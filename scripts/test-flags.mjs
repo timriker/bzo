@@ -64,6 +64,9 @@ import {
   getWingsSlideVelocity,
   hasAirControl,
   shotRicochets,
+  shieldsAgainstShot,
+  getFlagThrownAltitude,
+  SHIELD_FLIGHT,
   isTeamFlag,
   rememberFlagIdentity,
 } from '../public/flags.mjs';
@@ -414,6 +417,47 @@ close(
   FLAG_ALTITUDE,
   'hover height equals apex'
 );
+
+// Flag.cxx:123 and FlagInfo.cxx:174. Shield is the one flag that answers a shot
+// with a dropped flag rather than a death, and the flag it drops is thrown
+// _shieldFlight times higher than any other -- which buys sqrt(_shieldFlight)
+// times the flight, not _shieldFlight times it.
+{
+  const shield = getFlagType('SH');
+  assert.equal(shield.name, 'Shield');
+  assert.equal(shield.endurance, FLAG_ENDURANCE.UNSTABLE);
+  assert.equal(shield.quality, 0);
+  assert.equal(shield.team, null);
+  assert.equal(SHIELD_FLIGHT, 2.7);
+
+  assert.equal(shieldsAgainstShot('SH'), true);
+  for (const abbreviation of ['R', 'US', 'ID', 'WG', 'B*', null]) {
+    assert.equal(shieldsAgainstShot(abbreviation), false, `${abbreviation} does not stop a shot`);
+  }
+
+  close(getFlagThrownAltitude('SH'), 29.7, 'a shield flag is thrown 2.7 * _flagAltitude');
+  for (const abbreviation of ['R', 'US', 'B*', null]) {
+    close(
+      getFlagThrownAltitude(abbreviation),
+      FLAG_ALTITUDE,
+      `${abbreviation} is thrown _flagAltitude high`
+    );
+  }
+
+  const shieldFlight = computeFlagFlight(getFlagThrownAltitude('SH'), GRAVITY);
+  close(shieldFlight.flightEnd, 2 * Math.sqrt(2 * 29.7 / GRAVITY), 'shield flight duration');
+  close(shieldFlight.flightEnd, 4.923911, 'shield flight duration at bzo gravity');
+  close(
+    shieldFlight.flightEnd / flight.flightEnd,
+    Math.sqrt(SHIELD_FLIGHT),
+    'the extra altitude buys sqrt(_shieldFlight) times the flight'
+  );
+  close(
+    getFlagFlightHeight(shieldFlight.flightEnd / 2, shieldFlight.initialVelocity, GRAVITY),
+    29.7,
+    'shield apex is the altitude it was thrown to'
+  );
+}
 
 // A dropped flag: launched from a tank on a building, landing on the ground
 // well to one side.

@@ -52,6 +52,28 @@ or deployment configuration.
 - Confirm that the tank remains centered at the XR origin while the world moves
   relative to the player.
 
+## HUD panels
+
+The DOM HUD keeps every panel one `--hud-edge` from the edge of the viewport. A
+session has no viewport edge, so `XR_HUD_ANGLE_X`, `XR_HUD_ANGLE_UP` and
+`XR_HUD_ANGLE_DOWN` bound the panels in degrees off the gaze axis instead, and
+`placeXRHudPanel` holds every panel inside that box. Those three numbers are the
+only thing to change if the HUD sits wrong; nothing else encodes a position.
+
+- Look straight ahead without moving your head and confirm that the radar, the
+  scoreboard, the shot slots, the notices and the chat are all readable -- no
+  panel should need a glance down or out to the side to reach.
+- Confirm no panel is clipped by the edge of the display or lost in the blur at
+  the edge of the lens.
+- Confirm the chat panel sits above the bottom edge of the box with its caption
+  and all six message lines visible.
+- Send chat of each kind and confirm each line is the colour the desktop window
+  gives it: server yellow, misc blue, action peach, direct messages cyan and
+  purple, ordinary chat white.
+- With a keyboard attached, switch tabs with the digit keys and confirm the
+  caption follows. Let a message arrive on another tab and confirm the caption
+  row reports it as unread on the right.
+
 ## Controller mapping
 
 - Move either thumbstick forward and backward; the tank should move along its

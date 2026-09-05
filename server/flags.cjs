@@ -46,6 +46,11 @@ const FLAG_POLE_WIDTH = 0.025;
 const FLAG_CLEARANCE = 10.0;
 const MAX_FLAG_GRABS = 4;
 const BASE_SIZE = 60.0;
+// _shieldFlight. A Shield flag is thrown this many times higher than any other
+// when it leaves a tank (FlagInfo.cxx:174), which is the second half of what the
+// flag is worth: the hit costs you the flag, but the flag is still in the air
+// while you drive back under it.
+const SHIELD_FLIGHT = 2.7;
 
 // BZFlag's tank radius, deliberately not bzo's 2. The grab radius scales with
 // the world rather than with the vehicle, as the sound reference distance in
@@ -174,6 +179,14 @@ const FLAG_TYPES = Object.freeze({
     quality: FLAG_QUALITY.GOOD,
     team: null,
     help: 'Shots bounce off walls.  Don\'t shoot yourself!',
+  }),
+  SH: Object.freeze({
+    abbreviation: 'SH',
+    name: 'Shield',
+    endurance: FLAG_ENDURANCE.UNSTABLE,
+    quality: FLAG_QUALITY.GOOD,
+    team: null,
+    help: 'Getting hit only drops flag.  Flag flies an extra-long time.',
   }),
   JP: Object.freeze({
     abbreviation: 'JP',
@@ -304,6 +317,15 @@ function shotRicochets(abbreviation, allShotsRicochet) {
   return allShotsRicochet === true || abbreviation === 'R';
 }
 
+// gotBlowedUp (playing.cxx:3919). Shield is the one flag that answers a shot
+// with something other than a death: the tank lives and gives up the flag
+// instead. Only a shot -- upstream tests the reason as well as the flag, so
+// being run over, caught by a capture or genocided kills a shielded tank like
+// anyone else.
+function shieldsAgainstShot(abbreviation) {
+  return abbreviation === 'SH';
+}
+
 // LocalPlayer::doJump's vertical component. A flap relaunches a tank that is on
 // its way up only if it is climbing slower than the flap would, and a falling
 // one is slowed rather than relaunched -- so flapping late in a dive costs you
@@ -376,6 +398,15 @@ function getTeamFlagAbbreviation(colorIndex) {
     if (type.team === colorIndex) return type.abbreviation;
   }
   return null;
+}
+
+// FlagInfo::dropFlag's thrownAltitude. Every flag is thrown _flagAltitude high
+// except Shield, which goes _shieldFlight times that and so stays up
+// sqrt(_shieldFlight) ~ 1.64 times as long. A flag flying *in* never asks this:
+// addFlag settles its arc before it picks a type (FlagInfo.cxx:116), so a Shield
+// arrives like anything else and only leaves differently.
+function getFlagThrownAltitude(abbreviation) {
+  return abbreviation === 'SH' ? SHIELD_FLIGHT * FLAG_ALTITUDE : FLAG_ALTITUDE;
 }
 
 // FlagInfo::addFlag and FlagInfo::dropFlag both derive the flight from one
@@ -498,6 +529,7 @@ module.exports = {
   FLAG_CLEARANCE,
   MAX_FLAG_GRABS,
   BASE_SIZE,
+  SHIELD_FLIGHT,
   BZFLAG_TANK_RADIUS,
   FLAG_GRAB_RADIUS,
   FLAG_GRAB_LEVEL_TOLERANCE,
@@ -537,4 +569,6 @@ module.exports = {
   getFlagHoverHeight,
   getFlagFlightState,
   shotRicochets,
+  shieldsAgainstShot,
+  getFlagThrownAltitude,
 };

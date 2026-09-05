@@ -277,6 +277,14 @@ const GROUND_TEX_REPEAT = 0.05; // upstream groundHighResTexRepeat (defaultBZDB.
 // Upstream's five triangle strips over the four outer and four centre corners.
 const GROUND_EYE_SCRATCH = new THREE.Vector3();
 const ROAM_FORWARD_SCRATCH = new THREE.Vector3();
+const FLAG_BILLBOARD_SCRATCH = new THREE.Vector3();
+const FLAG_BILLBOARD_QUATERNION = new THREE.Quaternion();
+// The chase camera's offset from the tank it follows: this far behind along the
+// tank's heading, this far above it. One pair for both paths, because a desktop
+// third-person view and an XR one that framed the tank differently would be two
+// different views under one name.
+const THIRD_PERSON_DISTANCE = 12;
+const THIRD_PERSON_HEIGHT = 4;
 const GROUND_STRIPS = [
   [4, 5, 7, 6],
   [0, 1, 4, 5],
@@ -4965,12 +4973,34 @@ class RenderManager {
     if (!this.flagNodes?.size) return;
     this._stepFlagWaveSets(deltaTime);
 
-    // The billboard matrix upstream multiplies in is the inverse of the view
-    // rotation, so the flag's own axes become the screen's. worldGroup is only
-    // ever translated, so the camera's world orientation is that rotation here.
-    const cameraQuaternion = this.camera.quaternion;
+    // A flag turns to face the viewer about its own pole, and about nothing
+    // else. Upstream multiplies in the inverse of the whole view rotation
+    // (ViewFrustum::executeBillboard), which keeps the pole upright on a monitor
+    // only because a desktop camera has no roll and little pitch: the pole is
+    // vertical *on the screen*, not in the world. In a headset that reads as the
+    // flag leaning over with your head, and turning about the eye rather than
+    // about the pole means a flag spins in place when you merely look away from
+    // it. Yaw towards the viewer does what the billboard is for -- the cloth
+    // faces you -- and leaves the pole where the world put it.
+    //
+    // The turn is measured in worldGroup's own space rather than the scene's,
+    // because in a session worldGroup carries the player's heading: reading the
+    // camera's orientation straight off would apply that heading a second time.
+    const camera = FLAG_BILLBOARD_SCRATCH;
+    this.camera.getWorldPosition(camera);
+    // worldGroup is only ever translated and turned about the vertical, so its
+    // inverse is that by hand -- cheaper than updating the world matrix of every
+    // one of its children to ask `worldToLocal`.
+    camera.sub(this.worldGroup.position).applyQuaternion(
+      FLAG_BILLBOARD_QUATERNION.copy(this.worldGroup.quaternion).invert()
+    );
     this.flagNodes.forEach((node) => {
-      if (node.group.visible) node.group.quaternion.copy(cameraQuaternion);
+      if (node.group.visible) {
+        node.group.rotation.set(0, Math.atan2(
+          camera.x - node.group.position.x,
+          camera.z - node.group.position.z,
+        ), 0);
+      }
       if (node.warp?.group.visible) this._perturbFlagWarp(node.warp);
     });
   }
@@ -5178,10 +5208,34 @@ class RenderManager {
       if (myTank.userData.body) myTank.userData.body.visible = true;
       if (myTank.userData.turret) myTank.userData.turret.visible = true;
       const cameraOffset = new THREE.Vector3(
-        Math.sin(playerRotation) * 12,
-        4,
-        Math.cos(playerRotation) * 12,
+        Math.sin(playerRotation) * THIRD_PERSON_DISTANCE,
+        THIRD_PERSON_HEIGHT,
+        Math.cos(playerRotation) * THIRD_PERSON_DISTANCE,
       );
+      if (xrState.enabled) {
+        // The headset owns the camera, so the world moves instead -- the same
+        // rule first person and roaming follow. What differs is only the eye
+        // point: the chase position rather than the tank itself. It is rebuilt
+        // from the tank's current position every frame, which is what was
+        // missing; without it the world kept whatever offset first person last
+        // set and the tank simply drove out of the shot.
+        //
+        // The heading is taken as well as the position, so forward is the same
+        // direction it is in first person. Height lands the chase point on the
+        // XR floor, so a standing player's own height sits on top of it exactly
+        // as it does in first person -- THIRD_PERSON_HEIGHT is the number to
+        // tune if the view rides too high.
+        const eye = ROAM_FORWARD_SCRATCH.copy(myTank.position).add(cameraOffset);
+        const eyeY = eye.y;
+        const q = new THREE.Quaternion();
+        q.setFromAxisAngle(new THREE.Vector3(0, 1, 0), -playerRotation);
+        const eyeRotated = eye.set(eye.x, 0, eye.z).applyQuaternion(q);
+        this.worldGroup.quaternion.copy(q);
+        this.worldGroup.position.set(-eyeRotated.x, -eyeY, -eyeRotated.z);
+        return;
+      }
+      this.worldGroup.position.set(0, 0, 0);
+      this.worldGroup.quaternion.identity();
       this.camera.position.copy(myTank.position).add(cameraOffset);
       this.camera.lookAt(new THREE.Vector3(
         myTank.position.x - Math.sin(playerRotation) * 10,

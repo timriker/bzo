@@ -9,7 +9,8 @@ capture), 3 (Identify) and 9 (Ricochet) are **implemented**, as is the jumping
 switch and all three flags that hang off it -- `JP`, `WG` and `NJ` -- see
 "Jumping, and the flags that carry it". All three of phase 4's ways out of a bad
 flag -- the **shake timeout**, **shake wins** and **antidote flags** -- are in;
-its four client-side bad flags are not. Phases 5 to 8 and 10 onwards are not.
+its four client-side bad flags are not, and neither is phase 6 beyond `SH`
+Shield. Phases 5, 7, 8 and 10 onwards are not.
 
 The flag table in `public/flags.mjs` carries only the flags bzo implements, so
 **this document is the list of what is missing** -- see "What is left to add".
@@ -187,7 +188,8 @@ worse than trusting a modified client about a base it still had to drive to.
 
 Upstream carries 47 flag types: a Null type, four team flags, and 42
 superflags. bzo has the four team flags, Useless, Identify, Jumping, Wings,
-Ricochet and No Jumping, so **36 superflags remain** -- 23 good and 13 bad. The table below is the whole list,
+Ricochet, No Jumping and Shield, so **35 superflags remain** -- 22 good and
+13 bad. The table below is the whole list,
 grouped by the machinery each group needs rather than by name, because the
 machinery is what decides the order. `src/common/Flag.cxx` is the authority for
 every name, abbreviation, endurance, quality and help string;
@@ -197,7 +199,7 @@ every name, abbreviation, endurance, quality and help string;
 |---|---|---|
 | 4 | `B` `JM` `CB` `WA` | shake wins, antidote flags |
 | 5 | `V` `QT` `A` `M` `RC` `FO` `RO` `LT` `RT` `BY` `TR` | the effect resolver, in the shared pair |
-| 6 | `SR` `SH` `G` | damage rules, and a shot that remembers its flag |
+| 6 | `SR` `G` | damage rules, and a shot that remembers its flag |
 | 7 | `T` `N` `O` | per-player tank dimensions |
 | 8 | `F` `MG` `L` `IB` `SB` | per-shot rate, life, velocity and obstacle rules |
 | 10 | `SW` | a shot with no path -- an expanding sphere |
@@ -596,13 +598,10 @@ input clamp, and the resolver is where input clamps live.
 ## Phase 6 -- damage rules
 
 Three flags that change what a hit does rather than what a shot is. bzo's server
-owns hit detection (`simulateProjectilesStep`, `server.js:3326`), which makes
-all three server-side and simpler than upstream.
+owns hit detection (`simulateProjectilesStep`), which makes all three
+server-side and simpler than upstream. **`SH` Shield is implemented**; the other
+two are not.
 
-- **`SH` Shield** -- being shot drops your flag instead of killing you
-  (`bzfs.cxx:3879`), and the flag flies `_shieldFlight` 2.7 times the normal
-  altitude (`FlagInfo.cxx:174`). Two lines in the hit path plus one argument to
-  `computeFlagFlight`, which already takes the thrown altitude.
 - **`SR` Steamroller** -- touching a tank kills it, within
   `_srRadiusMult` 2.0 tank radii. A new server-side per-tick proximity sweep
   over live players; there is no such sweep today. Upstream's `_squishFactor`
@@ -620,6 +619,40 @@ all three server-side and simpler than upstream.
 and put it in the `shotBegin` payload -- the client needs it too, from phase 8
 on, to draw the shot right. This is the whole of phase 8's plumbing, arriving
 one phase early because `G` is the cheapest thing that proves it works.
+
+### `SH` Shield (implemented)
+
+Being shot drops your flag instead of killing you, and the flag flies
+`_shieldFlight` 2.7 times the normal altitude, so it is in the air
+sqrt(2.7) ~ 1.64 times as long -- long enough to drive back under it.
+
+The altitude is one argument: `getFlagThrownAltitude` in the shared pair answers
+`_shieldFlight * _flagAltitude` for `SH` and `_flagAltitude` for everything else,
+and `dropFlag` passes it to `computeFlagFlight`, which already took a thrown
+altitude. It applies to every way a Shield leaves a tank, not only to a hit,
+because upstream tests the type in `FlagInfo::dropFlag` and nothing else
+(`FlagInfo.cxx:174`). A flag flying *in* is untouched: `addFlag` settles its arc
+before it picks a type, so a Shield arrives like anything else.
+
+The hit path asks `shieldsAgainstShot` before it kills. When it answers, the
+shot ends where it struck, the tank keeps its health, `dropPlayerFlag` throws
+the flag, and nobody scores -- no kill, no death, no shake win, and no
+`playerHit`, so no client explodes anything. The client needs no new message:
+the `shotEnd` draws the impact and the `dropFlag` it already handles plays the
+drop sound and says what was lost, which is exactly the feedback upstream gives
+(`playing.cxx:3919` skips the explosion and the alert; `handleFlagDropped`
+still plays `SFX_DROP_FLAG`).
+
+**Only a shot.** Upstream tests the reason as well as the flag, so a shielded
+tank is still killed by a capture, by a self-destruct, and by the flags that
+kill without a shot when they arrive. That falls out for free here: those paths
+do not run through the projectile sweep.
+
+**A shot is spent by the first tank it reaches.** The sweep tests the projectile
+against every player, so it checks that the projectile is still in flight before
+each one: a shot that has already killed a tank, or been taken by a shield, has
+nothing left to hit the next tank with. Upstream never has this to decide --
+each client tests only its own tank, so one shot is one hit by construction.
 
 ## Phase 7 -- per-player tank dimensions
 

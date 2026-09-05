@@ -109,7 +109,8 @@ import {
   updateShotStatus,
   roundedRect,
   readStoredFlag,
-  bindToggleButton
+  bindToggleButton,
+  fitText
 } from './hud.js';
 import { renderManager, DEFAULT_MUZZLE_HEIGHT } from './render.js';
 import { describeMeasurements, describeRenderCapabilities } from './capabilities.mjs';
@@ -334,10 +335,44 @@ const xrScoreboardPanel = { canvas: null, texture: null, mesh: null, planeWidth:
 const xrAlertPanel = { canvas: null, texture: null, mesh: null, planeWidth: 0, planeHeight: 0 };
 const XR_HUD_PANELS = [xrRadarPanel, xrChatPanel, xrShotStatusPanel, xrScoreboardPanel, xrAlertPanel];
 const XR_HUD_PLANE_Z = -0.85;
+// --hud-edge is what keeps every DOM panel the same distance from the edge of
+// the viewport. An immersive session has no viewport edge to measure from: the
+// panels are planes parented to the head, and what bounds them is how far the
+// eye can turn before a panel stops being readable. This is that bound, in
+// degrees off the gaze axis, and it is the XR half of the same rule -- one box
+// that the radar, the scoreboard, the notices and the chat are all placed
+// inside, so they cannot drift apart.
+//
+// Down is the tightest direction on a headset: the facial interface and the
+// nose cut into it and it is where the lens is furthest from the eye, which is
+// why it gets no more room than up even though a neck bends that way more
+// easily. These are the three numbers to tune if the HUD sits wrong in a
+// headset; nothing else encodes a position.
+const XR_HUD_ANGLE_X = 28;
+const XR_HUD_ANGLE_UP = 24;
+const XR_HUD_ANGLE_DOWN = 24;
+// How far off centre a given angle lands on the HUD plane.
+function xrHudEdge(degrees) {
+  return Math.abs(XR_HUD_PLANE_Z) * Math.tan((degrees * Math.PI) / 180);
+}
 // messageColor, matching #roamStatus in the DOM column.
 const XR_ROAM_STATUS_COLOR = '#cfd8e6';
-const XR_RADAR_PLANE_SIZE = 0.45;
+// The radar's side on the HUD plane. It takes the box's top-right corner, and
+// this is the size that keeps the corner nearest the gunsight where it has
+// always been while the far corner comes inside the box -- a radar large enough
+// to reach both would have its inner edge on the crosshair.
+const XR_RADAR_PLANE_SIZE = 0.3;
 const XR_CHAT_PLANE_WIDTH = 0.9;
+// The chat canvas is laid out in pixels and the plane takes its aspect, so these
+// decide both what fits and how large it reads. A line is 22px on a canvas 1024
+// wide shown 0.9m across at 0.85m, which is about 1.2 degrees tall -- the size
+// text has to be to survive a lens, and the reason the panel shows six lines
+// rather than the twelve the same box would hold at desktop sizes.
+const XR_CHAT_CANVAS_WIDTH = 1024;
+const XR_CHAT_CAPTION_PX = 22;
+const XR_CHAT_LINE_PX = 22;
+const XR_CHAT_LINE_HEIGHT_PX = 26;
+const XR_CHAT_CANVAS_HEIGHT = 204;
 // BZFlag fires with Enter or the left mouse button and keeps the space bar for
 // dropping a flag (ActionBinding.cxx:92-95).
 const FIRE_KEY = 'Enter';
@@ -1171,6 +1206,28 @@ function updateChatLayoutForDebugOverlap() {
   const availableChatWidth = window.innerWidth - CHAT_DEBUG_PANEL_RESERVE;
   const shouldAvoidOverlap = desktopLike && debugVisible && availableChatWidth >= CHAT_MIN_WIDTH_WITH_DEBUG;
   body.classList.toggle('chat-avoid-debug', shouldAvoidOverlap);
+}
+
+// The chat palette lives in styles.css, where the DOM chat window uses it. The
+// XR panel paints the same chat onto a canvas and reads the same values back,
+// rather than keeping a second list that drifts the first time one changes. A
+// custom property on :root does not change while the page is up, so each one is
+// read once.
+const cssColorCache = new Map();
+function getCssColor(name, fallback) {
+  if (cssColorCache.has(name)) return cssColorCache.get(name);
+  const value = window.getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+  const color = value || fallback;
+  cssColorCache.set(name, color);
+  return color;
+}
+
+// The colour the DOM gives a chat line of this kind, from the same variable its
+// .chat-kind-* rule reads. A kind with no colour of its own -- `chat`, which is
+// most of them -- falls through to the window's own text colour, exactly as it
+// does in CSS.
+function getChatKindColor(kind) {
+  return getCssColor(`--chat-kind-${kind}`, '') || getCssColor('--chat-text', '#fff');
 }
 
 function getVisibleChatTabs() {
@@ -7385,7 +7442,6 @@ function updateFlags(deltaTime) {
   });
 
   updateAntidoteFlag();
-  renderManager.updateFlagVisuals(deltaTime);
 }
 
 function updateProjectiles(deltaTime) {
@@ -7568,7 +7624,26 @@ function ensureXRHudPanel(panel, { canvas = null, canvasWidth = 0, canvasHeight 
 
 // Resize the plane to the panel's current size and place it on the HUD plane.
 // The settings menu covers the view, so nothing else shows while it is open.
-function placeXRHudPanel(panel, { width, height, x, y }) {
+//
+// Whatever a caller asks for is held inside the HUD box: a panel wider or taller
+// than the box is scaled down to fit, and one that would hang over an edge is
+// slid back in. A caller that already asks for a spot inside the box is placed
+// exactly where it asked, so the box is a bound rather than a layout -- the same
+// thing --hud-edge is for the DOM panels, which position themselves and only
+// promise to stop short of the screen.
+function placeXRHudPanel(panel, { width: requestedWidth, height: requestedHeight, x: requestedX, y: requestedY }) {
+  const left = -xrHudEdge(XR_HUD_ANGLE_X);
+  const right = xrHudEdge(XR_HUD_ANGLE_X);
+  const top = xrHudEdge(XR_HUD_ANGLE_UP);
+  const bottom = -xrHudEdge(XR_HUD_ANGLE_DOWN);
+  // Scale rather than crop: the canvas behind a panel is laid out for its own
+  // aspect, so squeezing one dimension would letter-box the painting.
+  const fit = Math.min(1, (right - left) / requestedWidth, (top - bottom) / requestedHeight);
+  const width = requestedWidth * fit;
+  const height = requestedHeight * fit;
+  const x = Math.min(right - (width / 2), Math.max(left + (width / 2), requestedX));
+  const y = Math.min(top - (height / 2), Math.max(bottom + (height / 2), requestedY));
+
   if (panel.planeWidth !== width || panel.planeHeight !== height) {
     panel.mesh.geometry.dispose();
     panel.mesh.geometry = new THREE.PlaneGeometry(width, height);
@@ -7652,20 +7727,22 @@ function ensureXRRadarTexture() {
   if (!radarCanvas) return;
   if (!ensureXRHudPanel(xrRadarPanel, { canvas: radarCanvas })) return;
 
-  const size = XR_RADAR_PLANE_SIZE * 0.75;
-  const centerShift = 0.25 * size;
+  const size = XR_RADAR_PLANE_SIZE;
   placeXRHudPanel(xrRadarPanel, {
     width: size,
     height: size,
-    x: 0.42 - centerShift,
-    y: 0.38 - centerShift,
+    x: xrHudEdge(XR_HUD_ANGLE_X) - (size / 2),
+    y: xrHudEdge(XR_HUD_ANGLE_UP) - (size / 2),
   });
 
   if (isXREnabled()) xrRadarPanel.texture.needsUpdate = true;
 }
 
 function ensureXRChatOverlay() {
-  if (!ensureXRHudPanel(xrChatPanel, { canvasWidth: 1024, canvasHeight: 220 })) return;
+  if (!ensureXRHudPanel(xrChatPanel, {
+    canvasWidth: XR_CHAT_CANVAS_WIDTH,
+    canvasHeight: XR_CHAT_CANVAS_HEIGHT,
+  })) return;
 
   const canvas = xrChatPanel.canvas;
   const ctx = canvas.getContext('2d');
@@ -7677,49 +7754,63 @@ function ensureXRChatOverlay() {
   const w = canvas.width;
   const h = canvas.height;
   const panelX = 14;
-  const panelY = 14;
-  const panelW = w - 28;
-  const panelH = h - 26;
+  const panelY = 10;
+  const panelW = w - (2 * panelX);
+  const panelH = h - (2 * panelY);
 
   ctx.clearRect(0, 0, w, h);
-  ctx.fillStyle = 'rgba(13, 16, 22, 0.78)';
+  ctx.fillStyle = getCssColor('--chat-bg', 'rgba(0, 0, 0, 0.5)');
   roundedRect(ctx, panelX, panelY, panelW, panelH, 12);
   ctx.fill();
 
+  // Which tab you are reading, and whether anything has arrived on another one.
+  // The DOM chat spends a whole row on the tabs because they are buttons there;
+  // in a session nothing points at this panel and the tabs are keyboard-bound
+  // (the digits and the brackets), so a strip of five labels would be five
+  // labels you cannot press. One caption says the same thing in a fifth of the
+  // room, and the room goes to the messages, which are the part worth reading.
+  const activeTab = getVisibleChatTabs().find((tab) => tab.id === chatState.activeTab);
+  const unreadCount = getVisibleChatTabs()
+    .filter((tab) => tab.id !== chatState.activeTab && chatState.unread[tab.id]).length;
+  ctx.textBaseline = 'alphabetic';
+  ctx.textAlign = 'left';
+  ctx.font = `bold ${XR_CHAT_CAPTION_PX}px monospace`;
+  ctx.fillStyle = getCssColor('--chat-tab-active', '#fff');
+  const captionBaseline = panelY + XR_CHAT_CAPTION_PX + 4;
+  ctx.fillText(activeTab ? activeTab.label : 'All', panelX + 10, captionBaseline);
+  if (unreadCount > 0) {
+    ctx.textAlign = 'right';
+    ctx.fillStyle = getCssColor('--chat-tab-unread', '#ff8a80');
+    ctx.fillText(`+${unreadCount} unread`, panelX + panelW - 10, captionBaseline);
+    ctx.textAlign = 'left';
+  }
+
+  // The same six lines the DOM window holds, in the same colour per kind. A
+  // message that is yellow on a monitor is yellow in the headset.
   const activeMessages = chatState.messages[chatState.activeTab] || [];
-  const visibleMessages = activeMessages.slice(-3);
-  ctx.fillStyle = '#dfe7f3';
-  ctx.font = 'bold 17px monospace';
-  const messageAreaTop = 26;
-  const messageLineHeight = 18;
+  const visibleMessages = activeMessages.slice(-CHAT_VISIBLE_MESSAGES);
+  ctx.font = `${XR_CHAT_LINE_PX}px monospace`;
+  const firstLineBaseline = captionBaseline + XR_CHAT_CAPTION_PX;
   visibleMessages.forEach((msg, index) => {
-    const text = msg.text || '';
-    const y = messageAreaTop + index * messageLineHeight;
-    const trimmed = text.length > 42 ? `${text.slice(0, 39)}...` : text;
-    ctx.fillText(trimmed, 24, y + 14);
-  });
-
-  const tabs = getVisibleChatTabs();
-  const tabStripY = h - 32;
-  const tabStripHeight = 18;
-  const tabGap = 6;
-  const tabWidth = (panelW - (tabs.length + 1) * tabGap) / Math.max(1, tabs.length);
-
-  tabs.forEach((tab, index) => {
-    const x = panelX + tabGap + index * (tabWidth + tabGap);
-    const isActive = tab.id === chatState.activeTab;
-    ctx.fillStyle = isActive ? '#f5f7ff' : 'rgba(90, 100, 115, 0.88)';
-    ctx.fillRect(x, tabStripY, tabWidth, tabStripHeight);
-    ctx.strokeStyle = isActive ? '#a9c8ff' : '#d7dce6';
-    ctx.lineWidth = 1;
-    ctx.strokeRect(x, tabStripY, tabWidth, tabStripHeight);
-    ctx.fillStyle = isActive ? '#1c2430' : '#f1f5f9';
-    ctx.font = 'bold 12px monospace';
-    ctx.fillText(tab.label, x + 6, tabStripY + 13);
+    ctx.fillStyle = getChatKindColor(msg.kind);
+    ctx.fillText(
+      fitText(ctx, msg.text || '', panelW - 20),
+      panelX + 10,
+      firstLineBaseline + (index * XR_CHAT_LINE_HEIGHT_PX),
+    );
   });
 
   xrChatPanel.texture.needsUpdate = true;
-  placeXRHudPanel(xrChatPanel, { width: XR_CHAT_PLANE_WIDTH, height: 0.18, x: 0, y: -0.48 });
+  placeXRHudPanel(xrChatPanel, {
+    width: XR_CHAT_PLANE_WIDTH,
+    // The plane takes the canvas's own aspect, so a line of text is the shape it
+    // was painted rather than stretched to whatever height the plane was given.
+    height: XR_CHAT_PLANE_WIDTH * (XR_CHAT_CANVAS_HEIGHT / XR_CHAT_CANVAS_WIDTH),
+    x: 0,
+    // Against the bottom of the HUD box. It sat at 34 degrees below the gaze
+    // axis, which on a headset is under the lens rather than in front of it.
+    y: -xrHudEdge(XR_HUD_ANGLE_DOWN),
+  });
 }
 
 function ensureXRShotStatusOverlay() {
@@ -7777,10 +7868,10 @@ function ensureXRShotStatusOverlay() {
 
   const shotWidth = 0.08;
   const radarMesh = xrRadarPanel.mesh;
-  const radarPlaneWidth = radarMesh?.geometry ? radarMesh.geometry.parameters.width : XR_RADAR_PLANE_SIZE * 0.75;
+  const radarPlaneWidth = radarMesh?.geometry ? radarMesh.geometry.parameters.width : XR_RADAR_PLANE_SIZE;
   const radarRightEdge = radarMesh
     ? radarMesh.position.x + (radarPlaneWidth / 2)
-    : 0.42 - (0.25 * radarPlaneWidth) + (radarPlaneWidth / 2);
+    : xrHudEdge(XR_HUD_ANGLE_X);
   placeXRHudPanel(xrShotStatusPanel, {
     width: shotWidth,
     height: Math.min(0.18, 0.02 + maxSlots * 0.015),
@@ -7897,9 +7988,9 @@ function ensureXRScoreboardOverlay() {
   placeXRHudPanel(xrScoreboardPanel, {
     width: baseWidth,
     height: baseHeight,
-    // Left-aligned with the chat panel below it.
+    // Left-aligned with the chat panel below it, against the top of the box.
     x: -(XR_CHAT_PLANE_WIDTH / 2) + (baseWidth / 2),
-    y: 0.42 - (baseHeight / 2),
+    y: xrHudEdge(XR_HUD_ANGLE_UP) - (baseHeight / 2),
   });
 }
 
@@ -9127,6 +9218,10 @@ function animate(frameTime) {
     deathFollowTarget,
     roamFraming: isObserver() ? getRoamFraming() : null,
   });
+  // After the camera, not with the rest of the flag work: a flag turns to face
+  // wherever the viewer ended up this frame, and in a session that is decided by
+  // where updateCamera just put the world.
+  renderManager.updateFlagVisuals(deltaTime);
   markFramePhase('sim');
   updateRadar();
   markFramePhase('radar');

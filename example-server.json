@@ -44,6 +44,7 @@
     "count": 16,
     "allowed": [
       "R",
+      "SH",
       "ID",
       "US",
       "JP",

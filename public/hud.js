@@ -76,6 +76,20 @@ function resizeHudCanvasIfNeeded(cache, canvas, width, height, dpr) {
 }
 
 // Converts a color int or string to a CSS color string
+// Trim a string to what fits `maxWidth` in the context's current font, with an
+// ellipsis when anything was taken off. Both canvas HUDs -- the XR settings menu
+// and the XR chat panel -- lay text out in pixels rather than in characters, so
+// neither has to guess how wide a character is.
+export function fitText(context, text, maxWidth) {
+  const source = String(text || '');
+  if (context.measureText(source).width <= maxWidth) return source;
+  let result = source;
+  while (result.length > 1 && context.measureText(`${result}...`).width > maxWidth) {
+    result = result.slice(0, -1);
+  }
+  return `${result}...`;
+}
+
 export function colorToCSS(color) {
   if (typeof color === 'string') return color;
   if (typeof color === 'number') return `#${color.toString(16).padStart(6, '0')}`;

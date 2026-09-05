@@ -36,7 +36,9 @@ const {
   normalizeShakeTimeout,
   normalizeShakeWins,
   shotRicochets,
+  shieldsAgainstShot,
   getFlagEndurance,
+  getFlagThrownAltitude,
   getFlagType,
   getTeamFlagAbbreviation,
   isTeamFlag,
@@ -3004,7 +3006,7 @@ function dropFlag(flag) {
     }
   }
 
-  const flight = computeFlagFlight(FLAG_ALTITUDE, GAME_CONFIG.GRAVITY);
+  const flight = computeFlagFlight(getFlagThrownAltitude(flag.type), GAME_CONFIG.GRAVITY);
   flag.status = vanish ? FLAG_STATUS.GOING : FLAG_STATUS.IN_AIR;
   flag.launchPosition = launch;
   flag.landingPosition = landing;
@@ -4031,6 +4033,11 @@ function simulateProjectilesStep(stepSeconds, now) {
 
     // Check collision with players using extrapolated positions
     players.forEach((player) => {
+      // A shot is spent by the first tank it reaches, whether that killed the
+      // tank or a shield took it, so the rest of the sweep has nothing to hit
+      // with. Upstream never has this to decide: each client tests only its own
+      // tank (`checkEnvironment`), so one shot is one hit by construction.
+      if (!projectiles.has(id)) return;
       // LocalPlayer::checkHit tests a player's own shots too -- "Don't shoot
       // yourself!" is the Ricochet flag's own help text. Before it bounces a
       // shot cannot reach the tank that fired it, because it leaves the muzzle
@@ -4055,6 +4062,19 @@ function simulateProjectilesStep(stepSeconds, now) {
 
         // Projectile must be within tank's vertical bounds
         if (proj.y >= playerBottom && proj.y <= playerTop) {
+          // gotBlowedUp() with the shield flag: the shot ends where it struck,
+          // the tank keeps its life, and the flag is thrown as if the player had
+          // dropped it -- which is where _shieldFlight sends it up extra high.
+          // Nobody scores, because nobody died.
+          const carried = getPlayerFlag(player.id);
+          if (carried && shieldsAgainstShot(carried.type)) {
+            projectiles.delete(id);
+            logShotEnd(proj, 'shield_hit', { x: proj.x, y: proj.y, z: proj.z }, `victim=${player.id}`);
+            broadcastAll({ type: 'shotEnd', id, reason: 0, x: proj.x, y: proj.y, z: proj.z });
+            dropPlayerFlag(player.id);
+            return;
+          }
+
           // Hit!
           projectiles.delete(id);
           player.health = 0;

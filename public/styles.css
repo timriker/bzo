@@ -82,6 +82,24 @@ html, body {
      avoid it, and the covered part is still touchable. `viewport-fit=cover`
      stays, because drawing under the cutout is now the point. */
   --hud-edge: 10px;
+
+  /* The chat's palette. Named here rather than written at each rule because the
+     XR chat panel paints the same chat onto a canvas and reads these back with
+     getComputedStyle -- two lists of colours would drift the moment one of them
+     changed, and a message that is yellow on the desktop and white in the
+     headset is the same message telling you two different things. A kind with no
+     colour of its own falls back to --chat-text, which is what `chat` does. */
+  --chat-bg: rgba(0, 0, 0, 0.5);
+  --chat-text: #fff;
+  --chat-kind-server: #ffe082;
+  --chat-kind-misc: #b3e5fc;
+  --chat-kind-debug: #b0bec5;
+  --chat-kind-action: #ffccbc;
+  --chat-kind-direct-in: #80deea;
+  --chat-kind-direct-out: #b39ddb;
+  --chat-tab-idle: #ddd;
+  --chat-tab-active: #fff;
+  --chat-tab-unread: #ff8a80;
 }
 
 /* Scrollbars follow the theme rather than the platform's grey. `scrollbar-color`
@@ -163,8 +181,8 @@ canvas {
   transform: translateX(-50%);
   width: 95vw;
   max-height: 33vh;
-  background: rgba(0,0,0,0.5);
-  color: #fff;
+  background: var(--chat-bg);
+  color: var(--chat-text);
   /* Six lines of messages are sized off this, so a fixed 16px asked for 120px of
      a 135px budget on a short screen and squeezed the tab row out entirely. */
   font: var(--hud-font-body) monospace;
@@ -210,27 +228,27 @@ canvas {
 }
 
 #chatMessages .chat-line.chat-kind-server {
-  color: #ffe082;
+  color: var(--chat-kind-server);
 }
 
 #chatMessages .chat-line.chat-kind-misc {
-  color: #b3e5fc;
+  color: var(--chat-kind-misc);
 }
 
 #chatMessages .chat-line.chat-kind-debug {
-  color: #b0bec5;
+  color: var(--chat-kind-debug);
 }
 
 #chatMessages .chat-line.chat-kind-action {
-  color: #ffccbc;
+  color: var(--chat-kind-action);
 }
 
 #chatMessages .chat-line.chat-kind-direct-in {
-  color: #80deea;
+  color: var(--chat-kind-direct-in);
 }
 
 #chatMessages .chat-line.chat-kind-direct-out {
-  color: #b39ddb;
+  color: var(--chat-kind-direct-out);
 }
 
 .chat-tabs {
@@ -244,7 +262,7 @@ canvas {
 .chat-tab {
   border: 1px solid #777;
   background: rgba(24, 24, 24, 0.9);
-  color: #ddd;
+  color: var(--chat-tab-idle);
   border-radius: 5px;
   font: var(--hud-font-small) monospace;
   padding: calc(var(--hud-pad) / 2) var(--hud-pad);
@@ -252,14 +270,14 @@ canvas {
 }
 
 .chat-tab.active {
-  border-color: #fff;
-  color: #fff;
+  border-color: var(--chat-tab-active);
+  color: var(--chat-tab-active);
   background: rgba(52, 52, 52, 0.95);
 }
 
 .chat-tab.unread {
   border-color: #c62828;
-  color: #ff8a80;
+  color: var(--chat-tab-unread);
 }
 
 #chatWindow .chat-input-row {
