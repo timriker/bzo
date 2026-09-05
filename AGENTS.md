@@ -701,6 +701,73 @@ The roaming label is the status line, not an alert -- it persists. It reads
 `ScoreboardRenderer::getLeader`'s own prefix, so watching whoever is winning is
 distinguishable from having picked that same player by hand.
 
+## Anti-cheat modes
+
+`antiCheat.mode` in `server.json` is `strict`, `warning`, or `disabled`, and it
+decides what happens to a packet the server believes an unmodified client could
+not have sent:
+
+- **strict** refuses the packet.
+- **warning** honours the packet and writes the disagreement to the log.
+- **disabled** does not look.
+
+**`warning` must never change the game.** A refusal in warning mode defeats the
+only thing the mode is for: you cannot work out why the server disbelieved a
+packet if the server has already hidden the evidence behind a rubber-band, a
+swallowed shot, or a jump that never happened -- and each of those goes on to
+produce warnings of its own, because the client's state and the server's have
+now diverged for a second reason. Every rejection therefore routes through
+`reportCheat` in `server.js`, which counts the finding, logs it as
+`[ANTICHEAT:<MODE>] Player "<name>" <what> | REFUSED|ALLOWED | Warnings: <n>`,
+and returns whether the caller must refuse. Callers must obey the return value
+rather than deciding for themselves. Silently substituting a server-computed
+value for the client's counts as refusing it.
+
+The findings are: linear drift, angular drift, collision, moving while paused, a
+speed that changed faster than the configured acceleration, a rejected shot, a
+rejected jump, and the flag grab, shake and capture checks.
+
+**A malformed packet is not an anti-cheat finding.** A non-finite coordinate or
+velocity, a zero-length shot direction, or a shot from an observer cannot be
+turned into game state in any mode, so those are refused in every mode and
+logged as `[ANTICHEAT] Player "<name>" MALFORMED ...` without counting as a
+warning. The distinction is whether the server is exercising judgement: a
+tolerance it drew and the client did not is a finding, and a packet it cannot
+act on is not.
+
+### The acceleration check cannot see the stick
+
+`fs` and `rs` in a move packet are not the client's input. `updateMovement` in
+`client.js` derives them from the *resolved* displacement of the last single
+frame, after collision, so they are a measurement of where the tank got to and
+not a statement of where it was asked to go. Two things follow, and both have
+already been got wrong once:
+
+- **The server cannot tell which acceleration rate applied.** The client picks
+  deceleration from the desired input, which is not on the wire. The server
+  therefore allows the fastest rate any stick position could have produced.
+  Anything tighter refuses a tank that is merely letting go of a key, because
+  both decelerations are faster than their accelerations.
+- **A speed change caused by geometry is not bounded by the tank's limits.** A
+  tank sliding along a wall reports whatever the collision resolver left it,
+  which can swing across the whole range in one packet while the input holds
+  steady. The acceleration model has no term for this.
+
+The window comes from `sdt`, the interval the client reports between its own
+move packets, bounded by `getAccelerationWindow`. `dt` in the same packet is one
+frame and is not the same thing. The server's gap between arrivals is the send
+interval plus jitter, and jitter that shortens it makes an honest ramp look
+impossible.
+
+`sdt` is a client-asserted input to a cheat check, which is allowed here only
+because it is bounded: it may widen the window and only by
+`SDT_JITTER_ALLOWANCE`. Do not add an unbounded one -- in particular do not let
+the client name the obstacle it hit, which would let any client turn the check
+off by asserting a collision.
+
+The capture check never refuses even in strict mode -- see the intentional
+deviations above -- so it passes `enforceable = false` and always logs ALLOWED.
+
 ## Shot timing
 
 BZFlag derives shot timing from `_reloadTime`, which itself defaults to

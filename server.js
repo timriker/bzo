@@ -550,6 +550,14 @@ const ANTICHEAT_CONFIG = {
   collisionSlack: serverConfig.antiCheat?.collisionSlack ?? 0.05,
 };
 
+// Move packets quantize `fs` and `rs` with toFixed(2), so a difference between
+// two of them carries up to 0.02 that is rounding rather than a finding.
+const SPEED_QUANTIZATION_SLACK = 0.02;
+
+// The most the client's own send interval may widen the acceleration window
+// past the gap the server measured between arrivals.
+const SDT_JITTER_ALLOWANCE = 0.25;
+
 // Optional gameplay overrides from server config
 const configTankSpeed = Number(serverConfig.tankSpeed);
 if (Number.isFinite(configTankSpeed) && configTankSpeed > 0) {
@@ -1458,8 +1466,12 @@ class Player {
     this.cheatWarnings = {
       linearDrift: 0,
       angularDrift: 0,
+      collision: 0,
+      movedWhilePaused: 0,
+      speedClamped: 0,
       shotRejected: 0,
       jumpRejected: 0,
+      flagRejected: 0,
       totalWarnings: 0,
       lastWarningTime: 0,
     };
@@ -2048,17 +2060,74 @@ function findValidSpawnPosition(tankRadius = 2) {
   return { x: 0, y: 0, z: 0, rotation: 0 };
 }
 
+// Anti-cheat mode decides what happens to a packet the server believes an
+// unmodified client could not have sent. `strict` refuses it. `warning` honours
+// it and only writes the disagreement to the log, so a false positive shows up
+// as a log line instead of as a rubber-band, a swallowed shot or a jump that
+// never happens -- which is the whole point of the mode: you cannot work out
+// why the server disbelieved a packet if the server has already changed the
+// game to hide it. `disabled` does not look.
+//
+// A malformed packet is not an anti-cheat finding and does not come here: a
+// non-finite position or a zero-length shot direction cannot be honoured in any
+// mode, so those are refused everywhere and logged as MALFORMED.
+//
+// Every caller must route its rejection through this function and obey the
+// return value. Returns true when the packet must be refused.
+function reportCheat(player, kind, headline, detail = null, enforceable = true) {
+  if (ANTICHEAT_CONFIG.mode === 'disabled') return false;
+
+  const counters = player.cheatWarnings;
+  if (counters[kind] !== undefined) counters[kind]++;
+  counters.totalWarnings++;
+  counters.lastWarningTime = Date.now();
+
+  const refused = enforceable && ANTICHEAT_CONFIG.mode === 'strict';
+  log(
+    `[ANTICHEAT:${ANTICHEAT_CONFIG.mode.toUpperCase()}] Player "${player.name}" ${headline}`
+    + ` | ${refused ? 'REFUSED' : 'ALLOWED'} | Warnings: ${counters.totalWarnings}`
+  );
+  if (detail) {
+    for (const line of [].concat(detail)) log(`  ${line}`);
+  }
+  return refused;
+}
+
+// Every kind that fired at least once, so a new counter shows up in the summary
+// and the disconnect line without either of them having to list them all.
+function formatCheatWarnings(player) {
+  const parts = Object.entries(player.cheatWarnings)
+    .filter(([kind, count]) => kind !== 'totalWarnings' && kind !== 'lastWarningTime' && count > 0)
+    .map(([kind, count]) => `${count} ${kind}`);
+  return parts.length > 0 ? parts.join(', ') : 'none';
+}
+
+// A packet the server cannot act on at all, in any mode. Not counted as an
+// anti-cheat warning: nothing about it is a judgement call.
+function logMalformed(player, what, detail) {
+  log(`[ANTICHEAT] Player "${player.name}" MALFORMED ${what}: ${detail}`);
+}
+
 // Validate player movement
 function validateMovement(player, newX, newY, newZ, newRotation, deltaTime, velocityChanged = false, options = {}) {
-  // Can't move while paused
-  if (player.paused) {
+  // A non-finite coordinate would poison the stored position and every
+  // extrapolation made from it afterwards, so it is refused in every mode.
+  if (!Number.isFinite(newX) || !Number.isFinite(newY)
+    || !Number.isFinite(newZ) || !Number.isFinite(newRotation)) {
+    logMalformed(player, 'MOVE', `(${newX}, ${newY}, ${newZ}, r=${newRotation})`);
     return false;
   }
 
-  // If anti-cheat is disabled, allow all movement (but still check collisions below)
-  if (ANTICHEAT_CONFIG.mode === 'disabled') {
-    // Skip to collision checks
-  } else {
+  // A paused tank is invulnerable, so driving while paused is worth a warning,
+  // but an unmodified client also sends the odd in-flight move as the pause
+  // takes effect. Warning mode wants to see how often that is what this is.
+  if (player.paused && reportCheat(player, 'movedWhilePaused', 'MOVED WHILE PAUSED', [
+    `Recvd: (${newX.toFixed(2)}, ${newY.toFixed(2)}, ${newZ.toFixed(2)}, r=${newRotation.toFixed(2)})`,
+  ])) {
+    return false;
+  }
+
+  if (ANTICHEAT_CONFIG.mode !== 'disabled') {
     // Get extrapolated position based on last known velocities
     const now = Date.now();
     const timeSinceLastUpdate = (now - player.lastUpdate) / 1000;
@@ -2075,20 +2144,16 @@ function validateMovement(player, newX, newY, newZ, newRotation, deltaTime, velo
       const exceedAmount = distMoved - maxDrift;
       const likelihood = Math.min(100, (exceedAmount / maxDrift) * 100).toFixed(1);
 
-      player.cheatWarnings.linearDrift++;
-      player.cheatWarnings.totalWarnings++;
-      player.cheatWarnings.lastWarningTime = now;
-
-      log(`[ANTICHEAT:${ANTICHEAT_CONFIG.mode.toUpperCase()}] Player "${player.name}" LINEAR DRIFT: ${distMoved.toFixed(2)} > ${maxDrift.toFixed(2)} (+${exceedAmount.toFixed(2)}) | Likelihood: ${likelihood}% | Warnings: ${player.cheatWarnings.totalWarnings}`);
-      log(`  Stored: (${player.x.toFixed(2)}, ${player.y.toFixed(2)}, ${player.z.toFixed(2)}, r=${player.rotation.toFixed(2)})`);
-      log(`  Extrap: (${extrapolated.x.toFixed(2)}, ${extrapolated.y.toFixed(2)}, ${extrapolated.z.toFixed(2)}, r=${extrapolated.r.toFixed(2)})`);
-      log(`  Recvd:  (${newX.toFixed(2)}, ${newY.toFixed(2)}, ${newZ.toFixed(2)}, r=${newRotation.toFixed(2)})`);
-      log(`  Vels: fs=${player.forwardSpeed.toFixed(2)}, rs=${player.rotationSpeed.toFixed(2)}, vv=${player.verticalVelocity.toFixed(2)}, dt=${timeSinceLastUpdate.toFixed(2)}s, velChanged=${velocityChanged}`);
-
-      if (ANTICHEAT_CONFIG.mode === 'strict') {
-        return false;
-      }
-      // In warning mode, continue with validation
+      const refused = reportCheat(player, 'linearDrift',
+        `LINEAR DRIFT: ${distMoved.toFixed(2)} > ${maxDrift.toFixed(2)} (+${exceedAmount.toFixed(2)})`
+        + ` | Likelihood: ${likelihood}%`,
+        [
+          `Stored: (${player.x.toFixed(2)}, ${player.y.toFixed(2)}, ${player.z.toFixed(2)}, r=${player.rotation.toFixed(2)})`,
+          `Extrap: (${extrapolated.x.toFixed(2)}, ${extrapolated.y.toFixed(2)}, ${extrapolated.z.toFixed(2)}, r=${extrapolated.r.toFixed(2)})`,
+          `Recvd:  (${newX.toFixed(2)}, ${newY.toFixed(2)}, ${newZ.toFixed(2)}, r=${newRotation.toFixed(2)})`,
+          `Vels: fs=${player.forwardSpeed.toFixed(2)}, rs=${player.rotationSpeed.toFixed(2)}, vv=${player.verticalVelocity.toFixed(2)}, dt=${timeSinceLastUpdate.toFixed(2)}s, velChanged=${velocityChanged}`,
+        ]);
+      if (refused) return false;
     }
 
     // Calculate rotation change from extrapolated rotation
@@ -2099,43 +2164,46 @@ function validateMovement(player, newX, newY, newZ, newRotation, deltaTime, velo
       const exceedAmount = rotDiff - maxRotDrift;
       const likelihood = Math.min(100, (exceedAmount / maxRotDrift) * 100).toFixed(1);
 
-      player.cheatWarnings.angularDrift++;
-      player.cheatWarnings.totalWarnings++;
-      player.cheatWarnings.lastWarningTime = now;
-
-      log(`[ANTICHEAT:${ANTICHEAT_CONFIG.mode.toUpperCase()}] Player "${player.name}" ANGULAR DRIFT: ${rotDiff.toFixed(2)} > ${maxRotDrift.toFixed(2)} (+${exceedAmount.toFixed(2)}) | Likelihood: ${likelihood}% | Warnings: ${player.cheatWarnings.totalWarnings}`);
-      log(`  stored: ${player.rotation.toFixed(2)}, extrapolated: ${extrapolated.r.toFixed(2)}, received: ${newRotation.toFixed(2)}, rs=${player.rotationSpeed.toFixed(2)}, dt=${timeSinceLastUpdate.toFixed(2)}s`);
-
-      if (ANTICHEAT_CONFIG.mode === 'strict') {
-        return false;
-      }
-      // In warning mode, continue with validation
+      const refused = reportCheat(player, 'angularDrift',
+        `ANGULAR DRIFT: ${rotDiff.toFixed(2)} > ${maxRotDrift.toFixed(2)} (+${exceedAmount.toFixed(2)})`
+        + ` | Likelihood: ${likelihood}%`,
+        [
+          `stored: ${player.rotation.toFixed(2)}, extrapolated: ${extrapolated.r.toFixed(2)},`
+          + ` received: ${newRotation.toFixed(2)}, rs=${player.rotationSpeed.toFixed(2)},`
+          + ` dt=${timeSinceLastUpdate.toFixed(2)}s`,
+        ]);
+      if (refused) return false;
     }
   }
 
-  // Check collision against the unified collider set (map objects + border colliders).
-  const ignoreTeleporters = options.ignoreTeleporters === true;
-  let collision = checkCollision(newX, newY, newZ, 2, {
-    ignoreTeleporters,
-    rotation: newRotation,
-    slack: ANTICHEAT_CONFIG.collisionSlack
-  });
-  if (collision) {
-    if (collision === true) {
-      // Should not happen, but fallback to safe rejection.
-      log(`Player "${player.name}" collided with unknown object x:${player.x.toFixed(2)}, y:${player.y.toFixed(2)}, z:${player.z.toFixed(2)}`);
-      return false;
-    }
+  // Check collision against the unified collider set (map objects + border
+  // colliders). A move that ends inside an obstacle is the client and the server
+  // disagreeing about the shape of the world, which is the same class of finding
+  // as position drift and is reported the same way -- in warning mode the move
+  // stands and the disagreement goes to the log, because a refusal here is what
+  // rubber-bands an honest player and hides the geometry bug that caused it.
+  if (ANTICHEAT_CONFIG.mode !== 'disabled') {
+    const ignoreTeleporters = options.ignoreTeleporters === true;
+    const collision = checkCollision(newX, newY, newZ, 2, {
+      ignoreTeleporters,
+      rotation: newRotation,
+      slack: ANTICHEAT_CONFIG.collisionSlack
+    });
 
-    if (collision.collisionKind === 'boundary') {
-      log(`Player "${player.name}" collided boundary x:${player.x.toFixed(2)}, y:${player.y.toFixed(2)}, z:${player.z.toFixed(2)}`);
-      return false;
+    if (collision) {
+      const at = `p ${newX.toFixed(2)},${newY.toFixed(2)},${newZ.toFixed(2)}`;
+      let headline;
+      if (collision === true) {
+        headline = `COLLISION with unknown object (${at})`;
+      } else if (collision.collisionKind === 'boundary') {
+        headline = `COLLISION with boundary (${at})`;
+      } else {
+        const { x, z, w, d, h, baseY, rotation } = collision;
+        headline = `COLLISION obs:${collision.name} ${x.toFixed(2)},${baseY.toFixed(2)},${z.toFixed(2)},`
+          + ` w:${w.toFixed(2)}, d:${d.toFixed(2)}, h:${h.toFixed(2)}, rot:${rotation.toFixed(2)} (${at})`;
+      }
+      if (reportCheat(player, 'collision', headline)) return false;
     }
-
-    // Log obstacle details and reject movement.
-    const { x, z, w, d, h, baseY, rotation } = collision;
-    log(`Player "${player.name}" collided obs:${collision.name} ${x.toFixed(2)},${baseY.toFixed(2)},${z.toFixed(2)}, w:${w.toFixed(2)}, d:${d.toFixed(2)}, h:${h.toFixed(2)}, rot:${rotation.toFixed(2)} (p ${player.x.toFixed(2)},${player.y.toFixed(2)},${player.z.toFixed(2) })`);
-    return false;
   }
 
   return true;
@@ -2145,18 +2213,32 @@ function validateMovement(player, newX, newY, newZ, newRotation, deltaTime, velo
 // Every rejection here is a client/server inconsistency: an unmodified client
 // never fires a shot the server refuses. Return the reason so the caller can log
 // all of them the same way rather than some paths logging and others going
-// quiet. Returns null when the shot is good.
+// quiet. Returns null when the shot is good, otherwise `{ reason, fatal }`.
+//
+// `fatal` marks a shot the server cannot turn into a projectile at all, so it is
+// refused in every mode. Everything else is a tolerance the server has drawn
+// somewhere the client has not, and warning mode fires the shot anyway: a
+// swallowed shot tells the player nothing and tells the log nothing about which
+// side was wrong.
 function getShotRejection(player, shotX, shotY, shotZ) {
   // Shot originates from barrel end, which is ~3 units from tank center
   const barrelLength = 3.0;
   const now = Date.now();
 
-  if (player.team === 'observer') {
-    return 'observer cannot shoot';
+  if (!Number.isFinite(shotX) || !Number.isFinite(shotY) || !Number.isFinite(shotZ)) {
+    return { reason: `shot origin is not finite (${shotX}, ${shotY}, ${shotZ})`, fatal: true };
   }
 
+  // An observer has no tank, so there is no barrel for the shot to leave and
+  // nothing for a return shot to hit. Not a tolerance: refused in every mode.
+  if (player.team === 'observer') {
+    return { reason: 'observer cannot shoot', fatal: true };
+  }
+
+  // A dead tank firing is usually the client's shot crossing the server's kill,
+  // which is exactly the timing warning mode exists to measure.
   if (player.health <= 0) {
-    return `dead player cannot shoot (health=${player.health})`;
+    return { reason: `dead player cannot shoot (health=${player.health})`, fatal: false };
   }
 
   // Fire rate is limited by shot slots alone, matching bzfs: GameKeeper.cxx
@@ -2175,10 +2257,13 @@ function getShotRejection(player, shotX, shotY, shotZ) {
   // ANTICHEAT log for position rejections during testing and widen this if
   // honest shots are being refused.
   if (dist > barrelLength + GAME_CONFIG.SHOT_POSITION_TOLERANCE) {
-    return `shot from invalid position: ${dist.toFixed(2)} units from the barrel,`
-      + ` limit ${(barrelLength + GAME_CONFIG.SHOT_POSITION_TOLERANCE).toFixed(2)}`
-      + ` (extrapolated ${formatShotPoint(extrapolated.x, extrapolated.y, extrapolated.z)},`
-      + ` shot ${formatShotPoint(shotX, shotY, shotZ)})`;
+    return {
+      reason: `shot from invalid position: ${dist.toFixed(2)} units from the barrel,`
+        + ` limit ${(barrelLength + GAME_CONFIG.SHOT_POSITION_TOLERANCE).toFixed(2)}`
+        + ` (extrapolated ${formatShotPoint(extrapolated.x, extrapolated.y, extrapolated.z)},`
+        + ` shot ${formatShotPoint(shotX, shotY, shotZ)})`,
+      fatal: false,
+    };
   }
 
   let activeShotCount = 0;
@@ -2187,7 +2272,10 @@ function getShotRejection(player, shotX, shotY, shotZ) {
   });
 
   if (activeShotCount >= GAME_CONFIG.SHOT_MAX_ACTIVE) {
-    return `exceeded active shot slots (${activeShotCount}/${GAME_CONFIG.SHOT_MAX_ACTIVE})`;
+    return {
+      reason: `exceeded active shot slots (${activeShotCount}/${GAME_CONFIG.SHOT_MAX_ACTIVE})`,
+      fatal: false,
+    };
   }
 
   return null;
@@ -2195,21 +2283,19 @@ function getShotRejection(player, shotX, shotY, shotZ) {
 
 // A rejected shot means the client believed it could fire and the server did
 // not. That is the same class of client/server disagreement the drift checks
-// report, so it is counted and reported the same way.
-function logShotRejection(player, reason, message) {
-  player.cheatWarnings.shotRejected++;
-  player.cheatWarnings.totalWarnings++;
-  player.cheatWarnings.lastWarningTime = Date.now();
-
-  log(
-    `[ANTICHEAT:${ANTICHEAT_CONFIG.mode.toUpperCase()}] Player "${player.name}" SHOT REJECTED:`
-    + ` ${reason} | Warnings: ${player.cheatWarnings.totalWarnings}`
-  );
-  log(
-    `  player=${player.id} at=${formatShotPoint(player.x, player.y, player.z)}`
+// report, so it is counted and reported the same way. Returns true when the shot
+// must not be fired: always for a fatal reason, otherwise only in strict mode.
+function reportShotRejection(player, reason, message, fatal) {
+  const detail = `player=${player.id} at=${formatShotPoint(player.x, player.y, player.z)}`
     + ` sent=${formatShotPoint(Number(message.x), Number(message.y), Number(message.z))}`
-    + ` dir=(${Number(message.dirX)},${Number(message.dirY)},${Number(message.dirZ)})`
-  );
+    + ` dir=(${Number(message.dirX)},${Number(message.dirY)},${Number(message.dirZ)})`;
+
+  if (fatal) {
+    logMalformed(player, 'SHOT', `${reason} | ${detail}`);
+    return true;
+  }
+
+  return reportCheat(player, 'shotRejected', `SHOT REJECTED: ${reason}`, [detail]);
 }
 
 // LocalPlayer::doJump refuses the jump on the client, so an unmodified client
@@ -2217,16 +2303,13 @@ function logShotRejection(player, reason, message) {
 // this at all -- upstream trusts the client with jumping entirely -- but bzo's
 // server is where the anti-cheat line is drawn, and free flight on a no-jump
 // world is a larger prize than a little position drift.
-function logJumpRejection(player, flagType) {
-  player.cheatWarnings.jumpRejected++;
-  player.cheatWarnings.totalWarnings++;
-  player.cheatWarnings.lastWarningTime = Date.now();
-
-  log(
-    `[ANTICHEAT:${ANTICHEAT_CONFIG.mode.toUpperCase()}] Player "${player.name}" JUMP REJECTED:`
-    + ` jumping is off and the tank carries ${flagType || 'no flag'}`
-    + ` | Warnings: ${player.cheatWarnings.totalWarnings}`
-  );
+// Returns true when the jump must be refused, which in warning mode it is not:
+// a jump the server swallows leaves the client airborne on its own screen and
+// every frame of the flight afterwards is reported as drift, burying the one
+// line that says what actually went wrong.
+function reportJumpRejection(player, flagType) {
+  return reportCheat(player, 'jumpRejected',
+    `JUMP REJECTED: jumping is off and the tank carries ${flagType || 'no flag'}`);
 }
 
 function getAvailableShotSlot(playerId) {
@@ -2703,11 +2786,11 @@ function grabFlag(player, flag) {
   const extrapolated = player.getExtrapolatedPosition(Date.now());
   const gap = distance(extrapolated.x, extrapolated.z, flag.position.x, flag.position.z);
   if (Math.abs(extrapolated.y - flag.position.y) < FLAG_GRAB_LEVEL_TOLERANCE && gap > reach) {
-    log(
-      `[ANTICHEAT:${player.name}] FLAG GRAB REJECTED flag ${flag.index} ` +
-      `${flag.position.x.toFixed(2)},${flag.position.z.toFixed(2)} is ${gap.toFixed(2)} away`
-    );
-    return;
+    const refused = reportCheat(player, 'flagRejected',
+      `FLAG GRAB REJECTED flag ${flag.index} `
+      + `${flag.position.x.toFixed(2)},${flag.position.z.toFixed(2)} is ${gap.toFixed(2)} away`
+      + ` (reach ${reach.toFixed(2)})`);
+    if (refused) return;
   }
 
   flag.owner = player.id;
@@ -2837,17 +2920,50 @@ function searchFlag(player) {
 
 // dropFlag(). Upstream takes the drop position from the client because the
 // server's copy lags; bzo uses its own, which is already movement-validated.
+// Where the tank was when it let go. Dead-reckoned, like every other position
+// the server judges -- grabFlag, getShotRejection and the drift check all read
+// the extrapolation rather than the stored position, because between packets the
+// stored one is out of date by construction.
+//
+// It matters most in the air, which is where flags are most often dropped: the
+// client sends nothing between takeoff and landing, since the heartbeat is gated
+// on being on the ground and vertical velocity is extrapolated rather than
+// reported. The stored y for a tank shot down mid-jump is therefore the height it
+// took off from, and its flag would launch from the floor and land under the
+// tank that dropped it.
+//
+// Upstream takes this position from the client instead -- `sendDropFlag` packs
+// `myTank->getPosition()` and `dropFlag` clamps it only to the world bounds
+// (`bzfs.cxx:3745`). bzo reaches the same place without trusting the client for
+// it. The wire format already matches: the drop broadcast carries the launch,
+// the landing and the flight, as upstream's `flag.pack` does, so every client
+// animates the server's numbers rather than deriving them from the tank.
+function getFlagDropPosition(owner, now = Date.now()) {
+  // Past a whole jump of silence the server does not know where the tank is --
+  // a connection that stopped sending is the usual reason, and it still carries
+  // whatever speed it had -- so the stored position beats extrapolating seconds
+  // of travel that may never have happened.
+  const gravity = GAME_CONFIG.GRAVITY > 0 ? GAME_CONFIG.GRAVITY : 9.8;
+  const maxSilence = (2 * GAME_CONFIG.JUMP_VELOCITY / gravity) * 1000;
+  if (now - owner.lastUpdate > maxSilence) {
+    return { x: owner.x, y: owner.y, z: owner.z };
+  }
+  const extrapolated = owner.getExtrapolatedPosition(now);
+  return { x: extrapolated.x, y: extrapolated.y, z: extrapolated.z };
+}
+
 function dropFlag(flag) {
   if (flag.status !== FLAG_STATUS.ON_TANK) return;
   const owner = getFlagOwner(flag);
   if (!owner) return;
   flag.grabbedAt = 0;
 
+  const from = getFlagDropPosition(owner);
   const half = GAME_CONFIG.MAP_SIZE / 2;
   const launch = {
-    x: (owner.x < -half || owner.x > half) ? 0 : owner.x,
-    y: owner.y + FLAG_LAUNCH_TANK_HEIGHT,
-    z: (owner.z < -half || owner.z > half) ? 0 : owner.z,
+    x: (from.x < -half || from.x > half) ? 0 : from.x,
+    y: from.y + FLAG_LAUNCH_TANK_HEIGHT,
+    z: (from.z < -half || from.z > half) ? 0 : from.z,
   };
   const teamFlag = flag.team !== null;
   // Both kinds ride the same downward ray, cast from the tank's feet rather than
@@ -2855,7 +2971,7 @@ function dropFlag(flag) {
   // FlagInfo::dropFlag adds the tank height to the launch point separately.
   let landing = {
     x: launch.x,
-    y: findFlagLandingY(launch.x, launch.z, owner.y),
+    y: findFlagLandingY(launch.x, launch.z, from.y),
     z: launch.z,
   };
   let vanish = false;
@@ -2921,10 +3037,10 @@ function captureFlag(player, baseColorIndex) {
   // is worse than trusting a modified client about a base it has to drive to.
   const standingOn = getBaseTeamAtPoint(OBSTACLES, player.x, player.y, player.z);
   if (standingOn !== baseColorIndex) {
-    log(
-      `[ANTICHEAT:${player.name}] CAPTURE CLAIMED base ${baseColorIndex} ` +
-      `while standing on ${standingOn === null ? 'no base' : standingOn}`
-    );
+    reportCheat(player, 'flagRejected',
+      `CAPTURE CLAIMED base ${baseColorIndex} `
+      + `while standing on ${standingOn === null ? 'no base' : standingOn}`,
+      null, false);
   }
 
   const cappedIndex = flag.team;
@@ -4046,7 +4162,7 @@ if (ANTICHEAT_CONFIG.mode !== 'disabled') {
       log(`[ANTICHEAT SUMMARY] ${playersWithWarnings.length} player(s) with warnings:`);
       playersWithWarnings.forEach(p => {
         const timeSinceWarning = Math.floor((Date.now() - p.cheatWarnings.lastWarningTime) / 1000);
-        log(`  "${p.name}": ${p.cheatWarnings.totalWarnings} total (${p.cheatWarnings.linearDrift} linear, ${p.cheatWarnings.angularDrift} angular, ${p.cheatWarnings.shotRejected} shot) - last ${timeSinceWarning}s ago`);
+        log(`  "${p.name}": ${p.cheatWarnings.totalWarnings} total (${formatCheatWarnings(p)}) - last ${timeSinceWarning}s ago`);
       });
     }
   }, 300000); // 5 minutes
@@ -4102,6 +4218,23 @@ function requestServerRestart(reason) {
       process.exit(0);
     }
   }, 1000);
+}
+
+// How long the client had to change its speeds. The server's own measure is the
+// gap between packet arrivals, which is the send interval plus whatever the
+// network did to it -- when jitter shortens it, an honest ramp looks like an
+// impossible one. The client reports the interval it actually ramped over
+// (`sdt`), which is the one number neither side can measure alone.
+//
+// This is a client-asserted input to a cheat check, so it is bounded rather than
+// believed: it may only widen the window, and only by SDT_JITTER_ALLOWANCE. A
+// modified client buys at most that much extra acceleration, and the drift check
+// still bounds where the tank ends up.
+function getAccelerationWindow(arrivalGap, clientSendGap) {
+  if (!Number.isFinite(arrivalGap) || arrivalGap <= 0) return 0;
+  const claimed = Number(clientSendGap);
+  if (!Number.isFinite(claimed) || claimed <= arrivalGap) return arrivalGap;
+  return Math.min(claimed, arrivalGap + SDT_JITTER_ALLOWANCE);
 }
 
 function approachNormalizedValue(currentValue, targetValue, maxStep) {
@@ -4383,28 +4516,59 @@ wss.on('connection', (ws, req) => {
           let fs = requestedFS;
           let rs = requestedRS;
           const vv = Number(message.vv);
-                    const enforceMovementLimits = ANTICHEAT_CONFIG.mode !== 'disabled';
-                    if (enforceMovementLimits && Number.isFinite(deltaTime) && deltaTime > 0) {
-                      const forwardRate = Math.abs(requestedFS) < 0.001
-                        ? GAME_CONFIG.FORWARD_DECEL
-                        : (requestedFS >= 0 ? GAME_CONFIG.FORWARD_ACCEL : GAME_CONFIG.REVERSE_ACCEL);
-                      const turnRate = Math.abs(requestedRS) < 0.001
-                        ? GAME_CONFIG.TURN_DECEL
-                        : GAME_CONFIG.TURN_ACCEL;
 
-                      fs = requestedFS === 0
-                        ? 0
-                        : approachNormalizedValue(player.forwardSpeed || 0, requestedFS, forwardRate * deltaTime);
-                      rs = requestedRS === 0
-                        ? 0
-                        : approachNormalizedValue(player.rotationSpeed || 0, requestedRS, turnRate * deltaTime);
+          if (!Number.isFinite(requestedFS) || !Number.isFinite(requestedRS) || !Number.isFinite(vv)) {
+            logMalformed(player, 'MOVE', `velocities fs=${message.fs} rs=${message.rs} vv=${message.vv}`);
+            break;
+          }
 
-                      fs = Math.max(-reverseSpeedRatio, Math.min(1, fs));
-                      rs = Math.max(-1, Math.min(1, rs));
-                    } else {
-                      fs = requestedFS;
-                      rs = requestedRS;
-                    }
+          // The client sends the speed it actually reached, not the key it is
+          // holding, so a speed that changed faster than the tank can change
+          // speed is a disagreement worth reporting. Only strict mode rewrites
+          // it: silently substituting the server's value in warning mode moves
+          // the tank the client never asked to move, and then reports the
+          // difference back as drift.
+          const accelWindow = getAccelerationWindow(deltaTime, message.sdt);
+          if (ANTICHEAT_CONFIG.mode !== 'disabled' && accelWindow > 0) {
+            // The stick is not in the packet, so the server cannot tell which of
+            // the client's rates applied (`updateMovement` in `client.js` picks
+            // deceleration by the *desired* input, which the server never sees,
+            // and both decelerations are faster than their accelerations). It
+            // therefore allows the fastest rate any stick position could have
+            // produced. Anything tighter refuses a tank that is merely letting
+            // go of a key.
+            const forwardRate = Math.max(
+              GAME_CONFIG.FORWARD_ACCEL, GAME_CONFIG.REVERSE_ACCEL, GAME_CONFIG.FORWARD_DECEL);
+            const turnRate = Math.max(GAME_CONFIG.TURN_ACCEL, GAME_CONFIG.TURN_DECEL);
+
+            let limitedFS = approachNormalizedValue(
+              player.forwardSpeed || 0, requestedFS, forwardRate * accelWindow);
+            let limitedRS = approachNormalizedValue(
+              player.rotationSpeed || 0, requestedRS, turnRate * accelWindow);
+
+            limitedFS = Math.max(-reverseSpeedRatio, Math.min(1, limitedFS));
+            limitedRS = Math.max(-1, Math.min(1, limitedRS));
+
+            // Both endpoints are quantized to 0.01 by the sender, so the
+            // difference carries up to 0.02 that is rounding, not a finding.
+            const fsExceeded = Math.abs(limitedFS - requestedFS) > SPEED_QUANTIZATION_SLACK;
+            const rsExceeded = Math.abs(limitedRS - requestedRS) > SPEED_QUANTIZATION_SLACK;
+            if (fsExceeded || rsExceeded) {
+              const refused = reportCheat(player, 'speedClamped',
+                `SPEED CHANGED TOO FAST: fs ${(player.forwardSpeed || 0).toFixed(2)}->${requestedFS.toFixed(2)}`
+                + ` (limit ${limitedFS.toFixed(2)}),`
+                + ` rs ${(player.rotationSpeed || 0).toFixed(2)}->${requestedRS.toFixed(2)}`
+                + ` (limit ${limitedRS.toFixed(2)}),`
+                + ` window=${accelWindow.toFixed(3)}s (arrival ${deltaTime.toFixed(3)}s, client ${message.sdt})`);
+              if (refused) {
+                fs = limitedFS;
+                rs = limitedRS;
+              }
+            } else {
+              fs = limitedFS;
+              rs = limitedRS;
+            }
+          }
 
           let d = message.d !== undefined ? Number(message.d) : undefined; // Optional slide direction
           let vx = message.vx !== undefined ? Number(message.vx) : undefined;
@@ -4459,9 +4623,9 @@ wss.on('connection', (ws, req) => {
           // the weaker question it can answer, and Wings is taken at its word
           // about how many flaps it has left.
           const carriedFlagType = getPlayerFlag(player.id)?.type ?? null;
-          const jumpRefused = isJumpStart
+          const mayNotJump = isJumpStart
             && !canJump(carriedFlagType, ALLOW_JUMPING, false, GAME_CONFIG.WINGS_JUMP_COUNT);
-          if (jumpRefused) logJumpRejection(player, carriedFlagType);
+          const jumpRefused = mayNotJump && reportJumpRejection(player, carriedFlagType);
 
           // Use actual deltaTime for validation since we compare to extrapolated position
           // The extrapolated position accounts for the full time interval using OLD velocities
@@ -4559,30 +4723,29 @@ wss.on('connection', (ws, req) => {
         case 'shoot': {
           // message: { type: 'shot', x, y, z, dirX, dirZ }
           const shotRejection = getShotRejection(player, message.x, message.y, message.z);
-          if (shotRejection) {
-            logShotRejection(player, shotRejection, message);
+          if (shotRejection
+            && reportShotRejection(player, shotRejection.reason, message, shotRejection.fatal)) {
             break;
           }
           const rawDirX = Number(message.dirX);
           const rawDirZ = Number(message.dirZ);
           const rawDirY = Number(message.dirY);
           if (!Number.isFinite(rawDirX) || !Number.isFinite(rawDirZ)) {
-            logShotRejection(player, 'shot direction is not a finite number', message);
+            reportShotRejection(player, 'shot direction is not a finite number', message, true);
             break;
           }
           const planarLength = Math.hypot(rawDirX, rawDirZ);
           if (planarLength < 1e-6) {
-            logShotRejection(player, `shot direction has no horizontal component (${planarLength})`, message);
+            reportShotRejection(player, `shot direction has no horizontal component (${planarLength})`, message, true);
             break;
           }
           const shotDirX = rawDirX / planarLength;
           const shotDirZ = rawDirZ / planarLength;
           const shotDirY = Number.isFinite(rawDirY) ? rawDirY : 0;
+          // A shot allowed past the slot check in warning mode has no slot left
+          // to take. It flies with slot -1: the reload bar ignores it, and the
+          // log above already says the client thought it had one.
           const shotSlot = getAvailableShotSlot(player.id);
-          if (shotSlot < 0) {
-            logShotRejection(player, 'no free shot slot despite passing validation', message);
-            break;
-          }
           const id = (++projectileIdCounter).toString();
           const proj = new Projectile(
             id,
@@ -4671,12 +4834,10 @@ wss.on('connection', (ws, req) => {
           if (flag.endurance === FLAG_ENDURANCE.STICKY) {
             const held = (Date.now() - flag.grabbedAt) / 1000;
             if (!canShakeFlag(flag.type, FLAG_SHAKE_TIMEOUT, held)) {
-              log(
-                `[ANTICHEAT:${ANTICHEAT_CONFIG.mode.toUpperCase()}] Player "${player.name}" ` +
-                `SHAKE REJECTED ${getFlagType(flag.type).name} held ${held.toFixed(2)}s ` +
-                `of ${FLAG_SHAKE_TIMEOUT}s`
-              );
-              break;
+              const refused = reportCheat(player, 'flagRejected',
+                `SHAKE REJECTED ${getFlagType(flag.type).name} held ${held.toFixed(2)}s `
+                + `of ${FLAG_SHAKE_TIMEOUT}s`);
+              if (refused) break;
             }
             log(`Player "${player.name}" shook off ${getFlagType(flag.type).name} after ${held.toFixed(2)}s`);
           }
@@ -5066,7 +5227,7 @@ wss.on('connection', (ws, req) => {
 
     let logMsg = `Player "${playerName}" (#${playerNum}) disconnected. ${playerKills} kills, ${playerDeaths} deaths.`;
     if (cheatWarnings > 0 && ANTICHEAT_CONFIG.mode !== 'disabled') {
-      logMsg += ` [ANTICHEAT: ${cheatWarnings} warnings (${player.cheatWarnings.linearDrift} linear, ${player.cheatWarnings.angularDrift} angular)]`;
+      logMsg += ` [ANTICHEAT: ${cheatWarnings} warnings (${formatCheatWarnings(player)})]`;
     }
     logMsg += ` Players: ${players.size}`;
     log(logMsg);

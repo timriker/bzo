@@ -6496,6 +6496,13 @@ function handleMotion(deltaTime) {
       vx: Number(airVelocityX.toFixed(2)),
       vz: Number(airVelocityZ.toFixed(2)),
       dt: Number(deltaTime.toFixed(3)),
+      // How long the client took to get from the last packet's speeds to these
+      // ones. `dt` above is one frame, which is the window `fs` and `rs` were
+      // measured over, not the window they changed over. The server's own
+      // arrival gap is the send interval plus network jitter, so it is the one
+      // number neither side can measure alone; see the acceleration check in
+      // `server.js`, which bounds how far it will trust this.
+      sdt: Number((timeSinceLastSend / 1000).toFixed(3)),
     };
 
     // Add optional direction field if sliding
