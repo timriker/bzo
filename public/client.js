@@ -101,6 +101,7 @@ import {
   compareScoreboardPlayers,
   getActiveHudAlerts,
   getHudAlertColor,
+  HUD_ALERT_WARNING_COLOR,
   setHudAlert,
   updateAlertHud,
   updateScoreboard,
@@ -175,6 +176,7 @@ import {
   FLAG_GRAB_INTERVAL_MS,
   FLAG_GRAB_LEVEL_TOLERANCE,
   FLAG_GRAB_RADIUS,
+  FLAG_QUALITY,
   FLAG_RADIUS,
   FLAG_STATUS,
   FLAG_TYPES,
@@ -209,6 +211,7 @@ import {
 import { setupInstallPrompt } from './install.js';
 import {
   SHOT_COLLISION_RADIUS,
+  crossedFlatTop,
   getBaseTeamAtPoint,
   getColliderLocalPoint,
   getOrigRectNormal,
@@ -218,6 +221,7 @@ import {
   getPyramidFaceLocalNormal,
   getPyramidSurfaceLocalHeight,
   isWithinPyramidFootprint,
+  movingTankOverlapsHeight,
   pyramidIntersectsTank,
   testOrigRectTank,
   traceShotStep,
@@ -278,8 +282,16 @@ function checkClientBuild(build) {
 let fps = 0;
 let frameCount = 0;
 let lastFpsUpdate = performance.now();
-// How long after a map is built the one automatic renderer.stats line waits.
+// How long after a map is built the first automatic renderer.stats line waits.
 const RENDER_STATS_SAMPLE_DELAY_MS = 10000;
+// And how often another one lands while an XR session is running. A headset is
+// the machine that cannot open the debug HUD to read its own counters, and one
+// line ten seconds into a map is a race: enter the session late and the sample
+// describes the flat page instead, which looks perfectly reasonable and answers
+// a different question. A series also lets a mode be read on its middle sample
+// rather than on wherever the player happened to be standing for the only one.
+const XR_STATS_SAMPLE_INTERVAL_MS = 20000;
+let nextXRStatsSampleAt = 0;
 
 function updateFps() {
   frameCount++;
@@ -2643,6 +2655,17 @@ function withProgramWindow(stats) {
 function logRenderStats(reason) {
   const stats = withProgramWindow(renderManager.getRenderStats());
   if (!stats) return;
+  // The debug toggles change what is in the scene -- labels are a sprite over
+  // every obstacle, geometry is a ghost and a trace per tank -- so a sample
+  // that does not say whether they were on is a sample that cannot be compared
+  // with the one beside it.
+  stats.debugLabels = debugLabelsEnabled;
+  stats.debugGeometry = showDebugGeometry;
+  stats.debugHud = debugEnabled;
+  // A setting rather than a knob, and one that decides whether the scene has
+  // seven lights in it or none -- which is a different shader for every
+  // material in the world, so it cannot be left off a sample either.
+  stats.lighting = renderManager.dynamicLightingEnabled;
   const report = getFramePhaseReport();
   const phases = report ? ` ${describeMeasurements(report)}` : '';
   debugLog(`renderer.stats reason=${reason} fps=${fps} ${describeMeasurements(stats)}${phases}`);
@@ -3242,7 +3265,7 @@ function init() {
       const rendererSize = renderer.getSize(new THREE.Vector2());
       const drawingBufferSize = renderer.getDrawingBufferSize(new THREE.Vector2());
       debugLog(
-        `renderer.init.ok viewport=${window.innerWidth}x${window.innerHeight} canvas=${renderer.domElement.width}x${renderer.domElement.height} css=${rendererSize.x}x${rendererSize.y} shown=${renderer.domElement.clientWidth}x${renderer.domElement.clientHeight} drawbuf=${drawingBufferSize.x}x${drawingBufferSize.y} renderScale=${renderManager.renderScale} shadows=${renderManager.projectedShadowsEnabled} celestial=${renderManager.celestialEnabled}`,
+        `renderer.init.ok viewport=${window.innerWidth}x${window.innerHeight} canvas=${renderer.domElement.width}x${renderer.domElement.height} css=${rendererSize.x}x${rendererSize.y} shown=${renderer.domElement.clientWidth}x${renderer.domElement.clientHeight} drawbuf=${drawingBufferSize.x}x${drawingBufferSize.y} renderScale=${renderManager.renderScale} xrScale=${renderManager.xrFramebufferScale} shadows=${renderManager.projectedShadowsEnabled} celestial=${renderManager.celestialEnabled}`,
       );
       const capabilities = renderManager.getRenderCapabilities();
       if (capabilities) debugLog(`renderer.capabilities ${describeRenderCapabilities(capabilities)}`);
@@ -4104,6 +4127,7 @@ function removePlayer(playerId) {
       renderManager.getWorldGroup().remove(tank.userData.ghostMesh);
       tank.userData.ghostMesh = null;
     }
+    renderManager.dropProjectedShadows(tank);
     renderManager.getWorldGroup().remove(tank);
     tanks.delete(playerId);
     callUpdateScoreboard();
@@ -4571,8 +4595,21 @@ function rebuildTeleporterRuntimeState() {
 // The occupant is BZFlag's oriented 2.8 x 6.0 tank box (Obstacle::inBox). Every
 // call here is for the local player, so the heading defaults to theirs: a call
 // site that silently fell back to a circle would disagree with the server.
-function checkCollision(x, y, z, ignoredObstacles = null, rotation = playerRotation) {
+//
+// `fromY` is where the step began, and it is what makes this Obstacle::inBox or
+// Obstacle::inMovingBox: given one, the vertical extent of the test is the span
+// the tank swept rather than the point it ended at, so a frame long enough to
+// carry it through a roof still reports the roof. A caller asking about a
+// single point leaves it alone and gets the point test back unchanged.
+function checkCollision(x, y, z, ignoredObstacles = null, rotation = playerRotation, fromY = y) {
   let ontopCollision = null;
+  const sweeping = fromY !== y;
+  // Of everything a swept step touches, the surface it lands on is the highest
+  // flat top it crossed going down: upstream reads that off Obstacle::getHitNormal,
+  // which takes the roof when the roof came before any side, and sorts its
+  // candidates by height (World.cxx compareHeights) so the tallest wins.
+  let landing = null;
+  let sweptCollision = null;
   for (const obs of getCollisionColliders()) {
     if (ignoredObstacles && ignoredObstacles.has(obs)) continue;
     const obstacleHeight = obs.h || 4;
@@ -4582,6 +4619,25 @@ function checkCollision(x, y, z, ignoredObstacles = null, rotation = playerRotat
     const tankHeight = 2;
     const halfW = obs.w / 2;
     const halfD = obs.d / 2;
+    // Pyramids are never swept, as PyramidBuilding::inMovingBox is not: a
+    // slope's cross-section depends on the height it is taken at, so there is
+    // no one rectangle to sweep.
+    const swept = sweeping && obs.type !== 'pyramid';
+    const spanFromY = swept ? fromY : y;
+    // A collision found while sweeping is collected rather than returned, so
+    // the whole step can be judged before the tank is told what it hit.
+    const recordCollision = () => {
+      if (!sweeping) return { type: 'collision', obstacle: obs };
+      if (!sweptCollision) sweptCollision = { type: 'collision', obstacle: obs };
+      if (
+        swept
+        && crossedFlatTop(obstacleTop, fromY, y)
+        && (!landing || obstacleTop > landing.obstacleTop)
+      ) {
+        landing = { type: 'ontop', obstacle: obs, obstacleTop };
+      }
+      return null;
+    };
     const { x: localX, z: localZ } = getColliderLocalPoint(x, z, obs);
     const tankAngle = getTankLocalAngle(rotation, obs.rotation);
     const hitsRect = (rectHalfW, rectHalfD) =>
@@ -4599,10 +4655,8 @@ function checkCollision(x, y, z, ignoredObstacles = null, rotation = playerRotat
       ontopCollision = { type: 'ontop', obstacle: obs, obstacleTop };
     }
 
-    // Only check collision if tank top is below obstacle top and tank base is above obstacle base
-    const tankTop = y + tankHeight;
-    if (tankTop <= obstacleBase + epsilon) continue;
-    if (y >= obstacleTop - epsilon) continue;
+    // Only check collision if the span the tank covered reaches the obstacle.
+    if (!movingTankOverlapsHeight(obstacleBase, obstacleTop, spanFromY, y, tankHeight, epsilon)) continue;
 
     if (obs.type === 'box' || !obs.type) {
       // Teleporters only collide on their frame; the active inner slab must
@@ -4612,25 +4666,36 @@ function checkCollision(x, y, z, ignoredObstacles = null, rotation = playerRotat
         if (hitsRect(dims.halfW, dims.halfD)) {
           const activeBaseY = obstacleBase;
           const activeTopY = obstacleBase + dims.activeH;
-          const overlapsActiveVertical = tankTop > (activeBaseY + epsilon) && y < (activeTopY - epsilon);
+          // The portal interior is swept along with the frame, so a tank
+          // falling through it in one step is not stopped by the frame it
+          // never touched.
+          const overlapsActiveVertical = movingTankOverlapsHeight(
+            activeBaseY, activeTopY, spanFromY, y, tankHeight, epsilon
+          );
           const inPortalInterior = overlapsActiveVertical
             && hitsRect(dims.halfW, dims.activeHalfD);
           if (!inPortalInterior) {
-            return { type: 'collision', obstacle: obs };
+            const hit = recordCollision();
+            if (hit) return hit;
           }
         }
       } else if (overlapsFootprint) {
-        return { type: 'collision', obstacle: obs };
+        const hit = recordCollision();
+        if (hit) return hit;
       }
     } else if (obs.type === 'pyramid') {
       // Mirrors BZFlag PyramidBuilding::inBox via the shared geometry module,
       // so the server evaluates the same solid volume the client moves through.
       if (pyramidIntersectsTank(obs, x, y, z, rotation, tankHeight)) {
-        return { type: 'collision', obstacle: obs };
+        const hit = recordCollision();
+        if (hit) return hit;
       }
     }
   }
-  return ontopCollision || false;
+  // The landing goes first: a step that crossed a roof has found the surface it
+  // is standing on, and reporting the side it also clipped is what leaves the
+  // tank inside the building instead of on top of it.
+  return landing || sweptCollision || ontopCollision || false;
 }
 
 function validateMove(x, y, z, intendedDeltaX, intendedDeltaY, intendedDeltaZ, tankRadius = 2) {
@@ -4694,8 +4759,15 @@ function validateMove(x, y, z, intendedDeltaX, intendedDeltaY, intendedDeltaZ, t
     }
 
     if (!canSupport || topY === null) return null;
-    const nearTopBand = y >= topY - MAX_BUMP_HEIGHT && y <= topY + 1;
-    if (!nearTopBand || intendedDeltaY > 0) return null;
+    // Landing is a question about which plane the step crossed, not about how
+    // near the top it started (Obstacle::getHitNormal). The band that used to
+    // stand in for this let go of any step that fell more than a metre -- about
+    // 20fps at the speed a jump lands at -- and the tank went through the roof.
+    // A pyramid still needs the band: its volume is not swept, so a step can
+    // only be judged against where it ended.
+    const landedOnTop = crossedFlatTop(topY, y, newY)
+      || (y >= topY - MAX_BUMP_HEIGHT && y <= topY + 1);
+    if (!landedOnTop || intendedDeltaY > 0) return null;
 
     if (isWithinSupportFootprint(obs, newX, topY, newZ)) {
       return {
@@ -4709,7 +4781,7 @@ function validateMove(x, y, z, intendedDeltaX, intendedDeltaY, intendedDeltaZ, t
       };
     }
 
-    const collisionWithoutBox = checkCollision(newX, candidateY, newZ, new Set([obs]));
+    const collisionWithoutBox = checkCollision(newX, candidateY, newZ, new Set([obs]), playerRotation, y);
     if (!collisionWithoutBox) {
       return {
         x: newX,
@@ -4765,32 +4837,12 @@ function validateMove(x, y, z, intendedDeltaX, intendedDeltaY, intendedDeltaZ, t
     if (escapeCollision && escapeCollision.type !== 'ontop') return null;
     return { x: escapeX, z: escapeZ };
   };
-  const logSlideTrace = (stage, details = {}) => {
-    const obstacleName = collisionObj && collisionObj.obstacle && collisionObj.obstacle.name;
-    const parts = [
-      `[SLIDE_TRACE] ${stage}`,
-      `obs=${obstacleName || 'unknown'}`,
-      `pos=(${formatDebugNumber(x)},${formatDebugNumber(y)},${formatDebugNumber(z)})`,
-      `intent=(${formatDebugNumber(intendedDeltaX)},${formatDebugNumber(intendedDeltaY)},${formatDebugNumber(intendedDeltaZ)})`
-    ];
-    if (details.normal) {
-      parts.push(`normal=(${formatDebugNumber(details.normal.x)},${formatDebugNumber(details.normal.z)})`);
-    }
-    if (details.slide) {
-      parts.push(`slide=(${formatDebugNumber(details.slide.x)},${formatDebugNumber(details.slide.z)})`);
-    }
-    if (details.result) {
-      parts.push(`result=(${formatDebugNumber(details.result.x)},${formatDebugNumber(details.result.y)},${formatDebugNumber(details.result.z)})`);
-    }
-    if (details.note) {
-      parts.push(`note=${details.note}`);
-    }
-    sendMovementDebug(parts.join(' '));
-  };
-
-  // Try full movement first
+  // Try full movement first. This is the one test that stands for the whole
+  // step, so it is the one that sweeps: `y` is where the step began, and
+  // checkCollision reads the tank's vertical extent from there to where it
+  // ended rather than from the endpoint alone.
   const currentSupport = y > 0 ? findSupportSurface(x, y, z) : null;
-  let collisionObj = checkCollision(newX, candidateY, newZ);
+  let collisionObj = checkCollision(newX, candidateY, newZ, null, playerRotation, y);
 
 
   if (
@@ -4804,7 +4856,9 @@ function validateMove(x, y, z, intendedDeltaX, intendedDeltaY, intendedDeltaZ, t
       newX,
       candidateY,
       newZ,
-      new Set([currentSupport.obstacle])
+      new Set([currentSupport.obstacle]),
+      playerRotation,
+      y
     );
 
     if (!collisionWithoutSupport || collisionWithoutSupport.type === 'ontop') {
@@ -4895,10 +4949,6 @@ function validateMove(x, y, z, intendedDeltaX, intendedDeltaY, intendedDeltaZ, t
         landedOn = collisionObj.obstacle;
         landedType = 'obstacle';
       }
-      logSlideTrace('step-up', {
-        result: { x: stepUpResult.x, y: stepUpResult.y, z: stepUpResult.z },
-        note: `obs=${collisionObj.obstacle?.name || 'unknown'}`
-      });
       return {
         x: stepUpResult.x,
         y: stepUpResult.y,
@@ -4916,7 +4966,9 @@ function validateMove(x, y, z, intendedDeltaX, intendedDeltaY, intendedDeltaZ, t
   // If we hit a collision while moving upward (jumping into obstacle bottom), start falling
   if (collisionObj && collisionObj.type === 'collision' && intendedDeltaY > 0) {
     const horizontalOnlyCollision = checkCollision(newX, y, newZ);
-    const verticalOnlyCollision = checkCollision(x, candidateY, z);
+    // Rising fast enough clears a thin deck in one step the same way falling
+    // does, so the climb is swept as well.
+    const verticalOnlyCollision = checkCollision(x, candidateY, z, null, playerRotation, y);
 
     if (verticalOnlyCollision && (!horizontalOnlyCollision || horizontalOnlyCollision.type === 'ontop')) {
       // Hit obstacle bottom while jumping - immediately start falling
@@ -5010,10 +5062,6 @@ function validateMove(x, y, z, intendedDeltaX, intendedDeltaY, intendedDeltaZ, t
           surfaceSlideResult.x = escapeResult.x;
           surfaceSlideResult.z = escapeResult.z;
           cornerStickState.frames = 0;
-          logSlideTrace('box-corner-escape', {
-            result: { x: surfaceSlideResult.x, y: surfaceSlideResult.y, z: surfaceSlideResult.z },
-            note: `obs=${obstacleName || 'unknown'}`
-          });
         }
       }
     } else {
@@ -5025,11 +5073,6 @@ function validateMove(x, y, z, intendedDeltaX, intendedDeltaY, intendedDeltaZ, t
     } else if (newY < 0) {
       landedType = 'ground';
     }
-    logSlideTrace(surfaceSlideResult.traceStage || 'surface-slide', {
-      normal: surfaceSlideResult.normal,
-      slide: { x: surfaceSlideResult.slideX, z: surfaceSlideResult.slideZ },
-      result: { x: surfaceSlideResult.x, y: surfaceSlideResult.y, z: surfaceSlideResult.z }
-    });
     return {
       x: surfaceSlideResult.x,
       y: surfaceSlideResult.y,
@@ -5045,21 +5088,10 @@ function validateMove(x, y, z, intendedDeltaX, intendedDeltaY, intendedDeltaZ, t
     };
   }
 
-  logSlideTrace('surface-blocked', {
-    normal: surfaceContact ? { x: surfaceContact.normal.x, z: surfaceContact.normal.z } : null,
-    note: 'no surface resolution path'
-  });
   if (surfaceContact && surfaceContact.faceCenter) {
     showSelectedFaceDebug(surfaceContact.faceCenter, collisionObj.obstacle?.name || surfaceContact.faceCenter?.name || null, 'blocked');
   } else {
     hideSelectedFaceDebug();
-  }
-  if (Math.hypot(intendedDeltaX, intendedDeltaY, intendedDeltaZ) > 1e-4) {
-    sendMovementDebug(
-      `[MOVE_STUCK] pos=(${formatDebugNumber(x)},${formatDebugNumber(y)},${formatDebugNumber(z)}) ` +
-      `intent=(${formatDebugNumber(intendedDeltaX)},${formatDebugNumber(intendedDeltaY)},${formatDebugNumber(intendedDeltaZ)}) ` +
-      `obs=${collisionObj?.obstacle?.name || 'unknown'}`
-    );
   }
   resetCornerStickState();
   return { x, y, z, moved: false, altered: false, landedOn: null, landedType: null };
@@ -5494,14 +5526,6 @@ function deriveAirVelocityFromState(rotation, normalizedSpeed) {
     x: -Math.sin(rotation) * normalizedSpeed * speed,
     z: -Math.cos(rotation) * normalizedSpeed * speed
   };
-}
-
-function sendMovementDebug(message) {
-  debugLog(message);
-}
-
-function formatDebugNumber(value) {
-  return Number.isFinite(value) ? value.toFixed(2) : 'NaN';
 }
 
 function normalizeAngle(angle) {
@@ -7005,13 +7029,23 @@ function getMyFlag() {
 // label is already drawn in that team's colour, so the word is redundant. A flag
 // whose identity is still hidden cannot be on a tank, so there is nothing to
 // fall back to.
+// A carried flag as the scoreboards write it: what to call it, and what colour
+// to say it in.
+//
+// A bad flag is named in the warning colour, which is the same red the alert
+// wears when the flag is picked up (`hud->setAlert(2, flagName, 3.0f,
+// endurance == FlagSticky)`, playing.cxx:1455). Upstream leaves the scoreboard's
+// flag in the player's own colour and separates the bad ones onto a help page
+// instead; bzo says it on the line, because a penalty someone is carrying is
+// worth seeing at a glance and the roster is where it is read. The flag itself
+// in the world keeps `FlagType::getColor`, which is white for every superflag.
 function getPlayerFlagLabel(playerId) {
   const flag = getPlayerFlag(playerId);
   const type = getFlagType(flag?.type);
   if (!type) return null;
   return {
     label: type.team ? type.name.replace(/ Team$/, '') : type.abbreviation,
-    color: getFlagColor(flag.type),
+    color: type.quality === FLAG_QUALITY.BAD ? HUD_ALERT_WARNING_COLOR : getFlagColor(flag.type),
   };
 }
 
@@ -7612,6 +7646,7 @@ function ensureXRHudPanel(panel, { canvas = null, canvasWidth = 0, canvasHeight 
     );
     panel.mesh.renderOrder = Number.MAX_SAFE_INTEGER;
     panel.mesh.visible = false;
+    panel.mesh.userData.drawGroup = 'hud';
   }
 
   if (panel.mesh.parent !== baseCamera) {
@@ -7897,6 +7932,7 @@ function ensureXRScoreboardOverlay() {
       name: myPlayerName,
       kills: myTank.userData.playerState.kills || 0,
       deaths: myTank.userData.playerState.deaths || 0,
+      color: myTank.userData.playerState.color,
       flag: getPlayerFlagLabel(myPlayerId),
       isCurrent: true,
     });
@@ -7909,6 +7945,7 @@ function ensureXRScoreboardOverlay() {
         name: tank.userData.playerState.name || 'Player',
         kills: tank.userData.playerState.kills || 0,
         deaths: tank.userData.playerState.deaths || 0,
+        color: tank.userData.playerState.color,
         flag: getPlayerFlagLabel(id),
         isCurrent: false,
       });
@@ -7926,12 +7963,19 @@ function ensureXRScoreboardOverlay() {
 
   const teamRows = getTeamScoreRows(teamScores);
   const margin = 12;
+  const panelW = 320;
+  // Both columns are laid out in pixels, as the other canvas HUDs are. The
+  // score column is right-aligned against this edge rather than started at a
+  // fixed offset, so a two-digit score grows to the left instead of off the
+  // panel, and the name is cut to whatever is left over rather than to a
+  // character count that cannot know how wide the score beside it is.
+  const contentRight = panelW - margin;
+  const columnGap = 8;
   const rowHeight = 18;
   const headerHeight = 20;
   const maxRows = 8;
   const visiblePlayers = playerData.slice(0, maxRows);
   const teamBlockHeight = teamRows.length ? headerHeight + teamRows.length * rowHeight + 8 : 0;
-  const panelW = 320;
   const panelH = Math.max(120, teamBlockHeight + headerHeight + 10 + visiblePlayers.length * rowHeight + 12);
   canvas.width = panelW;
   canvas.height = panelH;
@@ -7951,9 +7995,13 @@ function ensureXRScoreboardOverlay() {
     ctx.font = '13px monospace';
     teamRows.forEach((row, index) => {
       const y = 38 + index * rowHeight;
+      const score = formatTeamScore(row);
       ctx.fillStyle = colorToCSS(getPlayerTeamColor(row.team));
-      ctx.fillText(row.label, margin, y);
-      ctx.fillText(formatTeamScore(row), panelW - 110, y);
+      ctx.textAlign = 'right';
+      ctx.fillText(score, contentRight, y);
+      ctx.textAlign = 'left';
+      const labelWidth = contentRight - margin - ctx.measureText(score).width - columnGap;
+      ctx.fillText(fitText(ctx, row.label, labelWidth), margin, y);
     });
     ctx.fillStyle = '#4CAF50';
     ctx.font = 'bold 14px monospace';
@@ -7961,24 +8009,43 @@ function ensureXRScoreboardOverlay() {
 
   const playerHeaderY = 16 + teamBlockHeight;
   ctx.fillText('Player', margin, playerHeaderY);
-  ctx.fillText('K/D', panelW - 42, playerHeaderY);
+  ctx.textAlign = 'right';
+  ctx.fillText('K/D', contentRight, playerHeaderY);
+  ctx.textAlign = 'left';
 
-  ctx.font = '13px monospace';
   visiblePlayers.forEach((player, index) => {
     const y = playerHeaderY + 22 + index * rowHeight;
+    // The row is drawn in the colour the player's tank is drawn in, as the flat
+    // scoreboard's rows are, so a name reads the same in the headset as on the
+    // screen. Only the flag departs from it, in the flag's own colour.
+    const rowColor = player.color ? colorToCSS(player.color) : '#E6F1FF';
+    // The flat scoreboard bolds your own row and lays a green band behind it;
+    // colour alone cannot say which row is yours once every row is coloured.
+    if (player.isCurrent) {
+      ctx.fillStyle = 'rgba(76, 175, 80, 0.25)';
+      ctx.fillRect(margin - 4, y - rowHeight + 5, panelW - (margin * 2) + 8, rowHeight);
+    }
+    // Measured in the row's own font, which the current player's row bolds.
+    ctx.font = player.isCurrent ? 'bold 13px monospace' : '13px monospace';
+    const stats = `${player.kills} / ${player.deaths}`;
+    const flagLabel = player.flag ? `/${player.flag.label}` : '';
     // A carried flag shares the row with the name, so the name gives up room for
     // it rather than the panel growing a column nothing usually fills.
-    const nameLimit = player.flag ? 8 : 14;
-    const name = String(player.name || 'Player');
-    ctx.fillStyle = player.isCurrent ? '#8BE28C' : '#E6F1FF';
-    const shown = name.length > nameLimit ? `${name.slice(0, nameLimit - 3)}...` : name;
+    const nameWidth = contentRight - margin - columnGap
+      - ctx.measureText(stats).width
+      - (flagLabel ? ctx.measureText(flagLabel).width : 0);
+    const shown = fitText(ctx, String(player.name || 'Player'), Math.max(0, nameWidth));
+
+    ctx.fillStyle = rowColor;
     ctx.fillText(shown, margin, y);
-    if (player.flag) {
+    if (flagLabel) {
       ctx.fillStyle = colorToCSS(player.flag.color);
-      ctx.fillText(`/${player.flag.label}`, margin + ctx.measureText(shown).width, y);
+      ctx.fillText(flagLabel, margin + ctx.measureText(shown).width, y);
     }
-    ctx.fillStyle = '#F2F5F8';
-    ctx.fillText(`${player.kills} / ${player.deaths}`, panelW - 46, y);
+    ctx.fillStyle = rowColor;
+    ctx.textAlign = 'right';
+    ctx.fillText(stats, contentRight, y);
+    ctx.textAlign = 'left';
   });
 
   xrScoreboardPanel.texture.needsUpdate = true;
@@ -8613,11 +8680,11 @@ const XR_HELP_ITEMS = Object.freeze([
   { id: 'helpFire', label: 'Fire', value: 'Either trigger', disabled: true },
   { id: 'helpJump', label: 'Jump', value: 'Either grip', disabled: true },
   { id: 'helpDrop', label: 'Drop Flag', value: 'Either primary (A)', disabled: true },
-  { id: 'helpIdentify', label: 'Identify', value: 'Either secondary (B)', disabled: true },
-  { id: 'helpMenu', label: 'Open Menu', value: 'Press either stick', disabled: true },
+  { id: 'helpIdentify', label: 'Identify', value: 'Press either stick', disabled: true },
+  { id: 'helpMenu', label: 'Open Menu', value: 'Either secondary (B)', disabled: true },
   { id: 'helpNavigate', label: 'Navigate', value: 'Either stick', disabled: true },
   { id: 'helpActivate', label: 'Activate', value: 'Trigger / primary', disabled: true },
-  { id: 'helpBack', label: 'Back', value: 'Grip / secondary', disabled: true },
+  { id: 'helpBack', label: 'Back', value: 'Either secondary (B) / grip', disabled: true },
   { id: 'backXR', label: 'Back', value: '' },
 ]);
 
@@ -8858,11 +8925,19 @@ function handleXRSettingsMenuInput(now = performance.now()) {
     return;
   }
 
+  // B opens the menu, steps back out of a submenu, and closes it from the top.
+  // It used to be the thumbstick press, which sits under a thumb that is
+  // already steering and was being hit by accident; identify is behind that now,
+  // where a stray press costs nothing. B carries the whole menu rather than only
+  // opening it, so a press cannot both open the menu and be read as the back it
+  // is inside one.
   const xrInput = getXRControllerInput();
-  const pressed = Boolean(xrInput.leftThumbstickPressed || xrInput.rightThumbstickPressed);
+  const pressed = Boolean(xrInput.buttonB);
   if (pressed && !xrSettingsShortcutLatched) {
     xrSettingsShortcutLatched = true;
-    toggleXRSettingsMenu();
+    if (!xrSettingsMenuOpen) toggleXRSettingsMenu();
+    else if (xrSettingsMenuScreen === 'settings') closeXRSettingsMenu();
+    else setXRSettingsMenuScreen('settings');
   } else if (!pressed) {
     xrSettingsShortcutLatched = false;
   }
@@ -8903,7 +8978,9 @@ function handleXRSettingsMenuInput(now = performance.now()) {
   }
   xrSettingsMenuActivateLatched = activatePressed;
 
-  const backPressed = xrInput.buttonB || xrInput.buttonGrip;
+  // B is handled above, where it stands for the whole menu; grip is the other
+  // way back out of a submenu.
+  const backPressed = xrInput.buttonGrip;
   if (backPressed && !xrSettingsMenuBackLatched) {
     if (xrSettingsMenuScreen === 'settings') closeXRSettingsMenu();
     else setXRSettingsMenuScreen('settings');
@@ -9103,11 +9180,20 @@ function animate(frameTime) {
   markFramePhase('xr');
 
   updateFps();
-  updateChatWindow();
-  updateAltitudeTape();
-  updateAltimeter({ myTank });
-  updateDegreeBar({ myTank, playerRotation, markers: getFlagHeadingMarkers() });
-  updateShotStatus({ myPlayerId, myTank, projectiles, gameConfig, now: Date.now() });
+  // None of the DOM HUD is on screen in a session -- the XR panels stand in for
+  // it -- and each of these measures an element with getBoundingClientRect
+  // before deciding whether to repaint, which is a layout flush per panel per
+  // frame for something nobody is looking at. It comes back on the first frame
+  // after the session ends: none of it is state, each paints from what the game
+  // currently is, and the one piece that is deferred -- the chat window -- keeps
+  // its dirty flag until somebody draws it.
+  if (!isXREnabled()) {
+    updateChatWindow();
+    updateAltitudeTape();
+    updateAltimeter({ myTank });
+    updateDegreeBar({ myTank, playerRotation, markers: getFlagHeadingMarkers() });
+    updateShotStatus({ myPlayerId, myTank, projectiles, gameConfig, now: Date.now() });
+  }
   markFramePhase('hud');
 
   handleInputEvents();
@@ -9115,13 +9201,10 @@ function animate(frameTime) {
   handleRoamMotion(deltaTime);
   markFramePhase('input');
 
-  const visibleTanks = [];
-  tanks.forEach((tank) => {
-    if (tank && tank.visible !== false) {
-      visibleTanks.push(tank);
-    }
-  });
-  renderManager.updateProjectedShadows(visibleTanks);
+  renderManager.updateWorldMatrices();
+  // Dead tanks go in too. A tank withheld from the pass keeps whatever shadow
+  // it last cast, so the pass is what has to be told to put it away.
+  renderManager.updateProjectedShadows(tanks.values());
   markFramePhase('shadows');
 
   if (!selectedFaceDebugTouchedThisFrame) {
@@ -9231,6 +9314,26 @@ function animate(frameTime) {
   renderManager.renderFrame();
   markFramePhase('draw');
   rollFramePhases();
+  sampleXRRenderStats();
+}
+
+// The session's own series. The clock starts when the session does, so the
+// first sample is a whole interval in and none of them describe the seconds
+// after entry, where the XR panels are uploading their textures and the driver
+// is still compiling.
+function sampleXRRenderStats() {
+  if (!isXREnabled()) {
+    nextXRStatsSampleAt = 0;
+    return;
+  }
+  const now = performance.now();
+  if (nextXRStatsSampleAt === 0) {
+    nextXRStatsSampleAt = now + XR_STATS_SAMPLE_INTERVAL_MS;
+    return;
+  }
+  if (now < nextXRStatsSampleAt) return;
+  nextXRStatsSampleAt = now + XR_STATS_SAMPLE_INTERVAL_MS;
+  logRenderStats('xrSession');
 }
 
 // Start the game

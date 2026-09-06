@@ -568,16 +568,21 @@ export function updateVirtualInputFromXR() {
   // matching the keyboard, so firing is the trigger alone.
   xrInputState.fire = controllerInput.leftTrigger > 0.5 || controllerInput.rightTrigger > 0.5;
 
-  // Side grip button: jump. B is identify, so grip carries this alone.
+  // Side grip button: jump. Nothing else claims it, so grip carries this alone.
   xrInputState.jump = controllerInput.buttonGrip;
 
   // A button: drop the carried flag
   xrInputState.drop = controllerInput.buttonA;
 
-  // B button: identify, which picks the roaming target for an observer and
-  // will lock a guided missile for a tank. Merged across both controllers by
-  // getXRControllerInput, so either hand works.
-  xrInputState.identify = controllerInput.buttonB;
+  // Pressing a thumbstick: identify, which picks the roaming target for an
+  // observer and will lock a guided missile for a tank. The stick is under a
+  // thumb that is already steering, so it gets pressed by accident -- which is
+  // why the harmless action is the one behind it, and the menu moved to B.
+  // Merged across both controllers by getXRControllerInput, so either hand
+  // works.
+  xrInputState.identify = Boolean(
+    controllerInput.leftThumbstickPressed || controllerInput.rightThumbstickPressed
+  );
   syncVirtualInput();
 }
 

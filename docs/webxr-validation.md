@@ -11,6 +11,8 @@ or deployment configuration.
 - Use `http://localhost:3000` for local checks, or an HTTPS deployment for a
   remote headset.
 - Record the browser, headset, browser version, page origin, and test date.
+- `/test.html` lists the measurement knobs as links, so a headset can pick one
+  without typing a query string and press Back to pick another.
 
 ## Desktop regression
 
@@ -83,19 +85,38 @@ only thing to change if the HUD sits wrong; nothing else encodes a position.
 - Press either trigger to fire.
 - Press either grip button to jump. The secondary face button no longer jumps.
 - Press either primary face button (A) to drop a carried flag.
-- Press either secondary face button (B) to identify. As an observer this picks
-  the tank centred in the view; for a tank it does nothing yet.
-- Press either thumbstick to open Settings.
+- Press either thumbstick in to identify. As an observer this picks the tank
+  centred in the view; for a tank it does nothing yet. Confirm that a stray
+  press while steering does nothing worse than that.
+- Press either secondary face button (B) to open Settings.
 - Release every control and confirm that no stale input continues to act.
 
 Every gameplay action must stay reachable from **one** controller alone, which is
 what the merged accessors in `getXRControllerInput()` exist for. Check each of
 the above with the other controller set down.
 
+## Movement
+
+A headset frame runs long where a desktop frame does not, and one frame is one
+step of tank motion, so the collision tests here are the ones a low frame rate
+breaks first. Do these with the render level showing a poor frame rate -- a busy
+part of the map, or several tanks firing -- rather than on an empty one.
+
+- Jump and land on the roof of a box. Confirm the tank stops on the roof rather
+  than sinking into the building or through it.
+- Drive off a tall building and land on a lower one on the way down. Confirm the
+  lower roof catches the tank.
+- Land on a thin deck or a base platform, which a long enough step passes
+  through body and all.
+- Jump up into the underside of a deck and confirm the tank is turned back.
+- With `antiCheat` in `warning` mode, confirm the server log records no
+  `COLLISION` findings for any of the above: a landing the client gets wrong is
+  a position the server disagrees with.
+
 ## XR Settings menu
 
-- Press either controller thumbstick and confirm that Settings opens without
-  ending the XR session.
+- Press either secondary face button (B) and confirm that Settings opens without
+  ending the XR session, and that a thumbstick press does not open it.
 - Confirm that `Exit VR` is the first selected row and `Close` is the last row.
 - Navigate up and down with either thumbstick.
 - Activate a setting with either trigger and either primary face button.
@@ -108,10 +129,10 @@ the above with the other controller set down.
 - Open Operator, cycle maps and shot limits, refresh server data, and confirm
   restart/apply actions affect the selected values. Confirm MOTD and desktop-only
   controls remain readable but cannot be activated.
-- From each submenu, use grip or the secondary face button and confirm that
+- From each submenu, use grip or the secondary face button (B) and confirm that
   focus returns to Settings rather than closing the entire menu.
-- Close Settings with either grip, either secondary face button, or another
-  thumbstick press.
+- Close Settings from the top level with either secondary face button (B).
+  Confirm one press does not open and close it again.
 - Confirm that movement, firing, and jumping remain neutral until all controls
   are released after closing.
 - Reopen Settings, activate `Exit VR`, and confirm that the normal desktop

@@ -599,15 +599,31 @@ player and the top row disagree.
 | step the selection | Enter, C, left click | `●`, Camera row | A / RT | either trigger |
 | up | Tab | `⤒` | B / LT | grip |
 | down | Space | `⚑` | X | A |
-| identify | I, right click | `◎` | shoulder | B |
+| identify | I, right click | `◎` | shoulder | thumbstick press |
 
 **The XR budget is full, and every action stays reachable from one controller.**
-Either trigger fires, and grip, A, B, and the thumbstick press -- settings -- are
-each OR'd across both hands by `getXRControllerInput()` (`webxr.js:628`). That
-invariant is why those merged accessors exist: a new XR action may only ever be
-added by taking a binding, never by splitting one across hands.
+Either trigger fires, and grip, A, B -- the settings menu -- and the thumbstick
+press are each OR'd across both hands by `getXRControllerInput()`
+(`webxr.js:628`). That invariant is why those merged accessors exist: a new XR
+action may only ever be added by taking a binding, never by splitting one across
+hands.
+
+**Identify is on the thumbstick press and the menu is on B, not the other way
+round.** A stick is under a thumb that is already steering, so it is the control
+that gets pressed by accident, and what sits behind it has to be the action that
+costs nothing when it fires unasked. Identify picks a roaming target; the menu
+takes over the view.
 
 ### Intentional deviations
+
+- **A bad flag is named in the warning colour on both scoreboards.** Upstream
+  leaves the carried flag in the player's own colour there and separates the bad
+  ones onto a help page instead (`Help6Menu`, "Bad Flags"). The red is the one
+  upstream already uses for the same fact -- `hud->setAlert(2, flagName, 3.0f,
+  endurance == FlagSticky)` (`playing.cxx:1455`) -- so the colour a player sees
+  when they pick a penalty up is the colour it keeps on the roster. The flag in
+  the world and on the radar is untouched: `FlagType::getColor` is white for
+  every superflag, and that is what bzo draws.
 
 - **One flattened cycle, not two.** Upstream spends two bindings here: F8 cycles
   the view type and F6/F7 cycle the subject. bzo binds nothing to changing the
@@ -968,23 +984,45 @@ variable.
 
 ### Measurement knobs
 
-Two URL parameters exist to tell costs apart on hardware nobody here owns, since
-a player can be asked to load a link:
+URL parameters exist to tell costs apart on hardware nobody here owns, since a
+player can be asked to load a link:
 
 - `?renderScale=0.5` -- draw into a buffer that fraction of the window on each
   axis, presented across the whole window. Separates the pixels bzo draws from
   the surface the browser presents, which resizing the window cannot, because
-  that moves both at once.
+  that moves both at once. It does nothing inside an XR session, where the
+  framebuffer belongs to the headset rather than to the page.
 - `?antialias=0` -- drop MSAA. Chrome carries a driver workaround saying MSAA is
   not acceptable on Intel GPUs, so its cost has to be measurable rather than
-  assumed.
+  assumed. An immersive session inherits the context's attribute for its own
+  framebuffer, so this one reaches a headset.
+- `?shadows=0` -- drop the projected shadow pass: the caster stencil draws, the
+  darkening overlay and the per-frame projection.
+- `?celestial=0` -- drop the sun and moon discs, which are three draws but large
+  ones.
+- `?xrRate=90` -- the cadence asked of the XR runtime through
+  `updateTargetFrameRate`. bzo asks for 72 by default, the Quest's own rate; the
+  knob is here because which rate is best is a measurement. A runtime asked for
+  nothing picks one and reports `frameRate=0`, and whatever it picked is the
+  rate its compositor runs at.
+- `?xrScale=0.7` -- a fraction of the resolution the XR runtime recommends,
+  through `setFramebufferScaleFactor`. It is a separate knob from `renderScale`
+  because that one works through `setPixelRatio`, and the framebuffer a session
+  draws into belongs to the headset: a sample taken in a session reports the
+  headset's own resolution whatever the page asked for. Set before a session
+  starts, since it is read when the session builds its framebuffer.
 
-Both are prototypes of settings bzo may one day pick from measurement, which is
+They are prototypes of settings bzo may one day pick from measurement, which is
 the other reason to keep them. A knob added here follows the same rules: URL
 only, never persisted, never in the UI, clamped on the way in, and **visible in
-the log** -- `renderScale` in `renderer.init.ok`, `antialias` in
+the log** -- `renderScale` and `xrScale` in `renderer.init.ok`, `antialias` in
 `renderer.capabilities`. A knob a sample does not record is a knob that produces
 data nobody can attribute later.
+
+**Every knob goes on `public/test.html`**, which is the list of them as links,
+one press each and Back to return. Typing a query string is not something a
+player does on a headset, so a knob missing from that page is a knob that will
+not be measured on the device that most needs measuring.
 
 ## Chat entry owns the keyboard, not the mouse
 

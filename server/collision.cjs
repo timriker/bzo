@@ -13,6 +13,8 @@
 //   - pyramidShrinkFactor   -> src/obstacle/PyramidBuilding.cxx shrinkFactor
 //   - pyramidIntersects     -> src/obstacle/PyramidBuilding.cxx inBox
 //   - isPyramidFlatTop      -> src/obstacle/PyramidBuilding.cxx isFlatTop
+//   - movingTankOverlapsHeight -> src/obstacle/BoxBuilding.cxx inMovingBox
+//   - crossedFlatTop        -> src/obstacle/Obstacle.cxx getHitNormal (roof)
 //
 // bzo stores pyramid height as a positive `h` plus an `inverted` flag, which is
 // what upstream calls ZFlip. bzo models tanks and shots as cylinders, so where
@@ -334,6 +336,41 @@ function isOverFlatTop(obs, x, z) {
   return Math.abs(localX) < obs.w / 2 && Math.abs(localZ) < obs.d / 2;
 }
 
+// --- Swept motion -----------------------------------------------------------
+//
+// A tank moves once per frame, so a slow frame moves it a long way, and asking
+// only where the step ended lets it pass clean through a surface it crossed on
+// the way. Upstream answers this without a smaller timestep: it widens the
+// *vertical* extent of the occupant test to the span the step covered
+// (BoxBuilding::inMovingBox, Teleporter::inMovingBox; a base delegates to the
+// box). The footprint stays where the step ended, and pyramids opt out --
+// PyramidBuilding::inMovingBox ignores the old position entirely, because a
+// slope's cross-section depends on the height it is taken at, so there is no
+// one rectangle to sweep.
+//
+// `epsilon` is the caller's own vertical tolerance, so an occupant resting
+// exactly on a surface reads as on it rather than in it, as the point test does.
+function movingTankOverlapsHeight(obstacleBase, obstacleTop, fromY, toY, tankHeight, epsilon) {
+  const lowY = fromY < toY ? fromY : toY;
+  const highY = fromY < toY ? toY : fromY;
+  if (lowY >= obstacleTop - epsilon) return false;
+  if (highY + tankHeight <= obstacleBase + epsilon) return false;
+  return true;
+}
+
+// The roof half of Obstacle::getHitNormal (Obstacle.cxx:165). Upstream rays the
+// tank's corners at the obstacle's sides, then -- on the way down only, "don't
+// care about way up" -- solves for the moment the tank met the flat top, and
+// takes the top when that came first. The surface it hands back has an up
+// normal, which the motion resolver reads as a landing rather than a wall.
+//
+// So a landing is a question about which plane the step crossed, not about how
+// near the top it started: a step beginning at or above the top and ending
+// below it landed on it, however far it fell.
+function crossedFlatTop(obstacleTop, fromY, toY) {
+  return fromY >= obstacleTop && toY < obstacleTop;
+}
+
 // --- Shots ------------------------------------------------------------------
 //
 // A shot occupies the world the way a tank does, but always as a cylinder:
@@ -593,6 +630,8 @@ module.exports = {
   isOnBaseTop,
   getBaseTeamAtPoint,
   isOverFlatTop,
+  movingTankOverlapsHeight,
+  crossedFlatTop,
   ZERO_TOLERANCE,
   getColliderLocalPoint,
   origRectPointDistanceSquared,

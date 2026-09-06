@@ -231,6 +231,76 @@ assert.ok(corner.x > 0 && corner.z > 0 && Math.abs(Math.hypot(corner.x, corner.z
 // Inside a long thin rib, resolve to the long face rather than the end cap.
 assert.deepEqual(client.getOrigRectNormal(8, 1, 1, 0.5), { x: 0, z: 1 });
 
+// --- Swept motion -----------------------------------------------------------
+//
+// BoxBuilding::inMovingBox and the roof half of Obstacle::getHitNormal. One
+// frame is one step, so a slow frame is a long step; both of these exist so a
+// long step is judged by the span it covered rather than by where it ended.
+
+const EPSILON = 0.15;
+// A roof at 4.5, the height of a standard box.
+const ROOF = 4.5;
+const spans = (fromY, toY) =>
+  client.movingTankOverlapsHeight(0, ROOF, fromY, toY, TANK_HEIGHT, EPSILON);
+
+// Where the step has no vertical extent, this is the point test it replaces:
+// resting on the roof is on it, not in it, and standing clear of it is clear.
+assert.equal(spans(ROOF, ROOF), false, 'a tank parked on the roof is not inside the box');
+assert.equal(spans(6, 6), false, 'a tank well above the roof misses it');
+assert.equal(spans(3, 3), true, 'a tank level with the wall hits it');
+
+// The step that started this: a tank falling at the speed a jump lands at
+// (19 units/second, from _jumpVelocity 19) covers 1.9 units in a frame at the
+// 0.1s cap, and used to arrive below the roof having never been told about it.
+assert.equal(spans(5.4, 3.5), true, 'a 1.9 unit fall through the roof reports the roof');
+assert.equal(
+  client.crossedFlatTop(ROOF, 5.4, 3.5), true,
+  'and the step is a landing, however far below the top it ended'
+);
+
+// A thin deck is the case the endpoint test cannot see at all: fall far enough
+// in one step and the tank is past it, body and all, by the time anything is
+// asked.
+const DECK_BASE = 10;
+const DECK_TOP = 10.5;
+const deckSpans = (fromY, toY) =>
+  client.movingTankOverlapsHeight(DECK_BASE, DECK_TOP, fromY, toY, TANK_HEIGHT, EPSILON);
+// Nothing slows a falling tank in BZFlag, so a drop from any height arrives
+// faster than a jump does and 2.5 units in one step is an ordinary hitch.
+assert.equal(deckSpans(8.1, 8.1), false, 'the endpoint alone is clean under the deck');
+assert.equal(deckSpans(10.6, 8.1), true, 'the step that crossed it is not');
+assert.equal(client.crossedFlatTop(DECK_TOP, 10.3, 8.1), false, 'started below the deck top');
+assert.equal(client.crossedFlatTop(DECK_TOP, 10.6, 8.1), true, 'started above it, so it landed');
+
+// Climbing is swept the same way, because a tank rising fast clears a thin deck
+// in one step exactly as it falls through one. Upstream's inMovingBox is
+// symmetric; only the landing is not.
+assert.equal(deckSpans(8.1, 10.3), true, 'a climb through the deck reports it');
+assert.equal(client.crossedFlatTop(DECK_TOP, 8.1, 10.3), false, 'a climb is never a landing');
+
+// Nothing about a landing depends on how near the top the step began. The band
+// this replaced gave up after one unit, which is what put tanks through roofs
+// on a headset whenever a frame ran long.
+assert.equal(client.crossedFlatTop(ROOF, ROOF, ROOF - 0.001), true, 'the shortest crossing counts');
+assert.equal(client.crossedFlatTop(ROOF, 24, 0), true, 'so does a fall from the top of the map');
+assert.equal(client.crossedFlatTop(ROOF, 4.4, 0), false, 'a step from under the roof is not a landing');
+assert.equal(client.crossedFlatTop(ROOF, 6, 5), false, 'nor is one that stayed above it');
+
+// Both sides of the pair answer alike, since a landing the client takes and the
+// server does not is a correction the player feels.
+for (const [fromY, toY] of [[5.4, 3.5], [10.6, 8.1], [8.1, 10.3], [ROOF, ROOF], [24, 0]]) {
+  assert.equal(
+    server.movingTankOverlapsHeight(0, ROOF, fromY, toY, TANK_HEIGHT, EPSILON),
+    client.movingTankOverlapsHeight(0, ROOF, fromY, toY, TANK_HEIGHT, EPSILON),
+    `swept overlap disagrees for ${fromY} -> ${toY}`
+  );
+  assert.equal(
+    server.crossedFlatTop(ROOF, fromY, toY),
+    client.crossedFlatTop(ROOF, fromY, toY),
+    `roof crossing disagrees for ${fromY} -> ${toY}`
+  );
+}
+
 // --- Shots ------------------------------------------------------------------
 
 // ShotStrategy::reflect. A head-on bounce reverses; a 45 degree one turns the

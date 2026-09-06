@@ -39,6 +39,14 @@ export function detectRenderCapabilities(renderer, hints = collectDeviceHints())
 
   const anisotropic = context?.getExtension?.('EXT_texture_filter_anisotropic')
     || context?.getExtension?.('WEBKIT_EXT_texture_filter_anisotropic');
+  // Whether the frame can be timed on the GPU at all. Every experiment so far
+  // has hit the same wall: `outside` covers the GPU still working and the wait
+  // for the display together, and nothing in JS can tell those apart. This
+  // extension can. Probing enables it, which costs nothing while nothing uses
+  // it.
+  const timerQuery = context?.getExtension?.('EXT_disjoint_timer_query_webgl2')
+    || context?.getExtension?.('EXT_disjoint_timer_query');
+
   // Which driver answered. This is identity, not capability, and it is here for
   // one reason: a frame rate means something entirely different when the string
   // says llvmpipe or SwiftShader than when it names a GPU, and every launch
@@ -58,6 +66,7 @@ export function detectRenderCapabilities(renderer, hints = collectDeviceHints())
     // A context can be created with a stencil buffer and still be handed one
     // with no bits, which is the case the stencil shadow pass cannot survive.
     stencil: Boolean(attributes.stencil) && (parameter('STENCIL_BITS') || 0) > 0,
+    timerQuery: Boolean(timerQuery),
     maxTextureSize: parameter('MAX_TEXTURE_SIZE'),
     maxSamples: parameter('MAX_SAMPLES') || 0,
     maxFragmentUniforms: parameter('MAX_FRAGMENT_UNIFORM_VECTORS'),

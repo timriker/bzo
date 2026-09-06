@@ -230,6 +230,80 @@ async function requestXRSession(renderer, animationCallback) {
   }
 }
 
+// The cadence to ask the runtime for. A Quest 2 offers 60/72/80/90/120 and,
+// asked for nothing, reports `frameRate=0` -- it has picked one and is not
+// saying which. That matters beyond curiosity: whatever it picked is the rate
+// its compositor runs at, and a compositor at 90 or 120 reprojects a client
+// delivering 30 three or four times over, on the same chip, in time that lands
+// in `outside` where nothing can see it. 72 is the headset's own native rate
+// and the one the fastest frames already reach.
+//
+// `?xrRate=90` overrides, because which rate is best here is a measurement
+// rather than a guess, and test.html is where measurements are chosen from.
+const XR_PREFERRED_FRAME_RATE = 72;
+
+function readXRFrameRatePreference() {
+  const raw = Number(new URLSearchParams(window.location.search).get('xrRate'));
+  return Number.isFinite(raw) && raw > 0 ? raw : XR_PREFERRED_FRAME_RATE;
+}
+
+export function chooseTargetFrameRate(supported, preferred = XR_PREFERRED_FRAME_RATE) {
+  const rates = Array.from(supported || []).filter((rate) => Number.isFinite(rate) && rate > 0);
+  if (rates.length === 0) return null;
+  if (rates.includes(preferred)) return preferred;
+  // Nothing exactly right: the nearest, and the lower of two equally near, since
+  // a rate the client cannot reach is worse than one it can.
+  return rates.reduce((best, rate) => {
+    const better = Math.abs(rate - preferred) - Math.abs(best - preferred);
+    return better < 0 || (better === 0 && rate < best) ? rate : best;
+  });
+}
+
+// How long to wait for the runtime to answer before saying it did not.
+const XR_FRAME_RATE_REPORT_MS = 3000;
+
+// Ask for a cadence and say what came back.
+//
+// **Never awaited, and never on the way in.** On a Quest, asked before the
+// renderer had handed the session its layer, this promise simply never settled:
+// the session was created, the startup awaited an answer that never came, and
+// every later press of the button was refused with "already in progress". A
+// measurement may report late, or not at all, but it may not decide whether the
+// session starts. Hence the timeout as well -- silence is itself a result, and
+// the line has to arrive either way.
+//
+// Both properties it reads are optional in the spec, so both may read unknown.
+function applyTargetFrameRate(session) {
+  const rates = session.supportedFrameRates;
+  const supported = rates ? Array.from(rates).join('/') : 'unknown';
+  const target = chooseTargetFrameRate(rates, readXRFrameRatePreference());
+
+  if (target === null || typeof session.updateTargetFrameRate !== 'function') {
+    debugLog(`session.frameRate=${session.frameRate ?? 'unknown'} supported=${supported} target=none`);
+    return;
+  }
+
+  let answered = false;
+  const report = (outcome) => {
+    if (answered) return;
+    answered = true;
+    debugLog(
+      `session.frameRate=${session.frameRate ?? 'unknown'}`
+      + ` supported=${supported} target=${target} ${outcome}`
+    );
+  };
+
+  window.setTimeout(() => report('no answer'), XR_FRAME_RATE_REPORT_MS);
+  try {
+    Promise.resolve(session.updateTargetFrameRate(target)).then(
+      () => report('accepted'),
+      (error) => report(`refused: ${error?.message || error}`),
+    );
+  } catch (error) {
+    report(`refused: ${error?.message || error}`);
+  }
+}
+
 async function startXRSession(renderer, animationCallback) {
   let session = null;
 
@@ -258,6 +332,9 @@ async function startXRSession(renderer, animationCallback) {
 
     xrEnabled = true;
     xrState.enabled = true;
+
+    // Once the session is live and nothing is waiting on it.
+    applyTargetFrameRate(session);
 
     // Set up the XR animation loop
     if (animationCallback) {

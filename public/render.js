@@ -165,8 +165,12 @@ const BZFLAG_FLAG_RIPPLE_PHASE = 1.16 * Math.PI;           // sinRipple2S offset
 const BZFLAG_FLAG_RIPPLE_LAG = 0.28 * Math.PI;             // angle2 offset
 const BZFLAG_FLAG_RIPPLE_TURNS = 4 * Math.PI;              // angle1 slope
 const BZFLAG_FLAG_RIPPLE_DAMP = 0.1;                       // damp
-// Flags are drawn after the world so their cloth blends against it, and they
-// never write depth to each other.
+// setAlphaFunc(GL_GEQUAL, 0.9) in notifyStyleChange: an ordinary flag is opaque
+// geometry with the cloth's own shape cut out of it by the texture's alpha, and
+// only a flag whose colour is fading turns blending on.
+const BZFLAG_FLAG_ALPHA_THRESHOLD = 0.9;
+// Flags are drawn after the world, and an opaque one occludes whatever is
+// behind it rather than blending with it.
 const FLAG_RENDER_ORDER = 5;
 // Shots ride over the flags they pass, and their explosions over the shots.
 const SHOT_RENDER_ORDER = 16;
@@ -235,6 +239,23 @@ function readAntialias() {
   return raw !== '0' && raw !== 'false';
 }
 
+// `?xrScale=0.7` is renderScale for a session, and it is a separate knob
+// because renderScale cannot be one: it works through setPixelRatio, and the
+// framebuffer a session draws into belongs to the headset, not to the page. So
+// a headset ignores renderScale outright -- the drawing buffer in a sample
+// taken in a session is the headset's own resolution whatever the page asked
+// for -- and this is the only way to ask for fewer pixels there. A fraction of
+// the resolution the runtime recommends, so 1 is native and above 1
+// supersamples.
+const XR_FRAMEBUFFER_SCALE_MIN = 0.25;
+const XR_FRAMEBUFFER_SCALE_MAX = 2;
+
+function readXRFramebufferScale() {
+  const raw = Number(new URLSearchParams(window.location.search).get('xrScale'));
+  if (!Number.isFinite(raw) || raw <= 0) return 1;
+  return Math.min(XR_FRAMEBUFFER_SCALE_MAX, Math.max(XR_FRAMEBUFFER_SCALE_MIN, raw));
+}
+
 const GROUND_GRID_Y = 0.02;
 // How big the sun and moon look and how far away they sit, from
 // makeCelestialLists (BackgroundRenderer.cxx:1706 for the sun, :483 for the
@@ -279,6 +300,10 @@ const GROUND_EYE_SCRATCH = new THREE.Vector3();
 const ROAM_FORWARD_SCRATCH = new THREE.Vector3();
 const FLAG_BILLBOARD_SCRATCH = new THREE.Vector3();
 const FLAG_BILLBOARD_QUATERNION = new THREE.Quaternion();
+// One flag's place in the batch, written and handed over once per flag per
+// frame rather than allocated per flag.
+const FLAG_INSTANCE_MATRIX = new THREE.Matrix4();
+const FLAG_INSTANCE_COLOR = new THREE.Color();
 // The chase camera's offset from the tank it follows: this far behind along the
 // tank's heading, this far above it. One pair for both paths, because a desktop
 // third-person view and an XR one that framed the tank differently would be two
@@ -328,6 +353,21 @@ const BZFLAG_LIGHT_ATTENUATION = [0.05, 0.0, 0.03];
 // to zero rather than clipping it.
 const BZFLAG_LIGHT_MAX_DISTANCE = 50;
 const BZFLAG_LIGHT_DECAY = 2;
+// SceneRenderer.cxx:1275. Upstream ranks the lights it has been offered and
+// keeps the first `maxLights` of them -- GL_MAX_LIGHTS less the one reserved
+// for the sun or the moon, so seven of them.
+//
+// bzo needs the cap for a second reason upstream does not have. Three keys its
+// shader program cache on how many lights are in the scene, so a light arriving
+// or leaving recompiles every material in the world: a firefight took a Quest 2
+// from 16 programs to 66 in two minutes, eleven of them inside one second, and
+// each compile is a stall on that driver. A pool of a fixed size, always in the
+// scene and dimmed to nothing when idle, is a count that never moves.
+const BZFLAG_MAX_DYNAMIC_LIGHTS = 7;
+const DYNAMIC_LIGHT_EYE = new THREE.Vector3();
+const DYNAMIC_LIGHT_FORWARD = new THREE.Vector3();
+const DYNAMIC_LIGHT_OFFSET = new THREE.Vector3();
+const DYNAMIC_LIGHT_QUATERNION = new THREE.Quaternion();
 // The colour scales, which are the only thing that differs between the lights.
 const BZFLAG_SHOT_LIGHT_SCALE = 1.5;          // BoltSceneNode.cxx:85
 const BZFLAG_SHOT_IMPACT_LIGHT_SCALE = 1.2;   // playing.cxx:3636, scaled by size/tankLength
@@ -690,6 +730,10 @@ class RenderManager {
     }
 
     this.renderer.xr.enabled = true;
+    // Set before any session starts, because it is read when the session builds
+    // its framebuffer and changing it afterwards does nothing.
+    this.xrFramebufferScale = readXRFramebufferScale();
+    this.renderer.xr.setFramebufferScaleFactor(this.xrFramebufferScale);
     // renderFrame() resets the counters itself, so they cover the whole frame
     // rather than whichever render() call happened to run last. The anaglyph
     // effect draws three passes per frame, and Three resets on every one.
@@ -831,6 +875,52 @@ class RenderManager {
   // What the last frame cost the GPU, for the debug HUD. Capabilities answer
   // what the machine can do; these answer what we asked it to do, which is the
   // half a render-level policy has no measurements for yet.
+  // Which bucket a thing's draws belong to. Written where the thing is built
+  // rather than guessed at counting time, and inherited: everything under a
+  // tank belongs to the tank.
+  _tagDraws(object3D, group) {
+    if (object3D) object3D.userData.drawGroup = group;
+    return object3D;
+  }
+
+  // What the frame is made of, which `calls` on its own cannot say -- and which
+  // has now been guessed wrong twice from the outside. Every mesh in the
+  // visible scene is charged to its nearest tagged ancestor and counted as the
+  // draws it would submit: one, or one per geometry group where it carries a
+  // material each.
+  //
+  // Frustum culling is not modelled, so this is what the scene offers rather
+  // than what Three accepted. The gap between the two is itself worth seeing:
+  // the projected shadows are never culled, so for those the two are the same
+  // number.
+  //
+  // Walked once per sample, which is once a map and once every twenty seconds
+  // in a session, not once a frame.
+  _countDrawGroups() {
+    const counts = new Map();
+    const walk = (object, inherited) => {
+      if (object.visible === false) return;
+      const group = object.userData?.drawGroup || inherited;
+      let draws = 0;
+      if (object.isInstancedMesh) draws = object.count > 0 ? 1 : 0;
+      else if (object.isMesh || object.isSprite || object.isLine || object.isPoints) {
+        // A mesh carrying several materials submits one draw per group, less
+        // any group whose material index the array does not reach -- Three
+        // skips those, and a BoxGeometry handed two materials has four of them.
+        draws = Array.isArray(object.material)
+          ? (object.geometry?.groups?.filter((group) => object.material[group.materialIndex]).length || 1)
+          : 1;
+      }
+      if (draws > 0) counts.set(group, (counts.get(group) || 0) + draws);
+      for (const child of object.children) walk(child, group);
+    };
+    walk(this.scene, 'other');
+    return Array.from(counts.entries())
+      .sort((a, b) => b[1] - a[1])
+      .map(([group, draws]) => `${group}:${draws}`)
+      .join(',');
+  }
+
   getRenderStats() {
     if (!this.renderer) return null;
     const { render, memory, programs } = this.renderer.info;
@@ -845,11 +935,115 @@ class RenderManager {
       programs: programs ? programs.length : 0,
       textures: memory.textures,
       geometries: memory.geometries,
+      draws: this._countDrawGroups(),
     };
   }
 
   canUseDynamicLighting() {
     return supportsDynamicLighting(this.renderCapabilities);
+  }
+
+  // The lights the scene is actually given. They are built once and never
+  // hidden and never removed, because Three does not count a light it cannot
+  // see -- hiding one costs the same recompile as deleting it, and a light
+  // dimmed to nothing costs a uniform and changes no program.
+  _getDynamicLightPool() {
+    if (!this._dynamicLightingActive() || !this.worldGroup) {
+      if (this._dynamicLightPool) {
+        this._dynamicLightPool.forEach((light) => this.worldGroup?.remove(light));
+        this._dynamicLightPool = null;
+      }
+      return null;
+    }
+    if (this._dynamicLightPool) return this._dynamicLightPool;
+
+    this._dynamicLightPool = [];
+    for (let slot = 0; slot < BZFLAG_MAX_DYNAMIC_LIGHTS; slot += 1) {
+      const light = new THREE.PointLight(0xffffff, 0, BZFLAG_LIGHT_MAX_DISTANCE, BZFLAG_LIGHT_DECAY);
+      this.worldGroup.add(light);
+      this._dynamicLightPool.push(light);
+    }
+    return this._dynamicLightPool;
+  }
+
+  // What a shot, an explosion or a jet asks for: somewhere to be, a colour and
+  // a brightness. Not a light in the scene, because how many lights are in the
+  // scene is the one thing that has to stay still.
+  _createDynamicLight(color, intensity) {
+    return {
+      position: new THREE.Vector3(),
+      color: new THREE.Color(color),
+      intensity,
+      visible: true,
+      importance: 0,
+    };
+  }
+
+  // Hand the pool to whichever effects matter most, once a frame.
+  //
+  // `OpenGLLight::calculateImportance`: a light further away than its own reach
+  // is dropped outright, and what survives is ranked by how near the eye it is.
+  // Upstream sorts every time; bzo sorts only when there are more candidates
+  // than slots, which in an ordinary frame there are not.
+  _applyDynamicLightPool() {
+    const pool = this._getDynamicLightPool();
+    if (!this._activeJumpJetLights) this._activeJumpJetLights = [];
+    if (!pool) {
+      this._activeJumpJetLights.length = 0;
+      return;
+    }
+
+    // The eye and where it looks, in the world group's own space, the way the
+    // flags take them: that group carries the player's heading in a session, so
+    // the camera's own world position is in a different frame from the lights'.
+    const inverse = DYNAMIC_LIGHT_QUATERNION.copy(this.worldGroup.quaternion).invert();
+    const eye = DYNAMIC_LIGHT_EYE;
+    this.camera.getWorldPosition(eye);
+    eye.sub(this.worldGroup.position).applyQuaternion(inverse);
+    const forward = DYNAMIC_LIGHT_FORWARD;
+    this.camera.getWorldDirection(forward).applyQuaternion(inverse);
+
+    if (!this._dynamicLightCandidates) this._dynamicLightCandidates = [];
+    const candidates = this._dynamicLightCandidates;
+    candidates.length = 0;
+    const offset = DYNAMIC_LIGHT_OFFSET;
+    this._forEachDynamicLight((light) => {
+      if (light.visible === false || !(light.intensity > 0)) return;
+      const distance = offset.copy(light.position).sub(eye).length();
+      // `OpenGLLight::calculateImportance` drops a light for being far away
+      // only when it is *behind* the viewer: `sphereCull` is cleared the moment
+      // the light is in front of the front plane, and the distance test below
+      // it never runs. A light in front is only ever ranked by distance, never
+      // disqualified by it -- a shot lighting the ground a hundred units ahead
+      // is a shot the player can see lighting the ground.
+      //
+      // Upstream also drops a light that has fallen outside a frustum side by
+      // more than its own reach. That test is not here: it needs the frustum
+      // planes, a session has two of them rather than one, and with seven slots
+      // and a handful of shots a light off to the side costs a slot rather than
+      // a wrong picture.
+      if (distance > BZFLAG_LIGHT_MAX_DISTANCE && offset.dot(forward) <= 0) return;
+      light.importance = distance > 0 ? 1 / distance : Infinity;
+      candidates.push(light);
+    });
+    if (candidates.length > pool.length) {
+      candidates.sort((a, b) => b.importance - a.importance);
+    }
+
+    for (let slot = 0; slot < pool.length; slot += 1) {
+      const light = pool[slot];
+      const source = candidates[slot];
+      if (!source) {
+        light.intensity = 0;
+        continue;
+      }
+      light.position.copy(source.position);
+      light.color.copy(source.color);
+      light.intensity = source.intensity;
+    }
+    // Gathered afresh every frame from the tanks that are actually jetting, so
+    // a tank that left the world leaves nothing behind here.
+    this._activeJumpJetLights.length = 0;
   }
 
   // Capability and switch kept apart, as `_dynamicLightingActive` does: the
@@ -942,6 +1136,7 @@ class RenderManager {
     // The bound Three would derive from a flattening matrix can under-estimate,
     // and a shadow that pops out is worse than one that is always submitted.
     shadowMesh.frustumCulled = false;
+    this._tagDraws(shadowMesh, 'shadow');
     this.worldGroup.add(shadowMesh);
     mesh.userData.shadowMesh = shadowMesh;
     return shadowMesh;
@@ -954,16 +1149,99 @@ class RenderManager {
     mesh.userData.shadowMesh = null;
   }
 
+  // A tank's whole shape as one geometry, in the tank's own space, shared by
+  // every tank wearing the same model.
+  //
+  // A tank arrives from the loader as seventeen objects and cast a shadow from
+  // each, which the draw breakdown measured at three quarters of everything the
+  // map itself costs -- and none of them cull, because a shadow's flattening
+  // matrix can under-estimate its bound. The shadow does not need the parts: it
+  // is one flat silhouette, the parts do not move against each other, and what
+  // does move on a tank moves by scrolling a texture rather than by turning a
+  // wheel.
+  _getTankShadowGeometry(tank) {
+    const key = tank.userData.modelPath || 'default';
+    if (!this._tankShadowGeometry) this._tankShadowGeometry = new Map();
+    const existing = this._tankShadowGeometry.get(key);
+    if (existing) return existing;
+
+    const positions = [];
+    const indices = [];
+    const matrix = new THREE.Matrix4();
+    const vertex = new THREE.Vector3();
+    tank.updateWorldMatrix(true, true);
+    const tankInverse = new THREE.Matrix4().copy(tank.matrixWorld).invert();
+
+    tank.traverse((child) => {
+      // A sprite is a name label, and a label casts nothing.
+      if (!child.isMesh || !child.geometry) return;
+      const position = child.geometry.getAttribute('position');
+      if (!position) return;
+      matrix.multiplyMatrices(tankInverse, child.matrixWorld);
+      const offset = positions.length / 3;
+      for (let i = 0; i < position.count; i += 1) {
+        vertex.fromBufferAttribute(position, i).applyMatrix4(matrix);
+        positions.push(vertex.x, vertex.y, vertex.z);
+      }
+      const index = child.geometry.getIndex();
+      if (index) {
+        for (let i = 0; i < index.count; i += 1) indices.push(index.getX(i) + offset);
+      } else {
+        for (let i = 0; i < position.count; i += 1) indices.push(i + offset);
+      }
+    });
+
+    const geometry = new THREE.BufferGeometry();
+    geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+    geometry.setIndex(indices);
+    this._tankShadowGeometry.set(key, geometry);
+    return geometry;
+  }
+
+  // One shadow for a whole tank, hung off the tank rather than off its parts.
+  _ensureTankShadowMesh(tank) {
+    const existing = tank.userData.shadowMesh;
+    if (existing) return existing;
+
+    const shadowMesh = this._tagDraws(
+      new THREE.Mesh(this._getTankShadowGeometry(tank), this._getProjectedShadowMaterial()),
+      'shadow',
+    );
+    shadowMesh.matrixAutoUpdate = false;
+    shadowMesh.matrixWorldAutoUpdate = false;
+    shadowMesh.renderOrder = PROJECTED_SHADOW_RENDER_ORDER;
+    shadowMesh.frustumCulled = false;
+    this.worldGroup.add(shadowMesh);
+    tank.userData.shadowMesh = shadowMesh;
+    return shadowMesh;
+  }
+
+  // Everything under `object3D` stops casting for good. A tank's meshes are
+  // clones sharing their geometry and materials with every other tank, so
+  // nothing here is disposed -- only the shadows pointing at them, which the
+  // world group would otherwise keep drawing after the caster has left it.
+  dropProjectedShadows(object3D) {
+    if (!object3D) return;
+    object3D.traverse((child) => this._removeProjectedShadowMesh(child));
+  }
+
   // The whole cost of a shadow, per frame: one matrix multiply.
-  _projectShadowForMesh(mesh, projection) {
-    if (!mesh || !mesh.geometry) return;
-    if (mesh.visible === false) {
+  //
+  // A caster is either a mesh with geometry of its own -- an obstacle fragment
+  // -- or a tank, which is a group of parts casting one merged silhouette.
+  _projectShadowForMesh(mesh, projection, casting = true) {
+    if (!mesh) return;
+    const isTank = !mesh.geometry;
+    if (isTank && mesh.userData.drawGroup !== 'tank') return;
+    if (!casting || mesh.visible === false) {
       const shadowMesh = mesh.userData.shadowMesh;
       if (shadowMesh) shadowMesh.visible = false;
       return;
     }
 
-    const shadowMesh = this._ensureProjectedShadowMesh(mesh);
+    const shadowMesh = isTank
+      ? this._ensureTankShadowMesh(mesh)
+      : this._ensureProjectedShadowMesh(mesh);
     shadowMesh.visible = true;
     shadowMesh.matrixWorld.multiplyMatrices(projection, mesh.matrixWorld);
   }
@@ -988,7 +1266,7 @@ class RenderManager {
     const extent = this._getProjectedShadowOverlayExtent();
     if (!this.projectedShadowOverlay) {
       this.projectedShadowOverlay = this._buildProjectedShadowOverlay(extent);
-      this.worldGroup.add(this.projectedShadowOverlay);
+      this.worldGroup.add(this._tagDraws(this.projectedShadowOverlay, 'shadow'));
       return;
     }
     if (this.projectedShadowOverlay.userData.extent === extent) return;
@@ -1085,7 +1363,7 @@ class RenderManager {
     const grid = this._buildGroundGrid(resolvedMapSize);
     if (!grid) return;
     this.gridHelper = grid;
-    this.worldGroup.add(grid);
+    this.worldGroup.add(this._tagDraws(grid, 'scenery'));
   }
 
   // Every shadow in the frame shares one projection, so the traversal and the
@@ -1094,6 +1372,21 @@ class RenderManager {
   // or not, where re-walking every obstacle's vertices did not -- and gating on
   // that made the cost rise as the frame rate fell, which is a hole a slow
   // machine could not climb out of.
+  // A matrix composed for every node in the world, visible or not, shadow
+  // caster or not: it scales with how much is in the world rather than with how
+  // much of it moves. The shadow pass needs it done before it projects
+  // anything, but it is not the shadow pass's cost -- with `?shadows=0` the
+  // same walk still happens, inside Three's own render, where it lands in
+  // `draw` and stops being comparable with the mode beside it. Doing it here,
+  // in every mode, is what keeps a phase meaning the same thing whatever else
+  // is turned off.
+  updateWorldMatrices() {
+    if (!this.worldGroup) return;
+    this.worldGroup.updateMatrixWorld(true);
+    markFramePhase('matrix');
+  }
+
+  // Expects updateWorldMatrices to have run this frame.
   updateProjectedShadows(tankMeshes = []) {
     // Each shadow mesh writes the stencil the ground overlay reads. Without a
     // stencil buffer there is no overlay to read it, so the meshes would draw
@@ -1110,13 +1403,6 @@ class RenderManager {
       this._projectedShadowWorldToLocal = new THREE.Matrix4();
     }
 
-    this.worldGroup.updateMatrixWorld(true);
-    // Everything up to here is the pass getting ready, and almost all of it is
-    // that walk: a matrix composed for every node in the world, visible or not,
-    // shadow caster or not. It scales with how much is in the world rather than
-    // with how much casts, which is a different cost from the projection below
-    // and has to be read separately from it.
-    markFramePhase('matrix');
     this._setProjectedShadowFlattenMatrix(this._projectedShadowFlatten, dir);
     this._projectedShadowWorldToLocal.copy(this.worldGroup.matrixWorld).invert();
     // Flatten in worldGroup space, whatever the world is doing in XR.
@@ -1130,11 +1416,15 @@ class RenderManager {
 
     for (const tank of tankMeshes) {
       if (!tank) continue;
-      tank.traverse((child) => {
-        if (child.isMesh && child.geometry) {
-          this._projectShadowForMesh(child, projection);
-        }
-      });
+      // A dead tank is hidden by its group, and the group is what casts: one
+      // silhouette for the whole tank rather than one shadow per part. A
+      // shadow keeps the last matrix it was handed -- written straight into
+      // matrixWorld, where nothing re-derives it from the world group -- so a
+      // caster that stops being projected leaves its shadow behind: a dark
+      // patch on a desktop, and in a session, where the world group carries the
+      // player's own heading, a shadow that appears stuck to the view. It comes
+      // back when the tank does.
+      this._projectShadowForMesh(tank, projection, tank.visible !== false);
     }
   }
 
@@ -1243,6 +1533,8 @@ class RenderManager {
 
   // Every dynamic light bzo casts belongs to something parented to worldGroup,
   // so the light's own position is already in the space the receivers live in.
+  // Everything asking for a light this frame, which is more than the scene can
+  // be given.
   _forEachDynamicLight(visit) {
     if (this.projectileLights) {
       for (const light of this.projectileLights.values()) {
@@ -1255,6 +1547,19 @@ class RenderManager {
     for (const effect of this.activeExplosions) {
       if (effect.light) visit(effect.light);
     }
+    if (this._activeJumpJetLights) {
+      for (const light of this._activeJumpJetLights) visit(light);
+    }
+  }
+
+  // And the ones it was given. A receiver stands for light landing on the
+  // ground, so it follows what is lighting the ground rather than what asked
+  // to.
+  _forEachPooledLight(visit) {
+    if (!this._dynamicLightPool) return;
+    for (const light of this._dynamicLightPool) {
+      if (light.intensity > 0) visit(light);
+    }
   }
 
   updateGroundReceivers() {
@@ -1265,7 +1570,7 @@ class RenderManager {
     const receivers = this._groundReceivers;
     let used = 0;
 
-    this._forEachDynamicLight((light) => {
+    this._forEachPooledLight((light) => {
       const height = light.position.y;
       if (!(height > 0)) return;
       const color = light.color;
@@ -1277,7 +1582,7 @@ class RenderManager {
       if (!mesh) {
         mesh = new THREE.Mesh(this._getGroundReceiverGeometry(), this._getGroundReceiverMaterial());
         mesh.renderOrder = GROUND_RECEIVER_RENDER_ORDER;
-        this.worldGroup.add(mesh);
+        this.worldGroup.add(this._tagDraws(mesh, 'effect'));
         receivers[used] = mesh;
       }
       mesh.position.set(light.position.x, GROUND_RECEIVER_Y, light.position.z);
@@ -1353,6 +1658,9 @@ class RenderManager {
       }
     }
 
+    // Which effects the scene's lights stand for this frame, decided after the
+    // shots have moved and before anything reads them.
+    this._applyDynamicLightPool();
     // After the lights have been moved, so a receiver never trails its shot.
     this.updateGroundReceivers();
     // The ground patch, the teleporters and the receivers all rebuild geometry
@@ -1833,7 +2141,7 @@ class RenderManager {
     this._setGroundCorner(2, groundExtent, -groundExtent);
     this._setGroundCorner(3, -groundExtent, -groundExtent);
     this.updateGroundCenter();
-    this.worldGroup.add(this.ground);
+    this.worldGroup.add(this._tagDraws(this.ground, 'scenery'));
 
     this._refreshProjectedShadowOverlay();
     this.setGroundGridEnabled(this.showGroundGrid, mapSize);
@@ -1883,7 +2191,7 @@ class RenderManager {
     northWall.castShadow = true;
     northWall.receiveShadow = true;
     northWall.name = 'North Wall';
-    this.worldGroup.add(northWall);
+    this.worldGroup.add(this._tagDraws(northWall, 'scenery'));
     boundaryMeshes.push(northWall);
     const markerHeight = Math.max(wallHeight + 8, this.maxObstacleHeight + 5);
     this._addCompassMarker('N', 0xB20000, new THREE.Vector3(0, markerHeight, -mapSize / 2));
@@ -1897,7 +2205,7 @@ class RenderManager {
     southWall.position.set(0, wallHeight / 2, mapSize / 2 + wallThickness / 2);
     southWall.castShadow = true;
     southWall.receiveShadow = true;
-    this.worldGroup.add(southWall);
+    this.worldGroup.add(this._tagDraws(southWall, 'scenery'));
     southWall.name = 'South Wall';
     boundaryMeshes.push(southWall);
     this._addCompassMarker('S', 0x1976D2, new THREE.Vector3(0, markerHeight, mapSize / 2));
@@ -1911,7 +2219,7 @@ class RenderManager {
     eastWall.position.set(mapSize / 2 + wallThickness / 2, wallHeight / 2, 0);
     eastWall.castShadow = true;
     eastWall.receiveShadow = true;
-    this.worldGroup.add(eastWall);
+    this.worldGroup.add(this._tagDraws(eastWall, 'scenery'));
     eastWall.name = 'East Wall';
     boundaryMeshes.push(eastWall);
     this._addCompassMarker('E', 0x388E3C, new THREE.Vector3(mapSize / 2, markerHeight, 0));
@@ -1925,7 +2233,7 @@ class RenderManager {
     westWall.position.set(-mapSize / 2 - wallThickness / 2, wallHeight / 2, 0);
     westWall.castShadow = true;
     westWall.receiveShadow = true;
-    this.worldGroup.add(westWall);
+    this.worldGroup.add(this._tagDraws(westWall, 'scenery'));
     westWall.name = 'West Wall';
     boundaryMeshes.push(westWall);
     this._addCompassMarker('W', 0x9C27B0, new THREE.Vector3(-mapSize / 2, markerHeight, 0));
@@ -1963,7 +2271,7 @@ class RenderManager {
     sprite.position.copy(position);
     sprite.scale.set(20, 20, 1);
     sprite.userData = { letter, initialY: position.y }; // Store metadata
-    this.worldGroup.add(sprite);
+    this.worldGroup.add(this._tagDraws(sprite, 'scenery'));
     if (!this.compassMarkers) this.compassMarkers = [];
     this.compassMarkers.push(sprite);
   }
@@ -2046,7 +2354,7 @@ class RenderManager {
       geometry.computeBoundingBox();
       geometry.computeBoundingSphere();
 
-      const mesh = new THREE.Mesh(geometry, materials);
+      const mesh = this._tagDraws(new THREE.Mesh(geometry, materials), 'world');
       mesh.name = `${key} fragment`;
       // It is built in world space and never moves.
       mesh.matrixAutoUpdate = false;
@@ -2114,7 +2422,7 @@ class RenderManager {
         mesh.userData.teleporter = {
           border: Number(obs.border) || 0,
         };
-        this.worldGroup.add(mesh);
+        this.worldGroup.add(this._tagDraws(mesh, 'teleporter'));
         this._addDebugLabel(mesh, 'obstacle');
       } else if (obs.kind === 'base') {
         const materials = this._createBaseFaceMaterials(obs.w, h, obs.d, obs.team || 1, baseY > 0);
@@ -2131,7 +2439,7 @@ class RenderManager {
           team: obs.team || 1,
         };
         if (mesh.geometry && !mesh.geometry.boundingBox) mesh.geometry.computeBoundingBox();
-        this.worldGroup.add(mesh);
+        this.worldGroup.add(this._tagDraws(mesh, 'base'));
         this._addDebugLabel(mesh, 'obstacle');
       } else if (obs.type === 'pyramid') {
         const geometry = new THREE.ConeGeometry(0.5 / Math.SQRT2, h, 4, 1);
@@ -2229,7 +2537,7 @@ class RenderManager {
   // fragment with every other obstacle of its kind. The position is in world
   // space and the label hangs off the world group rather than off the obstacle.
   _addDebugLabelAt(name, position, type) {
-    const label = this._createDebugLabelSprite(name);
+    const label = this._tagDraws(this._createDebugLabelSprite(name), 'debug');
     label.position.copy(position);
     this.worldGroup.add(label);
     label.visible = this.debugLabelsEnabled;
@@ -2238,7 +2546,9 @@ class RenderManager {
 
   _addDebugLabel(object3D, type) {
     if (!object3D) return;
-    const label = this._createDebugLabelSprite(object3D.name);
+    // Tagged even though it hangs off its subject, so it is counted as the
+    // debug it is rather than as whatever it is labelling.
+    const label = this._tagDraws(this._createDebugLabelSprite(object3D.name), 'debug');
     // Ensure boundingBox is computed for label placement
     if (object3D.geometry && !object3D.geometry.boundingBox) object3D.geometry.computeBoundingBox();
     const y = (object3D.geometry && object3D.geometry.boundingBox ? object3D.geometry.boundingBox.max.y : object3D.position.y) + 2;
@@ -2400,7 +2710,7 @@ class RenderManager {
       const frontMountain = new THREE.Mesh(frontGeometry, material);
       frontMountain.receiveShadow = false;
       frontMountain.castShadow = false;
-      this.worldGroup.add(frontMountain);
+      this.worldGroup.add(this._tagDraws(frontMountain, 'scenery'));
       this.mountainMeshes.push(frontMountain);
 
       const backGeometry = this._createMountainStripGeometry(
@@ -2413,7 +2723,7 @@ class RenderManager {
       const backMountain = new THREE.Mesh(backGeometry, material.clone());
       backMountain.receiveShadow = false;
       backMountain.castShadow = false;
-      this.worldGroup.add(backMountain);
+      this.worldGroup.add(this._tagDraws(backMountain, 'scenery'));
       this.mountainMeshes.push(backMountain);
     }
   }
@@ -2454,7 +2764,7 @@ class RenderManager {
 
       const celestialGeometry = new THREE.SphereGeometry(1, 32, 32);
       const addCelestialMesh = (material, renderOrder) => {
-        const mesh = new THREE.Mesh(celestialGeometry, material);
+        const mesh = this._tagDraws(new THREE.Mesh(celestialGeometry, material), 'scenery');
         mesh.renderOrder = renderOrder;
         this.worldGroup.add(mesh);
         this.celestialMeshes.push(mesh);
@@ -2495,8 +2805,61 @@ class RenderManager {
     if (!this.scene) return;
     this.clouds.forEach((cloud) => {
       this.worldGroup.remove(cloud);
+      // A cloud owns its geometry outright; the material is the sky's.
+      cloud.geometry.dispose();
     });
     this.clouds = [];
+  }
+
+  // One white for every cloud in the sky. Nothing about a puff varies but where
+  // it is and how big, so nothing about the material can.
+  _getCloudMaterial() {
+    if (!this._cloudMaterial) {
+      this._cloudMaterial = new THREE.MeshLambertMaterial({
+        color: 0xffffff,
+        transparent: true,
+        opacity: 0.7,
+      });
+    }
+    return this._cloudMaterial;
+  }
+
+  // A cloud's puffs as one geometry. They were a mesh each, which on a world of
+  // fifteen clouds of five to twelve puffs is around 125 draws for a decoration
+  // in the sky -- measured as the second largest thing in a headset frame,
+  // behind the tanks and ahead of everything the map is made of.
+  //
+  // Merged per cloud rather than all into one, because a cloud is what moves:
+  // each drifts at its own speed, so a mesh each keeps the animation a
+  // translation and asks nothing of the geometry per frame. It also leaves the
+  // clouds sorted against each other, which a single mesh would not; what is
+  // given up is sorting between the puffs of one cloud, and those are the same
+  // white at the same opacity, so there is nothing in it to see.
+  _buildCloudGeometry(puffs) {
+    const positions = [];
+    const normals = [];
+    const indices = [];
+    puffs.forEach((puff) => {
+      const sphere = new THREE.SphereGeometry(puff.radius, 8, 8);
+      sphere.translate(puff.offsetX, puff.offsetY, puff.offsetZ);
+      const position = sphere.getAttribute('position');
+      const normal = sphere.getAttribute('normal');
+      const index = sphere.getIndex();
+      const offset = positions.length / 3;
+      for (let vertex = 0; vertex < position.count; vertex += 1) {
+        positions.push(position.getX(vertex), position.getY(vertex), position.getZ(vertex));
+        normals.push(normal.getX(vertex), normal.getY(vertex), normal.getZ(vertex));
+      }
+      for (let i = 0; i < index.count; i += 1) indices.push(index.getX(i) + offset);
+      sphere.dispose();
+    });
+
+    const geometry = new THREE.BufferGeometry();
+    geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+    geometry.setAttribute('normal', new THREE.Float32BufferAttribute(normals, 3));
+    geometry.setIndex(indices);
+    geometry.computeBoundingSphere();
+    return geometry;
   }
 
   createClouds(cloudsData = []) {
@@ -2504,26 +2867,16 @@ class RenderManager {
     this.clearClouds();
 
     cloudsData.forEach((cloudData) => {
-      const cloudGroup = new THREE.Group();
+      const cloud = this._tagDraws(
+        new THREE.Mesh(this._buildCloudGeometry(cloudData.puffs), this._getCloudMaterial()),
+        'cloud',
+      );
+      cloud.position.set(cloudData.x, cloudData.y, cloudData.z);
+      cloud.userData.velocity = 0.5 + Math.random() * 1.0;
+      cloud.userData.startX = cloudData.x;
 
-      cloudData.puffs.forEach((puff) => {
-        const geometry = new THREE.SphereGeometry(puff.radius, 8, 8);
-        const material = new THREE.MeshLambertMaterial({
-          color: 0xffffff,
-          transparent: true,
-          opacity: 0.7,
-        });
-        const sphere = new THREE.Mesh(geometry, material);
-        sphere.position.set(puff.offsetX, puff.offsetY, puff.offsetZ);
-        cloudGroup.add(sphere);
-      });
-
-      cloudGroup.position.set(cloudData.x, cloudData.y, cloudData.z);
-      cloudGroup.userData.velocity = 0.5 + Math.random() * 1.0;
-      cloudGroup.userData.startX = cloudData.x;
-
-      this.worldGroup.add(cloudGroup);
-      this.clouds.push(cloudGroup);
+      this.worldGroup.add(cloud);
+      this.clouds.push(cloud);
     });
   }
 
@@ -2844,7 +3197,7 @@ class RenderManager {
       return null;
     }
 
-    const tankGroup = new THREE.Group();
+    const tankGroup = this._tagDraws(new THREE.Group(), 'tank');
 
     if (name) {
       const spriteMaterial = new THREE.SpriteMaterial({
@@ -2956,10 +3309,12 @@ class RenderManager {
   createTank(color = 0x4caf50, name = '', modelPath = this._tankModelPath) {
     const templateTank = this._createTankFromTemplate(color, name, modelPath);
     if (templateTank) {
+      templateTank.userData.modelPath = modelPath;
       return templateTank;
     }
 
-    const tankGroup = new THREE.Group();
+    const tankGroup = this._tagDraws(new THREE.Group(), 'tank');
+    tankGroup.userData.modelPath = modelPath;
 
     if (name) {
       const spriteMaterial = new THREE.SpriteMaterial({
@@ -3140,6 +3495,12 @@ class RenderManager {
   createGhostMesh(tank) {
     // Create a semi-transparent ghost version of a tank for showing server-confirmed position
     const ghostTank = tank.clone(true); // Deep clone the tank
+
+    // A clone carries the original's userData, so without this a ghost counts
+    // as a tank and debug geometry silently doubles what the tanks appear to
+    // cost. It is a whole tank's worth of draws, so it is worth seeing on its
+    // own.
+    this._tagDraws(ghostTank, 'debug');
 
     // Rebind name label after clone: Object3D clone serializes userData and can
     // drop direct object references like userData.nameLabel.
@@ -3510,18 +3871,12 @@ class RenderManager {
     sprite.position.copy(position);
     sprite.scale.set(BZFLAG_SHOT_EXPLOSION_SIZE, BZFLAG_SHOT_EXPLOSION_SIZE, 1);
     sprite.renderOrder = SHOT_EXPLOSION_RENDER_ORDER;
-    this.worldGroup.add(sprite);
+    this.worldGroup.add(this._tagDraws(sprite, 'effect'));
 
     let light = null;
     if (this._dynamicLightingActive()) {
-      light = new THREE.PointLight(
-        0xffcc80,
-        bzflagLightIntensity(BZFLAG_SHOT_IMPACT_LIGHT_SCALE),
-        BZFLAG_LIGHT_MAX_DISTANCE,
-        BZFLAG_LIGHT_DECAY,
-      );
+      light = this._createDynamicLight(0xffcc80, bzflagLightIntensity(BZFLAG_SHOT_IMPACT_LIGHT_SCALE));
       light.position.copy(position);
-      this.worldGroup.add(light);
     }
 
     this.activeShotExplosions.push({
@@ -3716,7 +4071,7 @@ class RenderManager {
     const shield = new THREE.Mesh(shieldGeometry, shieldMaterial);
     shield.position.set(x, y + 2, z);
     shield.userData.rotation = 0;
-    this.worldGroup.add(shield);
+    this.worldGroup.add(this._tagDraws(shield, 'effect'));
     return shield;
   }
 
@@ -3750,7 +4105,7 @@ class RenderManager {
     const startRadius = 2.5;
     ring.scale.set(startRadius, startRadius, 1);
 
-    this.worldGroup.add(ring);
+    this.worldGroup.add(this._tagDraws(ring, 'effect'));
     this.activeLandingEffects.push({
       ring,
       geometry: ringGeometry,
@@ -3811,9 +4166,9 @@ class RenderManager {
     topRing.position.set(position.x, position.y + 1.35, position.z);
     topRing.scale.set(0.65, 0.65, 1);
 
-    this.worldGroup.add(ring);
-    this.worldGroup.add(column);
-    this.worldGroup.add(topRing);
+    this.worldGroup.add(this._tagDraws(ring, 'effect'));
+    this.worldGroup.add(this._tagDraws(column, 'effect'));
+    this.worldGroup.add(this._tagDraws(topRing, 'effect'));
 
     this.activeSpawnEffects.push({
       ring,
@@ -3895,20 +4250,17 @@ class RenderManager {
     };
     // Only add a point light if dynamic lighting is enabled
     if (this._dynamicLightingActive()) {
-      const shotLight = new THREE.PointLight(
+      const shotLight = this._createDynamicLight(
         projectileColor,
         bzflagLightIntensity(BZFLAG_SHOT_LIGHT_SCALE),
-        BZFLAG_LIGHT_MAX_DISTANCE,
-        BZFLAG_LIGHT_DECAY,
       );
       shotLight.position.copy(projectile.position);
-      this.worldGroup.add(shotLight);
       projectile.userData.shotLight = shotLight;
       // Track for update/removal
       if (!this.projectileLights) this.projectileLights = new Map();
       this.projectileLights.set(projectile, shotLight);
     }
-    this.worldGroup.add(projectile);
+    this.worldGroup.add(this._tagDraws(projectile, 'effect'));
     this.playSound('fire', projectile.position);
     this.createMuzzleFlash(projectile.position, dir);
     return projectile;
@@ -3922,11 +4274,7 @@ class RenderManager {
     // BZFlag plays SFX_SHOT_BOOM when a shot ends.
     this.playSound('shotBoom', projectile.position);
     // Remove point light from scene if present
-    if (this.projectileLights && this.projectileLights.has(projectile)) {
-      const light = this.projectileLights.get(projectile);
-      this.worldGroup.remove(light);
-      this.projectileLights.delete(projectile);
-    }
+    if (this.projectileLights) this.projectileLights.delete(projectile);
     this.worldGroup.remove(projectile);
     if (projectile.userData?.head?.material?.map) projectile.userData.head.material.map.dispose();
     if (projectile.userData?.head?.material) projectile.userData.head.material.dispose();
@@ -3946,23 +4294,20 @@ class RenderManager {
     let explosionLight = null;
     let lightIntensity = 0;
     if (this._dynamicLightingActive() && typeof THREE !== 'undefined') {
-      explosionLight = new THREE.PointLight(
+      explosionLight = this._createDynamicLight(
         0xffe066,
         bzflagLightIntensity(BZFLAG_EXPLOSION_LIGHT_SCALE),
-        BZFLAG_LIGHT_MAX_DISTANCE,
-        BZFLAG_LIGHT_DECAY,
       );
       explosionLight.position.copy(position);
       // updateExplosions() fades this down from here.
       lightIntensity = explosionLight.intensity;
-      this.worldGroup.add(explosionLight);
     }
 
     const geometry = new THREE.SphereGeometry(2, 16, 16);
     const material = new THREE.MeshBasicMaterial({ color: 0xff4500, transparent: true, opacity: 0.8 });
     const explosion = new THREE.Mesh(geometry, material);
     explosion.position.copy(position);
-    this.worldGroup.add(explosion);
+    this.worldGroup.add(this._tagDraws(explosion, 'effect'));
 
     const shockwaveGeometry = new THREE.TorusGeometry(1.6, 0.12, 8, 48);
     const shockwaveMaterial = new THREE.MeshBasicMaterial({
@@ -3974,7 +4319,7 @@ class RenderManager {
     const shockwave = new THREE.Mesh(shockwaveGeometry, shockwaveMaterial);
     shockwave.rotation.x = Math.PI / 2;
     shockwave.position.set(position.x, Math.max(0.08, position.y + 0.08), position.z);
-    this.worldGroup.add(shockwave);
+    this.worldGroup.add(this._tagDraws(shockwave, 'effect'));
 
     const debrisPieces = [];
     let followTarget = null;
@@ -4066,7 +4411,7 @@ class RenderManager {
         (Math.random() - 0.5) * 10,
       );
       debris.userData.isTankPart = false;
-      this.worldGroup.add(debris);
+      this.worldGroup.add(this._tagDraws(debris, 'effect'));
       debrisPieces.push({ mesh: debris, lifetime: 0, maxLifetime: 2.5 });
     }
 
@@ -4171,8 +4516,6 @@ class RenderManager {
         explosion.lightIntensity *= fade;
         explosion.light.intensity = explosion.lightIntensity;
         if (explosion.lightIntensity <= 0.05) {
-          this.worldGroup.remove(explosion.light);
-          explosion.light.dispose && explosion.light.dispose();
           explosion.light = null;
         }
       }
@@ -4266,10 +4609,7 @@ class RenderManager {
         this.worldGroup.remove(effect.sprite);
         if (effect.material) effect.material.dispose();
         if (effect.texture) effect.texture.dispose();
-        if (effect.light) {
-          this.worldGroup.remove(effect.light);
-          effect.light.dispose && effect.light.dispose();
-        }
+        effect.light = null;
         this.activeShotExplosions.splice(index, 1);
       }
     }
@@ -4291,7 +4631,7 @@ class RenderManager {
   }
 
   _launchTankPart(part, centerPos, debrisPieces, speedMultiplier = 1.0, options = {}) {
-    this.worldGroup.add(part);
+    this.worldGroup.add(this._tagDraws(part, 'effect'));
     part.userData.isTankPart = true;
     part.userData.isPrimaryHull = Boolean(options.isFollowTarget);
     part.userData.groundBounces = 0;
@@ -4394,7 +4734,7 @@ class RenderManager {
       position.y + direction.y,
       position.z + direction.z
     );
-    this.worldGroup.add(mesh);
+    this.worldGroup.add(this._tagDraws(mesh, 'effect'));
 
     if (!this.muzzleFlashes) this.muzzleFlashes = [];
     this.muzzleFlashes.push({ mesh, material, age: 0 });
@@ -4469,7 +4809,7 @@ class RenderManager {
       position.y + (direction.y / length),
       position.z + (direction.z / length)
     );
-    this.worldGroup.add(mesh);
+    this.worldGroup.add(this._tagDraws(mesh, 'effect'));
 
     if (!this.ricochetEffects) this.ricochetEffects = [];
     this.ricochetEffects.push({ mesh, material, age: 0 });
@@ -4607,14 +4947,10 @@ class RenderManager {
     if (!tank.userData.jumpJetLight) {
       const { r, g, b } = BZFLAG_JUMPJET_LIGHT_COLOR;
       const peak = Math.max(r, g, b);
-      const light = new THREE.PointLight(
+      tank.userData.jumpJetLight = this._createDynamicLight(
         new THREE.Color(r / peak, g / peak, b / peak),
         0,
-        BZFLAG_LIGHT_MAX_DISTANCE,
-        BZFLAG_LIGHT_DECAY,
       );
-      tank.add(light);
-      tank.userData.jumpJetLight = light;
     }
     const light = tank.userData.jumpJetLight;
     light.visible = scale > 0;
@@ -4622,6 +4958,14 @@ class RenderManager {
     // (TankSceneNode.cxx:308); the colour here is normalised, so the scale
     // rides on the intensity instead.
     light.intensity = scale * bzflagLightIntensity(BZFLAG_JUMPJET_LIGHT_SCALE);
+    // The light sat on the tank and rode along with it; now it is a request in
+    // the world group's own space, which is where the tank's position already
+    // is, and it stands only for the frame that asked.
+    light.position.copy(tank.position);
+    if (light.visible && light.intensity > 0) {
+      if (!this._activeJumpJetLights) this._activeJumpJetLights = [];
+      this._activeJumpJetLights.push(light);
+    }
   }
 
   _getShotTeleportTexture() {
@@ -4757,7 +5101,9 @@ class RenderManager {
   // towards the pole so the cloth stays attached to it.
   _stepFlagWaveSets(deltaTime) {
     const twoPi = 2 * Math.PI;
-    this._flagWaveSets.forEach((set) => {
+    // Asked for rather than assumed: the first frame of a world steps the sets
+    // before anything else has had reason to build them.
+    (this._flagWaveSets ?? this._getFlagWaveSets()).forEach((set) => {
       set.ripple1 = (set.ripple1 + (deltaTime * BZFLAG_FLAG_RIPPLE_SPEED_1)) % twoPi;
       set.ripple2 = (set.ripple2 + (deltaTime * BZFLAG_FLAG_RIPPLE_SPEED_2)) % twoPi;
       const sinRipple2 = Math.sin(set.ripple2);
@@ -4829,14 +5175,106 @@ class RenderManager {
     positions.needsUpdate = true;
   }
 
-  _ensureFlagNode(index) {
-    if (!this.flagNodes) this.flagNodes = new Map();
-    const existing = this.flagNodes.get(index);
+  // Every flag in the world, in as few draws as there are cloth ripples plus
+  // one. `FlagSceneNode::notifyStyleChange` draws an ordinary flag opaque --
+  // no blending, `setAlphaFunc(GL_GEQUAL, 0.9)` against the texture -- and only
+  // reaches for blending when the flag's own colour has alpha below one, which
+  // is a flag warping in or out. An opaque flag needs no sorting against its
+  // neighbours, and that is what lets the whole world's flags ride in
+  // InstancedMeshes: one per wave set for the cloth, because a set is a shared
+  // geometry and instancing draws one geometry many times, and one for every
+  // pole in the world, which are identical.
+  //
+  // Capacity is grown in powers of two and the meshes are never culled: they
+  // stand for flags scattered over the whole map, so a bound around them is the
+  // map, and computing one per frame would cost more than the draw it saves.
+  _getFlagBatch(needed) {
+    if (this._flagBatch && this._flagBatch.capacity >= needed) return this._flagBatch;
+
+    this._disposeFlagBatch();
+    const capacity = Math.max(16, 2 ** Math.ceil(Math.log2(Math.max(1, needed))));
+    const waveSets = this._getFlagWaveSets();
+    const clothMaterial = new THREE.MeshBasicMaterial({
+      map: this._getFlagTexture(),
+      side: THREE.DoubleSide,
+      alphaTest: BZFLAG_FLAG_ALPHA_THRESHOLD,
+    });
+    const poleMaterial = new THREE.MeshBasicMaterial({ color: 0x000000 });
+    // The pole stands on the flag's position, so its offset is baked into the
+    // geometry and the instance matrix carries nothing but the flag's place and
+    // the way it faces.
+    const poleHeight = FLAG_POLE_SIZE + BZFLAG_FLAG_HEIGHT;
+    const poleGeometry = new THREE.PlaneGeometry(2 * FLAG_POLE_WIDTH, poleHeight)
+      .translate(0, poleHeight / 2, 0);
+
+    const prepare = (mesh) => {
+      this._tagDraws(mesh, 'flag');
+      mesh.count = 0;
+      mesh.frustumCulled = false;
+      mesh.renderOrder = FLAG_RENDER_ORDER;
+      mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+      this.getWorldGroup().add(mesh);
+      return mesh;
+    };
+
+    this._flagBatch = {
+      capacity,
+      clothMaterial,
+      poleMaterial,
+      poleGeometry,
+      cloth: waveSets.map((set) => prepare(new THREE.InstancedMesh(set.geometry, clothMaterial, capacity))),
+      pole: prepare(new THREE.InstancedMesh(poleGeometry, poleMaterial, capacity)),
+    };
+    return this._flagBatch;
+  }
+
+  _disposeFlagBatch() {
+    const batch = this._flagBatch;
+    if (!batch) return;
+    [...batch.cloth, batch.pole].forEach((mesh) => {
+      mesh.parent?.remove(mesh);
+      mesh.dispose();
+    });
+    batch.poleGeometry.dispose();
+    batch.clothMaterial.dispose();
+    batch.poleMaterial.dispose();
+    this._flagBatch = null;
+  }
+
+  // What a flag looks like right now, and nothing that draws it. A record is
+  // cheap enough that a world of 200 can carry one each whether or not that
+  // slot has ever held a flag.
+  _ensureFlagRecord(index) {
+    if (!this.flagRecords) this.flagRecords = new Map();
+    const existing = this.flagRecords.get(index);
     if (existing) return existing;
 
-    const waveSets = this._getFlagWaveSets();
-    const waveSet = waveSets[Math.floor(Math.random() * waveSets.length)];
+    const record = {
+      x: 0,
+      y: 0,
+      z: 0,
+      color: SUPER_FLAG_COLOR,
+      alpha: 1,
+      visible: false,
+      // Fixed for the life of the flag, so a flag does not change its ripple
+      // when it is picked up and put down again.
+      waveSet: Math.floor(Math.random() * BZFLAG_FLAG_WAVE_SETS),
+      fade: null,
+      warp: null,
+      label: null,
+    };
+    this.flagRecords.set(index, record);
+    return record;
+  }
 
+  // The one flag the batch cannot draw: upstream turns blending on for a flag
+  // whose colour has alpha below one, and an InstancedMesh has one material for
+  // every instance in it. A warping flag gets a mesh of its own for as long as
+  // it is fading, which is a second at a time and rarely more than one flag.
+  _ensureFlagFade(record) {
+    if (record.fade) return record.fade;
+
+    const waveSet = this._getFlagWaveSets()[record.waveSet];
     const group = new THREE.Group();
     const clothMaterial = new THREE.MeshBasicMaterial({
       map: this._getFlagTexture(),
@@ -4848,8 +5286,6 @@ class RenderManager {
     cloth.renderOrder = FLAG_RENDER_ORDER;
     group.add(cloth);
 
-    // The pole is drawn black and untextured, a thin quad standing the full
-    // height of the cloth.
     const poleMaterial = new THREE.MeshBasicMaterial({
       color: 0x000000,
       transparent: true,
@@ -4862,24 +5298,16 @@ class RenderManager {
     pole.renderOrder = FLAG_RENDER_ORDER;
     group.add(pole);
 
-    const worldGroup = this.getWorldGroup();
-    worldGroup.add(group);
-
-    // The warp is built the first time this flag actually warps, the way the
-    // label is. A world of 200 flags would otherwise carry 1600 discs that draw
-    // nothing: invisible costs no draw call, but `updateMatrixWorld` composes a
-    // matrix for every node whether it is visible or not, and it walks the tree
-    // twice a frame.
-    const node = { group, cloth, clothMaterial, pole, poleMaterial, warp: null };
-    this.flagNodes.set(index, node);
-    return node;
+    this.getWorldGroup().add(this._tagDraws(group, 'flag'));
+    record.fade = { group, clothMaterial, poleMaterial, pole };
+    return record.fade;
   }
 
-  _ensureFlagWarp(node) {
-    if (node.warp) return node.warp;
-    node.warp = this._createFlagWarp();
-    this.getWorldGroup().add(node.warp.group);
-    return node.warp;
+  _ensureFlagWarp(record) {
+    if (record.warp) return record.warp;
+    record.warp = this._createFlagWarp();
+    this.getWorldGroup().add(record.warp.group);
+    return record.warp;
   }
 
   // The debug label over a flag, created the first time that flag has anything
@@ -4888,8 +5316,8 @@ class RenderManager {
   //
   // It hangs off the world group rather than off the flag, because a flag is
   // billboarded every frame and a child would be swung around with it.
-  _ensureFlagLabel(node) {
-    if (node.label) return node.label;
+  _ensureFlagLabel(record) {
+    if (record.label) return record.label;
     const label = new THREE.Sprite(new THREE.SpriteMaterial({
       depthTest: true,
       depthWrite: false,
@@ -4898,7 +5326,7 @@ class RenderManager {
     }));
     label.scale.set(4, 1, 1);
     this.getWorldGroup().add(label);
-    node.label = label;
+    record.label = label;
     return label;
   }
 
@@ -4906,31 +5334,36 @@ class RenderManager {
   // the arrival/departure disc stack, zero for no warp at all. `label` is the
   // abbreviation of a flag whose identity this client knows, or null for one it
   // does not, and it draws only while the debug labels are on.
+  //
+  // Nothing here touches a mesh: the cloth and the pole are written into the
+  // batch once a frame by updateFlagVisuals, which is the only place that knows
+  // which way each flag has to face.
   showFlag(index, { x, y, z, color = SUPER_FLAG_COLOR, alpha = 1, warp = 0, label = null }) {
-    const node = this._ensureFlagNode(index);
-    node.group.visible = alpha > 0;
-    node.group.position.set(x, y, z);
-    node.clothMaterial.color.setHex(color);
-    node.clothMaterial.opacity = alpha;
-    node.poleMaterial.opacity = alpha;
+    const record = this._ensureFlagRecord(index);
+    record.x = x;
+    record.y = y;
+    record.z = z;
+    record.color = color;
+    record.alpha = alpha;
+    record.visible = alpha > 0;
 
     const showLabel = Boolean(label) && this.debugLabelsEnabled && alpha > 0;
     if (showLabel) {
-      const sprite = this._ensureFlagLabel(node);
+      const sprite = this._ensureFlagLabel(record);
       this.updateSpriteLabel(sprite, label, '#ffffff');
       sprite.position.set(x, y + BZFLAG_FLAG_HEIGHT + FLAG_POLE_SIZE + 1, z);
       sprite.visible = true;
-    } else if (node.label) {
-      node.label.visible = false;
+    } else if (record.label) {
+      record.label.visible = false;
     }
 
-    if (warp > 0 || node.warp) {
-      const flagWarp = this._ensureFlagWarp(node);
+    if (warp > 0 || record.warp) {
+      const flagWarp = this._ensureFlagWarp(record);
       flagWarp.group.visible = warp > 0;
       flagWarp.group.position.set(x, y, z);
     }
     if (warp > 0) {
-      node.warp.rings.forEach((ring, index2) => {
+      record.warp.rings.forEach((ring, index2) => {
         const size = warp - (BZFLAG_FLAG_WARP_STEP * index2);
         ring.mesh.visible = size > 0;
         if (size > 0) ring.mesh.scale.set(size, 1, size);
@@ -4939,38 +5372,44 @@ class RenderManager {
   }
 
   hideFlag(index) {
-    const node = this.flagNodes?.get(index);
-    if (!node) return;
-    node.group.visible = false;
-    if (node.warp) node.warp.group.visible = false;
-    if (node.label) node.label.visible = false;
+    const record = this.flagRecords?.get(index);
+    if (!record) return;
+    record.visible = false;
+    if (record.fade) record.fade.group.visible = false;
+    if (record.warp) record.warp.group.visible = false;
+    if (record.label) record.label.visible = false;
   }
 
   clearFlags() {
-    if (!this.flagNodes) return;
-    this.flagNodes.forEach((node) => {
-      // The cloth geometry is shared by every flag, so only the per-flag
-      // geometry and materials are disposed here.
-      node.group.parent?.remove(node.group);
-      node.warp?.group.parent?.remove(node.warp.group);
-      if (node.label) {
-        node.label.parent?.remove(node.label);
-        node.label.material.map?.dispose();
-        node.label.material.dispose();
+    this._disposeFlagBatch();
+    if (!this.flagRecords) return;
+    this.flagRecords.forEach((record) => {
+      // The cloth geometry is shared by every flag, so only what a record owns
+      // outright is disposed here.
+      if (record.fade) {
+        record.fade.group.parent?.remove(record.fade.group);
+        record.fade.clothMaterial.dispose();
+        record.fade.poleMaterial.dispose();
+        record.fade.pole.geometry.dispose();
       }
-      node.clothMaterial.dispose();
-      node.poleMaterial.dispose();
-      node.pole.geometry.dispose();
-      node.warp?.geometry.dispose();
-      node.warp?.rings.forEach((ring) => ring.material.dispose());
+      if (record.label) {
+        record.label.parent?.remove(record.label);
+        record.label.material.map?.dispose();
+        record.label.material.dispose();
+      }
+      if (record.warp) {
+        record.warp.group.parent?.remove(record.warp.group);
+        record.warp.geometry.dispose();
+        record.warp.rings.forEach((ring) => ring.material.dispose());
+      }
     });
-    this.flagNodes.clear();
+    this.flagRecords.clear();
   }
 
   // One step for every flag in the world: the shared cloth ripples, each
   // visible flag turns to face the camera, and each visible warp re-wobbles.
   updateFlagVisuals(deltaTime) {
-    if (!this.flagNodes?.size) return;
+    if (!this.flagRecords?.size) return;
     this._stepFlagWaveSets(deltaTime);
 
     // A flag turns to face the viewer about its own pole, and about nothing
@@ -4994,15 +5433,48 @@ class RenderManager {
     camera.sub(this.worldGroup.position).applyQuaternion(
       FLAG_BILLBOARD_QUATERNION.copy(this.worldGroup.quaternion).invert()
     );
-    this.flagNodes.forEach((node) => {
-      if (node.group.visible) {
-        node.group.rotation.set(0, Math.atan2(
-          camera.x - node.group.position.x,
-          camera.z - node.group.position.z,
-        ), 0);
+
+    const batch = this._getFlagBatch(this.flagRecords.size);
+    const matrix = FLAG_INSTANCE_MATRIX;
+    const color = FLAG_INSTANCE_COLOR;
+    batch.cloth.forEach((mesh) => { mesh.count = 0; });
+    batch.pole.count = 0;
+
+    this.flagRecords.forEach((record) => {
+      if (record.warp?.group.visible) this._perturbFlagWarp(record.warp);
+      if (!record.visible) return;
+
+      const yaw = Math.atan2(camera.x - record.x, camera.z - record.z);
+      matrix.makeRotationY(yaw);
+      matrix.setPosition(record.x, record.y, record.z);
+
+      if (record.alpha >= 1) {
+        if (record.fade) record.fade.group.visible = false;
+        const cloth = batch.cloth[record.waveSet];
+        const slot = cloth.count;
+        cloth.setMatrixAt(slot, matrix);
+        cloth.setColorAt(slot, color.setHex(record.color));
+        cloth.count = slot + 1;
+        batch.pole.setMatrixAt(batch.pole.count, matrix);
+        batch.pole.count += 1;
+        return;
       }
-      if (node.warp?.group.visible) this._perturbFlagWarp(node.warp);
+
+      // Fading, so it leaves the batch and is drawn on its own with blending.
+      const fade = this._ensureFlagFade(record);
+      fade.group.visible = true;
+      fade.group.position.set(record.x, record.y, record.z);
+      fade.group.rotation.set(0, yaw, 0);
+      fade.clothMaterial.color.setHex(record.color);
+      fade.clothMaterial.opacity = record.alpha;
+      fade.poleMaterial.opacity = record.alpha;
     });
+
+    batch.cloth.forEach((mesh) => {
+      mesh.instanceMatrix.needsUpdate = true;
+      if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
+    });
+    batch.pole.instanceMatrix.needsUpdate = true;
   }
 
   updateTreads(tanks, deltaTime, gameConfig) {
@@ -5115,38 +5587,36 @@ class RenderManager {
       if (focusPoint) {
         const velocity = target && target.parent ? (target.velocity || new THREE.Vector3()) : new THREE.Vector3();
         if (xrState.enabled) {
-          const followOffset = velocity.lengthSq() > 0.1
-            ? velocity.clone().normalize().multiplyScalar(-18).add(new THREE.Vector3(0, 9.5, 0))
-            : new THREE.Vector3(0, 9.5, 20);
-          const desiredPosition = focusPoint.clone().add(followOffset);
-          const lookDirection = focusPoint.clone().sub(desiredPosition);
-          const desiredYaw = Math.atan2(-lookDirection.x, -lookDirection.z);
-          const desiredQuaternion = new THREE.Quaternion().setFromAxisAngle(
-            new THREE.Vector3(0, 1, 0),
-            -desiredYaw
-          );
-          const rotatedDesiredPosition = desiredPosition.clone().applyQuaternion(desiredQuaternion);
-          const desiredWorldOffset = rotatedDesiredPosition.multiplyScalar(-1);
-          this.worldGroup.quaternion.slerp(desiredQuaternion, 0.035);
-          this.worldGroup.position.lerp(desiredWorldOffset, 0.035);
-        } else {
-          this.worldGroup.position.set(0, 0, 0);
-          this.worldGroup.quaternion.identity();
-          const followOffset = velocity.lengthSq() > 0.1
-            ? velocity.clone().normalize().multiplyScalar(-20).add(new THREE.Vector3(0, 10, 0))
-            : new THREE.Vector3(0, 10, 22);
-          const desiredPosition = focusPoint.clone().add(followOffset);
-          if (!this.deathCameraLogged) {
-            const dl = window.gameDebugLog;
-            if (dl) {
-              dl(`deathCam lookAt=${focusPoint.x.toFixed(1)},${focusPoint.y.toFixed(1)},${focusPoint.z.toFixed(1)} camPos=${desiredPosition.x.toFixed(1)},${desiredPosition.y.toFixed(1)},${desiredPosition.z.toFixed(1)} debrisVel=${velocity.x.toFixed(1)},${velocity.y.toFixed(1)},${velocity.z.toFixed(1)}`, 'render');
-            }
-            this.deathCameraLogged = true;
-          }
-          this.camera.position.lerp(desiredPosition, 0.045);
-          this.camera.up.set(0, 1, 0);
-          this.camera.lookAt(focusPoint);
+          // A headset player watches from where they died, and the world does
+          // not move at all: it is left exactly where first person put it,
+          // which is the spot the tank was standing on, and the explosion
+          // happens around the player.
+          //
+          // The chase below is bzo's own -- upstream has no death camera, the
+          // view simply stays where the tank was -- and what it chases is the
+          // body, a piece of debris with its own velocity that tumbles and
+          // bounces across the map. Turning that into world motion is precisely
+          // the movement a session must never make: the player is swung after
+          // something that is itself being thrown. On a monitor it reads as a
+          // camera; on a head it reads as being thrown too.
+          return;
         }
+        this.worldGroup.position.set(0, 0, 0);
+        this.worldGroup.quaternion.identity();
+        const followOffset = velocity.lengthSq() > 0.1
+          ? velocity.clone().normalize().multiplyScalar(-20).add(new THREE.Vector3(0, 10, 0))
+          : new THREE.Vector3(0, 10, 22);
+        const desiredPosition = focusPoint.clone().add(followOffset);
+        if (!this.deathCameraLogged) {
+          const dl = window.gameDebugLog;
+          if (dl) {
+            dl(`deathCam lookAt=${focusPoint.x.toFixed(1)},${focusPoint.y.toFixed(1)},${focusPoint.z.toFixed(1)} camPos=${desiredPosition.x.toFixed(1)},${desiredPosition.y.toFixed(1)},${desiredPosition.z.toFixed(1)} debrisVel=${velocity.x.toFixed(1)},${velocity.y.toFixed(1)},${velocity.z.toFixed(1)}`, 'render');
+          }
+          this.deathCameraLogged = true;
+        }
+        this.camera.position.lerp(desiredPosition, 0.045);
+        this.camera.up.set(0, 1, 0);
+        this.camera.lookAt(focusPoint);
         return;
       }
       this.deathFollowTarget = null;

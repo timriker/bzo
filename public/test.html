@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>bzo test modes</title>
+<!--
+  The measurement knobs, as links a headset can press.
+
+  They are URL parameters and nothing else -- never persisted, never in the game
+  UI -- so the only way to reach one is to type it or to be handed it. Typing a
+  query string on a headset is the reason this page exists: point the client
+  here, press a mode, and press Back to come and choose another.
+
+  Every knob bzo has belongs on this page. A knob nobody can reach is a knob
+  nobody measures with. See AGENTS.md, "Measurement knobs".
+-->
+<style>
+  :root { color-scheme: dark; }
+  body {
+    margin: 0;
+    padding: clamp(16px, 4vw, 40px);
+    background: #0b0e12;
+    color: #e6f1ff;
+    font: 16px/1.5 system-ui, sans-serif;
+  }
+  main { max-width: 44rem; margin: 0 auto; }
+  h1 { font-size: 1.6rem; margin: 0 0 0.25rem; }
+  h2 { font-size: 1.1rem; margin: 0 0 0.25rem; color: #4CAF50; }
+  h2 code { color: inherit; font-size: inherit; }
+  p { margin: 0 0 0.75rem; color: #b9c7d6; }
+  section { margin: 0 0 1.75rem; }
+  .lead { color: #e6f1ff; }
+  .modes { display: flex; flex-wrap: wrap; gap: 10px; }
+  a.mode {
+    /* Sized for a controller ray and a thumb, not a mouse. */
+    display: block;
+    min-height: 44px;
+    padding: 10px 16px;
+    border: 2px solid rgba(130, 150, 170, 0.6);
+    border-radius: 6px;
+    background: rgba(20, 26, 34, 0.9);
+    color: #e6f1ff;
+    text-decoration: none;
+  }
+  a.mode:hover, a.mode:focus { border-color: #4CAF50; outline: none; }
+  a.mode b { display: block; font-weight: 600; }
+  a.mode span { display: block; font: 13px/1.4 ui-monospace, monospace; color: #8fa3b8; }
+  a.mode.default { border-color: #4CAF50; }
+  footer { border-top: 1px solid #263040; padding-top: 1rem; color: #8fa3b8; font-size: 0.9rem; }
+  footer code { color: #b9c7d6; }
+</style>
+</head>
+<body>
+<main>
+  <h1>bzo test modes</h1>
+  <p class="lead">
+    Each link starts the game with one knob set. They measure, they do not
+    configure: nothing here is saved, and a plain reload of <code>/</code> puts
+    it back. <strong>Press Back to return to this list.</strong>
+  </p>
+
+  <section>
+    <h2>Start normally</h2>
+    <p>The baseline every other mode is read against. Take this sample first.</p>
+    <div class="modes">
+      <a class="mode default" href="/"><b>Play</b><span>/</span></a>
+    </div>
+  </section>
+
+  <section>
+    <h2><code>shadows</code></h2>
+    <p>
+      Off drops the whole projected shadow pass: the caster stencil draws, the
+      darkening overlay over the ground, and the per-frame projection. The
+      matrix walk the pass needs is not dropped with it, because every mode
+      pays that one and a phase has to mean the same thing in all of them.
+    </p>
+    <div class="modes">
+      <a class="mode default" href="/"><b>Shadows on</b><span>default</span></a>
+      <a class="mode" href="/?shadows=0"><b>Shadows off</b><span>?shadows=0</span></a>
+    </div>
+  </section>
+
+  <section>
+    <h2><code>celestial</code></h2>
+    <p>
+      Off drops the sun and moon discs. Three draws, but large ones: they are
+      sized by the angle they subtend and sit at twice the world away.
+    </p>
+    <div class="modes">
+      <a class="mode default" href="/"><b>Sun and moon on</b><span>default</span></a>
+      <a class="mode" href="/?celestial=0"><b>Sun and moon off</b><span>?celestial=0</span></a>
+    </div>
+  </section>
+
+  <section>
+    <h2><code>antialias</code></h2>
+    <p>
+      Off asks for a context without MSAA, which an immersive session inherits
+      for its own framebuffer. Chrome carries a driver workaround declaring MSAA
+      unacceptable on Intel GPUs, and those are the machines that read slowest,
+      so its cost has to be measured rather than assumed.
+    </p>
+    <div class="modes">
+      <a class="mode default" href="/"><b>MSAA on</b><span>default</span></a>
+      <a class="mode" href="/?antialias=0"><b>MSAA off</b><span>?antialias=0</span></a>
+    </div>
+  </section>
+
+  <section>
+    <h2><code>renderScale</code></h2>
+    <p>
+      Draw into a buffer this fraction of the window on each axis and let the
+      browser present it across the whole window. It separates the pixels bzo
+      draws from the surface the browser shows them on, which resizing a window
+      cannot, because that moves both at once. Clamped to 0.25.
+      <strong>It does nothing inside an XR session</strong>, where the
+      framebuffer belongs to the headset rather than to the page.
+    </p>
+    <div class="modes">
+      <a class="mode default" href="/"><b>Full</b><span>default</span></a>
+      <a class="mode" href="/?renderScale=0.75"><b>Three quarters</b><span>?renderScale=0.75</span></a>
+      <a class="mode" href="/?renderScale=0.5"><b>Half</b><span>?renderScale=0.5</span></a>
+      <a class="mode" href="/?renderScale=0.25"><b>Quarter</b><span>?renderScale=0.25</span></a>
+    </div>
+  </section>
+
+  <section>
+    <h2><code>xrScale</code></h2>
+    <p>
+      <code>renderScale</code> for a session, and a knob of its own because
+      <code>renderScale</code> cannot reach one: the framebuffer belongs to the
+      headset rather than to the page. This is a fraction of the resolution the
+      runtime recommends, so 1 is native and 0.7 is about half the pixels. It is
+      the only way to ask a headset for fewer of them, and
+      <strong>it does nothing outside a session</strong>. The drawing buffer in
+      the sample says whether it took: full native on a Quest 2 reads
+      2880x1584.
+    </p>
+    <div class="modes">
+      <a class="mode default" href="/"><b>Native</b><span>default</span></a>
+      <a class="mode" href="/?xrScale=0.8"><b>Four fifths</b><span>?xrScale=0.8</span></a>
+      <a class="mode" href="/?xrScale=0.7"><b>Seven tenths</b><span>?xrScale=0.7</span></a>
+      <a class="mode" href="/?xrScale=0.5"><b>Half</b><span>?xrScale=0.5</span></a>
+    </div>
+  </section>
+
+  <section>
+    <h2><code>xrRate</code></h2>
+    <p>
+      The cadence to ask the runtime for. A Quest 2 offers 60, 72, 80, 90 and
+      120, and asked for nothing it reports back <code>frameRate=0</code> -- it
+      has chosen one and will not say which. Whatever it chose is the rate its
+      compositor runs at, and a compositor at 90 or 120 reprojects a client
+      delivering 30 three or four times over, on the same chip. bzo now asks for
+      72, the headset's own rate; these say what the others do. The
+      <code>[WebXR]</code> line at session start reports what was asked for and
+      what came back.
+    </p>
+    <div class="modes">
+      <a class="mode default" href="/"><b>72</b><span>default</span></a>
+      <a class="mode" href="/?xrRate=60"><b>60</b><span>?xrRate=60</span></a>
+      <a class="mode" href="/?xrRate=90"><b>90</b><span>?xrRate=90</span></a>
+      <a class="mode" href="/?xrRate=120"><b>120</b><span>?xrRate=120</span></a>
+    </div>
+  </section>
+
+  <section>
+    <h2>Together</h2>
+    <p>
+      Knobs combine. The first two are the fill question in a headset, which is
+      where the evidence points: MSAA off, fewer pixels, and both at once. The
+      third bounds what the whole scene beyond the tanks and the world is worth.
+    </p>
+    <div class="modes">
+      <a class="mode" href="/?antialias=0&amp;xrScale=0.7">
+        <b>No MSAA, 0.7 scale</b><span>?antialias=0&amp;xrScale=0.7</span>
+      </a>
+      <a class="mode" href="/?xrScale=0.7">
+        <b>0.7 scale alone</b><span>?xrScale=0.7</span></a>
+      <a class="mode" href="/?shadows=0&amp;celestial=0&amp;antialias=0">
+        <b>Extras off</b><span>?shadows=0&amp;celestial=0&amp;antialias=0</span>
+      </a>
+    </div>
+  </section>
+
+  <footer>
+    <p>
+      Reading the result: a sample lands in the server log as
+      <code>renderer.stats</code> a while into every map and again when the debug
+      HUD closes, so a headset that never opens the HUD still reports one.
+      <code>draw</code> and the phases beside it are work bzo does;
+      <code>outside</code> is everything between one frame callback and the next,
+      which is the browser, the GPU and the wait for the display.
+      <code>fastest</code> is the shortest frame of the window and bounds the
+      refresh interval from below &mdash; a frame rate on its own cannot tell a
+      slow client from a 30Hz panel.
+    </p>
+    <p>
+      A session reports one of these every twenty seconds for as long as it
+      lasts, marked <code>reason=xrSession</code>, so a run is a series rather
+      than a single line taken wherever the player happened to be standing. The
+      mode that produced them is on the <code>renderer.init.ok</code> line above
+      the first one.
+    </p>
+  </footer>
+</main>
+</body>
+</html>

@@ -175,7 +175,7 @@ export function bindToggleButton(btn, {
 // these sit over whatever is behind them, and so does bzo: an alert is short
 // lived, and being readable matters more than what it briefly covers.
 export const MAX_HUD_ALERTS = 3;
-const HUD_ALERT_WARNING_COLOR = '#ff5a4a';
+export const HUD_ALERT_WARNING_COLOR = '#ff5a4a';
 const HUD_ALERT_COLOR = '#ffffff';
 const hudAlerts = new Array(MAX_HUD_ALERTS).fill(null);
 
