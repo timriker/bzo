@@ -6,6 +6,8 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
 
 ## [Unreleased]
 
+## [1.0.64] - 2026-09-06
+
 ### Added
 - `?xrRate=90`, the cadence asked of the XR runtime. Asked for once the session is live and never awaited: on a Quest, called before the renderer had handed the session its layer, `updateTargetFrameRate` returned a promise that never settled, and a startup waiting on it left the VR button refusing every press with "already in progress". A measurement may report late or not at all, but it may not decide whether the session starts, so there is a timeout behind it and silence produces a line of its own. A Quest 2 offers 60/72/80/90/120 and, asked for nothing, reports `frameRate=0` -- it has picked one and will not say which. Whatever it picked is the rate its compositor runs at, and a compositor at 90 or 120 reprojects a client delivering 30fps three or four times over, on the same chip, in time that lands in `outside` where nothing can see it. bzo now asks for 72, the headset's own rate, and logs what came back; the knob is there because which rate is best here is a measurement rather than a guess.
 - `session.frameRate` and `session.supportedFrameRates` on the `[WebXR]` line when a session starts, with whether `updateTargetFrameRate` exists. Both are optional in the spec, so both may read unknown. Without them `outside` cannot be read at all: a frame spent waiting for the display and a frame spent working look identical from inside the callback, and which one it is decides whether there is anything left to win.
