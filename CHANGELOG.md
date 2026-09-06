@@ -6,6 +6,8 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
 
 ## [Unreleased]
 
+## [1.0.65] - 2026-09-06
+
 ### Added
 - `scripts/headless-client.mjs`, which joins the running server in a headless
   Chrome and reports every console error and uncaught exception, optionally with
