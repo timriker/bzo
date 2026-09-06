@@ -127,6 +127,13 @@ export const DEFAULT_WINGS_SLIDE_TIME = 0.0;
 // is what makes hiding a superflag's identity free: an unidentified flag looks
 // exactly like an identified one.
 export const SUPER_FLAG_COLOR = 0xffffff;
+// A flag this client knows to be bad. Upstream has no such colour -- every
+// superflag it draws is white, because upstream never lets you know which one
+// you are looking at until you have it. bzo does let you know, so the one thing
+// worth knowing at a glance gets a colour, and it is orange rather than the
+// warning red the pickup alert wears: red is a team here, and a red flag over a
+// red tank on a red scoreboard row says nothing. No team is orange.
+export const BAD_FLAG_COLOR = 0xffa020;
 
 // Flag.cxx builds one FlagType per flag. This table is the whole of what bzo
 // knows about flags: an abbreviation it does not carry is not a flag the server
@@ -391,6 +398,12 @@ export function rememberFlagIdentity(known, index, type, status) {
 export function getKnownFlagAbbreviation(known, flag) {
   if (!flag) return null;
   return flag.type || known.get(flag.index) || null;
+}
+
+// Whether a flag is one of the penalties. The quality is on the table already;
+// this is the question the colours and the alerts actually ask of it.
+export function isBadFlag(abbreviation) {
+  return getFlagType(abbreviation)?.quality === FLAG_QUALITY.BAD;
 }
 
 export function getTeamFlagAbbreviation(colorIndex) {

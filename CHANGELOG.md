@@ -7,6 +7,14 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
 ## [Unreleased]
 
 ### Added
+- `scripts/headless-client.mjs`, which joins the running server in a headless
+  Chrome and reports every console error and uncaught exception, optionally with
+  a screenshot or an expression evaluated in the page. Chrome speaks CDP over a
+  WebSocket and `ws` is already a dependency, so this adds no browser automation
+  library and nothing to install. It renders through SwiftShader, so it answers
+  whether a change draws without throwing and what it looks like, never how fast
+  it is -- `renderer.stats` in `server.log` is still where frame cost is read,
+  from a real GPU. AGENTS.md now says which to reach for.
 - The entry dialog closes without joining. It has an `[X]` in its heading like
   every other dialog and a Cancel button beside OK, and both put back what the
   dialog was opened on top of. It had offered no way out that was not a join:
@@ -53,6 +61,47 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
   upstream (`playing.cxx:2446`).
 
 ### Changed
+- A flag this client knows to be bad is drawn in orange wherever it appears --
+  standing in the world, riding over the head of the tank carrying it, and beside
+  a name on either scoreboard. Upstream has no colour for this because upstream
+  never tells you which superflag you are looking at; bzo remembers every flag it
+  has seen, and the one thing worth knowing at a glance is whether picking it up
+  is a mistake. The colour comes from the same remembered identity the flag
+  labels already use, so a flag whose identity is still hidden stays white, as
+  every superflag is upstream.
+- The bad-flag colour is orange rather than the warning red the pickup alert
+  wears. Red is a team here, and a red flag over a red tank on a red scoreboard
+  row says nothing; no team is orange. The pickup alert keeps upstream's red,
+  where nothing else on screen is coloured and the message is momentary.
+- The radar draws a base in its team's own radar colour, shaded once and kept.
+  It had a third hardcoded table of four teams, clamped so a fifth would have
+  come out red, and it mixed and formatted a fresh colour string for every
+  obstacle on every repaint. `Team::getRadarColor` is what upstream's radar draws
+  a base in (`RadarRenderer.cxx:1186`) and bzo already had that table; the shaded
+  result is now built once per team and reused.
+- Every base on the map is two draw calls, whatever teams hold them, instead of
+  six each. A base needed six materials because the texture repeat lives on the
+  texture and its four sides tile by size while its top and bottom take the
+  picture once; and it needed a texture of its own per team because the team
+  colour was painted into the pixels. Both are now data on the vertices -- the
+  repeat baked into the UVs, as the boxes and pyramids already do it, and the
+  team tint as a vertex colour that Three multiplies the shared picture by. So
+  the bases merge into one mesh alongside them, and two textures serve the whole
+  map rather than six per base.
+- A base takes its tint from its team's own colour rather than from a table of
+  four. The tint is the team colour mixed six parts to four with white, which is
+  what the old table held for red, green and purple; blue moves a shade towards
+  bzo's own blue, which is not the pure blue the table assumed. Nothing here
+  counts teams any more, so a fifth team with a base costs no new code, no new
+  texture and no extra draw call.
+- Obstacles sitting on the ground are built without their bottom face, as
+  upstream builds them: `BoxSceneNodeGenerator.cxx:66` ("Don't generate the
+  bottom polygon if on the ground (or lower)"), `BaseSceneNodeGenerator.cxx:74`,
+  and `PyramidSceneNodeGenerator.cxx:109`, which keeps a pyramid's base only when
+  it is raised or stood on its point. The faces were back-facing and already
+  thrown away by the rasteriser, so this is geometry rather than frame time --
+  except for a base's, which was a fully transparent quad drawn in the blended
+  pass rather than a face left out of the mesh.
 - A paused tank wears upstream's sphere: black at half alpha, still, and a tank
   and a half wide (`Player.cxx:1004`, `1.5 * tankRadius`). bzo had drawn a
   spinning cyan wireframe ball less than half that size, which read as an effect
@@ -84,6 +133,12 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
   the player to press P, which is not how a pause the menu took is undone.
 
 ### Fixed
+- A browser that has never been here is asked for a name. `isDefaultPlayerName`
+  answered no for the empty string a first visit starts with, so the entry dialog
+  never opened and the client joined under an empty name for the server to
+  replace with `Player n` -- against the intent stated one line above it, "only
+  send join if there is a saved name of the player's own choosing". Having no
+  name is the clearest case of not having chosen one.
 - A paused tank stops where it paused on everyone else's screen. Both ends
   dead-reckoned it forward at whatever speed it was carrying when the pause
   landed, so a tank that paused while rolling drifted away from where the server

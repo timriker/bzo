@@ -1358,6 +1358,40 @@ carries the section for the version that failed.
   it is already open and read it directly whenever runtime diagnostics are
   needed. Do not ask the user to re-open it.
 
+## Testing
+
+Three things to reach for, in the order they cost:
+
+- **`npx eslint`** over what you changed, and `node --check server.js`. The
+  pre-commit hook runs eslint with `--max-warnings=0` over staged JS, so a commit
+  will refuse work that does not pass anyway.
+- **`node scripts/check-controls-docs.mjs`**, which holds the controls list in
+  `index.html` to the bindings in `input.js`.
+- **`node scripts/headless-client.mjs`**, which joins the running server in a
+  headless Chrome and reports every console error and uncaught exception. Chrome
+  is installed and speaks CDP over a WebSocket, and `ws` is already a dependency,
+  so there is no browser automation library to add and nothing to install. Give
+  it `--shot /tmp/x.png` for a screenshot to look at, or `--eval '<expression>'`
+  to read something out of the page:
+
+  ```
+  node scripts/headless-client.mjs --shot /tmp/bzo.png
+  node scripts/headless-client.mjs --eval 'document.getElementById("playerName").textContent'
+  ```
+
+  It renders through SwiftShader, so it answers **does this draw without
+  throwing, and what does it look like** and never **how fast is this**: a
+  software rasteriser reports single-digit fps on a frame a GPU spends two
+  milliseconds on. It joins the shared test server as a real player, so keep the
+  runs short.
+
+**For anything about frame cost, read `renderer.stats` in `server.log`** rather
+than measuring here. Every client logs one ten seconds into a map, with the
+`draws` breakdown, the frame phases and what the machine is. That is a real GPU
+on a real client, which is the only place the question can be answered -- and it
+is how a change like "the bases are one mesh now" is confirmed, by watching
+`base:24` become `base:2` on somebody else's machine.
+
 ## Server Architecture (`server.js`)
 
 - A single Express app serves static assets and hosts a `ws` WebSocket server

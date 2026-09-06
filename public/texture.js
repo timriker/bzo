@@ -9,12 +9,9 @@ import * as THREE from 'three';
 
 const textureLoader = new THREE.TextureLoader();
 
-const BASE_TEAM_TINTS = {
-  1: [1.0, 0.4, 0.4],
-  2: [0.4, 1.0, 0.4],
-  3: [0.4, 0.4, 1.0],
-  4: [1.0, 0.4, 1.0],
-};
+// How far a base is tinted towards its team's colour. The rest stays white, so
+// a red base reads as a light red rather than as the tank colour laid flat.
+const BASE_TINT_STRENGTH = 0.6;
 
 // One Texture per source image, handed out as clones. A clone shares its
 // Source with the original, so the image is fetched, decoded and uploaded to
@@ -153,17 +150,25 @@ function loadTintedTexture(path, tint) {
   return cloneSharedTexture(entry);
 }
 
-function getBaseTint(team = 1) {
-  const normalizedTeam = Number.isInteger(team) ? Math.max(1, Math.min(4, team)) : 1;
-  return BASE_TEAM_TINTS[normalizedTeam] || BASE_TEAM_TINTS[1];
+// The multiplier a base's team puts on its texture, taken from the team's own
+// colour rather than from a table of its own. Every team bzo ever adds arrives
+// with a colour, so every team can hold a base without anything here changing.
+export function getBaseTeamTint(teamColor) {
+  const channel = (shift) => ((teamColor >> shift) & 0xff) / 0xff;
+  const tint = (value) => (1 - BASE_TINT_STRENGTH) + (BASE_TINT_STRENGTH * value);
+  return [tint(channel(16)), tint(channel(8)), tint(channel(0))];
 }
 
-export function createBaseTopTexture(team = 1) {
-  return loadTintedTexture('/textures/base_top.png', getBaseTint(team));
+// Untinted, and shared by every base on the map whatever team holds it: the
+// team's colour rides on the vertices instead, which is what lets the bases
+// merge into one mesh. Loaded through the tinting path at full white, which is
+// what reduces the picture to the luminance the tint is applied to.
+export function createBaseTopTexture() {
+  return loadTintedTexture('/textures/base_top.png', [1, 1, 1]);
 }
 
-export function createBaseWallTexture(team = 1) {
-  return loadTintedTexture('/textures/base_wall.png', getBaseTint(team));
+export function createBaseWallTexture() {
+  return loadTintedTexture('/textures/base_wall.png', [1, 1, 1]);
 }
 
 export function createGroundTexture() {

@@ -102,7 +102,6 @@ import {
   compareScoreboardPlayers,
   getActiveHudAlerts,
   getHudAlertColor,
-  HUD_ALERT_WARNING_COLOR,
   setHudAlert,
   updateAlertHud,
   updateScoreboard,
@@ -177,11 +176,12 @@ import {
   FLAG_GRAB_INTERVAL_MS,
   FLAG_GRAB_LEVEL_TOLERANCE,
   FLAG_GRAB_RADIUS,
-  FLAG_QUALITY,
+  BAD_FLAG_COLOR,
   FLAG_RADIUS,
   FLAG_STATUS,
   FLAG_TYPES,
   SUPER_FLAG_COLOR,
+  isBadFlag,
   canJump,
   getFlagEndurance,
   getFlagFlightState,
@@ -1493,9 +1493,10 @@ function queueDebugPacket(payload) {
 }
 
 // A server-assigned 'Player' or 'Player n' is a placeholder, not a name the
-// player chose, so it does not count as one to join under.
+// player chose, so it does not count as one to join under. Neither does having
+// no name at all, which is what a browser that has never been here has.
 function isDefaultPlayerName(name) {
-  return name === 'Player' || /^Player \d+$/.test(name);
+  return !name || name === 'Player' || /^Player \d+$/.test(name);
 }
 
 function savePlayerName(name) {
@@ -7199,8 +7200,19 @@ function getPlayerFlagLabel(playerId) {
   if (!type) return null;
   return {
     label: type.team ? type.name.replace(/ Team$/, '') : type.abbreviation,
-    color: type.quality === FLAG_QUALITY.BAD ? HUD_ALERT_WARNING_COLOR : getFlagColor(flag.type),
+    color: getKnownFlagColor(flag),
   };
+}
+
+// What colour a flag is drawn in, from what this client has learned about it.
+// A flag whose identity is still hidden is white, as every superflag is
+// upstream; a flag known to be bad wears the bad-flag colour everywhere it
+// appears, which is the point of bzo tracking identities at all.
+function getKnownFlagColor(flag) {
+  const abbreviation = getKnownFlagAbbreviation(knownFlagTypes, flag);
+  if (!abbreviation) return SUPER_FLAG_COLOR;
+  if (isBadFlag(abbreviation)) return BAD_FLAG_COLOR;
+  return getFlagColor(abbreviation);
 }
 
 function describeFlag(flag) {
@@ -7622,7 +7634,7 @@ function updateFlags(deltaTime) {
       x: flag.position.x,
       y: flag.position.y,
       z: flag.position.z,
-      color: getFlagColor(flag.type),
+      color: getKnownFlagColor(flag),
       alpha: flag.alpha,
       warp: flag.warp,
       label: getKnownFlagAbbreviation(knownFlagTypes, flag),
@@ -8369,29 +8381,39 @@ function getRadarObstacles() {
   return radarObstacleOrder.list;
 }
 
-function getObstacleRadarFillStyle(obs) {
-  const neutral = [180, 180, 180];
-  if (!obs || obs.kind !== 'base') {
-    return `rgb(${neutral[0]},${neutral[1]},${neutral[2]})`;
+// Team::getRadarColor is what upstream's radar draws a base in
+// (RadarRenderer.cxx:1186), and bzo has the same table. Shaded towards the
+// radar's neutral grey so a base still reads as ground rather than as a tank.
+const RADAR_NEUTRAL_FILL_RGB = [180, 180, 180];
+const RADAR_BASE_TINT_STRENGTH = 0.65;
+const RADAR_NEUTRAL_FILL = `rgb(${RADAR_NEUTRAL_FILL_RGB.join(',')})`;
+// One string per team, built the first time that team's base is drawn. The
+// radar repaints every frame over every obstacle in range, and this was three
+// rounds of arithmetic and a fresh string each time.
+const radarBaseFills = new Map();
+
+function getRadarBaseFill(teamColorIndex) {
+  const cached = radarBaseFills.get(teamColorIndex);
+  if (cached) return cached;
+
+  const team = getTeamFromColorIndex(teamColorIndex);
+  const radarColor = team ? getPlayerTeamRadarColor(team) : null;
+  let fill = RADAR_NEUTRAL_FILL;
+  if (Number.isFinite(radarColor)) {
+    const shade = (shift, neutral) => Math.round(
+      (neutral * (1 - RADAR_BASE_TINT_STRENGTH))
+      + (((radarColor >> shift) & 0xff) * RADAR_BASE_TINT_STRENGTH)
+    );
+    const [nr, ng, nb] = RADAR_NEUTRAL_FILL_RGB;
+    fill = `rgb(${shade(16, nr)},${shade(8, ng)},${shade(0, nb)})`;
   }
+  radarBaseFills.set(teamColorIndex, fill);
+  return fill;
+}
 
-  const teamValue = Number(obs.team);
-  const team = Number.isFinite(teamValue)
-    ? Math.max(1, Math.min(4, Math.round(teamValue)))
-    : 1;
-  const teamColors = {
-    1: [178, 64, 64],
-    2: [64, 153, 64],
-    3: [64, 96, 192],
-    4: [144, 64, 176],
-  };
-  const [tr, tg, tb] = teamColors[team] || teamColors[1];
-  const tintStrength = 0.65;
-
-  const r = Math.round(neutral[0] * (1 - tintStrength) + tr * tintStrength);
-  const g = Math.round(neutral[1] * (1 - tintStrength) + tg * tintStrength);
-  const b = Math.round(neutral[2] * (1 - tintStrength) + tb * tintStrength);
-  return `rgb(${r},${g},${b})`;
+function getObstacleRadarFillStyle(obs) {
+  if (!obs || obs.kind !== 'base') return RADAR_NEUTRAL_FILL;
+  return getRadarBaseFill(Number(obs.team));
 }
 
 function updateRadar() {

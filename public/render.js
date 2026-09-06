@@ -26,6 +26,10 @@ import {
   loadAudioBuffer,
 } from './audio.js';
 import {
+  getPlayerTeamColor,
+  getTeamFromColorIndex,
+} from './teams.mjs';
+import {
   FLAG_POLE_SIZE,
   FLAG_POLE_WIDTH,
   SUPER_FLAG_COLOR,
@@ -40,6 +44,7 @@ import {
   createBoxWallTexture,
   createBaseTopTexture,
   createBaseWallTexture,
+  getBaseTeamTint,
   createPyramidTexture,
   createRoofTexture,
   createTeleporterBorderTexture,
@@ -1769,13 +1774,16 @@ class RenderManager {
   // as walls then caps. Vertices come out of BoxGeometry four to a face in the
   // order +X, -X, +Y, -Y, +Z, -Z, and the index buffer six to a face in the same
   // order, which is what both loops below count on.
-  _prepareBoxGeometry(width, height, depth, { sideScale = 1, capScale = 1, omitFaces = [] } = {}) {
+  _prepareBoxGeometry(width, height, depth, { sideScale = 1, capScale = 1, omitFaces = [], capRepeat = null } = {}) {
     const geometry = new THREE.BoxGeometry(width, height, depth);
+    // A base's caps take the picture once however large the base is, which is
+    // what upstream's getNextNode(1, 1) asks for (SceneBuilder.cxx:563).
+    const caps = capRepeat || [width / capScale, depth / capScale];
     const faceRepeats = [
       [depth / sideScale, height / sideScale],  // +X
       [depth / sideScale, height / sideScale],  // -X
-      [width / capScale, depth / capScale],     // +Y
-      [width / capScale, depth / capScale],     // -Y
+      caps,                                     // +Y
+      caps,                                     // -Y
       [width / sideScale, height / sideScale],  // +Z
       [width / sideScale, height / sideScale],  // -Z
     ];
@@ -1795,43 +1803,12 @@ class RenderManager {
     const omitted = new Set(omitFaces);
     const kept = (faces) => faces.filter((n) => !omitted.has(n)).flatMap(face);
     const walls = kept([BOX_FACE.PX, BOX_FACE.NX, BOX_FACE.PZ, BOX_FACE.NZ]);
-    const caps = kept([BOX_FACE.PY, BOX_FACE.NY]);
-    geometry.setIndex([...walls, ...caps]);
+    const capFaces = kept([BOX_FACE.PY, BOX_FACE.NY]);
+    geometry.setIndex([...walls, ...capFaces]);
     geometry.clearGroups();
     if (walls.length) geometry.addGroup(0, walls.length, 0);
-    if (caps.length) geometry.addGroup(walls.length, caps.length, 1);
+    if (capFaces.length) geometry.addGroup(walls.length, capFaces.length, 1);
     return geometry;
-  }
-
-  _createBaseFaceMaterials(width, height, depth, team = 1, showBottom = true) {
-    const sideTextureFactory = () => createBaseWallTexture(team);
-    const topTextureFactory = () => createBaseTopTexture(team);
-    const materials = [
-      new THREE.MeshLambertMaterial({ map: sideTextureFactory() }),
-      new THREE.MeshLambertMaterial({ map: sideTextureFactory() }),
-      new THREE.MeshLambertMaterial({ map: topTextureFactory() }),
-      new THREE.MeshLambertMaterial({ map: topTextureFactory() }),
-      new THREE.MeshLambertMaterial({ map: sideTextureFactory() }),
-      new THREE.MeshLambertMaterial({ map: sideTextureFactory() }),
-    ];
-
-    // Match BZFlag base UV behavior:
-    // - top and bottom are fixed UVs (exactly one texture repeat)
-    // - sides use size-based repeats
-    materials[0].map.repeat.set(depth, height);
-    materials[1].map.repeat.set(depth, height);
-    materials[4].map.repeat.set(width, height);
-    materials[5].map.repeat.set(width, height);
-    materials[2].map.repeat.set(1, 1);
-    materials[3].map.repeat.set(1, 1);
-
-    if (!showBottom) {
-      materials[3].transparent = true;
-      materials[3].opacity = 0;
-      materials[3].depthWrite = false;
-    }
-
-    return materials;
   }
 
   _disposeObject3D(object3D) {
@@ -2297,11 +2274,17 @@ class RenderManager {
   // a few hundred obstacles and ten thousand triangles, against a client that
   // runs out of one core with the GPU idle. Bases and teleporters stay out: one
   // carries team colour and a hidden face, the other animates.
-  _addObstacleFragment(fragments, key, materials, geometry, matrix) {
+  _addObstacleFragment(fragments, key, materials, geometry, matrix, color = null) {
     geometry.applyMatrix4(matrix);
     let fragment = fragments.get(key);
     if (!fragment) {
-      fragment = { materials, groups: materials.map(() => ({ positions: [], normals: [], uvs: [], indices: [] })) };
+      fragment = {
+        materials,
+        // Only the bases carry one, and they carry it because it is what lets
+        // every base on the map share one material whatever team holds it.
+        colored: color !== null,
+        groups: materials.map(() => ({ positions: [], normals: [], uvs: [], colors: [], indices: [] })),
+      };
       fragments.set(key, fragment);
     }
     const position = geometry.attributes.position;
@@ -2322,6 +2305,7 @@ class RenderManager {
           bucket.positions.push(position.getX(vertex), position.getY(vertex), position.getZ(vertex));
           bucket.normals.push(normal.getX(vertex), normal.getY(vertex), normal.getZ(vertex));
           bucket.uvs.push(uv.getX(vertex), uv.getY(vertex));
+          if (color) bucket.colors.push(color[0], color[1], color[2]);
         }
         bucket.indices.push(mapped);
       }
@@ -2330,10 +2314,11 @@ class RenderManager {
 
   // One mesh per fragment, its materials in the same order as its groups.
   _buildObstacleFragments(fragments) {
-    fragments.forEach(({ materials, groups }, key) => {
+    fragments.forEach(({ materials, groups, colored }, key) => {
       const positions = [];
       const normals = [];
       const uvs = [];
+      const colors = [];
       const indices = [];
       const geometry = new THREE.BufferGeometry();
       groups.forEach((bucket, materialIndex) => {
@@ -2343,6 +2328,7 @@ class RenderManager {
         positions.push(...bucket.positions);
         normals.push(...bucket.normals);
         uvs.push(...bucket.uvs);
+        colors.push(...bucket.colors);
         for (const value of bucket.indices) indices.push(value + vertexOffset);
         geometry.addGroup(indexOffset, bucket.indices.length, materialIndex);
       });
@@ -2350,11 +2336,12 @@ class RenderManager {
       geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
       geometry.setAttribute('normal', new THREE.Float32BufferAttribute(normals, 3));
       geometry.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+      if (colored) geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
       geometry.setIndex(indices);
       geometry.computeBoundingBox();
       geometry.computeBoundingSphere();
 
-      const mesh = this._tagDraws(new THREE.Mesh(geometry, materials), 'world');
+      const mesh = this._tagDraws(new THREE.Mesh(geometry, materials), key === 'base' ? 'base' : 'world');
       mesh.name = `${key} fragment`;
       // It is built in world space and never moves.
       mesh.matrixAutoUpdate = false;
@@ -2375,6 +2362,7 @@ class RenderManager {
     // keep their own entry and are not cleared here.
     this._disposeSharedObstacleMaterials('box');
     this._disposeSharedObstacleMaterials('pyramid');
+    this._disposeSharedObstacleMaterials('base');
     this._clearDebugLabels('obstacle');
   }
 
@@ -2425,27 +2413,37 @@ class RenderManager {
         this.worldGroup.add(this._tagDraws(mesh, 'teleporter'));
         this._addDebugLabel(mesh, 'obstacle');
       } else if (obs.kind === 'base') {
-        const materials = this._createBaseFaceMaterials(obs.w, h, obs.d, obs.team || 1, baseY > 0);
-        mesh = new THREE.Mesh(
-          new THREE.BoxGeometry(obs.w, h, obs.d),
-          materials,
+        this._addObstacleFragment(
+          fragments,
+          'base',
+          this._getSharedObstacleMaterials(
+            'base', createBaseWallTexture, createBaseTopTexture, { vertexColors: true }
+          ),
+          // BaseSceneNodeGenerator.cxx:74 leaves the bottom out of a base that
+          // sits on the ground, where nothing can see it.
+          this._prepareBoxGeometry(obs.w, h, obs.d, {
+            capRepeat: [1, 1],
+            omitFaces: baseY > 0 ? [] : [BOX_FACE.NY],
+          }),
+          obstacleMatrix(),
+          getBaseTeamTint(getPlayerTeamColor(getTeamFromColorIndex(obs.team || 1))),
         );
-        mesh.position.set(obs.x, baseY + h / 2, obs.z);
-        mesh.rotation.y = obs.rotation || 0;
-        mesh.castShadow = false;
-        mesh.receiveShadow = false;
-        mesh.name = obs.name || `Base ${i + 1}`;
-        mesh.userData.base = {
-          team: obs.team || 1,
-        };
-        if (mesh.geometry && !mesh.geometry.boundingBox) mesh.geometry.computeBoundingBox();
-        this.worldGroup.add(this._tagDraws(mesh, 'base'));
-        this._addDebugLabel(mesh, 'obstacle');
+        this._addDebugLabelAt(
+          obs.name || `Base ${i + 1}`,
+          new THREE.Vector3(obs.x, baseY + h + 2, obs.z),
+          'obstacle',
+        );
       } else if (obs.type === 'pyramid') {
         const geometry = new THREE.ConeGeometry(0.5 / Math.SQRT2, h, 4, 1);
         geometry.clearGroups();
-        geometry.addGroup(0, geometry.index.count - 12, 0);
-        geometry.addGroup(geometry.index.count - 12, 12, 1);
+        // PyramidSceneNodeGenerator.cxx:109 draws the base only when the pyramid
+        // is raised off the ground or stood on its point, which are the two ways
+        // anything can see it. It is the last four triangles of the cone.
+        const pyramidSideIndexCount = geometry.index.count - 12;
+        const showPyramidBase = baseY > 0 || Boolean(obs.inverted);
+        if (!showPyramidBase) geometry.setIndex(Array.from(geometry.index.array.slice(0, pyramidSideIndexCount)));
+        geometry.addGroup(0, pyramidSideIndexCount, 0);
+        if (showPyramidBase) geometry.addGroup(pyramidSideIndexCount, 12, 1);
         geometry.rotateY(-Math.PI / 4);
         if (obs.w > obs.d) {
           geometry.rotateY(Math.PI / 2);
@@ -2464,15 +2462,17 @@ class RenderManager {
           repeatX: pyramidBaseSpan / PYRAMID_TEXTURE_SCALE,
           repeatY: pyramidSlantHeight / PYRAMID_TEXTURE_SCALE,
         });
-        this._bakeGroupUvTransform(geometry, 1, {
-          repeatX: obs.w / PYRAMID_ROOF_TEXTURE_SCALE,
-          repeatY: obs.d / PYRAMID_ROOF_TEXTURE_SCALE,
-          // An inverted pyramid's base is seen from above, so its roof turns
-          // with it.
-          rotation: obs.inverted ? Math.PI : 0,
-          centerX: 0.5,
-          centerY: 0.5,
-        });
+        if (showPyramidBase) {
+          this._bakeGroupUvTransform(geometry, 1, {
+            repeatX: obs.w / PYRAMID_ROOF_TEXTURE_SCALE,
+            repeatY: obs.d / PYRAMID_ROOF_TEXTURE_SCALE,
+            // An inverted pyramid's base is seen from above, so its roof turns
+            // with it.
+            rotation: obs.inverted ? Math.PI : 0,
+            centerX: 0.5,
+            centerY: 0.5,
+          });
+        }
 
         this._addObstacleFragment(
           fragments,
@@ -2493,7 +2493,12 @@ class RenderManager {
           fragments,
           'box',
           this._getSharedObstacleMaterials('box', createBoxWallTexture, createRoofTexture),
-          this._prepareBoxGeometry(obs.w, h, obs.d, BOX_TEXTURE_SCALES),
+          // BoxSceneNodeGenerator.cxx:66, in its own words: "Don't generate the
+          // bottom polygon if on the ground (or lower)".
+          this._prepareBoxGeometry(obs.w, h, obs.d, {
+            ...BOX_TEXTURE_SCALES,
+            omitFaces: baseY > 0 ? [] : [BOX_FACE.NY],
+          }),
           obstacleMatrix(),
         );
         this._addDebugLabelAt(
