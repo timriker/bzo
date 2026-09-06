@@ -194,15 +194,28 @@ function activateFocusedControl(dialog) {
   return false;
 }
 
+// Left and right belong to the focused row, and the row says whether it wanted
+// them: a listener that acts on the adjustment calls preventDefault, which is
+// what dispatchEvent reports back. A row with nothing to adjust -- an action, or
+// a submenu asked to go left -- leaves the keys unconsumed rather than
+// swallowing them.
 function adjustFocusedControl(dialog, direction) {
   const activeElement = document.activeElement;
   const target = dialog.contains(activeElement) ? activeElement.closest?.('[data-menu-row]') : null;
   if (!target) return false;
-  target.dispatchEvent(new window.CustomEvent('menuadjust', {
+  return !target.dispatchEvent(new window.CustomEvent('menuadjust', {
     bubbles: true,
+    cancelable: true,
     detail: { direction },
   }));
-  return true;
+}
+
+// A dialog that is read rather than operated: up and down scroll the text, so
+// left and right are the only way a controller reaches the close button. Every
+// other dialog keeps the two axes apart -- up and down move between rows, left
+// and right act on the row.
+function movesFocusHorizontally(dialog) {
+  return dialog.dataset.dialogKind === 'document';
 }
 
 export function handleDialogControllerInput(input, { dismissDialog, now = performance.now() } = {}) {
@@ -226,12 +239,14 @@ export function handleDialogControllerInput(input, { dismissDialog, now = perfor
     controllerNavigationState.nextRepeatAt = 0;
   } else if (navigationToken !== controllerNavigationState.direction || now >= controllerNavigationState.nextRepeatAt) {
     const activeElement = document.activeElement;
-    if (!useVertical && adjustFocusedControl(openDialog, direction)) {
-      controllerNavigationState.direction = navigationToken;
-    } else {
+    // The stick reads the same way the arrow keys do: sideways adjusts the row
+    // it is on and never walks off it.
+    if (useVertical || movesFocusHorizontally(openDialog)) {
       moveDialogFocus(openDialog, activeElement, direction);
-      controllerNavigationState.direction = navigationToken;
+    } else {
+      adjustFocusedControl(openDialog, direction);
     }
+    controllerNavigationState.direction = navigationToken;
     controllerNavigationState.nextRepeatAt = now + 250;
   }
 
@@ -307,17 +322,20 @@ export function handleDialogKeydown(event, { dismissDialog } = {}) {
       event.preventDefault();
       return true;
     }
-  }
-
-  if (event.key === 'ArrowUp' || event.key === 'ArrowLeft') {
+    if (movesFocusHorizontally(openDialog)) {
+      event.preventDefault();
+      moveDialogFocus(openDialog, activeElement, direction);
+      return true;
+    }
+    // The row had nothing to change. Left and right do not move the focus here,
+    // so the press stops.
     event.preventDefault();
-    moveDialogFocus(openDialog, activeElement, -1);
     return true;
   }
 
-  if (event.key === 'ArrowDown' || event.key === 'ArrowRight') {
+  if (event.key === 'ArrowUp' || event.key === 'ArrowDown') {
     event.preventDefault();
-    moveDialogFocus(openDialog, activeElement, 1);
+    moveDialogFocus(openDialog, activeElement, event.key === 'ArrowUp' ? -1 : 1);
     return true;
   }
 

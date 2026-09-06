@@ -61,6 +61,35 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
   upstream (`playing.cxx:2446`).
 
 ### Changed
+- The help panel lists flags as Team, Good and Bad, in that order, with every
+  bad flag's name in the bad-flag colour. Upstream splits the same three across
+  pages of their own -- Good Flags then Bad Flags (`HelpMenu.cxx:416`, `:453`) --
+  and bzo's help is one scrolling panel, so the split is a heading and the bad
+  flags go last: the thing you are looking one up to avoid should not be mixed
+  in among the ones you want. The sections are built from the flag table's own
+  quality, so a bad flag added later lands in the right one wearing the right
+  colour without anyone remembering to put it there.
+- Left and right act on the focused menu row and no longer double as up and
+  down. A choice row steps back and forward -- Camera and Radar Range had been
+  cycling forward whichever way they were pushed, so walking back through three
+  camera modes meant going forward twice -- an on/off row flips either way, a
+  submenu opens on Right, and an action row takes neither. Rows that had nothing
+  to adjust were swallowing the keys silently; now the press simply stops.
+  Up and down are what move between rows, everywhere.
+
+  The XR panel had the same fall-through and a worse version of it: sideways on
+  a shared row moved the selection instead of changing anything, because the
+  panel only knew how to adjust its own rows. Both menus now ask one function
+  what left and right do to a settings row, so they cannot drift apart.
+
+  Back stays its own control -- Escape, B or grip -- rather than being hung on
+  Left, which would have meant two different things depending on the row. The
+  help panel keeps its exception: it is read rather than operated, so up and
+  down scroll it and left and right still move focus, which is how a controller
+  reaches its close button.
+- The tank carousel in the entry dialog is a choice row like the team selector
+  above it, so left and right walk the tanks from anywhere inside it rather than
+  only from whichever arrow the focus is sitting on.
 - A flag this client knows to be bad is drawn in orange wherever it appears --
   standing in the world, riding over the head of the tank carrying it, and beside
   a name on either scoreboard. Upstream has no colour for this because upstream

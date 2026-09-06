@@ -627,6 +627,7 @@ const defaultHudContext = {
   pushChatMessage: () => {},
   updateChatWindow: () => {},
   sendToServer: () => {},
+  cycleRadarZoom: () => {},
   getScene: () => null,
   toggleEntryDialog: () => {},
   getChatInput: () => null,
@@ -831,6 +832,46 @@ function refreshHudButtons() {
     cameraMode: hudContext.isObserver() ? hudContext.getObserverViewLabel() : hudContext.getCameraMode(),
   });
   settingsMenu?.refresh();
+}
+
+// Left and right on a settings row, for the flat menu and the XR panel alike.
+// Up and down are what move between rows, so nothing here walks off the row it
+// was given.
+//
+//   choice   left steps back, right steps forward
+//   toggle   either direction flips it -- an on/off row is a two-item choice,
+//            and a two-item list cycles the same way whichever way it is pushed
+//   submenu  right opens it; the row already reads "Open >"
+//   action   neither; it is Enter, a trigger or a tap
+//
+// Returns whether the row took the press.
+export function adjustSettingsMenuRow(id, direction) {
+  const item = settingsMenu?.items.find((candidate) => candidate.id === id);
+  if (!item || item.button.disabled) return false;
+
+  if (item.kind === 'choice') {
+    if (item.id === 'cameraBtn') {
+      cycleCameraMode(direction);
+      return true;
+    }
+    if (item.id === 'radarZoomBtn') {
+      hudContext.cycleRadarZoom(direction);
+      return true;
+    }
+    return false;
+  }
+
+  if (item.kind === 'toggle') {
+    item.button.click();
+    return true;
+  }
+
+  if (item.kind === 'submenu') {
+    if (direction > 0) item.button.click();
+    return true;
+  }
+
+  return false;
 }
 
 function getSettingsMenuValue(id, item) {
@@ -1112,17 +1153,23 @@ function cameraModeLabel(mode) {
   return 'Overview';
 }
 
-function cycleCameraMode() {
+const CAMERA_MODE_ORDER = Object.freeze(['first-person', 'third-person', 'overview']);
+
+function cycleCameraMode(direction = 1) {
   // Upstream's `roam cycle type forward` (F8). An observer's camera modes are
   // the roaming views, so C cycles those and leaves the player's own choice
-  // untouched underneath, ready for when they join a team.
+  // untouched underneath, ready for when they join a team. Roaming only cycles
+  // one way, so an observer gets the same view whichever way the row is pushed.
   if (hudContext.isObserver()) {
     hudContext.cycleObserverView();
     refreshHudButtons();
     return;
   }
-  const current = hudContext.getCameraMode();
-  const next = current === 'first-person' ? 'third-person' : current === 'third-person' ? 'overview' : 'first-person';
+  const current = CAMERA_MODE_ORDER.indexOf(hudContext.getCameraMode());
+  const step = direction < 0 ? -1 : 1;
+  const next = CAMERA_MODE_ORDER[
+    ((current < 0 ? 0 : current) + step + CAMERA_MODE_ORDER.length) % CAMERA_MODE_ORDER.length
+  ];
   hudContext.setCameraMode(next);
   try {
     localStorage.setItem('cameraMode', next);
@@ -1551,6 +1598,7 @@ function bindHudElements() {
   settingsMenu = initSettingsMenu({
     root: domRefs.settingsHud,
     getValue: getSettingsMenuValue,
+    onAdjust: adjustSettingsMenuRow,
   });
 }
 

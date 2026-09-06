@@ -46,7 +46,7 @@ function defaultValue(item) {
   return '';
 }
 
-export function initSettingsMenu({ root, getValue }) {
+export function initSettingsMenu({ root, getValue, onAdjust }) {
   if (!root) return null;
 
   const list = root.querySelector('.settingsMenuList');
@@ -84,11 +84,15 @@ export function initSettingsMenu({ root, getValue }) {
     Promise.resolve().then(refresh);
     window.setTimeout(refresh, 150);
   });
+  // What a row is worth adjusting to is the input layer's business, not the
+  // renderer's; this hands it the row and reports back whether it took it.
   root.addEventListener('menuadjust', (event) => {
     const button = event.target.closest?.('[data-menu-row]');
-    if (!button || button.disabled) return;
-    if (button.dataset.menuKind !== 'choice' && button.dataset.menuKind !== 'toggle') return;
-    button.click();
+    if (!button || button.disabled || typeof onAdjust !== 'function') return;
+    if (onAdjust(button.dataset.menuRow, event.detail.direction)) {
+      event.preventDefault();
+      refresh();
+    }
   });
 
   refresh();

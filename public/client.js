@@ -80,6 +80,7 @@ import {
   getGamepadInfo,
   isGameplayInputActive,
   isMenuContextActive,
+  adjustSettingsMenuRow,
   activateXRSettingsMenuItem,
   closeSettingsDialog,
   getXRSettingsMenuItems,
@@ -561,7 +562,7 @@ function setRadarZoomLevel(level, { announce = true } = {}) {
   return true;
 }
 
-function cycleRadarZoomLevel() {
+function cycleRadarZoomLevel(direction = 1) {
   let nearestIndex = 0;
   let nearestDelta = Math.abs(radarZoomLevel - RADAR_ZOOM_LEVELS[0]);
   for (let i = 1; i < RADAR_ZOOM_LEVELS.length; i++) {
@@ -571,7 +572,8 @@ function cycleRadarZoomLevel() {
       nearestIndex = i;
     }
   }
-  const nextIndex = (nearestIndex + 1) % RADAR_ZOOM_LEVELS.length;
+  const step = direction < 0 ? -1 : 1;
+  const nextIndex = (nearestIndex + step + RADAR_ZOOM_LEVELS.length) % RADAR_ZOOM_LEVELS.length;
   setRadarZoomLevel(RADAR_ZOOM_LEVELS[nextIndex]);
 }
 
@@ -770,6 +772,7 @@ function bindVolumeControls() {
     const channel = VOLUME_CHANNELS.find((candidate) => candidate.sliderId === row?.id);
     if (!channel) return;
     setVolumeLevel(channel.id, stepVolumeLevel(getVolumeLevel(channel.id), event.detail?.direction));
+    event.preventDefault();
   });
   renderManager.setGameVolumeLevel(getVolumeLevel('game'));
 }
@@ -951,6 +954,7 @@ function bindAudioControls() {
     teamSelector.addEventListener('menuadjust', (event) => {
       const direction = Number(event.detail?.direction) < 0 ? -1 : 1;
       selectRelativePlayerTeam(direction);
+      event.preventDefault();
     });
   }
   syncPlayerTeamSelector();
@@ -2103,6 +2107,13 @@ async function initTankSelector() {
   const nextBtn = document.getElementById('tankNextBtn');
   if (prevBtn) prevBtn.addEventListener('click', () => cycleTankModel(-1));
   if (nextBtn) nextBtn.addEventListener('click', () => cycleTankModel(1));
+  // The carousel is a choice row like the team selector above it, so left and
+  // right walk the tanks while the focus is anywhere inside it -- which is what
+  // a thumbstick has instead of reaching for one arrow or the other.
+  document.getElementById('tankSelector')?.addEventListener('menuadjust', (event) => {
+    cycleTankModel(Number(event.detail?.direction) < 0 ? -1 : 1);
+    event.preventDefault();
+  });
 
   await fetchTankModels();
   selectedTankModelId = normalizeTankModelId(selectedTankModelId);
@@ -2957,6 +2968,7 @@ initHudControls({
   },
   updateChatWindow: () => updateChatWindow(),
   sendToServer: (payload) => sendToServer(payload),
+  cycleRadarZoom: (direction) => cycleRadarZoomLevel(direction),
   requestVoicePermission,
   toggleVoiceMicrophone,
   getScene: () => scene,
@@ -2982,7 +2994,7 @@ function updateDebugLabelsButton() {
 window.addEventListener('DOMContentLoaded', () => {
   updateRadarZoomButton();
 
-  document.getElementById('radarZoomBtn')?.addEventListener('click', cycleRadarZoomLevel);
+  document.getElementById('radarZoomBtn')?.addEventListener('click', () => cycleRadarZoomLevel(1));
 
   // A context that cannot light the scene overrides the saved preference: the
   // row goes dead rather than promising something it cannot draw.
@@ -7234,7 +7246,10 @@ function buildFlagHelp() {
 
   const abbreviations = Object.keys(FLAG_TYPES);
   const teamAbbreviations = abbreviations.filter((abbreviation) => isTeamFlag(abbreviation));
-  const superAbbreviations = abbreviations.filter((abbreviation) => !isTeamFlag(abbreviation));
+  const superAbbreviations = abbreviations.filter(
+    (abbreviation) => !isTeamFlag(abbreviation) && !isBadFlag(abbreviation),
+  );
+  const badAbbreviations = abbreviations.filter((abbreviation) => isBadFlag(abbreviation));
 
   const addSection = (title, listAbbreviations, sharedHelp) => {
     if (listAbbreviations.length === 0) return;
@@ -7256,7 +7271,11 @@ function buildFlagHelp() {
       code.textContent = abbreviation;
       const name = document.createElement('b');
       name.textContent = type.name;
-      name.style.color = colorToCSS(getFlagColor(abbreviation));
+      // The colour a flag is drawn in everywhere else it appears, which for a
+      // bad one is the warning it wears in the world and on the scoreboards.
+      name.style.color = colorToCSS(
+        isBadFlag(abbreviation) ? BAD_FLAG_COLOR : getFlagColor(abbreviation),
+      );
       item.append(code, ' — ', name);
       if (!sharedHelp) item.append(` — ${type.help}`);
       list.appendChild(item);
@@ -7264,8 +7283,13 @@ function buildFlagHelp() {
     container.appendChild(list);
   };
 
+  // HelpMenu splits these across two pages, Good Flags then Bad Flags
+  // (HelpMenu.cxx:416, :453). bzo's help is one scrolling panel rather than
+  // pages, so the split is a heading and the bad flags go last: the thing you
+  // are looking one up to avoid should not be mixed in among the ones you want.
   addSection('Team Flags', teamAbbreviations, FLAG_TYPES[teamAbbreviations[0]]?.help);
-  addSection('Superflags', superAbbreviations, null);
+  addSection('Good Flags', superAbbreviations, null);
+  addSection('Bad Flags', badAbbreviations, null);
   updateRicochetHelp();
 }
 
@@ -9008,7 +9032,9 @@ function adjustXRSettingsMenuItem(item, direction) {
     input.value = String(Math.max(1, Math.min(10, Number(input.value || 5) + direction)));
     return true;
   }
-  return false;
+  // Everything above is a row the XR panel owns. The rest are the flat menu's
+  // own rows, and they answer to the same left and right there as here.
+  return adjustSettingsMenuRow(item.id, direction);
 }
 
 function getDisplayMode() {
@@ -9133,7 +9159,12 @@ function handleXRSettingsMenuInput(now = performance.now()) {
     xrSettingsMenuNextRepeatAt = 0;
   } else if (navigationToken !== xrSettingsMenuNavigationDirection || now >= xrSettingsMenuNextRepeatAt) {
     const selectedItem = items[xrSettingsMenuSelectedIndex];
-    if (!useHorizontal || !adjustXRSettingsMenuItem(selectedItem, direction)) {
+    // Sideways adjusts the row the stick is on. A row with nothing to adjust
+    // keeps the selection where it is rather than moving it, so the two axes
+    // read the same way here as they do on a flat screen.
+    if (useHorizontal) {
+      adjustXRSettingsMenuItem(selectedItem, direction);
+    } else {
       xrSettingsMenuSelectedIndex = (
         xrSettingsMenuSelectedIndex + direction + items.length
       ) % items.length;

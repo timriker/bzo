@@ -61,7 +61,14 @@ Keyboard events have one document listener in `public/input.js`. Application com
 - BZW `options` blocks support BZFlag's `-c`, `-offa`, `-autoTeam`, and six-slot `-mp rogue,red,green,blue,purple,observer`; map options override corresponding server settings.
 - When team mode is disabled, only Rogue and Observer are offered and player colors remain random. Enabled team mode uses BZFlag-compatible team colors.
 - Choice selectors use the shared Left/Right and activation model instead of native dropdowns so DOM and XR menus can share interaction semantics.
-- Up/Down and Tab move focus; Left/Right adjusts the focused settings row; activation and back behavior remain shared.
+- Up/Down and Tab move focus. Left/Right act on the focused row and never move
+  focus: a choice steps back and forward, an on/off row flips either way, a
+  submenu opens on Right, and an action row takes neither. Activation and back
+  behavior remain shared, and back stays its own control -- Escape, B or grip --
+  rather than being hung on Left.
+- Dialogs marked `data-dialog-kind="document"` are the exception: Up/Down scroll
+  the text and Left/Right move focus, because that is how a controller reaches
+  the close button of a panel that is read rather than operated.
 - Immersive XR Settings use a CanvasTexture renderer backed by the shared Settings values and actions.
 - Pressing either controller stick opens or closes XR Settings without ending the session.
 - Player-name activation opens Settings, where `Player Options` is the first destination for name, Team, and Tank changes.
