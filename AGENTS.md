@@ -48,6 +48,28 @@ These are deliberate. Do not "fix" them without being asked.
   there is no single team across the map, and a player joining teams that
   already exist is picked as upstream picks. Distance never overrides the
   balancing, only the even pick among candidates that already tie.
+- **An open menu or a hidden window pauses the tank.** Upstream pauses when its
+  window is iconified and resumes when it is restored (`pausedByUnmap`,
+  `playing.cxx:124`). `document.hidden` is the browser's word for iconified and
+  bzo pauses on it; bzo also hangs the same behaviour on the menus, which
+  are the other thing that covers the screen here -- Settings, Audio, Help, Operator, Entry and
+  the XR menu alike, since they all arrive as `INPUT_CONTEXT.DIALOG` or
+  `INPUT_CONTEXT.ENTRY`. Walking from one into another holds the pause, because
+  the context never leaves; leaving the last of them is what lifts it. Unlike
+  upstream, which hides the countdown for a pause the window manager asked for,
+  bzo counts it down in front of the menu that started it. The rest is upstream's:
+  the pause is remembered as bzo's own, so closing a menu never resumes a pause
+  the player took with the pause key, and the pause key is ignored while bzo
+  holds it. Both sources reconcile through one `syncAutoPause()` rather than each
+  toggling a pause: hiding the window while a menu is open and showing it again
+  leaves the tank paused, because the menu still is. The pause countdown itself
+  lives on the server, unlike upstream's, because the server is what decides
+  whether a tank may be hit.
+
+  A window that is merely unfocused is not paused for, because it is still on
+  screen and upstream does not pause for that either. Sound is not muted while
+  paused, which upstream does do: the game is meant to keep playing behind a
+  menu, and one of the menus is the audio settings.
 - **Clients reconnect directly when the server restarts**, rather than dropping
   to a menu -- unless the client code itself changed, in which case they reload.
   The server hashes `public/` and Three's build directory by content at boot and

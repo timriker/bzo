@@ -1344,15 +1344,16 @@ body.observing #identifyBtn {
 /* renderRoaming() draws both of these: renderStatus() puts the roaming label at
    the very top and renderAlerts() stacks the alert slots just under it. They are
    separate things -- the status line persists, an alert times out -- so they
-   share a column rather than an element. Both deliberately sit over the
-   scoreboard and radar: an alert lasts a few seconds and reading it matters more
-   than what it covers. */
+   share a column rather than an element. Both deliberately sit over everything,
+   dialogs included: an alert lasts a few seconds and reading it matters more
+   than what it covers, and opening a menu is itself what starts the pause
+   countdown that has to be read from in front of that menu. */
 #hudNotices {
   position: fixed;
   top: max(1vh, 12px);
   left: 0;
   width: 100%;
-  z-index: 200;
+  z-index: 1100;
   pointer-events: none;
   text-align: center;
 }
@@ -1612,14 +1613,12 @@ body.observing #roamStatus {
 }
 
 /* Every dialog closes the same way, so every heading lays out the same way:
-   the label, then the [X] against the right edge. Settings offered only a Close
-   row at the bottom of its menu, and the operator panel centred its [X] beside
-   the heading text. The entry dialog is not here on purpose -- it is a form to
-   fill in, not a panel to dismiss. */
+   the label, then the [X] against the right edge. */
 #settingsHud .dialogTitle,
 #helpPanel .dialogTitle,
 #audioOverlay .dialogTitle,
-#operatorOverlay .dialogTitle {
+#operatorOverlay .dialogTitle,
+#entryDialog h2 {
   display: flex;
   align-items: center;
   justify-content: space-between;

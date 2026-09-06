@@ -79,6 +79,7 @@ import {
   isGamepadConnected,
   getGamepadInfo,
   isGameplayInputActive,
+  isMenuContextActive,
   activateXRSettingsMenuItem,
   closeSettingsDialog,
   getXRSettingsMenuItems,
@@ -405,6 +406,14 @@ const NEAR_FLAG_ALERT_SECONDS = 5;
 // shake countdown has somewhere upstream-shaped to live.
 const CARRIED_FLAG_ALERT_SECONDS = 3;
 const FLAG_SHAKE_ALERT_SLOT = 2;
+// Every pause alert upstream writes goes to slot 1 for a second at a time:
+// the countdown, whatever refused it, and the clear when it takes hold
+// (clientCommands.cxx:455, playing.cxx:6889).
+const PAUSE_ALERT_SLOT = 1;
+const PAUSE_ALERT_SECONDS = 1;
+// Player.cxx:1006 sizes the paused sphere at one and a half tank radii, which is
+// wide enough to enclose the tank it is drawn around.
+const PAUSED_SPHERE_RADIUS = 1.5 * BZFLAG_TANK_RADIUS;
 const RADAR_ZOOM_LEVELS = [0.25, 0.5, 1.0];
 const RADAR_ZOOM_LABELS = ['Short', 'Medium', 'Long'];
 // BZFlag's displayRadarRange default (defaultBZDB.cxx). The level is deliberately
@@ -498,11 +507,6 @@ function syncPlayerTeamSelector() {
   if (teamValue) teamValue.textContent = label;
 }
 
-function updatePlayerTeamSelectorAvailability() {
-  const teamSelector = document.getElementById('entryTeamSelector');
-  if (teamSelector) teamSelector.disabled = gameplayJoinConfirmed;
-}
-
 function setAvailablePlayerTeams(teams) {
   availablePlayerTeams = PLAYER_TEAMS.filter((team) => teams.includes(team));
   if (selectedPlayerTeam !== PLAYER_TEAM.AUTOMATIC && !availablePlayerTeams.includes(selectedPlayerTeam)) {
@@ -511,11 +515,9 @@ function setAvailablePlayerTeams(teams) {
   syncPlayerTeamSelector();
 }
 
-function selectRelativePlayerTeam(direction, { allowJoined = false } = {}) {
-  if (gameplayJoinConfirmed && !allowJoined) {
-    syncPlayerTeamSelector();
-    return;
-  }
+// Offered to a player already in the game as well: the dialog stages the choice
+// and OK pays for it with a rejoin.
+function selectRelativePlayerTeam(direction) {
   const teamSelections = getPlayerTeamSelections(availablePlayerTeams);
   const currentIndex = teamSelections.indexOf(selectedPlayerTeam);
   const nextIndex = (currentIndex + direction + teamSelections.length) % teamSelections.length;
@@ -952,7 +954,6 @@ function bindAudioControls() {
     });
   }
   syncPlayerTeamSelector();
-  updatePlayerTeamSelectorAvailability();
 
   const channelSelect = document.getElementById('voiceChannelSelect');
   if (channelSelect) {
@@ -1597,47 +1598,105 @@ function isEntryDialogOpen() {
   return document.getElementById('entryDialog')?.style.display === 'block';
 }
 
-function toggleEntryDialog(name = '') {
+// What the dialog was opened on top of. Every field in it edits a draft, and
+// nothing reaches the game, localStorage or the server until OK is pressed --
+// so Cancel, the [X] and Escape all have something exact to put back.
+let entrySnapshot = null;
+
+function openEntryDialog(name = '') {
   const entryDialog = document.getElementById('entryDialog');
   const entryInput = document.getElementById('entryInput');
   if (!entryDialog || !entryInput) return;
-  const entryDialogWillOpen = entryDialog.style.display !== 'block';
-  if (entryDialogWillOpen) {
-    setInputContext(INPUT_CONTEXT.ENTRY);
-  }
-  entryDialog.style.display = entryDialogWillOpen ? 'block' : 'none';
-  if (!entryDialogWillOpen) {
-    syncInputContextFromUi();
-  }
-  if (entryDialogWillOpen) {
-    startTankPreviewAnimation();
-  } else {
-    stopTankPreviewAnimation();
-  }
-  isPaused = entryDialogWillOpen;
-  if (entryDialogWillOpen) {
-    gameplayJoinConfirmed = false;
-    updatePlayerTeamSelectorAvailability();
-    if (name === '') name = myPlayerName;
-    entryDialogReturnCameraMode = cameraMode;
-    cameraMode = 'overview';
-    entryInput.value = name;
-    entryInput.focus();
-    if (ws && ws.readyState === 1) {
-      ws.send(JSON.stringify({ type: 'leaveGame' }));
-    }
-    // Hide tank from scene if present
-    if (myTank && scene) {
-      const tank = tanks.get(myPlayerId);
-      if (tank) {
-        tank.visible = false;
-      }
-    }
-  } else {
-    cameraMode = entryDialogReturnCameraMode === 'overview' ? 'first-person' : entryDialogReturnCameraMode;
-  }
+
+  entrySnapshot = {
+    name: myPlayerName,
+    team: getSelectedPlayerTeam(),
+    tankModel: selectedTankModelId,
+  };
+  setInputContext(INPUT_CONTEXT.ENTRY);
+  entryDialog.style.display = 'block';
+  startTankPreviewAnimation();
+  entryDialogFreeze = true;
+  // Team is settled at join time, so changing it means rejoining -- which OK
+  // does, and which is why the selector is offered to a player already in the
+  // game rather than greyed out for them.
+  entryInput.value = name === '' ? myPlayerName : name;
+  entryInput.focus();
+  entryDialogReturnCameraMode = cameraMode;
+  cameraMode = 'overview';
 }
 
+// `revert` puts the draft back: that is Cancel, the [X], Escape and a click
+// that lands outside. OK and the XR join panel close without it, having either
+// applied the draft themselves or being about to.
+function closeEntryDialog({ revert = true } = {}) {
+  const entryDialog = document.getElementById('entryDialog');
+  if (!entryDialog || entryDialog.style.display !== 'block') return;
+
+  if (revert && entrySnapshot) {
+    // Straight back onto the field rather than through savePlayerName, which
+    // would write to localStorage -- the one thing Cancel must not do.
+    myPlayerName = entrySnapshot.name;
+    const entryInput = document.getElementById('entryInput');
+    if (entryInput) entryInput.value = myPlayerName;
+    selectedPlayerTeam = entrySnapshot.team;
+    syncPlayerTeamSelector();
+    // Nothing was applied, so putting the draft back is the id and the two
+    // pieces of the dialog that were drawn from it.
+    selectedTankModelId = entrySnapshot.tankModel;
+    updateSelectedTankOptionUI();
+    loadTankPreviewModel(getTankModelPathById(selectedTankModelId));
+  }
+
+  entryDialog.style.display = 'none';
+  stopTankPreviewAnimation();
+  entryDialogFreeze = false;
+  cameraMode = entryDialogReturnCameraMode === 'overview' ? 'first-person' : entryDialogReturnCameraMode;
+  syncInputContextFromUi();
+}
+
+// OK. The name and the team are settled by the server at join time, so either
+// one changing means rejoining; the tank is not, so it travels on its own and
+// costs nothing to change from inside a life.
+function applyEntrySelections() {
+  const entryInput = document.getElementById('entryInput');
+  const snapshot = entrySnapshot;
+  if (!entryInput || !snapshot) return;
+
+  savePlayerName(entryInput.value);
+  if (selectedTankModelId !== snapshot.tankModel) {
+    applySelectedTankModel(selectedTankModelId);
+  }
+
+  const rejoin = !gameplayJoinConfirmed
+    || myPlayerName !== snapshot.name
+    || getSelectedPlayerTeam() !== snapshot.team;
+  if (!rejoin) return;
+  // The join is the authority on both, and it is refused while the client still
+  // believes it is in the game.
+  gameplayJoinConfirmed = false;
+  setPendingJoinRequest(myPlayerName);
+  maybeSendPendingJoinRequest();
+}
+
+// The Default button: the dialog goes back to what a first-time player is
+// offered. It stages like every other control here, so nothing has happened
+// until OK.
+function resetEntrySelectionsToDefault() {
+  const entryInput = document.getElementById('entryInput');
+  if (entryInput) {
+    entryInput.value = '';
+    entryInput.focus();
+  }
+  selectedPlayerTeam = PLAYER_TEAM.AUTOMATIC;
+  syncPlayerTeamSelector();
+  setSelectedTankModel(getDefaultTankModel().id);
+}
+
+function toggleEntryDialog(name = '') {
+  if (isEntryDialogOpen()) closeEntryDialog();
+  else openEntryDialog(name);
+}
 
 // Obstacle definitions (received from server)
 let OBSTACLES = [];
@@ -1653,7 +1712,68 @@ let entryDialogReturnCameraMode = 'first-person';
 // Pause state
 let isPaused = false;
 let pauseCountdownStart = 0;
-let playerShields = new Map(); // Map of playerId to shield mesh
+// pausedByUnmap (playing.cxx:124). Upstream pauses the tank when its window is
+// iconified and resumes when it comes back, because a player who cannot see the
+// game cannot answer for the tank standing in it. bzo has two ways to stop
+// watching -- put a menu in front of the game, or hide the window -- and one
+// flag covers both, because both are a pause the player did not ask for and
+// neither may resume a pause the player did ask for.
+let autoPaused = false;
+// Which second the countdown alert last showed, so it is rewritten once a
+// second rather than once a frame.
+let pauseAlertSecondsShown = 0;
+// The tank is frozen while the entry dialog is up, which is not a pause: the
+// player is picking a name and a team, and the server knows nothing about it.
+let entryDialogFreeze = false;
+
+function isMyTankAlive() {
+  return Boolean(myTank && myTank.userData?.playerState?.health > 0);
+}
+
+// Whether the game is being watched at all: a menu in front of it or a hidden
+// window both mean no.
+function shouldAutoPause() {
+  return isMenuContextActive() || document.hidden;
+}
+
+// The Unmap/Map pair (playing.cxx:1211, :1246). Every menu and the window's own
+// visibility reconcile through this one function rather than toggling a pause
+// each on their own, so opening a menu, hiding the window and showing it again
+// leaves the tank paused for as long as the menu is still up. The server owns
+// the countdown, so both directions are the same toggle the P key sends: it
+// cancels a countdown that has not finished and unpauses one that has.
+function syncAutoPause() {
+  if (shouldAutoPause()) {
+    if (autoPaused || isPaused || pauseCountdownStart > 0) return;
+    if (isObserver() || !isMyTankAlive()) return;
+    autoPaused = true;
+    sendToServer({ type: 'pause' });
+    return;
+  }
+  if (!autoPaused) return;
+  autoPaused = false;
+  if (isPaused || pauseCountdownStart > 0) sendToServer({ type: 'pause' });
+}
+
+// Unmap and Map themselves. A hidden tab is the browser's word for iconified,
+// and it is the only one it gives: a window that is merely unfocused is still
+// on screen, which upstream does not pause for either.
+document.addEventListener('visibilitychange', syncAutoPause);
+
+// What is left of updatePauseCountdown (playing.cxx:6863) once the server owns
+// the countdown itself: the alert that counts it down where the eye is.
+function updatePauseCountdown() {
+  if (pauseCountdownStart === 0) {
+    pauseAlertSecondsShown = 0;
+    return;
+  }
+  const remaining = gameConfig.PAUSE_COUNTDOWN - (Date.now() - pauseCountdownStart);
+  const seconds = Math.max(1, Math.ceil(remaining / 1000));
+  if (seconds === pauseAlertSecondsShown) return;
+  pauseAlertSecondsShown = seconds;
+  setHudAlert(PAUSE_ALERT_SLOT, `Pausing in ${seconds}`, 1, false);
+}
+let playerPausedSpheres = new Map(); // Map of playerId to its paused sphere
 let deathFollowTarget = null;
 
 // Computed width resolves the viewport units even while the box is hidden for
@@ -1785,41 +1905,45 @@ function updateSelectedTankOptionUI() {
   if (nextBtn) nextBtn.disabled = disableArrows;
 }
 
-function setSelectedTankModel(modelId, { persist = true, applyToRender = true } = {}) {
-  const selectedId = normalizeTankModelId(modelId);
-  const selected = getTankModelById(selectedId);
+// Everything a tank choice costs outside the dialog it was made in: the stored
+// preference, the model the world draws for this player, and the one message
+// that tells everyone else. Kept apart from the selection itself so the entry
+// dialog can stage a choice and OK can be what pays for it.
+function applySelectedTankModel(modelId) {
+  const selected = getTankModelById(normalizeTankModelId(modelId));
+  if (!selected) return;
+  localStorage.setItem('tankModelId', selected.id);
+  renderManager.setTankModel(selected.path);
+  if (!gameplayJoinConfirmed || !myPlayerId) return;
+  const currentPlayerState = tanks.get(myPlayerId)?.userData?.playerState;
+  if (currentPlayerState) {
+    addPlayer({
+      ...currentPlayerState,
+      tankModel: selected.id,
+    });
+    myTank = tanks.get(myPlayerId);
+  }
+  sendToServer({
+    type: 'setTankModel',
+    tankModel: selected.id,
+  });
+}
+
+function setSelectedTankModel(modelId) {
+  const selected = getTankModelById(normalizeTankModelId(modelId));
   if (!selected) return;
   selectedTankModelId = selected.id;
-  if (persist) {
-    localStorage.setItem('tankModelId', selectedTankModelId);
-  }
-  if (applyToRender) {
-    renderManager.setTankModel(selected.path);
-  }
   if (tankPreviewCard) {
     loadTankPreviewModel(selected.path);
   }
-
   if (pendingJoinRequest) {
     pendingJoinRequest.tankModel = selectedTankModelId;
   }
-
-  if (gameplayJoinConfirmed && myPlayerId) {
-    const currentTank = tanks.get(myPlayerId);
-    const currentPlayerState = currentTank?.userData?.playerState;
-    if (currentPlayerState) {
-      addPlayer({
-        ...currentPlayerState,
-        tankModel: selectedTankModelId,
-      });
-      myTank = tanks.get(myPlayerId);
-    }
-    sendToServer({
-      type: 'setTankModel',
-      tankModel: selectedTankModelId,
-    });
+  // Nothing the entry dialog offers takes effect until OK, and the carousel is
+  // one of the things it offers.
+  if (!isEntryDialogOpen()) {
+    applySelectedTankModel(selectedTankModelId);
   }
-
   updateSelectedTankOptionUI();
 }
 
@@ -1981,7 +2105,7 @@ async function initTankSelector() {
 
   await fetchTankModels();
   selectedTankModelId = normalizeTankModelId(selectedTankModelId);
-  setSelectedTankModel(selectedTankModelId, { persist: true, applyToRender: true });
+  setSelectedTankModel(selectedTankModelId);
 }
 
 // Watch for mouseControlEnabled toggle to reset orientation center
@@ -2709,8 +2833,10 @@ function getDebugState() {
 function handleGameplayKeydown(event) {
   // An observer has no tank to pause or destroy, and the server drops both
   // messages from one. The keys stay consumed so nothing else reacts to them.
+  // A pause a menu asked for is the menu's to undo, which is why cmdPause does
+  // nothing at all while pausedByUnmap is set.
   if (event.code === 'KeyP') {
-    if (!isObserver()) sendToServer({ type: 'pause' });
+    if (!isObserver() && !autoPaused) sendToServer({ type: 'pause' });
     return true;
   }
 
@@ -2836,6 +2962,7 @@ initHudControls({
   getChatInput: () => chatInput,
   toggleEntryDialog,
   handleGameplayKeydown,
+  syncAutoPause,
 });
 
 // --- Debug Labels Button Wiring ---
@@ -3377,31 +3504,31 @@ function init() {
   // Add click handler for name change
   const playerNameEl = document.getElementById('playerName');
   const entryOkButton = document.getElementById('entryOkButton');
+  const entryCancelButton = document.getElementById('entryCancelButton');
   const entryDefaultButton = document.getElementById('entryDefaultButton');
+  const closeEntryBtn = document.getElementById('closeEntryBtn');
 
   if (playerNameEl && entryDialog) {
+    // Closed before the draft is applied, so the menu pause is lifted and the
+    // camera is back where it was before the join is asked for.
     entryOkButton.addEventListener('click', () => {
-      savePlayerName(entryInput.value);
-      setPendingJoinRequest(myPlayerName);
-      maybeSendPendingJoinRequest();
-      toggleEntryDialog();
+      closeEntryDialog({ revert: false });
+      applyEntrySelections();
     });
+
+    // Cancel and the [X] are the same button in two places.
+    const cancelEntry = () => closeEntryDialog();
+    entryCancelButton.addEventListener('click', cancelEntry);
+    closeEntryBtn.addEventListener('click', cancelEntry);
 
     entryDefaultButton.addEventListener('click', () => {
-      // Send blank name to server to request default Player n assignment
-      localStorage.setItem('playerName', '');
-      myPlayerName = '';
-      setPendingJoinRequest(myPlayerName);
-      maybeSendPendingJoinRequest();
-      toggleEntryDialog();
+      resetEntrySelectionsToDefault();
     });
 
+    // Escape reaches the dialog through the shared menu keydown handler, which
+    // dismisses it the way Cancel does.
     entryInput.addEventListener('keypress', (e) => {
-      if (e.key === 'Enter') {
-        entryOkButton.click();
-      } else if (e.key === 'Escape') {
-        entryDefaultButton.click();
-      }
+      if (e.key === 'Enter') entryOkButton.click();
     });
   }
 
@@ -3478,7 +3605,6 @@ function connectToServer() {
   ws.onclose = (event) => {
     renderReadyForJoin = false;
     gameplayJoinConfirmed = false;
-    updatePlayerTeamSelectorAvailability();
     activeInitSequence = 0;
     hideLoadingOverlay();
     let kills = 0;
@@ -3548,7 +3674,6 @@ function handleServerMessage(message) {
       queuedRosterMessages = [];
       renderReadyForJoin = false;
       gameplayJoinConfirmed = false;
-      updatePlayerTeamSelectorAvailability();
       pendingJoinRequest = null;
 
       // Show server info in entryDialog
@@ -3581,10 +3706,10 @@ function handleServerMessage(message) {
       pendingLocalProjectiles = [];
 
       // Clear any existing shields
-      playerShields.forEach((shield) => {
-        renderManager.removeShield(shield);
+      playerPausedSpheres.forEach((sphere) => {
+        renderManager.removePausedSphere(sphere);
       });
-      playerShields.clear();
+      playerPausedSpheres.clear();
 
       // Clear any existing clouds
       renderManager.clearClouds();
@@ -3636,7 +3761,6 @@ function handleServerMessage(message) {
     case 'playerJoined':
       if (message.player.id === myPlayerId) {
         gameplayJoinConfirmed = true;
-        updatePlayerTeamSelectorAvailability();
         playerTeam = normalizePlayerTeam(message.player.team);
         teamFlagMarkerStyle = colorToCSS(getPlayerTeamColor(playerTeam));
         syncPlayerTeamSelector();
@@ -3966,7 +4090,19 @@ function handleServerMessage(message) {
     case 'pauseCountdown':
       if (message.playerId === myPlayerId) {
         pauseCountdownStart = Date.now();
-        showMessage('Pausing in 2 seconds...');
+        pauseAlertSecondsShown = 0;
+        updatePauseCountdown();
+      }
+      break;
+
+    // Either the player pressed pause again or the tank had driven somewhere it
+    // may not pause from. Upstream shows both on the pause alert slot.
+    case 'pauseCancelled':
+      if (message.playerId === myPlayerId) {
+        pauseCountdownStart = 0;
+        pauseAlertSecondsShown = 0;
+        setHudAlert(PAUSE_ALERT_SLOT, message.reason, PAUSE_ALERT_SECONDS, false);
+        showMessage(message.reason);
       }
       break;
 
@@ -3974,18 +4110,28 @@ function handleServerMessage(message) {
       if (message.playerId === myPlayerId) {
         isPaused = true;
         pauseCountdownStart = 0;
-        showMessage('PAUSED - Press P to unpause', 'death');
+        pauseAlertSecondsShown = 0;
+        // setAlert(1, NULL) clears the countdown the moment it runs out.
+        setHudAlert(PAUSE_ALERT_SLOT, null, 0);
+        showMessage('Paused');
+      } else {
+        addChatEntry(['misc', 'all'], `${getPlayerName(message.playerId)} has paused`, CHAT_KIND_MISC);
       }
-      createShield(message.playerId, message.x, message.y, message.z);
+      setTankPausedState(message.playerId, true, message);
+      createPausedSphere(message.playerId, message.x, message.y, message.z);
       break;
 
     case 'playerUnpaused':
       if (message.playerId === myPlayerId) {
         isPaused = false;
         pauseCountdownStart = 0;
-        showMessage('Unpaused');
+        pauseAlertSecondsShown = 0;
+        showMessage('Resumed');
+      } else {
+        addChatEntry(['misc', 'all'], `${getPlayerName(message.playerId)} has unpaused`, CHAT_KIND_MISC);
       }
-      removeShield(message.playerId);
+      setTankPausedState(message.playerId, false);
+      removePausedSphere(message.playerId);
       break;
 
     case 'message': {
@@ -4132,27 +4278,35 @@ function removePlayer(playerId) {
     tanks.delete(playerId);
     callUpdateScoreboard();
   }
-  removeShield(playerId);
+  removePausedSphere(playerId);
 }
 
-function createShield(playerId, x, y, z) {
-  // Remove existing shield if any
-  removeShield(playerId);
-
-  const shield = renderManager.createShield({ x, y, z });
-  if (!shield) return;
-  playerShields.set(playerId, shield);
-
-  // Animate shield
-  shield.userData.rotation = 0;
+// The pause messages are the only ones that carry the flag, so they are what
+// keeps the drawn state in step with it. The position comes with the pause
+// because a tank that was rolling has been standing still on the server since
+// the moment it took hold.
+function setTankPausedState(playerId, paused, position = null) {
+  const state = tanks.get(playerId)?.userData?.playerState;
+  if (!state) return;
+  state.paused = paused;
+  if (!position) return;
+  state.x = position.x;
+  state.y = position.y;
+  state.z = position.z;
 }
 
-function removeShield(playerId) {
-  const shield = playerShields.get(playerId);
-  if (shield) {
-    renderManager.removeShield(shield);
-    playerShields.delete(playerId);
-  }
+function createPausedSphere(playerId, x, y, z) {
+  removePausedSphere(playerId);
+  const sphere = renderManager.createPausedSphere({ x, y, z, radius: PAUSED_SPHERE_RADIUS });
+  if (!sphere) return;
+  playerPausedSpheres.set(playerId, sphere);
+}
+
+function removePausedSphere(playerId) {
+  const sphere = playerPausedSpheres.get(playerId);
+  if (!sphere) return;
+  renderManager.removePausedSphere(sphere);
+  playerPausedSpheres.delete(playerId);
 }
 
 function createProjectile(data) {
@@ -6099,7 +6253,7 @@ function handleInputEvents() {
   // LocalPlayer.cxx:328. Standing on anything refills the flaps.
   if (!isInAir) wingsFlapsLeft = gameConfig.WINGS_JUMP_COUNT;
 
-  if (isPaused || pauseCountdownStart > 0) return;
+  if (isPaused || entryDialogFreeze || pauseCountdownStart > 0) return;
 
   // Gather intended input from controls
   const carriedFlagType = getMyFlag()?.type ?? null;
@@ -6137,7 +6291,7 @@ function handleInputEvents() {
 function handleMotion(deltaTime) {
   if (!myTank || !gameConfig) return;
   if (isObserver()) return;
-  if (isPaused || pauseCountdownStart > 0) return;
+  if (isPaused || entryDialogFreeze || pauseCountdownStart > 0) return;
 
   let forceMoveSend = false;
 
@@ -7581,18 +7735,13 @@ function updateProjectiles(deltaTime) {
   }
 }
 
-function updateShields() {
-  playerShields.forEach((shield, playerId) => {
-    // Rotate shield
-    shield.userData.rotation += 0.02;
-    shield.rotation.y = shield.userData.rotation;
-
-    // Update position to follow player
+// pausedSphere->move (Player.cxx:1006): it follows the tank and does nothing
+// else. A paused tank does not move, but its owner may still be falling onto
+// something when the pause lands.
+function updatePausedSpheres() {
+  playerPausedSpheres.forEach((sphere, playerId) => {
     const tank = tanks.get(playerId);
-    if (tank) {
-      shield.position.copy(tank.position);
-      shield.position.y = tank.position.y + 2;
-    }
+    if (tank) sphere.position.copy(tank.position);
   });
 }
 
@@ -8818,7 +8967,7 @@ function adjustXRSettingsMenuItem(item, direction) {
     return true;
   }
   if (item.id === 'teamXR') {
-    selectRelativePlayerTeam(direction, { allowJoined: true });
+    selectRelativePlayerTeam(direction);
     return true;
   }
   if (item.id === 'tankXR') {
@@ -8852,11 +9001,11 @@ function openXRJoinMenu() {
 }
 
 function applyXRJoinSelection() {
-  // The 2D dialog is open if the player entered XR from it, and it holds the
-  // game paused until it closes.
-  if (isEntryDialogOpen()) toggleEntryDialog();
+  // The 2D dialog is open if the player entered XR from it. This panel is its
+  // OK, so it closes without putting the draft back.
+  closeEntryDialog({ revert: false });
   gameplayJoinConfirmed = false;
-  updatePlayerTeamSelectorAvailability();
+  applySelectedTankModel(selectedTankModelId);
   sendToServer({
     type: 'joinGame',
     name: myPlayerName,
@@ -9056,6 +9205,12 @@ function extrapolatePosition(player, dt) {
     x, y, z, r, forwardSpeed, rotationSpeed, verticalVelocity,
     jumpDirection, slideDirection, airVelocityX, airVelocityZ, flagType
   } = player;
+
+  // getDeadReckoning (Player.cxx:1127): a paused tank does not move, whatever it
+  // was doing when the pause landed. Without this a tank that paused while
+  // rolling drifts away from where the server has it, and the sphere drawn
+  // around it goes with it.
+  if (player.paused) return { x, y, z, r };
 
   // Apply rotation
   const rotSpeed = gameConfig.TANK_ROTATION_SPEED || 1.5;
@@ -9272,10 +9427,11 @@ function animate(frameTime) {
   updateProjectiles(deltaTime);
   checkFlagGrab();
   updateFlagShake(deltaTime);
+  updatePauseCountdown();
   updateFlags(deltaTime);
   updateTankDimensions(deltaTime);
   renderManager.updateExplosions(deltaTime);
-  updateShields();
+  updatePausedSpheres();
   renderManager.updateTreads(tanks, deltaTime, gameConfig);
   renderManager.updateMuzzleFlashes(deltaTime);
   renderManager.updateRicochetEffects(deltaTime);

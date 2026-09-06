@@ -98,11 +98,20 @@ export function isGameplayInputActive() {
   return inputContextManager.isGameplayActive();
 }
 
+// A context that has a menu in front of the game. Every dialog bzo has, flat or
+// in a headset, is one of these two: the same fact that stops move, fire and
+// jump reaching the tank is what decides the tank should be paused.
+export function isMenuContextActive() {
+  const context = inputContextManager.getContext();
+  return context === INPUT_CONTEXT.DIALOG || context === INPUT_CONTEXT.ENTRY;
+}
+
 export function setInputContext(context) {
   const changed = inputContextManager.setContext(context);
   if (changed) {
     gamepadGameplayArmed = false;
     xrGameplayArmed = false;
+    hudContext.syncAutoPause();
   }
   return changed;
 }
@@ -622,6 +631,7 @@ const defaultHudContext = {
   toggleEntryDialog: () => {},
   getChatInput: () => null,
   handleGameplayKeydown: () => false,
+  syncAutoPause: () => {},
 };
 
 let hudContext = { ...defaultHudContext };

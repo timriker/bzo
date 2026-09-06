@@ -6,6 +6,105 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
 
 ## [Unreleased]
 
+### Added
+- The entry dialog closes without joining. It has an `[X]` in its heading like
+  every other dialog and a Cancel button beside OK, and both put back what the
+  dialog was opened on top of. It had offered no way out that was not a join:
+  OK joined, Default joined under a blank name, and there was nothing else --
+  which meant a player already in the game could not open it to look at the tank
+  list without giving up the life they were in the middle of.
+- Nothing the entry dialog offers takes effect until OK. The name, the team and
+  the tank are a draft: the carousel previews a tank without swapping the one in
+  the world, storing the preference or telling the server, and Default resets the
+  three fields rather than joining under them. OK applies what changed and only
+  what changed -- the tank travels on its own, while a name or a team means a
+  rejoin, because the server settles both at join time. Nothing changed means
+  nothing sent, so opening the dialog and pressing OK no longer costs a rejoin,
+  which resets the score.
+- The team selector is offered to a player already in the game. It had been
+  greyed out for them and the dialog worked around it by pretending the player
+  had left the moment it opened; the rejoin on OK is what changing a team costs,
+  and it is now the only thing it costs.
+- Hiding the window pauses the tank, and showing it again resumes. This is the
+  event upstream actually pauses on -- `Unmap`, the window being iconified
+  (`playing.cxx:1246`) -- and `document.hidden` is the browser's word for it. A
+  window that is merely unfocused is left alone, because it is still on screen
+  and upstream does not pause for that either. Both this and the menus reconcile
+  through one function rather than each toggling a pause of its own, so hiding
+  the window with a menu open and showing it again leaves the tank paused: the
+  menu is still up. It is the same code path that decides move, fire and jump
+  are not reaching the tank.
+- Opening a menu pauses the tank, counting down in front of the menu that
+  started it, and closing it resumes. Upstream pauses when
+  its window is iconified and resumes when it comes back (`playing.cxx:1211`,
+  `:1246`): a player who cannot see the game cannot answer for the tank standing
+  in it, and a tank that cannot be answered for is a free kill. A browser tab has
+  no unmap, but a menu covers the same screen, so bzo hangs the same behaviour on
+  the menus -- every one of them, flat or in a headset, since they all arrive as
+  the same input context, and since walking from Settings into Audio closes the
+  first and opens the second. It is upstream's `pausedByUnmap` in full: the pause
+  is remembered as the menu's, so closing the menu never resumes a pause the
+  player took themselves, and the pause key does nothing while it is the menu
+  holding the pause.
+- A pause countdown can be called off by pressing pause again, which is what
+  `cmdPause` does with a second press (`clientCommands.cxx:451`). Closing a menu
+  during those five seconds calls it off the same way.
+- Everyone is told when a player pauses or unpauses, as `MsgPause` tells them
+  upstream (`playing.cxx:2446`).
+
+### Changed
+- A paused tank wears upstream's sphere: black at half alpha, still, and a tank
+  and a half wide (`Player.cxx:1004`, `1.5 * tankRadius`). bzo had drawn a
+  spinning cyan wireframe ball less than half that size, which read as an effect
+  a flag had granted rather than as a tank nobody is driving -- and bzo now has a
+  Shield flag for that reading to be confused with. It is named for what upstream
+  calls it too, in the client and in the renderer.
+- Pausing takes five seconds instead of two, upstream's own countdown, and it is
+  counted down on the alert HUD a second at a time rather than announced once.
+  The alert is slot 1 for a second at a time, which is the slot and the duration
+  upstream gives every pause message.
+- The alert HUD draws over dialogs. It had sat under them, which was harmless
+  while every alert belonged to the game behind the menu -- but opening a menu is
+  now itself what starts a pause countdown, and a countdown that a menu can hide
+  is a countdown nobody reads. It already drew over the scoreboard and the radar
+  on the same grounds: an alert lasts a few seconds, and reading it matters more
+  than what it briefly covers.
+- A pause is refused from the air or from inside a building, with upstream's own
+  wording, and refused again if the tank has driven somewhere it may not pause
+  from before the countdown runs out. Both checks exist for the same reason
+  upstream gives: a pause gives up the team flag, so it may only be taken
+  somewhere the tank could still legally stand having lost it.
+- Pausing gives up the team flag and nothing else. Whatever is left goes fifteen
+  seconds later, which is `_pauseDropTime` -- long enough to answer the door,
+  short enough that a superflag cannot be parked out of the game indefinitely.
+  bzo had been dropping everything the instant the pause took hold.
+- A pause belongs to the life it was taken in: dying during the countdown calls
+  it off, and a tank that respawns comes back playing.
+- The local messages are upstream's: `Paused` and `Resumed`. The old text told
+  the player to press P, which is not how a pause the menu took is undone.
+
+### Fixed
+- A paused tank stops where it paused on everyone else's screen. Both ends
+  dead-reckoned it forward at whatever speed it was carrying when the pause
+  landed, so a tank that paused while rolling drifted away from where the server
+  had it -- with the sphere drawn around it going along. `getDeadReckoning`
+  (`Player.cxx:1127`) does not move a paused tank at all, and now neither does
+  bzo, on the client that draws it or the server that answers for it.
+- A paused tank cannot shoot. `invalidPlayerAction` kicks a paused player who
+  fires (`bzfs.cxx:4352`) and bzo checked nothing at all, so an invulnerable tank
+  could keep firing -- the one thing a pause must never buy. Reported as a shot
+  rejection rather than as malformed, because the pause takes hold on the server
+  and a shot already in flight from the client crosses it.
+- The entry dialog no longer clears a pause on its way out. It freezes the tank
+  while the player picks a name, which is not a pause and never was one, but it
+  was writing the same flag the server's pause state is read from.
+- The entry dialog no longer tells the server the player left. It sent a
+  `leaveGame` message the server has never had a handler for and hid the tank on
+  the local screen alone, so the tank everyone else could see stood there and
+  could be shot while its owner was reading a menu. The tank stays where it is
+  and pauses, which is what every other menu now does, and the pause is lifted
+  when the dialog closes.
+
 ## [1.0.64] - 2026-09-06
 
 ### Added

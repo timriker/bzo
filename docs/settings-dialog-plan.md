@@ -53,6 +53,8 @@ Keyboard events have one document listener in `public/input.js`. Application com
 - Settings use a vertical label/value layout with keyboard, pointer, touch, gamepad, and XR-controller navigation.
 - Settings labels and values align around the dialog center so related text stays visually adjacent.
 - Settings, Help, Audio, Operator, and Entry share one responsive screen footprint and a lightweight translucent background.
+- Entry stages every choice it offers and applies them on OK. Cancel, the `[X]`
+  and Escape put the draft back; Default resets the fields without applying them.
 - Entry follows BZFlag's `Team:` choice pattern, defaulting to Automatic and offering Rogue, Observer, Red, Blue, Green, and Purple, while retaining the BZO tank selector.
 - Player tanks and related HUD effects use the selected team's BZFlag-compatible color.
 - Server team policy is configured with `teamMode.enabled`, `teamMode.autoTeam`, `teamMode.teams`, and `teamMode.limits` in `server.json`.

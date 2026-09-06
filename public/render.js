@@ -4059,27 +4059,28 @@ class RenderManager {
     return texture;
   }
 
-  createShield({ x, y, z }) {
+  // Player::addPlayer's pausedSphere (Player.cxx:1004): a black sphere at half
+  // alpha around a tank that is paused, sitting on the tank's own position and
+  // wide enough to enclose it.
+  createPausedSphere({ x, y, z, radius }) {
     if (!this.scene) return null;
-    const shieldGeometry = new THREE.SphereGeometry(3, 16, 16);
-    const shieldMaterial = new THREE.MeshBasicMaterial({
-      color: 0x00ffff,
+    const geometry = new THREE.SphereGeometry(radius, 16, 16);
+    const material = new THREE.MeshBasicMaterial({
+      color: 0x000000,
       transparent: true,
-      opacity: 0.3,
-      wireframe: true,
+      opacity: 0.5,
     });
-    const shield = new THREE.Mesh(shieldGeometry, shieldMaterial);
-    shield.position.set(x, y + 2, z);
-    shield.userData.rotation = 0;
-    this.worldGroup.add(this._tagDraws(shield, 'effect'));
-    return shield;
+    const sphere = new THREE.Mesh(geometry, material);
+    sphere.position.set(x, y, z);
+    this.worldGroup.add(this._tagDraws(sphere, 'effect'));
+    return sphere;
   }
 
-  removeShield(shield) {
-    if (!shield || !this.scene) return;
-    this.worldGroup.remove(shield);
-    if (shield.geometry) shield.geometry.dispose();
-    if (shield.material) shield.material.dispose();
+  removePausedSphere(sphere) {
+    if (!sphere || !this.scene) return;
+    this.worldGroup.remove(sphere);
+    if (sphere.geometry) sphere.geometry.dispose();
+    if (sphere.material) sphere.material.dispose();
   }
 
   createLandingEffect(position, intensity = 1, { local = false } = {}) {

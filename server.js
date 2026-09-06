@@ -422,7 +422,10 @@ const GAME_CONFIG = {
   SHOTS_KEEP_VERTICAL_VELOCITY: false, // BZFlag _shotsKeepVerticalVelocity default
   MAX_SPEED_TOLERANCE: 1.5, // Allow 50% tolerance for latency
   SHOT_POSITION_TOLERANCE: 2, // Max distance shot can be from claimed position
-  PAUSE_COUNTDOWN: 2000, // ms
+  // cmdPause() counts down five seconds before a pause takes hold, so a tank
+  // about to be shot cannot become invulnerable on the frame it is hit.
+  PAUSE_COUNTDOWN: 5000, // ms; BZFlag clientCommands.cxx:481
+  PAUSE_DROP_TIME: 15000, // ms; BZFlag _pauseDropTime default
   RESPAWN_DELAY: 5000, // ms; BZFlag _explodeTime, which is also its _rejoinTime
   JUMP_VELOCITY: 19, // BZFlag _jumpVelocity default
   GRAVITY: 9.8, // BZFlag _gravity magnitude (units per second squared)
@@ -1421,6 +1424,8 @@ class Player {
     this.deaths = 0;
     this.paused = false;
     this.pauseCountdownStart = 0;
+    this.pauseTimer = null;
+    this.pauseDropTimer = null;
     this.verticalVelocity = 0;
     this.isJumping = false;
     this.lastJumpTime = 0;
@@ -1660,6 +1665,12 @@ class Player {
   }
 
   respawn() {
+    // A pause belongs to the life it was taken in. playing.cxx:6867 abandons a
+    // countdown the moment the tank stops being alive, and a tank that comes
+    // back from an explosion comes back playing.
+    clearPauseTimers(this);
+    this.paused = false;
+    this.pauseCountdownStart = 0;
     const spawnPos = getSpawnPosition(this);
     this.x = spawnPos.x;
     this.y = spawnPos.y;
@@ -1718,6 +1729,9 @@ class Player {
   getExtrapolatedPosition(atTime) {
     const dt = (atTime - this.lastUpdate) / 1000; // Convert to seconds
     if (dt <= 0) return { x: this.x, y: this.y, z: this.z, r: this.rotation };
+    // getDeadReckoning (Player.cxx:1127) does not move a paused tank, whatever
+    // it was doing when the pause landed.
+    if (this.paused) return { x: this.x, y: this.y, z: this.z, r: this.rotation };
 
     // Apply rotation
     const rotSpeed = GAME_CONFIG.TANK_ROTATION_SPEED || 1.5;
@@ -2235,6 +2249,14 @@ function getShotRejection(player, shotX, shotY, shotZ) {
   // nothing for a return shot to hit. Not a tolerance: refused in every mode.
   if (player.team === 'observer') {
     return { reason: 'observer cannot shoot', fatal: true };
+  }
+
+  // invalidPlayerAction() (bzfs.cxx:4352) kicks a paused player who shoots, and
+  // a paused tank cannot be shot back at. Not fatal for the same reason the dead
+  // check below is not: the pause takes hold on the server, and a shot already
+  // in flight from the client crosses it.
+  if (player.paused) {
+    return { reason: 'paused player cannot shoot', fatal: false };
   }
 
   // A dead tank firing is usually the client's shot crossing the server's kill,
@@ -3097,6 +3119,129 @@ function dropPlayerFlag(playerId) {
   if (!flag) return;
   if (flag.endurance === FLAG_ENDURANCE.STICKY) zapFlag(flag);
   else dropFlag(flag);
+}
+
+// cmdPause() (clientCommands.cxx:424) and updatePauseCountdown()
+// (playing.cxx:6863). Upstream runs the whole countdown on the client and tells
+// bzfs only the result; bzo runs it on the server, because the server is what
+// decides whether a tank may be hit, and a countdown the client owned would be
+// a countdown a modified client could skip.
+//
+// Upstream's reasons for refusing, in its own words: pausing drops the team
+// flag and stops the tank answering for where it is, so a tank may only pause
+// somewhere it could still legally stand after losing everything it carries.
+function getPauseRefusal(player) {
+  if (player.jumpDirection !== null && player.jumpDirection !== undefined) {
+    return 'Can\'t pause when you are in the air';
+  }
+  if (checkCollision(player.x, player.y, player.z, BZFLAG_TANK_RADIUS, { suppressLog: true })) {
+    return 'Can\'t pause while inside a building';
+  }
+  return null;
+}
+
+function clearPauseTimers(player) {
+  if (player.pauseTimer !== null) {
+    clearTimeout(player.pauseTimer);
+    player.pauseTimer = null;
+  }
+  if (player.pauseDropTimer !== null) {
+    clearTimeout(player.pauseDropTimer);
+    player.pauseDropTimer = null;
+  }
+}
+
+// The countdown ending in anything other than a pause: the player pressed pause
+// again, or the tank had moved somewhere it may not pause from. Upstream shows
+// both on the same alert slot, so both travel as one message.
+function cancelPauseCountdown(player, reason) {
+  clearPauseTimers(player);
+  player.pauseCountdownStart = 0;
+  sendToPlayer(player, { type: 'pauseCancelled', playerId: player.id, reason });
+}
+
+function setPaused(player, paused) {
+  clearPauseTimers(player);
+  player.paused = paused;
+  player.pauseCountdownStart = 0;
+  // A paused tank sends no position updates, so the first move message after a
+  // pause arrives however long the pause lasted after the last one -- and the
+  // drift check reads that whole gap through the stored velocities, which would
+  // carry a tank that was rolling when it paused clean across the map. The
+  // velocities themselves are left alone, as LocalPlayer.cxx:284 leaves them
+  // alone ("set dt to zero instead of clearing velocity ... for when we
+  // resume"): both ends kept them, so both ends still agree.
+  player.lastUpdate = Date.now();
+
+  if (!paused) {
+    broadcastAll({ type: 'playerUnpaused', playerId: player.id });
+    return;
+  }
+
+  // playing.cxx:6913 gives up the team flag before the pause takes hold. A
+  // paused tank cannot be shot, so a team flag it kept would be out of the game
+  // for as long as its carrier stayed away.
+  const flag = getPlayerFlag(player.id);
+  if (flag && flag.team !== null) dropPlayerFlag(player.id);
+
+  // LocalPlayer::doUpdate drops whatever is left after _pauseDropTime, which is
+  // what stops a player parking a superflag somewhere nobody can take it back.
+  player.pauseDropTimer = setTimeout(() => {
+    player.pauseDropTimer = null;
+    if (players.has(player.id) && player.paused) dropPlayerFlag(player.id);
+  }, GAME_CONFIG.PAUSE_DROP_TIME);
+
+  broadcastAll({
+    type: 'playerPaused',
+    playerId: player.id,
+    x: player.x,
+    y: player.y,
+    z: player.z,
+  });
+}
+
+function requestPause(player) {
+  // pausePlayer() (bzfs.cxx:2778) ignores a pause from a tank that is not alive,
+  // and an observer has no tank to pause at all.
+  if (player.team === 'observer' || player.health <= 0) return;
+
+  if (player.paused) {
+    setPaused(player, false);
+    return;
+  }
+
+  if (player.pauseCountdownStart > 0) {
+    cancelPauseCountdown(player, 'Pause cancelled');
+    return;
+  }
+
+  const refusal = getPauseRefusal(player);
+  if (refusal) {
+    sendToPlayer(player, { type: 'pauseCancelled', playerId: player.id, reason: refusal });
+    return;
+  }
+
+  player.pauseCountdownStart = Date.now();
+  // The life the countdown was started in. A tank that died and respawned inside
+  // those five seconds is a tank that never asked to pause.
+  const startedLife = player.deaths;
+  player.pauseTimer = setTimeout(() => {
+    player.pauseTimer = null;
+    if (!players.has(player.id) || player.deaths !== startedLife || player.health <= 0) {
+      player.pauseCountdownStart = 0;
+      return;
+    }
+    // Checked again at the end, as upstream checks it again: the tank has had
+    // five seconds to drive somewhere it may not pause from.
+    const lateRefusal = getPauseRefusal(player);
+    if (lateRefusal) {
+      cancelPauseCountdown(player, lateRefusal);
+      return;
+    }
+    setPaused(player, true);
+  }, GAME_CONFIG.PAUSE_COUNTDOWN);
+
+  broadcastAll({ type: 'pauseCountdown', playerId: player.id });
 }
 
 // A team flag's identity is fixed and never hidden; a superflag slot starts
@@ -4971,6 +5116,12 @@ wss.on('connection', (ws, req) => {
           player.verticalVelocity = 0;
           player.isJumping = false;
           player.onObstacle = false;
+          // A join is a new life, and a pause belongs to the life it was taken
+          // in. Reopening the entry dialog pauses the tank standing in the
+          // world; pressing OK is what ends both the dialog and the pause.
+          clearPauseTimers(player);
+          player.paused = false;
+          player.pauseCountdownStart = 0;
           player.forwardSpeed = 0;
           player.rotationSpeed = 0;
           player.jumpDirection = null;
@@ -5035,44 +5186,9 @@ wss.on('connection', (ws, req) => {
         }
 
         case 'pause':
-          if (player.team === 'observer') break;
-          if (!player.paused && player.pauseCountdownStart === 0) {
-            // Start pause countdown
-            player.pauseCountdownStart = Date.now();
-
-            broadcastAll({
-              type: 'pauseCountdown',
-              playerId: player.id,
-            });
-
-            // After countdown, activate pause
-            setTimeout(() => {
-              if (players.has(player.id) && player.pauseCountdownStart > 0) {
-                player.paused = true;
-                player.pauseCountdownStart = 0;
-                // bzfs.cxx:6913 gives up the flag before the pause takes hold.
-                dropPlayerFlag(player.id);
-
-                broadcastAll({
-                  type: 'playerPaused',
-                  playerId: player.id,
-                  x: player.x,
-                  y: player.y,
-                  z: player.z,
-                });
-              }
-            }, GAME_CONFIG.PAUSE_COUNTDOWN);
-          } else if (player.paused) {
-            // Unpause
-            player.paused = false;
-            player.pauseCountdownStart = 0;
-
-            broadcastAll({
-              type: 'playerUnpaused',
-              playerId: player.id,
-            });
-          }
+          requestPause(player);
           break;
+
         case 'getMaps': {
           // Reply with all .bzw files in maps/ plus 'random', and indicate current map
           sendMapList(ws);
@@ -5240,6 +5356,7 @@ wss.on('connection', (ws, req) => {
     const wasJoined = player.joined;
     player.voiceMicEnabled = false;
     player.joined = false;
+    clearPauseTimers(player);
     const leavingTeam = player.team;
     dropPlayerFlag(player.id);
     players.delete(player.id);
