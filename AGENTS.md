@@ -1252,7 +1252,8 @@ private instance proves the code compiles and nothing more.
 
 Test players appearing briefly on the scoreboard are expected and are not a
 reason to move off it. Name them so they are obviously yours, and disconnect them
-when the check is done.
+when the check is done. `scripts/headless-client.mjs` is the scripted client that
+does this; see **Testing** below.
 
 **To put a test player somewhere specific, use `testSpawn`.** `getTestSpawn` in
 `server.js` matches one player by name and hands it a fixed `x`, `y`, `z` and
@@ -1382,8 +1383,13 @@ Three things to reach for, in the order they cost:
   It renders through SwiftShader, so it answers **does this draw without
   throwing, and what does it look like** and never **how fast is this**: a
   software rasteriser reports single-digit fps on a frame a GPU spends two
-  milliseconds on. It joins the shared test server as a real player, so keep the
-  runs short.
+  milliseconds on.
+
+  It defaults to `http://localhost:3000`, which is the running dev server, and
+  joins it as a real player named `headless` -- see **Test against the running
+  server** above, which is the rule it follows: do not point it at a private
+  instance started to keep a test tidy, and let it disconnect when it is done.
+  Use `testSpawn` to put it somewhere specific.
 
 **For anything about frame cost, read `renderer.stats` in `server.log`** rather
 than measuring here. Every client logs one ten seconds into a map, with the
