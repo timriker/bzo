@@ -6,6 +6,8 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
 
 ## [Unreleased]
 
+## [1.0.67] - 2026-09-07
+
 ### Changed
 - Shot hits are tested against the segment a shot travelled rather than the point
   it landed on, which is what `SegmentedShotStrategy::checkHit` does upstream. A
