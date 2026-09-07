@@ -6,6 +6,8 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
 
 ## [Unreleased]
 
+## [1.0.66] - 2026-09-07
+
 ### Changed
 - Keyboard and mouse drive the tank together. With mouse steering on, each axis
   goes to the first source with something to say -- keys, then a stick, then the
