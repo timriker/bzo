@@ -1876,21 +1876,16 @@ class RenderManager {
   }
 
   _createTeleporterMesh(obs, nameSuffix = '') {
-    // Upstream's CustomGate constructor defaults, for a teleporter that gives
-    // no size or border of its own: 0.5 * _teleportWidth, _teleportBreadth,
-    // 2 * _teleportHeight, and a border of twice the half width.
-    const halfWidth = Math.max(0.25, Number(obs.w) / 2 || 0.56);
-    const sourceHalfBreadth = Math.max(0.25, Number(obs.d) / 2 || 4.48);
-    const sourceHeight = Math.max(1.0, Number(obs.h) || 20.16);
-    const border = Math.max(0.12, Number(obs.border) || 1.12);
+    // The frame as it arrives: `w`/`d`/`h` are the solid, resolved once by the
+    // importer, so the drawn frame is the collided frame by construction rather
+    // than by two places agreeing to add the same border. The opening inside it
+    // is upstream's scene generator subtraction, `getBreadth() - border` and
+    // `getHeight() - border`.
+    const halfWidth = obs.w / 2;
+    const halfBreadth = obs.d / 2;
+    const height = obs.h;
+    const border = obs.border;
 
-    // Match BZFlag Teleporter::finalize() for non-horizontal teleporters:
-    // size[1] = origBreadth + 2*border, size[2] = origHeight + border.
-    const halfBreadth = sourceHalfBreadth + (border * 2.0);
-    const height = sourceHeight + border;
-
-    // Scene generator then uses:
-    // h = getBreadth() - border, z = getHeight() - border.
     const innerBreadth = Math.max(0.1, halfBreadth - border);
     const halfBorder = border * 0.5;
     const portalHeight = Math.max(0.2, height - border);

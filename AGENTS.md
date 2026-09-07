@@ -335,6 +335,17 @@ already drifted. When touching any of them, change both sides in the same edit;
 the fix is to move each into the `collision` pair, matching upstream
 BZFlag, with fuzz coverage -- as the pyramid path already has.
 
+`getShotTeleporterDims` is the cheap half of that lesson already learned. It used
+to *compute* a teleporter's frame from the stated size and the border, and three
+consumers open-coded the same growth rather than asking it -- two of them wrongly,
+including the debug outline whose whole job is to show the surface a tank stands
+on. The importer now resolves the frame into `w`/`d`/`h` before the world goes on
+the wire, so a teleporter measures like a box and a consumer that reads the
+obvious field is right by default. **The delivered world should be as simple as
+possible for collision**: BZW is an import format and its conventions -- a stated
+size that means the opening, a half extent where bzo wants a full one, a rotation
+in degrees about a different axis -- belong in the importer and nowhere else.
+
 ## Visual effects
 
 Effects mirror BZFlag's, taking geometry and timing from upstream rather than

@@ -6,18 +6,56 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
 
 ## [Unreleased]
 
+### Changed
+- A teleporter's border is resolved into its solid by the importer, so the world
+  goes on the wire collision-ready and a teleporter's `w`/`d`/`h` mean what they
+  mean on a box. BZW states the *opening* and leaves the frame to be derived,
+  which is a trap for every reader downstream: three open-coded the growth and two
+  got it wrong, including the debug outline whose whole job is to show the surface
+  a tank stands on. `getShotTeleporterDims` is a reader rather than a calculator
+  on both sides now, deriving only the portal opening inside the frame, and the
+  renderer reads the same numbers -- so the drawn frame is the collided frame by
+  construction rather than by two places agreeing to add the same border. Also
+  picks up an upstream line bzo was missing: `finalize` takes
+  `max(border * 0.5, size[0])` for the x extent, which differs from `size[0]` at
+  any border but the default.
+- `maps/flagbuffet.bzw` has a 40x40 platform and a second teleporter on top of it,
+  linked to the ground one both ways on both faces, so obstacle edges can be
+  tested without a `JP` or `WG` flag in hand. It also asks for
+  `-set _wingsJumpCount 3`.
+
+### Added
+- `-set _wingsJumpCount <n>` in a map's `options` block sets how many flaps `WG`
+  Wings carries, joining `_maxFlagGrabs` as a BZDB variable bzo reads. Zero is
+  meaningful -- a wings tank that cannot flap -- so the floor is 0.
+
 ### Fixed
-- Landing on a teleporter lands on its frame. A teleporter's solid is the frame,
-  which `Teleporter::finalize` builds one border taller and two borders deeper
-  than the size the map states -- `getShotTeleporterDims` already mirrored that
-  and the horizontal collision already used it, but the obstacle *top* was taken
-  as the stated height everywhere. So a tank landing on `maps/flagbuffet.bzw`'s
-  portal stopped at 20.16 instead of the frame's real top of 21.28: sunk exactly
-  one border into the top bar, standing on a footprint narrower than the frame it
-  was on, and grazing the top edge of the active portal volume when it should be
-  clearly above it. One `getColliderTopY` now answers for the top in all four
-  places that asked, and the support test uses the frame's footprint too. The
-  teleport trigger already gated on `activeH` and needed no change.
+- Landing on a teleporter lands on its frame, and driving off an obstacle edge
+  works (#39). A teleporter's solid is the frame, which `Teleporter::finalize`
+  grows from the stated size by the border, and those grown values *are* the
+  obstacle's extents upstream. bzo took the stated height instead, so a tank
+  landing on `maps/flagbuffet.bzw`'s portal stopped at 20.16 rather than the
+  frame's real top of 21.28 -- sunk exactly one border into the top bar, standing
+  on a footprint 2.24 units short of the frame at each end, and grazing the top of
+  the active portal volume when it should be clearly above it.
+- The support snap no longer lifts a falling tank back onto a surface it has left,
+  which is what made an edge unusable (#39). Upstream's collision resolve only
+  ever *stops* downward motion -- `newVelocity[2] = 0.0f` against an upward normal
+  -- and nothing in it raises a tank. bzo's snap accepted a surface up to
+  `MAX_BUMP_HEIGHT` above the tank, right for driving up a kerb and wrong once a
+  tank is past an edge: it dropped a hair, the knife-edge footprint test flickered
+  back to true, and it was lifted to the roof and counted as having landed. At an
+  edge that repeated every frame -- the buzz, the repeated landing ring, and the
+  tank pinned on the lip, since being re-grounded re-zeroed its coasting speed so
+  it could only escape by turning, exactly as #39 described being "skewered".
+  While falling, a surface must now be at or below the tank to hold it; stepping
+  up still works, because that happens with no downward velocity.
+- Driving off a ledge carries your speed. The fall recorded the frozen speed into
+  `fallForwardSpeed` while the coasting branch read `jumpForwardSpeed`, which the
+  landing branch zeroes -- so a tank left a ledge at a standstill. This also
+  removed a client/server disagreement: the client told the server it was coasting
+  at that speed via `vx`/`vz`, which is what the server extrapolates airborne
+  motion from, while driving at zero itself.
 - The shot reload bars showed every slot reloading when one shot was fired (#36).
   Each bar was capped by a single global reload progress, so one shot turned all
   of them red and refilled them in lockstep, and the slot actually fired tracked

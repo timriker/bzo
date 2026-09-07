@@ -16,6 +16,7 @@ options
   -ms 3
   -sa
   -set _maxFlagGrabs 1
+  -set _wingsJumpCount 3
   -srvmsg "Flag names progress alphabetically clockwise from the north."
   -srvmsg "Good flags are on the inner loop.  Bad flags are on the outer loop."
   -srvmsg "Self-destruct may be the easiest way to drop a Bouncy flag."
@@ -27,24 +28,50 @@ world
   size 120
 end
 
+# A platform with room to drive on, for testing edges. 40x40 across the top at
+# a height of 10, reached by the teleporter pair below rather than by jumping,
+# so edge behaviour can be tested without a JP or WG flag in hand.
 box
   position 80 -80 0
-  size 10 10 10
+  size 20 20 10
 end
 
+# The ground end of the pair. Both teleporters give no size or border, so both
+# take CustomGate's defaults -- half width 0.56, half breadth 4.48, height
+# 20.16, border 1.12 -- which is also the path a map exercises by saying nothing.
 teleporter portal
   position 35 -80 0
   rotation 90
 end
 
+# And the platform end, in the middle of the roof.
+teleporter roof
+  position 80 -80 10
+  rotation 90
+end
+
+# Linked both ways round on both faces, so either face of either teleporter
+# takes you to the other one and you can always get back. Without these each
+# face would fall through to the opposite face of its own teleporter, which is
+# upstream's rule for an unlinked face and makes a doorway rather than a pair.
 link
   from portal:f
-  to   portal:b
+  to   roof:b
+end
+
+link
+  from roof:b
+  to   portal:f
 end
 
 link
   from portal:b
-  to   portal:f
+  to   roof:f
+end
+
+link
+  from roof:f
+  to   portal:b
 end
 
 zone

@@ -4971,17 +4971,10 @@ function rebuildTeleporterRuntimeState() {
 // the tank swept rather than the point it ended at, so a frame long enough to
 // carry it through a roof still reports the roof. A caller asking about a
 // single point leaves it alone and gets the point test back unchanged.
-// A teleporter's solid is its *frame*, which stands one border taller and two
-// borders deeper than the size the map states -- Teleporter::finalize builds it
-// that way and getShotTeleporterDims already mirrors it. Every other obstacle is
-// its own stated height. Without this a tank landing on flagbuffet's portal
-// stopped at 20.16 rather than the frame's real top of 21.28: sunk one border
-// into the top bar, and grazing the top edge of the active portal volume when it
-// should be clearly above it. See issue #38.
+// Every obstacle's top, teleporters included: the importer resolves a
+// teleporter's frame into `w`/`d`/`h` so there is no special case left here.
 function getColliderTopY(obs) {
-  const baseY = obs?.baseY || 0;
-  if (obs?.kind === 'teleporter') return baseY + getShotTeleporterDims(obs).h;
-  return baseY + (Number.isFinite(obs?.h) ? obs.h : 0);
+  return (obs?.baseY || 0) + (Number.isFinite(obs?.h) ? obs.h : 0);
 }
 
 function checkCollision(x, y, z, ignoredObstacles = null, rotation = playerRotation, fromY = y) {
@@ -5686,9 +5679,23 @@ function getSurfaceContact(obs, worldX, worldY, worldZ, tankRadius = 2) {
   return getBoxSurfaceContact(obs, worldX, worldZ, tankRadius);
 }
 
-function findSupportSurface(worldX, worldY, worldZ) {
+// `falling` is upstream's rule, and it is the difference between holding a tank
+// on a surface and lifting it back onto one. Upstream's collision resolve only
+// ever *stops* downward motion -- `newVelocity[2] = 0.0f` when it meets an
+// upward normal -- and nothing in it raises a tank. bzo's snap accepts a surface
+// up to MAX_BUMP_HEIGHT *above* the tank, which is right for driving up a kerb
+// and wrong for a tank that has already left an edge: it drops a hair, the
+// knife-edge footprint test flickers back to true, and the tank is lifted to the
+// roof again and counted as having landed. At an edge that repeats every frame,
+// which was the buzz, the ring, and the tank pinned on the lip -- once lifted it
+// is grounded again, so its coasting speed is re-zeroed and it cannot leave.
+//
+// So while falling, a surface must be at or below the tank to hold it. Stepping
+// up still works, because that happens with no downward velocity.
+function findSupportSurface(worldX, worldY, worldZ, falling = false) {
   let bestSupport = null;
   const tankScale = getMyTankScale();
+  const maxRise = falling ? 0 : MAX_BUMP_HEIGHT;
   for (const obs of getCollisionColliders()) {
     // Nothing a tank drives through holds one up. checkCollision already asks
     // this question and the support test has to give the same answer, or the
@@ -5699,7 +5706,7 @@ function findSupportSurface(worldX, worldY, worldZ) {
       const contact = getPyramidSurfaceContact(obs, worldX, worldY, worldZ);
       if (!contact || !contact.supportable) continue;
       const deltaY = contact.supportSurfaceY - worldY;
-      if (deltaY > MAX_BUMP_HEIGHT || deltaY < -SUPPORT_SNAP_DOWN) continue;
+      if (deltaY > maxRise || deltaY < -SUPPORT_SNAP_DOWN) continue;
       if (!bestSupport || contact.supportSurfaceY > bestSupport.surfaceY) {
         bestSupport = { obstacle: obs, surfaceY: contact.supportSurfaceY, normal: contact.normal, contact };
       }
@@ -5716,22 +5723,15 @@ function findSupportSurface(worldX, worldY, worldZ) {
     // classifies into the obstacle -- and the old `|| 4` height fallback then
     // turned that into a platform at y=4 across the whole world.
     if (!Number.isFinite(obs.w) || !Number.isFinite(obs.d) || !Number.isFinite(obs.h)) continue;
-    // A teleporter is stood on by its frame, which is wider and taller than the
-    // size the map gives -- the same solid checkCollision tests against, and the
-    // same one Teleporter::finalize builds. Standing on the stated size put a
-    // tank a border deep in the top bar.
-    const teleporterDims = obs.kind === 'teleporter' ? getShotTeleporterDims(obs) : null;
-    const footHalfW = teleporterDims ? teleporterDims.halfW : obs.w / 2;
-    const footHalfD = teleporterDims ? teleporterDims.halfD : obs.d / 2;
     const { x: localX, z: localZ } = getColliderLocalPoint(worldX, worldZ, obs);
     if (!testOrigRectTank(
-      footHalfW, footHalfD, localX, localZ,
+      obs.w / 2, obs.d / 2, localX, localZ,
       getTankLocalAngle(playerRotation, obs.rotation),
       0, tankScale
     )) continue;
     const surfaceY = getColliderTopY(obs);
     const deltaY = surfaceY - worldY;
-    if (deltaY > MAX_BUMP_HEIGHT || deltaY < -SUPPORT_SNAP_DOWN) continue;
+    if (deltaY > maxRise || deltaY < -SUPPORT_SNAP_DOWN) continue;
     if (!bestSupport || surfaceY > bestSupport.surfaceY) {
       bestSupport = { obstacle: obs, surfaceY, contact: null };
     }
@@ -5775,7 +5775,6 @@ let jumpWasHeld = false;
 // Whether the flag in hand steers in the air, resolved once per frame in
 // handleInputEvents and read by handleMotion, which runs straight after it.
 let airControl = false;
-let currentSupportObstacle = null;
 let smoothedForwardInput = 0;
 let smoothedRotationInput = 0;
 let localTeleportReentryBlockTeleporterIndex = null;
@@ -6072,6 +6071,12 @@ function normalizeAngle(angle) {
   return normalized;
 }
 
+// No impact threshold, because upstream has none: `addLandEffect` gates only on
+// `useFancyEffects` and the `landEffect` type, and the sound only on `entryDrop`
+// (LocalPlayer.cxx:812). Any InAir -> OnGround|OnBuilding transition rings, however
+// gentle. Upstream can afford that because it never manufactures a transition,
+// and neither does bzo now that the support snap cannot lift a falling tank back
+// onto a surface it left.
 function triggerLandingFeedback(tank, impactSpeed = 0, { local = false } = {}) {
   if (!tank?.position) return;
   const clampedImpact = Math.max(0, impactSpeed || 0);
@@ -6644,31 +6649,29 @@ function handleInputEvents() {
   // down, the landing branch zeroed the velocity, and a jump from an obstacle
   // could not get off it at all. Upstream stops vertical motion against a
   // surface only "if going down" (LocalPlayer.cxx:637); this is that condition.
-  const rising = (myTank.userData.verticalVelocity || 0) > 0;
+  const verticalVelocity = myTank.userData.verticalVelocity || 0;
+  const rising = verticalVelocity > 0;
   const supportSurface = rising ? null : findSupportSurface(
     myTank.position.x,
     myTank.position.y,
     myTank.position.z,
-    currentSupportObstacle
+    verticalVelocity < 0
   );
   onGround = false;
   onObstacle = false;
   if (supportSurface) {
     onObstacle = true;
-    currentSupportObstacle = supportSurface.obstacle;
     playerY = supportSurface.surfaceY;
     myTank.position.y = supportSurface.surfaceY;
     showSupportSurfaceDebug(supportSurface.obstacle, supportSurface.surfaceY);
     showSupportFootprintDebug(supportSurface.obstacle, supportSurface);
   } else if (myTank.position.y < 0.1) {
     onGround = true;
-    currentSupportObstacle = null;
     playerY = 0;
     myTank.position.y = 0;
     hideSupportSurfaceDebug();
     hideSupportFootprintDebug();
   } else {
-    currentSupportObstacle = null;
     hideSupportSurfaceDebug();
     hideSupportFootprintDebug();
   }
@@ -6902,6 +6905,14 @@ function handleMotion(deltaTime) {
     // Freeze forward speed at fall start (same as jump)
     const frozenForwardSpeed = myTank.userData.forwardSpeed || 0;
     myTank.userData.fallForwardSpeed = frozenForwardSpeed;
+    // And the speed the coasting branch actually reads. Driving off a ledge
+    // carries your speed with you -- upstream never zeroes horizontal velocity
+    // when a tank leaves a surface -- and without this the tank pins itself on
+    // an obstacle edge: the landing branch sets jumpForwardSpeed to 0, the next
+    // frame's micro-fall makes `handleInputEvents` force `intendedForward` to
+    // that 0, the snap re-captures it, and it lands again. It can only escape by
+    // turning, which is exactly what issue #39 reported as being "skewered".
+    myTank.userData.jumpForwardSpeed = frozenForwardSpeed;
     myTank.userData.slideDirection = undefined;
     const fallVelocity = deriveAirVelocityFromState(jumpDirection, frozenForwardSpeed);
     setAirVelocity(myTank, fallVelocity.x, fallVelocity.z);
@@ -7286,22 +7297,25 @@ function shoot() {
   return true;
 }
 
+// The teleporter's parts, read off the solid the server already resolved. The
+// world arrives collision-ready: `w`/`d`/`h` are the frame, as they are for
+// every other obstacle, so nothing here recomputes the border. The only thing
+// left to derive is the portal opening inside the frame, which is upstream's own
+// subtraction in the scene generator -- `getBreadth() - border` and
+// `getHeight() - border`.
 function getShotTeleporterDims(obs) {
-  // A teleporter that gives no size or border gets upstream's, from the
-  // CustomGate constructor: half width 0.5 * _teleportWidth, half breadth
-  // _teleportBreadth, height 2 * _teleportHeight, and a border twice the half
-  // width. maps/flagbuffet.bzw is one that leaves all four out.
-  const halfW = Math.max(0.25, Number(obs.w) / 2 || 0.56);
-  const sourceHalfBreadth = Math.max(0.25, Number(obs.d) / 2 || 4.48);
-  const sourceHeight = Math.max(1.0, Number(obs.h) || 20.16);
-  const border = Math.max(0.12, Number(obs.border) || 1.12);
-
-  // Match render teleporter geometry so visual frame and shot frame tests align.
-  const halfD = sourceHalfBreadth + (border * 2.0);
-  const h = sourceHeight + border;
-  const activeHalfD = Math.max(0.1, halfD - border);
-  const activeH = Math.max(0.2, h - border);
-  return { halfW, halfD, h, border, activeHalfD, activeH };
+  const halfW = obs.w / 2;
+  const halfD = obs.d / 2;
+  const h = obs.h;
+  const border = obs.border;
+  return {
+    halfW,
+    halfD,
+    h,
+    border,
+    activeHalfD: Math.max(0.1, halfD - border),
+    activeH: Math.max(0.2, h - border),
+  };
 }
 
 const BZFLAG_TELEPORT_TOLERANCE = 1e-6;

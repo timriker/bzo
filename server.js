@@ -954,6 +954,14 @@ function parseBZWServerOptions(lines) {
       if (value === '_maxFlagGrabs') {
         const grabs = Number(setValue);
         if (Number.isFinite(grabs)) options.maxFlagGrabs = normalizeFlagGrabs(grabs);
+      } else if (value === '_wingsJumpCount') {
+        // How many flaps `WG` Wings carries. Zero is meaningful -- a wings tank
+        // that cannot flap -- so the floor is 0 rather than 1, which is also
+        // what `wingsJumpCount` in server.json accepts.
+        const flaps = Number(setValue);
+        if (Number.isFinite(flaps) && Math.round(flaps) >= 0) {
+          options.wingsJumpCount = Math.round(flaps);
+        }
       } else {
         options.unreadBZDBVars.push(value);
       }
@@ -1386,6 +1394,26 @@ function parseBZWMap(filename) {
         if (!Number.isFinite(current.d)) current.d = BZW_TELEPORTER_DEFAULTS.d;
         if (!Number.isFinite(current.h)) current.h = BZW_TELEPORTER_DEFAULTS.h;
         if (!Number.isFinite(current.border)) current.border = BZW_TELEPORTER_DEFAULTS.border;
+        // Teleporter::finalize (Teleporter.cxx). The border grows the solid --
+        // `size[1] = origSize[1] + border * 2`, `size[2] = origSize[2] + border`
+        // -- and those grown values *are* the obstacle's extents, so they are
+        // what collides, what supports a tank and what is drawn.
+        //
+        // Applied here, once, so `w`/`d`/`h` on a teleporter mean the same thing
+        // they mean on a box: the solid. Three separate readers each open-coded
+        // this and two of them got it wrong, because the stated size is the hole
+        // rather than the frame and reading it directly is the easy mistake.
+        // getShotTeleporterDims is now a reader rather than a calculator.
+        const statedBorder = Math.max(0.12, current.border);
+        const statedHalfWidth = Math.max(0.25, current.w / 2);
+        const statedHalfBreadth = Math.max(0.25, current.d / 2);
+        const statedHeight = Math.max(1.0, current.h);
+        current.border = statedBorder;
+        // Upstream takes the larger of the border half-width and the stated
+        // width for the x extent, which is its own line in finalize().
+        current.w = Math.max(statedBorder * 0.5, statedHalfWidth) * 2;
+        current.d = (statedHalfBreadth + (statedBorder * 2)) * 2;
+        current.h = statedHeight + statedBorder;
         const teleporterIndex = teleporters.length;
         const linkName = current.name || `teleporter_${teleporterIndex}`;
         current.teleporterIndex = teleporterIndex;
@@ -1521,6 +1549,15 @@ if (Number.isInteger(mapServerOptions.maxFlagGrabs)
   const previousFlagGrabs = GAME_CONFIG.MAX_FLAG_GRABS;
   GAME_CONFIG.MAX_FLAG_GRABS = mapServerOptions.maxFlagGrabs;
   log(`Map option -set _maxFlagGrabs: ${GAME_CONFIG.MAX_FLAG_GRABS} (was ${previousFlagGrabs})`);
+}
+// -set _wingsJumpCount upstream, and the same assignment rule as the rest: the
+// map's number replaces the config's. It rides GAME_CONFIG to the client, which
+// is what refills the flaps on landing.
+if (Number.isInteger(mapServerOptions.wingsJumpCount)
+  && mapServerOptions.wingsJumpCount !== GAME_CONFIG.WINGS_JUMP_COUNT) {
+  const previousFlaps = GAME_CONFIG.WINGS_JUMP_COUNT;
+  GAME_CONFIG.WINGS_JUMP_COUNT = mapServerOptions.wingsJumpCount;
+  log(`Map option -set _wingsJumpCount: ${GAME_CONFIG.WINGS_JUMP_COUNT} (was ${previousFlaps})`);
 }
 if (mapServerOptions.unreadBZDBVars?.length > 0) {
   log(
@@ -2280,17 +2317,10 @@ function getCollisionColliders() {
 // `options.rotation` selects BZFlag's two occupant shapes: a heading makes the
 // occupant an oriented 2.8 x 6.0 box (Obstacle::inBox, used for tanks), and its
 // absence keeps the cylinder (Obstacle::inCylinder, correct for projectiles).
-// A teleporter's solid is its *frame*, which stands one border taller and two
-// borders deeper than the size the map states -- Teleporter::finalize builds it
-// that way and getShotTeleporterDims already mirrors it. Every other obstacle is
-// its own stated height. Without this a tank landing on flagbuffet's portal
-// stopped at 20.16 rather than the frame's real top of 21.28: sunk one border
-// into the top bar, and grazing the top edge of the active portal volume when it
-// should be clearly above it. See issue #38.
+// Every obstacle's top, teleporters included: the importer resolves a
+// teleporter's frame into `w`/`d`/`h` so there is no special case left here.
 function getColliderTopY(obs) {
-  const baseY = obs?.baseY || 0;
-  if (obs?.kind === 'teleporter') return baseY + getShotTeleporterDims(obs).h;
-  return baseY + (Number.isFinite(obs?.h) ? obs.h : 0);
+  return (obs?.baseY || 0) + (Number.isFinite(obs?.h) ? obs.h : 0);
 }
 
 function checkCollision(x, y, z, tankRadius = 2, options = {}) {
@@ -4081,22 +4111,24 @@ function forwardVoiceSignal(player, message) {
   });
 }
 
+// The teleporter's parts, read off the solid the parser already resolved. It
+// computes nothing about the border any more: `w`/`d`/`h` are the frame, as they
+// are for every other obstacle, and the only thing left to derive is the portal
+// opening inside it -- upstream's scene generator does the same subtraction,
+// `getBreadth() - border` and `getHeight() - border`.
 function getShotTeleporterDims(obs) {
-  // A teleporter that gives no size or border gets upstream's, from the
-  // CustomGate constructor: half width 0.5 * _teleportWidth, half breadth
-  // _teleportBreadth, height 2 * _teleportHeight, and a border twice the half
-  // width. maps/flagbuffet.bzw is one that leaves all four out.
-  const halfW = Math.max(0.25, Number(obs.w) / 2 || 0.56);
-  const sourceHalfBreadth = Math.max(0.25, Number(obs.d) / 2 || 4.48);
-  const sourceHeight = Math.max(1.0, Number(obs.h) || 20.16);
-  const border = Math.max(0.12, Number(obs.border) || 1.12);
-
-  // Match the same teleporter geometry basis as render.js/BZFlag finalize path.
-  const halfD = sourceHalfBreadth + (border * 2.0);
-  const h = sourceHeight + border;
-  const activeHalfD = Math.max(0.1, halfD - border);
-  const activeH = Math.max(0.2, h - border);
-  return { halfW, halfD, h, border, activeHalfD, activeH };
+  const halfW = obs.w / 2;
+  const halfD = obs.d / 2;
+  const h = obs.h;
+  const border = obs.border;
+  return {
+    halfW,
+    halfD,
+    h,
+    border,
+    activeHalfD: Math.max(0.1, halfD - border),
+    activeH: Math.max(0.2, h - border),
+  };
 }
 
 const BZFLAG_TELEPORT_TOLERANCE = 1e-6;

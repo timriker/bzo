@@ -93,7 +93,24 @@ A `teleporter` is a box with a `border`, and its two faces are named
 defaults from the `CustomGate` constructor -- half width `0.5 * _teleportWidth`,
 half breadth `_teleportBreadth`, height `2 * _teleportHeight`, and a border of
 twice the half width, so `0.56 / 4.48 / 20.16 / 1.12` -- which is what
-`maps/flagbuffet.bzw` relies on and every other map in `maps/` spells out. A `link` block takes `from` and `to`, either of
+`maps/flagbuffet.bzw` relies on and every other map in `maps/` spells out.
+
+**The importer resolves the border into the solid, and the world goes out
+collision-ready.** `Teleporter::finalize` grows the stated size by the border --
+`size[1] = origSize[1] + border * 2`, `size[2] = origSize[2] + border` -- and
+those grown values *are* the obstacle's extents upstream, so they are what
+collides, what holds a tank up and what is drawn. bzo therefore applies that
+growth once, at parse time, and a teleporter's `w`/`d`/`h` on the wire mean
+exactly what they mean on a box: the solid.
+
+BZW's convention is the opposite -- its stated size is the *opening*, and the
+frame is that plus the border -- which is a trap for every reader downstream.
+Three of them open-coded the growth and two got it wrong: the obstacle top, the
+support footprint, and the debug outline that is supposed to *show* the support
+footprint. `getShotTeleporterDims` is now a reader rather than a calculator; the
+only thing it still derives is the portal opening inside the frame, which is
+upstream's own `getBreadth() - border` subtraction. Anything that wants the
+solid can just read `w`/`d`/`h` and be right by default. A `link` block takes `from` and `to`, either of
 which may be:
 
 - a face name, `ne_tele_low:f`;
