@@ -71,6 +71,17 @@ function testOrigRectCircle(halfW, halfD, localX, localZ, radius) {
 // model is selected, so the model is cosmetic and never changes gameplay.
 const TANK_HALF_LENGTH = 3.0;
 const TANK_HALF_WIDTH = 1.4;
+// _tankHeight. Player.cxx:120 keeps this one whole rather than halved, and it is
+// what a shot's vertical hit test measures against.
+const TANK_HEIGHT = 2.05;
+
+// _wallHeight, which upstream states as 3.0 * _tankHeight. This is how tall the
+// world's border wall is *drawn* and how high up it stops a shot; a tank is
+// stopped by it at any altitude, because WallObstacle::inCylinder ignores height
+// and tests an infinite half-space. makeSegments spells the difference out: a
+// bouncing shot whose impact is above the top of the outer wall has the hit
+// ignored and carries on over it rather than bouncing back into the arena.
+const WORLD_WALL_HEIGHT = 3.0 * TANK_HEIGHT;
 
 // A rectangle centred at (localX, localZ), rotated so its lateral axis points
 // along (cos a, sin a), against the axis-aligned rectangle at the origin.
@@ -424,9 +435,15 @@ function shotInsideObstacle(obs, x, y, z, radius) {
 // The obstacle a shot is inside, or null. Teleporters are never consulted here:
 // a portal teleports a shot and a frame stops one, and the teleporter trace
 // decides both before this runs.
+//
+// `shootThrough` is upstream's own per-obstacle flag -- `shootthrough` in a
+// `.bzw`, `Obstacle::isShootThrough`, tested by `getFirstBuilding` before it
+// looks at the geometry at all -- and it is what makes the invisible part of the
+// world border transparent to shots while it still stops tanks.
 function findShotObstacle(obstacles, x, y, z, radius) {
   for (const obs of obstacles) {
     if (obs.kind === 'teleporter') continue;
+    if (obs.shootThrough) continue;
     if (shotInsideObstacle(obs, x, y, z, radius)) return obs;
   }
   return null;
@@ -462,6 +479,114 @@ function findShotImpact(obstacles, fromX, fromY, fromZ, toX, toY, toZ, radius) {
     }
   }
   return { fraction: lo, obstacle };
+}
+
+// The parametric interval over which a segment overlaps one obstacle's oriented
+// bounding box, grown by the shot's radius, or null when it never does. The box
+// is the exact solid for a box, a base and the world border; for a pyramid it is
+// a hull the solid sits inside, which is why the caller still asks
+// shotInsideObstacle within the interval it gets back.
+//
+// Vertical bounds are shotInsideObstacle's own, so the two agree about what
+// counts as inside.
+function getShotObstacleInterval(obs, from, to, radius) {
+  const base = obs.baseY || 0;
+  const top = base + (obs.h || 4);
+  const lowest = base + SHOT_VERTICAL_EPSILON - radius;
+  const highest = top - SHOT_VERTICAL_EPSILON;
+  if (highest <= lowest) return null;
+
+  const start = getColliderLocalPoint(from.x, from.z, obs);
+  const end = getColliderLocalPoint(to.x, to.z, obs);
+  let tMin = 0;
+  let tMax = 1;
+
+  const clip = (a, b, low, high) => {
+    const delta = b - a;
+    if (Math.abs(delta) < ZERO_TOLERANCE) return a >= low && a <= high;
+    let near = (low - a) / delta;
+    let far = (high - a) / delta;
+    if (near > far) {
+      const swap = near;
+      near = far;
+      far = swap;
+    }
+    if (near > tMin) tMin = near;
+    if (far < tMax) tMax = far;
+    return tMin <= tMax;
+  };
+
+  if (!clip(start.x, end.x, -((obs.w / 2) + radius), (obs.w / 2) + radius)) return null;
+  if (!clip(start.z, end.z, -((obs.d / 2) + radius), (obs.d / 2) + radius)) return null;
+  if (!clip(from.y, to.y, lowest, highest)) return null;
+  if (tMax < 0 || tMin > 1) return null;
+  return { tMin: Math.max(0, tMin), tMax: Math.min(1, tMax) };
+}
+
+// How finely an obstacle's own interval is walked before the bisection takes
+// over. The interval spans one obstacle, so this resolves a pyramid's slope to a
+// twelfth of its width and the bisection does the rest.
+const SHOT_INTERVAL_SAMPLES = 12;
+
+// Where along a segment a shot first meets solid geometry, for a segment of any
+// length. findShotImpact only bisects, so it needs the far end of the segment to
+// be inside something: that holds for one simulation step of an ordinary shot
+// and fails outright for a beam, which crosses the whole world in one segment
+// and would sail through everything on the way.
+//
+// Each obstacle is asked for the interval where the segment crosses its
+// bounding box, and the intervals are walked in order. Every true hit on an
+// obstacle lies inside that obstacle's own interval, so once an interval starts
+// later than the best hit found there is nothing left that could beat it.
+//
+// Returns the same shape findShotImpact does, and by the same convention: the
+// last point still outside, which is where the impact is drawn and where a
+// bounce starts from.
+function findShotSegmentImpact(obstacles, from, to, radius) {
+  const candidates = [];
+  for (const obs of obstacles) {
+    if (obs.kind === 'teleporter') continue;
+    if (obs.shootThrough) continue;
+    const interval = getShotObstacleInterval(obs, from, to, radius);
+    if (interval) candidates.push({ obs, tMin: interval.tMin, tMax: interval.tMax });
+  }
+  candidates.sort((a, b) => a.tMin - b.tMin);
+
+  const insideAt = (obs, t) => shotInsideObstacle(
+    obs,
+    from.x + ((to.x - from.x) * t),
+    from.y + ((to.y - from.y) * t),
+    from.z + ((to.z - from.z) * t),
+    radius
+  );
+
+  let best = null;
+  for (const candidate of candidates) {
+    if (best && candidate.tMin >= best.fraction) break;
+
+    let lo = candidate.tMin;
+    let hi = null;
+    for (let sample = 1; sample <= SHOT_INTERVAL_SAMPLES; sample++) {
+      const span = candidate.tMax - candidate.tMin;
+      const t = candidate.tMin + ((span * sample) / SHOT_INTERVAL_SAMPLES);
+      if (insideAt(candidate.obs, t)) {
+        hi = t;
+        break;
+      }
+      lo = t;
+    }
+    // A bounding box the segment crossed without ever reaching the solid inside
+    // it, which is a pyramid the shot passed over the slope of.
+    if (hi === null) continue;
+
+    for (let step = 0; step < 8; step++) {
+      const mid = (lo + hi) * 0.5;
+      if (insideAt(candidate.obs, mid)) hi = mid;
+      else lo = mid;
+    }
+    if (!best || lo < best.fraction) best = { fraction: lo, obstacle: candidate.obs };
+  }
+  return best;
 }
 
 // The outward unit normal of the surface a shot met, in world space.
@@ -581,7 +706,12 @@ function traceShotStep({
       posX = hitX;
       posY = hitY;
       posZ = hitZ;
-      if (!ricochet) {
+      // makeSegments reflects a Stop shot off an obstacle that declares itself
+      // bouncy -- `ricochet` in a `.bzw`, `Obstacle::canRicochet` -- as well as
+      // reflecting every shot on a world that says so. Upstream's own border
+      // walls are built with it off (`addWall`, bzfs.cxx:1057), so only a shot
+      // that ricochets of its own accord bounces off the border.
+      if (!ricochet && impact.obstacle.ricochet !== true) {
         obstacle = impact.obstacle;
         remaining = 0;
         break;
@@ -638,6 +768,8 @@ module.exports = {
   testOrigRectCircle,
   TANK_HALF_LENGTH,
   TANK_HALF_WIDTH,
+  TANK_HEIGHT,
+  WORLD_WALL_HEIGHT,
   testOrigRectRect,
   testOrigRectTank,
   getTankLocalAngle,
@@ -657,6 +789,8 @@ module.exports = {
   shotInsideObstacle,
   findShotObstacle,
   findShotImpact,
+  findShotSegmentImpact,
+  getShotObstacleInterval,
   getShotObstacleNormal,
   reflectShotDirection,
   traceShotStep,

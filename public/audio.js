@@ -46,6 +46,10 @@ export const GAME_SOUNDS = Object.freeze({
   fire: { file: 'fire.wav', sfx: 'SFX_FIRE' },
   // A shot expires or hits an obstacle.
   shotBoom: { file: 'boom.wav', sfx: 'SFX_SHOT_BOOM' },
+  // A laser is fired. Upstream picks the firing sound off the flag rather than
+  // playing SFX_FIRE for everything (playing.cxx:2956); Laser is the first flag
+  // bzo has that does.
+  laser: { file: 'laser.wav', sfx: 'SFX_LASER' },
   // A shot bounces off a building.
   ricochet: { file: 'ricochet.wav', sfx: 'SFX_RICOCHET' },
   // A tank is destroyed.

@@ -884,7 +884,7 @@ export function updateAltimeter({ myTank, tickSpacing = 5 }) {
   ctx.restore();
 }
 
-export function updateShotStatus({ myPlayerId, projectiles, gameConfig, now = Date.now() }) {
+export function updateShotStatus({ myPlayerId, projectiles, gameConfig, reloadProgress = 1, now = Date.now() }) {
   const hud = getHudCanvasContext(shotStatusRenderState, 'shotStatus');
   if (!hud || !myPlayerId || !gameConfig) return;
   const { canvas: shotStatus, controlBox, ctx } = hud;
@@ -932,9 +932,26 @@ export function updateShotStatus({ myPlayerId, projectiles, gameConfig, now = Da
       if (slotIndex < 0 || slotIndex >= maxSlots) return;
       const createdAt = Number.isFinite(projectile?.userData?.createdAt) ? projectile.userData.createdAt : now;
       const ageMs = Math.max(0, now - createdAt);
-      const progress = slotLifetimeMs > 0 ? Math.max(0, Math.min(1, ageMs / slotLifetimeMs)) : 0;
+      // GetShotLifetime: a shot variant holds its slot for its own life, not the
+      // world's, which is what makes a Machine Gun's slots come back ten times
+      // as fast.
+      const lifeFactor = Number.isFinite(projectile?.userData?.lifeFactor)
+        ? projectile.userData.lifeFactor
+        : 1;
+      const lifetimeMs = slotLifetimeMs * lifeFactor;
+      const progress = lifetimeMs > 0 ? Math.max(0, Math.min(1, ageMs / lifetimeMs)) : 0;
       slotProgress[slotIndex] = progress;
     });
+  }
+
+  // bzo spaces its shots over one world reload interval instead of giving every
+  // slot a timer of its own, so that interval is a floor under every bar: an
+  // empty slot is still not one you can fire from until the interval has run.
+  // Laser is what makes the difference visible -- its shot is long gone before
+  // its reload is up.
+  const reloadFloor = Math.max(0, Math.min(1, Number.isFinite(reloadProgress) ? reloadProgress : 1));
+  for (let i = 0; i < maxSlots; i++) {
+    slotProgress[i] = Math.min(slotProgress[i], reloadFloor);
   }
 
   const stateKey = `${maxSlots}:${slotProgress.map((value) => value.toFixed(2)).join('|')}`;

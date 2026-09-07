@@ -6,6 +6,83 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
 
 ## [Unreleased]
 
+### Changed
+- Shot hits are tested against the segment a shot travelled rather than the point
+  it landed on, which is what `SegmentedShotStrategy::checkHit` does upstream. A
+  Rapid Fire shell covers 2.5 units in a step against a tank 4 units across, so a
+  point sample could step past the edge of one. The sweep also runs before the
+  obstacle test now, so a tank standing in front of a wall is hit before the wall
+  is, and it takes the nearest tank rather than the last one it looked at.
+- The world border stops a shot only as high as the wall you can see. Upstream's
+  border is one `WallObstacle` doing two jobs: an infinite half-space that stops
+  a tank at any altitude, and a wall only `_wallHeight` tall to a bouncing shot,
+  which flies over it rather than back into the arena (`makeSegments`,
+  `ignoreHit`). bzo now says that with two colliders a side, each doing one of
+  the two jobs and standing aside from the other with one of upstream's own
+  flags. The barrier, a thousand units high -- taller than any map bzo has to
+  hold -- is the tank collider and is `shootThrough`: upstream's wall as a tank
+  meets it, a height-ignoring half-space with no roof. The visible wall, only
+  `WORLD_WALL_HEIGHT` tall, is the shot collider and is `driveThrough`, so tanks
+  are held by the barrier at the same inner edge and the wall's roof is not a
+  surface any collision code has to reason about. `WORLD_WALL_HEIGHT` is
+  upstream's `3.0 * _tankHeight`, and the renderer draws the wall to it, so what
+  bounces a shot is exactly what a player can see. The drawn wall was 5 units and
+  the collider 1000, which is why a ricochet could come back off thin air.
+- `drivethrough`, `shootthrough`, `passable` and `ricochet` are read per obstacle
+  from a `.bzw`, as bare keywords, which is how upstream's
+  `WorldFileObstacle::read` takes them. The shot tests skip a `shootThrough`
+  obstacle, both copies of `checkCollision` skip a `driveThrough` one, and
+  `traceShotStep` bounces an ordinary shot off a `ricochet` one. `maps/test.bzw`
+  has a labelled box for each.
+- The map parser matches every keyword against the line's first token, without
+  regard to case, as upstream matches with `strcasecmp` -- so `Position` is a
+  position and `basey` is no longer read as a `base`. It also takes upstream's
+  own `pos` and `rot` aliases and a pyramid's `flipz`, none of which it read
+  before: a map written with the short spellings used to arrive at the origin,
+  unrotated, with its flat-topped pyramids upright. Every map in `maps/` parses
+  to byte-identical geometry either way.
+- A per-obstacle `ricochet`, upstream's `Obstacle::canRicochet`, bounces even an
+  ordinary shot -- upstream's third source of a bounce after the world switch and
+  the flag. Its own border walls are built with it off, which is why only a shot
+  that ricochets of its own accord bounces off the border.
+- A shot's vertical hit test measures against `_tankHeight` 2.05 from the
+  collision pair rather than a literal 2.
+
+### Added
+- Five shot variants, the whole of the flag plan's phase 8 (#6): `F` Rapid Fire,
+  `MG` Machine Gun, `L` Laser, `SB` Super Bullet and `IB` Invisible Bullet. A
+  shot's velocity, rate, lifetime, obstacle rule, radar visibility and firing
+  sound now come from the flag that fired it, resolved once by `getShotEffects`
+  in the flags pair and carried on the projectile from then on -- so a shot keeps
+  the rules it was fired under even after its shooter drops the flag.
+
+  Rate needs nothing of the shot slots, because upstream declares Rapid Fire's
+  and Machine Gun's lifetime as the reciprocal of their rate: a shot that lives a
+  tenth as long gives its slot back ten times as fast. bzfs's own server gate
+  agrees, scaling by `AdLife` and never reading `AdRate`, so only the client's
+  interval between shots consults it.
+
+  `L` Laser is a beam rather than a projectile. At `_laserAdVel` 1000 a shell
+  crosses any bzo world inside one simulation step, so the server walks the whole
+  path when the trigger is pulled -- through buildings, the ground, teleporters,
+  the world edge and any tank in the way, one segment at a time, as upstream's
+  `makeSegments` does -- resolves the hit there, and leaves the segments for the
+  client to draw as upstream's untextured core-inside-a-glow beam. It reflects on
+  a `+r` world, sounds its own `SFX_LASER`, and plays a ricochet at every bend.
+- `findShotSegmentImpact` in the collision pair answers "what does this segment
+  hit first" for a segment of any length. `findShotImpact` bisects from the far
+  end, so it only finds an obstacle the far end is inside -- fine for one
+  1.67-unit step of an ordinary shot, and useless for a laser, which crossed the
+  world in one segment and went through every wall on the way. Each obstacle is
+  asked for the interval where the segment crosses its oriented bounding box and
+  the intervals are walked nearest first, so the exact test runs only where it
+  can matter.
+
+- `docs/bzw.md`: what the `.bzw` import reads and what it ignores -- the
+  coordinate conversion, every obstacle and `options` keyword bzo understands,
+  and the notable absences, since a map using one of those still loads and plays
+  with that part of it missing.
+
 ## [1.0.66] - 2026-09-07
 
 ### Changed

@@ -46,6 +46,13 @@ import {
   SHAKE_WINS_MAX,
   SHAKE_WINS_MIN,
   SUPER_FLAG_COLOR,
+  RAPID_FIRE_AD_VEL,
+  RAPID_FIRE_AD_RATE,
+  MACHINE_GUN_AD_VEL,
+  MACHINE_GUN_AD_RATE,
+  LASER_AD_VEL,
+  LASER_AD_RATE,
+  LASER_AD_LIFE,
   canJump,
   canShakeFlag,
   computeFlagFlight,
@@ -59,6 +66,7 @@ import {
   getFlagTeamIndex,
   getFlagType,
   getKnownFlagAbbreviation,
+  getShotEffects,
   getTeamFlagAbbreviation,
   getWingsJumpVelocity,
   getWingsSlideVelocity,
@@ -246,6 +254,101 @@ for (const abbreviation of ['JP', 'US', 'ID', 'B*', null]) {
   assert.equal(shotRicochets(null, false), false, 'and otherwise nothing bounces');
   assert.equal(shotRicochets('US', false), false);
   assert.equal(shotRicochets('R', true), true, 'the flag adds nothing to a world that already does');
+  // makeSegments promotes Stop to Reflect and never touches Through, so a shot
+  // that goes through buildings never bounces off one.
+  assert.equal(shotRicochets('SB', true), false, 'a super bullet passes through a ricochet world');
+  assert.equal(shotRicochets('SB', false), false);
+}
+
+// global.cxx:80, :95, :128 and the SegmentedShotStrategy constructors that read
+// them. A shot variant is three multipliers and three rules.
+{
+  assert.equal(RAPID_FIRE_AD_VEL, 1.5, '_rFireAdVel');
+  assert.equal(RAPID_FIRE_AD_RATE, 2.0, '_rFireAdRate');
+  assert.equal(MACHINE_GUN_AD_VEL, 1.5, '_mGunAdVel');
+  assert.equal(MACHINE_GUN_AD_RATE, 10.0, '_mGunAdRate');
+  assert.equal(LASER_AD_VEL, 1000.0, '_laserAdVel');
+  assert.equal(LASER_AD_RATE, 0.5, '_laserAdRate');
+  assert.equal(LASER_AD_LIFE, 0.1, '_laserAdLife');
+
+  // A flag with nothing to say about shots leaves the world's own shot alone,
+  // and so does anything that is not a flag at all.
+  for (const abbreviation of ['US', 'ID', 'WG', 'R', 'B*', 'ZZ', null]) {
+    const effects = getShotEffects(abbreviation);
+    assert.equal(effects.velocityFactor, 1, `${abbreviation} does not change shot speed`);
+    assert.equal(effects.rateFactor, 1, `${abbreviation} does not change the rate`);
+    assert.equal(effects.lifeFactor, 1, `${abbreviation} does not change the life`);
+    assert.equal(effects.beam, false);
+    assert.equal(effects.throughBuildings, false);
+    assert.equal(effects.hiddenOnRadar, false);
+  }
+
+  // _rFireAdLife and _mGunAdLife are declared as the reciprocal of the rate, so
+  // the slot frees exactly as fast as the flag fires.
+  const rapidFire = getShotEffects('F');
+  assert.equal(getFlagType('F').name, 'Rapid Fire');
+  close(rapidFire.velocityFactor, 1.5, 'a rapid fire shell is half again as fast');
+  close(rapidFire.rateFactor, 2, 'and fired twice as often');
+  close(rapidFire.lifeFactor, 0.5, 'for half as long');
+  close(rapidFire.lifeFactor * rapidFire.rateFactor, 1, '_rFireAdLife is 1 / _rFireAdRate');
+  // Range is speed times life: faster but not as far, which is the help text.
+  close(rapidFire.velocityFactor * rapidFire.lifeFactor, 0.75, 'and so does not reach as far');
+
+  const machineGun = getShotEffects('MG');
+  assert.equal(getFlagType('MG').name, 'Machine Gun');
+  close(machineGun.velocityFactor, 1.5, 'a machine gun shell is half again as fast');
+  close(machineGun.rateFactor, 10, 'and fired ten times as often');
+  close(machineGun.lifeFactor, 0.1, 'for a tenth as long');
+  close(machineGun.lifeFactor * machineGun.rateFactor, 1, '_mGunAdLife is 1 / _mGunAdRate');
+  close(machineGun.velocityFactor * machineGun.lifeFactor, 0.15, 'very short range');
+
+  // Laser is the one that breaks the reciprocal: a tenth of the life against
+  // half the rate, so it is the shot you wait twice as long for.
+  const laser = getShotEffects('L');
+  assert.equal(getFlagType('L').name, 'Laser');
+  close(laser.velocityFactor, 1000, 'infinite speed, in practice');
+  close(laser.rateFactor, 0.5, 'and a long reload');
+  close(laser.lifeFactor, 0.1, 'on a shot that is gone in a tenth of the time');
+  assert.ok(laser.lifeFactor * laser.rateFactor < 1, 'a laser is not reloaded by its own life');
+  assert.equal(laser.beam, true, 'a laser has no travel to interpolate');
+  assert.equal(laser.throughBuildings, false);
+  assert.equal(laser.hiddenOnRadar, false);
+  // Fast enough to cross any bzo world inside one simulation step, which is what
+  // makes tracing the whole path at once the honest thing to do.
+  assert.ok(laser.velocityFactor * 100 / 60 > 800, 'a laser outruns a simulation step');
+
+  // The two that change a rule rather than a number.
+  const superBullet = getShotEffects('SB');
+  assert.equal(getFlagType('SB').name, 'Super Bullet');
+  assert.equal(superBullet.throughBuildings, true, 'a super bullet shoots through buildings');
+  close(superBullet.velocityFactor, 1, 'and is otherwise an ordinary shot');
+  close(superBullet.rateFactor, 1);
+  close(superBullet.lifeFactor, 1);
+  assert.equal(superBullet.beam, false);
+
+  const invisibleBullet = getShotEffects('IB');
+  assert.equal(getFlagType('IB').name, 'Invisible Bullet');
+  assert.equal(invisibleBullet.hiddenOnRadar, true, 'an invisible bullet is off other radars');
+  close(invisibleBullet.velocityFactor, 1, 'and is otherwise an ordinary shot');
+  close(invisibleBullet.rateFactor, 1);
+  close(invisibleBullet.lifeFactor, 1);
+  assert.equal(invisibleBullet.throughBuildings, false);
+
+  // Every shot variant is an unstable good superflag, as Flag.cxx declares them.
+  for (const abbreviation of ['F', 'MG', 'L', 'SB', 'IB']) {
+    const type = getFlagType(abbreviation);
+    assert.equal(type.endurance, FLAG_ENDURANCE.UNSTABLE, `${abbreviation} is FlagUnstable`);
+    assert.equal(type.quality, 0, `${abbreviation} is a good flag`);
+    assert.equal(type.team, null, `${abbreviation} has no team`);
+    // Client and server must resolve the same shot, or a shell is drawn in one
+    // place and lands in another.
+    assert.deepEqual(
+      serverFlags.getShotEffects(abbreviation),
+      getShotEffects(abbreviation),
+      `client/server shot effects diverged for ${abbreviation}`
+    );
+  }
+  assert.deepEqual(serverFlags.getShotEffects(null), getShotEffects(null));
 }
 
 // A flap on the way up is worth taking only while you are climbing slower than
@@ -563,6 +666,16 @@ for (const abbreviation of ['WG', 'JP', 'US', null]) {
     }
   }
   assert.equal(serverFlags.hasAirControl(abbreviation), hasAirControl(abbreviation));
+}
+
+for (const abbreviation of ['R', 'SB', 'L', 'US', null]) {
+  for (const allShotsRicochet of [false, true]) {
+    assert.equal(
+      serverFlags.shotRicochets(abbreviation, allShotsRicochet),
+      shotRicochets(abbreviation, allShotsRicochet),
+      `client/server shotRicochets diverged for ${abbreviation}/${allShotsRicochet}`
+    );
+  }
 }
 
 for (const verticalVelocity of [-30, -5, 0, 4, 30]) {

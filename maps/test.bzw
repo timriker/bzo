@@ -201,3 +201,75 @@ position -45.0 45.0 0.0
 rotation 30.0
 size     25.0 10.0 10.0
 end
+
+# Passability keywords, one box each, in a row along the south-west ground with
+# nothing else near them. WorldFileObstacle::read takes all four as bare
+# keywords, so this row is also a check that they are read without regard to
+# case and that a keyword is never mistaken for a property.
+#
+# Each box is named for what it is, and bzo draws an obstacle's name as its debug
+# label, so the row reads itself with debug labels on. Drive at each in turn and
+# shoot at each in turn: `solid` is the control, and the other four should each
+# differ from it in exactly one way.
+box
+name "solid"
+position -70.0 -65.0 0.0
+rotation 0.0
+size     6.0 6.0 8.0
+end
+
+# Drive straight through it; shots still stop on it.
+box
+name "drivethrough"
+position -55.0 -65.0 0.0
+rotation 0.0
+size     6.0 6.0 8.0
+drivethrough
+end
+
+# Shoot straight through it; the tank still stops on it.
+box
+name "shootthrough"
+position -40.0 -65.0 0.0
+rotation 0.0
+size     6.0 6.0 8.0
+shootthrough
+end
+
+# Both at once, which is what `passable` means.
+box
+name "passable"
+position -25.0 -65.0 0.0
+rotation 0.0
+size     6.0 6.0 8.0
+passable
+end
+
+# Bounces an ordinary shot with no Ricochet flag and no `+r` on the server.
+# Mixed case on purpose: upstream matches these with strcasecmp.
+box
+name "ricochet"
+position -10.0 -65.0 0.0
+rotation 0.0
+size     6.0 6.0 8.0
+RicoChet
+end
+
+# The keyword spellings bzo used not to read. WorldFileLocation::read takes `pos`
+# and `rot` as aliases of `position` and `rotation`, and CustomPyramid takes
+# `flipz` as the other way of saying what a negative size height says. A map
+# written this way used to arrive at the origin, unrotated and upright.
+box
+name "aliased"
+pos -70.0 -80.0 0.0
+rot 45.0
+size     6.0 6.0 8.0
+end
+
+pyramid
+name "flipped"
+position -55.0 -80.0 0.0
+FlipZ
+rotation 0.0
+size     6.0 6.0 8.0
+end

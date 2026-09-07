@@ -5,12 +5,16 @@ as **GitHub issue #6**; reference it from every flag commit and changelog entry.
 Upstream references are paths under `$HOME/bzflag/`.
 
 Phases 1 (the Useless superflag, animation, and the drop key), 2 (team flags and
-capture), 3 (Identify) and 9 (Ricochet) are **implemented**, as is the jumping
-switch and all three flags that hang off it -- `JP`, `WG` and `NJ` -- see
-"Jumping, and the flags that carry it". All three of phase 4's ways out of a bad
-flag -- the **shake timeout**, **shake wins** and **antidote flags** -- are in;
-its four client-side bad flags are not, and neither is phase 6 beyond `SH`
-Shield. Phases 5, 7, 8 and 10 onwards are not.
+capture), 3 (Identify), 8 (shot variants) and 9 (Ricochet) are **implemented**,
+as is the jumping switch and all three flags that hang off it -- `JP` Jumping,
+`WG` Wings and `NJ` No Jumping -- see "Jumping, and the flags that carry it".
+All three of phase 4's ways out of a bad flag -- the **shake timeout**, **shake
+wins** and **antidote flags** -- are in; its four client-side bad flags are not,
+and neither is phase 6 beyond `SH` Shield. Phases 5, 7 and 10 onwards are not.
+
+Every flag is named as well as abbreviated wherever it is mentioned here, in
+`Flag.cxx`'s own words: the abbreviation is what the code, the config and the
+scoreboard use, and the name is what the help panel and a player say.
 
 The flag table in `public/flags.mjs` carries only the flags bzo implements, so
 **this document is the list of what is missing** -- see "What is left to add".
@@ -187,31 +191,33 @@ worse than trusting a modified client about a base it still had to drive to.
 ## What is left to add
 
 Upstream carries 47 flag types: a Null type, four team flags, and 42
-superflags. bzo has the four team flags, Useless, Identify, Jumping, Wings,
-Ricochet, No Jumping and Shield, so **35 superflags remain** -- 22 good and
-13 bad. The table below is the whole list,
-grouped by the machinery each group needs rather than by name, because the
-machinery is what decides the order. `src/common/Flag.cxx` is the authority for
-every name, abbreviation, endurance, quality and help string;
+superflags. bzo has the four team flags and twelve superflags -- `US` Useless,
+`ID` Identify, `JP` Jumping, `WG` Wings, `R` Ricochet, `NJ` No Jumping, `SH`
+Shield, `F` Rapid Fire, `MG` Machine Gun, `L` Laser, `SB` Super Bullet and `IB`
+Invisible Bullet -- so **30 superflags remain**, 17 good and 13 bad. The table
+below is the whole list, grouped by the machinery each group needs rather than by
+name, because the machinery is what decides the order. `src/common/Flag.cxx` is
+the authority for every name, abbreviation, endurance, quality and help string;
 `src/common/global.cxx` for every constant named here.
 
 | Phase | Flags | What it needs that bzo does not have |
 |---|---|---|
-| 4 | `B` `JM` `CB` `WA` | shake wins, antidote flags |
-| 5 | `V` `QT` `A` `M` `RC` `FO` `RO` `LT` `RT` `BY` `TR` | the effect resolver, in the shared pair |
-| 6 | `SR` `G` | damage rules, and a shot that remembers its flag |
-| 7 | `T` `N` `O` | per-player tank dimensions |
-| 8 | `F` `MG` `L` `IB` `SB` | per-shot rate, life, velocity and obstacle rules |
-| 10 | `SW` | a shot with no path -- an expanding sphere |
-| 11 | `TH` | flag stealing |
-| 12 | `GM` | a steerable shot, and a lock-on target |
-| 13 | `ST` `CL` `MQ` `SE` | per-viewer visibility |
-| 14 | `OO` `BU` `PZ` | movement through and under geometry |
+| 4 | `B` Blindness, `JM` Jamming, `CB` Colorblindness, `WA` Wide Angle | nothing; the machinery is in, and `WA` waits on the XR rule |
+| 5 | `V` High Speed, `QT` Quick Turn, `A` Agility, `M` Momentum, `RC` Reverse Controls, `FO` Forward Only, `RO` Reverse Only, `LT` Left Turn Only, `RT` Right Turn Only, `BY` Bouncy, `TR` Trigger Happy | the motion resolver, in the shared pair |
+| 6 | `SR` Steamroller, `G` Genocide | damage rules, and a per-tick proximity sweep |
+| 7 | `T` Tiny, `N` Narrow, `O` Obesity | per-player tank dimensions |
+| 10 | `SW` Shock Wave | a shot with no path -- an expanding sphere |
+| 11 | `TH` Thief | flag stealing |
+| 12 | `GM` Guided Missile | a steerable shot, and a lock-on target |
+| 13 | `ST` Stealth, `CL` Cloaking, `MQ` Masquerade, `SE` Seer | per-viewer visibility |
+| 14 | `OO` Oscillation Overthruster, `BU` Burrow, `PZ` Phantom Zone | movement through and under geometry |
 
-Phases 4 to 8 are each a small hook on machinery the phase before it built.
-Phases 10 to 14 are each their own feature and can be taken in any order once 8
-is done. Phase 9 was taken out of order for the same reason `JP`, `NJ` and `WG`
-were: it hangs off a world switch rather than off the phases before it.
+Phases 4 to 7 are each a small hook on machinery an earlier phase built. Phases
+10 to 14 are each their own feature and can be taken in any order. Phases 8 and 9
+were taken out of order -- 9 because it hangs off a world switch rather than off
+the phases before it, as `JP`, `NJ` and `WG` do, and 8 because the one thing it
+was said to need from phase 6 was already in: `flag` reached `Projectile` and
+`shotBegin` with Ricochet.
 
 ## Phase 3 -- Identify (implemented)
 
@@ -275,7 +281,7 @@ world of 200 flags does not pay for 200 label canvases to draw nothing.
 step of implementing a flag, not the first, because the row is what:
 
 - puts the flag in `superFlags.allowed`'s default, so the server starts handing
-  it out (`normalizeSuperFlagConfig`, `server.js:2180`);
+  it out (`normalizeSuperFlagConfig`, `server.js:2561`);
 - documents it in the help panel, which `buildFlagHelp` generates from the same
   table so the two can never disagree;
 - names it on the scoreboard, in the grab and drop messages, and in Identify's
@@ -545,18 +551,19 @@ the carrier sees:
 one held back on the XR rule below -- the headset owns the projection, so a
 field-of-view change has nothing to do there and it needs its own answer first.
 
-## Phase 5 -- the effect resolver, and the movement flags
+## Phase 5 -- the motion resolver, and the movement flags
 
-Thirteen flags, one piece of machinery. Every one of them is a multiplier or a
+Eleven flags, one piece of machinery. Every one of them is a multiplier or a
 clamp on tank motion, and both sides need the same answer: the client predicts
 the move, the server validates it against the client's own reported velocities
-(`validateMovement`, `server.js:1895`), so a speed multiplier the server does
+(`validateMovement`, `server.js:2145`), so a speed multiplier the server does
 not know about reads as linear drift.
 
-Add to the shared pair:
+Add to the shared pair, beside `getShotEffects`, which phase 8 built to the same
+shape and is the model to copy:
 
 ```
-getFlagEffects(abbreviation) -> {
+getMotionEffects(abbreviation) -> {
   speedFactor, angVelFactor,
   linearAccel, angularAccel, friction,   // null means use the world's
   forwardOnly, reverseOnly, leftOnly, rightOnly, reverseControls,
@@ -588,7 +595,7 @@ Upstream applies these in `LocalPlayer::getMaxSpeed` (`LocalPlayer.cxx:1100`),
 | `BY` Bouncy | jumps continuously on landing (`LocalPlayer.cxx:877`) | bad |
 | `TR` Trigger Happy | fires continuously (`LocalPlayer.cxx:1308`) | bad |
 
-`NJ` is out of this group and in already: it is a clamp on the jump gate rather
+`NJ` No Jumping is out of this group and in already: it is a clamp on the jump gate rather
 than on the motion resolver, and the gate has asked the shared pair since the
 jumping switch landed. See "Jumping, and the flags that carry it".
 
@@ -614,11 +621,10 @@ two are not.
   and the reason to note it: the outcome is identical and the check is not
   duplicated per client.
 
-`G` needs the projectile to remember which flag fired it. Add `flag` to
-`Projectile` (`server.js:1598`) from the shooter's carried flag at fire time,
-and put it in the `shotBegin` payload -- the client needs it too, from phase 8
-on, to draw the shot right. This is the whole of phase 8's plumbing, arriving
-one phase early because `G` is the cheapest thing that proves it works.
+`G` needs the projectile to remember which flag fired it. The projectile already carries it:
+`Projectile` (`server.js:1818`) takes the shooter's flag at fire time and
+`shotBegin` passes it on, both of which arrived with Ricochet and are what let
+phase 8 land without waiting for this one.
 
 ### `SH` Shield (implemented)
 
@@ -657,10 +663,10 @@ each client tests only its own tank, so one shot is one hit by construction.
 ## Phase 7 -- per-player tank dimensions
 
 Three flags, and one number that is currently a literal in a dozen places.
-`checkCollision(x, y, z, tankRadius = 2, ...)` (`server.js:1693`),
-`validateMovement`'s hardcoded `2` (`:1961`), the hit test's `dist < 2`
-(`:3418`), `findValidSpawnPosition` and the client's `validateMove`
-(`public/client.js:4212`) all assume one size for every tank.
+`checkCollision(x, y, z, tankRadius = 2, ...)` (`server.js:1933`),
+`validateMovement`'s hardcoded `2` (`:2220`), the hit test's `TANK_HIT_RADIUS`
+and `TANK_HIT_HEIGHT` (`:4085`), `findValidSpawnPosition` and the client's
+`validateMove` (`public/client.js:4957`) all assume one size for every tank.
 
 Give a player a size derived from its flag, thread it through all of those, and
 scale the rendered model to match:
@@ -685,39 +691,144 @@ half that width, which is why `FLAG_GRAB_RADIUS` is built from
 here, and the same answer applies: scale the *factors* from upstream and the
 *base* from bzo.
 
-`N` is the one that needs the oriented box rather than the cylinder, and
-`checkCollision` already has both shapes (`options.rotation`). The hit test
-does not -- it is a plain radius -- so `N` only reads as narrow against shots
-once the hit test uses the box too. Worth doing in this phase; upstream's
-`Player::getDimensions` is one shape for both.
+`N` Narrow is the one that needs the oriented box rather than the cylinder, and
+`checkCollision` already has both shapes (`options.rotation`). The shot hit test
+does not -- `getSegmentTankHitFraction` is a segment against an upright cylinder
+-- so `N` only reads as narrow against shots once that test takes the box too.
+Worth doing in this phase; upstream's `Player::getDimensions` is one shape for
+both.
 
 `O` not fitting through a teleporter falls out of the box test for free, since
 bzo's teleporter portal interior already keeps a full-radius check.
 
-## Phase 8 -- shot variants
+## Phase 8 -- shot variants (implemented)
 
-Five flags. All of them are the same change: a shot's rate, lifetime, velocity
-and obstacle behaviour come from the firing flag instead of from
-`GAME_CONFIG`. Phase 6 already put `flag` on the projectile and in `shotBegin`.
+Five flags, and one resolver behind all five: a shot's velocity, rate, lifetime,
+obstacle rule, radar visibility and firing sound come from the flag that fired it
+rather than from `GAME_CONFIG`. `getShotEffects` in the flags pair is that
+resolver -- pure, table-driven, and held against upstream's numbers by
+`scripts/test-flags.mjs`.
 
-- `GAME_CONFIG.SHOT_SPEED`, `SHOT_RANGE`, `SHOT_RELOAD_TIME` and
-  `SHOT_MAX_ACTIVE` become the defaults a resolver overrides per shot. Upstream
-  multiplies: `ShotStatistics` and `LocalPlayer::fireShot` read `_*AdVel`,
-  `_*AdRate` and `_*AdLife` and apply them to the world's numbers.
-- `getShotRejection` (`server.js:1992`) and `getAvailableShotSlot` (`:2058`)
-  are the reload gate. Both need the per-flag rate or a machine gun trips them.
-- The client draws the shot and must agree about its length and lifetime.
-
-| Flag | Velocity | Rate | Life | Notes |
+| Flag | Velocity | Rate | Life | What else |
 |---|---|---|---|---|
 | `F` Rapid Fire | x1.5 | x2 | x1/2 | `_rFireAdVel` `_rFireAdRate` `_rFireAdLife` |
 | `MG` Machine Gun | x1.5 | x10 | x1/10 | `_mGunAd*` |
-| `L` Laser | x1000 | x0.5 | x0.1 | `_laserAd*`; effectively instant, so it is a beam to draw, not a projectile to fly. Also `_lRAdRate` 0.5 when Laser and Ricochet meet. |
-| `IB` Invisible Bullet | -- | -- | -- | the shot is not drawn on other players' radar, but is drawn out the window |
-| `SB` Super Bullet | -- | -- | -- | passes through buildings; skip the obstacle test in `simulateProjectilesStep` |
+| `L` Laser | x1000 | x0.5 | x0.1 | `_laserAd*`; a beam, not a projectile, and `SFX_LASER` rather than `SFX_FIRE` |
+| `SB` Super Bullet | -- | -- | -- | passes through buildings, and so never bounces |
+| `IB` Invisible Bullet | -- | -- | -- | off every radar but its owner's |
 
-`L` is the one with real client work in it: an instant beam has no travel to
-interpolate, so it wants its own draw path.
+**Life is the rate, and that is why the slots need nothing.** `_rFireAdLife` and
+`_mGunAdLife` are not numbers upstream: they are the strings `1.0 / _rFireAdRate`
+and `1.0 / _mGunAdRate`. A shot slot frees when its shot dies, so a flag whose
+shots live a tenth as long has its slots back ten times as fast, and the rate
+falls out. bzfs's own server-side gate agrees -- `GetShotLifetime`
+(`GameKeeper.cxx:401`) scales by `AdLife` and never looks at `AdRate` -- so
+`getShotRejection` (`server.js:2256`) and `getAvailableShotSlot` (`:2356`) needed
+no change at all. Only the client's interval between shots reads the rate, in
+`getShotReloadTimeMs`, because that interval is what an honest client waits.
+
+Laser is the flag that breaks the reciprocal: a tenth of the life against half
+the rate, so its slot comes back long before its reload does. bzo spaces its
+shots over one world reload interval instead of giving every slot a timer of its
+own, so that interval is a floor under every bar in the shot-status display --
+which is what makes the wait for a laser legible rather than a bar that reads
+ready and a trigger that does nothing.
+
+**Range is velocity times life**, so the table above is also the range column:
+Rapid Fire reaches x0.75 as far ("faster but not as far") and Machine Gun x0.15
+("very short range").
+
+### `L` Laser -- a beam rather than a projectile
+
+At `_laserAdVel` 1000 a shot covers 1666 units in one simulation step, further
+than any bzo world is wide. There is nothing left to interpolate and nothing a
+point-sampled sweep could catch, so the whole path is walked once, when the
+trigger is pulled, by `traceShotBeam` -- which is exactly what upstream does in
+`LaserStrategy`'s constructor, and why its laser draws along a segment list
+rather than following a shell.
+
+- The walk takes whichever of a building, the ground, a teleporter, the world
+  edge and a tank it reaches first, one segment at a time, as `makeSegments`
+  does. Upstream gets that ordering by narrowing one `t` across `getGround`,
+  `getFirstBuilding` and `getFirstTeleporter` in turn; bzo asks the ground and
+  the buildings over the whole reach, lets the nearer of the two truncate the
+  segment, and asks the teleporters over what is left, which comes to the same
+  thing -- a portal behind a wall is not one the beam ever reaches. It stops at
+  upstream's own `maxSegment` 100. Range is velocity times life, 35000 units, so
+  a straight beam is limited by the map and only a bouncing one runs out of it.
+- **The obstacle question had to become a ray.** `findShotImpact` bisects from
+  the far end of the segment, so it only ever finds an obstacle the far end is
+  inside -- which holds for one 1.67-unit step of an ordinary shot and fails
+  outright for a beam, which crossed the world in one segment and sailed through
+  every wall on the way. `findShotSegmentImpact` joins the collision pair for it:
+  every obstacle is asked for the interval over which the segment crosses its
+  oriented bounding box, the intervals are walked nearest first, and the exact
+  `shotInsideObstacle` test is applied inside each one that could still beat the
+  best hit so far. The box is the exact solid for a box, a base and the world
+  border; for a pyramid it is a hull, so the interval is sampled and bisected
+  within. `traceShotStep` is left alone -- an ordinary shot's step is short, and
+  the ray test allocates.
+- A bounce off a pyramid can send the beam steeply upward, and with 35000 units
+  to spend it can clear the world border and leave. Upstream does the same
+  deliberately: `makeSegments` ignores a hit on the outer wall above the top of
+  it (`ignoreHit`) rather than bouncing a shot back down.
+- On a `+r` world it reflects: `makeSegments` promotes `Stop` to `Reflect` and a
+  laser is a `Stop` shot, so the beam bends off buildings by their own normal and
+  off the ground about straight up. Each new segment starts a hair off the
+  surface, as a teleport exit does, because `traceShotStep` carries a shot that
+  begins inside something straight through and a segment starting on the wall it
+  just bounced off would never move.
+- Hits are resolved at that same moment and the beam is cut short at the tank it
+  reached. A tank that drives into a beam afterwards is not hit, because the shot
+  passed before it got there -- the line left behind is the shot's remains, not
+  the shot.
+- The projectile is a clock from then on: it holds its slot, and at
+  `_laserAdLife` its `shotEnd` goes out. A beam that struck something sparks
+  where it struck; one that ran out of range or left the world fades.
+- `shotBegin` carries the segments, each tagged with what ended it. That is the
+  one thing the client cannot work out for itself, so it is also the one shot
+  bzo does not predict locally: the shooter gets the report and the muzzle flash
+  the instant it fires and the beam when the message lands. Each tagged bend
+  plays `SFX_RICOCHET` with the rico effect, and all of them at once, because
+  upstream's laser is already at the end of its path the first time it updates.
+- The client draws each layer of upstream's untextured beam -- a bright core
+  inside a faint glow (`LaserSceneNode.cxx:178`) -- as one instanced draw over
+  every segment, so a hundred-bounce beam costs two draws and no per-segment
+  geometry. bzo ships no laser texture, so the untextured variant is the one to
+  draw. On the radar the beam is drawn as its own polyline.
+
+### The hit test became a segment test
+
+A Rapid Fire shell covers 2.5 units in a step against a tank 4 units across, so
+sampling the shot's position once a step can step past the edge of a tank.
+Upstream never can: `SegmentedShotStrategy::checkHit` tests the frame's whole
+ray. `findShotPlayerHit` now does the same, over the step the shot just took,
+and takes the nearest tank rather than the last one it looked at. Two things
+follow, both of them upstream's behaviour rather than bzo's old behaviour:
+
+- The step has already been cut short at whatever it ran into, and the sweep now
+  runs before the obstacle test, so a tank standing in front of a wall is reached
+  before the wall is.
+- A step that bounced is still sampled at its end. The straight line from where
+  such a step started to where it finished cuts the corner, and a tank the far
+  side of the wall the shot bounced off did not just get hit.
+
+`TANK_HIT_RADIUS` and `TANK_HIT_HEIGHT` are what that test reads, and they are
+where phase 7's dimension flags will land.
+
+**`SB` Super Bullet.** Traced against nothing rather than against the obstacle
+list, which is upstream's `Through` -- including a teleporter frame, which is a
+building. The ground still stops it, because the floor was never in the obstacle
+list to begin with. It does not bounce even where the world bounces everything,
+since `makeSegments` promotes `Stop` and never touches `Through`, and
+`shotRicochets` says so. Upstream lets a super bullet leave the world and fly on
+until its lifetime runs out; bzo ends it at the border, which is the same shot
+either way.
+
+**`IB` Invisible Bullet.** One clause in the radar sweep. Upstream draws your own
+shots before it asks the question (`RadarRenderer.cxx:585`) and hides other
+players' invisible ones (`:664`), so an `IB` carrier can still see what it fired.
+`SE` Seer is the exception upstream makes and it arrives with phase 13.
 
 ## Phase 9 -- Ricochet (implemented)
 
@@ -767,12 +878,50 @@ The surfaces it bounces off:
 - **Pyramids**, whose sloped faces are what put a vertical component into a shot
   that was fired flat -- which is what makes the ground and the tops of boxes
   reachable at all.
-- **The world border**, which bzo models as four boxes, so it needs nothing of
-  its own. The obstacle test now runs before the out-of-bounds test for that
-  reason.
+- **The world border**, but only as high as the wall you can see. Upstream's
+  border is one `WallObstacle` a side doing two jobs at once: `inCylinder` and
+  `inBox` ignore height entirely, so it is an infinite half-space that stops a
+  tank at any altitude, while `makeSegments` ignores a bouncing shot's hit on it
+  above `getHeight()` (`ignoreHit`) and lets the shot fly over rather than back
+  into the arena. bzo says that with two colliders a side rather than a special
+  case in the shot path, each doing one of the two jobs and standing aside from
+  the other with one of upstream's own per-obstacle flags. The barrier, a
+  thousand units high -- taller than any map bzo has to hold -- is the tank
+  collider and is `shootThrough`: that is upstream's wall as a tank meets it, a
+  height-ignoring half-space with no roof. The visible wall, `WORLD_WALL_HEIGHT`
+  tall, is the shot collider and is `driveThrough`: it exists to give a shot a
+  height to stop bouncing at. `WORLD_WALL_HEIGHT` is upstream's
+  `3.0 * _tankHeight`, and the renderer draws the wall to it, so what bounces a
+  shot is exactly what a player can see. The obstacle test runs before the
+  out-of-bounds test so the border is met as geometry rather than as a limit.
+
+  The flag on the visible wall is what makes the split correct rather than what
+  papers over it: both colliders share an inner edge, so the barrier holds tanks
+  before they reach the wall, and the wall's roof -- which upstream's
+  `WallObstacle` does not have at all, `getHitNormal` only ever answering with
+  the plane -- is not a surface any collision code has to reason about.
 - **The ground**, which upstream treats as a surface of its own
   (`ShotStrategy::getGround`) rather than as an obstacle, and so does
   `traceShotStep`.
+
+**Per-obstacle ricochet is upstream's third source of a bounce**, after the
+world switch and the flag. `Obstacle::canRicochet` -- `ricochet` in a `.bzw` --
+makes one obstacle reflect even an ordinary shot: `makeSegments` stops a `Stop`
+shot only when `!building->canRicochet()`, and otherwise falls through into the
+same reflection an `R` carrier gets. `traceShotStep` asks the obstacle the same
+question, so the field is honoured the moment a map can set it. Upstream builds
+its own border walls with it off (`addWall`, `bzfs.cxx:1057`), which is why only
+a shot that ricochets of its own accord bounces off the border.
+
+**`drivethrough` and `shootthrough` are the pair it belongs with.** Upstream's
+`.bzw` takes both per obstacle -- `drivethrough` makes an object passable to
+tanks, `shootthrough` makes it transparent to shots -- and reads them as
+`Obstacle::isDriveThrough` and `isShootThrough`, the latter tested by
+`getFirstBuilding` before it looks at any geometry. bzo honours both fields
+already: `findShotObstacle` and `findShotSegmentImpact` skip a `shootThrough`
+obstacle, and both copies of `checkCollision` skip a `driveThrough` one. Nothing
+but the world border's own barrier sets either yet; a map parser that learns the
+two keywords has nowhere else to put them and nothing else to change.
 
 **Teleporter frames still stop a bouncing shot**, and are the one surface that
 does not reflect. Frames are decided by the teleporter trace, which the client
@@ -783,14 +932,17 @@ different paths. Doing it properly means the frame test joining the shared pair.
 **A ricocheted shot can kill the tank that fired it**, which is the flag's own
 help text. `LocalPlayer::checkHit` tests a player's own shots like anyone
 else's; before it bounces a shot cannot reach its shooter, because it leaves the
-muzzle further out than the hit radius and outruns the tank, but bzo samples a
-shot once a step rather than testing the whole segment, so it says that outright
-rather than trusting the sampling to agree. Killing yourself is a loss and
-nothing else, as self-destruct is.
+muzzle further out than the hit radius and outruns the tank, and bzo says that
+outright with a bounce count rather than leaning on the hit test to agree.
+Killing yourself is a loss and nothing else, as self-destruct is.
 
-`SB` and `L` both interact with this when they land: a super bullet ignores
-buildings and so never reflects off one, and Laser and Ricochet together halve
-the reload rate (`_lRAdRate`).
+Two of phase 8's flags meet this rule. `SB` Super Bullet ignores buildings and so
+never reflects off one, whatever the world says. `L` Laser does reflect, and its
+beam is bent segment by segment when the walk that builds it meets a wall -- see
+"`L` Laser -- a beam rather than a projectile". Upstream declares a `_lRAdRate`
+0.5 for the two together and no longer reads it anywhere, so there is nothing to
+implement: a tank carries one flag, and a laser on a `+r` world is the only way
+the two meet.
 
 ## Phase 10 -- Shock Wave
 
@@ -798,8 +950,8 @@ the reload rate (`_lRAdRate`).
 `_shockInRadius` (`_tankLength`) and `_shockOutRadius` 60, over
 `_shockAdLife` 0.2 of the normal shot life, including tanks on and inside
 buildings. Needs a shot kind that expands rather than moves, a sphere to draw,
-and the team-kill warning upstream gives it. The proximity sweep from `SR` is
-the same shape of code.
+and the team-kill warning upstream gives it. The proximity sweep from `SR`
+Steamroller is the same shape of code.
 
 ## Phase 11 -- Thief
 
@@ -807,7 +959,8 @@ the same shape of code.
 speed `_thiefVelAd` 1.67, size `_thiefTinyFactor` 0.5, shot velocity
 `_thiefAdShotVel` 8.0, rate `_thiefAdRate` 12.0, life `_thiefAdLife` 0.05, and
 `_thiefDropTime` half a reload before the stolen flag can be dropped. Needs
-phase 7's dimensions and phase 8's shot variants, and one new server rule: a
+phase 7's dimensions, and phase 8's shot variants are in: `getShotEffects` is
+where its velocity, rate and life go. One new server rule is left: a
 hit transfers the victim's flag to the shooter rather than killing.
 
 ## Phase 12 -- Guided Missile
@@ -844,7 +997,7 @@ the protocol.
 ## Phase 14 -- movement through and under geometry
 
 Three flags, each of them a change to collision itself, which is why they are
-last. `WG` was the fourth and is done -- it needed air steering rather than a
+last. `WG` Wings was the fourth and is done -- it needed air steering rather than a
 change to collision, so it came out of this group early. `motion.mjs` and `collision.mjs` are the shared pairs involved, and both
 have tests that need to keep passing.
 
@@ -853,12 +1006,13 @@ have tests that need to keep passing.
   building" as a state the tank can be in, which `motion.mjs` currently treats
   as the one thing that must never happen.
 - **`BU` Burrow** -- sits at `_burrowDepth` -1.32, immune to normal shots,
-  killable by `SR` from anyone including teammates, speed x`_burrowSpeedAd` 0.80
+  killable by `SR` Steamroller from anyone including teammates, speed x`_burrowSpeedAd` 0.80
   and turn x`_burrowAngularAd` 0.55. Needs negative ground, which bzo's
   `groundLimit` assumes is zero.
 - **`PZ` Phantom Zone** -- passing through a teleporter toggles Zoned; a Zoned
   tank drives through buildings, fires Zoned shots, and can only be hit by
-  `SB`, `SW` or another Zoned shot. Needs `OO`'s pass-through, a hook on bzo's
+  `SB` Super Bullet, `SW` Shock Wave or another Zoned shot. Needs `OO`'s
+  pass-through, a hook on bzo's
   teleporter path, and a shot kind with its own hit rules.
 
 ## Rules for an agent picking this up

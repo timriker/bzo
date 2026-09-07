@@ -25,6 +25,7 @@ import {
   getSoundPath,
   loadAudioBuffer,
 } from './audio.js';
+import { WORLD_WALL_HEIGHT } from './collision.mjs';
 import {
   getPlayerTeamColor,
   getTeamFromColorIndex,
@@ -375,6 +376,13 @@ const DYNAMIC_LIGHT_OFFSET = new THREE.Vector3();
 const DYNAMIC_LIGHT_QUATERNION = new THREE.Quaternion();
 // The colour scales, which are the only thing that differs between the lights.
 const BZFLAG_SHOT_LIGHT_SCALE = 1.5;          // BoltSceneNode.cxx:85
+// LaserSceneNode::renderGeoLaser (LaserSceneNode.cxx:178): a bright core inside a
+// faint glow, both cylinders the length of the segment. That is upstream's
+// untextured laser, and bzo ships no laser texture, so it is the one bzo draws.
+const BZFLAG_LASER_LAYERS = Object.freeze([
+  Object.freeze([0.0625, 0.85]),
+  Object.freeze([0.1, 0.125]),
+]);
 const BZFLAG_SHOT_IMPACT_LIGHT_SCALE = 1.2;   // playing.cxx:3636, scaled by size/tankLength
 const BZFLAG_EXPLOSION_LIGHT_SCALE = 9.6;     // playing.cxx:3654, colour * lightGain
 const BZFLAG_JUMPJET_LIGHT_SCALE = 3.0;       // TankSceneNode.cxx:308, (1.5,1,0.5) * 2
@@ -2137,7 +2145,11 @@ class RenderManager {
     this._disposeSharedObstacleMaterials('boundary');
     this._clearDebugLabels('boundary');
 
-    const wallHeight = 5;
+    // `_wallHeight`, the same figure the border colliders stand the solid part of
+    // the wall up to, so what bounces a shot is exactly what a player can see.
+    // Above it the barrier is invisible and lets shots through, which is what
+    // upstream's outer wall does too.
+    const wallHeight = WORLD_WALL_HEIGHT;
     const wallThickness = 1;
 
     // Create and track boundary meshes
@@ -4272,6 +4284,108 @@ class RenderManager {
     return projectile;
   }
 
+  // LaserStrategy's laser scene nodes: one quad per segment of a path that was
+  // built whole the moment the trigger was pulled. bzo takes the segments from
+  // the server, which traced them, and draws a thin additive tube along each --
+  // upstream textures its beam and bzo has no such texture, which is the only
+  // difference. The group sits at the muzzle so the shot still has a position
+  // for the radar and for its sounds.
+  createShotBeam(data) {
+    if (!this.scene) return null;
+    const beamColor = typeof data.color === 'number' ? data.color : 0xffff00;
+    const segments = Array.isArray(data.segments) ? data.segments : [];
+    const origin = segments.length > 0 ? segments[0].from : { x: data.x, y: data.y, z: data.z };
+    const group = new THREE.Group();
+    group.position.set(origin.x, origin.y, origin.z);
+    group.renderOrder = SHOT_RENDER_ORDER;
+
+    // One instanced draw per layer, however many bends the beam has: a
+    // ricocheting laser on an enclosed map runs to makeSegments' hundred
+    // segments, and a mesh apiece would be a hundred geometries built and thrown
+    // away inside a third of a second.
+    if (!this._laserGeometry) {
+      this._laserGeometry = new THREE.CylinderGeometry(1, 1, 1, 8, 1, true);
+    }
+    const materials = [];
+    const layers = [];
+    const up = new THREE.Vector3(0, 1, 0);
+    const from = new THREE.Vector3();
+    const to = new THREE.Vector3();
+    const direction = new THREE.Vector3();
+    const midpoint = new THREE.Vector3();
+    const orientation = new THREE.Quaternion();
+    const scale = new THREE.Vector3();
+    const matrix = new THREE.Matrix4();
+    const drawn = segments.filter((segment) => segment?.from && segment?.to
+      && Math.hypot(segment.to.x - segment.from.x, segment.to.y - segment.from.y,
+        segment.to.z - segment.from.z) > 0.01);
+
+    for (const [radius, alpha] of BZFLAG_LASER_LAYERS) {
+      if (drawn.length === 0) break;
+      const material = new THREE.MeshBasicMaterial({
+        color: beamColor,
+        transparent: true,
+        opacity: alpha,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false,
+      });
+      const mesh = new THREE.InstancedMesh(this._laserGeometry, material, drawn.length);
+      mesh.frustumCulled = false;
+      mesh.renderOrder = SHOT_RENDER_ORDER;
+      drawn.forEach((segment, index) => {
+        from.set(segment.from.x, segment.from.y, segment.from.z);
+        to.set(segment.to.x, segment.to.y, segment.to.z);
+        direction.subVectors(to, from);
+        const length = direction.length();
+        orientation.setFromUnitVectors(up, direction.divideScalar(length));
+        midpoint.addVectors(from, to).multiplyScalar(0.5).sub(group.position);
+        scale.set(radius, length, radius);
+        mesh.setMatrixAt(index, matrix.compose(midpoint, orientation, scale));
+      });
+      mesh.instanceMatrix.needsUpdate = true;
+      group.add(mesh);
+      materials.push(material);
+      layers.push(mesh);
+    }
+
+    group.userData = { beam: true, beamMaterials: materials, beamLayers: layers, color: beamColor };
+    this.worldGroup.add(this._tagDraws(group, 'effect'));
+    // The shooter has already heard and seen its own shot leave the barrel; this
+    // message is what tells it where the beam went.
+    if (!data.silent) {
+      this.playSound(typeof data.fireSound === 'string' ? data.fireSound : 'fire', group.position);
+      if (drawn.length > 0) {
+        const first = drawn[0];
+        const flashDir = new THREE.Vector3(
+          first.to.x - first.from.x, first.to.y - first.from.y, first.to.z - first.from.z
+        );
+        this.createMuzzleFlash(group.position, flashDir.normalize());
+      }
+    }
+
+    // SegmentedShotStrategy::update plays SFX_RICOCHET at the start of each
+    // reflected segment and adds a teleport effect where a shot crossed a
+    // portal. A laser is already at the end of its path the first time it
+    // updates (LaserStrategy's constructor sets the current time to the last
+    // one), so upstream announces every bend at once and so does this.
+    for (let i = 1; i < segments.length; i += 1) {
+      const cause = segments[i - 1].end;
+      const at = new THREE.Vector3(segments[i].from.x, segments[i].from.y, segments[i].from.z);
+      if (cause === 'obstacle' || cause === 'ground') {
+        this.playSound('ricochet', at);
+        const before = segments[i - 1];
+        this.createRicochetEffect(at, {
+          x: (segments[i].to.x - segments[i].from.x) - (before.to.x - before.from.x),
+          y: (segments[i].to.y - segments[i].from.y) - (before.to.y - before.from.y),
+          z: (segments[i].to.z - segments[i].from.z) - (before.to.z - before.from.z),
+        });
+      } else if (cause === 'teleport') {
+        this.playSound('teleport', at);
+      }
+    }
+    return group;
+  }
+
   removeProjectile(projectile, reason = 1) {
     if (!projectile || !this.scene) return;
     if (reason === 0) {
@@ -4282,6 +4396,13 @@ class RenderManager {
     // Remove point light from scene if present
     if (this.projectileLights) this.projectileLights.delete(projectile);
     this.worldGroup.remove(projectile);
+    if (projectile.userData?.beam) {
+      // The cylinder itself is shared between every beam ever drawn, so only the
+      // per-beam instances and their materials are thrown away.
+      for (const mesh of projectile.userData.beamLayers || []) mesh.dispose();
+      for (const material of projectile.userData.beamMaterials || []) material.dispose();
+      return;
+    }
     if (projectile.userData?.head?.material?.map) projectile.userData.head.material.map.dispose();
     if (projectile.userData?.head?.material) projectile.userData.head.material.dispose();
     if (Array.isArray(projectile.userData?.tailSegments)) {

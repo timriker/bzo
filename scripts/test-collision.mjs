@@ -400,4 +400,192 @@ const trapped = client.traceShotStep({ ...shotArgs, obstacles: corridor, ricoche
 assert.equal(trapped.bounces, client.MAX_SHOT_BOUNCES_PER_STEP, 'the bounce loop runs to its cap');
 assert.ok(Math.abs(trapped.x) < 1, 'and leaves the shot inside the corridor');
 
+// findShotSegmentImpact answers over a segment of any length, which is what a
+// beam needs and what findShotImpact cannot do: bisecting from the far end only
+// finds an obstacle the far end is inside, so a 35000-unit laser sailed through
+// a wall four units thick and left the world.
+{
+  const wall = { type: 'box', name: 'wall', x: 100, z: 0, w: 4, d: 400, h: 20, baseY: 0, rotation: 0 };
+  const from = { x: 0, y: 1.5, z: 0 };
+  const far = { x: 35000, y: 1.5, z: 0 };
+  const radius = client.SHOT_COLLISION_RADIUS;
+
+  assert.equal(
+    client.findShotImpact(
+      [wall], from.x, from.y, from.z, far.x, far.y, far.z, radius
+    ),
+    null,
+    'the bisection cannot see a wall the far end is past'
+  );
+
+  const impact = client.findShotSegmentImpact([wall], from, far, radius);
+  assert.ok(impact, 'the ray test finds it however far the segment reaches');
+  assert.equal(impact.obstacle, wall);
+  const hitX = from.x + ((far.x - from.x) * impact.fraction);
+  assert.ok(hitX > 97 && hitX <= 98, `stops just short of the wall face, got ${hitX}`);
+
+  // The nearest wall wins, whatever order the obstacles are in.
+  const nearer = { ...wall, name: 'nearer', x: 40 };
+  for (const obstacles of [[wall, nearer], [nearer, wall]]) {
+    const first = client.findShotSegmentImpact(obstacles, from, far, radius);
+    assert.equal(first.obstacle.name, 'nearer', 'the nearest obstacle is the one that is hit');
+  }
+
+  // A segment that stops short of the wall reaches nothing.
+  assert.equal(
+    client.findShotSegmentImpact([wall], from, { x: 50, y: 1.5, z: 0 }, radius),
+    null,
+    'a segment that ends before the wall does not hit it'
+  );
+
+  // A wall the beam passes over, and one it passes under.
+  assert.equal(
+    client.findShotSegmentImpact([wall], { x: 0, y: 30, z: 0 }, { x: 35000, y: 30, z: 0 }, radius),
+    null,
+    'a beam above a wall clears it'
+  );
+  assert.equal(
+    client.findShotSegmentImpact(
+      [{ ...wall, baseY: 10 }], from, far, radius
+    ),
+    null,
+    'and one under a raised wall goes beneath it'
+  );
+
+  // A rotated wall is tested in its own frame, and a pyramid is refined inside
+  // its bounding box rather than taken as the box.
+  const turned = { ...wall, name: 'turned', rotation: Math.PI / 4 };
+  assert.ok(client.findShotSegmentImpact([turned], from, far, radius), 'a rotated wall still stops it');
+  const pyramid = {
+    type: 'pyramid', name: 'pyr', x: 100, z: 0, w: 20, d: 20, h: 20, baseY: 0, rotation: 0,
+  };
+  assert.ok(
+    client.findShotSegmentImpact([pyramid], from, far, radius),
+    'a beam at the foot of a pyramid meets its slope'
+  );
+  // Near the tip the cross-section has shrunk to a column a unit across, so a
+  // beam eight units off the axis crosses the pyramid's bounding box and misses
+  // the solid inside it -- which is the case the interval walk exists for.
+  assert.equal(
+    client.findShotSegmentImpact(
+      [pyramid], { x: 0, y: 19, z: 8 }, { x: 35000, y: 19, z: 8 }, radius
+    ),
+    null,
+    'and one level with its tip passes beside it'
+  );
+  assert.ok(
+    client.getShotObstacleInterval(pyramid, { x: 0, y: 19, z: 8 }, { x: 35000, y: 19, z: 8 }, radius),
+    'even though it crossed the bounding box'
+  );
+
+  // The two copies agree, as ever.
+  assert.deepEqual(
+    server.findShotSegmentImpact([nearer, wall, turned, pyramid], from, far, radius),
+    client.findShotSegmentImpact([nearer, wall, turned, pyramid], from, far, radius),
+    'client and server ray impact diverged'
+  );
+  assert.deepEqual(
+    server.getShotObstacleInterval(wall, from, far, radius),
+    client.getShotObstacleInterval(wall, from, far, radius),
+    'client and server obstacle interval diverged'
+  );
+}
+
+// _wallHeight and the two flags the world border is expressed with. Upstream's
+// border is one WallObstacle: an infinite plane to a tank, only _wallHeight tall
+// to a bouncing shot, which flies over it rather than back into the arena.
+{
+  assert.equal(client.TANK_HEIGHT, 2.05, '_tankHeight');
+  assert.ok(
+    Math.abs(client.WORLD_WALL_HEIGHT - (3 * 2.05)) < 1e-9,
+    '_wallHeight is 3.0 * _tankHeight'
+  );
+  assert.equal(server.WORLD_WALL_HEIGHT, client.WORLD_WALL_HEIGHT);
+
+  // The border as bzo builds it: a barrier taller than any map that stops tanks
+  // and is `shootThrough`, and in front of it the visible wall, `_wallHeight`
+  // tall, that stops shots and is `driveThrough`.
+  const barrier = {
+    type: 'box', name: 'barrier', collisionKind: 'boundary', shootThrough: true,
+    x: 100, z: 0, w: 4, d: 400, h: 1000, baseY: 0, rotation: 0,
+  };
+  const solid = {
+    ...barrier, name: 'wall', shootThrough: false, driveThrough: true,
+    h: client.WORLD_WALL_HEIGHT,
+  };
+  const border = [barrier, solid];
+  const radius = client.SHOT_COLLISION_RADIUS;
+
+  // Low down the wall is there for a shot; high up only the barrier is, and a
+  // shoot-through obstacle is not an obstacle a shot can meet at all.
+  const low = { from: { x: 0, y: 2, z: 0 }, to: { x: 35000, y: 2, z: 0 } };
+  const high = { from: { x: 0, y: 40, z: 0 }, to: { x: 35000, y: 40, z: 0 } };
+  assert.equal(
+    client.findShotSegmentImpact(border, low.from, low.to, radius).obstacle.name,
+    'wall',
+    'a shot at tank height meets the wall'
+  );
+  assert.equal(
+    client.findShotSegmentImpact(border, high.from, high.to, radius),
+    null,
+    'and one above the wall passes through the barrier over it'
+  );
+  assert.equal(
+    client.findShotObstacle(border, 101, 40, 0, radius),
+    null,
+    'a shoot-through obstacle never counts as one a shot is inside'
+  );
+  // Which is what stops a bouncing shot being thrown back into the arena from
+  // an altitude no wall reaches: makeSegments ignores that hit outright. The
+  // step ends inside the wall's own span, which is the only kind of step
+  // traceShotStep can answer for.
+  const atBorder = {
+    obstacles: border, x: 90, z: 0, dirX: 1, dirY: 0, dirZ: 0,
+    distance: 10, radius, ricochet: true,
+  };
+  const overTheTop = client.traceShotStep({ ...atBorder, y: 40 });
+  assert.equal(overTheTop.bounces, 0, 'a bouncing shot above the wall does not bounce');
+  assert.ok(overTheTop.x >= 100, 'it carries on past the border');
+  const intoTheWall = client.traceShotStep({ ...atBorder, y: 2 });
+  assert.equal(intoTheWall.bounces, 1, 'and one at tank height bounces off the wall');
+  assert.ok(intoTheWall.dirX < 0, 'back into the arena');
+
+  // Each collider does one job and stands aside from the other, so no collision
+  // code has to reason about the visible wall's roof -- which upstream's
+  // WallObstacle does not have at all, getHitNormal only ever answering with the
+  // plane. Tanks are held by the barrier at the same inner edge either way.
+  assert.equal(solid.driveThrough, true, 'the visible wall is the shot collider only');
+  assert.equal(barrier.shootThrough, true, 'and the barrier is the tank collider only');
+  assert.equal(barrier.baseY + barrier.h, 1000, 'taller than any map bzo has to hold');
+  assert.equal(solid.x, barrier.x, 'both stand on the same ground');
+  assert.equal(solid.w, barrier.w);
+  // The geometry is solid either way; the flags decide who meets it.
+  assert.ok(client.shotInsideObstacle(barrier, 101, 40, 0, radius), 'the barrier is solid geometry');
+}
+
+// Obstacle::canRicochet -- `ricochet` in a `.bzw`. An obstacle that declares
+// itself bouncy reflects an ordinary shot, which is separate from the world
+// switch and from the flag.
+{
+  const plain = { type: 'box', name: 'plain', x: 20, z: 0, w: 4, d: 40, h: 10, baseY: 0, rotation: 0 };
+  const bouncy = { ...plain, name: 'bouncy', ricochet: true };
+  // The step has to end inside the wall for traceShotStep to see it at all.
+  const shot = { x: 0, y: 2, z: 0, dirX: 1, dirY: 0, dirZ: 0, distance: 20, radius: client.SHOT_COLLISION_RADIUS };
+
+  const stopped = client.traceShotStep({ ...shot, obstacles: [plain], ricochet: false });
+  assert.equal(stopped.bounces, 0, 'an ordinary shot stops at an ordinary wall');
+  assert.equal(stopped.obstacle.name, 'plain');
+
+  const bounced = client.traceShotStep({ ...shot, obstacles: [bouncy], ricochet: false });
+  assert.equal(bounced.bounces, 1, 'and bounces off one that declares itself bouncy');
+  assert.equal(bounced.obstacle, null);
+  assert.ok(bounced.dirX < 0, 'heading back the way it came');
+
+  assert.deepEqual(
+    server.traceShotStep({ ...shot, obstacles: [bouncy], ricochet: false }),
+    bounced,
+    'client and server per-obstacle ricochet diverged'
+  );
+}
+
 console.log(`collision geometry tests passed (${checked} fuzz samples, ${solidSamples} solid, seed ${SEED})`);

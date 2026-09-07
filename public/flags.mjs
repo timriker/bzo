@@ -52,6 +52,22 @@ export const BASE_SIZE = 60.0;
 // while you drive back under it.
 export const SHIELD_FLIGHT = 2.7;
 
+// _rFireAdVel, _rFireAdRate, _mGunAdVel, _mGunAdRate, _laserAdVel, _laserAdRate
+// and _laserAdLife (global.cxx:80, :95, :128). A shot variant is three
+// multipliers on the world's own shot: how fast it flies, how often it may be
+// fired, and how long it lives. Rapid Fire and Machine Gun declare their life as
+// the string "1.0 / <rate>" rather than as a number, so the reciprocal is the
+// rule and not a coincidence -- the shot slot frees exactly as fast as the flag
+// fires. Laser is the one that breaks it: a tenth of the life and half the rate,
+// which is what makes it the shot you wait for.
+export const RAPID_FIRE_AD_VEL = 1.5;
+export const RAPID_FIRE_AD_RATE = 2.0;
+export const MACHINE_GUN_AD_VEL = 1.5;
+export const MACHINE_GUN_AD_RATE = 10.0;
+export const LASER_AD_VEL = 1000.0;
+export const LASER_AD_RATE = 0.5;
+export const LASER_AD_LIFE = 0.1;
+
 // BZFlag's tank radius, deliberately not bzo's 2. The grab radius scales with
 // the world rather than with the vehicle, as the sound reference distance in
 // audio.js does: a bzo tank is half as wide as an upstream one, and building
@@ -179,6 +195,30 @@ export const FLAG_TYPES = Object.freeze({
     team: 4,
     help: TEAM_FLAG_HELP,
   }),
+  F: Object.freeze({
+    abbreviation: 'F',
+    name: 'Rapid Fire',
+    endurance: FLAG_ENDURANCE.UNSTABLE,
+    quality: FLAG_QUALITY.GOOD,
+    team: null,
+    help: 'Shoots more often.  Shells go faster but not as far.',
+  }),
+  MG: Object.freeze({
+    abbreviation: 'MG',
+    name: 'Machine Gun',
+    endurance: FLAG_ENDURANCE.UNSTABLE,
+    quality: FLAG_QUALITY.GOOD,
+    team: null,
+    help: 'Very fast reload and very short range.',
+  }),
+  L: Object.freeze({
+    abbreviation: 'L',
+    name: 'Laser',
+    endurance: FLAG_ENDURANCE.UNSTABLE,
+    quality: FLAG_QUALITY.GOOD,
+    team: null,
+    help: 'Shoots a laser.  Infinite speed and range but long reload time.',
+  }),
   R: Object.freeze({
     abbreviation: 'R',
     name: 'Ricochet',
@@ -186,6 +226,22 @@ export const FLAG_TYPES = Object.freeze({
     quality: FLAG_QUALITY.GOOD,
     team: null,
     help: 'Shots bounce off walls.  Don\'t shoot yourself!',
+  }),
+  SB: Object.freeze({
+    abbreviation: 'SB',
+    name: 'Super Bullet',
+    endurance: FLAG_ENDURANCE.UNSTABLE,
+    quality: FLAG_QUALITY.GOOD,
+    team: null,
+    help: 'Shoots through buildings.  Can kill Phantom Zone.',
+  }),
+  IB: Object.freeze({
+    abbreviation: 'IB',
+    name: 'Invisible Bullet',
+    endurance: FLAG_ENDURANCE.UNSTABLE,
+    quality: FLAG_QUALITY.GOOD,
+    team: null,
+    help: 'Your shots don\'t appear on other radars.  Can still see them out window.',
   }),
   SH: Object.freeze({
     abbreviation: 'SH',
@@ -315,12 +371,80 @@ export function hasAirControl(abbreviation) {
   return abbreviation === 'WG';
 }
 
+// SegmentedShotStrategy's constructors, and bzfs's GetShotLifetime
+// (GameKeeper.cxx:401): what the firing flag does to the shot. The three factors
+// scale the world's `_shotSpeed`, its reload interval and its shot lifetime; the
+// three booleans are the rules that are not numbers.
+//
+// `beam` is a shot with no travel left to simulate. At `_laserAdVel` 1000 the
+// shell is 1666 units downrange after one simulation step -- further than any
+// bzo world is wide -- so the whole path is traced when the trigger is pulled
+// and the shot is a stationary line for the rest of its life, which is also how
+// upstream draws its laser: along the segment list makeSegments built at once.
+//
+// `throughBuildings` is upstream's `Through` obstacle effect, and it is why Super
+// Bullet does not bounce even where the world bounces everything -- makeSegments
+// promotes `Stop` to `Reflect` and never touches `Through`.
+//
+// `hiddenOnRadar` keeps a shot off every radar but its owner's
+// (RadarRenderer.cxx:664, against :585, which draws your own shots whatever they
+// are).
+//
+// `fireSound` is the sample the shot is announced with. Upstream switches on the
+// flag rather than playing SFX_FIRE for everything (playing.cxx:2956), and Laser
+// is the first flag bzo has that takes a sound of its own.
+const DEFAULT_SHOT_EFFECTS = Object.freeze({
+  velocityFactor: 1,
+  rateFactor: 1,
+  lifeFactor: 1,
+  beam: false,
+  throughBuildings: false,
+  hiddenOnRadar: false,
+  fireSound: 'fire',
+});
+
+const SHOT_EFFECTS = Object.freeze({
+  F: Object.freeze({
+    ...DEFAULT_SHOT_EFFECTS,
+    velocityFactor: RAPID_FIRE_AD_VEL,
+    rateFactor: RAPID_FIRE_AD_RATE,
+    lifeFactor: 1 / RAPID_FIRE_AD_RATE,
+  }),
+  MG: Object.freeze({
+    ...DEFAULT_SHOT_EFFECTS,
+    velocityFactor: MACHINE_GUN_AD_VEL,
+    rateFactor: MACHINE_GUN_AD_RATE,
+    lifeFactor: 1 / MACHINE_GUN_AD_RATE,
+  }),
+  L: Object.freeze({
+    ...DEFAULT_SHOT_EFFECTS,
+    velocityFactor: LASER_AD_VEL,
+    rateFactor: LASER_AD_RATE,
+    lifeFactor: LASER_AD_LIFE,
+    beam: true,
+    fireSound: 'laser',
+  }),
+  SB: Object.freeze({
+    ...DEFAULT_SHOT_EFFECTS,
+    throughBuildings: true,
+  }),
+  IB: Object.freeze({
+    ...DEFAULT_SHOT_EFFECTS,
+    hiddenOnRadar: true,
+  }),
+});
+
+export function getShotEffects(abbreviation) {
+  return SHOT_EFFECTS[abbreviation] || DEFAULT_SHOT_EFFECTS;
+}
+
 // SegmentedShotStrategy::makeSegments. A shot that would stop at a wall
 // reflects off it instead when the world says every shot ricochets, and the
 // Ricochet flag makes one that reflects whatever the world says. With the world
 // switch on the flag has nothing left to offer, which is why the server forbids
-// it there.
+// it there. A shot that goes through buildings never meets one to bounce off.
 export function shotRicochets(abbreviation, allShotsRicochet) {
+  if (getShotEffects(abbreviation).throughBuildings) return false;
   return allShotsRicochet === true || abbreviation === 'R';
 }
 

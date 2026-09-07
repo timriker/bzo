@@ -193,6 +193,7 @@ import {
   getFlagTeamIndex,
   getFlagType,
   getKnownFlagAbbreviation,
+  getShotEffects,
   getWingsJumpVelocity,
   getWingsSlideVelocity,
   hasAirControl,
@@ -231,6 +232,7 @@ import {
   pyramidIntersectsTank,
   testOrigRectTank,
   traceShotStep,
+  WORLD_WALL_HEIGHT,
 } from './collision.mjs';
 import { resolveTankMotion } from './motion.mjs';
 
@@ -474,6 +476,9 @@ let xrSettingsMenuNextRepeatAt = 0;
 let xrSettingsMenuActivateLatched = false;
 let xrSettingsMenuBackLatched = false;
 let nextAllowedShotAt = 0;
+// The interval the last shot started, so the reload bars can show how far into
+// it they are. A flag that changes the rate changes this with it.
+let lastShotReloadMs = 0;
 let playerTeam = PLAYER_TEAM.ROGUE;
 // One entry per colour team the server offers: { team, size, wins, losses }.
 // Empty until a team-mode server sends its first update.
@@ -611,12 +616,35 @@ function callVoiceManager(method, ...args) {
   }
 }
 
+// How far through the interval since the last shot the reload is, 0 to 1. bzo's
+// reload is one interval shared by every slot, so this is a floor under all of
+// the shot bars rather than one bar's own progress.
+function getShotReloadProgress() {
+  if (!(lastShotReloadMs > 0)) return 1;
+  const remaining = nextAllowedShotAt - performance.now();
+  if (remaining <= 0) return 1;
+  return Math.max(0, Math.min(1, 1 - (remaining / lastShotReloadMs)));
+}
+
+// The world's `_shotSpeed` as the firing flag leaves it. The server resolves the
+// same product onto the projectile when it is fired, so both sides advance a
+// shot by the same amount in the same step.
+function getShotSpeed(flag) {
+  const base = Number.isFinite(gameConfig?.SHOT_SPEED) ? gameConfig.SHOT_SPEED : 100;
+  return base * getShotEffects(flag).velocityFactor;
+}
+
+// LocalPlayer::getReloadTime, scaled by the firing flag's rate. bzo's world
+// reload is one interval shared by every slot rather than upstream's timer per
+// slot, so a flag that fires twice as often waits half as long between shots;
+// the shot slots agree on their own, because a variant's life is the reciprocal
+// of its rate.
 function getShotReloadTimeMs() {
   const configuredReload = Number(gameConfig?.SHOT_RELOAD_TIME);
-  if (Number.isFinite(configuredReload) && configuredReload > 0) {
-    return configuredReload;
-  }
-  return 1000;
+  const base = Number.isFinite(configuredReload) && configuredReload > 0
+    ? configuredReload
+    : 1000;
+  return base / getShotEffects(getMyFlag()?.type ?? null).rateFactor;
 }
 
 function getVoiceAudioSettings() {
@@ -4324,6 +4352,34 @@ function removePausedSphere(playerId) {
 }
 
 function createProjectile(data) {
+  const effects = getShotEffects(data.flag ?? null);
+
+  // A beam was traced whole by the server and does not move, so there is no
+  // local copy to re-anchor and nothing to integrate: it is drawn from the
+  // segments that arrived with it.
+  if (effects.beam) {
+    const beamColor = getPlayerShotColor(data.playerId);
+    const beam = renderManager.createShotBeam({
+      ...data,
+      color: beamColor.getHex(),
+      fireSound: effects.fireSound,
+      // The shooter fired the report and the flash itself, the moment it pulled
+      // the trigger; only the path had to wait for the server.
+      silent: data.playerId === myPlayerId,
+    });
+    if (!beam) return;
+    beam.userData.playerId = data.playerId;
+    beam.userData.createdAt = data.createdAt;
+    beam.userData.shotSlot = Number.isInteger(data.shotSlot) ? data.shotSlot : 0;
+    beam.userData.radarColor = `#${beamColor.getHexString()}`;
+    beam.userData.flag = data.flag ?? null;
+    beam.userData.segments = Array.isArray(data.segments) ? data.segments : [];
+    beam.userData.lifeFactor = effects.lifeFactor;
+    beam.userData.hiddenOnRadar = effects.hiddenOnRadar;
+    projectiles.set(data.id, beam);
+    return;
+  }
+
   if (data.playerId === myPlayerId) {
     while (pendingLocalProjectiles.length > 0) {
       const pending = pendingLocalProjectiles.shift();
@@ -4342,6 +4398,9 @@ function createProjectile(data) {
       localProjectile.userData.pendingServerAck = false;
       localProjectile.userData.flag = data.flag ?? null;
       localProjectile.userData.ricochet = data.ricochet === true;
+      localProjectile.userData.speed = getShotSpeed(data.flag ?? null);
+      localProjectile.userData.lifeFactor = effects.lifeFactor;
+      localProjectile.userData.hiddenOnRadar = effects.hiddenOnRadar;
       localProjectile.userData.teleportReentryBlockTeleporterIndex = null;
       localProjectile.userData.teleportReentryBlockDistance = 0;
       projectiles.set(data.id, localProjectile);
@@ -4368,6 +4427,11 @@ function createProjectile(data) {
   // one thing bzo reads off it so far: whether the shot bounces.
   projectile.userData.flag = data.flag ?? null;
   projectile.userData.ricochet = data.ricochet === true;
+  // How fast it flies, how long its slot is held, and whether anybody else's
+  // radar shows it -- all three come off the firing flag.
+  projectile.userData.speed = getShotSpeed(data.flag ?? null);
+  projectile.userData.lifeFactor = effects.lifeFactor;
+  projectile.userData.hiddenOnRadar = effects.hiddenOnRadar;
   projectile.userData.teleportReentryBlockTeleporterIndex = null;
   projectile.userData.teleportReentryBlockDistance = 0;
   projectiles.set(data.id, projectile);
@@ -4404,6 +4468,10 @@ function createLocalProjectile({ x, y, z, dirX, dirZ, dirY = 0 }) {
   projectile.userData.ricochet = shotRicochets(
     projectile.userData.flag, gameConfig?.ALL_SHOTS_RICOCHET
   );
+  const localEffects = getShotEffects(projectile.userData.flag);
+  projectile.userData.speed = getShotSpeed(projectile.userData.flag);
+  projectile.userData.lifeFactor = localEffects.lifeFactor;
+  projectile.userData.hiddenOnRadar = localEffects.hiddenOnRadar;
   projectile.userData.teleportReentryBlockTeleporterIndex = null;
   projectile.userData.teleportReentryBlockDistance = 0;
   projectiles.set(localId, projectile);
@@ -4727,20 +4795,80 @@ function getBoxCollisionDistanceSquared(localX, localZ, halfW, halfD) {
   };
 }
 
+// Upstream's border is one WallObstacle a side doing two jobs at once.
+// WallObstacle::inCylinder and inBox ignore height entirely, so it is an
+// infinite half-space that stops a tank at any altitude; makeSegments then
+// ignores a bouncing shot's hit on it above getHeight() (`ignoreHit`) and lets
+// the shot fly over rather than back into the arena. So the wall you can see
+// bounces shots and the invisible barrier above it does not.
+//
+// bzo says that with two colliders a side rather than a special case in the shot
+// path, each doing one of the two jobs and standing aside from the other with one
+// of upstream's own per-obstacle flags:
+//
+//   - the barrier, a thousand units high -- taller than any map bzo has to hold
+//     -- is the tank collider, and is `shootThrough`. It is upstream's wall as
+//     tanks meet it: a height-ignoring half-space with no roof.
+//   - the visible wall, `_wallHeight` tall, is the shot collider, and is
+//     `driveThrough`. It exists to give a shot a height to stop bouncing at.
+//
+// The flag on the visible wall is what makes the split correct rather than what
+// papers over it. Tanks are held by the barrier at the same inner edge, so they
+// never reach the wall, and the wall's roof -- which upstream's WallObstacle does
+// not have at all, `getHitNormal` only ever answering with the plane -- is not a
+// surface any collision code has to reason about.
+//
+// Both flags are the ones a map's `shootthrough` and `drivethrough` keywords
+// set, which is what makes this the compatible way to say it.
 function getWorldBorderColliders() {
   if (cachedWorldBorderColliders.length > 0) return cachedWorldBorderColliders;
   const mapSize = gameConfig?.MAP_SIZE || gameConfig?.mapSize || 100;
   const halfMap = mapSize / 2;
   const thickness = 4;
+  const barrierHeight = 1000;
   const span = mapSize + thickness * 2;
-  cachedWorldBorderColliders = [
-    { type: 'box', name: 'boundary_north', collisionKind: 'boundary', x: 0, z: -halfMap - thickness / 2, w: span, d: thickness, h: 1000, baseY: 0, rotation: 0 },
-    { type: 'box', name: 'boundary_south', collisionKind: 'boundary', x: 0, z: halfMap + thickness / 2, w: span, d: thickness, h: 1000, baseY: 0, rotation: 0 },
-    { type: 'box', name: 'boundary_east', collisionKind: 'boundary', x: halfMap + thickness / 2, z: 0, w: thickness, d: span, h: 1000, baseY: 0, rotation: 0 },
-    { type: 'box', name: 'boundary_west', collisionKind: 'boundary', x: -halfMap - thickness / 2, z: 0, w: thickness, d: span, h: 1000, baseY: 0, rotation: 0 }
+  const sides = [
+    { name: 'north', x: 0, z: -halfMap - thickness / 2, w: span, d: thickness },
+    { name: 'south', x: 0, z: halfMap + thickness / 2, w: span, d: thickness },
+    { name: 'east', x: halfMap + thickness / 2, z: 0, w: thickness, d: span },
+    { name: 'west', x: -halfMap - thickness / 2, z: 0, w: thickness, d: span },
   ];
+  cachedWorldBorderColliders = [];
+  for (const side of sides) {
+    // The barrier that stops a tank at any altitude a map can reach, and lets
+    // every shot through.
+    cachedWorldBorderColliders.push({
+      type: 'box',
+      name: `boundary_${side.name}`,
+      collisionKind: 'boundary',
+      shootThrough: true,
+      x: side.x,
+      z: side.z,
+      w: side.w,
+      d: side.d,
+      h: barrierHeight,
+      baseY: 0,
+      rotation: 0,
+    });
+    // And the wall a player can see, which is what a shot bounces off below
+    // `_wallHeight` and nothing at all above it. Tanks are the barrier's job.
+    cachedWorldBorderColliders.push({
+      type: 'box',
+      name: `boundary_${side.name}_wall`,
+      collisionKind: 'boundary',
+      driveThrough: true,
+      x: side.x,
+      z: side.z,
+      w: side.w,
+      d: side.d,
+      h: WORLD_WALL_HEIGHT,
+      baseY: 0,
+      rotation: 0,
+    });
+  }
   return cachedWorldBorderColliders;
 }
+
 
 function getCollisionColliders() {
   if (cachedCollisionColliders.length === 0) {
@@ -4801,6 +4929,11 @@ function checkCollision(x, y, z, ignoredObstacles = null, rotation = playerRotat
   let sweptCollision = null;
   for (const obs of getCollisionColliders()) {
     if (ignoredObstacles && ignoredObstacles.has(obs)) continue;
+    // `drivethrough` in a `.bzw`, `Obstacle::isDriveThrough` upstream: an
+    // obstacle a tank passes straight through. Nothing sets it yet -- it is here
+    // so that a map which names it has nowhere else to be honoured -- and
+    // `shootThrough`, which the world border does use, is its other half.
+    if (obs.driveThrough) continue;
     const obstacleHeight = obs.h || 4;
     const obstacleBase = obs.baseY || 0;
     const obstacleTop = obstacleBase + obstacleHeight;
@@ -6864,7 +6997,8 @@ function handleMotion(deltaTime) {
     const maxActiveShots = normalizeShotSlotCount(gameConfig?.SHOT_MAX_ACTIVE);
     if (getActiveProjectileCountForPlayer(myPlayerId) < maxActiveShots) {
       if (shoot()) {
-        nextAllowedShotAt = fireNow + getShotReloadTimeMs();
+        lastShotReloadMs = getShotReloadTimeMs();
+        nextAllowedShotAt = fireNow + lastShotReloadMs;
       }
     }
   }
@@ -6897,6 +7031,18 @@ function shoot() {
     dirY: 0,
     dirZ,
   });
+  // A beam's path is the server's to trace -- it is a polyline through whatever
+  // it met, not something the client can extrapolate from a direction -- so the
+  // shooter gets the muzzle flash and the report at once and the beam itself
+  // when `shotBegin` lands. Everything else is predicted locally as before.
+  const myShot = getShotEffects(getMyFlag()?.type ?? null);
+  if (myShot.beam) {
+    const muzzle = new THREE.Vector3(shotX, shotY, shotZ);
+    renderManager.playSound(myShot.fireSound, muzzle);
+    renderManager.createMuzzleFlash(muzzle, new THREE.Vector3(dirX, 0, dirZ));
+    return true;
+  }
+
   createLocalProjectile({ x: shotX, y: shotY, z: shotZ, dirX, dirY: 0, dirZ });
   return true;
 }
@@ -7707,7 +7853,6 @@ function updateFlags(deltaTime) {
 }
 
 function updateProjectiles(deltaTime) {
-  const projectileSpeed = Number.isFinite(gameConfig?.SHOT_SPEED) ? gameConfig.SHOT_SPEED : 100;
   const clampedDelta = Math.min(0.1, Math.max(0, Number.isFinite(deltaTime) ? deltaTime : 0));
   projectileSimAccumulator += clampedDelta;
   const maxAccumulated = SHOT_SIM_STEP_SECONDS * SHOT_SIM_MAX_STEPS_PER_FRAME;
@@ -7717,6 +7862,12 @@ function updateProjectiles(deltaTime) {
 
   while (projectileSimAccumulator >= SHOT_SIM_STEP_SECONDS) {
     projectiles.forEach((projectile) => {
+      // A beam does not travel: the server traced its whole path when it was
+      // fired and the shot is a line until it fades.
+      if (projectile.userData.beam) return;
+      const projectileSpeed = Number.isFinite(projectile.userData.speed)
+        ? projectile.userData.speed
+        : (Number.isFinite(gameConfig?.SHOT_SPEED) ? gameConfig.SHOT_SPEED : 100);
       const traced = traceShotThroughTeleporters(
         {
           x: projectile.position.x,
@@ -8097,8 +8248,18 @@ function ensureXRShotStatusOverlay() {
     if (slotIndex < 0 || slotIndex >= maxSlots) return;
     const createdAt = Number.isFinite(projectile?.userData?.createdAt) ? projectile.userData.createdAt : Date.now();
     const ageMs = Math.max(0, Date.now() - createdAt);
-    slotProgress[slotIndex] = slotLifetimeMs > 0 ? Math.max(0, Math.min(1, ageMs / slotLifetimeMs)) : 0;
+    // A shot variant holds its slot for its own life; see updateShotStatus.
+    const lifeFactor = Number.isFinite(projectile?.userData?.lifeFactor)
+      ? projectile.userData.lifeFactor
+      : 1;
+    const lifetimeMs = slotLifetimeMs * lifeFactor;
+    slotProgress[slotIndex] = lifetimeMs > 0 ? Math.max(0, Math.min(1, ageMs / lifetimeMs)) : 0;
   });
+
+  const reloadFloor = getShotReloadProgress();
+  for (let slot = 0; slot < maxSlots; slot += 1) {
+    slotProgress[slot] = Math.min(slotProgress[slot], reloadFloor);
+  }
 
   const barGap = 2;
   const barHeight = 7;
@@ -8667,12 +8828,43 @@ function updateRadar() {
   }
 
   // Draw projectiles (shots) within radar distance
+  const shotRadarColorOf = (proj) => proj.userData?.radarColor || '#FFD700';
   if (typeof projectiles !== 'undefined' && projectiles.forEach) {
     projectiles.forEach((proj) => {
+      // RadarRenderer.cxx:664. An Invisible Bullet is drawn on its owner's radar
+      // and nobody else's -- upstream sweeps its own shots (:585) before it asks
+      // the question at all. Seer is the exception, and arrives with the flags
+      // that need it.
+      if (proj.userData?.hiddenOnRadar && proj.userData.playerId !== myPlayerId) return;
+      // A beam is a line on the radar, as its scene node is out the window. Its
+      // segments are already in world coordinates, so each one is two points.
+      if (proj.userData?.beam) {
+        const segments = proj.userData.segments || [];
+        if (segments.length === 0) return;
+        radarCtx.save();
+        radarCtx.strokeStyle = shotRadarColorOf(proj);
+        radarCtx.globalAlpha = 0.85;
+        radarCtx.lineWidth = 2;
+        radarCtx.beginPath();
+        for (const segment of segments) {
+          const fromRel = toRadarRelative(segment.from.x, segment.from.z);
+          const toRel = toRadarRelative(segment.to.x, segment.to.z);
+          if (isOutsideRadarSquare(fromRel.x, fromRel.y) && isOutsideRadarSquare(toRel.x, toRel.y)) {
+            continue;
+          }
+          const fromPos = radarToCanvas(fromRel.x, fromRel.y);
+          const toPos = radarToCanvas(toRel.x, toRel.y);
+          radarCtx.moveTo(fromPos.x, fromPos.y);
+          radarCtx.lineTo(toPos.x, toPos.y);
+        }
+        radarCtx.stroke();
+        radarCtx.restore();
+        return;
+      }
       const rel = toRadarRelative(proj.position.x, proj.position.z);
       if (isOutsideRadarSquare(rel.x, rel.y)) return;
       const pos = radarToCanvas(rel.x, rel.y);
-      const shotRadarColor = proj.userData?.radarColor || '#FFD700';
+      const shotRadarColor = shotRadarColorOf(proj);
 
       radarCtx.save();
       radarCtx.beginPath();
@@ -9419,7 +9611,10 @@ function animate(frameTime) {
     updateAltitudeTape();
     updateAltimeter({ myTank });
     updateDegreeBar({ myTank, playerRotation, markers: getFlagHeadingMarkers() });
-    updateShotStatus({ myPlayerId, myTank, projectiles, gameConfig, now: Date.now() });
+    updateShotStatus({
+      myPlayerId, myTank, projectiles, gameConfig,
+      reloadProgress: getShotReloadProgress(), now: Date.now(),
+    });
   }
   markFramePhase('hud');
 

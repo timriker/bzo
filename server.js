@@ -40,6 +40,7 @@ const {
   getFlagEndurance,
   getFlagThrownAltitude,
   getFlagType,
+  getShotEffects,
   getTeamFlagAbbreviation,
   isTeamFlag,
 } = require('./server/flags.cjs');
@@ -51,15 +52,21 @@ const {
 } = require('./server/server-name.cjs');
 const {
   SHOT_COLLISION_RADIUS,
+  findShotObstacle,
+  findShotSegmentImpact,
   getBaseTeamAtPoint,
   getBaseTopY,
   getColliderLocalPoint,
+  getShotObstacleNormal,
   getTankLocalAngle,
   isOverFlatTop,
   pyramidIntersectsCylinder,
   pyramidIntersectsTank,
+  reflectShotDirection,
+  TANK_HEIGHT,
   testOrigRectTank,
   traceShotStep,
+  WORLD_WALL_HEIGHT,
 } = require('./server/collision.cjs');
 const {
   normalizePlayerTeamSelection,
@@ -859,6 +866,21 @@ function parseBZWServerOptions(lines) {
 }
 
 // Parse a BZW file and convert to obstacle format
+// WorldFileObstacle::read. Four bare keywords, no arguments and matched without
+// regard to case as upstream's strcasecmp does, that say who an obstacle is solid
+// to. `passable` is the pair of the first two together, and `ricochet` bounces
+// even an ordinary shot -- upstream's third source of a bounce, after the world
+// switch and the Ricochet flag.
+//
+// Every obstacle upstream reads inherits these, so a box, a pyramid, a base and
+// a teleporter all take them, and so do bzo's.
+const BZW_PASSABILITY_KEYWORDS = new Map([
+  ['drivethrough', { driveThrough: true }],
+  ['shootthrough', { shootThrough: true }],
+  ['passable', { driveThrough: true, shootThrough: true }],
+  ['ricochet', { ricochet: true }],
+]);
+
 function parseBZWMap(filename) {
   const text = fs.readFileSync(filename, 'utf8');
   const lines = text.split(/\r?\n/);
@@ -1037,8 +1059,12 @@ function parseBZWMap(filename) {
     if (!line || line.startsWith('#')) {
       continue;
     }
+    // Every keyword upstream reads it reads with strcasecmp, and it reads the
+    // first whitespace-delimited token rather than a prefix of the line -- so
+    // `Position` is a position and `basey` is not a base.
+    const token = line.split(/\s+/)[0].toLowerCase();
 
-    if (currentLink && line === 'end') {
+    if (currentLink && token === 'end') {
       if (currentLink.from && currentLink.to) {
         parsedLinks.push(currentLink);
       } else {
@@ -1048,61 +1074,64 @@ function parseBZWMap(filename) {
       continue;
     }
 
-    if (currentLink && line.startsWith('from')) {
+    if (currentLink && token === 'from') {
       const [, ...fromParts] = line.split(/\s+/);
       currentLink.from = parseLinkEndpoint(fromParts.join(' ').replace(/"/g, '').trim());
       continue;
     }
 
-    if (currentLink && line.startsWith('to')) {
+    if (currentLink && token === 'to') {
       const [, ...toParts] = line.split(/\s+/);
       currentLink.to = parseLinkEndpoint(toParts.join(' ').replace(/"/g, '').trim());
       continue;
     }
 
-    if (!current && line.startsWith('link')) {
+    if (!current && token === 'link') {
       currentLink = { from: null, to: null };
       continue;
     }
 
-    if (line.startsWith('world')) {
+    if (token === 'world') {
       // Look ahead for size
       for (let j = i + 1; j < lines.length; j++) {
         const wline = lines[j].trim();
-        if (wline.startsWith('size')) {
+        if (wline.split(/\s+/)[0].toLowerCase() === 'size') {
           const [, size] = wline.split(/\s+/);
           if (size) {
             GAME_CONFIG.MAP_SIZE = parseFloat(size) * 2;
           }
           break;
         }
-        if (wline === 'end') break;
+        if (wline.toLowerCase() === 'end') break;
       }
-    } else if (line.startsWith('box')) {
+    } else if (token === 'box') {
       current = { type: 'box' };
-    } else if (line.startsWith('pyramid')) {
+    } else if (token === 'pyramid') {
       current = { type: 'pyramid' };
-    } else if (line.startsWith('base')) {
+    } else if (token === 'base') {
       current = { type: 'box', kind: 'base', team: 1 };
-    } else if (line.startsWith('teleporter')) {
+    } else if (token === 'teleporter') {
       current = { type: 'box', kind: 'teleporter' };
       const [, ...teleporterNameParts] = line.split(/\s+/);
       const inlineTeleporterName = teleporterNameParts.join(' ').replace(/"/g, '').trim();
       if (inlineTeleporterName) {
         current.name = inlineTeleporterName;
       }
-    } else if (current && line.startsWith('name')) {
+    } else if (current && BZW_PASSABILITY_KEYWORDS.has(token)) {
+      Object.assign(current, BZW_PASSABILITY_KEYWORDS.get(token));
+    } else if (current && token === 'name') {
       // name <string>
       const [, ...nameParts] = line.split(/\s+/);
       const name = nameParts.join(' ').replace(/"/g, '').trim();
       if (name) current.name = name;
-    } else if (current && line.startsWith('position')) {
-      // position x y z (BZFlag +Y north maps to our -Z north)
+    } else if (current && (token === 'position' || token === 'pos')) {
+      // position x y z, or its `pos` alias (WorldFileLocation::read).
+      // BZFlag +Y north maps to our -Z north.
       const [, x, y, z] = line.split(/\s+/);
       current.x = parseFloat(x);
       current.z = -parseFloat(y); // BZFlag +Y (north) -> our -Z (north)
       current.baseY = parseFloat(z) || 0;
-    } else if (current && line.startsWith('size')) {
+    } else if (current && token === 'size') {
       // size w d h (BZFlag x/y are center-to-edge half extents, z is full height)
       const [, w, d, h] = line.split(/\s+/);
       const rawW = parseFloat(w);
@@ -1112,21 +1141,25 @@ function parseBZWMap(filename) {
       current.d = Math.abs(rawD) * 2;
       current.h = Math.abs(rawH);
       if (current.type === 'pyramid') {
-        current.inverted = rawH < 0;
+        // A negative height is upstream's ZFlip, and `flipz` says the same thing
+        // outright. Either may come first, so neither clears the other.
+        current.inverted = rawH < 0 || current.inverted === true;
       }
-    } else if (current && line.startsWith('rotation')) {
+    } else if (current && (token === 'rotation' || token === 'rot')) {
       // BZFlag rotation is CCW around +Z; our world maps BZFlag +Y (north) to -Z,
       // which flips the depth axis. The correct conversion is +deg + π.
       const [, deg] = line.split(/\s+/);
       current.rotation = (parseFloat(deg) || 0) * Math.PI / 180 + Math.PI;
-    } else if (current && line.startsWith('border')) {
+    } else if (current && current.type === 'pyramid' && token === 'flipz') {
+      current.inverted = true;
+    } else if (current && token === 'border') {
       const [, border] = line.split(/\s+/);
       current.border = Math.abs(parseFloat(border) || 0);
-    } else if (current && current.kind === 'base' && line.startsWith('color')) {
+    } else if (current && current.kind === 'base' && token === 'color') {
       const [, color] = line.split(/\s+/);
       const team = parseInt(color, 10);
       current.team = Number.isInteger(team) ? Math.max(1, Math.min(4, team)) : 1;
-    } else if (current && line === 'end') {
+    } else if (current && token === 'end') {
       // Use BZW name if present, otherwise assign a generated name
       if (!current.name) {
         if (current.kind === 'teleporter') {
@@ -1818,9 +1851,19 @@ class Projectile {
     this.playerId = playerId;
     this.shotSlot = shotSlot;
     // FiringInfo carries the firing flag upstream, and every shot variant reads
-    // its behaviour off it. Ricochet is the first one bzo uses it for.
+    // its behaviour off it. Resolved once, here, so no later step has to ask the
+    // flag again -- and so a shot keeps the rules it was fired under even if the
+    // shooter drops the flag while it is still in the air, which is what
+    // upstream's per-shot ShotStrategy gives it for free.
     this.flag = flag;
+    const effects = getShotEffects(flag);
     this.ricochet = shotRicochets(flag, GAME_CONFIG.ALL_SHOTS_RICOCHET);
+    this.speed = GAME_CONFIG.SHOT_SPEED * effects.velocityFactor;
+    this.throughBuildings = effects.throughBuildings;
+    // A beam does not fly: `traceShotBeam` walks its whole path when it is
+    // fired and leaves it here, and the projectile is a clock from then on.
+    this.beam = effects.beam;
+    this.points = null;
     this.bounces = 0;
     this.x = x;
     this.y = y || 2.2; // Default height if not specified (tank height + barrel height)
@@ -1832,9 +1875,13 @@ class Projectile {
     this.originX = x;
     this.originY = this.y;
     this.originZ = z;
-    this.lifetimeSeconds = GAME_CONFIG.SHOT_SPEED > 0
+    // GetShotLifetime (GameKeeper.cxx:401): the world's reload interval scaled by
+    // the flag's own life factor. The slot this shot holds frees with it, which
+    // is how Rapid Fire and Machine Gun get their rate -- their life is declared
+    // as the reciprocal of it.
+    this.lifetimeSeconds = (GAME_CONFIG.SHOT_SPEED > 0
       ? (GAME_CONFIG.SHOT_RANGE / GAME_CONFIG.SHOT_SPEED)
-      : 10;
+      : 10) * effects.lifeFactor;
     this.teleportReentryBlockTeleporterIndex = null;
     this.teleportReentryBlockDistance = 0;
   }
@@ -1893,17 +1940,76 @@ function getBoxCollisionDistanceSquared(localX, localZ, halfW, halfD) {
   return distX * distX + distZ * distZ;
 }
 
+// Upstream's border is one WallObstacle a side doing two jobs at once.
+// WallObstacle::inCylinder and inBox ignore height entirely, so it is an
+// infinite half-space that stops a tank at any altitude; makeSegments then
+// ignores a bouncing shot's hit on it above getHeight() (`ignoreHit`) and lets
+// the shot fly over rather than back into the arena. So the wall you can see
+// bounces shots and the invisible barrier above it does not.
+//
+// bzo says that with two colliders a side rather than a special case in the shot
+// path, each doing one of the two jobs and standing aside from the other with one
+// of upstream's own per-obstacle flags:
+//
+//   - the barrier, a thousand units high -- taller than any map bzo has to hold
+//     -- is the tank collider, and is `shootThrough`. It is upstream's wall as
+//     tanks meet it: a height-ignoring half-space with no roof.
+//   - the visible wall, `_wallHeight` tall, is the shot collider, and is
+//     `driveThrough`. It exists to give a shot a height to stop bouncing at.
+//
+// The flag on the visible wall is what makes the split correct rather than what
+// papers over it. Tanks are held by the barrier at the same inner edge, so they
+// never reach the wall, and the wall's roof -- which upstream's WallObstacle does
+// not have at all, `getHitNormal` only ever answering with the plane -- is not a
+// surface any collision code has to reason about.
+//
+// Both flags are the ones a map's `shootthrough` and `drivethrough` keywords
+// set, which is what makes this the compatible way to say it.
 function getWorldBorderColliders() {
   const halfMap = GAME_CONFIG.MAP_SIZE / 2;
   const thickness = 4;
-  const boundaryHeight = 1000;
+  const barrierHeight = 1000;
   const span = GAME_CONFIG.MAP_SIZE + thickness * 2;
-  return [
-    { type: 'box', name: 'boundary_north', collisionKind: 'boundary', infiniteHeight: true, x: 0, z: -halfMap - thickness / 2, w: span, d: thickness, h: boundaryHeight, baseY: 0, rotation: 0 },
-    { type: 'box', name: 'boundary_south', collisionKind: 'boundary', infiniteHeight: true, x: 0, z: halfMap + thickness / 2, w: span, d: thickness, h: boundaryHeight, baseY: 0, rotation: 0 },
-    { type: 'box', name: 'boundary_east', collisionKind: 'boundary', infiniteHeight: true, x: halfMap + thickness / 2, z: 0, w: thickness, d: span, h: boundaryHeight, baseY: 0, rotation: 0 },
-    { type: 'box', name: 'boundary_west', collisionKind: 'boundary', infiniteHeight: true, x: -halfMap - thickness / 2, z: 0, w: thickness, d: span, h: boundaryHeight, baseY: 0, rotation: 0 }
+  const sides = [
+    { name: 'north', x: 0, z: -halfMap - thickness / 2, w: span, d: thickness },
+    { name: 'south', x: 0, z: halfMap + thickness / 2, w: span, d: thickness },
+    { name: 'east', x: halfMap + thickness / 2, z: 0, w: thickness, d: span },
+    { name: 'west', x: -halfMap - thickness / 2, z: 0, w: thickness, d: span },
   ];
+  const colliders = [];
+  for (const side of sides) {
+    // The barrier that stops a tank at any altitude a map can reach, and lets
+    // every shot through.
+    colliders.push({
+      type: 'box',
+      name: `boundary_${side.name}`,
+      collisionKind: 'boundary',
+      shootThrough: true,
+      x: side.x,
+      z: side.z,
+      w: side.w,
+      d: side.d,
+      h: barrierHeight,
+      baseY: 0,
+      rotation: 0,
+    });
+    // And the wall a player can see, which is what a shot bounces off below
+    // `_wallHeight` and nothing at all above it. Tanks are the barrier's job.
+    colliders.push({
+      type: 'box',
+      name: `boundary_${side.name}_wall`,
+      collisionKind: 'boundary',
+      driveThrough: true,
+      x: side.x,
+      z: side.z,
+      w: side.w,
+      d: side.d,
+      h: WORLD_WALL_HEIGHT,
+      baseY: 0,
+      rotation: 0,
+    });
+  }
+  return colliders;
 }
 
 function getCollisionColliders() {
@@ -1924,6 +2030,11 @@ function checkCollision(x, y, z, tankRadius = 2, options = {}) {
   const effectiveRadius = tankRadius - slack;
   for (const obs of getCollisionColliders()) {
     if (ignoreTeleporters && obs?.kind === 'teleporter') continue;
+    // `drivethrough` in a `.bzw`, `Obstacle::isDriveThrough` upstream: an
+    // obstacle a tank passes straight through. Nothing sets it yet -- it is here
+    // so that a map which names it has nowhere else to be honoured -- and
+    // `shootThrough`, which the world border does use, is its other half.
+    if (obs?.driveThrough) continue;
     const obstacleHeight = obs.h || 4;
     const obstacleBase = obs.baseY || 0;
     const obstacleTop = obstacleBase + obstacleHeight;
@@ -4062,12 +4173,349 @@ function logShotEnd(projectile, cause, point, details = '') {
   );
 }
 
+// The tank a shot's hit test sees: bzo's own radius, which is not upstream's
+// `_tankRadius` 4.32, and `_tankHeight` from the collision pair, which is.
+// Phase 7's dimension flags are what turn these into a per-player answer.
+const TANK_HIT_RADIUS = 2;
+const TANK_HIT_HEIGHT = TANK_HEIGHT;
+
+// How far along a segment a shot first comes within a tank radius of one tank's
+// centre, or null if it never does. This is SegmentedShotStrategy::checkHit's
+// ray test reduced to bzo's upright cylinder: upstream tests the frame's whole
+// ray rather than sampling a point on it, which is what lets a Rapid Fire shell
+// -- 2.5 units of travel a step against a tank 4 units across -- hit the edge of
+// a tank instead of stepping past it.
+//
+// A shot that starts the segment already inside the radius strikes where it
+// started, which is what a beam fired point blank does.
+function getSegmentTankHitFraction(from, to, tank) {
+  const dx = to.x - from.x;
+  const dz = to.z - from.z;
+  const fx = from.x - tank.x;
+  const fz = from.z - tank.z;
+  const a = (dx * dx) + (dz * dz);
+  const b = (fx * dx) + (fz * dz);
+  const c = (fx * fx) + (fz * fz) - (TANK_HIT_RADIUS * TANK_HIT_RADIUS);
+  if (a < 1e-12) return c <= 0 ? 0 : null;
+  const discriminant = (b * b) - (a * c);
+  if (discriminant < 0) return null;
+  const root = Math.sqrt(discriminant);
+  const near = (-b - root) / a;
+  if (near > 1) return null;
+  if (near < 0) return ((-b + root) / a) < 0 ? null : 0;
+  return near;
+}
+
+// The nearest tank a shot's segment reaches, with the point it reaches it at, or
+// null. A shot is spent by the first tank it meets, so the sweep keeps the
+// nearest rather than the last one it looked at; upstream never has this to
+// decide, because each client tests only its own tank and one shot is one hit by
+// construction.
+function findShotPlayerHit(proj, from, to, now) {
+  let best = null;
+  players.forEach((player) => {
+    // LocalPlayer::checkHit tests a player's own shots too -- "Don't shoot
+    // yourself!" is the Ricochet flag's own help text -- but only once one has
+    // bounced. Before that a shot leaves the muzzle beyond the hit radius and
+    // outruns the tank it came from.
+    if (player.id === proj.playerId && proj.bounces === 0) return;
+    if (player.team === 'observer') return; // Observers are non-combatants
+    if (player.paused) return; // Can't hit paused players
+    if (player.health <= 0) return; // Can't hit dead players
+
+    // Use extrapolated position for accurate hit detection
+    const extrapolated = player.getExtrapolatedPosition(now);
+    const fraction = getSegmentTankHitFraction(from, to, extrapolated);
+    if (fraction === null) return;
+    if (best && best.fraction <= fraction) return;
+
+    // The tank's height gate, asked where the shot entered its footprint.
+    const y = from.y + ((to.y - from.y) * fraction);
+    if (y < extrapolated.y || y > extrapolated.y + TANK_HIT_HEIGHT) return;
+
+    best = {
+      player,
+      fraction,
+      point: {
+        x: from.x + ((to.x - from.x) * fraction),
+        y,
+        z: from.z + ((to.z - from.z) * fraction),
+      },
+    };
+  });
+  return best;
+}
+
+// gotBlowedUp() for the tank a shot reached. The shot is spent either way: a
+// shield gives up its flag and lives, anybody else dies.
+function applyShotPlayerHit(proj, id, player, point) {
+  projectiles.delete(id);
+
+  // gotBlowedUp() with the shield flag: the shot ends where it struck, the tank
+  // keeps its life, and the flag is thrown as if the player had dropped it --
+  // which is where _shieldFlight sends it up extra high. Nobody scores, because
+  // nobody died.
+  const carried = getPlayerFlag(player.id);
+  if (carried && shieldsAgainstShot(carried.type)) {
+    logShotEnd(proj, 'shield_hit', point, `victim=${player.id}`);
+    broadcastAll({ type: 'shotEnd', id, reason: 0, x: point.x, y: point.y, z: point.z });
+    dropPlayerFlag(player.id);
+    return;
+  }
+
+  // Hit!
+  player.health = 0;
+  player.deaths++;
+
+  const shooter = players.get(proj.playerId);
+  // Killing yourself with your own ricochet is a loss and nothing else, as
+  // self-destruct is. getTeamScoreDeltasForKill already reads the two being the
+  // same player.
+  if (shooter && shooter.id !== player.id) {
+    shooter.kills++;
+    recordShakeWin(shooter);
+  }
+  recordTeamScoreForKill(shooter, player);
+
+  logShotEnd(proj, 'player_hit', point, `victim=${player.id}`);
+  dropPlayerFlag(player.id);
+
+  broadcastAll({
+    type: 'playerHit',
+    victimId: player.id,
+    shooterId: proj.playerId,
+    projectileId: id,
+  });
+
+  // Respawn player
+  setTimeout(() => {
+    if (players.has(player.id)) {
+      player.respawn();
+      broadcastAll({
+        type: 'playerRespawned',
+        player: player.getState(),
+      });
+    }
+  }, GAME_CONFIG.RESPAWN_DELAY);
+}
+
+// The first teleporter event on one segment: the portal a shot enters, or the
+// frame it hits. traceShotThroughTeleporters asks the same two questions over a
+// whole simulation step; a beam has to ask them a segment at a time, because
+// over a laser's range a wall stands between the muzzle and a portal far more
+// often than not.
+function findSegmentTeleporterEvent(from, to, blockedTeleporterIndex, blockedDistance, ignoreFrames) {
+  let earliest = null;
+  for (const obs of TELEPORTER_OBSTACLES_BY_INDEX.values()) {
+    const crossing = getShotTeleporterCrossing(from, to, obs);
+    if (crossing) {
+      const blocked = blockedTeleporterIndex !== null
+        && blockedDistance > 1e-6
+        && obs.teleporterIndex === blockedTeleporterIndex;
+      if (!blocked && (!earliest || crossing.t < earliest.event.t)) {
+        earliest = { obs, type: 'teleport', event: crossing };
+      }
+    }
+    // A frame is a building, and a shot that goes through buildings goes through
+    // this one too.
+    if (ignoreFrames) continue;
+    const frameHit = getShotTeleporterFrameHit(from, to, obs);
+    if (frameHit && (!earliest || frameHit.t < earliest.event.t)) {
+      earliest = { obs, type: 'frameHit', event: frameHit };
+    }
+  }
+  return earliest;
+}
+
+// A beam's whole path, walked when the trigger is pulled. `_laserAdVel` 1000
+// puts the shell 1666 units downrange inside one simulation step -- further than
+// any bzo world is wide -- so there is nothing left to interpolate, and upstream
+// says the same thing by building its laser's entire segment list in
+// LaserStrategy's constructor and drawing along it.
+//
+// Takes whichever of a building, the ground, a teleporter, the world edge and a
+// tank the beam reaches first, as makeSegments does, and leaves the segments on
+// the projectile for the client to draw. Returns the tank it reached, if any,
+// for the caller to resolve once `shotBegin` has gone out: the client has to
+// have the shot before it is told the shot killed somebody.
+// makeSegments' own maxSegment. A straight beam is one segment; a ricocheting
+// one is as many as it can fit into its range, which on an enclosed map is what
+// ends it rather than the range doing so.
+const MAX_BEAM_SEGMENTS = 100;
+// How far off a surface the next segment is traced from, along that surface's
+// normal. It has to clear SHOT_COLLISION_RADIUS: within that distance the shot
+// still counts as inside the obstacle, and a segment that starts inside
+// something is carried straight through it -- so a smaller clearance sent the
+// beam through the first wall it bounced off and out of the world. The drawn
+// segment still starts at the impact point, so there is no gap to see.
+const BEAM_SURFACE_CLEARANCE = SHOT_COLLISION_RADIUS * 4;
+
+function traceShotBeam(proj, now) {
+  const obstacles = proj.throughBuildings ? [] : getCollisionColliders();
+  const halfMap = GAME_CONFIG.MAP_SIZE / 2;
+  let point = { x: proj.x, y: proj.y, z: proj.z };
+  // Where the segment is drawn from, which is the surface it bounced off rather
+  // than the clearance point the next segment is traced from.
+  let drawFrom = { ...point };
+  let direction = { x: proj.dirX, y: proj.dirY || 0, z: proj.dirZ };
+  let remaining = proj.speed * proj.lifetimeSeconds;
+  let blockedTeleporterIndex = null;
+  let blockedDistance = 0;
+  proj.segments = [];
+
+  for (let segment = 0; segment < MAX_BEAM_SEGMENTS && remaining > 1e-6; segment++) {
+    const far = {
+      x: point.x + (direction.x * remaining),
+      y: point.y + (direction.y * remaining),
+      z: point.z + (direction.z * remaining),
+    };
+
+    // makeSegments narrows one `t` across the ground, the first building and the
+    // first teleporter, so whichever is nearest is what the segment ended on.
+    // This is that in bzo's terms: the ground and the buildings are asked over
+    // the whole reach, the nearer of the two truncates the segment, and the
+    // teleporters are asked over what is left -- a portal behind a wall is not
+    // one the beam ever reaches.
+    const groundFraction = (direction.y < 0 && far.y < 0)
+      ? (0 - point.y) / (direction.y * remaining)
+      : Infinity;
+    // traceShotStep's rule for a shot that begins inside something: carry it
+    // through, because there is no surface between where it is and where it came
+    // from to stop it.
+    const impact = findShotObstacle(obstacles, point.x, point.y, point.z, SHOT_COLLISION_RADIUS)
+      ? null
+      : findShotSegmentImpact(obstacles, point, far, SHOT_COLLISION_RADIUS);
+    const obstacleFraction = impact ? impact.fraction : Infinity;
+
+    let reason = 'range';
+    let obstacle = null;
+    let fraction = 1;
+    if (obstacleFraction <= groundFraction && obstacleFraction < 1) {
+      reason = 'obstacle';
+      obstacle = impact.obstacle;
+      fraction = obstacleFraction;
+    } else if (groundFraction < 1) {
+      reason = 'ground';
+      fraction = groundFraction;
+    }
+    let end = {
+      x: point.x + ((far.x - point.x) * fraction),
+      y: reason === 'ground' ? 0 : point.y + ((far.y - point.y) * fraction),
+      z: point.z + ((far.z - point.z) * fraction),
+    };
+
+    const teleporterEvent = findSegmentTeleporterEvent(
+      point, end, blockedTeleporterIndex, blockedDistance, proj.throughBuildings
+    );
+    if (teleporterEvent) {
+      end = { ...teleporterEvent.event.point };
+      reason = teleporterEvent.type === 'frameHit' ? 'frame_hit' : 'teleport';
+      obstacle = teleporterEvent.type === 'frameHit' ? teleporterEvent.obs : null;
+    }
+
+    if (Math.abs(end.x) > halfMap || Math.abs(end.z) > halfMap) {
+      end = findMapEdgeImpactPoint(point.x, point.y, point.z, end.x, end.y, end.z, halfMap);
+      reason = 'out_of_bounds';
+      obstacle = null;
+    }
+
+    const tankHit = findShotPlayerHit(proj, point, end, now);
+    if (tankHit) {
+      proj.segments.push({ from: { ...drawFrom }, to: { ...tankHit.point }, end: 'player_hit' });
+      proj.endReason = 'player_hit';
+      return tankHit;
+    }
+
+    // Each segment carries what ended it, which is what tells the client to
+    // play a ricochet where the next one starts.
+    proj.segments.push({ from: { ...drawFrom }, to: { ...end }, end: reason });
+    const travelled = Math.hypot(end.x - point.x, end.y - point.y, end.z - point.z);
+    remaining = Math.max(0, remaining - travelled);
+    blockedDistance = Math.max(0, blockedDistance - travelled);
+    if (blockedDistance <= 1e-6) blockedTeleporterIndex = null;
+    proj.endReason = reason;
+
+    if (reason === 'teleport') {
+      const sourceFaceId = teleporterEvent.event.sourceFaceId;
+      const destFaceId = getShotTeleportDestinationFace(sourceFaceId);
+      const destTeleporterIndex = Math.floor(destFaceId / 2);
+      const destObs = TELEPORTER_OBSTACLES_BY_INDEX.get(destTeleporterIndex);
+      if (!destObs) break;
+      const transformed = transformShotThroughTeleporter(
+        end, direction, teleporterEvent.obs, sourceFaceId % 2, destObs, destFaceId % 2
+      );
+      point = {
+        x: transformed.pointOut.x + (transformed.dirOut.x * BEAM_SURFACE_CLEARANCE),
+        y: transformed.pointOut.y + (transformed.dirOut.y * BEAM_SURFACE_CLEARANCE),
+        z: transformed.pointOut.z + (transformed.dirOut.z * BEAM_SURFACE_CLEARANCE),
+      };
+      direction = transformed.dirOut;
+      drawFrom = { ...point };
+      blockedTeleporterIndex = destTeleporterIndex;
+      blockedDistance = Math.max(
+        SHOT_TELEPORT_REENTRY_BLOCK_DISTANCE,
+        (getShotTeleporterDims(destObs).activeHalfD * 2) + 0.05,
+      );
+      log(`[SHOT_TP] id=${proj.id} beam srcFace=${sourceFaceId} dstFace=${destFaceId}`);
+      continue;
+    }
+
+    // makeSegments promotes Stop to Reflect on a world where every shot bounces,
+    // so a laser fired there is a beam that bends. Both surfaces bounce it: a
+    // building about its own normal, the ground about straight up. A teleporter
+    // frame is the one surface that does not, as it is for a flying shot.
+    if (proj.ricochet && (reason === 'obstacle' || reason === 'ground')) {
+      const normal = reason === 'ground'
+        ? { x: 0, y: 1, z: 0 }
+        : getShotObstacleNormal(obstacle, end.x, end.y, end.z, SHOT_COLLISION_RADIUS);
+      direction = reflectShotDirection(direction.x, direction.y, direction.z, normal);
+      // The next segment is traced from clear of the surface, along its normal
+      // rather than along the new direction: a grazing bounce leaves almost no
+      // perpendicular gap, and it is the perpendicular gap that decides whether
+      // the shot still reads as inside. The beam is still drawn from the impact.
+      drawFrom = { ...end };
+      point = {
+        x: end.x + (normal.x * BEAM_SURFACE_CLEARANCE),
+        y: end.y + (normal.y * BEAM_SURFACE_CLEARANCE),
+        z: end.z + (normal.z * BEAM_SURFACE_CLEARANCE),
+      };
+      proj.bounces++;
+      continue;
+    }
+
+    break;
+  }
+
+  return null;
+}
+
 function simulateProjectilesStep(stepSeconds, now) {
-  const stepDistance = GAME_CONFIG.SHOT_SPEED * stepSeconds;
   const obstacles = getCollisionColliders();
 
   projectiles.forEach((proj, id) => {
     const deltaTime = (now - proj.createdAt) / 1000;
+
+    // A beam has no travel and its hits were resolved when it was fired, so all
+    // that is left of it is the clock its slot runs on. It ends where it ended,
+    // which is where the impact is drawn.
+    if (proj.beam) {
+      if (deltaTime > proj.lifetimeSeconds) {
+        const end = proj.segments[proj.segments.length - 1]?.to
+          ?? { x: proj.x, y: proj.y, z: proj.z };
+        // A beam that ran out of range or left the world struck nothing, so it
+        // fades rather than sparking, which is what reason 1 says.
+        const spent = proj.endReason === 'range' || proj.endReason === 'out_of_bounds';
+        projectiles.delete(id);
+        broadcastAll({ type: 'shotEnd', id, reason: spent ? 1 : 0, x: end.x, y: end.y, z: end.z });
+        logShotEnd(proj, `beam_${proj.endReason}`, end,
+          `lifetime=${deltaTime.toFixed(3)}/${proj.lifetimeSeconds.toFixed(3)}`);
+      }
+      return;
+    }
+
+    // A shot variant's velocity is on the projectile, so a Rapid Fire shell and
+    // an ordinary one advance by different amounts in the same step.
+    const stepDistance = proj.speed * stepSeconds;
     const prevX = proj.x;
     const prevY = proj.y;
     const prevZ = proj.z;
@@ -4085,7 +4533,7 @@ function simulateProjectilesStep(stepSeconds, now) {
     proj.teleportReentryBlockTeleporterIndex = traced.reentryBlockTeleporterIndex;
     proj.teleportReentryBlockDistance = traced.reentryBlockDistance;
 
-    if (traced.frameHit) {
+    if (traced.frameHit && !proj.throughBuildings) {
       const impact = traced.point;
       const hitName = traced.frameHitObstacle?.name || 'teleporter frame';
       log(`Projectile ${id} hit obstacle "${hitName}" at (${impact.x.toFixed(2)}, ${impact.y.toFixed(2)}, ${impact.z.toFixed(2)})`);
@@ -4109,7 +4557,10 @@ function simulateProjectilesStep(stepSeconds, now) {
       : { x: prevX, y: prevY, z: prevZ };
 
     const step = traceShotStep({
-      obstacles,
+      // Upstream's `Through`: a super bullet is traced against nothing, so no
+      // building is ever the first thing it reaches. The ground still stops it,
+      // which is why the world's floor is not in this list to begin with.
+      obstacles: proj.throughBuildings ? [] : obstacles,
       x: stepStart.x,
       y: stepStart.y,
       z: stepStart.z,
@@ -4136,6 +4587,24 @@ function simulateProjectilesStep(stepSeconds, now) {
       broadcastAll({ type: 'shotEnd', id, reason: 1, x: removalPoint.x, y: removalPoint.y, z: removalPoint.z });
       logShotEnd(proj, 'timeout', removalPoint, `lifetime=${deltaTime.toFixed(3)}/${proj.lifetimeSeconds.toFixed(3)}`);
       log(`Projectile ${id} removed (expired)`);
+      return;
+    }
+
+    // Check collision with players along the step the shot just took rather
+    // than at the point it finished on. A Rapid Fire shell covers 2.5 units in a
+    // step against a tank 4 units across, so a point sample can step past the
+    // edge of one; upstream never can, because it tests the frame's whole ray.
+    // The step has already been cut short at whatever it ran into, so this asks
+    // the question in upstream's order: a tank standing in front of a wall is
+    // reached before the wall is.
+    //
+    // A step that bounced is sampled at its end instead. The straight line from
+    // where such a step started to where it finished cuts the corner, and a tank
+    // the far side of the wall the shot bounced off did not just get hit.
+    const hitFrom = step.bounces > 0 ? { x: proj.x, y: proj.y, z: proj.z } : stepStart;
+    const hit = findShotPlayerHit(proj, hitFrom, { x: proj.x, y: proj.y, z: proj.z }, now);
+    if (hit) {
+      applyShotPlayerHit(proj, id, hit.player, hit.point);
       return;
     }
 
@@ -4176,88 +4645,6 @@ function simulateProjectilesStep(stepSeconds, now) {
       return;
     }
 
-    // Check collision with players using extrapolated positions
-    players.forEach((player) => {
-      // A shot is spent by the first tank it reaches, whether that killed the
-      // tank or a shield took it, so the rest of the sweep has nothing to hit
-      // with. Upstream never has this to decide: each client tests only its own
-      // tank (`checkEnvironment`), so one shot is one hit by construction.
-      if (!projectiles.has(id)) return;
-      // LocalPlayer::checkHit tests a player's own shots too -- "Don't shoot
-      // yourself!" is the Ricochet flag's own help text. Before it bounces a
-      // shot cannot reach the tank that fired it, because it leaves the muzzle
-      // further out than the hit radius and outruns the tank; bzo samples the
-      // shot once a step rather than testing the whole segment, so it says that
-      // outright rather than relying on the sampling to agree.
-      if (player.id === proj.playerId && proj.bounces === 0) return;
-      if (player.team === 'observer') return; // Observers are non-combatants
-      if (player.paused) return; // Can't hit paused players
-      if (player.health <= 0) return; // Can't hit dead players
-
-      // Use extrapolated position for accurate hit detection
-      const extrapolated = player.getExtrapolatedPosition(now);
-
-      // Check horizontal distance
-      const dist = distance(proj.x, proj.z, extrapolated.x, extrapolated.z);
-      if (dist < 2) { // Tank hitbox radius
-        // Check vertical collision - tank is roughly 2 units tall
-        const tankHeight = 2;
-        const playerBottom = extrapolated.y;
-        const playerTop = extrapolated.y + tankHeight;
-
-        // Projectile must be within tank's vertical bounds
-        if (proj.y >= playerBottom && proj.y <= playerTop) {
-          // gotBlowedUp() with the shield flag: the shot ends where it struck,
-          // the tank keeps its life, and the flag is thrown as if the player had
-          // dropped it -- which is where _shieldFlight sends it up extra high.
-          // Nobody scores, because nobody died.
-          const carried = getPlayerFlag(player.id);
-          if (carried && shieldsAgainstShot(carried.type)) {
-            projectiles.delete(id);
-            logShotEnd(proj, 'shield_hit', { x: proj.x, y: proj.y, z: proj.z }, `victim=${player.id}`);
-            broadcastAll({ type: 'shotEnd', id, reason: 0, x: proj.x, y: proj.y, z: proj.z });
-            dropPlayerFlag(player.id);
-            return;
-          }
-
-          // Hit!
-          projectiles.delete(id);
-          player.health = 0;
-          player.deaths++;
-
-          const shooter = players.get(proj.playerId);
-          // Killing yourself with your own ricochet is a loss and nothing else,
-          // as self-destruct is. getTeamScoreDeltasForKill already reads the two
-          // being the same player.
-          if (shooter && shooter.id !== player.id) {
-            shooter.kills++;
-            recordShakeWin(shooter);
-          }
-          recordTeamScoreForKill(shooter, player);
-
-          logShotEnd(proj, 'player_hit', { x: proj.x, y: proj.y, z: proj.z }, `victim=${player.id}`);
-          dropPlayerFlag(player.id);
-
-          broadcastAll({
-            type: 'playerHit',
-            victimId: player.id,
-            shooterId: proj.playerId,
-            projectileId: id,
-          });
-
-          // Respawn player
-          setTimeout(() => {
-            if (players.has(player.id)) {
-              player.respawn();
-              broadcastAll({
-                type: 'playerRespawned',
-                player: player.getState(),
-              });
-            }
-          }, GAME_CONFIG.RESPAWN_DELAY);
-        }
-      }
-    });
   });
 }
 
@@ -4925,11 +5312,17 @@ wss.on('connection', (ws, req) => {
             getPlayerFlag(player.id)?.type ?? null
           );
           projectiles.set(id, proj);
+          // A beam is already everywhere it is going to be, so its path is walked
+          // here and travels with the message that announces it. The tank it
+          // reached is resolved after that message, because the client has to
+          // have the shot before it is told the shot killed somebody.
+          const beamHit = proj.beam ? traceShotBeam(proj, proj.createdAt) : null;
           log(
             `[shotBegin] id=${proj.id} player=${proj.playerId} slot=${proj.shotSlot}` +
             ` pos=${formatShotPoint(proj.x, proj.y, proj.z)}` +
             ` dir=(${proj.dirX.toFixed(4)},${proj.dirY.toFixed(4)},${proj.dirZ.toFixed(4)})` +
-            ` flag=${proj.flag || 'none'}${proj.ricochet ? ' ricochet' : ''}`
+            ` flag=${proj.flag || 'none'}${proj.ricochet ? ' ricochet' : ''}` +
+            (proj.beam ? ` beam=${proj.segments.length}seg end=${proj.endReason}` : '')
           );
           broadcastAll({
             type: 'shotBegin',
@@ -4944,8 +5337,10 @@ wss.on('connection', (ws, req) => {
             dirZ: proj.dirZ,
             flag: proj.flag,
             ricochet: proj.ricochet,
+            segments: proj.segments,
             createdAt: proj.createdAt
           });
+          if (beamHit) applyShotPlayerHit(proj, id, beamHit.player, beamHit.point);
           break;
         }
 

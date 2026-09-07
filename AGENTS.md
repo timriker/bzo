@@ -481,6 +481,12 @@ the switches both sides need, and `parseBZWServerOptions` in `server.js` takes
 the ones only the server acts on. Add a new switch to whichever of those matches
 who needs to know.
 
+`docs/bzw.md` is the list of every `.bzw` keyword bzo reads and every one it
+ignores, including the coordinate conversion. Update it in the same commit as
+`parseBZWMap`: a map that uses something bzo skips still loads, so the doc is
+the only place a mapper can find out what will and will not survive the import.
+`maps/test.bzw` carries a labelled example of each obstacle keyword.
+
 Shots against solid geometry live in the `collision` pair, not in either
 `server.js` or `client.js`: `traceShotStep` advances a shot over one fixed step,
 finds what it met, and reflects it about the surface normal when the shot
@@ -1495,7 +1501,8 @@ is how a change like "the bases are one mesh now" is confirmed, by watching
   collision helpers. Keep new mechanics in sync with these checks.
 - Map loading reads `server.json` to choose between procedural obstacles and
   `.bzw` files parsed by `parseBZWMap`. Add maps to `maps/` and update the config
-  or use the operator panel to switch.
+  or use the operator panel to switch. `docs/bzw.md` documents what the import
+  reads and what it drops.
 - Admin/operator overlay messages share the WebSocket channel; reuse that pattern
   for additional operator tools.
 - `forceClientReload()` broadcasts a `reload` message and closes sockets. It is
@@ -1529,7 +1536,13 @@ is how a change like "the bases are one mesh now" is confirmed, by watching
   when extending obstacle properties.
 - **Map scale**: `maps/*.bzw` use standard BZFlag coordinates at 1:1 scale. Box
   `x`/`y` in BZW are half-extents, which the parser multiplies by 2 to get full
-  width and depth. 1 bzo unit = 1 BZFlag unit.
+  width and depth. 1 bzo unit = 1 BZFlag unit. `docs/bzw.md` has the whole
+  conversion table and the keyword list.
+- **Obstacle passability**: `drivethrough`, `shootthrough`, `passable` and
+  `ricochet` are read per obstacle as upstream's `WorldFileObstacle::read` takes
+  them, and honoured in `checkCollision`, `findShotObstacle`,
+  `findShotSegmentImpact` and `traceShotStep`. The world border is built out of
+  the first two rather than out of a special case: see `getWorldBorderColliders`.
 
 ## Conventions & Testing
 

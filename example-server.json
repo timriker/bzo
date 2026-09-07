@@ -43,7 +43,12 @@
   "superFlags": {
     "count": 16,
     "allowed": [
+      "F",
+      "MG",
+      "L",
       "R",
+      "SB",
+      "IB",
       "SH",
       "ID",
       "US",
