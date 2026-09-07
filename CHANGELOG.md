@@ -6,6 +6,8 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
 
 ## [Unreleased]
 
+## [1.0.70] - 2026-09-07
+
 ### Added
 - `B` Blindness, `JM` Jamming and `CB` Colorblindness, three of phase 4's four
   bad flags (#6). All three are honoured entirely on the carrier's own client,
