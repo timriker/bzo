@@ -6,6 +6,8 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
 
 ## [Unreleased]
 
+## [1.0.74] - 2026-09-07
+
 ### Added
 - `SR` Steamroller and `G` Genocide (#6, phase 6). Steamroller kills by touch,
   within the victim's radius plus `_srRadiusMult` 2.0 of the roller's -- the only
