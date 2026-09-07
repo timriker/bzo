@@ -194,16 +194,16 @@ Upstream carries 47 flag types: a Null type, four team flags, and 42
 superflags. bzo has the four team flags and fifteen superflags -- `US` Useless,
 `ID` Identify, `JP` Jumping, `WG` Wings, `R` Ricochet, `NJ` No Jumping, `SH`
 Shield, `F` Rapid Fire, `MG` Machine Gun, `L` Laser, `SB` Super Bullet, `IB`
-Invisible Bullet, `T` Tiny, `N` Narrow and `O` Obesity -- so **27 superflags
-remain**, 15 good and 12 bad. The table
-below is the whole list, grouped by the machinery each group needs rather than by
-name, because the machinery is what decides the order. `src/common/Flag.cxx` is
-the authority for every name, abbreviation, endurance, quality and help string;
-`src/common/global.cxx` for every constant named here.
+Invisible Bullet, `T` Tiny, `N` Narrow, `O` Obesity, `B` Blindness, `JM` Jamming
+and `CB` Colorblindness -- so **24 superflags remain**, 15 good and 9 bad. The table below is the whole list, grouped by the
+machinery each group needs rather than by name, because the machinery is what
+decides the order. `src/common/Flag.cxx` is the authority for every name,
+abbreviation, endurance, quality and help string; `src/common/global.cxx` for
+every constant named here.
 
 | Phase | Flags | What it needs that bzo does not have |
 |---|---|---|
-| 4 | `B` Blindness, `JM` Jamming, `CB` Colorblindness, `WA` Wide Angle | nothing; the machinery is in, and `WA` waits on the XR rule |
+| 4 | `WA` Wide Angle | **blocked**: no XR answer yet, see below |
 | 5 | `V` High Speed, `QT` Quick Turn, `A` Agility, `M` Momentum, `RC` Reverse Controls, `FO` Forward Only, `RO` Reverse Only, `LT` Left Turn Only, `RT` Right Turn Only, `BY` Bouncy, `TR` Trigger Happy | the motion resolver, in the shared pair |
 | 6 | `SR` Steamroller, `G` Genocide | damage rules, and a per-tick proximity sweep |
 | 10 | `SW` Shock Wave | a shot with no path -- an expanding sphere |
@@ -212,12 +212,21 @@ the authority for every name, abbreviation, endurance, quality and help string;
 | 13 | `ST` Stealth, `CL` Cloaking, `MQ` Masquerade, `SE` Seer | per-viewer visibility |
 | 14 | `OO` Oscillation Overthruster, `BU` Burrow, `PZ` Phantom Zone | movement through and under geometry |
 
-Phases 4 to 6 are each a small hook on machinery an earlier phase built. Phases
-10 to 14 are each their own feature and can be taken in any order. Phases 8 and 9
-were taken out of order -- 9 because it hangs off a world switch rather than off
-the phases before it, as `JP`, `NJ` and `WG` do, and 8 because the one thing it
-was said to need from phase 6 was already in: `flag` reached `Projectile` and
-`shotBegin` with Ricochet.
+Phase 6 is a small hook on machinery an earlier phase built. Phases 10 to 14 are
+each their own feature and can be taken in any order. Phase 4 is down to its last
+flag, and that one is blocked rather than merely unstarted.
+
+Phases 7, 8 and 9 were taken out of order. 9 hangs off a world switch rather than
+off the phases before it, as `JP`, `NJ` and `WG` do. 8 turned out to need nothing
+from phase 6 after all -- `flag` already reached `Projectile` and `shotBegin` with
+Ricochet. 7 was asked for while `maps/flagbuffet.bzw` was on the test server,
+which is the map that makes a size flag worth having, and it owed nothing to 4, 5
+or 6 either.
+
+Phase 7 also paid forward. `TH` Thief in phase 11 is a size flag as much as a
+shot flag, and `getTankDimensionScale` now covers that half of it:
+`_thiefTinyFactor` is one more case beside `T` and `O`. What phase 11 still owes
+is the stealing.
 
 ## Phase 3 -- Identify (implemented)
 
@@ -559,27 +568,112 @@ The client draws it three ways, which are upstream's three:
   (`playing.cxx:6847`). `getFlagHeadingMarkers` returns both, and it no longer
   gives up early on a world with no teams, since the antidote does not need one.
 
-## Phase 4 -- the four bad flags that only change your own view
+## Phase 4 -- the bad flags that only change your own view (three of four in)
 
-The machinery this phase was built around is done -- sticky endurance, and all
-three of upstream's ways out; see "Getting rid of a bad flag". What is left is
-the four bad flags that need nothing beyond it, because they change only what
-the carrier sees:
+`B` Blindness, `JM` Jamming and `CB` Colorblindness are **implemented**. `WA`
+Wide Angle is **blocked on the XR discussion** and is the only thing left in this
+phase.
 
-- **`B` Blindness** -- no out-the-window view; the radar still works. Upstream
-  draws a black screen and keeps the HUD.
-- **`JM` Jamming** -- the radar stops working; the view is untouched.
-- **`CB` Colorblindness** -- every tank draws in your own team's colour, so you
-  cannot tell friend from enemy. Touches the tank colour lookup, the radar
-  colour lookup, and the scoreboard.
-- **`WA` Wide Angle** -- field of view goes to `_wideAngleAng` 1.745329 rad
-  (100 degrees). One camera value on the desktop; in XR the headset owns the
-  projection, so this one has nothing to do there and should say so rather than
-  fighting it.
+All three that landed are honoured entirely on the carrier's own client, which is
+where upstream honours them: there is no packet and no server rule, because a
+modified client that ignored one would only be cheating itself out of a penalty
+it is already carrying. The server's whole part is three rows in the flag table.
+The predicates -- `blanksTheView`, `jamsTheRadar`, `hidesTeamColors` -- live in
+the flags pair so the table stays the one place a flag is described.
 
-**Test:** each of these plus a shake timeout short enough to watch. `WA` is the
-one held back on the XR rule below -- the headset owns the projection, so a
-field-of-view change has nothing to do there and it needs its own answer first.
+**`B` Blindness.** "Can't see out window.  Radar still works." Upstream sets
+`SceneRenderer::setBlank` (`playing.cxx:6212`), the same switch it uses for a
+paused tank, and keeps drawing the HUD. bzo has one switch that says the same
+thing on both surfaces: everything the game draws hangs off `worldGroup` and
+every HUD panel hangs off the camera, so `renderManager.setBlank` hides the
+former and the latter is untouched. The sky background goes black with it -- a
+blinded tank should not be able to read the time of day off the horizon. Nothing
+XR-specific was needed, because the split it relies on is the one XR already
+uses.
+
+**`JM` Jamming.** "Radar doesn't work.  Can still see." Upstream paints a noise
+texture over the whole panel at full white and draws nothing else
+(`RadarRenderer.cxx:433`), so the radar is *gone* rather than dimmed. bzo has no
+noise texture and generates the static instead -- one grey level per cell of a
+coarse grid, which reads as static at radar size for a few hundred fills.
+
+**The static is translucent, and that is a deliberate divergence.** Upstream can
+afford opaque noise because its radar owns a region of the screen outside the 3D
+viewport, so covering it costs the view nothing. bzo's radar floats *over* the 3D
+view, where opaque static would take away part of what the flag explicitly leaves
+you. A jammed frame therefore *replaces* the panel background rather than covering
+it, at the same alpha the background would have had -- so the jammed panel is
+exactly as heavy as a working one, no more of the world is hidden while jammed
+than the radar hides anyway, and the panel does not appear to change weight as
+static and good frames alternate. `RADAR_JAM_STATIC_ALPHA` is derived from the
+panel's own two numbers rather than picked, so the two cannot drift apart.
+
+The cadence is upstream's and is the interesting half. `decay` is the chance of a
+good frame: it starts at 0.01 and the noise branch leaves it there, so about one
+frame in a hundred breaks through; that frame sets decay to 1, which *guarantees*
+a second good frame, and it halves per frame until noise takes over again. So a
+jammed radar gives a readable burst every second or two rather than an even
+flicker, and you can learn to play off the bursts. `getNextRadarJamDecay` in the
+flags pair is that rule, and `scripts/test-flags.mjs` holds it to the two
+properties that matter: a good frame is always followed by another, and the decay
+always settles back to the floor.
+
+**XR is free here**, and worth saying why rather than leaving it to be
+rediscovered: the XR radar panel is textured *from the DOM radar canvas itself*,
+so anything drawn into that canvas is in the headset on the same frame. Jamming
+needed no XR path at all.
+
+**`CB` Colorblindness.** "Can't tell team colors.  Don't shoot teammates!"
+Upstream substitutes `RogueTeam` for the real team wherever a remote player's
+colour is asked for -- the radar blip (`RadarRenderer.cxx:133`), the tank and its
+shots (`playing.cxx:6168`, `Player::addShots`'s `colorblind` argument) -- and
+suppresses the hunt flash on the radar.
+
+bzo needs one extra thought here, because bzo does not colour tanks by team:
+every player gets a colour of their own, and in team mode the server shades team
+mates apart *within a band around the team colour* (see "Radar colours" in
+`AGENTS.md`). That band is exactly where the team is legible, so replacing the
+player colour with rogue is the faithful move and `getEffectiveTankColor` is the
+one place it happens -- tank body, shots and blip all ask it. Your own tank keeps
+its colour, as it does upstream.
+
+Two consequences worth knowing:
+
+- A tank is *built* from its colour rather than tinted -- the body texture and
+  the name label are both generated from it -- so a change of colourblindness
+  rebuilds the remote tanks rather than recolouring them. That happens at once on
+  the flag change, not on each tank's next update, because a tank sitting still
+  would otherwise keep a colour it is no longer entitled to.
+- `ID` Identify degrades with it. Upstream drops to "Looking at a tank" rather
+  than naming the callsign (`playing.cxx:4479`), because the name would give away
+  the team the colour no longer does. Phase 3 is already in, so this is a real
+  interaction rather than a note for later.
+
+The scoreboard is deliberately **not** colourblinded, which is upstream's choice
+too: its list of who is on which team stays readable, so the flag costs you the
+ability to read a team off a tank in front of you and not the ability to know the
+teams exist.
+
+**`WA` Wide Angle -- blocked.** Field of view goes to `_wideAngleAng` 1.745329
+rad (100 degrees). On the flat canvas that is one camera value. In XR the headset
+owns the projection: the runtime sets it from the device's optics, and a client
+that overrode it would either be ignored or would make people ill. So `WA` has no
+XR implementation, and bzo's rule is that a flag needs one before it ships --
+otherwise the same flag is a real penalty in the browser and a no-op in a headset,
+which is worse than not having it.
+
+The options, none of them chosen yet:
+
+1. **Widen the flat view only, and let it be a no-op in XR.** Simplest, and
+   dishonest in the way the rule exists to prevent.
+2. **Substitute a different penalty in XR** -- a vignette, or a blur at the
+   edges -- so the flag costs something on both surfaces without touching the
+   projection. Not upstream's effect, but upstream's *intent*.
+3. **Forbid `WA` on a server whose players are in headsets**, the way the game
+   style already voids `JP` and `NJ`. Honest, and it makes the flag pool depend
+   on who is connected, which nothing else does.
+
+This wants a decision before code.
 
 ## Phase 5 -- the motion resolver, and the movement flags
 
@@ -748,6 +842,14 @@ size faster than it looks like it should.
 The server-position ghost is scaled by the same factors. It is a sibling of the
 tank rather than a child, so it inherits nothing and has to be told; a full-size
 ghost around a Tiny tank would misreport the one thing it exists to show.
+
+**`N` reads oddly in XR, and correctly.** At `_tankWidth` x 0.001 the tank is a
+plane, so the two eyes' viewpoints are far enough apart relative to its width that
+each can catch a different face of the turret. Nothing to fix: it is what a tank
+one and a half millimetres wide looks like in stereo, and the flag's own help text
+promises exactly that -- "Very hard to hit from front but is normal size from
+side." Anything that made it read better in a headset would be making it wider
+than upstream, which is the flag.
 
 What is *not* per-player: `getPauseRefusal`, which still asks a
 `BZFLAG_TANK_RADIUS` cylinder. It is a bzo-only guard with no upstream

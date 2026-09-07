@@ -6,6 +6,49 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
 
 ## [Unreleased]
 
+### Added
+- `B` Blindness, `JM` Jamming and `CB` Colorblindness, three of phase 4's four
+  bad flags (#6). All three are honoured entirely on the carrier's own client,
+  which is where upstream honours them -- there is no packet and no server rule,
+  because a modified client that ignored one would only be cheating itself out of
+  a penalty it is carrying. The server's whole part is three rows in the flag
+  table.
+- `B` blanks the view and keeps the radar, which is upstream's
+  `SceneRenderer::setBlank`. One switch covers both surfaces: everything the game
+  draws hangs off `worldGroup` and every HUD panel hangs off the camera, so
+  hiding the former leaves the instruments alone on the flat canvas and in a
+  headset alike. The sky goes black with it, so a blinded tank cannot read the
+  time of day off the horizon.
+- `JM` replaces the radar with generated static, and carries upstream's cadence
+  rather than an even flicker: `decay` is the chance of a good frame, starts at
+  0.01 so about one frame in a hundred breaks through, and a good frame sets it to
+  1 which guarantees a second before it halves away. So a jammed radar gives a
+  readable burst every second or two. XR needed no path of its own -- the XR radar
+  panel is textured from the DOM radar canvas, so the static is in the headset on
+  the same frame.
+
+  The static is translucent where upstream's noise is opaque, which is deliberate:
+  upstream's radar owns a region of screen outside the 3D viewport, so covering it
+  costs the view nothing, while bzo's radar floats over the 3D view. A jammed frame
+  replaces the panel background rather than covering it, at the alpha that
+  background would have had, so the jammed panel is exactly as heavy as a working
+  one and hides no more of the world than the radar hides anyway.
+- `CB` paints every other tank, its shots and its radar blip in the rogue colour.
+  bzo colours players individually rather than by team, but in team mode the
+  server shades team mates apart within a band around the team colour, so that
+  colour is exactly where the team is legible and replacing it is the faithful
+  move. Your own tank keeps its colour, as upstream's does. `ID` Identify degrades
+  with it, dropping to "Looking at a tank" rather than naming the callsign, since
+  the name would give away the team the colour no longer does. The scoreboard is
+  deliberately untouched, which is also upstream's choice.
+
+  bzo now implements eighteen of upstream's forty-two superflags; **24 remain**,
+  15 good and 9 bad. `WA` Wide Angle is the last of phase 4 and is **blocked on
+  an XR decision**: the headset owns the projection, so a field-of-view change has
+  no XR implementation, and shipping it would make the same flag a real penalty in
+  a browser and a no-op in a headset. `docs/flags-plan.md` records the three
+  options.
+
 ## [1.0.69] - 2026-09-07
 
 ### Added

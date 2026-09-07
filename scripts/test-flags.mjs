@@ -31,7 +31,13 @@ import {
   NARROW_FACTOR,
   OBESE_FACTOR,
   TINY_FACTOR,
+  RADAR_JAM_DECAY_FLOOR,
+  RADAR_JAM_DECAY_MIN,
+  blanksTheView,
+  getNextRadarJamDecay,
   getTankDimensionEase,
+  hidesTeamColors,
+  jamsTheRadar,
   getTankDimensionScale,
   getTankHitRadiusScale,
   usesNarrowHitBox,
@@ -764,6 +770,40 @@ for (const abbreviation of ['T', 'N', 'O', null]) {
     getTankDimensionScale(abbreviation),
     `client/server tank scale diverged for ${abbreviation}`
   );
+}
+
+// Phase 4's view flags. Each is one flag and nothing else, so a predicate that
+// answered for two of them would be a flag doing another's job.
+assert.equal(blanksTheView('B'), true);
+assert.equal(jamsTheRadar('JM'), true);
+assert.equal(hidesTeamColors('CB'), true);
+for (const abbreviation of [null, 'B', 'JM', 'CB', 'US', 'O']) {
+  const hits = [blanksTheView, jamsTheRadar, hidesTeamColors]
+    .filter((predicate) => predicate(abbreviation)).length;
+  assert.ok(hits <= 1, `${abbreviation} answered more than one view effect`);
+}
+assert.equal(blanksTheView('JM'), false, 'Jamming leaves the view alone');
+assert.equal(jamsTheRadar('B'), false, 'Blindness leaves the radar alone');
+
+// The jam cadence: noise holds the decay down, and a good frame sets it to 1 so
+// a second good frame is guaranteed before it halves away again.
+assert.equal(getNextRadarJamDecay(RADAR_JAM_DECAY_MIN, true), RADAR_JAM_DECAY_MIN);
+assert.equal(getNextRadarJamDecay(RADAR_JAM_DECAY_MIN, false), 1.0);
+assert.equal(getNextRadarJamDecay(1.0, false), 0.5);
+assert.equal(getNextRadarJamDecay(0.5, true), 0.25);
+assert.ok(
+  getNextRadarJamDecay(1.0, false) > RADAR_JAM_DECAY_FLOOR,
+  'the frame after a good one must still be a good one'
+);
+// It always returns to the floor rather than running away in either direction.
+let decay = 1.0;
+for (let i = 0; i < 200; i += 1) decay = getNextRadarJamDecay(decay, true);
+assert.ok(decay > 0 && decay <= RADAR_JAM_DECAY_FLOOR, `decay settled at ${decay}`);
+
+for (const abbreviation of ['B', 'JM', 'CB', null]) {
+  assert.equal(serverFlags.blanksTheView(abbreviation), blanksTheView(abbreviation));
+  assert.equal(serverFlags.jamsTheRadar(abbreviation), jamsTheRadar(abbreviation));
+  assert.equal(serverFlags.hidesTeamColors(abbreviation), hidesTeamColors(abbreviation));
 }
 
 console.log('Flag flight and type tests passed');

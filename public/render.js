@@ -1617,6 +1617,32 @@ class RenderManager {
     return this.scene;
   }
 
+  // SceneRenderer::setBlank (playing.cxx:6212), which upstream turns on for a
+  // paused tank and for Blindness. Everything the game draws hangs off
+  // `worldGroup`, and every HUD panel hangs off the camera, so hiding the one
+  // blanks the view and leaves the instruments -- on the flat canvas and in XR
+  // alike, from a single switch. The sky goes with it: a blinded tank should not
+  // be able to read the time of day off the horizon.
+  setBlank(blank) {
+    const blanked = blank === true;
+    if (this._blanked === blanked) return;
+    this._blanked = blanked;
+    if (this.worldGroup) this.worldGroup.visible = !blanked;
+    if (this.scene) {
+      if (blanked) {
+        this._sceneBackground = this.scene.background;
+        this.scene.background = new THREE.Color(0x000000);
+      } else if (this._sceneBackground !== undefined) {
+        this.scene.background = this._sceneBackground;
+        this._sceneBackground = undefined;
+      }
+    }
+  }
+
+  isBlanked() {
+    return this._blanked === true;
+  }
+
   getWorldGroup() {
     return this.worldGroup;
   }

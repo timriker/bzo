@@ -156,6 +156,7 @@ import {
 } from './roam.mjs';
 import {
   PLAYER_TEAM,
+  PLAYER_TEAM_COLORS,
   PLAYER_TEAMS,
   PLAYER_TEAM_LABELS,
   getPlayerTeamColor,
@@ -178,6 +179,7 @@ import {
   ANTIDOTE_FLAG_COLOR,
   BZFLAG_TANK_RADIUS,
   FLAG_EFFECT_TIME,
+  RADAR_JAM_DECAY_MIN,
   FLAG_ENDURANCE,
   FLAG_GRAB_INTERVAL_MS,
   FLAG_GRAB_LEVEL_TOLERANCE,
@@ -195,7 +197,11 @@ import {
   getFlagType,
   getKnownFlagAbbreviation,
   getShotEffects,
+  blanksTheView,
+  getNextRadarJamDecay,
   getTankDimensionScale,
+  hidesTeamColors,
+  jamsTheRadar,
   getWingsJumpVelocity,
   getWingsSlideVelocity,
   hasAirControl,
@@ -1636,7 +1642,14 @@ function lightenHexColor(colorValue, mix = 0.45) {
 function getPlayerShotColor(playerId) {
   const tank = tanks.get(playerId);
   const playerColor = tank?.userData?.playerState?.color;
-  return lightenHexColor(typeof playerColor === 'number' ? playerColor : 0x4caf50, 0.45);
+  // Player::addShots takes a `colorblind` flag for exactly this
+  // (playing.cxx:6169): a shot has to lie about its owner's team too, or the
+  // shots would give away what the tanks no longer do.
+  const color = getEffectiveTankColor(
+    playerId,
+    typeof playerColor === 'number' ? playerColor : 0x4caf50
+  );
+  return lightenHexColor(color, 0.45);
 }
 
 // Input state
@@ -4216,7 +4229,14 @@ function addPlayer(player) {
   const playerTankModelPath = getTankModelPathById(playerTankModelId);
   let tank = tanks.get(player.id);
 
-  const tankColorChanged = tank?.userData?.playerState?.color !== player.color;
+  // The colour the tank is actually built from, which is rogue for everyone else
+  // while colourblind. Comparing against the effective colour rather than the
+  // player's own is what makes picking the flag up a colour change, so the same
+  // rebuild path that handles a real recolour handles this too -- the body
+  // texture and the name label are both generated from it, so there is nothing
+  // cheaper to tweak in place.
+  const effectiveColor = getEffectiveTankColor(player.id, player.color);
+  const tankColorChanged = tank?.userData?.builtColor !== effectiveColor;
   if (tank && tank.userData && (tank.userData.tankModel !== playerTankModelId || tankColorChanged)) {
     if (tank.userData.ghostMesh) {
       renderManager.getWorldGroup().remove(tank.userData.ghostMesh);
@@ -4228,7 +4248,8 @@ function addPlayer(player) {
   }
 
   if (!tank) {
-    tank = renderManager.createTank(player.color, player.name, playerTankModelPath);
+    tank = renderManager.createTank(effectiveColor, player.name, playerTankModelPath);
+    tank.userData.builtColor = effectiveColor;
     renderManager.getWorldGroup().add(tank);
     tanks.set(player.id, tank);
 
@@ -6210,7 +6231,12 @@ function identifyRoamTarget() {
   }
   nemesisPlayerId = picked;
   adoptRoamTarget(picked);
-  const name = tanks.get(picked)?.userData?.playerState?.name || 'a tank';
+  // playing.cxx:4479. Colourblindness costs Identify its answer: upstream drops
+  // to "Looking at a tank" rather than naming the callsign, because the name
+  // would give away the team the colour no longer does.
+  const name = isColorblind()
+    ? 'a tank'
+    : (tanks.get(picked)?.userData?.playerState?.name || 'a tank');
   setHudAlert(1, `Looking at ${name}`, IDENTIFY_ALERT_SECONDS, false);
 }
 
@@ -7461,6 +7487,47 @@ function getMyTankScale() {
   return getTankDimensionScale(getMyFlag()?.type ?? null);
 }
 
+// Phase 4's three view flags, all read off the flag in the local tank's own
+// hands. Nothing else in the game changes, which is why the server has no part
+// in any of them.
+function isViewBlinded() {
+  return blanksTheView(getMyFlag()?.type ?? null);
+}
+
+function isRadarJammed() {
+  return jamsTheRadar(getMyFlag()?.type ?? null);
+}
+
+function isColorblind() {
+  return hidesTeamColors(getMyFlag()?.type ?? null);
+}
+
+// A tank is built from its colour rather than tinted, so a change of
+// colourblindness has to rebuild the remote tanks. Driven from the flag change
+// rather than polled, and done at once instead of waiting for each tank's next
+// update, because a tank that is sitting still would otherwise keep the colour
+// it is no longer entitled to.
+let colorblindApplied = false;
+function refreshColorblindTanks() {
+  const colorblind = isColorblind();
+  if (colorblind === colorblindApplied) return;
+  colorblindApplied = colorblind;
+  for (const [playerId, tank] of [...tanks.entries()]) {
+    if (playerId === myPlayerId) continue;
+    const state = tank?.userData?.playerState;
+    if (state) addPlayer(state);
+  }
+}
+
+// Every tank but your own reads as rogue while colourblind. bzo shades team
+// mates apart inside a band around the team colour, so the player colour is
+// where the team is legible and replacing it is what the flag has to do; your
+// own tank keeps its colour, as it does upstream.
+function getEffectiveTankColor(playerId, color) {
+  if (playerId === myPlayerId || !isColorblind()) return color;
+  return PLAYER_TEAM_COLORS[PLAYER_TEAM.ROGUE];
+}
+
 // ScoreboardRenderer::drawPlayerScore names a team flag after the callsign and a
 // superflag by its abbreviation, both in the flag's own colour. bzo names the
 // team flag by its colour alone, dropping the "Team" upstream spells out: the
@@ -8707,10 +8774,90 @@ function getObstacleRadarFillStyle(obs) {
   return getRadarBaseFill(Number(obs.team));
 }
 
+// RadarRenderer::render's noise branch (RadarRenderer.cxx:433). Upstream paints a
+// noise texture over the whole panel at full white and draws nothing else, so the
+// radar is gone rather than dimmed -- "Radar doesn't work" is the flag's own help
+// text. bzo has no noise texture, so the static is generated: one greyscale value
+// per cell of a coarse grid, which reads as static at radar size and costs a few
+// hundred fills rather than a texture upload.
+//
+// XR needs no separate path. The XR radar panel is textured from this very
+// canvas, so whatever lands here lands in the headset on the same frame.
+const RADAR_JAM_CELL = 4;
+// The panel the working radar sits on: a half-transparent black square at 95%,
+// so about 47% of the world behind it shows through. Named because the jammed
+// frames are tied to it.
+const RADAR_PANEL_FILL_ALPHA = 0.5;
+const RADAR_PANEL_GLOBAL_ALPHA = 0.95;
+const RADAR_PANEL_BORDER = 'rgba(76, 175, 80, 0.65)';
+
+// Upstream's noise is opaque, and it can afford to be: its radar owns a region of
+// the screen outside the 3D viewport, so covering it costs the view nothing. bzo's
+// radar floats *over* the 3D view, where opaque static would take away part of
+// what the flag explicitly leaves you -- "Radar doesn't work.  Can still see."
+//
+// So a jammed frame replaces the panel background rather than covering it, at the
+// same alpha the background would have had. The jammed panel is then exactly as
+// heavy as a working one: no more of the world is hidden while jammed than the
+// radar hides anyway, and the panel does not visibly change weight as static and
+// good frames alternate.
+const RADAR_JAM_STATIC_ALPHA = RADAR_PANEL_FILL_ALPHA * RADAR_PANEL_GLOBAL_ALPHA;
+let radarJamDecay = RADAR_JAM_DECAY_MIN;
+
+function drawRadarPanelBorder(size) {
+  radarCtx.strokeStyle = RADAR_PANEL_BORDER;
+  radarCtx.lineWidth = Math.max(2, Math.round(size * 0.01));
+  radarCtx.strokeRect(0, 0, size, size);
+}
+
+function drawRadarPanelBackground(size) {
+  radarCtx.clearRect(0, 0, size, size);
+  radarCtx.save();
+  radarCtx.globalAlpha = RADAR_PANEL_GLOBAL_ALPHA;
+  radarCtx.fillStyle = `rgba(0,0,0,${RADAR_PANEL_FILL_ALPHA})`;
+  radarCtx.fillRect(0, 0, size, size);
+  drawRadarPanelBorder(size);
+  radarCtx.restore();
+}
+
+function drawJammedRadar(size) {
+  radarCtx.clearRect(0, 0, size, size);
+  radarCtx.save();
+  radarCtx.globalAlpha = RADAR_JAM_STATIC_ALPHA;
+  for (let y = 0; y < size; y += RADAR_JAM_CELL) {
+    for (let x = 0; x < size; x += RADAR_JAM_CELL) {
+      const level = Math.floor(Math.random() * 256);
+      radarCtx.fillStyle = `rgb(${level},${level},${level})`;
+      radarCtx.fillRect(x, y, RADAR_JAM_CELL, RADAR_JAM_CELL);
+    }
+  }
+  radarCtx.restore();
+  // Outside the static's alpha, so the frame stays as crisp as it is on a good
+  // frame and the panel keeps its edge while jammed.
+  radarCtx.save();
+  drawRadarPanelBorder(size);
+  radarCtx.restore();
+}
+
 function updateRadar() {
   if (!radarCtx || !myTank || !gameConfig) return;
   // Declare radar variables only once
   const size = radarCanvas.width;
+
+  // `bzfrand() > decay` is upstream's roll, and the decay it leaves behind is
+  // what makes a jammed radar break through for a frame or two at a time rather
+  // than flicker evenly. Kept out of the flags pair only in its randomness: the
+  // decay rule itself is shared, so both copies agree on the cadence.
+  if (isRadarJammed()) {
+    const showNoise = Math.random() > radarJamDecay;
+    radarJamDecay = getNextRadarJamDecay(radarJamDecay, showNoise);
+    if (showNoise) {
+      drawJammedRadar(size);
+      return;
+    }
+  } else if (radarJamDecay !== RADAR_JAM_DECAY_MIN) {
+    radarJamDecay = RADAR_JAM_DECAY_MIN;
+  }
   const center = size / 2;
   const radius = center * 0.95;
   const radarWorldHalfExtent = getRadarWorldHalfExtent(radius);
@@ -8740,18 +8887,7 @@ function updateRadar() {
     Math.abs(radarX) > radarDistance + margin || Math.abs(radarY) > radarDistance + margin
   );
   // No radarRotation; use playerHeading directly
-  // Clear radar
-  radarCtx.clearRect(0, 0, size, size);
-
-  // Draw radar background as a square, similar to BZFlag's panel-style radar.
-  radarCtx.save();
-  radarCtx.globalAlpha = 0.95;
-  radarCtx.fillStyle = 'rgba(0,0,0,0.5)';
-  radarCtx.fillRect(0, 0, size, size);
-  radarCtx.strokeStyle = 'rgba(76, 175, 80, 0.65)';
-  radarCtx.lineWidth = Math.max(2, Math.round(size * 0.01));
-  radarCtx.strokeRect(0, 0, size, size);
-  radarCtx.restore();
+  drawRadarPanelBackground(size);
 
 
   // Draw world border (clip to radar distance area, rotated to player forward)
@@ -8972,10 +9108,13 @@ function updateRadar() {
     const state = tank.userData && tank.userData.playerState;
     if ((state && state.health <= 0) || tank.visible === false) return;
 
-    // Get player color (convert from hex number to CSS string)
+    // Get player color (convert from hex number to CSS string). RadarRenderer.cxx
+    // asks the same question of every blip it draws: colourblindness reaches the
+    // radar, or the panel would still say what the world no longer does.
     let playerColor = '#4CAF50'; // Default green
     if (state && typeof state.color === 'number') {
-      playerColor = '#' + state.color.toString(16).padStart(6, '0');
+      const effective = getEffectiveTankColor(state.id, state.color);
+      playerColor = '#' + effective.toString(16).padStart(6, '0');
     }
 
     const rel = toRadarRelative(tank.position.x, tank.position.z);
@@ -9784,6 +9923,13 @@ function animate(frameTime) {
   updatePauseCountdown();
   updateFlags(deltaTime);
   updateTankDimensions(deltaTime);
+  // Phase 4's view flags, applied where both surfaces reach: the DOM HUD block
+  // further down runs only outside XR, and blindness and colourblindness have to
+  // hold in a headset too.
+  refreshColorblindTanks();
+  // playing.cxx:6212 blanks the view for a paused tank as well as a blinded one.
+  // bzo draws its own paused overlay instead, so this is Blindness alone.
+  renderManager.setBlank(isViewBlinded());
   renderManager.updateExplosions(deltaTime);
   updatePausedSpheres();
   renderManager.updateTreads(tanks, deltaTime, gameConfig);

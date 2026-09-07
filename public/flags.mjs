@@ -339,6 +339,30 @@ export const FLAG_TYPES = Object.freeze({
     team: null,
     help: 'Tank becomes very large.  Can\'t fit through teleporters.',
   }),
+  CB: Object.freeze({
+    abbreviation: 'CB',
+    name: 'Colorblindness',
+    endurance: FLAG_ENDURANCE.STICKY,
+    quality: FLAG_QUALITY.BAD,
+    team: null,
+    help: 'Can\'t tell team colors.  Don\'t shoot teammates!',
+  }),
+  B: Object.freeze({
+    abbreviation: 'B',
+    name: 'Blindness',
+    endurance: FLAG_ENDURANCE.STICKY,
+    quality: FLAG_QUALITY.BAD,
+    team: null,
+    help: 'Can\'t see out window.  Radar still works.',
+  }),
+  JM: Object.freeze({
+    abbreviation: 'JM',
+    name: 'Jamming',
+    endurance: FLAG_ENDURANCE.STICKY,
+    quality: FLAG_QUALITY.BAD,
+    team: null,
+    help: 'Radar doesn\'t work.  Can still see.',
+  }),
 });
 
 export const FLAG_ABBREVIATIONS = Object.freeze(Object.keys(FLAG_TYPES));
@@ -407,6 +431,45 @@ export function getTankDimensionScale(abbreviation) {
     case 'N': return { length: 1, width: NARROW_FACTOR };
     default: return { length: 1, width: 1 };
   }
+}
+
+// The three flags that change nothing about the world and everything about what
+// the carrier can see of it. Upstream honours all three entirely on the carrier's
+// own client -- there is no packet and no server rule -- so bzo does too, and a
+// modified client that ignored them would only be cheating itself out of a
+// penalty it is carrying.
+//
+// `B` Blindness blanks the view and leaves the radar (SceneRenderer::setBlank,
+// playing.cxx:6212). `JM` Jamming does the reverse, replacing the radar with
+// noise (RadarRenderer::setJammed, playing.cxx:1464). `CB` Colorblindness paints
+// every *other* tank, its shots and its blip in the rogue colour
+// (RadarRenderer.cxx:133 and playing.cxx:6168), so teams cannot be read off
+// anything in the world.
+export function blanksTheView(abbreviation) {
+  return abbreviation === 'B';
+}
+
+export function jamsTheRadar(abbreviation) {
+  return abbreviation === 'JM';
+}
+
+export function hidesTeamColors(abbreviation) {
+  return abbreviation === 'CB';
+}
+
+// RadarRenderer::render (RadarRenderer.cxx:433). A jammed radar is noise on most
+// frames and the real thing on a few, and `decay` is the chance of a good one.
+// It starts at 0.01 and the noise branch leaves it there, so roughly one frame in
+// a hundred breaks through; that frame sets decay to 1, which guarantees a second
+// good frame, and it then halves per frame until noise takes over again. The
+// result is a readable burst every second or two rather than an even flicker.
+export const RADAR_JAM_DECAY_MIN = 0.01;
+export const RADAR_JAM_DECAY_FLOOR = 0.015;
+
+// Returns the decay to carry into the next frame, given this frame's roll.
+export function getNextRadarJamDecay(decay, showedNoise) {
+  if (showedNoise) return decay > RADAR_JAM_DECAY_FLOOR ? decay * 0.5 : decay;
+  return decay <= RADAR_JAM_DECAY_FLOOR ? 1.0 : decay * 0.5;
 }
 
 // Player::getRadius (Player.cxx:204), carrying upstream's own note: "this
