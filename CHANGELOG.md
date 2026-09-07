@@ -6,6 +6,107 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
 
 ## [Unreleased]
 
+### Changed
+- **Inertia is BZFlag's now, and there is none by default.** bzo smoothed the
+  stick through five rates of its own -- `forwardAccel`, `reverseAccel`,
+  `forwardDecel`, `turnAccel`, `turnDecel` -- with no upstream counterpart, which
+  gave every tank inertia BZFlag does not have (about `-a 2.25 2.36`) and no way
+  for a server or a map to say otherwise. Those five config keys are **removed**.
+  In their place is upstream's own `doMomentum`: an acceleration limit in real
+  units applied to the velocity, set by `-a <vel> <rot>` and defaulting to `0 0`,
+  which means no limit -- so a bzo tank now reaches full speed in one frame,
+  exactly as a BZFlag tank does. Set it in `server.json` as
+  `linearAcceleration` / `angularAcceleration`, or in a map's `options` block as
+  `-a`, which is both places upstream takes it. The model lives in the flags pair
+  so the client that drives the tank and the server that checks it run the same
+  code against the same numbers.
+
+### Added
+- `A` Agility triggers on a change of *stick*, which is deliberately not what
+  upstream does. Upstream compares against the previous `desiredSpeed` fraction
+  clamped to [-0.5, 1], and that clamp invents a change that never happened: a
+  held partial stick around 0.4 to 0.7 re-triggers the boost forever, so an
+  upstream Agility tank holding half forward sits at 28 units a second
+  indefinitely -- faster than anybody at full throttle, without moving the stick.
+  Agility rewards changing direction, and holding still is not changing, so half
+  stick outweighing full stick is a bug rather than a rule. It is invisible on a
+  keyboard, where the stick is only ever 0 or +/-1; bzo has analog input
+  everywhere.
+- `M` Momentum (#6), which completes phase 5. It composes with the world's
+  acceleration limit rather than replacing it, by adding reciprocals the way two
+  constraints on one quantity combine. Upstream substitutes instead, and since
+  `_momentumLinAcc` defaults to exactly what `-a 1 1` gives, upstream's `M` does
+  nothing at all on such a world and is an *upgrade* on anything heavier -- a
+  strange thing for a bad flag to be. bzo's reduces to upstream's figure on a
+  world with no inertia (20 u/s²) and is a handicap everywhere else.
+- The server's acceleration check runs that same model rather than a bound of its
+  own, in real units on both sides. With no inertia it finds nothing, which is
+  correct rather than lax -- a tank with no limit really can reach full speed in
+  a frame, and the `fs`/`rs` clamp is what bounds it. bzfs makes the mirror-image
+  trade, skipping its high-speed check when inertia is on.
+- `RC` ReverseControls, `FO` Forward Only, `RO` Reverse Only, `LT` Left Turn
+  Only, `RT` Right Turn Only, `BY` Bouncy and `TR` Trigger Happy (#6, phase 5's
+  bad flags -- everything but `M` Momentum). Five clamp the stick and two act
+  without it. The clamps go on the raw stick where upstream puts them, so the
+  acceleration smoothing and Agility's window downstream see what the tank was
+  actually asked to do; they stay client-side, as upstream has them, because
+  `fs` and `rs` are measured from the resolved displacement and a tank sliding
+  along a wall legitimately reports a sign it never asked for. `RC` pressing
+  forward drives backwards at half speed, since the negation lands before the
+  reverse-speed clamp -- upstream's order, and the right one: the flag reverses
+  the controls, it does not turn the tank around. `BY` is out of the jump gate
+  entirely and bounces on a world that forbids jumping, each bounce a random
+  quarter-to-full of the world's jump velocity. `TR` skips the reload gate and
+  waits only for a free shot slot, which is not a rate increase because that is
+  the rule the server already holds every shot to.
+- `testSpawn` in `server.json` takes a list as well as a single entry, so moving
+  a probe from flag zone to flag zone no longer costs the person testing beside
+  it their own fixed spawn.
+
+### Fixed
+- A client told to reload now waits for the server to answer `/api/ready` before
+  leaving the page. The socket has always retried forever, but `location.reload()`
+  fetches over HTTP -- and a reload that lands while the server is restarting
+  gets the browser's own error page, with no script left to try again, so the tab
+  stays dead until somebody presses reload by hand. A map change is the worst
+  case, because it tells every client to reload at the same moment it takes the
+  server away.
+- The server inferred a jump from a flat `vv > 10`, which predated every flag. A
+  `BY` Bouncy bounce starts as low as 4.75 at bzo's default, so the server missed
+  those jumps outright and went on extrapolating the tank along the ground while
+  it was in the air. The threshold is a tenth of the world's own jump velocity
+  now, so it follows a server that has tuned the jump.
+- `V` High Speed, `QT` Quick Turn and `A` Agility (#6, phase 5's three good
+  flags). Two multipliers on the world's own tank speed and turn rate --
+  `_velocityAd` and `_angularAd`, both 1.5 -- and one flag with a clock: a change
+  of more than `_agilityVelDelta` 0.3 in what the stick asks for buys
+  `_agilityAdVel` 2.25 for `_agilityTimeWindow` 1.0s, halved to 0.15 when the new
+  request is a reverse. Upstream's details come with it: the window does not
+  extend while it is open, and the fraction the change is measured against is
+  clamped to [-0.5, 1] so an already-boosted tank still has to make a real input
+  change to earn the next boost. `getMotionEffects` joins the flags pair, shaped
+  like `getShotEffects`, and the eight bad movement flags extend that table
+  rather than replacing it.
+- Move packets now say how fast a tank is going rather than how fast it is going
+  *for its flag*: `fs` and `rs` are fractions of the world's base speed and turn
+  rate, so a boosted tank reports more than 1 and every reader -- the server's
+  extrapolation, the client's remote extrapolation, the tread animation -- is
+  already correct with no flag state of its own. The server clamps the reading to
+  the flag's largest possible factor rather than its instantaneous one, because
+  Agility's window is the client's to run and a ceiling costs no state. Agility
+  is exempt from the forward half of the acceleration check for the same reason a
+  `WG` tank is exempt in the air: the boost lands all at once, so no acceleration
+  bound describes it.
+- The help panel lists good and bad flags sorted by abbreviation. Team flags keep
+  BZFlag's own red/green/blue/purple order, which is the numbering the rest of the
+  game counts in; the superflags had no order at all, since upstream's own help
+  walks a `std::set<FlagType*>` and bzo's table was in whatever order the phases
+  landed.
+- Log lines drop the redundant `Player` before a quoted name -- the quotes are
+  what identify it -- and both names in a `[Voice]` line are quoted. `Player 3`
+  with a bare number stays, where the word is the only thing saying what the
+  number counts. `joining game as` is now `joining as`.
+
 ## [1.0.74] - 2026-09-07
 
 ### Added

@@ -114,6 +114,57 @@ export const SHOCK_OUT_RADIUS = 60.0;
 // Steamroller would kill from twice as far away as it looks.
 export const SR_RADIUS_MULT = 2.0;
 
+// _velocityAd, _angularAd, _agilityAdVel, _agilityTimeWindow and
+// _agilityVelDelta (global.cxx:18, :23, :176). Phase 5's three good flags, all
+// of them multipliers on `LocalPlayer::setDesiredSpeed`'s `fracOfMaxSpeed` or
+// `setDesiredAngVel`'s `fracOfMaxAngVel` -- so they scale the world's own tank
+// speed and turn rate rather than replacing them, and a server that has tuned
+// either keeps its tuning.
+export const VELOCITY_AD = 1.5;
+export const ANGULAR_AD = 1.5;
+// Agility is the one with a clock. A sharp enough change in what the stick is
+// asking for buys `_agilityAdVel` for `_agilityTimeWindow` seconds; "sharp
+// enough" is a change of `_agilityVelDelta` in the requested fraction, halved
+// when the new request is a reverse, because backing up is a smaller number to
+// begin with.
+export const AGILITY_AD_VEL = 2.25;
+export const AGILITY_TIME_WINDOW = 1.0;
+export const AGILITY_VEL_DELTA = 0.3;
+
+// Bouncy's two numbers, both literals in `LocalPlayer.cxx` rather than BZDB
+// variables. A tank that has just landed waits `BOUNCE_DELAY` before it is
+// thrown back up (:884), and each bounce is a random quarter-to-full of the
+// world's own jump velocity (:1449) -- which is what makes it a stagger rather
+// than a hop, and why it is a bad flag and not a second `JP`.
+// -a <vel> <rot> (CmdLineOptions.cxx:602), which upstream itself calls inertia
+// (bzfs.cxx:5395). An acceleration *limit* rather than an acceleration: larger
+// is freer, and zero -- upstream's default, and bzo's -- means no limit at all,
+// which is why a stock BZFlag tank reaches full speed in one frame. It reaches
+// every client in the world settings packet, so it is a game style like ricochet
+// rather than a client preference, and a map's `options` block may set it
+// because upstream runs that block through the same parser as its command line.
+//
+// The linear figure is scaled by 20 and the angular one is not. That asymmetry
+// is upstream's own (LocalPlayer.cxx:1549 against :1558) and is kept, because a
+// number a server puts after `-a` has to mean the same thing in both games.
+export const LINEAR_ACCELERATION_SCALE = 20;
+
+// _momentumLinAcc and _momentumAngAcc (global.cxx:92). Upstream *replaces* the
+// world's limit with these while `M` is held, which has two odd consequences: on
+// a world running `-a 1 1` the flag does nothing at all, and on anything
+// heavier than that it is an upgrade.
+//
+// bzo composes the two instead, by adding their reciprocals the way two
+// constraints on one quantity combine. On a world with no limit that reduces to
+// upstream's own figure exactly; on a world that has one, `M` is always slower
+// than the world and never faster. See `composeAccelerationLimit`.
+export const MOMENTUM_LIN_ACC = 1.0;
+export const MOMENTUM_ANG_ACC = 1.0;
+
+export const BOUNCE_DELAY = 0.2;
+export const BOUNCY_JUMP_MIN_FACTOR = 0.25;
+export const BOUNCY_JUMP_RANGE = 0.75;
+
 // BZFlag's tank radius, deliberately not bzo's 2. The grab radius scales with
 // the world rather than with the vehicle, as the sound reference distance in
 // audio.js does: a bzo tank is half as wide as an upstream one, and building
@@ -306,6 +357,30 @@ export const FLAG_TYPES = Object.freeze({
     team: null,
     help: 'Getting hit only drops flag.  Flag flies an extra-long time.',
   }),
+  V: Object.freeze({
+    abbreviation: 'V',
+    name: 'High Speed',
+    endurance: FLAG_ENDURANCE.UNSTABLE,
+    quality: FLAG_QUALITY.GOOD,
+    team: null,
+    help: 'Tank moves faster.  Outrun bad guys.',
+  }),
+  QT: Object.freeze({
+    abbreviation: 'QT',
+    name: 'Quick Turn',
+    endurance: FLAG_ENDURANCE.UNSTABLE,
+    quality: FLAG_QUALITY.GOOD,
+    team: null,
+    help: 'Tank turns faster.  Good for dodging.',
+  }),
+  A: Object.freeze({
+    abbreviation: 'A',
+    name: 'Agility',
+    endurance: FLAG_ENDURANCE.UNSTABLE,
+    quality: FLAG_QUALITY.GOOD,
+    team: null,
+    help: 'Tank is quick and nimble making it easier to dodge.',
+  }),
   SR: Object.freeze({
     abbreviation: 'SR',
     name: 'Steamroller',
@@ -370,6 +445,70 @@ export const FLAG_TYPES = Object.freeze({
     team: null,
     help: 'Tank is super thin.  Very hard to hit from front but is normal size'
       + ' from side.  Can get through small openings.',
+  }),
+  RC: Object.freeze({
+    abbreviation: 'RC',
+    name: 'ReverseControls',
+    endurance: FLAG_ENDURANCE.STICKY,
+    quality: FLAG_QUALITY.BAD,
+    team: null,
+    help: 'Tank driving controls are reversed.',
+  }),
+  FO: Object.freeze({
+    abbreviation: 'FO',
+    name: 'Forward Only',
+    endurance: FLAG_ENDURANCE.STICKY,
+    quality: FLAG_QUALITY.BAD,
+    team: null,
+    help: 'Can\'t drive in reverse.',
+  }),
+  RO: Object.freeze({
+    abbreviation: 'RO',
+    name: 'ReverseOnly',
+    endurance: FLAG_ENDURANCE.STICKY,
+    quality: FLAG_QUALITY.BAD,
+    team: null,
+    help: 'Can\'t drive forward.',
+  }),
+  LT: Object.freeze({
+    abbreviation: 'LT',
+    name: 'Left Turn Only',
+    endurance: FLAG_ENDURANCE.STICKY,
+    quality: FLAG_QUALITY.BAD,
+    team: null,
+    help: 'Can\'t turn right.',
+  }),
+  RT: Object.freeze({
+    abbreviation: 'RT',
+    name: 'Right Turn Only',
+    endurance: FLAG_ENDURANCE.STICKY,
+    quality: FLAG_QUALITY.BAD,
+    team: null,
+    help: 'Can\'t turn left.',
+  }),
+  BY: Object.freeze({
+    abbreviation: 'BY',
+    name: 'Bouncy',
+    endurance: FLAG_ENDURANCE.STICKY,
+    quality: FLAG_QUALITY.BAD,
+    team: null,
+    help: 'Tank can\'t stop bouncing.',
+  }),
+  TR: Object.freeze({
+    abbreviation: 'TR',
+    name: 'Trigger Happy',
+    endurance: FLAG_ENDURANCE.STICKY,
+    quality: FLAG_QUALITY.BAD,
+    team: null,
+    help: 'Tank can\'t stop firing.',
+  }),
+  M: Object.freeze({
+    abbreviation: 'M',
+    name: 'Momentum',
+    endurance: FLAG_ENDURANCE.STICKY,
+    quality: FLAG_QUALITY.BAD,
+    team: null,
+    help: 'Tank has inertia.  Acceleration is limited.',
   }),
   NJ: Object.freeze({
     abbreviation: 'NJ',
@@ -477,6 +616,10 @@ export function canJump(abbreviation, allowJumping, airborne, flapsLeft) {
   if (abbreviation === 'WG') return flapsLeft > 0;
   if (airborne) return false;
   if (abbreviation === 'NJ') return false;
+  // "else if ((flag != Flags::Bouncy) && ..." (LocalPlayer.cxx:1425). Bouncy is
+  // out of the gate entirely: it bounces on a world that forbids jumping, which
+  // is most of what makes it a punishment rather than a second `JP`.
+  if (abbreviation === 'BY') return true;
   return allowJumping || abbreviation === 'JP';
 }
 
@@ -784,6 +927,201 @@ export function getShockWaveAlpha(radius) {
 export function shotRicochets(abbreviation, allShotsRicochet) {
   if (getShotEffects(abbreviation).throughBuildings) return false;
   return allShotsRicochet === true || abbreviation === 'R';
+}
+
+// LocalPlayer::setDesiredSpeed (LocalPlayer.cxx:1100) and setDesiredAngVel
+// (:1147): what the firing flag does to a shot, `getShotEffects` above does for
+// shots, and this does for the tank itself. Two multipliers on the world's own
+// tank speed and turn rate, and one boolean for the rule that is not a number.
+//
+// bzo reports `fs` and `rs` as fractions of the world's *base* speed and turn
+// rate, so a boosted tank sends a fraction above 1 and the server extrapolates
+// it at face value with no flag state to keep. That is what `getMaxSpeedFactor`
+// below is for: the server needs the bound, not the instant.
+const DEFAULT_MOTION_EFFECTS = Object.freeze({
+  speedFactor: 1,
+  angVelFactor: 1,
+  agility: false,
+  reverseControls: false,
+  forwardOnly: false,
+  reverseOnly: false,
+  leftTurnOnly: false,
+  rightTurnOnly: false,
+  bouncy: false,
+  triggerHappy: false,
+  momentum: false,
+});
+
+const MOTION_EFFECTS = Object.freeze({
+  V: Object.freeze({ ...DEFAULT_MOTION_EFFECTS, speedFactor: VELOCITY_AD }),
+  QT: Object.freeze({ ...DEFAULT_MOTION_EFFECTS, angVelFactor: ANGULAR_AD }),
+  A: Object.freeze({ ...DEFAULT_MOTION_EFFECTS, agility: true }),
+  RC: Object.freeze({ ...DEFAULT_MOTION_EFFECTS, reverseControls: true }),
+  FO: Object.freeze({ ...DEFAULT_MOTION_EFFECTS, forwardOnly: true }),
+  RO: Object.freeze({ ...DEFAULT_MOTION_EFFECTS, reverseOnly: true }),
+  LT: Object.freeze({ ...DEFAULT_MOTION_EFFECTS, leftTurnOnly: true }),
+  RT: Object.freeze({ ...DEFAULT_MOTION_EFFECTS, rightTurnOnly: true }),
+  M: Object.freeze({ ...DEFAULT_MOTION_EFFECTS, momentum: true }),
+  BY: Object.freeze({ ...DEFAULT_MOTION_EFFECTS, bouncy: true }),
+  TR: Object.freeze({ ...DEFAULT_MOTION_EFFECTS, triggerHappy: true }),
+});
+
+export function getMotionEffects(abbreviation) {
+  return MOTION_EFFECTS[abbreviation] || DEFAULT_MOTION_EFFECTS;
+}
+
+// The fastest a flag can ever move a tank, and the quickest it can ever turn
+// one. The client asks what its speed is *now*; the server asks only how far the
+// answer could go, because the bound is all a hit test and a drift threshold
+// need and a bound costs no state. Agility's boost is the whole of its top
+// speed -- outside the window it is an ordinary tank.
+export function getMaxSpeedFactor(abbreviation) {
+  const effects = getMotionEffects(abbreviation);
+  return effects.agility ? AGILITY_AD_VEL : effects.speedFactor;
+}
+
+export function getMaxAngVelFactor(abbreviation) {
+  return getMotionEffects(abbreviation).angVelFactor;
+}
+
+// Two acceleration limits acting on the same tank, composed. A limit is a
+// ceiling on how fast a velocity may change, so two of them acting together are
+// two constraints on one quantity: their reciprocals add, as they do for springs
+// in series or resistors in parallel. Zero means "no limit", so it contributes
+// nothing to the sum and the other limit stands alone.
+//
+// That is the one place bzo does not copy upstream here, and it is deliberate.
+// Upstream substitutes -- `linearAcc = M ? _momentumLinAcc : world` -- so `M` is
+// a handicap only on a world with less inertia than the flag carries. Composing
+// makes it a handicap everywhere, which is what a bad flag is for, and on a
+// world with no inertia at all it gives upstream's number unchanged.
+export function composeAccelerationLimit(worldLimit, flagLimit) {
+  const world = Number.isFinite(worldLimit) && worldLimit > 0 ? worldLimit : 0;
+  if (!(flagLimit > 0)) return world;
+  if (world <= 0) return flagLimit;
+  return 1 / ((1 / world) + (1 / flagLimit));
+}
+
+// What may actually limit this tank, in real units: units per second squared and
+// radians per second squared. Zero is no limit, and is what both ends read as
+// "the tank reaches whatever it was asked for this frame".
+export function getAccelerationLimits(abbreviation, worldLinear, worldAngular) {
+  const momentum = getMotionEffects(abbreviation).momentum;
+  const linear = composeAccelerationLimit(worldLinear, momentum ? MOMENTUM_LIN_ACC : 0);
+  const angular = composeAccelerationLimit(worldAngular, momentum ? MOMENTUM_ANG_ACC : 0);
+  return {
+    linear: linear > 0 ? linear * LINEAR_ACCELERATION_SCALE : 0,
+    angular,
+  };
+}
+
+// doMomentum's clamp itself (LocalPlayer.cxx:1546): how far a velocity may move
+// towards what the stick asked for, over one step. Both ends run this -- the
+// client to drive the tank and the server to check it -- which is the whole
+// point of it being here.
+export function applyAccelerationLimit(previous, desired, limit, seconds) {
+  if (!(limit > 0) || !(seconds > 0)) return desired;
+  const step = limit * seconds;
+  if (desired > previous + step) return previous + step;
+  if (desired < previous - step) return previous - step;
+  return desired;
+}
+
+// The five flags that clamp the stick rather than scaling the tank, in the order
+// upstream applies them: `ReverseControls` is negated where the input is
+// gathered (playing.cxx:983 for the keyboard, :1021 for the mouse), and the four
+// "only" flags are clamped afterwards in `setDesiredSpeed` (:1111) and
+// `setDesiredAngVel` (:1157). A tank carries one flag, so the two stages never
+// actually meet -- the order is upstream's and kept because it is free to keep.
+//
+// Signs are bzo's own and happen to agree with upstream's: positive forward is
+// forwards, and positive turn is left (`TURN_KEYS` maps `KeyA` to +1), which is
+// why `LT` clamps the negative side and `RT` the positive.
+//
+// Client-side, as upstream has it. The server does not re-derive these: `fs` and
+// `rs` are measured from the resolved displacement, so a tank sliding along a
+// wall legitimately reports a sign it never asked for, and a server clamp would
+// rubber-band an honest `FO` tank scraping backwards off a corner.
+export function applyMotionInput(abbreviation, forward, turn) {
+  const effects = getMotionEffects(abbreviation);
+  let clampedForward = effects.reverseControls ? -forward : forward;
+  let clampedTurn = effects.reverseControls ? -turn : turn;
+  if (effects.forwardOnly && clampedForward < 0) clampedForward = 0;
+  if (effects.reverseOnly && clampedForward > 0) clampedForward = 0;
+  if (effects.leftTurnOnly && clampedTurn < 0) clampedTurn = 0;
+  if (effects.rightTurnOnly && clampedTurn > 0) clampedTurn = 0;
+  return { forward: clampedForward, turn: clampedTurn };
+}
+
+// doUpdateMotion's bounce (LocalPlayer.cxx:877). A Bouncy tank on a surface is
+// thrown back up the moment its landing delay expires, and the delay is set by
+// the landing itself -- so the frame it arrives buys `BOUNCE_DELAY` and every
+// frame after that is a jump waiting to happen.
+//
+// Takes and returns `bounceReadyAt` for the same reason `getSpeedFactor` takes
+// and returns `agilityStartedAt`: the rule stays here and the caller only
+// remembers the answer.
+export function getBounceState(abbreviation, grounded, wasAirborne, bounceReadyAt, now) {
+  if (!getMotionEffects(abbreviation).bouncy || !grounded) return { jump: false, bounceReadyAt };
+  if (wasAirborne) return { jump: false, bounceReadyAt: now + BOUNCE_DELAY };
+  return { jump: now > bounceReadyAt, bounceReadyAt };
+}
+
+// doJump's Bouncy branch (LocalPlayer.cxx:1447): a random quarter-to-full of the
+// world's jump velocity, so no two bounces are the same height. `random` is
+// passed in rather than drawn here, to keep this pure and testable.
+export function getBouncyJumpVelocity(jumpVelocity, random) {
+  return (BOUNCY_JUMP_MIN_FACTOR + (random * BOUNCY_JUMP_RANGE)) * jumpVelocity;
+}
+
+// playing.cxx:7345. Trigger Happy fires every frame whether or not the trigger
+// is held, and `firingStatus` is Ready however long the reload has left
+// (LocalPlayer.cxx:847) -- so a free shot slot is the only thing it waits for,
+// which is the same rule the server already holds every shot to.
+export function firesContinuously(abbreviation) {
+  return getMotionEffects(abbreviation).triggerHappy;
+}
+
+// setDesiredSpeed's agility branch, which is the only motion rule with a clock.
+// While the window is open everything is boosted and the window does not extend;
+// outside it, a change of more than `_agilityVelDelta` in the requested fraction
+// opens a new one.
+//
+// **The change is measured against the previous stick, and that is deliberately
+// not what upstream does.** Upstream measures against the previous
+// `desiredSpeed` fraction -- which may itself already be boosted -- and clamps
+// that to [-0.5, 1] before comparing. Hold a partial stick somewhere around 0.4
+// to 0.7 and the clamp invents a change that never happened: 0.5 boosts to
+// 1.125, clamps to 1.0, and next frame |0.5 - 1.0| clears the 0.3 limit, so the
+// boost re-triggers for as long as the stick is held. An upstream Agility tank
+// holding half forward sits at 28 units a second indefinitely -- faster than
+// anybody at full throttle -- without ever moving the stick.
+//
+// That is a bug rather than a rule: Agility rewards *changing* direction, and
+// holding still is not changing. It is invisible upstream because a keyboard
+// stick is only ever 0 or +/-1, where both readings agree exactly. bzo has
+// analog input everywhere -- touch, gamepad, XR -- so half stick would outweigh
+// full stick for most of its players, which is the wrong way round.
+//
+// The [-0.5, 1] clamp below is kept because it is upstream's shape and costs
+// nothing; with a raw stick going in, it never bites.
+//
+// Returns the factor and the window's start, so the caller carries no rule of
+// its own -- give it back the `agilityStartedAt` it gets, and the state machine
+// is this function.
+export function getSpeedFactor(abbreviation, previousFraction, requestedFraction, agilityStartedAt, now) {
+  const effects = getMotionEffects(abbreviation);
+  if (!effects.agility) return { factor: effects.speedFactor, agilityStartedAt };
+  if ((now - agilityStartedAt) < AGILITY_TIME_WINDOW) {
+    return { factor: AGILITY_AD_VEL, agilityStartedAt };
+  }
+  const oldFraction = Math.max(-0.5, Math.min(1, previousFraction));
+  // "if (fracOfMaxSpeed < 0.0f) limit /= 2.0f" -- a reverse is half the change.
+  const limit = requestedFraction < 0 ? AGILITY_VEL_DELTA / 2 : AGILITY_VEL_DELTA;
+  if (Math.abs(requestedFraction - oldFraction) > limit) {
+    return { factor: AGILITY_AD_VEL, agilityStartedAt: now };
+  }
+  return { factor: 1, agilityStartedAt };
 }
 
 // checkEnvironment's squish loop (playing.cxx:4198): the flag that kills by

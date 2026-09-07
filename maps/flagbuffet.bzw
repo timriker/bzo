@@ -96,14 +96,14 @@ end
 # units and leaves thirty to the world edge. `color` is a BZFlag team index: 2
 # is green, 4 is purple.
 base
-  name east_green_base
+  name e_g_base
   position 130 0 0
   size 20 20 0
   color 2
 end
 
 base
-  name west_purple_base
+  name w_p_base
   position -130 0 0
   size 20 20 0
   color 4

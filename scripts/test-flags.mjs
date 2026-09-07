@@ -78,6 +78,17 @@ import {
   SHOCK_IN_RADIUS,
   SHOCK_OUT_RADIUS,
   SR_RADIUS_MULT,
+  VELOCITY_AD,
+  ANGULAR_AD,
+  AGILITY_AD_VEL,
+  AGILITY_TIME_WINDOW,
+  AGILITY_VEL_DELTA,
+  LINEAR_ACCELERATION_SCALE,
+  MOMENTUM_LIN_ACC,
+  MOMENTUM_ANG_ACC,
+  BOUNCE_DELAY,
+  BOUNCY_JUMP_MIN_FACTOR,
+  BOUNCY_JUMP_RANGE,
   canJump,
   canShakeFlag,
   computeFlagFlight,
@@ -100,6 +111,18 @@ import {
   hasAirControl,
   shotRicochets,
   shieldsAgainstShot,
+  getMotionEffects,
+  getMaxSpeedFactor,
+  getMaxAngVelFactor,
+  getSpeedFactor,
+  applyMotionInput,
+  composeAccelerationLimit,
+  getAccelerationLimits,
+  applyAccelerationLimit,
+  getBounceState,
+  getBouncyJumpVelocity,
+  firesContinuously,
+  isBadFlag,
   crushesOnContact,
   killsWholeTeam,
   getRunOverRadius,
@@ -115,8 +138,8 @@ const serverFlags = require('../server/flags.cjs');
 
 const GRAVITY = 9.8;
 const EPSILON = 1e-9;
-const close = (actual, expected, message) => assert.ok(
-  Math.abs(actual - expected) < 1e-6,
+const close = (actual, expected, message, tolerance = 1e-6) => assert.ok(
+  Math.abs(actual - expected) < tolerance,
   `${message}: expected ${expected}, got ${actual}`
 );
 
@@ -423,6 +446,238 @@ for (const abbreviation of ['JP', 'US', 'ID', 'B*', null]) {
 
   assert.equal(serverFlags.getShockWaveRadius(0.35, life), getShockWaveRadius(0.35, life),
     'client/server disagree about how big a wave is');
+}
+
+// Phase 5's three good flags, all of them multipliers on the world's own tank
+// speed and turn rate rather than replacements for it.
+{
+  assert.equal(VELOCITY_AD, 1.5, '_velocityAd');
+  assert.equal(ANGULAR_AD, 1.5, '_angularAd');
+  assert.equal(AGILITY_AD_VEL, 2.25, '_agilityAdVel');
+  assert.equal(AGILITY_TIME_WINDOW, 1.0, '_agilityTimeWindow');
+  assert.equal(AGILITY_VEL_DELTA, 0.3, '_agilityVelDelta');
+  assert.equal(getFlagType('V').name, 'High Speed');
+  assert.equal(getFlagType('QT').name, 'Quick Turn');
+  assert.equal(getFlagType('A').name, 'Agility');
+  for (const abbreviation of ['V', 'QT', 'A']) {
+    const type = getFlagType(abbreviation);
+    assert.equal(type.endurance, FLAG_ENDURANCE.UNSTABLE, `${abbreviation} is FlagUnstable`);
+    assert.equal(type.quality, 0, `${abbreviation} is a good flag`);
+    assert.equal(type.team, null);
+    // Motion only: none of the three touches the shot or the tank's size.
+    assert.deepEqual(getShotEffects(abbreviation), getShotEffects(null),
+      `${abbreviation} leaves the shot alone`);
+    assert.deepEqual(getTankDimensionScale(abbreviation), getTankDimensionScale(null),
+      `${abbreviation} leaves the tank's size alone`);
+  }
+
+  // Each moves exactly one of the two axes.
+  close(getMaxSpeedFactor('V'), VELOCITY_AD, 'High Speed drives half again as fast');
+  close(getMaxAngVelFactor('V'), 1, 'and turns at the world rate');
+  close(getMaxAngVelFactor('QT'), ANGULAR_AD, 'Quick Turn turns half again as fast');
+  close(getMaxSpeedFactor('QT'), 1, 'and drives at the world speed');
+  close(getMaxSpeedFactor('A'), AGILITY_AD_VEL, 'Agility tops out at the boost');
+  close(getMaxAngVelFactor('A'), 1);
+  for (const abbreviation of ['SW', 'SR', 'US', 'B*', 'ZZ', null]) {
+    close(getMaxSpeedFactor(abbreviation), 1, `${abbreviation} does not change speed`);
+    close(getMaxAngVelFactor(abbreviation), 1, `${abbreviation} does not change turning`);
+    assert.equal(getMotionEffects(abbreviation).agility, false);
+  }
+
+  // `V` and `QT` are constant, so the window arguments are never read.
+  assert.deepEqual(getSpeedFactor('V', 0, 1, -Infinity, 0), { factor: VELOCITY_AD, agilityStartedAt: -Infinity });
+  assert.deepEqual(getSpeedFactor(null, 0, 1, -Infinity, 0), { factor: 1, agilityStartedAt: -Infinity });
+
+  // Agility's window. A stick that has barely moved earns nothing...
+  const idle = getSpeedFactor('A', 0.5, 0.6, -Infinity, 100);
+  close(idle.factor, 1, 'a change of 0.1 is not a direction change');
+  assert.equal(idle.agilityStartedAt, -Infinity, 'and opens no window');
+  // ...a change of more than _agilityVelDelta does, and starts the clock.
+  const burst = getSpeedFactor('A', 0.0, 0.4, -Infinity, 100);
+  close(burst.factor, AGILITY_AD_VEL, 'a change of 0.4 is');
+  assert.equal(burst.agilityStartedAt, 100, 'and the window opens now');
+  // Exactly the limit is not "more than" it, which is upstream's own `>`.
+  close(getSpeedFactor('A', 0, AGILITY_VEL_DELTA, -Infinity, 100).factor, 1, 'the limit is exclusive');
+
+  // Reversing needs half the change, because a reverse is a smaller number.
+  close(getSpeedFactor('A', 0, -0.2, -Infinity, 100).factor, AGILITY_AD_VEL, 'a small reverse counts');
+  close(getSpeedFactor('A', 0, -0.1, -Infinity, 100).factor, 1, 'a smaller one does not');
+
+  // Inside the window everything is boosted, and the window does not extend --
+  // the start it gives back is the one it was handed.
+  const held = getSpeedFactor('A', 1, 1, 100, 100.5);
+  close(held.factor, AGILITY_AD_VEL, 'the whole window is boosted');
+  assert.equal(held.agilityStartedAt, 100, 'and holding the stick does not extend it');
+  // And it closes on time.
+  close(getSpeedFactor('A', 1, 1, 100, 100 + AGILITY_TIME_WINDOW).factor, 1, 'the window closes');
+
+  // Deliberately not upstream: the change is measured against the previous
+  // *stick*, so a held partial stick settles instead of re-triggering forever.
+  // Upstream compares against the previous (possibly boosted) desired speed
+  // clamped to [-0.5, 1], which makes half stick outweigh full stick.
+  for (let held = 0.4; held <= 0.75; held += 0.05) {
+    const settled = getSpeedFactor('A', held, held, -Infinity, 200);
+    close(settled.factor, 1, `a held stick of ${held.toFixed(2)} does not re-trigger`);
+  }
+  // The [-0.5, 1] clamp is upstream's shape and is kept, though a raw stick
+  // never reaches it.
+  close(getSpeedFactor('A', 2.25, 1, -Infinity, 200).factor, 1, 'a boosted fraction clamps to 1');
+
+  assert.deepEqual(serverFlags.getSpeedFactor('A', 0, 0.4, -Infinity, 100),
+    getSpeedFactor('A', 0, 0.4, -Infinity, 100), 'client/server agility diverged');
+  assert.equal(serverFlags.getMaxSpeedFactor('V'), getMaxSpeedFactor('V'));
+}
+
+// Phase 5's bad flags: five input clamps, one that jumps for you and one that
+// fires for you. None of them is a multiplier, which is why they waited for the
+// table the good three built rather than the other way round.
+{
+  for (const abbreviation of ['RC', 'FO', 'RO', 'LT', 'RT', 'BY', 'TR']) {
+    const type = getFlagType(abbreviation);
+    assert.equal(type.endurance, FLAG_ENDURANCE.STICKY, `${abbreviation} is FlagSticky`);
+    assert.equal(type.quality, 1, `${abbreviation} is a bad flag`);
+    assert.equal(isBadFlag(abbreviation), true);
+    // None of them scales the tank; that is what separates them from V and QT.
+    close(getMaxSpeedFactor(abbreviation), 1, `${abbreviation} does not change speed`);
+    close(getMaxAngVelFactor(abbreviation), 1, `${abbreviation} does not change turning`);
+  }
+  assert.equal(getFlagType('RC').name, 'ReverseControls');
+  assert.equal(getFlagType('RO').name, 'ReverseOnly');
+  assert.equal(getFlagType('LT').help, 'Can\'t turn right.');
+  assert.equal(getFlagType('RT').help, 'Can\'t turn left.');
+
+  // A flag with nothing to say about the stick passes it straight through.
+  for (const abbreviation of ['V', 'SW', 'US', null]) {
+    assert.deepEqual(applyMotionInput(abbreviation, 0.7, -0.4), { forward: 0.7, turn: -0.4 });
+  }
+
+  // Reverse Controls negates both axes, and nothing else.
+  assert.deepEqual(applyMotionInput('RC', 1, 1), { forward: -1, turn: -1 });
+  assert.deepEqual(applyMotionInput('RC', -0.5, 0.25), { forward: 0.5, turn: -0.25 });
+  assert.deepEqual(applyMotionInput('RC', 0, 0), { forward: -0, turn: -0 });
+
+  // The four "only" flags take one direction away and leave the other alone.
+  // Positive forward is forwards; positive turn is left (`TURN_KEYS` maps KeyA
+  // to +1), which is why LT clamps the negative side and RT the positive.
+  assert.deepEqual(applyMotionInput('FO', 1, 1), { forward: 1, turn: 1 }, 'FO keeps forward');
+  assert.deepEqual(applyMotionInput('FO', -1, 1), { forward: 0, turn: 1 }, 'and refuses reverse');
+  assert.deepEqual(applyMotionInput('RO', -0.5, 1), { forward: -0.5, turn: 1 }, 'RO keeps reverse');
+  assert.deepEqual(applyMotionInput('RO', 1, 1), { forward: 0, turn: 1 }, 'and refuses forward');
+  assert.deepEqual(applyMotionInput('LT', 1, 1), { forward: 1, turn: 1 }, 'LT keeps left');
+  assert.deepEqual(applyMotionInput('LT', 1, -1), { forward: 1, turn: 0 }, 'and refuses right');
+  assert.deepEqual(applyMotionInput('RT', 1, -1), { forward: 1, turn: -1 }, 'RT keeps right');
+  assert.deepEqual(applyMotionInput('RT', 1, 1), { forward: 1, turn: 0 }, 'and refuses left');
+  // Neither turn flag touches driving, and neither drive flag touches turning.
+  assert.deepEqual(applyMotionInput('LT', -1, 1), { forward: -1, turn: 1 });
+  assert.deepEqual(applyMotionInput('FO', 1, -1), { forward: 1, turn: -1 });
+
+  // Bouncy jumps on a world that forbids jumping, which is most of the point.
+  assert.equal(canJump('BY', false, false, 0), true, 'Bouncy bounces without -j');
+  assert.equal(canJump('BY', false, true, 0), false, 'but not while already airborne');
+  assert.equal(canJump(null, false, false, 0), false, 'where a plain tank cannot');
+
+  // The bounce clock: landing buys BOUNCE_DELAY, and every frame after it is a
+  // jump waiting to happen.
+  assert.equal(BOUNCE_DELAY, 0.2);
+  const landed = getBounceState('BY', true, true, 0, 100);
+  assert.equal(landed.jump, false, 'the frame it lands does not bounce');
+  close(landed.bounceReadyAt, 100 + BOUNCE_DELAY, 'it starts the delay instead');
+  assert.equal(getBounceState('BY', true, false, 100.2, 100.1).jump, false, 'still waiting');
+  assert.equal(getBounceState('BY', true, false, 100.2, 100.3).jump, true, 'and then it bounces');
+  // Nothing bounces in mid air, and no other flag bounces at all.
+  assert.equal(getBounceState('BY', false, false, 0, 100).jump, false, 'not while airborne');
+  assert.equal(getBounceState('JP', true, false, 0, 100).jump, false, 'Jumping does not bounce');
+  assert.equal(getBounceState(null, true, false, 0, 100).jump, false);
+
+  // A quarter to a full jump, and never outside that.
+  assert.equal(BOUNCY_JUMP_MIN_FACTOR, 0.25);
+  assert.equal(BOUNCY_JUMP_RANGE, 0.75);
+  close(getBouncyJumpVelocity(19, 0), 4.75, 'the smallest bounce is a quarter of a jump');
+  close(getBouncyJumpVelocity(19, 1), 19, 'and the largest is a whole one');
+  close(getBouncyJumpVelocity(19, 0.5), 11.875);
+
+  assert.equal(firesContinuously('TR'), true);
+  for (const abbreviation of ['MG', 'F', 'V', 'BY', null]) {
+    assert.equal(firesContinuously(abbreviation), false, `${abbreviation} waits for the trigger`);
+  }
+  // Trigger Happy is not a shot variant: it changes who pulls the trigger, not
+  // what leaves the barrel.
+  assert.deepEqual(getShotEffects('TR'), getShotEffects(null));
+
+  assert.deepEqual(serverFlags.applyMotionInput('RC', 1, -1), applyMotionInput('RC', 1, -1),
+    'client/server input clamps diverged');
+  assert.deepEqual(serverFlags.getBounceState('BY', true, true, 0, 100),
+    getBounceState('BY', true, true, 0, 100), 'client/server bounce clock diverged');
+}
+
+// Inertia: the world's `-a` and the `M` flag that composes with it.
+{
+  assert.equal(LINEAR_ACCELERATION_SCALE, 20, 'upstream scales the linear limit by 20');
+  assert.equal(MOMENTUM_LIN_ACC, 1.0, '_momentumLinAcc');
+  assert.equal(MOMENTUM_ANG_ACC, 1.0, '_momentumAngAcc');
+  assert.equal(getFlagType('M').name, 'Momentum');
+  assert.equal(getFlagType('M').endurance, FLAG_ENDURANCE.STICKY);
+  assert.equal(isBadFlag('M'), true);
+
+  // No limit is upstream's default, and zero is how it is spelled.
+  assert.deepEqual(getAccelerationLimits(null, 0, 0), { linear: 0, angular: 0 },
+    'a world with no -a has no inertia');
+  assert.deepEqual(getAccelerationLimits(null, undefined, undefined), { linear: 0, angular: 0 });
+  // A negative is nobody's answer; upstream clamps it away and so does this.
+  assert.deepEqual(getAccelerationLimits(null, -5, -5), { linear: 0, angular: 0 });
+
+  // A world with -a, and no flag: upstream's numbers, linear scaled by 20.
+  assert.deepEqual(getAccelerationLimits(null, 1, 1), { linear: 20, angular: 1 });
+  assert.deepEqual(getAccelerationLimits(null, 0.5, 2), { linear: 10, angular: 2 });
+
+  // M on a world with no inertia reduces to upstream's own figure exactly.
+  assert.deepEqual(getAccelerationLimits('M', 0, 0), { linear: 20, angular: 1 },
+    'M on a free world is upstream M');
+  // And on a world that has inertia, M is always slower than the world -- which
+  // is where bzo parts company with upstream, whose M would be an upgrade here.
+  const heavy = getAccelerationLimits('M', 0.5, 0.5);
+  close(heavy.linear, 20 / 3, 'M composes rather than replaces');
+  assert.ok(heavy.linear < getAccelerationLimits(null, 0.5, 0.5).linear,
+    'M is never faster than the world it is held on');
+  // Upstream would hand back 20 here, i.e. exactly the world's own limit, and
+  // the flag would do nothing at all.
+  close(getAccelerationLimits('M', 1, 1).linear, 10, 'M halves a -a 1 1 world');
+
+  // Composition itself: reciprocals add, and zero contributes nothing.
+  close(composeAccelerationLimit(0, 1), 1, 'no world limit leaves the flag alone');
+  close(composeAccelerationLimit(1, 0), 1, 'no flag limit leaves the world alone');
+  close(composeAccelerationLimit(0, 0), 0, 'neither is still neither');
+  close(composeAccelerationLimit(2, 2), 1, 'two equal limits halve');
+  for (const [w, f] of [[0.25, 1], [1, 4], [3, 0.5]]) {
+    const composed = composeAccelerationLimit(w, f);
+    assert.ok(composed < w && composed < f, `${w} with ${f} is stricter than both`);
+  }
+
+  // The clamp. No limit means the tank gets what it asked for.
+  close(applyAccelerationLimit(0, 25, 0, 0.1), 25, 'no limit is instant');
+  close(applyAccelerationLimit(0, 25, 20, 0), 25, 'and so is a zero-length step');
+  // 20 u/s^2 over a tenth of a second is two units of speed.
+  close(applyAccelerationLimit(0, 25, 20, 0.1), 2, 'a limit is units per second squared');
+  close(applyAccelerationLimit(10, 25, 20, 0.1), 12, 'measured from where it was');
+  // Symmetric, as upstream's is: slowing down is limited exactly as speeding up.
+  close(applyAccelerationLimit(25, 0, 20, 0.1), 23, 'stopping is limited too');
+  close(applyAccelerationLimit(0, -12.5, 20, 0.1), -2, 'and so is reversing');
+  // Asking for less than the limit allows gets exactly what was asked.
+  close(applyAccelerationLimit(0, 1, 20, 0.1), 1, 'a small change is not clamped');
+
+  // 0 to full speed at upstream's M, which is the figure to hold on to: 25 units
+  // a second against a 20 unit-per-second-squared limit is a second and a
+  // quarter.
+  let speed = 0;
+  let elapsed = 0;
+  while (speed < 25 && elapsed < 10) {
+    speed = applyAccelerationLimit(speed, 25, 20, 0.01);
+    elapsed += 0.01;
+  }
+  close(elapsed, 1.25, 'M takes 1.25s to reach full speed', 0.02);
+
+  assert.deepEqual(serverFlags.getAccelerationLimits('M', 1, 1), getAccelerationLimits('M', 1, 1),
+    'client/server inertia diverged');
 }
 
 // Phase 6's damage rules: the two flags that change what a hit does without

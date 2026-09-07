@@ -139,6 +139,7 @@ Read as a bzfs command line, one option a line. Everything bzo understands:
 | `-c` | team play on |
 | `-offa` | team play off, free-for-all |
 | `-autoTeam` | assign teams rather than letting players pick |
+| `-a <vel> <rot>` | the world's acceleration limit, upstream's inertia switch; `0 0` is none |
 | `-noTeamKills` | players on the same team are immune to each other; rogue is excepted |
 | `-tk` | a team killer does *not* die for it -- upstream kills them by default, and this is the opt-out |
 | `-mp a,b,c,d,e,f` | per-team player limits, in BZFlag's team order; a team limited to 0 is not offered |

@@ -7,13 +7,13 @@ Upstream references are paths under `$HOME/bzflag/`.
 Phases 1 (the Useless superflag, animation, and the drop key), 2 (team flags and
 capture), 3 (Identify), 6 (damage rules), 7 (per-player tank dimensions), 8 (shot
 variants), 9 (Ricochet), 10 (Shock Wave) and 13 (per-viewer visibility) are
-**implemented**, as is the jumping switch and all three flags that hang off it --
-`JP` Jumping, `WG` Wings and `NJ` No Jumping -- see "Jumping, and the flags that
-carry it".
+**implemented**, as are phase 5's three good flags and the jumping switch with
+all three flags that hang off it -- `JP` Jumping, `WG` Wings and `NJ` No Jumping
+-- see "Jumping, and the flags that carry it".
 All three of phase 4's ways out of a bad flag -- the **shake timeout**, **shake
 wins** and **antidote flags** -- are in, and three of its four client-side bad
 flags with them; `WA` Wide Angle is the one left, and it is blocked rather than
-merely unstarted. Phases 5, 11, 12 and 14 are not started.
+merely unstarted. Phases 11, 12 and 14 are not started.
 
 Every flag is named as well as abbreviated wherever it is mentioned here, in
 `Flag.cxx`'s own words: the abbreviation is what the code, the config and the
@@ -194,13 +194,10 @@ worse than trusting a modified client about a base it still had to drive to.
 ## What is left to add
 
 Upstream carries 47 flag types: a Null type, four team flags, and 42
-superflags. bzo has the four team flags and twenty-five superflags -- `US`
-Useless, `ID` Identify, `JP` Jumping, `WG` Wings, `R` Ricochet, `NJ` No Jumping,
-`SH` Shield, `SR` Steamroller, `G` Genocide, `F` Rapid Fire, `MG` Machine Gun,
-`L` Laser, `SB` Super Bullet, `IB` Invisible Bullet, `SW` Shock Wave, `T` Tiny,
-`N` Narrow, `O` Obesity, `B` Blindness, `JM` Jamming, `CB` Colorblindness, `ST`
-Stealth, `CL` Cloaking, `MQ` Masquerade and `SE` Seer -- so **17 superflags
-remain**, 8 good and 9 bad. The table below is the whole list, grouped by the
+superflags. bzo has the four team flags and thirty-six superflags -- everything
+except `WA` Wide Angle, `TH` Thief, `GM` Guided Missile, `OO` Oscillation
+Overthruster, `BU` Burrow and `PZ` Phantom Zone -- so **6 superflags remain**, 5
+good and 1 bad. The table below is the whole list, grouped by the
 machinery each group needs rather than by name, because the machinery is what
 decides the order. `src/common/Flag.cxx` is the authority for every name,
 abbreviation, endurance, quality and help string; `src/common/global.cxx` for
@@ -209,7 +206,6 @@ every constant named here.
 | Phase | Flags | What it needs that bzo does not have |
 |---|---|---|
 | 4 | `WA` Wide Angle | **blocked**: no XR answer yet, see below |
-| 5 | `V` High Speed, `QT` Quick Turn, `A` Agility, `M` Momentum, `RC` Reverse Controls, `FO` Forward Only, `RO` Reverse Only, `LT` Left Turn Only, `RT` Right Turn Only, `BY` Bouncy, `TR` Trigger Happy | the motion resolver, in the shared pair |
 | 11 | `TH` Thief | flag stealing |
 | 12 | `GM` Guided Missile | a steerable shot, and a lock-on target |
 | 14 | `OO` Oscillation Overthruster, `BU` Burrow, `PZ` Phantom Zone | movement through and under geometry |
@@ -707,7 +703,7 @@ The options, none of them chosen yet:
 
 This wants a decision before code.
 
-## Phase 5 -- the motion resolver, and the movement flags
+## Phase 5 -- the motion resolver, and the movement flags (implemented)
 
 Eleven flags, one piece of machinery. Every one of them is a multiplier or a
 clamp on tank motion, and both sides need the same answer: the client predicts
@@ -750,6 +746,168 @@ Upstream applies these in `LocalPlayer::getMaxSpeed` (`LocalPlayer.cxx:1100`),
 | `RT` Right Turn Only | left turn clamped to 0 | bad |
 | `BY` Bouncy | jumps continuously on landing (`LocalPlayer.cxx:877`) | bad |
 | `TR` Trigger Happy | fires continuously (`LocalPlayer.cxx:1308`) | bad |
+
+### The three good ones
+
+`getMotionEffects` is in the shared pair, shaped like `getShotEffects` as the
+plan above asked: two multipliers on the world's own tank speed and turn rate,
+and one boolean for the rule that is not a number. `V` and `QT` are a number
+each. Agility is the boolean, because it has a clock.
+
+**The wire carries speed, not stick.** `fs` and `rs` are fractions of the
+*world's* base speed and turn rate, so a boosted tank reports more than 1 and
+every reader -- `getExtrapolatedPosition`, the client's remote extrapolation, the
+tread animation -- multiplies by the world's own figure and is already correct.
+Nothing but the client needs to know which flag is in hand. That is what made
+this land without the server growing a copy of the motion resolver, which is the
+shape the plan above feared.
+
+**The server holds a bound, not an instant.** `getMaxSpeedFactor` answers the
+most a flag could ever manage -- 2.25 for Agility, whether the window is open or
+not -- and the server clamps the reading to it. Mirroring a one-second window off
+packets that do not carry the stick would be a second copy of a state machine to
+disagree with; a ceiling costs nothing. It is a looser gate than upstream's, and
+the same trade as the shot position tolerance.
+
+**Agility is exempt from the acceleration check**, on its forward half only. The
+window opens and the tank is 2.25x faster in that same frame, so no acceleration
+bound describes it -- which is already why a `WG` tank is exempt in the air. Its
+turn half still applies, because Agility does not touch turning.
+
+**Upstream's own details, kept.** The window does not extend while it is open, so
+holding the stick buys one second and not more, and a reverse needs half the
+change to trigger because a reverse is a smaller number to begin with.
+
+**One upstream detail deliberately not kept: what the change is measured
+against.** Upstream compares the new stick with the previous *`desiredSpeed`*
+fraction, which may itself already be boosted, clamped to [-0.5, 1]:
+
+```
+float oldFrac = desiredSpeed / BZDBCache::tankSpeed;   // can be up to 2.25
+if (oldFrac > 1.0f) oldFrac = 1.0f;
+```
+
+That clamp invents a change that never happened. A half-forward stick boosts to
+1.125, clamps to 1.0, and next frame `|0.5 - 1.0|` clears the 0.3 limit -- so the
+boost re-triggers for as long as the stick is held:
+
+| stick held | upstream | bzo |
+|---|---|---|
+| 1.0 | boosts once, expires | boosts once, expires |
+| 0.7 down to about 0.4 | **boosted permanently** | boosts once, expires |
+| 0.3 or less | never triggers | never triggers |
+
+An upstream Agility tank holding half forward sits at 28 units a second
+indefinitely -- faster than anybody at full throttle -- without ever moving the
+stick. Agility rewards *changing* direction, and holding still is not changing,
+so half stick outweighing full stick is a bug and not a rule.
+
+It is invisible upstream because a keyboard stick is only ever 0 or +/-1, where
+both readings agree exactly. bzo has analog input everywhere -- touch, gamepad,
+XR thumbsticks -- so it would be the normal case here rather than the corner.
+bzo therefore measures against the previous **stick**, and Agility is agile at
+every stick position and on every real change.
+
+
+### The seven bad ones
+
+Five of them clamp the stick and two act without it, and none is a multiplier --
+which is why they extend the table the good three built rather than needing one
+of their own. Every one is a boolean in `MOTION_EFFECTS`.
+
+**The clamps go on the raw stick**, where upstream puts them: `RC` is negated
+where input is gathered (playing.cxx:983 for the keyboard, :1021 for the mouse)
+and the four "only" flags are clamped in `setDesiredSpeed` and
+`setDesiredAngVel`. Doing it there rather than on the resolved velocity means
+everything downstream -- the acceleration smoothing, Agility's window -- sees
+what the tank was actually asked to do. bzo's signs happen to agree with
+upstream's: positive forward is forwards and positive turn is left, which is why
+`LT` clamps the negative side and `RT` the positive.
+
+**`RC` pressing forward drives backwards at half speed**, because the negation
+lands before the reverse-speed clamp: a full forward stick becomes a full reverse
+one, and reverse is capped at `REVERSE_SPEED_RATIO`. That is upstream's order and
+it is the right one -- the flag reverses the controls, it does not turn the tank
+around.
+
+**These stay client-side, as upstream has them.** The server does not re-derive
+the clamps, because `fs` and `rs` are measured from the resolved displacement: a
+tank sliding along a wall legitimately reports a sign it never asked for, and a
+server clamp would rubber-band an honest `FO` tank scraping backwards off a
+corner. They are handicaps, and removing one with a modified client is cheating
+yourself out of a punishment.
+
+**`BY` Bouncy is out of the jump gate entirely.** `canJump` answers yes for it
+whatever the world says, which is upstream's `(flag != Flags::Bouncy)`
+(LocalPlayer.cxx:1425) and most of what makes it a punishment rather than a
+second `JP`. Landing buys `BOUNCE_DELAY` 0.2s and every frame after that is a
+bounce, each a random quarter-to-full of the world's jump velocity -- the
+randomness is the flag, since a fixed bounce would just be jumping you did not
+ask for.
+
+That randomness broke something on the way in. **The server inferred a jump from
+`vv > 10`**, a flat number that predated every flag. A Bouncy bounce starts as
+low as 4.75 at bzo's default, so the server missed those jumps outright and went
+on extrapolating the tank along the ground while it was in the air. The threshold
+is now a tenth of the world's own jump velocity: clear of the two-decimal
+quantization on the wire, under anything that could be a real jump, and it
+follows a server that has tuned the jump.
+
+**`TR` Trigger Happy pulls the trigger every frame** whether or not anybody is
+holding it (playing.cxx:7345), and upstream's `firingStatus` stays Ready however
+long the reload has left. So it skips bzo's reload gate and waits only for a free
+shot slot -- which is not a rate increase, because a free slot is the rule the
+server already holds every shot to. It changes who pulls the trigger, not what
+leaves the barrel: `getShotEffects('TR')` is the world's own shot.
+
+### `M` Momentum, and the inertia it belongs to
+
+`M` was left until last because it is not a clamp on anything -- it is an
+acceleration model, and bzo had one of its own that had to go first.
+
+**Upstream has no inertia by default.** `doMomentum` limits how fast a velocity
+may change, but only `if (linearAcc > 0.0f)`, and that limit comes from bzfs's
+`-a <vel> <rot>`, which defaults to `0 0`. A stock BZFlag tank reaches full speed
+in one frame. bzfs calls the switch inertia in its own comments, sends both
+figures to every client in the world settings packet, and reads a map's `options`
+block through the same parser as its command line -- so `-a` is a game style a
+map may set, like `+r`.
+
+**bzo had inertia BZFlag does not, and no way to turn it off.** Five rates of its
+own -- `forwardAccel`, `reverseAccel`, `forwardDecel`, `turnAccel`, `turnDecel`
+-- smoothed the *stick* rather than the velocity, at roughly `-a 2.25 2.36`, set
+only in `server.json` and never reachable from a map. That is the opposite of the
+goal: bzo is meant to feel like BZFlag and offer the same knobs for changing it.
+So the five rates are gone, `-a` is in at both levels with upstream's `0 0`
+default, and `doMomentum` is in the shared pair where the client that drives the
+tank and the server that checks it both run it.
+
+**`M` composes with the world rather than replacing it.** Upstream substitutes:
+
+```
+linearAcc = (flag == Momentum) ? _momentumLinAcc : World::getLinearAcceleration();
+```
+
+`_momentumLinAcc` and `_momentumAngAcc` both default to 1.0 -- exactly what `-a
+1 1` gives -- so upstream's `M` does *nothing at all* on such a world, and on
+anything heavier it is an **upgrade**. That is a strange thing for a bad flag to
+be. bzo adds the reciprocals instead, the way two constraints on one quantity
+combine, which reduces to upstream's own figure on a world with no inertia and
+makes `M` a handicap everywhere else:
+
+| world `-a` | no flag | with `M` | upstream's `M` |
+|---|---|---|---|
+| `0 0` (default) | no limit | 20 u/s² | 20 u/s² |
+| `1 1` | 20 u/s² | 10 u/s² | 20 u/s² (no effect) |
+| `0.5 0.5` | 10 u/s² | 6.7 u/s² | 20 u/s² (faster) |
+
+That table is the whole of the deviation, and it is the only one in the phase.
+
+**`_momentumFriction` is not implemented.** `doFriction` limits how fast the
+velocity *vector* may swing, which bites when turning at speed; `_friction`
+defaults to 0 and `_momentumFriction` is 0, so neither does anything on a default
+world. Worth knowing that upstream's `M` therefore *removes* friction from a
+world that had set it -- one more way its `M` can be an upgrade.
 
 `NJ` No Jumping is out of this group and in already: it is a clamp on the jump gate rather
 than on the motion resolver, and the gate has asked the shared pair since the

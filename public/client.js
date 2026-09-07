@@ -197,6 +197,16 @@ import {
   getFlagType,
   getKnownFlagAbbreviation,
   getShotEffects,
+  applyAccelerationLimit,
+  applyMotionInput,
+  firesContinuously,
+  getAccelerationLimits,
+  getMotionEffects,
+  getBounceState,
+  getBouncyJumpVelocity,
+  getMaxAngVelFactor,
+  getMaxSpeedFactor,
+  getSpeedFactor,
   getShockWaveAlpha,
   getShockWaveRadius,
   blanksTheView,
@@ -299,8 +309,40 @@ function checkClientBuild(build) {
   sessionStorage.setItem(RELOADED_FOR_KEY, build);
   debugLog(`client.build stale boot=${bootClientBuild} server=${build} reloading`);
   // Long enough for that line to reach the socket, short enough not to be seen.
-  setTimeout(() => window.location.reload(), 250);
+  setTimeout(reloadWhenServerIsUp, 250);
   return false;
+}
+
+// A reload is the one thing a client does that it cannot recover from. The
+// socket retries forever on its own, but `location.reload()` fetches the page
+// over HTTP -- and if that lands while the server is restarting, the browser
+// replaces the tab with its own error page and there is no script left to try
+// again. The tab is then dead until somebody presses reload by hand, which is
+// exactly what an unattended test client on a headset cannot do.
+//
+// So wait for the server to answer before asking the browser to leave. The dev
+// server restarts on every `server.js`, `public/`, `maps/` and `server.json`
+// change, which is many times an hour while something is being worked on, and a
+// map change is the worst of them: it tells every client to reload at the same
+// moment it takes the server away.
+const RELOAD_READY_POLL_MS = 400;
+const RELOAD_READY_TIMEOUT_MS = 60000;
+
+async function reloadWhenServerIsUp() {
+  const deadline = Date.now() + RELOAD_READY_TIMEOUT_MS;
+  while (Date.now() < deadline) {
+    try {
+      const response = await fetch('/api/ready', { cache: 'no-store' });
+      if (response.ok) break;
+    } catch {
+      // Still down, or still starting. Neither is worth logging every 400ms.
+    }
+    await new Promise((resolve) => { setTimeout(resolve, RELOAD_READY_POLL_MS); });
+  }
+  // Out of patience rather than answered: reload anyway, because a tab that
+  // never reloads is no better off than one that reloaded too early, and the
+  // browser will at least show why.
+  window.location.reload();
 }
 
 // FPS
@@ -703,9 +745,13 @@ function logVoiceEvent(text) {
   else console.log(`[Voice] ${text}`);
 }
 
+// A peer in a log line, named where the roster has told us the name. Quoted for
+// the same reason every other logged name is: the quotes are what say "this is a
+// player", so a line naming two of them reads as two players rather than as a
+// player and a stray word.
 function describeVoicePeer(peerId) {
   const name = voicePeerDebug.get(peerId)?.name;
-  return name ? `${name} (${peerId})` : `peer ${peerId}`;
+  return name ? `"${name}" (${peerId})` : `peer ${peerId}`;
 }
 
 function trackVoicePeer(peerId, changes) {
@@ -4258,10 +4304,10 @@ function handleServerMessage(message) {
       break;
 
     case 'reload':
+      // The server usually says this on its way out -- a map change restarts it
+      // -- so the reload waits for it to come back rather than racing it.
       showMessage('Server updated - reloading...', 'death');
-      setTimeout(() => {
-        window.location.reload();
-      }, 1000);
+      setTimeout(reloadWhenServerIsUp, 1000);
       break;
 
     default:
@@ -5828,8 +5874,12 @@ let jumpWasHeld = false;
 // Whether the flag in hand steers in the air, resolved once per frame in
 // handleInputEvents and read by handleMotion, which runs straight after it.
 let airControl = false;
-let smoothedForwardInput = 0;
-let smoothedRotationInput = 0;
+// doUpdateMotion's `lastSpeed` and the tank's angular velocity, in real units --
+// units a second and radians a second, not stick fractions. They are what
+// `doMomentum` clamps against, so they have to be the actual velocities and not
+// what the stick was asking for.
+let lastSpeed = 0;
+let lastAngVel = 0;
 let localTeleportReentryBlockTeleporterIndex = null;
 let localTeleportReentryBlockDistance = 0;
 let localTeleportReentryBlockUntil = 0;
@@ -6058,14 +6108,6 @@ function triggerSpawnEffectForTank(tank, colorOverride = null) {
   applySpawnGrow(tank);
 }
 
-function approachValue(currentValue, targetValue, maxStep) {
-  if (!Number.isFinite(currentValue)) return targetValue;
-  if (!Number.isFinite(targetValue)) return currentValue;
-  if (!Number.isFinite(maxStep) || maxStep <= 0) return currentValue;
-  const delta = targetValue - currentValue;
-  if (Math.abs(delta) <= maxStep) return targetValue;
-  return currentValue + Math.sign(delta) * maxStep;
-}
 
 function setAirVelocity(tank, vx, vz) {
   if (!tank || !tank.userData) return;
@@ -6088,8 +6130,14 @@ function setAirVelocity(tank, vx, vz) {
 // under. Wings has its own of each: _wingsJumpVelocity and _wingsGravity, both
 // of which are the world's own values until a server says otherwise.
 function getJumpVelocity(verticalVelocity) {
-  if (!airControl) return gameConfig.JUMP_VELOCITY;
-  return getWingsJumpVelocity(gameConfig.WINGS_JUMP_VELOCITY, verticalVelocity);
+  if (airControl) return getWingsJumpVelocity(gameConfig.WINGS_JUMP_VELOCITY, verticalVelocity);
+  // Bouncy's bounce is a random quarter-to-full of the world's jump velocity, so
+  // no two are the same height. That randomness is the flag: a fixed bounce
+  // would just be jumping you did not ask for.
+  if (getMotionEffects(getMyFlag()?.type ?? null).bouncy) {
+    return getBouncyJumpVelocity(gameConfig.JUMP_VELOCITY, Math.random());
+  }
+  return gameConfig.JUMP_VELOCITY;
 }
 
 function getLocalGravity() {
@@ -6747,8 +6795,14 @@ function handleInputEvents() {
     jumpWasHeld = false;
   } else {
     const drive = gatherDriveInput();
-    intendedForward = drive.forward;
-    intendedRotation = drive.turn;
+    // Phase 5's input clamps: reversed controls, and the four flags that take
+    // one direction away. They belong here, on the raw stick, because that is
+    // where upstream negates and clamps -- everything downstream, including the
+    // acceleration smoothing and Agility's window, should see what the tank was
+    // actually asked to do.
+    const clamped = applyMotionInput(carriedFlagType, drive.forward, drive.turn);
+    intendedForward = clamped.forward;
+    intendedRotation = clamped.turn;
     if (drive.up && !jumpWasHeld
       && canJump(carriedFlagType, gameConfig.ALLOW_JUMPING, jumpDirection !== null, wingsFlapsLeft)) {
       intendedY = 1;
@@ -6759,6 +6813,26 @@ function handleInputEvents() {
     }
     jumpWasHeld = drive.up;
   }
+
+  // Bouncy takes the decision off the player entirely: a tank on a surface is
+  // thrown back up as soon as its landing delay expires, and `canJump` lets it
+  // through even on a world where nothing else may jump.
+  if (!jumpTriggered) {
+    const bounce = getBounceState(
+      carriedFlagType,
+      !isInAir,
+      myTank.userData.wasAirborne === true,
+      myTank.userData.bounceReadyAt ?? 0,
+      performance.now() / 1000,
+    );
+    myTank.userData.bounceReadyAt = bounce.bounceReadyAt;
+    if (bounce.jump && canJump(carriedFlagType, gameConfig.ALLOW_JUMPING, false, wingsFlapsLeft)) {
+      intendedY = 1;
+      jumpTriggered = true;
+      wingsFlapsLeft--;
+    }
+  }
+  myTank.userData.wasAirborne = isInAir;
   const reverseSpeedRatio = Number.isFinite(gameConfig?.REVERSE_SPEED_RATIO)
     ? gameConfig.REVERSE_SPEED_RATIO
     : 0.5;
@@ -6798,9 +6872,27 @@ function handleMotion(deltaTime) {
   const oldRotation = playerRotation;
 
 
-  // Step 3: Convert intended speed/rotation to deltas
-  const speed = gameConfig.TANK_SPEED * deltaTime;
-  const rotSpeed = gameConfig.TANK_ROTATION_SPEED * deltaTime;
+  // Step 3: Convert intended speed/rotation to deltas.
+  //
+  // Phase 5's three good flags land here and nowhere else, because
+  // `setDesiredSpeed` and `setDesiredAngVel` are the only places upstream
+  // applies them: they scale the world's own tank speed and turn rate rather
+  // than replacing them. Agility carries a clock, so `getSpeedFactor` is handed
+  // the window it last opened and gives back the window it wants next -- the
+  // rule stays in the shared pair and this only remembers the answer.
+  const motionFlag = getMyFlag()?.type ?? null;
+  const agility = getSpeedFactor(
+    motionFlag,
+    myTank.userData.previousSpeedFraction || 0,
+    intendedForward,
+    myTank.userData.agilityStartedAt ?? -Infinity,
+    performance.now() / 1000,
+  );
+  myTank.userData.agilityStartedAt = agility.agilityStartedAt;
+  myTank.userData.previousSpeedFraction = intendedForward;
+  const speedFactor = agility.factor;
+  const speed = gameConfig.TANK_SPEED * speedFactor * deltaTime;
+  const rotSpeed = gameConfig.TANK_ROTATION_SPEED * getMaxAngVelFactor(motionFlag) * deltaTime;
   let moveRotation = playerRotation;
   let intendedDeltaX, intendedDeltaY = 0, intendedDeltaZ;
   const priorAirVelocityX = myTank.userData.airVelocityX || 0;
@@ -6812,29 +6904,34 @@ function handleMotion(deltaTime) {
   // same acceleration limits with it. Upstream reaches the same place from the
   // other side: its wings branch skips doMomentum but still runs getNewAngVel,
   // and doMomentum does nothing without the Momentum flag anyway.
+  // doMomentum (LocalPlayer.cxx:1537). The world's acceleration limit -- `-a`,
+  // which upstream calls inertia -- composed with `M` if the tank is carrying
+  // it, applied to the velocity rather than to the stick. With `-a 0 0`, which
+  // is upstream's default and bzo's, there is no limit: `setDesiredSpeed` is
+  // instant and the tank reaches full speed in one frame, exactly as a BZFlag
+  // tank does.
+  //
+  // bzo used to smooth the stick instead, through five rates of its own with no
+  // upstream counterpart. That gave every tank inertia BZFlag does not have and
+  // no way for a server or a map to say otherwise, which is the opposite of the
+  // point: bzo should feel like BZFlag and offer the same knobs to change it.
+  const tankSpeedNow = gameConfig.TANK_SPEED * speedFactor;
+  const tankAngVelNow = gameConfig.TANK_ROTATION_SPEED * getMaxAngVelFactor(motionFlag);
   if (!isInAir || airControl) {
-    const forwardAccel = Number.isFinite(gameConfig.FORWARD_ACCEL) ? gameConfig.FORWARD_ACCEL : 1.8;
-    const reverseAccel = Number.isFinite(gameConfig.REVERSE_ACCEL) ? gameConfig.REVERSE_ACCEL : 1.2;
-    const forwardDecel = Number.isFinite(gameConfig.FORWARD_DECEL) ? gameConfig.FORWARD_DECEL : 2.5;
-    const turnAccel = Number.isFinite(gameConfig.TURN_ACCEL) ? gameConfig.TURN_ACCEL : 3.0;
-    const turnDecel = Number.isFinite(gameConfig.TURN_DECEL) ? gameConfig.TURN_DECEL : 4.0;
-
-    const desiredForward = intendedForward;
-    const desiredRotation = intendedRotation;
-
-    const forwardRate = Math.abs(desiredForward) < 0.001
-      ? forwardDecel
-      : (desiredForward >= 0 ? forwardAccel : reverseAccel);
-    const rotationRate = Math.abs(desiredRotation) < 0.001 ? turnDecel : turnAccel;
-
-    smoothedForwardInput = approachValue(smoothedForwardInput, desiredForward, forwardRate * deltaTime);
-    smoothedRotationInput = approachValue(smoothedRotationInput, desiredRotation, rotationRate * deltaTime);
-
-    movementForwardInput = smoothedForwardInput;
-    movementRotationInput = smoothedRotationInput;
+    const limits = getAccelerationLimits(
+      motionFlag, gameConfig.LINEAR_ACCELERATION, gameConfig.ANGULAR_ACCELERATION);
+    lastSpeed = applyAccelerationLimit(
+      lastSpeed, intendedForward * tankSpeedNow, limits.linear, deltaTime);
+    lastAngVel = applyAccelerationLimit(
+      lastAngVel, intendedRotation * tankAngVelNow, limits.angular, deltaTime);
+    // Back to the fraction everything downstream is written in. The velocity is
+    // what carries the limit; the fraction is just how it is spelled from here
+    // on, and how it goes on the wire.
+    movementForwardInput = tankSpeedNow > 0 ? lastSpeed / tankSpeedNow : 0;
+    movementRotationInput = tankAngVelNow > 0 ? lastAngVel / tankAngVelNow : 0;
   } else {
-    smoothedForwardInput = intendedForward;
-    smoothedRotationInput = intendedRotation;
+    lastSpeed = intendedForward * tankSpeedNow;
+    lastAngVel = intendedRotation * tankAngVelNow;
   }
 
   // Determine forward speed for movement calculation
@@ -7031,7 +7128,11 @@ function handleMotion(deltaTime) {
     if (jumpStarted) {
       jumpDirection = playerRotation;
       myJumpDirection = jumpDirection;
-      const jumpVelocity = deriveAirVelocityFromState(jumpDirection, movementForwardInput);
+      // The stick is a fraction of this tank's own maximum; the air velocity is
+      // a fraction of the world's, so the boost has to come with it or a High
+      // Speed tank would lose it the moment it left the ground.
+      const jumpVelocity = deriveAirVelocityFromState(
+        jumpDirection, movementForwardInput * speedFactor);
       setAirVelocity(myTank, jumpVelocity.x, jumpVelocity.z);
     }
   } else if (fallStarted) {
@@ -7096,7 +7197,8 @@ function handleMotion(deltaTime) {
         forceMoveSend = true;
       }
     } else if (jumpStarted && !result.altered) {
-      const jumpVelocity = deriveAirVelocityFromState(jumpDirection, intendedForward);
+      const jumpVelocity = deriveAirVelocityFromState(
+        jumpDirection, intendedForward * speedFactor);
       setAirVelocity(myTank, jumpVelocity.x, jumpVelocity.z);
     }
   }
@@ -7125,7 +7227,14 @@ function handleMotion(deltaTime) {
           const dot = (actualDeltaX * forwardX + actualDeltaZ * forwardZ) / actualDistance;
           forwardSpeed = (dot * actualSpeed) / tankSpeed;
         }
-        forwardSpeed = Math.max(-1, Math.min(1, forwardSpeed));
+        // `fs` is a fraction of the world's base speed, not of whatever this
+        // tank's flag has raised it to, so a boosted tank reports more than 1
+        // and the server extrapolates it at face value. The bound widens with
+        // the flag rather than the reading being squashed back to 1, which
+        // would have the server place a High Speed tank two thirds of the way
+        // to where it actually is.
+        const maxFS = getMaxSpeedFactor(motionFlag);
+        forwardSpeed = Math.max(-maxFS, Math.min(maxFS, forwardSpeed));
       }
     } else {
       const airSpeed = Math.hypot(myTank.userData.airVelocityX || 0, myTank.userData.airVelocityZ || 0);
@@ -7138,7 +7247,8 @@ function handleMotion(deltaTime) {
       const actualRotSpeed = actualDeltaRot / deltaTime;
       const tankRotSpeed = gameConfig.TANK_ROTATION_SPEED;
       rotationSpeed = actualRotSpeed / tankRotSpeed;
-      rotationSpeed = Math.max(-1, Math.min(1, rotationSpeed));
+      const maxRS = getMaxAngVelFactor(motionFlag);
+      rotationSpeed = Math.max(-maxRS, Math.min(maxRS, rotationSpeed));
     }
   }
   myTank.userData.forwardSpeed = forwardSpeed;
@@ -7294,9 +7404,16 @@ function handleMotion(deltaTime) {
 
   // Fire: the keyboard fire key or the left mouse button, and on mobile, XR or
   // a gamepad, virtualInput.fire.
-  const firePressed = isFireHeld();
+  // "Tank can't stop firing." Trigger Happy pulls the trigger every frame whether
+  // or not anybody is holding it, and upstream's firingStatus stays Ready however
+  // long the reload has left (LocalPlayer.cxx:847) -- so a free shot slot is the
+  // only thing it waits for, which is the rule the server holds every shot to
+  // anyway. Skipping the reload gate is therefore not a rate increase: it is the
+  // same sustained rate with the wait moved onto the slots.
+  const triggerHappy = firesContinuously(getMyFlag()?.type ?? null);
+  const firePressed = triggerHappy || isFireHeld();
   const fireNow = performance.now();
-  if (firePressed && fireNow >= nextAllowedShotAt) {
+  if (firePressed && (triggerHappy || fireNow >= nextAllowedShotAt)) {
     const maxActiveShots = normalizeShotSlotCount(gameConfig?.SHOT_MAX_ACTIVE);
     if (getActiveProjectileCountForPlayer(myPlayerId) < maxActiveShots) {
       if (shoot()) {
@@ -7855,11 +7972,20 @@ function buildFlagHelp() {
   container.replaceChildren();
 
   const abbreviations = Object.keys(FLAG_TYPES);
+  // Team flags keep BZFlag's own team order -- red, green, blue, purple -- which
+  // is the numbering every other part of the game counts in. The superflags have
+  // no such order to keep: upstream walks a `std::set<FlagType*>`, so its own
+  // help is in pointer order, and bzo's table was in whatever order the phases
+  // landed. Sorted by abbreviation, because the abbreviation is the column the
+  // list leads with and what the code, the config and the scoreboard all use.
+  const byAbbreviation = (a, b) => a.localeCompare(b);
   const teamAbbreviations = abbreviations.filter((abbreviation) => isTeamFlag(abbreviation));
   const superAbbreviations = abbreviations.filter(
     (abbreviation) => !isTeamFlag(abbreviation) && !isBadFlag(abbreviation),
-  );
-  const badAbbreviations = abbreviations.filter((abbreviation) => isBadFlag(abbreviation));
+  ).sort(byAbbreviation);
+  const badAbbreviations = abbreviations
+    .filter((abbreviation) => isBadFlag(abbreviation))
+    .sort(byAbbreviation);
 
   const addSection = (title, listAbbreviations, sharedHelp) => {
     if (listAbbreviations.length === 0) return;

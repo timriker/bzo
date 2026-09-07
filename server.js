@@ -46,6 +46,11 @@ const {
   getFlagThrownAltitude,
   getFlagType,
   getShotEffects,
+  getMotionEffects,
+  getAccelerationLimits,
+  applyAccelerationLimit,
+  getMaxAngVelFactor,
+  getMaxSpeedFactor,
   getShockWaveRadius,
   cloaksTheTank,
   getTankDimensionScale,
@@ -336,6 +341,18 @@ app.get('/api/tank-models', (req, res) => {
   res.json({ models: getAvailableTankModels() });
 });
 
+// The cheapest thing a client can ask to find out whether the server is
+// serving. A reload is what a restarted client does, and a reload that lands
+// while the server is still coming back is a browser error page -- with no
+// script left running, that tab is dead until somebody presses reload by hand.
+// So the client waits on this first; see `reloadWhenServerIsUp` in client.js.
+// No state, no headers worth caching, and it must stay that way: it is answered
+// while the world is still being built.
+app.get('/api/ready', (req, res) => {
+  res.set('Cache-Control', 'no-store');
+  res.json({ ready: true, build: CLIENT_BUILD });
+});
+
 // The manifest is generated per request so the installed app is named after the
 // host the client asked for, verbatim. Two hosts pointing at different servers
 // then install as two separately-named apps. TLS terminates at a reverse proxy
@@ -428,11 +445,11 @@ const GAME_CONFIG = {
   TANK_SPEED: 25.0, // BZFlag-like default (units per second)
   TANK_ROTATION_SPEED: 0.785398, // BZFlag _tankAngVel default (radians per second)
   REVERSE_SPEED_RATIO: 0.5, // Max reverse speed as fraction of forward speed
-  FORWARD_ACCEL: 1.8, // Forward input acceleration (normalized units per second)
-  REVERSE_ACCEL: 1.2, // Reverse input acceleration (normalized units per second)
-  FORWARD_DECEL: 2.5, // Forward/reverse input deceleration to zero
-  TURN_ACCEL: 3.0, // Turn input acceleration (normalized units per second)
-  TURN_DECEL: 4.0, // Turn input deceleration to zero
+  // -a <vel> <rot> upstream: the acceleration limit, zero meaning none, which is
+  // upstream's default and so bzo's. See the flags pair for what the numbers
+  // mean and why the linear one is scaled by 20.
+  LINEAR_ACCELERATION: 0,
+  ANGULAR_ACCELERATION: 0,
   SHOT_SPEED: 100, // BZFlag _shotSpeed default (units per second)
   SHOT_RANGE: 350, // BZFlag _shotRange default (world units)
   SHOT_DISTANCE: 350, // Legacy alias for client/radar code
@@ -602,29 +619,16 @@ if (Number.isFinite(configReverseSpeedRatio) && configReverseSpeedRatio >= 0 && 
   GAME_CONFIG.REVERSE_SPEED_RATIO = configReverseSpeedRatio;
 }
 
-const configForwardAccel = Number(serverConfig.forwardAccel);
-if (Number.isFinite(configForwardAccel) && configForwardAccel > 0) {
-  GAME_CONFIG.FORWARD_ACCEL = configForwardAccel;
+// `-a <vel> <rot>`, as `linearAcceleration` and `angularAcceleration`. Upstream
+// clamps a negative to zero rather than refusing it, and so does this.
+const configLinearAcceleration = Number(serverConfig.linearAcceleration);
+if (Number.isFinite(configLinearAcceleration)) {
+  GAME_CONFIG.LINEAR_ACCELERATION = Math.max(0, configLinearAcceleration);
 }
 
-const configReverseAccel = Number(serverConfig.reverseAccel);
-if (Number.isFinite(configReverseAccel) && configReverseAccel > 0) {
-  GAME_CONFIG.REVERSE_ACCEL = configReverseAccel;
-}
-
-const configForwardDecel = Number(serverConfig.forwardDecel);
-if (Number.isFinite(configForwardDecel) && configForwardDecel > 0) {
-  GAME_CONFIG.FORWARD_DECEL = configForwardDecel;
-}
-
-const configTurnAccel = Number(serverConfig.turnAccel);
-if (Number.isFinite(configTurnAccel) && configTurnAccel > 0) {
-  GAME_CONFIG.TURN_ACCEL = configTurnAccel;
-}
-
-const configTurnDecel = Number(serverConfig.turnDecel);
-if (Number.isFinite(configTurnDecel) && configTurnDecel > 0) {
-  GAME_CONFIG.TURN_DECEL = configTurnDecel;
+const configAngularAcceleration = Number(serverConfig.angularAcceleration);
+if (Number.isFinite(configAngularAcceleration)) {
+  GAME_CONFIG.ANGULAR_ACCELERATION = Math.max(0, configAngularAcceleration);
 }
 
 const configJumpVelocity = Number(serverConfig.jumpVelocity);
@@ -823,7 +827,7 @@ if (!Number.isFinite(GAME_CONFIG.FOG_END)) {
 
 log(`Anti-cheat mode: ${ANTICHEAT_CONFIG.mode}`);
 log(
-  `Gameplay config: tankSpeed=${GAME_CONFIG.TANK_SPEED}, tankRotationSpeed=${GAME_CONFIG.TANK_ROTATION_SPEED}, reverseSpeedRatio=${GAME_CONFIG.REVERSE_SPEED_RATIO}, forwardAccel=${GAME_CONFIG.FORWARD_ACCEL}, reverseAccel=${GAME_CONFIG.REVERSE_ACCEL}, forwardDecel=${GAME_CONFIG.FORWARD_DECEL}, turnAccel=${GAME_CONFIG.TURN_ACCEL}, turnDecel=${GAME_CONFIG.TURN_DECEL}, jumpVelocity=${GAME_CONFIG.JUMP_VELOCITY}, gravity=${GAME_CONFIG.GRAVITY}, shotSpeed=${GAME_CONFIG.SHOT_SPEED}, shotRange=${GAME_CONFIG.SHOT_RANGE}, shotReloadTime=${GAME_CONFIG.SHOT_RELOAD_TIME}ms, shotDuration≈${(GAME_CONFIG.SHOT_RANGE / GAME_CONFIG.SHOT_SPEED).toFixed(2)}s, shotMaxActive=${GAME_CONFIG.SHOT_MAX_ACTIVE}, shotRadius=${GAME_CONFIG.SHOT_RADIUS}, shotTailLength=${GAME_CONFIG.SHOT_TAIL_LENGTH}, shotsKeepVerticalVelocity=${GAME_CONFIG.SHOTS_KEEP_VERTICAL_VELOCITY}`
+  `Gameplay config: tankSpeed=${GAME_CONFIG.TANK_SPEED}, tankRotationSpeed=${GAME_CONFIG.TANK_ROTATION_SPEED}, reverseSpeedRatio=${GAME_CONFIG.REVERSE_SPEED_RATIO}, linearAcceleration=${GAME_CONFIG.LINEAR_ACCELERATION}, angularAcceleration=${GAME_CONFIG.ANGULAR_ACCELERATION}, jumpVelocity=${GAME_CONFIG.JUMP_VELOCITY}, gravity=${GAME_CONFIG.GRAVITY}, shotSpeed=${GAME_CONFIG.SHOT_SPEED}, shotRange=${GAME_CONFIG.SHOT_RANGE}, shotReloadTime=${GAME_CONFIG.SHOT_RELOAD_TIME}ms, shotDuration≈${(GAME_CONFIG.SHOT_RANGE / GAME_CONFIG.SHOT_SPEED).toFixed(2)}s, shotMaxActive=${GAME_CONFIG.SHOT_MAX_ACTIVE}, shotRadius=${GAME_CONFIG.SHOT_RADIUS}, shotTailLength=${GAME_CONFIG.SHOT_TAIL_LENGTH}, shotsKeepVerticalVelocity=${GAME_CONFIG.SHOTS_KEEP_VERTICAL_VELOCITY}`
 );
 log(
   `Fog config: mode=${GAME_CONFIG.FOG_MODE}, density=${GAME_CONFIG.FOG_DENSITY}, start=${GAME_CONFIG.FOG_START}, end=${GAME_CONFIG.FOG_END}, color=time-of-day`
@@ -890,6 +894,15 @@ function parseBZWServerOptions(lines) {
     if (option === '-sw') options.flagShakeWins = normalizeShakeWins(value);
     // -sa: put an antidote flag in the world for whoever is carrying a bad one.
     if (option === '-sa') options.antidoteFlags = true;
+    // -a <vel> <rot>: the world's acceleration limit, upstream's inertia switch.
+    // The only option here that takes two values, which is why it reads
+    // `setValue` as well.
+    if (option === '-a') {
+      const linear = Number(value);
+      const angular = Number(setValue);
+      if (Number.isFinite(linear)) options.linearAcceleration = Math.max(0, linear);
+      if (Number.isFinite(angular)) options.angularAcceleration = Math.max(0, angular);
+    }
     // -noTeamKills: "Players on the same team are immune to each other's shots.
     // Rogue is excepted." Friendly fire off, which upstream enforces on each
     // client in LocalPlayer::checkHit; bzo's server decides every hit, so it
@@ -2485,13 +2498,20 @@ function getSpawnPosition(player) {
   return findValidSpawnPosition();
 }
 
-// A fixed spawn for automated collision testing, so a probe always starts at a
-// known distance from known geometry instead of somewhere random. Set
-// `testSpawn` in server.json to enable; it is absent from example-server.json,
-// so a normal server never has one.
+// A fixed spawn for automated testing, so a probe always starts at a known
+// distance from known geometry -- or on a known flag zone -- instead of
+// somewhere random. Set `testSpawn` in server.json to enable; it is absent from
+// example-server.json, so a normal server never has one.
+//
+// One entry or a list of them. A list is what a session doing both at once
+// wants: a probe being moved from flag zone to flag zone should not cost the
+// person testing beside it their own fixed spawn, and a single object made every
+// change to one an edit to the other.
 function getTestSpawn(name) {
-  const spawn = serverConfig.testSpawn;
-  if (!spawn || spawn.name !== name) return null;
+  const configured = serverConfig.testSpawn;
+  const spawns = Array.isArray(configured) ? configured : (configured ? [configured] : []);
+  const spawn = spawns.find((candidate) => candidate?.name === name);
+  if (!spawn) return null;
   return {
     x: Number(spawn.x) || 0,
     y: Number(spawn.y) || 0,
@@ -2543,7 +2563,7 @@ function reportCheat(player, kind, headline, detail = null, enforceable = true) 
 
   const refused = enforceable && ANTICHEAT_CONFIG.mode === 'strict';
   log(
-    `[ANTICHEAT:${ANTICHEAT_CONFIG.mode.toUpperCase()}] Player "${player.name}" ${headline}`
+    `[ANTICHEAT:${ANTICHEAT_CONFIG.mode.toUpperCase()}] "${player.name}" ${headline}`
     + ` | ${refused ? 'REFUSED' : 'ALLOWED'} | Warnings: ${counters.totalWarnings}`
   );
   if (detail) {
@@ -2564,7 +2584,7 @@ function formatCheatWarnings(player) {
 // A packet the server cannot act on at all, in any mode. Not counted as an
 // anti-cheat warning: nothing about it is a judgement call.
 function logMalformed(player, what, detail) {
-  log(`[ANTICHEAT] Player "${player.name}" MALFORMED ${what}: ${detail}`);
+  log(`[ANTICHEAT] "${player.name}" MALFORMED ${what}: ${detail}`);
 }
 
 // Validate player movement
@@ -2901,6 +2921,9 @@ const CTF_ENABLED = TEAM_MODE.enabled && BASES_BY_TEAM.size > 0;
 // which never asks.
 const ALLOW_JUMPING = serverConfig.jumping !== false || mapServerOptions.jumping === true;
 GAME_CONFIG.ALLOW_JUMPING = ALLOW_JUMPING;
+// The upward velocity that counts as leaving the ground; see `isJumpStart`.
+const JUMP_START_VERTICAL_VELOCITY = Math.max(
+  0.05, (Number(GAME_CONFIG.JUMP_VELOCITY) || 19) * 0.1);
 // RicochetGameStyle upstream, `+r`. Every shot bounces off walls whatever flag
 // fired it. `ricochet` in `server.json` and `+r` in a map's `options` block both
 // reach it, and as with every bzfs switch a map may turn it on and nothing turns
@@ -2916,6 +2939,16 @@ GAME_CONFIG.ALL_SHOTS_RICOCHET = serverConfig.ricochet === true
 // Upstream refuses the hit on each client, in LocalPlayer::checkHit, and its
 // server scores whatever the client reports. bzo's server is the only thing that
 // decides a hit, so this is asked once, there.
+// `-a` from a map's `options` block. Upstream reads that block through the same
+// parser as its command line, so a map may set the world's inertia exactly as it
+// sets `-ms` or `+r`; the map's number simply replaces whatever came before it.
+if (Number.isFinite(mapServerOptions.linearAcceleration)) {
+  GAME_CONFIG.LINEAR_ACCELERATION = mapServerOptions.linearAcceleration;
+}
+if (Number.isFinite(mapServerOptions.angularAcceleration)) {
+  GAME_CONFIG.ANGULAR_ACCELERATION = mapServerOptions.angularAcceleration;
+}
+
 const NO_TEAM_KILLS = serverConfig.noTeamKills === true
   || mapServerOptions.noTeamKills === true;
 // `-tk`, which runs the opposite way round from its name: upstream kills a team
@@ -3371,7 +3404,7 @@ function grabFlag(player, flag) {
   flag.flightStartedAt = 0;
   flag.grabbedAt = Date.now();
   armBadFlagRelease(player, flag);
-  log(`Player "${player.name}" grabbed ${getFlagType(flag.type).name} flag ${flag.index}`);
+  log(`"${player.name}" grabbed ${getFlagType(flag.type).name} flag ${flag.index}`);
   broadcastAll({ type: 'grabFlag', playerId: player.id, flag: getFlagState(flag) });
 }
 
@@ -3427,7 +3460,7 @@ function checkAntidote(player) {
   if (player.health <= 0 || player.paused) return;
   if (Math.abs(player.y - antidote.y) >= FLAG_GRAB_LEVEL_TOLERANCE) return;
   if (distance(player.x, player.z, antidote.x, antidote.z) > FLAG_GRAB_RADIUS) return;
-  log(`Player "${player.name}" drove onto the antidote and shed ${getFlagType(flag.type).name}`);
+  log(`"${player.name}" drove onto the antidote and shed ${getFlagType(flag.type).name}`);
   dropFlag(flag);
 }
 
@@ -3440,7 +3473,7 @@ function recordShakeWin(player) {
   if (!flag || flag.endurance !== FLAG_ENDURANCE.STICKY) return;
   player.flagShakeWins -= 1;
   if (player.flagShakeWins > 0) return;
-  log(`Player "${player.name}" shook off ${getFlagType(flag.type).name} on wins`);
+  log(`"${player.name}" shook off ${getFlagType(flag.type).name} on wins`);
   dropFlag(flag);
 }
 
@@ -3586,7 +3619,7 @@ function dropFlag(flag) {
   flag.initialVelocity = flight.initialVelocity;
   flag.flightStartedAt = Date.now();
   log(
-    `Player "${owner.name}" dropped ${getFlagType(flag.type).name} flag ${flag.index} ` +
+    `"${owner.name}" dropped ${getFlagType(flag.type).name} flag ${flag.index} ` +
     `at ${landing.x.toFixed(2)},${landing.z.toFixed(2)}${vanish ? ' (vanishing)' : ''}`
   );
 
@@ -3620,7 +3653,7 @@ function captureFlag(player, baseColorIndex) {
   const cappedTeam = getTeamFromColorIndex(cappedIndex);
   const ownGoal = cappedIndex === cappingIndex;
   log(
-    `Player "${player.name}" captured the ${cappedTeam} flag ` +
+    `"${player.name}" captured the ${cappedTeam} flag ` +
     `on the ${getTeamFromColorIndex(baseColorIndex)} base${ownGoal ? ' (their own)' : ''}`
   );
 
@@ -5419,7 +5452,7 @@ setInterval(() => {
     if (player.ws.readyState === 1) { // OPEN
       // Check if connection is dead (no pong response)
       if (now - player.lastPongTime > WS_PONG_TIMEOUT) {
-        log(`Player "${player.name}" connection timeout (no pong for ${Math.floor((now - player.lastPongTime) / 1000)}s)`);
+        log(`"${player.name}" connection timeout (no pong for ${Math.floor((now - player.lastPongTime) / 1000)}s)`);
         player.ws.terminate();
         return;
       }
@@ -5517,14 +5550,6 @@ function getAccelerationWindow(arrivalGap, clientSendGap) {
   return Math.min(claimed, arrivalGap + SDT_JITTER_ALLOWANCE);
 }
 
-function approachNormalizedValue(currentValue, targetValue, maxStep) {
-  if (!Number.isFinite(targetValue)) return Number.isFinite(currentValue) ? currentValue : 0;
-  const current = Number.isFinite(currentValue) ? currentValue : 0;
-  if (!Number.isFinite(maxStep) || maxStep <= 0) return current;
-  const delta = targetValue - current;
-  if (Math.abs(delta) <= maxStep) return targetValue;
-  return current + Math.sign(delta) * maxStep;
-}
 
 // Helper to send the map list and current map to a given websocket
 function sendMapList(ws) {
@@ -5709,7 +5734,7 @@ wss.on('connection', (ws, req) => {
           // Log debug messages from clients
           const payloadName = typeof message.name === 'string' ? message.name.trim() : '';
           const debugFrom = payloadName || player.name || `Player ${player.playerNumber}`;
-          log(`[DEBUG] Player "${debugFrom}": ${message.message || ''}`);
+          log(`[DEBUG] "${debugFrom}": ${message.message || ''}`);
           break;
         }
         case 'tp': {
@@ -5791,8 +5816,20 @@ wss.on('connection', (ws, req) => {
           const reverseSpeedRatio = Number.isFinite(GAME_CONFIG.REVERSE_SPEED_RATIO)
             ? GAME_CONFIG.REVERSE_SPEED_RATIO
             : 0.5;
-          const requestedFS = Math.max(-reverseSpeedRatio, Math.min(1, Number(message.fs)));
-          const requestedRS = Math.max(-1, Math.min(1, Number(message.rs)));
+          // `fs` and `rs` are fractions of the world's *base* speed and turn
+          // rate, so a tank carrying `V`, `QT` or `A` reports more than 1 and
+          // `getExtrapolatedPosition` places it correctly with no flag state of
+          // its own. What the server needs here is only the bound, and only the
+          // flag's largest -- Agility's window is the client's to run, and a
+          // ceiling costs nothing to hold.
+          const motionFlag = getPlayerFlag(player.id)?.type ?? null;
+          const maxSpeedFactor = getMaxSpeedFactor(motionFlag);
+          const maxAngVelFactor = getMaxAngVelFactor(motionFlag);
+          const requestedFS = Math.max(
+            -reverseSpeedRatio * maxSpeedFactor,
+            Math.min(maxSpeedFactor, Number(message.fs)));
+          const requestedRS = Math.max(
+            -maxAngVelFactor, Math.min(maxAngVelFactor, Number(message.rs)));
           let fs = requestedFS;
           let rs = requestedRS;
           const vv = Number(message.vv);
@@ -5828,17 +5865,47 @@ wss.on('connection', (ws, req) => {
             // therefore allows the fastest rate any stick position could have
             // produced. Anything tighter refuses a tank that is merely letting
             // go of a key.
-            const forwardRate = Math.max(
-              GAME_CONFIG.FORWARD_ACCEL, GAME_CONFIG.REVERSE_ACCEL, GAME_CONFIG.FORWARD_DECEL);
-            const turnRate = Math.max(GAME_CONFIG.TURN_ACCEL, GAME_CONFIG.TURN_DECEL);
+            //
+            // The bound is `doMomentum`'s own, run against the same limits the
+            // client drove with: the world's `-a`, composed with `M` if the tank
+            // is carrying it. With `-a 0 0` -- upstream's default and bzo's --
+            // there is no limit, `applyAccelerationLimit` returns what was asked
+            // for, and this check finds nothing. That is correct rather than
+            // lax: a tank with no inertia really can reach full speed in a
+            // frame, and what bounds it then is the speed clamp above.
+            //
+            // In real units on both sides, because that is what a limit is
+            // expressed in. `fs` and `rs` come off the wire as fractions of the
+            // world's base speed and turn rate, so they are converted here and
+            // back again.
+            const limits = getAccelerationLimits(
+              motionFlag, GAME_CONFIG.LINEAR_ACCELERATION, GAME_CONFIG.ANGULAR_ACCELERATION);
+            const tankSpeed = GAME_CONFIG.TANK_SPEED || 1;
+            const tankAngVel = GAME_CONFIG.TANK_ROTATION_SPEED || 1;
 
-            let limitedFS = approachNormalizedValue(
-              player.forwardSpeed || 0, requestedFS, forwardRate * accelWindow);
-            let limitedRS = approachNormalizedValue(
-              player.rotationSpeed || 0, requestedRS, turnRate * accelWindow);
+            // Agility's boost lands all at once -- the window opens and the tank
+            // is 2.25x faster in that same frame -- so no acceleration bound can
+            // describe it, which is the Wings exemption above for a different
+            // reason. Only the forward half is exempt; Agility does not touch
+            // turning, so that bound still holds.
+            const burstsSpeed = getMotionEffects(motionFlag).agility;
 
-            limitedFS = Math.max(-reverseSpeedRatio, Math.min(1, limitedFS));
-            limitedRS = Math.max(-1, Math.min(1, limitedRS));
+            let limitedFS = burstsSpeed ? requestedFS : applyAccelerationLimit(
+              (player.forwardSpeed || 0) * tankSpeed,
+              requestedFS * tankSpeed,
+              limits.linear,
+              accelWindow,
+            ) / tankSpeed;
+            let limitedRS = applyAccelerationLimit(
+              (player.rotationSpeed || 0) * tankAngVel,
+              requestedRS * tankAngVel,
+              limits.angular,
+              accelWindow,
+            ) / tankAngVel;
+
+            limitedFS = Math.max(
+              -reverseSpeedRatio * maxSpeedFactor, Math.min(maxSpeedFactor, limitedFS));
+            limitedRS = Math.max(-maxAngVelFactor, Math.min(maxAngVelFactor, limitedRS));
 
             // Both endpoints are quantized to 0.01 by the sender, so the
             // difference carries up to 0.02 that is rounding, not a finding.
@@ -5878,7 +5945,18 @@ wss.on('connection', (ws, req) => {
 
           // Track jump direction for extrapolation
           const oldVV = player.verticalVelocity || 0;
-          const isJumpStart = oldVV <= 0 && vv > 10; // Transition from ground/falling to jumping
+          // A tank that was not already climbing and now is has jumped: a
+          // grounded one reports exactly 0 and a falling one reports negative,
+          // both quantized to two decimals by the sender.
+          //
+          // The threshold used to be a flat 10, which predated `BY` Bouncy --
+          // whose bounce is a random quarter-to-full of the world's jump
+          // velocity and starts as low as 4.75 at bzo's default. The server
+          // missed those jumps entirely and went on extrapolating the tank along
+          // the ground while it was in the air. A tenth of the world's own jump
+          // velocity is clear of the quantization and under anything that could
+          // be a real jump, and it follows a server that has tuned the jump.
+          const isJumpStart = oldVV <= 0 && vv > JUMP_START_VERTICAL_VELOCITY;
           const isLanding = player.jumpDirection !== null && vv === 0; // Transition from air to ground
           const isFallStart = player.jumpDirection === null && vv < 0; // Started falling (drove off edge)
 
@@ -5893,12 +5971,12 @@ wss.on('connection', (ws, req) => {
             const expectedLandX = x + dx;
             const expectedLandZ = z + dz;
             const expectedLandR = r + rs * rotSpeed * jumpTime;
-            log(`[JUMP] Player "${player.name}" jumped: pos=(${x.toFixed(2)},${z.toFixed(2)}), r=${r.toFixed(2)}, fs=${fs.toFixed(2)}, rs=${rs.toFixed(2)}, vv=${vv.toFixed(2)}`);
+            log(`[JUMP] "${player.name}" jumped: pos=(${x.toFixed(2)},${z.toFixed(2)}), r=${r.toFixed(2)}, fs=${fs.toFixed(2)}, rs=${rs.toFixed(2)}, vv=${vv.toFixed(2)}`);
             log(`[JUMP] Expected landing: pos=(${expectedLandX.toFixed(2)},${expectedLandZ.toFixed(2)}), r=${expectedLandR.toFixed(2)}`);
           } else if (isLanding) {
-            log(`[LAND] Player "${player.name}" landed: pos=(${x.toFixed(2)},${z.toFixed(2)}), r=${r.toFixed(2)}, fs=${fs.toFixed(2)}, rs=${rs.toFixed(2)}, vv=${vv.toFixed(2)}`);
+            log(`[LAND] "${player.name}" landed: pos=(${x.toFixed(2)},${z.toFixed(2)}), r=${r.toFixed(2)}, fs=${fs.toFixed(2)}, rs=${rs.toFixed(2)}, vv=${vv.toFixed(2)}`);
           } else if (isFallStart) {
-            log(`[FALL] Player "${player.name}" started falling: pos=(${x.toFixed(2)},${y.toFixed(2)},${z.toFixed(2)}), r=${r.toFixed(2)}, fs=${fs.toFixed(2)}, rs=${rs.toFixed(2)}, vv=${vv.toFixed(2)}`);
+            log(`[FALL] "${player.name}" started falling: pos=(${x.toFixed(2)},${y.toFixed(2)},${z.toFixed(2)}), r=${r.toFixed(2)}, fs=${fs.toFixed(2)}, rs=${rs.toFixed(2)}, vv=${vv.toFixed(2)}`);
           }
 
           // Check if velocities changed significantly - if so, use looser validation
@@ -6139,7 +6217,7 @@ wss.on('connection', (ws, req) => {
                 + `of ${FLAG_SHAKE_TIMEOUT}s`);
               if (refused) break;
             }
-            log(`Player "${player.name}" shook off ${getFlagType(flag.type).name} after ${held.toFixed(2)}s`);
+            log(`"${player.name}" shook off ${getFlagType(flag.type).name} after ${held.toFixed(2)}s`);
           }
           dropFlag(flag);
           break;
@@ -6152,7 +6230,7 @@ wss.on('connection', (ws, req) => {
           player.deaths++;
           recordTeamScoreForKill(player, player);
           dropPlayerFlag(player.id);
-          log(`Player "${player.name}" self-destructed.`);
+          log(`"${player.name}" self-destructed.`);
 
           broadcastAll({
             type: 'playerHit',
@@ -6271,9 +6349,9 @@ wss.on('connection', (ws, req) => {
           player.deaths = 0;
           player.kills = 0;
           if (message.isMobile) {
-            log(`Player ${player.id} joining game as "${joinName}" [${player.team.toUpperCase()}] [MOBILE]`);
+            log(`Player ${player.id} joining as "${joinName}" [${player.team.toUpperCase()}] [MOBILE]`);
           } else {
-            log(`Player ${player.id} joining game as "${joinName}" [${player.team.toUpperCase()}]`);
+            log(`Player ${player.id} joining as "${joinName}" [${player.team.toUpperCase()}]`);
           }
 
           // broadcast join to all (full player info)
@@ -6509,7 +6587,7 @@ wss.on('connection', (ws, req) => {
     players.delete(player.id);
     retireTeamFlags(getTeamColorIndex(leavingTeam));
 
-    let logMsg = `Player "${playerName}" (#${playerNum}) disconnected. ${playerKills} kills, ${playerDeaths} deaths.`;
+    let logMsg = `"${playerName}" (#${playerNum}) disconnected. ${playerKills} kills, ${playerDeaths} deaths.`;
     if (cheatWarnings > 0 && ANTICHEAT_CONFIG.mode !== 'disabled') {
       logMsg += ` [ANTICHEAT: ${cheatWarnings} warnings (${formatCheatWarnings(player)})]`;
     }

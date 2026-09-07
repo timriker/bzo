@@ -180,6 +180,15 @@ These are deliberate. Do not "fix" them without being asked.
   validation. It travels to its owner alone as `antidoteFlag`, and arrival is
   detected off position updates the way Identify's sweep is.
 
+- **`A` Agility triggers on a change of stick, not on upstream's clamped
+  previous speed.** Upstream compares against the previous `desiredSpeed`
+  fraction clamped to [-0.5, 1], which invents a change that never happened: a
+  held partial stick around 0.4 to 0.7 re-triggers the boost forever, so an
+  Agility tank holding half forward outruns anybody at full throttle without
+  moving the stick. That is invisible on a keyboard, where the stick is only ever
+  0 or +/-1, and bzo has analog input everywhere. Treated as an upstream bug. See
+  `docs/flags-plan.md`.
+
 - **Damage rules are decided on the server, where upstream decides them on each
   client.** `SR` Steamroller's proximity sweep and `G` Genocide's team wipe both
   run once, in the game loop and in the kill path, rather than once per client
@@ -819,19 +828,45 @@ warning. The distinction is whether the server is exercising judgement: a
 tolerance it drew and the client did not is a finding, and a packet it cannot
 act on is not.
 
+### Inertia is BZFlag's, and both ends run the same model
+
+There is one acceleration model, `doMomentum`, and it lives in the flags pair so
+the client that drives the tank and the server that checks it are running the
+same code against the same numbers. The rule is upstream's: a limit in units per
+second squared, applied to the *velocity*, with **zero meaning no limit at all**.
+
+**No inertia is the default**, because it is upstream's. bzfs takes `-a <vel>
+<rot>` and defaults it to `0 0`, and `doMomentum` only clamps `if (acc > 0.0f)`,
+so a stock BZFlag tank reaches full speed in one frame. bzo now does the same,
+and takes `-a` in `server.json` (`linearAcceleration`, `angularAcceleration`) and
+in a map's `options` block, as upstream takes it on a command line and in the
+same block.
+
+bzo used to smooth the *stick* instead, through five rates of its own --
+`forwardAccel`, `reverseAccel`, `forwardDecel`, `turnAccel`, `turnDecel` -- with
+no upstream counterpart. That gave every tank inertia BZFlag does not have, at
+roughly `-a 2.25 2.36`, with no way for a server or a map to say otherwise. Those
+five keys are gone. **Do not reintroduce a second acceleration model**: the point
+of one model is that "feels like BZFlag" is a thing that can be checked rather
+than tuned by ear.
+
+`M` Momentum composes with the world's limit rather than replacing it -- see the
+flags pair -- so it is a handicap on every map instead of upstream's
+do-nothing-here, upgrade-there.
+
 ### The acceleration check cannot see the stick
 
 `fs` and `rs` in a move packet are not the client's input. `updateMovement` in
 `client.js` derives them from the *resolved* displacement of the last single
 frame, after collision, so they are a measurement of where the tank got to and
-not a statement of where it was asked to go. Two things follow, and both have
+not a statement of where it was asked to go. Several things follow, and some have
 already been got wrong once:
 
-- **The server cannot tell which acceleration rate applied.** The client picks
-  deceleration from the desired input, which is not on the wire. The server
-  therefore allows the fastest rate any stick position could have produced.
-  Anything tighter refuses a tank that is merely letting go of a key, because
-  both decelerations are faster than their accelerations.
+- **With no inertia there is nothing for this check to find**, which is correct
+  rather than lax: a tank with no acceleration limit really can reach full speed
+  in a frame. What bounds it then is the `fs`/`rs` clamp, which is the flag's own
+  maximum. bzfs makes the mirror-image trade -- it skips its high-speed check
+  when inertia *is* on (`bzfs.cxx:5395`).
 - **A speed change caused by geometry is not bounded by the tank's limits.** A
   tank sliding along a wall reports whatever the collision resolver left it,
   which can swing across the whole range in one packet while the input holds
@@ -842,6 +877,25 @@ already been got wrong once:
   correct rather than impossible. The check therefore does not apply while a tank
   with air control is off the ground. Refusing it in strict mode would rubber-band
   the one flag whose whole point is steering where nothing else can.
+- **`A` Agility has no ramp either.** Its window opens and the tank is 2.25x
+  faster in the same frame, which is the flag's whole point. The forward half of
+  the check therefore does not apply to a tank carrying it; the turn half still
+  does, because Agility does not touch turning.
+
+### `fs` and `rs` are fractions of the *world's* speed, not of the tank's
+
+A tank carrying `V`, `QT` or `A` reports more than 1, and both ends multiply by
+the world's `TANK_SPEED` or `TANK_ROTATION_SPEED` to get the real thing. That is
+what keeps `getExtrapolatedPosition`, the remote extrapolation on the client and
+the tread animation all correct with no flag state of their own -- the number on
+the wire already says how fast the tank is going.
+
+The server holds the reading to the flag's *largest* factor rather than its
+instantaneous one (`getMaxSpeedFactor` in the flags pair). Agility's window is
+the client's to run: a bound costs no state, and the alternative is the server
+mirroring a one-second timer off packets that do not carry the stick. It is a
+looser gate than upstream's -- a modified client could hold the boost -- and it
+is the same trade as the shot position tolerance above it.
 
 The window comes from `sdt`, the interval the client reports between its own
 move packets, bounded by `getAccelerationWindow`. `dt` in the same packet is one
@@ -1334,6 +1388,13 @@ through the `soundFiles[]` table in `src/bzflag/sound.cxx`.
   explicitly asked.
 - The development server is typically already running in GNU Screen session `0`.
 - Gameplay logs stream to `server.log`, which is cleared on each server boot.
+- **A quoted name in a log line is a player; do not also write "Player".**
+  `"Orin" grabbed Shock Wave flag 12`, not `Player "Orin" grabbed ...`. The quotes
+  are what identify it, and the word only makes every line longer. `Player 3` with
+  a bare number is different and stays -- that is an id or a connection that has
+  not given a name yet, where the word is the only thing saying what the number
+  counts. This holds wherever a line names two players -- `[Voice] "t5810" (1)`
+  reads as a player because of the quotes, and unquoted it reads as a word.
 
 ## Checks and Tests
 
@@ -1535,6 +1596,63 @@ Three things to reach for, in the order they cost:
   server** above, which is the rule it follows: do not point it at a private
   instance started to keep a test tidy, and let it disconnect when it is done.
   Use `testSpawn` to put it somewhere specific.
+
+### Testing a flag with `maps/flagbuffet.bzw`
+
+**That map exists for this.** It puts three of every flag in its own one-unit
+zone at a known coordinate, so a flag can be put in a probe's hands on purpose
+rather than waited for. A `zoneflag` slot is pinned to its type -- upstream's
+`setRequiredFlag`, and `addFlag` never draws from the pool for one -- so it
+always comes back as the flag its zone declared and repeated runs cannot exhaust
+it, even with the map's `-set _maxFlagGrabs 1`.
+
+**Point `testSpawn` at the zone.** `testSpawn` in `server.json` spawns a named
+player at a fixed point, and a tank that spawns on a flag grabs it before it does
+anything else. It takes one entry or a list of them, so moving a probe from zone
+to zone does not disturb anybody else's fixed spawn -- add and remove the probe's
+entry and leave the rest alone. The zone coordinates are in the `.bzw`, which is BZW's axes:
+`bzo.x = bzw.x` and **`bzo.z = -bzw.y`**. `nodemon` watches `server.json`, so
+writing it restarts the server on its own -- and **put it back when the run is
+over**, since it is the running dev server's config and the name in it belongs to
+somebody's real client.
+
+**Drive by the input module, not by events.** Synthetic `KeyboardEvent`s
+dispatched from `--eval` do **not** reach the game -- dispatch the fire key and
+no shot is fired. Import the live module instead:
+
+```
+node scripts/headless-client.mjs --name probe --seconds 4 --eval '(async () => {
+  const input = await import("/input.js");
+  input.setGameplayKeyState("KeyW", true);
+  await new Promise(r => setTimeout(r, 4000));
+  input.setGameplayKeyState("KeyW", false);
+})()'
+```
+
+ES modules are cached, so that is the same instance `client.js` is reading, and
+everything downstream of the key is the real code path.
+
+**Measure from the server, not from the page.** Join a second raw `ws` client as
+an observer and read the `pm` broadcasts: they carry `x`, `z`, `fs` and `rs` for
+every other player, which is what the server actually believes about the probe.
+Nothing inside the probe's own page has to be reachable, and the number under
+test is the one the server acted on. Joining is one message --
+`{ type: 'joinGame', name, team: 'observer', tankModel: 'bzflag' }` -- and
+`queryPlayers` gets the id-to-name map.
+
+**Three things that will waste a run:**
+
+- **Do not spawn inside geometry.** A wedged tank sends no move packets at all
+  and the run looks like the client is broken. On this map the platform box
+  covers bzo `x` 60..100, `z` 60..100.
+- **A probe with no flag grabs the first zone it drives through**, which is how a
+  baseline run ends up carrying Super Bullet. A probe that already has one never
+  grabs another (`if (getMyFlag()) return;`), so only the baseline needs a route
+  that misses everything. bzo `z = 30` is the lane that does: the flag columns
+  span `z` -35..25 and the rows sit at `z` +/-40 and +/-80.
+- **Chrome takes the better part of a minute** to launch, load and join before
+  `--eval` runs at all, so an observer window measured in seconds will close
+  before the probe exists.
 
 **For anything about frame cost, read `renderer.stats` in `server.log`** rather
 than measuring here. Every client logs one ten seconds into a map, with the
