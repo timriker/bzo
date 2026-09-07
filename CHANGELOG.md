@@ -6,7 +6,15 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
 
 ## [Unreleased]
 
+## [1.0.68] - 2026-09-07
+
 ### Added
+- `maps/flagbuffet.bzw`, from upstream: three of every flag in its own zone, laid
+  out alphabetically clockwise from the north, good flags on the inner loop and
+  bad on the outer. It is the map the rest of this release exists to read, and the
+  quickest way to get a given flag into your hands to test it. bzo places 33 of
+  the 42 flags it declares -- three each of the eleven superflags bzo implements
+  that this world's game style also allows.
 - `-ms <count>` in a map's `options` block sets how many shots a tank may have in
   the air at once. Unlike the switches bzo already read out of that block this
   carries a value, and upstream parses a map's options where `-world` sits on the
