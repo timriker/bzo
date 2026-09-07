@@ -4053,10 +4053,16 @@ function handleServerMessage(message) {
         }
 
         if (isTeleportPacket) {
+          // The sound and nothing else. Upstream's tank teleport is
+          // `playWorldSound(SFX_TELEPORT, pos)` (playing.cxx:3085) with no
+          // effect attached: `addSpawnEffect` belongs to the spawn handler, one
+          // line above `setStatus(PlayerState::Alive)`, and the teleport effect
+          // upstream does have -- `addShotTeleportEffect` -- is for shots. A
+          // tank that grew out of the floor on arrival read as a respawn, which
+          // is a different event with a different meaning. See issue #38.
           const suppressLocalFx = message.id === myPlayerId && performance.now() < suppressLocalTeleportFxUntil;
           if (!suppressLocalFx) {
             renderManager.playSound('teleport', tank.position);
-            triggerSpawnEffectForTank(tank);
           }
 
           if (message.id === myPlayerId) {
@@ -6936,8 +6942,8 @@ function handleMotion(deltaTime) {
     myTank.rotation.y = playerRotation;
 
     if (teleportedThisFrame) {
+      // As above: the teleport sound is the whole of it.
       renderManager.playSound('teleport', myTank.position);
-      triggerSpawnEffectForTank(myTank);
       suppressLocalTeleportFxUntil = performance.now() + 250;
 
       // Match BZFlag semantics: explicit teleport event is sent before

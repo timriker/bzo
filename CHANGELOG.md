@@ -6,6 +6,18 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
 
 ## [Unreleased]
 
+### Fixed
+- Driving through a teleporter no longer plays the spawn effect (#38). It fired
+  `triggerSpawnEffectForTank`, which is three things at once -- the growth
+  animation from 1% scale, the spawn burst, and the `pop` sound -- so an arriving
+  tank grew out of the floor and read as a respawn, which is a different event
+  with a different meaning. Upstream's tank teleport is
+  `playWorldSound(SFX_TELEPORT, pos)` and nothing else: `addSpawnEffect` sits in
+  the spawn handler one line above `setStatus(PlayerState::Alive)`, and the
+  teleport effect upstream does have, `addShotTeleportEffect`, is for shots. The
+  teleport sound is now the whole of it, on both the local prediction and the
+  server echo.
+
 ## [1.0.71] - 2026-09-07
 
 ### Added
