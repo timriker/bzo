@@ -633,13 +633,6 @@ function callVoiceManager(method, ...args) {
 // How far through the interval since the last shot the reload is, 0 to 1. bzo's
 // reload is one interval shared by every slot, so this is a floor under all of
 // the shot bars rather than one bar's own progress.
-function getShotReloadProgress() {
-  if (!(lastShotReloadMs > 0)) return 1;
-  const remaining = nextAllowedShotAt - performance.now();
-  if (remaining <= 0) return 1;
-  return Math.max(0, Math.min(1, 1 - (remaining / lastShotReloadMs)));
-}
-
 // The world's `_shotSpeed` as the firing flag leaves it. The server resolves the
 // same product onto the projectile when it is fired, so both sides advance a
 // shot by the same amount in the same step.
@@ -4978,6 +4971,19 @@ function rebuildTeleporterRuntimeState() {
 // the tank swept rather than the point it ended at, so a frame long enough to
 // carry it through a roof still reports the roof. A caller asking about a
 // single point leaves it alone and gets the point test back unchanged.
+// A teleporter's solid is its *frame*, which stands one border taller and two
+// borders deeper than the size the map states -- Teleporter::finalize builds it
+// that way and getShotTeleporterDims already mirrors it. Every other obstacle is
+// its own stated height. Without this a tank landing on flagbuffet's portal
+// stopped at 20.16 rather than the frame's real top of 21.28: sunk one border
+// into the top bar, and grazing the top edge of the active portal volume when it
+// should be clearly above it. See issue #38.
+function getColliderTopY(obs) {
+  const baseY = obs?.baseY || 0;
+  if (obs?.kind === 'teleporter') return baseY + getShotTeleporterDims(obs).h;
+  return baseY + (Number.isFinite(obs?.h) ? obs.h : 0);
+}
+
 function checkCollision(x, y, z, ignoredObstacles = null, rotation = playerRotation, fromY = y) {
   let ontopCollision = null;
   const sweeping = fromY !== y;
@@ -4995,9 +5001,8 @@ function checkCollision(x, y, z, ignoredObstacles = null, rotation = playerRotat
     // so that a map which names it has nowhere else to be honoured -- and
     // `shootThrough`, which the world border does use, is its other half.
     if (obs.driveThrough) continue;
-    const obstacleHeight = obs.h || 4;
     const obstacleBase = obs.baseY || 0;
-    const obstacleTop = obstacleBase + obstacleHeight;
+    const obstacleTop = getColliderTopY(obs);
     const epsilon = 0.15;
     const tankHeight = 2;
     const halfW = obs.w / 2;
@@ -5387,9 +5392,7 @@ function validateMove(x, y, z, intendedDeltaX, intendedDeltaY, intendedDeltaZ, t
     if (!collisionObj && intendedDeltaY == 0 && y > 0 && myJumpDirection === null) {
       // Find which obstacle we're falling from (if any) at our current height
       for (const obs of OBSTACLES) {
-        const obstacleBase = obs.baseY || 0;
-        const obstacleHeight = obs.h || 4;
-        const obstacleTop = obstacleBase + obstacleHeight;
+        const obstacleTop = getColliderTopY(obs);
 
         // Check if this obstacle is at our height level (we might be leaving it)
         if (Math.abs(y - obstacleTop) < 1.0) {
@@ -5713,13 +5716,20 @@ function findSupportSurface(worldX, worldY, worldZ) {
     // classifies into the obstacle -- and the old `|| 4` height fallback then
     // turned that into a platform at y=4 across the whole world.
     if (!Number.isFinite(obs.w) || !Number.isFinite(obs.d) || !Number.isFinite(obs.h)) continue;
+    // A teleporter is stood on by its frame, which is wider and taller than the
+    // size the map gives -- the same solid checkCollision tests against, and the
+    // same one Teleporter::finalize builds. Standing on the stated size put a
+    // tank a border deep in the top bar.
+    const teleporterDims = obs.kind === 'teleporter' ? getShotTeleporterDims(obs) : null;
+    const footHalfW = teleporterDims ? teleporterDims.halfW : obs.w / 2;
+    const footHalfD = teleporterDims ? teleporterDims.halfD : obs.d / 2;
     const { x: localX, z: localZ } = getColliderLocalPoint(worldX, worldZ, obs);
     if (!testOrigRectTank(
-      obs.w / 2, obs.d / 2, localX, localZ,
+      footHalfW, footHalfD, localX, localZ,
       getTankLocalAngle(playerRotation, obs.rotation),
       0, tankScale
     )) continue;
-    const surfaceY = (obs.baseY || 0) + obs.h;
+    const surfaceY = getColliderTopY(obs);
     const deltaY = surfaceY - worldY;
     if (deltaY > MAX_BUMP_HEIGHT || deltaY < -SUPPORT_SNAP_DOWN) continue;
     if (!bestSupport || surfaceY > bestSupport.surfaceY) {
@@ -8597,10 +8607,11 @@ function ensureXRShotStatusOverlay() {
     slotProgress[slotIndex] = lifetimeMs > 0 ? Math.max(0, Math.min(1, ageMs / lifetimeMs)) : 0;
   });
 
-  const reloadFloor = getShotReloadProgress();
-  for (let slot = 0; slot < maxSlots; slot += 1) {
-    slotProgress[slot] = Math.min(slotProgress[slot], reloadFloor);
-  }
+  // The XR copy of the same bar, and it had the same fault: see the comment in
+  // `updateShotStatus`. A bar reads the shot in its own slot and nothing else,
+  // and the row is sorted, because the bars tally how ready the slots are rather
+  // than naming them (HUDRenderer.cxx:1988). Issue #36.
+  slotProgress.sort((a, b) => a - b);
 
   const barGap = 2;
   const barHeight = 7;
@@ -10038,7 +10049,7 @@ function animate(frameTime) {
     updateDegreeBar({ myTank, playerRotation, markers: getFlagHeadingMarkers() });
     updateShotStatus({
       myPlayerId, myTank, projectiles, gameConfig,
-      reloadProgress: getShotReloadProgress(), now: Date.now(),
+      now: Date.now(),
     });
   }
   markFramePhase('hud');

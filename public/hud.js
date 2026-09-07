@@ -884,7 +884,7 @@ export function updateAltimeter({ myTank, tickSpacing = 5 }) {
   ctx.restore();
 }
 
-export function updateShotStatus({ myPlayerId, projectiles, gameConfig, reloadProgress = 1, now = Date.now() }) {
+export function updateShotStatus({ myPlayerId, projectiles, gameConfig, now = Date.now() }) {
   const hud = getHudCanvasContext(shotStatusRenderState, 'shotStatus');
   if (!hud || !myPlayerId || !gameConfig) return;
   const { canvas: shotStatus, controlBox, ctx } = hud;
@@ -906,7 +906,26 @@ export function updateShotStatus({ myPlayerId, projectiles, gameConfig, reloadPr
   const dpr = window.devicePixelRatio || 1;
   const resized = resizeHudCanvasIfNeeded(shotStatusRenderState, shotStatus, statusWidth, statusHeight, dpr);
   const boxRect = controlBox?.getBoundingClientRect();
-  if (boxRect) {
+  // A `display: none` element still returns a rect -- all zeros, and truthy --
+  // so testing the object was never enough. While dead the control box is hidden
+  // (`client.js` sets it none for the death camera), the zeros put this canvas at
+  // `right + width + 16, top - height/2`, and it went to the top left corner
+  // wearing whatever it last painted. The bar belongs beside the control box, so
+  // when there is no control box to be beside there is no bar: upstream only
+  // draws these while playing. See issue #37.
+  const boxVisible = Boolean(boxRect) && (boxRect.width > 0 || boxRect.height > 0);
+  if (!boxVisible) {
+    if (shotStatusRenderState.hidden !== true) {
+      shotStatusRenderState.hidden = true;
+      shotStatus.style.visibility = 'hidden';
+    }
+    return;
+  }
+  if (shotStatusRenderState.hidden !== false) {
+    shotStatusRenderState.hidden = false;
+    shotStatus.style.visibility = '';
+  }
+  {
     const topPx = Math.round(boxRect.top + ((boxRect.height - totalHeight) / 2));
     const leftPx = Math.round(boxRect.right + indicatorWidth + 16);
     if (shotStatusRenderState.topPx !== topPx) {
@@ -944,15 +963,21 @@ export function updateShotStatus({ myPlayerId, projectiles, gameConfig, reloadPr
     });
   }
 
-  // bzo spaces its shots over one world reload interval instead of giving every
-  // slot a timer of its own, so that interval is a floor under every bar: an
-  // empty slot is still not one you can fire from until the interval has run.
-  // Laser is what makes the difference visible -- its shot is long gone before
-  // its reload is up.
-  const reloadFloor = Math.max(0, Math.min(1, Number.isFinite(reloadProgress) ? reloadProgress : 1));
-  for (let i = 0; i < maxSlots; i++) {
-    slotProgress[i] = Math.min(slotProgress[i], reloadFloor);
-  }
+  // HUDRenderer.cxx:1988. A bar reads the shot in its own slot and nothing else:
+  // an empty slot is 1.0, full, with no global term anywhere in it. Upstream's
+  // one global gate -- `jamTime`, set by `forceReload(_reloadTime / numShots)`
+  // after every shot -- reaches `getReloadTime()`, and `getReloadTime` feeds the
+  // "Reloaded in %.1f" *text* at HUDRenderer.cxx:1012. It never touches the bars.
+  //
+  // bzo used to apply that gate as a ceiling over every bar, which is what made
+  // one shot turn every bar red at once and refill them together: the display
+  // said all slots had been fired when one had. See issue #36.
+  //
+  // Then sorted, as upstream sorts, ascending. The bars are a tally of how ready
+  // the slots are and not a row of named slots, so sorting stops a bar jumping
+  // between rows as slots are used out of order -- which is the other half of
+  // "the first one moves more slowly and then skips ahead".
+  slotProgress.sort((a, b) => a - b);
 
   const stateKey = `${maxSlots}:${slotProgress.map((value) => value.toFixed(2)).join('|')}`;
   const colorKey = 'bzflag-shot-slots';

@@ -7,6 +7,33 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
 ## [Unreleased]
 
 ### Fixed
+- Landing on a teleporter lands on its frame. A teleporter's solid is the frame,
+  which `Teleporter::finalize` builds one border taller and two borders deeper
+  than the size the map states -- `getShotTeleporterDims` already mirrored that
+  and the horizontal collision already used it, but the obstacle *top* was taken
+  as the stated height everywhere. So a tank landing on `maps/flagbuffet.bzw`'s
+  portal stopped at 20.16 instead of the frame's real top of 21.28: sunk exactly
+  one border into the top bar, standing on a footprint narrower than the frame it
+  was on, and grazing the top edge of the active portal volume when it should be
+  clearly above it. One `getColliderTopY` now answers for the top in all four
+  places that asked, and the support test uses the frame's footprint too. The
+  teleport trigger already gated on `activeH` and needed no change.
+- The shot reload bars showed every slot reloading when one shot was fired (#36).
+  Each bar was capped by a single global reload progress, so one shot turned all
+  of them red and refilled them in lockstep, and the slot actually fired tracked
+  the slower of its own shot's life and that global ramp -- which is the "moves
+  more slowly and then skips ahead, and resets before reaching the end". Upstream
+  reads a bar from the shot in its own slot and nothing else, an empty slot being
+  full (`HUDRenderer.cxx:1988`); its one global gate, `jamTime`, reaches the
+  "Reloaded in %.1f" *text* and never the bars. The bars are also sorted now, as
+  upstream sorts them, since they tally how ready the slots are rather than naming
+  them. Both the DOM and XR copies had the fault.
+- The shot reload bars no longer jump to the top left corner when you die (#37).
+  The bar positions itself against the control box, which is hidden for the death
+  camera -- and a `display: none` element still returns a rect, all zeros and
+  truthy, so the guard passed and the zeros placed the canvas at the corner
+  wearing whatever it last painted. The bar now hides with the control box, which
+  is what upstream does by only drawing these while playing.
 - Driving through a teleporter no longer plays the spawn effect (#38). It fired
   `triggerSpawnEffectForTank`, which is three things at once -- the growth
   animation from 1% scale, the spawn burst, and the `pop` sound -- so an arriving

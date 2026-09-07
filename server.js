@@ -2280,6 +2280,19 @@ function getCollisionColliders() {
 // `options.rotation` selects BZFlag's two occupant shapes: a heading makes the
 // occupant an oriented 2.8 x 6.0 box (Obstacle::inBox, used for tanks), and its
 // absence keeps the cylinder (Obstacle::inCylinder, correct for projectiles).
+// A teleporter's solid is its *frame*, which stands one border taller and two
+// borders deeper than the size the map states -- Teleporter::finalize builds it
+// that way and getShotTeleporterDims already mirrors it. Every other obstacle is
+// its own stated height. Without this a tank landing on flagbuffet's portal
+// stopped at 20.16 rather than the frame's real top of 21.28: sunk one border
+// into the top bar, and grazing the top edge of the active portal volume when it
+// should be clearly above it. See issue #38.
+function getColliderTopY(obs) {
+  const baseY = obs?.baseY || 0;
+  if (obs?.kind === 'teleporter') return baseY + getShotTeleporterDims(obs).h;
+  return baseY + (Number.isFinite(obs?.h) ? obs.h : 0);
+}
+
 function checkCollision(x, y, z, tankRadius = 2, options = {}) {
   const ignoreTeleporters = options.ignoreTeleporters === true;
   const suppressLog = options.suppressLog === true;
@@ -2302,7 +2315,7 @@ function checkCollision(x, y, z, tankRadius = 2, options = {}) {
     if (obs?.driveThrough) continue;
     const obstacleHeight = obs.h || 4;
     const obstacleBase = obs.baseY || 0;
-    const obstacleTop = obstacleBase + obstacleHeight;
+    const obstacleTop = getColliderTopY(obs);
     const epsilon = 0.15;
     // Scale height based on radius (tanks are 2 units tall, projectiles much smaller)
     const tankHeight = tankRadius; // For tanks (radius=2), height=2; for projectiles (radius=0.1), height=0.1
