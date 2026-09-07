@@ -46,6 +46,16 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
   user-agent test had been preventing.
 
 ### Fixed
+- The scoreboard keeps the flags players are carrying when somebody joins. Two
+  surfaces draw the roster -- the flat list and the headset's panel -- and each
+  had gathered its own inputs, so a repaint could arrive without the flag
+  lookup and blank the column. A team score change is one such repaint and a
+  join changes team counts, so every client lost every carried flag the moment
+  anyone joined, until something else redrew the board. The rows are now built
+  in one place that no caller can call with half the information, and the same
+  rows are what the headset draws, in the same order -- it had been sorting by
+  a third set of rules and drawing observers among the players. It also reads
+  them once per change rather than rebuilding and re-sorting every frame.
 - The scoreboard drops a flag from the player who dropped it. `MsgDropFlag`
   names its owner by design, so the drop repainted the scoreboard while the flag
   was still on the tank, and the `flagUpdate` that makes it anonymous never

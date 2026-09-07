@@ -615,6 +615,24 @@ scoreboard order and the leader that roaming falls back to. Upstream reads the
 leader off the scoreboard's own order, and two orderings would let the tracked
 player and the top row disagree.
 
+### One roster, however many surfaces draw it
+
+Two surfaces draw the scoreboard -- the flat HUD's DOM list and the headset's
+canvas panel -- and **neither gathers its own inputs.** `buildScoreboardRows()`
+in `hud.js` builds the rows, `getScoreboardModel()` in `client.js` wraps them
+with the team rows and the roaming target, and `refreshScoreboards()` is the
+only entry point. It takes no arguments, so there is nothing for a caller to
+leave out: a repaint that reached the board without the flag lookup dropped
+every carried flag off it, and a team score change is a repaint, so a player
+joining blanked the column for everyone.
+
+The headset's panel is painted from the render loop, so it reads the model on
+its next frame. The model carries a version and the panel remembers which one
+is on its canvas: an unchanged roster costs a placement and nothing else, where
+rebuilding and re-sorting the rows every frame is real work in the one frame
+that can least afford it. Placement still runs every frame, because it is what
+sets `mesh.visible` and hides the panel behind the XR menu.
+
 | observer action | desktop | mobile | gamepad | XR |
 |---|---|---|---|---|
 | translate / yaw | WASD, arrows, mouse box | joystick | left stick | thumbstick |

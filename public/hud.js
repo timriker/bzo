@@ -452,11 +452,10 @@ export function formatTeamScore(row) {
   return `${row.score} (${row.wins}-${row.losses}) ${row.size}`;
 }
 
-function updateTeamScoreboard(teamScores) {
+function updateTeamScoreboard(rows) {
   const container = document.getElementById('teamScoreboard');
   if (!container) return;
   container.innerHTML = '';
-  const rows = getTeamScoreRows(teamScores);
   container.classList.toggle('teamScoreboardEmpty', rows.length === 0);
   if (!rows.length) return;
 
@@ -527,61 +526,65 @@ function writePlayerLabel(nameEl, flagEl, { name, nameColor, flag } = {}) {
   }
 }
 
-export function updateScoreboard({
+// One row per player, in scoreboard order, for however many surfaces draw the
+// roster. The flat scoreboard and the headset's canvas panel both read these,
+// so a player's colour, carried flag and place in the order cannot differ
+// between them -- and gathering the inputs in one place is what stops a caller
+// leaving one out and silently dropping a column.
+//
+// `getPlayerFlagLabel` is a lookup rather than something read here, because the
+// flag list belongs to client.js. ScoreboardRenderer::drawPlayerScore puts the
+// carried flag after the callsign, in the flag's own colour.
+export function buildScoreboardRows({
   myPlayerId,
   myPlayerName,
   myTank,
   tanks,
-  teamScores,
+  getPlayerFlagLabel = () => null,
+}) {
+  const rows = [];
+  const addRow = (id, name, state, isCurrent) => {
+    if (!state) return;
+    rows.push({
+      id,
+      name,
+      kills: state.kills || 0,
+      deaths: state.deaths || 0,
+      connectDate: state.connectDate ? new Date(state.connectDate) : new Date(0),
+      color: state.color,
+      flag: getPlayerFlagLabel(id),
+      isObserver: isObserverTeam(state.team),
+      isCurrent,
+    });
+  };
+
+  if (myPlayerId && myTank) addRow(myPlayerId, myPlayerName, myTank.userData.playerState, true);
+  tanks.forEach((tank, id) => {
+    if (id === myPlayerId) return;
+    addRow(id, tank.userData.playerState?.name || 'Player', tank.userData.playerState, false);
+  });
+
+  rows.sort(compareScoreboardPlayers);
+  return rows;
+}
+
+// The roster as the flat HUD draws it. Everything it needs arrives already
+// assembled, so this decides only how the rows look -- see the model builder in
+// `client.js`, which is the one entry point every repaint goes through.
+export function updateScoreboard({
+  rows,
+  teamRows,
   // Set while roaming: the id being watched, and the callback a row click
   // reports a new choice to. Absent for a playing tank, which leaves the rows
   // inert.
   roamTargetId = null,
   onSelectRoamTarget = null,
-  // ScoreboardRenderer::drawPlayerScore puts the carried flag after the
-  // callsign, in the flag's own colour. Supplied as a lookup rather than read
-  // here, because the flag list belongs to client.js.
-  getPlayerFlagLabel = () => null,
 }) {
-  updateTeamScoreboard(teamScores);
+  updateTeamScoreboard(teamRows);
   const scoreboardList = document.getElementById('scoreboardList');
   if (!scoreboardList) return;
   scoreboardList.innerHTML = '';
-  const playerData = [];
-
-  // Add current player
-  if (myPlayerId && myTank && myTank.userData.playerState) {
-    playerData.push({
-      id: myPlayerId,
-      name: myPlayerName,
-      kills: myTank.userData.playerState.kills || 0,
-      deaths: myTank.userData.playerState.deaths || 0,
-      connectDate: myTank.userData.playerState.connectDate ? new Date(myTank.userData.playerState.connectDate) : new Date(0),
-      color: myTank.userData.playerState.color,
-      flag: getPlayerFlagLabel(myPlayerId),
-      isObserver: isObserverTeam(myTank.userData.playerState.team),
-      isCurrent: true
-    });
-  }
-
-  // Add other players from server state
-  tanks.forEach((tank, id) => {
-    if (id !== myPlayerId && tank.userData.playerState) {
-      playerData.push({
-        id: id,
-        name: tank.userData.playerState.name || 'Player',
-        kills: tank.userData.playerState.kills || 0,
-        deaths: tank.userData.playerState.deaths || 0,
-        connectDate: tank.userData.playerState.connectDate ? new Date(tank.userData.playerState.connectDate) : new Date(0),
-        color: tank.userData.playerState.color,
-        flag: getPlayerFlagLabel(id),
-        isObserver: isObserverTeam(tank.userData.playerState.team),
-        isCurrent: false
-      });
-    }
-  });
-
-  playerData.sort(compareScoreboardPlayers);
+  const playerData = rows;
 
   // The panel's title is the player's own name, and it now carries the colour
   // their tank is drawn in and the flag they are holding, in the same shape a

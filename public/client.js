@@ -104,6 +104,7 @@ import {
   toggleDebugHud,
   toggleDebugLabels,
   compareScoreboardPlayers,
+  buildScoreboardRows,
   getActiveHudAlerts,
   getHudAlertColor,
   setHudAlert,
@@ -348,7 +349,11 @@ let radarCanvas, radarCtx;
 const xrRadarPanel = { canvas: null, texture: null, mesh: null, planeWidth: 0, planeHeight: 0 };
 const xrChatPanel = { canvas: null, texture: null, mesh: null, planeWidth: 0, planeHeight: 0 };
 const xrShotStatusPanel = { canvas: null, texture: null, mesh: null, planeWidth: 0, planeHeight: 0 };
-const xrScoreboardPanel = { canvas: null, texture: null, mesh: null, planeWidth: 0, planeHeight: 0 };
+const xrScoreboardPanel = {
+  canvas: null, texture: null, mesh: null, planeWidth: 0, planeHeight: 0,
+  // Which roster is on the canvas, so a frame can tell there is nothing to draw.
+  paintedVersion: 0, paintedRows: 0,
+};
 const xrAlertPanel = { canvas: null, texture: null, mesh: null, planeWidth: 0, planeHeight: 0 };
 const XR_HUD_PANELS = [xrRadarPanel, xrChatPanel, xrShotStatusPanel, xrScoreboardPanel, xrAlertPanel];
 const XR_HUD_PLANE_Z = -0.85;
@@ -1156,7 +1161,7 @@ async function prepareInitialRender(message, sequenceId) {
 
   applyRosterSnapshot(message.players);
   myTank = tanks.get(myPlayerId);
-  callUpdateScoreboard();
+  refreshScoreboards();
   await waitForAnimationFrame();
   if (sequenceId !== activeInitSequence) return false;
 
@@ -1212,7 +1217,7 @@ function applyPlayerList(players) {
     removePlayer(id);
   });
   myTank = tanks.get(myPlayerId);
-  callUpdateScoreboard();
+  refreshScoreboards();
 }
 
 function isDebugHudVisible() {
@@ -3833,7 +3838,7 @@ function handleServerMessage(message) {
             triggerSpawnEffectForTank(myTank, message.player.color);
           }
         }
-        callUpdateScoreboard();
+        refreshScoreboards();
       } else {
         // Another player joined: update their info and create their tank if needed
         const existingTank = tanks.get(message.player.id);
@@ -3843,14 +3848,14 @@ function handleServerMessage(message) {
         if (!wasAliveBefore && message.player.health > 0 && joinedTank) {
           triggerSpawnEffectForTank(joinedTank, message.player.color);
         }
-        callUpdateScoreboard();
+        refreshScoreboards();
         showMessage(`${message.player.name} joined the game`);
       }
       break;
 
     case 'teamUpdate':
       teamScores = message.teams || [];
-      updateScoreboard({ myPlayerId, myPlayerName, myTank, tanks, teamScores });
+      refreshScoreboards();
       break;
 
     case 'playerLeft': {
@@ -3876,7 +3881,7 @@ function handleServerMessage(message) {
             updateVoiceIdentity();
           }
         }
-        callUpdateScoreboard();
+        refreshScoreboards();
       }
       break;
 
@@ -4038,7 +4043,7 @@ function handleServerMessage(message) {
       // the message that makes it anonymous, so this is the one that has to
       // repaint -- otherwise a shaken flag stays on the scoreboard until some
       // unrelated event happens to redraw it.
-      callUpdateScoreboard();
+      refreshScoreboards();
       break;
 
     case 'grabFlag': {
@@ -4047,13 +4052,13 @@ function handleServerMessage(message) {
       handleFlagGrabbedAlerts(message.playerId, flag);
       addChatEntry(['misc', 'all'], `${getPlayerName(message.playerId)} grabbed ${label} flag`, CHAT_KIND_MISC);
       // The scoreboard names the carried flag, and it only repaints on events.
-      callUpdateScoreboard();
+      refreshScoreboards();
       break;
     }
 
     case 'captureFlag':
       handleFlagCaptured(message);
-      callUpdateScoreboard();
+      refreshScoreboards();
       break;
 
     case 'nearFlag':
@@ -4072,7 +4077,7 @@ function handleServerMessage(message) {
         showMessage(`Dropped ${label} flag`);
       }
       addChatEntry(['misc', 'all'], `${getPlayerName(message.playerId)} dropped ${label} flag`, CHAT_KIND_MISC);
-      callUpdateScoreboard();
+      refreshScoreboards();
       break;
     }
 
@@ -4270,7 +4275,7 @@ function addPlayer(player) {
     clearJumpPredictionDebug(tank);
   }
 
-  callUpdateScoreboard();
+  refreshScoreboards();
 }
 
 function removePlayer(playerId) {
@@ -4285,7 +4290,7 @@ function removePlayer(playerId) {
     renderManager.dropProjectedShadows(tank);
     renderManager.getWorldGroup().remove(tank);
     tanks.delete(playerId);
-    callUpdateScoreboard();
+    refreshScoreboards();
   }
   removePausedSphere(playerId);
 }
@@ -4504,7 +4509,7 @@ function handlePlayerHit(message) {
     if (victimTank && victimTank.userData.playerState) {
       victimTank.userData.playerState.deaths = (victimTank.userData.playerState.deaths || 0) + 1;
     }
-    callUpdateScoreboard();
+    refreshScoreboards();
   }
 
   // Remove the projectile
@@ -4573,7 +4578,7 @@ function handlePlayerRespawn(message) {
     }
   }
 
-  callUpdateScoreboard();
+  refreshScoreboards();
 
   if (message.player.id === myPlayerId) {
     playerX = message.player.x;
@@ -4587,22 +4592,43 @@ function handlePlayerRespawn(message) {
     if (crosshair) crosshair.style.display = '';
   }
 }
-// Helper to call updateScoreboard with all required parameters
-function callUpdateScoreboard() {
-  const observing = isObserver();
-  updateScoreboard({
-    myPlayerId,
-    myPlayerName,
-    myTank,
-    tanks,
-    teamScores,
-    getPlayerFlagLabel,
-    // Only an observer can pick a roam target, and only an explicit one is
-    // marked: with no target the view follows the leader, and marking the top
-    // row would claim a choice the player did not make.
-    roamTargetId: observing ? roamTargetId : null,
-    onSelectRoamTarget: observing ? selectRoamTarget : null,
-  });
+// The scoreboard, assembled once for every surface that draws it. Two of them
+// do -- the flat HUD's DOM list and the headset's canvas panel -- and they had
+// each gathered their own inputs, which is how they came to disagree: a repaint
+// that reached one of them without the flag lookup dropped every carried flag
+// off the board, and the two sorted their rows by different rules.
+//
+// So the roster is built here and nowhere else. `refreshScoreboards()` is the
+// only entry point, it takes no arguments, and there is nothing for a caller to
+// leave out.
+let scoreboardModel = null;
+let scoreboardVersion = 0;
+
+function getScoreboardModel() {
+  if (!scoreboardModel) {
+    const observing = isObserver();
+    scoreboardVersion += 1;
+    scoreboardModel = {
+      version: scoreboardVersion,
+      rows: buildScoreboardRows({ myPlayerId, myPlayerName, myTank, tanks, getPlayerFlagLabel }),
+      teamRows: getTeamScoreRows(teamScores),
+      // Only an observer can pick a roam target, and only an explicit one is
+      // marked: with no target the view follows the leader, and marking the top
+      // row would claim a choice the player did not make.
+      roamTargetId: observing ? roamTargetId : null,
+      onSelectRoamTarget: observing ? selectRoamTarget : null,
+    };
+  }
+  return scoreboardModel;
+}
+
+// Every change to the roster, the scores or the roaming target ends here. The
+// DOM list is rebuilt now; the headset's panel is painted from the render loop
+// and picks the new model up on its next frame, which is also what keeps it
+// from repainting a canvas that has not changed.
+function refreshScoreboards() {
+  scoreboardModel = null;
+  updateScoreboard(getScoreboardModel());
 }
 
 function handleMapsList(message) {
@@ -5919,7 +5945,7 @@ function getRoamTargetFlag() {
 function adoptRoamTarget(id) {
   roamTargetId = id;
   if (id !== null && !roamViewNeedsTarget(roamView)) roamView = ROAM_VIEW.TRACK;
-  callUpdateScoreboard();
+  refreshScoreboards();
 }
 
 // A row click sets an explicit target; clicking the marked row releases back to
@@ -5946,7 +5972,7 @@ function cycleRoamView() {
   roamView = next.view;
   roamTargetId = next.targetId;
   roamTargetFlagIndex = next.flagIndex;
-  callUpdateScoreboard();
+  refreshScoreboards();
 }
 
 // setTarget() (playing.cxx:4390): whoever is centred in the sights.
@@ -8122,43 +8148,17 @@ function ensureXRScoreboardOverlay() {
     return;
   }
 
-  const playerData = [];
-  if (myPlayerId && myTank && myTank.userData.playerState) {
-    playerData.push({
-      id: myPlayerId,
-      name: myPlayerName,
-      kills: myTank.userData.playerState.kills || 0,
-      deaths: myTank.userData.playerState.deaths || 0,
-      color: myTank.userData.playerState.color,
-      flag: getPlayerFlagLabel(myPlayerId),
-      isCurrent: true,
-    });
+  // The same rows the flat scoreboard draws, in the same order, with the same
+  // flags: one model, two surfaces. This runs every frame of a session, so an
+  // unchanged model is drawn by leaving the canvas alone and only placing the
+  // panel again -- the roster is repainted when it changes, not at frame rate.
+  const model = getScoreboardModel();
+  if (model.version === xrScoreboardPanel.paintedVersion) {
+    placeXRScoreboardPanel();
+    return;
   }
-
-  tanks.forEach((tank, id) => {
-    if (id !== myPlayerId && tank.userData.playerState) {
-      playerData.push({
-        id,
-        name: tank.userData.playerState.name || 'Player',
-        kills: tank.userData.playerState.kills || 0,
-        deaths: tank.userData.playerState.deaths || 0,
-        color: tank.userData.playerState.color,
-        flag: getPlayerFlagLabel(id),
-        isCurrent: false,
-      });
-    }
-  });
-
-  playerData.sort((a, b) => {
-    const aScore = (a.kills || 0) - (a.deaths || 0);
-    const bScore = (b.kills || 0) - (b.deaths || 0);
-    if (bScore !== aScore) return bScore - aScore;
-    if ((b.kills || 0) !== (a.kills || 0)) return b.kills - a.kills;
-    if ((a.deaths || 0) !== (b.deaths || 0)) return (a.deaths || 0) - (b.deaths || 0);
-    return String(a.name).localeCompare(String(b.name));
-  });
-
-  const teamRows = getTeamScoreRows(teamScores);
+  const playerData = model.rows;
+  const teamRows = model.teamRows;
   const margin = 12;
   const panelW = 320;
   // Both columns are laid out in pixels, as the other canvas HUDs are. The
@@ -8246,9 +8246,16 @@ function ensureXRScoreboardOverlay() {
   });
 
   xrScoreboardPanel.texture.needsUpdate = true;
+  xrScoreboardPanel.paintedVersion = model.version;
+  xrScoreboardPanel.paintedRows = visiblePlayers.length + teamRows.length;
+  placeXRScoreboardPanel();
+}
 
+// Where the panel hangs, which depends on how many rows it drew rather than on
+// the model, so it can be re-applied on a frame that repainted nothing.
+function placeXRScoreboardPanel() {
   const baseWidth = 0.36;
-  const baseHeight = Math.min(0.36, 0.06 + (visiblePlayers.length + teamRows.length) * 0.025);
+  const baseHeight = Math.min(0.36, 0.06 + (xrScoreboardPanel.paintedRows || 0) * 0.025);
   placeXRHudPanel(xrScoreboardPanel, {
     width: baseWidth,
     height: baseHeight,
