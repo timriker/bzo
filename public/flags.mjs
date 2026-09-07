@@ -44,7 +44,15 @@ export const FLAG_POLE_WIDTH = 0.025;
 // _flagHeight: the clearance a flag needs above its landing spot, not its
 // drawn size. DropGeometry tests a cylinder this tall.
 export const FLAG_CLEARANCE = 10.0;
+// _maxFlagGrabs: how many times a superflag may be picked up before it leaves
+// the world instead of landing. FlagInfo.cxx:137 reads it on every grab, so a
+// server may change it; this is upstream's global.cxx default. A sticky flag
+// ignores it and always gets one grab.
 export const MAX_FLAG_GRABS = 4;
+// Upstream stores it in an int-valued BZDB var with no range of its own, so the
+// only bound worth keeping is the one that makes it mean anything: a flag has to
+// survive the grab that picks it up.
+export const MAX_FLAG_GRABS_MIN = 1;
 export const BASE_SIZE = 60.0;
 // _shieldFlight. A Shield flag is thrown this many times higher than any other
 // when it leaves a tank (FlagInfo.cxx:174), which is the second half of what the
@@ -341,6 +349,17 @@ export function normalizeShakeWins(count) {
   const value = Math.floor(Number(count));
   if (!Number.isFinite(value) || value <= 0) return 0;
   return Math.min(SHAKE_WINS_MAX, Math.max(SHAKE_WINS_MIN, value));
+}
+
+// _maxFlagGrabs, from `server.json`'s `maxFlagGrabs` or a map's
+// `-set _maxFlagGrabs`. Upstream evaluates the variable as an int, so a
+// fractional value truncates; anything that is not a usable count falls back to
+// the default rather than to zero, because zero would take a flag out of the
+// world on the grab that found it.
+export function normalizeFlagGrabs(count) {
+  const value = Math.floor(Number(count));
+  if (!Number.isFinite(value)) return MAX_FLAG_GRABS;
+  return Math.max(MAX_FLAG_GRABS_MIN, value);
 }
 
 // LocalPlayer::setFlag's antidote square. Upstream picks x and y inside it and

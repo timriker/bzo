@@ -155,7 +155,10 @@ These are deliberate. Do not "fix" them without being asked.
 - **Superflags are on by default.** bzfs needs `-s` before a world has any
   superflags at all. bzo defaults `superFlags` to 16 slots drawn from every
   superflag in the shared `flags` table, so the feature is not invisible
-  without editing `server.json`.
+  without editing `server.json`. That is the *code* default, for a config that
+  never mentions `superFlags`, and it is what `example-server.json` asks for. The
+  dev server's own `server.json` asks for none, because there the world is what
+  says how many -- see "The world carries the gameplay".
 
 - **Jumping is on by default.** bzfs needs `-j` before any tank can jump; bzo
   has had jumping since before there was a switch, so `jumping` defaults to on
@@ -839,9 +842,10 @@ BZFlag derives shot timing from `_reloadTime`, which itself defaults to
 - `LocalPlayer.cxx:1311` — a slot reloads after `_reloadTime / numShots`
 
 So firing continuously sustains exactly `maxShots` shots in flight. bzo derives
-`SHOT_RELOAD_TIME` the same way, after the `server.json` overrides are applied,
-so changing `shotMaxActive`, `shotSpeed`, or `shotDistance` keeps the relation
-intact. With the defaults and five slots that is 700ms.
+`SHOT_RELOAD_TIME` the same way, after the `server.json` overrides are applied
+and again after a map's `-ms`, so changing `shotMaxActive`, `shotSpeed`, or
+`shotDistance` keeps the relation intact. With the defaults and one slot that is
+3500ms; `maps/hix.bzw` asks for five and gets 700ms.
 
 ### The server does not enforce a reload timer
 
@@ -1529,6 +1533,34 @@ is how a change like "the bases are one mesh now" is confirmed, by watching
 
 - Runtime settings (name, MOTD, default map, team mode, voice ICE servers) live
   in `server.json`; `example-server.json` documents the expected shape.
+
+### The world carries the gameplay
+
+`server.json` is gitignored; `example-server.json` is the tracked template copied
+to it on first start. The two answer different questions, and the dev server's
+`server.json` answers its one by holding **bzfs's own defaults** for every
+gameplay switch a map can set: no jumping, no ricochet, one shot slot, no
+superflags, and a bad flag shed only by dying. Those are `CmdLineOptions`'s
+constructor values -- `maxShots(1)`, `numExtraFlags(0)`, `shakeWins(0)`,
+`shakeTimeout(0)`, `gameOptions(0)` -- so reading that config tells you nothing
+about how a given world plays, which is the point: it cannot, because the world
+decides.
+
+What makes the dev server worth playing lives in the world instead, where a bzfs
+mapper would put it. `maps/hix.bzw` carries `-j`, `+r`, `-ms 5`, `-s 200`,
+`-st 50`, `-sw 2` and `-sa`, each with a comment saying what it does, and that is
+the file to edit to change how the dev server plays. Switching maps switches the
+rules with them.
+
+`example-server.json` is deliberately *not* aligned that way. A first start has
+whatever map it names and nothing else, so it keeps bzo's two documented
+deviations -- jumping on, 16 superflag slots -- and a fresh install is playable
+without editing a map first.
+
+Two settings cannot move to a world at all, because both are BZDB variables
+reached only through `-set` and bzo does not read `-set`: `wingsJumpCount` and
+`wingsSlideTime` stay in the config at upstream's `_wingsJumpCount` and
+`_wingsSlideTime`. Raising the flap count to test `WG` means editing the config.
 - `SERVER_CONFIG_PATH` overrides the config path; `MAPS_PATH` overrides the
   writable runtime maps directory.
 - Obstacles are generated and resolved server-side and sent in the `init`

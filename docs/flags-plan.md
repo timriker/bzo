@@ -295,9 +295,39 @@ Each row carries upstream's `name`, `abbreviation`, `endurance`, `quality`,
 holds every row against those rules: a key matching its abbreviation, a name and
 help string present, every bad flag sticky, every team flag normal.
 
-Upstream's `-f` and `+f` (`CmdLineOptions.cxx:751` and `:757`) set per-type
-counts and forbid types. `superFlags.allowed` covers the common case; per-type
-counts are worth adding only when there are enough flags for the mix to matter.
+### Where the pool comes from
+
+`-s` sets how many superflag slots a world holds, `-f` takes a type or a whole
+quality out of the pool, and a `zone` block's `zoneflag` pins a chosen count of a
+chosen type inside that zone -- all three read from a map's `options` block or its
+`zone` blocks, and all three are in. `superFlags.count` in `server.json` is the
+baseline a map's `-s` replaces; `superFlags.allowed` still works but is redundant,
+because absent it defaults to exactly the flags this table implements.
+
+Upstream's `+f <abbrev>[{count}]` (`CmdLineOptions.cxx:757`) is the one still
+missing. It pins a count of a type without a zone to put it in, which bzo has no
+model for: a slot is either drawn from the pool or bound to a zone, with no third
+state. Worth adding when there are enough flags for the mix to matter.
+
+### The game style voids flags the world contradicts
+
+`CmdLineOptions.cxx:1703` builds a `forbidden` set before any flag is placed, and
+a type in it is voided everywhere at once -- `flagCount[ft] = 0`, out of the
+random pool, and skipped by the zone-flag loop. bzo's `getForbiddenFlags` is the
+same set, and carries the two rules whose flags exist:
+
+| upstream rule | bzo |
+|---|---|
+| jumping on voids `JP`, off voids `NJ` | in |
+| `+r` voids `R` | in |
+| a world with no teleporters voids `PZ` | **missing**, `PZ` is phase 14 |
+| a world with no teams voids `G`, `CB` and `MQ` | **missing**, phases 6, 4 and 13 |
+
+The last two are not oversights yet -- none of those four flags exist -- but each
+belongs in `getForbiddenFlags` in the same change that adds its flag, not later.
+`PZ` on a world with nothing to phase through and `G` on a world with no teams to
+wipe out are both a flag that lies about what it does, which is the thing this
+document exists to prevent.
 
 ## Jumping, and the flags that carry it (implemented)
 

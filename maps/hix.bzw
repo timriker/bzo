@@ -5,9 +5,32 @@
 # This is a team play world
 
 options
+	# Team play, so the four coloured bases below are capture targets.
 	-c
+	# Per-team player limits, in BZFlag's team order:
+	# rogue, observer, red, green, blue, purple.
 	-mp 10,10,10,10,10,10
+	# Superflags may spawn on, and come to rest on, the buildings.
+	# With as much roof as this world has, the ground-only rule hides most of them.
 	-fb
+	# Tanks may jump. bzo has jumping on unless server.json turns it off,
+	# so this is what turns it back on for this world.
+	-j
+	# Every shot ricochets, whatever flag fired it.
+	+r
+	# Five shots in the air at once, where bzfs gives one. The reload time
+	# follows from it: a slot comes back after shotRange / shotSpeed / this.
+	-ms 5
+	# Superflag slots. Left off, this is 16; the world is 800 units across,
+	# so it takes rather more than that to find one.
+	-s 200
+	# A bad flag falls off by itself after this many seconds.
+	-st 50
+	# A bad flag also falls off after this many kills.
+	-sw 2
+	# An antidote flag is put in the world for whoever is carrying a bad one,
+	# which sheds it when they drive onto it.
+	-sa
 end
 
 # Typical World definition

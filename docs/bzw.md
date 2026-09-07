@@ -89,7 +89,11 @@ marked `drivethrough`, which stops shots and nothing else. See
 ## Teleporters and links
 
 A `teleporter` is a box with a `border`, and its two faces are named
-`<name>:f` and `<name>:b`. A `link` block takes `from` and `to`, either of
+`<name>:f` and `<name>:b`. A teleporter that gives neither takes upstream's
+defaults from the `CustomGate` constructor -- half width `0.5 * _teleportWidth`,
+half breadth `_teleportBreadth`, height `2 * _teleportHeight`, and a border of
+twice the half width, so `0.56 / 4.48 / 20.16 / 1.12` -- which is what
+`maps/flagbuffet.bzw` relies on and every other map in `maps/` spells out. A `link` block takes `from` and `to`, either of
 which may be:
 
 - a face name, `ne_tele_low:f`;
@@ -118,11 +122,78 @@ Read as a bzfs command line, one option a line. Everything bzo understands:
 | `-st <seconds>` | how long a bad flag sticks before it shakes off |
 | `-sw <kills>` | how many kills shake a bad flag off |
 | `-sa` | put an antidote flag in the world for whoever carries a bad one |
+| `-ms <count>` | how many shots a tank may have in the air at once |
+| `-s <count>`, `+s <count>` | how many superflag slots the world holds |
+| `-f <abbrev\|good\|bad>` | take a flag type, or a whole quality, out of the pool |
+| `-set _maxFlagGrabs <n>` | how many pickups a superflag survives |
+| `-srvmsg <text>` | a line the world says to each player as they join |
 
 A map option only ever turns a switch **on**, which is how a bzfs switch behaves:
 nothing in a map turns off something the server config enabled. `-j` is the one
 that reads oddly as a result -- bzo has jumping on by default, so `-j` in a map
 matters only on a server whose own config turned it off.
+
+The two options that carry a *value* rather than flip a switch are the exception,
+and they differ from each other. `-st` and `-sw` take the larger of the map's
+number and the config's, because both are switches that happen to be spelled with
+a number. `-ms` **replaces** the config's `shotMaxActive` outright: upstream reads
+a map's `options` block where `-world` sits on its command line, so the map's
+number is simply the later assignment. Changing it re-derives the reload time from
+`shotRange / shotSpeed / shotMaxActive`, since each slot comes back after
+`_reloadTime / maxShots`; a `shotReloadTime` pinned in `server.json` still wins.
+`-ms 0` means "tanks cannot shoot" upstream, which bzo has no mode for, so zero
+is clamped to one shot as the config's own value is.
+
+`-s` replaces `superFlags.count` the same way and for the same reason. Its count
+is optional, and upstream turns anything unparseable *or zero* into 16 -- `atoi`
+gives 0 for a missing count and 0 is then overwritten -- so `-s`, `-s 0` and
+`-s 16` are all sixteen flags and none of them are none. `+s` differs from `-s`
+only in marking every slot `required`, which keeps all of them in the world at
+once where `-s` lets a slot sit empty between insertions; bzo has only the
+insertion schedule, so it reads both spellings the same way.
+
+`-set _maxFlagGrabs` is a plain BZDB assignment, so the map's number replaces the
+config's `maxFlagGrabs` as `-ms` and `-s` do. Only the server acts on it -- it is
+read on grab and spent on drop -- but it rides into the `init` payload anyway,
+which is bzo's equivalent of upstream shipping every BZDB var to clients whether
+the client reads it or not.
+
+`-srvmsg` accumulates: every occurrence is another line, in map order, and a
+single occurrence may carry more than one by writing a literal `\n` inside it.
+Upstream joins them with that same marker and splits them again on the way out
+(`bzfs.cxx:2507`), so both spellings mean the same thing. The text is taken off
+the raw line rather than from the split tokens, because its own spacing is part
+of it -- upstream reads a quoted argument as one token and never touches the
+inside.
+
+The lines go out as ordinary **server chat to the player who just joined**, which
+is how upstream sends them, and is why they are not `motd`:
+
+| bzo | upstream | what it is |
+|---|---|---|
+| a map's `-srvmsg` | `-srvmsg` | said to each player on join, after the join completes |
+| `motd` in `server.json` | *nothing* | the label the entry dialog shows before anyone joins |
+| `description` in `server.json` | `-publictitle` | the blurb a public server list shows |
+
+Upstream has **no server MOTD at all.** Its `MessageOfTheDay` (`src/bzflag/motd.cxx`)
+is a *client* feature: the client fetches `BZDB.get("motdServer")` over HTTP and
+shows a BZFlag project announcement, which no game server has any say in. bzo's
+`motd` is its own thing and keeps its own name; the one upstream option it
+resembles is `-srvmsg`, and the two are kept apart because they speak at
+different moments -- one before you join, one after.
+
+Not read: `-admsg`, upstream's periodic advertisement broadcast to everyone on a
+timer, and `-helpmsg`, which reads chunks out of a file.
+
+`-f` is a switch that happens to name its target: disallows accumulate, nothing
+puts one back, and `good` or `bad` takes a whole quality out at once. It filters
+the pool a slot draws from, next to the two types the game style already forbids
+(`JP` or `NJ` by the jumping switch, `R` on a `+r` world). Naming a flag bzo does
+not implement is not an error -- it was not in the pool to remove.
+
+Upstream's `+f <abbrev>[{count}]`, which pins a chosen number of one type in the
+world, is **not** read: bzo's flag model is one pool and one slot count, with no
+per-type counts to put them in.
 
 `-mp` with no explicit `-c` or `-offa` implies team play when it enables any
 team other than rogue and observer.
@@ -143,10 +214,15 @@ loads and plays with that part of it missing. The notable absences:
   reads on any obstacle. An obstacle carrying one arrives untransformed.
 - **`world` fields other than `size`**: `flagHeight`, `noWalls`,
   `freeCtfSpawns`.
-- **`water`, `zone`, `weapon`, `physics`**, and the flag-placement keywords a
-  `zone` block carries. bzo places flags itself.
-- **`-set` and other BZDB assignments.** bzo's world constants are constants; see
-  `docs/flags-plan.md` for why.
+- **`water`, `weapon`, `physics`**.
+- **A `zone` block's `flag`, `team` and `safety` keywords.** `zoneflag` is read,
+  so a map's flag zones work; `flag` names a type any flag of which spawns in the
+  zone, `team` makes it a spawn area, and `safety` a Phantom Zone landing spot.
+  A map using any of the three is named in the load log rather than skipped
+  silently, because a spawn zone that is ignored moves every tank in the world.
+- **Every `-set` variable but `_maxFlagGrabs`.** bzo's world constants are
+  constants, and the one exception is the one it already keeps a configurable
+  copy of; see `docs/flags-plan.md`. A map that sets another is named on load.
 
 A map that needs any of these is not rejected -- it is worth knowing that it
 loaded rather than that it loaded *correctly*.

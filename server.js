@@ -33,6 +33,7 @@ const {
   computeFlagFlight,
   getAntidoteCoordinate,
   hasAirControl,
+  normalizeFlagGrabs,
   normalizeShakeTimeout,
   normalizeShakeWins,
   shotRicochets,
@@ -42,6 +43,7 @@ const {
   getFlagType,
   getShotEffects,
   getTeamFlagAbbreviation,
+  isBadFlag,
   isTeamFlag,
 } = require('./server/flags.cjs');
 const {
@@ -442,6 +444,7 @@ const GAME_CONFIG = {
   // "_jumpVelocity" and "_gravity" rather than numbers; they are resolved to the
   // world's values below.
   WINGS_JUMP_COUNT: DEFAULT_WINGS_JUMP_COUNT, // BZFlag _wingsJumpCount
+  MAX_FLAG_GRABS, // BZFlag _maxFlagGrabs
   WINGS_JUMP_VELOCITY: null, // BZFlag _wingsJumpVelocity; defaults to JUMP_VELOCITY
   WINGS_GRAVITY: null, // BZFlag _wingsGravity magnitude; defaults to GRAVITY
   WINGS_SLIDE_TIME: DEFAULT_WINGS_SLIDE_TIME, // BZFlag _wingsSlideTime
@@ -628,6 +631,11 @@ if (Number.isInteger(configWingsJumpCount) && configWingsJumpCount >= 0) {
   GAME_CONFIG.WINGS_JUMP_COUNT = configWingsJumpCount;
 }
 
+const configFlagGrabs = Number(serverConfig.maxFlagGrabs ?? NaN);
+if (Number.isFinite(configFlagGrabs)) {
+  GAME_CONFIG.MAX_FLAG_GRABS = normalizeFlagGrabs(configFlagGrabs);
+}
+
 const configWingsJumpVelocity = Number(serverConfig.wingsJumpVelocity ?? NaN);
 if (Number.isFinite(configWingsJumpVelocity) && configWingsJumpVelocity >= 0) {
   GAME_CONFIG.WINGS_JUMP_VELOCITY = configWingsJumpVelocity;
@@ -758,12 +766,18 @@ GAME_CONFIG.SHOT_DISTANCE = GAME_CONFIG.SHOT_RANGE;
 //   LocalPlayer.cxx:1311  forceReload(_reloadTime / numShots)
 // So a shot lives for the full reload time while each slot comes back after
 // _reloadTime / maxShots. Firing continuously then sustains exactly maxShots in
-// flight. Only derive when the operator has not pinned shotReloadTime.
-if (GAME_CONFIG.SHOT_RELOAD_TIME === null) {
-  const shotLifetimeMs = (GAME_CONFIG.SHOT_RANGE / GAME_CONFIG.SHOT_SPEED) * 1000;
-  GAME_CONFIG.SHOT_RELOAD_TIME = shotLifetimeMs / GAME_CONFIG.SHOT_MAX_ACTIVE;
+// flight. Only derive when the operator has not pinned shotReloadTime, which is
+// why the answer to "did they pin it" is taken once, before the first derivation
+// fills the field in: a map's `-ms` re-derives from the same basis later.
+const SHOT_RELOAD_TIME_PINNED = GAME_CONFIG.SHOT_RELOAD_TIME !== null;
+function deriveShotReloadTime() {
+  if (!SHOT_RELOAD_TIME_PINNED) {
+    const shotLifetimeMs = (GAME_CONFIG.SHOT_RANGE / GAME_CONFIG.SHOT_SPEED) * 1000;
+    GAME_CONFIG.SHOT_RELOAD_TIME = shotLifetimeMs / GAME_CONFIG.SHOT_MAX_ACTIVE;
+  }
+  GAME_CONFIG.SHOT_COOLDOWN = GAME_CONFIG.SHOT_RELOAD_TIME;
 }
-GAME_CONFIG.SHOT_COOLDOWN = GAME_CONFIG.SHOT_RELOAD_TIME;
+deriveShotReloadTime();
 
 const validFogModes = new Set(['none', 'linear', 'exp', 'exp2']);
 const configFogMode = typeof serverConfig.fogMode === 'string' ? serverConfig.fogMode.trim().toLowerCase() : '';
@@ -833,7 +847,10 @@ if (MAP_SOURCE !== 'random') {
 // keeps its say.
 function parseBZWServerOptions(lines) {
   let inOptions = false;
-  const options = {};
+  // Every other field is left absent unless the map names it. `forbiddenFlags`
+  // is the exception because `-f` may appear any number of times, and an empty
+  // list says the same thing as no list.
+  const options = { forbiddenFlags: [], unreadBZDBVars: [], serverMessages: [] };
 
   for (const rawLine of lines) {
     const line = rawLine.trim();
@@ -846,7 +863,7 @@ function parseBZWServerOptions(lines) {
       inOptions = false;
       continue;
     }
-    const [option, value] = line.split(/\s+/);
+    const [option, value, setValue] = line.split(/\s+/);
     // -fb: superflags may come to rest on buildings, and may spawn on them.
     if (option === '-fb') options.flagsOnBuildings = true;
     // -j: tanks may jump. bzo already defaults this on, so the switch only
@@ -860,6 +877,81 @@ function parseBZWServerOptions(lines) {
     if (option === '-sw') options.flagShakeWins = normalizeShakeWins(value);
     // -sa: put an antidote flag in the world for whoever is carrying a bad one.
     if (option === '-sa') options.antidoteFlags = true;
+    // -ms <count>: how many shots a tank may have in the air at once. Unlike the
+    // switches above this carries a value, and upstream parses a map's options
+    // where `-world` sits on the command line, so the map's number simply
+    // replaces whatever came before it rather than only ever raising it.
+    // A count of 0 means "tanks cannot shoot" upstream; bzo has no such mode, so
+    // normalizeShotSlotCount clamps it to one shot as it clamps the config.
+    if (option === '-ms') {
+      const requestedShots = Number(value);
+      if (Number.isFinite(requestedShots)) {
+        options.shotMaxActive = normalizeShotSlotCount(Math.round(requestedShots));
+      }
+    }
+    // -s <count>, and +s <count>: how many superflag slots the world holds,
+    // upstream's numExtraFlags. The count is optional and anything that is not a
+    // positive number means 16, which is upstream's own reading -- `atoi` gives 0
+    // for a missing or unparseable count and 0 is turned into 16 outright, so
+    // even `-s 0` is sixteen flags rather than none.
+    //
+    // `+s` additionally marks every slot `required`, so upstream keeps all of
+    // them in the world at all times where `-s` lets a slot sit empty between
+    // insertions. bzo has only the one behaviour -- a slot refills on the
+    // insertion schedule -- so both spellings land in the same place.
+    if (option === '-s' || option === '+s') {
+      const requestedFlags = Math.round(Number(value));
+      options.superFlagCount = Number.isFinite(requestedFlags) && requestedFlags > 0
+        ? requestedFlags
+        : 16;
+    }
+    // -f <abbreviation|good|bad>: take a flag type out of the pool a slot draws
+    // from, upstream's flagDisallowed table. Disallows accumulate and nothing
+    // puts one back, so this is a switch like the rest even though it names its
+    // target. A type bzo does not implement is already absent from the pool, so
+    // naming one is not an error -- it asks for nothing that was there.
+    if (option === '-f' && value) {
+      const disallowed = value.trim().toUpperCase();
+      const disallowedQuality = disallowed === 'GOOD' || disallowed === 'BAD'
+        ? disallowed === 'BAD'
+        : null;
+      for (const abbreviation of FLAG_ABBREVIATIONS) {
+        if (isTeamFlag(abbreviation)) continue;
+        const matches = disallowedQuality === null
+          ? abbreviation === disallowed
+          : isBadFlag(abbreviation) === disallowedQuality;
+        if (matches && !options.forbiddenFlags.includes(abbreviation)) {
+          options.forbiddenFlags.push(abbreviation);
+        }
+      }
+    }
+    // -srvmsg <text>: a line said to each player as they join. Upstream
+    // accumulates every occurrence into one string separated by a literal `\n`
+    // and splits it again on the way out (bzfs.cxx:2507), so a map may write
+    // several lines either way -- one option each, or one option carrying `\n`.
+    // The quotes a map wraps the text in are the option parser's, not the text's.
+    if (option === '-srvmsg') {
+      // Taken off the raw line rather than from the split tokens, because the
+      // text's own spacing is part of it -- upstream's parseWorldOptions reads a
+      // quoted argument as one token and never touches what is inside it.
+      const rest = line.replace(/^\S+\s*/, '');
+      const quoted = rest.match(/^"([\s\S]*)"$/);
+      const text = quoted ? quoted[1] : rest;
+      for (const messageLine of text.split('\\n')) options.serverMessages.push(messageLine);
+    }
+    // -set <variable> <value>: a BZDB assignment. bzo's world constants are
+    // constants, so the only variable it can honour is one it already keeps a
+    // configurable copy of. Every other name is collected and reported, because
+    // a map that sets `_tankSpeed` and is quietly played at bzo's is worse than
+    // a map that says so on load.
+    if (option === '-set' && value) {
+      if (value === '_maxFlagGrabs') {
+        const grabs = Number(setValue);
+        if (Number.isFinite(grabs)) options.maxFlagGrabs = normalizeFlagGrabs(grabs);
+      } else {
+        options.unreadBZDBVars.push(value);
+      }
+    }
   }
 
   return options;
@@ -874,6 +966,16 @@ function parseBZWServerOptions(lines) {
 //
 // Every obstacle upstream reads inherits these, so a box, a pyramid, a base and
 // a teleporter all take them, and so do bzo's.
+// CustomGate's constructor defaults, in bzo's terms: BZW states half extents in
+// x and y and a full height in z, so the half width 0.56 and half breadth 4.48
+// double, and the height 2 * _teleportHeight carries over as it is.
+const BZW_TELEPORTER_DEFAULTS = Object.freeze({
+  w: 2 * 0.56,
+  d: 2 * 4.48,
+  h: 2 * 10.08,
+  border: 2 * 0.56,
+});
+
 const BZW_PASSABILITY_KEYWORDS = new Map([
   ['drivethrough', { driveThrough: true }],
   ['shootthrough', { shootThrough: true }],
@@ -889,8 +991,15 @@ function parseBZWMap(filename) {
   const obstacles = [];
   const teleporters = [];
   const parsedLinks = [];
+  const zones = [];
   let current = null;
   let currentLink = null;
+  let currentZone = null;
+  // Which zone keywords a map asked for that bzo does not act on, gathered so
+  // the load can say so once rather than for every zone. `zone` blocks are
+  // otherwise the one place a map states something invisible: a spawn zone that
+  // is skipped moves every tank in the world.
+  const unreadZoneKeywords = new Set();
 
   function getTeleporterEndpointName(teleporter, face) {
     return `${teleporter.linkName}:${face === 0 ? 'f' : 'b'}`;
@@ -1091,6 +1200,94 @@ function parseBZWMap(filename) {
       continue;
     }
 
+    // CustomZone. A zone is not an obstacle -- nothing collides with it and
+    // nothing draws it -- so it goes to its own list rather than through
+    // `current`. Upstream ships zones to clients only so the client's
+    // `World::writeWorld` can write the map back out; no gameplay on either side
+    // reads them, so bzo keeps them on the server and sends nothing.
+    if (currentZone) {
+      if (token === 'end') {
+        currentZone.index = zones.length;
+        zones.push(currentZone);
+        currentZone = null;
+        continue;
+      }
+      if (token === 'position' || token === 'pos') {
+        const [, x, y, z] = line.split(/\s+/);
+        currentZone.x = parseFloat(x) || 0;
+        currentZone.z = -(parseFloat(y) || 0);
+        currentZone.y = parseFloat(z) || 0;
+        continue;
+      }
+      if (token === 'size') {
+        // Half extents in BZW's own x/y, kept in those axes because
+        // getRandomZonePoint rotates the offset the way upstream does and
+        // converts only the result.
+        const [, x, y] = line.split(/\s+/);
+        currentZone.halfWidth = Math.abs(parseFloat(x) || 0);
+        currentZone.halfDepth = Math.abs(parseFloat(y) || 0);
+        continue;
+      }
+      if (token === 'rotation' || token === 'rot') {
+        // Left in BZW's frame -- degrees counter-clockwise about +Z -- for the
+        // same reason the size is.
+        const [, deg] = line.split(/\s+/);
+        currentZone.rotation = (parseFloat(deg) || 0) * Math.PI / 180;
+        continue;
+      }
+      if (token === 'zoneflag') {
+        // zoneflag <abbreviation|good|bad> [count]. The count is optional and
+        // upstream defaults it to 1 when it does not parse; a count given as 0
+        // really does mean none. Repeats accumulate, as addZoneFlagCount does.
+        const [, requested, rawCount] = line.split(/\s+/);
+        if (!requested) continue;
+        const parsedCount = Number(rawCount);
+        const count = Number.isFinite(parsedCount) ? Math.max(0, Math.round(parsedCount)) : 1;
+        const wanted = requested.trim().toUpperCase();
+        const wantedQuality = wanted === 'GOOD' || wanted === 'BAD' ? wanted === 'BAD' : null;
+        for (const abbreviation of FLAG_ABBREVIATIONS) {
+          if (isTeamFlag(abbreviation)) continue;
+          const matches = wantedQuality === null
+            ? abbreviation === wanted
+            : isBadFlag(abbreviation) === wantedQuality;
+          if (!matches) continue;
+          currentZone.flagCounts.set(
+            abbreviation,
+            (currentZone.flagCounts.get(abbreviation) || 0) + count
+          );
+        }
+        // A type bzo does not implement is counted so the load can say how much
+        // of the map it left out, which for a flag test map is most of it.
+        if (wantedQuality === null && !getFlagType(wanted)) {
+          currentZone.unknownFlags.add(wanted);
+        }
+        continue;
+      }
+      // `flag`, `team` and `safety` are the rest of CustomZone::read: a spawn
+      // area for a team, a safety spot for a Phantom Zone tank, and a zone that
+      // any flag of a named type spawns in. None are read yet.
+      if (token === 'flag' || token === 'team' || token === 'safety') {
+        unreadZoneKeywords.add(token);
+        continue;
+      }
+      continue;
+    }
+
+    if (!current && !currentLink && token === 'zone') {
+      currentZone = {
+        index: zones.length,
+        x: 0,
+        y: 0,
+        z: 0,
+        halfWidth: 0,
+        halfDepth: 0,
+        rotation: 0,
+        flagCounts: new Map(),
+        unknownFlags: new Set(),
+      };
+      continue;
+    }
+
     if (token === 'world') {
       // Look ahead for size
       for (let j = i + 1; j < lines.length; j++) {
@@ -1170,6 +1367,19 @@ function parseBZWMap(filename) {
       }
 
       if (current.kind === 'teleporter') {
+        // CustomGate's constructor, for a teleporter that gave no size or
+        // border of its own: half width 0.5 * _teleportWidth, half breadth
+        // _teleportBreadth, height 2 * _teleportHeight, and a border twice the
+        // half width. Filled in here rather than left to each reader, because a
+        // dimension left undefined is not a small teleporter -- it is NaN, and
+        // testOrigRectRect answers "overlapping" for a NaN half extent, since
+        // every comparison against NaN is false and the corner is classified
+        // into the obstacle. One sizeless obstacle then supports a tank
+        // anywhere in the world.
+        if (!Number.isFinite(current.w)) current.w = BZW_TELEPORTER_DEFAULTS.w;
+        if (!Number.isFinite(current.d)) current.d = BZW_TELEPORTER_DEFAULTS.d;
+        if (!Number.isFinite(current.h)) current.h = BZW_TELEPORTER_DEFAULTS.h;
+        if (!Number.isFinite(current.border)) current.border = BZW_TELEPORTER_DEFAULTS.border;
         const teleporterIndex = teleporters.length;
         const linkName = current.name || `teleporter_${teleporterIndex}`;
         current.teleporterIndex = teleporterIndex;
@@ -1186,12 +1396,20 @@ function parseBZWMap(filename) {
     }
   }
 
+  if (unreadZoneKeywords.size > 0) {
+    log(
+      `Ignoring zone keywords bzo does not read in ${filename}:`
+      + ` ${Array.from(unreadZoneKeywords).sort().join(', ')}`
+    );
+  }
+
   const teleporterGraph = buildTeleporterLinks();
   return {
     obstacles,
     teleporterGraph,
     teamMode,
     serverOptions,
+    zones,
   };
 }
 
@@ -1254,6 +1472,9 @@ let OBSTACLES;
 let TELEPORTER_GRAPH = { teleporters: [], links: [] };
 let mapTeamMode = null;
 let mapServerOptions = {};
+// The map's `zone` blocks, in map order, so a flag slot can name the one it
+// belongs to by index the way upstream's `#<flagId>` qualifier does.
+let MAP_ZONES = [];
 if (MAP_SOURCE === 'random') {
   OBSTACLES = generateObstacles();
   TELEPORTER_GRAPH = { teleporters: [], links: [] };
@@ -1264,8 +1485,42 @@ if (MAP_SOURCE === 'random') {
   TELEPORTER_GRAPH = mapData.teleporterGraph;
   mapTeamMode = mapData.teamMode;
   mapServerOptions = mapData.serverOptions;
+  MAP_ZONES = mapData.zones;
   log(`Loaded ${OBSTACLES.length} obstacles from ${mapPath}`);
   log(`Loaded ${TELEPORTER_GRAPH.links.length} teleporter face links from ${mapPath}`);
+  if (MAP_ZONES.length > 0) log(`Loaded ${MAP_ZONES.length} zones from ${mapPath}`);
+}
+// -ms upstream. The map is read after the shot config above, so its shot slot
+// count lands here, and the reload time is derived a second time from it -- each
+// slot comes back after _reloadTime / maxShots, so changing one without the
+// other would leave a tank reloading at the wrong rate.
+if (Number.isInteger(mapServerOptions.shotMaxActive)
+  && mapServerOptions.shotMaxActive !== GAME_CONFIG.SHOT_MAX_ACTIVE) {
+  const previousShotMaxActive = GAME_CONFIG.SHOT_MAX_ACTIVE;
+  GAME_CONFIG.SHOT_MAX_ACTIVE = mapServerOptions.shotMaxActive;
+  deriveShotReloadTime();
+  log(
+    `Map option -ms: shotMaxActive=${GAME_CONFIG.SHOT_MAX_ACTIVE} (was ${previousShotMaxActive}), `
+    + `shotReloadTime=${GAME_CONFIG.SHOT_RELOAD_TIME}ms`
+  );
+}
+// -set _maxFlagGrabs upstream. A plain BZDB assignment, so as with `-ms` the
+// map's number replaces the config's rather than only raising it. It is read on
+// every grab (FlagInfo.cxx:137) and spent on every drop, so the server is the
+// only thing that acts on it -- but it rides `GAME_CONFIG` into the `init`
+// payload anyway, which is bzo's equivalent of upstream shipping every BZDB var
+// to clients whether the client reads it or not.
+if (Number.isInteger(mapServerOptions.maxFlagGrabs)
+  && mapServerOptions.maxFlagGrabs !== GAME_CONFIG.MAX_FLAG_GRABS) {
+  const previousFlagGrabs = GAME_CONFIG.MAX_FLAG_GRABS;
+  GAME_CONFIG.MAX_FLAG_GRABS = mapServerOptions.maxFlagGrabs;
+  log(`Map option -set _maxFlagGrabs: ${GAME_CONFIG.MAX_FLAG_GRABS} (was ${previousFlagGrabs})`);
+}
+if (mapServerOptions.unreadBZDBVars?.length > 0) {
+  log(
+    `Ignoring -set variables bzo does not read:`
+    + ` ${Array.from(new Set(mapServerOptions.unreadBZDBVars)).sort().join(', ')}`
+  );
 }
 const configuredMaxPlayers = Number(serverConfig.maxPlayers);
 const defaultTeamLimit = Number.isInteger(configuredMaxPlayers) && configuredMaxPlayers > 0
@@ -2610,6 +2865,17 @@ function describeBadFlagRelease() {
   if (ANTIDOTE_FLAGS) ways.push('on the antidote');
   return ways.length > 0 ? ways.join(' or ') : 'only on death';
 }
+// -srvmsg upstream. What the world says to each player as they arrive, in the
+// order the map wrote it. Upstream sends these as ordinary server chat rather
+// than as part of the world (bzfs.cxx:2507), so bzo does too -- which is also
+// why it is separate from `motd`, the label the entry dialog shows before anyone
+// has joined at all.
+const MAP_SERVER_MESSAGES = Object.freeze(mapServerOptions.serverMessages || []);
+// -f upstream. A map may take a flag type out of the pool by abbreviation, or a
+// whole quality out with `good` or `bad`, and nothing puts one back -- which is
+// how every other switch a map carries behaves. Settled at startup because the
+// map does not change under a running server.
+const MAP_FORBIDDEN_FLAGS = Object.freeze(mapServerOptions.forbiddenFlags || []);
 // CmdLineOptions.cxx:1705. Upstream drops a flag that contradicts the game style
 // from the pool outright rather than leaving it to confuse people. `JP` and `NJ`
 // are the two ends of the jumping switch and exactly one of them is ever worth
@@ -2617,7 +2883,8 @@ function describeBadFlagRelease() {
 // one without it `NJ` takes away what no tank had. `R` goes the same way as
 // `JP`: on a world where every shot already ricochets it grants nothing.
 function getForbiddenFlags() {
-  const forbidden = [];
+  // -f upstream, whatever the map took out of the pool by name or by quality.
+  const forbidden = [...MAP_FORBIDDEN_FLAGS];
   forbidden.push(ALLOW_JUMPING ? 'JP' : 'NJ');
   if (GAME_CONFIG.ALL_SHOTS_RICOCHET) forbidden.push('R');
   return forbidden;
@@ -2665,11 +2932,20 @@ function normalizeSuperFlagConfig(value) {
   };
 }
 
-const SUPER_FLAGS = normalizeSuperFlagConfig(serverConfig.superFlags);
+// -s upstream, the superflag count. A map's number replaces the config's rather
+// than only raising it, for the same reason `-ms` does: upstream reads a map's
+// `options` block where `-world` sits on its own command line, so the map's
+// number is simply the later assignment.
+const SUPER_FLAGS = normalizeSuperFlagConfig(
+  Number.isInteger(mapServerOptions.superFlagCount)
+    ? { ...serverConfig.superFlags, count: mapServerOptions.superFlagCount }
+    : serverConfig.superFlags
+);
 
 // What a slot is actually drawn from: everything the config allows, less
-// whatever the game style forbids right now. The game style can change while the
-// server runs, so this is asked per draw rather than settled at startup.
+// whatever the map and the game style forbid right now. The game style can
+// change while the server runs, so this is asked per draw rather than settled at
+// startup.
 function getSuperFlagPool() {
   const forbidden = getForbiddenFlags();
   return SUPER_FLAGS.allowed.filter((abbreviation) => !forbidden.includes(abbreviation));
@@ -2694,19 +2970,51 @@ function hasFlagClearance(x, y, z) {
 // x and y, and lets the downward ray decide which surface under it the flag
 // actually settles on. With flags on buildings off it passes maxZ = 0 instead,
 // which skips the ray and forces the ground.
-function findFlagSpawnPosition() {
+// CustomZone::getRandomPoint. A point anywhere in the zone's footprint, at the
+// zone's own altitude. Upstream picks the offset in BZW's axes and rotates it
+// there, so bzo does the same and converts only the result -- BZW's +Y north is
+// bzo's -Z north, which is why the depth term is subtracted.
+function getRandomZonePoint(zone) {
+  const offsetX = ((Math.random() * 2) - 1) * zone.halfWidth;
+  const offsetY = ((Math.random() * 2) - 1) * zone.halfDepth;
+  const cos = Math.cos(zone.rotation);
+  const sin = Math.sin(zone.rotation);
+  return {
+    x: zone.x + ((offsetX * cos) - (offsetY * sin)),
+    y: zone.y,
+    z: zone.z - ((offsetX * sin) + (offsetY * cos)),
+  };
+}
+
+// WorldInfo::getFlagSpawnPoint. Upstream asks the flag-id qualifier `#<index>`
+// first, which for a `zoneflag` slot names exactly one zone, then the type
+// qualifier `f<abbv>` that the `flag` keyword builds. bzo does not read `flag`,
+// so the first question is the only one there is.
+function getFlagSpawnZone(flag) {
+  if (!flag || flag.zoneIndex === null) return null;
+  return MAP_ZONES[flag.zoneIndex] || null;
+}
+
+function findFlagSpawnPosition(flag = null) {
+  const zone = getFlagSpawnZone(flag);
   const span = Math.max(1, GAME_CONFIG.MAP_SIZE - BASE_SIZE);
   const maxHeight = getMaxObstacleTopY(OBSTACLES);
   for (let attempt = 0; attempt < 10000; attempt++) {
-    const x = span * (Math.random() - 0.5);
-    const z = span * (Math.random() - 0.5);
-    const y = FLAGS_ON_BUILDINGS
-      ? findFlagLandingY(x, z, maxHeight * Math.random())
-      : 0;
-    if (hasFlagClearance(x, y, z)) return { x, y, z };
+    // Upstream re-asks getFlagSpawnPoint on every attempt and only falls back to
+    // a random world point when it has no answer, so a zone flag re-rolls inside
+    // its own zone rather than escaping it once the zone proves crowded.
+    const spot = zone
+      ? getRandomZonePoint(zone)
+      : {
+        x: span * (Math.random() - 0.5),
+        y: maxHeight * Math.random(),
+        z: span * (Math.random() - 0.5),
+      };
+    const y = FLAGS_ON_BUILDINGS ? findFlagLandingY(spot.x, spot.z, spot.y) : 0;
+    if (hasFlagClearance(spot.x, y, spot.z)) return { x: spot.x, y, z: spot.z };
   }
-  log('Unable to position flags on this world.');
-  return { x: 0, y: 0, z: 0 };
+  log(`Unable to position flag ${flag ? flag.index : '?'} on this world.`);
+  return zone ? { x: zone.x, y: zone.y, z: zone.z } : { x: 0, y: 0, z: 0 };
 }
 
 function getFlagOwner(flag) {
@@ -2746,10 +3054,13 @@ function broadcastFlagUpdate(flag) {
 // a fixed identity and simply appears at its base. The flag enters the world
 // hovering at _flagAltitude, fades in, then falls to the ground.
 function addFlag(flag) {
-  const pool = getSuperFlagPool();
-  if (pool.length === 0) return;
+  // FlagInfo::setRequiredFlag pins a slot to one type, which is what a
+  // `zoneflag` slot is: it always comes back as the flag its zone declared, and
+  // never draws from the pool.
+  const pool = flag.requiredType === null ? getSuperFlagPool() : null;
+  if (pool !== null && pool.length === 0) return;
   const flight = computeFlagFlight(FLAG_ALTITUDE, GAME_CONFIG.GRAVITY);
-  flag.type = pool[Math.floor(Math.random() * pool.length)];
+  flag.type = flag.requiredType ?? pool[Math.floor(Math.random() * pool.length)];
   flag.status = FLAG_STATUS.COMING;
   flag.owner = null;
   flag.grabbedAt = 0;
@@ -2763,7 +3074,7 @@ function addFlag(flag) {
   // flag a single grab, so shaking one off spends it and the flag leaves the
   // world rather than lying in wait for the next tank.
   flag.endurance = getFlagEndurance(flag.type);
-  flag.grabs = flag.endurance === FLAG_ENDURANCE.STICKY ? 1 : MAX_FLAG_GRABS;
+  flag.grabs = flag.endurance === FLAG_ENDURANCE.STICKY ? 1 : GAME_CONFIG.MAX_FLAG_GRABS;
 }
 
 // resetFlag(). Takes the flag off whoever holds it and sends it home: a team
@@ -2776,9 +3087,20 @@ function resetFlag(flag) {
   flag.grabbedAt = 0;
 
   if (flag.team === null) {
-    flag.position = findFlagSpawnPosition();
-    flag.type = null;
+    flag.position = findFlagSpawnPosition(flag);
+    // FlagInfo::resetFlag clears the type only for the random tail -- the slots
+    // past `numFlags - numExtraFlags` -- so a required flag keeps its own.
+    flag.type = flag.requiredType;
     flag.status = FLAG_STATUS.NO_EXIST;
+    if (flag.requiredType !== null) {
+      // "required flags mustn't just disappear": a required non-team flag goes
+      // straight back into the world rather than waiting out the insertion
+      // schedule an ordinary superflag slot waits on. addFlag sets the flight
+      // from the position already chosen above.
+      addFlag(flag);
+      broadcastFlagUpdate(flag);
+      return;
+    }
   } else {
     // getFlagSpawnPoint upstream. With no flag spawn zones the flag returns to
     // the centre of the top of one of its team's bases.
@@ -3357,11 +3679,15 @@ function requestPause(player) {
 
 // A team flag's identity is fixed and never hidden; a superflag slot starts
 // empty and the insertion schedule gives it one.
-function createFlagSlot(index, teamColorIndex) {
+function createFlagSlot(index, teamColorIndex, { requiredType = null, zoneIndex = null } = {}) {
   return {
     index,
     team: teamColorIndex,
-    type: teamColorIndex === null ? null : getTeamFlagAbbreviation(teamColorIndex),
+    // FlagInfo::setRequiredFlag. A slot with a required type always holds that
+    // type; a `zoneflag` slot also names the zone it respawns in.
+    requiredType,
+    zoneIndex,
+    type: teamColorIndex === null ? requiredType : getTeamFlagAbbreviation(teamColorIndex),
     status: FLAG_STATUS.NO_EXIST,
     endurance: teamColorIndex === null ? FLAG_ENDURANCE.UNSTABLE : FLAG_ENDURANCE.NORMAL,
     owner: null,
@@ -3388,6 +3714,30 @@ function createFlags() {
   teamFlagTeams.forEach((team) => {
     flags.push(createFlagSlot(flags.length, getTeamColorIndex(team)));
   });
+  // Zone flags next, before the random slots, which is upstream's order in
+  // finalizeParsing: team flags, then `+f` flags, then zone flags, then the `-s`
+  // tail. Keeping it means a zone flag's index does not move when `-s` changes,
+  // and the tail stays the part that draws from the pool.
+  const zoneForbiddenFlags = getForbiddenFlags();
+  const skippedZoneFlags = new Set();
+  MAP_ZONES.forEach((zone) => {
+    zone.unknownFlags.forEach((abbreviation) => skippedZoneFlags.add(abbreviation));
+    zone.flagCounts.forEach((count, abbreviation) => {
+      // Upstream skips a forbidden type here too, so a zone cannot put back what
+      // the game style or a `-f` took out. A team type belongs to
+      // addZoneTeamFlags, which bzo does not have: its team flags live on bases.
+      if (zoneForbiddenFlags.includes(abbreviation) || isTeamFlag(abbreviation)) {
+        skippedZoneFlags.add(abbreviation);
+        return;
+      }
+      for (let slot = 0; slot < count; slot++) {
+        flags.push(createFlagSlot(flags.length, null, {
+          requiredType: abbreviation,
+          zoneIndex: zone.index,
+        }));
+      }
+    });
+  });
   for (let slot = 0; slot < SUPER_FLAGS.count; slot++) {
     flags.push(createFlagSlot(flags.length, null));
   }
@@ -3401,15 +3751,27 @@ function createFlags() {
       resetFlag(flag);
       return;
     }
-    flag.position = findFlagSpawnPosition();
+    flag.position = findFlagSpawnPosition(flag);
     addFlag(flag);
   });
 
   if (teamFlagTeams.length > 0) log(`Flags: team flags for ${teamFlagTeams.join(', ')}`);
+  const zoneFlagCount = flags.filter((flag) => flag.zoneIndex !== null).length;
+  if (zoneFlagCount > 0 || skippedZoneFlags.size > 0) {
+    log(
+      `Flags: ${zoneFlagCount} zone flags from ${MAP_ZONES.length} zones`
+      + (skippedZoneFlags.size > 0
+        ? `; skipped ${skippedZoneFlags.size} type${skippedZoneFlags.size === 1 ? '' : 's'}`
+          + ` bzo does not have or the game style forbids`
+          + ` (${Array.from(skippedZoneFlags).sort().join(', ')})`
+        : '')
+    );
+  }
   if (SUPER_FLAGS.count > 0) {
     log(
       `Flags: ${SUPER_FLAGS.count} superflag slots (${getSuperFlagPool().join(', ')});` +
-      ` flagsOnBuildings=${FLAGS_ON_BUILDINGS}`
+      ` flagsOnBuildings=${FLAGS_ON_BUILDINGS}` +
+      (MAP_FORBIDDEN_FLAGS.length > 0 ? `; map forbids ${MAP_FORBIDDEN_FLAGS.join(', ')}` : '')
     );
   }
   const forbidden = getForbiddenFlags();
@@ -3688,9 +4050,13 @@ function forwardVoiceSignal(player, message) {
 }
 
 function getShotTeleporterDims(obs) {
+  // A teleporter that gives no size or border gets upstream's, from the
+  // CustomGate constructor: half width 0.5 * _teleportWidth, half breadth
+  // _teleportBreadth, height 2 * _teleportHeight, and a border twice the half
+  // width. maps/flagbuffet.bzw is one that leaves all four out.
   const halfW = Math.max(0.25, Number(obs.w) / 2 || 0.56);
-  const sourceHalfBreadth = Math.max(0.25, Number(obs.d) / 2 || 2.24);
-  const sourceHeight = Math.max(1.0, Number(obs.h) || 10.0);
+  const sourceHalfBreadth = Math.max(0.25, Number(obs.d) / 2 || 4.48);
+  const sourceHeight = Math.max(1.0, Number(obs.h) || 20.16);
   const border = Math.max(0.12, Number(obs.border) || 1.12);
 
   // Match the same teleporter geometry basis as render.js/BZFlag finalize path.
@@ -5553,6 +5919,18 @@ wss.on('connection', (ws, req) => {
           });
           broadcastTeamScores();
           refreshVoiceRosters(true);
+          // The world's greeting, said only to whoever just arrived. Upstream
+          // sends it after the join is complete, so a player is in the roster
+          // and can answer before the server has finished talking.
+          for (const text of MAP_SERVER_MESSAGES) {
+            sendToPlayer(player, {
+              type: 'message',
+              src: -1,
+              dst: player.id,
+              msgType: 'server',
+              text,
+            });
+          }
           break;
         }
 

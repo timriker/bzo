@@ -5625,6 +5625,11 @@ function getSurfaceContact(obs, worldX, worldY, worldZ, tankRadius = 2) {
 function findSupportSurface(worldX, worldY, worldZ) {
   let bestSupport = null;
   for (const obs of getCollisionColliders()) {
+    // Nothing a tank drives through holds one up. checkCollision already asks
+    // this question and the support test has to give the same answer, or the
+    // world border's visible wall -- `driveThrough`, `_wallHeight` tall -- is a
+    // roof a tank can land on at the one height it is never meant to rest at.
+    if (obs.driveThrough) continue;
     if (obs.type === 'pyramid') {
       const contact = getPyramidSurfaceContact(obs, worldX, worldY, worldZ);
       if (!contact || !contact.supportable) continue;
@@ -5640,12 +5645,18 @@ function findSupportSurface(worldX, worldY, worldZ) {
     // same test that reports being on top. A centre-plus-margin test was tuned
     // for the old radius-2 circle; with a 6-unit-long box it ends a unit before
     // the tank actually leaves the edge, and the tank hangs in that gap.
+    // A collider missing a dimension is a bug upstream of here, not a small
+    // obstacle four units tall. testOrigRectRect answers "overlapping" for a NaN
+    // half extent -- every comparison against NaN is false, so the corner
+    // classifies into the obstacle -- and the old `|| 4` height fallback then
+    // turned that into a platform at y=4 across the whole world.
+    if (!Number.isFinite(obs.w) || !Number.isFinite(obs.d) || !Number.isFinite(obs.h)) continue;
     const { x: localX, z: localZ } = getColliderLocalPoint(worldX, worldZ, obs);
     if (!testOrigRectTank(
       obs.w / 2, obs.d / 2, localX, localZ,
       getTankLocalAngle(playerRotation, obs.rotation)
     )) continue;
-    const surfaceY = (obs.baseY || 0) + (obs.h || 4);
+    const surfaceY = (obs.baseY || 0) + obs.h;
     const deltaY = surfaceY - worldY;
     if (deltaY > MAX_BUMP_HEIGHT || deltaY < -SUPPORT_SNAP_DOWN) continue;
     if (!bestSupport || surfaceY > bestSupport.surfaceY) {
@@ -7048,9 +7059,13 @@ function shoot() {
 }
 
 function getShotTeleporterDims(obs) {
+  // A teleporter that gives no size or border gets upstream's, from the
+  // CustomGate constructor: half width 0.5 * _teleportWidth, half breadth
+  // _teleportBreadth, height 2 * _teleportHeight, and a border twice the half
+  // width. maps/flagbuffet.bzw is one that leaves all four out.
   const halfW = Math.max(0.25, Number(obs.w) / 2 || 0.56);
-  const sourceHalfBreadth = Math.max(0.25, Number(obs.d) / 2 || 2.24);
-  const sourceHeight = Math.max(1.0, Number(obs.h) || 10.0);
+  const sourceHalfBreadth = Math.max(0.25, Number(obs.d) / 2 || 4.48);
+  const sourceHeight = Math.max(1.0, Number(obs.h) || 20.16);
   const border = Math.max(0.12, Number(obs.border) || 1.12);
 
   // Match render teleporter geometry so visual frame and shot frame tests align.

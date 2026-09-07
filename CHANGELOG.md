@@ -6,6 +6,100 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
 
 ## [Unreleased]
 
+### Added
+- `-ms <count>` in a map's `options` block sets how many shots a tank may have in
+  the air at once. Unlike the switches bzo already read out of that block this
+  carries a value, and upstream parses a map's options where `-world` sits on the
+  command line, so the map's number replaces `shotMaxActive` from `server.json`
+  rather than only ever raising it. The reload time is re-derived from it, since
+  each slot comes back after `_reloadTime / maxShots` and moving one without the
+  other would leave a tank reloading at the wrong rate; a `shotReloadTime` pinned
+  in the config still wins. `maps/flagbuffet.bzw` asks for `-ms 3`.
+- `-s <count>` and `+s <count>` in a map's `options` block set how many superflag
+  slots the world holds, replacing `superFlags.count` from `server.json`. The
+  count is optional and upstream turns anything unparseable *or zero* into 16, so
+  `-s`, `-s 0` and `-s 16` all mean sixteen; `+s` differs only in keeping every
+  slot filled at once, which bzo's insertion schedule already approximates, so
+  both spellings read the same. `+f <abbrev>{count}` is still not read -- bzo has
+  one pool and one slot count, with no per-type counts to pin flags into.
+- `-f <abbrev|good|bad>` in a map's `options` block takes a flag type, or a whole
+  quality, out of the pool a slot draws from -- upstream's `flagDisallowed`
+  table. Disallows accumulate and nothing puts one back, and they filter the pool
+  next to the types the game style already forbids.
+
+- A `zone` block's `zoneflag <abbrev|good|bad> [count]` places flags, as upstream
+  does. Each declared flag gets its own slot pinned to that type and bound to
+  that zone, so it always respawns inside it -- upstream's `setRequiredFlag` plus
+  the `#<flagId>` zone qualifier that `getFlagSpawnPoint` asks for first. The
+  slots sit between the team flags and the `-s` tail, which is upstream's order,
+  so a zone flag's index does not move when `-s` changes, and a required flag
+  goes straight back into the world on reset rather than waiting out the
+  insertion schedule. A type the game style forbids or bzo does not implement is
+  skipped and named on load; `maps/flagbuffet.bzw` declares 42 types and gets 33
+  flags, three each of the eleven that survive both tests. Zones stay on the
+  server: upstream ships them to clients only so `World::writeWorld` can write
+  the map back out, and no gameplay on either side reads them.
+- `-srvmsg <text>` in a map's `options` block, a line the world says to each
+  player as they join. It accumulates the way upstream's does -- every occurrence
+  is another line, and one occurrence may carry several by writing a literal
+  `\n` -- and goes out as ordinary server chat to the player who just arrived,
+  which is where `bzfs.cxx:2507` sends it. The text is read off the raw line so
+  its own spacing survives, since upstream treats a quoted argument as one token.
+  Separate from `motd`, which is the entry dialog's label and has no upstream
+  equivalent: upstream's own MOTD is a client-side fetch of a BZFlag project
+  announcement and no game server has a say in it. `maps/flagbuffet.bzw` carries
+  three lines explaining how its zones are laid out.
+- `-set _maxFlagGrabs <n>` in a map's `options` block sets how many pickups a
+  superflag survives, replacing `maxFlagGrabs` from `server.json`. It is the only
+  `-set` variable bzo reads; any other is named on load rather than skipped in
+  silence. Only the server acts on it, as upstream does -- `FlagInfo.cxx:137`
+  reads it on grab and the drop spends it -- but it rides `GAME_CONFIG` into the
+  `init` payload so a client can see the rule it is playing under, which is what
+  upstream gets for free by shipping every BZDB var.
+
+### Fixed
+- A teleporter that gives no `size` or `border` gets upstream's defaults at parse
+  time rather than in each reader, so no consumer can see an undefined dimension.
+  A missing half extent is not a small teleporter: `testOrigRectRect` classifies
+  a corner with `cx < -dx2 ? -1 : (cx > dx2 ? 1 : 0)`, both comparisons are false
+  against NaN, and the corner lands inside the obstacle -- so one sizeless
+  obstacle overlapped every tank everywhere in the world.
+- `findSupportSurface` no longer stands a tank on anything it can drive through,
+  which `checkCollision` has always refused to be blocked by. The world border's
+  visible wall is `driveThrough` and `WORLD_WALL_HEIGHT` tall, so a tank that
+  jumped near it could rest on the one roof the two-collider border design says
+  is not a surface at all.
+- `findSupportSurface` skips a collider missing a dimension instead of treating
+  it as four units tall. The `obs.h || 4` fallback turned a malformed collider
+  into a platform at y=4 spanning the whole map, which is where a tank on
+  `maps/flagbuffet.bzw` ended up standing.
+
+### Changed
+- The dev server's `server.json` now holds bzfs's own defaults for every gameplay
+  switch a map can set -- no jumping, no ricochet, one shot slot, no superflags,
+  and a bad flag shed only by dying, which are `CmdLineOptions`'s constructor
+  values -- and the dev server's gameplay moved into `maps/hix.bzw`, where a bzfs
+  mapper would put it. That map now carries `-j`, `+r`, `-ms 5`, `-s 200`,
+  `-st 50`, `-sw 2` and `-sa`, each with a comment saying what it does, so
+  switching maps switches the rules with them and the config no longer implies
+  anything about how a world plays. `wingsJumpCount` and `wingsSlideTime` stay in
+  the config at upstream's values, because both are BZDB variables reached only
+  through `-set`, which bzo does not read.
+- `superFlags.allowed` is gone from the dev server's `server.json`. It listed
+  exactly the twelve superflags bzo implements, which is what the field defaults
+  to when absent, so the copy only stood to drift as flags are added.
+  `example-server.json` keeps it, and bzo's two documented deviations from bzfs
+  defaults, so a first start is playable before anyone edits a map.
+
+### Fixed
+- A `teleporter` that gives no `size` or `border` now gets upstream's defaults
+  from the `CustomGate` constructor -- half breadth `_teleportBreadth` 4.48 and
+  height `2 * _teleportHeight` 20.16 -- rather than half of each. Every other map
+  in `maps/` spells its teleporters out, so nothing had reached the default path
+  until `maps/flagbuffet.bzw`, whose portal was drawn and collided against at half
+  the depth and half the height bzfs gives it. The half width 0.56 and border 1.12
+  defaults already matched.
+
 ## [1.0.67] - 2026-09-07
 
 ### Changed

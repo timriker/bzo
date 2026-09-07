@@ -1842,9 +1842,12 @@ class RenderManager {
   }
 
   _createTeleporterMesh(obs, nameSuffix = '') {
+    // Upstream's CustomGate constructor defaults, for a teleporter that gives
+    // no size or border of its own: 0.5 * _teleportWidth, _teleportBreadth,
+    // 2 * _teleportHeight, and a border of twice the half width.
     const halfWidth = Math.max(0.25, Number(obs.w) / 2 || 0.56);
-    const sourceHalfBreadth = Math.max(0.25, Number(obs.d) / 2 || 2.24);
-    const sourceHeight = Math.max(1.0, Number(obs.h) || 10.0);
+    const sourceHalfBreadth = Math.max(0.25, Number(obs.d) / 2 || 4.48);
+    const sourceHeight = Math.max(1.0, Number(obs.h) || 20.16);
     const border = Math.max(0.12, Number(obs.border) || 1.12);
 
     // Match BZFlag Teleporter::finalize() for non-horizontal teleporters:
