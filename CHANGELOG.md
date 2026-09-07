@@ -6,6 +6,41 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
 
 ## [Unreleased]
 
+## [1.0.73] - 2026-09-07
+
+### Added
+- `SW` Shock Wave (#6, phase 10): firing destroys every tank inside an expanding
+  sphere, through walls and roofs. A shot with no path -- it never leaves the
+  tank that fired it and what travels is its radius, from `_shockInRadius`
+  (`_tankLength` 6) out to `_shockOutRadius` 60 over `_shockAdLife` 0.2 of a
+  shot's life. Nothing stops it, so it is the first shot in bzo that is more than
+  one kill, and its hit test is the only one in the game that reads no collider
+  at all -- a plain sphere to the tank's own position, which is upstream's
+  "behind or in a building or even zoned". Your own wave cannot kill you; a
+  teammate's can, which is what the flag's help text warns about. A shield holds
+  for the whole wave rather than for one tick, as upstream's local `endShot`
+  makes it. The reload is the world's own -- `ShockWaveStrategy` is the one shot
+  strategy that never scales it -- so a wave is gone in 0.7s and the next still
+  comes round on the full 3.5. Drawn as upstream's low-quality wave, a translucent
+  team-coloured sphere fading 0.75 to 0.25, because its default one inverts the
+  colour inside the sphere with `glLogicOp` and WebGL has no logic op; the
+  shooter predicts it locally, it fades without an impact or a boom, and it is a
+  circle of the current radius on the radar.
+
+### Changed
+- The sound tables in `docs/audio.md` and `AGENTS.md` list every sample bzo
+  actually plays. `laser.wav` was missing from both since phase 8 and `flap.wav`
+  from `AGENTS.md` since Wings; `shock.wav` joins them.
+- `docs/flags-plan.md`'s running tally caught up with the code. It still called
+  phases 7 and 13 unstarted and none of phase 4's view flags in, and counted
+  fifteen superflags where bzo has twenty-three.
+- Known gap, written up in `AGENTS.md` under Shot timing: a shot variant's slot
+  frees on the shot's life rather than on its reload, so for `L` Laser and `SW`
+  Shock Wave -- the two flags whose life is not the reciprocal of their rate --
+  the server's slot check is looser than the client's fire gate. Honest play
+  matches upstream either way; the fix is a slot expiry separate from the shot
+  lifetime and is being taken on its own.
+
 ## [1.0.72] - 2026-09-07
 
 ### Changed

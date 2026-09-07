@@ -197,6 +197,8 @@ import {
   getFlagType,
   getKnownFlagAbbreviation,
   getShotEffects,
+  getShockWaveAlpha,
+  getShockWaveRadius,
   blanksTheView,
   cloaksTheTank,
   fakesTeamColor,
@@ -639,6 +641,19 @@ function callVoiceManager(method, ...args) {
 function getShotSpeed(flag) {
   const base = Number.isFinite(gameConfig?.SHOT_SPEED) ? gameConfig.SHOT_SPEED : 100;
   return base * getShotEffects(flag).velocityFactor;
+}
+
+// GetShotLifetime (GameKeeper.cxx:401), as the server resolves it onto the
+// projectile: the world's shot life scaled by the firing flag's own factor. A
+// shock wave is the one shot the client has to know this for, because the size
+// it is drawn at is how far through its life it is.
+function getShotLifetimeSeconds(flag) {
+  const speed = Number.isFinite(gameConfig?.SHOT_SPEED) ? gameConfig.SHOT_SPEED : 100;
+  const range = Number.isFinite(gameConfig?.SHOT_RANGE)
+    ? gameConfig.SHOT_RANGE
+    : (Number.isFinite(gameConfig?.SHOT_DISTANCE) ? gameConfig.SHOT_DISTANCE : 350);
+  const base = speed > 0 ? range / speed : 10;
+  return base * getShotEffects(flag).lifeFactor;
 }
 
 // LocalPlayer::getReloadTime, scaled by the firing flag's rate. bzo's world
@@ -4454,6 +4469,7 @@ function createProjectile(data) {
       localProjectile.userData.speed = getShotSpeed(data.flag ?? null);
       localProjectile.userData.lifeFactor = effects.lifeFactor;
       localProjectile.userData.hiddenOnRadar = effects.hiddenOnRadar;
+      localProjectile.userData.lifetimeSeconds = getShotLifetimeSeconds(data.flag ?? null);
       localProjectile.userData.teleportReentryBlockTeleporterIndex = null;
       localProjectile.userData.teleportReentryBlockDistance = 0;
       projectiles.set(data.id, localProjectile);
@@ -4464,12 +4480,22 @@ function createProjectile(data) {
   const shotColor = getPlayerShotColor(data.playerId);
   // Keep remote shot starts authoritative to avoid cross-machine clock skew.
   // BZFlag does not rely on sender wall-clock deltas to place remote shots.
-  const projectile = renderManager.createProjectile({
-    ...data,
-    x: data.x,
-    z: data.z,
-    color: shotColor.getHex(),
-  });
+  //
+  // A shock wave gets a sphere rather than a bolt, and no muzzle flash: it never
+  // left a barrel. Only somebody else's reaches here -- the shooter's own was
+  // predicted locally and re-anchored above.
+  const projectile = effects.shockwave
+    ? renderManager.createShotShockWave({
+      ...data,
+      color: shotColor.getHex(),
+      fireSound: effects.fireSound,
+    })
+    : renderManager.createProjectile({
+      ...data,
+      x: data.x,
+      z: data.z,
+      color: shotColor.getHex(),
+    });
   if (!projectile) return;
   projectile.userData.playerId = data.playerId;
   projectile.userData.createdAt = data.createdAt;
@@ -4485,6 +4511,7 @@ function createProjectile(data) {
   projectile.userData.speed = getShotSpeed(data.flag ?? null);
   projectile.userData.lifeFactor = effects.lifeFactor;
   projectile.userData.hiddenOnRadar = effects.hiddenOnRadar;
+  projectile.userData.lifetimeSeconds = getShotLifetimeSeconds(data.flag ?? null);
   projectile.userData.teleportReentryBlockTeleporterIndex = null;
   projectile.userData.teleportReentryBlockDistance = 0;
   projectiles.set(data.id, projectile);
@@ -4495,17 +4522,29 @@ function createLocalProjectile({ x, y, z, dirX, dirZ, dirY = 0 }) {
 
   const shotColor = getPlayerShotColor(myPlayerId);
   const localId = `local-${myPlayerId}-${Date.now()}-${localProjectileCounter++}`;
-  const projectile = renderManager.createProjectile({
-    id: localId,
-    playerId: myPlayerId,
-    x,
-    y,
-    z,
-    dirX,
-    dirY,
-    dirZ,
-    color: shotColor.getHex(),
-  });
+  const myFlag = getMyFlag()?.type ?? null;
+  const localEffects = getShotEffects(myFlag);
+  const projectile = localEffects.shockwave
+    ? renderManager.createShotShockWave({
+      id: localId,
+      playerId: myPlayerId,
+      x,
+      y,
+      z,
+      color: shotColor.getHex(),
+      fireSound: localEffects.fireSound,
+    })
+    : renderManager.createProjectile({
+      id: localId,
+      playerId: myPlayerId,
+      x,
+      y,
+      z,
+      dirX,
+      dirY,
+      dirZ,
+      color: shotColor.getHex(),
+    });
   if (!projectile) return;
 
   projectile.userData.playerId = myPlayerId;
@@ -4517,14 +4556,12 @@ function createLocalProjectile({ x, y, z, dirX, dirZ, dirY = 0 }) {
   // The server decides this too, and says so in shotBegin; predicting it here is
   // what keeps a bounce from arriving a round trip late on the shooter's own
   // screen, which is the one screen it has to look right on.
-  projectile.userData.flag = getMyFlag()?.type ?? null;
-  projectile.userData.ricochet = shotRicochets(
-    projectile.userData.flag, gameConfig?.ALL_SHOTS_RICOCHET
-  );
-  const localEffects = getShotEffects(projectile.userData.flag);
-  projectile.userData.speed = getShotSpeed(projectile.userData.flag);
+  projectile.userData.flag = myFlag;
+  projectile.userData.ricochet = shotRicochets(myFlag, gameConfig?.ALL_SHOTS_RICOCHET);
+  projectile.userData.speed = getShotSpeed(myFlag);
   projectile.userData.lifeFactor = localEffects.lifeFactor;
   projectile.userData.hiddenOnRadar = localEffects.hiddenOnRadar;
+  projectile.userData.lifetimeSeconds = getShotLifetimeSeconds(myFlag);
   projectile.userData.teleportReentryBlockTeleporterIndex = null;
   projectile.userData.teleportReentryBlockDistance = 0;
   projectiles.set(localId, projectile);
@@ -4633,8 +4670,12 @@ function handlePlayerHit(message) {
     refreshScoreboards();
   }
 
-  // Remove the projectile
-  removeProjectile(message.projectileId, 0);
+  // Remove the projectile. A shock wave is the exception: `isStoppedByHit()` is
+  // false for it, so it goes on swelling through everybody else it reaches and
+  // the server ends it on its own clock rather than on this kill.
+  if (!projectiles.get(message.projectileId)?.userData?.shockwave) {
+    removeProjectile(message.projectileId, 0);
+  }
 
   // Get victim tank and create explosion effect
   if (victimTank) {
@@ -7261,16 +7302,23 @@ function shoot() {
   const dirX = -Math.sin(playerRotation);
   const dirZ = -Math.cos(playerRotation);
 
-  // Calculate shot origin from model-derived muzzle offsets when available
+  const myShot = getShotEffects(getMyFlag()?.type ?? null);
+
+  // Calculate shot origin from model-derived muzzle offsets when available.
+  // LocalPlayer::fireShot (LocalPlayer.cxx:1230) is the exception: a shock wave
+  // has its origin "under tank", because the wave swells around the tank rather
+  // than leaving a barrel, and that point is what the server measures its radius
+  // from. The direction still travels, as upstream's FiringInfo carries the
+  // tank's angle whatever it does with the velocity.
   const muzzleForward = Number.isFinite(myTank?.userData?.muzzleForward)
     ? myTank.userData.muzzleForward
     : 3.0;
   const muzzleHeight = Number.isFinite(myTank?.userData?.muzzleHeight)
     ? myTank.userData.muzzleHeight
     : 1.57;
-  const shotX = playerX + dirX * muzzleForward;
-  const shotY = (myTank ? myTank.position.y : 0) + muzzleHeight;
-  const shotZ = playerZ + dirZ * muzzleForward;
+  const shotX = myShot.shockwave ? playerX : playerX + dirX * muzzleForward;
+  const shotY = (myTank ? myTank.position.y : 0) + (myShot.shockwave ? 0 : muzzleHeight);
+  const shotZ = myShot.shockwave ? playerZ : playerZ + dirZ * muzzleForward;
 
   sendToServer({
     type: 'shoot',
@@ -7284,8 +7332,9 @@ function shoot() {
   // A beam's path is the server's to trace -- it is a polyline through whatever
   // it met, not something the client can extrapolate from a direction -- so the
   // shooter gets the muzzle flash and the report at once and the beam itself
-  // when `shotBegin` lands. Everything else is predicted locally as before.
-  const myShot = getShotEffects(getMyFlag()?.type ?? null);
+  // when `shotBegin` lands. Everything else is predicted locally as before,
+  // including a shock wave: it is a sphere that grows from a known point at a
+  // known rate, so the shooter has no reason to wait a round trip to see it.
   if (myShot.beam) {
     const muzzle = new THREE.Vector3(shotX, shotY, shotZ);
     renderManager.playSound(myShot.fireSound, muzzle);
@@ -8228,8 +8277,10 @@ function updateProjectiles(deltaTime) {
   while (projectileSimAccumulator >= SHOT_SIM_STEP_SECONDS) {
     projectiles.forEach((projectile) => {
       // A beam does not travel: the server traced its whole path when it was
-      // fired and the shot is a line until it fades.
-      if (projectile.userData.beam) return;
+      // fired and the shot is a line until it fades. Neither does a shock wave:
+      // it stays where it was fired and grows, which is a per-frame job rather
+      // than a fixed-step one -- see below.
+      if (projectile.userData.beam || projectile.userData.shockwave) return;
       const projectileSpeed = Number.isFinite(projectile.userData.speed)
         ? projectile.userData.speed
         : (Number.isFinite(gameConfig?.SHOT_SPEED) ? gameConfig.SHOT_SPEED : 100);
@@ -8309,6 +8360,24 @@ function updateProjectiles(deltaTime) {
     });
     projectileSimAccumulator -= SHOT_SIM_STEP_SECONDS;
   }
+
+  // ShockWaveStrategy::update, which upstream runs on the frame rather than on a
+  // simulation step because nothing about it is integrated: the radius is a
+  // function of how old the wave is, so it is read straight off the clock. The
+  // server ends the wave; this only draws it, and holds it at full size for the
+  // frame or two between the two.
+  projectiles.forEach((projectile) => {
+    if (!projectile.userData.shockwave) return;
+    const createdAt = Number.isFinite(projectile.userData.createdAt)
+      ? projectile.userData.createdAt
+      : Date.now();
+    const lifetimeSeconds = Number.isFinite(projectile.userData.lifetimeSeconds)
+      ? projectile.userData.lifetimeSeconds
+      : getShotLifetimeSeconds(projectile.userData.flag ?? null);
+    const radius = getShockWaveRadius((Date.now() - createdAt) / 1000, lifetimeSeconds);
+    projectile.userData.shockWaveRadius = radius;
+    renderManager.updateShotShockWave(projectile, radius, getShockWaveAlpha(radius));
+  });
 
   if (pendingLocalProjectiles.length > 0) {
     const now = Date.now();
@@ -9278,6 +9347,28 @@ function updateRadar() {
         && proj.userData.playerId !== myPlayerId
         && !isSeer()
       ) return;
+      // ShockWaveStrategy::radarRender draws a circle of the current radius, as
+      // its scene node is a sphere of it out the window. The radar's world-to-
+      // canvas scale is uniform, so the radius scales with it.
+      if (proj.userData?.shockwave) {
+        const rel = toRadarRelative(proj.position.x, proj.position.z);
+        const waveRadius = Number.isFinite(proj.userData.shockWaveRadius)
+          ? proj.userData.shockWaveRadius
+          : 0;
+        if (isOutsideRadarSquare(rel.x, rel.y, waveRadius)) return;
+        const pos = radarToCanvas(rel.x, rel.y);
+        const panelRadius = (waveRadius / radarDistance) * radarWorldHalfExtent;
+        if (panelRadius <= 0) return;
+        radarCtx.save();
+        radarCtx.strokeStyle = shotRadarColorOf(proj);
+        radarCtx.globalAlpha = 0.85;
+        radarCtx.lineWidth = 2;
+        radarCtx.beginPath();
+        radarCtx.arc(pos.x, pos.y, panelRadius, 0, Math.PI * 2);
+        radarCtx.stroke();
+        radarCtx.restore();
+        return;
+      }
       // A beam is a line on the radar, as its scene node is out the window. Its
       // segments are already in world coordinates, so each one is two points.
       if (proj.userData?.beam) {

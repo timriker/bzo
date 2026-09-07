@@ -5,12 +5,15 @@ as **GitHub issue #6**; reference it from every flag commit and changelog entry.
 Upstream references are paths under `$HOME/bzflag/`.
 
 Phases 1 (the Useless superflag, animation, and the drop key), 2 (team flags and
-capture), 3 (Identify), 8 (shot variants) and 9 (Ricochet) are **implemented**,
+capture), 3 (Identify), 7 (per-player tank dimensions), 8 (shot variants), 9
+(Ricochet), 10 (Shock Wave) and 13 (per-viewer visibility) are **implemented**,
 as is the jumping switch and all three flags that hang off it -- `JP` Jumping,
 `WG` Wings and `NJ` No Jumping -- see "Jumping, and the flags that carry it".
 All three of phase 4's ways out of a bad flag -- the **shake timeout**, **shake
-wins** and **antidote flags** -- are in; its four client-side bad flags are not,
-and neither is phase 6 beyond `SH` Shield. Phases 5, 7 and 10 onwards are not.
+wins** and **antidote flags** -- are in, and three of its four client-side bad
+flags with them; `WA` Wide Angle is the one left, and it is blocked rather than
+merely unstarted. Phase 6 is in as far as `SH` Shield. Phases 5, 11, 12 and 14
+are not started.
 
 Every flag is named as well as abbreviated wherever it is mentioned here, in
 `Flag.cxx`'s own words: the abbreviation is what the code, the config and the
@@ -191,12 +194,13 @@ worse than trusting a modified client about a base it still had to drive to.
 ## What is left to add
 
 Upstream carries 47 flag types: a Null type, four team flags, and 42
-superflags. bzo has the four team flags and fifteen superflags -- `US` Useless,
-`ID` Identify, `JP` Jumping, `WG` Wings, `R` Ricochet, `NJ` No Jumping, `SH`
-Shield, `F` Rapid Fire, `MG` Machine Gun, `L` Laser, `SB` Super Bullet, `IB`
-Invisible Bullet, `T` Tiny, `N` Narrow, `O` Obesity, `B` Blindness, `JM` Jamming
-`CB` Colorblindness, `ST` Stealth, `CL` Cloaking, `MQ` Masquerade and `SE` Seer
--- so **20 superflags remain**, 11 good and 9 bad. The table below is the whole list, grouped by the
+superflags. bzo has the four team flags and twenty-three superflags -- `US`
+Useless, `ID` Identify, `JP` Jumping, `WG` Wings, `R` Ricochet, `NJ` No Jumping,
+`SH` Shield, `F` Rapid Fire, `MG` Machine Gun, `L` Laser, `SB` Super Bullet, `IB`
+Invisible Bullet, `SW` Shock Wave, `T` Tiny, `N` Narrow, `O` Obesity, `B`
+Blindness, `JM` Jamming, `CB` Colorblindness, `ST` Stealth, `CL` Cloaking, `MQ`
+Masquerade and `SE` Seer -- so **19 superflags remain**, 10 good and 9 bad. The
+table below is the whole list, grouped by the
 machinery each group needs rather than by name, because the machinery is what
 decides the order. `src/common/Flag.cxx` is the authority for every name,
 abbreviation, endurance, quality and help string; `src/common/global.cxx` for
@@ -206,13 +210,12 @@ every constant named here.
 |---|---|---|
 | 4 | `WA` Wide Angle | **blocked**: no XR answer yet, see below |
 | 5 | `V` High Speed, `QT` Quick Turn, `A` Agility, `M` Momentum, `RC` Reverse Controls, `FO` Forward Only, `RO` Reverse Only, `LT` Left Turn Only, `RT` Right Turn Only, `BY` Bouncy, `TR` Trigger Happy | the motion resolver, in the shared pair |
-| 6 | `SR` Steamroller, `G` Genocide | damage rules, and a per-tick proximity sweep |
-| 10 | `SW` Shock Wave | a shot with no path -- an expanding sphere |
+| 6 | `SR` Steamroller, `G` Genocide | damage rules, on the proximity sweep phase 10 built |
 | 11 | `TH` Thief | flag stealing |
 | 12 | `GM` Guided Missile | a steerable shot, and a lock-on target |
 | 14 | `OO` Oscillation Overthruster, `BU` Burrow, `PZ` Phantom Zone | movement through and under geometry |
 
-Phase 6 is a small hook on machinery an earlier phase built. Phases 10 to 14 are
+Phase 6 is a small hook on machinery an earlier phase built. Phases 11 to 14 are
 each their own feature and can be taken in any order. Phase 4 is down to its last
 flag, and that one is blocked rather than merely unstarted.
 
@@ -231,6 +234,10 @@ Phase 7 also paid forward. `TH` Thief in phase 11 is a size flag as much as a
 shot flag, and `getTankDimensionScale` now covers that half of it:
 `_thiefTinyFactor` is one more case beside `T` and `O`. What phase 11 still owes
 is the stealing.
+
+Phase 10 paid forward too, to the phase before it: `applyShockWaveHits` is the
+per-tick proximity sweep phase 6 was waiting on, asked against a radius rather
+than against a tank.
 
 ## Phase 3 -- Identify (implemented)
 
@@ -1125,14 +1132,81 @@ beam is bent segment by segment when the walk that builds it meets a wall -- see
 implement: a tank carries one flag, and a laser on a `+r` world is the only way
 the two meet.
 
-## Phase 10 -- Shock Wave
+## Phase 10 -- Shock Wave (implemented)
 
-`SW`. A shot with no position and no direction: firing kills every tank between
-`_shockInRadius` (`_tankLength`) and `_shockOutRadius` 60, over
-`_shockAdLife` 0.2 of the normal shot life, including tanks on and inside
-buildings. Needs a shot kind that expands rather than moves, a sphere to draw,
-and the team-kill warning upstream gives it. The proximity sweep from `SR`
-Steamroller is the same shape of code.
+`SW` Shock Wave. **A shot with no path.** It never leaves the tank that fired it;
+what travels is its radius. A sphere starts `_shockInRadius` across and grows to
+`_shockOutRadius` 60 over `_shockAdLife` 0.2 of a shot's life, killing every tank
+it swells past, and the strategy expires the shot the moment it is full size.
+That is `ShockWaveStrategy` in four lines; the rest of this section is what each
+of them costs a server that decides hits for everybody.
+
+**`_shockInRadius` is declared as `_tankLength`, so it is upstream's 6.0 and not
+bzo's smaller tank.** The wave sweeps a distance through the world rather than a
+multiple of the vehicle, which is the reasoning `BZFLAG_TANK_RADIUS` and the
+sound reference distance already carry: the figure transfers unchanged.
+
+**Nothing stops it.** `isStoppedByHit()` returns false, so a wave resolves every
+tank inside it rather than the nearest one. That is the first shot in bzo that is
+more than one kill, and it is why `applyShotPlayerHit` split in two:
+`applyShotVictim` is what happens to a tank, and what happens to the shot is the
+caller's -- an ordinary shell is spent by the tank it hits, a wave by nobody.
+
+**`checkHit` asks nothing about the geometry.** No obstacle trace, no height
+gate, no tank radius, no narrow box: just a sphere from where the wave was fired
+to where the tank is, measured to the tank's own position, so a tank on a roof is
+as far away as the roof is high. It is the only hit test in bzo that reads no
+collider at all, and that is upstream's own note on it -- "a shock wave can kill
+anything inside the radius, be it behind or in a building or even zoned" -- and
+what lets the help text promise tanks "on/in buildings".
+
+**A shield holds against a wave for the whole wave.** Upstream ends the shot
+locally once a shield has saved somebody, precisely because a wave is not stopped
+by a hit and would otherwise find the same tank again on the next frame with the
+shield already gone -- "making the shield useless" is its own comment
+(`playing.cxx:4032`). bzo carries the same rule as a set of resolved players on
+the projectile, which covers the other way a tank could meet one wave twice: a
+kill and a respawn inside 0.7s.
+
+**Your own wave cannot kill you**, and unlike a ricochet there is no bounce that
+could ever earn it. Teammates are another matter. bzo has no team-kill switch and
+a shot has always killed through a team, so a wave does too -- which is what the
+flag's own help text is warning about, and the whole of the warning upstream
+gives it.
+
+**The reload is the world's own.** Each of the four segmented strategies scales
+it -- `setReloadTime(reload / adRate)` -- and `ShockWaveStrategy` is the one that
+does not. So `SW`'s `rateFactor` is 1 and only its `lifeFactor` moves: a wave is
+gone in 0.7s and the next one still comes round on the full 3.5.
+
+That is also where `SW` walks into a gap `L` Laser was already standing in. bzo's
+server holds a shot slot for the shot's *life* and the client gates firing on the
+*reload*, which agree only because `F` and `MG` declare their life as the
+reciprocal of their rate. Laser and Shock Wave do not, so an honest client fires
+both at upstream's cadence while the server's slot check would let a modified one
+fire far faster. See "a variant's slot frees on its life, not its reload" in
+AGENTS.md -- it is a loose anti-cheat gate rather than a wrong game, and it is
+being fixed on its own rather than inside this phase.
+
+**bzo draws upstream's low-quality wave, because its default one cannot be
+drawn.** At quality 2 and above a shock wave inverts the colour of everything
+inside the sphere with `glLogicOp(GL_INVERT)` and lays the team-coloured surface
+over the inversion (`SphereSceneNode.cxx:386`). WebGL has no logic op to invert
+with. What is left is the fallback: a plain translucent sphere fading 0.75 to
+0.25 as it swells -- one of upstream's own variants rather than a third one bzo
+invented, which is the rule about shipping one variant and no setting. It is
+drawn double-sided, because the wave grows past the camera and the inside of the
+ball is most of what you ever see of your own, and one shared sphere geometry is
+scaled per frame, so a wave costs one draw whatever size it is.
+
+**The shooter predicts it.** A wave is a sphere growing from a known point at a
+known rate, so unlike a beam there is nothing to wait a round trip for: it goes
+out through `createLocalProjectile` like an ordinary shell and re-anchors when
+`shotBegin` lands. It fades at full size rather than ending on anything, so it
+takes neither the impact effect nor `SFX_SHOT_BOOM`; `SFX_SHOCK` when it is fired
+is the only sound it makes, and there is no muzzle flash because there is no
+muzzle -- the shot origin is "under tank" (`LocalPlayer.cxx:1230`). On the radar
+it is a circle of the current radius, as `radarRender` draws it.
 
 ## Phase 11 -- Thief
 

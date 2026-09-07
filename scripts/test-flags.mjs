@@ -74,6 +74,9 @@ import {
   LASER_AD_VEL,
   LASER_AD_RATE,
   LASER_AD_LIFE,
+  SHOCK_AD_LIFE,
+  SHOCK_IN_RADIUS,
+  SHOCK_OUT_RADIUS,
   canJump,
   canShakeFlag,
   computeFlagFlight,
@@ -88,6 +91,8 @@ import {
   getFlagType,
   getKnownFlagAbbreviation,
   getShotEffects,
+  getShockWaveAlpha,
+  getShockWaveRadius,
   getTeamFlagAbbreviation,
   getWingsJumpVelocity,
   getWingsSlideVelocity,
@@ -300,6 +305,7 @@ for (const abbreviation of ['JP', 'US', 'ID', 'B*', null]) {
     assert.equal(effects.rateFactor, 1, `${abbreviation} does not change the rate`);
     assert.equal(effects.lifeFactor, 1, `${abbreviation} does not change the life`);
     assert.equal(effects.beam, false);
+    assert.equal(effects.shockwave, false);
     assert.equal(effects.throughBuildings, false);
     assert.equal(effects.hiddenOnRadar, false);
   }
@@ -355,8 +361,22 @@ for (const abbreviation of ['JP', 'US', 'ID', 'B*', null]) {
   close(invisibleBullet.lifeFactor, 1);
   assert.equal(invisibleBullet.throughBuildings, false);
 
+  // A shock wave keeps the world's reload -- ShockWaveStrategy is the one shot
+  // strategy that never calls setReloadTime -- and spends a fifth of a shot's
+  // life expanding.
+  const shockWave = getShotEffects('SW');
+  assert.equal(getFlagType('SW').name, 'Shock Wave');
+  assert.equal(shockWave.shockwave, true, 'a shock wave has no path');
+  close(shockWave.lifeFactor, SHOCK_AD_LIFE, '_shockAdLife');
+  close(shockWave.rateFactor, 1, 'and comes round on the world\'s own reload');
+  close(shockWave.velocityFactor, 1, 'nothing travels, so the speed is never read');
+  assert.equal(shockWave.beam, false, 'a wave is not a beam: it has a life to spend');
+  assert.equal(shockWave.throughBuildings, false);
+  assert.equal(shockWave.hiddenOnRadar, false);
+  assert.equal(shockWave.fireSound, 'shock', 'SFX_SHOCK');
+
   // Every shot variant is an unstable good superflag, as Flag.cxx declares them.
-  for (const abbreviation of ['F', 'MG', 'L', 'SB', 'IB']) {
+  for (const abbreviation of ['F', 'MG', 'L', 'SB', 'IB', 'SW']) {
     const type = getFlagType(abbreviation);
     assert.equal(type.endurance, FLAG_ENDURANCE.UNSTABLE, `${abbreviation} is FlagUnstable`);
     assert.equal(type.quality, 0, `${abbreviation} is a good flag`);
@@ -370,6 +390,34 @@ for (const abbreviation of ['JP', 'US', 'ID', 'B*', null]) {
     );
   }
   assert.deepEqual(serverFlags.getShotEffects(null), getShotEffects(null));
+}
+
+// ShockWaveStrategy::update, held against the numbers it grows between.
+{
+  assert.equal(SHOCK_IN_RADIUS, 6.0, '_shockInRadius is _tankLength');
+  assert.equal(SHOCK_OUT_RADIUS, 60.0, '_shockOutRadius');
+  assert.equal(SHOCK_AD_LIFE, 0.2, '_shockAdLife');
+
+  // 3.5s of shot life at bzo's defaults, a fifth of which is the wave's.
+  const life = 3.5 * SHOCK_AD_LIFE;
+  close(getShockWaveRadius(0, life), SHOCK_IN_RADIUS, 'a wave starts a tank length across');
+  close(getShockWaveRadius(life / 2, life), 33, 'and grows evenly');
+  close(getShockWaveRadius(life, life), SHOCK_OUT_RADIUS, 'to _shockOutRadius when it expires');
+  // The strategy expires the shot the moment it is full size, so nothing ever
+  // reads a radius past the end -- but the client draws a frame or two after the
+  // server has decided, so the answer is held rather than run on.
+  close(getShockWaveRadius(life * 10, life), SHOCK_OUT_RADIUS, 'and no further');
+  close(getShockWaveRadius(-1, life), SHOCK_IN_RADIUS, 'nor before it was fired');
+  close(getShockWaveRadius(1, 0), SHOCK_OUT_RADIUS, 'a wave with no life is already over');
+
+  // The low-quality fade, 0.75 down to 0.25 across the same span.
+  close(getShockWaveAlpha(SHOCK_IN_RADIUS), 0.75, 'a new wave is the most solid it gets');
+  close(getShockWaveAlpha(33), 0.5, 'and thins evenly');
+  close(getShockWaveAlpha(SHOCK_OUT_RADIUS), 0.25, 'to a quarter at full size');
+  close(getShockWaveAlpha(SHOCK_OUT_RADIUS * 2), 0.25, 'and no thinner');
+
+  assert.equal(serverFlags.getShockWaveRadius(0.35, life), getShockWaveRadius(0.35, life),
+    'client/server disagree about how big a wave is');
 }
 
 // A flap on the way up is worth taking only while you are climbing slower than

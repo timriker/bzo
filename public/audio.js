@@ -50,6 +50,9 @@ export const GAME_SOUNDS = Object.freeze({
   // playing SFX_FIRE for everything (playing.cxx:2956); Laser is the first flag
   // bzo has that does.
   laser: { file: 'laser.wav', sfx: 'SFX_LASER' },
+  // A shock wave is fired. The wave itself makes no other sound: it fades when
+  // it reaches full size rather than ending on anything.
+  shock: { file: 'shock.wav', sfx: 'SFX_SHOCK' },
   // A shot bounces off a building.
   ricochet: { file: 'ricochet.wav', sfx: 'SFX_RICOCHET' },
   // A tank is destroyed.

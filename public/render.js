@@ -33,7 +33,9 @@ import {
 import {
   FLAG_POLE_SIZE,
   FLAG_POLE_WIDTH,
+  SHOCK_IN_RADIUS,
   SUPER_FLAG_COLOR,
+  getShockWaveAlpha,
 } from './flags.mjs';
 import {
   DEFAULT_VOLUME_LEVEL,
@@ -4420,16 +4422,76 @@ class RenderManager {
     return group;
   }
 
+  // ShockWaveStrategy's scene node: one translucent team-coloured sphere sitting
+  // where the tank fired it, scaled to the radius the flags pair computes and
+  // faded as it swells. `getShockWaveAlpha` says why this is upstream's low
+  // quality wave rather than its default one -- the default inverts the colour
+  // of everything inside the sphere, and WebGL has no logic op to invert with.
+  //
+  // Double-sided, because the wave grows past the camera and the inside of the
+  // ball is most of what you see of your own; and depth-write off, because it is
+  // a translucent shell that everything else has to stay visible through.
+  createShotShockWave(data) {
+    if (!this.scene) return null;
+    const waveColor = typeof data.color === 'number' ? data.color : 0xffff00;
+    // One sphere geometry for every wave ever drawn: the radius lives in the
+    // scale, so nothing here is rebuilt as the wave grows.
+    if (!this._shockWaveGeometry) {
+      this._shockWaveGeometry = new THREE.SphereGeometry(1, 24, 16);
+    }
+    const material = new THREE.MeshBasicMaterial({
+      color: waveColor,
+      transparent: true,
+      opacity: getShockWaveAlpha(SHOCK_IN_RADIUS),
+      side: THREE.DoubleSide,
+      depthWrite: false,
+    });
+    const mesh = new THREE.Mesh(this._shockWaveGeometry, material);
+    mesh.scale.setScalar(SHOCK_IN_RADIUS);
+    mesh.frustumCulled = false;
+    mesh.renderOrder = SHOT_RENDER_ORDER;
+
+    const group = new THREE.Group();
+    group.position.set(data.x, data.y, data.z);
+    group.renderOrder = SHOT_RENDER_ORDER;
+    group.add(mesh);
+    group.userData = { shockwave: true, shockWaveMesh: mesh, shockWaveMaterial: material, color: waveColor };
+    this.worldGroup.add(this._tagDraws(group, 'effect'));
+    // SFX_SHOCK, and no muzzle flash: the shot leaves no barrel. The shooter
+    // has already heard its own, so only everybody else's arrives with the
+    // message that announces it.
+    if (!data.silent) {
+      this.playSound(typeof data.fireSound === 'string' ? data.fireSound : 'fire', group.position);
+    }
+    return group;
+  }
+
+  updateShotShockWave(projectile, radius, alpha) {
+    const mesh = projectile?.userData?.shockWaveMesh;
+    if (!mesh) return;
+    mesh.scale.setScalar(radius);
+    mesh.material.opacity = alpha;
+  }
+
   removeProjectile(projectile, reason = 1) {
     if (!projectile || !this.scene) return;
     if (reason === 0) {
       this.createShotImpact(projectile.position);
     }
-    // BZFlag plays SFX_SHOT_BOOM when a shot ends.
-    this.playSound('shotBoom', projectile.position);
+    // BZFlag plays SFX_SHOT_BOOM when a shot ends. A shock wave is the exception:
+    // it is expired by its own strategy at full size rather than ended on
+    // anything, so it fades out of the world without a sound.
+    if (!projectile.userData?.shockwave) {
+      this.playSound('shotBoom', projectile.position);
+    }
     // Remove point light from scene if present
     if (this.projectileLights) this.projectileLights.delete(projectile);
     this.worldGroup.remove(projectile);
+    if (projectile.userData?.shockwave) {
+      // The sphere itself is shared between every wave ever drawn.
+      projectile.userData.shockWaveMaterial?.dispose();
+      return;
+    }
     if (projectile.userData?.beam) {
       // The cylinder itself is shared between every beam ever drawn, so only the
       // per-beam instances and their materials are thrown away.

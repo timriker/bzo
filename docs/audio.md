@@ -13,6 +13,8 @@ to every client, and every edit to it changes the build id and reloads them.
 |---|---|---|
 | `fire.wav` | `SFX_FIRE` | a shot is fired |
 | `boom.wav` | `SFX_SHOT_BOOM` | a shot expires or hits an obstacle |
+| `laser.wav` | `SFX_LASER` | a laser is fired |
+| `shock.wav` | `SFX_SHOCK` | a shock wave is fired |
 | `ricochet.wav` | `SFX_RICOCHET` | a shot bounces off a building |
 | `explosion.wav` | `SFX_EXPLOSION`, `SFX_DIE` | a tank is destroyed |
 | `jump.wav` | `SFX_JUMP` | a tank jumps |

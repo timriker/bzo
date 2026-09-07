@@ -879,6 +879,30 @@ early. Slot expiry compares shots a full lifetime apart, where jitter is noise.
 The sustained rate is identical either way -- `maxShots` slots each held for one
 shot lifetime is one shot per `SHOT_RELOAD_TIME`.
 
+### Open question: a variant's slot frees on its life, not its reload
+
+Upstream keeps the two apart. `ShotPath::reloadTime` starts at `_reloadTime` and
+each segmented strategy scales it in its own constructor -- `setReloadTime(reload
+/ adRate)` -- while `FiringInfo::lifetime` is scaled by the flag's `adLife`. The
+slot frees on the reload; the shot dies on the life. For `F` Rapid Fire and `MG`
+Machine Gun the two coincide, because their life is declared as the reciprocal of
+their rate, and that is the coincidence bzo built on: the server holds a slot for
+`lifetimeSeconds` and the client gates firing on `SHOT_RELOAD_TIME / rateFactor`.
+
+Two flags break the coincidence. `L` Laser has `_laserAdLife` 0.1 against
+`_laserAdRate` 0.5, and `SW` Shock Wave has `_shockAdLife` 0.2 against no rate
+scaling at all, because `ShockWaveStrategy` is the one strategy that never calls
+`setReloadTime`. So an honest client fires a laser every 7s and a shock wave every
+3.5s, exactly as upstream does, while the server's slot check would let a modified
+one fire a laser every 0.35s and a wave every 0.7s. Honest play is right; the
+anti-cheat gate is loose.
+
+The fix is to give `Projectile` a slot expiry separate from its lifetime -- the
+reload scaled by `rateFactor` -- and check shot slots against that rather than
+against how long the shell lives. Deferred rather than folded into the phase that
+found it, because it touches every shot variant and the two the gap is visible on
+are already in.
+
 ### Open question: shot position tolerance
 
 bzo allows a shot origin `barrelLength + SHOT_POSITION_TOLERANCE` (~5 units)
@@ -1214,9 +1238,12 @@ surface as an error, not a silent degradation.
 |---|---|---|---|
 | `fire` | `fire.wav` | `SFX_FIRE` | a shot is fired |
 | `shotBoom` | `boom.wav` | `SFX_SHOT_BOOM` | a shot expires or hits an obstacle |
+| `laser` | `laser.wav` | `SFX_LASER` | a laser is fired |
+| `shock` | `shock.wav` | `SFX_SHOCK` | a shock wave is fired |
 | `ricochet` | `ricochet.wav` | `SFX_RICOCHET` | a shot bounces off a building |
 | `explosion` | `explosion.wav` | `SFX_EXPLOSION`, `SFX_DIE` | a tank is destroyed |
 | `jump` | `jump.wav` | `SFX_JUMP` | a tank jumps |
+| `flap` | `flap.wav` | `SFX_FLAP` | a tank flaps its Wings |
 | `land` | `land.wav` | `SFX_LAND` | a tank lands |
 | `teleport` | `teleport.wav` | `SFX_TELEPORT` | a tank passes through a teleporter |
 | `pop` | `pop.wav` | `SFX_POP` | a tank appears (spawn) |

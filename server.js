@@ -42,6 +42,7 @@ const {
   getFlagThrownAltitude,
   getFlagType,
   getShotEffects,
+  getShockWaveRadius,
   cloaksTheTank,
   getTankDimensionScale,
   getTankHitRadiusScale,
@@ -2161,6 +2162,13 @@ class Projectile {
     // A beam does not fly: `traceShotBeam` walks its whole path when it is
     // fired and leaves it here, and the projectile is a clock from then on.
     this.beam = effects.beam;
+    // A shock wave does not fly either, and has no path to walk: it sits where
+    // the tank fired it and swells. `shockWaveResolved` is upstream's local
+    // `endShot` after a shield saved somebody (playing.cxx:4032) -- a wave is
+    // not stopped by a hit, so without it the same tank would meet the same wave
+    // again on the next tick and the shield would be worth nothing.
+    this.shockwave = effects.shockwave;
+    this.shockWaveResolved = effects.shockwave ? new Set() : null;
     this.points = null;
     this.bounces = 0;
     this.x = x;
@@ -4708,21 +4716,17 @@ function findShotPlayerHit(proj, from, to, now) {
   return best;
 }
 
-// gotBlowedUp() for the tank a shot reached. The shot is spent either way: a
-// shield gives up its flag and lives, anybody else dies.
-function applyShotPlayerHit(proj, id, player, point) {
-  projectiles.delete(id);
-
-  // gotBlowedUp() with the shield flag: the shot ends where it struck, the tank
-  // keeps its life, and the flag is thrown as if the player had dropped it --
-  // which is where _shieldFlight sends it up extra high. Nobody scores, because
-  // nobody died.
+// gotBlowedUp() for one tank a shot reached, and nothing about the shot's own
+// fate -- an ordinary shell is spent by the tank it hits and a shock wave is
+// spent by nobody, so the caller decides that. Returns what became of the tank.
+function applyShotVictim(proj, id, player) {
+  // gotBlowedUp() with the shield flag: the tank keeps its life and the flag is
+  // thrown as if the player had dropped it -- which is where _shieldFlight sends
+  // it up extra high. Nobody scores, because nobody died.
   const carried = getPlayerFlag(player.id);
   if (carried && shieldsAgainstShot(carried.type)) {
-    logShotEnd(proj, 'shield_hit', point, `victim=${player.id}`);
-    broadcastAll({ type: 'shotEnd', id, reason: 0, x: point.x, y: point.y, z: point.z });
     dropPlayerFlag(player.id);
-    return;
+    return 'shield';
   }
 
   // Hit!
@@ -4739,7 +4743,6 @@ function applyShotPlayerHit(proj, id, player, point) {
   }
   recordTeamScoreForKill(shooter, player);
 
-  logShotEnd(proj, 'player_hit', point, `victim=${player.id}`);
   dropPlayerFlag(player.id);
 
   broadcastAll({
@@ -4759,6 +4762,53 @@ function applyShotPlayerHit(proj, id, player, point) {
       });
     }
   }, GAME_CONFIG.RESPAWN_DELAY);
+  return 'killed';
+}
+
+// The tank a travelling shot reached. One hit and the shot is gone, whichever
+// way the tank took it.
+function applyShotPlayerHit(proj, id, player, point) {
+  projectiles.delete(id);
+  const outcome = applyShotVictim(proj, id, player);
+  logShotEnd(proj, outcome === 'shield' ? 'shield_hit' : 'player_hit', point, `victim=${player.id}`);
+  broadcastAll({ type: 'shotEnd', id, reason: 0, x: point.x, y: point.y, z: point.z });
+}
+
+// ShockWaveStrategy::checkHit: "a shock wave can kill anything inside the
+// radius, be it behind or in a building or even zoned". A plain sphere from the
+// tank that fired it to the tank it reaches, and the one hit test in the game
+// that asks nothing at all about the geometry in between -- no obstacle trace,
+// no height gate, no tank radius. Upstream measures to the tank's own position
+// and so does this, so a tank on a roof is as far away as the roof is high.
+//
+// Every tank inside is resolved, not just the nearest: the wave is not stopped
+// by a hit. Each one is resolved once, and the wave carries the list -- see
+// `shockWaveResolved` on the projectile.
+function applyShockWaveHits(proj, id, radius, now) {
+  const radiusSquared = radius * radius;
+  players.forEach((player) => {
+    // "my own shock wave cannot kill me" (LocalPlayer.cxx:1612). Unlike a
+    // ricochet there is no bounce that could ever earn it.
+    if (player.id === proj.playerId) return;
+    if (player.team === 'observer') return;
+    if (player.paused) return;
+    if (player.health <= 0) return;
+    if (proj.shockWaveResolved.has(player.id)) return;
+
+    const at = player.getExtrapolatedPosition(now);
+    const dx = at.x - proj.x;
+    const dy = at.y - proj.y;
+    const dz = at.z - proj.z;
+    if (((dx * dx) + (dy * dy) + (dz * dz)) > radiusSquared) return;
+
+    proj.shockWaveResolved.add(player.id);
+    const point = { x: at.x, y: at.y, z: at.z };
+    const outcome = applyShotVictim(proj, id, player);
+    log(
+      `[shockWave] id=${proj.id} player=${proj.playerId} ${outcome} victim=${player.id}` +
+      ` at=${formatShotPoint(point.x, point.y, point.z)} radius=${radius.toFixed(2)}`
+    );
+  });
 }
 
 // The first teleporter event on one segment: the portal a shot enters, or the
@@ -4956,6 +5006,23 @@ function simulateProjectilesStep(stepSeconds, now) {
 
   projectiles.forEach((proj, id) => {
     const deltaTime = (now - proj.createdAt) / 1000;
+
+    // A shock wave never leaves the tank that fired it; what travels is its
+    // radius. It kills everything it swells past over its whole life and then
+    // fades at full size, which is `setExpired()` rather than an impact -- so it
+    // ends on reason 1 and the client neither sparks nor booms.
+    if (proj.shockwave) {
+      const radius = getShockWaveRadius(deltaTime, proj.lifetimeSeconds);
+      applyShockWaveHits(proj, id, radius, now);
+      if (deltaTime >= proj.lifetimeSeconds) {
+        const at = { x: proj.x, y: proj.y, z: proj.z };
+        projectiles.delete(id);
+        broadcastAll({ type: 'shotEnd', id, reason: 1, x: at.x, y: at.y, z: at.z });
+        logShotEnd(proj, 'shockwave_faded', at,
+          `lifetime=${deltaTime.toFixed(3)}/${proj.lifetimeSeconds.toFixed(3)}`);
+      }
+      return;
+    }
 
     // A beam has no travel and its hits were resolved when it was fired, so all
     // that is left of it is the clock its slot runs on. It ends where it ended,
@@ -5795,7 +5862,8 @@ wss.on('connection', (ws, req) => {
             ` pos=${formatShotPoint(proj.x, proj.y, proj.z)}` +
             ` dir=(${proj.dirX.toFixed(4)},${proj.dirY.toFixed(4)},${proj.dirZ.toFixed(4)})` +
             ` flag=${proj.flag || 'none'}${proj.ricochet ? ' ricochet' : ''}` +
-            (proj.beam ? ` beam=${proj.segments.length}seg end=${proj.endReason}` : '')
+            (proj.beam ? ` beam=${proj.segments.length}seg end=${proj.endReason}` : '') +
+            (proj.shockwave ? ` shockwave life=${proj.lifetimeSeconds.toFixed(3)}s` : '')
           );
           broadcastAll({
             type: 'shotBegin',

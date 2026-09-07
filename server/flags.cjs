@@ -91,6 +91,19 @@ const LASER_AD_VEL = 1000.0;
 const LASER_AD_RATE = 0.5;
 const LASER_AD_LIFE = 0.1;
 
+// _shockAdLife, _shockInRadius and _shockOutRadius (global.cxx:132). A shock
+// wave is the one shot with no path: it starts as a sphere around the tank that
+// fired it and grows to `_shockOutRadius` over a fifth of a shot's life, killing
+// everything it reaches on the way and stopping for none of them.
+//
+// `_shockInRadius` is declared as `_tankLength`, so it is upstream's 6.0 rather
+// than anything bzo's smaller tank would give: the wave sweeps a distance
+// through the world, as `BZFLAG_TANK_RADIUS` above does, so the figure transfers
+// unchanged.
+const SHOCK_AD_LIFE = 0.2;
+const SHOCK_IN_RADIUS = 6.0;
+const SHOCK_OUT_RADIUS = 60.0;
+
 // BZFlag's tank radius, deliberately not bzo's 2. The grab radius scales with
 // the world rather than with the vehicle, as the sound reference distance in
 // audio.js does: a bzo tank is half as wide as an upstream one, and building
@@ -265,6 +278,15 @@ const FLAG_TYPES = Object.freeze({
     quality: FLAG_QUALITY.GOOD,
     team: null,
     help: 'Your shots don\'t appear on other radars.  Can still see them out window.',
+  }),
+  SW: Object.freeze({
+    abbreviation: 'SW',
+    name: 'Shock Wave',
+    endurance: FLAG_ENDURANCE.UNSTABLE,
+    quality: FLAG_QUALITY.GOOD,
+    team: null,
+    help: 'Firing destroys all tanks nearby.  Don\'t kill teammates!'
+      + '  Can kill tanks on/in buildings.',
   }),
   SH: Object.freeze({
     abbreviation: 'SH',
@@ -637,6 +659,12 @@ function hasAirControl(abbreviation) {
 // (RadarRenderer.cxx:664, against :585, which draws your own shots whatever they
 // are).
 //
+// `shockwave` is a shot with no path at all rather than one already at the end of
+// it. It never leaves the tank that fired it; what travels is its radius. Nothing
+// stops it -- `ShockWaveStrategy::isStoppedByHit` returns false -- so it kills
+// every tank it swells past instead of the first one, and it asks nothing about
+// the geometry in between.
+//
 // `fireSound` is the sample the shot is announced with. Upstream switches on the
 // flag rather than playing SFX_FIRE for everything (playing.cxx:2956), and Laser
 // is the first flag bzo has that takes a sound of its own.
@@ -645,6 +673,7 @@ const DEFAULT_SHOT_EFFECTS = Object.freeze({
   rateFactor: 1,
   lifeFactor: 1,
   beam: false,
+  shockwave: false,
   throughBuildings: false,
   hiddenOnRadar: false,
   fireSound: 'fire',
@@ -679,10 +708,46 @@ const SHOT_EFFECTS = Object.freeze({
     ...DEFAULT_SHOT_EFFECTS,
     hiddenOnRadar: true,
   }),
+  // ShockWaveStrategy's constructor shortens the shot and leaves the reload
+  // alone: unlike every other variant it never calls `setReloadTime`, so a shock
+  // wave comes round on the world's own interval however briefly each one lives.
+  SW: Object.freeze({
+    ...DEFAULT_SHOT_EFFECTS,
+    lifeFactor: SHOCK_AD_LIFE,
+    shockwave: true,
+    fireSound: 'shock',
+  }),
 });
 
 function getShotEffects(abbreviation) {
   return SHOT_EFFECTS[abbreviation] || DEFAULT_SHOT_EFFECTS;
+}
+
+// ShockWaveStrategy::update. The radius is a straight lerp from `_shockInRadius`
+// to `_shockOutRadius` across the shot's whole life -- which is already the
+// shortened one, because the constructor scales `lifetime` before anything reads
+// it -- and the strategy expires the shot the moment the wave is full size. Both
+// ends run this: the server to decide who it reached, the client to decide how
+// big to draw it.
+function getShockWaveRadius(elapsed, lifetimeSeconds) {
+  if (!(lifetimeSeconds > 0)) return SHOCK_OUT_RADIUS;
+  const t = Math.min(1, Math.max(0, elapsed / lifetimeSeconds));
+  return SHOCK_IN_RADIUS + ((SHOCK_OUT_RADIUS - SHOCK_IN_RADIUS) * t);
+}
+
+// The same function's fade, 0.75 down to 0.25 as the wave grows.
+//
+// This is upstream's *low* quality shock wave, and deliberately so. Its default
+// one inverts the colour of everything inside the sphere with `glLogicOp` and
+// draws the team-coloured surface over the inversion (SphereSceneNode.cxx:386),
+// and WebGL has no logic op to invert with -- so the variant bzo can actually
+// draw is the one upstream falls back to, a plain translucent sphere that fades
+// as it swells. See "Fewer options than BZFlag": bzo picks one of upstream's own
+// variants rather than inventing a third.
+function getShockWaveAlpha(radius) {
+  const span = SHOCK_OUT_RADIUS - SHOCK_IN_RADIUS;
+  const frac = Math.min(1, Math.max(0, (radius - SHOCK_IN_RADIUS) / span));
+  return 0.75 - (0.5 * frac);
 }
 
 // SegmentedShotStrategy::makeSegments. A shot that would stop at a wall
@@ -930,6 +995,9 @@ module.exports = {
   LASER_AD_VEL,
   LASER_AD_RATE,
   LASER_AD_LIFE,
+  SHOCK_AD_LIFE,
+  SHOCK_IN_RADIUS,
+  SHOCK_OUT_RADIUS,
   BZFLAG_TANK_RADIUS,
   FLAG_GRAB_RADIUS,
   FLAG_GRAB_LEVEL_TOLERANCE,
@@ -986,6 +1054,8 @@ module.exports = {
   getFlagHoverHeight,
   getFlagFlightState,
   getShotEffects,
+  getShockWaveRadius,
+  getShockWaveAlpha,
   shotRicochets,
   shieldsAgainstShot,
   getFlagThrownAltitude,
