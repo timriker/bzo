@@ -27,6 +27,14 @@ import {
 import {
   BZFLAG_TANK_RADIUS,
   FLAG_ALTITUDE,
+  FLAG_EFFECT_TIME,
+  NARROW_FACTOR,
+  OBESE_FACTOR,
+  TINY_FACTOR,
+  getTankDimensionEase,
+  getTankDimensionScale,
+  getTankHitRadiusScale,
+  usesNarrowHitBox,
   FLAG_CLEARANCE,
   FLAG_ENDURANCE,
   FLAG_GRAB_RADIUS,
@@ -715,6 +723,47 @@ for (const altitude of [1, 5, FLAG_ALTITUDE, 40]) {
       `client/server flight computation diverged for ${altitude}/${gravity}`
     );
   }
+}
+
+// Phase 7. Player::updateFlagEffect scales length and width from one factor for
+// `T` and `O`, touches only the width for `N`, and never touches height.
+assert.deepEqual(getTankDimensionScale('T'), { length: TINY_FACTOR, width: TINY_FACTOR });
+assert.deepEqual(getTankDimensionScale('O'), { length: OBESE_FACTOR, width: OBESE_FACTOR });
+assert.deepEqual(getTankDimensionScale('N'), { length: 1, width: NARROW_FACTOR });
+for (const abbreviation of [null, 'US', 'JP', 'R*']) {
+  assert.deepEqual(
+    getTankDimensionScale(abbreviation),
+    { length: 1, width: 1 },
+    `${abbreviation} should not resize a tank`
+  );
+}
+
+// Player::getRadius reads dimensionsScale[0], the length axis, which is exactly
+// the one Narrow leaves alone -- upstream's own comment says so.
+assert.equal(getTankHitRadiusScale('T'), TINY_FACTOR);
+assert.equal(getTankHitRadiusScale('O'), OBESE_FACTOR);
+assert.equal(getTankHitRadiusScale('N'), 1, 'Narrow must not change the hit radius');
+assert.equal(usesNarrowHitBox('N'), true);
+for (const abbreviation of [null, 'T', 'O', 'US']) {
+  assert.equal(usesNarrowHitBox(abbreviation), false, `${abbreviation} uses the sphere`);
+}
+
+// The ease is linear and takes exactly _flagEffectTime however far it travels.
+assert.equal(getTankDimensionEase(1, OBESE_FACTOR, 0), 1);
+assert.equal(getTankDimensionEase(1, OBESE_FACTOR, FLAG_EFFECT_TIME), OBESE_FACTOR);
+assert.equal(getTankDimensionEase(1, OBESE_FACTOR, FLAG_EFFECT_TIME * 2), OBESE_FACTOR);
+assert.equal(
+  getTankDimensionEase(1, OBESE_FACTOR, FLAG_EFFECT_TIME / 2),
+  1 + ((OBESE_FACTOR - 1) / 2)
+);
+assert.equal(getTankDimensionEase(TINY_FACTOR, 1, FLAG_EFFECT_TIME), 1, 'the ease runs both ways');
+
+for (const abbreviation of ['T', 'N', 'O', null]) {
+  assert.deepEqual(
+    serverFlags.getTankDimensionScale(abbreviation),
+    getTankDimensionScale(abbreviation),
+    `client/server tank scale diverged for ${abbreviation}`
+  );
 }
 
 console.log('Flag flight and type tests passed');

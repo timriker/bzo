@@ -588,4 +588,84 @@ assert.ok(Math.abs(trapped.x) < 1, 'and leaves the shot inside the corridor');
   );
 }
 
+// Phase 7. testOrigRectTank takes the tank's scale, and a scale of 1 has to be
+// exactly what the unscaled call already answered or every existing collision
+// moves.
+{
+  const box = { w: 10, d: 10, rotation: 0, x: 0, z: 0 };
+  const cases = [
+    [0, 0], [6, 0], [0, 6], [5.8, 5.8], [8, 0], [0, 12], [4.5, 4.5],
+  ];
+  for (const [px, pz] of cases) {
+    for (const angle of [0, 0.4, Math.PI / 2, 2.2]) {
+      const plain = client.testOrigRectTank(box.w / 2, box.d / 2, px, pz, angle);
+      assert.equal(
+        client.testOrigRectTank(box.w / 2, box.d / 2, px, pz, angle, 0, { length: 1, width: 1 }),
+        plain,
+        `a unit scale changed the answer at ${px},${pz} angle ${angle}`
+      );
+      assert.equal(
+        server.testOrigRectTank(box.w / 2, box.d / 2, px, pz, angle, 0, { length: 1, width: 1 }),
+        plain,
+        `client/server scaled tank box diverged at ${px},${pz}`
+      );
+    }
+  }
+
+  // A tiny tank fits where a full one does not; an obese one does not fit where
+  // a full one does. Tested end-on so the length axis is the one that decides.
+  const tiny = { length: 0.4, width: 0.4 };
+  const obese = { length: 2.5, width: 2.5 };
+  const justOutside = (client.TANK_HALF_LENGTH + 5) - 0.2;
+  assert.equal(
+    client.testOrigRectTank(5, 5, 0, justOutside, 0),
+    true,
+    'a full-size tank overlaps just inside its own length'
+  );
+  assert.equal(
+    client.testOrigRectTank(5, 5, 0, justOutside, 0, 0, tiny),
+    false,
+    'a tiny tank no longer reaches'
+  );
+  assert.equal(
+    client.testOrigRectTank(5, 5, 0, (client.TANK_HALF_LENGTH + 5) + 2, 0, 0, obese),
+    true,
+    'an obese tank reaches further than a full one'
+  );
+}
+
+// getSegmentBoxHitFraction: the Narrow hit shape. Held against the geometry
+// rather than against upstream's timeRayHitsBlock, which works in time over a
+// ray; the shape and the answer are the same question.
+{
+  const half = 1;
+  const long = 3;
+  // Straight through the middle, across the narrow axis: enters at the near face.
+  const across = client.getSegmentBoxHitFraction(-10, 0, 10, 0, 0, 0, 0, half, long);
+  assert.ok(Math.abs(across - ((10 - half) / 20)) < 1e-9, `across gave ${across}`);
+  // Along the long axis: enters at the near end.
+  const along = client.getSegmentBoxHitFraction(0, -10, 0, 10, 0, 0, 0, half, long);
+  assert.ok(Math.abs(along - ((10 - long) / 20)) < 1e-9, `along gave ${along}`);
+  // Starting inside strikes where it started, as the cylinder path does.
+  assert.equal(client.getSegmentBoxHitFraction(0, 0, 10, 0, 0, 0, 0, half, long), 0);
+  // Missing entirely, on each axis.
+  assert.equal(client.getSegmentBoxHitFraction(-10, 5, 10, 5, 0, 0, 0, half, long), null);
+  assert.equal(client.getSegmentBoxHitFraction(-10, 0, -5, 0, 0, 0, 0, half, long), null);
+  // A quarter turn swaps which extent the segment meets.
+  const turned = client.getSegmentBoxHitFraction(-10, 0, 10, 0, 0, 0, Math.PI / 2, half, long);
+  assert.ok(Math.abs(turned - ((10 - long) / 20)) < 1e-9, `turned gave ${turned}`);
+
+  for (const args of [
+    [-10, 0, 10, 0, 0, 0, 0, half, long],
+    [0, -10, 0, 10, 0, 0, 0.7, half, long],
+    [-10, 5, 10, 5, 0, 0, 0, half, long],
+  ]) {
+    assert.deepEqual(
+      server.getSegmentBoxHitFraction(...args),
+      client.getSegmentBoxHitFraction(...args),
+      'client/server segment box test diverged'
+    );
+  }
+}
+
 console.log(`collision geometry tests passed (${checked} fuzz samples, ${solidSamples} solid, seed ${SEED})`);

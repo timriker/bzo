@@ -191,10 +191,11 @@ worse than trusting a modified client about a base it still had to drive to.
 ## What is left to add
 
 Upstream carries 47 flag types: a Null type, four team flags, and 42
-superflags. bzo has the four team flags and twelve superflags -- `US` Useless,
+superflags. bzo has the four team flags and fifteen superflags -- `US` Useless,
 `ID` Identify, `JP` Jumping, `WG` Wings, `R` Ricochet, `NJ` No Jumping, `SH`
-Shield, `F` Rapid Fire, `MG` Machine Gun, `L` Laser, `SB` Super Bullet and `IB`
-Invisible Bullet -- so **30 superflags remain**, 17 good and 13 bad. The table
+Shield, `F` Rapid Fire, `MG` Machine Gun, `L` Laser, `SB` Super Bullet, `IB`
+Invisible Bullet, `T` Tiny, `N` Narrow and `O` Obesity -- so **27 superflags
+remain**, 15 good and 12 bad. The table
 below is the whole list, grouped by the machinery each group needs rather than by
 name, because the machinery is what decides the order. `src/common/Flag.cxx` is
 the authority for every name, abbreviation, endurance, quality and help string;
@@ -205,14 +206,13 @@ the authority for every name, abbreviation, endurance, quality and help string;
 | 4 | `B` Blindness, `JM` Jamming, `CB` Colorblindness, `WA` Wide Angle | nothing; the machinery is in, and `WA` waits on the XR rule |
 | 5 | `V` High Speed, `QT` Quick Turn, `A` Agility, `M` Momentum, `RC` Reverse Controls, `FO` Forward Only, `RO` Reverse Only, `LT` Left Turn Only, `RT` Right Turn Only, `BY` Bouncy, `TR` Trigger Happy | the motion resolver, in the shared pair |
 | 6 | `SR` Steamroller, `G` Genocide | damage rules, and a per-tick proximity sweep |
-| 7 | `T` Tiny, `N` Narrow, `O` Obesity | per-player tank dimensions |
 | 10 | `SW` Shock Wave | a shot with no path -- an expanding sphere |
 | 11 | `TH` Thief | flag stealing |
 | 12 | `GM` Guided Missile | a steerable shot, and a lock-on target |
 | 13 | `ST` Stealth, `CL` Cloaking, `MQ` Masquerade, `SE` Seer | per-viewer visibility |
 | 14 | `OO` Oscillation Overthruster, `BU` Burrow, `PZ` Phantom Zone | movement through and under geometry |
 
-Phases 4 to 7 are each a small hook on machinery an earlier phase built. Phases
+Phases 4 to 6 are each a small hook on machinery an earlier phase built. Phases
 10 to 14 are each their own feature and can be taken in any order. Phases 8 and 9
 were taken out of order -- 9 because it hangs off a world switch rather than off
 the phases before it, as `JP`, `NJ` and `WG` do, and 8 because the one thing it
@@ -690,46 +690,69 @@ each one: a shot that has already killed a tank, or been taken by a shield, has
 nothing left to hit the next tank with. Upstream never has this to decide --
 each client tests only its own tank, so one shot is one hit by construction.
 
-## Phase 7 -- per-player tank dimensions
+## Phase 7 -- per-player tank dimensions (implemented)
 
-Three flags, and one number that is currently a literal in a dozen places.
-`checkCollision(x, y, z, tankRadius = 2, ...)` (`server.js:1933`),
-`validateMovement`'s hardcoded `2` (`:2220`), the hit test's `TANK_HIT_RADIUS`
-and `TANK_HIT_HEIGHT` (`:4085`), `findValidSpawnPosition` and the client's
-`validateMove` (`public/client.js:4957`) all assume one size for every tank.
-
-Give a player a size derived from its flag, thread it through all of those, and
-scale the rendered model to match:
+Three flags, and one size that used to be the same for every tank. The scale is a
+pair rather than a number, because upstream's `Player::updateFlagEffect`
+(`Player.cxx:733`) sets the length and width targets separately and never touches
+height at all -- so a Tiny tank is short and stubby rather than small, and an
+Obese one is wide rather than tall.
 
 | Flag | Effect | Constant |
 |---|---|---|
 | `T` Tiny | length and width x0.4 | `_tinyFactor` |
-| `N` Narrow | width x0.001 | literal in `Player.cxx:756` |
+| `N` Narrow | width x0.001, length untouched | literal in `Player.cxx:756` |
 | `O` Obesity | length and width x2.5, too wide for a teleporter | `_obeseFactor` |
 
-Height is never scaled -- `Player::setFlagEffect` (`Player.cxx:733`) touches
-only the first two of the three dimensions, so a Tiny tank is short and stubby
-rather than small, and an Obese one is not tall. Upstream also eases the scale
-in over `FlagEffectTime` rather than snapping it; that is cosmetic and can wait,
-but the collision size must be the *target* from the moment the flag is taken or
-the two sides disagree during the ease.
+`getTankDimensionScale` in the flags pair is the whole rule, and the factors are
+upstream's while the bases stay bzo's -- `TANK_HALF_WIDTH` 1.4 and
+`TANK_HALF_LENGTH` 3.0 in the collision pair, which are upstream's own halved
+dimensions, and `TANK_HIT_RADIUS` 2, which is not.
 
-Upstream's dimensions are `_tankWidth` 2.8, `_tankLength` 6.0 (so
-`_tankRadius` = 0.72 x length = 4.32) and `_tankHeight` 2.05. bzo's tank is
-half that width, which is why `FLAG_GRAB_RADIUS` is built from
-`BZFLAG_TANK_RADIUS` rather than from bzo's 2 -- the same question comes up
-here, and the same answer applies: scale the *factors* from upstream and the
-*base* from bzo.
+**Where the size is asked.** `testOrigRectTank` and `pyramidIntersectsTank` take
+the scale, so obstacle collision, the swept step and `findSupportSurface` all use
+it on both sides of the wire: a narrow tank really does fit sideways through a gap
+nothing else fits, and an obese one is stopped by a teleporter's portal interior
+without a rule of its own, because that interior is checked at full size.
 
-`N` Narrow is the one that needs the oriented box rather than the cylinder, and
-`checkCollision` already has both shapes (`options.rotation`). The shot hit test
-does not -- `getSegmentTankHitFraction` is a segment against an upright cylinder
--- so `N` only reads as narrow against shots once that test takes the box too.
-Worth doing in this phase; upstream's `Player::getDimensions` is one shape for
-both.
+**The hit shape is not the collision shape, and that is upstream's doing.**
+`Player::getRadius` (`Player.cxx:204`) is `dimensionsScale[0] * _tankRadius` --
+the *length* scale on the radius -- and carries upstream's own note: "this
+encompasses everything but Narrow -- the Obese, Tiny, and Thief flags adjust the
+radius, but Narrow does not." Narrow only touches the width, so the sphere it
+would otherwise keep is full size. `SegmentedShotStrategy::checkHit`
+(`SegmentedShotStrategy.cxx:262`) therefore gives Narrow a box of its own, and
+says why in place: *"width of box is shell radius so you can actually hit narrow
+tank head on"*. So:
 
-`O` not fitting through a teleporter falls out of the box test for free, since
-bzo's teleporter portal interior already keeps a full-radius check.
+- every flag but `N` meets a sphere, scaled by the length factor;
+- `N` meets an oriented box, `getSegmentBoxHitFraction` in the collision pair,
+  whose half width is the **shell radius** and whose half length is the tank's
+  own -- not `NARROW_FACTOR`, which would be unhittable from the front rather
+  than hard to hit.
+
+bzo does not apply upstream's `0.99 *` shrink on the sphere, because bzo's base
+radius is its own number rather than `_tankRadius`.
+
+**The ease is cosmetic only.** Upstream eases the scale in over
+`_flagEffectTime` 0.64s and its collision uses the eased value, because upstream
+tests hits on the victim's own client. bzo's server owns hits, so the gameplay
+size is the **target** from the moment the flag changes hands and only the drawn
+tank eases -- `updateTankDimensions` keeps upstream's `dimensionsScale`,
+`dimensionsTarget` and `dimensionsRate` per tank and fixes the rate when the
+target changes, which is what makes the ease linear and exactly
+`_flagEffectTime` long however far it has to travel. A hitbox that disagreed with
+the server for two thirds of a second would be worse than a tank that changes
+size faster than it looks like it should.
+
+The server-position ghost is scaled by the same factors. It is a sibling of the
+tank rather than a child, so it inherits nothing and has to be told; a full-size
+ghost around a Tiny tank would misreport the one thing it exists to show.
+
+What is *not* per-player: `getPauseRefusal`, which still asks a
+`BZFLAG_TANK_RADIUS` cylinder. It is a bzo-only guard with no upstream
+equivalent and is deliberately more generous than the box, so a flag can only
+ever make it stricter than it needs to be.
 
 ## Phase 8 -- shot variants (implemented)
 
@@ -844,7 +867,7 @@ follow, both of them upstream's behaviour rather than bzo's old behaviour:
   side of the wall the shot bounced off did not just get hit.
 
 `TANK_HIT_RADIUS` and `TANK_HIT_HEIGHT` are what that test reads, and they are
-where phase 7's dimension flags will land.
+where phase 7's dimension flags landed.
 
 **`SB` Super Bullet.** Traced against nothing rather than against the obstacle
 list, which is upstream's `Through` -- including a teleporter frame, which is a
@@ -988,10 +1011,12 @@ Steamroller is the same shape of code.
 `TH`. A fast, tiny, harmless tank whose shot steals a flag instead of killing:
 speed `_thiefVelAd` 1.67, size `_thiefTinyFactor` 0.5, shot velocity
 `_thiefAdShotVel` 8.0, rate `_thiefAdRate` 12.0, life `_thiefAdLife` 0.05, and
-`_thiefDropTime` half a reload before the stolen flag can be dropped. Needs
-phase 7's dimensions, and phase 8's shot variants are in: `getShotEffects` is
-where its velocity, rate and life go. One new server rule is left: a
-hit transfers the victim's flag to the shooter rather than killing.
+`_thiefDropTime` half a reload before the stolen flag can be dropped. Phase 7's
+dimensions and phase 8's shot variants are both in, so its size is one more case
+in `getTankDimensionScale` -- `_thiefTinyFactor` on both axes, exactly as `T` and
+`O` are -- and its velocity, rate and life go in `getShotEffects`. One new server
+rule is left: a hit transfers the victim's flag to the shooter rather than
+killing.
 
 ## Phase 12 -- Guided Missile
 

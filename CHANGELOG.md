@@ -6,6 +6,38 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
 
 ## [Unreleased]
 
+### Added
+- Phase 7 of the flag plan: `T` Tiny, `N` Narrow and `O` Obesity, and the
+  per-player tank size all three need (#6). A flag scales the tank's length and
+  width and never its height, which is what `Player::updateFlagEffect` does, so a
+  Tiny tank is short and stubby rather than small and an Obese one is wide rather
+  than tall. `getTankDimensionScale` in the flags pair is the whole rule, with
+  upstream's `_tinyFactor` 0.4, `_obeseFactor` 2.5 and Narrow's 0.001 width.
+  `testOrigRectTank` and `pyramidIntersectsTank` now take that scale, so obstacle
+  collision, the swept step and the support-surface test all honour it on both
+  sides of the wire: a narrow tank fits sideways through a gap nothing else fits,
+  and an obese one is stopped by a teleporter without a rule of its own, because
+  the portal interior is already checked at full size.
+- The shot hit test follows upstream's two shapes rather than the drawn tank.
+  `Player::getRadius` is `dimensionsScale[0] * _tankRadius` -- the length scale --
+  and upstream's own note says "the Obese, Tiny, and Thief flags adjust the
+  radius, but Narrow does not", because Narrow only touches width. So every flag
+  but `N` meets a sphere scaled by the length factor, and `N` meets an oriented
+  box, whose half width is the **shell radius** rather than the tank's, in
+  upstream's words: "width of box is shell radius so you can actually hit narrow
+  tank head on". At the tank's real narrow width it would be unhittable head-on
+  rather than hard to hit.
+- The drawn tank eases between sizes over `_flagEffectTime` 0.64s, keeping
+  upstream's `dimensionsScale`/`Target`/`Rate` per tank and fixing the rate when
+  the target changes, so the ease is linear and takes exactly that long however
+  far it travels. Only the drawing eases: the collision and hit sizes are the
+  target from the moment the flag changes hands, because bzo's server owns hits
+  and a hitbox that disagreed with it for two thirds of a second would be worse
+  than a tank that resizes faster than it looks like it should. The
+  server-position ghost is scaled by the same factors -- it is a sibling of the
+  tank, not a child, so it inherits nothing and a full-size ghost around a Tiny
+  tank would misreport the one thing it is there to show.
+
 ## [1.0.68] - 2026-09-07
 
 ### Added

@@ -48,6 +48,21 @@ const FLAG_CLEARANCE = 10.0;
 // the world instead of landing. FlagInfo.cxx:137 reads it on every grab, so a
 // server may change it; this is upstream's global.cxx default. A sticky flag
 // ignores it and always gets one grab.
+// Player::updateFlagEffect (Player.cxx:733). A flag scales the tank's length and
+// width -- never its height, which is why a Tiny tank is short and stubby rather
+// than small, and an Obese one is wide rather than tall. `N` Narrow is the one
+// that touches width alone, and its factor is a literal upstream rather than a
+// BZDB variable.
+const OBESE_FACTOR = 2.5;
+const TINY_FACTOR = 0.4;
+const NARROW_FACTOR = 0.001;
+// _flagEffectTime: how long upstream takes to ease the scale from what it was to
+// what the new flag asks for. bzo eases the *drawn* tank over this and nothing
+// else: the collision and hit sizes are the target from the moment the flag
+// changes hands, because a hitbox that disagrees with the server for two thirds
+// of a second is worse than a tank that changes size faster than it looks like
+// it should.
+const FLAG_EFFECT_TIME = 0.64;
 const MAX_FLAG_GRABS = 4;
 // Upstream stores it in an int-valued BZDB var with no range of its own, so the
 // only bound worth keeping is the one that makes it mean anything: a flag has to
@@ -291,6 +306,23 @@ const FLAG_TYPES = Object.freeze({
     team: null,
     help: 'Tank can drive in air.',
   }),
+  T: Object.freeze({
+    abbreviation: 'T',
+    name: 'Tiny',
+    endurance: FLAG_ENDURANCE.UNSTABLE,
+    quality: FLAG_QUALITY.GOOD,
+    team: null,
+    help: 'Tank is small and can get through small openings.  Very hard to hit.',
+  }),
+  N: Object.freeze({
+    abbreviation: 'N',
+    name: 'Narrow',
+    endurance: FLAG_ENDURANCE.UNSTABLE,
+    quality: FLAG_QUALITY.GOOD,
+    team: null,
+    help: 'Tank is super thin.  Very hard to hit from front but is normal size'
+      + ' from side.  Can get through small openings.',
+  }),
   NJ: Object.freeze({
     abbreviation: 'NJ',
     name: 'No Jumping',
@@ -298,6 +330,14 @@ const FLAG_TYPES = Object.freeze({
     quality: FLAG_QUALITY.BAD,
     team: null,
     help: 'Tank can\'t jump.',
+  }),
+  O: Object.freeze({
+    abbreviation: 'O',
+    name: 'Obesity',
+    endurance: FLAG_ENDURANCE.STICKY,
+    quality: FLAG_QUALITY.BAD,
+    team: null,
+    help: 'Tank becomes very large.  Can\'t fit through teleporters.',
   }),
 });
 
@@ -356,6 +396,50 @@ function normalizeShakeWins(count) {
 // fractional value truncates; anything that is not a usable count falls back to
 // the default rather than to zero, because zero would take a flag out of the
 // world on the grab that found it.
+// Player::updateFlagEffect's dimension targets, as scale factors on the tank's
+// own length and width. Upstream sets both from one factor for `T` and `O` and
+// touches only the width for `N`, so this returns the pair rather than a single
+// number. Every other flag, and no flag at all, is the tank's own size.
+function getTankDimensionScale(abbreviation) {
+  switch (abbreviation) {
+    case 'O': return { length: OBESE_FACTOR, width: OBESE_FACTOR };
+    case 'T': return { length: TINY_FACTOR, width: TINY_FACTOR };
+    case 'N': return { length: 1, width: NARROW_FACTOR };
+    default: return { length: 1, width: 1 };
+  }
+}
+
+// Player::getRadius (Player.cxx:204), carrying upstream's own note: "this
+// encompasses everything but Narrow -- the Obese, Tiny, and Thief flags adjust
+// the radius, but Narrow does not." The hit sphere follows the *length* scale,
+// which is exactly the axis Narrow leaves alone, so a narrow tank keeps a
+// full-size sphere and would be no harder to hit at all. That is why
+// SegmentedShotStrategy::checkHit gives Narrow a shape of its own.
+function getTankHitRadiusScale(abbreviation) {
+  return getTankDimensionScale(abbreviation).length;
+}
+
+// SegmentedShotStrategy::checkHit (SegmentedShotStrategy.cxx:262). A shot meets
+// a sphere around every tank but a narrow one, which gets an oriented box --
+// and the box is only as wide as the shell, never as wide as the tank, in
+// upstream's own words: "width of box is shell radius so you can actually hit
+// narrow tank head on". At the tank's real narrow width the box would be
+// unhittable from the front rather than hard to hit, which is a different flag.
+function usesNarrowHitBox(abbreviation) {
+  return abbreviation === 'N';
+}
+
+// The eased scale a tank is *drawn* at, `elapsed` seconds after its flag last
+// changed. Upstream's rate is `(target - scale) / FlagEffectTime`, which takes
+// exactly FlagEffectTime to arrive whatever it started from, so the ease is a
+// straight interpolation from the scale in hand to the one the flag asks for.
+function getTankDimensionEase(fromScale, targetScale, elapsedSeconds) {
+  if (!(elapsedSeconds >= 0)) return targetScale;
+  if (elapsedSeconds >= FLAG_EFFECT_TIME) return targetScale;
+  const t = elapsedSeconds / FLAG_EFFECT_TIME;
+  return fromScale + ((targetScale - fromScale) * t);
+}
+
 function normalizeFlagGrabs(count) {
   const value = Math.floor(Number(count));
   if (!Number.isFinite(value)) return MAX_FLAG_GRABS;
@@ -684,8 +768,12 @@ module.exports = {
   FLAG_POLE_SIZE,
   FLAG_POLE_WIDTH,
   FLAG_CLEARANCE,
+  FLAG_EFFECT_TIME,
   MAX_FLAG_GRABS,
   MAX_FLAG_GRABS_MIN,
+  NARROW_FACTOR,
+  OBESE_FACTOR,
+  TINY_FACTOR,
   BASE_SIZE,
   SHIELD_FLIGHT,
   RAPID_FIRE_AD_VEL,
@@ -720,6 +808,9 @@ module.exports = {
   getFlagEndurance,
   canJump,
   normalizeShakeTimeout,
+  getTankDimensionEase,
+  getTankDimensionScale,
+  getTankHitRadiusScale,
   normalizeFlagGrabs,
   normalizeShakeWins,
   getAntidoteCoordinate,
@@ -730,6 +821,7 @@ module.exports = {
   getFlagTeamIndex,
   getKnownFlagAbbreviation,
   isBadFlag,
+  usesNarrowHitBox,
   getTeamFlagAbbreviation,
   rememberFlagIdentity,
   computeFlagFlight,

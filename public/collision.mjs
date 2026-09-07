@@ -149,15 +149,64 @@ export function testOrigRectRect(px, pz, angle, dx1, dy1, dx2, dy2) {
 // The tank box against an obstacle, both expressed in the obstacle's local
 // frame. `rotation` is the tank's heading in bzo terms, where forward is
 // (-sin r, -cos r); the lateral axis leads by a quarter turn.
-export function testOrigRectTank(halfW, halfD, localX, localZ, tankAngle, slack = 0) {
+export function testOrigRectTank(halfW, halfD, localX, localZ, tankAngle, slack = 0, tankScale = null) {
+  // Player::getDimensions, which a flag scales on the lateral and forward axes
+  // and never on height. `null` is the tank's own size, which is every tank
+  // without one of phase 7's three flags.
+  const halfWidth = TANK_HALF_WIDTH * (tankScale ? tankScale.width : 1);
+  const halfLength = TANK_HALF_LENGTH * (tankScale ? tankScale.length : 1);
   // Slack shrinks the tank, never the obstacle, mirroring how the circle path
   // reduces the tested radius.
-  const trim = Math.max(0, Math.min(slack, TANK_HALF_WIDTH));
+  const trim = Math.max(0, Math.min(slack, halfWidth));
   return testOrigRectRect(
     localX, localZ, tankAngle,
-    TANK_HALF_WIDTH - trim, TANK_HALF_LENGTH - trim,
+    halfWidth - trim, halfLength - trim,
     halfW, halfD
   );
+}
+
+// A segment against an oriented box centred on a tank, in the same frame
+// testOrigRectTank works in: `angle` is what getTankLocalAngle returns, the
+// lateral axis, so `halfWidth` measures across the tank and `halfLength` along
+// it. Returns the fraction of the segment at first contact, 0 if it began
+// inside, or null if it never touches.
+//
+// This is timeRayHitsBlock reduced to two dimensions and a unit interval. The
+// caller owns the height gate, as it does for the cylinder.
+export function getSegmentBoxHitFraction(
+  fromX, fromZ, toX, toZ, centreX, centreZ, angle, halfWidth, halfLength
+) {
+  const c = Math.cos(angle);
+  const s = Math.sin(angle);
+  // Both endpoints into the box's frame, the way testOrigRectRect rotates a
+  // point into the rotated rect's.
+  const px = fromX - centreX;
+  const pz = fromZ - centreZ;
+  const qx = toX - centreX;
+  const qz = toZ - centreZ;
+  const ox = (c * px) + (s * pz);
+  const oz = (c * pz) - (s * px);
+  const ex = ((c * qx) + (s * qz)) - ox;
+  const ez = ((c * qz) - (s * qx)) - oz;
+
+  let tMin = 0;
+  let tMax = 1;
+  const slab = (origin, delta, half) => {
+    if (Math.abs(delta) < 1e-12) return Math.abs(origin) <= half;
+    let near = (-half - origin) / delta;
+    let far = (half - origin) / delta;
+    if (near > far) {
+      const swap = near;
+      near = far;
+      far = swap;
+    }
+    if (near > tMin) tMin = near;
+    if (far < tMax) tMax = far;
+    return tMin <= tMax;
+  };
+  if (!slab(ox, ex, halfWidth)) return null;
+  if (!slab(oz, ez, halfLength)) return null;
+  return tMin;
 }
 
 // The tank's lateral axis angle inside an obstacle's local frame.
@@ -290,7 +339,7 @@ export function pyramidIntersectsCylinder(obs, x, y, z, radius, height) {
 // The tank box against a pyramid. The pyramid's cross-section shrinks with
 // height exactly as it does for the cylinder test, so only the shape tested
 // against it differs.
-export function pyramidIntersectsTank(obs, x, y, z, rotation, height, slack = 0) {
+export function pyramidIntersectsTank(obs, x, y, z, rotation, height, slack = 0, tankScale = null) {
   const baseY = obs.baseY || 0;
   if (y + height < baseY) return false;
   if (y >= baseY + getPyramidHeight(obs)) return false;
@@ -303,7 +352,8 @@ export function pyramidIntersectsTank(obs, x, y, z, rotation, height, slack = 0)
     (obs.w / 2) * shrink, (obs.d / 2) * shrink,
     local.x, local.z,
     getTankLocalAngle(rotation, obs.rotation),
-    slack
+    slack,
+    tankScale
   );
 }
 

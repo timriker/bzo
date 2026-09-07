@@ -42,9 +42,12 @@ const {
   getFlagThrownAltitude,
   getFlagType,
   getShotEffects,
+  getTankDimensionScale,
+  getTankHitRadiusScale,
   getTeamFlagAbbreviation,
   isBadFlag,
   isTeamFlag,
+  usesNarrowHitBox,
 } = require('./server/flags.cjs');
 const {
   documentTitle,
@@ -63,8 +66,10 @@ const {
   getTankLocalAngle,
   isOverFlatTop,
   pyramidIntersectsCylinder,
+  getSegmentBoxHitFraction,
   pyramidIntersectsTank,
   reflectShotDirection,
+  TANK_HALF_LENGTH,
   TANK_HEIGHT,
   testOrigRectTank,
   traceShotStep,
@@ -2283,6 +2288,10 @@ function checkCollision(x, y, z, tankRadius = 2, options = {}) {
   // harder to pass through.
   const slack = Math.max(0, Math.min(options.slack || 0, tankRadius));
   const effectiveRadius = tankRadius - slack;
+  // Phase 7's dimension flags. Only the oriented-box path can express a length
+  // and a width separately, which is the path a tank always takes; the cylinder
+  // is for projectiles, which carry no flag.
+  const tankScale = options.tankScale || null;
   for (const obs of getCollisionColliders()) {
     if (ignoreTeleporters && obs?.kind === 'teleporter') continue;
     // `drivethrough` in a `.bzw`, `Obstacle::isDriveThrough` upstream: an
@@ -2306,7 +2315,7 @@ function checkCollision(x, y, z, tankRadius = 2, options = {}) {
     const { x: localX, z: localZ } = getColliderLocalPoint(x, z, obs);
     const tankAngle = useTankBox ? getTankLocalAngle(options.rotation, obs.rotation) : 0;
     const hitsRect = (rectHalfW, rectHalfD, rectSlack) => (useTankBox
-      ? testOrigRectTank(rectHalfW, rectHalfD, localX, localZ, tankAngle, rectSlack)
+      ? testOrigRectTank(rectHalfW, rectHalfD, localX, localZ, tankAngle, rectSlack, tankScale)
       : getBoxCollisionDistanceSquared(localX, localZ, rectHalfW, rectHalfD)
         < (tankRadius - rectSlack) * (tankRadius - rectSlack));
 
@@ -2347,7 +2356,7 @@ function checkCollision(x, y, z, tankRadius = 2, options = {}) {
       // treated every inverted pyramid as upright and disagreed with the client
       // about roughly a fifth of the volume around it.
       const hitsPyramid = useTankBox
-        ? pyramidIntersectsTank(obs, x, y, z, options.rotation, tankHeight, slack)
+        ? pyramidIntersectsTank(obs, x, y, z, options.rotation, tankHeight, slack, tankScale)
         : pyramidIntersectsCylinder(obs, x, y, z, effectiveRadius, tankHeight);
       if (hitsPyramid) {
         if (!suppressLog) {
@@ -2569,7 +2578,8 @@ function validateMovement(player, newX, newY, newZ, newRotation, deltaTime, velo
     const collision = checkCollision(newX, newY, newZ, 2, {
       ignoreTeleporters,
       rotation: newRotation,
-      slack: ANTICHEAT_CONFIG.collisionSlack
+      slack: ANTICHEAT_CONFIG.collisionSlack,
+      tankScale: getPlayerTankScale(player),
     });
 
     if (collision) {
@@ -3227,6 +3237,14 @@ function sendFlagDrop(flag) {
 
 function getPlayerFlag(playerId) {
   return flags.find((flag) => flag.owner === playerId) || null;
+}
+
+// The size a tank is, from the flag it is carrying. Upstream eases this in over
+// _flagEffectTime; bzo takes the target from the moment the flag changes hands,
+// so the client and the server never disagree about a hitbox mid-ease. Only the
+// drawn tank eases.
+function getPlayerTankScale(player) {
+  return getTankDimensionScale(getPlayerFlag(player?.id)?.type ?? null);
 }
 
 // grabFlag(). The client sweeps for flags it is driving over and asks; this
@@ -4373,10 +4391,14 @@ function applyPlayerTeleportMessage(player, sourceState, fromFaceId, toFaceId, n
   const outY = Math.max(0, transformed.pointOut.y + transformed.dirOut.y * PLAYER_TELEPORT_EXIT_EPSILON);
   const outZ = transformed.pointOut.z + transformed.dirOut.z * PLAYER_TELEPORT_EXIT_EPSILON;
 
+  // "Tank becomes very large.  Can't fit through teleporters." Obesity needs no
+  // rule of its own for that: the portal interior is checked at full size, so a
+  // tank too wide for the opening is simply blocked here.
   const destinationCollision = checkCollision(outX, outY, outZ, 2, {
     ignoreTeleporters: true,
     rotation: player.rotation,
     suppressLog: true,
+    tankScale: getPlayerTankScale(player),
   });
   if (destinationCollision) {
     return { ok: false, reason: 'blocked_exit' };
@@ -4541,7 +4563,9 @@ function logShotEnd(projectile, cause, point, details = '') {
 
 // The tank a shot's hit test sees: bzo's own radius, which is not upstream's
 // `_tankRadius` 4.32, and `_tankHeight` from the collision pair, which is.
-// Phase 7's dimension flags are what turn these into a per-player answer.
+// Phase 7's dimension flags scale the radius, following upstream's own basis --
+// `Player::getRadius` is `dimensionsScale[0] * _tankRadius`, the length scale on
+// the base radius -- so the factors are upstream's and the base stays bzo's.
 const TANK_HIT_RADIUS = 2;
 const TANK_HIT_HEIGHT = TANK_HEIGHT;
 
@@ -4554,14 +4578,32 @@ const TANK_HIT_HEIGHT = TANK_HEIGHT;
 //
 // A shot that starts the segment already inside the radius strikes where it
 // started, which is what a beam fired point blank does.
-function getSegmentTankHitFraction(from, to, tank) {
+function getSegmentTankHitFraction(from, to, tank, flagType = null) {
+  // SegmentedShotStrategy::checkHit's two shapes. Narrow is the exception and
+  // upstream says why in place: the box is "shell radius" wide rather than tank
+  // width, "so you can actually hit narrow tank head on". Its length is the
+  // tank's full length, unscaled, because Narrow does not touch that axis.
+  if (usesNarrowHitBox(flagType)) {
+    return getSegmentBoxHitFraction(
+      from.x, from.z, to.x, to.z,
+      tank.x, tank.z,
+      // getExtrapolatedPosition names the heading `r`; a tank object straight off
+      // a player names it `rotation`. Both reach here.
+      getTankLocalAngle(Number.isFinite(tank.r) ? tank.r : (tank.rotation || 0)),
+      GAME_CONFIG.SHOT_RADIUS,
+      TANK_HALF_LENGTH
+    );
+  }
+  // Every other flag, and no flag, meets the sphere -- scaled by the length
+  // factor, which is the axis Player::getRadius reads.
+  const radius = TANK_HIT_RADIUS * getTankHitRadiusScale(flagType);
   const dx = to.x - from.x;
   const dz = to.z - from.z;
   const fx = from.x - tank.x;
   const fz = from.z - tank.z;
   const a = (dx * dx) + (dz * dz);
   const b = (fx * dx) + (fz * dz);
-  const c = (fx * fx) + (fz * fz) - (TANK_HIT_RADIUS * TANK_HIT_RADIUS);
+  const c = (fx * fx) + (fz * fz) - (radius * radius);
   if (a < 1e-12) return c <= 0 ? 0 : null;
   const discriminant = (b * b) - (a * c);
   if (discriminant < 0) return null;
@@ -4591,7 +4633,8 @@ function findShotPlayerHit(proj, from, to, now) {
 
     // Use extrapolated position for accurate hit detection
     const extrapolated = player.getExtrapolatedPosition(now);
-    const fraction = getSegmentTankHitFraction(from, to, extrapolated);
+    const playerFlagType = getPlayerFlag(player.id)?.type ?? null;
+    const fraction = getSegmentTankHitFraction(from, to, extrapolated, playerFlagType);
     if (fraction === null) return;
     if (best && best.fraction <= fraction) return;
 

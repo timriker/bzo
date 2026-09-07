@@ -198,6 +198,10 @@ const BZFLAG_SHOT_EXPLOSION_SIZE = 1.2 * BZFLAG_TANK_LENGTH;
 const BZFLAG_SHOT_EXPLOSION_DURATION = 0.8;
 const BZFLAG_SHOT_EXPLOSION_LIGHT_FADE_START_RATIO = 0.7;
 const PROJECTED_SHADOW_MIN_LIGHT_Y = 0.05;
+// The server-position ghost wraps the tank 5% out so both are visible at once.
+// It is exported because the ghost is a sibling of the tank, not a child, so
+// whoever scales the tank has to scale the ghost by the same factors.
+export const GHOST_SCALE = 1.05;
 const PROJECTED_SHADOW_STENCIL_REF = 1;
 // Write the stencil before the darkening overlay pass reads it.
 const PROJECTED_SHADOW_RENDER_ORDER = 10;
@@ -3531,8 +3535,10 @@ class RenderManager {
       }
     });
 
-    // Scale slightly larger to wrap around the tank (1.05x = 5% larger)
-    ghostTank.scale.set(1.05, 1.05, 1.05);
+    // Scale slightly larger to wrap around the tank. Phase 7's dimension flags
+    // scale it further from client.js, since the ghost is not a child of the
+    // tank and does not inherit the tank's own scaling.
+    ghostTank.scale.set(GHOST_SCALE, GHOST_SCALE, GHOST_SCALE);
 
     ghostTank.traverse((child) => {
       if (child.isMesh && child.material) {

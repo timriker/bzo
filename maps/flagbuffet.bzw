@@ -19,6 +19,8 @@ options
   -srvmsg "Flag names progress alphabetically clockwise from the north."
   -srvmsg "Good flags are on the inner loop.  Bad flags are on the outer loop."
   -srvmsg "Self-destruct may be the easiest way to drop a Bouncy flag."
+	# A bad flag also falls off after this many kills.
+	-sw 1
 end
 
 world

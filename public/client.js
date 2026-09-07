@@ -118,7 +118,7 @@ import {
   bindToggleButton,
   fitText
 } from './hud.js';
-import { renderManager, DEFAULT_MUZZLE_HEIGHT } from './render.js';
+import { renderManager, DEFAULT_MUZZLE_HEIGHT, GHOST_SCALE } from './render.js';
 import { describeMeasurements, describeRenderCapabilities } from './capabilities.mjs';
 import {
   getFramePhaseReport,
@@ -177,6 +177,7 @@ import {
 import {
   ANTIDOTE_FLAG_COLOR,
   BZFLAG_TANK_RADIUS,
+  FLAG_EFFECT_TIME,
   FLAG_ENDURANCE,
   FLAG_GRAB_INTERVAL_MS,
   FLAG_GRAB_LEVEL_TOLERANCE,
@@ -194,6 +195,7 @@ import {
   getFlagType,
   getKnownFlagAbbreviation,
   getShotEffects,
+  getTankDimensionScale,
   getWingsJumpVelocity,
   getWingsSlideVelocity,
   hasAirControl,
@@ -4927,6 +4929,7 @@ function checkCollision(x, y, z, ignoredObstacles = null, rotation = playerRotat
   // candidates by height (World.cxx compareHeights) so the tallest wins.
   let landing = null;
   let sweptCollision = null;
+  const tankScale = getMyTankScale();
   for (const obs of getCollisionColliders()) {
     if (ignoredObstacles && ignoredObstacles.has(obs)) continue;
     // `drivethrough` in a `.bzw`, `Obstacle::isDriveThrough` upstream: an
@@ -4963,7 +4966,7 @@ function checkCollision(x, y, z, ignoredObstacles = null, rotation = playerRotat
     const { x: localX, z: localZ } = getColliderLocalPoint(x, z, obs);
     const tankAngle = getTankLocalAngle(rotation, obs.rotation);
     const hitsRect = (rectHalfW, rectHalfD) =>
-      testOrigRectTank(rectHalfW, rectHalfD, localX, localZ, tankAngle);
+      testOrigRectTank(rectHalfW, rectHalfD, localX, localZ, tankAngle, 0, tankScale);
     const overlapsFootprint = hitsRect(halfW, halfD);
 
     const pyramidSurface = obs.type === 'pyramid' ? getPyramidSurfaceContact(obs, x, y, z) : null;
@@ -5008,7 +5011,7 @@ function checkCollision(x, y, z, ignoredObstacles = null, rotation = playerRotat
     } else if (obs.type === 'pyramid') {
       // Mirrors BZFlag PyramidBuilding::inBox via the shared geometry module,
       // so the server evaluates the same solid volume the client moves through.
-      if (pyramidIntersectsTank(obs, x, y, z, rotation, tankHeight)) {
+      if (pyramidIntersectsTank(obs, x, y, z, rotation, tankHeight, 0, tankScale)) {
         const hit = recordCollision();
         if (hit) return hit;
       }
@@ -5624,6 +5627,7 @@ function getSurfaceContact(obs, worldX, worldY, worldZ, tankRadius = 2) {
 
 function findSupportSurface(worldX, worldY, worldZ) {
   let bestSupport = null;
+  const tankScale = getMyTankScale();
   for (const obs of getCollisionColliders()) {
     // Nothing a tank drives through holds one up. checkCollision already asks
     // this question and the support test has to give the same answer, or the
@@ -5654,7 +5658,8 @@ function findSupportSurface(worldX, worldY, worldZ) {
     const { x: localX, z: localZ } = getColliderLocalPoint(worldX, worldZ, obs);
     if (!testOrigRectTank(
       obs.w / 2, obs.d / 2, localX, localZ,
-      getTankLocalAngle(playerRotation, obs.rotation)
+      getTankLocalAngle(playerRotation, obs.rotation),
+      0, tankScale
     )) continue;
     const surfaceY = (obs.baseY || 0) + obs.h;
     const deltaY = surfaceY - worldY;
@@ -5730,6 +5735,24 @@ function ensureTankDimensionState(tank) {
   if (!Number.isFinite(tank.userData.landingSquishScaleY)) tank.userData.landingSquishScaleY = 1;
   if (!Number.isFinite(tank.userData.landingSquishRecoverRate)) tank.userData.landingSquishRecoverRate = 1 / LANDING_SQUISH_TIME;
   if (!Number.isFinite(tank.userData.spawnScale)) tank.userData.spawnScale = 1;
+  // Player::dimensionsScale / Target / Rate, for the drawn tank only. The
+  // gameplay size is the target from the moment the flag changes hands.
+  if (!Number.isFinite(tank.userData.dimensionScaleLength)) tank.userData.dimensionScaleLength = 1;
+  if (!Number.isFinite(tank.userData.dimensionScaleWidth)) tank.userData.dimensionScaleWidth = 1;
+  if (!Number.isFinite(tank.userData.dimensionTargetLength)) tank.userData.dimensionTargetLength = 1;
+  if (!Number.isFinite(tank.userData.dimensionTargetWidth)) tank.userData.dimensionTargetWidth = 1;
+  if (!Number.isFinite(tank.userData.dimensionRateLength)) tank.userData.dimensionRateLength = 0;
+  if (!Number.isFinite(tank.userData.dimensionRateWidth)) tank.userData.dimensionRateWidth = 0;
+}
+
+// Player::updateDimensions (Player.cxx:503) for one axis. The rate is fixed when
+// the target changes, which is what makes the ease linear and exactly
+// _flagEffectTime long however far it has to travel.
+function easeTankDimension(scale, target, rate, deltaTime) {
+  if (rate === 0 || scale === target) return target;
+  const next = scale + (deltaTime * rate);
+  if (rate < 0) return next < target ? target : next;
+  return next > target ? target : next;
 }
 
 function applySpawnGrow(tank) {
@@ -5758,9 +5781,36 @@ function applyLandingSquish(tank, impactSpeed = 0) {
 }
 
 function updateTankDimensions(deltaTime) {
-  tanks.forEach((tank) => {
+  tanks.forEach((tank, playerId) => {
     if (!tank?.userData) return;
     ensureTankDimensionState(tank);
+
+    // Player::updateFlagEffect: a change of flag sets new targets and the rate
+    // that reaches them over _flagEffectTime. Height is never scaled, so only
+    // the length and width axes move.
+    const target = getTankDimensionScale(getPlayerFlag(playerId)?.type ?? null);
+    if (tank.userData.dimensionTargetLength !== target.length) {
+      tank.userData.dimensionRateLength =
+        (target.length - tank.userData.dimensionScaleLength) / FLAG_EFFECT_TIME;
+      tank.userData.dimensionTargetLength = target.length;
+    }
+    if (tank.userData.dimensionTargetWidth !== target.width) {
+      tank.userData.dimensionRateWidth =
+        (target.width - tank.userData.dimensionScaleWidth) / FLAG_EFFECT_TIME;
+      tank.userData.dimensionTargetWidth = target.width;
+    }
+    tank.userData.dimensionScaleLength = easeTankDimension(
+      tank.userData.dimensionScaleLength,
+      tank.userData.dimensionTargetLength,
+      tank.userData.dimensionRateLength,
+      deltaTime
+    );
+    tank.userData.dimensionScaleWidth = easeTankDimension(
+      tank.userData.dimensionScaleWidth,
+      tank.userData.dimensionTargetWidth,
+      tank.userData.dimensionRateWidth,
+      deltaTime
+    );
 
     const baseScaleX = tank.userData.baseScaleX;
     const baseScaleY = tank.userData.baseScaleY;
@@ -5784,11 +5834,26 @@ function updateTankDimensions(deltaTime) {
       tank.userData.spawnScale = spawnScale;
     }
 
+    // bzo's tank faces -Z, so the model's Z is its length and its X is its
+    // width -- the two axes a flag scales.
     tank.scale.set(
-      baseScaleX * spawnScale,
+      baseScaleX * tank.userData.dimensionScaleWidth * spawnScale,
       baseScaleY * squishScaleY * spawnScale,
-      baseScaleZ * spawnScale
+      baseScaleZ * tank.userData.dimensionScaleLength * spawnScale
     );
+
+    // The server-position ghost is a sibling of the tank rather than a child, so
+    // it carries its own transform and has to be told. A ghost that stayed
+    // full-size around a Tiny tank would misreport the very thing it is there to
+    // show.
+    const ghost = tank.userData.ghostMesh;
+    if (ghost) {
+      ghost.scale.set(
+        GHOST_SCALE * tank.userData.dimensionScaleWidth,
+        GHOST_SCALE,
+        GHOST_SCALE * tank.userData.dimensionScaleLength
+      );
+    }
   });
 }
 
@@ -7387,6 +7452,13 @@ function getPlayerFlag(playerId) {
 
 function getMyFlag() {
   return getPlayerFlag(myPlayerId);
+}
+
+// The size the local tank is, from the flag it carries. The target, not the
+// eased scale the model is drawn at: the server tests the target from the moment
+// the flag changes hands, so anything the client collides with has to agree.
+function getMyTankScale() {
+  return getTankDimensionScale(getMyFlag()?.type ?? null);
 }
 
 // ScoreboardRenderer::drawPlayerScore names a team flag after the callsign and a
