@@ -195,7 +195,8 @@ superflags. bzo has the four team flags and fifteen superflags -- `US` Useless,
 `ID` Identify, `JP` Jumping, `WG` Wings, `R` Ricochet, `NJ` No Jumping, `SH`
 Shield, `F` Rapid Fire, `MG` Machine Gun, `L` Laser, `SB` Super Bullet, `IB`
 Invisible Bullet, `T` Tiny, `N` Narrow, `O` Obesity, `B` Blindness, `JM` Jamming
-and `CB` Colorblindness -- so **24 superflags remain**, 15 good and 9 bad. The table below is the whole list, grouped by the
+`CB` Colorblindness, `ST` Stealth, `CL` Cloaking, `MQ` Masquerade and `SE` Seer
+-- so **20 superflags remain**, 11 good and 9 bad. The table below is the whole list, grouped by the
 machinery each group needs rather than by name, because the machinery is what
 decides the order. `src/common/Flag.cxx` is the authority for every name,
 abbreviation, endurance, quality and help string; `src/common/global.cxx` for
@@ -209,12 +210,15 @@ every constant named here.
 | 10 | `SW` Shock Wave | a shot with no path -- an expanding sphere |
 | 11 | `TH` Thief | flag stealing |
 | 12 | `GM` Guided Missile | a steerable shot, and a lock-on target |
-| 13 | `ST` Stealth, `CL` Cloaking, `MQ` Masquerade, `SE` Seer | per-viewer visibility |
 | 14 | `OO` Oscillation Overthruster, `BU` Burrow, `PZ` Phantom Zone | movement through and under geometry |
 
 Phase 6 is a small hook on machinery an earlier phase built. Phases 10 to 14 are
 each their own feature and can be taken in any order. Phase 4 is down to its last
 flag, and that one is blocked rather than merely unstarted.
+
+Phase 13 was taken next because `CB` had already built most of it: a flag that
+changes what one player sees of another needed one place where a remote tank's
+appearance is decided, and `getEffectiveTankColor` is that place.
 
 Phases 7, 8 and 9 were taken out of order. 9 hangs off a world switch rather than
 off the phases before it, as `JP`, `NJ` and `WG` do. 8 turned out to need nothing
@@ -330,7 +334,8 @@ same set, and carries the two rules whose flags exist:
 | jumping on voids `JP`, off voids `NJ` | in |
 | `+r` voids `R` | in |
 | a world with no teleporters voids `PZ` | **missing**, `PZ` is phase 14 |
-| a world with no teams voids `G`, `CB` and `MQ` | **missing**, phases 6, 4 and 13 |
+| a world with no teams voids `G` | **missing**, `G` is phase 6 |
+| a world with no teams voids `CB` and `MQ` | **deliberately not taken**, see phase 13 |
 
 The last two are not oversights yet -- none of those four flags exist -- but each
 belongs in `getForbiddenFlags` in the same change that adds its flag, not later.
@@ -636,6 +641,27 @@ mates apart *within a band around the team colour* (see "Radar colours" in
 player colour with rogue is the faithful move and `getEffectiveTankColor` is the
 one place it happens -- tank body, shots and blip all ask it. Your own tank keeps
 its colour, as it does upstream.
+
+**Rogue, and deliberately not the viewer's own colour** -- which is worth writing
+down because phase 13's `MQ` went the other way and the two look like the same
+question. They are not. `MQ`'s upstream value is `myTank->getTeam()`, which is
+genuinely ambiguous in bzo because bzo splits "the viewer's team" from "the
+viewer's colour"; `CB`'s is `RogueTeam`, a fixed third colour that is nobody's in
+particular. Taking the viewer's colour there would be a different rule rather
+than a different reading, and a worse one on three counts:
+
+- it would make `CB` and `MQ` **indistinguishable on screen**, so the precedence
+  between them -- `CB` wins, since upstream consults Masquerade only `if
+  (!colorblind)` -- would stop being observable at all;
+- rogue *means* no team in BZFlag, so painting everyone rogue says "team
+  unknown", which is what colourblindness actually gives you. Everyone in your
+  own colour says "all friendly", which is a misleading instruction from a flag
+  whose help is "Don't shoot teammates!";
+- and both are equally uniform, so both satisfy the only thing the flag has to
+  do. With that tied, the tie breaks on which signal is honest.
+
+Outside team mode bzo hands colours out from the whole wheel, so rogue is a
+genuinely neutral value there too rather than a colour somebody already has.
 
 Two consequences worth knowing:
 
@@ -1133,23 +1159,112 @@ VR B button and either gamepad shoulder picks the tank in your sights within
 missing is a shot whose direction is recomputed each tick on the server, and
 the HUD lock-on box and sound.
 
-## Phase 13 -- per-viewer visibility
+## Phase 13 -- per-viewer visibility (implemented)
 
-Four flags that all ask the same new question: what a tank looks like depends on
-who is looking. Today every client draws every tank the same way. All four need
-the *carried flag of other players* to be known to the client, which it already
-is -- `flag.owner` in the flags array -- so the work is in the render path, not
-the protocol.
+`ST` Stealth, `CL` Cloaking, `MQ` Masquerade and `SE` Seer. Four flags that only
+ever disagree with each other, so they are read as a set: `ST` hides a tank from
+the radar, `CL` hides it from the window, `MQ` makes it wear the viewer's own
+colours, and `SE` defeats all three.
 
-- **`ST` Stealth** -- invisible on radar; the model still draws, and its shots
-  still draw.
-- **`CL` Cloaking** -- the model does not draw; the radar blip still does. A
-  cloaked tank hit by a laser is revealed (`LocalPlayer.cxx:1630`).
-- **`MQ` Masquerade** -- to an enemy, your tank and your scoreboard row take
-  *their* team's colour. To a teammate, nothing changes.
-- **`SE` Seer** -- sees stealthed, cloaked and masquerading tanks normally. It
-  is the counter to the other three, so it is cheapest to write last and it is
-  what makes them testable without two machines.
+**Which end asks.** `ST`, `CL` and `MQ` are read off the tank being *looked at*;
+`SE` is read off the tank doing the looking. That split is why upstream threads
+`seerView` down into every draw call (`playing.cxx:6139`) rather than testing a
+flag where the tank is drawn, and why `getVisibleTankAlpha` in the flags pair
+takes both flags rather than one.
+
+| Flag | Hides from | Defeated by |
+|---|---|---|
+| `ST` Stealth | the radar blip, and lock-on | `SE` |
+| `CL` Cloaking | the window, and lock-on | `SE` |
+| `MQ` Masquerade | the team colour | `SE`, an observer, or `CB` |
+
+**`ST` and `CL` are mirror images and carrying one does not buy the other.** A
+stealthed tank is solid in the window; a cloaked tank is still on the radar
+(`RadarRenderer.cxx:628` filters only Stealth). `scripts/test-flags.mjs` asserts
+both directions, because it is the pair most likely to be conflated later.
+
+**`CL` fades rather than blinks.** `Player::updateFlagEffect` sets
+`alphaTarget = 0` (`Player.cxx:769`) and `updateTranslucency` eases it over the
+same `_flagEffectTime` the dimensions use, so bzo eases it in the same loop and
+from the same rate rule. Only a *fully* faded tank disappears, which is upstream's
+`cloaked && !seerView` (`Player.cxx:899`); part-way through, the tank is part-way
+transparent and can be seen if you are looking. A hidden tank is hidden outright
+rather than drawn at alpha 0, so it costs no draws and casts no shadow -- and its
+name label goes with it, since a floating callsign over an invisible tank would
+give away the one thing the flag is for.
+
+**The ghost fades with the tank.** The server-position ghost is a clone with its
+own materials, so it takes the same alpha scaled by its own `GHOST_ALPHA_SCALE`,
+and a fully cloaked tank's ghost is hidden -- via the flag that
+`updateDebugGeometryVisibility` already reads, so the cloak and the debug toggle
+do not each set visibility once a frame and disagree. A ghost left behind a
+vanished tank would hand a debug build the exact position the flag hides.
+
+**`MQ` folds into the one place a remote tank's colour is decided**, and the order
+there is upstream's (`playing.cxx:6171`): colourblindness first and it wins
+outright, because upstream computes `effectiveTeam = RogueTeam` and only consults
+Masquerade `if (!colorblind)` -- a colourblind viewer cannot be fooled by a
+disguise, as there is nothing left to fool. Then Masquerade, defeated by `SE` and
+never applied for an observer, who has no colour to impersonate with. Then the
+tank's own colour.
+
+**What colour a masquerading tank wears is a bzo question upstream does not have.**
+Upstream writes it as `effectiveTeam = myTank->getTeam()`, which is the viewer's
+*own* colour there, because upstream's team mates all share one. bzo shades team
+mates apart inside a band around the team colour, which splits that into two
+readings, and bzo takes **the viewer's own colour**:
+
+- it is a colour that certainly exists on the viewer's team, where the team's
+  *base* colour is one no real team mate wears -- a masquerading tank painted in
+  the base shade would be the only tank with it, which is a tell a regular would
+  learn in a day;
+- it needs no roster lookup and no choice of which team mate to copy, so it
+  cannot collide with a second masquerading tank or change frame to frame;
+- and it is the colour a viewer most associates with "one of us".
+
+The cost is the mirror image: your own colour is unique in bzo, so a tank wearing
+it exactly is impossible otherwise. That is the subtler of the two tells, and the
+one worth paying -- a player rarely has a precise sense of their own tank's
+shade, being inside it.
+
+It also means **`MQ` works in bzo without teams**, where upstream's would not.
+Upstream voids Masquerade on a teamless world (`CmdLineOptions.cxx:1716`) because
+`myTank->getTeam()` is then rogue for everyone and the disguise says nothing; in
+bzo the viewer's own colour is theirs alone whether or not there are teams, so
+the flag still hides who you are. The same argument applies to `CB`, which hides
+bzo's individual colours in free-for-all where upstream would have nothing to
+confuse. So bzo deliberately does **not** take the `!hasTeam` half of that
+forbid rule for `CB` and `MQ`. `G` Genocide, the third flag in it, genuinely
+needs teams to mean anything and should be voided when it lands in phase 6.
+
+Because a tank is *built* from its colour rather than tinted, a change of
+effective colour rebuilds it -- and three flags can cause that with no shared
+trigger: `CB` and `SE` are mine to pick up, `MQ` is theirs, and a flag change
+arrives on a flag message rather than a player update. So rather than hooking
+three events, `refreshTankDisguises` compares each tank's effective colour
+against the one it was built from once a frame. The compare is two property reads
+and a number test; only an actual change costs a rebuild.
+
+**`SE` reaches further than the other three**, and two of its reaches are live
+interactions rather than notes for later:
+
+- **`IB` Invisible Bullet** goes back on the radar for a seer, which is
+  `iSeeAll` in `RadarRenderer.cxx:665`. `IB` landed in phase 8, so a seer is now
+  the counter to an invisible shooter.
+- **`ID` Identify** can lock onto a stealthed or cloaked tank only with `SE`
+  (`playing.cxx:4242`), and `B` Blindness refuses every target outright
+  (`:4239`). Both halves matter: hiding from the eye and the radar would mean
+  little if the flag that names a tank could still find one.
+
+**One rule is the server's, and only one.** "Laser can't hit a cloaked tank"
+(`LocalPlayer.cxx:1630`). That is not a matter of what somebody can see -- a
+cloaked tank is genuinely immune to a beam -- so with bzo's server owning hits it
+has to be the server's answer rather than each client's. It is also what makes
+`CL` a good flag rather than a cosmetic one. Everything else in this phase is
+per-viewer and stays on the client, as it does upstream.
+
+The scoreboard is untouched by all four, as it is by `CB`: it says who is playing
+and on which team, and none of these flags is about that.
 
 ## Phase 14 -- movement through and under geometry
 

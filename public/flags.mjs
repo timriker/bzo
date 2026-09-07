@@ -355,6 +355,40 @@ export const FLAG_TYPES = Object.freeze({
     team: null,
     help: 'Can\'t see out window.  Radar still works.',
   }),
+  ST: Object.freeze({
+    abbreviation: 'ST',
+    name: 'Stealth',
+    endurance: FLAG_ENDURANCE.UNSTABLE,
+    quality: FLAG_QUALITY.GOOD,
+    team: null,
+    help: 'Tank is invisible on radar.  Shots are still visible.  Sneak up'
+      + ' behind enemies!',
+  }),
+  CL: Object.freeze({
+    abbreviation: 'CL',
+    name: 'Cloaking',
+    endurance: FLAG_ENDURANCE.UNSTABLE,
+    quality: FLAG_QUALITY.GOOD,
+    team: null,
+    help: 'Tank is invisible out window.  Shots are still visible.  Sneak up'
+      + ' behind enemies!',
+  }),
+  MQ: Object.freeze({
+    abbreviation: 'MQ',
+    name: 'Masquerade',
+    endurance: FLAG_ENDURANCE.UNSTABLE,
+    quality: FLAG_QUALITY.GOOD,
+    team: null,
+    help: 'In opponent\'s hud, you appear as a teammate.',
+  }),
+  SE: Object.freeze({
+    abbreviation: 'SE',
+    name: 'Seer',
+    endurance: FLAG_ENDURANCE.UNSTABLE,
+    quality: FLAG_QUALITY.GOOD,
+    team: null,
+    help: 'See stealthed, cloaked and masquerading tanks as normal.',
+  }),
   JM: Object.freeze({
     abbreviation: 'JM',
     name: 'Jamming',
@@ -431,6 +465,53 @@ export function getTankDimensionScale(abbreviation) {
     case 'N': return { length: 1, width: NARROW_FACTOR };
     default: return { length: 1, width: 1 };
   }
+}
+
+// Phase 13, per-viewer visibility. Four flags that only ever disagree with each
+// other, so they are read as a set rather than one at a time: `ST` hides a tank
+// from the radar, `CL` hides it from the window, `MQ` makes it wear the viewer's
+// own colours, and `SE` defeats all three.
+//
+// The asking side matters. `ST`, `CL` and `MQ` are read off the tank being
+// *looked at*; `SE` is read off the tank doing the looking. That split is why
+// upstream passes `seerView` down into every draw call rather than testing a
+// flag where the tank is drawn.
+export function hidesFromRadar(abbreviation) {
+  return abbreviation === 'ST';
+}
+
+export function cloaksTheTank(abbreviation) {
+  return abbreviation === 'CL';
+}
+
+export function fakesTeamColor(abbreviation) {
+  return abbreviation === 'MQ';
+}
+
+export function seesThroughDisguises(abbreviation) {
+  return abbreviation === 'SE';
+}
+
+// Player::updateFlagEffect's alpha target (Player.cxx:769), eased over the same
+// _flagEffectTime the dimensions use: a cloaking tank fades out rather than
+// blinking out, and fades back when the flag goes. Nothing else changes alpha.
+export function getTankAlphaTarget(abbreviation) {
+  return cloaksTheTank(abbreviation) ? 0 : 1;
+}
+
+// What a viewer holding `SE` sees a cloaked tank at. Upstream restores
+// `teleAlpha` (Player.cxx:912), which is 1 for a tank that is not mid-teleport,
+// so Seer sees a cloaked tank solid rather than faint -- "as normal", in the
+// flag's own words, not "as a ghost".
+export const SEER_REVEAL_ALPHA = 1;
+
+// Whether a tank is drawn at all, and how solid. `alpha` is the eased value, so
+// a tank part-way into its cloak is part-way transparent; only a fully faded one
+// disappears, which is upstream's `cloaked && !seerView` test (Player.cxx:899).
+export function getVisibleTankAlpha(abbreviation, alpha, viewerFlag) {
+  if (seesThroughDisguises(viewerFlag)) return SEER_REVEAL_ALPHA;
+  if (cloaksTheTank(abbreviation) && alpha <= 0) return 0;
+  return alpha;
 }
 
 // The three flags that change nothing about the world and everything about what

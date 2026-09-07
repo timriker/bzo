@@ -817,6 +817,12 @@ already been got wrong once:
   tank sliding along a wall reports whatever the collision resolver left it,
   which can swing across the whole range in one packet while the input holds
   steady. The acceleration model has no term for this.
+- **Air control has no ramp to bound.** A `WG` Wings tank steers in mid air, and
+  with `_wingsSlideTime` 0 -- upstream's default and bzo's -- its velocity
+  follows the stick with no ramp at all, so a full reversal in one frame is
+  correct rather than impossible. The check therefore does not apply while a tank
+  with air control is off the ground. Refusing it in strict mode would rubber-band
+  the one flag whose whole point is steering where nothing else can.
 
 The window comes from `sdt`, the interval the client reports between its own
 move packets, bounded by `getAccelerationWindow`. `dt` in the same packet is one

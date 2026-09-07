@@ -202,6 +202,10 @@ const PROJECTED_SHADOW_MIN_LIGHT_Y = 0.05;
 // It is exported because the ghost is a sibling of the tank, not a child, so
 // whoever scales the tank has to scale the ghost by the same factors.
 export const GHOST_SCALE = 1.05;
+// And the opacity it is drawn at, so the tank shows through it. Exported for the
+// same reason the scale is: the ghost is not a child of the tank, so whatever
+// fades the tank has to fade the ghost by the same proportion.
+export const GHOST_ALPHA_SCALE = 0.25;
 const PROJECTED_SHADOW_STENCIL_REF = 1;
 // Write the stencil before the darkening overlay pass reads it.
 const PROJECTED_SHADOW_RENDER_ORDER = 10;
@@ -3573,7 +3577,7 @@ class RenderManager {
           child.material = child.material.map(mat => {
             const cloned = mat.clone();
             cloned.transparent = true;
-            cloned.opacity = 0.25;
+            cloned.opacity = GHOST_ALPHA_SCALE;
             cloned.color.setHex(0xffffff);
             cloned.emissive.setHex(0x404040);
             cloned.emissiveIntensity = 0.2;
@@ -3582,7 +3586,7 @@ class RenderManager {
         } else {
           child.material = child.material.clone();
           child.material.transparent = true;
-          child.material.opacity = 0.25;
+          child.material.opacity = GHOST_ALPHA_SCALE;
           child.material.color.setHex(0xffffff);
           child.material.emissive.setHex(0x404040);
           child.material.emissiveIntensity = 0.2;
@@ -3590,7 +3594,7 @@ class RenderManager {
       } else if (child.isSprite && child.material) {
         // Make sprite label (name) transparent to match ghost opacity
         child.material = child.material.clone();
-        child.material.opacity = 0.25;
+        child.material.opacity = GHOST_ALPHA_SCALE;
         child.material.transparent = true;
       }
     });

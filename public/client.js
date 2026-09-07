@@ -118,7 +118,7 @@ import {
   bindToggleButton,
   fitText
 } from './hud.js';
-import { renderManager, DEFAULT_MUZZLE_HEIGHT, GHOST_SCALE } from './render.js';
+import { renderManager, DEFAULT_MUZZLE_HEIGHT, GHOST_ALPHA_SCALE, GHOST_SCALE } from './render.js';
 import { describeMeasurements, describeRenderCapabilities } from './capabilities.mjs';
 import {
   getFramePhaseReport,
@@ -198,10 +198,16 @@ import {
   getKnownFlagAbbreviation,
   getShotEffects,
   blanksTheView,
+  cloaksTheTank,
+  fakesTeamColor,
   getNextRadarJamDecay,
+  getTankAlphaTarget,
   getTankDimensionScale,
+  getVisibleTankAlpha,
+  hidesFromRadar,
   hidesTeamColors,
   jamsTheRadar,
+  seesThroughDisguises,
   getWingsJumpVelocity,
   getWingsSlideVelocity,
   hasAirControl,
@@ -2798,18 +2804,43 @@ function updateDebugGeometryVisibility() {
     hideSupportFootprintDebug();
   }
   tanks.forEach((tank) => {
-    if (tank.userData.ghostMesh) {
-      const isLocalTank = tank.userData && tank.userData.playerState && tank.userData.playerState.id === myPlayerId;
-      const shouldShowGhost = showDebugGeometry && (!isLocalTank || Boolean(tank.userData.ghostMesh.userData.hasPacketState));
-      tank.userData.ghostMesh.visible = shouldShowGhost;
-      if (tank.userData.ghostMesh.userData.packetMotionDebug) {
-        tank.userData.ghostMesh.userData.packetMotionDebug.visible = shouldShowGhost;
-      }
-    }
+    applyTankDebugVisibility(tank);
     if (tank.userData.jumpPredictionDebug) {
       tank.userData.jumpPredictionDebug.visible = showDebugGeometry;
     }
   });
+}
+
+// Whether a tank's server-position ghost is drawn. Called both from the debug
+// toggle and once a frame from applyTankAlpha, because the answer depends on the
+// cloak as well as the toggle and those change on different clocks -- the toggle
+// fires on a keypress, the cloak finishes 0.64s after a flag is taken. Deciding
+// it in one function and calling it from both is what keeps the two from
+// disagreeing; the toggle used to be the only caller, so a tank that cloaked
+// after the toggle kept its ghost.
+//
+// A ghost left behind a vanished tank is not a cosmetic problem. It is a full
+// tank clone that writes depth, so it occludes the ground grid behind it -- the
+// silhouette of a tank that is supposed to be invisible, handed to anyone with
+// debug geometry on.
+function applyTankDebugVisibility(tank) {
+  const ghost = tank?.userData?.ghostMesh;
+  if (!ghost) return;
+  const isLocalTank = tank.userData.playerState && tank.userData.playerState.id === myPlayerId;
+  const shouldShowGhost = showDebugGeometry
+    && !tank.userData.cloakHidden
+    && (!isLocalTank || Boolean(ghost.userData.hasPacketState));
+  // Evaluated every frame, written only on a change. The evaluation cannot be
+  // event-driven: a cloak *completes* 0.64s after the flag event that started it,
+  // on its own clock, so there is no event at the moment the tank should vanish.
+  // The write can be, and is -- three property writes a tank a frame is not much,
+  // but it is not nothing on a client that runs out of one core.
+  if (tank.userData.ghostShown === shouldShowGhost) return;
+  tank.userData.ghostShown = shouldShowGhost;
+  ghost.visible = shouldShowGhost;
+  if (ghost.userData.packetMotionDebug) {
+    ghost.userData.packetMotionDebug.visible = shouldShowGhost;
+  }
 }
 
 // The counters mean nothing apart from the machine that produced them, and the
@@ -5764,6 +5795,49 @@ function ensureTankDimensionState(tank) {
   if (!Number.isFinite(tank.userData.dimensionTargetWidth)) tank.userData.dimensionTargetWidth = 1;
   if (!Number.isFinite(tank.userData.dimensionRateLength)) tank.userData.dimensionRateLength = 0;
   if (!Number.isFinite(tank.userData.dimensionRateWidth)) tank.userData.dimensionRateWidth = 0;
+  // Player::alpha / alphaTarget / alphaRate, which upstream updates in
+  // updateTranslucency right beside the dimensions and over the same
+  // _flagEffectTime. Cloaking is the only thing that moves it.
+  if (!Number.isFinite(tank.userData.cloakAlpha)) tank.userData.cloakAlpha = 1;
+  if (!Number.isFinite(tank.userData.cloakAlphaTarget)) tank.userData.cloakAlphaTarget = 1;
+  if (!Number.isFinite(tank.userData.cloakAlphaRate)) tank.userData.cloakAlphaRate = 0;
+}
+
+// A tank's opacity, applied to every material it is built from. A fully faded
+// tank is hidden outright rather than drawn at alpha 0, so it costs no draws and
+// casts no shadow -- upstream returns before adding it to the scene at all
+// (Player.cxx:901). The name label goes with it: a floating callsign over an
+// invisible tank would give away the one thing the flag is for.
+function applyTankAlpha(tank, alpha) {
+  if (!tank) return;
+  const hidden = alpha <= 0;
+  if (tank.userData.cloakHidden !== hidden) {
+    tank.userData.cloakHidden = hidden;
+    tank.visible = !hidden;
+  }
+  // The tank's own shadow needs no help: _projectShadowForMesh already refuses
+  // to project from a mesh whose `visible` is false, so hiding the tank takes
+  // the silhouette with it. The ghost does need help, because it is a sibling of
+  // the tank rather than a child and inherits nothing.
+  applyTankDebugVisibility(tank);
+  if (hidden) return;
+  if (tank.userData.cloakAppliedAlpha === alpha) return;
+  tank.userData.cloakAppliedAlpha = alpha;
+  const opaque = alpha >= 1;
+  // The ghost is a clone with its own materials, so it fades with the tank
+  // rather than staying solid beside a fading one. Its own 5% inflation and the
+  // dimension scaling are separate; this is only the opacity.
+  const fade = (root, scale) => root.traverse((child) => {
+    if (!child.material) return;
+    const materials = Array.isArray(child.material) ? child.material : [child.material];
+    for (const material of materials) {
+      material.transparent = !opaque || scale < 1;
+      material.opacity = alpha * scale;
+      material.needsUpdate = true;
+    }
+  });
+  fade(tank, 1);
+  if (tank.userData.ghostMesh) fade(tank.userData.ghostMesh, GHOST_ALPHA_SCALE);
 }
 
 // Player::updateDimensions (Player.cxx:503) for one axis. The rate is fixed when
@@ -5831,6 +5905,34 @@ function updateTankDimensions(deltaTime) {
       tank.userData.dimensionTargetWidth,
       tank.userData.dimensionRateWidth,
       deltaTime
+    );
+
+    // Player::updateTranslucency, the same ease on the same clock. Cloaking
+    // fades a tank out over _flagEffectTime and dropping it fades back in, so
+    // the moment a cloak completes is visible rather than instant.
+    const alphaTarget = getTankAlphaTarget(getPlayerFlagType(playerId));
+    if (tank.userData.cloakAlphaTarget !== alphaTarget) {
+      tank.userData.cloakAlphaRate =
+        (alphaTarget - tank.userData.cloakAlpha) / FLAG_EFFECT_TIME;
+      tank.userData.cloakAlphaTarget = alphaTarget;
+    }
+    tank.userData.cloakAlpha = easeTankDimension(
+      tank.userData.cloakAlpha,
+      tank.userData.cloakAlphaTarget,
+      tank.userData.cloakAlphaRate,
+      deltaTime
+    );
+    // Your own tank is never hidden from you, whatever it is carrying: upstream
+    // only ever asks this of a remote player.
+    applyTankAlpha(
+      tank,
+      playerId === myPlayerId
+        ? 1
+        : getVisibleTankAlpha(
+          getPlayerFlagType(playerId),
+          tank.userData.cloakAlpha,
+          getMyFlag()?.type ?? null
+        )
     );
 
     const baseScaleX = tank.userData.baseScaleX;
@@ -6129,6 +6231,16 @@ function getRoamCandidates() {
     const state = tank.userData.playerState;
     if (!state || id === myPlayerId) return;
     if (isObserverTeam(state.team) || !(state.health > 0)) return;
+    // shouldTarget (playing.cxx:4239): blindness refuses every target, and a
+    // stealthed or cloaked tank can only be locked onto with Seer. Both halves
+    // matter to `ID` Identify, which is the one thing in bzo that locks on --
+    // hiding from the eye and the radar would mean little if the flag that names
+    // a tank could still find one.
+    if (isViewBlinded()) return;
+    if (!isSeer()) {
+      const theirFlag = getPlayerFlagType(id);
+      if (hidesFromRadar(theirFlag) || cloaksTheTank(theirFlag)) return;
+    }
     candidates.push({
       id,
       x: tank.position.x,
@@ -6508,7 +6620,16 @@ function handleInputEvents() {
 
   // Keep the tank snapped to a valid support surface under its center. This
   // stabilizes step/pyramid support without loosening side-contact ontop tests.
-  const supportSurface = findSupportSurface(
+  //
+  // A tank on its way *up* has no support, and asking for one undoes the jump.
+  // The search accepts a surface up to SUPPORT_SNAP_DOWN below the tank, and a
+  // jump's first frame rises `jumpVelocity * dt` -- 0.32 units at 60fps but only
+  // 0.13 at 144 -- so above roughly 95fps the tank was snapped straight back
+  // down, the landing branch zeroed the velocity, and a jump from an obstacle
+  // could not get off it at all. Upstream stops vertical motion against a
+  // surface only "if going down" (LocalPlayer.cxx:637); this is that condition.
+  const rising = (myTank.userData.verticalVelocity || 0) > 0;
+  const supportSurface = rising ? null : findSupportSurface(
     myTank.position.x,
     myTank.position.y,
     myTank.position.z,
@@ -7502,30 +7623,90 @@ function isColorblind() {
   return hidesTeamColors(getMyFlag()?.type ?? null);
 }
 
-// A tank is built from its colour rather than tinted, so a change of
-// colourblindness has to rebuild the remote tanks. Driven from the flag change
-// rather than polled, and done at once instead of waiting for each tank's next
-// update, because a tank that is sitting still would otherwise keep the colour
-// it is no longer entitled to.
-let colorblindApplied = false;
-function refreshColorblindTanks() {
-  const colorblind = isColorblind();
-  if (colorblind === colorblindApplied) return;
-  colorblindApplied = colorblind;
+// Phase 13's viewer side. `SE` is the only one of the four read off the local
+// tank; the other three are read off whoever is being looked at.
+function isSeer() {
+  return seesThroughDisguises(getMyFlag()?.type ?? null);
+}
+
+function getPlayerFlagType(playerId) {
+  return getPlayerFlag(playerId)?.type ?? null;
+}
+
+// Whether a remote tank appears on the radar at all. RadarRenderer.cxx:628 skips
+// a stealthed tank's blip outright rather than dimming it, and Seer is the only
+// thing that brings it back.
+function isHiddenFromRadar(playerId) {
+  if (playerId === myPlayerId || isSeer()) return false;
+  return hidesFromRadar(getPlayerFlagType(playerId));
+}
+
+// A tank is built from its colour rather than tinted -- the body texture and the
+// name label are both generated from it -- so a tank whose *effective* colour
+// changes has to be rebuilt. Three flags can cause that and they do not share a
+// trigger: `CB` and `SE` are mine to pick up, `MQ` is theirs, and a flag change
+// arrives on a flag message rather than a player update. So rather than hooking
+// three events, each tank's effective colour is compared against the one it was
+// built from, once a frame. The compare is two property reads and a number test;
+// only an actual change costs a rebuild.
+function refreshTankDisguises() {
   for (const [playerId, tank] of [...tanks.entries()]) {
     if (playerId === myPlayerId) continue;
     const state = tank?.userData?.playerState;
-    if (state) addPlayer(state);
+    if (!state) continue;
+    if (getEffectiveTankColor(playerId, state.color) !== tank.userData.builtColor) {
+      addPlayer(state);
+    }
   }
 }
 
-// Every tank but your own reads as rogue while colourblind. bzo shades team
-// mates apart inside a band around the team colour, so the player colour is
-// where the team is legible and replacing it is what the flag has to do; your
-// own tank keeps its colour, as it does upstream.
+// The colour a remote tank is drawn in, after every flag that has an opinion.
+// playing.cxx:6171 settles the same argument in the same order, and the order is
+// the whole of it:
+//
+//   1. Colourblindness first, and it wins outright. Upstream computes
+//      `effectiveTeam = RogueTeam` and only consults Masquerade `if
+//      (!colorblind)`, so a colourblind viewer cannot be fooled by a disguise --
+//      there is nothing left to fool.
+//   2. Masquerade next: the tank wears the *viewer's own* colour, so it reads as
+//      friendly to that viewer and to nobody else. Defeated by Seer, and never
+//      applied for an observer, who has no colour to be impersonated with.
+//   3. Otherwise the tank's own colour.
+//
+// Upstream writes step 2 as `effectiveTeam = myTank->getTeam()`, which is the
+// viewer's *own* colour there, because upstream's team mates all share one. bzo
+// shades team mates apart inside a band around the team colour, which splits
+// that into two readings, and the viewer's own colour is the right one:
+//
+//   - it is a colour that certainly exists on the viewer's team, where the
+//     team's base colour is one no real team mate wears -- a masquerading tank
+//     painted in it would be the only tank with the exact base shade, which is a
+//     tell a regular would learn in a day;
+//   - it needs no roster lookup and no choice of which team mate to copy, so it
+//     cannot collide with a second masquerading tank or change from frame to
+//     frame;
+//   - and it is the colour a viewer most associates with "one of us", which is
+//     the whole job.
+//
+// The cost is the mirror image: your own colour is unique in bzo, so a tank
+// wearing it exactly is impossible otherwise. That is a subtler tell than the
+// base shade and it is the one worth paying, since a player rarely has a precise
+// sense of their own tank's shade -- they are inside it.
+//
+// Your own tank always keeps its colour: upstream only ever rewrites a remote
+// player's, so you cannot see your own disguise.
 function getEffectiveTankColor(playerId, color) {
-  if (playerId === myPlayerId || !isColorblind()) return color;
-  return PLAYER_TEAM_COLORS[PLAYER_TEAM.ROGUE];
+  if (playerId === myPlayerId) return color;
+  if (isColorblind()) return PLAYER_TEAM_COLORS[PLAYER_TEAM.ROGUE];
+  if (
+    fakesTeamColor(getPlayerFlagType(playerId))
+    && !isSeer()
+    && !isObserver()
+  ) {
+    const mine = tanks.get(myPlayerId)?.userData?.playerState?.color;
+    if (Number.isFinite(mine)) return mine;
+  }
+  return color;
 }
 
 // ScoreboardRenderer::drawPlayerScore names a team flag after the callsign and a
@@ -9058,7 +9239,14 @@ function updateRadar() {
       // and nobody else's -- upstream sweeps its own shots (:585) before it asks
       // the question at all. Seer is the exception, and arrives with the flags
       // that need it.
-      if (proj.userData?.hiddenOnRadar && proj.userData.playerId !== myPlayerId) return;
+      // RadarRenderer.cxx:665's `iSeeAll`: Seer puts invisible bullets back on the
+      // radar. `IB` and `SE` are both in, so this is a live interaction rather
+      // than a note for later -- a seer is the counter to an invisible shooter.
+      if (
+        proj.userData?.hiddenOnRadar
+        && proj.userData.playerId !== myPlayerId
+        && !isSeer()
+      ) return;
       // A beam is a line on the radar, as its scene node is out the window. Its
       // segments are already in world coordinates, so each one is two points.
       if (proj.userData?.beam) {
@@ -9107,6 +9295,11 @@ function updateRadar() {
     // Only show on radar if alive and visible
     const state = tank.userData && tank.userData.playerState;
     if ((state && state.health <= 0) || tank.visible === false) return;
+    // RadarRenderer.cxx:628. A stealthed tank has no blip at all rather than a
+    // dim one, and Seer is the only thing that brings it back. A cloaked tank is
+    // the mirror image and stays on the radar: `CL` hides you from the window,
+    // `ST` hides you from the panel, and carrying one does not buy the other.
+    if (state && isHiddenFromRadar(state.id)) return;
 
     // Get player color (convert from hex number to CSS string). RadarRenderer.cxx
     // asks the same question of every blip it draws: colourblindness reaches the
@@ -9926,7 +10119,7 @@ function animate(frameTime) {
   // Phase 4's view flags, applied where both surfaces reach: the DOM HUD block
   // further down runs only outside XR, and blindness and colourblindness have to
   // hold in a headset too.
-  refreshColorblindTanks();
+  refreshTankDisguises();
   // playing.cxx:6212 blanks the view for a paused tank as well as a blinded one.
   // bzo draws its own paused overlay instead, so this is Blindness alone.
   renderManager.setBlank(isViewBlinded());

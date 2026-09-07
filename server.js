@@ -42,6 +42,7 @@ const {
   getFlagThrownAltitude,
   getFlagType,
   getShotEffects,
+  cloaksTheTank,
   getTankDimensionScale,
   getTankHitRadiusScale,
   getTeamFlagAbbreviation,
@@ -4631,6 +4632,13 @@ function findShotPlayerHit(proj, from, to, now) {
     if (player.paused) return; // Can't hit paused players
     if (player.health <= 0) return; // Can't hit dead players
 
+    // LocalPlayer::checkHit (LocalPlayer.cxx:1630): "laser can't hit a cloaked
+    // tank". The one rule in phase 13 that is not a matter of what somebody can
+    // see -- a cloaked tank is genuinely immune to a beam, so it has to be the
+    // server's answer rather than each client's. It is also the reason `CL` is a
+    // good flag rather than a cosmetic one.
+    if (proj.flag === 'L' && cloaksTheTank(getPlayerFlag(player.id)?.type ?? null)) return;
+
     // Use extrapolated position for accurate hit detection
     const extrapolated = player.getExtrapolatedPosition(now);
     const playerFlagType = getPlayerFlag(player.id)?.type ?? null;
@@ -5490,7 +5498,18 @@ wss.on('connection', (ws, req) => {
           // the tank the client never asked to move, and then reports the
           // difference back as drift.
           const accelWindow = getAccelerationWindow(deltaTime, message.sdt);
-          if (ANTICHEAT_CONFIG.mode !== 'disabled' && accelWindow > 0) {
+          // A third thing the acceleration model has no term for, beside the two
+          // in "The acceleration check cannot see the stick": air control. A
+          // `WG` tank steers in mid air, and with `_wingsSlideTime` 0 -- which is
+          // upstream's default and bzo's -- its velocity follows the stick with
+          // no ramp at all, so a full reversal in one frame is correct rather
+          // than impossible. No acceleration bound can describe that, so while
+          // such a tank is off the ground the bound does not apply. Refusing it
+          // in strict mode would rubber-band the one flag whose whole point is
+          // steering where nothing else can.
+          const airborne = player.jumpDirection !== null && player.jumpDirection !== undefined;
+          const steeringInAir = airborne && hasAirControl(getPlayerFlag(player.id)?.type ?? null);
+          if (ANTICHEAT_CONFIG.mode !== 'disabled' && accelWindow > 0 && !steeringInAir) {
             // The stick is not in the packet, so the server cannot tell which of
             // the client's rates applied (`updateMovement` in `client.js` picks
             // deceleration by the *desired* input, which the server never sees,

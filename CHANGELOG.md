@@ -6,6 +6,67 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
 
 ## [Unreleased]
 
+### Added
+- Phase 13, per-viewer visibility: `ST` Stealth, `CL` Cloaking, `MQ` Masquerade
+  and `SE` Seer (#6). Four flags that only ever disagree with each other, so they
+  are read as a set -- `ST` hides a tank from the radar, `CL` hides it from the
+  window, `MQ` makes it wear the viewer's own colours, and `SE` defeats all three.
+  `ST` and `CL` are mirror images and carrying one does not buy the other: a
+  stealthed tank is solid in the window, and a cloaked tank is still on the radar.
+- `CL` fades over `_flagEffectTime` rather than blinking out, easing on the same
+  clock and rate rule as the dimension flags, and only a fully faded tank
+  disappears -- part-way through it is part-way transparent and can be seen if you
+  are looking. A hidden tank is hidden outright rather than drawn at alpha 0, so
+  it costs no draws and casts no shadow, and its name label goes with it. The
+  server-position ghost fades with the tank and is hidden when the tank is, so a
+  debug build is not handed the position the flag hides.
+- `MQ` makes a tank wear the **viewer's own colour**, so it reads as friendly to
+  that viewer and to nobody else. Upstream writes this as the viewer's *team*
+  colour, which is the same thing there because its team mates share one; bzo
+  shades team mates apart within a band, and the viewer's own colour is the
+  faithful reading -- the team's base colour is one no real team mate wears, so a
+  tank painted in it would be the only one with the exact base shade. It also
+  means `MQ` works without teams in bzo, where upstream voids it: the viewer's
+  colour is theirs alone either way. It folds into the one place a remote tank's
+  colour is decided, in upstream's own order: colourblindness first and it wins
+  outright, since a colourblind viewer has nothing left to be fooled about; then
+  masquerade, defeated by `SE` and never applied for an observer; then the tank's
+  own colour. Because a tank is
+  built from its colour rather than tinted, and three flags can change it with no
+  shared trigger, each tank's effective colour is compared against the one it was
+  built from once a frame rather than hooking three events.
+- `SE` reaches two flags that were already in. `IB` Invisible Bullet goes back on
+  the radar for a seer, so a seer is now the counter to an invisible shooter; and
+  `ID` Identify can lock onto a stealthed or cloaked tank only with `SE`, while
+  `B` Blindness refuses every target outright.
+- A Laser cannot hit a cloaked tank, which is the one rule in this phase the
+  server owns. It is not a matter of what anybody can see -- a cloaked tank is
+  genuinely immune to a beam -- so with bzo's server owning hits it has to be the
+  server's answer. It is also what makes `CL` a good flag rather than a cosmetic
+  one.
+
+  bzo now implements twenty-two of upstream's forty-two superflags; **20 remain**,
+  11 good and 9 bad.
+
+### Fixed
+- A tank could not jump off an obstacle above roughly 95fps. The support search
+  accepts a surface up to `SUPPORT_SNAP_DOWN` 0.2 units below the tank, and a
+  jump's first frame rises `jumpVelocity * dt` -- 0.32 units at 60fps but only
+  0.13 at 144 -- so on a high-refresh display the tank was snapped straight back
+  onto the surface it had just left, the landing branch zeroed its velocity, and
+  the jump was eaten. Frame-rate dependent, so it looked like a per-device
+  problem. A rising tank now has no support at all, which is upstream's rule: it
+  stops vertical motion against a surface only "if going down"
+  (`LocalPlayer.cxx:637`). Most visible with `WG` Wings, where every flap off a
+  roof was being swallowed.
+- A cloaked tank's server-position ghost stayed visible. The ghost's visibility
+  was decided only when the debug-geometry toggle changed, so a tank that cloaked
+  afterwards kept its ghost -- a full tank clone that writes depth, occluding the
+  ground grid behind it and drawing the silhouette of a tank that is meant to be
+  invisible. It is now evaluated every frame, since a cloak completes 0.64s after
+  the flag event that started it and there is no event at the moment the tank
+  should vanish, but written only when the answer changes.
+
 ## [1.0.70] - 2026-09-07
 
 ### Added

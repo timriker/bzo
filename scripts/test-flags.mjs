@@ -33,11 +33,18 @@ import {
   TINY_FACTOR,
   RADAR_JAM_DECAY_FLOOR,
   RADAR_JAM_DECAY_MIN,
+  SEER_REVEAL_ALPHA,
   blanksTheView,
+  cloaksTheTank,
+  fakesTeamColor,
   getNextRadarJamDecay,
+  getTankAlphaTarget,
+  getVisibleTankAlpha,
+  hidesFromRadar,
   getTankDimensionEase,
   hidesTeamColors,
   jamsTheRadar,
+  seesThroughDisguises,
   getTankDimensionScale,
   getTankHitRadiusScale,
   usesNarrowHitBox,
@@ -804,6 +811,54 @@ for (const abbreviation of ['B', 'JM', 'CB', null]) {
   assert.equal(serverFlags.blanksTheView(abbreviation), blanksTheView(abbreviation));
   assert.equal(serverFlags.jamsTheRadar(abbreviation), jamsTheRadar(abbreviation));
   assert.equal(serverFlags.hidesTeamColors(abbreviation), hidesTeamColors(abbreviation));
+}
+
+// Phase 13. Four flags that each answer for exactly one thing, so a predicate
+// that answered for two would be one flag doing another's job.
+assert.equal(hidesFromRadar('ST'), true);
+assert.equal(cloaksTheTank('CL'), true);
+assert.equal(fakesTeamColor('MQ'), true);
+assert.equal(seesThroughDisguises('SE'), true);
+for (const abbreviation of [null, 'ST', 'CL', 'MQ', 'SE', 'US', 'CB']) {
+  const hits = [hidesFromRadar, cloaksTheTank, fakesTeamColor, seesThroughDisguises]
+    .filter((predicate) => predicate(abbreviation)).length;
+  assert.ok(hits <= 1, `${abbreviation} answered more than one visibility effect`);
+}
+// The pair that is often confused: stealth is the radar, cloaking is the window,
+// and carrying one must not buy the other.
+assert.equal(hidesFromRadar('CL'), false, 'cloaking does not hide from radar');
+assert.equal(cloaksTheTank('ST'), false, 'stealth does not hide from the window');
+
+// Only cloaking moves a tank's alpha, and it moves it all the way.
+assert.equal(getTankAlphaTarget('CL'), 0);
+for (const abbreviation of [null, 'ST', 'MQ', 'SE', 'US']) {
+  assert.equal(getTankAlphaTarget(abbreviation), 1, `${abbreviation} must stay solid`);
+}
+
+// getVisibleTankAlpha: mid-cloak is translucent, fully cloaked is gone, and a
+// seer sees it solid rather than faint -- "as normal", not "as a ghost".
+assert.equal(getVisibleTankAlpha('CL', 0.5, null), 0.5, 'a half-faded cloak is half visible');
+assert.equal(getVisibleTankAlpha('CL', 0, null), 0, 'a finished cloak is gone');
+assert.equal(getVisibleTankAlpha('CL', 0, 'SE'), SEER_REVEAL_ALPHA);
+assert.equal(getVisibleTankAlpha('CL', 0.5, 'SE'), SEER_REVEAL_ALPHA);
+assert.equal(SEER_REVEAL_ALPHA, 1, 'a seer sees a cloaked tank solid');
+// A seer's own view of an ordinary tank is unchanged, and a stealthed tank is
+// solid to everyone -- it was never the window it was hiding from.
+assert.equal(getVisibleTankAlpha(null, 1, 'SE'), 1);
+assert.equal(getVisibleTankAlpha('ST', 1, null), 1);
+
+for (const theirs of ['ST', 'CL', 'MQ', 'SE', null]) {
+  assert.equal(serverFlags.hidesFromRadar(theirs), hidesFromRadar(theirs));
+  assert.equal(serverFlags.cloaksTheTank(theirs), cloaksTheTank(theirs));
+  assert.equal(serverFlags.fakesTeamColor(theirs), fakesTeamColor(theirs));
+  assert.equal(serverFlags.seesThroughDisguises(theirs), seesThroughDisguises(theirs));
+  for (const mine of ['SE', null]) {
+    assert.equal(
+      serverFlags.getVisibleTankAlpha(theirs, 0, mine),
+      getVisibleTankAlpha(theirs, 0, mine),
+      `client/server visible alpha diverged for ${theirs} seen by ${mine}`
+    );
+  }
 }
 
 console.log('Flag flight and type tests passed');
