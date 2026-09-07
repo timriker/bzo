@@ -6,6 +6,8 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
 
 ## [Unreleased]
 
+## [1.0.69] - 2026-09-07
+
 ### Added
 - Phase 7 of the flag plan: `T` Tiny, `N` Narrow and `O` Obesity, and the
   per-player tank size all three need (#6). A flag scales the tank's length and
@@ -37,6 +39,14 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
   server-position ghost is scaled by the same factors -- it is a sibling of the
   tank, not a child, so it inherits nothing and a full-size ghost around a Tiny
   tank would misreport the one thing it is there to show.
+
+  bzo now implements fifteen of upstream's forty-two superflags -- `US` `ID`
+  `JP` `WG` `R` `NJ` `SH` `F` `MG` `L` `SB` `IB` `T` `N` `O` -- and twenty-seven
+  remain, fifteen good and twelve bad. `docs/flags-plan.md` is the list.
+
+### Changed
+- `maps/flagbuffet.bzw` sheds a bad flag after one kill, so its outer loop can
+  be worked through without dying for each one.
 
 ## [1.0.68] - 2026-09-07
 
