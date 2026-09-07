@@ -6,6 +6,8 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
 
 ## [Unreleased]
 
+## [1.0.71] - 2026-09-07
+
 ### Added
 - Phase 13, per-viewer visibility: `ST` Stealth, `CL` Cloaking, `MQ` Masquerade
   and `SE` Seer (#6). Four flags that only ever disagree with each other, so they
