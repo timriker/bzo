@@ -4033,6 +4033,12 @@ function handleServerMessage(message) {
 
     case 'flagUpdate':
       message.flags.forEach((state) => setFlagState(state));
+      // MsgDropFlag still names its owner, so the drop that precedes this
+      // repaints the scoreboard while the flag is still on the tank. This is
+      // the message that makes it anonymous, so this is the one that has to
+      // repaint -- otherwise a shaken flag stays on the scoreboard until some
+      // unrelated event happens to redraw it.
+      callUpdateScoreboard();
       break;
 
     case 'grabFlag': {

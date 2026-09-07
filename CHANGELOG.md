@@ -46,6 +46,11 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
   user-agent test had been preventing.
 
 ### Fixed
+- The scoreboard drops a flag from the player who dropped it. `MsgDropFlag`
+  names its owner by design, so the drop repainted the scoreboard while the flag
+  was still on the tank, and the `flagUpdate` that makes it anonymous never
+  repainted at all -- leaving a shaken bad flag beside the player's name, for
+  every client, until some unrelated event happened to redraw it.
 - Entering or leaving VR tells the rest of the client. The event two listeners
   were waiting on was never dispatched, so anaglyph stayed on into a session
   that draws its own stereo pair, and leaving VR left the XR menu open and the
