@@ -6,6 +6,8 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
 
 ## [Unreleased]
 
+## [1.0.72] - 2026-09-07
+
 ### Changed
 - A teleporter's border is resolved into its solid by the importer, so the world
   goes on the wire collision-ready and a teleporter's `w`/`d`/`h` mean what they
