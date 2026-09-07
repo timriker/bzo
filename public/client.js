@@ -73,6 +73,9 @@ import {
   initHudControls,
   latestOrientation,
   toggleMouseMode,
+  isMouseSteeringAvailable,
+  refreshHudButtons,
+  setPointerIdentify,
   isMobile,
   updateVirtualInputFromXR,
   updateVirtualInputFromGamepad,
@@ -390,6 +393,11 @@ const XR_CHAT_CANVAS_HEIGHT = 204;
 // BZFlag fires with Enter or the left mouse button and keeps the space bar for
 // dropping a flag (ActionBinding.cxx:92-95).
 const FIRE_KEY = 'Enter';
+// The drive keys and which way each one pushes its axis, kept as the two axes
+// they steer rather than one list, because a held key owns its own axis and
+// leaves the other to the stick or the mouse.
+const FORWARD_KEYS = Object.freeze({ KeyW: 1, ArrowUp: 1, KeyS: -1, ArrowDown: -1 });
+const TURN_KEYS = Object.freeze({ KeyA: 1, ArrowLeft: 1, KeyD: -1, ArrowRight: -1 });
 // playing.cxx:4028 shows the death notice for four seconds as a warning. The
 // kill notice is bzo's own and matches it, so the two read as a pair.
 const DEATH_ALERT_SECONDS = 4;
@@ -1837,10 +1845,28 @@ let mouseY = 0; // Percentage from center (-1 to 1)
 // back off them rather than kept a second time here.
 let motionBoxHalfExtent = 0;
 let motionBoxDeadZone = 0;
-registerGameplayInputReset(() => {
+function resetMouseSteering() {
   mouseX = 0;
   mouseY = 0;
-});
+}
+registerGameplayInputReset(resetMouseSteering);
+
+// The preference and the context together. `mouseControlEnabled` is what the
+// player asked for and survives a context that cannot honour it; this is
+// whether the box is actually steering right now.
+function mouseSteeringActive() {
+  return mouseControlEnabled && isMouseSteeringAvailable();
+}
+
+// Whether a click on the battlefield is a shot. The on-screen controls own the
+// whole screen while they are up -- a tap that misses the fire button is a miss,
+// not a shot -- and in VR there is no cursor to aim, so a paired mouse's buttons
+// are not a trigger either. Not gated on having a fine pointer: a touch that
+// lands on the canvas with the overlay off arrives here as a click, and firing
+// is the only thing it could mean.
+function mouseGameplayClickActive() {
+  return !virtualControlsEnabled && !isXREnabled();
+}
 
 const DEFAULT_TANK_MODEL_ID = 'bzflag';
 
@@ -2119,40 +2145,6 @@ async function initTankSelector() {
   selectedTankModelId = normalizeTankModelId(selectedTankModelId);
   setSelectedTankModel(selectedTankModelId);
 }
-
-// Watch for mouseControlEnabled toggle to reset orientation center
-Object.defineProperty(window, 'mouseControlEnabled', {
-  get() { return mouseControlEnabled; },
-  set(val) {
-    mouseControlEnabled = val;
-  }
-});
-
-// Orientation analog control state
-let orientationMode = null; // 'portrait' or 'landscape'
-
-function detectOrientationMode() {
-  if (window.matchMedia('(orientation: landscape)').matches) {
-    orientationMode = 'landscape';
-  } else {
-    orientationMode = 'portrait';
-  }
-}
-detectOrientationMode();
-window.addEventListener('orientationchange', () => {
-  detectOrientationMode();
-  if (isMobile && mouseControlEnabled) {
-    if (latestOrientation) latestOrientation.status = 'Orientation changed, recentered';
-  }
-});
-// Fallback for browsers that don't fire orientationchange
-window.addEventListener('resize', () => {
-  const prev = orientationMode;
-  detectOrientationMode();
-  if (orientationMode !== prev && isMobile && mouseControlEnabled) {
-    if (latestOrientation) latestOrientation.status = 'Orientation changed (resize), recentered';
-  }
-});
 
 // Player tank position (for movement prediction)
 let playerX = 0;
@@ -2931,8 +2923,12 @@ function handleGameplayKeydown(event) {
     return true;
   }
   if (event.code === 'Escape') {
-    mouseControlEnabled = false;
-    showMessage('Controls: Keyboard');
+    // Upstream has no such binding -- Escape opens its main menu -- but the web
+    // cannot confine the cursor to the box, so leaving mouse steering needs a
+    // key that is not also a drive key. It goes through the toggle so the row,
+    // the button and the stored preference all follow, and says nothing when
+    // there was nothing to leave.
+    toggleMouseMode(false);
     return true;
   }
   return false;
@@ -2963,6 +2959,7 @@ initHudControls({
   setMouseControlEnabled: (value) => { mouseControlEnabled = value; },
   getVirtualControlsEnabled: () => virtualControlsEnabled,
   setVirtualControlsEnabled: (value) => { virtualControlsEnabled = value; },
+  resetMouseSteering,
   pushChatMessage: (msg) => {
     addChatEntry(['misc', 'all'], msg, CHAT_KIND_MISC);
   },
@@ -3106,15 +3103,7 @@ window.addEventListener('DOMContentLoaded', () => {
           localStorage.setItem('debugLabelsEnabled', debugLabelsEnabled.toString());
           updateDebugLabelsButton();
         },
-        updateHudButtons: () => updateHudButtons({
-          mouseBtn: document.getElementById('mouseBtn'),
-          mouseControlEnabled,
-          debugBtn: document.getElementById('debugBtn'),
-          debugEnabled,
-          fullscreenBtn: document.getElementById('fullscreenBtn'),
-          cameraBtn: document.getElementById('cameraBtn'),
-          cameraMode
-        }),
+        updateHudButtons: refreshHudButtons,
         showMessage
       });
     });
@@ -3135,6 +3124,11 @@ window.addEventListener('DOMContentLoaded', () => {
 
   // Initialize WebXR support
   window.addEventListener('webxrsessionchange', event => {
+    // A headset has no cursor to read, so the box stops steering for as long as
+    // the session lasts -- and must not resume from wherever the cursor was
+    // parked when the player left it.
+    resetMouseSteering();
+    refreshHudButtons();
     if (event.detail?.enabled) return;
     closeXRSettingsMenu();
     document.getElementById('xrTextInput')?.blur();
@@ -3381,14 +3375,10 @@ function init() {
 
   // Restore debug state from localStorage
   if (readStoredFlag('debugEnabled')) {
-    const mouseBtn = document.getElementById('mouseBtn');
-    const debugBtn = document.getElementById('debugBtn');
-    const fullscreenBtn = document.getElementById('fullscreenBtn');
-    const cameraBtn = document.getElementById('cameraBtn');
     toggleDebugHud({
       debugEnabled,
       setDebugEnabled: setDebugEnabledState,
-      updateHudButtons: () => updateHudButtons({ mouseBtn, mouseControlEnabled, debugBtn, debugEnabled, fullscreenBtn, cameraBtn, cameraMode: isObserver() ? getRoamLabel() : cameraMode }),
+      updateHudButtons: refreshHudButtons,
       showMessage,
       updateDebugDisplay,
       getDebugState
@@ -3448,13 +3438,22 @@ function init() {
   // Mouse movement for analog control
   // Mouse analog control using position relative to center (cursor always visible)
   document.addEventListener('mousemove', (e) => {
-    if (!isGameplayInputActive() || !mouseControlEnabled) return;
+    if (!isGameplayInputActive() || !mouseSteeringActive()) return;
     mouseX = motionBoxAxisInput(e.clientX - window.innerWidth / 2);
     mouseY = motionBoxAxisInput(e.clientY - window.innerHeight / 2);
   });
 
-  // Mouse click to shoot (or enable mouse controls on first click)
-  let justActivatedMouseControl = false;
+  // Upstream binds Right Mouse to `identify` (ActionBinding.cxx:97), so the
+  // browser's own menu cannot have it. Only while the game owns input, and only
+  // outside the chrome: a right click in the chat box or the name field is still
+  // a paste.
+  document.addEventListener('contextmenu', (e) => {
+    if (!isGameplayInputActive()) return;
+    if (e.target.closest && e.target.closest('button, a, input, select, textarea, #chatWindow')) return;
+    e.preventDefault();
+  });
+
+  // Mouse click to shoot
   document.addEventListener('mousedown', (e) => {
     // A click outside an open dialog closes it and is consumed here, so it never
     // reaches the tank. The click after that one is an ordinary gameplay click.
@@ -3486,22 +3485,25 @@ function init() {
       return;
     }
 
+    if (!mouseGameplayClickActive()) return;
+
     if (e.button === 0) { // Left click
-      if (justActivatedMouseControl) {
-        justActivatedMouseControl = false;
-        return;
-      }
       setGameplayKeyState(FIRE_KEY, true);
     }
-    // Upstream's other `identify` binding (ActionBinding.cxx:97). Unclaimed in
-    // bzo, so it costs nothing from the key budget.
-    if (e.button === 2 && isObserver()) identifyRoamTarget();
+    // Upstream's other `identify` binding (ActionBinding.cxx:97). It goes to the
+    // same held input the on-screen and XR buttons use, so an observer picks a
+    // roaming target with it and a guided missile will lock with it.
+    if (e.button === 2) setPointerIdentify(true);
   });
 
   document.addEventListener('mouseup', (e) => {
     if (e.button === 0) {
       setGameplayKeyState(FIRE_KEY, false);
     }
+    // Released wherever it happens, including over the chrome and after the
+    // context that armed it has gone: a button nobody is holding must not stay
+    // held.
+    if (e.button === 2) setPointerIdentify(false);
   });
 
   // Load saved player name from localStorage
@@ -3549,18 +3551,6 @@ function init() {
 
   // Connect to server
   connectToServer();
-
-  // Update control box border color based on mode
-  const controlBox = document.getElementById('controlBox');
-  setInterval(() => {
-    if (controlBox) {
-      if (mouseControlEnabled) {
-        controlBox.classList.remove('keyboard-mode');
-      } else {
-        controlBox.classList.add('keyboard-mode');
-      }
-    }
-  }, 100);
 
   // Let Three.js own frame scheduling in both normal and XR modes.
   const renderer = renderManager.getRenderer();
@@ -5866,8 +5856,7 @@ function usesVirtualInput() {
 // shoots with it; an observer cycles the roaming view with it, which is the
 // whole reason it is shared rather than inlined.
 function isFireHeld() {
-  return (!isMobile && keys[FIRE_KEY])
-    || (usesVirtualInput() && virtualInput.fire);
+  return keys[FIRE_KEY] || (usesVirtualInput() && virtualInput.fire);
 }
 
 // Every tank that can be roamed to: alive, joined, and not an observer, which is
@@ -6185,36 +6174,53 @@ function sendObserverHeartbeat() {
 // camera spends `up` and `down` on altitude, which is the whole reason those two
 // come back raw.
 function gatherDriveInput() {
-  let forward = 0;
-  let turn = 0;
   let up = false;
   let down = false;
 
   // Use virtual input if gamepad connected, XR enabled, or virtual controls enabled
+  let stickForward = 0;
+  let stickTurn = 0;
   if (usesVirtualInput()) {
-    forward = virtualInput.forward;
-    turn = virtualInput.turn;
+    stickForward = virtualInput.forward;
+    stickTurn = virtualInput.turn;
     up = virtualInput.jump;
     down = virtualInput.drop;
   }
-  const wasdKeys = ['ArrowUp', 'ArrowLeft', 'ArrowDown', 'ArrowRight', 'KeyW', 'KeyA', 'KeyS', 'KeyD'];
-  let wasdPressed = false;
-  for (const code of wasdKeys) {
+
+  let keyForward = 0;
+  let keyTurn = 0;
+  let forwardKeyHeld = false;
+  let turnKeyHeld = false;
+  for (const code in FORWARD_KEYS) {
     if (keys[code]) {
-      forward += (code === 'KeyW' || code === 'ArrowUp') ? 1 : (code === 'KeyS' || code === 'ArrowDown') ? -1 : 0;
-      turn += (code === 'KeyA' || code === 'ArrowLeft') ? 1 : (code === 'KeyD' || code === 'ArrowRight') ? -1 : 0;
-      wasdPressed = true;
+      keyForward += FORWARD_KEYS[code];
+      forwardKeyHeld = true;
     }
   }
-  if (wasdPressed && mouseControlEnabled) {
-    toggleMouseMode();
+  for (const code in TURN_KEYS) {
+    if (keys[code]) {
+      keyTurn += TURN_KEYS[code];
+      turnKeyHeld = true;
+    }
   }
+
+  // Per axis, the first source with something to say wins: keys, then a stick,
+  // then the mouse box. Upstream mixes the same way where it mixes at all --
+  // its joystick branch takes rotation from the keyboard and speed from the
+  // stick (playing.cxx:1048) -- and the order matters, because a released stick
+  // reads zero and falls through while the mouse box legitimately holds an
+  // offset with the cursor parked away from centre. Holding W and S together is
+  // a deliberate stop, so a held pair still owns its axis at zero, which is
+  // what upstream's keyboardSpeed does with the same pair of keys.
+  let forward = forwardKeyHeld ? keyForward : stickForward;
+  let turn = turnKeyHeld ? keyTurn : stickTurn;
+  if (mouseSteeringActive()) {
+    if (!forwardKeyHeld && stickForward === 0) forward = -mouseY;
+    if (!turnKeyHeld && stickTurn === 0) turn = -mouseX;
+  }
+
   if (keys['Tab']) up = true;
   if (keys['Space']) down = true;
-  if (mouseControlEnabled) {
-    if (typeof mouseY !== 'undefined') forward = -mouseY;
-    if (typeof mouseX !== 'undefined') turn = -mouseX;
-  }
 
   return { forward, turn, up, down };
 }

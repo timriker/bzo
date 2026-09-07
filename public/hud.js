@@ -237,8 +237,26 @@ export function updateAlertHud(now = performance.now()) {
 }
 
 // Update HUD button states
-export function updateHudButtons({ mouseBtn, mouseControlEnabled, debugBtn, debugEnabled, fullscreenBtn, cameraBtn, cameraMode }) {
-  setActive(mouseBtn, mouseControlEnabled, 'Disable Mouse Movement (M)', 'Enable Mouse Movement (M)');
+export function updateHudButtons({
+  mouseBtn,
+  mouseControlEnabled,
+  mouseAvailable = true,
+  mouseUnavailableTitle = '',
+  debugBtn,
+  debugEnabled,
+  fullscreenBtn,
+  cameraBtn,
+  cameraMode,
+}) {
+  // A row that cannot steer goes dead rather than inert: it stays on the menu,
+  // reads Unavailable, and the focus walks past it. Same as the rows gated on
+  // what the renderer can draw.
+  if (mouseBtn) mouseBtn.disabled = !mouseAvailable;
+  setActive(mouseBtn, mouseControlEnabled, 'Disable Mouse Steering (M)', 'Enable Mouse Steering (M)');
+  if (mouseBtn && !mouseAvailable && mouseUnavailableTitle) mouseBtn.title = mouseUnavailableTitle;
+  // The motion box wears the mode, set from here because this is what every
+  // change to the mode already goes through.
+  document.getElementById('controlBox')?.classList.toggle('keyboard-mode', !mouseControlEnabled);
   setActive(debugBtn, debugEnabled, 'Hide Debug HUD (`)', 'Show Debug HUD (`)');
   setActive(fullscreenBtn, document.fullscreenElement, 'Exit Fullscreen (F)', 'Toggle Fullscreen (F)');
   if (cameraBtn) {

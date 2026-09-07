@@ -9,7 +9,7 @@ export const SETTINGS_MENU_ITEMS = Object.freeze([
   { id: 'playerOptionsBtn', label: 'Player Options', kind: 'submenu' },
   { id: 'cameraBtn', label: 'Camera', kind: 'choice' },
   { id: 'radarZoomBtn', label: 'Radar Range', kind: 'choice' },
-  { id: 'mouseBtn', label: 'Mouse Control', kind: 'toggle' },
+  { id: 'mouseBtn', label: 'Mouse Steering', kind: 'toggle' },
   { id: 'virtualControlsBtn', label: 'Virtual Controls', kind: 'toggle' },
   { id: 'fullscreenBtn', label: 'Fullscreen', kind: 'toggle' },
   { id: 'installBtn', label: 'Install App', kind: 'action' },

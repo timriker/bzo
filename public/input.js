@@ -22,6 +22,12 @@ const touchInput = { forward: 0, turn: 0, fire: false, jump: false, drop: false,
 const gamepadInput = { forward: 0, turn: 0, fire: false, jump: false, drop: false, identify: false };
 const xrInputState = { forward: 0, turn: 0, fire: false, jump: false, drop: false, identify: false };
 
+// Right Mouse carries `identify` (ActionBinding.cxx:97). The mouse is not one of
+// the three sources above -- it coexists with them rather than replacing one --
+// so it is held separately and folded in, which is what lets a right click work
+// with a gamepad plugged in.
+let pointerIdentify = false;
+
 // Keyboard input state
 export const keys = {};
 
@@ -59,7 +65,14 @@ function syncVirtualInput() {
   virtualInput.fire = source.fire;
   virtualInput.jump = source.jump;
   virtualInput.drop = source.drop;
-  virtualInput.identify = source.identify;
+  virtualInput.identify = source.identify || pointerIdentify;
+}
+
+// Held, not an edge: a guided missile will lock while it is down, and the
+// observer's roaming target already makes its own edge out of the hold.
+export function setPointerIdentify(pressed) {
+  pointerIdentify = Boolean(pressed);
+  syncVirtualInput();
 }
 
 function resetGamepadInput() {
@@ -82,6 +95,7 @@ function clearKeyboardInput() {
 
 function clearTransientInput() {
   clearKeyboardInput();
+  pointerIdentify = false;
   resetInputValues(touchInput);
   resetGamepadInput();
   resetXRInput();
@@ -624,6 +638,7 @@ const defaultHudContext = {
   setMouseControlEnabled: () => {},
   getVirtualControlsEnabled: () => false,
   setVirtualControlsEnabled: () => {},
+  resetMouseSteering: () => {},
   pushChatMessage: () => {},
   updateChatWindow: () => {},
   sendToServer: () => {},
@@ -665,8 +680,6 @@ const domRefs = {
 };
 
 let wireframeEnabled = false;
-let orientationMode = null;
-let orientationListenersAttached = false;
 let keyboardListenerAttached = false;
 let orientationDebugInitialized = false;
 let settingsMenu = null;
@@ -744,33 +757,54 @@ function isMobileBrowser() {
 
 export const isMobile = isMobileBrowser();
 
-function detectOrientationMode() {
-  orientationMode = window.matchMedia('(orientation: landscape)').matches ? 'landscape' : 'portrait';
+// A mouse is a capability, not a platform. `isMobile` is a user-agent guess and
+// a phone with a mouse paired to it steers exactly as a desktop does, so the
+// question is put to the browser instead: `any-pointer: fine` is its word for
+// "something here points precisely". The query is live, so plugging a mouse into
+// a phone lights the row up without a reload -- the same reason `available()` is
+// re-read on every refresh rather than sampled once.
+const finePointerQuery = typeof window.matchMedia === 'function'
+  ? window.matchMedia('(any-pointer: fine)')
+  : null;
+
+// A mouse that has actually moved is proof no media query can outrank, and the
+// query does get it wrong: headless Chrome has no input devices attached and
+// answers `false` on a machine with a mouse on the desk. A false negative would
+// take steering away with nothing to override it, so a real mouse event latches
+// the answer on for good. `pointerType` is what separates a mouse from a finger
+// here -- a touch produces mouse events too, but never a mouse pointer.
+let sawMousePointer = false;
+
+function hasFinePointer() {
+  return sawMousePointer || (finePointerQuery ? finePointerQuery.matches : true);
 }
 
-function resetOrientationCenter(status) {
-  if (status) {
-    latestOrientation.status = status;
-  }
+function watchForMousePointer() {
+  const noteMousePointer = (event) => {
+    if (event.pointerType !== 'mouse' || sawMousePointer) return;
+    sawMousePointer = true;
+    window.removeEventListener('pointermove', noteMousePointer);
+    window.removeEventListener('pointerdown', noteMousePointer);
+    refreshHudButtons();
+  };
+  window.addEventListener('pointermove', noteMousePointer, { passive: true });
+  window.addEventListener('pointerdown', noteMousePointer, { passive: true });
 }
 
-function setupOrientationListeners() {
-  if (orientationListenersAttached) return;
-  detectOrientationMode();
-  window.addEventListener('orientationchange', () => {
-    detectOrientationMode();
-    if (hudContext.isMobile && hudContext.getMouseControlEnabled()) {
-      resetOrientationCenter('Orientation changed, recentered');
-    }
-  });
-  window.addEventListener('resize', () => {
-    const prev = orientationMode;
-    detectOrientationMode();
-    if (orientationMode !== prev && hudContext.isMobile && hudContext.getMouseControlEnabled()) {
-      resetOrientationCenter('Orientation changed (resize), recentered');
-    }
-  });
-  orientationListenersAttached = true;
+// Whether the mouse can steer here at all, which is a different question from
+// whether the player has asked it to. The stored preference survives a context
+// that cannot honour it and comes back when the context does.
+export function isMouseSteeringAvailable() {
+  if (xrState.enabled) return false;
+  if (hudContext.getVirtualControlsEnabled()) return false;
+  return hasFinePointer();
+}
+
+// Why the row is dead, for the title and for the player who presses M anyway.
+export function mouseSteeringUnavailableReason() {
+  if (xrState.enabled) return 'Mouse steering is unavailable in VR: there is no cursor to read';
+  if (hudContext.getVirtualControlsEnabled()) return 'Virtual controls steer instead of the mouse';
+  return 'Mouse steering needs a mouse attached';
 }
 
 function setupMobileOrientationDebug() {
@@ -820,11 +854,18 @@ function stopPropagationForHud(ids, preventDefault = true) {
   });
 }
 
-function refreshHudButtons() {
+// Every HUD button re-read from the state that owns it. Exported because the
+// client has the same job to do from its own events -- a headset arriving, the
+// debug HUD toggling -- and a second copy of the argument list is a second
+// chance for the mouse row's gate to be left out of one of them.
+export function refreshHudButtons() {
   if (typeof hudContext.updateHudButtons !== 'function') return;
+  const mouseAvailable = isMouseSteeringAvailable();
   hudContext.updateHudButtons({
     mouseBtn: domRefs.mouseBtn,
-    mouseControlEnabled: hudContext.getMouseControlEnabled(),
+    mouseControlEnabled: hudContext.getMouseControlEnabled() && mouseAvailable,
+    mouseAvailable,
+    mouseUnavailableTitle: mouseSteeringUnavailableReason(),
     debugBtn: domRefs.debugBtn,
     debugEnabled: hudContext.getDebugEnabled(),
     fullscreenBtn: domRefs.fullscreenBtn,
@@ -1180,9 +1221,21 @@ function cycleCameraMode(direction = 1) {
   refreshHudButtons();
 }
 
+// The only way mouse steering goes on or off: `M`, this row, Escape. Driving the
+// tank never reaches it. Upstream bumps between input devices on its own
+// instead (`allowInputChange`, playing.cxx:821), because its devices are
+// exclusive and one of them has to be chosen; bzo drives from the keyboard and
+// the mouse together, so there is nothing for a bump to choose between. A
+// preference the player set by hand is only ever unset by hand.
 export function toggleMouseMode(forceState) {
   const current = hudContext.getMouseControlEnabled();
   const next = typeof forceState === 'boolean' ? forceState : !current;
+  // Turning it off always works. A context that cannot steer with a mouse says
+  // so rather than storing a preference that does nothing.
+  if (next && !isMouseSteeringAvailable()) {
+    hudContext.showMessage(mouseSteeringUnavailableReason());
+    return;
+  }
   if (next === current) return;
   hudContext.setMouseControlEnabled(next);
   try {
@@ -1190,10 +1243,8 @@ export function toggleMouseMode(forceState) {
   } catch {
     /* ignore storage errors */
   }
-  if (next && hudContext.isMobile) {
-    resetOrientationCenter('Orientation changed, recentered');
-  }
-  hudContext.showMessage(`Controls: ${next ? 'Mouse' : 'Keyboard'}`);
+  hudContext.resetMouseSteering();
+  hudContext.showMessage(`Controls: ${next ? 'Mouse and keyboard' : 'Keyboard'}`);
   refreshHudButtons();
 }
 
@@ -1209,9 +1260,18 @@ export function toggleVirtualControls(forceState) {
   const current = hudContext.getVirtualControlsEnabled();
   const next = typeof forceState === 'boolean' ? forceState : !current;
   hudContext.setVirtualControlsEnabled(next);
+  try {
+    localStorage.setItem('virtualControlsEnabled', next ? 'true' : 'false');
+  } catch {
+    /* ignore storage errors */
+  }
   domRefs.controlsOverlay.style.display = next ? 'block' : 'none';
   document.body.classList.toggle('virtual-controls-active', next);
   updateVirtualControlsBtn();
+  // The overlay takes steering off the mouse while it is up, and the mouse box
+  // holds whatever offset the cursor was last at. Clearing it means the overlay
+  // going away cannot hand a stale offset back to a tank nobody is touching.
+  hudContext.resetMouseSteering();
   // The button's own handler stops the click propagating, so the settings menu
   // never sees it and never re-reads the row. Toggling looked like it did
   // nothing there. toggleMouseMode has always ended this way.
@@ -1584,10 +1644,27 @@ function bindHudElements() {
   } catch {
     /* ignore storage errors */
   }
+  // A phone is handed the on-screen controls and a desktop is not, which is a
+  // fair guess from a user agent and no answer at all to a player who has said
+  // otherwise -- one with a keyboard and a mouse plugged into a phone wants them
+  // gone, and wants them to stay gone.
+  let virtualControls = isMobile;
+  try {
+    const savedVirtualControls = localStorage.getItem('virtualControlsEnabled');
+    if (savedVirtualControls === 'true') virtualControls = true;
+    if (savedVirtualControls === 'false') virtualControls = false;
+  } catch {
+    /* ignore storage errors */
+  }
+  toggleVirtualControls(virtualControls);
   document.addEventListener('fullscreenchange', () => {
     rememberFullscreenPreference();
     refreshHudButtons();
   });
+  // Plugging a mouse into a phone, or unplugging one, changes what the mouse
+  // row is allowed to offer.
+  finePointerQuery?.addEventListener?.('change', () => refreshHudButtons());
+  watchForMousePointer();
   restoreFullscreenOnFirstGesture();
 
   updateSettingsBtn();
@@ -1604,11 +1681,9 @@ function bindHudElements() {
 
 export function initHudControls(context) {
   hudContext = { ...hudContext, ...context, isMobile };
-  setupOrientationListeners();
   if (document.readyState === 'loading') {
     window.addEventListener('DOMContentLoaded', () => bindHudElements(), { once: true });
   } else {
     bindHudElements();
   }
-  toggleVirtualControls(isMobile);
 }

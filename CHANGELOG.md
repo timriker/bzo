@@ -6,6 +6,51 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
 
 ## [Unreleased]
 
+### Changed
+- Keyboard and mouse drive the tank together. With mouse steering on, each axis
+  goes to the first source with something to say -- keys, then a stick, then the
+  mouse box -- so a held drive key owns its own axis and the mouse keeps the
+  other: steer with the mouse while holding `W`, or turn with `A`/`D` while the
+  mouse sets the speed. Holding `W` and `S` together is a deliberate stop, so a
+  held pair still owns its axis at zero.
+
+  `M`, the settings row and Escape are now the only things that turn mouse
+  steering on and off. Driving no longer touches the setting: upstream bumps
+  between input devices on its own because its methods are exclusive and one has
+  to be chosen (`allowInputChange`, `playing.cxx:821`), and with both driving at
+  once there is nothing left to pick. Escape goes through the same toggle as the
+  row, so the button, the menu and the saved preference cannot disagree.
+- Mouse steering is offered on what the machine can do rather than what its user
+  agent says it is. A phone with a mouse paired to it steers as a desktop does,
+  so the question goes to `(any-pointer: fine)` -- live, so plugging a mouse in
+  lights the row up without a reload -- and a real mouse event outranks the
+  query, which answers `false` in a headless browser on a machine with a mouse
+  on the desk. VR closes the gate whatever the pointer says, since an immersive
+  session has no cursor to read, and so do the on-screen controls, which steer
+  instead while they are up. In each case the row goes dead rather than inert:
+  it stays on the menu reading `Unavailable` and the focus walks past it, and the
+  saved preference is left alone so it comes back when the context does.
+- Right click carries `identify` through the same held input as the on-screen
+  button, the gamepad shoulders and the XR B button, so it works with a gamepad
+  plugged in and a guided-missile lock will pick it up unchanged. bzo claims
+  `contextmenu` to keep the browser's own menu off the battlefield, but only
+  there: a right click in the chat box or the name field is still a paste.
+- A click that misses the on-screen controls does nothing instead of firing.
+  Those buttons own the whole screen while they are up, so a fat-fingered miss
+  between the joystick and the fire button is a miss, not a shot. Left click
+  fires everywhere else, with mouse steering on or off, as it always has.
+- The on-screen controls remember being turned off. A phone is handed them at
+  startup, which is a fair guess from a user agent and no answer at all to a
+  player with a keyboard and a mouse plugged into one, who had to dismiss them
+  every session. The `Enter` key also fires on a phone now, which the same
+  user-agent test had been preventing.
+
+### Fixed
+- Entering or leaving VR tells the rest of the client. The event two listeners
+  were waiting on was never dispatched, so anaglyph stayed on into a session
+  that draws its own stereo pair, and leaving VR left the XR menu open and the
+  entry dialog unoffered to a player who had never seen it.
+
 ## [1.0.65] - 2026-09-06
 
 ### Added

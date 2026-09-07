@@ -225,14 +225,14 @@ If you want automatic container updates, use your preferred container update man
 - `P` — pause/resume
 - `N` — open chat (or click the `Send` button)
 - `Enter` — send chat (while chat input is focused, or click `Send` again)
-- `Esc` — exit chat input or mouse mode
+- `Esc` — exit chat input or leave mouse steering
 - `1` / `2` / `3` / `4` / `5` — switch chat tab (`All` / `Chat` / `Server` / `Misc` / `Debug`)
 - `[` / `]` — previous/next chat tab
 - `.` — reply to last direct-message sender
 - `,` — message nemesis target
 - `Page Up` / `Page Down` — scroll chat history
 - `End` — jump chat to newest message
-- `M` — toggle mouse movement
+- `M` — toggle mouse steering
 - `C` — cycle camera mode
 - `O` — toggle operator panel
 - `F` — toggle fullscreen
@@ -246,6 +246,20 @@ If you want automatic container updates, use your preferred container update man
 - `/` or `?` — show/hide help panel
 
 - `I` or right-click — identify the tank in your sights
+
+### Mouse steering
+
+`M` turns it on and off, and nothing else does: the keys never take it away
+behind your back. With it on, the mouse sits in the targeting box and both
+surfaces drive at once -- hold a drive key and it owns that axis, let go and the
+mouse has it back -- so you can steer with the mouse while holding `W`, or turn
+with `A`/`D` while the mouse sets the speed.
+
+Left click shoots wherever the cursor is, whether mouse steering is on or not,
+unless the click lands on the chat panel or a button. The setting is unavailable
+with no mouse attached, in VR, and while the on-screen controls are up, since
+those steer instead; a click that misses one of their buttons does nothing
+rather than firing.
 
 ### Observer
 

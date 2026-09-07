@@ -19,6 +19,8 @@ or deployment configuration.
 - Open the game without a headset.
 - Confirm that the game joins normally and that keyboard, mouse, and gamepad
   controls still work.
+- With mouse steering on, confirm a held drive key takes its own axis and the
+  mouse keeps the other, and that letting go hands the axis back.
 - Confirm that the VR Mode button is disabled when WebXR is unavailable.
 
 ## Entry points
@@ -112,6 +114,21 @@ part of the map, or several tanks firing -- rather than on an empty one.
 - With `antiCheat` in `warning` mode, confirm the server log records no
   `COLLISION` findings for any of the above: a landing the client gets wrong is
   a position the server disagrees with.
+
+## Attached keyboard and mouse
+
+A headset can have both paired to it, and neither is detected: the keys either
+arrive as `keydown` or they do not, and there is no cursor in an immersive
+session at all. This is the part that cannot be answered without the hardware.
+
+- With a hardware keyboard paired, confirm whether the drive keys reach the tank
+  during a session, and record the answer either way -- bzo gates nothing on it.
+- Confirm `Mouse Steering` in the XR Settings menu reads `Unavailable` and that
+  the thumbstick walks past it rather than landing on it.
+- With a mouse paired, confirm that moving it and clicking it do nothing to the
+  tank: there is no cursor to aim, so the trigger is the only fire control.
+- Leave VR and confirm mouse steering is offered again, and that the tank does
+  not start driving on its own from wherever the cursor was left before entering.
 
 ## XR Settings menu
 

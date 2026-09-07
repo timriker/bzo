@@ -332,6 +332,7 @@ async function startXRSession(renderer, animationCallback) {
 
     xrEnabled = true;
     xrState.enabled = true;
+    announceSessionChange();
 
     // Once the session is live and nothing is waiting on it.
     applyTargetFrameRate(session);
@@ -465,6 +466,15 @@ function cleanupXRSession(lifecycle, session) {
   }
 }
 
+// A headset is a whole input surface arriving or leaving, and the things that
+// answer to it -- the anaglyph row, the mouse steering row, the XR menu -- live
+// in the client rather than here. One event carries the fact to all of them.
+function announceSessionChange() {
+  window.dispatchEvent(new window.CustomEvent('webxrsessionchange', {
+    detail: { enabled: xrState.enabled, mode: xrMode },
+  }));
+}
+
 function resetXRState() {
   xrEnabled = false;
   xrState.enabled = false;
@@ -472,6 +482,7 @@ function resetXRState() {
   xrState.frameCounter = 0;
   xrInputSources.clear();
   xrState.controllers.clear();
+  announceSessionChange();
 }
 
 // Store reference to reset animation loop

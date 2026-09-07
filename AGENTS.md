@@ -892,7 +892,13 @@ two meanings, not two bindings: the roam target picker in observer mode, and the
 guided-missile lock once those land. `pickTargetInSights` in `public/roam.mjs`
 holds the cone, so the missile path reuses it rather than growing a second copy.
 It also rides `virtualInput.identify`, which is where the touch button, the
-gamepad shoulders, and the XR B button arrive. See the Observer section.
+gamepad shoulders, the XR B button and a right click arrive. The mouse is not
+one of the three sources `syncVirtualInput()` chooses between -- it coexists
+with them -- so `setPointerIdentify()` is OR'd in rather than replacing the
+chosen one, which is what makes a right click work with a gamepad plugged in.
+bzo also claims `contextmenu` so the browser's own menu cannot have the button,
+but only while gameplay owns input and only outside the chrome: a right click in
+the chat box or the name field is still a paste. See the Observer section.
 
 ## Mouse steering is the targeting box
 
@@ -920,6 +926,64 @@ off `maxMotionSize`.
 `confineToMotionbox`); a browser cannot without pointer lock, so bzo lets the
 cursor leave. The mapping saturates either way -- the only cost is a longer drag
 back to centre.
+
+### Keyboard and mouse drive together
+
+Upstream's input method is exclusive -- Keyboard, Mouse or Joystick -- and under
+`allowInputChange` (default on) it bumps between them on its own: a drive key
+selects Keyboard (`playing.cxx:821`), moving the mouse selects Mouse
+(`playing.cxx:1296`). bzo does not autoswitch at all. `M`, the Mouse Steering
+row and Escape are the only things that change the setting, and `gatherDriveInput()`
+mixes instead: **per axis, the first source with something to say wins --
+keys, then a stick, then the mouse box.** Hold a drive key and it owns that axis
+while the mouse keeps the other, so a player steers with the mouse while holding
+`W`. Holding W and S together is a deliberate stop, so a held pair still owns its
+axis at zero, as upstream's `keyboardSpeed` does.
+
+The order matters: a released stick reads zero and falls through to the mouse,
+while the mouse box legitimately holds an offset with the cursor parked away from
+centre. Upstream mixes the same way where it mixes at all -- its joystick branch
+takes rotation from the keyboard and speed from the stick (`playing.cxx:1048`).
+
+**Do not add an autoswitch.** Upstream needs one because its input methods are
+exclusive and something has to pick between them; here both drive at once, so
+there is nothing left to pick. An autoswitch that also wrote its choice to
+`localStorage` -- which upstream never does -- would throw away a preference the
+player set by hand, on a keypress they meant as a turn.
+
+### A mouse is a capability, not a platform
+
+`isMobile` is a user-agent guess, and a phone with a mouse paired to it steers
+exactly as a desktop does. So the question goes to the browser:
+`isMouseSteeringAvailable()` asks `(any-pointer: fine)`, the same way
+`capabilities.mjs` asks the GL context what it can do, and the query is live --
+plugging a mouse into a phone lights the row up without a reload. **A real
+mouse event outranks the query**, because the query does get it wrong: headless
+Chrome has no input devices attached and answers `false` on a machine with a
+mouse on the desk. A `pointermove` or `pointerdown` carrying
+`pointerType === 'mouse'` latches the answer on and the listeners take
+themselves off; `pointerType` is what separates a mouse from a finger, since a
+touch produces mouse events too but never a mouse pointer. Two contexts
+close the gate whatever the pointer says: **VR**, where there is no cursor to
+read, and **the on-screen controls**, which steer instead while they are up.
+
+The row goes dead rather than inert -- visible, reading `Unavailable`, skipped by
+the focus -- which the settings menu already does for any `disabled` toggle. The
+stored preference is untouched by an unavailable context and comes back when the
+context does; only `mouseControlEnabled` is the player's answer, and
+`mouseSteeringActive()` is whether the box is steering right now.
+
+Keyboards need none of this. There is no media query for one and no gate worth
+writing: the keys arrive from `keydown` on any device that sends them, so a
+keyboard paired to a phone or a headset simply drives. The one thing that stood
+in the way was a `!isMobile` on the fire key, which also meant a canvas tap could
+never shoot.
+
+A left click fires wherever the cursor is, with mouse steering on or off. It is
+`mouseGameplayClickActive()` that decides whether a click is a shot at all, and
+it says no in VR -- a paired mouse cannot aim there -- and no while the
+on-screen controls are up, because those own the whole screen and a tap that
+misses the fire button is a miss, not a shot.
 
 ## The ground follows the eye
 

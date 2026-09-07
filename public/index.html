@@ -74,7 +74,7 @@
       <div class="settingsMenuList" role="menu">
         <button id="playerOptionsBtn" class="settingsHudBtn">Player Options</button>
         <button id="virtualControlsBtn" class="settingsHudBtn">Virtual Controls</button>
-        <button id="mouseBtn" class="settingsHudBtn">Mouse Mode</button>
+        <button id="mouseBtn" class="settingsHudBtn">Mouse Steering</button>
         <button id="fullscreenBtn" class="settingsHudBtn">Fullscreen</button>
         <button id="installBtn" class="settingsHudBtn" title="Install as an app">Install</button>
         <button id="debugBtn" class="settingsHudBtn">Debug</button>
@@ -247,7 +247,7 @@
       <ul>
         <li><strong>F</strong> — <b>Fullscreen</b> (or click the Fullscreen button)</li>
         <li><strong>`</strong> — <b>Debug HUD</b> (or click the Debug button)</li>
-        <li><strong>M</strong> — <b>Mouse Movement</b> (or click the Mouse Mode button)</li>
+        <li><strong>M</strong> — <b>Mouse Steering</b> (or click the Mouse Steering button)</li>
         <li><strong>-</strong>/<strong>=</strong> or <strong>Numpad -/+</strong> — <b>Radar Zoom</b></li>
         <li><strong>\</strong> — <b>Radar Zoom Reset (Medium)</b></li>
         <li><strong>Radar: ...</strong> button in Settings — <b>Cycle Short/Medium/Long presets</b></li>
@@ -284,14 +284,21 @@
         <li>Use on-screen joystick to move/turn</li>
       </ul>
 
-      <h2>Mouse Mode</h2>
+      <h2>Mouse Steering</h2>
       <ul>
-        <li><strong>M</strong> or <b>M</b> button — Enable/Disable Mouse Movement</li>
-        <li><strong>ESC</strong> — Exit Mouse Mode (return to keyboard)</li>
+        <li><strong>M</strong> or the <b>Mouse Steering</b> row — Enable/Disable</li>
+        <li><strong>ESC</strong> — Leave mouse steering</li>
         <li><strong>Mouse Up/Down</strong> — Control Speed</li>
         <li><strong>Mouse Left/Right</strong> — Turn Tank</li>
         <li><strong>Targeting Box</strong> — Inside the small box the tank holds still; the outer box edge is full turn and full speed, and going further out adds nothing</li>
-        <li><strong>Left Click</strong> — Shoot, anywhere on screen unless chat is active</li>
+        <li>The keys still drive: hold a key and it owns that axis, let go and the
+          mouse has it back. Steer with the mouse while holding <strong>W</strong>,
+          or turn with <strong>A</strong>/<strong>D</strong> while the mouse sets the speed.</li>
+        <li><strong>Left Click</strong> — Shoot, anywhere on screen unless chat is
+          active or the on-screen controls are up</li>
+        <li><strong>Right Click</strong> — Identify: picks the roaming target while observing</li>
+        <li>The row is unavailable with no mouse attached, in VR, or while the
+          on-screen controls are up, since those steer instead</li>
       </ul>
 
       <h2>Chat & Misc</h2>
