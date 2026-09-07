@@ -6,6 +6,8 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
 
 ## [Unreleased]
 
+## [1.0.75] - 2026-09-07
+
 ### Changed
 - **Inertia is BZFlag's now, and there is none by default.** bzo smoothed the
   stick through five rates of its own -- `forwardAccel`, `reverseAccel`,
