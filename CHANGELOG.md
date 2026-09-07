@@ -6,6 +6,56 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
 
 ## [Unreleased]
 
+### Added
+- `SR` Steamroller and `G` Genocide (#6, phase 6). Steamroller kills by touch,
+  within the victim's radius plus `_srRadiusMult` 2.0 of the roller's -- the only
+  rule in the game that runs off nothing but where two tanks are, so it gets a
+  sweep of its own in the game loop. The reach is measured in tank radii and so
+  takes bzo's tank rather than BZFlag's, which is the other side of the rule the
+  shock wave's radii follow; both radii are scaled by what each tank's flag does
+  to its size, so `T` is harder to run over and has a shorter reach. Vertical
+  separation counts double, as upstream weighs it, so nobody is squashed through
+  a roof. Genocide kills the dead tank's whole team, read off the shot, only on a
+  world with teams and never for rogue -- and it is out of the flag pool entirely
+  without them, as `JP` and `R` already are on worlds that make them pointless.
+  Both are decided on the server, where upstream decides them on each client.
+- `-noTeamKills` and `-tk`, upstream's two team-kill switches, which are not the
+  same switch and run in opposite directions. `-noTeamKills` turns friendly fire
+  off -- "Players on the same team are immune to each other's shots. Rogue is
+  excepted" -- and covers shots, shock waves and being run over together, because
+  bzo asks it in the one place that decides a hit. `-tk` is the *opt-out* from
+  upstream's default that a team killer dies for it, so bzo's default is the
+  strict one. Either way a team kill scores the killer a death rather than a
+  kill, so it never counts towards shaking a bad flag. Both reachable from
+  `server.json` and from a map's `options` block. `-tkkr` and `-tkannounce` are
+  not implemented.
+- `steamroller.wav` (`SFX_RUNOVER`), played in place of the explosion when a tank
+  is run over rather than on top of it, and the two death notices that go with
+  the new reasons -- "Got flattened by" and "Teammate hit with Genocide by", in
+  upstream's own words.
+- `maps/flagbuffet.bzw` has two bases -- green east, purple west -- and asks for
+  `-c` and `-mp 10,0,10,0,10,10`, so the flags that only mean something between
+  teams have somebody to mean it against: team flags and their capture, Genocide,
+  Masquerade, Colorblindness, a shock wave or a steamroller taking a team mate
+  with it. Green and purple are the two with bases; red and blue are closed,
+  because on a map this size two more bases would sit empty, and rogue stays open
+  for testing a tank that is on nobody's side. Its world grew from 240 to 320
+  across purely to make room outside the flag rings for them; the rings
+  themselves are where they were.
+
+### Fixed
+- A zero-height obstacle is flat rather than four units tall. `obs.h || 4` read a
+  height of 0 as a missing one in eleven places, so a `base` with `size w d 0` --
+  upstream's own `CustomBase` default, a pad painted on the ground that a tank
+  drives onto and a shot flies across -- became a solid block that stopped shots
+  and hid the ground under it. `getObstacleHeight` in the collision pair now asks
+  whether the number is there rather than whether it is truthy, which is what
+  `getColliderTopY` beside it has always done; the two disagreed until now. An
+  obstacle whose map gave no `size` at all still falls back to 4.
+- A base drawn flat on the ground is coplanar with it, which is a coin toss per
+  pixel. The shared base material takes a depth bias, which costs a base with
+  real height nothing.
+
 ## [1.0.73] - 2026-09-07
 
 ### Added

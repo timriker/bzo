@@ -17,6 +17,7 @@ to every client, and every edit to it changes the build id and reloads them.
 | `shock.wav` | `SFX_SHOCK` | a shock wave is fired |
 | `ricochet.wav` | `SFX_RICOCHET` | a shot bounces off a building |
 | `explosion.wav` | `SFX_EXPLOSION`, `SFX_DIE` | a tank is destroyed |
+| `steamroller.wav` | `SFX_RUNOVER` | a tank is run over by a Steamroller |
 | `jump.wav` | `SFX_JUMP` | a tank jumps |
 | `flap.wav` | `SFX_FLAP` | a tank flaps its Wings |
 | `land.wav` | `SFX_LAND` | a tank lands |

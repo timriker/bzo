@@ -25,7 +25,7 @@ import {
   getSoundPath,
   loadAudioBuffer,
 } from './audio.js';
-import { WORLD_WALL_HEIGHT } from './collision.mjs';
+import { WORLD_WALL_HEIGHT, getObstacleHeight } from './collision.mjs';
 import {
   getPlayerTeamColor,
   getTeamFromColorIndex,
@@ -2419,7 +2419,7 @@ class RenderManager {
     // Track max obstacle height for cardinal marker positioning
     this.maxObstacleHeight = 0;
     obstacles.forEach((obs) => {
-      const h = obs.h || 4;
+      const h = getObstacleHeight(obs);
       const baseY = obs.baseY || 0;
       const topY = baseY + h;
       if (topY > this.maxObstacleHeight) {
@@ -2436,7 +2436,7 @@ class RenderManager {
     const fragmentEuler = new THREE.Euler();
 
     obstacles.forEach((obs, i) => {
-      const h = obs.h || 4;
+      const h = getObstacleHeight(obs);
       const baseY = obs.baseY || 0;
       let mesh = null;
 
@@ -2463,7 +2463,19 @@ class RenderManager {
           fragments,
           'base',
           this._getSharedObstacleMaterials(
-            'base', createBaseWallTexture, createBaseTopTexture, { vertexColors: true }
+            'base', createBaseWallTexture, createBaseTopTexture, {
+              vertexColors: true,
+              // A base drawn flat on the ground -- upstream's CustomBase default,
+              // and what a map asks for when it wants a pad a tank drives onto
+              // rather than a block it has to jump -- is coplanar with the
+              // ground, and two coplanar surfaces are a coin toss per pixel.
+              // Upstream's base is its own scene node drawn after the ground;
+              // bzo's is a box merged into the world mesh, so it takes a depth
+              // bias instead. Costs a base with real height nothing.
+              polygonOffset: true,
+              polygonOffsetFactor: -1,
+              polygonOffsetUnits: -1,
+            }
           ),
           // BaseSceneNodeGenerator.cxx:74 leaves the bottom out of a base that
           // sits on the ground, where nothing can see it.
@@ -4509,9 +4521,13 @@ class RenderManager {
     }
   }
 
-  createExplosion(position, tank) {
+  // gotBlowedUp's explosion (playing.cxx:3925). `sound` is the sample the death
+  // is announced with, because upstream picks it off the reason rather than
+  // always exploding: being run over plays SFX_RUNOVER *instead of*
+  // SFX_EXPLOSION, so a squish sounds like a squish.
+  createExplosion(position, tank, sound = 'explosion') {
     if (!this.scene || !position) return;
-    this.playSound('explosion', position);
+    this.playSound(sound, position);
 
     // Dynamic lighting flash
     let explosionLight = null;

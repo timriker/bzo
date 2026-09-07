@@ -239,6 +239,7 @@ import {
   getColliderLocalPoint,
   getOrigRectNormal,
   getPyramidHeight,
+  getObstacleHeight,
   getTankLocalAngle,
   pyramidShrinkFactor,
   getPyramidFaceLocalNormal,
@@ -4603,6 +4604,15 @@ function handlePlayerHit(message) {
   const shooterName = shooterTank && shooterTank.userData && shooterTank.userData.playerState && shooterTank.userData.playerState.name ? shooterTank.userData.playerState.name : 'Someone';
   const victimName = victimTank && victimTank.userData && victimTank.userData.playerState && victimTank.userData.playerState.name ? victimTank.userData.playerState.name : 'Someone';
   const isSelfDestruct = Boolean(message.suicide) || (message.victimId === message.shooterId);
+  // Upstream's BlowedUpReason, as far as the server has reasons to send. It
+  // picks both the notice and the sound: `blowedUpMessage[]` (playing.cxx:186)
+  // is upstream's own table and these are its own words.
+  const deathReason = typeof message.reason === 'string' ? message.reason : 'shot';
+  const deathNotice = {
+    runOver: `Got flattened by ${shooterName}`,
+    genocide: `Teammate hit with Genocide by ${shooterName}`,
+  }[deathReason] || `Got shot by ${shooterName}`;
+  const deathSound = deathReason === 'runOver' ? 'runOver' : 'explosion';
   // A capture kills a whole team at once. Upstream scores nobody for it -- the
   // team loss is the entire penalty -- and the captureFlag message has already
   // said what happened, so only the local victim needs telling.
@@ -4625,7 +4635,7 @@ function handlePlayerHit(message) {
       showMessage('Your team flag was captured!', 'death');
       setHudAlert(0, 'Your team flag was captured!', DEATH_ALERT_SECONDS, true);
     } else {
-      const notice = isSelfDestruct ? 'Tank Self Destructed' : `Got shot by ${shooterName}`;
+      const notice = isSelfDestruct ? 'Tank Self Destructed' : deathNotice;
       showMessage(isSelfDestruct ? 'You self-destructed!' : `${shooterName} killed you!`, 'death');
       setHudAlert(0, notice, DEATH_ALERT_SECONDS, true);
     }
@@ -4683,7 +4693,9 @@ function handlePlayerHit(message) {
     // Immediately hide the tank from the scene
     victimTank.visible = false;
     // Create explosion with tank parts
-    const explosionResult = renderManager.createExplosion(victimTank.position, victimTank);
+    const explosionResult = renderManager.createExplosion(
+      victimTank.position, victimTank, deathSound
+    );
     if (message.victimId === myPlayerId) {
       deathFollowTarget = explosionResult?.followTarget || null;
       renderManager.deathFollowTarget = deathFollowTarget;
@@ -5149,7 +5161,7 @@ function validateMove(x, y, z, intendedDeltaX, intendedDeltaY, intendedDeltaZ, t
       if (!pyramidSurface || !pyramidSurface.climbable) return null;
       surfaceY = pyramidSurface.surfaceY;
     } else {
-      surfaceY = (obs.baseY || 0) + (obs.h || 4);
+      surfaceY = (obs.baseY || 0) + getObstacleHeight(obs);
     }
     const rise = surfaceY - y;
     if (rise <= 0 || rise > MAX_BUMP_HEIGHT) return null;
@@ -5175,7 +5187,7 @@ function validateMove(x, y, z, intendedDeltaX, intendedDeltaY, intendedDeltaZ, t
       topY = contact.supportSurfaceY;
       canSupport = contact.supportable;
     } else if (obs.type === 'box' || !obs.type) {
-      topY = (obs.baseY || 0) + (obs.h || 4);
+      topY = (obs.baseY || 0) + getObstacleHeight(obs);
     } else {
       return null;
     }
@@ -5628,7 +5640,7 @@ function getBoxSurfaceContact(obs, worldX, worldZ, tankRadius = 2) {
   const worldNormal = toWorldNormal(obs, { x: normalLocalX, y: 0, z: normalLocalZ });
   const faceCenterWorld = {
     x: obs.x + faceCenterLocal.x * cosRot + faceCenterLocal.z * sinRot,
-    y: (obs.baseY || 0) + ((obs.h || 4) * 0.5),
+    y: (obs.baseY || 0) + (getObstacleHeight(obs) * 0.5),
     z: obs.z - faceCenterLocal.x * sinRot + faceCenterLocal.z * cosRot
   };
 
@@ -9007,7 +9019,7 @@ function getRadarOpacity(playerY, baseY = 0, height = 0) {
 let radarObstacleOrder = { source: null, list: [] };
 
 function getRadarObstacleTopY(obs) {
-  return (obs.baseY || 0) + (obs.h || 4);
+  return (obs.baseY || 0) + getObstacleHeight(obs);
 }
 
 function getRadarObstacles() {
@@ -9308,7 +9320,7 @@ function updateRadar() {
 
       // Calculate opacity based on player's vertical position relative to obstacle
       const baseY = obs.baseY || 0;
-      const height = obs.h || 4;
+      const height = getObstacleHeight(obs);
       const opacity = getRadarOpacity(py, baseY, height);
 
       radarCtx.save();

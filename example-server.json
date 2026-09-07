@@ -28,6 +28,8 @@
   "turnDecel": 4.0,
   "jumping": true,
   "ricochet": false,
+  "noTeamKills": false,
+  "teamKillerDies": true,
   "jumpVelocity": 19,
   "gravity": 9.8,
   "wingsJumpCount": 1,

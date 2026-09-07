@@ -17,15 +17,28 @@ options
   -sa
   -set _maxFlagGrabs 1
   -set _wingsJumpCount 3
+  # Teams, so the flags that only mean something between them -- team flags and
+  # their capture, Genocide, Masquerade, Colorblindness, a shock wave or a
+  # steamroller taking a team mate with it -- have somebody to mean it against.
+  # Green and purple are the two with bases; red and blue are closed, because on
+  # a map this size two more bases would sit empty. Rogue stays open for testing
+  # a tank that is on nobody's side. `-mp` counts run rogue, red, green, blue,
+  # purple, observer, and a zero closes a team.
+  -c
+  -mp 10,0,10,0,10,10
   -srvmsg "Flag names progress alphabetically clockwise from the north."
   -srvmsg "Good flags are on the inner loop.  Bad flags are on the outer loop."
+  -srvmsg "Green base is east, purple base is west."
   -srvmsg "Self-destruct may be the easiest way to drop a Bouncy flag."
 	# A bad flag also falls off after this many kills.
 	-sw 1
 end
 
+# 160 rather than the 120 this started at, purely to make room outside the flag
+# rings for the two bases: the rings themselves stay at 40 and 80, so the only
+# thing that grew is the empty ground past them.
 world
-  size 120
+  size 160
 end
 
 # A platform with room to drive on, for testing edges. 40x40 across the top at
@@ -72,6 +85,28 @@ end
 link
   from roof:f
   to   portal:b
+end
+
+# The two bases, flat on the ground rather than raised on anything, so a tank
+# drives onto one instead of having to jump for it -- `size` gives no height at
+# all, which is upstream's CustomBase default and makes a base a painted square
+# a tank drives over and a shot flies across.
+#
+# Out at 130 with a 40x40 top, which clears the outer flag ring at 80 by fifty
+# units and leaves thirty to the world edge. `color` is a BZFlag team index: 2
+# is green, 4 is purple.
+base
+  name east_green_base
+  position 130 0 0
+  size 20 20 0
+  color 2
+end
+
+base
+  name west_purple_base
+  position -130 0 0
+  size 20 20 0
+  color 4
 end
 
 zone

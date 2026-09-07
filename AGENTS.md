@@ -180,6 +180,14 @@ These are deliberate. Do not "fix" them without being asked.
   validation. It travels to its owner alone as `antidoteFlag`, and arrival is
   detected off position updates the way Identify's sweep is.
 
+- **Damage rules are decided on the server, where upstream decides them on each
+  client.** `SR` Steamroller's proximity sweep and `G` Genocide's team wipe both
+  run once, in the game loop and in the kill path, rather than once per client
+  reporting its own death. Same outcome, one copy, and a client cannot decide it
+  was not run over. Friendly fire is asked in the same place: upstream refuses a
+  teammate's shot in `LocalPlayer::checkHit`, so bzo's `-noTeamKills` covers
+  shots, shock waves and being run over together. See `docs/flags-plan.md`.
+
 - **A game style may be switched while the server runs.** Upstream settles
   `gameOptions` from the command line at startup and never revisits it. bzo's
   Operator panel carries the ricochet switch, so anything derived from a game
@@ -1242,6 +1250,7 @@ surface as an error, not a silent degradation.
 | `shock` | `shock.wav` | `SFX_SHOCK` | a shock wave is fired |
 | `ricochet` | `ricochet.wav` | `SFX_RICOCHET` | a shot bounces off a building |
 | `explosion` | `explosion.wav` | `SFX_EXPLOSION`, `SFX_DIE` | a tank is destroyed |
+| `runOver` | `steamroller.wav` | `SFX_RUNOVER` | a tank is run over by a Steamroller |
 | `jump` | `jump.wav` | `SFX_JUMP` | a tank jumps |
 | `flap` | `flap.wav` | `SFX_FLAP` | a tank flaps its Wings |
 | `land` | `land.wav` | `SFX_LAND` | a tank lands |

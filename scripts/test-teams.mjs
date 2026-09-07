@@ -179,4 +179,25 @@ for (const capping of [RED, BLUE, ROGUE, PLAYER_TEAM.OBSERVER, null, undefined])
   }
 }
 
+// areFoes (bzfs.cxx:3042). Who may legitimately kill whom, which is what the
+// `-noTeamKills` switch and the team-kill score both ask.
+{
+  const { areFoes } = serverTeams;
+  const PURPLE = PLAYER_TEAM.PURPLE;
+
+  // With teams, your own team is not fair game.
+  assert.equal(areFoes(RED, BLUE, true), true, 'different teams are foes');
+  assert.equal(areFoes(RED, RED, true), false, 'the same team is not');
+  assert.equal(areFoes(PURPLE, PURPLE, true), false);
+
+  // "Rogue is excepted", in the words of upstream's own -noTeamKills help: every
+  // rogue is every other rogue's foe, because rogue is a name rather than a side.
+  assert.equal(areFoes(ROGUE, ROGUE, true), true, 'rogues are always foes');
+  assert.equal(areFoes(ROGUE, RED, true), true);
+
+  // And on a world with no teams at all, everybody is fair game.
+  assert.equal(areFoes(RED, RED, false), true, 'no teams means no team kills');
+  assert.equal(areFoes(ROGUE, ROGUE, false), true);
+}
+
 console.log('player team tests passed');

@@ -231,6 +231,23 @@ function getPyramidHeight(obs) {
   return Math.abs(obs.h || 0);
 }
 
+// How tall an obstacle stands, and bzo's fallback for one whose map gave no
+// size at all -- there is no `size` line a `.bzw` is obliged to write, and an
+// undefined extent is the NaN trap the teleporter defaults in the map parser
+// describe.
+//
+// A height of *zero* is a real answer rather than a missing one. A `base` drawn
+// flat on the ground is exactly that: upstream's CustomBase leaves `size[2]` at
+// 0 unless the map says otherwise, and such a base is a painted square a tank
+// drives over and a shot flies across, not a solid. So this asks whether the
+// number is there, not whether it is truthy -- which is what `getColliderTopY`
+// has always done, and the two disagreed until this existed.
+const DEFAULT_OBSTACLE_HEIGHT = 4;
+
+function getObstacleHeight(obs) {
+  return Number.isFinite(obs?.h) ? obs.h : DEFAULT_OBSTACLE_HEIGHT;
+}
+
 // Inverted pyramids present a flat top that can be driven on; upright ones come
 // to a point. Upstream: isFlatTop() { return getZFlip(); }
 function isPyramidFlatTop(obs) {
@@ -472,7 +489,7 @@ function rotateNormalToWorld(obs, localX, localY, localZ) {
 // True when a shot centred at (x, y, z) is inside this obstacle's solid volume.
 function shotInsideObstacle(obs, x, y, z, radius) {
   const base = obs.baseY || 0;
-  const top = base + (obs.h || 4);
+  const top = base + getObstacleHeight(obs);
   if (y + radius <= base + SHOT_VERTICAL_EPSILON) return false;
   if (y >= top - SHOT_VERTICAL_EPSILON) return false;
   if (obs.type === 'pyramid') {
@@ -541,7 +558,7 @@ function findShotImpact(obstacles, fromX, fromY, fromZ, toX, toY, toZ, radius) {
 // counts as inside.
 function getShotObstacleInterval(obs, from, to, radius) {
   const base = obs.baseY || 0;
-  const top = base + (obs.h || 4);
+  const top = base + getObstacleHeight(obs);
   const lowest = base + SHOT_VERTICAL_EPSILON - radius;
   const highest = top - SHOT_VERTICAL_EPSILON;
   if (highest <= lowest) return null;
@@ -648,7 +665,7 @@ function findShotSegmentImpact(obstacles, from, to, radius) {
 // horizontal normal -- which, as getNormalOrigRect does, always answers.
 function getShotObstacleNormal(obs, x, y, z, radius) {
   const base = obs.baseY || 0;
-  const top = base + (obs.h || 4);
+  const top = base + getObstacleHeight(obs);
 
   if (obs.type === 'pyramid') {
     // PyramidBuilding::get3DNormal names the flat end of the shape -- the base
@@ -826,6 +843,8 @@ module.exports = {
   getTankLocalAngle,
   getPyramidSurfaceLocalHeight,
   getPyramidHeight,
+  DEFAULT_OBSTACLE_HEIGHT,
+  getObstacleHeight,
   isPyramidFlatTop,
   pyramidShrinkFactor,
   getOrigRectNormal,

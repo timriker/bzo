@@ -77,6 +77,7 @@ import {
   SHOCK_AD_LIFE,
   SHOCK_IN_RADIUS,
   SHOCK_OUT_RADIUS,
+  SR_RADIUS_MULT,
   canJump,
   canShakeFlag,
   computeFlagFlight,
@@ -99,6 +100,10 @@ import {
   hasAirControl,
   shotRicochets,
   shieldsAgainstShot,
+  crushesOnContact,
+  killsWholeTeam,
+  getRunOverRadius,
+  getRunOverSeparation,
   getFlagThrownAltitude,
   SHIELD_FLIGHT,
   isTeamFlag,
@@ -418,6 +423,59 @@ for (const abbreviation of ['JP', 'US', 'ID', 'B*', null]) {
 
   assert.equal(serverFlags.getShockWaveRadius(0.35, life), getShockWaveRadius(0.35, life),
     'client/server disagree about how big a wave is');
+}
+
+// Phase 6's damage rules: the two flags that change what a hit does without
+// changing what a shot is.
+{
+  assert.equal(SR_RADIUS_MULT, 2.0, '_srRadiusMult');
+  assert.equal(getFlagType('SR').name, 'Steamroller');
+  assert.equal(getFlagType('G').name, 'Genocide');
+  for (const abbreviation of ['SR', 'G']) {
+    const type = getFlagType(abbreviation);
+    assert.equal(type.endurance, FLAG_ENDURANCE.UNSTABLE, `${abbreviation} is FlagUnstable`);
+    assert.equal(type.quality, 0, `${abbreviation} is a good flag`);
+    assert.equal(type.team, null);
+    // Neither touches the shot itself -- that is the whole point of the phase.
+    assert.deepEqual(getShotEffects(abbreviation), getShotEffects(null),
+      `${abbreviation} leaves the world's own shot alone`);
+  }
+
+  assert.equal(crushesOnContact('SR'), true);
+  assert.equal(killsWholeTeam('G'), true);
+  for (const abbreviation of ['SW', 'SH', 'US', 'L', 'B*', null]) {
+    assert.equal(crushesOnContact(abbreviation), false, `${abbreviation} does not squash`);
+    assert.equal(killsWholeTeam(abbreviation), false, `${abbreviation} kills one tank`);
+  }
+
+  // The reach is the victim's radius plus _srRadiusMult of the roller's, both
+  // scaled by what their flags do to their size. bzo's tank radius, not
+  // BZFlag's: a reach measured in tank radii shrinks with the tank.
+  const R = 2;
+  close(getRunOverRadius(null, 'SR', R), R + (2 * R), 'plain tank, plain roller');
+  // A Tiny victim is a smaller target, and a Tiny roller has a shorter reach.
+  close(getRunOverRadius('T', 'SR', R), (R * TINY_FACTOR) + (2 * R), 'Tiny is harder to run over');
+  // Obesity cuts both ways, which is upstream reading both radii off the same
+  // dimension scale.
+  close(getRunOverRadius('O', 'SR', R), (R * OBESE_FACTOR) + (2 * R), 'Obesity is easier to run over');
+
+  // The separation weighs the vertical double, so a tank overhead is twice as
+  // far as the same gap along the ground.
+  close(getRunOverSeparation(3, 0, 4), 5, 'flat ground is the plain distance');
+  close(getRunOverSeparation(0, 3, 0), 6, 'and height counts double');
+  close(getRunOverSeparation(0, 0, 0), 0);
+  // Which is what stops a roller squashing somebody through a roof: a tank one
+  // storey up is out of reach even standing on your head.
+  const reach = getRunOverRadius(null, 'SR', R);
+  assert.ok(getRunOverSeparation(0, 0, 0) < reach, 'standing on somebody squashes them');
+  assert.ok(getRunOverSeparation(0, 3.05, 0) >= reach, 'a storey up is out of reach');
+  assert.ok(getRunOverSeparation(5.9, 0, 0) < reach, 'and the reach along the ground is nearly two tanks');
+  assert.ok(getRunOverSeparation(6.1, 0, 0) >= reach);
+
+  assert.equal(serverFlags.getRunOverRadius('T', 'SR', R), getRunOverRadius('T', 'SR', R),
+    'client/server run-over radius diverged');
+  assert.equal(serverFlags.getRunOverSeparation(1, 2, 3), getRunOverSeparation(1, 2, 3),
+    'client/server run-over separation diverged');
 }
 
 // A flap on the way up is worth taking only while you are climbing slower than

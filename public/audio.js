@@ -57,6 +57,10 @@ export const GAME_SOUNDS = Object.freeze({
   ricochet: { file: 'ricochet.wav', sfx: 'SFX_RICOCHET' },
   // A tank is destroyed.
   explosion: { file: 'explosion.wav', sfx: 'SFX_EXPLOSION' },
+  // A tank is run over by a Steamroller. Upstream plays this in place of the
+  // explosion rather than on top of it (playing.cxx:3933), so a squish sounds
+  // like a squish and nothing else.
+  runOver: { file: 'steamroller.wav', sfx: 'SFX_RUNOVER' },
   // A tank jumps.
   jump: { file: 'jump.wav', sfx: 'SFX_JUMP' },
   // A tank flaps its Wings. Upstream tells the other clients about this one

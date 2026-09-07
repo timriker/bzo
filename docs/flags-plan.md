@@ -5,15 +5,15 @@ as **GitHub issue #6**; reference it from every flag commit and changelog entry.
 Upstream references are paths under `$HOME/bzflag/`.
 
 Phases 1 (the Useless superflag, animation, and the drop key), 2 (team flags and
-capture), 3 (Identify), 7 (per-player tank dimensions), 8 (shot variants), 9
-(Ricochet), 10 (Shock Wave) and 13 (per-viewer visibility) are **implemented**,
-as is the jumping switch and all three flags that hang off it -- `JP` Jumping,
-`WG` Wings and `NJ` No Jumping -- see "Jumping, and the flags that carry it".
+capture), 3 (Identify), 6 (damage rules), 7 (per-player tank dimensions), 8 (shot
+variants), 9 (Ricochet), 10 (Shock Wave) and 13 (per-viewer visibility) are
+**implemented**, as is the jumping switch and all three flags that hang off it --
+`JP` Jumping, `WG` Wings and `NJ` No Jumping -- see "Jumping, and the flags that
+carry it".
 All three of phase 4's ways out of a bad flag -- the **shake timeout**, **shake
 wins** and **antidote flags** -- are in, and three of its four client-side bad
 flags with them; `WA` Wide Angle is the one left, and it is blocked rather than
-merely unstarted. Phase 6 is in as far as `SH` Shield. Phases 5, 11, 12 and 14
-are not started.
+merely unstarted. Phases 5, 11, 12 and 14 are not started.
 
 Every flag is named as well as abbreviated wherever it is mentioned here, in
 `Flag.cxx`'s own words: the abbreviation is what the code, the config and the
@@ -194,13 +194,13 @@ worse than trusting a modified client about a base it still had to drive to.
 ## What is left to add
 
 Upstream carries 47 flag types: a Null type, four team flags, and 42
-superflags. bzo has the four team flags and twenty-three superflags -- `US`
+superflags. bzo has the four team flags and twenty-five superflags -- `US`
 Useless, `ID` Identify, `JP` Jumping, `WG` Wings, `R` Ricochet, `NJ` No Jumping,
-`SH` Shield, `F` Rapid Fire, `MG` Machine Gun, `L` Laser, `SB` Super Bullet, `IB`
-Invisible Bullet, `SW` Shock Wave, `T` Tiny, `N` Narrow, `O` Obesity, `B`
-Blindness, `JM` Jamming, `CB` Colorblindness, `ST` Stealth, `CL` Cloaking, `MQ`
-Masquerade and `SE` Seer -- so **19 superflags remain**, 10 good and 9 bad. The
-table below is the whole list, grouped by the
+`SH` Shield, `SR` Steamroller, `G` Genocide, `F` Rapid Fire, `MG` Machine Gun,
+`L` Laser, `SB` Super Bullet, `IB` Invisible Bullet, `SW` Shock Wave, `T` Tiny,
+`N` Narrow, `O` Obesity, `B` Blindness, `JM` Jamming, `CB` Colorblindness, `ST`
+Stealth, `CL` Cloaking, `MQ` Masquerade and `SE` Seer -- so **17 superflags
+remain**, 8 good and 9 bad. The table below is the whole list, grouped by the
 machinery each group needs rather than by name, because the machinery is what
 decides the order. `src/common/Flag.cxx` is the authority for every name,
 abbreviation, endurance, quality and help string; `src/common/global.cxx` for
@@ -210,14 +210,12 @@ every constant named here.
 |---|---|---|
 | 4 | `WA` Wide Angle | **blocked**: no XR answer yet, see below |
 | 5 | `V` High Speed, `QT` Quick Turn, `A` Agility, `M` Momentum, `RC` Reverse Controls, `FO` Forward Only, `RO` Reverse Only, `LT` Left Turn Only, `RT` Right Turn Only, `BY` Bouncy, `TR` Trigger Happy | the motion resolver, in the shared pair |
-| 6 | `SR` Steamroller, `G` Genocide | damage rules, on the proximity sweep phase 10 built |
 | 11 | `TH` Thief | flag stealing |
 | 12 | `GM` Guided Missile | a steerable shot, and a lock-on target |
 | 14 | `OO` Oscillation Overthruster, `BU` Burrow, `PZ` Phantom Zone | movement through and under geometry |
 
-Phase 6 is a small hook on machinery an earlier phase built. Phases 11 to 14 are
-each their own feature and can be taken in any order. Phase 4 is down to its last
-flag, and that one is blocked rather than merely unstarted.
+Phases 11 to 14 are each their own feature and can be taken in any order. Phase 4
+is down to its last flag, and that one is blocked rather than merely unstarted.
 
 Phase 13 was taken next because `CB` had already built most of it: a flag that
 changes what one player sees of another needed one place where a remote tank's
@@ -235,9 +233,10 @@ shot flag, and `getTankDimensionScale` now covers that half of it:
 `_thiefTinyFactor` is one more case beside `T` and `O`. What phase 11 still owes
 is the stealing.
 
-Phase 10 paid forward too, to the phase before it: `applyShockWaveHits` is the
-per-tick proximity sweep phase 6 was waiting on, asked against a radius rather
-than against a tank.
+Phase 10 paid forward to the phase before it, which is why 6 came after it:
+`applyShockWaveHits` had already established a sweep that kills several tanks
+from one cause, and `SR` is the same shape asked against a radius rather than
+against a wave.
 
 ## Phase 3 -- Identify (implemented)
 
@@ -759,31 +758,89 @@ jumping switch landed. See "Jumping, and the flags that carry it".
 `TR` is a firing rule rather than a motion one, but it belongs here: it is an
 input clamp, and the resolver is where input clamps live.
 
-## Phase 6 -- damage rules
+## Phase 6 -- damage rules (implemented)
 
 Three flags that change what a hit does rather than what a shot is. bzo's server
-owns hit detection (`simulateProjectilesStep`), which makes all three
-server-side and simpler than upstream. **`SH` Shield is implemented**; the other
-two are not.
+owns hit detection, which makes all three server-side and simpler than upstream.
 
-- **`SR` Steamroller** -- touching a tank kills it, within
-  `_srRadiusMult` 2.0 tank radii. A new server-side per-tick proximity sweep
-  over live players; there is no such sweep today. Upstream's `_squishFactor`
-  and `_squishTime` only flatten the victim's model as it dies, which is
-  cosmetic and can wait.
-- **`G` Genocide** -- killing one tank kills its whole team. Upstream detects
-  this on each client (`playing.cxx:2664`), because upstream's clients report
-  their own deaths; bzo's server decides hits, so bzo does it in one place on
-  the server when the killing shot carried `G`. That is a deliberate deviation
-  and the reason to note it: the outcome is identical and the check is not
-  duplicated per client.
+### `SR` Steamroller
 
-`G` needs the projectile to remember which flag fired it. The projectile already carries it:
-`Projectile` (`server.js:1818`) takes the shooter's flag at fire time and
-`shotBegin` passes it on, both of which arrived with Ricochet and are what let
-phase 8 land without waiting for this one.
+**Touching a tank kills it**, within the victim's radius plus `_srRadiusMult` 2.0
+of the roller's. It is the only rule in the game that runs off nothing but where
+two tanks are -- no shot, no geometry, no event -- so it gets a sweep of its own
+in the game loop rather than a hook on something that was already happening.
 
-### `SH` Shield (implemented)
+**The reach is measured in tank radii, so it takes bzo's tank and not BZFlag's.**
+This is the other side of the rule `BZFLAG_TANK_RADIUS` and `_shockInRadius`
+follow: those are distances through the world and transfer unchanged, while a
+reach built from the vehicle has to shrink with it. A bzo tank is half as wide,
+so a Steamroller measured in upstream's radii would kill from twice as far away
+as it looks. Both radii are scaled by whatever the tank's flag does to its size,
+because upstream reads both off `Player::getRadius` -- so `T` Tiny is harder to
+run over *and* has a shorter reach, and `O` Obesity is the reverse.
+
+**The vertical separation counts double.** Upstream's distance is
+`hypot(hypot(dx, dy), dz * 2)`, so a tank a storey above you is twice as far away
+as the same gap along the ground and cannot be squashed through a roof. (Upstream
+names the result `distSquared` and compares it to an unsquared radius. The name
+is wrong; the comparison is right.)
+
+**bzo sweeps on the server; upstream sweeps on each client.** Upstream runs the
+loop for the local tank only, in the same else-chain that has already decided it
+was not killed by a shot, by death touch or by water. bzo's server decides every
+kill, so it runs the whole sweep once -- a client that decided it had been run
+over would be a client that could decide it had not. The sweep costs one pass
+over the players while nobody is carrying the flag, which is the normal case.
+
+`_squishFactor` and `_squishTime` only flatten the victim's model as it dies.
+That is cosmetic and still to do.
+
+### `G` Genocide
+
+**Killing one tank kills its whole team.** Read off the *shot*, so it is asked
+where a shot kills somebody rather than anywhere a tank happens to die -- the
+projectile has carried its firing flag since Ricochet.
+
+Upstream detects it on each client (`playing.cxx:2655`), because upstream's
+clients report their own deaths; bzo asks once, on the server that decided the
+kill. The outcome is identical and the check is not duplicated per client.
+
+**Only on a world with teams** -- "geno only works in team games :)" is
+upstream's own comment -- **and never for rogue**, whose players share a name
+rather than a side. bzo goes one step further than upstream and takes `G` out of
+the flag pool entirely on a world without teams, as it already takes out `JP` on
+a world that always jumps and `R` on one that always bounces; upstream leaves it
+in and lets it do nothing.
+
+**The shooter's own team is not consulted.** A Genocide shot that killed a team
+mate takes the rest of the shooter's team with it. That is upstream's rule, and
+with a team killer dying for it by default the shooter goes too.
+
+### Friendly fire, and what it costs
+
+Phase 6 is where team kills stop being incidental, so the two switches upstream
+guards them with arrived with it. They are not the same switch and they run in
+opposite directions:
+
+- **`-noTeamKills`** -- "Players on the same team are immune to each other's
+  shots. Rogue is excepted." Friendly fire off. Off by default. Upstream refuses
+  the hit on the victim's own client (`LocalPlayer::checkHit`); bzo refuses it in
+  the one place that decides hits, which covers shots, shock waves and being run
+  over together.
+- **`-tk`** -- "player does not die when killing a teammate". Note which way this
+  runs: upstream kills a team killer **by default** (`teamKillerDies` starts
+  true) and `-tk` is what turns that off. So bzo's default is the strict one, and
+  the switch is the lenient one.
+
+Either way a team kill scores the killer a death rather than a kill, which is
+upstream's `score.killedBy()` in place of `score.kill()` -- so it never counts
+towards shaking a bad flag either. `areFoes` in the teams pair is the one answer
+to who may kill whom: everyone on a world with no teams, and every rogue always.
+
+`-tkkr` (kick a player over a team-kill ratio) and `-tkannounce` are not
+implemented. Kicking is not something a development test server wants.
+
+### `SH` Shield
 
 Being shot drops your flag instead of killing you, and the flag flies
 `_shieldFlight` 2.7 times the normal altitude, so it is in the air

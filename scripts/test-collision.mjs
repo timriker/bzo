@@ -668,4 +668,35 @@ assert.ok(Math.abs(trapped.x) < 1, 'and leaves the shot inside the corridor');
   }
 }
 
+// A height of zero is a real height, not a missing one. This is the whole reason
+// getObstacleHeight exists: `obs.h || 4` read a flat `base` -- upstream's own
+// CustomBase default, a pad painted on the ground -- as a four-unit block that
+// stopped shots and hid the ground under it.
+{
+  const flatBase = { kind: 'base', type: 'box', x: 0, z: 0, baseY: 0, w: 40, d: 40, h: 0 };
+  assert.equal(client.getObstacleHeight(flatBase), 0, 'a flat base is flat');
+  assert.equal(client.getBaseTopY(flatBase), 0, 'and its top surface is the ground');
+  assert.equal(client.isOnBaseTop(flatBase, 0, 0, 0), true, 'a tank on the ground is on it');
+  // The shot test is the one `obs.h || 4` got wrong: a shot at muzzle height
+  // crossing a flat base has nothing to hit.
+  assert.equal(
+    client.shotInsideObstacle(flatBase, 0, 1.57, 0, client.SHOT_COLLISION_RADIUS),
+    false,
+    'a shot flies across a flat base'
+  );
+  assert.equal(client.getShotObstacleInterval(
+    flatBase, { x: -60, y: 1.57, z: 0 }, { x: 60, y: 1.57, z: 0 }, client.SHOT_COLLISION_RADIUS
+  ), null, 'and never enters it');
+
+  // An obstacle whose map gave no size at all is the case the fallback is for,
+  // and it keeps the answer it always had.
+  assert.equal(client.getObstacleHeight({ type: 'box' }), client.DEFAULT_OBSTACLE_HEIGHT);
+  assert.equal(client.getObstacleHeight({ type: 'box', h: undefined }), 4);
+  assert.equal(client.getObstacleHeight({ type: 'box', h: NaN }), 4);
+  // A real height still answers for itself.
+  assert.equal(client.getObstacleHeight({ type: 'box', h: 10 }), 10);
+  assert.equal(server.getObstacleHeight(flatBase), client.getObstacleHeight(flatBase),
+    'client/server obstacle height diverged');
+}
+
 console.log(`collision geometry tests passed (${checked} fuzz samples, ${solidSamples} solid, seed ${SEED})`);

@@ -52,6 +52,13 @@ takes `flipz`, and `teleporter` also takes `border`.
 is what makes a base a capture target for that team. A `base` with no `color`
 is red.
 
+**A zero height is a real height.** `size w d 0` is upstream's own default for a
+`base` -- `CustomBase` leaves the third extent at 0 -- and it means a pad painted
+on the ground rather than a block: a tank drives onto it instead of having to
+jump, and a shot flies across it. Any obstacle may say it; only a `base` has much
+reason to. An obstacle that gives no `size` at all is a different thing, and
+still falls back to bzo's 4.
+
 An obstacle with no `name` is given one -- `B0`, `P3`, `t2` -- because the name
 is what the collision log, the debug labels and the teleporter links refer to.
 
@@ -132,6 +139,8 @@ Read as a bzfs command line, one option a line. Everything bzo understands:
 | `-c` | team play on |
 | `-offa` | team play off, free-for-all |
 | `-autoTeam` | assign teams rather than letting players pick |
+| `-noTeamKills` | players on the same team are immune to each other; rogue is excepted |
+| `-tk` | a team killer does *not* die for it -- upstream kills them by default, and this is the opt-out |
 | `-mp a,b,c,d,e,f` | per-team player limits, in BZFlag's team order; a team limited to 0 is not offered |
 | `-j` | tanks may jump |
 | `+r` | every shot ricochets |

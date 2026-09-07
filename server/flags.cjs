@@ -104,6 +104,16 @@ const SHOCK_AD_LIFE = 0.2;
 const SHOCK_IN_RADIUS = 6.0;
 const SHOCK_OUT_RADIUS = 60.0;
 
+// _srRadiusMult (global.cxx:146). Steamroller's reach, as a multiple of the
+// roller's own radius on top of the victim's -- so the two tanks have to be
+// nearly touching, which is the flag's own help text.
+//
+// Unlike the shock wave's radii this one is built from a tank rather than from
+// the world, so it takes bzo's own tank radius and not BZFlag's: a bzo tank is
+// half as wide, and a reach measured in tank radii has to shrink with it or
+// Steamroller would kill from twice as far away as it looks.
+const SR_RADIUS_MULT = 2.0;
+
 // BZFlag's tank radius, deliberately not bzo's 2. The grab radius scales with
 // the world rather than with the vehicle, as the sound reference distance in
 // audio.js does: a bzo tank is half as wide as an upstream one, and building
@@ -295,6 +305,22 @@ const FLAG_TYPES = Object.freeze({
     quality: FLAG_QUALITY.GOOD,
     team: null,
     help: 'Getting hit only drops flag.  Flag flies an extra-long time.',
+  }),
+  SR: Object.freeze({
+    abbreviation: 'SR',
+    name: 'Steamroller',
+    endurance: FLAG_ENDURANCE.UNSTABLE,
+    quality: FLAG_QUALITY.GOOD,
+    team: null,
+    help: 'Destroys tanks you touch but you have to get really close.',
+  }),
+  G: Object.freeze({
+    abbreviation: 'G',
+    name: 'Genocide',
+    endurance: FLAG_ENDURANCE.UNSTABLE,
+    quality: FLAG_QUALITY.GOOD,
+    team: null,
+    help: 'Killing one tank kills that tank\'s whole team.',
   }),
   JP: Object.freeze({
     abbreviation: 'JP',
@@ -760,6 +786,43 @@ function shotRicochets(abbreviation, allShotsRicochet) {
   return allShotsRicochet === true || abbreviation === 'R';
 }
 
+// checkEnvironment's squish loop (playing.cxx:4198): the flag that kills by
+// touch rather than by shot. It is the only rule in the game that runs off
+// nothing but where two tanks are, which is why it needs a sweep of its own
+// rather than a hook on something that was already happening.
+//
+// `BU` Burrow is upstream's other half of the same loop -- a burrowed tank is
+// squashed by anyone alive, flag or no flag -- and arrives with that flag.
+function crushesOnContact(abbreviation) {
+  return abbreviation === 'SR';
+}
+
+// The reach, in upstream's own terms: the victim's radius plus `_srRadiusMult`
+// of the roller's. Each is scaled by whatever the tank's flag does to its size,
+// because upstream reads both off `Player::getRadius`, which is the length
+// scale on the tank radius -- so a Tiny tank is harder to run over and easier
+// to run over things with.
+function getRunOverRadius(victimFlag, rollerFlag, tankRadius) {
+  return (tankRadius * getTankHitRadiusScale(victimFlag))
+    + (SR_RADIUS_MULT * tankRadius * getTankHitRadiusScale(rollerFlag));
+}
+
+// And the distance it is compared against, which is not the plain one: upstream
+// weighs the vertical separation double, so a tank a storey above you is twice
+// as far away as the same gap along the ground and cannot be squashed through a
+// roof. (Upstream calls the result `distSquared` and compares it to an unsquared
+// radius; the name is wrong and the comparison is right.)
+function getRunOverSeparation(dx, dy, dz) {
+  return Math.hypot(dx, dz, dy * 2);
+}
+
+// playing.cxx:2658. Killing one tank kills every tank on its team. Upstream
+// gates it on `World::allowTeams()` -- "geno only works in team games :)" -- and
+// on the dead tank's team not being rogue, since rogues are a team only in name.
+function killsWholeTeam(abbreviation) {
+  return abbreviation === 'G';
+}
+
 // gotBlowedUp (playing.cxx:3919). Shield is the one flag that answers a shot
 // with something other than a death: the tank lives and gives up the flag
 // instead. Only a shot -- upstream tests the reason as well as the flag, so
@@ -998,6 +1061,7 @@ module.exports = {
   SHOCK_AD_LIFE,
   SHOCK_IN_RADIUS,
   SHOCK_OUT_RADIUS,
+  SR_RADIUS_MULT,
   BZFLAG_TANK_RADIUS,
   FLAG_GRAB_RADIUS,
   FLAG_GRAB_LEVEL_TOLERANCE,
@@ -1058,5 +1122,9 @@ module.exports = {
   getShockWaveAlpha,
   shotRicochets,
   shieldsAgainstShot,
+  crushesOnContact,
+  killsWholeTeam,
+  getRunOverRadius,
+  getRunOverSeparation,
   getFlagThrownAltitude,
 };

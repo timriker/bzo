@@ -38,6 +38,10 @@ const {
   normalizeShakeWins,
   shotRicochets,
   shieldsAgainstShot,
+  crushesOnContact,
+  killsWholeTeam,
+  getRunOverRadius,
+  getRunOverSeparation,
   getFlagEndurance,
   getFlagThrownAltitude,
   getFlagType,
@@ -64,6 +68,7 @@ const {
   getBaseTeamAtPoint,
   getBaseTopY,
   getColliderLocalPoint,
+  getObstacleHeight,
   getShotObstacleNormal,
   getTankLocalAngle,
   isOverFlatTop,
@@ -96,6 +101,7 @@ const {
   getTeamFromColorIndex,
   getTeamScoreDeltasForCapture,
   getTeamScoreDeltasForKill,
+  areFoes,
 } = require('./server/teams.cjs');
 const path = require('path');
 const fs = require('fs');
@@ -884,6 +890,16 @@ function parseBZWServerOptions(lines) {
     if (option === '-sw') options.flagShakeWins = normalizeShakeWins(value);
     // -sa: put an antidote flag in the world for whoever is carrying a bad one.
     if (option === '-sa') options.antidoteFlags = true;
+    // -noTeamKills: "Players on the same team are immune to each other's shots.
+    // Rogue is excepted." Friendly fire off, which upstream enforces on each
+    // client in LocalPlayer::checkHit; bzo's server decides every hit, so it
+    // enforces it in the one place instead.
+    if (option === '-noTeamKills') options.noTeamKills = true;
+    // -tk: "player does not die when killing a teammate". Note which way round
+    // this runs -- upstream kills a team killer *by default*, and the switch is
+    // what turns that off, so `-tk` is the lenient setting rather than the
+    // strict one.
+    if (option === '-tk') options.teamKillerDies = false;
     // -ms <count>: how many shots a tank may have in the air at once. Unlike the
     // switches above this carries a value, and upstream parses a map's options
     // where `-world` sits on the command line, so the map's number simply
@@ -2351,7 +2367,7 @@ function checkCollision(x, y, z, tankRadius = 2, options = {}) {
     // so that a map which names it has nowhere else to be honoured -- and
     // `shootThrough`, which the world border does use, is its other half.
     if (obs?.driveThrough) continue;
-    const obstacleHeight = obs.h || 4;
+    const obstacleHeight = getObstacleHeight(obs);
     const obstacleBase = obs.baseY || 0;
     const obstacleTop = getColliderTopY(obs);
     const epsilon = 0.15;
@@ -2892,6 +2908,30 @@ GAME_CONFIG.ALLOW_JUMPING = ALLOW_JUMPING;
 // runs, which is why the flag pool is filtered per draw rather than at startup.
 GAME_CONFIG.ALL_SHOTS_RICOCHET = serverConfig.ricochet === true
   || mapServerOptions.ricochet === true;
+// NoTeamKillsGameStyle upstream, `-noTeamKills`: players on the same team are
+// immune to each other, and rogue is excepted because every rogue is every other
+// rogue's foe. Off by default, as upstream has it, and a map may turn it on
+// where nothing turns it back off.
+//
+// Upstream refuses the hit on each client, in LocalPlayer::checkHit, and its
+// server scores whatever the client reports. bzo's server is the only thing that
+// decides a hit, so this is asked once, there.
+const NO_TEAM_KILLS = serverConfig.noTeamKills === true
+  || mapServerOptions.noTeamKills === true;
+// `-tk`, which runs the opposite way round from its name: upstream kills a team
+// killer *by default* (`teamKillerDies` starts true, CmdLineOptions.h:79) and
+// `-tk` is what turns that off. So the default here is the strict one, and a map
+// or a config saying `teamKillerDies: false` is what makes it lenient -- again
+// only ever in the direction a bzfs switch moves.
+//
+// With friendly fire off there is no team kill left to answer for, so the two
+// switches never both apply.
+const TEAM_KILLER_DIES = serverConfig.teamKillerDies !== false
+  && mapServerOptions.teamKillerDies !== false;
+log(
+  `Team kills: ${NO_TEAM_KILLS ? 'friendly fire off (-noTeamKills)' : 'friendly fire on'}` +
+  `; a team killer ${TEAM_KILLER_DIES ? 'dies for it' : 'does not die (-tk)'}`
+);
 // -st upstream, the shake timeout: seconds a bad flag sticks before it falls off
 // by itself. Off by default, as upstream has it, so a bad flag is otherwise
 // carried until it kills you. `flagShakeTimeout` in `server.json` and `-st` in a
@@ -2949,6 +2989,12 @@ function getForbiddenFlags() {
   const forbidden = [...MAP_FORBIDDEN_FLAGS];
   forbidden.push(ALLOW_JUMPING ? 'JP' : 'NJ');
   if (GAME_CONFIG.ALL_SHOTS_RICOCHET) forbidden.push('R');
+  // "geno only works in team games :)" -- a world with no teams has no team to
+  // wipe, so Genocide is an ordinary shot wearing a rare flag's name. Upstream
+  // leaves it in the pool and lets it do nothing; bzo takes it out, as it
+  // already takes out `JP` on a world that always jumps and `R` on one that
+  // always bounces.
+  if (!TEAM_MODE.enabled) forbidden.push('G');
   return forbidden;
 }
 // -fb upstream. Whether a superflag may spawn on, and come to rest on, a
@@ -4598,6 +4644,64 @@ function traceShotThroughTeleporters(start, dir, travelDistance, projectileId, r
   };
 }
 
+// checkEnvironment's squish loop (playing.cxx:4198), which is the only rule in
+// the game that runs off nothing but where two tanks are -- so it gets a sweep
+// of its own rather than a hook on something that was already happening.
+//
+// Upstream runs this on each client, for that client's own tank, in the same
+// else-chain that decides it was not already killed by a shot, by death touch or
+// by water. bzo's server decides every kill and so runs the whole sweep here;
+// the outcome is the same and it is not asked once per client. Kills stay
+// server-side deliberately: a client that decided it had been run over would be
+// a client that could decide it had not.
+//
+// O(rollers x players) once a tick, and rollers is almost always zero, so the
+// first pass is what this costs on a normal map.
+function applySteamrollerSweep(now) {
+  const rollers = [];
+  players.forEach((player) => {
+    if (player.health <= 0 || player.paused || player.team === 'observer') return;
+    if (!crushesOnContact(getPlayerFlag(player.id)?.type ?? null)) return;
+    rollers.push({ player, at: player.getExtrapolatedPosition(now) });
+  });
+  if (rollers.length === 0) return;
+
+  players.forEach((victim) => {
+    // A paused tank cannot be hit by a shot in bzo, so it cannot be run over
+    // either. Upstream only checks the roller's pause; the victim is the local
+    // tank and its own pause is read further up the same chain.
+    if (victim.health <= 0 || victim.paused || victim.team === 'observer') return;
+    const victimFlag = getPlayerFlag(victim.id)?.type ?? null;
+    const victimAt = victim.getExtrapolatedPosition(now);
+
+    for (const roller of rollers) {
+      if (roller.player.id === victim.id) continue;
+      // Squashing is a kill like any other, so friendly fire governs it: the
+      // guard is upstream's own, in this very loop (playing.cxx:4212).
+      if (NO_TEAM_KILLS
+        && !areFoes(roller.player.team, victim.team, TEAM_MODE.enabled)) continue;
+
+      const rollerFlag = getPlayerFlag(roller.player.id)?.type ?? null;
+      const radius = getRunOverRadius(victimFlag, rollerFlag, TANK_HIT_RADIUS);
+      const separation = getRunOverSeparation(
+        victimAt.x - roller.at.x,
+        victimAt.y - roller.at.y,
+        victimAt.z - roller.at.z,
+      );
+      if (separation >= radius) continue;
+
+      log(
+        `Run over: "${roller.player.name}" flattened "${victim.name}"` +
+        ` at ${formatShotPoint(victimAt.x, victimAt.y, victimAt.z)}` +
+        ` (${separation.toFixed(2)} < ${radius.toFixed(2)})`
+      );
+      killPlayer(victim, roller.player, DEATH_REASON.RUN_OVER);
+      // One tank dies once, however many rollers reached it in the same tick.
+      break;
+    }
+  });
+}
+
 const SHOT_SIM_STEP_SECONDS = 1 / 60;
 const SHOT_SIM_MAX_STEPS_PER_LOOP = 8;
 
@@ -4613,6 +4717,15 @@ function logShotEnd(projectile, cause, point, details = '') {
     ` origin=${formatShotPoint(projectile.originX, projectile.y, projectile.originZ)}` +
     ` dir=(${projectile.dirX.toFixed(4)},${(projectile.dirY || 0).toFixed(4)},${projectile.dirZ.toFixed(4)})${extra}`
   );
+}
+
+// FiringInfo::shot.team, which upstream sets from the shooter at fire time and
+// then admits it never reads ("FIXME team coloring of shot is never used").
+// bzo asks the shooter instead, which differs only if somebody changed team
+// mid-flight -- and a shot that turned friendly in the air would be the stranger
+// of the two answers.
+function getShotTeam(proj) {
+  return players.get(proj.playerId)?.team ?? null;
 }
 
 // The tank a shot's hit test sees: bzo's own radius, which is not upstream's
@@ -4685,6 +4798,15 @@ function findShotPlayerHit(proj, from, to, now) {
     if (player.paused) return; // Can't hit paused players
     if (player.health <= 0) return; // Can't hit dead players
 
+    // "-noTeamKills: Players on the same team are immune to each other's shots.
+    // Rogue is excepted." Upstream refuses this on the victim's own client
+    // (LocalPlayer.cxx:1616); bzo refuses it here, where hits are decided. Your
+    // own shot still reaches you once it has bounced -- upstream excepts the
+    // shooter too (`source != this`), because a ricochet you drove into is
+    // nobody's team kill.
+    if (NO_TEAM_KILLS && player.id !== proj.playerId
+      && !areFoes(getShotTeam(proj), player.team, TEAM_MODE.enabled)) return;
+
     // LocalPlayer::checkHit (LocalPlayer.cxx:1630): "laser can't hit a cloaked
     // tank". The one rule in phase 13 that is not a matter of what somebody can
     // see -- a cloaked tank is genuinely immune to a beam, so it has to be the
@@ -4716,6 +4838,82 @@ function findShotPlayerHit(proj, from, to, now) {
   return best;
 }
 
+// Upstream's BlowedUpReason, as far as bzo has reasons: what the client is told
+// killed a tank, so it can pick the sound and the notice. `captured` travels on
+// its own field and predates this.
+const DEATH_REASON = Object.freeze({
+  SHOT: 'shot',           // GotShot
+  RUN_OVER: 'runOver',    // GotRunOver
+  GENOCIDE: 'genocide',   // GenocideEffect
+});
+
+// playerKilled() (bzfs.cxx:3345). One tank dies, for one reason, and everything
+// that follows from it: the score, the flag it was carrying, the message, and
+// the respawn. Every way to die in bzo but a capture comes through here -- a
+// capture kills a whole team at once and scores nobody, which is a different
+// rule rather than a repeat of this one.
+function killPlayer(victim, killer, reason, projectileId = null) {
+  // "victim was already dead. keep score." Upstream's own guard, and bzo needs
+  // it for the same reason plus one of its own: genocide kills a team in a loop,
+  // and a team killer who dies for the first of them must not die again for the
+  // rest.
+  if (victim.health <= 0) return;
+
+  victim.health = 0;
+  victim.deaths++;
+
+  // areFoes(): a kill across teams, a rogue killing anyone, or any kill at all
+  // on a world without teams. Everything else is a team kill.
+  const selfKill = !killer || killer.id === victim.id;
+  const teamKill = !selfKill && !areFoes(killer.team, victim.team, TEAM_MODE.enabled);
+  if (!selfKill) {
+    if (teamKill) {
+      // Upstream scores the killer a death rather than a kill for it
+      // (`killerData->score.killedBy()`), so a team kill never counts towards
+      // shaking a bad flag either.
+      killer.deaths++;
+    } else {
+      killer.kills++;
+      recordShakeWin(killer);
+    }
+  }
+  // Killing yourself is a loss and nothing else, as self-destruct is.
+  // getTeamScoreDeltasForKill already reads the two being the same player.
+  recordTeamScoreForKill(killer, victim);
+
+  dropPlayerFlag(victim.id);
+
+  broadcastAll({
+    type: 'playerHit',
+    victimId: victim.id,
+    shooterId: killer ? killer.id : null,
+    projectileId,
+    reason,
+  });
+
+  setTimeout(() => {
+    if (players.has(victim.id)) {
+      victim.respawn();
+      broadcastAll({
+        type: 'playerRespawned',
+        player: victim.getState(),
+      });
+    }
+  }, GAME_CONFIG.RESPAWN_DELAY);
+
+  // "-tk: player does not die when killing a teammate" -- so without it, they
+  // do. Upstream kills the killer with the same reason the victim took
+  // (`playerKilled(killerIndex, killerIndex, reason, ...)`), by their own hand
+  // and for no score. The guard at the top of this function is what stops a
+  // genocide that wiped the killer's own team killing them once per victim.
+  if (teamKill && TEAM_KILLER_DIES) {
+    log(`Team kill: "${killer.name}" killed "${victim.name}" and dies for it`);
+    killPlayer(killer, killer, reason);
+  } else if (teamKill) {
+    log(`Team kill: "${killer.name}" killed "${victim.name}"`);
+  }
+}
+
 // gotBlowedUp() for one tank a shot reached, and nothing about the shot's own
 // fate -- an ordinary shell is spent by the tank it hits and a shock wave is
 // spent by nobody, so the caller decides that. Returns what became of the tank.
@@ -4729,40 +4927,36 @@ function applyShotVictim(proj, id, player) {
     return 'shield';
   }
 
-  // Hit!
-  player.health = 0;
-  player.deaths++;
+  killPlayer(player, players.get(proj.playerId), DEATH_REASON.SHOT, id);
 
-  const shooter = players.get(proj.playerId);
-  // Killing yourself with your own ricochet is a loss and nothing else, as
-  // self-destruct is. getTeamScoreDeltasForKill already reads the two being the
-  // same player.
-  if (shooter && shooter.id !== player.id) {
-    shooter.kills++;
-    recordShakeWin(shooter);
-  }
-  recordTeamScoreForKill(shooter, player);
-
-  dropPlayerFlag(player.id);
-
-  broadcastAll({
-    type: 'playerHit',
-    victimId: player.id,
-    shooterId: proj.playerId,
-    projectileId: id,
-  });
-
-  // Respawn player
-  setTimeout(() => {
-    if (players.has(player.id)) {
-      player.respawn();
-      broadcastAll({
-        type: 'playerRespawned',
-        player: player.getState(),
-      });
-    }
-  }, GAME_CONFIG.RESPAWN_DELAY);
+  // playing.cxx:2655. Genocide is decided off the *shot*, so it is asked here
+  // rather than anywhere a tank happens to die: killing one tank kills its whole
+  // team. Upstream asks it on every client, because each client reports its own
+  // death; bzo asks it once, on the server that decided the kill.
+  applyGenocide(proj, player);
   return 'killed';
+}
+
+// "blow up if killer has genocide flag and i'm on same team as victim (and we're
+// not rogues)". Everyone left on the dead tank's team goes with it.
+//
+// Only on a world with teams -- "geno only works in team games :)" -- and never
+// for rogue, whose players share a name rather than a side. The shooter's own
+// team is not consulted: a Genocide shot that killed a team mate takes the rest
+// of the shooter's team too, which is upstream's rule and reads as fair warning.
+function applyGenocide(proj, victim) {
+  if (!killsWholeTeam(proj.flag)) return;
+  if (!TEAM_MODE.enabled) return;
+  if (!isColorTeam(victim.team)) return;
+
+  const killer = players.get(proj.playerId);
+  players.forEach((other) => {
+    if (other.id === victim.id) return;
+    if (other.team !== victim.team) return;
+    if (other.health <= 0) return;
+    log(`Genocide: "${other.name}" goes with "${victim.name}" (${victim.team})`);
+    killPlayer(other, killer, DEATH_REASON.GENOCIDE);
+  });
 }
 
 // The tank a travelling shot reached. One hit and the shot is gone, whichever
@@ -4794,6 +4988,10 @@ function applyShockWaveHits(proj, id, radius, now) {
     if (player.paused) return;
     if (player.health <= 0) return;
     if (proj.shockWaveResolved.has(player.id)) return;
+    // Friendly fire, as for any other shot: upstream's team-kill guard is one
+    // test in one loop over every shot the shooter owns, and a shock wave is one
+    // of them.
+    if (NO_TEAM_KILLS && !areFoes(getShotTeam(proj), player.team, TEAM_MODE.enabled)) return;
 
     const at = player.getExtrapolatedPosition(now);
     const dx = at.x - proj.x;
@@ -5206,6 +5404,7 @@ function gameLoop() {
     projectileSimAccumulator -= SHOT_SIM_STEP_SECONDS;
   }
 
+  applySteamrollerSweep(now);
   updateFlags(now);
 }
 

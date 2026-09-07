@@ -289,6 +289,20 @@ function isColorTeam(team) {
 //
 // Returned rather than applied so the rule can be tested against upstream's
 // without a server around it.
+// areFoes (bzfs.cxx:3042). Who may legitimately kill whom. Everyone is a foe on
+// a world with no teams, and a rogue is everyone's foe even on one that has
+// them -- which is why upstream's own `-noTeamKills` help says "Rogue is
+// excepted".
+//
+// Server-only. Upstream asks this on both ends -- each client refuses a
+// teammate's shot in `LocalPlayer::checkHit` and bzfs asks again to score the
+// team kill -- but bzo's server is the only thing that decides a hit, so there
+// is one copy and it lives here.
+function areFoes(teamA, teamB, teamsAllowed) {
+  if (!teamsAllowed) return true;
+  return teamA !== teamB || teamA === PLAYER_TEAM.ROGUE;
+}
+
 function getTeamScoreDeltasForKill(killerTeam, victimTeam, selfKill = false) {
   const deltas = [];
   if (killerTeam && killerTeam === victimTeam) {
@@ -393,6 +407,7 @@ module.exports = {
   getInitialPlayerColor,
   isColorTeam,
   isObserverTeam,
+  areFoes,
   getTeamScoreDeltasForKill,
   getTeamScoreDeltasForCapture,
 };
