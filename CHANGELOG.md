@@ -6,6 +6,151 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
 
 ## [Unreleased]
 
+## [1.0.87] - 2026-09-08
+
+### Added
+- **A phasing tank is clipped at the wall it is in, and sprays light out of the
+  seam.** bzo had the eighth dimension -- what a tank driving through a building
+  sees of it -- but not the other half, what everyone else sees of the tank: it
+  rendered solid with its nose buried in geometry. Now the half inside the wall
+  is clipped away and the cut edge streaks white, opaque at the seam and
+  transparent at the tips, re-rolled every frame so it flickers.
+  `TankIDLSceneNode` and the clip plane beside it (`Player.cxx:938-968`), both
+  from one crossing plane -- `getBoxCrossingPlane`, which is `isCrossing`
+  (`BoxBuilding.cxx:143`), whose box, pyramid and base bodies upstream are the
+  same function.
+
+  Not OO's alone -- upstream's condition takes a teleporter crossing too, so PZ
+  gets it. The silhouette is upstream's own 40-vertex table rather than bzo's
+  tank mesh, because bzo has several models where upstream has one and the table
+  suits all of them roughly while capping the per-frame cost at a known number.
+  Nothing new goes over the wire: upstream ships a `CrossingWall` status bit, and
+  bzo's client already knows every player's flag and holds the obstacle list.
+- **`docs/effects-plan.md`**, an audit of every visual effect upstream draws
+  against what bzo draws. All seven `effectsRenderer.cxx` families are present,
+  so the gaps are elsewhere and there are three: tank tracks (#24), teleporter
+  proximity, and weather -- which is map-driven and so shows nothing unless a map
+  asks.
+
+  Teleporter proximity turns out to be **two** effects off one input, and the
+  bigger one is easy to miss: `SceneRenderer.cxx:1145` blends the whole frame to
+  *yellow* as you approach a portal, reaching opaque about two units out. That
+  flash is what makes a teleport read as a teleport upstream, and bzo hard-cuts
+  with only the sound. The tank alpha fade beside it is the minor half. Both need
+  a graded overlay bzo does not have -- `setBlank` is binary -- and the flash
+  needs an XR decision first, because a full-field flash is a comfort and
+  photosensitivity problem in a headset; the plan records three designs and
+  recommends a vignette.
+
+- **`docs/operator-panel-plan.md`**, a plan for the operator panel: staged edits
+  with one confirm and Cancel in place of a button per row, the confirm reading
+  *Apply* or *Restart* by what has been staged, and the rule that every
+  control has to work with left, right and select -- numbers become steppers and
+  booleans become On/Off choices, while text stays reachable in a headset through
+  the system keyboard `beginXRTextEntry` already opens, gated on the
+  `isSystemKeyboardSupported()` capability rather than on being in XR.
+
+  It records three things worth knowing. **`maxPlayers` caps nothing**: it is read
+  once to supply the default per-team limit and is never enforced, where upstream
+  has a real cap (`autoTeamSelect` returns `ObserverTeam` at `maxRealPlayers`), so
+  a panel row labelled "max players" would need that check built first. A **game mode change is a map change**:
+  not a setting that needs a restart but a new game, which is the same event as a
+  match ending -- `docs/game-modes-plan.md` now says so from the other side, so
+  the two are built as one thing rather than drifting apart. And per-row apply
+  leaked into XR, where the operator menu currently spends two rows on every
+  setting; OK and Cancel remove rows rather than adding them.
+- **`renderer.stats` can find a leak now.** A client whose frame rate drifts down
+  over an idle hour, and comes back on a reconnect, had no evidence behind it: a
+  leak is a trend and one sample at map entry cannot show one. Every counter that
+  could climb is baselined at the page's first sample and reported as movement
+  since then -- `grew=objects+240,heap+38.5`, absent entirely while nothing moves.
+  The baseline outlives a reconnect on purpose, because a leak the reconnect
+  clears is the case worth catching.
+
+  New counters beside it: `objects`, every node in the scene graph, which catches
+  "something is added and not removed" whatever it is; `labels`, `tanks`,
+  `shots`, `worldFlags` and `spheres`, bzo's own collections, each of which is
+  added to on one event and removed from on another; and `heap`, the used JS heap
+  in MB where the browser exposes it, absent rather than zero where it does not.
+
+  **A slow series now runs on every client**, five minutes apart, so a flat page
+  left open produces a trend. The XR series stays at twenty seconds and
+  suppresses the slow one.
+- **A lost WebGL context is no longer silent.** It is how a client ends up
+  drawing black -- the browser takes the context away and every texture goes with
+  it, which Three cannot re-upload because it does not know they are gone. bzo had
+  no listener, so it had no evidence either. `webglcontextlost` and
+  `webglcontextrestored` now log with the resource counts at that moment, and
+  `contextLost` rides every later stats line.
+
+  **It caught one within the hour**, which is why the client now recovers rather
+  than only reporting: context lost and restored a second later, with 158 textures
+  and 128 geometries live against a steady state of 92 and 54 -- and the player
+  left looking at black tanks. What survived is what identified it: the barrel
+  looked right and the body, turret and treads were black, and the barrel is the
+  only tank part with no texture at all. Every textured surface was dead, which is
+  wholesale loss rather than one asset failing.
+
+  So a restore reloads the page, once per session and remembered across the
+  reload, since a driver that keeps taking the context away would otherwise never
+  settle anywhere a log could be read. Why Three did not re-upload those textures
+  itself is unresolved; the reload makes it moot.
+- **A texture that fails to load says so.** `_getSharedImage` set an error and
+  told its listeners, and nothing logged it -- so a missing file surfaced as a
+  rendering bug instead. `_createTreadTexture` in particular fills `#2b2b2b` when
+  its source has not arrived, which reads as black treads on a lit tank.
+  `docs/audio.md` already refuses fallbacks for a missing sample on the grounds
+  that "a failed load is a broken build and should surface as an error"; a texture
+  quietly going grey was the same failure without the evidence.
+
+### Changed
+- **One teardown for a tank, with three callers.** The ghost mesh, the projected
+  shadows and now the crossing-wall lights are drawn *beside* a tank rather than
+  under it -- a child would inherit its landing squish and spawn scaling -- so
+  none of them go away when the tank does. Three places did that by hand and had
+  already drifted, only the quit path dropping the shadows, so the new lights were
+  left behind by two of the three the day they landed: a tank that quit inside a
+  wall left its streaks hanging there. `discardTank` is now the only copy.
+
+  A tank that *dies* inside a wall is the other path and not teardown at all --
+  it keeps its object and stops being drawn -- so the effect tests `tank.visible`,
+  which is exactly upstream's two early returns in `addToScene` for a tank that
+  is not alive or is cloaked to nothing. The flag alone was not enough to notice,
+  because the tank keeps it on this client until the server's drop arrives.
+- **Escape backs out one rung at a time, and Settings is the last stop.**
+  Upstream's Escape opens the main menu (`MainMenu.cxx`) and bzo had no key that
+  opened Settings at all, so it was the one dialog a keyboard could not reach.
+  The web spends Escape on its own state first, so it is a ladder: leave chat,
+  then fullscreen -- the browser's own doing -- then mouse steering, then open
+  Settings, and the press after that closes it. Settings is one press from a
+  plain client and three from a fullscreen mouse-steering one, in the order
+  somebody would want them undone, and pressing Escape once too often is always
+  undone by pressing it again.
+
+  The fullscreen rung claims the press rather than letting it fall through, since
+  whether a browser also delivers the keydown that exits fullscreen is up to the
+  browser; claiming it spends the rung either way rather than doubling up with
+  mouse steering where it is delivered. bzo does not use pointer lock, which is
+  why mouse steering needs a rung of its own.
+- **Up and down leave a text field instead of jumping the caret.** In the
+  operator panel's MOTD row they moved the cursor to the ends of the text and
+  stranded the focus there, because `canCycleWithArrowKeys` fails a text input
+  and skipped every arrow. They are now handled before that gate: sideways
+  operates a row and up and down move between rows, on every row including a
+  text one, which is the same split an XR thumbstick reads. Left, right, Home and
+  End stay native in a text field, which is what editing needs.
+- **Shot Max Active is a slider.** A hand-rolled `<` value `>` stepper wrapped
+  onto three lines in the DOM; it now reuses the volume slider's markup, so it
+  is one line, drags with the mouse and steps with the arrow keys.
+- **A flag is named `ID/Identify` in chat.** Upstream prints the name alone
+  (`playing.cxx:2734`) and bzo's kill notices print the abbreviation alone, so
+  nothing tied the `/ID` on the scoreboard to the flag that does the
+  identifying. The grab, drop and theft lines pair both -- that is where a player
+  learns the mapping, and it fires once per pickup rather than every frame. HUD
+  alerts keep the short name, because `ID/Identify 4.3` is a shake countdown made
+  worse, and team flags stay name-only since `R*` through `P*` appear nowhere
+  else.
+
 ## [1.0.86] - 2026-09-08
 
 ### Added

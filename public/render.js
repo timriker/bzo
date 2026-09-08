@@ -263,6 +263,112 @@ const BZFLAG_EIGHTH_DIM_ALPHA_RANGE = 0.6;
 // Inside a building and therefore over everything the building is made of.
 const EIGHTH_DIM_RENDER_ORDER = 6;
 
+// The other half of the same flag: the eighth dimension is what a phasing tank
+// sees of the building, and this is what everyone else sees of the tank. A tank
+// half inside a wall is clipped flat at the wall's face and sprays white light
+// out of the seam -- TankIDLSceneNode (TankSceneNode.cxx:567) and the clip plane
+// beside it (Player.cxx:938-968), both driven by the same crossing plane.
+//
+// Upstream calls them interdimensional lights, which is `showIDL` in its own
+// source, and the effect is not OO's alone: PZ crossing a teleporter gets it
+// too, from the same branch.
+//
+// The silhouette is upstream's own table, not bzo's tank mesh. It is 40 vertices
+// and 26 faces standing in for the body, turret, barrel and both treads, in
+// upstream's tank-local frame -- x forward, y left, z up -- and in world units,
+// which bzo shares (`_tankLength` 6.0, `_tankWidth` 2.8). bzo has several tank
+// models where upstream has one, so a table that suits all of them roughly is
+// worth more than a silhouette exact to one; it also caps the per-frame cost at
+// something known, where the real meshes vary.
+const TANK_IDL_VERTICES = new Float32Array([
+  2.430, 0.877, 0.000,
+  2.430, -0.877, 0.000,
+  -2.835, 0.877, 1.238,
+  -2.835, -0.877, 1.238,
+  2.575, 0.877, 1.111,
+  2.575, -0.877, 1.111,
+  -2.229, -0.877, 0.000,
+  -2.229, 0.877, 0.000,
+  -1.370, 0.764, 2.050,
+  -1.370, -0.765, 2.050,
+  1.580, -0.434, 1.790,
+  1.580, 0.435, 1.790,
+  -0.456, -1.060, 1.040,
+  -0.456, 1.080, 1.040,
+  1.480, 0.516, 1.040,
+  1.480, -0.516, 1.040,
+  4.940, 0.047, 1.410,
+  4.940, -0.079, 1.530,
+  4.940, 0.047, 1.660,
+  4.940, 0.173, 1.530,
+  1.570, 0.047, 1.350,
+  1.570, -0.133, 1.530,
+  1.570, 0.047, 1.710,
+  1.570, 0.227, 1.530,
+  -2.229, 0.877, 0.000,
+  2.730, 1.400, 1.294,
+  2.597, 1.400, 0.000,
+  -2.970, 1.400, 1.410,
+  2.730, 0.877, 1.294,
+  2.597, 0.877, 0.000,
+  -2.970, 0.877, 1.410,
+  -2.229, 1.400, 0.000,
+  -2.229, -1.400, 0.000,
+  2.730, -0.875, 1.294,
+  2.597, -0.875, 0.000,
+  -2.970, -0.875, 1.410,
+  2.730, -1.400, 1.294,
+  2.597, -1.400, 0.000,
+  -2.970, -1.400, 1.410,
+  -2.229, -0.875, 0.000,
+]);
+const TANK_IDL_FACES = [
+  [1, 0, 4, 5],
+  [5, 4, 2, 3],
+  [3, 2, 7, 6],
+  [6, 7, 0, 1],
+  [12, 15, 10],
+  [12, 10, 9],
+  [13, 8, 11],
+  [13, 11, 14],
+  [15, 14, 11, 10],
+  [10, 11, 8, 9],
+  [9, 8, 13, 12],
+  [21, 17, 18, 22],
+  [22, 18, 19, 23],
+  [23, 19, 16, 20],
+  [20, 16, 17, 21],
+  [17, 16, 19, 18],
+  [29, 26, 25, 28],
+  [28, 25, 27, 30],
+  [30, 27, 31, 24],
+  [24, 31, 26, 29],
+  [25, 26, 31, 27],
+  [37, 34, 33, 36],
+  [36, 33, 35, 38],
+  [38, 35, 39, 32],
+  [32, 39, 34, 37],
+  [37, 36, 38, 32],
+];
+// Alpha 0.75 at the seam, 0 at the tips: the light fades out rather than ending.
+const TANK_IDL_INNER_ALPHA = 0.75;
+// draw(): `dist = 2.0f + 0.3f * (rand - 0.5f)`, re-rolled per face per frame,
+// which is what makes the lights flicker rather than sit still.
+const TANK_IDL_PROJECT_DISTANCE = 2.0;
+const TANK_IDL_PROJECT_JITTER = 0.3;
+// The projection origin sits one tank length back from the plane, so the streaks
+// fan rather than run parallel.
+const TANK_IDL_ORIGIN_SETBACK = BZFLAG_TANK_LENGTH;
+// Over the tank and the building both, being the seam between them.
+const TANK_IDL_RENDER_ORDER = 7;
+// Two triangles a face is the most a plane can cut from one, and the buffer is
+// allocated once at that size rather than grown: 26 faces is 156 vertices.
+const TANK_IDL_MAX_VERTICES = 26 * 6;
+// A clip plane that cuts nothing, for a tank that has left the wall. Removing
+// the plane instead would change the material's plane count and recompile every
+// program the tank draws with -- on the way out, and again on the next wall.
+const TANK_CLIP_DISABLED_CONSTANT = 1e6;
+
 const BZFLAG_SHOT_EXPLOSION_SIZE = 1.2 * BZFLAG_TANK_LENGTH;
 const BZFLAG_SHOT_EXPLOSION_DURATION = 0.8;
 const BZFLAG_SHOT_EXPLOSION_LIGHT_FADE_START_RATIO = 0.7;
@@ -746,6 +852,12 @@ class RenderManager {
     this.activeExplosions = [];
     this.activeLandingEffects = [];
     this.activeSpawnEffects = [];
+    // Scratch for one silhouette edge's two ends, reused for every edge of
+    // every face. The IDL runs 100 edges a tank a frame while a tank is inside
+    // a wall, and allocating a vector for each would hand the collector a
+    // steady drip on a client that runs out of one core.
+    this._tankIDLScratchA = new Float64Array(3);
+    this._tankIDLScratchB = new Float64Array(3);
     this.activeShotExplosions = [];
 
     // Dynamic lighting toggle (default true), and what the context allows.
@@ -835,7 +947,69 @@ class RenderManager {
     this._applyRendererSize(viewport);
     // Disable real-time shadow mapping for performance
     this.renderer.shadowMap.enabled = false;
+    // For the tank clip plane, which is the only thing bzo clips. Enabled at
+    // construction rather than on first use: turning it on changes how every
+    // program is generated, so doing it mid-game would recompile the lot at the
+    // moment a tank drives into a wall. A material without `clippingPlanes`
+    // pays nothing for it.
+    this.renderer.localClippingEnabled = true;
     container.appendChild(this.renderer.domElement);
+
+    // A lost context is how a client ends up drawing black. The browser takes
+    // the GL context away -- a driver reset, a background tab reclaimed, too
+    // many live contexts across tabs -- and every texture and buffer in it goes
+    // with it; Three cannot re-upload what it does not know is gone. Without
+    // these listeners that failure is *silent*, which is why "a client lost a
+    // texture and rendered black" had no evidence behind it.
+    //
+    // Recovered from by reloading, because the alternative is what was actually
+    // observed: a client sitting with black tanks until somebody reloaded it by
+    // hand. Three clears its own caches on restore and re-uploads each texture
+    // from `texture.image`, which works for the ones backed by a file -- the
+    // treads keep their look -- and not reliably for the `CanvasTexture` bzo
+    // builds nearly everything else from, including the tank body. A reload
+    // rebuilds all of them, which is the only path known to be correct.
+    //
+    // The default action is prevented because a context that is not restorable
+    // never fires `webglcontextrestored` at all, and a client that says nothing
+    // is the thing being fixed.
+    // `debugLog` belongs to client.js, which owns the socket the line goes down;
+    // it is assigned onto the manager after construction, as `deathFollowTarget`
+    // is. The counts also ride every stats line, so the finding survives even if
+    // nothing is listening at the moment it happens.
+    this.renderer.domElement.addEventListener('webglcontextlost', (event) => {
+      event.preventDefault();
+      this.contextLostCount = (this.contextLostCount || 0) + 1;
+      const { memory, programs } = this.renderer.info;
+      this.debugLog?.(
+        `renderer.contextLost count=${this.contextLostCount}`
+        + ` textures=${memory.textures} geometries=${memory.geometries}`
+        + ` programs=${programs ? programs.length : 0}`,
+        'render',
+      );
+    }, false);
+    this.renderer.domElement.addEventListener('webglcontextrestored', () => {
+      this.contextRestoredCount = (this.contextRestoredCount || 0) + 1;
+      this.debugLog?.(`renderer.contextRestored count=${this.contextRestoredCount}`, 'render');
+      // Once per page, and remembered across the reload: a driver that keeps
+      // taking the context away would otherwise reload forever, which is worse
+      // than black tanks because it never settles anywhere a log can be read.
+      // Whoever is left looking at a broken frame still has the two lines above.
+      let alreadyReloaded = false;
+      try {
+        alreadyReloaded = sessionStorage.getItem('bzoContextReload') === '1';
+        sessionStorage.setItem('bzoContextReload', '1');
+      } catch {
+        // A browser with storage denied gets the reload; a loop there is the
+        // less likely failure of the two.
+      }
+      if (alreadyReloaded) {
+        this.debugLog?.('renderer.contextRestored: not reloading again this session', 'render');
+        return;
+      }
+      this.debugLog?.('renderer.contextRestored: reloading to rebuild textures', 'render');
+      setTimeout(() => window.location.reload(), 250);
+    }, false);
 
 
     // Anaglyph effect setup (not enabled by default)
@@ -1014,22 +1188,48 @@ class RenderManager {
       .join(',');
   }
 
-  getRenderStats() {
+  // `deep` asks for the counters that cost something to gather -- currently the
+  // scene walk behind `objects`. Off by default because the debug HUD polls this
+  // twice a second while it is open, and that is exactly when somebody is
+  // measuring: an instrument that costs what it measures is worse than one field
+  // short. The logged series asks for them, a few times an hour.
+  getRenderStats({ deep = false } = {}) {
     if (!this.renderer) return null;
     const { render, memory, programs } = this.renderer.info;
     // The buffer, not the window: a client that is bound on pixels reads the
     // same at every frame rate unless this is next to the timings. It moves
     // whenever the window does, so the one logged at init does not answer it.
     const buffer = this.renderer.getDrawingBufferSize(new THREE.Vector2());
-    return {
+    const stats = {
       drawbuf: `${buffer.x}x${buffer.y}`,
       calls: render.calls,
       triangles: render.triangles,
       programs: programs ? programs.length : 0,
       textures: memory.textures,
       geometries: memory.geometries,
+      labels: this.debugLabels ? this.debugLabels.length : 0,
       draws: this._countDrawGroups(),
     };
+    // Everything in the scene graph, which is the one aggregate that catches
+    // "something is being added and not removed" whatever the something is.
+    // `textures` and `geometries` count what Three has uploaded and miss a node
+    // holding a shared one; this counts the nodes.
+    if (deep) stats.objects = this._countSceneObjects();
+    // Only when it has happened, so the field's presence is the finding.
+    if (this.contextLostCount) stats.contextLost = this.contextLostCount;
+    if (this.contextRestoredCount) stats.contextRestored = this.contextRestoredCount;
+    return stats;
+  }
+
+  // Scene descendants, counted rather than tracked: a running total would have
+  // to be right at every add and remove in the renderer, and the whole reason
+  // this exists is a suspicion that one of them is not. Only walked for a `deep`
+  // sample, which is the logged series and not the HUD's twice-a-second poll.
+  _countSceneObjects() {
+    if (!this.scene) return 0;
+    let count = 0;
+    this.scene.traverse(() => { count += 1; });
+    return count;
   }
 
   canUseDynamicLighting() {
@@ -2848,6 +3048,242 @@ class RenderManager {
     this.visibleInsideBuildingNodes = [];
   }
 
+  // The crossing-wall pair for one tank: `plane` is the wall it is straddling
+  // as `{x, y, z, d}` with the normal pointing out of the building, or null when
+  // it is not straddling one. Called every frame for a tank carrying a phasing
+  // flag and never for any other, which is the same gate upstream's
+  // `CrossingWall` status bit is.
+  setTankCrossingPlane(tank, plane) {
+    if (!tank?.userData) return;
+    this._applyTankClipPlane(tank, plane);
+    this._updateTankIDL(tank, plane);
+  }
+
+  // The tank is going away, so its lights have to go with it. They are parented
+  // to the world group rather than to the tank -- a child would wear the tank's
+  // landing squish and spawn scaling -- so nothing else detaches them, and a
+  // tank that quits while inside a wall would otherwise leave a set of streaks
+  // hanging in the building forever. `discardTank` is the one caller.
+  dropTankCrossingEffect(tank) {
+    const state = tank?.userData;
+    if (!state) return;
+    if (state.crossingIDLMesh) {
+      this._clearObjectForRemoval(state.crossingIDLMesh);
+      state.crossingIDLMesh = null;
+    }
+    // The plane object itself is only referenced by materials that are going
+    // away with the tank, so dropping the reference is the whole of it.
+    state.crossingClipPlane = null;
+  }
+
+  // Cut away the half of the tank inside the wall. Upstream's
+  // `tankNode->setClipPlane(plane)`, and three.js keeps the side the normal
+  // points to, which is why the plane is signed positive on the outside.
+  _applyTankClipPlane(tank, plane) {
+    const state = tank.userData;
+    // The overwhelmingly common case: a tank that has never phased, not phasing
+    // now. It must cost nothing, because this runs per tank per frame.
+    if (!plane && !state.crossingClipPlane) return;
+    if (!state.crossingClipPlane) {
+      // First wall this tank has ever been half inside. Assigning the array
+      // changes the material's clipping-plane count, which recompiles every
+      // program it draws with -- so it is assigned once here and mutated from
+      // then on, and it stays assigned when the tank leaves the wall holding a
+      // plane that cuts nothing. Toggling it instead would recompile on the way
+      // out and again on the next wall, which is the pattern `noteProgramCount`
+      // was written to catch.
+      state.crossingClipPlane = new THREE.Plane(
+        new THREE.Vector3(0, 1, 0),
+        TANK_CLIP_DISABLED_CONSTANT,
+      );
+      const planes = [state.crossingClipPlane];
+      tank.traverse((child) => {
+        if (!child.material) return;
+        const materials = Array.isArray(child.material) ? child.material : [child.material];
+        for (const material of materials) {
+          material.clippingPlanes = planes;
+          material.needsUpdate = true;
+        }
+      });
+    }
+    if (plane) {
+      state.crossingClipPlane.normal.set(plane.x, plane.y, plane.z);
+      state.crossingClipPlane.constant = plane.d;
+    } else {
+      state.crossingClipPlane.normal.set(0, 1, 0);
+      state.crossingClipPlane.constant = TANK_CLIP_DISABLED_CONSTANT;
+    }
+  }
+
+  // The lights themselves. Built in world space rather than in the tank's local
+  // frame: the plane arrives in world space, bzo's tank models do not all share
+  // a rest orientation, and a mesh at the origin with world-space vertices needs
+  // no matrix of its own.
+  _updateTankIDL(tank, plane) {
+    const state = tank.userData;
+    if (!plane) {
+      // Detached rather than hidden, for `setInsideBuildings`' reason:
+      // `updateMatrixWorld` walks a parented node whatever its visibility. The
+      // mesh and its buffer stay on the tank, so re-entering a wall costs
+      // nothing.
+      if (state.crossingIDLMesh?.parent) this.worldGroup.remove(state.crossingIDLMesh);
+      return;
+    }
+    if (!state.crossingIDLMesh) state.crossingIDLMesh = this._createTankIDLMesh();
+    const mesh = state.crossingIDLMesh;
+    const written = this._fillTankIDLGeometry(mesh.geometry, tank, plane);
+    if (written === 0) {
+      // Straddling by the arithmetic, but no face actually cut: the tank is in
+      // the wall's half-space without any of its silhouette crossing the plane.
+      if (mesh.parent) this.worldGroup.remove(mesh);
+      return;
+    }
+    if (!mesh.parent) this.worldGroup.add(mesh);
+  }
+
+  _createTankIDLMesh() {
+    const geometry = new THREE.BufferGeometry();
+    // Allocated once at the worst case and re-filled in place. A geometry
+    // rebuilt from new arrays every frame is a new buffer upload every frame,
+    // and this runs while a tank is moving through a wall.
+    geometry.setAttribute('position', new THREE.BufferAttribute(
+      new Float32Array(TANK_IDL_MAX_VERTICES * 3), 3,
+    ));
+    // Four components, because the fade to nothing is in the alpha: the seam is
+    // opaque white and the tips are transparent white.
+    geometry.setAttribute('color', new THREE.BufferAttribute(
+      new Float32Array(TANK_IDL_MAX_VERTICES * 4), 4,
+    ));
+    const material = new THREE.MeshBasicMaterial({
+      vertexColors: true,
+      transparent: true,
+      depthWrite: false,
+      // `builder.disableCulling()` in the constructor: the streaks are seen from
+      // both sides, and which side depends on where the viewer is standing.
+      side: THREE.DoubleSide,
+    });
+    const mesh = new THREE.Mesh(geometry, material);
+    mesh.renderOrder = TANK_IDL_RENDER_ORDER;
+    // The vertices are already in world space, so the mesh sits at the origin
+    // and never moves.
+    mesh.matrixAutoUpdate = false;
+    mesh.updateMatrix();
+    // Its bounds change every frame and the thing it is attached to is on
+    // screen by definition -- a wall the viewer can see a tank inside of.
+    mesh.frustumCulled = false;
+    return this._tagDraws(mesh, 'effect');
+  }
+
+  // IDLRenderNode::render (TankSceneNode.cxx:637). For each face of the
+  // silhouette, the two points where its edges cross the wall, and a streak from
+  // those out to where they project. Returns how many vertices were written.
+  _fillTankIDLGeometry(geometry, tank, plane) {
+    const rotation = tank.userData.crossingHeading ?? tank.rotation.y;
+    // The tank's own axes, so the silhouette can be placed without knowing
+    // which way a given tank model faces at rest. Forward is bzo's
+    // (-sin r, -cos r) and the lateral axis leads it by a quarter turn, which
+    // is upstream's +y.
+    const sin = Math.sin(rotation);
+    const cos = Math.cos(rotation);
+    const forwardX = -sin;
+    const forwardZ = -cos;
+    const leftX = -cos;
+    const leftZ = sin;
+    const originX = tank.position.x;
+    const originY = tank.position.y;
+    const originZ = tank.position.z;
+
+    const positions = geometry.getAttribute('position');
+    const colors = geometry.getAttribute('color');
+    const positionArray = positions.array;
+    const colorArray = colors.array;
+    let vertexCount = 0;
+
+    // One tank length in from the wall, which is where the streaks fan from.
+    const projectOriginX = originX - plane.x * TANK_IDL_ORIGIN_SETBACK;
+    const projectOriginY = originY - plane.y * TANK_IDL_ORIGIN_SETBACK;
+    const projectOriginZ = originZ - plane.z * TANK_IDL_ORIGIN_SETBACK;
+
+    const cross = [0, 0, 0, 0, 0, 0];
+    for (const face of TANK_IDL_FACES) {
+      let crossings = 0;
+      for (let i = 0, k = face.length - 1; i < face.length && crossings < 2; k = i, i += 1) {
+        const worldK = this._tankIDLVertex(
+          face[k], originX, originY, originZ, forwardX, forwardZ, leftX, leftZ, 0,
+        );
+        const worldI = this._tankIDLVertex(
+          face[i], originX, originY, originZ, forwardX, forwardZ, leftX, leftZ, 1,
+        );
+        const dK = plane.x * worldK[0] + plane.y * worldK[1] + plane.z * worldK[2] + plane.d;
+        const dI = plane.x * worldI[0] + plane.y * worldI[1] + plane.z * worldI[2] + plane.d;
+        if ((dK < 0) === (dI < 0)) continue;
+        // Where the edge meets the plane, which is what upstream interpolates
+        // the same way.
+        const fraction = dK / (dK - dI);
+        const base = crossings * 3;
+        cross[base] = worldK[0] + fraction * (worldI[0] - worldK[0]);
+        cross[base + 1] = worldK[1] + fraction * (worldI[1] - worldK[1]);
+        cross[base + 2] = worldK[2] + fraction * (worldI[2] - worldK[2]);
+        crossings += 1;
+      }
+      // A face touched by the plane at one point or not at all has no seam to
+      // draw, which is upstream's `if (crossings != 2) continue`.
+      if (crossings !== 2) continue;
+
+      const distance = TANK_IDL_PROJECT_DISTANCE
+        + TANK_IDL_PROJECT_JITTER * (Math.random() - 0.5);
+      const p0x = projectOriginX + distance * (cross[0] - projectOriginX);
+      const p0y = projectOriginY + distance * (cross[1] - projectOriginY);
+      const p0z = projectOriginZ + distance * (cross[2] - projectOriginZ);
+      const p1x = projectOriginX + distance * (cross[3] - projectOriginX);
+      const p1y = projectOriginY + distance * (cross[4] - projectOriginY);
+      const p1z = projectOriginZ + distance * (cross[5] - projectOriginZ);
+
+      // Upstream's four-point triangle strip, written as the two triangles it
+      // stands for: seam, seam, tip and seam, tip, tip.
+      const strip = [
+        cross[0], cross[1], cross[2], TANK_IDL_INNER_ALPHA,
+        cross[3], cross[4], cross[5], TANK_IDL_INNER_ALPHA,
+        p0x, p0y, p0z, 0,
+        cross[3], cross[4], cross[5], TANK_IDL_INNER_ALPHA,
+        p0x, p0y, p0z, 0,
+        p1x, p1y, p1z, 0,
+      ];
+      for (let i = 0; i < strip.length; i += 4) {
+        const p = vertexCount * 3;
+        const c = vertexCount * 4;
+        positionArray[p] = strip[i];
+        positionArray[p + 1] = strip[i + 1];
+        positionArray[p + 2] = strip[i + 2];
+        colorArray[c] = 1;
+        colorArray[c + 1] = 1;
+        colorArray[c + 2] = 1;
+        colorArray[c + 3] = strip[i + 3];
+        vertexCount += 1;
+      }
+    }
+
+    geometry.setDrawRange(0, vertexCount);
+    positions.needsUpdate = true;
+    colors.needsUpdate = true;
+    return vertexCount;
+  }
+
+  // One silhouette vertex in world space. Two scratch slots rather than one, so
+  // an edge's two ends can be held at once without allocating a pair of arrays
+  // every edge of every face of every frame.
+  _tankIDLVertex(index, originX, originY, originZ, forwardX, forwardZ, leftX, leftZ, slot) {
+    const base = index * 3;
+    const along = TANK_IDL_VERTICES[base];
+    const across = TANK_IDL_VERTICES[base + 1];
+    const up = TANK_IDL_VERTICES[base + 2];
+    const out = slot === 0 ? this._tankIDLScratchA : this._tankIDLScratchB;
+    out[0] = originX + forwardX * along + leftX * across;
+    out[1] = originY + up;
+    out[2] = originZ + forwardZ * along + leftZ * across;
+    return out;
+  }
+
   setDebugLabelsEnabled(enabled) {
     this.debugLabelsEnabled = enabled;
     this._updateDebugLabelsVisibility();
@@ -3944,6 +4380,14 @@ class RenderManager {
       };
       image.onerror = () => {
         entry.error = new Error(`Failed to load image: ${path}`);
+        // Said out loud, because the fallbacks behind this are silent and look
+        // like a rendering bug rather than a missing file: `_createTreadTexture`
+        // fills `#2b2b2b` when its source has not loaded, which reads as black
+        // treads on a lit tank. `docs/audio.md` already refuses fallbacks for a
+        // missing sample for exactly this reason -- "a failed load is a broken
+        // build and should surface as an error" -- and a texture that quietly
+        // goes grey is the same failure without the evidence.
+        this.debugLog?.(`renderer.imageLoadFailed path=${path}`, 'render');
         const listeners = entry.listeners.splice(0);
         listeners.forEach((listener) => {
           try {

@@ -728,4 +728,72 @@ assert.ok(Math.abs(trapped.x) < 1, 'and leaves the shot inside the corridor');
   }
 }
 
+// The crossing plane, which feeds the tank clip plane and the interdimensional
+// lights. What matters is the sign convention -- positive outside -- because a
+// clip plane with it backwards cuts away the half that should be visible.
+{
+  const box = { x: 0, z: 0, w: 10, d: 10, h: 5, rotation: 0, baseY: 0 };
+  const signedDistance = (plane, x, y, z) =>
+    plane.x * x + plane.y * y + plane.z * z + plane.d;
+
+  // Straddling the +x wall: the tank is 2.8 across at rotation 0, so at x = 5
+  // it has 1.4 outside and 1.4 in.
+  const plane = client.getBoxCrossingPlane(box, 5, 0, 0, 0);
+  assert.ok(plane, 'a tank half in the wall is crossing it');
+  assert.equal(Math.hypot(plane.x, plane.y, plane.z).toFixed(6), '1.000000', 'unit normal');
+  assert.ok(signedDistance(plane, 6.4, 0, 0) > 0, 'the outside half is positive');
+  assert.ok(signedDistance(plane, 3.6, 0, 0) < 0, 'the buried half is negative');
+  assert.equal(signedDistance(plane, 5, 0, 0).toFixed(6), '0.000000', 'zero on the wall');
+
+  // Swallowed whole: no wall to hang lights off, so no plane. This is the case
+  // that makes the effect blink out in the middle of a thick building.
+  assert.equal(client.getBoxCrossingPlane(box, 0, 0, 0, 0), null, 'fully inside is not crossing');
+  assert.equal(client.getBoxCrossingPlane(box, 20, 0, 0, 0), null, 'clear of it is not crossing');
+  // inBox's height term: driving over a low wall is not driving through it.
+  assert.equal(client.getBoxCrossingPlane(box, 5, 6, 0, 0), null, 'above it is not crossing');
+  assert.equal(client.getBoxCrossingPlane(box, 5, -3, 0, 0), null, 'below it is not crossing');
+
+  // The nearer wall wins. At the +z face the normal turns to +z, which is the
+  // guess upstream admits to making and the only thing distinguishing the two.
+  const zPlane = client.getBoxCrossingPlane(box, 0, 0, 5, Math.PI / 2);
+  assert.ok(zPlane, 'crossing the +z wall');
+  assert.ok(zPlane.z > 0.99, 'and the normal points out along +z');
+
+  // A rotated box turns its walls with it. A square box cannot show this --
+  // rotating one by a quarter turn leaves the same box -- so this is a long thin
+  // one, straddled on its narrow face, with the whole arrangement turned a
+  // quarter turn. The same local wall then faces along world +z instead of +x.
+  const slab = { x: 0, z: 0, w: 4, d: 20, h: 5, rotation: 0, baseY: 0 };
+  const flat = client.getBoxCrossingPlane(slab, 2, 0, 0, 0);
+  assert.ok(flat && flat.x > 0.99, 'the narrow wall faces +x unrotated');
+  const turned = { ...slab, rotation: Math.PI / 2 };
+  const turnedPlane = client.getBoxCrossingPlane(turned, 0, 0, 2, Math.PI / 2);
+  assert.ok(turnedPlane, 'a rotated box still has walls');
+  assert.ok(turnedPlane.z > 0.99, 'and the same wall now faces +z');
+  assert.ok(Math.abs(turnedPlane.x) < 0.01, 'with nothing left on the old axis');
+
+  // A pyramid tilts the plane to its slope, which is what makes the lights lie
+  // along the face rather than standing vertically in it.
+  const pyramid = { type: 'pyramid', x: 0, z: 0, w: 10, d: 10, h: 5, rotation: 0, baseY: 0 };
+  const slope = client.getBoxCrossingPlane(pyramid, 4, 0, 0, 0);
+  assert.ok(slope, 'a tank in a pyramid face is crossing it');
+  assert.ok(slope.y > 0, 'the pyramid plane leans back over the slope');
+  assert.equal(Math.hypot(slope.x, slope.y, slope.z).toFixed(6), '1.000000', 'still unit length');
+  // The box case never leans, whatever the tank is doing.
+  assert.equal(plane.y, 0, 'a box wall is vertical');
+
+  // Containment on its own, since it is the half of the test that is easy to
+  // get backwards: a tank inside is contained, one hanging over an edge is not.
+  assert.equal(client.tankRectInsideOrigRect(10, 10, 0, 0, 0), true, 'well inside');
+  assert.equal(client.tankRectInsideOrigRect(1, 1, 0, 0, 0), false, 'bigger than the box');
+
+  for (const args of [[box, 5, 0, 0, 0], [box, 0, 0, 0, 0], [pyramid, 4, 0, 0, 0]]) {
+    assert.deepEqual(
+      server.getBoxCrossingPlane(...args),
+      client.getBoxCrossingPlane(...args),
+      'client/server crossing planes diverged'
+    );
+  }
+}
+
 console.log(`collision geometry tests passed (${checked} fuzz samples, ${solidSamples} solid, seed ${SEED})`);

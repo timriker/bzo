@@ -22,15 +22,25 @@
       <div class="dialogTitle">Operator Panel <button id="closeOperatorBtn" class="closeBtn">&times;</button></div>
       <div class="dialogContent">
         <div id="motd">MOTD: </div>
+        <!-- Every row stages a value and nothing reaches the server until the
+             confirm below, as the entry dialog does. Numbers are steppers rather
+             than text boxes so the whole panel is reachable with left, right and
+             select, which is all a headset has; see
+             docs/operator-panel-plan.md. -->
         <div class="operatorRow operatorConfigRow">
           <label for="motdInput">Set MOTD:</label>
           <input type="text" id="motdInput" maxlength="140" placeholder="Message of the day">
-          <button id="setMotdBtn" class="btn">Update MOTD</button>
         </div>
+        <!-- A range input, which is the same control the audio sliders use: it
+             drags with a mouse, steps with the arrow keys once focused, and is
+             one element rather than three that can wrap onto separate lines. -->
         <div class="operatorRow operatorConfigRow">
-          <label for="shotMaxActiveInput">Shot Max Active:</label>
-          <input type="number" id="shotMaxActiveInput" min="1" max="10" step="1" inputmode="numeric">
-          <button id="setShotMaxActiveBtn" class="btn">Update Shot Limit</button>
+          <label for="shotMaxActiveSlider">Shot Max Active:</label>
+          <div class="volumeControl">
+            <input id="shotMaxActiveSlider" class="volumeSlider" type="range" min="1" max="10" step="1" value="1"
+              data-menu-row="shotMaxActiveSlider" data-menu-kind="range">
+            <output id="shotMaxActiveValue" class="volumeValue" for="shotMaxActiveSlider">1</output>
+          </div>
         </div>
         <div class="operatorRow">
           <label class="operatorToggle" for="ricochetInput">
@@ -38,15 +48,22 @@
             All shots ricochet
           </label>
         </div>
-        <div class="operatorRow">
+        <div class="operatorRow" data-menu-row="map" data-menu-kind="choice">
           <label for="mapList">Map:</label>
           <select id="mapList"></select>
-          <button id="restartBtn" class="btn">Restart with Map</button>
         </div>
         <div class="operatorRow">
           <label for="uploadMap">Upload Map:</label>
           <input type="file" id="uploadMap" accept=".bzw,.txt">
           <button id="uploadBtn" class="btn">Upload</button>
+        </div>
+        <!-- One confirm, labelled by what it is about to do: Apply while every
+             staged change is live, Restart the moment one is not. Cancel and the
+             X abort everything, so changing a row and thinking better of it costs
+             nothing. -->
+        <div class="operatorRow operatorConfirmRow">
+          <button id="operatorApplyBtn" class="btn" type="button">Apply</button>
+          <button id="operatorCancelBtn" class="btn" type="button">Cancel</button>
         </div>
       </div>
     </div>
@@ -299,7 +316,7 @@
       <h2>Mouse Steering</h2>
       <ul>
         <li><strong>M</strong> or the <b>Mouse Steering</b> row — Enable/Disable</li>
-        <li><strong>ESC</strong> — Leave mouse steering</li>
+        <li><strong>ESC</strong> — Leave mouse steering (see Dialogs &amp; Menus)</li>
         <li><strong>Mouse Up/Down</strong> — Control Speed</li>
         <li><strong>Mouse Left/Right</strong> — Turn Tank</li>
         <li><strong>Targeting Box</strong> — Inside the small box the tank holds still; the outer box edge is full turn and full speed, and going further out adds nothing</li>
@@ -311,6 +328,21 @@
         <li><strong>Right Click</strong> — Identify: locks a Guided Missile onto the tank in your sights, and picks the roaming target while observing</li>
         <li>The row is unavailable with no mouse attached, in VR, or while the
           on-screen controls are up, since those steer instead</li>
+      </ul>
+
+      <h2>Dialogs &amp; Menus</h2>
+      <ul>
+        <li><strong>ESC</strong> — Back out one step, and <b>Settings</b> is the last stop:
+          leave chat, leave fullscreen, leave mouse steering, then open Settings. One more
+          press closes it, so pressing ESC once too often costs nothing</li>
+        <li><strong>Up/Down</strong> — Previous/next control, including from inside a text field</li>
+        <li><strong>Left/Right</strong> — Change the focused control: move a slider, pick the next
+          choice. In a text field they move the cursor instead</li>
+        <li><strong>Tab</strong> / <strong>Shift+Tab</strong> — Previous/next control</li>
+        <li><strong>Home</strong> / <strong>End</strong> — First/last control</li>
+        <li><strong>Enter</strong> or <strong>Space</strong> — Press the focused control</li>
+        <li>This Help panel is read rather than operated, so here the arrows scroll it and
+          only Left/Right move focus</li>
       </ul>
 
       <h2>Chat & Misc</h2>

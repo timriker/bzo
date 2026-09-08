@@ -830,6 +830,106 @@ The roaming label is the status line, not an alert -- it persists. It reads
 `ScoreboardRenderer::getLeader`'s own prefix, so watching whoever is winning is
 distinguishable from having picked that same player by hand.
 
+### A flag is named three ways, one per surface
+
+| surface | form | function |
+|---|---|---|
+| HUD alert | `Identify` | `describeFlag` |
+| chat notice | `ID/Identify` | `describeFlagForChat` |
+| beside a callsign | `Orin/ID` | `getFlagLabelForAbbreviation`, `formatPlayerLabel` |
+
+Upstream prints the name alone in chat (`playing.cxx:2734`) and bzo's kill
+notices print the abbreviation alone, so nothing connected the `/ID` on the
+scoreboard with the flag that does the identifying. The grab, drop and theft
+lines pair both, because that is where a player learns the mapping: they fire
+once per pickup rather than every frame, so three characters buy something
+there. Alerts and the shake countdown keep the short name -- `ID/Identify 4.3`
+is a countdown made worse.
+
+Team flags are name-only in every form. Their abbreviations are `R*` through
+`P*`, which nothing displays anywhere, so `R*/Red Team` would teach a string
+that appears nowhere else.
+
+### A phasing tank is clipped at the wall and sprays light out of the seam
+
+Two effects, one plane. `getBoxCrossingPlane` (`collision.mjs`) is `isCrossing`
+(`BoxBuilding.cxx:143`), whose three upstream bodies -- box, pyramid, base -- are
+the same function, so bzo has one. It answers with the face the tank is
+straddling, normal pointing **out** of the building, and null in two cases that
+look alike from outside: clear of the obstacle, and swallowed whole. The second
+is why the lights appear on the way in, vanish inside a thick building and
+appear again on the way out.
+
+- **The clip plane** cuts the buried half away, so the tank reads as sliced flat
+  at the wall rather than as a tank with its nose in geometry.
+- **The interdimensional lights** (`TankIDLSceneNode`, upstream's own `showIDL`)
+  streak white out of the cut edge, opaque at the seam and transparent at the
+  tips, re-rolled every frame so they flicker.
+
+Not OO's alone: upstream's condition takes `crossingTeleporter` too, so PZ gets
+it. bzo already had the *other* half of the OO visual -- the eighth dimension,
+which is what the phasing tank sees of the building -- and these are what
+everyone else sees of the tank.
+
+**Three things about the implementation are deliberate.**
+
+`isCrossing` guesses which wall -- the one nearest the tank's centre -- and
+upstream calls it a guess: *"this is a guestimate, should really do a careful
+test"*. Wrong only at a corner, where either wall is defensible, and the careful
+test would be paid for by every phasing tank every frame to improve decoration.
+
+**The silhouette is upstream's table, not bzo's tank mesh.** 40 vertices and 26
+faces standing in for body, turret, barrel and treads, in world units, which bzo
+shares. bzo has several tank models where upstream has one, so a table that
+suits all of them roughly beats a silhouette exact to one -- and it caps the
+per-frame cost at a known number where the real meshes vary.
+
+**The clip plane is assigned once per tank and then mutated.** Assigning or
+removing `material.clippingPlanes` changes the plane count and recompiles every
+program the tank draws with. So the array goes on at the first wall and stays,
+holding a plane that cuts nothing when the tank is clear -- toggling it would
+recompile on the way out and again on the next wall, which is the pattern
+`noteProgramCount` exists to catch. `localClippingEnabled` is set at
+construction for the same reason, one size larger.
+
+**No protocol change.** Upstream computes this on the tank's own client and
+ships a `CrossingWall` status bit for the rest to redraw from. bzo's client
+already knows every player's flag, because the server owns flags, and already
+holds the obstacle list -- so every client answers for every tank and the wire
+says nothing.
+
+### A tank's siblings have to be let go by name
+
+Several things are drawn *for* a tank but parented to `worldGroup` beside it
+rather than under it, because a child would inherit the tank's landing squish,
+spawn grow and dimension scaling:
+
+| sibling | released by |
+|---|---|
+| the server-position ghost | `discardTank` |
+| the projected shadows | `renderManager.dropProjectedShadows` |
+| the crossing-wall clip plane and lights | `renderManager.dropTankCrossingEffect` |
+| the jump-prediction debug geometry | `clearJumpPredictionDebug` |
+
+**`discardTank` is the only place that releases them, and it has three callers**
+-- a player quits, a new world arrives, and `addPlayer` throws a tank away to
+rebuild it in another colour or model. Those were three copies of the same
+teardown and they had already drifted, only the quit path dropping the shadows,
+so the crossing lights were left behind by two of the three on the day they were
+added. Anything new hanging off a tank goes in that function.
+
+**Player state is not tank state.** The paused sphere and the missile lock belong
+to `removePlayer`, not to `discardTank`: `addPlayer`'s rebuild discards a tank
+mesh while the player is still sitting there, and a rebuild that cleared their
+lock would be a bug of its own.
+
+**Not being drawn is the other path, and it is not teardown.** A tank that dies
+or cloaks to nothing keeps its object and stops being drawn, which is upstream's
+two early returns in `Player::addToScene`. `tank.visible` is exactly that
+condition in bzo, so a per-frame effect tests it -- a tank killed inside a wall
+is the case that catches this, since it stops being drawn where it stood and it
+still holds its flag on this client until the server's drop arrives.
+
 ## Anti-cheat modes
 
 `antiCheat.mode` in `server.json` is `strict`, `warning`, or `disabled`, and it
@@ -1029,8 +1129,65 @@ keyboard. The rest have no default worth naming today, which is what quick find
 looked like until someone played in Firefox.
 
 Nothing carrying Ctrl, Meta, or Alt is ours, whatever key it is built on:
-Ctrl+W, Cmd+Q and Alt+Left pass straight through. Escape is deliberately left
-alone -- a browser will not let go of it, and it also leaves pointer lock.
+Ctrl+W, Cmd+Q and Alt+Left pass straight through. Escape is deliberately absent
+from the set: a browser will not let go of it, and leaving fullscreen is the
+first rung of the ladder below rather than something to fight.
+
+### Escape backs out one rung at a time
+
+Upstream's Escape opens the main menu (`MainMenu.cxx`), and Settings is the
+nearest thing bzo has -- but the web spends Escape on its own state first, so
+`handleGameKey` makes a ladder of it and each press undoes exactly one thing:
+
+| state | Escape does |
+|---|---|
+| chat entry focused | leaves chat (handled earlier, in the chat input's own handler) |
+| a dialog open | dismisses it (`handleDialogKeydown`, earlier still) |
+| `document.fullscreenElement` set | nothing: the browser is already leaving fullscreen |
+| mouse steering on | turns it off, through `toggleMouseMode` so the row, the button and the preference all follow |
+| otherwise | `openSettingsDialog()` |
+
+Settings is one press from a plain client and three from a fullscreen
+mouse-steering one, in the order somebody would want them undone -- and the
+press after the last one closes Settings again, so pressing Escape once too
+often never leaves a player somewhere they did not ask to be. That recoverability
+is what makes a multi-press ladder acceptable; without it, guessing wrong would
+cost something.
+
+### Sideways operates a row, up and down move between rows
+
+`handleDialogKeydown` in `public/menus.js` is the one focus model every dialog
+shares, and the split is the same one an XR thumbstick reads -- one habit works
+on every surface:
+
+| key | in a dialog |
+|---|---|
+| Up/Down | previous/next control, **from any row including a text field** |
+| Left/Right | adjust the focused control -- `adjustFocusedControl`, the same `menuadjust` event XR sends |
+| Tab/Shift+Tab, Home/End | previous/next, first/last |
+| Escape | dismiss |
+
+Up and down are handled *before* `canCycleWithArrowKeys`, which a text field
+fails on purpose: left, right, Home and End stay native there because that is
+what editing needs, but a single-line input has no use for up and down and the
+browser would spend them jumping the caret to the ends of the text, stranding
+the focus in the field. That is what the MOTD row did before.
+
+A dialog tagged `data-dialog-kind="document"` -- the help panel -- is read rather
+than operated, so its arrows scroll and only left/right move focus. Cycling
+focus through its handful of links would leave most of the text unreachable, and
+in XR there is no Page Up to reach the rest with.
+
+Verified in a real browser rather than a stub: `scripts/headless-client.mjs
+--eval` can force `operatorOverlay` visible, focus `motdInput` and dispatch the
+keys. There is no jsdom here, and a DOM stub deep enough for `activeElement`,
+focus and visibility would mostly test itself.
+
+The fullscreen rung claims the press rather than letting it fall through.
+Whether a browser also delivers the keydown that exits fullscreen is up to the
+browser, and claiming it means the rung is spent either way instead of doubling
+up with mouse steering on the browsers that do deliver it. bzo does not use
+pointer lock, which is why mouse steering needs a rung at all.
 
 bzo matches upstream on every binding it has taken so far
 (`ActionBinding.cxx:91-98`):
@@ -1101,7 +1258,7 @@ Upstream's input method is exclusive -- Keyboard, Mouse or Joystick -- and under
 `allowInputChange` (default on) it bumps between them on its own: a drive key
 selects Keyboard (`playing.cxx:821`), moving the mouse selects Mouse
 (`playing.cxx:1296`). bzo does not autoswitch at all. `M`, the Mouse Steering
-row and Escape are the only things that change the setting, and `gatherDriveInput()`
+row and Escape's mouse rung are the only things that change the setting, and `gatherDriveInput()`
 mixes instead: **per axis, the first source with something to say wins --
 keys, then a stick, then the mouse box.** Hold a drive key and it owns that axis
 while the mouse keeps the other, so a player steers with the mouse while holding
@@ -1221,6 +1378,59 @@ The other fields: `drawbuf` is the drawing buffer, which moves with the window
 and with `renderScale`; `programsWindow` is the low-high program count over the
 window, and a count that moves during play is Three recompiling rather than a
 bigger scene, since its program cache key includes the light count.
+
+**Finding a leak: read `grew`, not the counters.** A leak is a trend, and no
+single sample can show one -- which is why a client whose frame rate drifts down
+over an idle hour had no evidence behind it. So every counter that could climb is
+baselined at the page's first sample and reported as movement since then:
+`grew=objects+240,heap+38.5`, and the field is absent entirely while nothing
+moves. The baseline deliberately outlives a reconnect, because a leak the
+reconnect *clears* is exactly the case worth catching -- resetting it there would
+hide the finding.
+
+- `objects` is every node in the scene graph, the one aggregate that catches
+  "something is being added and not removed" whatever the something is.
+  `textures` and `geometries` count what Three has uploaded and miss a node
+  holding a shared one. It is a `deep` field: the debug HUD polls
+  `getRenderStats` twice a second while it is open, and that is exactly when
+  somebody is measuring, so the scene walk is asked for by the logged series and
+  not by the HUD. An instrument that costs what it measures is worse than one
+  field short.
+- `tanks`, `shots`, `worldFlags`, `spheres` and `labels` are bzo's own
+  collections. Each is added to on one event and has to be removed from on
+  another, so a count that climbs while a client sits idle names which one
+  forgot.
+- `heap` is `performance.memory.usedJSHeapSize` in MB, Chrome and Edge only. It
+  is coarse and lags collection, so read the slope and not the value. Absent
+  rather than zero where the browser does not expose it: a zero would read as
+  "no memory used" beside another browser's figure.
+
+**A slow series runs on every client**, five minutes apart, so a flat page left
+open produces a trend rather than the single sample at map entry it used to. The
+XR series stays at twenty seconds and suppresses the slow one, since a session is
+short and two interleaved series read as noise.
+
+**`contextLost` appears only when it has happened.** A lost GL context is how a
+client ends up drawing black: the browser takes the context away -- a driver
+reset, a background tab reclaimed, too many live contexts across tabs -- and
+every texture in it goes with it. That failure used to be entirely silent; the
+listeners log it with the resource counts at that moment, and the count rides
+every later stats line.
+
+**A restore reloads the page**, because logging alone left a player looking at
+black tanks. Observed once and diagnosed from what survived: on a tank in third
+person the barrel looked right and the body, turret and treads were all black --
+and the barrel is the one part with **no texture**, a flat
+`MeshLambertMaterial({ color: 0x333333 })`. So every textured surface was dead and
+the only survivor was the one that never sampled anything. Wholesale, which is
+the context-loss signature rather than one asset failing.
+
+Three does clear its caches on restore and re-upload from `texture.image`, so why
+these did not come back is **unresolved** -- and the reload makes it moot, which
+is why the reload is the fix rather than a smaller repair nobody can verify. Once
+per session and remembered across it: a driver that keeps taking the context away
+would otherwise reload forever, which is worse than black tanks because it never
+settles anywhere the log can be read.
 
 ### The HUD ignores the safe-area insets
 
@@ -2223,6 +2433,38 @@ entry and leave the rest alone. The zone coordinates are in the `.bzw`, which is
 writing it restarts the server on its own -- and **put it back when the run is
 over**, since it is the running dev server's config and the name in it belongs to
 somebody's real client.
+
+**Or `/mv` there, which needs no restart at all.** `/mv` moves a tank anywhere
+from the chat line, so a probe can put itself on a zone, pick the flag up, and go
+somewhere else to use it -- all inside one `--eval`, with nothing written to
+`server.json` and nobody else's spawn touched. It is the first thing to reach
+for now; `testSpawn` is for the case where the tank has to *start* somewhere.
+
+```
+say('/mv 40,0,25');   // x,y,z -- and `/mv 40,25` is x,z at y=0
+say('/mv 61,12,80,e');  // x,y,z,facing, cardinals only
+```
+
+Three things about it that cost a probe time to rediscover:
+
+- **The coordinates are bzo's, not the `.bzw`'s.** A zone at `position 40 -25 0`
+  in the map is `/mv 40,0,25`, by the `bzo.z = -bzw.y` rule above. Two arguments
+  are `x,z`; three are `x,y,z`; four add the facing. Passing `x,z,0,e` when you
+  meant `x,0,z,e` puts the tank in the air at *y* = your z, which lands
+  somewhere plausible and wastes the run.
+- **It will not put a tank inside an obstacle.** The landing resolution lifts it
+  to the surface above, which is the whole point of the command -- so to get a
+  phasing tank *inside* a wall, move it onto the roof and let it sink through.
+- **The flag on a zone is not guaranteed to be there yet.** Read the flag back
+  (`#playerName` ends in `/OO`) and poll rather than trusting the pickup. Real
+  players take flags, and both flag commands leave a gap: `/flag reset` does put
+  a required flag back in its own zone -- `resetFlag` picks the position from
+  `findFlagSpawnPosition` and re-adds it, because "required flags mustn't just
+  disappear" -- but `addFlag` gives it a *flight*, so for a second or two it is
+  in the air above the zone and a tank standing there has nothing to grab.
+  `/flag up` is the same wait, and longer. So sit on the zone and poll the label
+  instead of moving away and back. `/flag show` reports every flag's real
+  position, but its output overflows the chat history on flagbuffet.
 
 **Drive by the input module, not by events.** Synthetic `KeyboardEvent`s
 dispatched from `--eval` do **not** reach the game -- dispatch the fire key and

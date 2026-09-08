@@ -93,6 +93,22 @@ clock stopped until `/countdown` starts it, which is how match servers run.
 is killed, has its flag zapped, and is marked `restartOnBase`. Upstream then
 holds there until a new countdown starts.
 
+**Game over is the same event as a map change.** So is a game *mode* change: all
+three end the current game and put every player into a new one, and from a
+player's side they are indistinguishable -- the tank resets and comes back into a
+fresh match. Only the mechanism underneath differs, and only because of where bzo
+happens to keep the state: a map or a mode change restarts the process today,
+because `OBSTACLES`, `TEAM_MODE` and `GAME_TYPE` are resolved once at boot, while
+a match ending has to be in-process because it is a boundary *within* one server
+run.
+
+Build them as one thing. `cleanupGameOver` should reuse whatever "everyone
+re-enters" path the map change already uses rather than growing a second one, and
+the operator panel should present a mode change the way it presents a map change
+-- see `docs/operator-panel-plan.md`. Two mechanisms for one event is how they
+drift apart, and the drift shows up as a tank that survives one kind of reset and
+not the other.
+
 What bzo has to decide:
 
 - **The hold has to be server-side.** bzo respawns without waiting for a click

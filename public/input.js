@@ -1082,7 +1082,7 @@ function toggleHelpPanel() {
   updateHelpBtn();
 }
 
-function isFullscreenActive() {
+export function isFullscreenActive() {
   return document.fullscreenElement ||
          document.webkitFullscreenElement ||
          document.mozFullScreenElement;
@@ -1301,6 +1301,10 @@ export function toggleOperatorPanel() {
   if (currentVisible) {
     hideDialog(domRefs.operatorOverlay);
     syncInputContextFromUi();
+    // The panel stages its edits, so closing it by any route throws them away:
+    // re-opening has to start from what the server currently has, or an operator
+    // returns to a row they thought they had abandoned.
+    callOptionalHudCallback(['onOperatorPanelHidden']);
     hudContext.showMessage('Operator Panel: Hidden');
   } else {
     hideSettingsHudSilently();
@@ -1316,6 +1320,8 @@ export function toggleOperatorPanel() {
         return focusFirstDialogControl(dialog);
       },
     });
+    // Staged from the server's current values, before the rows are read.
+    callOptionalHudCallback(['onOperatorPanelShown']);
     hudContext.showMessage('Operator Panel: Shown');
     const requestId = Math.floor(Math.random() * 1e9);
     hudContext.sendToServer({ type: 'getMaps', requestId });

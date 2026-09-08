@@ -163,6 +163,39 @@ Operator panel.
 | `/flag up`, `/flag show`, `/flag reset` | `flagMod` | `zapFlag`, `resetFlag` and the flag table are all there |
 | `/set` | `setVar` | **only over what bzo already keeps configurable**, which turned out to be narrower than a map's `-set`: it is the three the Operator panel *propagates* (`motd`, `shotMaxActive`, `ricochet`), because anything else would move on the server and leave every client predicting against the old value. `/set` naming anything else says so rather than pretending. `/reset` has nothing to reset to and is not implemented |
 
+### Moving a player between teams -- bzo's own, and wanted
+
+**Upstream cannot do this at all.** There is no `/setteam`, no
+`bz_setPlayerTeam`, and no API event for it; `player.setTeam` is called in
+exactly three places -- at join (`bzfs.cxx:2309`), for the rabbit anointing
+(`:2764`), and for a server-side bot. A player changes team upstream by leaving
+and rejoining, which is why every team choice there is made in the join dialog.
+
+bzo already has the mechanism upstream lacks. Rabbit Chase moves a player between
+teams server-side every time it anoints, and `newRabbit` is the message that
+tells the clients to repaint -- so "set this player's team and broadcast it" is
+built and in use. A `/team <player> <team>` is that function with a different
+trigger.
+
+**What it unlocks is a match workflow**: everyone arrives as an observer, the
+players talk it over, and an operator puts the competitors on teams without
+anybody rejoining. That is not something upstream can express, and it is a better
+fit for bzo's auto-rejoin than "leave and come back on the right team" is.
+
+Two things it has to decide:
+
+- **The limit is a join-time gate, not an invariant.** `selectPlayerTeam` runs
+  only in the `joinGame` handler and nothing rechecks afterwards; team state is
+  keyed by team name in `Map`s and counted from the live roster, so no fixed array
+  can overflow and a team over its limit is simply a team of that size. So this
+  command must apply the limit itself, and decide whether an operator may
+  *exceed* it -- overriding is arguably the point of moving people by hand, but it
+  should be a decision rather than an accident.
+- **A team change is a life change.** The join path already drops the flag,
+  re-picks the colour and respawns; moving a player has to do the same, and
+  `getJoinPlayerColor` is where the colour rule lives. An observer becoming a
+  player also has to stop being white.
+
 ### Needs a small piece of machinery first
 
 | command | needs |

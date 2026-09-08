@@ -1163,6 +1163,22 @@ body {
   box-shadow: 0 0 14px rgba(76, 175, 80, 0.4);
 }
 
+/* The confirm sits apart from the rows it commits, so it does not read as one
+   more setting. */
+.operatorConfirmRow {
+  margin-top: 0.9em;
+  padding-top: 0.7em;
+  border-top: 1px solid rgba(76, 175, 80, 0.35);
+  gap: 0.6em;
+}
+
+/* Reads Restart rather than Apply when a staged change starts a new game, and
+   says so in the one place an operator is looking. */
+#operatorApplyBtn.startsNewGame {
+  border-color: #ffb347;
+  color: #ffb347;
+}
+
 .tankArrowBtn {
   width: 46px;
   height: 46px;

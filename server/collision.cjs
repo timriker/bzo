@@ -473,6 +473,100 @@ function phasedObstacleExpels(obs, reversingOnGround = false) {
   return reversingOnGround === true;
 }
 
+// True when the tank's footprint sits entirely within the obstacle's, both
+// already in the obstacle's local frame. `testRectInRect` (Intersect.cxx), and
+// the reason a tank swallowed whole by a building gets no lights: every corner
+// is inside, so there is no wall for the effect to hang off.
+function tankRectInsideOrigRect(halfW, halfD, localX, localZ, tankAngle, tankScale = null) {
+  const halfWidth = TANK_HALF_WIDTH * (tankScale ? tankScale.width : 1);
+  const halfLength = TANK_HALF_LENGTH * (tankScale ? tankScale.length : 1);
+  const cos = Math.cos(tankAngle);
+  const sin = Math.sin(tankAngle);
+  for (const [sw, sl] of [[1, 1], [1, -1], [-1, -1], [-1, 1]]) {
+    const cornerW = sw * halfWidth;
+    const cornerL = sl * halfLength;
+    const cx = localX + cos * cornerW - sin * cornerL;
+    const cz = localZ + sin * cornerW + cos * cornerL;
+    if (Math.abs(cx) > halfW || Math.abs(cz) > halfD) return false;
+  }
+  return true;
+}
+
+// The face a phasing tank is currently straddling, or null. `isCrossing`
+// (BoxBuilding.cxx:143, PyramidBuilding.cxx:228, BaseBuilding.cxx:85 -- the
+// three bodies are the same one, so this is one function), which is what
+// upstream feeds both the tank clip plane and the interdimensional lights.
+//
+// Null in two different situations that look alike from outside: the tank is
+// clear of the obstacle, or it is *entirely inside* it. A tank swallowed whole
+// has no wall to be half-in, so upstream draws nothing -- which is why the
+// lights appear on the way in, vanish in the middle of a thick building and
+// appear again on the way out.
+//
+// The returned plane is `nx*x + ny*y + nz*z + d`, unit-length and signed
+// positive on the *outside*: the tank's visible half is the positive one and
+// the half buried in the building is what a clip plane cuts away.
+//
+// Which wall is a guess -- the one the tank's centre is nearest -- and upstream
+// calls it one: "this is a guestimate, should really do a careful test". It is
+// wrong only for a tank straddling a corner, where either wall is defensible.
+// Kept as a guess deliberately, because the effect it feeds is decoration and
+// the careful test would be paid for by every phasing tank every frame.
+function getBoxCrossingPlane(obs, x, y, z, rotation, tankScale = null) {
+  if (!obs) return null;
+  const base = obs.baseY || 0;
+  const height = getObstacleHeight(obs);
+  // inBox's height term. A tank clear of the obstacle vertically is not in it,
+  // whatever its footprint says -- this is what stops a tank driving over a
+  // low wall from wearing lights.
+  if (y >= base + height || y + TANK_HEIGHT <= base) return null;
+
+  const halfW = obs.w / 2;
+  const halfD = obs.d / 2;
+  const local = getColliderLocalPoint(x, z, obs);
+  const tankAngle = getTankLocalAngle(rotation, obs.rotation || 0);
+  if (!testOrigRectTank(halfW, halfD, local.x, local.z, tankAngle, 0, tankScale)) return null;
+  if (tankRectInsideOrigRect(halfW, halfD, local.x, local.z, tankAngle, tankScale)) return null;
+
+  // The nearer wall, measured from the centre to each face. Local, so the two
+  // candidates are the local x and z axes and the sign picks which of the pair.
+  let localNormalX = 0;
+  let localNormalZ = 0;
+  let reach = 0;
+  if (Math.abs(Math.abs(local.x) - halfW) < Math.abs(Math.abs(local.z) - halfD)) {
+    localNormalX = local.x < 0 ? -1 : 1;
+    reach = halfW;
+  } else {
+    localNormalZ = local.z < 0 ? -1 : 1;
+    reach = halfD;
+  }
+
+  // Vertical for a box, tilted to the slope for a pyramid. Upstream's own
+  // `plane[2] = h * getWidth()` with `h = 1/hypot(height, width)`, and its own
+  // FIXME that this assumes a square base -- so a pyramid with w != d gets a
+  // plane at the wrong angle here exactly as it does upstream.
+  let normalY = 0;
+  let scale = 1;
+  if (obs.type === 'pyramid' && height > 0) {
+    // Upstream's `getWidth()` is the half-extent -- `pw = position + getWidth()
+    // * normal` is a point on the wall -- so this reads halfW, not the span.
+    const h = 1 / Math.hypot(height, halfW);
+    normalY = h * halfW;
+    scale = h * height;
+  }
+  // rotateNormalToWorld normalises, so this is the wall's unit outward
+  // direction whatever length goes in; `reach` turns it back into a distance.
+  const normal = rotateNormalToWorld(obs, localNormalX, 0, localNormalZ);
+  const nx = normal.x * scale;
+  const nz = normal.z * scale;
+  // Through the point on the wall. `d` uses only the horizontal components
+  // because that point has no height of its own, which is upstream's
+  // arithmetic even where the plane is tilted.
+  const pointX = obs.x + normal.x * reach;
+  const pointZ = obs.z + normal.z * reach;
+  return { x: nx, y: normalY, z: nz, d: -(nx * pointX + nz * pointZ) };
+}
+
 // --- Shots ------------------------------------------------------------------
 //
 // A shot occupies the world the way a tank does, but always as a cylinder:
@@ -846,13 +940,6 @@ function traceShotStep({
 }
 
 module.exports = {
-  BASE_TOP_TOLERANCE,
-  getBaseTopY,
-  isOnBaseTop,
-  getBaseTeamAtPoint,
-  isOverFlatTop,
-  movingTankOverlapsHeight,
-  crossedFlatTop,
   ZERO_TOLERANCE,
   getColliderLocalPoint,
   origRectPointDistanceSquared,
@@ -862,8 +949,8 @@ module.exports = {
   TANK_HEIGHT,
   WORLD_WALL_HEIGHT,
   testOrigRectRect,
-  getSegmentBoxHitFraction,
   testOrigRectTank,
+  getSegmentBoxHitFraction,
   getTankLocalAngle,
   getPyramidSurfaceLocalHeight,
   getPyramidHeight,
@@ -876,6 +963,16 @@ module.exports = {
   getPyramidFaceLocalNormal,
   pyramidIntersectsCylinder,
   pyramidIntersectsTank,
+  getBaseTopY,
+  BASE_TOP_TOLERANCE,
+  isOnBaseTop,
+  getBaseTeamAtPoint,
+  isOverFlatTop,
+  movingTankOverlapsHeight,
+  crossedFlatTop,
+  phasedObstacleExpels,
+  tankRectInsideOrigRect,
+  getBoxCrossingPlane,
   SHOT_VERTICAL_EPSILON,
   SHOT_COLLISION_RADIUS,
   MAX_SHOT_BOUNCES_PER_STEP,
@@ -883,10 +980,9 @@ module.exports = {
   shotInsideObstacle,
   findShotObstacle,
   findShotImpact,
-  findShotSegmentImpact,
   getShotObstacleInterval,
+  findShotSegmentImpact,
   getShotObstacleNormal,
   reflectShotDirection,
   traceShotStep,
-  phasedObstacleExpels,
 };

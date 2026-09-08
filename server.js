@@ -3302,6 +3302,13 @@ defineCommand('/mv', COMMAND_TIER.OPERATOR,
     if (subject !== player) replyToPlayer(subject, `An operator moved you to ${where}`);
   });
 
+// Which settings can be changed without starting a new game. Everything else is
+// a new game -- the map today, and the game's shape when the panel grows into it
+// -- because bzo resolves the world and the team layout once at boot. See
+// docs/operator-panel-plan.md: a map change, a mode change and a match ending are
+// one event, so they take one path.
+const LIVE_CONFIG_KEYS = Object.freeze(['motd', 'shotMaxActive', 'ricochet']);
+
 // The settings an operator may change while the server runs, in the one place
 // they are changed. Validated, written back to `server.json`, applied to the
 // live config, and broadcast -- in that order, and as one transaction, so a
@@ -3311,7 +3318,11 @@ defineCommand('/mv', COMMAND_TIER.OPERATOR,
 // two front ends, and the moment they are two functions they will disagree about
 // what a valid value is or forget to tell the clients.
 //
-// Returns `{ error }` or `{ changed: [...] }`.
+// A change outside `LIVE_CONFIG_KEYS` restarts, which is what makes the panel's
+// one button honest: it reads *Apply* while everything staged is live and
+// *Restart* the moment something is not.
+//
+// Returns `{ error }` or `{ changed: [...], restarted }`.
 function applyServerConfigChanges(requested, byWhom) {
   const next = {};
   if (Object.prototype.hasOwnProperty.call(requested, 'motd')) {
@@ -3328,6 +3339,19 @@ function applyServerConfigChanges(requested, byWhom) {
   if (Object.prototype.hasOwnProperty.call(requested, 'ricochet')) {
     if (typeof requested.ricochet !== 'boolean') return { error: 'Invalid ricochet value' };
     next.ricochet = requested.ricochet;
+  }
+  // Validated exactly as the standalone `setMap` did, since it is the same
+  // choice arriving through the panel's one confirm instead of its own button.
+  if (Object.prototype.hasOwnProperty.call(requested, 'mapFile')) {
+    const mapFile = typeof requested.mapFile === 'string' ? requested.mapFile.trim() : '';
+    if (!mapFile || mapFile !== path.basename(mapFile)
+      || (mapFile !== 'random' && !mapFile.endsWith('.bzw'))) {
+      return { error: 'Invalid map file' };
+    }
+    if (mapFile !== 'random' && !resolveMapFilePath(mapFile)) {
+      return { error: 'Map file not found' };
+    }
+    next.mapFile = mapFile;
   }
 
   try {
@@ -3364,6 +3388,17 @@ function applyServerConfigChanges(requested, byWhom) {
     changed.push('ricochet');
   }
 
+  // A new game rather than a live change: the world and the team layout are
+  // resolved once at boot, so the only honest way to apply one is to start over.
+  // Written to `server.json` above; this is what makes the clients follow.
+  if (next.mapFile !== undefined && next.mapFile !== serverConfig.mapFile) {
+    serverConfig.mapFile = next.mapFile;
+    changed.push('mapFile');
+    log(`Config changed by ${byWhom}: ${changed.join(', ')}; starting a new game`);
+    requestServerRestart(`${byWhom} changed ${changed.join(', ')}`);
+    return { changed, restarted: true };
+  }
+
   broadcastAll({
     type: 'serverConfigUpdate',
     motd: serverConfig.motd || '',
@@ -3371,7 +3406,7 @@ function applyServerConfigChanges(requested, byWhom) {
     ricochet: GAME_CONFIG.ALL_SHOTS_RICOCHET,
   });
   log(`Config changed by ${byWhom}: ${changed.length ? changed.join(', ') : 'nothing'}`);
-  return { changed };
+  return { changed, restarted: false };
 }
 
 // SetCommand and ResetCommand (commands.cxx:120, :129). Upstream's `/set` walks
@@ -7805,6 +7840,11 @@ wss.on('connection', (ws, req) => {
     config: GAME_CONFIG,
     teamMode: TEAM_MODE,
     teamScores: getTeamScoreState(),
+    // Which settings the panel may change without starting a new game. Sent
+    // rather than duplicated on the client, because the panel's one button reads
+    // *Apply* or *Restart* from this list and a second copy would eventually
+    // promise the wrong one -- see docs/operator-panel-plan.md.
+    liveConfigKeys: LIVE_CONFIG_KEYS,
     // bzfs.cxx:2437 sends MsgNewRabbit to a joining player for the same reason:
     // the rabbit is world state, not an event, so a client that arrives mid-game
     // has to be told who it is.
@@ -8710,7 +8750,7 @@ wss.on('connection', (ws, req) => {
         case 'setOperatorConfig': {
           if (refuseNonOperator(ws, player, 'setOperatorConfig')) break;
           const requested = {};
-          for (const key of ['motd', 'shotMaxActive', 'ricochet']) {
+          for (const key of [...LIVE_CONFIG_KEYS, 'mapFile']) {
             if (Object.prototype.hasOwnProperty.call(message, key)) requested[key] = message[key];
           }
           if (Object.keys(requested).length === 0) {
@@ -8722,8 +8762,10 @@ wss.on('connection', (ws, req) => {
             ws.send(JSON.stringify({ error: outcome.error }));
             break;
           }
-          sendMapList(ws);
-          ws.send(JSON.stringify({ success: true }));
+          // Nothing to send after a restart: the clients are already reloading,
+          // and a map list for a world that is going away is noise.
+          if (!outcome.restarted) sendMapList(ws);
+          ws.send(JSON.stringify({ success: true, restarted: Boolean(outcome.restarted) }));
           break;
         }
       }

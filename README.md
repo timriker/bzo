@@ -249,7 +249,9 @@ If you want automatic container updates, use your preferred container update man
 - `P` — pause/resume
 - `N` — open chat (or click the `Send` button)
 - `Enter` — send chat (while chat input is focused, or click `Send` again)
-- `Esc` — exit chat input or leave mouse steering
+- `Esc` — back out one step: exit chat input, leave fullscreen, leave mouse
+  steering, then open Settings. Pressing it again closes Settings, so it is
+  always safe to press one more time
 - `1` / `2` / `3` / `4` / `5` — switch chat tab (`All` / `Chat` / `Server` / `Misc` / `Debug`)
 - `[` / `]` — previous/next chat tab
 - `.` — reply to last direct-message sender

@@ -97,13 +97,16 @@ import {
   adjustSettingsMenuRow,
   activateXRSettingsMenuItem,
   closeSettingsDialog,
+  openSettingsDialog,
+  isFullscreenActive,
   getXRSettingsMenuItems,
   dismissDialogFromOutsideClick,
   refreshSettingsMenu,
   registerGameplayInputReset,
   setGameplayKeyState,
   setInputContext,
-  syncInputContextFromUi
+  syncInputContextFromUi,
+  toggleOperatorPanel
 } from './input.js';
 import { XRMenuRenderer } from './xr-menu.js';
 import {
@@ -137,9 +140,11 @@ import {
 import { renderManager, DEFAULT_MUZZLE_HEIGHT, GHOST_ALPHA_SCALE, GHOST_SCALE } from './render.js';
 import { describeMeasurements, describeRenderCapabilities } from './capabilities.mjs';
 import {
+  describeGrowth,
   getFramePhaseReport,
   getFastestFrame,
   getFrameProgramRange,
+  getHeapUsedMB,
   markFramePhase,
   rollFramePhases,
   startFramePhases,
@@ -285,6 +290,7 @@ import {
   getPyramidHeight,
   getObstacleHeight,
   getTankLocalAngle,
+  getBoxCrossingPlane,
   pyramidShrinkFactor,
   getPyramidFaceLocalNormal,
   getPyramidSurfaceLocalHeight,
@@ -395,6 +401,11 @@ const RENDER_STATS_SAMPLE_DELAY_MS = 10000;
 // rather than on wherever the player happened to be standing for the only one.
 const XR_STATS_SAMPLE_INTERVAL_MS = 20000;
 let nextXRStatsSampleAt = 0;
+// And how often one lands on a client that is simply left open. This is the
+// series that answers "why did an idle browser get slower over an hour", which
+// no single sample can: see sampleIdleRenderStats.
+const IDLE_STATS_SAMPLE_INTERVAL_MS = 300000;
+let nextIdleStatsSampleAt = 0;
 
 function updateFps() {
   frameCount++;
@@ -2020,6 +2031,11 @@ function getDebugSenderName() {
   return '';
 }
 
+// The renderer reports a lost GL context, which is a thing only it can see and
+// only client.js can send down the socket. Assigned once, here, beside the
+// function itself so the two cannot drift apart.
+renderManager.debugLog = (message, source) => debugLog(message, source);
+
 function debugLog(message, source = '') {
   const text = source ? `[${source}] ${String(message)}` : String(message);
   addChatEntry(['debug'], `[DBG] ${text}`, CHAT_KIND_DEBUG);
@@ -3454,7 +3470,9 @@ function withProgramWindow(stats) {
 }
 
 function logRenderStats(reason) {
-  const stats = withProgramWindow(renderManager.getRenderStats());
+  // The logged series is the one that pays for the scene walk: it lands a few
+  // times an hour, where the debug HUD polls twice a second.
+  const stats = withProgramWindow(renderManager.getRenderStats({ deep: true }));
   if (!stats) return;
   // The debug toggles change what is in the scene -- labels are a sprite over
   // every obstacle, geometry is a ghost and a trace per tank -- so a sample
@@ -3467,6 +3485,36 @@ function logRenderStats(reason) {
   // seven lights in it or none -- which is a different shader for every
   // material in the world, so it cannot be left off a sample either.
   stats.lighting = renderManager.dynamicLightingEnabled;
+  // bzo's own collections, which is where a leak would live if the scene graph
+  // is clean: each of these is added to on an event and has to be removed from
+  // on another, and a count that climbs while a client sits idle names which one
+  // forgot. `objects` in the render stats is the scene-graph half of the same
+  // question.
+  stats.tanks = tanks.size;
+  stats.shots = projectiles.size;
+  stats.worldFlags = flags.size;
+  stats.spheres = playerPausedSpheres.size;
+  const heap = getHeapUsedMB();
+  // Absent rather than zero where the browser does not expose it: a zero would
+  // read as "no memory used" beside another browser's real figure.
+  if (heap !== null) stats.heap = heap;
+  // What has moved since this page's first sample, and nothing when nothing has.
+  // A leak is a trend and no single line can show one -- see perf.js. The
+  // baseline deliberately outlives a reconnect, because a leak that a reconnect
+  // clears is the case worth catching.
+  const grew = describeGrowth({
+    objects: stats.objects,
+    textures: stats.textures,
+    geometries: stats.geometries,
+    programs: stats.programs,
+    labels: stats.labels,
+    tanks: stats.tanks,
+    shots: stats.shots,
+    worldFlags: stats.worldFlags,
+    spheres: stats.spheres,
+    ...(heap === null ? {} : { heap }),
+  });
+  if (grew) stats.grew = grew;
   const report = getFramePhaseReport();
   const phases = report ? ` ${describeMeasurements(report)}` : '';
   debugLog(`renderer.stats reason=${reason} fps=${fps} ${describeMeasurements(stats)}${phases}`);
@@ -3597,12 +3645,32 @@ function handleGameplayKeydown(event) {
     return true;
   }
   if (event.code === 'Escape') {
-    // Upstream has no such binding -- Escape opens its main menu -- but the web
-    // cannot confine the cursor to the box, so leaving mouse steering needs a
-    // key that is not also a drive key. It goes through the toggle so the row,
-    // the button and the stored preference all follow, and says nothing when
-    // there was nothing to leave.
-    toggleMouseMode(false);
+    // Upstream's Escape opens the main menu (`MainMenu.cxx`), and Settings is
+    // the closest thing bzo has -- but the web spends Escape on its own state
+    // first, so it is a ladder and each press undoes exactly one rung:
+    //
+    //   in fullscreen  the browser leaves fullscreen. The game does nothing.
+    //   mouse steering  turns off. The web cannot confine the cursor to the
+    //                   box, so leaving needs a key that is not a drive key.
+    //   otherwise       Settings opens, and Escape again closes it.
+    //
+    // Settings is therefore one press away from a plain client and three from a
+    // fullscreen mouse-steering one, in the order somebody would want them
+    // undone. The fourth press always undoes the third, so pressing once too
+    // often costs nothing -- which is what makes a ladder acceptable at all.
+    if (isFullscreenActive()) {
+      // Whether the browser also delivers this keydown is up to the browser;
+      // claiming it here means the rung is spent either way rather than
+      // doubling up with the one below on the browsers that do.
+      return true;
+    }
+    if (mouseControlEnabled) {
+      // Through the toggle, so the row, the button and the stored preference
+      // all follow.
+      toggleMouseMode(false);
+      return true;
+    }
+    openSettingsDialog();
     return true;
   }
   return false;
@@ -3624,6 +3692,8 @@ initHudControls({
     updateDebugLabelsButton();
   },
   getDebugState,
+  onOperatorPanelShown: () => openOperatorPanel(),
+  onOperatorPanelHidden: () => discardOperatorPanel(),
   isObserver: () => isObserver(),
   cycleObserverView: () => cycleRoamView(),
   getObserverViewLabel: () => getRoamLabel(),
@@ -3724,48 +3794,7 @@ window.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  const setMotdBtn = document.getElementById('setMotdBtn');
-  const motdInput = document.getElementById('motdInput');
-  if (setMotdBtn && motdInput) {
-    setMotdBtn.addEventListener('click', () => {
-      const motd = motdInput.value.trim();
-      if (!ws || ws.readyState !== WebSocket.OPEN) return;
-      sendToServer({
-        type: 'setOperatorConfig',
-        motd,
-      });
-    });
-  }
-
-  const setShotMaxActiveBtn = document.getElementById('setShotMaxActiveBtn');
-  const shotMaxActiveInput = document.getElementById('shotMaxActiveInput');
-  if (setShotMaxActiveBtn && shotMaxActiveInput) {
-    setShotMaxActiveBtn.addEventListener('click', () => {
-      const parsed = Number(shotMaxActiveInput.value);
-      if (!Number.isFinite(parsed)) {
-        showMessage('Shot max active must be a number.');
-        return;
-      }
-      if (!ws || ws.readyState !== WebSocket.OPEN) return;
-      sendToServer({
-        type: 'setOperatorConfig',
-        shotMaxActive: Math.round(parsed),
-      });
-    });
-  }
-
-  // A checkbox says what it did the moment it is ticked, so it applies itself
-  // rather than waiting for an Update button the way the typed rows do.
-  const ricochetInput = document.getElementById('ricochetInput');
-  if (ricochetInput) {
-    ricochetInput.addEventListener('change', () => {
-      if (!ws || ws.readyState !== WebSocket.OPEN) return;
-      sendToServer({
-        type: 'setOperatorConfig',
-        ricochet: ricochetInput.checked,
-      });
-    });
-  }
+  wireOperatorPanel();
   const btn = document.getElementById('debugLabelsBtn');
   if (btn) {
     btn.addEventListener('click', () => {
@@ -3782,18 +3811,6 @@ window.addEventListener('DOMContentLoaded', () => {
       });
     });
     updateDebugLabelsButton();
-  }
-
-  // Add handler for Restart with Map button
-  const restartBtn = document.getElementById('restartBtn');
-  const mapList = document.getElementById('mapList');
-  if (restartBtn && mapList) {
-    restartBtn.addEventListener('click', () => {
-      const selectedMap = mapList.value;
-      if (ws && ws.readyState === WebSocket.OPEN && selectedMap) {
-        ws.send(JSON.stringify({ type: 'setMap', mapFile: selectedMap }));
-      }
-    });
   }
 
   // Initialize WebXR support
@@ -4372,14 +4389,7 @@ function handleServerMessage(message) {
       announceServerTextIfChanged();
       worldTime = message.worldTime;
       // Clear any existing tanks from previous connections
-      tanks.forEach((tank) => {
-        // Remove ghost mesh if it exists
-        if (tank.userData.ghostMesh) {
-          renderManager.getWorldGroup().remove(tank.userData.ghostMesh);
-          tank.userData.ghostMesh = null;
-        }
-        renderManager.getWorldGroup().remove(tank);
-      });
+      tanks.forEach((tank) => discardTank(tank));
       tanks.clear();
 
       // Clear any existing projectiles
@@ -4411,6 +4421,10 @@ function handleServerMessage(message) {
       // that was chosen before this client arrived.
       rabbitPlayerId = message.rabbitId ?? null;
       rabbitChaseEnabled = Boolean(message.teamMode.rabbitSelection);
+      if (Array.isArray(message.liveConfigKeys)) liveConfigKeys = message.liveConfigKeys;
+      // The panel is wired before the first `init` arrives, so its rows start on
+      // placeholders. This is where the server's real values first exist.
+      if (!operatorStaged) syncOperatorPanelFromServer();
       if (message.voiceRtcConfig && typeof message.voiceRtcConfig === 'object') {
         voiceRtcConfig = message.voiceRtcConfig;
         callVoiceManager('setRtcConfig', voiceRtcConfig);
@@ -4755,9 +4769,12 @@ function handleServerMessage(message) {
 
     case 'grabFlag': {
       const flag = setFlagState(message.flag);
-      const label = describeFlag(flag);
       handleFlagGrabbedAlerts(message.playerId, flag);
-      addChatEntry(['misc', 'all'], `${getPlayerName(message.playerId)} grabbed ${label} flag`, CHAT_KIND_MISC);
+      addChatEntry(
+        ['misc', 'all'],
+        `${getPlayerName(message.playerId)} grabbed ${describeFlagForChat(flag)} flag`,
+        CHAT_KIND_MISC,
+      );
       // The scoreboard names the carried flag, and it only repaints on events.
       refreshScoreboards();
       break;
@@ -4797,7 +4814,11 @@ function handleServerMessage(message) {
           forceReload(getThiefDropReloadSeconds(getShotLifetimeSeconds(null)));
         }
       }
-      addChatEntry(['misc', 'all'], `${getPlayerName(message.playerId)} dropped ${label} flag`, CHAT_KIND_MISC);
+      addChatEntry(
+        ['misc', 'all'],
+        `${getPlayerName(message.playerId)} dropped ${describeFlagForChat(flag)} flag`,
+        CHAT_KIND_MISC,
+      );
       refreshScoreboards();
       break;
     }
@@ -4957,12 +4978,7 @@ function addPlayer(player) {
   const effectiveColor = getEffectiveTankColor(player.id, player.color);
   const tankColorChanged = tank?.userData?.builtColor !== effectiveColor;
   if (tank && tank.userData && (tank.userData.tankModel !== playerTankModelId || tankColorChanged)) {
-    if (tank.userData.ghostMesh) {
-      renderManager.getWorldGroup().remove(tank.userData.ghostMesh);
-      tank.userData.ghostMesh = null;
-    }
-    renderManager.getWorldGroup().remove(tank);
-    tanks.delete(player.id);
+    discardTank(tank, player.id);
     tank = null;
   }
 
@@ -5048,18 +5064,34 @@ function addPlayer(player) {
   refreshScoreboards();
 }
 
+// Everything hanging off a tank that is not parented to it, undone in one place.
+// The ghost, the projected shadows and the crossing-wall lights are all
+// *siblings* of the tank in the world group rather than children -- a child
+// would inherit the tank's landing squish and spawn scaling -- so none of them
+// go away when the tank does, and each has to be let go by name.
+//
+// One function and three callers, because there are three ways a tank leaves:
+// a player quits, a new world arrives, and `addPlayer` throws a tank away to
+// rebuild it in another colour or model. They were three copies of this, and
+// they had already drifted -- only the quit path dropped the shadows -- so the
+// lights were left behind by two of the three the day they were added.
+function discardTank(tank, playerId = null) {
+  if (!tank) return;
+  clearJumpPredictionDebug(tank);
+  if (tank.userData?.ghostMesh) {
+    renderManager.getWorldGroup().remove(tank.userData.ghostMesh);
+    tank.userData.ghostMesh = null;
+  }
+  renderManager.dropProjectedShadows(tank);
+  renderManager.dropTankCrossingEffect(tank);
+  renderManager.getWorldGroup().remove(tank);
+  if (playerId !== null) tanks.delete(playerId);
+}
+
 function removePlayer(playerId) {
   const tank = tanks.get(playerId);
   if (tank) {
-    clearJumpPredictionDebug(tank);
-    // Remove ghost mesh if it exists
-    if (tank.userData.ghostMesh) {
-      renderManager.getWorldGroup().remove(tank.userData.ghostMesh);
-      tank.userData.ghostMesh = null;
-    }
-    renderManager.dropProjectedShadows(tank);
-    renderManager.getWorldGroup().remove(tank);
-    tanks.delete(playerId);
+    discardTank(tank, playerId);
     refreshScoreboards();
   }
   removePausedSphere(playerId);
@@ -5593,6 +5625,7 @@ function handleMapsList(message) {
   });
 
   if (message.currentMap) {
+    currentMapFile = message.currentMap;
     mapList.value = message.currentMap;
   }
 
@@ -5601,16 +5634,13 @@ function handleMapsList(message) {
   if (motdEl) motdEl.textContent = `MOTD: ${serverMotdText}`;
   if (motdInput) motdInput.value = serverMotdText;
 
-  if (Number.isFinite(message.shotMaxActive)) {
-    const shotMaxActiveInput = document.getElementById('shotMaxActiveInput');
-    if (shotMaxActiveInput) {
-      shotMaxActiveInput.value = String(message.shotMaxActive);
-    }
-  }
-
   if (typeof message.ricochet === 'boolean') {
     applyRicochetSetting(message.ricochet);
   }
+  // The panel reads the server's values, so a map list that carries new ones has
+  // to re-stage from them -- unless somebody is mid-edit, whose staged copy is
+  // theirs until they commit or cancel.
+  if (!operatorStaged) syncOperatorPanelFromServer();
 }
 
 function handleServerConfigUpdate(message) {
@@ -5632,19 +5662,181 @@ function handleServerConfigUpdate(message) {
 
   announceServerTextIfChanged();
 
-  if (Number.isFinite(message.shotMaxActive)) {
-    if (gameConfig) {
-      gameConfig.SHOT_MAX_ACTIVE = message.shotMaxActive;
-    }
-    const shotMaxActiveInput = document.getElementById('shotMaxActiveInput');
-    if (shotMaxActiveInput) {
-      shotMaxActiveInput.value = String(message.shotMaxActive);
-    }
+  if (Number.isFinite(message.shotMaxActive) && gameConfig) {
+    gameConfig.SHOT_MAX_ACTIVE = message.shotMaxActive;
   }
 
   if (typeof message.ricochet === 'boolean') {
     applyRicochetSetting(message.ricochet);
   }
+  // An applied change is now the server's value, so the panel starts from it.
+  // A staged edit survives: it belongs to whoever is typing, not to the update.
+  if (!operatorStaged) syncOperatorPanelFromServer();
+}
+
+// The Operator panel stages every edit and commits on one confirm, exactly as
+// the entry dialog stages a name, a team and a tank. `operatorStaged` holds the
+// edits while the panel is open and is thrown away by Cancel, the `X`, or a
+// commit -- so re-opening always starts from what the server currently has.
+//
+// See docs/operator-panel-plan.md. The short version: a button per row meant a
+// restart per row on a dev box, and in a headset it meant two rows per setting.
+let operatorStaged = null;
+// Which map the server is actually running, so a staged choice can be compared
+// against it. `mapList.value` is the staged one once the panel is open.
+let currentMapFile = '';
+// Sent in `init`: the settings that can change without starting a new game.
+// Read rather than duplicated, so the confirm's label cannot promise something
+// the server will not do.
+let liveConfigKeys = ['motd', 'shotMaxActive', 'ricochet'];
+
+const SHOT_MAX_ACTIVE_MIN = 1;
+const SHOT_MAX_ACTIVE_MAX = 10;
+
+function getOperatorServerState() {
+  return {
+    motd: serverMotdText || '',
+    shotMaxActive: Number(gameConfig?.SHOT_MAX_ACTIVE) || SHOT_MAX_ACTIVE_MIN,
+    ricochet: Boolean(gameConfig?.ALL_SHOTS_RICOCHET),
+    mapFile: currentMapFile,
+  };
+}
+
+// The staged keys that differ from what the server has. Empty means the confirm
+// has nothing to do, which is worth showing rather than letting somebody press
+// it and wonder.
+function getOperatorChanges() {
+  if (!operatorStaged) return [];
+  const current = getOperatorServerState();
+  return Object.keys(operatorStaged).filter((key) => operatorStaged[key] !== current[key]);
+}
+
+function operatorChangesNeedRestart(changes) {
+  return changes.some((key) => !liveConfigKeys.includes(key));
+}
+
+// Writes the staged values into the panel and labels the confirm by what it is
+// about to do. Called on open and after every edit, so the label can never
+// disagree with the rows above it.
+function syncOperatorPanel() {
+  if (!operatorStaged) return;
+  const motdInput = document.getElementById('motdInput');
+  if (motdInput && motdInput.value !== operatorStaged.motd) motdInput.value = operatorStaged.motd;
+  const shotSlider = document.getElementById('shotMaxActiveSlider');
+  if (shotSlider && Number(shotSlider.value) !== operatorStaged.shotMaxActive) {
+    shotSlider.value = String(operatorStaged.shotMaxActive);
+  }
+  const shotValue = document.getElementById('shotMaxActiveValue');
+  if (shotValue) shotValue.textContent = String(operatorStaged.shotMaxActive);
+  const ricochetInput = document.getElementById('ricochetInput');
+  if (ricochetInput) ricochetInput.checked = operatorStaged.ricochet;
+  const mapList = document.getElementById('mapList');
+  if (mapList && operatorStaged.mapFile && mapList.value !== operatorStaged.mapFile) {
+    mapList.value = operatorStaged.mapFile;
+  }
+
+  const changes = getOperatorChanges();
+  const restart = operatorChangesNeedRestart(changes);
+  const apply = document.getElementById('operatorApplyBtn');
+  if (apply) {
+    apply.textContent = restart ? 'Restart' : 'Apply';
+    apply.classList.toggle('startsNewGame', restart);
+    apply.disabled = changes.length === 0;
+    apply.title = restart
+      ? 'Starts a new game: every player reloads into the new settings'
+      : 'Applies the staged changes';
+  }
+}
+
+function openOperatorPanel() {
+  operatorStaged = getOperatorServerState();
+  syncOperatorPanel();
+}
+
+// Paints the panel from what the server has, for when nothing is staged. The
+// rows are still the operator's view of the world while the panel is shut, so
+// they are worth keeping current.
+function syncOperatorPanelFromServer() {
+  const current = getOperatorServerState();
+  const shotSlider = document.getElementById('shotMaxActiveSlider');
+  if (shotSlider) shotSlider.value = String(current.shotMaxActive);
+  const shotValue = document.getElementById('shotMaxActiveValue');
+  if (shotValue) shotValue.textContent = String(current.shotMaxActive);
+  const ricochetInput = document.getElementById('ricochetInput');
+  if (ricochetInput) ricochetInput.checked = current.ricochet;
+  const apply = document.getElementById('operatorApplyBtn');
+  if (apply) {
+    apply.textContent = 'Apply';
+    apply.classList.remove('startsNewGame');
+    apply.disabled = true;
+  }
+}
+
+function discardOperatorPanel() {
+  operatorStaged = null;
+}
+
+function commitOperatorPanel() {
+  const changes = getOperatorChanges();
+  if (changes.length === 0 || !ws || ws.readyState !== WebSocket.OPEN) return;
+  const payload = { type: 'setOperatorConfig' };
+  for (const key of changes) payload[key] = operatorStaged[key];
+  sendToServer(payload);
+  // Thrown away on send rather than on the reply: the reply is a restart for
+  // half of these, and there is nothing to stage against afterwards.
+  operatorStaged = null;
+}
+
+// Each row edits the staged copy and nothing else. Called once, and every
+// surface that changes a value goes through `stageOperatorChange` so the label
+// is recomputed from one place.
+function stageOperatorChange(key, value) {
+  if (!operatorStaged) operatorStaged = getOperatorServerState();
+  operatorStaged[key] = value;
+  syncOperatorPanel();
+}
+
+function stageShotMaxActive(direction) {
+  if (!operatorStaged) operatorStaged = getOperatorServerState();
+  const next = Math.max(
+    SHOT_MAX_ACTIVE_MIN,
+    Math.min(SHOT_MAX_ACTIVE_MAX, operatorStaged.shotMaxActive + direction),
+  );
+  stageOperatorChange('shotMaxActive', next);
+}
+
+function wireOperatorPanel() {
+  const motdInput = document.getElementById('motdInput');
+  if (motdInput) {
+    motdInput.addEventListener('input', () => stageOperatorChange('motd', motdInput.value.trim()));
+  }
+  const shotSlider = document.getElementById('shotMaxActiveSlider');
+  if (shotSlider) {
+    // `input` rather than `change`, so dragging updates the label and the
+    // confirm as it moves rather than only on release.
+    shotSlider.addEventListener('input', () => {
+      stageOperatorChange('shotMaxActive', Number(shotSlider.value));
+    });
+  }
+  const ricochetInput = document.getElementById('ricochetInput');
+  if (ricochetInput) {
+    // Staged rather than applied on tick, unlike before: a checkbox that acted
+    // immediately was the one row that could not be cancelled.
+    ricochetInput.addEventListener('change', () => stageOperatorChange('ricochet', ricochetInput.checked));
+  }
+  const mapList = document.getElementById('mapList');
+  if (mapList) {
+    mapList.addEventListener('change', () => stageOperatorChange('mapFile', mapList.value));
+  }
+  document.getElementById('operatorApplyBtn')?.addEventListener('click', commitOperatorPanel);
+  // Honest from the start: nothing is staged before the panel is opened, so the
+  // confirm is disabled rather than sitting there enabled with nothing to do.
+  syncOperatorPanelFromServer();
+  // Through the same toggle every other close path uses, which also fires
+  // `onOperatorPanelHidden` and so does the discarding.
+  document.getElementById('operatorCancelBtn')?.addEventListener('click', () => {
+    toggleOperatorPanel();
+  });
 }
 
 // The ricochet game style reaches the client twice over: in the `init` config
@@ -6649,9 +6841,8 @@ function findSupportSurface(worldX, worldY, worldZ, falling = false) {
 // The world border is not a building and neither is a teleporter: both expel a
 // phased tank, so it can never be in one, and upstream leaves its walls out of
 // the collision manager this list comes from.
-function findInsideBuildings(worldX, worldY, worldZ, rotation) {
+function findInsideBuildings(worldX, worldY, worldZ, rotation, tankScale = getMyTankScale()) {
   const found = [];
-  const tankScale = getMyTankScale();
   for (const obs of getCollisionColliders()) {
     if (obs.driveThrough) continue;
     if (obs.collisionKind === 'boundary' || obs.kind === 'teleporter') continue;
@@ -6670,6 +6861,25 @@ function findInsideBuildings(worldX, worldY, worldZ, rotation) {
     found.push(obs);
   }
   return found;
+}
+
+// The wall a phasing tank is currently half inside, or null. Upstream works this
+// out on the tank's own client and ships a `CrossingWall` status bit for the
+// others to redraw from (LocalPlayer.cxx:678, PlayerState.h:30) -- but bzo's
+// client already knows every player's flag, because the server owns flags, and
+// already holds the whole obstacle list. So every client can answer this for
+// every tank and the protocol says nothing, which is one less thing to keep in
+// step across a version.
+//
+// The first straddled obstacle wins. Upstream asks `hitBuilding` for one
+// obstacle and tests that; a tank in a corner is inside two, and either wall is
+// as good an answer as the guess `isCrossing` makes anyway.
+function findTankCrossingPlane(worldX, worldY, worldZ, rotation, tankScale) {
+  for (const obs of findInsideBuildings(worldX, worldY, worldZ, rotation, tankScale)) {
+    const plane = getBoxCrossingPlane(obs, worldX, worldY, worldZ, rotation, tankScale);
+    if (plane) return plane;
+  }
+  return null;
 }
 
 // doUpdateMotion's last act (LocalPlayer.cxx:854), with the tank where the frame
@@ -6908,6 +7118,32 @@ function updateTankDimensions(deltaTime) {
     // And the ground the local tank is driving over, which is the whole of
     // upstream's zoned screen effect.
     if (playerId === myPlayerId) renderManager.setZoneGround(viewedZoned);
+
+    // The clip plane and the interdimensional lights, for a tank straddling a
+    // wall it is driving through. Only a phasing tank can be inside one, so
+    // every other tank skips the obstacle sweep entirely -- the same reason
+    // `updateInsideBuildings` gates on `amPhased`.
+    //
+    // `tank.visible` is the whole of upstream's two early returns in
+    // `addToScene`: it drops out for a tank that is not alive and for one
+    // cloaked to nothing, both of which draw no tank and so must draw no lights.
+    // A tank killed inside a wall is the case that matters -- it stops being
+    // drawn where it stood, and without this the streaks hang in the building
+    // with nothing in the middle of them. The tank also keeps its flag on this
+    // client for the moment between the kill and the server's drop, so the flag
+    // alone is not enough to notice.
+    //
+    // Null rather than skipping the call, because a tank that stops qualifying
+    // has to lose both the plane and the lights it already has.
+    const crossingScale = getTankDimensionScale(viewedFlag);
+    renderManager.setTankCrossingPlane(
+      tank,
+      tank.visible && drivesThroughBuildings(viewedFlag, viewedZoned)
+        ? findTankCrossingPlane(
+          tank.position.x, tank.position.y, tank.position.z, tank.rotation.y, crossingScale,
+        )
+        : null,
+    );
 
     const baseScaleX = tank.userData.baseScaleX;
     const baseScaleY = tank.userData.baseScaleY;
@@ -9097,6 +9333,25 @@ function describeFlag(flag) {
   return type ? type.name : 'unidentified';
 }
 
+// The chat form: `ID/Identify`, pairing the abbreviation the scoreboard shows
+// against a callsign with the name that says what the flag does. Upstream prints
+// the name alone (`playing.cxx:2734`), and bzo's own kill notices print the
+// abbreviation alone -- so a player reading both had no line that connected
+// them. A grab is where that connection is worth three characters: it is the
+// moment somebody learns which `/ID` is which flag, and it happens once per
+// pickup rather than every frame like a HUD alert, which is why the alerts keep
+// `describeFlag` and its shorter name.
+//
+// Team flags are name-only. Their abbreviations are `R*` through `P*`, which
+// nothing displays anywhere -- the scoreboard shows "Red" -- so pairing one
+// against "Red Team" would teach a string that never appears again.
+function describeFlagForChat(flag) {
+  const type = getFlagType(flag?.type);
+  if (!type) return 'unidentified';
+  if (type.team) return type.name;
+  return `${type.abbreviation}/${type.name}`;
+}
+
 // HelpMenu's flag pages, built from the shared flag table rather than written
 // out in index.html. The table is the list of flags bzo implements, so the help
 // cannot document a flag the server will not hand out, or miss one it will.
@@ -9375,7 +9630,7 @@ function handleFlagTransferred(message) {
   const victimName = getPlayerName(message.fromId);
   addChatEntry(
     ['misc', 'all'],
-    `${thiefName} stole ${victimName}'s ${label} flag`,
+    `${thiefName} stole ${victimName}'s ${describeFlagForChat(flag)} flag`,
     CHAT_KIND_MISC
   );
   if (message.fromId === myPlayerId) {
@@ -11215,23 +11470,46 @@ function getXRAudioMenuItems() {
   ];
 }
 
+// The same staged model the flat panel edits, one row per setting. This screen
+// used to carry an apply row *per* setting -- "Restart with Map", "Apply Shot
+// Limit" -- which is two rows each on the surface with the least room; one
+// confirm replaces all of them. See docs/operator-panel-plan.md.
 function getXROperatorMenuItems() {
   const mapList = document.getElementById('mapList');
-  const shotInput = document.getElementById('shotMaxActiveInput');
-  const currentMap = mapList?.selectedOptions?.[0]?.textContent || 'Loading...';
+  const staged = operatorStaged || getOperatorServerState();
+  const changes = getOperatorChanges();
+  const restart = operatorChangesNeedRestart(changes);
   const keyboard = isSystemKeyboardSupported();
+  const mapLabel = mapList
+    ? ([...mapList.options].find((option) => option.value === staged.mapFile)?.textContent
+      || staged.mapFile || 'Loading...')
+    : 'Loading...';
   return [
     {
       id: 'operatorMotdXR',
       label: 'MOTD',
-      value: keyboard ? (serverMotdText || '(empty)') : 'Desktop only',
+      // The headset's own keyboard where the session has one; see
+      // beginXRTextEntry. A paired physical keyboard is untested.
+      value: keyboard ? (staged.motd || '(empty)') : 'Desktop only',
       disabled: !keyboard,
     },
-    { id: 'operatorMapXR', label: 'Map', value: currentMap, adjustable: true, disabled: !mapList?.options?.length },
-    { id: 'operatorRestartXR', label: 'Restart with Map', value: '', disabled: !mapList?.value },
-    { id: 'operatorShotsXR', label: 'Shot Limit', value: shotInput?.value || String(gameConfig?.SHOT_MAX_ACTIVE || 5), adjustable: true },
-    { id: 'operatorApplyShotsXR', label: 'Apply Shot Limit', value: '' },
-    { id: 'operatorRicochetXR', label: 'All Shots Ricochet', value: gameConfig?.ALL_SHOTS_RICOCHET ? 'On' : 'Off' },
+    {
+      id: 'operatorMapXR',
+      label: 'Map',
+      value: mapLabel,
+      adjustable: true,
+      disabled: !mapList?.options?.length,
+    },
+    { id: 'operatorShotsXR', label: 'Shot Limit', value: String(staged.shotMaxActive), adjustable: true },
+    { id: 'operatorRicochetXR', label: 'All Shots Ricochet', value: staged.ricochet ? 'On' : 'Off' },
+    {
+      id: 'operatorApplyXR',
+      // Labelled by what it will do, as the flat panel's is.
+      label: restart ? 'Restart' : 'Apply',
+      value: changes.length === 0 ? 'no changes' : changes.join(', '),
+      disabled: changes.length === 0,
+    },
+    { id: 'operatorCancelXR', label: 'Cancel', value: '', disabled: changes.length === 0 },
     { id: 'operatorRefreshXR', label: 'Refresh Server Data', value: '' },
     { id: 'operatorDesktopXR', label: 'Upload Map', value: 'Desktop only', disabled: true },
     { id: 'backXR', label: 'Back', value: '' },
@@ -11283,13 +11561,14 @@ function adjustXRSettingsMenuItem(item, direction) {
   if (item.id === 'voiceInputXR') {
     return cycleSelectElement(document.getElementById('voiceInputDevice'), direction);
   }
+  // Both stage rather than apply, through the same functions the flat panel's
+  // rows call -- so the confirm's label is recomputed once and agrees on both
+  // surfaces.
   if (item.id === 'operatorMapXR') {
     return cycleSelectElement(document.getElementById('mapList'), direction);
   }
   if (item.id === 'operatorShotsXR') {
-    const input = document.getElementById('shotMaxActiveInput');
-    if (!input) return false;
-    input.value = String(Math.max(1, Math.min(10, Number(input.value || 5) + direction)));
+    stageShotMaxActive(direction);
     return true;
   }
   // Everything above is a row the XR panel owns. The rest are the flat menu's
@@ -11345,16 +11624,21 @@ function activateXRSettingsMenuSelection(item) {
   else if (item.id === 'voiceNoiseXR') document.getElementById('voiceNoiseSuppression')?.click();
   else if (item.id === 'voiceGainXR') document.getElementById('voiceAutoGainControl')?.click();
   else if (item.id === 'operatorMotdXR') {
-    beginXRTextEntry(serverMotdText, (typed) => {
-      const motdInput = document.getElementById('motdInput');
-      if (!motdInput) return;
-      motdInput.value = typed;
-      document.getElementById('setMotdBtn')?.click();
+    // Staged like every other row: the headset keyboard returns the text and the
+    // confirm is what sends it.
+    beginXRTextEntry((operatorStaged || getOperatorServerState()).motd, (typed) => {
+      stageOperatorChange('motd', typed.trim());
     });
   }
-  else if (item.id === 'operatorRestartXR') document.getElementById('restartBtn')?.click();
-  else if (item.id === 'operatorApplyShotsXR') document.getElementById('setShotMaxActiveBtn')?.click();
-  else if (item.id === 'operatorRicochetXR') document.getElementById('ricochetInput')?.click();
+  else if (item.id === 'operatorRicochetXR') {
+    stageOperatorChange('ricochet', !(operatorStaged || getOperatorServerState()).ricochet);
+  }
+  else if (item.id === 'operatorApplyXR') commitOperatorPanel();
+  else if (item.id === 'operatorCancelXR') {
+    // Back to the server's values, staying on the screen: in a headset there is
+    // no `X` to close, and leaving the screen is the Back row's job.
+    operatorStaged = getOperatorServerState();
+  }
   else if (item.id === 'operatorRefreshXR') setXRSettingsMenuScreen('operator');
   else activateXRSettingsMenuItem(item.id);
 }
@@ -11815,6 +12099,34 @@ function animate(frameTime) {
   markFramePhase('draw');
   rollFramePhases();
   sampleXRRenderStats();
+  sampleIdleRenderStats();
+}
+
+// A slow series for every client, flat page included. The XR series above is
+// seconds apart because a session is short and its cost is immediate; this one
+// is for the opposite question -- a client that has been left open, whose frame
+// rate has drifted down over an hour and comes back on a reconnect. One sample
+// at map entry cannot show that, and a trend is the only thing that can.
+//
+// Five minutes because the symptom takes minutes to hours to appear, so twelve
+// samples an hour is plenty and the cost is a log line. The counters it carries
+// are cheap; the scene walk behind `objects` is the most expensive part of it and
+// happens twelve times an hour.
+function sampleIdleRenderStats() {
+  // The XR series already covers a session, and two overlapping series would
+  // interleave in the log for no gain.
+  if (isXREnabled()) {
+    nextIdleStatsSampleAt = 0;
+    return;
+  }
+  const now = performance.now();
+  if (nextIdleStatsSampleAt === 0) {
+    nextIdleStatsSampleAt = now + IDLE_STATS_SAMPLE_INTERVAL_MS;
+    return;
+  }
+  if (now < nextIdleStatsSampleAt) return;
+  nextIdleStatsSampleAt = now + IDLE_STATS_SAMPLE_INTERVAL_MS;
+  logRenderStats('idleSeries');
 }
 
 // The session's own series. The clock starts when the session does, so the

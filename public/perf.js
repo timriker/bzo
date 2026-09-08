@@ -99,6 +99,60 @@ export function rollFramePhases() {
   framePhaseWindowStart = performance.now();
 }
 
+// A leak is a *trend*, and no single stats line can show one. So the counters
+// that could grow without bound are baselined the first time they are sampled
+// and reported as growth since then -- which is the number that means something
+// on a client that has been idle for an hour.
+//
+// The page is the baseline's lifetime rather than the connection: bzo reconnects
+// its clients on every server restart, and a leak the reconnect clears is
+// exactly the case worth catching -- resetting the baseline there would hide it.
+// `init` tears the scene down and rebuilds it, so a count that returns to its
+// starting value has answered the question either way.
+const growthBaseline = new Map();
+
+// Chrome and Edge only, and coarse: `usedJSHeapSize` is quantised and lags
+// collection, so a single reading says little. The *slope* over an idle hour is
+// the signal, which is what the baseline above turns it into.
+//
+// A capability, not a cost: where the browser does not expose it there is
+// nothing to disable, so the field is simply absent rather than zero -- a zero
+// would read as "no memory used" in a line somebody is comparing against
+// another browser's.
+export function getHeapUsedMB() {
+  const memory = performance.memory;
+  if (!memory || !Number.isFinite(memory.usedJSHeapSize)) return null;
+  return Number((memory.usedJSHeapSize / (1024 * 1024)).toFixed(1));
+}
+
+// Records `value` for `name` and returns how far it has moved since the first
+// time it was recorded, or null the first time and for a value that has not
+// moved. Null rather than zero so the caller can leave a quiet counter out of
+// the line entirely: a stats line full of `+0` is a line nobody reads.
+export function noteGrowth(name, value) {
+  if (!Number.isFinite(value)) return null;
+  if (!growthBaseline.has(name)) {
+    growthBaseline.set(name, value);
+    return null;
+  }
+  const delta = Number((value - growthBaseline.get(name)).toFixed(1));
+  return delta === 0 ? null : delta;
+}
+
+// The growth fields for a stats line: `grew=objects+12,heap+40.5` and nothing at
+// all when nothing has moved. One field rather than a delta beside every
+// counter, because the counters are already there and what is worth reading is
+// the short list of the ones that are climbing.
+export function describeGrowth(samples) {
+  const parts = [];
+  for (const [name, value] of Object.entries(samples)) {
+    const delta = noteGrowth(name, value);
+    if (delta === null) continue;
+    parts.push(`${name}${delta > 0 ? '+' : ''}${delta}`);
+  }
+  return parts.length > 0 ? parts.join(',') : null;
+}
+
 // Milliseconds per frame for the last completed window, or null before one has
 // completed.
 export function getFramePhaseReport() {

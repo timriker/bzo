@@ -2,6 +2,7 @@ const js = require("@eslint/js");
 
 const sharedGlobals = {
   console: "readonly",
+  performance: "readonly",
   setTimeout: "readonly",
   clearTimeout: "readonly",
   setInterval: "readonly",
@@ -62,7 +63,6 @@ module.exports = [
         FormData: "readonly",
         localStorage: "readonly",
         navigator: "readonly",
-        performance: "readonly",
         requestAnimationFrame: "readonly",
         ResizeObserver: "readonly",
         cancelAnimationFrame: "readonly",

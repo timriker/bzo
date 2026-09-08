@@ -324,6 +324,20 @@ export function handleDialogKeydown(event, { dismissDialog } = {}) {
     return true;
   }
 
+  // Up and down leave the row, whatever the row is -- ahead of the gate below,
+  // because a text field does not pass it. Sideways operates the control and up
+  // and down move between controls: the same split a slider follows and the
+  // same one an XR thumbstick reads, so one habit works on every row. A
+  // single-line input has nothing to do with up and down anyway; the browser
+  // would spend them jumping the caret to the ends of the text and strand the
+  // focus in the field. Left, right, Home and End stay native there, which is
+  // what editing needs.
+  if (event.key === 'ArrowUp' || event.key === 'ArrowDown') {
+    event.preventDefault();
+    moveDialogFocus(openDialog, activeElement, event.key === 'ArrowUp' ? -1 : 1);
+    return true;
+  }
+
   if (!canCycleWithArrowKeys(activeElement)) {
     return false;
   }
@@ -354,12 +368,6 @@ export function handleDialogKeydown(event, { dismissDialog } = {}) {
     // The row had nothing to change. Left and right do not move the focus here,
     // so the press stops.
     event.preventDefault();
-    return true;
-  }
-
-  if (event.key === 'ArrowUp' || event.key === 'ArrowDown') {
-    event.preventDefault();
-    moveDialogFocus(openDialog, activeElement, event.key === 'ArrowUp' ? -1 : 1);
     return true;
   }
 
