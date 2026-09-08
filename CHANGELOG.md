@@ -6,6 +6,53 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
 
 ## [Unreleased]
 
+## [1.0.88] - 2026-09-08
+
+### Added
+- **The flags you are hunting for are ringed on the radar.** The ring the rabbit
+  wears now marks your own team's flags and the antidote as well, and follows any
+  of the three out to the border of the panel when it is past radar range, where
+  an ordinary flag is simply dropped. Upstream rings none of them: it leaves the
+  two flag bearings to the heading tape (`prepareTheHUD`, `playing.cxx:6820`),
+  which an immersive session has no room for. The radar canvas is the surface to
+  put them on because it costs nothing -- it is uploaded every frame of a session
+  whatever is drawn on it, and the XR radar panel is textured from it.
+
+  A flag stays a cross out at the border where a tank degrades to a dot: a tank's
+  blip is an arrow because it carries a heading, and a heading is the one thing a
+  pinned marker no longer has, while a cross carries nothing but a position. A
+  flag on a tank takes `drawFlagOnTank`'s larger cross over its carrier's blip, so
+  a single marker answers who has it and which way they went. The ring takes the
+  colour of the cross it rings rather than the rabbit's hunt cyan, which the
+  rabbit needs only because its own blip is grey.
+
+### Changed
+- **A flag is the same colour on the radar as it is in the world.** The panel
+  asked the flag table what the wire had just said, so a flag this client knew to
+  be bad -- in its hands or lying on the ground -- still drew white there while
+  the world drew it orange. Both now read the flag record, so the one warning
+  colour reaches every surface. A team flag keeps upstream's lift for the dark
+  panel, which is its own split between `getColor` and `getRadarColor`.
+- **Identify asks rather than being told.** Upstream's `searchFlag` sweeps for
+  every player on every position update and pushes the answer whether or not the
+  client could already give it, which along a row of flags is a packet per flag
+  per pass. bzo's client makes the same sweep -- `findNearestGroundFlag` in the
+  flags pair, so neither end can pick a different flag -- names the nearest one
+  itself when it recognises it, and asks only about one it cannot name. The
+  server answers by sweeping its own copy of that tank's position, so the request
+  carries nothing to validate and the server keeps no record of what any client
+  knows.
+- **What a client has learned about a flag lives in the flag record**, not in a
+  second map beside it. `keepFlagIdentity` is the rule that keeps the record's
+  answer across the update that hides the type again, and drops it when the slot
+  empties or takes a flag flying in.
+- **The flag notices name the player and the flag in their own colours.** `Orin
+  grabbed L/Laser flag` was flat text while `Orin left the game` was coloured;
+  the grab, drop, theft, capture and pause lines now go through the same path, so
+  a callsign wears its roster colour and a flag wears the colour it has
+  everywhere else -- which puts a bad flag's warning on the line that says who
+  picked it up.
+
 ## [1.0.87] - 2026-09-08
 
 ### Added
