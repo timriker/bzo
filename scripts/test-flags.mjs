@@ -133,6 +133,7 @@ import {
   getMaxAngVelFactor,
   getSpeedFactor,
   applyMotionInput,
+  drivesThroughBuildings,
   composeAccelerationLimit,
   getAccelerationLimits,
   applyAccelerationLimit,
@@ -1459,6 +1460,61 @@ for (const theirs of ['ST', 'CL', 'MQ', 'SE', null]) {
   assert.equal(serverFlags.getFlagGrabCount('TH', MAX_FLAG_GRABS), getFlagGrabCount('TH', MAX_FLAG_GRABS));
   assert.equal(serverFlags.stealsFlags('TH'), stealsFlags('TH'));
   assert.equal(serverFlags.getThiefDropReloadSeconds(3.5), getThiefDropReloadSeconds(3.5));
+}
+
+// --- Phase 14: OO Oscillation Overthruster ----------------------------------
+{
+  const oo = getFlagType('OO');
+  assert.equal(oo.name, 'Oscillation Overthruster');
+  assert.equal(oo.endurance, FLAG_ENDURANCE.UNSTABLE);
+  assert.equal(oo.quality, 0, 'a good flag');
+  assert.equal(oo.team, null);
+  assert.equal(oo.help, 'Can drive through buildings.  Can\'t back up or shoot while inside.');
+  assert.equal(isBadFlag('OO'), false);
+
+  // The one flag that phases, and the only thing the flag itself decides.
+  assert.equal(drivesThroughBuildings('OO'), true);
+  for (const abbreviation of ['V', 'JP', 'WG', 'T', 'SB', 'US', 'R*', null]) {
+    assert.equal(drivesThroughBuildings(abbreviation), false,
+      `${abbreviation} is stopped by a building`);
+  }
+
+  // It changes nothing else about the tank: no speed, no turn rate, no size, no
+  // shot. Driving through a wall is the whole of it.
+  close(getMaxSpeedFactor('OO'), 1, 'an OO tank drives at the world speed');
+  close(getMaxAngVelFactor('OO'), 1, 'and turns at the world rate');
+  assert.deepEqual(getTankDimensionScale('OO'), { length: 1, width: 1 });
+  assert.deepEqual(getShotEffects('OO'), getShotEffects(null), 'and fires an ordinary shell');
+  assert.equal(canJump('OO', false, false, 0), false, 'it does not jump either');
+  assert.equal(canJump('OO', true, false, 0), true, 'unless the world says so');
+
+  // setDesiredSpeed's first clamp: inside a building the reverse is gone and
+  // everything else about the stick is untouched.
+  assert.deepEqual(applyMotionInput('OO', 1, -0.5, true), { forward: 1, turn: -0.5 },
+    'forwards and turning are still there');
+  assert.deepEqual(applyMotionInput('OO', -0.5, 1, true), { forward: 0, turn: 1 },
+    'the reverse is not');
+  assert.deepEqual(applyMotionInput('OO', -0.5, 1, false), { forward: -0.5, turn: 1 },
+    'and comes back on the way out');
+  // The clamp reads the state, so it holds for a tank wedged in a building
+  // whatever it is carrying -- and no tank outside one is touched by it.
+  assert.deepEqual(applyMotionInput(null, -1, 0, true), { forward: 0, turn: 0 });
+  assert.deepEqual(applyMotionInput(null, -1, 0, false), { forward: -1, turn: 0 });
+  // It runs ahead of the flag clamps, and agrees with them where they overlap.
+  assert.deepEqual(applyMotionInput('RC', 1, 0, true), { forward: 0, turn: -0 },
+    'reversed controls make a forward stick a reverse, and it is still refused');
+  assert.deepEqual(applyMotionInput('RO', -1, 0, true), { forward: 0, turn: 0 },
+    'and Reverse Only inside a building can do nothing at all');
+  // The old three-argument call is what every other flag's test above makes:
+  // no building, nothing clamped.
+  assert.deepEqual(applyMotionInput('OO', -0.5, 0), { forward: -0.5, turn: 0 });
+
+  // Both ends read the same flag: the server's collision check consults it, and
+  // a client that disagreed would be one driving through walls without it.
+  assert.equal(serverFlags.drivesThroughBuildings('OO'), drivesThroughBuildings('OO'));
+  assert.equal(serverFlags.drivesThroughBuildings('V'), drivesThroughBuildings('V'));
+  assert.deepEqual(serverFlags.applyMotionInput('OO', -1, 1, true), applyMotionInput('OO', -1, 1, true));
+  assert.deepEqual(serverFlags.FLAG_TYPES.OO, FLAG_TYPES.OO);
 }
 
 console.log('Flag flight and type tests passed');

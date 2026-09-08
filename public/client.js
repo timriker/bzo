@@ -217,6 +217,7 @@ import {
   getShockWaveRadius,
   blanksTheView,
   cloaksTheTank,
+  drivesThroughBuildings,
   fakesTeamColor,
   getNextRadarJamDecay,
   getTankAlphaTarget,
@@ -266,6 +267,7 @@ import {
   getPyramidSurfaceLocalHeight,
   isWithinPyramidFootprint,
   movingTankOverlapsHeight,
+  phasedObstacleExpels,
   pyramidIntersectsTank,
   testOrigRectTank,
   TANK_HEIGHT,
@@ -5171,6 +5173,9 @@ function getCollisionColliders() {
 function refreshCollisionColliders() {
   cachedWorldBorderColliders = [];
   cachedCollisionColliders = [];
+  // The buildings a tank was inside belonged to the world that is going away,
+  // and the renderer disposes their eighth-dimension nodes with it.
+  insideBuildings = [];
 }
 
 function rebuildTeleporterRuntimeState() {
@@ -5215,6 +5220,30 @@ function getColliderTopY(obs) {
   return (obs?.baseY || 0) + (Number.isFinite(obs?.h) ? obs.h : 0);
 }
 
+// Phase 14's phasing, for the local tank -- the only tank this client resolves
+// motion for. `insideBuildings` is upstream's own list
+// (LocalPlayer::collectInsideBuildings, LocalPlayer.cxx:966) and answers both
+// questions the flag asks: whether the tank is `InBuilding`, which is what takes
+// its reverse, its trigger and its drop control away, and which buildings the
+// eighth dimension is drawn inside of.
+let insideBuildings = [];
+// `desiredSpeed < 0` as `phasedObstacleExpels` asks it. Sampled where the stick
+// is read, which is a frame ahead of the collider that uses it -- as upstream's
+// is, `setDesiredSpeed` running off the input event and `getHitBuilding` off the
+// motion update.
+let phasedReverse = false;
+
+// LocalPlayer::doUpdateMotion's `phased` (LocalPlayer.cxx:271), asked once per
+// collider sweep rather than once per obstacle: reading the flag means walking
+// the flag list, and the sweeps run every frame.
+function amPhased() {
+  return drivesThroughBuildings(getMyFlag()?.type ?? null);
+}
+
+function amInsideBuilding() {
+  return insideBuildings.length > 0;
+}
+
 function checkCollision(x, y, z, ignoredObstacles = null, rotation = playerRotation, fromY = y) {
   let ontopCollision = null;
   const sweeping = fromY !== y;
@@ -5225,8 +5254,16 @@ function checkCollision(x, y, z, ignoredObstacles = null, rotation = playerRotat
   let landing = null;
   let sweptCollision = null;
   const tankScale = getMyTankScale();
+  // A phased tank finds obstacles and is not thrown out of them, so here -- the
+  // one place that says what the tank is thrown out of -- they are simply not
+  // there. That is what makes it drive through a building, and what makes it
+  // sink through a roof rather than land on one: a surface it is not expelled
+  // from holds nothing up.
+  const phased = amPhased();
+  const reversingOnGround = phased && phasedReverse && y <= 0;
   for (const obs of getCollisionColliders()) {
     if (ignoredObstacles && ignoredObstacles.has(obs)) continue;
+    if (phased && !phasedObstacleExpels(obs, reversingOnGround)) continue;
     // `drivethrough` in a `.bzw`, `Obstacle::isDriveThrough` upstream: an
     // obstacle a tank passes straight through. Nothing sets it yet -- it is here
     // so that a map which names it has nowhere else to be honoured -- and
@@ -5934,7 +5971,13 @@ function findSupportSurface(worldX, worldY, worldZ, falling = false) {
   let bestSupport = null;
   const tankScale = getMyTankScale();
   const maxRise = falling ? 0 : MAX_BUMP_HEIGHT;
+  // Nothing a tank is not expelled from holds it up, which is the same answer
+  // `checkCollision` gives and has to be, or a phased tank sinks through a roof
+  // and is then snapped back onto it.
+  const phased = amPhased();
+  const reversingOnGround = phased && phasedReverse && worldY <= 0;
   for (const obs of getCollisionColliders()) {
+    if (phased && !phasedObstacleExpels(obs, reversingOnGround)) continue;
     // Nothing a tank drives through holds one up. checkCollision already asks
     // this question and the support test has to give the same answer, or the
     // world border's visible wall -- `driveThrough`, `_wallHeight` tall -- is a
@@ -5975,6 +6018,52 @@ function findSupportSurface(worldX, worldY, worldZ, falling = false) {
     }
   }
   return bestSupport;
+}
+
+// LocalPlayer::collectInsideBuildings (LocalPlayer.cxx:966): every obstacle the
+// tank box overlaps where the frame left it. Upstream asks each one `inBox`,
+// which is the same solid `checkCollision` tests, and takes all of them rather
+// than the first -- a tank crossing a corner is inside two buildings, and the
+// eighth dimension belongs in both.
+//
+// The world border is not a building and neither is a teleporter: both expel a
+// phased tank, so it can never be in one, and upstream leaves its walls out of
+// the collision manager this list comes from.
+function findInsideBuildings(worldX, worldY, worldZ, rotation) {
+  const found = [];
+  const tankScale = getMyTankScale();
+  for (const obs of getCollisionColliders()) {
+    if (obs.driveThrough) continue;
+    if (obs.collisionKind === 'boundary' || obs.kind === 'teleporter') continue;
+    const obstacleBase = obs.baseY || 0;
+    const obstacleTop = getColliderTopY(obs);
+    if (!movingTankOverlapsHeight(obstacleBase, obstacleTop, worldY, worldY, 2, 0.15)) continue;
+    if (obs.type === 'pyramid') {
+      if (!pyramidIntersectsTank(obs, worldX, worldY, worldZ, rotation, 2, 0, tankScale)) continue;
+    } else {
+      const { x: localX, z: localZ } = getColliderLocalPoint(worldX, worldZ, obs);
+      if (!testOrigRectTank(
+        obs.w / 2, obs.d / 2, localX, localZ,
+        getTankLocalAngle(rotation, obs.rotation), 0, tankScale
+      )) continue;
+    }
+    found.push(obs);
+  }
+  return found;
+}
+
+// doUpdateMotion's last act (LocalPlayer.cxx:854), with the tank where the frame
+// leaves it. Only a phased tank can be inside a building, so every other tank
+// skips the sweep rather than running it to find nothing, and the renderer is
+// told only when the answer changes.
+function updateInsideBuildings() {
+  const found = amPhased()
+    ? findInsideBuildings(playerX, playerY, playerZ, playerRotation)
+    : [];
+  if (found.length === insideBuildings.length
+    && found.every((obs, i) => obs === insideBuildings[i])) return;
+  insideBuildings = found;
+  renderManager.setInsideBuildings(insideBuildings);
 }
 
 function isWithinSupportFootprint(obs, worldX, worldY, worldZ) {
@@ -7043,7 +7132,8 @@ function handleInputEvents() {
     // where upstream negates and clamps -- everything downstream, including the
     // acceleration smoothing and Agility's window, should see what the tank was
     // actually asked to do.
-    const clamped = applyMotionInput(carriedFlagType, drive.forward, drive.turn);
+    const clamped = applyMotionInput(
+      carriedFlagType, drive.forward, drive.turn, amInsideBuilding());
     intendedForward = clamped.forward;
     intendedRotation = clamped.turn;
     if (drive.up && !jumpWasHeld
@@ -7082,6 +7172,7 @@ function handleInputEvents() {
   intendedForward = Math.max(-reverseSpeedRatio, Math.min(1, intendedForward));
   intendedRotation = Math.max(-1, Math.min(1, intendedRotation));
   intendedY = Math.max(-1, Math.min(1, intendedY));
+  phasedReverse = intendedForward < 0;
 }
 
 function handleMotion(deltaTime) {
@@ -7385,6 +7476,8 @@ function handleMotion(deltaTime) {
     myTank.rotation.y = playerRotation;
   }
 
+  updateInsideBuildings();
+
   const actualDeltaX = playerX - oldX;
   const actualDeltaZ = playerZ - oldZ;
   const trajectoryDeltaX = Number.isFinite(result.trajectoryDeltaX)
@@ -7685,6 +7778,11 @@ function shoot() {
   // server only accepts in warning mode -- and warning mode is for measuring
   // honest disagreements, not for carrying a client's own bugs.
   if (!isMyTankAlive() || isPaused) return false;
+  // "((location == InBuilding) && !isPhantomZoned())" from the same test: a tank
+  // inside a building has no shot to fire, because the shot would come out of a
+  // wall. `getShotRejection` refuses it too -- the cover a building gives is
+  // worth more to a modified client than anything else `OO` grants.
+  if (amInsideBuilding()) return false;
   if (!ws || ws.readyState !== WebSocket.OPEN) return false;
   // An open socket is not a tank. bzo reconnects on its own, and between the
   // socket opening and the join being confirmed the client still carries the
@@ -8350,6 +8448,14 @@ function requestFlagDrop() {
   // server will refuse, and beats a control that silently does nothing.
   if (getFlagEndurance(flag.type) === FLAG_ENDURANCE.STICKY) {
     showMessage(`${describeFlag(flag)} ${describeBadFlagRelease()}`);
+    return false;
+  }
+  // cmdDrop's last condition (clientCommands.cxx:355). A flag dropped inside a
+  // building would be inside it too, where nothing could reach it, so the drop
+  // waits until the tank is out. Upstream ignores the key; bzo says why, as it
+  // does for a sticky flag.
+  if (amInsideBuilding()) {
+    showMessage('Can\'t drop a flag while inside a building');
     return false;
   }
   sendToServer({ type: 'dropFlag' });

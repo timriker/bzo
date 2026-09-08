@@ -449,6 +449,30 @@ function crossedFlatTop(obstacleTop, fromY, toY) {
   return fromY >= obstacleTop && toY < obstacleTop;
 }
 
+// --- Phasing ----------------------------------------------------------------
+
+// LocalPlayer::getHitBuilding's `expelled` (LocalPlayer.cxx:914). A phased tank
+// -- one carrying `OO` Oscillation Overthruster -- finds obstacles the same way
+// any other does and is simply not thrown out of them, which is the whole of
+// how it drives through a building. Three things throw it out anyway:
+//
+//   - a wall, which is bzo's world border. Upstream's WallObstacle is a
+//     height-ignoring half-space no flag passes, and phasing out of the world
+//     would be leaving it.
+//   - a teleporter, so `OO` crosses one rather than driving through its frame.
+//   - a reverse at ground level, which is upstream's own third term. Backing out
+//     of a building is refused by `applyMotionInput` while the tank is inside
+//     one, so this is what stops a tank *outside* one from reversing into it.
+//
+// Nothing else is exempt: a phased tank falls through a roof rather than resting
+// on it, because a roof it is not expelled from is not a surface.
+function phasedObstacleExpels(obs, reversingOnGround = false) {
+  if (!obs) return false;
+  if (obs.collisionKind === 'boundary') return true;
+  if (obs.kind === 'teleporter') return true;
+  return reversingOnGround === true;
+}
+
 // --- Shots ------------------------------------------------------------------
 //
 // A shot occupies the world the way a tank does, but always as a cylinder:
@@ -864,4 +888,5 @@ module.exports = {
   getShotObstacleNormal,
   reflectShotDirection,
   traceShotStep,
+  phasedObstacleExpels,
 };

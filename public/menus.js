@@ -26,6 +26,12 @@ const FOCUSABLE_SELECTOR = [
 // scroll wheel does rather than jumping a whole screen.
 const DIALOG_SCROLL_LINE = 48;
 
+// A dialog that is read rather than operated: the help panel, and anything else
+// that is a document with a close button rather than a panel of rows.
+function isDocumentDialog(dialog) {
+  return dialog?.dataset?.dialogKind === 'document';
+}
+
 // The element that actually scrolls: the dialog root if the overflow is on it,
 // otherwise its content. Measured rather than assumed, because which of the two
 // carries `overflow-y` is a styling decision.
@@ -120,12 +126,30 @@ export function focusFirstDialogControl(dialog) {
   return focusElement(preferred);
 }
 
+// The close button, for a dialog whose other controls sit wherever the text put
+// them. It is in the title bar at the top, so focusing it never scrolls.
+function focusDialogCloseControl(dialog) {
+  const focusables = getFocusableElements(dialog);
+  const close = focusables.find((element) => element.classList.contains('closeBtn'));
+  return focusElement(close || focusables[0] || dialog);
+}
+
 export function showDialog(dialog, { focusTarget } = {}) {
   if (!dialog) return false;
   rememberReturnFocus(dialog);
   dialog.style.display = 'block';
   if (typeof focusTarget === 'function') {
     return Boolean(focusTarget(dialog));
+  }
+  // A document opens at its top. It holds the scroll position it was closed at,
+  // and the control `focusFirstDialogControl` prefers over a close button is the
+  // first link in the text -- which in the help panel is in the last paragraph,
+  // so focusing it scrolls the end of the document into view and hides the
+  // beginning along with the title bar.
+  if (isDocumentDialog(dialog)) {
+    const scroller = getDialogScroller(dialog);
+    if (scroller) scroller.scrollTop = 0;
+    return focusDialogCloseControl(dialog);
   }
   return focusFirstDialogControl(dialog);
 }
@@ -215,7 +239,7 @@ function adjustFocusedControl(dialog, direction) {
 // other dialog keeps the two axes apart -- up and down move between rows, left
 // and right act on the row.
 function movesFocusHorizontally(dialog) {
-  return dialog.dataset.dialogKind === 'document';
+  return isDocumentDialog(dialog);
 }
 
 export function handleDialogControllerInput(input, { dismissDialog, now = performance.now() } = {}) {
@@ -283,7 +307,7 @@ export function handleDialogKeydown(event, { dismissDialog } = {}) {
   // in XR there is no Page Up or Page Down to reach the rest with instead. Left
   // and right still move focus, which is how a controller reaches the close
   // button without a Tab key.
-  if (openDialog.dataset.dialogKind === 'document') {
+  if (isDocumentDialog(openDialog)) {
     const scroller = getDialogScroller(openDialog);
     if (scroller && scrollDialogByKey(scroller, event.key)) {
       event.preventDefault();

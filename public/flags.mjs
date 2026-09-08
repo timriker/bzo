@@ -433,6 +433,14 @@ export const FLAG_TYPES = Object.freeze({
     team: null,
     help: 'Tank turns faster.  Good for dodging.',
   }),
+  OO: Object.freeze({
+    abbreviation: 'OO',
+    name: 'Oscillation Overthruster',
+    endurance: FLAG_ENDURANCE.UNSTABLE,
+    quality: FLAG_QUALITY.GOOD,
+    team: null,
+    help: 'Can drive through buildings.  Can\'t back up or shoot while inside.',
+  }),
   A: Object.freeze({
     abbreviation: 'A',
     name: 'Agility',
@@ -1301,15 +1309,37 @@ export function applyAccelerationLimit(previous, desired, limit, seconds) {
 // `rs` are measured from the resolved displacement, so a tank sliding along a
 // wall legitimately reports a sign it never asked for, and a server clamp would
 // rubber-band an honest `FO` tank scraping backwards off a corner.
-export function applyMotionInput(abbreviation, forward, turn) {
+// `insideBuilding` is `setDesiredSpeed`'s first clamp, ahead of every flag:
+// "oscillation overthruster tank in building can't back up" (LocalPlayer.cxx:1098).
+// It reads the state rather than the flag because `OO` is the only thing that
+// puts a living tank inside a building, so the state already says which flag it
+// is -- and a tank wedged in one for any other reason is refused the same
+// reverse, which is upstream's own wording of it.
+export function applyMotionInput(abbreviation, forward, turn, insideBuilding = false) {
   const effects = getMotionEffects(abbreviation);
   let clampedForward = effects.reverseControls ? -forward : forward;
   let clampedTurn = effects.reverseControls ? -turn : turn;
+  if (insideBuilding && clampedForward < 0) clampedForward = 0;
   if (effects.forwardOnly && clampedForward < 0) clampedForward = 0;
   if (effects.reverseOnly && clampedForward > 0) clampedForward = 0;
   if (effects.leftTurnOnly && clampedTurn < 0) clampedTurn = 0;
   if (effects.rightTurnOnly && clampedTurn > 0) clampedTurn = 0;
   return { forward: clampedForward, turn: clampedTurn };
+}
+
+// doUpdateMotion's `phased` (LocalPlayer.cxx:271). The flag that stops an
+// obstacle expelling the tank, which is the whole of driving through a building
+// -- `phasedObstacleExpels` in the collision pair is the other half, and it is
+// there because what a phased tank is still thrown out of is a question about
+// the obstacle. Upstream phases a dead or exploding tank by the same switch, for
+// tank pieces that fly through walls; bzo's explosion is its own animation and
+// never asks the collider anything.
+//
+// Server-authoritative as much as client-side: driving through walls is the
+// largest prize a modified client could claim, so the server's collision check
+// reads this too and refuses a tank inside a building without it.
+export function drivesThroughBuildings(abbreviation) {
+  return abbreviation === 'OO';
 }
 
 // doUpdateMotion's bounce (LocalPlayer.cxx:877). A Bouncy tank on a surface is

@@ -6,6 +6,51 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
 
 ## [Unreleased]
 
+### Added
+- **`OO` Oscillation Overthruster (#6).** A tank that drives through buildings,
+  and cannot reverse, shoot or drop its flag while it is inside one. Upstream's
+  rule is not that a phased tank stops colliding: `getHitBuilding` finds the
+  obstacle exactly as it would for anyone and then decides whether the tank is
+  *expelled* from it, so `phasedObstacleExpels` in the collision pair is that
+  decision and the three things that still expel are upstream's -- a wall, which
+  is bzo's world border; a teleporter, so `OO` crosses one rather than driving
+  through its frame; and a reverse at ground level, which is what stops a tank
+  outside a building backing into one. Nothing else is exempt, so an `OO` tank
+  sinks through a roof rather than resting on it, which is what upstream does
+  too. The server reads the same flag: driving through walls is the largest prize
+  a modified client could claim, so its collision check phases only for a tank
+  actually carrying `OO`, and it refuses a shot or a flag drop from inside a
+  building on its own account.
+- **The eighth dimension, so a phased tank can see the building it is in.** An
+  obstacle's faces are back-face culled, so from inside one the walls are not
+  there at all. Upstream's answer is two scene nodes per obstacle and bzo draws
+  both: `EighthDimSceneNode`'s loose triangles in random colours at random alpha
+  -- 60 for a box or a base, 20 for a pyramid -- and
+  `EighthDBoxSceneNode`/`EighthDPyrSceneNode`'s white wireframe of the obstacle
+  around them. They are built the first time a tank is inside that obstacle
+  rather than with the world, because a map has hundreds of obstacles and no
+  frame draws these until somebody carries the flag, and a pyramid's envelope
+  comes from bzo's own pyramid geometry rather than upstream's `slope * hypot`,
+  which is a cone and knows nothing of an inverted pyramid. All sixty triangles
+  are one mesh: the per-triangle colour and alpha ride on a four-component
+  vertex-colour attribute, which is what upstream's single `glBegin(GL_TRIANGLES)`
+  loop with a `myColor4fv` per triangle amounts to, so a building costs two draws
+  -- the cloud and the wireframe -- and never sixty. A node is attached to the
+  scene while the tank is inside its building and detached when it leaves rather
+  than merely hidden, because `updateMatrixWorld` walks the graph whatever is
+  visible.
+
+### Fixed
+- **The help panel opened with the end of the document on screen.** `?` showed
+  the licence paragraph and the source-code link, with the title bar and the
+  close button scrolled off the top. Opening a dialog focuses its first control
+  other than the close button, which on a panel of rows is the first row and in
+  the help panel is the first link in the text -- and that link is in the last
+  paragraph, so focusing it scrolled the page it is meant to be read from out of
+  view. A dialog marked `data-dialog-kind="document"` now opens at the top, on
+  its close button, which sits in the title bar where focusing it scrolls
+  nothing.
+
 ## [1.0.78] - 2026-09-08
 
 ### Fixed

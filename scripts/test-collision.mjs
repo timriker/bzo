@@ -699,4 +699,33 @@ assert.ok(Math.abs(trapped.x) < 1, 'and leaves the shot inside the corridor');
     'client/server obstacle height diverged');
 }
 
+// Phase 14's phasing. `OO` is not expelled by a building, which is the whole of
+// driving through one, and is still expelled by the three things upstream names.
+{
+  const box = { type: 'box', name: 'box', x: 0, z: 0, w: 10, d: 10, h: 10, baseY: 0 };
+  const pyramid = { type: 'pyramid', name: 'pyr', x: 0, z: 0, w: 10, d: 10, h: 10, baseY: 0 };
+  const boundary = { type: 'box', name: 'boundary_north', collisionKind: 'boundary', x: 0, z: 0, w: 10, d: 4, h: 1000, baseY: 0 };
+  const teleporter = { type: 'box', kind: 'teleporter', name: 'portal', x: 0, z: 0, w: 2, d: 9, h: 20, baseY: 0, border: 1.12 };
+
+  assert.equal(client.phasedObstacleExpels(box), false, 'a phased tank drives through a box');
+  assert.equal(client.phasedObstacleExpels(pyramid), false, 'and through a pyramid');
+  assert.equal(client.phasedObstacleExpels(boundary), true, 'the world border is still a wall');
+  assert.equal(client.phasedObstacleExpels(teleporter), true, 'and a teleporter is still crossed');
+  // The third term: reversing at ground level is what stops a tank backing into
+  // a building it is not yet inside, and it applies to every obstacle.
+  assert.equal(client.phasedObstacleExpels(box, true), true, 'reversing on the ground expels');
+  assert.equal(client.phasedObstacleExpels(pyramid, true), true, 'whatever the obstacle is');
+  assert.equal(client.phasedObstacleExpels(null), false, 'nothing expels nobody');
+
+  for (const obs of [box, pyramid, boundary, teleporter, null]) {
+    for (const reversing of [false, true]) {
+      assert.equal(
+        server.phasedObstacleExpels(obs, reversing),
+        client.phasedObstacleExpels(obs, reversing),
+        'client/server phasing diverged'
+      );
+    }
+  }
+}
+
 console.log(`collision geometry tests passed (${checked} fuzz samples, ${solidSamples} solid, seed ${SEED})`);

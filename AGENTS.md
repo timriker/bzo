@@ -428,7 +428,7 @@ altitude once per map.
 `docs/flags-plan.md` is the design and staging plan: what upstream does, the
 data model, the protocol, which phase each piece belongs to, and the full list
 of the superflags still missing. Read it before extending flags. It carries the
-current phase status; four superflags remain, and `WA` Wide Angle is blocked on
+current phase status; three superflags remain, and `WA` Wide Angle is blocked on
 an XR design rather than merely unstarted.
 
 **A flag needs an answer in XR before its row is added.** bzo ships one client

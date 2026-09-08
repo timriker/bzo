@@ -13,7 +13,8 @@ Wings and `NJ` No Jumping -- see "Jumping, and the flags that carry it".
 All three of phase 4's ways out of a bad flag -- the **shake timeout**, **shake
 wins** and **antidote flags** -- are in, and three of its four client-side bad
 flags with them; `WA` Wide Angle is the one left, and it is blocked rather than
-merely unstarted. Phase 14 is not started.
+merely unstarted. Phase 14 has `OO` Oscillation Overthruster in; `BU` Burrow and
+`PZ` Phantom Zone are what is left of it.
 
 Every flag is named as well as abbreviated wherever it is mentioned here, in
 `Flag.cxx`'s own words: the abbreviation is what the code, the config and the
@@ -194,9 +195,9 @@ worse than trusting a modified client about a base it still had to drive to.
 ## What is left to add
 
 Upstream carries 47 flag types: a Null type, four team flags, and 42
-superflags. bzo has the four team flags and thirty-eight superflags -- everything
-except `WA` Wide Angle, `OO` Oscillation Overthruster, `BU` Burrow
-and `PZ` Phantom Zone -- so **4 superflags remain**, 3 good and 1 bad. The table below is the whole list, grouped by the
+superflags. bzo has the four team flags and thirty-nine superflags -- everything
+except `WA` Wide Angle, `BU` Burrow and `PZ` Phantom Zone -- so
+**3 superflags remain**, 2 good and 1 bad. The table below is the whole list, grouped by the
 machinery each group needs rather than by name, because the machinery is what
 decides the order. `src/common/Flag.cxx` is the authority for every name,
 abbreviation, endurance, quality and help string; `src/common/global.cxx` for
@@ -205,10 +206,11 @@ every constant named here.
 | Phase | Flags | What it needs that bzo does not have |
 |---|---|---|
 | 4 | `WA` Wide Angle | **blocked**: no XR answer yet, see below |
-| 14 | `OO` Oscillation Overthruster, `BU` Burrow, `PZ` Phantom Zone | movement through and under geometry |
+| 14 | `BU` Burrow, `PZ` Phantom Zone | movement through and under geometry |
 
-Phase 14 is a feature of its own and owes nothing to anything left. Phase 4 is
-down to its last flag, and that one is blocked rather than merely unstarted.
+Phase 14 is a feature of its own and owes nothing to anything left, and `OO` has
+already built the half of it that `PZ` needs. Phase 4 is down to its last flag,
+and that one is blocked rather than merely unstarted.
 
 Phase 13 was taken next because `CB` had already built most of it: a flag that
 changes what one player sees of another needed one place where a remote tank's
@@ -1762,19 +1764,85 @@ last. `WG` Wings was the fourth and is done -- it needed air steering rather tha
 change to collision, so it came out of this group early. `motion.mjs` and `collision.mjs` are the shared pairs involved, and both
 have tests that need to keep passing.
 
-- **`OO` Oscillation Overthruster** -- drives through buildings; cannot reverse
-  or shoot while inside one (`LocalPlayer.cxx:678`, `:916`). Needs "inside a
-  building" as a state the tank can be in, which `motion.mjs` currently treats
-  as the one thing that must never happen.
+`OO` Oscillation Overthruster is **implemented**; see below. What is left:
+
 - **`BU` Burrow** -- sits at `_burrowDepth` -1.32, immune to normal shots,
   killable by `SR` Steamroller from anyone including teammates, speed x`_burrowSpeedAd` 0.80
   and turn x`_burrowAngularAd` 0.55. Needs negative ground, which bzo's
   `groundLimit` assumes is zero.
 - **`PZ` Phantom Zone** -- passing through a teleporter toggles Zoned; a Zoned
   tank drives through buildings, fires Zoned shots, and can only be hit by
-  `SB` Super Bullet, `SW` Shock Wave or another Zoned shot. Needs `OO`'s
-  pass-through, a hook on bzo's
-  teleporter path, and a shot kind with its own hit rules.
+  `SB` Super Bullet, `SW` Shock Wave or another Zoned shot. `OO` has built the
+  pass-through; what is left is a hook on bzo's teleporter path and a shot kind
+  with its own hit rules.
+
+### `OO` Oscillation Overthruster (implemented)
+
+**Phasing is a rule about expulsion, not about collision.** Upstream does not
+stop testing obstacles for a tank carrying `OO`: `getHitBuilding`
+(`LocalPlayer.cxx:914`) finds the obstacle exactly as it would for anyone and
+then decides whether the tank is *expelled* from it, and the motion loop breaks
+out on an obstacle it is not expelled from. `phasedObstacleExpels` in the
+collision pair is that decision, and the three things that still expel are
+upstream's: a wall, which is bzo's world border; a teleporter, so `OO` crosses
+one rather than driving through its frame; and a reverse at ground level, which
+is what stops a tank *outside* a building backing into one.
+
+Because nothing else is exempt, **a phased tank sinks through a roof rather than
+resting on it** -- a surface it is not expelled from holds nothing up. That is
+upstream's behaviour and not a bug to fix: `checkCollision` and
+`findSupportSurface` both ask the same question and have to give the same answer,
+or the tank falls through a roof and is snapped straight back onto it.
+
+**Inside a building is a state, and three controls read it.**
+`collectInsideBuildings` (`LocalPlayer.cxx:966`) is upstream's own list of every
+obstacle the tank box overlaps where the frame left it, and bzo's
+`findInsideBuildings` is the same sweep -- all of them, not the first, because a
+tank crossing a corner is inside two buildings. From it:
+
+- **No reverse** (`setDesiredSpeed`, `:1098`). The clamp lives in
+  `applyMotionInput` in the flags pair, ahead of every flag clamp, and reads the
+  state rather than the flag -- which is upstream's own wording, and means a tank
+  wedged in a building for any other reason is refused the same reverse.
+- **No shot** (`fireShot`'s "make sure we're allowed to shoot", `:1220`). Refused
+  on the client *and* by `getShotRejection`: the cover a building gives a shooter
+  is the largest prize the flag has to offer a modified client. Non-fatal there,
+  because the shot and the move that carried the tank inside cross on the wire.
+- **No drop** (`cmdDrop`, `clientCommands.cxx:355`). A flag dropped inside a
+  building would land inside it, where nothing could reach it again.
+
+Pausing inside a building was already refused, for the same reason and by the
+same test: `getPauseRefusal` asks the collider without phasing, so it answers for
+`OO` without knowing about it.
+
+**The eighth dimension is not decoration.** An obstacle's faces are back-face
+culled, so from inside one the walls are not there at all and a phased tank is
+driving through a building it cannot see. Upstream answers with two nodes per
+obstacle and bzo draws both: `EighthDimSceneNode`'s loose triangles in random
+colours at random alpha (60 for a box or base, 20 for a pyramid, sized
+`size[0] / cbrt(count)`), and `EighthDBoxSceneNode`/`EighthDPyrSceneNode`'s white
+wireframe of the obstacle around them. `SceneBuilder.cxx:46` has a cheaper
+variant behind `SHELL_INSIDE_NODES` that reuses the obstacle's own wall nodes; it
+is off by default, so the triangle cloud is the one to ship.
+
+**One mesh, not sixty.** The colour and alpha vary per triangle and still cost a
+single draw, because they ride on a four-component vertex-colour attribute --
+which is what upstream's one `glBegin(GL_TRIANGLES)` loop with a `myColor4fv` per
+triangle amounts to. A building you are inside is two draws, the cloud and the
+wireframe, which is upstream's two render nodes exactly. The node is attached to
+the scene on entry and detached on exit rather than hidden, since
+`updateMatrixWorld` walks the graph whatever is visible, and its matrix is
+composed once because the obstacle it belongs to never moves.
+
+Two differences from upstream, both deliberate: the nodes are built the first time a tank is inside that obstacle
+rather than with the world, because a map has hundreds of obstacles and no frame
+draws these until somebody carries the flag; and the pyramid's envelope comes
+from bzo's own `getPyramidSurfaceLocalHeight` rather than upstream's
+`slope * hypot(x, y)`, which is a cone rather than a pyramid and knows nothing of
+an inverted one.
+
+There is nothing here that needs an XR answer: the shapes are world geometry, and
+a headset sees them as a window does.
 
 ## Rules for an agent picking this up
 

@@ -59,6 +59,7 @@ const {
   getMaxSpeedFactor,
   getShockWaveRadius,
   cloaksTheTank,
+  drivesThroughBuildings,
   hidesFromRadar,
   seesThroughDisguises,
   getTankDimensionScale,
@@ -84,6 +85,7 @@ const {
   getObstacleHeight,
   getShotObstacleNormal,
   getTankLocalAngle,
+  phasedObstacleExpels,
   isOverFlatTop,
   pyramidIntersectsCylinder,
   getSegmentBoxHitFraction,
@@ -2397,8 +2399,20 @@ function checkCollision(x, y, z, tankRadius = 2, options = {}) {
   // and a width separately, which is the path a tank always takes; the cylinder
   // is for projectiles, which carry no flag.
   const tankScale = options.tankScale || null;
+  // Phase 14's `OO`. A phased tank is not expelled by what it drives into, so
+  // the obstacles it passes through are not obstacles this call can report --
+  // which is what stops the collision check below calling an honest tank inside
+  // a building a modified one. Every other caller leaves it off: a flag drop, a
+  // spawn and a teleport destination all have to clear the world itself.
+  const phased = options.phased === true;
   for (const obs of getCollisionColliders()) {
     if (ignoreTeleporters && obs?.kind === 'teleporter') continue;
+    // Never the reversing term: `fs` is measured from the displacement the tank
+    // actually made, so a tank scraping backwards off a corner reports a reverse
+    // it never asked for, and a server that expelled on that would rubber-band
+    // an honest one. The looser answer is the safe direction for a check whose
+    // whole job is catching a client that lied.
+    if (phased && !phasedObstacleExpels(obs, false)) continue;
     // `drivethrough` in a `.bzw`, `Obstacle::isDriveThrough` upstream: an
     // obstacle a tank passes straight through. Nothing sets it yet -- it is here
     // so that a map which names it has nowhere else to be honoured -- and
@@ -2692,6 +2706,7 @@ function validateMovement(player, newX, newY, newZ, newRotation, deltaTime, velo
       rotation: newRotation,
       slack: ANTICHEAT_CONFIG.collisionSlack,
       tankScale: getPlayerTankScale(player),
+      phased: isPlayerPhased(player),
     });
 
     if (collision) {
@@ -2776,6 +2791,14 @@ function getShotRejection(player, shotX, shotY, shotZ) {
         + ` shot ${formatShotPoint(shotX, shotY, shotZ)})`,
       fatal: false,
     };
+  }
+
+  // LocalPlayer::fireShot's "make sure we're allowed to shoot" (:1220), whose
+  // third term is `location == InBuilding`. Not fatal: the shot and the move
+  // that carried the tank into the building cross on the wire, and warning mode
+  // exists to measure exactly that.
+  if (isPlayerInsideBuilding(player, extrapolated.x, extrapolated.y, extrapolated.z, player.rotation)) {
+    return { reason: 'cannot shoot from inside a building', fatal: false };
   }
 
   let activeShotCount = 0;
@@ -3405,6 +3428,30 @@ function getPlayerFlag(playerId) {
 // drawn tank eases.
 function getPlayerTankScale(player) {
   return getTankDimensionScale(getPlayerFlag(player?.id)?.type ?? null);
+}
+
+function isPlayerPhased(player) {
+  return drivesThroughBuildings(getPlayerFlag(player?.id)?.type ?? null);
+}
+
+// LocalPlayer's `InBuilding` location (LocalPlayer.cxx:672), asked of the
+// server's own record of where a tank is. The client refuses to shoot or to drop
+// a flag there and an unmodified one never asks; this is the same question asked
+// where a modified client cannot answer it, and the cover a building gives a
+// shooter is the largest prize `OO` has to offer.
+//
+// Only a phased tank is asked. Any other tank inside a building is a
+// client/server disagreement about the world, which the collision check in
+// `validateMove` already reports as itself -- refusing its shots as well would
+// bury that finding under a second one.
+function isPlayerInsideBuilding(player, x, y, z, rotation) {
+  if (!isPlayerPhased(player)) return false;
+  return checkCollision(x, y, z, 2, {
+    rotation,
+    slack: ANTICHEAT_CONFIG.collisionSlack,
+    tankScale: getPlayerTankScale(player),
+    suppressLog: true,
+  }) !== false;
 }
 
 // grabFlag(). The client sweeps for flags it is driving over and asks; this
@@ -6510,6 +6557,14 @@ wss.on('connection', (ws, req) => {
               if (refused) break;
             }
             log(`"${player.name}" shook off ${getFlagType(flag.type).name} after ${held.toFixed(2)}s`);
+          }
+          // cmdDrop (clientCommands.cxx:355): a flag dropped inside a building
+          // would land inside it, where nothing could reach it again. The client
+          // refuses the control, so this only catches a modified one.
+          if (isPlayerInsideBuilding(player, player.x, player.y, player.z, player.rotation)) {
+            const refused = reportCheat(player, 'flagRejected',
+              'DROP REJECTED: inside a building');
+            if (refused) break;
           }
           dropFlag(flag);
           break;

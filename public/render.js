@@ -25,7 +25,11 @@ import {
   getSoundPath,
   loadAudioBuffer,
 } from './audio.js';
-import { WORLD_WALL_HEIGHT, getObstacleHeight } from './collision.mjs';
+import {
+  WORLD_WALL_HEIGHT,
+  getObstacleHeight,
+  getPyramidSurfaceLocalHeight,
+} from './collision.mjs';
 import {
   getPlayerTeamColor,
   getTeamFromColorIndex,
@@ -238,6 +242,26 @@ const BZFLAG_FLAG_WARP_WOBBLE_RANGE = 0.2;
 const BZFLAG_FLAG_WARP_COLORS = [
   0x40ff40, 0x4040ff, 0xff00ff, 0xff4040, 0xff8000, 0xffff00, 0xffffff,
 ];
+// The eighth dimension: what a tank driving through a building sees of it.
+// EighthDimSceneNode.cxx fills the solid with loose triangles in random colours
+// at random alpha, and EighthDBoxSceneNode / EighthDPyrSceneNode draw a white
+// wireframe of the obstacle around them. Both are needed and for the same
+// reason: an obstacle's faces are back-face culled, so from inside one the walls
+// are not there at all, and without these a phased tank drives through a
+// building it cannot see.
+//
+// The counts are BoxPolygons / BasePolygons 60 and PyrPolygons 20, and the
+// triangle size is upstream's `size[0] / cbrt(count)`.
+const BZFLAG_EIGHTH_DIM_BOX_POLYGONS = 60;
+const BZFLAG_EIGHTH_DIM_PYRAMID_POLYGONS = 20;
+// color[i] = 0.2 + 0.8 * rand per channel, alpha 0.2 + 0.6 * rand.
+const BZFLAG_EIGHTH_DIM_COLOR_MIN = 0.2;
+const BZFLAG_EIGHTH_DIM_COLOR_RANGE = 0.8;
+const BZFLAG_EIGHTH_DIM_ALPHA_MIN = 0.2;
+const BZFLAG_EIGHTH_DIM_ALPHA_RANGE = 0.6;
+// Inside a building and therefore over everything the building is made of.
+const EIGHTH_DIM_RENDER_ORDER = 6;
+
 const BZFLAG_SHOT_EXPLOSION_SIZE = 1.2 * BZFLAG_TANK_LENGTH;
 const BZFLAG_SHOT_EXPLOSION_DURATION = 0.8;
 const BZFLAG_SHOT_EXPLOSION_LIGHT_FADE_START_RATIO = 0.7;
@@ -699,6 +723,9 @@ class RenderManager {
     this._groundCenterZ = null;
     this.gridHelper = null;
     this.obstacleMeshes = [];
+    // Keyed by the obstacle the tank is inside, built on demand.
+    this.insideBuildingNodes = new Map();
+    this.visibleInsideBuildingNodes = [];
     this.mountainMeshes = [];
     this.celestialMeshes = [];
     this.sunMesh = null;
@@ -2446,6 +2473,9 @@ class RenderManager {
       this._clearObjectForRemoval(mesh);
     });
     this.obstacleMeshes = [];
+    // The eighth-dimension nodes are keyed by the obstacle objects the world
+    // that is going away owns, so they go with it.
+    this._clearInsideBuildings();
     // After the meshes, so nothing is still pointing at them. The boundary walls
     // keep their own entry and are not cleared here.
     this._disposeSharedObstacleMaterials('box');
@@ -2618,6 +2648,150 @@ class RenderManager {
     // Update compass marker heights now that we know maxObstacleHeight
     this._updateCompassMarkerHeights();
     this._refreshProjectedShadowOverlay();
+  }
+
+  // One eighth-dimension node per obstacle, built the first time a tank is
+  // inside that obstacle rather than with the world. Upstream builds all of them
+  // in SceneBuilder because it builds every scene node there anyway; here they
+  // are geometry no frame draws until somebody carries `OO`, and a map has
+  // hundreds of obstacles.
+  _getInsideBuildingNode(obs) {
+    let node = this.insideBuildingNodes.get(obs);
+    if (node) return node;
+
+    const height = getObstacleHeight(obs);
+    const halfW = obs.w / 2;
+    const halfD = obs.d / 2;
+    const pyramid = obs.type === 'pyramid';
+    const count = pyramid
+      ? BZFLAG_EIGHTH_DIM_PYRAMID_POLYGONS
+      : BZFLAG_EIGHTH_DIM_BOX_POLYGONS;
+    const polySize = halfW / Math.cbrt(count);
+
+    // The solid's vertical extent over a point of its footprint. A box is its
+    // whole height everywhere; a pyramid is bounded by the slope, which bzo asks
+    // its own geometry for rather than taking upstream's `slope * hypot(x, y)`:
+    // that is a cone rather than a pyramid, and it knows nothing of an inverted
+    // one, which bzo maps have.
+    const localSpan = (localX, localZ) => {
+      if (!pyramid) return { low: 0, high: height };
+      const surface = getPyramidSurfaceLocalHeight(obs, localX, localZ) ?? 0;
+      return obs.inverted ? { low: surface, high: height } : { low: 0, high: surface };
+    };
+
+    const positions = [];
+    const colors = [];
+    for (let i = 0; i < count; i += 1) {
+      // A triangle's centre, then three points scattered around it and clamped
+      // back into the solid.
+      const baseX = (halfW - 0.5 * polySize) * (2 * Math.random() - 1);
+      const baseZ = (halfD - 0.5 * polySize) * (2 * Math.random() - 1);
+      const baseSpan = localSpan(baseX, baseZ);
+      const baseY = baseSpan.low
+        + Math.max(0, baseSpan.high - baseSpan.low - 0.5 * polySize) * Math.random();
+      const red = BZFLAG_EIGHTH_DIM_COLOR_MIN + BZFLAG_EIGHTH_DIM_COLOR_RANGE * Math.random();
+      const green = BZFLAG_EIGHTH_DIM_COLOR_MIN + BZFLAG_EIGHTH_DIM_COLOR_RANGE * Math.random();
+      const blue = BZFLAG_EIGHTH_DIM_COLOR_MIN + BZFLAG_EIGHTH_DIM_COLOR_RANGE * Math.random();
+      const alpha = BZFLAG_EIGHTH_DIM_ALPHA_MIN + BZFLAG_EIGHTH_DIM_ALPHA_RANGE * Math.random();
+      for (let vertex = 0; vertex < 3; vertex += 1) {
+        const x = Math.max(-halfW, Math.min(halfW, baseX + polySize * (Math.random() - 0.5)));
+        const z = Math.max(-halfD, Math.min(halfD, baseZ + polySize * (Math.random() - 0.5)));
+        const span = localSpan(x, z);
+        const y = Math.max(span.low, Math.min(span.high, baseY + polySize * (Math.random() - 0.5)));
+        positions.push(x, y, z);
+        colors.push(red, green, blue, alpha);
+      }
+    }
+
+    const geometry = new THREE.BufferGeometry();
+    geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+    geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 4));
+    const material = new THREE.MeshBasicMaterial({
+      vertexColors: true,
+      transparent: true,
+      // disableCulling(), and no depth write: the triangles are a cloud, and
+      // whichever of them the driver happened to submit first is not the one
+      // that should hide the rest.
+      side: THREE.DoubleSide,
+      depthWrite: false,
+    });
+    const cloud = new THREE.Mesh(geometry, material);
+    cloud.renderOrder = EIGHTH_DIM_RENDER_ORDER;
+
+    // The white outline around them, which is the only edge of the building a
+    // tank inside it can see. A box is its twelve edges; a pyramid is its base
+    // and the four ribs to the apex, at the top for an upright one and at the
+    // bottom for an inverted one.
+    const apexY = obs.inverted ? 0 : height;
+    const cornerY = obs.inverted ? height : 0;
+    const corners = [
+      [halfW, cornerY, halfD],
+      [-halfW, cornerY, halfD],
+      [-halfW, cornerY, -halfD],
+      [halfW, cornerY, -halfD],
+    ];
+    const edges = [];
+    for (let i = 0; i < 4; i += 1) {
+      const next = (i + 1) % 4;
+      edges.push(...corners[i], ...corners[next]);
+      if (pyramid) {
+        edges.push(...corners[i], 0, apexY, 0);
+      } else {
+        const top = [corners[i][0], height, corners[i][2]];
+        const topNext = [corners[next][0], height, corners[next][2]];
+        edges.push(...top, ...topNext);
+        edges.push(...corners[i], ...top);
+      }
+    }
+    const outlineGeometry = new THREE.BufferGeometry();
+    outlineGeometry.setAttribute('position', new THREE.Float32BufferAttribute(edges, 3));
+    const outline = new THREE.LineSegments(
+      outlineGeometry,
+      new THREE.LineBasicMaterial({ color: 0xffffff })
+    );
+    outline.renderOrder = EIGHTH_DIM_RENDER_ORDER;
+
+    node = new THREE.Group();
+    node.position.set(obs.x, obs.baseY || 0, obs.z);
+    node.rotation.y = obs.rotation || 0;
+    // The obstacle it belongs to never moves, so neither does this.
+    node.matrixAutoUpdate = false;
+    node.updateMatrix();
+    // Never culled, for the same reason upstream's cull() returns false: the
+    // viewer is inside the volume this is the bounds of.
+    cloud.frustumCulled = false;
+    outline.frustumCulled = false;
+    node.add(cloud);
+    node.add(outline);
+    this._tagDraws(node, 'effect');
+    this.insideBuildingNodes.set(obs, node);
+    return node;
+  }
+
+  // playing.cxx:6198, "if inside a building, add some eighth dimension scene
+  // nodes": the obstacles the local tank is standing in, and nothing else.
+  // Called only when the list changes, so an ordinary frame does no work here.
+  // Attached and detached rather than shown and hidden. `updateMatrixWorld`
+  // walks the whole graph whatever is visible, so a node left parented is a
+  // matrix recomposed every frame for the rest of the session -- and a tank that
+  // drives through a dozen buildings would leave a dozen behind. The geometry
+  // stays in the map either way, so re-entering a building costs nothing.
+  setInsideBuildings(obstacles = []) {
+    if (!this.scene) return;
+    for (const node of this.visibleInsideBuildingNodes) this.worldGroup.remove(node);
+    this.visibleInsideBuildingNodes = obstacles.map((obs) => {
+      const node = this._getInsideBuildingNode(obs);
+      this.worldGroup.add(node);
+      return node;
+    });
+  }
+
+  _clearInsideBuildings() {
+    this.insideBuildingNodes.forEach((node) => {
+      this._clearObjectForRemoval(node);
+    });
+    this.insideBuildingNodes = new Map();
+    this.visibleInsideBuildingNodes = [];
   }
 
   setDebugLabelsEnabled(enabled) {
