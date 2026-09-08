@@ -6,6 +6,71 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
 
 ## [Unreleased]
 
+### Added
+- **`GM` Guided Missile, completing phase 5's shot flags and phase 12 (#6).** A
+  shot whose heading is a new answer every simulation step, turned toward
+  whichever tank its shooter has locked at `_gmTurnAngle` 0.628319 radians a
+  second -- azimuth and elevation separately, each at the full rate, so a missile
+  that has to come around and climb does both at once. Life `_gmAdLife` 0.95,
+  the world's own speed and reload, and it never ricochets on any world:
+  `GuidedMissileStrategy::checkBuildings` has no reflect branch, so it explodes
+  on the first building it reaches. `_gmActivationTime` 0.5 gates *hits* rather
+  than steering, which is what stops a missile locked onto a target two lengths
+  away from killing its own shooter as it comes round.
+- **The lock is the server's, which is a deliberate departure from upstream.**
+  Upstream runs `setTarget()` on the shooter's own client; a lock steers a real
+  weapon, so bzo decides it where hits are decided. Nothing is lost -- upstream's
+  scan reads the tank's own heading, not the camera's -- and the identify binding
+  now does something for a tank on every surface: `I`, right click, the on-screen
+  `◎` button, either VR B button and either gamepad shoulder. Two cones, one
+  press: `_lockOnAngle` 0.15 locks for a player with a missile to steer, and the
+  wider `_targetingAngle` 0.3 only names the tank, which is what identify does
+  for anybody else. The touch button was hidden outside observer mode until now,
+  waiting for exactly this.
+- A lock is broadcast, because every client steers every missile from the same
+  shared `steerGuidedShot` and has to know what it is steering at. Whether a lock
+  is still live is asked wherever it is *read*, so a target that dies, pauses or
+  ducks under `ST` is dropped by the missile on the same step on every screen,
+  with no packet. Upstream refuses Stealth outright here, with no `SE` exemption:
+  where a missile may fly is not a matter of what somebody can see.
+- **A lock lapses with the missile**, which upstream does not do -- nothing in
+  its `LocalPlayer` clears a target on a flag change, so its marker outlives the
+  flag. When `GM` leaves the hand and the last missile leaves the air, the lock
+  and its bracket go: a bracket over a tank you have no way to shoot at is saying
+  something that is no longer true. Dropping `GM` with a missile still flying
+  keeps the lock, because retargeting that missile is what the flag's help text
+  promises.
+- **The lock-on bracket stands in the world, not on the screen.** Upstream
+  projects the target and clamps the bracket to the window edge
+  (`HUDRenderer.cxx:1314`), which means nothing in a headset; bzo draws
+  upstream's proportions as a sprite at the locked tank, in the colour that tank
+  is drawn in, with depth testing off so a target that ducks behind a wall still
+  says where it went. What that costs is upstream's edge clamping, so the heading
+  tape carries a marker for the locked tank instead -- the same way a team flag
+  is found, and the answer for a target off the side of the screen in the window
+  and in VR alike.
+- `missile.wav` when a missile is fired, and `lock.wav` with a "locked on me"
+  warning for the tank being shot at, at most every 0.75s. Upstream plays the
+  warning when a `MsgGMUpdate` naming you arrives, which is a missile *already in
+  the air* -- so it lands on the shot and on a retarget, never on somebody taking
+  the lock, which warns nobody.
+- `server.log` records lock changes -- `"name" locked on "name"` and
+  `"name" lost the lock` -- which is how a retarget mid-flight can be read back
+  against the shot's own `[shotBegin]` and `[shotEnd]` headings.
+- The bolt is upstream's default-quality one: a billboard textured from
+  `missile.png`, a 4x4 sheet stepped one cell a frame, trailing a smoke puff
+  every `gmPuffTime` 1/8s. The modelled missile with fins is behind
+  `useQuality() >= 3`, so bzo draws the variant upstream draws by default. The
+  colour stays bzo's own -- upstream paints every missile the same orange, and
+  bzo colours every shot by who fired it, which is the shot you most want the
+  owner of. The tail is re-laid along the heading each step, since a missile's
+  is the one trail that has to follow.
+
+### Changed
+- `pickTargetInSights` and the two cone angles moved from `roam.mjs` into the
+  flags pair, with the cone as an argument. Upstream answers both questions with
+  one `setTarget()`, and the server needs the scan now that it owns the lock.
+
 ## [1.0.75] - 2026-09-07
 
 ### Changed

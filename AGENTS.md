@@ -427,11 +427,9 @@ altitude once per map.
 
 `docs/flags-plan.md` is the design and staging plan: what upstream does, the
 data model, the protocol, which phase each piece belongs to, and the full list
-of the superflags still missing. Read it before extending flags. Phases 1 to 3
-and 9 are implemented -- the Useless superflag with its flight animation and drop
-key, team flags and capture, Identify, and Ricochet -- along with the jumping
-switch, its three flags (`JP`, `NJ`, `WG`) and all three of upstream's ways out
-of a bad flag. Phase 4's own four flags, phases 5 to 8, and 10 onward are not.
+of the superflags still missing. Read it before extending flags. It carries the
+current phase status; five superflags remain, and `WA` Wide Angle is blocked on
+an XR design rather than merely unstarted.
 
 **A flag needs an answer in XR before its row is added.** bzo ships one client
 for desktop, mobile and the headset, so a flag whose effect is a desktop-camera
@@ -517,6 +515,18 @@ ignores, including the coordinate conversion. Update it in the same commit as
 `parseBZWMap`: a map that uses something bzo skips still loads, so the doc is
 the only place a mapper can find out what will and will not survive the import.
 `maps/test.bzw` carries a labelled example of each obstacle keyword.
+
+**A guided missile is the one shot whose path both ends integrate.** Every other
+shot is a direction and a speed decided at the muzzle; `GM`'s heading is turned
+toward its locked target every simulation step, so `steerGuidedShot` lives in the
+flags pair and the server and each client run it against the same target. The
+lock itself is the *server's* -- upstream picks it on the shooter's client, but a
+lock steers a real weapon -- and it is broadcast as `lockTarget` because every
+client steers every missile. Whether a lock is still live (`canLockOn`,
+`canLockOnto`) is asked wherever it is read rather than only where it is set, so
+both ends drop a dead or unlockable target on the same step with no packet. See
+the plan's phase 12 for the whole of it, including why the lock-on bracket stands
+in the world rather than on the screen.
 
 Shots against solid geometry live in the `collision` pair, not in either
 `server.js` or `client.js`: `traceShotStep` advances a shot over one fixed step,

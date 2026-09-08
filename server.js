@@ -22,6 +22,11 @@ const {
   FLAG_RADIUS,
   FLAG_STATUS,
   IDENTIFY_RANGE,
+  GM_TURN_ANGLE,
+  LOCK_ON_ANGLE,
+  TARGETING_ANGLE,
+  pickTargetInSights,
+  steerGuidedShot,
   MAX_FLAG_GRABS,
   DEFAULT_WINGS_JUMP_COUNT,
   DEFAULT_WINGS_SLIDE_TIME,
@@ -53,6 +58,8 @@ const {
   getMaxSpeedFactor,
   getShockWaveRadius,
   cloaksTheTank,
+  hidesFromRadar,
+  seesThroughDisguises,
   getTankDimensionScale,
   getTankHitRadiusScale,
   getTeamFlagAbbreviation,
@@ -1802,6 +1809,12 @@ class Player {
     // GameKeeper::Player::lastIdFlag. Which flag the Identify flag last named,
     // so the answer is sent once rather than on every position update.
     this.lastIdFlag = null;
+    // LocalPlayer::target, which upstream keeps on the shooter's own client and
+    // bzo keeps here: the id of the tank this player has locked a guided missile
+    // onto, or null. Every missile this player has in the air steers at it, as
+    // upstream's every missile reads `myTank->getTarget()` afresh each frame --
+    // which is the whole of "can lock on or retarget after firing".
+    this.lockTargetId = null;
     // LocalPlayer::flagShakingWins, kept here because bzo's server owns the
     // score. Wins still owed before the bad flag in hand falls off; zero
     // whenever the switch is off or there is no bad flag.
@@ -2198,6 +2211,12 @@ class Projectile {
     // again on the next tick and the shield would be worth nothing.
     this.shockwave = effects.shockwave;
     this.shockWaveResolved = effects.shockwave ? new Set() : null;
+    // A guided missile's heading is recomputed every step rather than fixed at
+    // the muzzle, and it is inert for its first `_gmActivationTime`: the flag
+    // that turns back toward a target beside its shooter must not kill the
+    // shooter on the way round.
+    this.guided = effects.guided;
+    this.activationTime = effects.activationTime;
     this.points = null;
     this.bounces = 0;
     this.x = x;
@@ -4752,6 +4771,124 @@ function logShotEnd(projectile, cause, point, details = '') {
   );
 }
 
+// The aim point a guided missile steers at. Upstream aims at the target's own
+// `getMuzzleHeight()` -- "right between the eyes" (GuidedMissleStrategy.cxx:180)
+// -- but a bzo tank has as many muzzle heights as it has models, and no client
+// could agree with the server about which one. The mid-height of the cylinder
+// the server hits with is a number every end already shares, and it is the point
+// most of the tank is nearest to.
+function getLockAimPoint(position) {
+  return { x: position.x, y: position.y + (TANK_HIT_HEIGHT / 2), z: position.z };
+}
+
+// setTarget()'s eligibility (playing.cxx:4415). A missile may be locked onto a
+// tank that is alive, unpaused and not stealthed -- and upstream refuses Stealth
+// outright, with no `SE` exemption, because where a missile may fly is not a
+// matter of what somebody can see.
+//
+// The rule is asked wherever the lock is *read* rather than only where it is
+// set, so a target that dies, pauses or picks up `ST` stops being followed with
+// no packet at all: every end applies the same rule to the same target id.
+function canLockOnto(player) {
+  if (!player || !player.joined) return false;
+  if (player.team === 'observer') return false;
+  if (player.health <= 0 || player.paused) return false;
+  // `ST` is one flag doing both jobs upstream: off the radar, and out of reach
+  // of a lock.
+  if (hidesFromRadar(getPlayerFlag(player.id)?.type ?? null)) return false;
+  return true;
+}
+
+// Whichever tank this player's missiles are steering at, or null. A lock is only
+// live while there is a missile for it to steer, which is the same test that
+// allows one to be taken.
+function getLockTarget(shooterId) {
+  const shooter = players.get(shooterId);
+  if (!shooter?.lockTargetId || !canLockOn(shooter)) return null;
+  const target = players.get(shooter.lockTargetId);
+  return canLockOnto(target) ? target : null;
+}
+
+// A lock lapses when there is nothing left for it to steer -- `GM` gone from the
+// hand and the last missile out of the air -- or when its target stops being
+// lockable, which upstream makes permanent rather than momentary
+// (GuidedMissleStrategy.cxx:165 sets `lastTarget = NoPlayer`).
+//
+// Upstream never clears a target on a flag change at all: nothing in
+// `LocalPlayer` does it, so its lock-on marker outlives the flag that earned it.
+// bzo lets it go, because a bracket over a tank you have no way to shoot at is
+// saying something that is no longer true.
+function expireLockTargets() {
+  players.forEach((player) => {
+    if (player.lockTargetId === null) return;
+    if (canLockOn(player) && canLockOnto(players.get(player.lockTargetId))) return;
+    setLockTarget(player, null);
+  });
+}
+
+// Every end steers a missile, so every end is told who it is steering at.
+function setLockTarget(player, targetId) {
+  const next = targetId ?? null;
+  if (player.lockTargetId === next) return;
+  player.lockTargetId = next;
+  const target = next === null ? null : players.get(next);
+  log(next === null
+    ? `"${player.name}" lost the lock`
+    : `"${player.name}" locked on "${target?.name ?? next}"`);
+  broadcastAll({ type: 'lockTarget', playerId: player.id, targetId: next });
+}
+
+// tankHasShotType() (playing.cxx:4376). Who may lock: the flag in hand, or a
+// missile still in the air after the flag was dropped -- which is the second
+// half of "can lock on or retarget after firing".
+function canLockOn(player) {
+  if (getPlayerFlag(player.id)?.type === 'GM') return true;
+  for (const proj of projectiles.values()) {
+    if (proj.guided && proj.playerId === player.id) return true;
+  }
+  return false;
+}
+
+// setTarget() (playing.cxx:4390). Upstream runs this on the shooter's own
+// client; bzo runs it here, because a lock steers a real missile and a modified
+// client must not be able to claim one it never earned. Nothing is lost by
+// moving it: upstream's scan reads `myTank->getAngle()`, the tank's own heading
+// rather than the camera's, and the server already knows that exactly.
+//
+// Two cones, one press. The tighter `_lockOnAngle` is a lock, and only for a
+// player with a missile to steer; the wider `_targetingAngle` only names the
+// tank, which is what identify does for everybody else. Upstream walks both in
+// one loop and lets a nearer tank outside the lock cone shut out a further one
+// inside it, purely because of the order the roster happens to be in; bzo asks
+// the two questions separately, so the answer does not depend on that.
+function setPlayerTarget(player) {
+  const now = Date.now();
+  const at = player.getExtrapolatedPosition(now);
+  const eye = { x: at.x, z: at.z };
+  const forward = { x: -Math.sin(at.r), z: -Math.cos(at.r) };
+  const seer = seesThroughDisguises(getPlayerFlag(player.id)?.type ?? null);
+
+  const lockable = [];
+  const visible = [];
+  players.forEach((other) => {
+    if (other.id === player.id || !other.joined) return;
+    if (other.team === 'observer' || other.health <= 0) return;
+    const position = other.getExtrapolatedPosition(now);
+    const candidate = { id: other.id, x: position.x, z: position.z };
+    if (canLockOnto(other)) lockable.push(candidate);
+    // The look refuses a stealthed tank too, but a seer sees through that one
+    // (playing.cxx:4436) where a missile never does.
+    if (seer || !hidesFromRadar(getPlayerFlag(other.id)?.type ?? null)) visible.push(candidate);
+  });
+
+  const locked = canLockOn(player)
+    ? pickTargetInSights(eye, forward, lockable, LOCK_ON_ANGLE)
+    : null;
+  setLockTarget(player, locked);
+  const targetId = locked ?? pickTargetInSights(eye, forward, visible, TARGETING_ANGLE);
+  sendToPlayer(player, { type: 'identifyResult', targetId, locked: locked !== null });
+}
+
 // FiringInfo::shot.team, which upstream sets from the shooter at fire time and
 // then admits it never reads ("FIXME team coloring of shot is never used").
 // bzo asks the shooter instead, which differs only if somebody changed team
@@ -4820,6 +4957,13 @@ function getSegmentTankHitFraction(from, to, tank, flagType = null) {
 // decide, because each client tests only its own tank and one shot is one hit by
 // construction.
 function findShotPlayerHit(proj, from, to, now) {
+  // GuidedMissileStrategy::checkHit (:318): "GM is not active until activation
+  // time passes (for any tank)". The tank the rule is really for is the one that
+  // fired it -- a missile locked onto a target two lengths away comes round
+  // through its own shooter.
+  if (proj.activationTime > 0
+    && ((now - proj.createdAt) / 1000) < proj.activationTime) return null;
+
   let best = null;
   players.forEach((player) => {
     // LocalPlayer::checkHit tests a player's own shots too -- "Don't shoot
@@ -4894,6 +5038,10 @@ function killPlayer(victim, killer, reason, projectileId = null) {
 
   victim.health = 0;
   victim.deaths++;
+  // playing.cxx:3827. A dead tank has nothing locked, so the marker goes with
+  // it and a respawn starts clean. Missiles already in the air fly straight from
+  // here, which is what upstream's `setTarget(NULL)` does to them too.
+  setLockTarget(victim, null);
 
   // areFoes(): a kill across teams, a rogue killing anyone, or any kill at all
   // on a world without teams. Everything else is a team kill.
@@ -5273,6 +5421,24 @@ function simulateProjectilesStep(stepSeconds, now) {
       return;
     }
 
+    // GuidedMissileStrategy::update turns the missile before it moves it, so the
+    // step is taken along the heading the missile has just chosen. A shooter with
+    // nothing locked -- or with a target that has died, paused or taken `ST` --
+    // leaves the missile flying straight.
+    if (proj.guided) {
+      const target = getLockTarget(proj.playerId);
+      const steered = steerGuidedShot(
+        { x: proj.dirX, y: proj.dirY || 0, z: proj.dirZ },
+        { x: proj.x, y: proj.y, z: proj.z },
+        target ? getLockAimPoint(target.getExtrapolatedPosition(now)) : null,
+        GM_TURN_ANGLE,
+        stepSeconds,
+      );
+      proj.dirX = steered.x;
+      proj.dirY = steered.y;
+      proj.dirZ = steered.z;
+    }
+
     // A shot variant's velocity is on the projectile, so a Rapid Fire shell and
     // an ordinary one advance by different amounts in the same step.
     const stepDistance = proj.speed * stepSeconds;
@@ -5438,6 +5604,7 @@ function gameLoop() {
   }
 
   applySteamrollerSweep(now);
+  expireLockTargets();
   updateFlags(now);
 }
 
@@ -6156,6 +6323,11 @@ wss.on('connection', (ws, req) => {
             flag: proj.flag,
             ricochet: proj.ricochet,
             segments: proj.segments,
+            // Who the shooter has locked, so a client that has not seen a
+            // `lockTarget` for them yet still steers this missile from its first
+            // frame -- and so the tank being shot at learns of it, which is when
+            // upstream warns them rather than when the lock was taken.
+            target: proj.guided ? (getLockTarget(proj.playerId)?.id ?? null) : null,
             createdAt: proj.createdAt
           });
           if (beamHit) applyShotPlayerHit(proj, id, beamHit.player, beamHit.point);
@@ -6169,6 +6341,16 @@ wss.on('connection', (ws, req) => {
         // after it is already receiving, so it asks once it is ready to draw
         // everyone, and that is what guarantees a full scoreboard however the
         // reconnects raced.
+        // setTarget() on upstream's `identify` binding (ActionBinding.cxx:97).
+        // An observer picks its roaming target on its own client, where the free
+        // camera it aims with lives; a tank asks here, because the answer steers
+        // a guided missile.
+        case 'identify': {
+          if (player.team === 'observer' || player.health <= 0 || player.paused) break;
+          setPlayerTarget(player);
+          break;
+        }
+
         case 'queryPlayers': {
           ws.send(JSON.stringify({
             type: 'playerList',
@@ -6585,6 +6767,12 @@ wss.on('connection', (ws, req) => {
     const leavingTeam = player.team;
     dropPlayerFlag(player.id);
     players.delete(player.id);
+    // playing.cxx:1685. A lock onto a player who has gone is cleared rather than
+    // left to expire, so nobody is told to steer at an id that no longer names
+    // anyone.
+    players.forEach((other) => {
+      if (other.lockTargetId === player.id) setLockTarget(other, null);
+    });
     retireTeamFlags(getTeamColorIndex(leavingTeam));
 
     let logMsg = `"${playerName}" (#${playerNum}) disconnected. ${playerKills} kills, ${playerDeaths} deaths.`;

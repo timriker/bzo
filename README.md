@@ -245,7 +245,8 @@ If you want automatic container updates, use your preferred container update man
 - `Settings -> Audio Settings` — set the game, voice, and microphone levels, and choose the voice channel: All, Nearby, or Team
 - `/` or `?` — show/hide help panel
 
-- `I` or right-click — identify the tank in your sights
+- `I` or right-click — identify the tank in your sights, and lock a Guided
+  Missile onto it
 
 ### Mouse steering
 

@@ -150,7 +150,6 @@ import {
   advanceRoamSelection,
   createRoamCamera,
   getRoamForward,
-  pickTargetInSights,
   roamViewNeedsTarget,
   updateRoamCamera,
 } from './roam.mjs';
@@ -228,6 +227,10 @@ import {
   normalizeShakeWins,
   rememberFlagIdentity,
   shotRicochets,
+  GM_TURN_ANGLE,
+  TARGETING_ANGLE,
+  pickTargetInSights,
+  steerGuidedShot,
 } from './flags.mjs';
 import { normalizeShotSlotCount } from './shots.mjs';
 import { CLIENT_VERSION } from './version.mjs';
@@ -258,6 +261,7 @@ import {
   movingTankOverlapsHeight,
   pyramidIntersectsTank,
   testOrigRectTank,
+  TANK_HEIGHT,
   traceShotStep,
   WORLD_WALL_HEIGHT,
 } from './collision.mjs';
@@ -470,6 +474,9 @@ const DEATH_ALERT_SECONDS = 4;
 const KILL_ALERT_SECONDS = 4;
 // setTarget()'s own two seconds, on its own slot so it never displaces a death.
 const IDENTIFY_ALERT_SECONDS = 2;
+// playing.cxx:3540. A guided missile's target is warned at most this often,
+// however many missiles are in the air or how often the shooter retargets.
+const LOCK_WARNING_INTERVAL_MS = 750;
 // handleNearFlag()'s five (playing.cxx:2016). It shares the identify slot
 // rather than upstream's slot 0: driving past a row of flags reports each one,
 // and bzo keeps slot 0 for the death and kill notices, which a player has four
@@ -3045,9 +3052,10 @@ function handleGameplayKeydown(event) {
     return true;
   }
   // Upstream's `identify` key (ActionBinding.cxx:98). It picks the roaming
-  // target for an observer; a tank will lock a guided missile with it.
+  // target for an observer, and locks a guided missile for a tank.
   if (event.code === 'KeyI' && !event.repeat) {
     if (isObserver()) identifyRoamTarget();
+    else requestLockOn();
     return true;
   }
   // Upstream's drop-flag key. It stays claimed even with no flag in hand, so a
@@ -4217,7 +4225,25 @@ function handleServerMessage(message) {
     }
 
     case 'shotBegin':
+      // A missile arrives already locked, so the map is seeded before the shot
+      // is drawn and its first step is aimed.
+      if (message.flag === 'GM') setPlayerLockTarget(message.playerId, message.target ?? null);
       createProjectile(message);
+      if (message.flag === 'GM') warnLockedOnMe(message.playerId, message.target ?? null);
+      break;
+
+    // MsgGMUpdate's target half (GuidedMissleStrategy.cxx:430). Who a player has
+    // locked, so every client steers that player's missiles at the same tank and
+    // the shooter's own gets the marker.
+    case 'lockTarget':
+      setPlayerLockTarget(message.playerId, message.targetId ?? null);
+      warnLockedOnMe(message.playerId, message.targetId ?? null);
+      break;
+
+    // setTarget()'s answer to the identify press, for a tank. The server ran the
+    // scan; this is only the alert it puts on slot 1 for two seconds.
+    case 'identifyResult':
+      showIdentifyResult(message.targetId ?? null, message.locked === true);
       break;
 
     case 'shotEnd':
@@ -4436,6 +4462,10 @@ function removePlayer(playerId) {
     refreshScoreboards();
   }
   removePausedSphere(playerId);
+  // Whatever this player had locked goes with them. The server clears every lock
+  // pointing *at* a departing player; this is the other direction, the lock they
+  // were holding, which no message covers because nobody has to be told.
+  playerLockTargets.delete(playerId);
 }
 
 // The pause messages are the only ones that carry the flag, so they are what
@@ -4516,6 +4546,7 @@ function createProjectile(data) {
       localProjectile.userData.speed = getShotSpeed(data.flag ?? null);
       localProjectile.userData.lifeFactor = effects.lifeFactor;
       localProjectile.userData.hiddenOnRadar = effects.hiddenOnRadar;
+      localProjectile.userData.guided = effects.guided;
       localProjectile.userData.lifetimeSeconds = getShotLifetimeSeconds(data.flag ?? null);
       localProjectile.userData.teleportReentryBlockTeleporterIndex = null;
       localProjectile.userData.teleportReentryBlockDistance = 0;
@@ -4542,6 +4573,8 @@ function createProjectile(data) {
       x: data.x,
       z: data.z,
       color: shotColor.getHex(),
+      fireSound: effects.fireSound,
+      guided: effects.guided,
     });
   if (!projectile) return;
   projectile.userData.playerId = data.playerId;
@@ -4558,6 +4591,9 @@ function createProjectile(data) {
   projectile.userData.speed = getShotSpeed(data.flag ?? null);
   projectile.userData.lifeFactor = effects.lifeFactor;
   projectile.userData.hiddenOnRadar = effects.hiddenOnRadar;
+  // A missile's heading is not fixed at the muzzle: `updateProjectiles` turns it
+  // every step at whichever tank its shooter has locked.
+  projectile.userData.guided = effects.guided;
   projectile.userData.lifetimeSeconds = getShotLifetimeSeconds(data.flag ?? null);
   projectile.userData.teleportReentryBlockTeleporterIndex = null;
   projectile.userData.teleportReentryBlockDistance = 0;
@@ -4591,6 +4627,8 @@ function createLocalProjectile({ x, y, z, dirX, dirZ, dirY = 0 }) {
       dirY,
       dirZ,
       color: shotColor.getHex(),
+      fireSound: localEffects.fireSound,
+      guided: localEffects.guided,
     });
   if (!projectile) return;
 
@@ -4608,6 +4646,7 @@ function createLocalProjectile({ x, y, z, dirX, dirZ, dirY = 0 }) {
   projectile.userData.speed = getShotSpeed(myFlag);
   projectile.userData.lifeFactor = localEffects.lifeFactor;
   projectile.userData.hiddenOnRadar = localEffects.hiddenOnRadar;
+  projectile.userData.guided = localEffects.guided;
   projectile.userData.lifetimeSeconds = getShotLifetimeSeconds(myFlag);
   projectile.userData.teleportReentryBlockTeleporterIndex = null;
   projectile.userData.teleportReentryBlockDistance = 0;
@@ -4634,6 +4673,16 @@ function removeProjectile(id, reason = 1, x = null, y = null, z = null) {
   if (numericReason === 0 && hasServerImpactPosition) {
     renderManager.createShotImpact(new THREE.Vector3(x, y, z));
   }
+}
+
+// Whether this player has a missile in the air. Upstream asks the same question
+// two ways -- `tankHasShotType` for who may lock, and the arrival of a
+// MsgGMUpdate for who is warned -- and both reduce to this.
+function hasGuidedShotInFlight(playerId) {
+  for (const projectile of projectiles.values()) {
+    if (projectile?.userData?.playerId === playerId && projectile.userData.guided) return true;
+  }
+  return false;
 }
 
 function getActiveProjectileCountForPlayer(playerId) {
@@ -6458,7 +6507,7 @@ function identifyRoamTarget() {
     x: framing.look.x - framing.eye.x,
     z: framing.look.z - framing.eye.z,
   };
-  const picked = pickTargetInSights(framing.eye, forward, getRoamCandidates());
+  const picked = pickTargetInSights(framing.eye, forward, getRoamCandidates(), TARGETING_ANGLE);
   if (picked === null) {
     setHudAlert(1, 'Looking at nothing', IDENTIFY_ALERT_SECONDS, false);
     return;
@@ -6472,6 +6521,110 @@ function identifyRoamTarget() {
     ? 'a tank'
     : (tanks.get(picked)?.userData?.playerState?.name || 'a tank');
   setHudAlert(1, `Looking at ${name}`, IDENTIFY_ALERT_SECONDS, false);
+}
+
+// LocalPlayer::target, mirrored per player. The server owns the lock -- it is
+// what steers a real missile -- and broadcasts it, so every client can turn every
+// missile the same way rather than guessing. Keyed by shooter; the value is the
+// tank id they have locked, or null.
+const playerLockTargets = new Map();
+
+function setPlayerLockTarget(playerId, targetId) {
+  if (targetId === null || targetId === undefined) playerLockTargets.delete(playerId);
+  else playerLockTargets.set(playerId, targetId);
+}
+
+// The same eligibility the server applies (`canLockOnto`), asked here so a
+// target that dies, pauses or takes `ST` stops being followed without waiting
+// for a packet. Returns the tank to steer at, or null.
+//
+// A lock is also only live while there is a missile for it to steer: `GM` in the
+// hand, or one still in the air after the flag was dropped. That is the server's
+// `canLockOn`, and it is why the bracket goes out when the flag does.
+function getLockTargetTank(shooterId) {
+  const targetId = playerLockTargets.get(shooterId);
+  if (targetId === undefined) return null;
+  if (getPlayerFlagType(shooterId) !== 'GM' && !hasGuidedShotInFlight(shooterId)) return null;
+  const tank = tanks.get(targetId);
+  const state = tank?.userData?.playerState;
+  if (!state || !(state.health > 0) || state.paused) return null;
+  if (isObserverTeam(state.team)) return null;
+  if (hidesFromRadar(getPlayerFlagType(targetId))) return null;
+  return tank;
+}
+
+// "Right between the eyes" (GuidedMissleStrategy.cxx:180), as the mid-height of
+// the hit cylinder -- see `getLockAimPoint` in `server.js` for why bzo aims at
+// that rather than at a muzzle.
+function getLockAimPoint(tank) {
+  return { x: tank.position.x, y: tank.position.y + (TANK_HEIGHT / 2), z: tank.position.z };
+}
+
+// playing.cxx:3537. The tank a missile is coming for is told so -- once, and not
+// again for three quarters of a second, however many missiles or updates arrive.
+// Upstream warns on the update that names you rather than on the lock itself,
+// which is the difference between "somebody could shoot at me" and "somebody
+// has".
+let lastLockWarningAt = -Infinity;
+function warnLockedOnMe(shooterId, targetId) {
+  if (targetId !== myPlayerId || shooterId === myPlayerId) return;
+  if (!hasGuidedShotInFlight(shooterId)) return;
+  const now = performance.now();
+  if (now - lastLockWarningAt < LOCK_WARNING_INTERVAL_MS) return;
+  lastLockWarningAt = now;
+  renderManager.playLocalSound('lock');
+  const name = getPlayerName(shooterId);
+  setHudAlert(1, `${name} locked on me`, IDENTIFY_ALERT_SECONDS, true);
+  addChatEntry(['misc', 'all'], `${name} locked on me`, CHAT_KIND_MISC);
+}
+
+// setTarget()'s two messages (playing.cxx:4451 and :4489), composed here because
+// the server sends the id and the client owns what a player is called -- and
+// owns Colourblindness, which costs Identify its answer: upstream drops to
+// "Looking at a tank" rather than naming the callsign, because the name would
+// give away the team the colour no longer does.
+function showIdentifyResult(targetId, locked) {
+  if (targetId === null) {
+    setHudAlert(1, 'Looking at nothing', IDENTIFY_ALERT_SECONDS, false);
+    return;
+  }
+  // setNemesis() is inside setTarget()'s locked branch alone (playing.cxx:4450):
+  // a lock names your enemy, a look does not.
+  if (locked) nemesisPlayerId = targetId;
+  const name = isColorblind() ? 'a tank' : getPlayerName(targetId);
+  setHudAlert(1, `${locked ? 'Locked on' : 'Looking at'} ${name}`, IDENTIFY_ALERT_SECONDS, false);
+}
+
+// The identify binding, for a tank. An observer answers this on its own client
+// -- the free camera it aims with lives there -- and a tank asks the server,
+// which is where a lock has to be decided.
+function requestLockOn() {
+  if (!ws || ws.readyState !== WebSocket.OPEN) return;
+  sendToServer({ type: 'identify' });
+}
+
+// The bracket around whatever this player has locked, once a frame: it follows
+// the tank, and it goes out the moment the lock does -- a target that dies,
+// pauses or takes `ST` is dropped by `getLockTargetTank` without a packet.
+// Blindness takes it too, as it takes everything else out the window.
+function updateLockOnMarker() {
+  const target = isObserver() || isViewBlinded() ? null : getLockTargetTank(myPlayerId);
+  if (!target) {
+    renderManager.setLockOnMarker(null);
+    return;
+  }
+  renderManager.setLockOnMarker(
+    { x: target.position.x, y: target.position.y + (TANK_HEIGHT / 2), z: target.position.z },
+    getLockTargetColor(target),
+  );
+}
+
+// The colour the target is drawn in, so a masquerading tank's bracket agrees
+// with the tank inside it and a colourblind viewer's brackets say no more about
+// teams than the tanks do.
+function getLockTargetColor(tank) {
+  const state = tank.userData?.playerState;
+  return getEffectiveTankColor(state?.id, state?.color ?? 0xffffff);
 }
 
 function getTankEyeHeight(tank) {
@@ -7402,6 +7555,15 @@ function handleMotion(deltaTime) {
   if (dropHeld && !dropWasHeld) requestFlagDrop();
   dropWasHeld = dropHeld;
 
+  // Identify: the `I` key is a discrete key handled with the others, so this is
+  // the touch button, the right mouse button, either VR B and either gamepad
+  // shoulder. Held down it locks once, not once a frame. The test is the
+  // observer's rather than the drop key's above, because the right mouse button
+  // reaches `virtualInput` on a desktop that uses no virtual controls at all.
+  const identifyHeld = isGameplayInputActive() && virtualInput.identify;
+  if (identifyHeld && !identifyWasHeld) requestLockOn();
+  identifyWasHeld = identifyHeld;
+
   // Fire: the keyboard fire key or the left mouse button, and on mobile, XR or
   // a gamepad, virtualInput.fire.
   // "Tank can't stop firing." Trigger Happy pulls the trigger every frame whether
@@ -7741,6 +7903,7 @@ let lastCaptureRequestAt = 0;
 let lastShakeRequestAt = 0;
 // Drop is an event, but every non-keyboard source reports a held button.
 let dropWasHeld = false;
+let identifyWasHeld = false;
 // LocalPlayer::flagShakingTime. The countdown belongs to one carried flag, so it
 // is keyed on the slot as well as the seconds: taking a different sticky flag
 // starts a fresh clock rather than inheriting what was left of the last one.
@@ -8284,6 +8447,18 @@ function getFlagHeadingMarkers() {
       color: colorToCSS(ANTIDOTE_FLAG_COLOR),
     });
   }
+
+  // The locked tank gets a marker of its own, in the colour it is drawn in.
+  // Upstream has no such marker -- it clamps the lock-on bracket to the edge of
+  // the window instead -- but bzo's bracket stands in the world, so a target off
+  // the side of the screen would have nothing at all saying where it went.
+  const locked = getLockTargetTank(myPlayerId);
+  if (locked) {
+    markers.push({
+      heading: headingTo(locked.position),
+      color: colorToCSS(getLockTargetColor(locked)),
+    });
+  }
   return markers.length > 0 ? markers : EMPTY_HEADING_MARKERS;
 }
 
@@ -8422,6 +8597,32 @@ function updateProjectiles(deltaTime) {
       const projectileSpeed = Number.isFinite(projectile.userData.speed)
         ? projectile.userData.speed
         : (Number.isFinite(gameConfig?.SHOT_SPEED) ? gameConfig.SHOT_SPEED : 100);
+
+      // GuidedMissileStrategy::update, run here as well as on the server. This is
+      // the one shot whose path cannot be extrapolated from where it started, so
+      // both ends integrate it from the same shared function and the same locked
+      // target -- upstream's remote clients do exactly this, steering their own
+      // copy of the missile at the target the shooter last named. Where a
+      // client's idea of that tank lags the server's, the missile is drawn a
+      // little wide of where it really is, and the server still decides the hit.
+      if (projectile.userData.guided) {
+        const target = getLockTargetTank(projectile.userData.playerId);
+        const steered = steerGuidedShot(
+          {
+            x: projectile.userData.dirX,
+            y: projectile.userData.dirY,
+            z: projectile.userData.dirZ,
+          },
+          projectile.position,
+          target ? getLockAimPoint(target) : null,
+          GM_TURN_ANGLE,
+          SHOT_SIM_STEP_SECONDS,
+        );
+        projectile.userData.dirX = steered.x;
+        projectile.userData.dirY = steered.y;
+        projectile.userData.dirZ = steered.z;
+        renderManager.aimProjectile(projectile, steered);
+      }
       const traced = traceShotThroughTeleporters(
         {
           x: projectile.position.x,
@@ -8498,6 +8699,18 @@ function updateProjectiles(deltaTime) {
     });
     projectileSimAccumulator -= SHOT_SIM_STEP_SECONDS;
   }
+
+  // The trail and the bolt animation are both per-frame rather than per step:
+  // upstream leaves a puff off a clock the missile carries, and steps the bolt's
+  // texture once per rendered frame.
+  let hasGuided = false;
+  projectiles.forEach((projectile) => {
+    if (!projectile.userData.guided) return;
+    hasGuided = true;
+    renderManager.trailGMPuffs(projectile, clampedDelta);
+  });
+  if (hasGuided) renderManager.advanceMissileFrames(projectiles);
+  renderManager.updateGMPuffs(clampedDelta);
 
   // ShockWaveStrategy::update, which upstream runs on the frame rather than on a
   // simulation step because nothing about it is integrated: the radius is a
@@ -10276,6 +10489,8 @@ function animate(frameTime) {
     window.xrDebugLogged = false;
   }
   markFramePhase('xr');
+
+  updateLockOnMarker();
 
   updateFps();
   // None of the DOM HUD is on screen in a session -- the XR panels stand in for

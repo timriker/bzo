@@ -111,39 +111,6 @@ export function advanceRoamSelection(current, {
 export const ROAM_FOLLOW_DISTANCE = 40;
 export const ROAM_FOLLOW_HEIGHT_FACTOR = 6;
 
-// _targetingAngle (global.cxx:158), compared against |sin| of the angle off
-// forward -- about 17.5 degrees. setTarget() (playing.cxx:4390) takes the
-// nearest candidate inside that cone and ignores anything behind.
-export const ROAM_TARGETING_ANGLE = 0.3;
-
-// Returns the id of the candidate centred in the sights, or null. Candidates are
-// {id, x, z}; the caller decides who is eligible.
-export function pickTargetInSights(eye, forward, candidates) {
-  const length = Math.hypot(forward.x, forward.z);
-  if (!(length > 0) || !Array.isArray(candidates)) return null;
-  const fx = forward.x / length;
-  const fz = forward.z / length;
-
-  let bestId = null;
-  let bestDistance = Infinity;
-  for (const candidate of candidates) {
-    const dx = candidate.x - eye.x;
-    const dz = candidate.z - eye.z;
-    // The camera frame: distance along the heading, and offset across it.
-    const ahead = (dx * fx) + (dz * fz);
-    if (ahead < 0) continue;
-    const lateral = (dx * fz) - (dz * fx);
-    const distance = Math.hypot(ahead, lateral);
-    if (distance <= 0) continue;
-    if (Math.abs(lateral) / distance >= ROAM_TARGETING_ANGLE) continue;
-    if (distance < bestDistance) {
-      bestDistance = distance;
-      bestId = candidate.id;
-    }
-  }
-  return bestId;
-}
-
 function clampAxis(value) {
   if (!Number.isFinite(value)) return 0;
   return Math.max(-1, Math.min(1, value));

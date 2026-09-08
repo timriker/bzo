@@ -6,14 +6,14 @@ Upstream references are paths under `$HOME/bzflag/`.
 
 Phases 1 (the Useless superflag, animation, and the drop key), 2 (team flags and
 capture), 3 (Identify), 6 (damage rules), 7 (per-player tank dimensions), 8 (shot
-variants), 9 (Ricochet), 10 (Shock Wave) and 13 (per-viewer visibility) are
-**implemented**, as are phase 5's three good flags and the jumping switch with
-all three flags that hang off it -- `JP` Jumping, `WG` Wings and `NJ` No Jumping
--- see "Jumping, and the flags that carry it".
+variants), 9 (Ricochet), 10 (Shock Wave), 12 (Guided Missile) and 13 (per-viewer
+visibility) are **implemented**, as are phase 5's three good flags and the
+jumping switch with all three flags that hang off it -- `JP` Jumping, `WG` Wings
+and `NJ` No Jumping -- see "Jumping, and the flags that carry it".
 All three of phase 4's ways out of a bad flag -- the **shake timeout**, **shake
 wins** and **antidote flags** -- are in, and three of its four client-side bad
 flags with them; `WA` Wide Angle is the one left, and it is blocked rather than
-merely unstarted. Phases 11, 12 and 14 are not started.
+merely unstarted. Phases 11 and 14 are not started.
 
 Every flag is named as well as abbreviated wherever it is mentioned here, in
 `Flag.cxx`'s own words: the abbreviation is what the code, the config and the
@@ -194,10 +194,9 @@ worse than trusting a modified client about a base it still had to drive to.
 ## What is left to add
 
 Upstream carries 47 flag types: a Null type, four team flags, and 42
-superflags. bzo has the four team flags and thirty-six superflags -- everything
-except `WA` Wide Angle, `TH` Thief, `GM` Guided Missile, `OO` Oscillation
-Overthruster, `BU` Burrow and `PZ` Phantom Zone -- so **6 superflags remain**, 5
-good and 1 bad. The table below is the whole list, grouped by the
+superflags. bzo has the four team flags and thirty-seven superflags -- everything
+except `WA` Wide Angle, `TH` Thief, `OO` Oscillation Overthruster, `BU` Burrow
+and `PZ` Phantom Zone -- so **5 superflags remain**, 4 good and 1 bad. The table below is the whole list, grouped by the
 machinery each group needs rather than by name, because the machinery is what
 decides the order. `src/common/Flag.cxx` is the authority for every name,
 abbreviation, endurance, quality and help string; `src/common/global.cxx` for
@@ -207,10 +206,9 @@ every constant named here.
 |---|---|---|
 | 4 | `WA` Wide Angle | **blocked**: no XR answer yet, see below |
 | 11 | `TH` Thief | flag stealing |
-| 12 | `GM` Guided Missile | a steerable shot, and a lock-on target |
 | 14 | `OO` Oscillation Overthruster, `BU` Burrow, `PZ` Phantom Zone | movement through and under geometry |
 
-Phases 11 to 14 are each their own feature and can be taken in any order. Phase 4
+Phases 11 and 14 are each their own feature and can be taken in either order. Phase 4
 is down to its last flag, and that one is blocked rather than merely unstarted.
 
 Phase 13 was taken next because `CB` had already built most of it: a flag that
@@ -1435,18 +1433,138 @@ in `getTankDimensionScale` -- `_thiefTinyFactor` on both axes, exactly as `T` an
 rule is left: a hit transfers the victim's flag to the shooter rather than
 killing.
 
-## Phase 12 -- Guided Missile
+## Phase 12 -- Guided Missile (implemented)
 
-`GM`. A shot that steers toward a locked target at `_gmTurnAngle` 0.628319 rad
-per second after `_gmActivationTime` 0.5s, with life `_gmAdLife` 0.95 and a
-`_gmSize` 1.5 model. Lock-on is upstream's `identify` at `_lockOnAngle` 0.15,
-retargetable in flight.
+`GM` Guided Missile. **The one shot whose path cannot be extrapolated from where
+it started.** Everything else bzo fires is a direction and a speed decided at the
+muzzle; a missile's heading is a new answer every simulation step, turned toward
+whichever tank its shooter has locked at `_gmTurnAngle` 0.628319 radians a
+second. `GuidedMissileStrategy::update` is the whole of it, and the rest of this
+section is what that costs a game where the server owns hits and the client draws.
 
-bzo already has the target: the `identify` binding on `I`, right click, either
-VR B button and either gamepad shoulder picks the tank in your sights within
-`_targetingAngle` 0.3 and sets it as your nemesis. That is the lock. What is
-missing is a shot whose direction is recomputed each tick on the server, and
-the HUD lock-on box and sound.
+Its three other numbers are small: life `_gmAdLife` 0.95, no change to speed and
+none to the reload -- the strategy scales `lifetime` and never calls
+`setReloadTime` -- and `_gmActivationTime` 0.5, which is not about steering at
+all. See "The half second nothing is hit".
+
+**Azimuth and elevation turn separately**, each toward its own target and each at
+the full rate (`GuidedMissleStrategy.cxx:186` and `:195`), so a missile that has
+to come around *and* climb does both at once. `steerGuidedShot` in the flags pair
+is that arithmetic, in bzo's angles: azimuth 0 faces -Z and grows to the left,
+which is `playerRotation`'s own convention, and the missile's direction vector is
+decomposed and recomposed each step rather than kept as a pair of angles -- so a
+missile that crosses a teleporter keeps the heading the teleporter gave it with
+nothing to resynchronise.
+
+A missile never ricochets, on any world. The ricochet switch is read by
+`makeSegments`, and `GuidedMissileStrategy::checkBuildings` has no reflect branch
+at all: the missile explodes on the first building it reaches. `shotRicochets`
+refuses it for the same reason it refuses `SB`.
+
+### The lock is the server's
+
+Upstream runs `setTarget()` on the shooter's own client. bzo runs it on the
+server, and this is the one place the phase departs from upstream on purpose: a
+lock steers a real missile, so a modified client claiming one it never earned
+would be aiming somebody else's weapon. Nothing is lost by moving it -- upstream's
+scan reads `myTank->getAngle()`, the tank's own heading rather than the camera's,
+which the server already knows exactly.
+
+So the `identify` binding sends one message and the server answers it:
+
+- **Two cones, one press.** The tighter `_lockOnAngle` 0.15 -- about 8.6 degrees
+  -- is a lock, and only for a player who has a missile to steer: the flag in
+  hand, or one still in the air after the flag was dropped, which is upstream's
+  `tankHasShotType`. The wider `_targetingAngle` 0.3 only *names* the tank, which
+  is what identify does for a player carrying anything else. `pickTargetInSights`
+  in the flags pair is the scan, with the cone as an argument, because the
+  observer's roaming identify asks the same question at the wider angle.
+- Upstream walks both cones in one loop and lets a nearer tank outside the lock
+  cone shut out a further one inside it, purely because of the order its roster
+  happens to be in. bzo asks the two questions separately, so the answer does not
+  depend on that.
+- **A lock is public.** The server broadcasts `lockTarget`, because every client
+  steers every missile and so every client has to know what each one is steering
+  at. `shotBegin` carries the target too, which seeds a client that has not seen
+  a `lockTarget` for that shooter yet.
+- **A target that stops being lockable stops being followed, with no packet.**
+  `canLockOnto` -- alive, unpaused, not an observer, not carrying `ST` -- is asked
+  wherever the lock is *read* rather than only where it is set, and both ends ask
+  it, so a target that dies or ducks under Stealth is dropped by the missile on
+  the same step on every screen. Upstream refuses Stealth outright here, with no
+  `SE` exemption: where a missile may fly is not a matter of what somebody can
+  see. The look at the wider cone does exempt a seer (`playing.cxx:4436`).
+- A dead shooter has nothing locked (`playing.cxx:3827`), and a lock onto a
+  player who has left is cleared rather than left to expire.
+- **A lock lapses with the missile.** When `GM` leaves the hand and the last
+  missile leaves the air there is nothing for the lock to steer, so it goes --
+  and so does the bracket. Upstream never clears a target on a flag change at
+  all: nothing in `LocalPlayer` does it, so its marker outlives the flag that
+  earned it. This is a deliberate departure: a bracket over a tank you have no
+  way to shoot at is saying something that is no longer true. Dropping `GM` while
+  a missile is still flying keeps the lock, because retargeting that missile is
+  the thing the flag's own help text promises.
+
+### Both ends steer, and only the server hits
+
+The client cannot wait for the server to say where a missile is -- there is no
+per-shot update packet in bzo, as there is none upstream -- so it integrates the
+same `steerGuidedShot` against its own copy of the target's position, which is
+exactly what upstream's remote clients do. Where a client's idea of that tank
+lags the server's, the missile is drawn a little wide of where it really is, and
+the hit is still the server's to decide. That is the same bargain every other
+shot in bzo already makes; a missile only makes it visible, because its whole
+path bends rather than its endpoint moving.
+
+### The half second nothing is hit
+
+`_gmActivationTime` gates **hits**, not steering (`GuidedMissleStrategy.cxx:318`,
+"GM is not active until activation time passes (for any tank)"). The missile
+flies and turns from the muzzle; nothing it touches in its first half second is
+hit. The tank the rule is really for is the one that fired it -- a missile locked
+onto a target two lengths away comes round through its own shooter -- so it is
+`activationTime` on the shot effects rather than a rule about ownership, and
+`findShotPlayerHit` returns nothing at all while it is running.
+
+### What the player sees and hears
+
+- **`missile.wav` when it is fired**, which is upstream switching the report on
+  the flag (`playing.cxx:2957`) rather than playing `SFX_FIRE` for everything.
+  Laser was the first flag bzo had that did this; this is the second.
+- **`lock.wav` for the tank being shot at**, with a "locked on me" message, at
+  most every 0.75s. Upstream plays it when a `MsgGMUpdate` naming you arrives
+  (`playing.cxx:3537`), which is a missile *already in the air* -- so the warning
+  is on the shot and on a retarget, never on somebody's finger on the lock
+  button. Taking the lock warns nobody.
+- **The bolt is upstream's default-quality one**: a billboard like every other
+  shot, textured from `missile.png` -- a 4x4 sheet stepped one cell a frame
+  (`BoltSceneNode.cxx:864`) -- and trailing a `SmokeGMPuffEffect` puff every
+  `gmPuffTime` 1/8s. The modelled missile with fins is behind
+  `useQuality() >= 3`, so by "Fewer options than BZFlag" bzo draws the variant
+  upstream draws by default. The colour is bzo's own: upstream paints every
+  missile the same orange, and bzo colours every shot by who fired it, which is
+  the shot you most want the owner of.
+- **The tail follows the heading.** Every other shot's trail is laid out once
+  along the direction it was fired; a missile's is re-laid each step, which is six
+  sprite positions and the only thing about the shot that moves.
+
+### The lock-on marker, and the one thing XR changed
+
+Upstream draws the lock-on bracket in screen space: it projects the target,
+clamps the result to the window edge so a target behind you still has a marker on
+the rim, and draws two brackets and the callsign (`HUDRenderer.cxx:1314`).
+
+bzo draws the bracket **in the world**, as a sprite standing at the locked tank,
+in the colour that tank is drawn in. A screen-space overlay means nothing in a
+headset, where there is no window to pin it to, and a sprite already billboards
+in both. The proportions are upstream's, and depth testing is off because a lock
+is a HUD element -- a target that ducks behind a wall is exactly when you want to
+know where it went.
+
+What that costs is upstream's edge clamping, so **the heading tape carries a
+marker for the locked tank** instead. That is where a bearing belongs in bzo
+anyway -- it is already how a team flag is found -- and it is the answer for a
+target off the side of the screen in the window and in VR alike.
 
 ## Phase 13 -- per-viewer visibility (implemented)
 

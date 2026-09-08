@@ -53,6 +53,13 @@ export const GAME_SOUNDS = Object.freeze({
   // A shock wave is fired. The wave itself makes no other sound: it fades when
   // it reaches full size rather than ending on anything.
   shock: { file: 'shock.wav', sfx: 'SFX_SHOCK' },
+  // A guided missile is fired.
+  missile: { file: 'missile.wav', sfx: 'SFX_MISSILE' },
+  // A guided missile has locked onto *me*. The one shot sound played for the
+  // tank being shot at rather than for the tank shooting: upstream plays it when
+  // a MsgGMUpdate naming you arrives (playing.cxx:3537), which is a missile
+  // already in the air, not somebody's finger on the lock button.
+  lock: { file: 'lock.wav', sfx: 'SFX_LOCK' },
   // A shot bounces off a building.
   ricochet: { file: 'ricochet.wav', sfx: 'SFX_RICOCHET' },
   // A tank is destroyed.

@@ -155,6 +155,48 @@ const BZFLAG_SHOT_TELEPORT_FLARE = 0.125;       // draw(): topsideOffset
 const BZFLAG_SHOT_TELEPORT_SPIN = 90;           // draw(): glRotatef(age*90, 1,0,0)
 const BZFLAG_SHOT_TELEPORT_SEGMENTS = 6;        // draw(): segments argument
 const BZFLAG_SHOT_TELEPORT_UV_TOP = 0.8;        // draw(): topUV
+// HUDRenderer::drawLockonMarker (HUDRenderer.cxx:1314): two brackets facing each
+// other across the locked tank, each a four-point strip inset at top and bottom.
+// The proportions are upstream's, in its own +/-40 box.
+//
+// Upstream draws them in screen space, projecting the target and clamping the
+// result to the window edge so a target behind you still has a marker on the
+// rim. bzo draws the bracket in the world instead, as a sprite standing at the
+// tank: a screen-space overlay has no meaning in a headset, where there is no
+// window to pin it to, and a sprite is already how bzo billboards. The cost is
+// upstream's edge clamping -- a target off screen has no marker -- and the
+// heading tape is where a bearing belongs anyway.
+const BZFLAG_LOCKON_SIZE = 40;                  // lockonSize
+const BZFLAG_LOCKON_INSET = 15;                 // lockonInset
+const BZFLAG_LOCKON_DECLINATION = 15;           // lockonDeclination
+const BZFLAG_LOCKON_LINE_WIDTH = 3;             // glLineWidth(3.0f)
+const BZFLAG_LOCKON_ALPHA = 0.45;               // hudColor3Afv(color, 0.45f)
+// How wide the bracket stands in the world. A bzo tank is four units across, so
+// this frames it with room to read as a bracket rather than as a box drawn on it.
+const BZFLAG_LOCKON_WORLD_SIZE = 7;
+
+// A guided missile's bolt, and its smoke trail. Upstream's default quality draws
+// the missile as a billboard like any other shot -- the modelled one with fins is
+// behind `useQuality() >= 3` -- but textured from `missile.png`, which is a 4x4
+// sheet stepped one cell a frame (BoltSceneNode.cxx:864), and trailing a
+// SmokeGMPuffEffect puff every `gmPuffTime`. That trail is what makes a missile
+// recognisable at a glance in upstream, so bzo takes both.
+//
+// The colour is bzo's, not upstream's. Upstream paints every GM bolt the same
+// orange (`setColor(1.0f, 0.2f, 0.0f)`); bzo colours every shot by who fired it,
+// and a missile is the shot you most want to know the owner of.
+const BZFLAG_MISSILE_TEXTURE = '/textures/missile.png';
+const BZFLAG_MISSILE_ANIM_CELLS = 4;            // setTextureAnimation(4, 4)
+const BZFLAG_GM_PUFF_TEXTURE = '/textures/puffs.png';
+const BZFLAG_GM_PUFF_CELLS = 2;                 // du = dv = 0.5, a random quadrant
+const BZFLAG_GM_PUFF_INTERVAL = 1 / 8;          // gmPuffTime
+const BZFLAG_GM_PUFF_LIFETIME = 3.5;            // ctor
+const BZFLAG_GM_PUFF_JITTER = 0.5;              // ctor: randMod
+const BZFLAG_GM_PUFF_DRIFT = 1.5;               // draw(): vertDrift = 1.5f * age
+const BZFLAG_GM_PUFF_SPIN = 180;                // draw(): glRotatef(age*180, 0,0,1)
+const BZFLAG_GM_PUFF_SIZE = 0.5;                // draw(): size = 0.5f + age * 1.25f
+const BZFLAG_GM_PUFF_GROWTH = 1.25;
+const BZFLAG_GM_PUFF_ALPHA = 0.5;               // draw(): alpha = 0.5f - age/lifetime
 // Flags, mirroring FlagSceneNode (FlagSceneNode.cxx) at upstream's default
 // quality, where `geoPole` is on and `realFlag` is off: pole and cloth are one
 // billboarded pair facing the camera, and the cloth is a strip of eight quads
@@ -3826,6 +3868,51 @@ class RenderManager {
       '/textures/green_bolt.png', 64, 64, this._paintTintedBZFlagBoltTexture, baseColor);
   }
 
+  // The same tint over the missile sheet, wrapped to one of its sixteen cells.
+  // Which cell is random to start with and steps once a frame, as upstream's
+  // does, so two missiles in the air are never in step.
+  _createMissileTexture(baseColor) {
+    const texture = this._createTintedTexture(
+      BZFLAG_MISSILE_TEXTURE, 256, 256, this._paintTintedBZFlagBoltTexture, baseColor);
+    const cell = 1 / BZFLAG_MISSILE_ANIM_CELLS;
+    texture.repeat.set(cell, cell);
+    // No mipmaps: a mip of the whole sheet blends cells into their neighbours,
+    // so a missile drawn small shows four frames at once instead of one. The
+    // cell is a soft glow, which is the kind of image that loses least by it.
+    texture.generateMipmaps = false;
+    texture.minFilter = THREE.LinearFilter;
+    const start = Math.floor(Math.random() * BZFLAG_MISSILE_ANIM_CELLS * BZFLAG_MISSILE_ANIM_CELLS);
+    texture.userData = {
+      u: start % BZFLAG_MISSILE_ANIM_CELLS,
+      v: Math.floor(start / BZFLAG_MISSILE_ANIM_CELLS),
+    };
+    this._applyMissileFrame(texture);
+    return texture;
+  }
+
+  // `offset` is a uniform rather than image data, so stepping a frame costs a
+  // matrix update and never a texture upload -- which matters, because this runs
+  // once a frame for every missile in the air.
+  _applyMissileFrame(texture) {
+    const cell = 1 / BZFLAG_MISSILE_ANIM_CELLS;
+    texture.offset.set(texture.userData.u * cell, texture.userData.v * cell);
+  }
+
+  // BoltSceneNode.cxx:864, on the last frame of each render: step one cell along,
+  // wrapping to the next row and then back to the start.
+  advanceMissileFrames(projectiles) {
+    projectiles.forEach((projectile) => {
+      const texture = projectile?.userData?.missileTexture;
+      if (!texture?.userData) return;
+      texture.userData.u += 1;
+      if (texture.userData.u === BZFLAG_MISSILE_ANIM_CELLS) {
+        texture.userData.u = 0;
+        texture.userData.v = (texture.userData.v + 1) % BZFLAG_MISSILE_ANIM_CELLS;
+      }
+      this._applyMissileFrame(texture);
+    });
+  }
+
   _paintTintedBZFlagTailTexture(ctx, canvas, image, baseColor) {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
@@ -4141,6 +4228,170 @@ class RenderManager {
     return sphere;
   }
 
+  // The marker is one sprite, made once and moved: it always faces the viewer,
+  // which is what upstream's screen-space bracket is for, and a sprite does that
+  // in a headset as readily as in a window. Depth testing is off because a lock
+  // is a HUD element -- upstream's is drawn over everything, and a target that
+  // ducks behind a wall is exactly when you want to know where it went.
+  setLockOnMarker(position, color) {
+    if (!this.scene) return;
+    if (!position) {
+      if (this.lockOnMarker) this.lockOnMarker.visible = false;
+      return;
+    }
+    if (!this.lockOnMarker) {
+      const material = new THREE.SpriteMaterial({
+        map: this._getLockOnTexture(),
+        transparent: true,
+        depthTest: false,
+        depthWrite: false,
+        opacity: BZFLAG_LOCKON_ALPHA,
+      });
+      this.lockOnMarker = new THREE.Sprite(material);
+      this.lockOnMarker.scale.set(BZFLAG_LOCKON_WORLD_SIZE, BZFLAG_LOCKON_WORLD_SIZE, 1);
+      this.lockOnMarker.renderOrder = SHOT_RENDER_ORDER + 1;
+      this.worldGroup.add(this._tagDraws(this.lockOnMarker, 'effect'));
+    }
+    this.lockOnMarker.visible = true;
+    this.lockOnMarker.position.set(position.x, position.y, position.z);
+    if (typeof color === 'number') this.lockOnMarker.material.color.setHex(color);
+  }
+
+  _getLockOnTexture() {
+    if (this._lockOnTexture) return this._lockOnTexture;
+    const size = 128;
+    const canvas = document.createElement('canvas');
+    canvas.width = size;
+    canvas.height = size;
+    const ctx = canvas.getContext('2d');
+    // Upstream's box is +/-40 with a little air around it, so the marker keeps
+    // its shape rather than touching the edge of its own texture.
+    const unit = (size * 0.45) / BZFLAG_LOCKON_SIZE;
+    const half = size / 2;
+    const at = (x, y) => [half + (x * unit), half - (y * unit)];
+    ctx.clearRect(0, 0, size, size);
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = BZFLAG_LOCKON_LINE_WIDTH * unit;
+    ctx.lineJoin = 'miter';
+    for (const side of [-1, 1]) {
+      const points = [
+        [side * BZFLAG_LOCKON_INSET, BZFLAG_LOCKON_SIZE - BZFLAG_LOCKON_DECLINATION],
+        [side * BZFLAG_LOCKON_SIZE, BZFLAG_LOCKON_SIZE],
+        [side * BZFLAG_LOCKON_SIZE, -BZFLAG_LOCKON_SIZE],
+        [side * BZFLAG_LOCKON_INSET, -BZFLAG_LOCKON_SIZE + BZFLAG_LOCKON_DECLINATION],
+      ];
+      ctx.beginPath();
+      points.forEach(([x, y], index) => {
+        const [px, py] = at(x, y);
+        if (index === 0) ctx.moveTo(px, py);
+        else ctx.lineTo(px, py);
+      });
+      ctx.stroke();
+    }
+    this._lockOnTexture = new THREE.CanvasTexture(canvas);
+    this._lockOnTexture.colorSpace = THREE.SRGBColorSpace;
+    return this._lockOnTexture;
+  }
+
+  // SmokeGMPuffEffect (effectsRenderer.cxx:1477), which is `gmPuffEffect`'s own
+  // default. A puff is one billboarded quad from a random quadrant of the puff
+  // sheet, jittered off the missile's path, drifting upward and spinning as it
+  // swells and fades. Upstream leaves one behind every `gmPuffTime`; the trail
+  // is what a missile looks like from anywhere but behind it.
+  // One puff per `gmPuffTime` of flight, whatever the frame rate: the clock is
+  // the missile's own, so a slow frame leaves the same trail as a fast one.
+  trailGMPuffs(projectile, deltaTime) {
+    if (!projectile || !(deltaTime > 0)) return;
+    const due = (projectile.userData.puffTimer ?? 0) + deltaTime;
+    if (due < BZFLAG_GM_PUFF_INTERVAL) {
+      projectile.userData.puffTimer = due;
+      return;
+    }
+    // A missile that has been off screen or stalled does not owe a burst of
+    // puffs all at one point, so the backlog is dropped rather than drawn.
+    projectile.userData.puffTimer = due % BZFLAG_GM_PUFF_INTERVAL;
+    this.createGMPuff(projectile.position);
+  }
+
+  createGMPuff(position) {
+    if (!this.scene || !position) return;
+    // Upstream picks a quadrant of the sheet at random per puff. The four are
+    // cut once and shared: a puff is a short-lived thing and there may be
+    // dozens of them, so none of them may cost a texture.
+    const textures = this._getGMPuffTextures();
+    const texture = textures[Math.floor(Math.random() * textures.length)];
+
+    const material = new THREE.SpriteMaterial({
+      map: texture,
+      transparent: true,
+      depthWrite: false,
+      opacity: BZFLAG_GM_PUFF_ALPHA,
+    });
+    const sprite = new THREE.Sprite(material);
+    const jitter = () => (Math.random() * BZFLAG_GM_PUFF_JITTER * 2) - BZFLAG_GM_PUFF_JITTER;
+    sprite.position.set(
+      position.x + jitter(),
+      position.y + jitter(),
+      position.z + jitter(),
+    );
+    sprite.scale.set(BZFLAG_GM_PUFF_SIZE * 2, BZFLAG_GM_PUFF_SIZE * 2, 1);
+    sprite.renderOrder = SHOT_RENDER_ORDER;
+    this.worldGroup.add(this._tagDraws(sprite, 'effect'));
+
+    if (!this.gmPuffs) this.gmPuffs = [];
+    this.gmPuffs.push({ sprite, material, age: 0, baseY: sprite.position.y });
+  }
+
+  updateGMPuffs(deltaTime) {
+    if (!this.gmPuffs?.length || deltaTime <= 0) return;
+    for (let i = this.gmPuffs.length - 1; i >= 0; i -= 1) {
+      const puff = this.gmPuffs[i];
+      puff.age += deltaTime;
+      const alpha = BZFLAG_GM_PUFF_ALPHA - (puff.age / BZFLAG_GM_PUFF_LIFETIME);
+      if (alpha <= 0.001) {
+        this.worldGroup.remove(puff.sprite);
+        puff.material.dispose();
+        this.gmPuffs.splice(i, 1);
+        continue;
+      }
+      puff.material.opacity = alpha;
+      // Upstream's `vertDrift`, on bzo's up axis.
+      puff.sprite.position.y = puff.baseY + (BZFLAG_GM_PUFF_DRIFT * puff.age);
+      const size = (BZFLAG_GM_PUFF_SIZE + (puff.age * BZFLAG_GM_PUFF_GROWTH)) * 2;
+      puff.sprite.scale.set(size, size, 1);
+      // A sprite has no roll of its own, so the spin is the texture's.
+      puff.material.rotation = THREE.MathUtils.degToRad(puff.age * BZFLAG_GM_PUFF_SPIN);
+    }
+  }
+
+  _getGMPuffTextures() {
+    if (this._gmPuffTextures) return this._gmPuffTextures;
+    const cells = BZFLAG_GM_PUFF_CELLS * BZFLAG_GM_PUFF_CELLS;
+    this._gmPuffTextures = [];
+    for (let quadrant = 0; quadrant < cells; quadrant += 1) {
+      this._gmPuffTextures.push(this._createTintedTexture(
+        BZFLAG_GM_PUFF_TEXTURE, 256, 256, this._paintGMPuffQuadrant, quadrant));
+    }
+    return this._gmPuffTextures;
+  }
+
+  // One quadrant of the puff sheet, drawn to fill its own texture. Cutting it
+  // here rather than with `offset`/`repeat` means a puff needs no texture of its
+  // own, and it goes through the same canvas-backed path everything else does,
+  // which is what redraws it if the image has not arrived yet.
+  _paintGMPuffQuadrant(ctx, canvas, image, quadrant) {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    if (!image) return;
+    const cells = BZFLAG_GM_PUFF_CELLS;
+    const width = image.width / cells;
+    const height = image.height / cells;
+    ctx.drawImage(
+      image,
+      (quadrant % cells) * width, Math.floor(quadrant / cells) * height, width, height,
+      0, 0, canvas.width, canvas.height,
+    );
+  }
+
   removePausedSphere(sphere) {
     if (!sphere || !this.scene) return;
     this.worldGroup.remove(sphere);
@@ -4254,7 +4505,10 @@ class RenderManager {
   createProjectile(data) {
     if (!this.scene) return null;
     const projectileColor = typeof data.color === 'number' ? data.color : 0xffff00;
-    const projectileTexture = this._createBoltTexture(projectileColor);
+    const guided = data.guided === true;
+    const projectileTexture = guided
+      ? this._createMissileTexture(projectileColor)
+      : this._createBoltTexture(projectileColor);
     const headMaterial = new THREE.SpriteMaterial({
       map: projectileTexture,
       color: 0xffffff,
@@ -4277,6 +4531,7 @@ class RenderManager {
     const tailSegmentCount = 6;
     const tailTexture = this._createShotTailTexture(projectileColor);
     const tailSegments = [];
+    const tailDistances = [];
     let uvCell = Math.floor(Math.random() * 16);
     for (let i = 0; i < tailSegmentCount; i += 1) {
       uvCell = (uvCell + 1) % 16;
@@ -4300,9 +4555,10 @@ class RenderManager {
       segment.scale.set(scale, scale, 1);
       segment.renderOrder = SHOT_RENDER_ORDER;
       const distance = 0.34 + (i * 0.28);
-      segment.position.set(-dir.x * distance, 0, -dir.z * distance);
+      segment.position.set(-dir.x * distance, -dir.y * distance, -dir.z * distance);
       projectile.add(segment);
       tailSegments.push(segment);
+      tailDistances.push(distance);
     }
     projectile.renderOrder = SHOT_RENDER_ORDER;
     projectile.add(head);
@@ -4311,8 +4567,11 @@ class RenderManager {
       dirZ: data.dirZ,
       color: projectileColor,
       projectileTexture,
+      // Only a missile's sheet is stepped; every other shot is one still image.
+      missileTexture: guided ? projectileTexture : null,
       head,
       tailSegments,
+      tailDistances,
     };
     // Only add a point light if dynamic lighting is enabled
     if (this._dynamicLightingActive()) {
@@ -4327,9 +4586,31 @@ class RenderManager {
       this.projectileLights.set(projectile, shotLight);
     }
     this.worldGroup.add(this._tagDraws(projectile, 'effect'));
-    this.playSound('fire', projectile.position);
+    // Upstream picks the report off the firing flag rather than playing SFX_FIRE
+    // for everything (playing.cxx:2956); a guided missile is the second shot bzo
+    // has that takes a sound of its own.
+    this.playSound(typeof data.fireSound === 'string' ? data.fireSound : 'fire', projectile.position);
     this.createMuzzleFlash(projectile.position, dir);
     return projectile;
+  }
+
+  // The trail hangs behind the shot along the direction it was fired, which is
+  // set once and never revisited -- except for a guided missile, whose direction
+  // is a new answer every step. Re-laying six sprite positions is cheaper than
+  // rotating the group, and it is the only thing about the shot that moves.
+  aimProjectile(projectile, direction) {
+    const segments = projectile?.userData?.tailSegments;
+    const distances = projectile?.userData?.tailDistances;
+    if (!segments || !distances) return;
+    const length = Math.hypot(direction.x, direction.y, direction.z);
+    if (!(length > 0)) return;
+    const x = direction.x / length;
+    const y = direction.y / length;
+    const z = direction.z / length;
+    for (let i = 0; i < segments.length; i += 1) {
+      const distance = distances[i];
+      segments[i].position.set(-x * distance, -y * distance, -z * distance);
+    }
   }
 
   // LaserStrategy's laser scene nodes: one quad per segment of a path that was

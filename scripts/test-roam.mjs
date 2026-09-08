@@ -7,12 +7,10 @@
 
 import assert from 'node:assert/strict';
 import {
-  ROAM_TARGETING_ANGLE,
   ROAM_VIEW,
   ROAM_VIEW_ORDER,
   advanceRoamSelection,
   nextRoamView,
-  pickTargetInSights,
   roamViewNeedsTarget,
   ROAM_TRANSLATE_SPEED_FACTOR,
   ROAM_ZOOM_DEFAULT,
@@ -118,38 +116,6 @@ assert.equal(roamViewNeedsTarget(ROAM_VIEW.FOLLOW), true);
 assert.equal(roamViewNeedsTarget(ROAM_VIEW.FPS), true);
 assert.equal(roamViewNeedsTarget(ROAM_VIEW.FREE), false);
 assert.equal(roamViewNeedsTarget(ROAM_VIEW.FLAG), false);
-
-// setTarget() (playing.cxx:4390): the nearest tank inside the cone wins, and
-// anything behind the camera is ignored however close it is.
-const eye = { x: 0, z: 0 };
-const north = { x: 0, z: -1 };
-assert.equal(pickTargetInSights(eye, north, [{ id: 'a', x: 0, z: -50 }]), 'a');
-assert.equal(pickTargetInSights(eye, north, [{ id: 'behind', x: 0, z: 50 }]), null);
-assert.equal(
-  pickTargetInSights(eye, north, [{ id: 'far', x: 0, z: -80 }, { id: 'near', x: 0, z: -20 }]),
-  'near',
-  'the nearest inside the cone wins',
-);
-// A candidate just inside the cone is taken, one just outside is not: at 100
-// ahead the cone half-width is 100 * tan(asin(0.3)).
-const coneHalfWidth = 100 * Math.tan(Math.asin(ROAM_TARGETING_ANGLE));
-assert.equal(pickTargetInSights(eye, north, [{ id: 'in', x: coneHalfWidth * 0.98, z: -100 }]), 'in');
-assert.equal(pickTargetInSights(eye, north, [{ id: 'out', x: coneHalfWidth * 1.02, z: -100 }]), null);
-// A nearer tank outside the cone does not beat a further one inside it.
-assert.equal(
-  pickTargetInSights(eye, north, [
-    { id: 'wide', x: 30, z: -10 },
-    { id: 'narrow', x: 0, z: -90 },
-  ]),
-  'narrow',
-);
-// The cone turns with the camera.
-assert.equal(pickTargetInSights(eye, { x: -1, z: 0 }, [{ id: 'west', x: -40, z: 0 }]), 'west');
-assert.equal(pickTargetInSights(eye, north, [{ id: 'west', x: -40, z: 0 }]), null);
-// Degenerate input is inert rather than throwing.
-assert.equal(pickTargetInSights(eye, { x: 0, z: 0 }, [{ id: 'a', x: 0, z: -5 }]), null);
-assert.equal(pickTargetInSights(eye, north, []), null);
-assert.equal(pickTargetInSights(eye, north, null), null);
 
 // Fire walks one sequence: within a view that takes a subject, the leader first
 // (the auto slot, null), then every player, then on to the next view.

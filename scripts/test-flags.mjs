@@ -26,6 +26,13 @@ import {
 } from '../public/teams.mjs';
 import {
   BZFLAG_TANK_RADIUS,
+  GM_AD_LIFE,
+  GM_ACTIVATION_TIME,
+  GM_TURN_ANGLE,
+  LOCK_ON_ANGLE,
+  TARGETING_ANGLE,
+  pickTargetInSights,
+  steerGuidedShot,
   FLAG_ALTITUDE,
   FLAG_EFFECT_TIME,
   NARROW_FACTOR,
@@ -312,6 +319,10 @@ for (const abbreviation of ['JP', 'US', 'ID', 'B*', null]) {
   // that goes through buildings never bounces off one.
   assert.equal(shotRicochets('SB', true), false, 'a super bullet passes through a ricochet world');
   assert.equal(shotRicochets('SB', false), false);
+  // GuidedMissileStrategy::checkBuildings has no reflect branch at all, so a
+  // missile explodes on the first building it reaches whatever the world says.
+  assert.equal(shotRicochets('GM', true), false, 'a guided missile never bounces');
+  assert.equal(shotRicochets('GM', false), false);
 }
 
 // global.cxx:80, :95, :128 and the SegmentedShotStrategy constructors that read
@@ -403,8 +414,29 @@ for (const abbreviation of ['JP', 'US', 'ID', 'B*', null]) {
   assert.equal(shockWave.hiddenOnRadar, false);
   assert.equal(shockWave.fireSound, 'shock', 'SFX_SHOCK');
 
+  // GuidedMissileStrategy's constructor scales the lifetime and nothing else:
+  // the world's own speed, the world's own reload, and a heading that is not
+  // fixed at the muzzle.
+  const guidedMissile = getShotEffects('GM');
+  assert.equal(getFlagType('GM').name, 'Guided Missile');
+  assert.equal(guidedMissile.guided, true, 'a missile steers');
+  close(guidedMissile.lifeFactor, GM_AD_LIFE, '_gmAdLife');
+  close(guidedMissile.velocityFactor, 1, 'at the world\'s own shot speed');
+  close(guidedMissile.rateFactor, 1, 'and the world\'s own reload');
+  close(guidedMissile.activationTime, GM_ACTIVATION_TIME, '_gmActivationTime');
+  assert.equal(guidedMissile.beam, false);
+  assert.equal(guidedMissile.shockwave, false);
+  assert.equal(guidedMissile.throughBuildings, false);
+  assert.equal(guidedMissile.hiddenOnRadar, false);
+  assert.equal(guidedMissile.fireSound, 'missile', 'SFX_MISSILE');
+  // No other flag is inert when it leaves the muzzle.
+  for (const abbreviation of ['F', 'MG', 'L', 'SB', 'IB', 'SW', 'US', null]) {
+    assert.equal(getShotEffects(abbreviation).activationTime, 0, `${abbreviation} is live at once`);
+    assert.equal(getShotEffects(abbreviation).guided, false, `${abbreviation} flies straight`);
+  }
+
   // Every shot variant is an unstable good superflag, as Flag.cxx declares them.
-  for (const abbreviation of ['F', 'MG', 'L', 'SB', 'IB', 'SW']) {
+  for (const abbreviation of ['F', 'MG', 'GM', 'L', 'SB', 'IB', 'SW']) {
     const type = getFlagType(abbreviation);
     assert.equal(type.endurance, FLAG_ENDURANCE.UNSTABLE, `${abbreviation} is FlagUnstable`);
     assert.equal(type.quality, 0, `${abbreviation} is a good flag`);
@@ -1218,6 +1250,115 @@ for (const theirs of ['ST', 'CL', 'MQ', 'SE', null]) {
       serverFlags.getVisibleTankAlpha(theirs, 0, mine),
       getVisibleTankAlpha(theirs, 0, mine),
       `client/server visible alpha diverged for ${theirs} seen by ${mine}`
+    );
+  }
+}
+
+// _targetingAngle and _lockOnAngle (global.cxx:158, :84).
+{
+  assert.equal(TARGETING_ANGLE, 0.3, '_targetingAngle');
+  assert.equal(LOCK_ON_ANGLE, 0.15, '_lockOnAngle');
+  assert.ok(LOCK_ON_ANGLE < TARGETING_ANGLE, 'a lock is the tighter of the two cones');
+
+  // setTarget() (playing.cxx:4390): the nearest tank inside the cone wins, and
+  // anything behind the eye is ignored however close it is. The cone is the
+  // caller's, so the same scan serves an observer's identify and a missile's lock.
+  const eye = { x: 0, z: 0 };
+  const north = { x: 0, z: -1 };
+  assert.equal(pickTargetInSights(eye, north, [{ id: 'a', x: 0, z: -50 }], TARGETING_ANGLE), 'a');
+  assert.equal(pickTargetInSights(eye, north, [{ id: 'behind', x: 0, z: 50 }], TARGETING_ANGLE), null);
+  assert.equal(
+    pickTargetInSights(eye, north, [{ id: 'far', x: 0, z: -80 }, { id: 'near', x: 0, z: -20 }], TARGETING_ANGLE),
+    'near',
+    'the nearest inside the cone wins',
+  );
+  // A candidate just inside the cone is taken, one just outside is not: at 100
+  // ahead the cone half-width is 100 * tan(asin(0.3)).
+  const coneHalfWidth = 100 * Math.tan(Math.asin(TARGETING_ANGLE));
+  assert.equal(pickTargetInSights(eye, north, [{ id: 'in', x: coneHalfWidth * 0.98, z: -100 }], TARGETING_ANGLE), 'in');
+  assert.equal(pickTargetInSights(eye, north, [{ id: 'out', x: coneHalfWidth * 1.02, z: -100 }], TARGETING_ANGLE), null);
+  // A nearer tank outside the cone does not beat a further one inside it.
+  assert.equal(
+    pickTargetInSights(eye, north, [
+      { id: 'wide', x: 30, z: -10 },
+      { id: 'narrow', x: 0, z: -90 },
+    ], TARGETING_ANGLE),
+    'narrow',
+  );
+  // The cone turns with the camera.
+  assert.equal(pickTargetInSights(eye, { x: -1, z: 0 }, [{ id: 'west', x: -40, z: 0 }], TARGETING_ANGLE), 'west');
+  assert.equal(pickTargetInSights(eye, north, [{ id: 'west', x: -40, z: 0 }], TARGETING_ANGLE), null);
+  // Degenerate input is inert rather than throwing.
+  assert.equal(pickTargetInSights(eye, { x: 0, z: 0 }, [{ id: 'a', x: 0, z: -5 }], TARGETING_ANGLE), null);
+  assert.equal(pickTargetInSights(eye, north, [], TARGETING_ANGLE), null);
+  assert.equal(pickTargetInSights(eye, north, null, TARGETING_ANGLE), null);
+
+  // The lock cone is half as wide, so a tank an observer would name is not
+  // necessarily one a missile will follow. At 100 ahead: 15.3 units against 30.9.
+  const lockHalfWidth = 100 * Math.tan(Math.asin(LOCK_ON_ANGLE));
+  const between = [{ id: 'wide', x: (lockHalfWidth + coneHalfWidth) / 2, z: -100 }];
+  assert.equal(pickTargetInSights(eye, north, between, TARGETING_ANGLE), 'wide');
+  assert.equal(pickTargetInSights(eye, north, between, LOCK_ON_ANGLE), null);
+}
+
+// GuidedMissileStrategy::update, the heading half of it. A missile turns at
+// _gmTurnAngle a second in azimuth and in elevation, and no faster.
+{
+  assert.equal(GM_TURN_ANGLE, 0.628319, '_gmTurnAngle');
+  const north = { x: 0, y: 0, z: -1 };
+  const from = { x: 0, y: 5, z: 0 };
+
+  // Nothing locked: the missile keeps the heading it was fired with, and the
+  // direction comes back normalized whatever went in.
+  assert.deepEqual(steerGuidedShot(north, from, null, GM_TURN_ANGLE, 1), north);
+  const long = steerGuidedShot({ x: 0, y: 0, z: -7 }, from, null, GM_TURN_ANGLE, 1);
+  close(Math.hypot(long.x, long.y, long.z), 1, 'a steered direction is a unit vector');
+
+  // A target dead ahead is already the heading, so nothing turns.
+  const ahead = steerGuidedShot(north, from, { x: 0, y: 5, z: -100 }, GM_TURN_ANGLE, 1);
+  close(ahead.x, 0);
+  close(ahead.z, -1);
+
+  // A target off to the left, further than one second of turn: the missile
+  // turns exactly _gmTurnAngle and no further. bzo's azimuth 0 faces -Z and
+  // turns left as it grows, which is playerRotation's own convention.
+  const left = steerGuidedShot(north, from, { x: -100, y: 5, z: 0 }, GM_TURN_ANGLE, 1);
+  close(Math.atan2(-left.x, -left.z), GM_TURN_ANGLE, 'one second of turn, to the left');
+  const halfStep = steerGuidedShot(north, from, { x: -100, y: 5, z: 0 }, GM_TURN_ANGLE, 0.5);
+  close(Math.atan2(-halfStep.x, -halfStep.z), GM_TURN_ANGLE / 2, 'half a second, half the turn');
+  const right = steerGuidedShot(north, from, { x: 100, y: 5, z: 0 }, GM_TURN_ANGLE, 1);
+  close(Math.atan2(-right.x, -right.z), -GM_TURN_ANGLE, 'and the other way for the other side');
+
+  // Within reach in one step, the missile snaps onto the target rather than
+  // overshooting it -- the first branch of upstream's three.
+  const near = steerGuidedShot(north, from, { x: -1, y: 5, z: -100 }, GM_TURN_ANGLE, 1);
+  close(Math.atan2(-near.x, -near.z), Math.atan2(1, 100), 'a small correction is taken whole');
+
+  // Azimuth and elevation are turned separately, so a target behind and above
+  // gets both at once and neither faster than the rate.
+  const climbing = steerGuidedShot(north, from, { x: 0, y: 105, z: 100 }, GM_TURN_ANGLE, 1);
+  close(Math.asin(climbing.y), GM_TURN_ANGLE, 'a full step of climb');
+  close(Math.abs(Math.atan2(-climbing.x, -climbing.z)), GM_TURN_ANGLE, 'and a full step of turn');
+
+  // A target directly overhead has no bearing to steer toward, so the missile
+  // holds the one it has and climbs rather than swinging to due north.
+  const overhead = steerGuidedShot({ x: 1, y: 0, z: 0 }, from, { x: 0, y: 60, z: 0 }, GM_TURN_ANGLE, 1);
+  close(Math.atan2(-overhead.x, -overhead.z), -Math.PI / 2, 'the bearing is kept');
+  close(Math.asin(overhead.y), GM_TURN_ANGLE);
+
+  // A direction with nothing in it cannot be turned, so it answers with one
+  // that can be drawn rather than with NaN.
+  assert.deepEqual(
+    steerGuidedShot({ x: 0, y: 0, z: 0 }, from, { x: 10, y: 5, z: 10 }, GM_TURN_ANGLE, 1),
+    { x: 0, y: 0, z: -1 },
+  );
+
+  // Both ends steer the same missile.
+  for (const to of [null, { x: -40, y: 6, z: -30 }, { x: 12, y: 0, z: 90 }]) {
+    assert.deepEqual(
+      serverFlags.steerGuidedShot(north, from, to, GM_TURN_ANGLE, 1 / 60),
+      steerGuidedShot(north, from, to, GM_TURN_ANGLE, 1 / 60),
+      'client/server guidance diverged',
     );
   }
 }

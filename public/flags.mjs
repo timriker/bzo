@@ -104,6 +104,30 @@ export const SHOCK_AD_LIFE = 0.2;
 export const SHOCK_IN_RADIUS = 6.0;
 export const SHOCK_OUT_RADIUS = 60.0;
 
+// _gmAdLife, _gmTurnAngle, _gmActivationTime and _lockOnAngle (global.cxx:66,
+// :84). A guided missile is the world's own shell at the world's own speed and
+// reload -- `GuidedMissileStrategy`'s constructor scales the lifetime and
+// nothing else -- with one difference that is the whole flag: its heading is
+// recomputed every step toward whichever tank the shooter has locked.
+//
+// `_gmTurnAngle` is a rate in radians a second, and it is spent on the
+// missile's azimuth and its elevation *separately* (GuidedMissleStrategy.cxx:186
+// and :195). A missile that has to come around and climb does both at once, and
+// neither faster than this.
+//
+// `_gmActivationTime` gates hits rather than steering: the missile flies and
+// turns from the muzzle, but nothing it touches in its first half second is hit
+// (GuidedMissleStrategy.cxx:318). That is what stops a shot fired at a tank two
+// lengths away from killing the tank that fired it as it comes around.
+//
+// `_lockOnAngle` is the cone the lock is picked from -- about 8.6 degrees,
+// half of `TARGETING_ANGLE`'s 17.5 -- because pointing a missile at a tank is a
+// larger claim than naming one.
+export const GM_AD_LIFE = 0.95;
+export const GM_TURN_ANGLE = 0.628319;
+export const GM_ACTIVATION_TIME = 0.5;
+export const LOCK_ON_ANGLE = 0.15;
+
 // _srRadiusMult (global.cxx:146). Steamroller's reach, as a multiple of the
 // roller's own radius on top of the victim's -- so the two tanks have to be
 // nearly touching, which is the flag's own help text.
@@ -307,6 +331,15 @@ export const FLAG_TYPES = Object.freeze({
     quality: FLAG_QUALITY.GOOD,
     team: null,
     help: 'Very fast reload and very short range.',
+  }),
+  GM: Object.freeze({
+    abbreviation: 'GM',
+    name: 'Guided Missile',
+    endurance: FLAG_ENDURANCE.UNSTABLE,
+    quality: FLAG_QUALITY.GOOD,
+    team: null,
+    help: 'Shots track a target.  Lock on with right button.  Can lock on or'
+      + ' retarget after firing.',
   }),
   L: Object.freeze({
     abbreviation: 'L',
@@ -834,6 +867,16 @@ export function hasAirControl(abbreviation) {
 // every tank it swells past instead of the first one, and it asks nothing about
 // the geometry in between.
 //
+// `guided` is a shot whose heading is not fixed at the muzzle: every simulation
+// step turns it toward whatever its shooter has locked, at `GM_TURN_ANGLE`. It
+// is the one variant whose path both ends have to integrate rather than
+// extrapolate, which is why `steerGuidedShot` below is shared rather than the
+// server's alone.
+//
+// `activationTime` is how long a shot flies before it may hit anything. Only a
+// guided missile has one, and `_gmActivationTime` is why: a missile turning back
+// toward a target beside its shooter would otherwise kill the shooter.
+//
 // `fireSound` is the sample the shot is announced with. Upstream switches on the
 // flag rather than playing SFX_FIRE for everything (playing.cxx:2956), and Laser
 // is the first flag bzo has that takes a sound of its own.
@@ -843,6 +886,8 @@ const DEFAULT_SHOT_EFFECTS = Object.freeze({
   lifeFactor: 1,
   beam: false,
   shockwave: false,
+  guided: false,
+  activationTime: 0,
   throughBuildings: false,
   hiddenOnRadar: false,
   fireSound: 'fire',
@@ -868,6 +913,16 @@ const SHOT_EFFECTS = Object.freeze({
     lifeFactor: LASER_AD_LIFE,
     beam: true,
     fireSound: 'laser',
+  }),
+  // GuidedMissileStrategy's constructor scales the lifetime and touches nothing
+  // else: it never calls `setReloadTime`, and it leaves the shell at the world's
+  // own speed. Everything that makes the flag is in the heading.
+  GM: Object.freeze({
+    ...DEFAULT_SHOT_EFFECTS,
+    lifeFactor: GM_AD_LIFE,
+    guided: true,
+    activationTime: GM_ACTIVATION_TIME,
+    fireSound: 'missile',
   }),
   SB: Object.freeze({
     ...DEFAULT_SHOT_EFFECTS,
@@ -919,13 +974,124 @@ export function getShockWaveAlpha(radius) {
   return 0.75 - (0.5 * frac);
 }
 
+// GuidedMissileStrategy::update (GuidedMissleStrategy.cxx:170). One simulation
+// step of a missile's heading: decompose the direction it is flying into an
+// azimuth and an elevation, turn each of them toward the aim point by at most
+// `turnAngle * seconds`, and compose a direction back out. Both ends run it --
+// the server to decide where the missile is, each client to draw it there --
+// which is why it is here and not in `server.js`.
+//
+// The angles are bzo's, not upstream's: at azimuth 0 a tank and its shots face
+// -Z, and a positive azimuth turns left, exactly as `playerRotation` does. The
+// arithmetic is upstream's unchanged.
+//
+// `to` is the aim point rather than the target's position, because "right
+// between the eyes" is the caller's question: upstream adds the target's own
+// muzzle height, and a bzo tank has as many muzzle heights as it has models.
+// A null `to` is a missile with nothing locked, which flies straight.
+export function steerGuidedShot(direction, from, to, turnAngle, seconds) {
+  const length = Math.hypot(direction.x, direction.y ?? 0, direction.z);
+  if (!(length > 0)) return { x: 0, y: 0, z: -1 };
+  const dir = {
+    x: direction.x / length,
+    y: (direction.y ?? 0) / length,
+    z: direction.z / length,
+  };
+  if (!to || !(turnAngle > 0) || !(seconds > 0)) return dir;
+
+  const dx = to.x - from.x;
+  const dy = to.y - from.y;
+  const dz = to.z - from.z;
+  const ground = Math.hypot(dx, dz);
+
+  const maxDelta = turnAngle * seconds;
+  // A target directly overhead has no bearing to turn toward, so the missile
+  // keeps the one it has and climbs. Upstream's atan2f(0, 0) answers zero here,
+  // which would swing the missile to due north instead.
+  const azimuth = ground > 1e-6
+    ? turnTowardAngle(Math.atan2(-dir.x, -dir.z), Math.atan2(-dx, -dz), maxDelta)
+    : Math.atan2(-dir.x, -dir.z);
+  const elevation = turnTowardAngle(
+    Math.atan2(dir.y, Math.hypot(dir.x, dir.z)),
+    Math.atan2(dy, ground),
+    maxDelta,
+  );
+
+  const cosElevation = Math.cos(elevation);
+  return {
+    x: -Math.sin(azimuth) * cosElevation,
+    y: Math.sin(elevation),
+    z: -Math.cos(azimuth) * cosElevation,
+  };
+}
+
+// limitAngle() (GuidedMissleStrategy.cxx:27), and the three-branch turn each of
+// the two angles takes: snap to the target when it is within reach this step,
+// otherwise move the whole step toward it.
+function limitAngle(angle) {
+  if (angle < -Math.PI) return angle + (2 * Math.PI);
+  if (angle >= Math.PI) return angle - (2 * Math.PI);
+  return angle;
+}
+
+function turnTowardAngle(current, desired, maxDelta) {
+  const delta = limitAngle(desired - current);
+  if (Math.abs(delta) <= maxDelta) return limitAngle(desired);
+  return limitAngle(current + (delta > 0 ? maxDelta : -maxDelta));
+}
+
+// _targetingAngle (global.cxx:158), compared against |sin| of the angle off
+// forward -- about 17.5 degrees.
+export const TARGETING_ANGLE = 0.3;
+
+// setTarget() (playing.cxx:4390): whoever is centred in the sights. It answers
+// two questions with one cone -- an observer naming the tank it is looking at,
+// at `TARGETING_ANGLE`, and a tank locking a guided missile onto one, at the
+// tighter `LOCK_ON_ANGLE` -- so both ends need it and the caller brings the
+// angle. The nearest candidate inside the cone wins, and anything behind the
+// eye is ignored.
+//
+// Candidates are `{id, x, z}`; who is eligible is the caller's question too,
+// because the two callers disagree about it: a lock refuses a stealthed or
+// paused tank where a look does not.
+export function pickTargetInSights(eye, forward, candidates, sineLimit) {
+  const length = Math.hypot(forward.x, forward.z);
+  if (!(length > 0) || !Array.isArray(candidates)) return null;
+  const fx = forward.x / length;
+  const fz = forward.z / length;
+
+  let bestId = null;
+  let bestDistance = Infinity;
+  for (const candidate of candidates) {
+    const dx = candidate.x - eye.x;
+    const dz = candidate.z - eye.z;
+    // The camera frame: distance along the heading, and offset across it.
+    const ahead = (dx * fx) + (dz * fz);
+    if (ahead < 0) continue;
+    const lateral = (dx * fz) - (dz * fx);
+    const distance = Math.hypot(ahead, lateral);
+    if (distance <= 0) continue;
+    if (Math.abs(lateral) / distance >= sineLimit) continue;
+    if (distance < bestDistance) {
+      bestDistance = distance;
+      bestId = candidate.id;
+    }
+  }
+  return bestId;
+}
+
 // SegmentedShotStrategy::makeSegments. A shot that would stop at a wall
 // reflects off it instead when the world says every shot ricochets, and the
 // Ricochet flag makes one that reflects whatever the world says. With the world
 // switch on the flag has nothing left to offer, which is why the server forbids
 // it there. A shot that goes through buildings never meets one to bounce off.
+//
+// A guided missile never bounces either, on any world: the ricochet switch is
+// read by `makeSegments`, and `GuidedMissileStrategy::checkBuildings` has no
+// path through it -- the missile explodes on the first building it reaches.
 export function shotRicochets(abbreviation, allShotsRicochet) {
-  if (getShotEffects(abbreviation).throughBuildings) return false;
+  const effects = getShotEffects(abbreviation);
+  if (effects.throughBuildings || effects.guided) return false;
   return allShotsRicochet === true || abbreviation === 'R';
 }
 

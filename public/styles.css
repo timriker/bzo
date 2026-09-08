@@ -1329,17 +1329,9 @@ body.no-jumping #altimeter {
   display: none;
 }
 
-/* Identify picks the roaming target. It will also lock a guided missile once
-   those exist; until then it has nothing to do outside observer mode, so the
-   touch button is only offered there. Fire and Drop keep their own labels,
-   because an observer spends them on the view and on descending. */
-#identifyBtn {
-  display: none;
-}
-
-body.observing #identifyBtn {
-  display: flex;
-}
+/* Identify picks the roaming target for an observer and locks a guided missile
+   for a tank, so the touch button is offered to both. Fire and Drop keep their
+   own labels, because an observer spends them on the view and on descending. */
 
 /* renderRoaming() draws both of these: renderStatus() puts the roaming label at
    the very top and renderAlerts() stacks the alert slots just under it. They are
