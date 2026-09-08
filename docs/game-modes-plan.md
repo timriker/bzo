@@ -152,12 +152,20 @@ picks a team; the selection functions are pure and live in the `teams` pair. See
 "Rabbit Chase" in `AGENTS.md` for the rules and for the deviations from
 upstream, and `docs/bzw.md` for the map switch.
 
-One thing it wanted and did not get: the **XR bearing ribbon**. The ribbon with
-a tank caret is still the recommended design for team flags, antidotes and the
-rabbit alike, and it is still unbuilt. Rabbit Chase reads in a headset without
-it -- the XR radar panel is textured from the flat radar's canvas, so the ring
-arrives there, and the XR scoreboard reads the same rows -- so the ribbon is
-worth building for all three at once rather than for this one.
+One thing it wanted and did not get: an **XR bearing cue**. The XR radar panel
+is textured from the flat radar's canvas, so the rabbit's ring arrives in a
+headset for free, and the same ring now marks the player's own team flags and
+the antidote -- pinned to the border of the panel when the thing is past radar
+range, which is the cheapest surface bzo has, since that canvas is uploaded
+every frame of a session whatever is drawn on it.
+
+What the radar cannot do is spare the player a top-down map to rotate mentally.
+The two candidates for that are a **world-locked sky beacon** -- one instanced
+draw riding the billboard yaw `updateFlagVisuals` already computes, and the
+answer to "lead me there" -- and a **head-locked bearing ribbon** with a tank
+caret. The ribbon is the more expensive of the two by a wide margin: its centre
+is where the player looks, so unlike every other XR panel its canvas would
+repaint and re-upload on every frame the head moves. Build the beacon first.
 
 ## Handicap
 

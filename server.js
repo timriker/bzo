@@ -29,6 +29,7 @@ const {
   FLAG_RADIUS,
   FLAG_STATUS,
   IDENTIFY_RANGE,
+  findNearestGroundFlag,
   GM_TURN_ANGLE,
   LOCK_ON_ANGLE,
   TARGETING_ANGLE,
@@ -2374,9 +2375,6 @@ class Player {
     this.clientIP = null;
     // PlayerInfo::restartOnBase. Set for every CTF spawn and after a capture.
     this.restartOnBase = false;
-    // GameKeeper::Player::lastIdFlag. Which flag the Identify flag last named,
-    // so the answer is sent once rather than on every position update.
-    this.lastIdFlag = null;
     // LocalPlayer::target, which upstream keeps on the shooter's own client and
     // bzo keeps here: the id of the tank this player has locked a guided missile
     // onto, or null. Every missile this player has in the air steers at it, as
@@ -5195,8 +5193,8 @@ function armBadFlagRelease(player, flag) {
 
 // checkEnvironment()'s "see if I'm over my antidote" (LocalPlayer.cxx:867),
 // server-side for the same reason the placement is. Runs off each accepted
-// position update, as searchFlag does, and asks the same two questions the flag
-// grab does: same level, and within a tank plus a flag radius.
+// position update, and asks the same two questions the flag grab does: same
+// level, and within a tank plus a flag radius.
 function checkAntidote(player) {
   const antidote = player.antidote;
   if (!antidote) return;
@@ -5222,45 +5220,27 @@ function recordShakeWin(player) {
   dropFlag(flag);
 }
 
-// searchFlag(). The whole of the Identify flag: while a player carries `ID`,
-// name the nearest flag resting on the ground within `_identifyRange` for them
-// alone. Runs off each accepted position update, as upstream runs it off
-// MsgPlayerUpdate, so it costs nothing for a player who is not moving.
+// searchFlag(), asked rather than pushed. Upstream sweeps for every player on
+// every position update and sends the answer whether or not the client could
+// already give it. bzo's client keeps what it has learned in its own flag record
+// -- `keepFlagIdentity` -- so it names a flag it recognises itself and asks only
+// about one it cannot, which is at most one packet per flag per world rather
+// than one per flag per pass along a row of them.
+//
+// The sweep is still upstream's and still the server's: `findNearestGroundFlag`
+// in the flags pair, over the range and the states upstream uses, so a client
+// cannot ask about a flag it is nowhere near or one that is not lying on the
+// ground. What arrives from the client is the question, never the answer.
 //
 // A flag's identity stays hidden in `flagUpdate` regardless. Identify tells its
 // carrier what one flag is; it does not reveal that flag to the world.
 function searchFlag(player) {
-  const playerFlag = getPlayerFlag(player.id);
-  if (playerFlag?.type !== 'ID') {
-    // Upstream leaves lastIdFlag alone here, so re-taking Identify beside the
-    // same flag stays silent. Clearing it means the answer arrives again, which
-    // is what a player who just picked the flag up is waiting for.
-    player.lastIdFlag = null;
-    return;
-  }
+  if (getPlayerFlag(player.id)?.type !== 'ID') return;
   if (player.health <= 0 || player.paused) return;
 
-  let closest = null;
-  let closestDistanceSquared = IDENTIFY_RANGE * IDENTIFY_RANGE;
-  for (const flag of flags) {
-    if (flag.status !== FLAG_STATUS.ON_GROUND) continue;
-    const dx = player.x - flag.position.x;
-    const dy = player.y - flag.position.y;
-    const dz = player.z - flag.position.z;
-    const distanceSquared = (dx * dx) + (dy * dy) + (dz * dz);
-    if (distanceSquared >= closestDistanceSquared) continue;
-    closestDistanceSquared = distanceSquared;
-    closest = flag;
-  }
+  const closest = findNearestGroundFlag(flags, player.x, player.y, player.z, IDENTIFY_RANGE);
+  if (!closest) return;
 
-  if (!closest) {
-    player.lastIdFlag = null;
-    return;
-  }
-  // One message per flag, not one per update: the answer only changes when a
-  // different flag becomes the nearest one.
-  if (closest.index === player.lastIdFlag) return;
-  player.lastIdFlag = closest.index;
   sendToPlayer(player, {
     type: 'nearFlag',
     index: closest.index,
@@ -8260,7 +8240,6 @@ wss.on('connection', (ws, req) => {
 
             broadcast(pmPacket, ws);
 
-            searchFlag(player);
             checkAntidote(player);
           } else {
             // Validation failed - jumpDirection unchanged (no update needed)
@@ -8392,6 +8371,16 @@ wss.on('connection', (ws, req) => {
           if (TEAM_MODE.enabled) {
             ws.send(JSON.stringify({ type: 'teamUpdate', teams: getTeamScoreState() }));
           }
+          break;
+        }
+
+        // The Identify flag asking what the nearest flag is. The client sweeps
+        // for itself and only asks about one it cannot already name, so this
+        // arrives once per flag rather than on every position update the way
+        // upstream's own push does.
+        case 'nearFlag': {
+          if (!player.joined) break;
+          searchFlag(player);
           break;
         }
 

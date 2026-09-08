@@ -473,12 +473,20 @@ its own frame delta from the value the server sent.
 Flag ownership lives only in the server's `flags` array. Do not add a second
 copy on the player.
 
-A client's *knowledge* of a flag's identity is separate, because bzfs reveals a
-superflag's type only while somebody is holding it: `rememberFlagIdentity` in
-the flags pair keeps what each client has learned, and the debug labels draw an
-identified flag's abbreviation over it. The memory is keyed by flag index, which
-is a slot rather than a flag, so it is forgotten when the slot's flag leaves the
+A client's *knowledge* of a flag's identity lives in its own flag record, not
+beside it. bzfs reveals a superflag's type only while somebody is holding it, so
+an update for a dropped flag arrives with `type: null`; `keepFlagIdentity` in the
+flags pair is the rule that keeps what the record already learned across such an
+update, and the debug labels draw an identified flag's abbreviation over it. A
+record is a slot rather than a flag, so it forgets when its flag leaves the
 world.
+
+Identify is asked for rather than pushed. The client sweeps for the nearest flag
+with `findNearestGroundFlag` from the flags pair, names it from its own record
+when it can, and sends a `nearFlag` only for a flag it cannot name; the server
+answers by making the same sweep against its own copy of that tank's position.
+Upstream sends the answer off every position update instead, which is a packet
+per flag per pass along a row of them for answers the client already has.
 
 Where a flag's rule is enforced follows one test: server-side wherever a modified
 client could gain by lying, client-side wherever it only changes what its own
@@ -1885,10 +1893,10 @@ hunter, upstream's `RabbitChase`.
   leader cannot disagree with the top row.
 - **XR reads both through the panels it already draws.** The XR radar panel is
   textured from the same canvas, so the ring arrives there on the same frame, and
-  the XR scoreboard reads the same rows. The bearing ribbon
-  `docs/game-modes-plan.md` recommends for team flags, antidotes and the rabbit
-  is still unbuilt; when it lands the rabbit gets a caret on it and this needs no
-  second affordance.
+  the XR scoreboard reads the same rows. The same ring marks the player's own
+  team flags and the antidote, which is what an immersive session has instead of
+  the heading tape; `docs/game-modes-plan.md` carries what a world-space bearing
+  cue would add on top of it.
 
 ## One label for a player, however many surfaces write it
 
@@ -2481,6 +2489,27 @@ node scripts/headless-client.mjs --name probe --seconds 4 --eval '(async () => {
 
 ES modules are cached, so that is the same instance `client.js` is reading, and
 everything downstream of the key is the real code path.
+
+**Chat needs a focus event raised by hand.** `/mv` and `/flag` are typed, so a
+probe has to send chat, and two things stop the obvious code working. A headless
+window is never focused, so `chatInput.focus()` raises no `focus` event and the
+client never enters chat entry; and the Send button sends on `mousedown`, so
+`click()` alone only toggles focus. Both together:
+
+```
+const say = (text) => {
+  const input = document.getElementById('chatInput');
+  input.dispatchEvent(new FocusEvent('focus'));
+  input.value = text;
+  document.getElementById('sendBtn')
+    .dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
+};
+```
+
+The HUD keys are a plain `keydown` listener rather than gameplay input, so those
+*do* answer a synthetic event on `document` -- `Minus` and `Equal` step the radar
+range, which is how a probe puts something outside the panel to see it pinned to
+the border.
 
 **Measure from the server, not from the page.** Join a second raw `ws` client as
 an observer and read the `pm` broadcasts: they carry `x`, `z`, `fs` and `rs` for

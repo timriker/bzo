@@ -1651,6 +1651,31 @@ export function getWingsSlideVelocity(
   return { x, z };
 }
 
+// searchFlag()'s sweep (bzfs.cxx). The nearest flag lying on the ground within
+// `_identifyRange`, or null. Both ends ask: the server to reveal a type the
+// client has never seen, the client to raise the same alert for one it has
+// already learned -- so the two must pick the same flag or Identify would name
+// one and the panel would ring another. Upstream measures in three dimensions,
+// which is what puts a flag on a roof out of reach of a tank below it.
+//
+// `flagIterable` is anything iterable of flags: the server's array, or the
+// client's `flags.values()`.
+export function findNearestGroundFlag(flagIterable, x, y, z, range) {
+  let closest = null;
+  let closestDistanceSquared = range * range;
+  for (const flag of flagIterable) {
+    if (flag.status !== FLAG_STATUS.ON_GROUND) continue;
+    const dx = x - flag.position.x;
+    const dy = y - flag.position.y;
+    const dz = z - flag.position.z;
+    const distanceSquared = (dx * dx) + (dy * dy) + (dz * dz);
+    if (distanceSquared >= closestDistanceSquared) continue;
+    closestDistanceSquared = distanceSquared;
+    closest = flag;
+  }
+  return closest;
+}
+
 // The BZFlag colour index of a team flag, or null for a superflag or for a flag
 // whose identity is still hidden.
 export function getFlagTeamIndex(abbreviation) {
@@ -1658,30 +1683,21 @@ export function getFlagTeamIndex(abbreviation) {
   return type && type.team ? type.team : null;
 }
 
-// What a client has learned about a slot's identity. bzfs reveals a superflag's
-// type only while somebody is carrying it, so `flag.type` drops back to null
-// the moment it is dropped -- but the flag is the same flag, and a player who
-// saw what it was still knows. Identify feeds this too.
+// The type a client's own flag record should carry after an update, which is
+// how a client remembers what it has learned. bzfs reveals a superflag's type
+// only while somebody is carrying it, so a dropped flag arrives with
+// `type: null` -- but it is the same flag, and a player who saw what it was
+// still knows, so the record keeps the answer rather than dropping back to
+// unidentified. Identify fills the same field.
 //
-// `known` is a Map from flag index to abbreviation. The index is a *slot*, not a
-// flag, so a slot that empties or takes a flag flying in has to be forgotten:
-// its next identity is a fresh roll, and keeping the old one would label a new
-// Useless as the Identify that stood there before it.
-export function rememberFlagIdentity(known, index, type, status) {
-  if (status === FLAG_STATUS.NO_EXIST || status === FLAG_STATUS.COMING) {
-    known.delete(index);
-    return;
-  }
-  if (type) known.set(index, type);
-}
-
-// The abbreviation to label a flag with, or null for one this client has no
-// business knowing. A carried flag names itself; anything else is whatever was
-// learned while its identity was visible. A team flag is never hidden, so it
-// always answers.
-export function getKnownFlagAbbreviation(known, flag) {
-  if (!flag) return null;
-  return flag.type || known.get(flag.index) || null;
+// The record forgets when its flag leaves it. A record is a *slot*, not a flag:
+// one that empties or takes a flag flying in gets a fresh roll next, and keeping
+// the old identity would label a new Useless as the Identify that stood there
+// before it. A team flag is never hidden and so answers with nothing to
+// remember.
+export function keepFlagIdentity(incomingType, knownType, status) {
+  if (status === FLAG_STATUS.NO_EXIST || status === FLAG_STATUS.COMING) return incomingType || null;
+  return incomingType || knownType || null;
 }
 
 // Whether a flag is one of the penalties. The quality is on the table already;

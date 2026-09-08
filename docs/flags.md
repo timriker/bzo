@@ -29,11 +29,21 @@ cannot drift out of step with the behaviour.
   sends a packet the server has to argue with.
 
 **Flag ownership lives only in the server's `flags` array.** There is no second
-copy on the player. A client's *knowledge* of a flag's identity is separate,
-because a superflag's type is revealed only while somebody holds it:
-`rememberFlagIdentity` keeps what each client has learned, keyed by flag index --
-a slot rather than a flag, so it is forgotten when that slot's flag leaves the
-world.
+copy on the player. A client's *knowledge* of a flag's identity lives in its own
+flag record and nowhere else: a superflag's type is revealed only while somebody
+holds it, so an update for a dropped one arrives with `type: null`, and
+`keepFlagIdentity` is the rule that keeps the record's answer across it. A record
+is a slot rather than a flag, so it forgets when its flag leaves the world -- its
+next flag is a fresh roll, and keeping the old identity would label a new Useless
+as the Identify that stood there before it.
+
+**Identify is asked for, not pushed.** Upstream's `searchFlag` sweeps for every
+player on every position update and sends the answer whether or not the client
+could already give it. bzo's client makes the same sweep -- `findNearestGroundFlag`
+in the flags pair, so neither end can pick a different flag -- names the nearest
+one itself when its record knows the type, and sends a `nearFlag` only for one it
+cannot name. The server answers by sweeping its own copy of that tank's position,
+so the request carries nothing to validate.
 
 **The `FLAG_TYPES` table is the list of what bzo has.** A row is what puts a flag
 in `superFlags.allowed`'s default and in the help panel, which `buildFlagHelp`
@@ -61,8 +71,11 @@ own arrangement: the client sweeps for what it is driving over and asks, and the
 server revalidates with a deliberately loose radius that absorbs a lag period.
 
 A superflag's identity is hidden from every client while nobody holds it, and
-becomes known to *everyone* the moment somebody picks it up. That costs nothing
-visually, because every superflag renders white; only the name differs.
+becomes known to *everyone* the moment somebody picks it up. Upstream can hide
+one for nothing, because every superflag it draws is white and only the name
+differs. bzo pays a little: a flag it knows to be bad wears `BAD_FLAG_COLOR`
+wherever it appears -- in the world, on the radar and on the scoreboards -- so a
+slot that has been identified looks different from one that has not.
 
 CTF is on when team mode is on **and** the map has bases, which is upstream's
 `ClassicCTF`. Team flags occupy the first slots of the flag array so a team's

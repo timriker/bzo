@@ -217,7 +217,6 @@ import {
   getFlagFlightState,
   getFlagTeamIndex,
   getFlagType,
-  getKnownFlagAbbreviation,
   getShotEffects,
   getThiefDropReloadSeconds,
   applyAccelerationLimit,
@@ -257,7 +256,9 @@ import {
   isTeamFlag,
   normalizeShakeTimeout,
   normalizeShakeWins,
-  rememberFlagIdentity,
+  keepFlagIdentity,
+  findNearestGroundFlag,
+  IDENTIFY_RANGE,
   shotRicochets,
   GM_TURN_ANGLE,
   TARGETING_ANGLE,
@@ -4770,10 +4771,14 @@ function handleServerMessage(message) {
     case 'grabFlag': {
       const flag = setFlagState(message.flag);
       handleFlagGrabbedAlerts(message.playerId, flag);
-      addChatEntry(
-        ['misc', 'all'],
-        `${getPlayerName(message.playerId)} grabbed ${describeFlagForChat(flag)} flag`,
-        CHAT_KIND_MISC,
+      // The player in their roster colour and the flag in its own, as every other
+      // notice that names a tank does. `flag: null` because the sentence names
+      // the flag already, and a callsign wearing it too would say it twice.
+      noticeAbout(
+        null,
+        [describePlayer(message.playerId, { flag: null }), ' grabbed ', describeFlagForNotice(flag), ' flag'],
+        0,
+        false,
       );
       // The scoreboard names the carried flag, and it only repaints on events.
       refreshScoreboards();
@@ -4814,10 +4819,11 @@ function handleServerMessage(message) {
           forceReload(getThiefDropReloadSeconds(getShotLifetimeSeconds(null)));
         }
       }
-      addChatEntry(
-        ['misc', 'all'],
-        `${getPlayerName(message.playerId)} dropped ${describeFlagForChat(flag)} flag`,
-        CHAT_KIND_MISC,
+      noticeAbout(
+        null,
+        [describePlayer(message.playerId, { flag: null }), ' dropped ', describeFlagForNotice(flag), ' flag'],
+        0,
+        false,
       );
       refreshScoreboards();
       break;
@@ -4889,7 +4895,7 @@ function handleServerMessage(message) {
         setHudAlert(PAUSE_ALERT_SLOT, null, 0);
         showMessage('Paused');
       } else {
-        addChatEntry(['misc', 'all'], `${getPlayerName(message.playerId)} has paused`, CHAT_KIND_MISC);
+        noticeAbout(null, [describePlayer(message.playerId), ' has paused'], 0, false);
       }
       setTankPausedState(message.playerId, true, message);
       createPausedSphere(message.playerId, message.x, message.y, message.z);
@@ -4902,7 +4908,7 @@ function handleServerMessage(message) {
         pauseAlertSecondsShown = 0;
         showMessage('Resumed');
       } else {
-        addChatEntry(['misc', 'all'], `${getPlayerName(message.playerId)} has unpaused`, CHAT_KIND_MISC);
+        noticeAbout(null, [describePlayer(message.playerId), ' has unpaused'], 0, false);
       }
       setTankPausedState(message.playerId, false);
       removePausedSphere(message.playerId);
@@ -9067,9 +9073,10 @@ function isShotTeleportDebugEnabled() {
 // client integrates it locally from there. See docs/flags.md.
 
 const flags = new Map();
-// Flag index to abbreviation, for every slot whose identity this client has
-// learned -- see rememberFlagIdentity in the flags pair for the rule.
-const knownFlagTypes = new Map();
+// Which flag `checkNearFlag` last named or asked about, so Identify speaks once
+// per flag rather than once per frame. Upstream's
+// `GameKeeper::Player::lastIdFlag`, on the end that now asks the question.
+let lastIdentifiedFlagIndex = null;
 // checkEnvironment() sweeps for flags to grab no more than five times a second,
 // and a capture is rate-limited the same way: the flag only leaves the tank when
 // the server says so, and until then the condition stays true every frame.
@@ -9104,7 +9111,7 @@ const FLAG_CARRY_HEIGHT = 2;
 
 function clearFlags() {
   flags.clear();
-  knownFlagTypes.clear();
+  lastIdentifiedFlagIndex = null;
   // clearFlags() disposes the antidote's node with every other flag's, so the
   // position it was drawn from has to go with it or the next frame recreates it.
   antidotePosition = null;
@@ -9118,8 +9125,10 @@ function setFlagState(state) {
   const flag = {
     index: state.index,
     // A superflag on the ground arrives without its type: bzfs hides the
-    // identity of any superflag nobody is holding.
-    type: state.type,
+    // identity of any superflag nobody is holding. What this client has already
+    // learned about the slot lives in this same field and is kept across such an
+    // update -- see `keepFlagIdentity` for when a record forgets.
+    type: keepFlagIdentity(state.type, existing?.type, state.status),
     status: state.status,
     owner: state.owner,
     position: { ...state.position },
@@ -9139,7 +9148,6 @@ function setFlagState(state) {
     alpha: existing ? existing.alpha : 1,
   };
   flags.set(state.index, flag);
-  rememberFlagIdentity(knownFlagTypes, flag.index, flag.type, flag.status);
   if (flag.status === FLAG_STATUS.NO_EXIST) renderManager.hideFlag(flag.index);
   return flag;
 }
@@ -9322,7 +9330,7 @@ function getFlagLabelForAbbreviation(abbreviation) {
 // upstream; a flag known to be bad wears the bad-flag colour everywhere it
 // appears, which is the point of bzo tracking identities at all.
 function getKnownFlagColor(flag) {
-  const abbreviation = getKnownFlagAbbreviation(knownFlagTypes, flag);
+  const abbreviation = flag?.type ?? null;
   if (!abbreviation) return SUPER_FLAG_COLOR;
   if (isBadFlag(abbreviation)) return BAD_FLAG_COLOR;
   return getFlagColor(abbreviation);
@@ -9350,6 +9358,25 @@ function describeFlagForChat(flag) {
   if (!type) return 'unidentified';
   if (type.team) return type.name;
   return `${type.abbreviation}/${type.name}`;
+}
+
+// The flag a notice is about, as a coloured part `noticeAbout` takes -- the same
+// shape `describePlayer` returns, so one sentence can name both. The colour is
+// the one the flag wears everywhere else, `getKnownFlagColor`, so a bad flag
+// carries the same warning into the chat line that it wears on the scoreboard,
+// on the radar and in the world.
+function describeFlagForNotice(flag) {
+  const text = describeFlagForChat(flag);
+  return { text, segments: [{ text, color: colorToCSS(getKnownFlagColor(flag)) }] };
+}
+
+// A team named in a notice, in that team's own tank colour. The capture lines
+// are about whose flag went into whose territory, and the colour is the fastest
+// way to read which pair that was.
+function describeTeamForNotice(colorIndex) {
+  const team = getTeamFromColorIndex(colorIndex);
+  if (!team) return { text: 'unknown', segments: null };
+  return { text: team, segments: [{ text: team, color: colorToCSS(getPlayerTeamColor(team)) }] };
 }
 
 // HelpMenu's flag pages, built from the shared flag table rather than written
@@ -9454,12 +9481,35 @@ function getMyTeamColorIndex() {
   return getTeamColorIndex(playerTeam);
 }
 
+// The colour the radar draws a flag in, which is the answer `getKnownFlagColor`
+// gives the world put against the radar's own team colours -- so a flag cannot
+// be one colour in front of the tank and another on the panel.
+//
+// A flag whose identity this client has not learned is white, as every
+// superflag is upstream. A team flag's colour is lifted for the dark panel,
+// which is upstream's own split between `getColor` and `getRadarColor`. A bad
+// flag keeps the single orange it wears everywhere else: that colour is bzo's
+// warning rather than a team's identity, and there is nothing to lift it away
+// from -- it was picked precisely because no team wears it.
+function getKnownFlagRadarColor(flag) {
+  const abbreviation = flag?.type ?? null;
+  if (!abbreviation) return SUPER_FLAG_COLOR;
+  if (isBadFlag(abbreviation)) return BAD_FLAG_COLOR;
+  return getFlagRadarColor(abbreviation);
+}
+
 // colorToCSS builds a string, and the radar asks for the same handful of flag
 // colours on every frame, so each one is resolved once and reused.
 const flagRadarStyles = new Map();
 
-function getFlagRadarStyle(abbreviation) {
-  const color = getFlagRadarColor(abbreviation);
+// The sought flags found by the frame's walk of the flag table, held back so
+// they draw after the batched crosses. Reused rather than rebuilt: a world may
+// hold two hundred flags and this runs every frame on a client with one core to
+// spend, so the walk that finds them is the one the panel already makes.
+const radarSoughtFlags = [];
+
+function getFlagRadarStyle(flag) {
+  const color = getKnownFlagRadarColor(flag);
   let style = flagRadarStyles.get(color);
   if (!style) {
     style = colorToCSS(color);
@@ -9628,10 +9678,18 @@ function handleFlagTransferred(message) {
   const label = describeFlag(flag);
   const thiefName = getPlayerName(message.toId);
   const victimName = getPlayerName(message.fromId);
-  addChatEntry(
-    ['misc', 'all'],
-    `${thiefName} stole ${victimName}'s ${describeFlagForChat(flag)} flag`,
-    CHAT_KIND_MISC
+  noticeAbout(
+    null,
+    [
+      describePlayer(message.toId, { flag: null }),
+      ' stole ',
+      describePlayer(message.fromId, { flag: null }),
+      "'s ",
+      describeFlagForNotice(flag),
+      ' flag',
+    ],
+    0,
+    false,
   );
   if (message.fromId === myPlayerId) {
     renderManager.playLocalSound('flagDrop');
@@ -9649,18 +9707,68 @@ function handleNearFlag(message) {
   if (getMyFlag()?.type !== 'ID') return;
   const type = getFlagType(message.flagType);
   if (!type) return;
-  knownFlagTypes.set(message.index, message.flagType);
+  // The answer goes into the flag record, which is where every other surface
+  // reads an identity from: the label over the flag, the radar cross, the
+  // scoreboard. Identify is one of the two ways a record learns one.
+  const flag = flags.get(message.index);
+  if (flag) flag.type = message.flagType;
+  lastIdentifiedFlagIndex = message.index;
+  announceNearFlag(type);
+}
+
+function announceNearFlag(type) {
   const notice = `Closest Flag: ${type.name}`;
   setHudAlert(1, notice, NEAR_FLAG_ALERT_SECONDS, false);
   showMessage(notice);
 }
 
+// searchFlag() on this end. Upstream's server sweeps for every player on every
+// position update and pushes the answer; here the client sweeps for itself and
+// speaks when the nearest flag changes.
+//
+// It asks the server only about a flag it cannot name. A record keeps what it
+// has learned, so driving back along a row of flags costs nothing after the
+// first pass -- and the identity cannot have gone stale underneath it, because
+// the only things that change a slot's identity are exactly the states that make
+// the record forget it.
+//
+// `lastIdentifiedFlagIndex` moves whether the flag was named or asked about, so
+// a flag still unknown is asked about once rather than once a frame. The answer
+// arrives as a `nearFlag`, which names it and moves the mark again.
+function checkNearFlag() {
+  if (getMyFlag()?.type !== 'ID' || !myTank) {
+    // Upstream clears its own `lastIdFlag` when the flag goes, so re-taking
+    // Identify beside the same flag answers again instead of staying silent.
+    lastIdentifiedFlagIndex = null;
+    return;
+  }
+  const closest = findNearestGroundFlag(
+    flags.values(),
+    playerX,
+    myTank.position.y,
+    playerZ,
+    IDENTIFY_RANGE
+  );
+  if (!closest) {
+    lastIdentifiedFlagIndex = null;
+    return;
+  }
+  if (closest.index === lastIdentifiedFlagIndex) return;
+  lastIdentifiedFlagIndex = closest.index;
+
+  const type = getFlagType(closest.type);
+  if (type) {
+    announceNearFlag(type);
+    return;
+  }
+  // The server sweeps again on its own copy of this tank's position rather than
+  // trusting the index, so the request carries nothing to check.
+  sendToServer({ type: 'nearFlag' });
+}
+
 // MsgCaptureFlag on the client. The server sends a playerHit for each tank on
 // the losing team, so the explosions come through the usual death path.
 function handleFlagCaptured(message) {
-  const capturedTeam = getTeamFromColorIndex(message.flagTeam);
-  const baseTeam = getTeamFromColorIndex(message.baseTeam);
-  const capturerName = getPlayerName(message.playerId);
   const capturer = tanks.get(message.playerId);
   const capturerTeamIndex = message.playerId === myPlayerId
     ? getMyTeamColorIndex()
@@ -9669,17 +9777,25 @@ function handleFlagCaptured(message) {
   const ownGoal = capturerTeamIndex === message.flagTeam;
 
   if (ownGoal) {
-    addChatEntry(
-      ['misc', 'all'],
-      `${capturerName} took their own flag into ${baseTeam} territory`,
-      CHAT_KIND_MISC
+    noticeAbout(
+      null,
+      [describePlayer(message.playerId, { flag: null }), ' took their own flag into ',
+        describeTeamForNotice(message.baseTeam), ' territory'],
+      0,
+      false,
     );
     if (message.playerId === myPlayerId) {
       showMessage("Don't capture your own flag!!!", 'death');
       renderManager.playLocalSound('killTeam');
     }
   } else {
-    addChatEntry(['misc', 'all'], `${capturerName} captured the ${capturedTeam} flag`, CHAT_KIND_MISC);
+    noticeAbout(
+      null,
+      [describePlayer(message.playerId, { flag: null }), ' captured the ',
+        describeTeamForNotice(message.flagTeam), ' flag'],
+      0,
+      false,
+    );
   }
 
   // My team lost its flag, or my team is the one that took somebody else's.
@@ -9688,6 +9804,19 @@ function handleFlagCaptured(message) {
   } else if (capturerTeamIndex === myTeamIndex) {
     renderManager.playLocalSound('flagWon');
   }
+}
+
+// A flag of the player's own team that they are not the one carrying. Upstream
+// asks this of the heading tape alone; bzo's radar rings the same flags, so both
+// ask here and the tape and the panel cannot end up marking different ones. An
+// enemy carrying it off is exactly when the bearing matters most, so a flag on a
+// tank still counts -- `updateFlags` parks a carried flag on top of its carrier,
+// which puts the mark on the tank that has it.
+function isSoughtTeamFlag(flag, myTeamIndex) {
+  if (myTeamIndex === null) return false;
+  if (getFlagTeamIndex(flag.type) !== myTeamIndex) return false;
+  if (flag.status === FLAG_STATUS.NO_EXIST) return false;
+  return flag.owner !== myPlayerId;
 }
 
 // prepareTheHUD() (playing.cxx:6820). One marker per flag of my own team, unless
@@ -9707,9 +9836,7 @@ function getFlagHeadingMarkers() {
   const myTeamIndex = getMyTeamColorIndex();
   if (myTeamIndex !== null) {
     flags.forEach((flag) => {
-      if (getFlagTeamIndex(flag.type) !== myTeamIndex) return;
-      if (flag.status === FLAG_STATUS.NO_EXIST) return;
-      if (flag.owner === myPlayerId) return;
+      if (!isSoughtTeamFlag(flag, myTeamIndex)) return;
       markers.push({ heading: headingTo(flag.position), color: teamFlagMarkerStyle });
     });
   }
@@ -9717,7 +9844,7 @@ function getFlagHeadingMarkers() {
   if (antidotePosition) {
     markers.push({
       heading: headingTo(antidotePosition),
-      color: colorToCSS(ANTIDOTE_FLAG_COLOR),
+      color: ANTIDOTE_FLAG_STYLE,
     });
   }
 
@@ -9845,7 +9972,7 @@ function updateFlags(deltaTime) {
       color: getKnownFlagColor(flag),
       alpha: flag.alpha,
       warp: flag.warp,
-      label: getKnownFlagAbbreviation(knownFlagTypes, flag),
+      label: flag.type,
     });
   });
 
@@ -10766,29 +10893,44 @@ function getObstacleRadarFillStyle(obs) {
   return getRadarBaseFill(Number(obs.team));
 }
 
-// The rabbit's blip is ringed so a hunter can pick it out of a panel full of
-// per-player colours. Upstream marks the *hunted* tank instead, by flashing its
-// blip cyan every fifth of a second (RadarRenderer.cxx:136) as part of its hunt
-// feature, which bzo does not have -- Rabbit Chase wants only the marker.
+// A blip the player is looking for is ringed: the rabbit, the player's own team
+// flags, and the antidote. Upstream rings none of the three. It marks the
+// *hunted* tank instead, by flashing its blip cyan every fifth of a second
+// (RadarRenderer.cxx:136) as part of its hunt feature, which bzo does not have
+// -- Rabbit Chase wants only the marker -- and it leaves the two flag bearings
+// to the heading tape (prepareTheHUD, playing.cxx:6820), which an immersive
+// session has no room for.
 //
-// A ring rather than a flash, in upstream's own hunt cyan: a flash is half
-// invisible on a client running at a low frame rate, which is the client bzo has
-// to draw for. It is suppressed under Colourblindness for exactly upstream's
-// reason -- there, every tank reads as rogue and the rabbit is not meant to be
-// findable.
+// A ring rather than a flash: a flash is half invisible on a client running at a
+// low frame rate, which is the client bzo has to draw for.
+//
+// The rabbit's ring is upstream's own hunt cyan, because its blip is one of a
+// panel full of per-player colours and grey is the one shade that does not read
+// against a dark panel. A flag's ring takes the colour of the cross it rings,
+// which is already the team's or the antidote's yellow, so a second colour would
+// say nothing the cross does not. The two can never appear together anyway:
+// Rabbit Chase turns the colour teams off, so a world has team flags or a rabbit
+// and never both.
 //
 // XR needs no separate path: the XR radar panel is textured from this canvas.
 const RADAR_RABBIT_RING_COLOR = 'rgb(0,204,229)';
-const RADAR_RABBIT_RING_RADIUS = 9;
-const RADAR_RABBIT_RING_WIDTH = 1.5;
+// The antidote's yellow as a style, cut once. Every other flag colour on the
+// panel goes through `getFlagRadarStyle`'s cache for the same reason: the radar
+// is redrawn every frame on a client with one core to spend.
+const ANTIDOTE_FLAG_STYLE = colorToCSS(ANTIDOTE_FLAG_COLOR);
+const RADAR_MARKER_RING_RADIUS = 9;
+const RADAR_MARKER_RING_WIDTH = 1.5;
+// Clear air between a ringed cross and its ring, for the zoom levels where the
+// cross is sized in world units and has grown past the default radius.
+const RADAR_MARKER_RING_GAP = 3;
 
-function drawRadarRabbitRing(x, y) {
+function drawRadarMarkerRing(x, y, style, radius = RADAR_MARKER_RING_RADIUS) {
   radarCtx.save();
   radarCtx.globalAlpha = 1;
-  radarCtx.lineWidth = RADAR_RABBIT_RING_WIDTH;
-  radarCtx.strokeStyle = RADAR_RABBIT_RING_COLOR;
+  radarCtx.lineWidth = RADAR_MARKER_RING_WIDTH;
+  radarCtx.strokeStyle = style;
   radarCtx.beginPath();
-  radarCtx.arc(x, y, RADAR_RABBIT_RING_RADIUS, 0, Math.PI * 2);
+  radarCtx.arc(x, y, radius, 0, Math.PI * 2);
   radarCtx.stroke();
   radarCtx.restore();
 }
@@ -10912,6 +11054,23 @@ function updateRadar() {
   const isOutsideRadarSquare = (radarX, radarY, margin = 0) => (
     Math.abs(radarX) > radarDistance + margin || Math.abs(radarY) > radarDistance + margin
   );
+  // Something past radar range is pinned to the border of the panel in its own
+  // direction, which is bzo's own -- upstream's radar simply stops at its range.
+  // The direction is preserved rather than the distance, so the marker sits on
+  // the side the thing is on and never mirrors. Null for a direction with no
+  // length, which is something standing exactly where the player is.
+  const projectToRadarEdge = (radarX, radarY) => {
+    const len = Math.hypot(radarX, radarY);
+    if (len < 1e-6) return null;
+    const nx = radarX / len;
+    const ny = radarY / len;
+    const halfExtent = Math.max(1, (size / 2) - RADAR_EDGE_DOT_INSET_PX);
+    const denom = Math.max(Math.abs(nx), Math.abs(ny), 1e-6);
+    return {
+      x: center + (nx / denom) * halfExtent,
+      y: center + (ny / denom) * halfExtent,
+    };
+  };
   // No radarRotation; use playerHeading directly
   drawRadarPanelBackground(size);
 
@@ -11198,28 +11357,19 @@ function updateRadar() {
 
     if (tankOutsideRadarSquare) {
       // Tank is outside radar range - draw as small dot against square edge.
-      // Calculate direction in radar space (same rotation as world2Radar).
-      // Project onto the radar square border (preserve direction and avoid mirroring).
-      const len = Math.hypot(rotX, rotY);
-      if (len < 1e-6) return;
-      const nx = rotX / len;
-      const ny = rotY / len;
-      const halfExtent = Math.max(1, (size / 2) - RADAR_EDGE_DOT_INSET_PX);
-      const denom = Math.max(Math.abs(nx), Math.abs(ny), 1e-6);
-      const edgeX = center + (nx / denom) * halfExtent;
-      const edgeY = center + (ny / denom) * halfExtent;
+      const edge = projectToRadarEdge(rotX, rotY);
+      if (!edge) return;
 
       radarCtx.save();
       radarCtx.beginPath();
-      radarCtx.arc(edgeX, edgeY, 3, 0, Math.PI * 2);
+      radarCtx.arc(edge.x, edge.y, 3, 0, Math.PI * 2);
       radarCtx.fillStyle = playerColor;
       radarCtx.globalAlpha = 0.8;
       radarCtx.fill();
       radarCtx.restore();
-      // The edge dot is bzo's own -- upstream's radar simply stops at its range
-      // -- and a rabbit that has run off the panel is exactly the one a hunter
-      // wants marked, so the ring follows it out there.
-      if (ringTheRabbit) drawRadarRabbitRing(edgeX, edgeY);
+      // A rabbit that has run off the panel is exactly the one a hunter wants
+      // marked, so the ring follows it out to the edge.
+      if (ringTheRabbit) drawRadarMarkerRing(edge.x, edge.y, RADAR_RABBIT_RING_COLOR);
       return;
     }
 
@@ -11248,7 +11398,7 @@ function updateRadar() {
       radarCtx.fill();
     }
     radarCtx.restore();
-    if (ringTheRabbit) drawRadarRabbitRing(pos.x, pos.y);
+    if (ringTheRabbit) drawRadarMarkerRing(pos.x, pos.y, RADAR_RABBIT_RING_COLOR);
   });
 
   // Flags on the ground, drawn as RadarRenderer::drawFlag does: a cross a flag
@@ -11256,6 +11406,10 @@ function updateRadar() {
   if (flags.size > 0) {
     const pixelsPerWorldUnit = radarWorldHalfExtent / Math.max(radarDistance, 1e-6);
     const crossHalf = Math.max(FLAG_RADIUS * pixelsPerWorldUnit, RADAR_FLAG_MIN_HALF_PX);
+    const tankCrossHalf = Math.max(
+      RADAR_FLAG_ON_TANK_RADII * pixelsPerWorldUnit,
+      RADAR_FLAG_ON_TANK_MIN_HALF_PX
+    );
     // Crosses that share a colour and an altitude go into one path and one
     // stroke. Sixteen white superflags standing on the ground -- the common case
     // -- cost a single stroke rather than sixteen, which matters because the
@@ -11272,7 +11426,7 @@ function updateRadar() {
       const rel = toRadarRelative(flag.position.x, flag.position.z);
       if (isOutsideRadarSquare(rel.x, rel.y)) return;
 
-      const style = getFlagRadarStyle(flag.type);
+      const style = getFlagRadarStyle(flag);
       const alpha = getRadarDepthScale(py, flag.position.y, 0, RADAR_OBJECT_DEPTH_FLOOR);
       if (style !== batchStyle || alpha !== batchAlpha) {
         flushRadarFlags();
@@ -11290,6 +11444,45 @@ function updateRadar() {
       radarCtx.lineTo(pos.x, pos.y + crossHalf);
     };
 
+    // A flag the player is looking for is drawn on its own after the rest: in
+    // flat colour rather than depth-scaled, since dimming the one flag you are
+    // hunting for by how far above or below you it is works against the point;
+    // pinned to the border of the panel when it is past radar range, where an
+    // ordinary flag is simply dropped; and ringed wherever it lands.
+    //
+    // It stays a cross out at the edge, where a tank degrades to a dot. A tank's
+    // blip is an arrow because it carries a heading, and a heading is the thing
+    // a pinned marker no longer has; a cross carries nothing but a position, so
+    // it loses none of its meaning by being pinned and stays the shape that says
+    // "flag" everywhere else on the panel.
+    //
+    // A flag on a tank takes drawFlagOnTank's larger cross over the carrier's
+    // blip, which is upstream's own mark for a carried flag -- so the one
+    // marker answers who has it and which way they went.
+    const drawSoughtFlag = (position, style, onTank) => {
+      const rel = toRadarRelative(position.x, position.z);
+      const pos = isOutsideRadarSquare(rel.x, rel.y)
+        ? projectToRadarEdge(rel.x, rel.y)
+        : radarToCanvas(rel.x, rel.y);
+      if (!pos) return;
+      const half = onTank ? tankCrossHalf : crossHalf;
+      radarCtx.globalAlpha = 1;
+      radarCtx.strokeStyle = style;
+      radarCtx.beginPath();
+      radarCtx.moveTo(pos.x - half, pos.y);
+      radarCtx.lineTo(pos.x + half, pos.y);
+      radarCtx.moveTo(pos.x, pos.y - half);
+      radarCtx.lineTo(pos.x, pos.y + half);
+      radarCtx.stroke();
+      drawRadarMarkerRing(
+        pos.x,
+        pos.y,
+        style,
+        Math.max(RADAR_MARKER_RING_RADIUS, half + RADAR_MARKER_RING_GAP)
+      );
+    };
+
+    const myTeamIndex = getMyTeamColorIndex();
     radarCtx.save();
     radarCtx.lineWidth = 1.5;
     // Upstream walks the flags backwards purely so the team flags, which come
@@ -11297,37 +11490,33 @@ function updateRadar() {
     flags.forEach((flag) => {
       if (getFlagTeamIndex(flag.type) === null) drawRadarFlag(flag);
     });
+    radarSoughtFlags.length = 0;
     flags.forEach((flag) => {
-      if (getFlagTeamIndex(flag.type) !== null) drawRadarFlag(flag);
+      if (getFlagTeamIndex(flag.type) === null) return;
+      // A sought flag is held back rather than batched, so its cross is not
+      // drawn twice in two different alphas.
+      if (isSoughtTeamFlag(flag, myTeamIndex)) {
+        radarSoughtFlags.push(flag);
+        return;
+      }
+      drawRadarFlag(flag);
     });
     flushRadarFlags();
+    radarSoughtFlags.forEach((flag) => {
+      drawSoughtFlag(flag.position, getFlagRadarStyle(flag), flag.status === FLAG_STATUS.ON_TANK);
+    });
     // RadarRenderer.cxx:715 draws the antidote last and in flat yellow, over
     // every flag in the world, because it is the one you are looking for.
     if (antidotePosition) {
-      const rel = toRadarRelative(antidotePosition.x, antidotePosition.z);
-      if (!isOutsideRadarSquare(rel.x, rel.y)) {
-        const pos = radarToCanvas(rel.x, rel.y);
-        radarCtx.globalAlpha = 1;
-        radarCtx.strokeStyle = colorToCSS(ANTIDOTE_FLAG_COLOR);
-        radarCtx.beginPath();
-        radarCtx.moveTo(pos.x - crossHalf, pos.y);
-        radarCtx.lineTo(pos.x + crossHalf, pos.y);
-        radarCtx.moveTo(pos.x, pos.y - crossHalf);
-        radarCtx.lineTo(pos.x, pos.y + crossHalf);
-        radarCtx.stroke();
-      }
+      drawSoughtFlag(antidotePosition, ANTIDOTE_FLAG_STYLE, false);
     }
     radarCtx.restore();
 
     // drawFlagOnTank(): carrying a flag puts a larger cross on your own blip.
     const carried = getMyFlag();
     if (carried) {
-      const tankCrossHalf = Math.max(
-        RADAR_FLAG_ON_TANK_RADII * pixelsPerWorldUnit,
-        RADAR_FLAG_ON_TANK_MIN_HALF_PX
-      );
       radarCtx.save();
-      radarCtx.strokeStyle = getFlagRadarStyle(carried.type);
+      radarCtx.strokeStyle = getFlagRadarStyle(carried);
       radarCtx.lineWidth = 1.5;
       radarCtx.beginPath();
       radarCtx.moveTo(center - tankCrossHalf, center);
@@ -12047,6 +12236,7 @@ function animate(frameTime) {
 
   updateProjectiles(deltaTime);
   checkFlagGrab();
+  checkNearFlag();
   updateFlagShake(deltaTime);
   updatePauseCountdown();
   updateFlags(deltaTime);

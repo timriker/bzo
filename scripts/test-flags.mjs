@@ -118,7 +118,7 @@ import {
   getFlagHoverHeight,
   getFlagTeamIndex,
   getFlagType,
-  getKnownFlagAbbreviation,
+  findNearestGroundFlag,
   getShotEffects,
   getShockWaveAlpha,
   getShockWaveRadius,
@@ -162,7 +162,7 @@ import {
   getFlagThrownAltitude,
   SHIELD_FLIGHT,
   isTeamFlag,
-  rememberFlagIdentity,
+  keepFlagIdentity,
 } from '../public/flags.mjs';
 
 const require = createRequire(import.meta.url);
@@ -840,50 +840,84 @@ for (const [abbreviation, type] of Object.entries(FLAG_TYPES)) {
   if (type.team !== null) assert.equal(type.endurance, 0, `${abbreviation} is FlagNormal`);
 }
 
-// rememberFlagIdentity -- what a client is allowed to remember about a slot.
-// bzfs hides a superflag's type whenever nobody is carrying it, so the label a
-// player sees comes from this memory rather than from the flag state.
+// keepFlagIdentity -- what a client's flag record is allowed to remember. bzfs
+// hides a superflag's type whenever nobody is carrying it, so a record that
+// dropped the answer on every such update would forget what the player saw.
 {
-  const known = new Map();
-  const remember = (index, type, status) => rememberFlagIdentity(known, index, type, status);
-  const label = (index, type = null) => getKnownFlagAbbreviation(known, { index, type });
+  // A record, updated the way `setFlagState` updates one.
+  let known = null;
+  const update = (type, status) => { known = keepFlagIdentity(type, known, status); };
 
   // A flag flies in and lands without anyone touching it: hidden throughout.
-  remember(3, null, FLAG_STATUS.COMING);
-  remember(3, null, FLAG_STATUS.ON_GROUND);
-  assert.equal(label(3), null, 'a flag nobody has touched has no identity');
+  update(null, FLAG_STATUS.COMING);
+  update(null, FLAG_STATUS.ON_GROUND);
+  assert.equal(known, null, 'a flag nobody has touched has no identity');
 
   // Identify names it, and it stays named while it sits there.
-  remember(3, 'ID', FLAG_STATUS.ON_GROUND);
-  assert.equal(label(3), 'ID', 'an identified flag is remembered');
+  update('ID', FLAG_STATUS.ON_GROUND);
+  assert.equal(known, 'ID', 'an identified flag is remembered');
+  update(null, FLAG_STATUS.ON_GROUND);
+  assert.equal(known, 'ID', 'and stays named across an update that hides it');
 
   // The slot empties and refills. Its next flag is a fresh roll, so keeping the
   // old answer would label a new flag as the one that stood there before it.
-  remember(3, null, FLAG_STATUS.NO_EXIST);
-  assert.equal(label(3), null, 'a vanished flag is forgotten');
-  remember(3, null, FLAG_STATUS.COMING);
-  remember(3, null, FLAG_STATUS.ON_GROUND);
-  assert.equal(label(3), null, 'the slot\'s next flag is not the last one');
+  update(null, FLAG_STATUS.NO_EXIST);
+  assert.equal(known, null, 'a vanished flag is forgotten');
+  update(null, FLAG_STATUS.COMING);
+  update(null, FLAG_STATUS.ON_GROUND);
+  assert.equal(known, null, 'the slot\'s next flag is not the last one');
 
   // A grab reveals a flag to everyone; the drop hides it again on the wire.
-  remember(7, null, FLAG_STATUS.ON_GROUND);
-  assert.equal(label(7), null, 'unheld and unknown');
-  remember(7, 'US', FLAG_STATUS.ON_TANK);
-  assert.equal(label(7, 'US'), 'US', 'a carried flag names itself');
-  remember(7, 'US', FLAG_STATUS.IN_AIR);
-  remember(7, null, FLAG_STATUS.ON_GROUND);
-  assert.equal(label(7), 'US', 'a flag dropped back into the world stays identified');
+  known = null;
+  update(null, FLAG_STATUS.ON_GROUND);
+  assert.equal(known, null, 'unheld and unknown');
+  update('US', FLAG_STATUS.ON_TANK);
+  assert.equal(known, 'US', 'a carried flag names itself');
+  update('US', FLAG_STATUS.IN_AIR);
+  update(null, FLAG_STATUS.ON_GROUND);
+  assert.equal(known, 'US', 'a flag dropped back into the world stays identified');
 
-  // A team flag is never hidden, so it answers with no memory needed, and a
-  // flag that is still in flight has an identity worth keeping.
-  remember(0, 'B*', FLAG_STATUS.ON_GROUND);
-  assert.equal(label(0, 'B*'), 'B*', 'a team flag labels itself');
-  remember(0, 'B*', FLAG_STATUS.NO_EXIST);
-  assert.equal(label(0), null, 'a retired team flag is forgotten');
-  remember(0, 'B*', FLAG_STATUS.ON_GROUND);
-  assert.equal(label(0), 'B*', 'and re-learned when its team comes back');
+  // A team flag is never hidden, so every update names it and there is nothing
+  // to remember. That includes the one that retires it with its team: what the
+  // record holds is what the server just said, and nothing draws a retired flag.
+  known = null;
+  update('B*', FLAG_STATUS.ON_GROUND);
+  assert.equal(known, 'B*', 'a team flag labels itself');
+  update('B*', FLAG_STATUS.NO_EXIST);
+  assert.equal(known, 'B*', 'a retired team flag still says which team it was');
 
-  assert.equal(getKnownFlagAbbreviation(known, null), null, 'no flag, no label');
+  // The forgetting that matters is a superflag slot's, which is the only kind
+  // whose next flag is a different flag.
+  known = 'ID';
+  update(null, FLAG_STATUS.NO_EXIST);
+  assert.equal(known, null, 'an identified superflag slot forgets when it empties');
+}
+
+// findNearestGroundFlag -- the sweep both ends make for Identify. Only flags
+// lying on the ground count, the range is a sphere rather than a circle, and the
+// nearest of several wins.
+{
+  const at = (index, status, x, y, z) => ({ index, status, position: { x, y, z } });
+  const world = [
+    at(0, FLAG_STATUS.ON_GROUND, 10, 0, 0),
+    at(1, FLAG_STATUS.ON_GROUND, 4, 0, 0),
+    at(2, FLAG_STATUS.ON_TANK, 1, 0, 0),
+    at(3, FLAG_STATUS.COMING, 2, 0, 0),
+  ];
+  assert.equal(findNearestGroundFlag(world, 0, 0, 0, 50)?.index, 1, 'the nearest one on the ground');
+  assert.equal(findNearestGroundFlag(world, 0, 0, 0, 3), null, 'nothing inside a shorter range');
+  assert.equal(findNearestGroundFlag(world, 9, 0, 0, 50)?.index, 0, 'nearest is measured, not first');
+  assert.equal(
+    findNearestGroundFlag([at(0, FLAG_STATUS.ON_GROUND, 0, 40, 0)], 0, 0, 0, 50)?.index,
+    0,
+    'a flag on a roof is in range by height alone'
+  );
+  assert.equal(
+    findNearestGroundFlag([at(0, FLAG_STATUS.ON_GROUND, 0, 60, 0)], 0, 0, 0, 50),
+    null,
+    'and out of it when the roof is high enough'
+  );
+  assert.equal(findNearestGroundFlag([], 0, 0, 0, 50), null, 'an empty world has no nearest flag');
 }
 
 // Flag.cxx:89 -- the four team flags, in BZFlag's TeamColor order, all normal
