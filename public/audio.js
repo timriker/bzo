@@ -69,6 +69,14 @@ export const GAME_SOUNDS = Object.freeze({
   // A team message arrives. Upstream's own trigger: only when somebody else sent
   // it, and at most once every two seconds (playing.cxx:3296).
   messageTeam: { file: 'message_team.wav', sfx: 'SFX_MESSAGE_TEAM' },
+  // A direct message arrives, addressed to me by somebody who is not me
+  // (playing.cxx:3261). Upstream also refuses it for a message from the server
+  // unless `beepOnServerMsg` is set, which is one of the settings bzo does not
+  // ship -- so a server message is silent here, which is its default there.
+  messagePrivate: { file: 'message_private.wav', sfx: 'SFX_MESSAGE_PRIVATE' },
+  // A message on the admin channel arrives, from somebody rather than from the
+  // server (playing.cxx:3279).
+  messageAdmin: { file: 'message_admin.wav', sfx: 'SFX_MESSAGE_ADMIN' },
   // A tank is destroyed.
   explosion: { file: 'explosion.wav', sfx: 'SFX_EXPLOSION' },
   // A tank is run over by a Steamroller. Upstream plays this in place of the

@@ -1288,6 +1288,15 @@ function updateOperatorBtn() {
 
 export function toggleOperatorPanel() {
   if (!domRefs.operatorOverlay) return;
+  // A disabled button cannot be clicked, so the button path needs no guard --
+  // but the `O` key reaches here directly, and on a server where this player is
+  // not an operator there is nothing behind the panel to show: every message it
+  // sends is refused. The button carries the answer, so it is the one place the
+  // state is read from.
+  if (domRefs.operatorBtn?.disabled) {
+    hudContext.showMessage('Operator: enter a name to become an operator on this server');
+    return;
+  }
   const currentVisible = isOperatorPanelVisible();
   if (currentVisible) {
     hideDialog(domRefs.operatorOverlay);

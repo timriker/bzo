@@ -16,12 +16,17 @@ const CHAT_TARGET_SERVER = -1;
 // the teams, and bzo spends small negatives on the two destinations that are not
 // players, so a team is one more of those.
 const CHAT_TARGET_TEAM = -2;
+// Upstream's `AdminPlayers` destination (Address.h:76), which it spends a
+// reserved PlayerId on. bzo spends small negatives on the destinations that are
+// not players, so this is one more of those.
+const CHAT_TARGET_ADMIN = -3;
 const CHAT_KIND_CHAT = 'chat';
 const CHAT_KIND_ACTION = 'action';
 const CHAT_KIND_SERVER = 'server';
 const CHAT_KIND_MISC = 'misc';
 const CHAT_KIND_DEBUG = 'debug';
 const CHAT_KIND_TEAM = 'team';
+const CHAT_KIND_ADMIN = 'admin';
 const CHAT_KIND_DIRECT_IN = 'direct-in';
 const CHAT_KIND_DIRECT_OUT = 'direct-out';
 const CLIENT_COPYRIGHT = 'Copyright (C) 2025-2026 Tim Riker <timriker@gmail.com>';
@@ -498,8 +503,10 @@ const IDENTIFY_ALERT_SECONDS = 2;
 // playing.cxx:3540. A guided missile's target is warned at most this often,
 // however many missiles are in the air or how often the shooter retargets.
 const LOCK_WARNING_INTERVAL_MS = 750;
-// playing.cxx:3296. A team message announces itself no more often than this.
-const TEAM_MESSAGE_SOUND_INTERVAL_MS = 2000;
+// playing.cxx:3260, :3277 and :3299. A message announces itself no more often
+// than this -- upstream's own two seconds, kept per kind because upstream keeps
+// a separate `static lastMsg` in each of the three branches.
+const MESSAGE_SOUND_INTERVAL_MS = 2000;
 // handleNearFlag()'s five (playing.cxx:2016). It shares the identify slot
 // rather than upstream's slot 0: driving past a row of flags reports each one,
 // and bzo keeps slot 0 for the death and kill notices, which a player has four
@@ -569,6 +576,11 @@ let nextAllowedShotAt = 0;
 // it they are. A flag that changes the rate changes this with it.
 let lastShotReloadMs = 0;
 let playerTeam = PLAYER_TEAM.ROGUE;
+// Whether this player may speak on the admin channel and operate the server.
+// The server's answer, not a rule kept here -- see `isAdmin` in `server.js` for
+// what decides it. Everything behind the Operator panel is refused there as
+// well, so this only decides what is worth offering.
+let amAdmin = false;
 // One entry per colour team the server offers: { team, size, wins, losses }.
 // Empty until a team-mode server sends its first update.
 let teamScores = [];
@@ -1588,6 +1600,7 @@ function normalizeMessageEndpoint(value, fallback = CHAT_TARGET_ALL) {
   if (value === CHAT_TARGET_ALL || value === String(CHAT_TARGET_ALL)) return CHAT_TARGET_ALL;
   if (value === CHAT_TARGET_SERVER || value === String(CHAT_TARGET_SERVER)) return CHAT_TARGET_SERVER;
   if (value === CHAT_TARGET_TEAM || value === String(CHAT_TARGET_TEAM)) return CHAT_TARGET_TEAM;
+  if (value === CHAT_TARGET_ADMIN || value === String(CHAT_TARGET_ADMIN)) return CHAT_TARGET_ADMIN;
   if (value === null || value === undefined || value === '') return fallback;
   return String(value);
 }
@@ -1597,6 +1610,7 @@ function getPlayerName(id) {
   if (normalizedId === CHAT_TARGET_ALL) return 'ALL';
   if (normalizedId === CHAT_TARGET_SERVER) return 'SERVER';
   if (normalizedId === CHAT_TARGET_TEAM) return 'TEAM';
+  if (normalizedId === CHAT_TARGET_ADMIN) return 'ADMIN';
   if (normalizedId === myPlayerId && typeof myPlayerName === 'string' && myPlayerName.trim().length > 0) {
     return myPlayerName.trim();
   }
@@ -1628,6 +1642,23 @@ function formatNetworkMessage(message) {
   // show, since its team mates all share one colour. The raw player colour and
   // not the effective one: Masquerade changes how a tank *looks*, not who said
   // something.
+  // playing.cxx:3271. An admin message is marked and goes to the Chat tab like a
+  // team message does -- upstream has no admin tab either. Only an admin ever
+  // receives one, so there is nothing to hide from anybody who can read it.
+  if (dst === CHAT_TARGET_ADMIN) {
+    const senderState = tanks.get(src)?.userData?.playerState;
+    const separator = msgType === CHAT_KIND_ACTION ? ' ' : ': ';
+    return {
+      text: `[ADMIN] ${fromName}${separator}${text}`,
+      tabs: ['chat', 'all'],
+      kind: CHAT_KIND_ADMIN,
+      segments: [
+        { text: '[ADMIN]', color: colorToCSS(getChatKindColor(CHAT_KIND_ADMIN)) },
+        { text: ` ${fromName}`, color: colorToCSS(senderState?.color ?? getChatKindColor(CHAT_KIND_ADMIN)) },
+        { text: `${separator}${text}` },
+      ],
+    };
+  }
   if (dst === CHAT_TARGET_TEAM) {
     const senderState = tanks.get(src)?.userData?.playerState;
     // Named by its colour alone -- `[Green]`, not `[Green Team]` -- for the same
@@ -1664,6 +1695,31 @@ function formatNetworkMessage(message) {
     return { text: `[${fromName}->] ${text}`, tabs: ['chat', 'all'], kind: CHAT_KIND_DIRECT_IN };
   }
   return { text: `${fromName}: ${text}`, tabs: ['chat', 'all'], kind: CHAT_KIND_CHAT };
+}
+
+// What being an admin, or not, looks like. Two things: the ADMIN destination is
+// only offered to somebody the server would let speak on it, and the Operator
+// button is disabled rather than hidden -- a control that is plainly unavailable
+// says more than one that is missing, which is the same rule the capability
+// gating follows for a renderer feature it cannot draw.
+function applyAdminUi() {
+  const adminOption = document.querySelector(`#chatTarget option[value="${CHAT_TARGET_ADMIN}"]`);
+  if (adminOption) {
+    adminOption.hidden = !amAdmin;
+    adminOption.disabled = !amAdmin;
+  }
+  const chatTarget = document.getElementById('chatTarget');
+  if (chatTarget && !amAdmin
+    && normalizeMessageEndpoint(chatTarget.value, CHAT_TARGET_ALL) === CHAT_TARGET_ADMIN) {
+    chatTarget.value = String(CHAT_TARGET_ALL);
+  }
+  const operatorBtn = document.getElementById('operatorBtn');
+  if (operatorBtn) {
+    operatorBtn.disabled = !amAdmin;
+    operatorBtn.title = amAdmin
+      ? 'Show Operator Panel (O)'
+      : 'Operator: enter a name to become an operator on this server';
+  }
 }
 
 function syncDebugTabVisibility() {
@@ -3460,8 +3516,10 @@ function init() {
     if (!chatTarget) return;
     // Save current selection
     const prevValue = chatTarget.value;
-    // Remove all but the three destinations that are not players
-    const fixedTargets = [CHAT_TARGET_ALL, CHAT_TARGET_TEAM, CHAT_TARGET_SERVER].map(String);
+    // Remove all but the destinations that are not players
+    const fixedTargets = [
+      CHAT_TARGET_ALL, CHAT_TARGET_TEAM, CHAT_TARGET_ADMIN, CHAT_TARGET_SERVER,
+    ].map(String);
     for (let i = chatTarget.options.length - 1; i >= 0; i--) {
       if (!fixedTargets.includes(chatTarget.options[i].value)) {
         chatTarget.remove(i);
@@ -3478,6 +3536,10 @@ function init() {
     });
     // Restore previous selection if possible
     chatTarget.value = prevValue;
+    // The rebuild does not touch the fixed options, but it runs on a timer and
+    // is the one place that could outlive a join, so the gate is re-applied
+    // rather than assumed to still hold.
+    applyAdminUi();
   }
 
   // Update dropdown whenever tanks change
@@ -3984,6 +4046,8 @@ function handleServerMessage(message) {
       if (message.player.id === myPlayerId) {
         gameplayJoinConfirmed = true;
         playerTeam = normalizePlayerTeam(message.player.team);
+        amAdmin = message.player.admin === true;
+        applyAdminUi();
         teamFlagMarkerStyle = colorToCSS(getPlayerTeamColor(playerTeam));
         syncPlayerTeamSelector();
         updateVoiceIdentity();
@@ -4091,6 +4155,8 @@ function handleServerMessage(message) {
           myTank = tanks.get(myPlayerId);
           if (message.player.team !== undefined) {
             playerTeam = normalizePlayerTeam(message.player.team);
+            amAdmin = message.player.admin === true;
+            applyAdminUi();
             syncPlayerTeamSelector();
             updateVoiceIdentity();
           }
@@ -4416,13 +4482,27 @@ function handleServerMessage(message) {
       if (typeof srcId === 'string' && dstId === myPlayerId && srcId !== myPlayerId) {
         lastDirectSenderId = srcId;
       }
-      // playing.cxx:3296: SFX_MESSAGE_TEAM, only when somebody else sent it, and
-      // at most once every two seconds however many arrive.
-      if (dstId === CHAT_TARGET_TEAM && srcId !== myPlayerId) {
+      // playing.cxx:3259, :3276 and :3296. Three sounds, each only when somebody
+      // else sent it, and each on a clock of its own -- upstream keeps a separate
+      // `static lastMsg` per branch, so a team message does not silence the
+      // private one that arrives beside it.
+      if (srcId !== myPlayerId) {
         const now = performance.now();
-        if (now - lastTeamMessageSoundAt >= TEAM_MESSAGE_SOUND_INTERVAL_MS) {
+        const throttled = (last) => now - last >= MESSAGE_SOUND_INTERVAL_MS;
+        if (dstId === CHAT_TARGET_TEAM && throttled(lastTeamMessageSoundAt)) {
           lastTeamMessageSoundAt = now;
           renderManager.playLocalSound('messageTeam');
+        } else if (dstId === CHAT_TARGET_ADMIN && throttled(lastAdminMessageSoundAt)) {
+          lastAdminMessageSoundAt = now;
+          renderManager.playLocalSound('messageAdmin');
+        } else if (dstId === myPlayerId && typeof srcId === 'string'
+          && throttled(lastPrivateMessageSoundAt)) {
+          // A message addressed to me by a player. Upstream refuses this one for
+          // a message from the *server* unless `beepOnServerMsg` is set, which
+          // is a setting bzo does not ship -- and `srcId` being a player id
+          // rather than a channel is the same test.
+          lastPrivateMessageSoundAt = now;
+          renderManager.playLocalSound('messagePrivate');
         }
       }
       const formatted = formatNetworkMessage(message);
@@ -8309,6 +8389,8 @@ let lastShakeRequestAt = 0;
 let dropWasHeld = false;
 let identifyWasHeld = false;
 let lastTeamMessageSoundAt = -Infinity;
+let lastAdminMessageSoundAt = -Infinity;
+let lastPrivateMessageSoundAt = -Infinity;
 // LocalPlayer::flagShakingTime. The countdown belongs to one carried flag, so it
 // is keyed on the slot as well as the seconds: taking a different sticky flag
 // starts a fresh clock rather than inheriting what was left of the last one.

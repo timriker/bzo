@@ -40,9 +40,10 @@ for (const value of [1, 3, '3', MAX_SHOT_SLOTS, MAX_SHOT_SLOTS + 1, 0, -1, 1.5, 
 
 // --- World weapons -----------------------------------------------------------
 {
-  // PlayerId ServerPlayer (include/global.h), which is what upstream stamps on
-  // every shot nobody fired.
-  assert.equal(WORLD_WEAPON_PLAYER_ID, 252);
+  // PlayerId ServerPlayer (Address.h:75), which is what upstream stamps on every
+  // shot nobody fired -- 253, and not the 252 next to it, which is the admin
+  // channel.
+  assert.equal(WORLD_WEAPON_PLAYER_ID, 253);
   assert.equal(serverLimits.WORLD_WEAPON_PLAYER_ID, WORLD_WEAPON_PLAYER_ID);
 
   // CustomWeapon's defaults and its floor on a delay.

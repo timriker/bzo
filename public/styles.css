@@ -105,6 +105,9 @@ html, body {
      all share one; bzo shades them apart, so it has a second colour to spend and
      spends it on saying who is talking. */
   --chat-kind-team: #a5d6a7;
+  /* The admin channel. Upstream marks it in yellow, which is the colour it also
+     gives a ServerPlayer callsign (playing.cxx:1332). */
+  --chat-kind-admin: #ffd54f;
   --chat-tab-idle: #ddd;
   --chat-tab-active: #fff;
   --chat-tab-unread: #ff8a80;
@@ -237,6 +240,10 @@ canvas {
 
 #chatMessages .chat-line.chat-kind-team {
   color: var(--chat-kind-team);
+}
+
+#chatMessages .chat-line.chat-kind-admin {
+  color: var(--chat-kind-admin);
 }
 
 #chatMessages .chat-line.chat-kind-server {
@@ -1661,6 +1668,14 @@ body.observing #roamStatus {
 }
 
 .settingsMenuRow:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+/* A HUD button for something this player may not do: plainly unavailable rather
+   than missing, which is the same rule the renderer's capability gating uses for
+   a feature the context cannot draw. */
+.settingsHudBtn:disabled {
   cursor: not-allowed;
   opacity: 0.5;
 }

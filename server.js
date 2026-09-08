@@ -2219,6 +2219,11 @@ class Player {
       team: this.team,
       voiceMicEnabled: this.voiceMicEnabled,
       voiceChannel: this.voiceChannel,
+      // Whether this player may speak on the admin channel and operate the
+      // server. Sent rather than derived so the rule has one home -- see
+      // `isAdmin` -- and so a client greying out a button is reading an answer
+      // rather than keeping a second copy of the question.
+      admin: isAdmin(this),
       teleportCooldownUntil: this.teleportCooldownUntil,
     };
   }
@@ -2379,6 +2384,52 @@ class Projectile {
 
 // Helper functions
 // Returns a unique player name. If the given name is empty or taken, returns 'Player n' with the lowest available n.
+// PlayerAccessInfo's `adminMessageSend` and `adminMessageReceive`, which is what
+// upstream gates the admin channel on. Upstream reads them out of a permissions
+// file keyed to a registered, password-checked callsign; bzo has no login, so
+// there is nothing to key a permission to and the closest honest stand-in is
+// **whether the player told us who they are**.
+//
+// A player who leaves the name field empty is called `Player <n>` by `nameCheck`
+// below, which also refuses that shape to anybody whose number it is not -- so
+// the default name cannot be claimed and a name that is not the default was
+// typed on purpose. That is the whole rule: type a name and you are an admin.
+//
+// It is a courtesy gate, not a security one, and it is only as strong as the
+// obscurity of a name field -- which is to say not at all. What makes it safe
+// enough is that it is checked on the server for every privileged message, so a
+// modified client that draws itself the Operator panel still cannot change the
+// map. When bzo grows a login, this is the one function that has to change.
+function isAdmin(player) {
+  if (!player || !player.joined) return false;
+  return player.name !== `Player ${player.playerNumber}`;
+}
+
+// The Operator panel's messages, refused for anyone who is not an admin. The
+// client greys the panel out, but that is presentation: a modified client can
+// draw itself whatever it likes, so every message behind it is checked here as
+// well. Upstream gates the same ground on `PlayerAccessInfo`; see `isAdmin` for
+// what stands in for that until bzo has a login.
+//
+// Returns true when the caller should stop.
+function refuseNonOperator(ws, player, what) {
+  if (isAdmin(player)) return false;
+  log(`[OPERATOR] "${player.name}" refused ${what}: not an admin`);
+  if (ws?.readyState === 1) {
+    ws.send(JSON.stringify({ error: 'You are not an operator on this server' }));
+  }
+  return true;
+}
+
+// The admin channel's audience: everyone `adminMessageReceive` would allow.
+function getAdmins() {
+  const admins = [];
+  players.forEach((candidate) => {
+    if (isAdmin(candidate)) admins.push(candidate);
+  });
+  return admins;
+}
+
 function nameCheck(requestedName, excludeId = null) {
   let name = requestedName && requestedName.trim() ? requestedName.trim() : '';
   // Get the player number for excludeId
@@ -6367,7 +6418,11 @@ wss.on('connection', (ws, req) => {
           const isAllTarget = rawTarget === 0 || rawTarget === '0' || rawTarget === null || rawTarget === undefined || rawTarget === '';
           const isServerTarget = rawTarget === -1 || rawTarget === '-1';
           const isTeamTarget = rawTarget === -2 || rawTarget === '-2';
-          const targetId = isAllTarget || isServerTarget || isTeamTarget
+          // Upstream's `AdminPlayers` destination. bzo spends small negatives on
+          // the destinations that are not players, so this is one more of them
+          // rather than upstream's reserved PlayerId 252.
+          const isAdminTarget = rawTarget === -3 || rawTarget === '-3';
+          const targetId = isAllTarget || isServerTarget || isTeamTarget || isAdminTarget
             ? Number(rawTarget)
             : String(rawTarget);
           const fromId = player.id;
@@ -6385,6 +6440,7 @@ wss.on('connection', (ws, req) => {
             if (id === 0) return 'ALL';
             if (id === -1) return 'SERVER';
             if (id === -2) return `[${player.team.toUpperCase()}]`;
+            if (id === -3) return '[ADMIN]';
             return players.has(id) ? `"${players.get(id).name}"` : `"Player ${id}"`;
           }
           const toName = describeChatTarget(targetId);
@@ -6430,6 +6486,40 @@ wss.on('connection', (ws, req) => {
               if (other.team !== player.team) return;
               if (other.ws && other.ws.readyState === 1) other.ws.send(encoded);
             });
+            break;
+          }
+
+          // The admin channel. Upstream gates both ends of it and answers a
+          // sender with no permission in its own words (bzfs.cxx:1546), rather
+          // than dropping the message silently -- somebody typing into a channel
+          // nobody hears should be told.
+          if (isAdminTarget) {
+            if (!isAdmin(player)) {
+              log(`[CHAT] "${fromName}"->[ADMIN] refused: not an admin`);
+              sendToPlayer(player, {
+                type: 'message',
+                src: -1,
+                dst: fromId,
+                msgType: 'chat',
+                text: 'You do not have permission to speak on the admin channel.',
+                ts: Date.now(),
+              });
+              break;
+            }
+            log(`[CHAT] "${fromName}"->[ADMIN]: ${text}`);
+            const payload = JSON.stringify({
+              type: 'message',
+              src: fromId,
+              dst: -3,
+              msgType,
+              text,
+              ts: Date.now(),
+            });
+            // The sender is included, as they are for team chat: a message you
+            // cannot see you have sent is worse than one echoed back.
+            for (const admin of getAdmins()) {
+              if (admin.ws && admin.ws.readyState === 1) admin.ws.send(payload);
+            }
             break;
           }
 
@@ -7235,11 +7325,13 @@ wss.on('connection', (ws, req) => {
           break;
 
         case 'getMaps': {
+          if (refuseNonOperator(ws, player, 'getMaps')) break;
           // Reply with all .bzw files in maps/ plus 'random', and indicate current map
           sendMapList(ws);
           break;
         }
         case 'setMap': {
+          if (refuseNonOperator(ws, player, 'setMap')) break;
           // Admin: set map
           const mapFile = typeof message.mapFile === 'string' ? message.mapFile.trim() : '';
           const safeMapFile = path.basename(mapFile);
@@ -7268,6 +7360,7 @@ wss.on('connection', (ws, req) => {
           break;
         }
         case 'uploadMap': {
+          if (refuseNonOperator(ws, player, 'uploadMap')) break;
           // Admin: upload map
           const { mapName, mapContent } = message;
           const normalizedMapName = typeof mapName === 'string' ? mapName.trim() : '';
@@ -7299,6 +7392,7 @@ wss.on('connection', (ws, req) => {
           break;
         }
         case 'setOperatorConfig': {
+          if (refuseNonOperator(ws, player, 'setOperatorConfig')) break;
           const hasMotd = Object.prototype.hasOwnProperty.call(message, 'motd');
           const hasShotMaxActive = Object.prototype.hasOwnProperty.call(message, 'shotMaxActive');
           const hasRicochet = Object.prototype.hasOwnProperty.call(message, 'ricochet');

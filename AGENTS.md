@@ -1292,6 +1292,59 @@ the input. Focus is the single source of that state: `setChatEntryActive` runs
 off the input's own focus and blur, so no code path may set `chatActive` by
 hand.
 
+## Admins and the admin channel
+
+bzo has no login, so there is nothing to key a permission to. Upstream reads
+`PlayerAccessInfo` out of a file keyed to a registered, password-checked
+callsign; the closest honest stand-in here is **whether the player told us who
+they are**.
+
+**An admin is a player whose name is not the default.** A player who leaves the
+name field empty is called `Player <n>` by `nameCheck`, which also refuses that
+shape to anybody whose number it is not -- so the default cannot be claimed and a
+name that is not the default was typed on purpose. `isAdmin` in `server.js` is
+the whole rule, and it is the one function a real login would replace.
+
+It is a courtesy gate. What makes it safe enough is that it is checked on the
+server for everything it guards:
+
+- **The admin chat channel**, both ways. Upstream gates sending on
+  `adminMessageSend` and receiving on `adminMessageReceive` (`bzfs.cxx:1546`,
+  `:1745`), and answers a sender with no permission in its own words rather than
+  dropping the message -- somebody typing into a channel nobody hears should be
+  told. bzo says the same sentence.
+- **The Operator panel's four messages** -- `getMaps`, `setMap`, `uploadMap`,
+  `setOperatorConfig` -- each refused by `refuseNonOperator`. The client disables
+  the Operator button for a non-admin, but that is presentation: a client can
+  draw itself whatever it likes.
+
+The client is *told* whether it is an admin, in `admin` on its own player state,
+rather than deriving it. Authority questions are the server's alone in bzo, and a
+greyed-out button is reading an answer rather than keeping a second copy of the
+question.
+
+**Chat destinations are small negatives**, because upstream spends reserved
+PlayerIds on the ones that are not players and bzo spends ids on players alone:
+
+| bzo | upstream | who sees it |
+|---|---|---|
+| `0` ALL | `AllPlayers` 254 | everyone |
+| `-1` SERVER | `ServerPlayer` 253 | the server log only |
+| `-2` TEAM | 251 and down | the sender's team, sender included |
+| `-3` ADMIN | `AdminPlayers` 252 | every admin, sender included |
+| a player id | the player id | that player and the sender |
+
+An admin message is marked `[ADMIN]` and goes to the Chat tab, as a team message
+goes there: upstream has no admin tab and neither does bzo. The ADMIN option is
+hidden in the destination dropdown for anybody the server would refuse.
+
+**Three message sounds, each on its own two-second clock.** Upstream keeps a
+separate `static lastMsg` in each of its three branches (`playing.cxx:3260`,
+`:3277`, `:3299`), so a team message does not silence the private one that
+arrived beside it. All three only fire when somebody else sent it. A message from
+the *server* is silent, which is upstream's default -- its private sound is gated
+on `beepOnServerMsg`, a setting bzo does not ship.
+
 ## Team scores
 
 In team mode the server keeps a score per colour team, exactly as bzfs does:
@@ -1821,9 +1874,12 @@ reached only through `-set` and bzo does not read `-set`: `wingsJumpCount` and
 - The old `/admin` server route was an abandoned experiment and has been removed.
   Keep future operator/admin UX inside the existing overlay/HUD flow unless the
   user asks for a different architecture.
-- During development it is intentional that any connected player may use operator
-  controls such as map switching. OAuth or stronger authorization may come later
-  but is not a current priority.
+- **Operator controls are gated on being an admin, and an admin is a player who
+  typed a name.** See "Admins and the admin channel" below. It is a courtesy
+  gate and not a security one; what makes it safe enough is that every
+  privileged message is refused on the server, so a modified client that draws
+  itself the Operator panel still cannot change the map. A real login may come
+  later; `isAdmin` in `server.js` is the one function it would replace.
 - The client should ALWAYS send valid data.
 - The server checks are ONLY in place to detect modified clients.
 - With unmodified client code, the server should never have to correct client

@@ -6,6 +6,48 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
 
 ## [Unreleased]
 
+### Added
+- **A direct message announces itself.** `SFX_MESSAGE_PRIVATE` was the one
+  message sound bzo was missing while having the feature that plays it: a DM
+  arrived silently where a team message beeped. Upstream's own trigger --
+  addressed to me, sent by a player rather than the server, and at most once
+  every two seconds. Each of the three message sounds keeps a clock of its own,
+  because upstream keeps a separate `static lastMsg` per branch, so a team
+  message no longer silences the private one that arrived beside it.
+- **An admin channel, and the concept of an admin.** Upstream's `AdminPlayers`
+  destination, gated both ways: sending needs permission and so does receiving,
+  and a sender without it gets upstream's own sentence -- "You do not have
+  permission to speak on the admin channel." -- rather than having the message
+  dropped silently. An admin message is marked `[ADMIN]`, goes to the Chat tab as
+  a team message does, and plays `SFX_MESSAGE_ADMIN`. ADMIN joins the destination
+  dropdown, hidden for anybody the server would refuse.
+
+  bzo has no login, so there is nothing to key a permission to. **An admin is a
+  player whose name is not the default.** `nameCheck` calls an empty name
+  `Player <n>` and refuses that shape to anybody whose number it is not, so the
+  default cannot be claimed and a name that is not the default was typed on
+  purpose. It is a courtesy gate rather than a security one, and `isAdmin` is the
+  one function a real login would replace.
+
+  Closes #41.
+
+### Changed
+- **The Operator panel is for admins only.** Its four messages -- `getMaps`,
+  `setMap`, `uploadMap`, `setOperatorConfig` -- are refused on the server for
+  anybody who is not an admin, and the Operator button is disabled rather than
+  hidden, since a control that is plainly unavailable says more than one that is
+  missing. Any connected player could previously change the map or the server
+  config; the standing decision that this was fine during development is
+  withdrawn, and the gate is server-side because a client can draw itself
+  whatever it likes.
+
+### Fixed
+- **A world weapon's shot carried the wrong reserved id.** `ServerPlayer` is 253;
+  252 is `AdminPlayers`, which the admin channel above is upstream's counterpart
+  of. Nothing broke -- a bzo player id is the decimal *string* of its player
+  number, so neither value could ever collide with a real player -- but the
+  constant cited `ServerPlayer` while holding the id next to it.
+
 ## [1.0.81] - 2026-09-08
 
 ### Added

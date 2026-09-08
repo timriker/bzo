@@ -20,13 +20,15 @@ export function normalizeShotSlotCount(value) {
   return parsedValue;
 }
 
-// PlayerId `ServerPlayer` (include/global.h), the id upstream gives every shot
+// PlayerId `ServerPlayer` (Address.h:75), the id upstream gives every shot
 // nobody fired: a world weapon's, and a death by drowning or a death physics
-// driver. bzo allocates player ids from 1 and caps a server well below this, so
-// it can never collide with a real player -- and a shot carrying it has no
-// entry in the roster on purpose, which is what every path that looks a shooter
-// up has to tolerate.
-export const WORLD_WEAPON_PLAYER_ID = 252;
+// driver. It is one of five reserved ids -- 255 NoPlayer, 254 AllPlayers, 253
+// ServerPlayer, 252 AdminPlayers, 251 and down for the teams -- and it is a
+// number where a bzo player id is the decimal *string* of its player number, so
+// the two can never be equal however many players join. A shot carrying it has
+// no entry in the roster on purpose, which is what every path that looks a
+// shooter up has to tolerate.
+export const WORLD_WEAPON_PLAYER_ID = 253;
 
 // bz_vectorFromRotations (bzfsAPI.cxx:1845), which is how a world weapon's aim
 // becomes a direction, converted to bzo's axes.
