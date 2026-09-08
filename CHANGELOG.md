@@ -6,6 +6,55 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
 
 ## [Unreleased]
 
+## [1.0.86] - 2026-09-08
+
+### Added
+- **`/mv`, which upstream has no version of** (#5). Not in bzfs, not in any
+  plugin, and no API call to move a tank either -- it is here because bzo is
+  developed by driving it, and `server.json`'s `testSpawn` already does this on
+  join. `/mv` is the same thing without a restart. `/tp` is left free for the
+  teleporters bzo already has as named obstacles.
+
+  `/mv x,z` goes there at whatever height the tank fits, keeping its facing;
+  `/mv x,y,z` gives the height, and a facing goes either in a fourth slot after
+  all three coordinates or as a word after them -- `/mv 0,0 e`, `/mv 0,30,0,s`.
+  `/mv <player> ...` moves somebody else, taking upstream's own
+  `<#slot|PlayerName|"Player Name">` target syntax. Coordinates are bzo's world
+  coordinates, the ones `testSpawn` takes.
+
+  A facing is one of the eight compass points and never a number: bzo's rotation
+  runs anticlockwise from north while a compass bearing runs clockwise, so `90`
+  would have been ambiguous in the one direction that matters.
+
+  Height goes through `dropSpawnPosition`, the resolver `testSpawn` uses: given
+  and clear it is honoured, so `/mv 0,30,0` puts you up to watch yourself fall;
+  given and blocked it climbs, so a coordinate inside an elevated obstacle comes
+  out on the roof; not given it starts from the ground, so `/mv 0,0` lands on the
+  grass on `hix` and on the centre block on `fountains`. The reply names where
+  the tank actually landed, which is how a mistyped coordinate shows itself.
+- **`/me`** (#5). `/me smiles` reads as "Tim Riker smiles", and it works to ALL,
+  to a team, to the admin channel and to one player -- because it is reformatted
+  in the message path rather than dispatched as a command, which is where
+  upstream puts it and for the same stated reason: a dispatcher has already
+  thrown the destination away. The wire carries `msgType: 'action'`, which bzo
+  already had and already rendered, so this was an entry point and nothing else.
+  `/me` with no argument answers upstream's sentence and `/mefoo` is not `/me`.
+- **The operator tier of server commands** (#5): `/kill`, `/say`, `/mute`,
+  `/unmute`, `/mutelist`, `/playerlist`, `/flag` and `/set`. Each sits in front
+  of a function bzo already had -- `/kill` goes through the one death path, so the
+  flag, the lock, the rabbit and the respawn all happen. A mute carries upstream's
+  own sentence and its own exception: somebody who may still send on the admin
+  channel does, which leaves a muted player a way to ask about it.
+
+### Changed
+- **The Operator panel and `/set` write through one function.** Both now go
+  through `applyServerConfigChanges`, which validates, persists to `server.json`,
+  applies to the live config and broadcasts as one transaction. They are one
+  action with two front ends, and two copies would have disagreed about what a
+  valid value is or forgotten to tell the clients. `/set` reaches exactly the
+  three the panel propagates, and says outright that everything else on this
+  server is a constant.
+
 ## [1.0.85] - 2026-09-08
 
 ### Added
