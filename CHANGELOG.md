@@ -6,6 +6,8 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
 
 ## [Unreleased]
 
+## [1.0.82] - 2026-09-08
+
 ### Added
 - **A direct message announces itself.** `SFX_MESSAGE_PRIVATE` was the one
   message sound bzo was missing while having the feature that plays it: a DM
