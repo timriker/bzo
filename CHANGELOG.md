@@ -6,6 +6,8 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
 
 ## [Unreleased]
 
+## [1.0.80] - 2026-09-08
+
 ### Added
 - **`BU` Burrow and `PZ` Phantom Zone, and with them bzo's flags are done (#6).**
   Every flag BZFlag has is in bzo except `WA` Wide Angle, which is deliberately
