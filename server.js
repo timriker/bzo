@@ -131,8 +131,17 @@ const {
   getTeamFromColorIndex,
   getTeamScoreDeltasForCapture,
   getTeamScoreDeltasForKill,
+  getGameType,
+  teamScoreMovesOnKill,
   areFoes,
 } = require('./server/teams.cjs');
+const {
+  SESSION_COOKIE_NAME,
+  SESSION_TTL_MS,
+  parseCookies,
+  isAdminSession,
+  createSessionStore,
+} = require('./server/sessions.cjs');
 const path = require('path');
 const fs = require('fs');
 const crypto = require('crypto');
@@ -297,6 +306,180 @@ app.get(['/', '/index.html'], (req, res) => {
   // one conditional request and a bodiless 304.
   res.set('Cache-Control', REVALIDATE);
   res.type('html').send(renderIndex(host));
+});
+
+// bzflag.org's global login, as a probe rather than a feature. Nothing here
+// grants anything: it answers whether the weblogin round trip and the token
+// check work for a server like bzo, and it prints what came back. See
+// AGENTS.md, "What a real login would look like".
+//
+// Two routes because the flow has two halves. `/login/start` is the redirect
+// -- `misc/checkToken.php` requires that the site send the player to
+// bzflag.org's own form rather than collecting a password itself, and a 302
+// from here is exactly that. `/login` is where bzflag.org sends them back.
+const BZFLAG_LOGIN_URL = 'https://my.bzflag.org/weblogin.php';
+const BZFLAG_LIST_SERVER_URL = 'https://my.bzflag.org/db/';
+
+// CHECKTOKENS, deliberately without the `@<ip>` half. The address would have to
+// be the one the *browser* used to reach my.bzflag.org, which publishes no AAAA
+// record, while a browser reaching bzo prefers IPv6 where it can -- so the two
+// are different families and can never match. Omitting it is what
+// checkToken.php calls `checkIP` false.
+//
+// `groups` names the groups to ask about, joined by an already-encoded CRLF --
+// `%0D%0A`, as both `checkToken.php` and bzfs's own ADD request write it. The
+// membership comes back on the `TOKGOOD:` line, and only for groups named here.
+async function checkGlobalToken(callsign, token, groups = []) {
+  const url = `${BZFLAG_LIST_SERVER_URL}?action=CHECKTOKENS`
+    + `&checktokens=${encodeURIComponent(callsign)}%3D${encodeURIComponent(token)}`
+    + (groups.length > 0
+      ? `&groups=${groups.map((group) => encodeURIComponent(group)).join('%0D%0A')}`
+      : '');
+  const response = await fetch(url, {
+    headers: { 'User-Agent': `bzo ${CLIENT_BUILD}` },
+    signal: AbortSignal.timeout(10000),
+  });
+  const body = await response.text();
+  return { url, status: response.status, body };
+}
+
+// The reply is newline separated and each line names itself, exactly as
+// ListServerConnection.cxx:118 and checkToken.php read it.
+function parseGlobalTokenReply(body) {
+  const result = { good: false, callsign: null, groups: [], bzid: null, lines: [] };
+  for (const rawLine of body.split(/\r\n|\r|\n/)) {
+    const line = rawLine.trim();
+    if (!line) continue;
+    result.lines.push(line);
+    if (line.startsWith('TOKGOOD: ')) {
+      result.good = true;
+      // `TOKGOOD: callsign:GROUP:GROUP` -- the callsign, then a group per colon.
+      const [callsign, ...groups] = line.slice('TOKGOOD: '.length).split(':');
+      result.callsign = callsign;
+      result.groups = groups;
+    } else if (line.startsWith('BZID: ')) {
+      // `BZID: <numeric id> <callsign>`, and a callsign may contain a space, so
+      // only the first one separates the two.
+      const [bzid, callsign] = line.slice('BZID: '.length).split(/\s+(.*)/s);
+      result.bzid = bzid;
+      if (callsign) result.callsign = callsign;
+    }
+  }
+  return result;
+}
+
+// Both endings of a login are a redirect to `/`, so the page reloads and comes
+// back on a fresh socket -- there is no identity to migrate onto a live
+// connection, and a failed login needs nothing beyond clearing the cookie.
+//
+// Failure is reported in the **fragment**. A fragment never reaches a server, so
+// nothing lands in an access log or a `Referer`, and its value only picks a
+// message: forging it achieves nothing.
+//
+// The cookie carries one opaque id and no attribute of the player. `HttpOnly`
+// keeps it away from scripts, `Secure` from plain HTTP -- the callback is HTTPS
+// by construction, since `/login` builds it that way -- `SameSite=Lax` off a
+// cross-site WebSocket handshake, and no `Domain` keeps it host-only rather
+// than shared with every sibling of this host.
+function finishLogin(res, sessionId) {
+  if (sessionId) {
+    res.cookie(SESSION_COOKIE_NAME, sessionId, {
+      httpOnly: true,
+      secure: true,
+      sameSite: 'lax',
+      path: '/',
+      maxAge: SESSION_TTL_MS,
+    });
+    res.redirect(302, '/');
+    return;
+  }
+  res.clearCookie(SESSION_COOKIE_NAME, { httpOnly: true, secure: true, sameSite: 'lax', path: '/' });
+  res.redirect(302, '/#login=failed');
+}
+
+// One route for both halves, because the query string already says which is
+// wanted: arriving with no `t` at all is someone who has not been to
+// bzflag.org yet, and arriving with one is bzflag.org sending them back.
+app.get('/login', async (req, res) => {
+  // No `t` parameter: start the round trip.
+  if (req.query.t === undefined) {
+    const host = requestHost(req);
+    if (!host) {
+      res.status(400).type('text/plain').send('Malformed Host header');
+      return;
+    }
+    // `%TOKEN%` and `%USERNAME%` are substituted by weblogin.php. Both ride in
+    // one parameter, separated by a colon: an unencoded `&` in `url=` would
+    // belong to weblogin.php's own query string rather than to this callback,
+    // so a second parameter would never arrive. checkToken.php's alternative is
+    // to encode the whole value, which would also encode the two placeholders,
+    // and whether they still substitute is not documented -- so this is the
+    // shape known to work.
+    const callback = `https://${host}/login?t=%TOKEN%:%USERNAME%`;
+    const target = `${BZFLAG_LOGIN_URL}?action=weblogin&url=${callback}`;
+    log(`[LOGIN] redirecting to bzflag.org, callback ${callback}`);
+    // The header is set rather than sent through `res.redirect`, which runs the
+    // URL through `encodeurl` and turns `%TOKEN%` into `%25TOKEN%25` -- a lone
+    // `%` is not a valid escape, so it gets escaped, and weblogin.php then has
+    // nothing it recognises to substitute.
+    res.status(302).set('Location', target).end();
+    return;
+  }
+
+  res.type('text/plain');
+  // Everything below is echoed back as plain text on purpose: the point of the
+  // probe is to see the raw reply, and text/plain cannot carry markup a query
+  // string smuggled in.
+  //
+  // A `t` that is present but unusable is an error rather than a fresh start.
+  // Redirecting on it would send the player back to bzflag.org, which would
+  // return them here with the same empty parameter, forever.
+  const packed = typeof req.query.t === 'string' ? req.query.t : '';
+  if (!packed) {
+    res.status(400).send('Came back with an empty token. Start again at /login.\n');
+    return;
+  }
+  // Express decodes `+` to a space, which is what a callsign with a space
+  // arrives as. The token comes first and holds no colon, so the split is on
+  // the first one only -- whatever follows is the callsign, colons and all.
+  const separator = packed.indexOf(':');
+  const token = separator === -1 ? packed : packed.slice(0, separator);
+  const callsign = separator === -1 ? '' : packed.slice(separator + 1);
+  log(`[LOGIN] callback token=${token} callsign="${callsign}"`);
+  if (!callsign) {
+    res.status(400).send(`Got a token but no callsign: ${packed}\n`);
+    return;
+  }
+
+  try {
+    const { url, status, body } = await checkGlobalToken(callsign, token, ADMIN_GROUPS);
+    const parsed = parseGlobalTokenReply(body);
+    log(`[LOGIN] CHECKTOKENS ${status} good=${parsed.good} bzid=${parsed.bzid || 'none'}`
+      + ` callsign="${parsed.callsign || ''}" groups=${parsed.groups.join(',') || 'none'}`);
+    for (const line of parsed.lines) log(`[LOGIN] < ${line}`);
+    if (!parsed.good || !parsed.bzid) {
+      log(`[LOGIN] refused "${callsign}" (${url})`);
+      finishLogin(res, null);
+      return;
+    }
+    // A group asked about and not named back is a group this player is not in,
+    // which is the same answer as a group that does not exist -- so the
+    // membership stored is the intersection with what the server asked, and
+    // nothing else. `isAdminSession` reads it later against `ADMIN_GROUPS`.
+    const sessionId = sessions.create({
+      bzid: parsed.bzid,
+      // The callsign bzflag.org confirmed, not the one the query string carried.
+      callsign: parsed.callsign || callsign,
+      groups: parsed.groups,
+    });
+    log(`[LOGIN] "${parsed.callsign || callsign}" bzid=${parsed.bzid} signed in`
+      + `; admin=${isAdminSession(sessions.get(sessionId), ADMIN_GROUPS)}`
+      + `; sessions=${sessions.size}`);
+    finishLogin(res, sessionId);
+  } catch (err) {
+    logError('[LOGIN] CHECKTOKENS failed', err);
+    finishLogin(res, null);
+  }
 });
 
 // Which icon a launcher takes from the manifest is documented nowhere and the
@@ -608,6 +791,84 @@ try {
 } catch (e) {
   logError(`Could not load server config at ${configPath}:`, e);
 }
+
+// `adminGroups` in `server.json`: the global groups this server would grant
+// admin to. The list server answers about no group it was not asked about, so
+// this list is both the question and the whole permission model -- a member of
+// a group missing from it is indistinguishable from a non-member.
+//
+// **It comes from the config and nowhere else.** A group list a client could
+// name is a permission a client could name, so neither the URL nor the browser
+// has a say: every login asks exactly these.
+//
+// A name is kept exactly as configured, case and spaces included. bzflag's own
+// groups are capitals with dots -- `BZADMIN`, `PLANNING.DEVELOPERS` -- but
+// phpBB's are ordinary words like `Registered users`, and which spelling the
+// list server answers to is not documented, so nothing here normalises one into
+// the other. Two characters are refused, because both would collide with the
+// wire format: `\r` and `\n` are what separates the names in the request, and
+// `:` is what separates them in the `TOKGOOD:` reply, so a name carrying either
+// could not be asked about or read back. A space needs neither -- it is simply
+// percent-encoded on the way out.
+function isAskableGroup(group) {
+  return group.length > 0 && !/[\r\n:]/.test(group);
+}
+
+const ADMIN_GROUPS = Object.freeze(
+  (Array.isArray(serverConfig.adminGroups) ? serverConfig.adminGroups : [])
+    .map((group) => (typeof group === 'string' ? group.trim() : ''))
+    .filter(isAskableGroup)
+    .filter((group, index, all) => all.indexOf(group) === index)
+);
+log(`Admin groups: ${ADMIN_GROUPS.map((group) => `"${group}"`).join(', ') || 'none configured'}`);
+const refusedAdminGroups = (Array.isArray(serverConfig.adminGroups) ? serverConfig.adminGroups : [])
+  .filter((group) => typeof group !== 'string' || !isAskableGroup(group.trim()));
+if (refusedAdminGroups.length > 0) {
+  log(`Admin groups refused (a group name may not contain a colon or a newline):`
+    + ` ${refusedAdminGroups.map((group) => JSON.stringify(group)).join(', ')}`);
+}
+
+// Sessions from the global login. Held in a Map like every other piece of bzo's
+// state, and written to one file beside the runtime maps so a restart does not
+// log everybody out: this server restarts on every edit, a bzflag.org token is
+// single use, and each re-login is a full round trip through my.bzflag.org.
+//
+// Debounced, because a login is rare but a prune is not, and neither is worth a
+// synchronous write on the game loop's thread.
+// Beside the config rather than in the maps directory: this is operator state
+// like `server.json`, it follows `SERVER_CONFIG_PATH` into a deployment's own
+// data directory, and the maps directory is a tracked part of the repo.
+const SESSIONS_PATH = path.join(path.dirname(configPath), 'sessions.json');
+let sessionWriteTimer = null;
+
+function writeSessionsSoon() {
+  if (sessionWriteTimer) return;
+  sessionWriteTimer = setTimeout(() => {
+    sessionWriteTimer = null;
+    try {
+      fs.writeFileSync(SESSIONS_PATH, JSON.stringify(sessions.serialize()), { mode: 0o600 });
+    } catch (error) {
+      logError(`Could not write sessions to ${SESSIONS_PATH}:`, error);
+    }
+  }, 1000);
+  // Nothing waits on this file, so it must never hold the process open.
+  sessionWriteTimer.unref?.();
+}
+
+const sessions = createSessionStore({ onChange: writeSessionsSoon });
+try {
+  if (fs.existsSync(SESSIONS_PATH)) {
+    const loaded = sessions.load(JSON.parse(fs.readFileSync(SESSIONS_PATH, 'utf8')));
+    log(`Sessions: restored ${loaded} of ${SESSION_TTL_MS / 3600000}h`);
+  }
+} catch (error) {
+  // A session file that cannot be read is everybody logging in again, which is
+  // a minor cost and the only safe reading of a file we cannot parse.
+  logError(`Could not read sessions from ${SESSIONS_PATH}, starting empty:`, error);
+}
+// Expiry is only noticed on a read otherwise, and an expired session sitting in
+// the file is an identity kept longer than it was granted for.
+setInterval(() => sessions.prune(), 15 * 60 * 1000).unref?.();
 
 let MAP_SOURCE = serverConfig.mapFile || 'random';
 let mapPath = '';
@@ -1789,8 +2050,11 @@ function recordTeamScoreForCapture(cappingTeam, cappedTeam) {
   broadcastTeamScores();
 }
 
+// `teamScoreMovesOnKill` is bzfs.cxx:3539's gate: a kill leaves the team score
+// alone in ClassicCTF, where only a capture moves it.
 function recordTeamScoreForKill(killer, victim) {
   if (!TEAM_MODE.enabled || !victim) return;
+  if (!teamScoreMovesOnKill(GAME_TYPE)) return;
   const deltas = getTeamScoreDeltasForKill(killer?.team, victim.team, killer?.id === victim.id);
   if (!deltas.length) return;
   for (const delta of deltas) {
@@ -1910,6 +2174,13 @@ class Player {
     this.ws = ws;
     // Always assign a default name if none provided
     this.name = name && name.trim() ? name : `Player ${this.playerNumber}`;
+    // Set from the session cookie on the handshake, and from nothing else. The
+    // id is kept so a login on a second device can invalidate this one; it is
+    // never sent to a client. See `isAdmin` and docs/login-plan.md.
+    this.sessionId = null;
+    this.verified = false;
+    this.bzid = null;
+    this.globalCallsign = null;
     this.x = 0;
     this.y = 0;
     this.z = 0;
@@ -2224,6 +2495,13 @@ class Player {
       // `isAdmin` -- and so a client greying out a button is reading an answer
       // rather than keeping a second copy of the question.
       admin: isAdmin(this),
+      // Authenticated with a bzflag.org global callsign. Upstream carries this
+      // as one of three booleans in `MsgPlayerInfo` -- registered, verified,
+      // admin -- which the client turns into the `-`, `+` and `@` it draws
+      // beside a callsign (`ScoreboardRenderer.cxx:718`). bzo never reaches
+      // `registered`: it learns nothing about a callsign unless a token
+      // verifies, and a verified token means registered as well.
+      verified: this.verified,
       teleportCooldownUntil: this.teleportCooldownUntil,
     };
   }
@@ -2386,23 +2664,33 @@ class Projectile {
 // Returns a unique player name. If the given name is empty or taken, returns 'Player n' with the lowest available n.
 // PlayerAccessInfo's `adminMessageSend` and `adminMessageReceive`, which is what
 // upstream gates the admin channel on. Upstream reads them out of a permissions
-// file keyed to a registered, password-checked callsign; bzo has no login, so
-// there is nothing to key a permission to and the closest honest stand-in is
-// **whether the player told us who they are**.
+// file keyed to a registered, password-checked callsign, and bzo now does the
+// same thing by the same authority: **authenticated with a bzflag.org global
+// callsign, and a member of at least one group named in `adminGroups`.**
 //
-// A player who leaves the name field empty is called `Player <n>` by `nameCheck`
-// below, which also refuses that shape to anybody whose number it is not -- so
-// the default name cannot be claimed and a name that is not the default was
-// typed on purpose. That is the whole rule: type a name and you are an admin.
+// Both halves are required and neither is client-supplied. The session comes
+// from the cookie on the WebSocket handshake and is looked up in the server's
+// own store, so a forged cookie is anonymous rather than privileged; the groups
+// come from what bzflag.org answered about the groups `server.json` asked
+// about, so a player cannot name their own. A server that lists no
+// `adminGroups` has no admins at all, and there is no way back in -- which is
+// why `example-server.json` ships bzflag's own `DEVELOPERS` and `BZADMIN`
+// rather than an empty list. An operator who wants nobody else's authority on
+// their server empties it; an operator who never opens the file inherits
+// bzflag's, which is a deliberate default and worth knowing about.
 //
-// It is a courtesy gate, not a security one, and it is only as strong as the
-// obscurity of a name field -- which is to say not at all. What makes it safe
-// enough is that it is checked on the server for every privileged message, so a
-// modified client that draws itself the Operator panel still cannot change the
-// map. When bzo grows a login, this is the one function that has to change.
+// This replaced a courtesy gate: any name that was not `Player <n>` used to
+// count, on the reasoning that a typed name was at least deliberate. It is gone
+// rather than kept alongside, because a player who never logged in being an
+// admin would make the login decorative.
+//
+// It is still checked on the server for every privileged message, so a modified
+// client that draws itself the Operator panel cannot change the map.
 function isAdmin(player) {
   if (!player || !player.joined) return false;
-  return player.name !== `Player ${player.playerNumber}`;
+  // Re-read the session rather than trusting the flag set at connect: an
+  // 8 hour session can expire mid-game, and `sessions.get` is what knows.
+  return isAdminSession(sessions.get(player.sessionId), ADMIN_GROUPS);
 }
 
 // The Operator panel's messages, refused for anyone who is not an admin. The
@@ -2430,8 +2718,24 @@ function getAdmins() {
   return admins;
 }
 
+// `@`, `+` and `-` are the authentication indicators upstream draws beside a
+// callsign (`ScoreboardRenderer.cxx:718`), and bzo draws the same characters. A
+// name may not start with one, so nobody can wear an indicator they were not
+// given -- most of all where a name is written as plain text and there is no
+// separate field to draw it in, like a chat line or the server log.
+//
+// Stripped rather than refused outright, so a name that only offends this rule
+// still joins under something close to what was typed. `nameCheck` already
+// substitutes rather than erroring everywhere else.
+const NAME_INDICATOR_PREFIX = /^[@+-]+/;
+
+function stripNameIndicators(requestedName) {
+  return typeof requestedName === 'string' ? requestedName.replace(NAME_INDICATOR_PREFIX, '') : requestedName;
+}
+
 function nameCheck(requestedName, excludeId = null) {
-  let name = requestedName && requestedName.trim() ? requestedName.trim() : '';
+  let name = stripNameIndicators(requestedName);
+  name = name && name.trim() ? name.trim() : '';
   // Get the player number for excludeId
   let playerNumber = null;
   if (excludeId) {
@@ -2463,6 +2767,78 @@ function nameCheck(requestedName, excludeId = null) {
   }
   return name;
 }
+// What a joining player is called, once authentication can outrank a typed
+// name. See docs/login-plan.md, "Name collisions".
+//
+// An authenticated player **is** their global callsign: not a name they asked
+// for, not one with an indicator typed into it, and not a fallback if somebody
+// else is standing on it. Upstream protects a registered callsign the same way,
+// by refusing it to anyone who cannot prove it is theirs; bzo cannot ask that
+// question of an unauthenticated player at all -- it learns nothing about a
+// callsign without a token -- so the protection runs the other way round and
+// the proof arrives with the claimant.
+function resolveJoinName(player, requestedName) {
+  const session = sessions.get(player.sessionId);
+  if (!session) return nameCheck(requestedName, player.id);
+
+  const callsign = session.callsign;
+  for (const other of players.values()) {
+    if (other.id === player.id || !other.joined) continue;
+    if ((other.name || '').toLowerCase() !== callsign.toLowerCase()) continue;
+
+    if (other.verified) {
+      // Two authenticated players can only collide by being the same account on
+      // a second device, and the newest device wins: signing in elsewhere to do
+      // admin work is a real thing to want.
+      //
+      // The superseded session is dropped as well, and that is not optional --
+      // bzo clients rejoin without waiting for a click, so a kicked device
+      // would reconnect, authenticate as the same callsign, and kick whatever
+      // kicked it, forever. Without its session it comes back as an ordinary
+      // anonymous player.
+      log(`"${callsign}" signed in again on another device;`
+        + ` dropping player ${other.playerNumber} and its session`);
+      if (other.sessionId) sessions.remove(other.sessionId);
+      other.verified = false;
+      other.bzid = null;
+      other.sessionId = null;
+      sendToPlayer(other, {
+        type: 'message',
+        src: -1,
+        dst: other.id,
+        msgType: 'server',
+        text: `You signed in as ${callsign} on another device.`,
+      });
+      try {
+        other.ws.close();
+      } catch (error) {
+        logError(`Could not close the superseded connection for "${callsign}"`, error);
+      }
+      continue;
+    }
+
+    // An unauthenticated player is renamed rather than disconnected: it frees
+    // the name just as well and leaves them in the game they were in the
+    // middle of.
+    const assigned = `Player ${other.playerNumber}`;
+    log(`"${other.name}" renamed to "${assigned}": "${callsign}" signed in and owns that name`);
+    other.name = assigned;
+    sendToPlayer(other, {
+      type: 'message',
+      src: -1,
+      dst: other.id,
+      msgType: 'server',
+      text: `${callsign} signed in with that name, so yours is now ${assigned}.`,
+    });
+    broadcastAll({ type: 'playerUpdated', player: other.getState() });
+  }
+
+  if (requestedName && requestedName.trim() && requestedName.trim() !== callsign) {
+    log(`"${requestedName.trim()}" ignored: player ${player.playerNumber} is signed in as "${callsign}"`);
+  }
+  return callsign;
+}
+
 function distance(x1, z1, x2, z2) {
   return Math.sqrt((x2 - x1) ** 2 + (z2 - z1) ** 2);
 }
@@ -3253,6 +3629,12 @@ rebuildTestSpawns();
 // ClassicCTF upstream. Team flags need both a team game and bases to stand on,
 // so a team-mode map with no bases plays without them.
 const CTF_ENABLED = TEAM_MODE.enabled && BASES_BY_TEAM.size > 0;
+// Upstream names the game once and several rules read that name rather than
+// re-deriving it. `CTF_ENABLED` and `TEAM_MODE` stay the ones to ask about
+// bases and about colour teams; this is for the rules upstream writes in terms
+// of the type as a whole.
+const GAME_TYPE = getGameType(TEAM_MODE.enabled, BASES_BY_TEAM.size > 0);
+log(`Game type: ${GAME_TYPE}`);
 // World::allowJumping, upstream's -j. Upstream has jumping off until the switch
 // turns it on; bzo has had it on since before there was a switch, so the default
 // stays on and `jumping: false` in server.json is what turns it off. A map's
@@ -6385,6 +6767,44 @@ wss.on('connection', (ws, req) => {
   }
   //log(`Player ${player.playerNumber} user agent: ${userAgent}`);
 
+  // What the handshake actually carried, per device, because the answer decides
+  // whether an `Origin` check is worth having. A browser is supposed to send
+  // `Origin` on a WebSocket upgrade and a non-browser client is not, and
+  // `SameSite=Lax` is supposed to keep a cookie off a cross-site upgrade -- both
+  // are worth reading off real phones and headsets rather than assuming. See
+  // AGENTS.md, "What a real login would look like".
+  //
+  // Cookie *names* only. A session id in a log is a session id somebody can
+  // read, and the question here is which cookies arrive, not what is in them.
+  const cookies = parseCookies(req.headers.cookie);
+  const cookieNames = Object.keys(cookies);
+  log(`[WS] Player ${player.playerNumber} handshake`
+    + ` origin=${req.headers.origin === undefined ? 'absent' : `"${req.headers.origin}"`}`
+    + ` host="${req.headers.host || ''}"`
+    + ` cookies=${cookieNames.length > 0 ? cookieNames.join(',') : 'none'}`
+    + ` secure=${req.headers['x-forwarded-proto'] || (req.socket.encrypted ? 'https' : 'http')}`
+    + ` ua="${req.headers['user-agent'] || ''}"`);
+
+  // The cookie is where identity binds, because the cookie is what the
+  // handshake carries. Everything the player is comes out of the server's own
+  // record: the id is only ever looked up, never parsed, so an invented one is
+  // anonymous rather than merely unlikely to work.
+  //
+  // The session is read once, here, and the id is kept so a superseded login
+  // can invalidate it. It is deliberately *not* sent to the client.
+  player.sessionId = cookies[SESSION_COOKIE_NAME] || null;
+  const session = sessions.get(player.sessionId);
+  if (session) {
+    player.verified = true;
+    player.bzid = session.bzid;
+    player.globalCallsign = session.callsign;
+    player.admin = isAdminSession(session, ADMIN_GROUPS);
+    log(`[WS] Player ${player.playerNumber} authenticated as "${session.callsign}"`
+      + ` bzid=${session.bzid} admin=${player.admin}`);
+  } else {
+    player.sessionId = null;
+  }
+
   // Send initial server state in init message
   const clouds = generateClouds(OBSTACLES);
   ws.send(JSON.stringify({
@@ -7163,7 +7583,7 @@ wss.on('connection', (ws, req) => {
         }
 
         case 'joinGame': {
-          let joinName = nameCheck(message.name, player.id);
+          let joinName = resolveJoinName(player, message.name);
           const requestedTankModel = typeof message.tankModel === 'string'
             ? normalizeTankModelId(message.tankModel)
             : 'bzflag';

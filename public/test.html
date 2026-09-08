@@ -185,6 +185,33 @@
     </div>
   </section>
 
+  <section>
+    <h2>Global login probe</h2>
+    <p>
+      Not a knob and not a feature &mdash; a one-off probe of bzflag.org's
+      global registration. It sends you to my.bzflag.org to log in with your
+      global callsign, comes back with a token, and asks the list server whether
+      that token is real. <strong>bzo never sees your password</strong>; the
+      login form is bzflag.org's own, which is what the check requires.
+      The answer is printed as plain text and also lands in the server log as
+      <code>[LOGIN]</code> lines. Nothing is stored and nothing is granted.
+    </p>
+    <p>
+      It also reports whether you are in any of the groups
+      <code>adminGroups</code> in <code>server.json</code> names, which is the
+      rule a real login here would use. The list server answers about
+      <em>only the groups it was asked about</em>, so that list is the whole
+      question &mdash; and it comes from the config, never from the URL, because
+      a group a client could name is a permission a client could name. Knowing
+      the answer still grants nothing today.
+    </p>
+    <div class="modes">
+      <a class="mode" href="/login">
+        <b>Log in with a bzflag.org callsign</b><span>/login</span>
+      </a>
+    </div>
+  </section>
+
   <footer>
     <p>
       Reading the result: a sample lands in the server log as

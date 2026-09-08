@@ -509,6 +509,24 @@ export function compareScoreboardPlayers(a, b) {
   return a.connectDate - b.connectDate;
 }
 
+// The authentication indicator, `ScoreboardRenderer.cxx:712`. Upstream builds it
+// as a field of its own beside the callsign rather than as part of the name, in
+// cyan, and picks exactly one character: `@` for an admin, else `+` for a player
+// who authenticated this session, else `-` for a registered callsign that did
+// not, else nothing at all.
+//
+// bzo reaches two of the three. It learns nothing about a callsign unless a
+// token verifies, and a verified token means registered as well, so `-` has no
+// state to describe here -- which is also why a name may not begin with one.
+export const SCOREBOARD_STATUS_COLOR = 0x00ffff;
+
+export function getPlayerStatusIndicator(state) {
+  if (!state) return '';
+  if (state.admin) return '@';
+  if (state.verified) return '+';
+  return '';
+}
+
 // One shape for a player's name and the flag they carry, wherever it is written.
 // Upstream builds a single string -- the callsign, then "/", then the flag's
 // abbreviation, with the colour changing at the slash and no space anywhere
@@ -553,6 +571,7 @@ export function buildScoreboardRows({
       connectDate: state.connectDate ? new Date(state.connectDate) : new Date(0),
       color: state.color,
       flag: getPlayerFlagLabel(id),
+      status: getPlayerStatusIndicator(state),
       isObserver: isObserverTeam(state.team),
       isCurrent,
     });
@@ -623,13 +642,19 @@ export function updateScoreboard({
     // from the pair rather than the flag away from the name.
     const labelSpan = document.createElement('span');
     labelSpan.className = 'playerLabel';
+    // Before the name and in cyan, which is where and how upstream draws it.
+    // Its own element, so it is never part of the name it sits beside.
+    const statusSpan = document.createElement('span');
+    statusSpan.className = 'scoreboardStatus';
+    statusSpan.textContent = player.status || '';
+    statusSpan.style.color = colorToCSS(SCOREBOARD_STATUS_COLOR);
     const nameSpan = document.createElement('span');
     nameSpan.className = 'scoreboardName';
     const flagSpan = document.createElement('span');
     flagSpan.className = 'scoreboardFlag';
     // The row already carries the player's colour; only the flag differs.
     writePlayerLabel(nameSpan, flagSpan, { name: player.name, flag: player.flag });
-    labelSpan.append(nameSpan, flagSpan);
+    labelSpan.append(statusSpan, nameSpan, flagSpan);
 
     const statsSpan = document.createElement('span');
     statsSpan.className = 'scoreboardStats';

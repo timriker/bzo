@@ -156,7 +156,10 @@ These are deliberate. Do not "fix" them without being asked.
   superflags at all. bzo defaults `superFlags` to 16 slots drawn from every
   superflag in the shared `flags` table, so the feature is not invisible
   without editing `server.json`. That is the *code* default, for a config that
-  never mentions `superFlags`, and it is what `example-server.json` asks for. The
+  never mentions `superFlags`, and it is what `example-server.json` asks for --
+  which is why that file names only `count` and no `allowed` list. An
+  enumerated list in a tracked file goes stale every time a flag is added, and
+  this one had: it named 13 of the 41 flags bzo now carries. The
   dev server's own `server.json` asks for none, because there the world is what
   says how many -- see "The world carries the gameplay".
 
@@ -1345,12 +1348,221 @@ arrived beside it. All three only fire when somebody else sent it. A message fro
 the *server* is silent, which is upstream's default -- its private sound is gated
 on `beepOnServerMsg`, a setting bzo does not ship.
 
+### What a real login would look like
+
+Not implemented, and recorded here because it is the one thing that would
+replace `isAdmin` rather than dress it up. bzflag.org's global registration is
+**two different token flows**, and only one of them suits a browser:
+
+- **The one bzfs uses.** The client POSTs
+  `action=GETTOKEN&callsign=&password=&nameport=` to `https://my.bzflag.org/db/`
+  and gets back `TOKEN: <token>` or `NOTOK:`/`ERROR:`
+  (`src/game/ServerAuth.cxx:37`), sends the token when it joins, and the server
+  passes it to the list server as `checktokens=callsign@ip=token` riding on its
+  `ADD` request, reading `TOKGOOD:`, `TOKBAD:`, `UNK:` and `BZID:` out of the
+  reply (`ListServerConnection.cxx:118`). The client holds the player's global
+  password to do this. **Not for bzo**: bzo's client is a web page, and a web
+  page asking for someone's bzflag.org password is the thing the next flow
+  exists to avoid.
+- **The one for websites**, which is what bzo is. `misc/checkToken.php` in the
+  upstream tree documents it: send the browser to
+  `https://my.bzflag.org/weblogin.php?action=weblogin&url=<url-encoded callback
+  containing %TOKEN% and %USERNAME%>`, let bzflag.org do the login, and verify
+  what comes back server-side with
+  `https://my.bzflag.org/db/?action=CHECKTOKENS&checktokens=<username>@<ip>%3D<token>&groups=<GROUP%0D%0AGROUP>`.
+  The reply carries `TOKGOOD: <callsign>:<GROUP>:<GROUP>` and
+  `BZID: <numeric id> <callsign>`. HTTPS both ways, a redirect the browser
+  already knows how to do, and bzo never sees a password.
+
+**The redirect half is confirmed working against bz.rikers.org**, 2026-09-08.
+Sending a browser to
+
+```
+https://my.bzflag.org/weblogin.php?action=weblogin&url=https://bz.rikers.org?t=%TOKEN%:%USERNAME%
+```
+
+logs in at bzflag.org and lands back on
+`https://bz.rikers.org/?t=700838849:Tim+Riker`. Three things that test settled:
+
+- **Pack the values into one query parameter.** `%TOKEN%` and `%USERNAME%` may
+  be placed anywhere in `url=`, but an unencoded `&` between two parameters
+  belongs to `weblogin.php`'s own query string, not to the callback's -- so
+  `...&url=https://bz.rikers.org?username=%USERNAME%&token=%TOKEN%` loses the
+  token. Either url-encode the whole `url=` value, as `checkToken.php` says to,
+  or carry both in one parameter with a separator, which is what the confirmed
+  URL above does.
+- **The callsign is form-encoded, so a space arrives as `+`.** Read the
+  parameter with `URLSearchParams`, which turns `+` back into a space;
+  `decodeURIComponent` does not, and would leave a player called `Tim+Riker`.
+  A callsign may contain a space, so this is not a corner case.
+- **The token is a ten-digit number** in practice, which matches upstream's own
+  note on `TokenLen` -- "opaque string (now int(10))". Treat it as opaque
+  anyway; the field is sized for 21 characters.
+
+**The verify half is a live probe**, `/login` in
+`server.js`, reachable from the "Global login probe" section of
+`public/test.html`. It grants nothing and stores nothing: it redirects, reads
+the token back, asks `CHECKTOKENS` about it, and prints the raw reply as plain
+text and as `[LOGIN]` lines in the server log. One route serves both halves,
+because the query string already says which is wanted: no `t` parameter is
+someone who has not been to bzflag.org yet and gets the redirect, and a `t` is
+bzflag.org sending them back. A `t` that is present but unusable is an error
+rather than a fresh start -- redirecting on it would come back with the same
+empty parameter, forever. What the probe has settled so far:
+
+- **A real token verifies with no IP supplied**, which is the question the probe
+  was built to answer. `CHECKTOKENS` echoes the request back as
+  `MSG: checktoken callsign=… , ip=, token=…` -- the empty `ip=` is what
+  omitting the `@<ip>` looks like from the far side -- and answers `TOKGOOD:`
+  anyway. bzo can keep its AAAA record.
+- **A bad token answers `TOKBAD: <callsign>`** and HTTP 200, so the status code
+  says nothing -- the reply body is the whole answer.
+- **Groups are answered only if asked about.** `&groups=` carries the names
+  joined by an already-encoded CRLF, `%0D%0A`, as both `checkToken.php` and
+  bzfs's own ADD write it, and membership comes back on the `TOKGOOD:` line
+  after the callsign, colon separated:
+  `TOKGOOD: Tim Riker:BBMODERATORS:BRYJEN.OPER:…`. Asking about 15 groups
+  returned the 14 the player belongs to and dropped the one that does not
+  exist, silently. So a group left out of the question, a group the player is
+  not in, and a group nobody has ever created are one answer, and **the
+  asked-for list is the whole permission model** -- there is no "tell me
+  everything they are in".
+- **The reply is colon delimited and the callsign sits inside it**, so a
+  callsign containing a colon would be ambiguous. Upstream splits the same way,
+  so bzo is no worse off than bzfs, but a callsign is not a safe field to parse
+  around.
+- **Key on the BZID, not the callsign.** The reply's last line is
+  `BZID: 1037 Tim Riker` -- a small stable integer, and the callsign after it is
+  a display name a player can change on the forum. Storing the name as the
+  identity would silently transfer a permission on a rename.
+- **A callback with a path works.** Confirmed with a 15-group list, a callback
+  around 230 characters -- weblogin.php substituted the placeholders and
+  returned to the path unchanged. That matters beyond the probe: the callback
+  may carry only one *query* parameter, since a second would need an `&` that
+  belongs to weblogin.php, so a real login's return-to and nonce have to travel
+  in the path as the group list does.
+- **The token lands in the browser's address bar and history.** The probe's
+  reply is `text/plain` with no subresources, so nothing leaks it through a
+  `Referer` header, but a real login should consume the token and redirect to a
+  clean URL rather than leave it sitting in history.
+- **Express decodes the callsign's `+` to a space** for `req.query`, so
+  `t=1234567890:Tim+Riker` arrives as the callsign `Tim Riker`.
+- **`res.redirect` cannot be used for the outbound leg.** It runs the URL
+  through `encodeurl`, and a lone `%` is not a valid escape, so `%TOKEN%`
+  becomes `%25TOKEN%25` and weblogin.php has nothing it recognises to
+  substitute. The route sets the `Location` header itself.
+
+**Where a session would live, once there is one.** Decided, not built. The
+browser gets **one opaque value and nothing else**: 32 random bytes in an
+`HttpOnly; Secure; SameSite=Lax` cookie. Every attribute -- the BZID, the
+callsign, the group memberships, whether any of them grants admin -- stays in a
+server-side record that the cookie is a key to.
+
+The reason is that a player can write their own cookies and their own
+`localStorage`, so anything stored there is attacker-chosen. That is harmless
+only as long as the server never *parses* trust out of it but *looks it up*: an
+invented id matches no record and is anonymous. A signed client-side claim -- a
+JWT carrying the groups -- would break exactly this, and could not be revoked
+either. `isAdmin` becomes a lookup against `adminGroups` at the moment an action
+is checked, and the client is still only *told* the answer, for the reason given
+above: a greyed-out button reads an answer rather than keeping a second copy of
+the question.
+
+A cookie is auto-sent and a WebSocket handshake is not subject to CORS, so an
+attacker's page can open a socket to bzo and the browser attaches the victim's
+cookie -- the value is never seen, and its randomness never comes into it. What
+stops that is `SameSite=Lax`, which rides only top-level navigations and so
+keeps the cookie off a cross-site upgrade. An `Origin` check is a second layer
+rather than the only one, and it earns its five lines in two cases: a browser
+old enough to predate Lax-by-default, and the day bzo is wanted inside another
+origin's iframe, which forces `SameSite=None` and removes the first layer
+entirely.
+
+Every handshake is logged as a `[WS]` line -- `origin`, `host`, cookie *names*
+only, scheme and user agent -- so the rule is written against what devices
+actually send. So far: desktop Chrome and Firefox both send
+`origin="https://bz.rikers.org"` matching the host, and a plain `ws` client
+sends `origin=absent`. That is the rule to use -- **reject only when `Origin`
+is present and does not match** -- since a non-browser client has no victim
+cookie to borrow. Phone and headset browsers still need sampling.
+
+Note the same lines show `secure=http`: the reverse proxy forwards
+`x-forwarded-for` but not `x-forwarded-proto`, so `req.secure` is false and
+nothing server-side should key on it. The browser leg is HTTPS regardless --
+`Origin` says so -- and a `Secure` cookie is honoured by the browser without
+the server needing to know.
+
+The probe is unauthenticated, so anyone who finds it can make bzo send one
+request to my.bzflag.org. That is acceptable for a probe on a dev server and is
+a reason it should not survive as-is into anything that grants a permission.
+
+What is left to build is a real callback and session -- and everything under
+"what it would cost" below. The login form is not the part that needs designing.
+
+What it would buy: a **BZID**, a stable numeric identity bzo could key
+permissions to, and **group membership**, which is what upstream's
+`PlayerAccessInfo` keys to -- so the admin gate would become a real question
+with a real answer.
+
+What it would cost, and why it is not a small change:
+
+- The script's own rule is that the site **must** redirect the user to
+  bzflag.org's form; login info arriving from any other form is rejected. So
+  this is a page navigation, not a dialog, and bzo needs a callback route and a
+  session of its own to survive the round trip.
+- Identity has to be bound to the WebSocket, which is opened after the redirect
+  is over. The verified BZID lives in bzo's session and the join has to present
+  it.
+- Tokens are single use and short-lived -- 22 bytes including the NUL
+  (`TokenLen`, `global.h:33`), erased by bzfs the moment it has used one
+  (`playing.cxx:5649`). Verify at the callback, then trust bzo's own session.
+- **Do not send the IP in `CHECKTOKENS`.** The address is supplied by the site,
+  not observed by bzflag.org: `checkToken.php` writes it into the query as
+  `checktokens=<callsign>@<ip>%3D<token>`, and bzflag.org compares it with the
+  address the token was issued to. Those two cannot match for bzo.
+  `my.bzflag.org` is a CNAME to `my.bzflag.bzexcess.com`, which publishes **A
+  records only**, so a browser reaches the login over IPv4 and the token is
+  bound to its v4 address. `bz.rikers.org` publishes both, and a browser that
+  can use IPv6 does -- `server.log` shows connects like `from 2607:fa18:…
+  (via ::ffff:166.70.97.196) (x-forwarded-for)`. The token's address and the
+  player's address are then different families, and no amount of
+  forwarded-for parsing reconciles them.
+
+  Upstream never meets this because released bzfs has no IPv6 either, so both
+  legs are v4 by construction. bzo has a choice bzfs does not:
+
+  - **Omit the `@<ip>`** -- `checkIP` false, in `checkToken.php`'s terms -- and
+    keep IPv6. What still binds the token is that it is single use, short
+    lived, and only ever handed to the browser that just authenticated, over
+    TLS. This is the cheaper side of the trade.
+  - **Drop bzo's AAAA record**, which makes both legs v4 and the check work as
+    upstream intends. It costs IPv6 reachability, and it does not make the
+    check reliable: a player behind CGNAT, a carrier proxy or a VPN can still
+    change address between fetching the token and joining, which shows up as
+    logins that fail for no visible reason.
+
+  This is only about the token check. A list-server row cannot hold an IPv6
+  address, but it does not need to: `bz.rikers.org` publishes both families, so
+  a row would simply carry the v4 one. Keeping AAAA costs nothing there.
+- Groups only come back if you ask for them by name, so bzo would have to name
+  the group it treats as admin -- and getting a bzo group created is somebody
+  else's permission. A BZID allowlist in `server.json` needs nobody's.
+
+The wiki page for this (`https://wiki.bzflag.org/Global_Registration`) has been
+read-only for years and carries none of the details above; the source and
+`misc/checkToken.php` are the reference.
+
 ## Team scores
 
 In team mode the server keeps a score per colour team, exactly as bzfs does:
 
-- `bzfs.cxx:3540` -- a kill across teams wins one for the killer's team and
-  loses one for the victim's; a kill inside a team only loses, two for a team
+- `bzfs.cxx:3539` -- **only a free-for-all game scores team points for a kill.**
+  In `ClassicCTF` a capture is the only thing that moves the team score, which
+  is what makes a capture worth crossing the map for; upstream gates the whole
+  per-kill block on `gameType == OpenFFA || TeamFFA`. `teamScoreMovesOnKill` in
+  the `teams` pair is that gate, asked of `GAME_TYPE`.
+- `bzfs.cxx:3540` -- when a kill does score, one win for the killer's team and
+  one loss for the victim's; a kill inside a team only loses, two for a team
   mate and one for yourself. Rogues and observers score for nobody, either as
   killer or as victim.
 - `bzfs.cxx:2377` -- a team's tally resets when its first player joins an empty

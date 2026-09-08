@@ -113,6 +113,26 @@ assert.equal(isColorTeam(PLAYER_TEAM.OBSERVER), false);
 // An unknown team normalizes to rogue, which scores for nobody.
 assert.equal(isColorTeam('unknown'), false);
 
+// The game type, against global.h:94. Colour teams and bases are the whole
+// question: no teams is OpenFFA, teams without bases is TeamFFA, and teams with
+// bases is ClassicCTF.
+const { getGameType, teamScoreMovesOnKill } = serverTeams;
+assert.equal(getGameType(false, false), 'OpenFFA');
+// A base on a map with no colour teams is nobody's base, so it changes nothing.
+assert.equal(getGameType(false, true), 'OpenFFA');
+assert.equal(getGameType(true, false), 'TeamFFA');
+assert.equal(getGameType(true, true), 'ClassicCTF');
+
+// bzfs.cxx:3539. Only the free-for-all types score team points for a kill; in
+// ClassicCTF a capture is the only thing that moves the team score.
+assert.equal(teamScoreMovesOnKill('OpenFFA'), true);
+assert.equal(teamScoreMovesOnKill('TeamFFA'), true);
+assert.equal(teamScoreMovesOnKill('ClassicCTF'), false);
+// Upstream skips the block for RabbitChase too, which bzo does not have yet:
+// the predicate is written as upstream's positive test so the type it does not
+// know still answers no.
+assert.equal(teamScoreMovesOnKill('RabbitChase'), false);
+
 // Team scoring, against bzfs.cxx:3540.
 const { getTeamScoreDeltasForKill } = serverTeams;
 const RED = PLAYER_TEAM.RED;

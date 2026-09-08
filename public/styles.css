@@ -744,6 +744,13 @@ body {
   font-weight: bold;
 }
 
+/* The authentication indicator sits tight against the name it belongs to, as
+   upstream's does -- there is no space between them, only a colour change. */
+.scoreboardStatus {
+  white-space: nowrap;
+  font-weight: bold;
+}
+
 .scoreboardStats {
   margin-left: 10px;
   white-space: nowrap;
@@ -1122,7 +1129,11 @@ body {
 }
 
 .tankOption {
-  width: 140px;
+  /* Fills whatever the dialog leaves between the two arrows, rather than a
+     fixed 140px card: the preview is the only thing in this row worth space,
+     and the dialog is laid out for phones through to headsets. */
+  flex: 1 1 auto;
+  min-width: 0;
   border: 2px solid #4CAF50;
   border-radius: 10px;
   background: rgba(0, 0, 0, 0.45);
@@ -1162,8 +1173,12 @@ body {
 }
 
 .tankPreviewCanvas {
-  width: 120px;
-  height: 80px;
+  /* The drawing buffer follows this, not the other way round -- see
+     `resizeTankPreview`. `aspect-ratio` keeps the frame the shape the preview
+     camera was framed for, and the cap stops it eating a tall screen. */
+  width: 100%;
+  aspect-ratio: 3 / 2;
+  max-height: 34vh;
   display: block;
   margin: 0 auto 6px auto;
   border-radius: 6px;

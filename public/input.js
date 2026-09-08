@@ -1324,11 +1324,14 @@ export function toggleOperatorPanel() {
   updateOperatorBtn();
 }
 
-// A click outside an open dialog dismisses it. The entry dialog is excluded:
-// it is the join prompt, not something a stray click should cancel.
+// A click outside an open dialog dismisses it, the entry dialog included: it
+// dismisses the way Cancel and the `[X]` do, putting the staged draft back
+// rather than applying it. Escape already reached it through the shared menu
+// keydown handler, so a click adds a third route to somewhere it could already
+// go rather than a new way to end up unjoined.
 export function dismissDialogFromOutsideClick(target) {
   const visibleDialog = getVisibleDialogRoot();
-  if (!visibleDialog || visibleDialog.id === 'entryDialog') return false;
+  if (!visibleDialog) return false;
   if (visibleDialog.contains(target)) return false;
   return dismissVisibleDialog(visibleDialog.id);
 }

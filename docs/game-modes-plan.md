@@ -1,0 +1,395 @@
+# Game modes
+
+Design and staging plan for the BZFlag game types and game styles bzo does not
+have yet. Upstream references are paths under `$HOME/bzflag/`.
+
+No GitHub issue tracks this yet; open one before the first commit and reference
+it from every commit and changelog entry here, as flag work referenced #6.
+
+## What upstream has
+
+Upstream splits "how does this server play" into two independent things.
+
+**One game type per server** (`include/global.h:94`), chosen by mutually
+exclusive switches and advertised in the ping reply so the server browser can
+label the row:
+
+| type | switch | shape |
+|---|---|---|
+| `TeamFFA` | default | colour teams, team scores move on kills, no bases |
+| `ClassicCTF` | `-c`, `-cr` | colour teams, bases, team flags; team scores move on captures only |
+| `OpenFFA` | `-offa` | no teams at all, every player a rogue, no team scores |
+| `RabbitChase` | `-rabbit` | one rabbit against every hunter, no team scores |
+
+**Any combination of game styles** (`include/global.h:102`), a bitmask on top of
+the type: `SuperFlag`, `Jumping`, `Inertia`, `Ricochet`, `Shakable`, `Antidote`,
+`Handicap`, `NoTeamKills`.
+
+**Match end is a third thing**, tied to neither: `-mps` a player score limit,
+`-mts` a team score limit, `-time` a clock, `-timemanual` to start that clock
+from `/countdown`, `-g` to serve one game and exit.
+
+## What bzo has
+
+Three of the four game types are in, and bzo derives the type rather than naming
+it:
+
+| type | how bzo reaches it | state |
+|---|---|---|
+| `TeamFFA` | `teamMode.enabled`, map with no `base` | **done** |
+| `ClassicCTF` | `teamMode.enabled` and at least one base -- `CTF_ENABLED`, `server.js:3255` | **done**, but see the kill-scoring defect below |
+| `OpenFFA` | `teamMode.enabled` false, or a map's `-offa` | **done** -- rogue and observer are the only teams offered and `broadcastTeamScores` returns early |
+| `RabbitChase` | -- | **missing** |
+
+Seven of the eight game styles are in: superflags (`+s`/`-s`), jumping (`-j`),
+inertia (`-a`), ricochet (`+r`), shakable (`-st`, `-sw`), antidote (`-sa`) and
+no-team-kills (`-noTeamKills`). **Handicap is missing.**
+
+None of the match-end switches exist: bzo has no score limit, no clock, and no
+game-over state at all. A bzo server plays until the map changes.
+
+So the gaps are, in order of how much they change:
+
+1. **ClassicCTF scores kills like TeamFFA** -- a live deviation, small fix.
+2. **Match end** -- score limits, a clock, and a game-over state.
+3. **Rabbit Chase** -- the one whole missing game type.
+4. **Handicap** -- one game style.
+
+## Name the type once
+
+Every gap below asks the same question -- *which game type is this?* -- and bzo
+currently answers it by asking two others (`TEAM_MODE.enabled` and
+`CTF_ENABLED`). That pair cannot express Rabbit Chase, and it is why the CTF
+defect below was easy to write.
+
+Add one derived constant beside `CTF_ENABLED`, upstream's own four names:
+
+```js
+const GAME_TYPE = RABBIT_SELECTION ? 'RabbitChase'
+  : CTF_ENABLED ? 'ClassicCTF'
+  : TEAM_MODE.enabled ? 'TeamFFA'
+  : 'OpenFFA';
+```
+
+`CTF_ENABLED` and `TEAM_MODE` stay exactly as they are -- they answer "are there
+bases" and "are there colour teams", which is what most of their callers
+actually want. `GAME_TYPE` is for the rules that key off the type as a whole:
+kill scoring, the forbidden-flag set, and rabbit anointing. It goes in the
+startup log next to the team-mode line, and in the `init` payload beside
+`teamMode`, because the entry dialog and the scoreboard both want to say what
+kind of game this is.
+
+## ClassicCTF must not score team points for kills -- **done**
+
+`bzfs.cxx:3534` gates the whole per-kill team-score block on
+`gameType == OpenFFA || gameType == TeamFFA`. In `ClassicCTF` a kill moves no
+team score at all -- captures are the only thing that move it, which is what
+makes a capture worth 8 kills' worth of attention. The comment in that block
+says so outright: "don't change team scores for individual player's kills in
+capture the flag mode."
+
+bzo's `recordTeamScoreForKill` (`server.js:1792`) is gated on
+`TEAM_MODE.enabled` alone, so on any team map with a base -- `hix.bzw`, every
+CTF map -- kills move the team score *and* captures do. The AGENTS.md "Team
+scores" section quotes `bzfs.cxx:3540` for the kill deltas without the gate
+above them.
+
+The fix is one condition and one doc paragraph:
+
+- `recordTeamScoreForKill` returns early unless `GAME_TYPE` is `TeamFFA` (or
+  `OpenFFA`, where nothing scores anyway because every player is a rogue).
+- `getTeamScoreDeltasForKill` in the `teams` pair stays pure and unchanged; the
+  gate belongs to the caller, as the `TEAM_MODE.enabled` gate already does.
+- `scripts/test-teams.mjs` gets a case per type asserting which of a kill and a
+  capture moves the tally.
+- The AGENTS.md "Team scores" section gains the gate, since it currently
+  documents the wrong rule.
+
+Worth doing first and on its own: it is a behaviour change players will notice
+on the dev server, and it is independent of everything below.
+
+## Match end
+
+Upstream's game-over machinery, in the order it is worth building:
+
+**Score limits** are the cheap half. `-mps <score>` sets `Score::score`, and
+`Score::reached()` (`src/bzfs/Score.cxx:108`) is `wins - losses >= score`, asked
+of the killer after every kill (`bzfs.cxx:3513`). `-mts <score>` is
+`checkTeamScore` (`bzfs.cxx:3313`): a colour team whose `wins - losses` reaches
+the limit ends the game. Either one broadcasts `MsgScoreOver` carrying the
+winner -- a player id with `NoTeam`, or a team with its index -- and the client
+turns that into "*name* (*team*) won the game" (`playing.cxx:2240`).
+
+**The clock** is the other half. `-time <seconds|h:mm:ss>` sets `timeLimit`;
+`countdownActive` and `gameStartTime` run it; `MsgTimeUpdate` carries the
+remaining seconds, sent on join, every 30 seconds, whenever the limit is
+adjusted, and once at zero (`bzfs.cxx:7180`). `-1` means the countdown is
+paused. At zero the client explodes the local tank, says "Time Expired" and
+"GAME OVER", and sets `gameOver` (`playing.cxx:2212`). `-timemanual` leaves the
+clock stopped until `/countdown` starts it, which is how match servers run.
+
+**Game over itself** is `cleanupGameOver` (`bzfs.cxx:3294`): every non-observer
+is killed, has its flag zapped, and is marked `restartOnBase`. Upstream then
+holds there until a new countdown starts.
+
+What bzo has to decide:
+
+- **The hold has to be server-side.** bzo respawns without waiting for a click
+  (an intentional deviation), so a game-over that only stops drawing would have
+  every tank back in the world five seconds later. The server refuses the spawn
+  while the game is over, and the client shows the standing scores rather than a
+  respawn countdown. That is the same shape as the pause countdown, which bzo
+  already moved to the server because the server decides whether a tank may be
+  hit.
+- **What restarts it.** Upstream restarts when the server empties, or on
+  `/countdown`. bzo has no chat commands at all (issue #5), so the first
+  implementation puts *start*, *pause*, *resume* and *set limit* in the Operator
+  panel, which is already admin-gated on the server through `refuseNonOperator`
+  and already has a message shape for exactly this (`setOperatorConfig`).
+  `/countdown` follows when #5 lands and calls the same functions.
+- **`-g` is not worth having.** "Serve one game and then exit" makes sense for a
+  process someone launched for one match; bzo's server is a web server that
+  reloads its clients on restart. Read the switch, log that it is ignored, and
+  say so in `docs/bzw.md`'s ignored list.
+
+Config: `maxPlayerScore`, `maxTeamScore`, `timeLimit` and `timeManualStart` in
+`server.json`, and `-mps`, `-mts`, `-time`, `-timemanual` in a map's `options`
+block, each behaving the way every other switch there does -- the map may set it
+and nothing turns it back off. All four default to bzfs's own defaults (no
+limit, no clock), so `server.json` keeps saying nothing about how a world plays.
+
+XR: the clock belongs in the header of the XR scoreboard panel next to the team
+rows, and "GAME OVER" is an XR toast like every other alert. Nothing here needs
+a new XR affordance.
+
+New messages: `scoreOver` (winner: player id or team) and `timeUpdate` (seconds
+left, `-1` for paused), both broadcast, with `timeUpdate` also riding in `init`
+so a joining player starts with the right clock.
+
+## Rabbit Chase
+
+One player is the rabbit; everyone else hunts them. Upstream's shape:
+
+- **Two extra teams.** `RabbitTeam` 6 and `HunterTeam` 7 (`global.h:59`), which
+  are teams for colour and friend-or-foe purposes but hold no bases, no flags
+  and no score. Rabbit is light grey `0.8 0.8 0.8`, hunter orange
+  `1.0 0.5 0.0`; the rabbit's radar colour is white (`src/common/Team.cxx:27`).
+- **Only rogues join.** `CmdLineOptions.cxx:1586` zeroes every colour team's
+  limit, saying so on stdout if the map asked for one, sets
+  `maxTeam[RabbitTeam]` to 1 and `maxTeam[HunterTeam]` to the rogue limit.
+  `autoTeamSelect` returns `HunterTeam` for every non-observer
+  (`bzfs.cxx:1923`). Rabbit Chase and CTF are mutually exclusive, and
+  `-c`/`-cr`/`-offa`/`-rabbit` each complain and win over what came before
+  (`CmdLineOptions.cxx:667`, `:706`, `:1096`).
+- **Anointing.** `anointNewRabbit` (`bzfs.cxx:2737`) runs when the rabbit dies,
+  pauses, leaves, or goes to observer, and when a player spawns while there is
+  no rabbit. With `-rabbit killer` whoever killed the rabbit gets it if they can
+  take it; otherwise `GameKeeper::Player::anointRabbit` (`GameKeeper.cxx:145`)
+  picks the best candidate by `Score::ranking()`, preferring anyone alive who is
+  not the old rabbit. `canBeRabbit` (`src/game/PlayerInfo.cxx:504`) refuses a
+  paused, unresponsive or observing player, and wants them alive unless nobody
+  else qualifies.
+- **Ranking** (`Score.cxx:42`) is `wins / (wins + losses)` scaled by
+  `1 - 0.5 / sqrt(wins + losses)`, or `0.5` for a player with no record --
+  a win *rate* damped towards the middle until there is enough of a record to
+  trust it. `-rabbit random` replaces the whole function with a random number
+  (`Score::setRandomRanking`), which is how the three selection modes reduce to
+  one code path.
+- **Being deposed is excused.** `isARabbitKill` (`include/PlayerInfo.h:324`) is
+  `wasRabbit || victim is the rabbit`, and `teamkill = !foe && !rabbitinvolved`
+  (`bzfs.cxx:3421`). Hunters are teammates, so hunter-on-hunter fire *is* team
+  killing -- except for the ex-rabbit, whose `wasRabbit` flag is set when
+  deposed (`PlayerInfo.cxx:419`) and cleared on their next spawn
+  (`bzfs.cxx:3287`). That window is the whole exception.
+- **Team scores never move** (`bzfs.cxx:3534`); player scores work as usual.
+- **The client repaints everyone** on `MsgNewRabbit` (`playing.cxx:2851`): the
+  rabbit becomes `RabbitTeam` and is marked hunted, everyone else becomes
+  `HunterTeam`, the new rabbit hears `SFX_HUNT_SELECT` and reads "You are now
+  the rabbit", and everyone gets "*name* is now the rabbit" in chat.
+- **Genocide, Colorblindness and Masquerade go out of the flag pool**, because
+  `hasTeam` only counts Red through Purple and Rabbit Chase zeroes those
+  (`CmdLineOptions.cxx:1693`). bzo already forbids `G` without colour teams and
+  already keeps `CB` and `MQ` deliberately, since every bzo player has their own
+  colour -- so the existing rule needs no change beyond reading `GAME_TYPE`.
+
+What bzo has to decide:
+
+- **Colours.** bzo gives every player a colour of their own, which is exactly
+  what hunter orange is for -- one colour for the crowd. Keep the per-player
+  colours for hunters and paint the **rabbit** upstream's grey, white on radar.
+  The rabbit is the only thing in the world that needs to be identifiable at a
+  glance, and it is the only thing that gets a reserved colour.
+- **The hunted marker.** Upstream marks the rabbit on the radar and in the
+  scoreboard through its hunt feature, which bzo does not have. Rabbit Chase
+  needs only the marker, not the whole feature: a radar ring on the rabbit's
+  blip and a `(rabbit)` mark on the scoreboard row.
+- **XR.** The radar answer does not carry into a headset, so the rabbit gets the
+  bearing ribbon with a tank caret -- the design already recommended for team
+  flags and antidotes -- pointed at the rabbit while it lives. That is the same
+  affordance rather than a second one, which is the point of choosing it once.
+- **Teams in the shared pair.** `rabbit` and `hunter` join `PLAYER_TEAM` and the
+  end of `BZFLAG_TEAM_ORDER` at indices 6 and 7. `isColorTeam` stays 1..4, so
+  bases, team flags and team scores are untouched by construction. `areFoes`
+  needs no change -- hunters share a team and the rabbit does not -- but the
+  team-kill decision in `handleKill` needs the `wasRabbit` excuse.
+- **Neither team is selectable.** They are not offered in the entry dialog's
+  team list and cannot be asked for; the server assigns them. Rabbit Chase
+  offers observer and nothing else, and `selectPlayerTeam` returns `hunter` for
+  every non-observer.
+- **Config.** `"rabbit": false | "score" | "killer" | "random"` in
+  `server.json`, and `-rabbit [score|killer|random]` in a map's `options` block,
+  mirroring bzfs including its default of `score` for a bare switch. Turning it
+  on forces colour teams off and logs that it did, exactly as
+  `CmdLineOptions.cxx:1586` does.
+- **Server-side selection.** `anointRabbit` and `ranking` go into
+  `server/teams.cjs` as pure functions marked server-only, as `areFoes` already
+  is, and `scripts/test-teams.mjs` holds them against upstream's numbers: the
+  ranking formula, the "prefer someone alive who is not the old rabbit" order,
+  the killer shortcut, and the random mode.
+
+New message: `newRabbit` (the rabbit's player id, or none), broadcast on every
+anointing and carried in `init`.
+
+## Handicap
+
+`-handicap` gives whoever is losing a faster tank. Upstream splits it in half:
+the server computes a number, the client turns it into speed.
+
+- **The number** is `recalcHandicap` (`bzfs.cxx:2077`): summing over every other
+  real non-observer player, how many times they killed me minus how many times I
+  killed them, clamped at zero. So it is a pairwise deficit, not a score
+  difference -- being beaten by one player raises the handicap even against
+  someone you are beating. Recomputed for killer and victim after every kill and
+  broadcast as `MsgHandicap` (`bzfs.cxx:3495`).
+- **The effect** is `playing.cxx:3010` and `LocalPlayer.cxx:1136`: the raw
+  number is divided by `_handicapScoreDiff` (50) and clamped to 0..1, then
+  scales tank speed by up to `_handicapVelAd` (2.0), angular velocity by
+  `_handicapAngAd` (1.5) and shot speed by `_handicapShotAd` (1.75). Advantages
+  only -- a player who is winning gets nothing, never a penalty.
+- `/handicap` lists everyone's value as a percentage (`commands.cxx:2069`).
+
+What bzo has to decide:
+
+- **The server applies it, not the client.** bzo's server decides every hit and
+  validates motion against the world's speed limits, so a client-side speed
+  boost would read as cheating. The multipliers join the per-player speed
+  adjustments that flag effects already go through in the `flags` pair, and the
+  client is told its own factor so it can predict -- same split as every other
+  speed-changing flag.
+- **Anti-cheat has to know.** `fs`/`rs` are fractions of the *world's* speed,
+  not the tank's, so the drift thresholds must read the handicapped limit for
+  that player or a losing player gets warned for driving at the speed the server
+  just granted them. This is the only genuinely fiddly part of the feature and
+  the reason to do it after the others.
+- **A pairwise kill matrix is new.** bzo tracks `kills` and `deaths` per player
+  and nothing pairwise, so `howManyTimesKilledBy` needs a per-player map keyed
+  by killer id, reset with the score on join.
+- **Where it shows.** A percentage column on the scoreboard, shown only when the
+  style is on, which answers `/handicap` without needing chat commands.
+- Config: `"handicap": true` in `server.json`, `-handicap` in a map's `options`
+  block. The four `_handicap*` values stay constants, as bzo's other world
+  constants do.
+
+XR: nothing to draw beyond the scoreboard column.
+
+## Publishing to the list server
+
+Worth knowing because two of the gaps above -- the score limits and the clock --
+are fields in the packet a public server publishes, so building them with
+upstream's names and units costs nothing now and saves a translation later.
+
+**The list server itself is plain HTTP.** `ListServerLink` is a `cURLManager`
+subclass that POSTs form-encoded bodies to `https://my.bzflag.org/db/`
+(`DefaultListServerURL`, `include/Protocol.h:42`):
+
+```
+action=ADD&nameport=<host:port>&version=BZFS0221&gameinfo=<58 hex chars>
+&build=<app version>&checktokens=<callsign@ip=token...>&groups=<...>
+&key=<publickey>&advertgroups=<...>&title=<url-encoded description>
+```
+
+`REMOVE` on shutdown, waiting up to three seconds for it. `ADD` again every 15
+minutes (`ListServerReAddTime`, `bzfs.cxx:84`) and on every join and every part
+(`bzfs.cxx:2496`, `:2997`), because the same request carries the player counts.
+Clients read the list the same way -- `action=LIST&version=BZFS0221`, plus
+callsign and password if they want a login token
+(`src/game/ServerList.cxx:273`). No binary anywhere in that path.
+
+**`gameinfo` is `PingPacket::packHex`** (`src/game/Ping.cxx:228`): eight
+`uint16` then thirteen `uint8`, each written most significant nibble first as 4
+and 2 hex digits, 58 characters exactly, in this order --
+
+`gameType`, `gameOptions`, `maxShots`, `shakeWins`, `shakeTimeout` (**tenths of
+a second**), `maxPlayerScore`, `maxTeamScore`, `maxTime` (seconds),
+`maxPlayers`, then a count and a maximum for each of rogue, red, green, blue,
+purple and observer.
+
+`gameType` is the enum value 0..3 and `gameOptions` the bitmask: `SuperFlag`
+`0x0002`, `Jumping` `0x0008`, `Inertia` `0x0010`, `Ricochet` `0x0020`,
+`Shakable` `0x0040`, `Antidote` `0x0080`, `Handicap` `0x0100`, `NoTeamKills`
+`0x0400`. Rabbits and hunters are counted as rogues (`bzfs.cxx:864`), and a
+server whose automatic countdown has ended reports **no players at all** so it
+can empty and start a new game (`bzfs.cxx:839`).
+
+**But the row is a raw TCP endpoint, and that is the blocker.** `nameport` is a
+host and port -- 5154 by default -- and a client that reads the row dials it
+directly with the binary protocol; the server answers by writing eight bytes of
+`BZFS0221` and a player id before any message (`bzfs.cxx:1399`). The row has no
+URL field, no transport field, and nothing in the path proxies: the list server
+is a directory of host:port pairs. A client also drops any row whose version
+string is not exactly its own and whose `gameinfo` is not exactly 58 characters
+(`ServerList.cxx:112`).
+
+**The whole path is IPv4 only.** The client reads a row's address with
+`sscanf(address, "%d.%d.%d.%d")` and range checks four bytes
+(`ServerList.cxx:120`), so there is nowhere to put an IPv6 address; released
+bzfs does not listen on IPv6 either, and `my.bzflag.org` publishes no AAAA
+record. That is a constraint on the row, not on bzo: `bz.rikers.org` publishes
+both families, so a row would carry the v4 address and the AAAA record would go
+on serving browsers as it does now. Dual stack is not what stands in the way --
+the transport is.
+
+So bzo cannot usefully be listed as it stands. Publishing is easy -- one HTTPS
+POST and a 58-character string -- but being listed is a *promise to accept a
+binary TCP connection*, and bzo speaks WebSocket and JSON over TLS. A row would
+put an address in front of every BZFlag client claiming protocol `0221`
+compatibility that bzo does not have. **The packet format is not what stands in
+the way**, which is why there is nothing to build here yet.
+
+The ways out, none of them small: speak the binary protocol on a TCP port beside
+the web server, which is a second server and the ping packet is the least of it;
+publish to a bzo-specific directory, where reusing this exact blob costs nothing
+and buys tooling that can read either; or get a web-client field into the list
+server, which is a conversation upstream rather than a patch here.
+
+What to do meanwhile: keep upstream's field names and units as the match-end
+work lands -- `shakeTimeout` in tenths of a second, `maxTime` in seconds --
+because bzo already holds every other field in that packet, and a publisher
+would then be a pure formatting function. Do not write the packer.
+
+The `checktokens=` parameter above is the other half of the same API, and the
+one part of it bzo could use today: see "Admins and the admin channel" in
+`AGENTS.md` for what a real login would look like.
+
+## Adjacent switches, deliberately out of scope
+
+- **`-cr`** -- CTF with a random world. bzo has no random world generator, and
+  `-b`, `-h`, `-density` and `-t` are ignored for the same reason.
+- **`-sb`**, tanks respawning on buildings. A spawn rule rather than a game
+  mode, but it is the one remaining spawn switch bzo does not read; worth its
+  own small change alongside the spawn code, not here.
+- **`-tkkr`** and **`-tkannounce`** -- kicking and announcing team killers. Both
+  are cheap now that there is an admin channel to announce into, and both belong
+  with the team-kill code rather than with game modes.
+- **`-mp`** is already read, per team, from `server.json` and from a map.
+
+## Suggested order
+
+1. `GAME_TYPE`, then the ClassicCTF kill-scoring fix on top of it.
+2. Score limits and `scoreOver`, which need no clock.
+3. The clock, game over, and the Operator panel's match controls.
+4. Rabbit Chase.
+5. Handicap.
+
+Each step is playable on its own, and the first is a bug fix that the rest lean
+on.

@@ -334,6 +334,21 @@ If the deployment sets a restrictive `Permissions-Policy` header, allow
 so HTTPS and the corresponding WebSocket proxy configuration are deployment
 responsibilities.
 
+Apache's `mod_proxy` sends `X-Forwarded-For`, `X-Forwarded-Host` and
+`X-Forwarded-Server` on its own, but **not** `X-Forwarded-Proto` or
+`X-Forwarded-Port`. Add them in the HTTPS vhost, with `mod_headers` enabled, or
+the server logs every connection as plain HTTP:
+
+```apache
+RequestHeader set X-Forwarded-Proto "https"
+RequestHeader set X-Forwarded-Port  "443"
+# mod_proxy appends to X-Forwarded-For, so pin it to the real peer rather than
+# letting a client prepend an address of its choosing.
+RequestHeader set X-Forwarded-For   "expr=%{REMOTE_ADDR}"
+```
+
+`set` rather than `add`, so a header a client sent cannot survive the hop.
+
 Use the [WebXR validation checklist](docs/webxr-validation.md) when checking a
 new browser, headset, or deployment. WebGPU rendering is outside the scope of
 this checklist.

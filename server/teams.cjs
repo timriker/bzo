@@ -303,6 +303,28 @@ function areFoes(teamA, teamB, teamsAllowed) {
   return teamA !== teamB || teamA === PLAYER_TEAM.ROGUE;
 }
 
+// GameType (global.h:94), by the two questions bzo already asks about a world.
+// Upstream picks the type with a switch and derives nothing; bzo has no switch
+// for it, so `-c`/`-offa` decide whether there are colour teams and the map
+// decides whether there are bases, which between them say the same thing.
+// `RabbitChase`, upstream's fourth, is not implemented -- see
+// docs/game-modes-plan.md.
+//
+// Server-only: the type decides scoring and spawning, which are the server's.
+function getGameType(teamsEnabled, hasBases) {
+  if (!teamsEnabled) return 'OpenFFA';
+  return hasBases ? 'ClassicCTF' : 'TeamFFA';
+}
+
+// bzfs.cxx:3539. A kill moves the team score in the two free-for-all types and
+// not in ClassicCTF, where a capture is the only thing that moves it -- which is
+// what makes a capture worth crossing the map for. In OpenFFA there are no
+// colour teams to score anyway, so the deltas come back empty and the gate is
+// upstream's belt to that braces.
+function teamScoreMovesOnKill(gameType) {
+  return gameType === 'TeamFFA' || gameType === 'OpenFFA';
+}
+
 function getTeamScoreDeltasForKill(killerTeam, victimTeam, selfKill = false) {
   const deltas = [];
   if (killerTeam && killerTeam === victimTeam) {
@@ -408,6 +430,8 @@ module.exports = {
   isColorTeam,
   isObserverTeam,
   areFoes,
+  getGameType,
+  teamScoreMovesOnKill,
   getTeamScoreDeltasForKill,
   getTeamScoreDeltasForCapture,
 };

@@ -116,6 +116,7 @@ import {
   toggleDebugLabels,
   compareScoreboardPlayers,
   buildScoreboardRows,
+  SCOREBOARD_STATUS_COLOR,
   getActiveHudAlerts,
   getHudAlertColor,
   setHudAlert,
@@ -140,7 +141,6 @@ import {
   startFramePhases,
 } from './perf.js';
 import * as THREE from 'three';
-import { OBJLoader } from 'three/addons/loaders/OBJLoader.js';
 import {
   initXR,
   isHeadsetAppLaunch,
@@ -174,6 +174,7 @@ import {
   getPlayerTeamSelections,
   getTeamColorIndex,
   getTeamFromColorIndex,
+  isColorTeam,
   isObserverTeam,
   normalizePlayerTeam,
   normalizePlayerTeamSelection,
@@ -581,6 +582,11 @@ let playerTeam = PLAYER_TEAM.ROGUE;
 // what decides it. Everything behind the Operator panel is refused there as
 // well, so this only decides what is worth offering.
 let amAdmin = false;
+// Authenticated with a bzflag.org global callsign. Read off the server's own
+// player state, never decided here: this is the client being told an answer,
+// as `amAdmin` is. See docs/login-plan.md.
+let amVerified = false;
+let myGlobalCallsign = null;
 // One entry per colour team the server offers: { team, size, wins, losses }.
 // Empty until a team-mode server sends its first update.
 let teamScores = [];
@@ -625,6 +631,10 @@ function syncPlayerTeamSelector() {
     teamSelector.setAttribute('aria-label', `Team: ${label}`);
   }
   if (teamValue) teamValue.textContent = label;
+  // The preview tank wears the staged team's colour, so the row above changing
+  // is the row below needing to be repainted. Every team change comes through
+  // here, which is why the call belongs here rather than at each caller.
+  refreshTankPreviewColor();
 }
 
 function setAvailablePlayerTeams(teams) {
@@ -1117,6 +1127,19 @@ function bindAudioControls() {
     });
   }
   syncPlayerTeamSelector();
+
+  const loginRow = document.getElementById('entryLoginRow');
+  if (loginRow) {
+    loginRow.addEventListener('click', () => startGlobalLogin());
+    // An action rather than a choice, so left and right have nothing to walk
+    // through -- but the row still has to answer the gamepad and controller
+    // press that a menu row is expected to answer.
+    loginRow.addEventListener('menuactivate', (event) => {
+      startGlobalLogin();
+      event.preventDefault();
+    });
+  }
+  applyLoginUi();
 
   const channelSelect = document.getElementById('voiceChannelSelect');
   if (channelSelect) {
@@ -1718,8 +1741,60 @@ function applyAdminUi() {
     operatorBtn.disabled = !amAdmin;
     operatorBtn.title = amAdmin
       ? 'Show Operator Panel (O)'
-      : 'Operator: enter a name to become an operator on this server';
+      : 'Operator: sign in with a bzflag.org global callsign that the server grants admin to';
   }
+  applyLoginUi();
+}
+
+// The Global login row in the entry dialog. It says what the server said and
+// nothing more: signed in as whom, and whether that carried admin. `@` and `+`
+// are upstream's own indicators (`ScoreboardRenderer.cxx:718`), so the row uses
+// the same characters the scoreboard will.
+function applyLoginUi() {
+  const value = document.getElementById('entryLoginValue');
+  const row = document.getElementById('entryLoginRow');
+  if (!value) return;
+  if (amVerified) {
+    value.textContent = `${amAdmin ? '@' : '+'}${myGlobalCallsign || myPlayerName}`;
+    if (row) {
+      row.dataset.loggedIn = 'true';
+      row.setAttribute('aria-label', `Signed in as ${myGlobalCallsign || myPlayerName}`);
+      row.title = amAdmin
+        ? 'Signed in, and an admin on this server'
+        : 'Signed in with a bzflag.org global callsign';
+    }
+    return;
+  }
+  value.textContent = 'Sign in';
+  if (row) {
+    delete row.dataset.loggedIn;
+    row.setAttribute('aria-label', 'Global login: sign in');
+    row.title = 'Sign in at bzflag.org with a global callsign. bzo never sees your password.';
+  }
+}
+
+// Leaving for bzflag.org's own login form, which `misc/checkToken.php` requires:
+// a site that collects the password itself is refused, and that is the whole
+// point -- bzo never sees one. The server does the rest at `/login`, sets a
+// session cookie and sends the browser back to `/`.
+//
+// This is a page navigation, so everything staged in the dialog is discarded
+// and the game is left. Inside an immersive session it also ends the session,
+// which is why the row says so before it goes: a headset player who is thrown
+// out of VR without warning has no idea what happened. Logging in from the flat
+// page before entering VR costs them nothing.
+function startGlobalLogin() {
+  if (amVerified) {
+    // Already signed in. Signing out is not built yet, so say so rather than
+    // sending them through a round trip that changes nothing.
+    setHudAlert(2, `Signed in as ${myGlobalCallsign || myPlayerName}`, 4, false);
+    return;
+  }
+  if (isXREnabled()) {
+    setHudAlert(2, 'Global login leaves VR. Exit the headset session first.', 5, true);
+    return;
+  }
+  window.location.href = '/login';
 }
 
 function syncDebugTabVisibility() {
@@ -2125,9 +2200,25 @@ let TANK_MODELS = [
 ];
 let selectedTankModelId = localStorage.getItem('tankModelId') || DEFAULT_TANK_MODEL_ID;
 let tankPreviewCard = null;
-const tankPreviewModelCache = new Map();
-let tankPreviewLoader = null;
 let tankPreviewAnimating = false;
+// How much of the frame the tank fills. The margin is wider than a flat fit
+// needs because the camera is a perspective one looking slightly down: the half
+// of a turning tank that swings towards the camera is nearer than the point the
+// fit was measured at, so it is magnified past what the measurement predicts.
+// Fitting tightly leaves a tank that sits neatly at one angle and pushes out of
+// frame a quarter turn later.
+const TANK_PREVIEW_FILL = 0.7;
+// Where the preview camera aims, shared by the camera and the fit that measures
+// from it -- two copies of this number would silently misframe every model.
+const TANK_PREVIEW_LOOK_AT = new THREE.Vector3(0, 0.8, 0);
+// Only reached before joining on a server with no team colour to borrow.
+const TANK_PREVIEW_FALLBACK_COLOR = 0x4caf50;
+// The pose a tank is first seen in. A model faces -z unrotated and the camera
+// sits at +z, so leaving it at zero shows the player the back of the tank --
+// the one view that says least about which tank it is. A quarter turn about Y
+// takes -z to -x, which from the camera is the left: a side-on profile, and the
+// silhouette that tells two hulls apart.
+const TANK_PREVIEW_START_ROTATION = Math.PI / 2;
 let tankPreviewRafId = null;
 
 function getDefaultTankModel() {
@@ -2233,49 +2324,164 @@ function cycleTankModel(step) {
   setSelectedTankModel(TANK_MODELS[nextIndex].id);
 }
 
+// The preview is built by the same `createTank` the world uses, so what the
+// carousel shows is what spawns: body and turret carry the tank texture in the
+// player's own colour, the treads carry `treads.png`, and a model that has
+// wheels instead of treads gets wheels. Loading the OBJ here separately is what
+// it used to do, and that drew an untextured OBJLoader default -- a preview of
+// the geometry rather than of the tank.
+//
+// Its own renderer, and its own scene: two WebGLRenderers each keep their own
+// GPU state for a material, and `createTank` hands back a fresh object graph per
+// call, so nothing is shared with the world but the canvas-backed texture
+// images.
+function getPreviewTankColor() {
+  // The **staged** team wins, because the dialog stages every choice it offers
+  // and this preview is what the staged choices would look like -- showing the
+  // colour of the team being left behind is showing the wrong answer to the
+  // question the player is in the middle of asking.
+  //
+  // Only where the staging says nothing does the current colour stand in: a
+  // team of Automatic names no colour, and on a server with team play off
+  // neither does Rogue -- there every player gets a distinct colour of their
+  // own, so their own is the honest preview.
+  const team = getSelectedPlayerTeam();
+  const staged = team !== PLAYER_TEAM.AUTOMATIC
+    && availablePlayerTeams.some(isColorTeam)
+    && PLAYER_TEAM_COLORS[team] !== undefined;
+  if (staged) return PLAYER_TEAM_COLORS[team];
+  const mine = tanks.get(myPlayerId)?.userData?.playerState?.color;
+  if (Number.isFinite(mine)) return mine;
+  return TANK_PREVIEW_FALLBACK_COLOR;
+}
+
+// Fill the canvas rather than a fixed 2.7 units: the frame is what the player
+// sees, and a model is only as big as its own bounding box says. The visible
+// extent is measured at the model's own distance, so the fit holds for any
+// aspect ratio the dialog is laid out at and for models of any proportion.
+// Measured **once**, while the tank still has no parent, and the numbers kept.
+// `Box3.setFromObject` reports a *world* box, so measuring a tank that already
+// sits inside the spinning group returns its box at whatever angle the spin has
+// reached -- and writing that centre into a position that lives in the rotated
+// frame moves the tank off the pivot by an amount that depends on the angle.
+// A resize is a refit, and the observer fires one as the dialog opens, so that
+// showed up as a tank orbiting its own tread instead of turning about itself.
+function measureTankModel(tank) {
+  tank.scale.setScalar(1);
+  tank.position.set(0, 0, 0);
+  tank.rotation.set(0, 0, 0);
+  tank.updateMatrixWorld(true);
+  const bounds = new THREE.Box3().setFromObject(tank);
+  return {
+    size: bounds.getSize(new THREE.Vector3()),
+    center: bounds.getCenter(new THREE.Vector3()),
+    minY: bounds.min.y,
+  };
+}
+
+function fitTankPreviewToView() {
+  const { camera, modelInner: tank, modelMeasure: measure } = tankPreviewCard;
+  if (!tank || !measure) return;
+  const { size, center, minY } = measure;
+  if (!(size.x > 0) || !(size.y > 0)) return;
+
+  const distance = camera.position.distanceTo(TANK_PREVIEW_LOOK_AT);
+  const visibleHeight = 2 * Math.tan((camera.fov * Math.PI) / 360) * distance;
+  const visibleWidth = visibleHeight * camera.aspect;
+
+  // The tank turns while it is previewed, so the width it needs is its widest
+  // horizontal reach -- the diagonal of its footprint -- not whichever of x and
+  // z happens to face the camera at this instant. Otherwise it fits at one angle
+  // and clips a quarter turn later.
+  const turningWidth = Math.hypot(size.x, size.z);
+  const scale = Math.min(
+    (visibleWidth * TANK_PREVIEW_FILL) / turningWidth,
+    (visibleHeight * TANK_PREVIEW_FILL) / size.y,
+  );
+
+  tank.scale.setScalar(scale);
+  // Centred on the two axes it turns around, and standing on the floor rather
+  // than centred vertically, which is how a tank is seen everywhere else.
+  tank.position.set(-center.x * scale, -minY * scale, -center.z * scale);
+  return scale * Math.max(size.x, size.z);
+}
+
+// The canvas is sized by CSS and the drawing buffer has to follow it, or the
+// preview is drawn at whatever size the dialog happened to be when it was
+// built -- which, for a dialog that starts hidden, is no size at all and a
+// fallback. Called from a ResizeObserver, so opening the dialog, rotating a
+// phone and resizing a window all arrive the same way.
+function resizeTankPreview() {
+  if (!tankPreviewCard) return;
+  const { renderer, camera } = tankPreviewCard;
+  const canvas = renderer.domElement;
+  const width = Math.floor(canvas.clientWidth);
+  const height = Math.floor(canvas.clientHeight);
+  // A hidden dialog measures zero. Keeping the last good size means reopening
+  // it does not have to rebuild anything.
+  if (width < 1 || height < 1) return;
+  renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
+  renderer.setSize(width, height, false);
+  camera.aspect = width / height;
+  camera.updateProjectionMatrix();
+  // The fit was measured against the old frustum, so it has to be measured
+  // again -- a wider frame is room the tank should be using.
+  if (tankPreviewCard.modelInner) {
+    const footprint = fitTankPreviewToView();
+    if (tankPreviewCard.floor && footprint) tankPreviewCard.floor.scale.setScalar(footprint * 0.62);
+  }
+  if (!tankPreviewAnimating) renderer.render(tankPreviewCard.scene, camera);
+}
+
+// Rebuilds the preview in the colour `getPreviewTankColor` now returns. The
+// texture is painted from the colour when the tank is built, so this is a
+// rebuild rather than a material tweak -- and it costs nothing when the dialog
+// has never been opened, because there is no preview to rebuild.
+function refreshTankPreviewColor() {
+  if (!tankPreviewCard || !tankPreviewCard.requestedModelPath) return;
+  loadTankPreviewModel(tankPreviewCard.requestedModelPath);
+}
+
 function loadTankPreviewModel(modelPath) {
   if (!tankPreviewCard || !modelPath) return;
 
   const { scene } = tankPreviewCard;
   tankPreviewCard.requestedModelPath = modelPath;
 
-  const applyLoadedModel = (baseObject) => {
+  renderManager.whenTankModelReady(modelPath).then(() => {
+    // A slow model and a fast carousel: by the time this resolves the player may
+    // have walked on to another tank, and drawing the one they left would be
+    // worse than drawing nothing.
     if (!tankPreviewCard || tankPreviewCard.requestedModelPath !== modelPath) return;
 
     if (tankPreviewCard.modelRoot) {
       scene.remove(tankPreviewCard.modelRoot);
       tankPreviewCard.modelRoot = null;
+      tankPreviewCard.modelInner = null;
+      tankPreviewCard.modelMeasure = null;
     }
 
-    const source = baseObject.clone(true);
+    const tank = renderManager.createTank(getPreviewTankColor(), '', modelPath);
+    if (!tank) return;
+    // Two groups: the inner tank is centred and scaled to the frame, and the
+    // outer one only turns. Rotating the group that carries the centring offset
+    // would swing the tank around the frame instead of about itself.
+    // Measured while it is still parentless, so the box is the model's own and
+    // no ancestor's rotation can lean into it.
+    tankPreviewCard.modelMeasure = measureTankModel(tank);
     const root = new THREE.Group();
-    root.add(source);
-
-    const bounds = new THREE.Box3().setFromObject(root);
-    const center = bounds.getCenter(new THREE.Vector3());
-    const size = bounds.getSize(new THREE.Vector3());
-    const maxAxis = Math.max(size.x, size.y, size.z) || 1;
-    const scale = 2.7 / maxAxis;
-    root.scale.setScalar(scale);
-    root.position.set(-center.x * scale, -bounds.min.y * scale, -center.z * scale);
-
+    root.add(tank);
+    tankPreviewCard.modelInner = tank;
+    const footprint = fitTankPreviewToView();
+    root.rotation.y = TANK_PREVIEW_START_ROTATION;
     scene.add(root);
     tankPreviewCard.modelRoot = root;
-  };
-
-  const cached = tankPreviewModelCache.get(modelPath);
-  if (cached) {
-    applyLoadedModel(cached);
-    return;
-  }
-
-  if (!tankPreviewLoader) {
-    tankPreviewLoader = new OBJLoader();
-  }
-
-  tankPreviewLoader.load(modelPath, (obj) => {
-    tankPreviewModelCache.set(modelPath, obj);
-    applyLoadedModel(obj);
+    // The floor is a shadow under this tank, so it is sized from this tank.
+    if (tankPreviewCard.floor && footprint) {
+      tankPreviewCard.floor.scale.setScalar(footprint * 0.62);
+    }
+  }).catch((error) => {
+    console.warn('Failed to build tank preview:', error);
   });
 }
 
@@ -2358,7 +2564,7 @@ async function initTankSelector() {
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(42, width / height, 0.1, 100);
   camera.position.set(0, 2.4, 7.2);
-  camera.lookAt(0, 0.8, 0);
+  camera.lookAt(TANK_PREVIEW_LOOK_AT);
 
   const ambient = new THREE.AmbientLight(0xffffff, 0.8);
   scene.add(ambient);
@@ -2366,15 +2572,30 @@ async function initTankSelector() {
   keyLight.position.set(3, 5, 4);
   scene.add(keyLight);
 
+  // Unit radius, scaled to whichever tank is standing on it: the models differ
+  // in footprint, and a disc sized for one of them reads as a puddle under
+  // another.
   const floor = new THREE.Mesh(
-    new THREE.CircleGeometry(2.3, 20),
+    new THREE.CircleGeometry(1, 24),
     new THREE.MeshBasicMaterial({ color: 0x123018, transparent: true, opacity: 0.35 }),
   );
   floor.rotation.x = -Math.PI / 2;
   floor.position.y = -0.05;
   scene.add(floor);
 
-  tankPreviewCard = { renderer, scene, camera, modelRoot: null, requestedModelPath: null };
+  tankPreviewCard = {
+    renderer, scene, camera, floor,
+    modelRoot: null, modelInner: null, modelMeasure: null, requestedModelPath: null,
+  };
+
+  // The dialog is hidden when this runs, so the size above is a fallback and
+  // this is what corrects it -- a ResizeObserver fires on the transition out of
+  // zero, which is exactly the moment the dialog opens.
+  if (typeof ResizeObserver === 'function') {
+    new ResizeObserver(() => resizeTankPreview()).observe(canvas);
+  } else {
+    window.addEventListener('resize', resizeTankPreview);
+  }
 
   const prevBtn = document.getElementById('tankPrevBtn');
   const nextBtn = document.getElementById('tankNextBtn');
@@ -4047,6 +4268,8 @@ function handleServerMessage(message) {
         gameplayJoinConfirmed = true;
         playerTeam = normalizePlayerTeam(message.player.team);
         amAdmin = message.player.admin === true;
+        amVerified = message.player.verified === true;
+        myGlobalCallsign = amVerified ? message.player.name : null;
         applyAdminUi();
         teamFlagMarkerStyle = colorToCSS(getPlayerTeamColor(playerTeam));
         syncPlayerTeamSelector();
@@ -4156,6 +4379,8 @@ function handleServerMessage(message) {
           if (message.player.team !== undefined) {
             playerTeam = normalizePlayerTeam(message.player.team);
             amAdmin = message.player.admin === true;
+            amVerified = message.player.verified === true;
+            myGlobalCallsign = amVerified ? message.player.name : null;
             applyAdminUi();
             syncPlayerTeamSelector();
             updateVoiceIdentity();
@@ -9726,18 +9951,29 @@ function ensureXRScoreboardOverlay() {
     ctx.font = player.isCurrent ? 'bold 13px monospace' : '13px monospace';
     const stats = `${player.kills} / ${player.deaths}`;
     const flagLabel = player.flag ? `/${player.flag.label}` : '';
+    // The authentication indicator, in front of the name and in cyan, as
+    // upstream draws it (`ScoreboardRenderer.cxx:712`) and as the flat
+    // scoreboard draws it. It takes its width off the name for the same reason
+    // the flag does.
+    const status = player.status || '';
+    const statusWidth = status ? ctx.measureText(status).width : 0;
     // A carried flag shares the row with the name, so the name gives up room for
     // it rather than the panel growing a column nothing usually fills.
     const nameWidth = contentRight - margin - columnGap
       - ctx.measureText(stats).width
+      - statusWidth
       - (flagLabel ? ctx.measureText(flagLabel).width : 0);
     const shown = fitText(ctx, String(player.name || 'Player'), Math.max(0, nameWidth));
 
+    if (status) {
+      ctx.fillStyle = colorToCSS(SCOREBOARD_STATUS_COLOR);
+      ctx.fillText(status, margin, y);
+    }
     ctx.fillStyle = rowColor;
-    ctx.fillText(shown, margin, y);
+    ctx.fillText(shown, margin + statusWidth, y);
     if (flagLabel) {
       ctx.fillStyle = colorToCSS(player.flag.color);
-      ctx.fillText(flagLabel, margin + ctx.measureText(shown).width, y);
+      ctx.fillText(flagLabel, margin + statusWidth + ctx.measureText(shown).width, y);
     }
     ctx.fillStyle = rowColor;
     ctx.textAlign = 'right';

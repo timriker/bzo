@@ -4,6 +4,10 @@
   "mapFile": "test.bzw",
   "motd": "Welcome to the test server!",
   "maxPlayers": 16,
+  "adminGroups": [
+    "DEVELOPERS",
+    "BZADMIN"
+  ],
   "port": 3000,
   "teamMode": {
     "enabled": false,
@@ -40,21 +44,7 @@
   "shotTailLength": 4.0,
   "shotsKeepVerticalVelocity": false,
   "superFlags": {
-    "count": 16,
-    "allowed": [
-      "F",
-      "MG",
-      "L",
-      "R",
-      "SB",
-      "IB",
-      "SH",
-      "ID",
-      "US",
-      "JP",
-      "WG",
-      "NJ"
-    ]
+    "count": 16
   },
   "flagShakeTimeout": 0,
   "flagShakeWins": 0,

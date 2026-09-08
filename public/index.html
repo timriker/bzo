@@ -219,6 +219,14 @@
       <span class="entryTeamLabel">Team:</span>
       <span id="entryTeamValue" class="entryTeamValue">Automatic</span>
     </button>
+    <!-- A bzflag.org global callsign. An action rather than a choice: it leaves
+         the page for bzflag.org's own login form, which is what lets bzo check
+         an identity without ever seeing a password. The server decides what it
+         is worth; this row only reports what the server said. -->
+    <button id="entryLoginRow" class="entryTeamSelector" type="button" data-menu-row="login" data-menu-kind="action">
+      <span class="entryTeamLabel">Global login:</span>
+      <span id="entryLoginValue" class="entryTeamValue">Sign in</span>
+    </button>
     <div id="tankSelector" data-menu-row="tank" data-menu-kind="choice">
       <div id="tankSelectorTitle">Choose Tank</div>
       <div id="tankSelectorCarousel">
