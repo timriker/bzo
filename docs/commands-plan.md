@@ -6,11 +6,22 @@ references are paths under `$HOME/bzflag/`.
 Issue #5 tracks this; reference it from every commit and changelog entry here, as
 flag work references #6 and game modes reference #42.
 
-**Steps 1 and 2 are done.** `server/commands.cjs` holds the parsing and the
-formatting, the table and the dispatcher are in `server.js`, and the commands are
-`/?`, `/help`, `/<prefix>?`, `/uptime`, `/serverquery`, `/msg`, `/date` and
-`/time`. See "Server commands" in `AGENTS.md` for what landed and the two places
-bzo departs from upstream.
+**Steps 1, 2 and 3 are done.** `server/commands.cjs` holds the parsing and the
+formatting, the table and the dispatcher are in `server.js`. The commands are
+`/?`, `/help` and `/<prefix>?`; the open tier `/uptime`, `/serverquery`, `/msg`,
+`/date`, `/time`; and the operator tier `/kill`, `/say`, `/mute`, `/unmute`,
+`/mutelist`, `/playerlist`, `/flag`, `/set` and `/mv`, plus `/me`. See "Server
+commands" in `AGENTS.md`.
+
+**`/mv` is bzo's own.** Upstream has no command that moves a tank -- not in bzfs,
+not in `BanCommands`, not in any plugin, and there is no API call for it either.
+It is here because bzo is developed by driving it: `testSpawn` in `server.json`
+does this on join, and `/mv` is the same thing without a restart.
+
+A facing is one of the eight compass points and never a number, for the reason in
+`AGENTS.md`. If an exact angle is ever wanted for a test, that is the moment to
+decide what a number means -- and it will need saying out loud whichever
+convention wins, because bzo's rotation and a compass bearing run opposite ways.
 
 ## What upstream has
 
@@ -123,6 +134,11 @@ A `permissions` map in `server.json` — bzflag.org group to a set of command na
 It is a config surface, not a rule, and bzo has done this before: team limits
 took the shape and skipped the surface until a map needed it.
 
+**Finer grain is expected eventually, and deliberately deferred.** That is a
+decision, not an oversight: the two tiers answer every command bzo has, and a
+permission model with nothing to grant out of is machinery in front of a boolean.
+Revisit it when a real server wants to hand out `/kick` without `/set`.
+
 ## The commands, by what bzo has to build
 
 ### Needs nothing new (a parser and a reply)
@@ -136,6 +152,7 @@ Operator panel.
 | `/uptime` | open | process start time |
 | `/serverquery` | open | bzo's version is `public/version.mjs` and rides `init` already |
 | `/msg <nick> text` | open | bzo already has private messages by `dst`; this is the same action typed |
+| `/me <action>` | `actionMessage` | **not a command**: upstream reformats it in the message path so it keeps its destination (`bzfs.cxx:1490`), and bzo does the same. The wire already carried `msgType: 'action'` and the client already rendered it, so this was an entry point and nothing more |
 | `/owner` | open | a `serverOwner` string in `server.json`, or drop it |
 | `/date`, `/time` | `date` | trivial, and `date` being a *permission* upstream is worth ignoring |
 | `/playerlist` | `playerList` | bzo knows names, slots and addresses; see the IP caveat below |
@@ -144,7 +161,7 @@ Operator panel.
 | `/say <message>` | `say` | a server-channel broadcast, which bzo already sends |
 | `/mute`, `/unmute`, `/mutelist` | `mute` | a per-player flag the `message` handler checks; no persistence needed while it lasts one session |
 | `/flag up`, `/flag show`, `/flag reset` | `flagMod` | `zapFlag`, `resetFlag` and the flag table are all there |
-| `/set`, `/reset` | `setVar` | **only over what bzo already keeps configurable.** bzo's world constants are constants (see AGENTS.md); the honest set is what a map's `-set` may touch, and `/set` naming anything else should say so rather than pretend |
+| `/set` | `setVar` | **only over what bzo already keeps configurable**, which turned out to be narrower than a map's `-set`: it is the three the Operator panel *propagates* (`motd`, `shotMaxActive`, `ricochet`), because anything else would move on the server and leave every client predicting against the old value. `/set` naming anything else says so rather than pretending. `/reset` has nothing to reset to and is not implemented |
 
 ### Needs a small piece of machinery first
 
@@ -216,9 +233,10 @@ piece of work here rather than two.
 2. ~~**The open tier**: `/uptime`, `/serverquery`, `/msg`, `/date`, `/time`.~~
    **Done**, with `/<prefix>?` as well -- upstream's `CmdHelp`, and the only
    per-command help either of us has.
-3. **The operator tier over things that already exist**: `/kill`, `/say`,
-   `/mute`, `/flag`, `/playerlist`, `/set`. Each one is a command in front of a
-   function bzo already has, and `localAdmin` means a test client can drive them.
+3. ~~**The operator tier over things that already exist**: `/kill`, `/say`,
+   `/mute`, `/flag`, `/playerlist`, `/set`.~~ **Done**, plus `/mv`. `/set`
+   reaches the three settings the Operator panel already propagates, and both now
+   write through one `applyServerConfigChanges` -- the rule above, honoured.
 4. **The client-local set**: `/silence`, `/unsilence`, `/highlight`, `/cmds`.
    Independent of everything above, and pure client work.
 5. **Lag measurement**, then the lag and idle commands that read it.

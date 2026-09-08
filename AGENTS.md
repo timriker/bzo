@@ -1733,6 +1733,65 @@ for. Where both exist they must call the same function: `/msg` and the chat entr
 both go through `deliverChatMessage`, so the admin channel's permission check
 cannot exist in only one of them.
 
+**`/mv` is bzo's own**, and the only command here upstream has no version of --
+not in bzfs, not in any plugin, and no API call to move a tank either. bzo is
+developed by driving it, and `testSpawn` in `server.json` already does this on
+join; `/mv` is the same thing without a restart, which is why it exists.
+
+**Not `/tp`.** That spelling is reserved: bzo has teleporters as named obstacles
+with linked faces, and a command that named one would want it. Moving a tank to a
+coordinate is a different thing.
+
+Its coordinates are bzo's world coordinates, the ones `testSpawn` takes and every
+log line prints: `+X` east, `-Z` north, `+Y` up. Two values are `x,z`; three are
+`x,y,z`, the order the rest of bzo writes a position in, so the second value
+never changes axis between forms.
+
+A facing is **one of the eight compass points and nothing else** -- `n`, `ne`,
+`e` and so on -- either in a fourth slot after all three coordinates, or as a
+word after them. A number is deliberately refused: bzo's rotation runs
+anticlockwise from north while a compass bearing runs clockwise, so `90` is
+ambiguous in the one direction that matters and a letter cannot be misread.
+`bearingToRotation` is that conversion, and the reply names the resulting facing
+back so it is visible either way.
+
+Height is the interesting part, and it is `dropSpawnPosition` -- the same
+resolver `testSpawn` uses:
+
+- **Given and clear**, it is honoured: `/mv 0,30,0` puts you thirty units up to
+  watch yourself fall.
+- **Given and blocked**, it climbs to the lowest surface above, so a coordinate
+  inside an elevated obstacle comes out on the roof rather than stuck in it.
+- **Not given**, it starts from the ground: `/mv 0,0` lands on the grass on
+  `hix` and on top of the centre block on `fountains`.
+
+The move goes out as a `positionCorrection` to the tank that moved -- that packet
+already clears the air velocity, the jump state and the teleporter blocks on that
+client -- and a plain `pm` to everyone else, which snaps the remote copy without
+the teleporter sound a `pt` would play. The tank arrives stopped, and
+`lastUpdate` is reset so the drift check does not integrate the old velocities
+across the jump.
+
+**`/me` is not dispatched as a command.** It is reformatted in the message path,
+before the dispatcher, and upstream says why in its own comment
+(`bzfs.cxx:1490`): *"this is here instead of in commands.cxx to allow
+player-player/player-channel targeted messages"*. A dispatcher has already thrown
+the destination away, so `/me` handled there could only reach one channel --
+here `/me waves` works to ALL, to a team, to the admin channel and to one player.
+
+**The wire carries a type, not the words.** Upstream strips `/me ` and sets
+`ActionMessage` (`global.h:88`); bzo already had `msgType: 'action'` and a client
+that renders it as `<name> <text>`, so `/me` added the entry point and nothing
+else. Sending the literal `/me` text and letting each client parse it would mean
+trusting the text -- which is the spoof upstream explicitly guards against three
+lines earlier, refusing an inbound message shaped like its own rendered
+`*text\t*` form. A typed field has nothing to forge.
+
+`/me` with no argument answers upstream's sentence, and `/mefoo` is not `/me` and
+falls through to the dispatcher -- upstream's *"don't intercept other messages
+beginning with /me..."*. It is listed in `/?` for discoverability, which upstream
+does not do because it has no `ServerCommand` for it.
+
 ### Intentional deviations
 
 - **`/help` lists commands, not help pages.** Upstream's pages come from the
@@ -1747,6 +1806,25 @@ cannot exist in only one of them.
 - **`/date` and `/time` are open**, where upstream spends a `date` permission on
   them. The server's clock is not a secret, and a permission per command is the
   model the plan declines.
+- **`/set` reaches three settings, not all of BZDB.** Upstream's `/set` walks the
+  whole database; bzo's world values are compiled-in constants, and the honest
+  set is narrower still than a map's `-set`: it is what the Operator panel
+  *propagates* to clients (`motd`, `shotMaxActive`, `ricochet`), because a value
+  changed only on the server leaves every client predicting against the old one.
+  Both the panel and `/set` write through `applyServerConfigChanges`, which
+  validates, persists to `server.json`, applies and broadcasts as one
+  transaction. `/set` with no argument lists them and says outright that
+  everything else is a constant, rather than accepting a name and doing nothing.
+- **`/me` is open to everyone.** Upstream gates it on an `actionMessage`
+  permission and answers "you are not presently authorized to perform /me
+  actions"; bzo has two tiers and an action is talking, so the mute check is what
+  stops it -- a muted player gets the same refusal for `/me` as for anything else
+  they try to say, which is the same place upstream's `talk` check sits.
+- **A mute lasts the session.** Upstream revokes the `talk` permission out of a
+  users file; bzo keeps a flag, with upstream's own sentence for the refusal
+  ("We're sorry, you are not allowed to talk!", `bzfs.cxx:1667`) and upstream's
+  own exception -- somebody who may still send on the admin channel does, which
+  is what leaves a muted player a way to ask about it.
 - **No client-local command table yet.** Upstream's client claims `/silence` and
   friends before the server sees them; bzo's client sends every line. That is
   step 4 of the plan, and it changes nothing about the above -- bzo's chat entry

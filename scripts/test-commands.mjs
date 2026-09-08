@@ -25,6 +25,11 @@ const {
   formatCTime,
   parseMsgCommand,
   formatUnknownCommand,
+  parsePlayerTarget,
+  parseBearing,
+  bearingToRotation,
+  rotationToBearingName,
+  parseMoveCoordinates,
 } = require('../server/commands.cjs');
 
 // Two tiers, which is the whole permission model -- see docs/commands-plan.md
@@ -155,6 +160,124 @@ assert.equal(formatDuration('nonsense'), '');
   // pair -- the caller sends both.
   assert.deepEqual(msg('"bob hi'), { error: 'Quote mismatch?', alsoUsage: true });
   assert.deepEqual(msg('"" hi'), { error: usage }, 'an empty quoted callsign is no callsign');
+}
+
+// Upstream's target syntax, `<#slot|PlayerName|"Player Name">` (BanCommands.cxx
+// :191), shared by /kick, /kill, /mute and /mv.
+{
+  const roster = { bob: '1', 'ann lee': '2' };
+  const byName = (callsign) => roster[callsign.trim().toLowerCase()] ?? null;
+  const byId = (slot) => (Object.values(roster).includes(String(slot)) ? String(slot) : null);
+  const target = (args) => parsePlayerTarget(args, byName, byId);
+
+  assert.deepEqual(target('bob'), { id: '1', rest: '' });
+  assert.deepEqual(target('bob and a reason'), { id: '1', rest: 'and a reason' });
+  assert.deepEqual(target('"ann lee" a reason'), { id: '2', rest: 'a reason' });
+  // A slot is bzo's player id, which is what `#` means here.
+  assert.deepEqual(target('#2 hello'), { id: '2', rest: 'hello' });
+  assert.deepEqual(target('#9'), { error: 'player #9 is not here' });
+  assert.deepEqual(target('ghost'), { error: '"ghost" is not here.  No such callsign.' });
+  assert.deepEqual(target('"bob'), { error: 'Quote mismatch?' });
+  // Nothing at all is the caller's usage message to give, not this one's.
+  assert.deepEqual(target(''), { error: null });
+  assert.deepEqual(target('   '), { error: null });
+  // The rest keeps its own spacing, as a reason or a message would.
+  assert.deepEqual(target('bob a  b'), { id: '1', rest: 'a  b' });
+}
+
+// A facing for /mv, as one of the eight compass points and nothing else. A
+// number is refused on purpose: bzo's rotation runs anticlockwise from north and
+// a bearing runs clockwise, so 90 is ambiguous in the one direction that matters.
+{
+  assert.equal(parseBearing('n'), 0);
+  assert.equal(parseBearing('N'), 0);
+  assert.equal(parseBearing('north'), 0);
+  assert.equal(parseBearing('e'), 90);
+  assert.equal(parseBearing('s'), 180);
+  assert.equal(parseBearing('w'), 270);
+  assert.equal(parseBearing('ne'), 45);
+  assert.equal(parseBearing('sw'), 225);
+  // Numbers are not directions here, however plausible they look.
+  assert.equal(parseBearing('0'), null);
+  assert.equal(parseBearing('90'), null);
+  assert.equal(parseBearing('270'), null);
+  assert.equal(parseBearing('sideways'), null);
+  assert.equal(parseBearing(''), null);
+  assert.equal(parseBearing(null), null);
+
+  // bzo faces -Z at 0 and turns toward -X, so rotation runs anticlockwise from
+  // north while a compass bearing runs clockwise. These are AGENTS.md's own four
+  // values, and the reason a number would have needed explaining.
+  const rad = (deg) => Number(bearingToRotation(deg).toFixed(4));
+  assert.equal(rad(0), 0, 'north');
+  assert.equal(rad(90), Number((3 * Math.PI / 2).toFixed(4)), 'east is 3pi/2');
+  assert.equal(rad(180), Number(Math.PI.toFixed(4)), 'south is pi');
+  assert.equal(rad(270), Number((Math.PI / 2).toFixed(4)), 'west is pi/2');
+
+  // And back again, for the echo. Round trips through all eight points.
+  for (const [deg, name] of [[0, 'N'], [45, 'NE'], [90, 'E'], [135, 'SE'],
+    [180, 'S'], [225, 'SW'], [270, 'W'], [315, 'NW']]) {
+    assert.equal(rotationToBearingName(bearingToRotation(deg)), name, `${deg} is ${name}`);
+  }
+  // A rotation between points takes the nearer one, since it is a label.
+  assert.equal(rotationToBearingName(bearingToRotation(10)), 'N');
+  assert.equal(rotationToBearingName(bearingToRotation(80)), 'E');
+}
+
+// /mv's grammar, which is bzo's own -- upstream has no command that moves a tank.
+{
+  const usage = 'Usage: /mv [player] <x,z|x,y,z|x,y,z,facing> [facing]';
+  // Two numbers leave the height out, which is the form worth typing.
+  assert.deepEqual(parseMoveCoordinates('0,0'), { x: 0, y: null, z: 0, bearing: null });
+  assert.deepEqual(parseMoveCoordinates('100,-100'), { x: 100, y: null, z: -100, bearing: null });
+  // Three is x,y,z -- the order the rest of bzo writes a position in, so the
+  // second number never changes meaning between forms.
+  assert.deepEqual(parseMoveCoordinates('0,30,0'), { x: 0, y: 30, z: 0, bearing: null });
+  // A facing in the list needs all three coordinates before it, which is what
+  // makes the fourth slot unambiguous.
+  assert.deepEqual(parseMoveCoordinates('0,30,0,s'), { x: 0, y: 30, z: 0, bearing: 180 });
+  assert.deepEqual(parseMoveCoordinates('0,0,0,nw'), { x: 0, y: 0, z: 0, bearing: 315 });
+  assert.deepEqual(parseMoveCoordinates('0,0,0,90'),
+    { error: '"90" is not a direction (n, ne, e, se, s, sw, w, nw)' });
+  // A bearing has a slot of its own as well, which is where a letter goes.
+  assert.deepEqual(parseMoveCoordinates('0,0 n'), { x: 0, y: null, z: 0, bearing: 0 });
+  assert.deepEqual(parseMoveCoordinates('0,0 e'), { x: 0, y: null, z: 0, bearing: 90 });
+  assert.deepEqual(parseMoveCoordinates('0,30,0 s'), { x: 0, y: 30, z: 0, bearing: 180 });
+  // A trailing facing wins over one in the list, being the later word.
+  assert.deepEqual(parseMoveCoordinates('0,0,0,n s'), { x: 0, y: 0, z: 0, bearing: 180 });
+  // Decimals and negatives, since a coordinate read off a log has both.
+  assert.deepEqual(parseMoveCoordinates('-12.5,3.25'), { x: -12.5, y: null, z: 3.25, bearing: null });
+  // Spacing around the commas is forgiven; a missing value is not.
+  assert.deepEqual(parseMoveCoordinates('0, 0'), { error: usage },
+    'a space splits the tokens, so this reads as coordinates and a bearing');
+  assert.deepEqual(parseMoveCoordinates('0,,0'), { error: usage });
+  assert.deepEqual(parseMoveCoordinates('0'), { error: usage }, 'one number is not a position');
+  assert.deepEqual(parseMoveCoordinates('1,2,3,4,5'), { error: usage });
+  assert.deepEqual(parseMoveCoordinates('a,b'), { error: usage });
+  assert.deepEqual(parseMoveCoordinates(''), { error: usage });
+  assert.deepEqual(parseMoveCoordinates('0,0 sideways'),
+    { error: '"sideways" is not a direction (n, ne, e, se, s, sw, w, nw)' });
+  assert.deepEqual(parseMoveCoordinates('0,0 90'),
+    { error: '"90" is not a direction (n, ne, e, se, s, sw, w, nw)' });
+  assert.deepEqual(parseMoveCoordinates('0,0 n extra'), { error: usage });
+}
+
+// `/me` is the one `/` line that is not dispatched as a command: it is
+// reformatted in the message path so it keeps its destination, which is upstream's
+// own reason for putting it there (bzfs.cxx:1490). The test is the shape of the
+// line, since that is what the message path matches on.
+{
+  const isMe = (text) => /^\/me(\s|$)/i.test(text);
+  assert.equal(isMe('/me smiles'), true);
+  assert.equal(isMe('/ME SHOUTS'), true, 'upstream matches case-insensitively');
+  assert.equal(isMe('/me'), true, 'and answers with the "requires an argument" reply');
+  assert.equal(isMe('/me   '), true);
+  // "don't intercept other messages beginning with /me..." -- upstream's own
+  // comment, and the reason the space matters.
+  assert.equal(isMe('/mexico'), false);
+  assert.equal(isMe('/mercy me'), false);
+  assert.equal(isMe('/m'), false);
+  assert.equal(isMe('me smiles'), false, 'without the slash it is just chat');
 }
 
 // parseServerCommand's last word (commands.cxx:3909). The slash is dropped and

@@ -152,6 +152,10 @@ const {
 } = require('./server/sessions.cjs');
 const {
   COMMAND_TIER,
+  parsePlayerTarget,
+  bearingToRotation,
+  rotationToBearingName,
+  parseMoveCoordinates,
   isCommandLine,
   parseCommandLine,
   parseHelpPrefix,
@@ -2361,6 +2365,13 @@ class Player {
     // nobody's team kill, which is the whole of Rabbit Chase's exception to
     // hunters being team mates -- see isARabbitKill.
     this.wasRabbit = false;
+    // PlayerAccessInfo's `talk` permission, revoked (BanCommands.cxx:215). A
+    // muted player may still run commands and still hears everyone; only what
+    // they say is dropped. It lasts the session, as upstream's does without a
+    // ban file behind it.
+    this.muted = false;
+    // The address `/playerlist` reports, set from the handshake.
+    this.clientIP = null;
     // PlayerInfo::restartOnBase. Set for every CTF spawn and after a capture.
     this.restartOnBase = false;
     // GameKeeper::Player::lastIdFlag. Which flag the Identify flag last named,
@@ -2886,6 +2897,28 @@ function replyToPlayer(player, text) {
   });
 }
 
+// `/me smiles` said as "Tim Riker smiles". Upstream reformats it in the *message*
+// path rather than in commands.cxx, and says why in its own comment
+// (bzfs.cxx:1490): "this is here instead of in commands.cxx to allow
+// player-player/player-channel targeted messages". A command dispatcher has
+// already thrown the destination away, so `/me` handled there could only ever
+// reach one channel.
+//
+// The wire carries a *type*, not the words `/me`: upstream strips the command and
+// sets `ActionMessage` (global.h:88), and bzo already had `msgType: 'action'` and
+// a client that renders it as "<name> <text>". So this adds the entry point and
+// nothing else -- see docs/commands-plan.md.
+function deliverActionMessage(player, targetId, action) {
+  const text = action.trim();
+  if (text.length === 0) {
+    // Upstream's sentence, which names the player because it is the only reply
+    // in the set that does (bzfs.cxx:1498).
+    replyToPlayer(player, `${player.name}, the /me command requires an argument`);
+    return;
+  }
+  deliverChatMessage(player, targetId, 'action', text);
+}
+
 // The server command table. Upstream makes each one a `ServerCommand` subclass
 // carrying its name, its help and its permission (`src/bzfs/commands.cxx`); bzo
 // keeps the three beside what the command does, because there is one of each and
@@ -2927,6 +2960,14 @@ defineCommand('/help', COMMAND_TIER.OPEN,
       replyToPlayer(player, `${command.name} ${command.help}`);
     }
   });
+
+// Listed so `/?` and `/help` find it, and reachable here as well -- the message
+// path catches `/me` first and keeps the destination, and this is what it would
+// mean without one. Not upstream's, which has no ServerCommand for `/me` at all
+// and so never lists it.
+defineCommand('/me', COMMAND_TIER.OPEN,
+  '<action> - say something as an action: "/me smiles" reads as "<name> smiles"',
+  (player, args) => deliverActionMessage(player, 0, args));
 
 // UpTimeCommand (commands.cxx:1015). Upstream appends a full stop, which is the
 // only punctuation in any of these replies and is kept for that reason.
@@ -2981,6 +3022,423 @@ defineCommand('/msg', COMMAND_TIER.OPEN,
     // message and a picked one cannot behave differently -- and so the admin
     // channel's own permission check still applies to `/msg >admin`.
     deliverChatMessage(player, parsed.to, 'chat', parsed.text);
+  });
+
+// Who a command means by `<#slot|PlayerName|"Player Name">`. bzo's slots are
+// its player ids, so `#3` is an id and anything else is a callsign.
+function resolveCommandTarget(args) {
+  return parsePlayerTarget(
+    args,
+    (callsign) => {
+      const wanted = callsign.trim().toLowerCase();
+      for (const other of players.values()) {
+        if (other.joined && other.name.toLowerCase() === wanted) return other.id;
+      }
+      return null;
+    },
+    (slot) => (players.has(String(slot)) && players.get(String(slot)).joined ? String(slot) : null),
+  );
+}
+
+// KillCommand (BanCommands.cxx:193). Upstream kills with `SelfDestruct` and
+// tells the victim who did it, which is the part worth keeping -- a tank that
+// exploded for no reason it can see is a bug report.
+defineCommand('/kill', COMMAND_TIER.OPERATOR,
+  '<#slot|PlayerName|"Player Name"> [reason] - kill a player',
+  (player, args) => {
+    const target = resolveCommandTarget(args);
+    if (!target.id) {
+      replyToPlayer(player, target.error || 'Usage: /kill <#slot|PlayerName> [reason]');
+      return;
+    }
+    const victim = players.get(target.id);
+    if (!victim || victim.team === PLAYER_TEAM.OBSERVER) {
+      replyToPlayer(player, 'An observer has no tank to kill');
+      return;
+    }
+    if (victim.health <= 0) {
+      replyToPlayer(player, `"${victim.name}" is already dead`);
+      return;
+    }
+    // Through the one death path, so the flag, the lock, the rabbit and the
+    // respawn all happen -- see applyDeath.
+    killPlayer(victim, victim, DEATH_REASON.SELF_DESTRUCT);
+    log(`[CMD] "${player.name}" killed "${victim.name}"${target.rest ? `: ${target.rest}` : ''}`);
+    replyToPlayer(player, `"${victim.name}" killed`);
+    replyToPlayer(victim, target.rest
+      ? `You were killed by an operator: ${target.rest}`
+      : 'You were killed by an operator');
+  });
+
+// SayCommand (commands.cxx:458): a public message that comes from the server
+// rather than from a player.
+defineCommand('/say', COMMAND_TIER.OPERATOR,
+  '[message] - generate a public message sent by the server',
+  (player, args) => {
+    if (args.length === 0) {
+      replyToPlayer(player, 'Usage: /say <message>');
+      return;
+    }
+    log(`[CMD] "${player.name}" said to ALL as the server: ${args}`);
+    broadcastAll({ type: 'message', src: -1, dst: 0, msgType: 'server', text: args, ts: Date.now() });
+  });
+
+// MuteCommand, UnmuteCommand, MuteListCommand (BanCommands.cxx:215). Upstream
+// removes the `talk` permission; bzo keeps a flag for the session, which is the
+// same thing without a users file to write it to.
+defineCommand('/mute', COMMAND_TIER.OPERATOR,
+  '<#slot|PlayerName|"Player Name"> - remove the ability for a player to communicate with other players',
+  (player, args) => {
+    const target = resolveCommandTarget(args);
+    if (!target.id) {
+      replyToPlayer(player, target.error || 'Usage: /mute <#slot|PlayerName>');
+      return;
+    }
+    const victim = players.get(target.id);
+    victim.muted = true;
+    log(`[CMD] "${player.name}" muted "${victim.name}"`);
+    replyToPlayer(player, `"${victim.name}" is now muted`);
+    replyToPlayer(victim, 'You have been muted by an operator');
+  });
+
+defineCommand('/unmute', COMMAND_TIER.OPERATOR,
+  '<#slot|PlayerName|"Player Name"> - restore the TALK permission to a previously muted player',
+  (player, args) => {
+    const target = resolveCommandTarget(args);
+    if (!target.id) {
+      replyToPlayer(player, target.error || 'Usage: /unmute <#slot|PlayerName>');
+      return;
+    }
+    const victim = players.get(target.id);
+    victim.muted = false;
+    log(`[CMD] "${player.name}" unmuted "${victim.name}"`);
+    replyToPlayer(player, `"${victim.name}" is no longer muted`);
+    replyToPlayer(victim, 'You are no longer muted');
+  });
+
+defineCommand('/mutelist', COMMAND_TIER.OPERATOR,
+  'list the players current muted',
+  (player) => {
+    const muted = [...players.values()].filter((other) => other.joined && other.muted);
+    if (muted.length === 0) {
+      replyToPlayer(player, 'Nobody is muted');
+      return;
+    }
+    for (const other of muted) replyToPlayer(player, `#${other.id} ${other.name}`);
+  });
+
+// PlayerListCommand (commands.cxx:274): "list player slots, names and IP
+// addresses". bzo's address comes from a forwarding header on a proxied
+// deployment, so it is reported as what it is -- see the note in
+// docs/commands-plan.md about why a ban cannot rest on it as read.
+defineCommand('/playerlist', COMMAND_TIER.OPERATOR,
+  '- list player slots, names and IP addresses',
+  (player) => {
+    const joined = [...players.values()].filter((other) => other.joined);
+    if (joined.length === 0) {
+      replyToPlayer(player, 'Nobody is here');
+      return;
+    }
+    for (const other of joined) {
+      const marks = [
+        other.muted ? 'muted' : null,
+        other.localAdmin ? 'local' : null,
+        other.verified ? `verified as ${other.globalCallsign}` : null,
+      ].filter(Boolean);
+      replyToPlayer(player, `#${other.id} ${other.name} [${other.team}] ${other.clientIP || 'unknown'}`
+        + (marks.length ? ` (${marks.join(', ')})` : ''));
+    }
+  });
+
+// FlagCommand (commands.cxx:156), `<reset|up|show>`. Upstream's `up` sends every
+// superflag away and leaves the slots to refill; `reset` puts them all back;
+// `show` reports each one.
+defineCommand('/flag', COMMAND_TIER.OPERATOR,
+  '<reset|up|show> - reset, remove or show the flags',
+  (player, args) => {
+    const what = args.trim().toLowerCase();
+    if (what === 'up') {
+      let count = 0;
+      flags.forEach((flag) => {
+        // Team flags stay: upstream's loop is over flags whose `flagTeam` is
+        // NoTeam, because sending a team flag away would end a CTF game.
+        if (flag.team !== null) return;
+        if (flag.status === FLAG_STATUS.NO_EXIST) return;
+        zapFlag(flag);
+        count += 1;
+      });
+      log(`[CMD] "${player.name}" sent ${count} flags up`);
+      replyToPlayer(player, `${count} flags sent up`);
+      return;
+    }
+    if (what === 'reset') {
+      let count = 0;
+      flags.forEach((flag) => {
+        resetFlag(flag);
+        count += 1;
+      });
+      log(`[CMD] "${player.name}" reset ${count} flags`);
+      replyToPlayer(player, `${count} flags reset`);
+      return;
+    }
+    if (what === 'show') {
+      let shown = 0;
+      flags.forEach((flag) => {
+        if (flag.status === FLAG_STATUS.NO_EXIST) return;
+        const owner = flag.owner !== null && players.has(flag.owner)
+          ? ` on "${players.get(flag.owner).name}"`
+          : '';
+        replyToPlayer(player, `#${flag.index} ${flag.type || 'none'}`
+          + ` at ${flag.position.x.toFixed(0)},${flag.position.y.toFixed(0)},${flag.position.z.toFixed(0)}${owner}`);
+        shown += 1;
+      });
+      if (shown === 0) replyToPlayer(player, 'No flags are in the world');
+      return;
+    }
+    replyToPlayer(player, 'Usage: /flag <reset|up|show>');
+  });
+
+// `/mv` is bzo's own: upstream has no command that moves a tank anywhere in
+// bzfs, and no API call for it either. It is here because bzo is developed by
+// driving it -- `testSpawn` in server.json does this on join, and this is the
+// same thing without a restart. See parseMoveCoordinates for the grammar.
+defineCommand('/mv', COMMAND_TIER.OPERATOR,
+  '[player] <x,z|x,y,z|x,y,z,facing> [facing] - move a tank to a position; height and facing are optional',
+  (player, args) => {
+    // A target is optional, so the first token is only a target if it does not
+    // parse as coordinates.
+    let subject = player;
+    let rest = args.trim();
+    const firstToken = rest.split(/\s+/)[0] || '';
+    if (!/^-?[\d.]/.test(firstToken)) {
+      const target = resolveCommandTarget(rest);
+      if (!target.id) {
+        replyToPlayer(player, target.error || 'Usage: /mv [player] <x,z> [facing]');
+        return;
+      }
+      subject = players.get(target.id);
+      rest = target.rest;
+    }
+
+    const parsed = parseMoveCoordinates(rest);
+    if (parsed.error) {
+      replyToPlayer(player, parsed.error);
+      return;
+    }
+    if (subject.team === PLAYER_TEAM.OBSERVER) {
+      replyToPlayer(player, 'An observer has no tank to move');
+      return;
+    }
+
+    const rotation = parsed.bearing === null
+      ? subject.rotation
+      : bearingToRotation(parsed.bearing);
+    // A height that was *given* is honoured where the tank fits, so `/mv 0,30,0`
+    // puts you thirty units up to watch yourself fall. Where it does not fit --
+    // a coordinate inside an elevated obstacle -- `dropSpawnPosition` climbs to
+    // the lowest surface above it, which is the same resolver `testSpawn` uses
+    // and the reason it comes out on the roof rather than stuck in the box.
+    //
+    // No height means start from the ground, which is the form worth typing:
+    // there it falls to the ground where the tank fits and climbs where it does
+    // not, so `/mv 0,0` lands on the grass on `hix` and on top of the centre
+    // block on `fountains`.
+    let y;
+    if (parsed.y !== null
+      && !checkCollision(parsed.x, parsed.y, parsed.z, 2, { rotation, suppressLog: true })) {
+      y = parsed.y;
+    } else {
+      y = dropSpawnPosition(parsed.x, parsed.y === null ? 0 : parsed.y, parsed.z, rotation);
+    }
+    if (y === null) {
+      replyToPlayer(player, `Nowhere to stand at ${parsed.x},${parsed.z}`);
+      return;
+    }
+
+    subject.x = parsed.x;
+    subject.y = y;
+    subject.z = parsed.z;
+    subject.rotation = rotation;
+    // As the observer heartbeat does for the same reason: the tank arrives
+    // stopped, and the drift check must not integrate the old velocities across
+    // the jump.
+    subject.forwardSpeed = 0;
+    subject.rotationSpeed = 0;
+    subject.verticalVelocity = 0;
+    subject.airVelocityX = 0;
+    subject.airVelocityZ = 0;
+    subject.jumpDirection = null;
+    subject.slideDirection = undefined;
+    subject.isJumping = false;
+    subject.teleportReentryBlockTeleporterIndex = null;
+    subject.teleportReentryBlockDistance = 0;
+    subject.teleportReentryBlockUntil = 0;
+    subject.teleportCooldownUntil = 0;
+    subject.lastUpdate = Date.now();
+
+    // `positionCorrection` for the tank that moved -- it already clears the air
+    // velocity, the jump state and the teleporter blocks on that client -- and a
+    // plain `pm` for everyone else, which snaps the remote copy without the
+    // teleporter sound a `pt` would play.
+    sendToPlayer(subject, {
+      type: 'positionCorrection',
+      x: subject.x, y: subject.y, z: subject.z, r: subject.rotation, vv: 0,
+    });
+    broadcast({
+      type: 'pm',
+      id: subject.id,
+      x: subject.x, y: subject.y, z: subject.z, r: subject.rotation,
+      fs: 0, rs: 0, vv: 0, vx: 0, vz: 0,
+    }, subject.ws);
+
+    const where = `${subject.x.toFixed(1)},${subject.y.toFixed(1)},${subject.z.toFixed(1)}`
+      + ` facing ${rotationToBearingName(subject.rotation)}`;
+    log(`[CMD] "${player.name}" moved "${subject.name}" to ${where}`);
+    // Echoed because the height was resolved rather than given: seeing where the
+    // tank actually landed is how a mistyped coordinate shows itself.
+    replyToPlayer(player, subject === player
+      ? `Moved to ${where}`
+      : `"${subject.name}" moved to ${where}`);
+    if (subject !== player) replyToPlayer(subject, `An operator moved you to ${where}`);
+  });
+
+// The settings an operator may change while the server runs, in the one place
+// they are changed. Validated, written back to `server.json`, applied to the
+// live config, and broadcast -- in that order, and as one transaction, so a
+// panel save that touches three of them is one file write and one broadcast.
+//
+// The Operator panel and `/set` both come through here. They are one action with
+// two front ends, and the moment they are two functions they will disagree about
+// what a valid value is or forget to tell the clients.
+//
+// Returns `{ error }` or `{ changed: [...] }`.
+function applyServerConfigChanges(requested, byWhom) {
+  const next = {};
+  if (Object.prototype.hasOwnProperty.call(requested, 'motd')) {
+    if (typeof requested.motd !== 'string') return { error: 'Invalid motd value' };
+    const motd = requested.motd.trim();
+    if (motd.length > 140) return { error: 'MOTD must be 140 characters or fewer' };
+    next.motd = motd;
+  }
+  if (Object.prototype.hasOwnProperty.call(requested, 'shotMaxActive')) {
+    const shots = Number(requested.shotMaxActive);
+    if (!Number.isFinite(shots)) return { error: 'Invalid shot max active value' };
+    next.shotMaxActive = normalizeShotSlotCount(Math.round(shots));
+  }
+  if (Object.prototype.hasOwnProperty.call(requested, 'ricochet')) {
+    if (typeof requested.ricochet !== 'boolean') return { error: 'Invalid ricochet value' };
+    next.ricochet = requested.ricochet;
+  }
+
+  try {
+    const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+    Object.assign(config, next);
+    fs.writeFileSync(configPath, JSON.stringify(config, null, 2));
+  } catch (error) {
+    logError(`Failed to update config at ${configPath}:`, error);
+    return { error: 'Failed to update config' };
+  }
+
+  const changed = [];
+  if (next.motd !== undefined) {
+    serverConfig.motd = next.motd;
+    changed.push('motd');
+  }
+  if (next.shotMaxActive !== undefined && next.shotMaxActive !== GAME_CONFIG.SHOT_MAX_ACTIVE) {
+    serverConfig.shotMaxActive = next.shotMaxActive;
+    GAME_CONFIG.SHOT_MAX_ACTIVE = next.shotMaxActive;
+    changed.push('shotMaxActive');
+  }
+  if (next.ricochet !== undefined && next.ricochet !== GAME_CONFIG.ALL_SHOTS_RICOCHET) {
+    serverConfig.ricochet = next.ricochet;
+    GAME_CONFIG.ALL_SHOTS_RICOCHET = next.ricochet;
+    applyRicochetGameStyle();
+    // A rule everyone is about to be shot by is worth saying out loud.
+    broadcastAll({
+      type: 'message',
+      src: -1,
+      dst: 0,
+      msgType: 'server',
+      text: next.ricochet ? 'All shots now ricochet' : 'Shots no longer ricochet',
+    });
+    changed.push('ricochet');
+  }
+
+  broadcastAll({
+    type: 'serverConfigUpdate',
+    motd: serverConfig.motd || '',
+    shotMaxActive: GAME_CONFIG.SHOT_MAX_ACTIVE,
+    ricochet: GAME_CONFIG.ALL_SHOTS_RICOCHET,
+  });
+  log(`Config changed by ${byWhom}: ${changed.length ? changed.join(', ') : 'nothing'}`);
+  return { changed };
+}
+
+// SetCommand and ResetCommand (commands.cxx:120, :129). Upstream's `/set` walks
+// the whole of BZDB; bzo's world constants are constants (see AGENTS.md), so the
+// honest set is the one the Operator panel already changes *and propagates* --
+// anything else would move on the server and leave every client predicting
+// against the old value.
+//
+// The panel and this write through the same two functions, which is the rule
+// docs/commands-plan.md sets for a command that shares an action with the panel.
+const SETTABLE_VARIABLES = Object.freeze({
+  ricochet: {
+    // Upstream's BZDB takes any of these for a boolean, and a typed command
+    // should not care which one somebody reached for.
+    apply: (value, player) => {
+      const text = value.trim().toLowerCase();
+      if (!['true', 'false', '1', '0', 'on', 'off'].includes(text)) {
+        return { error: 'ricochet is on or off' };
+      }
+      return applyServerConfigChanges(
+        { ricochet: ['true', '1', 'on'].includes(text) }, `"${player.name}" via /set`);
+    },
+    describe: () => String(GAME_CONFIG.ALL_SHOTS_RICOCHET),
+  },
+  shotMaxActive: {
+    apply: (value, player) => applyServerConfigChanges(
+      { shotMaxActive: Number(value) }, `"${player.name}" via /set`),
+    describe: () => String(GAME_CONFIG.SHOT_MAX_ACTIVE),
+  },
+  motd: {
+    apply: (value, player) => applyServerConfigChanges(
+      { motd: value }, `"${player.name}" via /set`),
+    describe: () => serverConfig.motd || '(none)',
+  },
+});
+
+defineCommand('/set', COMMAND_TIER.OPERATOR,
+  '[ var [ value ] ] - set a server variable to value, or display variables',
+  (player, args) => {
+    const [name, ...valueParts] = args.trim().split(/\s+/).filter(Boolean);
+    if (!name) {
+      replyToPlayer(player, 'Settable variables (use /set <var> <value>):');
+      for (const [variable, spec] of Object.entries(SETTABLE_VARIABLES)) {
+        replyToPlayer(player, `${variable} ${spec.describe()}`);
+      }
+      // Said rather than left to be discovered: bzo's other world values are
+      // compiled-in constants and a `/set` that silently did nothing would be
+      // worse than one that explains itself.
+      replyToPlayer(player, 'Everything else is a world constant on this server');
+      return;
+    }
+    const spec = SETTABLE_VARIABLES[name];
+    if (!spec) {
+      replyToPlayer(player, `"${name}" is not settable on this server`);
+      return;
+    }
+    if (valueParts.length === 0) {
+      replyToPlayer(player, `${name} ${spec.describe()}`);
+      return;
+    }
+    const result = spec.apply(valueParts.join(' '), player);
+    if (result && result.error) {
+      replyToPlayer(player, result.error);
+      return;
+    }
+    log(`[CMD] "${player.name}" set ${name} to ${spec.describe()}`);
+    replyToPlayer(player, `${name} ${spec.describe()}`);
   });
 
 function canRunCommand(player, command) {
@@ -3045,6 +3503,16 @@ function handleServerCommand(player, text) {
 function deliverChatMessage(player, targetId, msgType, text) {
   const fromId = player.id;
   const fromName = player.name;
+
+  // A muted player has no `talk` permission upstream, and this is upstream's own
+  // sentence for it (bzfs.cxx:1667). The exception is upstream's too: somebody
+  // who may still send on the admin channel does, which is what leaves a muted
+  // player a way to ask about it.
+  if (player.muted && !(targetId === -3 && isAdmin(player))) {
+    log(`[CHAT] "${fromName}" refused: muted`);
+    replyToPlayer(player, "We're sorry, you are not allowed to talk!");
+    return;
+  }
 
   // How a chat destination is written in the log. A player is in quotes and a
   // team is in brackets, as they are everywhere else; ALL and SERVER are
@@ -7278,6 +7746,11 @@ wss.on('connection', (ws, req) => {
   }
   // Never silently: an operator who turned this on should see it happen, and an
   // operator who did not mean to should see it too.
+  // Kept for `/playerlist`, which is upstream's "list player slots, names and IP
+  // addresses". It is the forwarded address where there is one, so it is only as
+  // trustworthy as the proxy -- see docs/commands-plan.md on why a ban cannot
+  // rest on it as read.
+  player.clientIP = clientIP;
   player.localAdmin = isLocalAdminRequest(LOCAL_ADMIN, req.socket.remoteAddress, req.headers);
   if (player.localAdmin) {
     log(`Player ${player.playerNumber} is an operator: connected from this machine (localAdmin)`);
@@ -7369,6 +7842,16 @@ wss.on('connection', (ws, req) => {
           const msgType = message.msgType === 'action' ? 'action' : 'chat';
           const text = typeof message.text === 'string' ? message.text.trim() : '';
           if (text.length === 0) break;
+
+          // `/me` before the command dispatcher, because it is the one `/` line
+          // that keeps its destination: upstream reformats it here for exactly
+          // that reason (bzfs.cxx:1490). `/mefoo` is not `/me` and falls through
+          // to the dispatcher -- upstream's "don't intercept other messages
+          // beginning with /me...".
+          if (/^\/me(\s|$)/i.test(text)) {
+            deliverActionMessage(player, targetId, text.slice(3));
+            break;
+          }
 
           // Step 1 of docs/commands-plan.md, and the reason it goes first: a line
           // beginning with `/` is a command whatever channel it was aimed at, and
@@ -8226,90 +8709,21 @@ wss.on('connection', (ws, req) => {
         }
         case 'setOperatorConfig': {
           if (refuseNonOperator(ws, player, 'setOperatorConfig')) break;
-          const hasMotd = Object.prototype.hasOwnProperty.call(message, 'motd');
-          const hasShotMaxActive = Object.prototype.hasOwnProperty.call(message, 'shotMaxActive');
-          const hasRicochet = Object.prototype.hasOwnProperty.call(message, 'ricochet');
-          if (!hasMotd && !hasShotMaxActive && !hasRicochet) {
+          const requested = {};
+          for (const key of ['motd', 'shotMaxActive', 'ricochet']) {
+            if (Object.prototype.hasOwnProperty.call(message, key)) requested[key] = message[key];
+          }
+          if (Object.keys(requested).length === 0) {
             ws.send(JSON.stringify({ error: 'No supported operator setting provided' }));
             break;
           }
-
-          let nextMotd = serverConfig.motd || '';
-          let nextShotMaxActive = GAME_CONFIG.SHOT_MAX_ACTIVE;
-          let nextRicochet = GAME_CONFIG.ALL_SHOTS_RICOCHET;
-
-          if (hasMotd) {
-            if (typeof message.motd !== 'string') {
-              ws.send(JSON.stringify({ error: 'Invalid motd value' }));
-              break;
-            }
-            nextMotd = message.motd.trim();
-            if (nextMotd.length > 140) {
-              ws.send(JSON.stringify({ error: 'MOTD must be 140 characters or fewer' }));
-              break;
-            }
+          const outcome = applyServerConfigChanges(requested, `operator "${player.name}"`);
+          if (outcome.error) {
+            ws.send(JSON.stringify({ error: outcome.error }));
+            break;
           }
-
-          if (hasShotMaxActive) {
-            const requestedShotMaxActive = Number(message.shotMaxActive);
-            if (!Number.isFinite(requestedShotMaxActive)) {
-              ws.send(JSON.stringify({ error: 'Invalid shot max active value' }));
-              break;
-            }
-            nextShotMaxActive = normalizeShotSlotCount(Math.round(requestedShotMaxActive));
-          }
-
-          if (hasRicochet) {
-            if (typeof message.ricochet !== 'boolean') {
-              ws.send(JSON.stringify({ error: 'Invalid ricochet value' }));
-              break;
-            }
-            nextRicochet = message.ricochet;
-          }
-
-          try {
-            const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
-            if (hasMotd) config.motd = nextMotd;
-            if (hasShotMaxActive) config.shotMaxActive = nextShotMaxActive;
-            if (hasRicochet) config.ricochet = nextRicochet;
-            fs.writeFileSync(configPath, JSON.stringify(config, null, 2));
-
-            if (hasMotd) serverConfig.motd = nextMotd;
-            if (hasShotMaxActive) {
-              serverConfig.shotMaxActive = nextShotMaxActive;
-              GAME_CONFIG.SHOT_MAX_ACTIVE = nextShotMaxActive;
-            }
-            if (hasRicochet && nextRicochet !== GAME_CONFIG.ALL_SHOTS_RICOCHET) {
-              serverConfig.ricochet = nextRicochet;
-              GAME_CONFIG.ALL_SHOTS_RICOCHET = nextRicochet;
-              applyRicochetGameStyle();
-              // A rule everyone is about to be shot by is worth saying out loud.
-              broadcastAll({
-                type: 'message',
-                src: -1,
-                dst: 0,
-                msgType: 'server',
-                text: nextRicochet ? 'All shots now ricochet' : 'Shots no longer ricochet',
-              });
-            }
-
-            broadcastAll({
-              type: 'serverConfigUpdate',
-              motd: serverConfig.motd || '',
-              shotMaxActive: GAME_CONFIG.SHOT_MAX_ACTIVE,
-              ricochet: GAME_CONFIG.ALL_SHOTS_RICOCHET,
-            });
-            sendMapList(ws);
-            ws.send(JSON.stringify({ success: true }));
-            log(
-              `Operator updated config: motd=${hasMotd ? 'yes' : 'no'} ` +
-              `shotMaxActive=${hasShotMaxActive ? String(nextShotMaxActive) : 'unchanged'} ` +
-              `ricochet=${hasRicochet ? String(nextRicochet) : 'unchanged'}`
-            );
-          } catch (error) {
-            logError(`Failed to update config at ${configPath}:`, error);
-            ws.send(JSON.stringify({ error: 'Failed to update config' }));
-          }
+          sendMapList(ws);
+          ws.send(JSON.stringify({ success: true }));
           break;
         }
       }

@@ -208,6 +208,151 @@ function parseMsgCommand(args, resolveCallsign, channels = {}) {
   return { to, text: rest };
 }
 
+// Upstream's own target syntax, `<#slot|PlayerName|"Player Name">`, which
+// `/kick`, `/kill` and `/mute` all take (BanCommands.cxx:191). bzo's slots are
+// its player ids, so `#3` is the id and anything else is a callsign, quoted when
+// it has a space in it.
+//
+// `resolveCallsign` is injected, as it is for /msg. Returns
+// `{ id, rest }` -- the rest of the line after the target -- or `{ error }`.
+function parsePlayerTarget(args, resolveCallsign, resolveId) {
+  if (typeof args !== 'string' || args.trim().length === 0) return { error: null };
+  const text = args.trim();
+
+  let name;
+  let rest;
+  if (text.startsWith('"')) {
+    const end = text.indexOf('"', 1);
+    if (end === -1) return { error: 'Quote mismatch?' };
+    name = text.slice(1, end);
+    rest = text.slice(end + 1).replace(/^\s+/, '');
+  } else {
+    const space = text.search(/\s/);
+    name = space === -1 ? text : text.slice(0, space);
+    rest = space === -1 ? '' : text.slice(space).replace(/^\s+/, '');
+  }
+
+  if (name.startsWith('#')) {
+    const id = resolveId(name.slice(1));
+    if (id === null) return { error: `player #${name.slice(1)} is not here` };
+    return { id, rest };
+  }
+  const id = resolveCallsign(name);
+  if (id === null) return { error: `"${name}" is not here.  No such callsign.` };
+  return { id, rest };
+}
+
+// A facing for /mv, as one of the eight compass points and nothing else.
+//
+// Degrees are deliberately not accepted. bzo's rotation runs anticlockwise from
+// north and a compass bearing runs clockwise, so a number is ambiguous in the
+// one direction that matters: somebody typing 90 means east and would have to
+// know which convention answered. A letter cannot be misread, and if an exact
+// angle is ever needed for a test that is the moment to decide what a number
+// means -- see docs/commands-plan.md.
+const COMPASS_BEARINGS = Object.freeze({
+  n: 0, north: 0,
+  ne: 45,
+  e: 90, east: 90,
+  se: 135,
+  s: 180, south: 180,
+  sw: 225,
+  w: 270, west: 270,
+  nw: 315,
+});
+
+const COMPASS_POINTS = Object.freeze(['n', 'ne', 'e', 'se', 's', 'sw', 'w', 'nw']);
+
+function formatBearingError(token) {
+  return `"${token}" is not a direction (${COMPASS_POINTS.join(', ')})`;
+}
+
+function parseBearing(token) {
+  if (typeof token !== 'string' || token.trim().length === 0) return null;
+  const text = token.trim().toLowerCase();
+  if (Object.prototype.hasOwnProperty.call(COMPASS_BEARINGS, text)) return COMPASS_BEARINGS[text];
+  return null;
+}
+
+// A compass bearing to bzo's rotation. bzo faces -Z at 0 and turns toward -X
+// (see "World Coordinate System" in AGENTS.md), so rotation runs *anticlockwise*
+// from north while a bearing runs clockwise -- which is the whole of the
+// conversion, and the reason /mv takes a compass point rather than a number.
+function bearingToRotation(degrees) {
+  const bounded = ((-degrees % 360) + 360) % 360;
+  return bounded * Math.PI / 180;
+}
+
+// The nearest of the eight points, for echoing back where a tank ended up
+// facing. Approximate on purpose: it is a label, not a value.
+function rotationToBearingName(rotation) {
+  const degrees = ((-(rotation * 180 / Math.PI) % 360) + 360) % 360;
+  const points = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
+  return points[Math.round(degrees / 45) % 8];
+}
+
+// `/mv` is bzo's own -- upstream has no command that moves a tank, in bzfs, in
+// BanCommands, in any plugin, or in the API. It exists here because bzo is
+// developed by driving it: `server.json`'s `testSpawn` puts a named player
+// somewhere on join, and this is the same thing without the restart.
+//
+// The coordinates are bzo's world coordinates, which is what `testSpawn` takes
+// and what every log line prints: `+X` east, `-Z` north, `+Y` up.
+//
+//   /mv x,z          -- there, at whatever height the tank fits, facing as it was
+//   /mv x,y,z        -- with the height given
+//   /mv x,y,z,facing
+//   /mv <coords> <facing>
+//   /mv <target> <coords> [facing]
+//
+// Two numbers leave the height out because that is the form worth typing: the
+// caller resolves it by dropping the tank onto whatever is at that point, so
+// `/mv 0,0` lands on the ground where the tank fits and on the roof where it does
+// not. Three is `x,y,z` -- the order the rest of bzo writes a position in -- so
+// the second number never changes meaning between forms, and a facing needs all
+// three before it to sit in the list. It also has a slot of its own after the
+// coordinates, which is the shorter thing to type.
+//
+// Returns `{ error }`, or `{ x, y, z, bearing }` where `y` and `bearing` are
+// null when they were not given.
+function parseMoveCoordinates(args) {
+  const usage = 'Usage: /mv [player] <x,z|x,y,z|x,y,z,facing> [facing]';
+  if (typeof args !== 'string' || args.trim().length === 0) return { error: usage };
+  const tokens = args.trim().split(/\s+/);
+  if (tokens.length > 2) return { error: usage };
+
+  const values = tokens[0].split(',').map((value) => value.trim());
+  if (values.some((value) => value.length === 0)) return { error: usage };
+  if (values.length < 2 || values.length > 4) return { error: usage };
+
+  // Only the coordinates are numbers. A fourth value is the facing, which is a
+  // compass point -- checking the whole list for finiteness would reject the one
+  // form that carries one.
+  const coordinates = values.slice(0, values.length === 4 ? 3 : values.length).map(Number);
+  if (!coordinates.every(Number.isFinite)) return { error: usage };
+
+  let x;
+  let y = null;
+  let z;
+  let bearing = null;
+  if (coordinates.length === 2) {
+    [x, z] = coordinates;
+  } else {
+    [x, y, z] = coordinates;
+  }
+  if (values.length === 4) {
+    bearing = parseBearing(values[3]);
+    if (bearing === null) return { error: formatBearingError(values[3]) };
+  }
+
+  if (tokens.length === 2) {
+    const trailing = parseBearing(tokens[1]);
+    if (trailing === null) return { error: formatBearingError(tokens[1]) };
+    bearing = trailing;
+  }
+  return { x, y, z, bearing };
+}
+
 // parseServerCommand's last word (commands.cxx:3909), in upstream's own
 // brackets. The slash is dropped, which is why the text is quoted at all.
 function formatUnknownCommand(text) {
@@ -216,6 +361,13 @@ function formatUnknownCommand(text) {
 
 module.exports = {
   COMMAND_TIER,
+  COMPASS_BEARINGS,
+  COMPASS_POINTS,
+  parsePlayerTarget,
+  parseBearing,
+  bearingToRotation,
+  rotationToBearingName,
+  parseMoveCoordinates,
   COMMAND_LIST_LINE_LENGTH,
   isCommandLine,
   parseCommandLine,
