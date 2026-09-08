@@ -6,8 +6,10 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
 
 ## [Unreleased]
 
+## [1.0.76] - 2026-09-08
+
 ### Added
-- **`GM` Guided Missile, completing phase 5's shot flags and phase 12 (#6).** A
+- **`GM` Guided Missile, completing phase 12 (#6).** A
   shot whose heading is a new answer every simulation step, turned toward
   whichever tank its shooter has locked at `_gmTurnAngle` 0.628319 radians a
   second -- azimuth and elevation separately, each at the full rate, so a missile
