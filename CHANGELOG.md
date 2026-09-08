@@ -6,6 +6,108 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
 
 ## [Unreleased]
 
+## [1.0.85] - 2026-09-08
+
+### Added
+- **Every notice that names a player says who they are**, not just Identify.
+  "Got shot by", "You killed", the third-person kill line, join, leave and the
+  lock warning all read `<callsign>/<FL> (<Team>)` now, coloured per component as
+  the scoreboard colours them. `formatPlayerLabel` is the one place it is
+  composed, so no two surfaces can describe the same tank differently, and a
+  killer on your own team is `teammate <callsign>` with neither team nor flag --
+  upstream's own wording (`playing.cxx:4008`).
+
+  **The team is named where it says something**: a colour team, or the rabbit. A
+  shade inside a team's band reads clearly on a tank and not at all in one line
+  of text, which is why upstream prints the team there and bzo now does too.
+  Rogue, observer and hunter name nothing -- every bzo player has a colour of
+  their own, so `(Rogue)` on every line of an OpenFFA server would be noise.
+
+  **The flag comes from the kill message, not from the world.** The server drops
+  a victim's flag before it says anyone died, so a notice reading live state
+  never saw one -- "You killed Orin" where it should have said "You killed
+  Orin/ID". `playerHit` now carries what each tank held at the moment of death,
+  as upstream's `MsgKilled` packs `flagType` for the same reason.
+- **Server commands, and a leading `/` never reaches chat** (#5). A chat line
+  beginning with `/` is now a command or an "Unknown command" reply, asked before
+  any destination -- so a mistyped `/kick bob` no longer announces itself to the
+  room, whichever channel it was aimed at. It needed no client work: bzo's chat
+  entry does not echo locally, so the server declining to broadcast is the whole
+  of it.
+
+  The commands are `/?` and `/help`, `/<prefix>?` for one command's usage, and
+  the open tier: `/uptime`, `/serverquery`, `/msg`, `/date`, `/time`. Upstream's
+  output formats throughout -- `/?`'s columns filled downward against a 64
+  character line, `/uptime`'s "1 day, 2 hours" with its full stop, `/date`'s
+  fixed-width `ctime`, and `/msg`'s error wording down to the two spaces after
+  the full stop. Two tiers where upstream has sixty permissions, and `/msg` goes
+  through the same delivery function the chat entry does, so the admin channel's
+  permission check cannot exist in only one of them.
+- **`docs/commands-plan.md`**, a plan for the rest of the bzfs chat commands
+  (#5): upstream's two-layer split and its sixty per-command permissions,
+  what bzo already has to build on, and the commands sorted by what each one
+  actually needs -- a parser, a small piece of machinery, or a whole subsystem.
+  It also records two things found while writing it: a ban cannot rest on bzo's
+  client address as currently read, and a kick needs an answer to bzo's
+  auto-rejoin or it is a no-op with a rude message attached.
+- **`"localAdmin": true` in `server.json`** makes a connection from this machine
+  an operator without a bzflag.org login, so a test client can drive the Operator
+  panel and, once bzo has them, the server commands. Off by default, and the rule
+  is deliberately two-part: bzo does not terminate TLS, so a public deployment is
+  behind a reverse proxy, and a proxy on the *same host* makes every request in
+  the world arrive from `127.0.0.1`. A loopback peer is not enough -- the request
+  must also carry no `X-Forwarded-*` header, which is the half a remote client
+  cannot forge. Every grant is logged.
+
+### Fixed
+- **A pad flush with the ground no longer stops a burrowed tank.** An obstacle
+  with no height sitting on the ground is a pad rather than a block, and bzo now
+  makes it passable to tanks and shots without the map saying so. Upstream's own
+  words, on the base (`BaseBuilding.cxx:77`): *"if a base is just the ground
+  (z == 0 && height == 0) no collision -- ground is already handled"*. Upstream
+  writes that guard on the base alone; its box arithmetic has none, and a `BU`
+  tank drives below zero, so its own span reaches up through a pad's `[0, 0]` and
+  it stops dead on one. Flat bases were affected too.
+
+  A pad is still drawn and still labelled -- the passability flags are read only
+  by the collision code, never by the renderer. It is no longer a *support
+  surface*, so the debug geometry no longer outlines one as the thing you are
+  standing on, which is correct: you are standing on the ground.
+- **A box flush with the ground no longer z-fights it.** A flat base carried a
+  depth bias for being coplanar with the ground and a flat box did not, so one
+  was a coin toss per pixel. Flat boxes now share a material with that bias,
+  which costs an ordinary box nothing.
+- **An observer is white on every server** (#42). `getInitialPlayerColor`
+  keyed the answer on whether colour teams were on, so with them off --
+  OpenFFA, and Rabbit Chase, where observer is the only team anyone can ask for
+  -- an observer kept
+  whatever colour the whole wheel had handed it, and the entry dialog previewed
+  Observer in that colour rather than in upstream's flat white. An observer is
+  never drawn and its row is read by name, so there is nothing for a distinct
+  colour to distinguish; `getJoinPlayerColor` now gives it `Team::getTankColor`'s
+  white whatever the team mode, and coming back to play takes a fresh colour,
+  since the white it was wearing is nobody's.
+- **An observer's row shows no score and no rank** (#42). Upstream draws
+  neither the score column nor the kills column for one
+  (`ScoreboardRenderer.cxx:829`) and bzo was drawing `0 / 0`: an observer
+  cannot kill or die, so that is the absence
+  of a score rather than a score, and a rank would name a place in a queue it can
+  never be picked from -- `canBeRabbit` refuses an observer outright. The blank
+  line upstream drops in front of the first observer (`:562`) comes with it, on
+  both the flat and the headset boards, because sorting them last says where they
+  are and only the gap says they are a separate group.
+- **The rank column is named** (#42). Upstream keeps the percentage inside a
+  column it labels only "Score" and never names the rank, which leaves a
+  reader to guess
+  what the number in front of their kills is. The heading now reads
+  `Rank Kills / Deaths` on a Rabbit Chase world, abbreviated to `Rank K/D` on the
+  headset's narrower panel.
+
+### Changed
+- **`maps/flagbuffet.bzw` names its flag zones.** Each of the 41 flag zones has a
+  flush box under it with the zone's own dimensions and a name like `L_Laser`, so
+  the debug labels name every flag on the buffet.
+
 ## [1.0.84] - 2026-09-08
 
 ### Added
@@ -22,7 +124,7 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
   `autoTeamSelect` does with it.
 
   **The anointing is upstream's**, in `server/teams.cjs` as pure functions:
-  `Score::ranking`'s win rate damped towards the middle, the "prefer anyone
+  `Score::ranking`'s discounted win rate, the "prefer anyone
   alive who is not the old rabbit" order, `-rabbit killer`'s shortcut for
   whoever shot the rabbit, and `-rabbit random`, which replaces the ranking
   rather than the selection. It runs when the rabbit dies, self-destructs,
@@ -48,6 +150,11 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
   whose win *rate* is worse than even, however far ahead they are on kills.
 
 ### Changed
+- **Identify names the flag and the rabbit.** "Looking at" and "Locked on" now
+  read `<callsign>/<FL> (rabbit)`, coloured per component as the scoreboard row
+  is, which is the same information upstream's `<callsign> (<Team>) with <Flag>`
+  carries. HUD alerts gained the `segments` a chat line already had, honoured by
+  both the DOM notice column and the XR notice panel.
 - **Every death runs one code path.** A self-destruct and a capture each had
   their own copy of the sequence a death performs, and both had drifted: neither
   cleared the guided-missile lock, so a missile went on steering at a tank that
@@ -55,11 +162,6 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
   deposing the rabbit. `applyDeath` is that sequence, and the three callers now
   differ only in what a death *costs* -- which is the part that really does
   differ, since a capture deliberately scores nobody a death.
-- **Identify names the flag and the rabbit.** "Looking at" and "Locked on" now
-  read `<callsign>/<FL> (rabbit)`, coloured per component as the scoreboard row
-  is, which is the same information upstream's `<callsign> (<Team>) with <Flag>`
-  carries. HUD alerts gained the `segments` a chat line already had, honoured by
-  both the DOM notice column and the XR notice panel.
 
 ## [1.0.83] - 2026-09-08
 

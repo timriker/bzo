@@ -1,6 +1,6 @@
 {
   "name": "bzo",
-  "version": "1.0.84",
+  "version": "1.0.85",
   "description": "Web based BZFlag like 3D multiplayer tank game, Battlezone Online",
   "main": "server.js",
   "scripts": {
@@ -9,7 +9,7 @@
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "check:server": "node --check server.js",
-    "check": "npm run check:server && npm run lint && npm run check:controls-docs && npm run check:shared-pairs && npm run test:volume && npm run test:voice-volume && npm run test:voice-channels && npm run test:input-context && npm run test:roam && npm run test:teams && npm run test:team-mode && npm run test:scoreboard && npm run test:shots && npm run test:flags && npm run test:server-name && npm run test:sessions && npm run test:motion && npm run test:collision && npm run test:capabilities",
+    "check": "npm run check:server && npm run lint && npm run check:controls-docs && npm run check:shared-pairs && npm run test:volume && npm run test:voice-volume && npm run test:voice-channels && npm run test:input-context && npm run test:roam && npm run test:teams && npm run test:team-mode && npm run test:scoreboard && npm run test:commands && npm run test:shots && npm run test:flags && npm run test:server-name && npm run test:sessions && npm run test:motion && npm run test:collision && npm run test:capabilities",
     "check:controls-docs": "node scripts/check-controls-docs.mjs",
     "check:shared-pairs": "node scripts/check-shared-pairs.mjs",
     "test:input-context": "node scripts/test-input-context.mjs",
@@ -19,6 +19,7 @@
     "test:roam": "node scripts/test-roam.mjs",
     "test:teams": "node scripts/test-teams.mjs",
     "test:scoreboard": "node scripts/test-scoreboard.mjs",
+    "test:commands": "node scripts/test-commands.mjs",
     "test:team-mode": "node scripts/test-team-mode.mjs",
     "test:server-name": "node scripts/test-server-name.mjs",
     "test:sessions": "node scripts/test-sessions.mjs",
