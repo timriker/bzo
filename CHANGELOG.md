@@ -6,6 +6,60 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
 
 ## [Unreleased]
 
+### Added
+- **World weapons.** A BZW `weapon` block is a gun the world owns: it fires on a
+  timer with nobody driving it, and its shots kill whoever they reach.
+  `fountains.bzw` is built entirely out of them and until now loaded as nine
+  boxes and nothing else. `position`, `rotation`, `tilt`, `type`, `initdelay` and
+  `delay` are all read, and `delay` is a **list** upstream cycles a shot at a
+  time, so a map can give a rhythm rather than a rate. One shot per weapon per
+  tick at most and then the clock is caught up, which is upstream's own "eat any
+  shots that have been missed" -- a server that stalled does not fire a burst to
+  make up for it.
+
+  A world weapon's shot carries upstream's `ServerPlayer` id and the rogue team,
+  so it takes no shot slot, waits on no reload, and is everybody's enemy. A tank
+  killed by one gets a death, nobody gets a kill, and the victim's team loses a
+  point. The notice is upstream's own whole phrase rather than a name --
+  `gotBlowedUp` throws the "Got shot by " prefix away when the killer has no
+  roster entry and says "Killed by the server", which every world weapon kill
+  does. There is nothing to draw: a world weapon is not an obstacle and has no
+  visible component upstream either, which is why a map that wants one seen puts
+  a box under it.
+
+  `trigger` and `eventteam` make an event-fired weapon rather than a timed one;
+  bzo has no event hooks to hang one on, so a map using either is named on load
+  and that weapon fires on its timer.
+
+  Closes #40.
+- **`maps/fountains.bzw`**, upstream's own world-weapons demonstration, tracked
+  as the map that exercises them: three shock waves on box roofs, four rapid-fire
+  guns firing inward from the corners, and two lasers down the length of the map.
+  It declares no `world` block, which is what turned up the world-size default
+  below.
+- **A `testSpawn` is dropped onto the geometry that actually loaded.** The
+  coordinates are typed by hand against one map, and a point inside a building
+  spawns a tank that cannot move -- which is what `server.json`'s own spawn at
+  the origin does on `fountains.bzw`, where a 60-unit box sits there.
+  `DropGeometry::dropPlayer` has two branches and both are here: a clear point
+  falls to the highest flat top under it, and a blocked one *climbs* to the
+  lowest flat top it fits on. Resolved once when the world loads and held in
+  memory for as long as that world is; `server.json` is never written back to,
+  because the coordinates in it are what the operator meant. A spawn with nowhere
+  to stand is named on load and that player spawns at random instead.
+
+### Changed
+- **The default world size is upstream's 800, not 400.** `_worldSize` defaults to
+  800 and is the full width, so a map with no `world` block spans +/-400. bzo
+  halved that, which put `fountains.bzw`'s two towers -- at +/-200 with a
+  ten-unit half extent -- straddling the boundary wall where upstream has 190
+  units to spare. It affected any upstream map that omits the block, not just
+  that one.
+- **The map load says what it dropped.** A `weapon` keyword bzo does not read, or
+  a weapon type it does not have, is now named at load the way an unread `zone`
+  keyword and an unread `-set` variable already were. A partial load should be
+  visible rather than looking like a clean one.
+
 ## [1.0.80] - 2026-09-08
 
 ### Added

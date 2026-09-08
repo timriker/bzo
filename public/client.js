@@ -247,7 +247,12 @@ import {
   pickTargetInSights,
   steerGuidedShot,
 } from './flags.mjs';
-import { normalizeShotSlotCount } from './shots.mjs';
+import {
+  normalizeShotSlotCount,
+  WORLD_WEAPON_PLAYER_ID,
+  WORLD_WEAPON_NAME,
+  WORLD_WEAPON_TEAM,
+} from './shots.mjs';
 import { CLIENT_VERSION } from './version.mjs';
 import { getSoundPaths } from './audio.js';
 import {
@@ -1770,6 +1775,14 @@ function lightenHexColor(colorValue, mix = 0.45) {
 }
 
 function getPlayerShotColor(playerId) {
+  // A world weapon's shot has no shooter to take a colour from. Upstream draws
+  // one in its `shot.team`'s colour, which `CustomWeapon` leaves at rogue, so
+  // that is the colour bzo gives it -- and rogue is a colour no player of a
+  // colour team wears, which is what makes a world weapon's shot readable as
+  // nobody's.
+  if (playerId === WORLD_WEAPON_PLAYER_ID) {
+    return lightenHexColor(getPlayerTeamColor(WORLD_WEAPON_TEAM), 0.45);
+  }
   const tank = tanks.get(playerId);
   const playerColor = tank?.userData?.playerState?.color;
   // Player::addShots takes a `colorblind` flag for exactly this
@@ -4797,17 +4810,32 @@ function getActiveProjectileCountForPlayer(playerId) {
 function handlePlayerHit(message) {
   const shooterTank = tanks.get(message.shooterId);
   const victimTank = tanks.get(message.victimId);
-  const shooterName = shooterTank && shooterTank.userData && shooterTank.userData.playerState && shooterTank.userData.playerState.name ? shooterTank.userData.playerState.name : 'Someone';
+  // A world weapon has no tank and no name of its own -- see `WORLD_WEAPON_NAME`
+  // for what upstream does have. Nothing here reads a callsign off it, because
+  // upstream's notice for this kill is a whole phrase rather than a prefix and a
+  // name.
+  const killedByWorld = message.shooterId === WORLD_WEAPON_PLAYER_ID;
+  const shooterName = killedByWorld
+    ? WORLD_WEAPON_NAME
+    : (shooterTank?.userData?.playerState?.name || 'Someone');
   const victimName = victimTank && victimTank.userData && victimTank.userData.playerState && victimTank.userData.playerState.name ? victimTank.userData.playerState.name : 'Someone';
   const isSelfDestruct = Boolean(message.suicide) || (message.victimId === message.shooterId);
   // Upstream's BlowedUpReason, as far as the server has reasons to send. It
   // picks both the notice and the sound: `blowedUpMessage[]` (playing.cxx:186)
   // is upstream's own table and these are its own words.
   const deathReason = typeof message.reason === 'string' ? message.reason : 'shot';
-  const deathNotice = {
-    runOver: `Got flattened by ${shooterName}`,
-    genocide: `Teammate hit with Genocide by ${shooterName}`,
-  }[deathReason] || `Got shot by ${shooterName}`;
+  // "if (!killerPlayer) blowedUpNotice = \"Killed by the server\"" -- gotBlowedUp
+  // (playing.cxx:3999) throws the whole prefix away when the killer has no
+  // roster entry, which is every kill by a world weapon: `lookupPlayer` finds
+  // its pseudo-player by name and never by id, so a `ServerPlayer` id always
+  // comes back empty. Upstream's exact words, and the reason a world weapon
+  // needs no name in the message.
+  const deathNotice = killedByWorld
+    ? 'Killed by the server'
+    : ({
+      runOver: `Got flattened by ${shooterName}`,
+      genocide: `Teammate hit with Genocide by ${shooterName}`,
+    }[deathReason] || `Got shot by ${shooterName}`);
   const deathSound = deathReason === 'runOver' ? 'runOver' : 'explosion';
   // A capture kills a whole team at once. Upstream scores nobody for it -- the
   // team loss is the entire penalty -- and the captureFlag message has already
@@ -4832,7 +4860,11 @@ function handlePlayerHit(message) {
       setHudAlert(0, 'Your team flag was captured!', DEATH_ALERT_SECONDS, true);
     } else {
       const notice = isSelfDestruct ? 'Tank Self Destructed' : deathNotice;
-      showMessage(isSelfDestruct ? 'You self-destructed!' : `${shooterName} killed you!`, 'death');
+      showMessage(
+        isSelfDestruct ? 'You self-destructed!'
+          : (killedByWorld ? deathNotice : `${shooterName} killed you!`),
+        'death'
+      );
       setHudAlert(0, notice, DEATH_ALERT_SECONDS, true);
     }
     // Switch to overview mode and hide crosshair

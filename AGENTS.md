@@ -1506,7 +1506,27 @@ does this; see **Testing** below.
 "testSpawn": { "name": "TestRogue", "x": 0, "y": 0, "z": 0, "rotation": 0 }
 ```
 
-It is absent from `example-server.json`, so a real server never has one. Do not
+It is absent from `example-server.json`, so a real server never has one.
+
+**The `y` you write is a hint, not the answer.** The coordinates are typed
+against one map, so `rebuildTestSpawns` resolves each one against the geometry
+that actually loaded, once, when the world loads -- upstream's
+`DropGeometry::dropPlayer`, whose two branches both matter here: a clear point
+falls to the highest flat top under it, and a point *inside* a building climbs to
+the lowest flat top it fits on. A spawn at the origin on a map with a box there
+lands on the roof, and the load says so:
+
+```
+Test spawn "Orin" dropped from y 0.00 to 10.00 at 0.00,0.00
+```
+
+`server.json` is never written back to -- the coordinates in it are what you
+meant -- and a spawn with nowhere at all to stand is named on load, with that
+player spawning at random instead. Watch for the roof you land on being under
+something: on `fountains.bzw` the origin drops onto the box whose shock wave is
+mounted on that very roof.
+
+Do not
 instead fake movement packets to walk a test player into place -- a live player's
 moves are validated, so the server will reject the jump and correct it, and the
 test then measures the anticheat rather than whatever it was written for. A test

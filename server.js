@@ -10,7 +10,14 @@ const logPath = require('path').join(__dirname, 'server.log');
 // Clear server.log on restart
 require('fs').writeFileSync(logPath, '');
 const { WebSocketServer } = require('ws');
-const { normalizeShotSlotCount } = require('./server/shots.cjs');
+const {
+  normalizeShotSlotCount,
+  WORLD_WEAPON_PLAYER_ID,
+  WORLD_WEAPON_TEAM,
+  getWorldWeaponDirection,
+  WORLD_WEAPON_DEFAULT_DELAY,
+  normalizeWorldWeaponDelays,
+} = require('./server/shots.cjs');
 const {
   BASE_SIZE,
   BZFLAG_TANK_RADIUS,
@@ -94,6 +101,7 @@ const {
   getTankLocalAngle,
   phasedObstacleExpels,
   isOverFlatTop,
+  isPyramidFlatTop,
   pyramidIntersectsCylinder,
   getSegmentBoxHitFraction,
   pyramidIntersectsTank,
@@ -458,7 +466,14 @@ wss.on('error', (err) => {
 
 // Game constants
 const GAME_CONFIG = {
-  MAP_SIZE: 400,
+  // `_worldSize` (global.cxx:184), which upstream defaults to 800 and states as
+  // the full width -- so a world with no `world` block spans +/-400. A BZW
+  // `world`'s `size` is the half width and `CustomWorld::read` doubles it
+  // (CustomWorld.cxx:38), which is why the parser below does the same. Matching
+  // upstream's default matters for any map that omits the block: `fountains.bzw`
+  // puts towers at +/-200 with room to spare at 800 and straddling the boundary
+  // wall at anything smaller.
+  MAP_SIZE: 800,
   TANK_SPEED: 25.0, // BZFlag-like default (units per second)
   TANK_ROTATION_SPEED: 0.785398, // BZFlag _tankAngVel default (radians per second)
   REVERSE_SPEED_RATIO: 0.5, // Max reverse speed as fraction of forward speed
@@ -1061,6 +1076,11 @@ function parseBZWMap(filename) {
   // otherwise the one place a map states something invisible: a spawn zone that
   // is skipped moves every tank in the world.
   const unreadZoneKeywords = new Set();
+  // A world weapon occupies nothing, so it is not an obstacle.
+  const weapons = [];
+  let currentWeapon = null;
+  const unreadWeaponKeywords = new Set();
+  const unreadWeaponTypes = new Set();
 
   function getTeleporterEndpointName(teleporter, face) {
     return `${teleporter.linkName}:${face === 0 ? 'f' : 'b'}`;
@@ -1335,6 +1355,81 @@ function parseBZWMap(filename) {
       continue;
     }
 
+    // CustomWeapon (CustomWeapon.cxx). A world weapon is not an obstacle -- it
+    // occupies nothing and is drawn as nothing -- so it collects in its own list
+    // rather than in `obstacles`, and `end` closes it the way a zone's does.
+    if (!current && !currentLink && !currentZone && token === 'weapon') {
+      currentWeapon = {
+        x: 0,
+        y: 0,
+        z: 0,
+        rotation: 0,
+        tilt: 0,
+        type: null,
+        initDelay: WORLD_WEAPON_DEFAULT_DELAY,
+        delays: [],
+      };
+      continue;
+    }
+    if (currentWeapon) {
+      if (token === 'end') {
+        // A weapon with no readable type fires upstream's Null flag, which is an
+        // ordinary shell -- `Flags::Null` is CustomWeapon's own default.
+        currentWeapon.delays = normalizeWorldWeaponDelays(currentWeapon.delays);
+        weapons.push(currentWeapon);
+        currentWeapon = null;
+        continue;
+      }
+      if (token === 'position' || token === 'pos') {
+        const [, x, y, z] = line.split(/\s+/);
+        currentWeapon.x = parseFloat(x) || 0;
+        // BZFlag +Y north maps to bzo -Z north, as it does for an obstacle.
+        currentWeapon.z = -(parseFloat(y) || 0);
+        currentWeapon.y = parseFloat(z) || 0;
+        continue;
+      }
+      if (token === 'rotation' || token === 'rot') {
+        const [, deg] = line.split(/\s+/);
+        currentWeapon.rotation = (parseFloat(deg) || 0) * Math.PI / 180;
+        continue;
+      }
+      if (token === 'tilt') {
+        const [, deg] = line.split(/\s+/);
+        currentWeapon.tilt = (parseFloat(deg) || 0) * Math.PI / 180;
+        continue;
+      }
+      if (token === 'type') {
+        const [, abbreviation] = line.split(/\s+/);
+        const wanted = (abbreviation || '').trim().toUpperCase();
+        // Flag::getDescFromAbbreviation, which leaves the type Null when it does
+        // not recognise the name. `WA` reaches here as any other unknown does.
+        if (getFlagType(wanted) && !isTeamFlag(wanted)) currentWeapon.type = wanted;
+        else if (wanted) unreadWeaponTypes.add(wanted);
+        continue;
+      }
+      if (token === 'initdelay') {
+        const [, seconds] = line.split(/\s+/);
+        const value = Number(seconds);
+        if (Number.isFinite(value)) currentWeapon.initDelay = Math.max(0, value);
+        continue;
+      }
+      if (token === 'delay') {
+        // A list, which upstream cycles a shot at a time.
+        const [, ...values] = line.split(/\s+/);
+        currentWeapon.delays = values;
+        continue;
+      }
+      // `trigger` and `eventteam` make an event-fired weapon rather than a timed
+      // one (CustomWeapon.cxx:100). bzo has no event hooks to hang one on, so a
+      // map using them is named on load rather than quietly firing on a timer it
+      // never asked for.
+      if (token === 'trigger' || token === 'eventteam') {
+        unreadWeaponKeywords.add(token);
+        continue;
+      }
+      continue;
+    }
+
     if (!current && !currentLink && token === 'zone') {
       currentZone = {
         index: zones.length,
@@ -1484,6 +1579,20 @@ function parseBZWMap(filename) {
       + ` ${Array.from(unreadZoneKeywords).sort().join(', ')}`
     );
   }
+  if (unreadWeaponKeywords.size > 0) {
+    log(
+      `Ignoring weapon keywords bzo does not read in ${filename}:`
+      + ` ${Array.from(unreadWeaponKeywords).sort().join(', ')}`
+      + ' (those weapons fire on their timer instead)'
+    );
+  }
+  if (unreadWeaponTypes.size > 0) {
+    log(
+      `Weapon types bzo does not have in ${filename}:`
+      + ` ${Array.from(unreadWeaponTypes).sort().join(', ')}`
+      + ' (those weapons fire an ordinary shell)'
+    );
+  }
 
   const teleporterGraph = buildTeleporterLinks();
   return {
@@ -1492,6 +1601,7 @@ function parseBZWMap(filename) {
     teamMode,
     serverOptions,
     zones,
+    weapons,
   };
 }
 
@@ -1557,6 +1667,9 @@ let mapServerOptions = {};
 // The map's `zone` blocks, in map order, so a flag slot can name the one it
 // belongs to by index the way upstream's `#<flagId>` qualifier does.
 let MAP_ZONES = [];
+// The map's `weapon` blocks. Upstream's `WorldWeapons` list, which is the
+// world's and not any player's.
+let WORLD_WEAPONS = [];
 if (MAP_SOURCE === 'random') {
   OBSTACLES = generateObstacles();
   TELEPORTER_GRAPH = { teleporters: [], links: [] };
@@ -1571,6 +1684,10 @@ if (MAP_SOURCE === 'random') {
   log(`Loaded ${OBSTACLES.length} obstacles from ${mapPath}`);
   log(`Loaded ${TELEPORTER_GRAPH.links.length} teleporter face links from ${mapPath}`);
   if (MAP_ZONES.length > 0) log(`Loaded ${MAP_ZONES.length} zones from ${mapPath}`);
+  WORLD_WEAPONS = mapData.weapons;
+  if (WORLD_WEAPONS.length > 0) {
+    log(`Loaded ${WORLD_WEAPONS.length} world weapons from ${mapPath}`);
+  }
 }
 // -ms upstream. The map is read after the shot config above, so its shot slot
 // count lands here, and the reload time is derived a second time from it -- each
@@ -2557,17 +2674,103 @@ function getSpawnPosition(player) {
 // wants: a probe being moved from flag zone to flag zone should not cost the
 // person testing beside it their own fixed spawn, and a single object made every
 // change to one an edit to the other.
+//
+// The coordinates are written by hand against one map's geometry, so they are
+// resolved against the world that actually loaded rather than trusted: see
+// `dropSpawnPosition`.
 function getTestSpawn(name) {
+  return TEST_SPAWNS.get(name) || null;
+}
+
+// DropGeometry::dropPlayer (DropGeometry.cxx:67), for a hand-written spawn. The
+// tank's own height and radius, plus upstream's `fudge` so a tank does not spawn
+// welded to the surface it landed on.
+const SPAWN_DROP_FUDGE = 0.001;
+
+// Where a tank put at this point would actually stand. Upstream's `dropIt`
+// (DropGeometry.cxx:210) has two branches and both matter here:
+//
+//   - the point is **clear**, so the tank falls: take the highest flat top
+//     under it, or the ground.
+//   - the point is **blocked**, so the tank climbs: take the lowest flat top at
+//     or above it that the tank fits on.
+//
+// The second is the one a hand-written coordinate needs. A `testSpawn` is typed
+// against a map's coordinates, and a point inside a building spawns a tank that
+// cannot move -- which is what `server.json`'s own spawn at the origin does on
+// `fountains.bzw`, where a 60-unit box sits there. Upstream climbs it out onto
+// the roof, and so does this.
+//
+// Returns the resolved y, or null when there is nowhere: the caller falls back
+// to a random spawn rather than putting a tank somewhere it is stuck.
+function dropSpawnPosition(x, y, z, rotation) {
+  const clearance = (atY) => !checkCollision(x, atY, z, 2, {
+    rotation,
+    suppressLog: true,
+  });
+
+  // isValidLanding(): a flat top that is not drive-through. The world boundary
+  // and a teleporter are not surfaces a tank is put on, which is the same set
+  // `findFlagLandingY` refuses.
+  const tops = [];
+  for (const obs of getCollisionColliders()) {
+    if (obs.driveThrough) continue;
+    if (obs.collisionKind === 'boundary' || obs.kind === 'teleporter') continue;
+    if (obs.type === 'pyramid' && !isPyramidFlatTop(obs)) continue;
+    if (!isOverFlatTop(obs, x, z)) continue;
+    tops.push((obs.baseY || 0) + getObstacleHeight(obs));
+  }
+
+  if (clearance(y)) {
+    // Falling: highest top below the start, else the ground.
+    const below = tops.filter((top) => top <= y).sort((a, b) => b - a);
+    for (const top of below) {
+      if (clearance(top)) return top + SPAWN_DROP_FUDGE;
+    }
+    if (y >= 0 && clearance(0)) return SPAWN_DROP_FUDGE;
+    return y + SPAWN_DROP_FUDGE;
+  }
+
+  // Climbing: lowest top at or above the start that the tank fits on.
+  const above = tops.filter((top) => top >= y).sort((a, b) => a - b);
+  for (const top of above) {
+    if (clearance(top)) return top + SPAWN_DROP_FUDGE;
+  }
+  return null;
+}
+
+// Resolved once, when the world is loaded, and held in memory for as long as
+// that world is. `server.json` is the operator's own file and is never written
+// back to: the coordinates they typed are what they meant, and this is only
+// where those coordinates put a tank on the map that loaded.
+const TEST_SPAWNS = new Map();
+
+function rebuildTestSpawns() {
+  TEST_SPAWNS.clear();
   const configured = serverConfig.testSpawn;
   const spawns = Array.isArray(configured) ? configured : (configured ? [configured] : []);
-  const spawn = spawns.find((candidate) => candidate?.name === name);
-  if (!spawn) return null;
-  return {
-    x: Number(spawn.x) || 0,
-    y: Number(spawn.y) || 0,
-    z: Number(spawn.z) || 0,
-    rotation: Number(spawn.rotation) || 0,
-  };
+  for (const spawn of spawns) {
+    if (typeof spawn?.name !== 'string') continue;
+    const x = Number(spawn.x) || 0;
+    const y = Number(spawn.y) || 0;
+    const z = Number(spawn.z) || 0;
+    const rotation = Number(spawn.rotation) || 0;
+    const droppedY = dropSpawnPosition(x, y, z, rotation);
+    if (droppedY === null) {
+      log(
+        `Test spawn "${spawn.name}" at ${x.toFixed(2)},${y.toFixed(2)},${z.toFixed(2)}`
+        + ' has nowhere to stand on this map; that player spawns at random instead'
+      );
+      continue;
+    }
+    if (Math.abs(droppedY - y) > SPAWN_DROP_FUDGE * 2) {
+      log(
+        `Test spawn "${spawn.name}" dropped from y ${y.toFixed(2)}`
+        + ` to ${droppedY.toFixed(2)} at ${x.toFixed(2)},${z.toFixed(2)}`
+      );
+    }
+    TEST_SPAWNS.set(spawn.name, { x, y: droppedY, z, rotation });
+  }
 }
 
 function findValidSpawnPosition(tankRadius = 2) {
@@ -2993,6 +3196,9 @@ function getRandomBasePosition(base) {
 }
 
 rebuildTeamBases(OBSTACLES);
+// Once the world is loaded, and only then: a hand-written spawn is resolved
+// against the geometry that actually arrived.
+rebuildTestSpawns();
 // ClassicCTF upstream. Team flags need both a team game and bases to stand on,
 // so a team-mode map with no bases plays without them.
 const CTF_ENABLED = TEAM_MODE.enabled && BASES_BY_TEAM.size > 0;
@@ -4855,6 +5061,86 @@ function traceShotThroughTeleporters(start, dir, travelDistance, projectileId, r
   };
 }
 
+// WorldWeapons::add (WorldWeapons.cxx:192). A weapon's first shot is
+// `initdelay` after the world was built -- upstream's `sync`, taken once so
+// every weapon on the map shares one clock and a map can stagger them, which is
+// what `fountains.bzw` does with 10, 13.3 and 16.6.
+let worldWeaponsArmedAt = 0;
+
+function armWorldWeapons(now) {
+  worldWeaponsArmedAt = now;
+  for (const weapon of WORLD_WEAPONS) {
+    weapon.nextFireAt = now + (weapon.initDelay * 1000);
+    weapon.nextDelayIndex = 0;
+  }
+}
+
+// WorldWeapons::fire (WorldWeapons.cxx:164). One shot per weapon per tick at
+// most, then the clock is caught up -- upstream's own "eat any shots that have
+// been missed", which stops a server that stalled from firing a burst to make up
+// for it.
+function fireWorldWeapons(now) {
+  if (WORLD_WEAPONS.length === 0) return;
+  if (worldWeaponsArmedAt === 0) armWorldWeapons(now);
+  for (const weapon of WORLD_WEAPONS) {
+    if (weapon.nextFireAt > now) continue;
+    fireWorldWeaponShot(weapon);
+    while (weapon.nextFireAt <= now) {
+      weapon.nextFireAt += weapon.delays[weapon.nextDelayIndex] * 1000;
+      weapon.nextDelayIndex = (weapon.nextDelayIndex + 1) % weapon.delays.length;
+    }
+  }
+}
+
+// WorldWeapons::fireShot (WorldWeapons.cxx:31). The shot is an ordinary
+// projectile in every respect but its shooter: `shot.player` is `ServerPlayer`,
+// so there is no tank to answer for it, no shot slot to take and no reload to
+// wait for. Its team is upstream's `teamColor`, which `CustomWeapon` leaves at
+// rogue -- and a rogue shot is everybody's enemy, which is what a world weapon
+// should be.
+function fireWorldWeaponShot(weapon) {
+  const direction = getWorldWeaponDirection(weapon.rotation, weapon.tilt);
+  const id = (++projectileIdCounter).toString();
+  const proj = new Projectile(
+    id,
+    WORLD_WEAPON_PLAYER_ID,
+    -1,
+    weapon.x,
+    weapon.y,
+    weapon.z,
+    direction.x,
+    direction.z,
+    direction.y,
+    weapon.type
+  );
+  // The shot's team, since there is no player to read one off.
+  proj.team = WORLD_WEAPON_TEAM;
+  projectiles.set(id, proj);
+  // A beam's whole path is walked when it is fired, as it is for a tank's, and a
+  // world weapon can be a `L` Laser -- `fountains.bzw` mounts two.
+  const beamHit = proj.beam ? traceShotBeam(proj, proj.createdAt) : null;
+  broadcastAll({
+    type: 'shotBegin',
+    id: proj.id,
+    playerId: proj.playerId,
+    x: proj.x,
+    y: proj.y,
+    z: proj.z,
+    shotSlot: proj.shotSlot,
+    dirX: proj.dirX,
+    dirY: proj.dirY,
+    dirZ: proj.dirZ,
+    flag: proj.flag,
+    ricochet: proj.ricochet,
+    segments: proj.segments,
+    // A world weapon locks onto nobody: upstream targets a `GM` world weapon
+    // through the API rather than from a map, which bzo has no equivalent of.
+    target: null,
+    createdAt: proj.createdAt,
+  });
+  if (beamHit) applyShotPlayerHit(proj, id, beamHit.player, beamHit.point);
+}
+
 // checkEnvironment's squish loop (playing.cxx:4198), which is the only rule in
 // the game that runs off nothing but where two tanks are -- so it gets a sweep
 // of its own rather than a hook on something that was already happening.
@@ -5078,6 +5364,8 @@ function setPlayerTarget(player) {
 // mid-flight -- and a shot that turned friendly in the air would be the stranger
 // of the two answers.
 function getShotTeam(proj) {
+  // A world weapon's shot carries its own: there is no player to ask.
+  if (proj.team) return proj.team;
   return players.get(proj.playerId)?.team ?? null;
 }
 
@@ -5234,7 +5522,10 @@ const DEATH_REASON = Object.freeze({
 // the respawn. Every way to die in bzo but a capture comes through here -- a
 // capture kills a whole team at once and scores nobody, which is a different
 // rule rather than a repeat of this one.
-function killPlayer(victim, killer, reason, projectileId = null) {
+// `shooterId` is for a killer that is not a player: a world weapon's shot
+// carries `ServerPlayer`, which has no roster entry to take an id from, and the
+// client needs the id to say what killed you.
+function killPlayer(victim, killer, reason, projectileId = null, shooterId = null) {
   // "victim was already dead. keep score." Upstream's own guard, and bzo needs
   // it for the same reason plus one of its own: genocide kills a team in a loop,
   // and a team killer who dies for the first of them must not die again for the
@@ -5272,7 +5563,7 @@ function killPlayer(victim, killer, reason, projectileId = null) {
   broadcastAll({
     type: 'playerHit',
     victimId: victim.id,
-    shooterId: killer ? killer.id : null,
+    shooterId: killer ? killer.id : shooterId,
     projectileId,
     reason,
   });
@@ -5318,7 +5609,7 @@ function applyShotVictim(proj, id, player) {
     return 'shield';
   }
 
-  killPlayer(player, players.get(proj.playerId), DEATH_REASON.SHOT, id);
+  killPlayer(player, players.get(proj.playerId), DEATH_REASON.SHOT, id, proj.playerId);
 
   // playing.cxx:2655. Genocide is decided off the *shot*, so it is asked here
   // rather than anywhere a tank happens to die: killing one tank kills its whole
@@ -5860,6 +6151,7 @@ function gameLoop() {
     projectileSimAccumulator -= SHOT_SIM_STEP_SECONDS;
   }
 
+  fireWorldWeapons(now);
   applySteamrollerSweep(now);
   expireLockTargets();
   updateFlags(now);

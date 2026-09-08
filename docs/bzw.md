@@ -33,7 +33,7 @@ with -Z north and +Y up. The importer converts as it reads:
 | `position x y z`, or `pos` | `x`, `z = -y`, `baseY = z` | +Y north becomes -Z north |
 | `size x y z` | `w = 2x`, `d = 2y`, `h = z` | BZW's x/y are half extents, z is a full height |
 | `rotation deg`, or `rot` | `rotation = deg * pi/180 + pi` | degrees CCW about +Z, and the depth axis flips |
-| `world` / `size r` | `MAP_SIZE = 2r` | BZW states the half width |
+| `world` / `size r` | `MAP_SIZE = 2r` | BZW states the half width; `CustomWorld.cxx:38` doubles it too |
 
 `pos` and `rot` are upstream's own aliases (`WorldFileLocation::read`), so a map
 that uses the short spellings is not a map that arrives at the origin.
@@ -225,6 +225,52 @@ per-type counts to put them in.
 `-mp` with no explicit `-c` or `-offa` implies team play when it enables any
 team other than rogue and observer.
 
+A map with no `world` block gets upstream's own default: `_worldSize` 800, which
+is the full width, so the world spans +/-400.
+
+## World weapons
+
+A `weapon` block is a gun the world owns: it fires on a timer with nobody
+driving it, and its shots kill whoever they reach.
+
+| BZW | bzo | notes |
+|---|---|---|
+| `position x y z` | the muzzle | BZW's `+Y` north is bzo's `-Z`, as for an obstacle |
+| `rotation deg` | the aim, around up | `bz_vectorFromRotations`, in bzo's axes |
+| `tilt deg` | the aim, up or down | 0 is level |
+| `type <abbrev>` | the firing flag | anything in the flag table; unknown fires a plain shell, as `Flags::Null` does |
+| `initdelay s` | the first shot | default 10, measured from when the world was built |
+| `delay s [s ...]` | the interval after that | default 10. A **list** is a rhythm upstream cycles a shot at a time |
+
+**A world weapon has no visible component**, upstream or here. It is not an
+obstacle: nothing is drawn at its position and it occupies no space, so a map
+that wants one to be seen puts a box under it -- which is what every weapon in
+`fountains.bzw` has. The `size` a weapon inherits from `WorldFileLocation` is
+never read.
+
+**And no name.** `CustomWeapon::read` reads no `name`, and a weapon is not in the
+obstacle table to be named in. What upstream gives them instead is one collective
+identity: a single `WorldPlayer` pseudo-player for every world weapon on the map,
+`Player(ServerPlayer, RogueTeam, "world weapon", "", ComputerPlayer)`, whose
+shots are drawn and put on the radar as that player's. It is not on the
+scoreboard, because it is not in `remotePlayers`, and bzo keeps it out of the
+roster for the same reason.
+
+So a shot from one carries upstream's `ServerPlayer` id and the rogue team, which
+is what bzo's `WORLD_WEAPON_PLAYER_ID` and `WORLD_WEAPON_TEAM` are, and it takes
+no shot slot and waits on no reload -- there is no tank to answer for it. Being
+rogue makes it everybody's enemy, which is what a world weapon should be.
+
+A tank killed by one gets a death, nobody gets a kill, and the victim's team
+loses a point. The notice is upstream's own whole phrase rather than a name:
+`gotBlowedUp` throws the "Got shot by " prefix away when the killer has no roster
+entry and says **"Killed by the server"**, which every world weapon kill does,
+because `lookupPlayer` finds the pseudo-player by name and never by id.
+
+`trigger` and `eventteam` make an event-fired weapon instead of a timed one.
+bzo has no event hooks to hang one on, so a map using either is named on load and
+that weapon fires on its timer.
+
 ## What is ignored
 
 Anything not listed above is skipped without comment, which means a map using it
@@ -241,7 +287,7 @@ loads and plays with that part of it missing. The notable absences:
   reads on any obstacle. An obstacle carrying one arrives untransformed.
 - **`world` fields other than `size`**: `flagHeight`, `noWalls`,
   `freeCtfSpawns`.
-- **`water`, `weapon`, `physics`**.
+- **`water`, `physics`**.
 - **A `zone` block's `flag`, `team` and `safety` keywords.** `zoneflag` is read,
   so a map's flag zones work; `flag` names a type any flag of which spawns in the
   zone, `team` makes it a spawn area, and `safety` a Phantom Zone landing spot.
