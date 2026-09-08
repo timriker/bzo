@@ -11,11 +11,17 @@ const CHAT_MIN_WIDTH_WITH_DEBUG = 560;
 const CHAT_DEBUG_PANEL_RESERVE = 352;
 const CHAT_TARGET_ALL = 0;
 const CHAT_TARGET_SERVER = -1;
+// Upstream's `send team` (ActionBinding.cxx:101), which addresses a message to a
+// team rather than to a player: its wire format spends PlayerIds 244 and up on
+// the teams, and bzo spends small negatives on the two destinations that are not
+// players, so a team is one more of those.
+const CHAT_TARGET_TEAM = -2;
 const CHAT_KIND_CHAT = 'chat';
 const CHAT_KIND_ACTION = 'action';
 const CHAT_KIND_SERVER = 'server';
 const CHAT_KIND_MISC = 'misc';
 const CHAT_KIND_DEBUG = 'debug';
+const CHAT_KIND_TEAM = 'team';
 const CHAT_KIND_DIRECT_IN = 'direct-in';
 const CHAT_KIND_DIRECT_OUT = 'direct-out';
 const CLIENT_COPYRIGHT = 'Copyright (C) 2025-2026 Tim Riker <timriker@gmail.com>';
@@ -477,6 +483,8 @@ const IDENTIFY_ALERT_SECONDS = 2;
 // playing.cxx:3540. A guided missile's target is warned at most this often,
 // however many missiles are in the air or how often the shooter retargets.
 const LOCK_WARNING_INTERVAL_MS = 750;
+// playing.cxx:3296. A team message announces itself no more often than this.
+const TEAM_MESSAGE_SOUND_INTERVAL_MS = 2000;
 // handleNearFlag()'s five (playing.cxx:2016). It shares the identify slot
 // rather than upstream's slot 0: driving past a row of flags reports each one,
 // and bzo keeps slot 0 for the death and kill notices, which a player has four
@@ -1399,10 +1407,16 @@ function cycleChatTab(direction) {
   setActiveChatTab(visibleTabs[nextIndex].id);
 }
 
-function addChatEntry(tabIds, text, kind = CHAT_KIND_MISC) {
+// `segments` is optional, and is how a line carries more than one colour:
+// `[{ text, color }]`, where a segment with no colour of its own takes the
+// kind's. `text` is still the whole line as one string -- it is what the XR
+// panel measures against and what anything that only wants the words reads --
+// so a renderer that ignores segments still draws something correct.
+function addChatEntry(tabIds, text, kind = CHAT_KIND_MISC, segments = null) {
   const entry = {
     text: String(text),
     kind,
+    segments: Array.isArray(segments) && segments.length > 0 ? segments : null,
     ts: Date.now(),
   };
   const uniqueTabIds = Array.from(new Set(tabIds));
@@ -1551,6 +1565,7 @@ function handleMessageNemesisTarget() {
 function normalizeMessageEndpoint(value, fallback = CHAT_TARGET_ALL) {
   if (value === CHAT_TARGET_ALL || value === String(CHAT_TARGET_ALL)) return CHAT_TARGET_ALL;
   if (value === CHAT_TARGET_SERVER || value === String(CHAT_TARGET_SERVER)) return CHAT_TARGET_SERVER;
+  if (value === CHAT_TARGET_TEAM || value === String(CHAT_TARGET_TEAM)) return CHAT_TARGET_TEAM;
   if (value === null || value === undefined || value === '') return fallback;
   return String(value);
 }
@@ -1559,6 +1574,7 @@ function getPlayerName(id) {
   const normalizedId = normalizeMessageEndpoint(id, CHAT_TARGET_SERVER);
   if (normalizedId === CHAT_TARGET_ALL) return 'ALL';
   if (normalizedId === CHAT_TARGET_SERVER) return 'SERVER';
+  if (normalizedId === CHAT_TARGET_TEAM) return 'TEAM';
   if (normalizedId === myPlayerId && typeof myPlayerName === 'string' && myPlayerName.trim().length > 0) {
     return myPlayerName.trim();
   }
@@ -1580,6 +1596,35 @@ function formatNetworkMessage(message) {
 
   if (msgType === CHAT_KIND_SERVER || src === CHAT_TARGET_SERVER) {
     return { text: `[SERVER] ${text}`, tabs: ['server', 'all'], kind: CHAT_KIND_SERVER };
+  }
+  // playing.cxx:3286. A team message is marked `[Team]` and goes to the Chat tab
+  // like any other -- upstream has no team tab, and neither does bzo.
+  //
+  // Two colours, because bzo has two to say: the team's own colour on the label
+  // -- the one its flag, its blip and its heading marker already wear -- and the
+  // sender's own colour on the callsign, which is a thing upstream has no way to
+  // show, since its team mates all share one colour. The raw player colour and
+  // not the effective one: Masquerade changes how a tank *looks*, not who said
+  // something.
+  if (dst === CHAT_TARGET_TEAM) {
+    const senderState = tanks.get(src)?.userData?.playerState;
+    // Named by its colour alone -- `[Green]`, not `[Green Team]` -- for the same
+    // reason `getPlayerFlagLabel` strips it off a team flag: the bracket says
+    // which of the two kinds of name this is and the colour says the rest, so the
+    // word is as redundant here as "Player" before a quoted name.
+    const teamName = PLAYER_TEAM_LABELS[normalizePlayerTeam(senderState?.team)] ?? 'Team';
+    const label = `[${teamName.replace(/ Team$/, '')}]`;
+    const separator = msgType === CHAT_KIND_ACTION ? ' ' : ': ';
+    return {
+      text: `${label} ${fromName}${separator}${text}`,
+      tabs: ['chat', 'all'],
+      kind: CHAT_KIND_TEAM,
+      segments: [
+        { text: label, color: colorToCSS(getPlayerTeamColor(senderState?.team)) },
+        { text: ` ${fromName}`, color: colorToCSS(senderState?.color ?? getChatKindColor(CHAT_KIND_TEAM)) },
+        { text: `${separator}${text}` },
+      ],
+    };
   }
   if (msgType === CHAT_KIND_ACTION) {
     if (typeof dst === 'string') {
@@ -3384,9 +3429,10 @@ function init() {
     if (!chatTarget) return;
     // Save current selection
     const prevValue = chatTarget.value;
-    // Remove all except ALL and SERVER
+    // Remove all but the three destinations that are not players
+    const fixedTargets = [CHAT_TARGET_ALL, CHAT_TARGET_TEAM, CHAT_TARGET_SERVER].map(String);
     for (let i = chatTarget.options.length - 1; i >= 0; i--) {
-      if (chatTarget.options[i].value !== '0' && chatTarget.options[i].value !== '-1') {
+      if (!fixedTargets.includes(chatTarget.options[i].value)) {
         chatTarget.remove(i);
       }
     }
@@ -4315,8 +4361,17 @@ function handleServerMessage(message) {
       if (typeof srcId === 'string' && dstId === myPlayerId && srcId !== myPlayerId) {
         lastDirectSenderId = srcId;
       }
+      // playing.cxx:3296: SFX_MESSAGE_TEAM, only when somebody else sent it, and
+      // at most once every two seconds however many arrive.
+      if (dstId === CHAT_TARGET_TEAM && srcId !== myPlayerId) {
+        const now = performance.now();
+        if (now - lastTeamMessageSoundAt >= TEAM_MESSAGE_SOUND_INTERVAL_MS) {
+          lastTeamMessageSoundAt = now;
+          renderManager.playLocalSound('messageTeam');
+        }
+      }
       const formatted = formatNetworkMessage(message);
-      addChatEntry(formatted.tabs, formatted.text, formatted.kind);
+      addChatEntry(formatted.tabs, formatted.text, formatted.kind, formatted.segments);
       updateChatWindow();
       break;
     }
@@ -7904,6 +7959,7 @@ let lastShakeRequestAt = 0;
 // Drop is an event, but every non-keyboard source reports a held button.
 let dropWasHeld = false;
 let identifyWasHeld = false;
+let lastTeamMessageSoundAt = -Infinity;
 // LocalPlayer::flagShakingTime. The countdown belongs to one carried flag, so it
 // is keyed on the slot as well as the seconds: taking a different sticky flag
 // starts a fresh clock rather than inheriting what was left of the last one.
@@ -8986,12 +9042,30 @@ function ensureXRChatOverlay() {
   ctx.font = `${XR_CHAT_LINE_PX}px monospace`;
   const firstLineBaseline = captionBaseline + XR_CHAT_CAPTION_PX;
   visibleMessages.forEach((msg, index) => {
-    ctx.fillStyle = getChatKindColor(msg.kind);
-    ctx.fillText(
-      fitText(ctx, msg.text || '', panelW - 20),
-      panelX + 10,
-      firstLineBaseline + (index * XR_CHAT_LINE_HEIGHT_PX),
-    );
+    const kindColor = getChatKindColor(msg.kind);
+    const baseline = firstLineBaseline + (index * XR_CHAT_LINE_HEIGHT_PX);
+    const maxWidth = panelW - 20;
+    if (!msg.segments) {
+      ctx.fillStyle = kindColor;
+      ctx.fillText(fitText(ctx, msg.text || '', maxWidth), panelX + 10, baseline);
+      return;
+    }
+    // A line with coloured runs is drawn run by run, each starting where the
+    // last one ended. `fitText` truncates one string against one width, so the
+    // width left over is carried along and the line stops mid-run rather than
+    // spilling off the panel.
+    let x = panelX + 10;
+    let remaining = maxWidth;
+    for (const segment of msg.segments) {
+      if (remaining <= 0) break;
+      const drawn = fitText(ctx, segment.text || '', remaining);
+      if (!drawn) break;
+      ctx.fillStyle = segment.color || kindColor;
+      ctx.fillText(drawn, x, baseline);
+      const width = ctx.measureText(drawn).width;
+      x += width;
+      remaining -= width;
+    }
   });
 
   xrChatPanel.texture.needsUpdate = true;
@@ -10341,7 +10415,18 @@ function updateChatWindow() {
     const msg = activeMessages[i];
     const div = document.createElement('div');
     div.className = `chat-line chat-kind-${msg.kind || CHAT_KIND_CHAT}`;
-    div.textContent = msg.text;
+    if (msg.segments) {
+      // A segment with no colour inherits the line's, which is the kind's own
+      // CSS rule -- so only the runs that need a colour carry one.
+      msg.segments.forEach((segment) => {
+        const span = document.createElement('span');
+        span.textContent = segment.text;
+        if (segment.color) span.style.color = segment.color;
+        div.appendChild(span);
+      });
+    } else {
+      div.textContent = msg.text;
+    }
     chatMessagesDiv.appendChild(div);
   }
 

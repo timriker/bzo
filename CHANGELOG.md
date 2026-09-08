@@ -6,6 +6,56 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
 
 ## [Unreleased]
 
+### Changed
+- `[CHAT]` log lines follow the log conventions: a player in quotes and a team in
+  brackets, so `[CHAT] "t5810"->[ROGUE]:` needs no word "team" in it -- the
+  bracket is what says which of the two a name is, exactly as the quotes are.
+  AGENTS.md now states that half of the rule alongside the quoted-name half.
+
+- The chat input row reads `[Send] [target] [input]`. Send and the target list
+  are used one after the other, so they sit together instead of with the input
+  between them -- which also puts the row in the order it is used, left to right.
+
+### Fixed
+- **Every dialog but Settings opened off the bottom of a tall page.** Help, the
+  operator panel, audio settings and the entry dialog were `position: absolute`,
+  and body is not a positioned ancestor -- so `top: 50%` centred them on the
+  *document* rather than on the window, and a document taller than the window put
+  them below the middle of what was on screen. They are `fixed` now, like
+  `#settingsHud` always was, and the centring lives once in the block all five
+  already shared instead of five times over. Their height also takes `svh`
+  alongside `vh`, for the reason the on-screen buttons already do: on mobile
+  Chrome `vh` is the viewport with the URL bar retracted, so a dialog sized in it
+  is taller than the window it has to fit.
+
+### Added
+- **Team chat, as a `TEAM` entry in the chat destination dropdown.** Upstream has
+  no team *tab*: its console tabs are All/Chat/Server/Misc
+  (`ControlPanel.cxx:252`), which is exactly what bzo mirrors, and a team message
+  goes to the **Chat** tab marked `[Team]` (`playing.cxx:3286`) with
+  `message_team.wav` when somebody else sent it, no more than once every two
+  seconds. bzo does the same.
+- **A team line carries two colours, where upstream has only one to give.** The
+  `[Green]` label -- named by its colour alone, as `getPlayerFlagLabel` names a
+  team flag, because the bracket and the colour already say "team" -- takes the
+  team's own colour -- the one its flag, its radar blip
+  and its heading marker already wear -- and the callsign takes the *sender's*
+  own. Upstream paints the whole line the team's ANSI code, which it can because
+  its team mates all share one colour; bzo shades them apart, so it has a second
+  colour to spend and spends it on saying who is talking. Chat entries now carry
+  optional coloured runs to make that possible, and both renderers draw them:
+  the DOM one as spans, the XR panel run by run, carrying the width left over so
+  a long line still stops at the panel edge.
+- Who a team message reaches is `player.team === sender.team`, sender included,
+  with no exception for Rogue or Observer -- bzfs's own team dispatch sends to
+  every player whose `isTeam` matches, which is the rule the `voice-channels`
+  pair already spells out for the Team voice channel. The two now agree.
+- The help panel and the README list the `identify` binding on every surface it
+  has -- `I`, right click, the on-screen `◎` button, either VR thumbstick press
+  and either gamepad shoulder -- and the panel has a **VR & Gamepad** section,
+  which it had none of before: the trigger, grip, A and B bindings were
+  discoverable only by pressing things.
+
 ## [1.0.76] - 2026-09-08
 
 ### Added

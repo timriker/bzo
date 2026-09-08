@@ -97,6 +97,14 @@ html, body {
   --chat-kind-action: #ffccbc;
   --chat-kind-direct-in: #80deea;
   --chat-kind-direct-out: #b39ddb;
+  /* Team chat, for the part of the line that is neither the team nor the sender:
+     the message itself. The `[Team]` label takes the team's own colour and the
+     callsign takes the sender's own, both set per run in `formatNetworkMessage`,
+     so this is only the fallback the rest of the line inherits. Upstream paints
+     the whole line the team's ANSI colour, which it can because its team mates
+     all share one; bzo shades them apart, so it has a second colour to spend and
+     spends it on saying who is talking. */
+  --chat-kind-team: #a5d6a7;
   --chat-tab-idle: #ddd;
   --chat-tab-active: #fff;
   --chat-tab-unread: #ff8a80;
@@ -227,6 +235,10 @@ canvas {
   -webkit-touch-callout: default;
 }
 
+#chatMessages .chat-line.chat-kind-team {
+  color: var(--chat-kind-team);
+}
+
 #chatMessages .chat-line.chat-kind-server {
   color: var(--chat-kind-server);
 }
@@ -316,7 +328,10 @@ body.chat-active #chatInput {
    because it acts on chat rather than selecting one of its views. */
 #sendBtn {
   flex: 0 0 auto;
-  margin-left: 6px;
+  /* Send comes first in the row -- `[Send] [target] [input]` -- so the gap it
+     owns is the one on its right. A left margin here would only inset the row
+     from the edge of the panel. */
+  margin-right: 6px;
   border: 1px solid var(--color-accent);
   border-radius: 5px;
   background: var(--color-btn-bg);
@@ -741,10 +756,6 @@ body {
 }
 
 #helpPanel {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
   z-index: 200;
   display: none;
 }
@@ -815,19 +826,11 @@ body {
 
 /* Operator Panel Styling */
 #operatorOverlay {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
   z-index: 300;
   display: none;
 }
 
 #audioOverlay {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
   z-index: 310;
   display: none;
 }
@@ -943,10 +946,6 @@ body {
 }
 
 #entryDialog {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
   z-index: 300;
   display: none;
 }
@@ -1555,8 +1554,22 @@ body.observing #roamStatus {
 #audioOverlay,
 #operatorOverlay,
 #entryDialog {
+  /* `fixed`, not `absolute`. Body is not a positioned ancestor, so an absolute
+     dialog centres on the *document* rather than on the window -- and a document
+     taller than the window puts `top: 50%` below the middle of what is on
+     screen, which is a dialog that opens off the bottom. Only `#settingsHud`
+     had this right. */
+  position: fixed;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
   width: min(820px, calc(100vw - 32px));
   height: min(86vh, 900px);
+  /* svh, not vh, for the same reason `--mobile-btn-size` takes it: on mobile
+     Chrome `vh` is the *large* viewport, the one with the URL bar retracted, so
+     a dialog sized in vh is taller than the window it has to fit in. Declared
+     second so a browser without svh keeps the vh line above. */
+  height: min(86svh, 900px);
   padding: 24px;
   border: 1px solid rgba(76, 175, 80, 0.72);
   border-radius: 8px;
@@ -1570,10 +1583,6 @@ body.observing #roamStatus {
 }
 
 #settingsHud {
-  position: fixed;
-  left: 50%;
-  top: 50%;
-  transform: translate(-50%, -50%);
   z-index: 1000;
   text-align: left;
   display: none;

@@ -246,7 +246,8 @@ If you want automatic container updates, use your preferred container update man
 - `/` or `?` — show/hide help panel
 
 - `I` or right-click — identify the tank in your sights, and lock a Guided
-  Missile onto it
+  Missile onto it. On the on-screen controls it is the `◎` button, in VR either
+  thumbstick press, and on a gamepad either shoulder
 
 ### Mouse steering
 

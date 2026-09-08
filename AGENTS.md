@@ -1405,6 +1405,9 @@ through the `soundFiles[]` table in `src/bzflag/sound.cxx`.
   not given a name yet, where the word is the only thing saying what the number
   counts. This holds wherever a line names two players -- `[Voice] "t5810" (1)`
   reads as a player because of the quotes, and unquoted it reads as a word.
+- **A team is in brackets, for the same reason.** `[ROGUE]`, as the join line
+  already writes it, so `[CHAT] "t5810"->[ROGUE]:` needs no word "team" in it --
+  the bracket is what says which of the two a name is.
 
 ## Checks and Tests
 

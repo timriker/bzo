@@ -180,12 +180,13 @@
     <div id="chatTabs" class="chat-tabs"></div>
     <div id="chatMessages"></div>
     <div class="chat-input-row">
+      <button id="sendBtn" type="button" aria-pressed="false" title="Type a chat message, then send it">Send</button>
       <select id="chatTarget">
         <option value="0">ALL</option>
+        <option value="-2">TEAM</option>
         <option value="-1">SERVER</option>
       </select>
       <input id="chatInput" type="text" />
-      <button id="sendBtn" type="button" aria-pressed="false" title="Type a chat message, then send it">Send</button>
     </div>
   </div>
 
@@ -263,6 +264,7 @@
         <li><strong>Enter</strong> — Shoot</li>
         <li><strong>Tab</strong> — Jump</li>
         <li><strong>Space</strong> — Drop Flag</li>
+        <li><strong>I</strong> — Identify: names the tank in your sights, and locks a Guided Missile onto it</li>
         <li><strong>Q</strong> — Self-Destruct</li>
         <li><strong>C</strong> — Toggle Camera View</li>
         <li><strong>P</strong> — Pause Game</li>
@@ -281,6 +283,7 @@
         <li><strong>⤒</strong> — Jump (tap button)</li>
         <li><strong>●</strong> — Fire (tap button)</li>
         <li><strong>⚑</strong> — Drop Flag (tap button)</li>
+        <li><strong>◎</strong> — Identify (tap button)</li>
         <li>Use on-screen joystick to move/turn</li>
       </ul>
 
@@ -333,6 +336,16 @@
         <li><strong>B</strong> — <b>Toggle Microphone</b></li>
         <li>Voice is available after microphone permission is granted.</li>
         <li>Observers talk and listen on the same terms as everyone else.</li>
+      </ul>
+
+      <h2>VR &amp; Gamepad</h2>
+      <ul>
+        <li><strong>Either trigger</strong> — Shoot</li>
+        <li><strong>Grip</strong> — Jump</li>
+        <li><strong>A</strong> — Drop Flag</li>
+        <li><strong>Either thumbstick press</strong> — Identify</li>
+        <li><strong>B</strong> — VR menu</li>
+        <li>On a gamepad: <strong>either shoulder</strong> — Identify</li>
       </ul>
 
       <h2>3D Viewing Modes</h2>

@@ -5817,29 +5817,38 @@ wss.on('connection', (ws, req) => {
           const rawTarget = message.dst ?? message.to;
           const isAllTarget = rawTarget === 0 || rawTarget === '0' || rawTarget === null || rawTarget === undefined || rawTarget === '';
           const isServerTarget = rawTarget === -1 || rawTarget === '-1';
-          const targetId = isAllTarget || isServerTarget ? Number(rawTarget) : String(rawTarget);
+          const isTeamTarget = rawTarget === -2 || rawTarget === '-2';
+          const targetId = isAllTarget || isServerTarget || isTeamTarget
+            ? Number(rawTarget)
+            : String(rawTarget);
           const fromId = player.id;
           const fromName = player.name;
           const msgType = message.msgType === 'action' ? 'action' : 'chat';
           const text = typeof message.text === 'string' ? message.text.trim() : '';
           if (text.length === 0) break;
 
-          function getPlayerName(id) {
+          // How a chat destination is written in the log. A player is in quotes
+          // and a team is in brackets, as they are everywhere else; ALL and
+          // SERVER are neither, so they are bare. See the log conventions in
+          // AGENTS.md -- the bracket is what says "team", so the word would be
+          // as redundant as "Player" before a quoted name.
+          function describeChatTarget(id) {
             if (id === 0) return 'ALL';
             if (id === -1) return 'SERVER';
-            return players.has(id) ? players.get(id).name : `Player ${id}`;
+            if (id === -2) return `[${player.team.toUpperCase()}]`;
+            return players.has(id) ? `"${players.get(id).name}"` : `"Player ${id}"`;
           }
-          const toName = getPlayerName(targetId);
+          const toName = describeChatTarget(targetId);
 
           // Log locally only if to == -1
           if (isServerTarget) {
-            log(`[CHAT] ${fromName}->${toName}: ${text}`);
+            log(`[CHAT] "${fromName}"->${toName}: ${text}`);
             break;
           }
 
           // Broadcast to all if to == 0
           if (isAllTarget) {
-            log(`[CHAT] ${fromName}->ALL: ${text}`);
+            log(`[CHAT] "${fromName}"->ALL: ${text}`);
             broadcastAll({
               type: 'message',
               src: fromId,
@@ -5851,9 +5860,33 @@ wss.on('connection', (ws, req) => {
             break;
           }
 
+          // Team chat. bzfs's own team dispatch sends to every player whose
+          // `isTeam(_team)` matches the destination, with no exception for Rogue
+          // or Observer -- which is the rule the `voice-channels` pair already
+          // spells out for the Team voice channel, so both use it. The sender is
+          // included: a message you cannot see you have sent is worse than one
+          // echoed back.
+          if (isTeamTarget) {
+            log(`[CHAT] "${fromName}"->${toName}: ${text}`);
+            const payload = {
+              type: 'message',
+              src: fromId,
+              dst: -2,
+              msgType,
+              text,
+              ts: Date.now(),
+            };
+            const encoded = JSON.stringify(payload);
+            players.forEach((other) => {
+              if (other.team !== player.team) return;
+              if (other.ws && other.ws.readyState === 1) other.ws.send(encoded);
+            });
+            break;
+          }
+
           // Send to specific player if id exists
           if (typeof targetId === 'string' && players.has(targetId)) {
-            log(`[CHAT] ${fromName}->${toName}: ${text}`);
+            log(`[CHAT] "${fromName}"->${toName}: ${text}`);
             const targetPlayer = players.get(targetId);
             const payload = {
               type: 'message',

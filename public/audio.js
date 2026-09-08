@@ -62,6 +62,9 @@ export const GAME_SOUNDS = Object.freeze({
   lock: { file: 'lock.wav', sfx: 'SFX_LOCK' },
   // A shot bounces off a building.
   ricochet: { file: 'ricochet.wav', sfx: 'SFX_RICOCHET' },
+  // A team message arrives. Upstream's own trigger: only when somebody else sent
+  // it, and at most once every two seconds (playing.cxx:3296).
+  messageTeam: { file: 'message_team.wav', sfx: 'SFX_MESSAGE_TEAM' },
   // A tank is destroyed.
   explosion: { file: 'explosion.wav', sfx: 'SFX_EXPLOSION' },
   // A tank is run over by a Steamroller. Upstream plays this in place of the
