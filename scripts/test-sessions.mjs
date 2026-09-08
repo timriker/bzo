@@ -11,6 +11,8 @@ const {
   isAdminSession,
   createSessionRecord,
   createSessionStore,
+  isLoopbackAddress,
+  isLocalAdminRequest,
 } = require('../server/sessions.cjs');
 
 // No real callsign or BZID belongs in a test. These are the shapes the list
@@ -142,6 +144,53 @@ assert.equal(isAdminSession(createSessionRecord({ bzid: '1', callsign: 'x' }, 10
   assert.equal(store.load({ sessions: { a: { bzid: '1' } } }), 0, 'no callsign');
   assert.equal(store.load({ sessions: { a: { bzid: '1', callsign: 'x' } } }), 0, 'no expiry');
   assert.equal(store.size, 0);
+}
+
+// `localAdmin`: whether a connection from this machine is an operator without a
+// login. The rule is deliberately two-part, and the second part is the one that
+// matters -- bzo does not terminate TLS, so a public deployment is behind a
+// reverse proxy, and a proxy on the *same host* makes every request in the world
+// arrive from 127.0.0.1.
+{
+  // Every spelling a Node socket hands back for loopback.
+  assert.equal(isLoopbackAddress('::1'), true);
+  assert.equal(isLoopbackAddress('0:0:0:0:0:0:0:1'), true);
+  assert.equal(isLoopbackAddress('127.0.0.1'), true);
+  assert.equal(isLoopbackAddress('127.1.2.3'), true, 'the whole 127/8, as loopback is');
+  assert.equal(isLoopbackAddress('::ffff:127.0.0.1'), true, 'a dual-stack listener maps IPv4');
+  assert.equal(isLoopbackAddress('[::1]'), true);
+  // And nothing else, including addresses that merely start the same way.
+  assert.equal(isLoopbackAddress('166.70.97.196'), false);
+  assert.equal(isLoopbackAddress('10.0.0.1'), false);
+  assert.equal(isLoopbackAddress('1270.0.0.1'), false);
+  assert.equal(isLoopbackAddress('::2'), false);
+  assert.equal(isLoopbackAddress(''), false);
+  assert.equal(isLoopbackAddress(undefined), false);
+
+  // Off unless the operator asked, whatever the peer.
+  assert.equal(isLocalAdminRequest(false, '::1', {}), false);
+  assert.equal(isLocalAdminRequest(undefined, '127.0.0.1', {}), false);
+  assert.equal(isLocalAdminRequest('yes', '127.0.0.1', {}), false, 'true, not truthy');
+
+  // On, and genuinely from this machine.
+  assert.equal(isLocalAdminRequest(true, '::1', {}), true);
+  assert.equal(isLocalAdminRequest(true, '127.0.0.1', {}), true);
+  assert.equal(isLocalAdminRequest(true, '::ffff:127.0.0.1', {}), true);
+  assert.equal(isLocalAdminRequest(true), false, 'no address, no admin');
+
+  // The part that keeps a same-host proxy from handing admin to the internet: a
+  // request that went through a proxy is not a request from this machine, and a
+  // remote client can add a forwarding header but cannot remove one.
+  assert.equal(isLocalAdminRequest(true, '::1', { 'x-forwarded-for': '1.2.3.4' }), false);
+  assert.equal(isLocalAdminRequest(true, '127.0.0.1', { 'X-Forwarded-For': '1.2.3.4' }), false);
+  // Any of them, not just X-Forwarded-For -- however the hop was labelled.
+  assert.equal(isLocalAdminRequest(true, '::1', { 'x-forwarded-proto': 'https' }), false);
+  assert.equal(isLocalAdminRequest(true, '::1', { 'x-forwarded-host': 'bz.rikers.org' }), false);
+  // A header that is not a forwarding header changes nothing.
+  assert.equal(isLocalAdminRequest(true, '::1', { 'user-agent': 'probe', cookie: 'a=b' }), true);
+
+  // And a remote peer is never local, headers or no headers.
+  assert.equal(isLocalAdminRequest(true, '166.70.97.196', {}), false);
 }
 
 console.log('session tests passed');

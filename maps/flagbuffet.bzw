@@ -120,10 +120,22 @@ zone
   team 4
 end
 
+box
+  name ID_Identify
+  position 0 0 0
+  size 1 1 0
+end
+
 zone
   position -35 40 0
   size 1 1 0
   zoneflag A 3
+end
+
+box
+  name A_Agility
+  position -35 40 0
+  size 1 1 0
 end
 
 zone
@@ -132,10 +144,22 @@ zone
   zoneflag BU 3
 end
 
+box
+  name BU_Burrow
+  position -25 40 0
+  size 1 1 0
+end
+
 zone
   position -15 40 0
   size 1 1 0
   zoneflag CL 3
+end
+
+box
+  name CL_Cloaking
+  position -15 40 0
+  size 1 1 0
 end
 
 #zone
@@ -150,10 +174,22 @@ zone
   zoneflag F 3
 end
 
+box
+  name F_Rapid_Fire
+  position 5 40 0
+  size 1 1 0
+end
+
 zone
   position 15 40 0
   size 1 1 0
   zoneflag G 3
+end
+
+box
+  name G_Genocide
+  position 15 40 0
+  size 1 1 0
 end
 
 zone
@@ -162,10 +198,22 @@ zone
   zoneflag GM 3
 end
 
+box
+  name GM_Guided_Missile
+  position 25 40 0
+  size 1 1 0
+end
+
 zone
   position 35 40 0
   size 1 1 0
   zoneflag IB 3
+end
+
+box
+  name IB_Invisible_Bullet
+  position 35 40 0
+  size 1 1 0
 end
 
 
@@ -175,10 +223,22 @@ zone
   zoneflag JP 3
 end
 
+box
+  name JP_Jumping
+  position 40 35 0
+  size 1 1 0
+end
+
 zone
   position 40 25 0
   size 1 1 0
   zoneflag L 3
+end
+
+box
+  name L_Laser
+  position 40 25 0
+  size 1 1 0
 end
 
 #zone
@@ -193,10 +253,22 @@ zone
   zoneflag MG 3
 end
 
+box
+  name MG_Machine_Gun
+  position 40 5 0
+  size 1 1 0
+end
+
 zone
   position 40 -5 0
   size 1 1 0
   zoneflag MQ 3
+end
+
+box
+  name MQ_Masquerade
+  position 40 -5 0
+  size 1 1 0
 end
 
 zone
@@ -205,10 +277,22 @@ zone
   zoneflag N 3
 end
 
+box
+  name N_Narrow
+  position 40 -15 0
+  size 1 1 0
+end
+
 zone
   position 40 -25 0
   size 1 1 0
   zoneflag OO 3
+end
+
+box
+  name OO_Oscillation_Overthruster
+  position 40 -25 0
+  size 1 1 0
 end
 
 #zone
@@ -224,10 +308,22 @@ zone
   zoneflag PZ 3
 end
 
+box
+  name PZ_Phantom_Zone
+  position 35 -40 0
+  size 1 1 0
+end
+
 zone
   position 25 -40 0
   size 1 1 0
   zoneflag QT 3
+end
+
+box
+  name QT_Quick_Turn
+  position 25 -40 0
+  size 1 1 0
 end
 
 zone
@@ -236,10 +332,22 @@ zone
   zoneflag R 3
 end
 
+box
+  name R_Ricochet
+  position 15 -40 0
+  size 1 1 0
+end
+
 zone
   position 5 -40 0
   size 1 1 0
   zoneflag SB 3
+end
+
+box
+  name SB_Super_Bullet
+  position 5 -40 0
+  size 1 1 0
 end
 
 zone
@@ -248,16 +356,34 @@ zone
   zoneflag SE 3
 end
 
+box
+  name SE_Seer
+  position -5 -40 0
+  size 1 1 0
+end
+
 zone
   position -15 -40 0
   size 1 1 0
   zoneflag SH 3
 end
 
+box
+  name SH_Shield
+  position -15 -40 0
+  size 1 1 0
+end
+
 zone
   position -25 -40 0
   size 1 1 0
   zoneflag SR 3
+end
+
+box
+  name SR_Steamroller
+  position -25 -40 0
+  size 1 1 0
 end
 
 #zone
@@ -273,10 +399,22 @@ zone
   zoneflag ST 3
 end
 
+box
+  name ST_Stealth
+  position -40 -35 0
+  size 1 1 0
+end
+
 zone
   position -40 -25 0
   size 1 1 0
   zoneflag SW 3
+end
+
+box
+  name SW_Shock_Wave
+  position -40 -25 0
+  size 1 1 0
 end
 
 zone
@@ -285,10 +423,22 @@ zone
   zoneflag T 3
 end
 
+box
+  name T_Tiny
+  position -40 -15 0
+  size 1 1 0
+end
+
 zone
   position -40 -5 0
   size 1 1 0
   zoneflag TH 3
+end
+
+box
+  name TH_Thief
+  position -40 -5 0
+  size 1 1 0
 end
 
 zone
@@ -297,16 +447,34 @@ zone
   zoneflag US 3
 end
 
+box
+  name US_Useless
+  position -40 5 0
+  size 1 1 0
+end
+
 zone
   position -40 15 0
   size 1 1 0
   zoneflag V 3
 end
 
+box
+  name V_High_Speed
+  position -40 15 0
+  size 1 1 0
+end
+
 zone
   position -40 25 0
   size 1 1 0
   zoneflag WG 3
+end
+
+box
+  name WG_Wings
+  position -40 25 0
+  size 1 1 0
 end
 
 #zone
@@ -323,10 +491,22 @@ zone
   zoneflag B 3
 end
 
+box
+  name B_Blindness
+  position -35 80 0
+  size 1 1 0
+end
+
 zone
   position -25 80 0
   size 1 1 0
   zoneflag BY 3
+end
+
+box
+  name BY_Bouncy
+  position -25 80 0
+  size 1 1 0
 end
 
 zone
@@ -335,10 +515,22 @@ zone
   zoneflag CB 3
 end
 
+box
+  name CB_Colorblindness
+  position -15 80 0
+  size 1 1 0
+end
+
 zone
   position -5 80 0
   size 1 1 0
   zoneflag FO 3
+end
+
+box
+  name FO_Forward_Only
+  position -5 80 0
+  size 1 1 0
 end
 
 zone
@@ -347,16 +539,34 @@ zone
   zoneflag JM 3
 end
 
+box
+  name JM_Jamming
+  position 5 80 0
+  size 1 1 0
+end
+
 zone
   position 15 80 0
   size 1 1 0
   zoneflag LT 3
 end
 
+box
+  name LT_Left_Turn_Only
+  position 15 80 0
+  size 1 1 0
+end
+
 zone
   position 25 80 0
   size 1 1 0
   zoneflag M 3
+end
+
+box
+  name M_Momentum
+  position 25 80 0
+  size 1 1 0
 end
 
 #zone
@@ -372,10 +582,22 @@ zone
   zoneflag NJ 3
 end
 
+box
+  name NJ_No_Jumping
+  position 80 35 0
+  size 1 1 0
+end
+
 zone
   position 80 25 0
   size 1 1 0
   zoneflag O 3
+end
+
+box
+  name O_Obesity
+  position 80 25 0
+  size 1 1 0
 end
 
 zone
@@ -384,10 +606,22 @@ zone
   zoneflag RC 3
 end
 
+box
+  name RC_ReverseControls
+  position 80 15 0
+  size 1 1 0
+end
+
 zone
   position 80 5 0
   size 1 1 0
   zoneflag RO 3
+end
+
+box
+  name RO_ReverseOnly
+  position 80 5 0
+  size 1 1 0
 end
 
 zone
@@ -396,10 +630,22 @@ zone
   zoneflag RT 3
 end
 
+box
+  name RT_Right_Turn_Only
+  position 80 -5 0
+  size 1 1 0
+end
+
 zone
   position 80 -15 0
   size 1 1 0
   zoneflag TR 3
+end
+
+box
+  name TR_Trigger_Happy
+  position 80 -15 0
+  size 1 1 0
 end
 
 zone

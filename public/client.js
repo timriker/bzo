@@ -116,7 +116,9 @@ import {
   toggleDebugLabels,
   compareScoreboardPlayers,
   formatPlayerLabel,
-  SCOREBOARD_RABBIT_MARK,
+  formatScoreboardStats,
+  getPlayerTeamMark,
+  getScoreboardStatsHeader,
   buildScoreboardRows,
   SCOREBOARD_STATUS_COLOR,
   getActiveHudAlerts,
@@ -260,7 +262,6 @@ import {
 import {
   normalizeShotSlotCount,
   WORLD_WEAPON_PLAYER_ID,
-  WORLD_WEAPON_NAME,
   WORLD_WEAPON_TEAM,
 } from './shots.mjs';
 import { CLIENT_VERSION } from './version.mjs';
@@ -687,22 +688,66 @@ function isTheRabbit(playerId) {
 // Colourblindness costs the whole answer, not just the name: upstream drops to
 // "a tank" outright (playing.cxx:4479), and naming the flag or marking the
 // rabbit would hand back what the colour no longer says.
-function describePlayer(playerId) {
-  // Colourblindness costs the whole answer, not just the name: upstream drops to
-  // "a tank" outright (playing.cxx:4479), and naming the flag or marking the
-  // rabbit would hand back what the colour no longer says.
+// A tank in one line of text: the callsign in the colour the roster gives it, the
+// flag it carries, and its team where the team says something. That is upstream's
+// `<callsign> (<Team>) with <Flag>` (playing.cxx:4016, :4488) in bzo's own order,
+// with the flag tight against the name as every bzo surface writes the pair.
+//
+// Every alert and notice that names a player goes through this, so none of them
+// can describe the same tank differently -- and adding the colour to alerts is
+// what let the team and the flag come with it.
+//
+// `blind` is Colourblindness, which costs the whole answer rather than just the
+// name: upstream drops to "a tank" outright (playing.cxx:4479), and naming the
+// flag or the team would hand back exactly what the colour no longer says.
+// `flag` overrides what the world says this tank is carrying, for a notice about
+// a moment that has already passed -- a kill message carries the flag from the
+// server for exactly that reason.
+function describePlayer(playerId, { blind = isColorblind(), flag } = {}) {
+  if (blind) return { text: 'a tank', segments: null };
+  const state = playerId === myPlayerId
+    ? myTank?.userData?.playerState
+    : tanks.get(playerId)?.userData?.playerState;
+  return formatPlayerLabel({
+    name: getPlayerName(playerId),
+    // The colour the scoreboard gives this player's row, so a notice and the
+    // roster agree about whose tank is being described.
+    nameColor: Number.isFinite(state?.color) ? state.color : null,
+    flag: flag === undefined ? getPlayerFlagLabel(playerId) : flag,
+    mark: getPlayerTeamMark(getPlayerTeamById(playerId)),
+  });
+}
+
+// The callsign alone, in the colour the roster gives it. Upstream's "teammate
+// <callsign>" carries neither team nor flag: we are already the same team, and
+// which of us it was is the whole of what went wrong.
+function describePlayerName(playerId) {
   if (isColorblind()) return { text: 'a tank', segments: null };
   const state = playerId === myPlayerId
     ? myTank?.userData?.playerState
     : tanks.get(playerId)?.userData?.playerState;
   return formatPlayerLabel({
     name: getPlayerName(playerId),
-    // The colour the scoreboard gives this player's row, so the alert and the
-    // roster agree about whose tank is being described.
     nameColor: Number.isFinite(state?.color) ? state.color : null,
-    flag: getPlayerFlagLabel(playerId),
-    rabbit: isRabbitTeam(getPlayerTeamById(playerId)) ? SCOREBOARD_RABBIT_MARK : null,
   });
+}
+
+// A notice that names a player, on both surfaces at once: the alert slot the eye
+// is on, and the chat line that keeps it after the alert times out. `parts` is
+// the sentence as `[string | describePlayer(...)]`, so a caller writes the words
+// and names the tanks without composing colours itself.
+function noticeAbout(slot, parts, seconds, warning, kind = CHAT_KIND_MISC) {
+  const segments = [];
+  for (const part of parts) {
+    if (typeof part === 'string') segments.push({ text: part });
+    else if (part?.segments) segments.push(...part.segments);
+    else if (part) segments.push({ text: part.text });
+  }
+  const text = segments.map((segment) => segment.text).join('');
+  if (slot !== null) setHudAlert(slot, text, seconds, warning, segments);
+  addChatEntry(['misc', 'all'], text, kind, segments);
+  updateChatWindow();
+  return text;
 }
 
 // The Identify alerts, on both surfaces: a prefix in the alert's own colour and
@@ -783,12 +828,9 @@ function applyNewRabbit(nextRabbitId) {
     renderManager.playLocalSound('huntSelect');
   }
   // addMessage(rabbit, "is now the rabbit") sits outside upstream's own branch,
-  // so the new rabbit reads the line as well as hearing the alert.
-  const name = nextRabbitId === myPlayerId
-    ? myPlayerName
-    : tanks.get(nextRabbitId)?.userData?.playerState?.name || 'Player';
-  addChatEntry(['misc', 'all'], `${name} is now the rabbit`, CHAT_KIND_MISC);
-  updateChatWindow();
+  // so the new rabbit reads the line as well as hearing the alert. The mark the
+  // description carries is `(rabbit)` by now, which is the point of the line.
+  noticeAbout(null, [describePlayer(nextRabbitId), ' is now the rabbit'], 0, false);
 }
 
 function normalizeRadarZoomLevel(value) {
@@ -2478,6 +2520,11 @@ function getPreviewTankColor() {
   // neither does Rogue -- there every player gets a distinct colour of their
   // own, so their own is the honest preview.
   const team = getSelectedPlayerTeam();
+  // Observer names a colour on every server, so staging it always answers:
+  // upstream's flat white, which is what an observer is given whatever the team
+  // mode -- see getJoinPlayerColor. The colour-team test below is about whether
+  // *Rogue* names one, and on a world with no colour teams it does not.
+  if (isObserverTeam(team)) return getPlayerTeamColor(PLAYER_TEAM.OBSERVER);
   const staged = team !== PLAYER_TEAM.AUTOMATIC
     && availablePlayerTeams.some(isColorTeam)
     && PLAYER_TEAM_COLORS[team] !== undefined;
@@ -4488,7 +4535,7 @@ function handleServerMessage(message) {
           triggerSpawnEffectForTank(joinedTank, message.player.color);
         }
         refreshScoreboards();
-        showMessage(`${message.player.name} joined the game`);
+        noticeAbout(null, [describePlayer(message.player.id), ' joined the game'], 0, false);
       }
       break;
 
@@ -4503,12 +4550,9 @@ function handleServerMessage(message) {
 
     case 'playerLeft': {
       // Show the player's name before removing
-      let leftName = 'Player';
-      const leftTank = tanks.get(message.id);
-      if (leftTank && leftTank.userData && leftTank.userData.playerState && leftTank.userData.playerState.name) {
-        leftName = leftTank.userData.playerState.name;
-      }
-      showMessage(`${leftName} left the game`);
+      // Described before the tank goes, since that is where the colour, the flag
+      // and the team are read from.
+      noticeAbout(null, [describePlayer(message.id), ' left the game'], 0, false);
       removePlayer(message.id);
       break;
     }
@@ -5258,14 +5302,15 @@ function handlePlayerHit(message) {
   const shooterTank = tanks.get(message.shooterId);
   const victimTank = tanks.get(message.victimId);
   // A world weapon has no tank and no name of its own -- see `WORLD_WEAPON_NAME`
-  // for what upstream does have. Nothing here reads a callsign off it, because
-  // upstream's notice for this kill is a whole phrase rather than a prefix and a
-  // name.
+  // in shots.mjs for what upstream does have. Nothing reads a callsign off it,
+  // because upstream's notice for this kill is a whole phrase rather than a
+  // prefix and a name: "Killed by the server".
   const killedByWorld = message.shooterId === WORLD_WEAPON_PLAYER_ID;
-  const shooterName = killedByWorld
-    ? WORLD_WEAPON_NAME
-    : (shooterTank?.userData?.playerState?.name || 'Someone');
-  const victimName = victimTank && victimTank.userData && victimTank.userData.playerState && victimTank.userData.playerState.name ? victimTank.userData.playerState.name : 'Someone';
+  // What each tank held when it happened, from the message rather than from the
+  // world: the victim's has been dropped by now, and the killer may have changed
+  // theirs. Upstream's MsgKilled carries the same thing for the same reason.
+  const victimFlag = getFlagLabelForAbbreviation(message.victimFlag);
+  const shooterFlag = getFlagLabelForAbbreviation(message.shooterFlag);
   const isSelfDestruct = Boolean(message.suicide) || (message.victimId === message.shooterId);
   // Upstream's BlowedUpReason, as far as the server has reasons to send. It
   // picks both the notice and the sound: `blowedUpMessage[]` (playing.cxx:186)
@@ -5277,12 +5322,27 @@ function handlePlayerHit(message) {
   // its pseudo-player by name and never by id, so a `ServerPlayer` id always
   // comes back empty. Upstream's exact words, and the reason a world weapon
   // needs no name in the message.
-  const deathNotice = killedByWorld
-    ? 'Killed by the server'
-    : ({
-      runOver: `Got flattened by ${shooterName}`,
-      genocide: `Teammate hit with Genocide by ${shooterName}`,
-    }[deathReason] || `Got shot by ${shooterName}`);
+  // blowedUpMessage[] (playing.cxx:186) is a *prefix*; the killer is described
+  // after it, which is where the team and the flag go.
+  const deathPrefix = {
+    runOver: 'Got flattened by ',
+    genocide: 'Teammate hit with Genocide by ',
+  }[deathReason] || 'Got shot by ';
+  // "matching the team-display style of other kill messages" (playing.cxx:4008):
+  // a killer on my own team is named `teammate <callsign>` and gets neither team
+  // nor flag, because which of us it was is the whole of what went wrong.
+  //
+  // Upstream's own test is `myTank->getTeam() == team && team != RogueTeam &&
+  // team != ObserverTeam`, which needs no separate "does this world have sides":
+  // in OpenFFA everybody is a rogue, and the rogue exclusion is what covers it.
+  // Hunters reach it too, and should -- they share a team, so hunter-on-hunter
+  // fire really is friendly fire.
+  const myTeamNow = normalizePlayerTeam(playerTeam);
+  const shotByTeammate = !killedByWorld
+    && !isSelfDestruct
+    && normalizePlayerTeam(getPlayerTeamById(message.shooterId)) === myTeamNow
+    && myTeamNow !== PLAYER_TEAM.ROGUE
+    && myTeamNow !== PLAYER_TEAM.OBSERVER;
   const deathSound = deathReason === 'runOver' ? 'runOver' : 'explosion';
   // A capture kills a whole team at once. Upstream scores nobody for it -- the
   // team loss is the entire penalty -- and the captureFlag message has already
@@ -5303,16 +5363,21 @@ function handlePlayerHit(message) {
     // Local player was killed. gotBlowedUp() puts this on the alert HUD for four
     // seconds as a warning (playing.cxx:4028), which is where the eye is.
     if (isCapture) {
-      showMessage('Your team flag was captured!', 'death');
-      setHudAlert(0, 'Your team flag was captured!', DEATH_ALERT_SECONDS, true);
+      noticeAbout(0, ['Your team flag was captured!'], DEATH_ALERT_SECONDS, true);
+    } else if (isSelfDestruct) {
+      noticeAbout(0, ['Tank Self Destructed'], DEATH_ALERT_SECONDS, true);
+    } else if (killedByWorld) {
+      // "Killed by the server" -- gotBlowedUp throws the whole prefix away when
+      // the killer has no roster entry, which is every world weapon.
+      noticeAbout(0, ['Killed by the server'], DEATH_ALERT_SECONDS, true);
+    } else if (shotByTeammate) {
+      noticeAbout(
+        0, [deathPrefix, 'teammate ', describePlayerName(message.shooterId)],
+        DEATH_ALERT_SECONDS, true);
     } else {
-      const notice = isSelfDestruct ? 'Tank Self Destructed' : deathNotice;
-      showMessage(
-        isSelfDestruct ? 'You self-destructed!'
-          : (killedByWorld ? deathNotice : `${shooterName} killed you!`),
-        'death'
-      );
-      setHudAlert(0, notice, DEATH_ALERT_SECONDS, true);
+      noticeAbout(
+        0, [deathPrefix, describePlayer(message.shooterId, { flag: shooterFlag })],
+        DEATH_ALERT_SECONDS, true);
     }
     // Switch to overview mode and hide crosshair
     lastCameraMode = cameraMode;
@@ -5334,14 +5399,33 @@ function handlePlayerHit(message) {
     // Nothing to say: the capture itself was already announced.
   } else if (message.shooterId === myPlayerId) {
     // Local player got a kill. Upstream has no alert for this -- it only warns
-    // you about your own death -- but the two belong together on screen.
+    // you about your own death -- but the two belong together on screen, and the
+    // victim is described exactly as the killer is in the notice above.
     if (!isSelfDestruct) {
-      showMessage(`You killed ${victimName}!`, 'kill');
-      setHudAlert(0, `You killed ${victimName}`, KILL_ALERT_SECONDS, false);
+      noticeAbout(
+        0, ['You killed ', describePlayer(message.victimId, { flag: victimFlag })],
+        KILL_ALERT_SECONDS, false);
     }
+  } else if (isSelfDestruct) {
+    // Somebody else's death: chat only, since upstream warns you about your own
+    // and nobody else's.
+    noticeAbout(
+      null, [describePlayer(message.victimId, { flag: victimFlag }), ' self-destructed'],
+      0, false);
+  } else if (killedByWorld) {
+    noticeAbout(
+      null,
+      [describePlayer(message.victimId, { flag: victimFlag }), ' was killed by the server'],
+      0, false);
   } else {
-    // Show to all other players
-    showMessage(isSelfDestruct ? `${victimName} self-destructed!` : `${shooterName} killed ${victimName}!`, 'info');
+    noticeAbout(
+      null,
+      [
+        describePlayer(message.shooterId, { flag: shooterFlag }),
+        ' killed ',
+        describePlayer(message.victimId, { flag: victimFlag }),
+      ],
+      0, false);
   }
   // Update other players' stats
 
@@ -5473,6 +5557,8 @@ function getScoreboardModel() {
         rabbitChase: rabbitChaseEnabled,
       }),
       teamRows: getTeamScoreRows(teamScores),
+      // Only the column heading reads this; the rows carry their own rank.
+      rabbitChase: rabbitChaseEnabled,
       // Only an observer can pick a roam target, and only an explicit one is
       // marked: with no target the view follows the leader, and marking the top
       // row would claim a choice the player did not make.
@@ -7325,9 +7411,7 @@ function warnLockedOnMe(shooterId, targetId) {
   if (now - lastLockWarningAt < LOCK_WARNING_INTERVAL_MS) return;
   lastLockWarningAt = now;
   renderManager.playLocalSound('lock');
-  const name = getPlayerName(shooterId);
-  setHudAlert(1, `${name} locked on me`, IDENTIFY_ALERT_SECONDS, true);
-  addChatEntry(['misc', 'all'], `${name} locked on me`, CHAT_KIND_MISC);
+  noticeAbout(1, [describePlayer(shooterId), ' locked on me'], IDENTIFY_ALERT_SECONDS, true);
 }
 
 // setTarget()'s two messages (playing.cxx:4451 and :4489), composed here because
@@ -8983,6 +9067,20 @@ function getPlayerFlagLabel(playerId) {
   };
 }
 
+// The same label from an abbreviation rather than from a flag in the world, for
+// a flag that has already left the tank by the time it is named -- which is
+// every flag a kill notice mentions, since the server drops the victim's before
+// it says anyone died. Naming it at all means its identity is known, so there is
+// no hidden-flag case to answer here.
+function getFlagLabelForAbbreviation(abbreviation) {
+  const type = getFlagType(abbreviation);
+  if (!type) return null;
+  return {
+    label: type.team ? type.name.replace(/ Team$/, '') : type.abbreviation,
+    color: isBadFlag(abbreviation) ? BAD_FLAG_COLOR : getFlagColor(abbreviation),
+  };
+}
+
 // What colour a flag is drawn in, from what this client has learned about it.
 // A flag whose identity is still hidden is white, as every superflag is
 // upstream; a flag known to be bad wears the bad-flag colour everywhere it
@@ -9952,7 +10050,7 @@ function ensureXRChatOverlay() {
       if (remaining <= 0) break;
       const drawn = fitText(ctx, segment.text || '', remaining);
       if (!drawn) break;
-      ctx.fillStyle = segment.color || kindColor;
+      ctx.fillStyle = segment.color ? colorToCSS(segment.color) : kindColor;
       ctx.fillText(drawn, x, baseline);
       const width = ctx.measureText(drawn).width;
       x += width;
@@ -10085,8 +10183,17 @@ function ensureXRScoreboardOverlay() {
   const headerHeight = 20;
   const maxRows = 8;
   const visiblePlayers = playerData.slice(0, maxRows);
+  // ScoreboardRenderer.cxx:562's blank line before the first observer, which the
+  // model marks so both boards break in the same place. Half a row here rather
+  // than a whole one: this panel's rows are tighter than the flat board's.
+  const observerGap = visiblePlayers.some((player) => player.startsObservers)
+    ? Math.round(rowHeight / 2)
+    : 0;
   const teamBlockHeight = teamRows.length ? headerHeight + teamRows.length * rowHeight + 8 : 0;
-  const panelH = Math.max(120, teamBlockHeight + headerHeight + 10 + visiblePlayers.length * rowHeight + 12);
+  const panelH = Math.max(
+    120,
+    teamBlockHeight + headerHeight + 10 + visiblePlayers.length * rowHeight + observerGap + 12,
+  );
   canvas.width = panelW;
   canvas.height = panelH;
 
@@ -10120,11 +10227,17 @@ function ensureXRScoreboardOverlay() {
   const playerHeaderY = 16 + teamBlockHeight;
   ctx.fillText('Player', margin, playerHeaderY);
   ctx.textAlign = 'right';
-  ctx.fillText('K/D', contentRight, playerHeaderY);
+  // The flat board's heading, abbreviated to what fits a headset panel. Both
+  // read it from the same place so they cannot name the columns differently.
+  ctx.fillText(
+    getScoreboardStatsHeader(rabbitChaseEnabled, true), contentRight, playerHeaderY);
   ctx.textAlign = 'left';
 
-  visiblePlayers.forEach((player, index) => {
-    const y = playerHeaderY + 22 + index * rowHeight;
+  let rowY = playerHeaderY + 22;
+  visiblePlayers.forEach((player) => {
+    if (player.startsObservers) rowY += observerGap;
+    const y = rowY;
+    rowY += rowHeight;
     // The row is drawn in the colour the player's tank is drawn in, as the flat
     // scoreboard's rows are, so a name reads the same in the headset as on the
     // screen. Only the flag departs from it, in the flag's own colour.
@@ -10137,7 +10250,10 @@ function ensureXRScoreboardOverlay() {
     }
     // Measured in the row's own font, which the current player's row bolds.
     ctx.font = player.isCurrent ? 'bold 13px monospace' : '13px monospace';
-    const stats = `${player.kills} / ${player.deaths}`;
+    // The same columns the flat board draws, which for an observer is none of
+    // them: it cannot kill or die, and it has no rank because it can never be
+    // anointed.
+    const stats = formatScoreboardStats(player);
     const flagLabel = player.flag ? `/${player.flag.label}` : '';
     // The authentication indicator, in front of the name and in cyan, as
     // upstream draws it (`ScoreboardRenderer.cxx:712`) and as the flat
@@ -11384,11 +11500,15 @@ function updateChatWindow() {
     div.className = `chat-line chat-kind-${msg.kind || CHAT_KIND_CHAT}`;
     if (msg.segments) {
       // A segment with no colour inherits the line's, which is the kind's own
-      // CSS rule -- so only the runs that need a colour carry one.
+      // CSS rule -- so only the runs that need a colour carry one. Through
+      // `colorToCSS` because a colour reaches here as either: the chat lines
+      // written here have always used CSS strings, and a segment describing a
+      // player carries the packed integer every other part of bzo colours a
+      // player with.
       msg.segments.forEach((segment) => {
         const span = document.createElement('span');
         span.textContent = segment.text;
-        if (segment.color) span.style.color = segment.color;
+        if (segment.color) span.style.color = colorToCSS(segment.color);
         div.appendChild(span);
       });
     } else {

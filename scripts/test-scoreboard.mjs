@@ -18,7 +18,10 @@ import {
   compareScoreboardPlayers,
   formatPlayerLabel,
   formatRabbitRank,
+  formatScoreboardStats,
   getPlayerStatusIndicator,
+  getPlayerTeamMark,
+  getScoreboardStatsHeader,
   setHudAlert,
   updateAlertHud,
 } from '../public/hud.js';
@@ -121,6 +124,67 @@ assert.equal(formatRabbitRank(0.539), '53%');
   assert.equal(plain.find((r) => r.id === '2').rabbit, null);
 }
 
+// An observer draws neither score column, which is upstream's own
+// `if (player->getTeam() != ObserverTeam)` around both (ScoreboardRenderer.cxx
+// :829). It cannot kill or die, so `0 / 0` is the absence of a score rather than
+// a score, and it can never be anointed, so a rank would name a place in a queue
+// it cannot be picked from.
+{
+  // The heading names the rank column, which upstream leaves unlabelled -- an
+  // unlabelled percentage in front of a kill count is a question, not an answer.
+  assert.equal(getScoreboardStatsHeader(false), 'Kills / Deaths');
+  assert.equal(getScoreboardStatsHeader(true), 'Rank Kills / Deaths');
+  assert.equal(getScoreboardStatsHeader(), 'Kills / Deaths');
+  // The headset's panel is narrow, so it takes the same heading abbreviated
+  // rather than one of its own.
+  assert.equal(getScoreboardStatsHeader(false, true), 'K/D');
+  assert.equal(getScoreboardStatsHeader(true, true), 'Rank K/D');
+
+  assert.equal(formatScoreboardStats({ kills: 4, deaths: 2 }), '4 / 2');
+  assert.equal(
+    formatScoreboardStats({ kills: 4, deaths: 2, rank: getPlayerRanking(4, 2) }),
+    '53% 4 / 2'
+  );
+  assert.equal(formatScoreboardStats({ kills: 0, deaths: 0, isObserver: true }), '');
+  // Even one carrying a score from before it switched, and even on a Rabbit
+  // Chase world: being an observer is what decides it.
+  assert.equal(formatScoreboardStats({ kills: 9, deaths: 1, isObserver: true }), '');
+  assert.equal(
+    formatScoreboardStats({ kills: 9, deaths: 1, rank: 0.8, isObserver: true }),
+    ''
+  );
+}
+
+// The break between the players and the observers, marked on the row so the flat
+// board and the headset's cannot put it in different places.
+{
+  const tanks = new Map([
+    ['2', { userData: { playerState: { id: '2', name: 'watcher', team: PLAYER_TEAM.OBSERVER } } }],
+    ['3', { userData: { playerState: { id: '3', name: 'watcher2', team: PLAYER_TEAM.OBSERVER } } }],
+  ]);
+  const myTank = { userData: { playerState: { id: '1', name: 'bun', team: PLAYER_TEAM.HUNTER, kills: 1, deaths: 0 } } };
+  const rows = buildScoreboardRows({
+    myPlayerId: '1', myPlayerName: 'bun', myTank, tanks, rabbitChase: true,
+  });
+  assert.deepEqual(rows.map((r) => r.id), ['1', '2', '3'], 'observers sort last');
+  assert.equal(rows[0].startsObservers, undefined);
+  assert.equal(rows[1].startsObservers, true, 'the first observer carries the break');
+  assert.equal(rows[2].startsObservers, undefined, 'and only the first');
+  // No rank for either of them, though the world is playing Rabbit Chase.
+  assert.equal(rows[0].rank, getPlayerRanking(1, 0));
+  assert.equal(rows[1].rank, null);
+  assert.equal(rows[2].rank, null);
+
+  // A board of nothing but observers has nobody above the break, so there is no
+  // break to draw.
+  const allObs = buildScoreboardRows({
+    myPlayerId: '2', myPlayerName: 'watcher',
+    myTank: tanks.get('2'), tanks: new Map([['3', tanks.get('3')]]),
+  });
+  assert.equal(allObs.length, 2);
+  assert.ok(allObs.every((r) => r.startsObservers === undefined), 'no leading break');
+}
+
 // One label shape, so a scoreboard row and an Identify alert cannot describe the
 // same tank differently. `text` is the whole line for anything that only wants
 // the words; `segments` colour each part as the roster colours it.
@@ -129,18 +193,18 @@ assert.equal(formatRabbitRank(0.539), '53%');
   assert.equal(formatPlayerLabel({ name: 'ann' }).text, 'ann');
   assert.equal(formatPlayerLabel({ name: 'ann', flag }).text, 'ann/GM');
   assert.equal(
-    formatPlayerLabel({ name: 'ann', flag, rabbit: SCOREBOARD_RABBIT_MARK }).text,
+    formatPlayerLabel({ name: 'ann', flag, mark: SCOREBOARD_RABBIT_MARK }).text,
     'ann/GM (rabbit)'
   );
   // The flag sits tight against the name and the mark stands off it, which is
   // how the scoreboard draws the three.
   assert.equal(
-    formatPlayerLabel({ name: 'ann', rabbit: SCOREBOARD_RABBIT_MARK }).text,
+    formatPlayerLabel({ name: 'ann', mark: SCOREBOARD_RABBIT_MARK }).text,
     'ann (rabbit)'
   );
 
   const { segments } = formatPlayerLabel({
-    name: 'ann', nameColor: 0x123456, flag, rabbit: SCOREBOARD_RABBIT_MARK,
+    name: 'ann', nameColor: 0x123456, flag, mark: SCOREBOARD_RABBIT_MARK,
   });
   assert.deepEqual(segments, [
     { text: 'ann', color: 0x123456 },
@@ -152,6 +216,30 @@ assert.equal(formatRabbitRank(0.539), '53%');
   assert.equal(segments.map((s) => s.text).join(''), 'ann/GM (rabbit)');
   // A name with no colour of its own inherits the line's, as a chat segment does.
   assert.equal(formatPlayerLabel({ name: 'ann' }).segments[0].color, null);
+}
+
+// The `(<Team>)` upstream puts after a callsign in a message (playing.cxx:4016),
+// for the teams where it says something.
+{
+  // A colour team names itself: a shade inside that team's band reads clearly on
+  // a tank and not at all in one line of text.
+  assert.deepEqual(getPlayerTeamMark(PLAYER_TEAM.RED), { label: '(Red)', color: 0xff0000 });
+  assert.equal(getPlayerTeamMark(PLAYER_TEAM.PURPLE).label, '(Purple)');
+  // " Team" is dropped from the label, as every other place bzo writes a team
+  // beside a name drops it.
+  assert.ok(!getPlayerTeamMark(PLAYER_TEAM.BLUE).label.includes('Team'));
+  // The rabbit names itself, and with the same mark the scoreboard uses -- it is
+  // the one thing in the world everybody is hunting.
+  assert.equal(getPlayerTeamMark(PLAYER_TEAM.RABBIT), SCOREBOARD_RABBIT_MARK);
+  // Rogue, observer and hunter name nothing. Every bzo player has a colour of
+  // their own, so `(Rogue)` on every line of an OpenFFA server would be noise,
+  // and in Rabbit Chase everyone who is not the rabbit is a hunter.
+  assert.equal(getPlayerTeamMark(PLAYER_TEAM.ROGUE), null);
+  assert.equal(getPlayerTeamMark(PLAYER_TEAM.OBSERVER), null);
+  assert.equal(getPlayerTeamMark(PLAYER_TEAM.HUNTER), null);
+  // An unknown team normalizes to rogue, which names nothing.
+  assert.equal(getPlayerTeamMark('nonsense'), null);
+  assert.equal(getPlayerTeamMark(null), null);
 }
 
 // ScoreboardRenderer.cxx:712 picks exactly one character, and bzo reaches two of
@@ -192,7 +280,7 @@ assert.equal(getPlayerStatusIndicator(null), '');
   const label = formatPlayerLabel({
     name: 'ann', nameColor: 0x123456,
     flag: { label: 'GM', color: 0x00ff00 },
-    rabbit: SCOREBOARD_RABBIT_MARK,
+    mark: SCOREBOARD_RABBIT_MARK,
   });
   setHudAlert(1, `Looking at ${label.text}`, 5, false, [{ text: 'Looking at ' }, ...label.segments]);
   updateAlertHud();

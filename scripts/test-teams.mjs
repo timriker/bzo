@@ -253,10 +253,10 @@ for (const capping of [RED, BLUE, ROGUE, PLAYER_TEAM.OBSERVER, null, undefined])
   assert.equal(areFoes(ROGUE, ROGUE, false), true);
 }
 
-// Score::ranking (Score.cxx:42). A win rate damped towards the middle until
-// there is enough of a record to trust it, which is what decides who becomes the
-// rabbit. Held against upstream's own arithmetic rather than against a table, so
-// a transcription slip in either term shows up.
+// Score::ranking (Score.cxx:42). A win rate discounted for how short the record
+// is, which is what decides who becomes the rabbit and what the scoreboard is
+// sorted by. Held against upstream's own arithmetic rather than against a table,
+// so a transcription slip in either term shows up.
 {
   const { getPlayerRanking } = serverTeams;
   const upstream = (wins, losses) => {
@@ -264,14 +264,28 @@ for (const capping of [RED, BLUE, ROGUE, PLAYER_TEAM.OBSERVER, null, undefined])
     if (sum === 0) return 0.5;
     return (wins / sum) * (1 - (0.5 / Math.sqrt(sum)));
   };
-  // No record at all is exactly the middle, which is what makes a fresh player
-  // a plausible rabbit rather than the worst candidate in the world.
+  // No record at all is a flat 0.5 -- the one value the formula never produces,
+  // and deliberately generous: it beats every even record, so a player who has
+  // just arrived is near the front of the queue rather than the back of it.
   assert.equal(getPlayerRanking(0, 0), 0.5);
-  // One win is a perfect rate halved by the penalty; twenty-five is trusted to
-  // 0.9 of it. Both are upstream's numbers and worth naming.
+  assert.ok(getPlayerRanking(0, 0) > getPlayerRanking(1, 1));
+  assert.ok(getPlayerRanking(0, 0) > getPlayerRanking(50, 50));
+  // One win is a perfect rate halved by the discount, so it ranks no better than
+  // never having played; twenty-five keeps 0.9 of it, and 1.0 is unreachable.
   assert.equal(getPlayerRanking(1, 0), 0.5);
   assert.equal(getPlayerRanking(25, 0), 0.9);
-  // Losing every game ranks at zero however long the record is.
+  assert.ok(getPlayerRanking(1000, 0) < 1);
+  // The discount multiplies, so it pulls towards zero rather than towards the
+  // middle: a rank is always at or below the rate it came from.
+  for (const [wins, losses] of [[4, 2], [40, 20], [1, 1], [50, 50]]) {
+    assert.ok(
+      getPlayerRanking(wins, losses) < wins / (wins + losses),
+      `${wins}-${losses} should rank below its own rate`
+    );
+  }
+  // Losing every game ranks at zero however long the record is, so a first death
+  // with no wins to divide takes a new player from the front to the back.
+  assert.equal(getPlayerRanking(0, 1), 0);
   assert.equal(getPlayerRanking(0, 9), 0);
   for (const [wins, losses] of [[3, 1], [1, 3], [10, 10], [7, 2], [0, 1], [40, 8]]) {
     assert.equal(
@@ -408,6 +422,48 @@ for (const capping of [RED, BLUE, ROGUE, PLAYER_TEAM.OBSERVER, null, undefined])
   assert.equal(resolveRabbitSelection('score', undefined), 'score');
   assert.equal(resolveRabbitSelection(false, 'killer'), 'killer');
   assert.equal(resolveRabbitSelection(false, undefined), null);
+}
+
+// What colour a join hands out. Observer is upstream's flat white on every
+// server (Team::getTankColor); every other team is a shade in its band with
+// colour teams on, and with them off the colour a player already has stands --
+// changing it mid-match would undo the only thing a distinct colour is for.
+{
+  const { getInitialPlayerColor, getJoinPlayerColor, getPlayerTeamColor: serverTeamColor } = serverTeams;
+  const WHITE = serverTeamColor(PLAYER_TEAM.OBSERVER);
+  const teams = { enabled: true };
+  const noTeams = { enabled: false };
+  // The pick is injected, so what it was asked for is what these assert on.
+  const asked = [];
+  const pick = (team) => { asked.push(team); return 0xabcdef; };
+
+  assert.equal(getJoinPlayerColor(teams, PLAYER_TEAM.OBSERVER, null, pick), WHITE);
+  assert.equal(getJoinPlayerColor(noTeams, PLAYER_TEAM.OBSERVER, null, pick), WHITE);
+  // ...which is the bug this pins: a world with no colour teams -- OpenFFA, and
+  // Rabbit Chase, where observer is the only team anyone can ask for -- used to
+  // leave an observer wearing the colour the constructor gave it off the wheel.
+  assert.equal(getJoinPlayerColor(noTeams, PLAYER_TEAM.OBSERVER, PLAYER_TEAM.HUNTER, pick), WHITE);
+  assert.deepEqual(asked, [], 'observer never asks for a distinct colour');
+
+  // With colour teams on, a shade inside the team's own band.
+  assert.equal(getJoinPlayerColor(teams, PLAYER_TEAM.RED, null, pick), 0xabcdef);
+  assert.deepEqual(asked, [PLAYER_TEAM.RED]);
+
+  // With them off, the colour already in hand stands.
+  asked.length = 0;
+  assert.equal(getJoinPlayerColor(noTeams, PLAYER_TEAM.ROGUE, null, pick), null);
+  assert.equal(getJoinPlayerColor(noTeams, PLAYER_TEAM.HUNTER, PLAYER_TEAM.HUNTER, pick), null);
+  assert.deepEqual(asked, [], 'a rejoin keeps its colour rather than churning it');
+
+  // Except coming back from observer, where the white it wore is nobody's: it
+  // takes a fresh colour off the whole wheel, which `null` is the request for.
+  assert.equal(getJoinPlayerColor(noTeams, PLAYER_TEAM.HUNTER, PLAYER_TEAM.OBSERVER, pick), 0xabcdef);
+  assert.deepEqual(asked, [null]);
+
+  // The constructor's rule agrees about observer, so the two cannot disagree if
+  // a first join ever reaches it.
+  assert.equal(getInitialPlayerColor(noTeams, PLAYER_TEAM.OBSERVER, pick), WHITE);
+  assert.equal(getInitialPlayerColor(teams, PLAYER_TEAM.OBSERVER, pick), WHITE);
 }
 
 console.log('player team tests passed');

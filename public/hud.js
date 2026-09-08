@@ -17,6 +17,7 @@ import {
   isColorTeam,
   isObserverTeam,
   isRabbitTeam,
+  normalizePlayerTeam,
 } from './teams.mjs';
 
 const degreeBarRenderState = {
@@ -573,6 +574,30 @@ export function formatRabbitRank(rank) {
   return `${Math.trunc(rank * 100)}%`;
 }
 
+// The score columns as a row draws them, or an empty string for an observer --
+// upstream wraps both columns in `if (player->getTeam() != ObserverTeam)`
+// (ScoreboardRenderer.cxx:829) and draws the callsign alone. Shared so the flat
+// board and the headset's cannot show a different set of columns.
+// What the stats column is called. Upstream keeps the rank inside a column it
+// labels only "Score" (`scoreLabel`, ScoreboardRenderer.cxx:36) and never names
+// the rank at all, which leaves a reader to guess what the percentage in front of
+// their kills is. bzo names it, because an unlabelled column is a question rather
+// than an answer.
+// `abbreviated` is the headset's, where the panel is a few hundred pixels wide
+// and 'Kills / Deaths' would crowd the names it sits over.
+export function getScoreboardStatsHeader(rabbitChase = false, abbreviated = false) {
+  const score = abbreviated ? 'K/D' : 'Kills / Deaths';
+  return rabbitChase ? `Rank ${score}` : score;
+}
+
+export function formatScoreboardStats(player) {
+  if (player.isObserver) return '';
+  const score = `${player.kills} / ${player.deaths}`;
+  return typeof player.rank === 'number'
+    ? `${formatRabbitRank(player.rank)} ${score}`
+    : score;
+}
+
 // Rabbit Chase marks the rabbit's row so the scoreboard says who everyone is
 // hunting. Upstream marks the *hunted* row instead, as part of the hunt feature
 // bzo does not have, so this is the marker without the feature -- the radar ring
@@ -596,13 +621,32 @@ export const SCOREBOARD_RABBIT_MARK = Object.freeze({
 // be noise rather than information, and the flag keeps the scoreboard's
 // abbreviation rather than upstream's full name for the same reason -- it is the
 // form a player reads everywhere else in bzo.
-export function formatPlayerLabel({ name, nameColor = null, flag = null, rabbit = null }) {
+export function formatPlayerLabel({ name, nameColor = null, flag = null, mark = null }) {
   const segments = [{ text: String(name), color: nameColor }];
   if (flag) segments.push({ text: `/${flag.label}`, color: flag.color });
-  if (rabbit) segments.push({ text: ` ${rabbit.label}`, color: rabbit.color });
+  if (mark) segments.push({ text: ` ${mark.label}`, color: mark.color });
   return {
     text: segments.map((segment) => segment.text).join(''),
     segments,
+  };
+}
+
+// The `(<Team>)` upstream puts after a callsign in a message (playing.cxx:4016
+// and :4488), for the teams where it says something.
+//
+// A colour team names itself, because a shade inside that team's band is not
+// something a reader can name from one line of text however clearly it reads on
+// a tank. The rabbit names itself, because it is the one thing in the world
+// everybody is hunting. Rogue, observer and hunter name nothing: every bzo player
+// has a colour of their own, so `(Rogue)` on every line of an OpenFFA server
+// would be noise, and in Rabbit Chase everyone who is not the rabbit is a hunter.
+export function getPlayerTeamMark(team) {
+  const normalized = normalizePlayerTeam(team);
+  if (isRabbitTeam(normalized)) return SCOREBOARD_RABBIT_MARK;
+  if (!isColorTeam(normalized)) return null;
+  return {
+    label: `(${PLAYER_TEAM_LABELS[normalized].replace(/ Team$/, '')})`,
+    color: getPlayerTeamColor(normalized),
   };
 }
 
@@ -658,7 +702,15 @@ export function buildScoreboardRows({
       name,
       kills: state.kills || 0,
       deaths: state.deaths || 0,
-      rank: rabbitChase ? getPlayerRanking(state.kills || 0, state.deaths || 0) : null,
+      // No rank for an observer, on a Rabbit Chase world or any other. An
+      // observer can never be anointed -- `canBeRabbit` refuses one outright --
+      // so a rank would read as a place in a queue it cannot be picked from.
+      // Upstream reaches the same answer by drawing no score column for an
+      // observer at all (ScoreboardRenderer.cxx:829), the rank being part of
+      // that column's string.
+      rank: rabbitChase && !isObserverTeam(state.team)
+        ? getPlayerRanking(state.kills || 0, state.deaths || 0)
+        : null,
       connectDate: state.connectDate ? new Date(state.connectDate) : new Date(0),
       color: state.color,
       flag: getPlayerFlagLabel(id),
@@ -676,6 +728,14 @@ export function buildScoreboardRows({
   });
 
   rows.sort(compareScoreboardPlayers);
+  // ScoreboardRenderer.cxx:562 drops a blank line in front of the first
+  // observer. Sorting them last says where they are; the gap is what says they
+  // are a separate group rather than the worst players on the board. Marked on
+  // the row rather than measured by each renderer, so the flat board and the
+  // headset's cannot disagree about where the break falls -- and not marked at
+  // all when there is nobody above it to be separated from.
+  const firstObserver = rows.findIndex((row) => row.isObserver);
+  if (firstObserver > 0) rows[firstObserver].startsObservers = true;
   return rows;
 }
 
@@ -685,6 +745,9 @@ export function buildScoreboardRows({
 export function updateScoreboard({
   rows,
   teamRows,
+  // Whether this world plays Rabbit Chase, which decides only what the stats
+  // column is called -- the rows already carry their own rank or not.
+  rabbitChase = false,
   // Set while roaming: the id being watched, and the callback a row click
   // reports a new choice to. Absent for a playing tank, which leaves the rows
   // inert.
@@ -692,6 +755,8 @@ export function updateScoreboard({
   onSelectRoamTarget = null,
 }) {
   updateTeamScoreboard(teamRows);
+  const statsHeader = document.getElementById('scoreboardStatsHeader');
+  if (statsHeader) statsHeader.textContent = getScoreboardStatsHeader(rabbitChase);
   const scoreboardList = document.getElementById('scoreboardList');
   if (!scoreboardList) return;
   scoreboardList.innerHTML = '';
@@ -720,7 +785,8 @@ export function updateScoreboard({
     const isRoamTarget = player.id === roamTargetId;
     entry.className = 'scoreboardEntry'
       + (player.isCurrent ? ' current' : '')
-      + (isRoamTarget ? ' roamTarget' : '');
+      + (isRoamTarget ? ' roamTarget' : '')
+      + (player.startsObservers ? ' startsObservers' : '');
     if (onSelectRoamTarget && !player.isCurrent) {
       // The one target gesture that works on a phone as well as a desktop.
       // Tapping the row already being watched releases back to the leader.
@@ -760,9 +826,11 @@ export function updateScoreboard({
     // upstream puts the rank in front of the score, because the rank is what the
     // board is sorted by and a column nobody can see makes the order look
     // arbitrary.
-    statsSpan.textContent = typeof player.rank === 'number'
-      ? `${formatRabbitRank(player.rank)} ${player.kills} / ${player.deaths}`
-      : `${player.kills} / ${player.deaths}`;
+    //
+    // An observer gets neither column, which is upstream's own `if (player
+    // ->getTeam() != ObserverTeam)` around both (:829). It cannot kill or die, so
+    // `0 / 0` is the absence of a score rather than a score.
+    statsSpan.textContent = formatScoreboardStats(player);
 
     entry.append(labelSpan, statsSpan);
     scoreboardList.appendChild(entry);

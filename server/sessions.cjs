@@ -188,7 +188,43 @@ function createSessionStore({
   };
 }
 
+// Loopback, in every spelling a Node socket hands back: `::1`, `127.0.0.0/8`,
+// and the IPv4-mapped form `::ffff:127.0.0.1` that a dual-stack listener reports
+// for an IPv4 peer.
+function isLoopbackAddress(address) {
+  if (typeof address !== 'string' || address === '') return false;
+  const bare = address.replace(/^::ffff:/i, '').replace(/^\[|\]$/g, '');
+  if (bare === '::1' || bare === '0:0:0:0:0:0:0:1') return true;
+  return /^127\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(bare);
+}
+
+// `localAdmin` in server.json: whether a connection from this machine is an
+// operator without logging in. It exists so a test client -- a headless browser,
+// a raw WebSocket probe -- can drive the Operator panel and, once bzo has them,
+// the server commands, without a bzflag.org account.
+//
+// **Off by default, and it has to be.** bzo does not terminate TLS, so a public
+// deployment is behind a reverse proxy, and a proxy on the *same host* makes
+// every request in the world arrive from 127.0.0.1. Granting admin on the peer
+// address alone would hand it to the internet.
+//
+// So the peer must be loopback *and* the request must carry no `X-Forwarded-For`.
+// That is the half a remote client cannot forge: it can add the header but not
+// remove it, and a proxy that follows the deployment notes in the README sets it
+// on every hop (`RequestHeader set`, so a client's own copy never survives). A
+// proxy that omits it entirely is the case this cannot see, which is the whole
+// reason an operator has to ask for this rather than get it by default.
+function isLocalAdminRequest(enabled, remoteAddress, headers = {}) {
+  if (enabled !== true) return false;
+  if (!isLoopbackAddress(remoteAddress)) return false;
+  // Any of them, not just X-Forwarded-For: a request that went through a proxy
+  // at all is not a request from this machine, however it was labelled.
+  return !Object.keys(headers).some((name) => /^x-forwarded-/i.test(name));
+}
+
 module.exports = {
+  isLoopbackAddress,
+  isLocalAdminRequest,
   SESSION_TTL_MS,
   SESSION_ID_BYTES,
   MAX_SESSIONS,

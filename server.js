@@ -119,6 +119,7 @@ const {
   selectPlayerTeam,
   getPlayerTeamColor,
   getInitialPlayerColor,
+  getJoinPlayerColor,
   TEAM_SHADE_HUE_SPREAD,
   TEAM_SHADE_HUE_STEP,
   TEAM_SHADE_SAT_SPREAD,
@@ -146,8 +147,20 @@ const {
   SESSION_TTL_MS,
   parseCookies,
   isAdminSession,
+  isLocalAdminRequest,
   createSessionStore,
 } = require('./server/sessions.cjs');
+const {
+  COMMAND_TIER,
+  isCommandLine,
+  parseCommandLine,
+  parseHelpPrefix,
+  formatCommandList,
+  formatDuration,
+  formatCTime,
+  parseMsgCommand,
+  formatUnknownCommand,
+} = require('./server/commands.cjs');
 const path = require('path');
 const fs = require('fs');
 const crypto = require('crypto');
@@ -255,6 +268,18 @@ app.use('/vendor/three', express.static(threeBuildDir, {
 
 // After threeBuildDir, which it hashes.
 const CLIENT_BUILD = computeClientBuild();
+// `TimeKeeper::getStartTime()`, which is what /uptime is measured from.
+const SERVER_START_TIME = Date.now();
+// getAppVersion() for /serverquery. The client's version is the server's -- both
+// ship from this repo -- and the build id is what actually distinguishes two
+// servers running the same release, so both are said.
+const SERVER_VERSION = (() => {
+  try {
+    return String(JSON.parse(fs.readFileSync(path.join(__dirname, 'package.json'), 'utf8')).version);
+  } catch {
+    return 'unknown';
+  }
+})();
 
 // index.html is rendered per request so the page is named after the host before
 // any script runs. iOS reads `apple-mobile-web-app-title` for a home screen
@@ -820,6 +845,11 @@ function isAskableGroup(group) {
   return group.length > 0 && !/[\r\n:]/.test(group);
 }
 
+// `localAdmin` in server.json. Whether a connection from this machine counts as
+// an operator without a bzflag.org login, which is what lets a test client drive
+// the Operator panel and the server commands. Off unless asked for -- see
+// isLocalAdminRequest for why that default is not timidity.
+const LOCAL_ADMIN = serverConfig.localAdmin === true;
 const ADMIN_GROUPS = Object.freeze(
   (Array.isArray(serverConfig.adminGroups) ? serverConfig.adminGroups : [])
     .map((group) => (typeof group === 'string' ? group.trim() : ''))
@@ -1781,6 +1811,27 @@ function parseBZWMap(filename) {
       const team = parseInt(color, 10);
       current.team = Number.isInteger(team) ? Math.max(1, Math.min(4, team)) : 1;
     } else if (current && token === 'end') {
+      // BaseBuilding::inMovingBox (BaseBuilding.cxx:77), in upstream's own words:
+      // "if a base is just the ground (z == 0 && height == 0) no collision --
+      // ground is already handled". A pad with no height is not something
+      // anything can hit, so no map has to say so: a flush base or box is
+      // passable by construction, to shots as much as to tanks.
+      //
+      // Upstream writes that guard on the base alone, because a zero-height box
+      // is vanishingly rare there. Its *box* arithmetic has none, and the case
+      // that exposes the difference is a burrowed tank: it drives below zero, so
+      // its own span reaches up through a pad's [0, 0] and it stops dead on one.
+      // `flagbuffet.bzw` puts a pad under every flag zone, which turned that into
+      // forty-one places a `BU` tank came to a halt.
+      //
+      // Read from the dimensions rather than from the keyword, so it is true of
+      // every flush pad and not only of the ones somebody remembered to mark.
+      // Teleporters are excluded because theirs are not final yet -- the block
+      // below fills in a sizeless one from CustomGate's defaults.
+      if (current.kind !== 'teleporter' && current.h === 0 && (current.baseY || 0) === 0) {
+        current.driveThrough = true;
+        current.shootThrough = true;
+      }
       // Use BZW name if present, otherwise assign a generated name
       if (!current.name) {
         if (current.kind === 'teleporter') {
@@ -2279,6 +2330,10 @@ class Player {
     this.verified = false;
     this.bzid = null;
     this.globalCallsign = null;
+    // Set from the socket on the handshake: a connection from this machine on a
+    // server whose `localAdmin` is on. See isLocalAdminRequest for why it is not
+    // simply "the peer is loopback".
+    this.localAdmin = false;
     this.x = 0;
     this.y = 0;
     this.z = 0;
@@ -2792,6 +2847,10 @@ class Projectile {
 // client that draws itself the Operator panel cannot change the map.
 function isAdmin(player) {
   if (!player || !player.joined) return false;
+  // A connection from this machine, where the operator asked for that to count.
+  // Decided once at connect because it is a property of the socket, not of a
+  // session that can expire under it.
+  if (player.localAdmin) return true;
   // Re-read the session rather than trusting the flag set at connect: an
   // 8 hour session can expire mid-game, and `sessions.get` is what knows.
   return isAdminSession(sessions.get(player.sessionId), ADMIN_GROUPS);
@@ -2811,6 +2870,288 @@ function refuseNonOperator(ws, player, what) {
     ws.send(JSON.stringify({ error: 'You are not an operator on this server' }));
   }
   return true;
+}
+
+// One line of server chat to one player, which is how every command answers.
+// `sendMessage(ServerPlayer, playerId, text)` upstream, and the same shape a
+// map's `-srvmsg` already uses here.
+function replyToPlayer(player, text) {
+  sendToPlayer(player, {
+    type: 'message',
+    src: -1,
+    dst: player.id,
+    msgType: 'server',
+    text,
+    ts: Date.now(),
+  });
+}
+
+// The server command table. Upstream makes each one a `ServerCommand` subclass
+// carrying its name, its help and its permission (`src/bzfs/commands.cxx`); bzo
+// keeps the three beside what the command does, because there is one of each and
+// a class per command would be a class per line.
+//
+// `help` is upstream's own wording where the command is upstream's. `tier` is
+// `COMMAND_TIER.OPEN` for a command anybody may run and `OPERATOR` for one
+// behind `isAdmin` -- see docs/commands-plan.md for why bzo has two tiers where
+// upstream has sixty permissions, and for the commands not here yet.
+//
+// A handler is `(player, args) => void` and answers through `replyToPlayer`.
+const SERVER_COMMANDS = new Map();
+
+function defineCommand(name, tier, help, run) {
+  SERVER_COMMANDS.set(name, { name, tier, help, run });
+}
+
+// CmdList (commands.cxx:467). The names only; `/<prefix>?` is what shows help.
+defineCommand('/?', COMMAND_TIER.OPEN,
+  '- display the list of server-side commands',
+  (player) => {
+    const names = [...SERVER_COMMANDS.values()]
+      .filter((command) => canRunCommand(player, command))
+      .map((command) => command.name);
+    for (const line of formatCommandList(names)) replyToPlayer(player, line);
+  });
+
+// HelpCommand (commands.cxx:2328) pages the help *files* named by `-helpmsg`,
+// which docs/bzw.md already lists as not read -- so there are no pages here to
+// list. bzo answers with the thing it does have: every command it will let this
+// player run, with upstream's one line of help each. `/<prefix>?` narrows it,
+// which is upstream's CmdHelp and the only per-command help either of us has.
+defineCommand('/help', COMMAND_TIER.OPEN,
+  '- display the commands you may run, with what each one does',
+  (player) => {
+    replyToPlayer(player, 'Commands (use /<command>? for one of them):');
+    for (const command of [...SERVER_COMMANDS.values()].sort((a, b) => a.name.localeCompare(b.name))) {
+      if (!canRunCommand(player, command)) continue;
+      replyToPlayer(player, `${command.name} ${command.help}`);
+    }
+  });
+
+// UpTimeCommand (commands.cxx:1015). Upstream appends a full stop, which is the
+// only punctuation in any of these replies and is kept for that reason.
+defineCommand('/uptime', COMMAND_TIER.OPEN,
+  "- show the server's uptime",
+  (player) => {
+    replyToPlayer(player, `${formatDuration((Date.now() - SERVER_START_TIME) / 1000)}.`);
+  });
+
+// ServerQueryCommand (commands.cxx:1000) answers "BZFS Version: <version>". bzo
+// is not bzfs and says so, and adds the build id: two bzo servers on the same
+// release differ by that and by nothing else a player can see.
+defineCommand('/serverquery', COMMAND_TIER.OPEN,
+  '- show the server version',
+  (player) => {
+    replyToPlayer(player, `bzo Version: ${SERVER_VERSION} (build ${CLIENT_BUILD})`);
+  });
+
+// DateCommand and TimeCommand (commands.cxx:418) are one implementation under
+// two names, both sending `ctime()` cut to 24 characters. Upstream gates them on
+// a `date` permission; bzo does not, because the server's clock is not a secret
+// and a permission per command is the model docs/commands-plan.md declines.
+for (const name of ['/date', '/time']) {
+  defineCommand(name, COMMAND_TIER.OPEN,
+    "- show the server's date and time",
+    (player) => replyToPlayer(player, formatCTime(new Date())));
+}
+
+// MsgCommand (commands.cxx:916). The same private message the client can already
+// send by picking a name in the chat entry, reachable by typing -- which is what
+// makes it worth having: a script can send one, and so can a player who knows
+// the callsign but does not want to open the dropdown.
+defineCommand('/msg', COMMAND_TIER.OPEN,
+  '<nick> text - Send text message to nick',
+  (player, args) => {
+    // Case-insensitively, and only players who have joined: an unjoined
+    // connection has a placeholder name and no business receiving mail.
+    const resolveCallsign = (callsign) => {
+      const wanted = callsign.trim().toLowerCase();
+      for (const other of players.values()) {
+        if (other.joined && other.name.toLowerCase() === wanted) return other.id;
+      }
+      return null;
+    };
+    const parsed = parseMsgCommand(args, resolveCallsign, { ADMIN: -3, TEAM: -2 });
+    if (parsed.error) {
+      replyToPlayer(player, parsed.error);
+      if (parsed.alsoUsage) replyToPlayer(player, 'Usage: /msg "some callsign" some message');
+      return;
+    }
+    // Routed through the one function the `message` handler uses, so a typed
+    // message and a picked one cannot behave differently -- and so the admin
+    // channel's own permission check still applies to `/msg >admin`.
+    deliverChatMessage(player, parsed.to, 'chat', parsed.text);
+  });
+
+function canRunCommand(player, command) {
+  return command.tier === COMMAND_TIER.OPEN || isAdmin(player);
+}
+
+// parseServerCommand (commands.cxx:3880), which is the whole of bzo's step 1: a
+// line beginning with `/` is a command or it is an error, and either way it is
+// never said out loud. Upstream reaches that by trying its table and answering
+// "Unknown command"; the reason it matters here is that bzo used to broadcast
+// the line, so a mistyped `/kick bob` announced itself to the room.
+//
+// Returns true when the line was a command line, handled or not.
+function handleServerCommand(player, text) {
+  if (!isCommandLine(text)) return false;
+
+  // CmdHelp (commands.cxx:476): `/co?` is the help for every command starting
+  // with `co`. Asked before the table, since `/?` is itself a name.
+  const helpPrefix = SERVER_COMMANDS.has(text.trim().toLowerCase()) ? null : parseHelpPrefix(text);
+  if (helpPrefix !== null) {
+    const matches = [...SERVER_COMMANDS.values()]
+      .filter((command) => command.name.startsWith(helpPrefix) && canRunCommand(player, command))
+      .sort((a, b) => a.name.localeCompare(b.name));
+    if (matches.length === 0) {
+      replyToPlayer(player, `No command starting with ${helpPrefix}`);
+    } else {
+      for (const command of matches) replyToPlayer(player, `${command.name} ${command.help}`);
+    }
+    log(`[CMD] "${player.name}": ${text}`);
+    return true;
+  }
+
+  const parsed = parseCommandLine(text);
+  const command = parsed && SERVER_COMMANDS.get(parsed.name);
+  if (!command) {
+    log(`[CMD] "${player.name}": ${text} -- unknown`);
+    // The whole line, not just the name: upstream's `message + 1` drops the
+    // slash and keeps the arguments, so a player sees back exactly what they
+    // typed.
+    replyToPlayer(player, formatUnknownCommand(text));
+    return true;
+  }
+  if (!canRunCommand(player, command)) {
+    // Upstream's own sentence, per command
+    // ("You do not have permission to run the /date command").
+    log(`[CMD] "${player.name}": ${text} -- refused, not an admin`);
+    replyToPlayer(player, `You do not have permission to run the ${command.name} command`);
+    return true;
+  }
+  log(`[CMD] "${player.name}": ${text}`);
+  command.run(player, parsed.args);
+  return true;
+}
+
+// Chat delivery, for every destination bzo has. Extracted from the `message`
+// handler so `/msg` reaches the same code: a typed message and one picked in the
+// chat entry are one action, and the moment they are two functions the admin
+// channel's permission check exists in only one of them.
+//
+// `targetId` is a player id, or one of bzo's small negatives -- 0 all, -1 the
+// server's log, -2 team, -3 the admin channel.
+function deliverChatMessage(player, targetId, msgType, text) {
+  const fromId = player.id;
+  const fromName = player.name;
+
+  // How a chat destination is written in the log. A player is in quotes and a
+  // team is in brackets, as they are everywhere else; ALL and SERVER are
+  // neither, so they are bare. See the log conventions in AGENTS.md -- the
+  // bracket is what says "team", so the word would be as redundant as "Player"
+  // before a quoted name.
+  const describeChatTarget = (id) => {
+    if (id === 0) return 'ALL';
+    if (id === -1) return 'SERVER';
+    if (id === -2) return `[${player.team.toUpperCase()}]`;
+    if (id === -3) return '[ADMIN]';
+    return players.has(id) ? `"${players.get(id).name}"` : `"Player ${id}"`;
+  };
+  const toName = describeChatTarget(targetId);
+
+  // Log locally only if to == -1
+  if (targetId === -1) {
+    log(`[CHAT] "${fromName}"->${toName}: ${text}`);
+    return;
+  }
+
+  // Broadcast to all if to == 0
+  if (targetId === 0) {
+    log(`[CHAT] "${fromName}"->ALL: ${text}`);
+    broadcastAll({
+      type: 'message',
+      src: fromId,
+      dst: 0,
+      msgType,
+      text,
+      ts: Date.now(),
+    });
+    return;
+  }
+
+  // Team chat. bzfs's own team dispatch sends to every player whose
+  // `isTeam(_team)` matches the destination, with no exception for Rogue or
+  // Observer -- which is the rule the `voice-channels` pair already spells out
+  // for the Team voice channel, so both use it. The sender is included: a
+  // message you cannot see you have sent is worse than one echoed back.
+  if (targetId === -2) {
+    log(`[CHAT] "${fromName}"->${toName}: ${text}`);
+    const payload = {
+      type: 'message',
+      src: fromId,
+      dst: -2,
+      msgType,
+      text,
+      ts: Date.now(),
+    };
+    const encoded = JSON.stringify(payload);
+    players.forEach((other) => {
+      if (other.team !== player.team) return;
+      if (other.ws && other.ws.readyState === 1) other.ws.send(encoded);
+    });
+    return;
+  }
+
+  // The admin channel. Upstream gates both ends of it and answers a sender with
+  // no permission in its own words (bzfs.cxx:1546), rather than dropping the
+  // message silently -- somebody typing into a channel nobody hears should be
+  // told.
+  if (targetId === -3) {
+    if (!isAdmin(player)) {
+      log(`[CHAT] "${fromName}"->[ADMIN] refused: not an admin`);
+      replyToPlayer(player, 'You do not have permission to speak on the admin channel.');
+      return;
+    }
+    log(`[CHAT] "${fromName}"->[ADMIN]: ${text}`);
+    const payload = JSON.stringify({
+      type: 'message',
+      src: fromId,
+      dst: -3,
+      msgType,
+      text,
+      ts: Date.now(),
+    });
+    // The sender is included, as they are for team chat: a message you cannot
+    // see you have sent is worse than one echoed back.
+    for (const admin of getAdmins()) {
+      if (admin.ws && admin.ws.readyState === 1) admin.ws.send(payload);
+    }
+    return;
+  }
+
+  // Send to specific player if id exists
+  if (typeof targetId === 'string' && players.has(targetId)) {
+    log(`[CHAT] "${fromName}"->${toName}: ${text}`);
+    const targetPlayer = players.get(targetId);
+    const payload = {
+      type: 'message',
+      src: fromId,
+      dst: targetId,
+      msgType,
+      text,
+      ts: Date.now(),
+    };
+    if (targetPlayer && targetPlayer.ws && targetPlayer.ws.readyState === 1) {
+      targetPlayer.ws.send(JSON.stringify(payload));
+    }
+    if (player.ws && player.ws.readyState === 1 && targetId !== fromId) {
+      player.ws.send(JSON.stringify(payload));
+    }
+    return;
+  }
+
+  // If targetId is invalid, ignore
 }
 
 // The admin channel's audience: everyone `adminMessageReceive` would allow.
@@ -3074,9 +3415,10 @@ function checkCollision(x, y, z, tankRadius = 2, options = {}) {
     // whole job is catching a client that lied.
     if (phased && !phasedObstacleExpels(obs, false)) continue;
     // `drivethrough` in a `.bzw`, `Obstacle::isDriveThrough` upstream: an
-    // obstacle a tank passes straight through. Nothing sets it yet -- it is here
-    // so that a map which names it has nowhere else to be honoured -- and
-    // `shootThrough`, which the world border does use, is its other half.
+    // obstacle a tank passes straight through. A map may name it, and a pad flush
+    // with the ground is given it whether or not the map says so -- see the `end`
+    // handler in parseBZWMap. `shootThrough`, which the world border also uses,
+    // is its other half.
     if (obs?.driveThrough) continue;
     const obstacleHeight = getObstacleHeight(obs);
     const obstacleBase = obs.baseY || 0;
@@ -6158,10 +6500,21 @@ function killPlayer(victim, killer, reason, projectileId = null, shooterId = nul
   // getTeamScoreDeltasForKill already reads the two being the same player.
   recordTeamScoreForKill(killer, victim);
 
+  // MsgKilled packs the flag (`buf = flagType->pack(buf)`, bzfs.cxx:3432) and
+  // gotBlowedUp names it from the packet rather than from the world. It has to:
+  // `applyDeath` drops the victim's flag before it broadcasts, so a client
+  // composing "You killed X/ID" from live state would never see one. Read here,
+  // while both tanks still hold what they held when it happened.
+  //
+  // Neither reveals anything: a flag on a tank has its type in every flag update
+  // already (`getFlagState`), and it is only a flag lying unowned on the ground
+  // that bzo hides.
   const killerId = killer ? killer.id : shooterId;
   applyDeath(victim, killerId, {
     projectileId,
     reason,
+    victimFlag: getPlayerFlag(victim.id)?.type ?? null,
+    shooterFlag: killer ? (getPlayerFlag(killer.id)?.type ?? null) : null,
     // The client words its death notice from this, and derives the same thing
     // from the ids as a fallback (`victimId === shooterId`). Read off the
     // shooter of record rather than off `selfKill`, which is also true of a
@@ -6923,6 +7276,12 @@ wss.on('connection', (ws, req) => {
   } else {
     log(`Player ${player.playerNumber} connect from ${ipDisplay}:${clientPort}`);
   }
+  // Never silently: an operator who turned this on should see it happen, and an
+  // operator who did not mean to should see it too.
+  player.localAdmin = isLocalAdminRequest(LOCAL_ADMIN, req.socket.remoteAddress, req.headers);
+  if (player.localAdmin) {
+    log(`Player ${player.playerNumber} is an operator: connected from this machine (localAdmin)`);
+  }
   //log(`Player ${player.playerNumber} user agent: ${userAgent}`);
 
   // What the handshake actually carried, per device, because the answer decides
@@ -7007,126 +7366,17 @@ wss.on('connection', (ws, req) => {
           const targetId = isAllTarget || isServerTarget || isTeamTarget || isAdminTarget
             ? Number(rawTarget)
             : String(rawTarget);
-          const fromId = player.id;
-          const fromName = player.name;
           const msgType = message.msgType === 'action' ? 'action' : 'chat';
           const text = typeof message.text === 'string' ? message.text.trim() : '';
           if (text.length === 0) break;
 
-          // How a chat destination is written in the log. A player is in quotes
-          // and a team is in brackets, as they are everywhere else; ALL and
-          // SERVER are neither, so they are bare. See the log conventions in
-          // AGENTS.md -- the bracket is what says "team", so the word would be
-          // as redundant as "Player" before a quoted name.
-          function describeChatTarget(id) {
-            if (id === 0) return 'ALL';
-            if (id === -1) return 'SERVER';
-            if (id === -2) return `[${player.team.toUpperCase()}]`;
-            if (id === -3) return '[ADMIN]';
-            return players.has(id) ? `"${players.get(id).name}"` : `"Player ${id}"`;
-          }
-          const toName = describeChatTarget(targetId);
+          // Step 1 of docs/commands-plan.md, and the reason it goes first: a line
+          // beginning with `/` is a command whatever channel it was aimed at, and
+          // it is never said out loud. A mistyped `/kick bob` used to announce
+          // itself to the room.
+          if (handleServerCommand(player, text)) break;
 
-          // Log locally only if to == -1
-          if (isServerTarget) {
-            log(`[CHAT] "${fromName}"->${toName}: ${text}`);
-            break;
-          }
-
-          // Broadcast to all if to == 0
-          if (isAllTarget) {
-            log(`[CHAT] "${fromName}"->ALL: ${text}`);
-            broadcastAll({
-              type: 'message',
-              src: fromId,
-              dst: 0,
-              msgType,
-              text,
-              ts: Date.now(),
-            });
-            break;
-          }
-
-          // Team chat. bzfs's own team dispatch sends to every player whose
-          // `isTeam(_team)` matches the destination, with no exception for Rogue
-          // or Observer -- which is the rule the `voice-channels` pair already
-          // spells out for the Team voice channel, so both use it. The sender is
-          // included: a message you cannot see you have sent is worse than one
-          // echoed back.
-          if (isTeamTarget) {
-            log(`[CHAT] "${fromName}"->${toName}: ${text}`);
-            const payload = {
-              type: 'message',
-              src: fromId,
-              dst: -2,
-              msgType,
-              text,
-              ts: Date.now(),
-            };
-            const encoded = JSON.stringify(payload);
-            players.forEach((other) => {
-              if (other.team !== player.team) return;
-              if (other.ws && other.ws.readyState === 1) other.ws.send(encoded);
-            });
-            break;
-          }
-
-          // The admin channel. Upstream gates both ends of it and answers a
-          // sender with no permission in its own words (bzfs.cxx:1546), rather
-          // than dropping the message silently -- somebody typing into a channel
-          // nobody hears should be told.
-          if (isAdminTarget) {
-            if (!isAdmin(player)) {
-              log(`[CHAT] "${fromName}"->[ADMIN] refused: not an admin`);
-              sendToPlayer(player, {
-                type: 'message',
-                src: -1,
-                dst: fromId,
-                msgType: 'chat',
-                text: 'You do not have permission to speak on the admin channel.',
-                ts: Date.now(),
-              });
-              break;
-            }
-            log(`[CHAT] "${fromName}"->[ADMIN]: ${text}`);
-            const payload = JSON.stringify({
-              type: 'message',
-              src: fromId,
-              dst: -3,
-              msgType,
-              text,
-              ts: Date.now(),
-            });
-            // The sender is included, as they are for team chat: a message you
-            // cannot see you have sent is worse than one echoed back.
-            for (const admin of getAdmins()) {
-              if (admin.ws && admin.ws.readyState === 1) admin.ws.send(payload);
-            }
-            break;
-          }
-
-          // Send to specific player if id exists
-          if (typeof targetId === 'string' && players.has(targetId)) {
-            log(`[CHAT] "${fromName}"->${toName}: ${text}`);
-            const targetPlayer = players.get(targetId);
-            const payload = {
-              type: 'message',
-              src: fromId,
-              dst: targetId,
-              msgType,
-              text,
-              ts: Date.now(),
-            };
-            if (targetPlayer && targetPlayer.ws && targetPlayer.ws.readyState === 1) {
-              targetPlayer.ws.send(JSON.stringify(payload));
-            }
-            if (player.ws && player.ws.readyState === 1 && targetId !== fromId) {
-              player.ws.send(JSON.stringify(payload));
-            }
-            break;
-          }
-
-          // If targetId is invalid, ignore
+          deliverChatMessage(player, targetId, msgType, text);
           break;
         }
         case 'voiceState': {
@@ -7776,17 +8026,17 @@ wss.on('connection', (ws, req) => {
             ? requestedTankModel
             : 'bzflag';
           player.team = assignedTeam;
-          if (TEAM_MODE.enabled) {
-            // A shade inside the new team's band, not the flat team colour:
-            // the player is already in the roster here, so they are excluded
-            // from the colours to stay clear of.
-            player.color = Player.pickDistinctColor(player.team, player);
-            // bzfs.cxx:2377 resets a team the moment its size becomes one.
-            // `teamCounts` excludes this player, so a lone player rejoining
-            // their own team resets it too, as a leave and join would upstream.
-            if (!teamCounts[assignedTeam] && isColorTeam(assignedTeam)) {
-              teamScores.delete(assignedTeam);
-            }
+          // `player` is already in the roster here, so it is excluded from the
+          // colours to stay clear of. A null answer leaves the colour it has.
+          const joinColor = getJoinPlayerColor(
+            TEAM_MODE, assignedTeam, previousTeam,
+            (team) => Player.pickDistinctColor(team, player));
+          if (joinColor !== null) player.color = joinColor;
+          // bzfs.cxx:2377 resets a team the moment its size becomes one.
+          // `teamCounts` excludes this player, so a lone player rejoining
+          // their own team resets it too, as a leave and join would upstream.
+          if (TEAM_MODE.enabled && !teamCounts[assignedTeam] && isColorTeam(assignedTeam)) {
+            teamScores.delete(assignedTeam);
           }
           player.voiceMicEnabled = false;
           player.joined = true;

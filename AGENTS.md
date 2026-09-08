@@ -1297,19 +1297,38 @@ hand.
 
 ## Admins and the admin channel
 
-bzo has no login, so there is nothing to key a permission to. Upstream reads
-`PlayerAccessInfo` out of a file keyed to a registered, password-checked
-callsign; the closest honest stand-in here is **whether the player told us who
-they are**.
+Upstream reads `PlayerAccessInfo` out of a file keyed to a registered,
+password-checked callsign. bzo's equivalent is a bzflag.org global login, and
+`isAdmin` in `server.js` is the whole rule. It answers yes for either of two
+things:
 
-**An admin is a player whose name is not the default.** A player who leaves the
-name field empty is called `Player <n>` by `nameCheck`, which also refuses that
-shape to anybody whose number it is not -- so the default cannot be claimed and a
-name that is not the default was typed on purpose. `isAdmin` in `server.js` is
-the whole rule, and it is the one function a real login would replace.
+- **An authenticated player in an admin group.** The session is looked up from a
+  cookie the server issued and the groups are what bzflag.org answered, so
+  neither half is client-supplied. `adminGroups` in `server.json` names the
+  groups; the session is re-read on every question rather than trusted from
+  connect, because an 8 hour session can expire mid-game.
+- **A connection from this machine, if the operator asked for it.**
+  `"localAdmin": true` in `server.json`, off by default. It exists so a test
+  client -- a headless browser, a raw WebSocket probe -- can drive the Operator
+  panel and the server commands without a bzflag.org account.
 
-It is a courtesy gate. What makes it safe enough is that it is checked on the
-server for everything it guards:
+  **The rule is not "the peer is loopback", and it must not be.** bzo does not
+  terminate TLS, so a public deployment sits behind a reverse proxy, and a proxy
+  on the *same host* makes every request in the world arrive from `127.0.0.1`.
+  So `isLocalAdminRequest` in the `sessions` module wants a loopback peer **and**
+  no `X-Forwarded-*` header at all. That second half is the one a remote client
+  cannot forge: it can add a header but not remove one, and a proxy following the
+  deployment notes in the README sets `X-Forwarded-For` on every hop with
+  `RequestHeader set`, so a client's own copy never survives. A proxy that omits
+  it entirely is the case this cannot see, which is exactly why an operator has
+  to ask for this rather than get it by default. Every grant is logged.
+
+Whichever way it is reached, it is checked on the server for everything it
+guards. Today that is the admin channel and the Operator panel; `/`-commands are
+the next thing behind it, and `docs/commands-plan.md` is the plan for them --
+including why bzo should not port upstream's sixty permissions.
+
+It is checked on the server for everything it guards:
 
 - **The admin chat channel**, both ways. Upstream gates sending on
   `adminMessageSend` and receiving on `adminMessageReceive` (`bzfs.cxx:1546`,
@@ -1685,6 +1704,53 @@ that column is centred and there is no per-run alignment that adds up to a
 centred line. Colourblindness still costs Identify its whole answer, not just the
 name (`playing.cxx:4479`): naming the flag or marking the rabbit would hand back
 what the colour no longer says.
+
+## Server commands
+
+A chat line beginning with `/` is a command. `handleServerCommand` in `server.js`
+is asked **before any chat destination**, so such a line is either a command or
+an "Unknown command" reply and is never said out loud, whichever channel it was
+aimed at. The parsing and the formatting are in the `commands` module,
+server-only; the table and what each command does are in `server.js`, beside the
+roster and the clock they read.
+
+Upstream makes each command a `ServerCommand` subclass carrying its name, one
+line of help and a permission (`src/bzfs/commands.cxx`). bzo keeps the same three
+per entry, with `help` in upstream's own wording where the command is upstream's,
+and `tier` in place of the permission. `docs/commands-plan.md` is the plan for the
+rest of the set, and says why bzo does not port upstream's sixty permissions:
+they exist to be granted out of a users file bzo has no equivalent of, since its
+groups come from bzflag.org and the server cannot edit them.
+
+**Two tiers.** `COMMAND_TIER.OPEN` is anybody who has joined; `OPERATOR` is
+`isAdmin`, which is the same gate as the admin channel and the Operator panel. A
+refusal is upstream's own sentence, naming the command.
+
+**The Operator panel stays the primary surface for anything an operator does more
+than once**, because it is the one that works in a headset. Commands are for
+one-offs, for questions, and for a test client -- which is what `localAdmin` is
+for. Where both exist they must call the same function: `/msg` and the chat entry
+both go through `deliverChatMessage`, so the admin channel's permission check
+cannot exist in only one of them.
+
+### Intentional deviations
+
+- **`/help` lists commands, not help pages.** Upstream's pages come from the
+  files `-helpmsg` names, which `docs/bzw.md` already lists as not read, so there
+  are no pages to page. bzo answers with every command the asking player may run
+  and upstream's one line of help each. `/<prefix>?` narrows it, which *is*
+  upstream's `CmdHelp` (`commands.cxx:476`) and the only per-command help either
+  of us has -- bzo takes the `?` half and not the `/co*` run-the-one-match half.
+- **`/serverquery` says `bzo Version:`, not `BZFS Version:`**, and adds the build
+  id. Two bzo servers on the same release differ by that and by nothing else a
+  player can see.
+- **`/date` and `/time` are open**, where upstream spends a `date` permission on
+  them. The server's clock is not a secret, and a permission per command is the
+  model the plan declines.
+- **No client-local command table yet.** Upstream's client claims `/silence` and
+  friends before the server sees them; bzo's client sends every line. That is
+  step 4 of the plan, and it changes nothing about the above -- bzo's chat entry
+  does not echo locally, which is why step 1 needed no client work at all.
 
 ## Team scores
 

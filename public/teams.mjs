@@ -164,8 +164,11 @@ export function getTeamScoreDeltasForCapture(cappingTeam, cappedTeam) {
 // this pair: the server picks the rabbit with it and the client sorts the
 // scoreboard by it, so a board that disagreed would stop predicting who is next.
 //
-// A win *rate* rather than a win count, damped towards the middle until there is
-// enough of a record to trust it: no record at all is exactly 0.5.
+// A win *rate* rather than a win count, discounted for how short the record is:
+// the second factor is 0.5 after one game, 0.75 after four and 0.9 after
+// twenty-five, so a rank always sits below the rate it came from and creeps up
+// towards it. No record at all is a flat 0.5, which is the one value the formula
+// does not produce -- and which beats every even record, 1-1 ranking 0.32.
 export function getPlayerRanking(wins, losses) {
   const sum = wins + losses;
   if (sum === 0) return 0.5;

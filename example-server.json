@@ -4,6 +4,7 @@
   "mapFile": "test.bzw",
   "motd": "Welcome to the test server!",
   "maxPlayers": 16,
+  "localAdmin": false,
   "adminGroups": [
     "DEVELOPERS",
     "BZADMIN"

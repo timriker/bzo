@@ -451,10 +451,19 @@ function teamScoreMovesOnKill(gameType) {
   return gameType === 'TeamFFA' || gameType === 'OpenFFA';
 }
 
-// Score::ranking (Score.cxx:42). A win *rate* rather than a win count, damped
-// towards the middle until there is enough of a record to trust it: a player
-// with no record at all is exactly 0.5, and the penalty term
-// `1 - 0.5 / sqrt(sum)` reaches 0.5 after one game and 0.9 after twenty-five.
+// Score::ranking (Score.cxx:42). A win *rate* rather than a win count,
+// discounted for how short the record is. The penalty term `1 - 0.5/sqrt(sum)`
+// multiplies, so it pulls a rank towards **zero** rather than towards the middle:
+// 0.5 after one game, 0.75 after four, 0.9 after twenty-five, 0.95 after a
+// hundred. A rank therefore always sits below the rate it came from and rises
+// towards it as the record lengthens -- 4-2 and 40-20 are both a 0.67 rate and
+// rank 0.53 and 0.62 -- and 1.0 is unreachable.
+//
+// The `sum == 0` answer of 0.5 is the one value the formula never produces, and
+// it is deliberately generous: it beats every even record (1-1 is 0.32, 50-50 is
+// 0.47), so a player who has just arrived is near the front of the queue for the
+// rabbit until their first death, which with no wins to divide takes them to 0.
+// Upstream's own note on the curve is "IIRC that is how wide is the gaussian".
 //
 // This decides who becomes the rabbit, and it is also what the scoreboard sorts
 // by in Rabbit Chase -- upstream keeps a second copy of the arithmetic on the
@@ -617,8 +626,35 @@ function getPlayerTeamColor(team) {
 // can tell two team mates apart at a range where the labels are unreadable. The
 // team is still what the colour says first; the band is narrow enough that no
 // shade of one team reads as another.
+//
+// Observer is the exception at both ends: it keeps upstream's flat white on every
+// server, whatever the team mode. An observer has no tank to tell apart from
+// another observer's -- it is never drawn -- and its scoreboard row is read by
+// name, so there is nothing for a distinct colour to distinguish. With colour
+// teams on `pickDistinctColor` already answers white for it, white having no hue
+// to shade; this makes it true with them off as well.
 function getInitialPlayerColor(teamMode, team, pickDistinctColor) {
+  if (isObserverTeam(team)) return PLAYER_TEAM_COLORS[PLAYER_TEAM.OBSERVER];
   return pickDistinctColor(teamMode.enabled ? team : null);
+}
+
+// What colour a player takes when a join puts them on `team`, having been on
+// `previousTeam` (null for a first join). `null` means the colour they already
+// have stands, which is what a rejoin on a world with no colour teams gets: a
+// tank that changed colour mid-match would undo the only thing a distinct colour
+// is for.
+//
+// Server-only. The constructor uses getInitialPlayerColor above, before any team
+// has been chosen; this is the one that sees a real team.
+function getJoinPlayerColor(teamMode, team, previousTeam, pickDistinctColor) {
+  if (isObserverTeam(team)) return PLAYER_TEAM_COLORS[PLAYER_TEAM.OBSERVER];
+  // A shade inside the new team's band rather than the flat team colour.
+  if (teamMode.enabled) return pickDistinctColor(team);
+  // Coming back from observer on a world with no colour teams, where the
+  // constructor's colour is long gone: the white it was wearing is nobody's, so
+  // it takes a fresh one off the whole wheel rather than staying white.
+  if (isObserverTeam(previousTeam)) return pickDistinctColor(null);
+  return null;
 }
 
 module.exports = {
@@ -646,6 +682,7 @@ module.exports = {
   getPlayerTeamColor,
   getPlayerTeamRadarColor,
   getInitialPlayerColor,
+  getJoinPlayerColor,
   isColorTeam,
   isObserverTeam,
   isRabbitTeam,

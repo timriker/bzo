@@ -2516,6 +2516,7 @@ class RenderManager {
     // After the meshes, so nothing is still pointing at them. The boundary walls
     // keep their own entry and are not cleared here.
     this._disposeSharedObstacleMaterials('box');
+    this._disposeSharedObstacleMaterials('boxFlat');
     this._disposeSharedObstacleMaterials('pyramid');
     this._disposeSharedObstacleMaterials('base');
     this._clearDebugLabels('obstacle');
@@ -2656,10 +2657,26 @@ class RenderManager {
           'obstacle',
         );
       } else {
+        // A box with no height is a pad on the ground rather than a block: a map
+        // uses one to mark ground -- `flagbuffet.bzw` puts a named one under
+        // every flag zone so the debug labels can name them -- and BZW writes it
+        // exactly as it writes a flat base, `size w d 0`.
+        //
+        // Being coplanar with the ground, it needs the same depth bias a flat
+        // base gets, or the two surfaces are a coin toss per pixel. Its own
+        // material key so an ordinary box does not pay for the bias, and so all
+        // the flat ones still share one material between them.
+        const flatOnGround = h <= 0 && baseY <= 0;
+        const boxKey = flatOnGround ? 'boxFlat' : 'box';
         this._addObstacleFragment(
           fragments,
-          'box',
-          this._getSharedObstacleMaterials('box', createBoxWallTexture, createRoofTexture),
+          boxKey,
+          this._getSharedObstacleMaterials(
+            boxKey, createBoxWallTexture, createRoofTexture,
+            flatOnGround
+              ? { polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 }
+              : {}
+          ),
           // BoxSceneNodeGenerator.cxx:66, in its own words: "Don't generate the
           // bottom polygon if on the ground (or lower)".
           this._prepareBoxGeometry(obs.w, h, obs.d, {

@@ -751,6 +751,13 @@ body {
   font-weight: bold;
 }
 
+/* ScoreboardRenderer.cxx:562 drops a blank line in front of the first observer.
+   Sorting them last says where they are; the gap says they are a separate group
+   rather than the worst players on the board. */
+.scoreboardEntry.startsObservers {
+  margin-top: 0.55em;
+}
+
 /* The rabbit mark stands off the name it follows, unlike the flag and the
    authentication indicator, because it is a word rather than a suffix. */
 .scoreboardRabbit:not(:empty) {

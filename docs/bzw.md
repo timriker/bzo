@@ -156,6 +156,25 @@ Read as a bzfs command line, one option a line. Everything bzo understands:
 | `-set _maxFlagGrabs <n>` | how many pickups a superflag survives |
 | `-srvmsg <text>` | a line the world says to each player as they join |
 
+## A pad flush with the ground
+
+An obstacle with **no height, sitting on the ground** -- `size w d 0` at
+`position x y 0`, which is exactly how BZW writes a flat base -- is a pad rather
+than a block, and bzo makes it passable to tanks and to shots whether or not the
+map says `drivethrough`. Upstream's own words, on the base
+(`BaseBuilding.cxx:77`): *"if a base is just the ground (z == 0 && height == 0)
+no collision -- ground is already handled".*
+
+Upstream writes that guard on the base alone, because a zero-height box is
+vanishingly rare there. Its box arithmetic has none, and the case that shows the
+difference is a **burrowed** tank: `BU` drives below zero, so its own span reaches
+up through a pad's `[0, 0]` and it stops dead on one.
+
+A pad is still drawn, and still labelled by the debug labels: the passability
+flags are read only by the collision code, never by the renderer. That is what
+makes a pad useful for marking ground -- `maps/flagbuffet.bzw` puts a named one
+under every flag zone, so `L_Laser` and friends label the whole buffet.
+
 A map option only ever turns a switch **on**, which is how a bzfs switch behaves:
 nothing in a map turns off something the server config enabled. `-j` is the one
 that reads oddly as a result -- bzo has jumping on by default, so `-j` in a map
