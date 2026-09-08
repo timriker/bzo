@@ -31,3 +31,4 @@ to every client, and every edit to it changes the build id and reloads them.
 | `flag_alert.wav` | `SFX_ALERT` | an enemy picked up my team's flag |
 | `teamgrab.wav` | `SFX_TEAMGRAB` | a team mate picked up an enemy team's flag |
 | `killteam.wav` | `SFX_KILL_TEAM` | I captured my own team's flag |
+| `hunt_select.wav` | `SFX_HUNT_SELECT` | I have just been made the rabbit |

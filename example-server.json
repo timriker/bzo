@@ -22,6 +22,7 @@
       "purple": 10
     }
   },
+  "rabbit": false,
   "tankSpeed": 25.0,
   "tankRotationSpeed": 0.785398,
   "linearAcceleration": 0,

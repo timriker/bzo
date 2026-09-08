@@ -3,8 +3,8 @@
 Design and staging plan for the BZFlag game types and game styles bzo does not
 have yet. Upstream references are paths under `$HOME/bzflag/`.
 
-No GitHub issue tracks this yet; open one before the first commit and reference
-it from every commit and changelog entry here, as flag work referenced #6.
+Issue #42 tracks this; reference it from every commit and changelog entry here,
+as flag work references #6.
 
 ## What upstream has
 
@@ -31,15 +31,15 @@ from `/countdown`, `-g` to serve one game and exit.
 
 ## What bzo has
 
-Three of the four game types are in, and bzo derives the type rather than naming
-it:
+All four game types are in. bzo has a switch only for Rabbit Chase and derives
+the rest:
 
 | type | how bzo reaches it | state |
 |---|---|---|
 | `TeamFFA` | `teamMode.enabled`, map with no `base` | **done** |
-| `ClassicCTF` | `teamMode.enabled` and at least one base -- `CTF_ENABLED`, `server.js:3255` | **done**, but see the kill-scoring defect below |
+| `ClassicCTF` | `teamMode.enabled` and at least one base -- `CTF_ENABLED` | **done** |
 | `OpenFFA` | `teamMode.enabled` false, or a map's `-offa` | **done** -- rogue and observer are the only teams offered and `broadcastTeamScores` returns early |
-| `RabbitChase` | -- | **missing** |
+| `RabbitChase` | `rabbit` in `server.json`, or a map's `-rabbit` | **done** -- see "Rabbit Chase" in `AGENTS.md` |
 
 Seven of the eight game styles are in: superflags (`+s`/`-s`), jumping (`-j`),
 inertia (`-a`), ricochet (`+r`), shakable (`-st`, `-sw`), antidote (`-sa`) and
@@ -48,65 +48,26 @@ no-team-kills (`-noTeamKills`). **Handicap is missing.**
 None of the match-end switches exist: bzo has no score limit, no clock, and no
 game-over state at all. A bzo server plays until the map changes.
 
-So the gaps are, in order of how much they change:
+So the gaps left are:
 
-1. **ClassicCTF scores kills like TeamFFA** -- a live deviation, small fix.
-2. **Match end** -- score limits, a clock, and a game-over state.
-3. **Rabbit Chase** -- the one whole missing game type.
-4. **Handicap** -- one game style.
+1. **Match end** -- score limits, a clock, and a game-over state.
+2. **Handicap** -- one game style.
 
-## Name the type once
+## Name the type once -- **done**
 
-Every gap below asks the same question -- *which game type is this?* -- and bzo
-currently answers it by asking two others (`TEAM_MODE.enabled` and
-`CTF_ENABLED`). That pair cannot express Rabbit Chase, and it is why the CTF
-defect below was easy to write.
-
-Add one derived constant beside `CTF_ENABLED`, upstream's own four names:
-
-```js
-const GAME_TYPE = RABBIT_SELECTION ? 'RabbitChase'
-  : CTF_ENABLED ? 'ClassicCTF'
-  : TEAM_MODE.enabled ? 'TeamFFA'
-  : 'OpenFFA';
-```
-
-`CTF_ENABLED` and `TEAM_MODE` stay exactly as they are -- they answer "are there
-bases" and "are there colour teams", which is what most of their callers
-actually want. `GAME_TYPE` is for the rules that key off the type as a whole:
-kill scoring, the forbidden-flag set, and rabbit anointing. It goes in the
-startup log next to the team-mode line, and in the `init` payload beside
-`teamMode`, because the entry dialog and the scoreboard both want to say what
-kind of game this is.
+`GAME_TYPE` in `server.js` over `getGameType` in the `teams` pair, and
+`TEAMS_ALLOWED` over `allowTeams` beside it. `CTF_ENABLED` and `TEAM_MODE` stay
+the ones to ask about bases and about colour teams. See "Game types" in
+`AGENTS.md`.
 
 ## ClassicCTF must not score team points for kills -- **done**
 
 `bzfs.cxx:3534` gates the whole per-kill team-score block on
-`gameType == OpenFFA || gameType == TeamFFA`. In `ClassicCTF` a kill moves no
-team score at all -- captures are the only thing that move it, which is what
-makes a capture worth 8 kills' worth of attention. The comment in that block
-says so outright: "don't change team scores for individual player's kills in
-capture the flag mode."
-
-bzo's `recordTeamScoreForKill` (`server.js:1792`) is gated on
-`TEAM_MODE.enabled` alone, so on any team map with a base -- `hix.bzw`, every
-CTF map -- kills move the team score *and* captures do. The AGENTS.md "Team
-scores" section quotes `bzfs.cxx:3540` for the kill deltas without the gate
-above them.
-
-The fix is one condition and one doc paragraph:
-
-- `recordTeamScoreForKill` returns early unless `GAME_TYPE` is `TeamFFA` (or
-  `OpenFFA`, where nothing scores anyway because every player is a rogue).
-- `getTeamScoreDeltasForKill` in the `teams` pair stays pure and unchanged; the
-  gate belongs to the caller, as the `TEAM_MODE.enabled` gate already does.
-- `scripts/test-teams.mjs` gets a case per type asserting which of a kill and a
-  capture moves the tally.
-- The AGENTS.md "Team scores" section gains the gate, since it currently
-  documents the wrong rule.
-
-Worth doing first and on its own: it is a behaviour change players will notice
-on the dev server, and it is independent of everything below.
+`gameType == OpenFFA || gameType == TeamFFA`: in `ClassicCTF` a capture is the
+only thing that moves the team score, which is what makes a capture worth 8
+kills' worth of attention. `teamScoreMovesOnKill` in the `teams` pair is that
+gate, asked of `GAME_TYPE` by `recordTeamScoreForKill`. See "Team scores" in
+`AGENTS.md`.
 
 ## Match end
 
@@ -166,89 +127,21 @@ New messages: `scoreOver` (winner: player id or team) and `timeUpdate` (seconds
 left, `-1` for paused), both broadcast, with `timeUpdate` also riding in `init`
 so a joining player starts with the right clock.
 
-## Rabbit Chase
+## Rabbit Chase -- **done**
 
-One player is the rabbit; everyone else hunts them. Upstream's shape:
+`"rabbit": "score" | "killer" | "random"` in `server.json` and `-rabbit
+[score|killer|random]` in a map's `options` block. Turning it on turns the
+colour teams off, which is what makes it and CTF mutually exclusive; nobody
+picks a team; the selection functions are pure and live in the `teams` pair. See
+"Rabbit Chase" in `AGENTS.md` for the rules and for the deviations from
+upstream, and `docs/bzw.md` for the map switch.
 
-- **Two extra teams.** `RabbitTeam` 6 and `HunterTeam` 7 (`global.h:59`), which
-  are teams for colour and friend-or-foe purposes but hold no bases, no flags
-  and no score. Rabbit is light grey `0.8 0.8 0.8`, hunter orange
-  `1.0 0.5 0.0`; the rabbit's radar colour is white (`src/common/Team.cxx:27`).
-- **Only rogues join.** `CmdLineOptions.cxx:1586` zeroes every colour team's
-  limit, saying so on stdout if the map asked for one, sets
-  `maxTeam[RabbitTeam]` to 1 and `maxTeam[HunterTeam]` to the rogue limit.
-  `autoTeamSelect` returns `HunterTeam` for every non-observer
-  (`bzfs.cxx:1923`). Rabbit Chase and CTF are mutually exclusive, and
-  `-c`/`-cr`/`-offa`/`-rabbit` each complain and win over what came before
-  (`CmdLineOptions.cxx:667`, `:706`, `:1096`).
-- **Anointing.** `anointNewRabbit` (`bzfs.cxx:2737`) runs when the rabbit dies,
-  pauses, leaves, or goes to observer, and when a player spawns while there is
-  no rabbit. With `-rabbit killer` whoever killed the rabbit gets it if they can
-  take it; otherwise `GameKeeper::Player::anointRabbit` (`GameKeeper.cxx:145`)
-  picks the best candidate by `Score::ranking()`, preferring anyone alive who is
-  not the old rabbit. `canBeRabbit` (`src/game/PlayerInfo.cxx:504`) refuses a
-  paused, unresponsive or observing player, and wants them alive unless nobody
-  else qualifies.
-- **Ranking** (`Score.cxx:42`) is `wins / (wins + losses)` scaled by
-  `1 - 0.5 / sqrt(wins + losses)`, or `0.5` for a player with no record --
-  a win *rate* damped towards the middle until there is enough of a record to
-  trust it. `-rabbit random` replaces the whole function with a random number
-  (`Score::setRandomRanking`), which is how the three selection modes reduce to
-  one code path.
-- **Being deposed is excused.** `isARabbitKill` (`include/PlayerInfo.h:324`) is
-  `wasRabbit || victim is the rabbit`, and `teamkill = !foe && !rabbitinvolved`
-  (`bzfs.cxx:3421`). Hunters are teammates, so hunter-on-hunter fire *is* team
-  killing -- except for the ex-rabbit, whose `wasRabbit` flag is set when
-  deposed (`PlayerInfo.cxx:419`) and cleared on their next spawn
-  (`bzfs.cxx:3287`). That window is the whole exception.
-- **Team scores never move** (`bzfs.cxx:3534`); player scores work as usual.
-- **The client repaints everyone** on `MsgNewRabbit` (`playing.cxx:2851`): the
-  rabbit becomes `RabbitTeam` and is marked hunted, everyone else becomes
-  `HunterTeam`, the new rabbit hears `SFX_HUNT_SELECT` and reads "You are now
-  the rabbit", and everyone gets "*name* is now the rabbit" in chat.
-- **Genocide, Colorblindness and Masquerade go out of the flag pool**, because
-  `hasTeam` only counts Red through Purple and Rabbit Chase zeroes those
-  (`CmdLineOptions.cxx:1693`). bzo already forbids `G` without colour teams and
-  already keeps `CB` and `MQ` deliberately, since every bzo player has their own
-  colour -- so the existing rule needs no change beyond reading `GAME_TYPE`.
-
-What bzo has to decide:
-
-- **Colours.** bzo gives every player a colour of their own, which is exactly
-  what hunter orange is for -- one colour for the crowd. Keep the per-player
-  colours for hunters and paint the **rabbit** upstream's grey, white on radar.
-  The rabbit is the only thing in the world that needs to be identifiable at a
-  glance, and it is the only thing that gets a reserved colour.
-- **The hunted marker.** Upstream marks the rabbit on the radar and in the
-  scoreboard through its hunt feature, which bzo does not have. Rabbit Chase
-  needs only the marker, not the whole feature: a radar ring on the rabbit's
-  blip and a `(rabbit)` mark on the scoreboard row.
-- **XR.** The radar answer does not carry into a headset, so the rabbit gets the
-  bearing ribbon with a tank caret -- the design already recommended for team
-  flags and antidotes -- pointed at the rabbit while it lives. That is the same
-  affordance rather than a second one, which is the point of choosing it once.
-- **Teams in the shared pair.** `rabbit` and `hunter` join `PLAYER_TEAM` and the
-  end of `BZFLAG_TEAM_ORDER` at indices 6 and 7. `isColorTeam` stays 1..4, so
-  bases, team flags and team scores are untouched by construction. `areFoes`
-  needs no change -- hunters share a team and the rabbit does not -- but the
-  team-kill decision in `handleKill` needs the `wasRabbit` excuse.
-- **Neither team is selectable.** They are not offered in the entry dialog's
-  team list and cannot be asked for; the server assigns them. Rabbit Chase
-  offers observer and nothing else, and `selectPlayerTeam` returns `hunter` for
-  every non-observer.
-- **Config.** `"rabbit": false | "score" | "killer" | "random"` in
-  `server.json`, and `-rabbit [score|killer|random]` in a map's `options` block,
-  mirroring bzfs including its default of `score` for a bare switch. Turning it
-  on forces colour teams off and logs that it did, exactly as
-  `CmdLineOptions.cxx:1586` does.
-- **Server-side selection.** `anointRabbit` and `ranking` go into
-  `server/teams.cjs` as pure functions marked server-only, as `areFoes` already
-  is, and `scripts/test-teams.mjs` holds them against upstream's numbers: the
-  ranking formula, the "prefer someone alive who is not the old rabbit" order,
-  the killer shortcut, and the random mode.
-
-New message: `newRabbit` (the rabbit's player id, or none), broadcast on every
-anointing and carried in `init`.
+One thing it wanted and did not get: the **XR bearing ribbon**. The ribbon with
+a tank caret is still the recommended design for team flags, antidotes and the
+rabbit alike, and it is still unbuilt. Rabbit Chase reads in a headset without
+it -- the XR radar panel is textured from the flat radar's canvas, so the ring
+arrives there, and the XR scoreboard reads the same rows -- so the ribbon is
+worth building for all three at once rather than for this one.
 
 ## Handicap
 
@@ -385,11 +278,8 @@ one part of it bzo could use today: see "Admins and the admin channel" in
 
 ## Suggested order
 
-1. `GAME_TYPE`, then the ClassicCTF kill-scoring fix on top of it.
-2. Score limits and `scoreOver`, which need no clock.
-3. The clock, game over, and the Operator panel's match controls.
-4. Rabbit Chase.
-5. Handicap.
+1. Score limits and `scoreOver`, which need no clock.
+2. The clock, game over, and the Operator panel's match controls.
+3. Handicap.
 
-Each step is playable on its own, and the first is a bug fix that the rest lean
-on.
+Each step is playable on its own.

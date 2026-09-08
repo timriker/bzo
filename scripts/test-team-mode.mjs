@@ -66,6 +66,16 @@ assert.deepEqual(mapOverride, {
     observer: 8,
   },
 });
+// `-rabbit [score|killer|random]` in a map's options block. A bare switch is
+// `score`, an unrecognised style is `score` as well -- upstream leaves the
+// argument unconsumed rather than rejecting it -- and the named styles carry.
+assert.equal(parseBZWTeamMode(['options', '-rabbit', 'end']).rabbitSelection, 'score');
+assert.equal(parseBZWTeamMode(['options', '-rabbit killer', 'end']).rabbitSelection, 'killer');
+assert.equal(parseBZWTeamMode(['options', '-rabbit random', 'end']).rabbitSelection, 'random');
+assert.equal(parseBZWTeamMode(['options', '-rabbit nonsense', 'end']).rabbitSelection, 'score');
+// Outside an options block it is not an option at all.
+assert.equal(parseBZWTeamMode(['-rabbit killer']), null);
+
 assert.deepEqual(parseBZWTeamMode([
   'options',
   '  -mp 10,2,2,0,0,8',
@@ -116,6 +126,8 @@ assert.deepEqual(parseBZWTeamMode(readFileSync(new URL('../maps/hix.bzw', import
 assert.deepEqual(resolveTeamMode({ enabled: false }, mapOverride), {
   enabled: true,
   autoTeam: false,
+  rabbitSelection: null,
+  colorTeamsRefused: false,
   teams: ['rogue', 'observer', 'green', 'purple'],
   limits: {
     rogue: 10,
@@ -127,12 +139,44 @@ assert.deepEqual(resolveTeamMode({ enabled: false }, mapOverride), {
 assert.deepEqual(resolveTeamMode({ enabled: true, teams: ['red', 'blue'] }, { enabled: false }), {
   enabled: false,
   autoTeam: false,
+  rabbitSelection: null,
+  colorTeamsRefused: false,
   teams: ['rogue', 'observer'],
   limits: {
     rogue: Number.MAX_SAFE_INTEGER,
     observer: Number.MAX_SAFE_INTEGER,
   },
 });
+
+// CmdLineOptions.cxx:1586. Rabbit Chase is the last word on the game type: the
+// colour teams go, whatever the config or the map asked for, and only observer
+// stays askable. The rabbit's limit is one and the hunters inherit the rogue
+// limit, which is upstream's shape exactly.
+assert.deepEqual(resolveTeamMode(
+  { enabled: true, teams: ['red', 'blue', 'rogue', 'observer'], limits: { red: 9, blue: 9, rogue: 7, observer: 3 } },
+  null,
+  16,
+  'killer',
+), {
+  enabled: false,
+  autoTeam: false,
+  rabbitSelection: 'killer',
+  colorTeamsRefused: true,
+  teams: ['observer', 'hunter'],
+  limits: { observer: 3, rabbit: 1, hunter: 7 },
+});
+// And a map's `-rabbit` reaches the same place, over a config that said nothing.
+assert.deepEqual(
+  resolveTeamMode({ enabled: false }, { rabbitSelection: 'random' }, 16).rabbitSelection,
+  'random',
+);
+// A switch only ever turns something on: the map's style wins over the config's,
+// and a config that already had it on is not turned off by a map that is silent.
+assert.equal(resolveTeamMode({ enabled: false }, { rabbitSelection: 'killer' }, 16, 'score').rabbitSelection, 'killer');
+assert.equal(resolveTeamMode({ enabled: false }, null, 16, 'score').rabbitSelection, 'score');
+assert.equal(resolveTeamMode({ enabled: false }, null, 16, false).rabbitSelection, null);
+// Nothing was refused when the config never asked for colour teams.
+assert.equal(resolveTeamMode({ enabled: false }, null, 16, 'score').colorTeamsRefused, false);
 
 const manualTeams = resolveTeamMode({
   enabled: true,
@@ -243,6 +287,24 @@ for (const left of shadedHues) {
       + `${TEAM_SHADE_HUE_SPREAD} degree bands would overlap`
     );
   }
+}
+
+// autoTeamSelect (bzfs.cxx:1923): "if we're running rabbit chase, all
+// non-observers start as hunters". Nothing is refused for naming the wrong team
+// -- a colour team is read as "play" -- and only the hunter limit can turn a
+// player away.
+{
+  const rabbitMode = resolveTeamMode({ enabled: true }, null, 4, 'score');
+  assert.equal(selectPlayerTeam('automatic', rabbitMode, {}), 'hunter');
+  assert.equal(selectPlayerTeam('rogue', rabbitMode, {}), 'hunter');
+  assert.equal(selectPlayerTeam('red', rabbitMode, {}), 'hunter');
+  assert.equal(selectPlayerTeam('observer', rabbitMode, {}), 'observer');
+  // Nobody may ask for either of the two teams the server assigns; asking is
+  // just another way of asking to play.
+  assert.equal(selectPlayerTeam('rabbit', rabbitMode, {}), 'hunter');
+  assert.equal(selectPlayerTeam('hunter', rabbitMode, {}), 'hunter');
+  assert.equal(selectPlayerTeam('automatic', rabbitMode, { hunter: 4 }), null, 'a full world turns a hunter away');
+  assert.equal(selectPlayerTeam('observer', rabbitMode, { hunter: 4 }), 'observer', 'but an observer is not a hunter');
 }
 
 console.log('team mode tests passed');

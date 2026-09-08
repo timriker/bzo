@@ -13,8 +13,14 @@ const PLAYER_TEAM = Object.freeze({
   BLUE: 'blue',
   GREEN: 'green',
   PURPLE: 'purple',
+  RABBIT: 'rabbit',
+  HUNTER: 'hunter',
 });
 
+// The teams a player may *ask* to join. Rabbit and hunter are missing on
+// purpose: Rabbit Chase assigns both, so neither is ever requested and neither
+// is offered in the entry dialog. See ALL_PLAYER_TEAMS for the teams a player
+// may be *on*.
 const PLAYER_TEAMS = Object.freeze([
   PLAYER_TEAM.ROGUE,
   PLAYER_TEAM.OBSERVER,
@@ -22,6 +28,15 @@ const PLAYER_TEAMS = Object.freeze([
   PLAYER_TEAM.BLUE,
   PLAYER_TEAM.GREEN,
   PLAYER_TEAM.PURPLE,
+]);
+// Every team a player may be on, which is upstream's whole TeamColor enum bar
+// the two pseudo-teams (`NumTeams` is 8, `global.h:59`). Rabbit and hunter are
+// teams for colour and friend-or-foe purposes and hold no base, no flag and no
+// score, which `isColorTeam` already answers for them.
+const ALL_PLAYER_TEAMS = Object.freeze([
+  ...PLAYER_TEAMS,
+  PLAYER_TEAM.RABBIT,
+  PLAYER_TEAM.HUNTER,
 ]);
 const NON_TEAM_MODE_TEAMS = Object.freeze([PLAYER_TEAM.ROGUE, PLAYER_TEAM.OBSERVER]);
 // BZFlag's TeamColor numbering (global.h:59). A BZW `base` object names one of
@@ -35,7 +50,13 @@ const BZFLAG_TEAM_ORDER = Object.freeze([
   PLAYER_TEAM.BLUE,
   PLAYER_TEAM.PURPLE,
   PLAYER_TEAM.OBSERVER,
+  PLAYER_TEAM.RABBIT,
+  PLAYER_TEAM.HUNTER,
 ]);
+// The teams `-mp` lists a count for, which stops at observer: Rabbit Chase
+// derives both of its limits from the rogue count rather than reading them
+// (`CmdLineOptions.cxx:1596`), so a map cannot name them.
+const BZFLAG_MP_TEAM_ORDER = Object.freeze(BZFLAG_TEAM_ORDER.slice(0, 6));
 const PLAYER_TEAM_COLORS = Object.freeze({
   [PLAYER_TEAM.ROGUE]: 0xffff00,
   [PLAYER_TEAM.OBSERVER]: 0xffffff,
@@ -43,6 +64,14 @@ const PLAYER_TEAM_COLORS = Object.freeze({
   [PLAYER_TEAM.BLUE]: 0x1a33ff,
   [PLAYER_TEAM.GREEN]: 0x00ff00,
   [PLAYER_TEAM.PURPLE]: 0xff00ff,
+  // Team::tankColor's last two rows (Team.cxx:27): rabbit light grey, hunter
+  // orange. bzo paints the rabbit's, and only the rabbit's -- hunters keep the
+  // per-player colours every bzo player has, since one colour for the crowd is
+  // what hunter orange was for and bzo has a better answer to it. The rabbit is
+  // the one thing in the world that has to be identifiable at a glance, so it is
+  // the one thing with a reserved colour.
+  [PLAYER_TEAM.RABBIT]: 0xcccccc,
+  [PLAYER_TEAM.HUNTER]: 0xff8000,
 });
 
 // Team::radarColor (Team.cxx:30). Deliberately not the tank colours: red, green
@@ -56,11 +85,20 @@ const PLAYER_TEAM_RADAR_COLORS = Object.freeze({
   [PLAYER_TEAM.BLUE]: 0x1440ff,
   [PLAYER_TEAM.GREEN]: 0x33e633,
   [PLAYER_TEAM.PURPLE]: 0xff66ff,
+  // The rabbit reads white on the radar rather than grey, which is upstream's
+  // own choice (Team.cxx:38) and the same reasoning as the other four: the
+  // radar's colours are lifted so a team reads against a dark panel.
+  [PLAYER_TEAM.RABBIT]: 0xffffff,
+  [PLAYER_TEAM.HUNTER]: 0xff8000,
 });
 
 function normalizePlayerTeam(team) {
   const normalized = typeof team === 'string' ? team.trim().toLowerCase() : '';
-  return PLAYER_TEAMS.includes(normalized) ? normalized : PLAYER_TEAM.ROGUE;
+  return ALL_PLAYER_TEAMS.includes(normalized) ? normalized : PLAYER_TEAM.ROGUE;
+}
+
+function isRabbitTeam(team) {
+  return normalizePlayerTeam(team) === PLAYER_TEAM.RABBIT;
 }
 
 function normalizePlayerTeamSelection(team) {
@@ -131,6 +169,16 @@ function parseBZWTeamMode(lines) {
       override.enabled = true;
       hasExplicitMode = true;
       touched = true;
+    } else if (option === '-rabbit') {
+      // `-rabbit [score|killer|random]`. Upstream's style argument is optional
+      // and a bare switch means `score`; an argument it does not recognise is
+      // left unconsumed rather than rejected, which comes to the same thing
+      // (CmdLineOptions.cxx:1096). Rabbit Chase and `-c` are mutually exclusive
+      // and Rabbit Chase wins whichever order they arrive in, which resolveTeamMode
+      // below is where that happens.
+      override.rabbitSelection = normalizeRabbitSelection(value ?? true);
+      hasExplicitMode = true;
+      touched = true;
     } else if (option === '-offa') {
       override.enabled = false;
       hasExplicitMode = true;
@@ -140,9 +188,9 @@ function parseBZWTeamMode(lines) {
       touched = true;
     } else if (option === '-mp' && value?.includes(',')) {
       const counts = value.split(',').map((count) => Number.parseInt(count, 10));
-      const enabledSet = new Set(BZFLAG_TEAM_ORDER.filter((team, index) => counts[index] > 0));
+      const enabledSet = new Set(BZFLAG_MP_TEAM_ORDER.filter((team, index) => counts[index] > 0));
       override.teams = PLAYER_TEAMS.filter((team) => enabledSet.has(team));
-      override.limits = Object.fromEntries(BZFLAG_TEAM_ORDER.map((team, index) => [
+      override.limits = Object.fromEntries(BZFLAG_MP_TEAM_ORDER.map((team, index) => [
         team,
         Number.isInteger(counts[index]) && counts[index] >= 0 ? counts[index] : 0,
       ]));
@@ -159,16 +207,68 @@ function parseBZWTeamMode(lines) {
   return touched ? override : null;
 }
 
-function resolveTeamMode(serverValue, mapOverride = null, defaultLimit = Number.MAX_SAFE_INTEGER) {
+// `rabbit` in server.json and `-rabbit` in a map's options block, which name one
+// of upstream's three RabbitSelection values (CmdLineOptions.cxx:1106). `false`,
+// absent or unreadable is Rabbit Chase off; anything else falls back to `score`,
+// as a bare `-rabbit` does upstream.
+const RABBIT_SELECTIONS = Object.freeze(['score', 'killer', 'random']);
+
+function normalizeRabbitSelection(value) {
+  if (value === undefined || value === null || value === false) return null;
+  const normalized = typeof value === 'string' ? value.trim().toLowerCase() : '';
+  if (normalized === 'false' || normalized === 'off' || normalized === 'none') return null;
+  return RABBIT_SELECTIONS.includes(normalized) ? normalized : 'score';
+}
+
+// A map switch only ever turns something on, as every other bzfs switch in an
+// options block does, so a map may pick Rabbit Chase or change its selection
+// style and nothing in a map turns it back off.
+function resolveRabbitSelection(serverValue, mapValue) {
+  return normalizeRabbitSelection(mapValue) ?? normalizeRabbitSelection(serverValue);
+}
+
+function resolveTeamMode(serverValue, mapOverride = null, defaultLimit = Number.MAX_SAFE_INTEGER, serverRabbit = null) {
   const serverMode = normalizeServerTeamMode(serverValue, defaultLimit);
-  const enabled = typeof mapOverride?.enabled === 'boolean'
+  const rabbitSelection = resolveRabbitSelection(serverRabbit, mapOverride?.rabbitSelection);
+  const requestedEnabled = typeof mapOverride?.enabled === 'boolean'
     ? mapOverride.enabled
     : serverMode.enabled;
-  if (!enabled) {
+
+  // CmdLineOptions.cxx:1586. Rabbit Chase zeroes every colour team's limit --
+  // "only rogues are allowed in Rabbit Chase" -- gives the rabbit a limit of one
+  // and the hunters whatever the rogue limit was. It is the last word on the game
+  // type whichever order the switches arrived in, which is what makes it and `-c`
+  // mutually exclusive; `colorTeamsRefused` is what the caller logs about it.
+  if (rabbitSelection) {
+    const rogueLimit = normalizeTeamLimits(
+      serverMode.limits, [PLAYER_TEAM.ROGUE], defaultLimit)[PLAYER_TEAM.ROGUE];
+    const teams = [PLAYER_TEAM.OBSERVER, PLAYER_TEAM.HUNTER];
+    return {
+      enabled: false,
+      autoTeam: false,
+      rabbitSelection,
+      colorTeamsRefused: requestedEnabled,
+      teams,
+      limits: {
+        ...normalizeTeamLimits(serverMode.limits, [PLAYER_TEAM.OBSERVER], defaultLimit),
+        // Only the hunter limit is ever consulted -- anointing does not ask
+        // whether the rabbit team has room, since deposing the old rabbit is what
+        // makes it. The rabbit's one is carried because it is a field of the ping
+        // packet a published server reports, and because it says the shape out
+        // loud.
+        [PLAYER_TEAM.RABBIT]: 1,
+        [PLAYER_TEAM.HUNTER]: rogueLimit,
+      },
+    };
+  }
+
+  if (!requestedEnabled) {
     const teams = [...NON_TEAM_MODE_TEAMS];
     return {
       enabled: false,
       autoTeam: false,
+      rabbitSelection: null,
+      colorTeamsRefused: false,
       teams,
       limits: normalizeTeamLimits(serverMode.limits, teams, defaultLimit),
     };
@@ -180,6 +280,8 @@ function resolveTeamMode(serverValue, mapOverride = null, defaultLimit = Number.
   return {
     enabled: true,
     autoTeam: mapOverride?.autoTeam ?? serverMode.autoTeam,
+    rabbitSelection: null,
+    colorTeamsRefused: false,
     teams,
     limits: normalizeTeamLimits(mapOverride?.limits ?? serverMode.limits, teams, defaultLimit),
   };
@@ -232,8 +334,19 @@ function pickByBaseDistance(candidates, teamCounts, basePositions, random) {
 function selectPlayerTeam(requestedTeam, teamMode, teamCounts = {}, teamScores = {}, basePositions = null, random = Math.random) {
   const requested = normalizePlayerTeamSelection(requestedTeam);
   const automatic = requested === PLAYER_TEAM.AUTOMATIC;
-  if (!automatic && !teamMode.teams.includes(requested)) return null;
   const hasRoom = (team) => (teamCounts[team] || 0) < teamMode.limits[team];
+
+  // autoTeamSelect (bzfs.cxx:1923): "if we're running rabbit chase, all
+  // non-observers start as hunters". There is no team to pick in Rabbit Chase --
+  // asking for observer gives observer and everything else gives hunter, the
+  // rabbit being anointed rather than joined. So a request for a colour team is
+  // honoured as "play" rather than refused, which is what upstream does with it.
+  if (teamMode.rabbitSelection) {
+    const team = requested === PLAYER_TEAM.OBSERVER ? PLAYER_TEAM.OBSERVER : PLAYER_TEAM.HUNTER;
+    return hasRoom(team) ? team : null;
+  }
+
+  if (!automatic && !teamMode.teams.includes(requested)) return null;
 
   if (!automatic && (requested === PLAYER_TEAM.OBSERVER || requested === PLAYER_TEAM.ROGUE || !teamMode.autoTeam)) {
     return hasRoom(requested) ? requested : null;
@@ -275,11 +388,12 @@ function isObserverTeam(team) {
   return normalizePlayerTeam(team) === PLAYER_TEAM.OBSERVER;
 }
 
-// Team::isColorTeam upstream. Rogues and observers carry no team score: a
-// rogue kill feeds nobody's tally, and neither does dying as one.
+// Team::isColorTeam upstream, which is red through purple and nothing else.
+// Every other team carries no team score: a rogue kill feeds nobody's tally and
+// neither does dying as one, and the same goes for the rabbit and the hunters,
+// which is half of why Rabbit Chase never moves a team score.
 function isColorTeam(team) {
-  const normalized = normalizePlayerTeam(team);
-  return normalized !== PLAYER_TEAM.ROGUE && normalized !== PLAYER_TEAM.OBSERVER;
+  return isColorTeamIndex(getTeamColorIndex(normalizePlayerTeam(team)));
 }
 
 // bzfs.cxx:3540. A kill across teams wins one for the killer's team and loses
@@ -303,17 +417,29 @@ function areFoes(teamA, teamB, teamsAllowed) {
   return teamA !== teamB || teamA === PLAYER_TEAM.ROGUE;
 }
 
-// GameType (global.h:94), by the two questions bzo already asks about a world.
-// Upstream picks the type with a switch and derives nothing; bzo has no switch
-// for it, so `-c`/`-offa` decide whether there are colour teams and the map
-// decides whether there are bases, which between them say the same thing.
-// `RabbitChase`, upstream's fourth, is not implemented -- see
-// docs/game-modes-plan.md.
+// GameType (global.h:94), by the questions bzo already asks about a world.
+// Upstream picks the type with a switch and derives nothing; bzo has a switch
+// only for Rabbit Chase, and otherwise `-c`/`-offa` decide whether there are
+// colour teams and the map decides whether there are bases, which between them
+// say the same thing.
+//
+// Rabbit Chase is asked first because it is the switch that turns the colour
+// teams off, so a world that has it can answer nothing else -- which is exactly
+// upstream's own "Capture the flag incompatible with Rabbit Chase".
 //
 // Server-only: the type decides scoring and spawning, which are the server's.
-function getGameType(teamsEnabled, hasBases) {
+function getGameType(teamsEnabled, hasBases, rabbitChase = false) {
+  if (rabbitChase) return 'RabbitChase';
   if (!teamsEnabled) return 'OpenFFA';
   return hasBases ? 'ClassicCTF' : 'TeamFFA';
+}
+
+// World::allowTeams / bzfs's own allowTeams (bzfs.cxx:3334): every game type but
+// OpenFFA has sides. It is asked of the game type rather than of `TEAM_MODE`
+// because Rabbit Chase has sides -- the rabbit and the hunters -- while having no
+// colour teams at all, so the two questions come apart there and nowhere else.
+function allowTeams(gameType) {
+  return gameType !== 'OpenFFA';
 }
 
 // bzfs.cxx:3539. A kill moves the team score in the two free-for-all types and
@@ -323,6 +449,97 @@ function getGameType(teamsEnabled, hasBases) {
 // upstream's belt to that braces.
 function teamScoreMovesOnKill(gameType) {
   return gameType === 'TeamFFA' || gameType === 'OpenFFA';
+}
+
+// Score::ranking (Score.cxx:42). A win *rate* rather than a win count, damped
+// towards the middle until there is enough of a record to trust it: a player
+// with no record at all is exactly 0.5, and the penalty term
+// `1 - 0.5 / sqrt(sum)` reaches 0.5 after one game and 0.9 after twenty-five.
+//
+// This decides who becomes the rabbit, and it is also what the scoreboard sorts
+// by in Rabbit Chase -- upstream keeps a second copy of the arithmetic on the
+// client for that (`rabbitRank`, Player.cxx:157), so the pair keeps one.
+function getPlayerRanking(wins, losses) {
+  const sum = wins + losses;
+  if (sum === 0) return 0.5;
+  return (wins / sum) * (1 - (0.5 / Math.sqrt(sum)));
+}
+
+// PlayerInfo::canBeRabbit (PlayerInfo.cxx:504). A paused or observing player
+// cannot hold it, and it wants someone alive -- `relaxing` is the pass that will
+// settle for a dead player in the game, which anointRabbit below makes when
+// nobody alive qualifies.
+//
+// A candidate is `{ paused, observer, alive, playing }`. Upstream also refuses a
+// `notResponding` player; bzo has no such state, because a client that stops
+// answering has a socket that closes and leaves the roster outright.
+//
+// Server-only.
+function canBeRabbit(candidate, relaxing = false) {
+  if (!candidate) return false;
+  if (candidate.paused || candidate.observer) return false;
+  return relaxing ? Boolean(candidate.playing) : Boolean(candidate.alive);
+}
+
+// GameKeeper::Player::anointRabbit (GameKeeper.cxx:145). The best candidate by
+// ranking, preferring anyone alive who is not the old rabbit: a "good" rabbit
+// beats every not-good one however they rank, and among equals the ranking
+// decides. Settling for the old rabbit or for a dead player is the fallback that
+// keeps a two-player game moving.
+//
+// `candidates` is one entry per player, `{ id, paused, observer, alive, playing,
+// ranking }`, with the ranking already computed -- upstream swaps the whole
+// ranking function out for `-rabbit random` (Score::setRandomRanking) rather
+// than branching inside the loop, so the caller owns that choice here too.
+// Returns the new rabbit's id, or null if nobody at all may hold it.
+//
+// Server-only.
+function anointRabbit(candidates, oldRabbitId = null) {
+  let chosenId = null;
+  let topRanking = -Infinity;
+  let goodRabbitChosen = false;
+
+  for (const candidate of candidates) {
+    if (!canBeRabbit(candidate, true)) continue;
+    const good = candidate.id !== oldRabbitId && Boolean(candidate.alive);
+    if (goodRabbitChosen && !good) continue;
+    if (good && !goodRabbitChosen) {
+      goodRabbitChosen = true;
+    } else if (!(candidate.ranking > topRanking)) {
+      continue;
+    }
+    topRanking = candidate.ranking;
+    chosenId = candidate.id;
+  }
+
+  return chosenId;
+}
+
+// The selection half of anointNewRabbit (bzfs.cxx:2737), without the broadcast:
+// under `-rabbit killer` whoever just killed the rabbit takes it if they are
+// still around and still eligible, and otherwise -- and for the other two styles
+// -- anointRabbit picks. Upstream asks the killer for the strict `canBeRabbit()`,
+// so a killer who died in the same exchange does not inherit it.
+//
+// Server-only.
+function pickNewRabbit({ candidates, oldRabbitId = null, killerId = null, selection = 'score' } = {}) {
+  if (selection === 'killer' && killerId !== null && killerId !== oldRabbitId) {
+    const killer = candidates.find((candidate) => candidate.id === killerId);
+    if (killer?.playing && canBeRabbit(killer)) return killerId;
+  }
+  return anointRabbit(candidates, oldRabbitId);
+}
+
+// PlayerInfo::isARabbitKill (PlayerInfo.h:324) -- `wasRabbit || victim is the
+// rabbit`. Shooting the rabbit is never a team kill, and neither is anything the
+// deposed rabbit does before its next spawn: hunters are team mates, so
+// hunter-on-hunter fire *is* team killing, and this one window is the whole
+// exception to that. `wasRabbit` is set the moment a rabbit is deposed and
+// cleared when it spawns again (bzfs.cxx:3287).
+//
+// Server-only.
+function isARabbitKill(killer, victim) {
+  return Boolean(killer?.wasRabbit) || isRabbitTeam(victim?.team);
 }
 
 function getTeamScoreDeltasForKill(killerTeam, victimTeam, selfKill = false) {
@@ -413,7 +630,9 @@ module.exports = {
   TEAM_SHADE_MIN_SATURATION,
   PLAYER_TEAM,
   PLAYER_TEAMS,
+  ALL_PLAYER_TEAMS,
   BZFLAG_TEAM_ORDER,
+  BZFLAG_MP_TEAM_ORDER,
   getTeamColorIndex,
   getTeamFromColorIndex,
   isColorTeamIndex,
@@ -429,8 +648,17 @@ module.exports = {
   getInitialPlayerColor,
   isColorTeam,
   isObserverTeam,
+  isRabbitTeam,
   areFoes,
+  allowTeams,
   getGameType,
+  normalizeRabbitSelection,
+  resolveRabbitSelection,
+  getPlayerRanking,
+  canBeRabbit,
+  anointRabbit,
+  pickNewRabbit,
+  isARabbitKill,
   teamScoreMovesOnKill,
   getTeamScoreDeltasForKill,
   getTeamScoreDeltasForCapture,

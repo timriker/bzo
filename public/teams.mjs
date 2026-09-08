@@ -13,8 +13,14 @@ export const PLAYER_TEAM = Object.freeze({
   BLUE: 'blue',
   GREEN: 'green',
   PURPLE: 'purple',
+  RABBIT: 'rabbit',
+  HUNTER: 'hunter',
 });
 
+// The teams a player may *ask* to join, which is what the entry dialog offers.
+// Rabbit and hunter are missing on purpose: Rabbit Chase assigns both, so the
+// server never sends either in `teamMode.teams` for the dialog to read. See
+// ALL_PLAYER_TEAMS for the teams a player may be *on*.
 export const PLAYER_TEAMS = Object.freeze([
   PLAYER_TEAM.ROGUE,
   PLAYER_TEAM.OBSERVER,
@@ -22,6 +28,13 @@ export const PLAYER_TEAMS = Object.freeze([
   PLAYER_TEAM.BLUE,
   PLAYER_TEAM.GREEN,
   PLAYER_TEAM.PURPLE,
+]);
+// Every team a player may be on, which is upstream's whole TeamColor enum bar
+// the two pseudo-teams (`NumTeams` is 8, `global.h:59`).
+export const ALL_PLAYER_TEAMS = Object.freeze([
+  ...PLAYER_TEAMS,
+  PLAYER_TEAM.RABBIT,
+  PLAYER_TEAM.HUNTER,
 ]);
 
 // BZFlag's TeamColor numbering (global.h:59). A BZW `base` object names one of
@@ -35,6 +48,8 @@ export const BZFLAG_TEAM_ORDER = Object.freeze([
   PLAYER_TEAM.BLUE,
   PLAYER_TEAM.PURPLE,
   PLAYER_TEAM.OBSERVER,
+  PLAYER_TEAM.RABBIT,
+  PLAYER_TEAM.HUNTER,
 ]);
 export const PLAYER_TEAM_COLORS = Object.freeze({
   [PLAYER_TEAM.ROGUE]: 0xffff00,
@@ -43,6 +58,12 @@ export const PLAYER_TEAM_COLORS = Object.freeze({
   [PLAYER_TEAM.BLUE]: 0x1a33ff,
   [PLAYER_TEAM.GREEN]: 0x00ff00,
   [PLAYER_TEAM.PURPLE]: 0xff00ff,
+  // Team::tankColor's last two rows (Team.cxx:27): rabbit light grey, hunter
+  // orange. Only the rabbit's is painted -- hunters keep the per-player colour
+  // every bzo player has, since one colour for the crowd is what hunter orange
+  // was for. See getEffectiveTankColor in client.js.
+  [PLAYER_TEAM.RABBIT]: 0xcccccc,
+  [PLAYER_TEAM.HUNTER]: 0xff8000,
 });
 
 export const PLAYER_TEAM_LABELS = Object.freeze({
@@ -53,6 +74,8 @@ export const PLAYER_TEAM_LABELS = Object.freeze({
   [PLAYER_TEAM.BLUE]: 'Blue Team',
   [PLAYER_TEAM.GREEN]: 'Green Team',
   [PLAYER_TEAM.PURPLE]: 'Purple Team',
+  [PLAYER_TEAM.RABBIT]: 'Rabbit',
+  [PLAYER_TEAM.HUNTER]: 'Hunter',
 });
 
 // Team::radarColor (Team.cxx:30). Deliberately not the tank colours: red, green
@@ -66,11 +89,20 @@ export const PLAYER_TEAM_RADAR_COLORS = Object.freeze({
   [PLAYER_TEAM.BLUE]: 0x1440ff,
   [PLAYER_TEAM.GREEN]: 0x33e633,
   [PLAYER_TEAM.PURPLE]: 0xff66ff,
+  // The rabbit reads white on the radar rather than grey, which is upstream's
+  // own choice (Team.cxx:38) and the same reasoning as the other four: the
+  // radar's colours are lifted so a team reads against a dark panel.
+  [PLAYER_TEAM.RABBIT]: 0xffffff,
+  [PLAYER_TEAM.HUNTER]: 0xff8000,
 });
 
 export function normalizePlayerTeam(team) {
   const normalized = typeof team === 'string' ? team.trim().toLowerCase() : '';
-  return PLAYER_TEAMS.includes(normalized) ? normalized : PLAYER_TEAM.ROGUE;
+  return ALL_PLAYER_TEAMS.includes(normalized) ? normalized : PLAYER_TEAM.ROGUE;
+}
+
+export function isRabbitTeam(team) {
+  return normalizePlayerTeam(team) === PLAYER_TEAM.RABBIT;
 }
 
 export function normalizePlayerTeamSelection(team) {
@@ -86,11 +118,11 @@ export function isObserverTeam(team) {
   return normalizePlayerTeam(team) === PLAYER_TEAM.OBSERVER;
 }
 
-// Team::isColorTeam upstream. Rogues and observers carry no team score: a
-// rogue kill feeds nobody's tally, and neither does dying as one.
+// Team::isColorTeam upstream, which is red through purple and nothing else.
+// Every other team carries no team score: a rogue kill feeds nobody's tally and
+// neither does dying as one, and the same goes for the rabbit and the hunters.
 export function isColorTeam(team) {
-  const normalized = normalizePlayerTeam(team);
-  return normalized !== PLAYER_TEAM.ROGUE && normalized !== PLAYER_TEAM.OBSERVER;
+  return isColorTeamIndex(getTeamColorIndex(normalizePlayerTeam(team)));
 }
 
 // null rather than rogue for anything that is not a team, so a caller cannot
@@ -125,6 +157,19 @@ export function getTeamScoreDeltasForCapture(cappingTeam, cappedTeam) {
   }
   if (isColorTeam(cappedTeam)) deltas.push({ team: cappedTeam, wins: 0, losses: 1 });
   return deltas;
+}
+
+// Score::ranking (Score.cxx:42), and `rabbitRank` in the client's own Player.cxx
+// -- upstream keeps the same formula twice for the same reason bzo keeps it in
+// this pair: the server picks the rabbit with it and the client sorts the
+// scoreboard by it, so a board that disagreed would stop predicting who is next.
+//
+// A win *rate* rather than a win count, damped towards the middle until there is
+// enough of a record to trust it: no record at all is exactly 0.5.
+export function getPlayerRanking(wins, losses) {
+  const sum = wins + losses;
+  if (sum === 0) return 0.5;
+  return (wins / sum) * (1 - (0.5 / Math.sqrt(sum)));
 }
 
 export function getPlayerTeamRadarColor(team) {

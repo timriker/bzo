@@ -127,11 +127,17 @@ const {
   isColorTeam,
   isObserverTeam,
   isColorTeamIndex,
+  isRabbitTeam,
   getTeamColorIndex,
   getTeamFromColorIndex,
   getTeamScoreDeltasForCapture,
   getTeamScoreDeltasForKill,
   getGameType,
+  allowTeams,
+  getPlayerRanking,
+  pickNewRabbit,
+  isARabbitKill,
+  PLAYER_TEAM,
   teamScoreMovesOnKill,
   areFoes,
 } = require('./server/teams.cjs');
@@ -1995,8 +2001,22 @@ const configuredMaxPlayers = Number(serverConfig.maxPlayers);
 const defaultTeamLimit = Number.isInteger(configuredMaxPlayers) && configuredMaxPlayers > 0
   ? configuredMaxPlayers
   : 16;
-const TEAM_MODE = resolveTeamMode(serverConfig.teamMode, mapTeamMode, defaultTeamLimit);
+const TEAM_MODE = resolveTeamMode(
+  serverConfig.teamMode, mapTeamMode, defaultTeamLimit, serverConfig.rabbit);
 log(`Team mode: ${TEAM_MODE.enabled ? 'enabled' : 'disabled'}; autoTeam=${TEAM_MODE.autoTeam}; teams=${TEAM_MODE.teams.map((team) => `${team}:${TEAM_MODE.limits[team]}`).join(',')}`);
+// RabbitChase upstream, `-rabbit [score|killer|random]`: one rabbit against every
+// hunter, and null when the world is not playing it. Resolved here rather than
+// beside GAME_TYPE because it is what decides whether the world has colour teams
+// at all -- `resolveTeamMode` above has already zeroed them if it is on
+// (CmdLineOptions.cxx:1586).
+const RABBIT_SELECTION = TEAM_MODE.rabbitSelection;
+if (RABBIT_SELECTION) {
+  log(`Rabbit chase: on; selection=${RABBIT_SELECTION}`);
+  // Upstream's own "only rogues are allowed in Rabbit Chase; zeroing out <team>".
+  if (TEAM_MODE.colorTeamsRefused) {
+    log('Rabbit chase: only hunters are allowed, so the configured colour teams are off');
+  }
+}
 
 // Team scores follow bzfs: a team's score is wins minus losses, only colour
 // teams keep one, and a team's tally resets when its first player joins an
@@ -2063,6 +2083,84 @@ function recordTeamScoreForKill(killer, victim) {
     score.losses += delta.losses;
   }
   broadcastTeamScores();
+}
+
+// `rabbitIndex` (bzfs.cxx:158). Who the rabbit is, or null when the world has no
+// rabbit -- which happens between the last player leaving and the next one
+// spawning, and whenever everybody who could hold it is paused or observing.
+let rabbitPlayerId = null;
+
+// anointNewRabbit (bzfs.cxx:2737). Run whenever the rabbit dies, pauses, leaves,
+// goes to observer or rejoins, and whenever a player spawns while there is no
+// rabbit. `killerId` is only read under `-rabbit killer`, where whoever shot the
+// rabbit takes it if they can.
+//
+// Upstream also runs this when a client sends `MsgNewRabbit` to refuse the post
+// while paused (bzfs.cxx:5196); bzo needs no such message, because the server
+// already knows who is paused and `canBeRabbit` refuses them here.
+function anointNewRabbit(killerId = null) {
+  if (!RABBIT_SELECTION) return;
+
+  const oldRabbitId = rabbitPlayerId;
+  const candidates = [];
+  players.forEach((candidate) => {
+    if (!candidate.joined) return;
+    candidates.push({
+      id: candidate.id,
+      paused: candidate.paused,
+      observer: isObserverTeam(candidate.team),
+      alive: candidate.health > 0,
+      // PlayerInfo::isPlaying, `state > PlayerInLimbo`: in the game, alive or
+      // not. A bzo player who is in the roster and has joined is exactly that.
+      playing: true,
+      // Score::ranking, or a random number under `-rabbit random` -- upstream
+      // replaces the whole function for that mode (Score::setRandomRanking)
+      // rather than branching inside the selection loop.
+      ranking: RABBIT_SELECTION === 'random'
+        ? Math.random()
+        : getPlayerRanking(candidate.kills, candidate.deaths),
+    });
+  });
+
+  rabbitPlayerId = pickNewRabbit({
+    candidates,
+    oldRabbitId,
+    killerId,
+    selection: RABBIT_SELECTION,
+  });
+
+  let changed = rabbitPlayerId !== oldRabbitId;
+  const oldRabbit = oldRabbitId !== null ? players.get(oldRabbitId) : null;
+  // PlayerInfo::wasARabbit (PlayerInfo.cxx:419): a deposed rabbit becomes a
+  // hunter and is marked, which is what excuses its shots until it spawns again.
+  // Guarded on the team because the observer case gets here having already left
+  // the rabbit team, and putting them back on it would undo the switch.
+  if (oldRabbit && changed && isRabbitTeam(oldRabbit.team)) {
+    oldRabbit.team = PLAYER_TEAM.HUNTER;
+    oldRabbit.wasRabbit = true;
+  }
+  const rabbit = rabbitPlayerId !== null ? players.get(rabbitPlayerId) : null;
+  // Also the rejoin case, where the same player keeps the post but arrived back
+  // as a hunter: upstream broadcasts only on a change of holder, and bzo has to
+  // broadcast a change of team as well because the team is what it draws.
+  if (rabbit && !isRabbitTeam(rabbit.team)) {
+    rabbit.team = PLAYER_TEAM.RABBIT;
+    changed = true;
+  }
+  if (!changed) return;
+
+  log(`Rabbit chase: ${rabbit ? `"${rabbit.name}" is now the rabbit` : 'no rabbit'}`);
+  // MsgNewRabbit. One id, or none: the client paints that player the rabbit and
+  // everybody else a hunter, as playing.cxx:2851 does.
+  broadcastAll({ type: 'newRabbit', playerId: rabbitPlayerId });
+}
+
+// bzfs.cxx:3287. Spawning closes the window in which a deposed rabbit's shots
+// are nobody's team kill, and takes the rabbit if the world has none.
+function handleRabbitSpawn(player) {
+  if (!RABBIT_SELECTION) return;
+  player.wasRabbit = false;
+  if (rabbitPlayerId === null) anointNewRabbit();
 }
 log(OBSTACLES);
 
@@ -2203,6 +2301,11 @@ class Player {
     this.team = 'rogue';
     this.color = getInitialPlayerColor(TEAM_MODE, this.team, (team) => Player.pickDistinctColor(team));
     this.joined = false;
+    // PlayerInfo::wasRabbit (PlayerInfo.h:204). Set when this player is deposed as
+    // the rabbit and cleared on its next spawn. In that window its shots are
+    // nobody's team kill, which is the whole of Rabbit Chase's exception to
+    // hunters being team mates -- see isARabbitKill.
+    this.wasRabbit = false;
     // PlayerInfo::restartOnBase. Set for every CTF spawn and after a capture.
     this.restartOnBase = false;
     // GameKeeper::Player::lastIdFlag. Which flag the Identify flag last named,
@@ -2463,6 +2566,7 @@ class Player {
     this.teleportReentryBlockDistance = 0;
     this.teleportReentryBlockUntil = 0;
     this.teleportCooldownUntil = 0;
+    handleRabbitSpawn(this);
   }
 
   getState() {
@@ -3633,8 +3737,13 @@ const CTF_ENABLED = TEAM_MODE.enabled && BASES_BY_TEAM.size > 0;
 // re-deriving it. `CTF_ENABLED` and `TEAM_MODE` stay the ones to ask about
 // bases and about colour teams; this is for the rules upstream writes in terms
 // of the type as a whole.
-const GAME_TYPE = getGameType(TEAM_MODE.enabled, BASES_BY_TEAM.size > 0);
+const GAME_TYPE = getGameType(TEAM_MODE.enabled, BASES_BY_TEAM.size > 0, Boolean(RABBIT_SELECTION));
 log(`Game type: ${GAME_TYPE}`);
+// allowTeams (bzfs.cxx:3334). Whether this world has sides at all, which is what
+// every team-kill question actually asks. Not `TEAM_MODE.enabled`: Rabbit Chase
+// has sides -- the rabbit against the hunters -- while having no colour teams,
+// so the two come apart there and only there.
+const TEAMS_ALLOWED = allowTeams(GAME_TYPE);
 // World::allowJumping, upstream's -j. Upstream has jumping off until the switch
 // turns it on; bzo has had it on since before there was a switch, so the default
 // stays on and `jumping: false` in server.json is what turns it off. A map's
@@ -3750,6 +3859,11 @@ function getForbiddenFlags() {
   // leaves it in the pool and lets it do nothing; bzo takes it out, as it
   // already takes out `JP` on a world that always jumps and `R` on one that
   // always bounces.
+  //
+  // Rabbit Chase reaches this through the same test rather than a second one:
+  // upstream forbids `G` when no colour team has a limit (CmdLineOptions.cxx:1693)
+  // and Rabbit Chase is what zeroes them all, so `TEAM_MODE.enabled` is already
+  // false by the time this is asked.
   if (!TEAM_MODE.enabled) forbidden.push('G');
   // "if (OBSTACLEMGR.getTeles().size() == 0) forbidden.insert(Flags::PhantomZone)"
   // (CmdLineOptions.cxx:1714). Crossing a teleporter is the only thing that
@@ -4461,22 +4575,14 @@ function captureFlag(player, baseColorIndex) {
   // scores no deaths for them -- the team loss is the whole penalty.
   players.forEach((victim) => {
     if (victim.team !== cappedTeam) return;
+    // Even for a tank that is already dead: the capture is what decides where it
+    // comes back, whether or not it was standing when the flag went.
     victim.restartOnBase = true;
     if (victim.health <= 0) return;
-    victim.health = 0;
-    dropPlayerFlag(victim.id);
-    broadcastAll({
-      type: 'playerHit',
-      victimId: victim.id,
-      shooterId: player.id,
-      projectileId: null,
-      captured: true,
-    });
-    setTimeout(() => {
-      if (!players.has(victim.id)) return;
-      victim.respawn();
-      broadcastAll({ type: 'playerRespawned', player: victim.getState() });
-    }, GAME_CONFIG.RESPAWN_DELAY);
+    // `captured` rather than a reason, and no score at all -- that is the whole
+    // of how a capture differs from any other death, and everything it has in
+    // common with one is in applyDeath.
+    applyDeath(victim, player.id, { captured: true });
   });
 }
 
@@ -4541,6 +4647,13 @@ function setPaused(player, paused) {
   // alone ("set dt to zero instead of clearing velocity ... for when we
   // resume"): both ends kept them, so both ends still agree.
   player.lastUpdate = Date.now();
+
+  // bzfs.cxx:2802. A rabbit that pauses gives the post up, because a rabbit
+  // nobody can shoot is not a rabbit; and a player coming back takes it if the
+  // world has none, which is how a game where everybody paused recovers.
+  if (RABBIT_SELECTION) {
+    if (paused ? rabbitPlayerId === player.id : rabbitPlayerId === null) anointNewRabbit();
+  }
 
   if (!paused) {
     broadcastAll({ type: 'playerUnpaused', playerId: player.id });
@@ -5630,7 +5743,7 @@ function applySteamrollerSweep(now) {
       // Squashing is a kill like any other, so friendly fire governs it: the
       // guard is upstream's own, in this very loop (playing.cxx:4212).
       if (NO_TEAM_KILLS
-        && !areFoes(roller.player.team, victim.team, TEAM_MODE.enabled)) continue;
+        && !areFoes(roller.player.team, victim.team, TEAMS_ALLOWED)) continue;
 
       // Steamroller crushes what it touches; anybody at all crushes a burrowed
       // tank. Both need the roller above ground, which is what stops two
@@ -5892,7 +6005,7 @@ function findShotPlayerHit(proj, from, to, now) {
     // guard by name (LocalPlayer.cxx:1617), because nothing about a theft is a
     // kill and a team mate carrying the flag you want is exactly who you rob.
     if (NO_TEAM_KILLS && !proj.steals && player.id !== proj.playerId
-      && !areFoes(getShotTeam(proj), player.team, TEAM_MODE.enabled)) return;
+      && !areFoes(getShotTeam(proj), player.team, TEAMS_ALLOWED)) return;
 
     // `ThiefStrategy::isStoppedByHit` returns false: a thief's beam is not spent
     // by a tank, so a tank with nothing to take does not block it. bzo stops it
@@ -5948,6 +6061,7 @@ const DEATH_REASON = Object.freeze({
   SHOT: 'shot',           // GotShot
   RUN_OVER: 'runOver',    // GotRunOver
   GENOCIDE: 'genocide',   // GenocideEffect
+  SELF_DESTRUCT: 'selfDestruct', // SelfDestruct
 });
 
 // playerKilled() (bzfs.cxx:3345). One tank dies, for one reason, and everything
@@ -5958,6 +6072,54 @@ const DEATH_REASON = Object.freeze({
 // `shooterId` is for a killer that is not a player: a world weapon's shot
 // carries `ServerPlayer`, which has no roster entry to take an id from, and the
 // client needs the id to say what killed you.
+// What a death *does*, as against what it costs: the tank stops, its lock goes
+// with it, its flag goes, the rabbit is re-anointed if the rabbit is what died,
+// the clients are told and the respawn is queued.
+//
+// Every death in bzo runs this and nothing runs a copy of it. It used to have
+// three copies -- a shot, a self-destruct and a capture -- and two of them had
+// already drifted: neither the self-destruct nor the capture cleared the lock,
+// so a missile kept steering at a tank that was already exploding, and the
+// self-destruct had to be told about the rabbit separately. That is what a
+// second copy of a list like this costs, so there is one.
+//
+// `killerId` is who the clients are told did it, which is not always a player:
+// a world weapon's shot carries `ServerPlayer`, and a capture carries whoever
+// capped. `hit` is what killed the tank -- the one part that really does differ
+// between a shot, a suicide and a capture -- spread over the message.
+//
+// What a death *costs* stays with the caller, because that is what differs:
+// killPlayer scores it, and a capture deliberately scores nobody a death, "the
+// team loss is the whole penalty".
+function applyDeath(victim, killerId, hit) {
+  victim.health = 0;
+  // playing.cxx:3827. A dead tank has nothing locked, so the marker goes with
+  // it and a respawn starts clean. Missiles already in the air fly straight from
+  // here, which is what upstream's `setTarget(NULL)` does to them too.
+  setLockTarget(victim, null);
+
+  // bzfs.cxx:3537. Killing the rabbit is what deposes it, and under
+  // `-rabbit killer` whoever did the killing takes it if they still can. Every
+  // way to depose a rabbit by killing it arrives here, which is the point.
+  if (RABBIT_SELECTION && victim.id === rabbitPlayerId) anointNewRabbit(killerId);
+
+  dropPlayerFlag(victim.id);
+
+  broadcastAll({
+    type: 'playerHit',
+    victimId: victim.id,
+    shooterId: killerId,
+    projectileId: null,
+    ...hit,
+  });
+
+  setTimeout(() => {
+    if (!players.has(victim.id)) return;
+    victim.respawn();
+    broadcastAll({ type: 'playerRespawned', player: victim.getState() });
+  }, GAME_CONFIG.RESPAWN_DELAY);
+}
+
 function killPlayer(victim, killer, reason, projectileId = null, shooterId = null) {
   // "victim was already dead. keep score." Upstream's own guard, and bzo needs
   // it for the same reason plus one of its own: genocide kills a team in a loop,
@@ -5965,17 +6127,22 @@ function killPlayer(victim, killer, reason, projectileId = null, shooterId = nul
   // rest.
   if (victim.health <= 0) return;
 
-  victim.health = 0;
   victim.deaths++;
-  // playing.cxx:3827. A dead tank has nothing locked, so the marker goes with
-  // it and a respawn starts clean. Missiles already in the air fly straight from
-  // here, which is what upstream's `setTarget(NULL)` does to them too.
-  setLockTarget(victim, null);
 
   // areFoes(): a kill across teams, a rogue killing anyone, or any kill at all
   // on a world without teams. Everything else is a team kill.
+  //
+  // isARabbitKill (bzfs.cxx:3421) is Rabbit Chase's one exception. Hunters share
+  // a team, so hunter-on-hunter fire *is* team killing -- except that shooting
+  // the rabbit never is, and neither is anything a deposed rabbit does before its
+  // next spawn. Decided before `applyDeath` below, because the anointing in
+  // there is what stops the victim being the rabbit; upstream's order too.
+  //
+  // Note this is not the same question as "was it a suicide" for the notice
+  // below: a world weapon has no killer to score, and is nobody's suicide.
   const selfKill = !killer || killer.id === victim.id;
-  const teamKill = !selfKill && !areFoes(killer.team, victim.team, TEAM_MODE.enabled);
+  const teamKill = !selfKill && !areFoes(killer.team, victim.team, TEAMS_ALLOWED)
+    && !isARabbitKill(killer, victim);
   if (!selfKill) {
     if (teamKill) {
       // Upstream scores the killer a death rather than a kill for it
@@ -5991,25 +6158,16 @@ function killPlayer(victim, killer, reason, projectileId = null, shooterId = nul
   // getTeamScoreDeltasForKill already reads the two being the same player.
   recordTeamScoreForKill(killer, victim);
 
-  dropPlayerFlag(victim.id);
-
-  broadcastAll({
-    type: 'playerHit',
-    victimId: victim.id,
-    shooterId: killer ? killer.id : shooterId,
+  const killerId = killer ? killer.id : shooterId;
+  applyDeath(victim, killerId, {
     projectileId,
     reason,
+    // The client words its death notice from this, and derives the same thing
+    // from the ids as a fallback (`victimId === shooterId`). Read off the
+    // shooter of record rather than off `selfKill`, which is also true of a
+    // world weapon's kill -- that has nobody to score and is nobody's suicide.
+    suicide: killerId === victim.id,
   });
-
-  setTimeout(() => {
-    if (players.has(victim.id)) {
-      victim.respawn();
-      broadcastAll({
-        type: 'playerRespawned',
-        player: victim.getState(),
-      });
-    }
-  }, GAME_CONFIG.RESPAWN_DELAY);
 
   // "-tk: player does not die when killing a teammate" -- so without it, they
   // do. Upstream kills the killer with the same reason the victim took
@@ -6153,7 +6311,7 @@ function applyShockWaveHits(proj, id, radius, now) {
     // Friendly fire, as for any other shot: upstream's team-kill guard is one
     // test in one loop over every shot the shooter owns, and a shock wave is one
     // of them.
-    if (NO_TEAM_KILLS && !areFoes(getShotTeam(proj), player.team, TEAM_MODE.enabled)) return;
+    if (NO_TEAM_KILLS && !areFoes(getShotTeam(proj), player.team, TEAMS_ALLOWED)) return;
 
     const at = player.getExtrapolatedPosition(now);
     const dx = at.x - proj.x;
@@ -6815,6 +6973,10 @@ wss.on('connection', (ws, req) => {
     config: GAME_CONFIG,
     teamMode: TEAM_MODE,
     teamScores: getTeamScoreState(),
+    // bzfs.cxx:2437 sends MsgNewRabbit to a joining player for the same reason:
+    // the rabbit is world state, not an event, so a client that arrives mid-game
+    // has to be told who it is.
+    rabbitId: rabbitPlayerId,
     voiceRtcConfig: { iceServers: VOICE_ICE_SERVERS },
     obstacles: OBSTACLES,
     teleporterGraph: TELEPORTER_GRAPH,
@@ -7554,31 +7716,18 @@ wss.on('connection', (ws, req) => {
         }
 
         case 'selfDestruct': {
+          // An observer has no tank to destroy. The dead tank is killPlayer's own
+          // guard, and it is only repeated here so a request that will do nothing
+          // is not logged as though it did.
           if (player.team === 'observer') break;
           if (player.health <= 0) break;
-          player.health = 0;
-          player.deaths++;
-          recordTeamScoreForKill(player, player);
-          dropPlayerFlag(player.id);
           log(`"${player.name}" self-destructed.`);
-
-          broadcastAll({
-            type: 'playerHit',
-            victimId: player.id,
-            shooterId: player.id,
-            projectileId: null,
-            suicide: true,
-          });
-
-          setTimeout(() => {
-            if (players.has(player.id)) {
-              player.respawn();
-              broadcastAll({
-                type: 'playerRespawned',
-                player: player.getState(),
-              });
-            }
-          }, GAME_CONFIG.RESPAWN_DELAY);
+          // playing.cxx:6966 is `gotBlowedUp(myTank, SelfDestruct, myTank->getId())`
+          // -- upstream's suicide is a kill whose killer is the victim, and it goes
+          // through playerKilled like every other death. So this is one call into
+          // the one death path: the loss, the flag, the lock, the rabbit and the
+          // respawn all happen there, and cannot be forgotten here.
+          killPlayer(player, player, DEATH_REASON.SELF_DESTRUCT);
           break;
         }
 
@@ -7589,7 +7738,12 @@ wss.on('connection', (ws, req) => {
             : 'bzflag';
           const previousTeam = player.joined ? player.team : null;
           const requestedTeam = normalizePlayerTeamSelection(message.team);
-          if (requestedTeam !== 'automatic' && !TEAM_MODE.teams.includes(requestedTeam)) {
+          // autoTeamSelect (bzfs.cxx:1923) refuses nothing in Rabbit Chase: asking
+          // for observer gives observer and asking for anything else means "play",
+          // which is a hunter. So the availability check is skipped there and
+          // selectPlayerTeam answers on its own.
+          if (!RABBIT_SELECTION && requestedTeam !== 'automatic'
+            && !TEAM_MODE.teams.includes(requestedTeam)) {
             ws.send(JSON.stringify({ error: `Team is not available: ${requestedTeam}` }));
             break;
           }
@@ -7699,6 +7853,15 @@ wss.on('connection', (ws, req) => {
             type: 'playerJoined',
             player: player.getState(),
           });
+          // After the join is on the wire, so `newRabbit` never names a player the
+          // other clients have not heard of yet.
+          //
+          // A rejoin arrives as a hunter, and upstream's own rejoin is a leave and
+          // an arrival -- `removePlayer` deposes the rabbit (bzfs.cxx:3001). So a
+          // rabbit that reopened the entry dialog puts the post up for anointing
+          // and is disfavoured for it, keeping it only if nobody else qualifies.
+          if (RABBIT_SELECTION && rabbitPlayerId === player.id) anointNewRabbit();
+          handleRabbitSpawn(player);
           broadcastTeamScores();
           refreshVoiceRosters(true);
           // The world's greeting, said only to whoever just arrived. Upstream
@@ -7925,6 +8088,10 @@ wss.on('connection', (ws, req) => {
     players.forEach((other) => {
       if (other.lockTargetId === player.id) setLockTarget(other, null);
     });
+    // bzfs.cxx:3001. The rabbit leaving vacates the post. It is already out of
+    // the roster here, so there is nobody to mark as the ex-rabbit -- which is
+    // the same reason upstream reads it off `playerIndex` rather than the player.
+    if (RABBIT_SELECTION && rabbitPlayerId === player.id) anointNewRabbit();
     retireTeamFlags(getTeamColorIndex(leavingTeam));
 
     let logMsg = `"${playerName}" (#${playerNum}) disconnected. ${playerKills} kills, ${playerDeaths} deaths.`;

@@ -8,7 +8,16 @@
 // hud.js - Handles HUD and debug display logic
 
 import { normalizeShotSlotCount } from './shots.mjs';
-import { PLAYER_TEAM_LABELS, getPlayerTeamColor, isColorTeam, isObserverTeam } from './teams.mjs';
+import {
+  PLAYER_TEAM,
+  PLAYER_TEAM_COLORS,
+  PLAYER_TEAM_LABELS,
+  getPlayerRanking,
+  getPlayerTeamColor,
+  isColorTeam,
+  isObserverTeam,
+  isRabbitTeam,
+} from './teams.mjs';
 
 const degreeBarRenderState = {
   canvas: null,
@@ -180,7 +189,13 @@ const HUD_ALERT_COLOR = '#ffffff';
 const hudAlerts = new Array(MAX_HUD_ALERTS).fill(null);
 
 // A null or empty string clears the slot, which is what setAlert(i, NULL) does.
-export function setHudAlert(index, text, durationSeconds, warning = false) {
+//
+// `segments` is optional and works exactly as a chat line's does: `[{ text,
+// color }]`, where a segment with no colour of its own takes the alert's. `text`
+// is still the whole line as one string, so a renderer that ignores segments
+// draws something correct. It is how an alert naming a player wears the same
+// colours the scoreboard gives that player -- see formatPlayerLabel.
+export function setHudAlert(index, text, durationSeconds, warning = false, segments = null) {
   const slot = Math.max(0, Math.min(MAX_HUD_ALERTS - 1, index | 0));
   if (!text) {
     hudAlerts[slot] = null;
@@ -189,6 +204,7 @@ export function setHudAlert(index, text, durationSeconds, warning = false) {
   hudAlerts[slot] = {
     text: String(text),
     warning: Boolean(warning),
+    segments: Array.isArray(segments) && segments.length > 0 ? segments : null,
     expiresAt: performance.now() + durationSeconds * 1000,
   };
 }
@@ -204,7 +220,7 @@ export function getActiveHudAlerts(now = performance.now()) {
       hudAlerts[i] = null;
       continue;
     }
-    active.push({ text: alert.text, warning: alert.warning });
+    active.push({ text: alert.text, warning: alert.warning, segments: alert.segments });
   }
   return active;
 }
@@ -221,8 +237,14 @@ export function updateAlertHud(now = performance.now()) {
   if (!alertHudElement) return;
   const active = getActiveHudAlerts(now);
   // Rebuilding three lines every frame would thrash the DOM for text that
-  // changes a few times a minute.
-  const key = active.map((alert) => `${alert.warning ? 'w' : 'n'}:${alert.text}`).join('\n');
+  // changes a few times a minute. The colours are part of the key as well as the
+  // words: two alerts can read the same and be about differently coloured
+  // players.
+  const key = active.map((alert) => (
+    `${alert.warning ? 'w' : 'n'}:${alert.segments
+      ? alert.segments.map((segment) => `${segment.color || ''}\u0000${segment.text}`).join('\u0001')
+      : alert.text}`
+  )).join('\n');
   if (key === lastAlertHudKey) return;
   lastAlertHudKey = key;
 
@@ -230,8 +252,19 @@ export function updateAlertHud(now = performance.now()) {
   active.forEach((alert) => {
     const line = document.createElement('div');
     line.className = 'alertHudLine';
-    line.textContent = alert.text;
     line.style.color = getHudAlertColor(alert.warning);
+    if (alert.segments) {
+      // A segment with no colour inherits the line's, which is the alert's own,
+      // exactly as a chat line's segments inherit the kind's.
+      alert.segments.forEach((segment) => {
+        const span = document.createElement('span');
+        span.textContent = segment.text;
+        if (segment.color) span.style.color = colorToCSS(segment.color);
+        line.appendChild(span);
+      });
+    } else {
+      line.textContent = alert.text;
+    }
     alertHudElement.appendChild(line);
   });
 }
@@ -501,6 +534,20 @@ function updateTeamScoreboard(rows) {
 // player and the top row disagree.
 export function compareScoreboardPlayers(a, b) {
   if (Boolean(a.isObserver) !== Boolean(b.isObserver)) return a.isObserver ? 1 : -1;
+  // newSortedList's default case (ScoreboardRenderer.cxx:1003) sorts by
+  // `getRabbitScore()` rather than `getScore()` on a Rabbit Chase world, so the
+  // board is ordered by who is next in line for the rabbit rather than by wins
+  // minus losses. The two agree often enough to hide the difference and then
+  // disagree: a player with no record at all ranks 0.5, above anyone whose rate
+  // is worse than even however far ahead they are on kills.
+  //
+  // `rank` is only set on a Rabbit Chase world, so this test is also the
+  // `allowRabbit()` that upstream asks -- and it is asked here rather than
+  // passed in so that every surface that orders players, the roaming leader
+  // included, cannot order them differently.
+  if (typeof a.rank === 'number' && typeof b.rank === 'number' && a.rank !== b.rank) {
+    return b.rank - a.rank;
+  }
   const aScore = (a.kills || 0) - (a.deaths || 0);
   const bScore = (b.kills || 0) - (b.deaths || 0);
   if (bScore !== aScore) return bScore - aScore;
@@ -519,6 +566,45 @@ export function compareScoreboardPlayers(a, b) {
 // token verifies, and a verified token means registered as well, so `-` has no
 // state to describe here -- which is also why a name may not begin with one.
 export const SCOREBOARD_STATUS_COLOR = 0x00ffff;
+
+// getRabbitScore() is `rabbitRank(...) * 100` truncated to a short, and upstream
+// prints it `%2d%%`.
+export function formatRabbitRank(rank) {
+  return `${Math.trunc(rank * 100)}%`;
+}
+
+// Rabbit Chase marks the rabbit's row so the scoreboard says who everyone is
+// hunting. Upstream marks the *hunted* row instead, as part of the hunt feature
+// bzo does not have, so this is the marker without the feature -- the radar ring
+// in client.js is its other half. In the rabbit's own tank colour, which ties
+// the row to the one tank in the world wearing a reserved colour.
+export const SCOREBOARD_RABBIT_MARK = Object.freeze({
+  label: '(rabbit)',
+  color: PLAYER_TEAM_COLORS[PLAYER_TEAM.RABBIT],
+});
+
+// The one place a player's name, the flag they carry and the Rabbit Chase mark
+// are composed into a single string. The scoreboard draws the three as separate
+// elements because it colours each one; anything writing a line of plain text --
+// an Identify alert, a chat notice -- takes the same composition from here, so
+// two surfaces cannot describe the same tank differently.
+//
+// Upstream's Identify writes `<callsign> (<Team>) with <Flag name>`
+// (playing.cxx:4488). bzo names the team only where it says something: in Rabbit
+// Chase, where `(rabbit)` is exactly upstream's `(Rabbit)`. Every bzo player has
+// a colour of their own, so `(Rogue)` on every line of an OpenFFA server would
+// be noise rather than information, and the flag keeps the scoreboard's
+// abbreviation rather than upstream's full name for the same reason -- it is the
+// form a player reads everywhere else in bzo.
+export function formatPlayerLabel({ name, nameColor = null, flag = null, rabbit = null }) {
+  const segments = [{ text: String(name), color: nameColor }];
+  if (flag) segments.push({ text: `/${flag.label}`, color: flag.color });
+  if (rabbit) segments.push({ text: ` ${rabbit.label}`, color: rabbit.color });
+  return {
+    text: segments.map((segment) => segment.text).join(''),
+    segments,
+  };
+}
 
 export function getPlayerStatusIndicator(state) {
   if (!state) return '';
@@ -559,6 +645,10 @@ export function buildScoreboardRows({
   myTank,
   tanks,
   getPlayerFlagLabel = () => null,
+  // Whether this world plays Rabbit Chase, which is upstream's `allowRabbit()`.
+  // It changes what the board is sorted by and adds the rank column, and nothing
+  // else on the row.
+  rabbitChase = false,
 }) {
   const rows = [];
   const addRow = (id, name, state, isCurrent) => {
@@ -568,10 +658,12 @@ export function buildScoreboardRows({
       name,
       kills: state.kills || 0,
       deaths: state.deaths || 0,
+      rank: rabbitChase ? getPlayerRanking(state.kills || 0, state.deaths || 0) : null,
       connectDate: state.connectDate ? new Date(state.connectDate) : new Date(0),
       color: state.color,
       flag: getPlayerFlagLabel(id),
       status: getPlayerStatusIndicator(state),
+      rabbit: isRabbitTeam(state.team) ? SCOREBOARD_RABBIT_MARK : null,
       isObserver: isObserverTeam(state.team),
       isCurrent,
     });
@@ -654,11 +746,23 @@ export function updateScoreboard({
     flagSpan.className = 'scoreboardFlag';
     // The row already carries the player's colour; only the flag differs.
     writePlayerLabel(nameSpan, flagSpan, { name: player.name, flag: player.flag });
-    labelSpan.append(statusSpan, nameSpan, flagSpan);
+    // After the flag, so the pair upstream draws tight together stays tight and
+    // the mark reads as something said about the row rather than part of a name.
+    const rabbitSpan = document.createElement('span');
+    rabbitSpan.className = 'scoreboardRabbit';
+    rabbitSpan.textContent = player.rabbit ? player.rabbit.label : '';
+    rabbitSpan.style.color = player.rabbit ? colorToCSS(player.rabbit.color) : '';
+    labelSpan.append(statusSpan, nameSpan, flagSpan, rabbitSpan);
 
     const statsSpan = document.createElement('span');
     statsSpan.className = 'scoreboardStats';
-    statsSpan.textContent = `${player.kills} / ${player.deaths}`;
+    // `%2d%% %4d %3d-%-3d` on a Rabbit Chase world (ScoreboardRenderer.cxx:675):
+    // upstream puts the rank in front of the score, because the rank is what the
+    // board is sorted by and a column nobody can see makes the order look
+    // arbitrary.
+    statsSpan.textContent = typeof player.rank === 'number'
+      ? `${formatRabbitRank(player.rank)} ${player.kills} / ${player.deaths}`
+      : `${player.kills} / ${player.deaths}`;
 
     entry.append(labelSpan, statsSpan);
     scoreboardList.appendChild(entry);

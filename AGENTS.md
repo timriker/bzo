@@ -1552,6 +1552,140 @@ The wiki page for this (`https://wiki.bzflag.org/Global_Registration`) has been
 read-only for years and carries none of the details above; the source and
 `misc/checkToken.php` are the reference.
 
+## Game types
+
+Upstream names one of four game types per server (`include/global.h:94`) and
+several rules read that name rather than re-deriving it. bzo has a switch only
+for Rabbit Chase, and otherwise derives the type from the two questions it
+already asks about a world -- so `getGameType` in the `teams` pair is
+`RABBIT_SELECTION`, then colour teams, then bases, and `GAME_TYPE` in
+`server.js` is what everything downstream reads.
+
+`CTF_ENABLED` and `TEAM_MODE` stay the ones to ask about bases and about colour
+teams, which is what most of their callers want. `GAME_TYPE` is for the rules
+upstream writes in terms of the type as a whole: kill scoring, the forbidden
+flag set, anointing, and `allowTeams`.
+
+**`allowTeams` is not `TEAM_MODE.enabled`.** `bzfs.cxx:3334` is
+`gameType != OpenFFA`: every type but OpenFFA has sides. Rabbit Chase has sides
+-- the rabbit against the hunters -- while having no colour teams at all, so the
+two questions come apart there and only there. `TEAMS_ALLOWED` is what every
+`areFoes` call passes, and passing `TEAM_MODE.enabled` instead would make Rabbit
+Chase a free-for-all in which nothing was ever a team kill.
+
+Match end -- `-mps`, `-mts`, `-time`, `-timemanual` -- and the `Handicap` game
+style are still missing; see `docs/game-modes-plan.md`.
+
+## Rabbit Chase
+
+`"rabbit": "score" | "killer" | "random"` in `server.json`, `-rabbit
+[score|killer|random]` in a map's `options` block. One rabbit against every
+hunter, upstream's `RabbitChase`.
+
+- **Turning it on turns the colour teams off**, whatever the config or a map's
+  `-c` asked for, which is `CmdLineOptions.cxx:1586` and is what makes Rabbit
+  Chase and CTF mutually exclusive without a check for it. `resolveTeamMode` is
+  where that happens, so there is one answer to "what teams does this world
+  have"; the rabbit's limit is 1 and the hunters inherit the rogue limit, as
+  upstream sets them. `colorTeamsRefused` is what the startup log reads.
+- **Nobody picks a team.** `selectPlayerTeam` returns observer for an observer
+  and hunter for everyone else (`bzfs.cxx:1923`), and a request for a colour
+  team is read as "play" rather than refused -- which is why the join path skips
+  its availability check here. Rabbit and hunter are in `ALL_PLAYER_TEAMS` and
+  not in `PLAYER_TEAMS`, so the entry dialog cannot offer either.
+- **Anointing** is `anointNewRabbit` in `server.js` over `pickNewRabbit`,
+  `anointRabbit`, `canBeRabbit` and `getPlayerRanking` in the `teams` pair, all
+  pure and all held against upstream's numbers in `scripts/test-teams.mjs`. It
+  runs when the rabbit dies, self-destructs, pauses, leaves, goes to observer or
+  rejoins, and whenever a player spawns while there is no rabbit. bzo's
+  self-destruct is its own path rather than a call into `killPlayer`, so it says
+  so separately -- upstream's suicide runs through `playerKilled` like every
+  other death.
+- **`-rabbit random` is not a fourth code path.** `Score::setRandomRanking`
+  replaces the ranking with a random number and the selection runs unchanged, so
+  the caller owns that choice and `anointRabbit` stays deterministic and
+  testable.
+- **Hunters are team mates.** Hunter-on-hunter fire *is* team killing, except on
+  the rabbit and except for a deposed rabbit until its next spawn --
+  `isARabbitKill`, over the `wasRabbit` flag set by `wasARabbit()` and cleared on
+  the next spawn. That window is the whole exception. Team scores never move
+  (`teamScoreMovesOnKill`); player scores work as usual.
+- **`newRabbit`** carries the rabbit's player id or `null`, broadcast on every
+  anointing and riding in `init` -- who the rabbit is is world state, not an
+  event, so a client arriving mid-game has to be told. The client paints that
+  player the rabbit and every other non-observer a hunter, as
+  `playing.cxx:2851` does. bzo needs no client-to-server `MsgNewRabbit`: upstream
+  sends one so a paused rabbit can refuse the post, and bzo's server already
+  knows who is paused.
+
+### Intentional deviations
+
+- **Only the rabbit gets a reserved colour.** Upstream paints the rabbit light
+  grey and every hunter orange; bzo keeps the per-player colours for hunters,
+  because one colour for the crowd is exactly what hunter orange was for and
+  bzo already has a better answer to it. The rabbit is the one thing in the
+  world that has to be identifiable at a glance, so it is the one thing with a
+  colour taken out of the pool -- and it is the one tank in bzo that wears a
+  team's colour rather than its own, on your own tank as well, because being the
+  rabbit is not a disguise.
+- **The radar rings the rabbit rather than flashing it.** Upstream flashes the
+  *hunted* blip cyan every fifth of a second (`RadarRenderer.cxx:136`) as part of
+  its hunt feature, which bzo does not have -- Rabbit Chase wants the marker and
+  not the feature. A steady ring in upstream's own hunt cyan, because a flash is
+  half invisible on a client running at a low frame rate, which is the client bzo
+  has to draw for. The blip inside it takes upstream's rabbit *radar* colour,
+  white, which is the one place that table entry is used. Both go under
+  Colourblindness, for upstream's reason: there every tank reads as rogue and the
+  rabbit is not meant to be findable.
+- **The ring is never on your own blip**, which is always dead centre and always
+  you. Upstream marks only its remote players and clears the scoreboard's hunt
+  state outright when the rabbit is you (`playing.cxx:2880`).
+- **The scoreboard marks the rabbit's row**, including your own -- upstream's
+  scoreboard hunt marker says "I have chosen to hunt this player", a viewer-side
+  selection, while `(rabbit)` is a fact about the world. It replaces upstream's
+  ten-second alert as the standing answer to "am I the rabbit".
+- **The board is sorted by rank, not by score.** `newSortedList`'s default case
+  (`ScoreboardRenderer.cxx:1003`) reads `getRabbitScore()` rather than
+  `getScore()` on a Rabbit Chase world, so the order says who is next in line for
+  the rabbit, and a `%` column in front of the score says it out loud
+  (`:675`). The two rules agree often enough to hide the difference and then
+  disagree: a player with no record ranks 0.5, above anyone whose *rate* is worse
+  than even however far ahead they are on kills. `rank` is set on a row only on
+  such a world, so its presence is the `allowRabbit()` upstream asks -- and
+  `compareScoreboardPlayers` reads it rather than taking a mode, so the roaming
+  leader cannot disagree with the top row.
+- **XR reads both through the panels it already draws.** The XR radar panel is
+  textured from the same canvas, so the ring arrives there on the same frame, and
+  the XR scoreboard reads the same rows. The bearing ribbon
+  `docs/game-modes-plan.md` recommends for team flags, antidotes and the rabbit
+  is still unbuilt; when it lands the rabbit gets a caret on it and this needs no
+  second affordance.
+
+## One label for a player, however many surfaces write it
+
+`formatPlayerLabel` in `hud.js` composes a callsign, the flag it carries and the
+Rabbit Chase mark into one string plus `segments`. The scoreboard draws the three
+as separate elements because it colours each; anything writing a line of plain
+text -- an Identify alert today -- takes the composition from here, so two
+surfaces cannot describe the same tank differently.
+
+Upstream's Identify writes `<callsign> (<Team>) with <Flag name>`
+(`playing.cxx:4488`). bzo names the team only where it says something: in Rabbit
+Chase, where `(rabbit)` is exactly upstream's `(Rabbit)`. Every bzo player has a
+colour of their own, so `(Rogue)` on every line of an OpenFFA server would be
+noise, and the flag keeps the scoreboard's abbreviation rather than upstream's
+full name because that is the form a player reads everywhere else in bzo.
+
+**Alerts carry `segments` as chat lines do.** `setHudAlert` takes an optional
+`[{ text, color }]`, a segment with no colour of its own inheriting the alert's,
+and `text` stays the whole line so a renderer that ignores segments still draws
+something correct. Both surfaces honour them: the DOM column builds one span per
+run, and the XR panel draws run by run -- measuring the whole line first, because
+that column is centred and there is no per-run alignment that adds up to a
+centred line. Colourblindness still costs Identify its whole answer, not just the
+name (`playing.cxx:4479`): naming the flag or marking the rabbit would hand back
+what the colour no longer says.
+
 ## Team scores
 
 In team mode the server keeps a score per colour team, exactly as bzfs does:
@@ -1845,11 +1979,19 @@ Then commit, tag, and push:
 
 ```bash
 git add package.json package-lock.json public/version.mjs CHANGELOG.md
-git commit -m "Release v1.0.37"
+git commit -m "Release v1.0.37 - short description. Closes #37"
 git tag v1.0.37
 git push
 git push origin v1.0.37
 ```
+
+**The subject has to describe the release, not just label it.** The version
+number is already in the tag, `package.json` and `CHANGELOG.md`, so a subject
+that repeats it alone adds nothing -- and `git log --oneline` is the one view
+where the subject is all there is. Name the change in a few words and reference
+the issue, with a real closing keyword (`Closes #NN`) where the release finishes
+it, since a bare `(#NN)` only links. The work itself gets its own commit before
+the release commit, described the same way.
 
 `.github/workflows/release.yml` then gates on: tag commit is on `main` →
 `npm run check` → `npm audit` → release metadata → tag increment → CodeQL →

@@ -115,6 +115,8 @@ import {
   toggleDebugHud,
   toggleDebugLabels,
   compareScoreboardPlayers,
+  formatPlayerLabel,
+  SCOREBOARD_RABBIT_MARK,
   buildScoreboardRows,
   SCOREBOARD_STATUS_COLOR,
   getActiveHudAlerts,
@@ -174,8 +176,10 @@ import {
   getPlayerTeamSelections,
   getTeamColorIndex,
   getTeamFromColorIndex,
+  getPlayerRanking,
   isColorTeam,
   isObserverTeam,
+  isRabbitTeam,
   normalizePlayerTeam,
   normalizePlayerTeamSelection,
 } from './teams.mjs';
@@ -577,6 +581,19 @@ let nextAllowedShotAt = 0;
 // it they are. A flag that changes the rate changes this with it.
 let lastShotReloadMs = 0;
 let playerTeam = PLAYER_TEAM.ROGUE;
+// `rabbitIndex` on the client side (playing.cxx keeps it in the players' teams
+// alone; bzo keeps the id as well, because the radar and the scoreboard both
+// want to ask "is this the rabbit" without walking the roster). null on a world
+// that is not playing Rabbit Chase, and between one rabbit and the next.
+let rabbitPlayerId = null;
+// World::allowRabbit() -- whether this world plays Rabbit Chase at all, which is
+// a different question from whether it has a rabbit right now. The scoreboard's
+// sort and its rank column read this, so they must not read `rabbitPlayerId`:
+// that is null between one rabbit and the next, and a board that reordered
+// itself in the gap would be unreadable.
+let rabbitChaseEnabled = false;
+// hud->setAlert(0, "You are now the rabbit.", 10.0f, false) -- playing.cxx:2877.
+const RABBIT_ALERT_SECONDS = 10;
 // Whether this player may speak on the admin channel and operate the server.
 // The server's answer, not a rule kept here -- see `isAdmin` in `server.js` for
 // what decides it. Everything behind the Operator panel is refused there as
@@ -657,6 +674,121 @@ function selectRelativePlayerTeam(direction) {
 
 function isObserver() {
   return isObserverTeam(playerTeam);
+}
+
+function isTheRabbit(playerId) {
+  return rabbitPlayerId !== null && playerId === rabbitPlayerId;
+}
+
+// A tank in one line of text: the callsign, the flag it carries and the Rabbit
+// Chase mark, in the shape a scoreboard row draws them. Upstream's Identify says
+// as much (playing.cxx:4488) and bzo's alerts read the same as its roster.
+//
+// Colourblindness costs the whole answer, not just the name: upstream drops to
+// "a tank" outright (playing.cxx:4479), and naming the flag or marking the
+// rabbit would hand back what the colour no longer says.
+function describePlayer(playerId) {
+  // Colourblindness costs the whole answer, not just the name: upstream drops to
+  // "a tank" outright (playing.cxx:4479), and naming the flag or marking the
+  // rabbit would hand back what the colour no longer says.
+  if (isColorblind()) return { text: 'a tank', segments: null };
+  const state = playerId === myPlayerId
+    ? myTank?.userData?.playerState
+    : tanks.get(playerId)?.userData?.playerState;
+  return formatPlayerLabel({
+    name: getPlayerName(playerId),
+    // The colour the scoreboard gives this player's row, so the alert and the
+    // roster agree about whose tank is being described.
+    nameColor: Number.isFinite(state?.color) ? state.color : null,
+    flag: getPlayerFlagLabel(playerId),
+    rabbit: isRabbitTeam(getPlayerTeamById(playerId)) ? SCOREBOARD_RABBIT_MARK : null,
+  });
+}
+
+// The Identify alerts, on both surfaces: a prefix in the alert's own colour and
+// then the player, coloured as their scoreboard row is. The prefix segment
+// carries no colour of its own, which is how it inherits the alert's.
+function showIdentifyAlert(prefix, playerId) {
+  const described = describePlayer(playerId);
+  setHudAlert(
+    1,
+    `${prefix} ${described.text}`,
+    IDENTIFY_ALERT_SECONDS,
+    false,
+    described.segments ? [{ text: `${prefix} ` }, ...described.segments] : null,
+  );
+}
+
+// The team a player is on, from whichever copy of the roster knows it:
+// `playerTeam` for me, since that is the one the join confirms, and the tank's
+// own state for anybody else.
+function getPlayerTeamById(playerId) {
+  if (playerId === myPlayerId) return playerTeam;
+  return tanks.get(playerId)?.userData?.playerState?.team ?? null;
+}
+
+// A tank is built from its colour rather than tinted, so a tank whose effective
+// colour just changed has to be rebuilt. `refreshTankDisguises` does that once a
+// frame for remote tanks and skips the local one on purpose -- you cannot see
+// your own disguise -- but being the rabbit is a team, not a disguise, so this is
+// the path the rabbit's repaint takes for either.
+function rebuildTankColor(playerId) {
+  const tank = tanks.get(playerId);
+  const state = tank?.userData?.playerState;
+  if (!tank || !state) return;
+  if (getEffectiveTankColor(playerId, state.color) === tank.userData.builtColor) return;
+  // The live mesh position rather than the one the last roster message carried:
+  // the local tank's stored state is only refreshed on a join, so rebuilding
+  // from it would stand the tank back where it was then for a frame.
+  addPlayer({
+    ...state,
+    x: tank.position.x,
+    y: tank.position.y,
+    z: tank.position.z,
+    rotation: tank.rotation.y,
+  });
+  // addPlayer *replaces* the mesh when the colour changed, so every caller that
+  // can rebuild the local tank has to re-point `myTank` at the new one -- the old
+  // one is out of `tanks` and out of the scene. Miss this and the movement code
+  // goes on writing positions onto an orphan while the camera reads playerX/Y/Z:
+  // the view moves and the tank does not.
+  if (playerId === myPlayerId) myTank = tanks.get(myPlayerId);
+}
+
+// MsgNewRabbit (playing.cxx:2851). One id repaints the whole roster: that player
+// becomes the rabbit and every other non-observer a hunter, which is what the
+// message says rather than something derived from it -- the server has already
+// made the same change to its own roster.
+function applyNewRabbit(nextRabbitId) {
+  const previousRabbitId = rabbitPlayerId;
+  rabbitPlayerId = nextRabbitId;
+
+  tanks.forEach((tank, id) => {
+    const state = tank.userData?.playerState;
+    if (!state || isObserverTeam(state.team)) return;
+    state.team = id === nextRabbitId ? PLAYER_TEAM.RABBIT : PLAYER_TEAM.HUNTER;
+  });
+  if (myPlayerId && !isObserver()) {
+    playerTeam = myPlayerId === nextRabbitId ? PLAYER_TEAM.RABBIT : PLAYER_TEAM.HUNTER;
+  }
+  // Only the two tanks whose colour can have changed, since hunters keep the
+  // per-player colour they already had.
+  if (previousRabbitId !== null) rebuildTankColor(previousRabbitId);
+  if (nextRabbitId !== null) rebuildTankColor(nextRabbitId);
+  refreshScoreboards();
+
+  if (nextRabbitId === null || nextRabbitId === previousRabbitId) return;
+  if (nextRabbitId === myPlayerId) {
+    setHudAlert(0, 'You are now the rabbit.', RABBIT_ALERT_SECONDS, false);
+    renderManager.playLocalSound('huntSelect');
+  }
+  // addMessage(rabbit, "is now the rabbit") sits outside upstream's own branch,
+  // so the new rabbit reads the line as well as hearing the alert.
+  const name = nextRabbitId === myPlayerId
+    ? myPlayerName
+    : tanks.get(nextRabbitId)?.userData?.playerState?.name || 'Player';
+  addChatEntry(['misc', 'all'], `${name} is now the rabbit`, CHAT_KIND_MISC);
+  updateChatWindow();
 }
 
 function normalizeRadarZoomLevel(value) {
@@ -4226,6 +4358,12 @@ function handleServerMessage(message) {
       gameConfig = message.config;
       setAvailablePlayerTeams(message.teamMode.teams);
       teamScores = message.teamScores || [];
+      // bzfs.cxx:2437 sends MsgNewRabbit to a joining player for the same reason:
+      // who the rabbit is is world state rather than an event. Set directly --
+      // there is no roster yet to repaint and nothing to announce about a rabbit
+      // that was chosen before this client arrived.
+      rabbitPlayerId = message.rabbitId ?? null;
+      rabbitChaseEnabled = Boolean(message.teamMode.rabbitSelection);
       if (message.voiceRtcConfig && typeof message.voiceRtcConfig === 'object') {
         voiceRtcConfig = message.voiceRtcConfig;
         callVoiceManager('setRtcConfig', voiceRtcConfig);
@@ -4357,6 +4495,10 @@ function handleServerMessage(message) {
     case 'teamUpdate':
       teamScores = message.teams || [];
       refreshScoreboards();
+      break;
+
+    case 'newRabbit':
+      applyNewRabbit(message.playerId ?? null);
       break;
 
     case 'playerLeft': {
@@ -5326,7 +5468,10 @@ function getScoreboardModel() {
     scoreboardVersion += 1;
     scoreboardModel = {
       version: scoreboardVersion,
-      rows: buildScoreboardRows({ myPlayerId, myPlayerName, myTank, tanks, getPlayerFlagLabel }),
+      rows: buildScoreboardRows({
+        myPlayerId, myPlayerName, myTank, tanks, getPlayerFlagLabel,
+        rabbitChase: rabbitChaseEnabled,
+      }),
       teamRows: getTeamScoreRows(teamScores),
       // Only an observer can pick a roam target, and only an explicit one is
       // marked: with no target the view follows the leader, and marking the top
@@ -7023,6 +7168,11 @@ function getRoamCandidates() {
       z: tank.position.z,
       kills: state.kills || 0,
       deaths: state.deaths || 0,
+      // The roaming leader is read off the scoreboard's own order
+      // (ScoreboardRenderer::getLeader), so a candidate carries whatever that
+      // order sorts by -- in Rabbit Chase the rank, or the top row and the
+      // followed tank would be two different players.
+      rank: rabbitChaseEnabled ? getPlayerRanking(state.kills || 0, state.deaths || 0) : null,
       connectDate: state.connectDate ? new Date(state.connectDate) : new Date(0),
       isObserver: false,
     });
@@ -7122,10 +7272,7 @@ function identifyRoamTarget() {
   // playing.cxx:4479. Colourblindness costs Identify its answer: upstream drops
   // to "Looking at a tank" rather than naming the callsign, because the name
   // would give away the team the colour no longer does.
-  const name = isColorblind()
-    ? 'a tank'
-    : (tanks.get(picked)?.userData?.playerState?.name || 'a tank');
-  setHudAlert(1, `Looking at ${name}`, IDENTIFY_ALERT_SECONDS, false);
+  showIdentifyAlert('Looking at', picked);
 }
 
 // LocalPlayer::target, mirrored per player. The server owns the lock -- it is
@@ -7196,8 +7343,7 @@ function showIdentifyResult(targetId, locked) {
   // setNemesis() is inside setTarget()'s locked branch alone (playing.cxx:4450):
   // a lock names your enemy, a look does not.
   if (locked) nemesisPlayerId = targetId;
-  const name = isColorblind() ? 'a tank' : getPlayerName(targetId);
-  setHudAlert(1, `${locked ? 'Locked on' : 'Looking at'} ${name}`, IDENTIFY_ALERT_SECONDS, false);
+  showIdentifyAlert(locked ? 'Locked on' : 'Looking at', targetId);
 }
 
 // The identify binding, for a tank. An observer answers this on its own client
@@ -8782,10 +8928,24 @@ function refreshTankDisguises() {
 // sense of their own tank's shade -- they are inside it.
 //
 // Your own tank always keeps its colour: upstream only ever rewrites a remote
-// player's, so you cannot see your own disguise.
+// player's, so you cannot see your own disguise. The rabbit is the exception at
+// both ends -- see below -- because it is a team colour rather than a lie about
+// one.
 function getEffectiveTankColor(playerId, color) {
+  // Colourblindness still wins outright, and it wins over the rabbit too:
+  // upstream computes `effectiveTeam = RogueTeam` and draws the tank from that,
+  // so a colourblind viewer cannot pick the rabbit out either. That is the whole
+  // reason the radar ring below is suppressed for one as well.
+  if (playerId !== myPlayerId && isColorblind()) return PLAYER_TEAM_COLORS[PLAYER_TEAM.ROGUE];
+  // Team::getTankColor. The rabbit is the one tank in bzo that wears a team's
+  // colour instead of its own -- see PLAYER_TEAM_COLORS in teams.mjs for why it
+  // is the only one -- and it applies to your own tank as well, because being
+  // the rabbit is not a disguise: upstream puts you on RabbitTeam and repaints
+  // you along with everybody else (playing.cxx:2869).
+  if (isRabbitTeam(getPlayerTeamById(playerId))) {
+    return PLAYER_TEAM_COLORS[PLAYER_TEAM.RABBIT];
+  }
   if (playerId === myPlayerId) return color;
-  if (isColorblind()) return PLAYER_TEAM_COLORS[PLAYER_TEAM.ROGUE];
   if (
     fakesTeamColor(getPlayerFlagType(playerId))
     && !isSeer()
@@ -9642,7 +9802,11 @@ function ensureXRNoticeOverlay() {
   const status = isObserver() ? getRoamLabel() : '';
   const lines = [];
   if (status) lines.push({ text: status, color: XR_ROAM_STATUS_COLOR });
-  alerts.forEach((alert) => lines.push({ text: alert.text, color: getHudAlertColor(alert.warning) }));
+  alerts.forEach((alert) => lines.push({
+    text: alert.text,
+    color: getHudAlertColor(alert.warning),
+    segments: alert.segments,
+  }));
   if (lines.length === 0) {
     if (xrAlertPanel.mesh) xrAlertPanel.mesh.visible = false;
     return;
@@ -9668,9 +9832,33 @@ function ensureXRNoticeOverlay() {
     // so the world behind it is whatever the player happens to be looking at.
     ctx.lineWidth = 6;
     ctx.strokeStyle = 'rgba(0, 0, 0, 0.85)';
-    ctx.strokeText(line.text, w / 2, y);
-    ctx.fillStyle = line.color;
-    ctx.fillText(line.text, w / 2, y);
+    if (!line.segments) {
+      ctx.strokeText(line.text, w / 2, y);
+      ctx.fillStyle = line.color;
+      ctx.fillText(line.text, w / 2, y);
+      return;
+    }
+    // A line with coloured runs is drawn run by run, as the chat panel draws
+    // one. Unlike the chat panel this column is centred, so the whole line is
+    // measured first and the runs are laid out from the left edge that puts --
+    // there is no per-run alignment that adds up to a centred line.
+    const widths = line.segments.map((segment) => ctx.measureText(segment.text || '').width);
+    const total = widths.reduce((sum, width) => sum + width, 0);
+    ctx.textAlign = 'left';
+    // The stroke goes under the whole line before any fill, so a run's outline
+    // never darkens the run beside it where the two touch.
+    let x = (w / 2) - (total / 2);
+    line.segments.forEach((segment, segmentIndex) => {
+      ctx.strokeText(segment.text || '', x, y);
+      x += widths[segmentIndex];
+    });
+    x = (w / 2) - (total / 2);
+    line.segments.forEach((segment, segmentIndex) => {
+      ctx.fillStyle = segment.color ? colorToCSS(segment.color) : line.color;
+      ctx.fillText(segment.text || '', x, y);
+      x += widths[segmentIndex];
+    });
+    ctx.textAlign = 'center';
   });
 
   placeXRHudPanel(xrAlertPanel, { width: 0.86, height: 0.176, x: 0, y: 0.3 });
@@ -9957,12 +10145,18 @@ function ensureXRScoreboardOverlay() {
     // the flag does.
     const status = player.status || '';
     const statusWidth = status ? ctx.measureText(status).width : 0;
+    // The Rabbit Chase mark, which the flat scoreboard draws after the flag and
+    // in the same place. The leading space is this panel's answer to the flat
+    // one's margin: everything here is laid out by measured width.
+    const rabbitLabel = player.rabbit ? ` ${player.rabbit.label}` : '';
     // A carried flag shares the row with the name, so the name gives up room for
-    // it rather than the panel growing a column nothing usually fills.
+    // it rather than the panel growing a column nothing usually fills. The mark
+    // comes out of the same allowance.
     const nameWidth = contentRight - margin - columnGap
       - ctx.measureText(stats).width
       - statusWidth
-      - (flagLabel ? ctx.measureText(flagLabel).width : 0);
+      - (flagLabel ? ctx.measureText(flagLabel).width : 0)
+      - (rabbitLabel ? ctx.measureText(rabbitLabel).width : 0);
     const shown = fitText(ctx, String(player.name || 'Player'), Math.max(0, nameWidth));
 
     if (status) {
@@ -9971,9 +10165,15 @@ function ensureXRScoreboardOverlay() {
     }
     ctx.fillStyle = rowColor;
     ctx.fillText(shown, margin + statusWidth, y);
+    let labelRight = margin + statusWidth + ctx.measureText(shown).width;
     if (flagLabel) {
       ctx.fillStyle = colorToCSS(player.flag.color);
-      ctx.fillText(flagLabel, margin + statusWidth + ctx.measureText(shown).width, y);
+      ctx.fillText(flagLabel, labelRight, y);
+      labelRight += ctx.measureText(flagLabel).width;
+    }
+    if (rabbitLabel) {
+      ctx.fillStyle = colorToCSS(player.rabbit.color);
+      ctx.fillText(rabbitLabel, labelRight, y);
     }
     ctx.fillStyle = rowColor;
     ctx.textAlign = 'right';
@@ -10193,6 +10393,33 @@ function getRadarBaseFill(teamColorIndex) {
 function getObstacleRadarFillStyle(obs) {
   if (!obs || obs.kind !== 'base') return RADAR_NEUTRAL_FILL;
   return getRadarBaseFill(Number(obs.team));
+}
+
+// The rabbit's blip is ringed so a hunter can pick it out of a panel full of
+// per-player colours. Upstream marks the *hunted* tank instead, by flashing its
+// blip cyan every fifth of a second (RadarRenderer.cxx:136) as part of its hunt
+// feature, which bzo does not have -- Rabbit Chase wants only the marker.
+//
+// A ring rather than a flash, in upstream's own hunt cyan: a flash is half
+// invisible on a client running at a low frame rate, which is the client bzo has
+// to draw for. It is suppressed under Colourblindness for exactly upstream's
+// reason -- there, every tank reads as rogue and the rabbit is not meant to be
+// findable.
+//
+// XR needs no separate path: the XR radar panel is textured from this canvas.
+const RADAR_RABBIT_RING_COLOR = 'rgb(0,204,229)';
+const RADAR_RABBIT_RING_RADIUS = 9;
+const RADAR_RABBIT_RING_WIDTH = 1.5;
+
+function drawRadarRabbitRing(x, y) {
+  radarCtx.save();
+  radarCtx.globalAlpha = 1;
+  radarCtx.lineWidth = RADAR_RABBIT_RING_WIDTH;
+  radarCtx.strokeStyle = RADAR_RABBIT_RING_COLOR;
+  radarCtx.beginPath();
+  radarCtx.arc(x, y, RADAR_RABBIT_RING_RADIUS, 0, Math.PI * 2);
+  radarCtx.stroke();
+  radarCtx.restore();
 }
 
 // RadarRenderer::render's noise branch (RadarRenderer.cxx:433). Upstream paints a
@@ -10576,12 +10803,27 @@ function updateRadar() {
       const effective = getEffectiveTankColor(state.id, state.color);
       playerColor = '#' + effective.toString(16).padStart(6, '0');
     }
+    // Team::getRadarColor for the rabbit, which is white where its tank is grey
+    // (Team.cxx:38). The radar's team colours are lifted so a team reads against
+    // a dark panel, and grey is the one shade that does not -- least of all
+    // inside the cyan ring below. This is the only blip bzo paints from a team
+    // rather than from the player, because the rabbit is the only tank that
+    // wears a team's colour at all. Colourblindness takes it, as it takes the
+    // tank's.
+    if (isTheRabbit(playerId) && !isColorblind()) {
+      playerColor = colorToCSS(getPlayerTeamRadarColor(PLAYER_TEAM.RABBIT));
+    }
 
     const rel = toRadarRelative(tank.position.x, tank.position.z);
     const rotX = rel.x;
     const rotY = rel.y;
     const tankOutsideRadarSquare = isOutsideRadarSquare(rotX, rotY, tankArrowWorldMargin);
     const pos = radarToCanvas(rel.x, rel.y);
+    // Never your own blip. It is always dead centre and always you, so a ring
+    // there says nothing -- upstream marks only the remote players for the same
+    // reason, and clears the scoreboard's hunt state outright when the rabbit is
+    // you (playing.cxx:2880).
+    const ringTheRabbit = isTheRabbit(playerId) && playerId !== myPlayerId && !isColorblind();
 
     if (tankOutsideRadarSquare) {
       // Tank is outside radar range - draw as small dot against square edge.
@@ -10603,6 +10845,10 @@ function updateRadar() {
       radarCtx.globalAlpha = 0.8;
       radarCtx.fill();
       radarCtx.restore();
+      // The edge dot is bzo's own -- upstream's radar simply stops at its range
+      // -- and a rabbit that has run off the panel is exactly the one a hunter
+      // wants marked, so the ring follows it out there.
+      if (ringTheRabbit) drawRadarRabbitRing(edgeX, edgeY);
       return;
     }
 
@@ -10631,6 +10877,7 @@ function updateRadar() {
       radarCtx.fill();
     }
     radarCtx.restore();
+    if (ringTheRabbit) drawRadarRabbitRing(pos.x, pos.y);
   });
 
   // Flags on the ground, drawn as RadarRenderer::drawFlag does: a cross a flag

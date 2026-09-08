@@ -138,6 +138,7 @@ Read as a bzfs command line, one option a line. Everything bzo understands:
 |---|---|
 | `-c` | team play on |
 | `-offa` | team play off, free-for-all |
+| `-rabbit [score\|killer\|random]` | Rabbit Chase: one rabbit against every hunter, no colour teams |
 | `-autoTeam` | assign teams rather than letting players pick |
 | `-a <vel> <rot>` | the world's acceleration limit, upstream's inertia switch; `0 0` is none |
 | `-noTeamKills` | players on the same team are immune to each other; rogue is excepted |
@@ -224,6 +225,20 @@ per-type counts to put them in.
 
 `-mp` with no explicit `-c` or `-offa` implies team play when it enables any
 team other than rogue and observer.
+
+`-rabbit` is the one option here that turns something *off*: Rabbit Chase has no
+colour teams, so it zeroes every colour team's limit whatever the config or an
+earlier `-c` asked for, and says so on load. That is upstream's own behaviour
+(`CmdLineOptions.cxx:1586`) and it is what makes Rabbit Chase and CTF mutually
+exclusive -- upstream complains about the pair and lets Rabbit Chase win
+whichever order they arrive in. A map with bases still loads; they simply stand
+there with no team to own them.
+
+The style argument is optional and names one of upstream's three: `score` picks
+the rabbit by ranking, `killer` gives it to whoever shot the last one, `random`
+replaces the ranking with a random number. A bare `-rabbit` is `score`, and so
+is a style bzfs would not recognise -- it leaves the argument unconsumed rather
+than rejecting the switch.
 
 A map with no `world` block gets upstream's own default: `_worldSize` 800, which
 is the full width, so the world spans +/-400.

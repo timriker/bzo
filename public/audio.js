@@ -121,6 +121,12 @@ export const GAME_SOUNDS = Object.freeze({
   teamGrab: { file: 'teamgrab.wav', sfx: 'SFX_TEAMGRAB' },
   // I captured my own team's flag.
   killTeam: { file: 'killteam.wav', sfx: 'SFX_KILL_TEAM' },
+  // I have just been made the rabbit (playing.cxx:2878). Upstream plays it for
+  // every hunt selection, of which Rabbit Chase's anointing is one; bzo has no
+  // hunt feature, so this is the only thing that plays it. Its pair `SFX_HUNT`,
+  // which upstream sounds positionally while a hunted tank is in view, has
+  // nothing to attach to here for the same reason.
+  huntSelect: { file: 'hunt_select.wav', sfx: 'SFX_HUNT_SELECT' },
 });
 
 export const GAME_SOUND_NAMES = Object.freeze(Object.keys(GAME_SOUNDS));

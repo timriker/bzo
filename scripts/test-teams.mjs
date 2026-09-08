@@ -8,9 +8,11 @@
 import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
 import {
+  ALL_PLAYER_TEAMS,
   PLAYER_TEAM,
   PLAYER_TEAMS,
   PLAYER_TEAM_LABELS,
+  isRabbitTeam,
   getPlayerTeamColor,
   getPlayerTeamSelections,
   isColorTeam,
@@ -42,6 +44,20 @@ assert.deepEqual(getPlayerTeamSelections([PLAYER_TEAM.BLUE, PLAYER_TEAM.OBSERVER
   PLAYER_TEAM.OBSERVER,
   PLAYER_TEAM.BLUE,
 ]);
+// The two teams Rabbit Chase assigns are teams a player may be *on* and never
+// teams a player may ask for, which is the whole difference between the lists.
+assert.deepEqual(ALL_PLAYER_TEAMS, [...PLAYER_TEAMS, PLAYER_TEAM.RABBIT, PLAYER_TEAM.HUNTER]);
+assert.equal(normalizePlayerTeam('RABBIT'), PLAYER_TEAM.RABBIT);
+assert.equal(normalizePlayerTeam(' hunter '), PLAYER_TEAM.HUNTER);
+assert.equal(isRabbitTeam(PLAYER_TEAM.RABBIT), true);
+assert.equal(isRabbitTeam(PLAYER_TEAM.HUNTER), false);
+assert.equal(isRabbitTeam(null), false);
+// Neither is offered in the entry dialog, whatever a caller passes in.
+assert.deepEqual(getPlayerTeamSelections(ALL_PLAYER_TEAMS), [
+  PLAYER_TEAM.AUTOMATIC,
+  ...PLAYER_TEAMS,
+]);
+
 assert.equal(isObserverTeam(PLAYER_TEAM.OBSERVER), true);
 assert.equal(isObserverTeam(PLAYER_TEAM.ROGUE), false);
 
@@ -112,6 +128,11 @@ assert.equal(isColorTeam(PLAYER_TEAM.ROGUE), false);
 assert.equal(isColorTeam(PLAYER_TEAM.OBSERVER), false);
 // An unknown team normalizes to rogue, which scores for nobody.
 assert.equal(isColorTeam('unknown'), false);
+// Team::isColorTeam is red through purple, so Rabbit Chase's two teams score for
+// nobody either -- half of why a kill never moves a team score there.
+assert.equal(isColorTeam(PLAYER_TEAM.RABBIT), false);
+assert.equal(isColorTeam(PLAYER_TEAM.HUNTER), false);
+assert.equal(serverTeams.isColorTeam(PLAYER_TEAM.HUNTER), false);
 
 // The game type, against global.h:94. Colour teams and bases are the whole
 // question: no teams is OpenFFA, teams without bases is TeamFFA, and teams with
@@ -122,15 +143,27 @@ assert.equal(getGameType(false, false), 'OpenFFA');
 assert.equal(getGameType(false, true), 'OpenFFA');
 assert.equal(getGameType(true, false), 'TeamFFA');
 assert.equal(getGameType(true, true), 'ClassicCTF');
+// Rabbit Chase is asked first and answers over everything else, which is
+// upstream's "Capture the flag incompatible with Rabbit Chase".
+assert.equal(getGameType(false, false, true), 'RabbitChase');
+assert.equal(getGameType(true, true, true), 'RabbitChase');
+
+// allowTeams (bzfs.cxx:3334). Every type but OpenFFA has sides, and Rabbit
+// Chase's are the rabbit against the hunters -- which is why it is asked of the
+// type rather than of the colour teams, which Rabbit Chase has none of.
+const { allowTeams } = serverTeams;
+assert.equal(allowTeams('OpenFFA'), false);
+assert.equal(allowTeams('TeamFFA'), true);
+assert.equal(allowTeams('ClassicCTF'), true);
+assert.equal(allowTeams('RabbitChase'), true);
 
 // bzfs.cxx:3539. Only the free-for-all types score team points for a kill; in
 // ClassicCTF a capture is the only thing that moves the team score.
 assert.equal(teamScoreMovesOnKill('OpenFFA'), true);
 assert.equal(teamScoreMovesOnKill('TeamFFA'), true);
 assert.equal(teamScoreMovesOnKill('ClassicCTF'), false);
-// Upstream skips the block for RabbitChase too, which bzo does not have yet:
-// the predicate is written as upstream's positive test so the type it does not
-// know still answers no.
+// bzfs.cxx:3534 skips the block for RabbitChase as well: player scores work as
+// usual there and no team score ever moves.
 assert.equal(teamScoreMovesOnKill('RabbitChase'), false);
 
 // Team scoring, against bzfs.cxx:3540.
@@ -218,6 +251,163 @@ for (const capping of [RED, BLUE, ROGUE, PLAYER_TEAM.OBSERVER, null, undefined])
   // And on a world with no teams at all, everybody is fair game.
   assert.equal(areFoes(RED, RED, false), true, 'no teams means no team kills');
   assert.equal(areFoes(ROGUE, ROGUE, false), true);
+}
+
+// Score::ranking (Score.cxx:42). A win rate damped towards the middle until
+// there is enough of a record to trust it, which is what decides who becomes the
+// rabbit. Held against upstream's own arithmetic rather than against a table, so
+// a transcription slip in either term shows up.
+{
+  const { getPlayerRanking } = serverTeams;
+  const upstream = (wins, losses) => {
+    const sum = wins + losses;
+    if (sum === 0) return 0.5;
+    return (wins / sum) * (1 - (0.5 / Math.sqrt(sum)));
+  };
+  // No record at all is exactly the middle, which is what makes a fresh player
+  // a plausible rabbit rather than the worst candidate in the world.
+  assert.equal(getPlayerRanking(0, 0), 0.5);
+  // One win is a perfect rate halved by the penalty; twenty-five is trusted to
+  // 0.9 of it. Both are upstream's numbers and worth naming.
+  assert.equal(getPlayerRanking(1, 0), 0.5);
+  assert.equal(getPlayerRanking(25, 0), 0.9);
+  // Losing every game ranks at zero however long the record is.
+  assert.equal(getPlayerRanking(0, 9), 0);
+  for (const [wins, losses] of [[3, 1], [1, 3], [10, 10], [7, 2], [0, 1], [40, 8]]) {
+    assert.equal(
+      getPlayerRanking(wins, losses),
+      upstream(wins, losses),
+      `ranking diverged for ${wins}-${losses}`
+    );
+  }
+  // A longer record of the same rate is trusted more, which is the whole point
+  // of the penalty term.
+  assert.ok(getPlayerRanking(20, 20) > getPlayerRanking(2, 2));
+}
+
+// PlayerInfo::canBeRabbit (PlayerInfo.cxx:504) and
+// GameKeeper::Player::anointRabbit (GameKeeper.cxx:145).
+{
+  const { canBeRabbit, anointRabbit, pickNewRabbit, isARabbitKill } = serverTeams;
+  const player = (id, extra = {}) => ({
+    id, paused: false, observer: false, alive: true, playing: true, ranking: 0.5, ...extra,
+  });
+
+  // Paused, observing, or not in the game at all: never the rabbit. A rabbit
+  // nobody can shoot is not a rabbit.
+  assert.equal(canBeRabbit(player('a')), true);
+  assert.equal(canBeRabbit(player('a', { paused: true })), false);
+  assert.equal(canBeRabbit(player('a', { observer: true })), false);
+  assert.equal(canBeRabbit(player('a', { alive: false })), false, 'the strict pass wants them alive');
+  // The relaxing pass settles for a dead player who is still in the game, which
+  // is the pass anointRabbit makes.
+  assert.equal(canBeRabbit(player('a', { alive: false }), true), true);
+  assert.equal(canBeRabbit(player('a', { alive: false, playing: false }), true), false);
+  assert.equal(canBeRabbit(player('a', { paused: true }), true), false);
+  assert.equal(canBeRabbit(null), false);
+
+  // The best ranking wins among candidates that are equally good.
+  assert.equal(anointRabbit([
+    player('a', { ranking: 0.2 }),
+    player('b', { ranking: 0.8 }),
+    player('c', { ranking: 0.5 }),
+  ]), 'b');
+
+  // "prefer anyone alive who is not the old rabbit": a good candidate beats
+  // every not-good one however badly it ranks.
+  assert.equal(anointRabbit([
+    player('old', { ranking: 0.99 }),
+    player('dead', { alive: false, ranking: 0.99 }),
+    player('good', { ranking: 0.01 }),
+  ], 'old'), 'good');
+
+  // With nobody good left it settles: a dead player in the game beats nobody at
+  // all, and the ranking still decides between them.
+  assert.equal(anointRabbit([
+    player('dead-low', { alive: false, ranking: 0.1 }),
+    player('dead-high', { alive: false, ranking: 0.7 }),
+  ], null), 'dead-high');
+  // Including settling for the old rabbit, which is how a one-player world
+  // keeps a rabbit at all -- upstream's own "no other than old rabbit to choose
+  // from".
+  assert.equal(anointRabbit([player('old', { alive: false })], 'old'), 'old');
+  // And with nobody eligible there is simply no rabbit.
+  assert.equal(anointRabbit([player('a', { paused: true }), player('b', { observer: true })]), null);
+  assert.equal(anointRabbit([]), null);
+
+  // anointNewRabbit's killer shortcut (bzfs.cxx:2747), which only `-rabbit
+  // killer` takes: whoever shot the rabbit gets it if they are still alive.
+  const killerCase = [player('killer', { ranking: 0.01 }), player('ace', { ranking: 0.99 })];
+  assert.equal(pickNewRabbit({ candidates: killerCase, oldRabbitId: 'old', killerId: 'killer', selection: 'killer' }), 'killer');
+  // The other two styles ignore the killer entirely.
+  assert.equal(pickNewRabbit({ candidates: killerCase, oldRabbitId: 'old', killerId: 'killer', selection: 'score' }), 'ace');
+  // A killer who died in the same exchange does not inherit it: upstream asks
+  // the strict canBeRabbit() of them.
+  assert.equal(pickNewRabbit({
+    candidates: [player('killer', { alive: false }), player('ace', { ranking: 0.99 })],
+    oldRabbitId: 'old',
+    killerId: 'killer',
+    selection: 'killer',
+  }), 'ace');
+  // Nor does the rabbit inherit its own post by killing itself.
+  assert.equal(pickNewRabbit({
+    candidates: [player('old'), player('ace', { ranking: 0.9 })],
+    oldRabbitId: 'old',
+    killerId: 'old',
+    selection: 'killer',
+  }), 'ace');
+  // A killer who has left is not there to take it.
+  assert.equal(pickNewRabbit({
+    candidates: [player('ace', { ranking: 0.9 })],
+    oldRabbitId: 'old',
+    killerId: 'gone',
+    selection: 'killer',
+  }), 'ace');
+
+  // `-rabbit random` is not a fourth code path: Score::setRandomRanking replaces
+  // the ranking with a random number and the selection above runs unchanged. So
+  // a random ranking still cannot pick an ineligible player, and still prefers a
+  // good candidate over the old rabbit.
+  for (let trial = 0; trial < 200; trial += 1) {
+    const chosen = anointRabbit([
+      player('old', { ranking: Math.random() }),
+      player('paused', { paused: true, ranking: Math.random() }),
+      player('good', { ranking: Math.random() }),
+    ], 'old');
+    assert.equal(chosen, 'good', 'a random ranking must still respect eligibility');
+  }
+
+  // isARabbitKill (PlayerInfo.h:324). Hunters are team mates, so hunter fire is
+  // team killing -- except on the rabbit, and except for a deposed rabbit until
+  // its next spawn.
+  assert.equal(isARabbitKill({ wasRabbit: false }, { team: PLAYER_TEAM.RABBIT }), true);
+  assert.equal(isARabbitKill({ wasRabbit: true }, { team: PLAYER_TEAM.HUNTER }), true);
+  assert.equal(isARabbitKill({ wasRabbit: false }, { team: PLAYER_TEAM.HUNTER }), false);
+  assert.equal(isARabbitKill(null, { team: PLAYER_TEAM.HUNTER }), false);
+  assert.equal(isARabbitKill({ wasRabbit: false }, null), false);
+}
+
+// `rabbit` in server.json and `-rabbit` in a map, normalized to upstream's three
+// RabbitSelection values (CmdLineOptions.cxx:1106).
+{
+  const { normalizeRabbitSelection, resolveRabbitSelection } = serverTeams;
+  assert.equal(normalizeRabbitSelection(undefined), null);
+  assert.equal(normalizeRabbitSelection(null), null);
+  assert.equal(normalizeRabbitSelection(false), null);
+  assert.equal(normalizeRabbitSelection('false'), null);
+  // A bare switch is `score`, and so is a style upstream would not recognise --
+  // it leaves the argument unconsumed rather than rejecting the switch.
+  assert.equal(normalizeRabbitSelection(true), 'score');
+  assert.equal(normalizeRabbitSelection(''), 'score');
+  assert.equal(normalizeRabbitSelection('nonsense'), 'score');
+  assert.equal(normalizeRabbitSelection(' KILLER '), 'killer');
+  assert.equal(normalizeRabbitSelection('random'), 'random');
+  // A map switch only ever turns something on, so the map wins where it speaks
+  // and the config stands where it does not.
+  assert.equal(resolveRabbitSelection('score', 'random'), 'random');
+  assert.equal(resolveRabbitSelection('score', undefined), 'score');
+  assert.equal(resolveRabbitSelection(false, 'killer'), 'killer');
+  assert.equal(resolveRabbitSelection(false, undefined), null);
 }
 
 console.log('player team tests passed');

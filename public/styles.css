@@ -751,6 +751,13 @@ body {
   font-weight: bold;
 }
 
+/* The rabbit mark stands off the name it follows, unlike the flag and the
+   authentication indicator, because it is a word rather than a suffix. */
+.scoreboardRabbit:not(:empty) {
+  white-space: nowrap;
+  margin-left: 6px;
+}
+
 .scoreboardStats {
   margin-left: 10px;
   white-space: nowrap;
