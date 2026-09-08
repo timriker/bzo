@@ -6,14 +6,14 @@ Upstream references are paths under `$HOME/bzflag/`.
 
 Phases 1 (the Useless superflag, animation, and the drop key), 2 (team flags and
 capture), 3 (Identify), 6 (damage rules), 7 (per-player tank dimensions), 8 (shot
-variants), 9 (Ricochet), 10 (Shock Wave), 12 (Guided Missile) and 13 (per-viewer
-visibility) are **implemented**, as are phase 5's three good flags and the
-jumping switch with all three flags that hang off it -- `JP` Jumping, `WG` Wings
-and `NJ` No Jumping -- see "Jumping, and the flags that carry it".
+variants), 9 (Ricochet), 10 (Shock Wave), 11 (Thief), 12 (Guided Missile) and 13
+(per-viewer visibility) are **implemented**, as are phase 5's three good flags and
+the jumping switch with all three flags that hang off it -- `JP` Jumping, `WG`
+Wings and `NJ` No Jumping -- see "Jumping, and the flags that carry it".
 All three of phase 4's ways out of a bad flag -- the **shake timeout**, **shake
 wins** and **antidote flags** -- are in, and three of its four client-side bad
 flags with them; `WA` Wide Angle is the one left, and it is blocked rather than
-merely unstarted. Phases 11 and 14 are not started.
+merely unstarted. Phase 14 is not started.
 
 Every flag is named as well as abbreviated wherever it is mentioned here, in
 `Flag.cxx`'s own words: the abbreviation is what the code, the config and the
@@ -194,9 +194,9 @@ worse than trusting a modified client about a base it still had to drive to.
 ## What is left to add
 
 Upstream carries 47 flag types: a Null type, four team flags, and 42
-superflags. bzo has the four team flags and thirty-seven superflags -- everything
-except `WA` Wide Angle, `TH` Thief, `OO` Oscillation Overthruster, `BU` Burrow
-and `PZ` Phantom Zone -- so **5 superflags remain**, 4 good and 1 bad. The table below is the whole list, grouped by the
+superflags. bzo has the four team flags and thirty-eight superflags -- everything
+except `WA` Wide Angle, `OO` Oscillation Overthruster, `BU` Burrow
+and `PZ` Phantom Zone -- so **4 superflags remain**, 3 good and 1 bad. The table below is the whole list, grouped by the
 machinery each group needs rather than by name, because the machinery is what
 decides the order. `src/common/Flag.cxx` is the authority for every name,
 abbreviation, endurance, quality and help string; `src/common/global.cxx` for
@@ -205,11 +205,10 @@ every constant named here.
 | Phase | Flags | What it needs that bzo does not have |
 |---|---|---|
 | 4 | `WA` Wide Angle | **blocked**: no XR answer yet, see below |
-| 11 | `TH` Thief | flag stealing |
 | 14 | `OO` Oscillation Overthruster, `BU` Burrow, `PZ` Phantom Zone | movement through and under geometry |
 
-Phases 11 and 14 are each their own feature and can be taken in either order. Phase 4
-is down to its last flag, and that one is blocked rather than merely unstarted.
+Phase 14 is a feature of its own and owes nothing to anything left. Phase 4 is
+down to its last flag, and that one is blocked rather than merely unstarted.
 
 Phase 13 was taken next because `CB` had already built most of it: a flag that
 changes what one player sees of another needed one place where a remote tank's
@@ -222,10 +221,10 @@ Ricochet. 7 was asked for while `maps/flagbuffet.bzw` was on the test server,
 which is the map that makes a size flag worth having, and it owed nothing to 4, 5
 or 6 either.
 
-Phase 7 also paid forward. `TH` Thief in phase 11 is a size flag as much as a
-shot flag, and `getTankDimensionScale` now covers that half of it:
-`_thiefTinyFactor` is one more case beside `T` and `O`. What phase 11 still owes
-is the stealing.
+Phase 7 paid forward to 11. `TH` Thief is a size flag as much as a shot flag, so
+`_thiefTinyFactor` was one more case in `getTankDimensionScale` beside `T` and
+`O`, and phase 8 had already made its shot three multipliers and a beam -- which
+left the stealing as the only thing phase 11 actually had to build.
 
 Phase 10 paid forward to the phase before it, which is why 6 came after it:
 `applyShockWaveHits` had already established a sweep that kills several tanks
@@ -1421,17 +1420,100 @@ is the only sound it makes, and there is no muzzle flash because there is no
 muzzle -- the shot origin is "under tank" (`LocalPlayer.cxx:1230`). On the radar
 it is a circle of the current radius, as `radarRender` draws it.
 
-## Phase 11 -- Thief
+## Phase 11 -- Thief (implemented)
 
-`TH`. A fast, tiny, harmless tank whose shot steals a flag instead of killing:
-speed `_thiefVelAd` 1.67, size `_thiefTinyFactor` 0.5, shot velocity
-`_thiefAdShotVel` 8.0, rate `_thiefAdRate` 12.0, life `_thiefAdLife` 0.05, and
-`_thiefDropTime` half a reload before the stolen flag can be dropped. Phase 7's
-dimensions and phase 8's shot variants are both in, so its size is one more case
-in `getTankDimensionScale` -- `_thiefTinyFactor` on both axes, exactly as `T` and
-`O` are -- and its velocity, rate and life go in `getShotEffects`. One new server
-rule is left: a hit transfers the victim's flag to the shooter rather than
-killing.
+`TH` Thief. **The only shot in the game whose outcome is neither a death nor
+nothing.** A thief's beam takes the flag the tank it reaches is carrying and
+leaves the tank alive, and everything else about the flag is the price of being
+close enough to fire it: a tank half the usual size (`_thiefTinyFactor` 0.5) at
+two thirds again the usual speed (`_thiefVelAd` 1.67, which beats `V` High
+Speed's 1.5), firing twelve times a reload (`_thiefAdRate` 12) a beam that
+reaches four tenths of a shell's range.
+
+**It is a beam, not a shell.** `ThiefStrategy` is `LaserStrategy` with different
+numbers: the same `makeSegments(Stop)` in the constructor, the same node per
+segment added to the scene all at once, and an `update` that spends the clock and
+never moves anything. So it goes in `getShotEffects` as `beam: true` beside `L`
+and takes the path `traceShotBeam` already walks. The range falls out of the two
+numbers -- `_thiefAdShotVel` 8 against `_thiefAdLife` 0.05 is 0.4 -- rather than
+being a range of its own.
+
+The beam is cyan for everybody (`setColor(0, 1, 1)`), where a laser wears its
+shooter's colour. That is the one shot in the game that does not say who fired
+it, and it is right: what a thief beam means is "that was a theft", not "that was
+so-and-so shooting at you". `beamColor` on the shot effects is how it reaches the
+client, and it is null for every other flag.
+
+**Three of upstream's hit rules stop being about damage.** `LocalPlayer::checkHit`
+excepts Thief by name twice and `ThiefStrategy` once, and all three are in
+`findShotPlayerHit`:
+
+- **You can never rob yourself.** Thief sits beside Shock Wave in the
+  `source == this` test (`LocalPlayer.cxx:1612`), and unlike a ricochet there is
+  no bounce that could ever earn it.
+- **A team mate's flag is fair game.** The no-team-kills guard excepts Thief in
+  its own words -- "Thief can still take a teammate's flag" -- because nothing
+  about a theft is a kill, and the team mate carrying what you want is exactly
+  who you rob.
+- **A tank is not what stops the beam.** `ThiefStrategy::isStoppedByHit` returns
+  false. bzo reads that as "a tank with nothing to take does not block it" and
+  stops the beam at the first tank it can actually rob. That is the one place
+  this phase does not simply follow upstream: upstream lets every client along
+  the beam report its own theft, the thief keeps only the last one to arrive, and
+  bzfs zaps the rest -- so robbing one tank per shot destroys nothing anybody
+  wanted and loses nothing anybody would notice.
+
+**Shield does not save you from a thief.** Upstream tests `killerFlag ==
+Flags::Thief` *before* it calls `gotBlowedUp` (`playing.cxx:4174`), so a shielded
+tank simply loses the Shield to the thief. `applyShotVictim` asks the same
+question in the same order.
+
+**The transfer is one message and no drop.** Upstream has the victim's client
+send `MsgTransferFlag` and bzfs check that the tank being transferred *to* is
+really carrying Thief; bzo needs neither half, because the shot already carries
+the flag it was fired with and the server is what decided it hit. `stealFlag`
+moves the flag between owners and broadcasts `transferFlag`, which is the only
+message in the game that moves a flag without a grab or a drop -- the flag never
+touches the ground, so nothing else would repaint it.
+
+**A theft spends the Thief flag.** Upstream zaps whatever the thief is holding
+before handing the stolen flag over, and what the thief is holding is Thief
+(`bzfs.cxx:5167`). `FlagInfo::addFlag` agrees from the other end: it names Thief
+beside the sticky flags in the test that gives a flag a single grab, so `TH` is
+the only good flag in the world with one grab in it. That is now
+`getFlagGrabCount` in the flags pair.
+
+**And it costs the thief a reload.** `_thiefDropTime` is charged when the Thief
+flag *leaves* the tank -- after a successful steal, the moment the theft spends
+it -- and upstream's own comment on the line is "make sure the player must reload
+after theft" (`playing.cxx:3823`). It is declared as `_reloadTime * 0.5`, and
+upstream's `_reloadTime` is a shot's whole life rather than the interval one slot
+comes back on, so `getThiefDropReloadSeconds` takes the world's shot life and not
+bzo's `SHOT_RELOAD_TIME`: at the defaults a theft costs several ordinary reloads.
+Putting the flag down by hand costs the same, because upstream cannot tell the
+two apart and neither reading is unfair.
+
+**One shot can slip out under the penalty, and that is upstream's race too.** The
+theft is decided on the server and the penalty is charged when the drop reaches
+the thief, so a client whose ordinary reload -- a twelfth of the world's, all of
+0.29s -- expires inside that round trip fires once more before the penalty lands.
+Measured on a headless probe at 12fps it was one shot 374ms after the steal, and
+the 1.75s then held from there. Nothing on this side can close it: only the
+server knows a theft happened, and bzo's server gates firing on shot slots rather
+than on a reload timer (see "The server does not enforce a reload timer" in
+AGENTS.md). Upstream is worse off, because its theft takes an extra hop -- the
+victim's client sends `MsgTransferFlag` before bzfs zaps anything.
+
+The victim gets a HUD line of their own, which upstream has no equivalent of. bzo
+says "Dropped X flag" every other time a flag leaves your tank, and a theft is the
+one way of losing one that sends the victim no drop at all -- so without it the
+flag would simply be gone with nothing said. Everything else follows upstream's
+`handleFlagTransferred`: the chat line reads "stole so-and-so's flag", and a
+stolen *team* flag rings the same two alerts a grabbed one does.
+
+In XR it needs nothing new. A thief aims and fires like any other tank, the beam
+is a polyline the renderer already draws, and losing a flag is a HUD line that
+already has a place to sit.
 
 ## Phase 12 -- Guided Missile (implemented)
 

@@ -55,6 +55,10 @@ export const GAME_SOUNDS = Object.freeze({
   shock: { file: 'shock.wav', sfx: 'SFX_SHOCK' },
   // A guided missile is fired.
   missile: { file: 'missile.wav', sfx: 'SFX_MISSILE' },
+  // A Thief's beam is fired. It is played for the shot rather than for the
+  // theft: upstream has no sound for a flag changing hands, and the shot is
+  // fired far more often than it hits anything.
+  thief: { file: 'thief.wav', sfx: 'SFX_THIEF' },
   // A guided missile has locked onto *me*. The one shot sound played for the
   // tank being shot at rather than for the tank shooting: upstream plays it when
   // a MsgGMUpdate naming you arrives (playing.cxx:3537), which is a missile

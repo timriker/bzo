@@ -48,6 +48,7 @@ const {
   getRunOverRadius,
   getRunOverSeparation,
   getFlagEndurance,
+  getFlagGrabCount,
   getFlagThrownAltitude,
   getFlagType,
   getShotEffects,
@@ -2217,6 +2218,10 @@ class Projectile {
     // shooter on the way round.
     this.guided = effects.guided;
     this.activationTime = effects.activationTime;
+    // ThiefStrategy. A shot that takes the victim's flag and leaves the tank
+    // alive -- so it answers to none of the rules that decide a death, and
+    // `findShotPlayerHit` and `applyShotVictim` both branch on it.
+    this.steals = effects.steals;
     this.points = null;
     this.bounces = 0;
     this.x = x;
@@ -3230,11 +3235,12 @@ function addFlag(flag) {
   flag.initialVelocity = flight.initialVelocity;
   flag.flightStartedAt = Date.now();
   // A bad flag is sticky and can only be shaken off; a good one may be dropped
-  // freely and survives _maxFlagGrabs pickups. FlagInfo.cxx:135 gives a sticky
+  // freely and survives _maxFlagGrabs pickups. FlagInfo.cxx:134 gives a sticky
   // flag a single grab, so shaking one off spends it and the flag leaves the
-  // world rather than lying in wait for the next tank.
+  // world rather than lying in wait for the next tank -- and names Thief in the
+  // same test, which is what makes a theft spend the flag that took it.
   flag.endurance = getFlagEndurance(flag.type);
-  flag.grabs = flag.endurance === FLAG_ENDURANCE.STICKY ? 1 : GAME_CONFIG.MAX_FLAG_GRABS;
+  flag.grabs = getFlagGrabCount(flag.type, GAME_CONFIG.MAX_FLAG_GRABS);
 }
 
 // resetFlag(). Takes the flag off whoever holds it and sends it home: a team
@@ -3375,14 +3381,18 @@ function sendFlagDrop(flag) {
   const state = getFlagState(flag);
   flag.owner = null;
   if (!owner) return;
-  // The one place a flag leaves a tank, whether it was thrown, shaken, zapped or
-  // captured, so it is where the shed state that was armed with it is torn down.
-  owner.flagShakeWins = 0;
-  if (owner.antidote) {
-    owner.antidote = null;
-    sendToPlayer(owner, { type: 'antidoteFlag', position: null });
-  }
+  clearFlagShedState(owner);
   broadcastAll({ type: 'dropFlag', playerId: owner.id, flag: state });
+}
+
+// What `armBadFlagRelease` set up, taken back down. Every way a flag leaves a
+// tank goes through here -- thrown, shaken, zapped, captured, or stolen -- and a
+// theft is the one that does not send a drop with it.
+function clearFlagShedState(owner) {
+  owner.flagShakeWins = 0;
+  if (!owner.antidote) return;
+  owner.antidote = null;
+  sendToPlayer(owner, { type: 'antidoteFlag', position: null });
 }
 
 function getPlayerFlag(playerId) {
@@ -4970,7 +4980,9 @@ function findShotPlayerHit(proj, from, to, now) {
     // yourself!" is the Ricochet flag's own help text -- but only once one has
     // bounced. Before that a shot leaves the muzzle beyond the hit radius and
     // outruns the tank it came from.
-    if (player.id === proj.playerId && proj.bounces === 0) return;
+    // "my own shock wave cannot kill me ... or Thief" (LocalPlayer.cxx:1612).
+    // Unlike a ricochet, no bounce ever earns a thief its own flag back.
+    if (player.id === proj.playerId && (proj.steals || proj.bounces === 0)) return;
     if (player.team === 'observer') return; // Observers are non-combatants
     if (player.paused) return; // Can't hit paused players
     if (player.health <= 0) return; // Can't hit dead players
@@ -4981,8 +4993,21 @@ function findShotPlayerHit(proj, from, to, now) {
     // own shot still reaches you once it has bounced -- upstream excepts the
     // shooter too (`source != this`), because a ricochet you drove into is
     // nobody's team kill.
-    if (NO_TEAM_KILLS && player.id !== proj.playerId
+    //
+    // "Thief can still take a teammate's flag" -- upstream excepts it from the
+    // guard by name (LocalPlayer.cxx:1617), because nothing about a theft is a
+    // kill and a team mate carrying the flag you want is exactly who you rob.
+    if (NO_TEAM_KILLS && !proj.steals && player.id !== proj.playerId
       && !areFoes(getShotTeam(proj), player.team, TEAM_MODE.enabled)) return;
+
+    // `ThiefStrategy::isStoppedByHit` returns false: a thief's beam is not spent
+    // by a tank, so a tank with nothing to take does not block it. bzo stops it
+    // at the first tank it can actually rob instead, which is the one place it
+    // does not simply follow upstream -- upstream lets every client along the
+    // beam report its own theft, and the thief keeps only the last of them while
+    // bzfs zaps the rest. Robbing one tank per shot loses nothing anybody wanted
+    // and destroys nothing.
+    if (proj.steals && !getPlayerFlag(player.id)) return;
 
     // LocalPlayer::checkHit (LocalPlayer.cxx:1630): "laser can't hit a cloaked
     // tank". The one rule in phase 13 that is not a matter of what somebody can
@@ -5099,6 +5124,11 @@ function killPlayer(victim, killer, reason, projectileId = null) {
 // fate -- an ordinary shell is spent by the tank it hits and a shock wave is
 // spent by nobody, so the caller decides that. Returns what became of the tank.
 function applyShotVictim(proj, id, player) {
+  // A thief's shot is answered before anything that could kill: upstream tests
+  // `killerFlag == Flags::Thief` ahead of `gotBlowedUp` (playing.cxx:4174), so a
+  // shielded tank loses its Shield to the thief rather than being saved by it.
+  if (proj.steals) return stealFlag(proj, player) ? 'stolen' : 'missed';
+
   // gotBlowedUp() with the shield flag: the tank keeps its life and the flag is
   // thrown as if the player had dropped it -- which is where _shieldFlight sends
   // it up extra high. Nobody scores, because nobody died.
@@ -5140,14 +5170,61 @@ function applyGenocide(proj, victim) {
   });
 }
 
+// MsgTransferFlag (bzfs.cxx:5099), with the client's half of it folded in. A
+// thief's beam takes the flag the victim is carrying and the victim keeps its
+// life: upstream has the tank that was hit send the transfer and bzfs check that
+// the tank being transferred *to* is really carrying Thief, which is a check bzo
+// does not need -- the shot already carries the flag it was fired with, and the
+// server is what decided it hit.
+//
+// Any flag can be stolen, a team flag included, and a theft spends the Thief
+// flag itself: upstream zaps whatever the thief is holding before it hands the
+// stolen flag over, and what the thief is holding is Thief.
+function stealFlag(proj, victim) {
+  const thief = players.get(proj.playerId);
+  const stolen = getPlayerFlag(victim.id);
+  if (!thief || !stolen) return false;
+
+  const held = getPlayerFlag(thief.id);
+  if (held) zapFlag(held);
+  // The victim gives up everything the flag armed as well as the flag, which is
+  // what `sendFlagDrop` does for every other way of losing one.
+  clearFlagShedState(victim);
+  stolen.owner = thief.id;
+  stolen.status = FLAG_STATUS.ON_TANK;
+  stolen.flightStartedAt = 0;
+  stolen.grabbedAt = Date.now();
+  armBadFlagRelease(thief, stolen);
+  log(`"${thief.name}" stole ${getFlagType(stolen.type).name} flag ${stolen.index} from "${victim.name}"`);
+  broadcastAll({
+    type: 'transferFlag',
+    fromId: victim.id,
+    toId: thief.id,
+    flag: getFlagState(stolen),
+  });
+  return true;
+}
+
 // The tank a travelling shot reached. One hit and the shot is gone, whichever
 // way the tank took it.
 function applyShotPlayerHit(proj, id, player, point) {
   projectiles.delete(id);
   const outcome = applyShotVictim(proj, id, player);
-  logShotEnd(proj, outcome === 'shield' ? 'shield_hit' : 'player_hit', point, `victim=${player.id}`);
-  broadcastAll({ type: 'shotEnd', id, reason: 0, x: point.x, y: point.y, z: point.z });
+  logShotEnd(proj, SHOT_END_LABEL[outcome], point, `victim=${player.id}`);
+  // `Player::endShot(id, false, false)` -- upstream ends a thief's shot on the
+  // tank it robbed with neither a hit nor an explosion, because nothing blew up.
+  // Reason 1 is bzo's "faded", and it is what a theft looks like.
+  const quiet = outcome === 'stolen' || outcome === 'missed';
+  broadcastAll({ type: 'shotEnd', id, reason: quiet ? 1 : 0, x: point.x, y: point.y, z: point.z });
 }
+
+// What became of the tank, as the shot log says it.
+const SHOT_END_LABEL = Object.freeze({
+  killed: 'player_hit',
+  shield: 'shield_hit',
+  stolen: 'flag_stolen',
+  missed: 'nothing_to_steal',
+});
 
 // ShockWaveStrategy::checkHit: "a shock wave can kill anything inside the
 // radius, be it behind or in a building or even zoned". A plain sphere from the

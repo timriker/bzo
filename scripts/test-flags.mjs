@@ -85,6 +85,13 @@ import {
   SHOCK_IN_RADIUS,
   SHOCK_OUT_RADIUS,
   SR_RADIUS_MULT,
+  THIEF_VEL_AD,
+  THIEF_TINY_FACTOR,
+  THIEF_AD_SHOT_VEL,
+  THIEF_AD_RATE,
+  THIEF_AD_LIFE,
+  THIEF_DROP_TIME_FACTOR,
+  THIEF_BEAM_COLOR,
   VELOCITY_AD,
   ANGULAR_AD,
   AGILITY_AD_VEL,
@@ -101,6 +108,9 @@ import {
   computeFlagFlight,
   getAntidoteCoordinate,
   getFlagEndurance,
+  getFlagGrabCount,
+  stealsFlags,
+  getThiefDropReloadSeconds,
   normalizeShakeTimeout,
   normalizeShakeWins,
   getFlagFlightHeight,
@@ -1361,6 +1371,94 @@ for (const theirs of ['ST', 'CL', 'MQ', 'SE', null]) {
       'client/server guidance diverged',
     );
   }
+}
+
+// Phase 11 -- Thief. The one flag that is a shot variant, a size flag and a
+// speed flag at once, so every one of the three has to agree with the others.
+{
+  assert.equal(THIEF_VEL_AD, 1.67, '_thiefVelAd');
+  assert.equal(THIEF_TINY_FACTOR, 0.5, '_thiefTinyFactor');
+  assert.equal(THIEF_AD_SHOT_VEL, 8.0, '_thiefAdShotVel');
+  assert.equal(THIEF_AD_RATE, 12.0, '_thiefAdRate');
+  assert.equal(THIEF_AD_LIFE, 0.05, '_thiefAdLife');
+  assert.equal(THIEF_DROP_TIME_FACTOR, 0.5, '_thiefDropTime is _reloadTime * 0.5');
+
+  const type = getFlagType('TH');
+  assert.equal(type.name, 'Thief');
+  assert.equal(type.endurance, FLAG_ENDURANCE.UNSTABLE, 'TH is FlagUnstable');
+  assert.equal(type.quality, 0, 'and a good flag, for all that it cannot kill');
+  assert.equal(type.team, null);
+  assert.equal(isBadFlag('TH'), false);
+
+  // ThiefStrategy is LaserStrategy's shape: makeSegments in the constructor and
+  // a node per segment drawn at once, so the whole path exists at the muzzle.
+  const thief = getShotEffects('TH');
+  assert.equal(thief.beam, true, 'a thief fires a beam, not a shell');
+  assert.equal(thief.steals, true, 'and the beam robs rather than kills');
+  close(thief.velocityFactor, THIEF_AD_SHOT_VEL, '_thiefAdShotVel');
+  close(thief.rateFactor, THIEF_AD_RATE, '_thiefAdRate');
+  close(thief.lifeFactor, THIEF_AD_LIFE, '_thiefAdLife');
+  // Range is speed times life: eight times as fast for a twentieth as long is
+  // four tenths of a shell's reach, which is why a thief has to close in.
+  close(thief.velocityFactor * thief.lifeFactor, 0.4, 'a thief beam is short');
+  assert.ok(thief.velocityFactor < getShotEffects('L').velocityFactor,
+    'and nothing like a laser, which crosses the world in a step');
+  assert.equal(thief.beamColor, THIEF_BEAM_COLOR, 'cyan for everybody');
+  assert.equal(thief.fireSound, 'thief', 'SFX_THIEF');
+  assert.equal(thief.shockwave, false);
+  assert.equal(thief.guided, false);
+  assert.equal(thief.throughBuildings, false);
+  assert.equal(thief.hiddenOnRadar, false);
+  assert.equal(thief.activationTime, 0, 'a thief beam is live at the muzzle');
+
+  // Nothing else steals, and nothing else has a colour of its own.
+  for (const abbreviation of ['L', 'GM', 'SW', 'F', 'MG', 'SB', 'IB', 'US', null]) {
+    assert.equal(stealsFlags(abbreviation), false, `${abbreviation} kills or does nothing`);
+    assert.equal(getShotEffects(abbreviation).beamColor, null,
+      `${abbreviation} wears its shooter's colour`);
+  }
+  assert.equal(stealsFlags('TH'), true);
+
+  // Player::updateFlagEffect sets both axes from _thiefTinyFactor, exactly as it
+  // does for Tiny and Obesity -- and Player::getRadius follows the length axis,
+  // so a thief is genuinely harder to hit rather than only smaller to look at.
+  assert.deepEqual(
+    getTankDimensionScale('TH'),
+    { length: THIEF_TINY_FACTOR, width: THIEF_TINY_FACTOR },
+    'a thief is half a tank'
+  );
+  assert.equal(getTankHitRadiusScale('TH'), THIEF_TINY_FACTOR);
+  assert.equal(usesNarrowHitBox('TH'), false, 'it is small, not narrow');
+  assert.ok(THIEF_TINY_FACTOR > TINY_FACTOR, 'but not as small as Tiny');
+
+  // Player::getMaxSpeed names Thief beside Velocity, and turns at the world
+  // rate: the flag buys speed and size, never agility. `_thiefVelAd` 1.67 beats
+  // `_velocityAd` 1.5, so a thief outruns High Speed -- which is the trade for a
+  // shot that cannot kill anybody.
+  close(getMaxSpeedFactor('TH'), THIEF_VEL_AD, 'a thief is the fastest tank there is');
+  close(getMaxAngVelFactor('TH'), 1, 'and turns at the world rate');
+  assert.ok(THIEF_VEL_AD > VELOCITY_AD, 'faster even than High Speed, which is the trade');
+  assert.equal(getMotionEffects('TH').agility, false);
+
+  // FlagInfo::addFlag names Thief in the same test as a sticky flag: one grab.
+  assert.equal(getFlagGrabCount('TH', MAX_FLAG_GRABS), 1, 'a theft spends the flag');
+  assert.equal(getFlagGrabCount('US', MAX_FLAG_GRABS), MAX_FLAG_GRABS);
+  assert.equal(getFlagGrabCount('O', MAX_FLAG_GRABS), 1, 'a sticky flag has one grab');
+  assert.equal(getFlagGrabCount(null, MAX_FLAG_GRABS), MAX_FLAG_GRABS, 'an empty slot is unstable');
+  assert.equal(getFlagGrabCount('TH', 9), 1, 'whatever the world allows everyone else');
+
+  // _thiefDropTime is half the world's *shot life*, not half the interval one
+  // slot comes back on -- so at bzo's defaults it is several ordinary reloads.
+  close(getThiefDropReloadSeconds(3.5), 1.75, 'half a reload, in upstream\'s terms');
+  close(getThiefDropReloadSeconds(0), 0);
+
+  // Both ends resolve the same thief, or the beam is drawn where it was not.
+  assert.deepEqual(serverFlags.getShotEffects('TH'), getShotEffects('TH'));
+  assert.deepEqual(serverFlags.getMotionEffects('TH'), getMotionEffects('TH'));
+  assert.deepEqual(serverFlags.getTankDimensionScale('TH'), getTankDimensionScale('TH'));
+  assert.equal(serverFlags.getFlagGrabCount('TH', MAX_FLAG_GRABS), getFlagGrabCount('TH', MAX_FLAG_GRABS));
+  assert.equal(serverFlags.stealsFlags('TH'), stealsFlags('TH'));
+  assert.equal(serverFlags.getThiefDropReloadSeconds(3.5), getThiefDropReloadSeconds(3.5));
 }
 
 console.log('Flag flight and type tests passed');

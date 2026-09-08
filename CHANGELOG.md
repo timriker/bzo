@@ -6,6 +6,56 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
 
 ## [Unreleased]
 
+## [1.0.78] - 2026-09-08
+
+### Fixed
+- **A dead tank could keep shooting for the whole five seconds of its death
+  camera.** Nothing on the client marked you dead: the server sends no state
+  with a kill -- the next state it sends for that player is the respawn -- so
+  `isMyTankAlive` went on answering with whatever it last heard, and the fire
+  path had nothing to test. `handlePlayerHit` now clears the victim's health
+  where it hides the tank, which is upstream's `setStatus(getStatus() &
+  ~PlayerState::Alive)`, and `shoot()` refuses while dead or paused, which is
+  `LocalPlayer::fireShot`'s "make sure we're allowed to shoot". The server
+  already refused both -- `getShotRejection` names them -- but it was running in
+  `warning` mode, where a finding is logged and honoured, so the shots landed.
+  An honest client must not send the packet in the first place. Measured with a
+  `TH` probe holding the trigger through its own death: seventeen shots before,
+  none after.
+- **And could shoot across a reconnect, before the join was confirmed.** bzo
+  reconnects on its own, and between the socket opening and `playerJoined`
+  landing the client still carries the last session's state: alive, holding the
+  trigger, standing where it used to. Three shots went out inside 350ms of
+  `ws.open` in testing, all of them logged `dead player cannot shoot`. `shoot()`
+  now waits for the join, which upstream has no need to guard because it has no
+  tank at all until it has entered the game.
+
+### Added
+- **`TH` Thief, completing phase 11 (#6).** The only shot in the game whose
+  outcome is neither a death nor nothing: a thief's beam takes the flag the tank
+  it reaches is carrying and leaves the tank alive. Everything else about the
+  flag is the price of getting close enough to fire it -- half a tank's size
+  (`_thiefTinyFactor` 0.5), two thirds again its speed (`_thiefVelAd` 1.67, which
+  beats `V` High Speed's 1.5), twelve shots a reload (`_thiefAdRate` 12), and a
+  beam that reaches four tenths of a shell's range. `ThiefStrategy` is
+  `LaserStrategy` with different numbers, so it is a beam like `L` and takes the
+  path the laser already walks -- cyan for everybody, where a laser wears its
+  shooter's colour, because what a thief beam says is "that was a theft" rather
+  than who fired it.
+- **Three of upstream's hit rules stop being about damage for it.** You can never
+  rob yourself, a team mate's flag is fair game even with team kills off -- "Thief
+  can still take a teammate's flag" is upstream's own comment -- and a tank with
+  nothing to take does not block the beam, which is `ThiefStrategy::isStoppedByHit`
+  returning false. Shield does not save you either: upstream tests for Thief
+  *before* it blows anybody up, so a shielded tank simply loses the Shield to the
+  thief.
+- A theft spends the Thief flag itself and costs the thief `_thiefDropTime`, half
+  the world's shot life, before the trigger works again. `TH` is the only good
+  flag in the world with a single grab in it, which is upstream naming it beside
+  the sticky flags in `FlagInfo::addFlag`.
+- `thief.wav` from upstream, played for the shot rather than for the theft, as
+  upstream plays it.
+
 ## [1.0.77] - 2026-09-08
 
 ### Changed

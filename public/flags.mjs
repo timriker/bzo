@@ -138,6 +138,33 @@ export const LOCK_ON_ANGLE = 0.15;
 // Steamroller would kill from twice as far away as it looks.
 export const SR_RADIUS_MULT = 2.0;
 
+// Thief's six numbers (global.cxx:164). The one flag that is a shot variant, a
+// size flag and a speed flag at once, which is why upstream spends six BZDB
+// variables on it and every other superflag one or two.
+//
+// `_thiefAdShotVel` 8 and `_thiefAdLife` 0.05 multiply out to four tenths of a
+// shell's range, and `ThiefStrategy` is built exactly as `LaserStrategy` is --
+// `makeSegments(Stop)`, then a node per segment drawn all at once -- so what a
+// thief fires is a beam rather than a shell, and a short one. That is the whole
+// balance of the flag: you have to be close, and you get twelve tries a reload
+// (`_thiefAdRate`) at half a tank's size (`_thiefTinyFactor`) and two thirds
+// again its speed (`_thiefVelAd`).
+//
+// `_thiefDropTime` is declared as `_reloadTime * 0.5`, so it is a fraction of
+// the world's shot life rather than of the interval one slot comes back on --
+// see `getThiefDropReloadSeconds`.
+export const THIEF_VEL_AD = 1.67;
+export const THIEF_TINY_FACTOR = 0.5;
+export const THIEF_AD_SHOT_VEL = 8.0;
+export const THIEF_AD_RATE = 12.0;
+export const THIEF_AD_LIFE = 0.05;
+export const THIEF_DROP_TIME_FACTOR = 0.5;
+// `thiefNodes[i]->setColor(0, 1, 1)` (SegmentedShotStrategy.cxx:703). The one
+// shot in the game that is not the shooter's own colour: a laser wears its
+// team's, a thief's beam is cyan for everybody, because what it says is "that
+// was a theft" rather than "that was so-and-so shooting at you".
+export const THIEF_BEAM_COLOR = 0x00ffff;
+
 // _velocityAd, _angularAd, _agilityAdVel, _agilityTimeWindow and
 // _agilityVelDelta (global.cxx:18, :23, :176). Phase 5's three good flags, all
 // of them multipliers on `LocalPlayer::setDesiredSpeed`'s `fracOfMaxSpeed` or
@@ -609,6 +636,14 @@ export const FLAG_TYPES = Object.freeze({
     team: null,
     help: 'See stealthed, cloaked and masquerading tanks as normal.',
   }),
+  TH: Object.freeze({
+    abbreviation: 'TH',
+    name: 'Thief',
+    endurance: FLAG_ENDURANCE.UNSTABLE,
+    quality: FLAG_QUALITY.GOOD,
+    team: null,
+    help: 'Steal flags.  Small and fast but can\'t kill.',
+  }),
   JM: Object.freeze({
     abbreviation: 'JM',
     name: 'Jamming',
@@ -686,6 +721,7 @@ export function getTankDimensionScale(abbreviation) {
   switch (abbreviation) {
     case 'O': return { length: OBESE_FACTOR, width: OBESE_FACTOR };
     case 'T': return { length: TINY_FACTOR, width: TINY_FACTOR };
+    case 'TH': return { length: THIEF_TINY_FACTOR, width: THIEF_TINY_FACTOR };
     case 'N': return { length: 1, width: NARROW_FACTOR };
     default: return { length: 1, width: 1 };
   }
@@ -808,6 +844,18 @@ export function getTankDimensionEase(fromScale, targetScale, elapsedSeconds) {
   return fromScale + ((targetScale - fromScale) * t);
 }
 
+// FlagInfo::addFlag's grab count (FlagInfo.cxx:134). A flag survives
+// `_maxFlagGrabs` pickups, except for the two kinds with one grab in them: a
+// sticky flag, which is spent by the shake that sheds it, and Thief, which
+// upstream names in the same test. Thief is the only good flag with a single
+// grab, and stealing spends it -- so a thief who takes a flag leaves nothing
+// behind for the next tank.
+export function getFlagGrabCount(abbreviation, maxFlagGrabs) {
+  if (getFlagEndurance(abbreviation) === FLAG_ENDURANCE.STICKY) return 1;
+  if (abbreviation === 'TH') return 1;
+  return maxFlagGrabs;
+}
+
 export function normalizeFlagGrabs(count) {
   const value = Math.floor(Number(count));
   if (!Number.isFinite(value)) return MAX_FLAG_GRABS;
@@ -877,6 +925,13 @@ export function hasAirControl(abbreviation) {
 // guided missile has one, and `_gmActivationTime` is why: a missile turning back
 // toward a target beside its shooter would otherwise kill the shooter.
 //
+// `steals` is the shot that does not kill. A thief's beam takes the flag its
+// victim is carrying and leaves the tank alive, which is the only outcome in the
+// game that is neither a death nor nothing -- and `ThiefStrategy::isStoppedByHit`
+// returning false is the second half of it: a thief shot is not spent by a tank.
+//
+// `beamColor` overrides the shooter's own colour for a beam. Only Thief has one.
+//
 // `fireSound` is the sample the shot is announced with. Upstream switches on the
 // flag rather than playing SFX_FIRE for everything (playing.cxx:2956), and Laser
 // is the first flag bzo has that takes a sound of its own.
@@ -890,6 +945,8 @@ const DEFAULT_SHOT_EFFECTS = Object.freeze({
   activationTime: 0,
   throughBuildings: false,
   hiddenOnRadar: false,
+  steals: false,
+  beamColor: null,
   fireSound: 'fire',
 });
 
@@ -941,10 +998,42 @@ const SHOT_EFFECTS = Object.freeze({
     shockwave: true,
     fireSound: 'shock',
   }),
+  // ThiefStrategy is LaserStrategy with different numbers and one different
+  // ending: the same `makeSegments(Stop)` in the constructor, the same node per
+  // segment drawn all at once, so it is a beam -- but eight times the speed
+  // against a twentieth of the life leaves it four tenths of a shell's range.
+  TH: Object.freeze({
+    ...DEFAULT_SHOT_EFFECTS,
+    velocityFactor: THIEF_AD_SHOT_VEL,
+    rateFactor: THIEF_AD_RATE,
+    lifeFactor: THIEF_AD_LIFE,
+    beam: true,
+    steals: true,
+    beamColor: THIEF_BEAM_COLOR,
+    fireSound: 'thief',
+  }),
 });
 
 export function getShotEffects(abbreviation) {
   return SHOT_EFFECTS[abbreviation] || DEFAULT_SHOT_EFFECTS;
+}
+
+// The shot that robs instead of killing, asked of the flag it was fired with.
+export function stealsFlags(abbreviation) {
+  return getShotEffects(abbreviation).steals;
+}
+
+// handleFlagDropped's "make sure the player must reload after theft"
+// (playing.cxx:3823). `_thiefDropTime` is declared as `_reloadTime * 0.5`, and
+// upstream's `_reloadTime` is the shot's whole life rather than the interval one
+// slot comes back on -- so this takes the world's shot life and not bzo's
+// `SHOT_RELOAD_TIME`, and a theft costs the thief several ordinary reloads.
+//
+// It is charged when the Thief flag *leaves* the tank, which after a successful
+// steal is the moment the flag is spent: putting it down by hand costs the same,
+// because upstream cannot tell the two apart and neither reading is unfair.
+export function getThiefDropReloadSeconds(shotLifetimeSeconds) {
+  return shotLifetimeSeconds * THIEF_DROP_TIME_FACTOR;
 }
 
 // ShockWaveStrategy::update. The radius is a straight lerp from `_shockInRadius`
@@ -1120,6 +1209,10 @@ const DEFAULT_MOTION_EFFECTS = Object.freeze({
 
 const MOTION_EFFECTS = Object.freeze({
   V: Object.freeze({ ...DEFAULT_MOTION_EFFECTS, speedFactor: VELOCITY_AD }),
+  // Player::getMaxSpeed (Player.cxx:219) names Thief beside Velocity, and
+  // `setDesiredSpeed` (LocalPlayer.cxx:1106) applies it the same way -- so it is
+  // a speed flag as much as a shot flag, and every speed check reads it here.
+  TH: Object.freeze({ ...DEFAULT_MOTION_EFFECTS, speedFactor: THIEF_VEL_AD }),
   QT: Object.freeze({ ...DEFAULT_MOTION_EFFECTS, angVelFactor: ANGULAR_AD }),
   A: Object.freeze({ ...DEFAULT_MOTION_EFFECTS, agility: true }),
   RC: Object.freeze({ ...DEFAULT_MOTION_EFFECTS, reverseControls: true }),

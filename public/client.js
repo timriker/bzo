@@ -202,6 +202,7 @@ import {
   getFlagType,
   getKnownFlagAbbreviation,
   getShotEffects,
+  getThiefDropReloadSeconds,
   applyAccelerationLimit,
   applyMotionInput,
   firesContinuously,
@@ -725,6 +726,13 @@ function getShotReloadTimeMs() {
     ? configuredReload
     : 1000;
   return base / getShotEffects(getMyFlag()?.type ?? null).rateFactor;
+}
+
+// LocalPlayer::forceReload. The trigger is out of action for this long whatever
+// the reload had left, which is what a theft costs the thief. bzo's reload is
+// one gate rather than a timer per slot, so this is that gate pushed out.
+function forceReload(seconds) {
+  nextAllowedShotAt = Math.max(nextAllowedShotAt, performance.now() + (seconds * 1000));
 }
 
 function getVoiceAudioSettings() {
@@ -4245,6 +4253,14 @@ function handleServerMessage(message) {
       break;
     }
 
+    // MsgTransferFlag. A thief's shot moved a flag from one tank to another
+    // without it ever touching the ground, so there is no grab and no drop to
+    // repaint from -- this is the only message that says so.
+    case 'transferFlag':
+      handleFlagTransferred(message);
+      refreshScoreboards();
+      break;
+
     case 'captureFlag':
       handleFlagCaptured(message);
       refreshScoreboards();
@@ -4264,6 +4280,12 @@ function handleServerMessage(message) {
       if (message.playerId === myPlayerId) {
         renderManager.playLocalSound('flagDrop');
         showMessage(`Dropped ${label} flag`);
+        // handleFlagDropped's "make sure the player must reload after theft"
+        // (playing.cxx:3823). Charged when the flag leaves the tank, which after
+        // a successful steal is the moment the theft spends it.
+        if (flag.type === 'TH') {
+          forceReload(getThiefDropReloadSeconds(getShotLifetimeSeconds(null)));
+        }
       }
       addChatEntry(['misc', 'all'], `${getPlayerName(message.playerId)} dropped ${label} flag`, CHAT_KIND_MISC);
       refreshScoreboards();
@@ -4558,7 +4580,11 @@ function createProjectile(data) {
   // local copy to re-anchor and nothing to integrate: it is drawn from the
   // segments that arrived with it.
   if (effects.beam) {
-    const beamColor = getPlayerShotColor(data.playerId);
+    // A laser wears its shooter's colour; a thief's beam is cyan for everybody,
+    // because `thiefNodes[i]->setColor(0, 1, 1)` never asks who fired it.
+    const beamColor = effects.beamColor === null
+      ? getPlayerShotColor(data.playerId)
+      : new THREE.Color(effects.beamColor);
     const beam = renderManager.createShotBeam({
       ...data,
       color: beamColor.getHex(),
@@ -4840,6 +4866,15 @@ function handlePlayerHit(message) {
   // Get victim tank and create explosion effect
   if (victimTank) {
     clearJumpPredictionDebug(victimTank);
+    // gotBlowedUp's `setStatus(getStatus() & ~PlayerState::Alive)`
+    // (playing.cxx:3990) for your own tank, and `setExplode()` for anybody
+    // else's. The server sends no state with the kill -- the next one it sends
+    // for this player is the respawn -- so until this runs the client still
+    // believes the tank it just exploded is alive, and everything that asks
+    // (`isMyTankAlive`, the roam list, who a missile may lock) gets the stale
+    // answer. Upstream never has this to do because a death is a status flag on
+    // the same struct the explosion is drawn from.
+    if (victimTank.userData.playerState) victimTank.userData.playerState.health = 0;
     // Immediately hide the tank from the scene
     victimTank.visible = false;
     // Create explosion with tank parts
@@ -7643,7 +7678,20 @@ function handleMotion(deltaTime) {
 
 function shoot() {
   if (isObserver()) return false;
+  // LocalPlayer::fireShot's "make sure we're allowed to shoot"
+  // (LocalPlayer.cxx:1220). A dead or paused tank has no shot to fire, and bzo
+  // holds to it here rather than leaving it to the server: `getShotRejection`
+  // refuses both, so a client that fired anyway would be sending a packet the
+  // server only accepts in warning mode -- and warning mode is for measuring
+  // honest disagreements, not for carrying a client's own bugs.
+  if (!isMyTankAlive() || isPaused) return false;
   if (!ws || ws.readyState !== WebSocket.OPEN) return false;
+  // An open socket is not a tank. bzo reconnects on its own, and between the
+  // socket opening and the join being confirmed the client still carries the
+  // last session's state -- alive, holding the trigger, standing where it used
+  // to. Upstream has nothing to guard here because it has no tank at all until
+  // it has entered the game.
+  if (!gameplayJoinConfirmed) return false;
 
   const dirX = -Math.sin(playerRotation);
   const dirZ = -Math.cos(playerRotation);
@@ -8383,16 +8431,19 @@ function updateAntidoteFlag() {
 }
 
 // MsgGrabFlag on the client. Taking a flag is a local sound for whoever took it,
-// and for everyone else it matters only when a team flag changed hands.
-function handleFlagGrabbedAlerts(grabberId, flag) {
+// and for everyone else it matters only when a team flag changed hands. A theft
+// comes through here too: the same flag is in the same hands by the end of it,
+// and `stolenFrom` is the only thing that reads differently.
+function handleFlagGrabbedAlerts(grabberId, flag, stolenFrom = null) {
   if (grabberId === myPlayerId) {
     renderManager.playLocalSound('flagGrab');
     // A bad flag is the one grab where what happens next matters more than what
     // was taken, so it says how this world lets you put it down.
     const sticky = getFlagEndurance(flag?.type) === FLAG_ENDURANCE.STICKY;
-    showMessage(sticky
-      ? `Grabbed ${describeFlag(flag)} flag - ${describeBadFlagRelease()}`
-      : `Grabbed ${describeFlag(flag)} flag`);
+    const took = stolenFrom === null
+      ? `Grabbed ${describeFlag(flag)} flag`
+      : `Stole ${stolenFrom}'s ${describeFlag(flag)} flag`;
+    showMessage(sticky ? `${took} - ${describeBadFlagRelease()}` : took);
     // The flag you are carrying, in the warning colour when it is one you cannot
     // put down. A sticky flag with a shake timeout running takes the slot over
     // from here for its countdown, so this is what it looks like for the moment
@@ -8421,6 +8472,31 @@ function handleFlagGrabbedAlerts(grabberId, flag) {
     showMessage('Team Grab!!!');
     if (grabber) renderManager.playSound('teamGrab', grabber.position);
   }
+}
+
+// MsgTransferFlag on the client (handleFlagTransferred, playing.cxx:3846). The
+// flag changes tanks with no grab and no drop between, so this is what moves it
+// on the scoreboard, in the world and on the thief's own HUD.
+//
+// The victim gets a line of their own, which upstream has no equivalent of. bzo
+// says "Dropped X flag" every other time a flag leaves your tank, and a theft is
+// the one way of losing one that sends the victim no drop at all -- so without
+// it the flag would simply be gone with nothing said.
+function handleFlagTransferred(message) {
+  const flag = setFlagState(message.flag);
+  const label = describeFlag(flag);
+  const thiefName = getPlayerName(message.toId);
+  const victimName = getPlayerName(message.fromId);
+  addChatEntry(
+    ['misc', 'all'],
+    `${thiefName} stole ${victimName}'s ${label} flag`,
+    CHAT_KIND_MISC
+  );
+  if (message.fromId === myPlayerId) {
+    renderManager.playLocalSound('flagDrop');
+    showMessage(`${thiefName} stole your ${label} flag`, 'death');
+  }
+  handleFlagGrabbedAlerts(message.toId, flag, victimName);
 }
 
 // MsgNearFlag on the client. The Identify flag's answer: the name of the

@@ -428,7 +428,7 @@ altitude once per map.
 `docs/flags-plan.md` is the design and staging plan: what upstream does, the
 data model, the protocol, which phase each piece belongs to, and the full list
 of the superflags still missing. Read it before extending flags. It carries the
-current phase status; five superflags remain, and `WA` Wide Angle is blocked on
+current phase status; four superflags remain, and `WA` Wide Angle is blocked on
 an XR design rather than merely unstarted.
 
 **A flag needs an answer in XR before its row is added.** bzo ships one client
@@ -961,13 +961,14 @@ Machine Gun the two coincide, because their life is declared as the reciprocal o
 their rate, and that is the coincidence bzo built on: the server holds a slot for
 `lifetimeSeconds` and the client gates firing on `SHOT_RELOAD_TIME / rateFactor`.
 
-Two flags break the coincidence. `L` Laser has `_laserAdLife` 0.1 against
-`_laserAdRate` 0.5, and `SW` Shock Wave has `_shockAdLife` 0.2 against no rate
+Three flags break the coincidence. `L` Laser has `_laserAdLife` 0.1 against
+`_laserAdRate` 0.5, `SW` Shock Wave has `_shockAdLife` 0.2 against no rate
 scaling at all, because `ShockWaveStrategy` is the one strategy that never calls
-`setReloadTime`. So an honest client fires a laser every 7s and a shock wave every
-3.5s, exactly as upstream does, while the server's slot check would let a modified
-one fire a laser every 0.35s and a wave every 0.7s. Honest play is right; the
-anti-cheat gate is loose.
+`setReloadTime`, and `TH` Thief has `_thiefAdLife` 0.05 against `_thiefAdRate` 12.
+So an honest client fires a laser every 7s, a shock wave every 3.5s and a thief
+beam every 0.29s, exactly as upstream does, while the server's slot check would
+let a modified one fire a laser every 0.35s, a wave every 0.7s and a thief beam
+every 0.18s. Honest play is right; the anti-cheat gate is loose.
 
 The fix is to give `Projectile` a slot expiry separate from its lifetime -- the
 reload scaled by `rateFactor` -- and check shot slots against that rather than
@@ -1312,6 +1313,7 @@ surface as an error, not a silent degradation.
 | `shotBoom` | `boom.wav` | `SFX_SHOT_BOOM` | a shot expires or hits an obstacle |
 | `laser` | `laser.wav` | `SFX_LASER` | a laser is fired |
 | `shock` | `shock.wav` | `SFX_SHOCK` | a shock wave is fired |
+| `thief` | `thief.wav` | `SFX_THIEF` | a Thief's beam is fired |
 | `ricochet` | `ricochet.wav` | `SFX_RICOCHET` | a shot bounces off a building |
 | `explosion` | `explosion.wav` | `SFX_EXPLOSION`, `SFX_DIE` | a tank is destroyed |
 | `runOver` | `steamroller.wav` | `SFX_RUNOVER` | a tank is run over by a Steamroller |
@@ -1340,10 +1342,9 @@ though a bzo tank has radius 2. Tune `MASTER_VOLUME` in `public/audio.js`, not
 individual sounds.
 
 Every remaining BZFlag sound is gated on a feature bzo does not have yet:
-`bounce` needs a tank bouncing off a wall, `thief` needs the Thief flag,
-`hunt`/`hunt_select` need hunting, `message_*` need per-kind chat sounds, and
-`laser`/`shock`/`missile`/`burrow`/`phantom`/`steamroller`/`lock` need superflag
-effects. When adding one of those features, take its sound from upstream
+`bounce` needs a tank bouncing off a wall, `hunt`/`hunt_select` need hunting,
+`message_*` need per-kind chat sounds, and `burrow`/`phantom` need the superflags
+they belong to. When adding one of those features, take its sound from upstream
 at the same time. The BZFlag sound codes are in `src/bzflag/sound.h`, resolved
 through the `soundFiles[]` table in `src/bzflag/sound.cxx`.
 
