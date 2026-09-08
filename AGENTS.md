@@ -165,7 +165,7 @@ These are deliberate. Do not "fix" them without being asked.
   and `jumping: false` in `server.json` is what turns it off. The rest follows
   upstream: a map's `-j` can still turn it back on, exactly one of `JP` and `NJ`
   is ever in the flag pool -- `JP` forbidden while jumping is on, `NJ` while it
-  is off -- and `WG` never consults it. See `docs/flags-plan.md`.
+  is off -- and `WG` never consults it. See `docs/flags.md`.
 
 - **A bad flag is shed by dying unless one of the three switches says
   otherwise.** Upstream's `-st`, `-sw` and `-sa` are all off by default and so
@@ -187,7 +187,7 @@ These are deliberate. Do not "fix" them without being asked.
   Agility tank holding half forward outruns anybody at full throttle without
   moving the stick. That is invisible on a keyboard, where the stick is only ever
   0 or +/-1, and bzo has analog input everywhere. Treated as an upstream bug. See
-  `docs/flags-plan.md`.
+  `docs/flags.md`.
 
 - **Damage rules are decided on the server, where upstream decides them on each
   client.** `SR` Steamroller's proximity sweep and `G` Genocide's team wipe both
@@ -195,7 +195,7 @@ These are deliberate. Do not "fix" them without being asked.
   reporting its own death. Same outcome, one copy, and a client cannot decide it
   was not run over. Friendly fire is asked in the same place: upstream refuses a
   teammate's shot in `LocalPlayer::checkHit`, so bzo's `-noTeamKills` covers
-  shots, shock waves and being run over together. See `docs/flags-plan.md`.
+  shots, shock waves and being run over together. See `docs/flags.md`.
 
 - **A game style may be switched while the server runs.** Upstream settles
   `gameOptions` from the command line at startup and never revisits it. bzo's
@@ -215,6 +215,21 @@ These are deliberate. Do not "fix" them without being asked.
   reports `immersive-vr` support on any phone, through Cardboard, so support
   alone does not mean a headset is present. The Settings menu still offers VR
   Mode there.
+
+- **Fewer options than BZFlag: implement upstream's default variant and ship no
+  setting for it.** Where upstream offers quality levels or a switch between two
+  looks -- a modelled guided missile behind `useQuality() >= 3`, a real flag
+  cloth behind `realFlag`, `SHELL_INSIDE_NODES` for the eighth dimension -- bzo
+  builds the one upstream draws by default and leaves the other out. A setting
+  is only added where a measurement says the frame rate needs it, which is the
+  same rule the render level follows. Every option is a second code path to keep
+  correct and a second thing to test on four surfaces.
+
+- **`WA` Wide Angle is not implemented and will not be.** It widens the field of
+  view, which the headset runtime owns in VR, so the flag would be a real
+  penalty in a browser and a no-op in a headset -- worse than absent, because it
+  looks like it works. It is the only flag BZFlag has that bzo does not. See
+  `docs/flags.md` and the Flags section of the README.
 
 The first two exist so a test session can be driven from the server alone. Re-testing
 otherwise means walking to every browser, phone, and headset and clicking. They
@@ -425,31 +440,32 @@ altitude once per map.
 
 ## Flags
 
-`docs/flags-plan.md` is the design and staging plan: what upstream does, the
-data model, the protocol, which phase each piece belongs to, and the full list
-of the superflags still missing. Read it before extending flags. It carries the
-current phase status; three superflags remain, and `WA` Wide Angle is blocked on
-an XR design rather than merely unstarted.
+`docs/flags.md` documents the flag system: where each part of it lives, and every
+place bzo's flags deliberately differ from BZFlag's. Read it before changing
+flags. Per-flag mechanics are not repeated there -- they are in comments beside
+the code, each citing the upstream file and line, where they cannot drift.
 
-**A flag needs an answer in XR before its row is added.** bzo ships one client
-for desktop, mobile and the headset, so a flag whose effect is a desktop-camera
-or 2D-HUD trick -- `WA` Wide Angle is the type case -- is held back and given its
-own XR design rather than shipped doing nothing in VR.
+bzo carries every flag BZFlag has except `WA` Wide Angle, which is deliberately
+absent and will stay absent: the headset owns the projection, so a field-of-view
+flag is a real penalty in a browser and a no-op in VR, and keeping XR honest
+matters more than carrying the flag. A `zoneflag WA` is ignored and `WA` is never
+spawned, which the server says once at load.
 
-**The `FLAG_TYPES` table holds only the flags bzo implements.** Adding a row is
-the last step of implementing a flag, not the first: the row is what puts the
-flag in `superFlags.allowed`'s default and in the help panel, which
-`buildFlagHelp` generates from the same table. An unimplemented row would be a
-flag in the world that lies about what it does, and a help entry promising it.
-The plan is the list of what is missing; the code is not.
+**A flag needs an answer in XR.** bzo ships one client for desktop, mobile and
+the headset, so an effect that is a desktop-camera or 2D-HUD trick is not enough:
+a flag that quietly does nothing in VR looks like it works and the player cannot
+tell.
+
+**The `FLAG_TYPES` table is the list of what bzo has.** A row is what puts a flag
+in `superFlags.allowed`'s default and in the help panel, which `buildFlagHelp`
+generates from the same table, so a row with no behaviour behind it would be a
+flag in the world that lies about what it does.
 
 The shape of it: the server owns every flag and sends the whole flight with the
 event that starts it, and the client integrates that arc locally, exactly as
 `FlagInfo::dropFlag` and `World::updateFlag` split the work upstream. There is no
 per-frame flag packet, and no clock sync -- the client advances `flightTime` by
-its own frame delta from the value the server sent. Grab, drop, and (later)
-capture are all client-initiated and server-validated, which is the same
-arrangement bzfs uses.
+its own frame delta from the value the server sent.
 
 Flag ownership lives only in the server's `flags` array. Do not add a second
 copy on the player.
@@ -460,6 +476,13 @@ the flags pair keeps what each client has learned, and the debug labels draw an
 identified flag's abbreviation over it. The memory is keyed by flag index, which
 is a slot rather than a flag, so it is forgotten when the slot's flag leaves the
 world.
+
+Where a flag's rule is enforced follows one test: server-side wherever a modified
+client could gain by lying, client-side wherever it only changes what its own
+player sees.
+
+Grab, drop and capture are client-initiated and server-validated, which is
+bzfs's own arrangement.
 
 CTF is on when team mode is on **and** the map has bases, which is upstream's
 `ClassicCTF`. Team flags occupy the first slots of the flag array so a team's

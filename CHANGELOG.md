@@ -6,6 +6,82 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
 
 ## [Unreleased]
 
+### Added
+- **`BU` Burrow and `PZ` Phantom Zone, and with them bzo's flags are done (#6).**
+  Every flag BZFlag has is in bzo except `WA` Wide Angle, which is deliberately
+  out for good rather than pending: it widens the field of view, which the
+  headset runtime owns in VR. That closes the flag work -- four team flags and
+  forty-one of upstream's forty-two superflags, all of them with an answer on
+  desktop, on a phone and in a headset.
+- **`BU` Burrow.** `getGroundLimit` is upstream's `groundLimit`: `_burrowDepth`
+  -1.32 for Burrow and zero for everybody else, and everything in bzo that
+  clamped a tank at zero now asks it instead -- the move resolver, the ground
+  snap, both ends' dead reckoning, and a server check, because being down there
+  is the whole of the flag's immunity. That immunity is geometry and not a rule:
+  a tank at `_burrowDepth` reaches up to 0.73 and a shell leaves a muzzle at
+  1.57, so the ordinary height gate refuses the hit, exactly as upstream's
+  motion bounding box does. A shot fired *by* a burrowed tank starts at 0.25 and
+  is inside that band, so two burrowed tanks can shoot each other, and a shock
+  wave still reaches down. The price is upstream's own exclamation mark:
+  **anybody** can drive over a burrowed tank, not only Steamroller -- and neither
+  can do it from below ground, which is what stops two burrowed tanks killing
+  each other the instant they meet. Digging in is four times gravity, the speed
+  and turn handicaps (`_burrowSpeedAd` 0.80, `_burrowAngularAd` 0.55) are read off
+  where the tank is rather than off the flag, and the radar is capped at a quarter
+  of its range while under.
+- **`PZ` Phantom Zone.** Crossing a teleporter does not move a Phantom Zone tank:
+  it toggles the zone and plays SFX_PHANTOM instead. Zoned, the tank drives
+  through buildings on `OO`'s machinery, may fire from inside one -- the exception
+  upstream writes into its own "allowed to shoot" test -- and fires bullets that
+  pass through walls. The two hit rules only make sense as a pair: a zoned tank is
+  reached by a super bullet, a shock wave or another zoned tank's bullet and by
+  nothing else, and a zoned bullet reaches nobody who is *not* zoned, so being
+  zoned costs you every target that is not. The state is the server's, kept on the
+  flag entry beside everything else about a flag, and sent as the state it is
+  rather than as a toggle so a client's own prediction converges on it. Upstream's
+  `setInvert` is not a colour inversion despite the name -- it swaps the ground for
+  `zoneGroundTexture` -- so bzo swaps the one ground mesh's map, which is also the
+  only form of that effect with any meaning in a headset. A zoned tank is drawn at
+  a quarter alpha for everybody, itself and a Seer included. The flag is dropped
+  from the pool on a map with no teleporters, since there would be no way to
+  switch it on.
+
+### Changed
+- **`docs/flags-plan.md` is gone, replaced by `docs/flags.md`.** The plan was a
+  staging document -- what upstream does, which phase each flag belonged to, and
+  the list of what was still missing -- and with every flag in, all of that is
+  history the changelog already holds. What replaced it is a reference for the
+  system as it stands: where each part of it lives, and every place bzo's flags
+  deliberately differ from BZFlag's, which is the one thing about them that was
+  written down nowhere else. Per-flag mechanics are not repeated there; they stay
+  in comments beside the code, each citing the upstream file and line, where they
+  cannot drift. Code comments name the flag they are about rather than the phase
+  it arrived in, and nothing in the code or the docs describes a flag as missing
+  or pending any more.
+- **The README says `WA` Wide Angle will not be implemented.** It widens the
+  field of view, which the headset runtime owns in VR -- it sets the projection
+  from the device's optics, and a client that overrode it would either be ignored
+  or make people ill. A flag that is a real penalty in a browser and a no-op in a
+  headset is worse than an absent one, because it looks like it works and the
+  player cannot tell, and keeping VR honest matters more than carrying the flag.
+  So it is out for good rather than pending, and the README says what that means
+  for a map written for BZFlag: `WA` is never spawned, a `zoneflag WA` is
+  ignored, and the skipped type is named once in the server log at load, so the
+  map loads and plays with nothing silently lost.
+
+### Fixed
+- **A burrow read as a fall, so climbing out of one landed the tank.** Upstream's
+  `location` stays `OnGround` through the whole dig-in and the whole climb back
+  out, because only a z *above* zero makes a tank `InAir` -- so its Falling status
+  never sets and it never "lands". bzo infers both from the vertical velocity in a
+  movement packet, and put landing rings and a landing sound on the screen every
+  time somebody dropped the flag. A tank at or below ground level is no longer
+  read as falling; the ground limit is clamped only on the way down, which is
+  upstream's own condition and what lets a tank climb out rather than be pinned;
+  and the creep that lifts it out is a floor recomputed from where the tank is
+  rather than momentum it keeps, since a few stored centimetres of rise are all it
+  takes for bzo to call the tank airborne.
+
 ## [1.0.79] - 2026-09-08
 
 ### Added

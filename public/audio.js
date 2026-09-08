@@ -85,6 +85,16 @@ export const GAME_SOUNDS = Object.freeze({
   land: { file: 'land.wav', sfx: 'SFX_LAND' },
   // A tank passes through a teleporter.
   teleport: { file: 'teleport.wav', sfx: 'SFX_TELEPORT' },
+  // A tank digs itself in. Upstream plays this the frame a Burrow tank crosses
+  // from ground level to below it (LocalPlayer.cxx:808), in place of the landing
+  // sound -- and its remote counterpart admits it "probably never gets played",
+  // because a remote tank's dead reckoning rarely reports the crossing frame.
+  // bzo plays it for the tank that burrowed, which is the one that hears it.
+  burrow: { file: 'burrow.wav', sfx: 'SFX_BURROW' },
+  // A Phantom Zone tank crosses a teleporter, which zones it rather than moving
+  // it. Upstream plays this instead of SFX_TELEPORT (LocalPlayer.cxx:734), so
+  // the two are never heard together.
+  phantom: { file: 'phantom.wav', sfx: 'SFX_PHANTOM' },
   // A tank appears. BZFlag's SFX_POP is the tank-appeared sound.
   pop: { file: 'pop.wav', sfx: 'SFX_POP' },
   // A flag is picked up. BZFlag plays the same sample for a bad flag through

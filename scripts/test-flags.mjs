@@ -134,6 +134,20 @@ import {
   getSpeedFactor,
   applyMotionInput,
   drivesThroughBuildings,
+  BURROW_DEPTH,
+  BURROW_SPEED_AD,
+  BURROW_ANGULAR_AD,
+  BURROW_GRAVITY_FACTOR,
+  BURROW_RADAR_FACTOR,
+  getGroundLimit,
+  getBurrowFactors,
+  isCrushedByAnyone,
+  canRunOver,
+  isZoned,
+  togglesZoneOnTeleport,
+  shotPassesThroughTank,
+  getFiredShotFlag,
+  ZONED_TANK_ALPHA,
   composeAccelerationLimit,
   getAccelerationLimits,
   applyAccelerationLimit,
@@ -491,7 +505,7 @@ for (const abbreviation of ['JP', 'US', 'ID', 'B*', null]) {
     'client/server disagree about how big a wave is');
 }
 
-// Phase 5's three good flags, all of them multipliers on the world's own tank
+// The three good movement flags, all of them multipliers on the world's own tank
 // speed and turn rate rather than replacements for it.
 {
   assert.equal(VELOCITY_AD, 1.5, '_velocityAd');
@@ -571,7 +585,7 @@ for (const abbreviation of ['JP', 'US', 'ID', 'B*', null]) {
   assert.equal(serverFlags.getMaxSpeedFactor('V'), getMaxSpeedFactor('V'));
 }
 
-// Phase 5's bad flags: five input clamps, one that jumps for you and one that
+// The bad movement flags: five input clamps, one that jumps for you and one that
 // fires for you. None of them is a multiplier, which is why they waited for the
 // table the good three built rather than the other way round.
 {
@@ -723,7 +737,7 @@ for (const abbreviation of ['JP', 'US', 'ID', 'B*', null]) {
     'client/server inertia diverged');
 }
 
-// Phase 6's damage rules: the two flags that change what a hit does without
+// The damage rules: the two flags that change what a hit does without
 // changing what a shot is.
 {
   assert.equal(SR_RADIUS_MULT, 2.0, '_srRadiusMult');
@@ -1142,7 +1156,7 @@ for (const altitude of [1, 5, FLAG_ALTITUDE, 40]) {
   }
 }
 
-// Phase 7. Player::updateFlagEffect scales length and width from one factor for
+// Dimensions. Player::updateFlagEffect scales length and width from one factor for
 // `T` and `O`, touches only the width for `N`, and never touches height.
 assert.deepEqual(getTankDimensionScale('T'), { length: TINY_FACTOR, width: TINY_FACTOR });
 assert.deepEqual(getTankDimensionScale('O'), { length: OBESE_FACTOR, width: OBESE_FACTOR });
@@ -1183,7 +1197,7 @@ for (const abbreviation of ['T', 'N', 'O', null]) {
   );
 }
 
-// Phase 4's view flags. Each is one flag and nothing else, so a predicate that
+// The view flags. Each is one flag and nothing else, so a predicate that
 // answered for two of them would be a flag doing another's job.
 assert.equal(blanksTheView('B'), true);
 assert.equal(jamsTheRadar('JM'), true);
@@ -1217,7 +1231,7 @@ for (const abbreviation of ['B', 'JM', 'CB', null]) {
   assert.equal(serverFlags.hidesTeamColors(abbreviation), hidesTeamColors(abbreviation));
 }
 
-// Phase 13. Four flags that each answer for exactly one thing, so a predicate
+// Per-viewer visibility. Four flags that each answer for exactly one thing, so a predicate
 // that answered for two would be one flag doing another's job.
 assert.equal(hidesFromRadar('ST'), true);
 assert.equal(cloaksTheTank('CL'), true);
@@ -1374,7 +1388,7 @@ for (const theirs of ['ST', 'CL', 'MQ', 'SE', null]) {
   }
 }
 
-// Phase 11 -- Thief. The one flag that is a shot variant, a size flag and a
+// `TH` Thief. The one flag that is a shot variant, a size flag and a
 // speed flag at once, so every one of the three has to agree with the others.
 {
   assert.equal(THIEF_VEL_AD, 1.67, '_thiefVelAd');
@@ -1462,7 +1476,7 @@ for (const theirs of ['ST', 'CL', 'MQ', 'SE', null]) {
   assert.equal(serverFlags.getThiefDropReloadSeconds(3.5), getThiefDropReloadSeconds(3.5));
 }
 
-// --- Phase 14: OO Oscillation Overthruster ----------------------------------
+// --- `OO` Oscillation Overthruster ------------------------------------------
 {
   const oo = getFlagType('OO');
   assert.equal(oo.name, 'Oscillation Overthruster');
@@ -1515,6 +1529,169 @@ for (const theirs of ['ST', 'CL', 'MQ', 'SE', null]) {
   assert.equal(serverFlags.drivesThroughBuildings('V'), drivesThroughBuildings('V'));
   assert.deepEqual(serverFlags.applyMotionInput('OO', -1, 1, true), applyMotionInput('OO', -1, 1, true));
   assert.deepEqual(serverFlags.FLAG_TYPES.OO, FLAG_TYPES.OO);
+}
+
+// --- `BU` Burrow -------------------------------------------------------------
+{
+  const bu = getFlagType('BU');
+  assert.equal(bu.name, 'Burrow');
+  assert.equal(bu.endurance, FLAG_ENDURANCE.UNSTABLE);
+  assert.equal(bu.quality, 0, 'a good flag');
+  assert.equal(
+    bu.help,
+    'Tank burrows underground, impervious to normal shots, but can be steamrolled by anyone!'
+  );
+
+  // global.cxx. The depth is a z and so is negative; the two adjustments are
+  // handicaps, which is what pays for the shot immunity.
+  assert.equal(BURROW_DEPTH, -1.32);
+  assert.equal(BURROW_SPEED_AD, 0.80);
+  assert.equal(BURROW_ANGULAR_AD, 0.55);
+  assert.equal(BURROW_GRAVITY_FACTOR, 4);
+  assert.equal(BURROW_RADAR_FACTOR, 0.25);
+  assert.ok(BURROW_SPEED_AD < 1 && BURROW_ANGULAR_AD < 1, 'both are handicaps');
+
+  // The ground limit is the whole of what makes the ground negotiable, and it is
+  // negotiable for exactly one flag.
+  assert.equal(getGroundLimit('BU'), BURROW_DEPTH);
+  for (const abbreviation of ['V', 'JP', 'WG', 'OO', 'PZ', 'SR', 'US', null]) {
+    assert.equal(getGroundLimit(abbreviation), 0, `${abbreviation} stands on the ground`);
+  }
+
+  // Both handicaps are gated on the tank being below ground rather than on the
+  // flag: "You may have burrow and still be above ground" (bzfs.cxx:5421).
+  assert.deepEqual(getBurrowFactors('BU', 0), { speed: 1, angVel: 1 }, 'above ground, no cost');
+  assert.deepEqual(getBurrowFactors('BU', 1.5), { speed: 1, angVel: 1 }, 'nor in the air');
+  assert.deepEqual(
+    getBurrowFactors('BU', BURROW_DEPTH),
+    { speed: BURROW_SPEED_AD, angVel: BURROW_ANGULAR_AD },
+    'down in the hole it costs both'
+  );
+  assert.deepEqual(getBurrowFactors('BU', -0.01), { speed: BURROW_SPEED_AD, angVel: BURROW_ANGULAR_AD },
+    'and from the first fraction below zero');
+  // No other flag is slowed by being low, and nothing about Burrow is a boost:
+  // the server's bound is 1, so it never has to know where the tank is.
+  assert.deepEqual(getBurrowFactors('V', -1), { speed: 1, angVel: 1 });
+  assert.deepEqual(getBurrowFactors(null, -1), { speed: 1, angVel: 1 });
+  close(getMaxSpeedFactor('BU'), 1, 'the fastest a Burrow tank goes is an ordinary tank');
+  close(getMaxAngVelFactor('BU'), 1);
+
+  // "can be steamrolled by anyone!" -- and by nobody who is not above ground,
+  // which is what stops two burrowed tanks killing each other on contact.
+  assert.equal(isCrushedByAnyone('BU'), true);
+  for (const abbreviation of ['SR', 'OO', 'PZ', 'T', 'US', null]) {
+    assert.equal(isCrushedByAnyone(abbreviation), false, `${abbreviation} is not crushed by just anyone`);
+  }
+  assert.equal(canRunOver(null, 'BU', 0), true, 'an ordinary tank crushes a burrowed one');
+  assert.equal(canRunOver(null, 'BU', 5), true, 'from a rooftop too, if it reaches');
+  assert.equal(canRunOver(null, 'BU', BURROW_DEPTH), false, 'but not from down there itself');
+  assert.equal(canRunOver('BU', 'BU', BURROW_DEPTH), false, 'so two burrowed tanks are safe from each other');
+  assert.equal(canRunOver(null, null, 0), false, 'and an ordinary tank crushes nothing');
+  assert.equal(canRunOver('SR', null, 0), true, 'Steamroller crushes what it touches');
+  assert.equal(canRunOver('SR', null, BURROW_DEPTH), false, 'while it is above ground');
+  // A zoned tank is phased through what it overlaps, so it cannot drive over a
+  // burrowed one -- but Steamroller is not a wheel and still works.
+  assert.equal(canRunOver('PZ', 'BU', 0, true), false, 'a zoned tank crushes nobody by touch');
+  assert.equal(canRunOver('PZ', 'BU', 0, false), true, 'unzoned it is an ordinary tank again');
+  assert.equal(canRunOver('SR', null, 0, true), true, 'and a zoned Steamroller still rolls');
+
+  // Both ends agree, since the server runs the squish sweep and the client
+  // drives the tank into the hole.
+  assert.equal(serverFlags.getGroundLimit('BU'), getGroundLimit('BU'));
+  assert.equal(serverFlags.BURROW_DEPTH, BURROW_DEPTH);
+  assert.deepEqual(serverFlags.getBurrowFactors('BU', -1), getBurrowFactors('BU', -1));
+  assert.equal(serverFlags.canRunOver(null, 'BU', 0), canRunOver(null, 'BU', 0));
+  assert.deepEqual(serverFlags.FLAG_TYPES.BU, FLAG_TYPES.BU);
+}
+
+// --- `PZ` Phantom Zone -------------------------------------------------------
+{
+  const pz = getFlagType('PZ');
+  assert.equal(pz.name, 'Phantom Zone');
+  assert.equal(pz.endurance, FLAG_ENDURANCE.UNSTABLE);
+  assert.equal(pz.quality, 0, 'a good flag');
+  assert.ok(pz.help.startsWith('Teleporting toggles Zoned effect.'));
+
+  // The flag alone is not the effect: `isPhantomZoned` is the flag *and* the
+  // state, and the state starts off.
+  assert.equal(isZoned('PZ', true), true);
+  assert.equal(isZoned('PZ', false), false, 'a flag just picked up is not zoned');
+  assert.equal(isZoned('OO', true), false, 'and nothing else can be zoned at all');
+  assert.equal(isZoned(null, true), false);
+
+  // Only a teleporter switches it, which is why upstream forbids the flag on a
+  // map with none.
+  assert.equal(togglesZoneOnTeleport('PZ'), true);
+  for (const abbreviation of ['OO', 'JP', 'US', null]) {
+    assert.equal(togglesZoneOnTeleport(abbreviation), false);
+  }
+
+  // Phasing: `OO` whenever it is held, `PZ` only while zoned.
+  assert.equal(drivesThroughBuildings('PZ', true), true, 'a zoned tank drives through buildings');
+  assert.equal(drivesThroughBuildings('PZ', false), false, 'an unzoned one does not');
+  assert.equal(drivesThroughBuildings('OO', false), true, 'OO never needed the state');
+  assert.equal(drivesThroughBuildings('OO', true), true);
+  assert.equal(drivesThroughBuildings('V', true), false, 'and the state alone phases nobody');
+
+  // The two hit rules, which are a pair: a zoned tank is reached by three shots
+  // and nothing else, and a zoned shot reaches nobody who is not zoned.
+  for (const shot of ['SW', 'SB', 'PZ']) {
+    assert.equal(shotPassesThroughTank(shot, true), false, `${shot} kills a zoned tank`);
+  }
+  for (const shot of ['L', 'GM', 'F', 'MG', 'IB', 'R', 'TH', null]) {
+    assert.equal(shotPassesThroughTank(shot, true), true, `${shot} goes straight through one`);
+  }
+  assert.equal(shotPassesThroughTank('PZ', false), true, 'a zoned bullet is harmless to everyone else');
+  for (const shot of ['SW', 'SB', 'L', 'GM', null]) {
+    assert.equal(shotPassesThroughTank(shot, false), false, `${shot} hits an ordinary tank`);
+  }
+
+  // "wee bit o hack -- if phantom flag but not phantomized the shot flag is
+  // normal": what a tank fires is not always what it is carrying.
+  assert.equal(getFiredShotFlag('PZ', true), 'PZ');
+  assert.equal(getFiredShotFlag('PZ', false), null, 'an unzoned phantom fires an ordinary shell');
+  assert.equal(getFiredShotFlag('SB', false), 'SB', 'and every other flag fires itself');
+  assert.equal(getFiredShotFlag(null, true), null);
+
+  // PhantomBulletStrategy is `makeSegments(Through)` and nothing else, so a
+  // zoned bullet is an ordinary shell that ignores walls -- as it must be, since
+  // the tank firing it is standing in one.
+  const zonedShot = getShotEffects('PZ');
+  assert.equal(zonedShot.throughBuildings, true);
+  close(zonedShot.velocityFactor, 1, 'at the world speed');
+  close(zonedShot.rateFactor, 1, 'on the world reload');
+  close(zonedShot.lifeFactor, 1, 'for the world lifetime');
+  assert.equal(zonedShot.beam, false);
+  assert.equal(zonedShot.guided, false);
+  assert.equal(zonedShot.shockwave, false);
+  assert.equal(zonedShot.steals, false);
+  // A shot that passes through walls cannot also bounce off them.
+  assert.equal(shotRicochets('PZ', true), false, 'a zoned bullet never ricochets');
+
+  // A zoned tank is a quarter solid to everybody, itself and a Seer included:
+  // upstream sets the same quarter in both branches rather than restoring it.
+  assert.equal(ZONED_TANK_ALPHA, 0.25);
+  close(getVisibleTankAlpha('PZ', 1, null, true), ZONED_TANK_ALPHA, 'faint to anyone');
+  close(getVisibleTankAlpha('PZ', 1, 'SE', true), ZONED_TANK_ALPHA, 'and to a Seer');
+  close(getVisibleTankAlpha('PZ', 1, null, false), 1, 'and solid again once unzoned');
+  // The cloaking rules are untouched by the fourth argument's default.
+  close(getVisibleTankAlpha('CL', 0, null), 0, 'a cloaked tank is still gone');
+  close(getVisibleTankAlpha('CL', 0, 'SE'), 1, 'and a Seer still sees it');
+
+  // The flag changes nothing else about the tank.
+  close(getMaxSpeedFactor('PZ'), 1);
+  close(getMaxAngVelFactor('PZ'), 1);
+  assert.deepEqual(getTankDimensionScale('PZ'), { length: 1, width: 1 });
+
+  // Both ends: the server decides the hits and owns the state, the client draws
+  // the tank and fires the shot.
+  assert.equal(serverFlags.isZoned('PZ', true), isZoned('PZ', true));
+  assert.equal(serverFlags.drivesThroughBuildings('PZ', true), drivesThroughBuildings('PZ', true));
+  assert.equal(serverFlags.shotPassesThroughTank('L', true), shotPassesThroughTank('L', true));
+  assert.equal(serverFlags.shotPassesThroughTank('PZ', false), shotPassesThroughTank('PZ', false));
+  assert.equal(serverFlags.getFiredShotFlag('PZ', false), getFiredShotFlag('PZ', false));
+  assert.deepEqual(serverFlags.getShotEffects('PZ'), getShotEffects('PZ'));
+  assert.deepEqual(serverFlags.FLAG_TYPES.PZ, FLAG_TYPES.PZ);
 }
 
 console.log('Flag flight and type tests passed');

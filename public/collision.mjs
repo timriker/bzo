@@ -152,7 +152,7 @@ export function testOrigRectRect(px, pz, angle, dx1, dy1, dx2, dy2) {
 export function testOrigRectTank(halfW, halfD, localX, localZ, tankAngle, slack = 0, tankScale = null) {
   // Player::getDimensions, which a flag scales on the lateral and forward axes
   // and never on height. `null` is the tank's own size, which is every tank
-  // without one of phase 7's three flags.
+  // without one of the three dimension flags.
   const halfWidth = TANK_HALF_WIDTH * (tankScale ? tankScale.width : 1);
   const halfLength = TANK_HALF_LENGTH * (tankScale ? tankScale.length : 1);
   // Slack shrinks the tank, never the obstacle, mirroring how the circle path

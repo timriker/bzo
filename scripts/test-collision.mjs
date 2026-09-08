@@ -588,7 +588,7 @@ assert.ok(Math.abs(trapped.x) < 1, 'and leaves the shot inside the corridor');
   );
 }
 
-// Phase 7. testOrigRectTank takes the tank's scale, and a scale of 1 has to be
+// The dimension flags. testOrigRectTank takes the tank's scale, and a scale of 1 has to be
 // exactly what the unscaled call already answered or every existing collision
 // moves.
 {
@@ -699,7 +699,7 @@ assert.ok(Math.abs(trapped.x) < 1, 'and leaves the shot inside the corridor');
     'client/server obstacle height diverged');
 }
 
-// Phase 14's phasing. `OO` is not expelled by a building, which is the whole of
+// Phasing. `OO` is not expelled by a building, which is the whole of
 // driving through one, and is still expelled by the three things upstream names.
 {
   const box = { type: 'box', name: 'box', x: 0, z: 0, w: 10, d: 10, h: 10, baseY: 0 };

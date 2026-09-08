@@ -128,6 +128,22 @@ const GM_TURN_ANGLE = 0.628319;
 const GM_ACTIVATION_TIME = 0.5;
 const LOCK_ON_ANGLE = 0.15;
 
+// Burrow's four numbers (global.cxx:28). `_burrowDepth` is negative because it
+// is a z and not a distance: it is how far below the ground a burrowed tank
+// sits. The two adjustments are handicaps rather than boosts, and they are what
+// pays for being impervious to a normal shot.
+const BURROW_DEPTH = -1.32;
+const BURROW_SPEED_AD = 0.80;
+const BURROW_ANGULAR_AD = 0.55;
+// doUpdateMotion (LocalPlayer.cxx:332): while it is below ground a burrowing
+// tank is pulled down at four times gravity, so it digs in rather than sinking
+// gently. Not a BZDB variable -- upstream writes the 4 in place.
+const BURROW_GRAVITY_FACTOR = 4;
+// RadarRenderer::render (RadarRenderer.cxx:403): a quarter of the range while
+// under the ground. There is not much to see from down there, and this is the
+// only cost of the flag a player notices before being run over.
+const BURROW_RADAR_FACTOR = 0.25;
+
 // _srRadiusMult (global.cxx:146). Steamroller's reach, as a multiple of the
 // roller's own radius on top of the victim's -- so the two tanks have to be
 // nearly touching, which is the flag's own help text.
@@ -166,7 +182,7 @@ const THIEF_DROP_TIME_FACTOR = 0.5;
 const THIEF_BEAM_COLOR = 0x00ffff;
 
 // _velocityAd, _angularAd, _agilityAdVel, _agilityTimeWindow and
-// _agilityVelDelta (global.cxx:18, :23, :176). Phase 5's three good flags, all
+// _agilityVelDelta (global.cxx:18, :23, :176). The three good movement flags, all
 // of them multipliers on `LocalPlayer::setDesiredSpeed`'s `fracOfMaxSpeed` or
 // `setDesiredAngVel`'s `fracOfMaxAngVel` -- so they scale the world's own tank
 // speed and turn rate rather than replacing them, and a server that has tuned
@@ -440,6 +456,22 @@ const FLAG_TYPES = Object.freeze({
     quality: FLAG_QUALITY.GOOD,
     team: null,
     help: 'Can drive through buildings.  Can\'t back up or shoot while inside.',
+  }),
+  BU: Object.freeze({
+    abbreviation: 'BU',
+    name: 'Burrow',
+    endurance: FLAG_ENDURANCE.UNSTABLE,
+    quality: FLAG_QUALITY.GOOD,
+    team: null,
+    help: 'Tank burrows underground, impervious to normal shots, but can be steamrolled by anyone!',
+  }),
+  PZ: Object.freeze({
+    abbreviation: 'PZ',
+    name: 'Phantom Zone',
+    endurance: FLAG_ENDURANCE.UNSTABLE,
+    quality: FLAG_QUALITY.GOOD,
+    team: null,
+    help: 'Teleporting toggles Zoned effect.  Zoned tank can drive through buildings.  Zoned tank shoots Zoned bullets and can\'t be shot (except by superbullet, shock wave, and other Zoned tanks).',
   }),
   A: Object.freeze({
     abbreviation: 'A',
@@ -735,7 +767,7 @@ function getTankDimensionScale(abbreviation) {
   }
 }
 
-// Phase 13, per-viewer visibility. Four flags that only ever disagree with each
+// Per-viewer visibility. Four flags that only ever disagree with each
 // other, so they are read as a set rather than one at a time: `ST` hides a tank
 // from the radar, `CL` hides it from the window, `MQ` makes it wear the viewer's
 // own colours, and `SE` defeats all three.
@@ -776,7 +808,14 @@ const SEER_REVEAL_ALPHA = 1;
 // Whether a tank is drawn at all, and how solid. `alpha` is the eased value, so
 // a tank part-way into its cloak is part-way transparent; only a fully faded one
 // disappears, which is upstream's `cloaked && !seerView` test (Player.cxx:899).
-function getVisibleTankAlpha(abbreviation, alpha, viewerFlag) {
+//
+// A zoned tank comes first and is not a per-viewer rule at all: upstream sets
+// the quarter in `updateFlagEffect`, where it applies to every tank drawn
+// (Player.cxx:635), and the seer branch sets the same quarter again rather than
+// restoring it (:915) -- so Seer does not see a zoned tank solid, and a zoned
+// tank is faint to itself as well. That is the flag's own feedback that it is on.
+function getVisibleTankAlpha(abbreviation, alpha, viewerFlag, zoned = false) {
+  if (isZoned(abbreviation, zoned)) return ZONED_TANK_ALPHA;
   if (seesThroughDisguises(viewerFlag)) return SEER_REVEAL_ALPHA;
   if (cloaksTheTank(abbreviation) && alpha <= 0) return 0;
   return alpha;
@@ -941,8 +980,8 @@ function hasAirControl(abbreviation) {
 // `beamColor` overrides the shooter's own colour for a beam. Only Thief has one.
 //
 // `fireSound` is the sample the shot is announced with. Upstream switches on the
-// flag rather than playing SFX_FIRE for everything (playing.cxx:2956), and Laser
-// is the first flag bzo has that takes a sound of its own.
+// flag rather than playing SFX_FIRE for everything (playing.cxx:2956); a flag
+// without one of its own is announced with SFX_FIRE.
 const DEFAULT_SHOT_EFFECTS = Object.freeze({
   velocityFactor: 1,
   rateFactor: 1,
@@ -990,6 +1029,14 @@ const SHOT_EFFECTS = Object.freeze({
     fireSound: 'missile',
   }),
   SB: Object.freeze({
+    ...DEFAULT_SHOT_EFFECTS,
+    throughBuildings: true,
+  }),
+  // PhantomBulletStrategy is `makeSegments(Through)` and nothing else
+  // (SegmentedShotStrategy.cxx:817), so a zoned bullet is an ordinary shell that
+  // ignores walls -- which it has to be, since the tank that fired it is inside
+  // one. What makes it a phantom shot is who it can hit, not how it flies.
+  PZ: Object.freeze({
     ...DEFAULT_SHOT_EFFECTS,
     throughBuildings: true,
   }),
@@ -1327,20 +1374,79 @@ function applyMotionInput(abbreviation, forward, turn, insideBuilding = false) {
   return { forward: clampedForward, turn: clampedTurn };
 }
 
-// doUpdateMotion's `phased` (LocalPlayer.cxx:271). The flag that stops an
-// obstacle expelling the tank, which is the whole of driving through a building
-// -- `phasedObstacleExpels` in the collision pair is the other half, and it is
+// doUpdateMotion's `phased` (LocalPlayer.cxx:271). What stops an obstacle
+// expelling the tank, which is the whole of driving through a building --
+// `phasedObstacleExpels` in the collision pair is the other half, and it is
 // there because what a phased tank is still thrown out of is a question about
 // the obstacle. Upstream phases a dead or exploding tank by the same switch, for
 // tank pieces that fly through walls; bzo's explosion is its own animation and
 // never asks the collider anything.
 //
+// Two flags reach it. `OO` phases as long as it is held; `PZ` phases only while
+// it is *zoned*, which is why the state is a second argument rather than
+// something derivable from the abbreviation.
+//
 // Server-authoritative as much as client-side: driving through walls is the
 // largest prize a modified client could claim, so the server's collision check
 // reads this too and refuses a tank inside a building without it.
-function drivesThroughBuildings(abbreviation) {
-  return abbreviation === 'OO';
+function drivesThroughBuildings(abbreviation, zoned = false) {
+  if (abbreviation === 'OO') return true;
+  return abbreviation === 'PZ' && zoned === true;
 }
+
+// Player::isPhantomZoned (Player.h:566): the flag *and* the state. Upstream
+// keeps the state in `PlayerState::FlagActive`, a status bit that only Phantom
+// Zone ever reads, and toggles it on a teleporter crossing. bzo keeps it on the
+// flag entry the server owns, because the server owns every other thing about a
+// flag and being zoned decides who can shoot you.
+function isZoned(abbreviation, flagActive) {
+  return abbreviation === 'PZ' && flagActive === true;
+}
+
+// doUpdateMotion's teleporter branch (LocalPlayer.cxx:729). A Phantom Zone tank
+// does not teleport at all: crossing a teleporter toggles the zone and plays
+// SFX_PHANTOM instead of moving the tank. That is the whole of how the flag is
+// switched on and off, and it is why upstream forbids `PZ` on a map with no
+// teleporters (CmdLineOptions.cxx:1714) -- there would be no way to use it.
+function togglesZoneOnTeleport(abbreviation) {
+  return abbreviation === 'PZ';
+}
+
+// LocalPlayer::checkHit's two phantom rules (LocalPlayer.cxx:1622 and :1634),
+// which are a pair and only make sense read together:
+//
+//   - "only superbullet or shockwave can kill zoned dude" -- and another zoned
+//     tank's bullet, which the test names third.
+//   - "zoned shots only kill zoned tanks" -- so a phantom bullet is harmless to
+//     everybody else, and being zoned costs you every target that is not.
+//
+// True when the shot goes straight through and nothing happens. Upstream asks
+// this on the victim's own client; bzo asks it where hits are decided, which is
+// the server, for the same reason it decides every other kill.
+function shotPassesThroughTank(shotFlag, victimZoned) {
+  if (victimZoned) {
+    return shotFlag !== 'SW' && shotFlag !== 'SB' && shotFlag !== 'PZ';
+  }
+  return shotFlag === 'PZ';
+}
+
+// ShotPath::FiringInfo (ShotPath.cxx:46), in upstream's own words: "wee bit o
+// hack -- if phantom flag but not phantomized the shot flag is normal". A `PZ`
+// tank that has not been through a teleporter fires ordinary shells, so the flag
+// a shot is fired *under* is not always the flag in the tank's hands.
+function getFiredShotFlag(abbreviation, zoned) {
+  if (abbreviation === 'PZ' && !zoned) return null;
+  return abbreviation;
+}
+
+// Player::updateFlagEffect (Player.cxx:635): a zoned tank is drawn at a quarter
+// alpha for everyone, "barely visible, regardless of teleporter proximity" --
+// which is upstream's note that this overrides the fade a tank gets from merely
+// standing near a teleporter. Not a per-viewer rule like `ST`, `CL` and `MQ`: a zoned
+// tank is faint to itself as well, and a Seer sees it at the same quarter
+// (Player.cxx:915) rather than solid.
+const ZONED_TANK_ALPHA = 0.25;
+
 
 // doUpdateMotion's bounce (LocalPlayer.cxx:877). A Bouncy tank on a surface is
 // thrown back up the moment its landing delay expires, and the delay is set by
@@ -1413,15 +1519,67 @@ function getSpeedFactor(abbreviation, previousFraction, requestedFraction, agili
   return { factor: 1, agilityStartedAt };
 }
 
+// LocalPlayer::doUpdateMotion's `groundLimit` (LocalPlayer.cxx:275). How far
+// below zero this tank may go: `_burrowDepth` for Burrow, and nothing at all for
+// everybody else. Both ends read it -- the client to stop the tank there, the
+// server to extrapolate and to validate the same z -- and it is the whole of
+// what makes the ground negotiable for one flag and solid for the rest.
+function getGroundLimit(abbreviation) {
+  return abbreviation === 'BU' ? BURROW_DEPTH : 0;
+}
+
+// setDesiredSpeed (LocalPlayer.cxx:1108) and setDesiredAngVel (:1164). Both are
+// gated on the tank actually being below ground rather than on the flag, and
+// upstream says why where its server checks the same thing: "You may have burrow
+// and still be above ground" (bzfs.cxx:5421). Until the tank is down there the
+// flag costs nothing and grants nothing.
+function getBurrowFactors(abbreviation, y) {
+  if (abbreviation !== 'BU' || !(y < 0)) return { speed: 1, angVel: 1 };
+  return { speed: BURROW_SPEED_AD, angVel: BURROW_ANGULAR_AD };
+}
+
+// Nothing about Burrow makes a tank harder to hit; it makes it *lower*. A tank
+// at `_burrowDepth` reaches up to 0.73 and a shot leaves a muzzle at 1.57, so a
+// level shell passes over it and the ordinary height gate refuses the hit --
+// which is exactly how upstream's immunity works, through the vertical extent of
+// its motion bounding box (BaseLocalPlayer.cxx:110) rather than through a rule.
+// A shot fired *by* a burrowed tank starts at 0.25 and is inside that band, so
+// two burrowed tanks can shoot each other, and a shock wave still reaches down.
+//
+// This is here to be found: there is no burrow branch in the hit test to read.
+
 // checkEnvironment's squish loop (playing.cxx:4198): the flag that kills by
 // touch rather than by shot. It is the only rule in the game that runs off
 // nothing but where two tanks are, which is why it needs a sweep of its own
 // rather than a hook on something that was already happening.
 //
-// `BU` Burrow is upstream's other half of the same loop -- a burrowed tank is
-// squashed by anyone alive, flag or no flag -- and arrives with that flag.
+// `isCrushedByAnyone` below is the other half of the same loop: a burrowed tank
+// is squashed by anyone alive, flag or no flag.
 function crushesOnContact(abbreviation) {
   return abbreviation === 'SR';
+}
+
+// And the other half of the same loop: a burrowed tank is squashed by anybody
+// alive, flag or no flag -- upstream's own exclamation mark, "can be
+// steamrolled by anyone!".
+function isCrushedByAnyone(abbreviation) {
+  return abbreviation === 'BU';
+}
+
+// Whether this roller may run this victim over, which is upstream's condition
+// (playing.cxx:4859) read as one question: Steamroller crushes whatever it
+// touches, and anybody at all crushes a burrowed tank.
+//
+// Both halves need the roller above ground. Upstream skips a roller at a
+// negative z outright, which is what stops two burrowed tanks killing each other
+// the moment they touch -- neither of them is standing on anything. The burrow
+// half additionally spares a zoned tank, which is phased through the tank it
+// overlaps rather than driving over it; a zoned tank carrying Steamroller still
+// crushes, because that is a shot-like effect and not a wheel.
+function canRunOver(rollerFlag, victimFlag, rollerY, rollerZoned = false) {
+  if (!(rollerY >= 0)) return false;
+  if (crushesOnContact(rollerFlag)) return true;
+  return isCrushedByAnyone(victimFlag) && !rollerZoned;
 }
 
 // The reach, in upstream's own terms: the victim's radius plus `_srRadiusMult`
@@ -1793,4 +1951,18 @@ module.exports = {
   TARGETING_ANGLE,
   pickTargetInSights,
   drivesThroughBuildings,
+  BURROW_DEPTH,
+  BURROW_SPEED_AD,
+  BURROW_ANGULAR_AD,
+  BURROW_GRAVITY_FACTOR,
+  BURROW_RADAR_FACTOR,
+  isZoned,
+  togglesZoneOnTeleport,
+  shotPassesThroughTank,
+  getFiredShotFlag,
+  ZONED_TANK_ALPHA,
+  getGroundLimit,
+  getBurrowFactors,
+  isCrushedByAnyone,
+  canRunOver,
 };

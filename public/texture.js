@@ -174,3 +174,12 @@ export function createBaseWallTexture() {
 export function createGroundTexture() {
   return loadTexture('/textures/std_ground.png');
 }
+
+// `zoneGroundTexture` (defaultBZDB.cxx:149). What a Phantom Zone tank sees the
+// ground as while it is zoned: BackgroundRenderer keeps a second set of ground
+// gstates and colours and swaps to them on `setInvert` (BackgroundRenderer.cxx:330),
+// which is upstream's whole "zoned" screen effect -- not a colour inversion of
+// the view, despite the name, but a different ground under a purple sky-clear.
+export function createZoneGroundTexture() {
+  return loadTexture('/textures/zone_ground.png');
+}

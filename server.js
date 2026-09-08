@@ -60,6 +60,13 @@ const {
   getShockWaveRadius,
   cloaksTheTank,
   drivesThroughBuildings,
+  canRunOver,
+  isCrushedByAnyone,
+  getGroundLimit,
+  getFiredShotFlag,
+  isZoned,
+  shotPassesThroughTank,
+  togglesZoneOnTeleport,
   hidesFromRadar,
   seesThroughDisguises,
   getTankDimensionScale,
@@ -954,8 +961,8 @@ function parseBZWServerOptions(lines) {
     // -f <abbreviation|good|bad>: take a flag type out of the pool a slot draws
     // from, upstream's flagDisallowed table. Disallows accumulate and nothing
     // puts one back, so this is a switch like the rest even though it names its
-    // target. A type bzo does not implement is already absent from the pool, so
-    // naming one is not an error -- it asks for nothing that was there.
+    // target. `WA`, the one type bzo does not carry, is already absent from the
+    // pool, so naming it is not an error -- it asks for nothing that was there.
     if (option === '-f' && value) {
       const disallowed = value.trim().toUpperCase();
       const disallowedQuality = disallowed === 'GOOD' || disallowed === 'BAD'
@@ -1310,8 +1317,9 @@ function parseBZWMap(filename) {
             (currentZone.flagCounts.get(abbreviation) || 0) + count
           );
         }
-        // A type bzo does not implement is counted so the load can say how much
-        // of the map it left out, which for a flag test map is most of it.
+        // A type with no `FLAG_TYPES` row matched nothing above, so it is
+        // recorded here for the load to name. That is `WA`, which bzo does not
+        // carry and will not (see docs/flags.md), or a typo in the map.
         if (wantedQuality === null && !getFlagType(wanted)) {
           currentZone.unknownFlags.add(wanted);
         }
@@ -2135,7 +2143,11 @@ class Player {
 
       return {
         x: this.x + dx,
-        y: Math.max(0, this.y + dy), // Don't go below ground
+        // Don't go below this tank's own ground, which for Burrow is
+        // `_burrowDepth`: getDeadReckoning clamps to the same limit
+        // (Player.cxx:1333), and a server that clamped at zero would put a
+        // burrowed tank's hit box a metre and a third above where it is.
+        y: Math.max(getGroundLimit(getPlayerFlag(this.id)?.type ?? null), this.y + dy),
         z: this.z + dz,
         r: newR
       };
@@ -2395,11 +2407,11 @@ function checkCollision(x, y, z, tankRadius = 2, options = {}) {
   // harder to pass through.
   const slack = Math.max(0, Math.min(options.slack || 0, tankRadius));
   const effectiveRadius = tankRadius - slack;
-  // Phase 7's dimension flags. Only the oriented-box path can express a length
+  // The dimension flags. Only the oriented-box path can express a length
   // and a width separately, which is the path a tank always takes; the cylinder
   // is for projectiles, which carry no flag.
   const tankScale = options.tankScale || null;
-  // Phase 14's `OO`. A phased tank is not expelled by what it drives into, so
+  // `OO` and a zoned `PZ`. A phased tank is not expelled by what it drives into, so
   // the obstacles it passes through are not obstacles this call can report --
   // which is what stops the collision check below calling an honest tank inside
   // a building a modified one. Every other caller leaves it off: a flag drop, a
@@ -2700,6 +2712,20 @@ function validateMovement(player, newX, newY, newZ, newRotation, deltaTime, velo
   // stands and the disagreement goes to the log, because a refusal here is what
   // rubber-bands an honest player and hides the geometry bug that caused it.
   if (ANTICHEAT_CONFIG.mode !== 'disabled') {
+    // Only Burrow has any ground below zero, and being down there is what makes
+    // a tank impervious to a level shot -- the height gate in the hit test is
+    // the whole of the immunity, so a client that lied about its z would be
+    // handing itself the flag's entire effect without carrying it. Reported as
+    // the same class of finding as a collision, because it is the same thing:
+    // the two ends disagreeing about where this tank is allowed to be.
+    const groundLimit = getPlayerGroundLimit(player);
+    if (newY < groundLimit - ANTICHEAT_GROUND_SLACK) {
+      const refused = reportCheat(player, 'collision',
+        `BELOW GROUND: y ${newY.toFixed(2)} < ${groundLimit.toFixed(2)}`
+        + ` carrying ${getPlayerFlag(player.id)?.type ?? 'no flag'}`);
+      if (refused) return false;
+    }
+
     const ignoreTeleporters = options.ignoreTeleporters === true;
     const collision = checkCollision(newX, newY, newZ, 2, {
       ignoreTeleporters,
@@ -2727,6 +2753,12 @@ function validateMovement(player, newX, newY, newZ, newRotation, deltaTime, velo
 
   return true;
 }
+
+// How far under its own floor a tank may report itself before the server calls
+// it a disagreement. A burrowed tank rests exactly at `_burrowDepth` and a
+// rounded packet lands a hundredth either side of it, so the slack is a frame's
+// worth of settling rather than a tolerance for anything a client could use.
+const ANTICHEAT_GROUND_SLACK = 0.2;
 
 // Validate shot
 // Every rejection here is a client/server inconsistency: an unmodified client
@@ -2797,7 +2829,12 @@ function getShotRejection(player, shotX, shotY, shotZ) {
   // third term is `location == InBuilding`. Not fatal: the shot and the move
   // that carried the tank into the building cross on the wire, and warning mode
   // exists to measure exactly that.
-  if (isPlayerInsideBuilding(player, extrapolated.x, extrapolated.y, extrapolated.z, player.rotation)) {
+  // "((location == InBuilding) && !isPhantomZoned())" -- the zoned tank is the
+  // exception upstream writes into the test itself. A zoned tank is *meant* to
+  // shoot from inside a building; that is what a phantom bullet is for, and it
+  // can only hit another zoned tank anyway.
+  if (!isPlayerZoned(player)
+    && isPlayerInsideBuilding(player, extrapolated.x, extrapolated.y, extrapolated.z, player.rotation)) {
     return { reason: 'cannot shoot from inside a building', fatal: false };
   }
 
@@ -2884,7 +2921,7 @@ function broadcastAll(message) {
 //
 // Mirrors bzfs: the server owns every flag, and the client animates a flight
 // from the numbers that came with the event that started it. See
-// docs/flags-plan.md, and FlagInfo.cxx / bzfs.cxx upstream.
+// docs/flags.md, and FlagInfo.cxx / bzfs.cxx upstream.
 //
 // A superflag lying on the ground is sent with `type: null`, because bzfs hides
 // the identity of an unheld superflag from every client (bzfs.cxx:361). Picking
@@ -3075,6 +3112,15 @@ function getForbiddenFlags() {
   // already takes out `JP` on a world that always jumps and `R` on one that
   // always bounces.
   if (!TEAM_MODE.enabled) forbidden.push('G');
+  // "if (OBSTACLEMGR.getTeles().size() == 0) forbidden.insert(Flags::PhantomZone)"
+  // (CmdLineOptions.cxx:1714). Crossing a teleporter is the only thing that
+  // zones a tank, so on a map with none the flag can never be switched on --
+  // which is the same reason `JP` goes out on a world that always jumps.
+  if (!OBSTACLES.some((obs) => obs.kind === 'teleporter')) forbidden.push('PZ');
+  // `CB` and `MQ` are upstream's other two teamless voids and are deliberately
+  // not taken: upstream's team mates share one colour, so with no teams both
+  // flags say nothing, while bzo gives every player a colour of its own and both
+  // still work. See docs/flags.md.
   return forbidden;
 }
 // -fb upstream. Whether a superflag may spawn on, and come to rest on, a
@@ -3226,6 +3272,10 @@ function getFlagState(flag, now = Date.now()) {
     flightTime,
     flightEnd: flag.flightEnd,
     initialVelocity: flag.initialVelocity,
+    // Phantom Zone's `PlayerState::FlagActive`. Sent as the state it is rather
+    // than as a toggle, so a client that predicted its own crossing converges on
+    // this instead of flipping a second time.
+    zoned: flag.zoned === true,
   };
 }
 
@@ -3430,8 +3480,28 @@ function getPlayerTankScale(player) {
   return getTankDimensionScale(getPlayerFlag(player?.id)?.type ?? null);
 }
 
+// Player::isPhantomZoned, server side. The state lives on the flag entry, which
+// is where every other thing about a flag lives, so there is one copy of it and
+// the client is told it the same way it is told everything else about a flag.
+function isPlayerZoned(player) {
+  const flag = getPlayerFlag(player?.id);
+  return isZoned(flag?.type ?? null, flag?.zoned === true);
+}
+
 function isPlayerPhased(player) {
-  return drivesThroughBuildings(getPlayerFlag(player?.id)?.type ?? null);
+  const flag = getPlayerFlag(player?.id);
+  return drivesThroughBuildings(flag?.type ?? null, flag?.zoned === true);
+}
+
+// LocalPlayer::doUpdateMotion's `groundLimit` for a player: how far below zero
+// the server will follow this tank.
+function getPlayerGroundLimit(player) {
+  return getGroundLimit(getPlayerFlag(player?.id)?.type ?? null);
+}
+
+function getShotFlagFor(player) {
+  const flag = getPlayerFlag(player?.id);
+  return getFiredShotFlag(flag?.type ?? null, flag?.zoned === true);
 }
 
 // LocalPlayer's `InBuilding` location (LocalPlayer.cxx:672), asked of the
@@ -3479,6 +3549,7 @@ function grabFlag(player, flag) {
   flag.status = FLAG_STATUS.ON_TANK;
   flag.flightStartedAt = 0;
   flag.grabbedAt = Date.now();
+  flag.zoned = false;
   armBadFlagRelease(player, flag);
   log(`"${player.name}" grabbed ${getFlagType(flag.type).name} flag ${flag.index}`);
   broadcastAll({ type: 'grabFlag', playerId: player.id, flag: getFlagState(flag) });
@@ -3639,6 +3710,7 @@ function dropFlag(flag) {
   const owner = getFlagOwner(flag);
   if (!owner) return;
   flag.grabbedAt = 0;
+  flag.zoned = false;
 
   const from = getFlagDropPosition(owner);
   const half = GAME_CONFIG.MAP_SIZE / 2;
@@ -3920,6 +3992,10 @@ function createFlagSlot(index, teamColorIndex, { requiredType = null, zoneIndex 
     // When the current carrier picked it up, which is the shake clock the
     // server checks a sticky drop against. Zero whenever nobody holds it.
     grabbedAt: 0,
+    // `PlayerState::FlagActive`, which only Phantom Zone reads. A flag arrives
+    // in a tank's hands switched off, so picking `PZ` up gives you nothing until
+    // you have driven through a teleporter.
+    zoned: false,
     position: { x: 0, y: 0, z: 0 },
     launchPosition: { x: 0, y: 0, z: 0 },
     landingPosition: { x: 0, y: 0, z: 0 },
@@ -4521,6 +4597,32 @@ function isPointInsideTeleporterPortal(obs, x, y, z, tankRadius = 2) {
   return overlapsActiveVertical && innerDistSquared < tankRadius * tankRadius;
 }
 
+// Why a zone toggle is refused, or null when it stands. A zoning tank does not
+// move, so there is no destination to transform to and no cooldown of its own:
+// the crossing is the whole claim, and it is checked the same way
+// `applyPlayerTeleportMessage` checks the crossing of a tank that does move --
+// against the point the client says it crossed at, never against wherever the
+// server has since extrapolated the tank to. At tank speed a frame is several
+// units, so the extrapolated position is past the portal by the time the
+// message lands.
+function getZoneRefusal(player, at, faceId, now) {
+  if (!Number.isInteger(faceId)) return `face ${faceId} is not a teleporter face`;
+  if (!Number.isFinite(at.x) || !Number.isFinite(at.y) || !Number.isFinite(at.z)) {
+    return `crossing point is not finite (${at.x}, ${at.y}, ${at.z})`;
+  }
+  const obs = TELEPORTER_OBSTACLES_BY_INDEX.get(Math.floor(faceId / 2));
+  if (!obs) return `no teleporter for face ${faceId}`;
+  const rotation = Number.isFinite(at.r) ? at.r : player.rotation;
+  const deltaTime = Math.max(0, (now - player.lastUpdate) / 1000);
+  if (!validateMovement(player, at.x, at.y, at.z, rotation, deltaTime, true)) {
+    return `crossing point ${formatShotPoint(at.x, at.y, at.z)} is not a place this tank could be`;
+  }
+  if (!isPointInsideTeleporterPortal(obs, at.x, at.y, at.z, 2)) {
+    return `${formatShotPoint(at.x, at.y, at.z)} is not inside the portal of face ${faceId}`;
+  }
+  return null;
+}
+
 function applyPlayerTeleportMessage(player, sourceState, fromFaceId, toFaceId, now) {
   if (!player || !sourceState || !Number.isInteger(fromFaceId) || !Number.isInteger(toFaceId)) {
     return { ok: false, reason: 'invalid_packet' };
@@ -4767,11 +4869,32 @@ function traceShotThroughTeleporters(start, dir, travelDistance, projectileId, r
 // O(rollers x players) once a tick, and rollers is almost always zero, so the
 // first pass is what this costs on a normal map.
 function applySteamrollerSweep(now) {
+  // Burrow is the other half of upstream's condition: a burrowed tank is
+  // crushed by *anybody*, so with one in the world every tank above ground is a
+  // roller. That is what this first pass is for -- it asks the cheap question,
+  // off the flags alone, and the usual answer is that there is nothing to
+  // sweep at all.
+  let anyRoller = false;
+  let anyCrushable = false;
+  players.forEach((player) => {
+    if (player.health <= 0 || player.paused || player.team === 'observer') return;
+    const flag = getPlayerFlag(player.id)?.type ?? null;
+    if (crushesOnContact(flag)) anyRoller = true;
+    if (isCrushedByAnyone(flag)) anyCrushable = true;
+  });
+  if (!anyRoller && !anyCrushable) return;
+
   const rollers = [];
   players.forEach((player) => {
     if (player.health <= 0 || player.paused || player.team === 'observer') return;
-    if (!crushesOnContact(getPlayerFlag(player.id)?.type ?? null)) return;
-    rollers.push({ player, at: player.getExtrapolatedPosition(now) });
+    const flag = getPlayerFlag(player.id)?.type ?? null;
+    if (!crushesOnContact(flag) && !anyCrushable) return;
+    rollers.push({
+      player,
+      flag,
+      zoned: isPlayerZoned(player),
+      at: player.getExtrapolatedPosition(now),
+    });
   });
   if (rollers.length === 0) return;
 
@@ -4790,8 +4913,11 @@ function applySteamrollerSweep(now) {
       if (NO_TEAM_KILLS
         && !areFoes(roller.player.team, victim.team, TEAM_MODE.enabled)) continue;
 
-      const rollerFlag = getPlayerFlag(roller.player.id)?.type ?? null;
-      const radius = getRunOverRadius(victimFlag, rollerFlag, TANK_HIT_RADIUS);
+      // Steamroller crushes what it touches; anybody at all crushes a burrowed
+      // tank. Both need the roller above ground, which is what stops two
+      // burrowed tanks killing each other the instant they meet.
+      if (!canRunOver(roller.flag, victimFlag, roller.at.y, roller.zoned)) continue;
+      const radius = getRunOverRadius(victimFlag, roller.flag, TANK_HIT_RADIUS);
       const separation = getRunOverSeparation(
         victimAt.x - roller.at.x,
         victimAt.y - roller.at.y,
@@ -4957,7 +5083,7 @@ function getShotTeam(proj) {
 
 // The tank a shot's hit test sees: bzo's own radius, which is not upstream's
 // `_tankRadius` 4.32, and `_tankHeight` from the collision pair, which is.
-// Phase 7's dimension flags scale the radius, following upstream's own basis --
+// The dimension flags scale the radius, following upstream's own basis --
 // `Player::getRadius` is `dimensionsScale[0] * _tankRadius`, the length scale on
 // the base radius -- so the factors are upstream's and the base stays bzo's.
 const TANK_HIT_RADIUS = 2;
@@ -5057,11 +5183,18 @@ function findShotPlayerHit(proj, from, to, now) {
     if (proj.steals && !getPlayerFlag(player.id)) return;
 
     // LocalPlayer::checkHit (LocalPlayer.cxx:1630): "laser can't hit a cloaked
-    // tank". The one rule in phase 13 that is not a matter of what somebody can
+    // tank". The one per-viewer rule that is not a matter of what somebody can
     // see -- a cloaked tank is genuinely immune to a beam, so it has to be the
     // server's answer rather than each client's. It is also the reason `CL` is a
     // good flag rather than a cosmetic one.
     if (proj.flag === 'L' && cloaksTheTank(getPlayerFlag(player.id)?.type ?? null)) return;
+
+    // LocalPlayer::checkHit's phantom pair (LocalPlayer.cxx:1622 and :1634): a
+    // zoned tank is only reached by a super bullet, a shock wave or another
+    // zoned tank's bullet, and a zoned bullet reaches nobody else. Upstream asks
+    // this on the victim's own client; bzo asks it here, for the same reason it
+    // decides every other kill here.
+    if (shotPassesThroughTank(proj.flag, isPlayerZoned(player))) return;
 
     // Use extrapolated position for accurate hit detection
     const extrapolated = player.getExtrapolatedPosition(now);
@@ -6273,13 +6406,14 @@ wss.on('connection', (ws, req) => {
           // grounded one reports exactly 0 and a falling one reports negative,
           // both quantized to two decimals by the sender.
           //
-          // The threshold used to be a flat 10, which predated `BY` Bouncy --
-          // whose bounce is a random quarter-to-full of the world's jump
-          // velocity and starts as low as 4.75 at bzo's default. The server
-          // missed those jumps entirely and went on extrapolating the tank along
-          // the ground while it was in the air. A tenth of the world's own jump
-          // velocity is clear of the quantization and under anything that could
-          // be a real jump, and it follows a server that has tuned the jump.
+          // The threshold is a tenth of the world's own jump velocity rather
+          // than a fixed number, because `BY` Bouncy's bounce is a random
+          // quarter-to-full of that velocity and starts as low as 4.75 at bzo's
+          // default -- a fixed threshold high enough to clear the quantization
+          // would miss those jumps and go on extrapolating the tank along the
+          // ground while it was in the air. A tenth is clear of the
+          // quantization, under anything that could be a real jump, and follows
+          // a server that has tuned the jump.
           const isJumpStart = oldVV <= 0 && vv > JUMP_START_VERTICAL_VELOCITY;
           const isLanding = player.jumpDirection !== null && vv === 0; // Transition from air to ground
           const isFallStart = player.jumpDirection === null && vv < 0; // Started falling (drove off edge)
@@ -6450,7 +6584,10 @@ wss.on('connection', (ws, req) => {
             shotDirX,
             shotDirZ,
             shotDirY,
-            getPlayerFlag(player.id)?.type ?? null
+            // ShotPath::FiringInfo (ShotPath.cxx:46): an unzoned Phantom Zone
+            // tank fires ordinary shells, so the flag a shot is fired under is
+            // not always the flag its shooter is holding.
+            getShotFlagFor(player)
           );
           projectiles.set(id, proj);
           // A beam is already everywhere it is going to be, so its path is walked
@@ -6558,6 +6695,13 @@ wss.on('connection', (ws, req) => {
             }
             log(`"${player.name}" shook off ${getFlagType(flag.type).name} after ${held.toFixed(2)}s`);
           }
+          // cmdDrop's `!myTank->isPhantomZoned()`: a zoned tank cannot put the
+          // flag down at all. Dropping it would leave the tank phased with
+          // nothing to unphase it, since only the flag can cross a teleporter.
+          if (isPlayerZoned(player)) {
+            const refused = reportCheat(player, 'flagRejected', 'DROP REJECTED: zoned');
+            if (refused) break;
+          }
           // cmdDrop (clientCommands.cxx:355): a flag dropped inside a building
           // would land inside it, where nothing could reach it again. The client
           // refuses the control, so this only catches a modified one.
@@ -6567,6 +6711,43 @@ wss.on('connection', (ws, req) => {
             if (refused) break;
           }
           dropFlag(flag);
+          break;
+        }
+
+        // doUpdateMotion's teleporter branch (LocalPlayer.cxx:729). A Phantom
+        // Zone tank crossing a teleporter is not moved: the zone toggles
+        // instead. The client detects the crossing, as it does for an ordinary
+        // teleport, and this is the server agreeing to it -- the state is the
+        // server's because being zoned is what decides who can shoot you.
+        case 'zone': {
+          if (!player.joined) break;
+          if (player.health <= 0) break;
+          const flag = getPlayerFlag(player.id);
+          if (!flag || !togglesZoneOnTeleport(flag.type)) {
+            reportCheat(player, 'flagRejected',
+              `ZONE REJECTED: carrying ${flag ? getFlagType(flag.type).name : 'no flag'}`);
+            break;
+          }
+          // The crossing itself is the whole claim, so it is the whole check:
+          // the face has to be a teleporter, the point the client says it
+          // crossed at has to be inside that teleporter's portal, and the point
+          // has to be somewhere the tank could legally be. That is exactly what
+          // `applyPlayerTeleportMessage` asks of a tank that does move -- there
+          // is simply no destination to transform to here.
+          const zoneAt = {
+            x: Number(message.x),
+            y: Number(message.y),
+            z: Number(message.z),
+            r: Number(message.r),
+          };
+          const zoneRefusal = getZoneRefusal(player, zoneAt, Number(message.fromFaceId), Date.now());
+          if (zoneRefusal) {
+            reportCheat(player, 'flagRejected', `ZONE REJECTED: ${zoneRefusal}`);
+            break;
+          }
+          flag.zoned = !flag.zoned;
+          log(`"${player.name}" ${flag.zoned ? 'zoned' : 'unzoned'}`);
+          broadcastFlagUpdate(flag);
           break;
         }
 

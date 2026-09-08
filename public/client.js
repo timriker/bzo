@@ -219,6 +219,13 @@ import {
   cloaksTheTank,
   drivesThroughBuildings,
   fakesTeamColor,
+  BURROW_GRAVITY_FACTOR,
+  BURROW_RADAR_FACTOR,
+  getBurrowFactors,
+  getGroundLimit,
+  getFiredShotFlag,
+  isZoned,
+  togglesZoneOnTeleport,
   getNextRadarJamDecay,
   getTankAlphaTarget,
   getTankDimensionScale,
@@ -727,7 +734,7 @@ function getShotReloadTimeMs() {
   const base = Number.isFinite(configuredReload) && configuredReload > 0
     ? configuredReload
     : 1000;
-  return base / getShotEffects(getMyFlag()?.type ?? null).rateFactor;
+  return base / getShotEffects(getMyShotFlag()).rateFactor;
 }
 
 // LocalPlayer::forceReload. The trigger is out of action for this long whatever
@@ -2542,8 +2549,9 @@ function samplePredictedAirPath(state) {
     let pointY = pos.y;
     let landedType = null;
 
-    if (pos.y <= 0) {
-      pointY = 0;
+    const pathGroundLimit = getGroundLimit(state.flagType ?? null);
+    if (pos.y <= pathGroundLimit) {
+      pointY = pathGroundLimit;
       landed = true;
       landedType = 'ground';
     }
@@ -4124,8 +4132,18 @@ function handleServerMessage(message) {
           renderManager.fireTankJumpJets(tank);
         }
 
-        // Detect fall start (drove off edge - record direction for air physics)
-        if (oldJumpDirection === null && message.vv < 0 && message.vv > -1) {
+        // Detect fall start (drove off edge - record direction for air physics).
+        //
+        // A tank at or below ground level has driven off nothing: it is a Burrow
+        // tank digging itself in, or climbing back out of its hole once the flag
+        // is gone. Upstream never reads either as a fall -- its `location` stays
+        // `OnGround` for the whole of it, because only a z above zero makes a
+        // tank `InAir` (LocalPlayer.cxx:670), so `PlayerState::Falling` never
+        // sets and `justLanded` never becomes true. bzo infers both from the
+        // vertical velocity in the packet instead, and without this gate a
+        // burrow reads as a fall and the climb out as a landing: rings and a
+        // landing sound every time somebody puts the flag down.
+        if (oldJumpDirection === null && message.vv < 0 && message.vv > -1 && message.y > 0) {
           tank.userData.jumpDirection = message.r;
         }
 
@@ -4688,7 +4706,7 @@ function createLocalProjectile({ x, y, z, dirX, dirZ, dirY = 0 }) {
 
   const shotColor = getPlayerShotColor(myPlayerId);
   const localId = `local-${myPlayerId}-${Date.now()}-${localProjectileCounter++}`;
-  const myFlag = getMyFlag()?.type ?? null;
+  const myFlag = getMyShotFlag();
   const localEffects = getShotEffects(myFlag);
   const projectile = localEffects.shockwave
     ? renderManager.createShotShockWave({
@@ -5220,7 +5238,7 @@ function getColliderTopY(obs) {
   return (obs?.baseY || 0) + (Number.isFinite(obs?.h) ? obs.h : 0);
 }
 
-// Phase 14's phasing, for the local tank -- the only tank this client resolves
+// Phasing, for the local tank -- the only tank this client resolves
 // motion for. `insideBuildings` is upstream's own list
 // (LocalPlayer::collectInsideBuildings, LocalPlayer.cxx:966) and answers both
 // questions the flag asks: whether the tank is `InBuilding`, which is what takes
@@ -5237,7 +5255,34 @@ let phasedReverse = false;
 // collider sweep rather than once per obstacle: reading the flag means walking
 // the flag list, and the sweeps run every frame.
 function amPhased() {
-  return drivesThroughBuildings(getMyFlag()?.type ?? null);
+  const flag = getMyFlag();
+  return drivesThroughBuildings(flag?.type ?? null, flag?.zoned === true);
+}
+
+// Player::isPhantomZoned for the local tank. The flag entry carries the state,
+// which is the server's, so this is one place rather than a variable of its own
+// that could disagree with the roster.
+// ShotPath::FiringInfo (ShotPath.cxx:46): the flag a shot is fired under, which
+// is the flag in hand for every type but `PZ` -- an unzoned Phantom Zone tank
+// fires ordinary shells. Everything that reads a shot's behaviour reads this
+// rather than the flag, so the muzzle sound, the reload and the local
+// projectile all agree with the shot the server actually creates.
+function getMyShotFlag() {
+  const flag = getMyFlag();
+  return getFiredShotFlag(flag?.type ?? null, flag?.zoned === true);
+}
+
+function amZoned() {
+  const flag = getMyFlag();
+  return isZoned(flag?.type ?? null, flag?.zoned === true);
+}
+
+// LocalPlayer::doUpdateMotion's `groundLimit` for the local tank: how far below
+// zero this frame may put it. Every clamp that holds the tank down asks this
+// rather than assuming zero, so Burrow is the one flag that makes the ground
+// negotiable and nothing else notices.
+function myGroundLimit() {
+  return getGroundLimit(getMyFlag()?.type ?? null);
 }
 
 function amInsideBuilding() {
@@ -5360,7 +5405,14 @@ function validateMove(x, y, z, intendedDeltaX, intendedDeltaY, intendedDeltaZ, t
   const newX = x + intendedDeltaX;
   const newY = y + intendedDeltaY;
   const newZ = z + intendedDeltaZ;
-  const candidateY = Math.max(0, newY);
+  // Upstream clamps to the ground limit only on the way *down*
+  // (LocalPlayer.cxx:511): "if ((newPos[2] < groundLimit) && (newVelocity[2] < 0))".
+  // The condition is what makes the creep work at all -- a tank climbing out
+  // from below its limit, which is one that has just lost Burrow, is rising, and
+  // a clamp that fired while it rose would put it on the surface in a single
+  // frame instead of letting it drive out.
+  const moveGroundLimit = myGroundLimit();
+  const candidateY = (newY < moveGroundLimit && intendedDeltaY < 0) ? moveGroundLimit : newY;
   let landedOn = null;
   let landedType = null; // 'ground' or 'obstacle'
   let startedFalling = false;
@@ -6269,17 +6321,25 @@ function updateTankDimensions(deltaTime) {
       deltaTime
     );
     // Your own tank is never hidden from you, whatever it is carrying: upstream
-    // only ever asks this of a remote player.
+    // only ever asks this of a remote player. A zoned tank is the exception, and
+    // it is not hiding -- the quarter alpha is how the flag says it is on, so it
+    // applies to the tank driving it as much as to the ones looking at it.
+    const viewedFlag = getPlayerFlagType(playerId);
+    const viewedZoned = getPlayerFlag(playerId)?.zoned === true;
     applyTankAlpha(
       tank,
-      playerId === myPlayerId
+      playerId === myPlayerId && !isZoned(viewedFlag, viewedZoned)
         ? 1
         : getVisibleTankAlpha(
-          getPlayerFlagType(playerId),
+          viewedFlag,
           tank.userData.cloakAlpha,
-          getMyFlag()?.type ?? null
+          getMyFlag()?.type ?? null,
+          viewedZoned
         )
     );
+    // And the ground the local tank is driving over, which is the whole of
+    // upstream's zoned screen effect.
+    if (playerId === myPlayerId) renderManager.setZoneGround(viewedZoned);
 
     const baseScaleX = tank.userData.baseScaleX;
     const baseScaleY = tank.userData.baseScaleY;
@@ -6369,7 +6429,36 @@ function getJumpVelocity(verticalVelocity) {
 }
 
 function getLocalGravity() {
-  return airControl ? gameConfig.WINGS_GRAVITY : gameConfig.GRAVITY;
+  if (airControl) return gameConfig.WINGS_GRAVITY;
+  // doUpdateMotion (LocalPlayer.cxx:332): a burrowing tank below ground level is
+  // pulled down at four times gravity, so the descent into the hole takes a
+  // fraction of a second rather than being a long slow sink.
+  if (playerY < 0 && (getMyFlag()?.type ?? null) === 'BU') {
+    return gameConfig.GRAVITY * BURROW_GRAVITY_FACTOR;
+  }
+  return gameConfig.GRAVITY;
+}
+
+// A tank under the floor it is allowed to rest on. That happens exactly once:
+// when a burrowed tank loses the flag, the limit springs back to zero with the
+// tank still down at `_burrowDepth`. It keeps its steering there -- upstream's
+// `location` is still `OnGround` at a negative z, so the full-control branch
+// runs -- and it must not be snapped to the surface, because the creep below is
+// what lifts it out.
+const GROUND_LIMIT_TOLERANCE = 0.01;
+function isBelowGroundLimit(y, groundLimit) {
+  return y < groundLimit - GROUND_LIMIT_TOLERANCE;
+}
+
+// "below the ground: however I got there, creep up" (LocalPlayer.cxx:376). A
+// tank below its own ground limit is lifted out rather than left there, which is
+// what happens to a burrowed tank the moment it loses the flag: the limit
+// springs back to zero and this walks it up to the surface. Upstream's own
+// expression, and it is a floor on the velocity rather than a teleport, so the
+// tank rises visibly.
+function applyGroundLimitCreep(verticalVelocity, y, groundLimit) {
+  if (!(y < groundLimit)) return verticalVelocity;
+  return Math.max(verticalVelocity, (-y / 2) + 0.5);
 }
 
 // HUDRenderer's altitude tape, which updateFlag() (playing.cxx:1465) puts up
@@ -7084,6 +7173,10 @@ function handleInputEvents() {
   // surface only "if going down" (LocalPlayer.cxx:637); this is that condition.
   const verticalVelocity = myTank.userData.verticalVelocity || 0;
   const rising = verticalVelocity > 0;
+  // Burrow's ground. A burrowed tank is "on the ground" at `_burrowDepth`, so
+  // the snap that holds a tank down has to hold it down to there instead of to
+  // zero -- and the ordinary tank's limit is still zero, so nothing else moves.
+  const groundLimit = myGroundLimit();
   const supportSurface = rising ? null : findSupportSurface(
     myTank.position.x,
     myTank.position.y,
@@ -7099,9 +7192,17 @@ function handleInputEvents() {
     showSupportSurfaceDebug(supportSurface.obstacle, supportSurface.surfaceY);
     showSupportFootprintDebug(supportSurface.obstacle, supportSurface);
   } else if (myTank.position.y < 0.1) {
+    // Upstream's `location` only becomes InAir above zero (LocalPlayer.cxx:670),
+    // so a tank on its way down into the ground is still `OnGround` and still
+    // has full control of itself all the way. It is snapped to its own floor
+    // only once it has reached it -- a tank *below* the floor is one that just
+    // lost Burrow, and the creep in `handleMotion` lifts it out instead.
     onGround = true;
-    playerY = 0;
-    myTank.position.y = 0;
+    if (myTank.position.y <= groundLimit
+      && !isBelowGroundLimit(myTank.position.y, groundLimit)) {
+      playerY = groundLimit;
+      myTank.position.y = groundLimit;
+    }
     hideSupportSurfaceDebug();
     hideSupportFootprintDebug();
   } else {
@@ -7127,7 +7228,7 @@ function handleInputEvents() {
     jumpWasHeld = false;
   } else {
     const drive = gatherDriveInput();
-    // Phase 5's input clamps: reversed controls, and the four flags that take
+    // The input clamps: reversed controls, and the four flags that take
     // one direction away. They belong here, on the raw stick, because that is
     // where upstream negates and clamps -- everything downstream, including the
     // acceleration smoothing and Agility's window, should see what the tank was
@@ -7208,7 +7309,7 @@ function handleMotion(deltaTime) {
 
   // Step 3: Convert intended speed/rotation to deltas.
   //
-  // Phase 5's three good flags land here and nowhere else, because
+  // The three good movement flags land here and nowhere else, because
   // `setDesiredSpeed` and `setDesiredAngVel` are the only places upstream
   // applies them: they scale the world's own tank speed and turn rate rather
   // than replacing them. Agility carries a clock, so `getSpeedFactor` is handed
@@ -7224,9 +7325,13 @@ function handleMotion(deltaTime) {
   );
   myTank.userData.agilityStartedAt = agility.agilityStartedAt;
   myTank.userData.previousSpeedFraction = intendedForward;
-  const speedFactor = agility.factor;
+  // Burrow's two handicaps, read off where the tank actually is rather than off
+  // the flag: holding the flag above ground costs nothing.
+  const burrow = getBurrowFactors(motionFlag, playerY);
+  const speedFactor = agility.factor * burrow.speed;
+  const angVelFactor = getMaxAngVelFactor(motionFlag) * burrow.angVel;
   const speed = gameConfig.TANK_SPEED * speedFactor * deltaTime;
-  const rotSpeed = gameConfig.TANK_ROTATION_SPEED * getMaxAngVelFactor(motionFlag) * deltaTime;
+  const rotSpeed = gameConfig.TANK_ROTATION_SPEED * angVelFactor * deltaTime;
   let moveRotation = playerRotation;
   let intendedDeltaX, intendedDeltaY = 0, intendedDeltaZ;
   const priorAirVelocityX = myTank.userData.airVelocityX || 0;
@@ -7250,7 +7355,7 @@ function handleMotion(deltaTime) {
   // no way for a server or a map to say otherwise, which is the opposite of the
   // point: bzo should feel like BZFlag and offer the same knobs to change it.
   const tankSpeedNow = gameConfig.TANK_SPEED * speedFactor;
-  const tankAngVelNow = gameConfig.TANK_ROTATION_SPEED * getMaxAngVelFactor(motionFlag);
+  const tankAngVelNow = gameConfig.TANK_ROTATION_SPEED * angVelFactor;
   if (!isInAir || airControl) {
     const limits = getAccelerationLimits(
       motionFlag, gameConfig.LINEAR_ACCELERATION, gameConfig.ANGULAR_ACCELERATION);
@@ -7297,13 +7402,47 @@ function handleMotion(deltaTime) {
     intendedDeltaY = myTank.userData.verticalVelocity * deltaTime;
   }
 
-  if (!jumpTriggered && myTank.position.y <= 0) {
+  const groundLimit = myGroundLimit();
+  if (!jumpTriggered && myTank.position.y <= groundLimit
+    && !isBelowGroundLimit(myTank.position.y, groundLimit)) {
     myTank.userData.verticalVelocity = 0;
-    myTank.position.y = 0;
+    myTank.position.y = groundLimit;
+    // The step this frame was computed from the velocity just cleared, so it has
+    // to go with it. A tank resting on the ground never noticed, because the
+    // velocity it clears is a fall's and the step was downwards into a floor it
+    // is already on -- but the climb out of a burrow arrives here rising, and a
+    // step left behind would carry the tank off the top of it.
+    intendedDeltaY = 0;
   }
 
-  if (isInAir) {
+  // doUpdateMotion applies gravity in the full-control branch too, whenever the
+  // tank is above its own floor (LocalPlayer.cxx:334) -- which is what makes a
+  // Burrow tank sink into the ground it is standing on rather than needing to be
+  // airborne first. Only a tank resting on the *ground* can sink: one on a
+  // building is held up by the building, whatever floor its flag gives it.
+  const sinkingIntoGround = onGround && playerY > groundLimit;
+  if (isInAir || sinkingIntoGround) {
     myTank.userData.verticalVelocity -= getLocalGravity() * deltaTime;
+  }
+  // The creep is a floor recomputed from where the tank is, not momentum it
+  // keeps. That distinction is the whole of it: upstream recomputes
+  // `newVelocity[2]` every frame and only raises it while the tank is under its
+  // limit, so the moment the tank is not under it there is nothing left lifting
+  // it. Storing the velocity instead throws the tank off the top of the climb --
+  // and it only takes a few centimetres, because bzo reads any height above the
+  // ground as airborne and lands the tank when it comes back down, with the
+  // rings and the sound of a landing. That is also what happens the instant a
+  // climbing tank re-grabs the flag it dropped: its floor drops away beneath it
+  // again, and any upward velocity it had kept would become a hop.
+  if (playerY < groundLimit) {
+    myTank.userData.verticalVelocity = applyGroundLimitCreep(
+      myTank.userData.verticalVelocity, playerY, groundLimit);
+    // And it rises to the floor, never past it.
+    intendedDeltaY = Math.min(
+      myTank.userData.verticalVelocity * deltaTime, groundLimit - playerY);
+  } else if (onGround && !jumpTriggered && myTank.userData.verticalVelocity > 0) {
+    myTank.userData.verticalVelocity = 0;
+    intendedDeltaY = 0;
   }
 
   let jumpStarted = false; // Track if jump was just triggered this frame
@@ -7337,7 +7476,32 @@ function handleMotion(deltaTime) {
       { x: result.x, y: result.y, z: result.z },
       localNowMs,
     );
-    if (predictedTeleport.applied) {
+    // doUpdateMotion's teleporter branch (LocalPlayer.cxx:729): a Phantom Zone
+    // tank does not teleport. The crossing is detected exactly as it is for
+    // everybody else -- and takes the same cooldown, so driving through a portal
+    // toggles once rather than once a frame -- but the tank stays where it is
+    // and the zone flips instead.
+    if (predictedTeleport.applied && togglesZoneOnTeleport(getMyFlag()?.type ?? null)) {
+      const zoneFlag = getMyFlag();
+      const zoned = !(zoneFlag.zoned === true);
+      zoneFlag.zoned = zoned;
+      // The point the crossing happened at, not wherever the server has since
+      // extrapolated the tank to. Same reasoning as the `tp` packet's own source
+      // state: the server has to check the claim the client actually made, and a
+      // frame of travel is several units at tank speed.
+      sendToServer({
+        type: 'zone',
+        fromFaceId: predictedTeleport.fromFaceId,
+        x: Number(result.x.toFixed(2)),
+        y: Number(result.y.toFixed(2)),
+        z: Number(result.z.toFixed(2)),
+        r: Number(sourceRotationBeforeTeleport.toFixed(2)),
+      });
+      // SFX_PHANTOM, in place of SFX_TELEPORT. Upstream plays one or the other,
+      // never both.
+      renderManager.playSound('phantom', myTank.position);
+      showMessage(zoned ? 'Zoned' : 'Unzoned');
+    } else if (predictedTeleport.applied) {
       const sourceState = {
         x: result.x,
         y: result.y,
@@ -7477,6 +7641,13 @@ function handleMotion(deltaTime) {
   }
 
   updateInsideBuildings();
+
+  // doUpdateMotion (LocalPlayer.cxx:808): the frame a tank crosses from ground
+  // level into the ground, which only Burrow ever does. Upstream plays it
+  // instead of the landing sound, in the same else-chain.
+  if (oldY >= 0 && playerY < 0) {
+    renderManager.playSound('burrow', myTank.position);
+  }
 
   const actualDeltaX = playerX - oldX;
   const actualDeltaZ = playerZ - oldZ;
@@ -7782,7 +7953,7 @@ function shoot() {
   // inside a building has no shot to fire, because the shot would come out of a
   // wall. `getShotRejection` refuses it too -- the cover a building gives is
   // worth more to a modified client than anything else `OO` grants.
-  if (amInsideBuilding()) return false;
+  if (amInsideBuilding() && !amZoned()) return false;
   if (!ws || ws.readyState !== WebSocket.OPEN) return false;
   // An open socket is not a tank. bzo reconnects on its own, and between the
   // socket opening and the join being confirmed the client still carries the
@@ -7794,7 +7965,7 @@ function shoot() {
   const dirX = -Math.sin(playerRotation);
   const dirZ = -Math.cos(playerRotation);
 
-  const myShot = getShotEffects(getMyFlag()?.type ?? null);
+  const myShot = getShotEffects(getMyShotFlag());
 
   // Calculate shot origin from model-derived muzzle offsets when available.
   // LocalPlayer::fireShot (LocalPlayer.cxx:1230) is the exception: a shock wave
@@ -8090,7 +8261,7 @@ function isShotTeleportDebugEnabled() {
 // --- Flags -------------------------------------------------------------
 //
 // The server owns every flag; a flag event carries the whole flight, and the
-// client integrates it locally from there. See docs/flags-plan.md.
+// client integrates it locally from there. See docs/flags.md.
 
 const flags = new Map();
 // Flag index to abbreviation, for every slot whose identity this client has
@@ -8152,6 +8323,11 @@ function setFlagState(state) {
     flightTime: state.flightTime,
     flightEnd: state.flightEnd,
     initialVelocity: state.initialVelocity,
+    // Phantom Zone's `PlayerState::FlagActive`. The server owns it, as it owns
+    // everything else about a flag, because being zoned decides who can shoot
+    // you. It arrives as the state it is rather than as a toggle, so the
+    // client's own prediction of a crossing converges instead of doubling.
+    zoned: state.zoned === true,
     // How the flag currently looks is carried over, so an update that arrives
     // part way through a fade does not pop it back to solid for one frame.
     warp: existing ? existing.warp : 0,
@@ -8181,7 +8357,7 @@ function getMyTankScale() {
   return getTankDimensionScale(getMyFlag()?.type ?? null);
 }
 
-// Phase 4's three view flags, all read off the flag in the local tank's own
+// The three view flags, all read off the flag in the local tank's own
 // hands. Nothing else in the game changes, which is why the server has no part
 // in any of them.
 function isViewBlinded() {
@@ -8196,7 +8372,7 @@ function isColorblind() {
   return hidesTeamColors(getMyFlag()?.type ?? null);
 }
 
-// Phase 13's viewer side. `SE` is the only one of the four read off the local
+// The viewer side of per-viewer visibility. `SE` is the only one of the four read off the local
 // tank; the other three are read off whoever is being looked at.
 function isSeer() {
   return seesThroughDisguises(getMyFlag()?.type ?? null);
@@ -8454,6 +8630,13 @@ function requestFlagDrop() {
   // building would be inside it too, where nothing could reach it, so the drop
   // waits until the tank is out. Upstream ignores the key; bzo says why, as it
   // does for a sticky flag.
+  // cmdDrop's other condition on the same line: `!myTank->isPhantomZoned()`. A
+  // zoned tank cannot put the flag down at all, wherever it is standing --
+  // dropping it would strand the tank phased with no way back.
+  if (amZoned()) {
+    showMessage('Can\'t drop the flag while zoned');
+    return false;
+  }
   if (amInsideBuilding()) {
     showMessage('Can\'t drop a flag while inside a building');
     return false;
@@ -9750,7 +9933,14 @@ function updateRadar() {
   const radius = center * 0.95;
   const radarWorldHalfExtent = getRadarWorldHalfExtent(radius);
   const baseRadarDistance = gameConfig.SHOT_DISTANCE || 50;
-  const radarDistance = baseRadarDistance * radarZoomLevel;
+  // RadarRenderer::render (RadarRenderer.cxx:403): "when burrowed, limit radar
+  // range" to a quarter. Upstream caps the range rather than scaling it, so a
+  // player already zoomed further in than the cap keeps their own setting -- and
+  // gets it back untouched when they surface, since nothing here is written down.
+  const burrowedRadarLimit = (getMyFlag()?.type ?? null) === 'BU' && myTank.position.y < 0
+    ? baseRadarDistance * BURROW_RADAR_FACTOR
+    : Infinity;
+  const radarDistance = Math.min(baseRadarDistance * radarZoomLevel, burrowedRadarLimit);
   const tankArrowWorldMargin = radarPixelsToWorldDistance(
     RADAR_TANK_ARROW_EXTENT_PX,
     radarDistance,
@@ -9944,11 +10134,9 @@ function updateRadar() {
     projectiles.forEach((proj) => {
       // RadarRenderer.cxx:664. An Invisible Bullet is drawn on its owner's radar
       // and nobody else's -- upstream sweeps its own shots (:585) before it asks
-      // the question at all. Seer is the exception, and arrives with the flags
-      // that need it.
-      // RadarRenderer.cxx:665's `iSeeAll`: Seer puts invisible bullets back on the
-      // radar. `IB` and `SE` are both in, so this is a live interaction rather
-      // than a note for later -- a seer is the counter to an invisible shooter.
+      // the question at all. Seer is the exception, below.
+      // RadarRenderer.cxx:665's `iSeeAll`: Seer puts invisible bullets back on
+      // the radar, so a seer is the counter to an invisible shooter.
       if (
         proj.userData?.hiddenOnRadar
         && proj.userData.playerId !== myPlayerId
@@ -10657,7 +10845,11 @@ function extrapolatePosition(player, dt) {
 
     return {
       x: x + dx,
-      y: Math.max(0, y + dy), // Don't go below ground
+      // Don't go below this tank's own ground: Burrow's is `_burrowDepth`, and
+      // getDeadReckoning clamps to the same limit (Player.cxx:1333) so a remote
+      // burrowed tank is not drawn hovering at zero while the server has it in
+      // its hole.
+      y: Math.max(getGroundLimit(flagType ?? null), y + dy),
       z: z + dz,
       r: newR
     };
@@ -10858,7 +11050,7 @@ function animate(frameTime) {
   updatePauseCountdown();
   updateFlags(deltaTime);
   updateTankDimensions(deltaTime);
-  // Phase 4's view flags, applied where both surfaces reach: the DOM HUD block
+  // The view flags, applied where both surfaces reach: the DOM HUD block
   // further down runs only outside XR, and blindness and colourblindness have to
   // hold in a headset too.
   refreshTankDisguises();

@@ -47,6 +47,7 @@ import {
   volumeLevelToGain,
 } from './volume.mjs';
 import {
+  createZoneGroundTexture,
   createBoundaryTexture,
   createBoxWallTexture,
   createBaseTopTexture,
@@ -1436,6 +1437,33 @@ class RenderManager {
     return 100;
   }
 
+  // SceneRenderer::setInvert (playing.cxx:6214), which despite the name is not a
+  // colour inversion of the view: BackgroundRenderer keeps a second set of
+  // ground gstates and colours built from `zoneGroundTexture` and swaps to them
+  // (BackgroundRenderer.cxx:330). So being zoned changes the ground under you
+  // and nothing else, which is the whole of upstream's zoned screen effect --
+  // and it is the one form of it that means anything in a headset, where there
+  // is no screen to post-process.
+  //
+  // One mesh, one material, one map swapped: the geometry, the lighting and the
+  // shadow overlay are untouched, so this costs nothing on a frame that does not
+  // change it.
+  setZoneGround(zoned) {
+    if (!this.ground) return;
+    const wanted = zoned === true;
+    if (this._zoneGroundActive === wanted) return;
+    this._zoneGroundActive = wanted;
+    if (wanted && !this._zoneGroundTexture) {
+      this._zoneGroundTexture = createZoneGroundTexture();
+      this._zoneGroundTexture.wrapS = THREE.RepeatWrapping;
+      this._zoneGroundTexture.wrapT = THREE.RepeatWrapping;
+    }
+    const texture = wanted ? this._zoneGroundTexture : this._groundTexture;
+    if (!texture) return;
+    this.ground.material.map = texture;
+    this.ground.material.needsUpdate = true;
+  }
+
   setGroundGridEnabled(enabled, mapSize = null) {
     this.showGroundGrid = !!enabled;
     if (!this.scene || !this.worldGroup) return;
@@ -1808,6 +1836,13 @@ class RenderManager {
   }
 
   clearGround() {
+    // The material's `dispose` does not reach its map, and the zone ground is a
+    // second texture the material is not holding when the standard one is up.
+    if (this._groundTexture) this._groundTexture.dispose();
+    if (this._zoneGroundTexture) this._zoneGroundTexture.dispose();
+    this._groundTexture = null;
+    this._zoneGroundTexture = null;
+    this._zoneGroundActive = false;
     if (this.ground && this.scene) {
       this.worldGroup.remove(this.ground);
       this.ground.geometry.dispose();
@@ -2218,6 +2253,8 @@ class RenderManager {
       side: THREE.FrontSide,
     });
 
+    this._groundTexture = groundTexture;
+    this._zoneGroundTexture = null;
     this.ground = new THREE.Mesh(groundGeometry, groundMaterial);
     this.ground.frustumCulled = false;
     this.groundExtent = groundExtent;
@@ -3790,7 +3827,7 @@ class RenderManager {
       }
     });
 
-    // Scale slightly larger to wrap around the tank. Phase 7's dimension flags
+    // Scale slightly larger to wrap around the tank. The dimension flags
     // scale it further from client.js, since the ghost is not a child of the
     // tank and does not inherit the tank's own scaling.
     ghostTank.scale.set(GHOST_SCALE, GHOST_SCALE, GHOST_SCALE);

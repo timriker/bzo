@@ -215,8 +215,8 @@ timer, and `-helpmsg`, which reads chunks out of a file.
 `-f` is a switch that happens to name its target: disallows accumulate, nothing
 puts one back, and `good` or `bad` takes a whole quality out at once. It filters
 the pool a slot draws from, next to the two types the game style already forbids
-(`JP` or `NJ` by the jumping switch, `R` on a `+r` world). Naming a flag bzo does
-not implement is not an error -- it was not in the pool to remove.
+(`JP` or `NJ` by the jumping switch, `R` on a `+r` world). Naming `WA`, the one
+flag bzo does not carry, is not an error -- it was not in the pool to remove.
 
 Upstream's `+f <abbrev>[{count}]`, which pins a chosen number of one type in the
 world, is **not** read: bzo's flag model is one pool and one slot count, with no
@@ -249,7 +249,7 @@ loads and plays with that part of it missing. The notable absences:
   silently, because a spawn zone that is ignored moves every tank in the world.
 - **Every `-set` variable but `_maxFlagGrabs`.** bzo's world constants are
   constants, and the one exception is the one it already keeps a configurable
-  copy of; see `docs/flags-plan.md`. A map that sets another is named on load.
+  copy of; see `docs/flags.md`. A map that sets another is named on load.
 
 A map that needs any of these is not rejected -- it is worth knowing that it
 loaded rather than that it loaded *correctly*.
