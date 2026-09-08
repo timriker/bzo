@@ -6,6 +6,61 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
 
 ## [Unreleased]
 
+## [1.0.84] - 2026-09-08
+
+### Added
+- **Rabbit Chase, upstream's fourth game type** (#42). One rabbit against every
+  hunter: `"rabbit": "score" | "killer" | "random"` in `server.json` and
+  `-rabbit [score|killer|random]` in a map's `options` block, both defaulting to
+  `score` for a bare switch as bzfs does. Turning it on turns the colour teams
+  off and says so in the log, which is `CmdLineOptions.cxx:1586` exactly, and
+  makes it and CTF mutually exclusive by construction rather than by a check.
+
+  **Nobody picks a team.** The entry dialog offers observer and nothing else;
+  everyone else joins as a hunter and the rabbit is anointed, never asked for.
+  Asking for a colour team is read as "play" rather than refused, which is what
+  `autoTeamSelect` does with it.
+
+  **The anointing is upstream's**, in `server/teams.cjs` as pure functions:
+  `Score::ranking`'s win rate damped towards the middle, the "prefer anyone
+  alive who is not the old rabbit" order, `-rabbit killer`'s shortcut for
+  whoever shot the rabbit, and `-rabbit random`, which replaces the ranking
+  rather than the selection. It runs when the rabbit dies, self-destructs,
+  pauses, leaves, goes to observer or rejoins, and whenever a player spawns
+  while the world has no rabbit.
+
+  **Hunters are team mates, so hunter-on-hunter fire is team killing** --
+  except on the rabbit, and except for a deposed rabbit until its next spawn.
+  That window is `wasRabbit`, and it is the whole exception. Team scores never
+  move; player scores work as usual.
+
+  **The rabbit is the one tank in bzo that wears a team's colour**, upstream's
+  light grey, white on the radar and ringed there in upstream's hunt cyan.
+  Hunters keep the per-player colour every bzo player has, because one colour
+  for the crowd is what hunter orange was for and bzo has a better answer to it.
+  The scoreboard marks the rabbit's row, and the headset reads both through the
+  panels it already draws -- the XR radar is textured from the same canvas.
+
+  **The board is sorted by rank rather than by score**, which is what
+  `newSortedList` does on a Rabbit Chase world, with a `%` column in front of the
+  score saying what it was sorted by. The order is now a prediction of who gets
+  the rabbit next: a player with no record at all ranks 50% and sits above anyone
+  whose win *rate* is worse than even, however far ahead they are on kills.
+
+### Changed
+- **Every death runs one code path.** A self-destruct and a capture each had
+  their own copy of the sequence a death performs, and both had drifted: neither
+  cleared the guided-missile lock, so a missile went on steering at a tank that
+  was already exploding, and the self-destruct had to be told separately about
+  deposing the rabbit. `applyDeath` is that sequence, and the three callers now
+  differ only in what a death *costs* -- which is the part that really does
+  differ, since a capture deliberately scores nobody a death.
+- **Identify names the flag and the rabbit.** "Looking at" and "Locked on" now
+  read `<callsign>/<FL> (rabbit)`, coloured per component as the scoreboard row
+  is, which is the same information upstream's `<callsign> (<Team>) with <Flag>`
+  carries. HUD alerts gained the `segments` a chat line already had, honoured by
+  both the DOM notice column and the XR notice panel.
+
 ## [1.0.83] - 2026-09-08
 
 ### Added
