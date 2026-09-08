@@ -6,6 +6,75 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
 
 ## [Unreleased]
 
+## [1.0.83] - 2026-09-08
+
+### Added
+- **Global login with a bzflag.org callsign, and admin keyed to it.** The
+  Player Options dialog carries a **Global login** row: it sends the browser to
+  bzflag.org's own login form, which is what lets bzo check an identity without
+  ever seeing a password -- `misc/checkToken.php` refuses a site that collects
+  one itself. bzflag.org sends the player back with a token, the server asks the
+  list server `CHECKTOKENS` whether it is real, and what comes back is a BZID, a
+  confirmed callsign, and membership of the groups the server asked about.
+
+  **An authenticated player is their global callsign.** The name is taken from
+  the session rather than from whatever the dialog sent, and it outranks a typed
+  one: an unauthenticated player holding it is renamed in place and told why,
+  and the same account arriving on a second device takes the identity with it,
+  dropping the older device and its session -- without which bzo's own
+  rejoin-without-asking would trade the name between two devices forever.
+
+  **`isAdmin` now means authenticated *and* a member of a group named in
+  `adminGroups`.** Neither half is client-supplied: the session is looked up
+  from a cookie the server issued, and the groups are what bzflag.org answered.
+  This replaces the courtesy gate where any name that was not `Player <n>`
+  counted -- keeping it would have made the login decorative.
+  `example-server.json` ships bzflag's own `DEVELOPERS` and `BZADMIN`, so a
+  fresh install has somebody who can operate it; an operator who wants only
+  their own authority empties the list.
+
+  **`@` and `+` beside a callsign**, on both the flat and the headset
+  scoreboards, in cyan and as a field of their own rather than as part of the
+  name -- `@` for an admin and `+` for an authenticated player, which is exactly
+  what `ScoreboardRenderer.cxx:712` draws. A name may not begin with `@`, `+` or
+  `-`, so nobody can wear an indicator they were not given.
+
+  The browser holds one opaque value and nothing else: 32 random bytes in a
+  host-only `HttpOnly; Secure; SameSite=Lax` cookie, keying an 8 hour
+  server-side session that survives a restart. Every attribute stays on the
+  server, so a forged cookie is anonymous rather than privileged. See
+  `docs/login-plan.md`.
+
+### Changed
+- **The tank carousel previews a tank rather than its geometry.** The preview is
+  built by the same `createTank` the world uses, so it carries the tank texture
+  in the colour it will spawn in, the treads carry theirs, and a wheeled model
+  gets wheels; it used to load the model separately and draw an untextured
+  default. It also fills the dialog now -- the canvas follows its own CSS size
+  through a `ResizeObserver` instead of the size the dialog was when it was
+  hidden, and the model is fitted to the frame rather than to a fixed 2.7 units.
+  It starts side-on, which says more about which tank it is than the back of one
+  does, and the colour follows the **staged** team, since the dialog's job is to
+  show what the staged choices would look like.
+- **A click outside the Player Options dialog closes it**, putting the staged
+  draft back exactly as Cancel, the `[X]` and Escape do. Every other dialog
+  already closed that way, and Escape already closed this one.
+
+### Fixed
+- **A kill no longer moves the team score in capture the flag.** Upstream gates
+  its whole per-kill team-score block on the game type being a free-for-all
+  (`bzfs.cxx:3539`): in `ClassicCTF` a capture is the only thing that moves a
+  team's tally, which is what makes a capture worth crossing the map for. bzo
+  asked only whether colour teams existed, so on any team map with a base --
+  `hix.bzw` included -- kills and captures both counted, and eight kills were
+  worth a flag. Player scores are untouched; the team rows are what change.
+
+  The type itself is now named once, as upstream names it: `GAME_TYPE` is
+  `OpenFFA`, `TeamFFA` or `ClassicCTF`, derived from the two questions bzo
+  already asked -- are there colour teams, and are there bases -- and logged at
+  startup. `RabbitChase`, upstream's fourth, is still missing; see
+  `docs/game-modes-plan.md`.
+
 ## [1.0.82] - 2026-09-08
 
 ### Added
