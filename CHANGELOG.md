@@ -6,6 +6,8 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
 
 ## [Unreleased]
 
+## [1.0.77] - 2026-09-08
+
 ### Changed
 - `[CHAT]` log lines follow the log conventions: a player in quotes and a team in
   brackets, so `[CHAT] "t5810"->[ROGUE]:` needs no word "team" in it -- the
