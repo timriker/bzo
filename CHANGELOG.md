@@ -6,6 +6,8 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
 
 ## [Unreleased]
 
+## [1.0.79] - 2026-09-08
+
 ### Added
 - **`OO` Oscillation Overthruster (#6).** A tank that drives through buildings,
   and cannot reverse, shoot or drop its flag while it is inside one. Upstream's
