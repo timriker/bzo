@@ -6,6 +6,8 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
 
 ## [Unreleased]
 
+## [1.0.81] - 2026-09-08
+
 ### Added
 - **World weapons.** A BZW `weapon` block is a gun the world owns: it fires on a
   timer with nobody driving it, and its shots kill whoever they reach.
