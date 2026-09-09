@@ -6,6 +6,30 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
 
 ## [Unreleased]
 
+### Added
+- **A fifth tank: `Bzship`**, contributed by Aeonovyli under CC BY-SA 4.0 and
+  re-tagged for bzo. The mesh is theirs untouched; its 37 Blender-default objects
+  were merged into the `body`/`turret`/`barrel`/`ltread`/`rtread` names
+  `docs/tank-model-format.md` requires, and it was then stretched per axis to
+  fill the 2.8 x 2.05 x 6.0 tank hit box. **It is not sized correctly and may not
+  stay.** The hull is wide and flat where the box is narrow and tall, so filling
+  every dimension distorts it rather than framing it; it carries no UVs, so every
+  surface samples a single texel and only the team tint reads; and at 26,380
+  triangles across 37 source objects it is twenty times the shipped tanks.
+
+### Changed
+- **A tank comes from its OBJ file or it does not exist.** The renderer's
+  procedural stand-in tank is gone, and with it the way a model that could not
+  be built reported itself as working: picking one used to hand the player a
+  generic tank built from boxes and cylinders, which is not a fault anybody
+  reads as a broken asset. A model that does not name `body`, `turret` and
+  `barrel`, or that names no treads or wheels on both sides, is no longer
+  offered at all -- the server holds each file in `public/obj/` to the contract
+  in `docs/tank-model-format.md` as it lists the models, and logs the roles a
+  rejected file is missing. `public/tank-parts.mjs` and `server/tank-parts.cjs`
+  are the mirrored pair both ends read it from, and `npm run test:tank-models`
+  holds every shipped model to it.
+
 ## [1.0.92] - 2026-09-09
 
 ### Security
