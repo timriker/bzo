@@ -6,6 +6,33 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
 
 ## [Unreleased]
 
+### Security
+- **`/login` is rate limited**, at ten requests a minute per address. It is the
+  one public route that spends something -- a callback carrying a token makes bzo
+  ask my.bzflag.org about it -- so an unmetered endpoint is an amplifier pointed
+  at bzflag.org as much as at bzo. The bucket is keyed on the address the proxy
+  names rather than on Express's `req.ip`, which behind the proxy the README
+  describes is the proxy itself for every player at once: one bucket for the whole
+  internet would be a self-inflicted outage rather than a limit. A refusal is a
+  plain-text 429 and a log line naming the address (`js/missing-rate-limiting`).
+- **The login callback stops echoing the token it was given.** A `t` parameter
+  with no callsign in it came back inside the 400, which is markup in a response
+  of bzo's own making whatever the content type says. The reply is a fixed
+  sentence now; the value it was sent is still in the log, where anybody
+  diagnosing a real callback was already looking (`js/reflected-xss`).
+- **The headless probe types the player name instead of building it into code.**
+  `--name` was escaped with `JSON.stringify` and interpolated into an expression
+  sent over CDP -- an escape that only mostly works, and the wrong tool for
+  turning data into code. `Input.insertText` carries the name as a parameter, and
+  types it the way a player does, input events and all
+  (`js/bad-code-sanitization`).
+- **The headless probe validates a CDP reply before dispatching on it.** The
+  callback for a reply was looked up by the id the reply carried and called on the
+  spot. It is now taken out of the pending map before it runs and run only when it
+  is a callback the script put there itself, so a reply naming an id nobody waits
+  on is dropped rather than dispatched
+  (`js/unvalidated-dynamic-method-call`).
+
 ## [1.0.91] - 2026-09-09
 
 ### Added

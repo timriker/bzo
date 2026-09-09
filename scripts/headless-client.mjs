@@ -74,8 +74,13 @@ const problems = [];
 socket.on('message', (raw) => {
   const message = JSON.parse(raw);
   if (message.id !== undefined) {
-    pending.get(message.id)?.(message);
+    const settle = pending.get(message.id);
     pending.delete(message.id);
+    // Taken out of the map before it runs, and only ever run when it is a
+    // callback this script put there itself: the id in a reply correlates it
+    // with a request rather than choosing what to call, so a reply naming an id
+    // nobody is waiting for is dropped instead of dispatched.
+    if (typeof settle === 'function') settle(message);
     return;
   }
   const { method, params } = message;
@@ -118,7 +123,13 @@ let joined = 'entry dialog never appeared';
 for (let second = 0; second < 45; second += 1) {
   await sleep(1000);
   if (await evaluate('document.getElementById("entryDialog")?.style.display') !== 'block') continue;
-  await evaluate(`document.getElementById("entryInput").value = ${JSON.stringify(playerName)}`);
+  // Typed rather than built into the expression. `JSON.stringify` into a string
+  // of code is an escape that only mostly works, and `Input.insertText` carries
+  // the name as a parameter instead -- which also types it the way a player
+  // does, input events and all, rather than assigning past them.
+  await evaluate('(() => { const input = document.getElementById("entryInput");'
+    + ' input.value = ""; input.focus(); return input === document.activeElement; })()');
+  await send('Input.insertText', { text: playerName });
   await evaluate('document.getElementById("entryOkButton").click()');
   joined = `joined as ${playerName}`;
   break;

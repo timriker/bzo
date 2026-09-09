@@ -6,6 +6,7 @@
  */
 
 const express = require('express');
+const rateLimit = require('express-rate-limit');
 const logPath = require('path').join(__dirname, 'server.log');
 // Clear server.log on restart
 require('fs').writeFileSync(logPath, '');
@@ -238,6 +239,44 @@ function logError(...args) {
 const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+// `/login` is the one public route that costs something to serve: a callback
+// carrying a token makes bzo ask my.bzflag.org about it, so an unmetered
+// endpoint is an amplifier pointed at bzflag.org as much as at bzo. Ten a
+// minute is far more than a login needs -- the round trip is two requests --
+// and the ceiling is per address rather than per server so one player cannot
+// spend everybody else's.
+//
+// Keyed on the address the proxy names rather than on `req.ip`, which behind the
+// proxy the README describes is the *proxy* for every player at once: one bucket
+// for the whole internet is a self-inflicted outage rather than a limit. Same
+// derivation the handshake logs and `/playerlist` use, and only as trustworthy
+// as the proxy -- which is the other reason the ceiling is generous.
+function requestAddress(req) {
+  const forwardedFor = req.headers['x-forwarded-for'];
+  const forwarded = typeof forwardedFor === 'string' ? forwardedFor.split(',')[0].trim() : '';
+  return forwarded || req.socket.remoteAddress || 'unknown';
+}
+
+const loginRateLimit = rateLimit({
+  windowMs: 60 * 1000,
+  limit: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: requestAddress,
+  // Both are answered by the key generator above: bzo reads the forwarded
+  // address itself rather than leaving it to Express's `trust proxy`, and an
+  // address is a bucket whether it is v4 or v6.
+  validate: { xForwardedForHeader: false, ipv6Subnet: false },
+  // Never silently, as with every other refusal: a player who cannot log in
+  // should be findable in the log by the operator they are about to ask.
+  handler: (req, res, _next, options) => {
+    log(`[LOGIN] rate limited ${requestAddress(req)}:`
+      + ` more than ${options.limit} requests in ${options.windowMs / 1000}s`);
+    res.status(options.statusCode).type('text/plain')
+      .send('Too many login requests. Try again in a minute.\n');
+  },
+});
 const PORT = process.env.PORT || 3000;
 const CONFIG_PATH = process.env.SERVER_CONFIG_PATH
   ? path.resolve(process.env.SERVER_CONFIG_PATH)
@@ -440,7 +479,7 @@ function finishLogin(res, sessionId) {
 // One route for both halves, because the query string already says which is
 // wanted: arriving with no `t` at all is someone who has not been to
 // bzflag.org yet, and arriving with one is bzflag.org sending them back.
-app.get('/login', async (req, res) => {
+app.get('/login', loginRateLimit, async (req, res) => {
   // No `t` parameter: start the round trip.
   if (req.query.t === undefined) {
     const host = requestHost(req);
@@ -467,9 +506,12 @@ app.get('/login', async (req, res) => {
   }
 
   res.type('text/plain');
-  // Everything below is echoed back as plain text on purpose: the point of the
-  // probe is to see the raw reply, and text/plain cannot carry markup a query
-  // string smuggled in.
+  // Plain text, and nothing the query string carried is echoed into it: what
+  // comes back is either a fixed sentence or bzflag.org's own reply, which is
+  // the raw material the probe exists to show. A reflected `t` would be markup
+  // in a response of bzo's own making -- text/plain or not, that is a page an
+  // attacker wrote -- and the log line below already records the value for
+  // anybody diagnosing a real callback.
   //
   // A `t` that is present but unusable is an error rather than a fresh start.
   // Redirecting on it would send the player back to bzflag.org, which would
@@ -487,7 +529,7 @@ app.get('/login', async (req, res) => {
   const callsign = separator === -1 ? '' : packed.slice(separator + 1);
   log(`[LOGIN] callback token=${token} callsign="${callsign}"`);
   if (!callsign) {
-    res.status(400).send(`Got a token but no callsign: ${packed}\n`);
+    res.status(400).send('Got a token but no callsign. Start again at /login.\n');
     return;
   }
 

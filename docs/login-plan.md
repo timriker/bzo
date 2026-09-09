@@ -19,6 +19,13 @@ persists it across the restarts that editing this server causes, and
 hangs the identity on the `Player`, `resolveJoinName` enforces the collision
 rules, and the entry dialog carries the login row.
 
+`/login` is rate limited to ten requests a minute per address, keyed on the
+address the proxy names rather than on `req.ip`, which behind the proxy is the
+proxy for everyone at once. It is the one public route that spends something --
+a callback with a token makes bzo ask my.bzflag.org about it -- and the round
+trip is two requests, so the ceiling is far above what a login needs and refusals
+are logged.
+
 The round trip itself works and is probed live. `/login` with no `t` parameter
 redirects to `https://my.bzflag.org/weblogin.php`, and bzflag.org sends the
 player back to `/login?t=<token>:<callsign>`, where the server asks
