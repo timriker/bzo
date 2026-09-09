@@ -49,6 +49,11 @@ box
   size 20 20 10
 end
 
+pyramid
+  position -80 80 0
+  size 20 20 30
+end
+
 # The ground end of the pair. Both teleporters give no size or border, so both
 # take CustomGate's defaults -- half width 0.56, half breadth 4.48, height
 # 20.16, border 1.12 -- which is also the path a map exercises by saying nothing.
