@@ -6,6 +6,7 @@
  */
 
 const express = require('express');
+const rateLimit = require('express-rate-limit');
 const logPath = require('path').join(__dirname, 'server.log');
 // Clear server.log on restart
 require('fs').writeFileSync(logPath, '');
@@ -238,6 +239,15 @@ function logError(...args) {
 const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+const loginRateLimit = rateLimit({
+  windowMs: 60 * 1000,
+  limit: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  handler: (_req, res) => {
+    res.status(429).type('text/plain').send('Too many login requests. Try again later.\n');
+  },
+});
 const PORT = process.env.PORT || 3000;
 const CONFIG_PATH = process.env.SERVER_CONFIG_PATH
   ? path.resolve(process.env.SERVER_CONFIG_PATH)
@@ -440,7 +450,7 @@ function finishLogin(res, sessionId) {
 // One route for both halves, because the query string already says which is
 // wanted: arriving with no `t` at all is someone who has not been to
 // bzflag.org yet, and arriving with one is bzflag.org sending them back.
-app.get('/login', async (req, res) => {
+app.get('/login', loginRateLimit, async (req, res) => {
   // No `t` parameter: start the round trip.
   if (req.query.t === undefined) {
     const host = requestHost(req);
