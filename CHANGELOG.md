@@ -6,7 +6,14 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
 
 ## [Unreleased]
 
+## [1.0.92] - 2026-09-09
+
 ### Security
+- **`js-yaml` is lifted to 4.3.2**, clearing GHSA-2883-xcg3-v3hh: `maxTotalMergeKeys`
+  counts the keys a merge yields rather than the merges themselves, so a document
+  of empty merge sources costs the CPU the limit was meant to cap. It reaches bzo
+  through `eslint` -> `@eslint/eslintrc`, which is a devDependency and in no
+  shipped image, but `npm audit` gates the release workflow.
 - **`/login` is rate limited**, at ten requests a minute per address. It is the
   one public route that spends something -- a callback carrying a token makes bzo
   ask my.bzflag.org about it -- so an unmetered endpoint is an amplifier pointed
