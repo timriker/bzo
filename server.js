@@ -171,6 +171,10 @@ const {
   parseMsgCommand,
   formatUnknownCommand,
 } = require('./server/commands.cjs');
+const {
+  missingTankParts,
+  readObjObjectNames,
+} = require('./server/tank-parts.cjs');
 const path = require('path');
 const fs = require('fs');
 const crypto = require('crypto');
@@ -577,6 +581,46 @@ app.use((req, res, next) => {
 // Serve static files
 app.use(express.static('public', { setHeaders: setStaticHeaders }));
 
+// Whether an OBJ carries the parts the renderer clones, keyed by file and
+// mtime: the list is rebuilt on every request and on every setTankModel, and
+// re-reading five files each time would be a parse per message. A model that
+// fails is named once per version of the file, not once per lookup.
+const tankModelPartsByFile = new Map();
+const reportedBadTankModels = new Set();
+
+function tankModelIsBuildable(filePath) {
+  let stamp = '';
+  try {
+    stamp = String(fs.statSync(filePath).mtimeMs);
+  } catch (error) {
+    logError(`Failed to stat tank model ${path.basename(filePath)}:`, error.message || error);
+    return false;
+  }
+  const cached = tankModelPartsByFile.get(filePath);
+  if (cached && cached.stamp === stamp) return cached.buildable;
+
+  let missing = ['a readable OBJ file'];
+  try {
+    missing = missingTankParts(readObjObjectNames(fs.readFileSync(filePath, 'utf8')));
+  } catch (error) {
+    logError(`Failed to read tank model ${path.basename(filePath)}:`, error.message || error);
+  }
+  const buildable = missing.length === 0;
+  tankModelPartsByFile.set(filePath, { stamp, buildable });
+
+  const reportKey = `${filePath}@${stamp}`;
+  if (!buildable && !reportedBadTankModels.has(reportKey)) {
+    reportedBadTankModels.add(reportKey);
+    logError(`Tank model ${path.basename(filePath)} is not offered: no ${missing.join(', no ')}.`
+      + ' See docs/tank-model-format.md for the object names a model must carry.');
+  }
+  return buildable;
+}
+
+// Every OBJ in public/obj is a tank the player may choose, except the ones that
+// cannot be drawn. A model missing its parts is left out rather than listed:
+// the client builds tanks from the file alone, so offering one it cannot build
+// would put a player in a tank nobody can see.
 function getAvailableTankModels() {
   const objDir = path.join(__dirname, 'public', 'obj');
   const hiddenModelFiles = new Set(['tank.obj']);
@@ -584,6 +628,7 @@ function getAvailableTankModels() {
     return fs.readdirSync(objDir)
       .filter((fileName) => fileName.toLowerCase().endsWith('.obj'))
       .filter((fileName) => !hiddenModelFiles.has(fileName.toLowerCase()))
+      .filter((fileName) => tankModelIsBuildable(path.join(objDir, fileName)))
       .map((fileName) => {
         const id = fileName.slice(0, -4).toLowerCase();
         const label = id === 'bzflag'

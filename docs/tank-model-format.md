@@ -113,6 +113,23 @@ pipeline include:
 - wheel meshes are animated by side based on discovered wheel object names
 - if only `ltread` and `rtread` exist, the renderer still works in fallback mode
 
+## Unbuildable Models
+
+A tank is the OBJ file it came from and nothing else. There is no generic tank
+to stand in for a model the renderer cannot build, because a substitute reports
+a broken model as working and leaves the fault to be found in play.
+
+A model that does not name `body`, `turret` and `barrel`, or that names no
+running gear on both sides, is therefore **not offered**: the server checks each
+file in `public/obj/` as it lists the models and logs the roles the file is
+missing instead of listing it. `public/tank-parts.mjs` and its
+`server/tank-parts.cjs` mirror hold the check both ends read, and
+`npm run test:tank-models` holds every shipped model to it.
+
+Reaching the renderer with an unbuildable model is an error there too:
+`createTank` returns nothing, names the missing roles on the console, and the
+player is left without a tank rather than wearing one that is not theirs.
+
 ## Minimal Supported Model
 
 A simple model only needs:

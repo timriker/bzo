@@ -5099,6 +5099,12 @@ function addPlayer(player) {
 
   if (!tank) {
     tank = renderManager.createTank(effectiveColor, player.name, playerTankModelPath);
+    // No tank rather than a stand-in one: the renderer has already said on the
+    // console which model it could not build, and the server does not offer a
+    // model that fails the same check, so this is a model that stopped loading
+    // rather than a player to draw a guess for. The next update for this player
+    // tries again, since nothing was put in `tanks` to skip the build.
+    if (!tank) return;
     tank.userData.builtColor = effectiveColor;
     renderManager.getWorldGroup().add(tank);
     tanks.set(player.id, tank);

@@ -119,6 +119,15 @@ These are deliberate. Do not "fix" them without being asked.
   it differs from upstream's as a consequence. Accepted for now -- do not report
   the model set or the explosion as parity gaps.
 
+  **A tank comes from an OBJ file or it does not exist.** There is no generic
+  tank to fall back on when a model will not build: a stand-in reports a broken
+  model as working and leaves the fault to be found in play, where an unfamiliar
+  tank shape is the last thing anyone reads as a broken asset. A model missing
+  its parts is kept out of the picker by the server as it lists `public/obj/`,
+  and reaching `createTank` with one is an error on the console. Do not add a
+  procedural tank, and do not substitute another model for one that failed --
+  the same rule the audio has.
+
 - **The sky follows a Minecraft clock, not real astronomy.** BZFlag computes
   where the sun and moon actually are: `SceneRenderer::setTimeOfDay` takes a
   Julian day and feeds `getSunPosition`/`getMoonPosition` in `daylight.cxx`,
