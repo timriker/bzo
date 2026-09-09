@@ -6,6 +6,8 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
 
 ## [Unreleased]
 
+## [1.0.89] - 2026-09-09
+
 ### Added
 - **Tanks leave tracks.** A pair of tread marks every twentieth of a second
   behind a tank driving forward and in front of one reversing, fading out over
