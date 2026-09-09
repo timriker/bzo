@@ -74,8 +74,11 @@ const problems = [];
 socket.on('message', (raw) => {
   const message = JSON.parse(raw);
   if (message.id !== undefined) {
-    pending.get(message.id)?.(message);
-    pending.delete(message.id);
+    if (pending.has(message.id)) {
+      const settle = pending.get(message.id);
+      pending.delete(message.id);
+      if (typeof settle === 'function') settle(message);
+    }
     return;
   }
   const { method, params } = message;
