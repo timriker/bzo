@@ -97,14 +97,56 @@ const send = (method, params = {}) => new Promise((resolve, reject) => {
   socket.send(JSON.stringify({ id, method, params }));
 });
 
-// Wrapped so a probe that throws is reported rather than ending the run.
+// `--eval` is an explicit local developer hook. Keep the parentheses so the
+// hook remains an expression (an object literal must not become a block).
 const evaluate = async (expression) => {
-  const { result } = await send('Runtime.evaluate', {
-    expression: `(() => { try { return ${expression}; } catch (error) { return 'ERROR ' + error.message; } })()`,
-    awaitPromise: true,
-    returnByValue: true,
+  try {
+    const response = await send('Runtime.evaluate', {
+      expression: `(() => { try { return (${expression}); } catch (error) { return 'ERROR ' + error.message; } })()`,
+      awaitPromise: true,
+      returnByValue: true,
+    });
+    if (response.exceptionDetails) {
+      const details = response.exceptionDetails;
+      return `ERROR ${details.exception?.description || details.text || 'evaluation failed'}`;
+    }
+    return response.result?.value;
+  } catch (error) {
+    return `ERROR ${error.message}`;
+  }
+};
+
+const setInputValue = async (value) => {
+  const response = await send('Runtime.evaluate', {
+    expression: 'document.getElementById("entryInput")',
+    returnByValue: false,
   });
-  return result.value;
+  if (response.exceptionDetails || !response.result?.objectId) {
+    const details = response.exceptionDetails;
+    return `ERROR ${details?.exception?.description || details?.text || 'entry input not found'}`;
+  }
+
+  const { objectId } = response.result;
+  try {
+    const result = await send('Runtime.callFunctionOn', {
+      objectId,
+      functionDeclaration: 'function (inputValue) { this.value = inputValue; }',
+      arguments: [{ value }],
+      awaitPromise: true,
+      returnByValue: true,
+    });
+    if (result.exceptionDetails) {
+      const details = result.exceptionDetails;
+      return `ERROR ${details.exception?.description || details.text || 'could not set entry input'}`;
+    }
+    return result.result?.value;
+  } finally {
+    try {
+      await send('Runtime.releaseObject', { objectId });
+    } catch {
+      // The page may close while the probe is cleaning up.
+    }
+  }
 };
 
 await send('Runtime.enable');
@@ -118,7 +160,11 @@ let joined = 'entry dialog never appeared';
 for (let second = 0; second < 45; second += 1) {
   await sleep(1000);
   if (await evaluate('document.getElementById("entryDialog")?.style.display') !== 'block') continue;
-  await evaluate(`document.getElementById("entryInput").value = ${JSON.stringify(playerName)}`);
+  const inputResult = await setInputValue(playerName);
+  if (typeof inputResult === 'string' && inputResult.startsWith('ERROR ')) {
+    joined = inputResult;
+    break;
+  }
   await evaluate('document.getElementById("entryOkButton").click()');
   joined = `joined as ${playerName}`;
   break;
