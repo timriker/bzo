@@ -5,12 +5,21 @@ keying admin to it. Upstream references are paths under `$HOME/bzflag/`; the
 findings the design rests on are in AGENTS.md, "What a real login would look
 like", which is also where anything learned later belongs.
 
-No GitHub issue tracks this yet; open one before the first commit and reference
-it from every commit and changelog entry, as flag work referenced #6.
+No GitHub issue tracks this. One was meant to be opened before the first commit
+and never was; the work shipped in v1.0.83 regardless, so an issue now would be
+opened closed. Anything left below is small enough to ride another tracker.
 
-## What is already true
+## What is built
 
-The round trip works and is probed live. `/login` with no `t` parameter
+**All of "Shape of the work" below, except where this section says otherwise.**
+`/login` finishes a verified token by creating a session, setting the cookie and
+redirecting to `/`; `server/sessions.cjs` holds the store, `sessions.json`
+persists it across the restarts that editing this server causes, and
+`scripts/test-sessions.mjs` covers the rules. The handshake reads the cookie and
+hangs the identity on the `Player`, `resolveJoinName` enforces the collision
+rules, and the entry dialog carries the login row.
+
+The round trip itself works and is probed live. `/login` with no `t` parameter
 redirects to `https://my.bzflag.org/weblogin.php`, and bzflag.org sends the
 player back to `/login?t=<token>:<callsign>`, where the server asks
 `CHECKTOKENS` whether the token is real. A real token verifies **with no IP
@@ -18,8 +27,17 @@ supplied**, group membership comes back for the groups named in `adminGroups`
 and for no others, and the reply carries a `BZID` -- a small stable integer that
 survives a callsign change on the forum.
 
-What the probe does *not* do is remember any of it. Everything below is the step
-from "we know who this is" to "the server treats them as that person".
+**Three pieces are not built**, all of them at the dialog rather than in the
+identity:
+
+- **Logging out.** `startGlobalLogin` says so when a signed-in player presses
+  the row. A session ends only by expiring, which is the 8 hours below.
+- **Stashing the staged draft across the login bounce.** The name, team and tank
+  staged in the entry dialog are still discarded by the page navigation.
+- **A login row that works inside an immersive session.** bzo took a third
+  answer to that wrinkle rather than either of the two below: the row refuses in
+  XR and says the login leaves VR, so nobody is dropped out of a session without
+  warning. Whether that is the final answer is open.
 
 ## Decisions
 
@@ -101,6 +119,9 @@ old one cannot touch the new device.
 
 ## Shape of the work
 
+Built, except for the three pieces named above. Kept because it is the record of
+why each piece is shaped the way it is.
+
 **`server/sessions.cjs`**, server-only, holding the store and its rules so
 `scripts/test-sessions.mjs` can exercise them without a server around them:
 create a session from a verified reply, look one up by id, drop one, prune the
@@ -139,7 +160,8 @@ following the same `data-menu-row` convention so keyboard, gamepad and XR
 navigation reach it. A logged-in player sees the field locked to their callsign
 and a Log out row instead.
 
-Two wrinkles that belong to that step rather than to the server:
+Two wrinkles that belong to that step rather than to the server, **both still
+open**:
 
 - The dialog stages every choice and applies it on OK, but a login is a page
   navigation, so pressing it discards the staged name, team and tank. Stash the
@@ -149,10 +171,12 @@ Two wrinkles that belong to that step rather than to the server:
   logging in leaves VR, does the round trip in the flat browser, and needs
   re-entry. The row says so, or is disabled inside a session with logging in
   expected beforehand. Either is a clear answer; what is not acceptable is a row
-  that silently drops the player out of VR.
+  that silently drops the player out of VR. bzo does the first: the row refuses
+  in XR and says why.
 
 ## Still open
 
+- **Logging out**, and the two dialog wrinkles above.
 - **Whether to check `Origin` on the upgrade.** `SameSite=Lax` is what keeps the
   cookie off a cross-site handshake, so a check is a second layer rather than
   the only one. Every handshake is already logged as a `[WS]` line; desktop

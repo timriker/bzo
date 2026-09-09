@@ -3,7 +3,8 @@
 What upstream BZFlag draws that bzo does not, and what each one is worth
 building. Upstream references are paths under `$HOME/bzflag/`.
 
-Flags are issue #6 and tank tracks are issue #24; the rest have no tracker yet.
+Flags were issue #6 and tank tracks were issue #24, both closed and both built.
+Nothing left in this document has a tracker.
 
 ## The audit
 
@@ -37,6 +38,17 @@ implemented, which is a flag gap rather than an effect one.
 dimension. `_mirror` defaults to `none` so a map has to ask for reflections, and
 nothing else in `src/geometry` is an effect bzo lacks.
 
+**Tank tracks (#24) are built**, and were the third thing this document was
+opened to plan: `public/tracks.mjs` for where a mark goes and `render.js` for
+the pool that draws them. See the Tank tracks section of AGENTS.md for what
+upstream has that bzo leaves out and why.
+
+The memory question they raised -- a fading decal per tank per interval, on a
+client that is CPU bound -- was answered by a fixed ring of 512 marks in one
+mesh, written once when a mark is laid and uploaded only over the marks that are
+still alive. A full pool drops its oldest mark, so a crowded map shortens every
+trail rather than growing the cost.
+
 ## Still missing
 
 | missing | upstream | worth |
@@ -44,13 +56,9 @@ nothing else in `src/geometry` is an effect bzo lacks.
 | teleporter proximity | `Player.cxx:642`, `SceneRenderer.cxx:1145` | two effects, below |
 | weather | `WeatherRenderer.cxx` | map-driven, so nothing shows unless a map asks |
 
-Tank tracks (#24) are built: `public/tracks.mjs` for where a mark goes and
-`render.js` for the pool that draws them. See the Tank tracks section of
-AGENTS.md for what upstream has that bzo leaves out and why.
-
-Weather is last for a reason: `_rainType` and its dozen siblings are server or
-map settings with no default, so a client that never joins a rainy map is not
-missing anything a player would notice.
+That is the whole list. Weather is last for a reason: `_rainType` and its dozen
+siblings are server or map settings with no default, so a client that never
+joins a rainy map is not missing anything a player would notice.
 
 ## Teleporter proximity is two effects, not one
 
@@ -118,11 +126,5 @@ implementation before it lands.
 
 1. **The graded overlay**, then the teleporter flash on top of it once the XR
    question is answered. Fix Blindness to use it in the same pass.
-
-The memory question tank tracks raised -- a fading decal per tank per interval,
-on a client that is CPU bound -- was answered by a fixed ring of 512 marks in one
-mesh, written once when a mark is laid and uploaded only over the marks that are
-still alive. A full pool drops its oldest mark, so a crowded map shortens every
-trail rather than growing the cost.
-3. **The tank alpha fade**, with `getProximity` already there.
-4. **Weather**, if a map ever asks.
+2. **The tank alpha fade**, with `getProximity` already there.
+3. **Weather**, if a map ever asks.

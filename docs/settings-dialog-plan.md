@@ -1,6 +1,7 @@
 # Settings Dialog Migration Plan
 
-Issue: #27
+Issue: #27, closed. The architecture it tracked is in place; what is left is the
+Resume Point below, which is small and unscheduled.
 
 ## Goal
 
@@ -76,7 +77,7 @@ Keyboard events have one document listener in `public/input.js`. Application com
 - XR Player Options changes Team and Tank selections and applies team changes through an authoritative rejoin.
 - XR Audio exposes the voice channel and the game, voice, and microphone levels as adjustable rows, then permission, microphone, input-device, and browser audio-processing controls.
 - Volume rows are `input[type=range]` in the DOM dialog and adjustable rows in XR, driven by the same `menuadjust` event: Up/Down leaves the row, Left/Right moves one step, and pointer drag works as the browser's own slider.
-- XR Operator exposes map selection/restart, shot-limit updates, server-data refresh, and read-only MOTD. Text editing and map upload remain desktop-only.
+- XR Operator stages map, shot limit, ricochet and MOTD as one row each and commits them with a single Apply/Restart row plus Cancel, alongside server-data refresh. MOTD is editable where the session offers a system keyboard; map upload remains desktop-only. See `docs/operator-panel-plan.md`.
 - Either stick navigates, either trigger or primary face button activates, and either grip or secondary face button closes the menu.
 
 ## Interaction Rules

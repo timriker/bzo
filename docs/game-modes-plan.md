@@ -3,8 +3,9 @@
 Design and staging plan for the BZFlag game types and game styles bzo does not
 have yet. Upstream references are paths under `$HOME/bzflag/`.
 
-Issue #42 tracks this; reference it from every commit and changelog entry here,
-as flag work references #6.
+Issue #42 tracked this and is closed -- Rabbit Chase finished what it was opened
+for. Match end and Handicap below have no tracker; open one before starting
+either, and reference it the way flag work referenced #6.
 
 ## What upstream has
 
