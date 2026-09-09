@@ -57,6 +57,12 @@ const BZFLAG_TEAM_ORDER = Object.freeze([
 // derives both of its limits from the rogue count rather than reading them
 // (`CmdLineOptions.cxx:1596`), so a map cannot name them.
 const BZFLAG_MP_TEAM_ORDER = Object.freeze(BZFLAG_TEAM_ORDER.slice(0, 6));
+// The teams the playing limit counts and caps: rogue and the four colour teams,
+// which is upstream's `CtfTeams` span. Observers are outside it on purpose --
+// `-mp 8` caps the tanks and says nothing about who is watching, so the total a
+// server holds is the playing limit plus the observer limit
+// (CmdLineOptions.cxx:458).
+const PLAYING_TEAMS = Object.freeze(BZFLAG_TEAM_ORDER.slice(0, 5));
 const PLAYER_TEAM_COLORS = Object.freeze({
   [PLAYER_TEAM.ROGUE]: 0xffff00,
   [PLAYER_TEAM.OBSERVER]: 0xffffff,
@@ -227,8 +233,22 @@ function resolveRabbitSelection(serverValue, mapValue) {
   return normalizeRabbitSelection(mapValue) ?? normalizeRabbitSelection(serverValue);
 }
 
-function resolveTeamMode(serverValue, mapOverride = null, defaultLimit = Number.MAX_SAFE_INTEGER, serverRabbit = null) {
-  const serverMode = normalizeServerTeamMode(serverValue, defaultLimit);
+// CmdLineOptions.cxx:453. A playing team may not be allowed more players than
+// the whole game is, so `-mp N` clamps every one of their limits down to it.
+// Applied where the limits are resolved, which is what makes the playing limit
+// the number that bites rather than one the per-team rows can talk past.
+function clampPlayingLimits(limits, maxRealPlayers) {
+  const clamped = { ...limits };
+  for (const team of PLAYING_TEAMS) {
+    if (clamped[team] > maxRealPlayers) clamped[team] = maxRealPlayers;
+  }
+  return clamped;
+}
+
+// `maxRealPlayers` is the configured playing limit -- upstream's `-mp` -- and it
+// is both the default per-team limit and the cap on every playing team's own.
+function resolveTeamMode(serverValue, mapOverride = null, maxRealPlayers = Number.MAX_SAFE_INTEGER, serverRabbit = null) {
+  const serverMode = normalizeServerTeamMode(serverValue, maxRealPlayers);
   const rabbitSelection = resolveRabbitSelection(serverRabbit, mapOverride?.rabbitSelection);
   const requestedEnabled = typeof mapOverride?.enabled === 'boolean'
     ? mapOverride.enabled
@@ -240,17 +260,18 @@ function resolveTeamMode(serverValue, mapOverride = null, defaultLimit = Number.
   // type whichever order the switches arrived in, which is what makes it and `-c`
   // mutually exclusive; `colorTeamsRefused` is what the caller logs about it.
   if (rabbitSelection) {
-    const rogueLimit = normalizeTeamLimits(
-      serverMode.limits, [PLAYER_TEAM.ROGUE], defaultLimit)[PLAYER_TEAM.ROGUE];
+    const rogueLimit = Math.min(maxRealPlayers, normalizeTeamLimits(
+      serverMode.limits, [PLAYER_TEAM.ROGUE], maxRealPlayers)[PLAYER_TEAM.ROGUE]);
     const teams = [PLAYER_TEAM.OBSERVER, PLAYER_TEAM.HUNTER];
     return {
       enabled: false,
       autoTeam: false,
       rabbitSelection,
       colorTeamsRefused: requestedEnabled,
+      maxRealPlayers,
       teams,
       limits: {
-        ...normalizeTeamLimits(serverMode.limits, [PLAYER_TEAM.OBSERVER], defaultLimit),
+        ...normalizeTeamLimits(serverMode.limits, [PLAYER_TEAM.OBSERVER], maxRealPlayers),
         // Only the hunter limit is ever consulted -- anointing does not ask
         // whether the rabbit team has room, since deposing the old rabbit is what
         // makes it. The rabbit's one is carried because it is a field of the ping
@@ -269,8 +290,10 @@ function resolveTeamMode(serverValue, mapOverride = null, defaultLimit = Number.
       autoTeam: false,
       rabbitSelection: null,
       colorTeamsRefused: false,
+      maxRealPlayers,
       teams,
-      limits: normalizeTeamLimits(serverMode.limits, teams, defaultLimit),
+      limits: clampPlayingLimits(
+        normalizeTeamLimits(serverMode.limits, teams, maxRealPlayers), maxRealPlayers),
     };
   }
 
@@ -282,8 +305,11 @@ function resolveTeamMode(serverValue, mapOverride = null, defaultLimit = Number.
     autoTeam: mapOverride?.autoTeam ?? serverMode.autoTeam,
     rabbitSelection: null,
     colorTeamsRefused: false,
+    maxRealPlayers,
     teams,
-    limits: normalizeTeamLimits(mapOverride?.limits ?? serverMode.limits, teams, defaultLimit),
+    limits: clampPlayingLimits(
+      normalizeTeamLimits(mapOverride?.limits ?? serverMode.limits, teams, maxRealPlayers),
+      maxRealPlayers),
   };
 }
 
@@ -336,24 +362,43 @@ function selectPlayerTeam(requestedTeam, teamMode, teamCounts = {}, teamScores =
   const automatic = requested === PLAYER_TEAM.AUTOMATIC;
   const hasRoom = (team) => (teamCounts[team] || 0) < teamMode.limits[team];
 
+  // autoTeamSelect (bzfs.cxx:1885), and its order: "asking for Observer gives
+  // observer", whatever else the world is doing. Ahead of Rabbit Chase because
+  // observer is the one team anybody may ask for there.
+  if (requested === PLAYER_TEAM.OBSERVER) {
+    return hasRoom(PLAYER_TEAM.OBSERVER) ? PLAYER_TEAM.OBSERVER : null;
+  }
+
+  // bzfs.cxx:1898: "if no player are available, join as Observer". The playing
+  // limit counts tanks and not observers, so a game whose tanks are all taken
+  // turns an arrival into a spectator rather than refusing it -- what refuses a
+  // connection is the total, which the caller asks about.
+  const playing = ALL_PLAYER_TEAMS.reduce((total, team) => (
+    team === PLAYER_TEAM.OBSERVER ? total : total + (teamCounts[team] || 0)), 0);
+  if (playing >= (teamMode.maxRealPlayers ?? Number.MAX_SAFE_INTEGER)) {
+    return hasRoom(PLAYER_TEAM.OBSERVER) ? PLAYER_TEAM.OBSERVER : null;
+  }
+
   // autoTeamSelect (bzfs.cxx:1923): "if we're running rabbit chase, all
   // non-observers start as hunters". There is no team to pick in Rabbit Chase --
-  // asking for observer gives observer and everything else gives hunter, the
-  // rabbit being anointed rather than joined. So a request for a colour team is
-  // honoured as "play" rather than refused, which is what upstream does with it.
+  // the rabbit is anointed rather than joined -- so a request for a colour team
+  // is honoured as "play" rather than refused, which is what upstream does.
   if (teamMode.rabbitSelection) {
-    const team = requested === PLAYER_TEAM.OBSERVER ? PLAYER_TEAM.OBSERVER : PLAYER_TEAM.HUNTER;
-    return hasRoom(team) ? team : null;
+    return hasRoom(PLAYER_TEAM.HUNTER) ? PLAYER_TEAM.HUNTER : null;
   }
 
   if (!automatic && !teamMode.teams.includes(requested)) return null;
 
-  if (!automatic && (requested === PLAYER_TEAM.OBSERVER || requested === PLAYER_TEAM.ROGUE || !teamMode.autoTeam)) {
+  if (!automatic && (requested === PLAYER_TEAM.ROGUE || !teamMode.autoTeam)) {
     return hasRoom(requested) ? requested : null;
   }
 
+  // "not putting in not enabled teams" (bzfs.cxx:1935): a team whose limit is
+  // zero is off, and it is left out before the balancing rather than filtered
+  // for room later -- otherwise the all-empty case below would found a team
+  // nobody is allowed to be on.
   let candidates = BZFLAG_TEAM_ORDER.slice(1, 5)
-    .filter((team) => teamMode.teams.includes(team))
+    .filter((team) => teamMode.teams.includes(team) && teamMode.limits[team] > 0)
     .sort((left, right) => (teamCounts[right] || 0) - (teamCounts[left] || 0));
   if (candidates.length === 0) return hasRoom(PLAYER_TEAM.ROGUE) ? PLAYER_TEAM.ROGUE : null;
 
@@ -676,6 +721,8 @@ module.exports = {
   normalizePlayerTeam,
   normalizePlayerTeamSelection,
   normalizeServerTeamMode,
+  normalizeTeamLimits,
+  clampPlayingLimits,
   parseBZWTeamMode,
   resolveTeamMode,
   selectPlayerTeam,

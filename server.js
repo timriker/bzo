@@ -115,6 +115,9 @@ const {
 } = require('./server/collision.cjs');
 const {
   normalizePlayerTeamSelection,
+  clampPlayingLimits,
+  normalizeRabbitSelection,
+  normalizeTeamLimits,
   parseBZWTeamMode,
   resolveTeamMode,
   selectPlayerTeam,
@@ -140,6 +143,7 @@ const {
   pickNewRabbit,
   isARabbitKill,
   PLAYER_TEAM,
+  PLAYER_TEAMS,
   teamScoreMovesOnKill,
   areFoes,
 } = require('./server/teams.cjs');
@@ -1760,14 +1764,20 @@ function parseBZWMap(filename) {
         }
         if (wline.toLowerCase() === 'end') break;
       }
+    // `rotation` is stated here rather than left to whether the block carries a
+    // `rotation` line, because everything downstream turns it into a cosine: a
+    // box or a pyramid with no rotation is a box at rotation 0, and saying so
+    // once is what lets the client, the collision pair and every log read the
+    // field instead of guessing a default for it. The rest of the shape has the
+    // same treatment further down, where `end` fills in what the block left out.
     } else if (token === 'box') {
-      current = { type: 'box' };
+      current = { type: 'box', rotation: 0 };
     } else if (token === 'pyramid') {
-      current = { type: 'pyramid' };
+      current = { type: 'pyramid', rotation: 0 };
     } else if (token === 'base') {
-      current = { type: 'box', kind: 'base', team: 1 };
+      current = { type: 'box', kind: 'base', team: 1, rotation: 0 };
     } else if (token === 'teleporter') {
-      current = { type: 'box', kind: 'teleporter' };
+      current = { type: 'box', kind: 'teleporter', rotation: 0 };
       const [, ...teleporterNameParts] = line.split(/\s+/);
       const inlineTeleporterName = teleporterNameParts.join(' ').replace(/"/g, '').trim();
       if (inlineTeleporterName) {
@@ -2053,12 +2063,24 @@ if (mapServerOptions.unreadBZDBVars?.length > 0) {
     + ` ${Array.from(new Set(mapServerOptions.unreadBZDBVars)).sort().join(', ')}`
   );
 }
+// `maxRealPlayers` upstream, which `-mp N` sets: how many tanks may play, and it
+// excludes the observers (CmdLineOptions.cxx:458). bzo's `maxPlayers` is that
+// number -- the default per-team limit, and the cap every playing team's own
+// limit is clamped down to.
 const configuredMaxPlayers = Number(serverConfig.maxPlayers);
-const defaultTeamLimit = Number.isInteger(configuredMaxPlayers) && configuredMaxPlayers > 0
+const MAX_REAL_PLAYERS = Number.isInteger(configuredMaxPlayers) && configuredMaxPlayers > 0
   ? configuredMaxPlayers
   : 16;
 const TEAM_MODE = resolveTeamMode(
-  serverConfig.teamMode, mapTeamMode, defaultTeamLimit, serverConfig.rabbit);
+  serverConfig.teamMode, mapTeamMode, MAX_REAL_PLAYERS, serverConfig.rabbit);
+// `maxPlayers = maxRealPlayers + maxTeam[ObserverTeam]` (CmdLineOptions.cxx:458).
+// Derived and never configured, which is why the panel offers a playing limit and
+// an observer limit and not this: reaching it refuses a connection outright
+// (bzfs.cxx:2339), where reaching the playing limit only turns an arrival into an
+// observer. See docs/operator-panel-plan.md.
+const MAX_TOTAL_PLAYERS = MAX_REAL_PLAYERS + (TEAM_MODE.limits[PLAYER_TEAM.OBSERVER] || 0);
+log(`Player limits: playing=${MAX_REAL_PLAYERS};`
+  + ` observers=${TEAM_MODE.limits[PLAYER_TEAM.OBSERVER] || 0}; total=${MAX_TOTAL_PLAYERS}`);
 log(`Team mode: ${TEAM_MODE.enabled ? 'enabled' : 'disabled'}; autoTeam=${TEAM_MODE.autoTeam}; teams=${TEAM_MODE.teams.map((team) => `${team}:${TEAM_MODE.limits[team]}`).join(',')}`);
 // RabbitChase upstream, `-rabbit [score|killer|random]`: one rabbit against every
 // hunter, and null when the world is not playing it. Resolved here rather than
@@ -3307,6 +3329,86 @@ defineCommand('/mv', COMMAND_TIER.OPERATOR,
 // one event, so they take one path.
 const LIVE_CONFIG_KEYS = Object.freeze(['motd', 'shotMaxActive', 'ricochet']);
 
+// The panel's rows are flat where `server.json` is nested, so a team's limit is
+// one key of its own -- `rogueLimit`, `observerLimit` -- and this is the mapping
+// back. One row per team is also what makes them steppable in a headset.
+const OPERATOR_TEAM_LIMIT_KEYS = Object.freeze(Object.fromEntries(
+  PLAYER_TEAMS.map((team) => [`${team}Limit`, team])));
+// `-rabbit [score|killer|random]`, plus the off position a `choice` row has to
+// have and a command-line switch does not.
+const RABBIT_SELECTIONS = Object.freeze(['off', 'score', 'killer', 'random']);
+// Upstream's own ceiling on either number (`MaxPlayers`, CmdLineOptions.h:37).
+const MAX_CONFIGURABLE_PLAYERS = 200;
+// Every setting the panel may stage, which is what the `setOperatorConfig`
+// handler accepts and what `init` reports the current value of.
+const OPERATOR_CONFIG_KEYS = Object.freeze([
+  ...LIVE_CONFIG_KEYS,
+  'mapFile',
+  'teams',
+  'rabbit',
+  'jumping',
+  'maxPlayers',
+  ...Object.keys(OPERATOR_TEAM_LIMIT_KEYS),
+]);
+
+// What the panel is looking at. Read from the config rather than from the
+// resolved world, because the config is what the panel edits: a map's own
+// `options` block still overrides it on the next boot, exactly as it does for
+// the map row today.
+function getOperatorConfigState() {
+  // Clamped, because clamped is what the server is running: a per-team limit
+  // above the playing limit is brought down when the world is resolved
+  // (CmdLineOptions.cxx:453), and a row showing the config's larger number would
+  // be describing a limit nobody is held to.
+  const limits = clampPlayingLimits(
+    normalizeTeamLimits(serverConfig.teamMode?.limits, PLAYER_TEAMS, MAX_REAL_PLAYERS),
+    MAX_REAL_PLAYERS);
+  return {
+    motd: serverConfig.motd || '',
+    shotMaxActive: GAME_CONFIG.SHOT_MAX_ACTIVE,
+    ricochet: GAME_CONFIG.ALL_SHOTS_RICOCHET,
+    mapFile: serverConfig.mapFile || '',
+    teams: serverConfig.teamMode === true || serverConfig.teamMode?.enabled === true,
+    rabbit: normalizeRabbitSelection(serverConfig.rabbit) || 'off',
+    jumping: serverConfig.jumping !== false,
+    maxPlayers: MAX_REAL_PLAYERS,
+    ...Object.fromEntries(Object.entries(OPERATOR_TEAM_LIMIT_KEYS)
+      .map(([key, team]) => [key, limits[team]])),
+  };
+}
+
+// `server.json`'s nested shape from the panel's flat one. `teamMode` may be a
+// bare boolean in a hand-written config, so it is grown into an object before
+// anything is written into it, and the team list follows the limits: a team
+// limited to zero is off, which is how a map's `-mp 10,0,4,0,2,8` already reads
+// (parseBZWTeamMode). One place decides whether a team exists.
+function writeOperatorConfigFields(config, next) {
+  const limitKeys = Object.keys(next).filter((key) => OPERATOR_TEAM_LIMIT_KEYS[key]);
+  if ((limitKeys.length > 0 || next.teams !== undefined)
+    && (!config.teamMode || typeof config.teamMode !== 'object')) {
+    config.teamMode = { enabled: config.teamMode === true };
+  }
+  for (const [key, value] of Object.entries(next)) {
+    const team = OPERATOR_TEAM_LIMIT_KEYS[key];
+    if (team) {
+      config.teamMode.limits = { ...config.teamMode.limits, [team]: value };
+    } else if (key === 'teams') {
+      config.teamMode.enabled = value;
+    } else if (key === 'rabbit') {
+      // `false` is the config's own off position, and what resolveRabbitSelection
+      // reads; `"off"` is the row's.
+      config.rabbit = value === 'off' ? false : value;
+    } else {
+      config[key] = value;
+    }
+  }
+  if (limitKeys.length > 0) {
+    const limits = normalizeTeamLimits(
+      config.teamMode.limits, PLAYER_TEAMS, next.maxPlayers ?? MAX_REAL_PLAYERS);
+    config.teamMode.teams = PLAYER_TEAMS.filter((team) => limits[team] > 0);
+  }
+}
+
 // The settings an operator may change while the server runs, in the one place
 // they are changed. Validated, written back to `server.json`, applied to the
 // live config, and broadcast -- in that order, and as one transaction, so a
@@ -3322,25 +3424,29 @@ const LIVE_CONFIG_KEYS = Object.freeze(['motd', 'shotMaxActive', 'ricochet']);
 //
 // Returns `{ error }` or `{ changed: [...], restarted }`.
 function applyServerConfigChanges(requested, byWhom) {
+  // What the panel was looking at when it staged these, so a value that is
+  // already the server's own does not start a new game for nothing.
+  const current = getOperatorConfigState();
+  const has = (key) => Object.prototype.hasOwnProperty.call(requested, key);
   const next = {};
-  if (Object.prototype.hasOwnProperty.call(requested, 'motd')) {
+  if (has('motd')) {
     if (typeof requested.motd !== 'string') return { error: 'Invalid motd value' };
     const motd = requested.motd.trim();
     if (motd.length > 140) return { error: 'MOTD must be 140 characters or fewer' };
     next.motd = motd;
   }
-  if (Object.prototype.hasOwnProperty.call(requested, 'shotMaxActive')) {
+  if (has('shotMaxActive')) {
     const shots = Number(requested.shotMaxActive);
     if (!Number.isFinite(shots)) return { error: 'Invalid shot max active value' };
     next.shotMaxActive = normalizeShotSlotCount(Math.round(shots));
   }
-  if (Object.prototype.hasOwnProperty.call(requested, 'ricochet')) {
+  if (has('ricochet')) {
     if (typeof requested.ricochet !== 'boolean') return { error: 'Invalid ricochet value' };
     next.ricochet = requested.ricochet;
   }
   // Validated exactly as the standalone `setMap` did, since it is the same
   // choice arriving through the panel's one confirm instead of its own button.
-  if (Object.prototype.hasOwnProperty.call(requested, 'mapFile')) {
+  if (has('mapFile')) {
     const mapFile = typeof requested.mapFile === 'string' ? requested.mapFile.trim() : '';
     if (!mapFile || mapFile !== path.basename(mapFile)
       || (mapFile !== 'random' && !mapFile.endsWith('.bzw'))) {
@@ -3351,10 +3457,44 @@ function applyServerConfigChanges(requested, byWhom) {
     }
     next.mapFile = mapFile;
   }
+  // The game's shape, which is the new-game tier: bzo resolves the team layout
+  // and the flag pool once at boot, so none of these can be applied live.
+  if (has('teams')) {
+    if (typeof requested.teams !== 'boolean') return { error: 'Invalid teams value' };
+    next.teams = requested.teams;
+  }
+  if (has('rabbit')) {
+    if (!RABBIT_SELECTIONS.includes(requested.rabbit)) {
+      return { error: `Rabbit chase is one of ${RABBIT_SELECTIONS.join(', ')}` };
+    }
+    next.rabbit = requested.rabbit;
+  }
+  if (has('jumping')) {
+    if (typeof requested.jumping !== 'boolean') return { error: 'Invalid jumping value' };
+    next.jumping = requested.jumping;
+  }
+  // The playing limit, upstream's `-mp`: at least one tank, since a server that
+  // allows none is a server nobody can play on.
+  if (has('maxPlayers')) {
+    const playing = Math.round(Number(requested.maxPlayers));
+    if (!Number.isFinite(playing) || playing < 1 || playing > MAX_CONFIGURABLE_PLAYERS) {
+      return { error: `The playing limit is 1 to ${MAX_CONFIGURABLE_PLAYERS}` };
+    }
+    next.maxPlayers = playing;
+  }
+  // A per-team limit may be zero, which turns that team off.
+  for (const [key, team] of Object.entries(OPERATOR_TEAM_LIMIT_KEYS)) {
+    if (!has(key)) continue;
+    const limit = Math.round(Number(requested[key]));
+    if (!Number.isFinite(limit) || limit < 0 || limit > MAX_CONFIGURABLE_PLAYERS) {
+      return { error: `The ${team} limit is 0 to ${MAX_CONFIGURABLE_PLAYERS}` };
+    }
+    next[key] = limit;
+  }
 
   try {
     const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
-    Object.assign(config, next);
+    writeOperatorConfigFields(config, next);
     fs.writeFileSync(configPath, JSON.stringify(config, null, 2));
   } catch (error) {
     logError(`Failed to update config at ${configPath}:`, error);
@@ -3386,12 +3526,15 @@ function applyServerConfigChanges(requested, byWhom) {
     changed.push('ricochet');
   }
 
-  // A new game rather than a live change: the world and the team layout are
-  // resolved once at boot, so the only honest way to apply one is to start over.
-  // Written to `server.json` above; this is what makes the clients follow.
-  if (next.mapFile !== undefined && next.mapFile !== serverConfig.mapFile) {
-    serverConfig.mapFile = next.mapFile;
-    changed.push('mapFile');
+  // A new game rather than a live change: the world, the team layout and the flag
+  // pool are resolved once at boot, so the only honest way to apply one of these
+  // is to start over. Written to `server.json` above; this is what makes the
+  // clients follow. A staged value that already matches is not one of them, so
+  // pressing the button on a change and its own undo restarts nothing.
+  const newGame = Object.keys(next)
+    .filter((key) => !LIVE_CONFIG_KEYS.includes(key) && next[key] !== current[key]);
+  if (newGame.length > 0) {
+    changed.push(...newGame);
     log(`Config changed by ${byWhom}: ${changed.join(', ')}; starting a new game`);
     requestServerRestart(`${byWhom} changed ${changed.join(', ')}`);
     return { changed, restarted: true };
@@ -3959,14 +4102,14 @@ function checkCollision(x, y, z, tankRadius = 2, options = {}) {
           }
 
           if (!suppressLog) {
-            log(`[COLLISION] ${x.toFixed(2)},${y.toFixed(2)},${z.toFixed(2)} ${obs.name}:${obs.type} ${obs.x.toFixed(2)},${obstacleBase.toFixed(2)},${obs.z.toFixed(2)} rot:${(obs.rotation || 0).toFixed(2)}, h:${obstacleHeight.toFixed(2)}, top:${obstacleTop.toFixed(2)}`);
+            log(`[COLLISION] ${x.toFixed(2)},${y.toFixed(2)},${z.toFixed(2)} ${obs.name}:${obs.type} ${obs.x.toFixed(2)},${obstacleBase.toFixed(2)},${obs.z.toFixed(2)} rot:${obs.rotation.toFixed(2)}, h:${obstacleHeight.toFixed(2)}, top:${obstacleTop.toFixed(2)}`);
           }
           return obs;
         }
       } else {
         if (hitsRect(halfW, halfD, slack)) {
           if (!suppressLog) {
-            log(`[COLLISION] ${x.toFixed(2)},${y.toFixed(2)},${z.toFixed(2)} ${obs.name}:${obs.type} ${obs.x.toFixed(2)},${obstacleBase.toFixed(2)},${obs.z.toFixed(2)} rot:${(obs.rotation || 0).toFixed(2)}, h:${obstacleHeight.toFixed(2)}, top:${obstacleTop.toFixed(2)}`);
+            log(`[COLLISION] ${x.toFixed(2)},${y.toFixed(2)},${z.toFixed(2)} ${obs.name}:${obs.type} ${obs.x.toFixed(2)},${obstacleBase.toFixed(2)},${obs.z.toFixed(2)} rot:${obs.rotation.toFixed(2)}, h:${obstacleHeight.toFixed(2)}, top:${obstacleTop.toFixed(2)}`);
           }
           return obs;
         }
@@ -3982,7 +4125,7 @@ function checkCollision(x, y, z, tankRadius = 2, options = {}) {
         : pyramidIntersectsCylinder(obs, x, y, z, effectiveRadius, tankHeight);
       if (hitsPyramid) {
         if (!suppressLog) {
-          log(`[COLLISION] ${x.toFixed(2)},${y.toFixed(2)},${z.toFixed(2)} ${obs.name}:${obs.type} ${obs.x.toFixed(2)},${obstacleBase.toFixed(2)},${obs.z.toFixed(2)} rot:${(obs.rotation || 0).toFixed(2)}, h:${obstacleHeight.toFixed(2)}, top:${obstacleTop.toFixed(2)}`);
+          log(`[COLLISION] ${x.toFixed(2)},${y.toFixed(2)},${z.toFixed(2)} ${obs.name}:${obs.type} ${obs.x.toFixed(2)},${obstacleBase.toFixed(2)},${obs.z.toFixed(2)} rot:${obs.rotation.toFixed(2)}, h:${obstacleHeight.toFixed(2)}, top:${obstacleTop.toFixed(2)}`);
         }
         return obs;
       }
@@ -4322,7 +4465,8 @@ function validateMovement(player, newX, newY, newZ, newRotation, deltaTime, velo
       } else {
         const { x, z, w, d, h, baseY, rotation } = collision;
         headline = `COLLISION obs:${collision.name} ${x.toFixed(2)},${baseY.toFixed(2)},${z.toFixed(2)},`
-          + ` w:${w.toFixed(2)}, d:${d.toFixed(2)}, h:${h.toFixed(2)}, rot:${rotation.toFixed(2)} (${at})`;
+          + ` w:${w.toFixed(2)}, d:${d.toFixed(2)}, h:${h.toFixed(2)},`
+          + ` rot:${rotation.toFixed(2)} (${at})`;
       }
       if (reportCheat(player, 'collision', headline)) return false;
     }
@@ -4561,7 +4705,7 @@ function getRandomBasePosition(base) {
   const spanZ = Math.max(0, base.d - (2 * FLAG_DROP_TEST_RADIUS));
   const localX = spanX * (Math.random() - 0.5);
   const localZ = spanZ * (Math.random() - 0.5);
-  const rotated = rotateXZ(localX, localZ, -(base.rotation || 0));
+  const rotated = rotateXZ(localX, localZ, -base.rotation);
   return {
     x: base.x + rotated.x,
     y: getBaseTopY(base),
@@ -6097,8 +6241,8 @@ function transformShotThroughTeleporter(pointIn, dirIn, sourceObs, sourceFace, d
   const srcDims = getShotTeleporterDims(sourceObs);
   const dstDims = getShotTeleporterDims(destObs);
 
-  const radians1 = (sourceObs.rotation || 0) + (sourceFace === 0 ? 0 : Math.PI);
-  const radians2 = (destObs.rotation || 0) + (destFace === 1 ? 0 : Math.PI);
+  const radians1 = sourceObs.rotation + (sourceFace === 0 ? 0 : Math.PI);
+  const radians2 = destObs.rotation + (destFace === 1 ? 0 : Math.PI);
 
   const relativeX = pointIn.x - sourceObs.x;
   const relativeZ = pointIn.z - sourceObs.z;
@@ -6295,8 +6439,8 @@ function applyPlayerTeleportMessage(player, sourceState, fromFaceId, toFaceId, n
     return { ok: false, reason: 'blocked_exit' };
   }
 
-  const radians1 = (sourceObs.rotation || 0) + (sourceFace === 0 ? 0 : Math.PI);
-  const radians2 = (destinationObs.rotation || 0) + (destinationFace === 1 ? 0 : Math.PI);
+  const radians1 = sourceObs.rotation + (sourceFace === 0 ? 0 : Math.PI);
+  const radians2 = destinationObs.rotation + (destinationFace === 1 ? 0 : Math.PI);
   const rotateDelta = radians2 - radians1;
 
   player.x = outX;
@@ -7828,6 +7972,11 @@ wss.on('connection', (ws, req) => {
     // *Apply* or *Restart* from this list and a second copy would eventually
     // promise the wrong one -- see docs/operator-panel-plan.md.
     liveConfigKeys: LIVE_CONFIG_KEYS,
+    // And what every one of them is set to, so the panel's rows start on the
+    // server's own values rather than on a placeholder. The three live ones are
+    // in here too, and the panel keeps reading those from the live config -- a
+    // `serverConfigUpdate` moves them without an `init`.
+    operatorConfig: getOperatorConfigState(),
     // bzfs.cxx:2437 sends MsgNewRabbit to a joining player for the same reason:
     // the rabbit is world state, not an event, so a client that arrives mid-game
     // has to be told who it is.
@@ -8521,6 +8670,17 @@ wss.on('connection', (ws, req) => {
             teamCounts[candidate.team] = (teamCounts[candidate.team] || 0) + 1;
             teamPlayerScores[candidate.team] = (teamPlayerScores[candidate.team] || 0) + candidate.kills - candidate.deaths;
           });
+          // bzfs.cxx:2339. The total -- tanks and observers together -- is what
+          // refuses an arrival outright; the playing limit inside
+          // selectPlayerTeam only turns one into a spectator. Asked of arrivals
+          // alone, since a player already in the game re-sending their name, team
+          // and tank is not a new one, and `teamCounts` above already leaves them
+          // out of the count.
+          const roster = Object.values(teamCounts).reduce((total, count) => total + count, 0);
+          if (!player.joined && roster >= MAX_TOTAL_PLAYERS) {
+            ws.send(JSON.stringify({ error: 'This game is full. Try again later.' }));
+            break;
+          }
           const assignedTeam = selectPlayerTeam(
             requestedTeam, TEAM_MODE, teamCounts, teamPlayerScores, getTeamBaseCenters());
           if (!assignedTeam) {
@@ -8742,7 +8902,7 @@ wss.on('connection', (ws, req) => {
         case 'setOperatorConfig': {
           if (refuseNonOperator(ws, player, 'setOperatorConfig')) break;
           const requested = {};
-          for (const key of [...LIVE_CONFIG_KEYS, 'mapFile']) {
+          for (const key of OPERATOR_CONFIG_KEYS) {
             if (Object.prototype.hasOwnProperty.call(message, key)) requested[key] = message[key];
           }
           if (Object.keys(requested).length === 0) {

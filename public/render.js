@@ -2791,14 +2791,14 @@ class RenderManager {
       // vertices instead because the merged mesh cannot carry one per obstacle.
       const obstacleMatrix = () => {
         fragmentPosition.set(obs.x, baseY + h / 2, obs.z);
-        fragmentRotation.setFromEuler(fragmentEuler.set(0, obs.rotation || 0, 0));
+        fragmentRotation.setFromEuler(fragmentEuler.set(0, obs.rotation, 0));
         return fragmentMatrix.compose(fragmentPosition, fragmentRotation, fragmentScale);
       };
 
       if (obs.kind === 'teleporter') {
         mesh = this._createTeleporterMesh(obs, i + 1);
         mesh.position.set(obs.x, baseY, obs.z);
-        mesh.rotation.y = obs.rotation || 0;
+        mesh.rotation.y = obs.rotation;
         mesh.name = obs.name || `Teleporter ${i + 1}`;
         mesh.userData.teleporter = {
           border: Number(obs.border) || 0,
@@ -3044,7 +3044,7 @@ class RenderManager {
 
     node = new THREE.Group();
     node.position.set(obs.x, obs.baseY || 0, obs.z);
-    node.rotation.y = obs.rotation || 0;
+    node.rotation.y = obs.rotation;
     // The obstacle it belongs to never moves, so neither does this.
     node.matrixAutoUpdate = false;
     node.updateMatrix();

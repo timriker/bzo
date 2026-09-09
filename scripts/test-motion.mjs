@@ -23,8 +23,8 @@ function makeWorld(obstacles) {
     if (py >= (o.baseY || 0) + o.h) return false;
     const dx = px - o.x;
     const dz = pz - o.z;
-    const c = Math.cos(o.rotation || 0);
-    const s = Math.sin(o.rotation || 0);
+    const c = Math.cos(o.rotation);
+    const s = Math.sin(o.rotation);
     const localX = dx * c - dz * s;
     const localZ = dx * s + dz * c;
     return testOrigRectTank(o.w / 2, o.d / 2, localX, localZ, getTankLocalAngle(az, o.rotation));
@@ -35,8 +35,8 @@ function makeWorld(obstacles) {
     getNormal: (obs, px, py, pz) => {
       const dx = px - obs.x;
       const dz = pz - obs.z;
-      const c = Math.cos(obs.rotation || 0);
-      const s = Math.sin(obs.rotation || 0);
+      const c = Math.cos(obs.rotation);
+      const s = Math.sin(obs.rotation);
       const n = getOrigRectNormal(obs.w / 2, obs.d / 2, dx * c - dz * s, dx * s + dz * c);
       return { x: n.x, y: 0, z: n.z };
     },

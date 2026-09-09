@@ -64,7 +64,20 @@ These are deliberate. Do not "fix" them without being asked.
   toggling a pause: hiding the window while a menu is open and showing it again
   leaves the tank paused, because the menu still is. The pause countdown itself
   lives on the server, unlike upstream's, because the server is what decides
-  whether a tank may be hit.
+  whether a tank may be hit -- so the client keeps a copy of it, and
+  `public/pause.mjs` holds the rules over both, which is what stops the two ways
+  to pause drifting apart.
+
+  **A pause belongs to the life it was taken in, and the asking outlives it.**
+  Upstream abandons a countdown the moment the tank stops being alive
+  (`playing.cxx:6866`) and so does bzo, on both ends: the server drops its
+  countdown and its pause in `respawn()` without sending anything, and the client
+  drops its copy off the same fact rather than waiting to be told. The next life
+  then asks again for whatever is still true -- a menu still in front of the
+  game, or the countdown the player was in when they died -- and the pause key
+  calls that off like any other. Unlike upstream, self destruct counts down too
+  (`Q`, five seconds, `cmdDestruct`), and it ends by asking the server to do the
+  killing rather than blowing the tank up where it stands.
 
   A window that is merely unfocused is not paused for, because it is still on
   screen and upstream does not pause for that either. Sound is not muted while

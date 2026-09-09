@@ -673,7 +673,7 @@ assert.ok(Math.abs(trapped.x) < 1, 'and leaves the shot inside the corridor');
 // CustomBase default, a pad painted on the ground -- as a four-unit block that
 // stopped shots and hid the ground under it.
 {
-  const flatBase = { kind: 'base', type: 'box', x: 0, z: 0, baseY: 0, w: 40, d: 40, h: 0 };
+  const flatBase = { kind: 'base', type: 'box', x: 0, z: 0, baseY: 0, w: 40, d: 40, h: 0, rotation: 0 };
   assert.equal(client.getObstacleHeight(flatBase), 0, 'a flat base is flat');
   assert.equal(client.getBaseTopY(flatBase), 0, 'and its top surface is the ground');
   assert.equal(client.isOnBaseTop(flatBase, 0, 0, 0), true, 'a tank on the ground is on it');
@@ -702,10 +702,10 @@ assert.ok(Math.abs(trapped.x) < 1, 'and leaves the shot inside the corridor');
 // Phasing. `OO` is not expelled by a building, which is the whole of
 // driving through one, and is still expelled by the three things upstream names.
 {
-  const box = { type: 'box', name: 'box', x: 0, z: 0, w: 10, d: 10, h: 10, baseY: 0 };
-  const pyramid = { type: 'pyramid', name: 'pyr', x: 0, z: 0, w: 10, d: 10, h: 10, baseY: 0 };
-  const boundary = { type: 'box', name: 'boundary_north', collisionKind: 'boundary', x: 0, z: 0, w: 10, d: 4, h: 1000, baseY: 0 };
-  const teleporter = { type: 'box', kind: 'teleporter', name: 'portal', x: 0, z: 0, w: 2, d: 9, h: 20, baseY: 0, border: 1.12 };
+  const box = { type: 'box', name: 'box', x: 0, z: 0, w: 10, d: 10, h: 10, baseY: 0, rotation: 0 };
+  const pyramid = { type: 'pyramid', name: 'pyr', x: 0, z: 0, w: 10, d: 10, h: 10, baseY: 0, rotation: 0 };
+  const boundary = { type: 'box', name: 'boundary_north', collisionKind: 'boundary', x: 0, z: 0, w: 10, d: 4, h: 1000, baseY: 0, rotation: 0 };
+  const teleporter = { type: 'box', kind: 'teleporter', name: 'portal', x: 0, z: 0, w: 2, d: 9, h: 20, baseY: 0, border: 1.12, rotation: 0 };
 
   assert.equal(client.phasedObstacleExpels(box), false, 'a phased tank drives through a box');
   assert.equal(client.phasedObstacleExpels(pyramid), false, 'and through a pyramid');

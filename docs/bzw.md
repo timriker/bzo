@@ -52,6 +52,15 @@ takes `flipz`, and `teleporter` also takes `border`.
 is what makes a base a capture target for that team. A `base` with no `color`
 is red.
 
+**Every obstacle carries a `rotation`, whether or not the block gave one.** The
+importer states 0 for a block that says nothing, because everything downstream
+turns the field into a cosine: the collision pair, the renderer, the radar and
+the logs all read it, and one absent field meant each of them carrying a default
+of its own. A missing one used to read as 0 in the arithmetic and throw in the
+one place that formatted it -- an anti-cheat collision report against an
+unrotated box -- which is exactly the cost of a shape that is only mostly
+there.
+
 **A zero height is a real height.** `size w d 0` is upstream's own default for a
 `base` -- `CustomBase` leaves the third extent at 0 -- and it means a pad painted
 on the ground rather than a block: a tank drives onto it instead of having to

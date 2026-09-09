@@ -108,6 +108,7 @@ import {
   syncInputContextFromUi,
   toggleOperatorPanel
 } from './input.js';
+import { DestructCountdown, PauseState } from './pause.mjs';
 import { XRMenuRenderer } from './xr-menu.js';
 import {
   colorToCSS,
@@ -2265,19 +2266,20 @@ let cameraMode = 'first-person'; // 'first-person', 'third-person', or 'overview
 let lastCameraMode = 'first-person';
 let entryDialogReturnCameraMode = 'first-person';
 
-// Pause state
-let isPaused = false;
-let pauseCountdownStart = 0;
-// pausedByUnmap (playing.cxx:124). Upstream pauses the tank when its window is
-// iconified and resumes when it comes back, because a player who cannot see the
-// game cannot answer for the tank standing in it. bzo has two ways to stop
-// watching -- put a menu in front of the game, or hide the window -- and one
-// flag covers both, because both are a pause the player did not ask for and
-// neither may resume a pause the player did ask for.
-let autoPaused = false;
+// Pause state. Three facts and the rules over them live in pause.mjs, which is
+// what keeps the two ways to pause -- the P key and a menu covering the game --
+// answering to one set of rules, `pausedByUnmap` (playing.cxx:124) among them:
+// a pause a menu took is the menu's to undo, and neither may resume a pause the
+// player asked for. The rules and the reasons are in pause.mjs.
+const pauseState = new PauseState();
 // Which second the countdown alert last showed, so it is rewritten once a
-// second rather than once a frame.
+// second rather than once a frame. Shared by both countdowns, since they share
+// upstream's alert slot and only one of them can be running.
 let pauseAlertSecondsShown = 0;
+// cmdDestruct's five seconds (clientCommands.cxx:415), which is the client's own
+// clock: the server owns the pause countdown because it decides whether a tank
+// may be hit, and owns nothing about this one because it ends in a request.
+const destructCountdown = new DestructCountdown(5000);
 // The tank is frozen while the entry dialog is up, which is not a pause: the
 // player is picking a name and a team, and the server knows nothing about it.
 let entryDialogFreeze = false;
@@ -2299,16 +2301,12 @@ function shouldAutoPause() {
 // the countdown, so both directions are the same toggle the P key sends: it
 // cancels a countdown that has not finished and unpauses one that has.
 function syncAutoPause() {
-  if (shouldAutoPause()) {
-    if (autoPaused || isPaused || pauseCountdownStart > 0) return;
-    if (isObserver() || !isMyTankAlive()) return;
-    autoPaused = true;
-    sendToServer({ type: 'pause' });
-    return;
-  }
-  if (!autoPaused) return;
-  autoPaused = false;
-  if (isPaused || pauseCountdownStart > 0) sendToServer({ type: 'pause' });
+  const send = pauseState.syncMenu({
+    covered: shouldAutoPause(),
+    alive: isMyTankAlive(),
+    observer: isObserver(),
+  });
+  if (send) sendToServer({ type: 'pause' });
 }
 
 // Unmap and Map themselves. A hidden tab is the browser's word for iconified,
@@ -2317,17 +2315,52 @@ function syncAutoPause() {
 document.addEventListener('visibilitychange', syncAutoPause);
 
 // What is left of updatePauseCountdown (playing.cxx:6863) once the server owns
-// the countdown itself: the alert that counts it down where the eye is.
+// the countdown itself: upstream's own guard on a tank that is no longer alive,
+// and the alert that counts the rest of it down where the eye is.
 function updatePauseCountdown() {
-  if (pauseCountdownStart === 0) {
+  // A pause belongs to the life it was taken in. The server abandons its own
+  // copy of the countdown the moment the tank dies and sends nothing, so this is
+  // the client keeping its copy honest rather than waiting to be told -- it can
+  // see its own tank explode. Issue #48 is what the wait cost: a tank shot
+  // during the countdown came back playing on the server and frozen here.
+  if (!isMyTankAlive() && pauseState.tankDied()) {
     pauseAlertSecondsShown = 0;
+    setHudAlert(PAUSE_ALERT_SLOT, null, 0);
     return;
   }
-  const remaining = gameConfig.PAUSE_COUNTDOWN - (Date.now() - pauseCountdownStart);
+  if (pauseState.countdownStart === 0) {
+    if (!destructCountdown.isCounting()) pauseAlertSecondsShown = 0;
+    return;
+  }
+  const remaining = gameConfig.PAUSE_COUNTDOWN - (Date.now() - pauseState.countdownStart);
   const seconds = Math.max(1, Math.ceil(remaining / 1000));
   if (seconds === pauseAlertSecondsShown) return;
   pauseAlertSecondsShown = seconds;
   setHudAlert(PAUSE_ALERT_SLOT, `Pausing in ${seconds}`, 1, false);
+}
+
+// updateDestructCountdown (playing.cxx:6950), which bzo ends differently: where
+// upstream blows the tank up where it stands, bzo asks the server to, because
+// the server is what decides a tank died. Everything else is upstream's -- five
+// seconds, one alert a second, abandoned with the life, and the key calls it off.
+function updateDestructCountdown() {
+  const outcome = destructCountdown.tick(Date.now(), { alive: isMyTankAlive() });
+  if (outcome === 'cleared') {
+    pauseAlertSecondsShown = 0;
+    setHudAlert(PAUSE_ALERT_SLOT, null, 0);
+    return;
+  }
+  if (outcome === 'fire') {
+    pauseAlertSecondsShown = 0;
+    setHudAlert(PAUSE_ALERT_SLOT, null, 0);
+    sendToServer({ type: 'selfDestruct' });
+    return;
+  }
+  if (!destructCountdown.isCounting()) return;
+  const seconds = destructCountdown.secondsLeft(Date.now());
+  if (seconds === pauseAlertSecondsShown) return;
+  pauseAlertSecondsShown = seconds;
+  setHudAlert(PAUSE_ALERT_SLOT, `Self Destructing in ${seconds}`, 1, false);
 }
 let playerPausedSpheres = new Map(); // Map of playerId to its paused sphere
 let deathFollowTarget = null;
@@ -3383,7 +3416,7 @@ function hideSupportFootprintDebug() {
 function getSupportOutlinePoints(obstacle, supportSurface) {
   if (!obstacle || !supportSurface) return null;
   const epsilon = 0.06;
-  const rotation = obstacle.rotation || 0;
+  const rotation = obstacle.rotation;
   const cos = Math.cos(rotation);
   const sin = Math.sin(rotation);
   const toWorldPoint = (lx, ly, lz) => new THREE.Vector3(
@@ -3597,7 +3630,7 @@ function handleGameplayKeydown(event) {
   // A pause a menu asked for is the menu's to undo, which is why cmdPause does
   // nothing at all while pausedByUnmap is set.
   if (event.code === 'KeyP') {
-    if (!isObserver() && !autoPaused) sendToServer({ type: 'pause' });
+    if (pauseState.pressPauseKey({ observer: isObserver() })) sendToServer({ type: 'pause' });
     return true;
   }
 
@@ -3663,8 +3696,21 @@ function handleGameplayKeydown(event) {
     setRadarZoomLevel(RADAR_ZOOM_DEFAULT);
     return true;
   }
+  // cmdDestruct (clientCommands.cxx:400): five seconds, and the key again calls
+  // it off. The request goes when the count runs out, in updateDestructCountdown.
   if (event.code === 'KeyQ' && ws && ws.readyState === WebSocket.OPEN) {
-    if (!isObserver()) sendToServer({ type: 'selfDestruct' });
+    const outcome = destructCountdown.pressDestructKey(Date.now(), {
+      observer: isObserver(),
+      alive: isMyTankAlive(),
+    });
+    pauseAlertSecondsShown = 0;
+    if (outcome === 'started') {
+      const seconds = destructCountdown.secondsLeft(Date.now());
+      pauseAlertSecondsShown = seconds;
+      setHudAlert(PAUSE_ALERT_SLOT, `Self Destructing in ${seconds}`, 1, false);
+    } else if (outcome === 'cancelled') {
+      setHudAlert(PAUSE_ALERT_SLOT, 'Self Destruct cancelled', 1.5, true);
+    }
     return true;
   }
   // Upstream's `identify` key (ActionBinding.cxx:98). It picks the roaming
@@ -4458,6 +4504,9 @@ function handleServerMessage(message) {
       rabbitPlayerId = message.rabbitId ?? null;
       rabbitChaseEnabled = Boolean(message.teamMode.rabbitSelection);
       if (Array.isArray(message.liveConfigKeys)) liveConfigKeys = message.liveConfigKeys;
+      if (message.operatorConfig && typeof message.operatorConfig === 'object') {
+        serverOperatorConfig = message.operatorConfig;
+      }
       // The panel is wired before the first `init` arrives, so its rows start on
       // placeholders. This is where the server's real values first exist.
       if (!operatorStaged) syncOperatorPanelFromServer();
@@ -4931,7 +4980,7 @@ function handleServerMessage(message) {
 
     case 'pauseCountdown':
       if (message.playerId === myPlayerId) {
-        pauseCountdownStart = Date.now();
+        pauseState.countdownStarted(Date.now());
         pauseAlertSecondsShown = 0;
         updatePauseCountdown();
       }
@@ -4941,7 +4990,7 @@ function handleServerMessage(message) {
     // may not pause from. Upstream shows both on the pause alert slot.
     case 'pauseCancelled':
       if (message.playerId === myPlayerId) {
-        pauseCountdownStart = 0;
+        pauseState.cancelledByServer();
         pauseAlertSecondsShown = 0;
         setHudAlert(PAUSE_ALERT_SLOT, message.reason, PAUSE_ALERT_SECONDS, false);
         showMessage(message.reason);
@@ -4950,8 +4999,7 @@ function handleServerMessage(message) {
 
     case 'playerPaused':
       if (message.playerId === myPlayerId) {
-        isPaused = true;
-        pauseCountdownStart = 0;
+        pauseState.pausedByServer();
         pauseAlertSecondsShown = 0;
         // setAlert(1, NULL) clears the countdown the moment it runs out.
         setHudAlert(PAUSE_ALERT_SLOT, null, 0);
@@ -4965,8 +5013,7 @@ function handleServerMessage(message) {
 
     case 'playerUnpaused':
       if (message.playerId === myPlayerId) {
-        isPaused = false;
-        pauseCountdownStart = 0;
+        pauseState.unpausedByServer();
         pauseAlertSecondsShown = 0;
         showMessage('Resumed');
       } else {
@@ -5627,6 +5674,17 @@ function handlePlayerRespawn(message) {
     playerY = message.player.y;
     playerZ = message.player.z;
     playerRotation = message.player.rotation;
+    // The new life starts unpaused on both ends -- the server's own `respawn`
+    // clears the pause and the countdown -- and then asks again for whatever is
+    // still true: a menu still in front of the game, or the countdown the player
+    // was in when they died. The asking outlives the life; P still calls it off.
+    if (pauseState.respawned({
+      covered: shouldAutoPause(),
+      alive: true,
+      observer: isObserver(),
+    })) {
+      sendToServer({ type: 'pause' });
+    }
     showMessage('You respawned!');
     // Restore normal view and crosshair
     cameraMode = lastCameraMode === 'overview' ? 'first-person' : lastCameraMode;
@@ -5757,17 +5815,123 @@ let currentMapFile = '';
 // Read rather than duplicated, so the confirm's label cannot promise something
 // the server will not do.
 let liveConfigKeys = ['motd', 'shotMaxActive', 'ricochet'];
+// Sent in `init` too: what every setting the panel offers is currently set to.
+// The three live ones are read from the live config below instead, since a
+// `serverConfigUpdate` moves those without an `init` to carry them.
+let serverOperatorConfig = {};
 
 const SHOT_MAX_ACTIVE_MIN = 1;
 const SHOT_MAX_ACTIVE_MAX = 10;
+// Upstream's own ceiling on a player count (`MaxPlayers`, CmdLineOptions.h:37).
+const OPERATOR_LIMIT_MAX = 200;
+// A `choice` row needs an off position where a command line switch is simply
+// absent, so `-rabbit [score|killer|random]` becomes four values.
+const RABBIT_SELECTIONS = ['off', 'score', 'killer', 'random'];
+// One limit row per team, observer first: it is the one team every mode has,
+// including Rabbit Chase, where it is the only team anyone may ask for.
+const OPERATOR_LIMIT_TEAMS = [
+  PLAYER_TEAM.OBSERVER,
+  PLAYER_TEAM.ROGUE,
+  PLAYER_TEAM.RED,
+  PLAYER_TEAM.GREEN,
+  PLAYER_TEAM.BLUE,
+  PLAYER_TEAM.PURPLE,
+];
+// The teams the playing limit counts and caps -- upstream's `CtfTeams` span,
+// which leaves the observers outside it (CmdLineOptions.cxx:453).
+const OPERATOR_PLAYING_TEAMS = OPERATOR_LIMIT_TEAMS.filter((team) => team !== PLAYER_TEAM.OBSERVER);
+// The rows `resolveTeamMode` zeroes when teams are off or rabbit chase is on.
+const OPERATOR_COLOR_TEAMS = [
+  PLAYER_TEAM.RED, PLAYER_TEAM.GREEN, PLAYER_TEAM.BLUE, PLAYER_TEAM.PURPLE,
+];
+const operatorLimitKey = (team) => `${team}Limit`;
 
 function getOperatorServerState() {
   return {
+    ...serverOperatorConfig,
     motd: serverMotdText || '',
     shotMaxActive: Number(gameConfig?.SHOT_MAX_ACTIVE) || SHOT_MAX_ACTIVE_MIN,
     ricochet: Boolean(gameConfig?.ALL_SHOTS_RICOCHET),
-    mapFile: currentMapFile,
+    mapFile: currentMapFile || serverOperatorConfig.mapFile || '',
   };
+}
+
+// Rabbit Chase derives the hunter limit from the rogue limit
+// (CmdLineOptions.cxx:1596), so the rogue row is what caps the hunters there --
+// relabelled rather than greyed, since greying it would leave an operator with
+// no way to say how many people may play.
+function getOperatorLimitLabel(team, rabbit) {
+  const label = rabbit && team === PLAYER_TEAM.ROGUE
+    ? PLAYER_TEAM_LABELS[PLAYER_TEAM.HUNTER]
+    : PLAYER_TEAM_LABELS[team];
+  return `${label} Limit:`;
+}
+
+// What a row's stepper may reach. In one place so the slider, the arrow keys and
+// the XR arrows cannot disagree about it.
+function getOperatorNumberBounds(key, state) {
+  if (key === 'shotMaxActive') return { min: SHOT_MAX_ACTIVE_MIN, max: SHOT_MAX_ACTIVE_MAX };
+  // At least one tank: a server that allows none is one nobody can play on.
+  if (key === 'maxPlayers') return { min: 1, max: OPERATOR_LIMIT_MAX };
+  const team = OPERATOR_LIMIT_TEAMS.find((candidate) => operatorLimitKey(candidate) === key);
+  if (team && OPERATOR_PLAYING_TEAMS.includes(team)) {
+    return { min: 0, max: Number(state?.maxPlayers) || OPERATOR_LIMIT_MAX };
+  }
+  // Zero is a real value for a team limit: it turns the team off.
+  return { min: 0, max: OPERATOR_LIMIT_MAX };
+}
+
+// The panel's own rows, built rather than written out: one per team, from the
+// team list the client already has, so a row cannot name a team the rest of the
+// client does not know about.
+function buildOperatorTeamLimitRows() {
+  const container = document.getElementById('operatorTeamLimits');
+  if (!container || container.childElementCount > 0) return;
+  for (const team of OPERATOR_LIMIT_TEAMS) {
+    const key = operatorLimitKey(team);
+    const row = document.createElement('div');
+    row.className = 'operatorRow operatorConfigRow';
+    row.dataset.menuRow = key;
+    row.dataset.menuKind = 'range';
+
+    const label = document.createElement('label');
+    label.id = `${key}Label`;
+    label.htmlFor = `${key}Slider`;
+    label.textContent = getOperatorLimitLabel(team, false);
+
+    const control = document.createElement('div');
+    control.className = 'volumeControl';
+    const slider = document.createElement('input');
+    slider.id = `${key}Slider`;
+    slider.className = 'volumeSlider';
+    slider.type = 'range';
+    slider.min = '0';
+    slider.max = String(OPERATOR_LIMIT_MAX);
+    slider.step = '1';
+    slider.value = '0';
+    const value = document.createElement('output');
+    value.id = `${key}Value`;
+    value.className = 'volumeValue';
+    value.setAttribute('for', slider.id);
+    value.textContent = '0';
+    slider.addEventListener('input', () => stageOperatorNumberValue(key, Number(slider.value)));
+
+    control.append(slider, value);
+    row.append(label, control);
+    container.append(row);
+  }
+}
+
+function setOperatorRangeRow(key, value, { disabled = false, max = null } = {}) {
+  const slider = document.getElementById(`${key}Slider`);
+  const output = document.getElementById(`${key}Value`);
+  const number = Number(value);
+  if (slider) {
+    if (max !== null) slider.max = String(max);
+    if (Number(slider.value) !== number) slider.value = String(number);
+    slider.disabled = disabled;
+  }
+  if (output) output.textContent = Number.isFinite(number) ? String(number) : '';
 }
 
 // The staged keys that differ from what the server has. Empty means the confirm
@@ -5786,22 +5950,54 @@ function operatorChangesNeedRestart(changes) {
 // Writes the staged values into the panel and labels the confirm by what it is
 // about to do. Called on open and after every edit, so the label can never
 // disagree with the rows above it.
+// Every row, from one state -- staged while the panel is open, the server's own
+// while it is not -- so the two paths cannot paint a row differently.
+//
+// Which rows the mode can honour is decided here as well: `resolveTeamMode`
+// zeroes the colour teams when teams are off and when rabbit chase is on, so
+// those rows grey out rather than offering a number the server would override.
+// Same rule as capabilities.mjs, applied to gameplay.
+function paintOperatorRows(state) {
+  const rabbit = Boolean(state.rabbit) && state.rabbit !== 'off';
+  setOperatorRangeRow('shotMaxActive', state.shotMaxActive);
+  const ricochetInput = document.getElementById('ricochetInput');
+  if (ricochetInput) ricochetInput.checked = Boolean(state.ricochet);
+  const teamsInput = document.getElementById('teamsInput');
+  if (teamsInput) {
+    teamsInput.checked = state.teams === true;
+    // Rabbit Chase is the last word on the game type whichever order the
+    // switches arrived in (CmdLineOptions.cxx:1586), so with it on there is
+    // nothing this row can decide.
+    teamsInput.disabled = rabbit;
+  }
+  const jumpingInput = document.getElementById('jumpingInput');
+  if (jumpingInput) jumpingInput.checked = state.jumping === true;
+  const rabbitSelect = document.getElementById('rabbitSelect');
+  if (rabbitSelect) {
+    rabbitSelect.value = RABBIT_SELECTIONS.includes(state.rabbit) ? state.rabbit : 'off';
+  }
+  setOperatorRangeRow('maxPlayers', state.maxPlayers);
+  for (const team of OPERATOR_LIMIT_TEAMS) {
+    const key = operatorLimitKey(team);
+    const bounds = getOperatorNumberBounds(key, state);
+    setOperatorRangeRow(key, state[key], {
+      disabled: OPERATOR_COLOR_TEAMS.includes(team) && (rabbit || state.teams !== true),
+      max: bounds.max,
+    });
+    const label = document.getElementById(`${key}Label`);
+    if (label) label.textContent = getOperatorLimitLabel(team, rabbit);
+  }
+}
+
 function syncOperatorPanel() {
   if (!operatorStaged) return;
   const motdInput = document.getElementById('motdInput');
   if (motdInput && motdInput.value !== operatorStaged.motd) motdInput.value = operatorStaged.motd;
-  const shotSlider = document.getElementById('shotMaxActiveSlider');
-  if (shotSlider && Number(shotSlider.value) !== operatorStaged.shotMaxActive) {
-    shotSlider.value = String(operatorStaged.shotMaxActive);
-  }
-  const shotValue = document.getElementById('shotMaxActiveValue');
-  if (shotValue) shotValue.textContent = String(operatorStaged.shotMaxActive);
-  const ricochetInput = document.getElementById('ricochetInput');
-  if (ricochetInput) ricochetInput.checked = operatorStaged.ricochet;
   const mapList = document.getElementById('mapList');
   if (mapList && operatorStaged.mapFile && mapList.value !== operatorStaged.mapFile) {
     mapList.value = operatorStaged.mapFile;
   }
+  paintOperatorRows(operatorStaged);
 
   const changes = getOperatorChanges();
   const restart = operatorChangesNeedRestart(changes);
@@ -5825,13 +6021,7 @@ function openOperatorPanel() {
 // rows are still the operator's view of the world while the panel is shut, so
 // they are worth keeping current.
 function syncOperatorPanelFromServer() {
-  const current = getOperatorServerState();
-  const shotSlider = document.getElementById('shotMaxActiveSlider');
-  if (shotSlider) shotSlider.value = String(current.shotMaxActive);
-  const shotValue = document.getElementById('shotMaxActiveValue');
-  if (shotValue) shotValue.textContent = String(current.shotMaxActive);
-  const ricochetInput = document.getElementById('ricochetInput');
-  if (ricochetInput) ricochetInput.checked = current.ricochet;
+  paintOperatorRows(getOperatorServerState());
   const apply = document.getElementById('operatorApplyBtn');
   if (apply) {
     apply.textContent = 'Apply';
@@ -5842,6 +6032,10 @@ function syncOperatorPanelFromServer() {
 
 function discardOperatorPanel() {
   operatorStaged = null;
+  // Painted back to the server's own values rather than left showing the edit
+  // that was just abandoned: the rows are the operator's view of the world while
+  // the panel is shut, and the XR menu reads the same state.
+  syncOperatorPanelFromServer();
 }
 
 function commitOperatorPanel() {
@@ -5864,38 +6058,114 @@ function stageOperatorChange(key, value) {
   syncOperatorPanel();
 }
 
-function stageShotMaxActive(direction) {
+// Every number on the panel stages through here, clamped to the row's own
+// bounds: a slider drag, an arrow key and an XR thumbstick all arrive as a
+// value, and none of them may leave a row outside what the server will take.
+function stageOperatorNumberValue(key, value) {
   if (!operatorStaged) operatorStaged = getOperatorServerState();
-  const next = Math.max(
-    SHOT_MAX_ACTIVE_MIN,
-    Math.min(SHOT_MAX_ACTIVE_MAX, operatorStaged.shotMaxActive + direction),
-  );
-  stageOperatorChange('shotMaxActive', next);
+  const bounds = getOperatorNumberBounds(key, operatorStaged);
+  const next = Math.max(bounds.min, Math.min(bounds.max, Math.round(Number(value) || 0)));
+  stageOperatorChange(key, next);
+  // CmdLineOptions.cxx:453: a playing team may not be allowed more players than
+  // the whole game is. The server clamps on the way in; doing it here as well is
+  // what makes the clamp visible before the button is pressed rather than a
+  // silent correction afterwards.
+  if (key === 'maxPlayers') {
+    for (const team of OPERATOR_PLAYING_TEAMS) {
+      const limitKey = operatorLimitKey(team);
+      if (Number(operatorStaged[limitKey]) > next) stageOperatorChange(limitKey, next);
+    }
+  }
+}
+
+// One step of a row, which is what a headset has: left, right and select.
+function stageOperatorNumber(key, direction) {
+  if (!operatorStaged) operatorStaged = getOperatorServerState();
+  stageOperatorNumberValue(key, Number(operatorStaged[key]) + (direction > 0 ? 1 : -1));
+}
+
+// The rabbit chase row, which is a `choice` rather than a number: off, then
+// upstream's three selection styles.
+function stageOperatorRabbit(direction) {
+  if (!operatorStaged) operatorStaged = getOperatorServerState();
+  const index = Math.max(0, RABBIT_SELECTIONS.indexOf(operatorStaged.rabbit));
+  const next = (index + (direction > 0 ? 1 : -1) + RABBIT_SELECTIONS.length) % RABBIT_SELECTIONS.length;
+  stageOperatorChange('rabbit', RABBIT_SELECTIONS[next]);
 }
 
 function wireOperatorPanel() {
+  buildOperatorTeamLimitRows();
   const motdInput = document.getElementById('motdInput');
   if (motdInput) {
     motdInput.addEventListener('input', () => stageOperatorChange('motd', motdInput.value.trim()));
   }
+  // `input` rather than `change`, so dragging a slider updates the label and the
+  // confirm as it moves rather than only on release.
   const shotSlider = document.getElementById('shotMaxActiveSlider');
   if (shotSlider) {
-    // `input` rather than `change`, so dragging updates the label and the
-    // confirm as it moves rather than only on release.
     shotSlider.addEventListener('input', () => {
-      stageOperatorChange('shotMaxActive', Number(shotSlider.value));
+      stageOperatorNumberValue('shotMaxActive', Number(shotSlider.value));
     });
   }
+  const maxPlayersSlider = document.getElementById('maxPlayersSlider');
+  if (maxPlayersSlider) {
+    maxPlayersSlider.addEventListener('input', () => {
+      stageOperatorNumberValue('maxPlayers', Number(maxPlayersSlider.value));
+    });
+  }
+  // Staged rather than applied on tick, unlike before: a checkbox that acted
+  // immediately was the one row that could not be cancelled.
   const ricochetInput = document.getElementById('ricochetInput');
   if (ricochetInput) {
-    // Staged rather than applied on tick, unlike before: a checkbox that acted
-    // immediately was the one row that could not be cancelled.
     ricochetInput.addEventListener('change', () => stageOperatorChange('ricochet', ricochetInput.checked));
+  }
+  const teamsInput = document.getElementById('teamsInput');
+  if (teamsInput) {
+    teamsInput.addEventListener('change', () => stageOperatorChange('teams', teamsInput.checked));
+  }
+  const jumpingInput = document.getElementById('jumpingInput');
+  if (jumpingInput) {
+    jumpingInput.addEventListener('change', () => stageOperatorChange('jumping', jumpingInput.checked));
+  }
+  const rabbitSelect = document.getElementById('rabbitSelect');
+  if (rabbitSelect) {
+    rabbitSelect.addEventListener('change', () => stageOperatorChange('rabbit', rabbitSelect.value));
   }
   const mapList = document.getElementById('mapList');
   if (mapList) {
     mapList.addEventListener('change', () => stageOperatorChange('mapFile', mapList.value));
   }
+  // Left and right on the focused row. The shared dialog model owns those keys
+  // and a controller's stick arrives the same way, so a row that does not answer
+  // `menuadjust` is a row only a mouse can operate -- which is what every slider
+  // here was. See menus.js.
+  document.getElementById('operatorOverlay')?.addEventListener('menuadjust', (event) => {
+    const row = event.target.closest?.('[data-menu-row]');
+    const key = row?.dataset.menuRow;
+    if (!key) return;
+    const direction = event.detail?.direction > 0 ? 1 : -1;
+    const slider = row.querySelector('input[type="range"]');
+    if (slider) {
+      if (!slider.disabled) stageOperatorNumber(key, direction);
+      event.preventDefault();
+      return;
+    }
+    // A `<select>` keeps the browser's own left and right when it has the focus;
+    // this is the controller reaching it, which the browser never sees.
+    const select = row.querySelector('select');
+    if (select) {
+      if (!select.disabled) cycleSelectElement(select, direction);
+      event.preventDefault();
+      return;
+    }
+    const toggle = row.querySelector('input[type="checkbox"]');
+    if (toggle) {
+      // Right is on and left is off, rather than a toggle on either: a stepper
+      // that answers the two directions differently is one an operator can aim.
+      if (!toggle.disabled) stageOperatorChange(key, direction > 0);
+      event.preventDefault();
+    }
+  });
   document.getElementById('operatorApplyBtn')?.addEventListener('click', commitOperatorPanel);
   // Honest from the start: nothing is staged before the panel is opened, so the
   // confirm is disabled rather than sitting there enabled with nothing to do.
@@ -6362,7 +6632,7 @@ function validateMove(x, y, z, intendedDeltaX, intendedDeltaY, intendedDeltaZ, t
     if (escapeLength < 1e-5) return null;
     escapeLocalX = (escapeLocalX / escapeLength) * CORNER_ESCAPE_DISTANCE;
     escapeLocalZ = (escapeLocalZ / escapeLength) * CORNER_ESCAPE_DISTANCE;
-    const rotation = obs.rotation || 0;
+    const rotation = obs.rotation;
     const cos = Math.cos(rotation);
     const sin = Math.sin(rotation);
     const escapeWorldX = escapeLocalX * cos + escapeLocalZ * sin;
@@ -6643,8 +6913,8 @@ function resolveMotionSlide(obs, x, y, z, deltaX, deltaZ, candidateY) {
   // slides by the same code -- the sloped face just contributes a Y component,
   // which resolveTankMotion already handles.
   const worldNormal = (obstacle, px, py, pz) => {
-    const c = Math.cos(obstacle.rotation || 0);
-    const sn = Math.sin(obstacle.rotation || 0);
+    const c = Math.cos(obstacle.rotation);
+    const sn = Math.sin(obstacle.rotation);
     const toWorld = (nx, nz) => ({ x: nx * c + nz * sn, z: -nx * sn + nz * c });
 
     if (obstacle.type === 'pyramid') {
@@ -6694,8 +6964,8 @@ function resolveMotionSlide(obs, x, y, z, deltaX, deltaZ, candidateY) {
 
 
 function toWorldNormal(obs, localNormal) {
-  const cosRot = Math.cos(obs.rotation || 0);
-  const sinRot = Math.sin(obs.rotation || 0);
+  const cosRot = Math.cos(obs.rotation);
+  const sinRot = Math.sin(obs.rotation);
   const worldX = localNormal.x * cosRot + localNormal.z * sinRot;
   const worldY = localNormal.y;
   const worldZ = -localNormal.x * sinRot + localNormal.z * cosRot;
@@ -6734,8 +7004,8 @@ function getBoxSurfaceContact(obs, worldX, worldZ, tankRadius = 2) {
     else normalLocalZ = 1;
   }
 
-  const cosRot = Math.cos(obs.rotation || 0);
-  const sinRot = Math.sin(obs.rotation || 0);
+  const cosRot = Math.cos(obs.rotation);
+  const sinRot = Math.sin(obs.rotation);
   const faceCenterLocal = Math.abs(normalLocalX) > Math.abs(normalLocalZ)
     ? { x: normalLocalX > 0 ? visualHalfW : -visualHalfW, z: 0 }
     : { x: 0, z: normalLocalZ > 0 ? visualHalfD : -visualHalfD };
@@ -6793,8 +7063,8 @@ function getPyramidSurfaceContact(obs, worldX, worldY, worldZ) {
     : { x: 0, z: (localNormal.z >= 0 ? 1 : -1) * halfD * 0.5 };
 
   const worldNormal = toWorldNormal(obs, localNormal);
-  const cosRot = Math.cos(obs.rotation || 0);
-  const sinRot = Math.sin(obs.rotation || 0);
+  const cosRot = Math.cos(obs.rotation);
+  const sinRot = Math.sin(obs.rotation);
   const faceCenterWorld = {
     x: obs.x + faceCenterLocal.x * cosRot + faceCenterLocal.z * sinRot,
     y: obstacleBase + height * 0.5,
@@ -7563,8 +7833,8 @@ function predictLocalPlayerTeleport(startState, endState, nowMs) {
     z: transformed.pointOut.z + transformed.dirOut.z * exitAdvance,
   };
 
-  const radians1 = (earliest.obs.rotation || 0) + (sourceFace === 0 ? 0 : Math.PI);
-  const radians2 = (destObs.rotation || 0) + (destFace === 1 ? 0 : Math.PI);
+  const radians1 = earliest.obs.rotation + (sourceFace === 0 ? 0 : Math.PI);
+  const radians2 = destObs.rotation + (destFace === 1 ? 0 : Math.PI);
   const rotateDelta = radians2 - radians1;
 
   localTeleportReentryBlockTeleporterIndex = destTeleporterIndex;
@@ -8198,7 +8468,7 @@ function handleInputEvents() {
   // LocalPlayer.cxx:328. Standing on anything refills the flaps.
   if (!isInAir) wingsFlapsLeft = gameConfig.WINGS_JUMP_COUNT;
 
-  if (isPaused || entryDialogFreeze || pauseCountdownStart > 0) return;
+  if (pauseState.isFrozen() || entryDialogFreeze) return;
 
   // Gather intended input from controls
   const carriedFlagType = getMyFlag()?.type ?? null;
@@ -8264,7 +8534,7 @@ function handleInputEvents() {
 function handleMotion(deltaTime) {
   if (!myTank || !gameConfig) return;
   if (isObserver()) return;
-  if (isPaused || entryDialogFreeze || pauseCountdownStart > 0) return;
+  if (pauseState.isFrozen() || entryDialogFreeze) return;
 
   let forceMoveSend = false;
 
@@ -8933,7 +9203,7 @@ function shoot() {
   // refuses both, so a client that fired anyway would be sending a packet the
   // server only accepts in warning mode -- and warning mode is for measuring
   // honest disagreements, not for carrying a client's own bugs.
-  if (!isMyTankAlive() || isPaused) return false;
+  if (!isMyTankAlive() || pauseState.paused) return false;
   // "((location == InBuilding) && !isPhantomZoned())" from the same test: a tank
   // inside a building has no shot to fire, because the shot would come out of a
   // wall. `getShotRejection` refuses it too -- the cover a building gives is
@@ -9115,8 +9385,8 @@ function transformShotThroughTeleporter(pointIn, dirIn, sourceObs, sourceFace, d
   const srcDims = getShotTeleporterDims(sourceObs);
   const dstDims = getShotTeleporterDims(destObs);
 
-  const radians1 = (sourceObs.rotation || 0) + (sourceFace === 0 ? 0 : Math.PI);
-  const radians2 = (destObs.rotation || 0) + (destFace === 1 ? 0 : Math.PI);
+  const radians1 = sourceObs.rotation + (sourceFace === 0 ? 0 : Math.PI);
+  const radians2 = destObs.rotation + (destFace === 1 ? 0 : Math.PI);
 
   const relativeX = pointIn.x - sourceObs.x;
   const relativeZ = pointIn.z - sourceObs.z;
@@ -11364,7 +11634,7 @@ function updateRadar() {
       const halfW = obsWidth / 2;
       const halfD = obsDepth / 2;
       const centerRel = toRadarRelative(obs.x, obs.z);
-      const obstacleRadarRotation = getRadarObjectRotation(obs.rotation || 0);
+      const obstacleRadarRotation = getRadarObjectRotation(obs.rotation);
       const cosR = Math.cos(obstacleRadarRotation);
       const sinR = Math.sin(obstacleRadarRotation);
       const corners = [
@@ -11835,6 +12105,16 @@ function getXRAudioMenuItems() {
   ];
 }
 
+// What the XR rows call each rabbit chase style. The flat panel's `<select>`
+// carries its own labels; this is the same list for the surface that draws them.
+const RABBIT_LABELS = {
+  off: 'Off',
+  score: 'Score',
+  killer: 'Killer',
+  random: 'Random',
+};
+const getXROperatorLimitId = (team) => `operator${team}LimitXR`;
+
 // The same staged model the flat panel edits, one row per setting. This screen
 // used to carry an apply row *per* setting -- "Restart with Map", "Apply Shot
 // Limit" -- which is two rows each on the surface with the least room; one
@@ -11845,6 +12125,7 @@ function getXROperatorMenuItems() {
   const changes = getOperatorChanges();
   const restart = operatorChangesNeedRestart(changes);
   const keyboard = isSystemKeyboardSupported();
+  const rabbit = Boolean(staged.rabbit) && staged.rabbit !== 'off';
   const mapLabel = mapList
     ? ([...mapList.options].find((option) => option.value === staged.mapFile)?.textContent
       || staged.mapFile || 'Loading...')
@@ -11867,6 +12148,37 @@ function getXROperatorMenuItems() {
     },
     { id: 'operatorShotsXR', label: 'Shot Limit', value: String(staged.shotMaxActive), adjustable: true },
     { id: 'operatorRicochetXR', label: 'All Shots Ricochet', value: staged.ricochet ? 'On' : 'Off' },
+    // The game's shape. Every row below is one line with one value, which is
+    // what the staged model bought: a setting used to cost a row and an apply
+    // row, and fourteen of those is not a list anybody can read in a headset.
+    {
+      id: 'operatorTeamsXR',
+      label: 'Teams',
+      value: staged.teams === true ? 'On' : 'Off',
+      disabled: rabbit,
+    },
+    {
+      id: 'operatorRabbitXR',
+      label: 'Rabbit Chase',
+      value: RABBIT_LABELS[staged.rabbit] || 'Off',
+      adjustable: true,
+    },
+    { id: 'operatorJumpingXR', label: 'Jumping', value: staged.jumping === true ? 'On' : 'Off' },
+    {
+      id: 'operatorPlayersXR',
+      label: 'Playing Limit',
+      value: String(staged.maxPlayers ?? ''),
+      adjustable: true,
+    },
+    ...OPERATOR_LIMIT_TEAMS.map((team) => ({
+      id: getXROperatorLimitId(team),
+      // Without the colon the flat panel's label carries, since the XR row draws
+      // its own label and value columns.
+      label: getOperatorLimitLabel(team, rabbit).replace(/:$/, ''),
+      value: String(staged[operatorLimitKey(team)] ?? ''),
+      adjustable: true,
+      disabled: OPERATOR_COLOR_TEAMS.includes(team) && (rabbit || staged.teams !== true),
+    })),
     {
       id: 'operatorApplyXR',
       // Labelled by what it will do, as the flat panel's is.
@@ -11933,7 +12245,20 @@ function adjustXRSettingsMenuItem(item, direction) {
     return cycleSelectElement(document.getElementById('mapList'), direction);
   }
   if (item.id === 'operatorShotsXR') {
-    stageShotMaxActive(direction);
+    stageOperatorNumber('shotMaxActive', direction);
+    return true;
+  }
+  if (item.id === 'operatorRabbitXR') {
+    stageOperatorRabbit(direction);
+    return true;
+  }
+  if (item.id === 'operatorPlayersXR') {
+    stageOperatorNumber('maxPlayers', direction);
+    return true;
+  }
+  const limitTeam = OPERATOR_LIMIT_TEAMS.find((team) => getXROperatorLimitId(team) === item.id);
+  if (limitTeam) {
+    stageOperatorNumber(operatorLimitKey(limitTeam), direction);
     return true;
   }
   // Everything above is a row the XR panel owns. The rest are the flat menu's
@@ -11997,6 +12322,14 @@ function activateXRSettingsMenuSelection(item) {
   }
   else if (item.id === 'operatorRicochetXR') {
     stageOperatorChange('ricochet', !(operatorStaged || getOperatorServerState()).ricochet);
+  }
+  // The two booleans below toggle on select, as the ricochet row does: a
+  // headset's select is one press where its arrows are two.
+  else if (item.id === 'operatorTeamsXR') {
+    stageOperatorChange('teams', (operatorStaged || getOperatorServerState()).teams !== true);
+  }
+  else if (item.id === 'operatorJumpingXR') {
+    stageOperatorChange('jumping', (operatorStaged || getOperatorServerState()).jumping !== true);
   }
   else if (item.id === 'operatorApplyXR') commitOperatorPanel();
   else if (item.id === 'operatorCancelXR') {
@@ -12415,6 +12748,7 @@ function animate(frameTime) {
   checkNearFlag();
   updateFlagShake(deltaTime);
   updatePauseCountdown();
+  updateDestructCountdown();
   updateFlags(deltaTime);
   updateTankDimensions(deltaTime);
   // The view flags, applied where both surfaces reach: the DOM HUD block

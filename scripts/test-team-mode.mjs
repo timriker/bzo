@@ -128,6 +128,7 @@ assert.deepEqual(resolveTeamMode({ enabled: false }, mapOverride), {
   autoTeam: false,
   rabbitSelection: null,
   colorTeamsRefused: false,
+  maxRealPlayers: Number.MAX_SAFE_INTEGER,
   teams: ['rogue', 'observer', 'green', 'purple'],
   limits: {
     rogue: 10,
@@ -141,6 +142,7 @@ assert.deepEqual(resolveTeamMode({ enabled: true, teams: ['red', 'blue'] }, { en
   autoTeam: false,
   rabbitSelection: null,
   colorTeamsRefused: false,
+  maxRealPlayers: Number.MAX_SAFE_INTEGER,
   teams: ['rogue', 'observer'],
   limits: {
     rogue: Number.MAX_SAFE_INTEGER,
@@ -162,6 +164,7 @@ assert.deepEqual(resolveTeamMode(
   autoTeam: false,
   rabbitSelection: 'killer',
   colorTeamsRefused: true,
+  maxRealPlayers: 16,
   teams: ['observer', 'hunter'],
   limits: { observer: 3, rabbit: 1, hunter: 7 },
 });
@@ -303,8 +306,70 @@ for (const left of shadedHues) {
   // just another way of asking to play.
   assert.equal(selectPlayerTeam('rabbit', rabbitMode, {}), 'hunter');
   assert.equal(selectPlayerTeam('hunter', rabbitMode, {}), 'hunter');
-  assert.equal(selectPlayerTeam('automatic', rabbitMode, { hunter: 4 }), null, 'a full world turns a hunter away');
-  assert.equal(selectPlayerTeam('observer', rabbitMode, { hunter: 4 }), 'observer', 'but an observer is not a hunter');
+  // A full world hands out observer rather than refusing (bzfs.cxx:1898), and in
+  // Rabbit Chase the hunter limit *is* the playing limit, so the two agree: the
+  // arrival watches. Only a world with nowhere to watch from turns them away.
+  assert.equal(selectPlayerTeam('automatic', rabbitMode, { hunter: 4 }), 'observer');
+  assert.equal(selectPlayerTeam('observer', rabbitMode, { hunter: 4 }), 'observer');
+  const rabbitNoWatching = resolveTeamMode(
+    { enabled: true, limits: { observer: 0 } }, null, 4, 'score');
+  assert.equal(selectPlayerTeam('automatic', rabbitNoWatching, { hunter: 4 }), null);
+}
+
+// CmdLineOptions.cxx:453. The playing limit caps every playing team's own limit,
+// so a per-team number above it is brought down rather than left to promise room
+// the game does not have. Observer is outside the cap, as upstream's is.
+{
+  const capped = resolveTeamMode({
+    enabled: true,
+    teams: ['rogue', 'observer', 'red', 'blue', 'green', 'purple'],
+    limits: { rogue: 20, red: 20, green: 3, blue: 20, purple: 20, observer: 20 },
+  }, null, 8);
+  assert.equal(capped.maxRealPlayers, 8);
+  assert.deepEqual(capped.limits, {
+    rogue: 8, red: 8, green: 3, blue: 8, purple: 8, observer: 20,
+  });
+  // And in Rabbit Chase, where the hunter limit is the rogue limit.
+  const cappedRabbit = resolveTeamMode(
+    { enabled: false, limits: { rogue: 20, observer: 20 } }, null, 8, 'score');
+  assert.deepEqual(cappedRabbit.limits, { observer: 20, rabbit: 1, hunter: 8 });
+}
+
+// bzfs.cxx:1898: "if no player are available, join as Observer". The playing
+// limit is reached by the tanks between them, whichever teams they are on, and an
+// arrival becomes a spectator rather than being refused.
+{
+  const mode = resolveTeamMode({
+    enabled: true,
+    teams: ['rogue', 'observer', 'red', 'blue', 'green', 'purple'],
+  }, null, 4);
+  assert.equal(selectPlayerTeam('automatic', mode, { red: 2, blue: 1 }), 'blue');
+  assert.equal(selectPlayerTeam('automatic', mode, { red: 2, blue: 1, green: 1 }), 'observer');
+  assert.equal(selectPlayerTeam('red', mode, { red: 2, blue: 1, green: 1 }), 'observer');
+  // Observers do not count towards it, so a crowd of them keeps the game joinable.
+  assert.equal(
+    selectPlayerTeam('automatic', mode, { red: 1, observer: 9 }, {}, null, () => 0), 'green');
+  // Nor does an observer's own request ever become something else.
+  assert.equal(selectPlayerTeam('observer', mode, { red: 4 }), 'observer');
+  // A playing limit with no observer room left refuses, which is what the total
+  // limit does on the way in.
+  const noWatching = resolveTeamMode({
+    enabled: true, teams: ['rogue', 'observer', 'red'], limits: { observer: 0 },
+  }, null, 2);
+  assert.equal(selectPlayerTeam('automatic', noWatching, { red: 2 }), null);
+}
+
+// "not putting in not enabled teams" (bzfs.cxx:1935): a team limited to zero is
+// off, and the balancing never founds it -- not even on an empty world, where
+// every team ties.
+{
+  const mode = resolveTeamMode({
+    enabled: true,
+    teams: ['rogue', 'observer', 'red', 'blue', 'green', 'purple'],
+    limits: { red: 0, green: 0, blue: 4, purple: 0, rogue: 4, observer: 4 },
+  });
+  assert.equal(selectPlayerTeam('automatic', mode, {}), 'blue');
+  assert.equal(selectPlayerTeam('red', mode, {}), null);
 }
 
 console.log('team mode tests passed');

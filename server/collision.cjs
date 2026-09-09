@@ -38,7 +38,7 @@ const ZERO_TOLERANCE = 1.0e-6;
 // render.js draws obstacles with `mesh.rotation.y = obs.rotation`, so the form
 // below is exactly the inverse of how the mesh is drawn. Do not "fix" the sign.
 function getColliderLocalPoint(x, z, obs) {
-  const rotation = obs.rotation || 0;
+  const rotation = obs.rotation;
   const dx = x - obs.x;
   const dz = z - obs.z;
   const cos = Math.cos(rotation);
@@ -524,7 +524,7 @@ function getBoxCrossingPlane(obs, x, y, z, rotation, tankScale = null) {
   const halfW = obs.w / 2;
   const halfD = obs.d / 2;
   const local = getColliderLocalPoint(x, z, obs);
-  const tankAngle = getTankLocalAngle(rotation, obs.rotation || 0);
+  const tankAngle = getTankLocalAngle(rotation, obs.rotation);
   if (!testOrigRectTank(halfW, halfD, local.x, local.z, tankAngle, 0, tankScale)) return null;
   if (tankRectInsideOrigRect(halfW, halfD, local.x, local.z, tankAngle, tankScale)) return null;
 
@@ -596,8 +596,8 @@ const MAX_SHOT_BOUNCES_PER_STEP = 4;
 // An obstacle-local normal in world space, normalized. The rotation is the
 // inverse of getColliderLocalPoint's, so the sign follows the same reasoning.
 function rotateNormalToWorld(obs, localX, localY, localZ) {
-  const cos = Math.cos(obs.rotation || 0);
-  const sin = Math.sin(obs.rotation || 0);
+  const cos = Math.cos(obs.rotation);
+  const sin = Math.sin(obs.rotation);
   const worldX = localX * cos + localZ * sin;
   const worldZ = -localX * sin + localZ * cos;
   const length = Math.hypot(worldX, localY, worldZ) || 1;

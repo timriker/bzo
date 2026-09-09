@@ -14,11 +14,14 @@ they call the same function.
 
 ## What the panel has now
 
-`motd`, `shotMaxActive`, `ricochet`, a map list with **Restart with Map**, and a
-map upload. Every setting carries **its own apply button**, and that shape is the
-thing to change first.
+`motd`, `shotMaxActive`, `ricochet`, a map list, a map upload, and the game's
+shape -- teams, rabbit chase, jumping, a playing limit and a limit per team --
+all **staged, with one Apply**. Every row edits `operatorStaged` and nothing
+reaches the server until the button is pressed, which is labelled by what it will
+do: *Apply* while everything staged is live, *Restart* the moment something is
+not. What is left is the rules pass and the match-end controls.
 
-## Stage the edits, apply once
+## Stage the edits, apply once -- **done**
 
 **OK and Cancel, like the entry dialog.** Every row edits a staged value and
 nothing reaches the server until OK; Cancel and the `X` commit nothing. The
@@ -26,8 +29,8 @@ entry dialog already works this way -- it stages a name, a team and a tank and
 pays for all three on OK -- so the panel is the odd one out rather than the
 innovation.
 
-**It removes rows, which is why it matters in XR.** The XR operator menu today
-reads:
+**It removes rows, which is why it matters in XR.** The XR operator menu used to
+read:
 
 ```
 MOTD                 Desktop only
@@ -46,7 +49,14 @@ thumbstick. One OK and one Cancel collapse every apply row, and each setting
 becomes a single line. Fourteen settings with per-row apply is unusable in a
 headset; fourteen settings plus OK and Cancel is a list.
 
-## Apply, or Restart
+It reads that way now, and it took the shape rows without growing an apply row:
+MOTD, Map, Shot Limit, All Shots Ricochet, Teams, Rabbit Chase, Jumping, Playing
+Limit and a limit per team are one line each, then Apply -- which names what is
+staged -- and Cancel, with Refresh Server Data, Upload Map and Back below them.
+Fourteen rows, one confirm. MOTD is editable where the session has a system
+keyboard rather than desktop-only; map upload still is not.
+
+## Apply, or Restart -- **done**, bar the file write
 
 One button with two labels, decided by what has been staged:
 
@@ -67,12 +77,20 @@ nothing.
 `server.js` under nodemon and calls `process.exit(0)` otherwise, so a Docker
 restart policy relaunches it. Nothing new is needed to restart.
 
-**This also fixes a live inconsistency.** `applyServerConfigChanges` writes
-`server.json` *and* broadcasts a live update. nodemon watches `server.json`, so
-on a dev box changing the MOTD restarts everyone, while the same change in
-production applies live and does not. Deciding the outcome from what changed --
-rather than writing the file every time -- makes the two environments behave the
-same.
+**A live change still writes `server.json`, and on a dev box that restarts
+everyone.** `applyServerConfigChanges` writes the file for every apply and then
+broadcasts, and `nodemon.json` watches `server.json` -- so changing the MOTD is
+live in production and a restart in development, whatever the button said. The
+two-outcome button is honest about the tier and the file write goes behind its
+back.
+
+Not fixed here, because the fix is a trade rather than a tidy-up. Writing only
+when a restart-tier setting changed would make the environments agree, and would
+also mean `motd`, `shotMaxActive` and `ricochet` last until the next restart and
+no longer -- which is upstream's own answer, since BZDB is runtime state and
+`/set` persists nothing. Dropping `server.json` from nodemon's watch list is the
+other end of it, and that would cost the `testSpawn` workflow in `AGENTS.md`,
+which relies on a config write restarting the server. Worth deciding on purpose.
 
 ## A game mode change is a map change
 
@@ -124,22 +142,35 @@ fixed set is a `choice`, and text is for what is genuinely free-form. MOTD,
 server name and description are that; nothing else on the panel is.
 
 **Grey a row the mode cannot honour**, which is `capabilities.mjs`'s rule applied
-to gameplay: `resolveTeamMode` zeroes the colour teams when rabbit chase is on,
-so the panel greys the per-team rows there. A UI that offers a combination the
-server would silently override is worse than one that offers less.
+to gameplay: `resolveTeamMode` zeroes the colour teams when rabbit chase is on and
+when teams are off, so the panel greys those four rows there -- and greys the
+Teams row itself under rabbit chase, which is the switch that overrules it
+(`CmdLineOptions.cxx:1586`). A UI that offers a combination the server would
+silently override is worse than one that offers less. The greying reads from the
+*staged* mode, so turning teams on brings the colour rows back before anything is
+applied.
 
 ## What to offer
 
-**The game's shape.** These are the new game tier: staging any of them turns the
-button to *Restart*.
+**The game's shape -- built.** These are the new game tier: staging any of them
+turns the button to *Restart*, because bzo resolves the team layout and the flag
+pool once at boot.
 
 | option | control | note |
 |---|---|---|
 | map | `choice` | already there |
 | teams | `choice` off/on | bzo derives ClassicCTF from whether the map has bases, so there is no separate CTF row |
-| rabbit chase | `choice` off/score/killer/random | greys the team rows when on |
-| per-team limits | `range` 0 upward | one row per team; which rows are live depends on the mode, below |
+| rabbit chase | `choice` off/score/killer/random | greys the teams row and the colour team rows when on |
+| playing limit | `range` 1-200 | the tanks, observers excluded; caps every playing team's own limit |
+| per-team limits | `range` 0-200 | one row per team; which rows are live depends on the mode, below |
 | jumping | On/Off | |
+
+The panel's rows are flat where `server.json` is nested, so each team limit is
+one key of its own -- `rogueLimit`, `observerLimit` -- mapped back to
+`teamMode.limits` on the way in. **A team limited to zero is off**, which is
+upstream's own rule ("not putting in not enabled teams", `bzfs.cxx:1935`) and
+already how a map's `-mp 10,0,4,0,2,8` reads, so the written team list follows
+the limits rather than being a second place a team's presence is decided.
 
 **Which team rows are live, by mode.** The panel should offer exactly the teams
 the mode can put a player on, which is what `resolveTeamMode` decides:
@@ -156,11 +187,10 @@ hunter limit *from* the rogue limit, which is upstream's own derivation
 with no way to limit how many people can play, so relabel it -- "Hunters" --
 rather than disabling it, and write the same `teamMode.limits.rogue` behind it.
 
-**A global player limit needs a prerequisite bzo does not have.** In bzo
-`maxPlayers` is read once, at `server.js:2055`, and used only to supply the
-*default* per-team limit; nothing enforces it as a cap. The real cap today is the
-sum of the per-team limits. Offering a row labelled "max players" that caps
-nothing is the one thing not to do.
+**A player limit has to cap something.** Offering a row labelled "max players"
+that caps nothing was the one thing not to do, and until the shape rows landed
+that is what bzo's `maxPlayers` was: read once to supply the *default* per-team
+limit, with the sum of the per-team limits as the real cap.
 
 Upstream has **two** limits, and the relationship between them is the answer to
 "does the player limit include observers":
@@ -181,14 +211,29 @@ Both are enforced, and differently: reaching `maxRealPlayers` makes
 so a full game turns arrivals into spectators; reaching `maxPlayers` rejects the
 connection outright with "This game is full" (`:2339`).
 
-**So the panel exposes two numbers, not three:** a playing limit
-(`maxRealPlayers`) and an observer limit. The total is arithmetic and belongs
-nowhere in the UI. That also settles Rabbit Chase: with the colour teams zeroed,
-upstream's `maxRealPlayers` reduces to the rogue count and `resolveTeamMode`
-derives the hunter limit from the same number -- so a playing limit and a
-"hunters" limit there are *the same value*, and showing both would be showing one
-number twice. Show the observer limit and one playing limit, labelled **Hunters**
-in that mode.
+**So the panel exposes two numbers, not three:** a playing limit and an observer
+limit. The total is arithmetic and is nowhere in the UI.
+
+bzo's `maxPlayers` is now the playing limit -- upstream's `maxRealPlayers`, and
+upstream's single-number `-mp N` form of it, which is the form where every
+playing team's own limit is clamped down to it (`:453`). Both of upstream's
+enforcements are bzo's too: `selectPlayerTeam` hands out observer once the tanks
+between them reach it, and the `joinGame` handler refuses an arrival with "This
+game is full" once the tanks and the observers together reach the derived total.
+
+**Rabbit Chase keeps both rows, because in bzo they are two numbers.** Upstream's
+identity between a playing limit and a hunter limit comes from `-mp` with all
+five counts listed, where `maxRealPlayers` *is* their sum; with a single number it
+keeps both, the playing limit clamping the hunter limit rather than being it. bzo
+has only the single-number form, so the Hunters row is the hunter limit and the
+playing limit is what it may be raised to -- greying either one would take away a
+number an operator can really set.
+
+**The clamp is visible before the button is pressed.** Lowering the playing limit
+lowers every playing team's row with it, in the panel, rather than letting the
+write correct them silently afterwards -- and a playing team's row cannot be
+stepped above it in the first place. The observer row is outside the clamp, as
+upstream's observer limit is.
 
 **Team limits are a join-time gate, not an invariant.** `selectPlayerTeam` is
 called from exactly one place in bzo -- the `joinGame` handler -- and nothing
@@ -198,7 +243,10 @@ rechecks a limit afterwards. Nor is anything sized by one: team state is
 per-team arrays on either side, so a team holding more players than its limit is
 simply a team of that size -- the count reports it, the scoreboard draws it, and
 nothing overflows. Any future way of putting a player on a team has to apply the
-limit itself, because no other code path will.
+limit itself, because no other code path will. The playing limit and the total
+are gates in the same one place and answer for no more than that: lowering either
+one from the panel starts a new game, so nobody is ever over a limit that was
+lowered under them.
 
 **Rules worth having, in a second pass.**
 
@@ -235,16 +283,31 @@ to break from a panel, and about controls that would be poor on any surface.
 
 ## Suggested order
 
-1. **OK and Cancel**, with the two-outcome button, over the four settings the
-   panel already has. Nothing new is offered; this is the restructure, and it is
-   the part that has to be right.
-2. **Convert the existing rows to `choice` and `range`**, so shot limit stops
-   being a text box and the XR menu loses its apply rows.
-3. **The game's shape**: teams, rabbit chase, max players, per-team limits,
-   jumping.
+1. ~~**OK and Cancel**, with the two-outcome button, over the four settings the
+   panel already has.~~ **Done.** It changed no setting and made every later row
+   cheaper: a new row is now one entry in a list rather than a row plus a button
+   plus a handler.
+2. ~~**Convert the existing rows to `choice` and `range`**, so shot limit stops
+   being a text box and the XR menu loses its apply rows.~~ **Done.** Shot limit
+   is a range in the DOM dialog and an adjustable row in XR.
+3. ~~**The game's shape**: teams, rabbit chase, max players, per-team limits,
+   jumping.~~ **Done.** With the playing limit enforced as upstream enforces it,
+   so the row caps something.
 4. **The rules pass**: superflags, team kills, the bad-flag group, identity text.
+   This is where the work resumes.
 5. Match-end controls, with match end (`docs/game-modes-plan.md`).
 
-Step 1 is worth doing alone: it changes no setting and makes every later row
-cheaper, because a new row is then one entry in a list rather than a row plus a
-button plus a handler.
+## A map's options still win, and the panel does not say so
+
+The panel edits `server.json`, and a map's own `options` block overrides it at
+boot: `maps/flagbuffet.bzw` carries `-ms 3` and `-mp 10,0,10,0,10,10`, so on that
+map the shot limit and the team limits the panel shows are the config's and the
+world is running the map's. The rows are honest about what they write and silent
+about what will happen to it, which is the same gap the shot limit row has had
+since it was a text box.
+
+Fixing it means telling the client which keys the running map overrides and
+greying those rows -- but a *staged* map change moves the answer, and the server
+cannot say what a map it has not loaded will override. Worth its own pass, after
+the rules pass, and worth deciding then whether the panel greys the row or shows
+both numbers.

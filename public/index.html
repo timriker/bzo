@@ -34,15 +34,14 @@
         <!-- A range input, which is the same control the audio sliders use: it
              drags with a mouse, steps with the arrow keys once focused, and is
              one element rather than three that can wrap onto separate lines. -->
-        <div class="operatorRow operatorConfigRow">
+        <div class="operatorRow operatorConfigRow" data-menu-row="shotMaxActive" data-menu-kind="range">
           <label for="shotMaxActiveSlider">Shot Max Active:</label>
           <div class="volumeControl">
-            <input id="shotMaxActiveSlider" class="volumeSlider" type="range" min="1" max="10" step="1" value="1"
-              data-menu-row="shotMaxActiveSlider" data-menu-kind="range">
+            <input id="shotMaxActiveSlider" class="volumeSlider" type="range" min="1" max="10" step="1" value="1">
             <output id="shotMaxActiveValue" class="volumeValue" for="shotMaxActiveSlider">1</output>
           </div>
         </div>
-        <div class="operatorRow">
+        <div class="operatorRow" data-menu-row="ricochet" data-menu-kind="choice">
           <label class="operatorToggle" for="ricochetInput">
             <input type="checkbox" id="ricochetInput">
             All shots ricochet
@@ -52,6 +51,43 @@
           <label for="mapList">Map:</label>
           <select id="mapList"></select>
         </div>
+        <!-- The game's shape, which every row below is part of: staging any of
+             them turns the confirm into Restart, because bzo resolves the team
+             layout and the flag pool once at boot. -->
+        <div class="operatorRow" data-menu-row="teams" data-menu-kind="choice">
+          <label class="operatorToggle" for="teamsInput">
+            <input type="checkbox" id="teamsInput">
+            Teams
+          </label>
+        </div>
+        <div class="operatorRow" data-menu-row="rabbit" data-menu-kind="choice">
+          <label for="rabbitSelect">Rabbit Chase:</label>
+          <select id="rabbitSelect">
+            <option value="off">Off</option>
+            <option value="score">Score</option>
+            <option value="killer">Killer</option>
+            <option value="random">Random</option>
+          </select>
+        </div>
+        <div class="operatorRow" data-menu-row="jumping" data-menu-kind="choice">
+          <label class="operatorToggle" for="jumpingInput">
+            <input type="checkbox" id="jumpingInput">
+            Jumping
+          </label>
+        </div>
+        <!-- How many tanks may play, observers excluded -- upstream's own
+             `maxRealPlayers`. The total a server holds is this plus the observer
+             limit below, which is arithmetic and so is not a row. -->
+        <div class="operatorRow operatorConfigRow" data-menu-row="maxPlayers" data-menu-kind="range">
+          <label for="maxPlayersSlider">Playing Limit:</label>
+          <div class="volumeControl">
+            <input id="maxPlayersSlider" class="volumeSlider" type="range" min="1" max="200" step="1" value="16">
+            <output id="maxPlayersValue" class="volumeValue" for="maxPlayersSlider">16</output>
+          </div>
+        </div>
+        <!-- One range row per team, built from the team list so the panel cannot
+             offer a team the client does not know about. -->
+        <div id="operatorTeamLimits"></div>
         <div class="operatorRow">
           <label for="uploadMap">Upload Map:</label>
           <input type="file" id="uploadMap" accept=".bzw,.txt">
@@ -291,7 +327,7 @@
         <li><strong>Tab</strong> — Jump</li>
         <li><strong>Space</strong> — Drop Flag</li>
         <li><strong>I</strong> — Identify: names the tank in your sights, and locks a Guided Missile onto it</li>
-        <li><strong>Q</strong> — Self-Destruct</li>
+        <li><strong>Q</strong> — Self-Destruct: five seconds, and <strong>Q</strong> again calls it off</li>
         <li><strong>C</strong> — Toggle Camera View</li>
         <li><strong>P</strong> — Pause Game</li>
         <li><strong>O</strong> — Operator Panel</li>

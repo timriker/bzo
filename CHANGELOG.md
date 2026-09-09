@@ -6,6 +6,67 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
 
 ## [Unreleased]
 
+### Added
+- **The operator panel offers the game's shape.** Teams on or off, rabbit chase
+  off/score/killer/random, jumping, a playing limit and a limit for each of the
+  six teams, staged with everything else and committed by the one confirm --
+  which reads *Restart* for all of them, since bzo resolves the team layout and
+  the flag pool once at boot. Every row is a stepper or a toggle, so the whole
+  panel is still reachable with left, right and select in a headset. A row the
+  mode cannot honour greys out as it is staged: rabbit chase greys the Teams row
+  and the four colour team rows and relabels Rogue as Hunter, which is the limit
+  the hunters actually get (`CmdLineOptions.cxx:1596`), and turning teams off
+  greys the colour rows on its own. A team limited to zero is off, as it is
+  upstream and as a map's `-mp 10,0,4,0,2,8` already read.
+- **The playing limit is enforced the way bzfs enforces it.** `maxPlayers` counts
+  the tanks and excludes the observers -- upstream's `maxRealPlayers` -- and every
+  playing team's own limit is clamped down to it. Reaching it turns an arrival
+  into a spectator rather than refusing it; reaching the total, which is the
+  playing limit plus the observer limit, refuses the arrival with "This game is
+  full". Until now the number only supplied the default per-team limit and capped
+  nothing.
+
+- **Self destruct counts down.** `Q` starts upstream's five second countdown --
+  `cmdDestruct` (`clientCommands.cxx:400`) -- with the count on the HUD and `Q`
+  again to call it off, where before it blew the tank up on the keypress. The
+  count is the client's own, since the server owns the pause countdown only
+  because it decides whether a tank may be hit and has no such stake in this
+  one; what the client sends when the count runs out is the same self destruct
+  request as before. A tank that dies under the countdown does not come back to
+  it. Closes #50.
+
+### Fixed
+- **A tank shot during the pause countdown comes back playing.** The server
+  abandons a countdown the moment the life it was asked in ends, and told nobody:
+  the client kept counting a countdown that would never finish, and since a
+  countdown is one of the two things that freeze the tank, the controls never came
+  back -- leaving a menu sent a pause toggle that the server either dropped, for a
+  tank still dead, or read as a fresh pause request. The client now drops its copy
+  off the same fact upstream drops its own on (`playing.cxx:6866`): a countdown on
+  a tank that is not alive is over. The new life then asks again for whatever is
+  still true -- a menu still in front of the game, or the countdown the player was
+  in when they died -- and `P` calls it off. The same wedge could be reached
+  without a countdown at all, since genocide and `/kill` both reach a paused tank.
+  The rules over all of this now live in one place, `public/pause.mjs`, with tests:
+  the pause key and a menu covering the game read the same state machine, and it
+  was them having a rule each that let a life ending fall between them. Closes #48.
+- **Every obstacle carries a `rotation`.** The BZW importer left the field off any
+  `box` or `pyramid` whose block gave no `rotation` line, so each reader carried a
+  default of its own -- `obs.rotation || 0` in the collision pair, the renderer,
+  the radar and the logs -- and the one place that formatted it instead of doing
+  arithmetic with it threw: an anti-cheat collision report against an unrotated
+  box died on `Cannot read properties of undefined`, the throw surfaced through
+  the message handler's catch as one unattributed line, and the cheat that
+  provoked it went unrecorded. The importer now states 0 for a block that says
+  nothing, and every reader reads the field.
+- **The operator panel's sliders answer the arrow keys and a controller.** Left
+  and right on a focused row are the dialog model's to spend, so the shot limit
+  slider was reachable with a mouse and dead to everything else; every row of the
+  panel now takes them -- steppers step, toggles set, and a `<select>` cycles for
+  a controller that the browser's own arrow handling never sees. Cancel also
+  paints the rows back to the server's values instead of leaving the abandoned
+  edit on a hidden panel.
+
 ## [1.0.90] - 2026-09-09
 
 ### Added
