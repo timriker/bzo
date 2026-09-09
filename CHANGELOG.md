@@ -6,6 +6,28 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
 
 ## [Unreleased]
 
+### Added
+- **`?follow=leader` is a link to hand somebody who wants to watch.** It joins as
+  an observer in the follow view on whoever is leading, without stopping to ask
+  for a name -- a browser that has one keeps it, one that does not joins under
+  the name the server gives it. Nothing is saved and `C` leaves the view, so a
+  reload of `/` is an ordinary player again. The value names who to watch, which
+  leaves room for a callsign later; a value bzo cannot resolve joins normally
+  rather than watching the wrong tank. It is on `public/test.html` with the URL
+  knobs.
+
+### Fixed
+- **An observer's radar follows the view it is actually looking through.** The
+  virtual tank every observer carries -- the one the radar, the heading tape and
+  the position other clients place a voice at all read -- was moved to the
+  roaming camera each frame, which is the eye only in free roam. Following or
+  driving with a tank left it parked wherever free roam last put it, so the radar
+  stayed behind while the view crossed the map. It now takes the eye of whichever
+  view is running and upstream's `roamViewAngle` with it. An observer that has
+  drifted more than a quarter of the nearby voice radius from the position it
+  last sent also updates early, at most once a second, rather than waiting out
+  the rest of its five second heartbeat.
+
 ## [1.0.89] - 2026-09-09
 
 ### Added

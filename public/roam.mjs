@@ -127,6 +127,19 @@ export function getRoamForward(theta) {
   return { x: -Math.sin(theta), z: -Math.cos(theta) };
 }
 
+// The heading a resolved view points, which is upstream's `roamViewAngle`
+// (playing.cxx:6088): the angle from the eye to the look point, so a view that
+// tracks a tank faces whatever it is watching. The inverse of getRoamForward, so
+// both axes go into atan2 negated. A look point standing exactly over the eye
+// names no heading of its own and `fallbackTheta` stands in -- upstream never
+// meets that case, because every one of its look points is offset horizontally.
+export function getRoamViewAngle(eye, look, fallbackTheta = 0) {
+  const dx = look.x - eye.x;
+  const dz = look.z - eye.z;
+  if (Math.hypot(dx, dz) < 1e-6) return fallbackTheta;
+  return Math.atan2(-dx, -dz);
+}
+
 // Pure, so `scripts/test-roam.mjs` can hold the rates against upstream's without
 // a frame loop around them. `theta` is left unwrapped, as upstream leaves it.
 export function updateRoamCamera(camera, input, deltaSeconds, limits) {

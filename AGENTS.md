@@ -693,10 +693,22 @@ view is `fps` and never `free`.
 The camera lives only on the client: `public/roam.mjs`, pure and covered by
 `scripts/test-roam.mjs`. Each frame the tank mesh is moved to the eye point,
 which is upstream's `myTank->move(virtPos, roamViewAngle)`, because the radar,
-the heading tape and the sound listener all read that transform and so follow the
-camera without knowing roaming exists. **Nothing draws that mesh** -- not the
-tank, not its server-position ghost, which hangs off `worldGroup` rather than off
-the tank and so has to be hidden separately.
+the heading tape and the position other clients place this observer at all read
+that transform and so follow the camera without knowing roaming exists.
+**Nothing draws that mesh** -- not the tank, not its server-position ghost, which
+hangs off `worldGroup` rather than off the tank and so has to be hidden
+separately.
+
+**The eye is the running view's, not the roaming camera's.** `track`, `follow`,
+`fps` and `flag` all frame themselves off something other than `roamCamera`,
+which keeps sitting wherever free roam last parked it, so reading the mesh off
+the camera pins the radar to a place the observer left. The heading that goes
+with it is upstream's `roamViewAngle` -- `atan2` from the eye to the look point,
+`getRoamViewAngle` in `roam.mjs` -- so a tracking view faces what it is watching.
+The mesh stands an eye height *under* the eye rather than at it, which is bzo's
+own: upstream flattens `virtPos` to `z = 0`, and standing under the eye is
+instead the same relation a driver's tank has to their camera, so a client
+adding an eye height to what it receives lands back on the camera.
 
 **An observer sends a heartbeat and nothing else.** Upstream does the same:
 `sendObserverHeartbeat` (`playing.cxx:7415`) gates a normal player update behind
@@ -705,10 +717,19 @@ the tank and so has to be hidden separately.
 heartbeat, because the nearby voice roster reads the position and 30 seconds is
 too coarse to place a voice.
 
+**An observer is not tracked through its movements.** Roughly where is the only
+question anything asks of the position, and 5 seconds answers it for a camera
+that is parked or flown by hand. It does not answer it for a tracking view, which
+rides a tank that drives while the observer touches nothing: 5 seconds of that
+covers more than the whole nearby radius, so the observer is heard from a place
+they have entirely left. One drift check handles that and nothing else -- if the
+camera is more than a quarter of the nearby radius from the position last sent,
+the update goes early, at most one a second. Everything else keeps the heartbeat.
+
 The packet carries a position and a heading. **Every velocity is zero**, so
 neither end dead reckons a camera -- there is no prediction to run and none to
-correct, and the position is five seconds stale at worst. The server takes it as
-sent: `applyObserverHeartbeat` checks only that the numbers are numbers, since a
+correct. The server takes it as sent: `applyObserverHeartbeat` checks only that
+the numbers are numbers, since a
 NaN would poison the distance maths. That is parsing, not validation, and no
 validation belongs there. An observer has no collision, no shots and no score,
 so there is no state a lie could corrupt -- only being heard from somewhere you
@@ -720,6 +741,24 @@ for itself how loud a peer is and where it stands, and it cannot do that for an
 observer it cannot locate. Reusing `pm` means no client-side special case -- the
 mesh it moves is the invisible one every observer already has at health 0, and
 the zero velocities give the receiving end nothing to extrapolate.
+
+**`?follow=leader` is the link to hand somebody who wants to watch.** It joins
+as an observer in the `follow` view on whoever is leading, and does not stop to
+ask for a name: a browser that already has one keeps it, and one that has never
+been here joins under the name the server gave the connection. It is the entry
+dialog's own staging underneath -- the team is selected and the join is sent, so
+nothing about the join path is special-cased -- and nothing is saved, so a plain
+reload of `/` is an ordinary player again. `C` leaves the view like any other.
+
+The value names **who** to watch, because that is the axis that will want more:
+a callsign is the obvious next value, and `leader` is simply the one target the
+roaming views can already resolve without being told an id. Which rig to watch
+from is the other axis and would be a parameter of its own -- one value cannot
+carry both. A value bzo cannot resolve is **refused** rather than guessed at, so
+a typo joins the game normally instead of silently watching the wrong tank, and
+so does a server that does not offer the observer team. The view is re-applied on
+every join rather than once, because a reconnect is how a client comes back from
+a server restart and a link left running on a screen should come back watching.
 
 **An observer uses voice on the same terms as everybody else.** It could
 always text chat, so the microphone ban was the odd rule out, and it lived
@@ -1523,6 +1562,11 @@ player can be asked to load a link:
   draws into belongs to the headset: a sample taken in a session reports the
   headset's own resolution whatever the page asked for. Set before a session
   starts, since it is read when the session builds its framebuffer.
+
+One URL parameter is not a measurement knob: `?follow=leader` is a feature, the
+spectator link described in the Observer section. It is listed on the same page
+because that page is what a URL can ask bzo for, and it follows the same rules
+otherwise -- URL only, never persisted, never in the UI.
 
 They are prototypes of settings bzo may one day pick from measurement, which is
 the other reason to keep them. A knob added here follows the same rules: URL

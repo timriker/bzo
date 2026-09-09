@@ -170,6 +170,7 @@ import {
   advanceRoamSelection,
   createRoamCamera,
   getRoamForward,
+  getRoamViewAngle,
   roamViewNeedsTarget,
   updateRoamCamera,
 } from './roam.mjs';
@@ -629,6 +630,28 @@ let myGlobalCallsign = null;
 let teamScores = [];
 let selectedPlayerTeam = PLAYER_TEAM.AUTOMATIC;
 let availablePlayerTeams = [PLAYER_TEAM.ROGUE, PLAYER_TEAM.OBSERVER];
+// `?follow=leader` -- the link to hand somebody who wants to watch a match. It
+// joins as an observer in the follow view on whoever is leading, and does not
+// stop to ask for a name, because a link that opens a dialog is not a link you
+// can hand out.
+//
+// The value names *who* to watch, which is the axis that will want more later:
+// a callsign is the obvious next one, and `leader` is simply the one target bzo
+// can already resolve without being told an id. Which rig to watch from is the
+// other axis and would be a parameter of its own, since one value cannot carry
+// both. A value bzo cannot resolve is refused rather than guessed at -- the page
+// joins as it always would, so a typo puts you in the game under your own name
+// instead of silently watching the wrong tank.
+const AUTO_FOLLOW_LEADER = 'leader';
+
+function readAutoFollowTarget() {
+  const params = new URLSearchParams(window.location.search);
+  if (!params.has('follow')) return null;
+  const requested = (params.get('follow') || '').trim().toLowerCase();
+  return requested === '' || requested === AUTO_FOLLOW_LEADER ? AUTO_FOLLOW_LEADER : null;
+}
+
+const autoFollowTarget = readAutoFollowTarget();
 let selectedVoiceInputDeviceId = '';
 // One level per VOLUME_CHANNELS row, restored before the first sound plays so
 // nothing is ever briefly loud on the way to the level the player chose.
@@ -2834,6 +2857,11 @@ let roamIdentifyWasHeld = false;
 // -Infinity so the first frame of observing sends one rather than waiting out
 // an interval the camera has not been alive for.
 let lastObserverHeartbeatAt = -Infinity;
+// Where that last update said the camera was, so a camera that has since gone
+// somewhere else can correct it before the next heartbeat comes due.
+let lastObserverSentX = 0;
+let lastObserverSentY = 0;
+let lastObserverSentZ = 0;
 let playerRotation = 0;
 
 // Dead reckoning state - track last sent velocities (not positions, since positions are extrapolated)
@@ -4447,12 +4475,30 @@ function handleServerMessage(message) {
       playerZ = message.player.z;
       playerRotation = message.player.rotation;
 
+      // A server that does not offer the observer team cannot honour the
+      // spectator link, so the page joins as it otherwise would rather than
+      // asking for a team and being refused.
+      const autoObserving = autoFollowTarget !== null
+        && availablePlayerTeams.includes(PLAYER_TEAM.OBSERVER);
+      if (autoObserving) {
+        // Staged the way the dialog stages it, and not saved: the link decides
+        // this page load and nothing after it.
+        selectedPlayerTeam = PLAYER_TEAM.OBSERVER;
+        syncPlayerTeamSelector();
+      }
+
       // Only send join if there is a saved name of the player's own choosing
       const savedName = getSavedJoinableName();
       if (savedName) {
         myPlayerName = savedName;
       }
       if (!isDefaultPlayerName(myPlayerName)) {
+        setPendingJoinRequest(myPlayerName);
+      } else if (autoObserving) {
+        // The name the server gave this connection, which is the one the entry
+        // dialog would have offered. A spectator arriving on a handed-out link
+        // has no name to be asked for.
+        myPlayerName = message.player.name;
         setPendingJoinRequest(myPlayerName);
       } else {
         // Ask for a name: in XR on the menu panel, otherwise in the 2D dialog
@@ -4474,6 +4520,15 @@ function handleServerMessage(message) {
       if (message.player.id === myPlayerId) {
         gameplayJoinConfirmed = true;
         playerTeam = normalizePlayerTeam(message.player.team);
+        // The view the spectator link asked for. Applied on every join rather
+        // than once: a reconnect is how this client comes back from a server
+        // restart, and a link left running on a screen somewhere should come
+        // back watching rather than staring at the spawn it landed on.
+        if (autoFollowTarget === AUTO_FOLLOW_LEADER && isObserverTeam(playerTeam)) {
+          roamView = ROAM_VIEW.FOLLOW;
+          roamTargetId = null;
+          roamTargetFlagIndex = null;
+        }
         amAdmin = message.player.admin === true;
         amVerified = message.player.verified === true;
         myGlobalCallsign = amVerified ? message.player.name : null;
@@ -7876,7 +7931,7 @@ function getRoamLabel() {
 // `myTank->move(virtPos, roamViewAngle)` in `playing.cxx:6110` -- so the radar,
 // the heading tape, and the sound listener all read the camera without knowing
 // about roaming. bzo does the same: the mesh is invisible at health 0, and the
-// only thing sent for it is the heartbeat at the bottom of this function.
+// only thing sent for it is the position update at the bottom of this function.
 function handleRoamMotion(deltaTime) {
   if (!isObserver()) {
     roamCamera = null;
@@ -7939,17 +7994,39 @@ function handleRoamMotion(deltaTime) {
   if (myTank.userData.ghostMesh) myTank.userData.ghostMesh.visible = false;
   if (myTank.userData.jumpPredictionDebug) myTank.userData.jumpPredictionDebug.visible = false;
 
+  // The eye is whichever view is running, not the roaming camera: a tracking
+  // view leaves `roamCamera` where free roam parked it and frames itself off the
+  // target instead. Upstream reads the same eyePoint back out of the view it
+  // just resolved -- `virtPos` in playing.cxx:6108 -- so following a tank
+  // carries the radar, the heading tape and the position other clients place
+  // this observer at along with the camera.
+  const framing = getRoamFraming();
+  const eye = framing ? framing.eye : { x: roamCamera.x, y: roamCamera.y, z: roamCamera.z };
+
   // The virtual tank stands under the eye rather than at it, so it sits where a
   // driver's tank would relative to the camera.
-  playerX = roamCamera.x;
-  playerY = roamCamera.y - eyeHeight;
-  playerZ = roamCamera.z;
-  playerRotation = roamCamera.theta;
+  playerX = eye.x;
+  playerY = eye.y - eyeHeight;
+  playerZ = eye.z;
+  playerRotation = framing
+    ? getRoamViewAngle(framing.eye, framing.look, roamCamera.theta)
+    : roamCamera.theta;
   myTank.position.set(playerX, playerY, playerZ);
-  myTank.rotation.y = roamCamera.theta;
+  myTank.rotation.y = playerRotation;
 
-  sendObserverHeartbeat();
+  sendObserverUpdate();
 }
+
+// How far the camera may leave the position last sent before the heartbeat is
+// not worth waiting out. It is a quarter of the nearby voice radius, which is
+// the one thing that reads the position, so nobody is ever placed a full earshot
+// away from where they are. A camera parked or drifting slowly never reaches it
+// and keeps the plain heartbeat.
+const OBSERVER_DRIFT_THRESHOLD = 15;
+// And no more than one of those a second however fast the camera is moving, so
+// the early send stays a correction to the heartbeat rather than a stream. At
+// free roam's 100 u/s that is one send per 100 units travelled.
+const OBSERVER_DRIFT_MIN_INTERVAL = 1000;
 
 // Upstream has this: `sendObserverHeartbeat` in playing.cxx:7415 gates a normal
 // player update behind `observerHeartbeat`, so a server can say where its
@@ -7959,12 +8036,32 @@ function handleRoamMotion(deltaTime) {
 //
 // The packet carries a position and a heading and nothing else. Every velocity
 // is zero, so neither end has anything to dead reckon: the camera is simply
-// wherever it was when the packet left, until the next one says otherwise. That
-// is enough for the nearby voice roster, which is the only thing that reads it.
-function sendObserverHeartbeat() {
+// wherever it was when the packet left, until the next one says otherwise. An
+// observer is not tracked through its movements and does not need to be -- the
+// question anything asks of the position is roughly where, not exactly where.
+//
+// The heartbeat alone answers that only for a camera that stays put. A tracking
+// view rides a tank that drives, without the observer touching a control, and
+// five seconds of that is further than the whole nearby radius: the observer
+// would be heard from a place they had already left entirely. So the drift check
+// below sends early when the camera has genuinely gone somewhere else, capped at
+// one a second, and the heartbeat carries every other case as before.
+function sendObserverUpdate() {
   const now = performance.now();
-  if (now - lastObserverHeartbeatAt < MAX_UPDATE_INTERVAL) return;
+  const sinceLastSend = now - lastObserverHeartbeatAt;
+  const drifted = Math.hypot(
+    playerX - lastObserverSentX,
+    playerY - lastObserverSentY,
+    playerZ - lastObserverSentZ,
+  ) >= OBSERVER_DRIFT_THRESHOLD;
+  const due = drifted
+    ? sinceLastSend >= OBSERVER_DRIFT_MIN_INTERVAL
+    : sinceLastSend >= MAX_UPDATE_INTERVAL;
+  if (!due) return;
   lastObserverHeartbeatAt = now;
+  lastObserverSentX = playerX;
+  lastObserverSentY = playerY;
+  lastObserverSentZ = playerZ;
   sendToServer({
     type: 'm',
     id: myPlayerId,

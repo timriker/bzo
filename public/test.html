@@ -14,6 +14,10 @@
 
   Every knob bzo has belongs on this page. A knob nobody can reach is a knob
   nobody measures with. See AGENTS.md, "Measurement knobs".
+
+  `follow` is the exception to the paragraph above: it is a feature rather than a
+  measurement, and it is here because this is the page that lists what a URL can
+  ask bzo for. See AGENTS.md, "Observer".
 -->
 <style>
   :root { color-scheme: dark; }
@@ -55,9 +59,10 @@
 <main>
   <h1>bzo test modes</h1>
   <p class="lead">
-    Each link starts the game with one knob set. They measure, they do not
-    configure: nothing here is saved, and a plain reload of <code>/</code> puts
-    it back. <strong>Press Back to return to this list.</strong>
+    Each link starts the game with one URL parameter set. Most of them measure
+    rather than configure, and none of them are saved: a plain reload of
+    <code>/</code> puts everything back.
+    <strong>Press Back to return to this list.</strong>
   </p>
 
   <section>
@@ -181,6 +186,31 @@
         <b>0.7 scale alone</b><span>?xrScale=0.7</span></a>
       <a class="mode" href="/?shadows=0&amp;celestial=0&amp;antialias=0">
         <b>Extras off</b><span>?shadows=0&amp;celestial=0&amp;antialias=0</span>
+      </a>
+    </div>
+  </section>
+
+  <section>
+    <h2><code>follow</code> &mdash; a link for watching</h2>
+    <p>
+      The one link here that is not a measurement. <code>?follow=leader</code>
+      joins as an observer in the follow view on whoever is leading, and does not
+      stop to ask for a name &mdash; a link you hand somebody who wants to watch
+      a match cannot open a dialog first. A browser that already has a name keeps
+      it; one that has never been here plays under the name the server gives it.
+    </p>
+    <p>
+      The value names <em>who</em> to watch. <code>leader</code> is the only one
+      bzo resolves today &mdash; it is the target the roaming views already have
+      without being told an id, and it re-resolves every frame, so the view moves
+      to whoever takes the lead. A callsign is the obvious next value. Anything
+      else is refused and the page joins normally, so a typo puts you in the game
+      rather than silently watching the wrong tank. Press <kbd>C</kbd> to leave
+      the view and cycle the rest.
+    </p>
+    <div class="modes">
+      <a class="mode" href="/?follow=leader">
+        <b>Watch the leader</b><span>?follow=leader</span>
       </a>
     </div>
   </section>

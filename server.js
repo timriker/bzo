@@ -5750,15 +5750,18 @@ function normalizePlayerId(value) {
   return null;
 }
 
-// An observer's heartbeat, sent every MAX_UPDATE_INTERVAL by the client. It has
-// no tank: nothing collides with it, nothing it does originates a shot, and the
-// only thing on the server that reads its position is the nearby voice roster.
-// So the position is taken as sent. The one test is that the numbers are
-// numbers, because a NaN would poison the distance maths -- that is parsing, not
-// validation, and there is deliberately no validation here.
+// An observer's heartbeat, sent every MAX_UPDATE_INTERVAL by the client, and
+// early only when the camera has drifted far enough that waiting out the rest of
+// the interval would place it a whole earshot away. It has no tank: nothing
+// collides with it, nothing it does originates a shot, and the only thing on the
+// server that reads its position is the nearby voice roster. So the position is
+// taken as sent. The one test is that the numbers are numbers, because a NaN
+// would poison the distance maths -- that is parsing, not validation, and there
+// is deliberately no validation here.
 //
 // Velocities are forced to zero rather than read, so no path extrapolates a
-// camera between heartbeats. The position is simply five seconds stale at worst.
+// camera between heartbeats. The position is simply five seconds stale at worst,
+// and less than a quarter of the nearby radius wrong whatever the camera did.
 //
 // It goes out as an ordinary `pm`, because the other clients need it too: voice
 // is peer to peer, so each client decides for itself how loud a peer is and

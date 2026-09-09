@@ -18,6 +18,7 @@ import {
   ROAM_ZOOM_MIN,
   createRoamCamera,
   getRoamForward,
+  getRoamViewAngle,
   updateRoamCamera,
 } from '../public/roam.mjs';
 
@@ -171,6 +172,34 @@ assert.equal(flagState.flagIndex, null);
 assert.deepEqual(
   advanceRoamSelection({ view: ROAM_VIEW.FPS, targetId: 'p3', flagIndex: null }, { playerIds: players, allowFlag: false }),
   { view: ROAM_VIEW.FREE, targetId: null, flagIndex: null },
+);
+
+// The view angle is the inverse of the forward vector, so a heading survives the
+// round trip through a look point built one unit ahead of it.
+for (const theta of [0, 0.7, Math.PI / 2, -2.4, 3.0]) {
+  const forward = getRoamForward(theta);
+  const eye = { x: 12, y: 5, z: -8 };
+  const look = { x: eye.x + forward.x, y: eye.y, z: eye.z + forward.z };
+  near(getRoamViewAngle(eye, look, 99), theta, `view angle round trips at ${theta}`);
+}
+
+// A tracking view faces its target rather than wherever the camera was flown.
+near(
+  getRoamViewAngle({ x: 0, y: 10, z: 40 }, { x: 0, y: 0, z: 0 }, 99),
+  0,
+  'a target due -Z reads as theta 0',
+);
+near(
+  getRoamViewAngle({ x: 30, y: 10, z: 0 }, { x: 0, y: 0, z: 0 }, 99),
+  Math.PI / 2,
+  'a target due -X reads as theta 90',
+);
+
+// Straight down names no heading, so the caller's own is kept.
+assert.equal(
+  getRoamViewAngle({ x: 5, y: 20, z: 5 }, { x: 5, y: 0, z: 5 }, 1.25),
+  1.25,
+  'a look point overhead falls back',
 );
 
 console.log('roaming camera tests passed');
