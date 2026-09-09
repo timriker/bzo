@@ -483,7 +483,7 @@ app.get('/login', async (req, res) => {
   const callsign = separator === -1 ? '' : packed.slice(separator + 1);
   log(`[LOGIN] callback token=${token} callsign="${callsign}"`);
   if (!callsign) {
-    res.status(400).send(`Got a token but no callsign: ${packed}\n`);
+    res.status(400).send('Got a token but no callsign. Start again at /login.\n');
     return;
   }
 
