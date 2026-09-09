@@ -6,6 +6,8 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
 
 ## [Unreleased]
 
+## [1.0.93] - 2026-09-09
+
 ### Added
 - **A fifth tank: `Bzship`**, contributed by Aeonovyli under CC BY-SA 4.0 and
   re-tagged for bzo. The mesh is theirs untouched; its 37 Blender-default objects
