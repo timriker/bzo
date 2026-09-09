@@ -6,6 +6,8 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
 
 ## [Unreleased]
 
+## [1.0.90] - 2026-09-09
+
 ### Added
 - **`?follow=leader` is a link to hand somebody who wants to watch.** It joins as
   an observer in the follow view on whoever is leading, without stopping to ask
