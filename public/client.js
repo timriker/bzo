@@ -295,6 +295,7 @@ import {
   pyramidShrinkFactor,
   getPyramidFaceLocalNormal,
   getPyramidSurfaceLocalHeight,
+  isOverFlatTop,
   isWithinPyramidFootprint,
   movingTankOverlapsHeight,
   phasedObstacleExpels,
@@ -305,6 +306,12 @@ import {
   WORLD_WALL_HEIGHT,
 } from './collision.mjs';
 import { resolveTankMotion } from './motion.mjs';
+import {
+  TRACK_SURFACE_TOLERANCE,
+  TRACK_UPDATE_TIME,
+  getTrackMarkPlacement,
+  getTrackMarkSides,
+} from './tracks.mjs';
 
 // Register the service worker that makes the game installable and serves its
 // assets from disk. The build id rides in the script URL, so any change to what
@@ -7196,6 +7203,78 @@ function updateTankDimensions(deltaTime) {
   });
 }
 
+// `TrackMarks::onBuilding` (`TrackMarks.cxx:415`): is there a surface directly
+// under this point for a mark to lie on. Upstream casts a short ray down through
+// its collision octree and takes any flat-topped obstacle whose top the mark is
+// level with; bzo walks the obstacle list, as every other geometry question on
+// this client does, and asks the same two things of each -- is the mark level
+// with the top, and is it over the footprint.
+//
+// The world floor answers first and answers everywhere, which is why upstream
+// never asks this of a mark left on the ground.
+function isTrackSurfaceAt(x, y, z) {
+  if (Math.abs(y) <= TRACK_SURFACE_TOLERANCE) return true;
+  for (const obs of getCollisionColliders()) {
+    // Nothing a tank drives through holds a mark up either, and a collider
+    // missing a dimension has no top to be level with.
+    if (obs.driveThrough) continue;
+    if (!Number.isFinite(obs.w) || !Number.isFinite(obs.d) || !Number.isFinite(obs.h)) continue;
+    if (Math.abs(y - getColliderTopY(obs)) > TRACK_SURFACE_TOLERANCE) continue;
+    if (isOverFlatTop(obs, x, z)) return true;
+  }
+  return false;
+}
+
+// `Player::updateTrackMarks` (`Player.cxx:458`), for every tank this client can
+// see. Upstream runs it from `Player::updatePlayerState` beside the tread
+// animation, on a clock of its own: a mark every `TrackMarks::updateTime`
+// whatever the frame rate, and the clock is only reset when a mark is actually
+// laid, so a tank that has been sitting still leaves one the moment it moves.
+//
+// A tank in the air leaves nothing -- there is no surface under the treads --
+// and neither does one phased into a wall, which is upstream's
+// `isAlive() && !isFalling() && !isPhantomZoned()`. Falling is asked of the
+// local tank through the ground state its own motion resolves, and of a remote
+// one through the jump direction its updates carry.
+function updateTrackMarks(deltaTime) {
+  if (!renderManager || !gameConfig || !(deltaTime > 0)) return;
+
+  tanks.forEach((tank, playerId) => {
+    const state = tank.userData.playerState;
+    if (!state || !(state.health > 0)) return;
+
+    const elapsed = (tank.userData.trackMarkTimer || 0) + deltaTime;
+    tank.userData.trackMarkTimer = elapsed;
+    if (elapsed <= TRACK_UPDATE_TIME) return;
+
+    const falling = playerId === myPlayerId
+      ? isInAir
+      : (tank.userData.jumpDirection !== null && tank.userData.jumpDirection !== undefined);
+    if (falling) return;
+    const flag = getPlayerFlag(playerId);
+    if (isZoned(flag?.type ?? null, flag?.zoned === true)) return;
+
+    const mark = getTrackMarkPlacement({
+      x: tank.position.x,
+      y: tank.position.y,
+      z: tank.position.z,
+      rotation: tank.rotation.y,
+      // Upstream's `relativeSpeed` is the velocity resolved along the heading,
+      // in world units; bzo carries the same thing as a fraction of tank speed.
+      speed: (tank.userData.forwardSpeed || 0) * gameConfig.TANK_SPEED,
+      scaleLength: tank.userData.dimensionScaleLength ?? 1,
+      scaleWidth: tank.userData.dimensionScaleWidth ?? 1,
+    });
+    if (!mark) return;
+
+    mark.sides = getTrackMarkSides(mark, isTrackSurfaceAt);
+    if (!mark.sides) return;
+
+    renderManager.addTrackMark(mark);
+    tank.userData.trackMarkTimer = 0;
+  });
+}
+
 function triggerSpawnEffectForTank(tank, colorOverride = null) {
   if (!tank || !renderManager || !tank.position) return;
 
@@ -12251,6 +12330,11 @@ function animate(frameTime) {
   renderManager.updateExplosions(deltaTime);
   updatePausedSpheres();
   renderManager.updateTreads(tanks, deltaTime, gameConfig);
+  // Where the treads have been. Upstream lays the marks with the rest of the
+  // per-tank visuals and ages them once for the whole world
+  // (`playing.cxx:7316`), so the two halves sit either side of the same call.
+  updateTrackMarks(deltaTime);
+  renderManager.updateTrackMarks(deltaTime);
   renderManager.updateMuzzleFlashes(deltaTime);
   renderManager.updateRicochetEffects(deltaTime);
   renderManager.updateShotTeleportEffects(deltaTime);

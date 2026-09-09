@@ -31,6 +31,14 @@ import {
   getPyramidSurfaceLocalHeight,
 } from './collision.mjs';
 import {
+  TRACK_TREAD_LEFT,
+  TRACK_TREAD_RIGHT,
+  TREAD_INSIDE,
+  TREAD_MARK_WIDTH,
+  TREAD_OUTSIDE,
+  getTrackMarkAlpha,
+} from './tracks.mjs';
+import {
   getPlayerTeamColor,
   getTeamFromColorIndex,
 } from './teams.mjs';
@@ -526,6 +534,32 @@ const GROUND_RECEIVER_SUN_DIMMING = 0.6;      // draw(): B = 1 - 0.6 * sunBright
 // Above the shadow darkening pass, so a shot lights ground it has just darkened.
 const GROUND_RECEIVER_Y = 0.04;
 const GROUND_RECEIVER_RENDER_ORDER = 21;
+
+// Tank track marks. Upstream draws these last of the things that lie on the
+// ground -- `renderGroundEffects` puts down the grid, the shadows and the
+// receivers (`SceneRenderer.cxx:975`) and `doRender` lays the ground tracks over
+// them (`SceneRenderer.cxx:1057`) -- so they take the next render order up, and
+// `TRACK_HEIGHT_OFFSET` puts them on the next layer up as well.
+//
+// Upstream keeps two lists and draws them differently: ground marks with the
+// depth test off, because it has to support a client with no depth buffer at
+// all, and marks left on a roof with depth writes off so they do not fight the
+// roof. WebGL always has the depth buffer, so one mesh with the writes off does
+// for both -- each mark is already lifted clear of the surface it sits on, and
+// the depth test is what stops a mark behind a building showing through it.
+const TRACK_MARK_RENDER_ORDER = 22;
+// A fixed budget rather than a growing one. A tank lays 20 marks a second and
+// they last 3, so 60 entries covers one tank driving without pause and this
+// covers eight of them; past that the oldest mark is dropped to make room, so a
+// crowded map shortens every trail instead of costing the client anything. The
+// pool is 124KB of vertex data whether it is used or not, which is what buys a
+// mark that is written once when it is laid and never moved again -- and every
+// upload is bounded by the marks that are alive, not by the size of the pool.
+const TRACK_MARK_CAPACITY = 512;
+// Two quads per entry, one per tread, four vertices each.
+const TRACK_MARK_QUADS = 2;
+const TRACK_MARK_VERTICES = TRACK_MARK_QUADS * 4;
+const TRACK_MARK_INDICES = TRACK_MARK_QUADS * 6;
 
 // BZFlag gives every dynamic light the same falloff, 1/(c + l*d + q*d*d) --
 // bolts (BoltSceneNode.cxx:52-55), jump jets (TankSceneNode.cxx:75-83) and
@@ -2725,6 +2759,9 @@ class RenderManager {
   setObstacles(obstacles = []) {
     if (!this.scene) return;
     this.clearObstacles();
+    // A trail belongs to the map it was left on, which is upstream's
+    // `TrackMarks::clear()` from `TrackMarks::init()`.
+    this.clearTrackMarks();
 
     // Track max obstacle height for cardinal marker positioning
     this.maxObstacleHeight = 0;
@@ -6730,6 +6767,233 @@ class RenderManager {
         });
       }
     });
+  }
+
+  // The whole world's track marks in one draw. Upstream gives each mark a scene
+  // node of its own and walks a linked list per frame; here every mark is a pair
+  // of quads at a fixed slot in one buffer, written when the mark is laid and
+  // never moved again, so the per-frame cost is the fade -- one alpha per vertex
+  // of the marks that are still alive -- and nothing else.
+  //
+  // Every mark fades over the same `_trackFade`, and they are laid in time
+  // order, so the live marks are always one run of slots and the oldest is
+  // always the next to go. That is what lets the ring be walked from its tail
+  // rather than swept, and what bounds every buffer upload to the marks that are
+  // actually on the ground.
+  _getTrackMarkMesh() {
+    if (this._trackMarkMesh) return this._trackMarkMesh;
+
+    const vertices = TRACK_MARK_CAPACITY * TRACK_MARK_VERTICES;
+    const geometry = new THREE.BufferGeometry();
+    const positions = new THREE.BufferAttribute(new Float32Array(vertices * 3), 3);
+    // Four components: the mark is black and the fade is in the alpha, exactly
+    // as `drawTreads` sets `glColor4f(0, 0, 0, 1 - ratio)`.
+    const colors = new THREE.BufferAttribute(new Float32Array(vertices * 4), 4);
+    positions.setUsage(THREE.DynamicDrawUsage);
+    colors.setUsage(THREE.DynamicDrawUsage);
+    geometry.setAttribute('position', positions);
+    geometry.setAttribute('color', colors);
+    const index = new Uint16Array(TRACK_MARK_CAPACITY * TRACK_MARK_QUADS * 6);
+    for (let quad = 0; quad < TRACK_MARK_CAPACITY * TRACK_MARK_QUADS; quad += 1) {
+      const v = quad * 4;
+      index.set([v, v + 1, v + 3, v + 1, v + 2, v + 3], quad * 6);
+    }
+    geometry.setIndex(new THREE.BufferAttribute(index, 1));
+
+    const material = new THREE.MeshBasicMaterial({
+      vertexColors: true,
+      transparent: true,
+      // The last thing drawn on the ground writes no depth, so the marks do not
+      // occlude each other where a trail crosses itself.
+      depthWrite: false,
+    });
+    const mesh = new THREE.Mesh(geometry, material);
+    mesh.renderOrder = TRACK_MARK_RENDER_ORDER;
+    // World-space vertices, so the mesh sits at the origin and never moves.
+    mesh.matrixAutoUpdate = false;
+    mesh.updateMatrix();
+    // The marks are scattered over the whole map, so a bound around them is the
+    // map and computing one every frame would cost more than the draw it saves.
+    mesh.frustumCulled = false;
+    mesh.visible = false;
+    this._trackMarkMesh = this._tagDraws(mesh, 'effect');
+    this._trackMarkAges = new Float32Array(TRACK_MARK_CAPACITY);
+    // The live run: `count` slots starting at `tail`, wrapping.
+    this._trackMarkTail = 0;
+    this._trackMarkCount = 0;
+    this.getWorldGroup().add(mesh);
+    return mesh;
+  }
+
+  // One mark, as `TrackMarks::addMark` accepts it: a place, a heading, the
+  // tank's width scale, and which treads left it. A pool that is full drops its
+  // oldest mark to make room -- upstream's list has no bound and lets a busy map
+  // grow one instead, which is the trade a client that has to hold a frame rate
+  // cannot make.
+  addTrackMark(mark) {
+    if (!this.worldGroup || !mark || !mark.sides) return;
+    const mesh = this._getTrackMarkMesh();
+    if (this._trackMarkCount === TRACK_MARK_CAPACITY) {
+      this._trackMarkTail = (this._trackMarkTail + 1) % TRACK_MARK_CAPACITY;
+      this._trackMarkCount -= 1;
+    }
+    const slot = (this._trackMarkTail + this._trackMarkCount) % TRACK_MARK_CAPACITY;
+    this._trackMarkCount += 1;
+
+    const positions = mesh.geometry.getAttribute('position');
+    const colors = mesh.geometry.getAttribute('color');
+    const positionArray = positions.array;
+    const colorArray = colors.array;
+
+    // The tank's own axes. Upstream draws the quad in tank space and lets
+    // `glRotatef` place it; bzo writes world-space vertices, so the frame is
+    // spelled out here -- forward is bzo's (-sin r, -cos r) and the lateral axis
+    // leads it by a quarter turn, which is upstream's +y.
+    const sin = Math.sin(mark.angle);
+    const cos = Math.cos(mark.angle);
+    const forwardX = -sin;
+    const forwardZ = -cos;
+    const leftX = -cos;
+    const leftZ = sin;
+    // `glScalef(1, te.scale, 1)`: the tank's width scale reaches the lateral
+    // offsets and nothing else, so a wide tank leaves its marks further apart
+    // without making either of them longer.
+    const inside = TREAD_INSIDE * mark.scale;
+    const outside = TREAD_OUTSIDE * mark.scale;
+    const halfWidth = 0.5 * TREAD_MARK_WIDTH;
+
+    const writeQuad = (quad, near, far) => {
+      let vertex = ((slot * TRACK_MARK_QUADS) + quad) * 4;
+      // Wound so the quad faces up: forward cross left is +y, so along the tread
+      // first and then across it is counter-clockwise seen from above.
+      const corners = [
+        -halfWidth, near,
+        +halfWidth, near,
+        +halfWidth, far,
+        -halfWidth, far,
+      ];
+      for (let i = 0; i < corners.length; i += 2) {
+        const along = corners[i];
+        const across = corners[i + 1];
+        const p = vertex * 3;
+        positionArray[p] = mark.x + (forwardX * along) + (leftX * across);
+        positionArray[p + 1] = mark.y;
+        positionArray[p + 2] = mark.z + (forwardZ * along) + (leftZ * across);
+        const c = vertex * 4;
+        colorArray[c] = 0;
+        colorArray[c + 1] = 0;
+        colorArray[c + 2] = 0;
+        colorArray[c + 3] = 1;
+        vertex += 1;
+      }
+    };
+
+    if (mark.sides & TRACK_TREAD_LEFT) writeQuad(0, inside, outside);
+    else this._collapseTrackMarkQuad(positionArray, slot, 0);
+    if (mark.sides & TRACK_TREAD_RIGHT) writeQuad(1, -outside, -inside);
+    else this._collapseTrackMarkQuad(positionArray, slot, 1);
+
+    this._trackMarkAges[slot] = 0;
+    // One slot's worth of vertices, rather than the pool: a mark is laid twenty
+    // times a second per tank and this is the only thing that ever moves one.
+    positions.addUpdateRange(slot * TRACK_MARK_VERTICES * 3, TRACK_MARK_VERTICES * 3);
+    positions.needsUpdate = true;
+    this._setTrackMarkDrawRange();
+    mesh.visible = true;
+  }
+
+  // A tread that left no mark collapses to a point at the origin, which is a
+  // pair of zero-area triangles: still in the index buffer, still submitted, and
+  // producing no fragments at all.
+  _collapseTrackMarkQuad(positionArray, slot, quad) {
+    const start = (((slot * TRACK_MARK_QUADS) + quad) * 4) * 3;
+    positionArray.fill(0, start, start + 12);
+  }
+
+  // Only the live run is submitted. It is one span of slots, so the common case
+  // is a draw range over it; where it wraps the whole pool goes, and the dead
+  // slots in the middle are the collapsed quads, which cost no fragments.
+  _setTrackMarkDrawRange() {
+    const geometry = this._trackMarkMesh.geometry;
+    const tail = this._trackMarkTail;
+    const count = this._trackMarkCount;
+    if (count === 0) geometry.setDrawRange(0, 0);
+    else if (tail + count <= TRACK_MARK_CAPACITY) {
+      geometry.setDrawRange(tail * TRACK_MARK_INDICES, count * TRACK_MARK_INDICES);
+    } else {
+      geometry.setDrawRange(0, TRACK_MARK_CAPACITY * TRACK_MARK_INDICES);
+    }
+  }
+
+  // `TrackMarks::update` (`TrackMarks.cxx:508`) ages every mark and drops the
+  // ones past `_trackFade`. Upstream also re-culls marks a physics driver has
+  // carried off the surface they were left on; bzo has no physics drivers, so
+  // where a mark was laid is where it stays.
+  updateTrackMarks(deltaTime) {
+    const mesh = this._trackMarkMesh;
+    if (!mesh || !(deltaTime > 0) || this._trackMarkCount === 0) return;
+
+    const positions = mesh.geometry.getAttribute('position');
+    const colors = mesh.geometry.getAttribute('color');
+    const positionArray = positions.array;
+    const colorArray = colors.array;
+    const ages = this._trackMarkAges;
+
+    // Retire from the tail, which is the oldest and so the first to expire.
+    while (this._trackMarkCount > 0) {
+      const slot = this._trackMarkTail;
+      ages[slot] += deltaTime;
+      if (getTrackMarkAlpha(ages[slot]) > 0) break;
+      this._collapseTrackMarkQuad(positionArray, slot, 0);
+      this._collapseTrackMarkQuad(positionArray, slot, 1);
+      positions.addUpdateRange(slot * TRACK_MARK_VERTICES * 3, TRACK_MARK_VERTICES * 3);
+      positions.needsUpdate = true;
+      this._trackMarkTail = (slot + 1) % TRACK_MARK_CAPACITY;
+      this._trackMarkCount -= 1;
+    }
+    this._setTrackMarkDrawRange();
+    if (this._trackMarkCount === 0) {
+      mesh.visible = false;
+      return;
+    }
+
+    // The rest of the run has already been aged at its head, so start past it.
+    for (let step = 1; step < this._trackMarkCount; step += 1) {
+      const slot = (this._trackMarkTail + step) % TRACK_MARK_CAPACITY;
+      ages[slot] += deltaTime;
+    }
+    for (let step = 0; step < this._trackMarkCount; step += 1) {
+      const slot = (this._trackMarkTail + step) % TRACK_MARK_CAPACITY;
+      const alpha = getTrackMarkAlpha(ages[slot]);
+      const start = slot * TRACK_MARK_VERTICES * 4;
+      for (let i = start + 3; i < start + (TRACK_MARK_VERTICES * 4); i += 4) {
+        colorArray[i] = alpha;
+      }
+    }
+    // The live run is contiguous, so it is one upload, or two where it wraps.
+    const stride = TRACK_MARK_VERTICES * 4;
+    const first = Math.min(this._trackMarkCount, TRACK_MARK_CAPACITY - this._trackMarkTail);
+    colors.addUpdateRange(this._trackMarkTail * stride, first * stride);
+    if (first < this._trackMarkCount) {
+      colors.addUpdateRange(0, (this._trackMarkCount - first) * stride);
+    }
+    colors.needsUpdate = true;
+  }
+
+  // `TrackMarks::clear`, which upstream calls when the renderer starts on a new
+  // world. A trail belongs to the map it was left on.
+  clearTrackMarks() {
+    const mesh = this._trackMarkMesh;
+    if (!mesh) return;
+    const positions = mesh.geometry.getAttribute('position');
+    positions.array.fill(0);
+    positions.clearUpdateRanges();
+    positions.needsUpdate = true;
+    this._trackMarkAges.fill(0);
+    this._trackMarkTail = 0;
+    this._trackMarkCount = 0;
+    this._setTrackMarkDrawRange();
+    mesh.visible = false;
   }
 
   updateClouds(deltaTime, mapSize) {

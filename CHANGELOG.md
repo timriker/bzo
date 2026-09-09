@@ -6,6 +6,29 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
 
 ## [Unreleased]
 
+### Added
+- **Tanks leave tracks.** A pair of tread marks every twentieth of a second
+  behind a tank driving forward and in front of one reversing, fading out over
+  three seconds -- `TrackMarks.cxx` and the `Player::updateTrackMarks` that feeds
+  it, at upstream's own size, spacing and fade. They are laid on roofs as well as
+  on the floor, and a tread hanging over the edge of a roof leaves nothing, which
+  is upstream's `InitAirCull`. `N` Narrow leaves no marks and neither does a
+  burrowed tank, both of which are refusals `addMark` already makes.
+
+  Of upstream's three kinds of track mark this is the one bzo can draw: the
+  puddles need a reflective ground bzo does not have, and nothing in BZFlag ever
+  asks for the third. The two Effects-menu knobs, `userTrackFade` and
+  `trackMarkCulling`, are absent as usual -- and half of the second one is a
+  per-frame re-cull for marks a physics driver has carried away, which bzo has
+  nothing to carry them with.
+
+  The whole world's marks are one mesh and one draw. A mark is written into a
+  fixed slot when it is laid and never moved again, so the only per-frame work is
+  the fade, and the buffer upload covers the marks that are alive rather than the
+  size of the pool. The pool holds 512 marks -- eight tanks driving without pause
+  -- and a full one drops its oldest, so a crowded map shortens every trail
+  instead of costing the client anything. Closes #24.
+
 ## [1.0.88] - 2026-09-08
 
 ### Added

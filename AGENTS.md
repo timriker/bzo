@@ -398,11 +398,51 @@ that rides along with the shot for four seconds, not a flash at the portal.
 | landing squish | `Player::setLandingSpeed` | `Player.cxx:1015` |
 | flag cloth and pole | `FlagSceneNode` | `FlagSceneNode.cxx:113` |
 | flag arrival/departure warp | `FlagWarpSceneNode` | `FlagWarpSceneNode.cxx:28` |
+| tank track marks | `TrackMarks` | `TrackMarks.cxx:320` |
 
 Textures come from `$HOME/bzflag/data/` into `public/textures/`, and belong in
 the map-entry preload list in `public/client.js`. Effect timings are hardcoded
 constants upstream, so keep them as constants here, each annotated with the
 upstream line it came from.
+
+### Tank tracks
+
+Upstream keeps three kinds of track mark and bzo draws one of them. `PuddleTrack`
+needs `_mirror` set to something other than "none" (`addMark`,
+`TrackMarks.cxx:322`) and bzo draws no reflections; `SmokeTrack` has no producer
+anywhere in the upstream tree, its texture a FIXME and nothing ever asking for
+one. What is left is the treads, which is the effect the issue is about.
+
+The split follows upstream's. `Player::updateTrackMarks` decides where a tank's
+next mark goes and whether there is one to lay, and that is `public/tracks.mjs`
+called from `client.js`, which is the side that knows a tank's flag, its ground
+state and the obstacle list. `TrackMarks.cxx` ages the marks and draws them, and
+that is `render.js`.
+
+**The whole world's marks are one mesh and one draw.** Upstream gives each mark a
+scene node of its own and walks a linked list every frame; bzo writes a mark's
+two quads into a fixed slot in one buffer when it is laid and never moves them
+again, so the per-frame cost is the fade and nothing else. Every mark lasts the
+same `_trackFade` and they are laid in time order, so the live marks are always
+one run of slots and the oldest is always the next to go -- which is what lets
+the ring be walked from its tail rather than swept, bounds the colour upload to
+the marks that are alive, and lets the draw range cover them rather than the
+pool. A frame therefore costs one draw call, four triangles per live mark, and
+one alpha per vertex of them.
+
+The pool is a ring of 512 marks -- eight tanks driving without pause, 124KB of
+vertex data whether it is used or not -- and a full pool drops its oldest mark,
+so a crowded map shortens every trail rather than costing the client anything.
+That is the memory question `docs/effects-plan.md` asked to answer before
+building this.
+
+Two upstream knobs are absent, per the rule of shipping the default variant and
+no setting: `userTrackFade` and `trackMarkCulling`. The second is not only a
+setting -- its `PhyDrvAirCull` half re-tests every mark each frame in case a
+physics driver has carried it off the surface it was left on, and bzo has no
+physics drivers, so where a mark is laid is where it stays. The `InitAirCull`
+half is kept, and is what stops a tank leaving marks in the air off the edge of a
+roof.
 
 ## Radar colours
 
