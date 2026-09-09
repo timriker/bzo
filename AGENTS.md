@@ -2418,6 +2418,14 @@ a release", execute this end to end unless they explicitly ask for a dry run,
 prepare-only, or no-commit. After completing it, stop at a concise confirmation
 of outcomes; do not append optional follow-up suggestions.
 
+**Commit everything first, and leave nothing behind.** A tag names a tree, so an
+edit still sitting in the working directory when the tag goes out is not in the
+release -- the version says one thing and the box says another, and nobody can
+reproduce it from the tag. That includes work somebody else left uncommitted:
+review it, say what it is, and commit it, rather than tagging around it. `git
+status` is clean before `release:prepare` and clean again once the tag is pushed;
+anything still pending at the end means the release went out without it.
+
 ```bash
 npm run release:prepare -- 1.0.37
 ```

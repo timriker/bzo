@@ -367,6 +367,10 @@ CI also runs these checks on pushes and pull requests.
 
 ## Release process
 
+Commit everything first: a tag names a tree, and an edit left uncommitted when
+the tag goes out is not in the release. `git status` is clean before preparing
+one and clean again once the tag is pushed.
+
 Prepare a release locally:
 
 ```bash
