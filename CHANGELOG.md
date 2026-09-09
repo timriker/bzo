@@ -6,6 +6,8 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
 
 ## [Unreleased]
 
+## [1.0.91] - 2026-09-09
+
 ### Added
 - **The operator panel offers the game's shape.** Teams on or off, rabbit chase
   off/score/killer/random, jumping, a playing limit and a limit for each of the
@@ -25,7 +27,6 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
   playing limit plus the observer limit, refuses the arrival with "This game is
   full". Until now the number only supplied the default per-team limit and capped
   nothing.
-
 - **Self destruct counts down.** `Q` starts upstream's five second countdown --
   `cmdDestruct` (`clientCommands.cxx:400`) -- with the count on the HUD and `Q`
   again to call it off, where before it blew the tank up on the keypress. The
@@ -33,7 +34,7 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
   because it decides whether a tank may be hit and has no such stake in this
   one; what the client sends when the count runs out is the same self destruct
   request as before. A tank that dies under the countdown does not come back to
-  it. Closes #50.
+  it.
 
 ### Fixed
 - **A tank shot during the pause countdown comes back playing.** The server
@@ -49,7 +50,7 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
   without a countdown at all, since genocide and `/kill` both reach a paused tank.
   The rules over all of this now live in one place, `public/pause.mjs`, with tests:
   the pause key and a menu covering the game read the same state machine, and it
-  was them having a rule each that let a life ending fall between them. Closes #48.
+  was them having a rule each that let a life ending fall between them.
 - **Every obstacle carries a `rotation`.** The BZW importer left the field off any
   `box` or `pyramid` whose block gave no `rotation` line, so each reader carried a
   default of its own -- `obs.rotation || 0` in the collision pair, the renderer,
