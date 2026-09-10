@@ -7,4 +7,4 @@
 
 // Written by scripts/prepare-release.mjs and verified against package.json by
 // scripts/check-release.mjs. Do not edit by hand.
-export const CLIENT_VERSION = '1.0.94';
+export const CLIENT_VERSION = '1.0.95';

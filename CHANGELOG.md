@@ -6,6 +6,8 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
 
 ## [Unreleased]
 
+## [1.0.95] - 2026-09-10
+
 ### Changed
 - **Faces buried inside other obstacles are no longer built.** Upstream already
   leaves out the two every map hits -- a box's bottom polygon when it sits on the
