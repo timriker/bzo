@@ -474,6 +474,27 @@ const BOX_TEXTURE_SCALES = { sideScale: 8, capScale: 2 };
 // BoxGeometry emits its faces in this order, four vertices and six indices each,
 // which is what _prepareBoxGeometry's loops count on.
 const BOX_FACE = Object.freeze({ PX: 0, NX: 1, PY: 2, NY: 3, PZ: 4, NZ: 5 });
+// What an untinted group in a tinted fragment multiplies its texture by.
+const WHITE_OBSTACLE_TINT = Object.freeze([1, 1, 1]);
+
+// The colour a map painted an obstacle, in the order its geometry groups take
+// them -- walls then caps -- or null where the map painted none. The BZW reader
+// resolves a face selector down to those two, since that is as finely as a box
+// or a pyramid divides here.
+function getObstacleTint(obs) {
+  if (!obs?.wallColor && !obs?.capColor) return null;
+  return [obs.wallColor || WHITE_OBSTACLE_TINT, obs.capColor || WHITE_OBSTACLE_TINT];
+}
+
+// A tinted obstacle's debug label wears its colour, so a map's painting can be
+// read off the label as well as off the obstacle. The cap first: the label hangs
+// over the top.
+function getObstacleTintHex(obs) {
+  const tint = obs?.capColor || obs?.wallColor;
+  if (!tint) return undefined;
+  const channel = (value) => Math.round(Math.max(0, Math.min(1, value)) * 0xff);
+  return (channel(tint[0]) << 16) | (channel(tint[1]) << 8) | channel(tint[2]);
+}
 // The same, for a pyramid's slanted sides and its base.
 const PYRAMID_TEXTURE_SCALE = 8;
 const PYRAMID_ROOF_TEXTURE_SCALE = 2;
@@ -2653,15 +2674,19 @@ class RenderManager {
   // the one place every obstacle's triangles are already in world space and
   // already being copied one at a time. A triangle it claims is kept out of the
   // buffers entirely, vertices and all.
-  _addObstacleFragment(fragments, key, materials, geometry, matrix, color = null, isBuried = null) {
+  // `colors` is one colour per material group or null, and a fragment either
+  // carries them for every vertex or for none: a base takes its team's, a box or
+  // a pyramid the colour its map painted it, and each rides on the vertices
+  // rather than on a material, which is what lets obstacles that are tinted
+  // differently still merge into one mesh. A group the caller left out is white,
+  // which multiplies its texture by nothing.
+  _addObstacleFragment(fragments, key, materials, geometry, matrix, colors = null, isBuried = null) {
     geometry.applyMatrix4(matrix);
     let fragment = fragments.get(key);
     if (!fragment) {
       fragment = {
         materials,
-        // Only the bases carry one, and they carry it because it is what lets
-        // every base on the map share one material whatever team holds it.
-        colored: color !== null,
+        colored: colors !== null,
         groups: materials.map(() => ({ positions: [], normals: [], uvs: [], colors: [], indices: [] })),
       };
       fragments.set(key, fragment);
@@ -2673,6 +2698,7 @@ class RenderManager {
     for (const group of geometry.groups) {
       const bucket = fragment.groups[group.materialIndex];
       if (!bucket) continue;
+      const color = colors ? (colors[group.materialIndex] || WHITE_OBSTACLE_TINT) : null;
       // A vertex is copied once however many of this group's triangles use it,
       // and a vertex no surviving triangle names is never copied at all.
       const remapped = new Map();
@@ -2757,7 +2783,10 @@ class RenderManager {
     // keep their own entry and are not cleared here.
     this._disposeSharedObstacleMaterials('box');
     this._disposeSharedObstacleMaterials('boxFlat');
+    this._disposeSharedObstacleMaterials('boxTinted');
+    this._disposeSharedObstacleMaterials('boxFlatTinted');
     this._disposeSharedObstacleMaterials('pyramid');
+    this._disposeSharedObstacleMaterials('pyramidTinted');
     this._disposeSharedObstacleMaterials('base');
     this._clearDebugLabels('obstacle');
   }
@@ -2812,6 +2841,9 @@ class RenderManager {
         obs, ax, ay, az, bx, by, bz, cx, cy, cz,
       );
 
+      // The colour the map painted, if it painted one.
+      const tint = getObstacleTint(obs);
+
       if (obs.kind === 'teleporter') {
         mesh = this._createTeleporterMesh(obs, i + 1);
         mesh.position.set(obs.x, baseY, obs.z);
@@ -2823,6 +2855,10 @@ class RenderManager {
         this.worldGroup.add(this._tagDraws(mesh, 'teleporter'));
         this._addDebugLabel(mesh, 'obstacle');
       } else if (obs.kind === 'base') {
+        // A base is tinted by the team that holds it rather than by anything the
+        // map said, so its own `color` is a team index and not a colour.
+        const baseTeamColor = getPlayerTeamColor(getTeamFromColorIndex(obs.team || 1));
+        const baseTeamTint = getBaseTeamTint(baseTeamColor);
         this._addObstacleFragment(
           fragments,
           'base',
@@ -2848,13 +2884,14 @@ class RenderManager {
             omitFaces: baseY > 0 ? [] : [BOX_FACE.NY],
           }),
           obstacleMatrix(),
-          getBaseTeamTint(getPlayerTeamColor(getTeamFromColorIndex(obs.team || 1))),
+          [baseTeamTint, baseTeamTint],
           buriedFace,
         );
         this._addDebugLabelAt(
           obs.name || `Base ${i + 1}`,
           new THREE.Vector3(obs.x, baseY + h + 2, obs.z),
           'obstacle',
+          baseTeamColor,
         );
       } else if (obs.type === 'pyramid') {
         const geometry = new THREE.ConeGeometry(0.5 / Math.SQRT2, h, 4, 1);
@@ -2897,21 +2934,24 @@ class RenderManager {
           });
         }
 
+        const pyramidKey = tint ? 'pyramidTinted' : 'pyramid';
         this._addObstacleFragment(
           fragments,
-          'pyramid',
+          pyramidKey,
           this._getSharedObstacleMaterials(
-            'pyramid', createPyramidTexture, createRoofTexture, { flatShading: true }
+            pyramidKey, createPyramidTexture, createRoofTexture,
+            tint ? { flatShading: true, vertexColors: true } : { flatShading: true }
           ),
           geometry,
           obstacleMatrix(),
-          null,
+          tint,
           buriedFace,
         );
         this._addDebugLabelAt(
           obs.name || `Pyramid ${i + 1}`,
           new THREE.Vector3(obs.x, baseY + h + 2, obs.z),
           'obstacle',
+          getObstacleTintHex(obs),
         );
       } else {
         // A box with no height is a pad on the ground rather than a block: a map
@@ -2923,16 +2963,23 @@ class RenderManager {
         // base gets, or the two surfaces are a coin toss per pixel. Its own
         // material key so an ordinary box does not pay for the bias, and so all
         // the flat ones still share one material between them.
+        //
+        // A tint the map painted takes a key of its own for the same reason: the
+        // colour rides on the vertices, so an untinted box would otherwise carry
+        // three numbers per vertex to say white.
         const flatOnGround = h <= 0 && baseY <= 0;
-        const boxKey = flatOnGround ? 'boxFlat' : 'box';
+        const boxKey = `${flatOnGround ? 'boxFlat' : 'box'}${tint ? 'Tinted' : ''}`;
         this._addObstacleFragment(
           fragments,
           boxKey,
           this._getSharedObstacleMaterials(
             boxKey, createBoxWallTexture, createRoofTexture,
-            flatOnGround
-              ? { polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 }
-              : {}
+            {
+              ...(flatOnGround
+                ? { polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 }
+                : {}),
+              ...(tint ? { vertexColors: true } : {}),
+            }
           ),
           // BoxSceneNodeGenerator.cxx:66, in its own words: "Don't generate the
           // bottom polygon if on the ground (or lower)".
@@ -2941,13 +2988,14 @@ class RenderManager {
             omitFaces: baseY > 0 ? [] : [BOX_FACE.NY],
           }),
           obstacleMatrix(),
-          null,
+          tint,
           buriedFace,
         );
         this._addDebugLabelAt(
           obs.name || `Box ${i + 1}`,
           new THREE.Vector3(obs.x, baseY + h + 2, obs.z),
           'obstacle',
+          getObstacleTintHex(obs),
         );
       }
 
@@ -3348,7 +3396,7 @@ class RenderManager {
     this._updateDebugLabelsVisibility();
   }
 
-  _createDebugLabelSprite(name) {
+  _createDebugLabelSprite(name, color = '#ffffff') {
     const labelMaterial = new THREE.SpriteMaterial({
       depthTest: true,
       depthWrite: false,
@@ -3357,15 +3405,17 @@ class RenderManager {
     });
     const label = new THREE.Sprite(labelMaterial);
     label.scale.set(4, 1, 1);
-    this.updateSpriteLabel(label, name || '', '#ffffff');
+    this.updateSpriteLabel(label, name || '', color);
     return label;
   }
 
   // For an obstacle with no mesh of its own, because it was merged into a
   // fragment with every other obstacle of its kind. The position is in world
   // space and the label hangs off the world group rather than off the obstacle.
-  _addDebugLabelAt(name, position, type) {
-    const label = this._tagDraws(this._createDebugLabelSprite(name), 'debug');
+  // `color` is the obstacle's own where it has one -- a base's team, or the
+  // colour a map painted a box -- so the label reads as the thing it names.
+  _addDebugLabelAt(name, position, type, color = undefined) {
+    const label = this._tagDraws(this._createDebugLabelSprite(name, color ?? '#ffffff'), 'debug');
     label.position.copy(position);
     this.worldGroup.add(label);
     label.visible = this.debugLabelsEnabled;
@@ -6426,6 +6476,11 @@ class RenderManager {
   // abbreviation of a flag whose identity this client knows, or null for one it
   // does not, and it draws only while the debug labels are on.
   //
+  // The label wears the colour of the cloth under it, so it says what the flag
+  // says: a team's colour for a team flag, bzo's orange for a bad one this
+  // client has identified, and white for every other superflag -- which is what
+  // upstream draws all of them, and what an unidentified one stays.
+  //
   // Nothing here touches a mesh: the cloth and the pole are written into the
   // batch once a frame by updateFlagVisuals, which is the only place that knows
   // which way each flag has to face.
@@ -6441,7 +6496,7 @@ class RenderManager {
     const showLabel = Boolean(label) && this.debugLabelsEnabled && alpha > 0;
     if (showLabel) {
       const sprite = this._ensureFlagLabel(record);
-      this.updateSpriteLabel(sprite, label, '#ffffff');
+      this.updateSpriteLabel(sprite, label, color);
       sprite.position.set(x, y + BZFLAG_FLAG_HEIGHT + FLAG_POLE_SIZE + 1, z);
       sprite.visible = true;
     } else if (record.label) {

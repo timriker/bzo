@@ -10414,11 +10414,23 @@ function getRadarObstacles() {
 }
 
 // Team::getRadarColor is what upstream's radar draws a base in
-// (RadarRenderer.cxx:1186), and bzo has the same table. Shaded towards the
-// radar's neutral grey so a base still reads as ground rather than as a tank.
+// (RadarRenderer.cxx:1186), and bzo has the same table. That colour and the one
+// a map paints an obstacle are both shaded towards the radar's neutral grey, so
+// a coloured surface still reads as ground rather than as a tank.
 const RADAR_NEUTRAL_FILL_RGB = [180, 180, 180];
-const RADAR_BASE_TINT_STRENGTH = 0.65;
+const RADAR_TINT_STRENGTH = 0.65;
 const RADAR_NEUTRAL_FILL = `rgb(${RADAR_NEUTRAL_FILL_RGB.join(',')})`;
+
+// Channels are 0 to 1, as the colour a map states is.
+function getRadarShadedFill(red, green, blue) {
+  const shade = (value, neutral) => Math.round(
+    (neutral * (1 - RADAR_TINT_STRENGTH))
+    + (Math.max(0, Math.min(1, value)) * 0xff * RADAR_TINT_STRENGTH)
+  );
+  const [neutralRed, neutralGreen, neutralBlue] = RADAR_NEUTRAL_FILL_RGB;
+  return `rgb(${shade(red, neutralRed)},${shade(green, neutralGreen)},${shade(blue, neutralBlue)})`;
+}
+
 // One string per team, built the first time that team's base is drawn. The
 // radar repaints every frame over every obstacle in range, and this was three
 // rounds of arithmetic and a fresh string each time.
@@ -10430,22 +10442,38 @@ function getRadarBaseFill(teamColorIndex) {
 
   const team = getTeamFromColorIndex(teamColorIndex);
   const radarColor = team ? getPlayerTeamRadarColor(team) : null;
-  let fill = RADAR_NEUTRAL_FILL;
-  if (Number.isFinite(radarColor)) {
-    const shade = (shift, neutral) => Math.round(
-      (neutral * (1 - RADAR_BASE_TINT_STRENGTH))
-      + (((radarColor >> shift) & 0xff) * RADAR_BASE_TINT_STRENGTH)
-    );
-    const [nr, ng, nb] = RADAR_NEUTRAL_FILL_RGB;
-    fill = `rgb(${shade(16, nr)},${shade(8, ng)},${shade(0, nb)})`;
-  }
+  const fill = Number.isFinite(radarColor)
+    ? getRadarShadedFill(
+      ((radarColor >> 16) & 0xff) / 0xff,
+      ((radarColor >> 8) & 0xff) / 0xff,
+      (radarColor & 0xff) / 0xff,
+    )
+    : RADAR_NEUTRAL_FILL;
   radarBaseFills.set(teamColorIndex, fill);
   return fill;
 }
 
+// Cached by the colour rather than by the obstacle, for the same reason a base's
+// is cached by its team: a map that paints fifty pads one colour cuts one
+// string, and a colour means the same fill whatever map it came from.
+const radarTintFills = new Map();
+
+function getRadarTintFill(tint) {
+  const key = `${tint[0]},${tint[1]},${tint[2]}`;
+  const cached = radarTintFills.get(key);
+  if (cached) return cached;
+  const fill = getRadarShadedFill(tint[0], tint[1], tint[2]);
+  radarTintFills.set(key, fill);
+  return fill;
+}
+
+// A base takes its team's colour and anything else takes the colour its map
+// painted it, if it painted one. The cap first: the radar looks down.
 function getObstacleRadarFillStyle(obs) {
-  if (!obs || obs.kind !== 'base') return RADAR_NEUTRAL_FILL;
-  return getRadarBaseFill(Number(obs.team));
+  if (!obs) return RADAR_NEUTRAL_FILL;
+  if (obs.kind === 'base') return getRadarBaseFill(Number(obs.team));
+  const tint = obs.capColor || obs.wallColor;
+  return tint ? getRadarTintFill(tint) : RADAR_NEUTRAL_FILL;
 }
 
 // A blip the player is looking for is ringed: the rabbit, the player's own team

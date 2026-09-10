@@ -6,6 +6,47 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
 
 ## [Unreleased]
 
+### Added
+- **A map may paint a box or a pyramid.** `color` on either -- and `diffuse`,
+  which is the same property under the name bzflag itself writes -- is read as
+  three or four numbers between 0 and 1, upstream's own numeric colour, and the
+  obstacle wears it over the texture it already had. A face selector in front of
+  the keyword narrows which faces take it: bzo draws a box as its four walls and
+  its two caps, so upstream's `x+`, `z-`, `top`, `sides` and the rest land on one
+  of those two. The colour reaches every client with the rest of the world, and a
+  tinted obstacle's debug label wears it too, as a base's label now wears its
+  team's.
+
+  `flagbuffet.bzw` paints the pad under each of the thirteen bad flags' zones, so
+  a pad reads as the kind of flag standing on it. The figure is written into the
+  map rather than looked up from bzo's own bad-flag orange: what a map is painted
+  is the map's decision, and a client that changed its mind about that orange
+  would otherwise silently repaint somebody's world.
+
+  Everything that draws the obstacle follows the colour: its debug label wears
+  it, as a base's label now wears its team's, and the radar shades its footprint
+  with it, towards the panel's neutral grey by the same fraction a base's team
+  colour is shaded, so a painted surface still reads as ground rather than as a
+  tank.
+
+### Changed
+- **A debug label wears the colour of what it names.** A flag standing in the
+  world takes the colour of its own cloth, `getKnownFlagColor` -- a team's colour
+  for a team flag, bzo's orange for a bad flag this client has identified, white
+  for every other superflag -- and a base takes its team's, where every label was
+  white before. One source for each colour, so a label cannot disagree with the
+  thing it labels.
+
+  It costs one draw call for all the tinted boxes on a map and one for all the
+  tinted pyramids. The colour rides on the vertices, which is what lets obstacles
+  painted differently still merge into one mesh -- the same trick that already
+  lets every base share one material whatever team holds it -- so a map that
+  paints nothing pays nothing. Upstream reads the property on a plain `box` as
+  well, but turns that box into a mesh obstacle to carry it; the shape is the same
+  either way, so bzo keeps its own box. Alpha is read and dropped, since an
+  obstacle bzo draws is opaque, and upstream's X11 colour names are not read.
+  See `docs/bzw.md`.
+
 ## [1.0.95] - 2026-09-10
 
 ### Changed

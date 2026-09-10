@@ -585,6 +585,14 @@ end
 #end
 
 
+# The outer loop, and every flag on it is a bad one. Each pad below states the
+# colour it is painted rather than leaving the client to work out what kind of
+# flag stands on it: `color` is upstream's own material property, read here on a
+# `box` exactly as `CustomBox` reads it, and what a pad says is the map's
+# decision and nobody else's. The figure is the orange bzo draws a known bad
+# flag in, so a pad matches the flag flying over it -- but it is written out
+# here, so changing that orange does not silently repaint the world, and this map
+# would have to be edited to follow it.
 
 zone
   position -35 80 0
@@ -596,6 +604,7 @@ box
   name B_Blindness
   position -35 80 0
   size 1 1 0
+  color 1.0 0.62745 0.12549
 end
 
 zone
@@ -608,6 +617,7 @@ box
   name BY_Bouncy
   position -25 80 0
   size 1 1 0
+  color 1.0 0.62745 0.12549
 end
 
 zone
@@ -620,6 +630,7 @@ box
   name CB_Colorblindness
   position -15 80 0
   size 1 1 0
+  color 1.0 0.62745 0.12549
 end
 
 zone
@@ -632,6 +643,7 @@ box
   name FO_Forward_Only
   position -5 80 0
   size 1 1 0
+  color 1.0 0.62745 0.12549
 end
 
 zone
@@ -644,6 +656,7 @@ box
   name JM_Jamming
   position 5 80 0
   size 1 1 0
+  color 1.0 0.62745 0.12549
 end
 
 zone
@@ -656,6 +669,7 @@ box
   name LT_Left_Turn_Only
   position 15 80 0
   size 1 1 0
+  color 1.0 0.62745 0.12549
 end
 
 zone
@@ -668,6 +682,7 @@ box
   name M_Momentum
   position 25 80 0
   size 1 1 0
+  color 1.0 0.62745 0.12549
 end
 
 #zone
@@ -687,6 +702,7 @@ box
   name NJ_No_Jumping
   position 80 35 0
   size 1 1 0
+  color 1.0 0.62745 0.12549
 end
 
 zone
@@ -699,6 +715,7 @@ box
   name O_Obesity
   position 80 25 0
   size 1 1 0
+  color 1.0 0.62745 0.12549
 end
 
 zone
@@ -711,6 +728,7 @@ box
   name RC_ReverseControls
   position 80 15 0
   size 1 1 0
+  color 1.0 0.62745 0.12549
 end
 
 zone
@@ -723,6 +741,7 @@ box
   name RO_ReverseOnly
   position 80 5 0
   size 1 1 0
+  color 1.0 0.62745 0.12549
 end
 
 zone
@@ -735,6 +754,7 @@ box
   name RT_Right_Turn_Only
   position 80 -5 0
   size 1 1 0
+  color 1.0 0.62745 0.12549
 end
 
 zone
@@ -747,6 +767,7 @@ box
   name TR_Trigger_Happy
   position 80 -15 0
   size 1 1 0
+  color 1.0 0.62745 0.12549
 end
 
 zone

@@ -45,12 +45,14 @@ first, and bzo stores the answer as a positive `h` with `inverted` set.
 ## Obstacles
 
 `box`, `pyramid`, `base` and `teleporter` are read. Each takes `name`,
-`position`, `size` and `rotation`; `base` also takes `color`, `pyramid` also
-takes `flipz`, and `teleporter` also takes `border`.
+`position`, `size` and `rotation`; `box` and `pyramid` also take `color`,
+`base` also takes `color` with a different meaning, `pyramid` also takes
+`flipz`, and `teleporter` also takes `border`.
 
-`color` is a BZFlag team index, clamped to 1-4 (red, green, blue, purple), and it
-is what makes a base a capture target for that team. A `base` with no `color`
-is red.
+On a `base`, `color` is a BZFlag team index, clamped to 1-4 (red, green, blue,
+purple), and it is what makes a base a capture target for that team. A `base`
+with no `color` is red. A base is tinted by the team holding it, so it takes no
+colour of its own.
 
 **Every obstacle carries a `rotation`, whether or not the block gave one.** The
 importer states 0 for a block that says nothing, because everything downstream
@@ -70,6 +72,59 @@ still falls back to bzo's 4.
 
 An obstacle with no `name` is given one -- `B0`, `P3`, `t2` -- because the name
 is what the collision log, the debug labels and the teleporter links refer to.
+
+### Colour
+
+On a `box` or a `pyramid`, `color` is the colour the obstacle is painted, and
+`diffuse` is the same property under the name bzflag itself writes
+(`ParseMaterial.cxx:90`). Three or four numbers between 0 and 1, upstream's own
+numeric colour form:
+
+```
+box
+  name BU_Burrow
+  position -25 40 0
+  size 1 1 0
+  color 1.0 0.62745 0.12549
+end
+```
+
+The colour multiplies the texture the obstacle already wears rather than
+replacing it, which is what `diffuse` does in the pipeline upstream draws with.
+`flagbuffet.bzw` paints the pad under every bad flag's zone, so a pad reads as
+the kind of flag standing on it -- and the figure is written into the map rather
+than looked up from bzo's own bad-flag colour, because what a map is painted is
+the map's decision.
+
+A face selector in front of the keyword narrows which faces take it, and
+upstream's names are `x+`, `x-`, `y+`, `y-`, `z+` and `z-` with `top`,
+`bottom`, `sides` and `outside` as extras (`CustomBox.cxx:34`). bzo draws a box
+as two groups -- its four walls and its two caps -- so a selector lands on one of
+those two: the upright faces are walls, the flat ones are caps, and naming one
+wall paints all four. Upstream's `z` is up where bzo's `y` is, so `z+` and `z-`
+are the caps.
+
+The fourth number is alpha. It is read, so a map stating it is not turned away,
+and then dropped: an obstacle bzo draws is opaque. Upstream also accepts an X11
+colour name here; bzo does not, and an obstacle naming one keeps its plain
+texture.
+
+Everything that draws the obstacle follows the colour. Its debug label wears it,
+as a base's label wears its team's, and the radar shades its footprint with it --
+towards the panel's neutral grey, the same way and by the same fraction a base's
+team colour is shaded, so a painted surface still reads as ground rather than as
+a tank.
+
+Painting an obstacle costs one extra draw call for all the tinted boxes on the
+map and one for all the tinted pyramids, because the colour rides on the vertices
+and lets obstacles painted differently still merge into one mesh -- the way every
+base already shares one material whatever team holds it. A map that paints
+nothing pays nothing.
+
+Upstream reads this on a plain `box`, but not for free: any material property
+makes `CustomBox` emit a `MeshObstacle` instead of a `BoxBuilding`
+(`CustomBox.cxx:302`). The shape is the same box either way, so bzo reads the
+colour and keeps its own box.
 
 ### Passability
 
@@ -324,8 +379,12 @@ loads and plays with that part of it missing. The notable absences:
   mostly empty.
 - **Groups**: `define` / `enddef` / `group`, and the instancing that goes with
   them. A grouped map arrives without whatever the groups contained.
-- **Appearance**: `material`, `texture`, `texsize`, `texoffset`, `dynamicColor`,
-  `textureMatrix`, `phydrv`. bzo textures obstacles by type.
+- **Appearance other than `color`**: `material` blocks and the `matref` that
+  names one, `texture`, `texsize`, `texoffset`, `dynamicColor`, `textureMatrix`,
+  `phydrv`, and the rest of what `parseMaterials` takes -- `ambient`,
+  `specular`, `emission`, `shininess`, `noradar`, `nolighting` and their
+  neighbours. bzo textures obstacles by type and lights them one way. `color`
+  and `diffuse` are read; see **Colour** above.
 - **Transforms**: `shift`, `scale`, `shear`, `spin`, `xform`, which upstream
   reads on any obstacle. An obstacle carrying one arrives untransformed.
 - **`world` fields other than `size`**: `flagHeight`, `noWalls`,

@@ -664,6 +664,12 @@ entry for. Do not "fix" that -- telling two team mates apart on the radar is
 the same job as telling them apart at a distance in the world, and the blip is
 the easier of the two to read a colour off.
 
+A base's own square is drawn in its team's radar colour and an obstacle a map
+painted is drawn in the colour the map gave it, both shaded towards the panel's
+neutral grey by the same fraction: a surface on the panel has to keep reading as
+ground rather than as a tank. `getObstacleRadarFillStyle` is the one place that
+decides, and `getRadarShadedFill` the one place that shades.
+
 Outside team mode that colour comes from the whole wheel. Inside it, the server
 shades team mates apart within a band around the team colour
 (`TEAM_SHADE_HUE_SPREAD` and friends in `server/teams.cjs`), so a red tank is
@@ -1145,6 +1151,14 @@ is a countdown made worse.
 Team flags are name-only in every form. Their abbreviations are `R*` through
 `P*`, which nothing displays anywhere, so `R*/Red Team` would teach a string
 that appears nowhere else.
+
+The fourth surface is the debug label a flag standing in the world wears with
+the labels on, which is the abbreviation alone -- and it is drawn in the colour
+of the cloth beneath it, `getKnownFlagColor`: a team's colour for a team flag,
+bzo's bad-flag orange for one this client has identified as bad, and white for
+every other superflag, which is what upstream draws all of them and what an
+unidentified one stays. One source for the colour, so a label can never disagree
+with the flag it names.
 
 ### A phasing tank is clipped at the wall and sprays light out of the seam
 

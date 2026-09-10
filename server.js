@@ -1450,6 +1450,40 @@ const BZW_PASSABILITY_KEYWORDS = new Map([
   ['ricochet', { ricochet: true }],
 ]);
 
+// A material property may name the faces it applies to first, and upstream's own
+// names for a box's faces are these, with `top`, `bottom`, `sides` and
+// `outside` as extras over the six (CustomBox.cxx:34 and :104). bzo draws a box
+// as two groups -- its four walls and its two caps -- so a selector lands on one
+// of the two: the upright faces are walls and the flat ones are caps. Naming a
+// single wall tints all four, which is as finely as bzo's geometry divides.
+//
+// Upstream's z is up where bzo's y is, so `z+` and `z-` are the caps.
+const BZW_FACE_GROUPS = new Map([
+  ['x+', 'walls'],
+  ['x-', 'walls'],
+  ['y+', 'walls'],
+  ['y-', 'walls'],
+  ['sides', 'walls'],
+  ['outside', 'walls'],
+  ['z+', 'caps'],
+  ['z-', 'caps'],
+  ['top', 'caps'],
+  ['bottom', 'caps'],
+]);
+
+// `color`, and `diffuse` which is the same thing under the name bzflag itself
+// writes (ParseMaterial.cxx:90). Three or four numbers, which is upstream's
+// numeric colour (ParseColor.cxx): the fourth is alpha, read so that a map
+// stating it is not turned away, and then dropped, because an obstacle bzo draws
+// is opaque. Upstream also takes an X11 colour name in the same place; bzo does
+// not, and a map using one keeps the untinted texture.
+function parseBzwColor(words) {
+  const values = words.slice(0, 4).map(Number);
+  if (values.length < 3) return null;
+  if (values.some((value) => !Number.isFinite(value))) return null;
+  return values.slice(0, 3).map((value) => Math.max(0, Math.min(1, value)));
+}
+
 function parseBZWMap(filename) {
   const text = fs.readFileSync(filename, 'utf8');
   const lines = text.split(/\r?\n/);
@@ -1910,6 +1944,24 @@ function parseBZWMap(filename) {
       const [, color] = line.split(/\s+/);
       const team = parseInt(color, 10);
       current.team = Number.isInteger(team) ? Math.max(1, Math.min(4, team)) : 1;
+    } else if (current && (BZW_FACE_GROUPS.has(token) || token === 'color' || token === 'diffuse')
+      && current.kind !== 'base' && current.kind !== 'teleporter') {
+      // The colour a map paints an obstacle, which the branch above reads as a
+      // team on a base -- upstream's CustomBase takes the word that way too --
+      // and which a teleporter has no use for, since bzo's carries its own
+      // materials. Everything else a material block can say is skipped here
+      // rather than rejected: `top texture foo` names faces bzo understands and
+      // a property it does not, and arrives as an untextured box either way.
+      const words = line.split(/\s+/);
+      const group = BZW_FACE_GROUPS.get(token);
+      const keyword = (group ? words[1] || '' : words[0]).toLowerCase();
+      if (keyword === 'color' || keyword === 'diffuse') {
+        const tint = parseBzwColor(words.slice(group ? 2 : 1));
+        if (tint) {
+          if (group !== 'caps') current.wallColor = tint;
+          if (group !== 'walls') current.capColor = tint;
+        }
+      }
     } else if (current && token === 'end') {
       // BaseBuilding::inMovingBox (BaseBuilding.cxx:77), in upstream's own words:
       // "if a base is just the ground (z == 0 && height == 0) no collision --
