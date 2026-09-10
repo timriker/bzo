@@ -286,21 +286,18 @@ import {
 import { setupInstallPrompt } from './install.js';
 import {
   SHOT_COLLISION_RADIUS,
-  crossedFlatTop,
   getBaseTeamAtPoint,
   getColliderLocalPoint,
-  getOrigRectNormal,
-  getPyramidHeight,
   getObstacleHeight,
   getTankLocalAngle,
   getBoxCrossingPlane,
-  pyramidShrinkFactor,
-  getPyramidFaceLocalNormal,
-  getPyramidSurfaceLocalHeight,
+  getTankHitNormal,
+  getShotTeleporterDims,
+  findTankObstacle,
   isOverFlatTop,
-  isWithinPyramidFootprint,
+  getPyramidHeight,
+  isPyramidFlatTop,
   movingTankOverlapsHeight,
-  phasedObstacleExpels,
   pyramidIntersectsTank,
   testOrigRectTank,
   TANK_HEIGHT,
@@ -2916,27 +2913,18 @@ const AIR_VELOCITY_THRESHOLD = 0.35; // Send if airborne horizontal velocity cha
 const MAX_UPDATE_INTERVAL = 5000; // Force update every 5 seconds
 const DEAD_STICK_STOP_THRESHOLD = 0.03; // Force an update when ground motion settles to near-zero
 const MAX_REMOTE_EXTRAPOLATION_STOP_SECONDS = 0.3; // Short horizon only when replicated state is fully stopped
-const CLIMBABLE_SURFACE_NORMAL_Y = 0.7;
-const MAX_BUMP_HEIGHT = 0.165;
-const ONTOP_TOLERANCE = 0.1;
-const SUPPORT_SNAP_DOWN = 0.2;
-const CORNER_STICK_MIN_INTENT = 0.2;
-const CORNER_STICK_MAX_PROGRESS = 0.08;
-const CORNER_STICK_FRAMES = 3;
-const CORNER_ESCAPE_DISTANCE = 0.2;
+// The occupant height every tank collision test measures with. Upstream passes
+// `getDimensions()[2]`, which is _tankHeight; bzo's collision tests have always
+// used a flat 2 for it, so it is named here rather than repeated.
+const TANK_COLLISION_HEIGHT = 2;
 const JUMP_PATH_MAX_TIME = 4.0;
 const JUMP_PATH_STEP_TIME = 0.12;
 
 // Extrapolation state
-let myJumpDirection = null; // null when on ground, rotation when in air
 // Tracks repeated low-progress face contacts so we can nudge out of corner pockets.
-let cornerStickState = { obstacleName: null, frames: 0 };
-let selectedFaceDebugMarker = null;
-let selectedFaceDebugTouchedThisFrame = false;
 let supportSurfaceDebugMarker = null;
+let surfaceOutlineDebugMarker = null;
 let supportSurfaceDebugTouchedThisFrame = false;
-let supportFootprintDebugMarker = null;
-let supportFootprintDebugTouchedThisFrame = false;
 // Toggle for ghost meshes and debug geometry
 let showDebugGeometry = readStoredFlag('showDebugGeometry', readStoredFlag('showGhosts'));
 
@@ -2947,32 +2935,20 @@ renderManager.setDebugLabelsEnabled(debugLabelsEnabled);
 const packetsSent = new Map();
 const packetsReceived = new Map();
 
-function ensureSelectedFaceDebugMarker() {
+function ensureSurfaceOutlineDebugMarker() {
   if (!showDebugGeometry) return null;
-  if (selectedFaceDebugMarker || !scene) return selectedFaceDebugMarker;
-  const markerGroup = new THREE.Group();
-  const pole = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.12, 0.12, 6, 10),
-    new THREE.MeshBasicMaterial({ color: 0x00ffff, transparent: true, opacity: 0.85 })
-  );
-  pole.position.y = 3;
-  const cap = new THREE.Mesh(
-    new THREE.ConeGeometry(0.35, 0.9, 12),
-    new THREE.MeshBasicMaterial({ color: 0xffff00, transparent: true, opacity: 0.9 })
-  );
-  cap.position.y = 6.25;
-  cap.userData.baseDirection = new THREE.Vector3(0, 1, 0);
-  const label = new THREE.Sprite(new THREE.SpriteMaterial({ transparent: true, depthTest: false, depthWrite: false }));
-  label.position.set(0, 7.35, 0);
-  label.scale.set(3.4, 0.85, 1);
-  markerGroup.userData.nameLabel = label;
-  markerGroup.add(pole);
-  markerGroup.add(cap);
-  markerGroup.add(label);
-  markerGroup.visible = false;
-  renderManager.getWorldGroup().add(markerGroup);
-  selectedFaceDebugMarker = markerGroup;
-  return selectedFaceDebugMarker;
+  if (surfaceOutlineDebugMarker || !scene) return surfaceOutlineDebugMarker;
+  const geometry = new THREE.BufferGeometry();
+  const material = new THREE.LineBasicMaterial({
+    color: 0xffb347,
+    transparent: true,
+    opacity: 0.95,
+    depthWrite: false
+  });
+  surfaceOutlineDebugMarker = new THREE.LineLoop(geometry, material);
+  surfaceOutlineDebugMarker.visible = false;
+  renderManager.getWorldGroup().add(surfaceOutlineDebugMarker);
+  return surfaceOutlineDebugMarker;
 }
 
 function ensureSupportSurfaceDebugMarker() {
@@ -3000,22 +2976,6 @@ function ensureSupportSurfaceDebugMarker() {
   renderManager.getWorldGroup().add(markerGroup);
   supportSurfaceDebugMarker = markerGroup;
   return supportSurfaceDebugMarker;
-}
-
-function ensureSupportFootprintDebugMarker() {
-  if (!showDebugGeometry) return null;
-  if (supportFootprintDebugMarker || !scene) return supportFootprintDebugMarker;
-  const geometry = new THREE.BufferGeometry();
-  const material = new THREE.LineBasicMaterial({
-    color: 0xffb347,
-    transparent: true,
-    opacity: 0.95,
-    depthWrite: false
-  });
-  supportFootprintDebugMarker = new THREE.LineLoop(geometry, material);
-  supportFootprintDebugMarker.visible = false;
-  renderManager.getWorldGroup().add(supportFootprintDebugMarker);
-  return supportFootprintDebugMarker;
 }
 
 function clearJumpPredictionDebug(tank) {
@@ -3350,53 +3310,11 @@ function updatePacketMotionDebug(targetObject, packetState, mode = 'received') {
   gizmo.visible = showDebugGeometry;
 }
 
-function showSelectedFaceDebug(faceCenter, obstacleName = null, mode = 'slide') {
-  if (!showDebugGeometry) return;
-  const marker = ensureSelectedFaceDebugMarker();
-  if (!marker || !faceCenter) return;
-  marker.position.set(faceCenter.x, faceCenter.y || 0, faceCenter.z);
-  const pole = marker.children[0];
-  const cap = marker.children[1];
-  const isBlocked = mode === 'blocked';
-  if (pole && pole.material) {
-    pole.material.color.setHex(isBlocked ? 0xff5a5a : 0x00ffff);
-  }
-  if (cap) {
-    if (cap.material) {
-      cap.material.color.setHex(isBlocked ? 0xffd166 : 0xffff00);
-    }
-    const baseDirection = cap.userData.baseDirection || new THREE.Vector3(0, 1, 0);
-    const normalX = faceCenter.normal?.x || 0;
-    const normalZ = faceCenter.normal?.z || 0;
-    const normalLength = Math.hypot(normalX, normalZ);
-    if (normalLength > 1e-6) {
-      const targetDirection = new THREE.Vector3(normalX / normalLength, 0, normalZ / normalLength);
-      cap.quaternion.setFromUnitVectors(baseDirection, targetDirection);
-    } else {
-      cap.quaternion.identity();
-    }
-  }
-  if (marker.userData.nameLabel) {
-    renderManager.updateSpriteLabel(
-      marker.userData.nameLabel,
-      obstacleName || faceCenter.name || 'face',
-      isBlocked ? '#ff8c69' : '#00ffff'
-    );
-    marker.userData.nameLabel.visible = true;
-  }
-  marker.visible = true;
-  selectedFaceDebugTouchedThisFrame = true;
-}
-
-function hideSelectedFaceDebug() {
-  if (selectedFaceDebugMarker) selectedFaceDebugMarker.visible = false;
-}
-
-function showSupportSurfaceDebug(obstacle, surfaceY) {
-  if (!showDebugGeometry || !obstacle || typeof surfaceY !== 'number') return;
+function showSupportSurfaceDebug(obstacle, position) {
+  if (!showDebugGeometry || !obstacle || !position) return;
   const marker = ensureSupportSurfaceDebugMarker();
   if (!marker) return;
-  marker.position.set(obstacle.x, surfaceY, obstacle.z);
+  marker.position.copy(position);
   if (marker.userData.nameLabel) {
     renderManager.updateSpriteLabel(marker.userData.nameLabel, obstacle.name || 'support', '#ffb347');
     marker.userData.nameLabel.visible = true;
@@ -3409,78 +3327,95 @@ function hideSupportSurfaceDebug() {
   if (supportSurfaceDebugMarker) supportSurfaceDebugMarker.visible = false;
 }
 
-function hideSupportFootprintDebug() {
-  if (supportFootprintDebugMarker) supportFootprintDebugMarker.visible = false;
+function hideSurfaceOutlineDebug() {
+  if (surfaceOutlineDebugMarker) surfaceOutlineDebugMarker.visible = false;
 }
 
-function getSupportOutlinePoints(obstacle, supportSurface) {
-  if (!obstacle || !supportSurface) return null;
+// The face of the last obstacle the step met, outlined. It is read off the
+// obstacle and the hit normal rather than off a support record, because there is
+// no support record any more: a flat top is the obstacle's own top rectangle,
+// and a slope is the triangle from the apex down the face the normal names.
+function getMotionSurfaceOutlinePoints(obstacle) {
+  if (!obstacle) return null;
   const epsilon = 0.06;
-  const rotation = obstacle.rotation;
-  const cos = Math.cos(rotation);
-  const sin = Math.sin(rotation);
+  const cos = Math.cos(obstacle.rotation);
+  const sin = Math.sin(obstacle.rotation);
   const toWorldPoint = (lx, ly, lz) => new THREE.Vector3(
     obstacle.x + lx * cos + lz * sin,
     ly,
     obstacle.z - lx * sin + lz * cos
   );
-
-  if (obstacle.type === 'pyramid' && supportSurface.contact?.climbable && !obstacle.inverted) {
-    const halfW = obstacle.w / 2;
-    const halfD = obstacle.d / 2;
-    const height = getPyramidHeight(obstacle);
-    const axis = supportSurface.contact.faceAxis;
-    const sign = supportSurface.contact.faceSign || 1;
-    const normal = supportSurface.contact.normal || { x: 0, y: 1, z: 0 };
-    const normalOffset = new THREE.Vector3(normal.x, normal.y, normal.z).multiplyScalar(epsilon);
-    let localPoints;
-    if (axis === 'x') {
-      localPoints = [
-        { x: 0, y: obstacle.baseY + height, z: 0 },
-        { x: sign * halfW, y: obstacle.baseY, z: -halfD },
-        { x: sign * halfW, y: obstacle.baseY, z: halfD }
-      ];
-    } else {
-      localPoints = [
-        { x: 0, y: obstacle.baseY + height, z: 0 },
-        { x: -halfW, y: obstacle.baseY, z: sign * halfD },
-        { x: halfW, y: obstacle.baseY, z: sign * halfD }
-      ];
-    }
-    return localPoints.map((point) =>
-      toWorldPoint(point.x, point.y, point.z).add(normalOffset)
-    );
-  }
-
   const halfW = obstacle.w / 2;
   const halfD = obstacle.d / 2;
-  const y = supportSurface.surfaceY + epsilon;
+
+  if (obstacle.type === 'pyramid' && !isPyramidFlatTop(obstacle)) {
+    const normal = getTankHitNormal(
+      obstacle, playerX, playerY, playerZ, playerRotation, playerY, TANK_COLLISION_HEIGHT);
+    const base = obstacle.baseY || 0;
+    const apex = base + getPyramidHeight(obstacle);
+    const local = getColliderLocalPoint(playerX, playerZ, obstacle);
+    const offset = new THREE.Vector3(normal.x, normal.y, normal.z).multiplyScalar(epsilon);
+    // Which of the four faces, by the side of the axis the tank is on and which
+    // extent it is further out along -- the same question the normal answers.
+    const localPoints = Math.abs(local.x) * halfD >= Math.abs(local.z) * halfW
+      ? [
+        { x: 0, y: apex, z: 0 },
+        { x: (local.x >= 0 ? 1 : -1) * halfW, y: base, z: -halfD },
+        { x: (local.x >= 0 ? 1 : -1) * halfW, y: base, z: halfD },
+      ]
+      : [
+        { x: 0, y: apex, z: 0 },
+        { x: -halfW, y: base, z: (local.z >= 0 ? 1 : -1) * halfD },
+        { x: halfW, y: base, z: (local.z >= 0 ? 1 : -1) * halfD },
+      ];
+    return localPoints.map((point) => toWorldPoint(point.x, point.y, point.z).add(offset));
+  }
+
+  const y = getColliderTopY(obstacle) + epsilon;
   return [
     toWorldPoint(-halfW, y, -halfD),
     toWorldPoint(-halfW, y, halfD),
     toWorldPoint(halfW, y, halfD),
-    toWorldPoint(halfW, y, -halfD)
+    toWorldPoint(halfW, y, -halfD),
   ];
 }
 
-function showSupportFootprintDebug(obstacle, supportSurface) {
-  if (!showDebugGeometry || !obstacle || !supportSurface) return;
-  const marker = ensureSupportFootprintDebugMarker();
+// The surface the last step met, which is upstream's `lastObstacle`.
+//
+// The marker stands at the middle of whatever the outline traced, so the two
+// always name the same surface: the centre of a box's roof or a plateau, and the
+// centre of the *face* of a slope rather than the point above it. Taking the
+// obstacle's own centre and top instead put it on a pyramid's apex however far
+// down the face the tank was.
+function showMotionSurfaceDebug(obstacle) {
+  if (!obstacle) {
+    hideSupportSurfaceDebug();
+    hideSurfaceOutlineDebug();
+    return;
+  }
+  if (!showDebugGeometry) return;
+  const points = getMotionSurfaceOutlinePoints(obstacle);
+  if (!points || points.length < 3) {
+    hideSupportSurfaceDebug();
+    hideSurfaceOutlineDebug();
+    return;
+  }
+  const centre = points
+    .reduce((sum, point) => sum.add(point), new THREE.Vector3())
+    .multiplyScalar(1 / points.length);
+  showSupportSurfaceDebug(obstacle, centre);
+  const marker = ensureSurfaceOutlineDebugMarker();
   if (!marker) return;
-  const points = getSupportOutlinePoints(obstacle, supportSurface);
-  if (!points || points.length < 3) return;
   if (marker.geometry) marker.geometry.dispose();
   marker.geometry = new THREE.BufferGeometry().setFromPoints(points);
   marker.visible = true;
-  supportFootprintDebugTouchedThisFrame = true;
 }
 
 function updateDebugGeometryVisibility() {
   renderManager.setGroundGridEnabled(showDebugGeometry, gameConfig?.MAP_SIZE);
   if (!showDebugGeometry) {
-    hideSelectedFaceDebug();
     hideSupportSurfaceDebug();
-    hideSupportFootprintDebug();
+    hideSurfaceOutlineDebug();
   }
   tanks.forEach((tank) => {
     applyTankDebugVisibility(tank);
@@ -4824,7 +4759,6 @@ function handleServerMessage(message) {
             playerZ = message.z;
             playerRotation = message.r;
             jumpDirection = tank.userData.jumpDirection ?? null;
-            myJumpDirection = jumpDirection;
             localTeleportCooldownUntil = Date.now() + PLAYER_TELEPORT_COOLDOWN_MS;
             lastSentForwardSpeed = Number.isFinite(message.fs) ? message.fs : lastSentForwardSpeed;
             lastSentRotationSpeed = Number.isFinite(message.rs) ? message.rs : lastSentRotationSpeed;
@@ -6198,43 +6132,6 @@ function showMessage(text) {
   routeLocalHudMessage(text);
 }
 
-function getBoxCollisionDistanceSquared(localX, localZ, halfW, halfD) {
-  const closestX = Math.max(-halfW, Math.min(localX, halfW));
-  const closestZ = Math.max(-halfD, Math.min(localZ, halfD));
-  const distX = localX - closestX;
-  const distZ = localZ - closestZ;
-  return {
-    closestX,
-    closestZ,
-    distSquared: distX * distX + distZ * distZ
-  };
-}
-
-// Upstream's border is one WallObstacle a side doing two jobs at once.
-// WallObstacle::inCylinder and inBox ignore height entirely, so it is an
-// infinite half-space that stops a tank at any altitude; makeSegments then
-// ignores a bouncing shot's hit on it above getHeight() (`ignoreHit`) and lets
-// the shot fly over rather than back into the arena. So the wall you can see
-// bounces shots and the invisible barrier above it does not.
-//
-// bzo says that with two colliders a side rather than a special case in the shot
-// path, each doing one of the two jobs and standing aside from the other with one
-// of upstream's own per-obstacle flags:
-//
-//   - the barrier, a thousand units high -- taller than any map bzo has to hold
-//     -- is the tank collider, and is `shootThrough`. It is upstream's wall as
-//     tanks meet it: a height-ignoring half-space with no roof.
-//   - the visible wall, `_wallHeight` tall, is the shot collider, and is
-//     `driveThrough`. It exists to give a shot a height to stop bouncing at.
-//
-// The flag on the visible wall is what makes the split correct rather than what
-// papers over it. Tanks are held by the barrier at the same inner edge, so they
-// never reach the wall, and the wall's roof -- which upstream's WallObstacle does
-// not have at all, `getHitNormal` only ever answering with the plane -- is not a
-// surface any collision code has to reason about.
-//
-// Both flags are the ones a map's `shootthrough` and `drivethrough` keywords
-// set, which is what makes this the compatible way to say it.
 function getWorldBorderColliders() {
   if (cachedWorldBorderColliders.length > 0) return cachedWorldBorderColliders;
   const mapSize = gameConfig?.MAP_SIZE || gameConfig?.mapSize || 100;
@@ -6326,16 +6223,6 @@ function rebuildTeleporterRuntimeState() {
   }
 }
 
-// Returns: null, { type: 'collision', obstacle }, or { type: 'ontop', obstacle }
-// The occupant is BZFlag's oriented 2.8 x 6.0 tank box (Obstacle::inBox). Every
-// call here is for the local player, so the heading defaults to theirs: a call
-// site that silently fell back to a circle would disagree with the server.
-//
-// `fromY` is where the step began, and it is what makes this Obstacle::inBox or
-// Obstacle::inMovingBox: given one, the vertical extent of the test is the span
-// the tank swept rather than the point it ended at, so a frame long enough to
-// carry it through a roof still reports the roof. A caller asking about a
-// single point leaves it alone and gets the point test back unchanged.
 // Every obstacle's top, teleporters included: the importer resolves a
 // teleporter's frame into `w`/`d`/`h` so there is no special case left here.
 function getColliderTopY(obs) {
@@ -6393,787 +6280,72 @@ function amInsideBuilding() {
   return insideBuildings.length > 0;
 }
 
-function checkCollision(x, y, z, ignoredObstacles = null, rotation = playerRotation, fromY = y) {
-  let ontopCollision = null;
-  const sweeping = fromY !== y;
-  // Of everything a swept step touches, the surface it lands on is the highest
-  // flat top it crossed going down: upstream reads that off Obstacle::getHitNormal,
-  // which takes the roof when the roof came before any side, and sorts its
-  // candidates by height (World.cxx compareHeights) so the tallest wins.
-  let landing = null;
-  let sweptCollision = null;
-  const tankScale = getMyTankScale();
-  // A phased tank finds obstacles and is not thrown out of them, so here -- the
-  // one place that says what the tank is thrown out of -- they are simply not
-  // there. That is what makes it drive through a building, and what makes it
-  // sink through a roof rather than land on one: a surface it is not expelled
-  // from holds nothing up.
+// The solid the local tank's box is inside of, or null. One line of its own,
+// because the loop is `findTankObstacle` in the shared `collision` pair and the
+// server calls the same one: this only says which world to look at and what the
+// local tank is. Every call is for the local player, so the heading defaults to
+// theirs -- a call site that silently fell back to a circle would disagree with
+// the server about the shape being tested.
+function checkCollision(x, y, z, rotation = playerRotation, fromY = y) {
   const phased = amPhased();
-  const reversingOnGround = phased && phasedReverse && y <= 0;
-  for (const obs of getCollisionColliders()) {
-    if (ignoredObstacles && ignoredObstacles.has(obs)) continue;
-    if (phased && !phasedObstacleExpels(obs, reversingOnGround)) continue;
-    // `drivethrough` in a `.bzw`, `Obstacle::isDriveThrough` upstream: an
-    // obstacle a tank passes straight through. Nothing sets it yet -- it is here
-    // so that a map which names it has nowhere else to be honoured -- and
-    // `shootThrough`, which the world border does use, is its other half.
-    if (obs.driveThrough) continue;
-    const obstacleBase = obs.baseY || 0;
-    const obstacleTop = getColliderTopY(obs);
-    const epsilon = 0.15;
-    const tankHeight = 2;
-    const halfW = obs.w / 2;
-    const halfD = obs.d / 2;
-    // Pyramids are never swept, as PyramidBuilding::inMovingBox is not: a
-    // slope's cross-section depends on the height it is taken at, so there is
-    // no one rectangle to sweep.
-    const swept = sweeping && obs.type !== 'pyramid';
-    const spanFromY = swept ? fromY : y;
-    // A collision found while sweeping is collected rather than returned, so
-    // the whole step can be judged before the tank is told what it hit.
-    const recordCollision = () => {
-      if (!sweeping) return { type: 'collision', obstacle: obs };
-      if (!sweptCollision) sweptCollision = { type: 'collision', obstacle: obs };
-      if (
-        swept
-        && crossedFlatTop(obstacleTop, fromY, y)
-        && (!landing || obstacleTop > landing.obstacleTop)
-      ) {
-        landing = { type: 'ontop', obstacle: obs, obstacleTop };
-      }
-      return null;
-    };
-    const { x: localX, z: localZ } = getColliderLocalPoint(x, z, obs);
-    const tankAngle = getTankLocalAngle(rotation, obs.rotation);
-    const hitsRect = (rectHalfW, rectHalfD) =>
-      testOrigRectTank(rectHalfW, rectHalfD, localX, localZ, tankAngle, 0, tankScale);
-    const overlapsFootprint = hitsRect(halfW, halfD);
-
-    const pyramidSurface = obs.type === 'pyramid' ? getPyramidSurfaceContact(obs, x, y, z) : null;
-
-    // Check if we're "on top" of this obstacle (at its top height or a climbable slope)
-    if (obs.type === 'pyramid') {
-      if (pyramidSurface && pyramidSurface.supportable && Math.abs(y - pyramidSurface.supportSurfaceY) < ONTOP_TOLERANCE) {
-        ontopCollision = { type: 'ontop', obstacle: obs, obstacleTop: pyramidSurface.supportSurfaceY, surfaceNormal: pyramidSurface.normal };
-      }
-    } else if (Math.abs(y - obstacleTop) < ONTOP_TOLERANCE && overlapsFootprint) {
-      ontopCollision = { type: 'ontop', obstacle: obs, obstacleTop };
-    }
-
-    // Only check collision if the span the tank covered reaches the obstacle.
-    if (!movingTankOverlapsHeight(obstacleBase, obstacleTop, spanFromY, y, tankHeight, epsilon)) continue;
-
-    if (obs.type === 'box' || !obs.type) {
-      // Teleporters only collide on their frame; the active inner slab must
-      // be pass-through so client movement does not slide before teleport.
-      if (obs?.kind === 'teleporter') {
-        const dims = getShotTeleporterDims(obs);
-        if (hitsRect(dims.halfW, dims.halfD)) {
-          const activeBaseY = obstacleBase;
-          const activeTopY = obstacleBase + dims.activeH;
-          // The portal interior is swept along with the frame, so a tank
-          // falling through it in one step is not stopped by the frame it
-          // never touched.
-          const overlapsActiveVertical = movingTankOverlapsHeight(
-            activeBaseY, activeTopY, spanFromY, y, tankHeight, epsilon
-          );
-          const inPortalInterior = overlapsActiveVertical
-            && hitsRect(dims.halfW, dims.activeHalfD);
-          if (!inPortalInterior) {
-            const hit = recordCollision();
-            if (hit) return hit;
-          }
-        }
-      } else if (overlapsFootprint) {
-        const hit = recordCollision();
-        if (hit) return hit;
-      }
-    } else if (obs.type === 'pyramid') {
-      // Mirrors BZFlag PyramidBuilding::inBox via the shared geometry module,
-      // so the server evaluates the same solid volume the client moves through.
-      if (pyramidIntersectsTank(obs, x, y, z, rotation, tankHeight, 0, tankScale)) {
-        const hit = recordCollision();
-        if (hit) return hit;
-      }
-    }
-  }
-  // The landing goes first: a step that crossed a roof has found the surface it
-  // is standing on, and reporting the side it also clipped is what leaves the
-  // tank inside the building instead of on top of it.
-  return landing || sweptCollision || ontopCollision || false;
-}
-
-function validateMove(x, y, z, intendedDeltaX, intendedDeltaY, intendedDeltaZ, tankRadius = 2) {
-
-  // Pure function: no references to global state
-  const newX = x + intendedDeltaX;
-  const newY = y + intendedDeltaY;
-  const newZ = z + intendedDeltaZ;
-  // Upstream clamps to the ground limit only on the way *down*
-  // (LocalPlayer.cxx:511): "if ((newPos[2] < groundLimit) && (newVelocity[2] < 0))".
-  // The condition is what makes the creep work at all -- a tank climbing out
-  // from below its limit, which is one that has just lost Burrow, is rising, and
-  // a clamp that fired while it rose would put it on the surface in a single
-  // frame instead of letting it drive out.
-  const moveGroundLimit = myGroundLimit();
-  const candidateY = (newY < moveGroundLimit && intendedDeltaY < 0) ? moveGroundLimit : newY;
-  let landedOn = null;
-  let landedType = null; // 'ground' or 'obstacle'
-  let startedFalling = false;
-  let fallingFromObstacle = null; // Obstacle we're falling from (to skip collision)
-  let altered = false;
-  const resolveY = (collisionInfo, fallbackY) => {
-    if (collisionInfo && collisionInfo.type === 'ontop' && typeof collisionInfo.obstacleTop === 'number') {
-      return collisionInfo.obstacleTop;
-    }
-    return fallbackY;
-  };
-  const tryStepUp = (collisionInfo) => {
-    if (!collisionInfo || collisionInfo.type !== 'collision' || !collisionInfo.obstacle) {
-      return null;
-    }
-    const obs = collisionInfo.obstacle;
-    let surfaceY = null;
-    if (obs.type === 'pyramid') {
-      const pyramidSurface = getPyramidSurfaceContact(obs, newX, y, newZ);
-      if (!pyramidSurface || !pyramidSurface.climbable) return null;
-      surfaceY = pyramidSurface.surfaceY;
-    } else {
-      surfaceY = (obs.baseY || 0) + getObstacleHeight(obs);
-    }
-    const rise = surfaceY - y;
-    if (rise <= 0 || rise > MAX_BUMP_HEIGHT) return null;
-    const steppedCollision = checkCollision(newX, surfaceY, newZ);
-    if (!steppedCollision) {
-      return { x: newX, y: surfaceY, z: newZ, collision: null };
-    }
-    if (steppedCollision.type === 'ontop') {
-      return { x: newX, y: steppedCollision.obstacleTop ?? surfaceY, z: newZ, collision: steppedCollision };
-    }
-    return null;
-  };
-  const tryTopSurfaceTransition = (collisionInfo) => {
-    if (!collisionInfo || collisionInfo.type !== 'collision' || !collisionInfo.obstacle) {
-      return null;
-    }
-    const obs = collisionInfo.obstacle;
-    let topY = null;
-    let canSupport = true;
-    if (obs.type === 'pyramid') {
-      const contact = getPyramidSurfaceContact(obs, newX, y, newZ);
-      if (!contact || !contact.supportable) return null;
-      topY = contact.supportSurfaceY;
-      canSupport = contact.supportable;
-    } else if (obs.type === 'box' || !obs.type) {
-      topY = (obs.baseY || 0) + getObstacleHeight(obs);
-    } else {
-      return null;
-    }
-
-    if (!canSupport || topY === null) return null;
-    // Landing is a question about which plane the step crossed, not about how
-    // near the top it started (Obstacle::getHitNormal). The band that used to
-    // stand in for this let go of any step that fell more than a metre -- about
-    // 20fps at the speed a jump lands at -- and the tank went through the roof.
-    // A pyramid still needs the band: its volume is not swept, so a step can
-    // only be judged against where it ended.
-    const landedOnTop = crossedFlatTop(topY, y, newY)
-      || (y >= topY - MAX_BUMP_HEIGHT && y <= topY + 1);
-    if (!landedOnTop || intendedDeltaY > 0) return null;
-
-    if (isWithinSupportFootprint(obs, newX, topY, newZ)) {
-      return {
-        x: newX,
-        y: topY,
-        z: newZ,
-        landedOn: obs,
-        landedType: 'obstacle',
-        startedFalling: false,
-        fallingFromObstacle: null
-      };
-    }
-
-    const collisionWithoutBox = checkCollision(newX, candidateY, newZ, new Set([obs]), playerRotation, y);
-    if (!collisionWithoutBox) {
-      return {
-        x: newX,
-        y: candidateY,
-        z: newZ,
-        landedOn: null,
-        landedType: null,
-        startedFalling: true,
-        fallingFromObstacle: obs
-      };
-    }
-    return null;
-  };
-  const resetCornerStickState = () => {
-    cornerStickState.obstacleName = null;
-    cornerStickState.frames = 0;
-  };
-  const tryCornerEscape = (obs, resultX, resultZ) => {
-    const halfW = obs.w / 2 + tankRadius;
-    const halfD = obs.d / 2 + tankRadius;
-    const localPoint = getColliderLocalPoint(resultX, resultZ, obs);
-    const corners = [
-      { x: -halfW, z: -halfD },
-      { x: -halfW, z: halfD },
-      { x: halfW, z: -halfD },
-      { x: halfW, z: halfD }
-    ];
-    let nearestCorner = corners[0];
-    let nearestDistSquared = Infinity;
-    for (const corner of corners) {
-      const dx = localPoint.x - corner.x;
-      const dz = localPoint.z - corner.z;
-      const distSquared = dx * dx + dz * dz;
-      if (distSquared < nearestDistSquared) {
-        nearestDistSquared = distSquared;
-        nearestCorner = corner;
-      }
-    }
-    let escapeLocalX = localPoint.x - nearestCorner.x;
-    let escapeLocalZ = localPoint.z - nearestCorner.z;
-    const escapeLength = Math.hypot(escapeLocalX, escapeLocalZ);
-    if (escapeLength < 1e-5) return null;
-    escapeLocalX = (escapeLocalX / escapeLength) * CORNER_ESCAPE_DISTANCE;
-    escapeLocalZ = (escapeLocalZ / escapeLength) * CORNER_ESCAPE_DISTANCE;
-    const rotation = obs.rotation;
-    const cos = Math.cos(rotation);
-    const sin = Math.sin(rotation);
-    const escapeWorldX = escapeLocalX * cos + escapeLocalZ * sin;
-    const escapeWorldZ = -escapeLocalX * sin + escapeLocalZ * cos;
-    const escapeX = resultX + escapeWorldX;
-    const escapeZ = resultZ + escapeWorldZ;
-    const escapeCollision = checkCollision(escapeX, candidateY, escapeZ);
-    if (escapeCollision && escapeCollision.type !== 'ontop') return null;
-    return { x: escapeX, z: escapeZ };
-  };
-  // Try full movement first. This is the one test that stands for the whole
-  // step, so it is the one that sweeps: `y` is where the step began, and
-  // checkCollision reads the tank's vertical extent from there to where it
-  // ended rather than from the endpoint alone.
-  const currentSupport = y > 0 ? findSupportSurface(x, y, z) : null;
-  let collisionObj = checkCollision(newX, candidateY, newZ, null, playerRotation, y);
-
-
-  if (
-    currentSupport &&
-    collisionObj &&
-    collisionObj.type === 'collision' &&
-    collisionObj.obstacle === currentSupport.obstacle &&
-    intendedDeltaY <= 0
-  ) {
-    const collisionWithoutSupport = checkCollision(
-      newX,
-      candidateY,
-      newZ,
-      new Set([currentSupport.obstacle]),
-      playerRotation,
-      y
-    );
-
-    if (!collisionWithoutSupport || collisionWithoutSupport.type === 'ontop') {
-      if (!isWithinSupportFootprint(currentSupport.obstacle, newX, y, newZ)) {
-        hideSelectedFaceDebug();
-        resetCornerStickState();
-        return {
-          x: newX,
-          y: y - 0.1,
-          z: newZ,
-          moved: true,
-          altered: true,
-          landedOn: null,
-          landedType: null,
-          startedFalling: true,
-          fallingFromObstacle: currentSupport.obstacle
-        };
-      }
-
-      collisionObj = collisionWithoutSupport;
-    }
-  }
-
-  // When driving off the edge of a supported surface, don't reinterpret the
-  // same obstacle as a side wall once the tank center leaves its top footprint.
-  if (
-    currentSupport &&
-    collisionObj &&
-    collisionObj.type === 'collision' &&
-    collisionObj.obstacle === currentSupport.obstacle &&
-    intendedDeltaY <= 0 &&
-    !isWithinSupportFootprint(currentSupport.obstacle, newX, y, newZ)
-  ) {
-    hideSelectedFaceDebug();
-    resetCornerStickState();
-    return {
-      x: newX,
-      y: y - 0.1,
-      z: newZ,
-      moved: true,
-      altered: true,
-      landedOn: null,
-      landedType: null,
-      startedFalling: true,
-      fallingFromObstacle: currentSupport.obstacle
-    };
-  }
-
-  if (collisionObj && collisionObj.type === 'collision' && intendedDeltaY <= 0) {
-    const topSurfaceResult = tryTopSurfaceTransition(collisionObj);
-    if (topSurfaceResult) {
-      hideSelectedFaceDebug();
-      resetCornerStickState();
-      if (topSurfaceResult.startedFalling) {
-        return {
-          x: topSurfaceResult.x,
-          y: topSurfaceResult.y,
-          z: topSurfaceResult.z,
-          moved: true,
-          altered: true,
-          landedOn: null,
-          landedType: null,
-          startedFalling: true,
-          fallingFromObstacle: topSurfaceResult.fallingFromObstacle
-        };
-      }
-      return {
-        x: topSurfaceResult.x,
-        y: topSurfaceResult.y,
-        z: topSurfaceResult.z,
-        moved: true,
-        altered: true,
-        landedOn: topSurfaceResult.landedOn,
-        landedType: topSurfaceResult.landedType,
-        startedFalling: false,
-        fallingFromObstacle: null
-      };
-    }
-
-    const stepUpResult = tryStepUp(collisionObj);
-    if (stepUpResult) {
-      hideSelectedFaceDebug();
-      resetCornerStickState();
-      if (stepUpResult.collision && stepUpResult.collision.type === 'ontop') {
-        landedOn = stepUpResult.collision.obstacle;
-        landedType = 'obstacle';
-      } else {
-        landedOn = collisionObj.obstacle;
-        landedType = 'obstacle';
-      }
-      return {
-        x: stepUpResult.x,
-        y: stepUpResult.y,
-        z: stepUpResult.z,
-        moved: true,
-        altered: true,
-        landedOn,
-        landedType,
-        startedFalling: false,
-        fallingFromObstacle: null
-      };
-    }
-  }
-
-  // If we hit a collision while moving upward (jumping into obstacle bottom), start falling
-  if (collisionObj && collisionObj.type === 'collision' && intendedDeltaY > 0) {
-    const horizontalOnlyCollision = checkCollision(newX, y, newZ);
-    // Rising fast enough clears a thin deck in one step the same way falling
-    // does, so the climb is swept as well.
-    const verticalOnlyCollision = checkCollision(x, candidateY, z, null, playerRotation, y);
-
-    if (verticalOnlyCollision && (!horizontalOnlyCollision || horizontalOnlyCollision.type === 'ontop')) {
-      // Hit obstacle bottom while jumping - immediately start falling
-      // Keep horizontal position at current location, start falling from current height
-      return {
-        x: x,
-        y: y,
-        z: z,
-        moved: false,
-        altered: false,
-        landedOn: null,
-        landedType: null,
-        startedFalling: false,
-        fallingFromObstacle: null,
-        hitObstacleBottom: true  // Signal to reverse vertical velocity
-      };
-    }
-  }
-
-  if (!collisionObj || collisionObj.type === 'ontop') {
-    hideSelectedFaceDebug();
-    resetCornerStickState();
-    // If we're on top of an obstacle, that's the landing
-    if (collisionObj && collisionObj.type === 'ontop') {
-      landedOn = collisionObj.obstacle;
-      landedType = 'obstacle';
-    } else if (newY < 0) {
-      landedType = 'ground';
-    }
-
-    // Only detect fall start if not already in air (myJumpDirection === null)
-    // This prevents re-triggering fall detection every frame after falling starts
-    if (!collisionObj && intendedDeltaY == 0 && y > 0 && myJumpDirection === null) {
-      // Find which obstacle we're falling from (if any) at our current height
-      for (const obs of OBSTACLES) {
-        const obstacleTop = getColliderTopY(obs);
-
-        // Check if this obstacle is at our height level (we might be leaving it)
-        if (Math.abs(y - obstacleTop) < 1.0) {
-          fallingFromObstacle = obs;
-          break;
-        }
-      }
-
-      // Start falling - we'll skip collision with fallingFromObstacle
-      startedFalling = true;
-      return { x: newX, y: newY - 0.1, z: newZ, moved: true, altered, landedOn, landedType, startedFalling, fallingFromObstacle };
-    }
-    const actualDX = newX - x;
-    const actualDZ = newZ - z;
-    altered = Math.abs(actualDX - intendedDeltaX) > 1e-6 || Math.abs(actualDZ - intendedDeltaZ) > 1e-6;
-    return { x: newX, y: resolveY(collisionObj, candidateY), z: newZ, moved: true, altered, landedOn, landedType, startedFalling, fallingFromObstacle };
-  }
-
-  const surfaceContact = getSurfaceContact(collisionObj.obstacle, newX, newY, newZ, tankRadius);
-  const surfaceSlideResult = resolveMotionSlide(
-    collisionObj.obstacle, x, y, z, intendedDeltaX, intendedDeltaZ, candidateY
-  );
-  if (surfaceSlideResult) {
-    if (surfaceSlideResult.faceCenter) {
-      const debugMode = surfaceSlideResult.traceStage === 'box-vertical-only' ? 'blocked' : 'slide';
-      showSelectedFaceDebug(
-        surfaceSlideResult.faceCenter,
-        collisionObj.obstacle?.name || surfaceSlideResult.faceCenter?.name || null,
-        debugMode
-      );
-    } else {
-      hideSelectedFaceDebug();
-    }
-    const actualMoveDistance = Math.hypot(surfaceSlideResult.x - x, surfaceSlideResult.z - z);
-    const intendedMoveDistance = Math.hypot(intendedDeltaX, intendedDeltaZ);
-    const obstacleName = collisionObj.obstacle?.name || null;
-    if (
-      collisionObj.obstacle &&
-      collisionObj.obstacle.type === 'box' &&
-      obstacleName &&
-      intendedMoveDistance > CORNER_STICK_MIN_INTENT &&
-      actualMoveDistance < CORNER_STICK_MAX_PROGRESS
-    ) {
-      if (cornerStickState.obstacleName === obstacleName) {
-        cornerStickState.frames += 1;
-      } else {
-        cornerStickState.obstacleName = obstacleName;
-        cornerStickState.frames = 1;
-      }
-      if (cornerStickState.frames >= CORNER_STICK_FRAMES) {
-        const escapeResult = tryCornerEscape(collisionObj.obstacle, surfaceSlideResult.x, surfaceSlideResult.z);
-        if (escapeResult) {
-          surfaceSlideResult.x = escapeResult.x;
-          surfaceSlideResult.z = escapeResult.z;
-          cornerStickState.frames = 0;
-        }
-      }
-    } else {
-      resetCornerStickState();
-    }
-    if (surfaceSlideResult.collisionOnTop) {
-      landedOn = collisionObj.obstacle;
-      landedType = 'obstacle';
-    } else if (newY < 0) {
-      landedType = 'ground';
-    }
-    return {
-      x: surfaceSlideResult.x,
-      y: surfaceSlideResult.y,
-      z: surfaceSlideResult.z,
-      trajectoryDeltaX: surfaceSlideResult.slideX,
-      trajectoryDeltaZ: surfaceSlideResult.slideZ,
-      moved: true,
-      altered: true,
-      landedOn,
-      landedType,
-      startedFalling: false,
-      fallingFromObstacle: null
-    };
-  }
-
-  if (surfaceContact && surfaceContact.faceCenter) {
-    showSelectedFaceDebug(surfaceContact.faceCenter, collisionObj.obstacle?.name || surfaceContact.faceCenter?.name || null, 'blocked');
-  } else {
-    hideSelectedFaceDebug();
-  }
-  resetCornerStickState();
-  return { x, y, z, moved: false, altered: false, landedOn: null, landedType: null };
-}
-
-
-// Box sliding, using BZFlag's motion resolution: advance, binary-search the
-// timestep for the last clear moment, cancel the velocity component along the
-// hit normal, slide with what is left. This asks only "is the tank clear here",
-// so it works with the oriented tank box, which no obstacle expansion can.
-function resolveMotionSlide(obs, x, y, z, deltaX, deltaZ, candidateY) {
-  // BZFlag does not branch on obstacle type when resolving motion; it asks the
-  // obstacle for its normal. PyramidBuilding::getNormal is the same rect normal
-  // as a box, taken against the cross-section at the tank's height, so a pyramid
-  // slides by the same code -- the sloped face just contributes a Y component,
-  // which resolveTankMotion already handles.
-  const worldNormal = (obstacle, px, py, pz) => {
-    const c = Math.cos(obstacle.rotation);
-    const sn = Math.sin(obstacle.rotation);
-    const toWorld = (nx, nz) => ({ x: nx * c + nz * sn, z: -nx * sn + nz * c });
-
-    if (obstacle.type === 'pyramid') {
-      const n = getPyramidFaceLocalNormal(obstacle, px, py, pz, 2);
-      if (n) {
-        const w = toWorld(n.x, n.z);
-        return { x: w.x, y: n.y || 0, z: w.z };
-      }
-    }
-    const local = getColliderLocalPoint(px, pz, obstacle);
-    const shrink = obstacle.type === 'pyramid' ? pyramidShrinkFactor(obstacle, py, 2) : 1;
-    const n = getOrigRectNormal(
-      (obstacle.w / 2) * shrink, (obstacle.d / 2) * shrink, local.x, local.z
-    );
-    const w = toWorld(n.x, n.z);
-    return { x: w.x, y: 0, z: w.z };
-  };
-
-  const result = resolveTankMotion({
-    x, y: candidateY, z, azimuth: playerRotation,
-    velocityX: deltaX, velocityY: 0, velocityZ: deltaZ,
-    angularVelocity: 0,
-    timeStep: 1,
-    groundLimit: 0,
-    onGround: y <= 0,
-    hitTest: (fx, fy, fz, fa, tx, ty, tz) => {
-      const hit = checkCollision(tx, ty, tz);
-      return hit && hit.type === 'collision' ? hit.obstacle : null;
-    },
-    getNormal: (obstacle, px, py, pz) => worldNormal(obstacle, px, py, pz),
+  return findTankObstacle(getCollisionColliders(), x, y, z, {
+    rotation,
+    fromY,
+    radius: TANK_COLLISION_HEIGHT,
+    tankScale: getMyTankScale(),
+    phased,
+    reversingOnGround: phased && phasedReverse && y <= 0,
   });
-
-  const finalCollision = checkCollision(result.x, candidateY, result.z);
-  const normal = worldNormal(result.obstacle || obs, result.x, candidateY, result.z);
-  return {
-    x: result.x,
-    y: candidateY,
-    z: result.z,
-    normal,
-    slideX: result.x - x,
-    slideZ: result.z - z,
-    collisionOnTop: !!(finalCollision && finalCollision.type === 'ontop'),
-    traceStage: 'motion-slide',
-    faceCenter: null,
-  };
 }
 
-
-function toWorldNormal(obs, localNormal) {
-  const cosRot = Math.cos(obs.rotation);
-  const sinRot = Math.sin(obs.rotation);
-  const worldX = localNormal.x * cosRot + localNormal.z * sinRot;
-  const worldY = localNormal.y;
-  const worldZ = -localNormal.x * sinRot + localNormal.z * cosRot;
-  const length = Math.hypot(worldX, worldY, worldZ) || 1;
-  return {
-    x: worldX / length,
-    y: worldY / length,
-    z: worldZ / length
-  };
-}
-
-function getBoxSurfaceContact(obs, worldX, worldZ, tankRadius = 2) {
-  const halfW = obs.w / 2;
-  const halfD = obs.d / 2;
-  const visualHalfW = obs.w / 2;
-  const visualHalfD = obs.d / 2;
-  const { x: localX, z: localZ } = getColliderLocalPoint(worldX, worldZ, obs);
-  const { closestX, closestZ, distSquared } = getBoxCollisionDistanceSquared(localX, localZ, halfW, halfD);
-  if (distSquared >= tankRadius * tankRadius) return null;
-
-  let normalLocalX = 0;
-  let normalLocalZ = 0;
-  if (distSquared > 0.0001) {
-    const dist = Math.sqrt(distSquared);
-    normalLocalX = (localX - closestX) / dist;
-    normalLocalZ = (localZ - closestZ) / dist;
-  } else {
-    const distToLeft = localX + halfW;
-    const distToRight = halfW - localX;
-    const distToFront = localZ + halfD;
-    const distToBack = halfD - localZ;
-    const minDist = Math.min(distToLeft, distToRight, distToFront, distToBack);
-    if (minDist === distToLeft) normalLocalX = -1;
-    else if (minDist === distToRight) normalLocalX = 1;
-    else if (minDist === distToFront) normalLocalZ = -1;
-    else normalLocalZ = 1;
-  }
-
-  const cosRot = Math.cos(obs.rotation);
-  const sinRot = Math.sin(obs.rotation);
-  const faceCenterLocal = Math.abs(normalLocalX) > Math.abs(normalLocalZ)
-    ? { x: normalLocalX > 0 ? visualHalfW : -visualHalfW, z: 0 }
-    : { x: 0, z: normalLocalZ > 0 ? visualHalfD : -visualHalfD };
-  const worldNormal = toWorldNormal(obs, { x: normalLocalX, y: 0, z: normalLocalZ });
-  const faceCenterWorld = {
-    x: obs.x + faceCenterLocal.x * cosRot + faceCenterLocal.z * sinRot,
-    y: (obs.baseY || 0) + (getObstacleHeight(obs) * 0.5),
-    z: obs.z - faceCenterLocal.x * sinRot + faceCenterLocal.z * cosRot
-  };
-
-  return {
-    obstacle: obs,
-    normal: worldNormal,
-    climbable: false,
-    faceCenter: {
-      x: faceCenterWorld.x,
-      y: faceCenterWorld.y,
-      z: faceCenterWorld.z,
-      normal: { x: worldNormal.x, z: worldNormal.z },
-      name: obs.name
-    }
-  };
-}
-
-function getPyramidSurfaceContact(obs, worldX, worldY, worldZ) {
-  const halfW = obs.w / 2;
-  const halfD = obs.d / 2;
-  const obstacleBase = obs.baseY || 0;
-  const height = getPyramidHeight(obs);
-  const tankHeight = 2;
-  const { x: localX, z: localZ } = getColliderLocalPoint(worldX, worldZ, obs);
-
-  // Take the normal from the cross-section at the tank's height, the way
-  // BZFlag's PyramidBuilding::getNormal does. There is deliberately no
-  // "outside the base footprint" gate: a tank whose centre sits beyond the
-  // footprint can still have its radius inside the slope, and refusing to
-  // describe a surface there leaves the slide resolver with nothing to work
-  // with and freezes the tank -- in mid-air, if it was falling.
-  const localNormal = getPyramidFaceLocalNormal(obs, worldX, worldY, worldZ, tankHeight);
-  const dominantAxis = Math.abs(localNormal.x) >= Math.abs(localNormal.z) ? 'x' : 'z';
-
-  // Outside the footprint there is no sloped surface overhead, so the contact
-  // sits at the base (upright) or the flat top (inverted). Colliding and
-  // standing are different questions: a normal exists everywhere, so the slide
-  // resolver always has something to work with, but only a tank actually over
-  // the pyramid can be held up by it.
-  const withinFootprint = isWithinPyramidFootprint(obs, worldX, worldZ);
-  const surfaceLocalHeight = getPyramidSurfaceLocalHeight(obs, localX, localZ)
-    ?? (obs.inverted ? height : 0);
-  const collisionSurfaceY = obstacleBase + surfaceLocalHeight;
-  const supportSurfaceY = obs.inverted ? obstacleBase + height : collisionSurfaceY;
-
-  const faceCenterLocal = dominantAxis === 'x'
-    ? { x: (localNormal.x >= 0 ? 1 : -1) * halfW * 0.5, z: 0 }
-    : { x: 0, z: (localNormal.z >= 0 ? 1 : -1) * halfD * 0.5 };
-
-  const worldNormal = toWorldNormal(obs, localNormal);
-  const cosRot = Math.cos(obs.rotation);
-  const sinRot = Math.sin(obs.rotation);
-  const faceCenterWorld = {
-    x: obs.x + faceCenterLocal.x * cosRot + faceCenterLocal.z * sinRot,
-    y: obstacleBase + height * 0.5,
-    z: obs.z - faceCenterLocal.x * sinRot + faceCenterLocal.z * cosRot
-  };
-  const climbable = !obs.inverted && worldNormal.y >= CLIMBABLE_SURFACE_NORMAL_Y;
-  const supportable = withinFootprint && (climbable || obs.inverted);
-  const penetrationDepth = obs.inverted
-    ? Math.max(0, worldY + tankHeight - collisionSurfaceY)
-    : Math.max(0, collisionSurfaceY - worldY);
-  return {
-    obstacle: obs,
-    normal: worldNormal,
-    climbable,
-    supportable,
-    withinFootprint,
-    faceAxis: dominantAxis,
-    faceSign: dominantAxis === 'x' ? (localNormal.x >= 0 ? 1 : -1) : (localNormal.z >= 0 ? 1 : -1),
-    surfaceY: collisionSurfaceY,
-    supportSurfaceY,
-    penetrationDepth,
-    faceCenter: {
-      x: faceCenterWorld.x,
-      y: faceCenterWorld.y,
-      z: faceCenterWorld.z,
-      normal: { x: worldNormal.x, z: worldNormal.z },
-      name: obs.name
-    }
-  };
-}
-
-function getSurfaceContact(obs, worldX, worldY, worldZ, tankRadius = 2) {
-  if (!obs) return null;
-  if (obs.type === 'pyramid') {
-    return getPyramidSurfaceContact(obs, worldX, worldY, worldZ);
-  }
-  return getBoxSurfaceContact(obs, worldX, worldZ, tankRadius);
-}
-
-// `falling` is upstream's rule, and it is the difference between holding a tank
-// on a surface and lifting it back onto one. Upstream's collision resolve only
-// ever *stops* downward motion -- `newVelocity[2] = 0.0f` when it meets an
-// upward normal -- and nothing in it raises a tank. bzo's snap accepts a surface
-// up to MAX_BUMP_HEIGHT *above* the tank, which is right for driving up a kerb
-// and wrong for a tank that has already left an edge: it drops a hair, the
-// knife-edge footprint test flickers back to true, and the tank is lifted to the
-// roof again and counted as having landed. At an edge that repeats every frame,
-// which was the buzz, the ring, and the tank pinned on the lip -- once lifted it
-// is grounded again, so its coasting speed is re-zeroed and it cannot leave.
+// The whole of a tank's step, in one pass, which is what doUpdateMotion is
+// (LocalPlayer.cxx:498): the caller builds a velocity and a turn rate, and a
+// single search resolves position, height and heading together. `resolveTankMotion`
+// in the shared `motion` pair is that loop; this is only the world it looks at.
 //
-// So while falling, a surface must be at or below the tank to hold it. Stepping
-// up still works, because that happens with no downward velocity.
-function findSupportSurface(worldX, worldY, worldZ, falling = false) {
-  let bestSupport = null;
-  const tankScale = getMyTankScale();
-  const maxRise = falling ? 0 : MAX_BUMP_HEIGHT;
-  // Nothing a tank is not expelled from holds it up, which is the same answer
-  // `checkCollision` gives and has to be, or a phased tank sinks through a roof
-  // and is then snapped back onto it.
-  const phased = amPhased();
-  const reversingOnGround = phased && phasedReverse && worldY <= 0;
-  for (const obs of getCollisionColliders()) {
-    if (phased && !phasedObstacleExpels(obs, reversingOnGround)) continue;
-    // Nothing a tank drives through holds one up. checkCollision already asks
-    // this question and the support test has to give the same answer, or the
-    // world border's visible wall -- `driveThrough`, `_wallHeight` tall -- is a
-    // roof a tank can land on at the one height it is never meant to rest at.
-    if (obs.driveThrough) continue;
-    if (obs.type === 'pyramid') {
-      const contact = getPyramidSurfaceContact(obs, worldX, worldY, worldZ);
-      if (!contact || !contact.supportable) continue;
-      const deltaY = contact.supportSurfaceY - worldY;
-      if (deltaY > maxRise || deltaY < -SUPPORT_SNAP_DOWN) continue;
-      if (!bestSupport || contact.supportSurfaceY > bestSupport.surfaceY) {
-        bestSupport = { obstacle: obs, surfaceY: contact.supportSurfaceY, normal: contact.normal, contact };
-      }
-      continue;
-    }
-
-    // Supported for exactly as long as the tank box still rests on the top, the
-    // same test that reports being on top. A centre-plus-margin test was tuned
-    // for the old radius-2 circle; with a 6-unit-long box it ends a unit before
-    // the tank actually leaves the edge, and the tank hangs in that gap.
-    // A collider missing a dimension is a bug upstream of here, not a small
-    // obstacle four units tall. testOrigRectRect answers "overlapping" for a NaN
-    // half extent -- every comparison against NaN is false, so the corner
-    // classifies into the obstacle -- and the old `|| 4` height fallback then
-    // turned that into a platform at y=4 across the whole world.
-    if (!Number.isFinite(obs.w) || !Number.isFinite(obs.d) || !Number.isFinite(obs.h)) continue;
-    const { x: localX, z: localZ } = getColliderLocalPoint(worldX, worldZ, obs);
-    if (!testOrigRectTank(
-      obs.w / 2, obs.d / 2, localX, localZ,
-      getTankLocalAngle(playerRotation, obs.rotation),
-      0, tankScale
-    )) continue;
-    const surfaceY = getColliderTopY(obs);
-    const deltaY = surfaceY - worldY;
-    if (deltaY > maxRise || deltaY < -SUPPORT_SNAP_DOWN) continue;
-    if (!bestSupport || surfaceY > bestSupport.surfaceY) {
-      bestSupport = { obstacle: obs, surfaceY, contact: null };
-    }
-  }
-  return bestSupport;
+// bzo used to run it twice over -- horizontally through here with `velocityY: 0`,
+// and vertically through a support surface of its own with its own tolerances --
+// and every disagreement between the two passes was a bug: a slope that held a
+// tank up at one threshold and dropped it at another, a landing declared by one
+// and undone by the other on the same frame. One pass cannot disagree with
+// itself, which is the point of converging on upstream rather than tuning the
+// gap between the two.
+//
+// `isFlatTop` is upstream's own (`BoxBuilding::isFlatTop` is true,
+// `PyramidBuilding::isFlatTop` is its ZFlip, `WallObstacle`'s is false), and it
+// is what decides whether a tank may be bumped up a low ledge.
+function resolveTankStep(velocityX, velocityY, velocityZ, angularVelocity, deltaTime) {
+  const groundLimit = myGroundLimit();
+  return resolveTankMotion({
+    x: playerX,
+    y: playerY,
+    z: playerZ,
+    azimuth: playerRotation,
+    velocityX,
+    velocityY,
+    velocityZ,
+    angularVelocity,
+    timeStep: deltaTime,
+    groundLimit,
+    onGround: playerY <= groundLimit,
+    // World::hitBuilding, which is the solid the tank is expelled from and
+    // nothing else. The step's own start height goes in as `fromY`, so the
+    // occupant's vertical extent covers the span it crossed -- upstream's
+    // inMovingBox, and what stops a fast fall passing through a roof.
+    hitTest: (fromX, fromY, fromZ, fromAz, toX, toY, toZ, toAz) => (
+      checkCollision(toX, toY, toZ, toAz, fromY)
+    ),
+    getNormal: (obs, px, py, pz, paz, hitX, hitY) => (
+      getTankHitNormal(obs, px, py, pz, paz, hitY, TANK_COLLISION_HEIGHT)
+    ),
+    isFlatTop: (obs) => {
+      if (!obs) return false;
+      if (obs.collisionKind === 'boundary') return false;
+      if (obs.type === 'pyramid') return isPyramidFlatTop(obs);
+      return true;
+    },
+    getObstacleTop: (obs) => getColliderTopY(obs),
+  });
 }
 
 // LocalPlayer::collectInsideBuildings (LocalPlayer.cxx:966): every obstacle the
@@ -7240,21 +6412,6 @@ function updateInsideBuildings() {
   renderManager.setInsideBuildings(insideBuildings);
 }
 
-function isWithinSupportFootprint(obs, worldX, worldY, worldZ) {
-  if (!obs) return false;
-
-  if (obs.type === 'pyramid') {
-    const contact = getPyramidSurfaceContact(obs, worldX, worldY, worldZ);
-    return Boolean(contact && contact.supportable);
-  }
-
-  const { x: localX, z: localZ } = getColliderLocalPoint(worldX, worldZ, obs);
-  return testOrigRectTank(
-    obs.w / 2, obs.d / 2, localX, localZ,
-    getTankLocalAngle(playerRotation, obs.rotation)
-  );
-}
-
 // Intended input state
 let intendedForward = 0; // -1..1
 let intendedRotation = 0; // -1..1
@@ -7263,6 +6420,9 @@ let jumpTriggered = false;
 let isInAir = false;
 let onGround = false;
 let onObstacle = false;
+// `lastObstacle` (LocalPlayer.cxx:428): what the step last met, which is what
+// the debug overlay draws and what upstream's no-climb jump rule reads.
+let lastMotionObstacle = null;
 let jumpDirection = null; // Stores the direction at jump start
 // LocalPlayer::wingsFlapCount. Refilled to _wingsJumpCount on every tick the
 // tank spends on a surface and spent one per jump, take-off included. Only Wings
@@ -8422,57 +7582,13 @@ function handleInputEvents() {
   if (isObserver()) return;
   if (!isGameplayInputActive()) return;
 
-  // Keep the tank snapped to a valid support surface under its center. This
-  // stabilizes step/pyramid support without loosening side-contact ontop tests.
-  //
-  // A tank on its way *up* has no support, and asking for one undoes the jump.
-  // The search accepts a surface up to SUPPORT_SNAP_DOWN below the tank, and a
-  // jump's first frame rises `jumpVelocity * dt` -- 0.32 units at 60fps but only
-  // 0.13 at 144 -- so above roughly 95fps the tank was snapped straight back
-  // down, the landing branch zeroed the velocity, and a jump from an obstacle
-  // could not get off it at all. Upstream stops vertical motion against a
-  // surface only "if going down" (LocalPlayer.cxx:637); this is that condition.
-  const verticalVelocity = myTank.userData.verticalVelocity || 0;
-  const rising = verticalVelocity > 0;
-  // Burrow's ground. A burrowed tank is "on the ground" at `_burrowDepth`, so
-  // the snap that holds a tank down has to hold it down to there instead of to
-  // zero -- and the ordinary tank's limit is still zero, so nothing else moves.
-  const groundLimit = myGroundLimit();
-  const supportSurface = rising ? null : findSupportSurface(
-    myTank.position.x,
-    myTank.position.y,
-    myTank.position.z,
-    verticalVelocity < 0
-  );
-  onGround = false;
-  onObstacle = false;
-  if (supportSurface) {
-    onObstacle = true;
-    playerY = supportSurface.surfaceY;
-    myTank.position.y = supportSurface.surfaceY;
-    showSupportSurfaceDebug(supportSurface.obstacle, supportSurface.surfaceY);
-    showSupportFootprintDebug(supportSurface.obstacle, supportSurface);
-  } else if (myTank.position.y < 0.1) {
-    // Upstream's `location` only becomes InAir above zero (LocalPlayer.cxx:670),
-    // so a tank on its way down into the ground is still `OnGround` and still
-    // has full control of itself all the way. It is snapped to its own floor
-    // only once it has reached it -- a tank *below* the floor is one that just
-    // lost Burrow, and the creep in `handleMotion` lifts it out instead.
-    onGround = true;
-    if (myTank.position.y <= groundLimit
-      && !isBelowGroundLimit(myTank.position.y, groundLimit)) {
-      playerY = groundLimit;
-      myTank.position.y = groundLimit;
-    }
-    hideSupportSurfaceDebug();
-    hideSupportFootprintDebug();
-  } else {
-    hideSupportSurfaceDebug();
-    hideSupportFootprintDebug();
-  }
-  isInAir = !onGround && !onObstacle;
-  // LocalPlayer.cxx:328. Standing on anything refills the flaps.
-  if (!isInAir) wingsFlapsLeft = gameConfig.WINGS_JUMP_COUNT;
+  // Where the tank is standing is not asked again here. doUpdateMotion reads
+  // `location` at the top of the frame from whatever the last step resolved
+  // (LocalPlayer.cxx:307) and the input branch is chosen off that -- so the one
+  // pass in `handleMotion` is the only thing that decides it, and this only
+  // reads the answer. Searching for a support surface here as well was the
+  // second opinion every bug in this path came out of.
+  showMotionSurfaceDebug(lastMotionObstacle);
 
   if (pauseState.isFrozen() || entryDialogFreeze) return;
 
@@ -8552,7 +7668,6 @@ function handleMotion(deltaTime) {
     // We were in air, now we're on ground/obstacle - send landing packet
     forceMoveSend = true;
     jumpDirection = null;
-    myJumpDirection = null;
     myTank.userData.jumpForwardSpeed = 0;
     myTank.userData.fallForwardSpeed = 0;
     myTank.userData.slideDirection = undefined;
@@ -8591,10 +7706,7 @@ function handleMotion(deltaTime) {
   const burrow = getBurrowFactors(motionFlag, playerY);
   const speedFactor = agility.factor * burrow.speed;
   const angVelFactor = getMaxAngVelFactor(motionFlag) * burrow.angVel;
-  const speed = gameConfig.TANK_SPEED * speedFactor * deltaTime;
-  const rotSpeed = gameConfig.TANK_ROTATION_SPEED * angVelFactor * deltaTime;
   let moveRotation = playerRotation;
-  let intendedDeltaX, intendedDeltaY = 0, intendedDeltaZ;
   const priorAirVelocityX = myTank.userData.airVelocityX || 0;
   const priorAirVelocityZ = myTank.userData.airVelocityZ || 0;
 
@@ -8634,13 +7746,20 @@ function handleMotion(deltaTime) {
     lastAngVel = intendedRotation * tankAngVelNow;
   }
 
-  // Determine forward speed for movement calculation
+  // Upstream's velocity, in world units per second rather than as a step: the
+  // resolver integrates it over the timestep itself, because the timestep is
+  // what it searches.
   let movementForwardSpeed = movementForwardInput;
   const coasting = isInAir && jumpDirection !== null && !airControl;
   const sliding = isInAir && airControl && gameConfig.WINGS_SLIDE_TIME > 0;
+  let velocityX;
+  let velocityZ;
   if (coasting) {
-    intendedDeltaX = priorAirVelocityX * deltaTime;
-    intendedDeltaZ = priorAirVelocityZ * deltaTime;
+    // "can't control motion in air": upstream carries oldVelocity straight
+    // through (LocalPlayer.cxx:341), which is the velocity the step that left
+    // the surface gave the tank.
+    velocityX = priorAirVelocityX;
+    velocityZ = priorAirVelocityZ;
   } else if (sliding) {
     // _wingsSlideTime above zero: the stick adds to the velocity the tank
     // already has rather than replacing it, so flight carries momentum.
@@ -8653,27 +7772,20 @@ function handleMotion(deltaTime) {
       gameConfig.WINGS_SLIDE_TIME,
       deltaTime,
     );
-    intendedDeltaX = slid.x * deltaTime;
-    intendedDeltaZ = slid.z * deltaTime;
+    velocityX = slid.x;
+    velocityZ = slid.z;
   } else {
-    intendedDeltaX = -Math.sin(moveRotation) * movementForwardSpeed * speed;
-    intendedDeltaZ = -Math.cos(moveRotation) * movementForwardSpeed * speed;
-  }
-  if (myTank.userData.verticalVelocity !== 0) {
-    intendedDeltaY = myTank.userData.verticalVelocity * deltaTime;
+    velocityX = -Math.sin(moveRotation) * movementForwardSpeed * tankSpeedNow;
+    velocityZ = -Math.cos(moveRotation) * movementForwardSpeed * tankSpeedNow;
   }
 
   const groundLimit = myGroundLimit();
+  const wasInAir = isInAir;
   if (!jumpTriggered && myTank.position.y <= groundLimit
     && !isBelowGroundLimit(myTank.position.y, groundLimit)) {
     myTank.userData.verticalVelocity = 0;
     myTank.position.y = groundLimit;
-    // The step this frame was computed from the velocity just cleared, so it has
-    // to go with it. A tank resting on the ground never noticed, because the
-    // velocity it clears is a fall's and the step was downwards into a floor it
-    // is already on -- but the climb out of a burrow arrives here rising, and a
-    // step left behind would carry the tank off the top of it.
-    intendedDeltaY = 0;
+    playerY = groundLimit;
   }
 
   // doUpdateMotion applies gravity in the full-control branch too, whenever the
@@ -8682,56 +7794,67 @@ function handleMotion(deltaTime) {
   // airborne first. Only a tank resting on the *ground* can sink: one on a
   // building is held up by the building, whatever floor its flag gives it.
   const sinkingIntoGround = onGround && playerY > groundLimit;
-  if (isInAir || sinkingIntoGround) {
+  if (isInAir || onObstacle || sinkingIntoGround) {
     myTank.userData.verticalVelocity -= getLocalGravity() * deltaTime;
   }
   // The creep is a floor recomputed from where the tank is, not momentum it
-  // keeps. That distinction is the whole of it: upstream recomputes
-  // `newVelocity[2]` every frame and only raises it while the tank is under its
-  // limit, so the moment the tank is not under it there is nothing left lifting
-  // it. Storing the velocity instead throws the tank off the top of the climb --
-  // and it only takes a few centimetres, because bzo reads any height above the
-  // ground as airborne and lands the tank when it comes back down, with the
-  // rings and the sound of a landing. That is also what happens the instant a
-  // climbing tank re-grabs the flag it dropped: its floor drops away beneath it
-  // again, and any upward velocity it had kept would become a hop.
+  // keeps. Upstream recomputes `newVelocity[2]` every frame and only raises it
+  // while the tank is under its limit, so the moment the tank is not under it
+  // there is nothing left lifting it.
   if (playerY < groundLimit) {
     myTank.userData.verticalVelocity = applyGroundLimitCreep(
       myTank.userData.verticalVelocity, playerY, groundLimit);
-    // And it rises to the floor, never past it.
-    intendedDeltaY = Math.min(
-      myTank.userData.verticalVelocity * deltaTime, groundLimit - playerY);
   } else if (onGround && !jumpTriggered && myTank.userData.verticalVelocity > 0) {
     myTank.userData.verticalVelocity = 0;
-    intendedDeltaY = 0;
   }
 
   let jumpStarted = false; // Track if jump was just triggered this frame
-  let fallStarted = false; // Track if fall was just triggered this frame
 
   // handleInputEvents already asked canJump, which is what refuses a second jump
   // in mid air -- and grants one to Wings, which is allowed to flap there.
   if (jumpTriggered) {
     myTank.userData.verticalVelocity = getJumpVelocity(myTank.userData.verticalVelocity || 0);
-    intendedDeltaY = myTank.userData.verticalVelocity * deltaTime;
     jumpStarted = true; // Mark that jump started this frame
     myTank.userData.jumpForwardSpeed = movementForwardInput;
     myTank.userData.fallForwardSpeed = movementForwardInput;
     myTank.userData.slideDirection = undefined;
     forceMoveSend = true; // Force send on jump
-    if (myTank) {
-      renderManager.playSound(airControl ? 'flap' : 'jump', myTank.position);
-      renderManager.fireTankJumpJets(myTank);
-    }
+    renderManager.playSound(airControl ? 'flap' : 'jump', myTank.position);
+    renderManager.fireTankJumpJets(myTank);
   }
 
-  let result = validateMove(playerX, playerY, playerZ, intendedDeltaX, intendedDeltaY, intendedDeltaZ, 2);
+  // One pass. Position, height and heading come back resolved together, so
+  // there is no second opinion for them to disagree with.
+  const angularVelocity = movementRotationInput * tankAngVelNow;
+  const step = resolveTankStep(
+    velocityX,
+    myTank.userData.verticalVelocity || 0,
+    velocityZ,
+    angularVelocity,
+    deltaTime,
+  );
+  const intendedTravelX = velocityX * deltaTime;
+  const intendedTravelZ = velocityZ * deltaTime;
+  let result = {
+    x: step.x,
+    y: step.y,
+    z: step.z,
+    moved: true,
+    // Whatever the resolver had to take away from the step, which is what the
+    // slide reporting downstream keys off.
+    altered: Math.abs((step.x - playerX) - intendedTravelX) > 1e-6
+      || Math.abs((step.z - playerZ) - intendedTravelZ) > 1e-6,
+    trajectoryDeltaX: step.velocityX * deltaTime,
+    trajectoryDeltaZ: step.velocityZ * deltaTime,
+  };
+  myTank.userData.verticalVelocity = step.velocityY;
+
   const localNowMs = Date.now();
   let teleportedThisFrame = false;
   let predictedTeleportRotateDelta = 0;
   let predictedTeleportPacket = null;
-  const sourceRotationBeforeTeleport = normalizeAngle(movementRotationInput * rotSpeed + oldRotation);
-  if (result.moved && !result.startedFalling && !result.hitObstacleBottom) {
+  const sourceRotationBeforeTeleport = normalizeAngle(step.azimuth);
+  if (result.moved) {
     const predictedTeleport = predictLocalPlayerTeleport(
       { x: oldX, y: oldY, z: oldZ },
       { x: result.x, y: result.y, z: result.z },
@@ -8797,67 +7920,67 @@ function handleMotion(deltaTime) {
     }
   }
 
-  if (result.hitObstacleBottom) {
-    // Hit obstacle bottom while jumping upward - reverse to falling
-    myTank.userData.verticalVelocity = -Math.abs(myTank.userData.verticalVelocity) * 0.5; // Bounce with 50% energy loss
-    // Keep jumpDirection frozen (still in air), but now falling
-    // Don't change position this frame - just reverse velocity
-  } else if (result.startedFalling) {
-    // Set small negative velocity so server knows we're falling (not on ground with vv=0)
-    myTank.userData.verticalVelocity = -0.1;
-    forceMoveSend = true; // Immediately notify server we're falling
-    // Set jumpDirection to current rotation to trigger air physics
-    jumpDirection = playerRotation;
-    myJumpDirection = jumpDirection;
-    fallStarted = true;
+  // "pick new location if we haven't already done so" (LocalPlayer.cxx:667).
+  // The resolver reports the one case it decided itself -- a surface met with an
+  // upward normal, upstream's OnBuilding -- and the rest is the height.
+  const nextOnObstacle = step.onBuilding;
+  const nextOnGround = !nextOnObstacle && step.y <= groundLimit;
+  const nextInAir = !nextOnObstacle && !nextOnGround;
 
-    // Freeze forward speed at fall start (same as jump)
-    const frozenForwardSpeed = myTank.userData.forwardSpeed || 0;
-    myTank.userData.fallForwardSpeed = frozenForwardSpeed;
-    // And the speed the coasting branch actually reads. Driving off a ledge
-    // carries your speed with you -- upstream never zeroes horizontal velocity
-    // when a tank leaves a surface -- and without this the tank pins itself on
-    // an obstacle edge: the landing branch sets jumpForwardSpeed to 0, the next
-    // frame's micro-fall makes `handleInputEvents` force `intendedForward` to
-    // that 0, the snap re-captures it, and it lands again. It can only escape by
-    // turning, which is exactly what issue #39 reported as being "skewered".
-    myTank.userData.jumpForwardSpeed = frozenForwardSpeed;
+  // `justLanded` (LocalPlayer.cxx:794): the frame the tank stops being in the
+  // air. One transition, so one sound and one ring, however many frames of
+  // slope or ground it took to get here.
+  if (wasInAir && !nextInAir) {
+    forceMoveSend = true;
+    triggerLandingFeedback(myTank, Math.abs(step.velocityY || 0), { local: true });
+    jumpDirection = null;
+    myTank.userData.jumpForwardSpeed = 0;
+    myTank.userData.fallForwardSpeed = 0;
     myTank.userData.slideDirection = undefined;
-    const fallVelocity = deriveAirVelocityFromState(jumpDirection, frozenForwardSpeed);
-    setAirVelocity(myTank, fallVelocity.x, fallVelocity.z);
-
-    // Immediately re-validate with air physics since this frame's movement was calculated wrong
-    // Recalculate movement using the stored dead-stick horizontal velocity.
-    const fallDeltaX = myTank.userData.airVelocityX * deltaTime;
-    const fallDeltaZ = myTank.userData.airVelocityZ * deltaTime;
-    const fallDeltaY = myTank.userData.verticalVelocity * deltaTime;
-
-    // Re-validate with correct air physics
-    const fallResult = validateMove(playerX, playerY, playerZ, fallDeltaX, fallDeltaY, fallDeltaZ, 2);
-    if (fallResult.moved) {
-      playerX = fallResult.x;
-      playerY = fallResult.y;
-      playerZ = fallResult.z;
-    }
-  } else if (result.landedOn) {
     myTank.userData.verticalVelocity = 0;
+    setAirVelocity(myTank, 0, 0);
+    clearJumpPredictionDebug(myTank);
   }
+
+  // And the frame it starts. Upstream needs no announcement -- `location` is
+  // InAir and the velocity it already had carries it -- but bzo's air model is
+  // told a direction and a velocity, so they are taken from the step that left
+  // the surface rather than frozen off a stick fraction.
+  const fallStarted = nextInAir && !wasInAir && !jumpStarted;
+  if (fallStarted) {
+    forceMoveSend = true;
+    jumpDirection = playerRotation;
+    myTank.userData.slideDirection = undefined;
+    setAirVelocity(myTank, step.velocityX, step.velocityZ);
+    const carried = gameConfig.TANK_SPEED > 0
+      ? Math.hypot(step.velocityX, step.velocityZ) / gameConfig.TANK_SPEED
+      : 0;
+    myTank.userData.jumpForwardSpeed = carried;
+    myTank.userData.fallForwardSpeed = carried;
+  }
+
+  onObstacle = nextOnObstacle;
+  onGround = nextOnGround;
+  isInAir = nextInAir;
+  lastMotionObstacle = step.obstacle || null;
+  if (!isInAir) wingsFlapsLeft = gameConfig.WINGS_JUMP_COUNT;
 
   let forwardSpeed = 0;
   let rotationSpeed = myTank.userData.rotationSpeed || 0;
 
-  if (result.moved && !fallStarted) {
-    // Don't use result if we just started falling - we already applied fallResult above
+  if (result.moved) {
     playerX = result.x;
     playerY = result.y;
     playerZ = result.z;
-    // Always update playerRotation for visual tank rotation
-    playerRotation = movementRotationInput * rotSpeed + oldRotation;
+    // The heading the one pass resolved, which is upstream's own: its search
+    // runs over the azimuth as well as the position and leaves `newAngVel = 0`
+    // where the step hit something, so a turn into a wall does not happen and
+    // nothing downstream has to undo one.
+    playerRotation = normalizeAngle(step.azimuth);
     if (teleportedThisFrame) {
       playerRotation = normalizeAngle(playerRotation + predictedTeleportRotateDelta);
       if (jumpDirection !== null && jumpDirection !== undefined) {
         jumpDirection = normalizeAngle(jumpDirection + predictedTeleportRotateDelta);
-        myJumpDirection = jumpDirection;
       }
 
       const rotatedAirVelocity = rotateXZ(
@@ -8886,7 +8009,6 @@ function handleMotion(deltaTime) {
     // Store jumpDirection AFTER rotation update so it matches packet r value
     if (jumpStarted) {
       jumpDirection = playerRotation;
-      myJumpDirection = jumpDirection;
       // The stick is a fraction of this tank's own maximum; the air velocity is
       // a fraction of the world's, so the boost has to come with it or a High
       // Speed tank would lose it the moment it left the ground.
@@ -8894,11 +8016,6 @@ function handleMotion(deltaTime) {
         jumpDirection, movementForwardInput * speedFactor);
       setAirVelocity(myTank, jumpVelocity.x, jumpVelocity.z);
     }
-  } else if (fallStarted) {
-    // Fall started - apply rotation but position was already updated by fallResult
-    playerRotation = movementRotationInput * rotSpeed + oldRotation;
-    myTank.position.set(playerX, playerY, playerZ);
-    myTank.rotation.y = playerRotation;
   }
 
   updateInsideBuildings();
@@ -9276,20 +8393,6 @@ function shoot() {
 // left to derive is the portal opening inside the frame, which is upstream's own
 // subtraction in the scene generator -- `getBreadth() - border` and
 // `getHeight() - border`.
-function getShotTeleporterDims(obs) {
-  const halfW = obs.w / 2;
-  const halfD = obs.d / 2;
-  const h = obs.h;
-  const border = obs.border;
-  return {
-    halfW,
-    halfD,
-    h,
-    border,
-    activeHalfD: Math.max(0.1, halfD - border),
-    activeH: Math.max(0.2, h - border),
-  };
-}
 
 const BZFLAG_TELEPORT_TOLERANCE = 1e-6;
 
@@ -12626,9 +11729,7 @@ function runFallbackAnimationLoop(frameTime) {
 // at low speed, where the eye tracks the motion and expects it to be even.
 function animate(frameTime) {
   startFramePhases();
-  selectedFaceDebugTouchedThisFrame = false;
   supportSurfaceDebugTouchedThisFrame = false;
-  supportFootprintDebugTouchedThisFrame = false;
   const now = Number.isFinite(frameTime) ? frameTime : performance.now();
   // A hidden tab stops delivering frames, so the first one back would otherwise
   // spend the whole gap at once and throw the tank across the map.
@@ -12686,15 +11787,9 @@ function animate(frameTime) {
   // it last cast, so the pass is what has to be told to put it away.
   renderManager.updateProjectedShadows(tanks.values());
   markFramePhase('shadows');
-
-  if (!selectedFaceDebugTouchedThisFrame) {
-    hideSelectedFaceDebug();
-  }
   if (!supportSurfaceDebugTouchedThisFrame) {
     hideSupportSurfaceDebug();
-  }
-  if (!supportFootprintDebugTouchedThisFrame) {
-    hideSupportFootprintDebug();
+    hideSurfaceOutlineDebug();
   }
 
   // Extrapolate other players' positions

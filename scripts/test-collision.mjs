@@ -195,14 +195,42 @@ const e_pyr1 = { type: 'pyramid', x: 340, z: 45, baseY: 0, rotation: Math.PI, w:
 const outsideFootprint = client.getPyramidFaceLocalNormal(e_pyr1, 341.95, 6.94, 52.54, 2);
 assert.ok(Math.hypot(outsideFootprint.x, outsideFootprint.y, outsideFootprint.z) > 1e-9);
 
-// Steep faces are not climbable, so the tank slides off rather than driving up.
+// Every pyramid face angles upward, however steep, which is what makes upstream
+// read a landing off it: `normal[2] = width / hypot(height, width)` is above the
+// 0.001 doUpdateMotion tests, so no slope sheds a tank and none is driven up.
 const steepNormalY = outsideFootprint.y / Math.hypot(outsideFootprint.x, outsideFootprint.y, outsideFootprint.z);
-assert.ok(steepNormalY < 0.7, `expected e_pyr1 face to be unclimbable, got normal.y=${steepNormalY}`);
+assert.ok(steepNormalY > 0.001, `expected e_pyr1 face to angle upward, got normal.y=${steepNormalY}`);
 
-// A shallow rib is climbable, matching the drive-up-a-pyramid behaviour.
-const rib = { type: 'pyramid', x: 140, z: 140, baseY: 0, rotation: Math.PI, w: 16, d: 2, h: 5, inverted: false };
-const ribNormal = client.getPyramidFaceLocalNormal(rib, 130.3, 0, 140.54, 2);
-assert.ok(ribNormal.y / Math.hypot(ribNormal.x, ribNormal.y, ribNormal.z) >= 0.7);
+// Upstream's own hit normal for a tank, which is what the one motion pass reads
+// a landing off. Every pyramid face angles upward, so a slope is a surface at
+// any steepness -- and the roof of a box is only a surface for a step that
+// crossed it going down.
+const slope = { type: 'pyramid', name: 'slope', x: -80, z: -80, baseY: 0, rotation: 0, w: 40, d: 40, h: 30, inverted: false };
+const faceNormal = client.getTankHitNormal(slope, -70, 15, -80, 0, 14.9, TANK_HEIGHT);
+assert.ok(faceNormal.y > 0.001, `a pyramid face angles upward, got ${faceNormal.y}`);
+assert.ok(faceNormal.x > 0, 'and outward, away from the axis');
+assert.ok(Math.abs(Math.hypot(faceNormal.x, faceNormal.y, faceNormal.z) - 1) < 1e-9, 'unit length');
+
+// A needle-thin pyramid still reads as a surface, which is why there is no
+// steepness threshold anywhere: upstream tests the normal against 0.001.
+const needle = { ...slope, w: 2, d: 2, h: 60 };
+assert.ok(client.getTankHitNormal(needle, -79.5, 30, -80, 0, 29.9, TANK_HEIGHT).y > 0.001);
+
+const roof = { type: 'box', name: 'roof', x: 0, z: 0, baseY: 0, rotation: 0, w: 20, d: 20, h: 10 };
+const landed = client.getTankHitNormal(roof, 0, 10.5, 0, 0, 9.5, TANK_HEIGHT);
+assert.deepEqual(landed, { x: 0, y: 1, z: 0 }, 'a step down through a roof lands on it');
+const wall = client.getTankHitNormal(roof, 12, 5, 0, 0, 5, TANK_HEIGHT);
+assert.equal(wall.y, 0, 'a step into a side meets a vertical wall');
+assert.ok(wall.x > 0.99, 'facing out along +x');
+
+for (const args of [[slope, -70, 15, -80, 0, 14.9, TANK_HEIGHT], [roof, 0, 10.5, 0, 0, 9.5, TANK_HEIGHT],
+  [roof, 12, 5, 0, 0, 5, TANK_HEIGHT], [needle, -79.5, 30, -80, 1, 29.9, TANK_HEIGHT]]) {
+  assert.deepEqual(
+    server.getTankHitNormal(...args),
+    client.getTankHitNormal(...args),
+    'client/server tank hit normals diverged'
+  );
+}
 
 // Regression: a normal exists everywhere, but support must be contained.
 // hix.bzw's inverted "cap" pyramids sit at baseY=12 h=2, so their flat top is at

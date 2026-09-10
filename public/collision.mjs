@@ -51,7 +51,7 @@ export function getColliderLocalPoint(x, z, obs) {
 
 // Squared distance from a local point to the nearest point of an axis-aligned
 // rectangle centered at the origin.
-export function origRectPointDistanceSquared(halfW, halfD, localX, localZ) {
+function origRectPointDistanceSquared(halfW, halfD, localX, localZ) {
   const closestX = Math.max(-halfW, Math.min(localX, halfW));
   const closestZ = Math.max(-halfD, Math.min(localZ, halfD));
   const distX = localX - closestX;
@@ -61,7 +61,7 @@ export function origRectPointDistanceSquared(halfW, halfD, localX, localZ) {
 
 // True when an axis-aligned rectangle centered at the origin intersects a
 // circle of radius r centered at the local point.
-export function testOrigRectCircle(halfW, halfD, localX, localZ, radius) {
+function testOrigRectCircle(halfW, halfD, localX, localZ, radius) {
   return origRectPointDistanceSquared(halfW, halfD, localX, localZ) < radius * radius;
 }
 
@@ -87,7 +87,7 @@ export const WORLD_WALL_HEIGHT = 3.0 * TANK_HEIGHT;
 // along (cos a, sin a), against the axis-aligned rectangle at the origin.
 // Ported from Intersect.cxx testOrigRectRect: dx1/dy1 are the rotated rect's
 // half-extents, dx2/dy2 the origin rect's.
-export function testOrigRectRect(px, pz, angle, dx1, dy1, dx2, dy2) {
+function testOrigRectRect(px, pz, angle, dx1, dy1, dx2, dy2) {
   const c = Math.cos(angle);
   const s = Math.sin(angle);
 
@@ -374,6 +374,107 @@ export function pyramidIntersectsTank(obs, x, y, z, rotation, height, slack = 0,
   );
 }
 
+// A teleporter's frame and the opening inside it. The importer resolves the
+// frame itself into `w`/`d`/`h` before the world goes on the wire, so this
+// derives only the portal, which is the frame minus its border.
+export function getShotTeleporterDims(obs) {
+  const halfW = obs.w / 2;
+  const halfD = obs.d / 2;
+  const h = obs.h;
+  const border = obs.border;
+  return {
+    halfW,
+    halfD,
+    h,
+    border,
+    activeHalfD: Math.max(0.1, halfD - border),
+    activeH: Math.max(0.2, h - border),
+  };
+}
+
+// World::hitBuilding (World.cxx:322): the first solid in `obstacles` that the
+// occupant is inside of, or null.
+//
+// One implementation, called by both ends. The client resolves moves with it and
+// the server rejects them with it -- different jobs, but "which volume is solid"
+// is one question and used to be answered by two copies of this loop that had
+// already drifted: the server tested every inverted pyramid as though it were
+// upright, and its vertical gate carried a slack the client's did not.
+//
+// The occupant is BZFlag's oriented 2.8 x 6.0 tank box (Obstacle::inBox) when a
+// `rotation` is given, and a cylinder of `radius` when it is not -- upstream's
+// own split, `inBox` for a tank and `inCylinder` for a projectile. `height`
+// defaults to the radius, which is what the cylinder callers mean by it.
+//
+// `fromY` is where a step began, and it is what makes this Obstacle::inBox or
+// Obstacle::inMovingBox: given one, the vertical extent is the span the occupant
+// swept rather than the point it ended at, so a frame long enough to carry a
+// tank through a roof still reports the roof. Pyramids opt out exactly as
+// PyramidBuilding::inMovingBox does -- a slope's cross-section depends on the
+// height it is taken at, so there is no one rectangle to sweep.
+//
+// `slack` shrinks the occupant and nothing else, so it can only ever remove a
+// collision. It is how the server stays strictly more permissive than the
+// client about a quantized position; the teleporter's portal keeps the full
+// shape, because slack there would make a portal harder to pass through.
+//
+// `phased` is `OO` and a zoned `PZ`: a phased tank is not expelled by what it
+// drives into, so what it passes through is not something this can report.
+export function findTankObstacle(obstacles, x, y, z, options = {}) {
+  const rotation = options.rotation;
+  const useTankBox = Number.isFinite(rotation);
+  const radius = Number.isFinite(options.radius) ? options.radius : 2;
+  const height = Number.isFinite(options.height) ? options.height : radius;
+  const fromY = Number.isFinite(options.fromY) ? options.fromY : y;
+  const slack = Math.max(0, Math.min(options.slack || 0, radius));
+  const tankScale = options.tankScale || null;
+  const phased = options.phased === true;
+  const reversingOnGround = options.reversingOnGround === true;
+  const ignoreTeleporters = options.ignoreTeleporters === true;
+  const epsilon = Number.isFinite(options.verticalEpsilon) ? options.verticalEpsilon : 0;
+
+  for (const obs of obstacles) {
+    if (!obs) continue;
+    if (ignoreTeleporters && obs.kind === 'teleporter') continue;
+    if (phased && !phasedObstacleExpels(obs, reversingOnGround)) continue;
+    // `drivethrough` in a `.bzw`, `Obstacle::isDriveThrough`: an obstacle an
+    // occupant passes straight through. `shootThrough` is its other half.
+    if (obs.driveThrough) continue;
+
+    const obstacleBase = obs.baseY || 0;
+    const obstacleTop = obstacleBase + getObstacleHeight(obs);
+    const spanFromY = obs.type === 'pyramid' ? y : fromY;
+    if (!movingTankOverlapsHeight(
+      obstacleBase, obstacleTop, spanFromY, y, height, epsilon)) continue;
+
+    if (obs.type === 'pyramid') {
+      const hits = useTankBox
+        ? pyramidIntersectsTank(obs, x, y, z, rotation, height, slack, tankScale)
+        : pyramidIntersectsCylinder(obs, x, y, z, radius - slack, height);
+      if (hits) return obs;
+      continue;
+    }
+
+    const local = getColliderLocalPoint(x, z, obs);
+    const tankAngle = useTankBox ? getTankLocalAngle(rotation, obs.rotation) : 0;
+    const hitsRect = (rectHalfW, rectHalfD, rectSlack) => (useTankBox
+      ? testOrigRectTank(rectHalfW, rectHalfD, local.x, local.z, tankAngle, rectSlack, tankScale)
+      : testOrigRectCircle(rectHalfW, rectHalfD, local.x, local.z, radius - rectSlack));
+
+    if (obs.kind === 'teleporter') {
+      const dims = getShotTeleporterDims(obs);
+      if (!hitsRect(dims.halfW, dims.halfD, slack)) continue;
+      const overlapsPortalVertically = movingTankOverlapsHeight(
+        obstacleBase, obstacleBase + dims.activeH, spanFromY, y, height, epsilon);
+      if (overlapsPortalVertically && hitsRect(dims.halfW, dims.activeHalfD, 0)) continue;
+      return obs;
+    }
+
+    if (hitsRect(obs.w / 2, obs.d / 2, slack)) return obs;
+  }
+  return null;
+}
+
 // BaseBuilding, as World::whoseBase reads it (World.cxx:181). A base's top
 // surface is what counts: a tank captures by standing on it, not by driving
 // past its side.
@@ -583,7 +684,7 @@ export function getBoxCrossingPlane(obs, x, y, z, rotation, tankScale = null) {
 
 // checkCollision's vertical epsilon: an occupant resting exactly on a surface
 // is on it, not in it.
-export const SHOT_VERTICAL_EPSILON = 0.15;
+const SHOT_VERTICAL_EPSILON = 0.15;
 // The cylinder a shot collides with, which is not the radius it is drawn at.
 // Upstream collides a shot as a ray, and a cylinder this thin is as near to one
 // as bzo's occupant test gets.
@@ -595,7 +696,7 @@ export const MAX_SHOT_BOUNCES_PER_STEP = 4;
 
 // An obstacle-local normal in world space, normalized. The rotation is the
 // inverse of getColliderLocalPoint's, so the sign follows the same reasoning.
-export function rotateNormalToWorld(obs, localX, localY, localZ) {
+function rotateNormalToWorld(obs, localX, localY, localZ) {
   const cos = Math.cos(obs.rotation);
   const sin = Math.sin(obs.rotation);
   const worldX = localX * cos + localZ * sin;
@@ -801,6 +902,43 @@ export function getShotObstacleNormal(obs, x, y, z, radius) {
   // through to the side.
   if (y >= top - SHOT_VERTICAL_EPSILON) return { x: 0, y: 1, z: 0 };
   if (y + radius <= base + SHOT_VERTICAL_EPSILON) return { x: 0, y: -1, z: 0 };
+  const local = getColliderLocalPoint(x, z, obs);
+  const side = getOrigRectNormal(obs.w / 2, obs.d / 2, local.x, local.z);
+  return rotateNormalToWorld(obs, side.x, 0, side.z);
+}
+
+// The outward unit normal of the surface a *tank's* step met, in world space.
+//
+// Obstacle::getHitNormal (Obstacle.cxx:122) rays the four corners of the moving
+// box at the obstacle's sides, then -- "on the way down; don't care about way
+// up" -- solves for the moment the box met the roof, and takes the roof when
+// that came first. bzo's caller has already resolved the step to the last
+// moment the tank was clear, so which plane the step crossed is the question
+// `crossedFlatTop` answers, and the sides fall through to the cross-section's
+// horizontal normal, which getNormalOrigRect always gives.
+//
+// PyramidBuilding overrides it (PyramidBuilding.cxx:271): the flat end of the
+// shape is named first -- the plateau of a flipped pyramid, the underside of an
+// upright one -- and everything else is the cross-section normal angled up by
+// the slope of the wall. That upward tilt is the whole reason a pyramid face
+// reads as a landing rather than as a wall, at every slope.
+//
+// `y` and `z` are where the step was last clear; `toY` is where it hit.
+export function getTankHitNormal(obs, x, y, z, rotation, toY, height) {
+  const base = obs.baseY || 0;
+
+  if (obs.type === 'pyramid') {
+    const pyramidHeight = getPyramidHeight(obs);
+    const flip = isPyramidFlatTop(obs);
+    const high = y > toY ? y : toY;
+    const low = y > toY ? toY : y;
+    if (flip && high >= base + pyramidHeight) return { x: 0, y: 1, z: 0 };
+    if (!flip && low + height < base) return { x: 0, y: -1, z: 0 };
+    const face = getPyramidFaceLocalNormal(obs, x, y, z, height);
+    return rotateNormalToWorld(obs, face.x, face.y, face.z);
+  }
+
+  if (crossedFlatTop(base + getObstacleHeight(obs), y, toY)) return { x: 0, y: 1, z: 0 };
   const local = getColliderLocalPoint(x, z, obs);
   const side = getOrigRectNormal(obs.w / 2, obs.d / 2, local.x, local.z);
   return rotateNormalToWorld(obs, side.x, 0, side.z);

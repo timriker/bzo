@@ -13,9 +13,14 @@
 //
 //   node scripts/headless-client.mjs --shot /tmp/shot.png
 //   node scripts/headless-client.mjs --eval 'document.getElementById("playerName").textContent'
+//   node scripts/headless-client.mjs --window 320,240   # ~60fps instead of ~8
 //
 // It renders through SwiftShader, so it answers "does this draw without
-// throwing, and what does it look like" and never "how fast is this".
+// throwing, and what does it look like" and never "how fast is this". The frame
+// *rate* still matters for what it can reach: gameplay is integrated per frame,
+// so a probe at 8fps moves a tank two feet a step and steps clean over anything
+// that only happens at a player's frame rate. `--window` is the dial -- 320,240
+// runs near 60fps, which is where those bugs live.
 
 import { spawn } from 'node:child_process';
 import { setTimeout as sleep } from 'node:timers/promises';
@@ -34,13 +39,18 @@ const shotPath = args.get('shot') || '';
 const evalExpression = args.get('eval') || '';
 const settleSeconds = Number(args.get('seconds') || 10);
 const port = Number(args.get('port') || 9333);
+// SwiftShader's cost is per pixel, so the window size is the frame rate. The
+// default draws a plausible screenshot at single-digit fps; a small one runs
+// near 60 and is the only way this probe reaches a motion bug that depends on
+// how far a tank moves in one frame.
+const windowSize = args.get('window') || '1280,800';
 
 const profile = fs.mkdtempSync(path.join(os.tmpdir(), 'bzo-headless-'));
 const chrome = spawn('google-chrome', [
   '--headless=new',
   `--remote-debugging-port=${port}`,
   `--user-data-dir=${profile}`,
-  '--window-size=1280,800',
+  `--window-size=${windowSize}`,
   // SwiftShader is the only GL a headless container has, and recent Chrome
   // refuses to fall back to it without being told to.
   '--enable-unsafe-swiftshader',

@@ -54,6 +54,51 @@ pyramid
   size 20 20 30
 end
 
+# A row of pyramids from nearly flat to nearly vertical, on the empty ground
+# south of the flag rings, so what a slope does to a tank can be driven rather
+# than argued about. All five share a 40-unit base, so only the height changes
+# and the slope is the only variable.
+#
+# The answer is the same at every slope, which is the point of the row: BZFlag
+# holds a tank on any pyramid face and drives it up none of them. A pyramid's
+# hit normal always tilts upward -- `width / hypot(height, width)`, which is
+# 0.98 on the shallowest of these and 0.32 on the steepest -- and
+# doUpdateMotion reads a landing off any normal above 0.001
+# (LocalPlayer.cxx:617). It bumps a tank up a ledge only where the obstacle
+# `isFlatTop()`, which for a pyramid is `flipz`, so the four upright ones stop a
+# tank at their base however gentle they look. Drop onto one and you stay where
+# you land, including on the point.
+pyramid
+  name slope_02
+  position -110 -120 0
+  size 20 20 4
+end
+pyramid
+  name slope_06
+  position -60 -120 0
+  size 20 20 12
+end
+pyramid
+  name slope_15
+  position -10 -120 0
+  size 20 20 30
+end
+pyramid
+  name slope_30
+  position 40 -120 0
+  size 20 20 60
+end
+
+# The flat-topped one, which is the shape a tank is meant to drive on: `flipz`
+# is upstream's ZFlip, `isFlatTop()` is true for it, and its widest
+# cross-section is the plateau rather than the base.
+pyramid
+  name plateau
+  position 90 -120 0
+  size 20 20 10
+  flipz
+end
+
 # The ground end of the pair. Both teleporters give no size or border, so both
 # take CustomGate's defaults -- half width 0.56, half breadth 4.48, height
 # 20.16, border 1.12 -- which is also the path a map exercises by saying nothing.

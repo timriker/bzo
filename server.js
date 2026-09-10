@@ -97,20 +97,18 @@ const {
   findShotSegmentImpact,
   getBaseTeamAtPoint,
   getBaseTopY,
+  getShotTeleporterDims,
+  findTankObstacle,
   getColliderLocalPoint,
   getObstacleHeight,
   getShotObstacleNormal,
   getTankLocalAngle,
-  phasedObstacleExpels,
   isOverFlatTop,
   isPyramidFlatTop,
-  pyramidIntersectsCylinder,
   getSegmentBoxHitFraction,
-  pyramidIntersectsTank,
   reflectShotDirection,
   TANK_HALF_LENGTH,
   TANK_HEIGHT,
-  testOrigRectTank,
   traceShotStep,
   WORLD_WALL_HEIGHT,
 } = require('./server/collision.cjs');
@@ -3110,15 +3108,6 @@ for (const name of ['/date', '/time']) {
 defineCommand('/msg', COMMAND_TIER.OPEN,
   '<nick> text - Send text message to nick',
   (player, args) => {
-    // Case-insensitively, and only players who have joined: an unjoined
-    // connection has a placeholder name and no business receiving mail.
-    const resolveCallsign = (callsign) => {
-      const wanted = callsign.trim().toLowerCase();
-      for (const other of players.values()) {
-        if (other.joined && other.name.toLowerCase() === wanted) return other.id;
-      }
-      return null;
-    };
     const parsed = parseMsgCommand(args, resolveCallsign, { ADMIN: -3, TEAM: -2 });
     if (parsed.error) {
       replyToPlayer(player, parsed.error);
@@ -3131,18 +3120,31 @@ defineCommand('/msg', COMMAND_TIER.OPEN,
     deliverChatMessage(player, parsed.to, 'chat', parsed.text);
   });
 
+// A callsign to a player id, case-insensitively, or null. Only players who have
+// joined: an unjoined connection carries a placeholder name and is in nobody's
+// roster, so it is not a thing any command can name. Every command that takes a
+// callsign asks this, `/msg` included -- two copies of it would be two answers
+// to "is that player here".
+function resolveCallsign(callsign) {
+  const wanted = callsign.trim().toLowerCase();
+  for (const other of players.values()) {
+    if (other.joined && other.name.toLowerCase() === wanted) return other.id;
+  }
+  return null;
+}
+
 // Who a command means by `<#slot|PlayerName|"Player Name">`. bzo's slots are
 // its player ids, so `#3` is an id and anything else is a callsign.
+//
+// `/msg` reaches the same lookup through `parseMsgCommand` instead, because its
+// destination may also be a team or the admin channel, and an unquoted callsign
+// there is walked forward to the first space that resolves -- upstream's own
+// behaviour, and the reason the two parsers are separate while the lookup is
+// not.
 function resolveCommandTarget(args) {
   return parsePlayerTarget(
     args,
-    (callsign) => {
-      const wanted = callsign.trim().toLowerCase();
-      for (const other of players.values()) {
-        if (other.joined && other.name.toLowerCase() === wanted) return other.id;
-      }
-      return null;
-    },
+    resolveCallsign,
     (slot) => (players.has(String(slot)) && players.get(String(slot)).joined ? String(slot) : null),
   );
 }
@@ -3260,10 +3262,48 @@ defineCommand('/playerlist', COMMAND_TIER.OPERATOR,
 // FlagCommand (commands.cxx:156), `<reset|up|show>`. Upstream's `up` sends every
 // superflag away and leaves the slots to refill; `reset` puts them all back;
 // `show` reports each one.
+// `drop` is bzo's own. Upstream's FlagCommand takes `<reset|up|show>`
+// (commands.cxx:593) and has no way to take a flag off one player: `up` sends
+// every superflag in the world away, which on a map built for testing flags
+// empties the thing you are standing on. bzo is developed by driving it, and the
+// move that costs a test run is being handed the wrong flag -- so this is the
+// other half of `/mv`: put the tank on the zone you want, drop what it is
+// carrying, and take the one that is there.
 defineCommand('/flag', COMMAND_TIER.OPERATOR,
-  '<reset|up|show> - reset, remove or show the flags',
+  '<reset|up|show|drop [player]> - reset, remove or show the flags, or drop one player\'s',
   (player, args) => {
-    const what = args.trim().toLowerCase();
+    const trimmed = args.trim();
+    const what = trimmed.toLowerCase();
+    if (what === 'drop' || what.startsWith('drop ')) {
+      const rest = trimmed.slice(4).trim();
+      // No target is your own flag, which is the form worth typing: the player
+      // holding the wrong flag is the one running the test.
+      let subject = player;
+      if (rest.length > 0) {
+        const target = resolveCommandTarget(rest);
+        if (!target.id) {
+          replyToPlayer(player, target.error || 'Usage: /flag drop [#slot|PlayerName]');
+          return;
+        }
+        subject = players.get(target.id);
+      }
+      const flag = getPlayerFlag(subject.id);
+      if (!flag) {
+        replyToPlayer(player, subject === player
+          ? 'You are not carrying a flag'
+          : `"${subject.name}" is not carrying a flag`);
+        return;
+      }
+      // Whatever the flag's own rules say happens when it leaves a tank: a
+      // sticky one is zapped rather than dropped, exactly as dying with it
+      // would, so this cannot be used to plant a bad flag for somebody else.
+      const abbreviation = flag.type || 'none';
+      dropPlayerFlag(subject.id);
+      log(`[CMD] "${player.name}" dropped ${abbreviation} from "${subject.name}"`);
+      replyToPlayer(player, `Dropped ${abbreviation} from "${subject.name}"`);
+      if (subject !== player) replyToPlayer(subject, `Your ${abbreviation} flag was dropped`);
+      return;
+    }
     if (what === 'up') {
       let count = 0;
       flags.forEach((flag) => {
@@ -3302,7 +3342,7 @@ defineCommand('/flag', COMMAND_TIER.OPERATOR,
       if (shown === 0) replyToPlayer(player, 'No flags are in the world');
       return;
     }
-    replyToPlayer(player, 'Usage: /flag <reset|up|show>');
+    replyToPlayer(player, 'Usage: /flag <reset|up|show|drop [player]>');
   });
 
 // `/mv` is bzo's own: upstream has no command that moves a tank anywhere in
@@ -4118,107 +4158,44 @@ function getColliderTopY(obs) {
   return (obs?.baseY || 0) + (Number.isFinite(obs?.h) ? obs.h : 0);
 }
 
+// The solid an occupant is inside of, or false. The loop is `findTankObstacle`
+// in the shared `collision` pair and the client calls the same one: this says
+// which world to look at, and logs, which the client has no reason to.
+//
+// `tankRadius` is the occupant's radius *and* its height -- 2 for a tank, much
+// less for a projectile -- which is what every caller here means by it. A
+// `rotation` in `options` takes the oriented tank box instead of the cylinder,
+// and the rest of `options` passes straight through: `slack` (the server's own
+// permissiveness about a quantized position), `tankScale`, `phased`,
+// `ignoreTeleporters`.
+//
+// The vertical gate keeps the 0.15 it has always had here, and only here: it can
+// only ever make the server *more* permissive than the client, which is the
+// direction anticheat slack is allowed to run in.
 function checkCollision(x, y, z, tankRadius = 2, options = {}) {
-  const ignoreTeleporters = options.ignoreTeleporters === true;
-  const suppressLog = options.suppressLog === true;
-  const useTankBox = Number.isFinite(options.rotation);
-  // Shrinks the tested radius only. Height is untouched, and the teleporter
-  // portal interior keeps the full radius so slack can never make a portal
-  // harder to pass through.
-  const slack = Math.max(0, Math.min(options.slack || 0, tankRadius));
-  const effectiveRadius = tankRadius - slack;
-  // The dimension flags. Only the oriented-box path can express a length
-  // and a width separately, which is the path a tank always takes; the cylinder
-  // is for projectiles, which carry no flag.
-  const tankScale = options.tankScale || null;
-  // `OO` and a zoned `PZ`. A phased tank is not expelled by what it drives into, so
-  // the obstacles it passes through are not obstacles this call can report --
-  // which is what stops the collision check below calling an honest tank inside
-  // a building a modified one. Every other caller leaves it off: a flag drop, a
-  // spawn and a teleport destination all have to clear the world itself.
-  const phased = options.phased === true;
-  for (const obs of getCollisionColliders()) {
-    if (ignoreTeleporters && obs?.kind === 'teleporter') continue;
+  const obs = findTankObstacle(getCollisionColliders(), x, y, z, {
+    rotation: options.rotation,
+    radius: tankRadius,
+    slack: options.slack,
+    tankScale: options.tankScale,
+    phased: options.phased === true,
     // Never the reversing term: `fs` is measured from the displacement the tank
     // actually made, so a tank scraping backwards off a corner reports a reverse
     // it never asked for, and a server that expelled on that would rubber-band
     // an honest one. The looser answer is the safe direction for a check whose
     // whole job is catching a client that lied.
-    if (phased && !phasedObstacleExpels(obs, false)) continue;
-    // `drivethrough` in a `.bzw`, `Obstacle::isDriveThrough` upstream: an
-    // obstacle a tank passes straight through. A map may name it, and a pad flush
-    // with the ground is given it whether or not the map says so -- see the `end`
-    // handler in parseBZWMap. `shootThrough`, which the world border also uses,
-    // is its other half.
-    if (obs?.driveThrough) continue;
-    const obstacleHeight = getObstacleHeight(obs);
-    const obstacleBase = obs.baseY || 0;
-    const obstacleTop = getColliderTopY(obs);
-    const epsilon = 0.15;
-    // Scale height based on radius (tanks are 2 units tall, projectiles much smaller)
-    const tankHeight = tankRadius; // For tanks (radius=2), height=2; for projectiles (radius=0.1), height=0.1
-    // Only check if tank top is below obstacle top and tank base is above obstacle base
-    const tankTop = y + tankHeight;
-    if (tankTop <= obstacleBase + epsilon) continue;
-    if (y >= obstacleTop - epsilon) continue;
-
-    const halfW = obs.w / 2;
-    const halfD = obs.d / 2;
-    const { x: localX, z: localZ } = getColliderLocalPoint(x, z, obs);
-    const tankAngle = useTankBox ? getTankLocalAngle(options.rotation, obs.rotation) : 0;
-    const hitsRect = (rectHalfW, rectHalfD, rectSlack) => (useTankBox
-      ? testOrigRectTank(rectHalfW, rectHalfD, localX, localZ, tankAngle, rectSlack, tankScale)
-      : getBoxCollisionDistanceSquared(localX, localZ, rectHalfW, rectHalfD)
-        < (tankRadius - rectSlack) * (tankRadius - rectSlack));
-
-    if (obs.type === 'box' || !obs.type) {
-      // Teleporter boxes are only solid on the frame. The inner active portal
-      // area must remain non-colliding so crossing can trigger teleport.
-      if (obs?.kind === 'teleporter') {
-        const dims = getShotTeleporterDims(obs);
-        if (hitsRect(dims.halfW, dims.halfD, slack)) {
-          const activeBaseY = obstacleBase;
-          const activeTopY = obstacleBase + dims.activeH;
-          const overlapsActiveVertical = tankTop > (activeBaseY + epsilon) && y < (activeTopY - epsilon);
-          // The portal interior keeps the full shape, so slack can never make a
-          // portal harder to pass through.
-          const inPortalInterior = overlapsActiveVertical
-            && hitsRect(dims.halfW, dims.activeHalfD, 0);
-          if (inPortalInterior) {
-            continue;
-          }
-
-          if (!suppressLog) {
-            log(`[COLLISION] ${x.toFixed(2)},${y.toFixed(2)},${z.toFixed(2)} ${obs.name}:${obs.type} ${obs.x.toFixed(2)},${obstacleBase.toFixed(2)},${obs.z.toFixed(2)} rot:${obs.rotation.toFixed(2)}, h:${obstacleHeight.toFixed(2)}, top:${obstacleTop.toFixed(2)}`);
-          }
-          return obs;
-        }
-      } else {
-        if (hitsRect(halfW, halfD, slack)) {
-          if (!suppressLog) {
-            log(`[COLLISION] ${x.toFixed(2)},${y.toFixed(2)},${z.toFixed(2)} ${obs.name}:${obs.type} ${obs.x.toFixed(2)},${obstacleBase.toFixed(2)},${obs.z.toFixed(2)} rot:${obs.rotation.toFixed(2)}, h:${obstacleHeight.toFixed(2)}, top:${obstacleTop.toFixed(2)}`);
-          }
-          return obs;
-        }
-      }
-    } else if (obs.type === 'pyramid') {
-      // Mirrors BZFlag PyramidBuilding::inBox: the pyramid's cross-section at
-      // the occupant's height is the base rectangle scaled by shrinkFactor.
-      // The previous 8-point sample never consulted obs.inverted, so the server
-      // treated every inverted pyramid as upright and disagreed with the client
-      // about roughly a fifth of the volume around it.
-      const hitsPyramid = useTankBox
-        ? pyramidIntersectsTank(obs, x, y, z, options.rotation, tankHeight, slack, tankScale)
-        : pyramidIntersectsCylinder(obs, x, y, z, effectiveRadius, tankHeight);
-      if (hitsPyramid) {
-        if (!suppressLog) {
-          log(`[COLLISION] ${x.toFixed(2)},${y.toFixed(2)},${z.toFixed(2)} ${obs.name}:${obs.type} ${obs.x.toFixed(2)},${obstacleBase.toFixed(2)},${obs.z.toFixed(2)} rot:${obs.rotation.toFixed(2)}, h:${obstacleHeight.toFixed(2)}, top:${obstacleTop.toFixed(2)}`);
-        }
-        return obs;
-      }
-    }
+    reversingOnGround: false,
+    ignoreTeleporters: options.ignoreTeleporters === true,
+    verticalEpsilon: 0.15,
+  });
+  if (!obs) return false;
+  if (options.suppressLog !== true) {
+    const base = obs.baseY || 0;
+    log(`[COLLISION] ${x.toFixed(2)},${y.toFixed(2)},${z.toFixed(2)} ${obs.name}:${obs.type}`
+      + ` ${obs.x.toFixed(2)},${base.toFixed(2)},${obs.z.toFixed(2)} rot:${obs.rotation.toFixed(2)},`
+      + ` h:${getObstacleHeight(obs).toFixed(2)}, top:${getColliderTopY(obs).toFixed(2)}`);
   }
-  return false;
+  return obs;
 }
 
 function findMapEdgeImpactPoint(prevX, prevY, prevZ, nextX, nextY, nextZ, halfMap) {
@@ -6166,20 +6143,6 @@ function forwardVoiceSignal(player, message) {
 // are for every other obstacle, and the only thing left to derive is the portal
 // opening inside it -- upstream's scene generator does the same subtraction,
 // `getBreadth() - border` and `getHeight() - border`.
-function getShotTeleporterDims(obs) {
-  const halfW = obs.w / 2;
-  const halfD = obs.d / 2;
-  const h = obs.h;
-  const border = obs.border;
-  return {
-    halfW,
-    halfD,
-    h,
-    border,
-    activeHalfD: Math.max(0.1, halfD - border),
-    activeH: Math.max(0.2, h - border),
-  };
-}
 
 const BZFLAG_TELEPORT_TOLERANCE = 1e-6;
 

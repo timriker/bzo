@@ -133,16 +133,38 @@ function resolveTankMotion({
     if (!normal) break;
 
     if (posY > 0 && normal.y > 0.001) {
-      // Landing on top of something rather than running into its side.
+      // Landing on top of something rather than running into its side. Upstream
+      // stops the fall and *keeps going* with the time the step has left
+      // (LocalPlayer.cxx:617, then the loop turns over): the next pass moves
+      // horizontally at this height, which is now clear, so the tank finishes
+      // its travel along the surface it just met.
+      //
+      // Ending the step here instead is what made driving on a roof feel stuck.
+      // A tank on a surface always carries a little downward velocity -- gravity
+      // is applied every frame it is above its floor -- so every frame hit the
+      // roof, and a step that ends at the hit has only travelled as far as the
+      // fraction of the frame before the tank sank the first millimetre.
       onBuilding = true;
       velY = 0;
-      remaining = 0;
-      break;
+      continue;
     }
 
     let mag = normal.x * velX + normal.z * velZ;
     if (!nearZero(normal.y)) {
+      // A surface below stops a fall, which is upstream's own test.
       if (velY < 0 && velY - (mag + normal.y * velY) * normal.y > 0) velY = 0;
+      // And a surface above stops a rise, which is bzo's one deviation here.
+      // Upstream leaves the rise in place -- it only ever cancels downward
+      // motion -- so a tank that jumps into an overhang stays pinned under it
+      // until gravity turns the velocity around, up to jumpVelocity/gravity.
+      // Stopping the rise drops it from where it hit instead.
+      //
+      // Only the vertical. `mag` is zero against a flat ceiling, so nothing
+      // horizontal is touched there either way, and against a sloped underside
+      // the component heading into the slope is still the only one cancelled --
+      // a tank that jumps into a ceiling while driving keeps its speed and
+      // simply starts to fall. See AGENTS.md.
+      if (velY > 0 && normal.y < 0) velY = 0;
       const horNormal = normal.x * normal.x + normal.z * normal.z;
       if (!nearZero(horNormal)) mag /= horNormal;
     }
@@ -169,13 +191,8 @@ function resolveTankMotion({
     onBuilding,
   };
 }
-
 module.exports = {
-  MIN_SEARCH_STEP,
-  MAX_SEARCH_STEPS,
   TINY_DISTANCE,
   MAX_BUMP_HEIGHT,
-  ZERO_TOLERANCE,
-  MAX_SLIDE_PASSES,
   resolveTankMotion,
 };

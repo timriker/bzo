@@ -126,6 +126,29 @@ function drive(world, start, velocityX, velocityZ, ticks) {
   assert.ok(r.z < -20, `a 12-unit gap should pass a 2.8-wide tank: z=${r.z}`);
 }
 
+// bzo's one deviation in this loop: a surface above stops a rise, so a tank that
+// jumps into a ceiling starts falling from where it hit instead of staying
+// pinned under it until gravity turns the velocity around. The horizontal
+// velocity is untouched, which is upstream's behaviour against a flat ceiling
+// anyway -- there is nothing for `mag` to cancel.
+{
+  // The harness clears a tank whose top is at or below the deck's underside, so
+  // 3.9 is just under it and one tick of jump velocity crosses.
+  const deck = { x: 0, z: 0, w: 40, d: 40, h: 4, baseY: 6, rotation: 0 };
+  const world = makeWorld([deck]);
+  const r = resolveTankMotion({
+    ...base, ...world, x: 0, y: 3.9, z: 0,
+    velocityX: 12, velocityY: 19, velocityZ: 0, timeStep: TICK,
+    getNormal: () => ({ x: 0, y: -1, z: 0 }),
+  });
+  assert.equal(r.velocityY, 0, `a ceiling stops the rise, got ${r.velocityY}`);
+  assert.equal(r.velocityX, 12, `and leaves the drive alone, got ${r.velocityX}`);
+  assert.ok(r.y < 4.1, `the tank stays under the deck: y=${r.y}`);
+  // And the rest of the step is spent travelling under it, not thrown away.
+  assert.ok(Math.abs(r.x - 12 * TICK) < 1e-9, `full travel under the deck: x=${r.x}`);
+  assert.equal(r.onBuilding, false, 'a ceiling is not something to stand on');
+}
+
 assert.equal(typeof serverMotion.resolveTankMotion, 'function');
 assert.equal(serverMotion.MAX_BUMP_HEIGHT, MAX_BUMP_HEIGHT);
 assert.equal(serverMotion.TINY_DISTANCE, TINY_DISTANCE);

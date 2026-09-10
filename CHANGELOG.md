@@ -6,6 +6,188 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
 
 ## [Unreleased]
 
+### Changed
+- **Tank motion is one pass, as upstream's is.** `doUpdateMotion` builds a
+  velocity and hands the whole step to a single search that resolves position,
+  height and heading together (`LocalPlayer.cxx:498`). bzo ran it twice over:
+  horizontally through `resolveTankMotion` with `velocityY: 0`, and vertically
+  through a support surface of its own with its own tolerances. Every
+  disagreement between the two passes was a bug, and they were all the same bug
+  -- one question with two answers, one from upstream and one a fudge beside it:
+  a slope that held a tank at one threshold and dropped it at another, a landing
+  declared by one pass and undone by the other on the same frame, a tank "on the
+  ground" by one number and above it by another. The gap between each pair is
+  where the tank flickered, once per frame, which is a sound and an effect per
+  frame.
+
+  The vertical velocity and the turn rate now go into the one resolver and its
+  answer is the frame's outcome. `getTankHitNormal` in the `collision` pair is
+  upstream's `Obstacle::getHitNormal` and `PyramidBuilding::getHitNormal`, and
+  the sign of its `y` is the whole of what decides a landing -- upstream's
+  `newPos[2] > 0 && normal[2] > 0.001`. That deleted, rather than added:
+
+  - `findSupportSurface` and the support-surface model entirely, with
+    `SUPPORT_SNAP_DOWN`, `ONTOP_TOLERANCE`, `isWithinSupportFootprint`,
+    `getPyramidSurfaceContact`, `getBoxSurfaceContact` and
+    `getPyramidTankSupportY`
+  - `validateMove`'s 430 lines, `resolveMotionSlide`, `tryStepUp`,
+    `tryTopSurfaceTransition`, the corner-escape counter and `resolveTankRotation`
+  - the `startedFalling` flag, the `-0.1` vertical-velocity sentinel that stood
+    in for a real fall, and the second `validateMove` call that re-ran the step
+    with air physics
+  - `hitObstacleBottom`, which reversed a rising tank's velocity at 50% energy
+    when it met a ceiling -- a bounce with no upstream counterpart. In its place
+    is a far smaller deviation, and the only one left in this loop: **a surface
+    above stops a rise.** Upstream cancels only *downward* motion against a
+    surface (`LocalPlayer.cxx:634`), so a tank that jumps into an overhang keeps
+    its upward velocity and hangs under it until gravity turns it around -- up
+    to `jumpVelocity / gravity`, near two seconds at bzo's defaults. bzo zeroes
+    the rise, so the tank falls from where it hit. Only the vertical: against a
+    flat ceiling upstream's `mag` is zero and leaves the drive alone, and so
+    does this, so jumping into a ceiling while moving keeps your speed and
+    simply starts you falling. `npm run test:motion` holds it.
+
+  `checkCollision` is `World::hitBuilding` again and nothing more: the first
+  solid the tank's box is inside of. It no longer reports which surface was met
+  or whether the tank is on top of one, because the resolver asks
+  `getTankHitNormal` that once about the step instead of once per obstacle here.
+  Its vertical slack is gone too, which was 0.15: upstream's `inBox` has none,
+  and a band let a tank on an inverted pyramid's plateau sink 15cm before the
+  solid noticed -- by then it was inside the wedge, where every height is solid
+  and the search has no clear point to stop at, and the tank hung there.
+
+  **The server asks the same question through the same code.** `findTankObstacle`
+  in the `collision` pair is `World::hitBuilding`, and `checkCollision` on both
+  ends is now a wrapper over it -- the client saying which world to look at and
+  what the local tank is, the server adding its logging and its tolerances.
+  There were two copies of that loop and they had drifted twice: the server
+  tested every inverted pyramid as though it were upright, and its vertical gate
+  carried a slack the client's did not. `getShotTeleporterDims` was a
+  byte-identical duplicate on both sides and moved into the pair with it. Both
+  came off the "known duplication" list in AGENTS.md.
+
+  The server's tolerances survive as *parameters* of that one loop rather than as
+  a second copy of it: `slack` shrinks the occupant, `verticalEpsilon` widens the
+  height gate, and both may only ever remove a collision, because the server has
+  to stay strictly more permissive than the client about a quantized position.
+  The drift thresholds and the extrapolation stay where they are -- the server
+  extrapolates every tank between packets because it is the server that decides
+  a kill, which is bzfs's own arrangement, not a duplicate of the client's
+  resolver. What that extrapolation lacks is a clock it can trust: bzo sends no
+  timestamp with a move, so network jitter lands inside the number the anticheat
+  judges. `docs/lag-plan.md` records what upstream measures and how, and stages
+  the work; nothing of it is built.
+
+  `checkCollision` answers with the obstacle or null now rather than wrapping it
+  in a result object and naming a `type`, because the resolver is its only caller
+  and only ever wanted the obstacle; its `ignoredObstacles` parameter went with
+  the pass that used it. Nine constants and helpers across the `collision` and
+  `motion` pairs lost an `export` nothing outside those modules reads.
+
+  The debug marker and outline for the surface a tank is on are read off the
+  obstacle and the hit normal now rather than off a support record -- a flat top
+  is the obstacle's own top rectangle, a slope the triangle from the apex down
+  the face the normal names -- so both survived the support model they used to
+  come from. The marker stands at the middle of what the outline traced, rather
+  than on the obstacle's own centre and top: on a pyramid that was the apex,
+  however far down a face the tank actually was.
+
+  Net 837 lines out of `public/client.js`, 626 across the tree. Fewer collision tests per frame, too:
+  the old path ran `checkCollision` several times *and* swept every collider in
+  `findSupportSurface`, every frame.
+
+  Upstream's own loop shape matters and is easy to get wrong: on meeting a
+  surface it zeroes the vertical velocity and **keeps going** with the time the
+  step has left, so the next pass carries the tank along the surface it just
+  met. Ending the step there instead makes driving on any roof feel stuck, since
+  a tank on a surface always carries a little downward velocity and every frame
+  hits.
+
+### Fixed
+- **A tank falling onto a pyramid stops on it instead of ending up inside it**
+  (#49). Landing was gated on the face's normal being within 0.7 of vertical, a
+  threshold bzo invented: nothing steeper held a tank up, so the resolver kept x
+  and z where they were while gravity carried on lowering y, and a tank dropped
+  onto `flagbuffet`'s pyramid arrived at ground level in the middle of it.
+  BZFlag has no such threshold -- `doUpdateMotion` reads a landing off any hit
+  normal above 0.001 (`LocalPlayer.cxx:617`) and a pyramid's always tilts upward
+  -- so every face now holds a tank, and where it holds it is
+  `getPyramidTankSupportY` in the `collision` pair: the lowest height at which
+  the tank's own box clears the shrunk cross-section. A tank therefore rests on
+  the corner nearest the pyramid's axis rather than on the slope under its
+  centre, and one whose box covers the axis balances on the point, both as
+  upstream does.
+
+  Three more things followed from that, each of which had to be right before a
+  tank could get off a slope again:
+
+  - **No slope may be driven up, however gentle.** Upstream bumps a tank up a
+    ledge only where the obstacle `isFlatTop()`, which for a pyramid means
+    `flipz`; the base footprint of an upright one is fully solid at ground
+    level, so a tank stops at its edge. The shortcut that lets a tank standing
+    on a roof ignore that building's walls no longer fires for an upright
+    pyramid either -- there the wall *is* the surface holding the tank up, and
+    dropping the hit walked the tank up the slope a step at a time.
+  - **A downward step a slope refuses stops at the surface it met**, rather than
+    holding x and z while y keeps falling.
+  - **A tank the code calls "on the ground" is on the ground.** `onGround` was
+    decided over a 0.1 band while the snap to the floor only fired at or below
+    it, so a tank nine millimetres up was both: it landed -- the sound and the
+    ground ring -- and `validateMove` started it falling again, on the same
+    frame, for as many frames as the creep down took. That is the buzz at the
+    foot of a slope, measured at thirty landing effects for one descent.
+    Upstream has one test and no band: `location` becomes InAir above the floor
+    and nowhere else (`LocalPlayer.cxx:670`), and the clamp inside its move loop
+    puts a tank that has reached the floor exactly on it.
+  - **A turn that would end inside a building does not happen.** Upstream's
+    collision search runs over the azimuth as well as the position
+    (`LocalPlayer.cxx:565`) and `newAngVel = 0` is what is left of a turn that
+    hit something; bzo settled the heading outside the resolver with no test at
+    all. A tank parked beside a pyramid could turn its own corner into the slope
+    -- the corner nearest the axis swings inward, where the surface is higher --
+    and be carried up the face and dropped again on the way back out, landing
+    each time. This also replaces the expulsion that had been added for it, so
+    nothing lifts a tank out of a slope any more: nothing puts it there.
+  - **Descending a slope is one landing, not one per frame.** `validateMove`
+    calls a tank fallen as soon as it is more than `ONTOP_TOLERANCE` above the
+    surface under it, while `findSupportSurface` took a surface back up to the
+    wider `SUPPORT_SNAP_DOWN` below -- so a tank whose slope dropped between
+    those two numbers in one frame fell out of the surface and was grabbed
+    straight back onto it, landing again, every frame. That is the buzz at the
+    base of the pyramid: a landing sound and a ground ring per frame, and a tank
+    that crawls because it spends every other frame being re-seated. Both
+    numbers answer one question, so a falling tank is now held only within
+    `ONTOP_TOLERANCE`, and the wider snap stays what it was for -- a tank still
+    driving along a surface, following it over a step. Which frame rates showed
+    it depended on `speed x dt x slope` landing between the two.
+  - **Driving off a surface carries the speed the tank is being driven at**, not
+    the speed measured from the previous frame's displacement. A slope drops
+    away faster than the support snap follows, so every frame downhill is a
+    fall, and a measured speed reads zero for a tank that has only just been
+    asked to move -- which pinned a tank to the slope it landed on. This is the
+    same class of fault as the ledge in #39 and now takes the value the jump path
+    already used.
+
+### Added
+- **`/flag drop [player]`**, which upstream has no equivalent of and is a
+  deliberate deviation. Its `FlagCommand` takes `<reset|up|show>`
+  (`commands.cxx:593`) and can only send *every* superflag in the world away,
+  which on a map built for testing flags empties the zone you are standing on.
+  bzo is developed by driving it, and the move that costs a test run is being
+  handed the wrong flag -- so this is the other half of `/mv`: put the tank on
+  the zone you want, drop what it is carrying, take the one that is there. No
+  target means your own. A sticky flag is zapped rather than dropped, exactly as
+  dying with it does, so it cannot be used to plant a bad flag on somebody else.
+- **`--window` on `scripts/headless-client.mjs`.** SwiftShader costs per pixel,
+  so the window size is the frame rate: the default 1280x800 probe runs at about
+  8fps, which moves a tank two feet per step and walks straight over anything
+  that only happens at a player's frame rate -- the landing buzz above among
+  them. `--window 320,240` runs near 60fps and reaches it.
+- **A row of five pyramids on `maps/flagbuffet.bzw`**, from nearly flat to
+  nearly vertical over one shared 40-unit base, plus a `flipz` one for the flat
+  top. They sit on the empty ground south of the flag rings so what a slope does
+  to a tank can be driven rather than argued about.
+
 ## [1.0.93] - 2026-09-09
 
 ### Added

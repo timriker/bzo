@@ -161,6 +161,7 @@ Operator panel.
 | `/say <message>` | `say` | a server-channel broadcast, which bzo already sends |
 | `/mute`, `/unmute`, `/mutelist` | `mute` | a per-player flag the `message` handler checks; no persistence needed while it lasts one session |
 | `/flag up`, `/flag show`, `/flag reset` | `flagMod` | `zapFlag`, `resetFlag` and the flag table are all there |
+| `/flag drop [player]` | `flagMod` | **bzo's own, and deliberate.** Upstream's FlagCommand cannot take a flag off one player, only send every superflag in the world away. Testing a flag means being handed the right one, so this is what `/mv` to a zone needs to be useful. A sticky flag is zapped, as dying with it is |
 | `/set` | `setVar` | **only over what bzo already keeps configurable**, which turned out to be narrower than a map's `-set`: it is the three the Operator panel *propagates* (`motd`, `shotMaxActive`, `ricochet`), because anything else would move on the server and leave every client predicting against the old value. `/set` naming anything else says so rather than pretending. `/reset` has nothing to reset to and is not implemented |
 
 ### Moving a player between teams -- bzo's own, and wanted
