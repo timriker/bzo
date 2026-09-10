@@ -9,7 +9,7 @@
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "check:server": "node --check server.js",
-    "check": "npm run check:server && npm run lint && npm run check:controls-docs && npm run check:shared-pairs && npm run test:volume && npm run test:voice-volume && npm run test:voice-channels && npm run test:input-context && npm run test:pause && npm run test:roam && npm run test:tracks && npm run test:teams && npm run test:team-mode && npm run test:scoreboard && npm run test:commands && npm run test:perf && npm run test:shots && npm run test:flags && npm run test:server-name && npm run test:sessions && npm run test:motion && npm run test:collision && npm run test:capabilities && npm run test:tank-models",
+    "check": "npm run check:server && npm run lint && npm run check:controls-docs && npm run check:shared-pairs && npm run test:volume && npm run test:voice-volume && npm run test:voice-channels && npm run test:input-context && npm run test:pause && npm run test:roam && npm run test:tracks && npm run test:teams && npm run test:team-mode && npm run test:scoreboard && npm run test:commands && npm run test:perf && npm run test:shots && npm run test:flags && npm run test:server-name && npm run test:sessions && npm run test:motion && npm run test:collision && npm run test:capabilities && npm run test:tank-models && npm run test:face-trim",
     "check:controls-docs": "node scripts/check-controls-docs.mjs",
     "check:shared-pairs": "node scripts/check-shared-pairs.mjs",
     "test:input-context": "node scripts/test-input-context.mjs",
@@ -36,7 +36,8 @@
     "release:check:increment": "node scripts/check-tag-increment.mjs",
     "changelog:extract": "node scripts/extract-changelog.mjs",
     "prepare": "node -e \"const { existsSync } = require('node:fs'); process.exit(existsSync('node_modules/.bin/husky') ? 0 : 1)\" && husky || true",
-    "test:collision": "node scripts/test-collision.mjs"
+    "test:collision": "node scripts/test-collision.mjs",
+    "test:face-trim": "node scripts/test-face-trim.mjs"
   },
   "keywords": [
     "game",

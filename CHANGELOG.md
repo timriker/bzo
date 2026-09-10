@@ -6,6 +6,32 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
 
 ## [Unreleased]
 
+### Changed
+- **Faces buried inside other obstacles are no longer built.** Upstream already
+  leaves out the two every map hits -- a box's bottom polygon when it sits on the
+  ground (`BoxSceneNodeGenerator.cxx:66`) and a pyramid's base unless it is
+  raised or stood on its point (`PyramidSceneNodeGenerator.cxx:109`) -- and this
+  asks the same question of the whole world: a triangle every point of which lies
+  inside the solid part of other obstacles cannot be seen from anywhere outside
+  them, so the world mesh never carries it. The unit is the triangle and it is
+  kept or dropped whole, so nothing is clipped and no vertex is invented.
+
+  What it is really for is the way maps fake a curve. With no curved obstacle to
+  draw, a map crosses several boxes at one spot -- `hix.bzw` builds four octagons,
+  its top of the world and its roof out of four planks each -- and every long face
+  of every plank is buried in its neighbours. Those are also the faces a phased
+  tank used to see as slabs across its view, because from inside one plank the
+  others are still solid, so the eighth dimension inside one of these reads as the
+  shape it is rather than as a box full of walls. `hix.bzw` loses 112 of its 992
+  obstacle triangles, 11%; `flagbuffet.bzw`, which now carries an octagon and a
+  thin wall out on the north-east ground for testing, loses 16 of 518.
+
+  Two faces in the same plane are left alone: they hide each other equally,
+  something has to be drawn there, and a rule that let each subtract the other
+  would leave a hole. The tolerance is a millimetre rather than a float epsilon,
+  because the coordinates tested are float32 out of a BufferGeometry and a map is
+  800 units across.
+
 ## [1.0.94] - 2026-09-10
 
 ### Changed

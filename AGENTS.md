@@ -275,6 +275,46 @@ These are deliberate. Do not "fix" them without being asked.
   looks like it works. It is the only flag BZFlag has that bzo does not. See
   `docs/flags.md` and the Flags section of the README.
 
+- **A face buried inside other obstacles is never built.** Upstream leaves out
+  the two cases every map hits and no more: a box's bottom polygon when it sits
+  on the ground (`BoxSceneNodeGenerator.cxx:66`) and a pyramid's base unless it
+  is raised or stood on its point (`PyramidSceneNodeGenerator.cxx:109`). Both are
+  the same question with the answer worked out by hand. bzo asks it of the whole
+  world in `public/face-trim.mjs`: a triangle every point of which lies inside
+  the solid part of other obstacles cannot be seen from any position outside
+  them, so `_addObstacleFragment` never copies it into the world mesh.
+
+  What makes it worth the load-time cost is the way maps fake a curve. With no
+  curved obstacle to draw, a map crosses several boxes at one spot -- `hix.bzw`
+  builds four octagons, its top of the world and its roof out of four planks
+  each, and `flagbuffet.bzw` carries one out on the north-east ground for testing
+  -- and every long face of every plank is buried in its neighbours. `hix.bzw`
+  loses 112 of its 992 obstacle triangles that way. Those are also the faces a
+  phased tank sees as slabs across its view, because from inside one plank the
+  others are still solid, so this is as much about what the eighth dimension
+  looks like inside a fake curve as about what the frame costs.
+
+  Three rules keep it safe, and each is load-bearing:
+
+  - **Whole triangles only.** A triangle is kept or dropped, never clipped, and
+    no vertex is invented, so the buffers only ever shrink. A face half buried
+    keeps both halves.
+  - **Two faces in the same plane are left alone.** They hide each other equally
+    and something has to be drawn there; a rule that let each subtract the other
+    would leave a hole. An octagon's four plank tops are exactly this case.
+  - **The tolerance is a millimetre, not a float epsilon.** The coordinates
+    tested are float32 out of a BufferGeometry and a map is 800 units across,
+    where float32 steps about 6e-5, so a plank's corner lands either side of the
+    neighbour it should touch. A tighter tolerance leaves a hairline crack down a
+    buried face, for one rosette and not the next.
+
+  The half-spaces the module builds have to describe the same solid the colliders
+  do -- `getColliderLocalPoint`'s handedness, which is also what a Three rotation
+  about +Y gives the mesh. A rosette is its own mirror, so getting that wrong is
+  invisible on the octagon and wrong at every other angle. `npm run
+  test:face-trim` holds all of it, including a cross-check against the collider
+  and a float32 case.
+
 The first two exist so a test session can be driven from the server alone. Re-testing
 otherwise means walking to every browser, phone, and headset and clicking. They
 may change once that stops being the dominant cost.

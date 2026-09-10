@@ -31,6 +31,7 @@ import {
   getObstacleHeight,
   getPyramidSurfaceLocalHeight,
 } from './collision.mjs';
+import { createBuriedTriangleTest } from './face-trim.mjs';
 import {
   TRACK_TREAD_LEFT,
   TRACK_TREAD_RIGHT,
@@ -2647,7 +2648,12 @@ class RenderManager {
   // a few hundred obstacles and ten thousand triangles, against a client that
   // runs out of one core with the GPU idle. Bases and teleporters stay out: one
   // carries team colour and a hidden face, the other animates.
-  _addObstacleFragment(fragments, key, materials, geometry, matrix, color = null) {
+  //
+  // `isBuried` is where the world's own hidden faces are dropped, since this is
+  // the one place every obstacle's triangles are already in world space and
+  // already being copied one at a time. A triangle it claims is kept out of the
+  // buffers entirely, vertices and all.
+  _addObstacleFragment(fragments, key, materials, geometry, matrix, color = null, isBuried = null) {
     geometry.applyMatrix4(matrix);
     let fragment = fragments.get(key);
     if (!fragment) {
@@ -2667,10 +2673,10 @@ class RenderManager {
     for (const group of geometry.groups) {
       const bucket = fragment.groups[group.materialIndex];
       if (!bucket) continue;
-      // A vertex is copied once however many of this group's triangles use it.
+      // A vertex is copied once however many of this group's triangles use it,
+      // and a vertex no surviving triangle names is never copied at all.
       const remapped = new Map();
-      for (let i = group.start; i < group.start + group.count; i += 1) {
-        const vertex = index.getX(i);
+      const copyVertex = (vertex) => {
         let mapped = remapped.get(vertex);
         if (mapped === undefined) {
           mapped = bucket.positions.length / 3;
@@ -2681,6 +2687,19 @@ class RenderManager {
           if (color) bucket.colors.push(color[0], color[1], color[2]);
         }
         bucket.indices.push(mapped);
+      };
+      for (let i = group.start; i < group.start + group.count; i += 3) {
+        const first = index.getX(i);
+        const second = index.getX(i + 1);
+        const third = index.getX(i + 2);
+        if (isBuried && isBuried(
+          position.getX(first), position.getY(first), position.getZ(first),
+          position.getX(second), position.getY(second), position.getZ(second),
+          position.getX(third), position.getY(third), position.getZ(third),
+        )) continue;
+        copyVertex(first);
+        copyVertex(second);
+        copyVertex(third);
       }
     }
   }
@@ -2761,6 +2780,11 @@ class RenderManager {
       }
     });
 
+    // The faces the world buries in itself. Worked out once for the whole
+    // obstacle list, because every obstacle is a candidate to hide any other,
+    // and then asked per triangle as the fragments are built below.
+    const isTriangleBuried = createBuriedTriangleTest(obstacles);
+
     // Boxes and pyramids collect here and become two meshes at the end.
     const fragments = new Map();
     const fragmentMatrix = new THREE.Matrix4();
@@ -2781,6 +2805,12 @@ class RenderManager {
         fragmentRotation.setFromEuler(fragmentEuler.set(0, obs.rotation, 0));
         return fragmentMatrix.compose(fragmentPosition, fragmentRotation, fragmentScale);
       };
+
+      // The buried-face test bound to this obstacle, which is never counted as
+      // hiding its own faces.
+      const buriedFace = (ax, ay, az, bx, by, bz, cx, cy, cz) => isTriangleBuried(
+        obs, ax, ay, az, bx, by, bz, cx, cy, cz,
+      );
 
       if (obs.kind === 'teleporter') {
         mesh = this._createTeleporterMesh(obs, i + 1);
@@ -2819,6 +2849,7 @@ class RenderManager {
           }),
           obstacleMatrix(),
           getBaseTeamTint(getPlayerTeamColor(getTeamFromColorIndex(obs.team || 1))),
+          buriedFace,
         );
         this._addDebugLabelAt(
           obs.name || `Base ${i + 1}`,
@@ -2874,6 +2905,8 @@ class RenderManager {
           ),
           geometry,
           obstacleMatrix(),
+          null,
+          buriedFace,
         );
         this._addDebugLabelAt(
           obs.name || `Pyramid ${i + 1}`,
@@ -2908,6 +2941,8 @@ class RenderManager {
             omitFaces: baseY > 0 ? [] : [BOX_FACE.NY],
           }),
           obstacleMatrix(),
+          null,
+          buriedFace,
         );
         this._addDebugLabelAt(
           obs.name || `Box ${i + 1}`,

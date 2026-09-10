@@ -159,6 +159,57 @@ base
   color 4
 end
 
+# Third-person camera geometry, out on the empty north-east ground where it is
+# clear of both flag rings and of everything else the map tests.
+#
+# The octagon is the four boxes hix carries under its diagonal walls: one
+# position, one size, rotations 45 degrees apart. The half-width is the
+# half-depth times (1 + sqrt 2), which is what puts each plank's corners exactly
+# on its neighbour's -- 19.313708499 is 8.0 * (1 + sqrt 2). What it is here for
+# is the overlap: a tank, or a chase camera, near the middle of this is inside
+# as many as four obstacles at once, and the count falls to three and then one
+# on the way out to the rim.
+box
+  name oct_0
+  position 100 100 0
+  rotation 0
+  size 19.313708499 8 15
+end
+
+box
+  name oct_45
+  position 100 100 0
+  rotation 45
+  size 19.313708499 8 15
+end
+
+box
+  name oct_90
+  position 100 100 0
+  rotation 90
+  size 19.313708499 8 15
+end
+
+box
+  name oct_135
+  position 100 100 0
+  rotation 135
+  size 19.313708499 8 15
+end
+
+# And a wall of the same thickness as hix's diagonal upper walls, 0.5 half-depth
+# for a metre across, sixty long and sixteen tall. A metre is thinner than the
+# chase camera's twelve-unit trail, so backing into this puts the eye out beyond
+# the far face rather than inside the wall -- which is the case a thick obstacle
+# does not reach. Twenty units south of the octagon, with room to turn between
+# them.
+box
+  name thin_wall
+  position 100 60 0
+  rotation 0
+  size 30 0.5 16
+end
+
 zone
   position 0 0 0
   size 1 1 0
