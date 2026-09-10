@@ -6,6 +6,8 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
 
 ## [Unreleased]
 
+## [1.0.96] - 2026-09-10
+
 ### Added
 - **A map may paint a box or a pyramid.** `color` on either -- and `diffuse`,
   which is the same property under the name bzflag itself writes -- is read as
