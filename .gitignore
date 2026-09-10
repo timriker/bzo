@@ -6,3 +6,4 @@ node_modules/
 server.json
 sessions.json
 data/
+cache/

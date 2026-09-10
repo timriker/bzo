@@ -395,6 +395,32 @@ version appears.
 | `scripts/*.mjs` | Release tooling, doc checks, tests, OBJ generators |
 | `maps/*.bzw` | Map files |
 | `docs/` | Design plans, manual validation checklists, and asset notes |
+| `cache/br/` | Brotli sidecars, derived from `public/` and Three's build; not in git |
+
+### Assets are compressed once, not per request
+
+Everything under `public/` and Three's build directory is served uncompressed by
+express, and a reverse proxy in front of it compresses by mime type -- which
+misses the models entirely, because express announces `.obj` as
+`application/x-tgif`. `server/precompress.cjs` closes that: it builds a brotli
+sidecar for each text asset and serves it to a client that asks for `br`. A cold
+join measured at the wire goes from 9,958KB to 5,575KB, the models from 1,911KB
+to 228KB.
+
+Quality 11, so it is done once and kept -- three seconds for a megabyte is out
+of the question per request when the game loop shares the process. The walk that
+computes the client build id plans it, since that walk is already holding every
+file's bytes, and a sidecar is named for the digest of those bytes:
+`cache/br/obj/bzflag.obj.<digest>.br`. So a sidecar that exists is by
+construction the current file's, an older one is a name nothing looks up, and
+the sweep in the same pass deletes it. Never trust an mtime here: serving a stale
+body is the desync the whole cache policy exists to prevent.
+
+A missing sidecar is never an error -- the request falls through to the identity
+file. That is what makes a read-only container, an unwritable `cache/`, and the
+seconds before the queue drains all correct rather than broken. `npm run
+precompress` does the same pass without a server, which is what the image build
+runs.
 
 ### Shared client/server modules
 

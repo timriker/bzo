@@ -141,8 +141,13 @@ export function getSoundPaths() {
   return GAME_SOUND_NAMES.map(getSoundPath);
 }
 
+// A plain fetch, because the service worker is what decides how fresh a sound
+// has to be: `/audio/` is served cache-first out of a cache keyed to the build,
+// and a miss there revalidates. A `no-store` fetch would be kept out of the HTTP
+// cache as well, leaving that revalidation nothing to validate against -- the
+// first load the worker controls would re-download every sound in full.
 export async function loadAudioBuffer(audioContext, url) {
-  const response = await fetch(url, { cache: 'no-store' });
+  const response = await fetch(url);
   if (!response.ok) {
     throw new Error(`Failed to load audio buffer from ${url}: ${response.status}`);
   }

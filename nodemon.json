@@ -1,6 +1,15 @@
 {
-  "watch": ["server.js", "public/", "maps/", "server.json"],
-  "ignore": ["server.log", "node_modules/"],
+  "watch": [
+    "server.js",
+    "server/",
+    "public/",
+    "maps/",
+    "server.json"
+  ],
+  "ignore": [
+    "server.log",
+    "node_modules/"
+  ],
   "delay": 0,
   "exitcrash": false
 }

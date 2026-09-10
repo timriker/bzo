@@ -51,7 +51,14 @@ COPY LICENSE ./LICENSE
 COPY README.md ./README.md
 COPY CHANGELOG.md ./CHANGELOG.md
 
-RUN mkdir -p /data && chown -R "$APP_UID:$APP_GID" /app /data
+# Build the brotli sidecars into the image. The server builds any that are
+# missing at boot, so this is not required -- but doing it here means a
+# container needs nothing writable at runtime and the first player to arrive
+# never waits for the compression. The directory is created and handed over
+# either way, so a container that does have to build them can.
+RUN node server/precompress.cjs
+
+RUN mkdir -p /data /app/cache/br && chown -R "$APP_UID:$APP_GID" /app /data
 
 USER ${APP_UID}:${APP_GID}
 

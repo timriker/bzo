@@ -6,6 +6,47 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
 
 ## [Unreleased]
 
+### Added
+- **Assets are compressed before they are asked for.** Every text asset -- the
+  models, the client code, the markup, Three's two builds -- now has a brotli
+  sidecar under `cache/br/`, served to any client that asks for `br`. A cold
+  join measured at the wire falls from 9,958KB to 5,575KB. The models are most
+  of it, 1,911KB to 228KB: an OBJ is ASCII numbers and compresses about ten to
+  one, and nothing was compressing them, because express announces `.obj` as
+  `application/x-tgif` and a proxy's mime list never matches that. Quality 11,
+  which is three seconds for a megabyte and so is done once at boot rather than
+  per request -- off the event loop, after the port is open, and never blocking
+  a game the sidecars are not needed to play. A sidecar is named for the digest
+  of the file it was made from, so one that exists is the current file's and one
+  left by an earlier version is a name nothing looks up; the same pass deletes
+  those. Where a sidecar is missing, or `cache/` cannot be written at all, the
+  request is answered with the file itself. `npm run precompress` builds them
+  without a server, which is what the container image does.
+
+### Fixed
+- **The login rate limiter stops naming an option its library does not have.**
+  `ipv6Subnet` belongs to express-rate-limit 8, and bzo asks for 7, which
+  answered every boot with an `ERR_ERL_UNKNOWN_VALIDATION` on stderr -- loud on
+  a fresh checkout and invisible here, since `server.log` carries what bzo logs
+  and not what a dependency prints. Nothing was disabled by it and nothing
+  behaved differently: the key generator already buckets by the exact address it
+  reads, which is what the option would have been asking for.
+- **A model is served as a model.** express's mime table maps `.obj` to TGIF's
+  format and `.mtl` to raw bytes; both are now their own registered types,
+  `model/obj` and `model/mtl`. Wrong on its face, and it also hid the largest
+  text the game serves from anything that compresses by type -- no proxy's list
+  holds `application/x-tgif`. The loader asks for text either way and never
+  consulted the type.
+- **Sounds are fetched the way every other asset is, so the cache can keep
+  them.** The service worker decides how fresh a sound has to be: `/audio/` is
+  served cache-first out of a cache keyed to the build, and a miss there
+  revalidates. Asking for the file with `no-store` on top of that kept it out of
+  the HTTP cache as well, which left the revalidation nothing to validate
+  against -- so the first load the worker actually controlled re-downloaded all
+  2.3MB of sound in full, and every change to the client code replayed it.
+  Measured at the wire, that load now costs twenty-eight conditional requests
+  and no bodies instead of 2.3MB.
+
 ## [1.0.96] - 2026-09-10
 
 ### Added

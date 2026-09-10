@@ -188,25 +188,20 @@ const crypto = require('crypto');
 // `server.json` or a map restarts the server without disturbing anyone -- plus
 // Three's build directory, which is served from `node_modules` rather than from
 // `public/` and would otherwise let a dependency bump slip past unnoticed.
+// The same walk plans the brotli sidecars, because it is already holding every
+// file's bytes and a sidecar is named for their digest -- see
+// `server/precompress.cjs`. It only plans: nothing is compressed until `start`.
 function computeClientBuild() {
   const hash = crypto.createHash('sha256');
-  const hashTree = (root) => {
-    const walk = (dir) => {
-      const entries = fs.readdirSync(dir, { withFileTypes: true })
-        .sort((a, b) => a.name.localeCompare(b.name));
-      for (const entry of entries) {
-        const full = path.join(dir, entry.name);
-        if (entry.isDirectory()) walk(full);
-        else if (entry.isFile()) {
-          hash.update(path.relative(root, full));
-          hash.update(fs.readFileSync(full));
-        }
-      }
-    };
-    if (fs.existsSync(root)) walk(root);
+  const hashTree = ({ root, urlPrefix }) => {
+    precompress.walkFiles(root, (full, relative) => {
+      const bytes = fs.readFileSync(full);
+      hash.update(relative);
+      hash.update(bytes);
+      precompress.consider(`${urlPrefix}${relative.split(path.sep).join('/')}`, full, bytes);
+    });
   };
-  hashTree(path.join(__dirname, 'public'));
-  hashTree(threeBuildDir);
+  precompress.assetRoots().forEach(hashTree);
   return hash.digest('hex').slice(0, 12);
 }
 const { isHeadsetBrowserUA } = require('./server/headset.cjs');
@@ -266,10 +261,10 @@ const loginRateLimit = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   keyGenerator: requestAddress,
-  // Both are answered by the key generator above: bzo reads the forwarded
-  // address itself rather than leaving it to Express's `trust proxy`, and an
-  // address is a bucket whether it is v4 or v6.
-  validate: { xForwardedForHeader: false, ipv6Subnet: false },
+  // Answered by the key generator above, which reads the forwarded address
+  // itself rather than leaving it to Express's `trust proxy`. That key is the
+  // address exactly as read, so an address is a bucket whether it is v4 or v6.
+  validate: { xForwardedForHeader: false },
   // Never silently, as with every other refusal: a player who cannot log in
   // should be findable in the log by the operator they are about to ask.
   handler: (req, res, _next, options) => {
@@ -301,6 +296,24 @@ function setStaticHeaders(res, filePath) {
     res.setHeader('Cache-Control', `public, max-age=${ASSET_MAX_AGE}`);
   }
 }
+
+// Wavefront geometry, named as itself. express's mime table maps `.obj` to
+// TGIF's format and `.mtl` to raw bytes, which is wrong on its face and also
+// hides the largest text the game serves from anything that compresses by type
+// -- a proxy's list will never hold `application/x-tgif`. `express.static.mime`
+// is the same instance `res.type` reads, so this reaches the identity response
+// and the compressed one alike. The loader asks for text either way and does
+// not consult the type.
+express.static.mime.define({ 'model/obj': ['obj'], 'model/mtl': ['mtl'] });
+
+// Ahead of every static handler, so a client that asks for `br` is answered
+// with a sidecar wherever one has been built. The same freshness policy is
+// handed over, because a compressed response and an identity one must promise
+// the same thing. `cache/` is derived from `public/` and Three's build
+// directory and is not in git.
+const precompress = require('./server/precompress.cjs');
+precompress.configure({ cacheDir: path.join(__dirname, 'cache', 'br') });
+app.use(precompress.middleware({ cacheControl: setStaticHeaders }));
 
 // Serve Three.js from the installed dependency so the game has no third-party
 // origins: an installed PWA on a headset or a LAN with no internet route still
@@ -758,6 +771,9 @@ process.on('unhandledRejection', (reason) => {
 const server = app.listen(PORT, '::', () => {
   log(`Server running on http://[::]:${PORT}`);
   log(`Client build ${CLIENT_BUILD}`);
+  // After the port is open, never before it: the game is playable while the
+  // sidecars are built, and a request that arrives first is served identity.
+  precompress.start({ log }).catch((error) => logError(`[BR] ${error.message}`));
 });
 
 server.on('error', (err) => {
