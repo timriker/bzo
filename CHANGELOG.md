@@ -6,6 +6,8 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
 
 ## [Unreleased]
 
+## [1.0.97] - 2026-09-10
+
 ### Added
 - **Assets are compressed before they are asked for.** Every text asset -- the
   models, the client code, the markup, Three's two builds -- now has a brotli
