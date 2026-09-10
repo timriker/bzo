@@ -6,6 +6,8 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
 
 ## [Unreleased]
 
+## [1.0.94] - 2026-09-10
+
 ### Changed
 - **Tank motion is one pass, as upstream's is.** `doUpdateMotion` builds a
   velocity and hands the whole step to a single search that resolves position,
