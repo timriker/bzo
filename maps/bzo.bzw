@@ -19,6 +19,11 @@
 # outer ring is every good flag, alphabetically clockwise from north.
 
 options
+	# Team play, so the four coloured bases below are capture targets.
+	-c
+	# Per-team player limits, in BZFlag's team order:
+	# rogue, observer, red, green, blue, purple.
+	-mp 10,10,10,10,10,10
   # Tanks may jump
   -j
   # Five shots in the air at once
