@@ -299,7 +299,9 @@ import {
   isPyramidFlatTop,
   movingTankOverlapsHeight,
   pyramidIntersectsTank,
+  testOrigRectCircle,
   testOrigRectTank,
+  TANK_HALF_LENGTH,
   TANK_HEIGHT,
   traceShotStep,
   WORLD_WALL_HEIGHT,
@@ -8529,6 +8531,57 @@ function getShotTeleporterCrossing(start, end, obs) {
   };
 }
 
+// _tankRadius (global.cxx:155): 0.72 * tankLength, the bounding-circle radius
+// used only for this proximity test -- everywhere else a tank is the
+// rectangle collision.mjs already carries.
+const TELEPORTER_PROXIMITY_RADIUS = 0.72 * (2 * TANK_HALF_LENGTH);
+
+// Teleporter::getProximity (Teleporter.cxx:373): how close a point is to
+// being swallowed by this portal, 0 (clear) to 1 (centred in the opening).
+// SceneRenderer::renderDimming() turns the max of these across every
+// teleporter into the yellow screen wash; Player::updateTranslucency turns
+// the same number into a tank's own alpha fade.
+function getTeleporterProximity(x, y, z, obs) {
+  const halfW = obs.w / 2;
+  const border = obs.border;
+  const activeHalfD = obs.d / 2 - border;
+  const activeH = obs.h - border;
+  const gate = 1.2 * TELEPORTER_PROXIMITY_RADIUS;
+
+  const local = getColliderLocalPoint(x, z, obs);
+  if (!testOrigRectCircle(halfW, activeHalfD, local.x, local.z, gate)) return 0;
+
+  const relY = y - (obs.baseY || 0);
+  if (relY < -gate || relY > activeH + gate) return 0;
+
+  const absX = Math.abs(local.x);
+  const absZ = Math.abs(local.z);
+  let t = 1.2 - absX / TELEPORTER_PROXIMITY_RADIUS;
+
+  if (absZ > activeHalfD) {
+    const f = (2 / Math.PI) * Math.atan2(absX, absZ - activeHalfD);
+    t *= f * f;
+  } else if (relY < 0) {
+    const f = 1 + relY / gate;
+    if (f >= 0 && f <= 1) t *= f * f;
+  } else if (relY > activeH) {
+    const f = 1 - (relY - activeH) / gate;
+    if (f >= 0 && f <= 1) t *= f * f;
+  }
+
+  return t > 0 ? Math.min(t, 1) : 0;
+}
+
+// World::getProximity (World.cxx:446): the maximum over every teleporter.
+function getWorldTeleporterProximity(x, y, z) {
+  let best = 0;
+  for (const obs of TELEPORTER_OBSTACLES_BY_INDEX.values()) {
+    const p = getTeleporterProximity(x, y, z, obs);
+    if (p > best) best = p;
+  }
+  return best;
+}
+
 function rotateXZ(x, z, angle) {
   const cos = Math.cos(angle);
   const sin = Math.sin(angle);
@@ -12007,6 +12060,13 @@ function animate(frameTime) {
   // playing.cxx:6212 blanks the view for a paused tank as well as a blinded one.
   // bzo draws its own paused overlay instead, so this is Blindness alone.
   renderManager.setBlank(isViewBlinded());
+  // Player::move (Player.cxx:276): recomputed off the tank's own position
+  // every time it moves, not just when driving through a teleporter.
+  if (myTank) {
+    renderManager.setTeleporterProximity(
+      getWorldTeleporterProximity(myTank.position.x, myTank.position.y, myTank.position.z)
+    );
+  }
   renderManager.updateExplosions(deltaTime);
   updatePausedSpheres();
   renderManager.updateTreads(tanks, deltaTime, gameConfig);

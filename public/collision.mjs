@@ -61,7 +61,7 @@ function origRectPointDistanceSquared(halfW, halfD, localX, localZ) {
 
 // True when an axis-aligned rectangle centered at the origin intersects a
 // circle of radius r centered at the local point.
-function testOrigRectCircle(halfW, halfD, localX, localZ, radius) {
+export function testOrigRectCircle(halfW, halfD, localX, localZ, radius) {
   return origRectPointDistanceSquared(halfW, halfD, localX, localZ) < radius * radius;
 }
 

@@ -2026,6 +2026,39 @@ class RenderManager {
     return this._blanked === true;
   }
 
+  // SceneRenderer::renderDimming's teleporterProximity branch (SceneRenderer.cxx
+  // :1145): a full-view yellow wash, graded by how close the tank is to a
+  // teleporter's opening (`blindnessColor`, upstream's own name for this yellow,
+  // despite having nothing to do with the Blindness flag above). Parented to the
+  // camera instead of drawn as a 2D screen overlay, so it renders correctly per
+  // eye in a headset too.
+  setTeleporterProximity(proximity) {
+    if (!this.camera) return;
+    const density = proximity > 0.75 ? 1 : proximity / 0.75;
+    if (density <= 0) {
+      if (this._teleporterFlash) this._teleporterFlash.visible = false;
+      return;
+    }
+    if (!this._teleporterFlash) {
+      const geometry = new THREE.PlaneGeometry(200, 200);
+      const material = new THREE.MeshBasicMaterial({
+        color: 0xffff00,
+        transparent: true,
+        depthTest: false,
+        depthWrite: false,
+        fog: false,
+      });
+      const mesh = new THREE.Mesh(geometry, material);
+      mesh.position.set(0, 0, -2);
+      mesh.renderOrder = 9999;
+      mesh.frustumCulled = false;
+      this.camera.add(mesh);
+      this._teleporterFlash = mesh;
+    }
+    this._teleporterFlash.visible = true;
+    this._teleporterFlash.material.opacity = density;
+  }
+
   getWorldGroup() {
     return this.worldGroup;
   }

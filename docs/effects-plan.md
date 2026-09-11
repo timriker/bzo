@@ -53,7 +53,7 @@ trail rather than growing the cost.
 
 | missing | upstream | worth |
 |---|---|---|
-| teleporter proximity | `Player.cxx:642`, `SceneRenderer.cxx:1145` | two effects, below |
+| tank alpha fade | `Player.cxx:642` | the minor half of teleporter proximity, below |
 | weather | `WeatherRenderer.cxx` | map-driven, so nothing shows unless a map asks |
 
 That is the whole list. Weather is last for a reason: `_rainType` and its dozen
@@ -77,7 +77,7 @@ There is a lateral gate at `1.2 * radius` against the portal rect, an
 | 1.94 units | 0.75 |
 | 0.86 units | 1.0 |
 
-### The screen flash is the impactful half
+### The screen flash is the impactful half, and is built
 
 `SceneRenderer.cxx:1145` blends the whole frame toward `blindnessColor`, which is
 `{1, 1, 0, 1}` -- **yellow** -- at `density = t / 0.75` clamped to 1. So the
@@ -85,46 +85,51 @@ frame is solid yellow from about 1.94 units out, and the player emerges on the
 far side. At tank speed that is roughly 130ms of ramp into a full-field flash.
 
 **This is what makes a teleport read as a teleport upstream.** It hides the view
-discontinuity. bzo hard-cuts to the destination today with only the sound, which
-is the one place a bzo teleport looks unlike a BZFlag teleport.
+discontinuity, and bzo now has it: `getWorldTeleporterProximity` (`client.js`,
+next to `getShotTeleporterCrossing`) ports `Teleporter::getProximity` and
+`World::getProximity` directly, and `RenderManager.setTeleporterProximity`
+(`render.js`) is the overlay.
 
-### The tank alpha fade is the minor half
+**This is not the same mechanism as Blindness, upstream's naming coincidence
+aside.** `blindnessColor` is `renderDimming`'s constant name for this yellow, not
+a sign the two effects share code -- `playing.cxx:6212` drives `setBlank` (a
+binary hide-the-world-and-black-the-sky switch) off `Flags::Blindness` and off
+pause, and separately, `playing.cxx:6232` drives `renderDimming`'s *other*
+branch, `useDimming` (a fixed black 75%-density blend), off a menu being open.
+`teleporterProximity` is the third, unrelated input to that same function.
+bzo's existing `setBlank`-based Blindness (`client.js`, next to
+`renderManager.setBlank(isViewBlinded())`) already matches upstream exactly and
+needed no change. The overlay this section describes is new and is teleporter
+proximity's alone.
+
+**The overlay is a mesh parented to the camera, not a 2D screen quad.** Upstream
+draws `renderDimming` with an identity projection over the whole viewport, which
+has no equivalent in a headset -- there is no window to pin a 2D overlay to.
+`setTeleporterProximity` instead adds a large, always-in-front, depth-tested-off
+plane as a child of `this.camera`, which Three.js renders once per eye under
+WebXR the same as any other object in camera space, so the wash is stereo-correct
+for free.
+
+**It gets no XR-specific cap.** `setBlank`'s comment already settles this
+question for the harder case: Blindness's full opaque blackout runs "on the flat
+canvas and in XR alike," unmitigated, because that is upstream's own effect and
+the project rule is to ship the effect BZFlag ships. A graded yellow wash peaking
+for roughly 130ms at tank speed is a smaller dose than that blackout, so capping
+it in a headset while leaving Blindness uncapped would be an inconsistency this
+codebase has already decided against, not a new safety line.
+
+### The tank alpha fade is the minor half, and is not built yet
 
 `teleAlpha = 1.0f - (0.75f * teleporterProximity)`, multiplied into `color[3]`
 alongside the cloak alpha, so every tank fades toward 25% over the same band. It
 carries real information -- a tank about to vanish shows it -- but it is subtle
-and brief for a tank at speed. Not worth building alone; nearly free beside the
-flash.
-
-### Two things to settle first
-
-**bzo has no graded overlay to hang the flash on.** `setBlank` is binary: it
-hides `worldGroup` and blacks the background, where upstream's is a density
-blend in a colour. So this needs a new mechanism -- which is worth having anyway,
-because it is also what upstream's `useDimming` is, and bzo's Blindness is
-currently the same on/off approximation.
-
-**It needs an XR answer, and that is the blocker.** A full-field yellow flash is
-uncomfortable in a headset and a photosensitivity concern besides: on a flat
-screen it is a flourish, in VR it is the entire visual field going opaque. Three
-plausible designs, none of them chosen yet:
-
-- **A lower ceiling in XR.** Same ramp, capped well short of opaque -- simplest,
-  and keeps one code path with one number that differs.
-- **A vignette instead of a fill.** Darken or tint the periphery and leave the
-  centre clear, which is the established comfort technique for exactly this and
-  is used by XR locomotion systems for the same reason. Costs the "you cannot see
-  through a teleporter" property.
-- **A much shorter ramp.** Flash briefly at the crossing rather than over five
-  units of approach, trading the warning for a smaller dose.
-
-The vignette is the most likely right answer and the most work. Do not build the
-flash before this is decided, per the rule that a flag effect needs an XR
-implementation before it lands.
+and brief for a tank at speed. `getWorldTeleporterProximity` is already there for
+it; what is missing is a hook into wherever bzo sets a tank's own alpha
+(`GHOST_ALPHA_SCALE` and the cloak/zoned alpha in `render.js`) to blend it in per
+tank, for every tank, not just the local one.
 
 ## Order
 
-1. **The graded overlay**, then the teleporter flash on top of it once the XR
-   question is answered. Fix Blindness to use it in the same pass.
+1. ~~The graded overlay, then the teleporter flash on top of it~~ -- both built.
 2. **The tank alpha fade**, with `getProximity` already there.
 3. **Weather**, if a map ever asks.

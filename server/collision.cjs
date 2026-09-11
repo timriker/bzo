@@ -1084,6 +1084,7 @@ function traceShotStep({
 module.exports = {
   ZERO_TOLERANCE,
   getColliderLocalPoint,
+  testOrigRectCircle,
   TANK_HALF_LENGTH,
   TANK_HALF_WIDTH,
   TANK_HEIGHT,
