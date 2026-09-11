@@ -6,6 +6,14 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
 
 ## [Unreleased]
 
+## [1.0.101] - 2026-09-11
+
+### Added
+- **Signed-in players can log out.** The login row now sends a signed-in
+  player to `/logout`, which removes their stored session and clears the
+  cookie before returning to `/`, the same page-navigation shape `/login`
+  already uses.
+
 ## [1.0.100] - 2026-09-11
 
 ### Added

@@ -2014,10 +2014,10 @@ function applyLoginUi() {
     value.textContent = `${amAdmin ? '@' : '+'}${myGlobalCallsign || myPlayerName}`;
     if (row) {
       row.dataset.loggedIn = 'true';
-      row.setAttribute('aria-label', `Signed in as ${myGlobalCallsign || myPlayerName}`);
+      row.setAttribute('aria-label', `Signed in as ${myGlobalCallsign || myPlayerName}. Activate to sign out.`);
       row.title = amAdmin
-        ? 'Signed in, and an admin on this server'
-        : 'Signed in with a bzflag.org global callsign';
+        ? 'Signed in, and an admin on this server. Click to sign out.'
+        : 'Signed in with a bzflag.org global callsign. Click to sign out.';
     }
     return;
   }
@@ -2029,28 +2029,26 @@ function applyLoginUi() {
   }
 }
 
-// Leaving for bzflag.org's own login form, which `misc/checkToken.php` requires:
-// a site that collects the password itself is refused, and that is the whole
-// point -- bzo never sees one. The server does the rest at `/login`, sets a
-// session cookie and sends the browser back to `/`.
+// Signed out: leaving for bzflag.org's own login form, which
+// `misc/checkToken.php` requires -- a site that collects the password itself is
+// refused, and that is the whole point, bzo never sees one. The server does the
+// rest at `/login`, sets a session cookie and sends the browser back to `/`.
 //
-// This is a page navigation, so everything staged in the dialog is discarded
-// and the game is left. Inside an immersive session it also ends the session,
-// which is why the row says so before it goes: a headset player who is thrown
-// out of VR without warning has no idea what happened. Logging in from the flat
-// page before entering VR costs them nothing.
+// Signed in: `/logout` removes the stored session server-side and clears the
+// cookie, then also sends the browser back to `/`.
+//
+// Either way this is a page navigation, so everything staged in the dialog is
+// discarded and the game is left. Inside an immersive session it also ends the
+// session, which is why the row says so before it goes: a headset player who is
+// thrown out of VR without warning has no idea what happened.
 function startGlobalLogin() {
-  if (amVerified) {
-    // Already signed in. Signing out is not built yet, so say so rather than
-    // sending them through a round trip that changes nothing.
-    setHudAlert(2, `Signed in as ${myGlobalCallsign || myPlayerName}`, 4, false);
-    return;
-  }
   if (isXREnabled()) {
-    setHudAlert(2, 'Global login leaves VR. Exit the headset session first.', 5, true);
+    setHudAlert(2, amVerified
+      ? 'Signing out leaves VR. Exit the headset session first.'
+      : 'Global login leaves VR. Exit the headset session first.', 5, true);
     return;
   }
-  window.location.href = '/login';
+  window.location.href = amVerified ? '/logout' : '/login';
 }
 
 function syncDebugTabVisibility() {

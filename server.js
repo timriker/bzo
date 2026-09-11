@@ -586,6 +586,20 @@ app.get('/login', loginRateLimit, async (req, res) => {
   }
 });
 
+// The other half of `finishLogin`: removes the stored session, if the cookie
+// still names one, and clears it either way. Also a page navigation, for the
+// same reason `/login` is one -- there is no identity to migrate onto a live
+// connection, so the browser has to come back on a fresh socket to see it gone.
+app.get('/logout', (req, res) => {
+  const cookies = parseCookies(req.headers.cookie);
+  const sessionId = cookies[SESSION_COOKIE_NAME];
+  if (sessionId && sessions.remove(sessionId)) {
+    log(`[LOGIN] session removed via /logout; sessions=${sessions.size}`);
+  }
+  res.clearCookie(SESSION_COOKIE_NAME, { httpOnly: true, secure: true, sameSite: 'lax', path: '/' });
+  res.redirect(302, '/');
+});
+
 // Which icon a launcher takes from the manifest is documented nowhere and the
 // platforms disagree, so log the fetches: the pair of lines names the browser
 // that asked and the file it settled on.

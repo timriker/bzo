@@ -34,11 +34,14 @@ supplied**, group membership comes back for the groups named in `adminGroups`
 and for no others, and the reply carries a `BZID` -- a small stable integer that
 survives a callsign change on the forum.
 
-**Three pieces are not built**, all of them at the dialog rather than in the
+**Logging out is built.** The same row that starts `/login` when signed out
+sends a signed-in player to `/logout`, which removes the stored session and
+clears the cookie before redirecting back to `/`, the same page-navigation
+shape as `/login` itself.
+
+**Two pieces are still not built**, both at the dialog rather than in the
 identity:
 
-- **Logging out.** `startGlobalLogin` says so when a signed-in player presses
-  the row. A session ends only by expiring, which is the 8 hours below.
 - **Stashing the staged draft across the login bounce.** The name, team and tank
   staged in the entry dialog are still discarded by the page navigation.
 - **A login row that works inside an immersive session.** bzo took a third
@@ -183,7 +186,7 @@ open**:
 
 ## Still open
 
-- **Logging out**, and the two dialog wrinkles above.
+- **The two dialog wrinkles above** (staging across the login bounce, and XR).
 - **Whether to check `Origin` on the upgrade.** `SameSite=Lax` is what keeps the
   cookie off a cross-site handshake, so a check is a second layer rather than
   the only one. Every handshake is already logged as a `[WS]` line; desktop
