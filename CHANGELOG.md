@@ -6,6 +6,79 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-09-11
+
+### Added
+- **`maps/bzo.bzw` is the new default map**, in place of `test.bzw`.
+  `ID` sits alone at the centre; a ring of every bad flag surrounds it,
+  clustered by what they take from a tank -- steering, momentum, senses, the
+  tank itself -- one theme per compass edge, with `WA` kept in the sight
+  group even though bzo never spawns it, so the same file plays unchanged on
+  an unmodified bzfs. A ring of every good flag surrounds that, alphabetical
+  clockwise from north as `flagbuffet.bzw` already orders them. A base sits
+  on each compass point, coloured as `hix.bzw` does. The four corners each
+  carry one obstacle test: the octagon and a thin wall in the north-east, the
+  pyramid/box overlap row and the nested-pyramid stack in the north-west, the
+  step and bump-height tests plus the passability-keyword row in the
+  south-east, and the teleporter pair plus two jump-into-overhang tests in
+  the south-west. `example-server.json` now names it.
+- **`maps/bzo.bzw` sets its own gameplay defaults** -- `-j` (jumping),
+  `-ms 5` (five shots in the air at once) and `-set _wingsJumpCount 4` --
+  in its own `options` block, so the world plays the same regardless of what
+  a server's own config says, the same way `hix.bzw` already does.
+
+### Changed
+- **The server reads `now` once per handler entry**, the other half of
+  `docs/lag-plan.md`'s cached clock (the client's own half shipped in
+  v1.0.100). `validateMovement`, `getShotRejection`, the `Projectile`
+  constructor, `grabFlag`, `dropFlag`/`getFlagDropPosition` and
+  `checkAntidote` all take `now` as a parameter now rather than reading the
+  clock again partway through one message, which is what let an
+  extrapolation and the drift check reading it disagree by however long the
+  intervening code took to run.
+- **bzo implements upstream's best-looking variant of an effect by default,
+  not its cheapest one.** `AGENTS.md`'s client-display-options policy said
+  the opposite; a look most players turn on for themselves is the one worth
+  shipping here from the start, and a cheaper fallback is now something a
+  measurement earns rather than the default assumption.
+- **The landing effect matches upstream's `StdLandEffect`.** What bzo drew
+  was a flat ring that only grew wider; upstream's is a shell that flares
+  wider *and* rises for its whole one-second life, textured with
+  `dusty_flare` -- the same speckled dust texture the shot-teleport collar
+  already wears -- rather than a smooth flat colour.
+
+### Fixed
+- **A shot that does not carry Ricochet still bounces where the server says
+  it does.** `ricochet` in a `.bzw` forces a bounce off that one obstacle
+  regardless of what the shot itself carries, and the server already handled
+  it correctly, but the client only ever traced a shot's path locally when
+  the shot's own `ricochet` flag was set -- so an ordinary shot flew straight
+  through on screen while the server reflected it, and the explosion landed
+  in the right place with nothing shown getting it there.
+- **A tank standing on a low platform can climb the next low ledge.**
+  `resolveTankStep`'s `onGround` was `playerY <= groundLimit`, which is only
+  ever true on the world floor itself -- so a tank could bump up from the
+  ground onto a step, but never from that step onto the next one. It now
+  also asks the tank's own `onGround`/`onObstacle` state, which upstream's
+  equivalent gate (`oldLocation != InAir`, `LocalPlayer.cxx:532`) already
+  covers by being sticky rather than recomputed from height.
+- **Climbing a ledge no longer buzzes.** The bump-climb path set the tank's
+  new height but never marked it as resting on the obstacle, so the next
+  frame found it above the world floor and not on a building, called that
+  falling, and landed it again an instant later -- one thump and one ring
+  per frame for as long as it held still on the ledge. The bump now sets the
+  same `onBuilding` state a landing does.
+- **A coloured flag-marker box is drivable and shootable on real bzfs.**
+  `color` on a `box` is a material property there, and a box that has one is
+  built as a full mesh with every face solid by default instead of upstream's
+  faster, uncustomized path -- so the bad-flag pads in `maps/bzo.bzw` and
+  `maps/flagbuffet.bzw` stood solid on a real server despite bzo's own
+  zero-height pads never needing `passable` stated. Both maps now say
+  `passable` on those boxes and give them a real (if tiny) height, which also
+  clears the `invalid mesh face` warning bzfs printed for every one of them --
+  a zero-height box's side faces are degenerate triangles once it is built as
+  a mesh at all.
+
 ## [1.0.101] - 2026-09-11
 
 ### Added

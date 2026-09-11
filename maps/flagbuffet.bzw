@@ -603,8 +603,9 @@ end
 box
   name B_Blindness
   position -35 80 0
-  size 1 1 0
+  size 1 1 0.02
   color 1.0 0.62745 0.12549
+  passable
 end
 
 zone
@@ -616,8 +617,9 @@ end
 box
   name BY_Bouncy
   position -25 80 0
-  size 1 1 0
+  size 1 1 0.02
   color 1.0 0.62745 0.12549
+  passable
 end
 
 zone
@@ -629,8 +631,9 @@ end
 box
   name CB_Colorblindness
   position -15 80 0
-  size 1 1 0
+  size 1 1 0.02
   color 1.0 0.62745 0.12549
+  passable
 end
 
 zone
@@ -642,8 +645,9 @@ end
 box
   name FO_Forward_Only
   position -5 80 0
-  size 1 1 0
+  size 1 1 0.02
   color 1.0 0.62745 0.12549
+  passable
 end
 
 zone
@@ -655,8 +659,9 @@ end
 box
   name JM_Jamming
   position 5 80 0
-  size 1 1 0
+  size 1 1 0.02
   color 1.0 0.62745 0.12549
+  passable
 end
 
 zone
@@ -668,8 +673,9 @@ end
 box
   name LT_Left_Turn_Only
   position 15 80 0
-  size 1 1 0
+  size 1 1 0.02
   color 1.0 0.62745 0.12549
+  passable
 end
 
 zone
@@ -681,8 +687,9 @@ end
 box
   name M_Momentum
   position 25 80 0
-  size 1 1 0
+  size 1 1 0.02
   color 1.0 0.62745 0.12549
+  passable
 end
 
 #zone
@@ -701,8 +708,9 @@ end
 box
   name NJ_No_Jumping
   position 80 35 0
-  size 1 1 0
+  size 1 1 0.02
   color 1.0 0.62745 0.12549
+  passable
 end
 
 zone
@@ -714,8 +722,9 @@ end
 box
   name O_Obesity
   position 80 25 0
-  size 1 1 0
+  size 1 1 0.02
   color 1.0 0.62745 0.12549
+  passable
 end
 
 zone
@@ -727,8 +736,9 @@ end
 box
   name RC_ReverseControls
   position 80 15 0
-  size 1 1 0
+  size 1 1 0.02
   color 1.0 0.62745 0.12549
+  passable
 end
 
 zone
@@ -740,8 +750,9 @@ end
 box
   name RO_ReverseOnly
   position 80 5 0
-  size 1 1 0
+  size 1 1 0.02
   color 1.0 0.62745 0.12549
+  passable
 end
 
 zone
@@ -753,8 +764,9 @@ end
 box
   name RT_Right_Turn_Only
   position 80 -5 0
-  size 1 1 0
+  size 1 1 0.02
   color 1.0 0.62745 0.12549
+  passable
 end
 
 zone
@@ -766,8 +778,9 @@ end
 box
   name TR_Trigger_Happy
   position 80 -15 0
-  size 1 1 0
+  size 1 1 0.02
   color 1.0 0.62745 0.12549
+  passable
 end
 
 zone

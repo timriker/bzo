@@ -1,0 +1,930 @@
+# bzo
+# Copyright (c) 1993-2026 Tim Riker
+#
+# This package is free software;  you can redistribute it and/or
+# modify it under the terms of the license found in the file
+# named COPYING that should have accompanied this file.
+#
+# THIS PACKAGE IS PROVIDED ``AS IS'' AND WITHOUT ANY EXPRESS OR
+# IMPLIED WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED
+# WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE.
+
+# The default world: every flag reachable within a short walk of the centre,
+# a base on each compass point, and a sample of bzo's obstacle geometry tests
+# in the four corners. `maps/flagbuffet.bzw` is the same idea at a larger
+# scale with only two bases; this one is meant to be started without
+# choosing a map first.
+#
+# `ID` sits alone at the centre. The ring immediately around it is every bad
+# flag bzo has, clustered by what they do to a tank rather than laid out
+# alphabetically, so a `-sa`/`-sw` server exercises one theme at a time. The
+# outer ring is every good flag, alphabetically clockwise from north, the
+# same convention `flagbuffet.bzw` uses.
+
+options
+  # Tanks may jump. bzo has jumping on unless server.json turns it off, so
+  # this is what turns it back on regardless of what the config says.
+  -j
+  # Five shots in the air at once, where bzfs gives one.
+  -ms 5
+  # How many times `WG` Wings may flap before it needs the ground again.
+  -set _wingsJumpCount 4
+  -srvmsg "Bad flags ring the centre; good flags ring those."
+  -srvmsg "Team bases sit on the compass points; test geometry is in the corners."
+	# A bad flag falls off by itself after this many seconds.
+	-st 50
+	# A bad flag also falls off after this many kills.
+	-sw 2
+	# An antidote flag is put in the world for whoever is carrying a bad one,
+	# which sheds it when they drive onto it.
+	-sa
+end
+
+world
+  size 140
+end
+
+# The centre. Every flag here is `zoneflag`d with a count of 3, matching
+# `flagbuffet.bzw`: enough copies that a grab does not empty the pad before
+# the next respawn cycle finds it again.
+zone
+  position 0 0 0
+  size 1 1 0
+  zoneflag ID 3
+end
+
+box
+  name ID_Identify
+  position 0 0 0
+  size 1 1 0
+  passable
+end
+
+# The bad ring, radius 25. Four groups, one per compass edge, each named for
+# what it takes away from a tank rather than what letter it starts with:
+#
+#   north  steering reversed or locked to one direction
+#   east   can't stop -- bouncing, firing, or accelerating
+#   south  senses taken away -- sight, colour, radar
+#   west   the tank itself grows or grounds
+#
+# `WA` sits with the sight group: bzo never spawns it (see docs/flags.md),
+# but the zone and its pad are real, so this map plays the same on an
+# unmodified bzfs.
+
+# North: steering.
+zone
+  position -20 25 0
+  size 1 1 0
+  zoneflag FO 3
+end
+box
+  name FO_Forward_Only
+  position -20 25 0
+  size 1 1 0.02
+  color 1.0 0.62745 0.12549
+  passable
+end
+
+zone
+  position -10 25 0
+  size 1 1 0
+  zoneflag LT 3
+end
+box
+  name LT_Left_Turn_Only
+  position -10 25 0
+  size 1 1 0.02
+  color 1.0 0.62745 0.12549
+  passable
+end
+
+zone
+  position 0 25 0
+  size 1 1 0
+  zoneflag RC 3
+end
+box
+  name RC_ReverseControls
+  position 0 25 0
+  size 1 1 0.02
+  color 1.0 0.62745 0.12549
+  passable
+end
+
+zone
+  position 10 25 0
+  size 1 1 0
+  zoneflag RO 3
+end
+box
+  name RO_ReverseOnly
+  position 10 25 0
+  size 1 1 0.02
+  color 1.0 0.62745 0.12549
+  passable
+end
+
+zone
+  position 20 25 0
+  size 1 1 0
+  zoneflag RT 3
+end
+box
+  name RT_Right_Turn_Only
+  position 20 25 0
+  size 1 1 0.02
+  color 1.0 0.62745 0.12549
+  passable
+end
+
+# East: can't stop.
+zone
+  position 25 10 0
+  size 1 1 0
+  zoneflag BY 3
+end
+box
+  name BY_Bouncy
+  position 25 10 0
+  size 1 1 0.02
+  color 1.0 0.62745 0.12549
+  passable
+end
+
+zone
+  position 25 0 0
+  size 1 1 0
+  zoneflag M 3
+end
+box
+  name M_Momentum
+  position 25 0 0
+  size 1 1 0.02
+  color 1.0 0.62745 0.12549
+  passable
+end
+
+zone
+  position 25 -10 0
+  size 1 1 0
+  zoneflag TR 3
+end
+box
+  name TR_Trigger_Happy
+  position 25 -10 0
+  size 1 1 0.02
+  color 1.0 0.62745 0.12549
+  passable
+end
+
+# South: senses.
+zone
+  position -15 -25 0
+  size 1 1 0
+  zoneflag B 3
+end
+box
+  name B_Blindness
+  position -15 -25 0
+  size 1 1 0.02
+  color 1.0 0.62745 0.12549
+  passable
+end
+
+zone
+  position -5 -25 0
+  size 1 1 0
+  zoneflag CB 3
+end
+box
+  name CB_Colorblindness
+  position -5 -25 0
+  size 1 1 0.02
+  color 1.0 0.62745 0.12549
+  passable
+end
+
+zone
+  position 5 -25 0
+  size 1 1 0
+  zoneflag JM 3
+end
+box
+  name JM_Jamming
+  position 5 -25 0
+  size 1 1 0.02
+  color 1.0 0.62745 0.12549
+  passable
+end
+
+# Not spawned by bzo -- see docs/flags.md -- kept so this map plays the same
+# on bzfs, which does spawn it.
+zone
+  position 15 -25 0
+  size 1 1 0
+  zoneflag WA 3
+end
+box
+  name WA_Wide_Angle
+  position 15 -25 0
+  size 1 1 0.02
+  color 1.0 0.62745 0.12549
+  passable
+end
+
+# West: the tank itself.
+zone
+  position -25 -5 0
+  size 1 1 0
+  zoneflag NJ 3
+end
+box
+  name NJ_No_Jumping
+  position -25 -5 0
+  size 1 1 0.02
+  color 1.0 0.62745 0.12549
+  passable
+end
+
+zone
+  position -25 5 0
+  size 1 1 0
+  zoneflag O 3
+end
+box
+  name O_Obesity
+  position -25 5 0
+  size 1 1 0.02
+  color 1.0 0.62745 0.12549
+  passable
+end
+
+# The good ring, radius 50. Alphabetically clockwise from north, the same
+# order and the same names `flagbuffet.bzw` uses.
+
+# North.
+zone
+  position -30 50 0
+  size 1 1 0
+  zoneflag A 3
+end
+box
+  name A_Agility
+  position -30 50 0
+  size 1 1 0
+  passable
+end
+
+zone
+  position -20 50 0
+  size 1 1 0
+  zoneflag BU 3
+end
+box
+  name BU_Burrow
+  position -20 50 0
+  size 1 1 0
+  passable
+end
+
+zone
+  position -10 50 0
+  size 1 1 0
+  zoneflag CL 3
+end
+box
+  name CL_Cloaking
+  position -10 50 0
+  size 1 1 0
+  passable
+end
+
+zone
+  position 0 50 0
+  size 1 1 0
+  zoneflag F 3
+end
+box
+  name F_Rapid_Fire
+  position 0 50 0
+  size 1 1 0
+  passable
+end
+
+zone
+  position 10 50 0
+  size 1 1 0
+  zoneflag G 3
+end
+box
+  name G_Genocide
+  position 10 50 0
+  size 1 1 0
+  passable
+end
+
+zone
+  position 20 50 0
+  size 1 1 0
+  zoneflag GM 3
+end
+box
+  name GM_Guided_Missile
+  position 20 50 0
+  size 1 1 0
+  passable
+end
+
+zone
+  position 30 50 0
+  size 1 1 0
+  zoneflag IB 3
+end
+box
+  name IB_Invisible_Bullet
+  position 30 50 0
+  size 1 1 0
+  passable
+end
+
+# East.
+zone
+  position 50 30 0
+  size 1 1 0
+  zoneflag JP 3
+end
+box
+  name JP_Jumping
+  position 50 30 0
+  size 1 1 0
+  passable
+end
+
+zone
+  position 50 20 0
+  size 1 1 0
+  zoneflag L 3
+end
+box
+  name L_Laser
+  position 50 20 0
+  size 1 1 0
+  passable
+end
+
+zone
+  position 50 10 0
+  size 1 1 0
+  zoneflag MG 3
+end
+box
+  name MG_Machine_Gun
+  position 50 10 0
+  size 1 1 0
+  passable
+end
+
+zone
+  position 50 -10 0
+  size 1 1 0
+  zoneflag MQ 3
+end
+box
+  name MQ_Masquerade
+  position 50 -10 0
+  size 1 1 0
+  passable
+end
+
+zone
+  position 50 -20 0
+  size 1 1 0
+  zoneflag N 3
+end
+box
+  name N_Narrow
+  position 50 -20 0
+  size 1 1 0
+  passable
+end
+
+zone
+  position 50 -30 0
+  size 1 1 0
+  zoneflag OO 3
+end
+box
+  name OO_Oscillation_Overthruster
+  position 50 -30 0
+  size 1 1 0
+  passable
+end
+
+# South.
+zone
+  position 30 -50 0
+  size 1 1 0
+  zoneflag PZ 3
+end
+box
+  name PZ_Phantom_Zone
+  position 30 -50 0
+  size 1 1 0
+  passable
+end
+
+zone
+  position 20 -50 0
+  size 1 1 0
+  zoneflag QT 3
+end
+box
+  name QT_Quick_Turn
+  position 20 -50 0
+  size 1 1 0
+  passable
+end
+
+zone
+  position 10 -50 0
+  size 1 1 0
+  zoneflag R 3
+end
+box
+  name R_Ricochet
+  position 10 -50 0
+  size 1 1 0
+  passable
+end
+
+zone
+  position 0 -50 0
+  size 1 1 0
+  zoneflag SB 3
+end
+box
+  name SB_Super_Bullet
+  position 0 -50 0
+  size 1 1 0
+  passable
+end
+
+zone
+  position -10 -50 0
+  size 1 1 0
+  zoneflag SE 3
+end
+box
+  name SE_Seer
+  position -10 -50 0
+  size 1 1 0
+  passable
+end
+
+zone
+  position -20 -50 0
+  size 1 1 0
+  zoneflag SH 3
+end
+box
+  name SH_Shield
+  position -20 -50 0
+  size 1 1 0
+  passable
+end
+
+zone
+  position -30 -50 0
+  size 1 1 0
+  zoneflag SR 3
+end
+box
+  name SR_Steamroller
+  position -30 -50 0
+  size 1 1 0
+  passable
+end
+
+# West.
+zone
+  position -50 -30 0
+  size 1 1 0
+  zoneflag ST 3
+end
+box
+  name ST_Stealth
+  position -50 -30 0
+  size 1 1 0
+  passable
+end
+
+zone
+  position -50 -20 0
+  size 1 1 0
+  zoneflag SW 3
+end
+box
+  name SW_Shock_Wave
+  position -50 -20 0
+  size 1 1 0
+  passable
+end
+
+zone
+  position -50 -10 0
+  size 1 1 0
+  zoneflag T 3
+end
+box
+  name T_Tiny
+  position -50 -10 0
+  size 1 1 0
+  passable
+end
+
+zone
+  position -50 0 0
+  size 1 1 0
+  zoneflag TH 3
+end
+box
+  name TH_Thief
+  position -50 0 0
+  size 1 1 0
+  passable
+end
+
+zone
+  position -50 10 0
+  size 1 1 0
+  zoneflag US 3
+end
+box
+  name US_Useless
+  position -50 10 0
+  size 1 1 0
+  passable
+end
+
+zone
+  position -50 20 0
+  size 1 1 0
+  zoneflag V 3
+end
+box
+  name V_High_Speed
+  position -50 20 0
+  size 1 1 0
+  passable
+end
+
+zone
+  position -50 30 0
+  size 1 1 0
+  zoneflag WG 3
+end
+box
+  name WG_Wings
+  position -50 30 0
+  size 1 1 0
+  passable
+end
+
+# The four bases, one on each compass point at radius 100, flat on the
+# ground as `flagbuffet.bzw`'s are. Colour follows `hix.bzw`'s convention:
+# north red, east green, south blue, west purple.
+base
+  name n_red_base
+  position 0 100 0
+  size 20 20 0
+  color 1
+end
+
+base
+  name e_green_base
+  position 100 0 0
+  size 20 20 0
+  color 2
+end
+
+base
+  name s_blue_base
+  position 0 -100 0
+  size 20 20 0
+  color 3
+end
+
+base
+  name w_purple_base
+  position -100 0 0
+  size 20 20 0
+  color 4
+end
+
+# Four obstacle tests, one per corner, clear of the rings and the bases.
+
+# North-east: the octagon and a thin wall, `hix.bzw`'s own third-person
+# camera geometry, also carried in `flagbuffet.bzw`. Four planks at one
+# position, 45 degrees apart; the half-width is the half-depth times
+# (1 + sqrt 2), which is what puts each plank's corners exactly on its
+# neighbour's. Near the middle a tank or a chase camera is inside as many as
+# four obstacles at once.
+box
+  name oct_0
+  position 105 105 0
+  rotation 0
+  size 14.485281374 6 12
+end
+
+box
+  name oct_45
+  position 105 105 0
+  rotation 45
+  size 14.485281374 6 12
+end
+
+box
+  name oct_90
+  position 105 105 0
+  rotation 90
+  size 14.485281374 6 12
+end
+
+box
+  name oct_135
+  position 105 105 0
+  rotation 135
+  size 14.485281374 6 12
+end
+
+# A wall a metre thick, thinner than the chase camera's trail, so backing
+# into it puts the eye out beyond the far face instead of inside the wall.
+box
+  name thin_wall
+  position 105 65 0
+  rotation 0
+  size 15 0.5 10
+end
+
+# North-west: two overlap tests. A pyramid, a box and a flipped pyramid
+# stand edge to edge -- climb the first, cross the flat top of the second,
+# and the third flares out above you rather than tapering to a point. Below
+# them, three pyramids share one footprint at three different sizes, so a
+# tank can only ever be resting on the outermost one still taller than it.
+pyramid
+  name overlap_up
+  position -95 83 0
+  rotation 0
+  size 18.0 9.0 10.0
+end
+
+box
+  name overlap_mid
+  position -95 95 0
+  rotation 0
+  size 18.0 3.0 10.0
+end
+
+pyramid
+  name overlap_down
+  position -95 107 0
+  rotation 0
+  size 18.0 9.0 -10.0
+end
+
+pyramid
+  name nest_base
+  position -95 55 0
+  rotation 0
+  size 10.0 10.0 3.0
+end
+
+pyramid
+  name nest_mid
+  position -95 55 0
+  rotation 0
+  size 5.0 5.0 7.0
+end
+
+pyramid
+  name nest_top
+  position -95 55 0
+  rotation 0
+  size 2.0 2.0 12.0
+end
+
+# South-east: step and bump height tests, and the passability keyword row.
+#
+# Three steps a quarter unit apart, each half a tank-length wide, so the
+# climb from one to the next can be driven rather than argued about.
+box
+  name step_low
+  position 80 -90 0
+  rotation 0
+  size 8.0 8.0 0.25
+end
+
+box
+  name step_medium
+  position 88 -90 0.25
+  rotation 0
+  size 8.0 8.0 0.25
+end
+
+box
+  name step_high
+  position 96 -90 0.5
+  rotation 0
+  size 8.0 8.0 0.25
+end
+
+# The same quarter-unit rise, stacked ten times on itself, to test whether
+# many small rises stay climbable even when the outside looks like one tall
+# wall.
+box
+  name stack1
+  position 80 -65 0
+  rotation 0
+  size 8.0 8.0 0.25
+end
+
+box
+  name stack2
+  position 80 -65 0.25
+  rotation 0
+  size 8.0 8.0 0.25
+end
+
+box
+  name stack3
+  position 80 -65 0.50
+  rotation 0
+  size 8.0 8.0 0.25
+end
+
+box
+  name stack4
+  position 80 -65 0.75
+  rotation 0
+  size 8.0 8.0 0.25
+end
+
+box
+  name stack5
+  position 80 -65 1.00
+  rotation 0
+  size 8.0 8.0 0.25
+end
+
+box
+  name stack6
+  position 80 -65 1.25
+  rotation 0
+  size 8.0 8.0 0.25
+end
+
+box
+  name stack7
+  position 80 -65 1.50
+  rotation 0
+  size 8.0 8.0 0.25
+end
+
+box
+  name stack8
+  position 80 -65 1.75
+  rotation 0
+  size 8.0 8.0 0.25
+end
+
+box
+  name stack9
+  position 80 -65 2.00
+  rotation 0
+  size 8.0 8.0 0.25
+end
+
+box
+  name stack10
+  position 80 -65 2.25
+  rotation 0
+  size 8.0 8.0 0.25
+end
+
+# Passability keywords, one box each, named for what it is since bzo draws
+# an obstacle's name as its debug label. `solid` is the control; each of the
+# other four differs from it in exactly one way.
+box
+  name solid
+  position 65 -125 0
+  rotation 0
+  size 6.0 6.0 5.0
+end
+
+box
+  name drivethrough
+  position 79 -125 0
+  rotation 0
+  size 6.0 6.0 5.0
+  drivethrough
+end
+
+box
+  name shootthrough
+  position 93 -125 0
+  rotation 0
+  size 6.0 6.0 5.0
+  shootthrough
+end
+
+box
+  name passable
+  position 107 -125 0
+  rotation 0
+  size 6.0 6.0 5.0
+  passable
+end
+
+box
+  name ricochet
+  position 121 -125 0
+  rotation 0
+  size 6.0 6.0 5.0
+  RicoChet
+end
+
+# `pos`/`rot`, `WorldFileLocation::read`'s aliases of `position`/`rotation`,
+# and `flipz`, the other way of saying a negative size height.
+box
+  name aliased
+  pos 65 -108 0
+  rot 45.0
+  size 6.0 6.0 5.0
+end
+
+pyramid
+  name flipped
+  position 79 -108 0
+  FlipZ
+  rotation 0
+  size 6.0 6.0 5.0
+end
+
+# South-west: the same teleporter pair `flagbuffet.bzw` carries, and two
+# overhangs to jump into. `doUpdateMotion` zeroes a tank's rise the instant
+# it meets a surface above it (see AGENTS.md), so driving under either of
+# these and jumping is what that rule looks like from the driver's seat --
+# the tank falls back to the ground rather than sticking to the underside.
+box
+  name platform
+  position -95 -95 0
+  size 10 10 8
+end
+
+teleporter portal
+  position -120 -95 0
+  rotation 90
+end
+
+teleporter roof
+  position -95 -95 8
+  rotation 90
+end
+
+link
+  from portal:f
+  to   roof:b
+end
+
+link
+  from roof:b
+  to   portal:f
+end
+
+link
+  from portal:b
+  to   roof:f
+end
+
+link
+  from roof:f
+  to   portal:b
+end
+
+# A flat ceiling to jump into: four units of clearance, easily driven under,
+# and well inside a jump's apex.
+box
+  name jump_box
+  position -115 -70 4
+  size 6 6 3
+end
+
+# The same test against a pyramid's base rather than a box's underside --
+# raised clear of the ground, so the base is a real face rather than the one
+# `public/face-trim.mjs` would otherwise leave out.
+pyramid
+  name jump_pyramid
+  position -95 -70 4
+  size 6 6 4
+end

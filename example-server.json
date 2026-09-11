@@ -1,7 +1,7 @@
 {
   "serverName": "BZFlag Test Server",
   "description": "A test server for BZFlag-style tank game with map selection.",
-  "mapFile": "test.bzw",
+  "mapFile": "bzo.bzw",
   "motd": "Welcome to the test server!",
   "maxPlayers": 16,
   "localAdmin": false,

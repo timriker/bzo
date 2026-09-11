@@ -92,6 +92,13 @@ function resolveTankMotion({
           posZ = fromZ + velZ * remaining * 0.5;
           az = toAz;
           remaining = 0;
+          // A bump is a landing too: without this the next frame finds the
+          // tank above groundLimit and not on a building, calls that falling,
+          // and the landing an instant later repeats every frame it holds
+          // still on the ledge -- one ring and one thump per frame, the same
+          // buzz a knife-edge footprint used to cause before the tank was
+          // pinned to it.
+          onBuilding = true;
           break;
         }
       }

@@ -13,9 +13,9 @@ Every keyword is matched case-insensitively against the line's first
 whitespace-delimited token, as upstream matches with `strcasecmp` -- so
 `Position` is a position and `basey` is not a `base`.
 
-`maps/test.bzw` carries a labelled example of each obstacle keyword: a row of
-boxes named for the mode each one demonstrates, which bzo draws as their debug
-labels.
+`maps/bzo.bzw`, the default map, carries a labelled example of each
+passability keyword in its south-east corner: a row of boxes named for the
+mode each one demonstrates, which bzo draws as their debug labels.
 
 Two references, and they answer different questions. `$HOME/bzflag/src/bzfs/`
 is the authority on what a keyword *does* -- `WorldFileLocation::read`,

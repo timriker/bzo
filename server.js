@@ -2999,7 +2999,7 @@ class Player {
 
 // Projectile class
 class Projectile {
-  constructor(id, playerId, shotSlot, x, y, z, dirX, dirZ, dirY = 0, flag = null) {
+  constructor(id, playerId, shotSlot, x, y, z, dirX, dirZ, dirY = 0, flag = null, now = Date.now()) {
     this.id = id;
     this.playerId = playerId;
     this.shotSlot = shotSlot;
@@ -3041,7 +3041,7 @@ class Projectile {
     this.dirX = dirX;
     this.dirY = dirY;
     this.dirZ = dirZ;
-    this.createdAt = Date.now();
+    this.createdAt = now;
     this.originX = x;
     this.originY = this.y;
     this.originZ = z;
@@ -4578,7 +4578,13 @@ function logMalformed(player, what, detail) {
 }
 
 // Validate player movement
-function validateMovement(player, newX, newY, newZ, newRotation, deltaTime, velocityChanged = false, options = {}) {
+//
+// `now` is the caller's own handler-entry clock, not a fresh read: `deltaTime`
+// above is already measured against it, and re-reading Date.now() here would let
+// the extrapolation below disagree with the interval it is being compared
+// against by however long this call took to reach -- the "several checks inside
+// one move handler read the clock independently" gap docs/lag-plan.md names.
+function validateMovement(player, newX, newY, newZ, newRotation, deltaTime, velocityChanged = false, options = {}, now = Date.now()) {
   // A non-finite coordinate would poison the stored position and every
   // extrapolation made from it afterwards, so it is refused in every mode.
   if (!Number.isFinite(newX) || !Number.isFinite(newY)
@@ -4598,7 +4604,6 @@ function validateMovement(player, newX, newY, newZ, newRotation, deltaTime, velo
 
   if (ANTICHEAT_CONFIG.mode !== 'disabled') {
     // Get extrapolated position based on last known velocities
-    const now = Date.now();
     const timeSinceLastUpdate = (now - player.lastUpdate) / 1000;
     const extrapolated = player.getExtrapolatedPosition(now);
 
@@ -4712,10 +4717,12 @@ const ANTICHEAT_GROUND_SLACK = 0.2;
 // somewhere the client has not, and warning mode fires the shot anyway: a
 // swallowed shot tells the player nothing and tells the log nothing about which
 // side was wrong.
-function getShotRejection(player, shotX, shotY, shotZ) {
+// `now` is the caller's own handler-entry clock (see validateMovement), reused
+// below for the projectile this shot creates so the position check and the
+// shot's own createdAt agree about when it was fired.
+function getShotRejection(player, shotX, shotY, shotZ, now = Date.now()) {
   // Shot originates from barrel end, which is ~3 units from tank center
   const barrelLength = 3.0;
-  const now = Date.now();
 
   if (!Number.isFinite(shotX) || !Number.isFinite(shotY) || !Number.isFinite(shotZ)) {
     return { reason: `shot origin is not finite (${shotX}, ${shotY}, ${shotZ})`, fatal: true };
@@ -5492,14 +5499,18 @@ function isPlayerInsideBuilding(player, x, y, z, rotation) {
 // check exists to catch a modified client, so it uses upstream's deliberately
 // loose radius -- a tank's whole second of travel plus both radii -- and only
 // rejects a distant grab when the two are on the same level, as bzfs does.
-function grabFlag(player, flag) {
+// `now` is the caller's handler-entry clock: the extrapolation below and
+// `grabbedAt` must agree on when the grab happened, or the shake timeout the
+// STICKY check counts against starts from a slightly different instant than
+// the one the reach check used.
+function grabFlag(player, flag, now = Date.now()) {
   if (player.team === 'observer') return;
   if (player.health <= 0 || player.paused) return;
   if (getPlayerFlag(player.id)) return;
   if (flag.status !== FLAG_STATUS.ON_GROUND) return;
 
   const reach = GAME_CONFIG.TANK_SPEED + BZFLAG_TANK_RADIUS + FLAG_RADIUS;
-  const extrapolated = player.getExtrapolatedPosition(Date.now());
+  const extrapolated = player.getExtrapolatedPosition(now);
   const gap = distance(extrapolated.x, extrapolated.z, flag.position.x, flag.position.z);
   if (Math.abs(extrapolated.y - flag.position.y) < FLAG_GRAB_LEVEL_TOLERANCE && gap > reach) {
     const refused = reportCheat(player, 'flagRejected',
@@ -5512,7 +5523,7 @@ function grabFlag(player, flag) {
   flag.owner = player.id;
   flag.status = FLAG_STATUS.ON_TANK;
   flag.flightStartedAt = 0;
-  flag.grabbedAt = Date.now();
+  flag.grabbedAt = now;
   flag.zoned = false;
   armBadFlagRelease(player, flag);
   log(`"${player.name}" grabbed ${getFlagType(flag.type).name} flag ${flag.index}`);
@@ -5563,7 +5574,7 @@ function armBadFlagRelease(player, flag) {
 // server-side for the same reason the placement is. Runs off each accepted
 // position update, and asks the same two questions the flag grab does: same
 // level, and within a tank plus a flag radius.
-function checkAntidote(player) {
+function checkAntidote(player, now = Date.now()) {
   const antidote = player.antidote;
   if (!antidote) return;
   const flag = getPlayerFlag(player.id);
@@ -5572,7 +5583,7 @@ function checkAntidote(player) {
   if (Math.abs(player.y - antidote.y) >= FLAG_GRAB_LEVEL_TOLERANCE) return;
   if (distance(player.x, player.z, antidote.x, antidote.z) > FLAG_GRAB_RADIUS) return;
   log(`"${player.name}" drove onto the antidote and shed ${getFlagType(flag.type).name}`);
-  dropFlag(flag);
+  dropFlag(flag, now);
 }
 
 // LocalPlayer::changeScore. A win owed against a bad flag, counted down by the
@@ -5651,14 +5662,17 @@ function getFlagDropPosition(owner, now = Date.now()) {
   return { x: extrapolated.x, y: extrapolated.y, z: extrapolated.z };
 }
 
-function dropFlag(flag) {
+// `now = Date.now()` is evaluated once and reused for both the drop position's
+// extrapolation and `flightStartedAt` below, so the flag does not fly from a
+// position measured at one instant but timed from another.
+function dropFlag(flag, now = Date.now()) {
   if (flag.status !== FLAG_STATUS.ON_TANK) return;
   const owner = getFlagOwner(flag);
   if (!owner) return;
   flag.grabbedAt = 0;
   flag.zoned = false;
 
-  const from = getFlagDropPosition(owner);
+  const from = getFlagDropPosition(owner, now);
   const half = GAME_CONFIG.MAP_SIZE / 2;
   const launch = {
     x: (from.x < -half || from.x > half) ? 0 : from.x,
@@ -5711,7 +5725,7 @@ function dropFlag(flag) {
   flag.position = { ...landing };
   flag.flightEnd = flight.flightEnd;
   flag.initialVelocity = flight.initialVelocity;
-  flag.flightStartedAt = Date.now();
+  flag.flightStartedAt = now;
   log(
     `"${owner.name}" dropped ${getFlagType(flag.type).name} flag ${flag.index} ` +
     `at ${landing.x.toFixed(2)},${landing.z.toFixed(2)}${vanish ? ' (vanishing)' : ''}`
@@ -6549,7 +6563,7 @@ function getZoneRefusal(player, at, faceId, now) {
   if (!obs) return `no teleporter for face ${faceId}`;
   const rotation = Number.isFinite(at.r) ? at.r : player.rotation;
   const deltaTime = Math.max(0, (now - player.lastUpdate) / 1000);
-  if (!validateMovement(player, at.x, at.y, at.z, rotation, deltaTime, true)) {
+  if (!validateMovement(player, at.x, at.y, at.z, rotation, deltaTime, true, {}, now)) {
     return `crossing point ${formatShotPoint(at.x, at.y, at.z)} is not a place this tank could be`;
   }
   if (!isPointInsideTeleporterPortal(obs, at.x, at.y, at.z, 2)) {
@@ -6594,7 +6608,7 @@ function applyPlayerTeleportMessage(player, sourceState, fromFaceId, toFaceId, n
   }
 
   const deltaTime = Math.max(0, (now - player.lastUpdate) / 1000);
-  if (!validateMovement(player, sourceState.x, sourceState.y, sourceState.z, sourceRotation, deltaTime, true)) {
+  if (!validateMovement(player, sourceState.x, sourceState.y, sourceState.z, sourceRotation, deltaTime, true, {}, now)) {
     return { ok: false, reason: 'invalid_source_state' };
   }
 
@@ -6814,7 +6828,7 @@ function fireWorldWeapons(now) {
   if (worldWeaponsArmedAt === 0) armWorldWeapons(now);
   for (const weapon of WORLD_WEAPONS) {
     if (weapon.nextFireAt > now) continue;
-    fireWorldWeaponShot(weapon);
+    fireWorldWeaponShot(weapon, now);
     while (weapon.nextFireAt <= now) {
       weapon.nextFireAt += weapon.delays[weapon.nextDelayIndex] * 1000;
       weapon.nextDelayIndex = (weapon.nextDelayIndex + 1) % weapon.delays.length;
@@ -6828,7 +6842,7 @@ function fireWorldWeapons(now) {
 // wait for. Its team is upstream's `teamColor`, which `CustomWeapon` leaves at
 // rogue -- and a rogue shot is everybody's enemy, which is what a world weapon
 // should be.
-function fireWorldWeaponShot(weapon) {
+function fireWorldWeaponShot(weapon, now) {
   const direction = getWorldWeaponDirection(weapon.rotation, weapon.tilt);
   const id = (++projectileIdCounter).toString();
   const proj = new Projectile(
@@ -6841,7 +6855,8 @@ function fireWorldWeaponShot(weapon) {
     direction.x,
     direction.z,
     direction.y,
-    weapon.type
+    weapon.type,
+    now
   );
   // The shot's team, since there is no player to read one off.
   proj.team = WORLD_WEAPON_TEAM;
@@ -7972,6 +7987,7 @@ setInterval(() => {
 // Anti-cheat monitoring: periodic summary report (every 5 minutes)
 if (ANTICHEAT_CONFIG.mode !== 'disabled') {
   setInterval(() => {
+    const now = Date.now();
     const playersWithWarnings = Array.from(players.values())
       .filter(p => p.cheatWarnings.totalWarnings > 0)
       .sort((a, b) => b.cheatWarnings.totalWarnings - a.cheatWarnings.totalWarnings);
@@ -7979,7 +7995,7 @@ if (ANTICHEAT_CONFIG.mode !== 'disabled') {
     if (playersWithWarnings.length > 0) {
       log(`[ANTICHEAT SUMMARY] ${playersWithWarnings.length} player(s) with warnings:`);
       playersWithWarnings.forEach(p => {
-        const timeSinceWarning = Math.floor((Date.now() - p.cheatWarnings.lastWarningTime) / 1000);
+        const timeSinceWarning = Math.floor((now - p.cheatWarnings.lastWarningTime) / 1000);
         log(`  "${p.name}": ${p.cheatWarnings.totalWarnings} total (${formatCheatWarnings(p)}) - last ${timeSinceWarning}s ago`);
       });
     }
@@ -8561,7 +8577,8 @@ wss.on('connection', (ws, req) => {
             r,
             deltaTime,
             velocityChanged,
-            { ignoreTeleporters: teleportReentryActive }
+            { ignoreTeleporters: teleportReentryActive },
+            now
           )) {
             // Validation passed - now update jumpDirection
             if (isJumpStart) {
@@ -8620,7 +8637,7 @@ wss.on('connection', (ws, req) => {
 
             broadcast(pmPacket, ws);
 
-            checkAntidote(player);
+            checkAntidote(player, now);
           } else {
             // Validation failed - jumpDirection unchanged (no update needed)
             // Send correction back to client
@@ -8645,7 +8662,8 @@ wss.on('connection', (ws, req) => {
 
         case 'shoot': {
           // message: { type: 'shot', x, y, z, dirX, dirZ }
-          const shotRejection = getShotRejection(player, message.x, message.y, message.z);
+          const now = Date.now();
+          const shotRejection = getShotRejection(player, message.x, message.y, message.z, now);
           if (shotRejection
             && reportShotRejection(player, shotRejection.reason, message, shotRejection.fatal)) {
             break;
@@ -8683,7 +8701,8 @@ wss.on('connection', (ws, req) => {
             // ShotPath::FiringInfo (ShotPath.cxx:46): an unzoned Phantom Zone
             // tank fires ordinary shells, so the flag a shot is fired under is
             // not always the flag its shooter is holding.
-            getShotFlagFor(player)
+            getShotFlagFor(player),
+            now
           );
           projectiles.set(id, proj);
           // A beam is already everywhere it is going to be, so its path is walked
@@ -8770,7 +8789,7 @@ wss.on('connection', (ws, req) => {
           if (!Number.isInteger(requestedIndex)) break;
           const flag = flags[requestedIndex];
           if (!flag) break;
-          grabFlag(player, flag);
+          grabFlag(player, flag, Date.now());
           break;
         }
 
@@ -8787,12 +8806,13 @@ wss.on('connection', (ws, req) => {
           if (player.health <= 0) break;
           const flag = getPlayerFlag(player.id);
           if (!flag) break;
+          const now = Date.now();
           // A sticky flag cannot be dropped on request; only its shake timeout
           // or a kill gets rid of it. The client runs the countdown, as upstream
           // does, so the server runs the same clock against the moment it saw
           // the grab -- otherwise a modified client sheds a bad flag on contact.
           if (flag.endurance === FLAG_ENDURANCE.STICKY) {
-            const held = (Date.now() - flag.grabbedAt) / 1000;
+            const held = (now - flag.grabbedAt) / 1000;
             if (!canShakeFlag(flag.type, FLAG_SHAKE_TIMEOUT, held)) {
               const refused = reportCheat(player, 'flagRejected',
                 `SHAKE REJECTED ${getFlagType(flag.type).name} held ${held.toFixed(2)}s `
@@ -8816,7 +8836,7 @@ wss.on('connection', (ws, req) => {
               'DROP REJECTED: inside a building');
             if (refused) break;
           }
-          dropFlag(flag);
+          dropFlag(flag, now);
           break;
         }
 
@@ -8846,7 +8866,8 @@ wss.on('connection', (ws, req) => {
             z: Number(message.z),
             r: Number(message.r),
           };
-          const zoneRefusal = getZoneRefusal(player, zoneAt, Number(message.fromFaceId), Date.now());
+          const now = Date.now();
+          const zoneRefusal = getZoneRefusal(player, zoneAt, Number(message.fromFaceId), now);
           if (zoneRefusal) {
             reportCheat(player, 'flagRejected', `ZONE REJECTED: ${zoneRefusal}`);
             break;

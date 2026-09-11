@@ -6367,7 +6367,13 @@ function resolveTankStep(velocityX, velocityY, velocityZ, angularVelocity, delta
     angularVelocity,
     timeStep: deltaTime,
     groundLimit,
-    onGround: playerY <= groundLimit,
+    // Resting on a building is resting, for the purpose of climbing the next
+    // low ledge -- `playerY <= groundLimit` alone is only ever true on the
+    // world floor itself, so a tank already standing on one step could never
+    // bump up onto the next. `onGround`/`onObstacle` are last frame's
+    // classification (set below from `nextOnGround`/`nextOnObstacle`), which
+    // is what upstream's own `OnGround`/`OnBuilding` distinction answers too.
+    onGround: onGround || onObstacle,
     // World::hitBuilding, which is the solid the tank is expelled from and
     // nothing else. The step's own start height goes in as `fromY`, so the
     // occupant's vertical extent covers the span it crossed -- upstream's
@@ -9710,10 +9716,20 @@ function updateProjectiles(deltaTime) {
         });
       }
 
-      // Only a bouncing shot is traced against solid geometry here. An ordinary
-      // one flies straight until the server says where it ended, and asking the
-      // question locally would only give it a second answer to disagree with.
-      if (!projectile.userData.ricochet) return;
+      // A shot that ricochets of its own accord is traced against solid
+      // geometry every step, same as the server. One that does not still has
+      // to be checked, though: an obstacle can force a bounce of its own
+      // (`ricochet` in a `.bzw`, `traceShotStep`'s own `impact.obstacle.ricochet`
+      // test) regardless of what the shot itself carries, and an ordinary shot
+      // that met one would otherwise fly straight through it while the server
+      // reflects it -- the explosion lands in the right place with nothing
+      // shown getting it there. A plain stop against ordinary geometry is
+      // still left alone here: the server owns where an ordinary shot really
+      // ends, and applying one early is the second answer the shot doesn't
+      // need. `ricochet` below is the shot's own property, not a constant, so
+      // `traceShotStep` bounces off an obstacle that declares it and nothing
+      // else.
+      const ownRicochet = projectile.userData.ricochet === true;
 
       // The segment to trace ends where the teleporter trace put the shot, so a
       // step that crossed a portal is measured back from the far side of it.
@@ -9731,8 +9747,9 @@ function updateProjectiles(deltaTime) {
         dirZ: traced.direction.z,
         distance: stepDistance,
         radius: SHOT_COLLISION_RADIUS,
-        ricochet: true,
+        ricochet: ownRicochet,
       });
+      if (!ownRicochet && step.bounces === 0) return;
       projectile.position.x = step.x;
       projectile.position.y = step.y;
       projectile.position.z = step.z;

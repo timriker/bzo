@@ -9,9 +9,9 @@ flag work references #6 and game modes reference #42.
 **Steps 1, 2 and 3 are done.** `server/commands.cjs` holds the parsing and the
 formatting, the table and the dispatcher are in `server.js`. The commands are
 `/?`, `/help` and `/<prefix>?`; the open tier `/uptime`, `/serverquery`, `/msg`,
-`/date`, `/time`; and the operator tier `/kill`, `/say`, `/mute`, `/unmute`,
-`/mutelist`, `/playerlist`, `/flag`, `/set` and `/mv`, plus `/me`. See "Server
-commands" in `AGENTS.md`.
+`/date`, `/time`, `/lagstats`; and the operator tier `/kill`, `/say`, `/mute`,
+`/unmute`, `/mutelist`, `/playerlist`, `/flag` (`reset`, `up`, `show`, `drop
+[player]`), `/set` and `/mv`, plus `/me`. See "Server commands" in `AGENTS.md`.
 
 **`/mv` is bzo's own.** Upstream has no command that moves a tank -- not in bzfs,
 not in `BanCommands`, not in any plugin, and there is no API call for it either.
@@ -121,7 +121,7 @@ have nothing to write to and the fine grain has nowhere to live.
 
 | tier | who | commands |
 |---|---|---|
-| open | anybody who has joined | `/?`, `/help`, `/uptime`, `/serverquery`, `/msg`, `/owner`, `/date`, `/time`, `/report` |
+| open | anybody who has joined | `/?`, `/help`, `/uptime`, `/serverquery`, `/msg`, `/owner`, `/date`, `/time`, `/lagstats`, `/report` |
 | operator | `isAdmin` | everything else |
 | absent | nobody | see "Deliberately out of scope" |
 
@@ -204,7 +204,7 @@ Two things it has to decide:
 | `/kick <player> <reason>` | nothing technically — but see the rejoin note below |
 | `/countdown`, `/gameover`, `/modcount` | the match-end machinery in `docs/game-modes-plan.md`. They are that feature's front end and should land with it, not before |
 | `/handicap` | the Handicap game style, also in `docs/game-modes-plan.md` |
-| `/lagstats`, `/lagwarn`, `/lagdrop`, `/jitterwarn`, `/jitterdrop`, `/packetlosswarn`, `/packetlossdrop` | **bzo measures no per-player lag.** There is a 30 second WebSocket keepalive ping and nothing that records a round trip. A `ping`/`pong` pair with a timestamp would give RTT and jitter cheaply, and is worth having for its own sake — the anti-cheat drift thresholds currently reason about latency they cannot see |
+| `/lagwarn`, `/lagdrop`, `/jitterwarn`, `/jitterdrop`, `/packetlosswarn`, `/packetlossdrop` | **`/lagstats` is done.** Every connection is measured with a `ping`/`pong` round trip (`createLagTracker`, `server.js`), which gives lag, jitter and a loss figure counted off missed pongs; `/lagstats` reports them per player, sorted worst first, with the player index shown to an operator only. What is left is the warn/kick machinery `docs/lag-plan.md` calls step 6: `lagwarn`/`lagdrop` and `jitterwarn`/`jitterdrop` thresholds in `server.json` and on the Operator panel, with these commands as their front end. A packet-loss threshold still waits on a transport that can lose more than a pong |
 | `/idlestats`, `/idletime` | last-input time per player, which the anti-cheat code nearly keeps already |
 | `/clientquery` | a client version reply; `init` carries the build id, so this is a round trip bzo could answer without asking the client |
 | `/showgroup`, `/showperms`, `/grouplist`, `/groupperms` | read-only against what bzflag.org returned for the session. Useful, and honest, as long as nobody expects to *set* anything |
@@ -273,7 +273,10 @@ piece of work here rather than two.
    write through one `applyServerConfigChanges` -- the rule above, honoured.
 4. **The client-local set**: `/silence`, `/unsilence`, `/highlight`, `/cmds`.
    Independent of everything above, and pure client work.
-5. **Lag measurement**, then the lag and idle commands that read it.
+5. ~~**Lag measurement**~~ **Done**: every connection's lag, jitter and loss are
+   tracked and `/lagstats` reports them. `/lagwarn`, `/lagdrop`, `/jitterwarn`,
+   `/jitterdrop` and the idle commands still wait on the warn/kick machinery
+   (`docs/lag-plan.md` step 6) and on last-input tracking, respectively.
 6. **BZID bans**, then `/kick` on top of them.
 7. Match-end commands with the match-end feature; `/handicap` with Handicap.
 8. Polls, reports, recording — each when something wants them.

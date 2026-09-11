@@ -4,7 +4,7 @@ Design and staging plan for measuring each player's lag, jitter and packet loss
 the way bzfs does, and for acting on it. Upstream references are paths under
 `$HOME/bzflag/`.
 
-Nothing here is built yet, but less is missing than it looks. A move already
+Stages 1 and half of 2 are built; the rest is not. A move already
 carries `sdt`, the client's own interval since its last send, and the server
 already round-trips a WebSocket ping. Between them, jitter and a round trip are
 measurable without changing the protocol at all. Only a sequence number is
@@ -232,40 +232,54 @@ fix rather than a window to widen.
 
 ## Staging
 
-1. **Server tracking and `/lagstats`.** The round trip off the existing
-   ping/pong at upstream's 10 second cadence, jitter off the `sdt` already in
-   every move, missed pongs as loss, and upstream's smoothing. A `lag` module on
-   the server holds the arithmetic with a test beside it. `/lagstats` is one
-   `defineCommand` at `COMMAND_TIER.OPEN`, sorted by lag and formatted as
-   `getLagStats` formats it, because a number nobody can read is a number nobody
-   will notice is wrong.
+1. **Server tracking and `/lagstats`. Done.** `server/lag.cjs` holds
+   `createLagTracker`, the round trip off the existing ping/pong at a 10 second
+   cadence (`PING_INTERVAL_MS`), jitter off the `sdt` already in every move,
+   missed pongs as loss, and upstream's dynamic smoothing. `/lagstats` is a
+   `COMMAND_TIER.OPEN` command in `server.js`, sorted by lag and formatted by
+   `formatLagStats`. `scripts/test-lag.mjs` covers the arithmetic.
 
-2. **The cached clock**, per the section above: once per frame on the client,
-   once per handler entry on the server, with a tick counter beside it.
+2. **The cached clock, per the section above -- done, less the tick counter.**
+   The client samples once per frame: `sampleEpochClock()` in `public/client.js`
+   sets `frameEpochMs`, and code that can run between frames (a hidden tab still
+   receiving socket messages) calls it explicitly rather than trusting the
+   stale value. On the server, each handler entry -- the `'m'`, `'shoot'`,
+   `'grabFlag'`, `'dropFlag'` and `'zone'` message cases -- reads `Date.now()`
+   once and passes it down: `validateMovement`, `getShotRejection`, the
+   `Projectile` constructor, `grabFlag`, `dropFlag`/`getFlagDropPosition` and
+   `checkAntidote` all take `now` as a parameter rather than reading the clock
+   again partway through, which is what let an extrapolation and the drift
+   check it feeds disagree by however long the intervening code took to run.
+   `getZoneRefusal` and `applyPlayerTeleportMessage` pass their own `now` into
+   `validateMovement` the same way. There is still no tick counter -- nothing
+   in the codebase needs a comparison-only clock yet, so it stays unbuilt
+   rather than shipped with no reader.
 
 3. **The bound window** as `enforceable: false`, sized from step 1's round trip.
-   It stands on its own and is not handicap work.
+   Not built. It stands on its own and is not handicap work.
 
-4. **A scoreboard column.** bzo shows lag where upstream only answers a command,
-   which is the deviation worth taking -- a column is read continuously and a
-   command is read once. It cannot ride `getState()` alone, since that fires
-   only at join and respawn and the column would freeze; broadcast the table
-   after each ping round, so the push rate is the measurement rate and there is
-   no second timer, and carry the figures in `getState()` as well so a joining
-   client starts populated rather than blank.
+4. **A scoreboard column.** Not built. bzo shows lag where upstream only
+   answers a command, which is the deviation worth taking -- a column is read
+   continuously and a command is read once. It cannot ride `getState()` alone,
+   since that fires only at join and respawn and the column would freeze;
+   broadcast the table after each ping round, so the push rate is the
+   measurement rate and there is no second timer, and carry the figures in
+   `getState()` as well so a joining client starts populated rather than blank.
 
-5. **Extrapolate on the client's clock, not ours.** `validateMovement` and
-   `getExtrapolatedPosition` take the interval between the client's own
-   timestamps, and the server's receive time becomes what it is upstream: an
-   input to jitter, not to physics. This is the step that needs upstream's
-   absolute timestamp rather than `sdt`, and the step that lets the drift
-   thresholds be tightened -- which is the point of the exercise. Re-derive them
-   once the measurement exists, not before.
+5. **Extrapolate on the client's clock, not ours.** Not built.
+   `validateMovement` and `getExtrapolatedPosition` still take the server's own
+   receive time. Take the interval between the client's own timestamps instead,
+   and let the server's receive time become what it is upstream: an input to
+   jitter, not to physics. This is the step that needs upstream's absolute
+   timestamp rather than `sdt`, and the step that lets the drift thresholds be
+   tightened -- which is the point of the exercise. Re-derive them once the
+   measurement exists, not before.
 
-6. **Warn and kick.** `lagwarn`/`lagdrop` and `jitterwarn`/`jitterdrop` in
-   `server.json` and on the Operator panel, with the matching commands. A
-   packet-loss threshold waits on a transport that can lose one: today the loss
-   figure counts missed pongs only, which is too coarse to kick on.
+6. **Warn and kick.** Not built. `lagwarn`/`lagdrop` and
+   `jitterwarn`/`jitterdrop` in `server.json` and on the Operator panel, with
+   the matching commands. A packet-loss threshold waits on a transport that can
+   lose one: today the loss figure counts missed pongs only, which is too
+   coarse to kick on.
 
 **Order matters between the measurement and the kicking.** Kicking on a number
 bzo has never measured is how an honest player on a bad connection gets thrown

@@ -5077,8 +5077,19 @@ class RenderManager {
     if (local) this.playLocalSound('land');
     else this.playSound('land', position);
 
-    const ringGeometry = new THREE.RingGeometry(0.5, 0.9, 48);
+    // StdLandEffect (effectsRenderer.cxx:1379): drawRingXY builds a shell
+    // between a base ring flat on the ground and a top ring that is both
+    // wider and higher, so the dirt flares up and out rather than sitting flat
+    // -- a splash, not a halo. The 1.05 taper is upstream's `0.05f*radius`
+    // topside offset, always a twentieth of the (growing) base radius, which
+    // is why a unit cylinder scaled by that one radius keeps the ratio.
+    const ringGeometry = new THREE.CylinderGeometry(1.05, 1, 1, 32, 1, true);
+    ringGeometry.translate(0, 0.5, 0);
+    // `dusty_flare`, the same texture the shot-teleport collar wears -- a
+    // speckle of dots dense at one edge and fading to nothing at the other,
+    // which is what reads as thrown dirt rather than a flat lit ring.
     const ringMaterial = new THREE.MeshBasicMaterial({
+      map: this._getShotTeleportTexture(),
       color: 0xffffff,
       side: THREE.DoubleSide,
       transparent: true,
@@ -5086,11 +5097,11 @@ class RenderManager {
       depthWrite: false
     });
     const ring = new THREE.Mesh(ringGeometry, ringMaterial);
-    ring.rotation.x = Math.PI / 2;
     ring.position.set(position.x, position.y + 0.03, position.z);
 
     const startRadius = 2.5;
-    ring.scale.set(startRadius, startRadius, 1);
+    // The top ring starts half a unit up (upstream's `0.5f + age`, age zero).
+    ring.scale.set(startRadius, 0.5, startRadius);
 
     this.worldGroup.add(this._tagDraws(ring, 'effect'));
     this.activeLandingEffects.push({
@@ -5660,7 +5671,10 @@ class RenderManager {
       const progress = Math.min(1, effect.lifetime / effect.maxLifetime);
       const radius = effect.startRadius + (effect.expansionRate * effect.lifetime);
       effect.ring.scale.x = radius;
-      effect.ring.scale.y = radius;
+      effect.ring.scale.z = radius;
+      // Upstream's `0.5f + age`: the top ring keeps rising for the effect's
+      // whole life, independent of how wide it has grown.
+      effect.ring.scale.y = 0.5 + effect.lifetime;
       effect.material.opacity = Math.max(0, 1.0 - progress);
       if (progress >= 1) {
         this.worldGroup.remove(effect.ring);

@@ -99,17 +99,24 @@ These are deliberate. Do not "fix" them without being asked.
   `useFancyEffects`, `spawnEffect`, `shotEffect`, `deathEffect`, `landEffect`,
   `ricoEffect`, `tpEffect` and friends as ReadWrite BZDB, largely so the game
   degrades on old hardware. bzo needs hardware-accelerated WebGL to run at all,
-  so that tradeoff does not apply. **Implement upstream's default variant and
-  no setting.** Add a toggle only when a measured frame-rate impact justifies
-  it, not for parity with the upstream options list.
+  so that tradeoff does not apply -- but the direction that points is toward
+  upstream's **best**-looking variant, not its default. **Implement the
+  highest quality option upstream has for a given effect, and ship no
+  setting for it, unless a measurement shows a real frame-rate cost** -- in
+  which case the cheaper variant is what ships, still with no toggle. Do not
+  default to upstream's own default on the assumption that it is the safe
+  choice: upstream picked its defaults for hardware from a decade before
+  bzo's, and a look most players immediately turn up in their own client is
+  the one worth having here from the start.
 
   Render levels chosen from the hardware -- a low/balanced/high policy, scaled
-  pixel ratio, budgeted effects -- are wanted **eventually**, and are not ready
-  now. Nothing here has been measured on the machines that matter, and a policy
-  built on guesses is worse than none: it hides the cost it claims to manage.
-  Frame *interval* in particular is not the measurement to build on, since a
-  vsync-limited client reports its refresh rate however much headroom it has.
-  Land the measurements first.
+  pixel ratio, budgeted effects -- are wanted **eventually**, and are what
+  will eventually carry the cheaper fallback automatically on the hardware
+  that needs it, rather than a manual setting. Nothing here has been measured
+  on the machines that matter, and a policy built on guesses is worse than
+  none: it hides the cost it claims to manage. Frame *interval* in particular
+  is not the measurement to build on, since a vsync-limited client reports its
+  refresh rate however much headroom it has. Land the measurements first.
 - **Tanks are selectable OBJ models, not one compiled-in model.** BZFlag ships a
   single tank in `src/geometry/models/tank/` at three LODs, varied only by the
   `animatedTreads` and `treadStyle` settings. bzo loads several models from
@@ -287,14 +294,19 @@ These are deliberate. Do not "fix" them without being asked.
   alone does not mean a headset is present. The Settings menu still offers VR
   Mode there.
 
-- **Fewer options than BZFlag: implement upstream's default variant and ship no
-  setting for it.** Where upstream offers quality levels or a switch between two
-  looks -- a modelled guided missile behind `useQuality() >= 3`, a real flag
-  cloth behind `realFlag`, `SHELL_INSIDE_NODES` for the eighth dimension -- bzo
-  builds the one upstream draws by default and leaves the other out. A setting
-  is only added where a measurement says the frame rate needs it, which is the
-  same rule the render level follows. Every option is a second code path to keep
-  correct and a second thing to test on four surfaces.
+- **Fewer options than BZFlag: implement upstream's best-looking variant and
+  ship no setting for it.** Where upstream offers quality levels or a switch
+  between two looks -- a modelled guided missile behind `useQuality() >= 3`, a
+  real flag cloth behind `realFlag`, `SHELL_INSIDE_NODES` for the eighth
+  dimension -- bzo builds the one a player who turns everything up would see,
+  not the one upstream ships cold, and leaves the other out. These three were
+  picked under the older rule (upstream's *default*) and are worth
+  revisiting now that the rule has changed -- see "bzo does not mirror
+  BZFlag's client display options" above. A setting is only added where a
+  measurement says the frame rate needs it, which is the same rule the render
+  level follows, and the fallback then is what the render level chooses
+  automatically, not a manual toggle. Every option is a second code path to
+  keep correct and a second thing to test on four surfaces.
 
 - **A surface above stops a rise; upstream leaves it in place.**
   `doUpdateMotion` only ever cancels *downward* motion against a surface -- its
@@ -900,7 +912,7 @@ who needs to know.
 ignores, including the coordinate conversion. Update it in the same commit as
 `parseBZWMap`: a map that uses something bzo skips still loads, so the doc is
 the only place a mapper can find out what will and will not survive the import.
-`maps/test.bzw` carries a labelled example of each obstacle keyword.
+`maps/bzo.bzw` carries a labelled example of each obstacle keyword.
 
 **A guided missile is the one shot whose path both ends integrate.** Every other
 shot is a direction and a speed decided at the muzzle; `GM`'s heading is turned
