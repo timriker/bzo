@@ -2038,8 +2038,8 @@ function parseBZWMap(filename) {
       // is vanishingly rare there. Its *box* arithmetic has none, and the case
       // that exposes the difference is a burrowed tank: it drives below zero, so
       // its own span reaches up through a pad's [0, 0] and it stops dead on one.
-      // `flagbuffet.bzw` puts a pad under every flag zone, which turned that into
-      // forty-one places a `BU` tank came to a halt.
+      // `bzo.bzw` puts a pad under every flag zone, which turned that into
+      // forty-two places a `BU` tank came to a halt.
       //
       // Read from the dimensions rather than from the keyword, so it is true of
       // every flush pad and not only of the ones somebody remembered to mark.

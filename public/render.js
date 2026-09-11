@@ -2992,8 +2992,8 @@ class RenderManager {
         );
       } else {
         // A box with no height is a pad on the ground rather than a block: a map
-        // uses one to mark ground -- `flagbuffet.bzw` puts a named one under
-        // every flag zone so the debug labels can name them -- and BZW writes it
+        // uses one to mark ground -- `bzo.bzw` puts a named one under most of its
+        // flag zones so the debug labels can name them -- and BZW writes it
         // exactly as it writes a flat base, `size w d 0`.
         //
         // Being coplanar with the ground, it needs the same depth bias a flat

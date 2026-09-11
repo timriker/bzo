@@ -21,11 +21,11 @@ import { getObstacleHeight } from './collision.mjs';
 // The reason it is worth doing is the way maps fake a curve. Lacking any curved
 // obstacle, a map crosses several boxes at one spot -- `hix.bzw` builds four
 // octagons, its top of the world and its roof out of four planks each, and
-// `flagbuffet.bzw` now carries one for testing -- and every long face of every
-// plank is buried in its neighbours. Those are also the faces a phased tank sees
-// as slabs across its view, because from inside one plank the others are still
-// solid, so this is as much about what the eighth dimension looks like as about
-// what the frame costs.
+// `bzo.bzw` carries one in its north-east corner for testing -- and every long
+// face of every plank is buried in its neighbours. Those are also the faces a
+// phased tank sees as slabs across its view, because from inside one plank the
+// others are still solid, so this is as much about what the eighth dimension
+// looks like as about what the frame costs.
 //
 // The unit is the triangle, and a triangle is either kept whole or dropped
 // whole: nothing is clipped and no vertex is invented, so the buffers only ever
@@ -55,7 +55,7 @@ const MIN_PIECE_AREA = 1e-4;
 const MAX_PIECES = 32;
 
 // An obstacle that can hide another obstacle's geometry. A pad with no height is
-// not a solid -- `flagbuffet.bzw` puts one under every flag zone, and the
+// not a solid -- `bzo.bzw` puts one under most of its flag zones, and the
 // importer already makes those drive- and shoot-through -- and a teleporter is
 // translucent and animates, so a face hidden inside one would show through it.
 export function hidesGeometry(obs) {

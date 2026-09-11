@@ -91,7 +91,7 @@ end
 
 The colour multiplies the texture the obstacle already wears rather than
 replacing it, which is what `diffuse` does in the pipeline upstream draws with.
-`flagbuffet.bzw` paints the pad under every bad flag's zone, so a pad reads as
+`bzo.bzw` paints the pad under every bad flag's zone, so a pad reads as
 the kind of flag standing on it -- and the figure is written into the map rather
 than looked up from bzo's own bad-flag colour, because what a map is painted is
 the map's decision.
@@ -164,7 +164,7 @@ A `teleporter` is a box with a `border`, and its two faces are named
 defaults from the `CustomGate` constructor -- half width `0.5 * _teleportWidth`,
 half breadth `_teleportBreadth`, height `2 * _teleportHeight`, and a border of
 twice the half width, so `0.56 / 4.48 / 20.16 / 1.12` -- which is what
-`maps/flagbuffet.bzw` relies on and every other map in `maps/` spells out.
+`maps/bzo.bzw` relies on and every other map in `maps/` spells out.
 
 **The importer resolves the border into the solid, and the world goes out
 collision-ready.** `Teleporter::finalize` grows the stated size by the border --
@@ -236,8 +236,8 @@ up through a pad's `[0, 0]` and it stops dead on one.
 
 A pad is still drawn, and still labelled by the debug labels: the passability
 flags are read only by the collision code, never by the renderer. That is what
-makes a pad useful for marking ground -- `maps/flagbuffet.bzw` puts a named one
-under every flag zone, so `L_Laser` and friends label the whole buffet.
+makes a pad useful for marking ground -- `maps/bzo.bzw` puts a named one under
+every flag zone, so `L_Laser` and friends label the whole ring.
 
 A map option only ever turns a switch **on**, which is how a bzfs switch behaves:
 nothing in a map turns off something the server config enabled. `-j` is the one

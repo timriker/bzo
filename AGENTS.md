@@ -345,8 +345,8 @@ These are deliberate. Do not "fix" them without being asked.
   What makes it worth the load-time cost is the way maps fake a curve. With no
   curved obstacle to draw, a map crosses several boxes at one spot -- `hix.bzw`
   builds four octagons, its top of the world and its roof out of four planks
-  each, and `flagbuffet.bzw` carries one out on the north-east ground for testing
-  -- and every long face of every plank is buried in its neighbours. `hix.bzw`
+  each, and `bzo.bzw` carries one in its north-east corner for testing -- and
+  every long face of every plank is buried in its neighbours. `hix.bzw`
   loses 112 of its 992 obstacle triangles that way. Those are also the faces a
   phased tank sees as slabs across its view, because from inside one plank the
   others are still solid, so this is as much about what the eighth dimension
@@ -588,8 +588,10 @@ halves come from one line: `doUpdateMotion` treats a hit as a landing whenever
 `width / hypot(height, width)` -- above that threshold for any pyramid a map can
 state. So there is no slope steep enough to shed a tank and none shallow enough
 to climb; the slope decides only *where* on the face the tank comes to rest.
-`maps/flagbuffet.bzw` carries a row of five pyramids from nearly flat to nearly
-vertical to drive this rather than argue about it.
+`maps/bzo.bzw`'s `nest_base`/`nest_mid`/`nest_top`, three pyramids sharing one
+footprint in its north-west corner, carry three different slopes -- 0.96,
+0.58 and 0.16 by that same formula, shallow to steep -- to drive this rather
+than argue about it.
 
 The consequences, each of which was once a bug:
 
@@ -2830,14 +2832,14 @@ Three things to reach for, in the order they cost:
   instance started to keep a test tidy, and let it disconnect when it is done.
   Use `testSpawn` to put it somewhere specific.
 
-### Testing a flag with `maps/flagbuffet.bzw`
+### Testing a flag with `maps/bzo.bzw`
 
-**That map exists for this.** It puts three of every flag in its own one-unit
-zone at a known coordinate, so a flag can be put in a probe's hands on purpose
-rather than waited for. A `zoneflag` slot is pinned to its type -- upstream's
-`setRequiredFlag`, and `addFlag` never draws from the pool for one -- so it
-always comes back as the flag its zone declared and repeated runs cannot exhaust
-it, even with the map's `-set _maxFlagGrabs 1`.
+**That map exists for this, among other things.** It puts three of every flag
+in its own one-unit zone at a known coordinate, so a flag can be put in a
+probe's hands on purpose rather than waited for. A `zoneflag` slot is pinned
+to its type -- upstream's `setRequiredFlag`, and `addFlag` never draws from
+the pool for one -- so it always comes back as the flag its zone declared and
+repeated runs cannot exhaust it, whatever `_maxFlagGrabs` is set to.
 
 **Point `testSpawn` at the zone.** `testSpawn` in `server.json` spawns a named
 player at a fixed point, and a tank that spawns on a flag grabs it before it does
@@ -2865,15 +2867,17 @@ cannot be used to plant a bad flag on somebody.
 
 **A probe has admin, so the pair is the whole workflow: `/mv` to the zone you
 want, then `/flag drop` to shed whatever you are already holding.** Reach for the
-second half whether or not you meant to pick anything up. `flagbuffet` is wall to
-wall flag zones -- the good ones on the inner loop at +/-40, the bad ones on the
-outer at +/-80 -- and a probe driving anywhere across them collects flags by
-accident. That is not a cosmetic problem: `O` Obesity and `T` Tiny resize the tank
-box, so every collision height a run measures comes out wrong, and `BY` Bouncy
-jumps the tank on its own, which reads exactly like a motion bug you did not
-write. Two runs in this repo's history were thrown away to each of those. Drop
-first, then measure -- and the empty ground past the rings, or the slope row
-south of them, is where a motion test belongs in the first place.
+second half whether or not you meant to pick anything up. `bzo.bzw`'s flags sit
+on the four compass arms around the centre -- bad at radius 25, good at radius
+50, each arm only as wide as its own group -- and a probe crossing an arm
+collects one by accident. That is not a cosmetic problem: `O` Obesity and `T`
+Tiny resize the tank box, so every collision height a run measures comes out
+wrong, and `BY` Bouncy jumps the tank on its own, which reads exactly like a
+motion bug you did not write. Two runs in this repo's history were thrown away
+to each of those. Drop first, then measure -- and bzo `x = 45` (any `z`) is the
+lane that misses every arm and every corner test alike, since it is neither of
+the two `x` values (`25`, `50`) an east/west arm sits at nor within reach of a
+north/south arm's own `x` extent (`+/-20` bad, `+/-30` good).
 
 ```
 say('/mv 40,0,25');   // x,y,z -- and `/mv 40,25` is x,z at y=0
@@ -2899,7 +2903,8 @@ Three things about it that cost a probe time to rediscover:
   in the air above the zone and a tank standing there has nothing to grab.
   `/flag up` is the same wait, and longer. So sit on the zone and poll the label
   instead of moving away and back. `/flag show` reports every flag's real
-  position, but its output overflows the chat history on flagbuffet.
+  position, but its output overflows the chat history on a map carrying this
+  many flags.
 
 **Drive by the input module, not by events.** Synthetic `KeyboardEvent`s
 dispatched from `--eval` do **not** reach the game -- dispatch the fire key and
@@ -2949,13 +2954,12 @@ test is the one the server acted on. Joining is one message --
 **Three things that will waste a run:**
 
 - **Do not spawn inside geometry.** A wedged tank sends no move packets at all
-  and the run looks like the client is broken. On this map the platform box
-  covers bzo `x` 60..100, `z` 60..100.
+  and the run looks like the client is broken. On this map the south-west
+  platform box covers bzo `x` -105..-85, `z` 85..105.
 - **A probe with no flag grabs the first zone it drives through**, which is how a
   baseline run ends up carrying Super Bullet. A probe that already has one never
   grabs another (`if (getMyFlag()) return;`), so only the baseline needs a route
-  that misses everything. bzo `z = 30` is the lane that does: the flag columns
-  span `z` -35..25 and the rows sit at `z` +/-40 and +/-80.
+  that misses everything -- bzo `x = 45` again, from the flag section above.
 - **Chrome takes the better part of a minute** to launch, load and join before
   `--eval` runs at all, so an observer window measured in seconds will close
   before the probe exists.

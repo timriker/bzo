@@ -914,8 +914,12 @@ function getShotObstacleNormal(obs, x, y, z, radius) {
 // up" -- solves for the moment the box met the roof, and takes the roof when
 // that came first. bzo's caller has already resolved the step to the last
 // moment the tank was clear, so which plane the step crossed is the question
-// `crossedFlatTop` answers, and the sides fall through to the cross-section's
-// horizontal normal, which getNormalOrigRect always gives.
+// `crossedFlatTop` answers for the top; the bottom is `low + height < base`,
+// the same test `getShotObstacleNormal` already made for a shot a few lines up
+// -- a box raised clear of the ground has a real underside, and a tank rising
+// into it from below is meeting that face, not a side wall. Only once both are
+// ruled out do the sides fall through to the cross-section's horizontal
+// normal, which getNormalOrigRect always gives.
 //
 // PyramidBuilding overrides it (PyramidBuilding.cxx:271): the flat end of the
 // shape is named first -- the plateau of a flipped pyramid, the underside of an
@@ -926,12 +930,12 @@ function getShotObstacleNormal(obs, x, y, z, radius) {
 // `y` and `z` are where the step was last clear; `toY` is where it hit.
 function getTankHitNormal(obs, x, y, z, rotation, toY, height) {
   const base = obs.baseY || 0;
+  const low = y > toY ? toY : y;
 
   if (obs.type === 'pyramid') {
     const pyramidHeight = getPyramidHeight(obs);
     const flip = isPyramidFlatTop(obs);
     const high = y > toY ? y : toY;
-    const low = y > toY ? toY : y;
     if (flip && high >= base + pyramidHeight) return { x: 0, y: 1, z: 0 };
     if (!flip && low + height < base) return { x: 0, y: -1, z: 0 };
     const face = getPyramidFaceLocalNormal(obs, x, y, z, height);
@@ -939,6 +943,7 @@ function getTankHitNormal(obs, x, y, z, rotation, toY, height) {
   }
 
   if (crossedFlatTop(base + getObstacleHeight(obs), y, toY)) return { x: 0, y: 1, z: 0 };
+  if (low + height < base) return { x: 0, y: -1, z: 0 };
   const local = getColliderLocalPoint(x, z, obs);
   const side = getOrigRectNormal(obs.w / 2, obs.d / 2, local.x, local.z);
   return rotateNormalToWorld(obs, side.x, 0, side.z);

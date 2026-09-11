@@ -300,11 +300,11 @@ to break from a panel, and about controls that would be poor on any surface.
 ## A map's options still win, and the panel does not say so
 
 The panel edits `server.json`, and a map's own `options` block overrides it at
-boot: `maps/flagbuffet.bzw` carries `-ms 3` and `-mp 10,0,10,0,10,10`, so on that
-map the shot limit and the team limits the panel shows are the config's and the
-world is running the map's. The rows are honest about what they write and silent
-about what will happen to it, which is the same gap the shot limit row has had
-since it was a text box.
+boot: `maps/bzo.bzw` carries `-ms 5` and `-j`, so on that map the shot limit and
+the jumping switch the panel shows are the config's and the world is running the
+map's. The rows are honest about what they write and silent about what will
+happen to it, which is the same gap the shot limit row has had since it was a
+text box.
 
 Fixing it means telling the client which keys the running map overrides and
 greying those rows -- but a *staged* map change moves the answer, and the server
