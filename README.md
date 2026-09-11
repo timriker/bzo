@@ -381,7 +381,12 @@ That updates:
 
 - `package.json`
 - `package-lock.json`
+- `public/version.mjs`
 - `CHANGELOG.md`
+
+All four go in the release commit. `public/version.mjs` is the one easy to
+leave behind, and a tag without it ships a client reporting the version before
+it.
 
 Then edit the new changelog section so it contains the real user-visible changes.
 
@@ -396,12 +401,18 @@ npm run release:check:increment -- v1.0.1
 Then commit, tag, and push:
 
 ```bash
-git add package.json package-lock.json CHANGELOG.md
-git commit -m "Release v1.0.1"
+git add package.json package-lock.json public/version.mjs CHANGELOG.md
+git commit -m "Release v1.0.1 - short description. Closes #1"
 git tag v1.0.1
 git push
 git push origin v1.0.1
 ```
+
+The subject describes the release rather than labelling it: the version is
+already in the tag, `package.json` and `CHANGELOG.md`, and `git log --oneline`
+is the one view where the subject is all there is. Name the change in a few
+words and reference the issue with a real closing keyword where the release
+finishes it, since a bare `(#NN)` only links.
 
 The release workflow will:
 
