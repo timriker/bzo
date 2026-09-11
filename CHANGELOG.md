@@ -6,6 +6,46 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-09-11
+
+### Added
+- **A teleporter proximity flash.** The view washes yellow as a tank nears a
+  teleporter's opening, graded by distance the way upstream's
+  `SceneRenderer::renderDimming` blends it (`Teleporter::getProximity`,
+  `World::getProximity`, ported into `getWorldTeleporterProximity`). It is a
+  mesh parented to the camera rather than a 2D screen overlay, so it renders
+  correctly per eye in a headset.
+- **`maps/bzo.bzw` plays team mode**, with the four coloured bases as capture
+  targets and BZFlag's usual per-team player limits, and its flags are single
+  use: `-set _maxFlagGrabs 1` means a good or bad flag disappears once taken
+  rather than drifting back onto a zone it does not belong on, and a bad flag
+  now sheds in 30 seconds or one kill (was 50 and two) with an antidote flag
+  in the world the whole time.
+- **`_maxBumpHeight` is a server and map option.** Upstream's bump-climb
+  threshold (`LocalPlayer.cxx:534`) was a hardcoded constant; a server.json
+  `maxBumpHeight` or a map's `-set _maxBumpHeight` now rides `GAME_CONFIG` to
+  the client the same way `_wingsJumpCount` already does.
+
+### Changed
+- **Static asset requests are rate limited.** CodeQL flagged
+  `js/missing-rate-limiting`: every static handler answers a request with a
+  filesystem read and nothing stood between an unauthenticated request and
+  repeated disk reads. Sized for a LAN party sharing one address, the same
+  reasoning as the existing login limiter.
+
+### Fixed
+- **A tank that jumps up into a floating box's underside keeps its speed.**
+  `getTankHitNormal` had no bottom-face case for a box, unlike its pyramid
+  branch and unlike `getShotObstacleNormal`'s own box case just above it, so
+  the hit computed a side-wall normal instead of a ceiling one and redirected
+  horizontal speed instead of leaving it alone. Fixed in both halves of the
+  collision pair, matching what real bzflag does: vertical speed stops, linear
+  speed carries through, and the tank drops from where it hit.
+- **`maps/flagbuffet.bzw` is removed.** `maps/bzo.bzw` now carries everything
+  it tested and more, so every doc and code-comment citation of the old map
+  points at the new one, including a full rewrite of `AGENTS.md`'s
+  flag-testing workflow against `bzo.bzw`'s actual coordinates.
+
 ## [1.1.0] - 2026-09-11
 
 ### Added
