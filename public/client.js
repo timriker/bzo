@@ -378,6 +378,9 @@ const RELOAD_READY_POLL_MS = 400;
 const RELOAD_READY_TIMEOUT_MS = 60000;
 
 async function reloadWhenServerIsUp() {
+  // The one place the fresh reading *is* the measurement: this polls across
+  // awaits while the server restarts, and frames may have stopped entirely, so
+  // the frame clock would never advance and the deadline would never arrive.
   const deadline = Date.now() + RELOAD_READY_TIMEOUT_MS;
   while (Date.now() < deadline) {
     try {
@@ -623,6 +626,34 @@ let amAdmin = false;
 // as `amAdmin` is. See docs/login-plan.md.
 let amVerified = false;
 let myGlobalCallsign = null;
+// The wall clock, read once a frame.
+//
+// `TimeKeeper::setTick()` / `getTick()` upstream (`TimeKeeper.h:71`), sampled at
+// the top of the play loop and read 64 times against 39 direct `getCurrent()`
+// calls: the cached value is the default and a fresh reading is the exception.
+// The rule its exceptions follow is that a fresh reading is taken only where the
+// reading *is* the measurement -- upstream keeps its network timing on
+// `getCurrent()` and everything else on the tick.
+//
+// bzo's split is by clock rather than by call site. `performance.now()` is
+// monotonic and is what motion and send timing already run on, so `deltaTime`
+// and `sdt` are untouched by this. This is the *epoch* clock, the one used for
+// anything measured against a timestamp the server also holds, and one reading
+// a frame is enough for all of it -- reading it per projectile, as the shot
+// ageing used to, differences two samples taken microseconds apart and calls the
+// difference physics.
+//
+// Anything that can run while frames are stopped calls `sampleEpochClock()`
+// instead of reading the stale value: a hidden tab delivers no frames but still
+// delivers socket messages, and a countdown started against a clock thirty
+// seconds old has already expired.
+let frameEpochMs = Date.now();
+
+function sampleEpochClock() {
+  frameEpochMs = Date.now();
+  return frameEpochMs;
+}
+
 // One entry per colour team the server offers: { team, size, wins, losses }.
 // Empty until a team-mode server sends its first update.
 let teamScores = [];
@@ -1697,7 +1728,9 @@ function addChatEntry(tabIds, text, kind = CHAT_KIND_MISC, segments = null) {
     text: String(text),
     kind,
     segments: Array.isArray(segments) && segments.length > 0 ? segments : null,
-    ts: Date.now(),
+    // Chat arrives from the socket, which keeps delivering while a hidden tab
+    // delivers no frames, so this advances the clock rather than reading it.
+    ts: sampleEpochClock(),
   };
   const uniqueTabIds = Array.from(new Set(tabIds));
   uniqueTabIds.forEach((tabId) => {
@@ -2338,7 +2371,7 @@ function updatePauseCountdown() {
     if (!destructCountdown.isCounting()) pauseAlertSecondsShown = 0;
     return;
   }
-  const remaining = gameConfig.PAUSE_COUNTDOWN - (Date.now() - pauseState.countdownStart);
+  const remaining = gameConfig.PAUSE_COUNTDOWN - (frameEpochMs - pauseState.countdownStart);
   const seconds = Math.max(1, Math.ceil(remaining / 1000));
   if (seconds === pauseAlertSecondsShown) return;
   pauseAlertSecondsShown = seconds;
@@ -2350,7 +2383,7 @@ function updatePauseCountdown() {
 // the server is what decides a tank died. Everything else is upstream's -- five
 // seconds, one alert a second, abandoned with the life, and the key calls it off.
 function updateDestructCountdown() {
-  const outcome = destructCountdown.tick(Date.now(), { alive: isMyTankAlive() });
+  const outcome = destructCountdown.tick(frameEpochMs, { alive: isMyTankAlive() });
   if (outcome === 'cleared') {
     pauseAlertSecondsShown = 0;
     setHudAlert(PAUSE_ALERT_SLOT, null, 0);
@@ -2363,7 +2396,7 @@ function updateDestructCountdown() {
     return;
   }
   if (!destructCountdown.isCounting()) return;
-  const seconds = destructCountdown.secondsLeft(Date.now());
+  const seconds = destructCountdown.secondsLeft(frameEpochMs);
   if (seconds === pauseAlertSecondsShown) return;
   pauseAlertSecondsShown = seconds;
   setHudAlert(PAUSE_ALERT_SLOT, `Self Destructing in ${seconds}`, 1, false);
@@ -3643,13 +3676,13 @@ function handleGameplayKeydown(event) {
   // cmdDestruct (clientCommands.cxx:400): five seconds, and the key again calls
   // it off. The request goes when the count runs out, in updateDestructCountdown.
   if (event.code === 'KeyQ' && ws && ws.readyState === WebSocket.OPEN) {
-    const outcome = destructCountdown.pressDestructKey(Date.now(), {
+    const outcome = destructCountdown.pressDestructKey(frameEpochMs, {
       observer: isObserver(),
       alive: isMyTankAlive(),
     });
     pauseAlertSecondsShown = 0;
     if (outcome === 'started') {
-      const seconds = destructCountdown.secondsLeft(Date.now());
+      const seconds = destructCountdown.secondsLeft(frameEpochMs);
       pauseAlertSecondsShown = seconds;
       setHudAlert(PAUSE_ALERT_SLOT, `Self Destructing in ${seconds}`, 1, false);
     } else if (outcome === 'cancelled') {
@@ -4768,7 +4801,7 @@ function handleServerMessage(message) {
             playerZ = message.z;
             playerRotation = message.r;
             jumpDirection = tank.userData.jumpDirection ?? null;
-            localTeleportCooldownUntil = Date.now() + PLAYER_TELEPORT_COOLDOWN_MS;
+            localTeleportCooldownUntil = sampleEpochClock() + PLAYER_TELEPORT_COOLDOWN_MS;
             lastSentForwardSpeed = Number.isFinite(message.fs) ? message.fs : lastSentForwardSpeed;
             lastSentRotationSpeed = Number.isFinite(message.rs) ? message.rs : lastSentRotationSpeed;
             lastSentVerticalVelocity = Number.isFinite(message.vv) ? message.vv : lastSentVerticalVelocity;
@@ -4923,7 +4956,7 @@ function handleServerMessage(message) {
 
     case 'pauseCountdown':
       if (message.playerId === myPlayerId) {
-        pauseState.countdownStarted(Date.now());
+        pauseState.countdownStarted(sampleEpochClock());
         pauseAlertSecondsShown = 0;
         updatePauseCountdown();
       }
@@ -5305,7 +5338,7 @@ function createLocalProjectile({ x, y, z, dirX, dirZ, dirY = 0 }) {
   if (myPlayerId === null || myPlayerId === undefined) return;
 
   const shotColor = getPlayerShotColor(myPlayerId);
-  const localId = `local-${myPlayerId}-${Date.now()}-${localProjectileCounter++}`;
+  const localId = `local-${myPlayerId}-${frameEpochMs}-${localProjectileCounter++}`;
   const myFlag = getMyShotFlag();
   const localEffects = getShotEffects(myFlag);
   const projectile = localEffects.shockwave
@@ -5334,7 +5367,7 @@ function createLocalProjectile({ x, y, z, dirX, dirZ, dirY = 0 }) {
   if (!projectile) return;
 
   projectile.userData.playerId = myPlayerId;
-  projectile.userData.createdAt = Date.now();
+  projectile.userData.createdAt = frameEpochMs;
   projectile.userData.dirY = Number.isFinite(dirY) ? dirY : 0;
   projectile.userData.shotSlot = null;
   projectile.userData.radarColor = `#${shotColor.getHexString()}`;
@@ -5352,7 +5385,7 @@ function createLocalProjectile({ x, y, z, dirX, dirZ, dirY = 0 }) {
   projectile.userData.teleportReentryBlockTeleporterIndex = null;
   projectile.userData.teleportReentryBlockDistance = 0;
   projectiles.set(localId, projectile);
-  pendingLocalProjectiles.push({ id: localId, sentAt: Date.now() });
+  pendingLocalProjectiles.push({ id: localId, sentAt: frameEpochMs });
 }
 
 function removeProjectile(id, reason = 1, x = null, y = null, z = null) {
@@ -7858,7 +7891,7 @@ function handleMotion(deltaTime) {
   };
   myTank.userData.verticalVelocity = step.velocityY;
 
-  const localNowMs = Date.now();
+  const localNowMs = frameEpochMs;
   let teleportedThisFrame = false;
   let predictedTeleportRotateDelta = 0;
   let predictedTeleportPacket = null;
@@ -9742,17 +9775,17 @@ function updateProjectiles(deltaTime) {
     if (!projectile.userData.shockwave) return;
     const createdAt = Number.isFinite(projectile.userData.createdAt)
       ? projectile.userData.createdAt
-      : Date.now();
+      : frameEpochMs;
     const lifetimeSeconds = Number.isFinite(projectile.userData.lifetimeSeconds)
       ? projectile.userData.lifetimeSeconds
       : getShotLifetimeSeconds(projectile.userData.flag ?? null);
-    const radius = getShockWaveRadius((Date.now() - createdAt) / 1000, lifetimeSeconds);
+    const radius = getShockWaveRadius((frameEpochMs - createdAt) / 1000, lifetimeSeconds);
     projectile.userData.shockWaveRadius = radius;
     renderManager.updateShotShockWave(projectile, radius, getShockWaveAlpha(radius));
   });
 
   if (pendingLocalProjectiles.length > 0) {
-    const now = Date.now();
+    const now = frameEpochMs;
     const timeoutMs = 2000;
     pendingLocalProjectiles = pendingLocalProjectiles.filter((pending) => {
       if (now - pending.sentAt <= timeoutMs) return true;
@@ -10098,8 +10131,8 @@ function ensureXRShotStatusOverlay() {
     if (projectile?.userData?.playerId !== myPlayerId) return;
     const slotIndex = Number.isInteger(projectile?.userData?.shotSlot) ? projectile.userData.shotSlot : -1;
     if (slotIndex < 0 || slotIndex >= maxSlots) return;
-    const createdAt = Number.isFinite(projectile?.userData?.createdAt) ? projectile.userData.createdAt : Date.now();
-    const ageMs = Math.max(0, Date.now() - createdAt);
+    const createdAt = Number.isFinite(projectile?.userData?.createdAt) ? projectile.userData.createdAt : frameEpochMs;
+    const ageMs = Math.max(0, frameEpochMs - createdAt);
     // A shot variant holds its slot for its own life; see updateShotStatus.
     const lifeFactor = Number.isFinite(projectile?.userData?.lifeFactor)
       ? projectile.userData.lifeFactor
@@ -11824,6 +11857,10 @@ function runFallbackAnimationLoop(frameTime) {
 function animate(frameTime) {
   startFramePhases();
   supportSurfaceDebugTouchedThisFrame = false;
+  // The frame's one reading of the wall clock. Everything measured against a
+  // timestamp the server also holds reads `frameEpochMs` from here on, so a
+  // whole frame agrees about when it happened.
+  sampleEpochClock();
   const now = Number.isFinite(frameTime) ? frameTime : performance.now();
   // A hidden tab stops delivering frames, so the first one back would otherwise
   // spend the whole gap at once and throw the tank across the map.
@@ -11866,7 +11903,7 @@ function animate(frameTime) {
     updateDegreeBar({ myTank, playerRotation, markers: getFlagHeadingMarkers() });
     updateShotStatus({
       myPlayerId, myTank, projectiles, gameConfig,
-      now: Date.now(),
+      now: frameEpochMs,
     });
   }
   markFramePhase('hud');
