@@ -6,6 +6,26 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
 
 ## [Unreleased]
 
+## [1.0.100] - 2026-09-11
+
+### Added
+- **Lag, jitter and loss are measured for every connection, and `/lagstats`
+  reports them.** The round trip comes off the WebSocket keep-alive ping that
+  was already running, and jitter off the interval each move already carries --
+  so neither costs a new message. The reply is bzfs's own: one row per player,
+  worst connection last, an operator also seeing slot numbers. A connection
+  whose first ping has not come back reads as `--` rather than as a perfect
+  zero. The ping now goes out every ten seconds, as upstream's does, because
+  that is a measurement cadence rather than a liveness one.
+
+### Changed
+- **The client reads the wall clock once a frame.** Everything measured against
+  a timestamp the server also holds now shares one reading per frame, so a whole
+  frame agrees about when it happened -- shot ageing in particular used to take
+  two readings per shot per frame and difference samples taken microseconds
+  apart. Motion and send timing are unchanged: those run on a monotonic clock
+  and always did.
+
 ## [1.0.99] - 2026-09-11
 
 ### Added

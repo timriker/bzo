@@ -1,6 +1,6 @@
 {
   "name": "bzo",
-  "version": "1.0.99",
+  "version": "1.0.100",
   "description": "Web based BZFlag like 3D multiplayer tank game, Battlezone Online",
   "main": "server.js",
   "scripts": {
@@ -9,7 +9,7 @@
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "check:server": "node --check server.js",
-    "check": "npm run check:server && npm run lint && npm run check:controls-docs && npm run check:shared-pairs && npm run test:volume && npm run test:voice-volume && npm run test:voice-channels && npm run test:input-context && npm run test:pause && npm run test:roam && npm run test:tracks && npm run test:teams && npm run test:team-mode && npm run test:scoreboard && npm run test:commands && npm run test:perf && npm run test:shots && npm run test:flags && npm run test:server-name && npm run test:sessions && npm run test:motion && npm run test:collision && npm run test:capabilities && npm run test:tank-models && npm run test:face-trim && npm run test:precompress && npm run test:listen-address",
+    "check": "npm run check:server && npm run lint && npm run check:controls-docs && npm run check:shared-pairs && npm run test:volume && npm run test:voice-volume && npm run test:voice-channels && npm run test:input-context && npm run test:pause && npm run test:roam && npm run test:tracks && npm run test:teams && npm run test:team-mode && npm run test:scoreboard && npm run test:commands && npm run test:perf && npm run test:shots && npm run test:flags && npm run test:server-name && npm run test:sessions && npm run test:lag && npm run test:motion && npm run test:collision && npm run test:capabilities && npm run test:tank-models && npm run test:face-trim && npm run test:precompress && npm run test:listen-address",
     "check:controls-docs": "node scripts/check-controls-docs.mjs",
     "check:shared-pairs": "node scripts/check-shared-pairs.mjs",
     "test:input-context": "node scripts/test-input-context.mjs",
@@ -26,6 +26,7 @@
     "test:team-mode": "node scripts/test-team-mode.mjs",
     "test:server-name": "node scripts/test-server-name.mjs",
     "test:sessions": "node scripts/test-sessions.mjs",
+    "test:lag": "node scripts/test-lag.mjs",
     "test:motion": "node scripts/test-motion.mjs",
     "test:shots": "node scripts/test-shots.mjs",
     "test:flags": "node scripts/test-flags.mjs",
