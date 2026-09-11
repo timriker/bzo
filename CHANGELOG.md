@@ -6,6 +6,8 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
 
 ## [Unreleased]
 
+## [1.0.98] - 2026-09-11
+
 ### Added
 - **`listen` says where the server answers, host and port together.** The way a
   proxy's own config writes it -- `[::]:3000`, `127.0.0.1:3000`, `[::1]:3000`,
