@@ -314,6 +314,31 @@ function setStaticHeaders(res, filePath) {
 // not consult the type.
 express.static.mime.define({ 'model/obj': ['obj'], 'model/mtl': ['mtl'] });
 
+// Every static handler below this line answers a request with a filesystem
+// read -- the brotli sidecar here, the identity file in `express.static`
+// further down -- and CodeQL is right to want a limit in front of that
+// (`js/missing-rate-limiting`, issue #7): nothing otherwise stands between an
+// unauthenticated request and repeated disk reads. Sized for a LAN party
+// sharing one address rather than for a single player, the same reason
+// `requestAddress` exists -- a cold join is a few dozen requests, so this
+// leaves three orders of magnitude of headroom over anything an honest client
+// reaches and only ever catches an actual flood.
+const assetRateLimit = rateLimit({
+  windowMs: 60 * 1000,
+  limit: 2000,
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: requestAddress,
+  validate: { xForwardedForHeader: false },
+  handler: (req, res, _next, options) => {
+    log(`[ASSETS] rate limited ${requestAddress(req)}:`
+      + ` more than ${options.limit} requests in ${options.windowMs / 1000}s`);
+    res.status(options.statusCode).type('text/plain')
+      .send('Too many requests. Try again in a minute.\n');
+  },
+});
+app.use(assetRateLimit);
+
 // Ahead of every static handler, so a client that asks for `br` is answered
 // with a sidecar wherever one has been built. The same freshness policy is
 // handed over, because a compressed response and an identity one must promise
