@@ -6,6 +6,18 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
 
 ## [Unreleased]
 
+## [1.2.1] - 2026-09-11
+
+### Changed
+- **A box's side walls stop restarting their texture at each box's own
+  corner.** Upstream's AntiFlicker (`remapTexCoords`, `QuadWallSceneNode.cxx:65`)
+  recomputes wall UVs from world position instead of the wall's own local
+  span, so two boxes that touch -- stacked to build a taller wall, or simply
+  adjacent -- sample the same phase of the tiling instead of each starting
+  fresh. Baked in at map load with no per-frame cost and no menu option: it
+  only ever helps, so there is nothing to switch off. Bases keep their own
+  stretched-to-fit tiling.
+
 ## [1.2.0] - 2026-09-11
 
 ### Added

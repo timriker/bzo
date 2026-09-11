@@ -2750,7 +2750,17 @@ class RenderManager {
   // rather than on a material, which is what lets obstacles that are tinted
   // differently still merge into one mesh. A group the caller left out is white,
   // which multiplies its texture by nothing.
-  _addObstacleFragment(fragments, key, materials, geometry, matrix, colors = null, isBuried = null) {
+  // `remapWallUv`: upstream's AntiFlicker (QuadWallSceneNode.cxx:65,
+  // `remapTexCoords`) -- the walls group (materialIndex 0, see
+  // `_prepareBoxGeometry`) gets its UV recomputed from world position instead
+  // of each box's own local corner, so two boxes that touch (stacked to build
+  // a taller wall, or simply adjacent) sample the same phase of the tiling
+  // instead of each restarting at 0. Only ever passed for the default box
+  // texture -- bases keep their own stretched-to-fit tiling, and a wall that
+  // never touches another one has no seam to fix, so there is no menu option:
+  // it is strictly better here and costs nothing upstream didn't already
+  // spend on the vertex it's replacing.
+  _addObstacleFragment(fragments, key, materials, geometry, matrix, colors = null, isBuried = null, remapWallUv = false) {
     geometry.applyMatrix4(matrix);
     let fragment = fragments.get(key);
     if (!fragment) {
@@ -2769,6 +2779,10 @@ class RenderManager {
       const bucket = fragment.groups[group.materialIndex];
       if (!bucket) continue;
       const color = colors ? (colors[group.materialIndex] || WHITE_OBSTACLE_TINT) : null;
+      // Only the walls (materialIndex 0) get remapped -- the roof keeps its
+      // own local tiling, same as upstream leaves a box's top scene node out
+      // of remapTexCoords.
+      const remapUv = remapWallUv && group.materialIndex === 0;
       // A vertex is copied once however many of this group's triangles use it,
       // and a vertex no surviving triangle names is never copied at all.
       const remapped = new Map();
@@ -2779,7 +2793,19 @@ class RenderManager {
           remapped.set(vertex, mapped);
           bucket.positions.push(position.getX(vertex), position.getY(vertex), position.getZ(vertex));
           bucket.normals.push(normal.getX(vertex), normal.getY(vertex), normal.getZ(vertex));
-          bucket.uvs.push(uv.getX(vertex), uv.getY(vertex));
+          if (remapUv) {
+            // Wall normals are horizontal (ny ~ 0); rotating one by 90 degrees
+            // about Y gives the direction the wall runs in, so its dot with
+            // world XZ is a coordinate that agrees with whatever else shares
+            // this plane, however many boxes it takes to build it.
+            const nx = normal.getX(vertex);
+            const nz = normal.getZ(vertex);
+            const u = (position.getX(vertex) * nz) - (position.getZ(vertex) * nx);
+            const v = position.getY(vertex);
+            bucket.uvs.push(u / BOX_TEXTURE_SCALES.sideScale, v / BOX_TEXTURE_SCALES.sideScale);
+          } else {
+            bucket.uvs.push(uv.getX(vertex), uv.getY(vertex));
+          }
           if (color) bucket.colors.push(color[0], color[1], color[2]);
         }
         bucket.indices.push(mapped);
@@ -3060,6 +3086,7 @@ class RenderManager {
           obstacleMatrix(),
           tint,
           buriedFace,
+          true,
         );
         this._addDebugLabelAt(
           obs.name || `Box ${i + 1}`,
