@@ -150,6 +150,27 @@ These are deliberate. Do not "fix" them without being asked.
   scroll wheel, or on-screen control to zoom the radar with -- a level left
   behind by a desktop session would strand a headset player at a range they
   cannot change.
+- **Three surfaces point at what upstream points at with one.** Upstream marks
+  the player's own team flags and the antidote on the heading tape alone
+  (`prepareTheHUD`, `playing.cxx:6820`). It rings nothing on the radar, and the
+  only tank it ever singles out there is the *hunted* one, whose blip flashes
+  cyan every fifth of a second (`RadarRenderer.cxx:136`) as part of a hunt
+  feature bzo does not have. bzo keeps the tape and adds two marks over the same
+  things, plus the rabbit: a **ring** on the radar, pinned to the border of the
+  panel when the thing is past range, and a **sky beacon** standing in the world
+  over it -- a half-transparent cone hanging from the cloud layer down to a
+  point just above the target, which upstream has no counterpart for at all.
+
+  Both exist because a headset has no room for a tape: its centre means where
+  the tank points and where the player is looking at once, which are the same
+  ray on a monitor and different rays in a headset. Both are drawn on flat
+  clients too rather than only in a session, because the tape is somewhere to
+  look *other than* the world, and a ring still leaves the player to turn a
+  top-down panel into a direction to drive.
+
+  A ring rather than upstream's flash, for the client bzo has to draw for: half
+  of a flash is invisible at a low frame rate. See "Three surfaces point at the
+  same things" for what decides which things get marked.
 - **A hidden superflag goes over the wire as `type: null`, not upstream's
   `"PZ"`.** bzfs hides the identity of any superflag nobody is carrying
   (`bzfs.cxx:361`) and packs a fake `PZ` abbreviation in its place, so an old
@@ -889,6 +910,37 @@ player is the one carrying it -- `HUDRenderer::addMarker` and
 `prepareTheHUD()`. It takes the team's *tank* colour, because the tape is not the
 radar. `updateDegreeBar` takes the markers as an argument, so the flag list stays
 in `client.js`.
+
+### Three surfaces point at the same things
+
+Upstream has one bearing surface, the heading tape. bzo has three, and the two
+it added exist because a headset has no room for a tape and a flat client has to
+look away from the world to read one:
+
+- **The heading tape**, upstream's, marking the player's own team flags, the
+  antidote, and -- bzo's own -- the tank the player has locked on to.
+- **A radar ring** around the same flags and around the rabbit, pinned to the
+  border of the panel when the thing is past radar range. The XR radar panel is
+  textured from that canvas, so the rings arrive in a headset for free.
+- **A sky beacon**, a coloured wedge hanging out of the cloud layer down to a
+  point just above the thing itself, over exactly what the radar rings. A ring
+  says where something is on a top-down panel and leaves the player to turn that
+  into a direction to drive; a mark standing in the world has already done it.
+  `updateSkyBeacons` in `client.js` picks the targets and `showSkyBeacons` in
+  `render.js` draws them.
+
+The marks are drawn by three different pieces of code, so what they mark is
+decided by one: `isSoughtTeamFlag` for a team flag and `isMarkedRabbit` for the
+rabbit. Add a target to a surface by teaching those, never by asking the
+question again where it is drawn -- two copies drift, and the drift shows up as
+a panel and a world that disagree about which tank is the rabbit.
+
+A beacon hangs from the lowest cloud, because the server puts the cloud layer a
+jump above the tallest thing in the world. So a beacon over a tank in the air is
+shorter than one over the ground, which is the altitude a top-down panel cannot
+show, and one over a target already at cloud height keeps a length of its own
+and climbs past the clouds. It fades out within about 45 units, where the thing
+itself is in view and a wedge over every spawn would be clutter.
 
 Both scoreboards name a carried flag after the callsign, as
 `ScoreboardRenderer::drawPlayerScore` does: a superflag by its abbreviation, in

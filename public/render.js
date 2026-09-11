@@ -238,6 +238,39 @@ const BZFLAG_FLAG_WARP_WOBBLE_RANGE = 0.2;
 const BZFLAG_FLAG_WARP_COLORS = [
   0x40ff40, 0x4040ff, 0xff00ff, 0xff4040, 0xff8000, 0xffff00, 0xffffff,
 ];
+// A sky beacon: a wedge hanging out of the cloud layer down to just above
+// something the player is looking for. Upstream has nothing like it -- its
+// bearings live on the heading tape (prepareTheHUD, playing.cxx:6820), which an
+// immersive session has no room for and which a flat client reads by looking
+// away from the world. bzo's radar rings the same things, and a ring answers
+// "where is it on the map"; what it leaves the player to do is turn a top-down
+// panel into a direction to drive. A mark standing in the world has already
+// done that, so a beacon marks exactly what a ring marks and never anything
+// else.
+//
+// A cone rather than a flat triangle turned to face the viewer. The triangle is
+// the cheaper draw, but it has to be re-aimed every frame, and two of them seen
+// from an angle both face you and so lie about which way they stand. A cone is
+// a triangle pointing down from wherever it is looked at; eight radial segments
+// leave its silhouette without corners.
+//
+// Front faces only: the viewer then looks through one wall rather than two, so
+// the wedge is an even wash of colour instead of twice as solid down its middle
+// as at its edges.
+const SKY_BEACON_RADIUS = 4;                 // 8 across at the top, over a drop of 16 and up
+const SKY_BEACON_SEGMENTS = 8;
+const SKY_BEACON_OPACITY = 0.5;
+// The top is the cloud layer, so a beacon over a tank in the air is shorter
+// than one over the ground -- which is the altitude a top-down panel cannot
+// show. A target at cloud height would leave nothing to see at all, so the
+// wedge keeps a length of its own and climbs past the clouds instead.
+const SKY_BEACON_MIN_LENGTH = 16;
+// Gone by the time the thing itself is in front of the player: a team flag
+// resting on its own base would otherwise stand a wedge over every spawn.
+// Faded rather than switched, because a beacon appearing whole reads as
+// something new arriving rather than as the one already being driven towards.
+const SKY_BEACON_FADE_NEAR = 15;
+const SKY_BEACON_FADE_FAR = 45;
 // The eighth dimension: what a tank driving through a building sees of it.
 // EighthDimSceneNode.cxx fills the solid with loose triangles in random colours
 // at random alpha, and EighthDBoxSceneNode / EighthDPyrSceneNode draw a white
@@ -505,6 +538,7 @@ const GROUND_EYE_SCRATCH = new THREE.Vector3();
 const ROAM_FORWARD_SCRATCH = new THREE.Vector3();
 const FLAG_BILLBOARD_SCRATCH = new THREE.Vector3();
 const FLAG_BILLBOARD_QUATERNION = new THREE.Quaternion();
+const SKY_BEACON_SCRATCH = new THREE.Vector3();
 // One flag's place in the batch, written and handed over once per flag per
 // frame rather than allocated per flag.
 const FLAG_INSTANCE_MATRIX = new THREE.Matrix4();
@@ -881,6 +915,9 @@ class RenderManager {
     this.sunGlowMesh = null;
     this.moonMesh = null;
     this.clouds = [];
+    this.skyBeacons = [];
+    this.skyBeaconGeometry = null;
+    this.skyBeaconTopY = 0;
 
     this.compassMarkers = [];
     this.maxObstacleHeight = 0;
@@ -3680,6 +3717,7 @@ class RenderManager {
   }
 
   clearClouds() {
+    this.skyBeaconTopY = 0;
     if (!this.scene) return;
     this.clouds.forEach((cloud) => {
       this.worldGroup.remove(cloud);
@@ -3756,6 +3794,17 @@ class RenderManager {
       this.worldGroup.add(cloud);
       this.clouds.push(cloud);
     });
+
+    // Where a sky beacon hangs from. The server puts the lowest cloud a jump
+    // above the tallest thing in the world (generateClouds), so a mark that
+    // reaches the bottom of the layer clears the map without being lost in it.
+    // A world that sent no clouds leaves it on the ground and every beacon
+    // falls back to a length of its own.
+    this.skyBeaconTopY = this.clouds.reduce(
+      (lowest, cloud) => Math.min(lowest, cloud.position.y),
+      Infinity,
+    );
+    if (!Number.isFinite(this.skyBeaconTopY)) this.skyBeaconTopY = 0;
   }
 
   getClouds() {
@@ -6526,6 +6575,80 @@ class RenderManager {
     if (record.label) record.label.visible = false;
   }
 
+  // The unit beacon: apex down and at the origin, so an instance is placed at
+  // the tip and scaled to whatever length the target's height leaves it.
+  _getSkyBeaconGeometry() {
+    if (!this.skyBeaconGeometry) {
+      this.skyBeaconGeometry = new THREE.ConeGeometry(1, 1, SKY_BEACON_SEGMENTS, 1, true)
+        .rotateX(Math.PI)
+        .translate(0, 0.5, 0);
+    }
+    return this.skyBeaconGeometry;
+  }
+
+  _ensureSkyBeacon(index) {
+    const existing = this.skyBeacons[index];
+    if (existing) return existing;
+
+    const mesh = this._tagDraws(new THREE.Mesh(this._getSkyBeaconGeometry(), new THREE.MeshBasicMaterial({
+      transparent: true,
+      // The wedge tints what is behind it rather than hiding it: it stands over
+      // the part of the world the player is driving into.
+      depthWrite: false,
+      side: THREE.FrontSide,
+    })), 'effect');
+    mesh.renderOrder = FLAG_RENDER_ORDER;
+    this.getWorldGroup().add(mesh);
+    this.skyBeacons[index] = mesh;
+    return mesh;
+  }
+
+  // One wedge for each thing the player is looking for, hung from the clouds
+  // down to the tip the caller places just clear of the target. `count` says
+  // how much of `targets` to read, so a caller can keep one array and refill it
+  // every frame rather than allocating one per frame.
+  //
+  // A mesh each rather than one instanced batch, which is what every other
+  // repeated thing in the world rides: a world holds a handful of these -- a
+  // team flag, an antidote, a rabbit -- and each fades on its own distance,
+  // which instancing has no per-instance opacity to carry.
+  showSkyBeacons(targets, count = targets?.length || 0) {
+    for (let index = count; index < this.skyBeacons.length; index += 1) {
+      this.skyBeacons[index].visible = false;
+    }
+    if (count === 0) return;
+
+    const viewer = this._getViewerInWorldSpace(SKY_BEACON_SCRATCH);
+    for (let index = 0; index < count; index += 1) {
+      const target = targets[index];
+      const mesh = this._ensureSkyBeacon(index);
+      const distance = Math.hypot(viewer.x - target.x, viewer.z - target.z);
+      const fade = (distance - SKY_BEACON_FADE_NEAR) / (SKY_BEACON_FADE_FAR - SKY_BEACON_FADE_NEAR);
+      const alpha = SKY_BEACON_OPACITY * Math.min(1, Math.max(0, fade));
+      mesh.visible = alpha > 0;
+      if (!mesh.visible) continue;
+
+      mesh.position.set(target.x, target.y, target.z);
+      mesh.scale.set(
+        SKY_BEACON_RADIUS,
+        Math.max(SKY_BEACON_MIN_LENGTH, this.skyBeaconTopY - target.y),
+        SKY_BEACON_RADIUS,
+      );
+      mesh.material.color.setHex(target.color);
+      mesh.material.opacity = alpha;
+    }
+  }
+
+  clearSkyBeacons() {
+    this.skyBeacons.forEach((mesh) => {
+      mesh.parent?.remove(mesh);
+      mesh.material.dispose();
+    });
+    this.skyBeacons = [];
+    this.skyBeaconGeometry?.dispose();
+    this.skyBeaconGeometry = null;
+  }
+
   clearFlags() {
     this._disposeFlagBatch();
     if (!this.flagRecords) return;
@@ -6552,6 +6675,20 @@ class RenderManager {
     this.flagRecords.clear();
   }
 
+  // Where the viewer stands, in worldGroup's own space. Read straight off the
+  // camera it would carry the player's heading twice in a session, because
+  // there it is worldGroup that turns.
+  //
+  // worldGroup is only ever translated and turned about the vertical, so its
+  // inverse is that by hand -- cheaper than updating the world matrix of every
+  // one of its children to ask `worldToLocal`.
+  _getViewerInWorldSpace(target) {
+    this.camera.getWorldPosition(target);
+    return target.sub(this.worldGroup.position).applyQuaternion(
+      FLAG_BILLBOARD_QUATERNION.copy(this.worldGroup.quaternion).invert()
+    );
+  }
+
   // One step for every flag in the world: the shared cloth ripples, each
   // visible flag turns to face the camera, and each visible warp re-wobbles.
   updateFlagVisuals(deltaTime) {
@@ -6571,14 +6708,7 @@ class RenderManager {
     // The turn is measured in worldGroup's own space rather than the scene's,
     // because in a session worldGroup carries the player's heading: reading the
     // camera's orientation straight off would apply that heading a second time.
-    const camera = FLAG_BILLBOARD_SCRATCH;
-    this.camera.getWorldPosition(camera);
-    // worldGroup is only ever translated and turned about the vertical, so its
-    // inverse is that by hand -- cheaper than updating the world matrix of every
-    // one of its children to ask `worldToLocal`.
-    camera.sub(this.worldGroup.position).applyQuaternion(
-      FLAG_BILLBOARD_QUATERNION.copy(this.worldGroup.quaternion).invert()
-    );
+    const camera = this._getViewerInWorldSpace(FLAG_BILLBOARD_SCRATCH);
 
     const batch = this._getFlagBatch(this.flagRecords.size);
     const matrix = FLAG_INSTANCE_MATRIX;

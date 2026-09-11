@@ -721,6 +721,15 @@ function isTheRabbit(playerId) {
   return rabbitPlayerId !== null && playerId === rabbitPlayerId;
 }
 
+// The rabbit as the hunters see it, which is what both marks over it ask:
+// never your own blip, since it is always dead centre and always you --
+// upstream marks only the remote players for the same reason, and clears the
+// scoreboard's hunt state outright when the rabbit is you (playing.cxx:2880) --
+// and never at all while Colourblindness has taken the team colours away.
+function isMarkedRabbit(playerId) {
+  return isTheRabbit(playerId) && playerId !== myPlayerId && !isColorblind();
+}
+
 // A tank in one line of text: the callsign, the flag it carries and the Rabbit
 // Chase mark, in the shape a scoreboard row draws them. Upstream's Identify says
 // as much (playing.cxx:4488) and bzo's alerts read the same as its roster.
@@ -8671,6 +8680,9 @@ function clearFlags() {
   // position it was drawn from has to go with it or the next frame recreates it.
   antidotePosition = null;
   renderManager.clearFlags();
+  // The beacons stood over the flags that just went, and the next world's are
+  // built from its own clouds.
+  renderManager.clearSkyBeacons();
 }
 
 function setFlagState(state) {
@@ -9415,6 +9427,60 @@ function getFlagHeadingMarkers() {
     });
   }
   return markers.length > 0 ? markers : EMPTY_HEADING_MARKERS;
+}
+
+// Clear of the thing it points at: a flag's pole is 1.6 tall and a tank 2.05,
+// so one height puts the tip just over either without touching it.
+const SKY_BEACON_CLEARANCE = 3;
+// Refilled in place every frame. A beacon wears the colour of the mark the
+// radar already puts on the same thing -- the team's tank colour for a team
+// flag, the antidote's yellow, and the rabbit's hunt cyan -- so the ring on the
+// panel and the wedge in the sky read as one mark rather than two.
+const skyBeaconTargets = [];
+
+function addSkyBeaconTarget(count, position, color) {
+  const target = skyBeaconTargets[count] || (skyBeaconTargets[count] = { x: 0, y: 0, z: 0, color: 0 });
+  target.x = position.x;
+  target.y = position.y + SKY_BEACON_CLEARANCE;
+  target.z = position.z;
+  target.color = color;
+  return count + 1;
+}
+
+// Everything the radar rings stands under a wedge in the sky as well: the
+// player's own team flags, the antidote, and the rabbit. The radar says where
+// on the map; the beacon says which way to drive, which is the half a headset
+// has no heading tape to give and a flat client has to look away from the world
+// to work out.
+//
+// The rabbit drops out of the sky under exactly the conditions that take its
+// blip off the panel -- dead, hidden, or wearing Stealth -- because the beacon
+// is the ring's other half and a flag that denies one has to deny both.
+function updateSkyBeacons() {
+  let count = 0;
+
+  const myTeamIndex = getMyTeamColorIndex();
+  if (myTeamIndex !== null) {
+    flags.forEach((flag) => {
+      if (!isSoughtTeamFlag(flag, myTeamIndex)) return;
+      count = addSkyBeaconTarget(count, flag.position, getFlagColor(flag.type));
+    });
+  }
+
+  if (antidotePosition) {
+    count = addSkyBeaconTarget(count, antidotePosition, ANTIDOTE_FLAG_COLOR);
+  }
+
+  const rabbit = rabbitPlayerId !== null && isMarkedRabbit(rabbitPlayerId)
+    ? tanks.get(rabbitPlayerId)
+    : null;
+  const rabbitState = rabbit?.userData?.playerState;
+  if (rabbit?.position && rabbit.visible !== false
+    && !(rabbitState && (rabbitState.health <= 0 || isHiddenFromRadar(rabbitState.id)))) {
+    count = addSkyBeaconTarget(count, rabbit.position, RABBIT_MARKER_COLOR);
+  }
+
+  renderManager.showSkyBeacons(skyBeaconTargets, count);
 }
 
 // checkEnvironment(). Carrying a team flag onto a base is a capture: either an
@@ -10496,7 +10562,11 @@ function getObstacleRadarFillStyle(obs) {
 // and never both.
 //
 // XR needs no separate path: the XR radar panel is textured from this canvas.
-const RADAR_RABBIT_RING_COLOR = 'rgb(0,204,229)';
+//
+// The cyan is a number first because the sky beacon over the same rabbit wears
+// it too, and a second literal is how the two would eventually disagree.
+const RABBIT_MARKER_COLOR = 0x00cce5;
+const RADAR_RABBIT_RING_COLOR = colorToCSS(RABBIT_MARKER_COLOR);
 // The antidote's yellow as a style, cut once. Every other flag colour on the
 // panel goes through `getFlagRadarStyle`'s cache for the same reason: the radar
 // is redrawn every frame on a client with one core to spend.
@@ -10932,11 +11002,7 @@ function updateRadar() {
     const rotY = rel.y;
     const tankOutsideRadarSquare = isOutsideRadarSquare(rotX, rotY, tankArrowWorldMargin);
     const pos = radarToCanvas(rel.x, rel.y);
-    // Never your own blip. It is always dead centre and always you, so a ring
-    // there says nothing -- upstream marks only the remote players for the same
-    // reason, and clears the scoreboard's hunt state outright when the rabbit is
-    // you (playing.cxx:2880).
-    const ringTheRabbit = isTheRabbit(playerId) && playerId !== myPlayerId && !isColorblind();
+    const ringTheRabbit = isMarkedRabbit(playerId);
 
     if (tankOutsideRadarSquare) {
       // Tank is outside radar range - draw as small dot against square edge.
@@ -11923,6 +11989,9 @@ function animate(frameTime) {
   // wherever the viewer ended up this frame, and in a session that is decided by
   // where updateCamera just put the world.
   renderManager.updateFlagVisuals(deltaTime);
+  // With the flags, and after the camera for the same reason: a beacon fades on
+  // how far the viewer ended up from what it marks.
+  updateSkyBeacons();
   markFramePhase('sim');
   updateRadar();
   markFramePhase('radar');

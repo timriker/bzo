@@ -6,6 +6,20 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
 
 ## [Unreleased]
 
+### Added
+- **A sky beacon over everything the radar rings.** A coloured wedge hanging out
+  of the cloud layer down to a point just above the player's own team flags, the
+  antidote and the rabbit -- the team's tank colour, the antidote's yellow, and
+  the rabbit's hunt cyan, so a ring on the panel and a wedge in the sky are
+  visibly the same mark. A ring answers "where is it on the map" and leaves the
+  player to turn a top-down panel into a direction to drive; a mark standing in
+  the world has already done that. This is what an immersive session has instead
+  of upstream's heading tape, and it is drawn in a flat client for the same
+  reason the rings are: the tape is somewhere to look other than the world.
+  Because the beacon hangs from the clouds and ends above its target, its length
+  is the target's altitude -- a rabbit mid-jump flies a shorter one -- and it
+  fades out within about 45 units, where the thing itself is in view. Refs #61.
+
 ## [1.0.98] - 2026-09-11
 
 ### Added

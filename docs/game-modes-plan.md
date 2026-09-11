@@ -153,20 +153,23 @@ picks a team; the selection functions are pure and live in the `teams` pair. See
 "Rabbit Chase" in `AGENTS.md` for the rules and for the deviations from
 upstream, and `docs/bzw.md` for the map switch.
 
-One thing it wanted and did not get: an **XR bearing cue**. The XR radar panel
-is textured from the flat radar's canvas, so the rabbit's ring arrives in a
-headset for free, and the same ring now marks the player's own team flags and
-the antidote -- pinned to the border of the panel when the thing is past radar
-range, which is the cheapest surface bzo has, since that canvas is uploaded
-every frame of a session whatever is drawn on it.
+The **XR bearing cue** it wanted is built, in two halves. The XR radar panel is
+textured from the flat radar's canvas, so the rabbit's ring arrives in a headset
+for free, and the same ring marks the player's own team flags and the antidote
+-- pinned to the border of the panel when the thing is past radar range, which
+is the cheapest surface bzo has, since that canvas is uploaded every frame of a
+session whatever is drawn on it.
 
-What the radar cannot do is spare the player a top-down map to rotate mentally.
-The two candidates for that are a **world-locked sky beacon** -- one instanced
-draw riding the billboard yaw `updateFlagVisuals` already computes, and the
-answer to "lead me there" -- and a **head-locked bearing ribbon** with a tank
-caret. The ribbon is the more expensive of the two by a wide margin: its centre
-is where the player looks, so unlike every other XR panel its canvas would
-repaint and re-upload on every frame the head moves. Build the beacon first.
+What the radar cannot do is spare the player a top-down map to rotate mentally,
+and the **world-locked sky beacon** is that (issue #61): a wedge out of the
+cloud layer down to a point just above the thing itself, over exactly what the
+radar rings. See "Three surfaces point at the same things" in `AGENTS.md`.
+
+The one candidate left unbuilt is a **head-locked bearing ribbon** with a tank
+caret, and it is rejected on cost rather than deferred: its centre is where the
+player looks, so unlike every other XR panel its canvas would repaint and
+re-upload on every frame the head moves, and the beacon already answers "lead me
+there" for nothing per frame.
 
 ## Handicap
 
