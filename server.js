@@ -156,6 +156,12 @@ const {
   createSessionStore,
 } = require('./server/sessions.cjs');
 const {
+  createLagTracker,
+  formatLagStats,
+  compareByLag,
+  PING_INTERVAL_MS,
+} = require('./server/lag.cjs');
+const {
   COMMAND_TIER,
   parsePlayerTarget,
   bearingToRotation,
@@ -842,7 +848,12 @@ const GAME_CONFIG = {
 };
 
 // WebSocket keep-alive configuration
-const WS_PING_INTERVAL = 30000; // Send ping every 30 seconds
+// One frame serves both purposes: it is what proves the socket is alive and
+// what measures how long the answer takes. So the cadence is the measurement's
+// rather than liveness's -- upstream's ten seconds (`nextping += 10.0`,
+// LagInfo.cxx:263), because a connection that degrades is worth seeing while it
+// is still degrading.
+const WS_PING_INTERVAL = PING_INTERVAL_MS;
 const WS_PONG_TIMEOUT = 60000; // Close connection if no pong after 60 seconds
 
 // --- Map selection: load from config and maps/ directory ---
@@ -2544,6 +2555,11 @@ class Player {
     this.rotation = 0;
     this.health = 0;
     this.lastUpdate = Date.now();
+    // LagInfo (`src/game/LagInfo.cxx`): the round trip, how steady the sending
+    // is, and how many pings went unanswered. Measured for every connection,
+    // whether or not anybody asks for it, because an average is only worth
+    // reading if it has been running.
+    this.lag = createLagTracker();
     this.kills = 0;
     this.deaths = 0;
     this.paused = false;
@@ -3193,6 +3209,39 @@ for (const name of ['/date', '/time']) {
     (player) => replyToPlayer(player, formatCTime(new Date())));
 }
 
+// LagStatCommand (commands.cxx:1958). Open to everyone, as upstream's is
+// (`nonAdminModes`, ServerCommandKey.cxx:24): who is lagging is not a secret,
+// and it is the answer to half the complaints a game produces. An operator also
+// gets the slot number, which is the only part upstream gates.
+//
+// Observers get a lag figure and nothing else -- they send no moves, so there
+// is no interval to measure jitter from. A connection that has not answered a
+// ping yet says so rather than reporting zero, which would read as perfect.
+defineCommand('/lagstats', COMMAND_TIER.OPEN,
+  '- show each player\'s lag and jitter',
+  (player) => {
+    const now = Date.now();
+    const showIndex = isAdmin(player);
+    const rows = [...players.values()]
+      .filter((other) => other.joined)
+      .map((other) => ({
+        callsign: other.name,
+        index: other.id,
+        observer: other.team === 'observer',
+        measured: other.lag.hasSamples(),
+        lag: other.lag.getLag(now),
+        jitter: other.lag.getJitter(),
+        loss: other.lag.getLoss(),
+      }));
+    if (rows.length === 0) {
+      replyToPlayer(player, 'Nobody is here');
+      return;
+    }
+    for (const row of rows.sort(compareByLag)) {
+      replyToPlayer(player, formatLagStats({ ...row, showIndex }));
+    }
+  });
+
 // MsgCommand (commands.cxx:916). The same private message the client can already
 // send by picking a name in the chat entry, reachable by typing -- which is what
 // makes it worth having: a script can send one, and so can a player who knows
@@ -3514,6 +3563,7 @@ defineCommand('/mv', COMMAND_TIER.OPERATOR,
     subject.teleportReentryBlockUntil = 0;
     subject.teleportCooldownUntil = 0;
     subject.lastUpdate = Date.now();
+    subject.lag.resetUpdateGap();
 
     // `positionCorrection` for the tank that moved -- it already clears the air
     // velocity, the jump state and the teleporter blocks on that client -- and a
@@ -5776,6 +5826,7 @@ function setPaused(player, paused) {
   // alone ("set dt to zero instead of clearing velocity ... for when we
   // resume"): both ends kept them, so both ends still agree.
   player.lastUpdate = Date.now();
+  player.lag.resetUpdateGap();
 
   // bzfs.cxx:2802. A rabbit that pauses gives the post up, because a rabbit
   // nobody can shoot is not a rabbit; and a player coming back takes it if the
@@ -6613,6 +6664,7 @@ function applyPlayerTeleportMessage(player, sourceState, fromFaceId, toFaceId, n
   player.teleportReentryBlockUntil = now + PLAYER_TELEPORT_REENTRY_BLOCK_MIN_MS;
   player.teleportCooldownUntil = now + PLAYER_TELEPORT_COOLDOWN_MS;
   player.lastUpdate = now;
+  player.lag.resetUpdateGap();
 
   return {
     ok: true,
@@ -7895,6 +7947,9 @@ setInterval(() => {
 
       // Mark as potentially dead and send ping
       player.isAlive = false;
+      // Before the frame goes out, so a ping that laps an unanswered one counts
+      // that one lost at send time rather than on a timeout.
+      player.lag.pingSent(now);
       player.ws.ping();
     }
   });
@@ -8028,8 +8083,14 @@ wss.on('connection', (ws, req) => {
 
   // Handle pong responses for keep-alive
   ws.on('pong', () => {
-    player.lastPongTime = Date.now();
+    const now = Date.now();
+    player.lastPongTime = now;
     player.isAlive = true;
+    // `LagInfo::updatePingLag` (LagInfo.cxx:96). The keep-alive ping was already
+    // making this round trip; recording when it went out is the whole of the
+    // measurement, and costs no message of its own -- ping and pong are
+    // WebSocket frames.
+    player.lag.pongReceived(now);
   });
 
   // Nobody is told about this player yet. bzfs's sendPlayerUpdate returns
@@ -8318,6 +8379,13 @@ wss.on('connection', (ws, req) => {
           // the tank the client never asked to move, and then reports the
           // difference back as drift.
           const accelWindow = getAccelerationWindow(deltaTime, message.sdt);
+          // `LagInfo::updateLag` (LagInfo.cxx:214). Upstream differences the
+          // client's absolute timestamp against its own arrival time; bzo has
+          // the same two intervals already -- how long the server waited for
+          // this packet, and how long the client says it took to send it -- so
+          // jitter needs no field the move does not carry. Measured whatever
+          // the anti-cheat mode is: it is a statistic, not a judgement.
+          player.lag.recordUpdate(now, Number(message.sdt));
           // A third thing the acceleration model has no term for, beside the two
           // in "The acceleration check cannot see the stick": air control. A
           // `WG` tank steers in mid air, and with `_wingsSlideTime` 0 -- which is
@@ -8901,6 +8969,7 @@ wss.on('connection', (ws, req) => {
           player.teleportReentryBlockUntil = 0;
           player.teleportCooldownUntil = 0;
           player.lastUpdate = Date.now();
+          player.lag.resetUpdateGap();
           player.deaths = 0;
           player.kills = 0;
           if (message.isMobile) {
