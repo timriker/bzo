@@ -11,41 +11,38 @@
 
 # The default world: every flag reachable within a short walk of the centre,
 # a base on each compass point, and a sample of bzo's obstacle geometry tests
-# in the four corners. `maps/flagbuffet.bzw` is the same idea at a larger
-# scale with only two bases; this one is meant to be started without
-# choosing a map first.
+# in the four corners.
 #
 # `ID` sits alone at the centre. The ring immediately around it is every bad
-# flag bzo has, clustered by what they do to a tank rather than laid out
+# flag, clustered by what they do to a tank rather than laid out
 # alphabetically, so a `-sa`/`-sw` server exercises one theme at a time. The
-# outer ring is every good flag, alphabetically clockwise from north, the
-# same convention `flagbuffet.bzw` uses.
+# outer ring is every good flag, alphabetically clockwise from north.
 
 options
-  # Tanks may jump. bzo has jumping on unless server.json turns it off, so
-  # this is what turns it back on regardless of what the config says.
+  # Tanks may jump
   -j
-  # Five shots in the air at once, where bzfs gives one.
+  # Five shots in the air at once
   -ms 5
   # How many times `WG` Wings may flap before it needs the ground again.
   -set _wingsJumpCount 4
+  # keep flags only in their spawn zones
+  -set _maxFlagGrabs 1
   -srvmsg "Bad flags ring the centre; good flags ring those."
   -srvmsg "Team bases sit on the compass points; test geometry is in the corners."
-	# A bad flag falls off by itself after this many seconds.
-	-st 30
-	# A bad flag also falls off after this many kills.
-	-sw 1
-	# An antidote flag is put in the world for whoever is carrying a bad one,
-	# which sheds it when they drive onto it.
-	-sa
+  # bad flag falls off in this many seconds
+  -st 30
+  # bad flag also falls off after this many kills.
+  -sw 1
+  # antidote flag for whoever is carrying a bad one
+  -sa
 end
 
 world
   size 140
 end
 
-# The centre. Every flag here is `zoneflag`d with a count of 3, matching
-# `flagbuffet.bzw`: enough copies that a grab does not empty the pad before
+# The centre. Every flag here is `zoneflag`d with a count of 3
+# enough copies that a grab does not empty the pad before
 # the next respawn cycle finds it again.
 zone
   position 0 0 0
@@ -69,8 +66,7 @@ end
 #   west   the tank itself grows or grounds
 #
 # `WA` sits with the sight group: bzo never spawns it (see docs/flags.md),
-# but the zone and its pad are real, so this map plays the same on an
-# unmodified bzfs.
+# but the zone and its pad are real, so this map plays on bzfs.
 
 # North: steering.
 zone
