@@ -6,6 +6,8 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
 
 ## [Unreleased]
 
+## [1.0.99] - 2026-09-11
+
 ### Added
 - **A sky beacon over everything the radar rings.** A coloured wedge hanging out
   of the cloud layer down to a point just above the player's own team flags, the
@@ -18,7 +20,7 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
   reason the rings are: the tape is somewhere to look other than the world.
   Because the beacon hangs from the clouds and ends above its target, its length
   is the target's altitude -- a rabbit mid-jump flies a shorter one -- and it
-  fades out within about 45 units, where the thing itself is in view. Refs #61.
+  fades out within about 45 units, where the thing itself is in view. Closes #61.
 
 ## [1.0.98] - 2026-09-11
 
