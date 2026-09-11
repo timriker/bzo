@@ -218,6 +218,8 @@ Read as a bzfs command line, one option a line. Everything bzo understands:
 | `-s <count>`, `+s <count>` | how many superflag slots the world holds |
 | `-f <abbrev\|good\|bad>` | take a flag type, or a whole quality, out of the pool |
 | `-set _maxFlagGrabs <n>` | how many pickups a superflag survives |
+| `-set _wingsJumpCount <n>` | how many times `WG` Wings may flap before it needs the ground again |
+| `-set _maxBumpHeight <n>` | how high a step a tank may climb without jumping |
 | `-srvmsg <text>` | a line the world says to each player as they join |
 
 ## A pad flush with the ground
@@ -268,6 +270,14 @@ config's `maxFlagGrabs` as `-ms` and `-s` do. Only the server acts on it -- it i
 read on grab and spent on drop -- but it rides into the `init` payload anyway,
 which is bzo's equivalent of upstream shipping every BZDB var to clients whether
 the client reads it or not.
+
+`-set _wingsJumpCount` and `-set _maxBumpHeight` are the same assignment again,
+each replacing its own `server.json` key (`wingsJumpCount`, `maxBumpHeight`).
+`_maxBumpHeight` is purely a client value -- bzo's bump-climb is resolved on the
+client alone, `server.js` never runs a tank's motion itself -- so unlike the
+others it does nothing the server acts on directly; it rides `GAME_CONFIG` to
+the client the same way regardless, which is what `resolveTankStep` reads
+instead of the module's own default.
 
 `-srvmsg` accumulates: every occurrence is another line, in map order, and a
 single occurrence may carry more than one by writing a literal `\n` inside it.
@@ -395,9 +405,10 @@ loads and plays with that part of it missing. The notable absences:
   zone, `team` makes it a spawn area, and `safety` a Phantom Zone landing spot.
   A map using any of the three is named in the load log rather than skipped
   silently, because a spawn zone that is ignored moves every tank in the world.
-- **Every `-set` variable but `_maxFlagGrabs`.** bzo's world constants are
-  constants, and the one exception is the one it already keeps a configurable
-  copy of; see `docs/flags.md`. A map that sets another is named on load.
+- **Every `-set` variable but `_maxFlagGrabs`, `_wingsJumpCount` and
+  `_maxBumpHeight`.** bzo's world constants are constants, and these three are
+  the ones it already keeps a configurable copy of; see `docs/flags.md`. A map
+  that sets another is named on load.
 
 A map that needs any of these is not rejected -- it is worth knowing that it
 loaded rather than that it loaded *correctly*.

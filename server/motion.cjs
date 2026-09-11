@@ -46,6 +46,10 @@ function resolveTankMotion({
   getNormal,
   isFlatTop = () => false,
   getObstacleTop = () => 0,
+  // `_maxBumpHeight` (LocalPlayer.cxx:534), a map or a server may raise or
+  // lower with `-set`/`maxBumpHeight` -- see server.js. Defaulting to the
+  // module constant is what every existing caller keeps getting for free.
+  maxBumpHeight = MAX_BUMP_HEIGHT,
 }) {
   let posX = x;
   let posY = y;
@@ -84,7 +88,7 @@ function resolveTankMotion({
     // Drive over a low flat-topped ledge rather than stopping dead against it.
     if (onGround && isFlatTop(hit)) {
       const top = getObstacleTop(hit);
-      if (top !== fromY && top < fromY + MAX_BUMP_HEIGHT) {
+      if (top !== fromY && top < fromY + maxBumpHeight) {
         const bumpY = top;
         if (!hitTest(fromX, bumpY, fromZ, fromAz, fromX, bumpY, fromZ, toAz)) {
           posX = fromX + velX * remaining * 0.5;

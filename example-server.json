@@ -37,6 +37,7 @@
   "gravity": 9.8,
   "wingsJumpCount": 1,
   "wingsSlideTime": 0,
+  "maxBumpHeight": 0.33,
   "shotSpeed": 100,
   "shotRange": 350,
   "shotDuration": 3.5,

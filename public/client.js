@@ -6391,6 +6391,8 @@ function resolveTankStep(velocityX, velocityY, velocityZ, angularVelocity, delta
       return true;
     },
     getObstacleTop: (obs) => getColliderTopY(obs),
+    // `_maxBumpHeight`, a server or a map may change (see server.js).
+    maxBumpHeight: gameConfig.MAX_BUMP_HEIGHT,
   });
 }
 

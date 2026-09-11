@@ -113,6 +113,7 @@ const {
   traceShotStep,
   WORLD_WALL_HEIGHT,
 } = require('./server/collision.cjs');
+const { MAX_BUMP_HEIGHT: DEFAULT_MAX_BUMP_HEIGHT } = require('./server/motion.cjs');
 const {
   normalizePlayerTeamSelection,
   clampPlayingLimits,
@@ -850,6 +851,7 @@ const GAME_CONFIG = {
   // world's values below.
   WINGS_JUMP_COUNT: DEFAULT_WINGS_JUMP_COUNT, // BZFlag _wingsJumpCount
   MAX_FLAG_GRABS, // BZFlag _maxFlagGrabs
+  MAX_BUMP_HEIGHT: DEFAULT_MAX_BUMP_HEIGHT, // BZFlag _maxBumpHeight
   WINGS_JUMP_VELOCITY: null, // BZFlag _wingsJumpVelocity; defaults to JUMP_VELOCITY
   WINGS_GRAVITY: null, // BZFlag _wingsGravity magnitude; defaults to GRAVITY
   WINGS_SLIDE_TIME: DEFAULT_WINGS_SLIDE_TIME, // BZFlag _wingsSlideTime
@@ -1139,6 +1141,13 @@ if (Number.isInteger(configWingsJumpCount) && configWingsJumpCount >= 0) {
 const configFlagGrabs = Number(serverConfig.maxFlagGrabs ?? NaN);
 if (Number.isFinite(configFlagGrabs)) {
   GAME_CONFIG.MAX_FLAG_GRABS = normalizeFlagGrabs(configFlagGrabs);
+}
+
+// Zero is meaningful here too -- a world with no bump-climbing at all, upstream's
+// own `-set _maxBumpHeight 0` -- so the floor is 0 rather than 1.
+const configMaxBumpHeight = Number(serverConfig.maxBumpHeight ?? NaN);
+if (Number.isFinite(configMaxBumpHeight) && configMaxBumpHeight >= 0) {
+  GAME_CONFIG.MAX_BUMP_HEIGHT = configMaxBumpHeight;
 }
 
 const configWingsJumpVelocity = Number(serverConfig.wingsJumpVelocity ?? NaN);
@@ -1479,6 +1488,14 @@ function parseBZWServerOptions(lines) {
         const flaps = Number(setValue);
         if (Number.isFinite(flaps) && Math.round(flaps) >= 0) {
           options.wingsJumpCount = Math.round(flaps);
+        }
+      } else if (value === '_maxBumpHeight') {
+        // How high a step a tank may climb without jumping. Zero is meaningful
+        // -- a world with no bump-climbing at all -- so the floor is 0 rather
+        // than some positive minimum.
+        const bump = Number(setValue);
+        if (Number.isFinite(bump) && bump >= 0) {
+          options.maxBumpHeight = bump;
         }
       } else {
         options.unreadBZDBVars.push(value);
@@ -2258,6 +2275,16 @@ if (Number.isInteger(mapServerOptions.wingsJumpCount)
   const previousFlaps = GAME_CONFIG.WINGS_JUMP_COUNT;
   GAME_CONFIG.WINGS_JUMP_COUNT = mapServerOptions.wingsJumpCount;
   log(`Map option -set _wingsJumpCount: ${GAME_CONFIG.WINGS_JUMP_COUNT} (was ${previousFlaps})`);
+}
+// -set _maxBumpHeight upstream (LocalPlayer.cxx:534). Purely a client value --
+// bzo's own bump-climb is client-side only, `server.js` never resolves tank
+// motion -- but it rides `GAME_CONFIG` to the client the same way every other
+// BZDB-backed number here does.
+if (Number.isFinite(mapServerOptions.maxBumpHeight)
+  && mapServerOptions.maxBumpHeight !== GAME_CONFIG.MAX_BUMP_HEIGHT) {
+  const previousBumpHeight = GAME_CONFIG.MAX_BUMP_HEIGHT;
+  GAME_CONFIG.MAX_BUMP_HEIGHT = mapServerOptions.maxBumpHeight;
+  log(`Map option -set _maxBumpHeight: ${GAME_CONFIG.MAX_BUMP_HEIGHT} (was ${previousBumpHeight})`);
 }
 if (mapServerOptions.unreadBZDBVars?.length > 0) {
   log(
