@@ -159,7 +159,31 @@ These are deliberate. Do not "fix" them without being asked.
   things, plus the rabbit: a **ring** on the radar, pinned to the border of the
   panel when the thing is past range, and a **sky beacon** standing in the world
   over it -- a half-transparent cone hanging from the cloud layer down to a
-  point just above the target, which upstream has no counterpart for at all.
+  point just above the target.
+
+  Upstream marks the same two things twice, not once. Two lines below the
+  `addMarker` that feeds the tape, `prepareTheHUD` also calls
+  `hud->AddEnhancedMarker` (`playing.cxx:6842` for a team flag, `:6855` for the
+  antidote), and `HUDRenderer::drawWaypointMarker` projects that world position
+  with `gluProject` and draws a triangle in **screen space**: apex on the
+  target, base above it, `hudWayPMarkerSize` (15) a side at alpha 0.45, the
+  team's colour for a team flag and yellow for the antidote. Off screen or
+  behind, it clamps to the nearest screen edge and rotates to point inward,
+  which is the pinning bzo's radar rings do. It is drawn at the tail of
+  `renderBox`, after `renderStatus`, so it sits over the shot clocks and under
+  the lock-on marker `drawLockonMarker` adds immediately after it. Upstream
+  marks no rabbit anywhere.
+
+  So the beacon is not a bzo invention, but it is not upstream's marker either,
+  and the difference is the point: a screen-space triangle has no depth test, so
+  it is drawn in front of the building the flag is behind and never says the
+  flag is behind one. The beacon stands *in* the world, is occluded like
+  anything else there, and works in a headset, which a mark positioned in screen
+  space cannot -- there is no screen. `hudWayPMarkerSize` being ReadWrite BZDB
+  also makes upstream's one of the client display options bzo implements at its
+  default and ships no setting for. What bzo does not have is any flat-client
+  equivalent of that triangle; the tape and the radar ring are what a flat
+  client gets.
 
   Both exist because a headset has no room for a tape: its centre means where
   the tank points and where the player is looking at once, which are the same
@@ -927,7 +951,9 @@ look away from the world to read one:
   says where something is on a top-down panel and leaves the player to turn that
   into a direction to drive; a mark standing in the world has already done it.
   `updateSkyBeacons` in `client.js` picks the targets and `showSkyBeacons` in
-  `render.js` draws them.
+  `render.js` draws them. Upstream's own second mark is a screen-space triangle
+  rather than anything standing in the world; the bearing-cue entry under
+  "Intentional deviations from BZFlag" describes it and how it differs.
 
 The marks are drawn by three different pieces of code, so what they mark is
 decided by one: `isSoughtTeamFlag` for a team flag and `isMarkedRabbit` for the

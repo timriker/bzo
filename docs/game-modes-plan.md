@@ -4,8 +4,8 @@ Design and staging plan for the BZFlag game types and game styles bzo does not
 have yet. Upstream references are paths under `$HOME/bzflag/`.
 
 Issue #42 tracked this and is closed -- Rabbit Chase finished what it was opened
-for. Match end and Handicap below have no tracker; open one before starting
-either, and reference it the way flag work referenced #6.
+for. Handicap is issue #62. Match end has no tracker; open one before starting
+it, and reference it the way flag work referenced #6.
 
 ## What upstream has
 
@@ -165,6 +165,13 @@ and the **world-locked sky beacon** is that (issue #61): a wedge out of the
 cloud layer down to a point just above the thing itself, over exactly what the
 radar rings. See "Three surfaces point at the same things" in `AGENTS.md`.
 
+Upstream has a second mark of its own beside the heading tape -- a screen-space
+triangle over the team flag and the antidote, from the same `prepareTheHUD`
+block -- which is not what the beacon is and does not answer the headset, since
+a mark placed in screen space has no screen to be placed on. It is described
+under "Intentional deviations from BZFlag" in `AGENTS.md`, along with the one
+thing bzo still lacks: any flat-client equivalent of it.
+
 The one candidate left unbuilt is a **head-locked bearing ribbon** with a tank
 caret, and it is rejected on cost rather than deferred: its centre is where the
 player looks, so unlike every other XR panel its canvas would repaint and
@@ -173,45 +180,198 @@ there" for nothing per frame.
 
 ## Handicap
 
-`-handicap` gives whoever is losing a faster tank. Upstream splits it in half:
-the server computes a number, the client turns it into speed.
+`-handicap` gives whoever is losing a faster tank. Issue #62, which also asks
+for size and agility on top of upstream's speed. Upstream splits it in half: the
+server computes a number, the client turns it into speed.
 
-- **The number** is `recalcHandicap` (`bzfs.cxx:2077`): summing over every other
-  real non-observer player, how many times they killed me minus how many times I
-  killed them, clamped at zero. So it is a pairwise deficit, not a score
-  difference -- being beaten by one player raises the handicap even against
-  someone you are beating. Recomputed for killer and victim after every kill and
-  broadcast as `MsgHandicap` (`bzfs.cxx:3495`).
-- **The effect** is `playing.cxx:3010` and `LocalPlayer.cxx:1136`: the raw
-  number is divided by `_handicapScoreDiff` (50) and clamped to 0..1, then
-  scales tank speed by up to `_handicapVelAd` (2.0), angular velocity by
-  `_handicapAngAd` (1.5) and shot speed by `_handicapShotAd` (1.75). Advantages
-  only -- a player who is winning gets nothing, never a penalty.
+- **The number is one scalar per player**, the same on every screen.
+  `recalcHandicap` (`bzfs.cxx:2077`) sums, over every other present real
+  non-observer player, how many times they killed me minus how many times I
+  killed them, clamped at zero. The pairwise terms collapse -- that sum is just
+  *deaths caused by opponents currently in the game* minus *kills of opponents
+  currently in the game*. A player 10-0 against one opponent and 0-10 against
+  another has a handicap of zero.
+- **The kill matrix exists for what it excludes, not to be per-opponent.**
+  A suicide is recorded (`victimData->player.killedBy(killerIndex)`,
+  `bzfs.cxx:3360`) but the recalc loop skips `i == playerIndex`, so it never
+  counts -- while `Score::losses` does increment for one. Departures are
+  subtractable: `removePlayer` calls `flushKiller` on every remaining player
+  (`bzfs.cxx:2872`) and then recomputes and broadcasts the whole table
+  (`bzfs.cxx:3035`). Observers drop out of the sum, and a world weapon's kill
+  lands under `ServerPlayer`, which the loop never visits.
+- **The effect** is `playing.cxx:3010` and `LocalPlayer.cxx:1136`: the raw number
+  is divided by `_handicapScoreDiff` (50) and clamped to 0..1, then scales tank
+  speed by up to `_handicapVelAd` (2.0), angular velocity by `_handicapAngAd`
+  (1.5) and shot speed by `_handicapShotAd` (1.75). Advantages only -- a player
+  who is winning gets nothing, never a penalty. Only `LocalPlayer` reads it;
+  remote tanks store the number and nothing looks at it, so the handicap changes
+  nothing about how an opponent is drawn, sized or hit.
+- **Upstream's own checks stay loose rather than per-player.**
+  `adjustTolerances` multiplies the *global* speed tolerance by `velAd` squared
+  whenever the style is on (`bzfs.cxx:4434`), and the shot-fired path uses the
+  maximum multipliers (`bzfs.cxx:4149`). Nothing narrows for a particular
+  player, so nothing can narrow underneath one.
 - `/handicap` lists everyone's value as a percentage (`commands.cxx:2069`).
 
-What bzo has to decide:
+### The number bzo keeps
 
-- **The server applies it, not the client.** bzo's server decides every hit and
-  validates motion against the world's speed limits, so a client-side speed
-  boost would read as cheating. The multipliers join the per-player speed
-  adjustments that flag effects already go through in the `flags` pair, and the
-  client is told its own factor so it can predict -- same split as every other
-  speed-changing flag.
-- **Anti-cheat has to know.** `fs`/`rs` are fractions of the *world's* speed,
-  not the tank's, so the drift thresholds must read the handicapped limit for
-  that player or a losing player gets warned for driving at the speed the server
-  just granted them. This is the only genuinely fiddly part of the feature and
-  the reason to do it after the others.
-- **A pairwise kill matrix is new.** bzo tracks `kills` and `deaths` per player
-  and nothing pairwise, so `howManyTimesKilledBy` needs a per-player map keyed
-  by killer id, reset with the score on join.
-- **Where it shows.** A percentage column on the scoreboard, shown only when the
-  style is on, which answers `/handicap` without needing chat commands.
+One new integer per player: **deaths at another player's hand**, excluding
+suicides and world weapons. bzo's `kills` already excludes both those and team
+kills (`killPlayer` in `server.js` scores a team killer a death), but `deaths`
+counts every way to die, so it cannot serve on its own. The handicap is then
+that counter minus `kills`, and it reaches clients as the two integers rather
+than as a matrix.
+
+That drops upstream's *present opponents* rule deliberately. Roster membership
+must not be an input, because a client whose `playerLeft` has not landed yet
+would compute a different number from the same scores. It also cuts the other
+way on fairness: upstream rewards a dominant player with a handicap boost as
+soon as their victims quit, which reads backwards.
+
+### Both ends derive it; neither end derives it from a derivation
+
+The client computes its own handicap from the integers it was **told**, through
+a shared pure function in the `flags` pair, exactly as it derives speed, size
+and hit radius from the flag letter it was told. Integer arithmetic on identical
+inputs cannot drift, so the client's multiplier and the server's bound agree by
+construction.
+
+What makes that safe is the scores being *assigned* rather than *derived*, and
+today they are not. bzo has no player-score message: the client increments off
+`playerHit`, +1 kill to the shooter and +1 death to the victim, which is already
+wrong for a team kill and heals only when the killer next respawns. Upstream
+sends absolute wins/losses/tks for killer and victim after every kill
+(`sendPlayerScores`, `bzfs.cxx:3487`) and its client applies whatever delta
+reaches that absolute value (`playing.cxx:3056`), so an upstream client never
+computes a score and silently self-corrects on every kill. **bzo has to do the
+same before the handicap can be derived from a score.** Team scores are already
+right: `broadcastTeamScores` sends absolute values on every kill, capture, join
+and part, and the client only stores them.
+
+`handicap` still rides `getState()`, which costs nothing new -- it is the
+authoritative value to reconcile the derived one against at every respawn, and
+a divergence there is a bug report rather than a silent drift.
+
+### Where it plugs in
+
+Everything is keyed on one value already, so the composition is a handful of
+signatures in the `flags` pair:
+
+- `getMaxSpeedFactor` and `getMaxAngVelFactor` take the handicap beside the
+  flag. `fs` and `rs` are fractions of the world's *base* speed and turn rate
+  and a boosted tank already reports above 1 -- that is how `V`, `QT` and `A`
+  work -- so raising the same bound is the whole of the anti-cheat change. No
+  new tolerance mechanism.
+- `getTankDimensionScale` takes it too, and size then lands everywhere at once:
+  drawn tank, hit sphere, world collision, roller reach and teleporter fit, with
+  no new wire field, because both ends already compute the scale from inputs
+  they hold.
+- **Changing mid-life needs nothing new.** `O` Obesity is `OBESE_FACTOR` 2.5 and
+  is sticky and bad -- a growth the player cannot drop, arriving mid-life, that
+  can wedge a tank and will not fit a teleporter. bzo already answers all of
+  that by stepping the authoritative size at the moment the flag changes hands
+  and easing only the drawn tank. A handicap step is a fraction of Obesity's and
+  follows the same rule.
+
+Quantize the handicap into a few notches rather than letting it move on every
+kill. That is tuning rather than correctness: it keeps the rate of change in the
+same range as flag changes.
+
+### Agility already means something here
+
+`A` Agility is `_agilityAdVel` 2.25 for `_agilityTimeWindow` after a stick
+change of `_agilityVelDelta`. So issue #62's "agility" is two candidates:
+
+- **Turn rate**, which is `_handicapAngAd` and is upstream's second multiplier.
+  Ship this one.
+- **The acceleration limit**, `-a` composed through `getAccelerationLimits`.
+  This is the one that makes a camper feel sluggish, but it only bites on a
+  world that actually sets `-a`; the default is no limit, where it does nothing.
+  If it is wanted, name it for the acceleration limit rather than for agility.
+
+### Advantage only, or a penalty for the leader
+
+Upstream clamps at zero and says so in place. Issue #62's camper -- slower turns
+and a larger hitbox for whoever is winning -- is a penalty, and giving losers a
+smaller hitbox does not make the camper's bigger, so it is a deviation rather
+than a reading of upstream.
+
+Build signed, ship clamped. The wire carries the signed value, upstream's own
+number before its `std::max(0, relscore)`; the shared derivation takes the
+signed normalized figure; and `server.json` decides whether the negative half is
+honoured or clamped to zero. Default clamped is parity, and the camper is a
+config change rather than a rewrite. A negative handicap needs the scoreboard
+column to show it, or a leader whose tank got worse has no way to know why.
+
+### `_handicapScoreDiff` 50 is wrong for a bzo-sized server
+
+Fifty *net* deaths against the field is tuned for a large public server grinding
+for an hour. At a relative score of 10 the normalized handicap is 0.2: speed
+1.2x, turn 1.1x. On a four-player game nobody reaches 50 and the feature never
+engages. All four `_handicap*` figures belong in `GAME_CONFIG`, which already
+ships in `init`, rather than as constants in the `flags` pair -- both because
+the client must derive from the same curve the server used, and because this one
+needs retuning against a real game before parity means anything.
+
+### The anti-cheat window
+
+The only genuinely racy part, and it is one-sided. The handicap rising is safe:
+the player died, the client keeps driving below a bound that just went up, and
+`playerRespawned` carries the new state before the tank can move again. The
+handicap *falling* is the problem -- it falls when the player scores a kill, the
+server tightens at once, and the client goes on driving at the old factor for
+half a round trip. A shockwave that takes five tanks drops it five notches in
+one tick, so a fixed one-notch tolerance fails exactly when the change is
+largest.
+
+Upstream's answer to the same shape of problem is a flat amnesty:
+
+```cpp
+// Don't kick players up to 10 seconds after a world parm has changed,
+if (now - lastWorldParmChange > 10.0f)
+```
+
+`bzfs.cxx:5331`, ten seconds after anything that moves the physics out from
+under a client (`:5637`, `:5686`). It suspends the *kick*, not the simulation.
+
+bzo already has the mechanism: `reportCheat(player, kind, headline, detail,
+enforceable)` computes `refused = enforceable && mode === 'strict'`, so passing
+`enforceable: false` logs the warning and never refuses the move. Hang a
+per-player expiry on any server-originated change to a motion bound -- a flag
+granted, a flag stripped by a Thief, a handicap notch, a spawn -- and pass
+`enforceable: false` for the affected check kinds while it is open. Position and
+collision checks keep enforcing throughout, which is what stops the window being
+a free teleport.
+
+**That window is not handicap work.** A flag taken away by a Thief drops
+`getMaxSpeedFactor` from 1.5 to 1.0 on the server while the client is still
+sending the old `fs`, and `mode` defaults to `strict`, so this is already live.
+Check the `speedClamped` warnings on `bz.rikers.org` against flag-loss events
+before building on it; if it fires today it is a bug to fix first, and the
+handicap inherits the fix.
+
+See `docs/lag-plan.md` for the clock the expiry is measured on and for the round
+trip that sizes it.
+
+### The rest
+
+- **Where it shows.** A percentage column on the scoreboard, only when the style
+  is on, and `/handicap` beside upstream's own -- one `defineCommand` at
+  `COMMAND_TIER.OPEN`, sorted and formatted as `commands.cxx:2069` does.
 - Config: `"handicap": true` in `server.json`, `-handicap` in a map's `options`
-  block. The four `_handicap*` values stay constants, as bzo's other world
-  constants do.
+  block.
+- XR: nothing to draw beyond the scoreboard column.
 
-XR: nothing to draw beyond the scoreboard column.
+### Order
+
+1. Absolute scores on the kill message, and delete the unused
+   `getTeamScoreDeltasForCapture` export from `public/teams.mjs` -- a mirrored
+   copy of authoritative scoring logic that nothing calls.
+2. The round trip and the clock discipline in `docs/lag-plan.md`, which is what
+   sizes the window below.
+3. The bound window as `enforceable: false`, which stands on its own.
+4. The counter, the shared derivation, speed and turn.
+5. Size, then the signed half behind its config.
 
 ## Publishing to the list server
 
