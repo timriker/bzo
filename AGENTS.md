@@ -2727,73 +2727,23 @@ itself an instruction to commit, tag, and push.
 
 ## Release Process
 
-Full steps also live in the README. When the user says "release now" or "do/make
-a release", execute this end to end unless they explicitly ask for a dry run,
-prepare-only, or no-commit. After completing it, stop at a concise confirmation
-of outcomes; do not append optional follow-up suggestions.
+**The steps live in the README, under "Release process", and that is the only
+copy.** Follow them there rather than repeating them here: this file and the
+README both held the sequence once, they drifted, and the release that followed
+the stale copy shipped a client reporting the previous version.
 
-**Commit everything first, and leave nothing behind.** A tag names a tree, so an
-edit still sitting in the working directory when the tag goes out is not in the
-release -- the version says one thing and the box says another, and nobody can
-reproduce it from the tag. That includes work somebody else left uncommitted:
-review it, say what it is, and commit it, rather than tagging around it. `git
-status` is clean before `release:prepare` and clean again once the tag is pushed;
-anything still pending at the end means the release went out without it.
+What is here is only what a maintainer reading the README does not need:
 
-```bash
-npm run release:prepare -- 1.0.37
-```
-
-That updates `package.json`, `package-lock.json`, `public/version.mjs`, and opens
-a new `CHANGELOG.md` section from `[Unreleased]`.
-
-Then edit the new changelog section so it contains the real user-visible changes,
-and validate:
-
-```bash
-npm run check
-npm run release:check -- v1.0.37
-npm run release:check:increment -- v1.0.37
-```
-
-Then commit, tag, and push:
-
-```bash
-git add package.json package-lock.json public/version.mjs CHANGELOG.md
-git commit -m "Release v1.0.37 - short description. Closes #37"
-git tag v1.0.37
-git push
-git push origin v1.0.37
-```
-
-**The subject has to describe the release, not just label it.** The version
-number is already in the tag, `package.json` and `CHANGELOG.md`, so a subject
-that repeats it alone adds nothing -- and `git log --oneline` is the one view
-where the subject is all there is. Name the change in a few words and reference
-the issue, with a real closing keyword (`Closes #NN`) where the release finishes
-it, since a bare `(#NN)` only links. The work itself gets its own commit before
-the release commit, described the same way.
-
-`.github/workflows/release.yml` then gates on: tag commit is on `main` →
-`npm run check` → `npm audit` → release metadata → tag increment → CodeQL →
-Node 18/24 compatibility → multi-arch Docker build and smoke test → GHCR tag
-promotion → GitHub release with notes extracted from `CHANGELOG.md`.
-
-**Do not wait for that workflow to finish.** Pushing the tag completes the
-release task; the workflow result arrives by email. Stop at a concise
-confirmation once the tag is pushed.
-
-**A release that fails its workflow is left alone.** bzo is in development and
-not every tag produces artifacts. Fix the cause and move to the next version --
-do not delete or move a published tag, and do not backfill a GitHub release for
-one that never built. `CHANGELOG.md` is the record either way, and it already
-carries the section for the version that failed.
-
-- Release tags are stable `vX.Y.Z` SemVer only. Prereleases and build metadata
-  are not published.
-- `public/version.mjs` is written by `scripts/prepare-release.mjs` and verified
-  against the tag by `scripts/check-release.mjs`. Do not edit it by hand, and do
-  not reintroduce a hardcoded client version string elsewhere.
+- **A release request is an instruction to commit, tag and push.** When the user
+  says "release now" or "do/make a release", execute the README's steps end to
+  end unless they explicitly ask for a dry run, prepare-only, or no-commit. This
+  is the one standing exception to **Committing** above.
+- **Do not wait for the release workflow to finish.** Pushing the tag completes
+  the task; the result arrives by email. Stop at a concise confirmation of
+  outcomes once the tag is pushed, and do not append optional follow-up
+  suggestions.
+- **The work itself gets its own commit before the release commit**, described
+  the same way the README asks the release commit to be described.
 
 ## Debugging Tips
 

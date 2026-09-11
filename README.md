@@ -367,9 +367,16 @@ CI also runs these checks on pushes and pull requests.
 
 ## Release process
 
-Commit everything first: a tag names a tree, and an edit left uncommitted when
-the tag goes out is not in the release. `git status` is clean before preparing
-one and clean again once the tag is pushed.
+Commit everything first, and leave nothing behind: a tag names a tree, so an
+edit still sitting in the working directory when the tag goes out is not in the
+release -- the version says one thing and the box says another, and nobody can
+reproduce it from the tag. That includes work somebody else left uncommitted:
+review it, say what it is, and commit it, rather than tagging around it. `git
+status` is clean before preparing a release and clean again once the tag is
+pushed; anything still pending at the end means the release went out without it.
+
+Release tags are stable `vX.Y.Z` SemVer only -- prereleases and build metadata
+are not published.
 
 Prepare a release locally:
 
@@ -423,6 +430,16 @@ The release workflow will:
 5. build and smoke-test Ubuntu 26.04 images with pinned Node.js `24.19.0` for `linux/amd64` and `linux/arm64`
 6. promote the verified versioned and moving Docker tags to GHCR
 7. publish a GitHub release and attach a source tarball
+
+**A release that fails its workflow is left alone.** bzo is in development and
+not every tag produces artifacts. Fix the cause and move to the next version --
+do not delete or move a published tag, and do not backfill a GitHub release for
+one that never built. [CHANGELOG.md](CHANGELOG.md) is the record either way, and
+it already carries the section for the version that failed.
+
+`public/version.mjs` is written by `scripts/prepare-release.mjs` and verified
+against the tag by `scripts/check-release.mjs`. Do not edit it by hand, and do
+not reintroduce a hardcoded client version string elsewhere.
 
 ## AGPL source availability
 
