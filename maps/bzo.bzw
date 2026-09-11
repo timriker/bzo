@@ -32,9 +32,9 @@ options
   -srvmsg "Bad flags ring the centre; good flags ring those."
   -srvmsg "Team bases sit on the compass points; test geometry is in the corners."
 	# A bad flag falls off by itself after this many seconds.
-	-st 50
+	-st 30
 	# A bad flag also falls off after this many kills.
-	-sw 2
+	-sw 1
 	# An antidote flag is put in the world for whoever is carrying a bad one,
 	# which sheds it when they drive onto it.
 	-sa
