@@ -9,7 +9,7 @@
     "DEVELOPERS",
     "BZADMIN"
   ],
-  "port": 3000,
+  "listen": "[::]:3000",
   "teamMode": {
     "enabled": false,
     "autoTeam": false,
@@ -46,7 +46,7 @@
   "shotTailLength": 4.0,
   "shotsKeepVerticalVelocity": false,
   "superFlags": {
-    "count": 16
+    "count": 0
   },
   "flagShakeTimeout": 0,
   "flagShakeWins": 0,

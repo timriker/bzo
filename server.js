@@ -10,6 +10,7 @@ const rateLimit = require('express-rate-limit');
 const logPath = require('path').join(__dirname, 'server.log');
 // Clear server.log on restart
 require('fs').writeFileSync(logPath, '');
+const http = require('http');
 const { WebSocketServer } = require('ws');
 const {
   normalizeShotSlotCount,
@@ -205,6 +206,7 @@ function computeClientBuild() {
   return hash.digest('hex').slice(0, 12);
 }
 const { isHeadsetBrowserUA } = require('./server/headset.cjs');
+const { describeListenTarget, resolveListenTarget } = require('./server/listen-address.cjs');
 const {
   DEFAULT_VOICE_CHANNEL,
   areVoicePeers,
@@ -274,7 +276,6 @@ const loginRateLimit = rateLimit({
       .send('Too many login requests. Try again in a minute.\n');
   },
 });
-const PORT = process.env.PORT || 3000;
 const CONFIG_PATH = process.env.SERVER_CONFIG_PATH
   ? path.resolve(process.env.SERVER_CONFIG_PATH)
   : path.join(__dirname, 'server.json');
@@ -768,13 +769,11 @@ process.on('unhandledRejection', (reason) => {
   process.exit(1);
 });
 
-const server = app.listen(PORT, '::', () => {
-  log(`Server running on http://[::]:${PORT}`);
-  log(`Client build ${CLIENT_BUILD}`);
-  // After the port is open, never before it: the game is playable while the
-  // sidecars are built, and a request that arrives first is served identity.
-  precompress.start({ log }).catch((error) => logError(`[BR] ${error.message}`));
-});
+// Built here, where the WebSocket server needs something to attach to, and
+// bound further down once `server.json` has been read: which address to bind is
+// a setting, and a setting cannot be honoured before the file it lives in has
+// been loaded.
+const server = http.createServer(app);
 
 server.on('error', (err) => {
   logError(`HTTP server error: ${err.message}`);
@@ -932,6 +931,31 @@ try {
 } catch (e) {
   logError(`Could not load server config at ${configPath}:`, e);
 }
+
+// Where to answer, decided in one place because the two halves of an address
+// are one decision. The environment wins over `server.json` for both, which is
+// what lets a container be told by its orchestration what a server is otherwise
+// told by its file, and each falls back to answering everywhere on 3000.
+//
+// A loopback address is how an operator behind a reverse proxy keeps anyone
+// from stepping around it to the port and reaching the uncertificated,
+// uncompressed path; `::` is every interface in both families, which is what a
+// container and a LAN game both need.
+const { host: LISTEN_HOST, port: PORT, note: listenNote } = resolveListenTarget({
+  envListen: process.env.LISTEN,
+  envPort: process.env.PORT,
+  configListen: serverConfig.listen,
+  configPort: serverConfig.port,
+});
+
+server.listen(PORT, LISTEN_HOST, () => {
+  if (listenNote) log(`[LISTEN] ${listenNote}`);
+  log(`Server running on ${describeListenTarget(LISTEN_HOST, PORT)}`);
+  log(`Client build ${CLIENT_BUILD}`);
+  // After the port is open, never before it: the game is playable while the
+  // sidecars are built, and a request that arrives first is served identity.
+  precompress.start({ log }).catch((error) => logError(`[BR] ${error.message}`));
+});
 
 // `adminGroups` in `server.json`: the global groups this server would grant
 // admin to. The list server answers about no group it was not asked about, so
@@ -5022,12 +5046,16 @@ function isTeamEmpty(colorIndex) {
 }
 
 // +s/-s upstream: how many superflag slots the world carries, and which types
-// may fill them. Upstream needs the switch to have any superflags at all; bzo
-// defaults them on, and defaults `allowed` to every superflag in the shared
-// flag table.
+// may fill them. A server carries none unless it is asked, as upstream's
+// `numExtraFlags(0)` does, so a map written without flags is played without
+// them. A `superFlags` block naming no usable count is upstream's bare `-s`,
+// which means sixteen. `allowed` defaults to every superflag in the shared flag
+// table, so asking for slots without naming types fills them from all of them.
 function normalizeSuperFlagConfig(value) {
   const requestedCount = Number(value?.count);
-  const count = Number.isInteger(requestedCount) && requestedCount >= 0 ? requestedCount : 16;
+  const count = Number.isInteger(requestedCount) && requestedCount >= 0
+    ? requestedCount
+    : (value ? 16 : 0);
   const requestedTypes = Array.isArray(value?.allowed) ? value.allowed : FLAG_ABBREVIATIONS;
   const allowed = requestedTypes
     .map((abbreviation) => (typeof abbreviation === 'string' ? abbreviation.trim().toUpperCase() : ''))

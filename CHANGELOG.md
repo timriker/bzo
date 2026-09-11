@@ -6,6 +6,26 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
 
 ## [Unreleased]
 
+### Added
+- **`listen` says where the server answers, host and port together.** The way a
+  proxy's own config writes it -- `[::]:3000`, `127.0.0.1:3000`, `[::1]:3000`,
+  `:3000`, or a bare host -- because a host and a port are one decision. `port`
+  still works and fills in whenever `listen` names no port, and both read the
+  environment first (`LISTEN`, `PORT`) and `server.json` second. The default is
+  unchanged: every interface in both families on 3000. Naming a loopback is how
+  an operator behind a reverse proxy stops anyone reaching the port directly,
+  where there is no certificate and a browser therefore offers neither brotli
+  nor a service worker. `localhost` resolves to `127.0.0.1` and says so, since a
+  socket binds one family and the name promises two.
+
+### Changed
+- **Superflags are off until a server or a map asks for them**, as upstream has
+  them (`numExtraFlags(0)`). A config that never mentions `superFlags` now
+  carries none, so a map written without flags is played without them. A
+  `superFlags` block naming no usable count is upstream's bare `-s`, which still
+  means sixteen, and a map's own `-s`/`+s` still replaces whatever the config
+  said.
+
 ## [1.0.97] - 2026-09-10
 
 ### Added

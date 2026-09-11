@@ -5,8 +5,13 @@
 
 FROM ubuntu:26.04
 
+# PORT and LISTEN are deliberately absent. Both are read from the environment
+# first and `server.json` second, so setting either here would make the matching
+# key in the operator's mounted `/data/server.json` permanently inert -- and
+# that file is exactly where someone would go to change it. Unset, the defaults
+# are port 3000 on every interface, which is what a container needs anyway, and
+# `docker run -e PORT=... -e LISTEN=...` still overrides the file.
 ENV NODE_ENV=production \
-    PORT=3000 \
   SERVER_CONFIG_PATH=/data/server.json \
     DEBIAN_FRONTEND=noninteractive
 

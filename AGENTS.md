@@ -174,16 +174,17 @@ These are deliberate. Do not "fix" them without being asked.
   honest capture is worse than trusting a modified client about a base it still
   had to drive to. The mismatch is logged as `[ANTICHEAT:...] CAPTURE CLAIMED`.
 
-- **Superflags are on by default.** bzfs needs `-s` before a world has any
-  superflags at all. bzo defaults `superFlags` to 16 slots drawn from every
-  superflag in the shared `flags` table, so the feature is not invisible
-  without editing `server.json`. That is the *code* default, for a config that
-  never mentions `superFlags`, and it is what `example-server.json` asks for --
-  which is why that file names only `count` and no `allowed` list. An
-  enumerated list in a tracked file goes stale every time a flag is added, and
-  this one had: it named 13 of the 41 flags bzo now carries. The
-  dev server's own `server.json` asks for none, because there the world is what
-  says how many -- see "The world carries the gameplay".
+- **Superflags are off until asked for, as upstream has them.** bzfs needs `-s`
+  before a world has any superflags at all (`numExtraFlags(0)`,
+  `CmdLineOptions.h:69`) and so does bzo: a config that never mentions
+  `superFlags` carries none, so a map written without flags is played without
+  them. A `superFlags` block naming no usable count is upstream's bare `-s`,
+  which means sixteen, and a map's own `-s`/`+s` replaces whatever the config
+  said. `allowed` defaults to every superflag in the shared `flags` table, which
+  is why `example-server.json` names only `count`: an enumerated list in a
+  tracked file goes stale every time a flag is added, and this one had -- it
+  named 13 of the 41 flags bzo now carries. See "The world carries the
+  gameplay".
 
 - **Jumping is on by default.** bzfs needs `-j` before any tank can jump; bzo
   has had jumping since before there was a switch, so `jumping` defaults to on
@@ -396,6 +397,31 @@ version appears.
 | `maps/*.bzw` | Map files |
 | `docs/` | Design plans, manual validation checklists, and asset notes |
 | `cache/br/` | Brotli sidecars, derived from `public/` and Three's build; not in git |
+
+### Where the server answers
+
+`listen` in `server.json` carries a host and a port together, the way a proxy's
+own config writes it: `[::]:3000`, `127.0.0.1:3000`, `[::1]:3000`, `:3000`, or a
+bare host with no port. `port` still works and fills in whenever `listen` names
+no port. Both are read from the environment first -- `LISTEN` and `PORT` -- and
+`server.json` second, so a container is configured by its orchestration and a
+server by its file. The `Dockerfile` deliberately sets neither, because setting
+one there would make the matching key in the operator's mounted
+`/data/server.json` permanently inert.
+
+The default is `[::]:3000`: every interface in both families, which is the only
+answer that is right without being told, since a container has to be reachable
+on the network Docker gave it and a LAN game has to be reachable from the LAN. A
+dual-stack socket takes an IPv4 peer as an IPv4-mapped address, which is why a
+proxy on the same host appears in the log as `::ffff:127.0.0.1`.
+
+Naming a loopback is how an operator behind a reverse proxy stops anyone
+stepping around it to the port -- where they would reach the uncompressed,
+uncertificated path, and where a browser offers neither brotli nor a service
+worker, both of which need a secure context. Bind one family and point the proxy
+at the same one: `127.0.0.1` with Caddy's `reverse_proxy 127.0.0.1:3000`, or
+`::1` with `[::1]:3000`. `localhost` is resolved to `127.0.0.1` and says so,
+because a socket binds one family and the name promises two.
 
 ### Assets are compressed once, not per request
 
