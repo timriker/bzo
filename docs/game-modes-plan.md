@@ -72,6 +72,13 @@ gate, asked of `GAME_TYPE` by `recordTeamScoreForKill`. See "Team scores" in
 
 ## Match end
 
+Issue #66 tracked the clock half of this and is closed: `timeLimit`,
+`timeManualStart`, the game-over hold, and `/countdown [pause|resume]` /
+`/gameover` are all in, without upstream's pre-match "3...2...1...GO" chat
+delay or its `h:mm:ss` form of `-time`. **Score limits (`-mps`/`-mts`) and
+`scoreOver` are still missing** -- open a new issue for those before starting
+them, and reference it the way flag work referenced #6.
+
 Upstream's game-over machinery, in the order it is worth building:
 
 **Score limits** are the cheap half. `-mps <score>` sets `Score::score`, and
@@ -120,29 +127,36 @@ What bzo has to decide:
   already moved to the server because the server decides whether a tank may be
   hit.
 - **What restarts it.** Upstream restarts when the server empties, or on
-  `/countdown`. bzo has no chat commands at all (issue #5), so the first
-  implementation puts *start*, *pause*, *resume* and *set limit* in the Operator
-  panel, which is already admin-gated on the server through `refuseNonOperator`
-  and already has a message shape for exactly this (`setOperatorConfig`).
-  `/countdown` follows when #5 lands and calls the same functions.
+  `/countdown`. By the time the clock was built, chat commands (issue #5) had
+  already landed, so `/countdown [pause|resume]` and `/gameover` are the chat
+  front end, and the Operator panel (flat and XR) grew its own Start/Pause/
+  Resume/End Match buttons calling the same four functions -- unstaged, like
+  Upload Map. `timeLimit` and `timeManualStart` are ordinary staged rows
+  alongside them, live rather than restart-requiring, unlike most of
+  `GAME_CONFIG` (`flagShakeTimeout` included), which the panel still does not
+  surface at all.
 - **`-g` is not worth having.** "Serve one game and then exit" makes sense for a
   process someone launched for one match; bzo's server is a web server that
   reloads its clients on restart. Read the switch, log that it is ignored, and
-  say so in `docs/bzw.md`'s ignored list.
+  say so in `docs/bzw.md`'s ignored list. Still not done -- a small change
+  independent of everything else here.
 
-Config: `maxPlayerScore`, `maxTeamScore`, `timeLimit` and `timeManualStart` in
-`server.json`, and `-mps`, `-mts`, `-time`, `-timemanual` in a map's `options`
-block, each behaving the way every other switch there does -- the map may set it
-and nothing turns it back off. All four default to bzfs's own defaults (no
-limit, no clock), so `server.json` keeps saying nothing about how a world plays.
+Config, the clock half of which is built: `timeLimit` and `timeManualStart` in
+`server.json`, and `-time`, `-timemanual` in a map's `options` block, behaving
+the way every other switch there does -- the map may set it and nothing turns
+it back off. `maxPlayerScore` and `maxTeamScore` (`-mps`, `-mts`) are the
+still-missing score-limit half, on the same terms. All four default to bzfs's
+own defaults (no limit, no clock), so `server.json` keeps saying nothing about
+how a world plays until it is asked to.
 
 XR: the clock belongs in the header of the XR scoreboard panel next to the team
 rows, and "GAME OVER" is an XR toast like every other alert. Nothing here needs
 a new XR affordance.
 
-New messages: `scoreOver` (winner: player id or team) and `timeUpdate` (seconds
-left, `-1` for paused), both broadcast, with `timeUpdate` also riding in `init`
-so a joining player starts with the right clock.
+New messages: `timeUpdate` (seconds left, `-1` for paused, built) and
+`scoreOver` (winner: player id or team, still needed for score limits), both
+broadcast. `timeUpdate` also rides in `init` so a joining player starts with
+the right clock.
 
 ## Rabbit Chase -- **done**
 
@@ -466,8 +480,8 @@ one part of it bzo could use today: see "Admins and the admin channel" in
 
 ## Suggested order
 
-1. Score limits and `scoreOver`, which need no clock.
-2. The clock, game over, and the Operator panel's match controls.
+1. ~~The clock, game over, and `/countdown`/`/gameover`~~ -- done, issue #66.
+2. Score limits and `scoreOver`, which need no clock.
 3. Handicap.
 
 Each step is playable on its own.

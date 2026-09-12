@@ -83,6 +83,21 @@ These are deliberate. Do not "fix" them without being asked.
   screen and upstream does not pause for that either. Sound is not muted while
   paused, which upstream does do: the game is meant to keep playing behind a
   menu, and one of the menus is the audio settings.
+- **Virtual controls hide under the same menus.** The on-screen joystick's
+  `#controlsOverlay` sits at `z-index: 9999`, above every dialog, so a phone
+  with it enabled would otherwise get an overlay in front of the menu it just
+  opened and touches the menu never receives. `setInputContext` re-asks on
+  every `INPUT_CONTEXT.DIALOG`/`ENTRY` transition rather than a dialog
+  remembering to put the overlay back: the answer is always `enabled && not a
+  menu context`, so leaving the last menu shows it again exactly when it was
+  on before, with nothing to restore.
+- **A dialog does not hand a touch device its keyboard by default.** Upstream
+  has no dialog focus to speak of; bzo's `showDialog` focuses the first
+  control so a physical keyboard can tab through a panel, and the Operator
+  panel picks its MOTD field specially for that reason. On a touch device
+  (`isMobile` in `input.js`) that field is the one thing worth avoiding: a
+  focused text input opens the on-screen keyboard over the panel that was just
+  asked to open, so the close button gets the focus there instead.
 - **Clients reconnect directly when the server restarts**, rather than dropping
   to a menu -- unless the client code itself changed, in which case they reload.
   The server hashes `public/` and Three's build directory by content at boot and
@@ -2261,8 +2276,9 @@ two questions come apart there and only there. `TEAMS_ALLOWED` is what every
 `areFoes` call passes, and passing `TEAM_MODE.enabled` instead would make Rabbit
 Chase a free-for-all in which nothing was ever a team kill.
 
-Match end -- `-mps`, `-mts`, `-time`, `-timemanual` -- and the `Handicap` game
-style are still missing; see `docs/game-modes-plan.md`.
+Match end's clock half (`-time`, `-timemanual`) is in -- see "Match end" below.
+Score limits (`-mps`, `-mts`) and the `Handicap` game style are still missing;
+see `docs/game-modes-plan.md`.
 
 ## Rabbit Chase
 
@@ -2498,6 +2514,51 @@ does not do because it has no `ServerCommand` for it.
   friends before the server sees them; bzo's client sends every line. That is
   step 4 of the plan, and it changes nothing about the above -- bzo's chat entry
   does not echo locally, which is why step 1 needed no client work at all.
+
+## Match end
+
+`timeLimit` (seconds) and `timeManualStart` in `server.json`, `-time <seconds>`
+and `-timemanual` in a map's `options` block. Upstream's clock (issue #66);
+score limits (`-mps`, `-mts`) are still missing -- see `docs/game-modes-plan.md`.
+
+- **No pre-match delay.** Upstream counts down "3...2...1...GO" in chat before
+  the clock actually starts; `/countdown` here starts it at once. `pause` and
+  `resume` are the two upstream verbs that still mean something without that
+  delay, and are the only arguments it takes.
+- **The hold is server-side**, because bzo respawns without a click. `endMatch`
+  kills every non-observer through the ordinary death path -- so the flag, the
+  lock and the rabbit resolve exactly as any other death resolves -- and the
+  respawn timeout in `applyDeath` checks `matchClock.gameOver` and does nothing
+  while it is set. A join during game over reads the same flag and arrives at
+  health 0, the way an observer always does, rather than on a fresh spawn.
+- **Scores are not reset at game over**, only at the next `startMatch()` --
+  upstream's own order, so the standing result stays on the board until a new
+  match begins. `startMatch` also respawns whoever the previous game-over held
+  dead, since nothing else was going to lift that hold.
+- **The game-over kill has no killer.** It reuses `WORLD_WEAPON_PLAYER_ID` the
+  way any world-weapon kill does, with `DEATH_REASON.GAME_OVER` distinguishing
+  its wording ("Time Expired - GAME OVER") from an ordinary "Killed by the
+  server", and bystanders get no per-tank chat line for it -- everyone alive
+  died in the same tick, and each of them already got their own alert.
+- **One model, two surfaces, again.** `timeUpdate` (seconds left, `-1` paused,
+  `null` no clock) rides `init` for a client arriving mid-match and feeds
+  `getScoreboardModel()`'s `timeLeft`, extrapolated locally the same way
+  `HUDRenderer` does upstream rather than re-sent every frame. The flat
+  scoreboard's `#matchClock` and the XR scoreboard panel's own clock text both
+  read that one field, so there is nothing XR-specific to build for the
+  numeral, and "Time Expired - GAME OVER" already reaches a headset as a toast
+  because it rides the same alert slot every other notice does.
+- **The Operator panel's Match Timer buttons are actions, not config.** Start,
+  Pause, Resume and End Match send a `matchControl` message straight to the
+  same four functions `/countdown`/`/gameover` call -- unstaged, like Upload
+  Map, because there is nothing to Apply later.
+- **The limit itself is a staged row, and it is live.** `timeLimit` (a slider,
+  0 is "no limit") and `timeManualStart` (a checkbox) are in
+  `LIVE_CONFIG_KEYS`, so Apply never restarts for them -- changing the number
+  a match already running uses re-broadcasts `timeUpdate` at once rather than
+  waiting for the 30-second cadence, the same reason upstream re-sends
+  `MsgTimeUpdate` on any admin adjustment. Unlike the four buttons above, these
+  two are ordinary staged rows, flat and XR, the same shape as `shotMaxActive`.
 
 ## Team scores
 

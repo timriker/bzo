@@ -214,6 +214,8 @@ Read as a bzfs command line, one option a line. Everything bzo understands:
 | `-st <seconds>` | how long a bad flag sticks before it shakes off |
 | `-sw <kills>` | how many kills shake a bad flag off |
 | `-sa` | put an antidote flag in the world for whoever carries a bad one |
+| `-time <seconds>` | the match clock; not upstream's `h:mm:ss` clock-time form |
+| `-timemanual` | the clock above waits for `/countdown` instead of starting on its own |
 | `-ms <count>` | how many shots a tank may have in the air at once |
 | `-s <count>`, `+s <count>` | how many superflag slots the world holds |
 | `-f <abbrev\|good\|bad>` | take a flag type, or a whole quality, out of the pool |
@@ -246,10 +248,10 @@ nothing in a map turns off something the server config enabled. `-j` is the one
 that reads oddly as a result -- bzo has jumping on by default, so `-j` in a map
 matters only on a server whose own config turned it off.
 
-The two options that carry a *value* rather than flip a switch are the exception,
-and they differ from each other. `-st` and `-sw` take the larger of the map's
-number and the config's, because both are switches that happen to be spelled with
-a number. `-ms` **replaces** the config's `shotMaxActive` outright: upstream reads
+The options that carry a *value* rather than flip a switch are the exception,
+and they differ from each other. `-st`, `-sw` and `-time` take the larger of the
+map's number and the config's, because all three are switches that happen to be
+spelled with a number. `-ms` **replaces** the config's `shotMaxActive` outright: upstream reads
 a map's `options` block where `-world` sits on its command line, so the map's
 number is simply the later assignment. Changing it re-derives the reload time from
 `shotRange / shotSpeed / shotMaxActive`, since each slot comes back after

@@ -9,7 +9,7 @@
 // Exports: setupInputHandlers, virtualInput, keys
 
 import { getXRControllerInput, xrState } from './webxr.js';
-import { focusFirstDialogControl, getVisibleDialogRoot, handleDialogControllerInput, handleDialogKeydown, hideDialog, showDialog } from './menus.js';
+import { focusDialogCloseControl, focusFirstDialogControl, getVisibleDialogRoot, handleDialogControllerInput, handleDialogKeydown, hideDialog, showDialog } from './menus.js';
 import { initSettingsMenu } from './settings.js';
 import { INPUT_CONTEXT, InputContextManager } from './input-context.mjs';
 
@@ -126,6 +126,7 @@ export function setInputContext(context) {
     gamepadGameplayArmed = false;
     xrGameplayArmed = false;
     hudContext.syncAutoPause();
+    syncControlsOverlayVisibility();
   }
   return changed;
 }
@@ -1255,6 +1256,19 @@ function updateVirtualControlsBtn() {
   domRefs.virtualControlsBtn.title = enabled ? 'Hide Virtual Controls' : 'Show Virtual Controls';
 }
 
+// What the overlay actually shows right now, as against what the player asked
+// for: a dialog in front of the game -- Settings, the Operator panel, the
+// entry dialog -- sits under the joystick's own `z-index: 9999`, so a phone
+// with virtual controls on gets an overlay it cannot see past and whose
+// touches the dialog never receives. Every context change re-asks this rather
+// than the dialog remembering to put the overlay back, so there is one answer
+// wherever a dialog opens or closes from.
+function syncControlsOverlayVisibility() {
+  if (!domRefs.controlsOverlay) return;
+  const shouldShow = hudContext.getVirtualControlsEnabled() && !isMenuContextActive();
+  domRefs.controlsOverlay.style.display = shouldShow ? 'block' : 'none';
+}
+
 export function toggleVirtualControls(forceState) {
   if (!domRefs.controlsOverlay) return;
   const current = hudContext.getVirtualControlsEnabled();
@@ -1265,7 +1279,7 @@ export function toggleVirtualControls(forceState) {
   } catch {
     /* ignore storage errors */
   }
-  domRefs.controlsOverlay.style.display = next ? 'block' : 'none';
+  syncControlsOverlayVisibility();
   document.body.classList.toggle('virtual-controls-active', next);
   updateVirtualControlsBtn();
   // The overlay takes steering off the mouse while it is up, and the mouse box
@@ -1311,6 +1325,12 @@ export function toggleOperatorPanel() {
     setInputContext(INPUT_CONTEXT.DIALOG);
     showDialog(domRefs.operatorOverlay, {
       focusTarget: (dialog) => {
+        // A focused text input summons the virtual keyboard on a touch device,
+        // covering the panel it was just asked to open -- so the close button
+        // gets the focus there instead, the way a document dialog's own does.
+        // A physical keyboard's Tab still reaches every row; this only decides
+        // what has focus before the first press.
+        if (isMobile) return focusDialogCloseControl(dialog);
         const motdInput = dialog.querySelector('#motdInput');
         if (motdInput && typeof motdInput.focus === 'function') {
           motdInput.focus();

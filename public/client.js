@@ -112,6 +112,7 @@ import { DestructCountdown, PauseState } from './pause.mjs';
 import { XRMenuRenderer } from './xr-menu.js';
 import {
   colorToCSS,
+  formatMatchClock,
   formatTeamScore,
   getTeamScoreRows,
   updateDebugDisplay,
@@ -669,6 +670,38 @@ const clientClockOrigin = Date.now();
 // One entry per colour team the server offers: { team, size, wins, losses }.
 // Empty until a team-mode server sends its first update.
 let teamScores = [];
+// The match clock ("Match end" in docs/game-modes-plan.md). `matchTimeLeft` is
+// the server's value as of `matchTimeReceivedAt` (an `frameEpochMs` reading),
+// extrapolated locally every time the scoreboard redraws rather than re-sent
+// every frame -- the same reason HUDRenderer does upstream. `null` with no
+// clock configured, `-1` while paused.
+let matchTimeLeft = null;
+let matchTimeReceivedAt = 0;
+let matchGameOver = false;
+
+// The Operator panel's Match Timer buttons and the XR equivalents both funnel
+// here, exactly as `/countdown`/`/gameover` reach the same server-side
+// functions from the chat entry.
+function sendMatchControl(action) {
+  sendToServer({ type: 'matchControl', action });
+}
+
+function applyMatchTimeUpdate(timeLeft) {
+  matchTimeLeft = timeLeft;
+  matchTimeReceivedAt = sampleEpochClock();
+  if (timeLeft === 0) matchGameOver = true;
+  else if (typeof timeLeft === 'number' && timeLeft > 0) matchGameOver = false;
+  refreshScoreboards();
+}
+
+// The number the HUD actually shows: extrapolated from the last update rather
+// than re-read every frame, and left untouched while paused (`-1` upstream's
+// own "show nothing" value, not a countdown to extrapolate).
+function getDisplayedMatchTimeLeft() {
+  if (matchTimeLeft === null || matchTimeLeft < 0) return matchTimeLeft;
+  const elapsed = (frameEpochMs - matchTimeReceivedAt) / 1000;
+  return Math.max(0, Math.round(matchTimeLeft - elapsed));
+}
 let selectedPlayerTeam = PLAYER_TEAM.AUTOMATIC;
 let availablePlayerTeams = [PLAYER_TEAM.ROGUE, PLAYER_TEAM.OBSERVER];
 // `?follow=leader` -- the link to hand somebody who wants to watch a match. It
@@ -3911,6 +3944,18 @@ window.addEventListener('DOMContentLoaded', () => {
     });
   }
 
+  // Match Timer buttons: immediate actions like Upload above, not staged
+  // config -- see "Match end" in AGENTS.md. `/countdown`/`/gameover` reach the
+  // same server functions; this is the panel's front end for them.
+  [
+    ['matchStartBtn', 'start'],
+    ['matchPauseBtn', 'pause'],
+    ['matchResumeBtn', 'resume'],
+    ['matchGameOverBtn', 'gameover'],
+  ].forEach(([id, action]) => {
+    document.getElementById(id)?.addEventListener('click', () => sendMatchControl(action));
+  });
+
   wireOperatorPanel();
   const btn = document.getElementById('debugLabelsBtn');
   if (btn) {
@@ -4079,6 +4124,14 @@ function init() {
   // Update dropdown whenever tanks change
   setInterval(updateChatTargetOptions, 1000);
   updateChatTargetOptions();
+
+  // The match clock ticks locally between updates (see `applyMatchTimeUpdate`),
+  // so the board needs redrawing once a second even with nothing else to
+  // report -- both surfaces read the same extrapolated value from
+  // `getScoreboardModel()`.
+  setInterval(() => {
+    if (matchTimeLeft !== null) refreshScoreboards();
+  }, 1000);
 
   if (chatTabs) {
     chatTabs.addEventListener('click', (e) => {
@@ -4538,6 +4591,9 @@ function handleServerMessage(message) {
       // that was chosen before this client arrived.
       rabbitPlayerId = message.rabbitId ?? null;
       rabbitChaseEnabled = Boolean(message.teamMode.rabbitSelection);
+      matchTimeLeft = typeof message.timeLeft === 'number' ? message.timeLeft : null;
+      matchTimeReceivedAt = sampleEpochClock();
+      matchGameOver = Boolean(message.gameOver);
       if (Array.isArray(message.liveConfigKeys)) liveConfigKeys = message.liveConfigKeys;
       if (message.operatorConfig && typeof message.operatorConfig === 'object') {
         serverOperatorConfig = message.operatorConfig;
@@ -4707,6 +4763,10 @@ function handleServerMessage(message) {
 
     case 'newRabbit':
       applyNewRabbit(message.playerId ?? null);
+      break;
+
+    case 'timeUpdate':
+      applyMatchTimeUpdate(typeof message.timeLeft === 'number' ? message.timeLeft : null);
       break;
 
     case 'playerLeft': {
@@ -5503,6 +5563,10 @@ function handlePlayerHit(message) {
   // picks both the notice and the sound: `blowedUpMessage[]` (playing.cxx:186)
   // is upstream's own table and these are its own words.
   const deathReason = typeof message.reason === 'string' ? message.reason : 'shot';
+  // playing.cxx:2212's own wording for the clock reaching zero -- a distinct
+  // notice from "Killed by the server", which is what every other world-weapon
+  // kill still says.
+  const isMatchEnd = deathReason === 'gameOver';
   // "if (!killerPlayer) blowedUpNotice = \"Killed by the server\"" -- gotBlowedUp
   // (playing.cxx:3999) throws the whole prefix away when the killer has no
   // roster entry, which is every kill by a world weapon: `lookupPlayer` finds
@@ -5551,6 +5615,8 @@ function handlePlayerHit(message) {
     // seconds as a warning (playing.cxx:4028), which is where the eye is.
     if (isCapture) {
       noticeAbout(0, ['Your team flag was captured!'], DEATH_ALERT_SECONDS, true);
+    } else if (isMatchEnd) {
+      noticeAbout(0, ['Time Expired - GAME OVER'], DEATH_ALERT_SECONDS, true);
     } else if (isSelfDestruct) {
       noticeAbout(0, ['Tank Self Destructed'], DEATH_ALERT_SECONDS, true);
     } else if (killedByWorld) {
@@ -5593,6 +5659,11 @@ function handlePlayerHit(message) {
         0, ['You killed ', describePlayer(message.victimId, { flag: victimFlag })],
         KILL_ALERT_SECONDS, false);
     }
+  } else if (isMatchEnd) {
+    // Nothing to say about any one tank: everyone alive died in the same
+    // tick, the dying player already got their own alert above, and a chat
+    // line per tank would spam the room for exactly the players it can't
+    // reach anyway (all of them just got the same treatment).
   } else if (isSelfDestruct) {
     // Somebody else's death: chat only, since upstream warns you about your own
     // and nobody else's.
@@ -5757,6 +5828,8 @@ function getScoreboardModel() {
       teamRows: getTeamScoreRows(teamScores),
       // Only the column heading reads this; the rows carry their own rank.
       rabbitChase: rabbitChaseEnabled,
+      timeLeft: getDisplayedMatchTimeLeft(),
+      gameOver: matchGameOver,
       // Only an observer can pick a roam target, and only an explicit one is
       // marked: with no target the view follows the leader, and marking the top
       // row would claim a choice the player did not make.
@@ -5835,6 +5908,13 @@ function handleServerConfigUpdate(message) {
   if (typeof message.ricochet === 'boolean') {
     applyRicochetSetting(message.ricochet);
   }
+
+  if (Number.isFinite(message.timeLimit) && gameConfig) {
+    gameConfig.TIME_LIMIT = message.timeLimit;
+  }
+  if (typeof message.timeManualStart === 'boolean' && gameConfig) {
+    gameConfig.TIME_MANUAL_START = message.timeManualStart;
+  }
   // An applied change is now the server's value, so the panel starts from it.
   // A staged edit survives: it belongs to whoever is typing, not to the update.
   if (!operatorStaged) syncOperatorPanelFromServer();
@@ -5862,6 +5942,10 @@ let serverOperatorConfig = {};
 
 const SHOT_MAX_ACTIVE_MIN = 1;
 const SHOT_MAX_ACTIVE_MAX = 10;
+// Matches the slider in index.html and the server's own ceiling
+// (`OPERATOR_TIME_LIMIT_MAX`); 0 is upstream's "no limit".
+const OPERATOR_TIME_LIMIT_MAX = 3600;
+const OPERATOR_TIME_LIMIT_STEP = 15;
 // Upstream's own ceiling on a player count (`MaxPlayers`, CmdLineOptions.h:37).
 const OPERATOR_LIMIT_MAX = 200;
 // A `choice` row needs an off position where a command line switch is simply
@@ -5892,6 +5976,8 @@ function getOperatorServerState() {
     motd: serverMotdText || '',
     shotMaxActive: Number(gameConfig?.SHOT_MAX_ACTIVE) || SHOT_MAX_ACTIVE_MIN,
     ricochet: Boolean(gameConfig?.ALL_SHOTS_RICOCHET),
+    timeLimit: Number(gameConfig?.TIME_LIMIT) || 0,
+    timeManualStart: Boolean(gameConfig?.TIME_MANUAL_START),
     mapFile: currentMapFile || serverOperatorConfig.mapFile || '',
   };
 }
@@ -5911,6 +5997,7 @@ function getOperatorLimitLabel(team, rabbit) {
 // the XR arrows cannot disagree about it.
 function getOperatorNumberBounds(key, state) {
   if (key === 'shotMaxActive') return { min: SHOT_MAX_ACTIVE_MIN, max: SHOT_MAX_ACTIVE_MAX };
+  if (key === 'timeLimit') return { min: 0, max: OPERATOR_TIME_LIMIT_MAX };
   // At least one tank: a server that allows none is one nobody can play on.
   if (key === 'maxPlayers') return { min: 1, max: OPERATOR_LIMIT_MAX };
   const team = OPERATOR_LIMIT_TEAMS.find((candidate) => operatorLimitKey(candidate) === key);
@@ -6012,6 +6099,17 @@ function paintOperatorRows(state) {
   }
   const jumpingInput = document.getElementById('jumpingInput');
   if (jumpingInput) jumpingInput.checked = state.jumping === true;
+  setOperatorRangeRow('timeLimit', state.timeLimit);
+  // setOperatorRangeRow just wrote the raw number; this is the one row whose
+  // label reads a duration instead, and 0 is worded rather than shown as 0:00.
+  const timeLimitValue = document.getElementById('timeLimitValue');
+  if (timeLimitValue) {
+    timeLimitValue.textContent = state.timeLimit > 0
+      ? (formatMatchClock(state.timeLimit) || '0:00')
+      : 'No limit';
+  }
+  const timeManualStartInput = document.getElementById('timeManualStartInput');
+  if (timeManualStartInput) timeManualStartInput.checked = state.timeManualStart === true;
   const rabbitSelect = document.getElementById('rabbitSelect');
   if (rabbitSelect) {
     rabbitSelect.value = RABBIT_SELECTIONS.includes(state.rabbit) ? state.rabbit : 'off';
@@ -6118,10 +6216,18 @@ function stageOperatorNumberValue(key, value) {
   }
 }
 
+// One notch of a row, for the headset's stick and the flat panel's own arrow
+// keys. A plain count wants 1; a number of seconds wants the slider's own
+// step, or fifteen presses reaches fifteen seconds.
+function getOperatorNumberStep(key) {
+  return key === 'timeLimit' ? OPERATOR_TIME_LIMIT_STEP : 1;
+}
+
 // One step of a row, which is what a headset has: left, right and select.
 function stageOperatorNumber(key, direction) {
   if (!operatorStaged) operatorStaged = getOperatorServerState();
-  stageOperatorNumberValue(key, Number(operatorStaged[key]) + (direction > 0 ? 1 : -1));
+  const step = getOperatorNumberStep(key);
+  stageOperatorNumberValue(key, Number(operatorStaged[key]) + (direction > 0 ? step : -step));
 }
 
 // The rabbit chase row, which is a `choice` rather than a number: off, then
@@ -6166,6 +6272,18 @@ function wireOperatorPanel() {
   const jumpingInput = document.getElementById('jumpingInput');
   if (jumpingInput) {
     jumpingInput.addEventListener('change', () => stageOperatorChange('jumping', jumpingInput.checked));
+  }
+  const timeLimitSlider = document.getElementById('timeLimitSlider');
+  if (timeLimitSlider) {
+    timeLimitSlider.addEventListener('input', () => {
+      stageOperatorNumberValue('timeLimit', Number(timeLimitSlider.value));
+    });
+  }
+  const timeManualStartInput = document.getElementById('timeManualStartInput');
+  if (timeManualStartInput) {
+    timeManualStartInput.addEventListener('change', () => {
+      stageOperatorChange('timeManualStart', timeManualStartInput.checked);
+    });
   }
   const rabbitSelect = document.getElementById('rabbitSelect');
   if (rabbitSelect) {
@@ -10359,6 +10477,13 @@ function ensureXRScoreboardOverlay() {
   const teamRows = model.teamRows;
   const margin = 12;
   const panelW = 320;
+  // The match clock, drawn above everything else the panel shows -- upstream's
+  // own scoreboard has no clock row because its HUD already carries one
+  // elsewhere on screen; a headset's scoreboard panel is the nearest thing bzo
+  // has to that, so the clock rides here instead. Nothing is reserved when no
+  // clock is configured.
+  const clockText = model.gameOver ? 'GAME OVER' : formatMatchClock(model.timeLeft);
+  const clockHeight = clockText ? 22 : 0;
   // Both columns are laid out in pixels, as the other canvas HUDs are. The
   // score column is right-aligned against this edge rather than started at a
   // fixed offset, so a two-digit score grows to the left instead of off the
@@ -10379,7 +10504,7 @@ function ensureXRScoreboardOverlay() {
   const teamBlockHeight = teamRows.length ? headerHeight + teamRows.length * rowHeight + 8 : 0;
   const panelH = Math.max(
     120,
-    teamBlockHeight + headerHeight + 10 + visiblePlayers.length * rowHeight + observerGap + 12,
+    clockHeight + teamBlockHeight + headerHeight + 10 + visiblePlayers.length * rowHeight + observerGap + 12,
   );
   canvas.width = panelW;
   canvas.height = panelH;
@@ -10392,13 +10517,21 @@ function ensureXRScoreboardOverlay() {
   ctx.lineWidth = 2;
   ctx.strokeRect(6, 6, panelW - 12, panelH - 12);
 
+  if (clockText) {
+    ctx.fillStyle = '#4CAF50';
+    ctx.font = 'bold 15px monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText(clockText, panelW / 2, 18);
+    ctx.textAlign = 'left';
+  }
+
   ctx.fillStyle = '#4CAF50';
   ctx.font = 'bold 14px monospace';
   if (teamRows.length) {
-    ctx.fillText('Team Score', margin, 16);
+    ctx.fillText('Team Score', margin, 16 + clockHeight);
     ctx.font = '13px monospace';
     teamRows.forEach((row, index) => {
-      const y = 38 + index * rowHeight;
+      const y = 38 + clockHeight + index * rowHeight;
       const score = formatTeamScore(row);
       ctx.fillStyle = colorToCSS(getPlayerTeamColor(row.team));
       ctx.textAlign = 'right';
@@ -10411,7 +10544,7 @@ function ensureXRScoreboardOverlay() {
     ctx.font = 'bold 14px monospace';
   }
 
-  const playerHeaderY = 16 + teamBlockHeight;
+  const playerHeaderY = 16 + clockHeight + teamBlockHeight;
   ctx.fillText('Player', margin, playerHeaderY);
   ctx.textAlign = 'right';
   // The flat board's heading, abbreviated to what fits a headset panel. Both
@@ -11552,6 +11685,17 @@ function getXROperatorMenuItems() {
     },
     { id: 'operatorJumpingXR', label: 'Jumping', value: staged.jumping === true ? 'On' : 'Off' },
     {
+      id: 'operatorTimeLimitXR',
+      label: 'Time Limit',
+      value: staged.timeLimit > 0 ? (formatMatchClock(staged.timeLimit) || '0:00') : 'No limit',
+      adjustable: true,
+    },
+    {
+      id: 'operatorTimeManualStartXR',
+      label: 'Manual Start',
+      value: staged.timeManualStart === true ? 'On' : 'Off',
+    },
+    {
       id: 'operatorPlayersXR',
       label: 'Playing Limit',
       value: String(staged.maxPlayers ?? ''),
@@ -11574,6 +11718,12 @@ function getXROperatorMenuItems() {
       disabled: changes.length === 0,
     },
     { id: 'operatorCancelXR', label: 'Cancel', value: '', disabled: changes.length === 0 },
+    // Immediate actions, like the Apply/Cancel pair above them and Upload Map
+    // below -- nothing here is staged.
+    { id: 'operatorMatchStartXR', label: 'Match: Start', value: '' },
+    { id: 'operatorMatchPauseXR', label: 'Match: Pause', value: '' },
+    { id: 'operatorMatchResumeXR', label: 'Match: Resume', value: '' },
+    { id: 'operatorMatchEndXR', label: 'Match: End Now', value: '' },
     { id: 'operatorRefreshXR', label: 'Refresh Server Data', value: '' },
     { id: 'operatorDesktopXR', label: 'Upload Map', value: 'Desktop only', disabled: true },
     { id: 'backXR', label: 'Back', value: '' },
@@ -11637,6 +11787,10 @@ function adjustXRSettingsMenuItem(item, direction) {
   }
   if (item.id === 'operatorRabbitXR') {
     stageOperatorRabbit(direction);
+    return true;
+  }
+  if (item.id === 'operatorTimeLimitXR') {
+    stageOperatorNumber('timeLimit', direction);
     return true;
   }
   if (item.id === 'operatorPlayersXR') {
@@ -11718,12 +11872,19 @@ function activateXRSettingsMenuSelection(item) {
   else if (item.id === 'operatorJumpingXR') {
     stageOperatorChange('jumping', (operatorStaged || getOperatorServerState()).jumping !== true);
   }
+  else if (item.id === 'operatorTimeManualStartXR') {
+    stageOperatorChange('timeManualStart', (operatorStaged || getOperatorServerState()).timeManualStart !== true);
+  }
   else if (item.id === 'operatorApplyXR') commitOperatorPanel();
   else if (item.id === 'operatorCancelXR') {
     // Back to the server's values, staying on the screen: in a headset there is
     // no `X` to close, and leaving the screen is the Back row's job.
     operatorStaged = getOperatorServerState();
   }
+  else if (item.id === 'operatorMatchStartXR') sendMatchControl('start');
+  else if (item.id === 'operatorMatchPauseXR') sendMatchControl('pause');
+  else if (item.id === 'operatorMatchResumeXR') sendMatchControl('resume');
+  else if (item.id === 'operatorMatchEndXR') sendMatchControl('gameover');
   else if (item.id === 'operatorRefreshXR') setXRSettingsMenuScreen('operator');
   else activateXRSettingsMenuItem(item.id);
 }

@@ -93,6 +93,31 @@
           <input type="file" id="uploadMap" accept=".bzw,.txt">
           <button id="uploadBtn" class="btn">Upload</button>
         </div>
+        <!-- Staged like every row above: 0 is upstream's own "no limit". -->
+        <div class="operatorRow operatorConfigRow" data-menu-row="timeLimit" data-menu-kind="range">
+          <label for="timeLimitSlider">Time Limit:</label>
+          <div class="volumeControl">
+            <input id="timeLimitSlider" class="volumeSlider" type="range" min="0" max="3600" step="15" value="0">
+            <output id="timeLimitValue" class="volumeValue" for="timeLimitSlider">No limit</output>
+          </div>
+        </div>
+        <div class="operatorRow" data-menu-row="timeManualStart" data-menu-kind="choice">
+          <label class="operatorToggle" for="timeManualStartInput">
+            <input type="checkbox" id="timeManualStartInput">
+            Manual Start (wait for /countdown)
+          </label>
+        </div>
+        <!-- Immediate actions, like Upload above -- nothing here is staged, so
+             these fire on click rather than waiting for Apply. Only meaningful
+             on a world with a time limit configured (`timeLimit` in
+             server.json or `-time` in the map); see "Match end" in AGENTS.md. -->
+        <div class="operatorRow">
+          <label>Match Timer:</label>
+          <button id="matchStartBtn" class="btn" type="button">Start</button>
+          <button id="matchPauseBtn" class="btn" type="button">Pause</button>
+          <button id="matchResumeBtn" class="btn" type="button">Resume</button>
+          <button id="matchGameOverBtn" class="btn" type="button">End Match</button>
+        </div>
         <!-- One confirm, labelled by what it is about to do: Apply while every
              staged change is live, Restart the moment one is not. Cancel and the
              X abort everything, so changing a row and thinking better of it costs
@@ -112,6 +137,7 @@
       </div>
     </div>
     <div id="scoreboard">
+      <div id="matchClock" class="matchClockHidden"></div>
       <div id="teamScoreboard" class="teamScoreboardEmpty"></div>
       <div id="scoreboardHeader">
         <span class="scoreboardName">Player</span>

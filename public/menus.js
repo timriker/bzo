@@ -128,7 +128,7 @@ export function focusFirstDialogControl(dialog) {
 
 // The close button, for a dialog whose other controls sit wherever the text put
 // them. It is in the title bar at the top, so focusing it never scrolls.
-function focusDialogCloseControl(dialog) {
+export function focusDialogCloseControl(dialog) {
   const focusables = getFocusableElements(dialog);
   const close = focusables.find((element) => element.classList.contains('closeBtn'));
   return focusElement(close || focusables[0] || dialog);

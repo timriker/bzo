@@ -663,6 +663,18 @@ body {
   padding-top: 1vw;
 }
 
+#matchClock {
+  text-align: center;
+  font-size: var(--hud-font-body);
+  font-weight: bold;
+  color: #4CAF50;
+  margin-bottom: 5px;
+}
+
+#matchClock.matchClockHidden {
+  display: none;
+}
+
 #scoreboard h3 {
   font-size: 16px;
   margin-bottom: 10px;

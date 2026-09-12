@@ -925,6 +925,13 @@ const GAME_CONFIG = {
   FOG_START: null, // Defaults to 0.5 * map size like BZFlag
   FOG_END: null, // Defaults to map size like BZFlag
   VOICE_NEARBY_RADIUS: 60, // Maximum distance for the initial Nearby voice channel
+  // -time upstream (CmdLineOptions.h:79), seconds until the match ends; 0 is no
+  // limit, which is bzfs's own default -- see "Match end" in
+  // docs/game-modes-plan.md and issue #66.
+  TIME_LIMIT: 0,
+  // -timemanual upstream: the clock above waits for /countdown instead of
+  // starting the moment the server has a limit to run.
+  TIME_MANUAL_START: false,
 };
 
 // WebSocket keep-alive configuration
@@ -1424,6 +1431,13 @@ if (MAP_SOURCE !== 'random') {
 //
 // Returns undefined for a switch the map does not mention, so the server config
 // keeps its say.
+// Seconds in, seconds out. Anything that is not a positive number is no limit,
+// which is `-time`'s own absence.
+function normalizeTimeLimit(seconds) {
+  const value = Number(seconds);
+  return Number.isFinite(value) && value > 0 ? value : 0;
+}
+
 function parseBZWServerOptions(lines) {
   let inOptions = false;
   // Every other field is left absent unless the map names it. `forbiddenFlags`
@@ -1456,6 +1470,15 @@ function parseBZWServerOptions(lines) {
     if (option === '-sw') options.flagShakeWins = normalizeShakeWins(value);
     // -sa: put an antidote flag in the world for whoever is carrying a bad one.
     if (option === '-sa') options.antidoteFlags = true;
+    // -time <seconds>: the match clock. Upstream also reads an `h:mm:ss`
+    // clock-time form; bzo does not.
+    if (option === '-time') {
+      const seconds = Number(value);
+      if (Number.isFinite(seconds) && seconds > 0) options.timeLimit = seconds;
+    }
+    // -timemanual: the clock above waits for /countdown rather than starting
+    // on its own.
+    if (option === '-timemanual') options.timeManualStart = true;
     // -a <vel> <rot>: the world's acceleration limit, upstream's inertia switch.
     // The only option here that takes two values, which is why it reads
     // `setValue` as well.
@@ -2457,6 +2480,107 @@ function recordTeamScoreForKill(killer, victim) {
   broadcastTeamScores();
 }
 
+// Match end ("Match end" in docs/game-modes-plan.md, issue #66). `-time`'s
+// clock: started automatically or by /countdown, pausable, and a hard stop at
+// zero that holds the spawn until the next /countdown. Upstream's own
+// "3...2...1...GO" pre-match delay is not reproduced -- /countdown starts the
+// match at once, and `pause`/`resume` are the two verbs that still mean
+// something without it.
+let matchClock = {
+  active: false,       // a match is running, whether or not it is paused
+  paused: false,
+  gameOver: false,
+  startTime: null,      // Date.now() the match began; shifted forward on resume
+  pauseStartedAt: null,
+};
+
+// bzfs.cxx:7182: timeLimit minus elapsed, clamped to zero. `-1` upstream's own
+// paused value, and `null` for no clock running at all -- which is what a
+// clockless world, or one waiting on /countdown, reports.
+function getMatchTimeLeft() {
+  if (!matchClock.active || !GAME_CONFIG.TIME_LIMIT) return null;
+  if (matchClock.paused) return -1;
+  const elapsed = (Date.now() - matchClock.startTime) / 1000;
+  return Math.max(0, Math.ceil(GAME_CONFIG.TIME_LIMIT - elapsed));
+}
+
+// startCountdown() (bzfs.cxx:780). A fresh match: every score back to zero,
+// the clock started, and everyone told. Nothing but /countdown and the
+// auto-start at boot calls this, so it is the one place a match begins.
+function startMatch() {
+  if (!GAME_CONFIG.TIME_LIMIT) return false;
+  teamScores.clear();
+  players.forEach((candidate) => {
+    candidate.kills = 0;
+    candidate.deaths = 0;
+    // Whoever the previous match's game-over held dead gets back in: nothing
+    // else was going to lift that hold, since the respawn timeout that would
+    // have revived them already saw `matchClock.gameOver` and gave up.
+    if (!isObserverTeam(candidate.team) && candidate.health <= 0) {
+      candidate.respawn();
+      broadcastAll({ type: 'playerRespawned', player: candidate.getState() });
+    }
+  });
+  matchClock.active = true;
+  matchClock.paused = false;
+  matchClock.gameOver = false;
+  matchClock.startTime = Date.now();
+  matchClock.pauseStartedAt = null;
+  broadcastTeamScores();
+  broadcastAll({ type: 'timeUpdate', timeLeft: GAME_CONFIG.TIME_LIMIT });
+  broadcastAll({
+    type: 'message', src: -1, dst: 0, msgType: 'server',
+    text: `Match duration is ${formatDuration(GAME_CONFIG.TIME_LIMIT)}`, ts: Date.now(),
+  });
+  log(`Match started: ${GAME_CONFIG.TIME_LIMIT}s`);
+  return true;
+}
+
+function pauseMatch() {
+  if (!matchClock.active || matchClock.gameOver || matchClock.paused) return false;
+  matchClock.paused = true;
+  matchClock.pauseStartedAt = Date.now();
+  broadcastAll({ type: 'timeUpdate', timeLeft: -1 });
+  log('Match paused');
+  return true;
+}
+
+function resumeMatch() {
+  if (!matchClock.active || !matchClock.paused) return false;
+  matchClock.startTime += Date.now() - matchClock.pauseStartedAt;
+  matchClock.paused = false;
+  matchClock.pauseStartedAt = null;
+  broadcastAll({ type: 'timeUpdate', timeLeft: getMatchTimeLeft() });
+  log('Match resumed');
+  return true;
+}
+
+// cleanupGameOver() (bzfs.cxx:3294). Kills every playing tank through the
+// ordinary death path -- so the flag, the lock and the rabbit all resolve the
+// way any other death does -- and holds the spawn: `applyDeath`'s own respawn
+// timeout checks `matchClock.gameOver` and does nothing while it is set, and a
+// fresh join reads the same flag. Deliberately does not reset scores; the
+// standing result stays on the board until the next startMatch().
+function endMatch() {
+  if (!matchClock.active || matchClock.gameOver) return false;
+  matchClock.active = false;
+  matchClock.paused = false;
+  matchClock.gameOver = true;
+  players.forEach((victim) => {
+    if (isObserverTeam(victim.team) || victim.health <= 0) return;
+    applyDeath(victim, WORLD_WEAPON_PLAYER_ID, {
+      projectileId: null,
+      reason: DEATH_REASON.GAME_OVER,
+      victimFlag: getPlayerFlag(victim.id)?.type ?? null,
+      shooterFlag: null,
+      suicide: false,
+    });
+  });
+  broadcastAll({ type: 'timeUpdate', timeLeft: 0 });
+  log('Match ended (time expired)');
+  return true;
+}
+
 // `rabbitIndex` (bzfs.cxx:158). Who the rabbit is, or null when the world has no
 // rabbit -- which happens between the last player leaving and the next one
 // spawning, and whenever everybody who could hold it is paused or observing.
@@ -3441,6 +3565,54 @@ defineCommand('/kill', COMMAND_TIER.OPERATOR,
       : 'You were killed by an operator');
   });
 
+// CountdownCommand (commands.cxx:1252). Upstream's own pre-match delay -- the
+// "3...2...1...GO" chat countdown before the clock actually starts -- is not
+// reproduced here; the bare form starts the match at once. `pause`/`resume`
+// are the two upstream verbs that still mean something without it.
+defineCommand('/countdown', COMMAND_TIER.OPERATOR,
+  '[pause|resume] - (re)start, pause, or resume the match clock',
+  (player, args) => {
+    const arg = args.trim().toLowerCase();
+    if (arg === 'pause') {
+      if (!pauseMatch()) {
+        replyToPlayer(player, 'No match is running to pause');
+        return;
+      }
+      log(`[CMD] "${player.name}" paused the match`);
+      return;
+    }
+    if (arg === 'resume') {
+      if (!resumeMatch()) {
+        replyToPlayer(player, 'No paused match to resume');
+        return;
+      }
+      log(`[CMD] "${player.name}" resumed the match`);
+      return;
+    }
+    if (arg) {
+      replyToPlayer(player, 'Usage: /countdown [pause|resume]');
+      return;
+    }
+    if (!startMatch()) {
+      replyToPlayer(player, 'This server has no time limit configured');
+      return;
+    }
+    log(`[CMD] "${player.name}" started the match`);
+  });
+
+// GameOverCommand (commands.cxx). Upstream's own /gameover, alongside
+// /superkill -- both reuse the same game-over machinery a time-up reaches on
+// its own.
+defineCommand('/gameover', COMMAND_TIER.OPERATOR,
+  '- end the match now',
+  (player) => {
+    if (!endMatch()) {
+      replyToPlayer(player, 'No match is running');
+      return;
+    }
+    log(`[CMD] "${player.name}" ended the match`);
+  });
+
 // SayCommand (commands.cxx:458): a public message that comes from the server
 // rather than from a player.
 defineCommand('/say', COMMAND_TIER.OPERATOR,
@@ -3717,7 +3889,15 @@ defineCommand('/mv', COMMAND_TIER.OPERATOR,
 // -- because bzo resolves the world and the team layout once at boot. See
 // docs/operator-panel-plan.md: a map change, a mode change and a match ending are
 // one event, so they take one path.
-const LIVE_CONFIG_KEYS = Object.freeze(['motd', 'shotMaxActive', 'ricochet']);
+// `timeLimit`/`timeManualStart` are live because changing them touches nothing
+// the world resolves once at boot -- they only decide what the next
+// `startMatch()` uses, the same way `/countdown` itself is a runtime action
+// rather than a restart.
+const LIVE_CONFIG_KEYS = Object.freeze(['motd', 'shotMaxActive', 'ricochet', 'timeLimit', 'timeManualStart']);
+// Upstream keeps no fixed ceiling on `-time`; this is the panel slider's own,
+// so a drag has somewhere to stop. A map or `server.json` may still set a
+// higher `timeLimit` directly -- the slider just cannot reach past an hour.
+const OPERATOR_TIME_LIMIT_MAX = 3600;
 
 // The panel's rows are flat where `server.json` is nested, so a team's limit is
 // one key of its own -- `rogueLimit`, `observerLimit` -- and this is the mapping
@@ -3761,6 +3941,8 @@ function getOperatorConfigState() {
     teams: serverConfig.teamMode === true || serverConfig.teamMode?.enabled === true,
     rabbit: normalizeRabbitSelection(serverConfig.rabbit) || 'off',
     jumping: serverConfig.jumping !== false,
+    timeLimit: GAME_CONFIG.TIME_LIMIT,
+    timeManualStart: GAME_CONFIG.TIME_MANUAL_START,
     maxPlayers: MAX_REAL_PLAYERS,
     ...Object.fromEntries(Object.entries(OPERATOR_TEAM_LIMIT_KEYS)
       .map(([key, team]) => [key, limits[team]])),
@@ -3833,6 +4015,17 @@ function applyServerConfigChanges(requested, byWhom) {
   if (has('ricochet')) {
     if (typeof requested.ricochet !== 'boolean') return { error: 'Invalid ricochet value' };
     next.ricochet = requested.ricochet;
+  }
+  if (has('timeLimit')) {
+    const seconds = Number(requested.timeLimit);
+    if (!Number.isFinite(seconds) || seconds < 0 || seconds > OPERATOR_TIME_LIMIT_MAX) {
+      return { error: `Time limit is 0 (no limit) to ${OPERATOR_TIME_LIMIT_MAX} seconds` };
+    }
+    next.timeLimit = normalizeTimeLimit(seconds);
+  }
+  if (has('timeManualStart')) {
+    if (typeof requested.timeManualStart !== 'boolean') return { error: 'Invalid time manual start value' };
+    next.timeManualStart = requested.timeManualStart;
   }
   // Validated exactly as the standalone `setMap` did, since it is the same
   // choice arriving through the panel's one confirm instead of its own button.
@@ -3915,6 +4108,21 @@ function applyServerConfigChanges(requested, byWhom) {
     });
     changed.push('ricochet');
   }
+  if (next.timeLimit !== undefined && next.timeLimit !== GAME_CONFIG.TIME_LIMIT) {
+    serverConfig.timeLimit = next.timeLimit;
+    GAME_CONFIG.TIME_LIMIT = next.timeLimit;
+    // bzfs.cxx:7180 re-broadcasts on any admin adjustment to the limit, not
+    // just on the cadence -- a match already running should not wait up to 30
+    // seconds to show the new number, and one that is not running has nothing
+    // to re-broadcast.
+    if (matchClock.active) broadcastAll({ type: 'timeUpdate', timeLeft: getMatchTimeLeft() });
+    changed.push('timeLimit');
+  }
+  if (next.timeManualStart !== undefined && next.timeManualStart !== GAME_CONFIG.TIME_MANUAL_START) {
+    serverConfig.timeManualStart = next.timeManualStart;
+    GAME_CONFIG.TIME_MANUAL_START = next.timeManualStart;
+    changed.push('timeManualStart');
+  }
 
   // A new game rather than a live change: the world, the team layout and the flag
   // pool are resolved once at boot, so the only honest way to apply one of these
@@ -3935,6 +4143,8 @@ function applyServerConfigChanges(requested, byWhom) {
     motd: serverConfig.motd || '',
     shotMaxActive: GAME_CONFIG.SHOT_MAX_ACTIVE,
     ricochet: GAME_CONFIG.ALL_SHOTS_RICOCHET,
+    timeLimit: GAME_CONFIG.TIME_LIMIT,
+    timeManualStart: GAME_CONFIG.TIME_MANUAL_START,
   });
   log(`Config changed by ${byWhom}: ${changed.length ? changed.join(', ') : 'nothing'}`);
   return { changed, restarted: false };
@@ -5154,6 +5364,17 @@ GAME_CONFIG.FLAG_SHAKE_WINS = FLAG_SHAKE_WINS;
 const ANTIDOTE_FLAGS = serverConfig.antidoteFlags === true
   || mapServerOptions.antidoteFlags === true;
 GAME_CONFIG.ANTIDOTE_FLAGS = ANTIDOTE_FLAGS;
+// -time upstream, the match clock: seconds until the match ends. Off by
+// default -- no limit -- and reached the same two ways as -st: a map may only
+// raise it, never shrink an operator's own setting.
+GAME_CONFIG.TIME_LIMIT = Math.max(
+  normalizeTimeLimit(serverConfig.timeLimit),
+  normalizeTimeLimit(mapServerOptions.timeLimit),
+);
+// -timemanual upstream: the clock waits for /countdown instead of starting the
+// moment the server has a limit to run.
+GAME_CONFIG.TIME_MANUAL_START = serverConfig.timeManualStart === true
+  || mapServerOptions.timeManualStart === true;
 // The three ways upstream lets you shed a bad flag, for the startup log and for
 // the message a player gets when they pick one up. With none of them on, dying
 // is the only way out -- which is upstream's default.
@@ -7379,6 +7600,7 @@ const DEATH_REASON = Object.freeze({
   RUN_OVER: 'runOver',    // GotRunOver
   GENOCIDE: 'genocide',   // GenocideEffect
   SELF_DESTRUCT: 'selfDestruct', // SelfDestruct
+  GAME_OVER: 'gameOver', // playing.cxx:2212 -- the match clock reached zero.
 });
 
 // playerKilled() (bzfs.cxx:3345). One tank dies, for one reason, and everything
@@ -7432,6 +7654,11 @@ function applyDeath(victim, killerId, hit) {
 
   setTimeout(() => {
     if (!players.has(victim.id)) return;
+    // cleanupGameOver()'s hold: a tank that died into game over stays dead
+    // until the next /countdown, which is what "the server refuses the spawn
+    // while the game is over" (docs/game-modes-plan.md, "Match end") means for
+    // a death already in flight when the clock hit zero.
+    if (matchClock.gameOver) return;
     victim.respawn();
     broadcastAll({ type: 'playerRespawned', player: victim.getState() });
   }, GAME_CONFIG.RESPAWN_DELAY);
@@ -8074,9 +8301,37 @@ function gameLoop() {
   applySteamrollerSweep(now);
   expireLockTargets();
   updateFlags(now);
+  tickMatchClock(now);
+}
+
+// bzfs.cxx:7180's cadence: every 30 seconds while the clock runs, and once
+// more the instant it crosses zero, which is also what ends the match.
+let lastMatchTimeBroadcastAt = 0;
+function tickMatchClock(now) {
+  if (!matchClock.active || matchClock.paused) return;
+  const timeLeft = getMatchTimeLeft();
+  // `null` means the limit was cleared out from under a running match (the
+  // panel's slider can do this) rather than that it reached zero -- `null <= 0`
+  // is true in JS, so this is not the same guard as skipping a paused clock.
+  if (timeLeft === null) return;
+  if (timeLeft <= 0) {
+    endMatch();
+    return;
+  }
+  if (now - lastMatchTimeBroadcastAt >= 30000) {
+    broadcastAll({ type: 'timeUpdate', timeLeft });
+    lastMatchTimeBroadcastAt = now;
+  }
 }
 
 createFlags();
+
+// -time with no -timemanual starts the clock as soon as the world is ready,
+// mirroring bzfs's own default -- a match server just plays. -timemanual
+// leaves it stopped until an operator runs /countdown.
+if (GAME_CONFIG.TIME_LIMIT > 0 && !GAME_CONFIG.TIME_MANUAL_START) {
+  startMatch();
+}
 
 setInterval(gameLoop, 16); // ~60fps
 
@@ -8342,6 +8597,12 @@ wss.on('connection', (ws, req) => {
     // the rabbit is world state, not an event, so a client that arrives mid-game
     // has to be told who it is.
     rabbitId: rabbitPlayerId,
+    // The match clock is world state for the same reason: a client that
+    // arrives mid-match, mid-pause, or after time has expired has to be told,
+    // not left to assume a clockless world. See "Match end" in
+    // docs/game-modes-plan.md.
+    timeLeft: getMatchTimeLeft(),
+    gameOver: matchClock.gameOver,
     voiceRtcConfig: { iceServers: VOICE_ICE_SERVERS },
     obstacles: OBSTACLES,
     teleporterGraph: TELEPORTER_GRAPH,
@@ -9118,8 +9379,11 @@ wss.on('connection', (ws, req) => {
           // way a tank would, not hovering at the origin. After that the camera
           // lives on the client and reports itself every five seconds; see
           // applyObserverHeartbeat.
+          // A player who arrives while the game is over gets the same
+          // non-combatant state an observer gets -- a spectator on the standing
+          // result rather than a fresh spawn -- until the next /countdown.
           const joinAsObserver = isObserverTeam(assignedTeam);
-          player.health = joinAsObserver ? 0 : 100;
+          player.health = (joinAsObserver || matchClock.gameOver) ? 0 : 100;
           // PlayerInfo::resetPlayer(ctf) puts every CTF spawn on the team base.
           player.restartOnBase = !joinAsObserver && CTF_ENABLED;
           const spawnPos = getSpawnPosition(player);
@@ -9260,6 +9524,30 @@ wss.on('connection', (ws, req) => {
           }
           break;
         }
+        // The Operator panel's Match Timer buttons and their XR equivalents.
+        // `/countdown`/`/gameover` reach the same four functions from the chat
+        // entry; this is the panel's front end for them.
+        case 'matchControl': {
+          if (refuseNonOperator(ws, player, 'matchControl')) break;
+          const actions = {
+            start: startMatch,
+            pause: pauseMatch,
+            resume: resumeMatch,
+            gameover: endMatch,
+          };
+          const run = actions[message.action];
+          if (!run) {
+            ws.send(JSON.stringify({ error: 'Invalid match control action' }));
+            break;
+          }
+          if (!run()) {
+            replyToPlayer(player, 'No change: check the time limit and the match state');
+            break;
+          }
+          log(`[OPERATOR] "${player.name}" used the panel's match control: ${message.action}`);
+          break;
+        }
+
         case 'uploadMap': {
           if (refuseNonOperator(ws, player, 'uploadMap')) break;
           // Admin: upload map

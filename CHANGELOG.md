@@ -6,6 +6,33 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
 
 ## [Unreleased]
 
+## [1.2.3] - 2026-09-12
+
+### Added
+- **Timed matches (#66).** `-time <seconds>`/`timeLimit` and
+  `-timemanual`/`timeManualStart` (`server.json` or a map's `options` block)
+  run a server-side match clock with a game-over hold at zero -- no respawn,
+  no fresh spawn on join -- until the next `/countdown`. `/countdown
+  [pause|resume]` and `/gameover` are the chat commands; the Operator panel
+  (flat and XR) gets the same four actions as buttons, plus a Time Limit
+  slider (0 is no limit) and a Manual Start checkbox, live with no restart.
+  The clock rides the scoreboard model both surfaces already share, and "Time
+  Expired - GAME OVER" reaches a headset as a toast for free through the
+  existing alert system.
+
+### Fixed
+- **A dialog no longer hands a touch device its keyboard by default.**
+  Opening the Operator panel (or any other dialog) auto-focused its first
+  text field, which pops a phone's on-screen keyboard over the panel that was
+  just asked to open. It focuses the close button instead on a touch device;
+  a physical keyboard's tab order is unchanged.
+- **Virtual controls no longer sit on top of an open dialog.** The on-screen
+  joystick's `z-index: 9999` put it above every menu, so a phone with it
+  enabled got an overlay in front of Settings, the Operator panel, or the
+  entry dialog, and the dialog underneath never received its touches. It now
+  hides for any menu context and resumes exactly the state it was in before,
+  with nothing to restore.
+
 ## [1.2.2] - 2026-09-12
 
 ### Fixed

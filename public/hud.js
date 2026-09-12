@@ -486,6 +486,35 @@ export function formatTeamScore(row) {
   return `${row.score} (${row.wins}-${row.losses}) ${row.size}`;
 }
 
+// HUDRenderer.cxx:975: H:MM:SS once past an hour, otherwise M:SS, with no
+// leading zero on the leftmost unit. `-1` (upstream's paused value) and `null`
+// (no clock configured) both blank rather than print a number -- upstream
+// reserves several negative timer values the same way to mean "show nothing".
+export function formatMatchClock(seconds) {
+  if (seconds === null || seconds === undefined || seconds < 0) return null;
+  const total = Math.max(0, Math.floor(seconds));
+  const hours = Math.floor(total / 3600);
+  const minutes = Math.floor((total % 3600) / 60);
+  const secs = total % 60;
+  if (hours > 0) {
+    return `${hours}:${String(minutes).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+  }
+  return `${minutes}:${String(secs).padStart(2, '0')}`;
+}
+
+function updateMatchClock(timeLeft, gameOver) {
+  const el = document.getElementById('matchClock');
+  if (!el) return;
+  if (timeLeft === null || timeLeft === undefined) {
+    el.classList.add('matchClockHidden');
+    return;
+  }
+  el.classList.remove('matchClockHidden');
+  // The board keeps saying so after the transient alert times out, until the
+  // next /countdown's timeUpdate clears it.
+  el.textContent = gameOver ? 'GAME OVER' : (formatMatchClock(timeLeft) || '');
+}
+
 function updateTeamScoreboard(rows) {
   const container = document.getElementById('teamScoreboard');
   if (!container) return;
@@ -753,7 +782,12 @@ export function updateScoreboard({
   // inert.
   roamTargetId = null,
   onSelectRoamTarget = null,
+  // Seconds left on the match clock, extrapolated by the caller the same way
+  // HUDRenderer does upstream; null with no clock configured, -1 while paused.
+  timeLeft = null,
+  gameOver = false,
 }) {
+  updateMatchClock(timeLeft, gameOver);
   updateTeamScoreboard(teamRows);
   const statsHeader = document.getElementById('scoreboardStatsHeader');
   if (statsHeader) statsHeader.textContent = getScoreboardStatsHeader(rabbitChase);
