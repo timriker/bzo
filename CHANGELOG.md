@@ -6,6 +6,41 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
 
 ## [Unreleased]
 
+## [1.2.6] - 2026-09-12
+
+### Added
+- **The mouse wheel zooms the radar** when the pointer is over it, using the
+  same fine continuous step `+`/`-` already do -- not the "Radar: Medium"
+  button's three-preset cycle, which wraps and would make a wheel gesture
+  jump to the opposite extreme. Answered by the same coordinate-based
+  listener the chat scrollbar fix below introduced, since the radar sits at
+  the top-right corner for the same reason chat sits at the bottom -- exactly
+  where looking around puts the cursor -- and keeps `pointer-events: none`
+  for the same reason.
+- **Middle Mouse drops the flag**, upstream's own default binding
+  (`ActionBinding.cxx:95`) alongside Space, which was the only one of the two
+  bzo had.
+
+### Fixed
+- **The chat window scrolls like Debug and Help do, and the mouse wheel now
+  reaches it while idle without stealing clicks the game still needs.** It
+  used to render only a fixed slice of the scrollback behind a `wheel`
+  listener bound to two separate elements, so the wheel could miss whichever
+  panel the pointer actually was over. `#chatMessages` scrolls natively now
+  (`overflow-y: auto`, the shared themed scrollbar included), and a viewer
+  scrolled up reading history is no longer yanked back to the bottom by a
+  message arriving while they read. The transcript still leaves clicks and
+  drags to the game while chat is idle -- exactly where mouse control puts
+  the cursor to fire while reversing -- so the wheel is answered by a small
+  coordinate-based listener instead of by taking the pointer; a touch drag
+  still needs chat active first, the same as a click does.
+  PageUp/PageDown/End are unchanged.
+- **`nodemon.json` lists `css` and `html` in its `ext`.** Nodemon's own
+  default (`js,mjs,cjs,json`) left a `.css`/`.html` edit unwatched even though
+  `public/` is a watched path, which let the `precompress` brotli sidecar for
+  a changed stylesheet go stale under a running dev server -- exactly the
+  chat scrollbar fix above, until this was caught.
+
 ## [1.2.5] - 2026-09-12
 
 ### Added

@@ -4,9 +4,10 @@
  * Source: https://github.com/timriker/bzo
  * See LICENSE or https://www.gnu.org/licenses/agpl-3.0.html
  */
+// The XR chat panel's own fixed window (public/client.js's flat one scrolls
+// natively and keeps the whole scrollback instead -- see `updateChatWindow`).
 const CHAT_VISIBLE_MESSAGES = 6;
 const CHAT_SCROLLBACK_LIMIT = 600;
-const CHAT_SCROLL_STEP = 3;
 const CHAT_MIN_WIDTH_WITH_DEBUG = 560;
 const CHAT_DEBUG_PANEL_RESERVE = 352;
 const CHAT_TARGET_ALL = 0;
@@ -47,13 +48,6 @@ const chatState = {
     server: [],
     misc: [],
     debug: [],
-  },
-  scrollOffsets: {
-    all: 0,
-    chat: 0,
-    server: 0,
-    misc: 0,
-    debug: 0,
   },
   unread: {
     all: false,
@@ -1768,9 +1762,14 @@ function setActiveChatTab(tabId) {
   }
   chatState.activeTab = tabId;
   chatState.unread[tabId] = false;
-  chatState.scrollOffsets[tabId] = 0;
   chatWindowDirty = true;
   updateChatWindow();
+  // A freshly selected tab always opens on its newest message -- what
+  // switching to it meant back when scroll was tracked as an offset from the
+  // end, and `updateChatWindow`'s own bottom-preservation has nothing to go
+  // on yet for a tab whose messages it has not painted before.
+  const chatMessagesDiv = document.getElementById('chatMessages');
+  if (chatMessagesDiv) chatMessagesDiv.scrollTop = chatMessagesDiv.scrollHeight;
   return true;
 }
 
@@ -1807,33 +1806,30 @@ function addChatEntry(tabIds, text, kind = CHAT_KIND_MISC, segments = null) {
     }
     if (tabId !== chatState.activeTab) {
       chatState.unread[tabId] = true;
-    } else if (chatState.scrollOffsets[tabId] > 0) {
-      chatState.scrollOffsets[tabId] = Math.min(chatState.scrollOffsets[tabId] + 1, Math.max(0, tabMessages.length - 1));
     }
   });
   chatWindowDirty = true;
 }
 
-function setChatScrollOffset(tabId, nextOffset) {
-  const tabMessages = chatState.messages[tabId] || [];
-  const maxOffset = Math.max(0, tabMessages.length - CHAT_VISIBLE_MESSAGES);
-  chatState.scrollOffsets[tabId] = Math.max(0, Math.min(maxOffset, nextOffset));
-  chatWindowDirty = true;
-  updateChatWindow();
+// A few px of slack: a fractional `scrollHeight` from sub-pixel line heights
+// would otherwise read as "not at the bottom" forever.
+function isChatScrolledToBottom(el) {
+  return el.scrollHeight - el.scrollTop - el.clientHeight < 4;
 }
 
-function adjustChatScroll(delta) {
-  const tabId = chatState.activeTab;
-  const current = chatState.scrollOffsets[tabId] || 0;
-  setChatScrollOffset(tabId, current + delta);
-}
-
+// PageUp/PageDown still move the transcript a page at a time; the wheel and a
+// touch drag need nothing here at all, because `#chatMessages` scrolls
+// natively now -- see "Chat scrolls like Debug and Help" below.
 function scrollChatPage(direction) {
-  adjustChatScroll(direction * CHAT_VISIBLE_MESSAGES);
+  const el = document.getElementById('chatMessages');
+  if (!el) return;
+  el.scrollTop -= direction * el.clientHeight;
 }
 
 function scrollChatToNewest() {
-  setChatScrollOffset(chatState.activeTab, 0);
+  const el = document.getElementById('chatMessages');
+  if (!el) return;
+  el.scrollTop = el.scrollHeight;
 }
 
 function routeLocalHudMessage(text) {
@@ -4365,17 +4361,53 @@ function init() {
     });
   }
 
-  const chatMessagesDiv = document.getElementById('chatMessages');
-  const onChatWheel = (e) => {
-    if (e.deltaY < 0) {
-      adjustChatScroll(CHAT_SCROLL_STEP);
-    } else if (e.deltaY > 0) {
-      adjustChatScroll(-CHAT_SCROLL_STEP);
+  // Chat scrolls like Debug and Help now (`#chatMessages` is `overflow-y:
+  // auto` in styles.css) whenever something lets a pointer event reach it --
+  // while chat is active, the scrollbar itself, and PageUp/PageDown/End
+  // through `scrollChatPage`/`scrollChatToNewest` above always do. The wheel
+  // alone needs its own answer while idle: `#chatMessages` (and `#radar`,
+  // below) keep `pointer-events: none` so a click or a drag there still
+  // reaches the game (aiming and firing while reversing put the cursor
+  // exactly at the bottom centre; looking around puts it near the radar's own
+  // top-right corner just as often), and `pointer-events` cannot tell a wheel
+  // apart from a click to make an exception for just one of them. This
+  // listens on the window instead and asks by coordinate, which is the same
+  // question hit-testing would have answered if either element could afford
+  // to take the pointer -- a touch drag still cannot reach either while idle
+  // for the same reason a click cannot.
+  window.addEventListener('wheel', (e) => {
+    const messagesDiv = document.getElementById('chatMessages');
+    if (messagesDiv) {
+      const rect = messagesDiv.getBoundingClientRect();
+      if (rect.width > 0 && rect.height > 0
+        && e.clientX >= rect.left && e.clientX <= rect.right
+        && e.clientY >= rect.top && e.clientY <= rect.bottom) {
+        messagesDiv.scrollTop += e.deltaY;
+        e.preventDefault();
+        return;
+      }
     }
-    e.preventDefault();
-  };
+    // Up zooms in, the same direction a map or a photo viewer's wheel does --
+    // there is no existing radar convention of bzo's own to match instead,
+    // upstream has no wheel bound to anything. `adjustRadarZoom` is the same
+    // fine, continuous step `+`/`-` already use; `cycleRadarZoomLevel` is a
+    // different thing -- the "Radar: Medium" button's own three-preset
+    // cycle, which wraps past its ends and would make a wheel gesture that
+    // feels continuous suddenly jump to the opposite extreme.
+    const radarEl = document.getElementById('radar');
+    if (radarEl) {
+      const rect = radarEl.getBoundingClientRect();
+      if (rect.width > 0 && rect.height > 0
+        && e.clientX >= rect.left && e.clientX <= rect.right
+        && e.clientY >= rect.top && e.clientY <= rect.bottom) {
+        adjustRadarZoom(e.deltaY < 0 ? 1 : -1);
+        e.preventDefault();
+      }
+    }
+  }, { passive: false });
+
+  const chatMessagesDiv = document.getElementById('chatMessages');
   if (chatMessagesDiv) {
-    chatMessagesDiv.addEventListener('wheel', onChatWheel, { passive: false });
     // The transcript only takes the pointer while chat entry is active, for
     // selecting text out of it. A drag there is a copy and keeps its selection;
     // a plain click is not, so the keyboard goes back to the input.
@@ -4390,9 +4422,6 @@ function init() {
       if (selection && selection.toString().length > 0) return;
       chatInput.focus();
     });
-  }
-  if (chatTabs) {
-    chatTabs.addEventListener('wheel', onChatWheel, { passive: false });
   }
 
   chatInput.addEventListener('keydown', (e) => {
@@ -4581,6 +4610,10 @@ function init() {
     // same held input the on-screen and XR buttons use, so an observer picks a
     // roaming target with it and a guided missile will lock with it.
     if (e.button === 2) setPointerIdentify(true);
+    // Upstream's default "Middle Mouse" -> drop binding (ActionBinding.cxx:95),
+    // alongside Space -- a discrete action on press, not a held key, so this
+    // asks for it once per click rather than tracking mouseup at all.
+    if (e.button === 1) requestFlagDrop();
   });
 
   document.addEventListener('mouseup', (e) => {
@@ -12304,14 +12337,19 @@ function updateChatWindow() {
     });
   }
 
+  // Captured before the rebuild below touches anything: a viewer already at
+  // the bottom stays pinned to the newest message the way a live chat should,
+  // and one who has scrolled up to read keeps looking at exactly what they
+  // were looking at -- restoring the same `scrollTop` after an unrelated
+  // message arrives leaves old content exactly where it was, which is the
+  // whole of "do not yank someone back down while they are reading".
+  const wasAtBottom = isChatScrolledToBottom(chatMessagesDiv);
+  const previousScrollTop = chatMessagesDiv.scrollTop;
+
   chatMessagesDiv.innerHTML = '';
 
   const activeMessages = chatState.messages[chatState.activeTab] || [];
-  const offset = chatState.scrollOffsets[chatState.activeTab] || 0;
-  const end = Math.max(0, activeMessages.length - offset);
-  const start = Math.max(0, end - CHAT_VISIBLE_MESSAGES);
-  for (let i = start; i < end; i++) {
-    const msg = activeMessages[i];
+  activeMessages.forEach((msg) => {
     const div = document.createElement('div');
     div.className = `chat-line chat-kind-${msg.kind || CHAT_KIND_CHAT}`;
     if (isHighlightMatch(msg.text)) div.classList.add('chat-highlight');
@@ -12332,7 +12370,9 @@ function updateChatWindow() {
       div.textContent = msg.text;
     }
     chatMessagesDiv.appendChild(div);
-  }
+  });
+
+  chatMessagesDiv.scrollTop = wasAtBottom ? chatMessagesDiv.scrollHeight : previousScrollTop;
 
   chatWindowDirty = false;
 }

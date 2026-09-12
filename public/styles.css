@@ -209,20 +209,23 @@ canvas {
   align-items: stretch;
 }
 
-/* The messages are the part that gives. The window packs to its bottom edge and
-   hides its overflow, so anything that does not fit is cut off the *top* -- and
-   the tabs are the first child. A min-height of six lines meant the messages
-   refused to shrink and pushed the tabs off a short screen instead. Six lines is
-   a ceiling now, not a floor: on a tall screen it fills to six, on a short one it
-   shows fewer and the tabs and the input row keep their place. */
+/* The messages are the part that gives. A min-height of six lines meant the
+   messages refused to shrink and pushed the tabs off a short screen instead.
+   Six lines is a ceiling now, not a floor: on a tall screen it fills to six,
+   on a short one it shows fewer and the tabs and the input row keep their
+   place. Plain block flow rather than a flex column, so the whole scrollback
+   scrolls the ordinary way -- a flex column packed to its own bottom edge is
+   exactly the layout that made `overflow-y: auto` behave surprisingly once
+   there was more content than fit, which stopped mattering the moment the
+   window stopped rendering only a fixed slice of it. The themed scrollbar
+   (`::-webkit-scrollbar` above) and wheel/touch scrolling both come from this
+   `overflow-y`, the same as `#debugHud` and every dialog already using it. */
 #chatMessages {
   flex: 1 1 auto;
   min-height: 0;
   max-height: calc(6 * 1.25em + 0.4em);
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-  justify-content: flex-end;
+  overflow-y: auto;
+  overflow-x: hidden;
   padding-bottom: 0.2em;
 }
 
@@ -324,10 +327,15 @@ canvas {
 }
 
 /* The panel covers the bottom of the screen, which is exactly where mouse
-   control puts the cursor to drive backwards. While chat is idle only the tabs
-   and the Send button take the pointer, so a click anywhere else over the panel
-   is a click on the battlefield -- including on the input, which the Send
-   button alone opens. Chat entry hands the panel's own controls back. */
+   control puts the cursor to drive backwards and to fire while doing it, so
+   the transcript stays out of the hit-test even though it is wheel-scrollable
+   (see the wheel listener in client.js): pointer-events would take the click
+   with it, and there is no CSS way to want one event type there and not the
+   other. Only the tabs, the Send button and the destination dropdown take the
+   pointer while chat is idle -- small, deliberate targets rather than the
+   whole width of the panel -- so a click anywhere else, including on the
+   transcript and the input, is a click on the battlefield until the input
+   itself is activated. */
 #chatWindow,
 #chatWindow .chat-tabs,
 #chatWindow .chat-input-row {
@@ -335,12 +343,12 @@ canvas {
 }
 
 #chatWindow .chat-tab,
-#sendBtn {
+#sendBtn,
+#chatTarget {
   pointer-events: auto;
 }
 
 body.chat-active #chatMessages,
-body.chat-active #chatTarget,
 body.chat-active #chatInput {
   pointer-events: auto;
 }

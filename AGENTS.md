@@ -1664,8 +1664,15 @@ bzo matches upstream on every binding it has taken so far
 | upstream | key | in bzo |
 |---|---|---|
 | `fire` | Enter, Left Mouse | matches |
-| `drop` (drop flag) | Space | matches |
+| `drop` (drop flag) | Space, Middle Mouse | matches |
 | `identify` | I, Right Mouse | matches |
+
+**Middle Mouse calls `requestFlagDrop()` once per press**, the same function
+Space and the touch/XR/gamepad drop button already call -- a discrete action
+on `mousedown`, not a held key, so there is no matching `mouseup` branch the
+way Left Mouse (fire) and Right Mouse (identify) both need one. It sits behind
+the same `mouseGameplayClickActive()`/`isGameplayInputActive()` guards those
+two do, in the same handler.
 
 **`I` and Right Mouse carry `identify`. Do not spend either on anything else.**
 The debug HUD sits on the backtick instead, which is unbound in upstream BZFlag and
@@ -2511,6 +2518,71 @@ literal `/?` is sent to the server immediately after -- through the ordinary
 chat path, so the server's existing "never broadcast a `/` line" rule and
 `replyToPlayer`'s private reply are exactly what a player typing `/?` by hand
 would get.
+
+### Chat and the radar scroll/zoom natively, like Debug and Help -- except by the pointer
+
+`#chatMessages` renders the *whole* scrollback on every redraw (bounded by
+`CHAT_SCROLLBACK_LIMIT`, 600), not a fixed slice tracked as an offset the way
+it once was, and it is `overflow-y: auto` -- the same as `#debugHud` and every
+dialog, so the themed `::-webkit-scrollbar`/`scrollbar-color` rule at the top
+of `styles.css` draws its scrollbar the same way too. That much is exactly
+"scrolls like Debug and Help".
+
+**The pointer is the one thing that cannot be, because the chat window sits
+where mouse control puts the cursor to drive backwards and to fire while
+doing it.** `#chatMessages` keeps `pointer-events: none` while chat is idle
+(`styles.css`, the block above `#sendBtn`'s own rule) so a click or a drag
+there still reaches the game underneath, exactly as it always has -- only the
+tabs, the Send button and the destination dropdown are small, deliberate
+exceptions to that. `pointer-events` cannot separate a wheel from a click, so
+giving the transcript the pointer to fix wheel-scrolling would have fixed it
+by breaking the click/drag passthrough it exists to preserve.
+
+The wheel gets its own answer instead: a `window`-level `wheel` listener
+(`client.js`, beside the mousedown/mouseup pair below) reads the event's
+`clientX`/`clientY`, compares them against `#chatMessages`'
+`getBoundingClientRect()`, and -- only when the pointer is actually over
+it -- adjusts `scrollTop` by `deltaY` itself and calls `preventDefault()`.
+That is the same question native hit-testing would answer if the element
+could afford `pointer-events: auto`, asked by coordinate instead. **A touch
+drag has no equivalent listener and does not scroll chat while it is idle**,
+for the identical reason a click does not activate it: there is no
+coordinate-based touch handler yet, only the wheel one. Once chat *is*
+active (or via PageUp/PageDown/End through `scrollChatPage`/
+`scrollChatToNewest` below, which always work), `#chatMessages` gets
+`pointer-events: auto` back and scrolls, drags and selects the ordinary way --
+native scrolling was never the problem; only reaching it while idle without
+also capturing the click was.
+
+**The same listener answers the wheel over `#radar`, for the identical
+reason.** The radar sits at the top-right corner, exactly where looking
+around puts the cursor, so it keeps `pointer-events: none` too and is asked
+by the same coordinate check rather than being given the pointer. Up zooms
+in: `adjustRadarZoom`, the same fine continuous step `+`/`-` already use, not
+`cycleRadarZoomLevel` -- that one is the "Radar: Medium" button's own
+three-preset cycle, which wraps past its ends and would make a wheel gesture
+that feels continuous jump to the opposite extreme instead.
+
+**Staying at the bottom, or not, is read off `scrollTop` rather than kept as
+state.** `updateChatWindow` checks `isChatScrolledToBottom` *before* it clears
+and rebuilds the message list, then restores either the bottom (a viewer
+following live chat keeps following it) or the exact same `scrollTop` (a
+viewer part-way through reading history is not yanked back down by a message
+that arrived while they were scrolled up) -- upstream has no analogue here
+since its control panel is not windowed at all. `scrollChatPage` and
+`scrollChatToNewest` (PageUp/PageDown/End) still work, now moving
+`#chatMessages`' own `scrollTop` directly instead of an offset a redraw had to
+interpret. Switching tabs always drops back to that tab's newest message,
+matching what resetting its offset to zero meant before.
+
+**`nodemon.json` names `css` and `html` in its `ext` list.** `public/` being a
+watched *path* does not cover every extension inside it -- nodemon's own
+default (`js,mjs,cjs,json`) would otherwise leave a `.css` or `.html` edit
+unwatched, and the `precompress` brotli sidecar for an unwatched file is never
+rebuilt: a request with `Accept-Encoding: br` (every browser) keeps getting
+the pre-edit cache while a plain `curl` (no such header) reads the live file
+and looks correct, which is the trap worth knowing about before trusting
+"`curl` says it's fine" for a CSS or HTML change.
 
 Height is the interesting part, and it is `dropSpawnPosition` -- the same
 resolver `testSpawn` uses:
