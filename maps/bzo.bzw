@@ -929,3 +929,28 @@ pyramid
   position -95 -70 4
   size 6 6 4
 end
+
+# A doorway frame built from three plain boxes -- two pillars and a header --
+# sized to a default teleporter's outer footprint (w 1.12, d 13.44, h 21.28,
+# border 1.12; see BZW_TELEPORTER_DEFAULTS and CustomGate::finalize in
+# server.js). Plain boxes with the same thin, long footprint exercise
+# resolveTankMotion's generic corner-slide handling directly, independent of
+# the teleporter's own jamb/header code, and can be dropped into bzfs/bzflag
+# unmodified for comparison against upstream.
+box
+  name frame_pillar_a
+  position -135 -63.84 0
+  size 0.56 0.56 20.16
+end
+
+box
+  name frame_pillar_b
+  position -135 -76.16 0
+  size 0.56 0.56 20.16
+end
+
+box
+  name frame_header
+  position -135 -70 20.16
+  size 0.56 6.72 1.12
+end

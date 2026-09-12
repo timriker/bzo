@@ -443,7 +443,23 @@ function findTankObstacle(obstacles, x, y, z, options = {}) {
 
     const obstacleBase = obs.baseY || 0;
     const obstacleTop = obstacleBase + getObstacleHeight(obs);
-    const spanFromY = obs.type === 'pyramid' ? y : fromY;
+    // A pyramid already tests the candidate height alone rather than sweeping
+    // from `fromY`, because its cross-section changes with height and a stale
+    // start height answers the wrong question. A teleporter's jamb needs the
+    // same treatment for a different reason: it is tall (its active portal
+    // spans nearly its own full height) and thin in the horizontal plane it
+    // actually needs tunnelling protection on, so sweeping the *vertical* test
+    // from `fromY` buys nothing -- and once a tank is already embedded at some
+    // height inside that tall span (jammed against the jamb, still falling),
+    // `fromY` stops being a known-clear starting point and starts being the
+    // stuck one. Every candidate the search then tries still has `fromY` as
+    // one end of its swept range, so the sweep always crosses the whole active
+    // band regardless of how far the candidate has actually fallen -- nothing
+    // is ever "newly clear", and the tank is pinned at that height forever,
+    // however much velocity gravity piles on. Testing the candidate alone, as
+    // the pyramid already does, lets a tank slide down (or up past) a
+    // teleporter's edge exactly as it would off any other obstacle's corner.
+    const spanFromY = (obs.type === 'pyramid' || obs.kind === 'teleporter') ? y : fromY;
     if (!movingTankOverlapsHeight(
       obstacleBase, obstacleTop, spanFromY, y, height, epsilon)) continue;
 
@@ -457,17 +473,37 @@ function findTankObstacle(obstacles, x, y, z, options = {}) {
 
     const local = getColliderLocalPoint(x, z, obs);
     const tankAngle = useTankBox ? getTankLocalAngle(rotation, obs.rotation) : 0;
-    const hitsRect = (rectHalfW, rectHalfD, rectSlack) => (useTankBox
-      ? testOrigRectTank(rectHalfW, rectHalfD, local.x, local.z, tankAngle, rectSlack, tankScale)
-      : testOrigRectCircle(rectHalfW, rectHalfD, local.x, local.z, radius - rectSlack));
+    const hitsRect = (rectHalfW, rectHalfD, rectSlack, centerOffsetZ = 0) => (useTankBox
+      ? testOrigRectTank(rectHalfW, rectHalfD, local.x, local.z - centerOffsetZ, tankAngle, rectSlack, tankScale)
+      : testOrigRectCircle(rectHalfW, rectHalfD, local.x, local.z - centerOffsetZ, radius - rectSlack));
 
     if (obs.kind === 'teleporter') {
       const dims = getShotTeleporterDims(obs);
       if (!hitsRect(dims.halfW, dims.halfD, slack)) continue;
-      const overlapsPortalVertically = movingTankOverlapsHeight(
+
+      // Teleporter::inBox (Teleporter.cxx:259): the frame is not a footprint
+      // with a hole cut from its middle -- it is two border-square pillars
+      // flanking the doorway, plus a crossbar above them spanning the whole
+      // width. "Does the occupant overlap the doorway rectangle" is not the
+      // same question as "is it passing cleanly through": the occupant is
+      // bigger than the border (every tank is -- the border here is ~1 unit,
+      // the tank 6.0 long), so it can reach past the border into the doorway
+      // while its centre, and the rest of its body, is still over solid
+      // pillar material. Testing each pillar directly, as upstream does,
+      // answers the actual question.
+      const pillarR = dims.border / 2;
+      const pillarOffset = dims.halfD - pillarR;
+      const overlapsPillarBand = movingTankOverlapsHeight(
         obstacleBase, obstacleBase + dims.activeH, spanFromY, y, height, epsilon);
-      if (overlapsPortalVertically && hitsRect(dims.halfW, dims.activeHalfD, 0)) continue;
-      return obs;
+      if (overlapsPillarBand && (
+        hitsRect(pillarR, pillarR, 0, pillarOffset) || hitsRect(pillarR, pillarR, 0, -pillarOffset)
+      )) return obs;
+
+      const overlapsHeaderBand = movingTankOverlapsHeight(
+        obstacleBase + dims.activeH, obstacleTop, spanFromY, y, height, epsilon);
+      if (overlapsHeaderBand && hitsRect(dims.halfW, dims.halfD, 0)) return obs;
+
+      continue;
     }
 
     if (hitsRect(obs.w / 2, obs.d / 2, slack)) return obs;
@@ -907,6 +943,181 @@ function getShotObstacleNormal(obs, x, y, z, radius) {
   return rotateNormalToWorld(obs, side.x, 0, side.z);
 }
 
+const SWEPT_TANK_CORNERS = [[1, 1], [1, -1], [-1, -1], [-1, 1]];
+
+// Ported from Intersect.cxx timeAndSideRayHitsOrigRect: where a ray starting
+// at (px, pz) with direction (vx, vz) first crosses the axis-aligned
+// rectangle of half-extents (halfW, halfD) centred at the origin. `side` is
+// -1 (never crosses), -2 (already inside, t 0), or 0/1/2/3 for the +x/+z/-x/-z
+// face -- the same face order getOrigRectNormal's axis-aligned cases use.
+function timeAndSideRayHitsOrigRect(px, pz, vx, vz, halfW, halfD) {
+  if (Math.abs(px) <= halfW && Math.abs(pz) <= halfD) return { t: 0, side: -2 };
+
+  let tx;
+  if (px > halfW) {
+    if (vx >= 0) return { t: -1, side: -1 };
+    tx = (halfW - px) / vx;
+  } else if (px < -halfW) {
+    if (vx <= 0) return { t: -1, side: -1 };
+    tx = -(halfW + px) / vx;
+  } else {
+    tx = -1;
+  }
+
+  let tz;
+  if (pz > halfD) {
+    if (vz >= 0) return { t: -1, side: -1 };
+    tz = (halfD - pz) / vz;
+  } else if (pz < -halfD) {
+    if (vz <= 0) return { t: -1, side: -1 };
+    tz = -(halfD + pz) / vz;
+  } else {
+    tz = -1;
+  }
+
+  if (Math.abs(pz + tx * vz) > halfD) tx = -1;
+  if (Math.abs(px + tz * vx) > halfW) tz = -1;
+  if (tx < 0 && tz < 0) return { t: -1, side: -1 };
+
+  if (tx < 0 || (tz >= 0 && tz < tx)) return { t: tz, side: pz > halfD ? 1 : 3 };
+  return { t: tx, side: px > halfW ? 0 : 2 };
+}
+
+// Ported from Intersect.cxx timeAndSideRayHitsRect: the same ray-vs-rectangle
+// test, for a rectangle that is `obs`'s own footprint rather than one already
+// sitting at the origin -- translates and rotates into `obs`'s local frame
+// (getColliderLocalPoint's own transform) and hands off to the Orig version.
+// `offsetZ` re-centres the rectangle along the obstacle's own local z axis --
+// a teleporter's jamb pillar, rather than its full footprint.
+function timeAndSideRayHitsRect(px, pz, vx, vz, obs, halfW, halfD, offsetZ = 0) {
+  const local = getColliderLocalPoint(px, pz, obs);
+  const cos = Math.cos(obs.rotation);
+  const sin = Math.sin(obs.rotation);
+  const dirX = vx * cos - vz * sin;
+  const dirZ = vx * sin + vz * cos;
+  return timeAndSideRayHitsOrigRect(local.x, local.z - offsetZ, dirX, dirZ, halfW, halfD);
+}
+
+// A tank corner's world position. `bx`/`bz` are one of SWEPT_TANK_CORNERS; the
+// tank's lateral (width) axis is (-cos az, sin az) and its length axis
+// (-sin az, -cos az) -- forward, this file's own heading convention (see
+// testOrigRectTank above).
+function sweptTankCornerWorld(cx, cz, az, bx, bz, halfWidth, halfLength) {
+  const cos = Math.cos(az);
+  const sin = Math.sin(az);
+  return {
+    x: cx - cos * halfWidth * bx - sin * halfLength * bz,
+    z: cz + sin * halfWidth * bx - cos * halfLength * bz,
+  };
+}
+
+// An obstacle corner's world position -- getColliderLocalPoint's inverse.
+// `offsetZ` re-centres the rectangle along the obstacle's own local z axis,
+// same as timeAndSideRayHitsRect's.
+function sweptObstacleCornerWorld(obs, halfW, halfD, bx, bz, offsetZ = 0) {
+  const cos = Math.cos(obs.rotation);
+  const sin = Math.sin(obs.rotation);
+  const lz = offsetZ + halfD * bz;
+  return {
+    x: obs.x + halfW * bx * cos + lz * sin,
+    z: obs.z - halfW * bx * sin + lz * cos,
+  };
+}
+
+// A world point in the tank's own local axes -- sweptTankCornerWorld's inverse.
+function worldToTankLocal(wx, wz, cx, cz, az) {
+  const dx = wx - cx;
+  const dz = wz - cz;
+  const cos = Math.cos(az);
+  const sin = Math.sin(az);
+  return {
+    x: -dx * cos + dz * sin,
+    z: -dx * sin - dz * cos,
+  };
+}
+
+// Obstacle::getHitNormal's (Obstacle.cxx:122) two ray passes: the tank's four
+// corners swept across the step against the obstacle's rectangle, and the
+// obstacle's four corners swept across the tank's own rectangle in the
+// tank's rotating frame. The second pass is what a small obstacle -- a
+// teleporter's jamb, say -- needs: the tank's own corners can sweep past it
+// entirely while its corner still pokes into the tank's flank partway
+// through the step, which the first pass alone never sees. Whichever ray
+// crosses first wins; null if neither ever does (upstream's own fallback
+// case -- LocalPlayer.cxx:614).
+//
+// This is what a static end-of-step position cannot answer: a grazing corner
+// hit rests somewhere consistent with more than one face (or with a corner
+// that was never really there -- getOrigRectNormal's diagonal case), and a
+// tangential slide computed from the wrong one can point right back into the
+// solid it just met. The swept path only ever crosses one face.
+function getSweptSideNormal(obs, fromX, fromZ, fromAz, toX, toZ, toAz, halfWidth, halfLength, halfW, halfD, offsetZ = 0) {
+  let bestSide = -1;
+  let minTime = 1;
+  let bestIsTankFace = false;
+
+  for (const [bx, bz] of SWEPT_TANK_CORNERS) {
+    const p1 = sweptTankCornerWorld(fromX, fromZ, fromAz, bx, bz, halfWidth, halfLength);
+    const p2 = sweptTankCornerWorld(toX, toZ, toAz, bx, bz, halfWidth, halfLength);
+    const hit = timeAndSideRayHitsRect(p1.x, p1.z, p2.x - p1.x, p2.z - p1.z, obs, halfW, halfD, offsetZ);
+    if (hit.side >= 0 && hit.t <= minTime) {
+      minTime = hit.t;
+      bestSide = hit.side;
+      bestIsTankFace = false;
+    }
+  }
+
+  for (const [bx, bz] of SWEPT_TANK_CORNERS) {
+    const world = sweptObstacleCornerWorld(obs, halfW, halfD, bx, bz, offsetZ);
+    const p1 = worldToTankLocal(world.x, world.z, fromX, fromZ, fromAz);
+    const p2 = worldToTankLocal(world.x, world.z, toX, toZ, toAz);
+    const hit = timeAndSideRayHitsOrigRect(p1.x, p1.z, p2.x - p1.x, p2.z - p1.z, halfWidth, halfLength);
+    if (hit.side >= 0 && hit.t <= minTime) {
+      minTime = hit.t;
+      bestSide = hit.side;
+      bestIsTankFace = true;
+    }
+  }
+
+  if (bestSide === -1) return null;
+
+  const theta = bestSide * (Math.PI / 2);
+  if (!bestIsTankFace) {
+    return rotateNormalToWorld(obs, Math.cos(theta), 0, Math.sin(theta));
+  }
+
+  // A face of the tank's own box, at the heading it had when the obstacle's
+  // corner actually crossed it -- negated, since the outward direction wanted
+  // here is away from the obstacle, not away from the tank.
+  const impactAz = fromAz + minTime * (toAz - fromAz);
+  return { x: Math.cos(impactAz - theta), y: 0, z: -Math.sin(impactAz - theta) };
+}
+
+// The horizontal normal of a box's (or a teleporter jamb's) side. `rectHalfW`/
+// `rectHalfD`/`rectOffsetZ` are the actual solid rectangle to test against --
+// the whole footprint for a box, but a teleporter's own two border-square
+// pillars for its jamb (see findTankObstacle's teleporter branch), since a
+// tank is wider than most teleporters' entire frame and would otherwise never
+// register a clean crossing of the *outer* footprint at all. `sweep`, when
+// the caller has one, is the step's actual endpoints and the tank's own
+// half-extents, and resolves it with getSweptSideNormal above; without one
+// (the debug outline's static position query has no step to sweep) or if the
+// sweep found no crossing, this falls back to the plain position read.
+function getSideNormal(obs, x, z, sweep, rectHalfW = obs.w / 2, rectHalfD = obs.d / 2, rectOffsetZ = 0) {
+  if (sweep) {
+    const swept = getSweptSideNormal(
+      obs, sweep.fromX, sweep.fromZ, sweep.fromAz,
+      sweep.toX, sweep.toZ, sweep.toAz,
+      sweep.halfWidth, sweep.halfLength,
+      rectHalfW, rectHalfD, rectOffsetZ
+    );
+    if (swept) return swept;
+  }
+  const local = getColliderLocalPoint(x, z, obs);
+  const side = getOrigRectNormal(rectHalfW, rectHalfD, local.x, local.z - rectOffsetZ);
+  return rotateNormalToWorld(obs, side.x, 0, side.z);
+}
+
 // The outward unit normal of the surface a *tank's* step met, in world space.
 //
 // Obstacle::getHitNormal (Obstacle.cxx:122) rays the four corners of the moving
@@ -918,8 +1129,7 @@ function getShotObstacleNormal(obs, x, y, z, radius) {
 // the same test `getShotObstacleNormal` already made for a shot a few lines up
 // -- a box raised clear of the ground has a real underside, and a tank rising
 // into it from below is meeting that face, not a side wall. Only once both are
-// ruled out do the sides fall through to the cross-section's horizontal
-// normal, which getNormalOrigRect always gives.
+// ruled out does the side fall through to getSideNormal.
 //
 // PyramidBuilding overrides it (PyramidBuilding.cxx:271): the flat end of the
 // shape is named first -- the plateau of a flipped pyramid, the underside of an
@@ -928,7 +1138,8 @@ function getShotObstacleNormal(obs, x, y, z, radius) {
 // reads as a landing rather than as a wall, at every slope.
 //
 // `y` and `z` are where the step was last clear; `toY` is where it hit.
-function getTankHitNormal(obs, x, y, z, rotation, toY, height) {
+// `sweep`, when given, threads through to getSideNormal.
+function getTankHitNormal(obs, x, y, z, rotation, toY, height, sweep = null) {
   const base = obs.baseY || 0;
   const low = y > toY ? toY : y;
 
@@ -944,9 +1155,47 @@ function getTankHitNormal(obs, x, y, z, rotation, toY, height) {
 
   if (crossedFlatTop(base + getObstacleHeight(obs), y, toY)) return { x: 0, y: 1, z: 0 };
   if (low + height < base) return { x: 0, y: -1, z: 0 };
-  const local = getColliderLocalPoint(x, z, obs);
-  const side = getOrigRectNormal(obs.w / 2, obs.d / 2, local.x, local.z);
-  return rotateNormalToWorld(obs, side.x, 0, side.z);
+
+  // A teleporter is a frame around a portal, not a solid block: `findTankObstacle`
+  // calls it solid whenever the swept height misses the portal's own active
+  // range (`activeH`, the frame's height less its border) rather than the whole
+  // frame's, or the point sits outside the portal's own width there. Left
+  // unhandled, a tank rising into the header from inside the doorway fell
+  // through to the side normal below and got turned sideways instead of back
+  // down.
+  if (obs.kind === 'teleporter') {
+    const dims = getShotTeleporterDims(obs);
+    // Below the header, the only solid material is one of the two
+    // border-square pillars flanking the doorway (findTankObstacle's own
+    // jamb test) -- not the frame's full outer footprint, which a real tank
+    // is wider than. Test whichever pillar the tank's side sits nearer.
+    const pillarR = dims.border / 2;
+    const pillarOffset = dims.halfD - pillarR;
+    const local = getColliderLocalPoint(x, z, obs);
+    const overPillar = Math.abs(local.x) <= pillarR && Math.abs(Math.abs(local.z) - pillarOffset) <= pillarR;
+
+    // The ceiling only answers for a step that actually crosses into the
+    // header band from below (`crossedFlatTop`'s own shape, the other
+    // direction) -- not merely one that is already resting above `activeH`.
+    // A Wings tank can hover and thrust into a pillar's own front face while
+    // floating above `activeH`: reading that as a ceiling hit on every such
+    // frame cancels the rise and leaves the forward thrust untouched, while
+    // the pillar stays solid in front of it and the header solid overhead --
+    // every direction the search tries is blocked, with nothing to break the
+    // tie. Once the step is no longer crossing, a tank still against a
+    // pillar (`overPillar`) reads its front face as the ordinary wall it is;
+    // one that has actually cleared the pillar falls through to the
+    // header's own front face below.
+    const high = y > toY ? y : toY;
+    if (low < base + dims.activeH && high >= base + dims.activeH && !overPillar) {
+      return { x: 0, y: -1, z: 0 };
+    }
+
+    const offsetZ = local.z >= 0 ? pillarOffset : -pillarOffset;
+    return getSideNormal(obs, x, z, sweep, pillarR, pillarR, offsetZ);
+  }
+
+  return getSideNormal(obs, x, z, sweep);
 }
 
 // ShotStrategy::reflect (ShotStrategy.cxx:140). The normal is a unit vector; the

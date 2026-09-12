@@ -15,9 +15,11 @@
 import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
 import * as client from '../public/collision.mjs';
+import { resolveTankMotion } from '../public/motion.mjs';
 
 const require = createRequire(import.meta.url);
 const server = require('../server/collision.cjs');
+const serverMotion = require('../server/motion.cjs');
 
 assert.deepEqual(
   Object.keys(server).sort(),
@@ -223,14 +225,90 @@ const wall = client.getTankHitNormal(roof, 12, 5, 0, 0, 5, TANK_HEIGHT);
 assert.equal(wall.y, 0, 'a step into a side meets a vertical wall');
 assert.ok(wall.x > 0.99, 'facing out along +x');
 
+// Regression: a teleporter's header, hit by a tank jumping up through the
+// doorway rather than falling onto the frame's own roof. Treated as a plain
+// box, the side normal below came off the outer footprint's edge -- often
+// nowhere near where the tank actually was -- which cancelled the wrong
+// velocity component and left the tank pinned rising into the header forever
+// instead of being turned back down. `activeH` = h - border = 18.88, so 18.5
+// is inside the doorway and 19.0 is into the header.
+const portal = { type: 'box', kind: 'teleporter', name: 'portal', x: 0, z: 0, baseY: 0, rotation: 0, w: 2, d: 9, h: 20, border: 1.12 };
+const header = client.getTankHitNormal(portal, 0, 18.5, 0, 0, 19.0, TANK_HEIGHT);
+assert.deepEqual(header, { x: 0, y: -1, z: 0 }, 'jumping into a teleporter header meets a ceiling, not a side wall');
+
+// And a jamb -- outside the doorway's own active depth but still within the
+// active height -- reads off the jamb's own pillar (a border-square column,
+// findTankObstacle's own solidity test), not the frame's outer footprint or
+// its inner doorway edge. z=4.4 sits near the pillar's own outward face
+// (pillarOffset 3.94 + pillarR 0.56 = 4.5), not its centre, so the nearest
+// wall is unambiguous.
+const jamb = client.getTankHitNormal(portal, 0, 10, 4.4, 0, 10, TANK_HEIGHT);
+assert.equal(jamb.y, 0, 'a jamb hit is a side wall, not a floor or ceiling');
+assert.ok(jamb.z > 0.99, 'facing out along +z, the pillar\'s own outward face');
+
 for (const args of [[slope, -70, 15, -80, 0, 14.9, TANK_HEIGHT], [roof, 0, 10.5, 0, 0, 9.5, TANK_HEIGHT],
-  [roof, 12, 5, 0, 0, 5, TANK_HEIGHT], [needle, -79.5, 30, -80, 1, 29.9, TANK_HEIGHT]]) {
+  [roof, 12, 5, 0, 0, 5, TANK_HEIGHT], [needle, -79.5, 30, -80, 1, 29.9, TANK_HEIGHT],
+  [portal, 0, 18.5, 0, 0, 19.0, TANK_HEIGHT], [portal, 0, 10, 4.4, 0, 10, TANK_HEIGHT]]) {
   assert.deepEqual(
     server.getTankHitNormal(...args),
     client.getTankHitNormal(...args),
     'client/server tank hit normals diverged'
   );
 }
+
+// Regression: a tank jumping into a teleporter's jamb, rather than the door
+// -- a corner graze during the fall, not a tank already deep inside the
+// pillar. `spanFromY` (testing the candidate height alone rather than
+// sweeping from a stale, already-embedded `fromY`) is what stops the tank
+// getting pinned at a fixed height forever; `getSweptSideNormal` (the actual
+// ray-swept corner normal, not a static end-of-step read) is what stops the
+// grazing hit's tangential slide from pointing back into the same solid
+// jamb rather than away from it. This is the exact trajectory a live report
+// of the bug produced (SW corner teleporter, default size): jump position,
+// heading, and speed at launch, air velocity carried forward frame to frame
+// exactly as client.js's setAirVelocity does.
+const swPortal = {
+  type: 'box', kind: 'teleporter', name: 'swPortal', x: -120, z: 95, baseY: 0,
+  rotation: 4.71238898038469, w: 1.12, d: 13.44, h: 21.28, border: 1.12,
+};
+function simulateJumpIntoJamb(resolve, findObstacle, hitNormal) {
+  let x = -108.85, y = 0.01, z = 112.89, az = 0.23;
+  let vx = -Math.sin(az) * 15, vz = -Math.cos(az) * 15;
+  let vy = 19.0;
+  const dt = 1 / 60;
+  for (let frame = 0; frame < 400; frame++) {
+    vy -= 9.8 * dt;
+    const intendedX = vx * dt;
+    const intendedZ = vz * dt;
+    const result = resolve({
+      x, y, z, azimuth: az,
+      velocityX: vx, velocityY: vy, velocityZ: vz,
+      timeStep: dt,
+      groundLimit: 0,
+      onGround: false,
+      hitTest: (fromX, fromY, fromZ, fromAz, toX, toY, toZ, toAz) =>
+        findObstacle([swPortal], toX, toY, toZ, { rotation: toAz, fromY, radius: 2, tankScale: null }),
+      getNormal: (obs, px, py, pz, paz, hitX, hitY, hitZ, hitAz, fromX, fromZ, fromAz, toX, toZ, toAz) =>
+        hitNormal(obs, px, py, pz, paz, hitY, TANK_HEIGHT, {
+          fromX, fromZ, fromAz, toX, toZ, toAz, halfWidth: 1.4, halfLength: 3.0,
+        }),
+      getObstacleTop: () => swPortal.baseY + swPortal.h,
+    });
+    // Carries forward the resolver's own velocity when altered, same as
+    // client.js's setAirVelocity(myTank, result.velocityX, result.velocityZ).
+    const altered = Math.abs((result.x - x) - intendedX) > 1e-6 || Math.abs((result.z - z) - intendedZ) > 1e-6;
+    x = result.x; y = result.y; z = result.z; az = result.azimuth;
+    vy = result.velocityY;
+    if (altered) { vx = result.velocityX; vz = result.velocityZ; }
+    if (y <= 0 && frame > 5) return y;
+  }
+  return y;
+}
+
+const clientJambY = simulateJumpIntoJamb(resolveTankMotion, client.findTankObstacle, client.getTankHitNormal);
+assert.ok(clientJambY <= 0, `a tank jumping into a teleporter's jamb must fall clear and land, client stuck at y=${clientJambY}`);
+const serverJambY = simulateJumpIntoJamb(serverMotion.resolveTankMotion, server.findTankObstacle, server.getTankHitNormal);
+assert.ok(serverJambY <= 0, `a tank jumping into a teleporter's jamb must fall clear and land, server stuck at y=${serverJambY}`);
 
 // Regression: a normal exists everywhere, but support must be contained.
 // hix.bzw's inverted "cap" pyramids sit at baseY=12 h=2, so their flat top is at

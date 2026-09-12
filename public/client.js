@@ -289,6 +289,7 @@ import {
   getBaseTeamAtPoint,
   getColliderLocalPoint,
   getObstacleHeight,
+  getOrigRectNormal,
   getTankLocalAngle,
   getBoxCrossingPlane,
   getTankHitNormal,
@@ -302,6 +303,7 @@ import {
   testOrigRectCircle,
   testOrigRectTank,
   TANK_HALF_LENGTH,
+  TANK_HALF_WIDTH,
   TANK_HEIGHT,
   traceShotStep,
   WORLD_WALL_HEIGHT,
@@ -655,6 +657,14 @@ function sampleEpochClock() {
   frameEpochMs = Date.now();
   return frameEpochMs;
 }
+
+// The origin a move packet's `ct` is measured from -- upstream's own
+// `TimeKeeper::getNullTime()` (`ServerLink.cxx:782`), so the value that rides
+// the wire stays a small, growing-from-zero number for the length of the
+// session instead of a thirteen-digit epoch. Only ever differenced against
+// another of this client's own `ct` values, so what it is relative to does
+// not matter to the server.
+const clientClockOrigin = Date.now();
 
 // One entry per colour team the server offers: { team, size, wins, losses }.
 // Empty until a team-mode server sends its first update.
@@ -3413,13 +3423,61 @@ function getMotionSurfaceOutlinePoints(obstacle) {
     return localPoints.map((point) => toWorldPoint(point.x, point.y, point.z).add(offset));
   }
 
-  const y = getColliderTopY(obstacle) + epsilon;
-  return [
-    toWorldPoint(-halfW, y, -halfD),
-    toWorldPoint(-halfW, y, halfD),
-    toWorldPoint(halfW, y, halfD),
-    toWorldPoint(halfW, y, -halfD),
-  ];
+  // A box (or a flat-top pyramid, which shares its footprint). `getTankHitNormal`
+  // answers "which face" from a *crossing* -- fromY on one side of a threshold,
+  // toY on the other -- which cannot fire from a single static position (there
+  // is no crossing to have happened), so it is no use here. Position alone
+  // answers it instead, the same way the pyramid branch above already reads
+  // position rather than a crossing to pick between two candidate faces:
+  // within the footprint is standing on it (or, rarely, under a raised one);
+  // outside the footprint but still solid is a side, and `getOrigRectNormal`
+  // -- itself position-only, the same function a box's own ordinary side hit
+  // resolves to -- says which one.
+  const base = obstacle.baseY || 0;
+  const top = getColliderTopY(obstacle);
+  const local = getColliderLocalPoint(playerX, playerZ, obstacle);
+  const withinFootprint = Math.abs(local.x) <= halfW && Math.abs(local.z) <= halfD;
+
+  if (withinFootprint) {
+    const y = playerY >= (base + top) / 2 ? top + epsilon : base - epsilon;
+    return [
+      toWorldPoint(-halfW, y, -halfD),
+      toWorldPoint(-halfW, y, halfD),
+      toWorldPoint(halfW, y, halfD),
+      toWorldPoint(halfW, y, -halfD),
+    ];
+  }
+
+  const side = getOrigRectNormal(halfW, halfD, local.x, local.z);
+  // A teleporter's front/rear face is solid only at its two pillars -- the
+  // door between them, below the header, is the whole reason it teleports
+  // rather than blocks. Left at the outer footprint's full depth, the
+  // outline spanned the open doorway along with the frame, as if the whole
+  // face were one solid wall.
+  let zNear = -halfD;
+  let zFar = halfD;
+  if (obstacle.kind === 'teleporter' && Math.abs(side.x) >= Math.abs(side.z)) {
+    const dims = getShotTeleporterDims(obstacle);
+    if (playerY < base + dims.activeH) {
+      const sign = local.z >= 0 ? 1 : -1;
+      zNear = sign * dims.activeHalfD;
+      zFar = sign * halfD;
+    }
+  }
+  const localPoints = Math.abs(side.x) >= Math.abs(side.z)
+    ? [
+      { x: Math.sign(side.x) * (halfW + epsilon), y: base, z: zNear },
+      { x: Math.sign(side.x) * (halfW + epsilon), y: base, z: zFar },
+      { x: Math.sign(side.x) * (halfW + epsilon), y: top, z: zFar },
+      { x: Math.sign(side.x) * (halfW + epsilon), y: top, z: zNear },
+    ]
+    : [
+      { x: -halfW, y: base, z: Math.sign(side.z) * (halfD + epsilon) },
+      { x: halfW, y: base, z: Math.sign(side.z) * (halfD + epsilon) },
+      { x: halfW, y: top, z: Math.sign(side.z) * (halfD + epsilon) },
+      { x: -halfW, y: top, z: Math.sign(side.z) * (halfD + epsilon) },
+    ];
+  return localPoints.map((point) => toWorldPoint(point.x, point.y, point.z));
 }
 
 // The surface the last step met, which is upstream's `lastObstacle`.
@@ -6383,9 +6441,15 @@ function resolveTankStep(velocityX, velocityY, velocityZ, angularVelocity, delta
     hitTest: (fromX, fromY, fromZ, fromAz, toX, toY, toZ, toAz) => (
       checkCollision(toX, toY, toZ, toAz, fromY)
     ),
-    getNormal: (obs, px, py, pz, paz, hitX, hitY) => (
-      getTankHitNormal(obs, px, py, pz, paz, hitY, TANK_COLLISION_HEIGHT)
-    ),
+    getNormal: (obs, px, py, pz, paz, hitX, hitY, hitZ, hitAz, fromX, fromZ, fromAz, toX, toZ, toAz) => {
+      const tankScale = getMyTankScale();
+      const sweep = {
+        fromX, fromZ, fromAz, toX, toZ, toAz,
+        halfWidth: TANK_HALF_WIDTH * (tankScale ? tankScale.width : 1),
+        halfLength: TANK_HALF_LENGTH * (tankScale ? tankScale.length : 1),
+      };
+      return getTankHitNormal(obs, px, py, pz, paz, hitY, TANK_COLLISION_HEIGHT, sweep);
+    },
     isFlatTop: (obs) => {
       if (!obs) return false;
       if (obs.collisionKind === 'boundary') return false;
@@ -8224,7 +8288,7 @@ function handleMotion(deltaTime) {
   if (rotationSpeedDelta > VELOCITY_THRESHOLD) reasons.push(`rs:${rotationSpeedDelta.toFixed(3)}`);
   if (verticalVelocityDelta > VERTICAL_VELOCITY_THRESHOLD) reasons.push(`vv:${verticalVelocityDelta.toFixed(3)}`);
   if (airVelocityDelta > AIR_VELOCITY_THRESHOLD) reasons.push(`av:${airVelocityDelta.toFixed(3)}`);
-  if (!airborneState && timeSinceLastSend > MAX_UPDATE_INTERVAL) reasons.push(`time:${(timeSinceLastSend/1000).toFixed(1)}s`);
+  if (timeSinceLastSend > MAX_UPDATE_INTERVAL) reasons.push(`time:${(timeSinceLastSend/1000).toFixed(1)}s`);
 
   // Minimum 100ms between non-forced updates to prevent rapid-fire from calculation noise
   const minTimeBetweenUpdates = 100; // ms
@@ -8232,7 +8296,17 @@ function handleMotion(deltaTime) {
 
   const shouldSendUpdate =
     forceMoveSend || // Force send on jump/land transitions
-    (!airborneState && timeSinceLastSend > MAX_UPDATE_INTERVAL) || // Heartbeat on ground only
+    // Heartbeat every MAX_UPDATE_INTERVAL, on the ground or in the air. A
+    // grounded tank already relies on this to say something when nothing else
+    // has changed; an airborne one needs it too, because a jump's own forced
+    // sends (start, land, an air-velocity change) only cover an ordinary jump
+    // -- one that's over in a couple of seconds. A tank that cannot progress
+    // its own arc at all (a collision livelock: see
+    // docs/hung-player-plan.md) otherwise has nothing left to report, ever.
+    // Costs nothing on an ordinary jump, which never runs long
+    // enough to reach it, and is the one thing that still fires when a jump
+    // that should have taken two seconds is still going after five.
+    timeSinceLastSend > MAX_UPDATE_INTERVAL ||
     (canSendVelocityUpdate && (
       forwardSpeedDelta > VELOCITY_THRESHOLD ||
       rotationSpeedDelta > VELOCITY_THRESHOLD ||
@@ -8270,6 +8344,13 @@ function handleMotion(deltaTime) {
       // number neither side can measure alone; see the acceleration check in
       // `server.js`, which bounds how far it will trust this.
       sdt: Number((timeSinceLastSend / 1000).toFixed(3)),
+      // This frame's epoch clock (`sampleEpochClock`), relative to
+      // `clientClockOrigin` so it is upstream's own small float rather than a
+      // wall-clock epoch -- the server only ever differences it against this
+      // same client's previous accepted value, never reads it as an absolute
+      // time. See docs/lag-plan.md, "Extrapolate on the client's clock, not
+      // ours".
+      ct: Number(((frameEpochMs - clientClockOrigin) / 1000).toFixed(3)),
     };
 
     // Add optional direction field if sliding

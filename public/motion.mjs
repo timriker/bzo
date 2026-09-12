@@ -34,7 +34,10 @@ function nearZero(value) {
 
 // `hitTest(fromX, fromY, fromZ, fromAz, toX, toY, toZ, toAz)` returns the
 // blocking obstacle or null. `getNormal(obstacle, x, y, z, az, hitX, hitY, hitZ,
-// hitAz)` returns a unit {x, y, z} pointing out of the surface.
+// hitAz, fromX, fromZ, fromAz, toX, toZ, toAz)` returns a unit {x, y, z}
+// pointing out of the surface -- the last six are this pass's own start and
+// original (pre-search) end, which a caller wanting a swept normal needs and
+// nothing here otherwise provides.
 export function resolveTankMotion({
   x, y, z, azimuth,
   velocityX, velocityY, velocityZ,
@@ -140,7 +143,7 @@ export function resolveTankMotion({
     if (posY < groundLimit && velY < 0) posY = groundLimit;
     remaining -= searchTime;
 
-    const normal = getNormal(hit, posX, posY, posZ, az, hitX, hitY, hitZ, hitAz);
+    const normal = getNormal(hit, posX, posY, posZ, az, hitX, hitY, hitZ, hitAz, fromX, fromZ, fromAz, toX, toZ, toAz);
     if (!normal) break;
 
     if (posY > 0 && normal.y > 0.001) {

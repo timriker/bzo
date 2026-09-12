@@ -154,6 +154,7 @@ const {
   parseCookies,
   isAdminSession,
   isLocalAdminRequest,
+  isLoopbackAddress,
   createSessionStore,
 } = require('./server/sessions.cjs');
 const {
@@ -734,6 +735,44 @@ app.get('/api/tank-models', (req, res) => {
   res.json({ models: getAvailableTankModels() });
 });
 
+// A position, a flag, a speed -- everything `/playerlist` doesn't say, for
+// whoever is watching from this machine while testing rather than typing
+// `/mv` and `/lagstats` and squinting at server.log. Loopback only, and not
+// gated behind `localAdmin`: a position is not an admin power, but it is
+// exactly what a wallhack wants, so the same untamperable signal
+// `isLocalAdminRequest` uses -- loopback, and no proxy hop -- applies
+// regardless of that setting.
+app.get('/api/players', (req, res) => {
+  if (!isLoopbackAddress(req.socket.remoteAddress)
+    || Object.keys(req.headers).some((name) => /^x-forwarded-/i.test(name))) {
+    res.status(404).end();
+    return;
+  }
+  res.set('Cache-Control', 'no-store');
+  res.json({
+    players: [...players.values()].filter((player) => player.joined).map((player) => {
+      const flag = getPlayerFlag(player.id);
+      return {
+        id: player.id,
+        name: player.name,
+        team: player.team,
+        x: player.x,
+        y: player.y,
+        z: player.z,
+        rotation: player.rotation,
+        forwardSpeed: player.forwardSpeed,
+        rotationSpeed: player.rotationSpeed,
+        verticalVelocity: player.verticalVelocity,
+        health: player.health,
+        kills: player.kills,
+        deaths: player.deaths,
+        paused: player.paused,
+        flag: flag ? { type: flag.type, zoned: flag.zoned === true } : null,
+      };
+    }),
+  });
+});
+
 // The cheapest thing a client can ask to find out whether the server is
 // serving. A reload is what a restarted client does, and a reload that lands
 // while the server is still coming back is a browser error page -- with no
@@ -1114,8 +1153,9 @@ const ANTICHEAT_CONFIG = {
 // two of them carries up to 0.02 that is rounding rather than a finding.
 const SPEED_QUANTIZATION_SLACK = 0.02;
 
-// The most the client's own send interval may widen the acceleration window
-// past the gap the server measured between arrivals.
+// The most a client-claimed interval -- the acceleration window's `sdt`, or
+// the extrapolation window's absolute timestamp -- may widen past the gap the
+// server itself measured between arrivals.
 const SDT_JITTER_ALLOWANCE = 0.25;
 
 // Optional gameplay overrides from server config
@@ -2621,6 +2661,14 @@ class Player {
     this.rotation = 0;
     this.health = 0;
     this.lastUpdate = Date.now();
+    // The client's own clock (`message.ct`, seconds relative to that client's
+    // own origin -- never an absolute time) as of the last *accepted* move,
+    // null until one arrives. Paired with `lastUpdate` rather than derived
+    // from `sdt`, so a move refused in strict mode (which leaves both fields
+    // where they were) does not throw off the next accepted move's own
+    // interval the way summing consecutive `sdt`s across a gap would. See
+    // docs/lag-plan.md, "Extrapolate on the client's clock, not ours".
+    this.lastClientTimestamp = null;
     // LagInfo (`src/game/LagInfo.cxx`): the round trip, how steady the sending
     // is, and how many pings went unanswered. Measured for every connection,
     // whether or not anybody asks for it, because an average is only worth
@@ -2958,10 +3006,17 @@ class Player {
   /**
    * Get extrapolated position at a specific time based on last known state.
    * @param {number} atTime - Timestamp (ms) to extrapolate to
+   * @param {number|null} dtOverrideSeconds - Use this interval instead of
+   *   `atTime - lastUpdate`. `validateMovement` passes the client's own
+   *   clamped interval here (see docs/lag-plan.md, "Extrapolate on the
+   *   client's clock, not ours"); every other caller extrapolates as of the
+   *   server's own clock and leaves this null.
    * @returns {{x: number, y: number, z: number, r: number}}
    */
-  getExtrapolatedPosition(atTime) {
-    const dt = (atTime - this.lastUpdate) / 1000; // Convert to seconds
+  getExtrapolatedPosition(atTime, dtOverrideSeconds = null) {
+    const dt = Number.isFinite(dtOverrideSeconds)
+      ? dtOverrideSeconds
+      : (atTime - this.lastUpdate) / 1000; // Convert to seconds
     if (dt <= 0) return { x: this.x, y: this.y, z: this.z, r: this.rotation };
     // getDeadReckoning (Player.cxx:1127) does not move a paused tank, whatever
     // it was doing when the pause landed.
@@ -4631,12 +4686,21 @@ function logMalformed(player, what, detail) {
 
 // Validate player movement
 //
-// `now` is the caller's own handler-entry clock, not a fresh read: `deltaTime`
-// above is already measured against it, and re-reading Date.now() here would let
-// the extrapolation below disagree with the interval it is being compared
-// against by however long this call took to reach -- the "several checks inside
-// one move handler read the clock independently" gap docs/lag-plan.md names.
-function validateMovement(player, newX, newY, newZ, newRotation, deltaTime, velocityChanged = false, options = {}, now = Date.now()) {
+// `now` is the caller's own handler-entry clock, not a fresh read: re-reading
+// Date.now() here would let the extrapolation below disagree with the interval
+// it is being compared against by however long this call took to reach -- the
+// "several checks inside one move handler read the clock independently" gap
+// docs/lag-plan.md names.
+//
+// `extrapolationSeconds` is the interval `getExtrapolatedPosition` extrapolates
+// over. The move handler passes the client's own clamped interval (see
+// `clampToArrivalGap`) so the drift check compares against how far the tank's
+// *own* clock says it travelled, not how long the packet happened to spend in
+// the network -- docs/lag-plan.md, "Extrapolate on the client's clock, not
+// ours". Every other caller has no client timestamp to offer and passes the
+// server's own arrival gap, which is what this function used to compute
+// unconditionally.
+function validateMovement(player, newX, newY, newZ, newRotation, extrapolationSeconds, velocityChanged = false, options = {}, now = Date.now()) {
   // A non-finite coordinate would poison the stored position and every
   // extrapolation made from it afterwards, so it is refused in every mode.
   if (!Number.isFinite(newX) || !Number.isFinite(newY)
@@ -4656,8 +4720,10 @@ function validateMovement(player, newX, newY, newZ, newRotation, deltaTime, velo
 
   if (ANTICHEAT_CONFIG.mode !== 'disabled') {
     // Get extrapolated position based on last known velocities
-    const timeSinceLastUpdate = (now - player.lastUpdate) / 1000;
-    const extrapolated = player.getExtrapolatedPosition(now);
+    const timeSinceLastUpdate = Number.isFinite(extrapolationSeconds)
+      ? extrapolationSeconds
+      : (now - player.lastUpdate) / 1000;
+    const extrapolated = player.getExtrapolatedPosition(now, timeSinceLastUpdate);
 
     // Compare to extrapolated position, not last stored position
     // With velocity-based dead reckoning, the client position should match extrapolated position
@@ -8106,21 +8172,27 @@ function requestServerRestart(reason) {
   }, 1000);
 }
 
-// How long the client had to change its speeds. The server's own measure is the
-// gap between packet arrivals, which is the send interval plus whatever the
-// network did to it -- when jitter shortens it, an honest ramp looks like an
-// impossible one. The client reports the interval it actually ramped over
-// (`sdt`), which is the one number neither side can measure alone.
-//
-// This is a client-asserted input to a cheat check, so it is bounded rather than
-// believed: it may only widen the window, and only by SDT_JITTER_ALLOWANCE. A
-// modified client buys at most that much extra acceleration, and the drift check
-// still bounds where the tank ends up.
-function getAccelerationWindow(arrivalGap, clientSendGap) {
+// Bounds any client-claimed interval to the server's own measured arrival gap,
+// widened by at most SDT_JITTER_ALLOWANCE. The server's measure is the gap
+// between packet arrivals, which is the send interval plus whatever the
+// network did to it -- when jitter shortens it, an honest client's own account
+// of the same span looks impossible by comparison. So the claim is bounded
+// rather than believed: it may only widen what the server saw, never narrow
+// it, and only by this much. A modified client buys at most that much benefit
+// of the doubt, whether it is spending it on acceleration (below) or on
+// extrapolation (`getExtrapolatedPosition`'s caller in `validateMovement`).
+function clampToArrivalGap(arrivalGap, claimedSeconds) {
   if (!Number.isFinite(arrivalGap) || arrivalGap <= 0) return 0;
-  const claimed = Number(clientSendGap);
+  const claimed = Number(claimedSeconds);
   if (!Number.isFinite(claimed) || claimed <= arrivalGap) return arrivalGap;
   return Math.min(claimed, arrivalGap + SDT_JITTER_ALLOWANCE);
+}
+
+// How long the client had to change its speeds, per its own `sdt` -- the
+// interval it actually ramped over, which is the one number neither side can
+// measure alone.
+function getAccelerationWindow(arrivalGap, clientSendGap) {
+  return clampToArrivalGap(arrivalGap, clientSendGap);
 }
 
 
@@ -8423,6 +8495,22 @@ wss.on('connection', (ws, req) => {
           const deltaTime = (now - player.lastUpdate) / 1000;
           // DON'T update player.lastUpdate here - it breaks extrapolation in validateMovement!
 
+          // The interval the drift check extrapolates over: the client's own
+          // clock between this move and the last *accepted* one (see
+          // `lastClientTimestamp`), clamped to no more than the server's own
+          // arrival gap plus SDT_JITTER_ALLOWANCE -- the claim may only widen
+          // the window the server itself measured, and only by that much, the
+          // same bound the acceleration check already trusts `sdt` with.
+          // `ct` is already seconds relative to the client's own origin (see
+          // `clientClockOrigin` in client.js) -- only ever differenced against
+          // this client's own previous value, never read as an absolute time.
+          // docs/lag-plan.md, "Extrapolate on the client's clock, not ours".
+          const clientTimestamp = Number(message.ct);
+          const hasClientTimestamp = Number.isFinite(clientTimestamp) && Number.isFinite(player.lastClientTimestamp);
+          const clientElapsed = hasClientTimestamp
+            ? clampToArrivalGap(deltaTime, clientTimestamp - player.lastClientTimestamp)
+            : deltaTime;
+
           // Only accept new compact field names
           let x = Number(message.x);
           let y = Number(message.y);
@@ -8619,15 +8707,17 @@ wss.on('connection', (ws, req) => {
             && !canJump(carriedFlagType, ALLOW_JUMPING, false, GAME_CONFIG.WINGS_JUMP_COUNT);
           const jumpRefused = mayNotJump && reportJumpRejection(player, carriedFlagType);
 
-          // Use actual deltaTime for validation since we compare to extrapolated position
-          // The extrapolated position accounts for the full time interval using OLD velocities
+          // Extrapolate over the client's own clamped interval where the
+          // packet carries one, the server's arrival gap otherwise -- see
+          // `clientElapsed` above. Either way the extrapolated position
+          // accounts for the full interval using OLD velocities.
           if (!jumpRefused && validateMovement(
             player,
             x,
             y,
             z,
             r,
-            deltaTime,
+            clientElapsed,
             velocityChanged,
             { ignoreTeleporters: teleportReentryActive },
             now
@@ -8667,6 +8757,7 @@ wss.on('connection', (ws, req) => {
             decayPlayerTeleportReentryBlock(player, movedPlanarDistance, now);
 
             player.lastUpdate = now; // Update timestamp AFTER accepting the move
+            if (Number.isFinite(clientTimestamp)) player.lastClientTimestamp = clientTimestamp;
 
             const pmPacket = {
               type: 'pm',

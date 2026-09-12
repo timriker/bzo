@@ -6,6 +6,42 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
 
 ## [Unreleased]
 
+## [1.2.2] - 2026-09-12
+
+### Fixed
+- **A tank could get stuck on a teleporter's frame**: permanently, jumping
+  into its jamb; passing straight through, driving square into its front or
+  rear face; or hanging entirely, flying with Wings into it while gaining
+  height. All three came from the same collision code taking shortcuts
+  upstream doesn't: a static end-of-step read instead of a swept corner ray
+  (`Obstacle::getHitNormal`, `Obstacle.cxx:123`) to decide which face was
+  hit, a "does it overlap the doorway" test instead of testing each jamb
+  pillar directly (`Teleporter::inBox`, `Teleporter.cxx:259`), and a header
+  ceiling check that didn't verify the tank was actually over the open
+  doorway rather than still against a pillar. See
+  `docs/teleporter-collision-fix.md` for the full breakdown.
+- A player stuck in place (a livelock, or any other cause) with a jump still
+  in progress stopped sending position updates entirely once the jump ran
+  past the couple of seconds an ordinary one takes, since the heartbeat that
+  covers a motionless grounded tank used to exempt an airborne one. Sent
+  every `MAX_UPDATE_INTERVAL` regardless of ground/air state now.
+
+### Added
+- **Server-side movement validation extrapolates on the client's own clock**
+  rather than the server's measured arrival gap, closing a jitter window
+  where a legitimately laggy connection could be flagged for exceeding an
+  interval it never actually claimed to move within. See
+  `docs/lag-plan.md`, "Extrapolate on the client's clock, not ours".
+- **`/api/players`**, a loopback-only diagnostic endpoint listing every
+  connected player's position, speed, flag, and vitals in one request, for
+  testing without typing `/mv`/`/lagstats` per player or grepping
+  `server.log`.
+- `maps/bzo.bzw` gains a permanent test fixture (`frame_pillar_a`,
+  `frame_pillar_b`, `frame_header`) -- three plain boxes sized to a default
+  teleporter's outer footprint, for testing corner-slide collision
+  independent of teleporter-specific code, including in unmodified
+  `bzfs`/`bzflag` for direct comparison against upstream.
+
 ## [1.2.1] - 2026-09-11
 
 ### Changed
