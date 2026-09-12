@@ -54,6 +54,8 @@
   "antidoteFlags": false,
   "timeLimit": 0,
   "timeManualStart": false,
+  "maxPlayerScore": 0,
+  "maxTeamScore": 0,
   "teamFlagTimeout": 30,
   "flagsOnBuildings": false,
   "voiceNearbyRadius": 60,

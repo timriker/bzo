@@ -505,7 +505,11 @@ export function formatMatchClock(seconds) {
 function updateMatchClock(timeLeft, gameOver) {
   const el = document.getElementById('matchClock');
   if (!el) return;
-  if (timeLeft === null || timeLeft === undefined) {
+  // No clock configured and no game to be over is the one case with nothing
+  // to show -- a score limit can end a clockless match too (`scoreOver` sets
+  // `gameOver` without ever setting a `timeLeft`), and that still belongs on
+  // the board.
+  if ((timeLeft === null || timeLeft === undefined) && !gameOver) {
     el.classList.add('matchClockHidden');
     return;
   }

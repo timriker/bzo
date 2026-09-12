@@ -932,6 +932,10 @@ const GAME_CONFIG = {
   // -timemanual upstream: the clock above waits for /countdown instead of
   // starting the moment the server has a limit to run.
   TIME_MANUAL_START: false,
+  // -mps/-mts upstream (CmdLineOptions.h): a player's or a colour team's wins
+  // minus losses ending the match; 0 is no limit either way.
+  MAX_PLAYER_SCORE: 0,
+  MAX_TEAM_SCORE: 0,
 };
 
 // WebSocket keep-alive configuration
@@ -1438,6 +1442,13 @@ function normalizeTimeLimit(seconds) {
   return Number.isFinite(value) && value > 0 ? value : 0;
 }
 
+// A whole number of wins minus losses, for `-mps`/`-mts`. Anything that is not
+// a positive integer is no limit, which is either switch's own absence.
+function normalizeScoreLimit(score) {
+  const value = Math.floor(Number(score));
+  return Number.isFinite(value) && value > 0 ? value : 0;
+}
+
 function parseBZWServerOptions(lines) {
   let inOptions = false;
   // Every other field is left absent unless the map names it. `forbiddenFlags`
@@ -1479,6 +1490,18 @@ function parseBZWServerOptions(lines) {
     // -timemanual: the clock above waits for /countdown rather than starting
     // on its own.
     if (option === '-timemanual') options.timeManualStart = true;
+    // -mps <score>: ends the match the moment any player's wins minus losses
+    // reaches it.
+    if (option === '-mps') {
+      const score = Number(value);
+      if (Number.isFinite(score) && score > 0) options.maxPlayerScore = score;
+    }
+    // -mts <score>: ends the match the moment any colour team's wins minus
+    // losses reaches it.
+    if (option === '-mts') {
+      const score = Number(value);
+      if (Number.isFinite(score) && score > 0) options.maxTeamScore = score;
+    }
     // -a <vel> <rot>: the world's acceleration limit, upstream's inertia switch.
     // The only option here that takes two values, which is why it reads
     // `setValue` as well.
@@ -2463,6 +2486,7 @@ function recordTeamScoreForCapture(cappingTeam, cappedTeam) {
     score.losses += losses;
   });
   broadcastTeamScores();
+  checkTeamScoreLimit();
 }
 
 // `teamScoreMovesOnKill` is bzfs.cxx:3539's gate: a kill leaves the team score
@@ -2478,6 +2502,7 @@ function recordTeamScoreForKill(killer, victim) {
     score.losses += delta.losses;
   }
   broadcastTeamScores();
+  checkTeamScoreLimit();
 }
 
 // Match end ("Match end" in docs/game-modes-plan.md, issue #66). `-time`'s
@@ -2505,10 +2530,15 @@ function getMatchTimeLeft() {
 }
 
 // startCountdown() (bzfs.cxx:780). A fresh match: every score back to zero,
-// the clock started, and everyone told. Nothing but /countdown and the
-// auto-start at boot calls this, so it is the one place a match begins.
+// the clock started if this server has one, and everyone told. Nothing but
+// /countdown and the auto-start at boot calls this, so it is the one place a
+// match begins.
+//
+// Not gated on `GAME_CONFIG.TIME_LIMIT`: a server with only a score limit
+// still needs a way to start the next match once the last one ends, and a
+// server with neither still gets a working reset out of /countdown. Only the
+// clock-specific state below is conditional on one being configured.
 function startMatch() {
-  if (!GAME_CONFIG.TIME_LIMIT) return false;
   teamScores.clear();
   players.forEach((candidate) => {
     candidate.kills = 0;
@@ -2521,18 +2551,30 @@ function startMatch() {
       broadcastAll({ type: 'playerRespawned', player: candidate.getState() });
     }
   });
-  matchClock.active = true;
   matchClock.paused = false;
   matchClock.gameOver = false;
-  matchClock.startTime = Date.now();
-  matchClock.pauseStartedAt = null;
   broadcastTeamScores();
-  broadcastAll({ type: 'timeUpdate', timeLeft: GAME_CONFIG.TIME_LIMIT });
-  broadcastAll({
-    type: 'message', src: -1, dst: 0, msgType: 'server',
-    text: `Match duration is ${formatDuration(GAME_CONFIG.TIME_LIMIT)}`, ts: Date.now(),
-  });
-  log(`Match started: ${GAME_CONFIG.TIME_LIMIT}s`);
+  if (GAME_CONFIG.TIME_LIMIT > 0) {
+    matchClock.active = true;
+    matchClock.startTime = Date.now();
+    matchClock.pauseStartedAt = null;
+    broadcastAll({ type: 'timeUpdate', timeLeft: GAME_CONFIG.TIME_LIMIT });
+    broadcastAll({
+      type: 'message', src: -1, dst: 0, msgType: 'server',
+      text: `Match duration is ${formatDuration(GAME_CONFIG.TIME_LIMIT)}`, ts: Date.now(),
+    });
+    log(`Match started: ${GAME_CONFIG.TIME_LIMIT}s`);
+  } else {
+    matchClock.active = false;
+    // Clears a client's stale "GAME OVER" from a previous score-limit ending,
+    // which nothing else would: with no clock there is no zero-crossing
+    // `timeUpdate` to double as that signal.
+    broadcastAll({ type: 'timeUpdate', timeLeft: null });
+    broadcastAll({
+      type: 'message', src: -1, dst: 0, msgType: 'server', text: 'Match started', ts: Date.now(),
+    });
+    log('Match started (no time limit)');
+  }
   return true;
 }
 
@@ -2561,8 +2603,18 @@ function resumeMatch() {
 // timeout checks `matchClock.gameOver` and does nothing while it is set, and a
 // fresh join reads the same flag. Deliberately does not reset scores; the
 // standing result stays on the board until the next startMatch().
-function endMatch() {
-  if (!matchClock.active || matchClock.gameOver) return false;
+//
+// Not gated on `matchClock.active`: a score limit (or /gameover) ends the
+// match on a server with no clock at all, exactly as it does on one with a
+// clock that simply has not started -- "Match end" ties to neither the clock
+// nor team play in docs/game-modes-plan.md, and this is the one function every
+// way to end a match funnels through.
+//
+// `winner` is `{ playerId } | { team }` for a score limit, upstream's own
+// `MsgScoreOver` payload; omitted for a time-up or an operator's /gameover,
+// which upstream's own client shows as "GAME OVER" with no winner named.
+function endMatch(winner = null) {
+  if (matchClock.gameOver) return false;
   matchClock.active = false;
   matchClock.paused = false;
   matchClock.gameOver = true;
@@ -2576,9 +2628,40 @@ function endMatch() {
       suicide: false,
     });
   });
-  broadcastAll({ type: 'timeUpdate', timeLeft: 0 });
-  log('Match ended (time expired)');
+  // Only a server with a clock concept has one to zero out; a score-limit
+  // ending on a clockless server has nothing for this to mean.
+  if (GAME_CONFIG.TIME_LIMIT > 0) broadcastAll({ type: 'timeUpdate', timeLeft: 0 });
+  if (winner) {
+    broadcastAll({ type: 'scoreOver', playerId: winner.playerId ?? null, team: winner.team ?? null });
+    log(`Match ended: ${winner.team ? `the ${winner.team} team` : `player ${winner.playerId}`} reached the score limit`);
+  } else {
+    log('Match ended');
+  }
   return true;
+}
+
+// Score::reached() (Score.cxx:108), asked of the killer after every ordinary
+// kill: wins minus losses reaching `-mps` ends the match with that player as
+// the winner.
+function checkPlayerScoreLimit(player) {
+  if (!GAME_CONFIG.MAX_PLAYER_SCORE) return;
+  if ((player.kills - player.deaths) >= GAME_CONFIG.MAX_PLAYER_SCORE) {
+    endMatch({ playerId: player.id });
+  }
+}
+
+// checkTeamScore (bzfs.cxx:3313): the same question asked of every colour
+// team after any move to a team's score, capture or kill alike.
+function checkTeamScoreLimit() {
+  if (!GAME_CONFIG.MAX_TEAM_SCORE) return;
+  for (const team of TEAM_MODE.teams) {
+    if (!isColorTeam(team)) continue;
+    const score = getTeamScore(team);
+    if ((score.wins - score.losses) >= GAME_CONFIG.MAX_TEAM_SCORE) {
+      endMatch({ team });
+      return;
+    }
+  }
 }
 
 // `rabbitIndex` (bzfs.cxx:158). Who the rabbit is, or null when the world has no
@@ -3593,10 +3676,7 @@ defineCommand('/countdown', COMMAND_TIER.OPERATOR,
       replyToPlayer(player, 'Usage: /countdown [pause|resume]');
       return;
     }
-    if (!startMatch()) {
-      replyToPlayer(player, 'This server has no time limit configured');
-      return;
-    }
+    startMatch();
     log(`[CMD] "${player.name}" started the match`);
   });
 
@@ -3893,11 +3973,19 @@ defineCommand('/mv', COMMAND_TIER.OPERATOR,
 // the world resolves once at boot -- they only decide what the next
 // `startMatch()` uses, the same way `/countdown` itself is a runtime action
 // rather than a restart.
-const LIVE_CONFIG_KEYS = Object.freeze(['motd', 'shotMaxActive', 'ricochet', 'timeLimit', 'timeManualStart']);
+// `maxPlayerScore`/`maxTeamScore` are live for the same reason: they only
+// decide what the next kill or capture checks against.
+const LIVE_CONFIG_KEYS = Object.freeze([
+  'motd', 'shotMaxActive', 'ricochet', 'timeLimit', 'timeManualStart', 'maxPlayerScore', 'maxTeamScore',
+]);
 // Upstream keeps no fixed ceiling on `-time`; this is the panel slider's own,
 // so a drag has somewhere to stop. A map or `server.json` may still set a
 // higher `timeLimit` directly -- the slider just cannot reach past an hour.
 const OPERATOR_TIME_LIMIT_MAX = 3600;
+// Same reasoning for `-mps`/`-mts`: a slider needs a ceiling to drag to, not a
+// protocol limit. A hundred wins is well past any game bzo's own player counts
+// would finish.
+const OPERATOR_SCORE_LIMIT_MAX = 100;
 
 // The panel's rows are flat where `server.json` is nested, so a team's limit is
 // one key of its own -- `rogueLimit`, `observerLimit` -- and this is the mapping
@@ -3943,6 +4031,8 @@ function getOperatorConfigState() {
     jumping: serverConfig.jumping !== false,
     timeLimit: GAME_CONFIG.TIME_LIMIT,
     timeManualStart: GAME_CONFIG.TIME_MANUAL_START,
+    maxPlayerScore: GAME_CONFIG.MAX_PLAYER_SCORE,
+    maxTeamScore: GAME_CONFIG.MAX_TEAM_SCORE,
     maxPlayers: MAX_REAL_PLAYERS,
     ...Object.fromEntries(Object.entries(OPERATOR_TEAM_LIMIT_KEYS)
       .map(([key, team]) => [key, limits[team]])),
@@ -4026,6 +4116,20 @@ function applyServerConfigChanges(requested, byWhom) {
   if (has('timeManualStart')) {
     if (typeof requested.timeManualStart !== 'boolean') return { error: 'Invalid time manual start value' };
     next.timeManualStart = requested.timeManualStart;
+  }
+  if (has('maxPlayerScore')) {
+    const score = Number(requested.maxPlayerScore);
+    if (!Number.isFinite(score) || score < 0 || score > OPERATOR_SCORE_LIMIT_MAX) {
+      return { error: `Player score limit is 0 (no limit) to ${OPERATOR_SCORE_LIMIT_MAX}` };
+    }
+    next.maxPlayerScore = normalizeScoreLimit(score);
+  }
+  if (has('maxTeamScore')) {
+    const score = Number(requested.maxTeamScore);
+    if (!Number.isFinite(score) || score < 0 || score > OPERATOR_SCORE_LIMIT_MAX) {
+      return { error: `Team score limit is 0 (no limit) to ${OPERATOR_SCORE_LIMIT_MAX}` };
+    }
+    next.maxTeamScore = normalizeScoreLimit(score);
   }
   // Validated exactly as the standalone `setMap` did, since it is the same
   // choice arriving through the panel's one confirm instead of its own button.
@@ -4123,6 +4227,16 @@ function applyServerConfigChanges(requested, byWhom) {
     GAME_CONFIG.TIME_MANUAL_START = next.timeManualStart;
     changed.push('timeManualStart');
   }
+  if (next.maxPlayerScore !== undefined && next.maxPlayerScore !== GAME_CONFIG.MAX_PLAYER_SCORE) {
+    serverConfig.maxPlayerScore = next.maxPlayerScore;
+    GAME_CONFIG.MAX_PLAYER_SCORE = next.maxPlayerScore;
+    changed.push('maxPlayerScore');
+  }
+  if (next.maxTeamScore !== undefined && next.maxTeamScore !== GAME_CONFIG.MAX_TEAM_SCORE) {
+    serverConfig.maxTeamScore = next.maxTeamScore;
+    GAME_CONFIG.MAX_TEAM_SCORE = next.maxTeamScore;
+    changed.push('maxTeamScore');
+  }
 
   // A new game rather than a live change: the world, the team layout and the flag
   // pool are resolved once at boot, so the only honest way to apply one of these
@@ -4145,6 +4259,8 @@ function applyServerConfigChanges(requested, byWhom) {
     ricochet: GAME_CONFIG.ALL_SHOTS_RICOCHET,
     timeLimit: GAME_CONFIG.TIME_LIMIT,
     timeManualStart: GAME_CONFIG.TIME_MANUAL_START,
+    maxPlayerScore: GAME_CONFIG.MAX_PLAYER_SCORE,
+    maxTeamScore: GAME_CONFIG.MAX_TEAM_SCORE,
   });
   log(`Config changed by ${byWhom}: ${changed.length ? changed.join(', ') : 'nothing'}`);
   return { changed, restarted: false };
@@ -5375,6 +5491,19 @@ GAME_CONFIG.TIME_LIMIT = Math.max(
 // moment the server has a limit to run.
 GAME_CONFIG.TIME_MANUAL_START = serverConfig.timeManualStart === true
   || mapServerOptions.timeManualStart === true;
+// -mps upstream, a player score limit: `Score::reached()` is wins minus losses
+// reaching this, asked of the killer after every kill. Reached the same two
+// ways as -st and -time.
+GAME_CONFIG.MAX_PLAYER_SCORE = Math.max(
+  normalizeScoreLimit(serverConfig.maxPlayerScore),
+  normalizeScoreLimit(mapServerOptions.maxPlayerScore),
+);
+// -mts upstream, a colour team score limit: `checkTeamScore` ends the game the
+// moment any one team's wins minus losses reaches this.
+GAME_CONFIG.MAX_TEAM_SCORE = Math.max(
+  normalizeScoreLimit(serverConfig.maxTeamScore),
+  normalizeScoreLimit(mapServerOptions.maxTeamScore),
+);
 // The three ways upstream lets you shed a bad flag, for the startup log and for
 // the message a player gets when they pick one up. With none of them on, dying
 // is the only way out -- which is upstream's default.
@@ -7696,6 +7825,10 @@ function killPlayer(victim, killer, reason, projectileId = null, shooterId = nul
     } else {
       killer.kills++;
       recordShakeWin(killer);
+      // Score::reached() (Score.cxx:108), asked of the killer after every
+      // ordinary kill -- not a team kill or a suicide, neither of which raises
+      // anyone's score.
+      checkPlayerScoreLimit(killer);
     }
   }
   // Killing yourself is a loss and nothing else, as self-destruct is.
@@ -8315,6 +8448,7 @@ function tickMatchClock(now) {
   // is true in JS, so this is not the same guard as skipping a paused clock.
   if (timeLeft === null) return;
   if (timeLeft <= 0) {
+    log('Match clock reached zero');
     endMatch();
     return;
   }

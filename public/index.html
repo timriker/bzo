@@ -107,6 +107,20 @@
             Manual Start (wait for /countdown)
           </label>
         </div>
+        <div class="operatorRow operatorConfigRow" data-menu-row="maxPlayerScore" data-menu-kind="range">
+          <label for="maxPlayerScoreSlider">Player Score Limit:</label>
+          <div class="volumeControl">
+            <input id="maxPlayerScoreSlider" class="volumeSlider" type="range" min="0" max="100" step="1" value="0">
+            <output id="maxPlayerScoreValue" class="volumeValue" for="maxPlayerScoreSlider">No limit</output>
+          </div>
+        </div>
+        <div class="operatorRow operatorConfigRow" data-menu-row="maxTeamScore" data-menu-kind="range">
+          <label for="maxTeamScoreSlider">Team Score Limit:</label>
+          <div class="volumeControl">
+            <input id="maxTeamScoreSlider" class="volumeSlider" type="range" min="0" max="100" step="1" value="0">
+            <output id="maxTeamScoreValue" class="volumeValue" for="maxTeamScoreSlider">No limit</output>
+          </div>
+        </div>
         <!-- Immediate actions, like Upload above -- nothing here is staged, so
              these fire on click rather than waiting for Apply. Only meaningful
              on a world with a time limit configured (`timeLimit` in

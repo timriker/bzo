@@ -70,16 +70,15 @@ kills' worth of attention. `teamScoreMovesOnKill` in the `teams` pair is that
 gate, asked of `GAME_TYPE` by `recordTeamScoreForKill`. See "Team scores" in
 `AGENTS.md`.
 
-## Match end
+## Match end -- **done**
 
-Issue #66 tracked the clock half of this and is closed: `timeLimit`,
-`timeManualStart`, the game-over hold, and `/countdown [pause|resume]` /
-`/gameover` are all in, without upstream's pre-match "3...2...1...GO" chat
-delay or its `h:mm:ss` form of `-time`. **Score limits (`-mps`/`-mts`) and
-`scoreOver` are still missing** -- open a new issue for those before starting
-them, and reference it the way flag work referenced #6.
+Issue #66 built the clock half and issue #67 the score-limit half.
+`timeLimit`, `timeManualStart`, `maxPlayerScore`, `maxTeamScore`, the
+game-over hold, `/countdown [pause|resume]` / `/gameover`, and the Operator
+panel's Match Timer buttons and four sliders are all in -- without upstream's
+pre-match "3...2...1...GO" chat delay or its `h:mm:ss` form of `-time`.
 
-Upstream's game-over machinery, in the order it is worth building:
+Upstream's game-over machinery, for reference:
 
 **Score limits** are the cheap half. `-mps <score>` sets `Score::score`, and
 `Score::reached()` (`src/bzfs/Score.cxx:108`) is `wins - losses >= score`, asked
@@ -87,7 +86,16 @@ of the killer after every kill (`bzfs.cxx:3513`). `-mts <score>` is
 `checkTeamScore` (`bzfs.cxx:3313`): a colour team whose `wins - losses` reaches
 the limit ends the game. Either one broadcasts `MsgScoreOver` carrying the
 winner -- a player id with `NoTeam`, or a team with its index -- and the client
-turns that into "*name* (*team*) won the game" (`playing.cxx:2240`).
+turns that into "*name* (*team*) won the game" (`playing.cxx:2240`). bzo's own
+`checkPlayerScoreLimit`/`checkTeamScoreLimit` ask the same question at the same
+two places -- after `killer.kills++` in `killPlayer`, and after every
+`broadcastTeamScores()` -- and both call the one `endMatch(winner)` the clock
+also calls, `winner` being `{ playerId }` or `{ team }`. The `scoreOver`
+broadcast that carries it is `{ playerId, team }` with one of the two null,
+and the client's notice is "*name* won the game" or "The *colour* team won the
+game" -- the alert-slot half of upstream's phrasing; there is no persistent
+"who won" line anywhere the way the scoreboard's clock label is persistent,
+since the standing scores already say it.
 
 **The clock** is the other half. `-time <seconds|h:mm:ss>` sets `timeLimit`;
 `countdownActive` and `gameStartTime` run it; `MsgTimeUpdate` carries the
@@ -141,22 +149,20 @@ What bzo has to decide:
   say so in `docs/bzw.md`'s ignored list. Still not done -- a small change
   independent of everything else here.
 
-Config, the clock half of which is built: `timeLimit` and `timeManualStart` in
-`server.json`, and `-time`, `-timemanual` in a map's `options` block, behaving
-the way every other switch there does -- the map may set it and nothing turns
-it back off. `maxPlayerScore` and `maxTeamScore` (`-mps`, `-mts`) are the
-still-missing score-limit half, on the same terms. All four default to bzfs's
-own defaults (no limit, no clock), so `server.json` keeps saying nothing about
-how a world plays until it is asked to.
+Config: `timeLimit`, `timeManualStart`, `maxPlayerScore` and `maxTeamScore` in
+`server.json`, and `-time`, `-timemanual`, `-mps`, `-mts` in a map's `options`
+block, all four behaving the way every other switch there does -- the map may
+set it and nothing turns it back off. All four default to bzfs's own defaults
+(no limit, no clock), so `server.json` keeps saying nothing about how a world
+plays until it is asked to.
 
 XR: the clock belongs in the header of the XR scoreboard panel next to the team
 rows, and "GAME OVER" is an XR toast like every other alert. Nothing here needs
 a new XR affordance.
 
-New messages: `timeUpdate` (seconds left, `-1` for paused, built) and
-`scoreOver` (winner: player id or team, still needed for score limits), both
-broadcast. `timeUpdate` also rides in `init` so a joining player starts with
-the right clock.
+New messages, both broadcast: `timeUpdate` (seconds left, `-1` for paused),
+which also rides in `init` so a joining player starts with the right clock,
+and `scoreOver` (`{ playerId, team }`, one of the two null).
 
 ## Rabbit Chase -- **done**
 
@@ -481,7 +487,7 @@ one part of it bzo could use today: see "Admins and the admin channel" in
 ## Suggested order
 
 1. ~~The clock, game over, and `/countdown`/`/gameover`~~ -- done, issue #66.
-2. Score limits and `scoreOver`, which need no clock.
+2. ~~Score limits and `scoreOver`~~ -- done, issue #67.
 3. Handicap.
 
 Each step is playable on its own.

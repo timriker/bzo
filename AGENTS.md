@@ -2517,9 +2517,10 @@ does not do because it has no `ServerCommand` for it.
 
 ## Match end
 
-`timeLimit` (seconds) and `timeManualStart` in `server.json`, `-time <seconds>`
-and `-timemanual` in a map's `options` block. Upstream's clock (issue #66);
-score limits (`-mps`, `-mts`) are still missing -- see `docs/game-modes-plan.md`.
+`timeLimit`/`timeManualStart` and `maxPlayerScore`/`maxTeamScore` in
+`server.json`, `-time`/`-timemanual`/`-mps`/`-mts` in a map's `options` block.
+Upstream's clock (issue #66) and score limits (issue #67) -- see
+`docs/game-modes-plan.md`.
 
 - **No pre-match delay.** Upstream counts down "3...2...1...GO" in chat before
   the clock actually starts; `/countdown` here starts it at once. `pause` and
@@ -2531,6 +2532,30 @@ score limits (`-mps`, `-mts`) are still missing -- see `docs/game-modes-plan.md`
   respawn timeout in `applyDeath` checks `matchClock.gameOver` and does nothing
   while it is set. A join during game over reads the same flag and arrives at
   health 0, the way an observer always does, rather than on a fresh spawn.
+  `endMatch(winner)` is not gated on a clock being active or even configured --
+  a score limit, or a bare `/gameover`, ends the match on a clockless server
+  exactly as time running out does on one with a clock, since "Match end" ties
+  to neither in `docs/game-modes-plan.md`. `startMatch` is the same symmetry in
+  reverse: a clockless server still needs a working `/countdown` to start the
+  *next* match once a score limit ends one, so only the clock-specific state
+  (`matchClock.active`, the running `timeUpdate` broadcast, the "Match
+  duration is..." announcement) is conditional on `GAME_CONFIG.TIME_LIMIT`;
+  the score reset and the respawn sweep always run. On a clockless server it
+  broadcasts `timeUpdate(null)` anyway, purely to clear a client's stale
+  `GAME OVER` from the score limit that just ended -- nothing else would,
+  since there is no zero-crossing to double as that signal.
+- **Score limits ask the same question at the two places a score moves.**
+  `checkPlayerScoreLimit` runs after `killer.kills++` in `killPlayer` (never
+  for a team kill or a suicide, neither of which raises a score);
+  `checkTeamScoreLimit` runs after every `broadcastTeamScores()`, so a capture
+  and a kill that moves a team's score both ask it. Either calls
+  `endMatch({ playerId })` or `endMatch({ team })`, which broadcasts
+  `scoreOver` alongside the usual `timeUpdate(0)` -- sent only when
+  `GAME_CONFIG.TIME_LIMIT` is set, since a score-limit ending on a clockless
+  server has no clock to zero out. The client's notice ("*name* won the game" /
+  "The *colour* team won the game") rides the same alert slot as the death
+  notice; there is no persistent "who won" line, since the standing scores
+  already say it.
 - **Scores are not reset at game over**, only at the next `startMatch()` --
   upstream's own order, so the standing result stays on the board until a new
   match begins. `startMatch` also respawns whoever the previous game-over held
@@ -2552,13 +2577,16 @@ score limits (`-mps`, `-mts`) are still missing -- see `docs/game-modes-plan.md`
   Pause, Resume and End Match send a `matchControl` message straight to the
   same four functions `/countdown`/`/gameover` call -- unstaged, like Upload
   Map, because there is nothing to Apply later.
-- **The limit itself is a staged row, and it is live.** `timeLimit` (a slider,
-  0 is "no limit") and `timeManualStart` (a checkbox) are in
-  `LIVE_CONFIG_KEYS`, so Apply never restarts for them -- changing the number
-  a match already running uses re-broadcasts `timeUpdate` at once rather than
-  waiting for the 30-second cadence, the same reason upstream re-sends
-  `MsgTimeUpdate` on any admin adjustment. Unlike the four buttons above, these
-  two are ordinary staged rows, flat and XR, the same shape as `shotMaxActive`.
+- **The limits themselves are staged rows, and they are live.** `timeLimit`
+  and `maxPlayerScore`/`maxTeamScore` (sliders, 0 is "no limit") and
+  `timeManualStart` (a checkbox) are all in `LIVE_CONFIG_KEYS`, so Apply never
+  restarts for them. Only `timeLimit` re-broadcasts anything on change -- a
+  match already running re-sends `timeUpdate` at once rather than waiting for
+  the 30-second cadence, the same reason upstream re-sends `MsgTimeUpdate` on
+  any admin adjustment -- since the score limits have no persistent display to
+  keep in sync, only the next kill or capture to be asked of. Unlike the four
+  buttons above, all four of these are ordinary staged rows, flat and XR, the
+  same shape as `shotMaxActive`.
 
 ## Team scores
 

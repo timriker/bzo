@@ -6,6 +6,31 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
 
 ## [Unreleased]
 
+## [1.2.4] - 2026-09-12
+
+### Added
+- **Score limits (#67).** `-mps <score>`/`maxPlayerScore` and
+  `-mts <score>`/`maxTeamScore` (`server.json` or a map's `options` block) end
+  the match the moment a player's or a colour team's wins minus losses
+  reaches the limit, through the same game-over hold `-time` (#66) uses --
+  works with or without a clock configured. A `scoreOver` broadcast names the
+  winner, and the client shows "*name* won the game" or "The *colour* team
+  won the game". The Operator panel (flat and XR) gets Player Score Limit and
+  Team Score Limit sliders alongside the Time Limit one.
+
+### Fixed
+- **A score limit could permanently soft-lock a clockless server.**
+  `startMatch` (`/countdown`, the Operator panel's Start button) used to
+  require a time limit to be configured at all; once a score-limit-only
+  server's match ended, there was no way to start the next one. It now always
+  resets scores and lifts the hold, and only the clock-specific parts --
+  the running `timeUpdate` broadcast, the "Match duration is..."
+  announcement -- are conditional on a time limit existing.
+- **A score-limit win on a clockless server never showed "GAME OVER" on the
+  flat scoreboard.** Its clock element only rendered when a numeric
+  `timeLeft` existed; the XR scoreboard panel already keyed off `gameOver`
+  independently, and the flat one now matches it.
+
 ## [1.2.3] - 2026-09-12
 
 ### Added

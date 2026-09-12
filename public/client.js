@@ -689,9 +689,29 @@ function sendMatchControl(action) {
 function applyMatchTimeUpdate(timeLeft) {
   matchTimeLeft = timeLeft;
   matchTimeReceivedAt = sampleEpochClock();
-  if (timeLeft === 0) matchGameOver = true;
-  else if (typeof timeLeft === 'number' && timeLeft > 0) matchGameOver = false;
+  // Exactly zero is the only value that means the match is over: `-1` is
+  // paused (still playing) and `null` is "no clock", which is also what
+  // `startMatch` sends on a clockless server specifically to clear a stale
+  // `GAME OVER` left over from a score-limit ending.
+  matchGameOver = timeLeft === 0;
   refreshScoreboards();
+}
+
+// playing.cxx:2240: a score limit's own end, distinct from the clock's --
+// there is a winner to name here, where a time-up or an operator's /gameover
+// has none. Reuses the same game-over scoreboard state `timeUpdate(0)` sets,
+// since the hold itself (no respawn) is identical either way.
+function applyScoreOver(playerId, team) {
+  matchGameOver = true;
+  refreshScoreboards();
+  const text = team
+    ? `The ${PLAYER_TEAM_LABELS[team] || team} team won the game`
+    : null;
+  if (text) {
+    noticeAbout(0, [text], DEATH_ALERT_SECONDS, true);
+  } else if (playerId) {
+    noticeAbout(0, [describePlayer(playerId), ' won the game'], DEATH_ALERT_SECONDS, true);
+  }
 }
 
 // The number the HUD actually shows: extrapolated from the last update rather
@@ -4769,6 +4789,10 @@ function handleServerMessage(message) {
       applyMatchTimeUpdate(typeof message.timeLeft === 'number' ? message.timeLeft : null);
       break;
 
+    case 'scoreOver':
+      applyScoreOver(message.playerId ?? null, message.team ?? null);
+      break;
+
     case 'playerLeft': {
       // Show the player's name before removing
       // Described before the tank goes, since that is where the colour, the flag
@@ -5915,6 +5939,12 @@ function handleServerConfigUpdate(message) {
   if (typeof message.timeManualStart === 'boolean' && gameConfig) {
     gameConfig.TIME_MANUAL_START = message.timeManualStart;
   }
+  if (Number.isFinite(message.maxPlayerScore) && gameConfig) {
+    gameConfig.MAX_PLAYER_SCORE = message.maxPlayerScore;
+  }
+  if (Number.isFinite(message.maxTeamScore) && gameConfig) {
+    gameConfig.MAX_TEAM_SCORE = message.maxTeamScore;
+  }
   // An applied change is now the server's value, so the panel starts from it.
   // A staged edit survives: it belongs to whoever is typing, not to the update.
   if (!operatorStaged) syncOperatorPanelFromServer();
@@ -5946,6 +5976,9 @@ const SHOT_MAX_ACTIVE_MAX = 10;
 // (`OPERATOR_TIME_LIMIT_MAX`); 0 is upstream's "no limit".
 const OPERATOR_TIME_LIMIT_MAX = 3600;
 const OPERATOR_TIME_LIMIT_STEP = 15;
+// Matches the sliders in index.html and the server's own ceiling
+// (`OPERATOR_SCORE_LIMIT_MAX`); 0 is upstream's "no limit" for either.
+const OPERATOR_SCORE_LIMIT_MAX = 100;
 // Upstream's own ceiling on a player count (`MaxPlayers`, CmdLineOptions.h:37).
 const OPERATOR_LIMIT_MAX = 200;
 // A `choice` row needs an off position where a command line switch is simply
@@ -5978,6 +6011,8 @@ function getOperatorServerState() {
     ricochet: Boolean(gameConfig?.ALL_SHOTS_RICOCHET),
     timeLimit: Number(gameConfig?.TIME_LIMIT) || 0,
     timeManualStart: Boolean(gameConfig?.TIME_MANUAL_START),
+    maxPlayerScore: Number(gameConfig?.MAX_PLAYER_SCORE) || 0,
+    maxTeamScore: Number(gameConfig?.MAX_TEAM_SCORE) || 0,
     mapFile: currentMapFile || serverOperatorConfig.mapFile || '',
   };
 }
@@ -5998,6 +6033,7 @@ function getOperatorLimitLabel(team, rabbit) {
 function getOperatorNumberBounds(key, state) {
   if (key === 'shotMaxActive') return { min: SHOT_MAX_ACTIVE_MIN, max: SHOT_MAX_ACTIVE_MAX };
   if (key === 'timeLimit') return { min: 0, max: OPERATOR_TIME_LIMIT_MAX };
+  if (key === 'maxPlayerScore' || key === 'maxTeamScore') return { min: 0, max: OPERATOR_SCORE_LIMIT_MAX };
   // At least one tank: a server that allows none is one nobody can play on.
   if (key === 'maxPlayers') return { min: 1, max: OPERATOR_LIMIT_MAX };
   const team = OPERATOR_LIMIT_TEAMS.find((candidate) => operatorLimitKey(candidate) === key);
@@ -6061,6 +6097,17 @@ function setOperatorRangeRow(key, value, { disabled = false, max = null } = {}) 
   if (output) output.textContent = Number.isFinite(number) ? String(number) : '';
 }
 
+// Overwrites a range row's own label for the rows where 0 means "off" rather
+// than a literal zero -- `timeLimit`, `maxPlayerScore`, `maxTeamScore` -- all
+// of which `setOperatorRangeRow` above has already written a plain number
+// into. `format` is only for `timeLimit`, whose label is a duration rather
+// than a bare count.
+function setOperatorNoLimitLabel(outputId, value, format = String) {
+  const output = document.getElementById(outputId);
+  if (!output) return;
+  output.textContent = value > 0 ? format(value) : 'No limit';
+}
+
 // The staged keys that differ from what the server has. Empty means the confirm
 // has nothing to do, which is worth showing rather than letting somebody press
 // it and wonder.
@@ -6100,16 +6147,15 @@ function paintOperatorRows(state) {
   const jumpingInput = document.getElementById('jumpingInput');
   if (jumpingInput) jumpingInput.checked = state.jumping === true;
   setOperatorRangeRow('timeLimit', state.timeLimit);
-  // setOperatorRangeRow just wrote the raw number; this is the one row whose
-  // label reads a duration instead, and 0 is worded rather than shown as 0:00.
-  const timeLimitValue = document.getElementById('timeLimitValue');
-  if (timeLimitValue) {
-    timeLimitValue.textContent = state.timeLimit > 0
-      ? (formatMatchClock(state.timeLimit) || '0:00')
-      : 'No limit';
-  }
+  // setOperatorRangeRow just wrote the raw number; 0 reads "No limit" on every
+  // one of these rows instead, upstream's own word for the same absence.
+  setOperatorNoLimitLabel('timeLimitValue', state.timeLimit, (v) => formatMatchClock(v) || '0:00');
   const timeManualStartInput = document.getElementById('timeManualStartInput');
   if (timeManualStartInput) timeManualStartInput.checked = state.timeManualStart === true;
+  setOperatorRangeRow('maxPlayerScore', state.maxPlayerScore);
+  setOperatorNoLimitLabel('maxPlayerScoreValue', state.maxPlayerScore);
+  setOperatorRangeRow('maxTeamScore', state.maxTeamScore);
+  setOperatorNoLimitLabel('maxTeamScoreValue', state.maxTeamScore);
   const rabbitSelect = document.getElementById('rabbitSelect');
   if (rabbitSelect) {
     rabbitSelect.value = RABBIT_SELECTIONS.includes(state.rabbit) ? state.rabbit : 'off';
@@ -6283,6 +6329,18 @@ function wireOperatorPanel() {
   if (timeManualStartInput) {
     timeManualStartInput.addEventListener('change', () => {
       stageOperatorChange('timeManualStart', timeManualStartInput.checked);
+    });
+  }
+  const maxPlayerScoreSlider = document.getElementById('maxPlayerScoreSlider');
+  if (maxPlayerScoreSlider) {
+    maxPlayerScoreSlider.addEventListener('input', () => {
+      stageOperatorNumberValue('maxPlayerScore', Number(maxPlayerScoreSlider.value));
+    });
+  }
+  const maxTeamScoreSlider = document.getElementById('maxTeamScoreSlider');
+  if (maxTeamScoreSlider) {
+    maxTeamScoreSlider.addEventListener('input', () => {
+      stageOperatorNumberValue('maxTeamScore', Number(maxTeamScoreSlider.value));
     });
   }
   const rabbitSelect = document.getElementById('rabbitSelect');
@@ -11696,6 +11754,18 @@ function getXROperatorMenuItems() {
       value: staged.timeManualStart === true ? 'On' : 'Off',
     },
     {
+      id: 'operatorMaxPlayerScoreXR',
+      label: 'Player Score Limit',
+      value: staged.maxPlayerScore > 0 ? String(staged.maxPlayerScore) : 'No limit',
+      adjustable: true,
+    },
+    {
+      id: 'operatorMaxTeamScoreXR',
+      label: 'Team Score Limit',
+      value: staged.maxTeamScore > 0 ? String(staged.maxTeamScore) : 'No limit',
+      adjustable: true,
+    },
+    {
       id: 'operatorPlayersXR',
       label: 'Playing Limit',
       value: String(staged.maxPlayers ?? ''),
@@ -11791,6 +11861,14 @@ function adjustXRSettingsMenuItem(item, direction) {
   }
   if (item.id === 'operatorTimeLimitXR') {
     stageOperatorNumber('timeLimit', direction);
+    return true;
+  }
+  if (item.id === 'operatorMaxPlayerScoreXR') {
+    stageOperatorNumber('maxPlayerScore', direction);
+    return true;
+  }
+  if (item.id === 'operatorMaxTeamScoreXR') {
+    stageOperatorNumber('maxTeamScore', direction);
     return true;
   }
   if (item.id === 'operatorPlayersXR') {
