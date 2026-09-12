@@ -129,6 +129,30 @@ assert.equal(manager.setMicrophoneVolumeLevel(9), 9);
 assert.equal(gainNode.gain.value, volumeLevelToGain(9));
 assert.equal(manager.getState().microphoneVolumeLevel, 9);
 
+// /silence's own half of playback: a muted peer stays silent regardless of
+// the shared volume level, and unmuting returns it to that level rather than
+// to full.
+manager.setPeerMuted('2', true);
+assert.equal(audios[0].volume, 0);
+assert.equal(manager.setVoiceVolumeLevel(6), 6);
+assert.equal(audios[0].volume, 0);
+manager.setPeerMuted('2', false);
+assert.equal(audios[0].volume, volumeLevelToGain(6));
+
+// Muting an id before its peer connection exists has to stick: the host
+// silences by callsign or verification, which it can know about well before
+// signaling ever reaches that id.
+manager.setPeerMuted('3', true);
+assert.equal(manager.handleServerMessage({
+  type: 'voiceRoster',
+  peers: [{ id: '2', team: 'rogue' }, { id: '3', team: 'rogue' }],
+}), true);
+assert.equal(audios.length, 2);
+const preMuted = audios.find((audio) => audio.dataset.voicePeerId === '3');
+assert.equal(preMuted.volume, 0);
+manager.setPeerMuted('3', false);
+assert.equal(preMuted.volume, volumeLevelToGain(6));
+
 // Muting has to reach both ends of the gain stage: a live output track would
 // keep forwarding the gain node's silence to every peer.
 await manager.toggleMicrophone(false);

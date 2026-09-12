@@ -1906,10 +1906,209 @@ function setChatEntryActive(active) {
   }
 }
 
+// Client-local commands ("Which surface a command belongs to" in
+// docs/commands-plan.md): a line upstream's own client claims before the
+// server ever sees it. `/silence` is the first of these -- "one client's
+// choice to ignore somebody" needs no server round trip, and asking the
+// server to keep that state would be inventing state for it.
+const LOCAL_COMMANDS = new Map();
+function defineLocalCommand(name, run) {
+  LOCAL_COMMANDS.set(name, run);
+}
+
+// Upstream's own list: callsigns, case-insensitive, persisted rather than
+// per-session (`silencedPersonN` in its BZDB config; `localStorage` here).
+// bzo adds one thing upstream's "-" cannot mean on this side: upstream's "-"
+// silences every *unregistered* player, and bzo's equivalent identity is
+// `verified`, not registration -- see the `+`/`@` marks already drawn beside
+// a callsign -- so `silenceUnverified` is a flag beside the set rather than a
+// member of it.
+let silencedCallsigns = new Set();
+let silenceUnverified = false;
+
+function loadSilenceState() {
+  try {
+    const saved = JSON.parse(localStorage.getItem('silencedCallsigns') || '[]');
+    if (Array.isArray(saved)) silencedCallsigns = new Set(saved);
+  } catch {
+    /* ignore storage errors */
+  }
+  try {
+    silenceUnverified = localStorage.getItem('silenceUnverifiedPlayers') === 'true';
+  } catch {
+    /* ignore storage errors */
+  }
+}
+
+function saveSilenceState() {
+  try {
+    localStorage.setItem('silencedCallsigns', JSON.stringify([...silencedCallsigns]));
+    localStorage.setItem('silenceUnverifiedPlayers', silenceUnverified ? 'true' : 'false');
+  } catch {
+    /* ignore storage errors */
+  }
+}
+loadSilenceState();
+
+// Asked at the two places a silenced player can still reach this client: an
+// incoming chat/action message, by the name it carries as its sender, and
+// voice, by id -- see `applySilenceToVoice`.
+function isPlayerSilenced(playerId) {
+  if (!playerId || playerId === myPlayerId) return false;
+  const state = tanks.get(playerId)?.userData?.playerState;
+  if (!state) return false;
+  if (silenceUnverified && state.verified !== true) return true;
+  return silencedCallsigns.has(state.name.trim().toLowerCase());
+}
+
+// bzo's own half of /silence: upstream has no voice chat to extend to, but a
+// text-only /silence here would leave a silenced player's voice coming
+// through regardless, which is not what anyone asking for it would expect.
+// Safe to call for a peer that has not connected yet -- voice.js's own
+// `mutedPeerIds` is what a fresh connection consults, not this call's timing.
+function applySilenceToVoice(playerId) {
+  if (!playerId || playerId === myPlayerId) return;
+  callVoiceManager('setPeerMuted', playerId, isPlayerSilenced(playerId));
+}
+
+// Every connected id, re-asked. Cheap enough to run on every roster change
+// (`addPlayer` calls this too) since `setPeerMuted` is just a Set update
+// unless the peer's own mute state actually flips.
+function refreshAllSilencedVoice() {
+  tanks.forEach((_tank, playerId) => applySilenceToVoice(playerId));
+}
+
+defineLocalCommand('/silence', (args) => {
+  const target = args.trim();
+  if (!target) {
+    showMessage('Usage: /silence <callsign>|-');
+    return;
+  }
+  if (target === '-') {
+    silenceUnverified = true;
+    saveSilenceState();
+    refreshAllSilencedVoice();
+    showMessage('Silencing every unauthenticated player');
+    return;
+  }
+  silencedCallsigns.add(target.toLowerCase());
+  saveSilenceState();
+  refreshAllSilencedVoice();
+  showMessage(`Silenced "${target}"`);
+});
+
+defineLocalCommand('/unsilence', (args) => {
+  const target = args.trim();
+  if (!target) {
+    showMessage('Usage: /unsilence <callsign>|-');
+    return;
+  }
+  if (target === '-') {
+    silenceUnverified = false;
+    saveSilenceState();
+    refreshAllSilencedVoice();
+    showMessage('No longer silencing unauthenticated players');
+    return;
+  }
+  silencedCallsigns.delete(target.toLowerCase());
+  saveSilenceState();
+  refreshAllSilencedVoice();
+  showMessage(`Unsilenced "${target}"`);
+});
+
+// HighlightCommand (CommandsImplementation.cxx:184): one regular expression,
+// case-insensitive, replacing whatever was there before. Persisted like
+// upstream's own `highlightPattern` BZDB var (`persistent = true`), unlike
+// the session-only silence list -- there is nothing per-session about
+// wanting your name to stand out.
+let highlightPattern = '';
+let highlightRegex = null;
+
+function compileHighlightRegex() {
+  if (!highlightPattern) {
+    highlightRegex = null;
+    return;
+  }
+  try {
+    highlightRegex = new RegExp(highlightPattern, 'i');
+  } catch {
+    // An invalid pattern highlights nothing rather than throwing on every
+    // chat line -- upstream's own `regcomp` failure is silent the same way.
+    highlightRegex = null;
+  }
+}
+
+function loadHighlightState() {
+  try {
+    highlightPattern = localStorage.getItem('highlightPattern') || '';
+  } catch {
+    highlightPattern = '';
+  }
+  compileHighlightRegex();
+}
+
+function saveHighlightState() {
+  try {
+    localStorage.setItem('highlightPattern', highlightPattern);
+  } catch {
+    /* ignore storage errors */
+  }
+}
+loadHighlightState();
+
+// ControlPanel.cxx:513: checked against every line already in the buffer, on
+// every redraw, not once at the moment a message arrived -- so changing the
+// pattern relights old lines that already match it as well as new ones.
+function isHighlightMatch(text) {
+  return Boolean(highlightRegex && highlightRegex.test(text));
+}
+
+defineLocalCommand('/highlight', (args) => {
+  highlightPattern = args.trim();
+  compileHighlightRegex();
+  saveHighlightState();
+  chatWindowDirty = true;
+  updateChatWindow();
+  if (!highlightPattern) {
+    showMessage('Highlight cleared');
+  } else if (!highlightRegex) {
+    showMessage(`Invalid highlight pattern: ${highlightPattern}`);
+  } else {
+    showMessage(`Highlighting "${highlightPattern}"`);
+  }
+});
+
+// CommandList (CommandsImplementation.cxx:201-269): upstream prints its own
+// local table, then asks the server for its own list too, rather than
+// answering only one half of "what commands are there".
+defineLocalCommand('/cmds', () => {
+  const names = [...LOCAL_COMMANDS.keys()].sort();
+  addChatEntry(['misc', 'all'], `Client-side commands: ${names.join(', ')}`, CHAT_KIND_MISC);
+  updateChatWindow();
+  sendToServer({ type: 'message', dst: CHAT_TARGET_ALL, msgType: CHAT_KIND_CHAT, text: '/?' });
+});
+
+// ComposeDefaultKey.cxx:98's own order: a composed line is tried against the
+// local table before it is ever sent, and a match never reaches the server --
+// the whole reason a command can be genuinely local rather than merely
+// answered locally.
+function tryLocalChatCommand(text) {
+  const match = /^(\/\S*)\s*([\s\S]*)$/.exec(text);
+  if (!match) return false;
+  const run = LOCAL_COMMANDS.get(match[1].toLowerCase());
+  if (!run) return false;
+  run(match[2]);
+  return true;
+}
+
 function sendChatInputText() {
   const chatTarget = document.getElementById('chatTarget');
   const text = chatInput.value.trim();
   if (text.length === 0) return;
+  if (tryLocalChatCommand(text)) {
+    chatInput.value = '';
+    return;
+  }
   const dst = normalizeMessageEndpoint(chatTarget.value, CHAT_TARGET_ALL);
   sendToServer({ type: 'message', dst, msgType: CHAT_KIND_CHAT, text });
   chatInput.value = '';
@@ -5144,6 +5343,14 @@ function handleServerMessage(message) {
     case 'message': {
       const srcId = normalizeMessageEndpoint(message.src ?? message.from, CHAT_TARGET_SERVER);
       const dstId = normalizeMessageEndpoint(message.dst ?? message.to, CHAT_TARGET_ALL);
+      // playing.cxx:3116-3150: only chat and action messages are ever
+      // filtered -- never a server-originated one (`src: -1` normalizes to
+      // `CHAT_TARGET_SERVER`, never a player id, so `isPlayerSilenced` cannot
+      // match it anyway).
+      if ((message.msgType === CHAT_KIND_CHAT || message.msgType === CHAT_KIND_ACTION)
+        && typeof srcId === 'string' && isPlayerSilenced(srcId)) {
+        break;
+      }
       if (typeof srcId === 'string' && dstId === myPlayerId && srcId !== myPlayerId) {
         lastDirectSenderId = srcId;
       }
@@ -5248,6 +5455,7 @@ function addPlayer(player) {
   tank.rotation.y = player.rotation;
   tank.userData.tankModel = playerTankModelId;
   tank.userData.playerState = player; // Store player state for scoreboard
+  applySilenceToVoice(player.id);
   tank.userData.verticalVelocity = player.verticalVelocity;
   tank.userData.forwardSpeed = player.forwardSpeed || 0;
   tank.userData.rotationSpeed = player.rotationSpeed || 0;
@@ -12106,6 +12314,7 @@ function updateChatWindow() {
     const msg = activeMessages[i];
     const div = document.createElement('div');
     div.className = `chat-line chat-kind-${msg.kind || CHAT_KIND_CHAT}`;
+    if (isHighlightMatch(msg.text)) div.classList.add('chat-highlight');
     if (msg.segments) {
       // A segment with no colour inherits the line's, which is the kind's own
       // CSS rule -- so only the runs that need a colour carry one. Through

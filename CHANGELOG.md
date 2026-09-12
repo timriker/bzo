@@ -6,6 +6,27 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
 
 ## [Unreleased]
 
+## [1.2.5] - 2026-09-12
+
+### Added
+- **`/silence <callsign>` and `/unsilence <callsign>` (issue #5)**, bzo's
+  first client-local commands: entirely in the browser, never sent to the
+  server, matching upstream's own client-side command layer. Filters that
+  player's chat and action messages for you only -- nobody else's view of
+  them changes. `/silence -` and `/unsilence -` silence or restore every
+  unauthenticated player at once, bzo's answer to upstream's own "silence
+  every unregistered player", since an unauthenticated name can be anything
+  and changes on every rejoin. Extended to voice, which upstream has none of
+  to extend: a silenced player's voice is muted too, and stays muted through
+  a reconnect under the same callsign.
+- **`/highlight <pattern>` and `/cmds` (issue #5)**, completing bzo's
+  client-local command table. `/highlight` is one case-insensitive regular
+  expression that pulsates, underlines and colours cyan every chat line
+  matching it -- on every redraw, so changing the pattern relights lines
+  already on screen -- and a bare `/highlight` clears it; both persist across
+  sessions. `/cmds` lists bzo's own local commands, then asks the server for
+  its own list too, the same two-part answer upstream's own `/cmds` gives.
+
 ## [1.2.4] - 2026-09-12
 
 ### Added

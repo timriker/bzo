@@ -270,6 +270,20 @@ canvas {
   color: var(--chat-kind-direct-out);
 }
 
+/* /highlight (ControlPanel.cxx:546-556): upstream redraws a matched line
+   pulsating, underlined and cyan instead of its usual colour. Placed after
+   every chat-kind-* rule so it wins on source order at equal specificity. */
+#chatMessages .chat-line.chat-highlight {
+  color: #00e5ff;
+  text-decoration: underline;
+  animation: chat-highlight-pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes chat-highlight-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.55; }
+}
+
 .chat-tabs {
   display: flex;
   flex-wrap: wrap;

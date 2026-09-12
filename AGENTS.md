@@ -2440,6 +2440,78 @@ ambiguous in the one direction that matters and a letter cannot be misread.
 `bearingToRotation` is that conversion, and the reply names the resulting facing
 back so it is visible either way.
 
+### Client-local commands -- `/silence`, `/unsilence`, `/highlight`, `/cmds`
+
+`LOCAL_COMMANDS` (`public/client.js`) is the table upstream's own client claims
+a composed line against before anything is ever sent (`ComposeDefaultKey.cxx:98`).
+`tryLocalChatCommand` runs ahead of `sendChatInputText`'s own `sendToServer`, so
+a match never reaches the server at all -- these are the commands where asking
+the server would mean inventing state on it for something genuinely local to
+one client. `docs/commands-plan.md` calls this out as the one place upstream's
+own two-layer split (client commands, then server commands) is worth keeping,
+and step 4 of that plan -- this whole table -- is now done.
+
+#### `/silence`, `/unsilence` -- extended to voice
+
+- **Case-insensitive callsigns, in a `Set`, persisted to `localStorage`** rather
+  than per-session -- upstream persists its own list too, in its BZDB config.
+- **Filters only chat and action messages** (`playing.cxx:3116-3150`'s own
+  scope), checked in the `message` case before anything else runs: a silenced
+  sender's line never reaches `addChatEntry` and plays no notification sound.
+  Nothing else is filtered -- not a kill notice, not a flag event.
+- **`-` is bzo's answer to upstream's own "silence every unregistered player",
+  not a member of the callsign set.** Upstream's identity split is
+  registered/unregistered; bzo's is `verified`, the same boolean already drawn
+  as the `+`/`@` marks beside a callsign. `silenceUnverified` is a flag beside
+  the set for exactly that reason -- an unauthenticated name can be anything and
+  is free to change on every rejoin, which is what makes silencing one callsign
+  alone worth so little against a determined pest.
+- **Extended to voice, which upstream has none of to extend.** A silenced
+  player's voice would otherwise keep coming through while their text stopped,
+  which is not what anyone typing `/silence` would expect. `applySilenceToVoice`
+  calls `voiceManager.setPeerMuted(id, muted)`, which forces one peer's
+  `<audio>` element to `0` -- the same element `applyVoicePlaybackVolume`
+  (`public/voice.js`) already sets the shared playback level on, so a muted
+  peer just reads `0` there instead of the level everyone else does. Muting
+  reaches a peer whether or not its connection exists yet: the mute is a `Set`
+  the manager already consults at connection time and on every volume change,
+  not a one-shot action, so `/silence`-ing a name before that player even joins
+  still holds once they do.
+- **Re-asked on every roster update, not just when the command runs.**
+  `addPlayer` calls `applySilenceToVoice` for every player state it stores,
+  which is what makes a reconnect (a new id under the same callsign, or a
+  freshly-unauthenticated join under `-`) silenced without re-typing anything.
+
+#### `/highlight <pattern>`
+
+One JavaScript `RegExp`, case-insensitive, replacing whatever was there before
+-- upstream's own `highlightPattern` is a POSIX extended regex compiled with
+`REG_ICASE`, and a bare `/highlight` is upstream's own way to clear it too,
+since there is no `/unhighlight`. An invalid pattern highlights nothing rather
+than throwing on every chat line, matching a failed `regcomp` silently doing
+the same. Persisted to `localStorage`, matching upstream's own persistent BZDB
+var -- unlike the silence list, there is nothing per-session about wanting a
+word to stand out.
+
+`isHighlightMatch` is checked in `updateChatWindow`'s own render loop, once
+per visible line, on every redraw -- not once when a line arrives. That is
+upstream's own model (`ControlPanel::render` scans its whole buffer every
+frame) and it is what makes changing the pattern relight every matching line
+already on screen rather than only the next one. The CSS is upstream's own
+three effects at once: pulsating, underlined, cyan (`.chat-highlight` in
+`styles.css`), placed after every `chat-kind-*` rule so it wins their shared
+colour at equal specificity.
+
+#### `/cmds`
+
+Upstream's own `CommandList` prints its local table, then sends the server
+its own `/?` so both halves of "what commands are there" answer one request.
+bzo's does the same: the local names go straight to `addChatEntry`, and a
+literal `/?` is sent to the server immediately after -- through the ordinary
+chat path, so the server's existing "never broadcast a `/` line" rule and
+`replyToPlayer`'s private reply are exactly what a player typing `/?` by hand
+would get.
+
 Height is the interesting part, and it is `dropSpawnPosition` -- the same
 resolver `testSpawn` uses:
 

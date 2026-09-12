@@ -161,6 +161,13 @@ export function createVoiceManager(options = {}) {
   const roster = new Map();
   const peers = new Map();
   const listeners = [];
+  // `/silence`'s bzo-specific half: upstream has no voice to silence, but a
+  // text-only /silence here would be surprising when the same player's voice
+  // keeps coming through. The host decides who belongs in this set (a
+  // callsign match, or bzo's own answer to upstream's "-" -- unauthenticated)
+  // and just tells us the id; this module only ever answers "is this peer
+  // muted" at the one place playback volume is set.
+  const mutedPeerIds = new Set();
 
   function invoke(name, ...args) {
     const callback = callbacks[name];
@@ -183,16 +190,32 @@ export function createVoiceManager(options = {}) {
   // graph the Game volume controls, so its level is the element's own gain.
   // That is playback only: it never touches the track sent to peers.
   function applyVoicePlaybackVolume(audio) {
-    const elements = audio ? [audio] : Array.from(peers.values(), (entry) => entry.remoteAudio);
+    const entries = audio
+      ? [[audio.dataset.voicePeerId, audio]]
+      : Array.from(peers.entries(), ([peerId, entry]) => [peerId, entry.remoteAudio]);
     const gain = volumeLevelToGain(voiceVolumeLevel);
-    elements.forEach((element) => {
+    entries.forEach(([peerId, element]) => {
       if (!element) return;
       try {
-        element.volume = gain;
+        element.volume = mutedPeerIds.has(normalizePlayerId(peerId)) ? 0 : gain;
       } catch {
         // A host may supply a media-element double with a read-only volume.
       }
     });
+  }
+
+  // The host calls this whenever its own reason to silence a peer changes --
+  // `/silence`/`/unsilence`, or a join that matches an existing rule -- rather
+  // than this module knowing anything about callsigns or verification. Safe to
+  // call before a peer connection exists: the set is what `createRemoteAudio`
+  // and every volume change consult, so a peer that connects after being
+  // muted starts silent rather than needing a second pass.
+  function setPeerMuted(peerId, muted) {
+    const normalized = normalizePlayerId(peerId);
+    if (normalized === null) return;
+    if (muted) mutedPeerIds.add(normalized); else mutedPeerIds.delete(normalized);
+    const entry = peers.get(normalized);
+    if (entry) applyVoicePlaybackVolume(entry.remoteAudio);
   }
 
   // Microphone level is a gain node between capture and the sent track, because
@@ -980,6 +1003,7 @@ export function createVoiceManager(options = {}) {
     setChannel,
     setVoiceVolumeLevel,
     setMicrophoneVolumeLevel,
+    setPeerMuted,
     setRtcConfig,
     toggleMicrophone,
     handleServerMessage,

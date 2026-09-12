@@ -6,12 +6,15 @@ references are paths under `$HOME/bzflag/`.
 Issue #5 tracks this; reference it from every commit and changelog entry here, as
 flag work references #6 and game modes reference #42.
 
-**Steps 1, 2 and 3 are done.** `server/commands.cjs` holds the parsing and the
+**Steps 1 through 4 are done.** `server/commands.cjs` holds the parsing and the
 formatting, the table and the dispatcher are in `server.js`. The commands are
-`/?`, `/help` and `/<prefix>?`; the open tier `/uptime`, `/serverquery`, `/msg`,
-`/date`, `/time`, `/lagstats`; and the operator tier `/kill`, `/say`, `/mute`,
-`/unmute`, `/mutelist`, `/playerlist`, `/flag` (`reset`, `up`, `show`, `drop
-[player]`), `/set` and `/mv`, plus `/me`. See "Server commands" in `AGENTS.md`.
+`/?`, `/help` and `/<prefix>?`; the open tier `/uptime`, `/serverquery`,
+`/msg`, `/date`, `/time`, `/lagstats`; and the operator tier `/kill`, `/say`,
+`/mute`, `/unmute`, `/mutelist`, `/playerlist`, `/flag` (`reset`, `up`, `show`,
+`drop [player]`), `/set`, `/mv`, `/countdown` and `/gameover` (issue #66), plus
+`/me`. Step 4's whole client-local table -- `/silence`, `/unsilence`,
+`/highlight`, `/cmds` -- is also done, entirely in `public/client.js` and
+never reaching the server. See "Server commands" in `AGENTS.md`.
 
 **`/mv` is bzo's own.** Upstream has no command that moves a tank -- not in bzfs,
 not in `BanCommands`, not in any plugin, and there is no API call for it either.
@@ -99,8 +102,10 @@ choice to ignore somebody, and asking the server about it would be inventing
 state. So:
 
 - The client keeps a **local** table for things that are only its own:
-  `/silence`, `/unsilence`, `/highlight`, `/localset`-shaped settings, `/cmds`.
-  These need no server work at all and can land first.
+  `/silence`, `/unsilence`, `/highlight` and `/cmds` (**all done** -- see
+  "Server commands" in `AGENTS.md`), plus `/localset`-shaped settings, which
+  wait on bzo having client-local settings worth naming this way. These need
+  no server work at all and could land first, which is why they did.
 - Everything else goes to the server as a message whose text begins with `/`, and
   the server parses it. **A `/` line is never broadcast as chat**, whether or not
   a command matches: an unmatched one gets "Unknown command" back, as upstream
@@ -271,8 +276,9 @@ piece of work here rather than two.
    `/mute`, `/flag`, `/playerlist`, `/set`.~~ **Done**, plus `/mv`. `/set`
    reaches the three settings the Operator panel already propagates, and both now
    write through one `applyServerConfigChanges` -- the rule above, honoured.
-4. **The client-local set**: `/silence`, `/unsilence`, `/highlight`, `/cmds`.
-   Independent of everything above, and pure client work.
+4. ~~**The client-local set**: `/silence`, `/unsilence`, `/highlight`,
+   `/cmds`.~~ **Done.** `/silence`/`/unsilence` are extended to voice, which
+   upstream has none of to extend.
 5. ~~**Lag measurement**~~ **Done**: every connection's lag, jitter and loss are
    tracked and `/lagstats` reports them. `/lagwarn`, `/lagdrop`, `/jitterwarn`,
    `/jitterdrop` and the idle commands still wait on the warn/kick machinery
