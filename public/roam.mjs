@@ -39,12 +39,20 @@ export const ROAM_ZOOM_MAX = 120;
 
 // Roaming.h:36. Upstream also has `disabled`, which an observer can never reach:
 // Roaming::setMode refuses it for ObserverTeam, so bzo does not model it.
+// `DRIVE_FP`/`DRIVE_TP` are bzo-only (issue #68's driveable phantom tank for
+// Observer and Map Viewer): a first- or third-person view of a tank the
+// observer is flying rather than a real one, driven by the same local physics
+// a playing tank uses. Neither needs a subject the way TRACK/FOLLOW/FPS/FLAG
+// do, so `roamViewNeedsTarget` leaves them out and they are never excluded by
+// `allowTargeted`.
 export const ROAM_VIEW = Object.freeze({
   FREE: 'free',
   TRACK: 'track',
   FOLLOW: 'follow',
   FPS: 'fps',
   FLAG: 'flag',
+  DRIVE_FP: 'drive-fp',
+  DRIVE_TP: 'drive-tp',
 });
 
 export const ROAM_VIEW_ORDER = Object.freeze([
@@ -53,16 +61,24 @@ export const ROAM_VIEW_ORDER = Object.freeze([
   ROAM_VIEW.FOLLOW,
   ROAM_VIEW.FPS,
   ROAM_VIEW.FLAG,
+  ROAM_VIEW.DRIVE_FP,
+  ROAM_VIEW.DRIVE_TP,
 ]);
 
 // The flag view tracks team flags only -- upstream skips any flag whose
 // `flagTeam` is NoTeam -- so it is not offered where there are none to track.
-export function nextRoamView(view, { allowFlag = true } = {}) {
-  const order = allowFlag
-    ? ROAM_VIEW_ORDER
-    : ROAM_VIEW_ORDER.filter((candidate) => candidate !== ROAM_VIEW.FLAG);
+// `allowTargeted` is Map Viewer's own restriction (issue #68): its world holds
+// no other tank to track, follow or ride along with, so every view
+// `roamViewNeedsTarget` would ask a subject of is left out -- FREE and the two
+// driving views remain, since driving is a tank of the observer's own rather
+// than a subject to find in someone else's world.
+export function nextRoamView(view, { allowFlag = true, allowTargeted = true, direction = 1 } = {}) {
+  const order = ROAM_VIEW_ORDER
+    .filter((candidate) => allowFlag || candidate !== ROAM_VIEW.FLAG)
+    .filter((candidate) => allowTargeted || !roamViewNeedsTarget(candidate));
   const index = order.indexOf(view);
-  return order[(index + 1) % order.length];
+  const step = direction < 0 ? -1 : 1;
+  return order[(index + step + order.length) % order.length];
 }
 
 // Views that need a tank to look at. The others read the roaming camera alone.
@@ -70,11 +86,19 @@ export function roamViewNeedsTarget(view) {
   return view === ROAM_VIEW.TRACK || view === ROAM_VIEW.FOLLOW || view === ROAM_VIEW.FPS;
 }
 
-// Step to the next entry, or undefined once the list is spent. `null` is the
-// auto slot -- upstream's `targetManual == -1` -- so a cycle runs
-// auto, first, second, ... and then falls off the end.
-function nextInCycle(current, entries) {
+// Step to the next (or, backward, the previous) entry, or undefined once the
+// list is spent in that direction. `null` is the auto slot -- upstream's
+// `targetManual == -1` -- so a forward cycle runs auto, first, second, ... and
+// falls off the end, and a backward one runs the same list the other way and
+// falls off the front.
+function nextInCycle(current, entries, direction = 1) {
   if (entries.length === 0) return undefined;
+  if (direction < 0) {
+    if (current === null || current === undefined) return undefined;
+    const index = entries.indexOf(current);
+    if (index <= 0) return null;
+    return entries[index - 1];
+  }
   if (current === null || current === undefined) return entries[0];
   const index = entries.indexOf(current);
   if (index < 0 || index === entries.length - 1) return undefined;
@@ -84,25 +108,38 @@ function nextInCycle(current, entries) {
 // Upstream spends two bindings here: F8 cycles the view type and F6/F7 cycle the
 // subject. bzo has one button for both, so the two are flattened into a single
 // walk -- within a view that takes a subject, step from the leader through every
-// player, then move to the next view and start at its leader again.
+// player, then move to the next view and start at its leader again. `direction`
+// runs the same walk backward, which is what lets left and right on a settings
+// row (or `C` versus a future shift-`C`) step through it both ways -- landing
+// on a new view's *last* subject rather than its leader, symmetric with a
+// forward entry always landing on the leader.
 export function advanceRoamSelection(current, {
   playerIds = [],
   flagIndexes = [],
   allowFlag = true,
+  allowTargeted = true,
+  direction = 1,
 } = {}) {
   const view = current?.view;
   if (roamViewNeedsTarget(view)) {
-    const nextTarget = nextInCycle(current.targetId, playerIds);
+    const nextTarget = nextInCycle(current.targetId, playerIds, direction);
     if (nextTarget !== undefined) {
       return { view, targetId: nextTarget, flagIndex: current.flagIndex ?? null };
     }
   } else if (view === ROAM_VIEW.FLAG) {
-    const nextFlag = nextInCycle(current.flagIndex, flagIndexes);
+    const nextFlag = nextInCycle(current.flagIndex, flagIndexes, direction);
     if (nextFlag !== undefined) {
       return { view, targetId: current.targetId ?? null, flagIndex: nextFlag };
     }
   }
-  return { view: nextRoamView(view, { allowFlag }), targetId: null, flagIndex: null };
+  const nextView = nextRoamView(view, { allowFlag, allowTargeted, direction });
+  if (direction < 0 && roamViewNeedsTarget(nextView)) {
+    return { view: nextView, targetId: playerIds[playerIds.length - 1] ?? null, flagIndex: null };
+  }
+  if (direction < 0 && nextView === ROAM_VIEW.FLAG) {
+    return { view: nextView, targetId: null, flagIndex: flagIndexes[flagIndexes.length - 1] ?? null };
+  }
+  return { view: nextView, targetId: null, flagIndex: null };
 }
 
 // playing.cxx:6034, the default variant: 40 behind the target's forward and six

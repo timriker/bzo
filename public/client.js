@@ -740,6 +740,18 @@ function readAutoFollowTarget() {
 }
 
 const autoFollowTarget = readAutoFollowTarget();
+
+// `?viewmap=bzo.bzw` -- issue #68's direct link into Map Viewer. Names a file
+// rather than validating one: the list of what this server has actually
+// hashed only exists once `init` arrives, so this just captures the request
+// and `init`'s handling of it decides whether the file is real.
+function readViewMapTarget() {
+  const params = new URLSearchParams(window.location.search);
+  if (!params.has('viewmap')) return null;
+  const requested = (params.get('viewmap') || '').trim();
+  return requested || null;
+}
+const autoViewMapTarget = readViewMapTarget();
 let selectedVoiceInputDeviceId = '';
 // One level per VOLUME_CHANNELS row, restored before the first sound plays so
 // nothing is ever briefly loud on the way to the level the player chose.
@@ -783,11 +795,118 @@ function syncPlayerTeamSelector() {
   // is the row below needing to be repainted. Every team change comes through
   // here, which is why the call belongs here rather than at each caller.
   refreshTankPreviewColor();
+  // Same reasoning for Map Viewer's map row and its preview (issue #68): every
+  // team change is a place the picker might need to appear, disappear, or hand
+  // off to a different world.
+  syncViewMapSelector();
+  syncMapViewerPreview();
+}
+
+// The map row inside the entry dialog. Always present rather than shown only
+// for Map Viewer -- a row that appears and disappears as the team selector
+// above it cycles is one more thing an XR menu (a plain array of rows, no DOM
+// to insert into) would have needed its own logic for, so both surfaces use
+// the same answer: the row stays, greyed out like any other control that
+// does not apply to the current selection (`.entryTeamSelector:disabled` is
+// already styled for this), and it still shows what it would apply to.
+function syncViewMapSelector() {
+  const row = document.getElementById('entryViewMapSelector');
+  const valueEl = document.getElementById('entryViewMapValue');
+  const isStagedAsMapViewer = getSelectedPlayerTeam() === PLAYER_TEAM.MAP_VIEWER;
+  if (row) row.disabled = !isStagedAsMapViewer;
+  if (!selectedViewMapFile || !availableViewMaps.some((entry) => entry.file === selectedViewMapFile)) {
+    selectedViewMapFile = availableViewMaps[0]?.file ?? null;
+  }
+  if (valueEl) valueEl.textContent = selectedViewMapFile || 'No maps available yet';
+}
+
+// Offered the same way the team row is: usable before or after joining.
+function selectRelativeViewMap(direction) {
+  if (availableViewMaps.length === 0) return;
+  const files = availableViewMaps.map((entry) => entry.file);
+  const currentIndex = Math.max(0, files.indexOf(selectedViewMapFile));
+  const nextIndex = (currentIndex + direction + files.length) % files.length;
+  selectedViewMapFile = files[nextIndex];
+  syncViewMapSelector();
+  syncMapViewerPreview();
+}
+
+// Whether the 3D view and radar right now are showing a map nobody has
+// joined, rather than the live match -- true while the dialog is staging Map
+// Viewer over a chosen map, and true for the rest of a session actually
+// joined as one. Remote tanks, shots and flags are hidden for the same
+// duration: they belong to the live match's coordinates, which no longer
+// describe anything in view.
+function isPreviewingAltWorld() {
+  return previewedMapFile !== null;
+}
+
+// Hides what is already on screen the instant a preview starts, and restores
+// ordinary visibility the instant one ends -- the guards in `addPlayer`,
+// `createProjectile` and `updateFlags` handle everything from here on by
+// simply not drawing more of it while `isPreviewingAltWorld()` holds.
+function setMapViewerPreviewActive(active) {
+  if (active) {
+    tanks.forEach((tank) => { tank.visible = false; });
+    flags.forEach((flag, index) => renderManager.hideFlag(index));
+    projectiles.forEach((projectile) => renderManager.removeProjectile(projectile));
+    projectiles.clear();
+  } else {
+    tanks.forEach((tank) => {
+      const state = tank.userData?.playerState;
+      tank.visible = Boolean(state && state.health > 0);
+    });
+  }
+}
+
+// The heart of the dialog-time preview (issue #68): behind the entry dialog,
+// exactly the way the live match already renders there before a fresh
+// connection has joined anything, Map Viewer's own picker swaps in whichever
+// map is currently staged. `loadWorldFile` is cache-backed (module-level by
+// hash, and the browser's own HTTP cache besides, since the URL is
+// `immutable`), so cycling back to an already-seen map is instant.
+function syncMapViewerPreview() {
+  const stagedTeam = getSelectedPlayerTeam();
+  if (stagedTeam !== PLAYER_TEAM.MAP_VIEWER) {
+    if (previewedMapFile !== null) {
+      previewedMapFile = null;
+      setMapViewerPreviewActive(false);
+      applyWorldData(liveWorldData);
+    }
+    return;
+  }
+  const target = selectedViewMapFile || availableViewMaps[0]?.file || null;
+  if (!target || target === previewedMapFile) return;
+  const entry = availableViewMaps.find((candidate) => candidate.file === target);
+  if (!entry) return;
+  const wasAlreadyPreviewing = previewedMapFile !== null;
+  previewedMapFile = target;
+  if (!wasAlreadyPreviewing) setMapViewerPreviewActive(true);
+  loadWorldFile(entry).then((world) => {
+    // The player may have cycled to a different map (or left Map Viewer
+    // entirely) while this fetch was in flight; only the most recent choice
+    // gets applied.
+    if (previewedMapFile === target) applyWorldData(world);
+  });
+}
+
+// The dialog's own team cycle: every server-recognized selection, with Map
+// Viewer (issue #68) inserted right after Observer -- it is never a real team
+// (see `PLAYER_TEAM.MAP_VIEWER`'s own comment in teams.mjs), offered here
+// purely as a client-side alternative to plain Observer, exactly when
+// Observer itself is offered and there is at least one map to look at.
+function getDialogTeamSelections() {
+  const base = getPlayerTeamSelections(availablePlayerTeams);
+  if (!availablePlayerTeams.includes(PLAYER_TEAM.OBSERVER) || availableViewMaps.length === 0) {
+    return base;
+  }
+  const observerIndex = base.indexOf(PLAYER_TEAM.OBSERVER);
+  return [...base.slice(0, observerIndex + 1), PLAYER_TEAM.MAP_VIEWER, ...base.slice(observerIndex + 1)];
 }
 
 function setAvailablePlayerTeams(teams) {
   availablePlayerTeams = PLAYER_TEAMS.filter((team) => teams.includes(team));
-  if (selectedPlayerTeam !== PLAYER_TEAM.AUTOMATIC && !availablePlayerTeams.includes(selectedPlayerTeam)) {
+  if (selectedPlayerTeam !== PLAYER_TEAM.AUTOMATIC && !getDialogTeamSelections().includes(selectedPlayerTeam)) {
     selectedPlayerTeam = PLAYER_TEAM.AUTOMATIC;
   }
   syncPlayerTeamSelector();
@@ -796,7 +915,7 @@ function setAvailablePlayerTeams(teams) {
 // Offered to a player already in the game as well: the dialog stages the choice
 // and OK pays for it with a rejoin.
 function selectRelativePlayerTeam(direction) {
-  const teamSelections = getPlayerTeamSelections(availablePlayerTeams);
+  const teamSelections = getDialogTeamSelections();
   const currentIndex = teamSelections.indexOf(selectedPlayerTeam);
   const nextIndex = (currentIndex + direction + teamSelections.length) % teamSelections.length;
   selectedPlayerTeam = teamSelections[nextIndex];
@@ -805,6 +924,27 @@ function selectRelativePlayerTeam(direction) {
 
 function isObserver() {
   return isObserverTeam(playerTeam);
+}
+
+// The driveable phantom tank for Observer and Map Viewer alike (issue #68):
+// a first- or third-person view of a tank the observer is flying, run
+// through the exact same local physics a playing tank uses -- collision,
+// jumping, shooting -- with nothing but the existing infrequent heartbeat
+// (`sendObserverUpdate`) ever reaching the server. `roamView` already carries
+// which camera the observer's whole camera system is in, so driving is just
+// two more entries in that same list rather than a mode of its own.
+function isPhantomDriving() {
+  return roamView === ROAM_VIEW.DRIVE_FP || roamView === ROAM_VIEW.DRIVE_TP;
+}
+
+// The flag a phantom tank's own motion, jumping and Wings behave as if they
+// were reading -- always Wings, so it never runs out of altitude -- without
+// touching `getMyFlag()` itself. `getMyFlag()` stays null for an observer
+// exactly as it already is: Drop Flag has to keep no-op'ing (`requestFlagDrop`
+// returns false for a null flag), and nothing else that reads the real flag
+// (the shot type, the HUD, the scoreboard colour) should think there is one.
+function effectiveMotionFlagType() {
+  return isPhantomDriving() ? 'WG' : (getMyFlag()?.type ?? null);
 }
 
 function isTheRabbit(playerId) {
@@ -1441,6 +1581,16 @@ function bindAudioControls() {
   }
   syncPlayerTeamSelector();
 
+  const viewMapSelector = document.getElementById('entryViewMapSelector');
+  if (viewMapSelector) {
+    viewMapSelector.addEventListener('click', () => selectRelativeViewMap(1));
+    viewMapSelector.addEventListener('menuadjust', (event) => {
+      const direction = Number(event.detail?.direction) < 0 ? -1 : 1;
+      selectRelativeViewMap(direction);
+      event.preventDefault();
+    });
+  }
+
   const loginRow = document.getElementById('entryLoginRow');
   if (loginRow) {
     loginRow.addEventListener('click', () => startGlobalLogin());
@@ -1519,25 +1669,115 @@ function hideLoadingOverlay() {
   setLoadingOverlayState({ visible: false });
 }
 
+// Map Viewer (issue #68) is Observer on the wire -- same team limit, same
+// team chat, same white scoreboard colour -- distinguished only by `viewMap`,
+// which the server reads purely for its own bookkeeping since the client
+// already rendered its choice before Join was ever pressed. One function so
+// every `joinGame` send -- the flat dialog's OK and the XR menu's "Apply and
+// Join" alike -- translates the client-only `mapviewer` sentinel the same
+// way; a second copy of this ternary is how the XR path once sent it to the
+// server raw, which read as an unrecognized team and fell back to Rogue.
+function getJoinTeamFields() {
+  const team = getSelectedPlayerTeam();
+  const isMapViewer = team === PLAYER_TEAM.MAP_VIEWER;
+  return {
+    team: isMapViewer ? PLAYER_TEAM.OBSERVER : team,
+    viewMap: isMapViewer ? selectedViewMapFile : undefined,
+  };
+}
+
 function setPendingJoinRequest(name) {
   pendingJoinRequest = {
     name,
     isMobile,
     tankModel: selectedTankModelId,
-    team: getSelectedPlayerTeam(),
   };
 }
 
 function maybeSendPendingJoinRequest() {
   if (!renderReadyForJoin || gameplayJoinConfirmed || !pendingJoinRequest) return;
-  pendingJoinRequest.team = getSelectedPlayerTeam();
   sendToServer({
     type: 'joinGame',
     name: pendingJoinRequest.name,
     isMobile: pendingJoinRequest.isMobile,
     tankModel: pendingJoinRequest.tankModel,
-    team: pendingJoinRequest.team,
+    ...getJoinTeamFields(),
   });
+}
+
+// Keyed by content hash, so a Map Viewer choosing the live match's own map,
+// or a reconnect within the same tab, never re-fetches a world it already
+// holds -- on top of the browser's own HTTP cache, which is what makes a
+// fresh tab's reconnect free (server.js serves each world at an
+// `immutable`, hash-named URL; see `MAP_REGISTRY`).
+const worldFileCache = new Map();
+
+async function loadWorldFile(worldRef) {
+  if (!worldRef || !worldRef.url) return null;
+  if (worldRef.hash && worldFileCache.has(worldRef.hash)) {
+    return worldFileCache.get(worldRef.hash);
+  }
+  try {
+    const response = await fetch(worldRef.url);
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    const world = await response.json();
+    if (worldRef.hash) worldFileCache.set(worldRef.hash, world);
+    return world;
+  } catch (error) {
+    console.error('Failed to load world file', worldRef.url, error);
+    return null;
+  }
+}
+
+// GAME_CONFIG's own default (defaultBZDB.cxx's `worldSize`, doubled the same
+// way the server doubles a map's own `world size` line -- see server.js's
+// `DEFAULT_MAP_SIZE`), used only in the brief window before any world has
+// applied at all.
+const DEFAULT_MAP_SIZE = 800;
+
+// The map size currently built into the scene -- the live match's, or a Map
+// Viewer preview's (issue #68) -- read from the world file the same way
+// obstacles and teleporters are. `init.config` deliberately carries no
+// MAP_SIZE of its own to ask instead: this is the one place map size comes
+// from, live match or preview alike.
+let currentWorldMapSize = null;
+
+// Obstacles, teleporters, clouds and world size -- everything a fetched world
+// file carries. Whatever else `init` sends (roster, scores, config) is live
+// match state and does not come from here.
+function applyWorldData(world) {
+  if (world && world.obstacles) {
+    OBSTACLES = world.obstacles;
+    refreshCollisionColliders();
+    renderManager.setObstacles(OBSTACLES);
+  } else {
+    OBSTACLES = [];
+    refreshCollisionColliders();
+    renderManager.setObstacles([]);
+  }
+
+  if (world && world.teleporterGraph && typeof world.teleporterGraph === 'object') {
+    TELEPORTER_GRAPH = world.teleporterGraph;
+  } else {
+    TELEPORTER_GRAPH = { teleporters: [], links: [] };
+  }
+  rebuildTeleporterRuntimeState();
+  debugLog(`world.teleporters count=${TELEPORTER_GRAPH.teleporters.length} links=${TELEPORTER_GRAPH.links.length}`);
+
+  if (world && world.clouds) {
+    renderManager.createClouds(world.clouds);
+  } else {
+    renderManager.clearClouds();
+  }
+
+  // Ground, boundary walls and mountains all have to match whichever map is
+  // actually on screen -- the live match's, or a Map Viewer preview's. The
+  // fallback only ever applies to a world that failed to fetch.
+  currentWorldMapSize = Number.isFinite(world?.mapSize) ? world.mapSize : DEFAULT_MAP_SIZE;
+  renderManager.buildGround(currentWorldMapSize);
+  renderManager.setGroundGridEnabled(showDebugGeometry, currentWorldMapSize);
+  renderManager.createMapBoundaries(currentWorldMapSize);
+  renderManager.createMountains(currentWorldMapSize);
 }
 
 async function prepareInitialRender(message, sequenceId) {
@@ -1575,9 +1815,6 @@ async function prepareInitialRender(message, sequenceId) {
     detail: 'Building world geometry',
   });
 
-  renderManager.buildGround(gameConfig.MAP_SIZE);
-  renderManager.setGroundGridEnabled(showDebugGeometry, gameConfig.MAP_SIZE);
-  renderManager.createMapBoundaries(gameConfig.MAP_SIZE);
   await waitForAnimationFrame();
   if (sequenceId !== activeInitSequence) return false;
 
@@ -1588,33 +1825,26 @@ async function prepareInitialRender(message, sequenceId) {
     detail: 'Synchronizing world objects',
   });
 
-  if (message.obstacles) {
-    OBSTACLES = message.obstacles;
-    refreshCollisionColliders();
-    renderManager.setObstacles(OBSTACLES);
-  } else {
-    OBSTACLES = [];
-    refreshCollisionColliders();
-    renderManager.setObstacles([]);
-  }
+  // `init` carries only a { hash, url } reference (see `MAP_REGISTRY` in
+  // server.js) so a client that already has this world -- an `immutable`
+  // response -- skips the fetch entirely. `loadWorldFile`/`applyWorldData`
+  // are also what a Map Viewer client (issue #68) calls a second time for
+  // the map it chose, against this same world-build code.
+  const world = message.world ? await loadWorldFile(message.world) : null;
+  if (sequenceId !== activeInitSequence) return false;
+  // Kept so a Map Viewer preview or session (issue #68) can hand the live
+  // world back on the way out without a re-fetch.
+  liveWorldData = world;
+  // `?viewmap=` (issue #68) stages its preview synchronously, before this
+  // `await` above ever yields, so a preview already under way by the time
+  // this resolves means the live world lost the race and stays un-applied --
+  // otherwise it would flash onto the screen the moment its own fetch
+  // finishes, undoing the direct link.
+  if (!isPreviewingAltWorld()) applyWorldData(world);
 
-  if (message.teleporterGraph && typeof message.teleporterGraph === 'object') {
-    TELEPORTER_GRAPH = message.teleporterGraph;
-  } else {
-    TELEPORTER_GRAPH = { teleporters: [], links: [] };
-  }
-  rebuildTeleporterRuntimeState();
-  debugLog(`world.teleporters count=${TELEPORTER_GRAPH.teleporters.length} links=${TELEPORTER_GRAPH.links.length}`);
-
-  renderManager.createMountains(gameConfig.MAP_SIZE);
   // The sun and the moon are the sky and the shadow direction, not dynamic
   // lighting, so they are here whatever that setting says.
   renderManager.setWorldTime(message.worldTime || 0);
-  if (message.clouds) {
-    renderManager.createClouds(message.clouds);
-  } else {
-    renderManager.clearClouds();
-  }
 
   setLoadingOverlayState({
     visible: true,
@@ -2558,10 +2788,30 @@ let TELEPORTER_GRAPH = { teleporters: [], links: [] };
 let TELEPORTER_OBSTACLES_BY_INDEX = new Map();
 let TELEPORTER_LINKS_BY_SOURCE_FACE = new Map();
 
+// Map Viewer (issue #68). `availableViewMaps` is `init.viewableMaps` verbatim
+// -- every map hashed so far, `{ file, hash, url }`. `selectedViewMapFile` is
+// the dialog's staged choice; `previewedMapFile` is whichever map is actually
+// applied to the scene right now, non-null exactly while that differs from
+// the live match (dialog preview or actual Map Viewer play). `liveWorldData`
+// is the live match's own world payload, kept so leaving a preview restores
+// it without a re-fetch.
+let availableViewMaps = [];
+let selectedViewMapFile = null;
+let previewedMapFile = null;
+let liveWorldData = null;
+
 // Camera mode
 let cameraMode = 'first-person'; // 'first-person', 'third-person', or 'overview'
 let lastCameraMode = 'first-person';
 let entryDialogReturnCameraMode = 'first-person';
+// Mirrors entryDialogReturnCameraMode, for the XR menu's own "Join Game" /
+// "Player Options" screen (issue #68): it is the one place XR previews a team
+// or Map Viewer choice before confirming it, the same reason the flat dialog
+// forces 'overview' while open. Without it, the render call site's
+// `isObserver()` reads the *confirmed* team -- during staging, whatever team
+// was last actually joined -- and shows that team's ordinary camera instead
+// of a preview. `null` means no override is currently applied.
+let xrPlayerScreenReturnCameraMode = null;
 
 // Pause state. Three facts and the rules over them live in pause.mjs, which is
 // what keeps the two ways to pause -- the P key and a menu covering the game --
@@ -2586,9 +2836,13 @@ function isMyTankAlive() {
 }
 
 // Whether the game is being watched at all: a menu in front of it or a hidden
-// window both mean no.
+// window both mean no. `document.hidden` is not that signal in XR -- entering
+// an immersive session backgrounds the flat page itself, on top of and not
+// instead of watching the game through the headset, and it stays "hidden" for
+// as long as the session runs, so treating it as a pause here would pause on
+// entry and never find its way back to unpaused.
 function shouldAutoPause() {
-  return isMenuContextActive() || document.hidden;
+  return isMenuContextActive() || (document.hidden && !isXREnabled());
 }
 
 // The Unmap/Map pair (playing.cxx:1211, :1246). Every menu and the window's own
@@ -2690,7 +2944,12 @@ function motionBoxAxisInput(offsetPx) {
 // The crosshair, motion box, shot status and altimeter are hidden by CSS off
 // this one class, rather than by four inline styles.
 function updateObserverHudVisibility() {
-  const observing = isObserver();
+  // Driving (issue #68) wants exactly what a playing tank's HUD shows --
+  // crosshair, shot status, the touch control box -- so it is excluded here
+  // the same way it is from `cameraMode`/`roamFraming` above: `.observing`'s
+  // CSS is what hides all of that (see styles.css), and free-roam is the only
+  // one of the two with nothing to aim or reload.
+  const observing = isObserver() && !isPhantomDriving();
   document.body.classList.toggle('observing', observing);
   // HUDRenderer::renderStatus (HUDRenderer.cxx:1026) prints the roaming label
   // where a playing tank's status would go.
@@ -2901,7 +3160,10 @@ function getPreviewTankColor() {
   // upstream's flat white, which is what an observer is given whatever the team
   // mode -- see getJoinPlayerColor. The colour-team test below is about whether
   // *Rogue* names one, and on a world with no colour teams it does not.
-  if (isObserverTeam(team)) return getPlayerTeamColor(PLAYER_TEAM.OBSERVER);
+  // Map Viewer (issue #68) is staged the same way here, before it becomes a
+  // plain `observer` join at send time -- also flat white, and for the same
+  // reason: no hue of its own to shade.
+  if (isObserverTeam(team) || team === PLAYER_TEAM.MAP_VIEWER) return getPlayerTeamColor(PLAYER_TEAM.OBSERVER);
   const staged = team !== PLAYER_TEAM.AUTOMATIC
     && availablePlayerTeams.some(isColorTeam)
     && PLAYER_TEAM_COLORS[team] !== undefined;
@@ -3180,9 +3442,7 @@ let roamView = ROAM_VIEW.FREE;
 // null is upstream's `targetManual == -1`: follow whoever is leading.
 let roamTargetId = null;
 let roamTargetFlagIndex = null;
-// Fire cycles the view and identify picks a target, so both are edges rather
-// than held states.
-let roamFireWasHeld = false;
+// Identify picks a target, which is an edge rather than a held state.
 let roamIdentifyWasHeld = false;
 // -Infinity so the first frame of observing sends one rather than waiting out
 // an interval the camera has not been alive for.
@@ -3760,7 +4020,7 @@ function showMotionSurfaceDebug(obstacle) {
 }
 
 function updateDebugGeometryVisibility() {
-  renderManager.setGroundGridEnabled(showDebugGeometry, gameConfig?.MAP_SIZE);
+  renderManager.setGroundGridEnabled(showDebugGeometry, currentWorldMapSize ?? DEFAULT_MAP_SIZE);
   if (!showDebugGeometry) {
     hideSupportSurfaceDebug();
     hideSurfaceOutlineDebug();
@@ -4060,7 +4320,7 @@ initHudControls({
   onOperatorPanelShown: () => openOperatorPanel(),
   onOperatorPanelHidden: () => discardOperatorPanel(),
   isObserver: () => isObserver(),
-  cycleObserverView: () => cycleRoamView(),
+  cycleObserverView: (direction) => cycleRoamView(direction),
   getObserverViewLabel: () => getRoamLabel(),
   getCameraMode: () => cameraMode,
   setCameraMode: (mode) => { cameraMode = mode; },
@@ -4810,6 +5070,12 @@ function handleServerMessage(message) {
       if (serverMotdEl) serverMotdEl.textContent = serverMotdText;
       announceServerTextIfChanged();
       worldTime = message.worldTime;
+      // Every map hashed so far (issue #68's Map Viewer picker) -- a fresh
+      // connection, a fresh list, and no preview staged against the old one.
+      availableViewMaps = Array.isArray(message.viewableMaps) ? message.viewableMaps : [];
+      selectedViewMapFile = null;
+      previewedMapFile = null;
+      liveWorldData = null;
       // Clear any existing tanks from previous connections
       tanks.forEach((tank) => discardTank(tank));
       tanks.clear();
@@ -4878,6 +5144,20 @@ function handleServerMessage(message) {
         selectedPlayerTeam = PLAYER_TEAM.OBSERVER;
         syncPlayerTeamSelector();
       }
+      // `?viewmap=` (issue #68), the same shape of link: Map Viewer is
+      // Observer on the wire, offered wherever Observer is, so it only means
+      // something if the server offers Observer at all and has actually
+      // hashed the requested file by now -- an unknown name or a server that
+      // refuses Observer falls through to a normal join rather than staging a
+      // team the server would refuse.
+      const autoViewingMap = autoViewMapTarget !== null
+        && availablePlayerTeams.includes(PLAYER_TEAM.OBSERVER)
+        && availableViewMaps.some((entry) => entry.file === autoViewMapTarget);
+      if (autoViewingMap) {
+        selectedPlayerTeam = PLAYER_TEAM.MAP_VIEWER;
+        selectedViewMapFile = autoViewMapTarget;
+        syncPlayerTeamSelector();
+      }
 
       // Only send join if there is a saved name of the player's own choosing
       const savedName = getSavedJoinableName();
@@ -4886,7 +5166,7 @@ function handleServerMessage(message) {
       }
       if (!isDefaultPlayerName(myPlayerName)) {
         setPendingJoinRequest(myPlayerName);
-      } else if (autoObserving) {
+      } else if (autoObserving || autoViewingMap) {
         // The name the server gave this connection, which is the one the entry
         // dialog would have offered. A spectator arriving on a handed-out link
         // has no name to be asked for.
@@ -4909,6 +5189,13 @@ function handleServerMessage(message) {
     }
 
     case 'playerJoined':
+      // A join is always unpaused on the server (server.js's own `joinGame`
+      // resets `player.paused` unconditionally), but the paused sphere is
+      // event-driven -- only 'playerPaused'/'playerUnpaused' touch it -- so a
+      // pause picked up in a previous life would otherwise hang on the tank
+      // forever, having no unpause event left to answer to.
+      setTankPausedState(message.player.id, false);
+      removePausedSphere(message.player.id);
       if (message.player.id === myPlayerId) {
         gameplayJoinConfirmed = true;
         playerTeam = normalizePlayerTeam(message.player.team);
@@ -4992,6 +5279,19 @@ function handleServerMessage(message) {
           if (!wasAliveBefore && message.player.health > 0) {
             triggerSpawnEffectForTank(myTank, message.player.color);
           }
+        }
+        // A join is a new life on both ends -- the server's own join handler
+        // clears its copy of the pause the same way `respawned()` does for a
+        // respawn -- but nothing did that here on the client, so a pause or
+        // countdown picked up moments earlier (staging a team in the entry
+        // dialog while still on a live tank, say) would otherwise survive a
+        // join that has nothing to do with it and show as already paused.
+        if (pauseState.respawned({
+          covered: shouldAutoPause(),
+          alive: isMyTankAlive(),
+          observer: isObserver(),
+        })) {
+          sendToServer({ type: 'pause' });
         }
         refreshScoreboards();
       } else {
@@ -5496,7 +5796,11 @@ function addPlayer(player) {
   tank.userData.slideDirection = player.slideDirection;
   tank.userData.airVelocityX = player.airVelocityX || 0;
   tank.userData.airVelocityZ = player.airVelocityZ || 0;
-  tank.visible = player.health > 0;
+  // Roster bookkeeping (userData.playerState, just above) still updates for
+  // the scoreboard while a Map Viewer preview or session is showing a
+  // different map -- only the mesh itself is hidden, since the live match's
+  // coordinates no longer describe anything in view. See isPreviewingAltWorld.
+  tank.visible = player.health > 0 && !isPreviewingAltWorld();
 
   // Update name label if it exists and has a material
   if (tank.userData.nameLabel && tank.userData.nameLabel.material && player.name) {
@@ -5610,6 +5914,10 @@ function removePausedSphere(playerId) {
 }
 
 function createProjectile(data) {
+  // Belongs to the live match, which a Map Viewer preview or session is not
+  // looking at (issue #68) -- nothing about a shot is scoreboard state, so
+  // unlike a tank there is nothing worth keeping track of underneath.
+  if (isPreviewingAltWorld()) return;
   const effects = getShotEffects(data.flag ?? null);
 
   // A beam was traced whole by the server and does not move, so there is no
@@ -5759,7 +6067,12 @@ function createLocalProjectile({ x, y, z, dirX, dirZ, dirY = 0 }) {
   // what keeps a bounce from arriving a round trip late on the shooter's own
   // screen, which is the one screen it has to look right on.
   projectile.userData.flag = myFlag;
-  projectile.userData.ricochet = shotRicochets(myFlag, gameConfig?.ALL_SHOTS_RICOCHET);
+  // Always on for a phantom tank's own shot (issue #68) -- cosmetic, so there
+  // is nothing lost in enhancing it beyond whatever the live match's own
+  // ricochet setting happens to be.
+  projectile.userData.ricochet = isPhantomDriving()
+    ? true
+    : shotRicochets(myFlag, gameConfig?.ALL_SHOTS_RICOCHET);
   projectile.userData.speed = getShotSpeed(myFlag);
   projectile.userData.lifeFactor = localEffects.lifeFactor;
   projectile.userData.hiddenOnRadar = localEffects.hiddenOnRadar;
@@ -6236,7 +6549,9 @@ const OPERATOR_LIMIT_TEAMS = [
   PLAYER_TEAM.PURPLE,
 ];
 // The teams the playing limit counts and caps -- upstream's `CtfTeams` span,
-// which leaves the observers outside it (CmdLineOptions.cxx:453).
+// which leaves the observers outside it (CmdLineOptions.cxx:453). Map Viewer
+// (issue #68) has no row of its own here at all -- it is Observer on the
+// wire, so an operator caps it by capping Observer.
 const OPERATOR_PLAYING_TEAMS = OPERATOR_LIMIT_TEAMS.filter((team) => team !== PLAYER_TEAM.OBSERVER);
 // The rows `resolveTeamMode` zeroes when teams are off or rabbit chase is on.
 const OPERATOR_COLOR_TEAMS = [
@@ -6651,7 +6966,7 @@ function showMessage(text) {
 
 function getWorldBorderColliders() {
   if (cachedWorldBorderColliders.length > 0) return cachedWorldBorderColliders;
-  const mapSize = gameConfig?.MAP_SIZE || gameConfig?.mapSize || 100;
+  const mapSize = currentWorldMapSize ?? DEFAULT_MAP_SIZE;
   const halfMap = mapSize / 2;
   const thickness = 4;
   const barrierHeight = 1000;
@@ -6929,14 +7244,27 @@ function findTankCrossingPlane(worldX, worldY, worldZ, rotation, tankScale) {
   return null;
 }
 
+// A tank box has no meaning for a bodiless observer camera -- zero width and
+// length reduces `findInsideBuildings`' rect test to a single point, which is
+// exactly "is the camera's own position inside this solid" and nothing more.
+const OBSERVER_POINT_SCALE = Object.freeze({ width: 0, length: 0 });
+
 // doUpdateMotion's last act (LocalPlayer.cxx:854), with the tank where the frame
-// leaves it. Only a phased tank can be inside a building, so every other tank
-// skips the sweep rather than running it to find nothing, and the renderer is
-// told only when the answer changes.
+// leaves it. Only a phased tank can be inside a building, so every other real
+// tank skips the sweep rather than running it to find nothing, and the
+// renderer is told only when the answer changes.
+//
+// An observer's free camera has no such gate and no collision at all: roam
+// can end up inside solid geometry with nothing stopping it, where the same
+// "otherwise there is nothing to see" problem applies -- so it gets the same
+// treatment unconditionally, tested as a point rather than a tank's own
+// footprint, since there is no tank body here to test.
 function updateInsideBuildings() {
   const found = amPhased()
     ? findInsideBuildings(playerX, playerY, playerZ, playerRotation)
-    : [];
+    : isObserver()
+      ? findInsideBuildings(playerX, playerY, playerZ, playerRotation, OBSERVER_POINT_SCALE)
+      : [];
   if (found.length === insideBuildings.length
     && found.every((obs, i) => obs === insideBuildings[i])) return;
   insideBuildings = found;
@@ -7656,14 +7984,22 @@ function selectRoamTarget(id) {
 // binds nothing to changing the subject on its own, so fire, `C`, and the
 // Settings Camera row all step through the same list rather than offering a view
 // cycle that skips past the players. See advanceRoamSelection in roam.mjs.
-function cycleRoamView() {
+function cycleRoamView(direction = 1) {
   const flagIndexes = getRoamTrackableFlags().map((flag) => flag.index);
+  // Map Viewer (issue #68) is Observer on the wire, so nothing about
+  // `playerTeam` says so -- `isPreviewingAltWorld()` is what actually means
+  // "this world has no other tank or flag in it to track, follow or ride
+  // along with", true for a dialog preview and for the rest of a session
+  // joined as one alike.
+  const viewingAltWorld = isPreviewingAltWorld();
   const next = advanceRoamSelection(
     { view: roamView, targetId: roamTargetId, flagIndex: roamTargetFlagIndex },
     {
       playerIds: getRoamCandidates().sort(compareScoreboardPlayers).map((candidate) => candidate.id),
       flagIndexes,
-      allowFlag: flagIndexes.length > 0,
+      allowFlag: flagIndexes.length > 0 && !viewingAltWorld,
+      allowTargeted: !viewingAltWorld,
+      direction,
     },
   );
   roamView = next.view;
@@ -7891,6 +8227,8 @@ function getRoamLabel() {
     const flag = getRoamTargetFlag();
     if (flag) return `Tracking ${describeFlag(flag)}`;
   }
+  if (roamView === ROAM_VIEW.DRIVE_FP) return 'First Person';
+  if (roamView === ROAM_VIEW.DRIVE_TP) return 'Third Person';
   return 'Roaming';
 }
 
@@ -7904,19 +8242,36 @@ function handleRoamMotion(deltaTime) {
     roamCamera = null;
     roamView = ROAM_VIEW.FREE;
     roamTargetId = null;
-    roamFireWasHeld = false;
     roamIdentifyWasHeld = false;
     lastObserverHeartbeatAt = -Infinity;
     return;
   }
   if (!myTank || !gameConfig) return;
 
-  // Both are events, not held states, and every non-keyboard source reports a
-  // held button -- the same shape the drop key already has.
+  // Driving (issue #68's phantom tank): `handleMotion`/`handleInputEvents`
+  // already resolved position, rotation and the tank's own transform through
+  // the real tank's own physics this frame -- the same pass a playing tank
+  // runs, `updateInsideBuildings` included -- so nothing below this belongs
+  // to it. Visibility and the heartbeat still do: a phantom tank is shown to
+  // the player driving it (unlike free-roam's invisible virtual tank), but
+  // never to anyone else, since `addPlayer`'s health-gated visibility on
+  // every other client is untouched and this player's health stays 0 on the
+  // server regardless of camera mode.
+  if (isPhantomDriving()) {
+    myTank.visible = true;
+    if (myTank.userData.ghostMesh) myTank.userData.ghostMesh.visible = false;
+    if (myTank.userData.jumpPredictionDebug) myTank.userData.jumpPredictionDebug.visible = false;
+    sendObserverUpdate();
+    return;
+  }
+
+  // Cycling used to answer Fire here too, but Fire is wanted free for a
+  // future driving mode's own shooting, and cycling already has three other
+  // ways in that do not conflict with anything: the `C` key, the Settings
+  // panel's Camera row, and the same row in the XR menu (`adjustSettingsMenuRow`
+  // via `cycleCameraMode`). Removed rather than kept as a fourth, redundant
+  // path that would need revisiting the moment Fire means something else.
   const inputActive = isGameplayInputActive();
-  const fireHeld = inputActive && isFireHeld();
-  if (fireHeld && !roamFireWasHeld) cycleRoamView();
-  roamFireWasHeld = fireHeld;
 
   const identifyHeld = inputActive && virtualInput.identify;
   if (identifyHeld && !roamIdentifyWasHeld) identifyRoamTarget();
@@ -7980,6 +8335,10 @@ function handleRoamMotion(deltaTime) {
     : roamCamera.theta;
   myTank.position.set(playerX, playerY, playerZ);
   myTank.rotation.y = playerRotation;
+
+  // `handleMotion` -- where this runs for a real tank -- returns immediately
+  // for an observer, so it never reaches its own call to this.
+  updateInsideBuildings();
 
   sendObserverUpdate();
 }
@@ -8110,7 +8469,10 @@ function handleInputEvents() {
   updateVirtualInputFromGamepad();
 
   if (!myTank || !gameConfig) return;
-  if (isObserver()) return;
+  // A driving observer (issue #68) reads every input a playing tank does --
+  // only `handleRoamMotion` still treats it as an observer, for the camera
+  // and the heartbeat.
+  if (isObserver() && !isPhantomDriving()) return;
   if (!isGameplayInputActive()) return;
 
   // Where the tank is standing is not asked again here. doUpdateMotion reads
@@ -8124,7 +8486,7 @@ function handleInputEvents() {
   if (pauseState.isFrozen() || entryDialogFreeze) return;
 
   // Gather intended input from controls
-  const carriedFlagType = getMyFlag()?.type ?? null;
+  const carriedFlagType = effectiveMotionFlagType();
   airControl = hasAirControl(carriedFlagType);
   if (isInAir && !airControl) {
     // In air: use stored jump values to match what we send in packets
@@ -8186,7 +8548,13 @@ function handleInputEvents() {
 
 function handleMotion(deltaTime) {
   if (!myTank || !gameConfig) return;
-  if (isObserver()) return;
+  // A driving observer (issue #68) runs this whole pass unmodified -- the
+  // point of it is reusing exactly what a playing tank already does. Only the
+  // three `sendToServer` calls inside (move packet, teleport report, drop
+  // flag) and shooting's own send are conditioned separately below, on
+  // `isObserver()` alone rather than this, since driving never sends any of
+  // them.
+  if (isObserver() && !isPhantomDriving()) return;
   if (pauseState.isFrozen() || entryDialogFreeze) return;
 
   let forceMoveSend = false;
@@ -8222,7 +8590,7 @@ function handleMotion(deltaTime) {
   // than replacing them. Agility carries a clock, so `getSpeedFactor` is handed
   // the window it last opened and gives back the window it wants next -- the
   // rule stays in the shared pair and this only remembers the answer.
-  const motionFlag = getMyFlag()?.type ?? null;
+  const motionFlag = effectiveMotionFlagType();
   const agility = getSpeedFactor(
     motionFlag,
     myTank.userData.previousSpeedFraction || 0,
@@ -8494,7 +8862,10 @@ function handleMotion(deltaTime) {
   onGround = nextOnGround;
   isInAir = nextInAir;
   lastMotionObstacle = step.obstacle || null;
-  if (!isInAir) wingsFlapsLeft = gameConfig.WINGS_JUMP_COUNT;
+  // Unlimited Wings while driving (issue #68): grounded recharges to it same
+  // as everywhere else, so a phantom tank landing and taking off again never
+  // runs dry either.
+  if (!isInAir) wingsFlapsLeft = isPhantomDriving() ? Infinity : gameConfig.WINGS_JUMP_COUNT;
 
   let forwardSpeed = 0;
   let rotationSpeed = myTank.userData.rotationSpeed || 0;
@@ -8531,8 +8902,12 @@ function handleMotion(deltaTime) {
       suppressLocalTeleportFxUntil = performance.now() + 250;
 
       // Match BZFlag semantics: explicit teleport event is sent before
-      // any subsequent movement packet generated this frame.
-      if (predictedTeleportPacket && ws && ws.readyState === WebSocket.OPEN) {
+      // any subsequent movement packet generated this frame. A driving
+      // observer (issue #68) still crosses the portal -- the prediction
+      // above already moved it -- it just never reports the crossing, which
+      // the server would refuse from Observer anyway (server.js's `'tp'`
+      // handler).
+      if (predictedTeleportPacket && !isObserver() && ws && ws.readyState === WebSocket.OPEN) {
         sendToServer(predictedTeleportPacket);
       }
     }
@@ -8731,7 +9106,10 @@ function handleMotion(deltaTime) {
       airVelocityDelta > AIR_VELOCITY_THRESHOLD
     ));
 
-  if (shouldSendUpdate && ws && ws.readyState === WebSocket.OPEN) {
+  // A driving observer (issue #68) resolves every bit of this exactly like a
+  // playing tank -- it just never reports it. `sendObserverUpdate`, from
+  // `handleRoamMotion`, is the only thing that reaches the server for it.
+  if (shouldSendUpdate && !isObserver() && ws && ws.readyState === WebSocket.OPEN) {
 
     // Round velocities to the precision we send to match server expectations
     // For jump packets, send the intendedForward value used for movement, not calculated forwardSpeed
@@ -8867,14 +9245,18 @@ function handleMotion(deltaTime) {
 }
 
 function shoot() {
-  if (isObserver()) return false;
+  if (isObserver() && !isPhantomDriving()) return false;
   // LocalPlayer::fireShot's "make sure we're allowed to shoot"
   // (LocalPlayer.cxx:1220). A dead or paused tank has no shot to fire, and bzo
   // holds to it here rather than leaving it to the server: `getShotRejection`
   // refuses both, so a client that fired anyway would be sending a packet the
   // server only accepts in warning mode -- and warning mode is for measuring
   // honest disagreements, not for carrying a client's own bugs.
-  if (!isMyTankAlive() || pauseState.paused) return false;
+  //
+  // `isMyTankAlive()` reads the server's own roster, which reports health 0
+  // for an observer always -- a phantom tank is never dead by that measure,
+  // so aliveness is skipped entirely while driving rather than asked at all.
+  if ((!isPhantomDriving() && !isMyTankAlive()) || pauseState.paused) return false;
   // "((location == InBuilding) && !isPhantomZoned())" from the same test: a tank
   // inside a building has no shot to fire, because the shot would come out of a
   // wall. `getShotRejection` refuses it too -- the cover a building gives is
@@ -8909,15 +9291,24 @@ function shoot() {
   const shotY = (myTank ? myTank.position.y : 0) + (myShot.shockwave ? 0 : muzzleHeight);
   const shotZ = myShot.shockwave ? playerZ : playerZ + dirZ * muzzleForward;
 
-  sendToServer({
-    type: 'shoot',
-    x: shotX,
-    y: shotY,
-    z: shotZ,
-    dirX,
-    dirY: 0,
-    dirZ,
-  });
+  // A phantom tank's shot (issue #68) is cosmetic: nothing about it is sent,
+  // so nobody else ever sees or hears it and the server never learns it
+  // happened. The local prediction below runs exactly as it does for a real
+  // shot waiting on `shotBegin` -- which for this one never arrives, so the
+  // existing 2-second stale-prediction purge in `updateProjectiles` is what
+  // ends it rather than the shot's own ~3.5s range/speed lifetime. Accepted
+  // for now rather than teaching it a real expiry.
+  if (!isObserver()) {
+    sendToServer({
+      type: 'shoot',
+      x: shotX,
+      y: shotY,
+      z: shotZ,
+      dirX,
+      dirY: 0,
+      dirZ,
+    });
+  }
   // A beam's path is the server's to trace -- it is a polyline through whatever
   // it met, not something the client can extrapolate from a direction -- so the
   // shooter gets the muzzle flash and the report at once and the beam itself
@@ -10126,6 +10517,10 @@ function checkFlagGrab() {
 // World::updateFlag plus updateFlags(): advance each flight, park carried flags
 // on top of their tanks, and hand the result to the renderer.
 function updateFlags(deltaTime) {
+  // The live match's flags do not belong in a Map Viewer's world (issue #68);
+  // setMapViewerPreviewActive already hid whatever was on screen when the
+  // preview started, so there is nothing left to keep updating.
+  if (isPreviewingAltWorld()) return;
   if (flags.size === 0 && !antidotePosition) return;
   const gravity = Number.isFinite(gameConfig?.GRAVITY) ? gameConfig.GRAVITY : 9.8;
 
@@ -11305,7 +11700,9 @@ function updateRadar() {
     radarDistance,
     radarWorldHalfExtent
   );
-  const mapSize = gameConfig.MAP_SIZE || 100;
+  // A Map Viewer preview's own size (issue #68), not the live match's --
+  // see currentWorldMapSize.
+  const mapSize = currentWorldMapSize ?? DEFAULT_MAP_SIZE;
   // Player world position and heading
   const px = myTank.position.x;
   const py = myTank.position.y;
@@ -11345,7 +11742,7 @@ function updateRadar() {
 
 
   // Draw world border (clip to radar distance area, rotated to player forward)
-  if (gameConfig && gameConfig.MAP_SIZE) {
+  if (mapSize) {
     radarCtx.save();
     radarCtx.globalAlpha = 0.7;
     // Calculate visible world border segment within radar distance
@@ -11667,8 +12064,10 @@ function updateRadar() {
   });
 
   // Flags on the ground, drawn as RadarRenderer::drawFlag does: a cross a flag
-  // radius across, never smaller than three pixels.
-  if (flags.size > 0) {
+  // radius across, never smaller than three pixels. Belongs to the live match
+  // the same way the 3D flag meshes do (see updateFlags), so it is withheld
+  // for the same reason during a Map Viewer preview or session (issue #68).
+  if (flags.size > 0 && !isPreviewingAltWorld()) {
     const pixelsPerWorldUnit = radarWorldHalfExtent / Math.max(radarDistance, 1e-6);
     const crossHalf = Math.max(FLAG_RADIUS * pixelsPerWorldUnit, RADAR_FLAG_MIN_HALF_PX);
     const tankCrossHalf = Math.max(
@@ -11809,10 +12208,26 @@ function setXRButtonState(enabled) {
   }
 }
 
+// See `xrPlayerScreenReturnCameraMode`'s own comment. Called wherever the
+// active screen (or whether the menu is open at all) might have changed, so
+// entering "player" always forces the override and leaving it (to another
+// screen, or by closing the menu entirely) always lifts it again.
+function syncXRPlayerScreenCameraOverride() {
+  const onPlayerScreen = xrSettingsMenuOpen && xrSettingsMenuScreen === 'player';
+  if (onPlayerScreen && xrPlayerScreenReturnCameraMode === null) {
+    xrPlayerScreenReturnCameraMode = cameraMode;
+    cameraMode = 'overview';
+  } else if (!onPlayerScreen && xrPlayerScreenReturnCameraMode !== null) {
+    cameraMode = xrPlayerScreenReturnCameraMode === 'overview' ? 'first-person' : xrPlayerScreenReturnCameraMode;
+    xrPlayerScreenReturnCameraMode = null;
+  }
+}
+
 function closeXRSettingsMenu() {
   if (!xrSettingsMenuOpen) return;
   xrSettingsMenuOpen = false;
   xrSettingsMenuRenderer?.hide();
+  syncXRPlayerScreenCameraOverride();
   syncInputContextFromUi();
 }
 
@@ -11821,6 +12236,7 @@ function setXRSettingsMenuScreen(screen) {
   xrSettingsMenuSelectedIndex = 0;
   xrSettingsMenuNavigationDirection = 0;
   xrSettingsMenuNextRepeatAt = 0;
+  syncXRPlayerScreenCameraOverride();
   if (screen === 'operator') {
     sendToServer({ type: 'getMaps', requestId: Math.floor(Math.random() * 1e9) });
   }
@@ -11865,6 +12281,18 @@ function getXRPlayerOptionsMenuItems() {
       disabled: !keyboard,
     },
     { id: 'teamXR', label: 'Team', value: PLAYER_TEAM_LABELS[selectedPlayerTeam], adjustable: true },
+    // Map Viewer's map picker (issue #68), the same row the flat dialog has --
+    // always present rather than only while Map Viewer is staged, since this
+    // is a plain array of rows with nothing to insert it into on the fly.
+    // `adjustXRSettingsMenuItem`'s own disabled check is what keeps left/right
+    // inert here, same as any other disabled row.
+    {
+      id: 'mapViewXR',
+      label: 'Map',
+      value: selectedViewMapFile || 'None available',
+      adjustable: true,
+      disabled: selectedPlayerTeam !== PLAYER_TEAM.MAP_VIEWER,
+    },
     { id: 'tankXR', label: 'Tank', value: tankModel.label || tankModel.id, adjustable: true },
     { id: 'rejoinXR', label: gameplayJoinConfirmed ? 'Apply & Rejoin' : 'Join', value: '' },
     { id: 'backXR', label: 'Back', value: '' },
@@ -12079,6 +12507,10 @@ function adjustXRSettingsMenuItem(item, direction) {
     selectRelativePlayerTeam(direction);
     return true;
   }
+  if (item.id === 'mapViewXR') {
+    selectRelativeViewMap(direction);
+    return true;
+  }
   if (item.id === 'tankXR') {
     cycleTankModel(direction);
     return true;
@@ -12148,7 +12580,7 @@ function applyXRJoinSelection() {
     name: myPlayerName,
     isMobile,
     tankModel: selectedTankModelId,
-    team: getSelectedPlayerTeam(),
+    ...getJoinTeamFields(),
   });
   closeXRSettingsMenu();
 }
@@ -12649,7 +13081,9 @@ function animate(frameTime) {
   renderManager.updateShotTeleportEffects(deltaTime);
   renderManager.updateJumpJets(tanks, deltaTime, gameConfig);
   if (gameConfig) {
-    renderManager.updateClouds(deltaTime, gameConfig.MAP_SIZE || 100);
+    // A Map Viewer preview's own size (issue #68), so clouds wrap within the
+    // map actually on screen rather than the live match's.
+    renderManager.updateClouds(deltaTime, currentWorldMapSize ?? DEFAULT_MAP_SIZE);
   }
   if (deathFollowTarget && !deathFollowTarget.parent) {
     deathFollowTarget = null;
@@ -12661,12 +13095,17 @@ function animate(frameTime) {
   // An observer cannot leave roaming, which is upstream's rule: Roaming::setMode
   // refuses roamViewDisabled for ObserverTeam. The player's own camera choice is
   // left untouched underneath, so it comes back on switching to a playing team.
+  // Driving (issue #68) is the one exception: its two views are real first-
+  // and third-person cameras on the phantom tank, not the roam camera's own
+  // framing, so they read exactly as a playing tank's own choice would.
   renderManager.updateCamera({
-    cameraMode: isObserver() ? 'roam' : cameraMode,
+    cameraMode: isPhantomDriving()
+      ? (roamView === ROAM_VIEW.DRIVE_FP ? 'first-person' : 'third-person')
+      : (isObserver() ? 'roam' : cameraMode),
     myTank,
     playerRotation,
     deathFollowTarget,
-    roamFraming: isObserver() ? getRoamFraming() : null,
+    roamFraming: (isObserver() && !isPhantomDriving()) ? getRoamFraming() : null,
   });
   // After the camera, not with the rest of the flag work: a flag turns to face
   // wherever the viewer ended up this frame, and in a session that is decided by

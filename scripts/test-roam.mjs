@@ -104,19 +104,38 @@ for (let i = 0; i < 100; i++) {
 near(stepwise.z, -ROAM_TRANSLATE_SPEED_FACTOR * TANK_SPEED, 'stepwise travel matches one step');
 
 // Roaming.h:36 -- the cycle order, with the flag view dropped where there are no
-// team flags to track.
-assert.deepEqual(ROAM_VIEW_ORDER, ['free', 'track', 'follow', 'fps', 'flag']);
+// team flags to track. `DRIVE_FP`/`DRIVE_TP` (issue #68's driveable phantom
+// tank) trail the rest: a tank of the observer's own rather than a subject
+// found in someone else's world.
+assert.deepEqual(ROAM_VIEW_ORDER, ['free', 'track', 'follow', 'fps', 'flag', 'drive-fp', 'drive-tp']);
 assert.equal(nextRoamView(ROAM_VIEW.FREE), ROAM_VIEW.TRACK);
 assert.equal(nextRoamView(ROAM_VIEW.FPS), ROAM_VIEW.FLAG);
-assert.equal(nextRoamView(ROAM_VIEW.FLAG), ROAM_VIEW.FREE, 'the cycle wraps');
-assert.equal(nextRoamView(ROAM_VIEW.FPS, { allowFlag: false }), ROAM_VIEW.FREE);
+assert.equal(nextRoamView(ROAM_VIEW.FLAG), ROAM_VIEW.DRIVE_FP);
+assert.equal(nextRoamView(ROAM_VIEW.DRIVE_FP), ROAM_VIEW.DRIVE_TP);
+assert.equal(nextRoamView(ROAM_VIEW.DRIVE_TP), ROAM_VIEW.FREE, 'the cycle wraps');
+assert.equal(nextRoamView(ROAM_VIEW.FPS, { allowFlag: false }), ROAM_VIEW.DRIVE_FP);
 assert.equal(nextRoamView(ROAM_VIEW.FLAG, { allowFlag: false }), ROAM_VIEW.FREE);
+// Map Viewer's restriction (issue #68): no other tank or flag to find, so
+// TRACK/FOLLOW/FPS/FLAG drop out, but driving -- a tank of the observer's own
+// -- does not.
+assert.equal(nextRoamView(ROAM_VIEW.FREE, { allowFlag: false, allowTargeted: false }), ROAM_VIEW.DRIVE_FP);
+assert.equal(nextRoamView(ROAM_VIEW.DRIVE_FP, { allowFlag: false, allowTargeted: false }), ROAM_VIEW.DRIVE_TP);
+assert.equal(nextRoamView(ROAM_VIEW.DRIVE_TP, { allowFlag: false, allowTargeted: false }), ROAM_VIEW.FREE);
+
+// Left on the Settings/XR camera row walks the same list backward -- the
+// direction a settings row's own right-steps-forward, left-steps-back
+// convention already promises everywhere else.
+assert.equal(nextRoamView(ROAM_VIEW.TRACK, { direction: -1 }), ROAM_VIEW.FREE);
+assert.equal(nextRoamView(ROAM_VIEW.FREE, { direction: -1 }), ROAM_VIEW.DRIVE_TP, 'the cycle wraps backward');
+assert.equal(nextRoamView(ROAM_VIEW.DRIVE_FP, { direction: -1 }), ROAM_VIEW.FLAG);
 
 assert.equal(roamViewNeedsTarget(ROAM_VIEW.TRACK), true);
 assert.equal(roamViewNeedsTarget(ROAM_VIEW.FOLLOW), true);
 assert.equal(roamViewNeedsTarget(ROAM_VIEW.FPS), true);
 assert.equal(roamViewNeedsTarget(ROAM_VIEW.FREE), false);
 assert.equal(roamViewNeedsTarget(ROAM_VIEW.FLAG), false);
+assert.equal(roamViewNeedsTarget(ROAM_VIEW.DRIVE_FP), false);
+assert.equal(roamViewNeedsTarget(ROAM_VIEW.DRIVE_TP), false);
 
 // Fire walks one sequence: within a view that takes a subject, the leader first
 // (the auto slot, null), then every player, then on to the next view.
@@ -147,7 +166,26 @@ assert.deepEqual(
 // moving through the views rather than sticking.
 assert.deepEqual(
   walk({ view: ROAM_VIEW.FREE, targetId: null, flagIndex: null }, 4, { playerIds: [], allowFlag: false }),
-  ['track:leader', 'follow:leader', 'fps:leader', 'free:leader'],
+  ['track:leader', 'follow:leader', 'fps:leader', 'drive-fp:leader'],
+);
+
+// The same walk backward: each view's last subject first (the mirror of a
+// forward entry always landing on the leader), then down through it to the
+// leader, then on to the previous view.
+assert.deepEqual(
+  walk(
+    { view: ROAM_VIEW.FOLLOW, targetId: null, flagIndex: null },
+    6,
+    { playerIds: players, allowFlag: false, direction: -1 },
+  ),
+  [
+    'track:p3',
+    'track:p2',
+    'track:p1',
+    'track:leader',
+    'free:leader',
+    'drive-tp:leader',
+  ],
 );
 
 // A target that has left the list is not found in it, so the next press moves on
@@ -164,14 +202,14 @@ assert.equal(flagState.flagIndex, 0);
 flagState = advanceRoamSelection(flagState, { flagIndexes: [0, 3] });
 assert.equal(flagState.flagIndex, 3);
 flagState = advanceRoamSelection(flagState, { flagIndexes: [0, 3] });
-assert.equal(flagState.view, ROAM_VIEW.FREE, 'the flag view is the last before the wrap');
+assert.equal(flagState.view, ROAM_VIEW.DRIVE_FP, 'the flag view moves on to driving, not back to the wrap');
 assert.equal(flagState.targetId, null, 'a new view starts on its leader');
 assert.equal(flagState.flagIndex, null);
 
 // Entering a view always starts at the leader, even coming from a picked target.
 assert.deepEqual(
   advanceRoamSelection({ view: ROAM_VIEW.FPS, targetId: 'p3', flagIndex: null }, { playerIds: players, allowFlag: false }),
-  { view: ROAM_VIEW.FREE, targetId: null, flagIndex: null },
+  { view: ROAM_VIEW.DRIVE_FP, targetId: null, flagIndex: null },
 );
 
 // The view angle is the inverse of the forward vector, so a heading survives the

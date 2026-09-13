@@ -1200,10 +1200,9 @@ const CAMERA_MODE_ORDER = Object.freeze(['first-person', 'third-person', 'overvi
 function cycleCameraMode(direction = 1) {
   // Upstream's `roam cycle type forward` (F8). An observer's camera modes are
   // the roaming views, so C cycles those and leaves the player's own choice
-  // untouched underneath, ready for when they join a team. Roaming only cycles
-  // one way, so an observer gets the same view whichever way the row is pushed.
+  // untouched underneath, ready for when they join a team.
   if (hudContext.isObserver()) {
-    hudContext.cycleObserverView();
+    hudContext.cycleObserverView(direction);
     refreshHudButtons();
     return;
   }

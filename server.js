@@ -299,6 +299,15 @@ const REVALIDATE = 'no-cache';
 const ASSET_MAX_AGE = 604800; // 7 days
 
 function setStaticHeaders(res, filePath) {
+  // `MAP_CACHE_DIR` (below) is named for the file's own content hash, so
+  // unlike everything else `express.static` serves here it can promise never
+  // to change -- checked first because this same function is also the
+  // `cacheControl` callback `precompress.middleware()` uses for its brotli
+  // responses, and the two representations of a map file must agree.
+  if (filePath.startsWith(MAP_CACHE_DIR)) {
+    res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+    return;
+  }
   if (/\.(?:html|css|js|mjs)$/.test(filePath) || filePath.includes(`${path.sep}icons${path.sep}`)) {
     res.setHeader('Cache-Control', REVALIDATE);
   } else {
@@ -362,6 +371,13 @@ app.use('/vendor/three/addons', express.static(threeAddonsDir, {
 app.use('/vendor/three', express.static(threeBuildDir, {
   setHeaders: (res) => res.setHeader('Cache-Control', REVALIDATE),
 }));
+
+// Content-hashed world files (see `MAP_REGISTRY` below) -- the filename is the
+// hash, so a response can promise it will never change. `setStaticHeaders`
+// (above) is what actually applies that promise, so it agrees with the
+// brotli sidecar `precompress.middleware()` serves for the same path.
+const MAP_CACHE_DIR = path.join(__dirname, 'cache', 'maps');
+app.use('/maps', express.static(MAP_CACHE_DIR, { setHeaders: setStaticHeaders }));
 
 // After threeBuildDir, which it hashes.
 const CLIENT_BUILD = computeClientBuild();
@@ -1686,6 +1702,13 @@ function parseBZWMap(filename) {
   const teleporters = [];
   const parsedLinks = [];
   const zones = [];
+  // The map's `world size` directive, applied to `GAME_CONFIG.MAP_SIZE` only
+  // at the call site that loads the live map -- never inside this function,
+  // which the background map-hashing trickle (see `MAP_REGISTRY`) also calls
+  // for every other map on the server. Mutating the shared config here would
+  // let whichever map that trickle parses last silently resize the live
+  // match for every later connection.
+  let mapSize = null;
   let current = null;
   let currentLink = null;
   let currentZone = null;
@@ -2070,7 +2093,7 @@ function parseBZWMap(filename) {
         if (wline.split(/\s+/)[0].toLowerCase() === 'size') {
           const [, size] = wline.split(/\s+/);
           if (size) {
-            GAME_CONFIG.MAP_SIZE = parseFloat(size) * 2;
+            mapSize = parseFloat(size) * 2;
           }
           break;
         }
@@ -2265,6 +2288,7 @@ function parseBZWMap(filename) {
     serverOptions,
     zones,
     weapons,
+    mapSize,
   };
 }
 
@@ -2344,6 +2368,13 @@ if (MAP_SOURCE === 'random') {
   mapTeamMode = mapData.teamMode;
   mapServerOptions = mapData.serverOptions;
   MAP_ZONES = mapData.zones;
+  // The map's `world size` directive. Applied here, at the one call site that
+  // loads the *live* map, rather than as a side effect inside `parseBZWMap`
+  // itself -- see that function's own comment on why.
+  if (Number.isFinite(mapData.mapSize)) {
+    GAME_CONFIG.MAP_SIZE = mapData.mapSize;
+    log(`Map option world size: MAP_SIZE=${GAME_CONFIG.MAP_SIZE}`);
+  }
   log(`Loaded ${OBSTACLES.length} obstacles from ${mapPath}`);
   log(`Loaded ${TELEPORTER_GRAPH.links.length} teleporter face links from ${mapPath}`);
   if (MAP_ZONES.length > 0) log(`Loaded ${MAP_ZONES.length} zones from ${mapPath}`);
@@ -2352,6 +2383,146 @@ if (MAP_SOURCE === 'random') {
     log(`Loaded ${WORLD_WEAPONS.length} world weapons from ${mapPath}`);
   }
 }
+
+// Content-hashed, HTTP-cacheable world files, so a client fetches a map's
+// static geometry once and an `immutable` response spares it a re-fetch on
+// every reconnect -- the same win upstream gets from its MD5-keyed world
+// cache (`WorldDownLoader`, playing.cxx), reached here through ordinary HTTP
+// caching instead of a bespoke client-side cache file. `init` carries only a
+// `{ hash, url }` reference to the live map's entry; Map Viewer (issue #68)
+// reuses the same entries for maps nobody has joined into.
+//
+// filename ('random' for a generated world included) -> { fileName, hash, url,
+// obstacles, teleporterGraph, teamMode, clouds, mapSize }.
+const MAP_REGISTRY = new Map();
+// GAME_CONFIG's own default (defaultBZDB.cxx's `worldSize`, doubled the same
+// way `parseBZWMap` doubles a map's own `world size` line) -- what a map with
+// no `world` block at all gets, both for the live match and for a Map
+// Viewer's preview of one.
+const DEFAULT_MAP_SIZE = 800;
+try {
+  fs.mkdirSync(MAP_CACHE_DIR, { recursive: true });
+} catch (error) {
+  logError(`Could not create map cache directory at ${MAP_CACHE_DIR}:`, error);
+}
+
+// Hashes what is actually served -- the parsed, cloud-decorated world data --
+// rather than the source `.bzw` bytes, since nothing here needs to survive a
+// restart and this is simpler. Queues the file straight into the existing
+// brotli sidecar pipeline (`server/precompress.cjs`, already mounted globally
+// at `app.use(precompress.middleware(...))`): map JSON is small enough that a
+// second, brotli-only cache would only complicate the pipeline for no real
+// disk saving, so this reuses it exactly as public/'s assets do, raw copy and
+// negotiated fallback included.
+function registerMapFile(fileName, obstacles, teleporterGraph, teamMode, mapSize) {
+  // Seeded from the map's own geometry (not from `fileName`, so a map that is
+  // renamed but not edited still lands on the same clouds and the same hash)
+  // -- deterministic across processes, unlike `MAP_SOURCE === 'random'`'s
+  // obstacles, which are expected to roll a new hash every boot along with
+  // everything else about them.
+  const seed = crypto.createHash('sha256')
+    .update(JSON.stringify({ obstacles, teleporterGraph })).digest().readUInt32BE(0);
+  const entry = {
+    obstacles,
+    teleporterGraph,
+    teamMode,
+    clouds: generateClouds(obstacles, seededRandom(seed)),
+    // A Map Viewer's ground plane, boundary walls and mountains (issue #68)
+    // need to match whichever map it is looking at, not the live match's --
+    // see the client's `applyWorldData`.
+    mapSize: Number.isFinite(mapSize) ? mapSize : DEFAULT_MAP_SIZE,
+  };
+  const json = JSON.stringify(entry);
+  const hash = crypto.createHash('sha256').update(json).digest('hex').slice(0, 12);
+  const url = `/maps/${hash}.json`;
+  const filePath = path.join(MAP_CACHE_DIR, `${hash}.json`);
+  try {
+    fs.writeFileSync(filePath, json);
+  } catch (error) {
+    logError(`Could not write map cache file for ${fileName}:`, error);
+    return null;
+  }
+  precompress.consider(url, filePath, Buffer.from(json));
+  const registered = { fileName, hash, url, ...entry };
+  MAP_REGISTRY.set(fileName, registered);
+  return registered;
+}
+
+// Anything left in `MAP_CACHE_DIR` that no current `MAP_REGISTRY` entry
+// names -- a map since removed or edited, or (before clouds were seeded
+// deterministically) simply a previous boot's copy of the same map. Run once
+// the background trickle below has registered everything this process ever
+// will, so a file mid-registration is never mistaken for an orphan.
+function sweepMapCache() {
+  const expected = new Set(Array.from(MAP_REGISTRY.values(), (entry) => `${entry.hash}.json`));
+  let removed = 0;
+  let entries;
+  try {
+    entries = fs.readdirSync(MAP_CACHE_DIR);
+  } catch {
+    return;
+  }
+  for (const name of entries) {
+    if (expected.has(name)) continue;
+    try {
+      fs.unlinkSync(path.join(MAP_CACHE_DIR, name));
+      removed += 1;
+    } catch (error) {
+      logError(`Could not remove stale map cache file ${name}:`, error);
+    }
+  }
+  if (removed > 0) log(`Removed ${removed} stale map cache file(s) from ${MAP_CACHE_DIR}`);
+}
+
+const LIVE_MAP_ENTRY = MAP_SOURCE === 'random'
+  ? registerMapFile('random', OBSTACLES, TELEPORTER_GRAPH, mapTeamMode, GAME_CONFIG.MAP_SIZE)
+  : registerMapFile(MAP_SOURCE, OBSTACLES, TELEPORTER_GRAPH, mapTeamMode, GAME_CONFIG.MAP_SIZE);
+
+// A Map Viewer's requested map file, checked against what this process has
+// actually hashed -- the client fetched its preview from `init.viewableMaps`
+// already, so this is bookkeeping (the roster, an operator's view of who is
+// looking at what), never something the client is waiting on. `null` for
+// anything unrecognized, which is what an ordinary observer join sends: it
+// would be misleading to say a plain observer is "viewing" the live map, so
+// nothing stands in for a missing choice.
+function resolveViewMapChoice(requested) {
+  const fileName = typeof requested === 'string' ? requested.trim() : '';
+  return fileName && MAP_REGISTRY.has(fileName) ? fileName : null;
+}
+
+// Parses and registers every other known map file in the background, one at a
+// time via `setTimeout` rather than in one synchronous burst -- today's maps
+// parse in low single-digit ms (no mesh/BSP work in `parseBZWMap`), so this is
+// about never letting a future oversized or uploaded map stall the game loop,
+// not about today's sizes. A map is listable/servable only once it lands in
+// `MAP_REGISTRY`: there is no "hashing in progress" state exposed to clients,
+// so a request that arrives too soon just sees a shorter list, and refreshing
+// sees more once this trickle catches up. `uploadMap` re-triggers this so a
+// map added mid-session becomes viewable without a restart.
+function hashRemainingMapsInBackground() {
+  const pending = listAvailableMapFiles()
+    .filter((fileName) => fileName !== 'random' && !MAP_REGISTRY.has(fileName));
+  const step = () => {
+    const fileName = pending.shift();
+    if (!fileName) {
+      sweepMapCache();
+      precompress.start({ log }).catch((error) => logError('[BR] map hashing pass failed:', error));
+      return;
+    }
+    try {
+      const filePath = resolveMapFilePath(fileName);
+      if (filePath) {
+        const mapData = parseBZWMap(filePath);
+        registerMapFile(fileName, mapData.obstacles, mapData.teleporterGraph, mapData.teamMode, mapData.mapSize);
+      }
+    } catch (error) {
+      logError(`Could not hash map ${fileName}:`, error);
+    }
+    setTimeout(step, 0);
+  };
+  setTimeout(step, 0);
+}
+hashRemainingMapsInBackground();
 // -ms upstream. The map is read after the shot config above, so its shot slot
 // count lands here, and the reload time is derived a second time from it -- each
 // slot comes back after _reloadTime / maxShots, so changing one without the
@@ -2793,8 +2964,12 @@ function getJumpApexHeight() {
   );
 }
 
-// Generate random clouds with fractal patter.
-function generateClouds(obstacles = OBSTACLES) {
+// Generate random clouds with fractal patter. `random` defaults to `Math.random`
+// but `registerMapFile` passes a seeded one: clouds ride into the hashed,
+// cached world file (see `MAP_REGISTRY`), and a hash that changed every boot
+// for the same map -- because the decoration on top of it kept re-rolling --
+// would defeat the whole reason that cache exists.
+function generateClouds(obstacles = OBSTACLES, random = Math.random) {
   const clouds = [];
   const numClouds = 15;
   const maxObstacleTopY = getMaxObstacleTopY(obstacles);
@@ -2803,20 +2978,20 @@ function generateClouds(obstacles = OBSTACLES) {
 
   for (let i = 0; i < numClouds; i++) {
     // Random position in sky
-    const x = (Math.random() - 0.5) * 200;
-    const y = cloudBaseY + Math.random() * 40;
-    const z = (Math.random() - 0.5) * 200;
+    const x = (random() - 0.5) * 200;
+    const y = cloudBaseY + random() * 40;
+    const z = (random() - 0.5) * 200;
 
     // Fractal puffs (multiple spheres clustered together)
     const puffs = [];
-    const numPuffs = 5 + Math.floor(Math.random() * 8);
+    const numPuffs = 5 + Math.floor(random() * 8);
 
     for (let j = 0; j < numPuffs; j++) {
       puffs.push({
-        offsetX: (Math.random() - 0.5) * 10,
-        offsetY: (Math.random() - 0.5) * 3,
-        offsetZ: (Math.random() - 0.5) * 10,
-        radius: 2 + Math.random() * 4
+        offsetX: (random() - 0.5) * 10,
+        offsetY: (random() - 0.5) * 3,
+        offsetZ: (random() - 0.5) * 10,
+        radius: 2 + random() * 4
       });
     }
 
@@ -2824,6 +2999,21 @@ function generateClouds(obstacles = OBSTACLES) {
   }
 
   return clouds;
+}
+
+// A small, deterministic PRNG (mulberry32) seeded from the map's own
+// obstacles/teleporters, so the same map always rolls the same clouds --
+// across a restart, not just within one process -- which is what lets its
+// world file keep the same hash and never orphan the one before it.
+function seededRandom(seed) {
+  let state = seed >>> 0;
+  return function next() {
+    state = (state + 0x6d2b79f5) | 0;
+    let t = state;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
 }
 
 // Game state
@@ -2895,6 +3085,9 @@ class Player {
     this.tankModel = 'bzflag';
     // Teams are server-authoritative. Observer is receive-only and non-combatant.
     this.team = 'rogue';
+    // Set on a Map Viewer join (issue #68), cleared on any other -- see
+    // `getState()`.
+    this.viewMap = null;
     this.color = getInitialPlayerColor(TEAM_MODE, this.team, (team) => Player.pickDistinctColor(team));
     this.joined = false;
     // PlayerInfo::wasRabbit (PlayerInfo.h:204). Set when this player is deposed as
@@ -3207,6 +3400,10 @@ class Player {
       // verifies, and a verified token means registered as well.
       verified: this.verified,
       teleportCooldownUntil: this.teleportCooldownUntil,
+      // The map a Map Viewer chose (issue #68), null for everyone else -- the
+      // roster's business is only which file, since the hash/url to render it
+      // is already public in `init.viewableMaps`.
+      viewMap: this.viewMap ?? null,
     };
   }
 
@@ -3555,7 +3752,7 @@ defineCommand('/lagstats', COMMAND_TIER.OPEN,
       .map((other) => ({
         callsign: other.name,
         index: other.id,
-        observer: other.team === 'observer',
+        observer: isObserverTeam(other.team),
         measured: other.lag.hasSamples(),
         lag: other.lag.getLag(now),
         jitter: other.lag.getJitter(),
@@ -5174,7 +5371,7 @@ function getShotRejection(player, shotX, shotY, shotZ, now = Date.now()) {
 
   // An observer has no tank, so there is no barrel for the shot to leave and
   // nothing for a return shot to hit. Not a tolerance: refused in every mode.
-  if (player.team === 'observer') {
+  if (isObserverTeam(player.team)) {
     return { reason: 'observer cannot shoot', fatal: true };
   }
 
@@ -5972,7 +6169,7 @@ function isPlayerInsideBuilding(player, x, y, z, rotation) {
 // STICKY check counts against starts from a slightly different instant than
 // the one the reach check used.
 function grabFlag(player, flag, now = Date.now()) {
-  if (player.team === 'observer') return;
+  if (isObserverTeam(player.team)) return;
   if (player.health <= 0 || player.paused) return;
   if (getPlayerFlag(player.id)) return;
   if (flag.status !== FLAG_STATUS.ON_GROUND) return;
@@ -6361,7 +6558,7 @@ function setPaused(player, paused) {
 function requestPause(player) {
   // pausePlayer() (bzfs.cxx:2778) ignores a pause from a tank that is not alive,
   // and an observer has no tank to pause at all.
-  if (player.team === 'observer' || player.health <= 0) return;
+  if (isObserverTeam(player.team) || player.health <= 0) return;
 
   if (player.paused) {
     setPaused(player, false);
@@ -7376,7 +7573,7 @@ function applySteamrollerSweep(now) {
   let anyRoller = false;
   let anyCrushable = false;
   players.forEach((player) => {
-    if (player.health <= 0 || player.paused || player.team === 'observer') return;
+    if (player.health <= 0 || player.paused || isObserverTeam(player.team)) return;
     const flag = getPlayerFlag(player.id)?.type ?? null;
     if (crushesOnContact(flag)) anyRoller = true;
     if (isCrushedByAnyone(flag)) anyCrushable = true;
@@ -7385,7 +7582,7 @@ function applySteamrollerSweep(now) {
 
   const rollers = [];
   players.forEach((player) => {
-    if (player.health <= 0 || player.paused || player.team === 'observer') return;
+    if (player.health <= 0 || player.paused || isObserverTeam(player.team)) return;
     const flag = getPlayerFlag(player.id)?.type ?? null;
     if (!crushesOnContact(flag) && !anyCrushable) return;
     rollers.push({
@@ -7401,7 +7598,7 @@ function applySteamrollerSweep(now) {
     // A paused tank cannot be hit by a shot in bzo, so it cannot be run over
     // either. Upstream only checks the roller's pause; the victim is the local
     // tank and its own pause is read further up the same chain.
-    if (victim.health <= 0 || victim.paused || victim.team === 'observer') return;
+    if (victim.health <= 0 || victim.paused || isObserverTeam(victim.team)) return;
     const victimFlag = getPlayerFlag(victim.id)?.type ?? null;
     const victimAt = victim.getExtrapolatedPosition(now);
 
@@ -7473,7 +7670,7 @@ function getLockAimPoint(position) {
 // no packet at all: every end applies the same rule to the same target id.
 function canLockOnto(player) {
   if (!player || !player.joined) return false;
-  if (player.team === 'observer') return false;
+  if (isObserverTeam(player.team)) return false;
   if (player.health <= 0 || player.paused) return false;
   // `ST` is one flag doing both jobs upstream: off the radar, and out of reach
   // of a lock.
@@ -7554,7 +7751,7 @@ function setPlayerTarget(player) {
   const visible = [];
   players.forEach((other) => {
     if (other.id === player.id || !other.joined) return;
-    if (other.team === 'observer' || other.health <= 0) return;
+    if (isObserverTeam(other.team) || other.health <= 0) return;
     const position = other.getExtrapolatedPosition(now);
     const candidate = { id: other.id, x: position.x, z: position.z };
     if (canLockOnto(other)) lockable.push(candidate);
@@ -7657,7 +7854,7 @@ function findShotPlayerHit(proj, from, to, now) {
     // "my own shock wave cannot kill me ... or Thief" (LocalPlayer.cxx:1612).
     // Unlike a ricochet, no bounce ever earns a thief its own flag back.
     if (player.id === proj.playerId && (proj.steals || proj.bounces === 0)) return;
-    if (player.team === 'observer') return; // Observers are non-combatants
+    if (isObserverTeam(player.team)) return; // No tank to hit
     if (player.paused) return; // Can't hit paused players
     if (player.health <= 0) return; // Can't hit dead players
 
@@ -7992,7 +8189,7 @@ function applyShockWaveHits(proj, id, radius, now) {
     // "my own shock wave cannot kill me" (LocalPlayer.cxx:1612). Unlike a
     // ricochet there is no bounce that could ever earn it.
     if (player.id === proj.playerId) return;
-    if (player.team === 'observer') return;
+    if (isObserverTeam(player.team)) return;
     if (player.paused) return;
     if (player.health <= 0) return;
     if (proj.shockWaveResolved.has(player.id)) return;
@@ -8707,14 +8904,23 @@ wss.on('connection', (ws, req) => {
     player.sessionId = null;
   }
 
+  // Every field but one: `MAP_SIZE` lives only in the map's own world file
+  // from here on (see `MAP_REGISTRY`'s `mapSize`), which is what a Map
+  // Viewer's preview is actually sized from. Sending it here too would give
+  // the client two sources for the same fact -- exactly what let the
+  // background map-hashing trickle silently resize the live match for issue
+  // #68 in the first place, on the server side of the same mistake.
+  const clientGameConfig = Object.fromEntries(
+    Object.entries(GAME_CONFIG).filter(([key]) => key !== 'MAP_SIZE'),
+  );
+
   // Send initial server state in init message
-  const clouds = generateClouds(OBSTACLES);
   ws.send(JSON.stringify({
     type: 'init',
     clientBuild: CLIENT_BUILD,
     player: player.getState(),
     players: getRosterFor(player),
-    config: GAME_CONFIG,
+    config: clientGameConfig,
     teamMode: TEAM_MODE,
     teamScores: getTeamScoreState(),
     // Which settings the panel may change without starting a new game. Sent
@@ -8738,11 +8944,18 @@ wss.on('connection', (ws, req) => {
     timeLeft: getMatchTimeLeft(),
     gameOver: matchClock.gameOver,
     voiceRtcConfig: { iceServers: VOICE_ICE_SERVERS },
-    obstacles: OBSTACLES,
-    teleporterGraph: TELEPORTER_GRAPH,
+    // A reference, not the world itself -- see `MAP_REGISTRY` above. The
+    // client fetches `url` once; the hash-named, `immutable` response spares
+    // a reconnect the re-fetch entirely.
+    world: { hash: LIVE_MAP_ENTRY.hash, url: LIVE_MAP_ENTRY.url },
+    // Every map hashed so far, for the join dialog's Map Viewer picker
+    // (issue #68). A map still hashing in the background is simply absent
+    // until a later `init` -- i.e. until the player reloads -- rather than
+    // arriving as a push update.
+    viewableMaps: Array.from(MAP_REGISTRY.values())
+      .map((entry) => ({ file: entry.fileName, hash: entry.hash, url: entry.url })),
     flags: getFlagStates(),
     worldTime,
-    clouds: clouds,
     serverName: serverConfig.serverName || '',
     description: serverConfig.description || '',
     motd: serverConfig.motd || '',
@@ -8820,7 +9033,7 @@ wss.on('connection', (ws, req) => {
           break;
         }
         case 'tp': {
-          if (player.team === 'observer') break;
+          if (isObserverTeam(player.team)) break;
 
           const now = Date.now();
           const sourceState = {
@@ -8880,7 +9093,7 @@ wss.on('connection', (ws, req) => {
           break;
         }
         case 'm': {
-          if (player.team === 'observer') {
+          if (isObserverTeam(player.team)) {
             applyObserverHeartbeat(player, message, ws);
             break;
           }
@@ -9293,7 +9506,7 @@ wss.on('connection', (ws, req) => {
         // camera it aims with lives; a tank asks here, because the answer steers
         // a guided missile.
         case 'identify': {
-          if (player.team === 'observer' || player.health <= 0 || player.paused) break;
+          if (isObserverTeam(player.team) || player.health <= 0 || player.paused) break;
           setPlayerTarget(player);
           break;
         }
@@ -9420,7 +9633,7 @@ wss.on('connection', (ws, req) => {
           // An observer has no tank to destroy. The dead tank is killPlayer's own
           // guard, and it is only repeated here so a request that will do nothing
           // is not logged as though it did.
-          if (player.team === 'observer') break;
+          if (isObserverTeam(player.team)) break;
           if (player.health <= 0) break;
           log(`"${player.name}" self-destructed.`);
           // playing.cxx:6966 is `gotBlowedUp(myTank, SelfDestruct, myTank->getId())`
@@ -9520,6 +9733,17 @@ wss.on('connection', (ws, req) => {
           player.health = (joinAsObserver || matchClock.gameOver) ? 0 : 100;
           // PlayerInfo::resetPlayer(ctf) puts every CTF spawn on the team base.
           player.restartOnBase = !joinAsObserver && CTF_ENABLED;
+          // Map Viewer (issue #68) is Observer on the wire -- same team limit,
+          // same team chat, same white colour, every gate above unchanged --
+          // distinguished only by this field, which names the map the client
+          // asked to look at instead of the live match. Validated against
+          // `MAP_REGISTRY` the same way an operator's own map picks are; a
+          // stale or invalid request is simply not a Map Viewer, since the
+          // client already validated its own choice against `init.viewableMaps`
+          // before ever asking. Nothing else about the join reads this -- the
+          // world it names is the client's business entirely, not the
+          // server's.
+          player.viewMap = joinAsObserver ? resolveViewMapChoice(message.viewMap) : null;
           const spawnPos = getSpawnPosition(player);
           player.x = spawnPos.x;
           player.y = spawnPos.y;
@@ -9711,6 +9935,9 @@ wss.on('connection', (ws, req) => {
             }));
             // Send updated map list (mapList reply)
             sendMapList(ws);
+            // Queue the new file for hashing so it becomes viewable (issue
+            // #68) without a restart -- setMap still needs one, this doesn't.
+            hashRemainingMapsInBackground();
           });
           break;
         }

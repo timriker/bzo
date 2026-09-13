@@ -5,10 +5,20 @@
  * See LICENSE or https://www.gnu.org/licenses/agpl-3.0.html
  */
 
+// `MAP_VIEWER` (issue #68) exists only here, on the client: it is never a
+// real team on the wire. Selecting it in the entry dialog sends a plain
+// `observer` join, plus a `viewMap` field naming the chosen map -- same team
+// limit, same team chat, same white scoreboard colour as any other observer,
+// since upstream's `TeamColor`/`-mp` has no seventh slot for a bzo-only
+// concept and bzo does not invent one either. It is in `ALL_PLAYER_TEAMS`
+// below (so the normalizer round-trips it for the dialog's own bookkeeping)
+// but deliberately left out of `PLAYER_TEAMS`, which is the list the server
+// actually recognizes as an askable team.
 export const PLAYER_TEAM = Object.freeze({
   AUTOMATIC: 'automatic',
   ROGUE: 'rogue',
   OBSERVER: 'observer',
+  MAP_VIEWER: 'mapviewer',
   RED: 'red',
   BLUE: 'blue',
   GREEN: 'green',
@@ -30,11 +40,13 @@ export const PLAYER_TEAMS = Object.freeze([
   PLAYER_TEAM.PURPLE,
 ]);
 // Every team a player may be on, which is upstream's whole TeamColor enum bar
-// the two pseudo-teams (`NumTeams` is 8, `global.h:59`).
+// the two pseudo-teams (`NumTeams` is 8, `global.h:59`) -- plus Map Viewer,
+// client-only as described above.
 export const ALL_PLAYER_TEAMS = Object.freeze([
   ...PLAYER_TEAMS,
   PLAYER_TEAM.RABBIT,
   PLAYER_TEAM.HUNTER,
+  PLAYER_TEAM.MAP_VIEWER,
 ]);
 
 // BZFlag's TeamColor numbering (global.h:59). A BZW `base` object names one of
@@ -54,6 +66,10 @@ export const BZFLAG_TEAM_ORDER = Object.freeze([
 export const PLAYER_TEAM_COLORS = Object.freeze({
   [PLAYER_TEAM.ROGUE]: 0xffff00,
   [PLAYER_TEAM.OBSERVER]: 0xffffff,
+  // No upstream color to take: Map Viewer is bzo-only. Observer's white, for
+  // the same reason Observer has it -- there is no tank to tell apart from
+  // another's, so nothing needs a hue of its own.
+  [PLAYER_TEAM.MAP_VIEWER]: 0xffffff,
   [PLAYER_TEAM.RED]: 0xff0000,
   [PLAYER_TEAM.BLUE]: 0x1a33ff,
   [PLAYER_TEAM.GREEN]: 0x00ff00,
@@ -70,6 +86,7 @@ export const PLAYER_TEAM_LABELS = Object.freeze({
   [PLAYER_TEAM.AUTOMATIC]: 'Automatic',
   [PLAYER_TEAM.ROGUE]: 'Rogue',
   [PLAYER_TEAM.OBSERVER]: 'Observer',
+  [PLAYER_TEAM.MAP_VIEWER]: 'Map Viewer',
   [PLAYER_TEAM.RED]: 'Red Team',
   [PLAYER_TEAM.BLUE]: 'Blue Team',
   [PLAYER_TEAM.GREEN]: 'Green Team',
@@ -85,6 +102,7 @@ export const PLAYER_TEAM_LABELS = Object.freeze({
 export const PLAYER_TEAM_RADAR_COLORS = Object.freeze({
   [PLAYER_TEAM.ROGUE]: 0xffff00,
   [PLAYER_TEAM.OBSERVER]: 0xffffff,
+  [PLAYER_TEAM.MAP_VIEWER]: 0xffffff,
   [PLAYER_TEAM.RED]: 0xff2626,
   [PLAYER_TEAM.BLUE]: 0x1440ff,
   [PLAYER_TEAM.GREEN]: 0x33e633,

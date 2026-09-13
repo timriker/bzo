@@ -312,6 +312,15 @@
       <span class="entryTeamLabel">Team:</span>
       <span id="entryTeamValue" class="entryTeamValue">Automatic</span>
     </button>
+    <!-- Map Viewer's map picker (issue #68). Always present rather than
+         shown only for Map Viewer, disabled otherwise -- selecting a map
+         previews it live, behind this dialog, the same way the live match
+         already renders back there before a fresh connection has joined
+         anything. -->
+    <button id="entryViewMapSelector" class="entryTeamSelector" type="button" data-menu-row="viewMap" data-menu-kind="choice" disabled>
+      <span class="entryTeamLabel">Map:</span>
+      <span id="entryViewMapValue" class="entryTeamValue">None available</span>
+    </button>
     <!-- A bzflag.org global callsign. An action rather than a choice: it leaves
          the page for bzflag.org's own login form, which is what lets bzo check
          an identity without ever seeing a password. The server decides what it

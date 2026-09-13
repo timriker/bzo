@@ -5,6 +5,14 @@
  * See LICENSE or https://www.gnu.org/licenses/agpl-3.0.html
  */
 
+// `MAP_VIEWER` (issue #68) is deliberately absent from every list below --
+// upstream's `TeamColor`/`-mp` has no seventh slot for a bzo-only concept, so
+// bzo does not invent one either. A Map Viewer is Observer on the wire: same
+// team limit, same team chat, same white scoreboard colour, same every gate
+// in this file, distinguished only by the `viewMap` field the join carries
+// alongside it (see `resolveViewMapChoice` in server.js). The client is the
+// only place `mapviewer` exists as a string, purely to drive its own dialog
+// and camera before translating the choice to `observer` at join time.
 const PLAYER_TEAM = Object.freeze({
   AUTOMATIC: 'automatic',
   ROGUE: 'rogue',

@@ -1201,11 +1201,19 @@ takes over the view.
 
 - **One flattened cycle, not two.** Upstream spends two bindings here: F8 cycles
   the view type and F6/F7 cycle the subject. bzo binds nothing to changing the
-  subject on its own, so fire, `C`, and the Settings/XR Camera row all walk the
-  same list -- within a view that takes a subject, the leader first and then
-  every player, then on to the next view. While roaming those replace the
+  subject on its own, so `C` and the Settings/XR Camera row walk the same
+  list -- within a view that takes a subject, the leader first and then every
+  player, then on to the next view. While roaming those replace the
   first/third/overview cycle, which does nothing for an observer; the player's
-  own choice is left untouched underneath for when they join a team.
+  own choice is left untouched underneath for when they join a team. Fire was
+  tried as a fourth path into the same cycle and removed as redundant, freeing
+  it for the driving phantom tank's own cosmetic shooting (see Map Viewer).
+  The Settings/XR Camera row's own left/right walks the list in both
+  directions -- `direction` threads through `cycleObserverView` /
+  `cycleRoamView` / `advanceRoamSelection` / `nextRoamView`, and entering a
+  view in reverse lands on its *last* subject rather than the leader,
+  symmetric with a forward entry. `C` itself has no direction to give, so it
+  only ever steps forward.
 - **The camera is level, like a tank's.** There is no pitch axis: altitude is on
   a button and no axis is left, and the look point sits one unit ahead at the
   eye's own height, so it travels with the camera forward, sideways and
@@ -1265,6 +1273,210 @@ takes over the view.
   issue #27 is for.
 - Whether continuous stick yaw is comfortable in XR roam. It matches what bzo
   already ships when driving; a comfort option is a measurement, not a guess.
+
+## Map Viewer
+
+A client-only variant of Observer (issue #68): pick "Map Viewer" in the join
+dialog, choose a map, and look around it while the live match keeps running
+underneath. Upstream has nothing like it -- BZFlag joins the one world a
+server runs.
+
+### Observer on the wire, not a team
+
+`player.team` is always `observer` on the wire -- same team limit, same team
+chat, same white scoreboard colour, every Observer gate unchanged --
+distinguished only by `player.viewMap`, carried alongside an ordinary
+observer join and validated against the server's map registry. A real, wire
+`mapviewer` team was tried first and reverted: upstream's `TeamColor`/`-mp`
+has no seventh slot for a bzo-only concept, so it was invisible to any map's
+`-mp` line and had to be hand-carried into the roam camera's target list, the
+radar's flag draw, and the join dialog's own team enum -- three places that
+would each need to remember it again the next time one of them changed.
+
+`PLAYER_TEAM.MAP_VIEWER` (`'mapviewer'`) exists only in `public/teams.mjs`, a
+client-only sentinel: it drives the entry dialog's own selection cycle and
+map picker, round-trips through `normalizePlayerTeam` (`ALL_PLAYER_TEAMS`, not
+`PLAYER_TEAMS`, so the server never offers or accepts it as an askable team),
+and is translated to `team: 'observer', viewMap: <file>` by
+`getJoinTeamFields()` at the moment a join is actually sent. Every sender of
+`joinGame` -- the flat dialog's OK (`maybeSendPendingJoinRequest`) and the XR
+menu's "Apply and Join" (`applyXRJoinSelection`) -- calls that one function
+rather than each carrying its own copy of the translation; the one time they
+did not, the XR path sent the raw sentinel, which the server does not
+recognize and normalized away to Rogue.
+
+Post-join, the client tells "is this session a Map Viewer" apart from "is
+this a plain Observer" using its own `viewMap`/`previewedMapFile` state
+(`isPreviewingAltWorld()`), not the team value, which never actually changes
+from `observer`. The roam camera's Track/Follow/Flag exclusion and the
+radar's flag draw both key off that instead, so the exclusion holds for the
+whole session and not just the dialog's own preview.
+
+### Hashed, cacheable world delivery
+
+Every map bzo ships is parsed once and registered in `MAP_REGISTRY` as
+`{ hash, obstacles, teleporterGraph, teamMode, clouds, mapSize }` -- the live
+map immediately at boot, every other bundled file in a background
+`setImmediate` trickle so an oversized or malformed one cannot block startup,
+and an uploaded one the moment `uploadMap` sees it. The hash is a truncated
+SHA-256 of the serialized entry, so a restart that reparses the same map
+lands on the same hash and a client's cached copy stays valid. Each entry is
+written once to `cache/maps/<hash>.json` and pushed through the existing
+brotli sidecar (`server/precompress.cjs`) the same way any other static asset
+is, then served at `/maps/<hash>.json` with `Cache-Control: public,
+max-age=31536000, immutable` -- safe because the filename *is* the content
+hash. This is upstream's own idea (`bzfs.cxx`'s world hash, so a client
+already holding a match's compiled world skips the transfer) done with
+ordinary HTTP caching instead of a bespoke client-side cache file.
+
+`init` carries `world: { hash, url }` for the live match and `viewableMaps: [{
+file, hash, url }, ...]` for every map hashed so far -- reachable by any
+connected client, unlike the operator-only `getMaps`/`sendMapList`, because
+the join dialog's map chooser needs the list before the player has joined
+anything. A client fetches and renders whichever world it needs (live or
+previewed) through the same `loadWorldFile`/`applyWorldData` pair; there is no
+separate `worldOverride` message.
+
+**World size is the map's own data, not config.** `parseBZWMap` returns
+`mapSize` from a map's `world size` line rather than writing it into
+`GAME_CONFIG.MAP_SIZE` -- the live map's own load still does apply it there at
+boot, but nothing else does. `init.config` carries no `MAP_SIZE` at all, since
+a client that reads it from two places (its own live match and every
+previewed map) could have them disagree; a per-map cached world file's own
+`mapSize` is the only copy, read client-side as `currentWorldMapSize` with
+`DEFAULT_MAP_SIZE` (800, upstream's own default) standing in only for the
+brief window before any world has loaded.
+
+### Dialog-time preview, not join-time
+
+Selecting Map Viewer and cycling its map picker fetches and applies each
+map's world live, behind the join dialog, the same way the live world already
+renders behind it before a fresh connection has joined anything. Join just
+means "stay in the world already on screen." The map-picker row is always
+present and merely `disabled` outside Map Viewer (both the flat dialog and
+the XR player screen), rather than hidden, so XR's fixed menu layout does not
+need a conditional row.
+
+Since the dialog already renders the live world/roster behind itself before a
+player has joined, previewing an alternate map also suppresses every remote
+tank/shot/flag -- both the 3D meshes and the radar's own flag draw, which is
+a separate code path from the mesh code and was missed on the first pass --
+for as long as a preview is active, not only once actually joined as Map
+Viewer. One guard, `isPreviewingAltWorld()`, keyed on "which world is
+currently applied," covers both.
+
+**XR staged a preview off the confirmed team, not the staged one.** The flat
+dialog forces `cameraMode = 'overview'` for as long as it is open (originally
+for its own tank-preview-thumbnail spin), which incidentally also hides the
+fact that `isObserver()` reads the confirmed join rather than the in-progress
+selection. XR's "player" screen had no equivalent, so staging Map Viewer
+there showed whatever real camera mode the player last actually joined with
+instead of a preview. `xrPlayerScreenReturnCameraMode` /
+`syncXRPlayerScreenCameraOverride()` mirror
+`entryDialogReturnCameraMode`/`openEntryDialog`/`closeEntryDialog` exactly,
+wired into `setXRSettingsMenuScreen()` and `closeXRSettingsMenu()`.
+
+### The ghost tank stays on as the proximity indicator
+
+The packet-motion-debug ghost mesh (gated on the `showDebugGeometry` toggle,
+opt-in) is deliberately **not** hidden during a Map Viewer preview or
+session, unlike the live match's ordinary tanks/shots/flags. It sits at a
+live position in the match's own coordinates, spatially incoherent with
+whatever map is actually on screen -- but a Map Viewer with debug geometry on
+gets a rough sense of who is nearby in the live match, which is what
+proximity voice chat actually gates on, and the toggle is symmetric: anyone
+else with debug geometry on sees a Map Viewer's own ghost the same way.
+Nothing is shown by default.
+
+### A driveable phantom tank, for Observer and Map Viewer alike
+
+`ROAM_VIEW.DRIVE_FP`/`DRIVE_TP` add first- and third-person driving to the
+existing free-roam view, for a plain Observer as much as for Map Viewer --
+`isPhantomDriving()` is `roamView === DRIVE_FP || DRIVE_TP`, independent of
+team. Cycling into and out of it goes through the same three paths that
+already cycle every other roam view: `C`, the Settings panel's Camera row,
+and the XR menu's own Camera row.
+
+**Full local simulation, reused as-is, not a second physics model.**
+`handleMotion`/`handleInputEvents` run unmodified for a driving phantom tank
+-- the same collision, jump, and shot prediction a real tank's client already
+owns, since the server only anti-cheat-validates a real player's moves rather
+than computing them. Three things are added on top rather than duplicated:
+
+- **Unlimited Wings.** `effectiveMotionFlagType()` returns `'WG'` while
+  driving at just the movement/jump read sites (`carriedFlagType`,
+  `motionFlag`), not by overriding `getMyFlag()` itself, which stays `null` so
+  Drop Flag keeps no-op'ing and nothing else that reads the real flag (HUD,
+  scoreboard colour) gets confused. The grounded recharge goes to `Infinity`
+  instead of `gameConfig.WINGS_JUMP_COUNT` while driving, so it never runs
+  dry mid-flight.
+- **Cosmetic shooting.** Firing runs the same local shot/ricochet/impact
+  simulation a real tank's client already predicts ahead of the server, but
+  nothing about it reaches the server -- no `shotBegin`, no hit report,
+  nothing for any other client to see. Ricochet is forced on
+  (`createLocalProjectile`) regardless of the live match's
+  `ALL_SHOTS_RICOCHET`, since it is cosmetic. A phantom tank's shot never
+  gets a `shotBegin` to flip `pendingServerAck` false, so the existing
+  2-second stale-prediction purge in `updateProjectiles` ends it there rather
+  than at its full ~3.5s range/speed lifetime -- accepted rather than
+  building real local expiry, since a phantom tank's own shot has no gameplay
+  consequence to get right.
+- **Collision, including with the world border and buildings**, which is
+  what makes it read as *driving* rather than a camera with a tank glued to
+  it -- climbing over a building, rather than flying through it, alongside
+  unlimited Wings.
+
+**Nothing new over the wire.** The only network traffic a driving phantom
+tank generates is what Observer already sends: the infrequent, unvalidated
+position heartbeat, plus chat and voice. Movement, jumping, and shooting are
+all local; other clients keep seeing only the last heartbeat position,
+un-predicted, via the same ghost-mesh mechanism above.
+
+**The free-roam camera reuses the phased-tank Oscillation Overthruster
+rendering for the same reason a phased tank needs it.** Roam (both free and
+driving) has no collision preventing the camera from ending up inside solid
+geometry, which looks broken -- inside-out faces, no shading -- for exactly
+the reason a tank without OO is never allowed to be there. bzo's existing OO
+treatment (`render.js`'s inside-buildings handling, `client.js`'s
+`amPhased()`/phased-wall bookkeeping) is reused rather than rebuilt, via a
+point-scale `updateInsideBuildings()` test called from `handleRoamMotion`.
+
+### Controls
+
+| action | free roam | driving |
+|---|---|---|
+| jump (Tab/grip/etc.) | climb | jump |
+| drop flag (Space/A/etc.) | descend | no-op |
+| fire | (unbound; camera-cycling on Fire was tried and removed as redundant with `C`/Settings/XR Camera) | shoot (cosmetic) |
+
+Free roam's up/down reads the same jump/drop-flag controls a real tank uses,
+which only makes sense there -- driving reads jump as an actual jump (via
+`canJump`/Wings above) and drop flag correctly no-ops, since a phantom tank
+carries no flag to drop.
+
+### Menu-driven pause
+
+Opening a menu (flat or XR) pauses a real, alive tank exactly as it does
+outside this feature -- `PauseState.syncMenu` and the server's own
+`requestPause` both refuse a pause for `isObserverTeam`/`health <= 0`, so an
+Observer or Map Viewer never gets one, matching upstream's "an observer has
+no tank to pause." Two gaps surfaced testing this in a headset, both fixed
+independent of team:
+
+- **`document.hidden` is not "not being watched" in XR.** Entering an
+  immersive session backgrounds the flat page on top of, not instead of,
+  watching the game through the headset, and it stays "hidden" for the whole
+  session -- so treating it as cause to pause left no "uncovered" transition
+  to ever find its way back to unpaused. `shouldAutoPause()` ignores
+  `document.hidden` while `isXREnabled()`.
+- **A join never reset the client's own belief about being paused or a
+  paused sphere.** The server clears its pause state on every `joinGame`,
+  but only `pauseState.respawned()` did so client-side, wired to
+  `playerRespawned` alone -- which an observer never receives. A pause or
+  countdown (or a paused-sphere visual, which is event-driven off
+  `playerPaused`/`playerUnpaused` alone) picked up moments earlier could
+  survive a join that had nothing to do with it. The client's own
+  `playerJoined` handling now clears both, for whichever player just joined.
 
 ## HUD alerts and the status line
 

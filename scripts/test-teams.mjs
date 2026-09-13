@@ -35,6 +35,7 @@ assert.deepEqual(PLAYER_TEAMS, [
 assert.equal(PLAYER_TEAM_LABELS[PLAYER_TEAM.ROGUE], 'Rogue');
 assert.equal(PLAYER_TEAM_LABELS[PLAYER_TEAM.AUTOMATIC], 'Automatic');
 assert.equal(PLAYER_TEAM_LABELS[PLAYER_TEAM.OBSERVER], 'Observer');
+assert.equal(PLAYER_TEAM_LABELS[PLAYER_TEAM.MAP_VIEWER], 'Map Viewer');
 assert.equal(PLAYER_TEAM_LABELS[PLAYER_TEAM.RED], 'Red Team');
 assert.equal(normalizePlayerTeam('BLUE'), PLAYER_TEAM.BLUE);
 assert.equal(normalizePlayerTeam('unknown'), PLAYER_TEAM.ROGUE);
@@ -46,7 +47,13 @@ assert.deepEqual(getPlayerTeamSelections([PLAYER_TEAM.BLUE, PLAYER_TEAM.OBSERVER
 ]);
 // The two teams Rabbit Chase assigns are teams a player may be *on* and never
 // teams a player may ask for, which is the whole difference between the lists.
-assert.deepEqual(ALL_PLAYER_TEAMS, [...PLAYER_TEAMS, PLAYER_TEAM.RABBIT, PLAYER_TEAM.HUNTER]);
+// Map Viewer (issue #68) is the third: never on the wire at all, but
+// recognized here so the dialog's own bookkeeping (`normalizePlayerTeam`)
+// round-trips its client-only sentinel instead of falling back to rogue.
+assert.deepEqual(
+  ALL_PLAYER_TEAMS,
+  [...PLAYER_TEAMS, PLAYER_TEAM.RABBIT, PLAYER_TEAM.HUNTER, PLAYER_TEAM.MAP_VIEWER],
+);
 assert.equal(normalizePlayerTeam('RABBIT'), PLAYER_TEAM.RABBIT);
 assert.equal(normalizePlayerTeam(' hunter '), PLAYER_TEAM.HUNTER);
 assert.equal(isRabbitTeam(PLAYER_TEAM.RABBIT), true);
@@ -60,11 +67,24 @@ assert.deepEqual(getPlayerTeamSelections(ALL_PLAYER_TEAMS), [
 
 assert.equal(isObserverTeam(PLAYER_TEAM.OBSERVER), true);
 assert.equal(isObserverTeam(PLAYER_TEAM.ROGUE), false);
+assert.equal(isObserverTeam(PLAYER_TEAM.MAP_VIEWER), false);
+
+// Map Viewer (issue #68) is never a real team -- it normalizes to itself
+// (the dialog's own bookkeeping depends on that), but it is not Observer, and
+// it is not in PLAYER_TEAMS, the list the server actually recognizes.
+assert.equal(normalizePlayerTeam(PLAYER_TEAM.MAP_VIEWER), PLAYER_TEAM.MAP_VIEWER);
+assert.equal(PLAYER_TEAMS.includes(PLAYER_TEAM.MAP_VIEWER), false);
+assert.equal('MAP_VIEWER' in serverTeams.PLAYER_TEAM, false);
 
 // public/teams.mjs and server/teams.cjs are hand-maintained copies
 // of the same normalization rules. Compare the shared surface directly so the
 // two cannot drift the way they did before (the client used to skip trimming).
-assert.deepEqual(serverTeams.PLAYER_TEAM, PLAYER_TEAM);
+// `MAP_VIEWER` is the one deliberate exception -- see its own comment above --
+// so it is left out of the client's copy before this comparison.
+const clientPlayerTeam = Object.fromEntries(
+  Object.entries(PLAYER_TEAM).filter(([key]) => key !== 'MAP_VIEWER'),
+);
+assert.deepEqual(serverTeams.PLAYER_TEAM, clientPlayerTeam);
 assert.deepEqual(serverTeams.PLAYER_TEAMS, PLAYER_TEAMS);
 
 const normalizationCases = [
