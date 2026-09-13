@@ -341,6 +341,40 @@ than rejecting the switch.
 A map with no `world` block gets upstream's own default: `_worldSize` 800, which
 is the full width, so the world spans +/-400.
 
+## Team zones
+
+A `zone` block's `team <n> [n ...]` marks it a spawn area for BZFlag team
+index `n` -- 0 rogue, 1-4 red/green/blue/purple -- and bzo reads it. A zone
+may list more than one team, on one line or split across repeats; both
+accumulate onto the same zone, the way upstream's own qualifier list does
+(`CustomZone.cxx:188-215`).
+
+A team zone is a fallback, and `restartOnBase` decides how often it is asked
+for rather than a base's mere existence deciding it. `getSpawnPosition` only
+takes the base branch when `restartOnBase` is set, which upstream does on a
+join and after a capture (`bzfs.cxx:4006`) and nowhere else -- an ordinary
+death, whoever or whatever caused it, leaves it `false` (`bzfs.cxx:3370`, the
+unset default `respawnOnBase` every plain kill passes). So a colour team's
+first life, and its first life after each capture, spawns on its `base`; every
+death in between -- self-destruct, an enemy's shot, even a teammate's -- asks
+the zone instead, exactly as it always has for rogue, which can never own a
+base at all. Where more than one zone names the same team, one is picked
+uniformly at random, the same simplification `getRandomTeamBase` already
+makes among a team's bases rather than upstream's area-weighted pick
+(`EntryZones::getZonePoint`). The point inside it is dropped onto whatever the
+zone actually sits on (`dropSpawnPosition`), the same way a `testSpawn` is,
+retrying inside the same zone a couple of dozen times before giving up to the
+map-wide random search -- `findFlagSpawnPosition`'s own re-roll, for the same
+reason: one crowded or awkward point is not a reason to leave the zone.
+
+`bzo.bzw`'s centre zone carries `team 0`, so rogue spawns there rather than
+the plain random search its absent base would otherwise fall to. Each of the
+four colour bases also has a small `team`-zoned pad a few units beyond it,
+tinted that team's colour the way a flag's pad is tinted the flag's -- so a
+red tank's first life, and its first life after a capture, spawns on
+`n_red_base`, and every other death spawns on `n_red_spawn` instead, and the
+same for the other three.
+
 ## World weapons
 
 A `weapon` block is a gun the world owns: it fires on a timer with nobody
@@ -405,11 +439,12 @@ loads and plays with that part of it missing. The notable absences:
 - **`world` fields other than `size`**: `flagHeight`, `noWalls`,
   `freeCtfSpawns`.
 - **`water`, `physics`**.
-- **A `zone` block's `flag`, `team` and `safety` keywords.** `zoneflag` is read,
-  so a map's flag zones work; `flag` names a type any flag of which spawns in the
-  zone, `team` makes it a spawn area, and `safety` a Phantom Zone landing spot.
-  A map using any of the three is named in the load log rather than skipped
-  silently, because a spawn zone that is ignored moves every tank in the world.
+- **A `zone` block's `flag` and `safety` keywords.** `zoneflag` is read, so a
+  map's flag zones work, and `team` is read too -- see **Team zones** below.
+  `flag` names a type any flag of which spawns in the zone, and `safety` is a
+  Phantom Zone landing spot; a map using either is named in the load log rather
+  than skipped silently, because a spawn zone that is ignored moves every tank
+  in the world.
 - **Every `-set` variable but `_maxFlagGrabs`, `_wingsJumpCount` and
   `_maxBumpHeight`.** bzo's world constants are constants, and these three are
   the ones it already keeps a configurable copy of; see `docs/flags.md`. A map

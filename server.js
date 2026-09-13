@@ -1986,10 +1986,25 @@ function parseBZWMap(filename) {
         }
         continue;
       }
-      // `flag`, `team` and `safety` are the rest of CustomZone::read: a spawn
-      // area for a team, a safety spot for a Phantom Zone tank, and a zone that
-      // any flag of a named type spawns in. None are read yet.
-      if (token === 'flag' || token === 'team' || token === 'safety') {
+      // team <n> [n ...]. CustomZone::read's spawn-area qualifier: n is a
+      // BZFlag team index, 0 rogue and 1-4 red/green/blue/purple, and a zone
+      // may list more than one either on one line or across repeats -- upstream
+      // accumulates both ways, since each is just another qualifier pushed onto
+      // the same zone.
+      if (token === 'team') {
+        const [, ...rest] = line.split(/\s+/);
+        for (const raw of rest) {
+          const teamIndex = parseInt(raw, 10);
+          if (Number.isInteger(teamIndex) && teamIndex >= 0 && teamIndex <= 4) {
+            currentZone.teams.add(teamIndex);
+          }
+        }
+        continue;
+      }
+      // `flag` and `safety` are the rest of CustomZone::read: a zone that any
+      // flag of a named type spawns in, and a safety spot for a Phantom Zone
+      // tank. Neither is read yet.
+      if (token === 'flag' || token === 'safety') {
         unreadZoneKeywords.add(token);
         continue;
       }
@@ -2082,6 +2097,7 @@ function parseBZWMap(filename) {
         rotation: 0,
         flagCounts: new Map(),
         unknownFlags: new Set(),
+        teams: new Set(),
       };
       continue;
     }
@@ -5017,19 +5033,53 @@ function findMapEdgeImpactPoint(prevX, prevY, prevZ, nextX, nextY, nextZ, halfMa
 
 // RandomSpawnPolicy::getPosition. A player waiting to restart at base spawns on
 // a random point of one of their own team's bases, which is every spawn in CTF
-// and every spawn after a capture; everyone else spawns anywhere valid.
+// and every spawn after a capture. Rogue has no base to claim -- a `base`'s
+// colour is always clamped to 1-4 -- so this is also the path a map's `team`
+// zone answers: a colour team's own base always wins when it has one, and a
+// zone only ever speaks for whoever a base left unanswered.
 function getSpawnPosition(player) {
   const testSpawn = getTestSpawn(player.name);
   if (testSpawn) return testSpawn;
 
+  const colorIndex = getTeamColorIndex(player.team);
   if (player.restartOnBase) {
     player.restartOnBase = false;
-    const base = getRandomTeamBase(getTeamColorIndex(player.team));
+    const base = getRandomTeamBase(colorIndex);
     if (base) {
       return { ...getRandomBasePosition(base), rotation: Math.random() * Math.PI * 2 };
     }
   }
+  // SpawnPolicy::getPosition's `else` (SpawnPolicy.cxx:66-167): everything
+  // that is not a base-priority restart asks the zone qualifier before it
+  // falls to a plain random point. That is every ordinary death -- upstream
+  // only forces `restartOnBase` back to true on a capture, never on a kill --
+  // so a `team` zone is what a self-destructed or shot-down colour tank comes
+  // back on, not only what rogue always does.
+  const zoneSpawn = getTeamZoneSpawnPosition(colorIndex);
+  if (zoneSpawn) return zoneSpawn;
   return findValidSpawnPosition();
+}
+
+// WorldInfo::getPlayerSpawnPoint, picked uniformly among every zone that
+// listed this team -- not area-weighted, the same simplification
+// `getRandomTeamBase` already makes among a team's bases. Dropped onto
+// whatever the zone actually sits on, since a zone's own y is only ever a
+// mapper's guess at the ground.
+function getTeamZoneSpawnPosition(colorIndex) {
+  if (colorIndex === null) return null;
+  const matches = MAP_ZONES.filter((zone) => zone.teams.has(colorIndex));
+  if (matches.length === 0) return null;
+  const zone = matches[Math.floor(Math.random() * matches.length)];
+  // findFlagSpawnPosition's own re-roll: a crowded zone is not a reason to
+  // leave it after one unlucky point, so this tries several before giving up
+  // to the map-wide random search.
+  for (let attempt = 0; attempt < 20; attempt++) {
+    const spot = getRandomZonePoint(zone);
+    const rotation = Math.random() * Math.PI * 2;
+    const droppedY = dropSpawnPosition(spot.x, spot.y, spot.z, rotation);
+    if (droppedY !== null) return { x: spot.x, y: droppedY, z: spot.z, rotation };
+  }
+  return null;
 }
 
 // A fixed spawn for automated testing, so a probe always starts at a known

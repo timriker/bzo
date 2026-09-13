@@ -48,11 +48,13 @@ end
 
 # The centre. Every flag here is `zoneflag`d with a count of 3
 # enough copies that a grab does not empty the pad before
-# the next respawn cycle finds it again.
+# the next respawn cycle finds it again. It also doubles as rogue's
+# spawn area, since rogue has no base to spawn on.
 zone
   position 0 0 0
   size 1 1 0
   zoneflag ID 3
+  team 0
 end
 
 box
@@ -595,11 +597,30 @@ end
 # The four bases, one on each compass point at radius 100, flat on the
 # ground as `flagbuffet.bzw`'s are. Colour follows `hix.bzw`'s convention:
 # north red, east green, south blue, west purple.
+#
+# Each base has a `team`-zoned pad just beyond it, tinted that team's colour
+# the way a flag's pad is tinted the flag's -- so a first spawn lands on the
+# base itself (`restartOnBase`, set on join and after a capture) and every
+# other death lands on the pad instead, the same fallback rogue's centre zone
+# answers. See docs/bzw.md, "Team zones".
 base
   name n_red_base
   position 0 100 0
   size 20 20 0
   color 1
+end
+
+zone
+  position 0 130 0
+  size 8 8 0
+  team 1
+end
+box
+  name n_red_spawn
+  position 0 130 0
+  size 8 8 0
+  color 1.0 0.0 0.0
+  passable
 end
 
 base
@@ -609,6 +630,19 @@ base
   color 2
 end
 
+zone
+  position 130 0 0
+  size 8 8 0
+  team 2
+end
+box
+  name e_green_spawn
+  position 130 0 0
+  size 8 8 0
+  color 0.0 1.0 0.0
+  passable
+end
+
 base
   name s_blue_base
   position 0 -100 0
@@ -616,11 +650,37 @@ base
   color 3
 end
 
+zone
+  position 0 -130 0
+  size 8 8 0
+  team 3
+end
+box
+  name s_blue_spawn
+  position 0 -130 0
+  size 8 8 0
+  color 0.101960784 0.2 1.0
+  passable
+end
+
 base
   name w_purple_base
   position -100 0 0
   size 20 20 0
   color 4
+end
+
+zone
+  position -130 0 0
+  size 8 8 0
+  team 4
+end
+box
+  name w_purple_spawn
+  position -130 0 0
+  size 8 8 0
+  color 1.0 0.0 1.0
+  passable
 end
 
 # Four obstacle tests, one per corner, clear of the rings and the bases.
