@@ -929,7 +929,10 @@ who needs to know.
 ignores, including the coordinate conversion. Update it in the same commit as
 `parseBZWMap`: a map that uses something bzo skips still loads, so the doc is
 the only place a mapper can find out what will and will not survive the import.
-`maps/bzo.bzw` carries a labelled example of each obstacle keyword.
+`maps/bzo.bzw` carries a labelled example of each obstacle keyword. `docs/bzw-plan.md`
+is the staging plan for the ignored keywords bzo means to add -- mesh geometry,
+groups and transforms, materials, physics drivers, water, and the rest -- and
+shrinks a section at a time as each moves into `docs/bzw.md` proper.
 
 **A guided missile is the one shot whose path both ends integrate.** Every other
 shot is a direction and a speed decided at the muzzle; `GM`'s heading is turned
