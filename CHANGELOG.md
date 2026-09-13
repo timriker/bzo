@@ -6,6 +6,19 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
 
 ## [Unreleased]
 
+## [1.2.8] - 2026-09-13
+
+### Added
+- **A `zone` block's `team <n>` is read**, marking it a spawn area for one of
+  BZFlag's team indices (0 rogue, 1-4 red/green/blue/purple). It only ever
+  answers where a `base`-priority spawn doesn't -- rogue always, since rogue
+  can never own a base, and a colour team's every death but its first life
+  and its first life after a capture. `bzo.bzw`'s centre zone now carries
+  `team 0` for rogue, and each of the four colour bases has a small
+  `team`-zoned pad just beyond it, tinted that team's colour, so a colour
+  tank's ordinary respawns land there instead of the map-wide random search.
+- `maps/eroah.bzw` and `maps/eroah2.bzw`, two more maps for the map picker.
+
 ## [1.2.7] - 2026-09-13
 
 ### Added
