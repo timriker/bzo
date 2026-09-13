@@ -6,6 +6,56 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
 
 ## [Unreleased]
 
+## [1.2.7] - 2026-09-13
+
+### Added
+- **Map Viewer (issue #68).** Pick "Map Viewer" in the join dialog (or the
+  XR menu's Player Options screen), choose a bundled or uploaded map, and
+  look around it while the live match keeps running underneath -- visible on
+  the scoreboard, can chat and use voice, sends the same infrequent position
+  heartbeat an Observer does, but renders the chosen map instead of the live
+  one. It is Observer on the wire, distinguished only by the map it asked to
+  see; nothing about team limits, chat, or scoreboard colour changes.
+  Selecting it and cycling its map picker previews each choice live, behind
+  the dialog, the same way the live world already renders there.
+- **First- and third-person camera modes for Observer and Map Viewer alike**,
+  a driveable phantom tank alongside the existing free-roam view. It reuses
+  a real tank's own local movement, collision, and shot prediction as-is --
+  climbing over buildings rather than through them -- with effectively
+  unlimited Wings and cosmetic-only shooting that never reaches the server
+  or any other client. Cycle into it with `C`, the Settings panel's Camera
+  row, or the XR menu's Camera row, the same three paths that already cycle
+  every other roam view.
+- **Every map bzo serves is now hashed and cached at an immutable URL**
+  (`/maps/<hash>.json`, brotli-compressed through the existing sidecar
+  pipeline), so a client fetches a world once and a reconnect or a Map
+  Viewer preview of the same map costs nothing further. World size now
+  travels only inside that per-map file, not in `init`'s config, since it is
+  a property of the map rather than of the server or the match being played
+  on it.
+
+### Fixed
+- **The Settings/XR Camera row's left and right now walk the roam-view list
+  in opposite directions**, rather than both stepping forward. Entering a
+  view in reverse lands on its last subject, symmetric with a forward entry
+  always landing on the leader.
+- **`document.hidden` no longer pauses an XR session.** Entering an
+  immersive session backgrounds the flat page on top of, not instead of,
+  watching the game through the headset, and the page stays "hidden" for the
+  whole session -- so treating it as a reason to pause left no way back to
+  unpaused until the session ended.
+- **A fresh join clears any pause the client still believed it was under**,
+  including the paused-sphere visual, rather than carrying one over from a
+  life it had nothing to do with.
+- The XR menu's "Apply and Join" now sends the same team/map fields the flat
+  dialog's OK does, fixing Map Viewer showing up as Rogue on the scoreboard
+  and the chosen map being dropped when a join was confirmed from the XR
+  side after being staged in the flat dialog.
+- Two live-instance-only bugs caught testing map hashing against the
+  running match: a background hash of a bundled map could overwrite the
+  live match's own world size, and non-deterministic cloud placement made a
+  map's hash change on every server restart.
+
 ## [1.2.6] - 2026-09-12
 
 ### Added
