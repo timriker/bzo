@@ -145,6 +145,17 @@ const TANK_NAV_LIGHTS = [
 // short of 1080 once the window's own furniture is out of it.
 const TANK_NAV_LIGHT_PIXELS = 2;
 const TANK_NAV_LIGHT_REFERENCE_HEIGHT = 800;
+// The other half of that reference: the view those two pixels were judged
+// through. A share of the buffer's height is a share of the camera's field of
+// view, so the same share is a wider angle through a wider lens. The game's 60
+// degrees across 16:9 is 36 degrees top to bottom, the tank preview's is 42,
+// and a headset's is 90-odd -- which would draw the same light two and a half
+// times the size, at every distance and whatever the headset's resolution,
+// because the buffer's height cancels out of the two. `projectionMatrix`
+// carries `1/tan(fovY/2)` in its second diagonal, so dividing the camera's own
+// by this one holds a light to the angle it was chosen at whatever draws it.
+const TANK_NAV_LIGHT_REFERENCE_FOCAL =
+  (16 / 9) / Math.tan(THREE.MathUtils.degToRad(BZFlag_DEFAULT_HORIZONTAL_FOV * 0.5));
 // A round dot has nothing to be round in under two pixels. This floors the
 // finished size rather than the share it is worked out from: floor the share
 // and a buffer far shorter than the reference -- the tank preview's canvas is
@@ -186,9 +197,13 @@ const TANK_NAV_LIGHT_GROWTH = 6;
 // anything once there are pixels to spend on it.
 const TANK_NAV_LIGHT_EDGE = 0.7;
 
-// `gl_PointSize` from the distance to the point and the height of the buffer
-// being drawn into. The clamp is the shader's own, so the only thing JS writes
-// is the height.
+// `gl_PointSize` from the distance to the point, the height of the buffer being
+// drawn into, and the camera's field of view. The clamp is the shader's own, so
+// the only thing JS writes is the height. The distance is the length of the
+// view-space position rather than its depth: depth falls short of the distance
+// by the cosine of the angle off the view axis, which a 36-degree view keeps
+// under a tenth and a headset's 90-odd does not -- there a light at the edge of
+// vision is a third larger again, and it breathes as the head turns.
 const TANK_NAV_LIGHT_VERTEX_SHADER = `
 uniform float bufferHeight;
 attribute vec3 color;
@@ -199,10 +214,13 @@ void main() {
   vColor = color;
   vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
   gl_Position = projectionMatrix * mvPosition;
-  float held = ${TANK_NAV_LIGHT_PIXELS.toFixed(1)} * bufferHeight / ${TANK_NAV_LIGHT_REFERENCE_HEIGHT.toFixed(1)};
+  float held = ${TANK_NAV_LIGHT_PIXELS.toFixed(1)} * bufferHeight
+    / ${TANK_NAV_LIGHT_REFERENCE_HEIGHT.toFixed(1)}
+    * projectionMatrix[1][1] / ${TANK_NAV_LIGHT_REFERENCE_FOCAL.toFixed(4)};
+  float viewDistance = length(mvPosition.xyz);
   gl_PointSize = max(${TANK_NAV_LIGHT_SIZE_MIN.toFixed(1)}, clamp(
     held * pow(
-      ${TANK_NAV_LIGHT_HOLD.toFixed(1)} / max(-mvPosition.z, 0.001),
+      ${TANK_NAV_LIGHT_HOLD.toFixed(1)} / max(viewDistance, 0.001),
       ${TANK_NAV_LIGHT_FALLOFF.toFixed(2)}
     ),
     held,
@@ -6164,10 +6182,13 @@ class RenderManager {
     return this._tankNavLightMaterial;
   }
 
-  // The buffer a given renderer is drawing into: in a session the headset's
-  // own rather than the canvas Three was sized against, and for the tank
-  // preview its small canvas rather than the game's. Both are property reads,
-  // which is what lets this be asked per draw instead of cached.
+  // The buffer a given renderer is drawing into, so the tank preview's small
+  // canvas is read as its own rather than the game's. A session states its
+  // height on the base layer where the browser has one; where it draws through
+  // a projection layer instead there is no base layer to ask, and the canvas
+  // answers for it, Three having sized the canvas to the session's buffer.
+  // Both are property reads, which is what lets this be asked per draw instead
+  // of cached.
   _getNavLightBufferHeight(renderer) {
     const layer = renderer?.xr?.getSession?.()?.renderState?.baseLayer;
     if (layer?.framebufferHeight) return layer.framebufferHeight;
