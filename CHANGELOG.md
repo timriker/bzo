@@ -6,6 +6,37 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
 
 ## [Unreleased]
 
+## [1.2.55] - 2026-09-23
+
+### Fixed
+- A tank's navigation lights are the same size to look at in a headset as on a
+  screen. They were sized as a share of the drawing buffer's height, and the
+  angle one pixel covers is the field of view over that same height, so the
+  height cancelled and a light came out as large as the camera was wide: the
+  game's 60 degrees across 16:9 is 36 degrees top to bottom, a headset's is
+  90-odd, and the same light was drawn three times the size at every distance
+  and whatever the headset's resolution. The size now divides by the camera's
+  own field of view, which also brings the tank preview's slightly closer
+  camera into line. A light is also placed by its distance rather than by its
+  depth -- depth falls short of the distance by the cosine of the angle off the
+  view axis, which a 36-degree view keeps under a tenth and a headset's does
+  not, so a light off to the side of vision was a third larger again and
+  breathed as the head turned.
+- Applying a tank or team choice from the headset's settings panel no longer
+  leaves the tank paused with no way to unpause it. The panel sent the join and
+  then closed, and closing gives back the pause it took when it opened -- which
+  landed behind the join, after the server had already cleared the pause for
+  the new life, so the new life came up paused. Nothing could undo it: a pause
+  the panel did not take is one the panel will not give back, and a headset has
+  no pause key. The panel now closes before it sends the join.
+- A tank model whose parts are split by material is refused with the parts it
+  is missing named, instead of being offered and then spawning an invisible
+  tank. An OBJ `g` opens an object exactly as `o` does, so an export shaped
+  `o body` followed by `g body_body_skin` carrying every face declares a body
+  the loader never builds; the check the server makes before offering a model
+  read only `o`, and only that a name was present rather than that any face
+  landed under it.
+
 ## [1.2.54] - 2026-09-23
 
 ### Added
