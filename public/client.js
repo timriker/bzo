@@ -14067,6 +14067,14 @@ function applyXRJoinSelection() {
   // The 2D dialog is open if the player entered XR from it. This panel is its
   // OK, so it closes without putting the draft back.
   closeEntryDialog({ revert: false });
+  // Both surfaces close before the join is sent rather than after it. Closing
+  // this panel gives back the pause it took when it opened, and that toggle
+  // belongs to the life it was taken in: behind the join the server clears the
+  // pause in the respawn and then reads the toggle against the new life, which
+  // comes up paused and stays there -- a pause the panel did not take is one it
+  // cannot give back, because `PauseState.syncMenu` will not claim a tank that
+  // is already frozen.
+  closeXRSettingsMenu();
   gameplayJoinConfirmed = false;
   applySelectedTankModel(selectedTankModelId);
   sendToServer({
@@ -14076,7 +14084,6 @@ function applyXRJoinSelection() {
     tankModel: selectedTankModelId,
     ...getJoinTeamFields(),
   });
-  closeXRSettingsMenu();
 }
 
 function activateXRSettingsMenuSelection(item) {
