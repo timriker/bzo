@@ -510,7 +510,8 @@ export function updateDebugDisplay({
   if (voice) {
     const peers = voice.peers || [];
     const connected = peers.filter((peer) => peer.connected).length;
-    html += `<div><span class="label">Voice:</span><span class="value">${voice.channel}, mic ${voice.transmitting ? 'on' : 'off'}</span></div>`;
+    const ducked = voice.ducked ? ', game ducked' : '';
+    html += `<div><span class="label">Voice:</span><span class="value">${voice.channel}, mic ${voice.transmitting ? 'on' : 'off'}${ducked}</span></div>`;
     html += `<div><span class="label">Voice Peers:</span><span class="value">${connected}/${peers.length} connected</span></div>`;
     peers.forEach((peer) => {
       const sending = peer.sending ? 'sending' : 'not sending';

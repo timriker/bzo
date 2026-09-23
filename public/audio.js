@@ -41,6 +41,33 @@ export const SOUND_DISTANCE_MODEL = 'inverse';
 // the AudioListener's master gain; this is the per-sound level underneath it.
 export const MASTER_VOLUME = 1;
 
+// Voice is placed in the world the gameplay sounds are already placed in, so a
+// player heard over voice comes from where their tank is standing. The numbers
+// are a voice's, not a shot's: a talking tank is audible well past the 86.4 a
+// shot carries, and a voice that faded on the same curve would be inaudible
+// across a street.
+//
+// Only the Nearby channel is placed at the speaker's real distance -- All and
+// Team reach across the whole map, so `voiceChannelUsesDistance` puts those
+// peers on the bearing to the speaker at exactly VOICE_REF_DISTANCE, where the
+// inverse model is still unity. One panner configuration then covers all three
+// channels: the distance the caller supplies is the whole difference.
+export const VOICE_REF_DISTANCE = 10;
+export const VOICE_ROLLOFF_FACTOR = 1;
+export const VOICE_DISTANCE_MODEL = 'inverse';
+// The same model three.js gives every PositionalAudio, and for the same
+// reason: equalpower is a left/right pan and nothing more, so a voice directly
+// behind would read as one directly ahead -- which is the case the issue
+// asking for this is really about.
+export const VOICE_PANNING_MODEL = 'HRTF';
+
+// Game sound ducks while somebody is talking. -6 dB is enough to hear a voice
+// over a firefight without the game going quiet, and the hold keeps the gain
+// from pumping between words: speaking is sampled every 200 ms, so anything
+// shorter would flap on the gaps inside a sentence.
+export const VOICE_DUCK_GAIN = 0.5;
+export const VOICE_DUCK_HOLD_MS = 600;
+
 export const GAME_SOUNDS = Object.freeze({
   // A shot is fired.
   fire: { file: 'fire.wav', sfx: 'SFX_FIRE' },

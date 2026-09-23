@@ -3083,6 +3083,77 @@ they belong to. When adding one of those features, take its sound from upstream
 at the same time. The BZFlag sound codes are in `src/bzflag/sound.h`, resolved
 through the `soundFiles[]` table in `src/bzflag/sound.cxx`.
 
+### Voice comes from where the speaker is standing
+
+Upstream has no voice chat, so none of this mirrors anything -- but a voice
+that arrives from nowhere is the one sound in the game that does not answer
+"where is that", and in a headset it is the odd one out twice over.
+
+A peer is heard through exactly one of two stages, never both:
+
+- **The `<audio>` element**, which is what bzo always had. Every browser that
+  can receive the track can play it, unplaced.
+- **The graph** -- `source -> gain -> panner -> destination`, built in
+  `attachPeerAudioGraph` off the same `AudioContext` the microphone gain and
+  the speaking analyser already use.
+
+**The graph only takes over once it is proven.** Routing a WebRTC track into
+Web Audio is the part browsers have historically got wrong, and one that hands
+back silence would take the whole call with it. `pollSpeaking` already reads
+each peer's analyser every 200 ms; the first read above zero -- any energy at
+all, not the speaking threshold -- flips `graphProven`, moves the level onto
+the gain node and takes the element to zero for good. A browser that cannot
+carry the track never proves it and keeps playing the peer on the element,
+which is exactly today's behaviour rather than a regression into silence. The
+cost is that the first syllable of a peer's first sentence is unplaced.
+
+**The panner goes to `context.destination`, not through the renderer's
+`AudioListener`.** That listener's master gain *is* the Game volume, and the
+Game volume is the thing voice ducks -- running voice under it would have a
+voice duck itself. What still applies is the listener's *pose*: three.js writes
+the camera's world transform onto the shared `AudioContext.listener` during the
+render, and a raw `PannerNode` is heard relative to that. `panningModel` is
+`HRTF`, the same model three.js gives every `PositionalAudio`, because
+`equalpower` is a left/right pan and nothing more -- a voice directly behind
+would read as one directly ahead, which is the case worth getting right.
+
+**Only Nearby is placed at the speaker's real distance.** `client.js`'s
+`updateVoicePlacement` owns the geometry, because it is the half that knows
+where the camera ended up this frame and where every tank is; `voice.js` only
+ever writes the coordinates it is handed. All and Team reach across the whole
+map, so a teammate calling for help from the far corner has to be as loud there
+as alongside you: those are placed on the bearing to the speaker at exactly
+`VOICE_REF_DISTANCE`, where the inverse model is still unity. One panner
+configuration then covers all three channels, and the existing
+`voiceChannelUsesDistance` is the switch. A peer with no tank yet is placed at
+the listener -- unattenuated and unplaced, rather than silent.
+
+It runs **after** `renderFrame()`, which is the one point in the frame where
+three has updated the world matrices and written the listener's pose, so the
+ears and every tank agree about where they are.
+
+### Game sound ducks while somebody is talking
+
+`VOICE_DUCK_GAIN` (-6 dB) is a factor on top of the player's Game volume, not a
+second setting: `setVoiceDucking` flips it and `_applyGameVolume` multiplies.
+Because voice is not under the `AudioListener`, ducking the master gain ducks
+the game and nothing else, which is what makes it one call.
+
+It engages at once and releases on a `VOICE_DUCK_HOLD_MS` hold. Speaking is
+sampled every 200 ms, so an immediate release would let the game swell back up
+in the gaps between words and duck again on the next one.
+
+`client.js` holds the peers being heard as a **set, not a counter**, so a peer
+who disconnects mid-sentence cannot leave the game ducked forever -- `voice.js`
+reports them as stopped when it tears their graph down, and that removes them.
+Ducking asks a narrower question than the speaking indicator does: not "is this
+player talking" but "is their voice reaching my ears", so a `/silence`d player
+still shows the indicator and ducks nothing, and silencing somebody mid-sentence
+lifts the duck they were holding down.
+
+**There is no setting for either.** Per the fewer-options rule, bzo ships the
+variant nobody turns off.
+
 ## WebXR
 
 - **An immersive session shows no DOM.** Anything the player must read or answer

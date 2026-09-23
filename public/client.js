@@ -203,6 +203,7 @@ import {
   VOICE_CHANNELS,
   getVoiceChannel,
   normalizeVoiceChannel,
+  voiceChannelUsesDistance,
 } from './voice-channels.mjs';
 import {
   ANTIDOTE_FLAG_COLOR,
@@ -278,7 +279,11 @@ import {
   WORLD_WEAPON_TEAM,
 } from './shots.mjs';
 import { CLIENT_VERSION } from './version.mjs';
-import { getSoundPaths } from './audio.js';
+import {
+  VOICE_DUCK_HOLD_MS,
+  VOICE_REF_DISTANCE,
+  getSoundPaths,
+} from './audio.js';
 import {
   DEFAULT_VOLUME_LEVEL,
   VOLUME_CHANNELS,
@@ -1440,10 +1445,94 @@ function handleVoiceRemoteTrackMuteChange({ peerId, muted } = {}) {
 // energy, so it tracks real transmission the way the mic glyph cannot.
 // Mirrors voiceMicToggled's own write to the same playerState.
 function handleVoiceSpeakingChange({ peerId, speaking } = {}) {
+  // Ducking asks a narrower question than the indicator does: not "is this
+  // player talking" but "is their voice reaching my ears", so a silenced
+  // player still shows the indicator and still ducks nothing.
+  setVoiceDuckingPeer(peerId, speaking === true && !isPlayerSilenced(peerId));
   const state = tanks.get(peerId)?.userData?.playerState;
   if (!state) return;
   state.voiceSpeaking = speaking === true;
   refreshScoreboards();
+}
+
+// Game sound steps back while somebody is talking (issue #119). Kept as the
+// set of peers actually being heard rather than a counter, so a peer that
+// disconnects mid-sentence -- voice.js reports them as stopped when it tears
+// their graph down -- cannot leave the game ducked forever.
+const voiceDuckingPeers = new Set();
+let voiceDuckReleaseTimer = null;
+
+function setVoiceDuckingPeer(peerId, audible) {
+  if (peerId === null || peerId === undefined) return;
+  const id = String(peerId);
+  if (audible) voiceDuckingPeers.add(id); else voiceDuckingPeers.delete(id);
+  applyVoiceDucking();
+}
+
+// Ducking engages at once and releases on a hold. Speaking is sampled every
+// 200 ms, so releasing immediately would let the game swell back up in the
+// gaps between words and duck again on the next one.
+function applyVoiceDucking() {
+  if (voiceDuckingPeers.size > 0) {
+    if (voiceDuckReleaseTimer !== null) {
+      clearTimeout(voiceDuckReleaseTimer);
+      voiceDuckReleaseTimer = null;
+    }
+    renderManager.setVoiceDucking(true);
+    return;
+  }
+  if (voiceDuckReleaseTimer !== null) return;
+  voiceDuckReleaseTimer = setTimeout(() => {
+    voiceDuckReleaseTimer = null;
+    if (voiceDuckingPeers.size === 0) renderManager.setVoiceDucking(false);
+  }, VOICE_DUCK_HOLD_MS);
+}
+
+const voiceListenerPosition = new THREE.Vector3();
+const voiceSpeakerPosition = new THREE.Vector3();
+const voiceBearing = new THREE.Vector3();
+
+// Where each peer's voice is heard from (issue #119). The renderer owns the
+// ears and voice.js owns the panners; the geometry between them is this, and
+// it lives here because this is the half that knows where every tank is.
+//
+// Only Nearby is placed at the speaker's real distance. All and Team reach
+// across the whole map, and a teammate calling for help from the far corner
+// has to be as loud there as they are alongside you -- so those are placed on
+// the bearing to the speaker at the panner's own reference distance, which
+// gives the direction and leaves the level alone.
+//
+// A peer with no tank to stand on -- one who has not been added yet -- is put
+// at the listener, which is unattenuated and unplaced rather than silent.
+// Called directly rather than through callVoiceManager: this runs once a
+// frame per peer, and that wrapper allocates a result object and puts every
+// failure on screen. setPeerPosition answers false instead of throwing.
+function updateVoicePlacement() {
+  if (voicePeerDebug.size === 0) return;
+  const place = voiceManager?.setPeerPosition;
+  if (typeof place !== 'function') return;
+  const listener = renderManager.getListenerWorldPosition(voiceListenerPosition);
+  if (!listener) return;
+  const usesDistance = voiceChannelUsesDistance(selectedVoiceChannel);
+  voicePeerDebug.forEach((_entry, peerId) => {
+    const tank = tanks.get(peerId);
+    if (!tank) {
+      place(peerId, listener);
+      return;
+    }
+    const speaker = tank.getWorldPosition(voiceSpeakerPosition);
+    if (usesDistance) {
+      place(peerId, speaker);
+      return;
+    }
+    const bearing = voiceBearing.subVectors(speaker, listener);
+    const distance = bearing.length();
+    if (distance < 1e-4) {
+      place(peerId, listener);
+      return;
+    }
+    place(peerId, bearing.multiplyScalar(VOICE_REF_DISTANCE / distance).add(listener));
+  });
 }
 
 // getStats() is async and not pushed the way the state-change events are, so
@@ -1512,6 +1601,7 @@ function getVoiceDebugState() {
   return {
     channel: getVoiceChannel(selectedVoiceChannel).label,
     transmitting: getVoiceState().transmitting === true,
+    ducked: renderManager.isVoiceDucked(),
     peers: Array.from(voicePeerDebug.entries()).map(([peerId, entry]) => {
       const connectionState = entry.states.connectionState || 'new';
       const connected = connectionState === 'connected';
@@ -1523,8 +1613,17 @@ function getVoiceDebugState() {
       // ever fired or .play() ever ran, and copying this out of a remote or
       // headless client's devtools to hand to someone else is exactly the
       // friction this whole panel exists to avoid.
+      //
+      // `placed` is the element still running but handed over: the voice is
+      // coming out of its panner, at the speaker's bearing, and the element is
+      // only still there as the fallback for a browser that never proves the
+      // graph. Which stage a peer is on is the manager's own answer, not the
+      // element's volume -- a silenced peer reads zero on either stage.
       const audioElement = document.querySelector(`audio[data-voice-peer-id="${peerId}"]`);
-      const playback = !audioElement ? 'no element' : audioElement.paused ? 'paused' : 'playing';
+      const placed = voiceManager?.getPeerPlacement?.(peerId) === 'panner';
+      const playback = !audioElement
+        ? 'no element'
+        : audioElement.paused ? 'paused' : placed ? 'placed' : 'playing';
       if (entry.playback !== playback) {
         entry.playback = playback;
         logVoiceEvent(`${describeVoicePeer(peerId)} playback: ${playback}`);
@@ -2479,7 +2578,14 @@ function isPlayerSilenced(playerId) {
 // `mutedPeerIds` is what a fresh connection consults, not this call's timing.
 function applySilenceToVoice(playerId) {
   if (!playerId || playerId === myPlayerId) return;
-  callVoiceManager('setPeerMuted', playerId, isPlayerSilenced(playerId));
+  const silenced = isPlayerSilenced(playerId);
+  callVoiceManager('setPeerMuted', playerId, silenced);
+  // Silencing somebody mid-sentence has to lift the duck they are holding
+  // down, and unsilencing them has to put it back.
+  setVoiceDuckingPeer(
+    playerId,
+    !silenced && tanks.get(playerId)?.userData?.playerState?.voiceSpeaking === true
+  );
 }
 
 // Every connected id, re-asked. Cheap enough to run on every roster change
@@ -14632,6 +14738,11 @@ function animate(frameTime) {
   // renderManager marks 'worldfx' from inside renderFrame, once it has finished
   // rebuilding geometry and before it submits anything; the rest is the draw.
   renderManager.renderFrame();
+  // After the draw, not before it: three.js updates the world matrices and
+  // writes the camera's pose onto the AudioContext listener during the render,
+  // so this is the one point in the frame where the ears and every tank agree
+  // about where they are.
+  updateVoicePlacement();
   markFramePhase('draw');
   rollFramePhases();
   sampleXRRenderStats();

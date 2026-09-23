@@ -11,6 +11,12 @@
 
 import { normalizePlayerTeam } from './teams.mjs';
 import {
+  VOICE_DISTANCE_MODEL,
+  VOICE_PANNING_MODEL,
+  VOICE_REF_DISTANCE,
+  VOICE_ROLLOFF_FACTOR,
+} from './audio.js';
+import {
   DEFAULT_VOLUME_LEVEL,
   clampVolumeLevel,
   volumeLevelToGain,
@@ -196,22 +202,64 @@ export function createVoiceManager(options = {}) {
       && Boolean(localStream && localStream.getAudioTracks().length);
   }
 
-  // Remote voice arrives as an HTMLMediaElement, outside the Three.js audio
-  // graph the Game volume controls, so its level is the element's own gain.
-  // That is playback only: it never touches the track sent to peers.
-  function applyVoicePlaybackVolume(audio) {
-    const entries = audio
-      ? [[audio.dataset.voicePeerId, audio]]
-      : Array.from(peers.entries(), ([peerId, entry]) => [peerId, entry.remoteAudio]);
-    const gain = volumeLevelToGain(voiceVolumeLevel);
-    entries.forEach(([peerId, element]) => {
-      if (!element) return;
+  // What one peer should be heard at: the shared level, or nothing at all if
+  // the host has silenced them. Playback only -- it never touches the track
+  // sent to peers.
+  function peerPlaybackGain(peerId) {
+    if (mutedPeerIds.has(normalizePlayerId(peerId))) return 0;
+    return volumeLevelToGain(voiceVolumeLevel);
+  }
+
+  function setElementVolume(element, value) {
+    if (!element) return;
+    try {
+      element.volume = value;
+    } catch {
+      // A host may supply a media-element double with a read-only volume.
+    }
+  }
+
+  // A gain node's value, ramped where the browser offers it. A step straight
+  // to the new value clicks; 10 ms is the same constant three.js uses on the
+  // listener's own master gain.
+  function setGainValue(node, context, value) {
+    if (!node) return;
+    const param = node.gain;
+    if (context && typeof param.setTargetAtTime === 'function' && Number.isFinite(context.currentTime)) {
       try {
-        element.volume = mutedPeerIds.has(normalizePlayerId(peerId)) ? 0 : gain;
+        param.setTargetAtTime(value, context.currentTime, 0.01);
+        return;
       } catch {
-        // A host may supply a media-element double with a read-only volume.
+        // Fall through to the direct write below.
       }
-    });
+    }
+    param.value = value;
+  }
+
+  // A peer is heard through exactly one of two stages, never both at once.
+  //
+  // The `<audio>` element is the one that always works: every browser that can
+  // receive the track can play it, unplaced, the way bzo played voice before
+  // there was anywhere to place it. The graph stage -- source, gain, panner --
+  // is the one that puts the voice where the speaker is standing, and it only
+  // takes over once `pollSpeaking` has actually read energy off that peer's
+  // analyser. Routing a WebRTC track into Web Audio is the part browsers have
+  // historically got wrong, and a browser that hands back silence would take
+  // the whole call with it; one that does carry the audio proves it within a
+  // poll of the first syllable, and the element steps aside for good.
+  function applyPeerPlaybackVolume(entry) {
+    if (!entry) return;
+    const level = peerPlaybackGain(entry.peerId);
+    setElementVolume(entry.remoteAudio, entry.graphProven ? 0 : level);
+    setGainValue(entry.playbackGain, entry.audioContext, entry.graphProven ? level : 0);
+  }
+
+  function applyVoicePlaybackVolume(audio) {
+    if (audio) {
+      setElementVolume(audio, peerPlaybackGain(audio.dataset.voicePeerId));
+      return;
+    }
+    peers.forEach(applyPeerPlaybackVolume);
   }
 
   // The host calls this whenever its own reason to silence a peer changes --
@@ -225,7 +273,7 @@ export function createVoiceManager(options = {}) {
     if (normalized === null) return;
     if (muted) mutedPeerIds.add(normalized); else mutedPeerIds.delete(normalized);
     const entry = peers.get(normalized);
-    if (entry) applyVoicePlaybackVolume(entry.remoteAudio);
+    if (entry) applyPeerPlaybackVolume(entry);
   }
 
   // Microphone level is a gain node between capture and the sent track, because
@@ -379,11 +427,19 @@ export function createVoiceManager(options = {}) {
   }
 
   // One MediaStreamAudioSourceNode per peer, built off the same AudioContext
-  // the microphone gain stage uses. It is only ever read from (an analyser
-  // pulled by pollSpeaking below), never connected onward -- playback stays
-  // on the <audio> element ontrack already wired up, so this cannot change
-  // what anyone hears.
-  function attachSpeakingAnalyser(entry, stream) {
+  // the microphone gain stage uses, feeding two things that never feed each
+  // other:
+  //
+  //   source -> analyser                      (read by pollSpeaking)
+  //          -> gain -> panner -> destination (what the player hears)
+  //
+  // The panner goes to the destination rather than through the renderer's
+  // AudioListener, because that listener's master gain *is* the Game volume --
+  // and the Game volume is the thing voice ducks. Running voice under it would
+  // duck the voice by its own speaking. The listener's *position* still
+  // applies: three.js writes the camera's pose onto the shared
+  // AudioContext.listener, which is what this panner is heard relative to.
+  function attachPeerAudioGraph(entry, stream) {
     if (entry.speakingAnalyser) return;
     const context = getAudioContext();
     if (!context || typeof context.createMediaStreamSource !== 'function') return;
@@ -393,25 +449,95 @@ export function createVoiceManager(options = {}) {
       analyser.fftSize = 512;
       analyser.smoothingTimeConstant = 0.2;
       source.connect(analyser);
+      entry.audioContext = context;
       entry.speakingSource = source;
       entry.speakingAnalyser = analyser;
       entry.speakingData = new Uint8Array(analyser.fftSize);
       entry.speaking = false;
+      attachPeerPanner(entry, context, source);
     } catch {
       // A context in a state that refuses new nodes (e.g. closed) just means
-      // no speaking indicator for this peer -- the rest of the call is fine.
+      // no speaking indicator and no placement for this peer -- the element
+      // keeps playing them, which is the whole point of it staying.
     }
   }
 
-  function detachSpeakingAnalyser(entry) {
+  // The panner opens at the world origin and silent, and the host pushes a
+  // position every frame from here on. Nothing is audible through it until
+  // `graphProven` flips, which cannot happen before a poll has seen audio --
+  // several frames of positions later -- so the origin is never heard.
+  function attachPeerPanner(entry, context, source) {
+    if (typeof context.createPanner !== 'function' || typeof context.createGain !== 'function') return;
     try {
-      entry.speakingSource?.disconnect();
+      const gain = context.createGain();
+      const panner = context.createPanner();
+      panner.panningModel = VOICE_PANNING_MODEL;
+      panner.distanceModel = VOICE_DISTANCE_MODEL;
+      panner.refDistance = VOICE_REF_DISTANCE;
+      panner.rolloffFactor = VOICE_ROLLOFF_FACTOR;
+      gain.gain.value = 0;
+      source.connect(gain);
+      gain.connect(panner);
+      panner.connect(context.destination);
+      entry.playbackGain = gain;
+      entry.panner = panner;
     } catch {
-      // Already disconnected by the browser is not an error here.
+      // No placement for this peer; the element still plays them unplaced.
+      entry.playbackGain = null;
+      entry.panner = null;
     }
+  }
+
+  // Where the host says this peer is standing, in the same world coordinates
+  // three.js gives the AudioContext listener. The host owns the geometry: it
+  // is the half that knows where the camera ended up this frame and which
+  // channel fades with distance.
+  function setPeerPosition(peerId, position) {
+    const entry = peers.get(normalizePlayerId(peerId));
+    if (!entry || !entry.panner || !position) return false;
+    const { x, y, z } = position;
+    if (!Number.isFinite(x) || !Number.isFinite(y) || !Number.isFinite(z)) return false;
+    const panner = entry.panner;
+    try {
+      if (panner.positionX) {
+        panner.positionX.value = x;
+        panner.positionY.value = y;
+        panner.positionZ.value = z;
+      } else if (typeof panner.setPosition === 'function') {
+        panner.setPosition(x, y, z);
+      }
+    } catch {
+      // A panner on a closed context is not worth reporting once a frame.
+      return false;
+    }
+    return true;
+  }
+
+  // Which of the two stages is carrying this peer, for the debug HUD. The
+  // element's own volume cannot answer it: a silenced peer sits at zero on
+  // either stage.
+  function getPeerPlacement(peerId) {
+    const entry = peers.get(normalizePlayerId(peerId));
+    if (!entry) return null;
+    if (entry.graphProven) return 'panner';
+    return entry.remoteAudio ? 'element' : null;
+  }
+
+  function detachPeerAudioGraph(entry) {
+    [entry.speakingSource, entry.playbackGain, entry.panner].forEach((node) => {
+      try {
+        node?.disconnect();
+      } catch {
+        // Already disconnected by the browser is not an error here.
+      }
+    });
+    entry.audioContext = null;
     entry.speakingSource = null;
     entry.speakingAnalyser = null;
     entry.speakingData = null;
+    entry.playbackGain = null;
+    entry.panner = null;
+    entry.graphProven = false;
     if (entry.speaking) {
       entry.speaking = false;
       invoke('onSpeakingChange', { peerId: entry.peerId, speaking: false });
@@ -432,7 +558,16 @@ export function createVoiceManager(options = {}) {
   function pollSpeaking() {
     peers.forEach((entry) => {
       if (!entry.speakingAnalyser) return;
-      const speaking = readAnalyserRms(entry.speakingAnalyser, entry.speakingData) >= SPEAKING_RMS_THRESHOLD;
+      const rms = readAnalyserRms(entry.speakingAnalyser, entry.speakingData);
+      // Any energy at all, not the speaking threshold: a sample that reached
+      // the analyser reached the panner too, which is the only thing being
+      // asked here. Digital silence reads as exactly zero, so an unproven
+      // graph stays unproven until the peer makes a sound.
+      if (rms > 0 && !entry.graphProven && entry.panner) {
+        entry.graphProven = true;
+        applyPeerPlaybackVolume(entry);
+      }
+      const speaking = rms >= SPEAKING_RMS_THRESHOLD;
       if (speaking === entry.speaking) return;
       entry.speaking = speaking;
       invoke('onSpeakingChange', { peerId: entry.peerId, speaking });
@@ -526,6 +661,10 @@ export function createVoiceManager(options = {}) {
       transceiver: null,
       remoteAudio: createRemoteAudio(peerId),
       remoteStream: null,
+      audioContext: null,
+      playbackGain: null,
+      panner: null,
+      graphProven: false,
       pendingCandidates: [],
       makingOffer: false,
       initialOfferSent: false,
@@ -561,7 +700,7 @@ export function createVoiceManager(options = {}) {
         });
       }
       invoke('onRemoteTrack', { peerId, stream, track: event.track, element: entry.remoteAudio });
-      attachSpeakingAnalyser(entry, stream);
+      attachPeerAudioGraph(entry, stream);
       // `track.muted` at ontrack time is a snapshot, not an answer -- it is
       // normal for a track to start muted the instant it exists, before any
       // packet has arrived, and this is what actually says whether it ever
@@ -667,7 +806,7 @@ export function createVoiceManager(options = {}) {
     } catch {
       // A peer can already be closed by the browser after a network failure.
     }
-    detachSpeakingAnalyser(entry);
+    detachPeerAudioGraph(entry);
     removeRemoteAudio(entry);
     peers.delete(peerId);
     invoke('onPeerRemoved', { peerId });
@@ -1120,6 +1259,8 @@ export function createVoiceManager(options = {}) {
     setVoiceVolumeLevel,
     setMicrophoneVolumeLevel,
     setPeerMuted,
+    setPeerPosition,
+    getPeerPlacement,
     setRtcConfig,
     toggleMicrophone,
     handleServerMessage,

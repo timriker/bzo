@@ -25,6 +25,7 @@ import {
   SOUND_DISTANCE_MODEL,
   SOUND_REF_DISTANCE,
   SOUND_ROLLOFF_FACTOR,
+  VOICE_DUCK_GAIN,
   getSoundPath,
   loadAudioBuffer,
 } from './audio.js';
@@ -1597,6 +1598,10 @@ class RenderManager {
     this.renderer = null;
     this.audioListener = null;
     this.gameVolumeLevel = DEFAULT_VOLUME_LEVEL;
+    // Set while somebody's voice is coming through, so the game gets out of
+    // the way of it. The player's own level is untouched underneath -- this is
+    // a factor on top of it, not a second setting.
+    this.voiceDucked = false;
     // Gameplay sample buffers, keyed by GAME_SOUNDS name.
     this.soundBuffers = new Map();
     this.container = null;
@@ -1938,8 +1943,35 @@ class RenderManager {
     return this.gameVolumeLevel;
   }
 
+  // Voice is not under the AudioListener -- it goes straight to the
+  // destination -- so ducking the master gain ducks the game and nothing else,
+  // which is what makes this one call the whole feature. setMasterVolume ramps
+  // rather than steps (setTargetAtTime, 10 ms), so there is no click either way.
+  setVoiceDucking(ducked) {
+    const next = ducked === true;
+    if (next === this.voiceDucked) return this.voiceDucked;
+    this.voiceDucked = next;
+    this._applyGameVolume();
+    return this.voiceDucked;
+  }
+
+  isVoiceDucked() {
+    return this.voiceDucked === true;
+  }
+
   _applyGameVolume() {
-    this.audioListener?.setMasterVolume(volumeLevelToGain(this.gameVolumeLevel));
+    const gain = volumeLevelToGain(this.gameVolumeLevel) * (this.voiceDucked ? VOICE_DUCK_GAIN : 1);
+    this.audioListener?.setMasterVolume(gain);
+  }
+
+  // Where the ears are, in world coordinates -- the same frame a voice panner
+  // is placed in. three.js writes this pose onto the AudioContext listener
+  // itself during the render, so reading it back afterwards is reading exactly
+  // what the panners are heard relative to.
+  getListenerWorldPosition(target) {
+    const node = this.audioListener || this.camera;
+    if (!node || !target) return null;
+    return node.getWorldPosition(target);
   }
 
   getRenderCapabilities() {

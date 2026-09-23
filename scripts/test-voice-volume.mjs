@@ -6,12 +6,19 @@
  * See LICENSE or https://www.gnu.org/licenses/agpl-3.0.html
  */
 
-// Covers the two voice levels: remote playback, which is the media element's
-// own gain, and the microphone, which is a gain node spliced between capture
-// and the track sent to peers.
+// Covers the two voice levels and where a voice is heard from: remote
+// playback, which starts on the media element and moves onto a panner once the
+// graph is proven to carry the peer's audio, and the microphone, which is a
+// gain node spliced between capture and the track sent to peers.
 
 import assert from 'node:assert/strict';
 import { volumeLevelToGain } from '../public/volume.mjs';
+import {
+  VOICE_DISTANCE_MODEL,
+  VOICE_PANNING_MODEL,
+  VOICE_REF_DISTANCE,
+  VOICE_ROLLOFF_FACTOR,
+} from '../public/audio.js';
 import { createVoiceManager } from '../public/voice.js';
 
 const audios = [];
@@ -168,3 +175,152 @@ assert.equal(captureTrack.stopped, true);
 assert.equal(audios.length, 0);
 
 console.log('voice volume tests passed');
+
+// ---------------------------------------------------------------------------
+// Placement: a peer's voice moves from the <audio> element onto the panner,
+// but only once the graph has been proven to carry their audio. A browser that
+// cannot route a WebRTC track into Web Audio reads as one that never proves
+// it, and must keep playing them on the element instead of going silent.
+
+const spatialAudios = [];
+globalThis.document.createElement = () => {
+  const element = {
+    autoplay: false,
+    playsInline: false,
+    volume: 1,
+    dataset: {},
+    style: {},
+    parentNode: null,
+    srcObject: null,
+    setAttribute() {},
+    pause() {},
+    play: () => Promise.resolve(),
+  };
+  spatialAudios.push(element);
+  return element;
+};
+
+let analyserSample = 128; // 128 is the zero line of time-domain byte data.
+const createdGains = [];
+let createdPanner = null;
+
+const spatialContext = {
+  state: 'running',
+  currentTime: 0,
+  destination: { name: 'destination' },
+  createMediaStreamSource: () => ({ connect() {}, disconnect() {} }),
+  createGain() {
+    const node = {
+      gain: {
+        value: 1,
+        setTargetAtTime(value) { this.value = value; },
+      },
+      connect() {},
+      disconnect() {},
+    };
+    createdGains.push(node);
+    return node;
+  },
+  createAnalyser: () => ({
+    fftSize: 512,
+    smoothingTimeConstant: 0,
+    connect() {},
+    disconnect() {},
+    getByteTimeDomainData(data) { data.fill(analyserSample); },
+  }),
+  createPanner() {
+    createdPanner = {
+      panningModel: '',
+      distanceModel: '',
+      refDistance: 0,
+      rolloffFactor: 0,
+      positionX: { value: 0 },
+      positionY: { value: 0 },
+      positionZ: { value: 0 },
+      connect() {},
+      disconnect() {},
+    };
+    return createdPanner;
+  },
+  createMediaStreamDestination: () => ({ stream: makeStream(makeTrack('sent2')) }),
+};
+
+const connections = [];
+class TrackedPeerConnection extends FakePeerConnection {
+  constructor() {
+    super();
+    connections.push(this);
+  }
+}
+
+const spatial = createVoiceManager({
+  autoStart: false,
+  localPlayerId: '1',
+  team: 'rogue',
+  voiceVolumeLevel: 7,
+  getAudioContext: () => spatialContext,
+  RTCPeerConnection: TrackedPeerConnection,
+});
+
+assert.equal(spatial.handleServerMessage({
+  type: 'voiceRoster',
+  peers: [{ id: '9', team: 'rogue' }],
+}), true);
+const peerElement = spatialAudios.find((element) => element.dataset.voicePeerId === '9');
+assert.ok(peerElement);
+assert.equal(connections.length, 1);
+
+// No track yet: the element is the only stage there is.
+assert.equal(peerElement.volume, volumeLevelToGain(7));
+assert.equal(createdPanner, null);
+
+connections[0].ontrack({ streams: [makeStream(makeTrack('remote'))], track: makeTrack('remote') });
+
+// The panner is built and configured, and is silent until it is proven.
+assert.ok(createdPanner);
+assert.equal(createdPanner.panningModel, VOICE_PANNING_MODEL);
+assert.equal(createdPanner.distanceModel, VOICE_DISTANCE_MODEL);
+assert.equal(createdPanner.refDistance, VOICE_REF_DISTANCE);
+assert.equal(createdPanner.rolloffFactor, VOICE_ROLLOFF_FACTOR);
+const peerGain = createdGains[createdGains.length - 1];
+assert.equal(peerGain.gain.value, 0);
+assert.equal(peerElement.volume, volumeLevelToGain(7));
+
+// The host places the voice in world coordinates.
+assert.equal(spatial.setPeerPosition('9', { x: 12, y: 3, z: -40 }), true);
+assert.equal(createdPanner.positionX.value, 12);
+assert.equal(createdPanner.positionY.value, 3);
+assert.equal(createdPanner.positionZ.value, -40);
+assert.equal(spatial.setPeerPosition('9', { x: NaN, y: 0, z: 0 }), false);
+assert.equal(createdPanner.positionX.value, 12);
+assert.equal(spatial.setPeerPosition('404', { x: 1, y: 1, z: 1 }), false);
+
+spatial.start();
+const pollTwice = () => new Promise((resolve) => setTimeout(resolve, 450));
+
+// Digital silence proves nothing: a graph that carries no audio is exactly
+// what a browser that cannot route the track looks like.
+await pollTwice();
+assert.equal(peerGain.gain.value, 0);
+assert.equal(peerElement.volume, volumeLevelToGain(7));
+
+// The first real sample hands playback over, for good.
+analyserSample = 200;
+await pollTwice();
+assert.equal(peerGain.gain.value, volumeLevelToGain(7));
+assert.equal(peerElement.volume, 0);
+
+// Both /silence and the volume slider now reach the gain node instead, and
+// the element stays out of it.
+spatial.setPeerMuted('9', true);
+assert.equal(peerGain.gain.value, 0);
+assert.equal(peerElement.volume, 0);
+spatial.setPeerMuted('9', false);
+assert.equal(peerGain.gain.value, volumeLevelToGain(7));
+assert.equal(spatial.setVoiceVolumeLevel(3), 3);
+assert.equal(peerGain.gain.value, volumeLevelToGain(3));
+assert.equal(peerElement.volume, 0);
+
+await spatial.shutdown();
+
+console.log('voice placement tests passed');
