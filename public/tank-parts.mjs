@@ -86,30 +86,49 @@ export function missingTankParts(objectNames) {
   return missing;
 }
 
+// The loader's `_object_pattern` (OBJLoader.js:20), which is what makes `g` and
+// `o` the same command as far as the meshes it builds are concerned.
+const OBJ_OBJECT_PATTERN = /^[og]\s*(.+)?/;
+
 // The object names an OBJ file declares, which is all either end reads to
 // answer the question above. Kept here so the server parses the contract the
 // same way the loader names the meshes it builds.
+//
+// `g` opens a block exactly as `o` does, because the loader's own
+// `_object_pattern` is `/^[og]\s*(.+)?/` and calls `startObject` for either.
+// Reading only `o` is how a per-material Blender export -- `o body` followed by
+// `g body_body_skin` carrying every face -- passes as a model with a body and
+// then builds meshes named nothing the renderer looks for.
+//
+// A block is only a name something can build if faces landed in it. The loader
+// drops an object whose geometry stayed empty, so the `o body` above names no
+// mesh at all; counting it would report a part the model does not have.
 //
 // A block that carries even one loose `l` (or `p`) primitive builds as a
 // LineSegments or Points node instead of a Mesh: OBJLoader.js sets the whole
 // object's type the first time it sees either command and never sets it back,
 // so a hundred `f` faces in the same block still come out invisible to the
 // renderer's `child.isMesh` lookup. Such a block is left out of the returned
-// names the same way an empty one would be -- a name nothing can ever build.
+// names the same way an empty one is -- a name nothing can ever build.
 export function readObjObjectNames(text) {
   const names = [];
   let current = null;
   let tainted = false;
+  let faces = 0;
   const commit = () => {
-    if (current !== null && !tainted) names.push(current);
+    if (current !== null && !tainted && faces > 0) names.push(current);
   };
   for (const line of String(text).split('\n')) {
-    if (line.startsWith('o ')) {
-      commit();
-      current = line.slice(2).trim();
-      tainted = false;
+    if (line.startsWith('f ')) {
+      faces += 1;
     } else if (line.startsWith('l ') || line.startsWith('p ')) {
       tainted = true;
+    } else if (OBJ_OBJECT_PATTERN.test(line)) {
+      commit();
+      // The loader's own naming: everything after the command, trimmed.
+      current = line.slice(1).trim();
+      tainted = false;
+      faces = 0;
     }
   }
   commit();

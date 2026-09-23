@@ -226,6 +226,50 @@ assert.deepEqual(
   'a barrel block with a stray loose edge should not count as a usable barrel',
 );
 
+// `g` opens a block the same way `o` does -- OBJLoader.js matches both with one
+// pattern -- so a per-material export leaves the `o` blocks empty and builds
+// meshes named for the material instead. The names the renderer looks for are
+// declared and build nothing, which is the shape PR #127's bzship arrived in.
+const materialGroups = [
+  'o body',
+  'g body_body_skin',
+  'f 1 2 3',
+  'g body_barrel_dark',
+  'f 1 2 3',
+  'o turret',
+  'g turret_body_skin',
+  'f 1 2 3',
+  'o barrel',
+  'g barrel_barrel_dark',
+  'f 1 2 3',
+  'o ltread',
+  'g ltread_treads',
+  'f 1 2 3',
+  'o rtread',
+  'g rtread_treads',
+  'f 1 2 3',
+].join('\n');
+assert.deepEqual(
+  readObjObjectNames(materialGroups),
+  [
+    'body_body_skin', 'body_barrel_dark', 'turret_body_skin',
+    'barrel_barrel_dark', 'ltread_treads', 'rtread_treads',
+  ],
+  'a group split by material names the meshes the loader actually builds',
+);
+assert.deepEqual(
+  missingTankParts(readObjObjectNames(materialGroups)),
+  ['body', 'turret', 'barrel', 'treads or wheels on both sides'],
+  'and an `o` block whose faces all went to a `g` inside it builds no part',
+);
+
+// The pairing bzflag.obj uses -- `o name` immediately followed by `g name` --
+// is the same name twice, and names the one mesh it builds once.
+assert.deepEqual(
+  readObjObjectNames(['o barrel', 'g barrel', 'f 1 2 3'].join('\n')),
+  ['barrel'],
+);
+
 // public/client.js keeps a hardcoded TANK_MODELS array as the tank it renders
 // before /api/tank-models answers (and if that call ever fails), falling back
 // to server.js's live directory scan once it does. Nothing else keeps that
