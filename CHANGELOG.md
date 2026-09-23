@@ -6,6 +6,24 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
 
 ## [Unreleased]
 
+## [1.2.56] - 2026-09-23
+
+### Added
+- Voice chat comes from the direction of the speaker. A peer's audio runs
+  through a panner placed where their tank is standing, rather than playing
+  unplaced on a hidden audio element. Only the Nearby channel is placed at the
+  speaker's real distance and fades with it; All and Team reach across the
+  whole map, so those are placed on the bearing to the speaker at the panner's
+  own reference distance -- the direction, with the level left alone. The
+  element stays as the fallback and keeps playing a peer until the graph has
+  been proven to carry their audio, so a browser that cannot route a WebRTC
+  track into Web Audio is unplaced rather than silent.
+- Game sound steps back 6 dB while somebody's voice is coming through, and
+  comes back a moment after they stop. The player's Game volume is untouched
+  underneath, and a silenced player ducks nothing.
+- The debug HUD names which stage is carrying each voice peer, and says when
+  the game is ducked.
+
 ## [1.2.55] - 2026-09-23
 
 ### Fixed
