@@ -6,6 +6,45 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
 
 ## [Unreleased]
 
+## [1.2.57] - 2026-09-24
+
+### Added
+- The scoreboard has columns, and a heading over each one. `#` is the player
+  number, shown to everyone -- upstream reveals its slot number only to an
+  admin, but a bzo player id is already in every roster message a browser's dev
+  tools can read, so the column is what makes "kick 3" and "watch 3" say the
+  same thing to everybody. `Score` is the number upstream leads with, wins
+  minus losses, which bzo sorted by and never showed. `BZID` is new and
+  admin-only, for acting on an account rather than on a name that changes
+  between sessions; the server omits the field entirely for everyone else.
+- The chat transcript scrolls under a finger. It stays out of the pointer's way
+  while chat is idle so a drag there still reaches the battlefield, which is
+  also why the browser never scrolled it: a touch listener now answers the same
+  question the wheel already answered.
+- Tricolor, a three-team CTF map by The Purple Panzer.
+
+### Changed
+- Chat shows three lines instead of six on a screen under 500px tall. A phone
+  held in landscape is about 430px, where six lines plus the tabs and the input
+  row stood a third of the way up the screen and into the targeting box. The
+  whole scrollback is still there.
+- The chat tabs stick up out of the panel like the tabs on a manila folder, so
+  the dark fill no longer runs the full width of the screen above the
+  transcript and the battlefield shows through between them.
+- Team rows on the scoreboard are drawn in the radar's colours, which are
+  lifted so a team reads against a dark panel -- purple in its tank colour was
+  very nearly unreadable there. A team's row and its base on the radar now
+  match. Each row names the colour alone, since every row on it is a team.
+- Shorter lines, for the same small screens: "Tim Riker dropped Red Team"
+  rather than "... Red Team flag", "Orin joined", "Win11 paused", and
+  "bzo.bzw ignored: ..." in place of "Keywords bzo does not read in bzo.bzw".
+  The steal and capture lines keep the word, where it still does work.
+
+### Fixed
+- Chat opens at its newest message after a reload rather than at the top of the
+  transcript. The scroll position was pinned before the panel had settled, so
+  the content grew underneath it and left the newest line below the fold.
+
 ## [1.2.56] - 2026-09-23
 
 ### Added
