@@ -653,8 +653,8 @@ function updateTeamScoreboard(rows) {
 
 // Observers last, as `ScoreboardRenderer::newSortedList` puts them under
 // `obsLast`: they score for nobody, so ranking them among the players says
-// something untrue. Then by (kills - deaths) descending, then kills descending,
-// then deaths ascending, then connectDate ascending (oldest first).
+// something untrue. Then by (wins - losses) descending, then wins descending,
+// then losses ascending, then connectDate ascending (oldest first).
 //
 // Exported because roaming follows the leader when it has no explicit target,
 // and upstream reads that off the scoreboard's own order
@@ -676,11 +676,11 @@ export function compareScoreboardPlayers(a, b) {
   if (typeof a.rank === 'number' && typeof b.rank === 'number' && a.rank !== b.rank) {
     return b.rank - a.rank;
   }
-  const aScore = (a.kills || 0) - (a.deaths || 0);
-  const bScore = (b.kills || 0) - (b.deaths || 0);
+  const aScore = (a.wins || 0) - (a.losses || 0);
+  const bScore = (b.wins || 0) - (b.losses || 0);
   if (bScore !== aScore) return bScore - aScore;
-  if ((b.kills || 0) !== (a.kills || 0)) return b.kills - a.kills;
-  if ((a.deaths || 0) !== (b.deaths || 0)) return (a.deaths || 0) - (b.deaths || 0);
+  if ((b.wins || 0) !== (a.wins || 0)) return b.wins - a.wins;
+  if ((a.losses || 0) !== (b.losses || 0)) return (a.losses || 0) - (b.losses || 0);
   return a.connectDate - b.connectDate;
 }
 
@@ -738,7 +738,7 @@ export function formatPersonalTally(player) {
 // (issue #65).
 export function formatScoreboardStats(player, { compact = false } = {}) {
   if (player.isObserver) return '';
-  const score = `${player.kills} / ${player.deaths}`;
+  const score = `${player.wins} / ${player.losses}`;
   const stats = typeof player.rank === 'number'
     ? `${formatRabbitRank(player.rank)} ${score}`
     : score;
@@ -746,7 +746,7 @@ export function formatScoreboardStats(player, { compact = false } = {}) {
   // (ScoreboardRenderer.cxx:675-686). bzo draws it only once there is
   // something to say, the same restraint the rank column already gets --
   // a zero is the expected state for almost every row, not information.
-  const withTeamKills = player.teamKills > 0 ? `${stats} [${player.teamKills}]` : stats;
+  const withTeamKills = player.tks > 0 ? `${stats} [${player.tks}]` : stats;
   if (compact) return withTeamKills;
   const tally = formatPersonalTally(player);
   return tally ? `${withTeamKills}  ${tally}` : withTeamKills;
@@ -852,9 +852,9 @@ export function buildScoreboardRows({
     rows.push({
       id,
       name,
-      kills: state.kills || 0,
-      deaths: state.deaths || 0,
-      teamKills: state.teamKills || 0,
+      wins: state.wins || 0,
+      losses: state.losses || 0,
+      tks: state.tks || 0,
       // The head-to-head record: my kills against this player and theirs
       // against me, tracked only for opponents (Player::localWins/
       // localLosses, playing.cxx:2556) -- and, on my own row, how many times
@@ -876,7 +876,7 @@ export function buildScoreboardRows({
       // observer at all (ScoreboardRenderer.cxx:829), the rank being part of
       // that column's string.
       rank: rabbitChase && !isObserverTeam(state.team)
-        ? getPlayerRanking(state.kills || 0, state.deaths || 0)
+        ? getPlayerRanking(state.wins || 0, state.losses || 0)
         : null,
       connectDate: state.connectDate ? new Date(state.connectDate) : new Date(0),
       color: state.color,

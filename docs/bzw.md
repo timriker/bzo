@@ -1236,7 +1236,7 @@ plain box or pyramid member regardless of whether that member set its own.
   tank was expelled by (`LocalPlayer.cxx:617-624`, `:771-780`), so a
   `drivethrough` face never supplies one, mesh included.
 - `death <message>` -- kills a tank outright instead of pushing it, showing
-  the rest of the line verbatim as the reason, the same `playerHit` message
+  the rest of the line verbatim as the reason, the same `killed` message
   a self-destruct or a run-over already sends. Unlike `linear`, this one
   reaches a `drivethrough` face too: upstream checks it a different way
   (`LocalPlayer::getHitBuilding`/`collectInsideBuildings`,

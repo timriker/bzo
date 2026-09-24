@@ -637,7 +637,7 @@ const ROSTER_MESSAGE_TYPES = new Set([
   'playerJoined',
   'playerUpdated',
   'playerLeft',
-  'playerRespawned',
+  'alive',
   'playerList',
 ]);
 let xrSettingsShortcutLatched = false;
@@ -972,7 +972,7 @@ function setMapViewerPreviewActive(active) {
   } else {
     tanks.forEach((tank) => {
       const state = tank.userData?.playerState;
-      tank.visible = Boolean(state && state.health > 0);
+      tank.visible = Boolean(state && state.alive);
     });
   }
 }
@@ -3333,7 +3333,7 @@ const destructCountdown = new DestructCountdown(5000);
 let entryDialogFreeze = false;
 
 function isMyTankAlive() {
-  return Boolean(myTank && myTank.userData?.playerState?.health > 0);
+  return Boolean(myTank && myTank.userData?.playerState?.alive);
 }
 
 // Whether the game is being watched at all: a menu in front of it or a hidden
@@ -5668,13 +5668,13 @@ function connectToServer() {
     gameplayJoinConfirmed = false;
     activeInitSequence = 0;
     hideLoadingOverlay();
-    let kills = 0;
-    let deaths = 0;
+    let wins = 0;
+    let losses = 0;
     if (myTank && myTank.userData && myTank.userData.playerState) {
-      kills = myTank.userData.playerState.kills || 0;
-      deaths = myTank.userData.playerState.deaths || 0;
+      wins = myTank.userData.playerState.wins || 0;
+      losses = myTank.userData.playerState.losses || 0;
     }
-    console.log(`Disconnected from server (code: ${event.code}, reason: ${event.reason}) | Kills: ${kills} | Deaths: ${deaths}`);
+    console.log(`Disconnected from server (code: ${event.code}, reason: ${event.reason}) | Kills: ${wins} | Deaths: ${losses}`);
     const scheduleReconnect = (delay) => {
       void resetVoiceManagerForReconnect().finally(() => {
         setTimeout(connectToServer, delay);
@@ -5686,7 +5686,7 @@ function connectToServer() {
       scheduleReconnect(2000);
       return;
     }
-    showMessage(`Disconnected from server | Kills: ${kills} | Deaths: ${deaths}`, 'death');
+    showMessage(`Disconnected from server | Kills: ${wins} | Deaths: ${losses}`, 'death');
     scheduleReconnect(3000);
   };
 
@@ -6078,7 +6078,7 @@ function handleServerMessage(message) {
         teamFlagMarkerStyle = colorToCSS(getPlayerTeamColor(playerTeam));
         syncPlayerTeamSelector();
         updateVoiceIdentity();
-        const wasAliveBefore = !!(myTank && myTank.userData?.playerState?.health > 0);
+        const wasAliveBefore = !!(myTank && myTank.userData?.playerState?.alive);
         addPlayer(message.player);
 
         // This is our join confirmation, update our tank and finish join
@@ -6162,7 +6162,7 @@ function handleServerMessage(message) {
           localTeleportCooldownUntil = 0;
           suppressLocalTeleportFxUntil = 0;
 
-          if (!wasAliveBefore && message.player.health > 0) {
+          if (!wasAliveBefore && message.player.alive) {
             triggerSpawnEffectForTank(myTank, message.player.color);
           }
         }
@@ -6183,10 +6183,10 @@ function handleServerMessage(message) {
       } else {
         // Another player joined: update their info and create their tank if needed
         const existingTank = tanks.get(message.player.id);
-        const wasAliveBefore = !!(existingTank && existingTank.userData?.playerState?.health > 0);
+        const wasAliveBefore = !!(existingTank && existingTank.userData?.playerState?.alive);
         addPlayer(message.player);
         const joinedTank = tanks.get(message.player.id);
-        if (!wasAliveBefore && message.player.health > 0 && joinedTank) {
+        if (!wasAliveBefore && message.player.alive && joinedTank) {
           triggerSpawnEffectForTank(joinedTank, message.player.color);
         }
         refreshScoreboards();
@@ -6392,11 +6392,11 @@ function handleServerMessage(message) {
       removeProjectile(message.id, message.reason, message.x, message.y, message.z);
       break;
 
-    case 'playerHit':
+    case 'killed':
       handlePlayerHit(message);
       break;
 
-    case 'playerRespawned':
+    case 'alive':
       handlePlayerRespawn(message);
       break;
 
@@ -6622,7 +6622,7 @@ function addPlayer(player) {
   // the scoreboard while a Map Viewer preview or session is showing a
   // different map -- only the mesh itself is hidden, since the live match's
   // coordinates no longer describe anything in view. See isPreviewingAltWorld.
-  tank.visible = player.health > 0 && !isPreviewingAltWorld();
+  tank.visible = player.alive && !isPreviewingAltWorld();
 
   // Update name label if it exists and has a material
   if (tank.userData.nameLabel && tank.userData.nameLabel.material && player.name) {
@@ -7116,10 +7116,10 @@ function handlePlayerHit(message) {
 
   if (!isCapture) {
     if (shooterTank && shooterTank.userData.playerState) {
-      shooterTank.userData.playerState.kills = (shooterTank.userData.playerState.kills || 0) + 1;
+      shooterTank.userData.playerState.wins = (shooterTank.userData.playerState.wins || 0) + 1;
     }
     if (victimTank && victimTank.userData.playerState) {
-      victimTank.userData.playerState.deaths = (victimTank.userData.playerState.deaths || 0) + 1;
+      victimTank.userData.playerState.losses = (victimTank.userData.playerState.losses || 0) + 1;
     }
     // Personal head-to-head record (Player::changeLocalScore, playing.cxx:2556):
     // kept on the opponent's own state, not mine, so their scoreboard row can
@@ -7156,7 +7156,7 @@ function handlePlayerHit(message) {
     // (`isMyTankAlive`, the roam list, who a missile may lock) gets the stale
     // answer. Upstream never has this to do because a death is a status flag on
     // the same struct the explosion is drawn from.
-    if (victimTank.userData.playerState) victimTank.userData.playerState.health = 0;
+    if (victimTank.userData.playerState) victimTank.userData.playerState.alive = false;
     // Immediately hide the tank from the scene
     victimTank.visible = false;
     // Create explosion with tank parts
@@ -7194,7 +7194,7 @@ function handlePlayerRespawn(message) {
     tank.userData.airVelocityX = message.player.airVelocityX || 0;
     tank.userData.airVelocityZ = message.player.airVelocityZ || 0;
 
-    // Update player state with full respawn data (including health = 100).
+    // Update player state with full respawn data (including alive = true).
     // Merged forward through the same helper addPlayer() uses, not a plain
     // overwrite -- a respawn is exactly the message that used to erase the
     // kill just landed on this player a moment earlier.
@@ -7217,7 +7217,7 @@ function handlePlayerRespawn(message) {
 
     tank.visible = true;
 
-    if (message.player.health > 0) {
+    if (message.player.alive) {
       triggerSpawnEffectForTank(tank, message.player.color);
     }
   }
@@ -8786,7 +8786,7 @@ function updateTrackMarks(deltaTime) {
 
   tanks.forEach((tank, playerId) => {
     const state = tank.userData.playerState;
-    if (!state || !(state.health > 0)) return;
+    if (!state || !state.alive) return;
 
     const elapsed = (tank.userData.trackMarkTimer || 0) + deltaTime;
     tank.userData.trackMarkTimer = elapsed;
@@ -9103,7 +9103,7 @@ function getRoamCandidates() {
   tanks.forEach((tank, id) => {
     const state = tank.userData.playerState;
     if (!state || id === myPlayerId) return;
-    if (isObserverTeam(state.team) || !(state.health > 0)) return;
+    if (isObserverTeam(state.team) || !state.alive) return;
     // shouldTarget (playing.cxx:4239): blindness refuses every target, and a
     // stealthed or cloaked tank can only be locked onto with Seer. Both halves
     // matter to `ID` Identify, which is the one thing in bzo that locks on --
@@ -9118,13 +9118,13 @@ function getRoamCandidates() {
       id,
       x: tank.position.x,
       z: tank.position.z,
-      kills: state.kills || 0,
-      deaths: state.deaths || 0,
+      wins: state.wins || 0,
+      losses: state.losses || 0,
       // The roaming leader is read off the scoreboard's own order
       // (ScoreboardRenderer::getLeader), so a candidate carries whatever that
       // order sorts by -- in Rabbit Chase the rank, or the top row and the
       // followed tank would be two different players.
-      rank: rabbitChaseEnabled ? getPlayerRanking(state.kills || 0, state.deaths || 0) : null,
+      rank: rabbitChaseEnabled ? getPlayerRanking(state.wins || 0, state.losses || 0) : null,
       connectDate: state.connectDate ? new Date(state.connectDate) : new Date(0),
       isObserver: false,
     });
@@ -9278,7 +9278,7 @@ function getLockTargetTank(shooterId) {
   if (getPlayerFlagType(shooterId) !== 'GM' && !hasGuidedShotInFlight(shooterId)) return null;
   const tank = tanks.get(targetId);
   const state = tank?.userData?.playerState;
-  if (!state || !(state.health > 0) || state.paused) return null;
+  if (!state || !state.alive || state.paused) return null;
   if (isObserverTeam(state.team)) return null;
   if (hidesFromRadar(getPlayerFlagType(targetId))) return null;
   return tank;
@@ -9449,7 +9449,7 @@ function getRoamLabel() {
 // Upstream moves the observer's own tank to the eye point every frame --
 // `myTank->move(virtPos, roamViewAngle)` in `playing.cxx:6110` -- so the radar,
 // the heading tape, and the sound listener all read the camera without knowing
-// about roaming. bzo does the same: the mesh is invisible at health 0, and the
+// about roaming. bzo does the same: the mesh is invisible while dead, and the
 // only thing sent for it is the position update at the bottom of this function.
 function handleRoamMotion(deltaTime) {
   if (!isObserver()) {
@@ -9468,8 +9468,8 @@ function handleRoamMotion(deltaTime) {
   // runs, `updateInsideBuildings` included -- so nothing below this belongs
   // to it. Visibility and the heartbeat still do: a phantom tank is shown to
   // the player driving it (unlike free-roam's invisible virtual tank), but
-  // never to anyone else, since `addPlayer`'s health-gated visibility on
-  // every other client is untouched and this player's health stays 0 on the
+  // never to anyone else, since `addPlayer`'s alive-gated visibility on
+  // every other client is untouched and this player stays dead on the
   // server regardless of camera mode.
   if (isPhantomDriving()) {
     myTank.visible = true;
@@ -10522,7 +10522,7 @@ function shoot() {
   // server only accepts in warning mode -- and warning mode is for measuring
   // honest disagreements, not for carrying a client's own bugs.
   //
-  // `isMyTankAlive()` reads the server's own roster, which reports health 0
+  // `isMyTankAlive()` reads the server's own roster, which reports not alive
   // for an observer always -- a phantom tank is never dead by that measure,
   // so aliveness is skipped entirely while driving rather than asked at all.
   if ((!isPhantomDriving() && !isMyTankAlive()) || pauseState.paused) return false;
@@ -11677,7 +11677,7 @@ function checkNearFlag() {
   sendToServer({ type: 'nearFlag' });
 }
 
-// MsgCaptureFlag on the client. The server sends a playerHit for each tank on
+// MsgCaptureFlag on the client. The server sends a killed for each tank on
 // the losing team, so the explosions come through the usual death path.
 function handleFlagCaptured(message) {
   const capturer = tanks.get(message.playerId);
@@ -11820,7 +11820,7 @@ function updateSkyBeacons() {
     : null;
   const rabbitState = rabbit?.userData?.playerState;
   if (rabbit?.position && rabbit.visible !== false
-    && !(rabbitState && (rabbitState.health <= 0 || isHiddenFromRadar(rabbitState.id)))) {
+    && !(rabbitState && (!rabbitState.alive || isHiddenFromRadar(rabbitState.id)))) {
     count = addSkyBeaconTarget(count, rabbit.position, RABBIT_MARKER_COLOR);
   }
 
@@ -11855,7 +11855,7 @@ function checkFlagCapture() {
 function checkFlagGrab() {
   if (!myTank || isObserver()) return;
   if (!gameplayJoinConfirmed) return;
-  if (myTank.userData?.playerState?.health <= 0) return;
+  if (!myTank.userData?.playerState?.alive) return;
   checkFlagCapture();
   if (getMyFlag()) return;
   // Upstream only grabs from the ground or a building, never mid-jump.
@@ -13565,7 +13565,7 @@ function updateRadar() {
     if (!tank.position) return;
     const state = tank.userData && tank.userData.playerState;
     const isSelf = playerId === myPlayerId;
-    // An observer's own tank carries no health and is invisible in the 3D
+    // An observer's own tank is never alive and is invisible in the 3D
     // world by design (see handleRoamMotion's "nothing draws it"), which
     // would otherwise hide it here same as anyone else's -- but a Map Viewer
     // or spectator has no other reference point on an empty radar without it,
@@ -13575,7 +13575,7 @@ function updateRadar() {
     // (issue #85) drives that same flag to false once cloak alpha hits zero
     // (see applyTankAlpha), which would silently buy every cloaked tank the
     // radar-blip immunity that only `ST` is supposed to grant.
-    if (!isSelf && state && state.health <= 0) return;
+    if (!isSelf && state && !state.alive) return;
     if (!isSelf && isPreviewingAltWorld()) return;
     // RadarRenderer.cxx:628. A stealthed tank has no blip at all rather than a
     // dim one, and Seer is the only thing that brings it back. A cloaked tank is

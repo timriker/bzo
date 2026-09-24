@@ -853,9 +853,9 @@ app.get('/api/players', (req, res) => {
         forwardSpeed: player.forwardSpeed,
         rotationSpeed: player.rotationSpeed,
         verticalVelocity: player.verticalVelocity,
-        health: player.health,
-        kills: player.kills,
-        deaths: player.deaths,
+        alive: player.alive,
+        wins: player.wins,
+        losses: player.losses,
         paused: player.paused,
         flag: flag ? { type: flag.type, zoned: flag.zoned === true } : null,
       };
@@ -7607,14 +7607,14 @@ function getMatchTimeLeft() {
 function startMatch() {
   teamScores.clear();
   players.forEach((candidate) => {
-    candidate.kills = 0;
-    candidate.deaths = 0;
+    candidate.wins = 0;
+    candidate.losses = 0;
     // Whoever the previous match's game-over held dead gets back in: nothing
     // else was going to lift that hold, since the respawn timeout that would
     // have revived them already saw `matchClock.gameOver` and gave up.
-    if (!isObserverTeam(candidate.team) && candidate.health <= 0) {
+    if (!isObserverTeam(candidate.team) && !candidate.alive) {
       candidate.respawn();
-      broadcastAll({ type: 'playerRespawned', player: candidate.getState() });
+      broadcastAll({ type: 'alive', player: candidate.getState() });
     }
   });
   matchClock.paused = false;
@@ -7685,7 +7685,7 @@ function endMatch(winner = null) {
   matchClock.paused = false;
   matchClock.gameOver = true;
   players.forEach((victim) => {
-    if (isObserverTeam(victim.team) || victim.health <= 0) return;
+    if (isObserverTeam(victim.team) || !victim.alive) return;
     applyDeath(victim, WORLD_WEAPON_PLAYER_ID, {
       projectileId: null,
       reason: DEATH_REASON.GAME_OVER,
@@ -7711,7 +7711,7 @@ function endMatch(winner = null) {
 // the winner.
 function checkPlayerScoreLimit(player) {
   if (!GAME_CONFIG.MAX_PLAYER_SCORE) return;
-  if ((player.kills - player.deaths) >= GAME_CONFIG.MAX_PLAYER_SCORE) {
+  if ((player.wins - player.losses) >= GAME_CONFIG.MAX_PLAYER_SCORE) {
     endMatch({ playerId: player.id });
   }
 }
@@ -7754,7 +7754,7 @@ function anointNewRabbit(killerId = null) {
       id: candidate.id,
       paused: candidate.paused,
       observer: isObserverTeam(candidate.team),
-      alive: candidate.health > 0,
+      alive: candidate.alive,
       // PlayerInfo::isPlaying, `state > PlayerInLimbo`: in the game, alive or
       // not. A bzo player who is in the roster and has joined is exactly that.
       playing: true,
@@ -7763,7 +7763,7 @@ function anointNewRabbit(killerId = null) {
       // rather than branching inside the selection loop.
       ranking: RABBIT_SELECTION === 'random'
         ? Math.random()
-        : getPlayerRanking(candidate.kills, candidate.deaths),
+        : getPlayerRanking(candidate.wins, candidate.losses),
     });
   });
 
@@ -7965,7 +7965,7 @@ class Player {
     this.y = 0;
     this.z = 0;
     this.rotation = 0;
-    this.health = 0;
+    this.alive = false;
     this.lastUpdate = Date.now();
     // The client's own clock (`message.ct`, seconds relative to that client's
     // own origin -- never an absolute time) as of the last *accepted* move,
@@ -7980,9 +7980,9 @@ class Player {
     // whether or not anybody asks for it, because an average is only worth
     // reading if it has been running.
     this.lag = createLagTracker();
-    this.kills = 0;
-    this.deaths = 0;
-    this.teamKills = 0;
+    this.wins = 0;
+    this.losses = 0;
+    this.tks = 0;
     this.paused = false;
     this.pauseCountdownStart = 0;
     this.pauseTimer = null;
@@ -8255,7 +8255,7 @@ class Player {
     this.y = spawnPos.y;
     this.z = spawnPos.z;
     this.rotation = spawnPos.rotation;
-    this.health = 100;
+    this.alive = true;
     this.verticalVelocity = 0;
     this.isJumping = false;
     this.onObstacle = false;
@@ -8280,10 +8280,10 @@ class Player {
       y: this.y,
       z: this.z,
       rotation: this.rotation,
-      health: this.health,
-      kills: this.kills,
-      deaths: this.deaths,
-      teamKills: this.teamKills,
+      alive: this.alive,
+      wins: this.wins,
+      losses: this.losses,
+      tks: this.tks,
       paused: this.paused,
       forwardSpeed: this.forwardSpeed,
       rotationSpeed: this.rotationSpeed,
@@ -8760,7 +8760,7 @@ defineCommand('/kill', COMMAND_TIER.OPERATOR,
       replyToPlayer(player, 'An observer has no tank to kill');
       return;
     }
-    if (victim.health <= 0) {
+    if (!victim.alive) {
       replyToPlayer(player, `"${victim.name}" is already dead`);
       return;
     }
@@ -9130,7 +9130,7 @@ defineCommand('/flag', COMMAND_TIER.OPERATOR,
       }
       // "do not give flags to dead players": the grab has to reach a tank that
       // is on the field, or the flag would be carried by nothing.
-      if (subject.health <= 0) {
+      if (!subject.alive) {
         replyToPlayer(player, `/flag give: player (${subject.name}) is not alive`);
         return;
       }
@@ -10662,8 +10662,8 @@ function getShotRejection(player, shotX, shotY, shotZ, now = Date.now()) {
 
   // A dead tank firing is usually the client's shot crossing the server's kill,
   // which is exactly the timing warning mode exists to measure.
-  if (player.health <= 0) {
-    return { reason: `dead player cannot shoot (health=${player.health})`, fatal: false };
+  if (!player.alive) {
+    return { reason: 'dead player cannot shoot', fatal: false };
   }
 
   // Fire rate is limited by shot slots alone, matching bzfs: GameKeeper.cxx
@@ -10926,7 +10926,7 @@ const NO_TEAM_KILLS = serverConfig.noTeamKills === true
 const TEAM_KILLER_DIES = serverConfig.teamKillerDies !== false
   && mapServerOptions.teamKillerDies !== false;
 log(
-  `Team kills: ${NO_TEAM_KILLS ? 'friendly fire off (-noTeamKills)' : 'friendly fire on'}` +
+  `Team wins: ${NO_TEAM_KILLS ? 'friendly fire off (-noTeamKills)' : 'friendly fire on'}` +
   `; a team killer ${TEAM_KILLER_DIES ? 'dies for it' : 'does not die (-tk)'}`
 );
 // -st upstream, the shake timeout: seconds a bad flag sticks before it falls off
@@ -11646,7 +11646,7 @@ function isPlayerInsideBuilding(player, x, y, z, rotation) {
 // the one the reach check used.
 function grabFlag(player, flag, now = Date.now(), { checkPos = true } = {}) {
   if (isObserverTeam(player.team)) return;
-  if (player.health <= 0 || player.paused) return;
+  if (!player.alive || player.paused) return;
   if (getPlayerFlag(player.id)) return;
   // `checkPos` is upstream's own argument, and it guards exactly these two:
   // where the flag is and how far away the tank is. `/flag give` is the caller
@@ -11724,7 +11724,7 @@ function checkAntidote(player, now = Date.now()) {
   if (!antidote) return;
   const flag = getPlayerFlag(player.id);
   if (!flag || flag.endurance !== FLAG_ENDURANCE.STICKY) return;
-  if (player.health <= 0 || player.paused) return;
+  if (!player.alive || player.paused) return;
   if (Math.abs(player.y - antidote.y) >= FLAG_GRAB_LEVEL_TOLERANCE) return;
   if (distance(player.x, player.z, antidote.x, antidote.z) > FLAG_GRAB_RADIUS) return;
   log(`"${player.name}" drove onto the antidote and shed ${getFlagType(flag.type).name}`);
@@ -11760,7 +11760,7 @@ function recordShakeWin(player) {
 // carrier what one flag is; it does not reveal that flag to the world.
 function searchFlag(player) {
   if (getPlayerFlag(player.id)?.type !== 'ID') return;
-  if (player.health <= 0 || player.paused) return;
+  if (!player.alive || player.paused) return;
 
   const closest = findNearestGroundFlag(flags, player.x, player.y, player.z, IDENTIFY_RANGE);
   if (!closest) return;
@@ -11911,7 +11911,7 @@ function dropFlag(flag, now = Date.now()) {
 function captureFlag(player, baseColorIndex) {
   const flag = getPlayerFlag(player.id);
   if (!flag || flag.team === null) return;
-  if (player.health <= 0 || player.paused) return;
+  if (!player.alive || player.paused) return;
   const cappingIndex = getTeamColorIndex(player.team);
   if (!isColorTeam(player.team)) return;
 
@@ -11954,7 +11954,7 @@ function captureFlag(player, baseColorIndex) {
     // Even for a tank that is already dead: the capture is what decides where it
     // comes back, whether or not it was standing when the flag went.
     victim.restartOnBase = true;
-    if (victim.health <= 0) return;
+    if (!victim.alive) return;
     // `captured` rather than a reason, and no score at all -- that is the whole
     // of how a capture differs from any other death, and everything it has in
     // common with one is in applyDeath.
@@ -12062,7 +12062,7 @@ function setPaused(player, paused) {
 function requestPause(player) {
   // pausePlayer() (bzfs.cxx:2778) ignores a pause from a tank that is not alive,
   // and an observer has no tank to pause at all.
-  if (isObserverTeam(player.team) || player.health <= 0) return;
+  if (isObserverTeam(player.team) || !player.alive) return;
 
   if (player.paused) {
     setPaused(player, false);
@@ -12083,10 +12083,10 @@ function requestPause(player) {
   player.pauseCountdownStart = Date.now();
   // The life the countdown was started in. A tank that died and respawned inside
   // those five seconds is a tank that never asked to pause.
-  const startedLife = player.deaths;
+  const startedLife = player.losses;
   player.pauseTimer = setTimeout(() => {
     player.pauseTimer = null;
-    if (!players.has(player.id) || player.deaths !== startedLife || player.health <= 0) {
+    if (!players.has(player.id) || player.losses !== startedLife || !player.alive) {
       player.pauseCountdownStart = 0;
       return;
     }
@@ -12319,7 +12319,7 @@ function normalizePlayerId(value) {
 // is peer to peer, so each client decides for itself how loud a peer is and
 // where it stands, and it can only do that for an observer it can locate. Zero
 // velocities mean the receiving end has nothing to extrapolate either, and the
-// mesh it moves is the invisible one every observer already has at health 0.
+// mesh it moves is the invisible one every observer already has while dead.
 //
 // What this allows is being heard from somewhere you are not, which is a small
 // thing beside what an observer may already watch, and smaller still beside a
@@ -13078,7 +13078,7 @@ function applySteamrollerSweep(now) {
   let anyRoller = false;
   let anyCrushable = false;
   players.forEach((player) => {
-    if (player.health <= 0 || player.paused || isObserverTeam(player.team)) return;
+    if (!player.alive || player.paused || isObserverTeam(player.team)) return;
     const flag = getPlayerFlag(player.id)?.type ?? null;
     if (crushesOnContact(flag)) anyRoller = true;
     if (isCrushedByAnyone(flag)) anyCrushable = true;
@@ -13087,7 +13087,7 @@ function applySteamrollerSweep(now) {
 
   const rollers = [];
   players.forEach((player) => {
-    if (player.health <= 0 || player.paused || isObserverTeam(player.team)) return;
+    if (!player.alive || player.paused || isObserverTeam(player.team)) return;
     const flag = getPlayerFlag(player.id)?.type ?? null;
     if (!crushesOnContact(flag) && !anyCrushable) return;
     rollers.push({
@@ -13103,7 +13103,7 @@ function applySteamrollerSweep(now) {
     // A paused tank cannot be hit by a shot in bzo, so it cannot be run over
     // either. Upstream only checks the roller's pause; the victim is the local
     // tank and its own pause is read further up the same chain.
-    if (victim.health <= 0 || victim.paused || isObserverTeam(victim.team)) return;
+    if (!victim.alive || victim.paused || isObserverTeam(victim.team)) return;
     const victimFlag = getPlayerFlag(victim.id)?.type ?? null;
     const victimAt = victim.getExtrapolatedPosition(now);
 
@@ -13176,7 +13176,7 @@ function getLockAimPoint(position) {
 function canLockOnto(player) {
   if (!player || !player.joined) return false;
   if (isObserverTeam(player.team)) return false;
-  if (player.health <= 0 || player.paused) return false;
+  if (!player.alive || player.paused) return false;
   // `ST` is one flag doing both jobs upstream: off the radar, and out of reach
   // of a lock.
   if (hidesFromRadar(getPlayerFlag(player.id)?.type ?? null)) return false;
@@ -13256,7 +13256,7 @@ function setPlayerTarget(player) {
   const visible = [];
   players.forEach((other) => {
     if (other.id === player.id || !other.joined) return;
-    if (isObserverTeam(other.team) || other.health <= 0) return;
+    if (isObserverTeam(other.team) || !other.alive) return;
     const position = other.getExtrapolatedPosition(now);
     const candidate = { id: other.id, x: position.x, z: position.z };
     if (canLockOnto(other)) lockable.push(candidate);
@@ -13361,7 +13361,7 @@ function findShotPlayerHit(proj, from, to, now) {
     if (player.id === proj.playerId && (proj.steals || proj.bounces === 0)) return;
     if (isObserverTeam(player.team)) return; // No tank to hit
     if (player.paused) return; // Can't hit paused players
-    if (player.health <= 0) return; // Can't hit dead players
+    if (!player.alive) return; // Can't hit dead players
 
     // "-noTeamKills: Players on the same team are immune to each other's shots.
     // Rogue is excepted." Upstream refuses this on the victim's own client
@@ -13470,7 +13470,7 @@ const DEATH_REASON = Object.freeze({
 // killPlayer scores it, and a capture deliberately scores nobody a death, "the
 // team loss is the whole penalty".
 function applyDeath(victim, killerId, hit) {
-  victim.health = 0;
+  victim.alive = false;
   // playing.cxx:3827. A dead tank has nothing locked, so the marker goes with
   // it and a respawn starts clean. Missiles already in the air fly straight from
   // here, which is what upstream's `setTarget(NULL)` does to them too.
@@ -13484,7 +13484,7 @@ function applyDeath(victim, killerId, hit) {
   dropPlayerFlag(victim.id);
 
   broadcastAll({
-    type: 'playerHit',
+    type: 'killed',
     victimId: victim.id,
     shooterId: killerId,
     projectileId: null,
@@ -13499,7 +13499,7 @@ function applyDeath(victim, killerId, hit) {
     // a death already in flight when the clock hit zero.
     if (matchClock.gameOver) return;
     victim.respawn();
-    broadcastAll({ type: 'playerRespawned', player: victim.getState() });
+    broadcastAll({ type: 'alive', player: victim.getState() });
   }, GAME_CONFIG.RESPAWN_DELAY);
 }
 
@@ -13508,9 +13508,9 @@ function killPlayer(victim, killer, reason, projectileId = null, shooterId = nul
   // it for the same reason plus one of its own: genocide kills a team in a loop,
   // and a team killer who dies for the first of them must not die again for the
   // rest.
-  if (victim.health <= 0) return;
+  if (!victim.alive) return;
 
-  victim.deaths++;
+  victim.losses++;
 
   // areFoes(): a kill across teams, a rogue killing anyone, or any kill at all
   // on a world without teams. Everything else is a team kill.
@@ -13532,10 +13532,10 @@ function killPlayer(victim, killer, reason, projectileId = null, shooterId = nul
       // (`killerData->score.killedBy()`), so a team kill never counts towards
       // shaking a bad flag either. `killerData->score.tK()` is the same call's
       // other half, tallied on the killer for the scoreboard's `[NN]` column.
-      killer.deaths++;
-      killer.teamKills++;
+      killer.losses++;
+      killer.tks++;
     } else {
-      killer.kills++;
+      killer.wins++;
       recordShakeWin(killer);
       // Score::reached() (Score.cxx:108), asked of the killer after every
       // ordinary kill -- not a team kill or a suicide, neither of which raises
@@ -13627,7 +13627,7 @@ function applyGenocide(proj, victim) {
   players.forEach((other) => {
     if (other.id === victim.id) return;
     if (other.team !== victim.team) return;
-    if (other.health <= 0) return;
+    if (!other.alive) return;
     log(`Genocide: "${other.name}" goes with "${victim.name}" (${victim.team})`);
     killPlayer(other, killer, DEATH_REASON.GENOCIDE);
   });
@@ -13707,7 +13707,7 @@ function applyShockWaveHits(proj, id, radius, now) {
     if (player.id === proj.playerId) return;
     if (isObserverTeam(player.team)) return;
     if (player.paused) return;
-    if (player.health <= 0) return;
+    if (!player.alive) return;
     if (proj.shockWaveResolved.has(player.id)) return;
     // Friendly fire, as for any other shot: upstream's team-kill guard is one
     // test in one loop over every shot the shooter owns, and a shock wave is one
@@ -14406,8 +14406,8 @@ wss.on('connection', (ws, req) => {
   let player = new Player(ws);
   players.set(player.id, player);
 
-  // Set player as not yet joined (health = 0)
-  player.health = 0;
+  // Set player as not yet joined (not alive)
+  player.alive = false;
 
   // A socket with no 'error' listener throws on the first protocol violation or
   // reset, killing the whole server. Any client can send a malformed frame, so
@@ -15135,7 +15135,7 @@ wss.on('connection', (ws, req) => {
         // camera it aims with lives; a tank asks here, because the answer steers
         // a guided missile.
         case 'identify': {
-          if (isObserverTeam(player.team) || player.health <= 0 || player.paused) break;
+          if (isObserverTeam(player.team) || !player.alive || player.paused) break;
           setPlayerTarget(player);
           break;
         }
@@ -15183,7 +15183,7 @@ wss.on('connection', (ws, req) => {
 
         case 'dropFlag': {
           if (!player.joined) break;
-          if (player.health <= 0) break;
+          if (!player.alive) break;
           const flag = getPlayerFlag(player.id);
           if (!flag) break;
           const now = Date.now();
@@ -15227,7 +15227,7 @@ wss.on('connection', (ws, req) => {
         // server's because being zoned is what decides who can shoot you.
         case 'zone': {
           if (!player.joined) break;
-          if (player.health <= 0) break;
+          if (!player.alive) break;
           const flag = getPlayerFlag(player.id);
           if (!flag || !togglesZoneOnTeleport(flag.type)) {
             reportCheat(player, 'flagRejected',
@@ -15263,7 +15263,7 @@ wss.on('connection', (ws, req) => {
           // guard, and it is only repeated here so a request that will do nothing
           // is not logged as though it did.
           if (isObserverTeam(player.team)) break;
-          if (player.health <= 0) break;
+          if (!player.alive) break;
           log(`"${player.name}" self-destructed.`);
           // playing.cxx:6966 is `gotBlowedUp(myTank, SelfDestruct, myTank->getId())`
           // -- upstream's suicide is a kill whose killer is the victim, and it goes
@@ -15297,7 +15297,7 @@ wss.on('connection', (ws, req) => {
           players.forEach((candidate) => {
             if (!candidate.joined || candidate.id === player.id) return;
             teamCounts[candidate.team] = (teamCounts[candidate.team] || 0) + 1;
-            teamPlayerScores[candidate.team] = (teamPlayerScores[candidate.team] || 0) + candidate.kills - candidate.deaths;
+            teamPlayerScores[candidate.team] = (teamPlayerScores[candidate.team] || 0) + candidate.wins - candidate.losses;
           });
           // bzfs.cxx:2339. The total -- tanks and observers together -- is what
           // refuses an arrival outright; the playing limit inside
@@ -15346,10 +15346,10 @@ wss.on('connection', (ws, req) => {
           player.joined = true;
           player.voiceRosterSignature = '';
           reportToListServer('join');
-          // An observer never comes alive. health 0 is the state the join flow
+          // An observer never comes alive. Not alive is the state the join flow
           // already renders as a scoreboard entry with an invisible tank, which
           // is exactly what an observer wants, and it leaves every path that
-          // tests health refusing on its own.
+          // tests it refusing on its own.
           //
           // It still gets a spawn position, because that is where its camera
           // starts: an observer should arrive standing on the field facing the
@@ -15360,7 +15360,7 @@ wss.on('connection', (ws, req) => {
           // non-combatant state an observer gets -- a spectator on the standing
           // result rather than a fresh spawn -- until the next /countdown.
           const joinAsObserver = isObserverTeam(assignedTeam);
-          player.health = (joinAsObserver || matchClock.gameOver) ? 0 : 100;
+          player.alive = !(joinAsObserver || matchClock.gameOver);
           // PlayerInfo::resetPlayer(ctf) puts every CTF spawn on the team base.
           player.restartOnBase = !joinAsObserver && CTF_ENABLED;
           // Map Viewer (issue #68) is Observer on the wire -- same team limit,
@@ -15400,8 +15400,8 @@ wss.on('connection', (ws, req) => {
           player.teleportCooldownUntil = 0;
           player.lastUpdate = Date.now();
           player.lag.resetUpdateGap();
-          player.deaths = 0;
-          player.kills = 0;
+          player.losses = 0;
+          player.wins = 0;
           // The tank is named here as well as on a later change, so a join
           // line says what a player is driving without the log having to be
           // read backwards for a change that may never have happened.
@@ -15736,8 +15736,8 @@ wss.on('connection', (ws, req) => {
   ws.on('close', () => {
     const playerName = player.name;
     const playerNum = player.playerNumber;
-    const playerKills = player.kills
-    const playerDeaths = player.deaths;
+    const playerWins = player.wins
+    const playerLosses = player.losses;
     const cheatWarnings = player.cheatWarnings.totalWarnings;
     const wasJoined = player.joined;
     player.voiceMicEnabled = false;
@@ -15759,7 +15759,7 @@ wss.on('connection', (ws, req) => {
     if (RABBIT_SELECTION && rabbitPlayerId === player.id) anointNewRabbit();
     retireTeamFlags(getTeamColorIndex(leavingTeam));
 
-    let logMsg = `"${playerName}" (#${playerNum}) disconnected. ${playerKills} kills, ${playerDeaths} deaths.`;
+    let logMsg = `"${playerName}" (#${playerNum}) disconnected. ${playerWins} kills, ${playerLosses} deaths.`;
     if (cheatWarnings > 0 && ANTICHEAT_CONFIG.mode !== 'disabled') {
       logMsg += ` [ANTICHEAT: ${cheatWarnings} warnings (${formatCheatWarnings(player)})]`;
     }

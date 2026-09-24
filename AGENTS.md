@@ -1546,7 +1546,7 @@ independent of team:
 - **A join never reset the client's own belief about being paused or a
   paused sphere.** The server clears its pause state on every `joinGame`,
   but only `pauseState.respawned()` did so client-side, wired to
-  `playerRespawned` alone -- which an observer never receives. A pause or
+  `alive` alone -- which an observer never receives. A pause or
   countdown (or a paused-sphere visual, which is event-driven off
   `playerPaused`/`playerUnpaused` alone) picked up moments earlier could
   survive a join that had nothing to do with it. The client's own
@@ -2972,7 +2972,7 @@ Upstream's clock (issue #66) and score limits (issue #67) -- see
   `GAME OVER` from the score limit that just ended -- nothing else would,
   since there is no zero-crossing to double as that signal.
 - **Score limits ask the same question at the two places a score moves.**
-  `checkPlayerScoreLimit` runs after `killer.kills++` in `killPlayer` (never
+  `checkPlayerScoreLimit` runs after `killer.wins++` in `killPlayer` (never
   for a team kill or a suicide, neither of which raises a score);
   `checkTeamScoreLimit` runs after every `broadcastTeamScores()`, so a capture
   and a kill that moves a team's score both ask it. Either calls

@@ -30,7 +30,7 @@ import {
 import { PLAYER_TEAM, getPlayerRanking } from '../public/teams.mjs';
 
 const row = (over = {}) => ({
-  id: 'x', kills: 0, deaths: 0, rank: null, isObserver: false,
+  id: 'x', wins: 0, losses: 0, rank: null, isObserver: false,
   connectDate: new Date(0), ...over,
 });
 
@@ -39,20 +39,20 @@ const row = (over = {}) => ({
 // first.
 {
   const sorted = [
-    row({ id: 'even', kills: 2, deaths: 2 }),
-    row({ id: 'obs', kills: 9, deaths: 0, isObserver: true }),
-    row({ id: 'ahead', kills: 5, deaths: 1 }),
-    row({ id: 'behind', kills: 0, deaths: 3 }),
+    row({ id: 'even', wins: 2, losses: 2 }),
+    row({ id: 'obs', wins: 9, losses: 0, isObserver: true }),
+    row({ id: 'ahead', wins: 5, losses: 1 }),
+    row({ id: 'behind', wins: 0, losses: 3 }),
   ].sort(compareScoreboardPlayers);
   assert.deepEqual(sorted.map((r) => r.id), ['ahead', 'even', 'behind', 'obs']);
 }
 {
-  // Same score, more kills wins; same again, fewer deaths wins; same again, the
+  // Same score, more wins ranks higher; same again, fewer losses; same again, the
   // older connection.
   const sorted = [
-    row({ id: 'younger', kills: 1, deaths: 1, connectDate: new Date(2000) }),
-    row({ id: 'busier', kills: 4, deaths: 4 }),
-    row({ id: 'older', kills: 1, deaths: 1, connectDate: new Date(1000) }),
+    row({ id: 'younger', wins: 1, losses: 1, connectDate: new Date(2000) }),
+    row({ id: 'busier', wins: 4, losses: 4 }),
+    row({ id: 'older', wins: 1, losses: 1, connectDate: new Date(1000) }),
   ].sort(compareScoreboardPlayers);
   assert.deepEqual(sorted.map((r) => r.id), ['busier', 'older', 'younger']);
 }
@@ -62,8 +62,8 @@ const row = (over = {}) => ({
 // next in line for the rabbit. `rank` is only set on such a world, so its
 // presence is the `allowRabbit()` that upstream asks.
 {
-  const ranked = (id, kills, deaths) => row({
-    id, kills, deaths, rank: getPlayerRanking(kills, deaths),
+  const ranked = (id, wins, losses) => row({
+    id, wins, losses, rank: getPlayerRanking(wins, losses),
   });
 
   // The case where the two rules disagree, and the reason the rank has to be the
@@ -72,7 +72,7 @@ const row = (over = {}) => ({
   const fresh = ranked('fresh', 0, 0);
   const mediocre = ranked('mediocre', 5, 4);
   assert.ok(fresh.rank > mediocre.rank, 'no record outranks a losing rate');
-  assert.ok((mediocre.kills - mediocre.deaths) > (fresh.kills - fresh.deaths));
+  assert.ok((mediocre.wins - mediocre.losses) > (fresh.wins - fresh.losses));
   assert.deepEqual(
     [mediocre, fresh].sort(compareScoreboardPlayers).map((r) => r.id),
     ['fresh', 'mediocre'],
@@ -80,7 +80,7 @@ const row = (over = {}) => ({
   );
   // Without a rank -- every other game type -- the same pair goes the other way.
   assert.deepEqual(
-    [row({ id: 'mediocre', kills: 5, deaths: 4 }), row({ id: 'fresh' })]
+    [row({ id: 'mediocre', wins: 5, losses: 4 }), row({ id: 'fresh' })]
       .sort(compareScoreboardPlayers).map((r) => r.id),
     ['mediocre', 'fresh']
   );
@@ -108,9 +108,9 @@ assert.equal(formatRabbitRank(0.539), '53%');
 // score.
 {
   const tanks = new Map([
-    ['2', { userData: { playerState: { id: '2', name: 'hunter', team: PLAYER_TEAM.HUNTER, kills: 1, deaths: 3 } } }],
+    ['2', { userData: { playerState: { id: '2', name: 'hunter', team: PLAYER_TEAM.HUNTER, wins: 1, losses: 3 } } }],
   ]);
-  const myTank = { userData: { playerState: { id: '1', name: 'bun', team: PLAYER_TEAM.RABBIT, kills: 4, deaths: 2 } } };
+  const myTank = { userData: { playerState: { id: '1', name: 'bun', team: PLAYER_TEAM.RABBIT, wins: 4, losses: 2 } } };
   const args = { myPlayerId: '1', myPlayerName: 'bun', myTank, tanks };
 
   const chase = buildScoreboardRows({ ...args, rabbitChase: true });
@@ -126,8 +126,8 @@ assert.equal(formatRabbitRank(0.539), '53%');
   assert.equal(plain.find((r) => r.id === '2').rabbit, null);
 }
 
-// teamKills, paused and micOn pass straight through from a player's own
-// state, same as kills and deaths do -- and default to 0/false for a player
+// tks, paused and micOn pass straight through from a player's own
+// state, same as wins and losses do -- and default to 0/false for a player
 // state that predates any of them, the way a fresh connect always does.
 {
   const tanks = new Map([
@@ -136,7 +136,7 @@ assert.equal(formatRabbitRank(0.539), '53%');
       userData: {
         playerState: {
           id: '3', name: 'ridden', team: PLAYER_TEAM.BLUE,
-          teamKills: 2, paused: true, voiceMicEnabled: true,
+          tks: 2, paused: true, voiceMicEnabled: true,
         },
       },
     }],
@@ -145,10 +145,10 @@ assert.equal(formatRabbitRank(0.539), '53%');
   const rows = buildScoreboardRows({ myPlayerId: '1', myPlayerName: 'me', myTank, tanks });
   const quiet = rows.find((r) => r.id === '2');
   const ridden = rows.find((r) => r.id === '3');
-  assert.equal(quiet.teamKills, 0);
+  assert.equal(quiet.tks, 0);
   assert.equal(quiet.paused, false);
   assert.equal(quiet.micOn, false);
-  assert.equal(ridden.teamKills, 2);
+  assert.equal(ridden.tks, 2);
   assert.equal(ridden.paused, true);
   assert.equal(ridden.micOn, true);
 }
@@ -169,50 +169,50 @@ assert.equal(formatRabbitRank(0.539), '53%');
   assert.equal(getScoreboardStatsHeader(false, true), 'K/D');
   assert.equal(getScoreboardStatsHeader(true, true), 'Rank K/D');
 
-  assert.equal(formatScoreboardStats({ kills: 4, deaths: 2 }), '4 / 2');
+  assert.equal(formatScoreboardStats({ wins: 4, losses: 2 }), '4 / 2');
   assert.equal(
-    formatScoreboardStats({ kills: 4, deaths: 2, rank: getPlayerRanking(4, 2) }),
+    formatScoreboardStats({ wins: 4, losses: 2, rank: getPlayerRanking(4, 2) }),
     '53% 4 / 2'
   );
-  assert.equal(formatScoreboardStats({ kills: 0, deaths: 0, isObserver: true }), '');
+  assert.equal(formatScoreboardStats({ wins: 0, losses: 0, isObserver: true }), '');
   // Even one carrying a score from before it switched, and even on a Rabbit
   // Chase world: being an observer is what decides it.
-  assert.equal(formatScoreboardStats({ kills: 9, deaths: 1, isObserver: true }), '');
+  assert.equal(formatScoreboardStats({ wins: 9, losses: 1, isObserver: true }), '');
   assert.equal(
-    formatScoreboardStats({ kills: 9, deaths: 1, rank: 0.8, isObserver: true }),
+    formatScoreboardStats({ wins: 9, losses: 1, rank: 0.8, isObserver: true }),
     ''
   );
 
   // The `[NN]` team-kill bracket (ScoreboardRenderer.cxx:675-686), drawn only
   // once there is one to report -- a zero is the expected state for almost
   // every row, not information.
-  assert.equal(formatScoreboardStats({ kills: 4, deaths: 2, teamKills: 0 }), '4 / 2');
-  assert.equal(formatScoreboardStats({ kills: 4, deaths: 2, teamKills: 2 }), '4 / 2 [2]');
+  assert.equal(formatScoreboardStats({ wins: 4, losses: 2, tks: 0 }), '4 / 2');
+  assert.equal(formatScoreboardStats({ wins: 4, losses: 2, tks: 2 }), '4 / 2 [2]');
   assert.equal(
-    formatScoreboardStats({ kills: 4, deaths: 2, rank: getPlayerRanking(4, 2), teamKills: 1 }),
+    formatScoreboardStats({ wins: 4, losses: 2, rank: getPlayerRanking(4, 2), tks: 1 }),
     '53% 4 / 2 [1]'
   );
 
   // The head-to-head tally (ScoreboardRenderer.cxx:692): blank until there is
   // a record to show, tilde-joined once there is one, and my own row shows a
   // self-destruct count instead -- never both.
-  assert.equal(formatScoreboardStats({ kills: 4, deaths: 2 }), '4 / 2');
+  assert.equal(formatScoreboardStats({ wins: 4, losses: 2 }), '4 / 2');
   assert.equal(
-    formatScoreboardStats({ kills: 4, deaths: 2, localWins: 3, localLosses: 1 }),
+    formatScoreboardStats({ wins: 4, losses: 2, localWins: 3, localLosses: 1 }),
     '4 / 2  3~1'
   );
-  assert.equal(formatPersonalTally({ kills: 4, deaths: 2, localWins: 0, localLosses: 0 }), '');
+  assert.equal(formatPersonalTally({ wins: 4, losses: 2, localWins: 0, localLosses: 0 }), '');
   assert.equal(
-    formatScoreboardStats({ kills: 4, deaths: 2, isCurrent: true, selfKills: 2 }),
+    formatScoreboardStats({ wins: 4, losses: 2, isCurrent: true, selfKills: 2 }),
     '4 / 2  2 self'
   );
   assert.equal(
-    formatScoreboardStats({ kills: 4, deaths: 2, isCurrent: true, selfKills: 0 }),
+    formatScoreboardStats({ wins: 4, losses: 2, isCurrent: true, selfKills: 0 }),
     '4 / 2'
   );
   // `compact` drops the tally first, for a phone-width scoreboard (issue #65).
   assert.equal(
-    formatScoreboardStats({ kills: 4, deaths: 2, localWins: 3, localLosses: 1 }, { compact: true }),
+    formatScoreboardStats({ wins: 4, losses: 2, localWins: 3, localLosses: 1 }, { compact: true }),
     '4 / 2'
   );
 }
@@ -224,7 +224,7 @@ assert.equal(formatRabbitRank(0.539), '53%');
     ['2', { userData: { playerState: { id: '2', name: 'watcher', team: PLAYER_TEAM.OBSERVER } } }],
     ['3', { userData: { playerState: { id: '3', name: 'watcher2', team: PLAYER_TEAM.OBSERVER } } }],
   ]);
-  const myTank = { userData: { playerState: { id: '1', name: 'bun', team: PLAYER_TEAM.HUNTER, kills: 1, deaths: 0 } } };
+  const myTank = { userData: { playerState: { id: '1', name: 'bun', team: PLAYER_TEAM.HUNTER, wins: 1, losses: 0 } } };
   const rows = buildScoreboardRows({
     myPlayerId: '1', myPlayerName: 'bun', myTank, tanks, rabbitChase: true,
   });

@@ -113,8 +113,8 @@ omitted rather than sent null.
 | `pt` | as `pm` plus `fromFaceId`,`toFaceId`,`jd`,`d?` | an accepted teleport |
 | `positionCorrection` | `x`,`y`,`z`,`r`,`vv` | the server moved you; the client snaps |
 | `playerJoined` / `playerLeft` / `playerUpdated` / `playerList` | player records | roster |
-| `playerRespawned` | player record | spawn |
-| `playerHit` | `victimId`, `shooterId`, `projectileId`, plus the hit's own fields | somebody died, and why |
+| `alive` | player record | spawn |
+| `killed` | `victimId`, `shooterId`, `projectileId`, plus the hit's own fields | somebody died, and why |
 | `shotBegin` | `id`, `playerId`, `x`,`y`,`z`, `shotSlot`, `dirX`,`dirY`,`dirZ`, `flag`, `ricochet`, `segments`, `target`, `createdAt` | a shot exists |
 | `shotEnd` | `id`, `reason`, `x`,`y`,`z` | it stopped, and where |
 | `reload` | -- | a shot slot came back |
@@ -174,7 +174,7 @@ bitfield (`Alive`, `Paused`, `Exploding`, `Teleporting`, `FlagActive`,
 `CrossingWall`, `Falling`, `OnDriver`, `UserInputs`, `JumpJets`, `PlaySound`)
 plus an `order` counter for reordering, and a physics-driver index. bzo
 carries none of those: the equivalent facts are either separate messages
-(`playerPaused`, `playerHit`) or derived from the velocities.
+(`playerPaused`, `killed`) or derived from the velocities.
 
 Lag is measured on the server and only on the server (`server/lag.cjs`) -- a
 client that measured its own lag would be reporting on the thing it is judged
@@ -217,6 +217,15 @@ So the same list of nouns -- killed, shot begin, shot end, grab flag, teleport
 - **Units** follow upstream wherever a value came from upstream -- world units,
   seconds, and `shakeTimeout` in tenths of a second. See
   `docs/game-modes-plan.md`.
+- **Names follow upstream** wherever the same thing exists on both sides. A
+  player record carries `alive` (upstream's `Alive` status bit, a boolean and
+  not a hit-point pool), and `wins`, `losses` and `tks` -- the three counters
+  `MsgScore` carries and the same words `teamUpdate` already used for a team's
+  tally. A name diverges only where the thing does: `shoot` is a request where
+  upstream's `MsgShotBegin` is a declaration, `shotSlot` is upstream's
+  per-player shot number under another name because bzo needs `id` for a
+  globally unique projectile, and `fs`/`rs`/`m`/`pm` are terse because they are
+  sent constantly as text.
 
 ## What is not on the socket
 
@@ -245,8 +254,8 @@ the mapping is mostly one to one:
 | `MsgAddPlayer` / `MsgRemovePlayer` | `playerJoined` / `playerLeft` |
 | `MsgQueryPlayers` | `queryPlayers` / `playerList` |
 | `MsgPlayerUpdate`, `MsgPlayerUpdateSmall` | `m`, `pm`, `pmBatch` |
-| `MsgAlive` | `playerRespawned` |
-| `MsgKilled` | `playerHit` (opposite direction) |
+| `MsgAlive` | `alive` |
+| `MsgKilled` | `killed` (opposite direction) |
 | `MsgShotBegin` / `MsgShotEnd` | `shoot` → `shotBegin` / `shotEnd` |
 | `MsgGrabFlag` / `MsgDropFlag` / `MsgCaptureFlag` / `MsgTransferFlag` | same names |
 | `MsgFlagUpdate` / `MsgNearFlag` | `flagUpdate` / `nearFlag` |
@@ -290,4 +299,4 @@ browser *play* on a real server would need the rest: the join handshake and
 its initial burst, pack and unpack for the remaining codes, and an answer to
 the authority inversion above -- something on bzo's side has to be willing to
 say "I died" on the player's behalf, because bzfs will never say it for them.
-Issue #82.
+`docs/proxy-plan.md` is the plan for that; issue #82.

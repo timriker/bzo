@@ -88,7 +88,7 @@ the limit ends the game. Either one broadcasts `MsgScoreOver` carrying the
 winner -- a player id with `NoTeam`, or a team with its index -- and the client
 turns that into "*name* (*team*) won the game" (`playing.cxx:2240`). bzo's own
 `checkPlayerScoreLimit`/`checkTeamScoreLimit` ask the same question at the same
-two places -- after `killer.kills++` in `killPlayer`, and after every
+two places -- after `killer.wins++` in `killPlayer`, and after every
 `broadcastTeamScores()` -- and both call the one `endMatch(winner)` the clock
 also calls, `winner` being `{ playerId }` or `{ team }`. The `scoreOver`
 broadcast that carries it is `{ playerId, team }` with one of the two null,
@@ -236,10 +236,10 @@ server computes a number, the client turns it into speed.
 ### The number bzo keeps
 
 One new integer per player: **deaths at another player's hand**, excluding
-suicides and world weapons. bzo's `kills` already excludes both those and team
-kills (`killPlayer` in `server.js` scores a team killer a death), but `deaths`
+suicides and world weapons. bzo's `wins` already excludes both those and team
+kills (`killPlayer` in `server.js` scores a team killer a loss), but `losses`
 counts every way to die, so it cannot serve on its own. The handicap is then
-that counter minus `kills`, and it reaches clients as the two integers rather
+that counter minus `wins`, and it reaches clients as the two integers rather
 than as a matrix.
 
 That drops upstream's *present opponents* rule deliberately. Roster membership
@@ -258,7 +258,7 @@ construction.
 
 What makes that safe is the scores being *assigned* rather than *derived*, and
 today they are not. bzo has no player-score message: the client increments off
-`playerHit`, +1 kill to the shooter and +1 death to the victim, which is already
+`killed`, +1 kill to the shooter and +1 death to the victim, which is already
 wrong for a team kill and heals only when the killer next respawns. Upstream
 sends absolute wins/losses/tks for killer and victim after every kill
 (`sendPlayerScores`, `bzfs.cxx:3487`) and its client applies whatever delta
@@ -337,7 +337,7 @@ needs retuning against a real game before parity means anything.
 
 The only genuinely racy part, and it is one-sided. The handicap rising is safe:
 the player died, the client keeps driving below a bound that just went up, and
-`playerRespawned` carries the new state before the tank can move again. The
+`alive` carries the new state before the tank can move again. The
 handicap *falling* is the problem -- it falls when the player scores a kill, the
 server tightens at once, and the client goes on driving at the old factor for
 half a round trip. A shockwave that takes five tanks drops it five notches in
