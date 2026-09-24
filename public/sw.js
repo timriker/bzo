@@ -43,10 +43,15 @@ const PRECACHE = [
 ];
 
 // Paths whose contents change only on release, and which cannot cause a
-// protocol desync if they lag. Icons are excluded: a launcher keeps whichever
-// one it was shown at install time, so a stale icon is the one kind that
-// outlives the cache it came from.
-const ASSET_PATHS = /^\/(?:textures|obj|audio|vendor)\//;
+// protocol desync if they lag. `/maps/` is the strongest of them: express
+// serves that URL space out of `cache/maps/`, where every file is named for
+// its own content hash and answered `immutable`, so a cache hit there is
+// exact by construction rather than merely current. Network-first would
+// re-fetch a whole world on every build change to be handed back the same
+// bytes. Icons are excluded: a launcher keeps whichever one it was shown at
+// install time, so a stale icon is the one kind that outlives the cache it
+// came from.
+const ASSET_PATHS = /^\/(?:textures|obj|audio|vendor|maps)\//;
 
 self.addEventListener('install', (event) => {
   event.waitUntil((async () => {
