@@ -527,6 +527,19 @@ server is unreachable, and for tutorial levels built on top of that.
 | `docs/` | Design plans, manual validation checklists, and asset notes |
 | `cache/br/` | Brotli sidecars, derived from `public/` and Three's build; not in git |
 
+### The wire
+
+One WebSocket per client, JSON objects discriminated by a `type` field, no
+second channel and no binary frames. `docs/network.md` documents it: every
+message in both directions, where the motion packet's fields come from, and
+the mapping to the 56 binary codes bzfs speaks (`include/Protocol.h:187-317`,
+which is upstream's only protocol document).
+
+The one difference worth carrying in your head: bzo is server-authoritative --
+the server simulates shots and decides who died -- while bzfs lets the victim's
+own client declare its death, its shot ends, its flag grabs and its teleports.
+The same nouns appear on both wires with the arrow reversed.
+
 ### Where the server answers
 
 `listen` in `server.json` carries a host and a port together, the way a proxy's
