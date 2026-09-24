@@ -2655,6 +2655,27 @@ hunter, upstream's `RabbitChase`.
   the heading tape; `docs/game-modes-plan.md` carries what a world-space bearing
   cue would add on top of it.
 
+## A thing that happened is said once
+
+Every event the server broadcasts is written by one `noticeAbout` line, for
+everyone it reaches and in the colours the roster gives -- including the player
+it happened to. `showMessage` -- the grey `local:` line `routeLocalHudMessage`
+writes -- is for what only this client knows: a refused command, a renderer
+that would not start, a flag alert about somebody else's grab.
+
+It is not for a second copy of a broadcast event addressed to the player it
+happened to. A drop that read `local: Dropped Green Team flag` above
+`Tim Riker dropped Green Team` said the same thing twice, in two voices, and
+spent two lines of a phone's three doing it. The same went for a grab, a theft
+told to its victim, and a pause -- where the local line was not even a
+duplicate but the other half of the same inconsistency: everybody else's pause
+was a notice and mine was a `local:` line.
+
+What survives is the part no broadcast line carries. A bad flag still says how
+this world lets you put it down, because that is a sentence about what happens
+next rather than about what just happened -- and it is written *after* the
+notice, since it is a remark about the flag the line above just named.
+
 ## One label for a player, however many surfaces write it
 
 `formatPlayerLabel` in `hud.js` composes a callsign, the flag it carries and the

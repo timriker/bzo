@@ -208,10 +208,11 @@ compares against the fraction the player actually asked for.
   you have no way to shoot at is saying something untrue. Dropping `GM` while a
   missile is still flying keeps the lock, because retargeting that missile is
   what the flag's help text promises.
-- **A theft tells the victim.** Upstream has no equivalent line. bzo says
-  "Dropped X flag" every other time a flag leaves your tank, and a theft is the
-  one way of losing one that sends the victim no drop at all, so without it the
-  flag would simply be gone with nothing said.
+- **A theft says so, and names both tanks.** Upstream has no equivalent line: a
+  theft is the one way of losing a flag that sends the victim no drop at all,
+  so without it the flag would simply be gone with nothing said. One line for
+  everybody, the victim included -- it names them, so a second line telling
+  them what they can already read would be the same event twice.
 - **Flags do not blow in the wind.** At upstream's default quality the cloth is
   billboarded to face the camera, so upstream's wind only turns a flag nobody can
   see turning.

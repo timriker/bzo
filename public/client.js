@@ -6341,7 +6341,6 @@ function handleServerMessage(message) {
 
     case 'grabFlag': {
       const flag = setFlagState(message.flag);
-      handleFlagGrabbedAlerts(message.playerId, flag);
       // The player in their roster colour and the flag in its own, as every other
       // notice that names a tank does. `flag: null` because the sentence names
       // the flag already, and a callsign wearing it too would say it twice.
@@ -6357,6 +6356,10 @@ function handleServerMessage(message) {
         0,
         false,
       );
+      // After the notice, not before it: what this adds for a bad flag is a
+      // sentence about the flag the line above just named, and it read
+      // backwards arriving first.
+      handleFlagGrabbedAlerts(message.playerId, flag);
       // The scoreboard names the carried flag, and it only repaints on events.
       refreshScoreboards();
       break;
@@ -6385,10 +6388,8 @@ function handleServerMessage(message) {
 
     case 'dropFlag': {
       const flag = setFlagState(message.flag);
-      const label = describeFlag(flag);
       if (message.playerId === myPlayerId) {
         renderManager.playLocalSound('flagDrop');
-        showMessage(`Dropped ${label} flag`);
         // handleFlagDropped's "make sure the player must reload after theft"
         // (playing.cxx:3823). Charged when the flag leaves the tank, which after
         // a successful steal is the moment the theft spends it.
@@ -6478,10 +6479,11 @@ function handleServerMessage(message) {
         pauseAlertSecondsShown = 0;
         // setAlert(1, NULL) clears the countdown the moment it runs out.
         setHudAlert(PAUSE_ALERT_SLOT, null, 0);
-        showMessage('Paused');
-      } else {
-        noticeAbout(null, [describePlayer(message.playerId), ' paused'], 0, false);
       }
+      // One line, whoever paused. A `local:` line saying "Paused" beside
+      // everyone else's "<name> paused" said the same thing twice as far as
+      // the transcript is concerned, and in a different voice.
+      noticeAbout(null, [describePlayer(message.playerId), ' paused'], 0, false);
       setTankPausedState(message.playerId, true, message);
       createPausedSphere(message.playerId, message.x, message.y, message.z);
       refreshScoreboards();
@@ -6491,10 +6493,8 @@ function handleServerMessage(message) {
       if (message.playerId === myPlayerId) {
         pauseState.unpausedByServer();
         pauseAlertSecondsShown = 0;
-        showMessage('Resumed');
-      } else {
-        noticeAbout(null, [describePlayer(message.playerId), ' unpaused'], 0, false);
       }
+      noticeAbout(null, [describePlayer(message.playerId), ' unpaused'], 0, false);
       setTankPausedState(message.playerId, false);
       removePausedSphere(message.playerId);
       refreshScoreboards();
@@ -11587,18 +11587,17 @@ function updateAntidoteFlag() {
 
 // MsgGrabFlag on the client. Taking a flag is a local sound for whoever took it,
 // and for everyone else it matters only when a team flag changed hands. A theft
-// comes through here too: the same flag is in the same hands by the end of it,
-// and `stolenFrom` is the only thing that reads differently.
-function handleFlagGrabbedAlerts(grabberId, flag, stolenFrom = null) {
+// comes through here too: the same flag is in the same hands by the end of it.
+function handleFlagGrabbedAlerts(grabberId, flag) {
   if (grabberId === myPlayerId) {
     renderManager.playLocalSound('flagGrab');
-    // A bad flag is the one grab where what happens next matters more than what
-    // was taken, so it says how this world lets you put it down.
+    // What was taken is already on the chat line every player gets and on the
+    // alert slot below, so the only thing said here is the part no other
+    // player's line carries: a bad flag is the one grab where what happens
+    // next matters more than what was taken, so it says how this world lets
+    // you put it down.
     const sticky = getFlagEndurance(flag?.type) === FLAG_ENDURANCE.STICKY;
-    const took = stolenFrom === null
-      ? `Grabbed ${describeFlag(flag)} flag`
-      : `Stole ${stolenFrom}'s ${describeFlag(flag)} flag`;
-    showMessage(sticky ? `${took} - ${describeBadFlagRelease()}` : took);
+    if (sticky) showMessage(describeBadFlagRelease());
     // The flag you are carrying, in the warning colour when it is one you cannot
     // put down. A sticky flag with a shake timeout running takes the slot over
     // from here for its countdown, so this is what it looks like for the moment
@@ -11633,15 +11632,11 @@ function handleFlagGrabbedAlerts(grabberId, flag, stolenFrom = null) {
 // flag changes tanks with no grab and no drop between, so this is what moves it
 // on the scoreboard, in the world and on the thief's own HUD.
 //
-// The victim gets a line of their own, which upstream has no equivalent of. bzo
-// says "Dropped X flag" every other time a flag leaves your tank, and a theft is
-// the one way of losing one that sends the victim no drop at all -- so without
-// it the flag would simply be gone with nothing said.
+// A theft is the one way of losing a flag that sends the victim no drop at all,
+// so the notice below is what says the flag is gone -- and it names the victim,
+// so the victim needs no second line of their own.
 function handleFlagTransferred(message) {
   const flag = setFlagState(message.flag);
-  const label = describeFlag(flag);
-  const thiefName = getPlayerName(message.toId);
-  const victimName = getPlayerName(message.fromId);
   noticeAbout(
     null,
     [
@@ -11655,11 +11650,8 @@ function handleFlagTransferred(message) {
     0,
     false,
   );
-  if (message.fromId === myPlayerId) {
-    renderManager.playLocalSound('flagDrop');
-    showMessage(`${thiefName} stole your ${label} flag`, 'death');
-  }
-  handleFlagGrabbedAlerts(message.toId, flag, victimName);
+  if (message.fromId === myPlayerId) renderManager.playLocalSound('flagDrop');
+  handleFlagGrabbedAlerts(message.toId, flag);
 }
 
 // MsgNearFlag on the client. The Identify flag's answer: the name of the
