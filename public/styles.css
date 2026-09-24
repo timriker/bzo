@@ -703,13 +703,21 @@ body {
   color: #4CAF50;
 }
 
+/* The header and every row are the same flex track list, so a label sits over
+   the cells it names. Widths come from SCOREBOARD_COLUMNS in `ch`, written
+   inline by makeScoreboardCell; the padding here has to match a row's so the
+   two line up. */
 #scoreboardHeader {
   display: flex;
-  justify-content: space-between;
-  font-size: var(--hud-font-small);
+  /* The rows' font, not the smaller one the other headers use: the column
+     widths are in `ch`, which is font-relative, so a header set one size down
+     would reserve narrower tracks than the rows it labels and every number
+     would sit left of its own heading. The muted colour is what separates it
+     from the rows instead. */
+  font-size: var(--hud-font-body);
   color: #888;
   margin-bottom: 5px;
-  padding-bottom: 5px;
+  padding: 0 var(--hud-pad) 5px;
   border-bottom: 1px solid #333;
 }
 
@@ -744,10 +752,29 @@ body {
 
 .scoreboardEntry {
   display: flex;
-  justify-content: space-between;
   margin: calc(var(--hud-gap) / 2) 0;
   padding: calc(var(--hud-pad) / 2) var(--hud-pad);
   border-radius: 3px;
+}
+
+/* A fixed-width column is the width its entry in SCOREBOARD_COLUMNS asks for;
+   the name column has none and takes what is left. `min-width: 0` is what lets
+   the name actually shrink to its ellipsis inside a flex row. */
+.scoreboardCell {
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.scoreboardCell-player {
+  flex: 1 1 auto;
+}
+
+/* Every cell but the first stands off the one before it, so a right-aligned
+   number never runs into the column on its left -- which is what the header's
+   labels do first, being wider than the values under them. */
+.scoreboardCell + .scoreboardCell {
+  padding-left: 6px;
 }
 
 .scoreboardEntry.current {
@@ -757,10 +784,19 @@ body {
 }
 
 .scoreboardName {
-  flex: 1;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/* The team board is still two items, a name and a score, rather than the
+   player board's column track list -- so its name takes the free space and
+   pushes the score out to the right edge, under the heading that names it.
+   A player row does not: there the name sits in a column of its own and the
+   numbers have columns of theirs. */
+.teamScoreHeader .scoreboardName,
+.teamScoreEntry .scoreboardName {
+  flex: 1;
 }
 
 /* Name and flag are one item wherever they appear, so a row's spacing pushes

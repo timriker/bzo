@@ -7614,7 +7614,7 @@ function startMatch() {
     // have revived them already saw `matchClock.gameOver` and gave up.
     if (!isObserverTeam(candidate.team) && !candidate.alive) {
       candidate.respawn();
-      broadcastAll({ type: 'alive', player: candidate.getState() });
+      broadcastPlayerRecord('alive', candidate);
     }
   });
   matchClock.paused = false;
@@ -8272,8 +8272,13 @@ class Player {
     handleRabbitSpawn(this);
   }
 
-  getState() {
-    return {
+  // `forAdmin` adds the fields only an admin may see. It is the recipient's
+  // permission, not the subject's, so the same player's record is two different
+  // objects depending on who is being told about them -- which is why every
+  // roster broadcast goes through `broadcastPlayerRecord` rather than
+  // `broadcastAll`.
+  getState(forAdmin = false) {
+    const state = {
       id: this.id,
       name: this.name,
       x: this.x,
@@ -8321,6 +8326,13 @@ class Player {
       // is already public in `init.viewableMaps`.
       viewMap: this.viewMap ?? null,
     };
+    // The forum account behind a verified callsign, for the scoreboard's
+    // admin-only BZID column. Upstream's scoreboard has no such column -- it
+    // shows the slot number to an admin and nothing else -- but bzo's admins
+    // already read a BZID off the list-server account page, and a name is the
+    // one thing a player can change between sessions.
+    if (forAdmin) state.bzid = this.bzid ?? null;
+    return state;
   }
 
   /**
@@ -9995,7 +10007,7 @@ function resolveJoinName(player, requestedName) {
       msgType: 'server',
       text: `${callsign} signed in with that name, so yours is now ${assigned}.`,
     });
-    broadcastAll({ type: 'playerUpdated', player: other.getState() });
+    broadcastPlayerRecord('playerUpdated', other);
   }
 
   if (requestedName && requestedName.trim() && requestedName.trim() !== callsign) {
@@ -10770,6 +10782,18 @@ function broadcast(message, excludeWs = null) {
     if (player.ws !== excludeWs && player.ws.readyState === 1) {
       player.ws.send(data);
     }
+  });
+}
+
+// One player's record, to everyone, in the shape each recipient is allowed to
+// see it. Two payloads rather than one because `getState` hides a field from a
+// non-admin, and two `JSON.stringify` calls are cheaper than one per recipient.
+function broadcastPlayerRecord(type, subject) {
+  const forAdmins = JSON.stringify({ type, player: subject.getState(true) });
+  const forEveryone = JSON.stringify({ type, player: subject.getState(false) });
+  players.forEach((player) => {
+    if (player.ws.readyState !== 1) return;
+    player.ws.send(isAdmin(player) ? forAdmins : forEveryone);
   });
 }
 
@@ -13499,7 +13523,7 @@ function applyDeath(victim, killerId, hit) {
     // a death already in flight when the clock hit zero.
     if (matchClock.gameOver) return;
     victim.respawn();
-    broadcastAll({ type: 'alive', player: victim.getState() });
+    broadcastPlayerRecord('alive', victim);
   }, GAME_CONFIG.RESPAWN_DELAY);
 }
 
@@ -14396,7 +14420,7 @@ function sendMapList(ws) {
 function getRosterFor(recipient) {
   return Array.from(players.values())
     .filter((candidate) => candidate.joined || candidate.id === recipient.id)
-    .map((candidate) => candidate.getState());
+    .map((candidate) => candidate.getState(isAdmin(recipient)));
 }
 
 // WebSocket connection handler
@@ -14526,7 +14550,7 @@ wss.on('connection', (ws, req) => {
     // Operator panel's title so an operator glancing at the panel already
     // knows what they're running, without typing the chat command for it.
     serverVersion: SERVER_VERSION,
-    player: player.getState(),
+    player: player.getState(isAdmin(player)),
     players: getRosterFor(player),
     config: clientGameConfig,
     teamMode: TEAM_MODE,
@@ -15420,10 +15444,16 @@ wss.on('connection', (ws, req) => {
             retireTeamFlags(getTeamColorIndex(previousTeam));
           }
 
-          broadcastAll({
-            type: 'playerJoined',
-            player: player.getState(),
-          });
+          broadcastPlayerRecord('playerJoined', player);
+          // `init` went out before this player had joined, and `isAdmin`
+          // refuses anyone who has not -- so an admin's opening roster was
+          // built without the admin-only fields. One roster replay after the
+          // join is what fills the BZID column in for the players who were
+          // already here; everyone who arrives later rides in on
+          // `broadcastPlayerRecord`.
+          if (isAdmin(player)) {
+            ws.send(JSON.stringify({ type: 'playerList', players: getRosterFor(player) }));
+          }
           // After the join is on the wire, so `newRabbit` never names a player the
           // other clients have not heard of yet.
           //
@@ -15461,10 +15491,7 @@ wss.on('connection', (ws, req) => {
             // not in the game. A tank picked in the entry dialog before joining
             // travels with the join itself.
             if (player.joined) {
-              broadcastAll({
-                type: 'playerUpdated',
-                player: player.getState(),
-              });
+              broadcastPlayerRecord('playerUpdated', player);
             }
           }
           break;

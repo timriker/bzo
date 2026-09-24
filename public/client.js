@@ -118,6 +118,7 @@ import {
   compareScoreboardPlayers,
   formatPlayerLabel,
   formatScoreboardStats,
+  SCOREBOARD_TIER,
   getPlayerTeamMark,
   getScoreboardStatsHeader,
   buildScoreboardRows,
@@ -7279,6 +7280,10 @@ function getScoreboardModel() {
       // row would claim a choice the player did not make.
       roamTargetId: observing ? roamTargetId : null,
       onSelectRoamTarget: observing ? selectRoamTarget : null,
+      // Offers the BZID column. The values themselves only arrive in the
+      // roster when the server agrees, so this decides the column and not the
+      // secret.
+      isAdmin: amAdmin,
     };
   }
   return scoreboardModel;
@@ -12699,12 +12704,14 @@ function ensureXRScoreboardOverlay() {
   ctx.fillStyle = '#4CAF50';
   ctx.font = 'bold 14px monospace';
   if (teamRows.length) {
-    ctx.fillText('Team Score', margin, 16 + clockHeight);
+    ctx.fillText('Teams', margin, 16 + clockHeight);
     ctx.font = '13px monospace';
     teamRows.forEach((row, index) => {
       const y = 38 + clockHeight + index * rowHeight;
       const score = formatTeamScore(row);
-      ctx.fillStyle = colorToCSS(getPlayerTeamColor(row.team));
+      // The flat board's team rows read from the radar's colour table, for the
+      // radar's own reason -- a dark panel -- and this panel is darker still.
+      ctx.fillStyle = colorToCSS(getPlayerTeamRadarColor(row.team));
       ctx.textAlign = 'right';
       ctx.fillText(score, contentRight, y);
       ctx.textAlign = 'left';
@@ -12716,7 +12723,16 @@ function ensureXRScoreboardOverlay() {
   }
 
   const playerHeaderY = 16 + clockHeight + teamBlockHeight;
-  ctx.fillText('Player', margin, playerHeaderY);
+  // The `#` column's width, measured once in the row font rather than per row,
+  // so every name starts at the same x instead of wherever that row's own id
+  // happened to end. The header reserves the same allowance, which is what
+  // puts 'Player' over the names rather than over the numbers.
+  ctx.save();
+  ctx.font = '13px monospace';
+  const numberWidth = ctx.measureText('###').width;
+  ctx.restore();
+  ctx.fillText('#', margin, playerHeaderY);
+  ctx.fillText('Player', margin + numberWidth, playerHeaderY);
   ctx.textAlign = 'right';
   // The flat board's heading, abbreviated to what fits a headset panel. Both
   // read it from the same place so they cannot name the columns differently.
@@ -12744,7 +12760,7 @@ function ensureXRScoreboardOverlay() {
     // The same columns the flat board draws, which for an observer is none of
     // them: it cannot kill or die, and it has no rank because it can never be
     // anointed.
-    const stats = formatScoreboardStats(player);
+    const stats = formatScoreboardStats(player, { tier: SCOREBOARD_TIER.MEDIUM });
     const flagLabel = player.flag ? `/${player.flag.label}` : '';
     // The authentication indicator, in front of the name and in cyan, as
     // upstream draws it (`ScoreboardRenderer.cxx:712`) and as the flat
@@ -12752,6 +12768,9 @@ function ensureXRScoreboardOverlay() {
     // the flag does.
     const status = player.status || '';
     const statusWidth = status ? ctx.measureText(status).width : 0;
+    // The player number, ahead of everything else on the row. Upstream shows it
+    // only to an admin; bzo shows it to everyone, here as on the flat board.
+    const numberLabel = String(player.id ?? '');
     // The Rabbit Chase mark, which the flat scoreboard draws after the flag and
     // in the same place. The leading space is this panel's answer to the flat
     // one's margin: everything here is laid out by measured width.
@@ -12765,6 +12784,7 @@ function ensureXRScoreboardOverlay() {
     // comes out of the same allowance.
     const nameWidth = contentRight - margin - columnGap
       - ctx.measureText(stats).width
+      - numberWidth
       - statusWidth
       - (flagLabel ? ctx.measureText(flagLabel).width : 0)
       - (pausedLabel ? ctx.measureText(pausedLabel).width : 0)
@@ -12772,13 +12792,16 @@ function ensureXRScoreboardOverlay() {
       - (rabbitLabel ? ctx.measureText(rabbitLabel).width : 0);
     const shown = fitText(ctx, String(player.name || 'Player'), Math.max(0, nameWidth));
 
+    ctx.fillStyle = rowColor;
+    ctx.fillText(numberLabel, margin, y);
+    const nameLeft = margin + numberWidth;
     if (status) {
       ctx.fillStyle = colorToCSS(SCOREBOARD_STATUS_COLOR);
-      ctx.fillText(status, margin, y);
+      ctx.fillText(status, nameLeft, y);
     }
     ctx.fillStyle = rowColor;
-    ctx.fillText(shown, margin + statusWidth, y);
-    let labelRight = margin + statusWidth + ctx.measureText(shown).width;
+    ctx.fillText(shown, nameLeft + statusWidth, y);
+    let labelRight = nameLeft + statusWidth + ctx.measureText(shown).width;
     if (flagLabel) {
       ctx.fillStyle = colorToCSS(player.flag.color);
       ctx.fillText(flagLabel, labelRight, y);

@@ -20,9 +20,15 @@ import {
   formatPersonalTally,
   formatPlayerLabel,
   formatRabbitRank,
+  SCOREBOARD_COLUMNS,
+  SCOREBOARD_TIER,
+  formatScoreboardCell,
   formatScoreboardStats,
   getPlayerStatusIndicator,
   getPlayerTeamMark,
+  getScoreboardColumnLabel,
+  getScoreboardColumnWidth,
+  getScoreboardColumns,
   getScoreboardStatsHeader,
   setHudAlert,
   updateAlertHud,
@@ -161,18 +167,20 @@ assert.equal(formatRabbitRank(0.539), '53%');
 {
   // The heading names the rank column, which upstream leaves unlabelled -- an
   // unlabelled percentage in front of a kill count is a question, not an answer.
-  assert.equal(getScoreboardStatsHeader(false), 'Kills / Deaths');
-  assert.equal(getScoreboardStatsHeader(true), 'Rank Kills / Deaths');
-  assert.equal(getScoreboardStatsHeader(), 'Kills / Deaths');
+  assert.equal(getScoreboardStatsHeader(false), 'Kills-Deaths');
+  assert.equal(getScoreboardStatsHeader(true), 'Rank Kills-Deaths');
+  assert.equal(getScoreboardStatsHeader(), 'Kills-Deaths');
   // The headset's panel is narrow, so it takes the same heading abbreviated
   // rather than one of its own.
-  assert.equal(getScoreboardStatsHeader(false, true), 'K/D');
-  assert.equal(getScoreboardStatsHeader(true, true), 'Rank K/D');
+  assert.equal(getScoreboardStatsHeader(false, true), 'K-D');
+  assert.equal(getScoreboardStatsHeader(true, true), 'Rank K-D');
 
-  assert.equal(formatScoreboardStats({ wins: 4, losses: 2 }), '4 / 2');
+  // The score column upstream leads with -- `wins - losses` (Player.h:486) --
+  // then the record with upstream's own hyphen.
+  assert.equal(formatScoreboardStats({ wins: 4, losses: 2 }), '2  4-2');
   assert.equal(
     formatScoreboardStats({ wins: 4, losses: 2, rank: getPlayerRanking(4, 2) }),
-    '53% 4 / 2'
+    '53% 2  4-2'
   );
   assert.equal(formatScoreboardStats({ wins: 0, losses: 0, isObserver: true }), '');
   // Even one carrying a score from before it switched, and even on a Rabbit
@@ -182,39 +190,114 @@ assert.equal(formatRabbitRank(0.539), '53%');
     formatScoreboardStats({ wins: 9, losses: 1, rank: 0.8, isObserver: true }),
     ''
   );
+  // A losing record scores negative, which upstream prints as readily as it
+  // prints a positive one.
+  assert.equal(formatScoreboardStats({ wins: 1, losses: 4 }), '-3  1-4');
 
   // The `[NN]` team-kill bracket (ScoreboardRenderer.cxx:675-686), drawn only
   // once there is one to report -- a zero is the expected state for almost
-  // every row, not information.
-  assert.equal(formatScoreboardStats({ wins: 4, losses: 2, tks: 0 }), '4 / 2');
-  assert.equal(formatScoreboardStats({ wins: 4, losses: 2, tks: 2 }), '4 / 2 [2]');
+  // every row, not information. It rides in the record cell, where upstream
+  // puts it, rather than becoming a column that is blank on nearly every row.
+  assert.equal(formatScoreboardStats({ wins: 4, losses: 2, tks: 0 }), '2  4-2');
+  assert.equal(formatScoreboardStats({ wins: 4, losses: 2, tks: 2 }), '2  4-2 [2]');
   assert.equal(
     formatScoreboardStats({ wins: 4, losses: 2, rank: getPlayerRanking(4, 2), tks: 1 }),
-    '53% 4 / 2 [1]'
+    '53% 2  4-2 [1]'
   );
 
   // The head-to-head tally (ScoreboardRenderer.cxx:692): blank until there is
   // a record to show, tilde-joined once there is one, and my own row shows a
   // self-destruct count instead -- never both.
-  assert.equal(formatScoreboardStats({ wins: 4, losses: 2 }), '4 / 2');
   assert.equal(
     formatScoreboardStats({ wins: 4, losses: 2, localWins: 3, localLosses: 1 }),
-    '4 / 2  3~1'
+    '2  4-2  3~1'
   );
   assert.equal(formatPersonalTally({ wins: 4, losses: 2, localWins: 0, localLosses: 0 }), '');
   assert.equal(
     formatScoreboardStats({ wins: 4, losses: 2, isCurrent: true, selfKills: 2 }),
-    '4 / 2  2 self'
+    '2  4-2  2 self'
   );
   assert.equal(
     formatScoreboardStats({ wins: 4, losses: 2, isCurrent: true, selfKills: 0 }),
-    '4 / 2'
+    '2  4-2'
   );
   // `compact` drops the tally first, for a phone-width scoreboard (issue #65).
   assert.equal(
-    formatScoreboardStats({ wins: 4, losses: 2, localWins: 3, localLosses: 1 }, { compact: true }),
-    '4 / 2'
+    formatScoreboardStats(
+      { wins: 4, losses: 2, localWins: 3, localLosses: 1 }, { tier: SCOREBOARD_TIER.MEDIUM }),
+    '2  4-2'
   );
+  // A phone drops the record too: `Score` is what the board is sorted by and
+  // says the same thing in a third of the width.
+  assert.equal(
+    formatScoreboardStats(
+      { wins: 4, losses: 2, localWins: 3, localLosses: 1 }, { tier: SCOREBOARD_TIER.NARROW }),
+    '2'
+  );
+}
+
+// One column list, read by the flat board, the header row and the headset
+// panel alike. A column that appears in one place under a name another place
+// never uses is the failure this guards against.
+{
+  const ids = (options) => getScoreboardColumns(options).map((column) => column.id);
+
+  // The wide board, for someone who is not an admin: upstream's three columns
+  // split so each carries its own label, plus the `#` upstream shows only to
+  // an admin and bzo shows to everyone.
+  assert.deepEqual(ids({}), ['number', 'player', 'score', 'record', 'tally']);
+
+  // BZID is offered to an admin and to nobody else. It has no upstream
+  // counterpart; the server is what withholds the value.
+  assert.deepEqual(
+    ids({ isAdmin: true }),
+    ['number', 'bzid', 'player', 'score', 'record', 'tally']
+  );
+
+  // The panel stops growing at 900px, so the two widest columns per unit of
+  // information go -- the BZID even for an admin, and the head-to-head tally.
+  assert.deepEqual(
+    ids({ tier: SCOREBOARD_TIER.MEDIUM, isAdmin: true }),
+    ['number', 'player', 'score', 'record']
+  );
+
+  // A phone gives up the record as well, leaving the name room to be a name.
+  assert.deepEqual(
+    ids({ tier: SCOREBOARD_TIER.NARROW, isAdmin: true }),
+    ['number', 'player', 'score']
+  );
+
+  // The long label is what the wide column is sized for, and the short one is
+  // what a narrower board has room to say.
+  const record = SCOREBOARD_COLUMNS.find((column) => column.id === 'record');
+  assert.equal(getScoreboardColumnLabel(record, SCOREBOARD_TIER.WIDE), 'Kills-Deaths');
+  assert.equal(getScoreboardColumnLabel(record, SCOREBOARD_TIER.MEDIUM), 'K-D');
+  // Wide enough for the label it carries, in both directions -- a cell sized
+  // to the value would clip its own heading.
+  assert.ok(getScoreboardColumnWidth(record, SCOREBOARD_TIER.WIDE) >= 'Kills-Deaths'.length);
+  assert.ok(getScoreboardColumnWidth(record, SCOREBOARD_TIER.MEDIUM) >= 'K-D'.length);
+  assert.ok(
+    getScoreboardColumnWidth(record, SCOREBOARD_TIER.MEDIUM)
+      < getScoreboardColumnWidth(record, SCOREBOARD_TIER.WIDE)
+  );
+
+  // Every column a surface draws formats through one function, so no surface
+  // can punctuate a number its own way.
+  const row = { id: '7', bzid: '9021', wins: 4, losses: 2, tks: 1, localWins: 3, localLosses: 1 };
+  assert.equal(formatScoreboardCell(row, 'number'), '7');
+  assert.equal(formatScoreboardCell(row, 'bzid'), '9021');
+  assert.equal(formatScoreboardCell(row, 'score'), '2');
+  assert.equal(formatScoreboardCell(row, 'record'), '4-2 [1]');
+  assert.equal(formatScoreboardCell(row, 'tally'), '3~1');
+  // A player who never verified has no BZID to show, admin looking or not.
+  assert.equal(formatScoreboardCell({ id: '3', bzid: null }, 'bzid'), '');
+  // An observer keeps its number -- and its BZID, which says who is watching --
+  // and loses every column that describes a fight it cannot join.
+  const observer = { id: '4', bzid: '55', wins: 9, losses: 1, isObserver: true };
+  assert.equal(formatScoreboardCell(observer, 'number'), '4');
+  assert.equal(formatScoreboardCell(observer, 'bzid'), '55');
+  assert.equal(formatScoreboardCell(observer, 'score'), '');
+  assert.equal(formatScoreboardCell(observer, 'record'), '');
 }
 
 // The break between the players and the observers, marked on the row so the flat

@@ -112,7 +112,7 @@ omitted rather than sent null.
 | `pm` | `id`,`x`,`y`,`z`,`r`,`fs`,`rs`,`vv`,`vx`,`vz` | a single move, outside the batch |
 | `pt` | as `pm` plus `fromFaceId`,`toFaceId`,`jd`,`d?` | an accepted teleport |
 | `positionCorrection` | `x`,`y`,`z`,`r`,`vv` | the server moved you; the client snaps |
-| `playerJoined` / `playerLeft` / `playerUpdated` / `playerList` | player records | roster |
+| `playerJoined` / `playerLeft` / `playerUpdated` / `playerList` | player records | roster. A record carries `bzid` only to an admin -- `broadcastPlayerRecord` sends two payloads, and `getState` omits the field entirely for everyone else |
 | `alive` | player record | spawn |
 | `killed` | `victimId`, `shooterId`, `projectileId`, plus the hit's own fields | somebody died, and why |
 | `shotBegin` | `id`, `playerId`, `x`,`y`,`z`, `shotSlot`, `dirX`,`dirY`,`dirZ`, `flag`, `ricochet`, `segments`, `target`, `createdAt` | a shot exists |

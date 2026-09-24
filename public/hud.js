@@ -13,7 +13,7 @@ import {
   PLAYER_TEAM_COLORS,
   PLAYER_TEAM_LABELS,
   getPlayerRanking,
-  getPlayerTeamColor,
+  getPlayerTeamRadarColor,
   isColorTeam,
   isObserverTeam,
   isRabbitTeam,
@@ -558,17 +558,29 @@ export function updateDebugDisplay({
   debugContent.innerHTML = html;
 }
 
+// What a row on the team board calls its team: the colour and nothing else.
+// `PLAYER_TEAM_LABELS` says "Red Team", which is right in the entry dialog and
+// in a chat target where a bare colour would not say what it was -- but every
+// row here is a team and the heading above them says so, so the word is the
+// same on every row and tells a reader nothing. Upstream names them not at all
+// and relies on the row's colour; a colour word is what survives a player who
+// cannot see the difference.
+const TEAM_SCORE_LABELS = Object.freeze({
+  [PLAYER_TEAM.RED]: 'Red',
+  [PLAYER_TEAM.GREEN]: 'Green',
+  [PLAYER_TEAM.BLUE]: 'Blue',
+  [PLAYER_TEAM.PURPLE]: 'Purple',
+});
+
 // Updates the scoreboard with current player stats
 // ScoreboardRenderer::renderTeamScores. A team's score is its wins minus its
-// losses, rows sort by it, and a team with nobody on it is left out. Upstream
-// tells the teams apart by colour alone; a name column costs nothing here and
-// survives a player who cannot.
+// losses, rows sort by it, and a team with nobody on it is left out.
 export function getTeamScoreRows(teamScores) {
   return (teamScores || [])
     .filter((entry) => entry && entry.size > 0 && isColorTeam(entry.team))
     .map((entry) => ({
       ...entry,
-      label: PLAYER_TEAM_LABELS[entry.team] || entry.team,
+      label: TEAM_SCORE_LABELS[entry.team] || PLAYER_TEAM_LABELS[entry.team] || entry.team,
       score: entry.wins - entry.losses,
     }))
     .sort((a, b) => b.score - a.score);
@@ -624,7 +636,7 @@ function updateTeamScoreboard(rows) {
   header.className = 'teamScoreHeader';
   const headerName = document.createElement('span');
   headerName.className = 'scoreboardName';
-  headerName.textContent = 'Team Score';
+  headerName.textContent = 'Teams';
   const headerStats = document.createElement('span');
   headerStats.className = 'scoreboardStats';
   headerStats.textContent = 'Score (W-L) Size';
@@ -635,7 +647,13 @@ function updateTeamScoreboard(rows) {
   rows.forEach((row) => {
     const entry = document.createElement('div');
     entry.className = 'scoreboardEntry teamScoreEntry';
-    entry.style.color = colorToCSS(getPlayerTeamColor(row.team));
+    // The radar's colour table, not the tank one -- for the radar's own
+    // reason. `Team::radarColor` lifts red, green and purple so a team reads
+    // against a dark panel (Team.cxx:30), and this panel is as dark as that
+    // one: purple in its tank colour is very nearly unreadable here. A base's
+    // square on the radar is drawn from this table too, so a team's row and
+    // its base now say the same colour.
+    entry.style.color = colorToCSS(getPlayerTeamRadarColor(row.team));
 
     const nameSpan = document.createElement('span');
     nameSpan.className = 'scoreboardName';
@@ -711,10 +729,90 @@ export function formatRabbitRank(rank) {
 // their kills is. bzo names it, because an unlabelled column is a question rather
 // than an answer.
 // `abbreviated` is the headset's, where the panel is a few hundred pixels wide
-// and 'Kills / Deaths' would crowd the names it sits over.
+// and the long labels would crowd the names they sit over.
 export function getScoreboardStatsHeader(rabbitChase = false, abbreviated = false) {
-  const score = abbreviated ? 'K/D' : 'Kills / Deaths';
+  const score = abbreviated ? 'K-D' : 'Kills-Deaths';
   return rabbitChase ? `Rank ${score}` : score;
+}
+
+// Which columns a surface draws, and what each one is called. One list, read by
+// the flat board, the headset panel and the header row alike, so a column
+// cannot appear in one place under a name another place never uses.
+//
+// Upstream draws three columns -- `Score`, ` Kills` and `Player`
+// (ScoreboardRenderer.cxx:36-41) -- and packs the rank, the score, the record
+// and the team-kill bracket into the first as one printf. bzo splits them so
+// each can carry its own label, because an unlabelled number is a question
+// rather than an answer.
+//
+// `width` is what the flat board reserves for the cell, in `ch`, so a column
+// tracks the HUD's font rather than a pixel count that would stop fitting the
+// moment the font changed. It is sized to the *label* on a wide board and to
+// the value on a narrow one, which is why there are two.
+export const SCOREBOARD_COLUMNS = Object.freeze([
+  // Upstream shows the slot number only to an admin or a player holding
+  // `playerList` (ScoreboardRenderer.cxx:734). bzo shows it to everyone: a
+  // player id is already in every roster message a browser's dev tools can
+  // read, so hiding it on screen buys nothing and costs the one column that
+  // makes "kick 3" and "watch 3" say the same thing to everybody.
+  Object.freeze({ id: 'number', label: '#', short: '#', width: 3, narrowWidth: 3, align: 'right' }),
+  // bzo's own, with no upstream counterpart. A callsign can change between
+  // sessions and a BZID cannot, so it is what an admin needs to ban or trust
+  // an account rather than a name -- and it is the same number the list-server
+  // account page already shows them. Admin-only, enforced on the server: a
+  // non-admin's roster never carries the field at all.
+  Object.freeze({ id: 'bzid', label: 'BZID', short: 'BZID', width: 7, narrowWidth: 7, align: 'right' }),
+  Object.freeze({ id: 'player', label: 'Player', short: 'Player', width: 0, narrowWidth: 0, align: 'left' }),
+  // `getScore()` is `wins - losses` (Player.h:486), the number upstream puts
+  // in front of the record and sorts the board by. bzo sorted by it already
+  // and never showed it.
+  Object.freeze({ id: 'score', label: 'Score', short: 'Score', width: 5, narrowWidth: 5, align: 'right' }),
+  Object.freeze({ id: 'record', label: 'Kills-Deaths', short: 'K-D', width: 12, narrowWidth: 7, align: 'right' }),
+  // Upstream's second column, the head-to-head record against me. The first
+  // thing a narrow board gives up, because it is the only one here bzo added
+  // on top of upstream's own (issue #65).
+  Object.freeze({ id: 'tally', label: '1-on-1', short: '1-on-1', width: 7, narrowWidth: 7, align: 'right' }),
+]);
+
+// How much room the surface has, which is the only thing that decides what it
+// draws. Three tiers rather than a width in pixels, so the flat board and the
+// headset panel pick from the same short list instead of each inventing its
+// own cutoff.
+export const SCOREBOARD_TIER = Object.freeze({
+  // Everything. `#mainhud` sizes to its content above 900px, so an extra
+  // column widens the panel and costs the names nothing.
+  WIDE: 'wide',
+  // The panel is clamped to `35vw` and cannot grow, so the columns that are
+  // widest per unit of information go: the BZID an admin can read on a bigger
+  // screen, and the head-to-head tally. The headset panel is this tier too --
+  // a few hundred pixels, fixed.
+  MEDIUM: 'medium',
+  // A phone. The record goes as well, because `Score` is what the board is
+  // sorted by and says the same thing in a third of the width; upstream draws
+  // both because it has a whole screen to draw them on.
+  NARROW: 'narrow',
+});
+
+export function getScoreboardColumns({ tier = SCOREBOARD_TIER.WIDE, isAdmin = false } = {}) {
+  const wide = tier === SCOREBOARD_TIER.WIDE;
+  const narrow = tier === SCOREBOARD_TIER.NARROW;
+  return SCOREBOARD_COLUMNS.filter((column) => {
+    if (column.id === 'bzid') return isAdmin && wide;
+    if (column.id === 'tally') return wide;
+    if (column.id === 'record') return !narrow;
+    return true;
+  });
+}
+
+// The width and label a column takes at a given tier. Sized to the label where
+// the label is the wider of the two, which is the whole reason a wide board can
+// say `Kills-Deaths` and a narrow one says `K-D`.
+export function getScoreboardColumnLabel(column, tier) {
+  return tier === SCOREBOARD_TIER.WIDE ? column.label : column.short;
+}
+
+export function getScoreboardColumnWidth(column, tier) {
+  return tier === SCOREBOARD_TIER.WIDE ? column.width : column.narrowWidth;
 }
 
 // The "Kills" column ScoreboardRenderer draws beside "Score"
@@ -732,24 +830,46 @@ export function formatPersonalTally(player) {
   return `${player.localWins}~${player.localLosses}`;
 }
 
-// `compact` drops the head-to-head tally, the one field here with no upstream
-// obligation to stay -- everything else mirrors ScoreboardRenderer's own
-// columns, but a phone-width scoreboard has to give something up first
-// (issue #65).
-export function formatScoreboardStats(player, { compact = false } = {}) {
+// What one column says about one player. Every surface formats through this,
+// so the flat board and the headset cannot round or punctuate a cell
+// differently. An observer's are blank from `player` rightward -- upstream
+// wraps both its columns in `if (player->getTeam() != ObserverTeam)`
+// (ScoreboardRenderer.cxx:829) and draws the callsign alone, because a tank
+// that cannot kill or die has no score rather than a score of zero.
+export function formatScoreboardCell(player, columnId) {
+  if (columnId === 'number') return String(player.id ?? '');
+  if (columnId === 'bzid') return player.bzid ? String(player.bzid) : '';
   if (player.isObserver) return '';
-  const score = `${player.wins} / ${player.losses}`;
-  const stats = typeof player.rank === 'number'
-    ? `${formatRabbitRank(player.rank)} ${score}`
-    : score;
-  // Upstream draws this bracket whenever the world has teams, at 0 or not
-  // (ScoreboardRenderer.cxx:675-686). bzo draws it only once there is
-  // something to say, the same restraint the rank column already gets --
-  // a zero is the expected state for almost every row, not information.
-  const withTeamKills = player.tks > 0 ? `${stats} [${player.tks}]` : stats;
-  if (compact) return withTeamKills;
-  const tally = formatPersonalTally(player);
-  return tally ? `${withTeamKills}  ${tally}` : withTeamKills;
+  if (columnId === 'score') {
+    const score = `${(player.wins || 0) - (player.losses || 0)}`;
+    // Upstream puts the rank in front of the score, because the rank is what
+    // the board is sorted by on a Rabbit Chase world and a column nobody can
+    // see makes the order look arbitrary (ScoreboardRenderer.cxx:675).
+    return typeof player.rank === 'number' ? `${formatRabbitRank(player.rank)} ${score}` : score;
+  }
+  if (columnId === 'record') {
+    const record = `${player.wins || 0}-${player.losses || 0}`;
+    // Upstream draws this bracket whenever the world has teams, at 0 or not
+    // (ScoreboardRenderer.cxx:675-686). bzo draws it only once there is
+    // something to say -- a zero is the expected state for almost every row,
+    // not information.
+    return player.tks > 0 ? `${record} [${player.tks}]` : record;
+  }
+  if (columnId === 'tally') return formatPersonalTally(player);
+  return '';
+}
+
+// The columns right of the name as one string, for a surface that draws them
+// as one: the headset panel measures a single right-aligned run rather than
+// reserving a cell per column. Composed from the same list the flat board lays
+// out, so the two cannot disagree about what is shown or how it reads.
+export function formatScoreboardStats(player, options = {}) {
+  if (player.isObserver) return '';
+  return getScoreboardColumns(options)
+    .filter((column) => column.id === 'score' || column.id === 'record' || column.id === 'tally')
+    .map((column) => formatScoreboardCell(player, column.id))
+    .filter((cell) => cell !== '')
+    .join('  ');
 }
 
 // Rabbit Chase marks the rabbit's row so the scoreboard says who everyone is
@@ -855,6 +975,10 @@ export function buildScoreboardRows({
       wins: state.wins || 0,
       losses: state.losses || 0,
       tks: state.tks || 0,
+      // Present only when the server decided this viewer may see it -- a
+      // non-admin's roster never carries the field, so the column is empty
+      // rather than withheld here.
+      bzid: state.bzid ?? null,
       // The head-to-head record: my kills against this player and theirs
       // against me, tracked only for opponents (Player::localWins/
       // localLosses, playing.cxx:2556) -- and, on my own row, how many times
@@ -906,6 +1030,41 @@ export function buildScoreboardRows({
   return rows;
 }
 
+// One cell of the flat board, header or row alike, so a column's width and
+// alignment are stated once and cannot drift between the two. The widths live
+// on SCOREBOARD_COLUMNS in `ch`, which tracks the HUD's font size rather than
+// a pixel count that would stop fitting the moment the font changed. The name
+// column has no width: it takes what the others leave.
+function makeScoreboardCell(column, tier) {
+  const cell = document.createElement('span');
+  cell.className = `scoreboardCell scoreboardCell-${column.id}`;
+  const width = getScoreboardColumnWidth(column, tier);
+  if (width) {
+    cell.style.flex = `0 0 ${width}ch`;
+    cell.style.textAlign = column.align;
+  }
+  return cell;
+}
+
+// The header row, built from the same column list the rows are, so a column
+// can never be drawn without its label or labelled without being drawn.
+// Upstream labels three columns and leaves the rank, the score and the
+// team-kill bracket unnamed inside them; bzo names every column it draws,
+// short-form on a phone where the long labels would not fit.
+function writeScoreboardHeader(columns, rabbitChase, tier) {
+  const header = document.getElementById('scoreboardHeader');
+  if (!header) return;
+  header.innerHTML = '';
+  columns.forEach((column) => {
+    const cell = makeScoreboardCell(column, tier);
+    const label = getScoreboardColumnLabel(column, tier);
+    // The rank rides inside the score column on a Rabbit Chase world, as
+    // upstream draws it, so that is the one label the mode changes.
+    cell.textContent = column.id === 'score' && rabbitChase ? `Rank ${label}` : label;
+    header.appendChild(cell);
+  });
+}
+
 // The roster as the flat HUD draws it. Everything it needs arrives already
 // assembled, so this decides only how the rows look -- see the model builder in
 // `client.js`, which is the one entry point every repaint goes through.
@@ -920,20 +1079,31 @@ export function updateScoreboard({
   // inert.
   roamTargetId = null,
   onSelectRoamTarget = null,
+  // Whether this viewer is an admin, which decides only whether the BZID
+  // column is offered. The server is what actually withholds the value, so a
+  // client that lied here would draw an empty column.
+  isAdmin = false,
   // Seconds left on the match clock, extrapolated by the caller the same way
   // HUDRenderer does upstream; null with no clock configured, -1 while paused.
   timeLeft = null,
   gameOver = false,
 }) {
-  // A phone-width viewport gives up the head-to-head tally first -- the one
-  // field here bzo added on top of upstream's own columns, and so the first
-  // one it can afford to lose (issue #65). Matches the breakpoint the rest of
-  // the mobile layout already uses.
-  const compact = window.innerWidth <= 600;
+  // A narrow viewport gives up columns rather than squeezing them: a small
+  // screen's font is a far larger share of it, so the same six columns that
+  // read cleanly on a desktop would leave no room for the names they describe.
+  //
+  // The cutoffs are the panel's own, not the rest of the layout's. Above 900px
+  // `#mainhud` sizes to its content (styles.css), so a column widens the panel
+  // and costs the names nothing; below it the panel is clamped to `35vw` and
+  // cannot grow, so a column has to go instead. 600px is where `35vw` stops
+  // leaving a name room at all.
+  const tier = window.innerWidth > 900 ? SCOREBOARD_TIER.WIDE
+    : window.innerWidth > 600 ? SCOREBOARD_TIER.MEDIUM
+      : SCOREBOARD_TIER.NARROW;
   updateMatchClock(timeLeft, gameOver);
   updateTeamScoreboard(teamRows);
-  const statsHeader = document.getElementById('scoreboardStatsHeader');
-  if (statsHeader) statsHeader.textContent = getScoreboardStatsHeader(rabbitChase);
+  const columns = getScoreboardColumns({ tier, isAdmin });
+  writeScoreboardHeader(columns, rabbitChase, tier);
   const scoreboardList = document.getElementById('scoreboardList');
   if (!scoreboardList) return;
   scoreboardList.innerHTML = '';
@@ -1014,19 +1184,19 @@ export function updateScoreboard({
     rabbitSpan.style.color = player.rabbit ? colorToCSS(player.rabbit.color) : '';
     labelSpan.append(statusSpan, nameSpan, flagSpan, pausedSpan, micSpan, rabbitSpan);
 
-    const statsSpan = document.createElement('span');
-    statsSpan.className = 'scoreboardStats';
-    // `%2d%% %4d %3d-%-3d` on a Rabbit Chase world (ScoreboardRenderer.cxx:675):
-    // upstream puts the rank in front of the score, because the rank is what the
-    // board is sorted by and a column nobody can see makes the order look
-    // arbitrary.
-    //
-    // An observer gets neither column, which is upstream's own `if (player
-    // ->getTeam() != ObserverTeam)` around both (:829). It cannot kill or die, so
-    // `0 / 0` is the absence of a score rather than a score.
-    statsSpan.textContent = formatScoreboardStats(player, { compact });
-
-    entry.append(labelSpan, statsSpan);
+    // One cell per column, in the header's order. The name column holds the
+    // label assembled above; every other column asks `formatScoreboardCell`,
+    // which is also what the headset panel asks, so no surface can punctuate a
+    // number its own way.
+    columns.forEach((column) => {
+      const cell = makeScoreboardCell(column, tier);
+      if (column.id === 'player') {
+        cell.appendChild(labelSpan);
+      } else {
+        cell.textContent = formatScoreboardCell(player, column.id);
+      }
+      entry.appendChild(cell);
+    });
     scoreboardList.appendChild(entry);
   });
 }

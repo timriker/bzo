@@ -3015,6 +3015,57 @@ Upstream's clock (issue #66) and score limits (issue #67) -- see
   buttons above, all four of these are ordinary staged rows, flat and XR, the
   same shape as `shotMaxActive`.
 
+## Scoreboard columns
+
+One list in `public/hud.js` -- `SCOREBOARD_COLUMNS` -- decides what every
+surface draws and what each column is called. The flat board lays it out as
+flex tracks, the headset panel measures the same cells, and the header row is
+built from the same list, so a column cannot appear in one place under a name
+another place never uses. Every cell formats through `formatScoreboardCell`.
+
+Upstream draws three columns -- `Score`, ` Kills` and `Player`
+(`ScoreboardRenderer.cxx:36-41`) -- and packs the rank, the score, the record
+and the team-kill bracket into the first as a single `printf`. bzo splits them
+so each can carry its own label. Two columns differ from upstream on purpose:
+
+- **`#`, the player number, is shown to everyone.** Upstream shows the slot
+  number only to an admin or a player holding `playerList` (`:734`). A bzo
+  player id is already in every roster message a browser's dev tools can read,
+  so hiding it on screen buys nothing and costs the column that makes "kick 3"
+  and "watch 3" mean the same thing to everybody.
+- **`BZID` is bzo's own, and admin-only.** It has no upstream counterpart. A
+  callsign changes between sessions and a BZID does not, so it is what an
+  admin needs to act on an account rather than a name. The gate is the
+  server's: `getState(forAdmin)` omits the field entirely for everyone else,
+  and every roster broadcast goes through `broadcastPlayerRecord`, which sends
+  two payloads rather than one. A client that lied about being an admin would
+  draw an empty column.
+
+**Width decides what is drawn, and the widths that matter are the panel's.**
+`#mainhud` sizes to its content above 900px, so a column widens the panel and
+costs the names nothing; below that it is clamped to `35vw` and cannot grow.
+So the tiers in `SCOREBOARD_TIER` are 900px and 600px, not the 600px the rest
+of the mobile layout uses: `wide` draws everything, `medium` drops the BZID and
+the head-to-head tally, and `narrow` drops the record as well, because `Score`
+is what the board is sorted by and says the same thing in a third of the width.
+The headset panel is `medium`, being a few hundred fixed pixels. A column is
+sized to its *label* on a wide board and to its value on a narrow one, which is
+why `Kills-Deaths` can be spelled out on one and is `K-D` on the other.
+
+The header shares the rows' font rather than the smaller one the other headings
+use. The widths are in `ch`, which is font-relative, so a header set one size
+down would reserve narrower tracks than the rows it labels and every number
+would sit left of its own heading.
+
+**The team board is still two items**, a name and a score, not a track list --
+its name takes the free space and pushes the score to the right edge. Its rows
+are drawn from the *radar's* colour table (`Team::radarColor`, `Team.cxx:30`)
+for the radar's own reason: the colours are lifted so a team reads against a
+dark panel, and this panel is darker still. A base's square on the radar comes
+from the same table, so a team's row and its base say the same colour. Each row
+names the colour alone -- `Red`, not `Red Team` -- because every row is a team
+and the heading says so; upstream names them not at all.
+
 ## Team scores
 
 In team mode the server keeps a score per colour team, exactly as bzfs does:
