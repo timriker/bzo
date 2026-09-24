@@ -3304,7 +3304,6 @@ function requestMapImportForView(file, sequenceId, onSuccess, onFailure) {
 
 // Camera mode
 let cameraMode = 'first-person'; // 'first-person', 'third-person', or 'overview'
-let lastCameraMode = 'first-person';
 let entryDialogReturnCameraMode = 'first-person';
 // Mirrors entryDialogReturnCameraMode, for the XR menu's own "Join Game" /
 // "Player Options" screen (issue #68): it is the one place XR previews a team
@@ -3417,6 +3416,16 @@ function updateDestructCountdown() {
 }
 let playerPausedSpheres = new Map(); // Map of playerId to its paused sphere
 let deathFollowTarget = null;
+// Whether the death camera owns the view. Not `deathFollowTarget` alone: an
+// explosion does not always leave a body to chase, and a death with no debris
+// still watches the spot it happened from `deathFollowAnchor`. Set on the local
+// player's own death and cleared by the respawn, so `cameraMode` underneath
+// stays exactly what the player chose.
+let deathCameraActive = false;
+
+function isDeathCameraActive() {
+  return deathCameraActive;
+}
 
 // Computed width resolves the viewport units even while the box is hidden for
 // the death camera, which a layout rect would report as zero.
@@ -3465,7 +3474,7 @@ function updateObserverHudVisibility() {
 function updateDeathCameraHudVisibility() {
   const controlBox = document.getElementById('controlBox');
   if (!controlBox) return;
-  const inDeathCamera = cameraMode === 'overview' && !!deathFollowTarget;
+  const inDeathCamera = isDeathCameraActive();
   controlBox.style.display = inDeathCamera ? 'none' : '';
 }
 
@@ -6322,6 +6331,7 @@ function handleServerMessage(message) {
         localTeleportCooldownUntil = 0;
         suppressLocalTeleportFxUntil = 0;
         clearJumpPredictionDebug(myTank);
+        deathCameraActive = false;
         deathFollowTarget = null;
         renderManager.deathFollowTarget = null;
         renderManager.deathFollowAnchor = null;
@@ -7097,19 +7107,19 @@ function handlePlayerHit(message) {
         0, [deathPrefix, describePlayer(message.shooterId, { flag: shooterFlag })],
         DEATH_ALERT_SECONDS, true);
     }
-    // Switch to overview mode and hide crosshair
-    lastCameraMode = cameraMode;
-    cameraMode = 'overview';
-    // Set camera to initial overview position above/behind victim tank
+    // The death camera is asked for while there is a body to watch, and
+    // `cameraMode` is not touched at all: it is still whatever the player
+    // chose, waiting under the death camera for the respawn to resume it. It
+    // used to be overwritten with 'overview', which is why a player who had
+    // *chosen* Overview never got it back -- the restore could not tell that
+    // apart from the death camera's own doing and bailed to first person.
+    // Start it above and behind the body rather than letting the first frame
+    // lerp in from wherever the tank's own view was standing.
     if (victimTank) {
       const vp = victimTank.position;
       camera.position.set(vp.x, vp.y + 10, vp.z + 22);
       camera.up.set(0, 1, 0);
       camera.lookAt(vp.x, vp.y, vp.z);
-    } else {
-      camera.position.set(0, 15, 20);
-      camera.up.set(0, 1, 0);
-      camera.lookAt(0, 0, 0);
     }
     const crosshair = document.getElementById('crosshair');
     if (crosshair) crosshair.style.display = 'none';
@@ -7213,6 +7223,7 @@ function handlePlayerHit(message) {
       victimTank.position, victimTank, deathSound
     );
     if (message.victimId === myPlayerId) {
+      deathCameraActive = true;
       deathFollowTarget = explosionResult?.followTarget || null;
       renderManager.deathFollowTarget = deathFollowTarget;
       renderManager.deathFollowAnchor = victimTank.position.clone();
@@ -7228,6 +7239,7 @@ function handlePlayerRespawn(message) {
   if (tank) {
     clearJumpPredictionDebug(tank);
     if (message.player.id === myPlayerId) {
+      deathCameraActive = false;
       deathFollowTarget = null;
       renderManager.deathFollowTarget = null;
       renderManager.deathFollowAnchor = null;
@@ -7290,8 +7302,9 @@ function handlePlayerRespawn(message) {
       sendToServer({ type: 'pause' });
     }
     showMessage('You respawned!');
-    // Restore normal view and crosshair
-    cameraMode = lastCameraMode === 'overview' ? 'first-person' : lastCameraMode;
+    // Nothing to restore: `cameraMode` was never taken away. Clearing the body
+    // is what ends the death camera, and the view the player chose -- Overview
+    // included -- is the one they come back to.
     const crosshair = document.getElementById('crosshair');
     if (crosshair) crosshair.style.display = '';
   }
@@ -14798,13 +14811,30 @@ function animate(frameTime) {
   // and third-person cameras on the phantom tank, not the roam camera's own
   // framing, so they read exactly as a playing tank's own choice would.
   renderManager.updateCamera({
-    cameraMode: isPhantomDriving()
-      ? (roamView === ROAM_VIEW.DRIVE_FP ? 'first-person' : 'third-person')
-      : (isObserver() ? 'roam' : cameraMode),
+    // The entry dialog frames the world whoever is behind it (issue #107):
+    // `showEntryDialog` puts the camera in overview, and an observer would
+    // otherwise keep the roaming camera and leave the map picker previewing
+    // each map from wherever the last one was being watched from. The dialog
+    // owns the view while it is open and gives it back on close, the same way
+    // it already gives back `cameraMode`.
+    cameraMode: isEntryDialogOpen()
+      ? 'overview'
+      // While there is a body to watch, and not a frame longer: the death
+      // camera is a mode of its own rather than a second meaning for Overview,
+      // so `cameraMode` underneath is untouched and the respawn simply resumes
+      // it. The entry dialog still wins -- a player picking a team is choosing
+      // where to go next, not watching what just happened.
+      : isDeathCameraActive()
+        ? 'death'
+        : isPhantomDriving()
+          ? (roamView === ROAM_VIEW.DRIVE_FP ? 'first-person' : 'third-person')
+          : (isObserver() ? 'roam' : cameraMode),
     myTank,
     playerRotation,
     deathFollowTarget,
-    roamFraming: (isObserver() && !isPhantomDriving()) ? getRoamFraming() : null,
+    roamFraming: (!isEntryDialogOpen() && isObserver() && !isPhantomDriving())
+      ? getRoamFraming()
+      : null,
   });
   // After the camera, not with the rest of the flag work: a flag turns to face
   // wherever the viewer ended up this frame, and in a session that is decided by

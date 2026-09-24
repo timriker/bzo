@@ -2070,6 +2070,78 @@ it says no in VR -- a paired mouse cannot aim there -- and no while the
 on-screen controls are up, because those own the whole screen and a tap that
 misses the fire button is a miss, not a shot.
 
+## The Overview camera frames the world
+
+`C` cycles a playing tank through first person, third person and Overview.
+**All three are bzo's own.** `Roaming::setMode` (`Roaming.cxx:66`) refuses
+roaming for anyone who is not an observer -- *"don't allow roaming for
+non-observers"* -- so upstream's playing tank has first person and nothing
+else. There is no upstream behaviour to mirror here, which makes this one of
+the few places bzo is choosing rather than matching.
+
+Overview used to be `camera.position.set(0, 15, 20)` looking at the origin:
+fifteen units up and twenty back whatever the map, which is one building's
+worth of a 280-unit world and a patch of grass on an 800-unit one (issue #107).
+`_frameWorldCamera` replaces it, and the entry dialog's backdrop and the map
+picker's preview read the same answer -- `updateCamera` is asked for Overview
+whenever the dialog is open, whoever is behind it, so an observer's roaming
+camera does not leave the picker previewing each map from wherever the last one
+was being watched from.
+
+**Tilted, not straight down.** The radar already draws this map from directly
+above, with every tank on it and three zooms to choose from; a flat overview
+would be a worse radar taking the whole screen. What the radar cannot show is
+height, which is most of what a bzo map is.
+
+**The distance is fitted, not calculated.** A tilted camera has no single
+closed form: the near edge of the map is a fraction of the far edge's distance
+away and subtends far more, so the formula that works looking straight down
+overflows the bottom of the frame as soon as the camera leans -- which it
+visibly did. The four ground corners are bisected into the frustum instead,
+exact and cheap at once per map and aspect, and cached on both.
+
+**Both axes, and they do not agree.** bzo fixes the *horizontal* field of view
+at BZFlag's 60 degrees and derives the vertical from the aspect
+(`_getVerticalFovForAspect`), so the vertical narrows as a screen widens and
+depth is the axis a view from above spends most of. A 16:9 desktop is bound by
+the vertical and a phone in portrait by the horizontal: the same 280-unit map
+wants 356 units of altitude on one and 275 on the other.
+
+The far plane is already enough. `_ensureMountainViewDistance` stretches it to
+`3 x mapSize + 200` for the mountains, and the furthest corner of a framed
+world is comfortably inside that at every size and aspect -- 1642 against 2600
+on an 800-unit map.
+
+**Clouds are hidden for this one view.** The server puts the lowest cloud a
+jump above the tallest obstacle (`generateClouds`), which is tens of units
+where this camera is hundreds, so the layer sits between the eye and the map it
+is there to show. Every other camera looks at a cloud from underneath, where it
+is scenery.
+
+**XR is deliberately left alone.** Moving the camera does nothing in a session
+-- bzo moves `worldGroup` and not the camera, because the pose owns the camera
+-- so a headset keeps whatever view the session had. The right answer there is
+not this view at altitude but the world on a tabletop in AR, which is its own
+piece of work; this view at least does not move, so nothing is flown anywhere.
+
+**The death camera is its own mode, and that is what makes Overview
+reliable.** While the two shared the name, dying had to overwrite `cameraMode`
+with `'overview'` and stash the old value -- and the restore on respawn could
+not tell a player who had *chosen* Overview from one who had been put there by
+dying, so it bailed to first person and a player in Overview never got their
+view back.
+
+Nothing overwrites `cameraMode` now. `deathCameraActive` is set on the local
+player's own death and cleared by the respawn, `updateCamera` is asked for
+`'death'` for exactly that long, and whatever the player chose is still there
+underneath when the body is released. The flag is its own rather than
+`deathFollowTarget` alone because an explosion does not always leave a body to
+chase: a death with no debris still watches the spot it happened from
+`deathFollowAnchor`, and gating on the debris would have dropped those deaths
+back into first person mid-explosion. The entry dialog still outranks it -- a
+player picking a team is choosing where to go next, not watching what just
+happened.
+
 ## The ground follows the eye
 
 The ground is not one enormous quad. It mirrors `drawGroundCentered()`

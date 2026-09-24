@@ -1636,6 +1636,8 @@ class RenderManager {
     this.sunGlowMesh = null;
     this.moonMesh = null;
     this.clouds = [];
+    // Set by the world overview, which stands above the cloud layer.
+    this.cloudsHiddenForOverview = false;
     this.skyBeacons = [];
     this.skyBeaconGeometry = null;
     this.skyBeaconTopY = 0;
@@ -2476,6 +2478,96 @@ class RenderManager {
       this.gridHelper.material?.dispose();
     }
     this.gridHelper = null;
+  }
+
+  // The world-framing overview stands above the weather -- the server puts the
+  // lowest cloud a jump above the tallest obstacle (`generateClouds`), which is
+  // tens of units where this camera is hundreds -- so the layer sits between
+  // the eye and the map it is there to show. Hidden for that one view and for
+  // nothing else: a cloud is scenery from underneath, which is where every
+  // other camera in the game looks at it from.
+  _setCloudsHidden(hidden) {
+    if (this.cloudsHiddenForOverview === hidden) return;
+    this.cloudsHiddenForOverview = hidden;
+    this.clouds.forEach((cloud) => { cloud.visible = !hidden; });
+  }
+
+  // Where a camera has to stand to hold the whole world in frame, and what it
+  // should be looking at: the answer the entry dialog's backdrop and the map
+  // picker's preview both want, since neither has a tank to frame instead
+  // (issue #107).
+  //
+  // Tilted rather than straight down, for two reasons. The radar already draws
+  // this map from directly above, with every tank on it and three zooms to pick
+  // from -- a flat overview would be a worse radar that took the whole screen.
+  // What the radar cannot show is height, which is most of what a bzo map is:
+  // pyramids, stacked boxes, a tank on a roof.
+  //
+  // The distance is found by fitting the world's four ground corners inside the
+  // frustum rather than by a formula, because a tilted camera has no single
+  // one: the near edge of the map is a fraction of the far edge's distance away
+  // and subtends far more, so the closed form that works looking straight down
+  // overflows the bottom of the frame as soon as the camera leans. Bisection
+  // over the distance is exact, and cheap enough at once per map and aspect --
+  // which is also why the answer is cached, since neither changes per frame.
+  //
+  // Both axes matter and they do not ask for the same thing. bzo fixes the
+  // *horizontal* field of view at BZFlag's 60 degrees and derives the vertical
+  // from the aspect (`_getVerticalFovForAspect`), so the vertical narrows as a
+  // screen widens -- and depth is the axis a view from above spends most of. A
+  // 16:9 desktop is bound by the vertical, a phone held in portrait by the
+  // horizontal.
+  _frameWorldCamera({ margin = 1.06, pitchDegrees = 52 } = {}) {
+    const mapSize = this._inferMapSizeFromGround();
+    const aspect = this.camera?.aspect > 0 ? this.camera.aspect : (16 / 9);
+    const cacheKey = `${mapSize}:${aspect.toFixed(4)}:${margin}:${pitchDegrees}`;
+    if (this.worldFramingCache?.key === cacheKey) return this.worldFramingCache.value;
+
+    const half = (mapSize * margin) / 2;
+    const tanHalfH = Math.tan(THREE.MathUtils.degToRad(BZFlag_DEFAULT_HORIZONTAL_FOV) / 2);
+    const tanHalfV = Math.tan(THREE.MathUtils.degToRad(this._getVerticalFovForAspect(aspect)) / 2);
+    const pitch = THREE.MathUtils.degToRad(pitchDegrees);
+    const sinPitch = Math.sin(pitch);
+    const cosPitch = Math.cos(pitch);
+
+    // The camera sits south of the middle and looks at it, so the map is
+    // oriented the way the compass and the radar already read it: north away.
+    // Its own axes, for putting a world point in front of it -- forward is the
+    // way it looks, up is perpendicular to that in the same vertical plane.
+    const fits = (distance) => {
+      const eyeY = distance * sinPitch;
+      const eyeZ = distance * cosPitch;
+      for (const cornerX of [-half, half]) {
+        for (const cornerZ of [-half, half]) {
+          const dx = cornerX;
+          const dy = -eyeY;
+          const dz = cornerZ - eyeZ;
+          // Depth along the view direction (0, -sin, -cos), and height along
+          // the camera's own up (0, cos, -sin).
+          const depth = (dy * -sinPitch) + (dz * -cosPitch);
+          if (depth <= 0) return false;
+          const up = (dy * cosPitch) + (dz * -sinPitch);
+          if (Math.abs(dx) > depth * tanHalfH) return false;
+          if (Math.abs(up) > depth * tanHalfV) return false;
+        }
+      }
+      return true;
+    };
+
+    let low = 1;
+    let high = Math.max(mapSize * 8, 64);
+    if (!fits(high)) high = mapSize * 40;
+    for (let i = 0; i < 40; i += 1) {
+      const mid = (low + high) / 2;
+      if (fits(mid)) high = mid; else low = mid;
+    }
+    const distance = high;
+    const value = {
+      eye: new THREE.Vector3(0, distance * sinPitch, distance * cosPitch),
+      look: new THREE.Vector3(0, 0, 0),
+    };
+    this.worldFramingCache = { key: cacheKey, value };
+    return value;
   }
 
   _inferMapSizeFromGround() {
@@ -5904,6 +5996,10 @@ class RenderManager {
         'cloud',
       );
       cloud.position.set(cloudData.x, cloudData.y, cloudData.z);
+      // A world loaded while the overview is up -- the map picker cycling
+      // through maps behind the entry dialog -- would otherwise arrive with
+      // its weather showing over the map the picker is there to show.
+      cloud.visible = !this.cloudsHiddenForOverview;
       cloud.userData.velocity = 0.5 + Math.random() * 1.0;
       cloud.userData.startX = cloudData.x;
 
@@ -9505,6 +9601,10 @@ class RenderManager {
   }
 
   updateCamera({ cameraMode, myTank, playerRotation, deathFollowTarget, roamFraming }) {
+    // Cleared here rather than in each branch that is not the world overview,
+    // so a camera that never thinks about clouds cannot leave them hidden. The
+    // one branch that wants them gone sets it again below.
+    this._setCloudsHidden(false);
     if (!this.camera) return;
     // Every roaming view resolves to an eye and a look point in client.js, so
     // the rigs stay with the game state and this only has to apply one.
@@ -9530,7 +9630,15 @@ class RenderManager {
       this.camera.lookAt(look.x, look.y, look.z);
       return;
     }
-    if (cameraMode === 'overview') {
+    // Watching your own tank come apart. Its own mode rather than a second
+    // meaning for Overview: while the two shared one, dying had to overwrite
+    // `cameraMode` and the restore on respawn could not tell a player who had
+    // *chosen* Overview from one who had been put there by dying, so it bailed
+    // to first person and a player in Overview never got their view back
+    // (issue #107). Nothing overwrites `cameraMode` now -- the death camera is
+    // asked for while `deathFollowTarget` is set and stops being asked for when
+    // it clears, and whatever the player had chosen is still there underneath.
+    if (cameraMode === 'death') {
       const target = deathFollowTarget || this.deathFollowTarget;
       const focusPoint = target && target.parent
         ? target.getWorldPosition(new THREE.Vector3())
@@ -9538,49 +9646,71 @@ class RenderManager {
       if (target && target.parent) {
         this.deathFollowAnchor = target.getWorldPosition(new THREE.Vector3());
       }
-      if (focusPoint) {
-        const velocity = target && target.parent ? (target.velocity || new THREE.Vector3()) : new THREE.Vector3();
-        if (xrState.enabled) {
-          // A headset player watches from where they died, and the world does
-          // not move at all: it is left exactly where first person put it,
-          // which is the spot the tank was standing on, and the explosion
-          // happens around the player.
-          //
-          // The chase below is bzo's own -- upstream has no death camera, the
-          // view simply stays where the tank was -- and what it chases is the
-          // body, a piece of debris with its own velocity that tumbles and
-          // bounces across the map. Turning that into world motion is precisely
-          // the movement a session must never make: the player is swung after
-          // something that is itself being thrown. On a monitor it reads as a
-          // camera; on a head it reads as being thrown too.
-          return;
-        }
-        this.worldGroup.position.set(0, 0, 0);
-        this.worldGroup.quaternion.identity();
-        const followOffset = velocity.lengthSq() > 0.1
-          ? velocity.clone().normalize().multiplyScalar(-20).add(new THREE.Vector3(0, 10, 0))
-          : new THREE.Vector3(0, 10, 22);
-        const desiredPosition = focusPoint.clone().add(followOffset);
-        if (!this.deathCameraLogged) {
-          const dl = window.gameDebugLog;
-          if (dl) {
-            dl(`deathCam lookAt=${focusPoint.x.toFixed(1)},${focusPoint.y.toFixed(1)},${focusPoint.z.toFixed(1)} camPos=${desiredPosition.x.toFixed(1)},${desiredPosition.y.toFixed(1)},${desiredPosition.z.toFixed(1)} debrisVel=${velocity.x.toFixed(1)},${velocity.y.toFixed(1)},${velocity.z.toFixed(1)}`, 'render');
-          }
-          this.deathCameraLogged = true;
-        }
-        this.camera.position.lerp(desiredPosition, 0.045);
-        this.camera.up.set(0, 1, 0);
-        this.camera.lookAt(focusPoint);
+      // No body to watch -- it has been cleaned up, or there never was one.
+      // Leave the camera wherever it is rather than throwing it somewhere: the
+      // respawn is a frame or two away and will place it.
+      if (!focusPoint) return;
+      const velocity = target && target.parent ? (target.velocity || new THREE.Vector3()) : new THREE.Vector3();
+      if (xrState.enabled) {
+        // A headset player watches from where they died, and the world does
+        // not move at all: it is left exactly where first person put it,
+        // which is the spot the tank was standing on, and the explosion
+        // happens around the player.
+        //
+        // The chase below is bzo's own -- upstream has no death camera, the
+        // view simply stays where the tank was -- and what it chases is the
+        // body, a piece of debris with its own velocity that tumbles and
+        // bounces across the map. Turning that into world motion is precisely
+        // the movement a session must never make: the player is swung after
+        // something that is itself being thrown. On a monitor it reads as a
+        // camera; on a head it reads as being thrown too.
         return;
       }
+      this.worldGroup.position.set(0, 0, 0);
+      this.worldGroup.quaternion.identity();
+      const followOffset = velocity.lengthSq() > 0.1
+        ? velocity.clone().normalize().multiplyScalar(-20).add(new THREE.Vector3(0, 10, 0))
+        : new THREE.Vector3(0, 10, 22);
+      const desiredPosition = focusPoint.clone().add(followOffset);
+      if (!this.deathCameraLogged) {
+        const dl = window.gameDebugLog;
+        if (dl) {
+          dl(`deathCam lookAt=${focusPoint.x.toFixed(1)},${focusPoint.y.toFixed(1)},${focusPoint.z.toFixed(1)} camPos=${desiredPosition.x.toFixed(1)},${desiredPosition.y.toFixed(1)},${desiredPosition.z.toFixed(1)} debrisVel=${velocity.x.toFixed(1)},${velocity.y.toFixed(1)},${velocity.z.toFixed(1)}`, 'render');
+        }
+        this.deathCameraLogged = true;
+      }
+      this.camera.position.lerp(desiredPosition, 0.045);
+      this.camera.up.set(0, 1, 0);
+      this.camera.lookAt(focusPoint);
+      return;
+    }
+
+    if (cameraMode === 'overview') {
       this.deathFollowTarget = null;
       this.deathFollowAnchor = null;
       this.deathCameraLogged = false;
       this.worldGroup.position.set(0, 0, 0);
       this.worldGroup.quaternion.identity();
-      this.camera.position.set(0, 15, 20);
-      this.camera.up.set(0, 1, 0);
-      this.camera.lookAt(0, 0, 0);
+      // Nothing to frame but the world itself: the entry dialog's backdrop, the
+      // map picker's preview, and the player's own third camera mode, which is
+      // what `_frameWorldCamera` is for. It used to be `(0, 15, 20)` looking at
+      // the origin, which was fifteen units up and twenty back whatever the map
+      // -- one building's worth of a 280-unit world and a patch of grass on an
+      // 800-unit one (issue #107).
+      //
+      // Left alone in a headset, where moving the camera does nothing anyway:
+      // bzo moves `worldGroup` and not the camera in a session, because the
+      // pose owns the camera. The right XR answer is not this view at altitude
+      // but the world on a tabletop in AR, which is its own piece of work --
+      // and this view at least does not move, so a headset sitting where the
+      // session put it is looking at the map rather than being flown over it.
+      if (!xrState.enabled) {
+        this._setCloudsHidden(true);
+        const { eye, look } = this._frameWorldCamera();
+        this.camera.position.copy(eye);
+        this.camera.up.set(0, 1, 0);
+        this.camera.lookAt(look);
+      }
       return;
     }
 
