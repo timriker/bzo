@@ -496,6 +496,9 @@ with no internet route, must still load. Three.js is mounted from the installed
 `node_modules/three` at `/vendor/three/`, so `package.json` is the only place its
 version appears.
 
+`docs/tutorial-plan.md` is the plan for what an installed client does when the
+server is unreachable, and for tutorial levels built on top of that.
+
 ### Layout
 
 | Path | Role |
