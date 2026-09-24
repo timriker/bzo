@@ -6,6 +6,39 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
 
 ## [Unreleased]
 
+## [1.2.58] - 2026-09-24
+
+### Added
+- `/mv` takes an exact angle as well as a compass point, so the tail of a Share
+  View Link pastes straight into it: `?pos=-320.0,0.0,-310.3,-91.3` becomes
+  `/mv -320.0,0.0,-310.3,-91.3`. The number is bzo's own rotation in degrees,
+  which is what the link writes -- not a compass bearing, so the two agree at 0
+  (north) and 180 (south) and disagree at the quarters. The reply still names
+  the facing the tank ended up with, so a number that meant the other thing
+  says so in the answer.
+
+### Changed
+- The Overview camera frames the whole map instead of parking fifteen units up
+  and twenty back from the origin whatever the world -- one building's worth of
+  a 280-unit map and a patch of grass on an 800-unit one. The entry dialog's
+  backdrop and the map picker's preview read the same framing, so choosing a
+  map now shows you the map. Tilted rather than overhead, because the radar
+  already draws this map from above and what it cannot draw is height.
+- Clouds are hidden while the Overview camera is up. The lowest cloud sits a
+  jump above the tallest obstacle, which is tens of units where that camera is
+  hundreds, so the layer stood between the eye and the map.
+- A grab, a drop and a theft say what happened once, in the coloured notice
+  every player gets, instead of following it with a flat grey `local:` copy
+  addressed to the player it happened to. Pausing reads the same way for
+  everybody now, your own pause included. A bad flag still says how this world
+  lets you put it down, since nobody else's line carries that.
+
+### Fixed
+- Dying no longer costs you the Overview camera. The death camera used to share
+  Overview's name, so the restore on respawn could not tell a player who had
+  chosen Overview from one who had been put there by dying, and bailed to first
+  person. It is its own camera now and nothing overwrites the view you picked.
+
 ## [1.2.57] - 2026-09-24
 
 ### Added
