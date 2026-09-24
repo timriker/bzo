@@ -1,0 +1,7153 @@
+# Tricolor version 2
+# A CTF map for three teams, each with a castle. Symmetric.
+# Copyright 2009 - The Purple Panzer released as Public Domain
+# https://www.bentz-engineering.com/bz/MyMaps.html
+
+options
+  -set _explodeTime 2
+  -set _latitude 41.341799
+  -set _longitude -71.938799
+  -set _rainRoofs 2
+  -set _wingsJumpCount 10
+  -set _mGunAdLife 0.8
+  -set _mGunAdRate 30
+  -set _mGunAdVel 10
+  -set _wingsJumpCount 12
+  -set _noClimb 0
+  -set _wallHeight 0
+  -set _drawClouds 0
+  -set _drawGroundLights 0
+  -set _wallHeight 0
+end
+world
+  size 430
+noWalls
+end
+physics
+  name Pyrs
+  death You've gone too far; you're dead.
+end
+####################### Start of include file includes/spawnpod.txt#######################
+material
+  name PyrWalls
+  diffuse 0.75 0.75 0.75 0.75
+  addtexture pyrwall.png
+end
+
+
+define spawnpod
+  mesh
+  # faces = 8
+  # checks = 0
+  # vertices = 5
+  # normals = 0
+  # texcoords = 0
+  # mins = -1 -1 0
+  # maxs = 1 1 1
+    driveThrough
+    vertex 0.00000000 0.00000000 1.00000000
+    vertex -1.00000000 -1.00000000 0.00000000
+    vertex -1.00000000 1.00000000 0.00000000
+    vertex 1.00000000 1.00000000 0.00000000
+    vertex 1.00000000 -1.00000000 0.00000000
+    face
+      vertices 0 1 2
+      matref PyrWalls
+      passable
+    endface
+    face
+      vertices 0 2 3
+      matref PyrWalls
+      passable
+    endface
+    face
+      vertices 0 3 4
+      matref PyrWalls
+      passable
+    endface
+    face
+      vertices 0 4 1
+      matref PyrWalls
+      passable
+    endface
+    face
+      vertices 2 1 0
+      matref PyrWalls
+    endface
+    face
+      vertices 3 2 0
+      matref PyrWalls
+    endface
+    face
+      vertices 4 3 0
+      matref PyrWalls
+    endface
+    face
+      vertices 1 4 0
+      matref PyrWalls
+    endface
+  end
+enddef
+
+#######################   End of include file includes/spawnpod.txt#######################
+arc
+ divisions 360
+ shift 0 0 0
+ size 432.000000 432.000000 5.000000
+ ratio 0.005
+ texture wall
+end
+material
+  name hillside
+  texture std_ground
+  notexalpha
+end
+meshpyr
+  shift 550 97 0
+  size 128.944084 128.944084 60.000000
+  rotation 10.000000
+phydrv Pyrs
+  shootthrough
+  noradar
+  color 0.000000 0.000000 0.000000 0.000000
+end
+meshpyr
+  shift 525 191 0
+  size 128.944084 128.944084 60.000000
+  rotation 20.000000
+phydrv Pyrs
+  shootthrough
+  noradar
+  color 0.000000 0.000000 0.000000 0.000000
+end
+meshpyr
+  shift 484 279 0
+  size 128.944084 128.944084 60.000000
+  rotation 30.000000
+phydrv Pyrs
+  shootthrough
+  noradar
+  color 0.000000 0.000000 0.000000 0.000000
+end
+meshpyr
+  shift 428 359 0
+  size 128.944084 128.944084 60.000000
+  rotation 40.000000
+phydrv Pyrs
+  shootthrough
+  noradar
+  color 0.000000 0.000000 0.000000 0.000000
+end
+meshpyr
+  shift 359 428 0
+  size 128.944084 128.944084 60.000000
+  rotation 50.000000
+phydrv Pyrs
+  shootthrough
+  noradar
+  color 0.000000 0.000000 0.000000 0.000000
+end
+meshpyr
+  shift 279 484 0
+  size 128.944084 128.944084 60.000000
+  rotation 60.000000
+phydrv Pyrs
+  shootthrough
+  noradar
+  color 0.000000 0.000000 0.000000 0.000000
+end
+meshpyr
+  shift 191 525 0
+  size 128.944084 128.944084 60.000000
+  rotation 70.000000
+phydrv Pyrs
+  shootthrough
+  noradar
+  color 0.000000 0.000000 0.000000 0.000000
+end
+meshpyr
+  shift 97 550 0
+  size 128.944084 128.944084 60.000000
+  rotation 80.000000
+phydrv Pyrs
+  shootthrough
+  noradar
+  color 0.000000 0.000000 0.000000 0.000000
+end
+meshpyr
+  shift 0 559 0
+  size 128.944084 128.944084 60.000000
+  rotation 90.000000
+phydrv Pyrs
+  shootthrough
+  noradar
+  color 0.000000 0.000000 0.000000 0.000000
+end
+meshpyr
+  shift -97 550 0
+  size 128.944084 128.944084 60.000000
+  rotation 100.000000
+phydrv Pyrs
+  shootthrough
+  noradar
+  color 0.000000 0.000000 0.000000 0.000000
+end
+meshpyr
+  shift -191 525 0
+  size 128.944084 128.944084 60.000000
+  rotation 110.000000
+phydrv Pyrs
+  shootthrough
+  noradar
+  color 0.000000 0.000000 0.000000 0.000000
+end
+meshpyr
+  shift -279 484 0
+  size 128.944084 128.944084 60.000000
+  rotation 120.000000
+phydrv Pyrs
+  shootthrough
+  noradar
+  color 0.000000 0.000000 0.000000 0.000000
+end
+meshpyr
+  shift -359 428 0
+  size 128.944084 128.944084 60.000000
+  rotation 130.000000
+phydrv Pyrs
+  shootthrough
+  noradar
+  color 0.000000 0.000000 0.000000 0.000000
+end
+meshpyr
+  shift -428 359 0
+  size 128.944084 128.944084 60.000000
+  rotation 140.000000
+phydrv Pyrs
+  shootthrough
+  noradar
+  color 0.000000 0.000000 0.000000 0.000000
+end
+meshpyr
+  shift -484 279 0
+  size 128.944084 128.944084 60.000000
+  rotation 150.000000
+phydrv Pyrs
+  shootthrough
+  noradar
+  color 0.000000 0.000000 0.000000 0.000000
+end
+meshpyr
+  shift -525 191 0
+  size 128.944084 128.944084 60.000000
+  rotation 160.000000
+phydrv Pyrs
+  shootthrough
+  noradar
+  color 0.000000 0.000000 0.000000 0.000000
+end
+meshpyr
+  shift -550 97 0
+  size 128.944084 128.944084 60.000000
+  rotation 170.000000
+phydrv Pyrs
+  shootthrough
+  noradar
+  color 0.000000 0.000000 0.000000 0.000000
+end
+meshpyr
+  shift -559 0 0
+  size 128.944084 128.944084 60.000000
+  rotation 180.000000
+phydrv Pyrs
+  shootthrough
+  noradar
+  color 0.000000 0.000000 0.000000 0.000000
+end
+meshpyr
+  shift -550 -97 0
+  size 128.944084 128.944084 60.000000
+  rotation 190.000000
+phydrv Pyrs
+  shootthrough
+  noradar
+  color 0.000000 0.000000 0.000000 0.000000
+end
+meshpyr
+  shift -525 -191 0
+  size 128.944084 128.944084 60.000000
+  rotation 200.000000
+phydrv Pyrs
+  shootthrough
+  noradar
+  color 0.000000 0.000000 0.000000 0.000000
+end
+meshpyr
+  shift -484 -279 0
+  size 128.944084 128.944084 60.000000
+  rotation 210.000000
+phydrv Pyrs
+  shootthrough
+  noradar
+  color 0.000000 0.000000 0.000000 0.000000
+end
+meshpyr
+  shift -428 -359 0
+  size 128.944084 128.944084 60.000000
+  rotation 220.000000
+phydrv Pyrs
+  shootthrough
+  noradar
+  color 0.000000 0.000000 0.000000 0.000000
+end
+meshpyr
+  shift -359 -428 0
+  size 128.944084 128.944084 60.000000
+  rotation 230.000000
+phydrv Pyrs
+  shootthrough
+  noradar
+  color 0.000000 0.000000 0.000000 0.000000
+end
+meshpyr
+  shift -279 -484 0
+  size 128.944084 128.944084 60.000000
+  rotation 240.000000
+phydrv Pyrs
+  shootthrough
+  noradar
+  color 0.000000 0.000000 0.000000 0.000000
+end
+meshpyr
+  shift -191 -525 0
+  size 128.944084 128.944084 60.000000
+  rotation 250.000000
+phydrv Pyrs
+  shootthrough
+  noradar
+  color 0.000000 0.000000 0.000000 0.000000
+end
+meshpyr
+  shift -97 -550 0
+  size 128.944084 128.944084 60.000000
+  rotation 260.000000
+phydrv Pyrs
+  shootthrough
+  noradar
+  color 0.000000 0.000000 0.000000 0.000000
+end
+meshpyr
+  shift 0 -559 0
+  size 128.944084 128.944084 60.000000
+  rotation 270.000000
+phydrv Pyrs
+  shootthrough
+  noradar
+  color 0.000000 0.000000 0.000000 0.000000
+end
+meshpyr
+  shift 97 -550 0
+  size 128.944084 128.944084 60.000000
+  rotation 280.000000
+phydrv Pyrs
+  shootthrough
+  noradar
+  color 0.000000 0.000000 0.000000 0.000000
+end
+meshpyr
+  shift 191 -525 0
+  size 128.944084 128.944084 60.000000
+  rotation 290.000000
+phydrv Pyrs
+  shootthrough
+  noradar
+  color 0.000000 0.000000 0.000000 0.000000
+end
+meshpyr
+  shift 279 -484 0
+  size 128.944084 128.944084 60.000000
+  rotation 300.000000
+phydrv Pyrs
+  shootthrough
+  noradar
+  color 0.000000 0.000000 0.000000 0.000000
+end
+meshpyr
+  shift 359 -428 0
+  size 128.944084 128.944084 60.000000
+  rotation 310.000000
+phydrv Pyrs
+  shootthrough
+  noradar
+  color 0.000000 0.000000 0.000000 0.000000
+end
+meshpyr
+  shift 428 -359 0
+  size 128.944084 128.944084 60.000000
+  rotation 320.000000
+phydrv Pyrs
+  shootthrough
+  noradar
+  color 0.000000 0.000000 0.000000 0.000000
+end
+meshpyr
+  shift 484 -279 0
+  size 128.944084 128.944084 60.000000
+  rotation 330.000000
+phydrv Pyrs
+  shootthrough
+  noradar
+  color 0.000000 0.000000 0.000000 0.000000
+end
+meshpyr
+  shift 525 -191 0
+  size 128.944084 128.944084 60.000000
+  rotation 340.000000
+phydrv Pyrs
+  shootthrough
+  noradar
+  color 0.000000 0.000000 0.000000 0.000000
+end
+meshpyr
+  shift 550 -97 0
+  size 128.944084 128.944084 60.000000
+  rotation 350.000000
+phydrv Pyrs
+  shootthrough
+  noradar
+  color 0.000000 0.000000 0.000000 0.000000
+end
+meshpyr
+  shift 559 0 0
+  size 128.944084 128.944084 60.000000
+  rotation 360.000000
+phydrv Pyrs
+  shootthrough
+  noradar
+  color 0.000000 0.000000 0.000000 0.000000
+end
+arc
+ divisions 360
+ shift 0 0 0
+ size 430.000000 430.000000 200.000000
+ ratio 0.001
+ shootthrough
+ color 0.0 0.0 0.0 0.0
+end
+arc
+ divisions 36
+ size 25 25 10
+ shift 0 0 6
+ ratio 0.10
+ color 1.000000 0.909804 0.513725 1.0
+end
+arc
+ divisions 8
+ size 10 10 1
+ shift 0 0 20
+ ratio 1.0
+ color 1.000000 0.909804 0.513725 1.0
+end
+meshbox
+  size 3.570000 3.570000 8.260000
+  shift 0 0 21
+  rotation 0.000000
+  texture http://images.bzflag.org/purplepanzer/Octagon.png
+end
+arc
+ divisions 3
+ angle 20
+ size 30 30 8
+ spin 40.000000 0 0 1
+ shift 0 0 0
+ ratio 0.10
+ color 1.000000 0.909804 0.513725 1.0
+end
+arc
+ divisions 3
+ angle 20
+ size 30 30 8
+ spin 80.000000 0 0 1
+ shift 0 0 0
+ ratio 0.10
+ color 1.000000 0.909804 0.513725 1.0
+end
+arc
+ divisions 3
+ angle 20
+ size 30 30 8
+ spin 120.000000 0 0 1
+ shift 0 0 0
+ ratio 0.10
+ color 1.000000 0.909804 0.513725 1.0
+end
+arc
+ divisions 3
+ angle 20
+ size 30 30 8
+ spin 160.000000 0 0 1
+ shift 0 0 0
+ ratio 0.10
+ color 1.000000 0.909804 0.513725 1.0
+end
+arc
+ divisions 3
+ angle 20
+ size 30 30 8
+ spin 200.000000 0 0 1
+ shift 0 0 0
+ ratio 0.10
+ color 1.000000 0.909804 0.513725 1.0
+end
+arc
+ divisions 3
+ angle 20
+ size 30 30 8
+ spin 240.000000 0 0 1
+ shift 0 0 0
+ ratio 0.10
+ color 1.000000 0.909804 0.513725 1.0
+end
+arc
+ divisions 3
+ angle 20
+ size 30 30 8
+ spin 280.000000 0 0 1
+ shift 0 0 0
+ ratio 0.10
+ color 1.000000 0.909804 0.513725 1.0
+end
+arc
+ divisions 3
+ angle 20
+ size 30 30 8
+ spin 320.000000 0 0 1
+ shift 0 0 0
+ ratio 0.10
+ color 1.000000 0.909804 0.513725 1.0
+end
+arc
+ divisions 3
+ angle 20
+ size 30 30 8
+ spin 360.000000 0 0 1
+ shift 0 0 0
+ ratio 0.10
+ color 1.000000 0.909804 0.513725 1.0
+end
+zone
+  position 0 0 0
+   size 15 15 1
+   safety 1
+end
+zone
+  position 0 0 0
+   size 15 15 1
+   safety 2
+end
+zone
+  position 0 0 0
+   size 15 15 1
+   safety 3
+end
+zone
+  position 0 0 0
+   size 15 15 1
+   safety 4
+end
+zone
+  position 0 0 0
+   size 15 15 1
+   flag G TH
+end
+zone
+  position 0 0 0
+   size 420 420 1
+   flag A CL F IB MG N OO PZ QT SE SH SR ST SB SW T V
+end
+define intowers1
+arc
+ size 10.000000 10.000000 40.000000
+ divisions 16
+ angle 360
+ shift 40.000000 40.000000 0.000000
+ texture roof
+ color 1.000000 0.000000 0.000000
+end
+cone
+  divisions 16
+  angle 360
+  texture roof
+  size 13.000000 13.000000 10.000000
+  shift 40.000000 40.000000 0
+  color 0.700000 0.700000 0.700000
+  smoothbounce
+end
+cone
+  divisions 16
+  angle 360
+  texture roof
+  size 14.000000 14.000000 10.000000
+  spin 180 1 0 0
+  shift 40.000000 40.000000 40.100000
+  color 0.700000 0.700000 0.700000
+  smoothbounce
+end
+arc
+ size 11.000000 11.000000 8.000000
+ ratio 0.02
+ divisions 4
+ angle 37.000000
+ spin 0.000000 0 0 1
+ shift 40.000000 40.000000 40.000000
+ texture roof
+ color 1.000000 0.000000 0.000000 1.000000
+ drivethrough
+end
+arc
+ size 11.000000 11.000000 8.000000
+ ratio 0.02
+ divisions 4
+ angle 37.000000
+ spin 45.000000 0 0 1
+ shift 40.000000 40.000000 40.000000
+ texture roof
+ color 1.000000 0.000000 0.000000 1.000000
+ drivethrough
+end
+arc
+ size 11.000000 11.000000 8.000000
+ ratio 0.02
+ divisions 4
+ angle 37.000000
+ spin 90.000000 0 0 1
+ shift 40.000000 40.000000 40.000000
+ texture roof
+ color 1.000000 0.000000 0.000000 1.000000
+ drivethrough
+end
+arc
+ size 11.000000 11.000000 8.000000
+ ratio 0.02
+ divisions 4
+ angle 37.000000
+ spin 135.000000 0 0 1
+ shift 40.000000 40.000000 40.000000
+ texture roof
+ color 1.000000 0.000000 0.000000 1.000000
+ drivethrough
+end
+arc
+ size 11.000000 11.000000 8.000000
+ ratio 0.02
+ divisions 4
+ angle 37.000000
+ spin 180.000000 0 0 1
+ shift 40.000000 40.000000 40.000000
+ texture roof
+ color 1.000000 0.000000 0.000000 1.000000
+ drivethrough
+end
+arc
+ size 11.000000 11.000000 8.000000
+ ratio 0.02
+ divisions 4
+ angle 37.000000
+ spin 225.000000 0 0 1
+ shift 40.000000 40.000000 40.000000
+ texture roof
+ color 1.000000 0.000000 0.000000 1.000000
+ drivethrough
+end
+arc
+ size 11.000000 11.000000 8.000000
+ ratio 0.02
+ divisions 4
+ angle 37.000000
+ spin 270.000000 0 0 1
+ shift 40.000000 40.000000 40.000000
+ texture roof
+ color 1.000000 0.000000 0.000000 1.000000
+ drivethrough
+end
+arc
+ size 11.000000 11.000000 8.000000
+ ratio 0.02
+ divisions 4
+ angle 37.000000
+ spin 315.000000 0 0 1
+ shift 40.000000 40.000000 40.000000
+ texture roof
+ color 1.000000 0.000000 0.000000 1.000000
+ drivethrough
+end
+arc
+ size 12.000000 12.000000 1.000000
+ ratio 0.02
+ divisions 16
+ angle 360
+ shift 40.000000 40.000000 40.000000
+ texture roof
+ color 1.000000 0.000000 0.000000 1.000000
+ drivethrough
+end
+arc
+ size 12.000000 12.000000 1.000000
+ ratio 0.02
+ divisions 16
+ angle 360
+ shift 40.000000 40.000000 47.000000
+ texture roof
+ color 1.000000 0.000000 0.000000 1.000000
+ drivethrough
+end
+cone
+  divisions 16
+  angle 360
+  texture roof
+  size 14.000000 14.000000 10.000000
+  shift 40.000000 40.000000 48.000000
+  color 0.700000 0.700000 0.700000
+drivethrough
+  smoothbounce
+end
+arc
+ size 5.000000 5.000000 10.000000
+ divisions 16
+ angle 360
+ shift 40.000000 40.000000 51.000000
+ texture roof
+drivethrough
+ color 1.000000 0.000000 0.000000
+end
+cone
+  divisions 16
+  angle 360
+  texture roof
+  size 8.000000 8.000000 10.000000
+  shift 40.000000 40.000000 61.000000
+  color 0.700000 0.700000 0.700000 1.000000
+  smoothbounce
+  drivethrough
+end
+cone
+  divisions 16
+  angle 360
+  texture roof
+  size 4.000000 4.000000 40.000000
+  shift 40.000000 40.000000 61.000000
+  color 0.700000 0.700000 0.700000 1.000000
+  smoothbounce
+  drivethrough
+end
+arc
+ size 10.000000 10.000000 40.000000
+ divisions 16
+ angle 360
+ shift 40.000000 -40.000000 0.000000
+ texture roof
+ color 1.000000 0.000000 0.000000
+end
+cone
+  divisions 16
+  angle 360
+  texture roof
+  size 13.000000 13.000000 10.000000
+  shift 40.000000 -40.000000 0
+  color 0.700000 0.700000 0.700000
+  smoothbounce
+end
+cone
+  divisions 16
+  angle 360
+  texture roof
+  size 14.000000 14.000000 10.000000
+  spin 180 1 0 0
+  shift 40.000000 -40.000000 40.100000
+  color 0.700000 0.700000 0.700000
+  smoothbounce
+end
+arc
+ size 11.000000 11.000000 8.000000
+ ratio 0.02
+ divisions 4
+ angle 37.000000
+ spin 0.000000 0 0 1
+ shift 40.000000 -40.000000 40.000000
+ texture roof
+ color 1.000000 0.000000 0.000000 1.000000
+ drivethrough
+end
+arc
+ size 11.000000 11.000000 8.000000
+ ratio 0.02
+ divisions 4
+ angle 37.000000
+ spin 45.000000 0 0 1
+ shift 40.000000 -40.000000 40.000000
+ texture roof
+ color 1.000000 0.000000 0.000000 1.000000
+ drivethrough
+end
+arc
+ size 11.000000 11.000000 8.000000
+ ratio 0.02
+ divisions 4
+ angle 37.000000
+ spin 90.000000 0 0 1
+ shift 40.000000 -40.000000 40.000000
+ texture roof
+ color 1.000000 0.000000 0.000000 1.000000
+ drivethrough
+end
+arc
+ size 11.000000 11.000000 8.000000
+ ratio 0.02
+ divisions 4
+ angle 37.000000
+ spin 135.000000 0 0 1
+ shift 40.000000 -40.000000 40.000000
+ texture roof
+ color 1.000000 0.000000 0.000000 1.000000
+ drivethrough
+end
+arc
+ size 11.000000 11.000000 8.000000
+ ratio 0.02
+ divisions 4
+ angle 37.000000
+ spin 180.000000 0 0 1
+ shift 40.000000 -40.000000 40.000000
+ texture roof
+ color 1.000000 0.000000 0.000000 1.000000
+ drivethrough
+end
+arc
+ size 11.000000 11.000000 8.000000
+ ratio 0.02
+ divisions 4
+ angle 37.000000
+ spin 225.000000 0 0 1
+ shift 40.000000 -40.000000 40.000000
+ texture roof
+ color 1.000000 0.000000 0.000000 1.000000
+ drivethrough
+end
+arc
+ size 11.000000 11.000000 8.000000
+ ratio 0.02
+ divisions 4
+ angle 37.000000
+ spin 270.000000 0 0 1
+ shift 40.000000 -40.000000 40.000000
+ texture roof
+ color 1.000000 0.000000 0.000000 1.000000
+ drivethrough
+end
+arc
+ size 11.000000 11.000000 8.000000
+ ratio 0.02
+ divisions 4
+ angle 37.000000
+ spin 315.000000 0 0 1
+ shift 40.000000 -40.000000 40.000000
+ texture roof
+ color 1.000000 0.000000 0.000000 1.000000
+ drivethrough
+end
+arc
+ size 12.000000 12.000000 1.000000
+ ratio 0.02
+ divisions 16
+ angle 360
+ shift 40.000000 -40.000000 40.000000
+ texture roof
+ color 1.000000 0.000000 0.000000 1.000000
+ drivethrough
+end
+arc
+ size 12.000000 12.000000 1.000000
+ ratio 0.02
+ divisions 16
+ angle 360
+ shift 40.000000 -40.000000 47.000000
+ texture roof
+ color 1.000000 0.000000 0.000000 1.000000
+ drivethrough
+end
+cone
+  divisions 16
+  angle 360
+  texture roof
+  size 14.000000 14.000000 10.000000
+  shift 40.000000 -40.000000 48.000000
+  color 0.700000 0.700000 0.700000
+drivethrough
+  smoothbounce
+end
+arc
+ size 5.000000 5.000000 10.000000
+ divisions 16
+ angle 360
+ shift 40.000000 -40.000000 51.000000
+ texture roof
+drivethrough
+ color 1.000000 0.000000 0.000000
+end
+cone
+  divisions 16
+  angle 360
+  texture roof
+  size 8.000000 8.000000 10.000000
+  shift 40.000000 -40.000000 61.000000
+  color 0.700000 0.700000 0.700000 1.000000
+  smoothbounce
+  drivethrough
+end
+cone
+  divisions 16
+  angle 360
+  texture roof
+  size 4.000000 4.000000 40.000000
+  shift 40.000000 -40.000000 61.000000
+  color 0.700000 0.700000 0.700000 1.000000
+  smoothbounce
+  drivethrough
+end
+arc
+ size 10.000000 10.000000 40.000000
+ divisions 16
+ angle 360
+ shift -40.000000 40.000000 0.000000
+ texture roof
+ color 1.000000 0.000000 0.000000
+end
+cone
+  divisions 16
+  angle 360
+  texture roof
+  size 13.000000 13.000000 10.000000
+  shift -40.000000 40.000000 0
+  color 0.700000 0.700000 0.700000
+  smoothbounce
+end
+cone
+  divisions 16
+  angle 360
+  texture roof
+  size 14.000000 14.000000 10.000000
+  spin 180 1 0 0
+  shift -40.000000 40.000000 40.100000
+  color 0.700000 0.700000 0.700000
+  smoothbounce
+end
+arc
+ size 11.000000 11.000000 8.000000
+ ratio 0.02
+ divisions 4
+ angle 37.000000
+ spin 0.000000 0 0 1
+ shift -40.000000 40.000000 40.000000
+ texture roof
+ color 1.000000 0.000000 0.000000 1.000000
+ drivethrough
+end
+arc
+ size 11.000000 11.000000 8.000000
+ ratio 0.02
+ divisions 4
+ angle 37.000000
+ spin 45.000000 0 0 1
+ shift -40.000000 40.000000 40.000000
+ texture roof
+ color 1.000000 0.000000 0.000000 1.000000
+ drivethrough
+end
+arc
+ size 11.000000 11.000000 8.000000
+ ratio 0.02
+ divisions 4
+ angle 37.000000
+ spin 90.000000 0 0 1
+ shift -40.000000 40.000000 40.000000
+ texture roof
+ color 1.000000 0.000000 0.000000 1.000000
+ drivethrough
+end
+arc
+ size 11.000000 11.000000 8.000000
+ ratio 0.02
+ divisions 4
+ angle 37.000000
+ spin 135.000000 0 0 1
+ shift -40.000000 40.000000 40.000000
+ texture roof
+ color 1.000000 0.000000 0.000000 1.000000
+ drivethrough
+end
+arc
+ size 11.000000 11.000000 8.000000
+ ratio 0.02
+ divisions 4
+ angle 37.000000
+ spin 180.000000 0 0 1
+ shift -40.000000 40.000000 40.000000
+ texture roof
+ color 1.000000 0.000000 0.000000 1.000000
+ drivethrough
+end
+arc
+ size 11.000000 11.000000 8.000000
+ ratio 0.02
+ divisions 4
+ angle 37.000000
+ spin 225.000000 0 0 1
+ shift -40.000000 40.000000 40.000000
+ texture roof
+ color 1.000000 0.000000 0.000000 1.000000
+ drivethrough
+end
+arc
+ size 11.000000 11.000000 8.000000
+ ratio 0.02
+ divisions 4
+ angle 37.000000
+ spin 270.000000 0 0 1
+ shift -40.000000 40.000000 40.000000
+ texture roof
+ color 1.000000 0.000000 0.000000 1.000000
+ drivethrough
+end
+arc
+ size 11.000000 11.000000 8.000000
+ ratio 0.02
+ divisions 4
+ angle 37.000000
+ spin 315.000000 0 0 1
+ shift -40.000000 40.000000 40.000000
+ texture roof
+ color 1.000000 0.000000 0.000000 1.000000
+ drivethrough
+end
+arc
+ size 12.000000 12.000000 1.000000
+ ratio 0.02
+ divisions 16
+ angle 360
+ shift -40.000000 40.000000 40.000000
+ texture roof
+ color 1.000000 0.000000 0.000000 1.000000
+ drivethrough
+end
+arc
+ size 12.000000 12.000000 1.000000
+ ratio 0.02
+ divisions 16
+ angle 360
+ shift -40.000000 40.000000 47.000000
+ texture roof
+ color 1.000000 0.000000 0.000000 1.000000
+ drivethrough
+end
+cone
+  divisions 16
+  angle 360
+  texture roof
+  size 14.000000 14.000000 10.000000
+  shift -40.000000 40.000000 48.000000
+  color 0.700000 0.700000 0.700000
+drivethrough
+  smoothbounce
+end
+arc
+ size 5.000000 5.000000 10.000000
+ divisions 16
+ angle 360
+ shift -40.000000 40.000000 51.000000
+ texture roof
+drivethrough
+ color 1.000000 0.000000 0.000000
+end
+cone
+  divisions 16
+  angle 360
+  texture roof
+  size 8.000000 8.000000 10.000000
+  shift -40.000000 40.000000 61.000000
+  color 0.700000 0.700000 0.700000 1.000000
+  smoothbounce
+  drivethrough
+end
+cone
+  divisions 16
+  angle 360
+  texture roof
+  size 4.000000 4.000000 40.000000
+  shift -40.000000 40.000000 61.000000
+  color 0.700000 0.700000 0.700000 1.000000
+  smoothbounce
+  drivethrough
+end
+arc
+ size 10.000000 10.000000 40.000000
+ divisions 16
+ angle 360
+ shift -40.000000 -40.000000 0.000000
+ texture roof
+ color 1.000000 0.000000 0.000000
+end
+cone
+  divisions 16
+  angle 360
+  texture roof
+  size 13.000000 13.000000 10.000000
+  shift -40.000000 -40.000000 0
+  color 0.700000 0.700000 0.700000
+  smoothbounce
+end
+cone
+  divisions 16
+  angle 360
+  texture roof
+  size 14.000000 14.000000 10.000000
+  spin 180 1 0 0
+  shift -40.000000 -40.000000 40.100000
+  color 0.700000 0.700000 0.700000
+  smoothbounce
+end
+arc
+ size 11.000000 11.000000 8.000000
+ ratio 0.02
+ divisions 4
+ angle 37.000000
+ spin 0.000000 0 0 1
+ shift -40.000000 -40.000000 40.000000
+ texture roof
+ color 1.000000 0.000000 0.000000 1.000000
+ drivethrough
+end
+arc
+ size 11.000000 11.000000 8.000000
+ ratio 0.02
+ divisions 4
+ angle 37.000000
+ spin 45.000000 0 0 1
+ shift -40.000000 -40.000000 40.000000
+ texture roof
+ color 1.000000 0.000000 0.000000 1.000000
+ drivethrough
+end
+arc
+ size 11.000000 11.000000 8.000000
+ ratio 0.02
+ divisions 4
+ angle 37.000000
+ spin 90.000000 0 0 1
+ shift -40.000000 -40.000000 40.000000
+ texture roof
+ color 1.000000 0.000000 0.000000 1.000000
+ drivethrough
+end
+arc
+ size 11.000000 11.000000 8.000000
+ ratio 0.02
+ divisions 4
+ angle 37.000000
+ spin 135.000000 0 0 1
+ shift -40.000000 -40.000000 40.000000
+ texture roof
+ color 1.000000 0.000000 0.000000 1.000000
+ drivethrough
+end
+arc
+ size 11.000000 11.000000 8.000000
+ ratio 0.02
+ divisions 4
+ angle 37.000000
+ spin 180.000000 0 0 1
+ shift -40.000000 -40.000000 40.000000
+ texture roof
+ color 1.000000 0.000000 0.000000 1.000000
+ drivethrough
+end
+arc
+ size 11.000000 11.000000 8.000000
+ ratio 0.02
+ divisions 4
+ angle 37.000000
+ spin 225.000000 0 0 1
+ shift -40.000000 -40.000000 40.000000
+ texture roof
+ color 1.000000 0.000000 0.000000 1.000000
+ drivethrough
+end
+arc
+ size 11.000000 11.000000 8.000000
+ ratio 0.02
+ divisions 4
+ angle 37.000000
+ spin 270.000000 0 0 1
+ shift -40.000000 -40.000000 40.000000
+ texture roof
+ color 1.000000 0.000000 0.000000 1.000000
+ drivethrough
+end
+arc
+ size 11.000000 11.000000 8.000000
+ ratio 0.02
+ divisions 4
+ angle 37.000000
+ spin 315.000000 0 0 1
+ shift -40.000000 -40.000000 40.000000
+ texture roof
+ color 1.000000 0.000000 0.000000 1.000000
+ drivethrough
+end
+arc
+ size 12.000000 12.000000 1.000000
+ ratio 0.02
+ divisions 16
+ angle 360
+ shift -40.000000 -40.000000 40.000000
+ texture roof
+ color 1.000000 0.000000 0.000000 1.000000
+ drivethrough
+end
+arc
+ size 12.000000 12.000000 1.000000
+ ratio 0.02
+ divisions 16
+ angle 360
+ shift -40.000000 -40.000000 47.000000
+ texture roof
+ color 1.000000 0.000000 0.000000 1.000000
+ drivethrough
+end
+cone
+  divisions 16
+  angle 360
+  texture roof
+  size 14.000000 14.000000 10.000000
+  shift -40.000000 -40.000000 48.000000
+  color 0.700000 0.700000 0.700000
+drivethrough
+  smoothbounce
+end
+arc
+ size 5.000000 5.000000 10.000000
+ divisions 16
+ angle 360
+ shift -40.000000 -40.000000 51.000000
+ texture roof
+drivethrough
+ color 1.000000 0.000000 0.000000
+end
+cone
+  divisions 16
+  angle 360
+  texture roof
+  size 8.000000 8.000000 10.000000
+  shift -40.000000 -40.000000 61.000000
+  color 0.700000 0.700000 0.700000 1.000000
+  smoothbounce
+  drivethrough
+end
+cone
+  divisions 16
+  angle 360
+  texture roof
+  size 4.000000 4.000000 40.000000
+  shift -40.000000 -40.000000 61.000000
+  color 0.700000 0.700000 0.700000 1.000000
+  smoothbounce
+  drivethrough
+end
+enddef
+zone
+  position -310.000000 0.000000 0
+  size 70.7213578500707 70.7213578500707 0
+  team 1
+end
+zone
+  position -310.000000 0.000000 0
+  size 70.7213578500707 70.7213578500707 50
+  flag CL GM L MQ SB SE ST
+end
+zone
+  position -310.000000 0.000000 0.000000
+   size 43.000000 43.000000 50
+   safety 1
+end
+define XtraStuff1
+meshbox
+  size 20.000000 20.000000 22.000000
+  shift 0 0 32
+  rotation 0.000000
+  texture roof
+  drivethrough
+  color 1.000000 0.000000 0.000000 0.800000
+end
+material
+ name TileMaterial0
+ nolighting
+  texture red_icon
+end
+material
+ name ReflectTileMaterial0
+ nolighting
+  texture red_icon
+end
+mesh
+  drivethrough
+  shootthrough
+  vertex 7.500000 0.500000 0.000000
+  vertex -7.500000 0.500000 0.000000
+  vertex -7.500000 -0.500000 0.000000
+  vertex 7.500000 -0.500000 0.000000
+  vertex 7.500000 0.500000 15.000000
+  vertex -7.500000 0.500000 15.000000
+  vertex -7.500000 -0.500000 15.000000
+  vertex 7.500000 -0.500000 15.000000
+  spin 270.000000 0 0 1
+  shift -21.000000 0.000000 36.500000
+  texcoord 0 0
+  texcoord 1 0
+  texcoord 1 1
+  texcoord 0 1
+  face 
+    vertices 3 2 1 0
+  endface
+  face 
+    vertices 0 1 2 3
+    color 0.6 0.6 0.6 0.5
+  endface
+  face
+    vertices 4 5 6 7
+  endface
+  face
+    vertices 7 6 5 4
+    color 0.6 0.6 0.6 0.5
+  endface
+  face
+    vertices 3 0 4 7 
+  endface
+  face
+    vertices 7 4 0 3 
+    color 0.6 0.6 0.6 0.5
+  endface
+  face
+    vertices 1 5 4 0
+  endface
+  face
+    vertices 0 4 5 1
+    color 0.6 0.6 0.6 0.5
+  endface
+  face
+    vertices 1 2 6 5
+  endface
+  face
+    vertices 6 5 2 1 
+    color 0.6 0.6 0.6 0.5
+  endface
+  face
+    vertices 2 3 7 6
+    matref TileMaterial0
+    texcoords 0 1 2 3
+  endface
+  face
+    vertices 6 7 3 2
+    matref ReflectTileMaterial0
+    texcoords 3 2 1 0
+    color 0.6 0.6 0.6 0.5
+  endface
+end
+meshbox
+  size 23.000000 23.000000 3.000000
+  shift 0 0 53
+  rotation 0.000000
+  texture roof
+  color 0.700000 0.700000 0.700000 1.000000
+end
+meshbox
+  size 2.000000 2.000000 21.000000
+  shift 20 20 32
+  rotation 0.000000
+  texture roof
+  color 1.000000 0.000000 0.000000 1.000000
+end
+meshbox
+  size 2.000000 2.000000 21.000000
+  shift 20 -20 32
+  rotation 0.000000
+  texture roof
+  color 1.000000 0.000000 0.000000 1.000000
+end
+meshbox
+  size 2.000000 2.000000 21.000000
+  shift 20 -20 32
+  rotation 0.000000
+  texture roof
+  color 1.000000 0.000000 0.000000 1.000000
+end
+meshbox
+  size 2.000000 2.000000 21.000000
+  shift -20 20 32
+  rotation 0.000000
+  texture roof
+  color 1.000000 0.000000 0.000000 1.000000
+end
+cone
+  divisions 8
+  angle 360
+  texture roof
+  size 5.000000 5.000000 60.000000
+  shift 0.000000 0.000000 64.000000
+  color 0.700000 0.700000 0.700000
+  smoothbounce
+end
+meshbox
+  size 4.000000 4.000000 10.000000
+  shift 20 -20 51
+  rotation 45.000000
+  texture roof
+  drivethrough
+  color 1.000000 0.000000 0.000000 1.000000
+end
+cone
+  divisions 4
+  angle 360
+  texture roof
+  spin 0 0 0 1
+  size 7.000000 7.000000 10.000000
+  shift 20.000000 -20.000000 61.000000
+  color 0.700000 0.700000 0.700000 1.000000
+  smoothbounce
+end
+cone
+  divisions 4
+  angle 360
+  texture roof
+  spin 0 0 0 1
+  size 4.000000 4.000000 30.000000
+  shift 20.000000 -20.000000 61.000000
+  color 0.700000 0.700000 0.700000
+  smoothbounce
+end
+meshbox
+  size 4.000000 4.000000 10.000000
+  shift 20 20 51
+  rotation 45.000000
+  texture roof
+  drivethrough
+  color 1.000000 0.000000 0.000000 1.000000
+end
+cone
+  divisions 4
+  angle 360
+  texture roof
+  spin 0 0 0 1
+  size 7.000000 7.000000 10.000000
+  shift 20.000000 20.000000 61.000000
+  color 0.700000 0.700000 0.700000 1.000000
+  smoothbounce
+end
+cone
+  divisions 4
+  angle 360
+  texture roof
+  spin 0 0 0 1
+  size 4.000000 4.000000 30.000000
+  shift 20.000000 20.000000 61.000000
+  color 0.700000 0.700000 0.700000
+  smoothbounce
+end
+meshbox
+  size 4.000000 4.000000 10.000000
+  shift -20 -20 51
+  rotation 45.000000
+  texture roof
+  drivethrough
+  color 1.000000 0.000000 0.000000 1.000000
+end
+cone
+  divisions 4
+  angle 360
+  texture roof
+  spin 0 0 0 1
+  size 7.000000 7.000000 10.000000
+  shift -20.000000 -20.000000 61.000000
+  color 0.700000 0.700000 0.700000 1.000000
+  smoothbounce
+end
+cone
+  divisions 4
+  angle 360
+  texture roof
+  spin 0 0 0 1
+  size 4.000000 4.000000 30.000000
+  shift -20.000000 -20.000000 61.000000
+  color 0.700000 0.700000 0.700000
+  smoothbounce
+end
+meshbox
+  size 4.000000 4.000000 10.000000
+  shift -20 20 51
+  rotation 45.000000
+  texture roof
+  drivethrough
+  color 1.000000 0.000000 0.000000 1.000000
+end
+cone
+  divisions 4
+  angle 360
+  texture roof
+  spin 0 0 0 1
+  size 7.000000 7.000000 10.000000
+  shift -20.000000 20.000000 61.000000
+  color 0.700000 0.700000 0.700000 1.000000
+  smoothbounce
+end
+cone
+  divisions 4
+  angle 360
+  texture roof
+  spin 0 0 0 1
+  size 4.000000 4.000000 30.000000
+  shift -20.000000 20.000000 61.000000
+  color 0.700000 0.700000 0.700000
+  smoothbounce
+end
+arc
+ size 6.000000 6.000000 65.000000
+ divisions 16
+ angle 360
+ shift 91.000000 27.000000 0.000000
+ texture roof
+ color 1.000000 0.000000 0.000000
+end
+cone
+  divisions 16
+  angle 360
+  texture roof
+  size 9.000000 9.000000 10.000000
+  spin 180 1 0 0
+  shift 91.000000 27.000000 65.100000
+  color 0.700000 0.700000 0.700000
+  smoothbounce
+end
+arc
+ size 6.000000 6.000000 8.000000
+ ratio 0.02
+ divisions 4
+ angle 16.000000
+ spin 0.000000 0 0 1
+ shift 91.000000 27.000000 65.000000
+ texture roof
+ color 1.000000 0.000000 0.000000 1.000000
+ drivethrough
+end
+arc
+ size 6.000000 6.000000 8.000000
+ ratio 0.02
+ divisions 4
+ angle 16.000000
+ spin 36.000000 0 0 1
+ shift 91.000000 27.000000 65.000000
+ texture roof
+ color 1.000000 0.000000 0.000000 1.000000
+ drivethrough
+end
+arc
+ size 6.000000 6.000000 8.000000
+ ratio 0.02
+ divisions 4
+ angle 16.000000
+ spin 72.000000 0 0 1
+ shift 91.000000 27.000000 65.000000
+ texture roof
+ color 1.000000 0.000000 0.000000 1.000000
+ drivethrough
+end
+arc
+ size 6.000000 6.000000 8.000000
+ ratio 0.02
+ divisions 4
+ angle 16.000000
+ spin 108.000000 0 0 1
+ shift 91.000000 27.000000 65.000000
+ texture roof
+ color 1.000000 0.000000 0.000000 1.000000
+ drivethrough
+end
+arc
+ size 6.000000 6.000000 8.000000
+ ratio 0.02
+ divisions 4
+ angle 16.000000
+ spin 144.000000 0 0 1
+ shift 91.000000 27.000000 65.000000
+ texture roof
+ color 1.000000 0.000000 0.000000 1.000000
+ drivethrough
+end
+arc
+ size 6.000000 6.000000 8.000000
+ ratio 0.02
+ divisions 4
+ angle 16.000000
+ spin 180.000000 0 0 1
+ shift 91.000000 27.000000 65.000000
+ texture roof
+ color 1.000000 0.000000 0.000000 1.000000
+ drivethrough
+end
+arc
+ size 6.000000 6.000000 8.000000
+ ratio 0.02
+ divisions 4
+ angle 16.000000
+ spin 216.000000 0 0 1
+ shift 91.000000 27.000000 65.000000
+ texture roof
+ color 1.000000 0.000000 0.000000 1.000000
+ drivethrough
+end
+arc
+ size 6.000000 6.000000 8.000000
+ ratio 0.02
+ divisions 4
+ angle 16.000000
+ spin 252.000000 0 0 1
+ shift 91.000000 27.000000 65.000000
+ texture roof
+ color 1.000000 0.000000 0.000000 1.000000
+ drivethrough
+end
+arc
+ size 6.000000 6.000000 8.000000
+ ratio 0.02
+ divisions 4
+ angle 16.000000
+ spin 288.000000 0 0 1
+ shift 91.000000 27.000000 65.000000
+ texture roof
+ color 1.000000 0.000000 0.000000 1.000000
+ drivethrough
+end
+arc
+ size 6.000000 6.000000 8.000000
+ ratio 0.02
+ divisions 4
+ angle 16.000000
+ spin 324.000000 0 0 1
+ shift 91.000000 27.000000 65.000000
+ texture roof
+ color 1.000000 0.000000 0.000000 1.000000
+ drivethrough
+end
+arc
+ size 7.000000 7.000000 1.000000
+ ratio 0.02
+ divisions 16
+ angle 360
+ shift 91.000000 27.000000 65.000000
+ texture roof
+ color 1.000000 0.000000 0.000000 1.000000
+ drivethrough
+end
+arc
+ size 7.000000 7.000000 1.000000
+ ratio 0.02
+ divisions 16
+ angle 360
+ shift 91.000000 27.000000 72.000000
+ texture roof
+ color 1.000000 0.000000 0.000000 1.000000
+ drivethrough
+end
+cone
+  divisions 16
+  angle 360
+  texture roof
+  size 10.000000 10.000000 10.000000
+  shift 91.000000 27.000000 73.000000
+  color 0.700000 0.700000 0.700000
+drivethrough
+  smoothbounce
+end
+arc
+ size 3.000000 3.000000 10.000000
+ divisions 16
+ angle 360
+ shift 91.000000 27.000000 76.000000
+ texture roof
+drivethrough
+ color 1.000000 0.000000 0.000000
+end
+cone
+  divisions 16
+  angle 360
+  texture roof
+  size 6.000000 6.000000 10.000000
+  shift 91.000000 27.000000 86.000000
+  color 0.700000 0.700000 0.700000 1.000000
+  smoothbounce
+  drivethrough
+end
+cone
+  divisions 16
+  angle 360
+  texture roof
+  size 2.000000 2.000000 40.000000
+  shift 91.000000 27.000000 86.000000
+  color 0.700000 0.700000 0.700000 1.000000
+  smoothbounce
+  drivethrough
+end
+enddef
+define Base1
+arc
+ size 100.000000 100.000000 14.000000
+ ratio 0.02
+ divisions 31
+ angle 100
+ spin 0 0 0 1
+ shift 0.000000 0.000000 0.000000
+ texture roof
+ color 0.600000 0.600000 0.600000
+end
+arc
+ size 100.000000 100.000000 1.200000
+ ratio 0.02
+ divisions 31
+ angle 100
+ spin 60 0 0 1
+ shift 0.000000 0.000000 14.000000
+ texture roof
+ color 0.600000 0.600000 0.600000
+end
+arc
+ size 100.000000 100.000000 7.200000
+ ratio 0.02
+ divisions 31
+ angle 100
+ spin 60 0 0 1
+ shift 0.000000 0.000000 15.900000
+ texture roof
+ color 0.600000 0.600000 0.600000
+end
+arc
+ size 100.000000 100.000000 14.000000
+ ratio 0.02
+ divisions 31
+ angle 100
+ spin 120 0 0 1
+ shift 0.000000 0.000000 0.000000
+ texture roof
+ color 0.600000 0.600000 0.600000
+end
+arc
+ size 100.000000 100.000000 1.200000
+ ratio 0.02
+ divisions 31
+ angle 100
+ spin 180 0 0 1
+ shift 0.000000 0.000000 14.000000
+ texture roof
+ color 0.600000 0.600000 0.600000
+end
+arc
+ size 100.000000 100.000000 7.200000
+ ratio 0.02
+ divisions 31
+ angle 100
+ spin 180 0 0 1
+ shift 0.000000 0.000000 15.900000
+ texture roof
+ color 0.600000 0.600000 0.600000
+end
+arc
+ size 100.000000 100.000000 14.000000
+ ratio 0.02
+ divisions 31
+ angle 100
+ spin 240 0 0 1
+ shift 0.000000 0.000000 0.000000
+ texture roof
+ color 0.600000 0.600000 0.600000
+end
+arc
+ size 100.000000 100.000000 1.200000
+ ratio 0.02
+ divisions 31
+ angle 100
+ spin 300 0 0 1
+ shift 0.000000 0.000000 14.000000
+ texture roof
+ color 0.600000 0.600000 0.600000
+end
+arc
+ size 100.000000 100.000000 7.200000
+ ratio 0.02
+ divisions 31
+ angle 100
+ spin 300 0 0 1
+ shift 0.000000 0.000000 15.900000
+ texture roof
+ color 0.600000 0.600000 0.600000
+end
+meshbox
+ size 17.277994 1.000000 14.000000
+ spin 80 0 0 1
+ shift 96.018756 -16.930697 0.000000
+ texture roof
+drivethrough
+shootthrough
+ color 0.700000 0.700000 0.700000 0.500000
+end
+material
+ name doorstuff
+ color 0.0 0.0 0.0 0.0
+end
+mesh
+  vertex -17.277994 0.000000 0.000000
+  vertex 17.277994 0.000000 0.000000
+  vertex 17.277994 0.000000 14.000000
+  vertex -17.277994 0.000000 14.000000
+  face
+    vertices 0 1 2 3
+    matref doorstuff
+  endface
+ spin 80 0 0 1
+ shift 96.018756 -16.930697 0.000000
+end
+meshbox
+ size 17.277994 1.000000 14.000000
+ spin 200 0 0 1
+ shift -33.346964 91.620031 0.000000
+ texture roof
+drivethrough
+shootthrough
+ color 0.700000 0.700000 0.700000 0.500000
+end
+mesh
+  vertex -17.277994 0.000000 0.000000
+  vertex 17.277994 0.000000 0.000000
+  vertex 17.277994 0.000000 14.000000
+  vertex -17.277994 0.000000 14.000000
+  face
+    vertices 0 1 2 3
+    matref doorstuff
+  endface
+ spin 200 0 0 1
+ shift -33.346964 91.620031 0.000000
+end
+meshbox
+ size 17.277994 1.000000 14.000000
+ spin 320 0 0 1
+ shift -62.671792 -74.689333 0.000000
+ texture roof
+drivethrough
+shootthrough
+ color 0.700000 0.700000 0.700000 0.500000
+end
+mesh
+  vertex -17.277994 0.000000 0.000000
+  vertex 17.277994 0.000000 0.000000
+  vertex 17.277994 0.000000 14.000000
+  vertex -17.277994 0.000000 14.000000
+  face
+    vertices 0 1 2 3
+    matref doorstuff
+  endface
+ spin 320 0 0 1
+ shift -62.671792 -74.689333 0.000000
+end
+arc
+ size 100.000000 100.000000 0.700000
+ ratio 0.02
+ divisions 3
+ angle 20
+ spin 60 0 0 1
+ shift 0.000000 0.000000 15.200000
+ texture roof
+ color 0.600000 0.600000 0.600000
+end
+arc
+ size 100.000000 100.000000 0.700000
+ ratio 0.02
+ divisions 3
+ angle 20
+ spin 100 0 0 1
+ shift 0.000000 0.000000 15.200000
+ texture roof
+ color 0.600000 0.600000 0.600000
+end
+arc
+ size 100.000000 100.000000 0.700000
+ ratio 0.02
+ divisions 3
+ angle 20
+ spin 140 0 0 1
+ shift 0.000000 0.000000 15.200000
+ texture roof
+ color 0.600000 0.600000 0.600000
+end
+arc
+ size 100.000000 100.000000 0.700000
+ ratio 0.02
+ divisions 3
+ angle 20
+ spin 180 0 0 1
+ shift 0.000000 0.000000 15.200000
+ texture roof
+ color 0.600000 0.600000 0.600000
+end
+arc
+ size 100.000000 100.000000 0.700000
+ ratio 0.02
+ divisions 3
+ angle 20
+ spin 220 0 0 1
+ shift 0.000000 0.000000 15.200000
+ texture roof
+ color 0.600000 0.600000 0.600000
+end
+arc
+ size 100.000000 100.000000 0.700000
+ ratio 0.02
+ divisions 3
+ angle 20
+ spin 260 0 0 1
+ shift 0.000000 0.000000 15.200000
+ texture roof
+ color 0.600000 0.600000 0.600000
+end
+arc
+ size 100.000000 100.000000 0.700000
+ ratio 0.02
+ divisions 3
+ angle 20
+ spin 300 0 0 1
+ shift 0.000000 0.000000 15.200000
+ texture roof
+ color 0.600000 0.600000 0.600000
+end
+arc
+ size 100.000000 100.000000 0.700000
+ ratio 0.02
+ divisions 3
+ angle 20
+ spin 340 0 0 1
+ shift 0.000000 0.000000 15.200000
+ texture roof
+ color 0.600000 0.600000 0.600000
+end
+arc
+ size 100.000000 100.000000 0.700000
+ ratio 0.02
+ divisions 3
+ angle 20
+ spin 380 0 0 1
+ shift 0.000000 0.000000 15.200000
+ texture roof
+ color 0.600000 0.600000 0.600000
+end
+arc
+ size 100.000000 100.000000 2.000000
+ ratio 0.2
+ divisions 31
+ angle 360
+ spin 225 0 0 1
+ shift 0.000000 0.000000 12.000000
+ texture roof
+ color 0.600000 0.600000 0.600000
+end
+arc
+ size 110.000000 110.000000 2.000000
+ ratio 0.2
+ divisions 31
+ angle 360
+ spin 225 0 0 1
+ shift 0.000000 0.000000 23.100000
+ texture roof
+ color 1.000000 0.000000 0.000000
+end
+arc
+ size 100.000000 100.000000 8.000000
+ ratio 0.01
+ divisions 31
+ angle 360
+ spin 225 0 0 1
+ shift 0.000000 0.000000 27.200000
+ texture roof
+ color 0.600000 0.600000 0.600000
+end
+arc
+ size 100.000000 100.000000 2.000000
+ ratio 0.15
+ divisions 31
+ angle 360
+ spin 225 0 0 1
+ shift 0.000000 0.000000 35.200000
+ texture roof
+ color 0.600000 0.600000 0.600000
+end
+meshbox
+  size 5.000000 5.000000 15.000000
+  shift -105.495330416011 120.294369196637 0
+  rotation 131.250000
+  texture roof
+  color 0.700000 0.700000 0.700000 1.000000
+end
+meshpyr
+  shift -105 120 15
+  size 4.000000 4.000000 7.000000
+  rotation 131.250000
+  texture roof
+  drivethrough
+  color 1.000000 0.000000 0.000000 0.950000
+end
+meshpyr
+  shift -105 120 0
+  size 8.000000 8.000000 14.900000
+  rotation 131.250000
+  texture roof
+  color 0.700000 0.700000 0.700000 1.000000
+end
+meshbox
+  size 5.000000 5.000000 15.000000
+  shift -159.391151694679 13.9449188396257 0
+  rotation 175.000000
+  texture roof
+  color 0.700000 0.700000 0.700000 1.000000
+end
+meshpyr
+  shift -159 14 15
+  size 4.000000 4.000000 7.000000
+  rotation 175.000000
+  texture roof
+  drivethrough
+  color 1.000000 0.000000 0.000000 0.950000
+end
+meshpyr
+  shift -159 14 0
+  size 8.000000 8.000000 14.900000
+  rotation 175.000000
+  texture roof
+  color 0.700000 0.700000 0.700000 1.000000
+end
+meshbox
+  size 5.000000 5.000000 15.000000
+  shift -124.781517294861 -100.147755549449 0
+  rotation 218.750000
+  texture roof
+  color 0.700000 0.700000 0.700000 1.000000
+end
+meshpyr
+  shift -125 -100 15
+  size 4.000000 4.000000 7.000000
+  rotation 218.750000
+  texture roof
+  drivethrough
+  color 1.000000 0.000000 0.000000 0.950000
+end
+meshpyr
+  shift -125 -100 0
+  size 8.000000 8.000000 14.900000
+  rotation 218.750000
+  texture roof
+  color 0.700000 0.700000 0.700000 1.000000
+end
+meshbox
+  size 5.000000 5.000000 15.000000
+  shift -20.884190755209 -158.63117781981 0
+  rotation 262.500000
+  texture roof
+  color 0.700000 0.700000 0.700000 1.000000
+end
+meshpyr
+  shift -21 -159 15
+  size 4.000000 4.000000 7.000000
+  rotation 262.500000
+  texture roof
+  drivethrough
+  color 1.000000 0.000000 0.000000 0.950000
+end
+meshpyr
+  shift -21 -159 0
+  size 8.000000 8.000000 14.900000
+  rotation 262.500000
+  texture roof
+  color 0.700000 0.700000 0.700000 1.000000
+end
+meshbox
+  size 5.000000 5.000000 15.000000
+  shift 94.6095437381725 -129.031136682798 0
+  rotation 306.250000
+  texture roof
+  color 0.700000 0.700000 0.700000 1.000000
+end
+meshpyr
+  shift 95 -129 15
+  size 4.000000 4.000000 7.000000
+  rotation 306.250000
+  texture roof
+  drivethrough
+  color 1.000000 0.000000 0.000000 0.950000
+end
+meshpyr
+  shift 95 -129 0
+  size 8.000000 8.000000 14.900000
+  rotation 306.250000
+  texture roof
+  color 0.700000 0.700000 0.700000 1.000000
+end
+meshbox
+  size 5.000000 5.000000 15.000000
+  shift 157.569240481953 -27.7837084267097 0
+  rotation 350.000000
+  texture roof
+  color 0.700000 0.700000 0.700000 1.000000
+end
+meshpyr
+  shift 158 -28 15
+  size 4.000000 4.000000 7.000000
+  rotation 350.000000
+  texture roof
+  drivethrough
+  color 1.000000 0.000000 0.000000 0.950000
+end
+meshpyr
+  shift 158 -28 0
+  size 8.000000 8.000000 14.900000
+  rotation 350.000000
+  texture roof
+  color 0.700000 0.700000 0.700000 1.000000
+end
+group intowers1
+  spin 30 0 0 1
+end
+arc
+ size 15.000000 15.000000 30.000000
+ ratio 0.02
+ divisions 4
+ angle 360
+ shift 0.000000 0.000000 0.000000
+ texture roof
+ color 1.000000 0.000000 0.000000
+end
+group XtraStuff1
+  spin 60.000000 0 0 1
+  shift 0.000000 0.000000 0.000000
+end
+enddef
+group Base1
+ spin 120 0 0 1
+ shift -310.000000 0.000000 0.000000
+end
+arc
+ size 300.000000 300.000000 15.000000
+ ratio 0.01
+ noradar
+ divisions 5
+ angle 10
+ spin 121.060606060606 0 0 1
+ shift 0.000000 0.000000 0.000000
+ texture roof
+ color 0.600000 0.600000 0.600000
+end
+arc
+ size 320.000000 320.000000 15.000000
+ noradar
+ ratio 0.01
+ divisions 5
+ angle 10
+ spin 121.060606060606 0 0 1
+ shift 0.000000 0.000000 0.000000
+ texture roof
+ color 0.600000 0.600000 0.600000
+end
+arc
+ size 320.000000 320.000000 2.000000
+ noradar
+ ratio 0.07
+ divisions 5
+ angle 10
+ spin 121.060606060606 0 0 1
+ shift 0.000000 0.000000 15.000000
+ texture roof
+ color 0.600000 0.600000 0.600000
+end
+arc
+ size 300.000000 300.000000 15.000000
+ ratio 0.01
+ noradar
+ divisions 5
+ angle 10
+ spin 108.939393939394 0 0 1
+ shift 0.000000 0.000000 0.000000
+ texture roof
+ color 0.600000 0.600000 0.600000
+end
+arc
+ size 320.000000 320.000000 15.000000
+ noradar
+ ratio 0.01
+ divisions 5
+ angle 10
+ spin 108.939393939394 0 0 1
+ shift 0.000000 0.000000 0.000000
+ texture roof
+ color 0.600000 0.600000 0.600000
+end
+arc
+ size 320.000000 320.000000 2.000000
+ noradar
+ ratio 0.07
+ divisions 5
+ angle 10
+ spin 108.939393939394 0 0 1
+ shift 0.000000 0.000000 15.000000
+ texture roof
+ color 0.600000 0.600000 0.600000
+end
+arc
+ size 350.000000 350.000000 2.000000
+ ratio 0.2
+ noradar
+ divisions 3
+ angle 7
+ spin 116.5 0 0 1
+ shift 0.000000 0.000000 15.000000
+ texture roof
+ color 0.600000 0.600000 0.600000
+end
+arc
+ size 350.000000 350.000000 15.000000
+ ratio 0.01
+ noradar
+ divisions 3
+ angle 7
+ spin 116.5 0 0 1
+ shift 0.000000 0.000000 0.000000
+ color 0.600000 0.600000 0.600000
+end
+meshbox
+  size 2.000000 15.000000 15.000000
+  shift -149.476267391785 299.803011136679 0
+  rotation 206.500000
+  color 0.600000 0.600000 0.600000 1.000000
+end
+meshbox
+  size 2.000000 15.000000 15.000000
+  shift -184.898890079539 279.351750392502 0
+  rotation 213.500000
+  color 0.600000 0.600000 0.600000 1.000000
+end
+meshbox
+  size 26.146723 1.000000 16.000000
+  shift -125 216.50635094611 0
+  rotation 210.000000
+  texture http://images.bzflag.org/purplepanzer/breccia.png
+  noradar
+  color 0.600000 0.600000 0.600000 1.000000
+end
+material
+ name TileMaterial1
+ nolighting
+  texture http://images.planet-mofo.com/Panzer/cave/lascaux1.png
+end
+material
+ name ReflectTileMaterial1
+ nolighting
+  texture http://images.planet-mofo.com/Panzer/cave/lascaux1.png
+end
+mesh
+  noradar
+  vertex 10.212766 0.500000 0.000000
+  vertex -10.212766 0.500000 0.000000
+  vertex -10.212766 -0.500000 0.000000
+  vertex 10.212766 -0.500000 0.000000
+  vertex 10.212766 0.500000 15.000000
+  vertex -10.212766 0.500000 15.000000
+  vertex -10.212766 -0.500000 15.000000
+  vertex 10.212766 -0.500000 15.000000
+  spin 210.000000 0 0 1
+  shift -125.500000 217.372376 0.000000
+  texcoord 0 0
+  texcoord 1 0
+  texcoord 1 1
+  texcoord 0 1
+  face 
+    vertices 3 2 1 0
+  endface
+  face 
+    vertices 0 1 2 3
+    color 0.6 0.6 0.6 0.5
+  endface
+  face
+    vertices 4 5 6 7
+  endface
+  face
+    vertices 7 6 5 4
+    color 0.6 0.6 0.6 0.5
+  endface
+  face
+    vertices 3 0 4 7 
+  endface
+  face
+    vertices 7 4 0 3 
+    color 0.6 0.6 0.6 0.5
+  endface
+  face
+    vertices 1 5 4 0
+  endface
+  face
+    vertices 0 4 5 1
+    color 0.6 0.6 0.6 0.5
+  endface
+  face
+    vertices 1 2 6 5
+  endface
+  face
+    vertices 6 5 2 1 
+    color 0.6 0.6 0.6 0.5
+  endface
+  face
+    vertices 2 3 7 6
+    matref TileMaterial1
+    texcoords 0 1 2 3
+  endface
+  face
+    vertices 6 7 3 2
+    matref ReflectTileMaterial1
+    texcoords 3 2 1 0
+    color 0.6 0.6 0.6 0.5
+  endface
+end
+meshbox
+  size 2.000000 23.000000 16.000000
+  shift -116.220021978692 249.234641435079 0
+  rotation 217.000000
+  texture http://images.bzflag.org/purplepanzer/breccia.png
+  noradar
+  color 0.600000 0.600000 0.600000 1.000000
+end
+meshbox
+  size 2.000000 23.000000 16.000000
+  shift -157.733519996537 225.266812179473 0
+  rotation 217.000000
+  texture http://images.bzflag.org/purplepanzer/breccia.png
+  noradar
+  color 0.600000 0.600000 0.600000 1.000000
+end
+define shaft
+box
+  shift 22.5 0 16
+  size 7.500000 30.000000 30.000000
+  rotation 0.000000
+end
+box
+  shift -22.5 0 16
+  size 7.500000 30.000000 30.000000
+  rotation 0.000000
+end
+box
+  shift 0 22.5 16
+  size 7.500000 15.000000 30.000000
+  rotation 90.000000
+end
+box
+  shift 0 -22.5 16
+  size 7.500000 15.000000 30.000000
+  rotation 90.000000
+end
+enddef
+group shaft
+  spin 120 0 0 1
+  shift -137.500000 238.156986 0.000000
+end
+zone
+  position -137.500000 238.156986 0
+   size 20 20 10
+   flag WG
+end
+meshbox
+  size 24.375000 24.375000 10.000000
+  shift -110.875 192.041133289199 28
+  rotation 210.000000
+  texture std_ground
+end
+meshbox
+  size 36.000000 36.000000 25.000000
+  shift -200.999999999999 348.142212321345 31
+  rotation 120.000000
+  texture std_ground
+end
+material
+  name ColumnMaterial
+  texture http://images.bzflag.org/purplepanzer/daino.png
+  notexalpha
+end
+material
+  name ColumnBaseMaterial
+  texture http://images.bzflag.org/purplepanzer/chiselled.png
+  notexalpha
+end
+define ColumnBase
+meshbox
+  size 1.430000 1.430000 1.000000
+  shift 0 0 0
+  rotation 0.000000
+  matref ColumnBaseMaterial
+end
+enddef
+define myColumn
+meshbox
+  size 1.430000 1.430000 1.000000
+  shift 0 0 0
+  rotation 0.000000
+  matref ColumnBaseMaterial
+end
+meshbox
+  size 1.100000 1.100000 1.400000
+  shift 0 0 12.2
+  rotation 0.000000
+  matref ColumnBaseMaterial
+end
+mesh
+  matref ColumnMaterial
+  vertex 0.919238815542513 0.919238815542511 0
+  vertex 0.707106781186548 0.707106781186547 13
+  vertex 2.10020531781624E-15 1.3 0
+  vertex 1.61554255216634E-15 1 13
+  vertex -0.91923881554251 0.919238815542514 0
+  vertex -0.707106781186546 0.707106781186549 13
+  vertex -1.3 4.20041063563248E-15 0
+  vertex -1 3.23108510433268E-15 13
+  vertex -0.919238815542516 -0.919238815542508 0
+  vertex -0.70710678118655 -0.707106781186545 13
+  vertex -6.01195796704618E-15 -1.3 0
+  vertex -4.62458305157398E-15 -1 13
+  vertex 0.919238815542507 -0.919238815542517 0
+  vertex 0.707106781186544 -0.707106781186551 13
+  vertex 1.3 -8.40082127126496E-15 0
+  vertex 1 -6.46217020866535E-15 13
+    face
+       vertices 0 2 3 1
+    endface
+    face
+       vertices 2 4 5 3
+    endface
+    face
+       vertices 4 6 7 5
+    endface
+    face
+       vertices 6 8 9 7
+    endface
+    face
+       vertices 8 10 11 9
+    endface
+    face
+       vertices 10 12 13 11
+    endface
+    face
+       vertices 12 14 15 13
+    endface
+    face
+       vertices 14 0 1 15
+    endface
+end
+enddef
+define myColumnThird
+meshbox
+  size 1.430000 1.430000 1.000000
+  shift 0 0 0
+  rotation 0.000000
+  matref ColumnBaseMaterial
+end
+mesh
+  matref ColumnMaterial
+  vertex 0.919238815542513 0.919238815542511 0
+  vertex 0.707106781186548 0.707106781186547 7.8
+  vertex 2.10020531781624E-15 1.3 0
+  vertex 1.61554255216634E-15 1 7.8
+  vertex -0.91923881554251 0.919238815542514 0
+  vertex -0.707106781186546 0.707106781186549 7.8
+  vertex -1.3 4.20041063563248E-15 0
+  vertex -1 3.23108510433268E-15 7.8
+  vertex -0.919238815542516 -0.919238815542508 0
+  vertex -0.70710678118655 -0.707106781186545 7.8
+  vertex -6.01195796704618E-15 -1.3 0
+  vertex -4.62458305157398E-15 -1 7.8
+  vertex 0.919238815542507 -0.919238815542517 0
+  vertex 0.707106781186544 -0.707106781186551 7.8
+  vertex 1.3 -8.40082127126496E-15 0
+  vertex 1 -6.46217020866535E-15 7.8
+    face
+       vertices 0 2 3 1
+    endface
+    face
+       vertices 2 4 5 3
+    endface
+    face
+       vertices 4 6 7 5
+    endface
+    face
+       vertices 6 8 9 7
+    endface
+    face
+       vertices 8 10 11 9
+    endface
+    face
+       vertices 10 12 13 11
+    endface
+    face
+       vertices 12 14 15 13
+    endface
+    face
+       vertices 14 0 1 15
+    endface
+    face
+       vertices 1 3 5 7 9 11 13 15
+    endface
+    face
+       vertices 15 13 11 9 7 5 3 1
+    endface
+end
+enddef
+define TTemple
+group ColumnBase
+  shift -30.000000 -20 0.000000
+end
+group myColumn
+  shift -30.000000 -10 0.000000
+end
+group myColumn
+  shift -30.000000 0 0.000000
+end
+group myColumn
+  shift -30.000000 10 0.000000
+end
+group myColumnThird
+  shift -30.000000 20 0.000000
+end
+group ColumnBase
+  shift -30.000000 -30.000000 0.000000
+end
+group ColumnBase
+  shift -30.000000 30.000000 0.000000
+end
+group myColumn
+  shift -20.000000 -30.000000 0.000000
+end
+group myColumn
+  shift -20.000000 30.000000 0.000000
+end
+group myColumn
+  shift -10.000000 -30.000000 0.000000
+end
+group myColumn
+  shift -10.000000 30.000000 0.000000
+end
+group myColumnThird
+  shift 10.000000 -30.000000 0.000000
+end
+group ColumnBase
+  shift 10.000000 30.000000 0.000000
+end
+group myColumn
+  shift 30.000000 -30.000000 0.000000
+end
+group myColumn
+  shift 30.000000 30.000000 0.000000
+end
+enddef
+group TTemple
+  spin 120 0 0 1
+  shift -199.999999999999 346.410161513776 57
+end
+meshbox
+  size 14.000000 32.000000 20.000000
+  shift -177.499999999999 307.439018343476 36
+  rotation 120.000000
+  texture std_ground
+end
+meshbox
+  size 21.000000 27.000000 20.000000
+  shift -161.999999999999 280.592230826158 31
+  rotation 120.000000
+  texture std_ground
+end
+define octslice
+meshbox
+  size 14.140000 30.000000 20.000000
+  shift 0 0 0
+  rotation 0.000000
+end
+meshbox
+  size 5.656000 1.000000 1.500000
+  shift 0 29 20
+  rotation 0.000000
+end
+meshbox
+  size 5.656000 1.000000 1.500000
+  shift 0 -29 20
+  rotation 0.000000
+end
+enddef
+define oct_platform
+ group octslice
+  position 0 0 0
+ end
+ group octslice
+  position 0 0 0
+  spin 45 0 0 1
+ end
+ group octslice
+  position 0 0 0
+  spin -45 0 0 1
+ end
+ group octslice
+  position 0 0 0
+  spin 90 0 0 1
+ end
+enddef
+define tHill
+mesh
+  inside 0 0 1
+  noclusters
+  shift 0.000000 0.000000 0
+  matref hillside
+   vertex -50.000000 -50.000000 0.000000 # Vertex ID: 0
+   vertex -50.000000 -25.000000 0.000000 # Vertex ID: 1
+   vertex -50.000000 0.000000 0.000000 # Vertex ID: 2
+   vertex -50.000000 25.000000 0.000000 # Vertex ID: 3
+   vertex -50.000000 50.000000 0.000000 # Vertex ID: 4
+   vertex -25.000000 -50.000000 0.000000 # Vertex ID: 5
+   vertex -25.000000 -25.000000 40.000000 # Vertex ID: 6
+   vertex -25.000000 0.000000 38.812341 # Vertex ID: 7
+   vertex -25.000000 25.000000 39.621421 # Vertex ID: 8
+   vertex -25.000000 50.000000 0.000000 # Vertex ID: 9
+   vertex 0.000000 -50.000000 0.000000 # Vertex ID: 10
+   vertex 0.000000 -25.000000 40.000000 # Vertex ID: 11
+   vertex 0.000000 0.000000 40.000000 # Vertex ID: 12
+   vertex 0.000000 25.000000 39.853162 # Vertex ID: 13
+   vertex 0.000000 50.000000 0.000000 # Vertex ID: 14
+   vertex 25.000000 -50.000000 0.000000 # Vertex ID: 15
+   vertex 25.000000 -25.000000 38.290074 # Vertex ID: 16
+   vertex 25.000000 0.000000 38.075312 # Vertex ID: 17
+   vertex 25.000000 25.000000 39.819700 # Vertex ID: 18
+   vertex 25.000000 50.000000 0.000000 # Vertex ID: 19
+   vertex 50.000000 -50.000000 0.000000 # Vertex ID: 20
+   vertex 50.000000 -25.000000 0.000000 # Vertex ID: 21
+   vertex 50.000000 0.000000 0.000000 # Vertex ID: 22
+   vertex 50.000000 25.000000 0.000000 # Vertex ID: 23
+   vertex 50.000000 50.000000 0.000000 # Vertex ID: 24
+  face
+    vertices 0 5 1
+  endface
+  face
+    vertices 5 6 1
+  endface
+  face
+    vertices 1 6 2
+  endface
+  face
+    vertices 6 7 2
+  endface
+  face
+    vertices 2 7 3
+  endface
+  face
+    vertices 7 8 3
+  endface
+  face
+    vertices 3 8 4
+  endface
+  face
+    vertices 8 9 4
+  endface
+  face
+    vertices 5 10 6
+  endface
+  face
+    vertices 10 11 6
+  endface
+  face
+    vertices 6 11 7
+  endface
+  face
+    vertices 11 12 7
+  endface
+  face
+    vertices 7 12 8
+  endface
+  face
+    vertices 12 13 8
+  endface
+  face
+    vertices 8 13 9
+  endface
+  face
+    vertices 13 14 9
+  endface
+  face
+    vertices 10 15 11
+  endface
+  face
+    vertices 15 16 11
+  endface
+  face
+    vertices 11 16 12
+  endface
+  face
+    vertices 16 17 12
+  endface
+  face
+    vertices 12 17 13
+  endface
+  face
+    vertices 17 18 13
+  endface
+  face
+    vertices 13 18 14
+  endface
+  face
+    vertices 18 19 14
+  endface
+  face
+    vertices 15 20 16
+  endface
+  face
+    vertices 20 21 16
+  endface
+  face
+    vertices 16 21 17
+  endface
+  face
+    vertices 21 22 17
+  endface
+  face
+    vertices 17 22 18
+  endface
+  face
+    vertices 22 23 18
+  endface
+  face
+    vertices 18 23 19
+  endface
+  face
+    vertices 23 24 19
+  endface
+end
+meshpyr
+  shift 0 0 0
+  size 55.000000 55.000000 12.000000
+  rotation 0.000000
+  texture std_ground
+end
+enddef
+group oct_platform
+  spin 120.000000 0 0 1
+  shift -87.500000 151.554446 20.000000
+end
+group tHill
+  spin 120.000000 0 0 1
+  shift -87.500000 151.554446 0 1
+end
+meshbox
+  size 10.000000 56.250000 17.000000
+  shift -237.739027207365 290.978036013882 0
+  rotation 219.250000
+  texture std_ground
+end
+meshbox
+  size 10.000000 56.250000 17.000000
+  shift -133.124857527641 351.377055039519 0
+  rotation 200.750000
+  texture std_ground
+end
+meshbox
+  size 10.000000 60.750000 17.000000
+  shift -149.792986537175 183.337458486458 0
+  rotation 219.250000
+  texture std_ground
+end
+meshbox
+  size 10.000000 60.750000 17.000000
+  shift -83.8784032459588 221.393260893163 0
+  rotation 200.750000
+  texture std_ground
+end
+meshbox
+  size 10.000000 128.000000 0.100000
+  shift -192.342419883004 235.415363800985 17
+  rotation 219.250000
+  texture std_ground
+end
+meshbox
+  size 10.000000 128.000000 0.100000
+  shift -107.704475551305 284.281103744548 17
+  rotation 200.750000
+  texture std_ground
+end
+meshbox
+  size 10.000000 128.000000 12.000000
+  shift -187.161088499 239.555269096444 17
+  rotation 218.000000
+  texture std_ground
+end
+meshbox
+  size 10.000000 128.000000 12.000000
+  shift -113.880404398437 281.863891788304 17
+  rotation 202.000000
+  texture std_ground
+end
+meshbox
+  size 6.000000 123.000000 9.000000
+  shift -185.960842153982 246.778372604614 29
+  rotation 217.000000
+  texture std_ground
+end
+meshbox
+  size 6.000000 123.000000 9.000000
+  shift -120.735918703185 284.435999716804 29
+  rotation 203.000000
+  texture std_ground
+end
+meshbox
+  size 10.000000 66.500000 18.000000
+  shift -209.642187486307 299.400072187627 29
+  rotation 215.000000
+  texture std_ground
+end
+meshbox
+  size 10.000000 66.500000 18.000000
+  shift -154.466974666225 331.255496161896 29
+  rotation 205.000000
+  texture std_ground
+end
+meshbox
+  size 23.000000 23.000000 0.500000
+  shift -310 1.00163638234313E-12 30
+  rotation 180.000000
+  texture roof
+end
+meshbox
+  size 45.000000 10.000000 1.000000
+  shift -165 5.33129042214892E-13 22.6
+  rotation 360.000000
+  texture roof
+  color 0.700000 0.700000 0.700000 1.000000
+end
+meshbox
+  size 45.000000 8.000000 1.500000
+  shift -165 5.33129042214892E-13 23.6
+  rotation 360.000000
+  texture roof
+  color 1.000000 0.000000 0.000000 1.000000
+end
+define AdvanceTower1
+meshbox
+  size 15.000000 15.000000 23.000000
+  shift 0 0 0
+  rotation 0.000000
+  texture roof
+end
+meshbox
+  size 15.000000 15.000000 2.000000
+  shift 0 0 25
+  rotation 0.000000
+  texture roof
+end
+meshbox
+  size 19.000000 19.000000 2.000000
+  shift 0 0 23
+  rotation 0.000000
+  texture roof
+  color 1.000000 0.000000 0.000000 1.000000
+end
+meshbox
+  size 1.000000 5.000000 2.500000
+  shift 13 0 27
+  rotation 0.000000
+  texture roof
+  color 1.000000 0.000000 0.000000 1.000000
+end
+meshbox
+  size 1.000000 5.000000 2.500000
+  shift -13 0 27
+  rotation 0.000000
+  texture roof
+  color 1.000000 0.000000 0.000000 1.000000
+end
+meshbox
+  size 1.000000 5.000000 2.500000
+  shift 0 13 27
+  rotation 90.000000
+  texture roof
+  color 1.000000 0.000000 0.000000 1.000000
+end
+meshbox
+  size 1.000000 5.000000 2.500000
+  shift 0 -13 27
+  rotation 90.000000
+  texture roof
+  color 1.000000 0.000000 0.000000 1.000000
+end
+enddef
+group AdvanceTower1
+ spin 120.000000 0 0 1
+ shift -120.000000 0.000000 0
+end
+define intowers4
+arc
+ size 10.000000 10.000000 40.000000
+ divisions 16
+ angle 360
+ shift 40.000000 40.000000 0.000000
+ texture roof
+ color 0.501961 0.000000 0.501961
+end
+cone
+  divisions 16
+  angle 360
+  texture roof
+  size 13.000000 13.000000 10.000000
+  shift 40.000000 40.000000 0
+  color 0.700000 0.700000 0.700000
+  smoothbounce
+end
+cone
+  divisions 16
+  angle 360
+  texture roof
+  size 14.000000 14.000000 10.000000
+  spin 180 1 0 0
+  shift 40.000000 40.000000 40.100000
+  color 0.700000 0.700000 0.700000
+  smoothbounce
+end
+arc
+ size 11.000000 11.000000 8.000000
+ ratio 0.02
+ divisions 4
+ angle 37.000000
+ spin 0.000000 0 0 1
+ shift 40.000000 40.000000 40.000000
+ texture roof
+ color 0.501961 0.000000 0.501961 1.000000
+ drivethrough
+end
+arc
+ size 11.000000 11.000000 8.000000
+ ratio 0.02
+ divisions 4
+ angle 37.000000
+ spin 45.000000 0 0 1
+ shift 40.000000 40.000000 40.000000
+ texture roof
+ color 0.501961 0.000000 0.501961 1.000000
+ drivethrough
+end
+arc
+ size 11.000000 11.000000 8.000000
+ ratio 0.02
+ divisions 4
+ angle 37.000000
+ spin 90.000000 0 0 1
+ shift 40.000000 40.000000 40.000000
+ texture roof
+ color 0.501961 0.000000 0.501961 1.000000
+ drivethrough
+end
+arc
+ size 11.000000 11.000000 8.000000
+ ratio 0.02
+ divisions 4
+ angle 37.000000
+ spin 135.000000 0 0 1
+ shift 40.000000 40.000000 40.000000
+ texture roof
+ color 0.501961 0.000000 0.501961 1.000000
+ drivethrough
+end
+arc
+ size 11.000000 11.000000 8.000000
+ ratio 0.02
+ divisions 4
+ angle 37.000000
+ spin 180.000000 0 0 1
+ shift 40.000000 40.000000 40.000000
+ texture roof
+ color 0.501961 0.000000 0.501961 1.000000
+ drivethrough
+end
+arc
+ size 11.000000 11.000000 8.000000
+ ratio 0.02
+ divisions 4
+ angle 37.000000
+ spin 225.000000 0 0 1
+ shift 40.000000 40.000000 40.000000
+ texture roof
+ color 0.501961 0.000000 0.501961 1.000000
+ drivethrough
+end
+arc
+ size 11.000000 11.000000 8.000000
+ ratio 0.02
+ divisions 4
+ angle 37.000000
+ spin 270.000000 0 0 1
+ shift 40.000000 40.000000 40.000000
+ texture roof
+ color 0.501961 0.000000 0.501961 1.000000
+ drivethrough
+end
+arc
+ size 11.000000 11.000000 8.000000
+ ratio 0.02
+ divisions 4
+ angle 37.000000
+ spin 315.000000 0 0 1
+ shift 40.000000 40.000000 40.000000
+ texture roof
+ color 0.501961 0.000000 0.501961 1.000000
+ drivethrough
+end
+arc
+ size 12.000000 12.000000 1.000000
+ ratio 0.02
+ divisions 16
+ angle 360
+ shift 40.000000 40.000000 40.000000
+ texture roof
+ color 0.501961 0.000000 0.501961 1.000000
+ drivethrough
+end
+arc
+ size 12.000000 12.000000 1.000000
+ ratio 0.02
+ divisions 16
+ angle 360
+ shift 40.000000 40.000000 47.000000
+ texture roof
+ color 0.501961 0.000000 0.501961 1.000000
+ drivethrough
+end
+cone
+  divisions 16
+  angle 360
+  texture roof
+  size 14.000000 14.000000 10.000000
+  shift 40.000000 40.000000 48.000000
+  color 0.700000 0.700000 0.700000
+drivethrough
+  smoothbounce
+end
+arc
+ size 5.000000 5.000000 10.000000
+ divisions 16
+ angle 360
+ shift 40.000000 40.000000 51.000000
+ texture roof
+drivethrough
+ color 0.501961 0.000000 0.501961
+end
+cone
+  divisions 16
+  angle 360
+  texture roof
+  size 8.000000 8.000000 10.000000
+  shift 40.000000 40.000000 61.000000
+  color 0.700000 0.700000 0.700000 1.000000
+  smoothbounce
+  drivethrough
+end
+cone
+  divisions 16
+  angle 360
+  texture roof
+  size 4.000000 4.000000 40.000000
+  shift 40.000000 40.000000 61.000000
+  color 0.700000 0.700000 0.700000 1.000000
+  smoothbounce
+  drivethrough
+end
+arc
+ size 10.000000 10.000000 40.000000
+ divisions 16
+ angle 360
+ shift 40.000000 -40.000000 0.000000
+ texture roof
+ color 0.501961 0.000000 0.501961
+end
+cone
+  divisions 16
+  angle 360
+  texture roof
+  size 13.000000 13.000000 10.000000
+  shift 40.000000 -40.000000 0
+  color 0.700000 0.700000 0.700000
+  smoothbounce
+end
+cone
+  divisions 16
+  angle 360
+  texture roof
+  size 14.000000 14.000000 10.000000
+  spin 180 1 0 0
+  shift 40.000000 -40.000000 40.100000
+  color 0.700000 0.700000 0.700000
+  smoothbounce
+end
+arc
+ size 11.000000 11.000000 8.000000
+ ratio 0.02
+ divisions 4
+ angle 37.000000
+ spin 0.000000 0 0 1
+ shift 40.000000 -40.000000 40.000000
+ texture roof
+ color 0.501961 0.000000 0.501961 1.000000
+ drivethrough
+end
+arc
+ size 11.000000 11.000000 8.000000
+ ratio 0.02
+ divisions 4
+ angle 37.000000
+ spin 45.000000 0 0 1
+ shift 40.000000 -40.000000 40.000000
+ texture roof
+ color 0.501961 0.000000 0.501961 1.000000
+ drivethrough
+end
+arc
+ size 11.000000 11.000000 8.000000
+ ratio 0.02
+ divisions 4
+ angle 37.000000
+ spin 90.000000 0 0 1
+ shift 40.000000 -40.000000 40.000000
+ texture roof
+ color 0.501961 0.000000 0.501961 1.000000
+ drivethrough
+end
+arc
+ size 11.000000 11.000000 8.000000
+ ratio 0.02
+ divisions 4
+ angle 37.000000
+ spin 135.000000 0 0 1
+ shift 40.000000 -40.000000 40.000000
+ texture roof
+ color 0.501961 0.000000 0.501961 1.000000
+ drivethrough
+end
+arc
+ size 11.000000 11.000000 8.000000
+ ratio 0.02
+ divisions 4
+ angle 37.000000
+ spin 180.000000 0 0 1
+ shift 40.000000 -40.000000 40.000000
+ texture roof
+ color 0.501961 0.000000 0.501961 1.000000
+ drivethrough
+end
+arc
+ size 11.000000 11.000000 8.000000
+ ratio 0.02
+ divisions 4
+ angle 37.000000
+ spin 225.000000 0 0 1
+ shift 40.000000 -40.000000 40.000000
+ texture roof
+ color 0.501961 0.000000 0.501961 1.000000
+ drivethrough
+end
+arc
+ size 11.000000 11.000000 8.000000
+ ratio 0.02
+ divisions 4
+ angle 37.000000
+ spin 270.000000 0 0 1
+ shift 40.000000 -40.000000 40.000000
+ texture roof
+ color 0.501961 0.000000 0.501961 1.000000
+ drivethrough
+end
+arc
+ size 11.000000 11.000000 8.000000
+ ratio 0.02
+ divisions 4
+ angle 37.000000
+ spin 315.000000 0 0 1
+ shift 40.000000 -40.000000 40.000000
+ texture roof
+ color 0.501961 0.000000 0.501961 1.000000
+ drivethrough
+end
+arc
+ size 12.000000 12.000000 1.000000
+ ratio 0.02
+ divisions 16
+ angle 360
+ shift 40.000000 -40.000000 40.000000
+ texture roof
+ color 0.501961 0.000000 0.501961 1.000000
+ drivethrough
+end
+arc
+ size 12.000000 12.000000 1.000000
+ ratio 0.02
+ divisions 16
+ angle 360
+ shift 40.000000 -40.000000 47.000000
+ texture roof
+ color 0.501961 0.000000 0.501961 1.000000
+ drivethrough
+end
+cone
+  divisions 16
+  angle 360
+  texture roof
+  size 14.000000 14.000000 10.000000
+  shift 40.000000 -40.000000 48.000000
+  color 0.700000 0.700000 0.700000
+drivethrough
+  smoothbounce
+end
+arc
+ size 5.000000 5.000000 10.000000
+ divisions 16
+ angle 360
+ shift 40.000000 -40.000000 51.000000
+ texture roof
+drivethrough
+ color 0.501961 0.000000 0.501961
+end
+cone
+  divisions 16
+  angle 360
+  texture roof
+  size 8.000000 8.000000 10.000000
+  shift 40.000000 -40.000000 61.000000
+  color 0.700000 0.700000 0.700000 1.000000
+  smoothbounce
+  drivethrough
+end
+cone
+  divisions 16
+  angle 360
+  texture roof
+  size 4.000000 4.000000 40.000000
+  shift 40.000000 -40.000000 61.000000
+  color 0.700000 0.700000 0.700000 1.000000
+  smoothbounce
+  drivethrough
+end
+arc
+ size 10.000000 10.000000 40.000000
+ divisions 16
+ angle 360
+ shift -40.000000 40.000000 0.000000
+ texture roof
+ color 0.501961 0.000000 0.501961
+end
+cone
+  divisions 16
+  angle 360
+  texture roof
+  size 13.000000 13.000000 10.000000
+  shift -40.000000 40.000000 0
+  color 0.700000 0.700000 0.700000
+  smoothbounce
+end
+cone
+  divisions 16
+  angle 360
+  texture roof
+  size 14.000000 14.000000 10.000000
+  spin 180 1 0 0
+  shift -40.000000 40.000000 40.100000
+  color 0.700000 0.700000 0.700000
+  smoothbounce
+end
+arc
+ size 11.000000 11.000000 8.000000
+ ratio 0.02
+ divisions 4
+ angle 37.000000
+ spin 0.000000 0 0 1
+ shift -40.000000 40.000000 40.000000
+ texture roof
+ color 0.501961 0.000000 0.501961 1.000000
+ drivethrough
+end
+arc
+ size 11.000000 11.000000 8.000000
+ ratio 0.02
+ divisions 4
+ angle 37.000000
+ spin 45.000000 0 0 1
+ shift -40.000000 40.000000 40.000000
+ texture roof
+ color 0.501961 0.000000 0.501961 1.000000
+ drivethrough
+end
+arc
+ size 11.000000 11.000000 8.000000
+ ratio 0.02
+ divisions 4
+ angle 37.000000
+ spin 90.000000 0 0 1
+ shift -40.000000 40.000000 40.000000
+ texture roof
+ color 0.501961 0.000000 0.501961 1.000000
+ drivethrough
+end
+arc
+ size 11.000000 11.000000 8.000000
+ ratio 0.02
+ divisions 4
+ angle 37.000000
+ spin 135.000000 0 0 1
+ shift -40.000000 40.000000 40.000000
+ texture roof
+ color 0.501961 0.000000 0.501961 1.000000
+ drivethrough
+end
+arc
+ size 11.000000 11.000000 8.000000
+ ratio 0.02
+ divisions 4
+ angle 37.000000
+ spin 180.000000 0 0 1
+ shift -40.000000 40.000000 40.000000
+ texture roof
+ color 0.501961 0.000000 0.501961 1.000000
+ drivethrough
+end
+arc
+ size 11.000000 11.000000 8.000000
+ ratio 0.02
+ divisions 4
+ angle 37.000000
+ spin 225.000000 0 0 1
+ shift -40.000000 40.000000 40.000000
+ texture roof
+ color 0.501961 0.000000 0.501961 1.000000
+ drivethrough
+end
+arc
+ size 11.000000 11.000000 8.000000
+ ratio 0.02
+ divisions 4
+ angle 37.000000
+ spin 270.000000 0 0 1
+ shift -40.000000 40.000000 40.000000
+ texture roof
+ color 0.501961 0.000000 0.501961 1.000000
+ drivethrough
+end
+arc
+ size 11.000000 11.000000 8.000000
+ ratio 0.02
+ divisions 4
+ angle 37.000000
+ spin 315.000000 0 0 1
+ shift -40.000000 40.000000 40.000000
+ texture roof
+ color 0.501961 0.000000 0.501961 1.000000
+ drivethrough
+end
+arc
+ size 12.000000 12.000000 1.000000
+ ratio 0.02
+ divisions 16
+ angle 360
+ shift -40.000000 40.000000 40.000000
+ texture roof
+ color 0.501961 0.000000 0.501961 1.000000
+ drivethrough
+end
+arc
+ size 12.000000 12.000000 1.000000
+ ratio 0.02
+ divisions 16
+ angle 360
+ shift -40.000000 40.000000 47.000000
+ texture roof
+ color 0.501961 0.000000 0.501961 1.000000
+ drivethrough
+end
+cone
+  divisions 16
+  angle 360
+  texture roof
+  size 14.000000 14.000000 10.000000
+  shift -40.000000 40.000000 48.000000
+  color 0.700000 0.700000 0.700000
+drivethrough
+  smoothbounce
+end
+arc
+ size 5.000000 5.000000 10.000000
+ divisions 16
+ angle 360
+ shift -40.000000 40.000000 51.000000
+ texture roof
+drivethrough
+ color 0.501961 0.000000 0.501961
+end
+cone
+  divisions 16
+  angle 360
+  texture roof
+  size 8.000000 8.000000 10.000000
+  shift -40.000000 40.000000 61.000000
+  color 0.700000 0.700000 0.700000 1.000000
+  smoothbounce
+  drivethrough
+end
+cone
+  divisions 16
+  angle 360
+  texture roof
+  size 4.000000 4.000000 40.000000
+  shift -40.000000 40.000000 61.000000
+  color 0.700000 0.700000 0.700000 1.000000
+  smoothbounce
+  drivethrough
+end
+arc
+ size 10.000000 10.000000 40.000000
+ divisions 16
+ angle 360
+ shift -40.000000 -40.000000 0.000000
+ texture roof
+ color 0.501961 0.000000 0.501961
+end
+cone
+  divisions 16
+  angle 360
+  texture roof
+  size 13.000000 13.000000 10.000000
+  shift -40.000000 -40.000000 0
+  color 0.700000 0.700000 0.700000
+  smoothbounce
+end
+cone
+  divisions 16
+  angle 360
+  texture roof
+  size 14.000000 14.000000 10.000000
+  spin 180 1 0 0
+  shift -40.000000 -40.000000 40.100000
+  color 0.700000 0.700000 0.700000
+  smoothbounce
+end
+arc
+ size 11.000000 11.000000 8.000000
+ ratio 0.02
+ divisions 4
+ angle 37.000000
+ spin 0.000000 0 0 1
+ shift -40.000000 -40.000000 40.000000
+ texture roof
+ color 0.501961 0.000000 0.501961 1.000000
+ drivethrough
+end
+arc
+ size 11.000000 11.000000 8.000000
+ ratio 0.02
+ divisions 4
+ angle 37.000000
+ spin 45.000000 0 0 1
+ shift -40.000000 -40.000000 40.000000
+ texture roof
+ color 0.501961 0.000000 0.501961 1.000000
+ drivethrough
+end
+arc
+ size 11.000000 11.000000 8.000000
+ ratio 0.02
+ divisions 4
+ angle 37.000000
+ spin 90.000000 0 0 1
+ shift -40.000000 -40.000000 40.000000
+ texture roof
+ color 0.501961 0.000000 0.501961 1.000000
+ drivethrough
+end
+arc
+ size 11.000000 11.000000 8.000000
+ ratio 0.02
+ divisions 4
+ angle 37.000000
+ spin 135.000000 0 0 1
+ shift -40.000000 -40.000000 40.000000
+ texture roof
+ color 0.501961 0.000000 0.501961 1.000000
+ drivethrough
+end
+arc
+ size 11.000000 11.000000 8.000000
+ ratio 0.02
+ divisions 4
+ angle 37.000000
+ spin 180.000000 0 0 1
+ shift -40.000000 -40.000000 40.000000
+ texture roof
+ color 0.501961 0.000000 0.501961 1.000000
+ drivethrough
+end
+arc
+ size 11.000000 11.000000 8.000000
+ ratio 0.02
+ divisions 4
+ angle 37.000000
+ spin 225.000000 0 0 1
+ shift -40.000000 -40.000000 40.000000
+ texture roof
+ color 0.501961 0.000000 0.501961 1.000000
+ drivethrough
+end
+arc
+ size 11.000000 11.000000 8.000000
+ ratio 0.02
+ divisions 4
+ angle 37.000000
+ spin 270.000000 0 0 1
+ shift -40.000000 -40.000000 40.000000
+ texture roof
+ color 0.501961 0.000000 0.501961 1.000000
+ drivethrough
+end
+arc
+ size 11.000000 11.000000 8.000000
+ ratio 0.02
+ divisions 4
+ angle 37.000000
+ spin 315.000000 0 0 1
+ shift -40.000000 -40.000000 40.000000
+ texture roof
+ color 0.501961 0.000000 0.501961 1.000000
+ drivethrough
+end
+arc
+ size 12.000000 12.000000 1.000000
+ ratio 0.02
+ divisions 16
+ angle 360
+ shift -40.000000 -40.000000 40.000000
+ texture roof
+ color 0.501961 0.000000 0.501961 1.000000
+ drivethrough
+end
+arc
+ size 12.000000 12.000000 1.000000
+ ratio 0.02
+ divisions 16
+ angle 360
+ shift -40.000000 -40.000000 47.000000
+ texture roof
+ color 0.501961 0.000000 0.501961 1.000000
+ drivethrough
+end
+cone
+  divisions 16
+  angle 360
+  texture roof
+  size 14.000000 14.000000 10.000000
+  shift -40.000000 -40.000000 48.000000
+  color 0.700000 0.700000 0.700000
+drivethrough
+  smoothbounce
+end
+arc
+ size 5.000000 5.000000 10.000000
+ divisions 16
+ angle 360
+ shift -40.000000 -40.000000 51.000000
+ texture roof
+drivethrough
+ color 0.501961 0.000000 0.501961
+end
+cone
+  divisions 16
+  angle 360
+  texture roof
+  size 8.000000 8.000000 10.000000
+  shift -40.000000 -40.000000 61.000000
+  color 0.700000 0.700000 0.700000 1.000000
+  smoothbounce
+  drivethrough
+end
+cone
+  divisions 16
+  angle 360
+  texture roof
+  size 4.000000 4.000000 40.000000
+  shift -40.000000 -40.000000 61.000000
+  color 0.700000 0.700000 0.700000 1.000000
+  smoothbounce
+  drivethrough
+end
+enddef
+zone
+  position 155.000000 -268.467875 0
+  size 70.7213578500707 70.7213578500707 0
+  team 4
+end
+zone
+  position 155.000000 -268.467875 0
+  size 70.7213578500707 70.7213578500707 50
+  flag CL GM L MQ SB SE ST
+end
+zone
+  position 155.000000 -268.467875 0.000000
+   size 43.000000 43.000000 50
+   safety 4
+end
+define XtraStuff4
+meshbox
+  size 20.000000 20.000000 22.000000
+  shift 0 0 32
+  rotation 0.000000
+  texture roof
+  drivethrough
+  color 0.501961 0.000000 0.501961 0.800000
+end
+material
+ name TileMaterial2
+ nolighting
+  texture purple_icon
+end
+material
+ name ReflectTileMaterial2
+ nolighting
+  texture purple_icon
+end
+mesh
+  drivethrough
+  shootthrough
+  vertex 7.500000 0.500000 0.000000
+  vertex -7.500000 0.500000 0.000000
+  vertex -7.500000 -0.500000 0.000000
+  vertex 7.500000 -0.500000 0.000000
+  vertex 7.500000 0.500000 15.000000
+  vertex -7.500000 0.500000 15.000000
+  vertex -7.500000 -0.500000 15.000000
+  vertex 7.500000 -0.500000 15.000000
+  spin 270.000000 0 0 1
+  shift -21.000000 0.000000 36.500000
+  texcoord 0 0
+  texcoord 1 0
+  texcoord 1 1
+  texcoord 0 1
+  face 
+    vertices 3 2 1 0
+  endface
+  face 
+    vertices 0 1 2 3
+    color 0.6 0.6 0.6 0.5
+  endface
+  face
+    vertices 4 5 6 7
+  endface
+  face
+    vertices 7 6 5 4
+    color 0.6 0.6 0.6 0.5
+  endface
+  face
+    vertices 3 0 4 7 
+  endface
+  face
+    vertices 7 4 0 3 
+    color 0.6 0.6 0.6 0.5
+  endface
+  face
+    vertices 1 5 4 0
+  endface
+  face
+    vertices 0 4 5 1
+    color 0.6 0.6 0.6 0.5
+  endface
+  face
+    vertices 1 2 6 5
+  endface
+  face
+    vertices 6 5 2 1 
+    color 0.6 0.6 0.6 0.5
+  endface
+  face
+    vertices 2 3 7 6
+    matref TileMaterial2
+    texcoords 0 1 2 3
+  endface
+  face
+    vertices 6 7 3 2
+    matref ReflectTileMaterial2
+    texcoords 3 2 1 0
+    color 0.6 0.6 0.6 0.5
+  endface
+end
+meshbox
+  size 23.000000 23.000000 3.000000
+  shift 0 0 53
+  rotation 0.000000
+  texture roof
+  color 0.700000 0.700000 0.700000 1.000000
+end
+meshbox
+  size 2.000000 2.000000 21.000000
+  shift 20 20 32
+  rotation 0.000000
+  texture roof
+  color 0.501961 0.000000 0.501961 1.000000
+end
+meshbox
+  size 2.000000 2.000000 21.000000
+  shift 20 -20 32
+  rotation 0.000000
+  texture roof
+  color 0.501961 0.000000 0.501961 1.000000
+end
+meshbox
+  size 2.000000 2.000000 21.000000
+  shift 20 -20 32
+  rotation 0.000000
+  texture roof
+  color 0.501961 0.000000 0.501961 1.000000
+end
+meshbox
+  size 2.000000 2.000000 21.000000
+  shift -20 20 32
+  rotation 0.000000
+  texture roof
+  color 0.501961 0.000000 0.501961 1.000000
+end
+cone
+  divisions 8
+  angle 360
+  texture roof
+  size 5.000000 5.000000 60.000000
+  shift 0.000000 0.000000 64.000000
+  color 0.700000 0.700000 0.700000
+  smoothbounce
+end
+meshbox
+  size 4.000000 4.000000 10.000000
+  shift 20 -20 51
+  rotation 45.000000
+  texture roof
+  drivethrough
+  color 0.501961 0.000000 0.501961 1.000000
+end
+cone
+  divisions 4
+  angle 360
+  texture roof
+  spin 0 0 0 1
+  size 7.000000 7.000000 10.000000
+  shift 20.000000 -20.000000 61.000000
+  color 0.700000 0.700000 0.700000 1.000000
+  smoothbounce
+end
+cone
+  divisions 4
+  angle 360
+  texture roof
+  spin 0 0 0 1
+  size 4.000000 4.000000 30.000000
+  shift 20.000000 -20.000000 61.000000
+  color 0.700000 0.700000 0.700000
+  smoothbounce
+end
+meshbox
+  size 4.000000 4.000000 10.000000
+  shift 20 20 51
+  rotation 45.000000
+  texture roof
+  drivethrough
+  color 0.501961 0.000000 0.501961 1.000000
+end
+cone
+  divisions 4
+  angle 360
+  texture roof
+  spin 0 0 0 1
+  size 7.000000 7.000000 10.000000
+  shift 20.000000 20.000000 61.000000
+  color 0.700000 0.700000 0.700000 1.000000
+  smoothbounce
+end
+cone
+  divisions 4
+  angle 360
+  texture roof
+  spin 0 0 0 1
+  size 4.000000 4.000000 30.000000
+  shift 20.000000 20.000000 61.000000
+  color 0.700000 0.700000 0.700000
+  smoothbounce
+end
+meshbox
+  size 4.000000 4.000000 10.000000
+  shift -20 -20 51
+  rotation 45.000000
+  texture roof
+  drivethrough
+  color 0.501961 0.000000 0.501961 1.000000
+end
+cone
+  divisions 4
+  angle 360
+  texture roof
+  spin 0 0 0 1
+  size 7.000000 7.000000 10.000000
+  shift -20.000000 -20.000000 61.000000
+  color 0.700000 0.700000 0.700000 1.000000
+  smoothbounce
+end
+cone
+  divisions 4
+  angle 360
+  texture roof
+  spin 0 0 0 1
+  size 4.000000 4.000000 30.000000
+  shift -20.000000 -20.000000 61.000000
+  color 0.700000 0.700000 0.700000
+  smoothbounce
+end
+meshbox
+  size 4.000000 4.000000 10.000000
+  shift -20 20 51
+  rotation 45.000000
+  texture roof
+  drivethrough
+  color 0.501961 0.000000 0.501961 1.000000
+end
+cone
+  divisions 4
+  angle 360
+  texture roof
+  spin 0 0 0 1
+  size 7.000000 7.000000 10.000000
+  shift -20.000000 20.000000 61.000000
+  color 0.700000 0.700000 0.700000 1.000000
+  smoothbounce
+end
+cone
+  divisions 4
+  angle 360
+  texture roof
+  spin 0 0 0 1
+  size 4.000000 4.000000 30.000000
+  shift -20.000000 20.000000 61.000000
+  color 0.700000 0.700000 0.700000
+  smoothbounce
+end
+arc
+ size 6.000000 6.000000 65.000000
+ divisions 16
+ angle 360
+ shift 91.000000 27.000000 0.000000
+ texture roof
+ color 0.501961 0.000000 0.501961
+end
+cone
+  divisions 16
+  angle 360
+  texture roof
+  size 9.000000 9.000000 10.000000
+  spin 180 1 0 0
+  shift 91.000000 27.000000 65.100000
+  color 0.700000 0.700000 0.700000
+  smoothbounce
+end
+arc
+ size 6.000000 6.000000 8.000000
+ ratio 0.02
+ divisions 4
+ angle 16.000000
+ spin 0.000000 0 0 1
+ shift 91.000000 27.000000 65.000000
+ texture roof
+ color 0.501961 0.000000 0.501961 1.000000
+ drivethrough
+end
+arc
+ size 6.000000 6.000000 8.000000
+ ratio 0.02
+ divisions 4
+ angle 16.000000
+ spin 36.000000 0 0 1
+ shift 91.000000 27.000000 65.000000
+ texture roof
+ color 0.501961 0.000000 0.501961 1.000000
+ drivethrough
+end
+arc
+ size 6.000000 6.000000 8.000000
+ ratio 0.02
+ divisions 4
+ angle 16.000000
+ spin 72.000000 0 0 1
+ shift 91.000000 27.000000 65.000000
+ texture roof
+ color 0.501961 0.000000 0.501961 1.000000
+ drivethrough
+end
+arc
+ size 6.000000 6.000000 8.000000
+ ratio 0.02
+ divisions 4
+ angle 16.000000
+ spin 108.000000 0 0 1
+ shift 91.000000 27.000000 65.000000
+ texture roof
+ color 0.501961 0.000000 0.501961 1.000000
+ drivethrough
+end
+arc
+ size 6.000000 6.000000 8.000000
+ ratio 0.02
+ divisions 4
+ angle 16.000000
+ spin 144.000000 0 0 1
+ shift 91.000000 27.000000 65.000000
+ texture roof
+ color 0.501961 0.000000 0.501961 1.000000
+ drivethrough
+end
+arc
+ size 6.000000 6.000000 8.000000
+ ratio 0.02
+ divisions 4
+ angle 16.000000
+ spin 180.000000 0 0 1
+ shift 91.000000 27.000000 65.000000
+ texture roof
+ color 0.501961 0.000000 0.501961 1.000000
+ drivethrough
+end
+arc
+ size 6.000000 6.000000 8.000000
+ ratio 0.02
+ divisions 4
+ angle 16.000000
+ spin 216.000000 0 0 1
+ shift 91.000000 27.000000 65.000000
+ texture roof
+ color 0.501961 0.000000 0.501961 1.000000
+ drivethrough
+end
+arc
+ size 6.000000 6.000000 8.000000
+ ratio 0.02
+ divisions 4
+ angle 16.000000
+ spin 252.000000 0 0 1
+ shift 91.000000 27.000000 65.000000
+ texture roof
+ color 0.501961 0.000000 0.501961 1.000000
+ drivethrough
+end
+arc
+ size 6.000000 6.000000 8.000000
+ ratio 0.02
+ divisions 4
+ angle 16.000000
+ spin 288.000000 0 0 1
+ shift 91.000000 27.000000 65.000000
+ texture roof
+ color 0.501961 0.000000 0.501961 1.000000
+ drivethrough
+end
+arc
+ size 6.000000 6.000000 8.000000
+ ratio 0.02
+ divisions 4
+ angle 16.000000
+ spin 324.000000 0 0 1
+ shift 91.000000 27.000000 65.000000
+ texture roof
+ color 0.501961 0.000000 0.501961 1.000000
+ drivethrough
+end
+arc
+ size 7.000000 7.000000 1.000000
+ ratio 0.02
+ divisions 16
+ angle 360
+ shift 91.000000 27.000000 65.000000
+ texture roof
+ color 0.501961 0.000000 0.501961 1.000000
+ drivethrough
+end
+arc
+ size 7.000000 7.000000 1.000000
+ ratio 0.02
+ divisions 16
+ angle 360
+ shift 91.000000 27.000000 72.000000
+ texture roof
+ color 0.501961 0.000000 0.501961 1.000000
+ drivethrough
+end
+cone
+  divisions 16
+  angle 360
+  texture roof
+  size 10.000000 10.000000 10.000000
+  shift 91.000000 27.000000 73.000000
+  color 0.700000 0.700000 0.700000
+drivethrough
+  smoothbounce
+end
+arc
+ size 3.000000 3.000000 10.000000
+ divisions 16
+ angle 360
+ shift 91.000000 27.000000 76.000000
+ texture roof
+drivethrough
+ color 0.501961 0.000000 0.501961
+end
+cone
+  divisions 16
+  angle 360
+  texture roof
+  size 6.000000 6.000000 10.000000
+  shift 91.000000 27.000000 86.000000
+  color 0.700000 0.700000 0.700000 1.000000
+  smoothbounce
+  drivethrough
+end
+cone
+  divisions 16
+  angle 360
+  texture roof
+  size 2.000000 2.000000 40.000000
+  shift 91.000000 27.000000 86.000000
+  color 0.700000 0.700000 0.700000 1.000000
+  smoothbounce
+  drivethrough
+end
+enddef
+define Base4
+arc
+ size 100.000000 100.000000 14.000000
+ ratio 0.02
+ divisions 31
+ angle 100
+ spin 0 0 0 1
+ shift 0.000000 0.000000 0.000000
+ texture roof
+ color 0.600000 0.600000 0.600000
+end
+arc
+ size 100.000000 100.000000 1.200000
+ ratio 0.02
+ divisions 31
+ angle 100
+ spin 60 0 0 1
+ shift 0.000000 0.000000 14.000000
+ texture roof
+ color 0.600000 0.600000 0.600000
+end
+arc
+ size 100.000000 100.000000 7.200000
+ ratio 0.02
+ divisions 31
+ angle 100
+ spin 60 0 0 1
+ shift 0.000000 0.000000 15.900000
+ texture roof
+ color 0.600000 0.600000 0.600000
+end
+arc
+ size 100.000000 100.000000 14.000000
+ ratio 0.02
+ divisions 31
+ angle 100
+ spin 120 0 0 1
+ shift 0.000000 0.000000 0.000000
+ texture roof
+ color 0.600000 0.600000 0.600000
+end
+arc
+ size 100.000000 100.000000 1.200000
+ ratio 0.02
+ divisions 31
+ angle 100
+ spin 180 0 0 1
+ shift 0.000000 0.000000 14.000000
+ texture roof
+ color 0.600000 0.600000 0.600000
+end
+arc
+ size 100.000000 100.000000 7.200000
+ ratio 0.02
+ divisions 31
+ angle 100
+ spin 180 0 0 1
+ shift 0.000000 0.000000 15.900000
+ texture roof
+ color 0.600000 0.600000 0.600000
+end
+arc
+ size 100.000000 100.000000 14.000000
+ ratio 0.02
+ divisions 31
+ angle 100
+ spin 240 0 0 1
+ shift 0.000000 0.000000 0.000000
+ texture roof
+ color 0.600000 0.600000 0.600000
+end
+arc
+ size 100.000000 100.000000 1.200000
+ ratio 0.02
+ divisions 31
+ angle 100
+ spin 300 0 0 1
+ shift 0.000000 0.000000 14.000000
+ texture roof
+ color 0.600000 0.600000 0.600000
+end
+arc
+ size 100.000000 100.000000 7.200000
+ ratio 0.02
+ divisions 31
+ angle 100
+ spin 300 0 0 1
+ shift 0.000000 0.000000 15.900000
+ texture roof
+ color 0.600000 0.600000 0.600000
+end
+meshbox
+ size 17.277994 1.000000 14.000000
+ spin 80 0 0 1
+ shift 96.018756 -16.930697 0.000000
+ texture roof
+drivethrough
+shootthrough
+ color 0.700000 0.700000 0.700000 0.500000
+end
+mesh
+  vertex -17.277994 0.000000 0.000000
+  vertex 17.277994 0.000000 0.000000
+  vertex 17.277994 0.000000 14.000000
+  vertex -17.277994 0.000000 14.000000
+  face
+    vertices 0 1 2 3
+    matref doorstuff
+  endface
+ spin 80 0 0 1
+ shift 96.018756 -16.930697 0.000000
+end
+meshbox
+ size 17.277994 1.000000 14.000000
+ spin 200 0 0 1
+ shift -33.346964 91.620031 0.000000
+ texture roof
+drivethrough
+shootthrough
+ color 0.700000 0.700000 0.700000 0.500000
+end
+mesh
+  vertex -17.277994 0.000000 0.000000
+  vertex 17.277994 0.000000 0.000000
+  vertex 17.277994 0.000000 14.000000
+  vertex -17.277994 0.000000 14.000000
+  face
+    vertices 0 1 2 3
+    matref doorstuff
+  endface
+ spin 200 0 0 1
+ shift -33.346964 91.620031 0.000000
+end
+meshbox
+ size 17.277994 1.000000 14.000000
+ spin 320 0 0 1
+ shift -62.671792 -74.689333 0.000000
+ texture roof
+drivethrough
+shootthrough
+ color 0.700000 0.700000 0.700000 0.500000
+end
+mesh
+  vertex -17.277994 0.000000 0.000000
+  vertex 17.277994 0.000000 0.000000
+  vertex 17.277994 0.000000 14.000000
+  vertex -17.277994 0.000000 14.000000
+  face
+    vertices 0 1 2 3
+    matref doorstuff
+  endface
+ spin 320 0 0 1
+ shift -62.671792 -74.689333 0.000000
+end
+arc
+ size 100.000000 100.000000 0.700000
+ ratio 0.02
+ divisions 3
+ angle 20
+ spin 60 0 0 1
+ shift 0.000000 0.000000 15.200000
+ texture roof
+ color 0.600000 0.600000 0.600000
+end
+arc
+ size 100.000000 100.000000 0.700000
+ ratio 0.02
+ divisions 3
+ angle 20
+ spin 100 0 0 1
+ shift 0.000000 0.000000 15.200000
+ texture roof
+ color 0.600000 0.600000 0.600000
+end
+arc
+ size 100.000000 100.000000 0.700000
+ ratio 0.02
+ divisions 3
+ angle 20
+ spin 140 0 0 1
+ shift 0.000000 0.000000 15.200000
+ texture roof
+ color 0.600000 0.600000 0.600000
+end
+arc
+ size 100.000000 100.000000 0.700000
+ ratio 0.02
+ divisions 3
+ angle 20
+ spin 180 0 0 1
+ shift 0.000000 0.000000 15.200000
+ texture roof
+ color 0.600000 0.600000 0.600000
+end
+arc
+ size 100.000000 100.000000 0.700000
+ ratio 0.02
+ divisions 3
+ angle 20
+ spin 220 0 0 1
+ shift 0.000000 0.000000 15.200000
+ texture roof
+ color 0.600000 0.600000 0.600000
+end
+arc
+ size 100.000000 100.000000 0.700000
+ ratio 0.02
+ divisions 3
+ angle 20
+ spin 260 0 0 1
+ shift 0.000000 0.000000 15.200000
+ texture roof
+ color 0.600000 0.600000 0.600000
+end
+arc
+ size 100.000000 100.000000 0.700000
+ ratio 0.02
+ divisions 3
+ angle 20
+ spin 300 0 0 1
+ shift 0.000000 0.000000 15.200000
+ texture roof
+ color 0.600000 0.600000 0.600000
+end
+arc
+ size 100.000000 100.000000 0.700000
+ ratio 0.02
+ divisions 3
+ angle 20
+ spin 340 0 0 1
+ shift 0.000000 0.000000 15.200000
+ texture roof
+ color 0.600000 0.600000 0.600000
+end
+arc
+ size 100.000000 100.000000 0.700000
+ ratio 0.02
+ divisions 3
+ angle 20
+ spin 380 0 0 1
+ shift 0.000000 0.000000 15.200000
+ texture roof
+ color 0.600000 0.600000 0.600000
+end
+arc
+ size 100.000000 100.000000 2.000000
+ ratio 0.2
+ divisions 31
+ angle 360
+ spin 225 0 0 1
+ shift 0.000000 0.000000 12.000000
+ texture roof
+ color 0.600000 0.600000 0.600000
+end
+arc
+ size 110.000000 110.000000 2.000000
+ ratio 0.2
+ divisions 31
+ angle 360
+ spin 225 0 0 1
+ shift 0.000000 0.000000 23.100000
+ texture roof
+ color 0.501961 0.000000 0.501961
+end
+arc
+ size 100.000000 100.000000 8.000000
+ ratio 0.01
+ divisions 31
+ angle 360
+ spin 225 0 0 1
+ shift 0.000000 0.000000 27.200000
+ texture roof
+ color 0.600000 0.600000 0.600000
+end
+arc
+ size 100.000000 100.000000 2.000000
+ ratio 0.15
+ divisions 31
+ angle 360
+ spin 225 0 0 1
+ shift 0.000000 0.000000 35.200000
+ texture roof
+ color 0.600000 0.600000 0.600000
+end
+meshbox
+  size 5.000000 5.000000 15.000000
+  shift -105.495330416011 120.294369196637 0
+  rotation 131.250000
+  texture roof
+  color 0.700000 0.700000 0.700000 1.000000
+end
+meshpyr
+  shift -105 120 15
+  size 4.000000 4.000000 7.000000
+  rotation 131.250000
+  texture roof
+  drivethrough
+  color 0.501961 0.000000 0.501961 0.950000
+end
+meshpyr
+  shift -105 120 0
+  size 8.000000 8.000000 14.900000
+  rotation 131.250000
+  texture roof
+  color 0.700000 0.700000 0.700000 1.000000
+end
+meshbox
+  size 5.000000 5.000000 15.000000
+  shift -159.391151694679 13.9449188396257 0
+  rotation 175.000000
+  texture roof
+  color 0.700000 0.700000 0.700000 1.000000
+end
+meshpyr
+  shift -159 14 15
+  size 4.000000 4.000000 7.000000
+  rotation 175.000000
+  texture roof
+  drivethrough
+  color 0.501961 0.000000 0.501961 0.950000
+end
+meshpyr
+  shift -159 14 0
+  size 8.000000 8.000000 14.900000
+  rotation 175.000000
+  texture roof
+  color 0.700000 0.700000 0.700000 1.000000
+end
+meshbox
+  size 5.000000 5.000000 15.000000
+  shift -124.781517294861 -100.147755549449 0
+  rotation 218.750000
+  texture roof
+  color 0.700000 0.700000 0.700000 1.000000
+end
+meshpyr
+  shift -125 -100 15
+  size 4.000000 4.000000 7.000000
+  rotation 218.750000
+  texture roof
+  drivethrough
+  color 0.501961 0.000000 0.501961 0.950000
+end
+meshpyr
+  shift -125 -100 0
+  size 8.000000 8.000000 14.900000
+  rotation 218.750000
+  texture roof
+  color 0.700000 0.700000 0.700000 1.000000
+end
+meshbox
+  size 5.000000 5.000000 15.000000
+  shift -20.884190755209 -158.63117781981 0
+  rotation 262.500000
+  texture roof
+  color 0.700000 0.700000 0.700000 1.000000
+end
+meshpyr
+  shift -21 -159 15
+  size 4.000000 4.000000 7.000000
+  rotation 262.500000
+  texture roof
+  drivethrough
+  color 0.501961 0.000000 0.501961 0.950000
+end
+meshpyr
+  shift -21 -159 0
+  size 8.000000 8.000000 14.900000
+  rotation 262.500000
+  texture roof
+  color 0.700000 0.700000 0.700000 1.000000
+end
+meshbox
+  size 5.000000 5.000000 15.000000
+  shift 94.6095437381725 -129.031136682798 0
+  rotation 306.250000
+  texture roof
+  color 0.700000 0.700000 0.700000 1.000000
+end
+meshpyr
+  shift 95 -129 15
+  size 4.000000 4.000000 7.000000
+  rotation 306.250000
+  texture roof
+  drivethrough
+  color 0.501961 0.000000 0.501961 0.950000
+end
+meshpyr
+  shift 95 -129 0
+  size 8.000000 8.000000 14.900000
+  rotation 306.250000
+  texture roof
+  color 0.700000 0.700000 0.700000 1.000000
+end
+meshbox
+  size 5.000000 5.000000 15.000000
+  shift 157.569240481953 -27.7837084267097 0
+  rotation 350.000000
+  texture roof
+  color 0.700000 0.700000 0.700000 1.000000
+end
+meshpyr
+  shift 158 -28 15
+  size 4.000000 4.000000 7.000000
+  rotation 350.000000
+  texture roof
+  drivethrough
+  color 0.501961 0.000000 0.501961 0.950000
+end
+meshpyr
+  shift 158 -28 0
+  size 8.000000 8.000000 14.900000
+  rotation 350.000000
+  texture roof
+  color 0.700000 0.700000 0.700000 1.000000
+end
+group intowers4
+  spin 30 0 0 1
+end
+arc
+ size 15.000000 15.000000 30.000000
+ ratio 0.02
+ divisions 4
+ angle 360
+ shift 0.000000 0.000000 0.000000
+ texture roof
+ color 0.501961 0.000000 0.501961
+end
+group XtraStuff4
+  spin 60.000000 0 0 1
+  shift 0.000000 0.000000 0.000000
+end
+enddef
+group Base4
+ spin 240 0 0 1
+ shift 155.000000 -268.467875 0.000000
+end
+arc
+ size 300.000000 300.000000 15.000000
+ ratio 0.01
+ noradar
+ divisions 5
+ angle 10
+ spin 241.060606060606 0 0 1
+ shift 0.000000 0.000000 0.000000
+ texture roof
+ color 0.600000 0.600000 0.600000
+end
+arc
+ size 320.000000 320.000000 15.000000
+ noradar
+ ratio 0.01
+ divisions 5
+ angle 10
+ spin 241.060606060606 0 0 1
+ shift 0.000000 0.000000 0.000000
+ texture roof
+ color 0.600000 0.600000 0.600000
+end
+arc
+ size 320.000000 320.000000 2.000000
+ noradar
+ ratio 0.07
+ divisions 5
+ angle 10
+ spin 241.060606060606 0 0 1
+ shift 0.000000 0.000000 15.000000
+ texture roof
+ color 0.600000 0.600000 0.600000
+end
+arc
+ size 300.000000 300.000000 15.000000
+ ratio 0.01
+ noradar
+ divisions 5
+ angle 10
+ spin 228.939393939394 0 0 1
+ shift 0.000000 0.000000 0.000000
+ texture roof
+ color 0.600000 0.600000 0.600000
+end
+arc
+ size 320.000000 320.000000 15.000000
+ noradar
+ ratio 0.01
+ divisions 5
+ angle 10
+ spin 228.939393939394 0 0 1
+ shift 0.000000 0.000000 0.000000
+ texture roof
+ color 0.600000 0.600000 0.600000
+end
+arc
+ size 320.000000 320.000000 2.000000
+ noradar
+ ratio 0.07
+ divisions 5
+ angle 10
+ spin 228.939393939394 0 0 1
+ shift 0.000000 0.000000 15.000000
+ texture roof
+ color 0.600000 0.600000 0.600000
+end
+arc
+ size 350.000000 350.000000 2.000000
+ ratio 0.2
+ noradar
+ divisions 3
+ angle 7
+ spin 236.5 0 0 1
+ shift 0.000000 0.000000 15.000000
+ texture roof
+ color 0.600000 0.600000 0.600000
+end
+arc
+ size 350.000000 350.000000 15.000000
+ ratio 0.01
+ noradar
+ divisions 3
+ angle 7
+ spin 236.5 0 0 1
+ shift 0.000000 0.000000 0.000000
+ color 0.600000 0.600000 0.600000
+end
+meshbox
+  size 2.000000 15.000000 15.000000
+  shift -184.898890079541 -279.3517503925 0
+  rotation 326.500000
+  color 0.600000 0.600000 0.600000 1.000000
+end
+meshbox
+  size 2.000000 15.000000 15.000000
+  shift -149.476267391787 -299.803011136678 0
+  rotation 333.500000
+  color 0.600000 0.600000 0.600000 1.000000
+end
+meshbox
+  size 26.146723 1.000000 16.000000
+  shift -125.000000000001 -216.506350946109 0
+  rotation 330.000000
+  texture http://images.bzflag.org/purplepanzer/chiselled.png
+  noradar
+  color 0.600000 0.600000 0.600000 1.000000
+end
+material
+ name TileMaterial3
+ nolighting
+  texture http://images.planet-mofo.com/Panzer/cave/lascaux2.png
+end
+material
+ name ReflectTileMaterial3
+ nolighting
+  texture http://images.planet-mofo.com/Panzer/cave/lascaux2.png
+end
+mesh
+  noradar
+  vertex 10.491803 0.500000 0.000000
+  vertex -10.491803 0.500000 0.000000
+  vertex -10.491803 -0.500000 0.000000
+  vertex 10.491803 -0.500000 0.000000
+  vertex 10.491803 0.500000 15.000000
+  vertex -10.491803 0.500000 15.000000
+  vertex -10.491803 -0.500000 15.000000
+  vertex 10.491803 -0.500000 15.000000
+  spin 330.000000 0 0 1
+  shift -125.500000 -217.372376 0.000000
+  texcoord 0 0
+  texcoord 1 0
+  texcoord 1 1
+  texcoord 0 1
+  face 
+    vertices 3 2 1 0
+  endface
+  face 
+    vertices 0 1 2 3
+    color 0.6 0.6 0.6 0.5
+  endface
+  face
+    vertices 4 5 6 7
+  endface
+  face
+    vertices 7 6 5 4
+    color 0.6 0.6 0.6 0.5
+  endface
+  face
+    vertices 3 0 4 7 
+  endface
+  face
+    vertices 7 4 0 3 
+    color 0.6 0.6 0.6 0.5
+  endface
+  face
+    vertices 1 5 4 0
+  endface
+  face
+    vertices 0 4 5 1
+    color 0.6 0.6 0.6 0.5
+  endface
+  face
+    vertices 1 2 6 5
+  endface
+  face
+    vertices 6 5 2 1 
+    color 0.6 0.6 0.6 0.5
+  endface
+  face
+    vertices 2 3 7 6
+    matref TileMaterial3
+    texcoords 0 1 2 3
+  endface
+  face
+    vertices 6 7 3 2
+    matref ReflectTileMaterial3
+    texcoords 3 2 1 0
+    color 0.6 0.6 0.6 0.5
+  endface
+end
+meshbox
+  size 2.000000 23.000000 16.000000
+  shift -157.733519996539 -225.266812179472 0
+  rotation 337.000000
+  texture http://images.bzflag.org/purplepanzer/chiselled.png
+  noradar
+  color 0.600000 0.600000 0.600000 1.000000
+end
+meshbox
+  size 2.000000 23.000000 16.000000
+  shift -116.220021978694 -249.234641435078 0
+  rotation 337.000000
+  texture http://images.bzflag.org/purplepanzer/chiselled.png
+  noradar
+  color 0.600000 0.600000 0.600000 1.000000
+end
+group shaft
+  spin 240 0 0 1
+  shift -137.500000 -238.156986 0.000000
+end
+zone
+  position -137.500000 -238.156986 0
+   size 20 20 10
+   flag WG
+end
+meshbox
+  size 28.125000 28.125000 10.000000
+  shift -114.625000000001 -198.536323817582 28
+  rotation 330.000000
+  texture std_ground
+end
+meshbox
+  size 36.000000 36.000000 25.000000
+  shift -201.000000000001 -348.142212321343 31
+  rotation 240.000000
+  texture std_ground
+end
+group TTemple
+  spin 240 0 0 1
+  shift -200.000000000001 -346.410161513775 57
+end
+meshbox
+  size 14.000000 32.000000 20.000000
+  shift -177.500000000001 -307.439018343475 36
+  rotation 240.000000
+  texture std_ground
+end
+meshbox
+  size 21.000000 27.000000 20.000000
+  shift -162.000000000001 -280.592230826157 31
+  rotation 240.000000
+  texture std_ground
+end
+group oct_platform
+  spin 240.000000 0 0 1
+  shift -87.500000 -151.554446 20.000000
+end
+group tHill
+  spin 240.000000 0 0 1
+  shift -87.500000 -151.554446 0 1
+end
+meshbox
+  size 10.000000 56.250000 17.000000
+  shift -133.124857527643 -351.377055039518 0
+  rotation 339.250000
+  texture std_ground
+end
+meshbox
+  size 10.000000 56.250000 17.000000
+  shift -237.739027207367 -290.97803601388 0
+  rotation 320.750000
+  texture std_ground
+end
+meshbox
+  size 10.000000 60.750000 17.000000
+  shift -83.8784032459602 -221.393260893163 0
+  rotation 339.250000
+  texture std_ground
+end
+meshbox
+  size 10.000000 60.750000 17.000000
+  shift -149.792986537177 -183.337458486457 0
+  rotation 320.750000
+  texture std_ground
+end
+meshbox
+  size 10.000000 128.000000 0.100000
+  shift -107.704475551307 -284.281103744547 17
+  rotation 339.250000
+  texture std_ground
+end
+meshbox
+  size 10.000000 128.000000 0.100000
+  shift -192.342419883006 -235.415363800984 17
+  rotation 320.750000
+  texture std_ground
+end
+meshbox
+  size 10.000000 128.000000 12.000000
+  shift -113.880404398439 -281.863891788303 17
+  rotation 338.000000
+  texture std_ground
+end
+meshbox
+  size 10.000000 128.000000 12.000000
+  shift -187.161088499001 -239.555269096443 17
+  rotation 322.000000
+  texture std_ground
+end
+meshbox
+  size 6.000000 123.000000 9.000000
+  shift -120.735918703187 -284.435999716804 29
+  rotation 337.000000
+  texture std_ground
+end
+meshbox
+  size 6.000000 123.000000 9.000000
+  shift -185.960842153984 -246.778372604613 29
+  rotation 323.000000
+  texture std_ground
+end
+meshbox
+  size 10.000000 66.500000 18.000000
+  shift -154.466974666227 -331.255496161895 29
+  rotation 335.000000
+  texture std_ground
+end
+meshbox
+  size 10.000000 66.500000 18.000000
+  shift -209.642187486309 -299.400072187626 29
+  rotation 325.000000
+  texture std_ground
+end
+meshbox
+  size 23.000000 23.000000 0.500000
+  shift 154.999999999999 -268.467875173177 30
+  rotation 300.000000
+  texture roof
+end
+meshbox
+  size 45.000000 10.000000 1.000000
+  shift 82.4999999999992 -142.894191624433 22.6
+  rotation 120.000000
+  texture roof
+  color 0.700000 0.700000 0.700000 1.000000
+end
+meshbox
+  size 45.000000 8.000000 1.500000
+  shift 82.4999999999992 -142.894191624433 23.6
+  rotation 120.000000
+  texture roof
+  color 0.501961 0.000000 0.501961 1.000000
+end
+define AdvanceTower2
+meshbox
+  size 15.000000 15.000000 23.000000
+  shift 0 0 0
+  rotation 0.000000
+  texture roof
+end
+meshbox
+  size 15.000000 15.000000 2.000000
+  shift 0 0 25
+  rotation 0.000000
+  texture roof
+end
+meshbox
+  size 19.000000 19.000000 2.000000
+  shift 0 0 23
+  rotation 0.000000
+  texture roof
+  color 0.501961 0.000000 0.501961 1.000000
+end
+meshbox
+  size 1.000000 5.000000 2.500000
+  shift 13 0 27
+  rotation 0.000000
+  texture roof
+  color 0.501961 0.000000 0.501961 1.000000
+end
+meshbox
+  size 1.000000 5.000000 2.500000
+  shift -13 0 27
+  rotation 0.000000
+  texture roof
+  color 0.501961 0.000000 0.501961 1.000000
+end
+meshbox
+  size 1.000000 5.000000 2.500000
+  shift 0 13 27
+  rotation 90.000000
+  texture roof
+  color 0.501961 0.000000 0.501961 1.000000
+end
+meshbox
+  size 1.000000 5.000000 2.500000
+  shift 0 -13 27
+  rotation 90.000000
+  texture roof
+  color 0.501961 0.000000 0.501961 1.000000
+end
+enddef
+group AdvanceTower2
+ spin 240.000000 0 0 1
+ shift 60.000000 -103.923048 0
+end
+define intowers3
+arc
+ size 10.000000 10.000000 40.000000
+ divisions 16
+ angle 360
+ shift 40.000000 40.000000 0.000000
+ texture roof
+ color 0.000000 0.000000 1.000000
+end
+cone
+  divisions 16
+  angle 360
+  texture roof
+  size 13.000000 13.000000 10.000000
+  shift 40.000000 40.000000 0
+  color 0.700000 0.700000 0.700000
+  smoothbounce
+end
+cone
+  divisions 16
+  angle 360
+  texture roof
+  size 14.000000 14.000000 10.000000
+  spin 180 1 0 0
+  shift 40.000000 40.000000 40.100000
+  color 0.700000 0.700000 0.700000
+  smoothbounce
+end
+arc
+ size 11.000000 11.000000 8.000000
+ ratio 0.02
+ divisions 4
+ angle 37.000000
+ spin 0.000000 0 0 1
+ shift 40.000000 40.000000 40.000000
+ texture roof
+ color 0.000000 0.000000 1.000000 1.000000
+ drivethrough
+end
+arc
+ size 11.000000 11.000000 8.000000
+ ratio 0.02
+ divisions 4
+ angle 37.000000
+ spin 45.000000 0 0 1
+ shift 40.000000 40.000000 40.000000
+ texture roof
+ color 0.000000 0.000000 1.000000 1.000000
+ drivethrough
+end
+arc
+ size 11.000000 11.000000 8.000000
+ ratio 0.02
+ divisions 4
+ angle 37.000000
+ spin 90.000000 0 0 1
+ shift 40.000000 40.000000 40.000000
+ texture roof
+ color 0.000000 0.000000 1.000000 1.000000
+ drivethrough
+end
+arc
+ size 11.000000 11.000000 8.000000
+ ratio 0.02
+ divisions 4
+ angle 37.000000
+ spin 135.000000 0 0 1
+ shift 40.000000 40.000000 40.000000
+ texture roof
+ color 0.000000 0.000000 1.000000 1.000000
+ drivethrough
+end
+arc
+ size 11.000000 11.000000 8.000000
+ ratio 0.02
+ divisions 4
+ angle 37.000000
+ spin 180.000000 0 0 1
+ shift 40.000000 40.000000 40.000000
+ texture roof
+ color 0.000000 0.000000 1.000000 1.000000
+ drivethrough
+end
+arc
+ size 11.000000 11.000000 8.000000
+ ratio 0.02
+ divisions 4
+ angle 37.000000
+ spin 225.000000 0 0 1
+ shift 40.000000 40.000000 40.000000
+ texture roof
+ color 0.000000 0.000000 1.000000 1.000000
+ drivethrough
+end
+arc
+ size 11.000000 11.000000 8.000000
+ ratio 0.02
+ divisions 4
+ angle 37.000000
+ spin 270.000000 0 0 1
+ shift 40.000000 40.000000 40.000000
+ texture roof
+ color 0.000000 0.000000 1.000000 1.000000
+ drivethrough
+end
+arc
+ size 11.000000 11.000000 8.000000
+ ratio 0.02
+ divisions 4
+ angle 37.000000
+ spin 315.000000 0 0 1
+ shift 40.000000 40.000000 40.000000
+ texture roof
+ color 0.000000 0.000000 1.000000 1.000000
+ drivethrough
+end
+arc
+ size 12.000000 12.000000 1.000000
+ ratio 0.02
+ divisions 16
+ angle 360
+ shift 40.000000 40.000000 40.000000
+ texture roof
+ color 0.000000 0.000000 1.000000 1.000000
+ drivethrough
+end
+arc
+ size 12.000000 12.000000 1.000000
+ ratio 0.02
+ divisions 16
+ angle 360
+ shift 40.000000 40.000000 47.000000
+ texture roof
+ color 0.000000 0.000000 1.000000 1.000000
+ drivethrough
+end
+cone
+  divisions 16
+  angle 360
+  texture roof
+  size 14.000000 14.000000 10.000000
+  shift 40.000000 40.000000 48.000000
+  color 0.700000 0.700000 0.700000
+drivethrough
+  smoothbounce
+end
+arc
+ size 5.000000 5.000000 10.000000
+ divisions 16
+ angle 360
+ shift 40.000000 40.000000 51.000000
+ texture roof
+drivethrough
+ color 0.000000 0.000000 1.000000
+end
+cone
+  divisions 16
+  angle 360
+  texture roof
+  size 8.000000 8.000000 10.000000
+  shift 40.000000 40.000000 61.000000
+  color 0.700000 0.700000 0.700000 1.000000
+  smoothbounce
+  drivethrough
+end
+cone
+  divisions 16
+  angle 360
+  texture roof
+  size 4.000000 4.000000 40.000000
+  shift 40.000000 40.000000 61.000000
+  color 0.700000 0.700000 0.700000 1.000000
+  smoothbounce
+  drivethrough
+end
+arc
+ size 10.000000 10.000000 40.000000
+ divisions 16
+ angle 360
+ shift 40.000000 -40.000000 0.000000
+ texture roof
+ color 0.000000 0.000000 1.000000
+end
+cone
+  divisions 16
+  angle 360
+  texture roof
+  size 13.000000 13.000000 10.000000
+  shift 40.000000 -40.000000 0
+  color 0.700000 0.700000 0.700000
+  smoothbounce
+end
+cone
+  divisions 16
+  angle 360
+  texture roof
+  size 14.000000 14.000000 10.000000
+  spin 180 1 0 0
+  shift 40.000000 -40.000000 40.100000
+  color 0.700000 0.700000 0.700000
+  smoothbounce
+end
+arc
+ size 11.000000 11.000000 8.000000
+ ratio 0.02
+ divisions 4
+ angle 37.000000
+ spin 0.000000 0 0 1
+ shift 40.000000 -40.000000 40.000000
+ texture roof
+ color 0.000000 0.000000 1.000000 1.000000
+ drivethrough
+end
+arc
+ size 11.000000 11.000000 8.000000
+ ratio 0.02
+ divisions 4
+ angle 37.000000
+ spin 45.000000 0 0 1
+ shift 40.000000 -40.000000 40.000000
+ texture roof
+ color 0.000000 0.000000 1.000000 1.000000
+ drivethrough
+end
+arc
+ size 11.000000 11.000000 8.000000
+ ratio 0.02
+ divisions 4
+ angle 37.000000
+ spin 90.000000 0 0 1
+ shift 40.000000 -40.000000 40.000000
+ texture roof
+ color 0.000000 0.000000 1.000000 1.000000
+ drivethrough
+end
+arc
+ size 11.000000 11.000000 8.000000
+ ratio 0.02
+ divisions 4
+ angle 37.000000
+ spin 135.000000 0 0 1
+ shift 40.000000 -40.000000 40.000000
+ texture roof
+ color 0.000000 0.000000 1.000000 1.000000
+ drivethrough
+end
+arc
+ size 11.000000 11.000000 8.000000
+ ratio 0.02
+ divisions 4
+ angle 37.000000
+ spin 180.000000 0 0 1
+ shift 40.000000 -40.000000 40.000000
+ texture roof
+ color 0.000000 0.000000 1.000000 1.000000
+ drivethrough
+end
+arc
+ size 11.000000 11.000000 8.000000
+ ratio 0.02
+ divisions 4
+ angle 37.000000
+ spin 225.000000 0 0 1
+ shift 40.000000 -40.000000 40.000000
+ texture roof
+ color 0.000000 0.000000 1.000000 1.000000
+ drivethrough
+end
+arc
+ size 11.000000 11.000000 8.000000
+ ratio 0.02
+ divisions 4
+ angle 37.000000
+ spin 270.000000 0 0 1
+ shift 40.000000 -40.000000 40.000000
+ texture roof
+ color 0.000000 0.000000 1.000000 1.000000
+ drivethrough
+end
+arc
+ size 11.000000 11.000000 8.000000
+ ratio 0.02
+ divisions 4
+ angle 37.000000
+ spin 315.000000 0 0 1
+ shift 40.000000 -40.000000 40.000000
+ texture roof
+ color 0.000000 0.000000 1.000000 1.000000
+ drivethrough
+end
+arc
+ size 12.000000 12.000000 1.000000
+ ratio 0.02
+ divisions 16
+ angle 360
+ shift 40.000000 -40.000000 40.000000
+ texture roof
+ color 0.000000 0.000000 1.000000 1.000000
+ drivethrough
+end
+arc
+ size 12.000000 12.000000 1.000000
+ ratio 0.02
+ divisions 16
+ angle 360
+ shift 40.000000 -40.000000 47.000000
+ texture roof
+ color 0.000000 0.000000 1.000000 1.000000
+ drivethrough
+end
+cone
+  divisions 16
+  angle 360
+  texture roof
+  size 14.000000 14.000000 10.000000
+  shift 40.000000 -40.000000 48.000000
+  color 0.700000 0.700000 0.700000
+drivethrough
+  smoothbounce
+end
+arc
+ size 5.000000 5.000000 10.000000
+ divisions 16
+ angle 360
+ shift 40.000000 -40.000000 51.000000
+ texture roof
+drivethrough
+ color 0.000000 0.000000 1.000000
+end
+cone
+  divisions 16
+  angle 360
+  texture roof
+  size 8.000000 8.000000 10.000000
+  shift 40.000000 -40.000000 61.000000
+  color 0.700000 0.700000 0.700000 1.000000
+  smoothbounce
+  drivethrough
+end
+cone
+  divisions 16
+  angle 360
+  texture roof
+  size 4.000000 4.000000 40.000000
+  shift 40.000000 -40.000000 61.000000
+  color 0.700000 0.700000 0.700000 1.000000
+  smoothbounce
+  drivethrough
+end
+arc
+ size 10.000000 10.000000 40.000000
+ divisions 16
+ angle 360
+ shift -40.000000 40.000000 0.000000
+ texture roof
+ color 0.000000 0.000000 1.000000
+end
+cone
+  divisions 16
+  angle 360
+  texture roof
+  size 13.000000 13.000000 10.000000
+  shift -40.000000 40.000000 0
+  color 0.700000 0.700000 0.700000
+  smoothbounce
+end
+cone
+  divisions 16
+  angle 360
+  texture roof
+  size 14.000000 14.000000 10.000000
+  spin 180 1 0 0
+  shift -40.000000 40.000000 40.100000
+  color 0.700000 0.700000 0.700000
+  smoothbounce
+end
+arc
+ size 11.000000 11.000000 8.000000
+ ratio 0.02
+ divisions 4
+ angle 37.000000
+ spin 0.000000 0 0 1
+ shift -40.000000 40.000000 40.000000
+ texture roof
+ color 0.000000 0.000000 1.000000 1.000000
+ drivethrough
+end
+arc
+ size 11.000000 11.000000 8.000000
+ ratio 0.02
+ divisions 4
+ angle 37.000000
+ spin 45.000000 0 0 1
+ shift -40.000000 40.000000 40.000000
+ texture roof
+ color 0.000000 0.000000 1.000000 1.000000
+ drivethrough
+end
+arc
+ size 11.000000 11.000000 8.000000
+ ratio 0.02
+ divisions 4
+ angle 37.000000
+ spin 90.000000 0 0 1
+ shift -40.000000 40.000000 40.000000
+ texture roof
+ color 0.000000 0.000000 1.000000 1.000000
+ drivethrough
+end
+arc
+ size 11.000000 11.000000 8.000000
+ ratio 0.02
+ divisions 4
+ angle 37.000000
+ spin 135.000000 0 0 1
+ shift -40.000000 40.000000 40.000000
+ texture roof
+ color 0.000000 0.000000 1.000000 1.000000
+ drivethrough
+end
+arc
+ size 11.000000 11.000000 8.000000
+ ratio 0.02
+ divisions 4
+ angle 37.000000
+ spin 180.000000 0 0 1
+ shift -40.000000 40.000000 40.000000
+ texture roof
+ color 0.000000 0.000000 1.000000 1.000000
+ drivethrough
+end
+arc
+ size 11.000000 11.000000 8.000000
+ ratio 0.02
+ divisions 4
+ angle 37.000000
+ spin 225.000000 0 0 1
+ shift -40.000000 40.000000 40.000000
+ texture roof
+ color 0.000000 0.000000 1.000000 1.000000
+ drivethrough
+end
+arc
+ size 11.000000 11.000000 8.000000
+ ratio 0.02
+ divisions 4
+ angle 37.000000
+ spin 270.000000 0 0 1
+ shift -40.000000 40.000000 40.000000
+ texture roof
+ color 0.000000 0.000000 1.000000 1.000000
+ drivethrough
+end
+arc
+ size 11.000000 11.000000 8.000000
+ ratio 0.02
+ divisions 4
+ angle 37.000000
+ spin 315.000000 0 0 1
+ shift -40.000000 40.000000 40.000000
+ texture roof
+ color 0.000000 0.000000 1.000000 1.000000
+ drivethrough
+end
+arc
+ size 12.000000 12.000000 1.000000
+ ratio 0.02
+ divisions 16
+ angle 360
+ shift -40.000000 40.000000 40.000000
+ texture roof
+ color 0.000000 0.000000 1.000000 1.000000
+ drivethrough
+end
+arc
+ size 12.000000 12.000000 1.000000
+ ratio 0.02
+ divisions 16
+ angle 360
+ shift -40.000000 40.000000 47.000000
+ texture roof
+ color 0.000000 0.000000 1.000000 1.000000
+ drivethrough
+end
+cone
+  divisions 16
+  angle 360
+  texture roof
+  size 14.000000 14.000000 10.000000
+  shift -40.000000 40.000000 48.000000
+  color 0.700000 0.700000 0.700000
+drivethrough
+  smoothbounce
+end
+arc
+ size 5.000000 5.000000 10.000000
+ divisions 16
+ angle 360
+ shift -40.000000 40.000000 51.000000
+ texture roof
+drivethrough
+ color 0.000000 0.000000 1.000000
+end
+cone
+  divisions 16
+  angle 360
+  texture roof
+  size 8.000000 8.000000 10.000000
+  shift -40.000000 40.000000 61.000000
+  color 0.700000 0.700000 0.700000 1.000000
+  smoothbounce
+  drivethrough
+end
+cone
+  divisions 16
+  angle 360
+  texture roof
+  size 4.000000 4.000000 40.000000
+  shift -40.000000 40.000000 61.000000
+  color 0.700000 0.700000 0.700000 1.000000
+  smoothbounce
+  drivethrough
+end
+arc
+ size 10.000000 10.000000 40.000000
+ divisions 16
+ angle 360
+ shift -40.000000 -40.000000 0.000000
+ texture roof
+ color 0.000000 0.000000 1.000000
+end
+cone
+  divisions 16
+  angle 360
+  texture roof
+  size 13.000000 13.000000 10.000000
+  shift -40.000000 -40.000000 0
+  color 0.700000 0.700000 0.700000
+  smoothbounce
+end
+cone
+  divisions 16
+  angle 360
+  texture roof
+  size 14.000000 14.000000 10.000000
+  spin 180 1 0 0
+  shift -40.000000 -40.000000 40.100000
+  color 0.700000 0.700000 0.700000
+  smoothbounce
+end
+arc
+ size 11.000000 11.000000 8.000000
+ ratio 0.02
+ divisions 4
+ angle 37.000000
+ spin 0.000000 0 0 1
+ shift -40.000000 -40.000000 40.000000
+ texture roof
+ color 0.000000 0.000000 1.000000 1.000000
+ drivethrough
+end
+arc
+ size 11.000000 11.000000 8.000000
+ ratio 0.02
+ divisions 4
+ angle 37.000000
+ spin 45.000000 0 0 1
+ shift -40.000000 -40.000000 40.000000
+ texture roof
+ color 0.000000 0.000000 1.000000 1.000000
+ drivethrough
+end
+arc
+ size 11.000000 11.000000 8.000000
+ ratio 0.02
+ divisions 4
+ angle 37.000000
+ spin 90.000000 0 0 1
+ shift -40.000000 -40.000000 40.000000
+ texture roof
+ color 0.000000 0.000000 1.000000 1.000000
+ drivethrough
+end
+arc
+ size 11.000000 11.000000 8.000000
+ ratio 0.02
+ divisions 4
+ angle 37.000000
+ spin 135.000000 0 0 1
+ shift -40.000000 -40.000000 40.000000
+ texture roof
+ color 0.000000 0.000000 1.000000 1.000000
+ drivethrough
+end
+arc
+ size 11.000000 11.000000 8.000000
+ ratio 0.02
+ divisions 4
+ angle 37.000000
+ spin 180.000000 0 0 1
+ shift -40.000000 -40.000000 40.000000
+ texture roof
+ color 0.000000 0.000000 1.000000 1.000000
+ drivethrough
+end
+arc
+ size 11.000000 11.000000 8.000000
+ ratio 0.02
+ divisions 4
+ angle 37.000000
+ spin 225.000000 0 0 1
+ shift -40.000000 -40.000000 40.000000
+ texture roof
+ color 0.000000 0.000000 1.000000 1.000000
+ drivethrough
+end
+arc
+ size 11.000000 11.000000 8.000000
+ ratio 0.02
+ divisions 4
+ angle 37.000000
+ spin 270.000000 0 0 1
+ shift -40.000000 -40.000000 40.000000
+ texture roof
+ color 0.000000 0.000000 1.000000 1.000000
+ drivethrough
+end
+arc
+ size 11.000000 11.000000 8.000000
+ ratio 0.02
+ divisions 4
+ angle 37.000000
+ spin 315.000000 0 0 1
+ shift -40.000000 -40.000000 40.000000
+ texture roof
+ color 0.000000 0.000000 1.000000 1.000000
+ drivethrough
+end
+arc
+ size 12.000000 12.000000 1.000000
+ ratio 0.02
+ divisions 16
+ angle 360
+ shift -40.000000 -40.000000 40.000000
+ texture roof
+ color 0.000000 0.000000 1.000000 1.000000
+ drivethrough
+end
+arc
+ size 12.000000 12.000000 1.000000
+ ratio 0.02
+ divisions 16
+ angle 360
+ shift -40.000000 -40.000000 47.000000
+ texture roof
+ color 0.000000 0.000000 1.000000 1.000000
+ drivethrough
+end
+cone
+  divisions 16
+  angle 360
+  texture roof
+  size 14.000000 14.000000 10.000000
+  shift -40.000000 -40.000000 48.000000
+  color 0.700000 0.700000 0.700000
+drivethrough
+  smoothbounce
+end
+arc
+ size 5.000000 5.000000 10.000000
+ divisions 16
+ angle 360
+ shift -40.000000 -40.000000 51.000000
+ texture roof
+drivethrough
+ color 0.000000 0.000000 1.000000
+end
+cone
+  divisions 16
+  angle 360
+  texture roof
+  size 8.000000 8.000000 10.000000
+  shift -40.000000 -40.000000 61.000000
+  color 0.700000 0.700000 0.700000 1.000000
+  smoothbounce
+  drivethrough
+end
+cone
+  divisions 16
+  angle 360
+  texture roof
+  size 4.000000 4.000000 40.000000
+  shift -40.000000 -40.000000 61.000000
+  color 0.700000 0.700000 0.700000 1.000000
+  smoothbounce
+  drivethrough
+end
+enddef
+zone
+  position 155.000000 268.467875 0
+  size 70.7213578500707 70.7213578500707 0
+  team 3
+end
+zone
+  position 155.000000 268.467875 0
+  size 70.7213578500707 70.7213578500707 50
+  flag CL GM L MQ SB SE ST
+end
+zone
+  position 155.000000 268.467875 0.000000
+   size 43.000000 43.000000 50
+   safety 3
+end
+define XtraStuff3
+meshbox
+  size 20.000000 20.000000 22.000000
+  shift 0 0 32
+  rotation 0.000000
+  texture roof
+  drivethrough
+  color 0.000000 0.000000 1.000000 0.800000
+end
+material
+ name TileMaterial4
+ nolighting
+  texture blue_icon
+end
+material
+ name ReflectTileMaterial4
+ nolighting
+  texture blue_icon
+end
+mesh
+  drivethrough
+  shootthrough
+  vertex 7.500000 0.500000 0.000000
+  vertex -7.500000 0.500000 0.000000
+  vertex -7.500000 -0.500000 0.000000
+  vertex 7.500000 -0.500000 0.000000
+  vertex 7.500000 0.500000 15.000000
+  vertex -7.500000 0.500000 15.000000
+  vertex -7.500000 -0.500000 15.000000
+  vertex 7.500000 -0.500000 15.000000
+  spin 270.000000 0 0 1
+  shift -21.000000 0.000000 36.500000
+  texcoord 0 0
+  texcoord 1 0
+  texcoord 1 1
+  texcoord 0 1
+  face 
+    vertices 3 2 1 0
+  endface
+  face 
+    vertices 0 1 2 3
+    color 0.6 0.6 0.6 0.5
+  endface
+  face
+    vertices 4 5 6 7
+  endface
+  face
+    vertices 7 6 5 4
+    color 0.6 0.6 0.6 0.5
+  endface
+  face
+    vertices 3 0 4 7 
+  endface
+  face
+    vertices 7 4 0 3 
+    color 0.6 0.6 0.6 0.5
+  endface
+  face
+    vertices 1 5 4 0
+  endface
+  face
+    vertices 0 4 5 1
+    color 0.6 0.6 0.6 0.5
+  endface
+  face
+    vertices 1 2 6 5
+  endface
+  face
+    vertices 6 5 2 1 
+    color 0.6 0.6 0.6 0.5
+  endface
+  face
+    vertices 2 3 7 6
+    matref TileMaterial4
+    texcoords 0 1 2 3
+  endface
+  face
+    vertices 6 7 3 2
+    matref ReflectTileMaterial4
+    texcoords 3 2 1 0
+    color 0.6 0.6 0.6 0.5
+  endface
+end
+meshbox
+  size 23.000000 23.000000 3.000000
+  shift 0 0 53
+  rotation 0.000000
+  texture roof
+  color 0.700000 0.700000 0.700000 1.000000
+end
+meshbox
+  size 2.000000 2.000000 21.000000
+  shift 20 20 32
+  rotation 0.000000
+  texture roof
+  color 0.000000 0.000000 1.000000 1.000000
+end
+meshbox
+  size 2.000000 2.000000 21.000000
+  shift 20 -20 32
+  rotation 0.000000
+  texture roof
+  color 0.000000 0.000000 1.000000 1.000000
+end
+meshbox
+  size 2.000000 2.000000 21.000000
+  shift 20 -20 32
+  rotation 0.000000
+  texture roof
+  color 0.000000 0.000000 1.000000 1.000000
+end
+meshbox
+  size 2.000000 2.000000 21.000000
+  shift -20 20 32
+  rotation 0.000000
+  texture roof
+  color 0.000000 0.000000 1.000000 1.000000
+end
+cone
+  divisions 8
+  angle 360
+  texture roof
+  size 5.000000 5.000000 60.000000
+  shift 0.000000 0.000000 64.000000
+  color 0.700000 0.700000 0.700000
+  smoothbounce
+end
+meshbox
+  size 4.000000 4.000000 10.000000
+  shift 20 -20 51
+  rotation 45.000000
+  texture roof
+  drivethrough
+  color 0.000000 0.000000 1.000000 1.000000
+end
+cone
+  divisions 4
+  angle 360
+  texture roof
+  spin 0 0 0 1
+  size 7.000000 7.000000 10.000000
+  shift 20.000000 -20.000000 61.000000
+  color 0.700000 0.700000 0.700000 1.000000
+  smoothbounce
+end
+cone
+  divisions 4
+  angle 360
+  texture roof
+  spin 0 0 0 1
+  size 4.000000 4.000000 30.000000
+  shift 20.000000 -20.000000 61.000000
+  color 0.700000 0.700000 0.700000
+  smoothbounce
+end
+meshbox
+  size 4.000000 4.000000 10.000000
+  shift 20 20 51
+  rotation 45.000000
+  texture roof
+  drivethrough
+  color 0.000000 0.000000 1.000000 1.000000
+end
+cone
+  divisions 4
+  angle 360
+  texture roof
+  spin 0 0 0 1
+  size 7.000000 7.000000 10.000000
+  shift 20.000000 20.000000 61.000000
+  color 0.700000 0.700000 0.700000 1.000000
+  smoothbounce
+end
+cone
+  divisions 4
+  angle 360
+  texture roof
+  spin 0 0 0 1
+  size 4.000000 4.000000 30.000000
+  shift 20.000000 20.000000 61.000000
+  color 0.700000 0.700000 0.700000
+  smoothbounce
+end
+meshbox
+  size 4.000000 4.000000 10.000000
+  shift -20 -20 51
+  rotation 45.000000
+  texture roof
+  drivethrough
+  color 0.000000 0.000000 1.000000 1.000000
+end
+cone
+  divisions 4
+  angle 360
+  texture roof
+  spin 0 0 0 1
+  size 7.000000 7.000000 10.000000
+  shift -20.000000 -20.000000 61.000000
+  color 0.700000 0.700000 0.700000 1.000000
+  smoothbounce
+end
+cone
+  divisions 4
+  angle 360
+  texture roof
+  spin 0 0 0 1
+  size 4.000000 4.000000 30.000000
+  shift -20.000000 -20.000000 61.000000
+  color 0.700000 0.700000 0.700000
+  smoothbounce
+end
+meshbox
+  size 4.000000 4.000000 10.000000
+  shift -20 20 51
+  rotation 45.000000
+  texture roof
+  drivethrough
+  color 0.000000 0.000000 1.000000 1.000000
+end
+cone
+  divisions 4
+  angle 360
+  texture roof
+  spin 0 0 0 1
+  size 7.000000 7.000000 10.000000
+  shift -20.000000 20.000000 61.000000
+  color 0.700000 0.700000 0.700000 1.000000
+  smoothbounce
+end
+cone
+  divisions 4
+  angle 360
+  texture roof
+  spin 0 0 0 1
+  size 4.000000 4.000000 30.000000
+  shift -20.000000 20.000000 61.000000
+  color 0.700000 0.700000 0.700000
+  smoothbounce
+end
+arc
+ size 6.000000 6.000000 65.000000
+ divisions 16
+ angle 360
+ shift 91.000000 27.000000 0.000000
+ texture roof
+ color 0.000000 0.000000 1.000000
+end
+cone
+  divisions 16
+  angle 360
+  texture roof
+  size 9.000000 9.000000 10.000000
+  spin 180 1 0 0
+  shift 91.000000 27.000000 65.100000
+  color 0.700000 0.700000 0.700000
+  smoothbounce
+end
+arc
+ size 6.000000 6.000000 8.000000
+ ratio 0.02
+ divisions 4
+ angle 16.000000
+ spin 0.000000 0 0 1
+ shift 91.000000 27.000000 65.000000
+ texture roof
+ color 0.000000 0.000000 1.000000 1.000000
+ drivethrough
+end
+arc
+ size 6.000000 6.000000 8.000000
+ ratio 0.02
+ divisions 4
+ angle 16.000000
+ spin 36.000000 0 0 1
+ shift 91.000000 27.000000 65.000000
+ texture roof
+ color 0.000000 0.000000 1.000000 1.000000
+ drivethrough
+end
+arc
+ size 6.000000 6.000000 8.000000
+ ratio 0.02
+ divisions 4
+ angle 16.000000
+ spin 72.000000 0 0 1
+ shift 91.000000 27.000000 65.000000
+ texture roof
+ color 0.000000 0.000000 1.000000 1.000000
+ drivethrough
+end
+arc
+ size 6.000000 6.000000 8.000000
+ ratio 0.02
+ divisions 4
+ angle 16.000000
+ spin 108.000000 0 0 1
+ shift 91.000000 27.000000 65.000000
+ texture roof
+ color 0.000000 0.000000 1.000000 1.000000
+ drivethrough
+end
+arc
+ size 6.000000 6.000000 8.000000
+ ratio 0.02
+ divisions 4
+ angle 16.000000
+ spin 144.000000 0 0 1
+ shift 91.000000 27.000000 65.000000
+ texture roof
+ color 0.000000 0.000000 1.000000 1.000000
+ drivethrough
+end
+arc
+ size 6.000000 6.000000 8.000000
+ ratio 0.02
+ divisions 4
+ angle 16.000000
+ spin 180.000000 0 0 1
+ shift 91.000000 27.000000 65.000000
+ texture roof
+ color 0.000000 0.000000 1.000000 1.000000
+ drivethrough
+end
+arc
+ size 6.000000 6.000000 8.000000
+ ratio 0.02
+ divisions 4
+ angle 16.000000
+ spin 216.000000 0 0 1
+ shift 91.000000 27.000000 65.000000
+ texture roof
+ color 0.000000 0.000000 1.000000 1.000000
+ drivethrough
+end
+arc
+ size 6.000000 6.000000 8.000000
+ ratio 0.02
+ divisions 4
+ angle 16.000000
+ spin 252.000000 0 0 1
+ shift 91.000000 27.000000 65.000000
+ texture roof
+ color 0.000000 0.000000 1.000000 1.000000
+ drivethrough
+end
+arc
+ size 6.000000 6.000000 8.000000
+ ratio 0.02
+ divisions 4
+ angle 16.000000
+ spin 288.000000 0 0 1
+ shift 91.000000 27.000000 65.000000
+ texture roof
+ color 0.000000 0.000000 1.000000 1.000000
+ drivethrough
+end
+arc
+ size 6.000000 6.000000 8.000000
+ ratio 0.02
+ divisions 4
+ angle 16.000000
+ spin 324.000000 0 0 1
+ shift 91.000000 27.000000 65.000000
+ texture roof
+ color 0.000000 0.000000 1.000000 1.000000
+ drivethrough
+end
+arc
+ size 7.000000 7.000000 1.000000
+ ratio 0.02
+ divisions 16
+ angle 360
+ shift 91.000000 27.000000 65.000000
+ texture roof
+ color 0.000000 0.000000 1.000000 1.000000
+ drivethrough
+end
+arc
+ size 7.000000 7.000000 1.000000
+ ratio 0.02
+ divisions 16
+ angle 360
+ shift 91.000000 27.000000 72.000000
+ texture roof
+ color 0.000000 0.000000 1.000000 1.000000
+ drivethrough
+end
+cone
+  divisions 16
+  angle 360
+  texture roof
+  size 10.000000 10.000000 10.000000
+  shift 91.000000 27.000000 73.000000
+  color 0.700000 0.700000 0.700000
+drivethrough
+  smoothbounce
+end
+arc
+ size 3.000000 3.000000 10.000000
+ divisions 16
+ angle 360
+ shift 91.000000 27.000000 76.000000
+ texture roof
+drivethrough
+ color 0.000000 0.000000 1.000000
+end
+cone
+  divisions 16
+  angle 360
+  texture roof
+  size 6.000000 6.000000 10.000000
+  shift 91.000000 27.000000 86.000000
+  color 0.700000 0.700000 0.700000 1.000000
+  smoothbounce
+  drivethrough
+end
+cone
+  divisions 16
+  angle 360
+  texture roof
+  size 2.000000 2.000000 40.000000
+  shift 91.000000 27.000000 86.000000
+  color 0.700000 0.700000 0.700000 1.000000
+  smoothbounce
+  drivethrough
+end
+enddef
+define Base3
+arc
+ size 100.000000 100.000000 14.000000
+ ratio 0.02
+ divisions 31
+ angle 100
+ spin 0 0 0 1
+ shift 0.000000 0.000000 0.000000
+ texture roof
+ color 0.600000 0.600000 0.600000
+end
+arc
+ size 100.000000 100.000000 1.200000
+ ratio 0.02
+ divisions 31
+ angle 100
+ spin 60 0 0 1
+ shift 0.000000 0.000000 14.000000
+ texture roof
+ color 0.600000 0.600000 0.600000
+end
+arc
+ size 100.000000 100.000000 7.200000
+ ratio 0.02
+ divisions 31
+ angle 100
+ spin 60 0 0 1
+ shift 0.000000 0.000000 15.900000
+ texture roof
+ color 0.600000 0.600000 0.600000
+end
+arc
+ size 100.000000 100.000000 14.000000
+ ratio 0.02
+ divisions 31
+ angle 100
+ spin 120 0 0 1
+ shift 0.000000 0.000000 0.000000
+ texture roof
+ color 0.600000 0.600000 0.600000
+end
+arc
+ size 100.000000 100.000000 1.200000
+ ratio 0.02
+ divisions 31
+ angle 100
+ spin 180 0 0 1
+ shift 0.000000 0.000000 14.000000
+ texture roof
+ color 0.600000 0.600000 0.600000
+end
+arc
+ size 100.000000 100.000000 7.200000
+ ratio 0.02
+ divisions 31
+ angle 100
+ spin 180 0 0 1
+ shift 0.000000 0.000000 15.900000
+ texture roof
+ color 0.600000 0.600000 0.600000
+end
+arc
+ size 100.000000 100.000000 14.000000
+ ratio 0.02
+ divisions 31
+ angle 100
+ spin 240 0 0 1
+ shift 0.000000 0.000000 0.000000
+ texture roof
+ color 0.600000 0.600000 0.600000
+end
+arc
+ size 100.000000 100.000000 1.200000
+ ratio 0.02
+ divisions 31
+ angle 100
+ spin 300 0 0 1
+ shift 0.000000 0.000000 14.000000
+ texture roof
+ color 0.600000 0.600000 0.600000
+end
+arc
+ size 100.000000 100.000000 7.200000
+ ratio 0.02
+ divisions 31
+ angle 100
+ spin 300 0 0 1
+ shift 0.000000 0.000000 15.900000
+ texture roof
+ color 0.600000 0.600000 0.600000
+end
+meshbox
+ size 17.277994 1.000000 14.000000
+ spin 80 0 0 1
+ shift 96.018756 -16.930697 0.000000
+ texture roof
+drivethrough
+shootthrough
+ color 0.700000 0.700000 0.700000 0.500000
+end
+mesh
+  vertex -17.277994 0.000000 0.000000
+  vertex 17.277994 0.000000 0.000000
+  vertex 17.277994 0.000000 14.000000
+  vertex -17.277994 0.000000 14.000000
+  face
+    vertices 0 1 2 3
+    matref doorstuff
+  endface
+ spin 80 0 0 1
+ shift 96.018756 -16.930697 0.000000
+end
+meshbox
+ size 17.277994 1.000000 14.000000
+ spin 200 0 0 1
+ shift -33.346964 91.620031 0.000000
+ texture roof
+drivethrough
+shootthrough
+ color 0.700000 0.700000 0.700000 0.500000
+end
+mesh
+  vertex -17.277994 0.000000 0.000000
+  vertex 17.277994 0.000000 0.000000
+  vertex 17.277994 0.000000 14.000000
+  vertex -17.277994 0.000000 14.000000
+  face
+    vertices 0 1 2 3
+    matref doorstuff
+  endface
+ spin 200 0 0 1
+ shift -33.346964 91.620031 0.000000
+end
+meshbox
+ size 17.277994 1.000000 14.000000
+ spin 320 0 0 1
+ shift -62.671792 -74.689333 0.000000
+ texture roof
+drivethrough
+shootthrough
+ color 0.700000 0.700000 0.700000 0.500000
+end
+mesh
+  vertex -17.277994 0.000000 0.000000
+  vertex 17.277994 0.000000 0.000000
+  vertex 17.277994 0.000000 14.000000
+  vertex -17.277994 0.000000 14.000000
+  face
+    vertices 0 1 2 3
+    matref doorstuff
+  endface
+ spin 320 0 0 1
+ shift -62.671792 -74.689333 0.000000
+end
+arc
+ size 100.000000 100.000000 0.700000
+ ratio 0.02
+ divisions 3
+ angle 20
+ spin 60 0 0 1
+ shift 0.000000 0.000000 15.200000
+ texture roof
+ color 0.600000 0.600000 0.600000
+end
+arc
+ size 100.000000 100.000000 0.700000
+ ratio 0.02
+ divisions 3
+ angle 20
+ spin 100 0 0 1
+ shift 0.000000 0.000000 15.200000
+ texture roof
+ color 0.600000 0.600000 0.600000
+end
+arc
+ size 100.000000 100.000000 0.700000
+ ratio 0.02
+ divisions 3
+ angle 20
+ spin 140 0 0 1
+ shift 0.000000 0.000000 15.200000
+ texture roof
+ color 0.600000 0.600000 0.600000
+end
+arc
+ size 100.000000 100.000000 0.700000
+ ratio 0.02
+ divisions 3
+ angle 20
+ spin 180 0 0 1
+ shift 0.000000 0.000000 15.200000
+ texture roof
+ color 0.600000 0.600000 0.600000
+end
+arc
+ size 100.000000 100.000000 0.700000
+ ratio 0.02
+ divisions 3
+ angle 20
+ spin 220 0 0 1
+ shift 0.000000 0.000000 15.200000
+ texture roof
+ color 0.600000 0.600000 0.600000
+end
+arc
+ size 100.000000 100.000000 0.700000
+ ratio 0.02
+ divisions 3
+ angle 20
+ spin 260 0 0 1
+ shift 0.000000 0.000000 15.200000
+ texture roof
+ color 0.600000 0.600000 0.600000
+end
+arc
+ size 100.000000 100.000000 0.700000
+ ratio 0.02
+ divisions 3
+ angle 20
+ spin 300 0 0 1
+ shift 0.000000 0.000000 15.200000
+ texture roof
+ color 0.600000 0.600000 0.600000
+end
+arc
+ size 100.000000 100.000000 0.700000
+ ratio 0.02
+ divisions 3
+ angle 20
+ spin 340 0 0 1
+ shift 0.000000 0.000000 15.200000
+ texture roof
+ color 0.600000 0.600000 0.600000
+end
+arc
+ size 100.000000 100.000000 0.700000
+ ratio 0.02
+ divisions 3
+ angle 20
+ spin 380 0 0 1
+ shift 0.000000 0.000000 15.200000
+ texture roof
+ color 0.600000 0.600000 0.600000
+end
+arc
+ size 100.000000 100.000000 2.000000
+ ratio 0.2
+ divisions 31
+ angle 360
+ spin 225 0 0 1
+ shift 0.000000 0.000000 12.000000
+ texture roof
+ color 0.600000 0.600000 0.600000
+end
+arc
+ size 110.000000 110.000000 2.000000
+ ratio 0.2
+ divisions 31
+ angle 360
+ spin 225 0 0 1
+ shift 0.000000 0.000000 23.100000
+ texture roof
+ color 0.000000 0.000000 1.000000
+end
+arc
+ size 100.000000 100.000000 8.000000
+ ratio 0.01
+ divisions 31
+ angle 360
+ spin 225 0 0 1
+ shift 0.000000 0.000000 27.200000
+ texture roof
+ color 0.600000 0.600000 0.600000
+end
+arc
+ size 100.000000 100.000000 2.000000
+ ratio 0.15
+ divisions 31
+ angle 360
+ spin 225 0 0 1
+ shift 0.000000 0.000000 35.200000
+ texture roof
+ color 0.600000 0.600000 0.600000
+end
+meshbox
+  size 5.000000 5.000000 15.000000
+  shift -105.495330416011 120.294369196637 0
+  rotation 131.250000
+  texture roof
+  color 0.700000 0.700000 0.700000 1.000000
+end
+meshpyr
+  shift -105 120 15
+  size 4.000000 4.000000 7.000000
+  rotation 131.250000
+  texture roof
+  drivethrough
+  color 0.000000 0.000000 1.000000 0.950000
+end
+meshpyr
+  shift -105 120 0
+  size 8.000000 8.000000 14.900000
+  rotation 131.250000
+  texture roof
+  color 0.700000 0.700000 0.700000 1.000000
+end
+meshbox
+  size 5.000000 5.000000 15.000000
+  shift -159.391151694679 13.9449188396257 0
+  rotation 175.000000
+  texture roof
+  color 0.700000 0.700000 0.700000 1.000000
+end
+meshpyr
+  shift -159 14 15
+  size 4.000000 4.000000 7.000000
+  rotation 175.000000
+  texture roof
+  drivethrough
+  color 0.000000 0.000000 1.000000 0.950000
+end
+meshpyr
+  shift -159 14 0
+  size 8.000000 8.000000 14.900000
+  rotation 175.000000
+  texture roof
+  color 0.700000 0.700000 0.700000 1.000000
+end
+meshbox
+  size 5.000000 5.000000 15.000000
+  shift -124.781517294861 -100.147755549449 0
+  rotation 218.750000
+  texture roof
+  color 0.700000 0.700000 0.700000 1.000000
+end
+meshpyr
+  shift -125 -100 15
+  size 4.000000 4.000000 7.000000
+  rotation 218.750000
+  texture roof
+  drivethrough
+  color 0.000000 0.000000 1.000000 0.950000
+end
+meshpyr
+  shift -125 -100 0
+  size 8.000000 8.000000 14.900000
+  rotation 218.750000
+  texture roof
+  color 0.700000 0.700000 0.700000 1.000000
+end
+meshbox
+  size 5.000000 5.000000 15.000000
+  shift -20.884190755209 -158.63117781981 0
+  rotation 262.500000
+  texture roof
+  color 0.700000 0.700000 0.700000 1.000000
+end
+meshpyr
+  shift -21 -159 15
+  size 4.000000 4.000000 7.000000
+  rotation 262.500000
+  texture roof
+  drivethrough
+  color 0.000000 0.000000 1.000000 0.950000
+end
+meshpyr
+  shift -21 -159 0
+  size 8.000000 8.000000 14.900000
+  rotation 262.500000
+  texture roof
+  color 0.700000 0.700000 0.700000 1.000000
+end
+meshbox
+  size 5.000000 5.000000 15.000000
+  shift 94.6095437381725 -129.031136682798 0
+  rotation 306.250000
+  texture roof
+  color 0.700000 0.700000 0.700000 1.000000
+end
+meshpyr
+  shift 95 -129 15
+  size 4.000000 4.000000 7.000000
+  rotation 306.250000
+  texture roof
+  drivethrough
+  color 0.000000 0.000000 1.000000 0.950000
+end
+meshpyr
+  shift 95 -129 0
+  size 8.000000 8.000000 14.900000
+  rotation 306.250000
+  texture roof
+  color 0.700000 0.700000 0.700000 1.000000
+end
+meshbox
+  size 5.000000 5.000000 15.000000
+  shift 157.569240481953 -27.7837084267097 0
+  rotation 350.000000
+  texture roof
+  color 0.700000 0.700000 0.700000 1.000000
+end
+meshpyr
+  shift 158 -28 15
+  size 4.000000 4.000000 7.000000
+  rotation 350.000000
+  texture roof
+  drivethrough
+  color 0.000000 0.000000 1.000000 0.950000
+end
+meshpyr
+  shift 158 -28 0
+  size 8.000000 8.000000 14.900000
+  rotation 350.000000
+  texture roof
+  color 0.700000 0.700000 0.700000 1.000000
+end
+group intowers3
+  spin 30 0 0 1
+end
+arc
+ size 15.000000 15.000000 30.000000
+ ratio 0.02
+ divisions 4
+ angle 360
+ shift 0.000000 0.000000 0.000000
+ texture roof
+ color 0.000000 0.000000 1.000000
+end
+group XtraStuff3
+  spin 60.000000 0 0 1
+  shift 0.000000 0.000000 0.000000
+end
+enddef
+group Base3
+ spin 360 0 0 1
+ shift 155.000000 268.467875 0.000000
+end
+arc
+ size 300.000000 300.000000 15.000000
+ ratio 0.01
+ noradar
+ divisions 5
+ angle 10
+ spin 361.060606060606 0 0 1
+ shift 0.000000 0.000000 0.000000
+ texture roof
+ color 0.600000 0.600000 0.600000
+end
+arc
+ size 320.000000 320.000000 15.000000
+ noradar
+ ratio 0.01
+ divisions 5
+ angle 10
+ spin 361.060606060606 0 0 1
+ shift 0.000000 0.000000 0.000000
+ texture roof
+ color 0.600000 0.600000 0.600000
+end
+arc
+ size 320.000000 320.000000 2.000000
+ noradar
+ ratio 0.07
+ divisions 5
+ angle 10
+ spin 361.060606060606 0 0 1
+ shift 0.000000 0.000000 15.000000
+ texture roof
+ color 0.600000 0.600000 0.600000
+end
+arc
+ size 300.000000 300.000000 15.000000
+ ratio 0.01
+ noradar
+ divisions 5
+ angle 10
+ spin 348.939393939394 0 0 1
+ shift 0.000000 0.000000 0.000000
+ texture roof
+ color 0.600000 0.600000 0.600000
+end
+arc
+ size 320.000000 320.000000 15.000000
+ noradar
+ ratio 0.01
+ divisions 5
+ angle 10
+ spin 348.939393939394 0 0 1
+ shift 0.000000 0.000000 0.000000
+ texture roof
+ color 0.600000 0.600000 0.600000
+end
+arc
+ size 320.000000 320.000000 2.000000
+ noradar
+ ratio 0.07
+ divisions 5
+ angle 10
+ spin 348.939393939394 0 0 1
+ shift 0.000000 0.000000 15.000000
+ texture roof
+ color 0.600000 0.600000 0.600000
+end
+arc
+ size 350.000000 350.000000 2.000000
+ ratio 0.2
+ noradar
+ divisions 3
+ angle 7
+ spin 356.5 0 0 1
+ shift 0.000000 0.000000 15.000000
+ texture roof
+ color 0.600000 0.600000 0.600000
+end
+arc
+ size 350.000000 350.000000 15.000000
+ ratio 0.01
+ noradar
+ divisions 3
+ angle 7
+ spin 356.5 0 0 1
+ shift 0.000000 0.000000 0.000000
+ color 0.600000 0.600000 0.600000
+end
+meshbox
+  size 2.000000 15.000000 15.000000
+  shift 334.375157471325 -20.4512607441791 0
+  rotation 446.500000
+  color 0.600000 0.600000 0.600000 1.000000
+end
+meshbox
+  size 2.000000 15.000000 15.000000
+  shift 334.375157471326 20.4512607441748 0
+  rotation 453.500000
+  color 0.600000 0.600000 0.600000 1.000000
+end
+meshbox
+  size 26.146723 1.000000 16.000000
+  shift 250 -1.61554255216634E-12 0
+  rotation 450.000000
+  texture http://images.bzflag.org/purplepanzer/daino.png
+  noradar
+  color 0.600000 0.600000 0.600000 1.000000
+end
+material
+ name TileMaterial5
+ nolighting
+  texture http://images.planet-mofo.com/Panzer/cave/lascaux5.png
+end
+material
+ name ReflectTileMaterial5
+ nolighting
+  texture http://images.planet-mofo.com/Panzer/cave/lascaux5.png
+end
+mesh
+  noradar
+  vertex 9.795918 0.500000 0.000000
+  vertex -9.795918 0.500000 0.000000
+  vertex -9.795918 -0.500000 0.000000
+  vertex 9.795918 -0.500000 0.000000
+  vertex 9.795918 0.500000 15.000000
+  vertex -9.795918 0.500000 15.000000
+  vertex -9.795918 -0.500000 15.000000
+  vertex 9.795918 -0.500000 15.000000
+  spin 450.000000 0 0 1
+  shift 251.000000 0.000000 0.000000
+  texcoord 0 0
+  texcoord 1 0
+  texcoord 1 1
+  texcoord 0 1
+  face 
+    vertices 3 2 1 0
+  endface
+  face 
+    vertices 0 1 2 3
+    color 0.6 0.6 0.6 0.5
+  endface
+  face
+    vertices 4 5 6 7
+  endface
+  face
+    vertices 7 6 5 4
+    color 0.6 0.6 0.6 0.5
+  endface
+  face
+    vertices 3 0 4 7 
+  endface
+  face
+    vertices 7 4 0 3 
+    color 0.6 0.6 0.6 0.5
+  endface
+  face
+    vertices 1 5 4 0
+  endface
+  face
+    vertices 0 4 5 1
+    color 0.6 0.6 0.6 0.5
+  endface
+  face
+    vertices 1 2 6 5
+  endface
+  face
+    vertices 6 5 2 1 
+    color 0.6 0.6 0.6 0.5
+  endface
+  face
+    vertices 2 3 7 6
+    matref TileMaterial5
+    texcoords 0 1 2 3
+  endface
+  face
+    vertices 6 7 3 2
+    matref ReflectTileMaterial5
+    texcoords 3 2 1 0
+    color 0.6 0.6 0.6 0.5
+  endface
+end
+meshbox
+  size 2.000000 23.000000 16.000000
+  shift 273.95354197523 -23.9678292556077 0
+  rotation 457.000000
+  texture http://images.bzflag.org/purplepanzer/daino.png
+  noradar
+  color 0.600000 0.600000 0.600000 1.000000
+end
+meshbox
+  size 2.000000 23.000000 16.000000
+  shift 273.95354197523 23.9678292556044 0
+  rotation 457.000000
+  texture http://images.bzflag.org/purplepanzer/daino.png
+  noradar
+  color 0.600000 0.600000 0.600000 1.000000
+end
+group shaft
+  spin 360 0 0 1
+  shift 275.000000 0.000000 0.000000
+end
+zone
+  position 275.000000 0.000000 0
+   size 20 20 10
+   flag WG
+end
+meshbox
+  size 28.125000 28.125000 10.000000
+  shift 229.25 -1.48145252033653E-12 28
+  rotation 450.000000
+  texture std_ground
+end
+meshbox
+  size 36.000000 36.000000 25.000000
+  shift 402 -2.59779242388347E-12 31
+  rotation 360.000000
+  texture std_ground
+end
+group TTemple
+  spin 360 0 0 1
+  shift 400 -2.58486808346614E-12 57
+end
+meshbox
+  size 14.000000 32.000000 20.000000
+  shift 355 -2.2940704240762E-12 36
+  rotation 360.000000
+  texture std_ground
+end
+meshbox
+  size 21.000000 27.000000 20.000000
+  shift 324 -2.09374314760757E-12 31
+  rotation 360.000000
+  texture std_ground
+end
+group oct_platform
+  spin 360.000000 0 0 1
+  shift 175.000000 0.000000 20.000000
+end
+group tHill
+  spin 360.000000 0 0 1
+  shift 175.000000 0.000000 0 1
+end
+meshbox
+  size 10.000000 56.250000 17.000000
+  shift 370.863884735008 60.3990190256352 0
+  rotation 459.250000
+  texture std_ground
+end
+meshbox
+  size 10.000000 56.250000 17.000000
+  shift 370.863884735007 -60.3990190256396 0
+  rotation 440.750000
+  texture std_ground
+end
+meshbox
+  size 10.000000 60.750000 17.000000
+  shift 233.671389783135 38.0558024067043 0
+  rotation 459.250000
+  texture std_ground
+end
+meshbox
+  size 10.000000 60.750000 17.000000
+  shift 233.671389783135 -38.0558024067071 0
+  rotation 440.750000
+  texture std_ground
+end
+meshbox
+  size 10.000000 128.000000 0.100000
+  shift 300.046895434311 48.8657399435611 17
+  rotation 459.250000
+  texture std_ground
+end
+meshbox
+  size 10.000000 128.000000 0.100000
+  shift 300.04689543431 -48.8657399435647 17
+  rotation 440.750000
+  texture std_ground
+end
+meshbox
+  size 10.000000 128.000000 12.000000
+  shift 301.041492897438 42.3086226918577 17
+  rotation 458.000000
+  texture std_ground
+end
+meshbox
+  size 10.000000 128.000000 12.000000
+  shift 301.041492897437 -42.3086226918616 17
+  rotation 442.000000
+  texture std_ground
+end
+meshbox
+  size 6.000000 123.000000 9.000000
+  shift 306.696760857169 37.6576271121887 29
+  rotation 457.000000
+  texture std_ground
+end
+meshbox
+  size 6.000000 123.000000 9.000000
+  shift 306.696760857168 -37.6576271121927 29
+  rotation 443.000000
+  texture std_ground
+end
+meshbox
+  size 10.000000 66.500000 18.000000
+  shift 364.109162152533 31.855423974267 29
+  rotation 455.000000
+  texture std_ground
+end
+meshbox
+  size 10.000000 66.500000 18.000000
+  shift 364.109162152533 -31.8554239742714 29
+  rotation 445.000000
+  texture std_ground
+end
+meshbox
+  size 23.000000 23.000000 0.500000
+  shift 155.000000000002 268.467875173175 30
+  rotation 420.000000
+  texture roof
+end
+meshbox
+  size 45.000000 10.000000 1.000000
+  shift 82.5000000000011 142.894191624432 22.6
+  rotation 240.000000
+  texture roof
+  color 0.700000 0.700000 0.700000 1.000000
+end
+meshbox
+  size 45.000000 8.000000 1.500000
+  shift 82.5000000000011 142.894191624432 23.6
+  rotation 240.000000
+  texture roof
+  color 0.000000 0.000000 1.000000 1.000000
+end
+define AdvanceTower3
+meshbox
+  size 15.000000 15.000000 23.000000
+  shift 0 0 0
+  rotation 0.000000
+  texture roof
+end
+meshbox
+  size 15.000000 15.000000 2.000000
+  shift 0 0 25
+  rotation 0.000000
+  texture roof
+end
+meshbox
+  size 19.000000 19.000000 2.000000
+  shift 0 0 23
+  rotation 0.000000
+  texture roof
+  color 0.000000 0.000000 1.000000 1.000000
+end
+meshbox
+  size 1.000000 5.000000 2.500000
+  shift 13 0 27
+  rotation 0.000000
+  texture roof
+  color 0.000000 0.000000 1.000000 1.000000
+end
+meshbox
+  size 1.000000 5.000000 2.500000
+  shift -13 0 27
+  rotation 0.000000
+  texture roof
+  color 0.000000 0.000000 1.000000 1.000000
+end
+meshbox
+  size 1.000000 5.000000 2.500000
+  shift 0 13 27
+  rotation 90.000000
+  texture roof
+  color 0.000000 0.000000 1.000000 1.000000
+end
+meshbox
+  size 1.000000 5.000000 2.500000
+  shift 0 -13 27
+  rotation 90.000000
+  texture roof
+  color 0.000000 0.000000 1.000000 1.000000
+end
+enddef
+group AdvanceTower3
+ spin 360.000000 0 0 1
+ shift 60.000000 103.923048 0
+end
+group spawnpod
+  scale 12 12 12
+  spin 45 0 0 1
+  shift 340.000000 -160.000000 0
+  driveThrough 
+end
+group spawnpod
+  scale 12 12 12
+  spin 45 0 0 1
+  shift -303.850115 221.077153 0
+  driveThrough 
+end
+group spawnpod
+  scale 12 12 12
+  spin 45 0 0 1
+  shift 71.000000 0.000000 0
+  driveThrough 
+end
+group spawnpod
+  scale 12 12 12
+  spin 45 0 0 1
+  shift -31.435935 374.448637 0
+  driveThrough 
+end
+group spawnpod
+  scale 12 12 12
+  spin 45 0 0 1
+  shift -39.533373 -373.680495 0
+  driveThrough 
+end
+group spawnpod
+  scale 12 12 12
+  spin 45 0 0 1
+  shift -35.500000 61.487804 0
+  driveThrough 
+end
+group spawnpod
+  scale 12 12 12
+  spin 45 0 0 1
+  shift -308.564065 -214.448637 0
+  driveThrough 
+end
+group spawnpod
+  scale 12 12 12
+  spin 45 0 0 1
+  shift 343.383488 152.603342 0
+  driveThrough 
+end
+group spawnpod
+  scale 12 12 12
+  spin 45 0 0 1
+  shift -35.500000 -61.487804 0
+  driveThrough 
+end
+ 
+####### File Information #######
+ 
+pyramid
+  position 0.000000 0.000000 29.260000
+  rotation 0.000000
+  size     3.570000 3.570000 35.000000
+end
+# Begin Base 1
+teleporter
+  position -167.500000 290.118510 0.000000
+  rotation 120.000000
+  border 1.000000
+  size 0.100000 7.000000 7.000000
+end
+box
+  position -110.875000 192.041133 33.000000
+  rotation 210.000000
+  size     12.000000 22.375000 12.000000
+end
+box
+  position -200.000000 346.410162 57.000000
+  rotation 120.000000
+  size     20.000000 20.000000 1.000000
+end
+teleporter
+  position -200.000000 346.410162 58.000000
+  rotation 120.000000
+  border 1.120000
+  size 0.560000 10.000000 10.000000
+end
+# Fully connect Hill1 and Tele1 START
+link
+ from 2
+ to 0
+end
+link
+ from 3
+ to 1
+end
+link
+ from 0
+ to 2
+end
+link
+ from 1
+ to 3
+end
+# Fully connect Hill1 and Tele1 END
+box
+  position -200.000000 346.410162 56.000000
+  rotation 120.000000
+  size     35.000000 35.000000 1.000000
+end
+base
+  position -310.000000 0.000000 30.500000
+  rotation 180.000000
+  size     23.000000 23.000000 2.000000
+  color    1
+end
+teleporter
+  position -335.000000 0.000000 0.000000
+  rotation 270.000000
+  border 1.000000
+  size 0.100000 7.000000 7.000000
+end
+box
+  position -310.000000 0.000000 55.100000
+  rotation 270.000000
+  size     10.000000 10.000000 1.004000
+end
+teleporter
+  position -310.000000 0.000000 56.104000
+  rotation 270.000000
+  border 1.000000
+  size 0.100000 7.000000 7.000000
+end
+# Fully connect Ground1 and Air1 START
+link
+ from 4
+ to 6
+end
+link
+ from 5
+ to 7
+end
+link
+ from 6
+ to 4
+end
+link
+ from 7
+ to 5
+end
+# Fully connect Ground1 and Air1 END
+# Begin Base 4
+teleporter
+  position -167.500000 -290.118510 0.000000
+  rotation 240.000000
+  border 1.000000
+  size 0.100000 7.000000 7.000000
+end
+box
+  position -114.625000 -198.536324 33.000000
+  rotation 330.000000
+  size     12.000000 26.125000 12.000000
+end
+box
+  position -200.000000 -346.410162 57.000000
+  rotation 240.000000
+  size     20.000000 20.000000 1.000000
+end
+teleporter
+  position -200.000000 -346.410162 58.000000
+  rotation 240.000000
+  border 1.120000
+  size 0.560000 10.000000 10.000000
+end
+# Fully connect Hill2 and Tele2 START
+link
+ from 10
+ to 8
+end
+link
+ from 11
+ to 9
+end
+link
+ from 8
+ to 10
+end
+link
+ from 9
+ to 11
+end
+# Fully connect Hill2 and Tele2 END
+box
+  position -200.000000 -346.410162 56.000000
+  rotation 240.000000
+  size     35.000000 35.000000 1.000000
+end
+base
+  position 155.000000 -268.467875 30.500000
+  rotation 300.000000
+  size     23.000000 23.000000 2.000000
+  color    4
+end
+teleporter
+  position 167.500000 -290.118510 0.000000
+  rotation 390.000000
+  border 1.000000
+  size 0.100000 7.000000 7.000000
+end
+box
+  position 155.000000 -268.467875 55.100000
+  rotation 390.000000
+  size     10.000000 10.000000 1.004000
+end
+teleporter
+  position 155.000000 -268.467875 56.104000
+  rotation 390.000000
+  border 1.000000
+  size 0.100000 7.000000 7.000000
+end
+# Fully connect Ground2 and Air2 START
+link
+ from 12
+ to 14
+end
+link
+ from 13
+ to 15
+end
+link
+ from 14
+ to 12
+end
+link
+ from 15
+ to 13
+end
+# Fully connect Ground2 and Air2 END
+# Begin Base 3
+teleporter
+  position 335.000000 0.000000 0.000000
+  rotation 360.000000
+  border 1.000000
+  size 0.100000 7.000000 7.000000
+end
+box
+  position 229.250000 0.000000 33.000000
+  rotation 450.000000
+  size     12.000000 26.125000 12.000000
+end
+box
+  position 400.000000 0.000000 57.000000
+  rotation 360.000000
+  size     20.000000 20.000000 1.000000
+end
+teleporter
+  position 400.000000 0.000000 58.000000
+  rotation 360.000000
+  border 1.120000
+  size 0.560000 10.000000 10.000000
+end
+# Fully connect Hill3 and Tele3 START
+link
+ from 18
+ to 16
+end
+link
+ from 19
+ to 17
+end
+link
+ from 16
+ to 18
+end
+link
+ from 17
+ to 19
+end
+# Fully connect Hill3 and Tele3 END
+box
+  position 400.000000 0.000000 56.000000
+  rotation 360.000000
+  size     35.000000 35.000000 1.000000
+end
+base
+  position 155.000000 268.467875 30.500000
+  rotation 420.000000
+  size     23.000000 23.000000 2.000000
+  color    3
+end
+teleporter
+  position 167.500000 290.118510 0.000000
+  rotation 510.000000
+  border 1.000000
+  size 0.100000 7.000000 7.000000
+end
+box
+  position 155.000000 268.467875 55.100000
+  rotation 510.000000
+  size     10.000000 10.000000 1.004000
+end
+teleporter
+  position 155.000000 268.467875 56.104000
+  rotation 510.000000
+  border 1.000000
+  size 0.100000 7.000000 7.000000
+end
+# Fully connect Ground3 and Air3 START
+link
+ from 20
+ to 22
+end
+link
+ from 21
+ to 23
+end
+link
+ from 22
+ to 20
+end
+link
+ from 23
+ to 21
+end
+# Fully connect Ground3 and Air3 END
