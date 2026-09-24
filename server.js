@@ -6919,7 +6919,7 @@ function parseBZWMap(filename, { quiet = false, extraMessages = [] } = {}) {
       .sort((a, b) => b[1] - a[1])
       .map(([option, count]) => (count > 1 ? `${option} x${count}` : option))
       .join(', ');
-    warn(`Server options bzo does not read in ${mapLabel}: ${unreadOptionList}`);
+    warn(`${mapLabel} ignored options: ${unreadOptionList}`);
   }
 
   if (unreadKeywordCounts.size > 0) {
@@ -6927,7 +6927,7 @@ function parseBZWMap(filename, { quiet = false, extraMessages = [] } = {}) {
       .sort((a, b) => b[1] - a[1])
       .map(([keyword, count]) => `${keyword} x${count}`)
       .join(', ');
-    warn(`Keywords bzo does not read in ${mapLabel}: ${unreadList}`);
+    warn(`${mapLabel} ignored: ${unreadList}`);
   }
 
   // What a player actually sees when they view or join this map -- not just

@@ -5344,6 +5344,47 @@ function init() {
     }
   }, { passive: false });
 
+  // The wheel's answer, for a finger. `#chatMessages` keeps `pointer-events:
+  // none` while chat is idle so a drag over it still reaches the battlefield,
+  // which also means the browser never scrolls it natively and the iOS-bounce
+  // guard in `init` cancels the gesture outright. So the same coordinate check
+  // the wheel uses reads the touch and moves `scrollTop` by hand.
+  //
+  // Only while chat is idle: once it is active the transcript has the pointer
+  // back and scrolls, drags and selects the ordinary way, and a second hand on
+  // `scrollTop` would move it twice per frame.
+  let chatTouchY = null;
+  const chatTouchTarget = (touch) => {
+    if (chatActive) return null;
+    const messagesDiv = document.getElementById('chatMessages');
+    if (!messagesDiv) return null;
+    const rect = messagesDiv.getBoundingClientRect();
+    if (rect.width <= 0 || rect.height <= 0) return null;
+    if (touch.clientX < rect.left || touch.clientX > rect.right) return null;
+    if (touch.clientY < rect.top || touch.clientY > rect.bottom) return null;
+    return messagesDiv;
+  };
+  window.addEventListener('touchstart', (e) => {
+    // One finger only. Two is a pinch, which belongs to whatever is under the
+    // panel rather than to the transcript.
+    chatTouchY = e.touches.length === 1 && chatTouchTarget(e.touches[0])
+      ? e.touches[0].clientY
+      : null;
+  }, { passive: true });
+  window.addEventListener('touchmove', (e) => {
+    if (chatTouchY === null || e.touches.length !== 1) return;
+    const messagesDiv = document.getElementById('chatMessages');
+    if (!messagesDiv) return;
+    const touch = e.touches[0];
+    // A finger dragging up moves the content up, which is the direction a
+    // native touch scroll goes -- the opposite sign from the wheel's deltaY.
+    messagesDiv.scrollTop += chatTouchY - touch.clientY;
+    chatTouchY = touch.clientY;
+  }, { passive: true });
+  const endChatTouch = () => { chatTouchY = null; };
+  window.addEventListener('touchend', endChatTouch, { passive: true });
+  window.addEventListener('touchcancel', endChatTouch, { passive: true });
+
   const chatMessagesDiv = document.getElementById('chatMessages');
   if (chatMessagesDiv) {
     // The transcript only takes the pointer while chat entry is active, for
@@ -6191,7 +6232,7 @@ function handleServerMessage(message) {
           triggerSpawnEffectForTank(joinedTank, message.player.color);
         }
         refreshScoreboards();
-        noticeAbout(null, [describePlayer(message.player.id), ' joined the game'], 0, false);
+        noticeAbout(null, [describePlayer(message.player.id), ' joined'], 0, false);
       }
       break;
 
@@ -6216,7 +6257,7 @@ function handleServerMessage(message) {
       // Show the player's name before removing
       // Described before the tank goes, since that is where the colour, the flag
       // and the team are read from.
-      noticeAbout(null, [describePlayer(message.id), ' left the game'], 0, false);
+      noticeAbout(null, [describePlayer(message.id), ' left'], 0, false);
       removePlayer(message.id);
       break;
     }
@@ -6304,9 +6345,15 @@ function handleServerMessage(message) {
       // The player in their roster colour and the flag in its own, as every other
       // notice that names a tank does. `flag: null` because the sentence names
       // the flag already, and a callsign wearing it too would say it twice.
+      //
+      // No trailing " flag", which upstream appends (`playing.cxx:2736`).
+      // `Red Team` and `MG/Machine Gun` are already flag names and nothing
+      // else in the game is called either, so the word is a fifth of the line
+      // spent saying what the line already said -- and a line this one shares
+      // with three others on a phone.
       noticeAbout(
         null,
-        [describePlayer(message.playerId, { flag: null }), ' grabbed ', describeFlagForNotice(flag), ' flag'],
+        [describePlayer(message.playerId, { flag: null }), ' grabbed ', describeFlagForNotice(flag)],
         0,
         false,
       );
@@ -6349,9 +6396,10 @@ function handleServerMessage(message) {
           forceReload(getThiefDropReloadSeconds(getShotLifetimeSeconds(null)));
         }
       }
+      // Terse for the same reason the grab above is: see that comment.
       noticeAbout(
         null,
-        [describePlayer(message.playerId, { flag: null }), ' dropped ', describeFlagForNotice(flag), ' flag'],
+        [describePlayer(message.playerId, { flag: null }), ' dropped ', describeFlagForNotice(flag)],
         0,
         false,
       );
@@ -6432,7 +6480,7 @@ function handleServerMessage(message) {
         setHudAlert(PAUSE_ALERT_SLOT, null, 0);
         showMessage('Paused');
       } else {
-        noticeAbout(null, [describePlayer(message.playerId), ' has paused'], 0, false);
+        noticeAbout(null, [describePlayer(message.playerId), ' paused'], 0, false);
       }
       setTankPausedState(message.playerId, true, message);
       createPausedSphere(message.playerId, message.x, message.y, message.z);
@@ -6445,7 +6493,7 @@ function handleServerMessage(message) {
         pauseAlertSecondsShown = 0;
         showMessage('Resumed');
       } else {
-        noticeAbout(null, [describePlayer(message.playerId), ' has unpaused'], 0, false);
+        noticeAbout(null, [describePlayer(message.playerId), ' unpaused'], 0, false);
       }
       setTankPausedState(message.playerId, false);
       removePausedSphere(message.playerId);
@@ -14441,7 +14489,26 @@ function updateChatWindow() {
     chatMessagesDiv.appendChild(div);
   });
 
-  chatMessagesDiv.scrollTop = wasAtBottom ? chatMessagesDiv.scrollHeight : previousScrollTop;
+  if (!wasAtBottom) {
+    chatMessagesDiv.scrollTop = previousScrollTop;
+    chatWindowDirty = false;
+    return;
+  }
+
+  chatMessagesDiv.scrollTop = chatMessagesDiv.scrollHeight;
+  // A pin is only as good as the layout it was taken against. On a reload the
+  // transcript is filled before the panel has settled -- a font still
+  // resolving, a phone still deciding how tall its viewport is -- so
+  // `scrollHeight` grows after the pin and the newest line ends up below the
+  // fold, which reads as chat opening at the top. Taking it again on the next
+  // frame costs nothing and is what makes a reload show the newest message.
+  const pinned = chatMessagesDiv.scrollTop;
+  requestAnimationFrame(() => {
+    // Only if nothing has moved it since: a finger or a wheel on the
+    // transcript in that frame owns the position, not this.
+    if (chatMessagesDiv.scrollTop !== pinned) return;
+    chatMessagesDiv.scrollTop = chatMessagesDiv.scrollHeight;
+  });
 
   chatWindowDirty = false;
 }

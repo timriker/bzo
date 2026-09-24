@@ -185,6 +185,11 @@ canvas {
   flex: 1 1 auto;
   min-width: 0;
 }
+/* The frame only: it positions the panel and carries the font the rows are
+   sized in. The dark background belongs to #chatBody below, so the tab strip
+   above it is transparent and the battlefield shows through between the tabs
+   -- the tabs stand up off the folder rather than sitting on a band that runs
+   the whole width of the screen. */
 #chatWindow {
   position: fixed;
   left: 50%;
@@ -192,14 +197,25 @@ canvas {
   transform: translateX(-50%);
   width: 95vw;
   max-height: 33vh;
-  background: var(--chat-bg);
   color: var(--chat-text);
-  /* Six lines of messages are sized off this, so a fixed 16px asked for 120px of
+  /* The line count is sized off this, so a fixed 16px asked for 120px of
      a 135px budget on a short screen and squeezed the tab row out entirely. */
   font: var(--hud-font-body) monospace;
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  box-sizing: border-box;
+  align-items: stretch;
+  min-height: 0;
+}
+
+/* The folder itself: everything below the tabs, and the only part with a
+   background. */
+#chatBody {
+  background: var(--chat-bg);
   padding: var(--hud-pad) var(--hud-pad) calc(var(--hud-pad) * 0.75) var(--hud-pad);
   border-radius: 12px 12px 0 0;
-  z-index: 100;
   display: flex;
   flex-direction: column;
   justify-content: flex-end;
@@ -207,6 +223,7 @@ canvas {
   box-sizing: border-box;
   overflow: hidden;
   align-items: stretch;
+  min-height: 0;
 }
 
 /* The messages are the part that gives. A min-height of six lines meant the
@@ -293,22 +310,34 @@ canvas {
   gap: 4px;
   /* Neither of these gives up room; the messages above do. */
   flex: 0 0 auto;
+  /* Against the folder below, so an active tab's missing bottom border meets
+     the body's own edge and the two read as one shape. The side padding lines
+     the strip up with the body's content rather than with its edge. */
+  padding: 0 var(--hud-pad);
+  margin-bottom: -1px;
 }
 
+/* Square at the bottom and rounded at the top, standing on the folder rather
+   than floating above it. Each tab carries its own background, which is what
+   leaves the strip between them transparent. */
 .chat-tab {
   border: 1px solid #777;
+  border-bottom: none;
   background: rgba(24, 24, 24, 0.9);
   color: var(--chat-tab-idle);
-  border-radius: 5px;
+  border-radius: 6px 6px 0 0;
   font: var(--hud-font-small) monospace;
   padding: calc(var(--hud-pad) / 2) var(--hud-pad);
   cursor: pointer;
 }
 
+/* The tab whose page is showing is the front of the folder: it takes the
+   body's own fill so the two read as one surface, where an idle tab stays
+   darker and behind it. */
 .chat-tab.active {
   border-color: var(--chat-tab-active);
   color: var(--chat-tab-active);
-  background: rgba(52, 52, 52, 0.95);
+  background: var(--chat-bg);
 }
 
 .chat-tab.unread {
@@ -434,11 +463,13 @@ body.chat-active #chatInput {
     bottom: 0 !important;
     transform: translateX(-50%) !important;
     margin: 0 !important;
-    padding: 4px 4px 2px 4px;
-    border-radius: 10px 10px 0 0;
     position: fixed !important;
     box-sizing: border-box;
     z-index: 100;
+  }
+  #chatBody {
+    padding: 4px 4px 2px 4px;
+    border-radius: 10px 10px 0 0;
   }
   #chatWindow input,
   #chatWindow textarea {
@@ -454,6 +485,20 @@ body.chat-active #chatInput {
   #chatMessages {
     min-height: calc(6 * 1.2em + 0.35em);
     max-height: calc(6 * 1.2em + 0.35em);
+  }
+}
+
+/* A phone held in landscape is around 430px tall, and the HUD's font is at its
+   clamp floor there -- so six lines of transcript plus the tabs and the input
+   row stand a third of the way up the screen, into the targeting box, which is
+   centred. Three lines keep the box clear; the scrollback is all still there
+   behind the scrollbar, and now under a finger as well. Stated as a height
+   rather than a device width because it is height the panel is spending, and a
+   short desktop window is spending it the same way. */
+@media (max-height: 500px) {
+  #chatMessages {
+    min-height: 0;
+    max-height: calc(3 * 1.2em + 0.35em);
   }
 }
 /* Mobile Controls Overlay Styles */

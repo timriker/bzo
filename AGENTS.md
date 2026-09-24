@@ -2802,6 +2802,27 @@ chat path, so the server's existing "never broadcast a `/` line" rule and
 `replyToPlayer`'s private reply are exactly what a player typing `/?` by hand
 would get.
 
+### The chat panel is a folder, and its tabs stick up out of it
+
+`#chatWindow` positions the panel and carries the font its rows are sized in,
+and nothing else: the dark fill, the padding and the rounded top corners belong
+to `#chatBody`, which holds the transcript and the input row. So the tab strip
+above it is transparent, each tab carries its own background, and the
+battlefield shows through between them -- the tabs stand up out of the folder
+instead of riding on a band that runs the full width of the screen. A tab is
+square at the bottom and rounded at the top, has no bottom border, and the
+strip has `margin-bottom: -1px` so an active tab's open edge meets the body's
+own. The active tab takes `--chat-bg`, the body's fill, so the two read as one
+surface; an idle tab stays darker and reads as being behind it.
+
+**Three lines below 500px of viewport height, six above it.** A phone held in
+landscape is around 430px tall and the HUD's font is at its clamp floor there,
+so six lines plus the tabs and the input row stand a third of the way up the
+screen -- into the targeting box, which is centred. The rule is stated as a
+height rather than a device width because height is what the panel is spending,
+and a short desktop window spends it the same way. Nothing is lost: the whole
+scrollback is still there behind the scrollbar, and now under a finger.
+
 ### Chat and the radar scroll/zoom natively, like Debug and Help -- except by the pointer
 
 `#chatMessages` renders the *whole* scrollback on every redraw (bounded by
@@ -2827,15 +2848,22 @@ The wheel gets its own answer instead: a `window`-level `wheel` listener
 `getBoundingClientRect()`, and -- only when the pointer is actually over
 it -- adjusts `scrollTop` by `deltaY` itself and calls `preventDefault()`.
 That is the same question native hit-testing would answer if the element
-could afford `pointer-events: auto`, asked by coordinate instead. **A touch
-drag has no equivalent listener and does not scroll chat while it is idle**,
-for the identical reason a click does not activate it: there is no
-coordinate-based touch handler yet, only the wheel one. Once chat *is*
-active (or via PageUp/PageDown/End through `scrollChatPage`/
-`scrollChatToNewest` below, which always work), `#chatMessages` gets
-`pointer-events: auto` back and scrolls, drags and selects the ordinary way --
-native scrolling was never the problem; only reaching it while idle without
-also capturing the click was.
+could afford `pointer-events: auto`, asked by coordinate instead. **A finger
+gets the same answer**, from a `touchstart`/`touchmove` pair beside it: the
+same coordinate check picks the transcript up, and `scrollTop` moves by the
+drag's own delta -- the opposite sign from the wheel's `deltaY`, because a
+finger moves the content rather than the viewport. It only runs while chat is
+idle; once chat *is* active (or via PageUp/PageDown/End through
+`scrollChatPage`/`scrollChatToNewest` below, which always work),
+`#chatMessages` gets `pointer-events: auto` back and scrolls, drags and
+selects the ordinary way, and a second hand on `scrollTop` would move it
+twice. Native scrolling was never the problem; only reaching it while idle
+without also capturing the click was.
+
+The iOS-bounce guard in `init` is why the touch pair is needed at all rather
+than just letting the browser scroll: it cancels every `touchmove` whose
+target is not inside one of a list of allowed elements, and a touch over the
+transcript has the canvas as its target while the transcript has no pointer.
 
 **The same listener answers the wheel over `#radar`, for the identical
 reason.** The radar sits at the top-right corner, exactly where looking
@@ -2851,7 +2879,14 @@ state.** `updateChatWindow` checks `isChatScrolledToBottom` *before* it clears
 and rebuilds the message list, then restores either the bottom (a viewer
 following live chat keeps following it) or the exact same `scrollTop` (a
 viewer part-way through reading history is not yanked back down by a message
-that arrived while they were scrolled up) -- upstream has no analogue here
+that arrived while they were scrolled up). A pin to the bottom is taken again
+on the next frame, because a pin is only as good as the layout it was measured
+against: on a reload the transcript is filled before the panel has settled --
+a font still resolving, a phone still deciding how tall its viewport is -- so
+`scrollHeight` grows after the pin and the newest line ends up below the fold,
+which reads as chat opening at the top. The second pin is skipped if anything
+moved `scrollTop` in that frame, so a finger already on the transcript keeps
+what it took -- upstream has no analogue here
 since its control panel is not windowed at all. `scrollChatPage` and
 `scrollChatToNewest` (PageUp/PageDown/End) still work, now moving
 `#chatMessages`' own `scrollTop` directly instead of an offset a redraw had to
