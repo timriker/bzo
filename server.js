@@ -190,7 +190,6 @@ const {
 const {
   COMMAND_TIER,
   parsePlayerTarget,
-  bearingToRotation,
   rotationToBearingName,
   parseMoveCoordinates,
   formatFlagInfo,
@@ -9178,7 +9177,7 @@ defineCommand('/flag', COMMAND_TIER.OPERATOR,
 // driving it -- `testSpawn` in server.json does this on join, and this is the
 // same thing without a restart. See parseMoveCoordinates for the grammar.
 defineCommand('/mv', COMMAND_TIER.OPERATOR,
-  '[player] <x,z|x,y,z|x,y,z,facing> [facing] - move a tank to a position; height and facing are optional',
+  '[player] <x,z|x,y,z|x,y,z,facing> [facing] - move a tank to a position; height optional, facing a compass point or degrees',
   (player, args) => {
     // A target is optional, so the first token is only a target if it does not
     // parse as coordinates.
@@ -9205,9 +9204,9 @@ defineCommand('/mv', COMMAND_TIER.OPERATOR,
       return;
     }
 
-    const rotation = parsed.bearing === null
-      ? subject.rotation
-      : bearingToRotation(parsed.bearing);
+    // `parseMoveCoordinates` resolved it: a compass point and an angle are two
+    // spellings of the same thing by the time it hands one back.
+    const rotation = parsed.rotation === null ? subject.rotation : parsed.rotation;
     // A height that was *given* is honoured where the tank fits, so `/mv 0,30,0`
     // puts you thirty units up to watch yourself fall. Where it does not fit --
     // a coordinate inside an elevated obstacle -- `dropSpawnPosition` climbs to

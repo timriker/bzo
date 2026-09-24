@@ -2722,13 +2722,22 @@ log line prints: `+X` east, `-Z` north, `+Y` up. Two values are `x,z`; three are
 `x,y,z`, the order the rest of bzo writes a position in, so the second value
 never changes axis between forms.
 
-A facing is **one of the eight compass points and nothing else** -- `n`, `ne`,
-`e` and so on -- either in a fourth slot after all three coordinates, or as a
-word after them. A number is deliberately refused: bzo's rotation runs
-anticlockwise from north while a compass bearing runs clockwise, so `90` is
-ambiguous in the one direction that matters and a letter cannot be misread.
-`bearingToRotation` is that conversion, and the reply names the resulting facing
-back so it is visible either way.
+A facing is one of the eight compass points -- `n`, `ne`, `e` and so on -- or an
+exact angle, either in a fourth slot after all three coordinates or as a word
+after them.
+
+**A number is bzo's own rotation in degrees, not a compass bearing** (issue
+#109). That is the convention a Share View Link already writes: `?pos=x,y,z,deg`
+is `playerRotation` in degrees and `readViewPosTarget` reads it straight back,
+so the tail of a link pastes into `/mv` unchanged --
+`/mv -320.0,0.0,-310.3,-91.3`. The two conventions run opposite ways, so they
+agree at `0` (north) and `180` (south) and disagree at the quarters: bzo's `90`
+is *west*, where a bearing's is east. That is why the compass points stay -- a
+letter cannot be misread -- and why the reply names the facing the tank ended up
+with, so a number that meant the other thing says so in the answer.
+
+`parseFacing` resolves both spellings to radians, `bearingToRotation` being the
+compass half of it, so the command handler never sees which one was typed.
 
 ### Client-local commands -- `/silence`, `/unsilence`, `/highlight`, `/cmds`
 

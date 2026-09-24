@@ -21,10 +21,11 @@ not in `BanCommands`, not in any plugin, and there is no API call for it either.
 It is here because bzo is developed by driving it: `testSpawn` in `server.json`
 does this on join, and `/mv` is the same thing without a restart.
 
-A facing is one of the eight compass points and never a number, for the reason in
-`AGENTS.md`. If an exact angle is ever wanted for a test, that is the moment to
-decide what a number means -- and it will need saying out loud whichever
-convention wins, because bzo's rotation and a compass bearing run opposite ways.
+A facing is one of the eight compass points, or an exact angle. The angle is
+bzo's own rotation in degrees rather than a compass bearing, which is the
+convention a Share View Link's `pos=` tail already carries and the reason a
+number is taken at all (issue #109). The two run opposite ways, so that is said
+out loud in `AGENTS.md` and the reply names the facing the tank ended up with.
 
 ## What upstream has
 

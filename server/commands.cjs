@@ -242,14 +242,17 @@ function parsePlayerTarget(args, resolveCallsign, resolveId) {
   return { id, rest };
 }
 
-// A facing for /mv, as one of the eight compass points and nothing else.
+// A facing for /mv: one of the eight compass points, or an exact angle.
 //
-// Degrees are deliberately not accepted. bzo's rotation runs anticlockwise from
-// north and a compass bearing runs clockwise, so a number is ambiguous in the
-// one direction that matters: somebody typing 90 means east and would have to
-// know which convention answered. A letter cannot be misread, and if an exact
-// angle is ever needed for a test that is the moment to decide what a number
-// means -- see docs/commands-plan.md.
+// **A number is bzo's own rotation in degrees, not a compass bearing.** That is
+// the convention a Share View Link already writes -- `?pos=x,y,z,deg` is
+// `playerRotation` in degrees, and `readViewPosTarget` reads it straight back
+// as `deg * PI / 180` -- and pasting that tail into `/mv` is the whole reason
+// a number is taken at all (issue #109). The two conventions run opposite ways,
+// so they agree at 0 (north) and 180 (south) and disagree at 90: bzo's 90 is
+// *west*, where a bearing's is east. A letter still cannot be misread, which is
+// why the compass points remain and why the reply names the facing it ended up
+// with -- a number that meant the other thing says so in the answer.
 const COMPASS_BEARINGS = Object.freeze({
   n: 0, north: 0,
   ne: 45,
@@ -264,7 +267,7 @@ const COMPASS_BEARINGS = Object.freeze({
 const COMPASS_POINTS = Object.freeze(['n', 'ne', 'e', 'se', 's', 'sw', 'w', 'nw']);
 
 function formatBearingError(token) {
-  return `"${token}" is not a direction (${COMPASS_POINTS.join(', ')})`;
+  return `"${token}" is not a direction (${COMPASS_POINTS.join(', ')}) or an angle in degrees`;
 }
 
 function parseBearing(token) {
@@ -281,6 +284,24 @@ function parseBearing(token) {
 function bearingToRotation(degrees) {
   const bounded = ((-degrees % 360) + 360) % 360;
   return bounded * Math.PI / 180;
+}
+
+// A facing token as bzo's own rotation, in radians -- a compass point through
+// the conversion above, or a number that was already in bzo's convention and
+// only needs its units changed. `null` for anything else, which the caller
+// turns into `formatBearingError`.
+//
+// Normalized to [0, 2pi) whichever way it arrived, so the two spellings of the
+// same facing produce the same number: an angle off a share link is whatever
+// the tank's rotation happened to be and runs negative as readily as positive.
+function parseFacing(token) {
+  const bearing = parseBearing(token);
+  if (bearing !== null) return bearingToRotation(bearing);
+  if (typeof token !== 'string') return null;
+  const degrees = Number(token.trim());
+  if (token.trim().length === 0 || !Number.isFinite(degrees)) return null;
+  const bounded = ((degrees % 360) + 360) % 360;
+  return (bounded * Math.PI) / 180;
 }
 
 // The nearest of the eight points, for echoing back where a tank ended up
@@ -305,6 +326,10 @@ function rotationToBearingName(rotation) {
 //   /mv <coords> <facing>
 //   /mv <target> <coords> [facing]
 //
+// A facing is a compass point or an angle -- see `parseFacing` for which way a
+// number runs. The four-value form is the one a Share View Link's `pos=` tail
+// pastes straight into: `/mv -320.0,0.0,-310.3,-91.3` (issue #109).
+//
 // Two numbers leave the height out because that is the form worth typing: the
 // caller resolves it by dropping the tank onto whatever is at that point, so
 // `/mv 0,0` lands on the ground where the tank fits and on the roof where it does
@@ -313,8 +338,11 @@ function rotationToBearingName(rotation) {
 // three before it to sit in the list. It also has a slot of its own after the
 // coordinates, which is the shorter thing to type.
 //
-// Returns `{ error }`, or `{ x, y, z, bearing }` where `y` and `bearing` are
-// null when they were not given.
+// Returns `{ error }`, or `{ x, y, z, rotation }` where `y` and `rotation` are
+// null when they were not given. `rotation` is radians in bzo's own convention,
+// resolved here rather than handed back as a bearing for the caller to convert:
+// there are two spellings of a facing now and only one of them was ever a
+// bearing.
 function parseMoveCoordinates(args) {
   const usage = 'Usage: /mv [player] <x,z|x,y,z|x,y,z,facing> [facing]';
   if (typeof args !== 'string' || args.trim().length === 0) return { error: usage };
@@ -325,32 +353,32 @@ function parseMoveCoordinates(args) {
   if (values.some((value) => value.length === 0)) return { error: usage };
   if (values.length < 2 || values.length > 4) return { error: usage };
 
-  // Only the coordinates are numbers. A fourth value is the facing, which is a
-  // compass point -- checking the whole list for finiteness would reject the one
-  // form that carries one.
+  // Only the first three values are coordinates. A fourth is the facing, which
+  // may be a compass point -- checking the whole list for finiteness would
+  // reject the one form that carries a letter there.
   const coordinates = values.slice(0, values.length === 4 ? 3 : values.length).map(Number);
   if (!coordinates.every(Number.isFinite)) return { error: usage };
 
   let x;
   let y = null;
   let z;
-  let bearing = null;
+  let rotation = null;
   if (coordinates.length === 2) {
     [x, z] = coordinates;
   } else {
     [x, y, z] = coordinates;
   }
   if (values.length === 4) {
-    bearing = parseBearing(values[3]);
-    if (bearing === null) return { error: formatBearingError(values[3]) };
+    rotation = parseFacing(values[3]);
+    if (rotation === null) return { error: formatBearingError(values[3]) };
   }
 
   if (tokens.length === 2) {
-    const trailing = parseBearing(tokens[1]);
+    const trailing = parseFacing(tokens[1]);
     if (trailing === null) return { error: formatBearingError(tokens[1]) };
-    bearing = trailing;
+    rotation = trailing;
   }
-  return { x, y, z, bearing };
+  return { x, y, z, rotation };
 }
 
 // FlagInfo::getTextualInfo (FlagInfo.cxx:284), which is the one line `/flag
@@ -384,6 +412,7 @@ module.exports = {
   COMPASS_POINTS,
   parsePlayerTarget,
   parseBearing,
+  parseFacing,
   bearingToRotation,
   rotationToBearingName,
   parseMoveCoordinates,

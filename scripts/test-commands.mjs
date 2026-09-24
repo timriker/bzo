@@ -27,6 +27,7 @@ const {
   formatUnknownCommand,
   parsePlayerTarget,
   parseBearing,
+  parseFacing,
   bearingToRotation,
   rotationToBearingName,
   parseMoveCoordinates,
@@ -228,26 +229,33 @@ assert.equal(formatDuration('nonsense'), '');
 // /mv's grammar, which is bzo's own -- upstream has no command that moves a tank.
 {
   const usage = 'Usage: /mv [player] <x,z|x,y,z|x,y,z,facing> [facing]';
+  const notADirection = (token) =>
+    `"${token}" is not a direction (n, ne, e, se, s, sw, w, nw) or an angle in degrees`;
   // Two numbers leave the height out, which is the form worth typing.
-  assert.deepEqual(parseMoveCoordinates('0,0'), { x: 0, y: null, z: 0, bearing: null });
-  assert.deepEqual(parseMoveCoordinates('100,-100'), { x: 100, y: null, z: -100, bearing: null });
+  assert.deepEqual(parseMoveCoordinates('0,0'), { x: 0, y: null, z: 0, rotation: null });
+  assert.deepEqual(parseMoveCoordinates('100,-100'), { x: 100, y: null, z: -100, rotation: null });
   // Three is x,y,z -- the order the rest of bzo writes a position in, so the
   // second number never changes meaning between forms.
-  assert.deepEqual(parseMoveCoordinates('0,30,0'), { x: 0, y: 30, z: 0, bearing: null });
+  assert.deepEqual(parseMoveCoordinates('0,30,0'), { x: 0, y: 30, z: 0, rotation: null });
   // A facing in the list needs all three coordinates before it, which is what
   // makes the fourth slot unambiguous.
-  assert.deepEqual(parseMoveCoordinates('0,30,0,s'), { x: 0, y: 30, z: 0, bearing: 180 });
-  assert.deepEqual(parseMoveCoordinates('0,0,0,nw'), { x: 0, y: 0, z: 0, bearing: 315 });
-  assert.deepEqual(parseMoveCoordinates('0,0,0,90'),
-    { error: '"90" is not a direction (n, ne, e, se, s, sw, w, nw)' });
+  assert.deepEqual(parseMoveCoordinates('0,30,0,s'),
+    { x: 0, y: 30, z: 0, rotation: bearingToRotation(180) });
+  assert.deepEqual(parseMoveCoordinates('0,0,0,nw'),
+    { x: 0, y: 0, z: 0, rotation: bearingToRotation(315) });
   // A bearing has a slot of its own as well, which is where a letter goes.
-  assert.deepEqual(parseMoveCoordinates('0,0 n'), { x: 0, y: null, z: 0, bearing: 0 });
-  assert.deepEqual(parseMoveCoordinates('0,0 e'), { x: 0, y: null, z: 0, bearing: 90 });
-  assert.deepEqual(parseMoveCoordinates('0,30,0 s'), { x: 0, y: 30, z: 0, bearing: 180 });
+  assert.deepEqual(parseMoveCoordinates('0,0 n'),
+    { x: 0, y: null, z: 0, rotation: bearingToRotation(0) });
+  assert.deepEqual(parseMoveCoordinates('0,0 e'),
+    { x: 0, y: null, z: 0, rotation: bearingToRotation(90) });
+  assert.deepEqual(parseMoveCoordinates('0,30,0 s'),
+    { x: 0, y: 30, z: 0, rotation: bearingToRotation(180) });
   // A trailing facing wins over one in the list, being the later word.
-  assert.deepEqual(parseMoveCoordinates('0,0,0,n s'), { x: 0, y: 0, z: 0, bearing: 180 });
+  assert.deepEqual(parseMoveCoordinates('0,0,0,n s'),
+    { x: 0, y: 0, z: 0, rotation: bearingToRotation(180) });
   // Decimals and negatives, since a coordinate read off a log has both.
-  assert.deepEqual(parseMoveCoordinates('-12.5,3.25'), { x: -12.5, y: null, z: 3.25, bearing: null });
+  assert.deepEqual(parseMoveCoordinates('-12.5,3.25'),
+    { x: -12.5, y: null, z: 3.25, rotation: null });
   // Spacing around the commas is forgiven; a missing value is not.
   assert.deepEqual(parseMoveCoordinates('0, 0'), { error: usage },
     'a space splits the tokens, so this reads as coordinates and a bearing');
@@ -256,11 +264,46 @@ assert.equal(formatDuration('nonsense'), '');
   assert.deepEqual(parseMoveCoordinates('1,2,3,4,5'), { error: usage });
   assert.deepEqual(parseMoveCoordinates('a,b'), { error: usage });
   assert.deepEqual(parseMoveCoordinates(''), { error: usage });
-  assert.deepEqual(parseMoveCoordinates('0,0 sideways'),
-    { error: '"sideways" is not a direction (n, ne, e, se, s, sw, w, nw)' });
-  assert.deepEqual(parseMoveCoordinates('0,0 90'),
-    { error: '"90" is not a direction (n, ne, e, se, s, sw, w, nw)' });
+  assert.deepEqual(parseMoveCoordinates('0,0 sideways'), { error: notADirection('sideways') });
   assert.deepEqual(parseMoveCoordinates('0,0 n extra'), { error: usage });
+}
+
+// A facing may be an exact angle, so a Share View Link's `pos=` tail pastes
+// straight into /mv (issue #109). The number is bzo's own rotation in degrees,
+// which is what the link writes and what `readViewPosTarget` reads back.
+{
+  const deg = (degrees) => ((degrees % 360) + 360) % 360 * Math.PI / 180;
+  // The issue's own example, whole.
+  assert.deepEqual(parseMoveCoordinates('-320.0,0.0,-310.3,-91.3'),
+    { x: -320, y: 0, z: -310.3, rotation: deg(-91.3) });
+  // And in the slot of its own, where a letter also goes.
+  assert.deepEqual(parseMoveCoordinates('0,0 -91.3'), { x: 0, y: null, z: 0, rotation: deg(-91.3) });
+
+  // The two conventions agree at north and south and disagree at the quarters:
+  // bzo's rotation runs anticlockwise from north, a bearing clockwise.
+  assert.equal(parseFacing('0'), parseFacing('n'), '0 is north either way');
+  assert.equal(parseFacing('180'), parseFacing('s'), 'and 180 is south either way');
+  assert.equal(parseFacing('90'), parseFacing('w'), "bzo's 90 is west, where a bearing's is east");
+  assert.equal(parseFacing('270'), parseFacing('e'));
+  // Which the reply says out loud, so a number that meant the other thing is
+  // visible in the answer rather than only in the tank.
+  assert.equal(rotationToBearingName(parseFacing('90')), 'W');
+
+  // Negative and out-of-range angles normalize, because an angle off a share
+  // link is whatever the tank's rotation happened to be.
+  assert.equal(parseFacing('-90'), parseFacing('270'));
+  assert.equal(parseFacing('450'), parseFacing('90'));
+  assert.equal(parseFacing('-360'), parseFacing('0'));
+
+  // Still not a facing.
+  assert.equal(parseFacing('sideways'), null);
+  assert.equal(parseFacing(''), null);
+  assert.equal(parseFacing('   '), null);
+  assert.equal(parseFacing(null), null);
+  assert.equal(parseFacing('NaN'), null);
+  assert.equal(parseFacing('Infinity'), null, 'a rotation has to be a number you can turn to');
+  // `parseBearing` itself is unchanged: it is the compass, and nothing else.
+  assert.equal(parseBearing('90'), null);
 }
 
 // `/me` is the one `/` line that is not dispatched as a command: it is
