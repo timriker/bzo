@@ -6,6 +6,43 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
 
 ## [Unreleased]
 
+### Changed
+- A `mesh` block draws one call per material it uses rather than one per face.
+  Its faces were each given a `geometry` group of their own, which is a draw
+  call each whatever they are made of. They are collated by material now, the
+  way upstream's `MeshFragSceneNode` collates them and the way bzo already
+  collated boxes and pyramids. Measured on
+  `import-xs.bzexcess.com_5155.bzw`, the Jetson client's draw calls fall from
+  15217 to 978 and its `draw` phase from 45.9ms to 12.9ms, for the same 92712
+  triangles; with the radar below, its shortest frame goes from 98.6ms to
+  20.5ms and its frame rate from 17 to 46.
+- The radar draws a map at the detail the panel can show. A mesh too small on
+  it for its own faces to separate draws its footprint instead, and a face
+  narrower than a pixel inside a mesh too big to collapse is left out --
+  bzo's own answer to what a map shipping `radarLods` would answer for itself
+  (#90). Measured on `import-xs.bzexcess.com_5155.bzw` at the widest range,
+  where 459 meshes offer 16251 faces, the `radar` phase falls from 277.9ms to
+  39.6ms; on the Jetson client at that range it is 50.9ms against 190ms-odd.
+  Fine detail at a wide range reads slightly blockier for it; the shape of the
+  map does not change.
+- `?radarZoom=` sets the radar's range at startup, clamped to the same 0.005
+  to 2 the wheel is, and every `renderer.stats` line carries the range it was
+  taken at. The panel's cost is what its range puts on it, so a sample that
+  did not say which range it came from could not be compared with the one
+  beside it. URL only, never persisted, never in the UI -- see
+  `public/test.html`.
+- The radar drops what is off the panel before it projects anything, and fills
+  in batches. It used to walk every obstacle and every upward mesh face in the
+  map every frame, take a sine and a cosine of the player's heading for each
+  vertex of each of them, and issue a `fill()` an obstacle. Measured on
+  `import-xs.bzexcess.com_5155.bzw`, the `radar` phase falls from 43.4ms to
+  4.9ms on the Jetson client and from 17.0ms to 2.9ms on a desktop. An
+  obstacle is rejected on a
+  circle around its own footprint, so a long walkway whose centre is off the
+  panel still draws the span of it that is on. Where two obstacles inside one
+  batch overlap, the union fills once rather than twice, so a partly
+  transparent overlap no longer darkens at the seam.
+
 ## [1.2.63] - 2026-09-25
 
 ### Fixed

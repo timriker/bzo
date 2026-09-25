@@ -4693,10 +4693,24 @@ class RenderManager {
     const positions = [];
     const normalsOut = [];
     const uvsOut = [];
-    const indices = [];
     const materials = [];
     const materialIndexByKey = new Map();
-    const geometryGroups = [];
+    // A face's triangles land in its material's own bucket rather than in one
+    // index list in map order, because a `BufferGeometry` group is a draw call
+    // and a group per face is a draw call per face. Upstream collates the same
+    // way -- `MeshSceneNodeGenerator.cxx:206` builds one `MeshFragSceneNode`
+    // per "collection of faces with the same material properties" -- and it is
+    // the same trade `_addObstacleFragment` makes for boxes and pyramids. On
+    // `import-xs.bzexcess.com_5155.bzw` it is the difference between a few
+    // dozen draws and tens of thousands.
+    //
+    // Sparse and indexed by material, so the buckets come out in the order the
+    // materials were first met, and a face's triangles keep their order inside
+    // one. Faces of *different* materials are no longer interleaved in map
+    // order: a mesh's translucent faces are drawn unsorted either way -- bzo
+    // merges them where upstream keeps them out of the fragment to sort them --
+    // so this reorders something that was already arbitrary against the view.
+    const indicesByMaterial = [];
     const edgeA = new THREE.Vector3();
     const edgeB = new THREE.Vector3();
 
@@ -4787,12 +4801,11 @@ class RenderManager {
         }
       });
 
-      const triangleStart = indices.length;
+      const faceIndices = [];
       for (let t = 1; t < vertexIndices.length - 1; t++) {
-        indices.push(baseVertex, baseVertex + t, baseVertex + t + 1);
+        faceIndices.push(baseVertex, baseVertex + t, baseVertex + t + 1);
       }
-      const triangleCount = indices.length - triangleStart;
-      if (triangleCount <= 0) return;
+      if (!faceIndices.length) return;
 
       const key = `${face.texture || ''}|${face.textureUrl || ''}|${(face.color || []).join(',')}`
         + `|${animIdentityKey(face.dynamicColor)}|${animIdentityKey(face.textureMatrix)}`
@@ -4913,7 +4926,25 @@ class RenderManager {
         materials.push(material);
         materialIndexByKey.set(key, materialIndex);
       }
-      geometryGroups.push({ start: triangleStart, count: triangleCount, materialIndex });
+      let bucket = indicesByMaterial[materialIndex];
+      if (!bucket) {
+        bucket = [];
+        indicesByMaterial[materialIndex] = bucket;
+      }
+      for (let i = 0; i < faceIndices.length; i += 1) bucket.push(faceIndices[i]);
+    });
+
+    // One run per material, laid end to end. `forEach` skips the holes a
+    // material whose every face was degenerate leaves behind.
+    const indices = [];
+    const geometryGroups = [];
+    indicesByMaterial.forEach((bucket, materialIndex) => {
+      if (!bucket.length) return;
+      geometryGroups.push({ start: indices.length, count: bucket.length, materialIndex });
+      // Appended one at a time: a spread is an argument list, and a bucket on a
+      // map like `import-xs.bzexcess.com_5155.bzw` runs to hundreds of
+      // thousands of indices, well past what a call can carry.
+      for (let i = 0; i < bucket.length; i += 1) indices.push(bucket[i]);
     });
 
     if (!indices.length) return null;

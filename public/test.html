@@ -100,6 +100,24 @@
   </section>
 
   <section>
+    <h2><code>radarZoom</code></h2>
+    <p>
+      The radar's range, as a multiple of a shot's, clamped to 0.005 to 2. The
+      panel repaints over every obstacle its range reaches, so this is what
+      decides the <code>radar</code> phase -- and a wide range on a map built
+      out of a few <code>define</code> blocks placed hundreds of times is the
+      worst case there is. Every sample carries the range it was taken at as
+      <code>radarZoom</code>. The wheel over the panel moves it too.
+    </p>
+    <div class="modes">
+      <a class="mode default" href="/"><b>Medium</b><span>default, 0.5</span></a>
+      <a class="mode" href="/?radarZoom=1"><b>Long</b><span>?radarZoom=1</span></a>
+      <a class="mode" href="/?radarZoom=1.4"><b>Whole world</b><span>?radarZoom=1.4</span></a>
+      <a class="mode" href="/?radarZoom=2"><b>Widest</b><span>?radarZoom=2</span></a>
+    </div>
+  </section>
+
+  <section>
     <h2><code>antialias</code></h2>
     <p>
       Off asks for a context without MSAA, which an immersive session inherits

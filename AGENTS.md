@@ -894,6 +894,36 @@ boxes then pyramids in map order and lets a pyramid cover the base beside it. A
 top-down panel reads better as a height map, so `getRadarObstacles` sorts by top
 altitude once per map.
 
+**The panel is the client's own biggest phase on a large map, so it drops what it
+can and batches the rest.** `public/radar-geometry.mjs` holds both parts.
+Rejection is a circle around an obstacle's whole footprint, tested against the
+panel's square before anything is projected -- **never the obstacle's centre
+alone**: hix's walkways are long enough that their centres sit well off the
+panel while a span of them is still on it, and `scripts/test-radar-geometry.mjs`
+is what holds that invariant down. A spinning mesh's faces take their circle
+around `spinPivot`, which a spin leaves every vertex the same distance from, so
+one radius covers every angle. The clip itself runs over flat `x, y` buffers
+rather than arrays of points, and the heading's sine and cosine are taken once a
+frame rather than once a vertex.
+
+**A map is drawn at the detail the panel can show, which is bzo's own stand-in
+for `radarLods`.** Upstream picks a coarser mesh for the minimap out of the LOD
+chain a `drawInfo` block carries; a map without one gives it nothing to pick,
+and most do not. So bzo derives the same idea from the geometry it has, in two
+steps: a mesh whose whole footprint is under `RADAR_MESH_FOOTPRINT_PIXELS`
+across draws that footprint in place of its faces, and inside a mesh too big to
+collapse, a face under `RADAR_FACE_MIN_PIXELS` across is left out. A polygon
+narrower than a pixel cannot draw one. Both thresholds are in panel pixels, so
+they do nothing at a close range and everything at a wide one -- which is where
+a map built out of a few `define` blocks placed hundreds of times puts tens of
+thousands of faces on the panel.
+
+Fills are then coalesced into **runs** of neighbours that share a colour and a
+quantised opacity -- runs, not a grouping by colour, because the altitude sort
+above is load-bearing and gathering the list by colour would reorder it. Where
+two obstacles inside one run overlap, the union fills once rather than twice, so
+a partly transparent overlap does not darken at the seam.
+
 ## Flags
 
 `docs/flags.md` documents the flag system: where each part of it lives, and every
@@ -2306,6 +2336,13 @@ player can be asked to load a link:
   darkening overlay and the per-frame projection.
 - `?celestial=0` -- drop the sun and moon discs, which are three draws but large
   ones.
+- `?radarZoom=1.4` -- the radar's range at startup, as a multiple of a shot's,
+  clamped to the same 0.005 to 2 the wheel over the panel is. The panel
+  repaints over every obstacle its range reaches, so the range is what decides
+  the `radar` phase, and a client asked to measure a map has to be able to
+  start wide rather than be wheeled there by hand. It rides every
+  `renderer.stats` line as `radarZoom` rather than the init line, because the
+  wheel moves it too.
 - `?xrRate=90` -- the cadence asked of the XR runtime through
   `updateTargetFrameRate`. bzo asks for 72 by default, the Quest's own rate; the
   knob is here because which rate is best is a measurement. A runtime asked for

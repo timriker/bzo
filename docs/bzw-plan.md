@@ -112,12 +112,6 @@ mapper can rely on; `src/bzfs/CustomMesh.cxx`, `src/bzfs/CustomMeshFace.cxx`,
 and each primitive's own `Custom*.cxx` remain the upstream reference. What is
 left:
 
-- [ ] Merge a mesh's own adjacent same-material triangle ranges into one
-      `geometry` group rather than one per face -- `_buildMeshObject` adds a
-      group per face regardless, one draw call per face rather than one per
-      distinct texture. Fine at `bzo.bzw`'s scale; worth doing before a
-      130-mesh map like `import-Planet-MoFo.com_4202.bzw` renders at its own
-      real scale.
 - [ ] Name a mesh's own individual faces in the collision log, the way a
       box's face selectors are named today -- a mesh's debug label already
       names the whole mesh, but not which face a report is against.

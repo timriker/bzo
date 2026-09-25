@@ -198,6 +198,17 @@ import {
   normalizePlayerTeam,
   normalizePlayerTeamSelection,
 } from './teams.mjs';
+import {
+  RADAR_BOX_CORNERS,
+  clipPolygonToRadarSquare,
+  ensureRadarPolygonBuffers,
+  getRadarClipBuffer,
+  getRadarMeshFaceCull,
+  getRadarMeshObstacleCull,
+  getRadarObstacleCullRadius,
+  getRadarPolygonScratch,
+  isOutsideRadarSquare as isOutsideRadarSquareOf,
+} from './radar-geometry.mjs';
 import { createVoiceManager } from './voice.js';
 import {
   DEFAULT_VOICE_CHANNEL,
@@ -622,6 +633,21 @@ const RADAR_ZOOM_MIN = 0.005;
 const RADAR_ZOOM_MAX = 2.0;
 const RADAR_ZOOM_STEP = 1.05;
 let radarZoomLevel = RADAR_ZOOM_DEFAULT;
+// `?radarZoom=` -- a measurement knob, the same rules as the ones in render.js:
+// URL only, never persisted, never in the UI, clamped on the way in, and on
+// every `renderer.stats` line. The panel's cost is what its range puts on it,
+// so a client asked to measure a map has to be able to start wide rather than
+// be wheeled there by hand -- and a sample that did not say which range it was
+// taken at could not be compared with the one beside it.
+function readRadarZoomKnob() {
+  const raw = new URLSearchParams(window.location.search).get('radarZoom');
+  if (raw === null) return null;
+  const numeric = Number(raw);
+  if (!Number.isFinite(numeric)) return null;
+  return Math.max(RADAR_ZOOM_MIN, Math.min(RADAR_ZOOM_MAX, numeric));
+}
+const radarZoomKnob = readRadarZoomKnob();
+if (radarZoomKnob !== null) radarZoomLevel = radarZoomKnob;
 const pendingDebugPackets = [];
 let pendingJoinRequest = null;
 let renderReadyForJoin = false;
@@ -4823,6 +4849,10 @@ function logRenderStats(reason) {
   // seven lights in it or none -- which is a different shader for every
   // material in the world, so it cannot be left off a sample either.
   stats.lighting = renderManager.dynamicLightingEnabled;
+  // The radar's range decides how much of the map the panel draws, which is the
+  // `radar` phase. It moves with the wheel as well as with `?radarZoom=`, so it
+  // belongs on every sample rather than on the init line.
+  stats.radarZoom = Math.round(radarZoomLevel * 1000) / 1000;
   // bzo's own collections, which is where a leak would live if the scene graph
   // is clean: each of these is added to on an event and has to be removed from
   // on another, and a count that climbs while a client sits idle names which one
@@ -4962,7 +4992,7 @@ function handleGameplayKeydown(event) {
     return true;
   }
   if (event.code === 'Backslash') {
-    setRadarZoomLevel(RADAR_ZOOM_DEFAULT);
+    setRadarZoomLevel(radarZoomKnob ?? RADAR_ZOOM_DEFAULT);
     return true;
   }
   // cmdDestruct (clientCommands.cxx:400): five seconds, and the key again calls
@@ -13064,54 +13094,6 @@ function radarPixelsToWorldDistance(pixelDistance, radarDistance, radarWorldHalf
   return pixelDistance / Math.max(pixelsPerWorldUnit, 1e-6);
 }
 
-function clipPolygonAxisAligned(points, axis, boundary, keepLessEqual) {
-  if (!Array.isArray(points) || points.length === 0) return [];
-  const output = [];
-
-  const isInside = (point) => (
-    keepLessEqual ? point[axis] <= boundary : point[axis] >= boundary
-  );
-
-  const intersect = (a, b) => {
-    const delta = b[axis] - a[axis];
-    if (Math.abs(delta) < 1e-9) {
-      return { x: a.x, y: a.y };
-    }
-    const t = (boundary - a[axis]) / delta;
-    return {
-      x: a.x + (b.x - a.x) * t,
-      y: a.y + (b.y - a.y) * t,
-    };
-  };
-
-  for (let i = 0; i < points.length; i += 1) {
-    const current = points[i];
-    const previous = points[(i + points.length - 1) % points.length];
-    const currentInside = isInside(current);
-    const previousInside = isInside(previous);
-
-    if (currentInside) {
-      if (!previousInside) {
-        output.push(intersect(previous, current));
-      }
-      output.push(current);
-    } else if (previousInside) {
-      output.push(intersect(previous, current));
-    }
-  }
-
-  return output;
-}
-
-function clipPolygonToRadarSquare(points, halfExtent) {
-  let clipped = points;
-  clipped = clipPolygonAxisAligned(clipped, 'x', halfExtent, true);
-  clipped = clipPolygonAxisAligned(clipped, 'x', -halfExtent, false);
-  clipped = clipPolygonAxisAligned(clipped, 'y', halfExtent, true);
-  clipped = clipPolygonAxisAligned(clipped, 'y', -halfExtent, false);
-  return clipped;
-}
-
 /**
  * Convert 3D world coordinates to 2D radar coordinates
  * @param {number} worldX - World X position
@@ -13119,22 +13101,22 @@ function clipPolygonToRadarSquare(points, halfExtent) {
  * @param {number} px - Player X position
  * @param {number} pz - Player Z position
  * @param {number} playerHeading - Player heading in radians
- * @param {number} center - Radar canvas center
- * @param {number} radius - Radar effective radius
- * @param {number} shotDistance - Visible radar distance
- * @param {number} worldRotation - Optional world rotation (default 0)
- * @returns {{x: number, y: number, distance: number, rotation: number}} Radar coordinates, distance, and transformed rotation
+ * @param {number} [headingCos] - Cosine of playerHeading, if the caller holds it
+ * @param {number} [headingSin] - Sine of playerHeading, if the caller holds it
+ * @returns {{x: number, y: number}} Player-relative radar coordinates
  */
-function worldToRadarRelative(worldX, worldZ, px, pz, playerHeading) {
+function worldToRadarRelative(worldX, worldZ, px, pz, playerHeading, headingCos, headingSin) {
   const dx = worldX - px;
   const dz = worldZ - pz;
-  const distance = Math.sqrt(dx * dx + dz * dz);
+
+  // The heading is one value for the whole frame and this runs once per vertex
+  // of every obstacle in the map, so a caller that draws more than one thing
+  // hands its own sine and cosine in rather than paying for them again here.
+  const cos = headingCos === undefined ? Math.cos(playerHeading) : headingCos;
+  const sin = headingSin === undefined ? Math.sin(playerHeading) : headingSin;
 
   // Rotate to player-relative coordinates (forward = up on radar)
-  const rotX = dx * Math.cos(playerHeading) - dz * Math.sin(playerHeading);
-  const rotY = dx * Math.sin(playerHeading) + dz * Math.cos(playerHeading);
-
-  return { x: rotX, y: rotY, distance };
+  return { x: (dx * cos) - (dz * sin), y: (dx * sin) + (dz * cos) };
 }
 
 function radarRelativeToCanvas(radarX, radarY, center, radarWorldHalfExtent, radarDistance) {
@@ -13158,7 +13140,7 @@ function world2Radar(worldX, worldZ, px, pz, playerHeading, center, radius, shot
   // - Add playerHeading so objects stay fixed in world space as radar rotates
   const rotation = -worldRotation + playerHeading;
 
-  return { x, y, distance: rel.distance, rotation };
+  return { x, y, rotation };
 }
 
 // RadarRenderer::colorScale and transScale. Anything at the player's own level
@@ -13201,11 +13183,12 @@ function getRadarObstacles() {
       // A material's `noradar` flag (docs/bzw.md, "Materials and appearance")
       // -- upstream's RadarRenderer skips a face whose material asks for it;
       // bzo has no per-face radar drawing to skip, so the whole obstacle sits
-      // out instead. A mesh draws through `getRadarMeshFaces` below instead of
+      // out instead. A mesh draws through `getRadarMeshObstacles` below instead of
       // here -- it has no single footprint the way a box's `w`/`d` gives one.
       list: [...OBSTACLES]
         .filter((obs) => !obs.noRadar && obs.type !== 'mesh')
-        .sort((left, right) => getRadarObstacleTopY(left) - getRadarObstacleTopY(right)),
+        .sort((left, right) => getRadarObstacleTopY(left) - getRadarObstacleTopY(right))
+        .map((obs) => ({ obs, cullRadius: getRadarObstacleCullRadius(obs) })),
     };
   }
   return radarObstacleOrder.list;
@@ -13221,26 +13204,57 @@ function getRadarObstacles() {
 // `noradar` (inherited from the mesh's own default, same as any other
 // material property a face does not restate) drops it same as any other
 // obstacle's. Sorted and cached the same way `getRadarObstacles` is.
-let radarMeshFaceOrder = { source: null, list: [] };
+// Grouped by the mesh rather than kept flat, because how much of a mesh is
+// worth drawing is one decision for the whole of it -- see
+// `RADAR_MESH_FOOTPRINT_PIXELS`. Every face of a mesh shares its top altitude,
+// so sorting the meshes by that gives the same paint order a flat list sorted
+// face by face did.
+let radarMeshOrder = { source: null, list: [] };
 
-function getRadarMeshFaces() {
-  if (radarMeshFaceOrder.source !== OBSTACLES) {
+// A mesh's drawn faces all share one colour where every one of them states the
+// same, which is the colour its footprint can stand in with. Mixed, the panel's
+// neutral grey is the only honest answer for a shape that is several colours.
+function getRadarMeshFootprintTint(faces) {
+  let tint = null;
+  for (const { face } of faces) {
+    if (!face.color) return null;
+    if (!tint) tint = face.color;
+    else if (face.color[0] !== tint[0] || face.color[1] !== tint[1] || face.color[2] !== tint[2]) {
+      return null;
+    }
+  }
+  return tint;
+}
+
+function getRadarMeshObstacles() {
+  if (radarMeshOrder.source !== OBSTACLES) {
     const entries = [];
+    let widestFace = 0;
     OBSTACLES.forEach((obs) => {
       if (obs.type !== 'mesh' || !obs.bounds) return;
+      const faces = [];
       obs.faces.forEach((face) => {
         if (!face.plane || face.plane[1] <= 0 || face.noRadar) return;
-        entries.push({ obs, face, topY: obs.bounds.maxY });
+        widestFace = Math.max(widestFace, face.vertexIndices.length);
+        faces.push({ face, ...getRadarMeshFaceCull(obs, face) });
+      });
+      if (!faces.length) return;
+      entries.push({
+        obs,
+        faces,
+        footprintTint: getRadarMeshFootprintTint(faces),
+        ...getRadarMeshObstacleCull(obs),
       });
     });
-    radarMeshFaceOrder = {
+    // Sized for the widest face the map has, once, rather than growing the
+    // scratch buffers part-way through a frame.
+    ensureRadarPolygonBuffers((widestFace * 2) + 8);
+    radarMeshOrder = {
       source: OBSTACLES,
-      list: entries
-        .sort((left, right) => left.topY - right.topY)
-        .map(({ obs, face }) => ({ obs, face })),
+      list: entries.sort((left, right) => left.obs.bounds.maxY - right.obs.bounds.maxY),
     };
   }
-  return radarMeshFaceOrder.list;
+  return radarMeshOrder.list;
 }
 
 // Team::getRadarColor is what upstream's radar draws a base in
@@ -13250,6 +13264,29 @@ function getRadarMeshFaces() {
 const RADAR_NEUTRAL_FILL_RGB = [180, 180, 180];
 const RADAR_TINT_STRENGTH = 0.65;
 const RADAR_NEUTRAL_FILL = `rgb(${RADAR_NEUTRAL_FILL_RGB.join(',')})`;
+
+// How finely an obstacle's depth opacity is rounded before it decides whether
+// the batched fill can keep going -- see `addRadarFill`.
+const RADAR_FILL_ALPHA_STEPS = 32;
+
+// How small a mesh has to be on the panel before its own footprint stands in
+// for its faces. A mesh this wide has faces a pixel or two across, which the
+// panel cannot tell apart from the outline around them -- and a map built out
+// of a few `define` blocks placed a couple of hundred times puts tens of
+// thousands of such faces on the panel at a wide zoom, each one a polygon the
+// radar walks and fills for a pixel. It is bzo's own answer to what a map that
+// ships `radarLods` would have answered for itself (#90): the detail a plan
+// view cannot show is not drawn.
+const RADAR_MESH_FOOTPRINT_PIXELS = 10;
+
+// And how small one face of a mesh too big to collapse has to be before it is
+// left out. A polygon narrower than a pixel cannot draw a pixel: it tints one,
+// faintly, under whatever its neighbours put there. Measured on
+// `import-xs.bzexcess.com_5155.bzw` at the widest range, 2160 of the 7429
+// faces that survive the footprint test are this small, and they are the
+// interior detail of structures whose own large faces draw the shape either
+// way.
+const RADAR_FACE_MIN_PIXELS = 1;
 
 // Channels are 0 to 1, as the colour a map states is.
 function getRadarShadedFill(red, green, blue) {
@@ -13461,7 +13498,21 @@ function updateRadar() {
   const py = myTank.position.y;
   const pz = myTank.position.z;
   const playerHeading = myTank.rotation ? myTank.rotation.y : 0;
-  const toRadarRelative = (worldX, worldZ) => worldToRadarRelative(worldX, worldZ, px, pz, playerHeading);
+  // One pair for the whole panel. The obstacle and mesh-face loops below run
+  // over every obstacle in the map at four or more vertices each, and a sine
+  // and a cosine per vertex is thousands of them for one value that does not
+  // change inside a frame.
+  const headingCos = Math.cos(playerHeading);
+  const headingSin = Math.sin(playerHeading);
+  const toRadarRelative = (worldX, worldZ) => worldToRadarRelative(
+    worldX,
+    worldZ,
+    px,
+    pz,
+    playerHeading,
+    headingCos,
+    headingSin,
+  );
   const radarToCanvas = (radarX, radarY) => radarRelativeToCanvas(
     radarX,
     radarY,
@@ -13471,8 +13522,62 @@ function updateRadar() {
   );
   const getRadarObjectRotation = (worldRotation) => (-worldRotation) + playerHeading;
   const isOutsideRadarSquare = (radarX, radarY, margin = 0) => (
-    Math.abs(radarX) > radarDistance + margin || Math.abs(radarY) > radarDistance + margin
+    isOutsideRadarSquareOf(radarX, radarY, radarDistance, margin)
   );
+  // Refreshed each time it is read: `clipPolygonToRadarSquare` grows the
+  // buffers to fit the widest polygon it is handed, and a grow replaces them.
+  const radarPolygonScratch = () => getRadarPolygonScratch();
+
+  // One `fill()` a colour rather than one an obstacle, which is the same trade
+  // a batched draw makes against a per-primitive one: the panel repaints every
+  // frame over every obstacle in the map, and on a large one the call overhead
+  // outweighs the filling.
+  //
+  // The order obstacles paint in is load-bearing -- a higher surface has to
+  // cover the lower one it overlaps, which is what the altitude sort above is
+  // for -- so this coalesces *runs* of neighbours that share a fill rather than
+  // gathering the whole list by colour. The sequence is exactly what it was.
+  // The sort is by top altitude, so neighbours mostly share an opacity too, and
+  // most of a map wears the one neutral grey.
+  //
+  // Two obstacles inside one run that overlap fill as their union, once, so a
+  // partly transparent overlap does not darken at the seam. The panel reads as
+  // a height map off the sort, and a doubled patch says nothing the sort does
+  // not.
+  let radarFillPath = null;
+  let radarFillStyle = '';
+  let radarFillAlpha = -1;
+  const flushRadarFills = () => {
+    if (!radarFillPath) return;
+    radarCtx.globalAlpha = radarFillAlpha;
+    radarCtx.fillStyle = radarFillStyle;
+    radarCtx.fill(radarFillPath);
+    radarCtx.globalAlpha = 1;
+    radarFillPath = null;
+  };
+  // `polygon` is a flat `x, y` buffer in radar-relative units, as the clip
+  // leaves it.
+  const addRadarFill = (polygon, count, fillStyle, opacity) => {
+    // Quantised so a run is not broken by a difference the panel cannot show:
+    // the depth scale spans 0.5 to 1, and a thirty-secondth of that is well
+    // under what a two-hundred-pixel panel resolves.
+    const alpha = Math.round(opacity * RADAR_FILL_ALPHA_STEPS) / RADAR_FILL_ALPHA_STEPS;
+    if (radarFillPath && (fillStyle !== radarFillStyle || alpha !== radarFillAlpha)) {
+      flushRadarFills();
+    }
+    if (!radarFillPath) {
+      radarFillPath = new Path2D();
+      radarFillStyle = fillStyle;
+      radarFillAlpha = alpha;
+    }
+    for (let i = 0; i < count; i += 1) {
+      const panelX = center + ((polygon[i * 2] / radarDistance) * radarWorldHalfExtent);
+      const panelY = center + ((polygon[(i * 2) + 1] / radarDistance) * radarWorldHalfExtent);
+      if (i === 0) radarFillPath.moveTo(panelX, panelY);
+      else radarFillPath.lineTo(panelX, panelY);
+    }
+    radarFillPath.closePath();
+  };
   // Something past radar range is pinned to the border of the panel in its own
   // direction, which is bzo's own -- upstream's radar simply stops at its range.
   // The direction is preserved rather than the distance, so the marker sits on
@@ -13600,61 +13705,44 @@ function updateRadar() {
 
   // Draw obstacles within radar distance, rotated to match map orientation
   if (typeof OBSTACLES !== 'undefined' && Array.isArray(OBSTACLES)) {
-    getRadarObstacles().forEach(obs => {
-      const obsWidth = obs.w || 8;
-      const obsDepth = obs.d || 8;
-
-      const halfW = obsWidth / 2;
-      const halfD = obsDepth / 2;
+    getRadarObstacles().forEach(({ obs, cullRadius }) => {
       const centerRel = toRadarRelative(obs.x, obs.z);
+      // The whole footprint against the panel, so a long obstacle whose centre
+      // is off the panel still draws the span of it that is on -- see
+      // `getRadarObstacleCullRadius`. Ahead of the corner work rather than
+      // after it, which is the point: on a large map most of the list is out
+      // of range and costs one comparison rather than a clipped polygon.
+      if (isOutsideRadarSquare(centerRel.x, centerRel.y, cullRadius)) return;
+
+      const halfW = (obs.w || 8) / 2;
+      const halfD = (obs.d || 8) / 2;
       const obstacleRadarRotation = getRadarObjectRotation(obs.rotation);
       const cosR = Math.cos(obstacleRadarRotation);
       const sinR = Math.sin(obstacleRadarRotation);
-      const corners = [
-        { x: -halfW, z: -halfD },
-        { x: halfW, z: -halfD },
-        { x: halfW, z: halfD },
-        { x: -halfW, z: halfD },
-      ];
+      const scratch = radarPolygonScratch();
+      for (let i = 0; i < 4; i += 1) {
+        const cornerX = RADAR_BOX_CORNERS[i * 2] * halfW;
+        const cornerZ = RADAR_BOX_CORNERS[(i * 2) + 1] * halfD;
+        scratch[i * 2] = centerRel.x + ((cornerX * cosR) - (cornerZ * sinR));
+        scratch[(i * 2) + 1] = centerRel.y + ((cornerX * sinR) + (cornerZ * cosR));
+      }
 
-      const radarPolygon = corners.map((corner) => {
-        const rotatedX = corner.x * cosR - corner.z * sinR;
-        const rotatedY = corner.x * sinR + corner.z * cosR;
-        return {
-          x: centerRel.x + rotatedX,
-          y: centerRel.y + rotatedY,
-        };
-      });
-
-      const clippedPolygon = clipPolygonToRadarSquare(radarPolygon, radarDistance);
-      if (clippedPolygon.length < 3) return;
+      const clippedCount = clipPolygonToRadarSquare(scratch, 4, radarDistance);
+      if (clippedCount < 3) return;
 
       // Calculate opacity based on player's vertical position relative to obstacle
       const baseY = obs.baseY || 0;
       const height = getObstacleHeight(obs);
-      const opacity = getRadarOpacity(py, baseY, height);
-
-      radarCtx.save();
-      radarCtx.globalAlpha = opacity;
-      radarCtx.fillStyle = getObstacleRadarFillStyle(obs);
-      radarCtx.beginPath();
-      clippedPolygon.forEach((point, index) => {
-        const panel = radarToCanvas(point.x, point.y);
-        const drawX = panel.x;
-        const drawY = panel.y;
-        if (index === 0) {
-          radarCtx.moveTo(drawX, drawY);
-        } else {
-          radarCtx.lineTo(drawX, drawY);
-        }
-      });
-      radarCtx.closePath();
-      radarCtx.fill();
-      radarCtx.restore();
+      addRadarFill(
+        getRadarClipBuffer(),
+        clippedCount,
+        getObstacleRadarFillStyle(obs),
+        getRadarOpacity(py, baseY, height),
+      );
     });
   }
 
-  // Draw a mesh's own upward-facing faces -- see `getRadarMeshFaces`. Each
+  // Draw a mesh's own upward-facing faces -- see `getRadarMeshObstacles`. Each
   // face's own vertices are already in world space (no obstacle rotation to
   // apply, unlike a box), so this projects them directly rather than
   // rotating a local rectangle the way the obstacle loop above does -- unless
@@ -13662,46 +13750,87 @@ function updateRadar() {
   // rotated live about its own `spinPivot` first, the 2D (x/z) equivalent of
   // `renderManager`'s own `rotation.y` on that mesh's 3D pivot group
   // (`meshSpinRadians` is the one shared formula both read).
+  //
+  // A mesh too small on the panel for its faces to separate draws its
+  // footprint instead -- see `RADAR_MESH_FOOTPRINT_PIXELS`. The footprint is
+  // the same world-space box, so a spin turns it the same way a face turns.
   if (typeof OBSTACLES !== 'undefined' && Array.isArray(OBSTACLES)) {
-    getRadarMeshFaces().forEach(({ obs, face }) => {
+    const worldToPanelPixels = radarWorldHalfExtent / radarDistance;
+    getRadarMeshObstacles().forEach((entry) => {
+      const { obs, faces, footprint, footprintTint, cullX, cullZ, cullRadius } = entry;
+      // Same rejection as the obstacle loop, on the circle the cached list
+      // carries for this mesh -- a spinning one's is centred on the pivot, so
+      // it holds whatever angle the mesh is at this frame.
+      const cullRel = toRadarRelative(cullX, cullZ);
+      if (isOutsideRadarSquare(cullRel.x, cullRel.y, cullRadius)) return;
+
       const spinAngle = obs.angvel && obs.spinPivot ? meshSpinRadians(obs.angvel) : 0;
       const spinCos = Math.cos(spinAngle);
       const spinSin = Math.sin(spinAngle);
-      const radarPolygon = face.vertexIndices.map((vi) => {
-        const v = obs.vertices[vi];
-        if (!spinAngle) return toRadarRelative(v.x, v.z);
-        const dx = v.x - obs.spinPivot.x;
-        const dz = v.z - obs.spinPivot.z;
-        return toRadarRelative(
-          obs.spinPivot.x + (dx * spinCos) + (dz * spinSin),
-          obs.spinPivot.z - (dx * spinSin) + (dz * spinCos),
-        );
-      });
-      const clippedPolygon = clipPolygonToRadarSquare(radarPolygon, radarDistance);
-      if (clippedPolygon.length < 3) return;
+      // Projects one world (x, z) into the scratch buffer at `slot`, spinning
+      // it about the mesh's pivot first where the mesh turns.
+      const project = (scratch, slot, worldX, worldZ) => {
+        let spunX = worldX;
+        let spunZ = worldZ;
+        if (spinAngle) {
+          const offsetX = worldX - obs.spinPivot.x;
+          const offsetZ = worldZ - obs.spinPivot.z;
+          spunX = obs.spinPivot.x + (offsetX * spinCos) + (offsetZ * spinSin);
+          spunZ = obs.spinPivot.z - (offsetX * spinSin) + (offsetZ * spinCos);
+        }
+        const dx = spunX - px;
+        const dz = spunZ - pz;
+        scratch[slot * 2] = (dx * headingCos) - (dz * headingSin);
+        scratch[(slot * 2) + 1] = (dx * headingSin) + (dz * headingCos);
+      };
 
       // A single face has no height of its own to speak of -- upstream's own
       // `BZDBCache::useMeshForRadar` fallback for exactly this, using the
       // whole mesh's own vertical span instead of one infinitely thin face.
+      // The footprint reads the same figure, being the same mesh.
       const opacity = getRadarOpacity(py, obs.bounds.minY, obs.bounds.maxY - obs.bounds.minY);
 
-      radarCtx.save();
-      radarCtx.globalAlpha = opacity;
-      radarCtx.fillStyle = face.color ? getRadarTintFill(face.color) : RADAR_NEUTRAL_FILL;
-      radarCtx.beginPath();
-      clippedPolygon.forEach((point, index) => {
-        const panel = radarToCanvas(point.x, point.y);
-        if (index === 0) {
-          radarCtx.moveTo(panel.x, panel.y);
-        } else {
-          radarCtx.lineTo(panel.x, panel.y);
+      if ((cullRadius * 2 * worldToPanelPixels) < RADAR_MESH_FOOTPRINT_PIXELS) {
+        const scratch = radarPolygonScratch();
+        for (let i = 0; i < 4; i += 1) {
+          project(scratch, i, footprint[i * 2], footprint[(i * 2) + 1]);
         }
+        const clippedCount = clipPolygonToRadarSquare(scratch, 4, radarDistance);
+        if (clippedCount < 3) return;
+        addRadarFill(
+          getRadarClipBuffer(),
+          clippedCount,
+          footprintTint ? getRadarTintFill(footprintTint) : RADAR_NEUTRAL_FILL,
+          opacity,
+        );
+        return;
+      }
+
+      faces.forEach(({ face, cullRadius: faceRadius }) => {
+        if ((faceRadius * 2 * worldToPanelPixels) < RADAR_FACE_MIN_PIXELS) return;
+        const vertexCount = face.vertexIndices.length;
+        const scratch = radarPolygonScratch();
+        for (let i = 0; i < vertexCount; i += 1) {
+          const v = obs.vertices[face.vertexIndices[i]];
+          project(scratch, i, v.x, v.z);
+        }
+
+        const clippedCount = clipPolygonToRadarSquare(scratch, vertexCount, radarDistance);
+        if (clippedCount < 3) return;
+
+        addRadarFill(
+          getRadarClipBuffer(),
+          clippedCount,
+          face.color ? getRadarTintFill(face.color) : RADAR_NEUTRAL_FILL,
+          opacity,
+        );
       });
-      radarCtx.closePath();
-      radarCtx.fill();
-      radarCtx.restore();
     });
   }
+
+  // Everything the two loops above accumulated, before the gameplay layers go
+  // down over it.
+  flushRadarFills();
 
   // Draw projectiles (shots) within radar distance
   const shotRadarColorOf = (proj) => proj.userData?.radarColor || '#FFD700';
