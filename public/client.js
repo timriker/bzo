@@ -143,7 +143,7 @@ import {
 } from './hud.js';
 import {
   renderManager, DEFAULT_MUZZLE_HEIGHT, GHOST_ALPHA_SCALE, GHOST_SCALE, meshSpinRadians,
-  reportAlphaWithoutThreshold, TANK_NAV_LIGHTS_NAME,
+  reportAlphaWithoutThreshold, TANK_NAV_LIGHTS_NAME, WORLD_LABEL_RENDER_ORDER,
 } from './render.js';
 import { describeMeasurements, describeRenderCapabilities } from './capabilities.mjs';
 import {
@@ -4197,6 +4197,7 @@ function ensureSupportSurfaceDebugMarker() {
   );
   cap.position.y = 4.6;
   const label = new THREE.Sprite(new THREE.SpriteMaterial({ transparent: true, depthTest: false, depthWrite: false }));
+  label.renderOrder = WORLD_LABEL_RENDER_ORDER;
   label.position.set(0, 5.7, 0);
   label.scale.set(3.4, 0.85, 1);
   markerGroup.userData.nameLabel = label;
@@ -4430,6 +4431,7 @@ function ensurePacketMotionDebug(targetObject, mode = 'received') {
   turnIndicator.userData.baseOffset = 1.0;
 
   const label = new THREE.Sprite(new THREE.SpriteMaterial({ transparent: true, depthTest: false, depthWrite: false }));
+  label.renderOrder = WORLD_LABEL_RENDER_ORDER;
   label.position.set(0, 1.7, 0);
   label.scale.set(4.2, 0.95, 1);
 

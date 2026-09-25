@@ -400,6 +400,17 @@ const FLAG_RENDER_ORDER = 5;
 // Shots ride over the flags they pass, and their explosions over the shots.
 const SHOT_RENDER_ORDER = 16;
 const SHOT_EXPLOSION_RENDER_ORDER = 17;
+// Every name written into the world -- a tank's callsign, a flag's
+// abbreviation, an obstacle's debug label. Upstream draws these as flat HUD
+// text after the scene is finished (HUDRenderer::renderTankLabels), so nothing
+// in the world can paint over a name. Here they are billboards in the scene
+// instead, and a label writes no depth of its own: without a render order above
+// everything else in the transparent pass, anything drawn later covers it --
+// an alpha-textured wall, a projected shadow, a track mark -- whether that
+// thing stands in front of the name or well behind it. Above the highest world
+// order (track marks, 22) and below the camera-mounted teleporter flash, which
+// is a full-screen effect and belongs over the names too.
+export const WORLD_LABEL_RENDER_ORDER = 30;
 // The warp a flag arrives and leaves through, from FlagWarpSceneNode.cxx:28.
 // Seven horizontal twelve-sided discs in a fixed rainbow at half alpha, each
 // one step smaller than the last and a hair further along the stack.
@@ -5688,6 +5699,7 @@ class RenderManager {
       alphaTest: 0.1,
     });
     const label = new THREE.Sprite(labelMaterial);
+    label.renderOrder = WORLD_LABEL_RENDER_ORDER;
     label.scale.set(4, 1, 1);
     this.updateSpriteLabel(label, name || '', color);
     return label;
@@ -6727,6 +6739,7 @@ class RenderManager {
         alphaTest: 0.1,
       });
       const sprite = new THREE.Sprite(spriteMaterial);
+      sprite.renderOrder = WORLD_LABEL_RENDER_ORDER;
       sprite.position.set(0, 3, 0);
       sprite.scale.set(2, 0.5, 1);
       tankGroup.add(sprite);
@@ -9141,6 +9154,7 @@ class RenderManager {
       transparent: true,
       alphaTest: 0.1,
     }));
+    label.renderOrder = WORLD_LABEL_RENDER_ORDER;
     label.scale.set(4, 1, 1);
     this.getWorldGroup().add(label);
     record.label = label;

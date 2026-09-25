@@ -6,6 +6,18 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
 
 ## [Unreleased]
 
+## [1.2.62] - 2026-09-25
+
+### Fixed
+- A name over a tank is no longer painted over by things standing behind it. A
+  label writes no depth of its own, so anything drawn after it in the
+  transparent pass covered it wherever the two overlapped on screen -- an
+  alpha-textured wall, a projected shadow, a flag, a track mark -- however far
+  behind the name that thing actually stood. Every name written into the world
+  now draws after all of them: a tank's callsign, a flag's abbreviation, and
+  the debug labels over obstacles. A wall genuinely in front of a tank still
+  hides its name.
+
 ## [1.2.61] - 2026-09-25
 
 ### Fixed
