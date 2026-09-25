@@ -362,6 +362,20 @@ const BZFLAG_LOCKON_WORLD_SIZE = 7;
 // and a missile is the shot you most want to know the owner of.
 const BZFLAG_MISSILE_TEXTURE = '/textures/missile.png';
 const BZFLAG_MISSILE_ANIM_CELLS = 4;            // setTextureAnimation(4, 4)
+// `shot_tail.png` is a four-by-four sheet of wisps, and a shot takes six
+// consecutive cells of it from a random start so that two shots in the air do
+// not wear the same tail.
+const BZFLAG_SHOT_TAIL_CELLS = 4;
+// How far behind the bolt each segment of the trail sits, how big it is and how
+// much of it shows. Fixed by its place in the trail rather than by the shot, so
+// they are read straight out of these rather than stored per shot.
+const BZFLAG_SHOT_TAIL_SEGMENTS = 6;
+const BZFLAG_SHOT_TAIL_DISTANCES = [0.34, 0.62, 0.90, 1.18, 1.46, 1.74];
+const BZFLAG_SHOT_TAIL_SCALES = [0.78, 0.70, 0.62, 0.54, 0.46, 0.38];
+const BZFLAG_SHOT_TAIL_ALPHAS = [0.74, 0.64, 0.54, 0.44, 0.34, 0.24];
+const BZFLAG_SHOT_HEAD_SCALE = 1.35;
+// Grown in powers of two from here, the way the flag batch grows.
+const BZFLAG_SHOT_BATCH_MIN_CAPACITY = 32;
 const BZFLAG_GM_PUFF_TEXTURE = '/textures/puffs.png';
 const BZFLAG_GM_PUFF_CELLS = 2;                 // du = dv = 0.5, a random quadrant
 const BZFLAG_GM_PUFF_INTERVAL = 1 / 8;          // gmPuffTime
@@ -1130,6 +1144,7 @@ const GROUND_CENTER_SIZE = 128; // upstream centerSize
 const GROUND_TEX_REPEAT = 0.05; // upstream groundHighResTexRepeat (defaultBZDB.cxx:82)
 // Upstream's five triangle strips over the four outer and four centre corners.
 const GROUND_EYE_SCRATCH = new THREE.Vector3();
+const SHOT_EXPLOSION_EYE_SCRATCH = new THREE.Vector3();
 const ROAM_FORWARD_SCRATCH = new THREE.Vector3();
 const FLAG_BILLBOARD_SCRATCH = new THREE.Vector3();
 const FLAG_BILLBOARD_QUATERNION = new THREE.Quaternion();
@@ -1333,6 +1348,80 @@ void main() {
   gl_FragColor = vec4(texColor.rgb * tint, a);
 }
 `;
+
+// Every bolt of one colour in one draw, and its whole trail in another.
+//
+// The quad is laid out in view space rather than world space, which is how a
+// `Sprite` faces the eye and is why this can be instanced where a `Sprite`
+// cannot: the instance matrix carries only the centre and the size, so a shot
+// moving is four floats rather than a rotation composed on the CPU for every
+// segment of every trail.
+//
+// `instanceUvOffset` is which cell of a sheet the instance shows -- the wisp a
+// trail segment wears, and the animation frame a guided missile is on --
+// and `instanceAlpha` how much of it shows, which for a trail is fixed by how
+// far back the segment sits.
+const SHOT_BATCH_VERTEX_SHADER = `
+attribute vec2 instanceUvOffset;
+attribute float instanceAlpha;
+uniform vec2 uvScale;
+varying vec2 vUv;
+varying float vAlpha;
+void main() {
+  vUv = (uv * uvScale) + instanceUvOffset;
+  vAlpha = instanceAlpha;
+  vec4 centre = modelViewMatrix * instanceMatrix * vec4(0.0, 0.0, 0.0, 1.0);
+  vec2 size = vec2(length(instanceMatrix[0].xyz), length(instanceMatrix[1].xyz));
+  centre.xy += position.xy * size;
+  gl_Position = projectionMatrix * centre;
+}
+`;
+
+// `colorspace_fragment` is what a `SpriteMaterial` ends with too. Without it a
+// shader of one's own writes linear values into a screen that expects the
+// output space, and every shot comes out dark.
+const SHOT_BATCH_FRAGMENT_SHADER = `
+uniform sampler2D map;
+varying vec2 vUv;
+varying float vAlpha;
+void main() {
+  vec4 texel = texture2D(map, vUv);
+  gl_FragColor = vec4(texel.rgb, texel.a * vAlpha);
+  #include <colorspace_fragment>
+}
+`;
+
+function createShotBatchMaterial(texture, { cells = 1, additive = false } = {}) {
+  return new THREE.ShaderMaterial({
+    uniforms: {
+      map: { value: texture },
+      uvScale: { value: new THREE.Vector2(1 / cells, 1 / cells) },
+    },
+    vertexShader: SHOT_BATCH_VERTEX_SHADER,
+    fragmentShader: SHOT_BATCH_FRAGMENT_SHADER,
+    transparent: true,
+    depthWrite: false,
+    blending: additive ? THREE.AdditiveBlending : THREE.NormalBlending,
+  });
+}
+
+function buildShotBatchMesh(texture, capacity, { cells, additive }) {
+  const geometry = new THREE.PlaneGeometry(1, 1);
+  geometry.setAttribute(
+    'instanceUvOffset', new THREE.InstancedBufferAttribute(new Float32Array(capacity * 2), 2),
+  );
+  geometry.setAttribute(
+    'instanceAlpha', new THREE.InstancedBufferAttribute(new Float32Array(capacity).fill(1), 1),
+  );
+  const mesh = new THREE.InstancedMesh(geometry, createShotBatchMaterial(texture, { cells, additive }), capacity);
+  mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+  // Shots are scattered over the whole map, so a bound around them is the map
+  // -- the same reason the flag batch is never culled.
+  mesh.frustumCulled = false;
+  mesh.renderOrder = SHOT_RENDER_ORDER;
+  mesh.count = 0;
+  return mesh;
+}
 
 // One instanced draw call per mesh regardless of how many drops or puddles are
 // alive -- `glDepthMask(GL_FALSE)` and `GL_SRC_ALPHA`/`GL_ONE_MINUS_SRC_ALPHA`
@@ -7301,8 +7390,187 @@ class RenderManager {
       '/textures/shot_tail.png', 128, 32, this._paintTintedBZFlagTailTexture, baseColor);
   }
 
+  // A shot's look is decided entirely by the colour of whoever fired it, and a
+  // colour is a property of a player rather than of a shot. So everything a
+  // bolt wears is built once for a colour and then shared by every shot of it:
+  // tinting a texture reads a whole canvas back and walks it pixel by pixel,
+  // and a shot that built its own paid that twice and uploaded two textures,
+  // for a shape identical to the last shot the same tank fired.
+  //
+  // The same fact is what lets a colour's shots ride in two `InstancedMesh`es
+  // -- one for the bolts, one for every segment of every trail -- instead of
+  // seven sprites and seven draw calls each. A busy server draws three times
+  // as many colours as are shooting, rather than seven times as many shots as
+  // are in the air.
+  //
+  // A guided missile is the exception and keeps a sprite of its own: its sheet
+  // steps a cell a frame (`advanceMissileFrames`), so two missiles sharing one
+  // texture would animate in lockstep and, worse, step it twice as fast.
+  _getShotColorCache(color) {
+    if (!this._shotColorCache) this._shotColorCache = new Map();
+    let entry = this._shotColorCache.get(color);
+    if (!entry) {
+      entry = { bolt: null, tailSheet: null, headMesh: null, tailMesh: null, capacity: 0 };
+      this._shotColorCache.set(color, entry);
+    }
+    return entry;
+  }
+
+  _getShotBoltTexture(color) {
+    const entry = this._getShotColorCache(color);
+    if (!entry.bolt) entry.bolt = this._createBoltTexture(color);
+    return entry.bolt;
+  }
+
+  _getShotTailSheet(color) {
+    const entry = this._getShotColorCache(color);
+    if (!entry.tailSheet) entry.tailSheet = this._createShotTailTexture(color);
+    return entry.tailSheet;
+  }
+
+  // Grown in powers of two and never shrunk, so a colour that once had a lot in
+  // the air does not rebuild its buffers the next time it does.
+  _getShotBatch(color, needed) {
+    const entry = this._getShotColorCache(color);
+    if (entry.headMesh && entry.capacity >= needed) return entry;
+
+    let capacity = Math.max(BZFLAG_SHOT_BATCH_MIN_CAPACITY, entry.capacity || 0);
+    while (capacity < needed) capacity *= 2;
+    this._disposeShotBatch(entry);
+
+    entry.capacity = capacity;
+    entry.headMesh = buildShotBatchMesh(this._getShotBoltTexture(color), capacity, {
+      cells: 1, additive: false,
+    });
+    entry.tailMesh = buildShotBatchMesh(
+      this._getShotTailSheet(color), capacity * BZFLAG_SHOT_TAIL_SEGMENTS,
+      { cells: BZFLAG_SHOT_TAIL_CELLS, additive: true },
+    );
+    this.worldGroup.add(this._tagDraws(entry.headMesh, 'effect'));
+    this.worldGroup.add(this._tagDraws(entry.tailMesh, 'effect'));
+    return entry;
+  }
+
+  _disposeShotBatch(entry) {
+    for (const mesh of [entry.headMesh, entry.tailMesh]) {
+      if (!mesh) continue;
+      this.worldGroup?.remove(mesh);
+      mesh.geometry.dispose();
+      mesh.material.dispose();
+      mesh.dispose();
+    }
+    entry.headMesh = null;
+    entry.tailMesh = null;
+  }
+
+  // Every bolt in the world, written into its colour's two meshes. Rebuilt
+  // whole each frame rather than kept in slots: the caller already walks every
+  // shot to move it, so a free list would buy bookkeeping and nothing else --
+  // and a shot that ends leaves no hole to find.
+  updateShotVisuals(projectiles) {
+    const batches = this._shotColorCache;
+    if (batches) {
+      for (const entry of batches.values()) {
+        if (entry.headMesh) entry.headMesh.count = 0;
+        if (entry.tailMesh) entry.tailMesh.count = 0;
+      }
+    }
+    if (!projectiles) return;
+
+    // Counted before anything is written, so a colour's meshes are grown once
+    // for the frame rather than once per shot that overflows them.
+    const perColor = new Map();
+    projectiles.forEach((projectile) => {
+      const state = projectile?.userData;
+      if (!state || state.beam || state.shockwave || !state.tailCells) return;
+      perColor.set(state.color, (perColor.get(state.color) || 0) + 1);
+    });
+    if (perColor.size === 0) return;
+    for (const [color, needed] of perColor) this._getShotBatch(color, needed);
+
+    if (!this._shotBatchDummy) this._shotBatchDummy = new THREE.Object3D();
+    const dummy = this._shotBatchDummy;
+    const step = 1 / BZFLAG_SHOT_TAIL_CELLS;
+
+    projectiles.forEach((projectile) => {
+      const state = projectile?.userData;
+      if (!state || state.beam || state.shockwave || !state.tailCells) return;
+      const batch = this._shotColorCache.get(state.color);
+      const { x, y, z } = projectile.position;
+
+      // A missile's head is its own animated sprite, so only its trail rides
+      // here; every other shot puts its bolt in as well.
+      if (!state.guidedHead) {
+        const head = batch.headMesh;
+        dummy.position.set(x, y, z);
+        dummy.scale.set(BZFLAG_SHOT_HEAD_SCALE, BZFLAG_SHOT_HEAD_SCALE, 1);
+        dummy.updateMatrix();
+        head.setMatrixAt(head.count, dummy.matrix);
+        head.geometry.attributes.instanceAlpha.setX(head.count, 1);
+        head.count += 1;
+      }
+
+      const tail = batch.tailMesh;
+      for (let i = 0; i < BZFLAG_SHOT_TAIL_SEGMENTS; i += 1) {
+        const distance = BZFLAG_SHOT_TAIL_DISTANCES[i];
+        const scale = BZFLAG_SHOT_TAIL_SCALES[i];
+        dummy.position.set(
+          x - (state.tailDirX * distance),
+          y - (state.tailDirY * distance),
+          z - (state.tailDirZ * distance),
+        );
+        dummy.scale.set(scale, scale, 1);
+        dummy.updateMatrix();
+        tail.setMatrixAt(tail.count, dummy.matrix);
+        const cell = state.tailCells[i];
+        tail.geometry.attributes.instanceUvOffset.setXY(
+          tail.count,
+          (cell % BZFLAG_SHOT_TAIL_CELLS) * step,
+          Math.floor(cell / BZFLAG_SHOT_TAIL_CELLS) * step,
+        );
+        tail.geometry.attributes.instanceAlpha.setX(tail.count, BZFLAG_SHOT_TAIL_ALPHAS[i]);
+        tail.count += 1;
+      }
+    });
+
+    for (const color of perColor.keys()) {
+      const batch = this._shotColorCache.get(color);
+      batch.headMesh.instanceMatrix.needsUpdate = true;
+      batch.headMesh.geometry.attributes.instanceAlpha.needsUpdate = true;
+      batch.tailMesh.instanceMatrix.needsUpdate = true;
+      batch.tailMesh.geometry.attributes.instanceUvOffset.needsUpdate = true;
+      batch.tailMesh.geometry.attributes.instanceAlpha.needsUpdate = true;
+    }
+  }
+
+  // One sheet per source image for the whole session. An impact used to build
+  // its own 512x512 canvas and upload a texture off it, for a picture with no
+  // per-impact variation in it at all -- the frame it is on and the angle it
+  // sits at are the sprite's, not the image's.
+  //
+  // The clone is what keeps the frame per impact: `Texture.clone()` copies
+  // `.source` by reference, so every impact samples the one uploaded sheet
+  // while carrying its own `offset` to walk it with.
+  _getShotExplosionSheet(sourcePath) {
+    if (!this._shotExplosionSheets) this._shotExplosionSheets = new Map();
+    let sheet = this._shotExplosionSheets.get(sourcePath);
+    if (!sheet) {
+      sheet = this._buildShotExplosionSheet(sourcePath);
+      this._shotExplosionSheets.set(sourcePath, sheet);
+    }
+    return sheet;
+  }
+
   _createShotExplosionTexture() {
     const sourcePath = SHOT_EXPLOSION_TEXTURES[Math.floor(Math.random() * SHOT_EXPLOSION_TEXTURES.length)];
+    const texture = this._getShotExplosionSheet(sourcePath).clone();
+    texture.repeat.set(1 / 8, 1 / 8);
+    texture.offset.set(0, 0);
+    texture.needsUpdate = true;
+    return texture;
+  }
+
+  _buildShotExplosionSheet(sourcePath) {
     const source = this._getSharedImage(sourcePath);
     const { texture, redraw } = this._createCanvasBackedImageTexture(512, 512, (ctx, canvas) => {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -7325,8 +7593,6 @@ class RenderManager {
       }
     });
     texture.colorSpace = THREE.SRGBColorSpace;
-    texture.repeat.set(1 / 8, 1 / 8);
-    texture.offset.set(0, 0);
 
     if (!source.loaded) {
       source.listeners.push(redraw);
@@ -7363,11 +7629,18 @@ class RenderManager {
     });
     material.rotation = Math.random() * Math.PI * 2;
 
+    // Where the shot actually ended. The sprite is offset from it every frame,
+    // so the offset is taken from this rather than from wherever the sprite was
+    // left last time.
+    const origin = new THREE.Vector3(position.x, position.y, position.z);
     const sprite = new THREE.Sprite(material);
-    sprite.position.copy(position);
+    sprite.position.copy(origin);
     sprite.scale.set(BZFLAG_SHOT_EXPLOSION_SIZE, BZFLAG_SHOT_EXPLOSION_SIZE, 1);
     sprite.renderOrder = SHOT_EXPLOSION_RENDER_ORDER;
     this.worldGroup.add(this._tagDraws(sprite, 'effect'));
+    // A shot ends on the surface it struck, and a quad standing on that point
+    // is half inside it. `_faceShotExplosion` lifts it clear -- see there.
+    this._faceShotExplosion(sprite, origin);
 
     let light = null;
     if (this._dynamicLightingActive()) {
@@ -7379,12 +7652,39 @@ class RenderManager {
       sprite,
       material,
       texture,
+      origin,
       duration: BZFLAG_SHOT_EXPLOSION_DURATION,
       age: 0,
       light,
       lightFadeStart: BZFLAG_SHOT_EXPLOSION_DURATION * BZFLAG_SHOT_EXPLOSION_LIGHT_FADE_START_RATIO,
       lightBaseIntensity: light ? light.intensity : 0,
     });
+  }
+
+  // `BillboardSceneNode::BillboardRenderNode::render` (`:357-375`): "want to
+  // move the billboard directly towards the eye a little bit". A shot ends on
+  // the face it struck, and a camera-facing quad centred there is half buried
+  // in the wall -- so upstream slides it along the line from the explosion to
+  // the eye by the quad's own half width, which is exactly far enough that no
+  // part of it can still be behind the surface.
+  //
+  // Along the line to the eye rather than towards the camera's own forward
+  // axis, which upstream's comment is careful about: the two are only the same
+  // for something dead centre in the view, and moving along the view axis
+  // would leave an explosion at the edge of the screen still in the wall.
+  //
+  // Every frame, because the eye moves even when the explosion does not.
+  _faceShotExplosion(sprite, origin) {
+    if (!sprite || !origin || !this.camera || !this.worldGroup) return;
+    this.camera.updateWorldMatrix(true, false);
+    this.worldGroup.updateWorldMatrix(true, false);
+    const eye = this.camera.getWorldPosition(SHOT_EXPLOSION_EYE_SCRATCH);
+    this.worldGroup.worldToLocal(eye);
+    eye.sub(origin);
+    const distance = eye.length();
+    if (!(distance > 1e-6)) return;
+    eye.multiplyScalar((BZFLAG_SHOT_EXPLOSION_SIZE * 0.5) / distance);
+    sprite.position.copy(origin).add(eye);
   }
 
   _createTreadTexture() {
@@ -7861,21 +8161,8 @@ class RenderManager {
     if (!this.scene) return null;
     const projectileColor = typeof data.color === 'number' ? data.color : 0xffff00;
     const guided = data.guided === true;
-    const projectileTexture = guided
-      ? this._createMissileTexture(projectileColor)
-      : this._createBoltTexture(projectileColor);
-    const headMaterial = new THREE.SpriteMaterial({
-      map: projectileTexture,
-      color: 0xffffff,
-      transparent: true,
-      depthWrite: false,
-    });
     const projectile = new THREE.Group();
     projectile.position.set(data.x, data.y, data.z);
-
-    const head = new THREE.Sprite(headMaterial);
-    head.scale.set(1.35, 1.35, 1);
-    head.renderOrder = SHOT_RENDER_ORDER;
 
     const dir = new THREE.Vector3(data.dirX || 0, 0, data.dirZ || -1);
     if (dir.lengthSq() < 0.0001) {
@@ -7883,51 +8170,50 @@ class RenderManager {
     } else {
       dir.normalize();
     }
-    const tailSegmentCount = 6;
-    const tailTexture = this._createShotTailTexture(projectileColor);
-    const tailSegments = [];
-    const tailDistances = [];
-    let uvCell = Math.floor(Math.random() * 16);
-    for (let i = 0; i < tailSegmentCount; i += 1) {
-      uvCell = (uvCell + 1) % 16;
-      const u = (uvCell % 4) * 0.25;
-      const v = Math.floor(uvCell / 4) * 0.25;
-      const segmentTexture = tailTexture.clone();
-      segmentTexture.repeat.set(0.25, 0.25);
-      segmentTexture.offset.set(u, v);
-      segmentTexture.needsUpdate = true;
 
-      const segmentMaterial = new THREE.SpriteMaterial({
-        map: segmentTexture,
-        color: 0xffffff,
-        transparent: true,
-        depthWrite: false,
-        opacity: 0.74 - (i * 0.1),
-        blending: THREE.AdditiveBlending,
-      });
-      const segment = new THREE.Sprite(segmentMaterial);
-      const scale = 0.78 - (i * 0.08);
-      segment.scale.set(scale, scale, 1);
-      segment.renderOrder = SHOT_RENDER_ORDER;
-      const distance = 0.34 + (i * 0.28);
-      segment.position.set(-dir.x * distance, -dir.y * distance, -dir.z * distance);
-      projectile.add(segment);
-      tailSegments.push(segment);
-      tailDistances.push(distance);
+    // Six consecutive cells of the wisp sheet from a random start, so two shots
+    // in the air never wear the same trail. Which cell a segment shows reaches
+    // the batch as an instance attribute, so the sheet itself stays one texture
+    // for the whole colour.
+    const tailCellCount = BZFLAG_SHOT_TAIL_CELLS * BZFLAG_SHOT_TAIL_CELLS;
+    const tailCells = [];
+    let uvCell = Math.floor(Math.random() * tailCellCount);
+    for (let i = 0; i < BZFLAG_SHOT_TAIL_SEGMENTS; i += 1) {
+      uvCell = (uvCell + 1) % tailCellCount;
+      tailCells.push(uvCell);
     }
-    projectile.renderOrder = SHOT_RENDER_ORDER;
-    projectile.add(head);
+
     projectile.userData = {
       dirX: data.dirX,
       dirZ: data.dirZ,
       color: projectileColor,
-      projectileTexture,
-      // Only a missile's sheet is stepped; every other shot is one still image.
-      missileTexture: guided ? projectileTexture : null,
-      head,
-      tailSegments,
-      tailDistances,
+      // Where the trail hangs. Normalized at the muzzle and rewritten by
+      // `aimProjectile` for a missile, which is the only shot that turns.
+      tailDirX: dir.x,
+      tailDirY: dir.y,
+      tailDirZ: dir.z,
+      tailCells,
     };
+
+    // A missile animates, so it keeps a sprite and a sheet of its own; every
+    // other bolt is drawn by its colour's batch -- see `_getShotColorCache`.
+    if (guided) {
+      const missileTexture = this._createMissileTexture(projectileColor);
+      const head = new THREE.Sprite(new THREE.SpriteMaterial({
+        map: missileTexture,
+        color: 0xffffff,
+        transparent: true,
+        depthWrite: false,
+      }));
+      head.scale.set(BZFLAG_SHOT_HEAD_SCALE, BZFLAG_SHOT_HEAD_SCALE, 1);
+      head.renderOrder = SHOT_RENDER_ORDER;
+      projectile.add(head);
+      projectile.userData.guidedHead = head;
+      projectile.userData.projectileTexture = missileTexture;
+      // Only a missile's sheet is stepped; every other shot is one still image.
+      projectile.userData.missileTexture = missileTexture;
+    }
+    projectile.renderOrder = SHOT_RENDER_ORDER;
     // Only add a point light if dynamic lighting is enabled
     if (this._dynamicLightingActive()) {
       const shotLight = this._createDynamicLight(
@@ -7954,18 +8240,13 @@ class RenderManager {
   // is a new answer every step. Re-laying six sprite positions is cheaper than
   // rotating the group, and it is the only thing about the shot that moves.
   aimProjectile(projectile, direction) {
-    const segments = projectile?.userData?.tailSegments;
-    const distances = projectile?.userData?.tailDistances;
-    if (!segments || !distances) return;
+    const state = projectile?.userData;
+    if (!state?.tailCells) return;
     const length = Math.hypot(direction.x, direction.y, direction.z);
     if (!(length > 0)) return;
-    const x = direction.x / length;
-    const y = direction.y / length;
-    const z = direction.z / length;
-    for (let i = 0; i < segments.length; i += 1) {
-      const distance = distances[i];
-      segments[i].position.set(-x * distance, -y * distance, -z * distance);
-    }
+    state.tailDirX = direction.x / length;
+    state.tailDirY = direction.y / length;
+    state.tailDirZ = direction.z / length;
   }
 
   // LaserStrategy's laser scene nodes: one quad per segment of a path that was
@@ -8147,13 +8428,12 @@ class RenderManager {
       for (const material of projectile.userData.beamMaterials || []) material.dispose();
       return;
     }
-    if (projectile.userData?.head?.material?.map) projectile.userData.head.material.map.dispose();
-    if (projectile.userData?.head?.material) projectile.userData.head.material.dispose();
-    if (Array.isArray(projectile.userData?.tailSegments)) {
-      for (const segment of projectile.userData.tailSegments) {
-        if (segment?.material?.map) segment.material.map.dispose();
-        if (segment?.material) segment.material.dispose();
-      }
+    // A bolt and its trail belong to the colour's batch and outlive the shot;
+    // a guided missile's own animated sheet is the only thing here a shot owns.
+    const guidedHead = projectile.userData?.guidedHead;
+    if (guidedHead?.material) {
+      guidedHead.material.map?.dispose();
+      guidedHead.material.dispose();
     }
   }
 
@@ -8473,6 +8753,7 @@ class RenderManager {
       const frame = Math.min(63, Math.floor(progress * 64));
       this._setSpriteAtlasFrame(effect.texture, frame, 8, 8);
       effect.material.opacity = Math.max(0, 1 - progress);
+      this._faceShotExplosion(effect.sprite, effect.origin);
 
       if (effect.light) {
         if (effect.age < effect.lightFadeStart) {
@@ -8487,7 +8768,10 @@ class RenderManager {
       if (progress >= 1) {
         this.worldGroup.remove(effect.sprite);
         if (effect.material) effect.material.dispose();
-        if (effect.texture) effect.texture.dispose();
+        // The texture is a clone sharing the session's one uploaded sheet, so
+        // it is dropped rather than disposed: disposing the last clone would
+        // free the sheet off the GPU and the next impact would upload it again.
+        effect.texture = null;
         effect.light = null;
         this.activeShotExplosions.splice(index, 1);
       }

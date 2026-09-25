@@ -15122,6 +15122,10 @@ function animate(frameTime) {
   // wherever the viewer ended up this frame, and in a session that is decided by
   // where updateCamera just put the world.
   renderManager.updateFlagVisuals(deltaTime);
+  // After the shots have been stepped and before the draw: every bolt in the
+  // world is written into its colour's instanced meshes from where the
+  // simulation just left it.
+  renderManager.updateShotVisuals(projectiles);
   // With the flags, and after the camera for the same reason: a beacon fades on
   // how far the viewer ended up from what it marks.
   updateSkyBeacons();

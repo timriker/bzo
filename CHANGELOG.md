@@ -6,6 +6,40 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
 
 ## [Unreleased]
 
+### Changed
+- A shot costs two draws for its colour rather than seven for itself. A bolt
+  was a head sprite and a six-segment trail, each segment its own sprite with
+  its own material over its own clone of a texture the shot had just tinted by
+  reading a whole canvas back and walking it pixel by pixel -- for an image
+  identical to the last shot the same tank fired. A shot's look depends only on
+  who fired it, so a colour now builds its two textures once and every bolt of
+  that colour rides in two `InstancedMesh`es: one for the bolts, one for every
+  segment of every trail. Which wisp a segment wears and how much of it shows
+  are instance attributes, so the trail is still different shot to shot.
+  Measured on `bzo.bzw` over the same twelve shots: firing one falls from
+  1.83ms to 0.62ms, and the twelve in the air from 98 draws to 14 -- a busy server now draws three times
+  as many colours as are shooting rather than seven times as many shots as are
+  in the air. A guided missile keeps a sprite and a sheet of its own, because
+  it steps a cell a frame and two missiles sharing one would animate in
+  lockstep.
+- A shot's explosion no longer stands half inside what the shot hit. A shot
+  ends on the face it struck, and a camera-facing quad centred on that point is
+  half buried in it. The quad now slides along the line from the explosion to
+  the eye by its own half width, which is exactly far enough that no part of it
+  is still behind the surface --
+  `BillboardSceneNode::BillboardRenderNode::render` (`:357-375`), "want to move
+  the billboard directly towards the eye a little bit". Along the line to the
+  eye rather than the camera's forward axis, which is upstream's own
+  distinction: the two agree only for something dead centre in the view, and an
+  explosion at the edge of the screen would otherwise stay in the wall.
+- A shot impact takes the explosion sheet already in memory instead of building
+  one. Every burst was painting its own 512x512 canvas and uploading a texture
+  off it, for a picture with no per-impact variation in it: the frame it is on
+  and the angle it sits at belong to the sprite, not to the image. Each of the
+  two source images is now drawn once for the session and an impact clones it,
+  which copies the source by reference -- one upload, and each burst still
+  walks its own way through the sheet.
+
 ## [1.2.64] - 2026-09-25
 
 ### Changed
