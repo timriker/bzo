@@ -258,7 +258,7 @@ define diag_quadrant
 		endface
 	end
 	# octagon under the wall
-	a real octagon (`arc`, 8 divisions), apothem
+	# a real octagon (`arc`, 8 divisions), apothem
 	# 19.3137084990, circumradius 20.9050074380
 	arc
 		name oct

@@ -42,9 +42,12 @@ export const ROAM_ZOOM_MAX = 120;
 // `DRIVE_FP`/`DRIVE_TP` are bzo-only (issue #68's driveable phantom tank for
 // Observer and Map Viewer): a first- or third-person view of a tank the
 // observer is flying rather than a real one, driven by the same local physics
-// a playing tank uses. Neither needs a subject the way TRACK/FOLLOW/FPS/FLAG
-// do, so `roamViewNeedsTarget` leaves them out and they are never excluded by
-// `allowTargeted`.
+// a playing tank uses. `OVERVIEW` is bzo-only too -- the world-framing camera
+// a playing tank already reaches as the third entry in its own `C` cycle
+// (`CAMERA_MODE_ORDER`, public/input.js), which an observer had no way to ask
+// for because an observer's `C` cycles this list instead. None of the three
+// needs a subject the way TRACK/FOLLOW/FPS/FLAG do, so `roamViewNeedsTarget`
+// leaves them out and they are never excluded by `allowTargeted`.
 export const ROAM_VIEW = Object.freeze({
   FREE: 'free',
   TRACK: 'track',
@@ -53,8 +56,12 @@ export const ROAM_VIEW = Object.freeze({
   FLAG: 'flag',
   DRIVE_FP: 'drive-fp',
   DRIVE_TP: 'drive-tp',
+  OVERVIEW: 'overview',
 });
 
+// Upstream's own five first and in its own order, then bzo's three -- so a
+// cycle through a real match's views reads exactly as bzflag's does before it
+// reaches anything bzo added.
 export const ROAM_VIEW_ORDER = Object.freeze([
   ROAM_VIEW.FREE,
   ROAM_VIEW.TRACK,
@@ -63,6 +70,7 @@ export const ROAM_VIEW_ORDER = Object.freeze([
   ROAM_VIEW.FLAG,
   ROAM_VIEW.DRIVE_FP,
   ROAM_VIEW.DRIVE_TP,
+  ROAM_VIEW.OVERVIEW,
 ]);
 
 // The flag view tracks team flags only -- upstream skips any flag whose

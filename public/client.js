@@ -825,8 +825,8 @@ function readViewMapTarget() {
 }
 const autoViewMapTarget = readViewMapTarget();
 
-// `?cam=free|fp|tp` alongside `?viewmap=` -- which roam view a shared Map
-// Viewer link starts in. The three named are the only ones a link can
+// `?cam=free|fp|tp|overview` alongside `?viewmap=` -- which roam view a shared
+// Map Viewer link starts in. The four named are the only ones a link can
 // reproduce at all: every other `ROAM_VIEW` rides a specific player or flag,
 // which a generic link has no way to name. Read once and applied on every
 // (re)join the same way `autoFollowTarget` already is, below.
@@ -836,6 +836,7 @@ function readViewCamTarget() {
   if (raw === 'free') return ROAM_VIEW.FREE;
   if (raw === 'fp') return ROAM_VIEW.DRIVE_FP;
   if (raw === 'tp') return ROAM_VIEW.DRIVE_TP;
+  if (raw === 'overview') return ROAM_VIEW.OVERVIEW;
   return null;
 }
 const autoViewCamTarget = readViewCamTarget();
@@ -864,7 +865,12 @@ const autoViewPosTarget = readViewPosTarget();
 // this one is not actually in.
 function buildShareViewLink() {
   if (!selectedViewMapFile) return null;
-  const camNames = { [ROAM_VIEW.FREE]: 'free', [ROAM_VIEW.DRIVE_FP]: 'fp', [ROAM_VIEW.DRIVE_TP]: 'tp' };
+  const camNames = {
+    [ROAM_VIEW.FREE]: 'free',
+    [ROAM_VIEW.DRIVE_FP]: 'fp',
+    [ROAM_VIEW.DRIVE_TP]: 'tp',
+    [ROAM_VIEW.OVERVIEW]: 'overview',
+  };
   const cam = camNames[roamView];
   const deg = ((playerRotation * 180) / Math.PI).toFixed(1);
   const pos = `${playerX.toFixed(1)},${playerY.toFixed(1)},${playerZ.toFixed(1)},${deg}`;
@@ -1054,6 +1060,14 @@ function isObserver() {
 // two more entries in that same list rather than a mode of its own.
 function isPhantomDriving() {
   return roamView === ROAM_VIEW.DRIVE_FP || roamView === ROAM_VIEW.DRIVE_TP;
+}
+
+// The observer/Map Viewer end of the world-framing camera -- true only while
+// an observer has actually cycled to it, so a playing tank's own Overview
+// (`cameraMode`, public/input.js) is untouched and comes back unchanged on
+// joining a team.
+function isObservingOverview() {
+  return isObserver() && roamView === ROAM_VIEW.OVERVIEW;
 }
 
 // The flag a phantom tank's own motion, jumping and Wings behave as if they
@@ -2163,6 +2177,44 @@ function applyWorldData(world) {
   renderManager.createMountains(currentWorldMapSize);
   renderManager.buildWater(currentWorldMapSize, world?.waterLevel || null);
   renderManager.buildWeather(currentWorldMapSize, world?.weather || null, OBSTACLES);
+  confineViewerToWorld();
+}
+
+// How far inside the border wall a viewer brought back into bounds is put --
+// a couple of tank lengths, so the camera is plainly inside the world rather
+// than embedded in the wall it just came through.
+const WORLD_REENTRY_MARGIN = 10;
+
+// A Map Viewer or an observer keeps whatever position it already had when the
+// world underneath it changes -- issue #68 lets the map change without
+// rejoining, and a `?viewmap=` link can arrive carrying a `pos=` copied from
+// an entirely different map. A world smaller than the last one then leaves
+// that position outside its own border wall, looking in at the map from the
+// mountains, which is what `spintest.bzw` does to anyone arriving from a
+// full-sized map.
+//
+// Only a position genuinely outside the new bounds is touched. An ordinary
+// join is always inside them -- the server's spawn is authoritative and is
+// chosen against this same world -- so this can never argue with it.
+function confineViewerToWorld() {
+  const half = (Number.isFinite(currentWorldMapSize) ? currentWorldMapSize : DEFAULT_MAP_SIZE) / 2;
+  const limit = Math.max(0, half - WORLD_REENTRY_MARGIN);
+  const confine = (value) => Math.max(-limit, Math.min(limit, value));
+  const outside = (value) => Math.abs(value) > limit;
+
+  // `playerX`/`playerZ` rather than the tank mesh, because this runs at points
+  // in a join where the mesh has not been picked up into `myTank` yet -- the
+  // pair is what the heartbeat, the radar and the tank's own transform all
+  // read from anyway, so moving it moves everything that follows.
+  if (outside(playerX) || outside(playerZ)) {
+    playerX = confine(playerX);
+    playerZ = confine(playerZ);
+    if (myTank) myTank.position.set(playerX, myTank.position.y, playerZ);
+  }
+  if (roamCamera && (outside(roamCamera.x) || outside(roamCamera.z))) {
+    roamCamera.x = confine(roamCamera.x);
+    roamCamera.z = confine(roamCamera.z);
+  }
 }
 
 async function prepareInitialRender(message, sequenceId) {
@@ -6160,6 +6212,11 @@ function handleServerMessage(message) {
             playerRotation = autoViewPosTarget.rotation;
             roamCamera = null;
           }
+          // Whatever this join settled on -- the server's spawn, chosen
+          // against the live match's world, or a `pos=` copied off a link to
+          // some other map entirely -- is a position in a world that may not
+          // be the one about to be drawn. See `confineViewerToWorld`.
+          confineViewerToWorld();
         }
 
         // Save the name to localStorage (server may have kept our requested name or assigned default)
@@ -7391,6 +7448,16 @@ function handleMapsList(message) {
   // theirs until they commit or cancel.
   if (!operatorStaged) syncOperatorPanelFromServer();
 
+  // The entry dialog's own picker reads `availableViewMaps`, which `init`
+  // seeds once. A map hashed after that -- the background trickle finishing
+  // its pass, or a remote import landing -- arrives as one of these, so the
+  // picker has to take it too or it stays stuck on whatever list happened to
+  // exist the moment this client connected. `syncViewMapSelector` re-picks
+  // on its own if the staged choice is no longer in the list.
+  if (Array.isArray(message.viewableMaps)) {
+    availableViewMaps = message.viewableMaps;
+    syncViewMapSelector();
+  }
   populateViewMapTable(Array.isArray(message.viewableMaps) ? message.viewableMaps : []);
 }
 
@@ -9509,6 +9576,7 @@ function getRoamLabel() {
   }
   if (roamView === ROAM_VIEW.DRIVE_FP) return 'First Person';
   if (roamView === ROAM_VIEW.DRIVE_TP) return 'Third Person';
+  if (roamView === ROAM_VIEW.OVERVIEW) return 'Overview';
   return 'Roaming';
 }
 
@@ -9592,12 +9660,18 @@ function handleRoamMotion(deltaTime) {
     floorY: eyeHeight,
   });
 
-  // An observer has no tank to show. The mesh is still moved, because the radar,
-  // the heading tape and the sound listener all read its transform -- that is
-  // upstream's virtual tank -- but nothing draws it: not the tank, not its
-  // server-position ghost, which hangs off worldGroup rather than off the tank
-  // and so does not inherit this.
-  myTank.visible = false;
+  // An observer has no tank to show, with one exception. The mesh is still
+  // moved, because the radar, the heading tape and the sound listener all read
+  // its transform -- that is upstream's virtual tank -- but nothing draws it:
+  // not the tank, not its server-position ghost, which hangs off worldGroup
+  // rather than off the tank and so does not inherit this.
+  //
+  // Overview is the exception. The whole point of that view is seeing the map
+  // laid out, and a camera above the map is the one place where the virtual
+  // tank is not under your feet but a thing on the board -- without it there
+  // is nothing on screen saying where you are, or where switching back to any
+  // other view would put you.
+  myTank.visible = roamView === ROAM_VIEW.OVERVIEW;
   if (myTank.userData.ghostMesh) myTank.userData.ghostMesh.visible = false;
   if (myTank.userData.jumpPredictionDebug) myTank.userData.jumpPredictionDebug.visible = false;
 
@@ -14828,11 +14902,19 @@ function animate(frameTime) {
         ? 'death'
         : isPhantomDriving()
           ? (roamView === ROAM_VIEW.DRIVE_FP ? 'first-person' : 'third-person')
-          : (isObserver() ? 'roam' : cameraMode),
+          // An observer's own Overview is the same world-framing camera a
+          // playing tank's third mode reaches -- one implementation in
+          // render.js, asked for the same way from either side, rather than a
+          // roam framing that would have to recompute the map's extents.
+          : (isObservingOverview() ? 'overview'
+            : (isObserver() ? 'roam' : cameraMode)),
     myTank,
     playerRotation,
     deathFollowTarget,
-    roamFraming: (!isEntryDialogOpen() && isObserver() && !isPhantomDriving())
+    // Overview frames the world itself, so it hands over no eye/look pair of
+    // its own -- leaving it out is what lets the branch above take effect.
+    roamFraming: (!isEntryDialogOpen() && isObserver() && !isPhantomDriving()
+      && !isObservingOverview())
       ? getRoamFraming()
       : null,
   });

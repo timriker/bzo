@@ -6,6 +6,110 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
 
 ## [Unreleased]
 
+### Added
+- A material's `nosorting`, `notexalpha` and `notexcolor` are read: a
+  translucent face that asks to keep writing depth does, a texture whose alpha
+  channel the map says to ignore draws opaque rather than blended, and a
+  textured face the map does not want modulated is drawn as the picture is.
+  `notexalpha` keeps a stated `alphathresh` -- that is an alpha test, and
+  BZFlag applies it either way.
+- `tint` on a `group` instance multiplies its meshes' colours, so one `define`
+  can be placed in several colours without a material per copy. Nested
+  instances multiply, the same product upstream composes.
+- `shift`, `scale`, `shear` and `spin` on a `mesh`, `tetra`, `cone`/`meshpyr`,
+  `arc`/`meshbox` or `sphere`. BZFlag reads these as one ordered transform
+  list folded into a matrix, not as four independent settings, and that is
+  what bzo does now -- so a mesh can be sheared, or spun about any axis, or
+  moved and turned repeatedly, and it lands where the map says. `spin` on
+  those blocks used to be dropped without a word: `tricolor.bzw` alone has
+  273 of them, and its arches, doors and towers were all left unrotated.
+- Overview is a camera an observer and Map Viewer can reach, after First
+  Person and Third Person in the same `C` cycle -- a playing tank already had
+  it as its third mode and an observer had no way to ask for one. Share View
+  Links carry it as `cam=overview`. The virtual tank is drawn in this view
+  only, because a camera above the map is the one place it reads as a marker
+  of where you are rather than something under your feet.
+- A mesh's `drawInfo { ... }` block is read -- the corner table and the
+  `tris`/`tristrip`/`trifan`/`quads`/`quadstrip`/`polygon` commands over it,
+  its own vertex/normal/texcoord pools, its first `lod`, and `angvel` where
+  BZFlag actually keeps it. This is what BZFlag *draws* a mesh with when one
+  is present, and a mesh may state nothing else: every tank in `RatsNest.bzw`
+  is written that way and used to draw here as nothing at all. As upstream
+  does, the block feeds the screen and the `face` list feeds collision, so a
+  mesh with no faces is decoration you drive through.
+- A spinning tank over the centre of `bzo.bzw`, turning once every eight
+  seconds at three quarters of a jump's apex and wearing bzo's own untinted
+  tank camo. It is BZFlag's stock tank, generated from this repo's own
+  `public/obj/tank.obj` by the new `scripts/gen-tank-bzw.mjs`, and written in
+  `drawInfo` form -- so the same text spins the same tank in a real BZFlag
+  client. The idea and the name are Rat's Nest's, which hangs six copies of
+  that same upstream model around its map; its geometry is not copied here,
+  since that map is CC BY-NC-SA.
+- `scripts/gen-tank-bzw.mjs`, which turns an OBJ into a BZW mesh whose
+  surface is a `drawInfo` block: pools deduplicated, a corner table over
+  them, and `tris` commands over that.
+- One of `hix.bzw`'s support trusses in `bzo.bzw`, in the open ground south of
+  the green base, carrying a round metre-thick platform at the height that map
+  hangs a walkway from. It wears a hix walkway's own materials -- concrete
+  deck, see-through grid underneath, caution stripe around the rim.
+- A row of panels west of the blue base in `bzo.bzw` showing each of these
+  against its own control, and showing that a two-sided surface is written as
+  two faces with reversed winding.
+
+### Fixed
+- The largest mesh in `ahs3_Paradise_Valley.bzw` was being thrown away
+  mid-parse. A `sphere` bounding hint inside a `drawInfo` block was read as
+  the start of a sphere obstacle, discarding the mesh in progress and
+  spilling ten thousand of its lines into the map's own "ignored" tally. With
+  `drawInfo` read, every bundled map now loads with nothing reported.
+- A `material`, `physics`, `dynamicColor` or `textureMatrix` block written
+  inside a `define` is read. BZFlag registers all four globally whatever they
+  are nested in, and bzo was skipping them -- which left every `matref` naming
+  one unresolved and the obstacle untextured. `tricolor.bzw` states seven of
+  its materials that way and now draws with them.
+- `matref -1` and its `dyncol`/`texmat` equivalents are no longer reported as
+  references to something missing. `-1` is BZFlag's own spelling of "none",
+  and BZFlag suppresses the same warning for it.
+- A comment line in `hix.bzw` that had lost its `#`, which the map reported as
+  a keyword bzo could not read.
+- The mountains are drawn over the ground rather than under it. BZFlag lays
+  the ground down first and paints the mountains over it with the depth test
+  off (`BackgroundRenderer.cxx:605-695`); bzo had the two the other way round,
+  so the ground plane -- which reaches ten times the world, far past the
+  mountain ring -- painted them out from any viewpoint high enough to see past
+  it. On a small map that is one jump.
+- Map Viewer drops you inside the map. The position survived a world change,
+  so arriving from a larger map -- or following a `?viewmap=` link carrying a
+  `pos=` from a different map entirely -- left you outside the border wall
+  looking in from the mountains. Only a starting position genuinely outside
+  the new world is moved; roaming out past the wall on purpose still works.
+- The entry dialog's map picker lists every map, in alphabetical order. It was
+  showing whichever maps the server had finished hashing at the moment that
+  client connected and never revisiting the list, so a client that rejoined
+  right after a restart could cycle the whole picker without passing maps that
+  exist -- and the served map jumped to the front of the order regardless. The
+  server now sorts the list and pushes the finished one to everyone already
+  connected.
+
+### Removed
+- `pyrtest.bzw`. Every pyramid case it covered -- the overlap trio, the nested
+  footprints, `flipz` and the aliased spelling -- is in `bzo.bzw`'s own corner
+  tests.
+
+### Changed
+- `spintest.bzw` is a 100-unit world instead of an 800-unit one, and its
+  blades are two-sided, so the thing under test fills the screen and does not
+  vanish for half of each turn.
+- `groupAlpha` and `shader`/`addshader`/`noshaders` are read and dropped
+  rather than counted as gaps. Neither can change what BZFlag draws: it
+  collates a mesh's faces the way `groupAlpha` asks for regardless, and
+  nothing in its whole tree ever reads a material's shader list back.
+- `noculling` draws both sides of a face built from a `drawInfo` block, and
+  nothing anywhere else -- which is exactly where BZFlag can act on it. On
+  every other surface BZFlag throws the face away when the eye is behind its
+  plane, before the flag could disable anything; a map wanting a two-sided
+  surface writes the face twice with reversed winding.
+
 ## [1.2.58] - 2026-09-24
 
 ### Added

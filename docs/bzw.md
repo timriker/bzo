@@ -219,7 +219,30 @@ A material's own fields:
 | `dyncol <name>` | replaces the material's own tint outright with a named `dynamicColor`'s live RGBA -- see **Animated materials**, below |
 | `texmat <name>` | a named `textureMatrix`'s live UV transform, layered on top of whatever UVs the texture already carries -- see **Animated materials**, below |
 | `specular <r g b [a]>`, `shininess <n>`, `emission <r g b [a]>` | a highlight on the face, and a self-lit tint -- see **Lighting**, below |
-| `ambient <r g b [a]>` | read and dropped -- see **Lighting**, below for why |
+| `alphathresh <n>` | the alpha test a partly transparent texture is cut at -- see **Alpha threshold**, below |
+| `noculling` | draws both sides of a face built from a `drawInfo` block, and nothing anywhere else -- see **Transparency flags**, below |
+| `nosorting` | a translucent face goes on writing depth instead of joining the back-to-front pass -- see **Transparency flags**, below |
+| `notexalpha` | the texture's own alpha channel is ignored, so a picture carrying one still draws opaque |
+| `notexcolor` | a textured face stops being modulated by the material's own tint -- the picture is drawn as it is |
+| `ambient <r g b [a]>`, `groupAlpha` | read and dropped -- see **Lighting** and **Transparency flags**, below, for why |
+
+**A `material` block may be written inside a `define`**, and the definition
+does not scope it: it is registered globally, visible to every `matref` in
+the file, exactly as if it had been written at the top level. That is
+upstream's own behaviour and not an accident of it -- `parseNormalObject`
+(`BZWReader.cxx:139-184`) builds the object before the reader's
+`define`/`enddef` branches ever run and without consulting the group
+definition, and on `end` a material takes the `usesManager()` path
+(`:250-253`) into one global registry rather than the `usesGroupDef()` path
+an obstacle takes. The same holds for `physics`, `dynamicColor`,
+`textureMatrix` and `transform`. Real maps rely on it: `tricolor.bzw` states
+seven of its materials inside definitions.
+
+**`matref -1` is not an unresolved reference.** `-1` is upstream's own
+spelling of "no material", and every caller suppresses its own warning for
+exactly that string (`CustomGroup.cxx:87`, and the `phydrv`/`texmat` readers
+beside it). bzo leaves it unreported the same way, on `matref`, `dyncol`,
+`texmat` and `phydrv` alike -- `ahs3_Paradise_Valley.bzw` writes one.
 
 **A `matref` may also name a material by number instead of by name**, upstream's
 own alternative for a `material` block that gave no `name` line at all --
@@ -494,25 +517,109 @@ Not yet read:
   in (8 units per tile on a box's or a pyramid's walls, 2 on a box's caps --
   see **Colour** and `_prepareBoxGeometry`) rather than at a size or an offset
   the map may have asked for.
-- **`alphathresh`.** Read, and used as the material's alpha test the way
-  upstream does (`MeshSceneNode.cxx:525`). See **Alpha threshold** below for
-  what happens when a map states none.
-- **`shader`/`addshader`/`noshaders`, `noculling`, `nosorting`, `occluder`,
-  `groupAlpha`, `spheremap`, `notexalpha`, `notexcolor`, `resetmat`.** Read
-  and dropped -- not yet implemented rather than deliberately declined. Each
-  is counted as it is dropped and named in the server log and in the map's
-  own `-srvmsg` lines, so a map says which of them it asked for. Two are
-  worth singling out, because bzo does not merely ignore them:
-
-  - `notexalpha` asks for a texture's alpha channel to be ignored. bzo turns
-    blending on for any texture with real alpha (see **Texture alpha**), so a
-    map stating this gets the opposite of what it asked for.
-  - `noculling` asks for a surface to be drawn from both sides. bzo uses
-    `DoubleSide` in a number of places, but each is bzo's own decision about
-    a particular feature; a map cannot ask for it.
+- **`occluder`, `spheremap`, `resetmat`.** Read and dropped -- not yet
+  implemented rather than deliberately declined. Each is counted as it is
+  dropped and named in the server log and in the map's own `-srvmsg` lines,
+  so a map says which of them it asked for. Of the three only `spheremap`
+  changes what upstream draws; `occluder` feeds its visibility culler, which
+  bzo has no equivalent of.
+- **`shader`/`addshader`/`noshaders`.** Read and dropped, deliberately.
+  `BzMaterial` parses and stores a material's shader list and nothing
+  anywhere upstream ever reads it back -- `getShader`/`getShaderCount` have
+  no caller outside `BzMaterial` itself -- so these are as dead in a real
+  bzflag client as they are here.
 - **`noshadow`.** Read and kept on the material (see **Materials**), but
   nothing yet skips building a caster's projected shadow for one that asks
   for none -- every solid obstacle casts one regardless.
+
+### Transparency flags: `nosorting`, `notexalpha`, `notexcolor`
+
+Three flags that sit beside `alphathresh` on the same material and decide,
+between them, how a face blends. All three are read on a `material` block, on
+a mesh or a mesh face's own inline properties, and on a
+`cone`/`meshpyr`/`arc`/`meshbox`/`sphere`/`tetra` material slot.
+
+Stated **inline on a plain `box` or `pyramid`** they are still unread, along
+with `alphathresh` and `noshadow`: those obstacles keep a texture, a tint and
+`noradar`/`nolighting` per wall/cap slot and have nowhere to put the rest, so
+a map stating one is named on load rather than quietly ignored. The three
+read-and-dropped keywords below are the exception -- a box gets the same
+nothing from them that upstream gives it, so they are not reported.
+
+- **`nosorting`** keeps a translucent face writing depth. Upstream leaves it
+  out of the back-to-front ordered pass (`MeshSceneNode.cxx:520`), and that
+  pass is the only thing `SceneRenderer::doRender` wraps in
+  `glDepthMask(GL_FALSE)` -- so the depth write is what the flag actually
+  buys a mapper, and it is what bzo reproduces. three.js sorts its own
+  transparent queue back to front regardless, which is the correct order
+  rather than something to opt out of.
+- **`notexalpha`** keeps the texture's alpha channel out of the *blend*, so
+  a picture that happens to carry one still draws opaque. Upstream reads the
+  channel only while this is unset (`MeshSceneNode.cxx:429-433`,
+  `MeshSceneNodeGenerator.cxx:471-477`, both feeding `setBlending` alone). It
+  says nothing about the alpha *test*: `alphathresh` reaches `GL_GEQUAL`
+  whatever this flag said (`WallSceneNode.cxx:369-370`), so a material
+  stating both still cuts its fully transparent pixels away -- it just stops
+  blending the partial ones. bzo does the same, and drops only its own
+  default threshold (see **Alpha threshold** below), which is the point: the
+  map is saying the channel is not meant as transparency.
+- **`notexcolor`** stops a textured face from being modulated by the
+  material's own tint -- upstream substitutes plain white, alpha included
+  (`MeshSceneNode.cxx:428`, `:470-481`), so neither the colour nor its
+  translucency reaches the face. On an untextured face it means nothing
+  upstream and nothing here: there is no picture for a colour to be used
+  *on*.
+
+**`noculling` is read and dropped, deliberately.** It reads like "draw this
+face from both sides", and it cannot do that in a real bzflag client either.
+A plain `mesh` block draws through `MeshPolySceneNode`, and both it
+(`MeshPolySceneNode.cxx:255-261`) and its base `WallSceneNode::cull`
+(`:87-95`) open with *"cull if eye is behind (or on) plane"* and return true
+-- the node never reaches a render list, so the `disableCulling()` the flag
+sets (`WallSceneNode.cxx:371-372`) never runs. A box's or a pyramid's own
+quad faces go the same way. See **Two-sided surfaces** below for what a map
+writes instead.
+
+Upstream honours it on one path: a mesh drawn from its own `drawInfo` block,
+through `MeshSceneNode`, whose `cull` (`:287-300`) is bounding-box alone with
+no plane test in front of it. bzo reads `drawInfo` geometry (see **Draw
+info** below) and carries the flag onto exactly those faces, so the two agree
+there too -- and a plain face still never gets it, because upstream's own
+renderer could not act on it if it did.
+
+**`groupAlpha` is read and dropped, deliberately**, the same as `ambient`.
+Its only reader anywhere upstream (`MeshSceneNodeGenerator.cxx:213-215`)
+decides whether a translucent face gets a scene node of its own, sorted
+against the world individually, or is collated into one node with the faces
+sharing its material -- and `MeshSceneNode.cxx:517-519` says outright that it
+does not use the flag, because everything there is grouped already. bzo
+builds one merged geometry group per material and draws a whole mesh as a
+single object, which *is* the collated case, so a map stating this asks for
+what bzo does anyway.
+
+### Two-sided surfaces
+
+A surface meant to be seen from both sides is written as **two faces over the
+same vertices with reversed winding**, not as a `noculling` material. That is
+what real maps do, and it is what `maps/bzo.bzw` does in all four places it
+needs one -- the billboard bush's quad, its mirrored twin, and the two
+animated sign quads -- each a `face`/`endface` pair whose second face lists
+the same corners in the opposite order:
+
+```
+face
+  vertices 0 1 2 3
+  texcoords 0 1 2 3
+endface
+face #backside
+  vertices 1 0 3 2
+  texcoords 1 0 3 2
+endface
+```
+
+The plane cull above is per face, so the back face is a face of its own with
+its own outward plane and survives from behind on its own terms. It costs one
+more polygon and nothing else.
 
 ### Alpha threshold
 
@@ -522,7 +629,10 @@ Upstream runs an alpha test only where a material states `alphathresh`:
 one gets exactly that value here.
 
 **Where a map states none, bzo does not match upstream, on purpose.** A
-texture with real transparency gets an alpha test of 0.05 anyway. Without it a
+texture with real transparency gets an alpha test of 0.05 anyway -- unless
+the material also states `notexalpha`, which says the channel is not
+transparency at all. A threshold the map states itself is applied either
+way, `notexalpha` or not, the same as upstream. Without it a
 foliage cutout's fully transparent pixels still write depth and block whatever
 is behind them -- which is a visible fault, not a stylistic difference, and
 was blocking teleporter effects through the gaps in a shrub before this
@@ -1105,6 +1215,11 @@ always does, so it is counted for the load to name instead
 this way on that map's load -- moot in practice today, since "3way" is itself
 a `mesh` define with nothing to place yet).
 
+**All of that is about a `box`, a `pyramid` or a `group` line.** On anything
+that builds a mesh, the same four keywords are read as upstream's own
+`MeshTransform` instead, with none of those limits -- see **Mesh transforms**
+below.
+
 A `define` may itself hold `group` instances of other definitions, and bzo
 recurses into them the way `GroupDefinition::makeGroups` does -- a definition
 that names itself again while still being placed, directly or through others,
@@ -1126,15 +1241,27 @@ of its own.
 
 `drivethrough`/`shootthrough`/`ricochet` on the `group` line add permission to
 whatever a member already has rather than replacing it, and apply to a member
-of any type. `matref`/`addtexture` and `phydrv` are read too, but neither
-follows that same only-if-unset shape, and neither touches a plain box or
-pyramid member at all -- both are mesh-only upstream
+of any type. `matref`/`addtexture`, `tint` and `phydrv` are read too, but none
+follows that same only-if-unset shape, and none touches a plain box or
+pyramid member at all -- all three are mesh-only upstream
 (`ObstacleModifier::execute`, `ObstacleModifier.cxx:179-223`), and opposite
 rules from each other on a mesh's own faces: a `matref`/`addtexture` line
 *replaces* every face's material outright, unconditionally, while `phydrv`
 only ever touches a face that *already* names some driver -- a face with none
 stays driver-less under a moving group. See **Physics drivers** and
 **Materials** above for what a mapper can rely on from each.
+
+`tint <r g b [a]>` multiplies each mesh face's diffuse component-wise rather
+than replacing it (`getTintedMaterial`, `ObstacleModifier.cxx:158-176` --
+ambient, specular and emission are left alone there on purpose), which is how
+one `define` gets placed in several colours without a material per copy. It
+is applied *after* whatever `matref`/`addtexture` the same instance states,
+so an instance can replace a material and tint the replacement in one block.
+A face with no diffuse of its own starts from `BzMaterial`'s opaque white, so
+the tint simply becomes the colour. Nested instances multiply: a `tint 0.5
+0.5 0.5` inside a `define` placed by a `tint 0.5 1 1` instance lands at
+`0.25 0.5 0.5`, the same product upstream composes in
+`ObstacleModifier`'s own constructor.
 
 A `teleporter` in a `define` is placed the same way any other member is --
 named `t<n>` for its place in the definition if it gave no name of its own,
@@ -1155,10 +1282,10 @@ Not yet read:
 
 - `shear`, on a plain obstacle or inside a `group` block -- it has no
   representation in bzo's axis-aligned box/pyramid model at all, unlike
-  `shift`/`scale`/`spin` above.
+  `shift`/`scale`/`spin` above. On a mesh it is read; see **Mesh transforms**.
 - A named `transform` block (`xform <name>`, referencing one built from
   `shift`/`scale`/`shear`/`spin` lines) and the `xform <name>` line that
-  references one from inside a `group` block or a plain obstacle.
+  references one, anywhere it appears.
 - `scale` stated directly on a plain box or pyramid (no `group` involved),
   rather than inside a `group` block -- see **Groups** above for why this one
   differs from `shift`/`spin`, which are read either way.
@@ -1171,18 +1298,91 @@ per face-level `drivethrough`/`shootthrough`, a tank slides off one the same
 way it slides off a box corner, and the oriented tank box is its own precise
 case rather than a circle standing in for it) -- see **Groups** above.
 
+### Mesh transforms
+
+`shift`, `scale`, `shear` and `spin` on a block that builds a mesh -- `mesh`
+itself, and the `tetra`, `cone`/`meshpyr`, `arc`/`meshbox` and `sphere`
+primitives -- are upstream's `MeshTransform` (`src/game/MeshTransform.cxx`),
+ported rather than approximated. They are **one ordered list, not four
+settings**: each line appends, the list folds into a single 4x4 in the order
+written, and every point of the finished mesh goes through it. So two `spin`s
+about different axes, or a `scale` on either side of a `shift`, all mean what
+reading them top to bottom says they mean, and a block may state the same
+keyword more than once.
+
+None of the limits that apply to a box hold here. A mesh is a bag of
+arbitrary points, so `shear` and a `spin` about any axis at all have exact
+answers on it -- `tricolor.bzw` leans on this, with fifteen off-list `spin`s
+on plain meshes and 225 more on its `arc`s.
+
+`position`/`size`/`rotation` on the same block are the older spelling of one
+scale, one spin about the vertical and one shift. Upstream builds those three
+first and then appends whatever list the block stated
+(`CustomMesh::writeToGroupDef`, and its siblings on each primitive), so a
+block may use both and the trio happens first. bzo composes them the same
+way, and a `group` instance's own transform applies after all of it, matching
+the point where upstream's obstacle modifier runs.
+
+Normals go through the matrix's cofactor rather than the matrix, so a
+non-uniform `scale` leaves them perpendicular to the surface they belong to,
+and a transform whose determinant is negative -- a mirroring one -- flips
+every normal, upstream's own `Tool::modifyNormal`.
+
+A named `transform` block and the `xform <name>` line that pulls one in are
+still not read; see "What is ignored" below.
+
+### Draw info
+
+`drawInfo { ... }` is upstream's render-optimized copy of a mesh's surface --
+a flat corner table and a set of OpenGL draw commands over it -- and where a
+mesh states one it is what upstream *draws*. `MeshSceneNode` is built from
+it, and the mesh's own `face` list is left to collision alone;
+`MeshSceneNodeGenerator`, the per-face path everything else in this document
+describes, is what a mesh *without* one takes. bzo splits the same way:
+these faces reach the screen, the `face` list reaches the collision pair.
+
+**A mesh may state nothing else.** Every tank model in `RatsNest.bzw` is
+written that way -- vertices, normals, texcoords and a `drawInfo`, with no
+`face` at all -- which makes it decoration a tank drives straight through,
+and which is why such a mesh used to draw as nothing here.
+
+What is read:
+
+- `corner <vertex> <normal> <texcoord>` -- one entry in the corner table,
+  indexing the mesh's own pools.
+- `vertex`/`normal`/`texcoord` inside the block -- pools of its own, which
+  *replace* the mesh's for drawing (`MeshDrawInfo::clientSetup`, `:464-478`).
+- `lod` / `matref <name>` / the draw commands inside -- `tris`, `tristrip`,
+  `trifan`, `quads`, `quadstrip` and `polygon` are each expanded into the
+  faces they stand for, with GL's own windings. `lines`/`lineloop`/
+  `linestrip`/`points` describe no surface and are dropped, as upstream draws
+  them outside the solid too.
+- `angvel <degrees/sec>` -- see below.
+
+Only the **first** `lod` is used. Upstream picks one per frame by
+`lengthPerPixel` against the screen size (`MeshSceneNode::notifyStyleChange`);
+bzo has no LOD machinery and takes the one a map lists first, which is the
+highest detail. `radarlod` is walked and dropped -- bzo's radar draws an
+obstacle's footprint rather than mesh geometry. `extents`, `center`, `sphere`
+and `option` are bounds and hints bzo derives for itself, and `dlist` asks
+for a display list, which WebGL has no equivalent of.
+
+A `drawInfo` block owns every line until its own `end`, the way
+`MeshDrawInfo::parse` consumes the stream. That matters: half its vocabulary
+is shared with the top level, and a `sphere` bounding hint inside a draw set
+would otherwise open a sphere obstacle in the middle of a mesh.
+
 - `angvel <degrees/sec>` -- a continuous spin, upstream's own `MeshDrawInfo`
-  render-optimization animation (`angvel`, inside a `drawInfo { ... }`
-  sub-block bzo does not otherwise read -- see "What is ignored" below and
-  #87). Since upstream itself gives a hand-authored spin no pivot of its own
-  (it turns about world origin unless placed through a `group`, in which case
-  it turns about wherever that instance's own local origin landed), bzo reads
-  it as a plain mesh-level property rather than modelling the unused
-  `drawInfo` grammar around it, and pivots the same way: about the mesh's own
-  local (0,0,0), placed by however many `group` instances (if any) it took to
-  reach the world. Purely visual -- a spinning mesh's faces (upstream: any
-  drawInfo-optimized one, always) collide and block shots exactly as if they
-  never moved.
+  animation, read from inside the `drawInfo` block where upstream reads it
+  (`MeshDrawInfo.cxx:910-926`) and also accepted as a plain mesh-level
+  property, which is how a remote import spells it after the wire protocol
+  has dropped the block around it. Since upstream gives a hand-authored spin
+  no pivot of its own (it turns about world origin unless placed through a
+  `group`, in which case it turns about wherever that instance's own local
+  origin landed), bzo pivots the same way: about the mesh's own local
+  (0,0,0), placed by however many `group` instances (if any) it took to reach
+  the world. Purely visual -- a spinning mesh's faces collide and block shots
+  exactly as if they never moved.
 
 All six primitives that expand to a mesh upstream are read too:
 
@@ -1271,12 +1471,15 @@ The notable absences:
 - **`texsize`/`texoffset` on a `material` block or a `matref`.** See
   **Materials** above for what a material *does* read now (`addtexture`/
   `texture` against bzo's own stock assets, `color`/`diffuse`, `noradar`,
-  `nolighting`, `dyncol`/`texmat`, and -- see **Lighting** there --
-  `specular`/`shininess`/`emission`; `ambient` is read but never applied,
-  matching upstream's own dead field).
-- **`shear`, `xform`, and a `spin` about anything but the vertical axis.**
-  `shift`, `scale` and a vertical `spin` are read now -- see **Groups**
-  above, and its "Not yet read" list for what of this line is left.
+  `nolighting`, `dyncol`/`texmat`, `alphathresh`, and -- see **Transparency
+  flags** and **Lighting** there -- `nosorting`/`notexalpha`/`notexcolor` and
+  `specular`/`shininess`/`emission`, and `noculling` on a `drawInfo` face;
+  `ambient` and `groupAlpha` are read but never applied, each matching what
+  upstream does with its own).
+- **`xform`, and -- on a `box`, `pyramid` or `group` only -- `shear` and a
+  `spin` about anything but the vertical axis.** `shift`, `scale` and a
+  vertical `spin` are read there now; on a mesh all four are read in full,
+  see **Mesh transforms** and **Groups** above.
 - **A `zone` block's `flag` keyword.** `zoneflag`, `team` and `safety` are all
   read -- see **Team zones** and **Flag safety zones** above. `flag` names a
   type any flag of which spawns in the zone; a map using it is named in the

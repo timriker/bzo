@@ -699,6 +699,17 @@ const CELESTIAL_GLOW_RATIO = 1.5;
 // first, which is why `createMountains` also turns off `transparent` --
 // see the comment there.
 const MOUNTAIN_RENDER_ORDER = -500;
+// And the ground goes *before* them, which is the whole reason that works.
+// Upstream's order is fixed by `SceneRenderer`: `renderGround` lays the
+// ground down first (`BackgroundRenderer.cxx:605-609`), `renderGroundEffects`
+// then draws the grid, the shadows and the light receivers, and only then
+// does `drawMountains` paint over the lot of it with the depth test off
+// (`:689-695`). Without an explicit order here the ground sorts at the
+// default 0 and lands *after* the mountains, so a ground plane that reaches
+// ten times the world (`mapSize * 10`, far beyond the mountains' own
+// `2.25 * mapSize`) simply paints them out -- visible from any viewpoint high
+// enough to see past the ring, which on a small map is one jump.
+const GROUND_RENDER_ORDER = -600;
 // BZFlag does not draw the ground as one enormous quad. At its default quality
 // it draws a patch that follows the eye, skirted by four quads reaching the edge
 // of the world (BackgroundRenderer::drawGroundCentered, BackgroundRenderer.cxx:1132).
@@ -797,6 +808,20 @@ function resolveAlphaTest(material, textureName) {
   return FOLIAGE_ALPHA_TEST;
 }
 
+// `nosorting` (`BzMaterial::getNoSorting`). Upstream draws a material like
+// this in the ordinary render lists rather than in the back-to-front ordered
+// one, and the ordered list is the only thing `SceneRenderer::doRender`
+// (`SceneRenderer.cxx:1069-1074`) wraps in `glDepthMask(GL_FALSE)` -- so what
+// the flag actually buys a mapper is that the face goes on writing depth
+// after it turns transparent. bzo has a single draw list, so that depth write
+// is the whole of what carries over: three.js already sorts its transparent
+// queue back to front, which is the correct order rather than a thing to opt
+// out of. Read off `userData` so the alpha callback, which fires a microtask
+// or a network round trip later, sees the same answer as the code below it.
+function setTransparentDepthWrite(material) {
+  material.depthWrite = !!material.userData?.noSorting;
+}
+
 function applyTextureAlpha(material, hasAlpha, textureName = null) {
   if (!hasAlpha) return;
   material.transparent = true;
@@ -816,8 +841,9 @@ function applyTextureAlpha(material, hasAlpha, textureName = null) {
   // overlapping transparent geometry (crossed-quad foliage billboards,
   // stacked leaf layers) blends instead of occluding itself through the
   // depth buffer. Depth *testing* stays on, so this still hides correctly
-  // behind opaque scene geometry -- only writes are disabled.
-  material.depthWrite = false;
+  // behind opaque scene geometry -- only writes are disabled, and a material
+  // whose map states `nosorting` keeps even those.
+  setTransparentDepthWrite(material);
   material.needsUpdate = true;
 }
 
@@ -3575,6 +3601,8 @@ class RenderManager {
     this._zoneGroundTexture = null;
     this.ground = new THREE.Mesh(groundGeometry, groundMeshMaterial);
     this.ground.frustumCulled = false;
+    // Before the mountains, after the sky -- see `GROUND_RENDER_ORDER`.
+    this.ground.renderOrder = GROUND_RENDER_ORDER;
     this.groundExtent = groundExtent;
     this.groundMapSize = mapSize;
     this._groundCenterX = null;
@@ -4610,10 +4638,19 @@ class RenderManager {
   // nothing here repositions the mesh -- it is static geometry the way a
   // box/pyramid fragment already is.
   _buildMeshObject(meshObs, index) {
-    const verts = meshObs.vertices || [];
-    const norms = meshObs.normals || [];
-    const texcoords = meshObs.texcoords || [];
-    const faces = meshObs.faces || [];
+    // A `drawInfo` block is upstream's render-optimized copy of the same
+    // surface, and where a mesh states one it is what upstream *draws* --
+    // `MeshSceneNode` is built from it and the mesh's own `face` list is left
+    // to collision alone (`MeshSceneNodeGenerator::getMeshNodes` is the other
+    // path, for a mesh without one). bzo splits the same way: these faces
+    // reach the screen, `meshObs.faces` reaches `collision.cjs`. A map may
+    // state only a `drawInfo` -- every tank model in `RatsNest.bzw` does --
+    // and then there is nothing else to draw it with.
+    const drawFaces = meshObs.drawFaces || null;
+    const verts = (drawFaces && meshObs.drawVertices) || meshObs.vertices || [];
+    const norms = (drawFaces && meshObs.drawNormals) || meshObs.normals || [];
+    const texcoords = (drawFaces && meshObs.drawTexcoords) || meshObs.texcoords || [];
+    const faces = drawFaces || meshObs.faces || [];
     if (!verts.length || !faces.length) return null;
 
     const positions = [];
@@ -4722,7 +4759,9 @@ class RenderManager {
 
       const key = `${face.texture || ''}|${face.textureUrl || ''}|${(face.color || []).join(',')}`
         + `|${animIdentityKey(face.dynamicColor)}|${animIdentityKey(face.textureMatrix)}`
-        + `|${materialLightingKey(face.specular, face.shininess, face.emission)}`;
+        + `|${materialLightingKey(face.specular, face.shininess, face.emission)}`
+        + `|${face.noSorting ? 's' : ''}${face.useTextureAlpha === false ? 'a' : ''}`
+        + `${face.useColorOnTexture === false ? 'd' : ''}${face.noCulling ? 'c' : ''}`;
       let materialIndex = materialIndexByKey.get(key);
       if (materialIndex === undefined) {
         // A generic `mesh` face with no `texture`/`addtexture` at all (unlike
@@ -4731,6 +4770,20 @@ class RenderManager {
         // here would draw a wall pattern the map never asked for.
         const LitClass = pickLitMaterialClass(face.specular);
         const lightingOptions = buildLightingMaterialOptions(face.specular, face.shininess, face.emission);
+        // `noculling`, which only a face built from a `drawInfo` block ever
+        // carries: that is the one path where upstream's own scene node has
+        // no plane cull in front of it, so the flag can actually show a far
+        // side (`MeshSceneNode::cull`, `:287-300`). See `applyBzwMaterialToken`
+        // in server.js for why a plain face never gets here.
+        if (face.noCulling) lightingOptions.side = THREE.DoubleSide;
+        // `notexalpha` (`BzMaterial::getUseTextureAlpha`) -- upstream reads
+        // the texture's own alpha channel only where this is left set
+        // (`MeshSceneNode.cxx:429-433`), so a picture that happens to carry
+        // alpha draws fully opaque. bzo's own default alpha test is the
+        // deliberate difference documented in docs/bzw.md; a map turning the
+        // channel off is asking for neither -- but see the alpha test just
+        // below, which upstream applies regardless.
+        const readsTextureAlpha = face.useTextureAlpha !== false;
         let material;
         if (face.texture || face.textureUrl) {
           const textureFactory = resolveObstacleTextureFactory(
@@ -4742,7 +4795,9 @@ class RenderManager {
           // callback never actually fires until this statement (and `let`)
           // has finished, even when the answer was already known.
           material = new LitClass({
-            map: textureFactory((hasAlpha) => applyTextureAlpha(material, hasAlpha, face.texture || face.textureUrl)),
+            map: textureFactory((hasAlpha) => applyTextureAlpha(
+              material, hasAlpha && readsTextureAlpha, face.texture || face.textureUrl,
+            )),
             ...lightingOptions,
           });
         } else {
@@ -4754,7 +4809,32 @@ class RenderManager {
         if (Number.isFinite(face.alphaThreshold)) {
           material.userData.alphaThreshold = face.alphaThreshold;
         }
-        if (face.color) {
+        // `nosorting` -- same reason as the threshold above: the alpha
+        // callback runs long after this returns and needs the answer then.
+        if (face.noSorting) material.userData.noSorting = true;
+        // `alphathresh` is an alpha *test*, and upstream sets it from the
+        // material unconditionally -- `WallSceneNode::setupBlending`
+        // (`:369-370`) and `MeshSceneNode.cxx:523-525` both apply
+        // `GL_GEQUAL` whatever `notexalpha` said, because that flag decides
+        // only whether the texture's alpha reaches the *blend*
+        // (`node->setBlending(alpha)`, `MeshSceneNodeGenerator.cxx:471-477`).
+        // So a `notexalpha` face with a stated threshold still cuts its
+        // transparent pixels away; it just stops blending the partial ones.
+        // The blending path below sets the same test from the callback, once
+        // the image says it has alpha at all.
+        if (!readsTextureAlpha && Number.isFinite(face.alphaThreshold) && face.alphaThreshold !== 0) {
+          material.alphaTest = face.alphaThreshold;
+        }
+        // `notexcolor` (`BzMaterial::getUseColorOnTexture`) -- with a texture
+        // on the material, upstream stops modulating it by the material's own
+        // diffuse and uses plain white instead (`MeshSceneNode.cxx:428`,
+        // `:470-481`), alpha included, so neither the tint nor its
+        // translucency reaches the face. Untextured, the flag means nothing
+        // upstream and nothing here: there is no picture for a colour to be
+        // used *on*.
+        const usesOwnColor = face.useColorOnTexture !== false
+          || !(face.texture || face.textureUrl);
+        if (face.color && usesOwnColor) {
           material.color.setRGB(face.color[0] ?? 1, face.color[1] ?? 1, face.color[2] ?? 1);
           // A material's own flat `diffuse`/`color` alpha (`parseBzwColor`,
           // server.js) -- distinct from a texture's own per-pixel alpha
@@ -4766,7 +4846,7 @@ class RenderManager {
           if (alpha < 1) {
             material.transparent = true;
             material.opacity = alpha;
-            material.depthWrite = false;
+            setTransparentDepthWrite(material);
           }
         }
         // `dyncol` -- replaces this face's diffuse outright (see
@@ -4780,7 +4860,7 @@ class RenderManager {
         // skips a sort pass bzo does not have.
         if (face.dynamicColor) {
           material.transparent = true;
-          material.depthWrite = false;
+          setTransparentDepthWrite(material);
           this._animatedMaterials.push({ material, dynamicColor: face.dynamicColor, source: 'mesh' });
         }
         // `texmat` -- a live UV transform on this face's own texture. The

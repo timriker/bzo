@@ -2,9 +2,18 @@
 # confirm both blades visibly spin: TopLevelSpin orbits world origin (upstream's
 # own behaviour for a hand-authored spin with no enclosing group), while the two
 # GroupBlade instances each spin in place about their own placed position.
+#
+# Every blade is written as two faces over the same corners in opposite order,
+# which is how a BZW map asks for a two-sided surface -- a spinning blade that
+# vanished for half of each turn would make the test harder to read, not
+# easier. See docs/bzw.md, "Two-sided surfaces".
 
+# Sized to the blades and nothing else. TopLevelSpin's own orbit reaches 35
+# units from the origin and the two GroupBlade instances reach 35 along each
+# axis, so walls at 50 leave a margin to stand in without the eye having to
+# cross a quarter of a kilometre of empty ground to see what is being tested.
 world
-	size 400
+	size 50
 end
 
 material
@@ -23,6 +32,11 @@ mesh
 		matref spinmat
 		passable
 	endface
+	face #backside
+		vertices 0 2 1
+		matref spinmat
+		passable
+	endface
 end
 
 define SpinBlade
@@ -33,6 +47,11 @@ define SpinBlade
 		vertex 0 0 8
 		face
 			vertices 0 1 2
+			matref spinmat
+			passable
+		endface
+		face #backside
+			vertices 0 2 1
 			matref spinmat
 			passable
 		endface

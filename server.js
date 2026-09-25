@@ -2779,6 +2779,257 @@ const UNSUPPORTED_TOP_LEVEL_KEYWORDS = new Set([
   'transform',
 ]);
 
+// Material keywords bzo reads and deliberately drops, because none of them
+// can change what a real bzflag client draws either -- see
+// `applyBzwMaterialToken` for the reason behind each. Inside a `material`
+// block, a mesh or one of the mesh primitives that helper already consumes
+// them; this set is how a plain `box` or `pyramid` (whose own branch reads
+// only the handful of properties bzo's box model has a place for) reaches
+// the same answer instead of reporting them as gaps it does not have.
+const BZW_INERT_MATERIAL_KEYWORDS = new Set([
+  'ambient', 'groupalpha', 'noculling',
+  // `BzMaterial` parses and stores these three, and nothing in the whole
+  // upstream tree ever reads them back -- `getShader`/`getShaderCount` have
+  // no caller outside `BzMaterial` itself, confirmed by grep. Dead in a real
+  // bzflag client, so dead here.
+  'shader', 'addshader', 'noshaders',
+]);
+
+// `MeshTransform` (`src/game/MeshTransform.cxx`), the `shift`/`scale`/
+// `shear`/`spin` sequence a `mesh` block states about itself. Upstream reads
+// them in `WorldFileLocation::read` (`:95-135`) as an ordered list rather
+// than as four independent settings, and `MeshTransform::Tool` folds that
+// list into one 4x4 as it walks it -- so two `spin`s about different axes,
+// or a `scale` before and after a `shift`, all mean what reading them in
+// order says they mean. Ported here rather than approximated, because unlike
+// a box (whose `shift`/`spin` bzo maps onto `position`/`rotation`, see
+// docs/bzw.md "Groups") a mesh is a bag of arbitrary points: every one of
+// these has an exact answer on it, including the `shear` and the off-vertical
+// `spin` that have no place in bzo's axis-aligned box model.
+//
+// Everything here is in upstream's own frame (Z up), not bzo's --
+// `applyMeshTransform` converts each point across and back, so the matrix
+// and the map text agree axis for axis.
+
+// `multiply` (`MeshTransform.cxx:154-168`), which composes the new transform
+// on the *left*: after `m = multiply(m, t)` the accumulated matrix applies
+// `t` last, so a vertex sees the list in the order the map wrote it.
+function multiplyMeshTransform(m, n) {
+  const t = [[0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0]];
+  for (let i = 0; i < 4; i++) {
+    for (let j = 0; j < 4; j++) {
+      t[i][j] = (m[0][j] * n[i][0]) + (m[1][j] * n[i][1])
+        + (m[2][j] * n[i][2]) + (m[3][j] * n[i][3]);
+    }
+  }
+  return t;
+}
+
+const MESH_TRANSFORM_IDENTITY = [
+  [1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 1, 0], [0, 0, 0, 1],
+];
+
+// `shift`/`scale`/`shear`/`spin` (`MeshTransform.cxx:169-236`), each as the
+// 4x4 upstream multiplies in. `shear`'s own off-diagonal placement is
+// upstream's exactly -- it is not the symmetric shear it looks like it should
+// be, and copying it rather than deriving it is the point.
+function meshTransformStep(op) {
+  const [a, b, c] = op.data;
+  if (op.type === 'shift') {
+    return [[1, 0, 0, a], [0, 1, 0, b], [0, 0, 1, c], [0, 0, 0, 1]];
+  }
+  if (op.type === 'scale') {
+    return [[a, 0, 0, 0], [0, b, 0, 0], [0, 0, c, 0], [0, 0, 0, 1]];
+  }
+  if (op.type === 'shear') {
+    return [[1, 0, a, 0], [0, 1, b, 0], [c, 0, 1, 0], [0, 0, 0, 1]];
+  }
+  // `spin <degrees> <ax> <ay> <az>` -- Rodrigues about an arbitrary axis, and
+  // a zero-length axis is skipped rather than producing NaNs, same as
+  // `MeshTransform.cxx:203-210`.
+  const lenSq = (a * a) + (b * b) + (c * c);
+  if (!(lenSq > 0)) return null;
+  const inv = 1 / Math.sqrt(lenSq);
+  const nx = a * inv; const ny = b * inv; const nz = c * inv;
+  const radians = op.data[3];
+  const cos = Math.cos(radians);
+  const sin = Math.sin(radians);
+  const icos = 1 - cos;
+  return [
+    [(nx * nx * icos) + cos, (nx * ny * icos) - (nz * sin), (nx * nz * icos) + (ny * sin), 0],
+    [(ny * nx * icos) + (nz * sin), (ny * ny * icos) + cos, (ny * nz * icos) - (nx * sin), 0],
+    [(nz * nx * icos) - (ny * sin), (nz * ny * icos) + (nx * sin), (nz * nz * icos) + cos, 0],
+    [0, 0, 0, 1],
+  ];
+}
+
+// `MeshTransform::Tool`'s constructor (`:242-305`): the folded vertex matrix,
+// the cofactor matrix normals go through instead (so a non-uniform scale
+// leaves them perpendicular), and the determinant's sign, which says whether
+// the transform turned the mesh inside out and every normal has to flip.
+function buildMeshTransformTool(ops) {
+  if (!ops || ops.length === 0) return null;
+  let vm = MESH_TRANSFORM_IDENTITY;
+  for (const op of ops) {
+    const step = meshTransformStep(op);
+    if (step) vm = multiplyMeshTransform(vm, step);
+  }
+  const normalMatrix = [
+    [
+      (vm[1][1] * vm[2][2]) - (vm[1][2] * vm[2][1]),
+      (vm[1][2] * vm[2][0]) - (vm[1][0] * vm[2][2]),
+      (vm[1][0] * vm[2][1]) - (vm[1][1] * vm[2][0]),
+    ],
+    [
+      (vm[2][1] * vm[0][2]) - (vm[2][2] * vm[0][1]),
+      (vm[2][2] * vm[0][0]) - (vm[2][0] * vm[0][2]),
+      (vm[2][0] * vm[0][1]) - (vm[2][1] * vm[0][0]),
+    ],
+    [
+      (vm[0][1] * vm[1][2]) - (vm[0][2] * vm[1][1]),
+      (vm[0][2] * vm[1][0]) - (vm[0][0] * vm[1][2]),
+      (vm[0][0] * vm[1][1]) - (vm[0][1] * vm[1][0]),
+    ],
+  ];
+  const determinant = (vm[0][0] * normalMatrix[0][0])
+    + (vm[0][1] * normalMatrix[0][1])
+    + (vm[0][2] * normalMatrix[0][2]);
+  return { vertexMatrix: vm, normalMatrix, inverted: determinant < 0 };
+}
+
+// `MeshDrawInfo`'s own draw commands (`MeshDrawInfo.cxx:681-694`), each an
+// OpenGL primitive over a list of *corner* indices. bzo draws polygons, so
+// every surface mode is expanded here into the faces it stands for and the
+// two line modes and `points` are dropped -- they describe no surface, and
+// upstream's own renderer draws them as lines and points rather than as part
+// of the solid (`DrawCmd::draw`).
+//
+// The windings are GL's, not a guess: a strip alternates so every triangle
+// faces the same way, a fan pivots on its first corner, and a quad strip
+// takes its four corners in the order that keeps the quad convex.
+function expandMeshDrawCommand(mode, indices) {
+  const polys = [];
+  if (indices.length < 3) return polys;
+  if (mode === 'tris') {
+    for (let i = 0; i + 2 < indices.length; i += 3) {
+      polys.push([indices[i], indices[i + 1], indices[i + 2]]);
+    }
+  } else if (mode === 'tristrip') {
+    for (let i = 0; i + 2 < indices.length; i++) {
+      polys.push(i % 2 === 0
+        ? [indices[i], indices[i + 1], indices[i + 2]]
+        : [indices[i + 1], indices[i], indices[i + 2]]);
+    }
+  } else if (mode === 'trifan') {
+    for (let i = 1; i + 1 < indices.length; i++) {
+      polys.push([indices[0], indices[i], indices[i + 1]]);
+    }
+  } else if (mode === 'quads') {
+    for (let i = 0; i + 3 < indices.length; i += 4) {
+      polys.push([indices[i], indices[i + 1], indices[i + 2], indices[i + 3]]);
+    }
+  } else if (mode === 'quadstrip') {
+    for (let i = 0; i + 3 < indices.length; i += 2) {
+      polys.push([indices[i], indices[i + 1], indices[i + 3], indices[i + 2]]);
+    }
+  } else if (mode === 'polygon') {
+    polys.push(indices.slice());
+  }
+  return polys;
+}
+
+// Every mode `setupDrawModeMap` knows, so an unrecognized word inside a draw
+// set is reported rather than silently dropped.
+const MESH_DRAW_MODES = new Set([
+  'points', 'lines', 'lineloop', 'linestrip',
+  'tris', 'tristrip', 'trifan', 'quads', 'quadstrip', 'polygon',
+]);
+
+// `WorldFileLocation::read`'s own transform lines (`:88-135`), shared by
+// every block that builds a mesh of its own -- `mesh`, and the `tetra`,
+// `cone`/`meshpyr`, `arc`/`meshbox` and `sphere` primitives, whose
+// `writeToGroupDef` is shaped exactly like `CustomMesh`'s. Returns whether
+// the token was one of them, so a caller falls through for anything else.
+function readMeshTransformToken(target, token, words) {
+  if (token === 'shift' || token === 'scale' || token === 'shear') {
+    const [a, b, c] = words.slice(1).map(Number);
+    target.transformOps.push({ type: token, data: [a || 0, b || 0, c || 0, 0] });
+    return true;
+  }
+  if (token === 'spin') {
+    const [deg, ax, ay, az] = words.slice(1).map(Number);
+    target.transformOps.push({
+      type: 'spin', data: [ax || 0, ay || 0, az || 0, (deg || 0) * Math.PI / 180],
+    });
+    return true;
+  }
+  return false;
+}
+
+// bzo stores a mesh's points already turned into its own frame (BZW x stays
+// x, BZW z becomes up, BZW y becomes -z -- see the `vertex` line in the mesh
+// parser). The transform is upstream's and reads in upstream's frame, so each
+// point crosses over, moves, and crosses back rather than the matrix being
+// rewritten into bzo's axes: one conversion either side, stated once, instead
+// of a similarity transform nobody can check against the map text.
+function applyMeshTransform(mesh) {
+  const tool = buildMeshTransformTool(mesh.transformOps);
+  if (!tool) return mesh;
+  const vm = tool.vertexMatrix;
+  const nm = tool.normalMatrix;
+
+  const movePoint = (p) => {
+    const x = p.x; const y = -p.z; const z = p.y;
+    const tx = (x * vm[0][0]) + (y * vm[0][1]) + (z * vm[0][2]) + vm[0][3];
+    const ty = (x * vm[1][0]) + (y * vm[1][1]) + (z * vm[1][2]) + vm[1][3];
+    const tz = (x * vm[2][0]) + (y * vm[2][1]) + (z * vm[2][2]) + vm[2][3];
+    return { x: tx, y: tz, z: -ty };
+  };
+
+  // `Tool::modifyNormal` (`:380-411`) -- cofactor, renormalize, and flip on a
+  // mirroring transform. A normal that collapses to zero length falls back to
+  // straight up, upstream's own "dunno, going with Z" case.
+  const moveNormal = (n) => {
+    const x = n.x; const y = -n.z; const z = n.y;
+    let tx = (x * nm[0][0]) + (y * nm[0][1]) + (z * nm[0][2]);
+    let ty = (x * nm[1][0]) + (y * nm[1][1]) + (z * nm[1][2]);
+    let tz = (x * nm[2][0]) + (y * nm[2][1]) + (z * nm[2][2]);
+    const len = Math.hypot(tx, ty, tz);
+    if (len > 0) {
+      tx /= len; ty /= len; tz /= len;
+    } else {
+      tx = 0; ty = 0; tz = 1;
+    }
+    if (tool.inverted) {
+      tx = -tx; ty = -ty; tz = -tz;
+    }
+    return { x: tx, y: tz, z: -ty };
+  };
+
+  mesh.vertices = mesh.vertices.map(movePoint);
+  mesh.normals = mesh.normals.map(moveNormal);
+  mesh.checkPoints = mesh.checkPoints.map((p) => ({ ...movePoint(p), inside: p.inside }));
+  // A `drawInfo` block that brought pools of its own is a second copy of the
+  // same surface and moves with it.
+  if (mesh.drawVertices) mesh.drawVertices = mesh.drawVertices.map(movePoint);
+  if (mesh.drawNormals) mesh.drawNormals = mesh.drawNormals.map(moveNormal);
+  return mesh;
+}
+
+// The `BzMaterial` flags that decide how a face blends -- `nosorting`,
+// `notexalpha`, `notexcolor`, read by `applyBzwMaterialToken` below -- pulled
+// off any material-shaped object onto a face bound for the renderer.
+// `BzMaterial::reset`'s own defaults are all "ordinary": sort translucent
+// faces, and use both the texture's alpha and the material's own colour,
+// which is what a material that never stated any of them reads back as here.
+// `noculling` is not among them: it is read and dropped, for the reason
+// `applyBzwMaterialToken` gives.
+const bzwMaterialFlags = (m) => ({
+  noSorting: !!m.noSorting,
+  useTextureAlpha: m.useTextureAlpha !== false,
+  useColorOnTexture: m.useColorOnTexture !== false,
+});
+
 // `TetraBuilding::makeMesh`'s own fixed face topology (`MeshUtils.h`'s
 // `addFace` calls, `TetraBuilding.cxx:110-121`): four triangles, each
 // omitting one vertex, always in this order regardless of how a mapper
@@ -2826,6 +3077,7 @@ function buildTetraMesh(tetra) {
     driveThrough: false, shootThrough: false, ricochet: false,
     texture: mats[i].texture, textureUrl: mats[i].textureUrl,
     color: mats[i].color, noRadar: mats[i].noRadar, noLighting: mats[i].noLighting,
+    ...bzwMaterialFlags(mats[i]),
   }));
 
   const center = {
@@ -2976,12 +3228,7 @@ function buildConeMesh(cone) {
   // here instead: spin around the vertical axis, then shift, then convert --
   // a plain `cone`'s own `rotation` is already spent as `baseHeading`, so it
   // spins by nothing extra here.
-  // `shift` (WorldFileLocation's own extra transform, CustomCone.cxx) lands
-  // on top of `position`/`rotation` in world space -- it is not spun by the
-  // primitive's own rotation, so it's added alongside `pos` rather than
-  // passed through `spin`.
-  const shift = cone.shiftBzf;
-  const pos = { x: cone.posBzf.x + shift.x, y: cone.posBzf.y + shift.y, z: cone.posBzf.z + shift.z };
+  const pos = { ...cone.posBzf };
   const spinAngle = cone.isPyramid ? cone.rotationRad : 0;
   const cosSpin = Math.cos(spinAngle);
   const sinSpin = Math.sin(spinAngle);
@@ -3025,6 +3272,7 @@ function buildConeMesh(cone) {
   };
   const matFields = (m) => ({
     texture: m.texture, textureUrl: m.textureUrl, color: m.color, noRadar: m.noRadar, noLighting: m.noLighting,
+    ...bzwMaterialFlags(m),
   });
   const [edgeMat, bottomMat, startMat, endMat] = cone.materials;
 
@@ -3380,9 +3628,7 @@ function buildArcMesh(arc) {
   // See `buildConeMesh`'s own comment on `spinAngle` -- the same reasoning
   // applies here: a `meshbox`'s own `rotation` is upstream's own second
   // transform on top of the fixed 45-degree twist, not part of `baseHeading`.
-  // `shift` joins `pos` unrotated for the same reason `buildConeMesh` does.
-  const shift = arc.shiftBzf;
-  const pos = { x: arc.posBzf.x + shift.x, y: arc.posBzf.y + shift.y, z: arc.posBzf.z + shift.z };
+  const pos = { ...arc.posBzf };
   const spinAngle = arc.isBox ? arc.rotationRad : 0;
   const cosSpin = Math.cos(spinAngle);
   const sinSpin = Math.sin(spinAngle);
@@ -3408,6 +3654,7 @@ function buildArcMesh(arc) {
   };
   const matFields = (m) => ({
     texture: m.texture, textureUrl: m.textureUrl, color: m.color, noRadar: m.noRadar, noLighting: m.noLighting,
+    ...bzwMaterialFlags(m),
   });
   const faces = built.faces.map(({ side, ...face }) => ({
     ...faceBase, ...face, ...matFields(arc.materials[side]),
@@ -3620,8 +3867,7 @@ function buildSphereMesh(sphere) {
     });
   }
 
-  const shift = sphere.shiftBzf;
-  const pos = { x: sphere.posBzf.x + shift.x, y: sphere.posBzf.y + shift.y, z: sphere.posBzf.z + shift.z };
+  const pos = { ...sphere.posBzf };
   const toBzo = (p) => ({ x: p.x + pos.x, y: p.z + pos.z, z: -(p.y + pos.y) });
   const toBzoDir = (n) => ({ x: n.x, y: n.z, z: -n.y });
 
@@ -3634,6 +3880,7 @@ function buildSphereMesh(sphere) {
   };
   const matFields = (m) => ({
     texture: m.texture, textureUrl: m.textureUrl, color: m.color, noRadar: m.noRadar, noLighting: m.noLighting,
+    ...bzwMaterialFlags(m),
   });
   const outFaces = faces.map(({ side, ...face }) => ({
     ...faceBase, ...face, ...matFields(sphere.materials[side]),
@@ -4188,6 +4435,13 @@ function parseBZWMap(filename, { quiet = false, extraMessages = [] } = {}) {
   // `face` was read (`CustomMeshFace`'s constructor snapshot) and nothing
   // else parsed here has that shape.
   let currentMeshFace = null;
+  // The `drawInfo { ... }` block a mesh may carry -- upstream's
+  // `MeshDrawInfo`, the render-optimized copy of the same surface, and the
+  // only place upstream reads `angvel` from. Non-null exactly while one is
+  // open; `depth` walks its own nested `lod`/`matref` blocks so their `end`
+  // lines close them rather than the mesh around them, which is what used to
+  // cut a mesh short at the first one.
+  let currentDrawInfo = null;
   // `define <name>` / `enddef`. Everything closed while this is set collects
   // into its obstacle list instead of `obstacles`, keyed by name so any number
   // of `group` instances can place transformed copies of it later.
@@ -4539,6 +4793,11 @@ function parseBZWMap(filename, { quiet = false, extraMessages = [] } = {}) {
       } else {
         referenced = materialsByName.get(rawRef.toLowerCase()) || null;
       }
+      // `-1` is upstream's own spelling of "no material", not a name it
+      // failed to find: every caller suppresses its own warning for exactly
+      // that string (`CustomGroup.cxx:87`, `ObstacleModifier`, and the
+      // `phydrv`/`texmat` readers beside them), so it is left unreported
+      // here too rather than named on load as a map's mistake.
       if (referenced) {
         target.texture = referenced.texture;
         target.textureUrl = referenced.textureUrl;
@@ -4552,7 +4811,11 @@ function parseBZWMap(filename, { quiet = false, extraMessages = [] } = {}) {
         target.emission = referenced.emission;
         target.shininess = referenced.shininess;
         target.alphaThreshold = referenced.alphaThreshold;
-      } else if (rawRef) {
+        target.noCulling = referenced.noCulling;
+        target.noSorting = referenced.noSorting;
+        target.useTextureAlpha = referenced.useTextureAlpha;
+        target.useColorOnTexture = referenced.useColorOnTexture;
+      } else if (rawRef && rawRef !== '-1') {
         unresolvedMaterialRefs.add(rawRef.toLowerCase());
       }
       return true;
@@ -4568,7 +4831,7 @@ function parseBZWMap(filename, { quiet = false, extraMessages = [] } = {}) {
         : dynamicColorsByName.get(rawRef.toLowerCase()) || null;
       if (referenced) {
         target.dynamicColor = referenced;
-      } else if (rawRef) {
+      } else if (rawRef && rawRef !== '-1') {
         unresolvedDynamicColorRefs.add(rawRef.toLowerCase());
       }
       return true;
@@ -4594,7 +4857,7 @@ function parseBZWMap(filename, { quiet = false, extraMessages = [] } = {}) {
         : textureMatricesByName.get(rawRef.toLowerCase()) || null;
       if (referenced) {
         target.textureMatrix = referenced;
-      } else if (rawRef) {
+      } else if (rawRef && rawRef !== '-1') {
         unresolvedTextureMatrixRefs.add(rawRef.toLowerCase());
       }
       return true;
@@ -4663,6 +4926,81 @@ function parseBZWMap(filename, { quiet = false, extraMessages = [] } = {}) {
       target.alphaThreshold = Number.isFinite(value) ? value : 0;
       return true;
     }
+    if (token === 'noculling') {
+      // `BzMaterial::setNoCulling`. Kept, but it reaches the renderer down
+      // one path only, which is upstream's rule rather than a bzo limit.
+      //
+      // A plain `mesh` face draws through `MeshPolySceneNode`, and both it
+      // (`MeshPolySceneNode.cxx:255-261`) and its base `WallSceneNode::cull`
+      // (`:87-95`) open with "cull if eye is behind (or on) plane" and return
+      // true -- the node never reaches a render list, so the
+      // `disableCulling()` this sets (`WallSceneNode.cxx:371-372`) never
+      // runs. A box's or a pyramid's quad faces go the same way. A map
+      // wanting a two-sided surface writes the face twice with reversed
+      // winding, which is what real maps do and what `maps/bzo.bzw`'s own
+      // billboards do.
+      //
+      // The exception is a mesh drawn from its own `drawInfo` block, where
+      // `MeshSceneNode::cull` (`:287-300`) is bounding-box alone with no
+      // plane test at all and the flag really does show the far side. bzo
+      // carries it onto those faces and nowhere else -- see
+      // `buildMeshDrawFaces`.
+      target.noCulling = true;
+      return true;
+    }
+    if (token === 'nosorting') {
+      // `BzMaterial::setNoSorting` -- keeps a translucent material out of
+      // upstream's own back-to-front ordered pass (`MeshSceneNode.cxx:520`),
+      // which is the one pass `SceneRenderer::doRender` draws under
+      // `glDepthMask(GL_FALSE)`. What that means for a single-list renderer
+      // like bzo's is exactly the depth mask: a `nosorting` face goes on
+      // writing depth even once its texture or its tint turns it
+      // transparent. See `applyTextureAlpha` in `render.js`.
+      target.noSorting = true;
+      return true;
+    }
+    if (token === 'notexalpha') {
+      // `BzMaterial::setUseTextureAlpha(false)` -- upstream looks at a
+      // texture's own alpha channel only while this is set
+      // (`MeshSceneNode.cxx:429-433`, `MeshSceneNodeGenerator.cxx:471-477`,
+      // both feeding `setBlending` alone), so a picture that happens to
+      // carry alpha draws fully opaque instead of blending. It says nothing
+      // about the alpha *test*: `alphathresh` reaches `GL_GEQUAL` whatever
+      // this flag said (`WallSceneNode.cxx:369-370`), so a material stating
+      // both still cuts its transparent pixels away. See `render.js`.
+      target.useTextureAlpha = false;
+      return true;
+    }
+    if (token === 'notexcolor') {
+      // `BzMaterial::setUseColorOnTexture(false)` -- upstream stops
+      // modulating the texture by the material's own diffuse and uses plain
+      // white in its place (`MeshSceneNode.cxx:428`, `:470-481`), which is
+      // what a mapper wants where a material's tint exists for the
+      // untextured fallback rather than for the picture. Only ever reached
+      // with a texture actually on the material, upstream and here alike.
+      target.useColorOnTexture = false;
+      return true;
+    }
+    if (token === 'shader' || token === 'addshader' || token === 'noshaders') {
+      // `BzMaterial` parses and stores a material's shader list, and nothing
+      // anywhere upstream ever reads it back -- `getShader`/`getShaderCount`
+      // have no caller outside `BzMaterial` itself. Read and dropped, the
+      // same as `ambient` below.
+      return true;
+    }
+    if (token === 'groupalpha') {
+      // `BzMaterial::setGroupAlpha`. Its only reader anywhere upstream
+      // (`MeshSceneNodeGenerator.cxx:213-215`) decides whether a translucent
+      // face gets a scene node of its own -- sorted against the world
+      // individually -- or is collated into one node with the faces sharing
+      // its material; `MeshSceneNode.cxx:517-519` states outright that it
+      // does not use the flag, because everything there is grouped already.
+      // bzo builds one merged geometry group per material and draws the
+      // whole mesh as a single object, which *is* the collated case, so a
+      // map stating this asks for what bzo does regardless. Read and
+      // dropped, the same as `ambient` below -- not a parity gap to report.
+      return true;
+    }
     if (token === 'specular' || token === 'emission' || token === 'shininess') {
       // `BzMaterial::reset` defaults for a component this line leaves
       // unstated: specular/emission `0 0 0 1`, shininess `0`. These are the
@@ -4706,6 +5044,21 @@ function parseBZWMap(filename, { quiet = false, extraMessages = [] } = {}) {
     // first whitespace-delimited token rather than a prefix of the line -- so
     // `Position` is a position and `basey` is not a base.
     const token = line.split(/\s+/)[0].toLowerCase();
+
+    // A `drawInfo { ... }` block owns every line until its own `end`.
+    // Upstream reads it by consuming the stream outright
+    // (`MeshDrawInfo::parse`), and bzo has to claim it just as early: half
+    // its vocabulary is shared with the top level, and a `sphere` bounding
+    // hint inside a draw set would otherwise open a sphere obstacle in the
+    // middle of a mesh and throw the mesh away with it
+    // (`ahs3_Paradise_Valley.bzw`, whose largest mesh vanished exactly that
+    // way). Opened from the mesh branch below, which is the only place one
+    // can appear.
+    if (currentDrawInfo) {
+      readMeshDrawInfoLine(current, currentDrawInfo, token, line.split(/\s+/));
+      if (currentDrawInfo.closed) currentDrawInfo = null;
+      continue;
+    }
 
     if (currentLink && token === 'end') {
       if (currentLink.from && currentLink.to) {
@@ -4914,7 +5267,18 @@ function parseBZWMap(filename, { quiet = false, extraMessages = [] } = {}) {
     // `material` / `end`. Registered by name for `matref` to look up, the way
     // upstream's `CustomMaterial::writeToManager` adds it to the
     // `MaterialManager` for later `matref` lookups to find.
-    if (!current && !currentLink && !currentZone && !currentWeapon && !currentDefine
+    //
+    // A `define` does not scope this, and the same goes for the `physics`,
+    // `dynamicColor` and `textureMatrix` blocks below. Upstream's
+    // `parseNormalObject` (`BZWReader.cxx:139-184`) builds the object before
+    // the reader's own `define`/`enddef` branches ever run and without
+    // consulting the group definition, and on `end` the block takes the
+    // `usesManager()` path (`:250-253`) into one global registry rather than
+    // the `usesGroupDef()` path an obstacle takes. So a material written
+    // inside a definition is visible to every `matref` in the file, exactly
+    // as if it had been written at the top level -- real maps rely on it
+    // (`tricolor.bzw` states seven that way).
+    if (!current && !currentLink && !currentZone && !currentWeapon
       && !currentMaterial && !currentPhysicsDriver && !currentDynamicColor && !currentTextureMatrix
       && !currentWaterLevel
       && token === 'material') {
@@ -4922,6 +5286,7 @@ function parseBZWMap(filename, { quiet = false, extraMessages = [] } = {}) {
         name: null, texture: null, textureUrl: null, color: null, noRadar: false, noLighting: false,
         dynamicColor: null, textureMatrix: null,
         specular: null, emission: null, shininess: null, alphaThreshold: null,
+        noSorting: false, useTextureAlpha: true, useColorOnTexture: true,
       };
       continue;
     }
@@ -4968,11 +5333,10 @@ function parseBZWMap(filename, { quiet = false, extraMessages = [] } = {}) {
       if (applyBzwMaterialToken(currentMaterial, token, line.split(/\s+/))) {
         continue;
       }
-      // Everything else a material block can say -- ambient (read and
-      // dropped; see `applyBzwMaterialToken` above), shader/addshader/
-      // noshaders, alphathresh, noculling, nosorting, occluder, groupAlpha,
-      // spheremap, notexalpha, notexcolor, resetmat -- is dropped, and
-      // counted on the way out. A material keyword bzo does not read changes
+      // Everything else a material block can say -- ambient and groupAlpha
+      // (both read and dropped; see `applyBzwMaterialToken` above),
+      // shader/addshader/noshaders, occluder, spheremap, resetmat -- is
+      // dropped, and counted on the way out. A material keyword bzo does not read changes
       // what a map looks like, so the map should say which ones it wanted
       // rather than leaving it to be discovered by surveying the tree.
       unreadKeywordCounts.set(token, (unreadKeywordCounts.get(token) || 0) + 1);
@@ -4982,7 +5346,7 @@ function parseBZWMap(filename, { quiet = false, extraMessages = [] } = {}) {
     // `physics` / `end` (`CustomPhysicsDriver.cxx`). Registered by name (or
     // left to resolve by file-order index, the same as a `material` with no
     // `name`) for `phydrv` to look up later.
-    if (!current && !currentLink && !currentZone && !currentWeapon && !currentDefine
+    if (!current && !currentLink && !currentZone && !currentWeapon
       && !currentMaterial && !currentPhysicsDriver && !currentDynamicColor && !currentTextureMatrix
       && !currentWaterLevel
       && token === 'physics') {
@@ -5034,7 +5398,7 @@ function parseBZWMap(filename, { quiet = false, extraMessages = [] } = {}) {
     // A named, time-varying RGBA -- registered by name (or file-order index)
     // for a `material`'s own `dyncol` to look up later, the same as a
     // `physics` block is for `phydrv`.
-    if (!current && !currentLink && !currentZone && !currentWeapon && !currentDefine
+    if (!current && !currentLink && !currentZone && !currentWeapon
       && !currentMaterial && !currentPhysicsDriver && !currentDynamicColor && !currentTextureMatrix
       && !currentWaterLevel
       && token === 'dynamiccolor') {
@@ -5114,7 +5478,7 @@ function parseBZWMap(filename, { quiet = false, extraMessages = [] } = {}) {
     // `textureMatrix` / `end` (`CustomTextureMatrix.cxx`, `TextureMatrix.cxx`).
     // A named, time-varying UV transform -- registered the same way, for a
     // `material`'s own `texmat` to look up.
-    if (!current && !currentLink && !currentZone && !currentWeapon && !currentDefine
+    if (!current && !currentLink && !currentZone && !currentWeapon
       && !currentMaterial && !currentPhysicsDriver && !currentDynamicColor && !currentTextureMatrix
       && !currentWaterLevel
       && token === 'texturematrix') {
@@ -5379,7 +5743,7 @@ function parseBZWMap(filename, { quiet = false, extraMessages = [] } = {}) {
         type: 'tetra', name: null,
         definedIn: currentDefine ? currentDefine.name : null,
         vertexPositions: [],
-        shiftBzf: { x: 0, y: 0, z: 0 },
+        transformOps: [],
         faceMaterials: [0, 1, 2, 3].map(() => (
           { texture: 'mesh', textureUrl: null, color: null, noRadar: false, noLighting: false }
         )),
@@ -5401,13 +5765,9 @@ function parseBZWMap(filename, { quiet = false, extraMessages = [] } = {}) {
         if (current.vertexPositions.length < 4) {
           warn(`Not creating tetrahedron in ${mapLabel}, not enough vertices (${current.vertexPositions.length})`);
         } else {
-          const { shiftBzf } = current;
-          if (shiftBzf.x || shiftBzf.y || shiftBzf.z) {
-            current.vertexPositions = current.vertexPositions.map((v) => ({
-              x: v.x + shiftBzf.x, y: v.y + shiftBzf.y, z: v.z + shiftBzf.z,
-            }));
-          }
           const tetraMesh = buildTetraMesh(current);
+          tetraMesh.transformOps = current.transformOps;
+          applyMeshTransform(tetraMesh);
           if (currentDefine) {
             currentDefine.meshes.push(tetraMesh);
           } else {
@@ -5422,9 +5782,8 @@ function parseBZWMap(filename, { quiet = false, extraMessages = [] } = {}) {
           const [x, y, z] = words.slice(1).map(Number);
           current.vertexPositions.push({ x: x || 0, y: z || 0, z: -(y || 0) });
         }
-      } else if (token === 'shift') {
-        const [x, y, z] = words.slice(1).map(Number);
-        current.shiftBzf = { x: x || 0, y: z || 0, z: -(y || 0) };
+      } else if (readMeshTransformToken(current, token, words)) {
+        // See the same arm on `cone`/`arc`/`sphere` below.
       } else if (token === 'normals' || token === 'texcoords') {
         // See the comment above -- intentionally a no-op.
       } else if (BZW_PASSABILITY_KEYWORDS.has(token)) {
@@ -5458,7 +5817,7 @@ function parseBZWMap(filename, { quiet = false, extraMessages = [] } = {}) {
         definedIn: currentDefine ? currentDefine.name : null,
         isPyramid,
         posBzf: { x: 0, y: 0, z: 0 },
-        shiftBzf: { x: 0, y: 0, z: 0 },
+        transformOps: [],
         sizeBzf: isPyramid
           ? { x: MESHPYR_DEFAULT_BASE, y: MESHPYR_DEFAULT_BASE, z: MESHPYR_DEFAULT_HEIGHT }
           : { x: 10, y: 10, z: 10 },
@@ -5483,18 +5842,25 @@ function parseBZWMap(filename, { quiet = false, extraMessages = [] } = {}) {
         const coneMesh = buildConeMesh(current);
         if (!coneMesh) {
           warn(`Not creating ${current.isPyramid ? 'meshpyr' : 'cone'} in ${mapLabel}, invalid size/divisions/texsize`);
-        } else if (currentDefine) {
-          currentDefine.meshes.push(coneMesh);
         } else {
-          meshes.push(finalizeMeshGeometry(coneMesh));
+          coneMesh.transformOps = current.transformOps;
+          applyMeshTransform(coneMesh);
+          if (currentDefine) {
+            currentDefine.meshes.push(coneMesh);
+          } else {
+            meshes.push(finalizeMeshGeometry(coneMesh));
+          }
         }
         current = null;
       } else if (token === 'position' || token === 'pos') {
         const [x, y, z] = words.slice(1).map(Number);
         current.posBzf = { x: x || 0, y: y || 0, z: z || 0 };
-      } else if (token === 'shift') {
-        const [x, y, z] = words.slice(1).map(Number);
-        current.shiftBzf = { x: x || 0, y: y || 0, z: z || 0 };
+      } else if (readMeshTransformToken(current, token, words)) {
+        // `shift`/`scale`/`shear`/`spin` -- the ordered transform list,
+        // folded into one matrix and applied to the finished mesh at `end`,
+        // after this block's own `position`/`size`/`rotation`. That is
+        // upstream's order: `writeToGroupDef` builds the trio into a
+        // `MeshTransform` and then `append`s the stated list to it.
       } else if (token === 'size') {
         const [x, y, z] = words.slice(1).map(Number);
         current.sizeBzf = { x: x || 0, y: y || 0, z: z || 0 };
@@ -5552,7 +5918,7 @@ function parseBZWMap(filename, { quiet = false, extraMessages = [] } = {}) {
         definedIn: currentDefine ? currentDefine.name : null,
         isBox,
         posBzf: { x: 0, y: 0, z: 0 },
-        shiftBzf: { x: 0, y: 0, z: 0 },
+        transformOps: [],
         sizeBzf: isBox
           ? { x: MESHBOX_DEFAULT_BASE, y: MESHBOX_DEFAULT_BASE, z: MESHBOX_DEFAULT_HEIGHT }
           : { x: 10, y: 10, z: 10 },
@@ -5577,18 +5943,25 @@ function parseBZWMap(filename, { quiet = false, extraMessages = [] } = {}) {
         const arcMesh = buildArcMesh(current);
         if (!arcMesh) {
           warn(`Not creating ${current.isBox ? 'meshbox' : 'arc'} in ${mapLabel}, invalid size/divisions/ratio/texsize`);
-        } else if (currentDefine) {
-          currentDefine.meshes.push(arcMesh);
         } else {
-          meshes.push(finalizeMeshGeometry(arcMesh));
+          arcMesh.transformOps = current.transformOps;
+          applyMeshTransform(arcMesh);
+          if (currentDefine) {
+            currentDefine.meshes.push(arcMesh);
+          } else {
+            meshes.push(finalizeMeshGeometry(arcMesh));
+          }
         }
         current = null;
       } else if (token === 'position' || token === 'pos') {
         const [x, y, z] = words.slice(1).map(Number);
         current.posBzf = { x: x || 0, y: y || 0, z: z || 0 };
-      } else if (token === 'shift') {
-        const [x, y, z] = words.slice(1).map(Number);
-        current.shiftBzf = { x: x || 0, y: y || 0, z: z || 0 };
+      } else if (readMeshTransformToken(current, token, words)) {
+        // `shift`/`scale`/`shear`/`spin` -- the ordered transform list,
+        // folded into one matrix and applied to the finished mesh at `end`,
+        // after this block's own `position`/`size`/`rotation`. That is
+        // upstream's order: `writeToGroupDef` builds the trio into a
+        // `MeshTransform` and then `append`s the stated list to it.
       } else if (token === 'size') {
         const [x, y, z] = words.slice(1).map(Number);
         current.sizeBzf = { x: x || 0, y: y || 0, z: z || 0 };
@@ -5640,7 +6013,7 @@ function parseBZWMap(filename, { quiet = false, extraMessages = [] } = {}) {
         type: 'sphere', name: null,
         definedIn: currentDefine ? currentDefine.name : null,
         posBzf: { x: 0, y: 0, z: 10 },
-        shiftBzf: { x: 0, y: 0, z: 0 },
+        transformOps: [],
         sizeBzf: { x: 10, y: 10, z: 10 },
         rotationRad: 0,
         divisions: 4,
@@ -5660,18 +6033,25 @@ function parseBZWMap(filename, { quiet = false, extraMessages = [] } = {}) {
         const sphereMesh = buildSphereMesh(current);
         if (!sphereMesh) {
           warn(`Not creating sphere in ${mapLabel}, invalid size/divisions/texsize`);
-        } else if (currentDefine) {
-          currentDefine.meshes.push(sphereMesh);
         } else {
-          meshes.push(finalizeMeshGeometry(sphereMesh));
+          sphereMesh.transformOps = current.transformOps;
+          applyMeshTransform(sphereMesh);
+          if (currentDefine) {
+            currentDefine.meshes.push(sphereMesh);
+          } else {
+            meshes.push(finalizeMeshGeometry(sphereMesh));
+          }
         }
         current = null;
       } else if (token === 'position' || token === 'pos') {
         const [x, y, z] = words.slice(1).map(Number);
         current.posBzf = { x: x || 0, y: y || 0, z: z || 0 };
-      } else if (token === 'shift') {
-        const [x, y, z] = words.slice(1).map(Number);
-        current.shiftBzf = { x: x || 0, y: y || 0, z: z || 0 };
+      } else if (readMeshTransformToken(current, token, words)) {
+        // `shift`/`scale`/`shear`/`spin` -- the ordered transform list,
+        // folded into one matrix and applied to the finished mesh at `end`,
+        // after this block's own `position`/`size`/`rotation`. That is
+        // upstream's order: `writeToGroupDef` builds the trio into a
+        // `MeshTransform` and then `append`s the stated list to it.
       } else if (token === 'size') {
         const [x, y, z] = words.slice(1).map(Number);
         current.sizeBzf = { x: x || 0, y: y || 0, z: z || 0 };
@@ -5723,6 +6103,15 @@ function parseBZWMap(filename, { quiet = false, extraMessages = [] } = {}) {
         driveThrough: false, shootThrough: false, ricochet: false,
         texture: 'mesh', textureUrl: null, color: null, noRadar: false, noLighting: false,
         specular: null, emission: null, shininess: null, alphaThreshold: null,
+        noSorting: false, useTextureAlpha: true, useColorOnTexture: true,
+        // `MeshTransform`'s own ordered `shift`/`scale`/`shear`/`spin`
+        // list, plus the `position`/`size`/`rotation` trio that is shorthand
+        // for one of each -- both folded into one matrix at `end`, below.
+        transformOps: [],
+        xformPos: null, xformSize: null, xformRotation: 0,
+        // `drawInfo`'s own render-only surface, and the pools it may bring
+        // with it -- see `readMeshDrawInfoLine`. Null unless a map states one.
+        drawFaces: null, drawVertices: null, drawNormals: null, drawTexcoords: null,
         // `MeshDrawInfo`'s own `angvel` (#88, degrees/sec) -- upstream states
         // it inside an unrelated render-optimization sub-block bzo does not
         // otherwise read (`drawInfo { ... }`, see `server/remote-world-
@@ -5738,7 +6127,17 @@ function parseBZWMap(filename, { quiet = false, extraMessages = [] } = {}) {
       // the generic per-obstacle branches below, since nothing else parsed
       // in this function has a face nested inside it.
       const words = line.split(/\s+/);
-      if (currentMeshFace) {
+      if (token === 'drawinfo') {
+        currentDrawInfo = {
+          depth: 0, closed: false,
+          corners: [], vertices: [], normals: [], texcoords: [],
+          // Only the first `lod` is kept. Upstream picks one per frame by
+          // `lengthPerPixel` against the screen size (`MeshSceneNode::
+          // notifyStyleChange`); bzo has no LOD machinery, so it takes the
+          // one a map lists first, which is the highest detail.
+          lod: null, set: null,
+        };
+      } else if (currentMeshFace) {
         // Inside `face` / `endface`. Every property here is scoped to this
         // one face, which already started from the mesh's own defaults at
         // the moment `face` was read, below -- CustomMeshFace's own
@@ -5781,10 +6180,39 @@ function parseBZWMap(filename, { quiet = false, extraMessages = [] } = {}) {
         // `server/remote-world-import.cjs`). Worth a warning either way: an
         // operator who hand-wrote a genuinely empty mesh gets the same nudge
         // to remove it.
-        if (current.vertices.length > 0 && current.faces.length === 0) {
+        if (current.vertices.length > 0 && current.faces.length === 0
+          && !(current.drawFaces && current.drawFaces.length > 0)) {
           warn(`Ignoring mesh "${current.name || current.definedIn || '(unnamed)'}" in ${mapLabel}, `
             + `${current.vertices.length} vertices with no faces`);
         }
+        // The mesh's own transform, baked into its points here -- upstream
+        // hands the same folded matrix to `MeshObstacle`'s constructor
+        // (`CustomMesh::writeToGroupDef`), so it is part of what the mesh
+        // *is* before anything places it. A `group` instance's own transform
+        // then applies on top, the same order as upstream's, where the
+        // instance's modifier runs at `makeGroups` time.
+        //
+        // `position`/`size`/`rotation` are the older spelling of one scale,
+        // one spin about the vertical and one shift, in that order, and
+        // upstream prepends them to whatever the explicit list already holds
+        // (`xform.append(transform)`) rather than replacing it -- so a mesh
+        // may state both, and the trio happens first.
+        if (current.xformSize || current.xformRotation || current.xformPos) {
+          const oldStyle = [];
+          const size = current.xformSize;
+          if (size && (size[0] !== 1 || size[1] !== 1 || size[2] !== 1)) {
+            oldStyle.push({ type: 'scale', data: [size[0], size[1], size[2], 0] });
+          }
+          if (current.xformRotation) {
+            oldStyle.push({ type: 'spin', data: [0, 0, 1, current.xformRotation] });
+          }
+          const pos = current.xformPos;
+          if (pos && (pos[0] !== 0 || pos[1] !== 0 || pos[2] !== 0)) {
+            oldStyle.push({ type: 'shift', data: [pos[0], pos[1], pos[2], 0] });
+          }
+          current.transformOps = [...oldStyle, ...current.transformOps];
+        }
+        applyMeshTransform(current);
         if (currentDefine) {
           // Still a template in its own local frame -- `finalizeMeshGeometry`
           // runs later, once a `group` instance places it (or not at all, if
@@ -5816,6 +6244,20 @@ function parseBZWMap(filename, { quiet = false, extraMessages = [] } = {}) {
         current.decorative = true;
       } else if (token === 'angvel') {
         current.angvel = Number(words[1]) || 0;
+      } else if (readMeshTransformToken(current, token, words)) {
+        // `shift`/`scale`/`shear`/`spin` -- one ordered list, folded into a
+        // matrix at `end`. Unlike a box or a `group`, where bzo takes only a
+        // spin about the map's own vertical (nothing else survives an
+        // axis-aligned model), a mesh spins about any axis at all: its
+        // vertices are arbitrary points and the matrix is exact.
+      } else if (token === 'position' || token === 'pos') {
+        const [x, y, z] = words.slice(1).map(Number);
+        current.xformPos = [x || 0, y || 0, z || 0];
+      } else if (token === 'size') {
+        const [x, y, z] = words.slice(1).map(Number);
+        current.xformSize = [x ?? 1, y ?? 1, z ?? 1];
+      } else if (token === 'rotation' || token === 'rot') {
+        current.xformRotation = (Number(words[1]) || 0) * Math.PI / 180;
       } else if (token === 'face') {
         // CustomMeshFace's own constructor -- a snapshot of the mesh's
         // defaults as they stand right now, not a live reference to them:
@@ -5831,6 +6273,7 @@ function parseBZWMap(filename, { quiet = false, extraMessages = [] } = {}) {
           color: current.color, noRadar: current.noRadar, noLighting: current.noLighting,
           specular: current.specular, emission: current.emission, shininess: current.shininess,
           alphaThreshold: current.alphaThreshold,
+          ...bzwMaterialFlags(current),
         };
       } else if (BZW_PASSABILITY_KEYWORDS.has(token)) {
         Object.assign(current, BZW_PASSABILITY_KEYWORDS.get(token));
@@ -5947,6 +6390,18 @@ function parseBZWMap(filename, { quiet = false, extraMessages = [] } = {}) {
       const [, color] = line.split(/\s+/);
       const team = parseInt(color, 10);
       current.team = Number.isInteger(team) ? Math.max(1, Math.min(4, team)) : 1;
+    } else if (current && current.type === 'group' && token === 'tint') {
+      // `CustomGroup::read`'s own `tint` (`CustomGroup.cxx:58-67`) -- not a
+      // material property at all, and read nowhere else in a map. It
+      // multiplies each mesh face's diffuse RGBA component-wise
+      // (`getTintedMaterial`, `ObstacleModifier.cxx:158-176`; ambient,
+      // specular and emission are left alone there on purpose), and it is
+      // applied *after* whatever `matref`/`addtexture` the same instance
+      // states, so an instance can both replace a material and tint the
+      // replacement. Two nested instances multiply, which falls out of
+      // applying each level's own tint as the nesting unwinds.
+      const tint = parseBzwColor(line.split(/\s+/).slice(1));
+      if (tint) current.tint = tint;
     } else if (current && current.type === 'group'
       && (token === 'matref' || token === 'addtexture' || token === 'texture'
         || token === 'dyncol' || token === 'texmat')) {
@@ -5962,6 +6417,7 @@ function parseBZWMap(filename, { quiet = false, extraMessages = [] } = {}) {
         texture: null, textureUrl: null, color: null, noRadar: false, noLighting: false,
         dynamicColor: null, textureMatrix: null,
         specular: null, emission: null, shininess: null, alphaThreshold: null,
+        noSorting: false, useTextureAlpha: true, useColorOnTexture: true,
       };
       applyBzwMaterialToken(current.materialOverride, token, line.split(/\s+/));
     } else if (current && (BZW_FACE_GROUPS.has(token) || token === 'color' || token === 'diffuse'
@@ -6022,7 +6478,7 @@ function parseBZWMap(filename, { quiet = false, extraMessages = [] } = {}) {
             if (material.shininess != null) current.capShininess = material.shininess;
           }
           if (material.noRadar) current.noRadar = true;
-        } else if (refName) {
+        } else if (refName && refName !== '-1') {
           unresolvedMaterialRefs.add(refName);
         }
       } else if (keyword === 'addtexture' || keyword === 'texture') {
@@ -6046,7 +6502,7 @@ function parseBZWMap(filename, { quiet = false, extraMessages = [] } = {}) {
         if (referenced) {
           if (group !== 'caps') current.wallDynamicColor = referenced;
           if (group !== 'walls') current.capDynamicColor = referenced;
-        } else if (refName) {
+        } else if (refName && refName !== '-1') {
           unresolvedDynamicColorRefs.add(refName.toLowerCase());
         }
       } else if (keyword === 'texmat') {
@@ -6057,7 +6513,7 @@ function parseBZWMap(filename, { quiet = false, extraMessages = [] } = {}) {
         if (referenced) {
           if (group !== 'caps') current.wallTextureMatrix = referenced;
           if (group !== 'walls') current.capTextureMatrix = referenced;
-        } else if (refName) {
+        } else if (refName && refName !== '-1') {
           unresolvedTextureMatrixRefs.add(refName.toLowerCase());
         }
       } else if (keyword === 'noradar') {
@@ -6090,6 +6546,7 @@ function parseBZWMap(filename, { quiet = false, extraMessages = [] } = {}) {
           ricochet: !!current.ricochet,
           phydrv: current.phydrv || null,
           materialOverride: current.materialOverride || null,
+          tint: current.tint || null,
         };
         if (currentDefine) {
           currentDefine.groupInstances.push(instanceRequest);
@@ -6197,6 +6654,9 @@ function parseBZWMap(filename, { quiet = false, extraMessages = [] } = {}) {
     } else if (!current && !currentLink && !currentZone && !currentWeapon
       && UNSUPPORTED_TOP_LEVEL_KEYWORDS.has(token)) {
       unsupportedCounts.set(token, (unsupportedCounts.get(token) || 0) + 1);
+    } else if (current && BZW_INERT_MATERIAL_KEYWORDS.has(token)) {
+      // Read and dropped rather than tallied -- a box or pyramid stating one
+      // of these gets exactly what upstream gives it, which is nothing.
     } else {
       // Nothing above claimed this line. Every branch that reads a keyword is
       // one of the arms this falls off the end of, so reaching here means bzo
@@ -6205,6 +6665,165 @@ function parseBZWMap(filename, { quiet = false, extraMessages = [] } = {}) {
       // in `maps/` without any of them ever saying so.
       unreadKeywordCounts.set(token, (unreadKeywordCounts.get(token) || 0) + 1);
     }
+  }
+
+  // One line inside a `drawInfo { ... }` block (`MeshDrawInfo::parse`,
+  // `MeshDrawInfo.cxx:874-1029`, with `parseDrawLod`/`parseDrawSet` for the
+  // two nested levels). The block is upstream's render-optimized copy of the
+  // same surface the mesh's own `face` list describes -- a flat corner table
+  // plus GL draw commands over it -- and a real map may state *only* this,
+  // with no faces at all, which is how `RatsNest.bzw`'s own tank models are
+  // written and why bzo used to draw them as nothing.
+  //
+  // A corner is `vertex normal texcoord`, indexing the mesh's own pools --
+  // unless the block states pools of its own, which replace them for drawing
+  // (`MeshDrawInfo::clientSetup`, `:464-478`). Draw commands index corners.
+  function readMeshDrawInfoLine(mesh, info, token, words) {
+    // Inside a draw set: the commands themselves, and the per-set hints bzo
+    // has no use for.
+    if (info.depth === 2) {
+      if (token === 'end') {
+        info.set = null;
+        info.depth = 1;
+        return;
+      }
+      if (token === 'dlist' || token === 'sphere') return;
+      if (MESH_DRAW_MODES.has(token)) {
+        const indices = words.slice(1).map(Number).filter(Number.isInteger);
+        if (info.set) info.set.commands.push({ mode: token, indices });
+        return;
+      }
+      unreadKeywordCounts.set(token, (unreadKeywordCounts.get(token) || 0) + 1);
+      return;
+    }
+    // Inside a lod: its own screen-size threshold, and one draw set per
+    // material.
+    if (info.depth === 1) {
+      if (token === 'end') {
+        info.depth = 0;
+        return;
+      }
+      if (token === 'length' || token === 'lengthperpixel') return;
+      if (token === 'matref') {
+        const set = { materialRef: words[1] || '', commands: [] };
+        if (info.lod) info.lod.sets.push(set);
+        info.set = set;
+        info.depth = 2;
+        return;
+      }
+      unreadKeywordCounts.set(token, (unreadKeywordCounts.get(token) || 0) + 1);
+      return;
+    }
+    // The block's own body.
+    if (token === 'end') {
+      info.closed = true;
+      buildMeshDrawFaces(mesh, info);
+      return;
+    }
+    if (token === 'angvel') {
+      // Upstream's own home for it (`:910-926`). A mesh-level `angvel` is
+      // bzo's own spelling of the same thing (see the `mesh` branch above),
+      // and a map stating it here is stating it where bzflag reads it.
+      mesh.angvel = Number(words[1]) || 0;
+      return;
+    }
+    if (token === 'corner') {
+      const [v, n, t] = words.slice(1).map(Number);
+      info.corners.push({
+        vertex: Number.isInteger(v) ? v : -1,
+        normal: Number.isInteger(n) ? n : -1,
+        texcoord: Number.isInteger(t) ? t : -1,
+      });
+      return;
+    }
+    if (token === 'vertex') {
+      const [x, y, z] = words.slice(1).map(Number);
+      info.vertices.push({ x: x || 0, y: z || 0, z: -(y || 0) });
+      return;
+    }
+    if (token === 'normal') {
+      const [x, y, z] = words.slice(1).map(Number);
+      info.normals.push({ x: x || 0, y: z || 0, z: -(y || 0) });
+      return;
+    }
+    if (token === 'texcoord') {
+      const [u, v] = words.slice(1).map(Number);
+      info.texcoords.push({ u: u || 0, v: v || 0 });
+      return;
+    }
+    if (token === 'lod' || token === 'radarlod') {
+      // `radarlod` is a second, coarser copy for the radar alone. bzo draws
+      // its radar from the obstacle's own footprint rather than from mesh
+      // geometry, so it is walked for its `end` lines and otherwise dropped.
+      const lod = { sets: [] };
+      if (token === 'lod' && !info.lod) info.lod = lod;
+      info.depth = 1;
+      return;
+    }
+    // `extents`/`center`/`sphere` are bounds upstream precomputes and bzo
+    // derives itself; `option` is a renderer hint; `dlist` asks for a display
+    // list, which WebGL has no equivalent of. All read and dropped.
+    if (token === 'extents' || token === 'center' || token === 'sphere'
+      || token === 'option' || token === 'dlist') {
+      return;
+    }
+    unreadKeywordCounts.set(token, (unreadKeywordCounts.get(token) || 0) + 1);
+  }
+
+  // Turns a finished `drawInfo` block into the faces bzo draws it with. These
+  // are render-only, kept apart from the mesh's own `faces`: upstream draws
+  // from `drawInfo` and collides against the face list, and a mesh that
+  // states only a `drawInfo` -- every tank in `RatsNest.bzw` -- is decoration
+  // a tank drives straight through, which falls out of leaving `faces` empty.
+  function buildMeshDrawFaces(mesh, info) {
+    if (!info.lod || info.corners.length === 0) return;
+    // Pools of its own replace the mesh's for drawing, all three together
+    // (`clientSetup` switches on `rawVertCount` alone).
+    if (info.vertices.length > 0) {
+      mesh.drawVertices = info.vertices;
+      mesh.drawNormals = info.normals;
+      mesh.drawTexcoords = info.texcoords;
+    }
+    const drawFaces = [];
+    for (const set of info.lod.sets) {
+      // The set's own material, resolved the way every other `matref` is.
+      const material = {
+        texture: null, textureUrl: null, color: null, noRadar: false, noLighting: false,
+        dynamicColor: null, textureMatrix: null,
+        specular: null, emission: null, shininess: null, alphaThreshold: null,
+        noSorting: false, useTextureAlpha: true, useColorOnTexture: true,
+      };
+      applyBzwMaterialToken(material, 'matref', ['matref', set.materialRef]);
+      for (const command of set.commands) {
+        for (const poly of expandMeshDrawCommand(command.mode, command.indices)) {
+          const corners = poly.map((index) => info.corners[index]).filter(Boolean);
+          if (corners.length < 3) continue;
+          drawFaces.push({
+            vertexIndices: corners.map((corner) => corner.vertex),
+            normalIndices: corners.every((corner) => corner.normal >= 0)
+              ? corners.map((corner) => corner.normal) : [],
+            texcoordIndices: corners.every((corner) => corner.texcoord >= 0)
+              ? corners.map((corner) => corner.texcoord) : [],
+            texture: material.texture,
+            textureUrl: material.textureUrl,
+            color: material.color,
+            noRadar: material.noRadar,
+            noLighting: material.noLighting,
+            specular: material.specular,
+            emission: material.emission,
+            shininess: material.shininess,
+            alphaThreshold: material.alphaThreshold,
+            dynamicColor: material.dynamicColor,
+            textureMatrix: material.textureMatrix,
+            // Only here: this is the one route on which upstream's own
+            // renderer honours `noculling` -- see `applyBzwMaterialToken`.
+            noCulling: !!material.noCulling,
+            ...bzwMaterialFlags(material),
+          });
+        }
+      }
+    }
+    if (drawFaces.length > 0) mesh.drawFaces = drawFaces;
   }
 
   // Applies one `group` instance's composed transform (scale, then spin, then
@@ -6224,7 +6843,10 @@ function parseBZWMap(filename, { quiet = false, extraMessages = [] } = {}) {
   // a phydrv override only ever touches a face that *already* names some
   // driver (upstream's own comment: "only modify faces that already have a
   // physics driver") -- a face with none stays driver-less under a moving
-  // group. Building new face objects rather than mutating the member's own:
+  // group. A `tint` is mesh-only for the same reason, and multiplies each
+  // face's diffuse rather than replacing it, after any material override the
+  // same instance states. Building new face objects rather than mutating the
+  // member's own:
   // the same `define` this member came from may be instantiated again
   // elsewhere with a different override, and that later instance must not
   // see this one's.
@@ -6232,7 +6854,8 @@ function parseBZWMap(filename, { quiet = false, extraMessages = [] } = {}) {
     if (member.type !== 'mesh') return member;
     const hasPhydrvOverride = !!request.phydrv;
     const hasMaterialOverride = !!request.materialOverride;
-    if (!hasPhydrvOverride && !hasMaterialOverride) return member;
+    const tint = request.tint || null;
+    if (!hasPhydrvOverride && !hasMaterialOverride && !tint) return member;
     return {
       ...member,
       faces: member.faces.map((face) => {
@@ -6248,6 +6871,16 @@ function parseBZWMap(filename, { quiet = false, extraMessages = [] } = {}) {
           next.emission = request.materialOverride.emission;
           next.shininess = request.materialOverride.shininess;
           next.alphaThreshold = request.materialOverride.alphaThreshold;
+          Object.assign(next, bzwMaterialFlags(request.materialOverride));
+        }
+        // `tint` last, over whatever the material override just wrote --
+        // `ObstacleModifier::execute` tints the face's *replacement*
+        // material, not the one it replaced. A face with no diffuse of its
+        // own starts from `BzMaterial::reset`'s own opaque white, so
+        // multiplying leaves the tint itself.
+        if (tint) {
+          const base = next.color || [1, 1, 1, 1];
+          next.color = tint.map((component, i) => component * (base[i] ?? 1));
         }
         return next;
       }),
@@ -6348,6 +6981,11 @@ function parseBZWMap(filename, { quiet = false, extraMessages = [] } = {}) {
       // face in place. Reusing the template's array would let the last
       // instance placed overwrite every earlier one's collision plane.
       faces: mesh.faces.map((face) => ({ ...face })),
+      drawFaces: mesh.drawFaces ? mesh.drawFaces.map((face) => ({ ...face })) : null,
+      drawVertices: mesh.drawVertices ? mesh.drawVertices.map(placePoint) : null,
+      drawNormals: mesh.drawNormals
+        ? mesh.drawNormals.map((n) => transformGroupPoint(n, 1, 1, 1, cos, sin))
+        : null,
       // The point a spinning mesh (`angvel`, #88) rotates about -- upstream
       // has no per-mesh pivot of its own (a hand-authored `drawInfo` spins
       // about world origin), so this is just the mesh's own local (0,0,0)
@@ -7381,6 +8019,13 @@ function hashRemainingMapsInBackground() {
       // landed, the same reasoning `sweepMapCache`'s own summary line below
       // already follows.
       if (total > 0) log(`Converted ${converted} of ${total} bzw file(s) to cached json`);
+      // Everyone already connected is holding whatever list this trickle had
+      // reached when their `init` went out -- which, on a restart that
+      // clients auto-rejoin into (see AGENTS.md), is routinely a short one.
+      // Nothing else ever revisits it, so the picker would stay missing
+      // maps until a reload. One push at the end of the pass fixes that for
+      // every open client at once.
+      if (converted > 0) broadcastMapList();
       sweepMapCache();
       sweepStaleImports();
       precompress.start({ log }).catch((error) => logError('[BR] map hashing pass failed:', error));
@@ -14398,7 +15043,22 @@ function getAccelerationWindow(arrivalGap, clientSendGap) {
 // than waiting for a reconnect) and `init` never compute this two ways.
 function getViewableMapsList() {
   return Array.from(MAP_REGISTRY.values())
-    .map((entry) => ({ file: entry.fileName, hash: entry.hash, url: entry.url }));
+    .map((entry) => ({ file: entry.fileName, hash: entry.hash, url: entry.url }))
+    // Sorted here rather than left in registration order. The registry is
+    // filled in whatever order maps arrive -- the served map first, because
+    // it is registered before anything else, then the background trickle's
+    // own alphabetical pass, then any remote import whenever it lands -- and
+    // the entry dialog's picker steps through this list with left/right, so
+    // registration order reads as no order at all once one map has jumped
+    // the queue.
+    .sort((left, right) => left.file.localeCompare(right.file));
+}
+
+// Every client at once -- see `hashRemainingMapsInBackground`'s own call.
+function broadcastMapList() {
+  for (const player of players.values()) {
+    if (player.ws && player.ws.readyState === 1) sendMapList(player.ws);
+  }
 }
 
 function sendMapList(ws) {
