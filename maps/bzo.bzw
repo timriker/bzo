@@ -34,7 +34,7 @@ options
   -set _maxFlagGrabs 1
   -srvmsg "Bad flags ring the center; good flags ring those."
   -srvmsg "Team bases sit on the compass points; test geometry is in the corners."
-  -srvmsg "Use Settings->Debug Labels to see flag zone names"
+  -srvmsg "Use Settings->Debug Labels in bzo to see flag zone names"
   # bad flag falls off in this many seconds
   -st 10
   # bad flag also falls off after this many kills.
