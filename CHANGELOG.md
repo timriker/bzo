@@ -6,6 +6,8 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
 
 ## [Unreleased]
 
+## [1.2.65] - 2026-09-25
+
 ### Changed
 - A shot costs two draws for its colour rather than seven for itself. A bolt
   was a head sprite and a six-segment trail, each segment its own sprite with
