@@ -6,6 +6,8 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
 
 ## [Unreleased]
 
+## [1.2.59] - 2026-09-25
+
 ### Added
 - A material's `nosorting`, `notexalpha` and `notexcolor` are read: a
   translucent face that asks to keep writing depth does, a texture whose alpha
