@@ -3062,6 +3062,30 @@ const bzwMaterialFlags = (m) => ({
   useColorOnTexture: m.useColorOnTexture !== false,
 });
 
+// Everything a face carries off the material it names. The four generated
+// meshes -- `tetra`, `cone`/`meshpyr`, `arc`/`meshbox` and `sphere` -- resolve
+// a material per side and then assemble ordinary faces from it field by field,
+// so a field this does not name is silently dropped on the way. A hand-written
+// `mesh` face never had that problem: it starts from the mesh's own material
+// and keeps what it does not overwrite. Naming the whole set in one place is
+// what stops the two routes drifting apart again -- `texmat` and `dyncol` were
+// dead on an `arc` while the same material animated on a `mesh` beside it, and
+// the lighting properties went the same way.
+const bzwFaceMaterial = (m) => ({
+  texture: m.texture,
+  textureUrl: m.textureUrl,
+  color: m.color,
+  noRadar: m.noRadar,
+  noLighting: m.noLighting,
+  dynamicColor: m.dynamicColor ?? null,
+  textureMatrix: m.textureMatrix ?? null,
+  specular: m.specular ?? null,
+  emission: m.emission ?? null,
+  shininess: m.shininess ?? null,
+  alphaThreshold: m.alphaThreshold ?? null,
+  ...bzwMaterialFlags(m),
+});
+
 // `TetraBuilding::makeMesh`'s own fixed face topology (`MeshUtils.h`'s
 // `addFace` calls, `TetraBuilding.cxx:110-121`): four triangles, each
 // omitting one vertex, always in this order regardless of how a mapper
@@ -3107,9 +3131,7 @@ function buildTetraMesh(tetra) {
     vertexIndices, normalIndices: [], texcoordIndices: [],
     phydrv: null, noclusters: false, smoothBounce: false,
     driveThrough: false, shootThrough: false, ricochet: false,
-    texture: mats[i].texture, textureUrl: mats[i].textureUrl,
-    color: mats[i].color, noRadar: mats[i].noRadar, noLighting: mats[i].noLighting,
-    ...bzwMaterialFlags(mats[i]),
+    ...bzwFaceMaterial(mats[i]),
   }));
 
   const center = {
@@ -3302,10 +3324,7 @@ function buildConeMesh(cone) {
     phydrv: cone.phydrv, noclusters: false, smoothBounce: false,
     driveThrough: false, shootThrough: false, ricochet: false,
   };
-  const matFields = (m) => ({
-    texture: m.texture, textureUrl: m.textureUrl, color: m.color, noRadar: m.noRadar, noLighting: m.noLighting,
-    ...bzwMaterialFlags(m),
-  });
+  const matFields = bzwFaceMaterial;
   const [edgeMat, bottomMat, startMat, endMat] = cone.materials;
 
   // Every face below is wound the way upstream's own index math winds it,
@@ -3684,10 +3703,7 @@ function buildArcMesh(arc) {
     phydrv: arc.phydrv, noclusters: false, smoothBounce: false,
     driveThrough: false, shootThrough: false, ricochet: false,
   };
-  const matFields = (m) => ({
-    texture: m.texture, textureUrl: m.textureUrl, color: m.color, noRadar: m.noRadar, noLighting: m.noLighting,
-    ...bzwMaterialFlags(m),
-  });
+  const matFields = bzwFaceMaterial;
   const faces = built.faces.map(({ side, ...face }) => ({
     ...faceBase, ...face, ...matFields(arc.materials[side]),
   }));
@@ -3910,10 +3926,7 @@ function buildSphereMesh(sphere) {
     phydrv: sphere.phydrv, noclusters: false, smoothBounce: false,
     driveThrough: false, shootThrough: false, ricochet: false,
   };
-  const matFields = (m) => ({
-    texture: m.texture, textureUrl: m.textureUrl, color: m.color, noRadar: m.noRadar, noLighting: m.noLighting,
-    ...bzwMaterialFlags(m),
-  });
+  const matFields = bzwFaceMaterial;
   const outFaces = faces.map(({ side, ...face }) => ({
     ...faceBase, ...face, ...matFields(sphere.materials[side]),
   }));
@@ -15397,6 +15410,11 @@ wss.on('connection', (ws, req) => {
     // client fetches `url` once; the hash-named, `immutable` response spares
     // a reconnect the re-fetch entirely.
     world: { hash: LIVE_MAP_ENTRY.hash, url: LIVE_MAP_ENTRY.url },
+    // Which of `viewableMaps` the live match is being played on. `mapList`
+    // carries the same field, but only in reply to `getMaps`, which nothing
+    // asks for until somebody opens the View or Operator dialog -- so without
+    // it here a client has no name for the world it is standing in.
+    currentMap: MAP_SOURCE,
     // Every map hashed so far, for the join dialog's Map Viewer picker
     // (issue #68). A map still hashing in the background is simply absent
     // until a later `init` -- i.e. until the player reloads -- rather than

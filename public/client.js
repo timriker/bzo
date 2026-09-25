@@ -143,7 +143,7 @@ import {
 } from './hud.js';
 import {
   renderManager, DEFAULT_MUZZLE_HEIGHT, GHOST_ALPHA_SCALE, GHOST_SCALE, meshSpinRadians,
-  reportAlphaWithoutThreshold, TANK_NAV_LIGHTS_NAME, WORLD_LABEL_RENDER_ORDER,
+  reportAlphaWithoutThreshold, TANK_NAV_LIGHTS_NAME,
 } from './render.js';
 import { describeMeasurements, describeRenderCapabilities } from './capabilities.mjs';
 import {
@@ -861,25 +861,38 @@ function readViewPosTarget() {
 const autoViewPosTarget = readViewPosTarget();
 
 // The current view, as a link -- what the "Share View Link" button hands
-// back. Only meaningful while genuinely in Map Viewer: a live match has no
-// `viewmap` of its own to send someone back to, so this is null rather than
-// a link to nowhere in particular otherwise. `cam=` is omitted for a roam
-// view the link format cannot name (`roamViewNeedsTarget`'s own list --
-// TRACK/FOLLOW/FPS/FLAG all ride a specific player or flag), leaving the
-// receiving end to fall back to its own default rather than claim a view
-// this one is not actually in.
+// back. It names the map actually on screen: the staged or joined Map Viewer
+// world while one is up, and the live match's own map otherwise. The picker's
+// `selectedViewMapFile` is not that map -- the entry dialog stages the first
+// map on the list into it whether or not anyone is heading for Map Viewer, so
+// reading it handed a player in a live match a link to somebody else's map.
+// `cam=` is omitted for a roam view the link format cannot name
+// (`roamViewNeedsTarget`'s own list -- TRACK/FOLLOW/FPS/FLAG all ride a
+// specific player or flag), leaving the receiving end to fall back to its own
+// default rather than claim a view this one is not actually in.
 function buildShareViewLink() {
-  if (!selectedViewMapFile) return null;
+  const mapFile = isPreviewingAltWorld() ? previewedMapFile : currentMapFile;
+  // A link is only worth handing over for a map this server has hashed and
+  // will serve to whoever opens it -- which the served map is, but a `random`
+  // world generated at startup is not.
+  if (!mapFile || !availableViewMaps.some((entry) => entry.file === mapFile)) return null;
   const camNames = {
     [ROAM_VIEW.FREE]: 'free',
     [ROAM_VIEW.DRIVE_FP]: 'fp',
     [ROAM_VIEW.DRIVE_TP]: 'tp',
     [ROAM_VIEW.OVERVIEW]: 'overview',
   };
-  const cam = camNames[roamView];
+  // An observer's camera is a roam view; a playing tank's is its own setting,
+  // and the two share the link's vocabulary but not their state.
+  const playerCamNames = {
+    'first-person': 'fp',
+    'third-person': 'tp',
+    overview: 'overview',
+  };
+  const cam = isObserver() ? camNames[roamView] : playerCamNames[cameraMode];
   const deg = ((playerRotation * 180) / Math.PI).toFixed(1);
   const pos = `${playerX.toFixed(1)},${playerY.toFixed(1)},${playerZ.toFixed(1)},${deg}`;
-  const query = `viewmap=${encodeURIComponent(selectedViewMapFile)}${cam ? `&cam=${cam}` : ''}&pos=${pos}`;
+  const query = `viewmap=${encodeURIComponent(mapFile)}${cam ? `&cam=${cam}` : ''}&pos=${pos}`;
   return `${window.location.origin}${window.location.pathname}?${query}`;
 }
 let selectedVoiceInputDeviceId = '';
@@ -4197,7 +4210,6 @@ function ensureSupportSurfaceDebugMarker() {
   );
   cap.position.y = 4.6;
   const label = new THREE.Sprite(new THREE.SpriteMaterial({ transparent: true, depthTest: false, depthWrite: false }));
-  label.renderOrder = WORLD_LABEL_RENDER_ORDER;
   label.position.set(0, 5.7, 0);
   label.scale.set(3.4, 0.85, 1);
   markerGroup.userData.nameLabel = label;
@@ -4431,7 +4443,6 @@ function ensurePacketMotionDebug(targetObject, mode = 'received') {
   turnIndicator.userData.baseOffset = 1.0;
 
   const label = new THREE.Sprite(new THREE.SpriteMaterial({ transparent: true, depthTest: false, depthWrite: false }));
-  label.renderOrder = WORLD_LABEL_RENDER_ORDER;
   label.position.set(0, 1.7, 0);
   label.scale.set(4.2, 0.95, 1);
 
@@ -6016,6 +6027,9 @@ function handleServerMessage(message) {
       // Every map hashed so far (issue #68's Map Viewer picker) -- a fresh
       // connection, a fresh list, and no preview staged against the old one.
       availableViewMaps = Array.isArray(message.viewableMaps) ? message.viewableMaps : [];
+      // Which of them the live match is on, so a share link made without ever
+      // opening the View dialog still names the world it was made in.
+      currentMapFile = message.currentMap || '';
       selectedViewMapFile = null;
       previewedMapFile = null;
       liveWorldData = null;
@@ -8724,6 +8738,13 @@ function applyTankAlpha(tank, alpha) {
     // painting over it. They go with the tank when it is hidden outright,
     // which is the only fading upstream's own lights do.
     if (child.name === TANK_NAV_LIGHTS_NAME) return;
+    // The callsign, for the same reason and then some. It is a label over the
+    // tank rather than a part of it, and an opaque material is not in the
+    // transparent pass at all -- so no render order can keep it over the
+    // alpha-textured world, whose every bush, teleporter and beacon is drawn
+    // after the whole opaque queue. Its own alpha is set where it is built:
+    // solid on the tank, `GHOST_ALPHA_SCALE` on the ghost's copy.
+    if (child.isSprite) return;
     const materials = Array.isArray(child.material) ? child.material : [child.material];
     for (const material of materials) {
       material.transparent = !opaque || scale < 1;

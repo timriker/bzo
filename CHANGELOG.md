@@ -6,6 +6,45 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
 
 ## [Unreleased]
 
+## [1.2.63] - 2026-09-25
+
+### Fixed
+- A tank's callsign is hidden by what stands in front of it and by nothing
+  else. The fade that every tank's materials go through was turning the
+  callsign's material opaque along with the hull, which dropped the name out of
+  the transparent pass entirely -- drawn before every alpha-textured face in
+  the world and painted over by all of them, however far behind the name they
+  stood. Names now write depth and sort with the scene, so a projected shadow,
+  a track mark or a merged obstacle behind a name is rejected where the name is
+  nearer, while a panel in front of it covers it again.
+- `arc`, `cone`/`meshpyr`, `sphere` and `tetra` draw with the whole of the
+  material they name. The four shapes BZFlag expands into meshes were
+  assembling their faces from a partial copy, so `dyncol`, `texmat`,
+  `specular`, `emission`, `shininess` and `alphathresh` were dropped on the way
+  and a material that animated on a `mesh` sat still on an `arc` beside it.
+  This reaches imported maps as well as bzo's own.
+- Faces animating from the same named `dynamicColor` or `textureMatrix` share
+  one material again. The block's name is what identifies it now: the server
+  resolves one per block and hands it to every face that names it, and
+  serializing the world gave each face its own copy -- which split a
+  sixteen-division `arc` into sixteen materials and sixteen animation updates a
+  frame.
+- Share View Link names the map on screen -- the previewed world in Map Viewer,
+  the live match's map otherwise -- rather than the entry dialog's map picker,
+  which is seeded with the first map on the list for every player whether or
+  not they are heading for Map Viewer. `cam=` reads a playing tank's own camera
+  rather than always reporting a roaming view it is not in.
+
+### Changed
+- The teleporter proximity wash is the last thing the world draws, which is
+  where BZFlag runs it: `renderDimming` closes `SceneRenderer::render` and the
+  HUD is drawn over the finished frame afterwards.
+- `bzo.bzw`: the beacon and stripe test quads stand as tall as the material
+  test panels beside them, so the row reads as one set. The tower platform's
+  caution band scrolls, and a second inward-facing band inside the disc means
+  it reads from under the deck -- through the see-through underside -- as well
+  as from outside, which a single-sided face cannot do on its own.
+
 ## [1.2.62] - 2026-09-25
 
 ### Fixed

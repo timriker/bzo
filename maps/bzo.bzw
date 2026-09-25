@@ -1756,8 +1756,8 @@ define anim_stripe_quad
   mesh
     vertex -1.5 0 0
     vertex 1.5 0 0
-    vertex 1.5 0 4
-    vertex -1.5 0 4
+    vertex 1.5 0 7
+    vertex -1.5 0 7
     texcoord 0 0
     texcoord 1 0
     texcoord 1 1
@@ -1784,8 +1784,8 @@ define anim_beacon_quad
   mesh
     vertex -1.5 0 0
     vertex 1.5 0 0
-    vertex 1.5 0 4
-    vertex -1.5 0 4
+    vertex 1.5 0 7
+    vertex -1.5 0 7
     texcoord 0 0
     texcoord 1 0
     texcoord 1 1
@@ -1963,6 +1963,40 @@ group support
   shift 100 -42 0
 end
 
+# The hazard band around the platform below, marching around the rim. The
+# `anim_stripe_quad` sign on the field is the same mechanism on a flat quad;
+# this is it on a curved surface, where the shift runs along the rim rather
+# than up a face, so one texture matrix is tested against both. Slow on
+# purpose -- it marks an edge to watch out for rather than asking to be
+# looked at.
+textureMatrix
+  name platform_stripe_scroll
+  shift 0.2 0
+end
+
+material
+  name platform_caution
+  addtexture caution
+  texmat platform_stripe_scroll
+end
+
+# The same band read from the inside, which needs the opposite shift to travel
+# the same way around the platform. A ring's inside wall runs its texcoords
+# *down* around the ring where the outside wall runs them up -- upstream's own
+# index math, `((divisions + (x % 2)) * 2) - (x + (i * 2))` against the outside
+# face's `x + (i * 2)` (`ArcObstacle::makeRing`) -- so one `shift` drives the
+# two faces in opposite directions and they have to be written as a pair.
+textureMatrix
+  name platform_stripe_scroll_inner
+  shift -0.2 0
+end
+
+material
+  name platform_caution_inner
+  addtexture caution
+  texmat platform_stripe_scroll_inner
+end
+
 # A metre-thick disc resting on the bracket, sixteen divisions rather than
 # hix's own eight so it reads as round rather than octagonal. Radius 8 puts
 # its rim exactly over the cap pieces' own reach, so the bracket meets it at
@@ -1974,7 +2008,40 @@ arc
   divisions 16
   top matref concrete
   bottom matref seethrough
-  outside texture caution
+  outside matref platform_caution
+end
+
+# The same band facing the other way, so the rim reads from under the deck as
+# well as from outside it. A mesh face is single-sided and there is no flag
+# that changes it: `noculling` sets GL state that a plain face never reaches,
+# because `MeshPolySceneNode::cull` (`MeshPolySceneNode.cxx:255`) drops the
+# whole node first -- "cull if eye is behind (or on) plane" -- and only a mesh
+# drawn from a `drawInfo` block escapes that test. So the second side has to be
+# geometry, and a ring is the stock way to write it: a solid `arc` has no
+# inside edge at all (`ArcObstacle.cxx:97`, and `materials[Inside]` appears
+# only inside `makeRing`), while a ring's inside wall carries the inward normal
+# `n = (-cos, -sin)` (`:454`) this needs.
+#
+# Which side you see is decided per face by where your eye is, not by where the
+# platform is: from outside, the disc's own rim faces you and this ring's does
+# not; from anywhere inside the rim's cylinder -- looking up through the
+# `seethrough` underside -- it is the other way round, and the far side of the
+# band shows through the fence. One face of the pair, always, from every angle.
+#
+# Wholly inside the disc (radius 7.85 to 7.95 against its 8, and 14.02 to 14.98
+# against its 14 to 15) so no face of it is coplanar with the disc's rim, top or
+# bottom: coincident faces would trade the missing band for depth fighting.
+# `passable` because it is a decoration -- the disc around it is what a tank
+# drives on and what a shot hits. `ratio` is upstream's own wall fraction,
+# `inrad = size * (1 - ratio)` (`ArcObstacle.cxx:153`), not an inner radius.
+arc
+  name tower_platform_band
+  position 100 -42 14.02
+  size     7.95 7.95 0.96
+  ratio    0.0125
+  divisions 16
+  passable
+  matref platform_caution_inner
 end
 
 # A spinning tank over the map centre.
