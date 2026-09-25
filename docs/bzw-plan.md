@@ -28,6 +28,18 @@ placeholder text where an example should be -- so those four are validated
 against `$HOME/bzflag/src/bzfs/Custom{Arc,Cone,Sphere,Tetra}.cxx` directly
 rather than against any map, real or documented, until one turns up.
 
+**`scripts/survey-live-maps.mjs` is how "what do real maps use" gets
+answered.** It asks the public list server what is running, imports each
+server's live world through bzo's own `POST /list/import`, and reports what
+bzo's parser said it could not read. An imported map is bzo's own
+re-serialization of the *compiled* world off the wire, so what it measures is
+what a real server actually runs rather than what somebody typed: the source
+map's comments, its `define` names and any keyword the compiled world drops
+are gone before bzo ever sees them. The server's own world variables do
+survive -- the import enters as a momentary observer to collect them and
+writes the non-default ones back as `-set` lines -- so `-set` usage is
+measured here like any other keyword.
+
 **Once a keyword works, give it a home and delete the section here.** A
 per-obstacle keyword (mesh, group, material, phydrv) gets a labelled corner of
 `bzo.bzw`, the same treatment every obstacle and passability keyword already
@@ -44,6 +56,37 @@ whichever section documents it, with the same rigor -- upstream source, the
 conversion bzo applies, what a mapper needs to know. This plan file shrinks as
 sections close, down to nothing; git history holds the record of what closed,
 so nothing here should say "done" and stay.
+
+### Live servers that exercise each gap
+
+Re-import one of these to test a section (`npm run dev`, then the join
+dialog's "Import Remote Map", or `scripts/survey-live-maps.mjs --server
+<host:port>`). The address is the durable pointer, not the file:
+`maps/import-*.bzw` is a regeneratable cache and is gitignored. These were
+the maps running at the time of the survey; a server that rotates maps may
+be playing something else by the time you read this.
+
+| Gap | Server | Map |
+| --- | --- | --- |
+| non-vertical `spin` (24 lines) | `bmbz.ducatileague.org:6004` | LouMan's Mystic Valley |
+| non-vertical `spin` (11) | `bmbz.ducatileague.org:5152` | Airfield Attack! |
+| non-vertical `spin` (9) | `bmbz.ducatileague.org:6002` | INCOMING! :: by ahs3 |
+| zone `flag <type>` | `bmbz.ducatileague.org:5157` | Island Hopping |
+| zone `flag <type>` | `bmbz.ducatileague.org:5160` | Castle Warfare |
+| `spheremap` | `bmbz.ducatileague.org:5185` | FATALITY by tankatek |
+| `occluder` | `1purplepanzer.mooo.com:4101` | Desert War |
+| `angular`/`slide` physics | `bmbz.ducatileague.org:5179` | BMBZ: Eria Ziel |
+| missing `explode1` texture | `bmbz.ducatileague.org:5164` | LouMan's Pandemonium |
+| missing `treads` texture | `bmbz.ducatileague.org:5198` | Traxion Radial by GEP |
+| missing `dusty_flare`/`puffs` | `bmbz.ducatileague.org:5185` | FATALITY by tankatek |
+| missing `blend_flash` texture | `bmbz.ducatileague.org:5178` | Nix Dodgeball by R3lax |
+| missing `root` texture | `1vs1.catay.be:5155` | 1vs1 fancy style |
+| an `arc` bzo refuses to build | `bmbz.ducatileague.org:5162` | Pool Table by GEP |
+
+Group-placed teleporter links are broken on import for a different reason --
+a bug, not a missing keyword: see issue #130, reproduced on
+`bmbz.ducatileague.org:5181` (Obstacle Course) and
+`bmbz.leaguesunited.org:5198` (HiX).
 
 **Map Viewer previews most of this without a live match.** Picking a map in
 the join dialog's Map Viewer loads and renders its geometry immediately, and
@@ -108,12 +151,11 @@ What is left:
       representation in bzo's axis-aligned box/pyramid model at all.
 - [ ] `scale` stated directly on a plain box or pyramid, no `group` involved.
 - [ ] A `spin` about anything but the vertical axis -- tips a shape out of
-      bzo's axis-aligned model the same way `shear` does. Only real local use
-      is `ahs3_INCOMING.bzw`'s "3way" groups, and it is moot there today: that
-      define is pure `mesh`, so there is nothing yet to tip. Revisit once mesh
-      geometry lands, alongside a general oriented box/pyramid representation
-      or upstream's own mesh-conversion fallback -- whichever this needs by
-      then.
+      bzo's axis-aligned model the same way `shear` does. The most common
+      thing bzo drops on a real map: 63 such lines across 7 of the 54 live
+      servers `scripts/survey-live-maps.mjs` imported, one map alone
+      accounting for 24. Needs a general oriented box/pyramid
+      representation, or upstream's own mesh-conversion fallback.
 
 ## Materials and appearance
 
@@ -180,25 +222,14 @@ mesh geometry does too.
       `addtexture`'d picture's UVs upstream's own way, rather than every
       obstacle of a kind sharing that kind's own baked-in tiling regardless
       of what material it wears.
-- [x] `dynamicColor` and `textureMatrix` -- animated tint and scrolling/
-      rotating UVs, and the `dyncol`/`texmat` lines that pull them into a
-      `material`. Validated against three real maps that use both
-      (`ahs3_Ironside_Battlefield.bzw`, `dw_missilewar3.bzw`,
-      `import-Planet-MoFo.com_4202.bzw`), plus `maps/bzo.bzw`'s own
-      `PD_Conveyor`/`PD_Death` pads for the box/pyramid side -- see "Animated
-      materials" in `docs/bzw.md`, including the one remaining assumption
-      (a wall/cap slot with both a static tint and a `dyncol` at once).
-- [x] `matref`/`addtexture` on a `group` instance -- not the only-if-unset
-      shape assumed here originally. Checked directly against upstream's own
-      `ObstacleModifier::execute` (`ObstacleModifier.cxx:179-223`): it never
-      touches a plain box or pyramid member at all, and on a mesh member it
-      *replaces* every face's material outright, unconditionally, rather
-      than filling in one a face left unset. `import-Planet-MoFo.com_4202.bzw`'s
-      `billboard-image` define is the real map that exercises this -- one
-      shared mesh, a different `matref` per `group` instance selecting a
-      different billboard picture each time. `tint` (a separate multiplicative
-      colour modifier, distinct from `matref`'s own `color`) has no real map
-      sample yet and is not read.
+- [ ] Stock textures bzo ships no PNG for, each named by a real map and
+      each falling back to the obstacle's plain default: `explode1`,
+      `treads`, `blend_flash`, `puffs`, `dusty_flare`, `flag`, `root` (10
+      names across 10 of the 54 live maps surveyed). Several are BZFlag's
+      own effect textures rather than wall textures, so some belong with
+      `docs/effects-plan.md` rather than here.
+- [ ] `spheremap` -- a material's environment-mapped texture coordinates,
+      dropped on 4 of the 54 live maps surveyed.
 
 ## Physics drivers
 
@@ -211,8 +242,8 @@ full account of what a mapper can rely on now.
 and 5 `death` instances across the 21 real maps fetched to validate this
 section, none of them `angular`, `radial`, or `slide`). `phydrv` resolves
 against a named driver registry the same digit-first-then-name way `matref`
-resolves, and a `group` instance's own `phydrv` overrides a member's only
-when the member sets none, the same shape `matref`/tint already get.
+resolves, and a `group` instance's own `phydrv` reaches a mesh member's
+faces on upstream's own terms -- see "Physics drivers" in `docs/bzw.md`.
 `resolvePhysicsDriverAt` (the shared `collision` pair) resolves a driver off
 an obstacle/face both sides already agree they found, and can't disagree
 about -- but the two sides find that obstacle two different ways, matching
@@ -234,27 +265,6 @@ two different upstream mechanisms rather than one:
   exactly on solid ground read as *clear* -- backwards for "what am I on"),
   which is why the death driver silently never fired until this existed.
 
-- [x] Parse `physics` / `end` into a named driver table, and `phydrv` on a
-      box, pyramid, group instance, or mesh face into a reference onto it.
-- [x] Add a `linear` driver's velocity to a tank's own motion, client-side,
-      keyed off `lastMotionObstacle` the same way upstream reads a driver id
-      assigned on the previous frame's support check.
-- [x] Anti-cheat: `validateMovement`'s drift check adds the same `linear`
-      contribution to its own extrapolation, so an honest conveyor rider
-      doesn't trip `linearDriftThreshold`. Server-side this goes through
-      `findPhysicsSurfaceObstacle` rather than `lastMotionObstacle` (the
-      server has no equivalent to track), so it is slightly more permissive
-      than the client -- a `driveThrough` linear driver could clear the
-      drift check server-side even though the client itself never applies
-      that push. Permissive is the safe direction for anti-cheat slack, and
-      no real map gives a `linear` driver a `driveThrough` face, so this is
-      parked rather than fixed.
-- [x] `death` kills a tank outright through the existing `killPlayer`/
-      `applyDeath` path (the same one self-destruct and run-over already
-      use), carrying the driver's own message as a new `deathMessage` field
-      rather than through `reason`, which every other caller already uses as
-      a fixed lookup key rather than display text.
-
 What's left:
 
 - [ ] `angular` (a rotation about a point) and `slide` (removes friction
@@ -267,16 +277,17 @@ What's left:
       `PhysicsDriver::getRadialVel`/`getRadialPos` consumer anywhere in its
       own renderer), the same shelved-feature shape as `combineMode: decal`
       under "Materials" above.
-- [x] `phydrv` on a `group` instance reaching a mesh member's own faces --
-      not an only-if-unset override the way this line first assumed either
-      (see "Materials and appearance" above for the same correction on
-      `matref`): upstream only ever replaces the driver on a face that
-      *already* names one (`ObstacleModifier::execute`,
-      `ObstacleModifier.cxx:210-221`, upstream's own comment: "only modify
-      faces that already have a physics driver"), and never touches a plain
-      box or pyramid member at all. `import-Planet-MoFo.com_4202.bzw`'s
-      `base_pillar` define (`base_oval`'s `down5`/`down11`) is the real map
-      that exercises this.
+
+## Zones and occluders
+
+- [ ] A zone's `flag <type>` qualifier -- "flags of this type respawn here",
+      distinct from `zoneflag <type> [count]`, which is read and puts flags
+      into the world. Dropped on 9 of the 54 live maps surveyed, the most
+      widespread single keyword bzo does not read. `CustomZone::read`.
+- [ ] `occluder` -- a mesh marked as blocking what is behind it, upstream's
+      own visibility cull. One map of 54. bzo culls through three.js's own
+      frustum culling and nothing else, so this is a rendering-speed
+      keyword with no gameplay meaning; last in line here for that reason.
 
 ## Leftovers
 

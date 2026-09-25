@@ -1,0 +1,54 @@
+# A world where tanks cannot shoot: `-ms 0`, upstream's own "tanks will not be
+# able to shoot". One purpose, named for it, the way noWalls.bzw and water.bzw
+# each carry the one map-wide setting they are about -- an options block holds
+# exactly one shot count, so this cannot share a map with anything else.
+#
+# What to look for: no shot bar beside the control box (and none in XR), the
+# trigger doing nothing at all, and the load saying
+# "Shots: no shot slots -- tanks cannot shoot on this world".
+
+world
+  name No Shots
+  size 200
+end
+
+options
+  -srvmsg "Nobody can shoot here. Drive."
+  -ms 0
+end
+
+# Something to drive on and around, so the map is worth standing in.
+box
+  name centre_block
+  position 0 0 0
+  size 20 20 6
+  rotation 0
+end
+
+pyramid
+  name north_ramp
+  position 0 -40 0
+  size 12 12 10
+  rotation 0
+end
+
+pyramid
+  name south_ramp
+  position 0 40 0
+  size 12 12 10
+  rotation 0
+end
+
+box
+  name east_wall
+  position 45 0 0
+  size 4 25 8
+  rotation 0
+end
+
+box
+  name west_wall
+  position -45 0 0
+  size 4 25 8
+  rotation 0
+end

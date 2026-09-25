@@ -1450,6 +1450,17 @@ export function updateShotStatus({ myPlayerId, projectiles, gameConfig, now = Da
   if (!hud || !myPlayerId || !gameConfig) return;
   const { canvas: shotStatus, controlBox, ctx } = hud;
   const maxSlots = normalizeShotSlotCount(gameConfig.SHOT_MAX_ACTIVE);
+  // `-ms 0`: a world where tanks cannot shoot has no slots to report on, so
+  // the bar goes away entirely rather than standing there empty. Hidden
+  // through the same state the control box's own disappearance uses, so
+  // whichever reason came first, the canvas ends up in one known state.
+  if (maxSlots === 0) {
+    if (shotStatusRenderState.hidden !== true) {
+      shotStatusRenderState.hidden = true;
+      shotStatus.style.visibility = 'hidden';
+    }
+    return;
+  }
   const indicatorWidth = Math.max(18, Math.round(window.innerWidth / 50));
   const indicatorHeight = Math.max(8, Math.round(window.innerHeight / 80));
   const indicatorSpace = Math.max(2, Math.round(indicatorHeight / 10) + 2);

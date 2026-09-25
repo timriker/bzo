@@ -290,11 +290,24 @@ bzo messages with no counterpart upstream: everything voice
 `server/remote-world-import.cjs` is already a partial bzfs client: it dials a
 server's TCP port, completes the `BZFS0221` handshake, and asks
 `MsgQueryGame`, `MsgWantSettings`, `MsgWantWHash` and `MsgGetWorld`, decoding
-the binary world into bzw text which then becomes an ordinary bzo world. It
-deliberately never sends `MsgEnter`, so it never occupies a player slot --
-bzfs answers all four to any connection.
+the binary world into bzw text which then becomes an ordinary bzo world. bzfs
+answers all four to any connection, entered or not.
 
-That covers the world download and the game settings. A proxy that let a
+It then does send `MsgEnter`, once the world is already in hand, and this
+costs a seat. A bzfs sends its BZDB only from `addPlayer`, after a player has
+actually been accepted (`bzfs.cxx:2361-2365`), so `_tankSpeed`, `_gravity`
+and every other world variable can only be read by briefly being on the
+server: one observer slot named `bzo-import`, one join and one part in
+everybody's chat, then `MsgExit`. What comes back is written into the
+exported map as `-set` lines -- only the values that differ from upstream's
+own defaults (`server/bzdb-defaults.cjs`, generated from `globalDBItems` by
+`scripts/gen-bzdb-defaults.mjs`), and including names bzo does not read
+itself, because a map played at `_tankSpeed 40` should say so in the file.
+A rejected or timed-out join costs the import nothing: everything above it
+already arrived, and the map loads without `-set`. `enterForVariables: false`
+skips the join for a caller that would rather stay invisible.
+
+That covers the world download, the game settings and the world variables. A proxy that let a
 browser *play* on a real server would need the rest: the join handshake and
 its initial burst, pack and unpack for the remaining codes, and an answer to
 the authority inversion above -- something on bzo's side has to be willing to

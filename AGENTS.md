@@ -1412,6 +1412,16 @@ anything. A client fetches and renders whichever world it needs (live or
 previewed) through the same `loadWorldFile`/`applyWorldData` pair; there is no
 separate `worldOverride` message.
 
+**A preview drives by the previewed map's physics.** A map's own
+`_tankSpeed`/`_gravity`/`_jumpVelocity`/shot variables and its `-ms` ride the
+cached world file as `gameplay` (`deriveMapGameplay`, server.js), and
+`applyWorldData` lays them over the client's own `gameConfig` for as long as
+that map is on screen -- `liveGameConfig` keeps `init`'s copy so coming back
+is dropping the overlay rather than re-fetching. A variable the previewed map
+says nothing about keeps the live match's value. Jumping and ricochet are not
+in it (bzo forces both on) and neither are the flag variables, since a preview
+suppresses every flag anyway. See "Map physics" in `docs/bzw.md`.
+
 **World size is the map's own data, not config.** `parseBZWMap` returns
 `mapSize` from a map's `world size` line rather than writing it into
 `GAME_CONFIG.MAP_SIZE` -- the live map's own load still does apply it there at
@@ -1811,8 +1821,10 @@ BZFlag derives shot timing from `_reloadTime`, which itself defaults to
 
 So firing continuously sustains exactly `maxShots` shots in flight. bzo derives
 `SHOT_RELOAD_TIME` the same way, after the `server.json` overrides are applied
-and again after a map's `-ms`, so changing `shotMaxActive`, `shotSpeed`, or
-`shotDistance` keeps the relation intact. With the defaults and one slot that is
+and again once the map's own physics are (its `-ms`, `_reloadTime`, `_shotSpeed`
+and `_shotRange` together, in one pass), so changing `shotMaxActive`,
+`shotSpeed`, or `shotDistance` keeps the relation intact. A map stating
+`_reloadTime` replaces the derived basis with its own. With the defaults and one slot that is
 3500ms; `maps/hix.bzw` asks for five and gets 700ms.
 
 ### The server does not enforce a reload timer
@@ -2995,6 +3007,26 @@ since its control panel is not windowed at all. `scrollChatPage` and
 interpret. Switching tabs always drops back to that tab's newest message,
 matching what resetting its offset to zero meant before.
 
+**`nodemon.json` does not watch `maps/`; `npm run dev` watches the one map
+being played.** Editing the live map restarts the server that serves it --
+the only map a restart can pick up -- while every other file in `maps/`
+changes without one. That is what makes an import usable: `POST /list/import`
+writes a new `.bzw` into `maps/` and registers it itself (`registerMapFile`),
+so a restart there is not merely wasted, it kills the very request that is
+still writing the file.
+
+**A CLI `--watch` replaces `nodemon.json`'s whole `watch` list; it does not
+add to it.** nodemon merges command-line settings over the config file and
+command-line values win (`lib/config/load.js:49`), so a lone
+`--watch maps/<map>` silently stops `server.js`, `server/`, `public/` and
+`server.json` being watched at all -- the server then keeps running stale
+code and nothing says so. `npm run dev:watch-args` therefore prints the
+*whole* list, `nodemon.json`'s own `watch` entries plus the active map, and
+`npm run dev` passes all of them. `nodemon.json` stays the one place the
+standing paths are written. A `mapFile` change in `server.json` restarts the
+server (that file is in the list) but does not move the map watch until the
+dev loop itself is restarted.
+
 **`nodemon.json` names `css` and `html` in its `ext` list.** `public/` being a
 watched *path* does not cover every extension inside it -- nodemon's own
 default (`js,mjs,cjs,json`) would otherwise leave a `.css` or `.html` edit
@@ -3404,6 +3436,8 @@ variant nobody turns off.
   the loop.
 - The server watches `public/` and `server.js`, forcing connected clients to
   reload on any `public/` change and restarting itself when `server.js` changes.
+  In `maps/` only the map actually being played is watched -- see
+  "`nodemon.json` does not watch `maps/`" above.
 - Because `npm run dev` is used, edits to watched files usually restart or reload
   the running server automatically. **Do not start duplicate dev servers** unless
   explicitly asked.

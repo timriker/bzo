@@ -476,6 +476,11 @@ const SHOT_SIM_MAX_STEPS_PER_FRAME = 8;
 let projectileSimAccumulator = 0;
 let ws = null;
 let gameConfig = null;
+// The live match's own config, exactly as `init` sent it. `gameConfig` is
+// that with the currently-applied world's own physics laid over the top, so
+// coming back from a Map Viewer preview is a matter of dropping the overlay
+// rather than asking the server for the config again.
+let liveGameConfig = null;
 let serverDescriptionText = '';
 let serverMotdText = '';
 let serverNameText = '';
@@ -2177,7 +2182,24 @@ function applyWorldData(world) {
   renderManager.createMountains(currentWorldMapSize);
   renderManager.buildWater(currentWorldMapSize, world?.waterLevel || null);
   renderManager.buildWeather(currentWorldMapSize, world?.weather || null, OBSTACLES);
+  applyWorldGameplay(world?.gameplay || null);
   confineViewerToWorld();
+}
+
+// How the world now on screen drives and shoots. A Map Viewer preview is the
+// only place the two can differ -- upstream has no way to look at a map it is
+// not playing, so a real bzflag client's BZDB is always its own server's --
+// and a preview that showed a `_tankSpeed 40` map at bzo's own 25 would be
+// showing how the map is *not* played.
+//
+// Only what that map actually states is laid over; a variable it says nothing
+// about keeps the live match's value, which is how upstream reads a BZDB
+// variable a world leaves alone. Jumping and ricochet are not in here (bzo
+// forces both on) and neither are the flag variables, since a preview
+// suppresses every flag along with every other player's tank.
+function applyWorldGameplay(gameplay) {
+  if (!liveGameConfig) return;
+  gameConfig = gameplay ? { ...liveGameConfig, ...gameplay } : liveGameConfig;
 }
 
 // How far inside the border wall a viewer brought back into bounds is put --
@@ -6019,7 +6041,11 @@ function handleServerMessage(message) {
       message.flags.forEach((state) => setFlagState(state));
 
       myPlayerId = message.player.id;
-      gameConfig = message.config;
+      liveGameConfig = message.config;
+      // Whatever world is already on screen keeps its own physics: the entry
+      // dialog renders a preview before a join, so `init` can arrive with a
+      // previewed map already applied underneath it.
+      applyWorldGameplay(currentWorldData?.gameplay || null);
       setAvailablePlayerTeams(message.teamMode.teams);
       teamScores = message.teamScores || [];
       // bzfs.cxx:2437 sends MsgNewRabbit to a joining player for the same reason:
@@ -7695,26 +7721,33 @@ function handleServerConfigUpdate(message) {
 
   announceServerTextIfChanged();
 
-  if (Number.isFinite(message.shotMaxActive) && gameConfig) {
-    gameConfig.SHOT_MAX_ACTIVE = message.shotMaxActive;
+  // Written to the live match's own config, not to `gameConfig`, which may be
+  // a Map Viewer preview's overlay over it -- an operator's change belongs to
+  // the match either way, and `applyWorldGameplay` below rebuilds the overlay
+  // on top of it. The two are the same object whenever no preview is up.
+  if (Number.isFinite(message.shotMaxActive) && liveGameConfig) {
+    liveGameConfig.SHOT_MAX_ACTIVE = message.shotMaxActive;
   }
 
   if (typeof message.ricochet === 'boolean') {
     applyRicochetSetting(message.ricochet);
   }
 
-  if (Number.isFinite(message.timeLimit) && gameConfig) {
-    gameConfig.TIME_LIMIT = message.timeLimit;
+  if (Number.isFinite(message.timeLimit) && liveGameConfig) {
+    liveGameConfig.TIME_LIMIT = message.timeLimit;
   }
-  if (typeof message.timeManualStart === 'boolean' && gameConfig) {
-    gameConfig.TIME_MANUAL_START = message.timeManualStart;
+  if (typeof message.timeManualStart === 'boolean' && liveGameConfig) {
+    liveGameConfig.TIME_MANUAL_START = message.timeManualStart;
   }
-  if (Number.isFinite(message.maxPlayerScore) && gameConfig) {
-    gameConfig.MAX_PLAYER_SCORE = message.maxPlayerScore;
+  if (Number.isFinite(message.maxPlayerScore) && liveGameConfig) {
+    liveGameConfig.MAX_PLAYER_SCORE = message.maxPlayerScore;
   }
-  if (Number.isFinite(message.maxTeamScore) && gameConfig) {
-    gameConfig.MAX_TEAM_SCORE = message.maxTeamScore;
+  if (Number.isFinite(message.maxTeamScore) && liveGameConfig) {
+    liveGameConfig.MAX_TEAM_SCORE = message.maxTeamScore;
   }
+  // Whatever world is on screen keeps its own physics over the top of the
+  // values that just moved.
+  applyWorldGameplay(currentWorldData?.gameplay || null);
   // An applied change is now the server's value, so the panel starts from it.
   // A staged edit survives: it belongs to whoever is typing, not to the update.
   if (!operatorStaged) syncOperatorPanelFromServer();
@@ -7740,7 +7773,10 @@ let liveConfigKeys = ['serverName', 'motd', 'shotMaxActive', 'ricochet'];
 // `serverConfigUpdate` moves those without an `init` to carry them.
 let serverOperatorConfig = {};
 
-const SHOT_MAX_ACTIVE_MIN = 1;
+// Zero is a real setting, not a floor to clamp away: it is upstream's own
+// "tanks cannot shoot" (`-ms 0`), and an operator who can read it off a map
+// should be able to set it here too.
+const SHOT_MAX_ACTIVE_MIN = 0;
 const SHOT_MAX_ACTIVE_MAX = 10;
 // Matches the slider in index.html and the server's own ceiling
 // (`OPERATOR_TIME_LIMIT_MAX`); 0 is upstream's "no limit".
@@ -7780,7 +7816,13 @@ function getOperatorServerState() {
     ...serverOperatorConfig,
     serverName: serverNameText || '',
     motd: serverMotdText || '',
-    shotMaxActive: Number(gameConfig?.SHOT_MAX_ACTIVE) || SHOT_MAX_ACTIVE_MIN,
+    // `|| SHOT_MAX_ACTIVE_MIN` would read a real zero as "no value" and then
+    // answer with the minimum, which is now zero itself -- so the panel has
+    // to ask whether the server said anything at all, not whether what it
+    // said was truthy. One shot stands in until it has.
+    shotMaxActive: Number.isFinite(gameConfig?.SHOT_MAX_ACTIVE)
+      ? normalizeShotSlotCount(gameConfig.SHOT_MAX_ACTIVE)
+      : 1,
     ricochet: Boolean(gameConfig?.ALL_SHOTS_RICOCHET),
     timeLimit: Number(gameConfig?.TIME_LIMIT) || 0,
     timeManualStart: Boolean(gameConfig?.TIME_MANUAL_START),
@@ -12692,6 +12734,12 @@ function ensureXRShotStatusOverlay() {
   const maxSlots = gameConfig && Number.isFinite(gameConfig.SHOT_MAX_ACTIVE)
     ? normalizeShotSlotCount(gameConfig.SHOT_MAX_ACTIVE)
     : 5;
+  // `-ms 0`: no slots to draw bars for. Without this the canvas is sized to
+  // its own 32px floor and an empty panel hangs in the headset.
+  if (maxSlots === 0) {
+    xrShotStatusPanel.mesh.visible = false;
+    return;
+  }
   const shotSpeed = Number.isFinite(gameConfig?.SHOT_SPEED) ? gameConfig.SHOT_SPEED : 100;
   const shotRange = Number.isFinite(gameConfig?.SHOT_RANGE)
     ? gameConfig.SHOT_RANGE

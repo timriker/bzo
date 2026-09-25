@@ -6,6 +6,51 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
 
 ## [Unreleased]
 
+## [1.2.60] - 2026-09-25
+
+### Added
+- A map's own physics are read: `_tankSpeed`, `_tankAngVel`, `_gravity`,
+  `_jumpVelocity`, `_shotSpeed`, `_shotRange`, `_shotRadius`, `_reloadTime`
+  and `_rejoinTime`. BZFlag locks every one of them, which means the server states
+  the value and each client obeys -- already how bzo works -- so a map that
+  names one is naming how it is meant to be driven and shot on, and the map's
+  number replaces the config's. `_reloadTime` and `-ms` are applied together,
+  since each shot slot comes back after one divided by the other, and Wings'
+  own gravity and jump follow the world's unless the config pinned them.
+  Seven of twenty-two servers surveyed run a non-default `_tankSpeed`, and
+  every one of them used to be played here at 25.
+- A Map Viewer preview drives by the previewed map's physics rather than the
+  live match's. The per-map world file carries the same set, and the client
+  lays it over its own config for as long as that map is on screen; a variable
+  the map says nothing about keeps the live value. Jumping and ricochet stay
+  out of it -- bzo forces both on -- and so do the flag variables, since a
+  preview has no flags in it.
+- A remote import records what the source server actually chose. It enters as
+  a momentary observer to collect the BZDB dump a bzfs sends only to an
+  accepted player, leaves again, and writes every value that differs from
+  BZFlag's own defaults into the exported map as a `-set` line -- including
+  names bzo does not read itself, because a map played at `_tankSpeed 40`
+  should say so in the file rather than quietly play at 25. A server that
+  refuses the join costs the import nothing.
+- `scripts/gen-bzdb-defaults.mjs` and the `server/bzdb-defaults.cjs` it
+  writes: BZFlag's own 167 world-variable defaults, which is what tells a
+  server's deliberate setting from the value it would have had anyway.
+- `-ms 0` means what it means upstream: tanks cannot shoot. It used to be
+  clamped to one shot without a word, so a map asking for no shooting -- a
+  parkour course, where a shot is the one thing that can undo somebody else's
+  run -- loaded looking as though it had asked for one. Only a negative count
+  is clamped now, which is upstream's own split. The shot bar and its XR panel
+  go away rather than standing empty, the server refuses such a shot outright
+  instead of reporting a slot overrun warning mode would let through, and the
+  load says so. `server.json`'s `shotMaxActive` takes zero too, and
+  `maps/noShots.bzw` is a small map that demonstrates it.
+
+### Changed
+- `npm run dev` watches only the map actually being played, not all of
+  `maps/`. A restart can pick up the live map and nothing else, so importing
+  or editing any other map no longer takes the server down -- which used to
+  kill the very request that was writing the imported file.
+
 ## [1.2.59] - 2026-09-25
 
 ### Added

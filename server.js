@@ -1335,6 +1335,10 @@ const GAME_CONFIG = {
   SHOT_SPEED: 100, // BZFlag _shotSpeed default (units per second)
   SHOT_RANGE: 350, // BZFlag _shotRange default (world units)
   SHOT_DISTANCE: 350, // Legacy alias for client/radar code
+  // ms; upstream's `_reloadTime`, which is how long a shot lives and the basis
+  // the per-slot reload below is derived from. Null until a map states one,
+  // which leaves upstream's own default of _shotRange / _shotSpeed standing.
+  SHOT_LIFETIME: null,
   SHOT_RELOAD_TIME: null, // ms; derived below from BZFlag's _reloadTime / maxShots
   SHOT_COOLDOWN: null, // Legacy alias used by existing client fire gating
   SHOT_MAX_ACTIVE: 1, // BZFlag maxShots default
@@ -1618,8 +1622,13 @@ async function performRemoteMapImport(host, port) {
 
 async function performRemoteMapImportNow(listedServer, safeMapName) {
   const { host, port } = listedServer;
-  const { worldDatabase, gameSettings, queryGame } = await fetchWorldFromServer(host, port, 15000);
+  const { worldDatabase, gameSettings, queryGame, variables } =
+    await fetchWorldFromServer(host, port, 15000);
   const tree = parseWorldDatabase(worldDatabase);
+  // The server's own world variables, for the `-set` lines in the exported
+  // map. Null when the momentary observer join that carries them was refused
+  // or timed out (see `fetchWorldFromServer`); the map imports either way.
+  tree.variables = variables || null;
   if (gameSettings && gameSettings.length >= 30) tree.gameSettings = decodeGameSettings(gameSettings);
   if (queryGame && queryGame.length >= 44) tree.queryGame = decodeQueryGame(queryGame);
   if (tree.gameSettings) tree.worldSize = tree.gameSettings.worldSize;
@@ -1652,7 +1661,8 @@ async function performRemoteMapImportNow(listedServer, safeMapName) {
   }
   registerMapFile(
     safeMapName, mapData.obstacles, mapData.teleporterGraph, mapData.teamMode, mapData.mapSize,
-    mapData.messages, mapData.noWalls, mapData.waterLevel, mapData.weather, mapData.groundMaterial
+    mapData.messages, mapData.noWalls, mapData.waterLevel, mapData.weather, mapData.groundMaterial,
+    mapData.serverOptions.gameplay
   );
   return { safeMapName, byteLength: worldDatabase.length };
 }
@@ -2545,12 +2555,16 @@ if (Number.isFinite(configWingsSlideTime) && configWingsSlideTime >= 0) {
 
 // _wingsJumpVelocity and _wingsGravity are aliases upstream, so a server that
 // says nothing about them gets a wings jump identical to an ordinary one.
-if (GAME_CONFIG.WINGS_JUMP_VELOCITY === null) {
-  GAME_CONFIG.WINGS_JUMP_VELOCITY = GAME_CONFIG.JUMP_VELOCITY;
+// Whether the operator said anything is remembered rather than re-derived: the
+// map is read long after this, and a map that states `_gravity` has to move
+// the alias with it without overwriting a value the operator did pin.
+const WINGS_JUMP_VELOCITY_PINNED = GAME_CONFIG.WINGS_JUMP_VELOCITY !== null;
+const WINGS_GRAVITY_PINNED = GAME_CONFIG.WINGS_GRAVITY !== null;
+function resolveWingsAliases() {
+  if (!WINGS_JUMP_VELOCITY_PINNED) GAME_CONFIG.WINGS_JUMP_VELOCITY = GAME_CONFIG.JUMP_VELOCITY;
+  if (!WINGS_GRAVITY_PINNED) GAME_CONFIG.WINGS_GRAVITY = GAME_CONFIG.GRAVITY;
 }
-if (GAME_CONFIG.WINGS_GRAVITY === null) {
-  GAME_CONFIG.WINGS_GRAVITY = GAME_CONFIG.GRAVITY;
-}
+resolveWingsAliases();
 
 const configShotSpeed = Number(serverConfig.shotSpeed);
 if (Number.isFinite(configShotSpeed) && configShotSpeed > 0) {
@@ -2582,8 +2596,12 @@ if (Number.isFinite(configShotCooldown) && configShotCooldown > 0) {
   GAME_CONFIG.SHOT_RELOAD_TIME = configShotCooldown;
 }
 
+// `>= 0`, not `> 0`: zero is upstream's own "tanks cannot shoot" (`-ms 0`),
+// and `server.json` is where bzo keeps what upstream keeps on its command
+// line, so an operator can ask for it here as a map can ask for it in its
+// `options` block.
 const configShotMaxActive = Number(serverConfig.shotMaxActive);
-if (Number.isInteger(configShotMaxActive) && configShotMaxActive > 0) {
+if (Number.isInteger(configShotMaxActive) && configShotMaxActive >= 0) {
   GAME_CONFIG.SHOT_MAX_ACTIVE = normalizeShotSlotCount(configShotMaxActive);
 }
 
@@ -2663,8 +2681,22 @@ GAME_CONFIG.SHOT_DISTANCE = GAME_CONFIG.SHOT_RANGE;
 // fills the field in: a map's `-ms` re-derives from the same basis later.
 const SHOT_RELOAD_TIME_PINNED = GAME_CONFIG.SHOT_RELOAD_TIME !== null;
 function deriveShotReloadTime() {
+  // No slots, no reload to derive -- and `SHOT_RELOAD_TIME` rides `GAME_CONFIG`
+  // into `init`, where `JSON.stringify(Infinity)` would reach the client as
+  // `null` and read as "the server forgot to say" rather than "there is no
+  // shooting here". Zero is the honest answer: nothing is ever waiting on it.
+  if (GAME_CONFIG.SHOT_MAX_ACTIVE === 0) {
+    GAME_CONFIG.SHOT_RELOAD_TIME = 0;
+    GAME_CONFIG.SHOT_COOLDOWN = 0;
+    return;
+  }
   if (!SHOT_RELOAD_TIME_PINNED) {
-    const shotLifetimeMs = (GAME_CONFIG.SHOT_RANGE / GAME_CONFIG.SHOT_SPEED) * 1000;
+    // `_reloadTime` when the map states one, upstream's own default basis of
+    // _shotRange / _shotSpeed when it does not (ShotPath.cxx:48).
+    const shotLifetimeMs = Number.isFinite(GAME_CONFIG.SHOT_LIFETIME)
+      && GAME_CONFIG.SHOT_LIFETIME > 0
+      ? GAME_CONFIG.SHOT_LIFETIME
+      : (GAME_CONFIG.SHOT_RANGE / GAME_CONFIG.SHOT_SPEED) * 1000;
     GAME_CONFIG.SHOT_RELOAD_TIME = shotLifetimeMs / GAME_CONFIG.SHOT_MAX_ACTIVE;
   }
   GAME_CONFIG.SHOT_COOLDOWN = GAME_CONFIG.SHOT_RELOAD_TIME;
@@ -3905,6 +3937,36 @@ function buildSphereMesh(sphere) {
 // than porting `doLineRain`'s plain streaks, so "rain" gets the same textured
 // look as "fatrain" rather than upstream's `GL_LINES` streak. See "Weather" in
 // docs/bzw.md.
+// `-set` variables that describe how the world drives and shoots, mapped onto
+// the `GAME_CONFIG` fields that already hold each one. Every one of these is
+// `StateDatabase::Locked` upstream (`globalDBItems`, src/common/global.cxx),
+// so the server owns the value and the client is told it -- which is exactly
+// bzo's own arrangement, and why a map may state them at all.
+//
+// The flag variables (`_wings*`, `_maxFlagGrabs`) are read elsewhere and stay
+// there: they belong to superflags, which a Map Viewer preview never has.
+// `-j` and `+r` are not here either -- bzo forces jumping and ricochet on
+// (see "The options block" in docs/bzw.md), so a map cannot turn them off.
+const MAP_PHYSICS_VARS = new Map([
+  ['_tankSpeed', { key: 'TANK_SPEED' }],
+  ['_tankAngVel', { key: 'TANK_ROTATION_SPEED' }],
+  // Upstream states gravity as a negative acceleration and bzo keeps the
+  // magnitude, so a map's `-9.81` and its `9.81` mean the same thing here.
+  ['_gravity', { key: 'GRAVITY', transform: Math.abs }],
+  ['_jumpVelocity', { key: 'JUMP_VELOCITY' }],
+  ['_shotSpeed', { key: 'SHOT_SPEED' }],
+  ['_shotRange', { key: 'SHOT_RANGE' }],
+  ['_shotRadius', { key: 'SHOT_RADIUS' }],
+  // Seconds upstream, milliseconds here. Upstream defaults it to
+  // `_explodeTime` and bzo keeps the one number for both, so only the
+  // rejoin spelling is read -- `_explodeTime` on its own is how long the
+  // explosion is drawn for, which is not what this delay is.
+  ['_rejoinTime', { key: 'RESPAWN_DELAY', transform: (n) => n * 1000 }],
+  // Seconds upstream, milliseconds here, and it is the *basis* a reload is
+  // derived from rather than the reload itself -- see `deriveShotReloadTime`.
+  ['_reloadTime', { key: 'SHOT_LIFETIME', transform: (n) => n * 1000 }],
+]);
+
 const WEATHER_RAIN_TYPES = new Set(['rain', 'snow', 'fatrain', 'frog', 'particle', 'bubble']);
 
 // The single-value `_rain*` variables that still mean something once
@@ -3940,7 +4002,7 @@ function parseBZWServerOptions(lines) {
     // Server options in the map's own `options` block that no test above
     // claims, by option, so a map says which of its settings bzo ignored.
     unreadOptions: new Map(),
-    forbiddenFlags: [], unreadBZDBVars: [], serverMessages: [], adMessages: [],
+    forbiddenFlags: [], unreadBZDBVars: [], serverMessages: [], adMessages: [], gameplay: {},
   };
 
   for (const rawLine of lines) {
@@ -3954,7 +4016,14 @@ function parseBZWServerOptions(lines) {
       inOptions = false;
       continue;
     }
-    const [option, value, setValue] = line.split(/\s+/);
+    const [option, value, rawSetValue] = line.split(/\s+/);
+    // `-set <name> "<value>"`: upstream has world variables whose value is a
+    // list (`_ambientLight` and the other colours), and a remote import
+    // writes those back out quoted rather than dropping them. Nothing else in
+    // this block takes a quoted value, so the quotes are unwrapped here and
+    // every reader below sees the plain string either way.
+    const quotedSetValue = option === '-set' ? line.match(/^-set\s+\S+\s+"([^"]*)"\s*$/) : null;
+    const setValue = quotedSetValue ? quotedSetValue[1] : rawSetValue;
     // Each option below is tested through this, so an option no test claims
     // is an option bzo does not read -- recorded rather than passed over, the
     // same as `unreadBZDBVars` already does for a `-set` variable.
@@ -4027,6 +4096,9 @@ function parseBZWServerOptions(lines) {
       const requestedShots = Number(value);
       if (Number.isFinite(requestedShots)) {
         options.shotMaxActive = normalizeShotSlotCount(Math.round(requestedShots));
+        // Also part of how this map shoots, so a Map Viewer preview reloads at
+        // its rate rather than the live match's -- see `deriveMapGameplay`.
+        options.gameplay.SHOT_MAX_ACTIVE = options.shotMaxActive;
       }
     }
     // -s <count>, and +s <count>: how many superflag slots the world holds,
@@ -4156,6 +4228,20 @@ function parseBZWServerOptions(lines) {
         if (BZW_STOCK_TEXTURES.has(textureName)) {
           const field = value === '_rainTexture' ? 'texture' : 'puddleTexture';
           options.weather = { ...(options.weather || {}), [field]: textureName };
+        }
+      } else if (MAP_PHYSICS_VARS.has(value)) {
+        // The world's own physics. Upstream locks every one of these, which
+        // means the server states them and each client obeys -- so a map that
+        // names one is naming how it is meant to be driven and shot on, and
+        // bzo reads it the same way it already reads `-a` and `-ms`. Kept out
+        // of the flag variables next to them on purpose: those describe
+        // superflags, and a Map Viewer preview has no flags in it (see
+        // "Map physics" in docs/bzw.md).
+        const { key, transform } = MAP_PHYSICS_VARS.get(value);
+        const num = Number(setValue);
+        if (Number.isFinite(num)) {
+          const applied = transform ? transform(num) : num;
+          if (applied > 0) options.gameplay[key] = applied;
         }
       } else {
         options.unreadBZDBVars.push(value);
@@ -7559,6 +7645,13 @@ function parseBZWMap(filename, { quiet = false, extraMessages = [] } = {}) {
     warn(`${mapLabel} ignored options: ${unreadOptionList}`);
   }
 
+  if (serverOptions.unreadBZDBVars && serverOptions.unreadBZDBVars.length > 0) {
+    warn(
+      `${mapLabel} ignored -set variables: `
+      + Array.from(new Set(serverOptions.unreadBZDBVars)).sort().join(', ')
+    );
+  }
+
   if (unreadKeywordCounts.size > 0) {
     const unreadList = Array.from(unreadKeywordCounts.entries())
       .sort((a, b) => b[1] - a[1])
@@ -7810,8 +7903,36 @@ try {
 // second, brotli-only cache would only complicate the pipeline for no real
 // disk saving, so this reuses it exactly as public/'s assets do, raw copy and
 // negotiated fallback included.
+// What a map says about how it is driven and shot on, ready for a client to
+// lay over its own `gameConfig` -- the map's own `MAP_PHYSICS_VARS` values
+// plus whatever those imply. A key the map never states is absent, and the
+// viewer keeps the value it already had, which is how upstream reads a BZDB
+// variable a world leaves alone.
+function deriveMapGameplay(gameplay) {
+  if (!gameplay || Object.keys(gameplay).length === 0) return null;
+  const overlay = { ...gameplay };
+  // `SHOT_DISTANCE` is the client/radar name for the same number, and the
+  // reload comes off the same basis the live match derives it from -- both
+  // kept here rather than in the client so there is one derivation, not two.
+  if (overlay.SHOT_RANGE !== undefined) overlay.SHOT_DISTANCE = overlay.SHOT_RANGE;
+  const range = overlay.SHOT_RANGE ?? GAME_CONFIG.SHOT_RANGE;
+  const speed = overlay.SHOT_SPEED ?? GAME_CONFIG.SHOT_SPEED;
+  const lifetime = overlay.SHOT_LIFETIME ?? GAME_CONFIG.SHOT_LIFETIME;
+  if (overlay.SHOT_LIFETIME !== undefined || overlay.SHOT_RANGE !== undefined
+    || overlay.SHOT_SPEED !== undefined || overlay.SHOT_MAX_ACTIVE !== undefined) {
+    const shotLifetimeMs = Number.isFinite(lifetime) && lifetime > 0
+      ? lifetime
+      : (range / speed) * 1000;
+    overlay.SHOT_RELOAD_TIME = shotLifetimeMs
+      / (overlay.SHOT_MAX_ACTIVE ?? GAME_CONFIG.SHOT_MAX_ACTIVE);
+    overlay.SHOT_COOLDOWN = overlay.SHOT_RELOAD_TIME;
+  }
+  return overlay;
+}
+
 function registerMapFile(
-  fileName, obstacles, teleporterGraph, teamMode, mapSize, messages, noWalls, waterLevel, weather, groundMaterial
+  fileName, obstacles, teleporterGraph, teamMode, mapSize, messages, noWalls, waterLevel, weather,
+  groundMaterial, gameplay
 ) {
   // Seeded from the map's own geometry (not from `fileName`, so a map that is
   // renamed but not edited still lands on the same clouds and the same hash)
@@ -7847,6 +7968,13 @@ function registerMapFile(
     // too (see `applyWorldData`/`buildGround` in client.js/render.js),
     // `null` when the map states no `-gndtex` or `GroundMaterial` block.
     groundMaterial: groundMaterial || null,
+    // `gameplay` -- how this map drives and shoots, for a Map Viewer preview
+    // to lay over its own `gameConfig` (see `applyWorldData` in client.js).
+    // Only what the map itself states, so a preview of a map that says
+    // nothing about physics plays by whatever the viewer already had.
+    // Deliberately no jumping or ricochet in here (bzo forces both on) and no
+    // flag variables (a preview has no flags to grab).
+    gameplay: deriveMapGameplay(gameplay),
     // What this map says to a player who arrives on it -- -srvmsg lines and
     // the dropped-unsupported-feature tally, both from parseBZWMap. Read by
     // the client only at the moment it actually starts viewing this map
@@ -7978,11 +8106,11 @@ function sweepStaleImports() {
 const LIVE_MAP_ENTRY = MAP_SOURCE === 'random'
   ? registerMapFile(
     'random', OBSTACLES, TELEPORTER_GRAPH, mapTeamMode, GAME_CONFIG.MAP_SIZE, mapMessages, mapNoWalls,
-    mapWaterLevel, null, null
+    mapWaterLevel, null, null, null
   )
   : registerMapFile(
     MAP_SOURCE, OBSTACLES, TELEPORTER_GRAPH, mapTeamMode, GAME_CONFIG.MAP_SIZE, mapMessages, mapNoWalls,
-    mapWaterLevel, mapWeather, mapGroundMaterial
+    mapWaterLevel, mapWeather, mapGroundMaterial, mapServerOptions.gameplay
   );
 
 // A Map Viewer's requested map file, checked against what this process has
@@ -8041,7 +8169,8 @@ function hashRemainingMapsInBackground() {
         const mapData = parseBZWMap(filePath, { quiet: true });
         if (registerMapFile(
           fileName, mapData.obstacles, mapData.teleporterGraph, mapData.teamMode, mapData.mapSize,
-          mapData.messages, mapData.noWalls, mapData.waterLevel, mapData.weather, mapData.groundMaterial
+          mapData.messages, mapData.noWalls, mapData.waterLevel, mapData.weather, mapData.groundMaterial,
+          mapData.serverOptions.gameplay
         )) {
           converted += 1;
         }
@@ -8062,19 +8191,35 @@ hashRemainingMapsInBackground();
 // completion), and sweep both the map cache and its brotli sidecars for
 // whatever either of those just removed. Same cadence as the session pruner.
 setInterval(() => hashRemainingMapsInBackground(), 15 * 60 * 1000).unref?.();
-// -ms upstream. The map is read after the shot config above, so its shot slot
-// count lands here, and the reload time is derived a second time from it -- each
-// slot comes back after _reloadTime / maxShots, so changing one without the
-// other would leave a tank reloading at the wrong rate.
-if (Number.isInteger(mapServerOptions.shotMaxActive)
-  && mapServerOptions.shotMaxActive !== GAME_CONFIG.SHOT_MAX_ACTIVE) {
-  const previousShotMaxActive = GAME_CONFIG.SHOT_MAX_ACTIVE;
-  GAME_CONFIG.SHOT_MAX_ACTIVE = mapServerOptions.shotMaxActive;
-  deriveShotReloadTime();
-  log(
-    `Map option -ms: shotMaxActive=${GAME_CONFIG.SHOT_MAX_ACTIVE} (was ${previousShotMaxActive}), `
-    + `shotReloadTime=${GAME_CONFIG.SHOT_RELOAD_TIME}ms`
-  );
+// How the live map says it is driven and shot on: its `MAP_PHYSICS_VARS`
+// variables and its `-ms`, which upstream's own map files state side by side
+// and which bzo applies together for the same reason -- each shot slot comes
+// back after _reloadTime / maxShots, so changing one without the other leaves
+// a tank reloading at the wrong rate. `deriveShotReloadTime` runs once, after
+// the whole block, rather than once per variable.
+//
+// A Map Viewer preview gets the same set from its own map instead, per map
+// (`deriveMapGameplay`), which is the only place the two can disagree.
+{
+  const applied = [];
+  for (const [key, value] of Object.entries(mapServerOptions.gameplay || {})) {
+    if (GAME_CONFIG[key] === value) continue;
+    applied.push(`${key}=${value} (was ${GAME_CONFIG[key]})`);
+    GAME_CONFIG[key] = value;
+  }
+  if (applied.length > 0) {
+    GAME_CONFIG.SHOT_DISTANCE = GAME_CONFIG.SHOT_RANGE;
+    deriveShotReloadTime();
+    resolveWingsAliases();
+    log(`Map physics: ${applied.join(', ')}, shotReloadTime=${GAME_CONFIG.SHOT_RELOAD_TIME}ms`);
+  }
+  // Upstream prints "WARNING: tanks will not be able to shoot" the moment it
+  // reads `-ms 0` (CmdLineOptions.cxx:904). Said here instead of there so
+  // that it covers a `server.json` asking for it as well as a map, and so it
+  // is said once rather than once per source.
+  if (GAME_CONFIG.SHOT_MAX_ACTIVE === 0) {
+    log('Shots: no shot slots -- tanks cannot shoot on this world');
+  }
 }
 // -set _maxFlagGrabs upstream. A plain BZDB assignment, so as with `-ms` the
 // map's number replaces the config's rather than only raising it. It is read on
@@ -8106,12 +8251,6 @@ if (Number.isFinite(mapServerOptions.maxBumpHeight)
   const previousBumpHeight = GAME_CONFIG.MAX_BUMP_HEIGHT;
   GAME_CONFIG.MAX_BUMP_HEIGHT = mapServerOptions.maxBumpHeight;
   log(`Map option -set _maxBumpHeight: ${GAME_CONFIG.MAX_BUMP_HEIGHT} (was ${previousBumpHeight})`);
-}
-if (mapServerOptions.unreadBZDBVars?.length > 0) {
-  log(
-    `Ignoring -set variables bzo does not read:`
-    + ` ${Array.from(new Set(mapServerOptions.unreadBZDBVars)).sort().join(', ')}`
-  );
 }
 // `maxRealPlayers` upstream, which `-mp N` sets: how many tanks may play, and it
 // excludes the observers (CmdLineOptions.cxx:458). bzo's `maxPlayers` is that
@@ -11306,6 +11445,16 @@ function getShotRejection(player, shotX, shotY, shotZ, now = Date.now()) {
   // nothing for a return shot to hit. Not a tolerance: refused in every mode.
   if (isObserverTeam(player.team)) {
     return { reason: 'observer cannot shoot', fatal: true };
+  }
+
+  // A world with no shot slots at all (`-ms 0`, upstream's "tanks will not be
+  // able to shoot"). Refused here, beside the observer, rather than down at
+  // the slot count: every check between the two is non-fatal, so reaching one
+  // of those first would let warning mode fire a shot in a world that has no
+  // shooting. An overrun of a real slot count stays non-fatal -- that is the
+  // honest disagreement warning mode exists to measure.
+  if (GAME_CONFIG.SHOT_MAX_ACTIVE === 0) {
+    return { reason: 'this world has no shot slots', fatal: true };
   }
 
   // invalidPlayerAction() (bzfs.cxx:4352) kicks a paused player who shoots, and

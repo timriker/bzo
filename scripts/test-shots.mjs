@@ -22,15 +22,23 @@ assert.equal(normalizeShotSlotCount(3), 3);
 assert.equal(normalizeShotSlotCount('3'), 3);
 assert.equal(normalizeShotSlotCount(MAX_SHOT_SLOTS), MAX_SHOT_SLOTS);
 assert.equal(normalizeShotSlotCount(MAX_SHOT_SLOTS + 1), MAX_SHOT_SLOTS);
-assert.equal(normalizeShotSlotCount(0), 1);
+// `-ms 0` is upstream's "tanks cannot shoot", so zero is a count like any
+// other. Only a negative one is clamped, which is upstream's own split.
+assert.equal(normalizeShotSlotCount(0), 0);
+assert.equal(normalizeShotSlotCount('0'), 0);
 assert.equal(normalizeShotSlotCount(-1), 1);
 assert.equal(normalizeShotSlotCount(1.5), 1);
 assert.equal(normalizeShotSlotCount(Number.POSITIVE_INFINITY), 1);
 assert.equal(normalizeShotSlotCount(Number.MAX_SAFE_INTEGER + 1), 1);
+// Absence is not a stated zero, even though `Number` turns all of these into
+// one: a missing setting still means one shot.
 assert.equal(normalizeShotSlotCount(null), 1);
 assert.equal(normalizeShotSlotCount(undefined), 1);
+assert.equal(normalizeShotSlotCount(''), 1);
+assert.equal(normalizeShotSlotCount('   '), 1);
+assert.equal(normalizeShotSlotCount(false), 1);
 
-for (const value of [1, 3, '3', MAX_SHOT_SLOTS, MAX_SHOT_SLOTS + 1, 0, -1, 1.5, Infinity, Number.MAX_SAFE_INTEGER + 1, null, undefined]) {
+for (const value of [1, 3, '3', MAX_SHOT_SLOTS, MAX_SHOT_SLOTS + 1, 0, '0', -1, 1.5, Infinity, Number.MAX_SAFE_INTEGER + 1, null, undefined, '', '   ', false]) {
   assert.equal(
     serverLimits.normalizeShotSlotCount(value),
     normalizeShotSlotCount(value),

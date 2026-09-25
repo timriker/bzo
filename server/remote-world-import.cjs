@@ -13,11 +13,23 @@
 // for the wire format so the two never drift apart; see the script for the
 // long version of how the protocol and the binary world format work.
 //
-// It never sends MsgEnter, so it never occupies a player slot -- bzfs answers
-// MsgQueryGame/MsgWantSettings/MsgWantWHash/MsgGetWorld to any connection,
-// entered or not, same as bzfquery.py.
+// The world download itself never sends MsgEnter, so it never occupies a
+// player slot -- bzfs answers MsgQueryGame/MsgWantSettings/MsgWantWHash/
+// MsgGetWorld to any connection, entered or not, same as bzfquery.py.
+//
+// The server's BZDB is the exception, and it costs something. A bzfs sends
+// its world variables (MsgSetVar) only from `addPlayer`, after the player has
+// actually been accepted (`bzfs.cxx:2361-2365`), so there is no way to read
+// `_tankSpeed` or `_gravity` off a server without briefly being on it: one
+// observer slot, one join and one part in everybody's chat. That is the whole
+// price of knowing what a map is really played at, and an import that skips
+// it silently writes a map that plays by bzo's defaults instead of the
+// server's -- so it is done by default, as a momentary observer that leaves
+// again the instant the variables arrive, and `enterForVariables: false`
+// turns it off for a caller that would rather stay invisible.
 
 const net = require('node:net');
+const { BZDB_DEFAULTS } = require('./bzdb-defaults.cjs');
 const zlib = require('node:zlib');
 
 const PROTOCOL_VERSION = 'BZFS0221';
@@ -28,6 +40,25 @@ const DEFAULT_LIST_SERVER = 'https://my.bzflag.org/db/';
 // unbounded memory growth in the live bzo process (the CLI script has no such
 // guard -- a runaway `node` process there is the user's own problem to Ctrl-C).
 const MAX_WORLD_DATABASE_BYTES = 64 * 1024 * 1024;
+
+// MsgEnter's fixed-width fields (`include/global.h`, `ServerLink::sendEnter`).
+const CALLSIGN_LEN = 32;
+const MOTTO_LEN = 128;
+const TOKEN_LEN = 22;
+const VERSION_LEN = 60;
+const PLAYER_ID_LEN = 1;
+const OBSERVER_TEAM = 5;
+const TANK_PLAYER = 0;
+// Who the remote server sees for the moment this is joined. The version
+// string is read with `sscanf(..., "%d.%d.%d", ...)` upstream, so it leads
+// with digits an operator's logs can sort, and says what it is after them.
+const IMPORT_CALLSIGN = 'bzo-import';
+const IMPORT_MOTTO = 'bzo map import -- https://github.com/timriker/bzo';
+const IMPORT_CLIENT_VERSION = `0.0.0 bzo`;
+// Long enough for a busy server to get through MsgAccept and its BZDB dump,
+// short enough that a server which answers neither does not hold the import
+// open. Failure here is never fatal: the map still imports, without `-set`.
+const ENTER_TIMEOUT_MS = 8000;
 
 function findPublicServer(servers, host, port) {
   if (!Array.isArray(servers) || typeof host !== 'string' || host === ''
@@ -158,7 +189,42 @@ function sendFrame(socket, codeStr, payload = Buffer.alloc(0)) {
   socket.write(Buffer.concat([header, payload]));
 }
 
-function fetchWorldFromServer(host, port, timeout) {
+// MsgEnter's payload: `ServerLink::sendEnter`'s own fixed-width layout, with
+// the trailing PlayerId-sized slack it also sends. Every string is NUL-padded
+// to its field width rather than length-prefixed, which is why this is built
+// as one zeroed buffer and written into.
+function buildEnterPayload() {
+  const payload = Buffer.alloc(
+    2 + 2 + CALLSIGN_LEN + MOTTO_LEN + TOKEN_LEN + VERSION_LEN + PLAYER_ID_LEN
+  );
+  payload.writeUInt16BE(TANK_PLAYER, 0);
+  payload.writeUInt16BE(OBSERVER_TEAM, 2);
+  let at = 4;
+  payload.write(IMPORT_CALLSIGN, at, CALLSIGN_LEN - 1, 'ascii'); at += CALLSIGN_LEN;
+  payload.write(IMPORT_MOTTO, at, MOTTO_LEN - 1, 'ascii'); at += MOTTO_LEN;
+  // No token: this is an unregistered callsign, which is what an anonymous
+  // join is. A server that demands registration rejects it, and the import
+  // goes on without variables.
+  at += TOKEN_LEN;
+  payload.write(IMPORT_CLIENT_VERSION, at, VERSION_LEN - 1, 'ascii');
+  return payload;
+}
+
+// MsgSetVar: a u16 pair count, then that many (u8 length, bytes) pairs. Sent
+// in as many frames as it takes to stay under MaxPacketLen (`PackVars.h`), so
+// every frame between MsgAccept and the first non-MsgSetVar reply counts.
+function decodeSetVars(payload, into) {
+  const r = new Reader(payload);
+  const count = r.u16();
+  for (let i = 0; i < count; i += 1) {
+    const name = r.bytes(r.u8()).toString('latin1');
+    const value = r.bytes(r.u8()).toString('latin1');
+    if (name) into.set(name, value);
+  }
+  return into;
+}
+
+function fetchWorldFromServer(host, port, timeout, options = {}) {
   return new Promise((resolve, reject) => {
     // Upstream bzfs does not support IPv6; force IPv4 so dual-stack hosts
     // (e.g. AAAA + A records) don't route the connection over IPv6.
@@ -214,6 +280,37 @@ function fetchWorldFromServer(host, port, timeout) {
     });
     socket.on('error', fail);
     socket.on('close', () => fail(new Error('connection closed')));
+
+    // Enter as an observer, take the BZDB dump bzfs sends every accepted
+    // player, and leave. Bounded by its own clock rather than the outer
+    // watchdog: a server that accepts the join and then says nothing must not
+    // strand a world that has already arrived.
+    async function collectVariables() {
+      sendFrame(socket, 'en', buildEnterPayload());
+      const deadline = Date.now() + ENTER_TIMEOUT_MS;
+      const vars = new Map();
+      let accepted = false;
+      for (;;) {
+        if (Date.now() > deadline) break;
+        const { code, payload } = await Promise.race([
+          readFrame(),
+          new Promise((res) => setTimeout(() => res({ code: '', payload: null }), deadline - Date.now())),
+        ]);
+        if (!code) break;
+        if (code === 'rj' || code === 'sk') break;
+        if (code === 'ac') { accepted = true; continue; }
+        if (code === 'sv') { decodeSetVars(payload, vars); continue; }
+        // MsgTeamUpdate is the first thing after the variables (`addPlayer`,
+        // bzfs.cxx:2385-2387), so anything else once they have started
+        // arriving means there are no more coming.
+        if (accepted && vars.size > 0) break;
+      }
+      // Leave whether or not anything arrived. The socket is destroyed
+      // immediately after this resolves, but a server that is told is a
+      // server that does not wait out a timeout on an empty slot.
+      try { sendFrame(socket, 'ex'); } catch { /* already gone */ }
+      return vars.size > 0 ? vars : null;
+    }
 
     socket.on('connect', async () => {
       try {
@@ -280,7 +377,19 @@ function fetchWorldFromServer(host, port, timeout) {
           if (bytesLeft === 0) break;
         }
 
-        succeed({ worldDatabase: Buffer.concat(parts), gameSettings, queryGame });
+        // Last, so that a rejected join costs the import nothing it has not
+        // already got: everything above is answered to an un-entered
+        // connection, and only the variables need a seat.
+        let variables = null;
+        if (options.enterForVariables !== false) {
+          try {
+            variables = await collectVariables();
+          } catch {
+            variables = null;
+          }
+        }
+
+        succeed({ worldDatabase: Buffer.concat(parts), gameSettings, queryGame, variables });
       } catch (err) {
         fail(err);
       }
@@ -907,7 +1016,46 @@ function fmt3(v) { return `${fmt(v[0])} ${fmt(v[1])} ${fmt(v[2])}`; }
 // server.js actually reads, derived from the server's own MsgGameSettings/
 // MsgQueryGame answers -- so a map loaded into bzo plays by close to the same
 // rules it was surveyed under, not just the same geometry.
-function buildOptionsLines(gameSettings, queryGame, listInfo) {
+// Which of the server's world variables it actually chose. A bzfs sends its
+// whole BZDB to a player who enters -- all of upstream's own defaults
+// included -- so the ones that differ from `BZDB_DEFAULTS`, plus any name
+// upstream does not define at all (a map's or a plugin's own variable, which
+// cannot have a default to match), are the whole of what this server says
+// that a stock one does not. Deliberately not filtered down to the variables
+// bzo itself reads: a map that is played at `_tankSpeed 40` should say so in
+// the file even while bzo is still playing it at 25, both so the gap is
+// visible and so `-set` shows up in the unread-keyword tally that
+// `docs/bzw-plan.md` is prioritized from.
+// Two names a server always sends that are not settings:
+//
+// `poll` is not a value at all -- bzfs stores the VotingArbiter's *pointer*
+// there (`BZDB.setPointer("poll", ...)`, bzfs.cxx:6770), so it arrives as a
+// decimal memory address that differs on every import of the same server and
+// means nothing anywhere else. Upstream's own recorder skips it by name for
+// the same reason (`RecordReplay.cxx:1486`).
+//
+// `_worldSize` is real, but the `world` block in the very file this is
+// writing already states it; recording it twice only invites the two to
+// disagree.
+const NON_SETTING_VARIABLES = new Set(['poll', '_worldSize']);
+
+function collectNonDefaultVariables(variables) {
+  if (!variables) return [];
+  const out = [];
+  for (const [name, value] of variables) {
+    if (typeof name !== 'string' || typeof value !== 'string') continue;
+    if (NON_SETTING_VARIABLES.has(name)) continue;
+    // A name or value carrying a newline or a quote would not survive the
+    // round trip through a `.bzw` line, and nothing upstream defines one.
+    if (/[\s"]/.test(name) || /[\n\r"]/.test(value)) continue;
+    if (BZDB_DEFAULTS[name] === value) continue;
+    out.push([name, value]);
+  }
+  out.sort((a, b) => a[0].localeCompare(b[0]));
+  return out;
+}
+
+function buildOptionsLines(gameSettings, queryGame, listInfo, variables) {
   const lines = [];
   const has = (bit) => (gameSettings.gameOptionsBits & bit) !== 0;
   // GameType (`include/global.h:94`) is its own axis from the GameOptions
@@ -964,13 +1112,21 @@ function buildOptionsLines(gameSettings, queryGame, listInfo) {
     if (queryGame.maxTeamScore > 0) lines.push(`  -mts ${queryGame.maxTeamScore}`);
     if (queryGame.maxTime > 0) lines.push(`  -time ${fmt(queryGame.maxTime / 10)}`);
   }
+  // `-set` last, after every switch above: a reader looking for what makes
+  // this server unusual finds the ordinary options first, in the order a
+  // hand-written map states them. A value with a space in it -- upstream has
+  // several, `_ambientLight` among them -- is quoted, which is how bzo's own
+  // parser reads it back.
+  for (const [name, value] of collectNonDefaultVariables(variables)) {
+    lines.push(`  -set ${name} ${/\s/.test(value) || value === '' ? `"${value}"` : value}`);
+  }
   return lines;
 }
 
 function buildBZWText(serverMeta, tree, fetchedAt) {
   const {
     managers, world, groupDefs, links, waterLevel, waterMaterial, weapons, zones, worldSize,
-    gameSettings, queryGame,
+    gameSettings, queryGame, variables,
   } = tree;
   const { dynamicColors, textureMatrices, materials, physicsDrivers, meshTransforms } = managers;
 
@@ -1258,7 +1414,7 @@ function buildBZWText(serverMeta, tree, fetchedAt) {
 
   if (gameSettings) {
     lines.push('options');
-    for (const line of buildOptionsLines(gameSettings, queryGame, serverMeta.listInfo)) lines.push(line);
+    for (const line of buildOptionsLines(gameSettings, queryGame, serverMeta.listInfo, variables)) lines.push(line);
     lines.push('end');
     lines.push('');
   }
@@ -1330,6 +1486,7 @@ module.exports = {
   findPublicServer,
   fetchServerList,
   fetchWorldFromServer,
+  collectNonDefaultVariables,
   decodeGameSettings,
   decodeQueryGame,
   parseWorldDatabase,

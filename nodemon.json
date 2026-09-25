@@ -3,7 +3,6 @@
     "server.js",
     "server/",
     "public/",
-    "maps/",
     "server.json"
   ],
   "ignore": [

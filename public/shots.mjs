@@ -9,9 +9,24 @@
 // arrives through an untrusted WebSocket payload.
 export const MAX_SHOT_SLOTS = 64;
 
+// Zero survives: `-ms 0` means "tanks cannot shoot" upstream
+// (`CmdLineOptions.cxx:897-909`, which warns and then honours it), and it is
+// only a *negative* or unparseable count that upstream turns into one shot.
+// Everything that can fire asks this first, so a world with no slots refuses
+// every shot by arithmetic rather than by a switch of its own.
+//
+// Which means absence has to be told from a stated zero before the number is
+// taken: `Number(null)`, `Number(false)` and `Number('')` are all 0, and none
+// of them is a world saying it has no shooting.
 export function normalizeShotSlotCount(value) {
+  if (value === null || typeof value === 'boolean') {
+    return 1;
+  }
+  if (typeof value === 'string' && value.trim() === '') {
+    return 1;
+  }
   const parsedValue = Number(value);
-  if (!Number.isSafeInteger(parsedValue) || parsedValue < 1) {
+  if (!Number.isSafeInteger(parsedValue) || parsedValue < 0) {
     return 1;
   }
   if (parsedValue > MAX_SHOT_SLOTS) {

@@ -735,6 +735,15 @@ Read as a bzfs command line, one option a line. Everything bzo understands:
 | `-set _maxFlagGrabs <n>` | how many pickups a superflag survives |
 | `-set _wingsJumpCount <n>` | how many times `WG` Wings may flap before it needs the ground again |
 | `-set _maxBumpHeight <n>` | how high a step a tank may climb without jumping |
+| `-set _tankSpeed <n>` | how fast a tank drives |
+| `-set _tankAngVel <radians>` | how fast a tank turns |
+| `-set _gravity <n>` | the world's gravity; upstream writes it negative, bzo keeps the magnitude |
+| `-set _jumpVelocity <n>` | how hard a jump pushes off |
+| `-set _shotSpeed <n>` | how fast a shot travels |
+| `-set _shotRange <n>` | how far a shot travels before it dies |
+| `-set _shotRadius <n>` | a shot's own size |
+| `-set _reloadTime <seconds>` | how long a shot lives, and the basis each slot's reload is divided out of |
+| `-set _rejoinTime <seconds>` | how long a dead tank waits before it can spawn again |
 | `-set _rainType <rain\|snow\|fatrain\|frog\|particle\|bubble>` | turns on weather -- see **Weather** |
 | `-srvmsg <text>` | a line the world says to each player as they join |
 | `-admsg <text>` | a line said to everyone already playing, repeated every 15 minutes |
@@ -800,9 +809,21 @@ config's `shotMaxActive` outright: upstream reads
 a map's `options` block where `-world` sits on its command line, so the map's
 number is simply the later assignment. Changing it re-derives the reload time from
 `shotRange / shotSpeed / shotMaxActive`, since each slot comes back after
-`_reloadTime / maxShots`; a `shotReloadTime` pinned in `server.json` still wins.
-`-ms 0` means "tanks cannot shoot" upstream, which bzo has no mode for, so zero
-is clamped to one shot as the config's own value is.
+`_reloadTime / maxShots`; a `shotReloadTime` pinned in `server.json` still wins,
+and a map stating `_reloadTime` replaces the basis -- see **Map physics**.
+`-ms 0` means "tanks cannot shoot", and bzo reads it that way too
+(`CmdLineOptions.cxx:897-909`, which warns and then honours it). Only a
+*negative* or unparseable count becomes one shot, upstream's own split. A
+world with no slots refuses every shot at both ends -- the client's fire gate
+has nothing to fire into, and the server refuses fatally rather than as a slot
+overrun, so warning mode does not let one through either. The shot bar and its
+XR panel are hidden rather than drawn empty, and the load says
+`Shots: no shot slots -- tanks cannot shoot on this world`. `server.json`'s
+own `shotMaxActive` takes zero the same way, since that is where bzo keeps
+what upstream keeps on its command line. `maps/noShots.bzw` is the map that
+demonstrates it -- an `options` block holds one shot count, so this is a
+map-wide setting that cannot share a map with anything else, the same as
+`noWalls.bzw` and `water.bzw`.
 
 `-s` replaces `superFlags.count` the same way and for the same reason. Its count
 is optional, and upstream turns anything unparseable *or zero* into 16 -- `atoi`
@@ -910,6 +931,43 @@ end
 (`size` is the half width -- see **Coordinates**, above -- and `flagHeight` is
 one of the three more fields below; a bare `name` line is neither upstream's
 nor bzo's, and is read and dropped like any other unhandled token.)
+
+## Map physics
+
+`_tankSpeed`, `_tankAngVel`, `_gravity`, `_jumpVelocity`, `_shotSpeed`,
+`_shotRange`, `_shotRadius`, `_reloadTime` and `_rejoinTime` are
+`StateDatabase::Locked`
+upstream (`globalDBItems`, `src/common/global.cxx`), which means the server
+owns the value and every client is told it. That is already how bzo works, so
+a map may state any of them and the map's number replaces the config's, the
+same plain assignment `-ms` and `-set _maxFlagGrabs` get.
+
+Two of them are not quite a direct copy:
+
+- `_gravity` is a downward acceleration upstream and so is written negative;
+  bzo stores the magnitude, so `-9.81` and `9.81` mean the same thing here.
+- `_reloadTime` is how long a shot lives, not how long a reload takes. Each
+  slot comes back after `_reloadTime / maxShots`, which is why a map stating
+  it and a map stating `-ms` are applied together and the reload is derived
+  once from the pair. A map that states neither gets upstream's own default
+  basis of `_shotRange / _shotSpeed`.
+- `_rejoinTime` is upstream's own name for the wait before a dead tank may
+  spawn again. Upstream defaults it to `_explodeTime` and bzo keeps one
+  number for both, so only this spelling is read: `_explodeTime` on its own
+  is how long the explosion is drawn for, which is a different thing.
+
+`_wingsJumpVelocity` and `_wingsGravity` are aliases for `_jumpVelocity` and
+`_gravity` upstream, so a map that moves the world's gravity moves Wings' with
+it -- unless the server's own config pinned the wings value, which wins.
+
+**A Map Viewer preview uses the previewed map's physics, not the live
+match's.** The per-map world file carries this same set (`gameplay` in the
+cached `/maps/<hash>.json`), and the client lays it over its own `gameConfig`
+for as long as that map is on screen. A variable the previewed map says
+nothing about keeps the live match's value, which is what upstream does with
+any BZDB variable a world leaves alone. Jumping and ricochet are not part of
+it -- bzo forces both on -- and neither are the flag variables, since a
+preview has no flags in it.
 
 ## World fields
 
@@ -1485,11 +1543,12 @@ The notable absences:
   type any flag of which spawns in the zone; a map using it is named in the
   load log rather than skipped silently, because a spawn zone that is ignored
   moves every tank in the world.
-- **Every `-set` variable but `_maxFlagGrabs`, `_wingsJumpCount`,
-  `_maxBumpHeight`, and the `_rain*` family.** bzo's world constants are
-  constants, and these are the ones it already keeps a configurable copy of;
-  see `docs/flags.md` and **Weather** above. A map that sets another is named
-  on load.
+- **Every `-set` variable but the ones in the options table above** --
+  `_maxFlagGrabs`, `_wingsJumpCount`, `_maxBumpHeight`, the world physics
+  under **Map physics**, and the `_rain*` family. bzo's other world constants
+  are constants, and these are the ones it already keeps a configurable copy
+  of; see `docs/flags.md` and **Weather** above. A map that sets another is
+  named on load.
 
 A map that needs any of these is not rejected -- it is worth knowing that it
 loaded rather than that it loaded *correctly*.

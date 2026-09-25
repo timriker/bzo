@@ -1,11 +1,12 @@
 {
   "name": "bzo",
-  "version": "1.2.59",
+  "version": "1.2.60",
   "description": "Web based BZFlag like 3D multiplayer tank game, Battlezone Online",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "dev": "trap 'exit 0' INT; while true; do nodemon --exitcrash server.js; echo '[dev] server exited, restarting in 2s (Ctrl-C to stop)'; sleep 2; done",
+    "dev:watch-args": "node -p \"[...require('./nodemon.json').watch, 'maps/' + (require('./server.json').mapFile || 'bzo.bzw')].map((w) => '--watch ' + w).join(' ')\"",
+    "dev": "trap 'exit 0' INT; while true; do nodemon --exitcrash $(npm run --silent dev:watch-args) server.js; echo '[dev] server exited, restarting in 2s (Ctrl-C to stop)'; sleep 2; done",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "check:server": "node --check server.js",
