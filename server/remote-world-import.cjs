@@ -885,14 +885,33 @@ function parseTetra(r) {
   };
 }
 
+// The instance name is what every teleporter placed through this group is
+// named after -- `GroupDefinition::appendGroupName` prefixes it onto each
+// contained teleporter's own name, and a `link` block's endpoints are those
+// full names. Drop it and every group-placed teleporter link in the map
+// names something that no longer exists.
+//
+// `GroupInstance::pack` also stuffs the instance's material remap table into
+// the tail of the same string, behind a NUL terminator, when it has one;
+// `unpack` spots that by the string being longer than its own C string and
+// reads an int32 count plus that many src/dst material index pairs.
 function parseGroupInstance(r) {
   const groupdef = r.str();
-  const nameLen = r.u32();
-  r.skip(nameLen); // instance name; may hide a material remap table, irrelevant here
+  const raw = r.bytes(r.u32());
+  const nul = raw.indexOf(0);
+  const name = (nul < 0 ? raw : raw.subarray(0, nul)).toString('utf8');
+  const matMap = [];
+  if (nul >= 0) {
+    const tail = new Reader(raw.subarray(nul + 1));
+    const count = tail.i32();
+    for (let i = 0; i < count && tail.remaining >= 8; i++) {
+      matMap.push([tail.i32(), tail.i32()]);
+    }
+  }
   const transform = parseTransform(r);
   const bits = r.u8();
   const inst = {
-    groupdef, transform,
+    groupdef, name, matMap, transform,
     modifyTeam: !!(bits & 1), modifyColor: !!(bits & 2),
     modifyPhysicsDriver: !!(bits & 4), modifyMaterial: !!(bits & 8),
     driveThrough: !!(bits & 16), shootThrough: !!(bits & 32), ricochet: !!(bits & 64),
@@ -1272,11 +1291,13 @@ function buildBZWText(serverMeta, tree, fetchedAt) {
 
   function printGroupInstance(lines, inst, indent) {
     lines.push(`${indent}group ${inst.groupdef}`);
+    if (inst.name) lines.push(`${indent}  name ${inst.name}`);
     printTransformOps(lines, inst.transform.ops, indent);
     if (inst.modifyTeam) lines.push(`${indent}  team ${inst.team}`);
     if (inst.modifyColor) lines.push(`${indent}  tint ${inst.tint.map(fmt).join(' ')}`);
     if (inst.modifyPhysicsDriver) lines.push(`${indent}  phydrv ${ref(physicsDrivers, inst.phydrv)}`);
     if (inst.modifyMaterial) lines.push(`${indent}  matref ${ref(materials, inst.material)}`);
+    else for (const [src, dst] of inst.matMap) lines.push(`${indent}  matswap ${ref(materials, src)} ${ref(materials, dst)}`);
     if (inst.driveThrough) lines.push(`${indent}  driveThrough`);
     if (inst.shootThrough) lines.push(`${indent}  shootThrough`);
     if (inst.ricochet) lines.push(`${indent}  ricochet`);

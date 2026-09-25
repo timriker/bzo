@@ -6,6 +6,19 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
 
 ## [Unreleased]
 
+## [1.2.61] - 2026-09-25
+
+### Fixed
+- Imported maps keep the name of every `group` that places obstacles, so
+  teleporters inside those groups keep their names too. BZFlag builds a
+  group-placed teleporter's link name from its instance name, and the link
+  names travel over the wire as text; dropping the instance name left the
+  imported map naming teleporters that no longer existed, and every
+  group-placed teleporter on such a map was unreachable. A survey of live
+  servers found 24 broken links of this shape, on maps including "Obstacle
+  Course" and "HiX". A `group`'s material remap table, which BZFlag hides in
+  the tail of that same name field, now comes across as `matswap` lines.
+
 ## [1.2.60] - 2026-09-25
 
 ### Added
