@@ -6,6 +6,27 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
 
 ## [Unreleased]
 
+## [1.2.69] - 2026-09-26
+
+### Added
+- Two map warnings bzo never raised, each matching what real bzfs already says
+  about the same map. A mesh face with no area -- three vertices that never
+  leave a line -- is dropped rather than kept, at upstream's own threshold
+  (`MeshFace::finalize`), and the obstacles the dropped faces came from are
+  named in one server-log line. Separately, a zero-size box or pyramid that
+  carries a material or a physics driver is reported, because bzfs builds that
+  one as a mesh whose four side faces all collapse to a line, while bzo keeps
+  it a box and so has no faces of its own to find the fault in.
+
+### Fixed
+- The test death pad on `bzo.bzw` is no longer flush with the ground. A box
+  naming a material or a physics driver is a mesh to bzfs rather than a
+  `BoxBuilding`, and a flush one gives that mesh four zero-area sides, so every
+  world load on a real server drew four `invalid mesh face` warnings and left
+  the pad as two coincident horizontal faces with nothing to resolve a driver
+  against. It now carries the same barely-real height as the conveyor and
+  launch pads beside it.
+
 ## [1.2.68] - 2026-09-26
 
 ### Fixed
