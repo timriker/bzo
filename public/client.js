@@ -8675,6 +8675,14 @@ let onObstacle = false;
 // `lastObstacle` (LocalPlayer.cxx:428): what the step last met, which is what
 // the debug overlay draws and what upstream's no-climb jump rule reads.
 let lastMotionObstacle = null;
+// `LocalPlayer::doUpdateMotion` (LocalPlayer.cxx:805-810): a face whose physics
+// driver pushes upward -- a jump pad -- sounds `SFX_BOUNCE`, and that branch
+// comes first in the chain, so the same frame never also rings the landing or
+// the burrow sound.
+function isDrivenUpward(obstacle, x, y, z) {
+  const driver = resolvePhysicsDriverAt(obstacle, x, y, z);
+  return !!(driver?.linear && driver.linear[1] > 0);
+}
 let jumpDirection = null; // Stores the direction at jump start
 // LocalPlayer::wingsFlapCount. Refilled to _wingsJumpCount on every tick the
 // tank spends on a surface and spent one per jump, take-off included. Only Wings
@@ -9157,12 +9165,15 @@ function normalizeAngle(angle) {
 // gentle. Upstream can afford that because it never manufactures a transition,
 // and neither does bzo now that the support snap cannot lift a falling tank back
 // onto a surface it left.
-function triggerLandingFeedback(tank, impactSpeed = 0, { local = false } = {}) {
+// `silent` is the bounce branch above winning the else-chain: upstream still
+// runs `EFFECTS.addLandEffect` for any landing (LocalPlayer.cxx:799-801) and
+// only the sound is skipped, so the ring and the squish stay.
+function triggerLandingFeedback(tank, impactSpeed = 0, { local = false, silent = false } = {}) {
   if (!tank?.position) return;
   const clampedImpact = Math.max(0, impactSpeed || 0);
   const intensity = 1.0;
   applyLandingSquish(tank, clampedImpact);
-  renderManager.createLandingEffect(tank.position, intensity, { local });
+  renderManager.createLandingEffect(tank.position, intensity, { local, silent });
 }
 
 function decayLocalTeleportReentryBlock(distanceMoved, nowMs) {
@@ -10039,7 +10050,10 @@ function handleMotion(deltaTime) {
     myTank.userData.verticalVelocity = 0;
     setAirVelocity(myTank, 0, 0);
     clearJumpPredictionDebug(myTank);
-    triggerLandingFeedback(myTank, landingImpactSpeed, { local: true });
+    triggerLandingFeedback(myTank, landingImpactSpeed, {
+      local: true,
+      silent: isDrivenUpward(lastMotionObstacle, playerX, playerY, playerZ),
+    });
   }
 
   const oldX = playerX;
@@ -10298,7 +10312,10 @@ function handleMotion(deltaTime) {
   // slope or ground it took to get here.
   if (wasInAir && !nextInAir) {
     forceMoveSend = true;
-    triggerLandingFeedback(myTank, Math.abs(step.velocityY || 0), { local: true });
+    triggerLandingFeedback(myTank, Math.abs(step.velocityY || 0), {
+      local: true,
+      silent: isDrivenUpward(step.obstacle || null, step.x, step.y, step.z),
+    });
     jumpDirection = null;
     myTank.userData.jumpForwardSpeed = 0;
     myTank.userData.fallForwardSpeed = 0;
@@ -10430,11 +10447,21 @@ function handleMotion(deltaTime) {
 
   updateInsideBuildings();
 
-  // doUpdateMotion (LocalPlayer.cxx:808): the frame a tank crosses from ground
-  // level into the ground, which only Burrow ever does. Upstream plays it
-  // instead of the landing sound, in the same else-chain.
-  if (oldY >= 0 && playerY < 0) {
-    renderManager.playSound('burrow', myTank.position);
+  // doUpdateMotion (LocalPlayer.cxx:803-816), the whole else-chain in upstream's
+  // own order, read off the face this frame's step ended on -- upstream sets its
+  // physics driver from `lastObstacle` immediately before this. A driver pushing
+  // upward sounds first and every frame the tank is still on the pad, which is
+  // upstream's behaviour too and in practice one or two frames, since a pad that
+  // lifts a tank stops being under it. Otherwise the frame a tank crosses from
+  // ground level into the ground, which only Burrow ever does.
+  // Both in the ear rather than positional: upstream's chain is three
+  // `playLocalSound` calls, which it documents as distance 0 -- no attenuation.
+  // These are the player's own tank, under the camera, so a rolloff only ever
+  // makes them quieter than upstream's.
+  if (isDrivenUpward(lastMotionObstacle, playerX, playerY, playerZ)) {
+    renderManager.playLocalSound('bounce');
+  } else if (oldY >= 0 && playerY < 0) {
+    renderManager.playLocalSound('burrow');
   }
 
   const actualDeltaX = playerX - oldX;

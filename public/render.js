@@ -3286,16 +3286,19 @@ class RenderManager {
     return materials;
   }
 
-  // Per key, because the boxes and the boundary walls are torn down separately
-  // and each owns only its own entry.
-  _disposeSharedObstacleMaterials(key) {
-    const materials = this._sharedObstacleMaterials?.get(key);
-    if (!materials) return;
-    materials.forEach((material) => {
-      material.map?.dispose();
-      material.dispose();
+  // Takes a key or a predicate over keys, because the boxes and the boundary
+  // walls are torn down separately and each owns only its own entries.
+  _disposeSharedObstacleMaterials(selector) {
+    if (!this._sharedObstacleMaterials) return;
+    const matches = typeof selector === 'function' ? selector : (key) => key === selector;
+    [...this._sharedObstacleMaterials.keys()].forEach((key) => {
+      if (!matches(key)) return;
+      this._sharedObstacleMaterials.get(key).forEach((material) => {
+        material.map?.dispose();
+        material.dispose();
+      });
+      this._sharedObstacleMaterials.delete(key);
     });
-    this._sharedObstacleMaterials.delete(key);
   }
 
   // Bakes a texture's UV transform into the vertices one geometry group uses, so
@@ -4357,15 +4360,12 @@ class RenderManager {
     // The eighth-dimension nodes are keyed by the obstacle objects the world
     // that is going away owns, so they go with it.
     this._clearInsideBuildings();
-    // After the meshes, so nothing is still pointing at them. The boundary walls
-    // keep their own entry and are not cleared here.
-    this._disposeSharedObstacleMaterials('box');
-    this._disposeSharedObstacleMaterials('boxFlat');
-    this._disposeSharedObstacleMaterials('boxTinted');
-    this._disposeSharedObstacleMaterials('boxFlatTinted');
-    this._disposeSharedObstacleMaterials('pyramid');
-    this._disposeSharedObstacleMaterials('pyramidTinted');
-    this._disposeSharedObstacleMaterials('base');
+    // After the meshes, so nothing is still pointing at them. Every entry but
+    // the boundary walls', which `createMapBoundaries` owns and clears itself.
+    // Swept rather than named: a box or pyramid key is built from the
+    // obstacle's textures, lighting and animation, so it is not a string this
+    // can spell out in advance.
+    this._disposeSharedObstacleMaterials((key) => key !== 'boundary');
     this._clearDebugLabels('obstacle');
   }
 
@@ -8043,13 +8043,17 @@ class RenderManager {
     if (sphere.material) sphere.material.dispose();
   }
 
-  createLandingEffect(position, intensity = 1, { local = false } = {}) {
+  createLandingEffect(position, intensity = 1, { local = false, silent = false } = {}) {
     if (!this.scene || !position) return;
     const clampedIntensity = Math.max(0.4, Math.min(1.6, intensity || 1));
     // BZFlag has no per-sound gain, so landing volume does not vary with impact
     // speed. The intensity argument still drives the visual landing effect.
-    if (local) this.playLocalSound('land');
-    else this.playSound('land', position);
+    // `silent` is a caller that has already sounded the bounce this frame; the
+    // effect still draws, since upstream's is not part of that else-chain.
+    if (!silent) {
+      if (local) this.playLocalSound('land');
+      else this.playSound('land', position);
+    }
 
     // StdLandEffect (effectsRenderer.cxx:1379): drawRingXY builds a shell
     // between a base ring flat on the ground and a top ring that is both

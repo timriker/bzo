@@ -1662,6 +1662,18 @@ physics
   death Tank Melted By The Test Pad
 end
 
+# A `linear` whose push is straight up -- a jump pad, which is the one shape of
+# driver upstream gives its own sound (`SFX_BOUNCE`,
+# `LocalPlayer.cxx:805-810`), played ahead of the landing and burrow sounds in
+# the same else-chain. `ahs3_INCOMING.bzw`'s own cones are the real-map
+# precedent (`linear 0 0 30`); 20 here because it is a demo pad rather than a
+# route across a field -- just above `_jumpVelocity`, so it reads as a launch
+# and not a jump, and the tank is back down in a couple of seconds.
+physics
+  name test_bounce
+  linear 0 0 20
+end
+
 # The pads' own look, so each reads visually the way it behaves. Upstream has
 # no engine link at all between a `linear` driver and a `textureMatrix` --
 # checked directly against `$HOME/bzflag`: neither `PhysicsDriver` nor
@@ -1697,6 +1709,29 @@ material
   nolighting
 end
 
+# `automatic_icon`, upstream's own autopilot star -- a marker rather than a
+# picture of a surface, which is what a pad a tank is meant to aim for wants.
+# It is one sign, so it gets one copy of itself: a box cap tiles every 2 units
+# (`BOX_TEXTURE_SCALES.capScale`, `public/render.js`) and this pad is 6 across,
+# so `fixedscale 3 3` -- which divides the UVs, `TextureMatrix::finalize`
+# (TextureMatrix.cxx:297) -- stretches the three tiles back out into one.
+# `fixedcenter` is the pivot that scaling happens about, and upstream defaults
+# it to the middle of a single tile (0.5, 0.5); this cap's UVs run 0..3, so
+# pivoting there leaves the one copy straddling a corner. Pivoting at the UV
+# origin instead sends 0..3 to 0..1, which is the face.
+textureMatrix
+  name bounce_fit
+  fixedscale 3 3
+  fixedcenter 0 0
+end
+
+material
+  name bounce_look
+  addtexture automatic_icon
+  texmat bounce_fit
+  nolighting
+end
+
 box
   name PD_Conveyor
   position -135 -100 0
@@ -1711,6 +1746,20 @@ box
   size 3 3 0
   phydrv test_death
   matref death_look
+end
+
+# South of the purple base against the west wall rather than down in the pad
+# column with the other two: a launch wants open sky above it and somewhere
+# clear to come down, and the corner below is watchtowers. Same barely-real
+# height `PD_Conveyor` needs for the same reason -- a flush pad is walked across
+# as ordinary ground and never becomes the `lastMotionObstacle` a `linear` push
+# is read off.
+box
+  name PD_Bounce
+  position -135 -35 0
+  size 3 3 0.1
+  phydrv test_bounce
+  matref bounce_look
 end
 
 # `dyncol`/`texmat` -- a material's own tint or UV animated from a named

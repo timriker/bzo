@@ -3321,14 +3321,22 @@ surface as an error, not a silent degradation.
 | `shotBoom` | `boom.wav` | `SFX_SHOT_BOOM` | a shot expires or hits an obstacle |
 | `laser` | `laser.wav` | `SFX_LASER` | a laser is fired |
 | `shock` | `shock.wav` | `SFX_SHOCK` | a shock wave is fired |
+| `missile` | `missile.wav` | `SFX_MISSILE` | a guided missile is fired |
 | `thief` | `thief.wav` | `SFX_THIEF` | a Thief's beam is fired |
+| `lock` | `lock.wav` | `SFX_LOCK` | a guided missile has locked onto me |
 | `ricochet` | `ricochet.wav` | `SFX_RICOCHET` | a shot bounces off a building |
+| `messageTeam` | `message_team.wav` | `SFX_MESSAGE_TEAM` | a team message arrives from somebody else |
+| `messagePrivate` | `message_private.wav` | `SFX_MESSAGE_PRIVATE` | a direct message addressed to me arrives |
+| `messageAdmin` | `message_admin.wav` | `SFX_MESSAGE_ADMIN` | a message on the admin channel arrives |
 | `explosion` | `explosion.wav` | `SFX_EXPLOSION`, `SFX_DIE` | a tank is destroyed |
 | `runOver` | `steamroller.wav` | `SFX_RUNOVER` | a tank is run over by a Steamroller |
 | `jump` | `jump.wav` | `SFX_JUMP` | a tank jumps |
 | `flap` | `flap.wav` | `SFX_FLAP` | a tank flaps its Wings |
 | `land` | `land.wav` | `SFX_LAND` | a tank lands |
+| `bounce` | `bounce.wav` | `SFX_BOUNCE` | a tank stands on an upward physics driver |
 | `teleport` | `teleport.wav` | `SFX_TELEPORT` | a tank passes through a teleporter |
+| `burrow` | `burrow.wav` | `SFX_BURROW` | a Burrow tank digs in below ground level |
+| `phantom` | `phantom.wav` | `SFX_PHANTOM` | a Phantom Zone tank crosses a teleporter |
 | `pop` | `pop.wav` | `SFX_POP` | a tank appears (spawn) |
 | `flagGrab` | `flag_grab.wav` | `SFX_GRAB_FLAG`, `SFX_GRAB_BAD` | a flag is picked up |
 | `flagDrop` | `flag_drop.wav` | `SFX_DROP_FLAG` | a flag is dropped |
@@ -3336,7 +3344,8 @@ surface as an error, not a silent degradation.
 | `flagLost` | `flag_lost.wav` | `SFX_LOSE` | my team's flag was captured |
 | `flagAlert` | `flag_alert.wav` | `SFX_ALERT` | an enemy picked up my team's flag |
 | `teamGrab` | `teamgrab.wav` | `SFX_TEAMGRAB` | a team mate picked up an enemy team's flag |
-| `killTeam` | `killteam.wav` | `SFX_KILL_TEAM` | I captured my own team's flag |
+| `killTeam` | `killteam.wav` | `SFX_KILL_TEAM` | I captured my own team’s flag |
+| `huntSelect` | `hunt_select.wav` | `SFX_HUNT_SELECT` | I have just been made the rabbit |
 
 **Levels mirror BZFlag exactly, and there is no per-sound volume.** BZFlag scales
 every sample only by distance and one global setting; the samples are pre-mixed

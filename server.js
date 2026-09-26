@@ -4368,18 +4368,19 @@ function parseBzwColor(words) {
 // no network fetch, no CORS/CSP surface, and the obstacle keeps its type's
 // plain default texture.
 const BZW_STOCK_TEXTURES = new Set([
-  'automatic_icon', 'blue_basetop', 'blue_basewall', 'blue_bolt', 'blue_icon', 'blue_laser',
-  'blue_super_bolt', 'blue_tank', 'boxwall', 'bubble', 'bzflag-256x256', 'bzflag-48x48',
-  'caution', 'clouds', 'frog', 'green_basetop', 'green_basewall', 'green_bolt',
-  'green_icon', 'green_laser', 'green_super_bolt', 'green_tank', 'hunter_bolt', 'hunter_laser',
-  'hunter_super_bolt', 'hunter_tank', 'menu_arrow', 'mesh', 'moon', 'observer_icon',
-  'puddle', 'purple_basetop', 'purple_basewall', 'purple_bolt', 'purple_icon', 'purple_laser',
-  'purple_super_bolt', 'purple_tank', 'pyrwall', 'rabbit_bolt', 'rabbit_laser', 'rabbit_super_bolt',
-  'rabbit_tank', 'radar', 'raindrop', 'red_basetop', 'red_basewall', 'red_bolt',
-  'red_icon', 'red_laser', 'red_super_bolt', 'red_tank', 'rogue_bolt', 'rogue_icon',
-  'rogue_laser', 'rogue_super_bolt', 'rogue_tank', 'roof', 'snowflake', 'std_ground',
-  'telelink', 'tetrawall', 'thief', 'title', 'wall', 'water',
-  'zone_ground',
+  'automatic_icon', 'blend_flash', 'blue_basetop', 'blue_basewall', 'blue_bolt', 'blue_icon',
+  'blue_laser', 'blue_super_bolt', 'blue_tank', 'boxwall', 'bubble', 'bzflag-256x256',
+  'bzflag-48x48', 'caution', 'clouds', 'dusty_flare', 'explode1', 'explode2', 'flag', 'frog',
+  'green_basetop', 'green_basewall', 'green_bolt', 'green_icon', 'green_laser',
+  'green_super_bolt', 'green_tank', 'hunter_bolt', 'hunter_laser', 'hunter_super_bolt',
+  'hunter_tank', 'jumpjets', 'menu_arrow', 'mesh', 'missile', 'moon', 'mountain1', 'mountain2',
+  'mountain3', 'mountain4', 'mountain5', 'observer_icon', 'puddle', 'puffs', 'purple_basetop',
+  'purple_basewall', 'purple_bolt', 'purple_icon', 'purple_laser', 'purple_super_bolt',
+  'purple_tank', 'pyrwall', 'rabbit_bolt', 'rabbit_laser', 'rabbit_super_bolt', 'rabbit_tank',
+  'radar', 'raindrop', 'red_basetop', 'red_basewall', 'red_bolt', 'red_icon', 'red_laser',
+  'red_super_bolt', 'red_tank', 'rogue_bolt', 'rogue_icon', 'rogue_laser', 'rogue_super_bolt',
+  'rogue_tank', 'roof', 'shot_tail', 'snowflake', 'std_ground', 'telelink', 'tetrawall', 'thief',
+  'title', 'treads', 'wall', 'water', 'zone_ground',
 ]);
 
 // A texture name as a `material`/`addtexture`/`texture` line states it --

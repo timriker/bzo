@@ -118,6 +118,14 @@ export const GAME_SOUNDS = Object.freeze({
   flap: { file: 'flap.wav', sfx: 'SFX_FLAP' },
   // A tank lands.
   land: { file: 'land.wav', sfx: 'SFX_LAND' },
+  // A tank is standing on a face whose physics driver pushes upward -- a jump
+  // pad. Upstream sounds this in place of the landing sound rather than on top
+  // of it, and ahead of the burrow sound in the same else-chain
+  // (LocalPlayer.cxx:803-816), so a tank thrown off a pad rings once. Its
+  // remote half, `PlayerState::BounceSound` (Player.cxx:1386), has nothing to
+  // attach to here: bzo tracks which face is under the local tank, not which
+  // is under everyone else's, so only the tank that bounced hears it.
+  bounce: { file: 'bounce.wav', sfx: 'SFX_BOUNCE' },
   // A tank passes through a teleporter.
   teleport: { file: 'teleport.wav', sfx: 'SFX_TELEPORT' },
   // A tank digs itself in. Upstream plays this the frame a Burrow tank crosses
