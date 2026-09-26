@@ -14,6 +14,13 @@ where the two differ. Upstream references are paths under `$HOME/bzflag/`.
   occupies a player slot. `buildEnterPayload` nonetheless already lays out the
   whole message including its 22-byte token field, zeroed -- forwarding a
   global login is writing into a slot that exists rather than adding one.
+- **A world that arrives without names.** Upstream's `Obstacle` has no name
+  field and packs none, so the binary world carries named materials, textures,
+  physics drivers and mesh transforms but no object names and no group
+  structure -- it is already flattened. A proxied world therefore differs from
+  the operator's own `.bzw` in what bzo's tooling can call things, not in what
+  a player sees or collides with. This is the existing map-viewer path's
+  behaviour already, not something proxying introduces.
 - **A list row already parsed into `host` and `port`.** `fetchServerList`
   splits the list server's `nameport` field, so a bzfs row carries
   `bz4.rikers.org` and `5154` -- exactly the key a proxy map is written
@@ -170,6 +177,42 @@ a `-publickey` (`bzfs.conf`), so it is publicized and token checks do run
 rather than falling through to `notRequired`. The public list row carries
 `bz4.rikers.org:5154`, which is the map key. Nothing about the first proxy
 needs a second machine or a cooperating operator.
+
+## Transport: the proxy speaks TCP and UDP
+
+bzo's browser side is one WebSocket and nothing else -- no unreliable path, no
+second channel (`docs/network.md`). bzfs is TCP plus a UDP link on the same
+port, IPv4 only. The conversion is entirely inside the proxy: it terminates the
+WebSocket and dials both.
+
+**UDP is optional only for an observer.** bzfs applies a blunt rule to any
+non-bot player that sends `MsgShotBegin` over TCP -- "Your end is not using
+UDP", "Turn on UDP on your firewall or router", then `removePlayer(i, "no
+UDP")` (`bzfs.cxx:5596-5608`). So the first shot a TCP-only proxied player
+fires disconnects them. Reading is unaffected either way, since
+`NetHandler::pwrite` only routes `MsgShotBegin`, `MsgShotEnd`,
+`MsgPlayerUpdate`, `MsgPlayerUpdateSmall`, `MsgGMUpdate`, `MsgLagPing` and
+`MsgGameTime` over UDP when `udpout` is up and sends everything over TCP
+otherwise -- it is sending a shot that is fatal.
+
+The proxy therefore does what a normal client does, and does it because that is
+what a normal client does rather than only where it is forced: one UDP socket
+per proxied player alongside the TCP connection, opened by sending
+`MsgUDPLinkRequest` from it and confirmed by bzfs with `MsgUDPLinkEstablished`
+back over TCP and a `MsgUDPLinkRequest` back over UDP (`sendUDPupdate`,
+`bzfs.cxx:329`). The UDP path has its own ceiling: `MaxUDPPacketLen` is 68
+bytes against TCP's 1024 (`Protocol.h:47`).
+
+**Not by entering as a bot.** The kick is guarded by `!isBot()`, and `isBot()`
+is just `type == ComputerPlayer` (`PlayerInfo.h:319`), so `MsgEnter` could
+claim it and dodge the rule. It would be a lie about what the client is, it
+changes how a target treats the player, and it trades looking like a good
+client for avoiding the thing that makes one.
+
+Co-location makes the dual path cheap rather than merely mandatory. UDP exists
+for loss and head-of-line blocking on a real network; over loopback or a LAN
+there is effectively neither, so the proxy gets the protocol bzfs expects
+without inheriting the failure modes it was designed around.
 
 ## The one real design cost: authority
 
@@ -474,10 +517,13 @@ a watchable real match without any of the authority inversion.
    scoreboard shown, before anything moves -- visible from both ends, since
    bz4's own player list shows the observer.
 
-3. **Translate the downstream state.** Positions, shots, flags, scores, teams
-   and the match clock into the messages bzo's client already renders. The bulk
-   of the work, and the payoff: roaming a live BZFlag match in a browser or a
-   headset.
+3. **Translate the downstream state, over both transports.** Positions, shots,
+   flags, scores, teams and the match clock into the messages bzo's client
+   already renders. The UDP link belongs here rather than with play: the bulk
+   messages are the ones that ride it, and having it up before anyone can shoot
+   means the proxy never presents itself as the TCP-only client bzfs kicks. The
+   bulk of the work, and the payoff: roaming a live BZFlag match in a browser
+   or a headset.
 
 4. **Replace the hardcoded target with the `proxies` map**, plus the
    `/login/<target>` allowlist. Several targets first exist here, so this is
@@ -488,7 +534,9 @@ a watchable real match without any of the authority inversion.
    `alive`, and grab/drop/capture/teleport as notifications), the
    dead-and-waiting state, the rejoin cooldown, holding the bzfs connection
    across a browser reconnect, and the cheating decision -- which wants
-   settling before this lands rather than after.
+   settling before this lands rather than after. The first upstream `shotBegin`
+   is also the first thing that tests the UDP link for real, since that is the
+   message bzfs refuses over TCP.
 
 6. **Advertise to the list server.** Per-target report blocks, the bzo table's
    rows and its Proxied column, per-target liveness.
