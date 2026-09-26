@@ -6,15 +6,35 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
 
 ## [Unreleased]
 
+### Changed
+- Player ids are BZFlag's own slot numbers now: 0 through 243, with the
+  destinations that are not a player at the top of the byte -- 251 a team, 252
+  the admin channel, 253 the server, 254 everybody. bzo used to start players
+  at 1 and spend small negatives on the rest, which made its ids disagree with
+  the ones a BZFlag scoreboard and an id-taking command show, and which
+  collided outright when a proxied server's player 0 spoke: their chat arrived
+  as a message from everybody. Refs #82.
+
 ### Added
+- Signing in from a proxied server comes back to that server. `/login/<key>`
+  and `/logout/<key>` take a proxy target as their return page, so a player
+  who signs in while watching a real match is returned to the match rather
+  than to this server's own game. The forwarded-token probe keeps the same
+  route under a `probe-` prefix. Refs #82.
+- `?view=` on a spectator link picks which roam view to watch in, so
+  `?follow=leader&view=track` comes back tracking the leader rather than
+  following them. `?follow=` says who to watch and this says from where --
+  the two axes one value could never carry together.
 - A browser can watch a real BZFlag server through bzo. `?proxy=<host_port>`
   points the ordinary client at an allowlisted `bzfs` this instance can reach
   on a private address: bzo joins that server as an observer on the browser's
   behalf, imports its world the way Map Viewer already does, and turns what
   the server tells a joining player -- the roster, the team scores, the match
   clock, the server's own greeting -- into one bzo `init`. The connection is
-  held, so players arriving and leaving over there show up here. Nothing moves
-  yet: positions, flags and shots are the next piece. Refs #82.
+  held, and what happens over there happens here: tanks move, spawn, die and
+  pause, flags are carried and dropped, shots fly, scores change and chat goes
+  both ways, including `/` commands, which the target answers. The proxy keeps
+  a UDP link alongside its TCP one, as any good BZFlag client does. Refs #82.
 - `/login/<host_port>` hands a bzflag.org login token to a real `bzfs` rather
   than spending it here, which is how a proxied player would carry a global
   identity. The answer, which the whole idea rested on, is that an unmodified

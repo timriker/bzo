@@ -329,11 +329,13 @@
       <div id="chatMessages"></div>
       <div class="chat-input-row">
         <button id="sendBtn" type="button" aria-pressed="false" title="Type a chat message, then send it">Send</button>
+        <!-- Upstream's own PlayerId destinations (Address.h:73-78); see
+             CHAT_TARGET_ALL and friends in client.js. -->
         <select id="chatTarget">
-          <option value="0">ALL</option>
-          <option value="-2">TEAM</option>
-          <option value="-3">ADMIN</option>
-          <option value="-1">SERVER</option>
+          <option value="254">ALL</option>
+          <option value="251">TEAM</option>
+          <option value="252">ADMIN</option>
+          <option value="253">SERVER</option>
         </select>
         <input id="chatInput" type="text" />
       </div>

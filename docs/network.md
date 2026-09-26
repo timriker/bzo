@@ -67,6 +67,23 @@ Identity is not on this socket at all. A player signs in over HTTP at `/login`
 and the server reads the session cookie when the socket opens; see
 `docs/login.md`.
 
+## Player ids
+
+A player id is a slot number, and it is upstream's: `0` through 243, with the
+destinations that are not a player at the top of the byte -- 251 a team, 252
+the admin channel, 253 the server, 254 everybody (`Address.h:73-78`, and
+`player-ids.mjs`/`player-ids.cjs`, which is the pair both ends read them
+from). bzo writes them as strings, because they are object keys here rather
+than bytes on a wire.
+
+The numbering is shared with BZFlag deliberately. A slot number is what the
+scoreboard shows and what an id-taking command names, so it should mean the
+same thing in both; and a proxied player's id *is* the target's own
+(`docs/proxy-plan.md`), which only works if both ends agree which numbers a
+player may hold. The one place the two differ: upstream spends 244 through 251
+on the eight teams and names which one, where bzo spends only 251 and means
+"the sender's team", since a client can address no other.
+
 ## Client to server
 
 29 types, dispatched by one switch in `server.js`. Fields marked optional are
@@ -86,7 +103,7 @@ omitted rather than sent null.
 | `pause` | -- | toggle; the server runs the countdown |
 | `selfDestruct` | -- | `/kill` on yourself |
 | `identify` | -- | toggle the lock/identify target |
-| `message` | `dst`, `msgType`, `text` | chat. `dst` is `0` for all, else a player id or a team; `msgType` is `chat`/`action`/`team`/`admin`/... |
+| `message` | `dst`, `msgType`, `text` | chat. `dst` is a player id, or one of the reserved ids below; `msgType` is `chat`/`action`/`team`/`admin`/... |
 | `setTankModel` | `tankModel` | change tank mid-session |
 | `queryPlayers` | -- | ask for a fresh roster |
 | `getMaps` | `requestId` | the map list |

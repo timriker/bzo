@@ -241,12 +241,13 @@ function buildEnterPayload({
   motto = IMPORT_MOTTO,
   token = '',
   version = IMPORT_CLIENT_VERSION,
+  team = OBSERVER_TEAM,
 } = {}) {
   const payload = Buffer.alloc(
     2 + 2 + CALLSIGN_LEN + MOTTO_LEN + TOKEN_LEN + VERSION_LEN + PLAYER_ID_LEN
   );
   payload.writeUInt16BE(TANK_PLAYER, 0);
-  payload.writeUInt16BE(OBSERVER_TEAM, 2);
+  payload.writeUInt16BE(team, 2);
   let at = 4;
   payload.write(callsign, at, CALLSIGN_LEN - 1, 'ascii'); at += CALLSIGN_LEN;
   payload.write(motto, at, MOTTO_LEN - 1, 'ascii'); at += MOTTO_LEN;

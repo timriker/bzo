@@ -1,10 +1,10 @@
 # Proxying a real bzfs server
 
-A browser can watch, but not yet play. Issue #82: let a browser play, or watch,
-on an ordinary `bzfs` server through a bzo instance. `docs/network.md` is the
-protocol reference this plan assumes -- what bzo says on the wire, what bzfs
-says, and where the two differ. Upstream references are paths under
-`$HOME/bzflag/`.
+A browser can watch a live match, but not yet play in one. Issue #82: let a
+browser play, or watch, on an ordinary `bzfs` server through a bzo instance.
+`docs/network.md` is the protocol reference this plan assumes -- what bzo says
+on the wire, what bzfs says, and where the two differ. Upstream references are
+paths under `$HOME/bzflag/`.
 
 ## What already exists to build on
 
@@ -601,8 +601,8 @@ step before it is cheaper against one hardcoded loopback target than against a
 registry. Observer-first still holds: an observer sends no state, so it reaches
 a watchable real match without any of the authority inversion.
 
-1. **A forwarded token verifies. Done.** `/login/bz.rikers.org_5154` runs the
-   weblogin, deliberately does *not* call `CHECKTOKENS` -- a token is answered
+1. **A forwarded token verifies. Done.** `/login/probe-bz.rikers.org_5154`
+   runs the weblogin, deliberately does *not* call `CHECKTOKENS` -- a token is answered
    once, so asking would spend the very thing being forwarded -- and sends one
    `MsgEnter` to `127.0.0.1:5154` with the callback's callsign and its token.
    bzfs queues the list-server ADD on the same main-loop pass
@@ -610,6 +610,10 @@ a watchable real match without any of the authority inversion.
    lands, so the verdict arrives as a chat message and the `MsgAccept` follows
    it: `Global login approved!`, then the join. The target it may aim at is an
    allowlist, `PROXY_TARGETS`, which is what the `proxies` map grows from.
+   The `probe-` prefix is because a bare target now names the way *back* to
+   that target: `/login/<host_port>` signs in and returns to `?proxy=`, so a
+   player watching a real server comes back watching it rather than landing in
+   this server's own game. `/logout/<host_port>` does the same.
 
    Two things the probe does that the importer does not: it occupies a real
    player slot on the target, and a *verified* join under a callsign already
@@ -639,13 +643,32 @@ a watchable real match without any of the authority inversion.
    yet the forwarded token from step 1: an observer that arrives unverified is
    refused nothing that matters, and the join that spends a token is step 5's.
 
-3. **Translate the downstream state, over both transports.** Positions, shots,
-   flags, scores, teams and the match clock into the messages bzo's client
-   already renders. The UDP link belongs here rather than with play: the bulk
-   messages are the ones that ride it, and having it up before anyone can shoot
-   means the proxy never presents itself as the TCP-only client bzfs kicks. The
-   bulk of the work, and the payoff: roaming a live BZFlag match in a browser
-   or a headset.
+3. **The downstream state, over both transports. Done bar two gaps.**
+   Positions, spawns, deaths, pauses, flags, shots, scores, the badges beside
+   a callsign, the match clock and the rabbit, all into the messages bzo's
+   client already renders. The UDP link is up before the join finishes rather
+   than with play: the bulk messages ride it, and a proxy that waited would be
+   presenting itself as the TCP-only client bzfs kicks for shooting.
+
+   Two conversions are the whole of the work. Coordinates -- bzfs is `+Y`
+   north and `+Z` up, bzo is three.js's `-Z` north and `+Y` up, the same
+   change the world importer already makes (`docs/bzw.md`), with a heading a
+   quarter turn apart. And authority: bzo's `fs`/`rs` are the *inputs* a
+   client would have held, because that is what the receiving client
+   dead-reckons with, so they are recovered from the velocity bzfs sends
+   against the very numbers that client will multiply back by.
+
+   Where one end's silence is the other's missing message, the proxy keeps the
+   clock. A shot that simply expires ends with no `MsgShotEnd` at all -- every
+   upstream client stops drawing it on its own -- where bzo's client removes a
+   projectile only when told to, so the proxy sends the ending, at the shot's
+   own lifetime or the world's edge, whichever comes first.
+
+   **The two gaps.** A shot's path is client-side work upstream, and bzo's
+   client does not do it, so a proxied shot passes through a wall it should
+   have stopped at, and a Laser arrives without the segments bzo draws a beam
+   from. Both want the client to trace a shot it was given rather than the
+   proxy simulating one.
 
 4. **Replace the hardcoded target with the `proxies` map**, plus the
    `/login/<target>` allowlist. Several targets first exist here, so this is

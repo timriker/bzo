@@ -10,17 +10,14 @@ const CHAT_VISIBLE_MESSAGES = 6;
 const CHAT_SCROLLBACK_LIMIT = 600;
 const CHAT_MIN_WIDTH_WITH_DEBUG = 560;
 const CHAT_DEBUG_PANEL_RESERVE = 352;
-const CHAT_TARGET_ALL = 0;
-const CHAT_TARGET_SERVER = -1;
-// Upstream's `send team` (ActionBinding.cxx:101), which addresses a message to a
-// team rather than to a player: its wire format spends PlayerIds 244 and up on
-// the teams, and bzo spends small negatives on the two destinations that are not
-// players, so a team is one more of those.
-const CHAT_TARGET_TEAM = -2;
-// Upstream's `AdminPlayers` destination (Address.h:76), which it spends a
-// reserved PlayerId on. bzo spends small negatives on the destinations that are
-// not players, so this is one more of those.
-const CHAT_TARGET_ADMIN = -3;
+// A chat destination that is not a player is one of upstream's reserved
+// PlayerIds -- see `player-ids.mjs` for the space and why bzo shares it.
+// `send team` (ActionBinding.cxx:101) is `FIRST_TEAM` and means this client's
+// own team, which is the only one it can address.
+const CHAT_TARGET_ALL = ALL_PLAYERS;
+const CHAT_TARGET_SERVER = SERVER_PLAYER;
+const CHAT_TARGET_ADMIN = ADMIN_PLAYERS;
+const CHAT_TARGET_TEAM = FIRST_TEAM;
 const CHAT_KIND_CHAT = 'chat';
 const CHAT_KIND_ACTION = 'action';
 const CHAT_KIND_SERVER = 'server';
@@ -103,6 +100,12 @@ import {
   toggleOperatorPanel,
   toggleViewPanel
 } from './input.js';
+import {
+  ALL_PLAYERS,
+  SERVER_PLAYER,
+  ADMIN_PLAYERS,
+  FIRST_TEAM,
+} from './player-ids.mjs';
 import { getMenuClickDirection } from './menus.js';
 import { DestructCountdown, PauseState } from './pause.mjs';
 import { HUNT_MARKER_COLOR, HuntState } from './hunt.mjs';
@@ -177,6 +180,7 @@ import {
   ROAM_FOLLOW_DISTANCE,
   ROAM_FOLLOW_HEIGHT_FACTOR,
   ROAM_VIEW,
+  ROAM_VIEW_ORDER,
   advanceRoamSelection,
   createRoamCamera,
   getRoamForward,
@@ -846,6 +850,21 @@ function readAutoFollowTarget() {
 }
 
 const autoFollowTarget = readAutoFollowTarget();
+
+// Which view to watch in, the second axis the comment above says belongs in a
+// parameter of its own: `?follow=leader&view=track` comes back tracking the
+// leader rather than following them, which is a different camera and, on a
+// screen left running, usually the one wanted. Any of the views the roam
+// cycle offers by name, and an unrecognised one is refused the same way --
+// the link watches as it otherwise would rather than guessing.
+function readAutoRoamView() {
+  const params = new URLSearchParams(window.location.search);
+  if (!params.has('view')) return null;
+  const requested = (params.get('view') || '').trim().toLowerCase();
+  return ROAM_VIEW_ORDER.includes(requested) ? requested : null;
+}
+
+const autoRoamView = readAutoRoamView();
 
 // `?viewmap=bzo.bzw` -- issue #68's direct link into Map Viewer. Names a file
 // rather than validating one: the list of what this server has actually
@@ -3131,7 +3150,20 @@ function startGlobalLogin() {
       : 'Global login leaves VR. Exit the headset session first.', 5, true);
     return;
   }
-  window.location.href = amVerified ? '/logout' : '/login';
+  // Back to the page this started on, still watching what it was watching. A
+  // browser on a proxied server returns to that match rather than to this
+  // server's own game, and the view rides along as a second path segment --
+  // the callback bzflag.org returns to may hold only one query parameter, so
+  // anything the round trip must carry travels in the path (see `/login`).
+  //
+  // One value covers both spectator parameters: `?view=` implies watching the
+  // leader, so a page on `?follow=leader` comes back on `view=follow`, which
+  // is the same camera.
+  const params = new URLSearchParams(window.location.search);
+  const proxyTarget = params.get('proxy');
+  const watching = isObserver() && roamView ? `/${encodeURIComponent(roamView)}` : '';
+  const returnPage = proxyTarget ? `/${encodeURIComponent(proxyTarget)}${watching}` : '';
+  window.location.href = `${amVerified ? '/logout' : '/login'}${returnPage}`;
 }
 
 function syncDebugTabVisibility() {
@@ -6227,7 +6259,7 @@ function handleServerMessage(message) {
       // A server that does not offer the observer team cannot honour the
       // spectator link, so the page joins as it otherwise would rather than
       // asking for a team and being refused.
-      const autoObserving = autoFollowTarget !== null
+      const autoObserving = (autoFollowTarget !== null || autoRoamView !== null)
         && availablePlayerTeams.includes(PLAYER_TEAM.OBSERVER);
       if (autoObserving) {
         // Staged the way the dialog stages it, and not saved: the link decides
@@ -6327,8 +6359,9 @@ function handleServerMessage(message) {
         // than once: a reconnect is how this client comes back from a server
         // restart, and a link left running on a screen somewhere should come
         // back watching rather than staring at the spawn it landed on.
-        if (autoFollowTarget === AUTO_FOLLOW_LEADER && isObserverTeam(playerTeam)) {
-          roamView = ROAM_VIEW.FOLLOW;
+        if ((autoFollowTarget === AUTO_FOLLOW_LEADER || autoRoamView !== null)
+          && isObserverTeam(playerTeam)) {
+          roamView = autoRoamView || ROAM_VIEW.FOLLOW;
           roamTargetId = null;
           roamTargetFlagIndex = null;
         }

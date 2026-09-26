@@ -635,6 +635,14 @@ the server simulates shots and decides who died -- while bzfs lets the victim's
 own client declare its death, its shot ends, its flag grabs and its teleports.
 The same nouns appear on both wires with the arrow reversed.
 
+**A player id is a slot number, and it is upstream's.** 0 through 243, with
+the non-player destinations at the top of the byte -- 251 a team, 252 admin,
+253 the server, 254 everybody (`Address.h:73-78`). The `player-ids` pair is
+where both ends read them from, and `docs/network.md` has the one place bzo
+differs. A slot number is what the scoreboard shows and what an id-taking
+command names, so it means the same thing in bzo as in BZFlag -- and a proxied
+player's id *is* the target's own, which only works if the two agree.
+
 bzo also speaks the bzfs wire as a client, in two places.
 `server/remote-world-import.cjs` fetches a world and hangs up;
 `server/bzfs-session.cjs` joins a server and stays, which is what a browser
@@ -1365,6 +1373,13 @@ a typo joins the game normally instead of silently watching the wrong tank, and
 so does a server that does not offer the observer team. The view is re-applied on
 every join rather than once, because a reconnect is how a client comes back from
 a server restart and a link left running on a screen should come back watching.
+
+**`?view=` is that other axis**, and it is the parameter the paragraph above
+said it would want: any of the roam views by its own name, so
+`?follow=leader&view=track` comes back *tracking* the leader rather than
+following them. It is refused on a name the cycle does not offer, for the same
+reason `?follow=` is, and it implies watching where it stands alone --
+`?view=track` is a spectator link too. Neither parameter is saved.
 
 **An observer uses voice on the same terms as everybody else.** It could
 always text chat, so the microphone ban was the odd rule out, and it lived
