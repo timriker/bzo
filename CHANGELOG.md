@@ -6,6 +6,8 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
 
 ## [Unreleased]
 
+## [1.2.70] - 2026-09-26
+
 ### Changed
 - Player ids are BZFlag's own slot numbers now: 0 through 243, with the
   destinations that are not a player at the top of the byte -- 251 a team, 252
@@ -16,15 +18,6 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
   as a message from everybody. Refs #82.
 
 ### Added
-- Signing in from a proxied server comes back to that server. `/login/<key>`
-  and `/logout/<key>` take a proxy target as their return page, so a player
-  who signs in while watching a real match is returned to the match rather
-  than to this server's own game. The forwarded-token probe keeps the same
-  route under a `probe-` prefix. Refs #82.
-- `?view=` on a spectator link picks which roam view to watch in, so
-  `?follow=leader&view=track` comes back tracking the leader rather than
-  following them. `?follow=` says who to watch and this says from where --
-  the two axes one value could never carry together.
 - A browser can watch a real BZFlag server through bzo. `?proxy=<host_port>`
   points the ordinary client at an allowlisted `bzfs` this instance can reach
   on a private address: bzo joins that server as an observer on the browser's
@@ -40,6 +33,15 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
   identity. The answer, which the whole idea rested on, is that an unmodified
   server accepts it: "Global login approved!", as long as it sees the
   connection arrive from a private address. Refs #82.
+- Signing in from a proxied server comes back to that server. `/login/<key>`
+  and `/logout/<key>` take a proxy target as their return page, so a player
+  who signs in while watching a real match is returned to the match rather
+  than to this server's own game. The forwarded-token probe keeps the same
+  route under a `probe-` prefix. Refs #82.
+- `?view=` on a spectator link picks which roam view to watch in, so
+  `?follow=leader&view=track` comes back tracking the leader rather than
+  following them. `?follow=` says who to watch and this says from where --
+  the two axes one value could never carry together.
 
 ## [1.2.69] - 2026-09-26
 
