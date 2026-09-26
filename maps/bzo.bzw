@@ -1740,10 +1740,16 @@ box
   matref conveyor_look
 end
 
+# The same barely-real height the other two pads carry, and for a second
+# reason besides: a box with a `matref` or `phydrv` is built as a mesh rather
+# than a `BoxBuilding` (`isOldBox`, `CustomBox.cxx:304`), and a flush one gives
+# that mesh four zero-area side faces, which `MeshFace` discards with an
+# "invalid mesh face" warning -- leaving the pad as two coincident horizontal
+# faces with nothing to resolve a driver against.
 box
   name PD_Death
   position -135 -125 0
-  size 3 3 0
+  size 3 3 0.1
   phydrv test_death
   matref death_look
 end
