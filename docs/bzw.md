@@ -517,6 +517,18 @@ Not yet read:
   in (8 units per tile on a box's or a pyramid's walls, 2 on a box's caps --
   see **Colour** and `_prepareBoxGeometry`) rather than at a size or an offset
   the map may have asked for.
+
+  On a box or pyramid these two do something beyond UVs: they clear
+  `isOldBox`/`isOldPyramid`, so upstream builds that obstacle as a mesh rather
+  than a `BoxBuilding` or `PyramidBuilding` (`CustomBox.cxx:185-204`,
+  `CustomPyramid.cxx:187-206`) -- the same switch a face list, a `phydrv` or a
+  material throws. bzo keeps it a box either way. That difference is invisible
+  while the obstacle has real dimensions, and shows up when one does not: a
+  flush box that upstream meshes gets four zero-area side faces, which
+  `MeshFace` warns about and discards. bzo reports that case for a material or
+  a `phydrv` (see **Zero-area mesh faces**) and cannot for these two, since it
+  does not read them to know they were stated -- they are counted as unread
+  keywords instead.
 - **`occluder`, `spheremap`, `resetmat`.** Read and dropped -- not yet
   implemented rather than deliberately declined. Each is counted as it is
   dropped and named in the server log and in the map's own `-srvmsg` lines,
@@ -770,6 +782,10 @@ than a block, and bzo makes it passable to tanks and to shots whether or not the
 map says `drivethrough`. Upstream's own words, on the base
 (`BaseBuilding.cxx:77`): *"if a base is just the ground (z == 0 && height == 0)
 no collision -- ground is already handled".*
+
+A pad that also carries a material or a `phydrv` is a different story on
+upstream, which builds it as a mesh and then discards the side faces it cannot
+plane -- see **Zero-area mesh faces**.
 
 Upstream writes that guard on the base alone, because a zero-height box is
 vanishingly rare there. Its box arithmetic has none, and the case that shows the
@@ -1355,6 +1371,36 @@ radar-drawn, and collided with (a tank and a shot both stop at a mesh face,
 per face-level `drivethrough`/`shootthrough`, a tank slides off one the same
 way it slides off a box corner, and the oriented tank box is its own precise
 case rather than a circle standing in for it) -- see **Groups** above.
+
+### Zero-area mesh faces
+
+A face needs three vertices that are not collinear to have a plane at all.
+Upstream looks for them the thorough way -- `MeshFace::finalize`
+(`MeshFace.cxx:80-129`) tries every vertex triple and keeps the largest cross
+product -- and when the best one is still below `1.0e-20` it logs
+`invalid mesh face`, sets the face's `vertexCount` to 0, and loads the world
+anyway. bzo runs the same test at the same threshold, drops the same faces, and
+names the obstacles it dropped them from in one line in the server log.
+
+The case that reaches this in practice is a **flush obstacle upstream builds as
+a mesh**. A box or pyramid stating a face list, a `phydrv`, a material,
+`texsize` or `texoffset` clears `isOldBox`/`isOldPyramid` and becomes a mesh
+rather than a `BoxBuilding`/`PyramidBuilding` (`CustomBox.cxx:304`), and with
+one dimension at zero its four side faces each collapse to a line -- four
+warnings, one per side, on every world load. Only the *sides* go: the top and
+bottom keep their real area and their driver.
+
+bzo keeps such an obstacle a box, so those faces never exist here and the test
+above cannot see them. It reports the shape instead, naming any zero-size box
+or pyramid that carries a material or a `phydrv`, and warns rather than
+repairs: upstream plays on without the faces, and whether the pad wanted a
+height is the map's decision. `texsize` and `texoffset` are the blind spot --
+bzo does not read either on a box (see **What is ignored**), so it cannot know
+one was stated.
+
+A flush obstacle that states none of those keywords is not involved. It stays a
+`BoxBuilding` upstream too, with no faces to be degenerate -- see **A pad flush
+with the ground**.
 
 ### Mesh transforms
 

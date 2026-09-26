@@ -215,7 +215,10 @@ mesh geometry does too.
 - [ ] `texsize`/`texoffset` scaling and shifting a `matref`'d or
       `addtexture`'d picture's UVs upstream's own way, rather than every
       obstacle of a kind sharing that kind's own baked-in tiling regardless
-      of what material it wears.
+      of what material it wears. Reading them also closes a second gap: on a
+      box or pyramid they clear `isOldBox`/`isOldPyramid`, so a flush obstacle
+      stating one is a mesh with degenerate faces to bzfs, and bzo's own
+      zero-area check cannot report what it never reads.
 - [ ] Stock textures bzo ships no PNG for, each named by a real map and
       each falling back to the obstacle's plain default: `explode1`,
       `treads`, `blend_flash`, `puffs`, `dusty_flare`, `flag`, `root` (10

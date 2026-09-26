@@ -6487,6 +6487,7 @@ function parseBZWMap(filename, { quiet = false, extraMessages = [] } = {}) {
         // as any per-face command -- see the `end` handler.
         current.hasFaceCommand = true;
       }
+      if (current.type !== 'group') current.meshedByBzfs = true;
     } else if (current && current.kind === 'base' && token === 'color') {
       const [, color] = line.split(/\s+/);
       const team = parseInt(color, 10);
@@ -6538,6 +6539,7 @@ function parseBZWMap(filename, { quiet = false, extraMessages = [] } = {}) {
         // to false -- see the `end` handler for what that changes.
         current.hasFaceCommand = true;
       }
+      current.meshedByBzfs = true;
       const words = line.split(/\s+/);
       const group = BZW_FACE_GROUPS.get(token);
       const keyword = (group ? words[1] || '' : words[0]).toLowerCase();
@@ -7634,6 +7636,91 @@ function parseBZWMap(filename, { quiet = false, extraMessages = [] } = {}) {
     warn(
       `Ignoring "phydrv" naming a physics driver not defined in ${mapLabel}:`
       + ` ${Array.from(unresolvedPhysicsDriverRefs).sort().join(', ')}`
+    );
+  }
+
+  // `MeshFace::finalize` (MeshFace.cxx:80-129) picks the vertex triple with
+  // the largest cross product to build a face's plane from, and a face whose
+  // best triple is degenerate has no plane to make: upstream logs "invalid
+  // mesh face" and sets `vertexCount` to 0, discarding the face and loading
+  // the world anyway. Same test, same threshold, same outcome here -- a map
+  // that draws a warning from bzfs draws one from bzo rather than loading
+  // clean in one and noisy in the other.
+  function faceMaxCrossSqr(vertices, indices) {
+    let max = 0;
+    for (let i = 0; i < indices.length - 2; i++) {
+      for (let j = i + 1; j < indices.length - 1; j++) {
+        const a = vertices[indices[i]];
+        const b = vertices[indices[j]];
+        if (!a || !b) continue;
+        const e2 = [a.x - b.x, a.y - b.y, a.z - b.z];
+        for (let k = j + 1; k < indices.length; k++) {
+          const c = vertices[indices[k]];
+          if (!c) continue;
+          const e1 = [c.x - b.x, c.y - b.y, c.z - b.z];
+          const cross = [
+            e1[1] * e2[2] - e1[2] * e2[1],
+            e1[2] * e2[0] - e1[0] * e2[2],
+            e1[0] * e2[1] - e1[1] * e2[0],
+          ];
+          const lenSqr = cross[0] * cross[0] + cross[1] * cross[1] + cross[2] * cross[2];
+          if (lenSqr > max) max = lenSqr;
+        }
+      }
+    }
+    return max;
+  }
+
+  // Upstream's own threshold, `MeshFace.cxx:114`.
+  const MIN_FACE_CROSS_SQR = 1.0e-20;
+  const degenerateFaceCounts = new Map();
+  for (const obstacle of obstacles) {
+    if (!Array.isArray(obstacle.faces) || !Array.isArray(obstacle.vertices)) continue;
+    const kept = obstacle.faces.filter((face) => {
+      const indices = face.vertexIndices || [];
+      if (indices.length >= 3
+        && faceMaxCrossSqr(obstacle.vertices, indices) >= MIN_FACE_CROSS_SQR) return true;
+      const name = obstacle.name || obstacle.type;
+      degenerateFaceCounts.set(name, (degenerateFaceCounts.get(name) || 0) + 1);
+      return false;
+    });
+    if (kept.length !== obstacle.faces.length) obstacle.faces = kept;
+  }
+  if (degenerateFaceCounts.size > 0) {
+    const dropped = Array.from(degenerateFaceCounts.values()).reduce((sum, n) => sum + n, 0);
+    const list = Array.from(degenerateFaceCounts.entries())
+      .sort((a, b) => b[1] - a[1])
+      .map(([name, count]) => (count > 1 ? `${name} x${count}` : name))
+      .join(', ');
+    warn(`${mapLabel} dropped ${dropped} zero-area mesh face${dropped === 1 ? '' : 's'}: ${list}`);
+  }
+
+  // The same fault in the one shape bzo does not build as a mesh. A box or
+  // pyramid naming a material or a physics driver is a mesh to bzfs
+  // (`isOldBox`, CustomBox.cxx:304; `isOldPyramid`, CustomPyramid.cxx) and
+  // stays a box here, so the faces that would be degenerate are never built
+  // and the check above cannot see them. Flush is legal for a plain box --
+  // this map puts a passable pad under every flag zone (see the `end`
+  // handler) -- so only the meshed kind is worth a word, and it is a warning
+  // rather than a repair: bzfs discards those faces and plays on, and the
+  // operator is the one who can decide whether the pad wanted a height.
+  //
+  // `texsize` and `texoffset` also clear `isOldBox` upstream. bzo reads
+  // neither on a box, so they arrive in `unreadKeywordCounts` above instead
+  // of here.
+  const flushMeshedNames = [];
+  for (const obstacle of obstacles) {
+    if (!obstacle.meshedByBzfs) continue;
+    if (obstacle.type !== 'box' && obstacle.type !== 'pyramid') continue;
+    if (obstacle.w !== 0 && obstacle.d !== 0 && obstacle.h !== 0) continue;
+    flushMeshedNames.push(obstacle.name || obstacle.type);
+  }
+  if (flushMeshedNames.length > 0) {
+    warn(
+      `${mapLabel} has ${flushMeshedNames.length} zero-size`
+      + ` ${flushMeshedNames.length === 1 ? 'obstacle' : 'obstacles'} naming a material or`
+      + ` physics driver, which bzfs builds as a mesh with faces it then`
+      + ` discards: ${flushMeshedNames.sort().join(', ')}`
     );
   }
   if (unreadPhysicsDriverKeywords.size > 0) {
