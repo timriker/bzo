@@ -185,6 +185,15 @@ second channel (`docs/network.md`). bzfs is TCP plus a UDP link on the same
 port, IPv4 only. The conversion is entirely inside the proxy: it terminates the
 WebSocket and dials both.
 
+That asymmetry is where bzo is today rather than a property of the design. A
+browser can be given an unreliable path -- a WebRTC data channel, or HTTP/3 and
+WebTransport -- and a bzo that had one would match the shape bzfs already has,
+with the proxy forwarding unreliable to unreliable instead of flattening it
+onto the WebSocket. bzo does not have one: its WebRTC use is voice, and that is
+browser to browser rather than browser to server, so none of it is a transport
+the proxy could borrow. Until that changes the proxy absorbs the mismatch, and
+co-location is what makes absorbing it cheap.
+
 **UDP is optional only for an observer.** bzfs applies a blunt rule to any
 non-bot player that sends `MsgShotBegin` over TCP -- "Your end is not using
 UDP", "Turn on UDP on your firewall or router", then `removePlayer(i, "no
