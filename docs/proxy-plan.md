@@ -285,8 +285,10 @@ hosts, because those are two different addresses and both are needed:
 }
 ```
 
-The key is the identity a player sees, and for a publicized target it should
-be the `-publicaddr` its own operator already advertises. The value is what
+The key is the identity a player sees. For a publicized target it is exactly
+the host:port the public bzflag list carries -- the target's own
+`-publicaddr` -- so the bzo row and the bzflag row read the same string and a
+player comparing them sees one server. The value is what
 the proxy dials, private for the reason above. The key cannot be the dial
 target: every proxy's is
 `127.0.0.1:5154`, which names nothing and collides across instances. Never a
@@ -306,6 +308,41 @@ case rather than an excluded one: it can be proxied with no global login in the
 path. Requiring one is then the proxy's own policy, not bzfs's. An operator
 mixing a public target with a private test one therefore gets global logins on
 the first and not the second, without configuring either.
+
+**A proxied player is on `bz4.rikers.org:5154`.** That is the host:port the
+public bzflag list publishes, it is what the bzo row says, and it is the whole
+of the player's model of where they are. The dial target is how the proxy
+reaches it, and operator configuration is all it ever is: it names nothing a
+visitor can act on, it means something different on every host, and passed
+through it would outlive the session in artifacts. Three places it would arrive
+today if the value were used where the key belongs:
+
+- **The cached map's name.** `remoteMapFileName` builds
+  `import-<host>_<port>.bzw` (`server.js:1506`), which is also the `?viewmap=`
+  parameter and the name `/list` shows. Key it on the map's key, so bz4's world
+  caches as `import-bz4.rikers.org_5154.bzw` whatever was dialled to fetch it.
+- **The map file's own header.** `buildBZWText` writes `# downloaded by bzo ...
+  from <host>:<port>` into the `.bzw` (`remote-world-import.cjs:1412`), and a
+  player can read the map. It gets the display name.
+- **Anything a player is told went wrong.** "could not reach
+  bz4.rikers.org:5154", never the loopback address. `server.log` may say
+  either; its reader is the operator.
+
+Keying on the display name is not only the discreet choice, it is the working
+one. `parseImportMapFileName` recovers a host:port from the name so a shared
+`?viewmap=` link outlives the cache, and `bz4.rikers.org:5154` is re-askable by
+any bzo, while `import-127.0.0.1_5154.bzw` would send somebody else's instance
+at its own loopback.
+
+**The import needs its own entry point, not a relaxed guard.**
+`performRemoteMapImport` deliberately refuses a host:port that is not in the
+public bzfs list, falling back to a cached copy or throwing
+(`server.js:1608`) -- the address there comes from a client-supplied
+`?viewmap=` name, so the check is the thing standing between that name and an
+arbitrary outbound connection. It stays exactly as it is. A proxy's own import
+is authorized by the operator's `proxies` map instead: name from the key,
+address from the value, permission from the config. A second caller of the same
+fetch, authorized differently, rather than a loosening of the first.
 
 The map is an operator assertion bzo cannot verify: get it wrong and players
 see one server's name over another server's game. Where the key is a real
