@@ -6,6 +6,19 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
 
 ## [Unreleased]
 
+## [1.2.68] - 2026-09-26
+
+### Fixed
+- A tank no longer spawns under the world on a map whose ground is mesh terrain.
+  `ahs3_Paradise_Valley.bzw` puts its floor a median 95 units up, and a mesh is a
+  shell rather than a solid, so a spawn at ground level collided with nothing and
+  was accepted. Three things were wrong: the random spawn never dropped onto
+  anything, the drop could not read a mesh's per-face heights and answered the
+  top of the whole object instead -- a mountain peak rather than the floor -- and
+  it then rejected every real landing, because bzo reads a tank resting exactly
+  on a surface as inside it. Clearance is now probed at the height the tank will
+  actually stand at.
+
 ## [1.2.67] - 2026-09-26
 
 ### Added
