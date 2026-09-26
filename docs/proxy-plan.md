@@ -14,13 +14,12 @@ where the two differ. Upstream references are paths under `$HOME/bzflag/`.
   occupies a player slot. `buildEnterPayload` nonetheless already lays out the
   whole message including its 22-byte token field, zeroed -- forwarding a
   global login is writing into a slot that exists rather than adding one.
-- **A world that arrives without names.** Upstream's `Obstacle` has no name
-  field and packs none, so the binary world carries named materials, textures,
-  physics drivers and mesh transforms but no object names and no group
-  structure -- it is already flattened. A proxied world therefore differs from
-  the operator's own `.bzw` in what bzo's tooling can call things, not in what
-  a player sees or collides with. This is the existing map-viewer path's
-  behaviour already, not something proxying introduces.
+- **The viewer's cached world, unchanged.** A proxy's world is the same
+  artifact Map Viewer already serves: `import-<host>_<port>.bzw`
+  (`remoteMapFileName`, `server.js:1506`) and its hashed JSON. That includes
+  how object names are handled -- upstream's `Obstacle` has no name field and
+  packs none, so the binary world arrives flattened and unnamed -- which is
+  settled behaviour in production rather than a question proxying reopens.
 - **A list row already parsed into `host` and `port`.** `fetchServerList`
   splits the list server's `nameport` field, so a bzfs row carries
   `bz4.rikers.org` and `5154` -- exactly the key a proxy map is written
@@ -59,10 +58,11 @@ rabbit, no anti-cheat.
 What it does hold is small:
 
 - **A world per target**, fetched once at boot -- not per player -- through the
-  existing importer, hashed, and served like any other map. Every player on
-  that target shares it, and several worlds are already ordinary: hashed
-  delivery serves any number of maps by content hash, so the synthesized
-  `init` names the one this connection's target resolved to.
+  existing importer, into the same `import-<host>_<port>.bzw` cache and hashed
+  delivery Map Viewer uses. Every player on that target shares it, and several
+  worlds are already ordinary: hashed delivery serves any number of maps by
+  content hash, so the synthesized `init` names the one this connection's
+  target resolved to.
 - **A target per connection**, chosen at join from the `proxies` map below.
   A lookup, not state.
 - **An `init` buffer per connection.** bzo's client wants one `init`; bzfs
