@@ -6,6 +6,39 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
 
 ## [Unreleased]
 
+## [1.2.66] - 2026-09-26
+
+### Added
+- A map can name every stock texture BZFlag ships. The list a `material`'s
+  `texture`/`matref`/`addtexture` could reach held 67 of the 82 pictures in
+  upstream's own `data/`, so a map naming one of the other fifteen -- the five
+  mountains, `treads`, `flag`, `missile`, `puffs`, `jumpjets`, `shot_tail`,
+  `blend_flash`, `dusty_flare` and the two explosions -- drew the obstacle's
+  plain default here and the right picture upstream, whose texture manager
+  resolves any name in `data/`. All 82 now resolve.
+- A jump pad sounds. A surface whose physics driver pushes a tank upward plays
+  BZFlag's own `bounce.wav`, ahead of the landing and burrow sounds in the same
+  chain it uses. `bzo.bzw` has a pad to hear it on, south of the purple base
+  against the west wall.
+- Every sound effect BZFlag ships is now in the box. `hunt.wav` and the four
+  spree samples have nothing that plays them -- hunting needs a scoreboard bzo
+  does not have yet, and BZFlag itself references the spree samples nowhere --
+  so they are shipped but never loaded.
+
+### Changed
+- A tank's own bounce and burrow sounds play in the ear rather than positioned
+  in the world, which is where BZFlag puts them: they were passing through a
+  distance rolloff that made them quieter than they have ever been there.
+
+### Fixed
+- A map change no longer leaves the previous map's materials and textures
+  behind. Only one of the seven a world teardown tried to free was a name
+  anything was ever stored under, so every box and pyramid material survived a
+  Map Viewer preview or a map change for the rest of the session -- and an
+  animated one came back frozen at whatever colour or offset its animation had
+  reached, because the registration that drives it was dropped while the
+  material itself was kept.
+
 ## [1.2.65] - 2026-09-25
 
 ### Changed
