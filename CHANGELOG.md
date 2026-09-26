@@ -6,6 +6,35 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
 
 ## [Unreleased]
 
+## [1.2.67] - 2026-09-26
+
+### Added
+- Hunting, on BZFlag's own keys. `U` opens a cursor on the scoreboard and `7`
+  opens it in add mode; `Up` and `Down` move it, `Enter` marks the row it is on,
+  and `U` again clears every mark. The cursor is a pulsing `○` that fills in to
+  `◎` when you commit. A hunted player wears a cyan `◎` on their scoreboard row
+  and a cyan ring on the radar, with a beacon in the sky over them in their own
+  tank colour, and while one is in your sights the HUD says `SPOTTED:` and
+  `hunt.wav` pings once a second from where they are. In Rabbit Chase the rabbit
+  is marked automatically, which is where the ring and the beacon over it now
+  come from.
+- A **Hunt row in Settings**, under Camera, so a phone and a headset can hunt
+  without a keyboard. Left and right step through `Clear` and then the players in
+  alphabetical order, and select marks or unmarks whoever is shown -- or clears
+  every mark on `Clear`. With a mouse or a finger, a chevron steps and the rest
+  of the row selects. It is a new row kind, `pick`: the first whose sideways keys
+  and whose select do different things, which is why it wears its chevrons around
+  the value rather than at the row's edges.
+
+### Changed
+- The rabbit's radar ring and sky beacon are the hunt's marks now, not a rule of
+  their own, over whoever is hunted rather than over the rabbit alone.
+- A sky beacon over a hunted tank takes that tank's own colour rather than hunt
+  cyan, so several marked at once are told apart -- the radar ring stays cyan,
+  because there it is laid over a blip already in the player's colour and would
+  otherwise disappear into it. The rabbit keeps cyan on both: it is the one
+  target the world picked rather than one this player did.
+
 ## [1.2.66] - 2026-09-26
 
 ### Added
