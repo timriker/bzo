@@ -5873,7 +5873,13 @@ function sendToServer(message) {
 
 function connectToServer() {
   const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-  ws = new WebSocket(`${protocol}//${window.location.host}`);
+  // `?proxy=<target>` rides on the socket as well as the page: it is how the
+  // server knows which real bzfs this connection is for, and it has to know
+  // before it can send `init`, which it does the moment the socket opens. A
+  // page without it connects to this server's own game, as it always has.
+  const proxyTarget = new URLSearchParams(window.location.search).get('proxy');
+  const query = proxyTarget ? `/?proxy=${encodeURIComponent(proxyTarget)}` : '';
+  ws = new WebSocket(`${protocol}//${window.location.host}${query}`);
 
   ws.onopen = () => {
     callVoiceManager('start');

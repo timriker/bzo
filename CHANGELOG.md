@@ -6,6 +6,21 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
 
 ## [Unreleased]
 
+### Added
+- A browser can watch a real BZFlag server through bzo. `?proxy=<host_port>`
+  points the ordinary client at an allowlisted `bzfs` this instance can reach
+  on a private address: bzo joins that server as an observer on the browser's
+  behalf, imports its world the way Map Viewer already does, and turns what
+  the server tells a joining player -- the roster, the team scores, the match
+  clock, the server's own greeting -- into one bzo `init`. The connection is
+  held, so players arriving and leaving over there show up here. Nothing moves
+  yet: positions, flags and shots are the next piece. Refs #82.
+- `/login/<host_port>` hands a bzflag.org login token to a real `bzfs` rather
+  than spending it here, which is how a proxied player would carry a global
+  identity. The answer, which the whole idea rested on, is that an unmodified
+  server accepts it: "Global login approved!", as long as it sees the
+  connection arrive from a private address. Refs #82.
+
 ## [1.2.69] - 2026-09-26
 
 ### Added

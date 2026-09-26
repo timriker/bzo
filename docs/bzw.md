@@ -252,7 +252,7 @@ so reads it as a plain index into the file's materials, in the order they were
 defined -- `matref 0` is the first `material` block in the file, named or not.
 bzo reads it the same way, against every material in file order regardless of
 whether it gave a `name`: real maps lean on this, most heavily
-`import-bz4.rikers.org_5154.bzw`, whose 18 materials are all but one unnamed
+`import-bz.rikers.org_5154.bzw`, whose 18 materials are all but one unnamed
 and referenced purely as `matref 0` through `matref 17`. This does not
 replicate upstream's own dedup on add (`BzMaterialManager::addMaterial` reuses
 an existing entry, rather than appending a new one, for a block that matches
@@ -260,7 +260,7 @@ one already registered on every field upstream tracks) -- doing that against
 only the fields bzo itself keeps would collapse two materials upstream still
 tells apart by a field bzo drops (a multi-layer `addtexture`, most notably; see
 below), which shifts every later index enough to break that same map's own
-highest `matref`s -- checked directly against `import-bz4.rikers.org_5154.bzw`'s
+highest `matref`s -- checked directly against `import-bz.rikers.org_5154.bzw`'s
 own materials, so bzo indexes in plain file order instead.
 
 A `matref` on an obstacle takes the same face selector a plain `color`/

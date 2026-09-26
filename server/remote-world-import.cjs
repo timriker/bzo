@@ -189,24 +189,69 @@ function sendFrame(socket, codeStr, payload = Buffer.alloc(0)) {
   socket.write(Buffer.concat([header, payload]));
 }
 
+// The other direction: bzfs frames everything the same way, so one buffered
+// reader serves every connection this file makes. `readExact` hands back
+// whole slices in arrival order, which is why the waiters are a queue rather
+// than a single pending read.
+function createFrameReader(socket) {
+  let buffer = Buffer.alloc(0);
+  const waiters = [];
+
+  function pump() {
+    while (waiters.length && buffer.length >= waiters[0].n) {
+      const w = waiters.shift();
+      const out = buffer.subarray(0, w.n);
+      buffer = buffer.subarray(w.n);
+      w.resolve(out);
+    }
+  }
+  socket.on('data', (chunk) => {
+    buffer = buffer.length ? Buffer.concat([buffer, chunk]) : chunk;
+    pump();
+  });
+
+  function readExact(n) {
+    return new Promise((res) => {
+      waiters.push({ n, resolve: res });
+      pump();
+    });
+  }
+  async function readFrame() {
+    const header = await readExact(4);
+    const len = header.readUInt16BE(0);
+    const code = header.toString('ascii', 2, 4);
+    const payload = len > 0 ? await readExact(len) : Buffer.alloc(0);
+    return { code, payload };
+  }
+  return { readExact, readFrame };
+}
+
 // MsgEnter's payload: `ServerLink::sendEnter`'s own fixed-width layout, with
 // the trailing PlayerId-sized slack it also sends. Every string is NUL-padded
 // to its field width rather than length-prefixed, which is why this is built
 // as one zeroed buffer and written into.
-function buildEnterPayload() {
+//
+// The token field is the one a forwarded global login is written into. An
+// import leaves it zeroed: `bzo-import` is an unregistered callsign, which is
+// what an anonymous join is, and a server that demands registration rejects
+// it and the import goes on without variables. Every field is NUL-terminated,
+// so each write is capped a byte short of its slot.
+function buildEnterPayload({
+  callsign = IMPORT_CALLSIGN,
+  motto = IMPORT_MOTTO,
+  token = '',
+  version = IMPORT_CLIENT_VERSION,
+} = {}) {
   const payload = Buffer.alloc(
     2 + 2 + CALLSIGN_LEN + MOTTO_LEN + TOKEN_LEN + VERSION_LEN + PLAYER_ID_LEN
   );
   payload.writeUInt16BE(TANK_PLAYER, 0);
   payload.writeUInt16BE(OBSERVER_TEAM, 2);
   let at = 4;
-  payload.write(IMPORT_CALLSIGN, at, CALLSIGN_LEN - 1, 'ascii'); at += CALLSIGN_LEN;
-  payload.write(IMPORT_MOTTO, at, MOTTO_LEN - 1, 'ascii'); at += MOTTO_LEN;
-  // No token: this is an unregistered callsign, which is what an anonymous
-  // join is. A server that demands registration rejects it, and the import
-  // goes on without variables.
-  at += TOKEN_LEN;
-  payload.write(IMPORT_CLIENT_VERSION, at, VERSION_LEN - 1, 'ascii');
+  payload.write(callsign, at, CALLSIGN_LEN - 1, 'ascii'); at += CALLSIGN_LEN;
+  payload.write(motto, at, MOTTO_LEN - 1, 'ascii'); at += MOTTO_LEN;
+  payload.write(token, at, TOKEN_LEN - 1, 'ascii'); at += TOKEN_LEN;
+  payload.write(version, at, VERSION_LEN - 1, 'ascii');
   return payload;
 }
 
@@ -229,8 +274,7 @@ function fetchWorldFromServer(host, port, timeout, options = {}) {
     // Upstream bzfs does not support IPv6; force IPv4 so dual-stack hosts
     // (e.g. AAAA + A records) don't route the connection over IPv6.
     const socket = net.createConnection({ host, port, family: 4 });
-    let buffer = Buffer.alloc(0);
-    const waiters = [];
+    const { readExact, readFrame } = createFrameReader(socket);
     let settled = false;
 
     const watchdog = setTimeout(() => fail(new Error('timed out')), timeout);
@@ -252,32 +296,6 @@ function fetchWorldFromServer(host, port, timeout, options = {}) {
       resolve(value);
     }
 
-    function pump() {
-      while (waiters.length && buffer.length >= waiters[0].n) {
-        const w = waiters.shift();
-        const out = buffer.subarray(0, w.n);
-        buffer = buffer.subarray(w.n);
-        w.resolve(out);
-      }
-    }
-    function readExact(n) {
-      return new Promise((res) => {
-        waiters.push({ n, resolve: res });
-        pump();
-      });
-    }
-    async function readFrame() {
-      const header = await readExact(4);
-      const len = header.readUInt16BE(0);
-      const code = header.toString('ascii', 2, 4);
-      const payload = len > 0 ? await readExact(len) : Buffer.alloc(0);
-      return { code, payload };
-    }
-
-    socket.on('data', (chunk) => {
-      buffer = buffer.length ? Buffer.concat([buffer, chunk]) : chunk;
-      pump();
-    });
     socket.on('error', fail);
     socket.on('close', () => fail(new Error('connection closed')));
 
@@ -390,6 +408,151 @@ function fetchWorldFromServer(host, port, timeout, options = {}) {
         }
 
         succeed({ worldDatabase: Buffer.concat(parts), gameSettings, queryGame, variables });
+      } catch (err) {
+        fail(err);
+      }
+    });
+  });
+}
+
+// ---------------------------------------------------------------------------
+// The global-login probe: one MsgEnter carrying a token my.bzflag.org just
+// issued to a browser, sent by something that is not that browser. Whether
+// bzfs accepts it is the single assumption the proxy design rests on --
+// docs/proxy-plan.md, "The token forces co-location" and step 1 of its order
+// of work.
+//
+// bzfs does not decide this itself. It queues the list-server ADD on the same
+// main-loop pass as the join and holds the player out of the game until the
+// reply lands, then says which way it went as a chat message from the server:
+// "Global login approved!", "Global login rejected, bad token.", or, for a
+// callsign nobody has registered, that it is not registered
+// (`ListServerConnection.cxx:280-295`). So the probe's whole job is to join,
+// read the server's own messages, and leave.
+//
+// Unlike the world import this occupies a real player slot, and a verified
+// join takes the callsign from any session already using it
+// (`bzfs.cxx:2167`) -- so it leaves the moment a verdict lands, and is run
+// under your own callsign while you are not otherwise on the target.
+// ---------------------------------------------------------------------------
+
+const SERVER_PLAYER_ID = 253;
+const PROBE_CALLSIGN_MOTTO = 'bzo global-login probe -- https://github.com/timriker/bzo';
+// Long enough for bzfs to reach my.bzflag.org and hear back on its own
+// schedule, short enough that a target which never answers is an error rather
+// than a hung request.
+const PROBE_TIMEOUT_MS = 20000;
+// How long to keep reading after the verdict, for the MsgAccept that follows
+// it. Only bounds the wait for something bzfs sends in the same breath.
+const PROBE_ACCEPT_GRACE_MS = 2000;
+
+// The three endings bzfs writes, in the words it writes them. Matched as
+// prefixes because only the first is punctuated the same way every time.
+const PROBE_VERDICTS = Object.freeze([
+  { prefix: 'Global login approved', verdict: 'approved' },
+  { prefix: 'Global login rejected', verdict: 'rejected' },
+  { prefix: 'This callsign is not registered', verdict: 'unregistered' },
+]);
+
+function probeGlobalToken({ host, port, callsign, token, timeout = PROBE_TIMEOUT_MS }) {
+  return new Promise((resolve, reject) => {
+    const socket = net.createConnection({ host, port, family: 4 });
+    const { readExact, readFrame } = createFrameReader(socket);
+    let settled = false;
+    const messages = [];
+
+    const watchdog = setTimeout(() => fail(new Error('timed out')), timeout);
+    function cleanup() {
+      clearTimeout(watchdog);
+      socket.destroy();
+    }
+    function fail(err) {
+      if (settled) return;
+      settled = true;
+      cleanup();
+      reject(err);
+    }
+    function succeed(value) {
+      if (settled) return;
+      settled = true;
+      // Say goodbye before hanging up, so the target frees the slot now
+      // rather than waiting out a timeout on it.
+      try { sendFrame(socket, 'ex'); } catch { /* already gone */ }
+      cleanup();
+      resolve(value);
+    }
+
+    socket.on('error', fail);
+    socket.on('close', () => fail(new Error('connection closed')));
+
+    socket.on('connect', async () => {
+      try {
+        socket.write('BZFLAG\r\n\r\n');
+        const version = (await readExact(8)).toString('ascii');
+        const playerId = (await readExact(1)).readUInt8(0);
+        if (version !== PROTOCOL_VERSION) {
+          throw new Error(`protocol ${version} (bzo speaks ${PROTOCOL_VERSION})`);
+        }
+        if (playerId === 0xff) throw new Error('rejected (full, banned, or closed)');
+
+        sendFrame(socket, 'en', buildEnterPayload({
+          callsign,
+          motto: PROBE_CALLSIGN_MOTTO,
+          token,
+        }));
+
+        // The verdict arrives before the join does: bzfs writes it the moment
+        // the list server answers and only then finishes adding the player,
+        // so MsgAccept follows it rather than preceding it. Both are wanted --
+        // a token that verifies and a seat on the server are two different
+        // facts -- so reading carries on past the verdict for a moment.
+        let accepted = false;
+        let verdict = null;
+        let deadline = Date.now() + timeout;
+        for (;;) {
+          let timer = null;
+          const { code, payload } = await Promise.race([
+            readFrame(),
+            new Promise((res) => {
+              timer = setTimeout(() => res({ code: '', payload: null }),
+                Math.max(0, deadline - Date.now()));
+            }),
+          ]);
+          clearTimeout(timer);
+          // Nothing more is coming in the time allowed. Whatever has arrived
+          // is the answer, and the read queue is abandoned with the socket.
+          if (!code) break;
+          if (code === 'ac') {
+            accepted = true;
+            if (verdict) break;
+            continue;
+          }
+          if (code === 'rj') {
+            // MsgReject: a u16 reason code, then the server's own sentence.
+            const reason = payload.length > 2
+              ? payload.toString('latin1', 2).replace(/\0.*$/s, '') : '';
+            succeed({ accepted: false, verdict: 'refused', reason, messages });
+            return;
+          }
+          if (code === 'sk') {
+            succeed({ accepted, verdict: 'superkilled', messages });
+            return;
+          }
+          if (code !== 'mg') continue;
+          // MsgMessage: from, to, type, then a NUL-terminated string
+          // (`sendMessage`, bzfs.cxx:1701).
+          const from = payload.readUInt8(0);
+          const text = payload.toString('latin1', 3).replace(/\0.*$/s, '');
+          if (from !== SERVER_PLAYER_ID) continue;
+          messages.push(text);
+          const hit = verdict ? null : PROBE_VERDICTS.find((v) => text.startsWith(v.prefix));
+          if (hit) {
+            verdict = hit.verdict;
+            if (accepted) break;
+            deadline = Date.now() + PROBE_ACCEPT_GRACE_MS;
+          }
+        }
+        succeed({ accepted, verdict: verdict || 'silent', messages });
       } catch (err) {
         fail(err);
       }
@@ -1499,6 +1662,13 @@ function buildBZWText(serverMeta, tree, fetchedAt) {
 
 module.exports = {
   PROTOCOL_VERSION,
+  // The wire plumbing, for `bzfs-session.cjs`: a proxy speaks the same
+  // protocol to the same servers, and there is one implementation of it.
+  Reader,
+  sendFrame,
+  createFrameReader,
+  buildEnterPayload,
+  decodeSetVars,
   DEFAULT_LIST_SERVER,
   OBSTACLE_ORDER,
   GAME_STYLES,
@@ -1507,6 +1677,7 @@ module.exports = {
   findPublicServer,
   fetchServerList,
   fetchWorldFromServer,
+  probeGlobalToken,
   collectNonDefaultVariables,
   decodeGameSettings,
   decodeQueryGame,

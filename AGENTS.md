@@ -635,6 +635,14 @@ the server simulates shots and decides who died -- while bzfs lets the victim's
 own client declare its death, its shot ends, its flag grabs and its teleports.
 The same nouns appear on both wires with the arrow reversed.
 
+bzo also speaks the bzfs wire as a client, in two places.
+`server/remote-world-import.cjs` fetches a world and hangs up;
+`server/bzfs-session.cjs` joins a server and stays, which is what a browser
+watching a real BZFlag match through bzo (`?proxy=<host_port>`) is connected
+to. That connection is never a player in this server's own game -- it is not
+in `players` at all -- and its `init` is synthesized from what its target says
+to a joining player. `docs/proxy-plan.md`, issue #82.
+
 ### Where the server answers
 
 `listen` in `server.json` carries a host and a port together, the way a proxy's
@@ -2780,6 +2788,17 @@ What it cost, and why it was not a small change:
 - Groups only come back if you ask for them by name, so bzo would have to name
   the group it treats as admin -- and getting a bzo group created is somebody
   else's permission. A BZID allowlist in `server.json` needs nobody's.
+
+**A token verifies for whoever hands it over, as long as bzfs sees a private
+address.** Confirmed 2026-09-26: `/login/bz.rikers.org_5154` takes the token
+my.bzflag.org issued to a browser and writes it into an `MsgEnter` of bzo's
+own, sent to `127.0.0.1:5154`, and bzfs answers "Global login approved!" and
+accepts the join. The connection being loopback is the whole reason -- bzfs
+then omits the `@<ip>` half of its list-server question
+(`ListServerConnection.cxx:413`), which is the same `checkIP` false path bzo
+asks `CHECKTOKENS` on, and from a public address it would fail instead. That
+is what makes a bzfs proxy possible and confines one to its target's own
+network: `docs/proxy-plan.md`.
 
 The wiki page for this (`https://wiki.bzflag.org/Global_Registration`) has been
 read-only for years and carries none of the details above; the source and

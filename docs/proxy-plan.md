@@ -1,19 +1,28 @@
 # Proxying a real bzfs server
 
-Nothing here is built. Issue #82: let a browser play, or watch, on an ordinary
-`bzfs` server through a bzo instance. `docs/network.md` is the protocol
-reference this plan assumes -- what bzo says on the wire, what bzfs says, and
-where the two differ. Upstream references are paths under `$HOME/bzflag/`.
+A browser can watch, but not yet play. Issue #82: let a browser play, or watch,
+on an ordinary `bzfs` server through a bzo instance. `docs/network.md` is the
+protocol reference this plan assumes -- what bzo says on the wire, what bzfs
+says, and where the two differ. Upstream references are paths under
+`$HOME/bzflag/`.
 
 ## What already exists to build on
 
 - **A partial bzfs client.** `server/remote-world-import.cjs` dials a server's
   TCP port, completes the `BZFS0221` handshake, and asks `MsgQueryGame`,
   `MsgWantSettings`, `MsgWantWHash` and `MsgGetWorld`, decoding the binary
-  world into bzw text. It deliberately never sends `MsgEnter`, so it never
-  occupies a player slot. `buildEnterPayload` nonetheless already lays out the
-  whole message including its 22-byte token field, zeroed -- forwarding a
-  global login is writing into a slot that exists rather than adding one.
+  world into bzw text. None of that needs a player slot. `MsgEnter` is sent
+  only for the BZDB dump, which bzfs gives nobody who has not joined, and
+  `buildEnterPayload` lays out the whole message including its 22-byte token
+  field -- forwarding a global login is writing into a slot that exists rather
+  than adding one.
+- **The forwarded-login probe.** `probeGlobalToken` and `/login/<target>` send
+  one such `MsgEnter` with a real token in that field and read bzfs's verdict
+  back. Step 1 below.
+- **A held connection.** `server/bzfs-session.cjs` joins a target and stays on
+  it, decoding what bzfs says about players, teams, flags, the rabbit and the
+  clock, and answering its lag pings. Step 2 below, and what step 3 forwards
+  from.
 - **The viewer's cached world, unchanged.** A proxy's world is the same
   artifact Map Viewer already serves: `import-<host>_<port>.bzw`
   (`remoteMapFileName`, `server.js:1506`) and its hashed JSON. That includes
@@ -22,7 +31,7 @@ where the two differ. Upstream references are paths under `$HOME/bzflag/`.
   settled behaviour in production rather than a question proxying reopens.
 - **A list row already parsed into `host` and `port`.** `fetchServerList`
   splits the list server's `nameport` field, so a bzfs row carries
-  `bz4.rikers.org` and `5154` -- exactly the key a proxy map is written
+  `bz.rikers.org` and `5154` -- exactly the key a proxy map is written
   against.
 - **Hashed world delivery.** A parsed map becomes `/maps/<hash>.json`,
   `immutable`, which any client can fetch. See AGENTS.md, "Hashed, cacheable
@@ -35,9 +44,10 @@ where the two differ. Upstream references are paths under `$HOME/bzflag/`.
 ## The shape: one instance, several targets, no game of its own
 
 An instance is configured to proxy bzfs servers rather than to host a map. It
-may offer several: `bz.rikers.org` can carry `bz4.rikers.org` on
-`127.0.0.1:5154`, a second test bzfs on another loopback port, and a third on
-`192.168.12.x`, each listed and joined separately. What it does not do is host
+may offer several: the bzo on `bz.rikers.org` can carry the bzfs on
+`bz.rikers.org:5154` over `127.0.0.1:5154`, a second test bzfs on another
+loopback port, and a third on `192.168.12.x`, each listed and joined
+separately. What it does not do is host
 its own game *and* proxy others -- that needs per-player world, config, roster
 and clock, and buys nothing this does not.
 
@@ -164,19 +174,29 @@ that pair and nothing else is also the least code.
 an allowlisted path segment rather than a query parameter, because the callback
 weblogin.php returns to may hold only one query parameter -- a second needs an
 `&` that weblogin.php's own query string claims (`LOGIN_RETURN_PATHS`,
-`server.js:560`). A target becomes another key, `/login/bz4.rikers.org_5154`,
+`server.js:560`). A target becomes another key, `/login/bz.rikers.org_5154`,
 and the reason it is an allowlist rather than a trusted segment still holds: an
 unrecognised one would be an open redirect. The `proxies` map below is that
 allowlist.
 
-**The first target already satisfies all of this.** `bz4.rikers.org` is a bzfs
-on the same host as `bz.rikers.org`, listening on `0.0.0.0:5154`, so
-`127.0.0.1:5154` reaches it and the address bzfs observes is loopback -- no
-`-i` binding to get in the way. It runs `-publicaddr bz4.rikers.org:5154` with
-a `-publickey` (`bzfs.conf`), so it is publicized and token checks do run
-rather than falling through to `notRequired`. The public list row carries
-`bz4.rikers.org:5154`, which is the map key. Nothing about the first proxy
-needs a second machine or a cooperating operator.
+**The first target already satisfies all of this.** The bzfs behind
+`bz.rikers.org` runs on the same host as bzo itself, listening on
+`0.0.0.0:5154`, so `127.0.0.1:5154` reaches it and the address bzfs observes
+is loopback -- no `-i` binding to get in the way. It runs `-publicaddr
+bz.rikers.org:5154` with a `-publickey` (`bzfs.conf`), so it is publicized and
+token checks do run rather than falling through to `notRequired`. That
+`-publicaddr` is also what the public list row carries, so `bz.rikers.org_5154`
+is the map key. Nothing about the first proxy needs a second machine or a
+cooperating operator.
+
+**And a forwarded token is accepted there.** `probeGlobalToken`
+(`server/remote-world-import.cjs`) sends one `MsgEnter` over loopback carrying
+a token my.bzflag.org issued to a browser, under the callsign the weblogin
+callback named, and bzfs answers `Global login approved!` and then accepts the
+join -- roughly three quarters of a second from callback to verdict. The
+assumption the rest of this plan rests on is measured rather than reasoned:
+bzfs asked the list server with no `@<ip>` half, because the connection came
+from 127.0.0.1, and the list server checked the token without an address.
 
 ## Transport: the proxy speaks TCP and UDP
 
@@ -279,8 +299,8 @@ hosts, because those are two different addresses and both are needed:
 
 ```json
 "proxies": {
-  "bz4.rikers.org:5154": "127.0.0.1:5154",
-  "bz4-test:5155":       "127.0.0.1:5155",
+  "bz.rikers.org:5154": "127.0.0.1:5154",
+  "bz-test:5155":       "127.0.0.1:5155",
   "bz-lan:5154":         "192.168.12.20:5154"
 }
 ```
@@ -309,7 +329,7 @@ path. Requiring one is then the proxy's own policy, not bzfs's. An operator
 mixing a public target with a private test one therefore gets global logins on
 the first and not the second, without configuring either.
 
-**A proxied player is on `bz4.rikers.org:5154`.** That is the host:port the
+**A proxied player is on `bz.rikers.org:5154`.** That is the host:port the
 public bzflag list publishes, it is what the bzo row says, and it is the whole
 of the player's model of where they are. The dial target is how the proxy
 reaches it, and operator configuration is all it ever is: it names nothing a
@@ -321,10 +341,10 @@ today if the value were used where the key belongs:
   handle. `remoteMapFileName` builds `import-<host>_<port>.bzw`
   (`server.js:1506`), and that name is the `?viewmap=` parameter in a URL a
   player can share and the row `/list` shows under local maps. Key it on the
-  map's key, so bz4's world caches as `import-bz4.rikers.org_5154.bzw`
-  whatever was dialled to fetch it.
+  map's key, so the target's world caches as
+  `import-bz.rikers.org_5154.bzw` whatever was dialled to fetch it.
 - **Anything a player is told went wrong.** "could not reach
-  bz4.rikers.org:5154", never the loopback address. `server.log` may say
+  bz.rikers.org:5154", never the loopback address. `server.log` may say
   either; its reader is the operator.
 
 The `.bzw` itself is not in that set. `/maps` serves `MAP_CACHE_DIR`, the
@@ -339,7 +359,7 @@ loopback address they configured themselves.
 
 Keying on the display name is not only the discreet choice, it is the working
 one. `parseImportMapFileName` recovers a host:port from the name so a shared
-`?viewmap=` link outlives the cache, and `bz4.rikers.org:5154` is re-askable by
+`?viewmap=` link outlives the cache, and `bz.rikers.org:5154` is re-askable by
 any bzo, while `import-127.0.0.1_5154.bzw` would send somebody else's instance
 at its own loopback.
 
@@ -382,6 +402,37 @@ rejoin cooldown above.
 `ServerLink.cxx:690`). A proxy puts its own there, so an operator can see who
 arrived by bzo without anybody inventing a mechanism.
 
+## How a player reaches one
+
+Three ways in, and they are the three Map Viewer already has, because a proxy
+is the same thing seen from further away: the same client, pointed somewhere
+else.
+
+- **A link.** `?proxy=<host_port>`, beside `?viewmap=<file>`. A GET parameter
+  rather than a POST or a path: the whole value of it is that it can be sent
+  to somebody, and a URL that keeps the choice out of itself cannot be. It is
+  also why the target is keyed on the public `host:port` rather than the dial
+  address -- the link says which match, not which wire.
+- **A picker in the entry dialog**, beside the Map Viewer one, fed by a
+  `proxies` list on `init` the way `viewableMaps` feeds that one. A player who
+  has never seen a link picks a server from the instance's own list. Choosing
+  one is a page navigation to its `?proxy=` link rather than a message on the
+  live socket: the target is fixed when the socket opens -- `init` is
+  synthesized from it -- and a navigation is what `/login` already does for the
+  same reason.
+- **A row on `/list`**, which is the section below.
+
+`/login/<host_port>` ends the same way. Today it prints the probe's verdict
+because that is all it is; once a proxied player can play, its ending is a
+redirect to `/?proxy=<host_port>` -- the token is spent joining that target, so
+the browser should land in that match rather than back at a page about it.
+
+**Several targets on one instance is the ordinary case, not the exotic one.**
+A host running four `bzfs` on four local ports publishes one bzo and four keys:
+`?proxy=example.org_5154`, `_5155`, `_5156`, `_5157`. Nothing about that needs
+multi-world (below) -- the worlds are the targets', fetched and hashed
+separately, and bzo hosts no game of its own.
+
 ## Advertising a proxy
 
 bzo's own list server (`docs/list-server.md`) is bzo on both ends over
@@ -422,13 +473,14 @@ by the same path as anyone else's, since the designated instance already writes
 its own report straight into its registry rather than special-casing itself.
 
 **Two instances may carry the same target, and nothing coordinates them.**
-`bz.rikers.org` reaching `bz4.rikers.org` on `127.0.0.1:5154` and `orin-bzo`
-reaching it on `192.168.12.5:5154` are two independent registrations with two
-keys, and both rows list. This is where separating the map's key from its value
-pays: the identity a player sees stays the same across proxies while the dial
-target is local to each, so the two rows agree about which match they lead to
-and differ only in the way in. Nothing needed building to allow it -- it is a
-consequence of keys being per instance, and it is unlikely to be common.
+`bz.rikers.org` reaching `bz.rikers.org:5154` on `127.0.0.1:5154` and
+`orin-bzo` reaching it on `192.168.12.5:5154` are two independent registrations
+with two keys, and both rows list. This is where separating the map's key from
+its value pays: the identity a player sees stays the same across proxies while
+the dial target is local to each, so the two rows agree about which match they
+lead to and differ only in the way in. Nothing needed building to allow it --
+it is a consequence of keys being per instance, and it is unlikely to be
+common.
 
 The honest reading of those two rows is that **they show one match twice**, so
 their player counts are identical by construction rather than additive. That is
@@ -549,28 +601,43 @@ step before it is cheaper against one hardcoded loopback target than against a
 registry. Observer-first still holds: an observer sends no state, so it reaches
 a watchable real match without any of the authority inversion.
 
-1. **Prove a forwarded token verifies.** No proxy, no rendering. A probe in the
-   mould of `/login`'s -- `/login/bz4.rikers.org:5154` -- runs the weblogin,
-   deliberately does *not* call `CHECKTOKENS`, and sends one `MsgEnter` to
-   `127.0.0.1:5154` with the callback's callsign and the token written into the
-   22-byte slot `buildEnterPayload` already reserves and zeroes. bzfs queues
-   the list-server ADD on the same main-loop pass (`bzfs.cxx:7259`) and holds
-   the player out of the game until the reply lands, so the answer comes back
-   in seconds as a chat message: "Global login approved!" or "Global login
-   rejected, bad token." Read it from both sides. This is the single assumption
-   the design rests on and it costs one throwaway connection.
+1. **A forwarded token verifies. Done.** `/login/bz.rikers.org_5154` runs the
+   weblogin, deliberately does *not* call `CHECKTOKENS` -- a token is answered
+   once, so asking would spend the very thing being forwarded -- and sends one
+   `MsgEnter` to `127.0.0.1:5154` with the callback's callsign and its token.
+   bzfs queues the list-server ADD on the same main-loop pass
+   (`bzfs.cxx:7259`) and holds the player out of the game until the reply
+   lands, so the verdict arrives as a chat message and the `MsgAccept` follows
+   it: `Global login approved!`, then the join. The target it may aim at is an
+   allowlist, `PROXY_TARGETS`, which is what the `proxies` map grows from.
 
    Two things the probe does that the importer does not: it occupies a real
    player slot on the target, and a *verified* join under a callsign already
    playing there kicks that session (`bzfs.cxx:2167`). Probe with your own
-   callsign while not otherwise on bz4.
+   callsign while not otherwise on the target.
 
-2. **Enter as an observer and synthesize one `init`.** Still one hardcoded
-   target. The world already imports, so this is `MsgEnter` for real, the
-   post-enter burst collected into a single bzo `init`, and the connection
-   held. Done when the browser loads bz4's world with bz4's real roster and
-   scoreboard shown, before anything moves -- visible from both ends, since
-   bz4's own player list shows the observer.
+2. **An observer, and one synthesized `init`. Done.** `/proxy/<target>` serves
+   the ordinary client, which keeps that path on its WebSocket -- the server
+   has to know which bzfs a socket is for before it can send `init`, and
+   `init` goes out the moment a socket opens. That connection is not a player
+   in this server's game: it is never in `players`, so nothing here simulates
+   for it or scores it. It gets a `BzfsSession` (`server/bzfs-session.cjs`) of
+   its own instead, which joins as an observer, keeps what bzfs tells a
+   joining player, answers the lag pings that would otherwise get it kicked
+   (`lagKick`, bzfs.cxx:4378), and stays. `init` is synthesized from that:
+   the target's world through the existing import, its roster, its team
+   scores, its clock. Ids are the target's own -- a `PlayerId` names every
+   player on the connection, this viewer included, so there is no second id
+   space to keep a table for.
+
+   Roster changes and the target's chat carry on afterwards; everything the
+   session decodes that has a position in it is held rather than spoken, since
+   that is step 3. The flag array is deliberately empty for the same reason.
+
+   The callsign is the login session's, or a numbered `bzo-view-N` for a
+   browser that has not signed in -- never the client's to choose. It is not
+   yet the forwarded token from step 1: an observer that arrives unverified is
+   refused nothing that matters, and the join that spends a token is step 5's.
 
 3. **Translate the downstream state, over both transports.** Positions, shots,
    flags, scores, teams and the match clock into the messages bzo's client
