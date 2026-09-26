@@ -8,6 +8,7 @@
 // hud.js - Handles HUD and debug display logic
 
 import { normalizeShotSlotCount } from './shots.mjs';
+import { HUNT_MARKER_COLOR } from './hunt.mjs';
 import {
   PLAYER_TEAM,
   PLAYER_TEAM_COLORS,
@@ -873,14 +874,73 @@ export function formatScoreboardStats(player, options = {}) {
 }
 
 // Rabbit Chase marks the rabbit's row so the scoreboard says who everyone is
-// hunting. Upstream marks the *hunted* row instead, as part of the hunt feature
-// bzo does not have, so this is the marker without the feature -- the radar ring
-// in client.js is its other half. In the rabbit's own tank colour, which ties
-// the row to the one tank in the world wearing a reserved colour.
+// hunting. In the rabbit's own tank colour, which ties the row to the one tank
+// in the world wearing a reserved colour. Upstream has no such mark; what it
+// marks is the *hunted* row, which bzo now draws as well -- and in Rabbit Chase
+// the two land on the same row, because the rabbit is hunted automatically.
 export const SCOREBOARD_RABBIT_MARK = Object.freeze({
   label: '(rabbit)',
   color: PLAYER_TEAM_COLORS[PLAYER_TEAM.RABBIT],
 });
+
+// One ring, in two states: a bullseye on a marked row, and a pulsating open ring
+// on the row the cursor is over. Committing fills the ring in, which is the
+// whole reason they are the same shape -- the cursor shows you the mark you are
+// about to make rather than merely pointing at where it would go.
+//
+// Upstream writes `Hunt->` and `->` (`ScoreboardRenderer::drawPlayerScore`,
+// ScoreboardRenderer.cxx:845-858), both in white, because its bitmap font has
+// nothing else to draw with -- the same concession that makes a paused tank
+// `[p]` there and an hourglass here. Glyphs say "target" and "not yet" without
+// the word, and hand the six characters `Hunt->` was taking back to the
+// callsign beside it.
+//
+// `○` U+25CB and `◎` U+25CE, which are a designed pair: same outer ring, same
+// baseline, and the mark is the cursor with its centre filled. U+25CC, the
+// dotted ring, is the trap -- it is the one of the three that Liberation Sans
+// carries, so a browser that substitutes Liberation Sans for Arial draws the
+// cursor from it and the bullseye from a fallback face, and the two come out
+// visibly different sizes. Both of these fall through to the same fallback,
+// which is what keeps them matched.
+//
+// `.scoreboardHunt` names a font stack for the same reason rather than
+// inheriting the board's: which face answers for a glyph the body font lacks
+// is the browser's choice, and the pair only reads as one ring in two states
+// while both come from one face.
+//
+// Hunt cyan rather than upstream's white, and the same cyan the radar ring
+// wears: every bzo row is already coloured for its player, so the mark is only
+// legible in a colour that is not one of theirs -- and one colour across the two
+// surfaces says the ring and the bullseye are the same fact.
+//
+// Upstream hides the cursor while add mode is on (`huntCursor && !huntAddMode`),
+// which leaves `7` selecting a row nothing points at. bzo draws it in both
+// modes: it is the only thing that says what fire is about to mark, and in add
+// mode it is also what says which row fire would *un*mark.
+export const SCOREBOARD_HUNT_LABEL = '\u25CE';
+export const SCOREBOARD_HUNT_CURSOR_LABEL = '\u25CB';
+export const SCOREBOARD_HUNT_COLOR = HUNT_MARKER_COLOR;
+
+// ` *SEL*`, in pulsating yellow at the head of the board while the cursor is
+// open (ScoreboardRenderer.cxx:482-487) -- the one thing that says the arrow
+// keys are picking a row rather than driving.
+export const SCOREBOARD_HUNT_SELECT_LABEL = ' *SEL*';
+export const SCOREBOARD_HUNT_SELECT_COLOR = 0xffff00;
+
+// What a row's hunt column says: the mark, the cursor, or nothing. One answer
+// for every surface that draws it -- the flat board, the headset panel, and the
+// Settings row that steps through players one at a time, where the shown player
+// is always the cursor -- so none of them can disagree about which player is
+// about to be marked.
+//
+// A marked row under the cursor reads as the mark, not the cursor: it is
+// already what the cursor would make it. Which row the cursor is on is still
+// said, by the pulse the cursor's own styling adds either way.
+export function getScoreboardHuntLabel(player) {
+  if (player.hunted) return SCOREBOARD_HUNT_LABEL;
+  if (player.huntCursor) return SCOREBOARD_HUNT_CURSOR_LABEL;
+  return '';
+}
 
 // The one place a player's name, the flag they carry and the Rabbit Chase mark
 // are composed into a single string. The scoreboard draws the three as separate
@@ -965,6 +1025,11 @@ export function buildScoreboardRows({
   // It changes what the board is sorted by and adds the rank column, and nothing
   // else on the row.
   rabbitChase = false,
+  // The hunt, as `HuntState` in `hunt.mjs` holds it: the ids marked, and the id
+  // the scoreboard cursor is over while it is open. Both arrive already decided
+  // so the two boards mark the same rows.
+  huntedIds = null,
+  huntCursorId = null,
 }) {
   const rows = [];
   const addRow = (id, name, state, isCurrent) => {
@@ -1007,6 +1072,10 @@ export function buildScoreboardRows({
       flag: getPlayerFlagLabel(id),
       status: getPlayerStatusIndicator(state),
       rabbit: isRabbitTeam(state.team) ? SCOREBOARD_RABBIT_MARK : null,
+      // Player::isHunted, and the cursor `renderScoreboard` draws over one row
+      // while selecting.
+      hunted: Boolean(huntedIds && huntedIds.has(id)),
+      huntCursor: huntCursorId !== null && id === huntCursorId,
       isObserver: isObserverTeam(state.team),
       isCurrent,
     });
@@ -1051,7 +1120,7 @@ function makeScoreboardCell(column, tier) {
 // Upstream labels three columns and leaves the rank, the score and the
 // team-kill bracket unnamed inside them; bzo names every column it draws,
 // short-form on a phone where the long labels would not fit.
-function writeScoreboardHeader(columns, rabbitChase, tier) {
+function writeScoreboardHeader(columns, rabbitChase, tier, huntSelecting) {
   const header = document.getElementById('scoreboardHeader');
   if (!header) return;
   header.innerHTML = '';
@@ -1061,6 +1130,15 @@ function writeScoreboardHeader(columns, rabbitChase, tier) {
     // The rank rides inside the score column on a Rabbit Chase world, as
     // upstream draws it, so that is the one label the mode changes.
     cell.textContent = column.id === 'score' && rabbitChase ? `Rank ${label}` : label;
+    // `*SEL*` rides the name column's heading, which is the only one with room
+    // to lend it, and goes out the moment the cursor closes.
+    if (huntSelecting && column.id === 'player') {
+      const sel = document.createElement('span');
+      sel.className = 'scoreboardHuntSel';
+      sel.textContent = SCOREBOARD_HUNT_SELECT_LABEL;
+      sel.style.color = colorToCSS(SCOREBOARD_HUNT_SELECT_COLOR);
+      cell.appendChild(sel);
+    }
     header.appendChild(cell);
   });
 }
@@ -1074,6 +1152,9 @@ export function updateScoreboard({
   // Whether this world plays Rabbit Chase, which decides only what the stats
   // column is called -- the rows already carry their own rank or not.
   rabbitChase = false,
+  // Whether the hunt cursor is open, which the header says with `*SEL*`. The
+  // rows carry the cursor itself.
+  huntSelecting = false,
   // Set while roaming: the id being watched, and the callback a row click
   // reports a new choice to. Absent for a playing tank, which leaves the rows
   // inert.
@@ -1103,7 +1184,7 @@ export function updateScoreboard({
   updateMatchClock(timeLeft, gameOver);
   updateTeamScoreboard(teamRows);
   const columns = getScoreboardColumns({ tier, isAdmin });
-  writeScoreboardHeader(columns, rabbitChase, tier);
+  writeScoreboardHeader(columns, rabbitChase, tier, huntSelecting);
   const scoreboardList = document.getElementById('scoreboardList');
   if (!scoreboardList) return;
   scoreboardList.innerHTML = '';
@@ -1182,7 +1263,13 @@ export function updateScoreboard({
     rabbitSpan.className = 'scoreboardRabbit';
     rabbitSpan.textContent = player.rabbit ? player.rabbit.label : '';
     rabbitSpan.style.color = player.rabbit ? colorToCSS(player.rabbit.color) : '';
-    labelSpan.append(statusSpan, nameSpan, flagSpan, pausedSpan, micSpan, rabbitSpan);
+    // Last on the row, where upstream draws it: hard against the stats column,
+    // pointing back at the name it belongs to.
+    const huntSpan = document.createElement('span');
+    huntSpan.className = 'scoreboardHunt' + (player.huntCursor ? ' huntCursor' : '');
+    huntSpan.textContent = getScoreboardHuntLabel(player);
+    huntSpan.style.color = colorToCSS(SCOREBOARD_HUNT_COLOR);
+    labelSpan.append(statusSpan, nameSpan, flagSpan, pausedSpan, micSpan, rabbitSpan, huntSpan);
 
     // One cell per column, in the header's order. The name column holds the
     // label assembled above; every other column asks `formatScoreboardCell`,

@@ -156,12 +156,16 @@ export const GAME_SOUNDS = Object.freeze({
   teamGrab: { file: 'teamgrab.wav', sfx: 'SFX_TEAMGRAB' },
   // I captured my own team's flag.
   killTeam: { file: 'killteam.wav', sfx: 'SFX_KILL_TEAM' },
-  // I have just been made the rabbit (playing.cxx:2878). Upstream plays it for
-  // every hunt selection, of which Rabbit Chase's anointing is one; bzo has no
-  // hunt feature, so this is the only thing that plays it. Its pair `SFX_HUNT`,
-  // which upstream sounds positionally while a hunted tank is in view, has
-  // nothing to attach to here for the same reason.
+  // Every step of a hunt that is not its first or its last: moving a target on
+  // or off the hunted set, opening and closing the scoreboard cursor, and
+  // Rabbit Chase's own anointing (playing.cxx:2878), which upstream treats as
+  // one more hunt selection.
   huntSelect: { file: 'hunt_select.wav', sfx: 'SFX_HUNT_SELECT' },
+  // Hunting begins or ends: the first target marked, the last one gone, and
+  // hunting turned off. It is also the bearing itself -- while a hunted tank is
+  // in your sights it pings once a second, positioned at that tank, which is
+  // the one thing in bzo that says which way to drive with a sound alone.
+  hunt: { file: 'hunt.wav', sfx: 'SFX_HUNT' },
 });
 
 export const GAME_SOUND_NAMES = Object.freeze(Object.keys(GAME_SOUNDS));

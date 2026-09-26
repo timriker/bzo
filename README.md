@@ -275,6 +275,30 @@ If you want automatic container updates, use your preferred container update man
   Missile onto it. On the on-screen controls it is the `◎` button, in VR either
   thumbstick press, and on a gamepad either shoulder
 
+### Hunting
+
+Marking a player puts a cyan `◎` on their scoreboard row, a cyan ring on their
+radar blip, and a beacon in the sky over them in their own tank colour -- so
+several marked at once are still told apart at a glance. While one of them is in
+your sights the HUD says `SPOTTED:` and a ping sounds once a second from where
+they are. In Rabbit Chase the rabbit is marked for you, and its beacon is cyan
+like its ring: everyone is hunting it, so everyone's mark over it says so.
+
+- `U` — hunt: open the scoreboard cursor, and press it again on a running hunt
+  to clear every mark
+- `7` — add hunt: the same cursor, but committing adds to what is marked rather
+  than replacing it, and committing on a row already marked takes it off
+- `Settings -> Hunt` — the same thing without a keyboard, for a phone or a
+  headset. Left and right step through `Clear` and then the players in
+  alphabetical order; select marks or unmarks whoever is shown, or clears every
+  mark on `Clear`. On a touch screen or with a mouse, tap a chevron to step and
+  anywhere else on the row to select
+- With the cursor open, the board's heading reads `*SEL*` and a pulsing `○` sits
+  on the row it is on, filling in to `◎` when you commit. `Up` / `Down` move it,
+  `Enter` commits, and `U` or `7` backs out keeping whatever was already marked.
+  `I` and `Space` move the cursor too, so a surface without arrow keys can reach
+  it
+
 ### Mouse steering
 
 `M` turns it on and off, and nothing else does: the keys never take it away

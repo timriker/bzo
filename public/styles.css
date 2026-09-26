@@ -887,6 +887,62 @@ body {
   margin-left: 6px;
 }
 
+/* The hunted bullseye and the cursor's open ring, hard against the stats column the way
+   upstream draws them (ScoreboardRenderer.cxx:845). They stand off the name for
+   the rabbit mark's reason: they are something said about the row, not a suffix
+   on the callsign. */
+/* The two hunt rings, and only them. `unicode-range` limits this face to the
+   two codepoints, so naming it first on an element pins the rings without
+   touching the callsign beside them -- which is why the Settings row can use it
+   too, where swapping the whole value to another family would restyle the name.
+
+   They have to come from one face or they stop reading as one ring in two
+   states: Arial's usual Linux substitute, Liberation Sans, carries neither, so
+   both fall through together there, but a platform whose Arial has the plain
+   ring and not the bullseye would draw the pair at two different sizes -- which
+   is exactly what the dotted U+25CC did before this pair replaced it. Every
+   face named here has both, and if none of them is installed the browser falls
+   back to what it would have done anyway. */
+@font-face {
+  font-family: 'HuntRings';
+  src: local('DejaVu Sans'), local('Segoe UI Symbol'), local('Apple Symbols'), local('Arial Unicode MS');
+  unicode-range: U+25CB, U+25CE;
+}
+
+.scoreboardHunt:not(:empty) {
+  white-space: nowrap;
+  margin-left: 6px;
+  font-weight: bold;
+  font-family: 'HuntRings', 'Arial', sans-serif;
+}
+
+/* Upstream's PulsatingColor, which is what separates the row the cursor is on
+   -- about to be marked -- from the rows already marked. Both the cursor arrow
+   and the `*SEL*` at the head of the board wear it. */
+.scoreboardHunt.huntCursor,
+.scoreboardHuntSel {
+  animation: huntPulse 1s ease-in-out infinite;
+}
+
+.scoreboardHuntSel {
+  white-space: nowrap;
+  font-weight: bold;
+}
+
+@keyframes huntPulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.25; }
+}
+
+/* A player who would rather not have a pulse on screen keeps the mark and
+   loses the blink; the arrow still says which row the cursor is on. */
+@media (prefers-reduced-motion: reduce) {
+  .scoreboardHunt.huntCursor,
+  .scoreboardHuntSel {
+    animation: none;
+  }
+}
+
 .scoreboardStats {
   margin-left: 10px;
   white-space: nowrap;
@@ -1310,6 +1366,41 @@ body {
 .entryTeamSelector[data-menu-kind="choice"] .entryTeamValue::after,
 .settingsMenuRow[data-menu-kind="choice"] .settingsMenuValue::after {
   content: " ›";
+}
+
+/* A `pick` row wears both chevrons around its *value*, where a choice row
+   spreads them to the row's two edges. That difference is the point rather than
+   decoration: on a choice row sideways and select do the same thing, and on
+   this one they do not, so it must not look like one. The chevrons flank the
+   player the row is pointed at, which is what they step. */
+.settingsMenuRow[data-menu-kind="pick"] .settingsMenuValue::before {
+  content: "‹ ";
+}
+
+.settingsMenuRow[data-menu-kind="pick"] .settingsMenuValue::after {
+  content: " ›";
+}
+
+/* The row's mark is the scoreboard's mark, so it is pinned to the same face --
+   and only the two ring codepoints are, so the callsign keeps the menu's own
+   font. Without it, toggling could swap the ring for a bullseye of a different
+   size on a platform whose body font has one and not the other. */
+.settingsMenuRow[data-menu-kind="pick"] .settingsMenuValue {
+  font-family: 'HuntRings', 'Arial', sans-serif;
+}
+
+/* The hit zones getMenuClickZone measures: a chevron's width at each end steps,
+   everything between them marks. Only the cursor says so -- drawing a boundary
+   would put two vertical rules through a row that is one control. */
+.settingsMenuRow[data-menu-kind="pick"]:not(:disabled) {
+  cursor: pointer;
+}
+
+/* Nobody to point at. The row stays in place and stops answering, rather than
+   leaving and coming back as players join. */
+.settingsMenuRow[data-menu-kind="pick"]:disabled .settingsMenuValue::before,
+.settingsMenuRow[data-menu-kind="pick"]:disabled .settingsMenuValue::after {
+  content: "";
 }
 
 .entryTeamSelector:hover,

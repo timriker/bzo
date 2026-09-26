@@ -203,12 +203,11 @@ These are deliberate. Do not "fix" them without being asked.
   the player's own team flags and the antidote on the heading tape alone
   (`prepareTheHUD`, `playing.cxx:6820`). It rings nothing on the radar, and the
   only tank it ever singles out there is the *hunted* one, whose blip flashes
-  cyan every fifth of a second (`RadarRenderer.cxx:136`) as part of a hunt
-  feature bzo does not have. bzo keeps the tape and adds two marks over the same
-  things, plus the rabbit: a **ring** on the radar, pinned to the border of the
-  panel when the thing is past range, and a **sky beacon** standing in the world
-  over it -- a half-transparent cone hanging from the cloud layer down to a
-  point just above the target.
+  cyan every fifth of a second (`RadarRenderer.cxx:136`). bzo keeps the tape and
+  adds two marks over the same things, plus every hunted tank: a **ring** on the
+  radar, pinned to the border of the panel when the thing is past range, and a
+  **sky beacon** standing in the world over it -- a half-transparent cone
+  hanging from the cloud layer down to a point just above the target.
 
   Upstream marks the same two things twice, not once. Two lines below the
   `addMarker` that feeds the tape, `prepareTheHUD` also calls
@@ -221,7 +220,7 @@ These are deliberate. Do not "fix" them without being asked.
   which is the pinning bzo's radar rings do. It is drawn at the tail of
   `renderBox`, after `renderStatus`, so it sits over the shot clocks and under
   the lock-on marker `drawLockonMarker` adds immediately after it. Upstream
-  marks no rabbit anywhere.
+  stands nothing in the world over a hunted tank, and marks no rabbit anywhere.
 
   So the beacon is not a bzo invention, but it is not upstream's marker either,
   and the difference is the point: a screen-space triangle has no depth test, so
@@ -244,6 +243,92 @@ These are deliberate. Do not "fix" them without being asked.
   A ring rather than upstream's flash, for the client bzo has to draw for: half
   of a flash is invisible at a low frame rate. See "Three surfaces point at the
   same things" for what decides which things get marked.
+- **The hunt cursor points at a player, not at a row.** Upstream keeps
+  `huntPosition` as an index into the sorted roster and re-resolves it every
+  time the board is drawn (`ScoreboardRenderer.cxx:494-520`), so a kill that
+  reorders the board moves the cursor onto whoever took that line. bzo's
+  `HuntState` keeps the id instead: the player is picking a player. The rest of
+  the machine is upstream's, including the sounds -- `SFX_HUNT` for the first
+  target, for the last one leaving and for hunting turned off, `SFX_HUNT_SELECT`
+  for every step in between, and nothing at all for a cursor move.
+
+  Three smaller departures, all for the same reason -- a cursor whose state is
+  invisible is a cursor nobody can use:
+
+  - **The cursor is drawn in add mode too.** Upstream's condition is
+    `huntCursor && !huntAddMode` (`:853`), which leaves `7` selecting a row
+    nothing points at -- and in add mode the row under the cursor is also the
+    one fire would *un*mark, which is the case that most needs saying.
+  - **The cursor and the mark are one ring in two states**, `○` and `◎`, where
+    upstream writes `->` and `Hunt->`. Committing fills the ring in, so the
+    cursor shows the mark it is about to make rather than pointing at where it
+    would go -- and the same pair serves the Settings row, which steps through
+    players one at a time and is always its own cursor. `getScoreboardHuntLabel`
+    in `hud.js` is the one answer every surface asks for it. The pair is U+25CB
+    and U+25CE, and `.scoreboardHunt` names its own font stack: both have to be
+    drawn by one face or they come out different sizes, and the dotted U+25CC is
+    the glyph that breaks it, being the only one of the three Liberation Sans
+    carries.
+  - **The cursor steps past observers** as well as past your own row. An
+    observer has no tank to ring, to stand a beacon over or to spot down the
+    sights, so a stop there would mark nothing.
+  - **There is no scoreboard to force open.** `huntKeyEvent` sets
+    `displayScore` (`:310`) because upstream's board can be hidden; bzo's
+    cannot.
+
+  **A phone and a headset hunt from a Settings row, not the cursor.** Upstream's
+  marking UI is a scoreboard cursor driven by the arrow keys and *fire*, which
+  survives neither move: a headset has no arrow keys and no scoreboard to
+  arrow through, and burning fire to pick a target is worse there than here.
+  So `Settings -> Hunt` is a second way in -- `kind: 'pick'` in `settings.js`,
+  which the XR menu inherits for free, since `adjustXRSettingsMenuItem` falls
+  through to `adjustSettingsMenuRow` and `getXRSettingsMenuItems` builds its
+  list from the same rows.
+
+  `pick` is the only row kind whose two axes mean different things. Everywhere
+  else in that menu, sideways and select do the same job -- a `choice` steps
+  forward on select, a `toggle` toggles -- so this one wears its chevrons
+  around the *value* rather than at the row's edges, to say outright that it is
+  not one of those. `getMenuClickZone` in `menus.js` gives it three hit zones
+  where `getMenuClickDirection` gives a choice row two, and it answers 0 for a
+  click with no coordinates, which is how Enter and a headset's `A` both reach
+  the row's own verb through `button.click()`.
+
+  Three rules the row follows, each load-bearing:
+
+  - **It steps alphabetically, where the cursor steps in board order.** A list
+    you step through has to be stable, and score order re-sorts on every kill.
+    The cursor tolerates that only because it is drawn *on* the board and has to
+    follow what is drawn; the row is not, so it sorts for stepping instead.
+  - **It is an editor, not a display.** It shows one player, so it cannot show
+    the set -- but the set is already on screen, since every marked row carries
+    `◎` on the flat board and the headset panel both. Do not add a screen
+    listing every player to "fix" this.
+  - **Clear is an entry in the list, not a row of its own.** First in the list
+    and always present, so it is one step from either end through the wrap and
+    the list never changes length underneath a press. It says how much it would
+    clear before it is pressed.
+
+  The row toggles through `HuntState.toggle` directly and never opens
+  `HUNT_SELECTING`, which is a scoreboard-cursor concept. `toggle` is also what
+  `select` marks through, so one place decides what a mark costs in sound.
+
+  `_forbidHunting` has no equivalent here. It is Locked BZDB a plugin sets
+  (`global.cxx:65`), and bzo has no BZDB over the wire for a server to set it
+  with.
+
+- **A sighting is decided on the client, where a lock is decided on the
+  server.** `setHuntTarget` and `setTarget` are the same scan upstream, run on
+  the same client. bzo moved `setTarget` to the server because it can take a
+  guided-missile lock, which steers a real shot (see "Damage rules are decided
+  on the server"), and left the sighting here: it is an alert and a sound for
+  the player who marked the target, so a modified client faking one would be
+  lying to itself, and asking the server once a frame per player would be a real
+  cost for it. It also means the two cones are asked separately rather than in
+  one loop, which is the same split `setPlayerTarget` already makes -- upstream
+  lets a lock target further away shut out a nearer tank inside the wider cone,
+  purely because of the order the roster happens to be in.
+
 - **A hidden superflag goes over the wire as `type: null`, not upstream's
   `"PZ"`.** bzfs hides the identity of any superflag nobody is carrying
   (`bzfs.cxx:361`) and packs a fake `PZ` abbreviation in its place, so an old
@@ -1077,9 +1162,10 @@ look away from the world to read one:
 
 - **The heading tape**, upstream's, marking the player's own team flags, the
   antidote, and -- bzo's own -- the tank the player has locked on to.
-- **A radar ring** around the same flags and around the rabbit, pinned to the
-  border of the panel when the thing is past radar range. The XR radar panel is
-  textured from that canvas, so the rings arrive in a headset for free.
+- **A radar ring** around the same flags and around every hunted tank -- which
+  in Rabbit Chase is the rabbit, marked automatically -- pinned to the border of
+  the panel when the thing is past radar range. The XR radar panel is textured
+  from that canvas, so the rings arrive in a headset for free.
 - **A sky beacon**, a coloured wedge hanging out of the cloud layer down to a
   point just above the thing itself, over exactly what the radar rings. A ring
   says where something is on a top-down panel and leaves the player to turn that
@@ -1089,11 +1175,34 @@ look away from the world to read one:
   rather than anything standing in the world; the bearing-cue entry under
   "Intentional deviations from BZFlag" describes it and how it differs.
 
+**A mark carries identity only where nothing else does.** That is what decides
+each one's colour, and it is why the two marks over a hunted tank are *not* the
+same colour:
+
+- A **radar ring** and the **scoreboard bullseye** are laid on something already
+  painted in the player's own colour -- a blip, a row -- so they wear hunt cyan
+  instead. A tank's ring is radius 9 over a blip spanning six either side, so it
+  sits right on the arrow: in the player's colour it would be a blob, not a ring.
+  A flag's ring is the exception that proves it, taking the colour of the cross
+  it rings, because there it is given `half + GAP` of clear space and the cross
+  is a shape rather than a fill.
+- A **beacon** stands alone against the sky with nothing inside it, so its
+  colour is the only thing that can say *who*, which starts to matter the moment
+  `7` has marked more than one tank. It takes the tank's own colour, through
+  `getEffectiveTankColor` so a Masquerading tank's beacon agrees with the tank.
+
+  The rabbit keeps the cyan, and is the only tank that does. Its own colour is
+  the reserved rabbit grey, which reads badly against a bright sky, and it is
+  the one target the *world* chose rather than this viewer -- everybody is
+  hunting it, and everybody's beacon over it should say the same thing. It is
+  the same line the scoreboard draws between `(rabbit)`, a fact about the world,
+  and the bullseye, a mark this viewer put there.
+
 The marks are drawn by three different pieces of code, so what they mark is
-decided by one: `isSoughtTeamFlag` for a team flag and `isMarkedRabbit` for the
-rabbit. Add a target to a surface by teaching those, never by asking the
+decided by one: `isSoughtTeamFlag` for a team flag and `isHuntMarked` for a
+hunted tank. Add a target to a surface by teaching those, never by asking the
 question again where it is drawn -- two copies drift, and the drift shows up as
-a panel and a world that disagree about which tank is the rabbit.
+a panel and a world that disagree about which tank is marked.
 
 A beacon hangs from the lowest cloud, because the server puts the cloud layer a
 jump above the tallest thing in the world. So a beacon over a tank in the air is
@@ -2743,22 +2852,24 @@ hunter, upstream's `RabbitChase`.
   colour taken out of the pool -- and it is the one tank in bzo that wears a
   team's colour rather than its own, on your own tank as well, because being the
   rabbit is not a disguise.
-- **The radar rings the rabbit rather than flashing it.** Upstream flashes the
-  *hunted* blip cyan every fifth of a second (`RadarRenderer.cxx:136`) as part of
-  its hunt feature, which bzo does not have -- Rabbit Chase wants the marker and
-  not the feature. A steady ring in upstream's own hunt cyan, because a flash is
-  half invisible on a client running at a low frame rate, which is the client bzo
-  has to draw for. The blip inside it takes upstream's rabbit *radar* colour,
-  white, which is the one place that table entry is used. Both go under
-  Colourblindness, for upstream's reason: there every tank reads as rogue and the
-  rabbit is not meant to be findable.
+- **The radar rings the rabbit rather than flashing it.** The ring is the
+  hunt's, not Rabbit Chase's: the rabbit is marked hunted the moment it is
+  anointed, as `playing.cxx:2887` marks it, so the mark over it is whatever the
+  hunt puts over anything it marks. Upstream flashes the hunted blip cyan every
+  fifth of a second (`RadarRenderer.cxx:136`); bzo draws a steady ring in
+  upstream's own hunt cyan, because a flash is half invisible on a client
+  running at a low frame rate, which is the client bzo has to draw for. The blip
+  inside it takes upstream's rabbit *radar* colour, white, which is the one place
+  that table entry is used. Both go under Colourblindness, for upstream's reason:
+  there every tank reads as rogue and the rabbit is not meant to be findable.
 - **The ring is never on your own blip**, which is always dead centre and always
-  you. Upstream marks only its remote players and clears the scoreboard's hunt
-  state outright when the rabbit is you (`playing.cxx:2880`).
-- **The scoreboard marks the rabbit's row**, including your own -- upstream's
-  scoreboard hunt marker says "I have chosen to hunt this player", a viewer-side
-  selection, while `(rabbit)` is a fact about the world. It replaces upstream's
-  ten-second alert as the standing answer to "am I the rabbit".
+  you. Upstream marks only its remote players and clears the hunt outright when
+  the rabbit is you (`playing.cxx:2880`), which bzo does too.
+- **The scoreboard marks the rabbit's row**, including your own, beside the
+  hunt's own bullseye. The two say different things and bzo draws both:
+  upstream's hunt marker says "I have chosen to hunt this player", a viewer-side
+  selection, while `(rabbit)` is a fact about the world. `(rabbit)` replaces
+  upstream's ten-second alert as the standing answer to "am I the rabbit".
 - **The board is sorted by rank, not by score.** `newSortedList`'s default case
   (`ScoreboardRenderer.cxx:1003`) reads `getRabbitScore()` rather than
   `getScore()` on a Rabbit Chase world, so the order says who is next in line for

@@ -105,6 +105,7 @@ import {
 } from './input.js';
 import { getMenuClickDirection } from './menus.js';
 import { DestructCountdown, PauseState } from './pause.mjs';
+import { HUNT_MARKER_COLOR, HuntState } from './hunt.mjs';
 import { XRMenuRenderer } from './xr-menu.js';
 import {
   colorToCSS,
@@ -122,6 +123,8 @@ import {
   getPlayerTeamMark,
   getScoreboardStatsHeader,
   buildScoreboardRows,
+  getScoreboardHuntLabel,
+  SCOREBOARD_HUNT_COLOR,
   SCOREBOARD_STATUS_COLOR,
   getActiveHudAlerts,
   getHudAlertColor,
@@ -1128,13 +1131,20 @@ function isTheRabbit(playerId) {
   return rabbitPlayerId !== null && playerId === rabbitPlayerId;
 }
 
-// The rabbit as the hunters see it, which is what both marks over it ask:
-// never your own blip, since it is always dead centre and always you --
+// A hunted tank as the hunter sees it, which is what every mark over one asks:
+// the radar ring, the sky beacon and the scoreboard's own bullseye.
+//
+// Never your own blip, since it is always dead centre and always you --
 // upstream marks only the remote players for the same reason, and clears the
-// scoreboard's hunt state outright when the rabbit is you (playing.cxx:2880) --
-// and never at all while Colourblindness has taken the team colours away.
-function isMarkedRabbit(playerId) {
-  return isTheRabbit(playerId) && playerId !== myPlayerId && !isColorblind();
+// hunt outright when the rabbit is you (playing.cxx:2880) -- and never at all
+// while Colourblindness has taken the team colours away, which is upstream's
+// own gate on the hunted flash (RadarRenderer.cxx:136).
+//
+// The rabbit is here without being named: Rabbit Chase marks it automatically
+// (playing.cxx:2887), so on a Rabbit Chase world this answers for exactly the
+// one tank it used to.
+function isHuntMarked(playerId) {
+  return huntState.isHunted(playerId) && playerId !== myPlayerId && !isColorblind();
 }
 
 // A tank in one line of text: the callsign, the flag it carries and the Rabbit
@@ -1276,6 +1286,14 @@ function applyNewRabbit(nextRabbitId) {
   // per-player colour they already had.
   if (previousRabbitId !== null) rebuildTankColor(previousRabbitId);
   if (nextRabbitId !== null) rebuildTankColor(nextRabbitId);
+  // The hunt follows the anointing: every mark is cleared and the new rabbit
+  // takes one, so a hunter's radar ring, sky beacon and `SPOTTED` alert all come
+  // from the hunt rather than from a second rule about rabbits
+  // (playing.cxx:2858-2889).
+  huntState.rabbitChanged(nextRabbitId, {
+    iAmTheRabbit: nextRabbitId !== null && nextRabbitId === myPlayerId,
+    observing: isObserver(),
+  });
   refreshScoreboards();
 
   if (nextRabbitId === null || nextRabbitId === previousRabbitId) return;
@@ -3441,6 +3459,39 @@ let pauseAlertSecondsShown = 0;
 // clock: the server owns the pause countdown because it decides whether a tank
 // may be hit, and owns nothing about this one because it ends in a request.
 const destructCountdown = new DestructCountdown(5000);
+// The hunt: which players are marked, and where the scoreboard cursor is while
+// one is being picked. The rules are in hunt.mjs, because the two keys, the
+// board's cursor and Rabbit Chase's own anointing all move the same state.
+const huntState = new HuntState();
+// pulse (playing.cxx:4581) -- `SFX_HUNT` sounds at a hunted tank at most once a
+// second however long it stays in the sights. In `frameEpochMs` terms; 0 before
+// the first ping.
+let huntPulseUntil = 0;
+// hud->setAlert(1, msg, 2.0f, 0) -- playing.cxx:4581. Identify's own two
+// seconds, on the same slot, because a look and a sighting answer the same
+// question and only one of them can be the latest answer.
+const HUNT_ALERT_SECONDS = 2;
+const HUNT_PULSE_MS = 1000;
+// The Settings row's own subject: the player it is currently pointed at.
+// Separate from `huntState.cursorId`, which belongs to the scoreboard cursor --
+// stepping this row must not put the board into select mode, and the board's
+// cursor must not move because a menu is open somewhere.
+let huntRowTargetId = null;
+// Clear rides that row's stepping list as its first entry rather than taking a
+// row of its own: `Clear - Alice - Bob -` wraps, so it is one step from either
+// end of the roster, and the menu keeps a line it would otherwise spend saying
+// the same thing. It is always present, even with nothing marked, because a
+// list that changes length underneath you is the thing alphabetical order is
+// here to avoid -- it simply does nothing then. Not a player id any roster can
+// produce.
+const HUNT_ROW_CLEAR_ID = 'hunt:clear';
+
+// Both live up here rather than beside the row they serve because
+// `initHudControls` refreshes the Settings menu synchronously as it binds, long
+// before the rest of the file has run: anything the row reads on that first
+// pass has to be initialized by now, or it is read inside its own temporal dead
+// zone. Same reason `getHuntRowPlayers` walks `tanks` rather than asking for
+// the scoreboard model, which is built from state declared much further down.
 // The tank is frozen while the entry dialog is up, which is not a pause: the
 // player is picking a name and a team, and the server knows nothing about it.
 let entryDialogFreeze = false;
@@ -4924,6 +4975,18 @@ function getDebugState() {
 // Keys the game acts on. Holding the browser off them is the keydown
 // listener's job in input.js, which claims the whole set before this runs.
 function handleGameplayKeydown(event) {
+  // doKeyCommon puts the hunt cursor ahead of every driving key while it is
+  // open (playing.cxx:609), so Up and Down pick a row rather than driving and
+  // Enter commits rather than firing.
+  if (huntState.isSelecting() && handleHuntSelectionKey(event)) return true;
+  // huntKeyEvent (ScoreboardRenderer.cxx:283), on upstream's own two bindings:
+  // `U` is `hunt` (ActionBinding.cxx:153) and `7` is `addhunt`
+  // (clientConfig.cxx:259).
+  if ((event.code === 'KeyU' || event.code === 'Digit7') && !event.repeat) {
+    pressHuntKey(event.code === 'Digit7');
+    return true;
+  }
+
   // An observer has no tank to pause or destroy, and the server drops both
   // messages from one. The keys stay consumed so nothing else reacts to them.
   // A pause a menu asked for is the menu's to undo, which is why cmdPause does
@@ -5082,6 +5145,13 @@ initHudControls({
   getObserverViewLabel: () => getRoamLabel(),
   getCameraMode: () => cameraMode,
   setCameraMode: (mode) => { cameraMode = mode; },
+  // The Hunt row, on every surface the Settings menu reaches: the flat panel,
+  // a phone's touch zones, and the XR list, which mirrors these rows rather
+  // than keeping a copy of its own.
+  getHuntRowValue,
+  stepHuntRow,
+  toggleHuntRow,
+  hasHuntCandidates: () => getHuntRowPlayers().length > 0,
   getMouseControlEnabled: () => mouseControlEnabled,
   setMouseControlEnabled: (value) => { mouseControlEnabled = value; },
   getVirtualControlsEnabled: () => virtualControlsEnabled,
@@ -6100,6 +6170,16 @@ function handleServerMessage(message) {
       // that was chosen before this client arrived.
       rabbitPlayerId = message.rabbitId ?? null;
       rabbitChaseEnabled = Boolean(message.teamMode.rabbitSelection);
+      // huntReset (ScoreboardRenderer.cxx:333) -- joining a server. Nothing
+      // marked here is about the world that is arriving, and a reconnect is a
+      // join: the ids it would keep belong to whoever holds them now.
+      huntState.reset();
+      if (rabbitPlayerId !== null) {
+        huntState.rabbitChanged(rabbitPlayerId, {
+          iAmTheRabbit: rabbitPlayerId === myPlayerId,
+          observing: isObserver(),
+        });
+      }
       matchTimeLeft = typeof message.timeLeft === 'number' ? message.timeLeft : null;
       matchTimeReceivedAt = sampleEpochClock();
       matchGameOver = Boolean(message.gameOver);
@@ -6886,6 +6966,10 @@ function removePlayer(playerId) {
   const tank = tanks.get(playerId);
   if (tank) {
     discardTank(tank, playerId);
+    // Before the repaint, so the row that has gone takes its bullseye with it
+    // and hunting that has run out of targets is already over by the time the
+    // board is drawn.
+    pruneHuntedPlayers();
     refreshScoreboards();
   }
   removePausedSphere(playerId);
@@ -7459,10 +7543,14 @@ function getScoreboardModel() {
       rows: buildScoreboardRows({
         myPlayerId, myPlayerName, myTank, tanks, getPlayerFlagLabel,
         rabbitChase: rabbitChaseEnabled,
+        huntedIds: huntState.hunted,
+        huntCursorId: huntState.getCursorId(),
       }),
       teamRows: getTeamScoreRows(teamScores),
       // Only the column heading reads this; the rows carry their own rank.
       rabbitChase: rabbitChaseEnabled,
+      // Only the heading reads this too: the cursor itself is on a row.
+      huntSelecting: huntState.isSelecting(),
       timeLeft: getDisplayedMatchTimeLeft(),
       gameOver: matchGameOver,
       // Only an observer can pick a roam target, and only an explicit one is
@@ -7486,6 +7574,10 @@ function getScoreboardModel() {
 function refreshScoreboards() {
   scoreboardModel = null;
   updateScoreboard(getScoreboardModel());
+  // The Hunt row reads the same roster and the same marks, so a board repaint
+  // is also when the row goes stale -- a player leaving takes a name out of its
+  // list, and a key press changes the ring it is showing.
+  refreshSettingsMenu();
 }
 
 function handleMapsList(message) {
@@ -9592,6 +9684,237 @@ function updateLockOnMarker() {
 function getLockTargetColor(tank) {
   const state = tank.userData?.playerState;
   return getEffectiveTankColor(state?.id, state?.color ?? 0xffffff);
+}
+
+// --- hunting ------------------------------------------------------------
+
+// The rows the hunt cursor may land on, in the order the scoreboard draws them.
+// Upstream walks its own sorted list (ScoreboardRenderer.cxx:494) and steps past
+// your own row, because a tank cannot hunt itself. bzo steps past observers as
+// well: an observer has no tank to ring, to stand a beacon over or to spot down
+// the sights, so a cursor stop there would mark nothing.
+function getHuntCandidates() {
+  return getScoreboardModel().rows
+    .filter((row) => !row.isCurrent && !row.isObserver)
+    .map((row) => row.id);
+}
+
+// Entering the cursor with a drive key already down would leave the tank
+// rolling: the key's state was set before the press reached here, and the next
+// event it produces is a keyup the cursor has already spent. Every key the
+// cursor claims is let go on the way in and on every press it takes.
+function releaseHuntSelectionKeys() {
+  [ 'ArrowUp', 'ArrowDown', 'Space', FIRE_KEY ].forEach((code) => {
+    setGameplayKeyState(code, false);
+  });
+}
+
+// `hunt` and `addhunt` (clientCommands.cxx:1032 and :1044), upstream's own `U`
+// and `7`. Both only open the scoreboard cursor; what they differ in is whether
+// committing replaces the hunted set or adds to it -- and, from a hunt already
+// running, whether the key reopens the cursor or turns hunting off.
+//
+// Upstream force-opens the scoreboard here if `displayScore` is off
+// (ScoreboardRenderer.cxx:310). bzo's board cannot be hidden, so there is
+// nothing to open.
+function pressHuntKey(isAdd) {
+  const sound = huntState.pressHuntKey(isAdd, getHuntCandidates());
+  if (sound) renderManager.playLocalSound(sound);
+  if (huntState.isSelecting()) releaseHuntSelectionKeys();
+  refreshScoreboards();
+}
+
+// doKeyCommon (playing.cxx:609). While the cursor is open the scoreboard owns
+// Up, Down and fire, so the arrows do not drive and Enter does not shoot.
+// Upstream's `identify` and `drop` bindings step the cursor too -- `I` and
+// `Space` here -- which is what lets a surface with no arrow keys reach it.
+// Returns whether the key was spent.
+function handleHuntSelectionKey(event) {
+  const direction = (event.code === 'ArrowDown' || event.code === 'KeyI') ? 1
+    : (event.code === 'ArrowUp' || event.code === 'Space') ? -1
+      : 0;
+  if (direction !== 0) {
+    releaseHuntSelectionKeys();
+    huntState.moveCursor(getHuntCandidates(), direction);
+    refreshScoreboards();
+    return true;
+  }
+  if (event.code !== FIRE_KEY) return false;
+  releaseHuntSelectionKeys();
+  const sound = huntState.select(getHuntCandidates());
+  if (sound) renderManager.playLocalSound(sound);
+  refreshScoreboards();
+  return true;
+}
+
+// The mark on a player who has left, and the rule underneath it: hunting that
+// has run out of targets is over (ScoreboardRenderer.cxx:581). Upstream reaches
+// this by recounting the hunted rows every time it draws the board; bzo asks it
+// wherever the roster changes, since the board here is not redrawn every frame.
+function pruneHuntedPlayers() {
+  if (!huntState.hasHunted() && !huntState.isSelecting()) return;
+  const sound = huntState.prune(new Set(tanks.keys()));
+  if (sound) renderManager.playLocalSound(sound);
+  // A cursor whose row has left, or that has nobody left to point at. Asked
+  // after the marks, because a departure can empty both at once.
+  huntState.refreshCursor(getHuntCandidates());
+}
+
+// --- the Hunt row in Settings -------------------------------------------
+
+// The entries the row steps through: Clear, then the players in alphabetical
+// order rather than the board's. A list you step through has to be stable --
+// score order re-sorts on every kill, so `right` would land on a different
+// player depending on when the press arrived. The scoreboard cursor tolerates
+// that only because it is drawn *on* the board and has to follow what is drawn;
+// this row is not, so it sorts for stepping instead. Ties break on id, so two
+// identical callsigns hold still.
+//
+// Off the roster rather than the scoreboard model, which the order makes free:
+// with nothing to inherit from the board, asking for the model would only tie
+// the row to state that is not ready when Settings first paints.
+function getHuntRowPlayers() {
+  const players = [];
+  tanks.forEach((tank, id) => {
+    const state = tank.userData?.playerState;
+    if (!state || id === myPlayerId || isObserverTeam(state.team)) return;
+    players.push({ id, name: state.name || 'Player' });
+  });
+  return players.sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' })
+    || String(a.id).localeCompare(String(b.id)));
+}
+
+function getHuntRowCandidates() {
+  return [{ id: HUNT_ROW_CLEAR_ID, name: 'Clear', clear: true }, ...getHuntRowPlayers()];
+}
+
+// The subject, repaired against the current roster: a player who has left hands
+// the row back to the first player rather than leaving it pointed at nobody.
+// The first *player*, not the first entry -- opening Settings on `Clear` would
+// offer to undo the hunt before offering to start one.
+function getHuntRowTarget() {
+  const candidates = getHuntRowCandidates();
+  const found = candidates.find((candidate) => candidate.id === huntRowTargetId);
+  if (found) return found;
+  const fallback = candidates.find((candidate) => !candidate.clear) ?? null;
+  huntRowTargetId = fallback?.id ?? null;
+  return fallback;
+}
+
+// `<callsign> ○` or `<callsign> ◎`, which is the scoreboard's own pair in the
+// scoreboard's own order -- the mark follows the name there too. The row is
+// always its own cursor, since it shows one player at a time, so it asks for
+// the label with `huntCursor` set and gets the open ring when unmarked.
+//
+// Clear says how much it would clear, so a press that wipes three marks says so
+// before it is pressed rather than after.
+function getHuntRowValue() {
+  const target = getHuntRowTarget();
+  if (!target) return null;
+  if (target.clear) {
+    return huntState.hasHunted() ? `Clear (${huntState.hunted.size})` : 'Clear';
+  }
+  const mark = getScoreboardHuntLabel({
+    hunted: huntState.isHunted(target.id),
+    huntCursor: true,
+  });
+  return `${target.name} ${mark}`;
+}
+
+function stepHuntRow(direction) {
+  const candidates = getHuntRowCandidates();
+  if (candidates.length < 2) return false;
+  const at = candidates.findIndex((candidate) => candidate.id === huntRowTargetId);
+  const step = direction < 0 ? -1 : 1;
+  const next = at === -1 ? 0 : (at + step + candidates.length) % candidates.length;
+  huntRowTargetId = candidates[next].id;
+  refreshScoreboards();
+  return true;
+}
+
+// The row's own verb, which is whatever the entry it is on means. On a player,
+// `addhunt` semantics -- it adds to the set and takes one back off it -- because
+// a row that replaced everything on every press could never mark a second
+// player, and `U` is the key for replacing. On Clear, upstream's `hunt` from a
+// running hunt: every mark goes.
+function toggleHuntRow() {
+  const target = getHuntRowTarget();
+  if (!target) return false;
+  const sound = target.clear ? huntState.clearAll() : huntState.toggle(target.id);
+  if (sound) renderManager.playLocalSound(sound);
+  refreshScoreboards();
+  return true;
+}
+
+// setHuntTarget (playing.cxx:4505), run every frame for a driving tank: if a
+// hunted tank is the nearest thing inside the targeting cone, say so and ping
+// from where it is.
+//
+// This is the one targeting question bzo asks on the client. `identify` goes to
+// the server because it can take a guided-missile lock, which steers a real
+// shot and so cannot be a client's word -- see `setPlayerTarget` in server.js.
+// A sighting steers nothing: it is an alert and a sound for the player who
+// already marked the target, so a modified client that faked one would be
+// lying only to itself, and asking the server once a frame per player would be
+// a real cost for it.
+//
+// Upstream lets a guided-missile lock further away beat a nearer tank inside
+// the wider cone, purely because both are picked in one loop; bzo asks the
+// targeting cone on its own, the same split `setPlayerTarget` already makes.
+function updateHuntBearing() {
+  if (!huntState.hasHunted()) return;
+  if (!myTank || isObserver() || !isMyTankAlive()) return;
+  // Blindness and Colourblindness both refuse the alert and the ping
+  // (playing.cxx:4562). Upstream picks the target first and then checks; the
+  // answer is the same and this way the scan is skipped entirely.
+  const myFlagType = getMyFlag()?.type ?? null;
+  if (blanksTheView(myFlagType) || hidesTeamColors(myFlagType)) return;
+
+  // The tank's own heading, not the camera's, which is what upstream scans
+  // with -- a sighting is about where the barrel points.
+  const eye = { x: playerX, z: playerZ };
+  const forward = { x: -Math.sin(playerRotation), z: -Math.cos(playerRotation) };
+  const seer = isSeer();
+  const candidates = [];
+  tanks.forEach((tank, id) => {
+    const state = tank.userData?.playerState;
+    if (!state || id === myPlayerId || !state.alive || isObserverTeam(state.team)) return;
+    // Stealth is out of the scan unless Seer is in hand (playing.cxx:4552).
+    if (!seer && hidesFromRadar(getPlayerFlagType(id))) return;
+    candidates.push({ id, x: tank.position.x, z: tank.position.z });
+  });
+
+  const spotted = pickTargetInSights(eye, forward, candidates, TARGETING_ANGLE);
+  if (spotted === null || !huntState.isHunted(spotted)) return;
+  // Checked again after the pick, as upstream checks it: a Seer may scan a
+  // Stealth tank, but hunting still refuses to report one.
+  if (hidesFromRadar(getPlayerFlagType(spotted))) return;
+
+  // "Don't interfere with GM lock display" (playing.cxx:4566) -- the lock
+  // already owns this alert slot and is the more urgent of the two. The ping
+  // still sounds, which is upstream's own split.
+  if (!getLockTargetTank(myPlayerId)) {
+    showHuntAlert(spotted);
+  }
+  if (frameEpochMs >= huntPulseUntil) {
+    huntPulseUntil = frameEpochMs + HUNT_PULSE_MS;
+    const tank = tanks.get(spotted);
+    if (tank) renderManager.playSound('hunt', tank.position);
+  }
+}
+
+// `SPOTTED: <callsign> (<team>) with <flag>` (playing.cxx:4569), written through
+// the same composition every other bzo notice names a tank with, so a sighting
+// and the roster describe the same player the same way.
+function showHuntAlert(playerId) {
+  const described = describePlayer(playerId);
+  setHudAlert(
+    1,
+    `SPOTTED: ${described.text}`,
+    HUNT_ALERT_SECONDS,
+    false,
+    described.segments ? [{ text: 'SPOTTED: ' }, ...described.segments] : null,
+  );
 }
 
 function getTankEyeHeight(tank) {
@@ -12030,11 +12353,33 @@ function getFlagHeadingMarkers() {
 // Clear of the thing it points at: a flag's pole is 1.6 tall and a tank 2.05,
 // so one height puts the tip just over either without touching it.
 const SKY_BEACON_CLEARANCE = 3;
-// Refilled in place every frame. A beacon wears the colour of the mark the
-// radar already puts on the same thing -- the team's tank colour for a team
-// flag, the antidote's yellow, and the rabbit's hunt cyan -- so the ring on the
-// panel and the wedge in the sky read as one mark rather than two.
+// Refilled in place every frame. A beacon is drawn in whatever colour identifies
+// the thing it stands over: the team's colour for a team flag, the antidote's
+// yellow, and a hunted tank's own colour -- see `getHuntBeaconColor` for why
+// that one departs from the cyan its radar ring wears.
 const skyBeaconTargets = [];
+
+// A beacon over a hunted tank is drawn in that tank's own colour, where its
+// radar ring is hunt cyan. The two disagree on purpose: the ring is a mark laid
+// *on* a blip already painted in the player's colour, so it has to be a colour
+// that is not theirs or it disappears into the blip -- at radius 9 over a blip
+// spanning six either side it sits right on the arrow. A beacon stands alone
+// against the sky with nothing inside it, so its colour is the only thing that
+// can say *who*, which matters the moment `7` has marked more than one tank.
+//
+// The rabbit is the exception, and keeps the cyan. Its own colour is the
+// reserved rabbit grey, which reads badly against a bright sky, and it is the
+// one target the world chose rather than this player -- everybody is hunting it
+// and everybody's beacon over it should say the same thing. That is the same
+// line the scoreboard already draws between `(rabbit)`, a fact about the world,
+// and the bullseye, a mark this viewer put there.
+//
+// `getEffectiveTankColor` rather than the raw colour, so a Masquerading tank's
+// beacon agrees with the tank underneath it.
+function getHuntBeaconColor(playerId, state) {
+  if (isTheRabbit(playerId)) return HUNT_MARKER_COLOR;
+  return getEffectiveTankColor(playerId, state?.color ?? HUNT_MARKER_COLOR);
+}
 
 function addSkyBeaconTarget(count, position, color) {
   const target = skyBeaconTargets[count] || (skyBeaconTargets[count] = { x: 0, y: 0, z: 0, color: 0 });
@@ -12046,12 +12391,12 @@ function addSkyBeaconTarget(count, position, color) {
 }
 
 // Everything the radar rings stands under a wedge in the sky as well: the
-// player's own team flags, the antidote, and the rabbit. The radar says where
-// on the map; the beacon says which way to drive, which is the half a headset
-// has no heading tape to give and a flat client has to look away from the world
-// to work out.
+// player's own team flags, the antidote, and every hunted tank. The radar says
+// where on the map; the beacon says which way to drive, which is the half a
+// headset has no heading tape to give and a flat client has to look away from
+// the world to work out.
 //
-// The rabbit drops out of the sky under exactly the conditions that take its
+// A hunted tank drops out of the sky under exactly the conditions that take its
 // blip off the panel -- dead, hidden, or wearing Stealth -- because the beacon
 // is the ring's other half and a flag that denies one has to deny both.
 function updateSkyBeacons() {
@@ -12069,13 +12414,16 @@ function updateSkyBeacons() {
     count = addSkyBeaconTarget(count, antidotePosition, ANTIDOTE_FLAG_COLOR);
   }
 
-  const rabbit = rabbitPlayerId !== null && isMarkedRabbit(rabbitPlayerId)
-    ? tanks.get(rabbitPlayerId)
-    : null;
-  const rabbitState = rabbit?.userData?.playerState;
-  if (rabbit?.position && rabbit.visible !== false
-    && !(rabbitState && (!rabbitState.alive || isHiddenFromRadar(rabbitState.id)))) {
-    count = addSkyBeaconTarget(count, rabbit.position, RABBIT_MARKER_COLOR);
+  // One beacon per hunted tank. In Rabbit Chase that is the one the rabbit used
+  // to get; off it, it is however many the player marked, which they chose one
+  // at a time and can clear with a single `U`.
+  if (huntState.hasHunted()) {
+    tanks.forEach((tank, playerId) => {
+      if (!isHuntMarked(playerId) || !tank?.position || tank.visible === false) return;
+      const state = tank.userData?.playerState;
+      if (state && (!state.alive || isHiddenFromRadar(playerId))) return;
+      count = addSkyBeaconTarget(count, tank.position, getHuntBeaconColor(playerId, state));
+    });
   }
 
   renderManager.showSkyBeacons(skyBeaconTargets, count);
@@ -13030,6 +13378,11 @@ function ensureXRScoreboardOverlay() {
     // in the same place. The leading space is this panel's answer to the flat
     // one's margin: everything here is laid out by measured width.
     const rabbitLabel = player.rabbit ? ` ${player.rabbit.label}` : '';
+    // The bullseye on a marked row, drawn from the same place the flat board reads
+    // it. The cursor never lands here -- a headset has no key to move it with --
+    // but the mark does, because the hunt is the same hunt on both surfaces.
+    const huntMark = getScoreboardHuntLabel(player);
+    const huntLabel = huntMark ? ` ${huntMark}` : '';
     // The flat scoreboard's own paused hourglass and mic glyph, drawn after
     // the flag the same way there.
     const pausedLabel = player.paused ? '⏳' : '';
@@ -13044,7 +13397,8 @@ function ensureXRScoreboardOverlay() {
       - (flagLabel ? ctx.measureText(flagLabel).width : 0)
       - (pausedLabel ? ctx.measureText(pausedLabel).width : 0)
       - (micLabel ? ctx.measureText(micLabel).width : 0)
-      - (rabbitLabel ? ctx.measureText(rabbitLabel).width : 0);
+      - (rabbitLabel ? ctx.measureText(rabbitLabel).width : 0)
+      - (huntLabel ? ctx.measureText(huntLabel).width : 0);
     const shown = fitText(ctx, String(player.name || 'Player'), Math.max(0, nameWidth));
 
     ctx.fillStyle = rowColor;
@@ -13075,6 +13429,11 @@ function ensureXRScoreboardOverlay() {
     if (rabbitLabel) {
       ctx.fillStyle = colorToCSS(player.rabbit.color);
       ctx.fillText(rabbitLabel, labelRight, y);
+      labelRight += ctx.measureText(rabbitLabel).width;
+    }
+    if (huntLabel) {
+      ctx.fillStyle = colorToCSS(SCOREBOARD_HUNT_COLOR);
+      ctx.fillText(huntLabel, labelRight, y);
     }
     ctx.fillStyle = rowColor;
     ctx.textAlign = 'right';
@@ -13370,31 +13729,27 @@ function getObstacleRadarFillStyle(obs) {
   return tint ? getRadarTintFill(tint) : RADAR_NEUTRAL_FILL;
 }
 
-// A blip the player is looking for is ringed: the rabbit, the player's own team
-// flags, and the antidote. Upstream rings none of the three. It marks the
-// *hunted* tank instead, by flashing its blip cyan every fifth of a second
-// (RadarRenderer.cxx:136) as part of its hunt feature, which bzo does not have
-// -- Rabbit Chase wants only the marker -- and it leaves the two flag bearings
-// to the heading tape (prepareTheHUD, playing.cxx:6820), which an immersive
-// session has no room for.
+// A blip the player is looking for is ringed: a hunted tank, the player's own
+// team flags, and the antidote. Upstream rings none of the three. It marks the
+// hunted tank by flashing its blip cyan every fifth of a second
+// (RadarRenderer.cxx:136), and it leaves the two flag bearings to the heading
+// tape (prepareTheHUD, playing.cxx:6820), which an immersive session has no room
+// for.
 //
 // A ring rather than a flash: a flash is half invisible on a client running at a
 // low frame rate, which is the client bzo has to draw for.
 //
-// The rabbit's ring is upstream's own hunt cyan, because its blip is one of a
+// The hunted ring is upstream's own hunt cyan, because its blip is one of a
 // panel full of per-player colours and grey is the one shade that does not read
 // against a dark panel. A flag's ring takes the colour of the cross it rings,
 // which is already the team's or the antidote's yellow, so a second colour would
-// say nothing the cross does not. The two can never appear together anyway:
-// Rabbit Chase turns the colour teams off, so a world has team flags or a rabbit
-// and never both.
+// say nothing the cross does not.
 //
 // XR needs no separate path: the XR radar panel is textured from this canvas.
 //
-// The cyan is a number first because the sky beacon over the same rabbit wears
-// it too, and a second literal is how the two would eventually disagree.
-const RABBIT_MARKER_COLOR = 0x00cce5;
-const RADAR_RABBIT_RING_COLOR = colorToCSS(RABBIT_MARKER_COLOR);
+// The cyan itself lives in `hunt.mjs`, because the scoreboard's bullseye wears
+// it too and a second literal is how the two would eventually disagree.
+const RADAR_HUNT_RING_COLOR = colorToCSS(HUNT_MARKER_COLOR);
 // The antidote's yellow as a style, cut once. Every other flag colour on the
 // panel goes through `getFlagRadarStyle`'s cache for the same reason: the radar
 // is redrawn every frame on a client with one core to spend.
@@ -13984,7 +14339,7 @@ function updateRadar() {
     const rotY = rel.y;
     const tankOutsideRadarSquare = isOutsideRadarSquare(rotX, rotY, tankArrowWorldMargin);
     const pos = radarToCanvas(rel.x, rel.y);
-    const ringTheRabbit = isMarkedRabbit(playerId);
+    const ringTheHunted = isHuntMarked(playerId);
 
     if (tankOutsideRadarSquare) {
       // Tank is outside radar range - draw as small dot against square edge.
@@ -13998,9 +14353,9 @@ function updateRadar() {
       radarCtx.globalAlpha = 0.8;
       radarCtx.fill();
       radarCtx.restore();
-      // A rabbit that has run off the panel is exactly the one a hunter wants
-      // marked, so the ring follows it out to the edge.
-      if (ringTheRabbit) drawRadarMarkerRing(edge.x, edge.y, RADAR_RABBIT_RING_COLOR);
+      // A hunted tank that has run off the panel is exactly the one a hunter
+      // wants marked, so the ring follows it out to the edge.
+      if (ringTheHunted) drawRadarMarkerRing(edge.x, edge.y, RADAR_HUNT_RING_COLOR);
       return;
     }
 
@@ -14029,7 +14384,7 @@ function updateRadar() {
       radarCtx.fill();
     }
     radarCtx.restore();
-    if (ringTheRabbit) drawRadarMarkerRing(pos.x, pos.y, RADAR_RABBIT_RING_COLOR);
+    if (ringTheHunted) drawRadarMarkerRing(pos.x, pos.y, RADAR_HUNT_RING_COLOR);
   });
 
   // Flags on the ground, drawn as RadarRenderer::drawFlag does: a cross a flag
@@ -14968,6 +15323,9 @@ function animate(frameTime) {
   markFramePhase('xr');
 
   updateLockOnMarker();
+  // With the lock marker, and for the same reason: both ask what is in the
+  // sights this frame, and upstream runs them back to back (playing.cxx:6893).
+  updateHuntBearing();
 
   updateFps();
   // None of the DOM HUD is on screen in a session -- the XR panels stand in for

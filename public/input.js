@@ -9,7 +9,7 @@
 // Exports: setupInputHandlers, virtualInput, keys
 
 import { getXRControllerInput, xrState } from './webxr.js';
-import { focusDialogCloseControl, focusFirstDialogControl, getMenuClickDirection, getVisibleDialogRoot, handleDialogControllerInput, handleDialogKeydown, hideDialog, showDialog } from './menus.js';
+import { focusDialogCloseControl, focusFirstDialogControl, getMenuClickDirection, getMenuClickZone, getVisibleDialogRoot, handleDialogControllerInput, handleDialogKeydown, hideDialog, showDialog } from './menus.js';
 import { initSettingsMenu } from './settings.js';
 import { INPUT_CONTEXT, InputContextManager } from './input-context.mjs';
 
@@ -649,6 +649,13 @@ const defaultHudContext = {
   getChatInput: () => null,
   handleGameplayKeydown: () => false,
   syncAutoPause: () => {},
+  // The Hunt row. The hunt itself lives in client.js -- it needs the roster, the
+  // sounds and the scoreboard -- so this layer only asks it what to draw and
+  // tells it which way the row was pressed.
+  getHuntRowValue: () => null,
+  stepHuntRow: () => false,
+  toggleHuntRow: () => false,
+  hasHuntCandidates: () => false,
 };
 
 let hudContext = { ...defaultHudContext };
@@ -661,6 +668,7 @@ const domRefs = {
   fullscreenBtn: null,
   debugBtn: null,
   cameraBtn: null,
+  huntBtn: null,
   helpBtn: null,
   playerOptionsBtn: null,
   settingsBtn: null,
@@ -747,6 +755,8 @@ const GAMEPLAY_OWNED_KEYS = new Set([
   'PageUp', 'PageDown', 'End',
   // View, HUD, radar, help
   'KeyM', 'KeyC', 'KeyO', 'KeyF', 'Backquote', 'KeyB', 'KeyI',
+  // Hunting: `U` is upstream's `hunt` and `7` its `addhunt`.
+  'KeyU', 'Digit7',
   'Slash', 'Backslash', 'Minus', 'Equal', 'NumpadAdd', 'NumpadSubtract',
   // Not a binding: Firefox opens its link quick-find on an apostrophe and eats
   // the keyboard until dismissed, which from inside a tank looks like a freeze.
@@ -872,7 +882,17 @@ function stopPropagationForHud(ids, preventDefault = true) {
 // client has the same job to do from its own events -- a headset arriving, the
 // debug HUD toggling -- and a second copy of the argument list is a second
 // chance for the mouse row's gate to be left out of one of them.
+// Whether the Hunt row has anybody to point at. Kept as `disabled` rather than
+// hidden: a greyed row says the feature is there and why it is not available,
+// where a row that comes and goes is one a player has to catch in the act to
+// learn about. Both surfaces read `button.disabled` -- the XR list copies it,
+// and neither adjust nor activate will touch a disabled row.
+function syncHuntRows() {
+  if (domRefs.huntBtn) domRefs.huntBtn.disabled = !hudContext.hasHuntCandidates();
+}
+
 export function refreshHudButtons() {
+  syncHuntRows();
   if (typeof hudContext.updateHudButtons !== 'function') return;
   const mouseAvailable = isMouseSteeringAvailable();
   hudContext.updateHudButtons({
@@ -904,6 +924,14 @@ export function adjustSettingsMenuRow(id, direction) {
   const item = settingsMenu?.items.find((candidate) => candidate.id === id);
   if (!item || item.button.disabled) return false;
 
+  // Sideways on a `pick` row changes the subject rather than the setting. It is
+  // the one kind where select does something else, which is why it is a kind of
+  // its own rather than a `choice` with a special case.
+  if (item.kind === 'pick') {
+    if (id !== 'huntBtn') return false;
+    return hudContext.stepHuntRow(direction);
+  }
+
   if (item.kind === 'choice') {
     if (item.id === 'cameraBtn') {
       cycleCameraMode(direction);
@@ -930,6 +958,9 @@ export function adjustSettingsMenuRow(id, direction) {
 }
 
 function getSettingsMenuValue(id, item) {
+  // The player the row is pointed at and whether they are marked, or why there
+  // is nobody to point at. Composed in client.js, which owns the roster.
+  if (id === 'huntBtn') return hudContext.getHuntRowValue() ?? 'No players';
   if (id === 'cameraBtn') {
     return hudContext.isObserver()
       ? hudContext.getObserverViewLabel()
@@ -978,6 +1009,7 @@ export function getXRSettingsMenuItems() {
 // Capabilities can appear after the menu is built -- the browser decides when a
 // page becomes installable -- so the owning module refreshes the row itself.
 export function refreshSettingsMenu() {
+  syncHuntRows();
   settingsMenu?.refresh();
 }
 
@@ -1453,6 +1485,7 @@ function bindHudElements() {
   domRefs.fullscreenBtn = document.getElementById('fullscreenBtn');
   domRefs.debugBtn = document.getElementById('debugBtn');
   domRefs.cameraBtn = document.getElementById('cameraBtn');
+  domRefs.huntBtn = document.getElementById('huntBtn');
   domRefs.helpBtn = document.getElementById('helpBtn');
   domRefs.playerOptionsBtn = document.getElementById('playerOptionsBtn');
   domRefs.settingsBtn = document.getElementById('settingsBtn');
@@ -1543,6 +1576,22 @@ function bindHudElements() {
       cycleCameraMode(getMenuClickDirection(e));
     });
   }
+
+  // The three-zone row: a chevron steps the subject, anything else marks or
+  // unmarks it. A click with no coordinates -- Enter on the focused row, or a
+  // headset's A through `activateXRSettingsMenuItem` -- comes back as zone 0,
+  // which is the row's own verb.
+  if (domRefs.huntBtn) {
+    domRefs.huntBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const zone = getMenuClickZone(e, domRefs.huntBtn);
+      if (zone === 0) hudContext.toggleHuntRow();
+      else hudContext.stepHuntRow(zone);
+      refreshSettingsMenu();
+    });
+  }
+
 
   if (domRefs.helpBtn) {
     domRefs.helpBtn.addEventListener('click', (e) => {

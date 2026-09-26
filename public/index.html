@@ -223,6 +223,7 @@
         <button id="debugLabelsBtn" class="settingsHudBtn">Debug Labels</button>
         <button id="radarZoomBtn" class="settingsHudBtn" title="Radar range preset">Radar: Medium</button>
         <button id="cameraBtn" class="settingsHudBtn">Camera</button>
+        <button id="huntBtn" class="settingsHudBtn" title="Hunt: step through players and Clear with the arrows, select to mark, unmark or clear">Hunt</button>
         <button id="helpBtn" class="settingsHudBtn">Help</button>
         <button id="operatorBtn" class="settingsHudBtn">Operator</button>
         <button id="viewBtn" class="settingsHudBtn">View</button>
@@ -431,10 +432,37 @@
         <li><strong>Tab</strong> — Jump</li>
         <li><strong>Space</strong> — Drop Flag</li>
         <li><strong>I</strong> — Identify: names the tank in your sights, and locks a Guided Missile onto it</li>
+        <li><strong>U</strong> — Hunt: open the scoreboard cursor; press it again on a running hunt to clear every mark</li>
+        <li><strong>7</strong> — Add Hunt: the same cursor, but committing adds to what is marked rather than replacing it</li>
         <li><strong>Delete</strong> — Self-Destruct: five seconds, and <strong>Delete</strong> again calls it off</li>
         <li><strong>C</strong> — Toggle Camera View</li>
         <li><strong>P</strong> — Pause Game</li>
         <li><strong>O</strong> — Operator Panel</li>
+      </ul>
+
+      <h2>Hunting</h2>
+      <p>A hunted player wears a cyan <strong>&#9678;</strong> on their scoreboard row,
+        a cyan ring on the radar, and a beacon in the sky in their own tank colour, so
+        several marked at once are still told apart. While one is in your sights the HUD
+        says <strong>SPOTTED:</strong> and a ping sounds once a second from where they
+        are. In Rabbit Chase the rabbit is marked for you, and its beacon is cyan like
+        its ring.</p>
+      <ul>
+        <li><strong>U</strong> — Hunt: open the cursor, or clear a running hunt</li>
+        <li><strong>7</strong> — Add Hunt: open the cursor in add mode, where committing
+          adds a target and committing on one already marked takes it off</li>
+        <li><strong>Up</strong> / <strong>Down</strong> — move the cursor; the heading reads
+          <strong>*SEL*</strong> and a pulsing <strong>&#9675;</strong> sits on the row it is
+          on, which fills in to <strong>&#9678;</strong> when you commit</li>
+        <li><strong>Enter</strong> — commit the row the cursor is on</li>
+        <li><strong>U</strong> or <strong>7</strong> — back out, keeping whatever was already marked</li>
+        <li><strong>I</strong> and <strong>Space</strong> move the cursor too, so a surface
+          without arrow keys can reach it</li>
+        <li><strong>Settings &rarr; Hunt</strong> — the same thing without a keyboard, for a
+          phone or a headset. Left and right step through <strong>Clear</strong> and then the
+          players in alphabetical order; select marks or unmarks whoever is shown, or clears
+          every mark on <strong>Clear</strong>. Tap a chevron to step and anywhere else on the
+          row to select</li>
       </ul>
 
       <h2>Flags</h2>

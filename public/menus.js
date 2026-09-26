@@ -184,6 +184,11 @@ function moveDialogFocus(dialog, currentElement, direction) {
 // right -- so the seam between the two halves is the boundary, measured rather
 // than assumed, because which columns a row has is a styling decision. A row
 // laid out any other way falls back to its own middle.
+// How wide each chevron's hit zone is, in CSS pixels. Wide enough for a thumb
+// on a phone -- the platform this row exists for -- and capped at a quarter of
+// the row so a narrow panel still leaves a select zone in the middle.
+const MENU_CLICK_CHEVRON_WIDTH = 44;
+
 function getRowSplitX(row) {
   const rect = row?.getBoundingClientRect?.();
   if (!rect?.width) return null;
@@ -206,6 +211,28 @@ function getRowSplitX(row) {
 // coordinates are zero -- inside the label half of every row on screen -- and
 // would otherwise walk the list backwards on the key that is supposed to
 // advance it.
+// A three-zone version of the split above, for a row whose sideways keys and
+// whose select do different things -- `kind: 'pick'`, where left and right
+// change *which* thing the row is about and select acts on it. The two chevron
+// zones are narrow and the rest of the row selects, which is the right way
+// round: stepping is the repeated action, and mis-clicking it costs one press.
+//
+// A click with no coordinates is the keyboard's Enter or a headset's A arriving
+// through `button.click()`, and both mean the row's own verb, so they land on
+// 0. That is the one place this differs from `getMenuClickDirection`, which
+// answers 1 for the same event because stepping forward is all a choice row
+// does.
+export function getMenuClickZone(event, row = event?.currentTarget) {
+  if (!event || !event.detail) return 0;
+  const rect = row?.getBoundingClientRect?.();
+  const x = Number(event.clientX);
+  if (!rect?.width || !Number.isFinite(x)) return 0;
+  const edge = Math.min(rect.width / 4, MENU_CLICK_CHEVRON_WIDTH);
+  if (x < rect.left + edge) return -1;
+  if (x > rect.right - edge) return 1;
+  return 0;
+}
+
 export function getMenuClickDirection(event, row = event?.currentTarget) {
   if (!event || !event.detail) return 1;
   const x = Number(event.clientX);

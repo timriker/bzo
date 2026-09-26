@@ -8,6 +8,13 @@
 export const SETTINGS_MENU_ITEMS = Object.freeze([
   { id: 'playerOptionsBtn', label: 'Player Options', kind: 'submenu' },
   { id: 'cameraBtn', label: 'Camera', kind: 'choice' },
+  // `pick` is the one row kind whose two axes mean different things: left and
+  // right change *which* player the row is about, select marks or unmarks them.
+  // Every other kind does the same thing whichever way you press -- a `choice`
+  // steps forward on select, a `toggle` toggles -- so this one wears its
+  // chevrons around the value rather than at the row's edges, to say outright
+  // that it is not one of those. See getMenuClickZone in menus.js.
+  { id: 'huntBtn', label: 'Hunt', kind: 'pick' },
   { id: 'radarZoomBtn', label: 'Radar Range', kind: 'choice' },
   { id: 'mouseBtn', label: 'Mouse Steering', kind: 'toggle' },
   { id: 'virtualControlsBtn', label: 'Virtual Controls', kind: 'toggle' },
@@ -48,6 +55,14 @@ function defaultValue(item) {
   return '';
 }
 
+// `pick` rows carry their state glyph inside the value, so the On/Off colouring
+// below must not try to read them, and the chevrons are drawn by CSS around the
+// same span. Kept as a predicate rather than an id list so a second pick row
+// needs nothing here.
+function isPickRow(item) {
+  return item.kind === 'pick';
+}
+
 export function initSettingsMenu({ root, getValue, onAdjust }) {
   if (!root) return null;
 
@@ -73,7 +88,7 @@ export function initSettingsMenu({ root, getValue, onAdjust }) {
       value.textContent = currentValue ?? defaultValue(item);
       // Only On/Off rows carry a state colour. Rows that read "Open >", "Long"
       // or "First Person" are not on or off, so they keep the neutral styling.
-      if (value.textContent === 'On' || value.textContent === 'Off') {
+      if (!isPickRow(item) && (value.textContent === 'On' || value.textContent === 'Off')) {
         item.button.dataset.menuState = value.textContent.toLowerCase();
       } else {
         delete item.button.dataset.menuState;

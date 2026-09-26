@@ -29,7 +29,10 @@ import {
   getScoreboardColumnLabel,
   getScoreboardColumnWidth,
   getScoreboardColumns,
+  getScoreboardHuntLabel,
   getScoreboardStatsHeader,
+  SCOREBOARD_HUNT_CURSOR_LABEL,
+  SCOREBOARD_HUNT_LABEL,
   setHudAlert,
   updateAlertHud,
 } from '../public/hud.js';
@@ -130,6 +133,52 @@ assert.equal(formatRabbitRank(0.539), '53%');
   // The mark is read off the team, so it survives a world that is not asked
   // about -- there is no rabbit team outside Rabbit Chase to read it from.
   assert.equal(plain.find((r) => r.id === '2').rabbit, null);
+}
+
+// The hunt's two marks reach the rows the way every other mark does, so the flat
+// board and the headset panel cannot mark different rows. The cursor and the
+// mark are separate facts: a row can carry either, both, or neither.
+{
+  const tanks = new Map([
+    ['2', { userData: { playerState: { id: '2', name: 'prey', team: PLAYER_TEAM.RED } } }],
+    ['3', { userData: { playerState: { id: '3', name: 'next', team: PLAYER_TEAM.BLUE } } }],
+  ]);
+  const myTank = { userData: { playerState: { id: '1', name: 'me', team: PLAYER_TEAM.RED } } };
+  const rows = buildScoreboardRows({
+    myPlayerId: '1', myPlayerName: 'me', myTank, tanks,
+    huntedIds: new Set(['2']),
+    huntCursorId: '3',
+  });
+  const by = (id) => rows.find((r) => r.id === id);
+  assert.equal(by('2').hunted, true);
+  assert.equal(by('2').huntCursor, false);
+  assert.equal(by('3').hunted, false);
+  assert.equal(by('3').huntCursor, true);
+  assert.equal(by('1').hunted, false, 'you cannot hunt yourself');
+
+  // ScoreboardRenderer.cxx:845 -- the mark wins over the cursor on a row that
+  // carries both: the row is marked, which is the more important of the two
+  // things the column can say.
+  assert.equal(getScoreboardHuntLabel(by('2')), SCOREBOARD_HUNT_LABEL);
+  assert.equal(getScoreboardHuntLabel(by('3')), SCOREBOARD_HUNT_CURSOR_LABEL);
+  assert.equal(getScoreboardHuntLabel(by('1')), '');
+  assert.equal(
+    getScoreboardHuntLabel({ hunted: true, huntCursor: true }),
+    SCOREBOARD_HUNT_LABEL,
+  );
+}
+
+// A board built without the hunt carries neither mark, which is every board on
+// a client that has never pressed the key.
+{
+  const tanks = new Map([
+    ['2', { userData: { playerState: { id: '2', name: 'prey', team: PLAYER_TEAM.RED } } }],
+  ]);
+  const myTank = { userData: { playerState: { id: '1', name: 'me', team: PLAYER_TEAM.RED } } };
+  const rows = buildScoreboardRows({ myPlayerId: '1', myPlayerName: 'me', myTank, tanks });
+  assert.deepEqual(rows.map((r) => r.hunted), [false, false]);
+  assert.deepEqual(rows.map((r) => r.huntCursor), [false, false]);
+  assert.deepEqual(rows.map(getScoreboardHuntLabel), ['', '']);
 }
 
 // tks, paused and micOn pass straight through from a player's own
