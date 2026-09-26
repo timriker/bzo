@@ -1036,14 +1036,27 @@ const MESH_FLAT_TOP_MIN_UP = 1 - 1e-4;
 // pointing up, and standing under (x, z). The point-in-polygon test reuses
 // `testPolygonInAxisBox` with a box shrunk to a fleck -- the same call
 // `findMeshFaceAt` makes for a real occupant, just with no size of its own.
-function isOverMeshFlatTopAt(obs, x, z) {
+// Every flat top this mesh presents over (x, z), as heights, highest last is not
+// promised -- the caller sorts for the direction it is searching.
+//
+// Upstream never needs this: each mesh face is its own collision obstacle there
+// (`CollisionManager.cxx:345` files `mesh->getFace(f)` individually), so
+// `DropGeometry::dropIt` gets face heights straight out of a downward ray and
+// `getExtents().maxs[2]` is the height of *that face*. bzo keeps a mesh whole,
+// where the same expression gives the top of the entire object -- a mountain
+// peak rather than the ground you are standing on -- so the per-face heights
+// are gathered here instead and the caller picks among them as `dropIt` does.
+export function meshFlatTopYsAt(obs, x, z) {
   const { bounds } = obs;
   if (!bounds || x < bounds.minX || x > bounds.maxX || z < bounds.minZ || z > bounds.maxZ) {
-    return false;
+    return [];
   }
   const speck = 1e-3;
-  return obs.faces.some((face) => {
-    if (!face.plane || face.plane[1] < MESH_FLAT_TOP_MIN_UP) return false;
+  const tops = [];
+  for (const face of obs.faces) {
+    if (!face.plane || face.plane[1] < MESH_FLAT_TOP_MIN_UP) continue;
+    // An up-plane is horizontal to within the same fudge at both ends, so every
+    // vertex of one shares a height and the first is the face's own.
     const y = obs.vertices[face.vertexIndices[0]].y;
     const localPoints = face.vertexIndices.map((vi) => {
       const v = obs.vertices[vi];
@@ -1051,13 +1064,20 @@ function isOverMeshFlatTopAt(obs, x, z) {
     });
     const [nx, ny, nz, d] = face.plane;
     const localPlane = [nx, ny, nz, d + (nx * x) + (ny * y) + (nz * z)];
-    return testPolygonInAxisBox(
+    if (testPolygonInAxisBox(
       localPoints,
       localPlane,
       [-speck, -speck, -speck],
       [speck, speck, speck],
-    );
-  });
+    )) {
+      tops.push(y);
+    }
+  }
+  return tops;
+}
+// Whether any of them exists, which is all a footprint test needs.
+function isOverMeshFlatTopAt(obs, x, z) {
+  return meshFlatTopYsAt(obs, x, z).length > 0;
 }
 
 // The footprint test a flag drop uses, with no radius: DropGeometry gives a team

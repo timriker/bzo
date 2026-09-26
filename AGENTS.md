@@ -329,6 +329,16 @@ These are deliberate. Do not "fix" them without being asked.
   lets a lock target further away shut out a nearer tank inside the wider cone,
   purely because of the order the roster happens to be in.
 
+- **A spawn drop clears five centimetres above the surface, where upstream
+  clears at it.** `DropGeometry::dropIt` sets `pos[2] = zTop` and asks
+  `isValidClearance` there, which works because a `MeshFace` is infinitely thin.
+  bzo reads a tank resting exactly on a surface as inside it -- see "resting
+  exactly on a surface" -- so probing at `zTop` rejects every real landing and
+  drops the tank through to the ground, which on a mesh-terrain map is under the
+  world. `SPAWN_DROP_FUDGE` is therefore 0.05 rather than a float epsilon, and
+  it is the height the clearance is probed at as well as the height returned.
+  The moment the resting bug is fixed, this can go back to upstream's epsilon.
+
 - **A hidden superflag goes over the wire as `type: null`, not upstream's
   `"PZ"`.** bzfs hides the identity of any superflag nobody is carrying
   (`bzfs.cxx:361`) and packs a fake `PZ` abbreviation in its place, so an old

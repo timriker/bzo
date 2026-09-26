@@ -121,6 +121,7 @@ const {
   getShotObstacleNormal,
   getTankLocalAngle,
   isOverFlatTop,
+  meshFlatTopYsAt,
   isPyramidFlatTop,
   getSegmentBoxHitFraction,
   reflectShotDirection,
@@ -11094,7 +11095,15 @@ function getTestSpawn(name) {
 // DropGeometry::dropPlayer (DropGeometry.cxx:67), for a hand-written spawn. The
 // tank's own height and radius, plus upstream's `fudge` so a tank does not spawn
 // welded to the surface it landed on.
-const SPAWN_DROP_FUDGE = 0.001;
+// Upstream's is a float epsilon, because a `MeshFace` there is infinitely thin
+// and a tank resting exactly on one is clear of it. bzo's collision reads a tank
+// sitting exactly on a surface as inside it -- see the "resting exactly on a
+// surface" note in AGENTS.md, which is unfixed -- so a drop tested at the
+// surface height rejects every real landing and falls through to the ground.
+// Five centimetres is under the height a tank settles through in one frame, and
+// it is the one place that behaviour has to be worked around rather than
+// inherited: the alternative is every spawn landing under a mesh floor.
+const SPAWN_DROP_FUDGE = 0.05;
 
 // Where a tank put at this point would actually stand. Upstream's `dropIt`
 // (DropGeometry.cxx:210) has two branches and both matter here:
@@ -11126,6 +11135,14 @@ function dropSpawnPosition(x, y, z, rotation) {
     if (obs.driveThrough) continue;
     if (obs.collisionKind === 'boundary' || obs.kind === 'teleporter') continue;
     if (obs.type === 'pyramid' && !isPyramidFlatTop(obs)) continue;
+    // A mesh offers one landing per flat face, which is what upstream's ray
+    // gets back: each face is an obstacle of its own there. Asking this one for
+    // `baseY + height` answers the top of the whole object instead -- the peak
+    // of a mountain range rather than the valley floor under the tank.
+    if (obs.type === 'mesh') {
+      for (const top of meshFlatTopYsAt(obs, x, z)) tops.push(top);
+      continue;
+    }
     if (!isOverFlatTop(obs, x, z)) continue;
     tops.push((obs.baseY || 0) + getObstacleHeight(obs));
   }
@@ -11141,16 +11158,18 @@ function dropSpawnPosition(x, y, z, rotation) {
     // Falling: highest top below the start, else the ground.
     const below = tops.filter((top) => top <= y).sort((a, b) => b - a);
     for (const top of below) {
-      if (clearance(top)) return top + SPAWN_DROP_FUDGE;
+      if (clearance(top + SPAWN_DROP_FUDGE)) return top + SPAWN_DROP_FUDGE;
     }
-    if (y >= groundLevel && clearance(groundLevel)) return groundLevel + SPAWN_DROP_FUDGE;
+    if (y >= groundLevel && clearance(groundLevel + SPAWN_DROP_FUDGE)) {
+      return groundLevel + SPAWN_DROP_FUDGE;
+    }
     return y + SPAWN_DROP_FUDGE;
   }
 
   // Climbing: lowest top at or above the start that the tank fits on.
   const above = tops.filter((top) => top >= y).sort((a, b) => a - b);
   for (const top of above) {
-    if (clearance(top)) return top + SPAWN_DROP_FUDGE;
+    if (clearance(top + SPAWN_DROP_FUDGE)) return top + SPAWN_DROP_FUDGE;
   }
   return null;
 }
@@ -11189,26 +11208,71 @@ function rebuildTestSpawns() {
   }
 }
 
+// SpawnPolicy::getPosition's random search (SpawnPolicy.cxx:97-124): a random
+// point on the map, a random height over it, and then a drop. The drop is the
+// part bzo went without -- it spawned every tank on the flat world ground, which
+// is correct only on a map whose ground *is* the floor. On a mesh-terrain map
+// the floor is the mesh, tens of units up, and a mesh is a shell rather than a
+// solid: a tank at ground level under one collides with nothing, so the spot
+// passed and the tank spawned beneath the world.
 function findValidSpawnPosition(tankRadius = 2) {
   const halfMap = GAME_CONFIG.MAP_SIZE / 2;
   const maxAttempts = 100;
-  // `waterLevel` -- this search never looks for an obstacle top the way
-  // `dropSpawnPosition` does, so its own flat plane is the ground itself,
-  // moved up to the water's surface for the same reason as there.
-  const y = (mapWaterLevel && mapWaterLevel.height > 0) ? mapWaterLevel.height : 0;
+  // `waterLevel`, as `dropSpawnPosition`'s own floor is.
+  const groundLevel = (mapWaterLevel && mapWaterLevel.height > 0) ? mapWaterLevel.height : 0;
+  const ceiling = getWorldMaxHeight();
 
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
     const x = Math.random() * (GAME_CONFIG.MAP_SIZE - tankRadius * 4) - (halfMap - tankRadius * 2);
     const z = Math.random() * (GAME_CONFIG.MAP_SIZE - tankRadius * 4) - (halfMap - tankRadius * 2);
     const rotation = Math.random() * Math.PI * 2;
+    // `bzfrand() * maxHeight`, so a multi-level map is entered at every level
+    // rather than only on its roof.
+    const startY = Math.random() * ceiling;
 
+    const y = dropSpawnPosition(x, startY, z, rotation);
+    if (y === null) continue;
+    // The one place bzo refuses what upstream would accept. Starting below the
+    // terrain, `dropIt` skips every surface above the start and lands on bare
+    // ground -- under the world, which is the bug being fixed rather than
+    // behaviour worth copying. Landing on a real surface at any level is still
+    // allowed, so a tank may still spawn under a bridge.
+    if (y <= groundLevel + 1 && hasFlatTopAbove(x, z, y)) continue;
     if (!checkCollision(x, y, z, tankRadius, { rotation })) {
       return { x, y, z, rotation };
     }
   }
 
   // If we couldn't find a valid position after many attempts, return a safe default
-  return { x: 0, y, z: 0, rotation: 0 };
+  return { x: 0, y: groundLevel, z: 0, rotation: 0 };
+}
+
+// Whether the world puts anything drivable over this point, which is what
+// separates "standing on the map's ground" from "standing under the map".
+function hasFlatTopAbove(x, z, y) {
+  for (const obs of getCollisionColliders()) {
+    if (obs.driveThrough) continue;
+    if (obs.collisionKind === 'boundary' || obs.kind === 'teleporter') continue;
+    if (obs.type === 'mesh') {
+      if (meshFlatTopYsAt(obs, x, z).some((top) => top > y + 1)) return true;
+      continue;
+    }
+    if (obs.type === 'pyramid' && !isPyramidFlatTop(obs)) continue;
+    if (!isOverFlatTop(obs, x, z)) continue;
+    if ((obs.baseY || 0) + getObstacleHeight(obs) > y + 1) return true;
+  }
+  return false;
+}
+
+// `world->getMaxWorldHeight()` -- how high the drop starts looking from.
+function getWorldMaxHeight() {
+  let max = 0;
+  for (const obs of getCollisionColliders()) {
+    if (obs.collisionKind === 'boundary') continue;
+    const top = getColliderTopY(obs);
+    if (Number.isFinite(top) && top > max) max = top;
+  }
+  return max;
 }
 
 // Anti-cheat mode decides what happens to a packet the server believes an
