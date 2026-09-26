@@ -317,16 +317,25 @@ visitor can act on, it means something different on every host, and passed
 through it would outlive the session in artifacts. Three places it would arrive
 today if the value were used where the key belongs:
 
-- **The cached map's name.** `remoteMapFileName` builds
-  `import-<host>_<port>.bzw` (`server.js:1506`), which is also the `?viewmap=`
-  parameter and the name `/list` shows. Key it on the map's key, so bz4's world
-  caches as `import-bz4.rikers.org_5154.bzw` whatever was dialled to fetch it.
-- **The map file's own header.** `buildBZWText` writes `# downloaded by bzo ...
-  from <host>:<port>` into the `.bzw` (`remote-world-import.cjs:1412`), and a
-  player can read the map. It gets the display name.
+- **The cached map's name**, which is the one thing here a player really does
+  handle. `remoteMapFileName` builds `import-<host>_<port>.bzw`
+  (`server.js:1506`), and that name is the `?viewmap=` parameter in a URL a
+  player can share and the row `/list` shows under local maps. Key it on the
+  map's key, so bz4's world caches as `import-bz4.rikers.org_5154.bzw`
+  whatever was dialled to fetch it.
 - **Anything a player is told went wrong.** "could not reach
   bz4.rikers.org:5154", never the loopback address. `server.log` may say
   either; its reader is the operator.
+
+The `.bzw` itself is not in that set. `/maps` serves `MAP_CACHE_DIR`, the
+hashed JSON (`server.js:415`); the `.bzw` lives in `RUNTIME_MAPS_DIR` and is
+never served, so a player references the file by name and receives the JSON.
+`buildBZWText`'s `# downloaded by bzo ... from <host>:<port>` header
+(`remote-world-import.cjs:1412`) is therefore an operator-visible artifact
+rather than a leak. It should still carry the display name, for provenance:
+a cached world whose header disagrees with its own filename is confusing, and
+an operator reading it wants to know which target it came from, not the
+loopback address they configured themselves.
 
 Keying on the display name is not only the discreet choice, it is the working
 one. `parseImportMapFileName` recovers a host:port from the name so a shared
