@@ -649,7 +649,8 @@ bzo also speaks the bzfs wire as a client, in two places.
 watching a real BZFlag match through bzo (`?proxy=<host_port>`) is connected
 to. That connection is never a player in this server's own game -- it is not
 in `players` at all -- and its `init` is synthesized from what its target says
-to a joining player. `docs/proxy-plan.md`, issue #82.
+to a joining player. `docs/proxy.md` is what it supports and
+`docs/proxy-plan.md` what it does not; issue #82.
 
 ### Where the server answers
 
@@ -2813,7 +2814,7 @@ then omits the `@<ip>` half of its list-server question
 (`ListServerConnection.cxx:413`), which is the same `checkIP` false path bzo
 asks `CHECKTOKENS` on, and from a public address it would fail instead. That
 is what makes a bzfs proxy possible and confines one to its target's own
-network: `docs/proxy-plan.md`.
+network: `docs/proxy.md`.
 
 The wiki page for this (`https://wiki.bzflag.org/Global_Registration`) has been
 read-only for years and carries none of the details above; the source and

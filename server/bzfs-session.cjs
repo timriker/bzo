@@ -10,7 +10,7 @@
 // fetches a world and hangs up; this joins for real, keeps what bzfs tells a
 // joining player, and stays on the server. One of these per proxied browser,
 // because bzfs allots a `PlayerId` per connection and has no multiplexing.
-// See docs/proxy-plan.md.
+// See docs/proxy.md.
 //
 // The wire format is `remote-world-import.cjs`'s, imported rather than
 // repeated: same framing, same reader, same `MsgEnter` layout.

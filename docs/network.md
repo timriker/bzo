@@ -79,7 +79,7 @@ than bytes on a wire.
 The numbering is shared with BZFlag deliberately. A slot number is what the
 scoreboard shows and what an id-taking command names, so it should mean the
 same thing in both; and a proxied player's id *is* the target's own
-(`docs/proxy-plan.md`), which only works if both ends agree which numbers a
+(`docs/proxy.md`), which only works if both ends agree which numbers a
 player may hold. The one place the two differ: upstream spends 244 through 251
 on the eight teams and names which one, where bzo spends only 251 and means
 "the sender's team", since a client can address no other.
@@ -329,4 +329,5 @@ browser *play* on a real server would need the rest: the join handshake and
 its initial burst, pack and unpack for the remaining codes, and an answer to
 the authority inversion above -- something on bzo's side has to be willing to
 say "I died" on the player's behalf, because bzfs will never say it for them.
-`docs/proxy-plan.md` is the plan for that; issue #82.
+`docs/proxy.md` is what a proxy does today and `docs/proxy-plan.md` is what
+it does not; issue #82.

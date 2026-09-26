@@ -420,8 +420,7 @@ function fetchWorldFromServer(host, port, timeout, options = {}) {
 // The global-login probe: one MsgEnter carrying a token my.bzflag.org just
 // issued to a browser, sent by something that is not that browser. Whether
 // bzfs accepts it is the single assumption the proxy design rests on --
-// docs/proxy-plan.md, "The token forces co-location" and step 1 of its order
-// of work.
+// docs/proxy.md, "A proxy runs inside its target's network".
 //
 // bzfs does not decide this itself. It queues the list-server ADD on the same
 // main-loop pass as the join and holds the player out of the game until the

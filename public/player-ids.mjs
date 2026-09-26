@@ -12,7 +12,7 @@
 // bzo numbers players the same way for two reasons. A slot number is what the
 // scoreboard shows and what an id-taking command names, so it should mean the
 // same thing in bzo as in BZFlag; and a proxied player's id is the target's
-// own (docs/proxy-plan.md), which only works if both wires agree about which
+// own (docs/proxy.md), which only works if both wires agree about which
 // numbers a player may hold. bzo's ids are strings of these numbers, since
 // they are object keys rather than bytes.
 

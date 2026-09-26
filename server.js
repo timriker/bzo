@@ -575,7 +575,7 @@ function parseGlobalTokenReply(body) {
 const LOGIN_RETURN_PATHS = Object.freeze({ list: '/list' });
 
 // The bzfs servers this instance may proxy, and the one thing a `/login` path
-// segment may name besides a return page. docs/proxy-plan.md: the key is the
+// segment may name besides a return page. docs/proxy.md: the key is the
 // target's public `host_port`, the way a list-server row names it and the way
 // the world it imports is already filed; `host`/`port` is the private address
 // the proxy dials instead. That address is the point rather than a shortcut --
@@ -15575,8 +15575,7 @@ function getRosterFor(recipient) {
 }
 
 // ---------------------------------------------------------------------------
-// Proxy mode: a browser watching a real bzfs through bzo. docs/proxy-plan.md,
-// step 2.
+// Proxy mode: a browser watching a real bzfs through bzo. docs/proxy.md.
 //
 // A proxy connection is not a player in this server's own game. It is never in
 // `players`, so nothing here simulates for it, broadcasts to it or scores it --
@@ -15597,7 +15596,7 @@ const PROXY_CLIENT_VERSION = '0.0.0 bzo';
 // The motto a target's player list shows beside the callsign: which bzo this
 // player came through, taken from the Host they reached it on. That is the one
 // fact the operator on the other end cannot work out for themselves -- several
-// instances may proxy the same server (see docs/proxy-plan.md) -- and it is
+// instances may proxy the same server (see docs/proxy.md) -- and it is
 // what a native client sees with `showMotto`.
 function proxyMotto(req) {
   const host = sanitizeHost(req.headers.host);
@@ -15636,10 +15635,10 @@ function bzfsChatDestination(target, team) {
   if (isRealPlayerId(target)) return Number(target);
   return target === ADMIN_PLAYERS ? ADMIN_PLAYERS : ALL_PLAYERS;
 }
+
 // A callsign for a viewer who has not signed in. The name a target sees is
-// never the client's to choose (docs/proxy-plan.md, "The callsign comes from
-// the weblogin callback"), so an anonymous browser is numbered rather than
-// asked. Counted per process, because a target rejects a callsign already on
+// never the client's to choose (docs/proxy.md, "What a proxy connection
+// is"), so an anonymous browser is numbered rather than asked. Counted per process, because a target rejects a callsign already on
 // it and two viewers must not collide.
 let nextProxyViewerNumber = 1;
 
@@ -15931,7 +15930,7 @@ function buildProxyInit(session, mapEntry, viewer) {
       // `verified` is not claimed here: it is whatever `MsgPlayerInfo` said,
       // which is the target's own answer and the only one that means anything
       // on a proxied server. bzfs holds the join until the token check lands
-      // (docs/proxy-plan.md, step 1), so by the time this is built it knows.
+      // (docs/proxy.md), so by the time this is built it knows.
       globalCallsign: viewer.globalCallsign,
     },
     players,
@@ -15981,7 +15980,7 @@ async function handleProxyConnection(ws, req, key, target) {
     // In order: the callsign the weblogin just named, which is the only one
     // that goes with the token; then a bzo session's, for a player signed in
     // here but not for this target; then a numbered one. Never the client's
-    // own choosing, at any step (docs/proxy-plan.md).
+    // own choosing, at any step (docs/proxy.md).
     callsign: pendingLogin
       ? pendingLogin.callsign
       : (loginSession ? loginSession.callsign : `bzo-view-${nextProxyViewerNumber++}`),
@@ -16018,8 +16017,8 @@ async function handleProxyConnection(ws, req, key, target) {
       version: PROXY_CLIENT_VERSION,
       // The forwarded global login, unspent. It only verifies because bzfs
       // sees this connection arrive from a private address and asks the list
-      // server without one (docs/proxy-plan.md, "The token forces
-      // co-location").
+      // server without one (docs/proxy.md, "A proxy runs inside its
+      // target's network").
       token: viewer.token,
     });
     // Registered before the join, because a target that hangs up during it
