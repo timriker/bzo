@@ -131,6 +131,17 @@ jobs:
         uses: actions/checkout@v4
         with:
           ref: ${{ github.sha }}
+          # Full history, so each file below gets its own last commit date.
+          fetch-depth: 0
+
+      # express's ETag is a file's size and mtime, and COPY keeps the mtime,
+      # so a checkout-time stamp would give every asset a new ETag in every
+      # image. The last commit to touch a file moves only when the file does.
+      - name: Set file times to their last commit
+        run: |
+          # A shallow clone would stamp every file with the one commit it has.
+          test "$(git rev-parse --is-shallow-repository)" = false
+          git ls-files -z public | xargs -0 -n1 sh -c 'touch -d "@$(git log -1 --format=%ct -- "$0")" "$0"'
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
