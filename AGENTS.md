@@ -3932,13 +3932,15 @@ That runs, in order:
 | `npm run test:collision` | Obstacle geometry, fuzzed for client/server parity |
 | `npm run test:capabilities` | WebGL capability detection and feature gating |
 
-CI runs the same checks on pushes and pull requests, on `ubuntu-26.04`
-runners, and additionally runs `npm audit --omit=dev --audit-level=high`.
+CI runs the same checks on pushes and pull requests, in an `ubuntu:26.04`
+container, and additionally runs `npm audit --omit=dev --audit-level=high`.
 
-**Node is pinned to what Ubuntu 26.04 ships**: 24.19.0. Do not upgrade it, and
-do not write code that needs a newer one. Where a test has to reach for a
-browser global, `Object.defineProperty` rather than assignment, since Node
-already owns some of the names (`globalThis.navigator`).
+**Node is Ubuntu 26.04's own `nodejs` package**: 22.22.1 today, with npm 9.2.0.
+The dev machine, the servers, CI and the Docker image all run it, and none of
+them pins a version, so an Ubuntu update moves them together. Do not install
+another Node, and do not write code that needs a newer one. Where a test has
+to reach for a browser global, `Object.defineProperty` rather than assignment,
+since Node already owns some of the names (`globalThis.navigator`).
 
 **`overrides.qs` in `package.json` is deliberate.** express 4.22.2 is the last
 4.x and pins `body-parser` to `qs ~6.15.1`, which two moderate advisories cover

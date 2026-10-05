@@ -18,22 +18,19 @@ jobs:
   lint-and-check:
     name: Lint and check
     runs-on: ubuntu-26.04
+    # Ubuntu's own Node and npm, as a server running bzo from source has them,
+    # rather than the runner's.
+    container: ubuntu:26.04
 
     steps:
+      - name: Install Node.js, npm, git and markdownlint
+        run: apt-get update && apt-get install -y --no-install-recommends ca-certificates git nodejs npm markdownlint
+
       - name: Check out repository
         uses: actions/checkout@v4
 
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 24.19.0
-          cache: npm
-
       - name: Install dependencies without lifecycle scripts
         run: npm ci --ignore-scripts
-
-      - name: Install markdownlint
-        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends markdownlint
 
       - name: Lint and validate
         run: npm run check
@@ -41,16 +38,16 @@ jobs:
   npm-audit:
     name: Audit production dependencies
     runs-on: ubuntu-26.04
+    # Ubuntu's own Node and npm, as a server running bzo from source has them,
+    # rather than the runner's.
+    container: ubuntu:26.04
 
     steps:
+      - name: Install Node.js and npm
+        run: apt-get update && apt-get install -y --no-install-recommends ca-certificates git nodejs npm
+
       - name: Check out repository
         uses: actions/checkout@v4
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 24.19.0
-          cache: npm
 
       - name: Install dependencies without lifecycle scripts
         run: npm ci --ignore-scripts
@@ -130,5 +127,5 @@ jobs:
           set -euo pipefail
           image="bzo:ci-ubuntu26.04-${{ strategy.job-index }}"
           actual_node="$(docker run --rm --platform "${{ matrix.platform }}" "$image" node --version)"
-          test "$actual_node" = "v24.19.0"
+          case "$actual_node" in v22.*) ;; *) echo "expected Ubuntu's Node 22, got $actual_node" >&2; exit 1 ;; esac
           docker run --rm --platform "${{ matrix.platform }}" "$image" node --check server.js

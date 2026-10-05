@@ -16,11 +16,17 @@ jobs:
   gate:
     name: Validate release
     runs-on: ubuntu-26.04
+    # Ubuntu's own Node and npm, as a server running bzo from source has them,
+    # rather than the runner's.
+    container: ubuntu:26.04
     outputs:
       image: ${{ steps.image.outputs.name }}
       version: ${{ steps.version.outputs.value }}
 
     steps:
+      - name: Install Node.js, npm, git and markdownlint
+        run: apt-get update && apt-get install -y --no-install-recommends ca-certificates git nodejs npm markdownlint
+
       - name: Check out repository
         uses: actions/checkout@v4
         with:
@@ -36,17 +42,8 @@ jobs:
             exit 1
           fi
 
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 24.19.0
-          cache: npm
-
       - name: Install dependencies without lifecycle scripts
         run: npm ci --ignore-scripts
-
-      - name: Install markdownlint
-        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends markdownlint
 
       - name: Lint and validate
         run: npm run check
@@ -210,7 +207,7 @@ jobs:
           set -euo pipefail
           for platform in linux/amd64 linux/arm64; do
             actual_node="$(docker run --rm --pull=always --platform "$platform" "${IMAGE}:${STAGING_TAG}" node --version)"
-            test "$actual_node" = "v24.19.0"
+            case "$actual_node" in v22.*) ;; *) echo "expected Ubuntu's Node 22, got $actual_node" >&2; exit 1 ;; esac
             docker run --rm --pull=always --platform "$platform" "${IMAGE}:${STAGING_TAG}" node --check server.js
           done
 

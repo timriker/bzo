@@ -21,10 +21,10 @@ Each tagged release publishes:
 
 Every published image contains `linux/amd64` and `linux/arm64` variants. Release
 tags use stable `vX.Y.Z` SemVer only; prerelease and build-metadata tags are not
-published. Ubuntu 26.04 images use the pinned Node.js `24.19.0` runtime.
+published.
 
-Docker images are built on Ubuntu 26.04 with pinned Node.js `24.19.0`, and CI
-runs on Ubuntu 26.04 with the same Node.
+Docker images are built on Ubuntu 26.04 with Ubuntu's own `nodejs` package
+(Node.js 22), and CI runs on the same Node in an Ubuntu 26.04 container.
 
 ## Install and run a server
 
@@ -171,7 +171,7 @@ The release workflow will:
 3. fail if `package.json` does not match the pushed tag
 4. fail if [CHANGELOG.md](CHANGELOG.md) does not contain a matching
    non-placeholder section
-5. build and smoke-test Ubuntu 26.04 images with pinned Node.js `24.19.0` for
+5. build and smoke-test Ubuntu 26.04 images with Ubuntu's Node.js 22 for
    `linux/amd64` and `linux/arm64`
 6. promote the verified versioned and moving Docker tags to GHCR
 7. publish a GitHub release and attach a source tarball
