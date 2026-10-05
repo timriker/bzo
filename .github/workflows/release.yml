@@ -15,7 +15,7 @@ permissions:
 jobs:
   gate:
     name: Validate release
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     outputs:
       image: ${{ steps.image.outputs.name }}
       version: ${{ steps.version.outputs.value }}
@@ -44,6 +44,9 @@ jobs:
 
       - name: Install dependencies without lifecycle scripts
         run: npm ci --ignore-scripts
+
+      - name: Install markdownlint
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends markdownlint
 
       - name: Lint and validate
         run: npm run check
@@ -90,7 +93,7 @@ jobs:
   codeql:
     name: CodeQL release scan
     needs: gate
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     permissions:
       actions: read
       contents: read
@@ -112,42 +115,13 @@ jobs:
         with:
           category: /language:javascript-typescript
 
-  node-compatibility:
-    name: Release Node.js compatibility
-    needs: gate
-    runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        node-version:
-          - '18.19.1'
-          - '24.19.0'
-
-    steps:
-      - name: Check out repository
-        uses: actions/checkout@v4
-        with:
-          ref: ${{ github.sha }}
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ matrix.node-version }}
-          cache: npm
-
-      - name: Install dependencies without lifecycle scripts
-        run: npm ci --ignore-scripts
-
-      - name: Check runtime compatibility
-        run: npm run check
 
   build:
     name: Build Ubuntu 26.04 images
     needs:
       - gate
       - codeql
-      - node-compatibility
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     permissions:
       contents: read
       packages: write
@@ -196,7 +170,7 @@ jobs:
     needs:
       - gate
       - build
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     permissions:
       contents: read
       packages: read
@@ -247,7 +221,7 @@ jobs:
       - codeql
       - verify
     if: ${{ needs.verify.result == 'success' }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     permissions:
       contents: read
       packages: write
@@ -294,7 +268,7 @@ jobs:
       - gate
       - promote
     if: ${{ needs.promote.result == 'success' }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     permissions:
       actions: read
       contents: write

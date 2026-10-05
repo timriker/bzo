@@ -17,7 +17,7 @@ permissions:
 jobs:
   lint-and-check:
     name: Lint and check
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
 
     steps:
       - name: Check out repository
@@ -40,7 +40,7 @@ jobs:
 
   npm-audit:
     name: Audit production dependencies
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
 
     steps:
       - name: Check out repository
@@ -58,35 +58,10 @@ jobs:
       - name: Check production dependency vulnerabilities
         run: npm audit --omit=dev --audit-level=high
 
-  node-compatibility:
-    name: Node.js runtime compatibility
-    runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        node-version:
-          - '18.19.1'
-          - '24.19.0'
-
-    steps:
-      - name: Check out repository
-        uses: actions/checkout@v4
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ matrix.node-version }}
-          cache: npm
-
-      - name: Install dependencies without lifecycle scripts
-        run: npm ci --ignore-scripts
-
-      - name: Check runtime compatibility
-        run: npm run check
 
   codeql:
     name: CodeQL
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     permissions:
       contents: read
       actions: read
@@ -109,7 +84,7 @@ jobs:
   dependency-review:
     name: Dependency review
     if: github.event_name == 'pull_request'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
 
     steps:
       - name: Review dependency changes
@@ -119,7 +94,7 @@ jobs:
 
   container-build:
     name: Build and smoke-test Ubuntu 26.04 ${{ matrix.platform }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     strategy:
       fail-fast: false
       matrix:

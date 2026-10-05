@@ -127,7 +127,7 @@ that. The Operator panel deletes only what it uploaded, which it records in
 
 ### Prerequisites
 
-- Node.js 18.19.1 or Node.js 24.19.0
+- Node.js 24.19.0, as Ubuntu 26.04 ships it
 - npm
 
 ### Setup

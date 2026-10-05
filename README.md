@@ -23,8 +23,8 @@ Every published image contains `linux/amd64` and `linux/arm64` variants. Release
 tags use stable `vX.Y.Z` SemVer only; prerelease and build-metadata tags are not
 published. Ubuntu 26.04 images use the pinned Node.js `24.19.0` runtime.
 
-Docker images are built on Ubuntu 26.04 with pinned Node.js `24.19.0`.
-Runtime compatibility is validated in CI on Node.js `18.19.1` and `24.19.0`.
+Docker images are built on Ubuntu 26.04 with pinned Node.js `24.19.0`, and CI
+runs on Ubuntu 26.04 with the same Node.
 
 ## Install and run a server
 

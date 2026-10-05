@@ -3932,17 +3932,13 @@ That runs, in order:
 | `npm run test:collision` | Obstacle geometry, fuzzed for client/server parity |
 | `npm run test:capabilities` | WebGL capability detection and feature gating |
 
-CI runs the same checks on pushes and pull requests, and additionally runs
-`npm audit --omit=dev --audit-level=high` and a Node 18.19.1 / 24.19.0
-compatibility matrix.
+CI runs the same checks on pushes and pull requests, on `ubuntu-26.04`
+runners, and additionally runs `npm audit --omit=dev --audit-level=high`.
 
-**Node is pinned to what Ubuntu 24.04 and 26.04 ship**: 18.19.1 and 24.19.0. Do
-not upgrade it, and do not write code that needs a newer one. Note that CI's main
-lint job runs on 24, so a check that passes on a local 18 has not been fully
-tested -- `globalThis.navigator` exists on 24 and not on 18, and that difference
-has already broken a release. Where a test has to reach for a browser global,
-`Object.defineProperty` rather than assignment, so it works whichever Node owns
-the name.
+**Node is pinned to what Ubuntu 26.04 ships**: 24.19.0. Do not upgrade it, and
+do not write code that needs a newer one. Where a test has to reach for a
+browser global, `Object.defineProperty` rather than assignment, since Node
+already owns some of the names (`globalThis.navigator`).
 
 **`overrides.qs` in `package.json` is deliberate.** express 4.22.2 is the last
 4.x and pins `body-parser` to `qs ~6.15.1`, which two moderate advisories cover

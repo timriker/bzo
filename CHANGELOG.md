@@ -6,6 +6,10 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
 
 ## [Unreleased]
 
+### Changed
+- Node.js 24.19.0 is the one supported runtime, as Ubuntu 26.04 ships it;
+  Node 18 and Ubuntu 24.04 are dropped. CI runs on `ubuntu-26.04`.
+
 ## [1.3.18] - 2026-10-05
 
 ### Added
