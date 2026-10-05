@@ -116,24 +116,24 @@ one that gives none (`_boxBase`/`6 * _muzzleHeight`, `30.0`/`9.42`; `_pyrBase`/
 `5 * _tankHeight`, `8.20`/`10.25`; a `base`'s own zero-height default, see
 above):
 
-```
+```text
 box
-	position     x     y     0.0
-	rotation     deg
-	size         30.0  30.0  9.42
+  position     x     y     0.0
+  rotation     deg
+  size         30.0  30.0  9.42
 end
 
 pyramid
-	position     x     y     0.0
-	rotation     deg
-	size         8.20  8.20  10.25
+  position     x     y     0.0
+  rotation     deg
+  size         8.20  8.20  10.25
 end
 
 base
-	position     x     y     0.0
-	rotation     deg
-	size         30.0  30.0  0.0
-	color        1
+  position     x     y     0.0
+  rotation     deg
+  size         30.0  30.0  0.0
+  color        1
 end
 ```
 
@@ -147,7 +147,7 @@ On a `box` or a `pyramid`, `color` is the colour the obstacle is painted, and
 (`ParseMaterial.cxx:90`). Three or four numbers between 0 and 1, upstream's own
 numeric colour form:
 
-```
+```text
 box
   name BU_Burrow
   position -25 40 0
@@ -233,7 +233,7 @@ restating `addtexture`/`diffuse` on every obstacle that wants the same look.
 `maps/bzo.bzw` carries a labelled example next to the passability row: a
 `caution-amber` material and a box that `matref`s it.
 
-```
+```text
 material
   name caution-amber
   addtexture caution
@@ -668,7 +668,7 @@ needs one -- the billboard bush's quad, its mirrored twin, and the two
 animated sign quads -- each a `face`/`endface` pair whose second face lists
 the same corners in the opposite order:
 
-```
+```text
 face
   vertices 0 1 2 3
   texcoords 0 1 2 3
@@ -723,12 +723,12 @@ half breadth `_teleportBreadth`, height `2 * _teleportHeight`, and a border of
 twice the half width, so `0.56 / 4.48 / 20.16 / 1.12` -- which is what
 `maps/bzo.bzw` relies on and every other map in `maps/` spells out:
 
-```
+```text
 teleporter
-	position     x     y     0.0
-	rotation     deg
-	size         0.56  4.48  20.16
-	border       1.12
+  position     x     y     0.0
+  rotation     deg
+  size         0.56  4.48  20.16
+  border       1.12
 end
 ```
 
@@ -744,20 +744,20 @@ BZW's convention is the opposite -- its stated size is the *opening*, and the
 frame is that plus the border -- which is a trap for every reader downstream.
 Three of them open-coded the growth and two got it wrong: the obstacle top, the
 support footprint, and the debug outline that is supposed to *show* the support
-footprint. `getShotTeleporterDims` is now a reader rather than a calculator; the
-only thing it still derives is the portal opening inside the frame, which is
-upstream's own `getBreadth() - border` subtraction. Anything that wants the
-solid can just read `w`/`d`/`h` and be right by default. A `link` block takes `from` and `to`, either of
-which may be:
+footprint. `getShotTeleporterDims` is now a reader rather than a calculator;
+the only thing it still derives is the portal opening inside the frame, which
+is upstream's own `getBreadth() - border` subtraction. Anything that wants the
+solid can just read `w`/`d`/`h` and be right by default. A `link` block takes
+`from` and `to`, either of which may be:
 
 - a face name, `ne_tele_low:f`;
 - a glob over face names, `ne_*:f` or `?w_tele_high:b`, matched case-insensitively;
 - a numeric face id, `0` for the first teleporter's front face, `1` for its back.
 
-```
+```text
 link
-	from ne_tele_low:f
-	to ne_tele_high:b
+  from ne_tele_low:f
+  to ne_tele_high:b
 end
 ```
 
@@ -988,8 +988,8 @@ is the full width, so the world spans +/-400.
 
 ```
 world
-	size        400.0
-	flagHeight  10.0
+  size        400.0
+  flagHeight  10.0
 end
 ```
 

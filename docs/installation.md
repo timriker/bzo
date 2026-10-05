@@ -14,17 +14,20 @@ Use [compose.yml](../compose.yml):
 docker compose up -d
 ```
 
-This starts the server on port 3000, with 5154 open for BZFlag clients, and stores runtime config in `./data/server.json`.
+This starts the server on port 3000, with 5154 open for BZFlag clients, and
+stores runtime config in `./data/server.json`.
 
-On first start, the server copies [example-server.json](../example-server.json) to the configured runtime path if no config exists.
+On first start, the server copies [example-server.json](../example-server.json)
+to the configured runtime path if no config exists.
 
 Its `bzdb` block is upstream's command-line `-set`: world variables by
 upstream's names and as upstream writes the values, `"_tankSpeed": "30"` or
 `"_shotRange": "_shotSpeed * 3.5"`. A map's own `-set` lines go over it, and
 `/set` and `/reset` change it while the server runs. [docs/bzdb.md](bzdb.md)
-lists the variables bzo reads, with their defaults. A server.json from before the block still
-works: its old keys (`tankSpeed`, `gravity`, `shotDuration` and the rest) are
-read as the variables they were, and the startup log names each one to move.
+lists the variables bzo reads, with their defaults. A server.json from before
+the block still works: its old keys (`tankSpeed`, `gravity`, `shotDuration` and
+the rest) are read as the variables they were, and the startup log names each
+one to move.
 
 Then open:
 
@@ -133,7 +136,8 @@ that. The Operator panel deletes only what it uploaded, which it records in
 npm install
 ```
 
-If `server.json` does not exist, the server will create it from [example-server.json](../example-server.json) on first start.
+If `server.json` does not exist, the server will create it from
+[example-server.json](../example-server.json) on first start.
 
 ### Run
 
@@ -202,7 +206,6 @@ IPv6 anyway:
 ```
 
 The TLS name has to be on the relay's certificate too.
-
 
 ## Behind a reverse proxy
 
@@ -299,7 +302,7 @@ global login only verifies when bzfs sees the connection arrive from
 network**, which in practice means on the same host. Each target gets a row
 on `/list` and a link of its own:
 
-```
+```text
 https://your-bzo.example.com/?proxy=example.org_5154
 ```
 
@@ -384,4 +387,5 @@ or:
 docker pull ghcr.io/timriker/bzo:latest
 ```
 
-If you want automatic container updates, use your preferred container update manager. That is not built into the game itself.
+If you want automatic container updates, use your preferred container update
+manager. That is not built into the game itself.

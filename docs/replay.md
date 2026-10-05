@@ -29,7 +29,7 @@ Every address in it is 127.0.0.1.
 from `NativeTranslator` packets to check what the sample does not exercise.
 Pass it a file to read a real recording:
 
-```
+```sh
 node scripts/test-bzfs-replay.mjs ~/.bzf/recordings/<name>
 ```
 

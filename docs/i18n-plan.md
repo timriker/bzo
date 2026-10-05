@@ -118,8 +118,10 @@ from `createLabel()` calls, so every line of it is a gettext string and much of
 it is genuinely translated: 64 of the 96 long help strings have German. But
 they are keyed by *hard-wrapped English line*:
 
-    msgid "BZFlag is a multi-player networked tank battle game.  There are five teams:"
-    msgid "red, green, blue, purple, and rogues (rogue tanks are black).  Destroying a"
+```text
+msgid "BZFlag is a multi-player networked tank battle game.  There are five teams:"
+msgid "red, green, blue, purple, and rogues (rogue tanks are black).  Destroying a"
+```
 
 Those line breaks were chosen for English at a fixed width, and the German
 lines do not reassemble into a German paragraph -- word order moved. There is
@@ -295,9 +297,9 @@ bad trade, particularly when the lexer is what produces the XR block list.
 Three places have to run the generator, and each is a real place:
 
 - **A working tree.** `npm run dev` builds every locale's pages, and rebuilds
-  when a page or a catalog changes. nodemon already watches `public/` and restarts on any change
-  there, so the same reflex that picks up an edited client file picks up an
-  edited help page:
+  when a page or a catalog changes. nodemon already watches `public/` and
+  restarts on any change there, so the same reflex that picks up an edited
+  client file picks up an edited help page:
 
   - `nodemon.json` watches `docs/help/` and `l10n/`, and adds `md` and `po`
     to `ext`
@@ -534,9 +536,9 @@ nobody has to rediscover it.
    point the help panel at the same bundle, add search, give `Dockerfile` its
    builder stage before its precompress step, add `/doc/` to the service
    worker's `ASSET_PATHS`, move the controls table into code and generate its
-   three renderings from it, retire `check-controls-docs.mjs`. Doing this before tagging markup means the help
-   prose never enters a catalog in the first place, and what is left of
-   `index.html` is chrome labels.
+   three renderings from it, retire `check-controls-docs.mjs`. Doing this
+   before tagging markup means the help prose never enters a catalog in the
+   first place, and what is left of `index.html` is chrome labels.
 3. **Declarative surfaces.** `settings.js`, `flags.mjs`, `teams.mjs`, and the
    `index.html` attributes. This is where upstream's import pays for itself --
    menu verbs, team names and flag names are the strings it already has.

@@ -89,7 +89,7 @@ iOS applies its own rounded-rectangle mask and renders transparency as black, so
 ### Regenerating
 
 The PNGs are committed as source; there is no build step and no image
-dependency. To rebuild them, extract `ic10` from `BZFlag.icns`, rotate its hue 120° to make
-`any-1024.png`, and derive the rest from that with a Lanczos downscale: the
-72% inset on black for the maskable pair, a composite onto white for the tile
-set, and a composite onto black for the iOS icon.
+dependency. To rebuild them, extract `ic10` from `BZFlag.icns`, rotate its hue
+120° to make `any-1024.png`, and derive the rest from that with a Lanczos
+downscale: the 72% inset on black for the maskable pair, a composite onto white
+for the tile set, and a composite onto black for the iOS icon.

@@ -1,6 +1,7 @@
 # Battlezone Online
 
-Battlezone Online is a real-time multiplayer tank game built with Node.js, WebSockets, and Three.js.
+Battlezone Online is a real-time multiplayer tank game built with Node.js,
+WebSockets, and Three.js.
 
 ## Try it
 
@@ -15,7 +16,8 @@ Each tagged release publishes:
 - a source tarball
 - a versioned Ubuntu 26.04 image at `ghcr.io/timriker/bzo:<version>-ubuntu26.04`
 - a moving `ubuntu26.04` tag
-- `ghcr.io/timriker/bzo:<version>` and `ghcr.io/timriker/bzo:latest`, both using Ubuntu 26.04
+- `ghcr.io/timriker/bzo:<version>` and `ghcr.io/timriker/bzo:latest`, both
+  using Ubuntu 26.04
 
 Every published image contains `linux/amd64` and `linux/arm64` variants. Release
 tags use stable `vX.Y.Z` SemVer only; prerelease and build-metadata tags are not
@@ -167,8 +169,10 @@ The release workflow will:
 1. verify that the stable tag is newer than the previous release and points to `main`
 2. install dependencies and run lint, validation, audit, and CodeQL checks
 3. fail if `package.json` does not match the pushed tag
-4. fail if [CHANGELOG.md](CHANGELOG.md) does not contain a matching non-placeholder section
-5. build and smoke-test Ubuntu 26.04 images with pinned Node.js `24.19.0` for `linux/amd64` and `linux/arm64`
+4. fail if [CHANGELOG.md](CHANGELOG.md) does not contain a matching
+   non-placeholder section
+5. build and smoke-test Ubuntu 26.04 images with pinned Node.js `24.19.0` for
+   `linux/amd64` and `linux/arm64`
 6. promote the verified versioned and moving Docker tags to GHCR
 7. publish a GitHub release and attach a source tarball
 
@@ -214,6 +218,7 @@ server, or saved out by a client, carries no grant with it. See
 
 This project is licensed under the GNU Affero General Public License v3.0.
 
-Network users can access the source code from the running app via `/source`, or directly at:
+Network users can access the source code from the running app via `/source`, or
+directly at:
 
 - <https://github.com/timriker/bzo>

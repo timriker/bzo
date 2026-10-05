@@ -43,16 +43,16 @@ Lessons want a few knobs the pilot doesn't have yet:
 
 Roger stays upstream's; these go into Ace. In order of payoff:
 
-1. **Path finding (started).** `public/nav.mjs`: a grid of 4-unit columns,
-   a node for each surface a tank fits on in each, and the only moves that
-   change a tank's level -- a step no taller than `_maxBumpHeight`, a drop,
-   and a jump -- plus a bridge straight over a gap one column wide, which a
-   tank longer than the gap drives across. There are no ramps: a slope holds
-   a tank up but is never driven up, pyramid or mesh. Each destination gets
-   one backwards search, kept, so a route from anywhere is a walk downhill:
-   about 1ms, after about 90ms for a new destination and about 2s for the
-   first one in a world, which builds the graph and flies its flights. Ace uses it to
-   fetch team flags and the antidote, and to carry a flag home.
+1. **Path finding (started).** `public/nav.mjs`: a grid of 4-unit columns, a
+   node for each surface a tank fits on in each, and the only moves that change
+   a tank's level -- a step no taller than `_maxBumpHeight`, a drop, and a jump
+   -- plus a bridge straight over a gap one column wide, which a tank longer
+   than the gap drives across. There are no ramps: a slope holds a tank up but
+   is never driven up, pyramid or mesh. Each destination gets one backwards
+   search, kept, so a route from anywhere is a walk downhill: about 1ms, after
+   about 90ms for a new destination and about 2s for the first one in a world,
+   which builds the graph and flies its flights. Ace uses it to fetch team
+   flags and the antidote, and to carry a flag home.
 
    How fast he drives one is measured, not guessed: `npm run bench:pilot`
    (`scripts/bench-pilot.mjs`) runs every base-to-base pair of a map with

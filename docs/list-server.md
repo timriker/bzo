@@ -75,31 +75,30 @@ doing.
 
 ## Reporting
 
-The reporting client (`reportToListServer`, `server.js:10715`) posts JSON,
-not bzfs's form-encoded body -- both ends are bzo, so there's no reason to
-mimic a wire format that predates JSON everywhere. It fires on boot, every
-~15 minutes after (`ListServerReAddTime`'s own cadence), on every join and
-part (for live counts), and once more as a REMOVE-equivalent on `SIGTERM`/
-`SIGINT`. Payload: `key`, `reason`, title/description, player and max
-counts, `version`, the shot limit and game style (`maxShots`, `style` --
-`GAME_CONFIG.SHOT_MAX_ACTIVE`, `GAME_TYPE`), and the game-option bits
-(`computeLocalGameOptionsBits`, `server.js:10699`) -- the same fields `/list`
-already draws for a remote bzfs row's Shots/Style columns and option bits,
-read off this server's own resolved config instead of decoded off the wire.
-Also `map`, the world being played -- `mapFile`, or `random` for a generated
-one -- which is the `?viewmap=` name on that instance. Changing the map is a
-restart today, so the row follows on the next boot; anything that changes it
-*without* one, a rotation on a timer say, has to report as well, or the
-column quietly starts lying. The readout pane's own fields ride along with these -- per-team counts and
-maxima in `-mp` order, the shake timeout and win count, and the time, team
-score and player score limits -- so a bzo row's pane says as much as a bzfs
-row's, which gets all of it free from its ping packet. An instance too old
-to report them shows the lines it has and leaves the rest out, rather than
-reading as a server with no teams. And `voiceEnabled`
-(`VOICE_ICE_SERVERS.length > 0`) -- not whether the
-client feature exists (it always does), but whether at least one ICE
-server is configured, since a peer connection across anything but a LAN
-typically never completes without one.
+The reporting client (`reportToListServer`, `server.js:10715`) posts JSON, not
+bzfs's form-encoded body -- both ends are bzo, so there's no reason to mimic a
+wire format that predates JSON everywhere. It fires on boot, every ~15 minutes
+after (`ListServerReAddTime`'s own cadence), on every join and part (for live
+counts), and once more as a REMOVE-equivalent on `SIGTERM`/ `SIGINT`. Payload:
+`key`, `reason`, title/description, player and max counts, `version`, the shot
+limit and game style (`maxShots`, `style` -- `GAME_CONFIG.SHOT_MAX_ACTIVE`,
+`GAME_TYPE`), and the game-option bits (`computeLocalGameOptionsBits`,
+`server.js:10699`) -- the same fields `/list` already draws for a remote bzfs
+row's Shots/Style columns and option bits, read off this server's own resolved
+config instead of decoded off the wire. Also `map`, the world being played --
+`mapFile`, or `random` for a generated one -- which is the `?viewmap=` name on
+that instance. Changing the map is a restart today, so the row follows on the
+next boot; anything that changes it *without* one, a rotation on a timer say,
+has to report as well, or the column quietly starts lying. The readout pane's
+own fields ride along with these -- per-team counts and maxima in `-mp` order,
+the shake timeout and win count, and the time, team score and player score
+limits -- so a bzo row's pane says as much as a bzfs row's, which gets all of
+it free from its ping packet. An instance too old to report them shows the
+lines it has and leaves the rest out, rather than reading as a server with no
+teams. And `voiceEnabled` (`VOICE_ICE_SERVERS.length > 0`) -- not whether the
+client feature exists (it always does), but whether at least one ICE server is
+configured, since a peer connection across anything but a LAN typically never
+completes without one.
 
 Also `mapHash` and `world`. The hash is the content hash of the world being
 played, and it is all the list server needs to draw that instance's overview
@@ -132,13 +131,13 @@ placeholder otherwise -- see "Config" below.
 Listening is not answering. A restart's map pass
 (`hashRemainingMapsInBackground`) lists unchanged maps from
 `cache/map-index.json`, but one that parses new or edited maps holds the event
-loop for seconds after the port opens, and a list server that calls back then -- bzo's challenge, the
-BZFlag list's connect test -- times out and counts it against the server. So
-a server says nothing to either list until that pass is done, or a minute
-has gone by (`serverReady`): no boot report, no join or part, no BZFlag ADD,
-and the designated server's own boot-time checks of other servers wait too,
-since a reply it is too busy to read is as late as one that never came. Then
-it sends one report, after dialling its proxied targets.
+loop for seconds after the port opens, and a list server that calls back then
+-- bzo's challenge, the BZFlag list's connect test -- times out and counts it
+against the server. So a server says nothing to either list until that pass is
+done, or a minute has gone by (`serverReady`): no boot report, no join or part,
+no BZFlag ADD, and the designated server's own boot-time checks of other
+servers wait too, since a reply it is too busy to read is as late as one that
+never came. Then it sends one report, after dialling its proxied targets.
 
 ## Uptime
 
@@ -391,8 +390,8 @@ The filter box takes upstream's own filter language
 (`src/bzflag/ServerListFilter.cxx`), and the `?` beside it opens the whole
 syntax table -- the same one upstream's in-client help menu prints, in the
 place the person typing is looking. Plain text is a glob over address and
-description, a leading `/` starts comma-separated filters combined with
-*and*, a second `/` starts another set joined with *or*, and a filter is
+description, a leading `/` starts comma-separated filters combined with *and*,
+a second `/` starts another set joined with *or*, and a filter is
 `+name`/`-name`, `name` with `< <= > >= =` and a number, or `name)glob` /
 `name]regex`. `scripts/test-server-filter.mjs` pins the bounds, which are
 exclusive the way upstream's are. Two deliberate differences: `F` is
@@ -401,12 +400,14 @@ free-for-all here (upstream's own table gives the letter to both `ffa` and
 bzo has no favourites to collide with), and `i` and `I` both mean inertia
 (upstream's parser takes the lowercase letter while its help page prints the
 capital). A filter naming a per-team figure leaves out any row bzo has no
-figure for, rather than counting it as zero. bzo adds three booleans of its own: `b`/`bots`, from a
-server's `_disableBots`, and `gw`/`guestWatch`, `gu`/`guests` and `gc`/`guestChat`, from what bzo
-has learned about guest access (docs/proxy.md, "Guest access"). A server bzo
-has not found out about matches neither `+` nor `-`. And a pattern, `ve`/`ver`/`version`, over the server's version -- `bzo-*`
-for bzo, bzfs's own build for the rest (see **A server's build**) -- which
-plain text searches too, so `bzo-` alone lists bzo servers.
+figure for, rather than counting it as zero. bzo adds three booleans of its
+own: `b`/`bots`, from a server's `_disableBots`, and `gw`/`guestWatch`,
+`gu`/`guests` and `gc`/`guestChat`, from what bzo has learned about guest
+access (docs/proxy.md, "Guest access"). A server bzo has not found out about
+matches neither `+` nor `-`. And a pattern, `ve`/`ver`/`version`, over the
+server's version -- `bzo-*` for bzo, bzfs's own build for the rest (see **A
+server's build**) -- which plain text searches too, so `bzo-` alone lists bzo
+servers.
 
 Clicking a row selects it rather than following it, because the pane is
 where the detail is and the bar above it holds the way in. Arrow keys move
@@ -419,16 +420,16 @@ ever shows (`ServerItem::getSortFactor`). Each heading says how many servers
 are under it and how many people are playing on them -- observers are
 counted as neither, here or anywhere else on the page.
 
-A bzo row's link enters that game directly: each row is its own origin and
-its own websocket, not something to import a map from. An instance that
-proxies contributes a row per target as well as its own, so the list is one
-row per *game* rather than per instance -- such a row names the target and
-links to that instance's `?proxy=` for it. The selected row's own buttons sit on the filter bar rather than in the pane,
-so the way in stays in one place instead of moving as a pane grows or
-shrinks. A bzfs row offers **View map** and **Import**, plus a **Watch** link
-for a signed-in admin: the same test the in-client View list makes
-(`canWatchRemoteServers`), because watching sends that server a callsign bzo
-has verified (`docs/proxy.md`).
+A bzo row's link enters that game directly: each row is its own origin and its
+own websocket, not something to import a map from. An instance that proxies
+contributes a row per target as well as its own, so the list is one row per
+*game* rather than per instance -- such a row names the target and links to
+that instance's `?proxy=` for it. The selected row's own buttons sit on the
+filter bar rather than in the pane, so the way in stays in one place instead of
+moving as a pane grows or shrinks. A bzfs row offers **View map** and
+**Import**, plus a **Watch** link for a signed-in admin: the same test the
+in-client View list makes (`canWatchRemoteServers`), because watching sends
+that server a callsign bzo has verified (`docs/proxy.md`).
 
 Sorting, selection and the filter parser are `public/list-page.js`, served as
 a file rather than inlined in the page: the parser is long enough that

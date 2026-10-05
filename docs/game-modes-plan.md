@@ -240,7 +240,7 @@ a translation later.
 subclass that POSTs form-encoded bodies to `https://my.bzflag.org/db/`
 (`DefaultListServerURL`, `include/Protocol.h:42`):
 
-```
+```text
 action=ADD&nameport=<host:port>&version=BZFS0221&gameinfo=<58 hex chars>
 &build=<app version>&checktokens=<callsign@ip=token...>&groups=<...>
 &key=<publickey>&advertgroups=<...>&title=<url-encoded description>

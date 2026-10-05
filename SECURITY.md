@@ -17,7 +17,8 @@ Previous releases are not patched.
 
 ## Getting Security Updates
 
-For the fastest security updates, run the Docker image tracking `:latest` and keep it updated regularly.
+For the fastest security updates, run the Docker image tracking `:latest` and
+keep it updated regularly.
 
 Example update flow:
 

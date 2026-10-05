@@ -23,10 +23,11 @@ No third-party map pack with mesh/group/physics-driver usage in the wild turned
 up on a search of the BZFlag-Dev GitHub org or the usual community sites --
 BZFlag ships no sample maps using them either. The porteighty `bzw_docs` pages
 for `mesh` and `group` each carry a complete, runnable example block, though,
-which is the next best thing to a real map and is cited per section below. `arc`/`cone`/`sphere`/`tetra`'s docs pages are unfinished --
-placeholder text where an example should be -- so those four are validated
-against `$HOME/bzflag/src/bzfs/Custom{Arc,Cone,Sphere,Tetra}.cxx` directly
-rather than against any map, real or documented, until one turns up.
+which is the next best thing to a real map and is cited per section below.
+`arc`/`cone`/`sphere`/`tetra`'s docs pages are unfinished -- placeholder text
+where an example should be -- so those four are validated against
+`$HOME/bzflag/src/bzfs/Custom{Arc,Cone,Sphere,Tetra}.cxx` directly rather than
+against any map, real or documented, until one turns up.
 
 **`scripts/survey-live-maps.mjs` is how "what do real maps use" gets
 answered.** It asks the public list server what is running, imports each

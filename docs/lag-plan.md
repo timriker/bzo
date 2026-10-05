@@ -86,7 +86,7 @@ and referenced nowhere. The only path to a player is `/lagstats`
 (`commands.cxx:1979`), which sorts the roster by lag, formats each row with
 `LagInfo::getLagStats` and sends each as a chat message to whoever asked:
 
-```
+```text
 callsign                : 123 +- 12ms 3% lost/ooo
 ```
 
@@ -105,7 +105,7 @@ from the previous packet's speeds to these. The server measures its own arrival
 gap for the same pair of packets. Upstream's jitter is exactly the disagreement
 between those two:
 
-```
+```text
 jitter = |arrival gap - sdt|
 ```
 

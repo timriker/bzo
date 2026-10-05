@@ -18,7 +18,8 @@ two in step.
 - `Space` — drop flag
 - `I` or right-click — identify the tank in your sights, and lock a Guided
   Missile onto it
-- `Delete` — self-destruct, after a five second countdown; `Delete` again calls it off
+- `Delete` — self-destruct, after a five second countdown; `Delete` again calls
+  it off
 - `9` or `/autopilot [roger|ace]` — autopilot: the pilot drives, aims and
   shoots until pressed again. `Settings -> Autopilot` chooses the pilot without
   a keyboard. You can still drive while it does, to help it out of a corner --
@@ -29,7 +30,8 @@ two in step.
 
 - `N` — open chat (or click the `Send` button)
 - `Enter` — send chat (while chat input is focused, or click `Send` again)
-- `1` / `2` / `3` / `4` / `5` — switch chat tab (`All` / `Chat` / `Server` / `Misc` / `Debug`)
+- `1` / `2` / `3` / `4` / `5` — switch chat tab (`All` / `Chat` / `Server` /
+  `Misc` / `Debug`)
 - `[` / `]` — previous/next chat tab
 - `Tab` — while typing, complete a player, command or flag name; `@` starts a
   mention and `#` a player's slot number
@@ -52,10 +54,12 @@ two in step.
 - `` ` `` — toggle debug HUD
 - `=` or `+` or `Numpad +` — zoom radar out (increase range)
 - `-` or `Numpad -` — zoom radar in (decrease range)
-- `\` — reset radar zoom to the default medium range (half the world's radar limit, which is the world size unless the map says otherwise)
+- `\` — reset radar zoom to the default medium range (half the world's radar
+  limit, which is the world size unless the map says otherwise)
 - `Settings -> Radar: ...` — cycle Short/Medium/Long radar presets
 - `B` — toggle the voice microphone
-- `Settings -> Audio Settings` — set the game, voice, and microphone levels, and choose the voice channel: All, Nearby, or Team
+- `Settings -> Audio Settings` — set the game, voice, and microphone levels,
+  and choose the voice channel: All, Nearby, or Team
 - `/` or `?` — show/hide help panel
 
 ### Hunting

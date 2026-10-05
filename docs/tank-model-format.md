@@ -76,8 +76,9 @@ Additional accepted aliases:
 - `wheel_right3`
 - `wheel_right4`
 
-The renderer animates however many indexed wheels it finds on each side, in numeric order.
-This supports 3-wheel, 4-wheel, and other tracked layouts without model-specific code.
+The renderer animates however many indexed wheels it finds on each side, in
+numeric order. This supports 3-wheel, 4-wheel, and other tracked layouts
+without model-specific code.
 
 ## Navigation Light Object Names
 
@@ -91,7 +92,7 @@ tank is pointing resolves before its silhouette does. A model places its own:
 
 Each is a single-vertex point object, not geometry:
 
-```
+```text
 o lightRear
 v 0.000000 2.100000 1.530000
 p -1
@@ -263,4 +264,5 @@ A more detailed tracked vehicle may provide:
 
 - Prefer upstream BZFlag names when they already exist
 - Use `bzo` extension names to expose more structure for animation and materials
-- The renderer should prefer specific split-part names first, then fall back to simpler names
+- The renderer should prefer specific split-part names first, then fall back to
+  simpler names

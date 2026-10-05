@@ -135,7 +135,7 @@ caps nothing is the one thing not to offer.
 Upstream has **two** limits, and the relationship between them is the answer to
 "does the player limit include observers":
 
-```
+```text
 maxPlayers = maxRealPlayers + maxTeam[ObserverTeam]   // CmdLineOptions.cxx:458
 ```
 

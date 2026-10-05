@@ -99,6 +99,7 @@ handler is a tiny app:
      </dict>
    </array>
    ```
+
 3. Open `BZFlag Link.app` once from the Finder, so macOS notices it.
 
 `-a BZFlag` finds the client by its application name; if yours is named for

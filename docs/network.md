@@ -350,10 +350,10 @@ A rejected or timed-out join costs the import nothing: everything above it
 already arrived, and the map loads without `-set`. `enterForVariables: false`
 skips the join for a caller that would rather stay invisible.
 
-That covers the world download, the game settings and the world variables. A proxy that let a
-browser *play* on a real server would need the rest: the join handshake and
-its initial burst, pack and unpack for the remaining codes, and an answer to
-the authority inversion above -- something on bzo's side has to be willing to
-say "I died" on the player's behalf, because bzfs will never say it for them.
-`docs/proxy.md` is what a proxy does today and `docs/proxy-plan.md` is what
-it does not; issue #82.
+That covers the world download, the game settings and the world variables. A
+proxy that let a browser *play* on a real server would need the rest: the join
+handshake and its initial burst, pack and unpack for the remaining codes, and
+an answer to the authority inversion above -- something on bzo's side has to be
+willing to say "I died" on the player's behalf, because bzfs will never say it
+for them. `docs/proxy.md` is what a proxy does today and `docs/proxy-plan.md`
+is what it does not; issue #82.

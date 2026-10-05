@@ -266,4 +266,3 @@ Two things it has to decide:
 2. `/lagwarn` and friends with `docs/lag-plan.md` step 6; the idle commands
    with last-input tracking.
 3. Reports, when something wants them.
-

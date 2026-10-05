@@ -82,14 +82,14 @@ A restart, which a map change is in bzo, drops every native client, and it
 has to rejoin: bzfs does the same, and the client has no reconnect of its
 own. Browsers rejoin by themselves; a BZFlag client does not.
 
-- **Driving.** A client joins on the team it asks for, bzo's to assign where
-  it asks for automatic, the rabbit or a hunter. bzo spawns it as it joins and
-  after each death, and the client starts its tank where `MsgAlive` says.
-  Its `MsgPlayerUpdate`s become bzo moves (`moveFromBzfs`), so every other
-  player sees it drive. Its physics are its own client's, which bzo cannot
-  correct and does not yet match, so a movement finding about it is logged
-  and not refused, whatever the anti-cheat mode. A spawn request while bzo has it alive means
-  it died on its own screen only, and is answered with where it is.
+- **Driving.** A client joins on the team it asks for, bzo's to assign where it
+  asks for automatic, the rabbit or a hunter. bzo spawns it as it joins and
+  after each death, and the client starts its tank where `MsgAlive` says. Its
+  `MsgPlayerUpdate`s become bzo moves (`moveFromBzfs`), so every other player
+  sees it drive. Its physics are its own client's, which bzo cannot correct and
+  does not yet match, so a movement finding about it is logged and not refused,
+  whatever the anti-cheat mode. A spawn request while bzo has it alive means it
+  died on its own screen only, and is answered with where it is.
 
 - **Shooting.** A client's `MsgShotBegin` becomes the `shoot` a browser
   sends (`shootFromBzfs`), and bzo's server flies it and decides what it

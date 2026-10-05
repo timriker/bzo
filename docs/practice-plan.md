@@ -86,7 +86,7 @@ nothing offline.
 
 ## The shape
 
-```
+```text
 public/game/          the core: rules only, no I/O
   core.mjs            createGame({ world, config, hooks }) -> { join, leave, message, tick }
   ...                 one file per slice below

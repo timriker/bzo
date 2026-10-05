@@ -57,22 +57,22 @@ These are deliberate. Do not "fix" them without being asked.
 - **An open menu or a hidden window pauses the tank.** Upstream pauses when its
   window is iconified and resumes when it is restored (`pausedByUnmap`,
   `playing.cxx:124`). `document.hidden` is the browser's word for iconified and
-  bzo pauses on it; bzo also hangs the same behaviour on the menus, which
-  are the other thing that covers the screen here -- Settings, Audio, Help, Operator, Entry and
-  the XR menu alike, since they all arrive as `INPUT_CONTEXT.DIALOG` or
-  `INPUT_CONTEXT.ENTRY`. Walking from one into another holds the pause, because
-  the context never leaves; leaving the last of them is what lifts it. Unlike
-  upstream, which hides the countdown for a pause the window manager asked for,
-  bzo counts it down in front of the menu that started it. The rest is upstream's:
-  the pause is remembered as bzo's own, so closing a menu never resumes a pause
-  the player took with the pause key, and the pause key is ignored while bzo
-  holds it. Both sources reconcile through one `syncAutoPause()` rather than each
-  toggling a pause: hiding the window while a menu is open and showing it again
-  leaves the tank paused, because the menu still is. The pause countdown itself
-  lives on the server, unlike upstream's, because the server is what decides
-  whether a tank may be hit -- so the client keeps a copy of it, and
-  `public/pause.mjs` holds the rules over both, which is what stops the two ways
-  to pause drifting apart.
+  bzo pauses on it; bzo also hangs the same behaviour on the menus, which are
+  the other thing that covers the screen here -- Settings, Audio, Help,
+  Operator, Entry and the XR menu alike, since they all arrive as
+  `INPUT_CONTEXT.DIALOG` or `INPUT_CONTEXT.ENTRY`. Walking from one into
+  another holds the pause, because the context never leaves; leaving the last
+  of them is what lifts it. Unlike upstream, which hides the countdown for a
+  pause the window manager asked for, bzo counts it down in front of the menu
+  that started it. The rest is upstream's: the pause is remembered as bzo's
+  own, so closing a menu never resumes a pause the player took with the pause
+  key, and the pause key is ignored while bzo holds it. Both sources reconcile
+  through one `syncAutoPause()` rather than each toggling a pause: hiding the
+  window while a menu is open and showing it again leaves the tank paused,
+  because the menu still is. The pause countdown itself lives on the server,
+  unlike upstream's, because the server is what decides whether a tank may be
+  hit -- so the client keeps a copy of it, and `public/pause.mjs` holds the
+  rules over both, which is what stops the two ways to pause drifting apart.
 
   **A pause belongs to the life it was taken in, and the asking outlives it.**
   Upstream abandons a countdown the moment the tank stops being alive
@@ -771,11 +771,11 @@ both sides is kept as a **hand-maintained pair**: `public/<name>.mjs` and
 `motion`, `drive`, `teleport`, `trace`, `headset`, `flags` and
 `voice-channels`; `MIRRORED` in `scripts/check-shared-pairs.mjs` lists the ones
 kept byte for byte, and `node scripts/mirror-pair.mjs <name>` writes such a
-pair's `.cjs` from its `.mjs`. `npm run check:shared-pairs` enforces them: the two mirrored
-pairs must match line for line, and any name a hand-written pair exports on
-both sides must agree in type and arity. A pair that drifts does not throw --
-the client and server just quietly disagree about geometry, which surfaces as
-position corrections.
+pair's `.cjs` from its `.mjs`. `npm run check:shared-pairs` enforces them: the
+two mirrored pairs must match line for line, and any name a hand-written pair
+exports on both sides must agree in type and arity. A pair that drifts does not
+throw -- the client and server just quietly disagree about geometry, which
+surfaces as position corrections.
 
 **Any such pair must have a parity test** in `scripts/` that loads both copies
 and asserts they agree across a shared input table. See
@@ -1668,7 +1668,8 @@ the cached world file raw (`bzdb`), with its `-ms` (`gameplay`), and
 `configForWorld` evaluates them over `init`'s base for as long as that map is
 on screen -- the map as it would play on this server. `liveGameConfig` keeps
 the live world's, so coming back drops the preview's rather than re-fetching.
-Jumping and ricochet are not in it, since bzo forces both on. See "Map physics" in `docs/bzw.md`.
+Jumping and ricochet are not in it, since bzo forces both on. See "Map physics"
+in `docs/bzw.md`.
 
 **World size is the map's own data, not config.** `parseBZWMap` returns
 `mapSize` from a map's `world size` line rather than writing it into
@@ -1692,10 +1693,10 @@ need a conditional row.
 
 Since the dialog already renders the live world/roster behind itself before a
 player has joined, previewing an alternate map also suppresses every remote
-tank/shot/flag -- both the 3D meshes and the radar's own flag draw, a
-separate code path from the mesh code -- for as long as a preview is active,
-not only once actually joined as Map Viewer. One guard, `isPreviewingAltWorld()`, keyed on "which world is
-currently applied," covers both.
+tank/shot/flag -- both the 3D meshes and the radar's own flag draw, a separate
+code path from the mesh code -- for as long as a preview is active, not only
+once actually joined as Map Viewer. One guard, `isPreviewingAltWorld()`, keyed
+on "which world is currently applied," covers both.
 
 **XR staged a preview off the confirmed team, not the staged one.** The flat
 dialog forces `cameraMode = 'overview'` for as long as it is open (for its own
@@ -2682,13 +2683,14 @@ not be measured on the device that most needs measuring.
 
 ## Chat entry owns the keyboard, not the mouse
 
-The chat panel sits along the bottom of the screen, which is exactly where mouse
-control puts the cursor to drive backwards. So while chat is idle the panel is
-click-through: only the tabs and the Send button take the pointer, and a click
-anywhere else over it -- the input included -- fires the tank. **The Send button
-is the only pointer that opens chat entry.** It is named Send rather than Chat
-because the tab strip already spends that word on the Chat tab. Clicking the input must not,
-because the input covers ground the player is aiming over.
+The chat panel sits along the bottom of the screen, which is exactly where
+mouse control puts the cursor to drive backwards. So while chat is idle the
+panel is click-through: only the tabs and the Send button take the pointer, and
+a click anywhere else over it -- the input included -- fires the tank. **The
+Send button is the only pointer that opens chat entry.** It is named Send
+rather than Chat because the tab strip already spends that word on the Chat
+tab. Clicking the input must not, because the input covers ground the player is
+aiming over.
 
 Chat entry -- focus in `#chatInput` -- ends on Enter, Escape, or the Send
 button, and nothing else. A click on the battlefield while typing is swallowed
@@ -3916,6 +3918,7 @@ That runs, in order:
 | `npm run lint` | ESLint across server, `public/`, and `scripts/` |
 | `npm run check:controls-docs` | `docs/controls.md` matches the in-game help panel |
 | `npm run check:shared-pairs` | Each `public/<name>.mjs` and `server/<name>.cjs` still agree |
+| `npm run check:markdown` | markdownlint (`mdl`) over every `.md` but CHANGELOG.md, under `.mdl-style.rb`; skipped with a warning when `mdl` is not installed |
 | `npm run test:volume` | Audio level clamping, curve, formatting, and persistence |
 | `npm run test:voice-volume` | Remote playback gain and the microphone gain stage |
 | `npm run test:voice-channels` | Which players each channel pairs, both directions |
@@ -4058,11 +4061,12 @@ What is here is only what a maintainer reading the README does not need:
   `ws.send(JSON.stringify({ type: 'debug', message: 'your debug info' }))` and
   they appear in `server.log`. This is especially useful on headsets like Quest 2
   where browser console access is limited.
-- **Check `server.log` with `grep` or `rg` for the lines you need**, not by opening it
-  in a file-reading tool. Opening it makes some agent tools track the file and
-  attach every later change to the conversation, which on a busy server floods
-  the chat. Grep narrowly -- a player's name, a log tag like `[BZFLAG]` -- and
-  pipe through `tail` to keep only recent hits; `wc -l` watches it grow.
+- **Check `server.log` with `grep` or `rg` for the lines you need**, not by
+  opening it in a file-reading tool. Opening it makes some agent tools track
+  the file and attach every later change to the conversation, which on a busy
+  server floods the chat. Grep narrowly -- a player's name, a log tag like
+  `[BZFLAG]` -- and pipe through `tail` to keep only recent hits; `wc -l`
+  watches it grow.
 - `server.log` is the primary runtime output surface during development. Check
   it whenever runtime diagnostics are needed. Do not ask the user to re-open
   it.
@@ -4168,14 +4172,14 @@ declared and repeated runs cannot exhaust it, whatever `_maxFlagGrabs` is set
 to.
 
 **Point `testSpawn` at the zone.** `testSpawn` in `server.json` spawns a named
-player at a fixed point, and a tank that spawns on a flag grabs it before it does
-anything else. It takes one entry or a list of them, so moving a probe from zone
-to zone does not disturb anybody else's fixed spawn -- add and remove the probe's
-entry and leave the rest alone. The zone coordinates are in the `.bzw`, which is BZW's axes:
-`bzo.x = bzw.x` and **`bzo.z = -bzw.y`**. `nodemon` watches `server.json`, so
-writing it restarts the server on its own -- and **put it back when the run is
-over**, since it is the running dev server's config and the name in it belongs to
-somebody's real client.
+player at a fixed point, and a tank that spawns on a flag grabs it before it
+does anything else. It takes one entry or a list of them, so moving a probe
+from zone to zone does not disturb anybody else's fixed spawn -- add and remove
+the probe's entry and leave the rest alone. The zone coordinates are in the
+`.bzw`, which is BZW's axes: `bzo.x = bzw.x` and **`bzo.z = -bzw.y`**.
+`nodemon` watches `server.json`, so writing it restarts the server on its own
+-- and **put it back when the run is over**, since it is the running dev
+server's config and the name in it belongs to somebody's real client.
 
 **Or `/mv` there, which needs no restart at all.** `/mv` moves a tank anywhere
 from the chat line, so a probe can put itself on a zone, pick the flag up, and go
@@ -4380,6 +4384,7 @@ without editing a map first.
 
 Raising `WG`'s flap count to test it is `/set _wingsJumpCount <n>`, or a
 `-set` line in the map or server.json's `bzdb` block.
+
 - `SERVER_CONFIG_PATH` overrides the config path; `MAPS_PATH` overrides the
   writable runtime maps directory, and `REPLAYS_PATH` the replays one.
 - Obstacles are generated and resolved server-side and sent in the `init`

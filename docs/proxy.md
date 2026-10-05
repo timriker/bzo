@@ -10,7 +10,7 @@ still unbuilt, playing above all. Upstream references are paths under
 
 `?proxy=<host_port>` points the ordinary client at a proxied server:
 
-```
+```text
 https://<this bzo>/?proxy=example.org_5154
 ```
 
@@ -549,4 +549,3 @@ for a world's variables, and /list shows the answer as **Guests Watch** or
 
 The visitor is `bzo-import` with the motto `bzo server check --
 <publicUrl>/list`, so an operator who sees it knows where the answers are.
-
