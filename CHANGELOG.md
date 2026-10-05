@@ -6,6 +6,17 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
 
 ## [Unreleased]
 
+## [1.3.18] - 2026-10-05
+
+### Added
+- [docs/bzfs-web-plan.md](docs/bzfs-web-plan.md): a plan for bzfs to serve
+  the web client and take browsers as players on its own game port.
+
+### Fixed
+- A dead tank stays where it died until it respawns, autopilot or not, so its
+  radar marker no longer drives around. Observers and Map Viewers still move.
+  #177
+
 ## [1.3.17] - 2026-10-05
 
 ### Added
