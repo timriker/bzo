@@ -6,6 +6,13 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
 
 ## [Unreleased]
 
+## [1.3.22] - 2026-10-05
+
+### Fixed
+- Releases build again. The CI and release jobs that run in the
+  `ubuntu:26.04` container failed on git's ownership check, so v1.3.20 and
+  v1.3.21 published no images; their changes ship in this release.
+
 ## [1.3.21] - 2026-10-05
 
 ### Added
