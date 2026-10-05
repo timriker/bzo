@@ -6,6 +6,19 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
 
 ## [Unreleased]
 
+## [1.3.21] - 2026-10-05
+
+### Added
+- `docs/bzflag-2.6-plan.md`: serving BZFlag 2.6 native clients alongside 2.4,
+  what to suggest upstream (clients send their version string, `BZFS0226`,
+  in place of `BZFLAG`; the list server keys entries on host:port and
+  version), and what bzo already does that 2.4 does not.
+
+### Changed
+- The Docker image keeps each texture, sound and model at the time of its
+  last commit, so after an upgrade a browser revalidates an unchanged one
+  and gets a 304 instead of downloading it again (#180).
+
 ## [1.3.20] - 2026-10-05
 
 ### Changed
