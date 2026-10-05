@@ -6,6 +6,18 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
 
 ## [Unreleased]
 
+## [1.3.17] - 2026-10-05
+
+### Added
+- Replays: `/?replay=<name>` plays a bzfs recording to everyone watching it,
+  with the live viewers under "Watching" on the scoreboard. "Local replays" on
+  `/list` and in the View dialog, upload and delete in the Operator panel,
+  and `/replay stats` and `/replay list`. See
+  [docs/replay.md](docs/replay.md). #172
+- Recording: bzo keeps its last game in a buffer from boot, and `/record` or
+  the Operator panel's Save Recording writes it as a bzfs recording. #172
+- The Operator panel deletes the maps it uploaded.
+
 ## [1.3.16] - 2026-10-05
 
 ### Added
