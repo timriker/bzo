@@ -38,7 +38,16 @@ const {
   parseWorldDatabase,
   buildBZWText,
   collectNonDefaultVariables,
+  decodeSetVars,
 } = require('./server/remote-world-import.cjs');
+const { readReplay, writeReplay, PACKET_MODE: REPLAY_PACKET_MODE } = require('./server/bzfs-replay.cjs');
+const {
+  BroadcastBuffer, bufferToReplay, SERVER_PLAYER: BZO_RECORDER_PLAYER,
+} = require('./server/bzo-recorder.cjs');
+const { createUploadRecord } = require('./server/uploads.cjs');
+const {
+  ReplayRoom, ReplaySession, summarizeReplay, fileListLines,
+} = require('./server/bzfs-replay-room.cjs');
 const {
   BzfsSession,
   toBzfsChatText,
@@ -337,7 +346,7 @@ function computeClientBuild() {
 const { isHeadsetBrowserUA } = require('./server/headset.cjs');
 const { describeListenTarget, resolveListenTarget } = require('./server/listen-address.cjs');
 const {
-  createBzflagServer, publishToBzflagList, REJECT_IP_BANNED, REJECT_ID_BANNED,
+  createBzflagServer, publishToBzflagList, REJECT_IP_BANNED, REJECT_ID_BANNED, packGameSettings,
 } = require('./server/bzflag-server.cjs');
 const { generateWorldBzw } = require('./server/world-generator.cjs');
 const { addCardinalLetters } = require('./server/bzflag-extras.cjs');
@@ -345,7 +354,7 @@ const {
   NativeTranslator, decodeEnter, decodeClientMessage, moveFromBzfs, shootFromBzfs,
 } = require('./server/bzflag-native.cjs');
 const { compileBzwWorld } = require('./server/bzw-compile.cjs');
-const { packWorldDatabase } = require('./server/bzflag-world.cjs');
+const { packWorldDatabase, bzfsWorldHashOfBzw } = require('./server/bzflag-world.cjs');
 const {
   DEFAULT_VOICE_CHANNEL,
   areVoicePeers,
@@ -1234,6 +1243,29 @@ app.get('/api/_admin-probe', (req, res) => {
 });
 
 // A position, a flag, a speed -- everything `/playerlist` doesn't say, for
+// This instance's recordings, for the View dialog's "Local replays" table:
+// what `/list` shows of each, less the file's own details. Public, as the
+// list is; a replay is anyone's to watch.
+app.get('/api/replays', async (req, res) => {
+  res.set('Cache-Control', 'no-store');
+  try {
+    const replays = await listReplays();
+    res.json({
+      replays: replays.filter((entry) => entry.summary).map((entry) => ({
+        name: entry.name,
+        start: entry.summary.start,
+        seconds: entry.summary.seconds,
+        players: entry.summary.players.length,
+        map: entry.map,
+        viewers: entry.playing ? entry.playing.viewers : 0,
+      })),
+    });
+  } catch (error) {
+    logError('/api/replays failed:', error);
+    res.status(500).json({ replays: [] });
+  }
+});
+
 // whoever is watching from this machine while testing rather than typing
 // `/mv` and `/lagstats` and squinting at server.log. Loopback only, and not
 // gated behind `localAdmin`: a position is not an admin power, but it is
@@ -2071,6 +2103,121 @@ function renderOverview(url, label) {
     + ` height="256" alt="Overview of ${escapeHtml(label)}" loading="lazy"></div>`;
 }
 
+// A recording's moment, as the Local maps table writes a file's: UTC, to the
+// second, so rows sort and read the same wherever the reader is.
+function formatReplayDate(ms) {
+  return Number.isFinite(ms) && ms > 0 ? new Date(ms).toISOString().replace('T', ' ').slice(0, 19) : '';
+}
+
+function formatReplayLength(seconds) {
+  if (!Number.isFinite(seconds)) return '';
+  const whole = Math.round(seconds);
+  return `${Math.floor(whole / 60)}:${String(whole % 60).padStart(2, '0')}`;
+}
+
+// The Local replays list, the same shell as Local maps: one line per
+// recording, a pane for the selected one, the sortable header and the filter
+// box. A replay is local to this instance (docs/replay-plan.md), so this
+// list is built here and never published to the list server.
+function renderReplayList(listId, filterId, replays) {
+  if (!replays.length) return `<p class="muted">None.</p>`;
+  const data = replays.map((entry) => ({
+    a: entry.name,
+    d: entry.map || '',
+    hs: entry.summary?.worldHash || '',
+    n: entry.name.toLowerCase(),
+    t: entry.summary?.start || 0,
+    len: entry.summary?.seconds || 0,
+    pl: entry.summary?.players.length || 0,
+  }));
+  const rows = replays.map((entry, index) => {
+    const summary = entry.summary;
+    const desc = entry.error ? `unreadable: ${entry.error}` : (entry.map || '');
+    const live = entry.playing ? ` -- ${entry.playing.viewers} watching` : '';
+    return `<li>`
+      + `<a class="srow${index === 0 ? ' selected' : ''}" href="/?replay=${encodeURIComponent(entry.name)}"`
+      + ` data-pane="replay-pane-${index}" data-i="${index}">`
+      + `<span class="num col-date">${escapeHtml(summary ? formatReplayDate(summary.start) : '')}</span>`
+      + `<span class="num col-len">${escapeHtml(summary ? formatReplayLength(summary.seconds) : '')}</span>`
+      + `<span class="num col-pl">${summary ? summary.players.length : ''}</span>`
+      + `<span class="addr">${escapeHtml(entry.name)}</span>`
+      + `<span class="desc dim">${escapeHtml(desc + live)}</span>`
+      + `</a></li>`;
+  }).join('\n');
+  const head = `<div class="shead">`
+    + `<button class="num col-date" data-field="t" title="When it was recorded (UTC)">Date</button>`
+    + `<button class="num col-len" data-field="len" title="How long it runs">Length</button>`
+    + `<button class="num col-pl" data-field="pl" title="Players in it, observers not counted">Players</button>`
+    + `<button class="name" data-field="n" data-text title="Replay file name">Name</button>`
+    + `<button class="name" data-field="d" data-text title="The map it was played on">Map</button>`
+    + `</div>`;
+  const widths = `--col-pl:${listColumnWidth('Players', data.map((entry) => entry.pl || ''))}`;
+  return `<div class="listWrap" id="${escapeHtml(listId)}" style="${widths}">`
+    + `<div class="panes">${replays
+      .map((entry, index) => renderReplayReadout(entry, index, index !== 0)).join('\n')}</div>`
+    + `<div class="listBar">`
+    + `<input id="${escapeHtml(filterId)}" class="clearable" type="text" placeholder="Filter…">`
+    + replays.map((entry, index) => `<div class="rowActions" id="replay-pane-${index}-actions"`
+      + `${index !== 0 ? ' hidden' : ''}>`
+      + (entry.summary
+        ? `<a class="action" href="/?replay=${encodeURIComponent(entry.name)}">Watch</a>`
+        : `<span class="muted">Unreadable</span>`)
+      + (entry.summary && replayLocalMapFile(entry.map)
+        ? ` <a class="action" href="/?viewmap=${encodeURIComponent(replayLocalMapFile(entry.map))}">View map</a>`
+        : '')
+      + `</div>`).join('')
+    + `</div>`
+    + head
+    + `<ul class="srows">\n${rows}\n</ul>`
+    + `<script type="application/json" id="${escapeHtml(listId)}-data">`
+    + `${JSON.stringify(data).replace(/</g, '\\u003c')}</script>`
+    + `</div>`;
+}
+
+// The local map file a replay row's map name is, where it is one: the View
+// map action goes there. A server's `host:port` is not a file.
+function replayLocalMapFile(mapName) {
+  if (!mapName) return null;
+  const fileName = `${mapName}.bzw`;
+  return MAP_REGISTRY.has(fileName) && listLocalMapFiles().includes(fileName) ? fileName : null;
+}
+
+// What the recording is on the left, who was in it on the right, and the map's
+// picture beside them. A player who left early is listed with the score they
+// left with.
+function renderReplayReadout(entry, index, hidden) {
+  const summary = entry.summary || { players: [], observers: [] };
+  const row = (label, value) => `<div class="paneRow"><span>${label}</span>`
+    + `<span>${escapeHtml(value === undefined || value === null ? '' : String(value))}</span></div>`;
+  const playing = entry.playing
+    ? `${entry.playing.viewers} watching, at ${formatReplayLength(entry.playing.played)}`
+    : '';
+  const players = summary.players.map((player) => row(
+    escapeHtml(player.callsign),
+    `${player.wins - player.losses} (${player.wins}-${player.losses})`
+      + ` ${getTeamFromColorIndex(player.team) || ''}`,
+  )).join('');
+  return `<div class="pane" id="replay-pane-${index}"${hidden ? ' hidden' : ''}>`
+    + `<div class="paneMain"><div class="paneBody">`
+    + `<p class="paneTitle">${escapeHtml(entry.name)}</p>`
+    + `<div class="paneCols">`
+    + `<div class="paneCol">`
+    + row('Date', formatReplayDate(summary.start))
+    + row('Length', formatReplayLength(summary.seconds))
+    + row('Map', entry.map || '')
+    + row('Recorded by', summary.recordedBy || '')
+    + row('bzfs', [summary.appVersion, summary.protocol].filter(Boolean).join(' '))
+    + row('Observers', summary.observers.join(', '))
+    + row('Now', playing)
+    + row('Size', entry.size ? formatByteSize(entry.size) : '')
+    + (entry.error ? row('Error', entry.error) : '')
+    + `</div>`
+    + `<div class="paneCol">${players || row('Players', 'none')}</div>`
+    + `</div></div>`
+    + renderOverview(entry.overviewUrl, entry.name)
+    + `</div></div>`;
+}
+
 // What the map is made of on the left, what it is on the right -- the same two
 // columns a server's pane has -- and the overview picture beside them. Every
 // label is always present, blank where the map says nothing, so the pane keeps
@@ -2577,7 +2724,7 @@ function renderListTables({ servers, bzoServers, canWatch }) {
 }
 
 function renderListPage({
-  servers, bzoServers, cacheAgeSeconds, imported, importError, session, admin, canWatch,
+  servers, bzoServers, cacheAgeSeconds, imported, importError, session, admin, canWatch, replays = [],
 }) {
   const tables = renderListTables({ servers, bzoServers, canWatch });
 
@@ -2599,7 +2746,8 @@ function renderListPage({
     ? '#keys'
     : `${escapeHtml(LIST_SERVER_URL)}/list#keys`;
   const navBlock = `<p class="nav">`
-    + `<a href="#bzo">bzo</a> | <a href="#bzflag">bzflag</a> | <a href="#maps">maps</a> | <a href="${keysHref}">keys</a>`
+    + `<a href="#bzo">bzo</a> | <a href="#bzflag">bzflag</a> | <a href="#maps">maps</a> | <a href="#replays">replays</a>`
+    + ` | <a href="${keysHref}">keys</a>`
     + ` | ${identityBlock}</p>`;
 
   const flash = imported
@@ -2755,6 +2903,9 @@ function renderListPage({
   .col-obj { width: var(--col-obj, 4ch); }
   .col-fa { width: var(--col-fa, 5ch); }
   .col-sz { width: var(--col-sz, 4ch); }
+  .col-date { width: 19ch; }
+  .col-len { width: 6ch; }
+  .col-pl { width: var(--col-pl, 7ch); }
   .srow .dim { color: #999; }
   .srow .mark, .srow .opt, .shead .mark, .shead .opt {
     flex: none;
@@ -2860,6 +3011,11 @@ ${tables.bzfsTable}
 views that map.</p>
 ${tables.mapsTable}
 
+<h1 id="replays">Local replays - ${replays.length}<span id="replayList-count"></span></h1>
+<p class="muted">bzfs recordings in this server's <code>replays/</code> -- pick a row to read
+it; Watch plays it to everyone watching that replay.</p>
+${renderReplayList('replayList', 'replayFilter', replays)}
+
 <!-- Sorting, selection and the filter language: public/list-page.js. A plain
      classic script, not a module, so it is defined before the key admin
      section's own inline script below calls attachTable. -->
@@ -2899,6 +3055,7 @@ app.get('/list', async (req, res) => {
       // login claims no name on the remote: it watches and plays as a
       // `bzo-view-<tag>`, which says it is nobody in particular.
       canWatch: admin,
+      replays: await listReplays(),
     }));
   } catch (error) {
     logError('/list failed to reach the list server:', error);
@@ -3250,6 +3407,13 @@ const BUNDLED_MAPS_DIR = path.join(__dirname, 'maps');
 const RUNTIME_MAPS_DIR = process.env.MAPS_PATH
   ? path.resolve(process.env.MAPS_PATH)
   : path.join(path.dirname(configPath), 'maps');
+// bzfs recordings, laid out as maps are: the runtime directory beside
+// `server.json` first, then the bundled sample (docs/replay.md). Never under
+// `public/`: a raw recording's hidden packets hold players' addresses.
+const BUNDLED_REPLAYS_DIR = path.join(__dirname, 'replays');
+const RUNTIME_REPLAYS_DIR = process.env.REPLAYS_PATH
+  ? path.resolve(process.env.REPLAYS_PATH)
+  : path.join(path.dirname(configPath), 'replays');
 
 // The Operator panel's "Import Remote Map" dropdown, and the public `/list`
 // page below, both read this -- one POST to the public list server decodes
@@ -3632,6 +3796,204 @@ async function importProxyWorld(target) {
   return promise;
 }
 
+// A replay's name is its file's, less `.rec`: what `?replay=` carries and a
+// list row shows. Only names that cannot climb out of the directory.
+function replayFilePath(name) {
+  if (typeof name !== 'string' || !/^[A-Za-z0-9_-][A-Za-z0-9._-]{0,99}$/.test(name)) return null;
+  for (const dir of new Set([RUNTIME_REPLAYS_DIR, BUNDLED_REPLAYS_DIR])) {
+    const filePath = path.join(dir, `${name}.rec`);
+    if (fs.existsSync(filePath)) return filePath;
+  }
+  return null;
+}
+
+// A whole recording, read for a room, which holds it for as long as anyone
+// watches. Nothing else keeps one: a list row needs only `replaySummaryFor`.
+async function loadReplay(name) {
+  const filePath = replayFilePath(name);
+  if (!filePath) return null;
+  return readReplay(await fs.promises.readFile(filePath));
+}
+
+// Every recording this instance holds, by name: the runtime directory's over
+// a bundled one of the same name, as `replayFilePath` resolves it.
+function listReplayNames() {
+  const names = new Set();
+  for (const dir of new Set([RUNTIME_REPLAYS_DIR, BUNDLED_REPLAYS_DIR])) {
+    let entries = [];
+    try {
+      entries = fs.readdirSync(dir);
+    } catch {
+      continue;
+    }
+    for (const entry of entries) {
+      const name = entry.endsWith('.rec') ? entry.slice(0, -4) : null;
+      if (name && replayFilePath(name)) names.add(name);
+    }
+  }
+  return [...names].sort();
+}
+
+// What a list row says about one recording (`summarizeReplay`), kept per
+// file and remade when the file changes. A file that does not read as a
+// recording is listed with the reason, so an upload that went wrong is seen.
+const replaySummaries = new Map();
+async function replaySummaryFor(name) {
+  const filePath = replayFilePath(name);
+  if (!filePath) return null;
+  const { mtimeMs, size } = await fs.promises.stat(filePath);
+  const held = replaySummaries.get(name);
+  if (held && held.mtimeMs === mtimeMs && held.size === size) return held;
+  let entry;
+  try {
+    const replay = readReplay(await fs.promises.readFile(filePath));
+    entry = { name, mtimeMs, size, summary: summarizeReplay(replay), error: null };
+  } catch (error) {
+    entry = { name, mtimeMs, size, summary: null, error: error.message };
+  }
+  replaySummaries.set(name, entry);
+  return entry;
+}
+
+// The map a recording was played on: the local map whose world bzfs would
+// hash the same (`bzfsHash`, from the map worker), else a server last seen
+// running it. Empty when neither is known.
+function replayMapName(worldHash) {
+  if (!worldHash) return '';
+  for (const entry of MAP_REGISTRY.values()) {
+    if (entry.bzfsHash !== worldHash) continue;
+    if (parseImportMapFileName(entry.fileName) || isReplayWorldFile(entry.fileName)) continue;
+    return entry.fileName.replace(/\.bzw$/i, '');
+  }
+  return bzfsWorlds.serversWithWorld(worldHash)[0] || '';
+}
+
+// A recording's picture: bzfs's own world hash names it where this server has
+// drawn that world, else the replay world's own once a room has registered it.
+function replayOverviewUrl(worldHash) {
+  if (isBzfsWorldHash(worldHash)
+    && fs.existsSync(path.join(OVERVIEW_CACHE_DIR, `bzfs-${worldHash}.svg`))) {
+    return `/overviews/bzfs-${worldHash}.svg`;
+  }
+  return MAP_REGISTRY.get(`import-replay-${worldHash}.bzw`)?.overviewUrl || null;
+}
+
+// Every recording as `/list` and the View dialog show it, with how far along
+// a room playing it is.
+async function listReplays() {
+  const out = [];
+  for (const name of listReplayNames()) {
+    const entry = await replaySummaryFor(name);
+    if (!entry) continue;
+    const room = replayRooms.get(name);
+    out.push({
+      name,
+      size: entry.size,
+      modified: entry.mtimeMs,
+      error: entry.error,
+      summary: entry.summary,
+      map: entry.summary ? replayMapName(entry.summary.worldHash) : '',
+      overviewUrl: entry.summary ? replayOverviewUrl(entry.summary.worldHash) : null,
+      playing: room ? room.progress() : null,
+    });
+  }
+  return out;
+}
+
+// A recording's world, registered as a map so a room's `init` can name it, the
+// way a proxied target's is. Filed by bzfs's world hash, so two recordings on
+// one map share it, and under `import-` so its `.bzw` is swept and ignored
+// like any other reconstruction (.gitignore). Its JSON is kept as a viewed
+// map's is, for an hour from each join (`keptAt`, `sweepMapCache`); one swept
+// already is rebuilt from the recording, which costs a parse.
+const inFlightReplayImports = new Map();
+async function importReplayWorld(name, replay) {
+  const tag = isBzfsWorldHash(replay.worldHash) ? replay.worldHash : name;
+  const safeMapName = `import-replay-${tag}`.replace(/[^A-Za-z0-9._-]/g, '_') + '.bzw';
+  const registered = MAP_REGISTRY.get(safeMapName);
+  if (registered && fs.existsSync(path.join(MAP_CACHE_DIR, `${registered.hash}.json`))) {
+    registered.keptAt = Date.now();
+    return { safeMapName };
+  }
+  const existing = inFlightReplayImports.get(safeMapName);
+  if (existing) return existing;
+  const promise = (async () => {
+    const tree = parseWorldDatabase(replay.world);
+    // The server's variables as of the first snapshot, for the map's `-set`
+    // lines, and its settings out of the header (`worldSettings` is the whole
+    // MsgGameSettings frame, four bytes of length and code first).
+    const variables = new Map();
+    for (const packet of replay.packets) {
+      if (packet.mode === REPLAY_PACKET_MODE.REAL && variables.size > 0) break;
+      if (packet.code === 'sv') decodeSetVars(packet.payload, variables);
+    }
+    tree.variables = variables.size > 0 ? variables : null;
+    const settings = replay.worldSettings.subarray(4);
+    if (settings.length >= 30) tree.gameSettings = decodeGameSettings(settings);
+    if (tree.gameSettings) tree.worldSize = tree.gameSettings.worldSize;
+    await writeImportedWorld({
+      source: `replay ${name}.rec, recorded by ${replay.callsign || 'unknown'}`
+        + ` on bzfs ${replay.appVersion || 'unknown'}`,
+      version: replay.protocol,
+      worldHash: replay.worldHash || '',
+    }, tree, safeMapName);
+    const entry = MAP_REGISTRY.get(safeMapName);
+    if (entry) entry.keptAt = Date.now();
+    return { safeMapName };
+  })().finally(() => inFlightReplayImports.delete(safeMapName));
+  inFlightReplayImports.set(safeMapName, promise);
+  return promise;
+}
+
+// A recording's world file, as `importReplayWorld` names it.
+function isReplayWorldFile(fileName) {
+  return typeof fileName === 'string' && fileName.startsWith('import-replay-');
+}
+
+// The worlds being played to somebody now. Kept by both sweeps while a room
+// plays them, and for `IMPORT_REUSE_MS` after its last viewer leaves.
+function replayWorldsPlaying() {
+  return new Set([...replayRooms.values()].map((room) => room.worldFile).filter(Boolean));
+}
+
+// A recording a little past upstream's own buffer default (`DefaultMaxBytes`,
+// 16 MB), which is what a `/record save` of a full buffer comes to.
+const REPLAY_UPLOAD_MAX_BYTES = 32 * 1024 * 1024;
+
+// `/replay list` and `/record list`: every recording here with its length,
+// read the way `/list` reads them.
+async function replayFileList() {
+  return (await listReplays())
+    .filter((entry) => entry.summary)
+    .map((entry) => ({ name: entry.name, seconds: entry.summary.seconds }));
+}
+
+// One room per recording being watched, made by its first viewer and dropped
+// when its last one leaves.
+const replayRooms = new Map();
+async function replayRoomFor(name) {
+  const held = replayRooms.get(name);
+  if (held) return held;
+  const replay = await loadReplay(name);
+  if (!replay) return null;
+  // Another viewer may have made it while this one read the file.
+  if (replayRooms.has(name)) return replayRooms.get(name);
+  const room = new ReplayRoom({
+    name,
+    replay,
+    listFiles: replayFileList,
+    directory: 'replays/',
+  });
+  room.onEmpty = () => {
+    if (replayRooms.get(name) === room) replayRooms.delete(name);
+    const world = MAP_REGISTRY.get(room.worldFile);
+    if (world) world.keptAt = Date.now();
+    log(`[REPLAY] ${name}: last viewer left`);
+  };
+  replayRooms.set(name, room);
+  return room;
+}
+
 // How long a world download may take. The interactive one is a person waiting
 // on a page: too short and a league server's map can never be imported at all,
 // too long and a failure looks like a hang. The background one is the world
@@ -3715,20 +4077,32 @@ async function performRemoteMapImportNow(listedServer, safeMapName, timeout, gue
   // record rather than looked up again here: the fetch above can take up to
   // 15 seconds, and the shared list cache can have expired and been
   // refreshed without this server on it by the time it returns.
-  const text = buildBZWText(
-    {
-      host,
-      port,
-      title: listedServer.title || '',
-      owner: listedServer.owner || '',
-      ip: listedServer.ip || '',
-      version: BZFS_PROTOCOL_VERSION,
-      worldHash: worldHash || '',
-      listInfo: listedServer.info || null,
-    },
-    tree,
-    new Date().toISOString(),
-  );
+  await writeImportedWorld({
+    host,
+    port,
+    title: listedServer.title || '',
+    owner: listedServer.owner || '',
+    ip: listedServer.ip || '',
+    version: BZFS_PROTOCOL_VERSION,
+    worldHash: worldHash || '',
+    listInfo: listedServer.info || null,
+  }, tree, safeMapName);
+  // `compressedSize`/`uncompressedSize` are bzfs's own figures out of the
+  // world header, not bzo's measurement of the transfer -- the numbers
+  // another client would see for the same world.
+  return {
+    safeMapName,
+    byteLength: worldDatabase.length,
+    compressedSize: tree.compressedSize,
+    uncompressedSize: tree.uncompressedSize,
+  };
+}
+
+// A parsed bzfs world, written out as a `.bzw` under `safeMapName` and
+// registered, as every import of one is: off a server's wire or out of a
+// recording (`importReplayWorld`).
+async function writeImportedWorld(serverMeta, tree, safeMapName) {
+  const text = buildBZWText(serverMeta, tree, new Date().toISOString());
   const filePath = path.join(RUNTIME_MAPS_DIR, safeMapName);
   await fs.promises.writeFile(filePath, text);
   // Converted now rather than left to the background trickle
@@ -3744,15 +4118,6 @@ async function performRemoteMapImportNow(listedServer, safeMapName, timeout, gue
     world = await convertMapFile(safeMapName, filePath);
   }
   registerWorldFile(safeMapName, world);
-  // `compressedSize`/`uncompressedSize` are bzfs's own figures out of the
-  // world header, not bzo's measurement of the transfer -- the numbers
-  // another client would see for the same world.
-  return {
-    safeMapName,
-    byteLength: worldDatabase.length,
-    compressedSize: tree.compressedSize,
-    uncompressedSize: tree.uncompressedSize,
-  };
 }
 
 function ensureRuntimeMapsDir(dirPath) {
@@ -3770,7 +4135,8 @@ function ensureRuntimeMapsDir(dirPath) {
 // so it is neither parsed at boot nor listed as a local map.
 function listLocalMapFiles() {
   return listAvailableMapFiles()
-    .filter((fileName) => !parseImportMapFileName(fileName) || fileName === MAP_SOURCE);
+    .filter((fileName) => fileName === MAP_SOURCE
+      || (!parseImportMapFileName(fileName) && !isReplayWorldFile(fileName)));
 }
 
 function listAvailableMapFiles() {
@@ -4173,6 +4539,8 @@ async function probeAdminWhitelist() {
 // like `server.json`, it follows `SERVER_CONFIG_PATH` into a deployment's own
 // data directory, and the maps directory is a tracked part of the repo.
 const SESSIONS_PATH = path.join(path.dirname(configPath), 'sessions.json');
+// What the Operator panel uploaded, and so may delete (`server/uploads.cjs`).
+const uploads = createUploadRecord(path.join(path.dirname(configPath), 'uploads.json'), { log });
 let sessionWriteTimer = null;
 
 function writeSessionsSoon() {
@@ -5612,7 +5980,13 @@ function worldBuildOptions(fileName) {
 // whose parse the game itself is built from. Every other map is converted on
 // a worker (`convertMapFile`).
 function registerMapFile(fileName, map, options) {
-  return registerWorldFile(fileName, buildWorldFile(map, worldBuildOptions(fileName)), options);
+  const world = buildWorldFile(map, worldBuildOptions(fileName));
+  // The worker hashes the maps it converts; this is the one parsed here, the
+  // live map, and the hash bzo serves native clients is not its file's own
+  // (it adds the compass letters).
+  const filePath = fileName === 'random' ? null : resolveMapFilePath(fileName);
+  if (filePath) world.bzfsHash = bzfsWorldHashOfBzw(fs.readFileSync(filePath, 'latin1'));
+  return registerWorldFile(fileName, world, options);
 }
 
 // Parses and builds a map file on a worker thread (`server/map-convert-
@@ -5698,6 +6072,9 @@ function registerWorldFile(fileName, world, { keepWorld = true } = {}) {
     registeredAt: Date.now(),
     keptAt: keepWorld ? Date.now() : 0,
     stats,
+    // bzfs's hash of this world, for naming the map a recording was played
+    // on (`replayMapName`). Null where the worker could not make it.
+    bzfsHash: typeof world.bzfsHash === 'string' ? world.bzfsHash : null,
     // Whether the overview above got written, so `/list` can show the app's
     // own mark in the pane instead of an image that would not load.
     overviewUrl: hasOverview ? overviewUrl : null,
@@ -5707,7 +6084,7 @@ function registerWorldFile(fileName, world, { keepWorld = true } = {}) {
   // So the next boot can list this file from its hash, picture and stats
   // without parsing it.
   mapIndex.note(fileName, hash, overviewName, resolveMapFilePath(fileName),
-    { stats, version: SERVER_VERSION });
+    { stats, version: SERVER_VERSION, bzfsHash: registered.bzfsHash });
   return registered;
 }
 
@@ -5724,9 +6101,11 @@ function sweepMapCache() {
   // its `.bzw` by `sweepStaleImports`), and for an hour after somebody last
   // asked to view it (`prepareMapForView`). A picture is kept for every map.
   const expected = new Set();
+  const playing = replayWorldsPlaying();
   for (const entry of MAP_REGISTRY.values()) {
     if (entry.overviewUrl) expected.add(path.basename(entry.overviewUrl));
     const keep = entry.fileName === MAP_SOURCE || parseImportMapFileName(entry.fileName)
+      || playing.has(entry.fileName)
       || (entry.keptAt && Date.now() - entry.keptAt < IMPORT_REUSE_MS);
     if (keep) expected.add(`${entry.hash}.json`);
     else entry.keptAt = 0;
@@ -5799,8 +6178,14 @@ function sweepMapCache() {
 // ever touches a remote import.
 function sweepStaleImports() {
   let removed = 0;
+  const playing = replayWorldsPlaying();
   for (const fileName of listAvailableMapFiles()) {
-    if (!parseImportMapFileName(fileName)) continue;
+    // A recording's world is rebuilt from the recording whenever it is
+    // needed, so it goes an hour after its last room closes, however new the
+    // file. While one plays it, never.
+    const replayWorld = isReplayWorldFile(fileName);
+    if (!replayWorld && !parseImportMapFileName(fileName)) continue;
+    if (replayWorld && playing.has(fileName)) continue;
     // Never the map being played. An import ages out on mtime alone, and
     // nothing about hosting one touches the file, so a server left running on
     // an imported map for two hours would delete the map out from under
@@ -5816,7 +6201,12 @@ function sweepStaleImports() {
     } catch {
       continue;
     }
-    if (Date.now() - stats.mtimeMs < IMPORT_MAX_AGE_MS) continue;
+    if (replayWorld) {
+      const lastUsed = Math.max(stats.mtimeMs, MAP_REGISTRY.get(fileName)?.keptAt || 0);
+      if (Date.now() - lastUsed < IMPORT_REUSE_MS) continue;
+    } else if (Date.now() - stats.mtimeMs < IMPORT_MAX_AGE_MS) {
+      continue;
+    }
     try {
       fs.unlinkSync(filePath);
       MAP_REGISTRY.delete(fileName);
@@ -5921,6 +6311,7 @@ function hashRemainingMapsInBackground() {
           registeredAt: Date.now(),
           keptAt: 0,
           stats: known.stats,
+          bzfsHash: known.bzfsHash,
           overviewUrl: `/overviews/${known.overview}.svg`,
         });
         restored += 1;
@@ -7300,6 +7691,115 @@ defineCommand('/help', COMMAND_TIER.OPEN,
 defineCommand('/me', COMMAND_TIER.OPEN,
   '<action> - say something as an action: "/me smiles" reads as "<name> smiles"',
   (player, args) => deliverActionMessage(player, 0, args));
+
+// RecordCommand (commands.cxx:3604), worded as upstream's. The buffer is on
+// from boot, as `-recbuf` would have it, so `/record save` keeps a game
+// after it happens. `/record file` marks where the file starts and writes it
+// at `/record stop`, out of the same buffer, so it is only as long as the
+// buffer holds; upstream streams it to disk as it goes.
+const RECORD_USAGE = Object.freeze([
+  'usage:',
+  '  /record start',
+  '  /record stop',
+  '  /record size <Mbytes>',
+  '  /record rate <seconds>',
+  '  /record stats',
+  '  /record save <filename> [seconds]',
+  '  /record file <filename>',
+  '  /record list [-t | -n | --] [pattern]',
+]);
+
+// A file name as `/record` takes one: the replay's name, `.rec` optional.
+function recordingName(text) {
+  const name = String(text || '').trim().replace(/\.rec$/i, '');
+  return /^[A-Za-z0-9_-][A-Za-z0-9._-]{0,99}$/.test(name) ? name : null;
+}
+
+defineCommand('/record', COMMAND_TIER.OPERATOR,
+  '[start|stop|size|list|rate..] - manage the bzflag record system',
+  async (player, args) => {
+    const reply = (line) => replyToPlayer(player, line);
+    const [sub = '', ...rest] = args.trim().split(/\s+/);
+    const word = sub.toLowerCase();
+    if (word === 'start') {
+      recorder.start();
+      reply('Recording started');
+    } else if (word === 'stop') {
+      if (recordFile) {
+        const { name, from } = recordFile;
+        recordFile = null;
+        try {
+          await saveRecording(name, { from, callsign: player.name });
+        } catch (error) {
+          reply(`Could not open for writing: ${name} (${error.message})`);
+        }
+      }
+      recorder.stop();
+      reply('Recording stopped');
+    } else if (word === 'size') {
+      const mbytes = Number.parseInt(rest[0], 10);
+      if (!Number.isFinite(mbytes) || mbytes < 1) {
+        for (const line of RECORD_USAGE) reply(line);
+        return;
+      }
+      recorder.setMaxBytes(mbytes * 1024 * 1024);
+      reply(`Record size set to ${mbytes}`);
+    } else if (word === 'rate') {
+      const seconds = Number.parseInt(rest[0], 10);
+      if (!Number.isFinite(seconds) || seconds < 1) {
+        for (const line of RECORD_USAGE) reply(line);
+        return;
+      }
+      recorder.setRateMs(seconds * 1000);
+      reply(`Record rate set to ${seconds}`);
+    } else if (word === 'stats') {
+      const stats = recorder.stats();
+      if (!stats.recording) {
+        reply('Not Recording');
+        return;
+      }
+      if (recordFile) {
+        reply(`Filename:  ${recordFile.name}`);
+        reply(`   saved:  ${stats.bytes} bytes / ${stats.entries} packets`
+          + ` / ${((Date.now() - recordFile.from) / 1000).toFixed(1)} seconds`);
+      } else {
+        reply(`Buffered:  ${stats.bytes} bytes / ${stats.entries} packets / ${stats.seconds.toFixed(1)} seconds`);
+      }
+    } else if (word === 'save') {
+      const name = recordingName(rest[0]);
+      if (!name) {
+        for (const line of RECORD_USAGE) reply(line);
+        return;
+      }
+      const seconds = rest[1] === undefined ? null : Number.parseInt(rest[1], 10);
+      if (!recorder.recording || recorder.entries.length === 0) {
+        reply('No buffer to save');
+        return;
+      }
+      try {
+        await saveRecording(name, { seconds, callsign: player.name });
+        reply(`Record buffer saved to: ${name}`);
+        log(`[CMD] "${player.name}" saved recording ${name}`);
+      } catch (error) {
+        reply(`Could not open for writing: ${name} (${error.message})`);
+      }
+    } else if (word === 'file') {
+      const name = recordingName(rest[0]);
+      if (!name) {
+        for (const line of RECORD_USAGE) reply(line);
+        return;
+      }
+      recorder.start();
+      recorder.takeSnapshot();
+      recordFile = { name, from: Date.now() };
+      reply(`Recording to file: ${name}`);
+    } else if (word === 'list') {
+      const lines = fileListLines(await replayFileList(), args.trim().slice(4), 'replays/');
+      for (const line of lines || RECORD_USAGE) reply(line);
+    } else {
+      for (const line of RECORD_USAGE) reply(line);
+    }
+  });
 
 // UpTimeCommand (commands.cxx:1015). Upstream appends a full stop, which is the
 // only punctuation in any of these replies and is kept for that reason.
@@ -10257,9 +10757,117 @@ function occupyShotSlot(player, slot, flag, now) {
   player.shotSlotFreeAt[slot] = now + getSlotReloadMs(flag);
 }
 
+// bzo's own games, recorded as upstream's `-recbuf` records: everything
+// broadcast, buffered, and a recording only when an operator saves one
+// (`/record`, `server/bzo-recorder.cjs`). On from boot, as the plan has it,
+// so a game worth keeping can be kept after it happens.
+const recorder = new BroadcastBuffer({ snapshot: recorderSnapshot });
+// `/record file`: where the file being "streamed" started, and its name. The
+// buffer is what holds it, so it is as long as the buffer is.
+let recordFile = null;
+
+// The game as a joining observer would be told it, everyone's view of it.
+function recorderSnapshot() {
+  return {
+    bzdb: Object.fromEntries(liveBzdb),
+    flags: getFlagStates(),
+    players: [...players.values()].filter((player) => player.joined).map((player) => player.getState(false)),
+    teamScores: getTeamScoreState(),
+    rabbitId: rabbitPlayerId,
+  };
+}
+
+// One broadcast into the buffer, with what converting it later will need
+// that the game will have forgotten by then: the scores a kill left (tallied
+// before it is sent, `killPlayer`), and the guided missiles a lock steers.
+function recordBroadcast(data, message) {
+  if (!recorder.recording) return;
+  const entry = recorder.record(data);
+  if (!entry || !message) return;
+  if (message.type === 'killed') {
+    entry.extra = { scores: {} };
+    for (const id of [message.victimId, message.shooterId]) {
+      const player = id === null || id === undefined ? null : players.get(String(id));
+      if (player) entry.extra.scores[player.id] = { wins: player.wins, losses: player.losses, tks: player.tks };
+    }
+  } else if (message.type === 'gmUpdate') {
+    entry.extra = {
+      guided: {
+        [String(message.playerId)]: [...projectiles.values()]
+          .filter((proj) => proj.guided && String(proj.playerId) === String(message.playerId))
+          .map((proj) => ({
+            id: proj.id, x: proj.x, y: proj.y, z: proj.z,
+            dirX: proj.dirX, dirY: proj.dirY, dirZ: proj.dirZ, speed: proj.speed,
+            team: players.get(String(proj.playerId))?.team ?? null,
+          })),
+      },
+    };
+  }
+}
+
+// What a saved recording carries besides its packets (`saveHeader`). The world
+// is the map file's own, as bzfs would load it -- not the one bzo serves native
+// clients, which adds compass letters -- so its hash names the map, and the
+// recording matches one made with bzfs on the same file.
+function recordingHeader(callsign) {
+  const generated = MAP_SOURCE === 'random';
+  const mapPath = generated ? null : resolveMapFilePath(MAP_SOURCE);
+  const text = generated ? RANDOM_WORLD_BZW : (mapPath ? fs.readFileSync(mapPath, 'latin1') : null);
+  if (!text) throw new Error(`no map file for ${MAP_SOURCE}`);
+  const world = packWorldDatabase(compileBzwWorld(text));
+  const settings = packGameSettings(bzflagGameSettings());
+  const frame = Buffer.alloc(4 + settings.length);
+  frame.writeUInt16BE(settings.length, 0);
+  frame.write('gs', 2, 'latin1');
+  settings.copy(frame, 4);
+  // `packFlagTypes`: each type in play, by its two-letter code.
+  const types = [...new Set(flags.map((flag) => flag.type).filter(Boolean))];
+  const flagTypes = Buffer.alloc(types.length * 2);
+  types.forEach((type, index) => flagTypes.write(String(type).slice(0, 2), index * 2, 'latin1'));
+  return {
+    player: BZO_RECORDER_PLAYER,
+    callsign: callsign || 'SERVER',
+    motto: '',
+    protocol: BZFS_PROTOCOL_VERSION,
+    appVersion: BZO_APP_VERSION,
+    worldHash: `${generated ? 't' : 'p'}${crypto.createHash('md5').update(world).digest('hex')}`,
+    worldSettings: frame,
+    flagTypes,
+    world,
+  };
+}
+
+// The last `seconds` of the buffer, or all of it, to `replays/<name>.rec`.
+// Recorded as an upload so the Operator panel may delete it.
+async function saveRecording(name, { seconds = null, from = null, callsign = '' } = {}) {
+  const entries = from === null ? recorder.slice(seconds) : recorder.entries.filter((entry, index, all) => {
+    const start = all.findLastIndex((e) => e.snapshot && e.at <= from);
+    return index >= Math.max(0, start);
+  });
+  if (entries.length === 0) throw new Error('No buffer to save');
+  const replay = bufferToReplay(entries, {
+    header: recordingHeader(callsign),
+    translator: {
+      teamIndex: bzflagTeamIndex,
+      config: () => GAME_CONFIG,
+      flagName: (type) => getFlagType(type)?.name || '',
+    },
+  });
+  const bytes = writeReplay(replay);
+  await fs.promises.mkdir(RUNTIME_REPLAYS_DIR, { recursive: true });
+  const filePath = path.join(RUNTIME_REPLAYS_DIR, `${name}.rec`);
+  await fs.promises.writeFile(filePath, bytes);
+  uploads.add('replays', name);
+  invalidateListTables();
+  log(`[RECORD] saved ${filePath}: ${bytes.length} bytes, ${replay.packets.length} packets,`
+    + ` ${(replay.fileTime / 1e6).toFixed(1)} s`);
+  return { filePath, bytes: bytes.length, packets: replay.packets.length, seconds: replay.fileTime / 1e6 };
+}
+
 // Broadcast to all players except sender
 function broadcast(message, excludeWs = null) {
   const data = JSON.stringify(message);
+  recordBroadcast(data, message);
   players.forEach((player) => {
     if (player.ws !== excludeWs && player.ws.readyState === 1) {
       player.ws.send(data);
@@ -10273,6 +10881,7 @@ function broadcast(message, excludeWs = null) {
 function broadcastPlayerRecord(type, subject) {
   const forAdmins = JSON.stringify({ type, player: subject.getState(true) });
   const forEveryone = JSON.stringify({ type, player: subject.getState(false) });
+  recordBroadcast(forEveryone, null);
   players.forEach((player) => {
     if (player.ws.readyState !== 1) return;
     player.ws.send(isAdmin(player) ? forAdmins : forEveryone);
@@ -10282,6 +10891,7 @@ function broadcastPlayerRecord(type, subject) {
 // Broadcast to all players including sender
 function broadcastAll(message) {
   const data = JSON.stringify(message);
+  recordBroadcast(data, message);
   players.forEach((player) => {
     if (player.ws.readyState === 1) {
       player.ws.send(data);
@@ -10964,17 +11574,7 @@ if (BZFLAG_CONFIG?.listen) {
         return { team: index, size: sizes[team] || 0, wins: score.wins, losses: score.losses };
       });
     },
-    getGameSettings: () => ({
-      worldSize: GAME_CONFIG.MAP_SIZE,
-      style: GAME_TYPE,
-      gameOptionsBits: computeLocalGameOptionsBits(),
-      maxShots: GAME_CONFIG.SHOT_MAX_ACTIVE,
-      numFlags: flags.length,
-      linearAcceleration: GAME_CONFIG.LINEAR_ACCELERATION,
-      angularAcceleration: GAME_CONFIG.ANGULAR_ACCELERATION,
-      shakeTimeout: Math.round(FLAG_SHAKE_TIMEOUT * 10),
-      shakeWins: FLAG_SHAKE_WINS,
-    }),
+    getGameSettings: bzflagGameSettings,
     getWorld: getBzflagWorld,
     getCacheUrl: bzflagCacheUrl,
     // The handshake's id is the player's bzo number, so every id a native
@@ -10998,6 +11598,21 @@ if (BZFLAG_CONFIG?.listen) {
   bzflagServer.listen(host, port)
     .then(() => log(`[BZFLAG] listening on ${host}:${port}`))
     .catch((error) => logError(`[BZFLAG] listen on ${BZFLAG_CONFIG.listen} failed: ${error.message}`));
+}
+
+// MsgGameSettings, as native clients and recordings are told it.
+function bzflagGameSettings() {
+  return {
+    worldSize: GAME_CONFIG.MAP_SIZE,
+    style: GAME_TYPE,
+    gameOptionsBits: computeLocalGameOptionsBits(),
+    maxShots: GAME_CONFIG.SHOT_MAX_ACTIVE,
+    numFlags: flags.length,
+    linearAcceleration: GAME_CONFIG.LINEAR_ACCELERATION,
+    angularAcceleration: GAME_CONFIG.ANGULAR_ACCELERATION,
+    shakeTimeout: Math.round(FLAG_SHAKE_TIMEOUT * 10),
+    shakeWins: FLAG_SHAKE_WINS,
+  };
 }
 
 // The world as bzfs packs it. server/bzw-compile.cjs compiles the map's
@@ -14170,6 +14785,8 @@ if (GAME_CONFIG.TIME_LIMIT > 0 && !GAME_CONFIG.TIME_MANUAL_START) {
 }
 
 setInterval(gameLoop, 16); // ~60fps
+// Buffering from the first moment there is a game to record.
+recorder.start();
 
 // WebSocket keep-alive: periodically ping all clients and close dead connections
 setInterval(() => {
@@ -14345,6 +14962,11 @@ function sendMapList(ws) {
   ws.send(JSON.stringify({
     type: 'mapList',
     maps: listAvailableMapFiles(),
+    // What the Operator panel may delete: its own uploads that are still here.
+    uploads: {
+      maps: uploads.list('maps').filter((name) => fs.existsSync(path.join(RUNTIME_MAPS_DIR, name))),
+      replays: uploads.list('replays').filter((name) => fs.existsSync(path.join(RUNTIME_REPLAYS_DIR, `${name}.rec`))),
+    },
     viewableMaps: getViewableMapsList(),
     currentMap: MAP_SOURCE,
     shotMaxActive: GAME_CONFIG.SHOT_MAX_ACTIVE,
@@ -14493,6 +15115,25 @@ function resolveProxyRequest(url) {
   if (query === -1) return null;
   const params = new URLSearchParams(url.slice(query + 1));
 
+  // One of this instance's own recordings, always watched: nothing is dialled,
+  // and the room stands in for the target (`ReplaySession`).
+  const replayName = params.get('replay');
+  if (replayName) {
+    return {
+      kind: 'replay',
+      key: replayName,
+      team: PLAYER_TEAM.OBSERVER,
+      target: Object.freeze({
+        key: replayName,
+        urlKey: replayName,
+        displayHost: 'replay',
+        displayPort: 0,
+        host: 'replay',
+        port: 0,
+      }),
+    };
+  }
+
   const watchSpec = params.get('watch');
   if (watchSpec) {
     const parsed = parseHostPort(watchSpec.replace(/_(\d+)$/, ':$1'));
@@ -14553,6 +15194,12 @@ function resolveProxyRequest(url) {
 // at all, and admin is the gate on connecting somewhere the operator never
 // configured (`docs/list-server-plan.md`).
 async function authoriseProxyRequest(req, request) {
+  // Anyone may watch a replay this instance holds, as anyone may view its maps.
+  if (request.kind === 'replay') {
+    return replayFilePath(request.key)
+      ? { allowed: true }
+      : { allowed: false, error: 'This server has no replay by that name.' };
+  }
   if (request.kind !== 'watch') {
     if (request.target) return { allowed: true };
     const offered = Object.values(PROXY_TARGETS).map((target) => target.urlKey);
@@ -14626,6 +15273,8 @@ function proxyPlayerRecord(player, motion = null) {
     // upstream draws it beside the callsign on its own scoreboard
     // (`ScoreboardRenderer.cxx:766`).
     motto: typeof player.motto === 'string' ? player.motto : '',
+    // Watching a replay live rather than in the recording (`ReplaySession`).
+    ...(player.watching ? { watching: true } : {}),
     // Only ever present when the target chose to tell this connection
     // (`MsgAdminInfo`), which it does for a holder of `playerList` and nobody
     // else. `clientIP` is the name bzo's own roster already uses.
@@ -15092,7 +15741,7 @@ function buildProxyInit(session, mapEntry, viewer, status, enterTeam) {
     localMap: MAP_SOURCE,
     flags: session.state.flags.filter(Boolean).map(proxyFlagState),
     worldTime: currentWorldTime(),
-    title: `${viewer.key} (proxied)`,
+    title: `${viewer.key} (${viewer.kind === 'replay' ? 'replay' : 'proxied'})`,
     motd: '',
   };
 }
@@ -15160,6 +15809,7 @@ async function handleProxyConnection(ws, req, request) {
   const loginSession = sessions.get(cookies[SESSION_COOKIE_NAME]);
   const viewer = {
     key,
+    kind,
     // In order: the callsign the weblogin just named, which is the only one
     // that goes with the token; then the session's, which is that same name
     // on every connection after the first, since a token cannot be answered
@@ -15184,7 +15834,7 @@ async function handleProxyConnection(ws, req, request) {
   // a spawn or a refusal is as good an answer as a probe's (`noteGuest`).
   const unregistered = !viewer.token && viewer.globalCallsign === null;
   const noteGuest = (fact) => {
-    if (unregistered && target) bzfsWorlds.noteGuest(target.displayHost, target.displayPort, fact);
+    if (unregistered && target && kind !== 'replay') bzfsWorlds.noteGuest(target.displayHost, target.displayPort, fact);
   };
   log(`[PROXY] ${key}: viewer "${viewer.callsign}" connecting`
     + ` to ${target.host}:${target.port} as ${team}${bot ? ' [BOT]' : ''}`
@@ -15235,10 +15885,14 @@ async function handleProxyConnection(ws, req, request) {
     // target imported within the hour costs nothing to proxy.
     // Asked for alongside the world, not after it: both are the target's own
     // answer about the game, and the browser is told nothing until it has both.
-    const [{ safeMapName }, targetStatus] = await Promise.all([
-      importProxyWorld(target),
-      proxyTargetStatus(key, target),
-    ]);
+    // A replay's world is the recording's own, and there is no server to ask
+    // what game it runs: the header's settings are what a session reads.
+    const room = kind === 'replay' ? await replayRoomFor(key) : null;
+    if (kind === 'replay' && !room) throw new Error(`no replay ${key}`);
+    const [{ safeMapName }, targetStatus] = await Promise.all(room
+      ? [importReplayWorld(key, room.replay), null]
+      : [importProxyWorld(target), proxyTargetStatus(key, target)]);
+    if (room) room.worldFile = safeMapName;
     const mapEntry = MAP_REGISTRY.get(safeMapName);
     if (!mapEntry) throw new Error(`imported ${safeMapName} is not registered`);
     if (ws.readyState !== ws.OPEN) return;
@@ -15282,7 +15936,14 @@ async function handleProxyConnection(ws, req, request) {
       log(`[PROXY] ${key}: "${viewer.callsign}" asked for ${team}, which it does not run`);
     }
 
-    session = new BzfsSession({
+    session = room ? new ReplaySession({
+      room,
+      callsign: viewer.callsign,
+      motto: proxyMotto(req),
+      // Upstream's REPLAY permission, which is this server's operators: the
+      // same test `/list` makes of a browser.
+      operator: isLocalAdminHttp(req) || (loginSession ? isAdminSession(loginSession, ADMIN_GROUPS) : false),
+    }) : new BzfsSession({
       host: target.host,
       port: target.port,
       callsign: viewer.callsign,
@@ -17559,6 +18220,7 @@ function acceptConnection(ws, req) {
               return;
             }
             log(`Admin uploaded new map: ${safeMapName}`);
+            uploads.add('maps', safeMapName);
             ws.send(JSON.stringify({ success: true }));
             // Send direct chat message to uploader
             ws.send(JSON.stringify({
@@ -17574,6 +18236,123 @@ function acceptConnection(ws, req) {
             // #68) without a restart -- setMap still needs one, this doesn't.
             hashRemainingMapsInBackground();
           });
+          break;
+        }
+
+        // A bzfs recording, base64 over the socket since it is binary. Read
+        // before it is kept, so a file that is not a recording is refused here
+        // rather than listed as unreadable.
+        case 'uploadReplay': {
+          if (refuseNonOperator(ws, player, 'uploadReplay')) break;
+          const said = (text) => ws.send(JSON.stringify({
+            type: 'message', src: SERVER_PLAYER, dst: player.id, msgType: 'server', text,
+          }));
+          const name = typeof message.replayName === 'string'
+            ? path.basename(message.replayName.trim()).replace(/\.rec$/i, '') : '';
+          if (!/^[A-Za-z0-9_-][A-Za-z0-9._-]{0,99}$/.test(name) || typeof message.content !== 'string') {
+            said('Upload refused: a replay name is letters, digits, ".", "_" and "-".');
+            break;
+          }
+          const bytes = Buffer.from(message.content, 'base64');
+          if (bytes.length > REPLAY_UPLOAD_MAX_BYTES) {
+            said(`Upload refused: ${name} is over ${REPLAY_UPLOAD_MAX_BYTES / (1024 * 1024)} MB.`);
+            break;
+          }
+          try {
+            readReplay(bytes);
+          } catch (error) {
+            said(`Upload refused: ${name} is not a bzfs recording (${error.message}).`);
+            break;
+          }
+          if (replayRooms.has(name)) {
+            said(`Upload refused: ${name} is being watched.`);
+            break;
+          }
+          fs.promises.mkdir(RUNTIME_REPLAYS_DIR, { recursive: true })
+            .then(() => fs.promises.writeFile(path.join(RUNTIME_REPLAYS_DIR, `${name}.rec`), bytes))
+            .then(() => {
+              uploads.add('replays', name);
+              log(`Admin "${player.name}" uploaded replay ${name}.rec, ${bytes.length} bytes`);
+              said(`Uploaded replay ${name} with ${bytes.length} bytes`);
+              invalidateListTables();
+              sendMapList(ws);
+            })
+            .catch((error) => {
+              logError('Replay upload failed:', error);
+              said(`Upload failed: ${error.message}`);
+            });
+          break;
+        }
+
+        // The panel's Save Recording: `/record save`, answered the same way.
+        case 'saveRecording': {
+          if (refuseNonOperator(ws, player, 'saveRecording')) break;
+          const said = (text) => ws.send(JSON.stringify({
+            type: 'message', src: SERVER_PLAYER, dst: player.id, msgType: 'server', text,
+          }));
+          const name = recordingName(message.name);
+          const seconds = Number.isInteger(message.seconds) && message.seconds > 0 ? message.seconds : null;
+          if (!name) {
+            said('Save refused: a recording name is letters, digits, ".", "_" and "-".');
+            break;
+          }
+          if (!recorder.recording || recorder.entries.length === 0) {
+            said('No buffer to save');
+            break;
+          }
+          saveRecording(name, { seconds, callsign: player.name })
+            .then(() => {
+              said(`Record buffer saved to: ${name}`);
+              log(`[OPERATOR] "${player.name}" saved recording ${name}`);
+              sendMapList(ws);
+            })
+            .catch((error) => said(`Could not open for writing: ${name} (${error.message})`));
+          break;
+        }
+
+        // What the Operator panel uploaded, and only that (`uploads`): never
+        // a bundled file, never the map being played, never a replay being
+        // watched.
+        case 'deleteUpload': {
+          if (refuseNonOperator(ws, player, 'deleteUpload')) break;
+          const said = (text) => ws.send(JSON.stringify({
+            type: 'message', src: SERVER_PLAYER, dst: player.id, msgType: 'server', text,
+          }));
+          const kind = message.kind === 'replays' ? 'replays' : (message.kind === 'maps' ? 'maps' : null);
+          const name = typeof message.name === 'string' ? message.name : '';
+          if (!kind || !uploads.has(kind, name)) {
+            said(`Delete refused: ${name || 'that'} was not uploaded here.`);
+            break;
+          }
+          if (kind === 'maps' && name === MAP_SOURCE) {
+            said(`Delete refused: ${name} is the map being played.`);
+            break;
+          }
+          if (kind === 'replays' && replayRooms.has(name)) {
+            said(`Delete refused: ${name} is being watched.`);
+            break;
+          }
+          const filePath = kind === 'maps'
+            ? path.join(RUNTIME_MAPS_DIR, name)
+            : path.join(RUNTIME_REPLAYS_DIR, `${name}.rec`);
+          fs.promises.rm(filePath, { force: true })
+            .then(() => {
+              uploads.remove(kind, name);
+              if (kind === 'maps') {
+                MAP_REGISTRY.delete(name);
+                sweepMapCache();
+              } else {
+                replaySummaries.delete(name);
+              }
+              invalidateListTables();
+              log(`Admin "${player.name}" deleted ${kind === 'maps' ? 'map' : 'replay'} ${name}`);
+              said(`Deleted ${kind === 'maps' ? 'map' : 'replay'} ${name}`);
+              sendMapList(ws);
+            })
+            .catch((error) => {
+              logError(`Deleting ${name} failed:`, error);
+              said(`Delete failed: ${error.message}`);
+            });
           break;
         }
 

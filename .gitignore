@@ -5,6 +5,7 @@ node_modules/
 *.patch
 server.json
 sessions.json
+uploads.json
 list-server-keys.json
 bans.json
 data/
@@ -34,3 +35,9 @@ groupdb.txt
 
 # Claude Code session state: local settings and job scratch files.
 .claude/
+
+# Recordings uploaded through the Operator panel, or saved by /record. A raw
+# recording's hidden packets hold players' addresses and typed commands, so
+# only the bundled sample is tracked (docs/replay.md).
+/replays/*
+!/replays/hix-robots.rec

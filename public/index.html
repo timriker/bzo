@@ -100,6 +100,27 @@
           <input type="file" id="uploadMap" accept=".bzw,.txt">
           <button id="uploadBtn" class="btn">Upload</button>
         </div>
+        <div class="operatorRow">
+          <label for="uploadReplay">Upload Replay:</label>
+          <input type="file" id="uploadReplay" accept=".rec">
+          <button id="uploadReplayBtn" class="btn">Upload</button>
+        </div>
+        <!-- `/record save` from the panel: the buffer bzo keeps from boot, or
+             its last N seconds, to replays/<name>.rec. -->
+        <div class="operatorRow">
+          <label for="saveRecordingName">Save Recording:</label>
+          <input type="text" id="saveRecordingName" placeholder="name" maxlength="100">
+          <input type="number" id="saveRecordingSeconds" placeholder="all" min="1" step="1">
+          <button id="saveRecordingBtn" class="btn">Save</button>
+        </div>
+        <!-- Only what this panel uploaded: never a bundled map or replay, the
+             map being played, or a replay being watched (server.js,
+             `deleteUpload`). -->
+        <div class="operatorRow">
+          <label for="deleteUploadSelect">Delete Upload:</label>
+          <select id="deleteUploadSelect"></select>
+          <button id="deleteUploadBtn" class="btn">Delete</button>
+        </div>
         <!-- Staged like every row above: 0 is upstream's own "no limit". -->
         <div class="operatorRow operatorConfigRow" data-menu-row="timeLimit" data-menu-kind="range">
           <label for="timeLimitSlider">Time Limit:</label>
@@ -207,6 +228,19 @@
           <thead><tr>
             <th>File</th><th data-sort="num">Size</th><th data-sort="num">Objects</th>
             <th data-sort="num">Faces</th><th>Style</th>
+          </tr></thead>
+          <tbody></tbody>
+        </table>
+        </div>
+        <h3>Local replays</h3>
+        <div class="operatorRow">
+          <input type="text" id="viewReplayFilter" placeholder="Filter…">
+        </div>
+        <div class="viewTableScroll">
+        <table id="viewReplayTable" class="viewTable">
+          <thead><tr>
+            <th>File</th><th>Date</th><th data-sort="num">Length</th>
+            <th data-sort="num">Players</th><th>Map</th>
           </tr></thead>
           <tbody></tbody>
         </table>

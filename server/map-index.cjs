@@ -68,14 +68,16 @@ function createMapIndex({ statePath, overviewDir, log, logError }) {
     },
 
     // Called as each map registers, with the file it was read from.
-    note(fileName, hash, overview, filePath, { stats = null, version = '' } = {}) {
+    // `bzfsHash` is the world's hash as bzfs would give it, or null where it
+    // could not be made.
+    note(fileName, hash, overview, filePath, { stats = null, version = '', bzfsHash = null } = {}) {
       const stat = statOf(filePath);
       if (!stat) return;
       const existing = entries.get(fileName);
       if (existing && existing.hash === hash && existing.overview === overview
         && existing.mtimeMs === stat.mtimeMs && existing.size === stat.size
-        && existing.version === version) return;
-      entries.set(fileName, { hash, overview, ...stat, stats, version });
+        && existing.version === version && existing.bzfsHash === bzfsHash) return;
+      entries.set(fileName, { hash, overview, ...stat, stats, version, bzfsHash });
       save();
     },
 
@@ -92,11 +94,12 @@ function createMapIndex({ statePath, overviewDir, log, logError }) {
     },
 
     // What a map was registered with, for listing it without a parse: only
-    // where `has` holds, the stats were kept, and this bzo made them.
+    // where `has` holds, the stats were kept, and this bzo made them. An
+    // entry from before `bzfsHash` was kept is parsed once more for it.
     restore(fileName, filePath, version) {
       if (!this.has(fileName, filePath)) return null;
       const entry = entries.get(fileName);
-      return entry.stats && entry.version === version ? entry : null;
+      return entry.stats && entry.version === version && entry.bzfsHash !== undefined ? entry : null;
     },
 
     // The picture's name `has` vouches for, or null.

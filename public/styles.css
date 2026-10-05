@@ -1039,6 +1039,13 @@ body.scoreboard-collapsed #mainhud {
   margin-top: 0.55em;
 }
 
+/* Over a replay's live viewers, who are not in the recording being played. */
+.scoreboardGroupLabel {
+  margin-top: 0.55em;
+  font-size: 0.85em;
+  opacity: 0.7;
+}
+
 /* The rabbit mark stands off the name it follows, unlike the flag and the
    authentication indicator, because it is a word rather than a suffix. */
 .scoreboardRabbit:not(:empty) {

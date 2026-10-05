@@ -502,6 +502,8 @@ window.attachList('bzoServerList', 'bzoServerFilter');
 // Only the glob half of the filter language means anything on it, which is why
 // it has no syntax-help button beside its box.
 window.attachList('mapList', 'mapFilter');
+// And so is the replays list, for the same reason.
+window.attachList('replayList', 'replayFilter');
 
 // An x inside each filter box's right edge, shown while there is text: a
 // click empties the box and filters again, as deleting the text would.

@@ -162,7 +162,8 @@ import {
   borrowChat,
   returnChat,
   borrowScoreboard,
-  returnScoreboard
+  returnScoreboard,
+  SCOREBOARD_WATCHING_LABEL,
 } from './hud.js';
 import {
   renderManager, GHOST_ALPHA_SCALE, GHOST_SCALE, meshSpinRadians,
@@ -1092,11 +1093,13 @@ let viewerPlacedByLink = false;
 function buildShareViewLink() {
   const destination = currentDestination();
   const watching = destination.startsWith('watch:') ? destination.slice('watch:'.length) : null;
+  // A replay is shared as itself, for the same reason.
+  const replaying = destination.startsWith('replay:') ? destination.slice('replay:'.length) : null;
   const mapFile = isPreviewingAltWorld() ? previewedMapFile : currentMapFile;
   // A link is only worth handing over for a map this server has hashed and
   // will serve to whoever opens it -- which the served map is, but a `random`
   // world generated at startup is not.
-  if (!watching && (!mapFile || !availableViewMaps.some((entry) => entry.file === mapFile))) return null;
+  if (!watching && !replaying && (!mapFile || !availableViewMaps.some((entry) => entry.file === mapFile))) return null;
   const camNames = {
     [ROAM_VIEW.FREE]: 'free',
     [ROAM_VIEW.DRIVE_FP]: 'fp',
@@ -1113,7 +1116,7 @@ function buildShareViewLink() {
   const cam = isObserver() ? (camNames[roamView] || 'free') : playerCamNames[cameraMode];
   const deg = ((playerRotation * 180) / Math.PI).toFixed(1);
   const pos = `${playerX.toFixed(1)},${playerY.toFixed(1)},${playerZ.toFixed(1)},${deg}`;
-  const where = watching
+  const where = replaying ? `replay=${encodeURIComponent(replaying)}` : watching
     ? `watch=${encodeURIComponent(watching)}`
     : `viewmap=${encodeURIComponent(mapFile)}`;
   const query = `${where}${cam ? `&cam=${cam}` : ''}&pos=${pos}`;
@@ -1255,6 +1258,10 @@ function currentDestination() {
   // not one of the targets it proxies either.
   const watching = params.get('watch');
   if (watching) return `watch:${watching}`;
+  // So is a replay: one of this instance's recordings, played to whoever
+  // watches it (docs/replay.md).
+  const replaying = params.get('replay');
+  if (replaying) return `replay:${replaying}`;
   const key = params.get('proxy');
   return key ? `proxy:${key}` : DESTINATION_LOCAL;
 }
@@ -1266,7 +1273,7 @@ function getDestinationChoices() {
   // Watching is reached from the View dialog rather than chosen here, but a
   // page already on one has to be able to name where it is -- and to leave.
   const here = currentDestination();
-  if (here.startsWith('watch:')) choices.unshift(here);
+  if (here.startsWith('watch:') || here.startsWith('replay:')) choices.unshift(here);
   return choices;
 }
 
@@ -1280,6 +1287,7 @@ function destinationLabel(destination) {
   if (destination.startsWith('watch:')) {
     return `watching ${destination.slice('watch:'.length).replace(/_(\d+)$/, ':$1')}`;
   }
+  if (destination.startsWith('replay:')) return `replay ${destination.slice('replay:'.length)}`;
   const proxy = findProxyDestination(destination);
   // `host:port`, not the title the public list carries. A title is a
   // description -- two servers may well share one, and "bzo compatibilty
@@ -1300,6 +1308,8 @@ function getDestinationTeams(destination) {
   // A watcher observes and nothing else -- no token, so the target would
   // refuse a spawn even if one were asked for.
   if (destination.startsWith('watch:')) return [PLAYER_TEAM.OBSERVER];
+  // Nobody plays in a recording.
+  if (destination.startsWith('replay:')) return [PLAYER_TEAM.OBSERVER];
   if (destination === currentDestination()) return availablePlayerTeams;
   const proxy = findProxyDestination(destination);
   if (proxy) return PLAYER_TEAMS.filter((team) => proxy.teams.includes(team));
@@ -1328,6 +1338,7 @@ function destinationNeedsLogin(destination, team) {
   // A watched server is played as an unregistered guest (`guestCallsign` in
   // server.js), which no login could help with.
   if (destination.startsWith('watch:')) return false;
+  if (destination.startsWith('replay:')) return false;
   return !(destination === currentDestination() && team === proxyEnteredTeam);
 }
 
@@ -2521,7 +2532,8 @@ function hideLoadingOverlay() {
 // game. Read off the URL rather than waiting for `init`, because the entry
 // dialog is dressed before the first message arrives.
 function isProxiedPage() {
-  return new URLSearchParams(window.location.search).get('proxy') !== null;
+  const params = new URLSearchParams(window.location.search);
+  return params.get('proxy') !== null || params.get('replay') !== null;
 }
 
 // Upstream has one tank model and no way to choose another, and the bzfs
@@ -6427,8 +6439,69 @@ window.addEventListener('DOMContentLoaded', () => {
     });
   }
 
+  // A recording is binary, so it goes as base64.
+  const uploadReplayBtn = document.getElementById('uploadReplayBtn');
+  const uploadReplay = document.getElementById('uploadReplay');
+  if (uploadReplayBtn && uploadReplay) {
+    uploadReplayBtn.addEventListener('click', () => {
+      const file = uploadReplay.files && uploadReplay.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = () => {
+        const dataUrl = String(reader.result || '');
+        sendToServer({
+          type: 'uploadReplay',
+          replayName: file.name,
+          content: dataUrl.slice(dataUrl.indexOf(',') + 1),
+        });
+      };
+      reader.readAsDataURL(file);
+    });
+  }
+
+  // The last N seconds of the game, or everything the buffer holds, as a
+  // recording (`/record save`).
+  const saveRecordingBtn = document.getElementById('saveRecordingBtn');
+  if (saveRecordingBtn) {
+    saveRecordingBtn.addEventListener('click', () => {
+      const name = document.getElementById('saveRecordingName')?.value.trim() || '';
+      const seconds = Number.parseInt(document.getElementById('saveRecordingSeconds')?.value, 10);
+      if (!name) return;
+      sendToServer({ type: 'saveRecording', name, seconds: Number.isFinite(seconds) && seconds > 0 ? seconds : null });
+    });
+  }
+
+  const deleteUploadBtn = document.getElementById('deleteUploadBtn');
+  const deleteUploadSelect = document.getElementById('deleteUploadSelect');
+  if (deleteUploadBtn && deleteUploadSelect) {
+    // Two presses, the first arming the second for a few seconds: a native
+    // confirm() would leave a headset or a full-screen game for a browser box.
+    let armedValue = null;
+    let armTimer = null;
+    const disarm = () => {
+      armedValue = null;
+      clearTimeout(armTimer);
+      deleteUploadBtn.textContent = 'Delete';
+    };
+    deleteUploadSelect.addEventListener('change', disarm);
+    deleteUploadBtn.addEventListener('click', () => {
+      if (!deleteUploadSelect.value) return;
+      if (armedValue !== deleteUploadSelect.value) {
+        disarm();
+        armedValue = deleteUploadSelect.value;
+        deleteUploadBtn.textContent = 'Confirm';
+        armTimer = setTimeout(disarm, 4000);
+        return;
+      }
+      const { kind, name } = JSON.parse(armedValue);
+      disarm();
+      sendToServer({ type: 'deleteUpload', kind, name });
+    });
+  }
+
   attachSortFilter('viewServerTable', 'viewServerFilter');
   attachSortFilter('viewMapTable', 'viewMapFilter');
+  attachSortFilter('viewReplayTable', 'viewReplayFilter');
   document.getElementById('viewServerRefreshBtn')?.addEventListener('click', () => requestViewData());
 
   // Match Timer buttons: immediate actions like Upload above, not staged
@@ -7278,7 +7351,12 @@ function connectToServer() {
   // see `proxyMotto`.
   // A team on a watch link is an admin playing there rather than watching.
   const watchTeam = watchTarget ? params.get('team') : null;
-  const query = watchTarget
+  // `?replay=` rides on the socket for the same reason again, and carries no
+  // team: a replay is only ever watched.
+  const replayName = params.get('replay');
+  const query = replayName
+    ? `/?replay=${encodeURIComponent(replayName)}`
+    : watchTarget
     ? `/?watch=${encodeURIComponent(watchTarget)}${watchTeam ? `&team=${encodeURIComponent(watchTeam)}` : ''}`
     : (proxyTarget
       ? `/?proxy=${encodeURIComponent(proxyTarget)}${proxyTeam ? `&team=${encodeURIComponent(proxyTeam)}` : ''}`
@@ -9238,9 +9316,32 @@ function refreshScoreboards() {
   refreshSettingsMenu();
 }
 
+// The Operator panel's Delete Upload choices: the maps and replays it
+// uploaded that are still here, as the server lists them.
+function populateDeleteUploadSelect(uploaded) {
+  const select = document.getElementById('deleteUploadSelect');
+  if (!select) return;
+  select.innerHTML = '';
+  const add = (kind, name, label) => {
+    const option = document.createElement('option');
+    option.value = JSON.stringify({ kind, name });
+    option.textContent = label;
+    select.appendChild(option);
+  };
+  for (const name of uploaded?.maps || []) add('maps', name, `map ${name}`);
+  for (const name of uploaded?.replays || []) add('replays', name, `replay ${name}`);
+  if (select.options.length === 0) {
+    const none = document.createElement('option');
+    none.value = '';
+    none.textContent = 'nothing uploaded';
+    select.appendChild(none);
+  }
+}
+
 function handleMapsList(message) {
   const mapList = document.getElementById('mapList');
   if (!mapList) return;
+  populateDeleteUploadSelect(message.uploads);
 
   // Clear existing options
   mapList.innerHTML = '';
@@ -9576,6 +9677,46 @@ function viewMapFile(file) {
 function requestViewData() {
   sendToServer({ type: 'listRemoteServers' });
   sendToServer({ type: 'getMaps' });
+  void refreshViewReplayTable();
+}
+
+// The View dialog's "Local replays": this instance's recordings, over HTTP
+// rather than the socket, since a proxied or replay connection answers only
+// what its target would. A row is the way in, as a map's is.
+async function refreshViewReplayTable() {
+  const tbody = document.querySelector('#viewReplayTable tbody');
+  if (!tbody) return;
+  let replays = [];
+  try {
+    const response = await fetch('/api/replays', { cache: 'no-store' });
+    if (response.ok) replays = (await response.json()).replays || [];
+  } catch {
+    // Listed as none; the dialog's other tables are unaffected.
+  }
+  tbody.innerHTML = '';
+  for (const entry of replays) {
+    const row = document.createElement('tr');
+    const cell = (text, value) => {
+      const td = document.createElement('td');
+      td.textContent = text;
+      if (value !== undefined) td.dataset.value = String(value);
+      return td;
+    };
+    const whole = Math.round(entry.seconds || 0);
+    row.append(
+      cell(entry.name),
+      // UTC, as /list writes it.
+      cell(entry.start ? new Date(entry.start).toISOString().replace('T', ' ').slice(0, 16) : ''),
+      cell(`${Math.floor(whole / 60)}:${String(whole % 60).padStart(2, '0')}`, whole),
+      cell(String(entry.players || 0), entry.players || 0),
+      cell(entry.map || ''),
+    );
+    if (entry.viewers) row.title = `${entry.viewers} watching now`;
+    makeRowActivate(row, () => {
+      window.location.href = `${window.location.pathname}?replay=${encodeURIComponent(entry.name)}`;
+    }, `Watch ${entry.name}`);
+    tbody.appendChild(row);
+  }
 }
 
 function openViewPanel() {
@@ -15425,10 +15566,13 @@ function ensureXRScoreboardOverlay() {
   const observerGap = visiblePlayers.some((player) => player.startsObservers)
     ? Math.round(rowHeight / 2)
     : 0;
+  // A replay's live viewers get a line of their own for the flat board's
+  // "Watching" heading.
+  const watchingGap = visiblePlayers.some((player) => player.startsWatching) ? rowHeight : 0;
   const teamBlockHeight = teamRows.length ? headerHeight + teamRows.length * rowHeight + 8 : 0;
   const panelH = Math.max(
     120,
-    clockHeight + teamBlockHeight + headerHeight + 10 + visiblePlayers.length * rowHeight + observerGap + 12,
+    clockHeight + teamBlockHeight + headerHeight + 10 + visiblePlayers.length * rowHeight + observerGap + watchingGap + 12,
   );
   canvas.width = panelW;
   canvas.height = panelH;
@@ -15491,6 +15635,12 @@ function ensureXRScoreboardOverlay() {
   let rowY = playerHeaderY + 22;
   visiblePlayers.forEach((player) => {
     if (player.startsObservers) rowY += observerGap;
+    if (player.startsWatching) {
+      ctx.font = '11px monospace';
+      ctx.fillStyle = 'rgba(230, 241, 255, 0.7)';
+      ctx.fillText(SCOREBOARD_WATCHING_LABEL, margin, rowY);
+      rowY += watchingGap;
+    }
     const y = rowY;
     rowY += rowHeight;
     // The row is drawn in the colour the player's tank is drawn in, as the flat

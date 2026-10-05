@@ -512,6 +512,7 @@ module.exports = {
   publishToBzflagList,
   packPingHex,
   packQueryGame,
+  packGameSettings,
   PING_HEX_LENGTH,
   NUM_TEAMS,
 };

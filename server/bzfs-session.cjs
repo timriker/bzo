@@ -1107,6 +1107,7 @@ class BzfsSession {
 
 module.exports = {
   BzfsSession,
+  OBSERVER_TEAM,
   toBzfsChatText,
   splitBzfsChat,
   CHAT_TEXT_MAX,

@@ -849,8 +849,16 @@ function updateTeamScoreboard(rows) {
 // and upstream reads that off the scoreboard's own order
 // (`ScoreboardRenderer::getLeader`) -- two orderings would let the tracked
 // player and the top row disagree.
+// Players, then observers, then a replay's live viewers: the recording's own
+// observers belong to the game being played back, and the viewers do not.
+function scoreboardGroup(row) {
+  if (!row.isObserver) return 0;
+  return row.watching ? 2 : 1;
+}
+
 export function compareScoreboardPlayers(a, b) {
-  if (Boolean(a.isObserver) !== Boolean(b.isObserver)) return a.isObserver ? 1 : -1;
+  const group = scoreboardGroup(a) - scoreboardGroup(b);
+  if (group !== 0) return group;
   // newSortedList's default case (ScoreboardRenderer.cxx:1003) sorts by
   // `getRabbitScore()` rather than `getScore()` on a Rabbit Chase world, so the
   // board is ordered by who is next in line for the rabbit rather than by wins
@@ -1048,6 +1056,9 @@ export function formatScoreboardStats(player, options = {}) {
 // in the world wearing a reserved colour. Upstream has no such mark; what it
 // marks is the *hunted* row, which bzo now draws as well -- and in Rabbit Chase
 // the two land on the same row, because the rabbit is hunted automatically.
+// The heading over a replay's live viewers, on both boards.
+export const SCOREBOARD_WATCHING_LABEL = 'Watching';
+
 export const SCOREBOARD_RABBIT_MARK = Object.freeze({
   label: '(rabbit)',
   color: PLAYER_TEAM_COLORS[PLAYER_TEAM.RABBIT],
@@ -1263,6 +1274,9 @@ export function buildScoreboardRows({
       hunted: Boolean(huntedIds && huntedIds.has(id)),
       huntCursor: huntCursorId !== null && id === huntCursorId,
       isObserver: isObserverTeam(state.team),
+      // Watching a replay live, rather than in the recording (server.js's
+      // `proxyPlayerRecord`). Always an observer too.
+      watching: Boolean(state.watching) && isObserverTeam(state.team),
       isCurrent,
     });
   };
@@ -1282,6 +1296,11 @@ export function buildScoreboardRows({
   // all when there is nobody above it to be separated from.
   const firstObserver = rows.findIndex((row) => row.isObserver);
   if (firstObserver > 0) rows[firstObserver].startsObservers = true;
+  // A replay's live viewers are a group of their own, named because upstream
+  // has nothing like it to borrow a blank line from. Named even at the top of
+  // an empty board, since nobody above it is not the same as nobody recorded.
+  const firstWatching = rows.findIndex((row) => row.watching);
+  if (firstWatching !== -1) rows[firstWatching].startsWatching = true;
   return rows;
 }
 
@@ -1411,6 +1430,12 @@ export function updateScoreboard({
 
   // Create scoreboard entries
   playerData.forEach(player => {
+    if (player.startsWatching) {
+      const label = document.createElement('div');
+      label.className = 'scoreboardGroupLabel';
+      label.textContent = SCOREBOARD_WATCHING_LABEL;
+      scoreboardList.appendChild(label);
+    }
     const entry = document.createElement('div');
     // ScoreboardRenderer::drawRoamTarget marks the row the observer is watching.
     const isRoamTarget = player.id === roamTargetId;

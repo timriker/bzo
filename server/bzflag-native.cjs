@@ -432,12 +432,31 @@ class NativeTranslator {
   }
 
   // The burst bzfs sends after MsgEnter (`addPlayer`, bzfs.cxx:2355).
-  accept(init, self) {
-    this.selfBzoId = String(self.id);
+  // The game as it stands, for a recording rather than a client: what
+  // `accept` tells an arrival, less the arrival itself -- no MsgAccept, no
+  // record of its own, no addresses. A recorder calls this at the start of
+  // what it saves and at each snapshot (`server/bzo-recorder.cjs`), as bzfs
+  // writes its state packets (`Record::sendStates`).
+  writeState(init) {
     this.accepted = true;
     this.accepting = true;
-    this.write('ac', new Writer(1).u8(this.selfSlot).done());
-    const vars = Object.entries(init.bzdb || {});
+    this.writeVars(init.bzdb);
+    this.flagUpdate(init.flags || []);
+    for (const record of init.players || []) {
+      if (record.joined === false) continue;
+      this.addPlayer(record);
+      if (record.alive) this.alive(record);
+    }
+    this.accepting = false;
+    if (Array.isArray(init.teamScores) && init.teamScores.length > 0) this.teamUpdate(init.teamScores);
+    if (init.rabbitId !== null && init.rabbitId !== undefined) {
+      this.write('nR', new Writer(1).u8(this.slotFor(init.rabbitId)).done());
+    }
+  }
+
+  // MsgSetVar, twenty to a message as bzfs batches them.
+  writeVars(bzdb) {
+    const vars = Object.entries(bzdb || {});
     for (let start = 0; start < vars.length; start += 20) {
       const chunk = vars.slice(start, start + 20);
       const w = new Writer(512).u16(chunk.length);
@@ -448,6 +467,14 @@ class NativeTranslator {
       }
       this.write('sv', w.done());
     }
+  }
+
+  accept(init, self) {
+    this.selfBzoId = String(self.id);
+    this.accepted = true;
+    this.accepting = true;
+    this.write('ac', new Writer(1).u8(this.selfSlot).done());
+    this.writeVars(init.bzdb);
     this.flagUpdate(init.flags || []);
     for (const record of init.players || []) {
       if (String(record.id) === this.selfBzoId) continue;

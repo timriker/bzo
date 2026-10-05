@@ -542,6 +542,14 @@ function createBzfsWorldTracker(deps) {
       return [...listed.keys()].map((key) => records.get(key)?.worldHash).filter(Boolean);
     },
 
+    // Every tracked server last seen running this world, as `host:port`: what
+    // a replay's row calls a map no local file matches.
+    serversWithWorld(worldHash) {
+      load();
+      if (!worldHash) return [];
+      return [...records.entries()].filter(([, record]) => record.worldHash === worldHash).map(([key]) => key);
+    },
+
     // For `/list`, so a row can say what it knows about that server's world.
     recordFor(host, port) {
       load();

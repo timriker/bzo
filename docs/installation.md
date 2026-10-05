@@ -115,6 +115,11 @@ services:
 You can still provide static read-only maps in the image path, but uploaded maps
 should go to the runtime directory.
 
+Replays work the same way: the bundled sample ships at `/app/replays`, uploads
+go to `$(dirname $SERVER_CONFIG_PATH)/replays`, and `REPLAYS_PATH` overrides
+that. The Operator panel deletes only what it uploaded, which it records in
+`uploads.json` beside `server.json`.
+
 ## Install from source
 
 ### Prerequisites

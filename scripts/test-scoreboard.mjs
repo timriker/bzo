@@ -350,6 +350,32 @@ assert.equal(formatRabbitRank(0.539), '53%');
   assert.equal(formatScoreboardCell(observer, 'record'), '');
 }
 
+// A replay's live viewers: after the recording's own observers, however they
+// would otherwise sort, with the "Watching" heading on the first of them. A
+// viewer that is somehow not an observer is not one of them.
+{
+  const state = (id, name, team, extra = {}) => ({ userData: { playerState: { id, name, team, ...extra } } });
+  const tanks = new Map([
+    ['200', state('200', 'aaa-viewer', PLAYER_TEAM.OBSERVER, { watching: true, connectDate: 1000 })],
+    ['5', state('5', 'recorder', PLAYER_TEAM.OBSERVER)],
+    ['0', state('0', 'robohost', PLAYER_TEAM.RED, { wins: 2 })],
+    ['201', state('201', 'robohost', PLAYER_TEAM.OBSERVER, { watching: true, connectDate: 2000 })],
+    ['202', state('202', 'odd', PLAYER_TEAM.RED, { watching: true })],
+  ]);
+  const rows = buildScoreboardRows({ myPlayerId: '201', myPlayerName: 'robohost', myTank: tanks.get('201'), tanks });
+  assert.deepEqual(rows.map((r) => r.id), ['0', '202', '5', '200', '201']);
+  assert.equal(rows[2].startsObservers, true);
+  assert.equal(rows[3].startsWatching, true, 'the first viewer carries the heading');
+  assert.ok(rows.filter((r) => r.startsWatching).length === 1, 'and only the first');
+  assert.equal(rows[1].watching, false);
+  // With nobody recorded on the board yet, the heading is still there.
+  const alone = buildScoreboardRows({
+    myPlayerId: '200', myPlayerName: 'v', myTank: tanks.get('200'), tanks: new Map([['200', tanks.get('200')]]),
+  });
+  assert.equal(alone[0].startsWatching, true);
+  assert.equal(alone[0].startsObservers, undefined);
+}
+
 // The break between the players and the observers, marked on the row so the flat
 // board and the headset's cannot put it in different places.
 {

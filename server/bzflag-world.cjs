@@ -15,7 +15,9 @@
 'use strict';
 
 const zlib = require('zlib');
+const crypto = require('crypto');
 const { OBSTACLE_ORDER } = require('./remote-world-import.cjs');
+const { compileBzwWorld } = require('./bzw-compile.cjs');
 
 // Protocol.h:117-142 and global.h:121.
 const WORLD_CODE_HEADER = 0x6865;
@@ -356,4 +358,19 @@ function packWorldDatabase(tree) {
   return out;
 }
 
-module.exports = { packWorldBody, packWorldDatabase };
+// The hash bzfs gives a world loaded from a `.bzw`: `p` and the MD5 of the
+// database it sends (bzfs.cxx:1208). bzo's packing is bzfs's byte for byte
+// (scripts/test-bzflag-world.mjs), so this is what a recording made on that
+// map carries, and how a replay names its local map. Null for a map the
+// compiler cannot reproduce.
+function bzfsWorldHashOfBzw(text) {
+  try {
+    const tree = compileBzwWorld(text);
+    if (tree.unsupported && tree.unsupported.length > 0) return null;
+    return `p${crypto.createHash('md5').update(packWorldDatabase(tree)).digest('hex')}`;
+  } catch {
+    return null;
+  }
+}
+
+module.exports = { packWorldBody, packWorldDatabase, bzfsWorldHashOfBzw };

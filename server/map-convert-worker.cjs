@@ -16,6 +16,7 @@ const path = require('path');
 const { parentPort, workerData } = require('worker_threads');
 const { configureBzwParse, parseBZWMap, buildWorldFile } = require('./bzw-parse.cjs');
 const { digestOf } = require('./precompress.cjs');
+const { bzfsWorldHashOfBzw } = require('./bzflag-world.cjs');
 
 // `writeDir`: where to write the world's JSON, when it is to be kept. Written
 // here rather than sent back, so the server's thread never holds a big map's
@@ -34,9 +35,12 @@ if (writeDir) {
   fs.writeFileSync(path.join(writeDir, `${world.hash}.json`), bytes);
   written = { digest: digestOf(bytes), size: bytes.length };
 }
+// For naming the map a recording was played on (`bzfsWorldHashOfBzw`).
+const bzfsHash = bzfsWorldHashOfBzw(fs.readFileSync(filePath, 'latin1'));
 parentPort.postMessage({
   result: {
     ...world,
+    bzfsHash,
     written,
     instancing: map.instancing || null,
     warnedMessages: map.warnedMessages,

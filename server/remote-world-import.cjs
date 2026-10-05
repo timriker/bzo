@@ -2044,7 +2044,11 @@ function buildBZWText(serverMeta, tree, fetchedAt) {
   }
 
   const lines = [];
-  lines.push(`# downloaded by bzo (https://github.com/timriker/bzo) from ${serverMeta.host}:${serverMeta.port}${serverMeta.title ? ` -- ${serverMeta.title}` : ''}`);
+  // `source` names where a world came from that no server sent just now: a
+  // recording's, read out of the file.
+  lines.push(serverMeta.source
+    ? `# read by bzo (https://github.com/timriker/bzo) from ${serverMeta.source}`
+    : `# downloaded by bzo (https://github.com/timriker/bzo) from ${serverMeta.host}:${serverMeta.port}${serverMeta.title ? ` -- ${serverMeta.title}` : ''}`);
   lines.push(`# fetched ${fetchedAt}`);
   // What the list server says about this server that nothing below records:
   // the hexcode is already the options block, and the title is above.

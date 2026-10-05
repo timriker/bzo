@@ -49,6 +49,7 @@ RUN npm ci --omit=dev --ignore-scripts && npm cache clean --force
 
 COPY public ./public
 COPY maps ./maps
+COPY replays ./replays
 COPY server ./server
 COPY example-server.json ./example-server.json
 COPY server.js ./server.js

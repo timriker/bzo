@@ -697,7 +697,9 @@ watching a real BZFlag match through bzo (`?proxy=<host_port>`) is connected
 to. That connection is never a player in this server's own game -- it is not
 in `players` at all -- and its `init` is synthesized from what its target says
 to a joining player. `docs/proxy.md` is what it supports and
-`docs/proxy-plan.md` what it does not; issue #82.
+`docs/proxy-plan.md` what it does not; issue #82. `docs/replay.md` is how
+bzo reads a bzfs recording and plays it to `?replay=<name>` through the same
+path, and `docs/replay-plan.md` what is left; issue #172.
 
 **`node --check` parses; it does not boot.** A module-level `const` that reads
 something initialized further down the file passes every static check and
@@ -4379,7 +4381,7 @@ without editing a map first.
 Raising `WG`'s flap count to test it is `/set _wingsJumpCount <n>`, or a
 `-set` line in the map or server.json's `bzdb` block.
 - `SERVER_CONFIG_PATH` overrides the config path; `MAPS_PATH` overrides the
-  writable runtime maps directory.
+  writable runtime maps directory, and `REPLAYS_PATH` the replays one.
 - Obstacles are generated and resolved server-side and sent in the `init`
   payload. The client recreates meshes from that data, so keep the schema stable
   when extending obstacle properties.

@@ -233,7 +233,9 @@ Two things it has to decide:
   `/poll kill|set|flagreset`, `/vote` and `/veto` are built
   (`server/polls.cjs`); the `antipoll*` counter-permissions have no group to
   live in yet.
-- **Recording** — `/record`, `/replay`. bzo records nothing.
+- **Recording** — `/record` is built, and `/replay stats` and `list` in a
+  replay room ([replay.md](replay.md)); the rest of `/replay` is
+  [replay-plan.md](replay-plan.md).
 - **Reports** — `/report`, `/viewreports`. A file to append to and read back;
   small, but it is state.
 - **Help pages** — `/help <page>`, `/sendhelp`. Upstream reads chunks out of
@@ -263,5 +265,5 @@ Two things it has to decide:
 1. `/modcount`; `/handicap` with Handicap.
 2. `/lagwarn` and friends with `docs/lag-plan.md` step 6; the idle commands
    with last-input tracking.
-3. Reports, recording — each when something wants them.
+3. Reports, when something wants them.
 
