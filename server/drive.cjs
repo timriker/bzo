@@ -346,17 +346,8 @@ function resolveStep(state, velocityX, velocityY, velocityZ, angularVelocity, dt
   });
 }
 
-// handleMotion: one frame of the tank's motion. Returns what happened in it:
-//   landed      { impactSpeed, obstacle, x, y, z } the frame it came down
-//   jumpStarted { flap } the frame it left the ground under its own power
-//   fallStarted the frame it went over an edge
-//   teleport    the crossing a teleporter made, `world.teleport`'s own answer
-//               plus where and how the tank met it
-//   zoneToggle  a Phantom Zone tank's crossing, which flips the zone instead
-//   drivenUpward, burrowEntered, forceSend, moved, teleported
-function stepDrive(state, intended, tank, world, clock, dt) {
-  const { config } = world;
-  const events = {
+function noDriveEvents() {
+  return {
     landed: null,
     jumpStarted: null,
     fallStarted: false,
@@ -368,6 +359,36 @@ function stepDrive(state, intended, tank, world, clock, dt) {
     forceSend: false,
     moved: 0,
   };
+}
+
+// A dead tank's frame: it stays where it died, whatever the controls say.
+// Upstream's `location == Dead` sets `dt` to zero (LocalPlayer.cxx:282), so
+// nothing moves it and its radar marker holds still until the respawn. The
+// speeds go to zero rather than being kept as upstream keeps them, because
+// bzo's server extrapolates a move packet's speeds and a frozen tank that
+// claims to be driving reads as drift.
+function holdDrive(state) {
+  state.lastSpeed = 0;
+  state.lastAngVel = 0;
+  state.forwardSpeed = 0;
+  state.rotationSpeed = 0;
+  state.verticalVelocity = 0;
+  state.airVelocityX = 0;
+  state.airVelocityZ = 0;
+  return noDriveEvents();
+}
+
+// handleMotion: one frame of the tank's motion. Returns what happened in it:
+//   landed      { impactSpeed, obstacle, x, y, z } the frame it came down
+//   jumpStarted { flap } the frame it left the ground under its own power
+//   fallStarted the frame it went over an edge
+//   teleport    the crossing a teleporter made, `world.teleport`'s own answer
+//               plus where and how the tank met it
+//   zoneToggle  a Phantom Zone tank's crossing, which flips the zone instead
+//   drivenUpward, burrowEntered, forceSend, moved, teleported
+function stepDrive(state, intended, tank, world, clock, dt) {
+  const { config } = world;
+  const events = noDriveEvents();
 
   // A tank that came down onto something last frame lands now, before anything
   // else touches its height or velocity.
@@ -774,6 +795,7 @@ module.exports = {
   isDrivenUpward,
   findInsideBuildings,
   readDriveInput,
+  holdDrive,
   stepDrive,
   movePacketFields,
   packetVelocity,

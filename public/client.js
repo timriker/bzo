@@ -386,6 +386,7 @@ import {
   readDriveInput,
   shotFromTank,
   stepDrive,
+  holdDrive,
 } from './drive.mjs';
 import { bzdbFromObject, worldConfig as evaluateWorldConfig } from './bzdb.mjs';
 import { normalizeAngle } from './motion.mjs';
@@ -4504,6 +4505,14 @@ let entryDialogFreeze = false;
 
 function isMyTankAlive() {
   return Boolean(myTank && myTank.userData?.playerState?.alive);
+}
+
+// Whether the local tank is a playing one waiting to respawn, dead or not yet
+// spawned, which upstream holds still (`doMotion` only runs `isAlive()`,
+// playing.cxx:7336). An observer is never alive and moves anyway: roaming,
+// Map Viewer and the phantom tank are all Observer.
+function isMyTankFrozenByDeath() {
+  return !isObserver() && !isMyTankAlive();
 }
 
 // Whether the game is being watched at all: a menu in front of it or a hidden
@@ -12863,6 +12872,7 @@ function handleInputEvents() {
   showMotionSurfaceDebug(lastMotionObstacle);
 
   if (pauseState.isFrozen() || entryDialogFreeze) return;
+  if (isMyTankFrozenByDeath()) return;
 
   runAutopilot();
 
@@ -12901,7 +12911,9 @@ function handleMotion(deltaTime) {
   // rings, the packets, and the tank's mesh.
   loadMyDrive();
   const wasInAir = isInAir;
-  const events = stepDrive(myDrive, {
+  // The rest of this pass still runs for a dead tank: the heartbeat below is
+  // what keeps a proxied bzfs from marking it not responding.
+  const events = isMyTankFrozenByDeath() ? holdDrive(myDrive) : stepDrive(myDrive, {
     forward: intendedForward,
     rotation: intendedRotation,
     jumpTriggered,
