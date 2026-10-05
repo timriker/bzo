@@ -775,7 +775,7 @@ Read as a bzfs command line, one option a line. Everything bzo understands:
 |---|---|
 | `-c` | team play on |
 | `-offa` | team play off, free-for-all |
-| `-rabbit [score\|killer\|random]` | Rabbit Chase: one rabbit against every hunter, no colour teams |
+| `-rabbit [mode]` | Rabbit Chase: one rabbit against every hunter, no colour teams; `mode` is `score`, `killer` or `random` |
 | `-autoTeam` | assign teams rather than letting players pick |
 | `-a <vel> <rot>` | the world's acceleration limit, upstream's inertia switch; `0 0` is none |
 | `-noTeamKills` | players on the same team are immune to each other; rogue is excepted |
@@ -793,8 +793,8 @@ Read as a bzfs command line, one option a line. Everything bzo understands:
 | `-mts <score>` | ends the match when any colour team's wins minus losses reaches it |
 | `-ms <count>` | how many shots a tank may have in the air at once |
 | `-s <count>`, `+s <count>` | how many superflag slots the world holds |
-| `-f <abbrev\|good\|bad>` | take a flag type, or a whole quality, out of the pool |
-| `+f <abbrev\|good\|bad>[{count}]` | flags of a type always in the world, one or `count` of them, with no zone of their own (see **Flag spawn zones**); `team` is not read |
+| `-f <flag>` | take a flag type out of the pool; `flag` is its abbreviation, or `good` or `bad` for a whole quality |
+| `+f <flag>[{count}]` | `flag` as for `-f`: flags of a type always in the world, one or `count` of them, with no zone of their own (see **Flag spawn zones**); `team` is not read |
 | `-set <name> <value>` | a world variable -- see [bzdb.md](bzdb.md) for every one bzo reads |
 | `-noradar` | no radar for anyone; it sets `_radarLimit` to 0 |
 | `-srvmsg <text>` | a line the world says to each player as they join |
