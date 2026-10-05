@@ -6,6 +6,8 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
 
 ## [Unreleased]
 
+## [1.3.20] - 2026-10-05
+
 ### Changed
 - Node.js is Ubuntu 26.04's own `nodejs` package, 22.22.1 today, in the
   Docker image and in CI, as on a server running from source. The image
