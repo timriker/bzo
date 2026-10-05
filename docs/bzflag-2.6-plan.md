@@ -112,9 +112,26 @@ review doc.
 | OBJ tank models, chosen per player, and camo | `docs/tank-model-format.md`, `public/camo.mjs` | No | OBJ loading, skins |
 | Worlds served by content hash, compressed, cached forever; native clients get it through MsgCacheURL | `docs/network.md`, `docs/bzflag-clients.md` | Yes | Faster map transfer (2.6 drops the cache URL instead) |
 
-bzo-only, with no 2.6 counterpart: WebXR, touch and gamepads, installable app,
-voice chat, the proxy to real `bzfs` servers, the operator panel, `.rec`
-recording and browser replay, and auto-rejoin.
+bzo-only, with no 2.6 counterpart: WebXR, touch, installable app, voice chat,
+the proxy to real `bzfs` servers, the operator panel, `.rec` recording and
+browser replay, and auto-rejoin.
+
+Gamepads are not bzo-only. Upstream reads any SDL joystick
+(`src/platform/SDLJoystick.cxx`), and 2.4.30 is ahead of `master` there, so
+2.6 gets it from the merge. They differ:
+
+| | bzo | BZFlag 2.4.30 |
+|---|---|---|
+| Setup | Browser's standard layout, on when plugged in | Picked in Input Settings, opened at startup; raw `SDL_Joystick`, no hotplug |
+| Driving | Left stick | Axes chosen by number (`jsXAxis`, `jsYAxis`), invertible |
+| Shaping | Fixed 20% dead zone | `jsRangeMin` (dead zone, 5%), `jsRangeMax`, `jsRampType`, `jsStretchCorners` |
+| Buttons | Fixed: shoot, jump, drop, identify | Bound like keys ("Joystick Button 1", hat directions); no defaults |
+| Rumble | None | Death and firing, `rumble` on by default |
+| Menus | Driven by the pad | Joystick buttons reach menus, which answer keyboard keys only |
+
+bzo could take upstream's rumble (the Gamepad API's `vibrationActuator`) and
+its dead-zone and ramp settings; upstream could take a default button layout
+and menu navigation.
 
 Not in bzo yet: locale at join (`docs/i18n-plan.md`), normal and specular
 maps, custom flags or a flag effect field, an unknown-flag type, and
