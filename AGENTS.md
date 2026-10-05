@@ -576,6 +576,10 @@ server is unreachable, and for tutorial levels built on top of that.
 from an installed client: the game's rules out of `server.js` into one module
 the server and a browser Worker both run.
 
+`docs/bzflag-2.6-plan.md` is the plan for serving BZFlag 2.6 native clients
+alongside 2.4, and what to suggest upstream so one port and one list entry
+can carry both.
+
 `docs/bots-plan.md` is the plan for the autopilot and for bots (issue #151).
 `public/autopilot.mjs` reads the world only through a view, so the client's
 autopilot and the server's own bots (`server/bots.cjs`) drive the same
