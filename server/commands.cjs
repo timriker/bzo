@@ -277,26 +277,27 @@ function parseBearing(token) {
   return null;
 }
 
-// A compass bearing to bzo's rotation. bzo faces -Z at 0 and turns toward -X
-// (see "World Coordinate System" in AGENTS.md), so rotation runs *anticlockwise*
-// from north while a bearing runs clockwise -- which is the whole of the
-// conversion, and the reason /mv takes a compass point rather than a number.
-function bearingToRotation(degrees) {
-  const bounded = ((-degrees % 360) + 360) % 360;
+// A compass bearing as an azimuth, upstream's heading: counter-clockwise from
+// east (+X), where a bearing runs clockwise from north -- which is the whole of
+// the conversion, and the reason /mv takes a compass point rather than a
+// number. In radians, in [0, 2pi).
+function bearingToAzimuth(degrees) {
+  const bounded = (((90 - degrees) % 360) + 360) % 360;
   return bounded * Math.PI / 180;
 }
 
-// A facing token as bzo's own rotation, in radians -- a compass point through
-// the conversion above, or a number that was already in bzo's convention and
+// A facing token as an azimuth, in radians -- a compass point through the
+// conversion above, or a number that was already an azimuth in degrees, as a
+// `.bzw`'s `rotation` is and as a Share View Link's `pos=` tail writes it, and
 // only needs its units changed. `null` for anything else, which the caller
 // turns into `formatBearingError`.
 //
 // Normalized to [0, 2pi) whichever way it arrived, so the two spellings of the
 // same facing produce the same number: an angle off a share link is whatever
-// the tank's rotation happened to be and runs negative as readily as positive.
+// the tank's heading happened to be and runs negative as readily as positive.
 function parseFacing(token) {
   const bearing = parseBearing(token);
-  if (bearing !== null) return bearingToRotation(bearing);
+  if (bearing !== null) return bearingToAzimuth(bearing);
   if (typeof token !== 'string') return null;
   const degrees = Number(token.trim());
   if (token.trim().length === 0 || !Number.isFinite(degrees)) return null;
@@ -306,8 +307,8 @@ function parseFacing(token) {
 
 // The nearest of the eight points, for echoing back where a tank ended up
 // facing. Approximate on purpose: it is a label, not a value.
-function rotationToBearingName(rotation) {
-  const degrees = ((-(rotation * 180 / Math.PI) % 360) + 360) % 360;
+function azimuthToBearingName(azimuth) {
+  const degrees = (((90 - (azimuth * 180 / Math.PI)) % 360) + 360) % 360;
   const points = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
   return points[Math.round(degrees / 45) % 8];
 }
@@ -317,10 +318,10 @@ function rotationToBearingName(rotation) {
 // developed by driving it: `server.json`'s `testSpawn` puts a named player
 // somewhere on join, and this is the same thing without the restart.
 //
-// The coordinates are bzo's world coordinates, which is what `testSpawn` takes
-// and what every log line prints: `+X` east, `-Z` north, `+Y` up.
+// The coordinates are upstream's, as a `.bzw` writes them and as `testSpawn`
+// takes them and every log line prints them: `+X` east, `+Y` north, `+Z` up.
 //
-//   /mv x,z          -- there, at whatever height the tank fits, facing as it was
+//   /mv x,y          -- there, at whatever height the tank fits, facing as it was
 //   /mv x,y,z        -- with the height given
 //   /mv x,y,z,facing
 //   /mv <coords> <facing>
@@ -328,23 +329,21 @@ function rotationToBearingName(rotation) {
 //
 // A facing is a compass point or an angle -- see `parseFacing` for which way a
 // number runs. The four-value form is the one a Share View Link's `pos=` tail
-// pastes straight into: `/mv -320.0,0.0,-310.3,-91.3` (issue #109).
+// pastes straight into: `/mv -320.0,310.3,0.0,-1.3` (issue #109).
 //
 // Two numbers leave the height out because that is the form worth typing: the
 // caller resolves it by dropping the tank onto whatever is at that point, so
 // `/mv 0,0` lands on the ground where the tank fits and on the roof where it does
-// not. Three is `x,y,z` -- the order the rest of bzo writes a position in -- so
-// the second number never changes meaning between forms, and a facing needs all
-// three before it to sit in the list. It also has a slot of its own after the
-// coordinates, which is the shorter thing to type.
+// not. Three is `x,y,z`, so the first two never change meaning between forms,
+// and a facing needs all three before it to sit in the list. It also has a slot
+// of its own after the coordinates, which is the shorter thing to type.
 //
-// Returns `{ error }`, or `{ x, y, z, rotation }` where `y` and `rotation` are
-// null when they were not given. `rotation` is radians in bzo's own convention,
-// resolved here rather than handed back as a bearing for the caller to convert:
-// there are two spellings of a facing now and only one of them was ever a
-// bearing.
+// Returns `{ error }`, or `{ x, y, z, azimuth }` where `z` and `azimuth` are
+// null when they were not given. `azimuth` is radians, resolved here rather
+// than handed back as a bearing for the caller to convert: there are two
+// spellings of a facing and only one of them is a bearing.
 function parseMoveCoordinates(args) {
-  const usage = 'Usage: /mv [player] <x,z|x,y,z|x,y,z,facing> [facing]';
+  const usage = 'Usage: /mv [player] <x,y|x,y,z|x,y,z,facing> [facing]';
   if (typeof args !== 'string' || args.trim().length === 0) return { error: usage };
   const tokens = args.trim().split(/\s+/);
   if (tokens.length > 2) return { error: usage };
@@ -360,25 +359,25 @@ function parseMoveCoordinates(args) {
   if (!coordinates.every(Number.isFinite)) return { error: usage };
 
   let x;
-  let y = null;
-  let z;
-  let rotation = null;
+  let y;
+  let z = null;
+  let azimuth = null;
   if (coordinates.length === 2) {
-    [x, z] = coordinates;
+    [x, y] = coordinates;
   } else {
     [x, y, z] = coordinates;
   }
   if (values.length === 4) {
-    rotation = parseFacing(values[3]);
-    if (rotation === null) return { error: formatBearingError(values[3]) };
+    azimuth = parseFacing(values[3]);
+    if (azimuth === null) return { error: formatBearingError(values[3]) };
   }
 
   if (tokens.length === 2) {
     const trailing = parseFacing(tokens[1]);
     if (trailing === null) return { error: formatBearingError(tokens[1]) };
-    rotation = trailing;
+    azimuth = trailing;
   }
-  return { x, y, z, rotation };
+  return { x, y, z, azimuth };
 }
 
 // FlagInfo::getTextualInfo (FlagInfo.cxx:284), which is the one line `/flag
@@ -406,8 +405,8 @@ module.exports = {
   parsePlayerTarget,
   parseBearing,
   parseFacing,
-  bearingToRotation,
-  rotationToBearingName,
+  bearingToAzimuth,
+  azimuthToBearingName,
   parseMoveCoordinates,
   COMMAND_LIST_LINE_LENGTH,
   isCommandLine,

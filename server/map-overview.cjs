@@ -26,6 +26,7 @@
 
 const { getTeamFromColorIndex, getPlayerTeamRadarColor } = require('./teams.cjs');
 const { meshArrays, FACE_NO_RADAR, NO_INDEX } = require('./mesh-arrays.cjs');
+const { getObstacleBase } = require('./collision.cjs');
 
 // The grid, and so the picture, in pixels square. 256 is what `/list`'s pane
 // shows and about where the rectangle encoding stops paying for itself: 512
@@ -170,16 +171,16 @@ function walkSurfaces(obstacles, mapSize, size, visit) {
             x: arrays.vertices[vi], y: arrays.vertices[vi + 1], z: arrays.vertices[vi + 2],
           };
           vertices.push(vertex);
-          if (vertex.y > top) top = vertex.y;
+          if (vertex.z > top) top = vertex.z;
         }
         // Faces standing on edge project to a line and have nothing to fill:
         // a wall's footprint is already covered by whatever caps it, and a
         // face with no area cannot be seen from above.
         const firstX = vertices[1].x - vertices[0].x;
-        const firstZ = vertices[1].z - vertices[0].z;
+        const firstY = vertices[1].y - vertices[0].y;
         const secondX = vertices[2].x - vertices[0].x;
-        const secondZ = vertices[2].z - vertices[0].z;
-        const wind = (firstZ * secondX) - (firstX * secondZ);
+        const secondY = vertices[2].y - vertices[0].y;
+        const wind = (firstX * secondY) - (firstY * secondX);
         if (Math.abs(wind) < 1e-9) continue;
         // Only surfaces that face upwards. A mesh is usually a closed solid,
         // so every cell of a terrain has an underside as well as a top, and
@@ -192,8 +193,8 @@ function walkSurfaces(obstacles, mapSize, size, visit) {
         let up = wind > 0;
         const normalIndex = arrays.cornerNormal[start];
         if (normalIndex !== NO_INDEX) {
-          const normalY = arrays.normals[(normalIndex * 3) + 1];
-          if (Number.isFinite(normalY)) up = normalY > 0;
+          const normalZ = arrays.normals[(normalIndex * 3) + 2];
+          if (Number.isFinite(normalZ)) up = normalZ > 0;
         }
         if (!up) continue;
         // A material's `noradar` keeps a face off the panel, and the picture
@@ -201,28 +202,20 @@ function walkSurfaces(obstacles, mapSize, size, visit) {
         // the flag is per face and a mesh may hide only some of itself.
         if ((arrays.faceFlags[f] & FACE_NO_RADAR) !== 0) continue;
         const color = arrays.materials[arrays.faceMaterial[f]]?.color;
-        visit(vertices.map((vertex) => [toPixel(vertex.x), toPixel(vertex.z)]), top,
+        // North is up the picture.
+        visit(vertices.map((vertex) => [toPixel(vertex.x), toPixel(0 - vertex.y)]), top,
           color ? (tintFill(color) || fill) : fill);
       }
       continue;
     }
-    visit(footprintCorners(obs, toPixel), (obs.baseY || 0) + (obs.h || 0), fill);
+    visit(footprintCorners(obs, toPixel), getObstacleBase(obs) + ((obs.size && obs.size[2]) || 0), fill);
   }
 }
 
 // A box's or a pyramid's four corners from above, rotated as the map rotated
-// it. Its own `bounds` would be the axis-aligned box around this, which on a
-// map of angled walls reads as a blur.
-//
-// `w` and `d` are the full extents, which is why they are halved here -- the
-// same halving `getRadarObstacleCullRadius` and the panel's own box draw do.
-// The rotation is **negated**, which is the panel's own map-to-panel
-// transform: `getRadarObjectRotation` (public/client.js) is
-// `(-worldRotation) + playerHeading`, and a picture of the whole map has no
-// heading, so this is that function at heading zero. Taking `obs.rotation`
-// as-is mirrors every angle that is not a multiple of 90 degrees -- an
-// obstacle's own `bounds` cannot catch it, being the same either way, but
-// `hix.bzw`'s corner-to-centre walls land on the wrong diagonal.
+// it, in order round it. Its own `bounds` would be the axis-aligned box around
+// this, which on a map of angled walls reads as a blur. North is up the
+// picture, so a pixel's row is from -y.
 // Every base's outline, over everything else -- upstream's order too: its
 // bases follow the boxes, pyramids and meshes (`RadarRenderer::renderObstacles`).
 function baseOutlines(obstacles, mapSize, size) {
@@ -240,14 +233,14 @@ function baseOutlines(obstacles, mapSize, size) {
 }
 
 function footprintCorners(obs, toPixel) {
-  const rotation = -(obs.rotation || 0);
-  const cos = Math.cos(rotation);
-  const sin = Math.sin(rotation);
-  const halfWidth = (obs.w || 0) / 2;
-  const halfDepth = (obs.d || 0) / 2;
-  return [[-1, -1], [1, -1], [1, 1], [-1, 1]].map(([signX, signZ]) => [
-    toPixel(obs.x + ((signX * halfWidth * cos) - (signZ * halfDepth * sin))),
-    toPixel(obs.z + ((signX * halfWidth * sin) + (signZ * halfDepth * cos))),
+  const cos = Math.cos(obs.angle || 0);
+  const sin = Math.sin(obs.angle || 0);
+  const halfWidth = obs.size ? obs.size[0] : 0;
+  const halfDepth = obs.size ? obs.size[1] : 0;
+  const [x, y] = obs.pos || [0, 0];
+  return [[-1, -1], [1, -1], [1, 1], [-1, 1]].map(([signX, signY]) => [
+    toPixel(x + (signX * halfWidth * cos) - (signY * halfDepth * sin)),
+    toPixel(0 - (y + (signX * halfWidth * sin) + (signY * halfDepth * cos))),
   ]);
 }
 

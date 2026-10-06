@@ -44,6 +44,8 @@ const { readReplay, writeReplay, PACKET_MODE: REPLAY_PACKET_MODE } = require('./
 const {
   BroadcastBuffer, bufferToReplay, SERVER_PLAYER: BZO_RECORDER_PLAYER,
 } = require('./server/bzo-recorder.cjs');
+
+
 const { createUploadRecord } = require('./server/uploads.cjs');
 const {
   ReplayRoom, ReplaySession, summarizeReplay, fileListLines,
@@ -67,16 +69,15 @@ const {
   WORLD_WEAPON_PLAYER_ID,
   getWorldMissileLifetimeSeconds,
   WORLD_WEAPON_TEAM,
-  getWorldWeaponDirection,
   getShotFlight,
   getWorldReloadSeconds,
   getSlotReloadSeconds,
   findFreeShotSlot,
   countFreeShotSlots,
   shotIsActive,
-  getShotTankHit,
   shockWaveHitsTank,
 } = require('./server/shots.cjs');
+const { getShotTankHit, getWorldWeaponDirection } = require('./server/shots.cjs');
 const {
   BASE_SIZE,
   FLAG_ABBREVIATIONS,
@@ -92,8 +93,6 @@ const {
   findNearestGroundFlag,
   GM_TURN_ANGLE,
   TARGETING_ANGLE,
-  pickTargetInSights,
-  steerGuidedShot,
   MAX_FLAG_GRABS,
   DEFAULT_WINGS_JUMP_COUNT,
   DEFAULT_WINGS_SLIDE_TIME,
@@ -170,6 +169,7 @@ const {
   MACHINE_GUN_AD_VEL,
   MACHINE_GUN_AD_RATE,
 } = require('./server/flags.cjs');
+const { steerGuidedShot, pickTargetInSights } = require('./server/flags.cjs');
 const {
   documentTitle,
   escapeHtml,
@@ -180,16 +180,17 @@ const {
   SHOT_COLLISION_RADIUS,
   SHOT_BOUNCE_CLEARANCE,
   getBaseTeamAtPoint,
-  getBaseTopY,
+  getBaseTop,
   getShotTeleporterDims,
   findTankObstacle,
   findPhysicsSurfaceObstacle,
   resolvePhysicsDriverAt,
   getColliderLocalPoint,
+  getObstacleBase,
   getObstacleHeight,
   getShotObstacleNormal,
   isOverFlatTop,
-  meshFlatTopYsAt,
+  meshFlatTopsAt,
   isPyramidFlatTop,
   reflectShotDirection,
   traceShotStep,
@@ -201,7 +202,7 @@ const {
 const {
   buildTeleporterIndex,
   getTeleportDestinationFace,
-  rotateXZ,
+  rotateXY,
   transformShotThroughTeleporter,
 } = require('./server/teleport.cjs');
 const {
@@ -210,6 +211,7 @@ const {
   traceShotThroughTeleporters,
 } = require('./server/trace.cjs');
 const { MAX_BUMP_HEIGHT: DEFAULT_MAX_BUMP_HEIGHT, normalizeAngle } = require('./server/motion.cjs');
+const { packetVelocity } = require('./server/drive.cjs');
 const { BZDB_DEFAULTS } = require('./server/bzdb-defaults.cjs');
 const {
   BZDB_CONFIG_VARS,
@@ -295,7 +297,7 @@ const {
 const {
   COMMAND_TIER,
   parsePlayerTarget,
-  rotationToBearingName,
+  azimuthToBearingName,
   parseMoveCoordinates,
   isCommandLine,
   parseCommandLine,
@@ -548,6 +550,7 @@ const {
   formatInstancing,
   getMaxObstacleTopY,
   addRequiredFlags,
+  WORLD_FORMAT,
 } = require('./server/bzw-parse.cjs');
 // Beside the image's own files, not on the volume with `CACHE_DIR`: these
 // sidecars are compressed copies of `public/`, they are built at image build
@@ -672,6 +675,9 @@ const SERVER_VERSION = (() => {
 // server's `build` and `/serverquery`. The release, then the build id, which
 // is what tells two servers on one release apart.
 const BZO_APP_VERSION = `bzo-${SERVER_VERSION}-${CLIENT_BUILD}`;
+// What a map index entry was written by: the release, and the layout its
+// world file is in, so a world written in an older one is parsed again.
+const MAP_INDEX_VERSION = `${SERVER_VERSION}/world${WORLD_FORMAT}`;
 
 const BZO_USER_AGENT =
   `bzo/${SERVER_VERSION} (${CLIENT_BUILD}; +https://github.com/timriker/bzo)`;
@@ -1289,7 +1295,7 @@ app.get('/api/players', (req, res) => {
         x: player.x,
         y: player.y,
         z: player.z,
-        rotation: player.rotation,
+        azimuth: player.azimuth,
         forwardSpeed: player.forwardSpeed,
         rotationSpeed: player.rotationSpeed,
         verticalVelocity: player.verticalVelocity,
@@ -5903,6 +5909,7 @@ if (MAP_SOURCE === 'random') {
   WORLD_WEAPONS = mapData.weapons;
 }
 
+
 // Content-hashed, HTTP-cacheable world files, so a client fetches a map's
 // static geometry once and an `immutable` response spares it a re-fetch on
 // every reconnect -- the same win upstream gets from its MD5-keyed world
@@ -6084,7 +6091,7 @@ function registerWorldFile(fileName, world, { keepWorld = true } = {}) {
   // So the next boot can list this file from its hash, picture and stats
   // without parsing it.
   mapIndex.note(fileName, hash, overviewName, resolveMapFilePath(fileName),
-    { stats, version: SERVER_VERSION, bzfsHash: registered.bzfsHash });
+    { stats, version: MAP_INDEX_VERSION, bzfsHash: registered.bzfsHash });
   return registered;
 }
 
@@ -6302,7 +6309,7 @@ function hashRemainingMapsInBackground() {
       // has not changed since a previous boot parsed it. Parsed otherwise, for
       // its hash, picture and stats only: nobody is playing it, and its world
       // is written when somebody views it (`prepareMapForView`).
-      const known = filePath ? mapIndex.restore(fileName, filePath, SERVER_VERSION) : null;
+      const known = filePath ? mapIndex.restore(fileName, filePath, MAP_INDEX_VERSION) : null;
       if (known) {
         MAP_REGISTRY.set(fileName, {
           fileName,
@@ -6955,7 +6962,7 @@ class Player {
     this.x = 0;
     this.y = 0;
     this.z = 0;
-    this.rotation = 0;
+    this.azimuth = 0;
     this.alive = false;
     // When each shot slot comes back, as an epoch time per slot. Upstream's
     // `shots[]` array with the shells left out: a slot is taken when it is
@@ -7046,10 +7053,10 @@ class Player {
     // Extrapolation state
     this.forwardSpeed = 0;
     this.rotationSpeed = 0;
-    this.jumpDirection = null;
-    this.slideDirection = undefined;
+    this.jumpAzimuth = null;
+    this.slideAzimuth = undefined;
     this.airVelocityX = 0;
-    this.airVelocityZ = 0;
+    this.airVelocityY = 0;
     this.teleportReentryBlockTeleporterIndex = null;
     this.teleportReentryBlockDistance = 0;
     this.teleportReentryBlockUntil = 0;
@@ -7265,7 +7272,7 @@ class Player {
     this.x = spawnPos.x;
     this.y = spawnPos.y;
     this.z = spawnPos.z;
-    this.rotation = spawnPos.rotation;
+    this.azimuth = spawnPos.azimuth;
     this.alive = true;
     this.hasSpawned = true;
     // A new life is heard from as it starts; its first move comes after.
@@ -7278,12 +7285,12 @@ class Player {
     this.verticalVelocity = 0;
     this.isJumping = false;
     this.onObstacle = false;
-    this.jumpDirection = null;
-    this.slideDirection = undefined;
+    this.jumpAzimuth = null;
+    this.slideAzimuth = undefined;
     this.forwardSpeed = 0;
     this.rotationSpeed = 0;
     this.airVelocityX = 0;
-    this.airVelocityZ = 0;
+    this.airVelocityY = 0;
     this.teleportReentryBlockTeleporterIndex = null;
     this.teleportReentryBlockDistance = 0;
     this.teleportReentryBlockUntil = 0;
@@ -7303,7 +7310,7 @@ class Player {
       x: this.x,
       y: this.y,
       z: this.z,
-      rotation: this.rotation,
+      azimuth: this.azimuth,
       alive: this.alive,
       wins: this.wins,
       losses: this.losses,
@@ -7315,10 +7322,11 @@ class Player {
       forwardSpeed: this.forwardSpeed,
       rotationSpeed: this.rotationSpeed,
       verticalVelocity: this.verticalVelocity,
-      jumpDirection: this.jumpDirection,
-      slideDirection: this.slideDirection,
+      jumpAzimuth: this.jumpAzimuth,
+      slideAzimuth: this.slideAzimuth,
       airVelocityX: this.airVelocityX,
-      airVelocityZ: this.airVelocityZ,
+      airVelocityY: this.airVelocityY,
+
       connectDate: this.connectDate ? this.connectDate.toISOString() : undefined,
       color: this.color,
       tankModel: this.tankModel,
@@ -7372,115 +7380,86 @@ class Player {
     const dt = Number.isFinite(dtOverrideSeconds)
       ? dtOverrideSeconds
       : (atTime - this.lastUpdate) / 1000; // Convert to seconds
-    if (dt <= 0) return { x: this.x, y: this.y, z: this.z, r: this.rotation };
-    // getDeadReckoning (Player.cxx:1127) does not move a paused tank, whatever
-    // it was doing when the pause landed.
-    if (this.paused) return { x: this.x, y: this.y, z: this.z, r: this.rotation };
+    if (dt <= 0 || this.paused) return { x: this.x, y: this.y, z: this.z, azimuth: this.azimuth };
 
-    // Apply rotation
     const rotSpeed = GAME_CONFIG.TANK_ROTATION_SPEED || 1.5;
-    const newR = this.rotation + this.rotationSpeed * rotSpeed * dt;
+    const speed = GAME_CONFIG.TANK_SPEED || 15;
 
-    // Determine if player is in air based on jumpDirection
-    const isInAir = this.jumpDirection !== null && this.jumpDirection !== undefined;
-
+    const isInAir = this.jumpAzimuth !== null && this.jumpAzimuth !== undefined;
     if (isInAir) {
-      const hasAirVelocity = Number.isFinite(this.airVelocityX) && Number.isFinite(this.airVelocityZ);
-      const speed = GAME_CONFIG.TANK_SPEED || 15;
-      const moveDirection = this.slideDirection !== undefined ? this.slideDirection : this.jumpDirection;
-      const dx = hasAirVelocity ? this.airVelocityX * dt : -Math.sin(moveDirection) * this.forwardSpeed * speed * dt;
-      const dz = hasAirVelocity ? this.airVelocityZ * dt : -Math.cos(moveDirection) * this.forwardSpeed * speed * dt;
-
-      // Apply gravity to vertical velocity. A wings tank falls at _wingsGravity,
-      // which is the world's own unless a server has said otherwise, so
-      // extrapolating it at the world's would read as vertical drift.
+      // A tank in the air coasts: its air velocity, or its jump's speed along
+      // the direction it left on, and gravity on the way.
+      const hasAirVelocity = Number.isFinite(this.airVelocityX) && Number.isFinite(this.airVelocityY);
+      const moveAzimuth = this.slideAzimuth !== undefined ? this.slideAzimuth : this.jumpAzimuth;
+      const dx = hasAirVelocity ? this.airVelocityX * dt : Math.cos(moveAzimuth) * this.forwardSpeed * speed * dt;
+      const dy = hasAirVelocity ? this.airVelocityY * dt : Math.sin(moveAzimuth) * this.forwardSpeed * speed * dt;
       const gravity = hasAirControl(getPlayerFlag(this.id)?.type)
         ? GAME_CONFIG.WINGS_GRAVITY
         : GAME_CONFIG.GRAVITY;
       const vv = this.verticalVelocity - gravity * dt;
-      const dy = (this.verticalVelocity + vv) / 2 * dt; // Average velocity over dt
-
+      const dz = (this.verticalVelocity + vv) / 2 * dt; // Average velocity over dt
       return {
         x: this.x + dx,
-        // Don't go below this tank's own ground, which for Burrow is
-        // `_burrowDepth`: getDeadReckoning clamps to the same limit
-        // (Player.cxx:1333), and a server that clamped at zero would put a
-        // burrowed tank's hit box a metre and a third above where it is.
-        y: Math.max(getGroundLimit(getPlayerFlag(this.id)?.type ?? null), this.y + dy),
-        z: this.z + dz,
-        r: newR
+        y: this.y + dy,
+        z: Math.max(getGroundLimit(getPlayerFlag(this.id)?.type ?? null), this.z + dz),
+        azimuth: this.azimuth + this.rotationSpeed * rotSpeed * dt,
       };
     }
 
-    // On ground: check for circular vs straight motion
-    const speed = GAME_CONFIG.TANK_SPEED || 15;
     const rs = this.rotationSpeed || 0;
     const fs = this.forwardSpeed || 0;
+    // A tank sliding along something moves along the slide, not its heading.
+    const moveAzimuth = this.slideAzimuth !== undefined ? this.slideAzimuth : this.azimuth;
 
-    // Use slide direction if present, otherwise use rotation
-    const moveDirection = this.slideDirection !== undefined ? this.slideDirection : this.rotation;
-
-    // A physics driver's push, the same shared lookup the client's own
-    // motion step uses (`resolvePhysicsDriverAt`) -- so an honest client
-    // riding a conveyor still extrapolates to roughly where it actually
-    // ends up, and `validateMovement`'s drift check does not mistake the
-    // push for cheating. Vertical always applies, matching `linear`'s own
-    // z-component upstream adds unconditionally; horizontal only while on
-    // ground, which this branch already is.
+    // A physics driver under the tank carries it.
     const driver = getSupportPhysicsDriver(this.x, this.y, this.z);
-    const driverLinear = (driver && driver.linear) || null;
-    const driverDx = driverLinear ? driverLinear[0] * dt : 0;
-    const driverDy = driverLinear ? driverLinear[1] * dt : 0;
-    const driverDz = driverLinear ? driverLinear[2] * dt : 0;
+    const push = driver && driver.linear
+      ? { x: driver.linear[0], y: driver.linear[1], z: driver.linear[2] } : null;
+    const pushX = push ? push.x * dt : 0;
+    const pushY = push ? push.y * dt : 0;
+    const pushZ = push ? push.z * dt : 0;
 
+    const omega = rs * rotSpeed;
+    const v = fs * speed;
     if (Math.abs(rs) < 0.001) {
-      // Straight line motion (or sliding)
-      const dx = -Math.sin(moveDirection) * fs * speed * dt;
-      const dz = -Math.cos(moveDirection) * fs * speed * dt;
-      return { x: this.x + dx + driverDx, y: this.y + driverDy, z: this.z + dz + driverDz, r: newR };
-    } else {
-      // Circular arc motion
-      // Radius of curvature: R = |linear_velocity / angular_velocity|
-      const R = Math.abs((fs * speed) / (rs * rotSpeed));
-
-      // Arc angle traveled
-      const theta = rs * rotSpeed * dt;
-
-      // Center of circle in world space
-      // Forward is (-sin(r), -cos(r)), perpendicular at r - π/2
-      const perpAngle = this.rotation - Math.PI / 2;
-      const centerSign = -(rs * fs); // Negated to match correct circular motion
-      const cx = this.x + Math.sign(centerSign) * R * (-Math.sin(perpAngle));
-      const cz = this.z + Math.sign(centerSign) * R * (-Math.cos(perpAngle));
-
-      // New position rotated around center
-      // Negate theta for clockwise rotation (rs > 0 means turn right = clockwise)
-      const dx = this.x - cx;
-      const dz = this.z - cz;
-      const cosTheta = Math.cos(-theta);
-      const sinTheta = Math.sin(-theta);
-      const newDx = dx * cosTheta - dz * sinTheta;
-      const newDz = dx * sinTheta + dz * cosTheta;
-
       return {
-        x: cx + newDx + driverDx,
-        y: this.y + driverDy,
-        z: cz + newDz + driverDz,
-        r: this.rotation + theta
+        x: this.x + (Math.cos(moveAzimuth) * v * dt) + pushX,
+        y: this.y + (Math.sin(moveAzimuth) * v * dt) + pushY,
+        z: this.z + pushZ,
+        azimuth: this.azimuth + omega * dt,
       };
     }
+    // Turning while driving: an arc. The heading turns at `omega` and the tank
+    // travels along it, so the position is the integral of (cos, sin) of it.
+    const a0 = this.azimuth;
+    const a1 = this.azimuth + omega * dt;
+    return {
+      x: this.x + ((v / omega) * (Math.sin(a1) - Math.sin(a0))) + pushX,
+      y: this.y + ((v / omega) * (Math.cos(a0) - Math.cos(a1))) + pushY,
+      z: this.z + pushZ,
+      azimuth: this.azimuth + omega * dt,
+    };
   }
 }
 
-// Projectile class
+// A bzfs vec3 as a point.
+function vec3Point(v) {
+  return { x: v[0], y: v[1], z: v[2] };
+}
 
-// What `shotBegin` says a shot was fired with: upstream's FiringInfo velocity
-// (`MsgShotBegin`), before the flag's strategy makes anything of it. Every
-// screen makes the flight itself (`getShotFlight`), as every upstream client's
-// strategy does, so a BZFlag client, a proxied bzfs and a browser all read the
-// same number. A segmented shot's speed carries its flag's factor, taken back
-// out here; a Guided Missile flies at the world's speed along its heading, and
-// a shock wave does not move.
+
+// A shot's position, velocity and beam as `shotBegin` carries them.
+function wireShot(proj) {
+  return {
+    x: proj.x,
+    y: proj.y,
+    z: proj.z,
+    ...firedVelocity(proj),
+    segments: proj.segments,
+  };
+}
+
+
 function firedVelocity(proj) {
   const effects = getShotEffects(proj.flag);
   const speed = effects.shockwave ? 0
@@ -7493,7 +7472,7 @@ function firedVelocity(proj) {
 }
 
 class Projectile {
-  constructor(id, playerId, shotSlot, x, y, z, dirX, dirZ, dirY = 0, flag = null, now = Date.now(), speed = null) {
+  constructor(id, playerId, shotSlot, x, y, z, dirX, dirY, dirZ = 0, flag = null, now = Date.now(), speed = null) {
     this.id = id;
     this.playerId = playerId;
     this.shotSlot = shotSlot;
@@ -7533,15 +7512,15 @@ class Projectile {
     this.points = null;
     this.bounces = 0;
     this.x = x;
-    this.y = y || 2.2; // Default height if not specified (tank height + barrel height)
-    this.z = z;
+    this.y = y;
+    this.z = z || 2.2; // Default height if not specified (tank height + barrel height)
     this.dirX = dirX;
     this.dirY = dirY;
     this.dirZ = dirZ;
     this.createdAt = now;
     this.originX = x;
-    this.originY = this.y;
-    this.originZ = z;
+    this.originY = y;
+    this.originZ = this.z;
     // GetShotLifetime (GameKeeper.cxx:401): the world's reload scaled by the
     // flag's own life factor. How long the *shell* lives, which is not how long
     // the slot that fired it is out of action -- see `getSlotReloadMs`. For an
@@ -8907,7 +8886,7 @@ defineCommand('/flag', COMMAND_TIER.OPERATOR,
 // driving it -- `testSpawn` in server.json does this on join, and this is the
 // same thing without a restart. See parseMoveCoordinates for the grammar.
 defineCommand('/mv', COMMAND_TIER.OPERATOR,
-  '[player] <x,z|x,y,z|x,y,z,facing> [facing] - move a tank to a position; height optional, facing a compass point or degrees',
+  '[player] <x,y|x,y,z|x,y,z,facing> [facing] - move a tank to a position; height optional, facing a compass point or degrees',
   (player, args) => {
     // A target is optional, so the first token is only a target if it does not
     // parse as coordinates.
@@ -8917,7 +8896,7 @@ defineCommand('/mv', COMMAND_TIER.OPERATOR,
     if (!/^-?[\d.]/.test(firstToken)) {
       const target = resolveCommandTarget(rest);
       if (!target.id) {
-        replyToPlayer(player, target.error || 'Usage: /mv [player] <x,z> [facing]');
+        replyToPlayer(player, target.error || 'Usage: /mv [player] <x,y> [facing]');
         return;
       }
       subject = players.get(target.id);
@@ -8936,7 +8915,8 @@ defineCommand('/mv', COMMAND_TIER.OPERATOR,
 
     // `parseMoveCoordinates` resolved it: a compass point and an angle are two
     // spellings of the same thing by the time it hands one back.
-    const rotation = parsed.rotation === null ? subject.rotation : parsed.rotation;
+    const azimuth = parsed.azimuth === null ? subject.azimuth : parsed.azimuth;
+    const at = { x: parsed.x, y: parsed.y, z: parsed.z };
     // A height that was *given* is honoured where the tank fits, so `/mv 0,30,0`
     // puts you thirty units up to watch yourself fall. Where it does not fit --
     // a coordinate inside an elevated obstacle -- `dropSpawnPosition` climbs to
@@ -8955,28 +8935,28 @@ defineCommand('/mv', COMMAND_TIER.OPERATOR,
     // and it is the one way to reach the sealed state on purpose. The tank
     // still falls out of it the moment the flag goes.
     const phased = isPlayerPhased(subject);
-    let y;
-    if (phased && parsed.y !== null) {
-      y = parsed.y;
+    let z;
+    if (phased && at.z !== null) {
+      z = at.z;
     } else if (phased) {
       // No height given still means the ground, which is where a tank driving
       // in through the side of a building would be.
-      y = 0;
-    } else if (parsed.y !== null
-      && !checkCollision(parsed.x, parsed.y, parsed.z, 2, { rotation, suppressLog: true })) {
-      y = parsed.y;
+      z = 0;
+    } else if (at.z !== null
+      && !checkCollision(at.x, at.y, at.z, 2, { azimuth, suppressLog: true })) {
+      z = at.z;
     } else {
-      y = dropSpawnPosition(parsed.x, parsed.y === null ? 0 : parsed.y, parsed.z, rotation);
+      z = dropSpawnPosition(at.x, at.y, at.z === null ? 0 : at.z, azimuth);
     }
-    if (y === null) {
+    if (z === null) {
       replyToPlayer(player, `Nowhere to stand at ${parsed.x},${parsed.z}`);
       return;
     }
 
-    subject.x = parsed.x;
-    subject.y = y;
-    subject.z = parsed.z;
-    subject.rotation = rotation;
+    subject.x = at.x;
+    subject.y = at.y;
+    subject.z = z;
+    subject.azimuth = azimuth;
     // As the observer heartbeat does for the same reason: the tank arrives
     // stopped, and the drift check must not integrate the old velocities across
     // the jump.
@@ -8984,9 +8964,9 @@ defineCommand('/mv', COMMAND_TIER.OPERATOR,
     subject.rotationSpeed = 0;
     subject.verticalVelocity = 0;
     subject.airVelocityX = 0;
-    subject.airVelocityZ = 0;
-    subject.jumpDirection = null;
-    subject.slideDirection = undefined;
+    subject.airVelocityY = 0;
+    subject.jumpAzimuth = null;
+    subject.slideAzimuth = undefined;
     subject.isJumping = false;
     subject.teleportReentryBlockTeleporterIndex = null;
     subject.teleportReentryBlockDistance = 0;
@@ -9001,7 +8981,7 @@ defineCommand('/mv', COMMAND_TIER.OPERATOR,
     // teleporter sound a `pt` would play.
     sendToPlayer(subject, {
       type: 'positionCorrection',
-      x: subject.x, y: subject.y, z: subject.z, r: subject.rotation, vv: 0,
+      x: subject.x, y: subject.y, z: subject.z, a: subject.azimuth, vv: 0,
       // Said, so a BZFlag client -- which has no correction, only a spawn to
       // be placed by -- is placed by this one and by nothing else.
       moved: true,
@@ -9009,12 +8989,12 @@ defineCommand('/mv', COMMAND_TIER.OPERATOR,
     broadcast({
       type: 'pm',
       id: subject.id,
-      x: subject.x, y: subject.y, z: subject.z, r: subject.rotation,
-      fs: 0, rs: 0, vv: 0, vx: 0, vz: 0,
+      x: subject.x, y: subject.y, z: subject.z, a: subject.azimuth,
+      fs: 0, rs: 0, vv: 0, vx: 0, vy: 0,
     }, subject.ws);
 
     const where = `${subject.x.toFixed(1)},${subject.y.toFixed(1)},${subject.z.toFixed(1)}`
-      + ` facing ${rotationToBearingName(subject.rotation)}`;
+      + ` facing ${azimuthToBearingName(subject.azimuth)}`;
     log(`[CMD] "${player.name}" moved "${subject.name}" to ${where}`);
     // Echoed because the height was resolved rather than given: seeing where the
     // tank actually landed is how a mistyped coordinate shows itself.
@@ -9054,12 +9034,12 @@ defineCommand('/pos', COMMAND_TIER.OPEN,
       return;
     }
     const where = `${subject.x.toFixed(2)},${subject.y.toFixed(2)},${subject.z.toFixed(2)}`;
-    log(`[POS] "${player.name}" checked "${subject.name}": pos=(${where}), r=${subject.rotation.toFixed(2)},`
+    log(`[POS] "${player.name}" checked "${subject.name}": pos=(${where}), azimuth=${subject.azimuth.toFixed(2)},`
       + ` fs=${(subject.forwardSpeed || 0).toFixed(2)}, rs=${(subject.rotationSpeed || 0).toFixed(2)},`
       + ` vv=${(subject.verticalVelocity || 0).toFixed(2)}`);
     replyToPlayer(player, subject === player
-      ? `You are at ${where} facing ${rotationToBearingName(subject.rotation)}`
-      : `"${subject.name}" is at ${where} facing ${rotationToBearingName(subject.rotation)}`);
+      ? `You are at ${where} facing ${azimuthToBearingName(subject.azimuth)}`
+      : `"${subject.name}" is at ${where} facing ${azimuthToBearingName(subject.azimuth)}`);
   });
 
 // Which settings can be changed without starting a new game. Everything else is
@@ -9885,8 +9865,8 @@ function resolveJoinName(player, requestedName) {
   return callsign;
 }
 
-function distance(x1, z1, x2, z2) {
-  return Math.sqrt((x2 - x1) ** 2 + (z2 - z1) ** 2);
+function distance(x1, y1, x2, y2) {
+  return Math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2);
 }
 
 
@@ -9912,8 +9892,9 @@ function getColliderTopY(obs) {
   // A mesh has no `.h` at all -- see `getObstacleHeight`'s own same check --
   // so `baseY + h` silently answers `baseY` (the mesh's own *bottom*) for
   // one instead of its real top.
-  if (obs?.type === 'mesh' && obs.bounds) return obs.bounds.maxY;
-  return (obs?.baseY || 0) + (Number.isFinite(obs?.h) ? obs.h : 0);
+  if (!obs) return 0;
+  if (obs.type === 'mesh' && obs.bounds) return getObstacleBase(obs) + getObstacleHeight(obs);
+  return getObstacleBase(obs) + (Number.isFinite(obs.size?.[2]) ? obs.size[2] : 0);
 }
 
 // The solid an occupant is inside of, or false. The loop is `findTankObstacle`
@@ -9932,7 +9913,7 @@ function getColliderTopY(obs) {
 // direction anticheat slack is allowed to run in.
 function checkCollision(x, y, z, tankRadius = 2, options = {}) {
   const obs = findTankObstacle(getCollisionColliders(), x, y, z, {
-    rotation: options.rotation,
+    azimuth: options.azimuth,
     radius: tankRadius,
     slack: options.slack,
     tankScale: options.tankScale,
@@ -9948,22 +9929,24 @@ function checkCollision(x, y, z, tankRadius = 2, options = {}) {
   });
   if (!obs) return false;
   if (options.suppressLog !== true) {
-    const base = obs.baseY || 0;
+    const base = getObstacleBase(obs);
     // A mesh has no single position/rotation to report -- checked directly
     // against upstream: `MeshObstacle`'s own constructor never calls
     // `Obstacle`'s position-taking one, so it inherits the base `Obstacle()`
     // default (0, 0, rotation 0) and never relies on it for anything real
     // either. bzo's own mesh objects go further and carry no such field at
-    // all, so `obs.x`/`obs.z`/`obs.rotation` are `undefined` here rather
+    // all, so `obs.pos`/`obs.angle` are `undefined` here rather
     // than a meaningless zero -- printing the bounds center in their place
     // for a mesh is at least a real point on the thing that was hit, which
     // upstream's own zero never was; `rotation` has no such stand-in, since
     // an arbitrary mesh has no one facing to report.
-    const posX = Number.isFinite(obs.x) ? obs.x : ((obs.bounds?.minX + obs.bounds?.maxX) / 2 || 0);
-    const posZ = Number.isFinite(obs.z) ? obs.z : ((obs.bounds?.minZ + obs.bounds?.maxZ) / 2 || 0);
-    const rotation = Number.isFinite(obs.rotation) ? obs.rotation : 0;
+    // In upstream's frame, as the map states it.
+    const posX = Number.isFinite(obs.pos?.[0]) ? obs.pos[0] : ((obs.bounds?.minX + obs.bounds?.maxX) / 2 || 0);
+    const posY = Number.isFinite(obs.pos?.[1]) ? obs.pos[1] : ((obs.bounds?.minY + obs.bounds?.maxY) / 2 || 0);
+    const angle = Number.isFinite(obs.angle) ? obs.angle : 0;
     log(`[COLLISION] ${x.toFixed(2)},${y.toFixed(2)},${z.toFixed(2)} ${obs.name}:${obs.type}`
-      + ` ${posX.toFixed(2)},${base.toFixed(2)},${posZ.toFixed(2)} rot:${rotation.toFixed(2)},`
+      + ` ${posX.toFixed(2)},${posY.toFixed(2)},${base.toFixed(2)} angle:${angle.toFixed(2)},`
+
       + ` h:${getObstacleHeight(obs).toFixed(2)}, top:${getColliderTopY(obs).toFixed(2)}`);
   }
   return obs;
@@ -10003,7 +9986,7 @@ function getSpawnPosition(player) {
     player.restartOnBase = false;
     const base = getRandomTeamBase(colorIndex);
     if (base) {
-      return { ...getRandomBasePosition(base), rotation: Math.random() * Math.PI * 2 };
+      return { ...getRandomBasePosition(base), azimuth: Math.random() * Math.PI * 2 };
     }
   }
   // SpawnPolicy::getPosition's `else` (SpawnPolicy.cxx:66-167): everything
@@ -10044,24 +10027,24 @@ function findSafeSpawnPosition(player, nextCandidate) {
   } while (Date.now() - started <= budgetMs);
   const chosen = best || last;
   const enemy = nearestSpawnEnemy(player, chosen);
-  const rotation = isSpawnImminentlyDangerous(chosen) && enemy.rotation !== null
-    ? enemy.rotation + Math.PI
+  const azimuth = isSpawnImminentlyDangerous(chosen) && enemy.azimuth !== null
+    ? enemy.azimuth + Math.PI
     : Math.random() * Math.PI * 2;
-  return { ...chosen, rotation };
+  return { ...chosen, azimuth };
 }
 
 // SpawnPolicy::isFacing: whether a tank at `enemy`, heading `rotation`, points
 // within `deviation` of the spot, ignoring one more than two tank heights above
 // or below it.
 function isFacingSpawn(enemy, spot, deviation) {
-  if (Math.abs(enemy.y - spot.y) > 2 * TANK.height) return false;
+  if (Math.abs(enemy.z - spot.z) > 2 * TANK.height) return false;
   const toX = spot.x - enemy.x;
-  const toZ = spot.z - enemy.z;
-  const length = Math.hypot(toX, toZ);
+  const toY = spot.y - enemy.y;
+  const length = Math.hypot(toX, toY);
   if (length < 1e-6) return true;
-  const forwardX = -Math.sin(enemy.rotation);
-  const forwardZ = -Math.cos(enemy.rotation);
-  const cos = ((forwardX * toX) + (forwardZ * toZ)) / length;
+  const forwardX = Math.cos(enemy.azimuth);
+  const forwardY = Math.sin(enemy.azimuth);
+  const cos = ((forwardX * toX) + (forwardY * toY)) / length;
   return Math.acos(Math.max(-1, Math.min(1, cos))) < deviation / 2;
 }
 
@@ -10091,18 +10074,18 @@ function isSpawnImminentlyDangerous(spot) {
 // level, and the way it faces; no foe is as far as can be.
 function nearestSpawnEnemy(player, spot) {
   let best = Infinity;
-  let rotation = null;
+  let azimuth = null;
   for (const other of players.values()) {
     if (other === player || !other.joined || !other.alive) continue;
     if (!areFoes(other.team, player.team, TEAMS_ALLOWED)) continue;
-    if (Math.abs(other.y - spot.y) >= 1) continue;
-    const dist = Math.hypot(other.x - spot.x, other.z - spot.z);
+    if (Math.abs(other.z - spot.z) >= 1) continue;
+    const dist = Math.hypot(other.x - spot.x, other.y - spot.y);
     if (dist < best) {
       best = dist;
-      rotation = other.rotation;
+      azimuth = other.azimuth;
     }
   }
-  return { distance: best === Infinity ? 1e12 : best, rotation };
+  return { distance: best === Infinity ? 1e12 : best, azimuth };
 }
 
 // WorldInfo::getPlayerSpawnPoint, picked uniformly among every zone that
@@ -10120,9 +10103,9 @@ function getTeamZoneSpawnPosition(colorIndex) {
   // to the map-wide random search.
   for (let attempt = 0; attempt < 20; attempt++) {
     const spot = getRandomZonePoint(zone);
-    const rotation = Math.random() * Math.PI * 2;
-    const droppedY = dropSpawnPosition(spot.x, spot.y, spot.z, rotation);
-    if (droppedY !== null) return { x: spot.x, y: droppedY, z: spot.z, rotation };
+    const azimuth = Math.random() * Math.PI * 2;
+    const droppedZ = dropSpawnPosition(spot.x, spot.y, spot.z, azimuth);
+    if (droppedZ !== null) return { x: spot.x, y: spot.y, z: droppedZ, azimuth };
   }
   return null;
 }
@@ -10173,15 +10156,15 @@ const SPAWN_DROP_FUDGE = 0.05;
 //
 // Returns the resolved y, or null when there is nowhere: the caller falls back
 // to a random spawn rather than putting a tank somewhere it is stuck.
-function dropSpawnPosition(x, y, z, rotation) {
-  const clearance = (atY) => !checkCollision(x, atY, z, 2, {
-    rotation,
+function dropSpawnPosition(x, y, z, azimuth) {
+  const clearance = (atZ) => !checkCollision(x, y, atZ, 2, {
+    azimuth,
     suppressLog: true,
   });
 
   // isValidLanding(): a flat top that is not drive-through. The world boundary
   // and a teleporter are not surfaces a tank is put on, which is the same set
-  // `findFlagLandingY` refuses.
+  // `findFlagLandingZ` refuses.
   const tops = [];
   for (const obs of getCollisionColliders()) {
     if (obs.driveThrough) continue;
@@ -10192,11 +10175,11 @@ function dropSpawnPosition(x, y, z, rotation) {
     // `baseY + height` answers the top of the whole object instead -- the peak
     // of a mountain range rather than the valley floor under the tank.
     if (obs.type === 'mesh') {
-      for (const top of meshFlatTopYsAt(obs, x, z)) tops.push(top);
+      for (const top of meshFlatTopsAt(obs, x, y)) tops.push(top);
       continue;
     }
-    if (!isOverFlatTop(obs, x, z)) continue;
-    tops.push((obs.baseY || 0) + getObstacleHeight(obs));
+    if (!isOverFlatTop(obs, x, y)) continue;
+    tops.push(getObstacleBase(obs) + getObstacleHeight(obs));
   }
 
   // `waterLevel` -- a floating-point tank has no ground to fall to under a
@@ -10206,20 +10189,20 @@ function dropSpawnPosition(x, y, z, rotation) {
   // leaving one that only ever resolves to an instant `WaterDeath`.
   const groundLevel = (mapWaterLevel && mapWaterLevel.height > 0) ? mapWaterLevel.height : 0;
 
-  if (clearance(y)) {
+  if (clearance(z)) {
     // Falling: highest top below the start, else the ground.
-    const below = tops.filter((top) => top <= y).sort((a, b) => b - a);
+    const below = tops.filter((top) => top <= z).sort((a, b) => b - a);
     for (const top of below) {
       if (clearance(top + SPAWN_DROP_FUDGE)) return top + SPAWN_DROP_FUDGE;
     }
-    if (y >= groundLevel && clearance(groundLevel + SPAWN_DROP_FUDGE)) {
+    if (z >= groundLevel && clearance(groundLevel + SPAWN_DROP_FUDGE)) {
       return groundLevel + SPAWN_DROP_FUDGE;
     }
-    return y + SPAWN_DROP_FUDGE;
+    return z + SPAWN_DROP_FUDGE;
   }
 
   // Climbing: lowest top at or above the start that the tank fits on.
-  const above = tops.filter((top) => top >= y).sort((a, b) => a - b);
+  const above = tops.filter((top) => top >= z).sort((a, b) => a - b);
   for (const top of above) {
     if (clearance(top + SPAWN_DROP_FUDGE)) return top + SPAWN_DROP_FUDGE;
   }
@@ -10238,11 +10221,14 @@ function rebuildTestSpawns() {
   const spawns = Array.isArray(configured) ? configured : (configured ? [configured] : []);
   for (const spawn of spawns) {
     if (typeof spawn?.name !== 'string') continue;
+    // In upstream's frame, as `/pos` prints it: `azimuth` in radians.
     const x = Number(spawn.x) || 0;
     const y = Number(spawn.y) || 0;
     const z = Number(spawn.z) || 0;
-    const rotation = Number(spawn.rotation) || 0;
-    const droppedY = dropSpawnPosition(x, y, z, rotation);
+    const at = { x, y, z };
+    const azimuth = Number(spawn.azimuth) || 0;
+    const droppedY = dropSpawnPosition(at.x, at.y, at.z, azimuth);
+
     if (droppedY === null) {
       log(
         `Test spawn "${spawn.name}" at ${x.toFixed(2)},${y.toFixed(2)},${z.toFixed(2)}`
@@ -10250,13 +10236,14 @@ function rebuildTestSpawns() {
       );
       continue;
     }
-    if (Math.abs(droppedY - y) > SPAWN_DROP_FUDGE * 2) {
+    if (Math.abs(droppedY - z) > SPAWN_DROP_FUDGE * 2) {
       log(
-        `Test spawn "${spawn.name}" dropped from y ${y.toFixed(2)}`
-        + ` to ${droppedY.toFixed(2)} at ${x.toFixed(2)},${z.toFixed(2)}`
+        `Test spawn "${spawn.name}" dropped from z ${z.toFixed(2)}`
+        + ` to ${droppedY.toFixed(2)} at ${x.toFixed(2)},${y.toFixed(2)}`
+
       );
     }
-    TEST_SPAWNS.set(spawn.name, { x, y: droppedY, z, rotation });
+    TEST_SPAWNS.set(spawn.name, { x: at.x, y: at.y, z: droppedY, azimuth });
   }
 }
 
@@ -10276,42 +10263,43 @@ function findValidSpawnPosition(tankRadius = 2) {
 
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
     const x = Math.random() * (GAME_CONFIG.MAP_SIZE - tankRadius * 4) - (halfMap - tankRadius * 2);
-    const z = Math.random() * (GAME_CONFIG.MAP_SIZE - tankRadius * 4) - (halfMap - tankRadius * 2);
-    const rotation = Math.random() * Math.PI * 2;
+    const y = Math.random() * (GAME_CONFIG.MAP_SIZE - tankRadius * 4) - (halfMap - tankRadius * 2);
+    const azimuth = Math.random() * Math.PI * 2;
     // `bzfrand() * maxHeight`, so a multi-level map is entered at every level
     // rather than only on its roof.
-    const startY = Math.random() * ceiling;
+    const startZ = Math.random() * ceiling;
 
-    const y = dropSpawnPosition(x, startY, z, rotation);
-    if (y === null) continue;
+    const z = dropSpawnPosition(x, y, startZ, azimuth);
+    if (z === null) continue;
     // The one place bzo refuses what upstream would accept. Starting below the
     // terrain, `dropIt` skips every surface above the start and lands on bare
     // ground -- under the world, which is the bug being fixed rather than
     // behaviour worth copying. Landing on a real surface at any level is still
     // allowed, so a tank may still spawn under a bridge.
-    if (y <= groundLevel + 1 && hasFlatTopAbove(x, z, y)) continue;
-    if (!checkCollision(x, y, z, tankRadius, { rotation })) {
-      return { x, y, z, rotation };
+    if (z <= groundLevel + 1 && hasFlatTopAbove(x, y, z)) continue;
+    if (!checkCollision(x, y, z, tankRadius, { azimuth })) {
+      return { x, y, z, azimuth };
     }
   }
 
   // If we couldn't find a valid position after many attempts, return a safe default
-  return { x: 0, y: groundLevel, z: 0, rotation: 0 };
+  return { x: 0, y: 0, z: groundLevel, azimuth: 0 };
 }
 
 // Whether the world puts anything drivable over this point, which is what
 // separates "standing on the map's ground" from "standing under the map".
-function hasFlatTopAbove(x, z, y) {
+function hasFlatTopAbove(x, y, z) {
   for (const obs of getCollisionColliders()) {
     if (obs.driveThrough) continue;
     if (obs.collisionKind === 'boundary' || obs.kind === 'teleporter') continue;
     if (obs.type === 'mesh') {
-      if (meshFlatTopYsAt(obs, x, z).some((top) => top > y + 1)) return true;
+      if (meshFlatTopsAt(obs, x, y).some((top) => top > z + 1)) return true;
       continue;
     }
     if (obs.type === 'pyramid' && !isPyramidFlatTop(obs)) continue;
-    if (!isOverFlatTop(obs, x, z)) continue;
-    if ((obs.baseY || 0) + getObstacleHeight(obs) > y + 1) return true;
+    if (!isOverFlatTop(obs, x, y)) continue;
+    if (getObstacleBase(obs) + getObstacleHeight(obs) > z + 1) return true;
+
   }
   return false;
 }
@@ -10397,12 +10385,12 @@ function logMalformed(player, what, detail) {
 // the network -- docs/lag-plan.md, "Extrapolate on the client's clock, not
 // ours". Every other caller has no client timestamp to offer and passes the
 // server's own arrival gap instead.
-function validateMovement(player, newX, newY, newZ, newRotation, extrapolationSeconds, velocityChanged = false, options = {}, now = Date.now()) {
+function validateMovement(player, newX, newY, newZ, newAzimuth, extrapolationSeconds, velocityChanged = false, options = {}, now = Date.now()) {
   // A non-finite coordinate would poison the stored position and every
   // extrapolation made from it afterwards, so it is refused in every mode.
   if (!Number.isFinite(newX) || !Number.isFinite(newY)
-    || !Number.isFinite(newZ) || !Number.isFinite(newRotation)) {
-    logMalformed(player, 'MOVE', `(${newX}, ${newY}, ${newZ}, r=${newRotation})`);
+    || !Number.isFinite(newZ) || !Number.isFinite(newAzimuth)) {
+    logMalformed(player, 'MOVE', `(${newX}, ${newY}, ${newZ}, azimuth=${newAzimuth})`);
     return false;
   }
 
@@ -10410,7 +10398,7 @@ function validateMovement(player, newX, newY, newZ, newRotation, extrapolationSe
   // but an unmodified client also sends the odd in-flight move as the pause
   // takes effect. Warning mode wants to see how often that is what this is.
   if (player.paused && reportCheat(player, 'movedWhilePaused', 'MOVED WHILE PAUSED', [
-    `Recvd: (${newX.toFixed(2)}, ${newY.toFixed(2)}, ${newZ.toFixed(2)}, r=${newRotation.toFixed(2)})`,
+    `Recvd: (${newX.toFixed(2)}, ${newY.toFixed(2)}, ${newZ.toFixed(2)}, azimuth=${newAzimuth.toFixed(2)})`,
   ])) {
     return false;
   }
@@ -10426,7 +10414,7 @@ function validateMovement(player, newX, newY, newZ, newRotation, extrapolationSe
     // With velocity-based dead reckoning, the client position should match extrapolated position
     // We allow a tolerance based on physics drift, network jitter, and rounding errors
     // If velocity changed, use much looser validation since extrapolation doesn't account for it
-    const distMoved = distance(extrapolated.x, extrapolated.z, newX, newZ);
+    const distMoved = distance(extrapolated.x, extrapolated.y, newX, newY);
     const maxDrift = velocityChanged ? ANTICHEAT_CONFIG.linearDriftThresholdVelocityChanged : ANTICHEAT_CONFIG.linearDriftThreshold;
 
     if (distMoved > maxDrift) {
@@ -10436,9 +10424,9 @@ function validateMovement(player, newX, newY, newZ, newRotation, extrapolationSe
       const refused = reportCheat(player, 'linearDrift',
         `LINEAR DRIFT ${distMoved.toFixed(2)} > ${maxDrift.toFixed(2)} (${likelihood}%)`,
         [
-          `stored ${formatCheatPose(player.x, player.y, player.z, player.rotation)}`
-          + ` extrap ${formatCheatPose(extrapolated.x, extrapolated.y, extrapolated.z, extrapolated.r)}`
-          + ` recvd ${formatCheatPose(newX, newY, newZ, newRotation)}`,
+          `stored ${formatCheatPose(player.x, player.y, player.z, player.azimuth)}`
+          + ` extrap ${formatCheatPose(extrapolated.x, extrapolated.y, extrapolated.z, extrapolated.azimuth)}`
+          + ` recvd ${formatCheatPose(newX, newY, newZ, newAzimuth)}`,
           `fs=${player.forwardSpeed.toFixed(2)} rs=${player.rotationSpeed.toFixed(2)}`
           + ` vv=${player.verticalVelocity.toFixed(2)} dt=${timeSinceLastUpdate.toFixed(2)}s`
           + `${velocityChanged ? ' velChanged' : ''}`,
@@ -10447,7 +10435,7 @@ function validateMovement(player, newX, newY, newZ, newRotation, extrapolationSe
     }
 
     // Calculate rotation change from extrapolated rotation
-    const rotDiff = Math.abs(normalizeAngle(newRotation - extrapolated.r));
+    const rotDiff = Math.abs(normalizeAngle(newAzimuth - extrapolated.azimuth));
     const maxRotDrift = ANTICHEAT_CONFIG.angularDriftThreshold;
 
     if (rotDiff > maxRotDrift) {
@@ -10457,8 +10445,8 @@ function validateMovement(player, newX, newY, newZ, newRotation, extrapolationSe
       const refused = reportCheat(player, 'angularDrift',
         `ANGULAR DRIFT ${rotDiff.toFixed(2)} > ${maxRotDrift.toFixed(2)} (${likelihood}%)`,
         [
-          `r stored ${player.rotation.toFixed(2)} extrap ${extrapolated.r.toFixed(2)}`
-          + ` recvd ${newRotation.toFixed(2)}`,
+          `azimuth stored ${player.azimuth.toFixed(2)} extrap ${extrapolated.azimuth.toFixed(2)}`
+          + ` recvd ${newAzimuth.toFixed(2)}`,
           `rs=${player.rotationSpeed.toFixed(2)} dt=${timeSinceLastUpdate.toFixed(2)}s`,
         ]);
       if (refused) return false;
@@ -10479,9 +10467,9 @@ function validateMovement(player, newX, newY, newZ, newRotation, extrapolationSe
     // the same class of finding as a collision, because it is the same thing:
     // the two ends disagreeing about where this tank is allowed to be.
     const groundLimit = getPlayerGroundLimit(player);
-    if (newY < groundLimit - ANTICHEAT_GROUND_SLACK) {
+    if (newZ < groundLimit - ANTICHEAT_GROUND_SLACK) {
       const refused = reportCheat(player, 'collision',
-        `BELOW GROUND: y ${newY.toFixed(2)} < ${groundLimit.toFixed(2)}`
+        `BELOW GROUND: z ${newZ.toFixed(2)} < ${groundLimit.toFixed(2)}`
         + ` carrying ${getPlayerFlag(player.id)?.type ?? 'no flag'}`);
       if (refused) return false;
     }
@@ -10489,7 +10477,7 @@ function validateMovement(player, newX, newY, newZ, newRotation, extrapolationSe
     const ignoreTeleporters = options.ignoreTeleporters === true;
     const collision = checkCollision(newX, newY, newZ, 2, {
       ignoreTeleporters,
-      rotation: newRotation,
+      azimuth: newAzimuth,
       slack: ANTICHEAT_CONFIG.collisionSlack,
       tankScale: getPlayerTankScale(player),
       phased: isPlayerPhased(player),
@@ -10516,10 +10504,12 @@ function validateMovement(player, newX, newY, newZ, newRotation, extrapolationSe
             + ` z:${b.minZ.toFixed(2)}..${b.maxZ.toFixed(2)} (${at})`
           : `COLLISION obs:${collision.name} mesh (${at})`;
       } else {
-        const { x, z, w, d, h, baseY, rotation } = collision;
-        headline = `COLLISION obs:${collision.name} ${x.toFixed(2)},${baseY.toFixed(2)},${z.toFixed(2)},`
-          + ` w:${w.toFixed(2)}, d:${d.toFixed(2)}, h:${h.toFixed(2)},`
-          + ` rot:${rotation.toFixed(2)} (${at})`;
+        const [x, y, base] = collision.pos;
+        const [halfW, halfD, h] = collision.size;
+        headline = `COLLISION obs:${collision.name} ${x.toFixed(2)},${y.toFixed(2)},${base.toFixed(2)},`
+          + ` size:${halfW.toFixed(2)},${halfD.toFixed(2)},${h.toFixed(2)},`
+          + ` angle:${collision.angle.toFixed(2)} (${at})`;
+
       }
       if (reportCheat(player, 'collision', headline)) return false;
     }
@@ -10548,7 +10538,7 @@ function validateMovement(player, newX, newY, newZ, newRotation, extrapolationSe
   // twice for it. `height > 0` is upstream's own guard too: a `waterLevel 0`
   // plane sits exactly on the ground every tank already stands on, so this
   // would otherwise kill on arrival.
-  if (mapWaterLevel && mapWaterLevel.height > 0 && newY <= mapWaterLevel.height) {
+  if (mapWaterLevel && mapWaterLevel.height > 0 && newZ <= mapWaterLevel.height) {
     killPlayer(player, null, DEATH_REASON.WATER);
   }
 
@@ -10631,7 +10621,7 @@ function getShotRejection(player, shotX, shotY, shotZ, now = Date.now()) {
 
   // Use extrapolated position, not stored position
   const extrapolated = player.getExtrapolatedPosition(now);
-  const dist = distance(extrapolated.x, extrapolated.z, shotX, shotZ);
+  const dist = distance(extrapolated.x, extrapolated.y, shotX, shotY);
 
   // NOTE: bzfs is far more permissive here. bzfs.cxx shotFired() allows
   // (tankSpeed * _velocityAd + 2 * _muzzleFront), tens of units, deliberately
@@ -10657,7 +10647,7 @@ function getShotRejection(player, shotX, shotY, shotZ, now = Date.now()) {
   // shoot from inside a building; that is what a phantom bullet is for, and it
   // can only hit another zoned tank anyway.
   if (!isPlayerZoned(player)
-    && isPlayerInsideBuilding(player, extrapolated.x, extrapolated.y, extrapolated.z, player.rotation)) {
+    && isPlayerInsideBuilding(player, extrapolated.x, extrapolated.y, extrapolated.z, player.azimuth)) {
     return { reason: 'cannot shoot from inside a building', fatal: false };
   }
 
@@ -10692,24 +10682,35 @@ const SHOT_VELOCITY_TOLERANCE = 0.5;
 const SHOT_MOVE_FRESH_MS = 1000;
 function getShotVelocityRejection(player, velocity, now) {
   const keepVertical = GAME_CONFIG.SHOTS_KEEP_VERTICAL_VELOCITY === true;
-  if (!keepVertical && Math.abs(velocity.y) > SHOT_VELOCITY_TOLERANCE) {
-    return `shot climbs at ${velocity.y.toFixed(2)} in a world that keeps shots level`;
+  if (!keepVertical && Math.abs(velocity.z) > SHOT_VELOCITY_TOLERANCE) {
+    return `shot climbs at ${velocity.z.toFixed(2)} in a world that keeps shots level`;
   }
+  // The move's own fields are the wire's, so its velocity comes back in bzo's
+  // frame and crosses.
   const fields = player.lastMoveFields;
-  const stated = fields && now - fields.at < SHOT_MOVE_FRESH_MS ? packetVelocity(fields, GAME_CONFIG) : null;
+  const stated = fields && now - fields.at < SHOT_MOVE_FRESH_MS
+    ? moveVelocity(fields) : null;
   const tank = stated
     ? { vx: stated.x, vy: stated.y, vz: stated.z }
     : getPlayerMotion(player, getPlayerFlag(player.id)?.type ?? null, now);
   const muzzleSpeed = Math.hypot(
     velocity.x - tank.vx,
-    keepVertical ? velocity.y - tank.vy : 0,
-    velocity.z - tank.vz,
+    velocity.y - tank.vy,
+    keepVertical ? velocity.z - tank.vz : 0,
   );
+
   if (Math.abs(muzzleSpeed - GAME_CONFIG.SHOT_SPEED) > SHOT_VELOCITY_TOLERANCE) {
     return `shot leaves the tank at ${muzzleSpeed.toFixed(2)}, not the world's ${GAME_CONFIG.SHOT_SPEED}`
       + ` (tank moving at (${tank.vx.toFixed(2)},${tank.vy.toFixed(2)},${tank.vz.toFixed(2)}))`;
   }
   return null;
+}
+
+// The tank's velocity as an accepted move states it: the air velocity for a
+// tank the move says is in the air, and on the ground `fs` along the slide
+// heading or the tank's own. `fields` is the move's own, `a`, `sd`, `vx`, `vy`.
+function moveVelocity(fields) {
+  return packetVelocity(fields, GAME_CONFIG);
 }
 
 function reportShotRejection(player, reason, message, fatal) {
@@ -10946,8 +10947,10 @@ function getTeamBaseCenters() {
     let sumX = 0;
     let sumZ = 0;
     bases.forEach((base) => {
-      sumX += base.x;
-      sumZ += base.z;
+      // Only the distances between them are weighed, so any two ground axes
+      // will do: upstream's x and y.
+      sumX += base.pos[0];
+      sumZ += base.pos[1];
     });
     centers[team] = { x: sumX / bases.length, z: sumZ / bases.length };
   });
@@ -10962,16 +10965,17 @@ function getRandomTeamBase(colorIndex) {
 // TeamBase::getRandomPosition. A point on the base's top surface, kept a tank
 // radius clear of its edges.
 function getRandomBasePosition(base) {
-  const spanX = Math.max(0, base.w - (2 * FLAG_DROP_TEST_RADIUS));
-  const spanZ = Math.max(0, base.d - (2 * FLAG_DROP_TEST_RADIUS));
+  const spanX = Math.max(0, (2 * base.size[0]) - (2 * FLAG_DROP_TEST_RADIUS));
+  const spanY = Math.max(0, (2 * base.size[1]) - (2 * FLAG_DROP_TEST_RADIUS));
   const localX = spanX * (Math.random() - 0.5);
-  const localZ = spanZ * (Math.random() - 0.5);
-  const rotated = rotateXZ(localX, localZ, -base.rotation);
+  const localY = spanY * (Math.random() - 0.5);
+  const turned = rotateXY(localX, localY, base.angle);
   return {
-    x: base.x + rotated.x,
-    y: getBaseTopY(base),
-    z: base.z + rotated.z,
+    x: base.pos[0] + turned.x,
+    y: base.pos[1] + turned.y,
+    z: getBaseTop(base),
   };
+
 }
 
 rebuildTeamBases(OBSTACLES);
@@ -11674,7 +11678,7 @@ function getBzflagWorld() {
     } else {
       // bzo's compass letters, which its browsers draw for themselves, at the
       // height they draw them (`_addCompassMarker`, public/render.js).
-      const tallest = OBSTACLES.reduce((top, obstacle) => Math.max(top, obstacle.bounds?.maxY ?? 0), 0);
+      const tallest = OBSTACLES.reduce((top, obstacle) => Math.max(top, obstacle.bounds?.maxZ ?? 0), 0);
       addCardinalLetters(tree, {
         mapSize: GAME_CONFIG.MAP_SIZE,
         height: Math.max((GAME_CONFIG.WALL_HEIGHT || 0) + 8, tallest + 5),
@@ -11850,7 +11854,7 @@ async function seatNativeClient(link, payload) {
         const to = moveFromBzfs(update, GAME_CONFIG);
         const crossing = findCrossedTeleporterFace({ x: seated.x, y: seated.y, z: seated.z }, to);
         const refusal = crossing
-          ? getZoneRefusal(seated, { ...crossing.at, r: to.r }, crossing.faceId, Date.now())
+          ? getZoneRefusal(seated, { ...crossing.at, azimuth: to.a }, crossing.faceId, Date.now())
           : 'its path crossed no teleporter';
         if (refusal) reportCheat(seated, 'flagRejected', `ZONE REJECTED: ${refusal}`);
         zonedFlag.zoned = flagActive;
@@ -12009,21 +12013,22 @@ function bzflagListTitle() {
 // bzo takes as it takes the client's moves, sent to every browser as bzo's
 // own teleport move (`pt`) so it is drawn as one rather than a slide. A link
 // bzo does not know -- a group-placed teleporter numbered differently -- is
-// still a teleport, said with no faces.
+// still a teleport, said with no faces. `move` is the wire's, as
+// `moveFromBzfs` spells it.
 function applyNativeTeleport(player, move, { from, to }) {
   const now = Date.now();
   const known = getTeleportDestinationFace(TELEPORTER_LINKS_BY_SOURCE_FACE, from) === to;
   player.x = move.x;
   player.y = move.y;
   player.z = move.z;
-  player.rotation = move.r;
+  player.azimuth = move.a;
   player.forwardSpeed = move.fs;
   player.rotationSpeed = move.rs;
   player.verticalVelocity = move.vv;
   player.airVelocityX = move.vx;
-  player.airVelocityZ = move.vz;
-  player.jumpDirection = move.air ? move.r : null;
-  player.slideDirection = move.d;
+  player.airVelocityY = move.vy;
+  player.jumpAzimuth = move.air ? move.a : null;
+  player.slideAzimuth = move.sd;
   player.lastUpdate = now;
   if (Number.isFinite(move.ct)) player.lastClientTimestamp = move.ct;
   noteHeardFrom(player, now);
@@ -12033,18 +12038,20 @@ function applyNativeTeleport(player, move, { from, to }) {
     x: player.x,
     y: player.y,
     z: player.z,
-    r: player.rotation,
+    a: player.azimuth,
     fs: player.forwardSpeed,
     rs: player.rotationSpeed,
     vv: player.verticalVelocity,
     vx: player.airVelocityX,
-    vz: player.airVelocityZ,
+    vy: player.airVelocityY,
     fromFaceId: known ? from : null,
     toFaceId: known ? to : null,
-    jd: player.jumpDirection,
+    ja: player.jumpAzimuth,
   };
-  if (player.slideDirection !== undefined) packet.d = player.slideDirection;
+  if (player.slideAzimuth !== undefined) packet.sd = player.slideAzimuth;
+
   broadcastAll(packet);
+
   log(`[PLAYER_TP] player=${player.id} srcFace=${from} dstFace=${to}${known ? '' : ' (link not in bzo\'s map)'}`
     + ` pos=(${player.x.toFixed(2)},${player.y.toFixed(2)},${player.z.toFixed(2)}) native`);
 }
@@ -12149,7 +12156,7 @@ setInterval(() => {
 // and which upstream's own comment calls "not a real clearance check".
 function hasFlagClearance(x, y, z) {
   for (let offset = 0; offset < FLAG_HEIGHT; offset += FLAG_DROP_TEST_RADIUS) {
-    if (checkCollision(x, y + offset, z, FLAG_DROP_TEST_RADIUS, { suppressLog: true })) return false;
+    if (checkCollision(x, y, z + offset, FLAG_DROP_TEST_RADIUS, { suppressLog: true })) return false;
   }
   return true;
 }
@@ -12160,9 +12167,7 @@ function hasFlagClearance(x, y, z) {
 // actually settles on. With flags on buildings off it passes maxZ = 0 instead,
 // which skips the ray and forces the ground.
 // CustomZone::getRandomPoint. A point anywhere in the zone's footprint, at the
-// zone's own altitude. Upstream picks the offset in BZW's axes and rotates it
-// there, so bzo does the same and converts only the result -- BZW's +Y north is
-// bzo's -Z north, which is why the depth term is subtracted.
+// zone's own altitude: an offset in the zone's own axes, turned by its angle.
 function getRandomZonePoint(zone) {
   const offsetX = ((Math.random() * 2) - 1) * zone.halfWidth;
   const offsetY = ((Math.random() * 2) - 1) * zone.halfDepth;
@@ -12170,8 +12175,8 @@ function getRandomZonePoint(zone) {
   const sin = Math.sin(zone.rotation);
   return {
     x: zone.x + ((offsetX * cos) - (offsetY * sin)),
-    y: zone.y,
-    z: zone.z - ((offsetX * sin) + (offsetY * cos)),
+    y: zone.y + ((offsetX * sin) + (offsetY * cos)),
+    z: zone.z,
   };
 }
 
@@ -12216,18 +12221,19 @@ function findFlagSpawnPosition(flag = null) {
       ? getRandomZonePoint(zone)
       : {
         x: span * (Math.random() - 0.5),
-        y: maxHeight * Math.random(),
-        z: span * (Math.random() - 0.5),
+        y: span * (Math.random() - 0.5),
+        z: maxHeight * Math.random(),
       };
-    const y = FLAGS_ON_BUILDINGS ? findFlagLandingY(spot.x, spot.z, spot.y) : 0;
+    const z = FLAGS_ON_BUILDINGS ? findFlagLandingZ(spot.x, spot.y, spot.z) : 0;
     // `null` -- open water under this point, nothing to land on above the
     // waterline. Re-roll rather than spawn a flag there, the same as a point
     // `hasFlagClearance` refuses.
-    if (y === null) continue;
-    if (hasFlagClearance(spot.x, y, spot.z)) return { x: spot.x, y, z: spot.z };
+    if (z === null) continue;
+    if (hasFlagClearance(spot.x, spot.y, z)) return { x: spot.x, y: spot.y, z };
   }
   log(`Unable to position flag ${flag ? flag.index : '?'} on this world.`);
-  return zone ? { x: zone.x, y: zone.y, z: zone.z } : { x: 0, y: getFlagFloorY(), z: 0 };
+  return zone ? { x: zone.x, y: zone.y, z: zone.z } : { x: 0, y: 0, z: getFlagFloorY() };
+
 }
 
 function getFlagOwner(flag) {
@@ -12274,6 +12280,7 @@ function describeFlagForCommand(flag) {
     status: flag.status,
     position: flag.position,
   };
+
 }
 
 function getFlagStates() {
@@ -12342,7 +12349,8 @@ function resetFlag(flag) {
     // the centre of the top of one of its team's bases.
     const base = getRandomTeamBase(flag.team);
     flag.position = base
-      ? { x: base.x, y: getBaseTopY(base), z: base.z }
+      ? { x: base.pos[0], y: base.pos[1], z: getBaseTop(base) }
+
       : { x: 0, y: 0, z: 0 };
     // A team flag is `required`, so it does not fly in -- it simply appears.
     // While its team has nobody on it, it stays out of the world entirely.
@@ -12412,28 +12420,29 @@ function getFlagFloorY() {
 
 // `DropGeometry::dropIt`'s own two-way split -- "check the ground" only when
 // `minZ <= 0.0f`, otherwise a point with nothing above the floor found by the
-// ray is `return false` outright, never the floor itself. `findFlagLandingY`
+// ray is `return false` outright, never the floor itself. `findFlagLandingZ`
 // returns `null` for exactly that case: a real obstacle top always wins
 // (bzo has no clearance/opposing-base test of its own on a bare surface,
 // unlike upstream's `isValidClearance`, so any flat top at or below `fromY`
 // still counts), but nothing found is the ground when there is no water and
 // "no safe landing here" once there is -- an open stretch of water is not a
 // place a flag may rest, any more than it is a place a tank may stand.
-function findFlagLandingY(x, z, fromY) {
-  const floorY = getFlagFloorY();
-  let landingY = floorY;
-  let found = floorY <= 0;
+function findFlagLandingZ(x, y, fromZ) {
+  const floorZ = getFlagFloorY();
+  let landingZ = floorZ;
+  let found = floorZ <= 0;
   for (const obs of getCollisionColliders()) {
     // isValidLanding() skips anything a tank can drive through, and the world
     // boundary is not somewhere a flag belongs.
     if (obs.collisionKind === 'boundary' || obs.kind === 'teleporter') continue;
     const top = getColliderTopY(obs);
-    if (top > fromY || top <= landingY) continue;
-    if (!isOverFlatTop(obs, x, z)) continue;
-    landingY = top;
+    if (top > fromZ || top <= landingZ) continue;
+    if (!isOverFlatTop(obs, x, y)) continue;
+    landingZ = top;
     found = true;
   }
-  return found ? landingY : null;
+  return found ? landingZ : null;
+
 }
 
 // isOpposingTeam(). A team flag may not come to rest on another team's base:
@@ -12575,10 +12584,10 @@ function getShotFlagFor(player) {
 // client/server disagreement about the world, which the collision check in
 // `validateMove` already reports as itself -- refusing its shots as well would
 // bury that finding under a second one.
-function isPlayerInsideBuilding(player, x, y, z, rotation) {
+function isPlayerInsideBuilding(player, x, y, z, azimuth) {
   if (!isPlayerPhased(player)) return false;
   return checkCollision(x, y, z, 2, {
-    rotation,
+    azimuth,
     slack: ANTICHEAT_CONFIG.collisionSlack,
     tankScale: getPlayerTankScale(player),
     suppressLog: true,
@@ -12606,11 +12615,11 @@ function grabFlag(player, flag, now = Date.now(), { checkPos = true } = {}) {
 
   const reach = GAME_CONFIG.TANK_SPEED + TANK.radius + FLAG_RADIUS;
   const extrapolated = player.getExtrapolatedPosition(now);
-  const gap = distance(extrapolated.x, extrapolated.z, flag.position.x, flag.position.z);
-  if (checkPos && Math.abs(extrapolated.y - flag.position.y) < FLAG_GRAB_LEVEL_TOLERANCE && gap > reach) {
+  const gap = distance(extrapolated.x, extrapolated.y, flag.position.x, flag.position.y);
+  if (checkPos && Math.abs(extrapolated.z - flag.position.z) < FLAG_GRAB_LEVEL_TOLERANCE && gap > reach) {
     const refused = reportCheat(player, 'flagRejected',
       `FLAG GRAB REJECTED flag ${flag.index} `
-      + `${flag.position.x.toFixed(2)},${flag.position.z.toFixed(2)} is ${gap.toFixed(2)} away`
+      + `${flag.position.x.toFixed(2)},${flag.position.y.toFixed(2)} is ${gap.toFixed(2)} away`
       + ` (reach ${reach.toFixed(2)})`);
     if (refused) return;
   }
@@ -12635,8 +12644,8 @@ function findAntidotePosition() {
   for (let attempt = 0; attempt < ANTIDOTE_PLACEMENT_ATTEMPTS; attempt++) {
     position = {
       x: getAntidoteCoordinate(worldSize, BASE_SIZE, CTF_ENABLED, Math.random()),
-      y: 0,
-      z: getAntidoteCoordinate(worldSize, BASE_SIZE, CTF_ENABLED, Math.random()),
+      y: getAntidoteCoordinate(worldSize, BASE_SIZE, CTF_ENABLED, Math.random()),
+      z: 0,
     };
     // inBuilding(pos, tankRadius, tankHeight) upstream: the test is whether a
     // tank fits, not whether a flag does, because you have to drive onto it.
@@ -12679,8 +12688,9 @@ function checkAntidote(player, now = Date.now()) {
   const flag = getPlayerFlag(player.id);
   if (!flag || flag.endurance !== FLAG_ENDURANCE.STICKY) return;
   if (!player.alive || player.paused) return;
-  if (Math.abs(player.y - antidote.y) >= FLAG_GRAB_LEVEL_TOLERANCE) return;
-  if (distance(player.x, player.z, antidote.x, antidote.z) > getFlagGrabRadius()) return;
+  if (Math.abs(player.z - antidote.z) >= FLAG_GRAB_LEVEL_TOLERANCE) return;
+  if (distance(player.x, player.y, antidote.x, antidote.y) > getFlagGrabRadius()) return;
+
   log(`"${player.name}" drove onto the antidote and shed ${getFlagType(flag.type).name}`);
   dropFlag(flag, now);
 }
@@ -12775,8 +12785,8 @@ function dropFlag(flag, now = Date.now()) {
   const half = GAME_CONFIG.MAP_SIZE / 2;
   const launch = {
     x: (from.x < -half || from.x > half) ? 0 : from.x,
-    y: from.y + FLAG_LAUNCH_TANK_HEIGHT,
-    z: (from.z < -half || from.z > half) ? 0 : from.z,
+    y: (from.y < -half || from.y > half) ? 0 : from.y,
+    z: from.z + FLAG_LAUNCH_TANK_HEIGHT,
   };
   const teamFlag = flag.team !== null;
   // Both kinds ride the same downward ray, cast from the tank's feet rather than
@@ -12784,15 +12794,15 @@ function dropFlag(flag, now = Date.now()) {
   // FlagInfo::dropFlag adds the tank height to the launch point separately.
   //
   // `landingY` is `null` for open water: nothing above the waterline under
-  // this point at all (`findFlagLandingY`). `landing.y` itself always gets a
+  // this point at all (`findFlagLandingZ`). `landing.y` itself always gets a
   // real number regardless -- upstream's own `dropIt` leaves `pos[2]` at
   // `minZ` in that same case (`if (pos[2] < minZ) pos[2] = minZ`), it just
   // also returns `false`, which is the signal both branches below act on.
-  const landingY = findFlagLandingY(launch.x, launch.z, from.y);
+  const landingY = findFlagLandingZ(launch.x, launch.y, from.z);
   let landing = {
     x: launch.x,
-    y: landingY === null ? getFlagFloorY() : landingY,
-    z: launch.z,
+    y: launch.y,
+    z: landingY === null ? getFlagFloorY() : landingY,
   };
   let vanish = false;
 
@@ -12814,11 +12824,11 @@ function dropFlag(flag, now = Date.now()) {
         // upstream re-runs `dropTeamFlag` at `{0,0,0}` rather than trusting
         // it blindly, and on a water map the centre may itself be a platform
         // (`maps/water.bzw`'s own hub) rather than the bare ground at `y=0`.
-        const centreY = findFlagLandingY(0, 0, getMaxObstacleTopY(OBSTACLES));
-        const centre = { x: 0, y: centreY === null ? getFlagFloorY() : centreY, z: 0 };
+        const centreY = findFlagLandingZ(0, 0, getMaxObstacleTopY(OBSTACLES));
+        const centre = { x: 0, y: 0, z: centreY === null ? getFlagFloorY() : centreY };
         if (centreY === null || isOpposingBaseAt(centre, flag.team)) {
           const base = getRandomTeamBase(flag.team);
-          landing = base ? { x: base.x, y: getBaseTopY(base), z: base.z } : centre;
+          landing = base ? { x: base.pos[0], y: base.pos[1], z: getBaseTop(base) } : centre;
         } else {
           landing = centre;
         }
@@ -12836,7 +12846,7 @@ function dropFlag(flag, now = Date.now()) {
     if (flag.grabs <= 0 || landingY === null) {
       vanish = true;
       flag.grabs = 0;
-    } else if (!FLAGS_ON_BUILDINGS && landing.y > 0) {
+    } else if (!FLAGS_ON_BUILDINGS && landing.z > 0) {
       vanish = true;
     }
   }
@@ -12851,7 +12861,8 @@ function dropFlag(flag, now = Date.now()) {
   flag.flightStartedAt = now;
   log(
     `"${owner.name}" dropped ${getFlagType(flag.type).name} flag ${flag.index} ` +
-    `at ${landing.x.toFixed(2)},${landing.z.toFixed(2)}${vanish ? ' (vanishing)' : ''}`
+    `at ${landing.x.toFixed(2)},${landing.y.toFixed(2)}${vanish ? ' (vanishing)' : ''}`
+
   );
 
   sendFlagDrop(flag);
@@ -13003,7 +13014,7 @@ function dropPlayerFlag(playerId) {
 // flag and stops the tank answering for where it is, so a tank may only pause
 // somewhere it could still legally stand after losing everything it carries.
 function getPauseRefusal(player) {
-  if (player.jumpDirection !== null && player.jumpDirection !== undefined) {
+  if (player.jumpAzimuth !== null && player.jumpAzimuth !== undefined) {
     return 'Can\'t pause when you are in the air';
   }
   if (checkCollision(player.x, player.y, player.z, TANK.radius, { suppressLog: true })) {
@@ -13395,25 +13406,26 @@ function applyObserverHeartbeat(player, message, ws) {
   const x = Number(message.x);
   const y = Number(message.y);
   const z = Number(message.z);
-  const r = Number(message.r);
-  if (![x, y, z, r].every(Number.isFinite)) return;
+  const a = Number(message.a);
+  if (![x, y, z, a].every(Number.isFinite)) return;
   player.x = x;
   player.y = y;
   player.z = z;
-  player.rotation = r;
+  player.azimuth = a;
   player.forwardSpeed = 0;
   player.rotationSpeed = 0;
   player.verticalVelocity = 0;
   broadcast({
     type: 'pm',
     id: player.id,
-    x, y, z, r,
+    x, y, z, a,
     fs: 0,
     rs: 0,
     vv: 0,
     vx: 0,
-    vz: 0,
+    vy: 0,
   }, ws);
+
 }
 
 function isVoicePeer(source, target) {
@@ -13424,9 +13436,10 @@ function isVoicePeer(source, target) {
   if (bots.has(source.id) || bots.has(target.id)) return false;
   // Infinity rather than 0 for a player with no position yet: out of earshot is
   // the safe reading, and only Nearby consults it at all.
-  const planar = Number.isFinite(source.x) && Number.isFinite(source.z)
-    && Number.isFinite(target.x) && Number.isFinite(target.z)
-    ? distance(source.x, source.z, target.x, target.z)
+  const planar = Number.isFinite(source.x) && Number.isFinite(source.y)
+    && Number.isFinite(target.x) && Number.isFinite(target.y)
+    ? distance(source.x, source.y, target.x, target.y)
+
     : Infinity;
   return areVoicePeers(source, target, planar, GAME_CONFIG.VOICE_NEARBY_RADIUS);
 }
@@ -13589,15 +13602,15 @@ function decayPlayerTeleportReentryBlock(player, travelDistance, now) {
 
 function isPointInsideTeleporterPortal(obs, x, y, z, tankRadius = 2) {
   if (!obs || obs.kind !== 'teleporter') return false;
-  const obstacleBase = obs.baseY || 0;
+  const obstacleBase = getObstacleBase(obs);
   const epsilon = 0.15;
-  const tankTop = y + tankRadius;
-  const { x: localX, z: localZ } = getColliderLocalPoint(x, z, obs);
+  const tankTop = z + tankRadius;
+  const { x: localX, y: localY } = getColliderLocalPoint(x, y, obs);
   const dims = getShotTeleporterDims(obs);
-  const innerDistSquared = getBoxCollisionDistanceSquared(localX, localZ, dims.halfW, dims.activeHalfD);
-  const activeBaseY = obstacleBase;
-  const activeTopY = obstacleBase + dims.activeH;
-  const overlapsActiveVertical = tankTop > (activeBaseY + epsilon) && y < (activeTopY - epsilon);
+  const innerDistSquared = getBoxCollisionDistanceSquared(localX, localY, dims.halfW, dims.activeHalfD);
+  const activeBottom = obstacleBase;
+  const activeTop = obstacleBase + dims.activeH;
+  const overlapsActiveVertical = tankTop > (activeBottom + epsilon) && z < (activeTop - epsilon);
   return overlapsActiveVertical && innerDistSquared < tankRadius * tankRadius;
 }
 
@@ -13626,7 +13639,7 @@ function findCrossedTeleporterFace(from, to) {
     };
     for (const [index, obs] of TELEPORTER_OBSTACLES_BY_INDEX) {
       if (!isPointInsideTeleporterPortal(obs, at.x, at.y, at.z, 2)) continue;
-      const side = getColliderLocalPoint(from.x, from.z, obs).x > 0 ? 0 : 1;
+      const side = getColliderLocalPoint(from.x, from.y, obs).x > 0 ? 0 : 1;
       return { faceId: (index * 2) + side, at };
     }
   }
@@ -13640,9 +13653,9 @@ function getZoneRefusal(player, at, faceId, now) {
   }
   const obs = TELEPORTER_OBSTACLES_BY_INDEX.get(Math.floor(faceId / 2));
   if (!obs) return `no teleporter for face ${faceId}`;
-  const rotation = Number.isFinite(at.r) ? at.r : player.rotation;
+  const azimuth = Number.isFinite(at.azimuth) ? at.azimuth : player.azimuth;
   const deltaTime = Math.max(0, (now - player.lastUpdate) / 1000);
-  if (!validateMovement(player, at.x, at.y, at.z, rotation, deltaTime, true, {}, now)) {
+  if (!validateMovement(player, at.x, at.y, at.z, azimuth, deltaTime, true, {}, now)) {
     return `crossing point ${formatShotPoint(at.x, at.y, at.z)} is not a place this tank could be`;
   }
   if (!isPointInsideTeleporterPortal(obs, at.x, at.y, at.z, 2)) {
@@ -13651,6 +13664,8 @@ function getZoneRefusal(player, at, faceId, now) {
   return null;
 }
 
+// `sourceState` is the crossing in upstream's frame, in a player's own field
+// names, plus `vv`.
 function applyPlayerTeleportMessage(player, sourceState, fromFaceId, toFaceId, now) {
   if (!player || !sourceState || !Number.isInteger(fromFaceId) || !Number.isInteger(toFaceId)) {
     return { ok: false, reason: 'invalid_packet' };
@@ -13660,12 +13675,12 @@ function applyPlayerTeleportMessage(player, sourceState, fromFaceId, toFaceId, n
     return { ok: false, reason: 'invalid_source_state' };
   }
 
-  const sourceRotation = Number.isFinite(sourceState.r) ? sourceState.r : player.rotation;
+  const sourceAzimuth = Number.isFinite(sourceState.azimuth) ? sourceState.azimuth : player.azimuth;
   const sourceVerticalVelocity = Number.isFinite(sourceState.vv) ? sourceState.vv : player.verticalVelocity;
-  const sourceAirVelocityX = Number.isFinite(sourceState.vx) ? sourceState.vx : player.airVelocityX;
-  const sourceAirVelocityZ = Number.isFinite(sourceState.vz) ? sourceState.vz : player.airVelocityZ;
-  const hasSourceJumpDirection = sourceState.jd !== null && Number.isFinite(sourceState.jd);
-  const sourceJumpDirection = hasSourceJumpDirection ? sourceState.jd : player.jumpDirection;
+  const sourceAirVelocityX = Number.isFinite(sourceState.airVelocityX) ? sourceState.airVelocityX : player.airVelocityX;
+  const sourceAirVelocityY = Number.isFinite(sourceState.airVelocityY) ? sourceState.airVelocityY : player.airVelocityY;
+  const hasSourceJumpAzimuth = sourceState.jumpAzimuth !== null && Number.isFinite(sourceState.jumpAzimuth);
+  const sourceJumpAzimuth = hasSourceJumpAzimuth ? sourceState.jumpAzimuth : player.jumpAzimuth;
 
   if (now < (player.teleportCooldownUntil || 0)) {
     return { ok: false, reason: 'cooldown' };
@@ -13687,7 +13702,7 @@ function applyPlayerTeleportMessage(player, sourceState, fromFaceId, toFaceId, n
   }
 
   const deltaTime = Math.max(0, (now - player.lastUpdate) / 1000);
-  if (!validateMovement(player, sourceState.x, sourceState.y, sourceState.z, sourceRotation, deltaTime, true, {}, now)) {
+  if (!validateMovement(player, sourceState.x, sourceState.y, sourceState.z, sourceAzimuth, deltaTime, true, {}, now)) {
     return { ok: false, reason: 'invalid_source_state' };
   }
 
@@ -13702,19 +13717,19 @@ function applyPlayerTeleportMessage(player, sourceState, fromFaceId, toFaceId, n
   player.x = sourceState.x;
   player.y = sourceState.y;
   player.z = sourceState.z;
-  player.rotation = sourceRotation;
+  player.azimuth = sourceAzimuth;
   player.verticalVelocity = sourceVerticalVelocity;
   player.airVelocityX = sourceAirVelocityX;
-  player.airVelocityZ = sourceAirVelocityZ;
-  player.jumpDirection = sourceJumpDirection;
+  player.airVelocityY = sourceAirVelocityY;
+  player.jumpAzimuth = sourceJumpAzimuth;
 
-  const moveDirection = player.slideDirection !== undefined
-    ? player.slideDirection
-    : (player.jumpDirection !== null && player.jumpDirection !== undefined ? player.jumpDirection : player.rotation);
+  const moveAzimuth = player.slideAzimuth !== undefined
+    ? player.slideAzimuth
+    : (player.jumpAzimuth !== null && player.jumpAzimuth !== undefined ? player.jumpAzimuth : player.azimuth);
   const dirIn = {
-    x: -Math.sin(moveDirection),
-    y: 0,
-    z: -Math.cos(moveDirection),
+    x: Math.cos(moveAzimuth),
+    y: Math.sin(moveAzimuth),
+    z: 0,
   };
 
   const transformed = transformShotThroughTeleporter(
@@ -13727,15 +13742,15 @@ function applyPlayerTeleportMessage(player, sourceState, fromFaceId, toFaceId, n
   );
 
   const outX = transformed.pointOut.x + transformed.dirOut.x * PLAYER_TELEPORT_EXIT_EPSILON;
-  const outY = Math.max(0, transformed.pointOut.y + transformed.dirOut.y * PLAYER_TELEPORT_EXIT_EPSILON);
-  const outZ = transformed.pointOut.z + transformed.dirOut.z * PLAYER_TELEPORT_EXIT_EPSILON;
+  const outY = transformed.pointOut.y + transformed.dirOut.y * PLAYER_TELEPORT_EXIT_EPSILON;
+  const outZ = Math.max(0, transformed.pointOut.z + transformed.dirOut.z * PLAYER_TELEPORT_EXIT_EPSILON);
 
   // "Tank becomes very large.  Can't fit through teleporters." Obesity needs no
   // rule of its own for that: the portal interior is checked at full size, so a
   // tank too wide for the opening is simply blocked here.
   const destinationCollision = checkCollision(outX, outY, outZ, 2, {
     ignoreTeleporters: true,
-    rotation: player.rotation,
+    azimuth: player.azimuth,
     suppressLog: true,
     tankScale: getPlayerTankScale(player),
   });
@@ -13743,25 +13758,25 @@ function applyPlayerTeleportMessage(player, sourceState, fromFaceId, toFaceId, n
     return { ok: false, reason: 'blocked_exit' };
   }
 
-  const radians1 = sourceObs.rotation + (sourceFace === 0 ? 0 : Math.PI);
-  const radians2 = destinationObs.rotation + (destinationFace === 1 ? 0 : Math.PI);
-  const rotateDelta = radians2 - radians1;
+  // Upstream's turn between the two faces (`getPointWRT`'s `aOut`), a left turn.
+  const { rotateDelta } = transformed;
 
   player.x = outX;
   player.y = outY;
   player.z = outZ;
-  player.rotation = normalizeAngle(player.rotation + rotateDelta);
-  if (player.slideDirection !== undefined) {
-    player.slideDirection = normalizeAngle(player.slideDirection + rotateDelta);
+  player.azimuth = normalizeAngle(player.azimuth + rotateDelta);
+  if (player.slideAzimuth !== undefined) {
+    player.slideAzimuth = normalizeAngle(player.slideAzimuth + rotateDelta);
   }
-  if (player.jumpDirection !== null && player.jumpDirection !== undefined) {
-    player.jumpDirection = normalizeAngle(player.jumpDirection + rotateDelta);
+  if (player.jumpAzimuth !== null && player.jumpAzimuth !== undefined) {
+    player.jumpAzimuth = normalizeAngle(player.jumpAzimuth + rotateDelta);
   }
-  if (Number.isFinite(player.airVelocityX) && Number.isFinite(player.airVelocityZ)) {
-    const rotatedAirVelocity = rotateXZ(player.airVelocityX, player.airVelocityZ, rotateDelta);
+  if (Number.isFinite(player.airVelocityX) && Number.isFinite(player.airVelocityY)) {
+    const rotatedAirVelocity = rotateXY(player.airVelocityX, player.airVelocityY, rotateDelta);
     player.airVelocityX = rotatedAirVelocity.x;
-    player.airVelocityZ = rotatedAirVelocity.z;
+    player.airVelocityY = rotatedAirVelocity.y;
   }
+
 
   player.teleportReentryBlockTeleporterIndex = destinationTeleporterIndex;
   player.teleportReentryBlockDistance = Math.max(
@@ -13829,8 +13844,8 @@ function fireWorldWeaponShot(weapon, now) {
     weapon.y,
     weapon.z,
     direction.x,
-    direction.z,
     direction.y,
+    direction.z,
     weapon.type,
     now
   );
@@ -13848,15 +13863,12 @@ function fireWorldWeaponShot(weapon, now) {
     type: 'shotBegin',
     id: proj.id,
     playerId: proj.playerId,
-    x: proj.x,
-    y: proj.y,
-    z: proj.z,
     shotSlot: proj.shotSlot,
-    ...firedVelocity(proj),
+    ...wireShot(proj),
     flag: proj.flag,
     ricochet: proj.ricochet,
-    segments: proj.segments,
     // FiringInfo's `shot.team`, which a world weapon's shot is drawn in.
+
     team: proj.team,
     // A world weapon locks onto nobody: upstream targets a `GM` world weapon
     // through the API rather than from a map, which bzo has no equivalent of.
@@ -13927,8 +13939,9 @@ function applySteamrollerSweep(now) {
       // Steamroller crushes what it touches; anybody at all crushes a burrowed
       // tank. Both need the roller above ground, which is what stops two
       // burrowed tanks killing each other the instant they meet.
-      if (!canRunOver(roller.flag, victimFlag, roller.at.y, roller.zoned)) continue;
+      if (!canRunOver(roller.flag, victimFlag, roller.at.z, roller.zoned)) continue;
       const radius = getRunOverRadius(victimFlag, roller.flag, TANK.radius);
+      // Across, up, across: the middle term is the one weighed as height.
       const separation = getRunOverSeparation(
         victimAt.x - roller.at.x,
         victimAt.y - roller.at.y,
@@ -13960,7 +13973,7 @@ function logShotEnd(projectile, cause, point, details = '') {
   log(
     `[shotEnd] id=${projectile.id} player=${projectile.playerId} slot=${projectile.shotSlot}` +
     ` cause=${cause} at=${formatShotPoint(point.x, point.y, point.z)}` +
-    ` origin=${formatShotPoint(projectile.originX, projectile.y, projectile.originZ)}` +
+    ` origin=${formatShotPoint(projectile.originX, projectile.originY, projectile.originZ)}` +
     ` dir=(${projectile.dirX.toFixed(4)},${(projectile.dirY || 0).toFixed(4)},${projectile.dirZ.toFixed(4)})${extra}`
   );
 }
@@ -13972,7 +13985,8 @@ function logShotEnd(projectile, cause, point, details = '') {
 // the server hits with is a number every end already shares, and it is the point
 // most of the tank is nearest to.
 function getLockAimPoint(position) {
-  return { x: position.x, y: position.y + (TANK.hitHeight / 2), z: position.z };
+  return { x: position.x, y: position.y, z: position.z + (TANK.hitHeight / 2) };
+
 }
 
 // setTarget()'s eligibility (playing.cxx:4415). A missile may be locked onto a
@@ -14060,8 +14074,8 @@ function canLockOn(player) {
 function setPlayerTarget(player) {
   const now = Date.now();
   const at = player.getExtrapolatedPosition(now);
-  const eye = { x: at.x, z: at.z };
-  const forward = { x: -Math.sin(at.r), z: -Math.cos(at.r) };
+  const eye = { x: at.x, y: at.y };
+  const forward = { x: Math.cos(at.azimuth), y: Math.sin(at.azimuth) };
   const seer = seesThroughDisguises(getPlayerFlag(player.id)?.type ?? null);
 
   const lockable = [];
@@ -14070,7 +14084,8 @@ function setPlayerTarget(player) {
     if (other.id === player.id || !other.joined) return;
     if (isObserverTeam(other.team) || !other.alive) return;
     const position = other.getExtrapolatedPosition(now);
-    const candidate = { id: other.id, x: position.x, z: position.z };
+    const candidate = { id: other.id, x: position.x, y: position.y };
+
     if (canLockOnto(other)) lockable.push(candidate);
     // The look refuses a stealthed tank too, but a seer sees through that one
     // (playing.cxx:4436) where a missile never does.
@@ -14692,7 +14707,7 @@ function simulateProjectilesStep(stepSeconds, now) {
     // boundary collider a shot radius short of the edge, and only leaves the
     // world outright on a step that skipped past that.
     const halfMap = GAME_CONFIG.MAP_SIZE / 2;
-    if (Math.abs(proj.x) > halfMap || Math.abs(proj.z) > halfMap) {
+    if (Math.abs(proj.x) > halfMap || Math.abs(proj.y) > halfMap) {
       projectiles.delete(id);
       const removalPoint = findMapEdgeImpactPoint(
         stepStart.x, stepStart.y, stepStart.z, proj.x, proj.y, proj.z, halfMap
@@ -15268,7 +15283,7 @@ function guestCallsign(callsign) {
 
 function proxyPlayerRecord(player, motion = null) {
   const team = getTeamFromColorIndex(player.team) || PLAYER_TEAM.OBSERVER;
-  const position = motion ? proxyPosition(motion.pos) : { x: 0, y: 0, z: 0 };
+  const position = motion ? { x: motion.pos[0], y: motion.pos[1], z: motion.pos[2] } : { x: 0, y: 0, z: 0 };
   return {
     id: String(player.id),
     name: player.callsign,
@@ -15286,7 +15301,7 @@ function proxyPlayerRecord(player, motion = null) {
     x: round2(position.x),
     y: round2(position.y),
     z: round2(position.z),
-    rotation: motion ? round2(proxyRotation(motion.azimuth)) : 0,
+    azimuth: motion ? round2(motion.azimuth) : 0,
     alive: motion ? motion.alive : false,
     wins: player.wins,
     losses: player.losses,
@@ -15296,10 +15311,10 @@ function proxyPlayerRecord(player, motion = null) {
     forwardSpeed: 0,
     rotationSpeed: 0,
     verticalVelocity: motion ? round3(motion.velocity[2]) : 0,
-    jumpDirection: null,
-    slideDirection: undefined,
+    jumpAzimuth: null,
+    slideAzimuth: undefined,
     airVelocityX: 0,
-    airVelocityZ: 0,
+    airVelocityY: 0,
     // Upstream gives every tank on a team the one team colour
     // (`Team::getTankColor`); bzo's own shading apart of team mates is this
     // server's idea about its own players, and a proxied roster is not that.
@@ -15336,22 +15351,6 @@ function proxyTeamScores(teams) {
   return scores;
 }
 
-// bzfs's world is right-handed with +Y north and +Z up; bzo's is three.js's,
-// with -Z north and +Y up. The same conversion the world importer already
-// makes as it reads a `.bzw` (docs/bzw.md, "Coordinates"), which is why a
-// proxied tank lands on the map the importer drew.
-function proxyPosition(pos) {
-  return { x: pos[0], y: pos[2], z: -pos[1] };
-}
-
-// bzfs measures a heading counter-clockwise from +X. A bzo rotation is a
-// three.js rotation about Y, whose zero faces -Z -- `forward` is
-// `(-sin r, -cos r)` on both sides of bzo's own wire. East in one is north in
-// the other, so the two are a quarter turn apart.
-function proxyRotation(azimuth) {
-  return azimuth - Math.PI / 2;
-}
-
 // Two decimals on a position or an angle, three on a speed: what bzo's own
 // move packets carry, and the whole of its compression story
 // (`docs/network.md`). Worth keeping here too, since these are the messages
@@ -15372,23 +15371,20 @@ function round3(value) {
 // will multiply back by -- this server's config with the map's own overlaid,
 // which is where the target's `-set` lines already are.
 function proxyMove(id, motion, physics) {
-  const r = proxyRotation(motion.azimuth);
-  const position = proxyPosition(motion.pos);
-  const vx = motion.velocity[0];
-  const vz = -motion.velocity[1];
-  const forwardX = -Math.sin(r);
-  const forwardZ = -Math.cos(r);
+  const a = motion.azimuth;
+  const [x, y, z] = motion.pos;
+  const [vx, vy, vv] = motion.velocity;
   return {
     id: String(id),
-    x: round2(position.x),
-    y: round2(position.y),
-    z: round2(position.z),
-    r: round2(r),
-    fs: round3((vx * forwardX + vz * forwardZ) / physics.tankSpeed),
+    x: round2(x),
+    y: round2(y),
+    z: round2(z),
+    a: round2(a),
+    fs: round3((vx * Math.cos(a) + vy * Math.sin(a)) / physics.tankSpeed),
     rs: round3(motion.angVel / physics.tankAngVel),
-    vv: round3(motion.velocity[2]),
+    vv: round3(vv),
     vx: round3(vx),
-    vz: round3(vz),
+    vy: round3(vy),
   };
 }
 
@@ -15411,7 +15407,7 @@ function proxyOutboundMotion(message, physics, status) {
   const x = Number(message.x) || 0;
   const y = Number(message.y) || 0;
   const z = Number(message.z) || 0;
-  const r = Number(message.r) || 0;
+  const a = Number(message.a) || 0;
   // The velocity the browser is actually moving at, read the way this
   // server's own `getPlayerMotion` reads it: in the air the air velocity the
   // packet carries, which keeps the speed and direction the tank left the
@@ -15421,25 +15417,24 @@ function proxyOutboundMotion(message, physics, status) {
   // reckons from exactly this between updates, so a velocity along the wrong
   // line puts the tank somewhere else on their screen until the next one.
   const airVX = Number(message.vx);
-  const airVZ = Number(message.vz);
+  const airVY = Number(message.vy);
   let vx;
-  let vz;
-  if (message.air && Number.isFinite(airVX) && Number.isFinite(airVZ)) {
+  let vy;
+  if (message.air && Number.isFinite(airVX) && Number.isFinite(airVY)) {
     vx = airVX;
-    vz = airVZ;
+    vy = airVY;
   } else {
-    const slide = Number(message.d);
-    const direction = Number.isFinite(slide) ? slide : r;
+    const slide = Number(message.sd);
+    const azimuth = Number.isFinite(slide) ? slide : a;
     const speed = (Number(message.fs) || 0) * physics.tankSpeed;
-    vx = -Math.sin(direction) * speed;
-    vz = -Math.cos(direction) * speed;
+    vx = Math.cos(azimuth) * speed;
+    vy = Math.sin(azimuth) * speed;
   }
   return {
-    // bzo is Y-up, bzfs is Z-up (`proxyPosition`).
-    pos: [x, -z, y],
-    velocity: [vx, -vz, Number(message.vv) || 0],
-    // A quarter turn apart (`proxyRotation`).
-    azimuth: r + Math.PI / 2,
+    pos: [x, y, z],
+    velocity: [vx, vy, Number(message.vv) || 0],
+    azimuth: a,
+
     angVel: (Number(message.rs) || 0) * physics.tankAngVel,
     status,
   };
@@ -15477,9 +15472,9 @@ function proxyFlagState(flag, zonedOf = () => false) {
     type: hidden ? null : flag.type,
     status: flag.status,
     owner: carried ? String(flag.owner) : null,
-    position: proxyPosition(flag.position),
-    launchPosition: proxyPosition(flag.launchPosition),
-    landingPosition: proxyPosition(flag.landingPosition),
+    position: vec3Point(flag.position),
+    launchPosition: vec3Point(flag.launchPosition),
+    landingPosition: vec3Point(flag.landingPosition),
     flightTime: flag.flightTime,
     flightEnd: flag.flightEnd,
     initialVelocity: flag.initialVelocity,
@@ -15520,8 +15515,8 @@ const TEAM_FLAG_ABBREVIATIONS = new Set(['R*', 'G*', 'B*', 'P*']);
 const proxyPilotNames = new Map();
 
 function proxyShot(shot, ricochetAll) {
-  const velocity = { x: shot.velocity[0], y: shot.velocity[2], z: -shot.velocity[1] };
-  const position = proxyPosition(shot.pos);
+  const velocity = vec3Point(shot.velocity);
+  const position = vec3Point(shot.pos);
   const flag = shot.flag || null;
   return {
     type: 'shotBegin',
@@ -16134,7 +16129,7 @@ async function handleProxyConnection(ws, req, request) {
         // tank there is what the client already drew it at.
         ...(session.state.motion.has(death.victim)
           ? (() => {
-            const at = proxyPosition(session.state.motion.get(death.victim).pos);
+            const at = vec3Point(session.state.motion.get(death.victim).pos);
             return { x: round2(at.x), y: round2(at.y), z: round2(at.z) };
           })()
           : { x: 0, y: 0, z: 0 }),
@@ -16155,7 +16150,7 @@ async function handleProxyConnection(ws, req, request) {
 
     session.on('pause', ({ id, paused }) => {
       const motion = session.state.motion.get(id);
-      const position = motion ? proxyPosition(motion.pos) : { x: 0, y: 0, z: 0 };
+      const position = motion ? vec3Point(motion.pos) : { x: 0, y: 0, z: 0 };
       send(paused
         ? {
           type: 'playerPaused',
@@ -16215,7 +16210,7 @@ async function handleProxyConnection(ws, req, request) {
         type: 'nearFlag',
         index: found.index,
         flagType,
-        position: proxyPosition(pos),
+        position: vec3Point(pos),
       });
     });
 
@@ -16268,7 +16263,7 @@ async function handleProxyConnection(ws, req, request) {
         if (announcedAlive.get(player.id) === false) return;
         announcedAlive.set(player.id, false);
         const motion = session.state.motion.get(player.id);
-        const at = motion ? proxyPosition(motion.pos) : { x: 0, y: 0, z: 0 };
+        const at = motion ? vec3Point(motion.pos) : { x: 0, y: 0, z: 0 };
         send({
           type: 'killed',
           victimId: String(player.id),
@@ -16327,13 +16322,14 @@ async function handleProxyConnection(ws, req, request) {
       // A lifetime of zero would be a shot that never ends; upstream's own
       // default stands in for a target that sends one.
       const lifetime = shot.lifetime > 0 ? shot.lifetime : PROXY_DEFAULT_SHOT_LIFETIME;
+      const velocity = vec3Point(shot.velocity);
       shotsInFlight.set(message.id, {
         x: message.x,
         y: message.y,
         z: message.z,
-        vx: shot.velocity[0],
-        vy: shot.velocity[2],
-        vz: -shot.velocity[1],
+        vx: velocity.x,
+        vy: velocity.y,
+        vz: velocity.z,
         at: message.createdAt,
         // Only to forget it: a shot that runs out of life is retired by the
         // client that flew it, at the life its flag really has rather than
@@ -16638,8 +16634,8 @@ async function handleProxyConnection(ws, req, request) {
       const y = Number(message.y) || 0;
       const z = Number(message.z) || 0;
       // A velocity converts the way a position does, being a difference of
-      // two of them over time (`proxyOutboundMotion`).
-      const velocity = [Number(message.vx) || 0, -(Number(message.vz) || 0), Number(message.vy) || 0];
+      // two of them over time.
+      const velocity = [Number(message.vx) || 0, Number(message.vy) || 0, Number(message.vz) || 0];
       const slot = nextShotSlot;
       nextShotSlot = (nextShotSlot + 1) % maxShots;
       const firingFlag = proxyCarriedFlagType(session) || '';
@@ -16650,7 +16646,7 @@ async function handleProxyConnection(ws, req, request) {
       // zeroes both `shotSpeed` and `tankSpeed` for one, so any velocity at all
       // fails its speed check and the shot is dropped without a word.
       const wave = firingFlag === 'SW';
-      const origin = wave && lastMotion ? lastMotion.pos : [x, -z, y];
+      const origin = wave && lastMotion ? lastMotion.pos : [x, y, z];
 
       session.sendShot({
         slot,
@@ -16747,18 +16743,17 @@ async function handleProxyConnection(ws, req, request) {
       if (!Number.isInteger(shotId) || shotId < 0) return;
 
       const speed = Number(message.speed) || 0;
-      // The same axis swap every other outbound position takes
-      // (`proxyOutboundMotion`), applied to a direction because a direction is
-      // a difference of two positions.
+      // A direction converts the way a position does, being a difference of
+      // two of them.
       const velocity = [
         (Number(message.dirX) || 0) * speed,
-        -(Number(message.dirZ) || 0) * speed,
         (Number(message.dirY) || 0) * speed,
+        (Number(message.dirZ) || 0) * speed,
       ];
       session.sendGMUpdate({
         player: session.playerId,
         shotId,
-        pos: [Number(message.x) || 0, -(Number(message.z) || 0), Number(message.y) || 0],
+        pos: [Number(message.x) || 0, Number(message.y) || 0, Number(message.z) || 0],
         velocity,
         // `lastTarget` is `NoPlayer` when a missile is chasing nobody, which is
         // how upstream spells a lock that has lapsed.
@@ -17234,11 +17229,11 @@ function acceptConnection(ws, req) {
             x: Number(message.x),
             y: Number(message.y),
             z: Number(message.z),
-            r: Number(message.r),
+            azimuth: Number(message.a),
+            airVelocityX: Number(message.vx),
+            airVelocityY: Number(message.vy),
+            jumpAzimuth: message.ja === null ? null : Number(message.ja),
             vv: Number(message.vv),
-            vx: Number(message.vx),
-            vz: Number(message.vz),
-            jd: message.jd === null ? null : Number(message.jd),
           };
           const fromFaceId = Number(message.fromFaceId);
           const toFaceId = Number(message.toFaceId);
@@ -17250,7 +17245,7 @@ function acceptConnection(ws, req) {
               x: player.x,
               y: player.y,
               z: player.z,
-              r: player.rotation,
+              a: player.azimuth,
               vv: player.verticalVelocity || 0,
             }));
             if (teleportResult.reason !== 'cooldown' && teleportResult.reason !== 'reentry_block') {
@@ -17265,19 +17260,20 @@ function acceptConnection(ws, req) {
             x: player.x,
             y: player.y,
             z: player.z,
-            r: player.rotation,
+            a: player.azimuth,
             fs: player.forwardSpeed || 0,
             rs: player.rotationSpeed || 0,
             vv: player.verticalVelocity || 0,
             vx: player.airVelocityX || 0,
-            vz: player.airVelocityZ || 0,
+            vy: player.airVelocityY || 0,
             fromFaceId: teleportResult.fromFaceId,
             toFaceId: teleportResult.toFaceId,
-            jd: player.jumpDirection,
+            ja: player.jumpAzimuth,
           };
-          if (player.slideDirection !== undefined) {
-            ptPacket.d = player.slideDirection;
+          if (player.slideAzimuth !== undefined) {
+            ptPacket.sd = player.slideAzimuth;
           }
+
 
           broadcastAll(ptPacket);
           log(
@@ -17318,11 +17314,12 @@ function acceptConnection(ws, req) {
             ? clampToArrivalGap(deltaTime, clientTimestamp - player.lastClientTimestamp)
             : deltaTime;
 
-          // Only accept new compact field names
-          let x = Number(message.x);
-          let y = Number(message.y);
-          let z = Number(message.z);
-          let r = Number(message.r);
+          // Only accept new compact field names. `r` is the heading, an
+          // azimuth, read off the wire's `a`.
+          const x = Number(message.x);
+          const y = Number(message.y);
+          const z = Number(message.z);
+          const r = Number(message.a);
           const reverseSpeedRatio = Number.isFinite(GAME_CONFIG.REVERSE_SPEED_RATIO)
             ? GAME_CONFIG.REVERSE_SPEED_RATIO
             : 0.5;
@@ -17379,7 +17376,7 @@ function acceptConnection(ws, req) {
           // such a tank is off the ground the bound does not apply. Refusing it
           // in strict mode would rubber-band the one flag whose whole point is
           // steering where nothing else can.
-          const airborne = player.jumpDirection !== null && player.jumpDirection !== undefined;
+          const airborne = player.jumpAzimuth !== null && player.jumpAzimuth !== undefined;
           const steeringInAir = airborne && hasAirControl(getPlayerFlag(player.id)?.type ?? null);
           // `_disableSpeedChecks` turns the speed check off outright, as
           // upstream's sets its tolerance to infinity (bzfs.cxx:4442).
@@ -17458,16 +17455,17 @@ function acceptConnection(ws, req) {
             }
           }
 
-          let d = message.d !== undefined ? Number(message.d) : undefined; // Optional slide direction
-          let vx = message.vx !== undefined ? Number(message.vx) : undefined;
-          let vz = message.vz !== undefined ? Number(message.vz) : undefined;
-          const hasAirVelocity = Number.isFinite(vx) && Number.isFinite(vz);
+          // Optional slide heading, and the air velocity.
+          const d = message.sd !== undefined ? Number(message.sd) : undefined;
+          const vx = message.vx !== undefined ? Number(message.vx) : undefined;
+          const vy = message.vy !== undefined ? Number(message.vy) : undefined;
+          const hasAirVelocity = Number.isFinite(vx) && Number.isFinite(vy);
 
           const previousState = {
             x: player.x,
             y: player.y,
             z: player.z,
-            r: player.rotation,
+            azimuth: player.azimuth,
           };
 
           const teleportReentryActive = player.teleportReentryBlockTeleporterIndex !== null
@@ -17488,8 +17486,8 @@ function acceptConnection(ws, req) {
           // quantization, under anything that could be a real jump, and follows
           // a server that has tuned the jump.
           const isJumpStart = oldVV <= 0 && vv > JUMP_START_VERTICAL_VELOCITY;
-          const isLanding = player.jumpDirection !== null && vv === 0; // Transition from air to ground
-          const isFallStart = player.jumpDirection === null && vv < 0; // Started falling (drove off edge)
+          const isLanding = player.jumpAzimuth !== null && vv === 0; // Transition from air to ground
+          const isFallStart = player.jumpAzimuth === null && vv < 0; // Started falling (drove off edge)
 
           // Log jump/land/fall events but DON'T update jumpDirection yet - must validate first
           if (isJumpStart) {
@@ -17497,13 +17495,13 @@ function acceptConnection(ws, req) {
             const jumpTime = 2.05; // Approximate jump duration
             const speed = GAME_CONFIG.TANK_SPEED || 15;
             const rotSpeed = GAME_CONFIG.TANK_ROTATION_SPEED || 1.5;
-            const dx = -Math.sin(r) * fs * speed * jumpTime;
-            const dz = -Math.cos(r) * fs * speed * jumpTime;
+            const dx = Math.cos(r) * fs * speed * jumpTime;
+            const dy = Math.sin(r) * fs * speed * jumpTime;
             const expectedLandX = x + dx;
-            const expectedLandZ = z + dz;
+            const expectedLandY = y + dy;
             const expectedLandR = r + rs * rotSpeed * jumpTime;
             log(`[JUMP] "${player.name}" jumped: pos=(${x.toFixed(2)},${y.toFixed(2)},${z.toFixed(2)}), r=${r.toFixed(2)}, fs=${fs.toFixed(2)}, rs=${rs.toFixed(2)}, vv=${vv.toFixed(2)}`);
-            log(`[JUMP] Expected landing: pos=(${expectedLandX.toFixed(2)},${expectedLandZ.toFixed(2)}), r=${expectedLandR.toFixed(2)}`);
+            log(`[JUMP] Expected landing: pos=(${expectedLandX.toFixed(2)},${expectedLandY.toFixed(2)}), r=${expectedLandR.toFixed(2)}`);
           } else if (isLanding) {
             log(`[LAND] "${player.name}" landed: pos=(${x.toFixed(2)},${y.toFixed(2)},${z.toFixed(2)}), r=${r.toFixed(2)}, fs=${fs.toFixed(2)}, rs=${rs.toFixed(2)}, vv=${vv.toFixed(2)}`);
           } else if (isFallStart) {
@@ -17545,42 +17543,43 @@ function acceptConnection(ws, req) {
           )) {
             // Validation passed - now update jumpDirection
             if (isJumpStart) {
-              player.jumpDirection = r; // Store rotation at jump start
+              player.jumpAzimuth = r; // Store the heading at jump start
             } else if (isFallStart) {
-              player.jumpDirection = r; // Store rotation at fall start (same as jump)
+              player.jumpAzimuth = r; // Store the heading at fall start (same as jump)
             } else if (isLanding) {
-              player.jumpDirection = null; // Clear jump direction on landing
+              player.jumpAzimuth = null; // Clear jump direction on landing
             }
 
             // Update position/rotation AND velocities for next extrapolation
             player.x = x;
             player.y = y;
             player.z = z;
-            player.rotation = r;
+            player.azimuth = r;
             player.forwardSpeed = fs;
             player.rotationSpeed = rs;
             player.verticalVelocity = vv;
-            player.slideDirection = d; // Store slide direction (undefined if not sliding)
+            player.slideAzimuth = d; // Store slide direction (undefined if not sliding)
             // The accepted move as the shot check reads it: a shot the client
             // fires next inherits the velocity these numbers state
             // (`packetVelocity`), whatever the server's own reading of the jump.
+            // As the move states them, which `moveVelocity` reads.
             player.lastMoveFields = {
-              r, fs, d, vv, vx, vz, air: Number(message.air) === 1 ? 1 : 0, at: now,
+              a: r, fs, sd: d, vv, vx, vy, air: Number(message.air) === 1 ? 1 : 0, at: now,
             };
             if (hasAirVelocity) {
               player.airVelocityX = vx;
-              player.airVelocityZ = vz;
-            } else if (player.jumpDirection !== null) {
+              player.airVelocityY = vy;
+            } else if (player.jumpAzimuth !== null) {
               const speed = GAME_CONFIG.TANK_SPEED || 15;
-              const moveDirection = d !== undefined ? d : player.jumpDirection;
-              player.airVelocityX = -Math.sin(moveDirection) * fs * speed;
-              player.airVelocityZ = -Math.cos(moveDirection) * fs * speed;
+              const moveAzimuth = d !== undefined ? d : player.jumpAzimuth;
+              player.airVelocityX = Math.cos(moveAzimuth) * fs * speed;
+              player.airVelocityY = Math.sin(moveAzimuth) * fs * speed;
             } else {
               player.airVelocityX = 0;
-              player.airVelocityZ = 0;
+              player.airVelocityY = 0;
             }
 
-            const movedPlanarDistance = Math.hypot(player.x - previousState.x, player.z - previousState.z);
+            const movedPlanarDistance = Math.hypot(player.x - previousState.x, player.y - previousState.y);
             decayPlayerTeleportReentryBlock(player, movedPlanarDistance, now);
 
             player.lastUpdate = now; // Update timestamp AFTER accepting the move
@@ -17591,17 +17590,17 @@ function acceptConnection(ws, req) {
               x,
               y,
               z,
-              r,
+              a: r,
               fs,
               rs,
               vv,
               vx: player.airVelocityX,
-              vz: player.airVelocityZ,
+              vy: player.airVelocityY,
             };
 
-            // Include optional slide direction if present
+            // Include optional slide heading if present
             if (d !== undefined) {
-              pmPacket.d = d;
+              pmPacket.sd = d;
             }
 
             // Queued rather than broadcast here: one WS frame per move meant
@@ -17619,16 +17618,17 @@ function acceptConnection(ws, req) {
             player.rotationSpeed = 0;
             player.verticalVelocity = 0;
             player.airVelocityX = 0;
-            player.airVelocityZ = 0;
+            player.airVelocityY = 0;
             player.lastUpdate = now;
             ws.send(JSON.stringify({
               type: 'positionCorrection',
               x: player.x,
               y: player.y,
               z: player.z,
-              r: player.rotation,
+              a: player.azimuth,
               vv: 0,
             }));
+
           }
           break;
         }
@@ -17636,7 +17636,8 @@ function acceptConnection(ws, req) {
         case 'shoot': {
           // message: { type: 'shoot', x, y, z, vx, vy, vz }
           const now = Date.now();
-          const shotRejection = getShotRejection(player, message.x, message.y, message.z, now);
+          const from = { x: Number(message.x), y: Number(message.y), z: Number(message.z) };
+          const shotRejection = getShotRejection(player, from.x, from.y, from.z, now);
           if (shotRejection
             && reportShotRejection(player, shotRejection.reason, message, shotRejection.fatal)) {
             break;
@@ -17668,12 +17669,12 @@ function acceptConnection(ws, req) {
             id,
             player.id,
             shotSlot,
-            message.x,
-            message.y,
-            message.z,
+            from.x,
+            from.y,
+            from.z,
             flight.x,
-            flight.z,
             flight.y,
+            flight.z,
             // ShotPath::FiringInfo (ShotPath.cxx:46): an unzoned Phantom Zone
             // tank fires ordinary shells, so the flag a shot is fired under is
             // not always the flag its shooter is holding.
@@ -17700,14 +17701,11 @@ function acceptConnection(ws, req) {
             type: 'shotBegin',
             id: proj.id,
             playerId: proj.playerId,
-            x: proj.x,
-            y: proj.y,
-            z: proj.z,
             shotSlot: proj.shotSlot,
-            ...firedVelocity(proj),
+            ...wireShot(proj),
             flag: proj.flag,
             ricochet: proj.ricochet,
-            segments: proj.segments,
+
             // FiringInfo's `shot.team`: the shooter's team as it fired. Only
             // carried, as upstream's is -- who a shot may hit is still asked of
             // the shooter (`getShotTeam`).
@@ -17817,7 +17815,7 @@ function acceptConnection(ws, req) {
           // cmdDrop (clientCommands.cxx:355): a flag dropped inside a building
           // would land inside it, where nothing could reach it again. The client
           // refuses the control, so this only catches a modified one.
-          if (isPlayerInsideBuilding(player, player.x, player.y, player.z, player.rotation)) {
+          if (isPlayerInsideBuilding(player, player.x, player.y, player.z, player.azimuth)) {
             const refused = reportCheat(player, 'flagRejected',
               'DROP REJECTED: inside a building');
             if (refused) break;
@@ -17850,8 +17848,10 @@ function acceptConnection(ws, req) {
             x: Number(message.x),
             y: Number(message.y),
             z: Number(message.z),
-            r: Number(message.r),
+            azimuth: Number(message.a),
+
           };
+
           const now = Date.now();
           const zoneRefusal = getZoneRefusal(player, zoneAt, Number(message.fromFaceId), now);
           if (zoneRefusal) {
@@ -18028,7 +18028,7 @@ function acceptConnection(ws, req) {
           player.x = spawnPos.x;
           player.y = spawnPos.y;
           player.z = spawnPos.z;
-          player.rotation = spawnPos.rotation;
+          player.azimuth = spawnPos.azimuth;
           player.verticalVelocity = 0;
           player.isJumping = false;
           player.onObstacle = false;
@@ -18040,10 +18040,11 @@ function acceptConnection(ws, req) {
           player.pauseCountdownStart = 0;
           player.forwardSpeed = 0;
           player.rotationSpeed = 0;
-          player.jumpDirection = null;
-          player.slideDirection = undefined;
+          player.jumpAzimuth = null;
+          player.slideAzimuth = undefined;
           player.airVelocityX = 0;
-          player.airVelocityZ = 0;
+          player.airVelocityY = 0;
+
           player.teleportReentryBlockTeleporterIndex = null;
           player.teleportReentryBlockDistance = 0;
           player.teleportReentryBlockUntil = 0;
@@ -18611,7 +18612,6 @@ function acceptConnection(ws, req) {
 // for -- until somebody arrives.
 const { EventEmitter } = require('node:events');
 const { planBotFill, pickBotToRemove } = require('./server/bots.cjs');
-const { packetVelocity } = require('./server/drive.cjs');
 
 const BOT_TICK_SECONDS = 0.05;
 // The longest step a bot's tank takes when the worker has fallen behind.
@@ -18664,7 +18664,7 @@ function isRealPlayer(player) {
 // A tank's motion now, from its last accepted move, by the same model the
 // client draws it with.
 function getPlayerMotion(player, flagType, now) {
-  const airborne = player.jumpDirection !== null && player.jumpDirection !== undefined;
+  const airborne = player.jumpAzimuth !== null && player.jumpAzimuth !== undefined;
   const gravity = hasAirControl(flagType) ? GAME_CONFIG.WINGS_GRAVITY : GAME_CONFIG.GRAVITY;
   if (airborne) {
     const elapsed = Math.max(0, (now - player.lastUpdate) / 1000);
@@ -18672,14 +18672,14 @@ function getPlayerMotion(player, flagType, now) {
       airborne,
       gravity,
       vx: player.airVelocityX || 0,
-      vy: (player.verticalVelocity || 0) - (gravity * elapsed),
-      vz: player.airVelocityZ || 0,
+      vy: player.airVelocityY || 0,
+      vz: (player.verticalVelocity || 0) - (gravity * elapsed),
     };
   }
-  const direction = player.slideDirection ?? player.rotation;
+  const azimuth = player.slideAzimuth ?? player.azimuth;
   const speed = (player.forwardSpeed || 0) * GAME_CONFIG.TANK_SPEED;
   return {
-    airborne, gravity, vx: -Math.sin(direction) * speed, vy: 0, vz: -Math.cos(direction) * speed,
+    airborne, gravity, vx: Math.cos(azimuth) * speed, vy: Math.sin(azimuth) * speed, vz: 0,
   };
 }
 
@@ -18845,11 +18845,14 @@ function botOwnView(bot, now) {
   const maxShots = normalizeShotSlotCount(GAME_CONFIG.SHOT_MAX_ACTIVE);
   return {
     id: me.id,
-    state: { alive: me.alive && me.joined, x: me.x, y: me.y, z: me.z, rotation: me.rotation },
+    state: {
+      alive: me.alive && me.joined, x: me.x, y: me.y, z: me.z, azimuth: me.azimuth,
+    },
     // The flag it drives by, as a client's tank does: Burrow takes it under,
     // Agility gives it the burst, Wings flies it.
     flag: myFlag ? { type: myType, zoned: myFlag.zoned === true } : null,
-    antidote: me.antidote ?? null,
+    antidote: me.antidote ? { x: me.antidote.x, y: me.antidote.y, z: me.antidote.z } : null,
+
     self: {
       id: me.id,
       flag: myType,
@@ -18918,8 +18921,8 @@ function botCheckEnvironment(bot, self) {
   if (self.inAir) return;
   for (const flag of flags) {
     if (flag.status !== FLAG_STATUS.ON_GROUND) continue;
-    if (Math.abs(self.y - flag.position.y) >= FLAG_GRAB_LEVEL_TOLERANCE) continue;
-    if (distance(self.x, self.z, flag.position.x, flag.position.z) >= getFlagGrabRadius()) continue;
+    if (Math.abs(self.z - flag.position.z) >= FLAG_GRAB_LEVEL_TOLERANCE) continue;
+    if (distance(self.x, self.y, flag.position.x, flag.position.y) >= getFlagGrabRadius()) continue;
     bot.lastGrabAt = now;
     bot.socket.say({ type: 'grabFlag', index: flag.index });
     return;

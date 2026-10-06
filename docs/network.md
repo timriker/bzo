@@ -234,11 +234,10 @@ So the same list of nouns -- killed, shot begin, shot end, grab flag, teleport
 
 ## Coordinates, units and ids
 
-- **Up axis.** bzo is Y-up, bzw and bzfs are Z-up. The conversion happens once,
-  at map parse: `posBzf`/`shiftBzf` hold the file's own values and the bzo
-  obstacle is built from them (`server.js:5493`).
-- **Angles** are radians in both, and bzo's `r` is a Three.js Y rotation where
-  upstream's `azimuth` is about Z.
+- **Axes.** The wire is upstream's frame, as bzw and bzfs are: +Z up, +Y
+  north, and so is everything that reads it.
+- **Angles** are radians in both, and a heading is an azimuth, counter-clockwise
+  from +X: a move's `a`, a player record's `azimuth`.
 - **Player ids** are decimal strings in bzo and a `uint8` in bzfs, where
   255/254/253/252 and the team ids are reserved. bzo already borrows 253 for a
   world weapon's shots (`server/shots.cjs`), and a decimal string can never

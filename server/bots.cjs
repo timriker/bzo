@@ -60,7 +60,7 @@ const round = (value, places) => Number(value.toFixed(places));
 //   config()        GAME_CONFIG
 //   colliders()     every solid a tank meets, world walls included
 //   topOf(obs)      an obstacle's top
-//   state()         { alive, x, y, z, rotation } off the server's player
+//   state()         { alive, x, y, z, azimuth } off the server's player
 //   flag()          { type, zoned } of the flag the bot holds, or null
 //   view(self)      the pilot's view, given the bot's own idea of itself
 //   send(message)   a message as though the bot's client had sent it
@@ -82,15 +82,15 @@ class BotDriver {
   get x() { return this.drive.x; }
   get y() { return this.drive.y; }
   get z() { return this.drive.z; }
-  get r() { return this.drive.rotation; }
-  get vy() { return this.drive.verticalVelocity; }
+  get azimuth() { return this.drive.azimuth; }
+  get vz() { return this.drive.verticalVelocity; }
   get angVel() { return this.drive.lastAngVel; }
   get speed() { return this.drive.lastSpeed; }
   get jumpDirection() { return this.drive.jumpDirection; }
 
   // Where the server put the tank, which is where every life starts.
   respawn(state) {
-    this.drive = createDriveState({ x: state.x, y: state.y, z: state.z, rotation: state.rotation });
+    this.drive = createDriveState({ x: state.x, y: state.y, z: state.z, azimuth: state.azimuth });
     this.lastSent = null;
   }
 
@@ -111,15 +111,15 @@ class BotDriver {
       x: d.x,
       y: d.y,
       z: d.z,
-      rotation: d.rotation,
+      azimuth: d.azimuth,
       inAir,
       muzzleForward: TANK.muzzleForward,
       muzzleHeight: TANK.muzzleHeight,
       // How the tank is moving, which a shot inherits -- as the client's view
       // says it.
       velocity: inAir
-        ? { x: d.airVelocityX, y: d.verticalVelocity, z: d.airVelocityZ }
-        : { x: -Math.sin(d.rotation) * d.lastSpeed, y: 0, z: -Math.cos(d.rotation) * d.lastSpeed },
+        ? { x: d.airVelocityX, y: d.airVelocityY, z: d.verticalVelocity }
+        : { x: Math.cos(d.azimuth) * d.lastSpeed, y: Math.sin(d.azimuth) * d.lastSpeed, z: 0 },
       speed: d.lastSpeed,
       topSpeed: d.topSpeed || config.TANK_SPEED,
       accel: d.linearLimit,
@@ -167,11 +167,11 @@ class BotDriver {
         x: round(tp.source.x, 2),
         y: round(tp.source.y, 2),
         z: round(tp.source.z, 2),
-        r: round(tp.sourceRotation, 2),
+        a: round(tp.sourceAzimuth, 2),
         vv: round(tp.verticalVelocity, 2),
         vx: round(tp.airVelocityX, 2),
-        vz: round(tp.airVelocityZ, 2),
-        jd: tp.jumpDirection === null ? null : round(tp.jumpDirection, 2),
+        vy: round(tp.airVelocityY, 2),
+        ja: tp.jumpDirection === null ? null : round(tp.jumpDirection, 2),
       });
     }
     this.report(dt, events.forceSend || out.fire, Boolean(events.jumpStarted));
@@ -220,7 +220,7 @@ class BotDriver {
       x: this.drive.x,
       y: this.drive.y,
       z: this.drive.z,
-      rotation: this.drive.rotation,
+      azimuth: this.drive.azimuth,
       tankVelocity: packetVelocity(fields, config),
       config,
       shockwave: getShotEffects(fired).shockwave,

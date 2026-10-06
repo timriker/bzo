@@ -66,6 +66,14 @@ for (const name of MIRRORED) {
       /^const \{([^}]*)\} = require\('\.\/([a-z-]+)\.cjs'\);$/gm,
       (whole, names, module_) => `shares {${names.trim()}} with ${module_}`,
     )
+    .replace(
+      /^import \* as ([A-Za-z_$][\w$]*) from '\.\/([a-z-]+)\.mjs';$/gm,
+      (whole, name_, module_) => `shares ${name_} with ${module_}`,
+    )
+    .replace(
+      /^const ([A-Za-z_$][\w$]*) = require\('\.\/([a-z-]+)\.cjs'\);$/gm,
+      (whole, name_, module_) => `shares ${name_} with ${module_}`,
+    )
     .replace(/\nmodule\.exports = \{[\s\S]*?\};\s*$/, '')
     .trim();
   const a = normalize(readFileSync(`public/${name}.mjs`, 'utf8')).split('\n');

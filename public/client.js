@@ -264,7 +264,6 @@ import {
   SUPER_FLAG_COLOR,
   isBadFlag,
   getFlagEndurance,
-  getFlagFlightState,
   getFlagTeamIndex,
   getFlagType,
   getShotEffects,
@@ -297,13 +296,12 @@ import {
   findNearestGroundFlag,
   shotRicochets,
   TARGETING_ANGLE,
-  pickTargetInSights,
-  steerGuidedShot,
   canRunOver,
   getRunOverRadius,
   getRunOverSeparation,
   configureFlagEffects,
 } from './flags.mjs';
+import { steerGuidedShot, pickTargetInSights, getFlagFlightState } from './flags.mjs';
 import {
   normalizeShotSlotCount,
   WORLD_WEAPON_PLAYER_ID,
@@ -315,10 +313,10 @@ import {
   getShotSlotProgress,
   findFreeShotSlot,
   countFreeShotSlots,
-  getShotTankHit,
   shockWaveHitsTank,
   getShotFlight,
 } from './shots.mjs';
+import { getShotTankHit } from './shots.mjs';
 import { CLIENT_VERSION } from './version.mjs';
 import {
   VOICE_DUCK_HOLD_MS,
@@ -354,21 +352,20 @@ import {
   SHOT_BOUNCE_CLEARANCE,
   getBaseTeamAtPoint,
   getColliderLocalPoint,
-  getObstacleHeight,
   getOrigRectNormal,
+  getTankHitNormal,
+  findMeshHitFace,
+  findMeshHitFaceOriented,
+  getPyramidHeight,
+  isPyramidFlatTop,
+  getObstacleHeight,
   getShotObstacleNormal,
   getBoxCrossingPlane,
   getMeshCrossingPlane,
-  getTankHitNormal,
   getShotTeleporterDims,
-  findMeshHitFace,
-  findMeshHitFaceOriented,
   resolvePhysicsDriverAt,
   isOverFlatTop,
-  getPyramidHeight,
-  isPyramidFlatTop,
   reflectShotDirection,
-  findShotSegmentImpact,
   testOrigRectCircle,
   traceShotStep,
   buildCollisionColliders,
@@ -377,6 +374,8 @@ import {
   DEFAULT_MUZZLE_HEIGHT,
   WORLD_WALL_HEIGHT,
   TANK,
+  findShotSegmentImpact,
+  getObstacleBase,
 } from './collision.mjs';
 import { meshArrays, FACE_NO_RADAR } from './mesh-arrays.mjs';
 import {
@@ -410,6 +409,31 @@ import {
   getTrackMarkSides,
   setTrackFadeTime
 } from './tracks.mjs';
+
+// A tank's mesh, where it stands and the way it faces. It stands in the
+// renderer's `worldFrame`, and its model faces +x, so it turns by its azimuth
+// about z.
+function placeTank(object, x, y, z, azimuth) {
+  object.position.set(x, y, z);
+  object.rotation.set(0, 0, azimuth);
+}
+
+// Where a shot is, kept on it as the game's state, and its mesh moved there:
+// a shot stands in the renderer's `worldFrame`, which is upstream's.
+function placeShot(projectile, p) {
+  projectile.userData.at = { x: p.x, y: p.y, z: p.z };
+  projectile.position.set(p.x, p.y, p.z);
+}
+
+// Where a tank's mesh stands, and the way it faces: a remote tank's state is
+// its mesh's, which the animation loop places each frame.
+function tankPoint(tank) {
+  return { x: tank.position.x, y: tank.position.y, z: tank.position.z };
+}
+
+function tankAzimuth(tank) {
+  return tank.rotation.z;
+}
 
 // Register the service worker that makes the game installable and serves its
 // assets from disk. The build id rides in the script URL, so any change to what
@@ -544,7 +568,6 @@ function updateFps() {
 
 // Game state
 let scene;
-let camera;
 let myPlayerId = null;
 let myPlayerName = '';
 let myTank = null;
@@ -1065,16 +1088,18 @@ function readViewCamTarget() {
 const autoViewCamTarget = readViewCamTarget();
 
 // `?pos=x,y,z,deg` -- where a shared Map Viewer link starts, and which way it
-// faces. Degrees rather than radians: this is the one part of the link a
-// person might actually read or type by hand, the same reason `-set`'s own
-// `rotation` line in a `.bzw` is degrees and not radians.
+// faces, in upstream's frame as a `.bzw` and `/mv` state it: `z` up, and the
+// facing an azimuth, counter-clockwise from east. Degrees rather than radians:
+// this is the one part of the link a person might actually read or type by
+// hand, the same reason a `.bzw`'s own `rotation` line is degrees and not
+// radians.
 function readViewPosTarget() {
   const params = new URLSearchParams(window.location.search);
   if (!params.has('pos')) return null;
   const parts = (params.get('pos') || '').split(',').map(Number);
   if (parts.length !== 4 || !parts.every(Number.isFinite)) return null;
   const [x, y, z, deg] = parts;
-  return { x, y, z, rotation: (deg * Math.PI) / 180 };
+  return { x, y, z, azimuth: (deg * Math.PI) / 180 };
 }
 const autoViewPosTarget = readViewPosTarget();
 // Set once a link's `pos=` has placed the viewer. A free camera is free: the
@@ -1118,8 +1143,9 @@ function buildShareViewLink() {
     overview: 'overview',
   };
   const cam = isObserver() ? (camNames[roamView] || 'free') : playerCamNames[cameraMode];
-  const deg = ((playerRotation * 180) / Math.PI).toFixed(1);
-  const pos = `${playerX.toFixed(1)},${playerY.toFixed(1)},${playerZ.toFixed(1)},${deg}`;
+  // As `/mv` takes it -- see `readViewPosTarget`.
+  const deg = ((myAzimuth * 180) / Math.PI).toFixed(1);
+  const pos = `${myX.toFixed(1)},${myY.toFixed(1)},${myZ.toFixed(1)},${deg}`;
   const where = replaying ? `replay=${encodeURIComponent(replaying)}` : watching
     ? `watch=${encodeURIComponent(watching)}`
     : `viewmap=${encodeURIComponent(mapFile)}`;
@@ -1616,15 +1642,13 @@ function rebuildTankColor(playerId) {
   // from it would stand the tank back where it was then for a frame.
   addPlayer({
     ...state,
-    x: tank.position.x,
-    y: tank.position.y,
-    z: tank.position.z,
-    rotation: tank.rotation.y,
+    ...tankPoint(tank),
+    azimuth: tankAzimuth(tank),
   });
   // addPlayer *replaces* the mesh when the colour changed, so every caller that
   // can rebuild the local tank has to re-point `myTank` at the new one -- the old
   // one is out of `tanks` and out of the scene. Miss this and the movement code
-  // goes on writing positions onto an orphan while the camera reads playerX/Y/Z:
+  // goes on writing positions onto an orphan while the camera reads myX/Y/Z:
   // the view moves and the tank does not.
   if (playerId === myPlayerId) myTank = tanks.get(myPlayerId);
 }
@@ -2899,18 +2923,18 @@ function confineViewerToWorld() {
   const confine = (value) => Math.max(-limit, Math.min(limit, value));
   const outside = (value) => Math.abs(value) > limit;
 
-  // `playerX`/`playerZ` rather than the tank mesh, because this runs at points
-  // in a join where the mesh has not been picked up into `myTank` yet -- the
-  // pair is what the heartbeat, the radar and the tank's own transform all
-  // read from anyway, so moving it moves everything that follows.
-  if (outside(playerX) || outside(playerZ)) {
-    playerX = confine(playerX);
-    playerZ = confine(playerZ);
-    if (myTank) myTank.position.set(playerX, myTank.position.y, playerZ);
+  // `myX`/`myY` rather than the tank mesh, because this runs at points in a
+  // join where the mesh has not been picked up into `myTank` yet -- the pair
+  // is what the heartbeat, the radar and the tank's own transform all read
+  // from anyway, so moving it moves everything that follows.
+  if (outside(myX) || outside(myY)) {
+    myX = confine(myX);
+    myY = confine(myY);
+    if (myTank) myTank.position.set(myX, myY, myZ);
   }
-  if (roamCamera && (outside(roamCamera.x) || outside(roamCamera.z))) {
+  if (roamCamera && (outside(roamCamera.x) || outside(roamCamera.y))) {
     roamCamera.x = confine(roamCamera.x);
-    roamCamera.z = confine(roamCamera.z);
+    roamCamera.y = confine(roamCamera.y);
   }
 }
 
@@ -4792,15 +4816,15 @@ let tankPreviewAnimating = false;
 const TANK_PREVIEW_FILL = 0.7;
 // Where the preview camera aims, shared by the camera and the fit that measures
 // from it -- two copies of this number would silently misframe every model.
-const TANK_PREVIEW_LOOK_AT = new THREE.Vector3(0, 0.8, 0);
+// The preview stands in the game's axes, on +z, as a tank does in the world.
+const TANK_PREVIEW_LOOK_AT = new THREE.Vector3(0, 0, 0.8);
 // Only reached before joining on a server with no team colour to borrow.
 const TANK_PREVIEW_FALLBACK_COLOR = 0x4caf50;
-// The pose a tank is first seen in. A model faces -z unrotated and the camera
-// sits at +z, so leaving it at zero shows the player the back of the tank --
-// the one view that says least about which tank it is. A quarter turn about Y
-// takes -z to -x, which from the camera is the left: a side-on profile, and the
-// silhouette that tells two hulls apart.
-const TANK_PREVIEW_START_ROTATION = Math.PI / 2;
+// The pose a tank is first seen in. A model faces +x unrotated and the camera
+// sits at -y, looking north. A half turn about z faces it -x, which from the
+// camera is the left: a side-on profile, and the silhouette that tells two
+// hulls apart.
+const TANK_PREVIEW_START_ROTATION = Math.PI;
 // The turntable's spin, in radians of yaw per frame.
 const TANK_PREVIEW_SPIN_PER_FRAME = 0.015;
 // The longest step the treads will take from one preview frame to the next.
@@ -5028,15 +5052,15 @@ function measureTankModel(tank) {
   return {
     size: bounds.getSize(new THREE.Vector3()),
     center: bounds.getCenter(new THREE.Vector3()),
-    minY: bounds.min.y,
+    minZ: bounds.min.z,
   };
 }
 
 function fitTankPreviewToView() {
   const { camera, modelInner: tank, modelMeasure: measure } = tankPreviewCard;
   if (!tank || !measure) return;
-  const { size, center, minY } = measure;
-  if (!(size.x > 0) || !(size.y > 0)) return;
+  const { size, center, minZ } = measure;
+  if (!(size.x > 0) || !(size.z > 0)) return;
 
   const distance = camera.position.distanceTo(TANK_PREVIEW_LOOK_AT);
   const visibleHeight = 2 * Math.tan((camera.fov * Math.PI) / 360) * distance;
@@ -5044,19 +5068,19 @@ function fitTankPreviewToView() {
 
   // The tank turns while it is previewed, so the width it needs is its widest
   // horizontal reach -- the diagonal of its footprint -- not whichever of x and
-  // z happens to face the camera at this instant. Otherwise it fits at one angle
+  // y happens to face the camera at this instant. Otherwise it fits at one angle
   // and clips a quarter turn later.
-  const turningWidth = Math.hypot(size.x, size.z);
+  const turningWidth = Math.hypot(size.x, size.y);
   const scale = Math.min(
     (visibleWidth * TANK_PREVIEW_FILL) / turningWidth,
-    (visibleHeight * TANK_PREVIEW_FILL) / size.y,
+    (visibleHeight * TANK_PREVIEW_FILL) / size.z,
   );
 
   tank.scale.setScalar(scale);
   // Centred on the two axes it turns around, and standing on the floor rather
   // than centred vertically, which is how a tank is seen everywhere else.
-  tank.position.set(-center.x * scale, -minY * scale, -center.z * scale);
-  return scale * Math.max(size.x, size.z);
+  tank.position.set(-center.x * scale, -center.y * scale, -minZ * scale);
+  return scale * Math.max(size.x, size.y);
 }
 
 // The canvas is sized by CSS and the drawing buffer has to follow it, or the
@@ -5127,7 +5151,7 @@ function loadTankPreviewModel(modelPath) {
     root.add(tank);
     tankPreviewCard.modelInner = tank;
     const footprint = fitTankPreviewToView();
-    root.rotation.y = TANK_PREVIEW_START_ROTATION;
+    root.rotation.z = TANK_PREVIEW_START_ROTATION;
     scene.add(root);
     tankPreviewCard.modelRoot = root;
     // The floor is a shadow under this tank, so it is sized from this tank.
@@ -5186,7 +5210,7 @@ function animateTankPreviews() {
 
   if (tankPreviewCard) {
     if (tankPreviewCard.modelRoot) {
-      tankPreviewCard.modelRoot.rotation.y += TANK_PREVIEW_SPIN_PER_FRAME;
+      tankPreviewCard.modelRoot.rotation.z += TANK_PREVIEW_SPIN_PER_FRAME;
     }
     // The preview tank is not driving anywhere, it is turning on the spot, so
     // its treads run the way a tank spinning in place runs them: one forward,
@@ -5235,13 +5259,14 @@ async function initTankSelector() {
 
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(42, width / height, 0.1, 100);
-  camera.position.set(0, 2.4, 7.2);
+  camera.position.set(0, -7.2, 2.4);
+  camera.up.set(0, 0, 1);
   camera.lookAt(TANK_PREVIEW_LOOK_AT);
 
   const ambient = new THREE.AmbientLight(0xffffff, 0.8);
   scene.add(ambient);
   const keyLight = new THREE.DirectionalLight(0xffffff, 0.7);
-  keyLight.position.set(3, 5, 4);
+  keyLight.position.set(3, -4, 5);
   scene.add(keyLight);
 
   // Unit radius, scaled to whichever tank is standing on it: the models differ
@@ -5251,8 +5276,7 @@ async function initTankSelector() {
     new THREE.CircleGeometry(1, 24),
     new THREE.MeshBasicMaterial({ color: 0x123018, transparent: true, opacity: 0.35 }),
   );
-  floor.rotation.x = -Math.PI / 2;
-  floor.position.y = -0.05;
+  floor.position.z = -0.05;
   scene.add(floor);
 
   tankPreviewCard = {
@@ -5286,10 +5310,12 @@ async function initTankSelector() {
   setSelectedTankModel(selectedTankModelId);
 }
 
-// Player tank position (for movement prediction)
-let playerX = 0;
-let playerY = 0; // Y is vertical position
-let playerZ = 0;
+// This tank, in upstream's frame: (x, y) on the ground, z up, and the azimuth
+// counter-clockwise from +x.
+let myX = 0;
+let myY = 0;
+let myZ = 0;
+let myAzimuth = Math.PI / 2;
 // The observer's roaming camera, held only while observing. See roam.mjs.
 let roamCamera = null;
 // Set while phantom-driving (DRIVE_FP/DRIVE_TP), whose own tank physics move
@@ -5312,14 +5338,13 @@ let lastObserverHeartbeatAt = -Infinity;
 let lastObserverSentX = 0;
 let lastObserverSentY = 0;
 let lastObserverSentZ = 0;
-let playerRotation = 0;
 
 // Dead reckoning state - track last sent velocities (not positions, since positions are extrapolated)
 let lastSentForwardSpeed = 0;
 let lastSentRotationSpeed = 0;
 let lastSentVerticalVelocity = 0;
 let lastSentAirVelocityX = 0;
-let lastSentAirVelocityZ = 0;
+let lastSentAirVelocityY = 0;
 let lastSentTime = 0;
 // The heading the last move carried, for `_angleTolerance`'s drift check.
 let lastSentHeading = null;
@@ -5400,7 +5425,7 @@ function ensureSurfaceOutlineDebugMarker() {
   });
   surfaceOutlineDebugMarker = new THREE.LineLoop(geometry, material);
   surfaceOutlineDebugMarker.visible = false;
-  renderManager.getWorldGroup().add(surfaceOutlineDebugMarker);
+  renderManager.getWorldFrame().add(surfaceOutlineDebugMarker);
   return surfaceOutlineDebugMarker;
 }
 
@@ -5412,21 +5437,24 @@ function ensureSupportSurfaceDebugMarker() {
     new THREE.CylinderGeometry(0.1, 0.1, 4.5, 10),
     new THREE.MeshBasicMaterial({ color: 0xff4d9d, transparent: true, opacity: 0.85 })
   );
-  pole.position.y = 2.25;
+  // A cylinder is built along its own y, and stood up on z.
+  pole.rotation.x = Math.PI / 2;
+  pole.position.z = 2.25;
   const cap = new THREE.Mesh(
     new THREE.CylinderGeometry(0.55, 0.55, 0.18, 16),
     new THREE.MeshBasicMaterial({ color: 0xffb347, transparent: true, opacity: 0.95 })
   );
-  cap.position.y = 4.6;
+  cap.rotation.x = Math.PI / 2;
+  cap.position.z = 4.6;
   const label = new THREE.Sprite(new THREE.SpriteMaterial({ transparent: true, depthTest: false, depthWrite: false }));
-  label.position.set(0, 5.7, 0);
+  label.position.set(0, 0, 5.7);
   label.scale.set(3.4, 0.85, 1);
   markerGroup.userData.nameLabel = label;
   markerGroup.add(pole);
   markerGroup.add(cap);
   markerGroup.add(label);
   markerGroup.visible = false;
-  renderManager.getWorldGroup().add(markerGroup);
+  renderManager.getWorldFrame().add(markerGroup);
   supportSurfaceDebugMarker = markerGroup;
   return supportSurfaceDebugMarker;
 }
@@ -5434,7 +5462,7 @@ function ensureSupportSurfaceDebugMarker() {
 function clearJumpPredictionDebug(tank) {
   if (!tank?.userData?.jumpPredictionDebug) return;
   const debugGroup = tank.userData.jumpPredictionDebug;
-  renderManager.getWorldGroup().remove(debugGroup);
+  debugGroup.removeFromParent();
   debugGroup.traverse((child) => {
     if (child.geometry) child.geometry.dispose();
     if (child.material) {
@@ -5478,7 +5506,6 @@ function ensureJumpPredictionDebug(tank, mode = 'received') {
       depthWrite: false
     })
   );
-  landingRing.rotation.x = Math.PI / 2;
 
   const landingPillar = new THREE.Mesh(
     new THREE.CylinderGeometry(0.08, 0.08, 1.2, 10),
@@ -5489,14 +5516,17 @@ function ensureJumpPredictionDebug(tank, mode = 'received') {
       depthWrite: false
     })
   );
-  landingPillar.position.y = 0.6;
+  // A cylinder stands along y; the world's up is z.
+  landingPillar.rotation.x = Math.PI / 2;
+  landingPillar.position.z = 0.6;
 
   group.add(line);
   group.add(landingRing);
   group.add(landingPillar);
   group.userData = { line, landingRing, landingPillar, mode };
   group.visible = false;
-  renderManager.getWorldGroup().add(group);
+  // In the world's own frame: a torus lies flat in xy as it is built.
+  renderManager.getWorldFrame().add(group);
   tank.userData.jumpPredictionDebug = group;
   return group;
 }
@@ -5513,33 +5543,33 @@ function samplePredictedAirPath(state) {
   for (let step = 0; step <= maxSteps; step += 1) {
     const t = step * stepTime;
     const pos = extrapolatePosition(state, t);
-    let pointY = pos.y;
+    let pointZ = pos.z;
     let landedType = null;
 
     const pathGroundLimit = getGroundLimit(state.flagType ?? null);
-    if (pos.y <= pathGroundLimit) {
-      pointY = pathGroundLimit;
+    if (pos.z <= pathGroundLimit) {
+      pointZ = pathGroundLimit;
       landed = true;
       landedType = 'ground';
     }
 
-    points.push(new THREE.Vector3(pos.x, pointY, pos.z));
+    points.push(new THREE.Vector3(pos.x, pos.y, pointZ));
     if (landed) {
-      landingPoint = { x: pos.x, y: pointY, z: pos.z, type: landedType };
+      landingPoint = { x: pos.x, y: pos.y, z: pointZ, type: landedType };
       break;
     }
   }
 
   if (!landed) {
-    const initialY = Number.isFinite(state.y) ? state.y : 0;
+    const initialZ = Number.isFinite(state.z) ? state.z : 0;
     const initialVV = Number.isFinite(state.verticalVelocity) ? state.verticalVelocity : 0;
-    const discriminant = (initialVV * initialVV) + (2 * gravity * initialY);
+    const discriminant = (initialVV * initialVV) + (2 * gravity * initialZ);
     if (gravity > 0 && discriminant >= 0) {
       const landingTime = (initialVV + Math.sqrt(discriminant)) / gravity;
       if (Number.isFinite(landingTime) && landingTime > 0) {
         const landingPos = extrapolatePosition(state, landingTime);
-        points.push(new THREE.Vector3(landingPos.x, 0, landingPos.z));
-        landingPoint = { x: landingPos.x, y: 0, z: landingPos.z, type: 'ground' };
+        points.push(new THREE.Vector3(landingPos.x, landingPos.y, 0));
+        landingPoint = { x: landingPos.x, y: landingPos.y, z: 0, type: 'ground' };
       }
     }
   }
@@ -5547,7 +5577,7 @@ function samplePredictedAirPath(state) {
   if (points.length < 2) {
     const pos = extrapolatePosition(state, 0);
     points.push(new THREE.Vector3(pos.x, pos.y, pos.z));
-    points.push(new THREE.Vector3(pos.x, Math.max(0, pos.y - 0.01), pos.z));
+    points.push(new THREE.Vector3(pos.x, pos.y, Math.max(0, pos.z - 0.01)));
   }
 
   return {
@@ -5563,7 +5593,7 @@ function samplePredictedAirPath(state) {
 
 function updateJumpPredictionDebug(tank, state, mode = 'received') {
   if (!tank) return;
-  const airborne = state && state.jumpDirection !== null && state.jumpDirection !== undefined;
+  const airborne = state && state.jumpAzimuth !== null && state.jumpAzimuth !== undefined;
   if (!airborne) {
     if (tank.userData.jumpPredictionDebug) {
       tank.userData.jumpPredictionDebug.visible = false;
@@ -5587,10 +5617,10 @@ function updateJumpPredictionDebug(tank, state, mode = 'received') {
 
   const landing = prediction.landingPoint;
   if (landingRing) {
-    landingRing.position.set(landing.x, landing.y + 0.05, landing.z);
+    landingRing.position.set(landing.x, landing.y, landing.z + 0.05);
   }
   if (landingPillar) {
-    landingPillar.position.set(landing.x, landing.y + 0.6, landing.z);
+    landingPillar.position.set(landing.x, landing.y, landing.z + 0.6);
   }
   debugGroup.visible = showDebugGeometry;
 }
@@ -5599,23 +5629,25 @@ function ensurePacketMotionDebug(targetObject, mode = 'received') {
   if (!showDebugGeometry || !targetObject) return null;
   if (targetObject.userData.packetMotionDebug) return targetObject.userData.packetMotionDebug;
 
+  // In the tank's own axes: x forward, y to port, z up. A cylinder or a cone
+  // is built along its own y, and turned to the axis it shows.
   const motionGroup = new THREE.Group();
-  motionGroup.position.set(0, 3.1, 0);
+  motionGroup.position.set(0, 0, 3.1);
 
   const linearGroup = new THREE.Group();
   const shaft = new THREE.Mesh(
     new THREE.CylinderGeometry(0.08, 0.08, 1.4, 10),
     new THREE.MeshBasicMaterial({ color: mode === 'sent' ? 0x7cf29a : 0x7cd6ff, transparent: true, opacity: 0.9 })
   );
-  shaft.rotation.x = Math.PI / 2;
-  shaft.position.z = -0.7;
+  shaft.rotation.z = -Math.PI / 2;
+  shaft.position.x = 0.7;
   shaft.userData.baseLength = 1.4;
   const head = new THREE.Mesh(
     new THREE.ConeGeometry(0.22, 0.55, 12),
     new THREE.MeshBasicMaterial({ color: mode === 'sent' ? 0xc9ff6a : 0xfff36a, transparent: true, opacity: 0.95 })
   );
-  head.rotation.x = -Math.PI / 2;
-  head.position.z = -1.55;
+  head.rotation.z = -Math.PI / 2;
+  head.position.x = 1.55;
   head.userData.baseOffset = 1.55;
   linearGroup.add(shaft);
   linearGroup.add(head);
@@ -5626,13 +5658,15 @@ function ensurePacketMotionDebug(targetObject, mode = 'received') {
     new THREE.MeshBasicMaterial({ color: 0xff9f43, transparent: true, opacity: 0.9 })
   );
   verticalShaft.userData.baseLength = 1.2;
-  verticalShaft.position.y = 0.6;
+  verticalShaft.rotation.x = Math.PI / 2;
+  verticalShaft.position.z = 0.6;
   const verticalHead = new THREE.Mesh(
     new THREE.ConeGeometry(0.2, 0.45, 12),
     new THREE.MeshBasicMaterial({ color: 0xff6b6b, transparent: true, opacity: 0.95 })
   );
   verticalHead.userData.baseOffset = 1.35;
-  verticalHead.position.y = 1.35;
+  verticalHead.rotation.x = Math.PI / 2;
+  verticalHead.position.z = 1.35;
   verticalGroup.add(verticalShaft);
   verticalGroup.add(verticalHead);
 
@@ -5640,19 +5674,18 @@ function ensurePacketMotionDebug(targetObject, mode = 'received') {
     new THREE.TorusGeometry(1.0, 0.04, 8, 24),
     new THREE.MeshBasicMaterial({ color: 0xff7ad9, transparent: true, opacity: 0.35 })
   );
-  turnRing.rotation.x = Math.PI / 2;
-  turnRing.position.y = 0.15;
+  turnRing.position.z = 0.15;
 
   const turnIndicator = new THREE.Mesh(
     new THREE.ConeGeometry(0.18, 0.5, 12),
     new THREE.MeshBasicMaterial({ color: 0xff7ad9, transparent: true, opacity: 0.95 })
   );
-  turnIndicator.rotation.z = -Math.PI / 2;
-  turnIndicator.position.set(1.0, 0.15, 0);
+  turnIndicator.rotation.z = Math.PI;
+  turnIndicator.position.set(0, -1.0, 0.15);
   turnIndicator.userData.baseOffset = 1.0;
 
   const label = new THREE.Sprite(new THREE.SpriteMaterial({ transparent: true, depthTest: false, depthWrite: false }));
-  label.position.set(0, 1.7, 0);
+  label.position.set(0, 0, 1.7);
   label.scale.set(4.2, 0.95, 1);
 
   motionGroup.userData = { linearGroup, verticalGroup, turnRing, turnIndicator, nameLabel: label, mode };
@@ -5681,19 +5714,22 @@ function updatePacketMotionDebug(targetObject, packetState, mode = 'received') {
 
   const fs = Number.isFinite(packetState?.fs) ? packetState.fs : 0;
   const rs = Number.isFinite(packetState?.rs) ? packetState.rs : 0;
+  // The gizmo hangs off the tank, so only the angle between the way it moves
+  // and the way it faces matters.
   const vx = Number.isFinite(packetState?.vx) ? packetState.vx : 0;
-  const vz = Number.isFinite(packetState?.vz) ? packetState.vz : 0;
+  const vy = Number.isFinite(packetState?.vy) ? packetState.vy : 0;
   const vv = Number.isFinite(packetState?.vv) ? packetState.vv : 0;
-  const r = Number.isFinite(packetState?.r) ? packetState.r : (targetObject.rotation?.y || 0);
-  const moveDirection = packetState?.d ?? packetState?.jumpDirection ?? r;
+  const r = Number.isFinite(packetState?.a) ? packetState.a : tankAzimuth(targetObject);
+  const moveAzimuth = packetState?.sd ?? packetState?.jumpAzimuth;
+  const moveDirection = Number.isFinite(moveAzimuth) ? moveAzimuth : r;
   const tankSpeed = gameConfig?.TANK_SPEED || 12.5;
 
-  const airSpeed = Math.hypot(vx, vz);
+  const airSpeed = Math.hypot(vx, vy);
   const hasAirVector = airSpeed > 0.01;
   let displayDirection = moveDirection;
   let speedMagnitude = Math.abs(fs);
   if (hasAirVector) {
-    displayDirection = Math.atan2(-vx, -vz);
+    displayDirection = Math.atan2(vy, vx);
     speedMagnitude = airSpeed / tankSpeed;
   } else if (fs < 0) {
     displayDirection += Math.PI;
@@ -5705,13 +5741,13 @@ function updatePacketMotionDebug(targetObject, packetState, mode = 'received') {
     const shaft = linearGroup.children[0];
     const head = linearGroup.children[1];
     linearGroup.visible = speedMagnitude > 0.01;
-    linearGroup.rotation.y = displayDirection - r;
+    linearGroup.rotation.z = displayDirection - r;
     if (shaft) {
-      shaft.scale.set(1, 1, arrowScale);
-      shaft.position.z = -(shaft.userData.baseLength || 1.4) * arrowScale * 0.5;
+      shaft.scale.set(1, arrowScale, 1);
+      shaft.position.x = (shaft.userData.baseLength || 1.4) * arrowScale * 0.5;
     }
     if (head) {
-      head.position.z = -(head.userData.baseOffset || 1.55) * arrowScale;
+      head.position.x = (head.userData.baseOffset || 1.55) * arrowScale;
     }
   }
 
@@ -5726,12 +5762,12 @@ function updatePacketMotionDebug(targetObject, packetState, mode = 'received') {
       const arrowScale = Math.max(0.2, verticalMagnitude);
       if (verticalShaft) {
         verticalShaft.scale.set(1, arrowScale, 1);
-        verticalShaft.position.y = (verticalShaft.userData.baseLength || 1.2) * arrowScale * 0.5;
+        verticalShaft.position.z = (verticalShaft.userData.baseLength || 1.2) * arrowScale * 0.5;
       }
       if (verticalHead) {
         verticalHead.scale.set(1, arrowScale, 1);
-        verticalHead.position.y = (verticalHead.userData.baseOffset || 1.35) * arrowScale;
-        verticalHead.rotation.z = vv >= 0 ? 0 : Math.PI;
+        verticalHead.position.z = (verticalHead.userData.baseOffset || 1.35) * arrowScale;
+        verticalHead.rotation.x = vv >= 0 ? Math.PI / 2 : -Math.PI / 2;
       }
     }
   }
@@ -5744,9 +5780,10 @@ function updatePacketMotionDebug(targetObject, packetState, mode = 'received') {
     if (activeTurn) {
       const turnScale = Math.max(0.2, turnMagnitude);
       const turnOffset = (turnIndicator.userData.baseOffset || 1.0) * turnScale;
-      turnIndicator.position.x = rs >= 0 ? -turnOffset : turnOffset;
-      turnIndicator.rotation.z = rs >= 0 ? Math.PI / 2 : -Math.PI / 2;
-      turnIndicator.scale.set(1, 1, turnScale);
+      // A left turn points the cone to port, on the port side.
+      turnIndicator.position.y = rs >= 0 ? turnOffset : -turnOffset;
+      turnIndicator.rotation.z = rs >= 0 ? 0 : Math.PI;
+      turnIndicator.scale.set(1, turnScale, 1);
       turnRing.material.opacity = 0.2 + Math.min(0.5, turnMagnitude * 0.35);
     }
   }
@@ -5792,11 +5829,11 @@ function getMotionSurfaceOutlinePoints(obstacle) {
   if (!obstacle) return null;
   const epsilon = 0.06;
 
-  // A mesh has no `w`/`d`/`rotation` to reconstruct a footprint from -- its
-  // own faces already are the footprint, in world space already, so the
-  // outline is simply whichever face the tank is actually touching, found
-  // the same way `getTankHitNormal`'s own mesh case does (the oriented box
-  // when there is a heading to orient it by, the plain cylinder otherwise).
+  // A mesh has no `size`/`angle` to reconstruct a footprint from -- its own
+  // faces already are the footprint, in world space already, so the outline
+  // is simply whichever face the tank is actually touching, found the same
+  // way `getTankHitNormal`'s own mesh case does (the oriented box when there
+  // is a heading to orient it by, the plain cylinder otherwise).
   //
   // A stop square-on to a face backs the tank off by `TINY_DISTANCE * mag`
   // (motion.cjs), and `mag` there is the *full* velocity dotted against the
@@ -5812,26 +5849,26 @@ function getMotionSurfaceOutlinePoints(obstacle) {
     // at (`findMeshHitFaceOriented`'s own `[0, height]`, matching a tank's
     // feet-at-the-query-point shape) -- fine for a wall, where the slack
     // above only needs to widen the footprint, but resting square on a
-    // *roof* backs `playerY` off upward by that same tiny amount, which can
+    // *roof* backs the tank off upward by that same tiny amount, which can
     // leave the roof's own plane just below this query's floor instead of
-    // inside it. Asking a touch below `playerY` instead, with the extra
-    // slack folded into `queryHeight` on top of that, straddles the true
-    // surface regardless of which side the backoff nudged it to.
+    // inside it. Asking a touch below the tank instead, with the extra slack
+    // folded into `queryHeight` on top of that, straddles the true surface
+    // regardless of which side the backoff nudged it to.
     const DEBUG_OUTLINE_SLACK = 0.5;
     const tankScale = getMyTankScale();
     const halfWidth = (TANK.halfWidth * (tankScale ? tankScale.width : 1)) + DEBUG_OUTLINE_SLACK;
     const halfLength = (TANK.halfLength * (tankScale ? tankScale.length : 1)) + DEBUG_OUTLINE_SLACK;
-    const queryY = playerY - DEBUG_OUTLINE_SLACK;
+    const queryZ = myZ - DEBUG_OUTLINE_SLACK;
     const queryHeight = TANK.collisionHeight + (2 * DEBUG_OUTLINE_SLACK);
     // A face is its index in the mesh now (issue #153), and index zero is a
     // real face and a falsy number -- so both the fallback and the "none"
     // test compare against -1 rather than leaning on truthiness.
     const oriented = findMeshHitFaceOriented(
-      obstacle, playerX, queryY, playerZ, playerRotation, halfWidth, halfLength, queryHeight,
+      obstacle, myX, myY, queryZ, myAzimuth, halfWidth, halfLength, queryHeight,
     );
     const f = oriented >= 0
       ? oriented
-      : findMeshHitFace(obstacle, playerX, queryY, playerZ, queryHeight, queryHeight);
+      : findMeshHitFace(obstacle, myX, myY, queryZ, queryHeight, queryHeight);
     if (f < 0) return null;
     const arrays = meshArrays(obstacle);
     const offset = new THREE.Vector3(
@@ -5847,42 +5884,43 @@ function getMotionSurfaceOutlinePoints(obstacle) {
     return outline;
   }
 
-  const cos = Math.cos(obstacle.rotation);
-  const sin = Math.sin(obstacle.rotation);
-  const toWorldPoint = (lx, ly, lz) => new THREE.Vector3(
-    obstacle.x + lx * cos + lz * sin,
-    ly,
-    obstacle.z - lx * sin + lz * cos
+  // A point in the obstacle's own frame, `getColliderLocalPoint`'s, in the
+  // world's.
+  const cos = Math.cos(obstacle.angle || 0);
+  const sin = Math.sin(obstacle.angle || 0);
+  const toWorldPoint = (lx, ly, z) => new THREE.Vector3(
+    obstacle.pos[0] + (lx * cos) - (ly * sin),
+    obstacle.pos[1] + (lx * sin) + (ly * cos),
+    z,
   );
-  const halfW = obstacle.w / 2;
-  const halfD = obstacle.d / 2;
+  const halfW = obstacle.size[0];
+  const halfD = obstacle.size[1];
+  const base = getObstacleBase(obstacle);
+  const local = getColliderLocalPoint(myX, myY, obstacle);
 
   if (obstacle.type === 'pyramid' && !isPyramidFlatTop(obstacle)) {
-    const normal = getTankHitNormal(
-      obstacle, playerX, playerY, playerZ, playerRotation, playerY, TANK.collisionHeight);
-    const base = obstacle.baseY || 0;
+    const normal = getTankHitNormal(obstacle, myX, myY, myZ, myAzimuth, myZ, TANK.collisionHeight);
     const apex = base + getPyramidHeight(obstacle);
-    const local = getColliderLocalPoint(playerX, playerZ, obstacle);
     const offset = new THREE.Vector3(normal.x, normal.y, normal.z).multiplyScalar(epsilon);
     // Which of the four faces, by the side of the axis the tank is on and which
     // extent it is further out along -- the same question the normal answers.
-    const localPoints = Math.abs(local.x) * halfD >= Math.abs(local.z) * halfW
+    const localPoints = Math.abs(local.x) * halfD >= Math.abs(local.y) * halfW
       ? [
-        { x: 0, y: apex, z: 0 },
-        { x: (local.x >= 0 ? 1 : -1) * halfW, y: base, z: -halfD },
-        { x: (local.x >= 0 ? 1 : -1) * halfW, y: base, z: halfD },
+        { x: 0, y: 0, z: apex },
+        { x: (local.x >= 0 ? 1 : -1) * halfW, y: -halfD, z: base },
+        { x: (local.x >= 0 ? 1 : -1) * halfW, y: halfD, z: base },
       ]
       : [
-        { x: 0, y: apex, z: 0 },
-        { x: -halfW, y: base, z: (local.z >= 0 ? 1 : -1) * halfD },
-        { x: halfW, y: base, z: (local.z >= 0 ? 1 : -1) * halfD },
+        { x: 0, y: 0, z: apex },
+        { x: -halfW, y: (local.y >= 0 ? 1 : -1) * halfD, z: base },
+        { x: halfW, y: (local.y >= 0 ? 1 : -1) * halfD, z: base },
       ];
     return localPoints.map((point) => toWorldPoint(point.x, point.y, point.z).add(offset));
   }
 
   // A box (or a flat-top pyramid, which shares its footprint). `getTankHitNormal`
-  // answers "which face" from a *crossing* -- fromY on one side of a threshold,
-  // toY on the other -- which cannot fire from a single static position (there
+  // answers "which face" from a *crossing* -- fromZ on one side of a threshold,
+  // toZ on the other -- which cannot fire from a single static position (there
   // is no crossing to have happened), so it is no use here. Position alone
   // answers it instead, the same way the pyramid branch above already reads
   // position rather than a crossing to pick between two candidate faces:
@@ -5890,52 +5928,51 @@ function getMotionSurfaceOutlinePoints(obstacle) {
   // outside the footprint but still solid is a side, and `getOrigRectNormal`
   // -- itself position-only, the same function a box's own ordinary side hit
   // resolves to -- says which one.
-  const base = obstacle.baseY || 0;
   const top = getColliderTopY(obstacle);
-  const local = getColliderLocalPoint(playerX, playerZ, obstacle);
-  const withinFootprint = Math.abs(local.x) <= halfW && Math.abs(local.z) <= halfD;
+  const withinFootprint = Math.abs(local.x) <= halfW && Math.abs(local.y) <= halfD;
 
   if (withinFootprint) {
-    const y = playerY >= (base + top) / 2 ? top + epsilon : base - epsilon;
+    const z = myZ >= (base + top) / 2 ? top + epsilon : base - epsilon;
     return [
-      toWorldPoint(-halfW, y, -halfD),
-      toWorldPoint(-halfW, y, halfD),
-      toWorldPoint(halfW, y, halfD),
-      toWorldPoint(halfW, y, -halfD),
+      toWorldPoint(-halfW, -halfD, z),
+      toWorldPoint(-halfW, halfD, z),
+      toWorldPoint(halfW, halfD, z),
+      toWorldPoint(halfW, -halfD, z),
     ];
   }
 
-  const side = getOrigRectNormal(halfW, halfD, local.x, local.z);
+  const side = getOrigRectNormal(halfW, halfD, local.x, local.y);
   // A teleporter's front/rear face is solid only at its two pillars -- the
   // door between them, below the header, is the whole reason it teleports
   // rather than blocks. Left at the outer footprint's full depth, the
   // outline spanned the open doorway along with the frame, as if the whole
   // face were one solid wall.
-  let zNear = -halfD;
-  let zFar = halfD;
-  if (obstacle.kind === 'teleporter' && Math.abs(side.x) >= Math.abs(side.z)) {
+  let yNear = -halfD;
+  let yFar = halfD;
+  if (obstacle.kind === 'teleporter' && Math.abs(side.x) >= Math.abs(side.y)) {
     const dims = getShotTeleporterDims(obstacle);
-    if (playerY < base + dims.activeH) {
-      const sign = local.z >= 0 ? 1 : -1;
-      zNear = sign * dims.activeHalfD;
-      zFar = sign * halfD;
+    if (myZ < base + dims.activeH) {
+      const sign = local.y >= 0 ? 1 : -1;
+      yNear = sign * dims.activeHalfD;
+      yFar = sign * halfD;
     }
   }
-  const localPoints = Math.abs(side.x) >= Math.abs(side.z)
+  const localPoints = Math.abs(side.x) >= Math.abs(side.y)
     ? [
-      { x: Math.sign(side.x) * (halfW + epsilon), y: base, z: zNear },
-      { x: Math.sign(side.x) * (halfW + epsilon), y: base, z: zFar },
-      { x: Math.sign(side.x) * (halfW + epsilon), y: top, z: zFar },
-      { x: Math.sign(side.x) * (halfW + epsilon), y: top, z: zNear },
+      { x: Math.sign(side.x) * (halfW + epsilon), y: yNear, z: base },
+      { x: Math.sign(side.x) * (halfW + epsilon), y: yFar, z: base },
+      { x: Math.sign(side.x) * (halfW + epsilon), y: yFar, z: top },
+      { x: Math.sign(side.x) * (halfW + epsilon), y: yNear, z: top },
     ]
     : [
-      { x: -halfW, y: base, z: Math.sign(side.z) * (halfD + epsilon) },
-      { x: halfW, y: base, z: Math.sign(side.z) * (halfD + epsilon) },
-      { x: halfW, y: top, z: Math.sign(side.z) * (halfD + epsilon) },
-      { x: -halfW, y: top, z: Math.sign(side.z) * (halfD + epsilon) },
+      { x: -halfW, y: Math.sign(side.y) * (halfD + epsilon), z: base },
+      { x: halfW, y: Math.sign(side.y) * (halfD + epsilon), z: base },
+      { x: halfW, y: Math.sign(side.y) * (halfD + epsilon), z: top },
+      { x: -halfW, y: Math.sign(side.y) * (halfD + epsilon), z: top },
     ];
   return localPoints.map((point) => toWorldPoint(point.x, point.y, point.z));
 }
+
 
 // The surface the last step met, which is upstream's `lastObstacle`.
 //
@@ -6105,10 +6142,10 @@ function getDebugState() {
     packetsReceived,
     sentBps,
     receivedBps,
-    playerX,
-    playerY,
-    playerZ,
-    playerRotation,
+    playerX: myX,
+    playerY: myY,
+    playerZ: myZ,
+    azimuth: myAzimuth,
     myTank,
     cameraMode,
     OBSTACLES,
@@ -7127,7 +7164,6 @@ function init() {
   try {
     renderContext = renderManager.init({});
     scene = renderContext.scene;
-    camera = renderContext.camera;
     const renderer = renderManager.getRenderer();
     if (renderer) {
       const rendererSize = renderer.getSize(new THREE.Vector2());
@@ -7144,7 +7180,6 @@ function init() {
     showMessage(`3D renderer unavailable: ${reason}`);
     debugLog(`renderer.init.failed reason="${reason}"`);
     scene = renderManager.getScene();
-    camera = renderManager.getCamera();
     const debugContent = document.getElementById('debugContent');
     if (debugContent) {
       debugContent.innerHTML = `<p>3D renderer failed to initialize.</p><p>${reason}</p><p>Open the game in an external browser window for full WebGL support.</p>`;
@@ -7466,40 +7501,39 @@ function applyPlayerMoveMessage(message, isTeleportPacket) {
   const tank = tanks.get(message.id);
   if (!tank) return;
   const oldVerticalVel = tank.userData.verticalVelocity || 0;
-  const oldJumpDirection = tank.userData.jumpDirection;
+  const oldJumpAzimuth = tank.userData.jumpAzimuth;
 
   // Store server-confirmed position for ghost rendering
   tank.userData.serverPosition = {
     x: message.x,
     y: message.y,
     z: message.z,
-    r: message.r
+    azimuth: message.a,
   };
   tank.userData.lastUpdateTime = performance.now();
 
   // Update position (will be overridden by extrapolation in animation loop)
-  tank.position.set(message.x, message.y, message.z);
-  tank.rotation.y = message.r;
+  placeTank(tank, message.x, message.y, message.z, message.a);
   tank.userData.forwardSpeed = message.fs;
   tank.userData.rotationSpeed = message.rs;
   tank.userData.verticalVelocity = message.vv;
-  tank.userData.slideDirection = message.d; // Optional slide direction (undefined if not sliding)
+  tank.userData.slideAzimuth = message.sd; // Optional slide direction (undefined if not sliding)
   tank.userData.airVelocityX = Number.isFinite(message.vx)
     ? message.vx
     : tank.userData.airVelocityX || 0;
-  tank.userData.airVelocityZ = Number.isFinite(message.vz)
-    ? message.vz
-    : tank.userData.airVelocityZ || 0;
+  tank.userData.airVelocityY = Number.isFinite(message.vy)
+    ? message.vy
+    : tank.userData.airVelocityY || 0;
 
-  if (isTeleportPacket && message.jd !== undefined) {
-    tank.userData.jumpDirection = message.jd;
+  if (isTeleportPacket && message.ja !== undefined) {
+    tank.userData.jumpAzimuth = message.ja;
   }
 
   // Detect jump start (record jump direction). Upstream announces a flap
   // with PlayerState::WingsSound; bzo already knows who carries what, so
   // the flag answers instead of a bit in the packet.
   if (oldVerticalVel <= 0 && message.vv > 10) {
-    tank.userData.jumpDirection = message.r;
+    tank.userData.jumpAzimuth = message.a;
     const wings = hasAirControl(getPlayerFlag(message.id)?.type);
     renderManager.playSound(wings ? 'flap' : 'jump', tank.position);
     renderManager.fireTankJumpJets(tank);
@@ -7516,46 +7550,45 @@ function applyPlayerMoveMessage(message, isTeleportPacket) {
   // vertical velocity in the packet instead, and without this gate a
   // burrow reads as a fall and the climb out as a landing: rings and a
   // landing sound every time somebody puts the flag down.
-  if (oldJumpDirection === null && message.vv < 0 && message.vv > -1 && message.y > 0) {
-    tank.userData.jumpDirection = message.r;
+  if (oldJumpAzimuth === null && message.vv < 0 && message.vv > -1 && message.z > 0) {
+    tank.userData.jumpAzimuth = message.a;
   }
 
   // Detect landing (clear jump direction)
   // Don't check oldVerticalVel < 0 because extrapolation doesn't update tank.userData.verticalVelocity
-  if (oldJumpDirection !== null && message.vv === 0) {
-    tank.userData.jumpDirection = null;
+  if (oldJumpAzimuth !== null && message.vv === 0) {
+    tank.userData.jumpAzimuth = null;
     triggerLandingFeedback(tank, Math.abs(oldVerticalVel), { local: message.id === myPlayerId });
   }
 
   // Update ghost mesh position to server-confirmed position
   if (tank.userData.ghostMesh) {
-    tank.userData.ghostMesh.position.set(message.x, message.y, message.z);
-    tank.userData.ghostMesh.rotation.y = message.r;
+    placeTank(tank.userData.ghostMesh, message.x, message.y, message.z, message.a);
     updatePacketMotionDebug(tank.userData.ghostMesh, {
       fs: message.fs,
       rs: message.rs,
       vv: message.vv,
       vx: message.vx,
-      vz: message.vz,
-      r: message.r,
-      d: message.d,
-      jumpDirection: tank.userData.jumpDirection
+      vy: message.vy,
+      a: message.a,
+      sd: message.sd,
+      jumpAzimuth: tank.userData.jumpAzimuth
     }, 'received');
   }
 
-  if (tank.userData.jumpDirection !== null && tank.userData.jumpDirection !== undefined) {
+  if (tank.userData.jumpAzimuth !== null && tank.userData.jumpAzimuth !== undefined) {
     updateJumpPredictionDebug(tank, {
       x: message.x,
       y: message.y,
       z: message.z,
-      r: message.r,
+      azimuth: message.a,
       forwardSpeed: message.fs,
       rotationSpeed: message.rs,
       verticalVelocity: message.vv,
-      jumpDirection: tank.userData.jumpDirection,
-      slideDirection: message.d,
+      jumpAzimuth: tank.userData.jumpAzimuth,
+      slideAzimuth: message.sd,
       airVelocityX: Number.isFinite(message.vx) ? message.vx : tank.userData.airVelocityX || 0,
-      airVelocityZ: Number.isFinite(message.vz) ? message.vz : tank.userData.airVelocityZ || 0,
+      airVelocityY: Number.isFinite(message.vy) ? message.vy : tank.userData.airVelocityY || 0,
       flagType: getPlayerFlag(message.id)?.type ?? null
     }, 'received');
   } else {
@@ -7576,18 +7609,18 @@ function applyPlayerMoveMessage(message, isTeleportPacket) {
     }
 
     if (message.id === myPlayerId) {
-      playerX = message.x;
-      playerY = message.y;
-      playerZ = message.z;
-      playerRotation = message.r;
-      jumpDirection = tank.userData.jumpDirection ?? null;
+      myX = message.x;
+      myY = message.y;
+      myZ = message.z;
+      myAzimuth = message.a;
+      jumpAzimuth = tank.userData.jumpAzimuth ?? null;
       localTeleportCooldownUntil = sampleEpochClock() + PLAYER_TELEPORT_COOLDOWN_MS;
       lastSentForwardSpeed = Number.isFinite(message.fs) ? message.fs : lastSentForwardSpeed;
       lastSentRotationSpeed = Number.isFinite(message.rs) ? message.rs : lastSentRotationSpeed;
       lastSentHeading = null;
       lastSentVerticalVelocity = Number.isFinite(message.vv) ? message.vv : lastSentVerticalVelocity;
       lastSentAirVelocityX = Number.isFinite(message.vx) ? message.vx : lastSentAirVelocityX;
-      lastSentAirVelocityZ = Number.isFinite(message.vz) ? message.vz : lastSentAirVelocityZ;
+      lastSentAirVelocityY = Number.isFinite(message.vy) ? message.vy : lastSentAirVelocityY;
       lastSentTime = performance.now();
     }
   }
@@ -7743,9 +7776,9 @@ function handleServerMessage(message) {
       renderManager._applyFogConfig(gameConfig);
       applyRicochetSetting(gameConfig.ALL_SHOTS_RICOCHET === true);
       refreshCollisionColliders();
-      playerX = message.player.x;
-      playerZ = message.player.z;
-      playerRotation = message.player.rotation;
+      myX = message.player.x;
+      myY = message.player.y;
+      myAzimuth = message.player.azimuth;
 
       // Known from the handshake cookie, before any join -- set here rather
       // than waiting for `playerJoined` so the entry dialog below locks the
@@ -7919,10 +7952,10 @@ function handleServerMessage(message) {
 
         // This is our join confirmation, update our tank and finish join
         myPlayerName = message.player.name;
-        playerX = message.player.x;
-        playerY = message.player.y;
-        playerZ = message.player.z;
-        playerRotation = message.player.rotation;
+        myX = message.player.x;
+        myY = message.player.y;
+        myZ = message.player.z;
+        myAzimuth = message.player.azimuth;
 
         // The view a shared Map Viewer link asked for -- applied on every
         // join, same reasoning as `autoFollowTarget` just above. A position
@@ -7939,10 +7972,10 @@ function handleServerMessage(message) {
             roamView = ROAM_VIEW.DRIVE_FP;
           }
           if (autoViewPosTarget) {
-            playerX = autoViewPosTarget.x;
-            playerY = autoViewPosTarget.y;
-            playerZ = autoViewPosTarget.z;
-            playerRotation = autoViewPosTarget.rotation;
+            myX = autoViewPosTarget.x;
+            myY = autoViewPosTarget.y;
+            myZ = autoViewPosTarget.z;
+            myAzimuth = autoViewPosTarget.azimuth;
             roamCamera = null;
             viewerPlacedByLink = true;
           }
@@ -7969,8 +8002,7 @@ function handleServerMessage(message) {
         // Reuse and update my tank
         myTank = tanks.get(myPlayerId);
         if (myTank) {
-          myTank.position.set(playerX, playerY, playerZ);
-          myTank.rotation.y = playerRotation;
+          placeTank(myTank, myX, myY, myZ, myAzimuth);
           myTank.userData.verticalVelocity = message.player.verticalVelocity || 0;
           myTank.userData.playerState = withClientLocalPlayerState(myTank.userData.playerState, message.player);
 
@@ -7984,10 +8016,9 @@ function handleServerMessage(message) {
             const ghostTank = renderManager.createGhostMesh(myTank);
             // Reset rotation to 0 to ensure we're setting absolute values
             ghostTank.rotation.set(0, 0, 0);
-            ghostTank.position.set(playerX, playerY, playerZ);
-            ghostTank.rotation.y = playerRotation;
+            placeTank(ghostTank, myX, myY, myZ, myAzimuth);
             ghostTank.visible = showDebugGeometry;
-            renderManager.getWorldGroup().add(ghostTank);
+            renderManager.getWorldFrame().add(ghostTank);
             myTank.userData.ghostMesh = ghostTank;
           }
 
@@ -7999,10 +8030,10 @@ function handleServerMessage(message) {
 
           myTank.userData.forwardSpeed = message.player.forwardSpeed || 0;
           myTank.userData.rotationSpeed = message.player.rotationSpeed || 0;
-          myTank.userData.jumpDirection = message.player.jumpDirection ?? null;
-          myTank.userData.slideDirection = message.player.slideDirection;
+          myTank.userData.jumpAzimuth = message.player.jumpAzimuth ?? null;
+          myTank.userData.slideAzimuth = message.player.slideAzimuth;
           myTank.userData.airVelocityX = message.player.airVelocityX || 0;
-          myTank.userData.airVelocityZ = message.player.airVelocityZ || 0;
+          myTank.userData.airVelocityY = message.player.airVelocityY || 0;
           myTank.visible = true;
           localTeleportReentryBlockTeleporterIndex = null;
           localTeleportReentryBlockDistance = 0;
@@ -8144,22 +8175,21 @@ function handleServerMessage(message) {
 
     case 'positionCorrection':
       // Server corrected our position - update dead reckoning state
-      playerX = message.x;
-      playerY = message.y;
-      playerZ = message.z;
-      playerRotation = message.r;
+      myX = message.x;
+      myY = message.y;
+      myZ = message.z;
+      myAzimuth = message.a;
       // Don't reset velocity tracking - the correction is only for position/rotation drift
       // Resetting velocities to 0 would trigger immediate resend of current velocities
       // Only update lastSentTime to prevent immediate heartbeat trigger
       lastSentTime = performance.now();
       if (myTank) {
-        myTank.position.set(playerX, playerY, playerZ);
-        myTank.rotation.y = playerRotation;
+        placeTank(myTank, myX, myY, myZ, myAzimuth);
         myTank.userData.verticalVelocity = message.vv || 0;
         myTank.userData.airVelocityX = 0;
-        myTank.userData.airVelocityZ = 0;
-        myTank.userData.jumpDirection = null;
-        myTank.userData.slideDirection = undefined;
+        myTank.userData.airVelocityY = 0;
+        myTank.userData.jumpAzimuth = null;
+        myTank.userData.slideAzimuth = undefined;
         localTeleportReentryBlockTeleporterIndex = null;
         localTeleportReentryBlockDistance = 0;
         localTeleportReentryBlockUntil = 0;
@@ -8551,19 +8581,19 @@ function addPlayer(player) {
     if (!tank) return;
     tank.userData.builtColor = effectiveColor;
     tank.userData.builtRogue = camoOptions.rogue;
-    renderManager.getWorldGroup().add(tank);
+    renderManager.getWorldFrame().add(tank);
     tanks.set(player.id, tank);
 
     // Create ghost mesh for this tank. Remote ghosts show last received server
     // state; the local ghost shows the last sent movement packet.
     const ghostTank = renderManager.createGhostMesh(tank);
     ghostTank.visible = false;
-    renderManager.getWorldGroup().add(ghostTank);
+    renderManager.getWorldFrame().add(ghostTank);
     tank.userData.ghostMesh = ghostTank;
     ensurePacketMotionDebug(ghostTank, player.id === myPlayerId ? 'sent' : 'received');
 
     if (player.id !== myPlayerId) {
-      tank.userData.serverPosition = { x: player.x, y: player.y, z: player.z, r: player.rotation };
+      tank.userData.serverPosition = { x: player.x, y: player.y, z: player.z, azimuth: player.azimuth };
       ghostTank.visible = showDebugGeometry;
       ghostTank.userData.hasPacketState = true;
     } else {
@@ -8571,18 +8601,17 @@ function addPlayer(player) {
     }
   }
   // Always update tank state
-  tank.position.set(player.x, player.y, player.z);
-  tank.rotation.y = player.rotation;
+  placeTank(tank, player.x, player.y, player.z, player.azimuth);
   tank.userData.tankModel = playerTankModelId;
   tank.userData.playerState = withClientLocalPlayerState(previousPlayerState, player); // Store player state for scoreboard
   applySilenceToVoice(player.id);
   tank.userData.verticalVelocity = player.verticalVelocity;
   tank.userData.forwardSpeed = player.forwardSpeed || 0;
   tank.userData.rotationSpeed = player.rotationSpeed || 0;
-  tank.userData.jumpDirection = player.jumpDirection ?? null;
-  tank.userData.slideDirection = player.slideDirection;
+  tank.userData.jumpAzimuth = player.jumpAzimuth ?? null;
+  tank.userData.slideAzimuth = player.slideAzimuth;
   tank.userData.airVelocityX = player.airVelocityX || 0;
-  tank.userData.airVelocityZ = player.airVelocityZ || 0;
+  tank.userData.airVelocityY = player.airVelocityY || 0;
   // Roster bookkeeping (userData.playerState, just above) still updates for
   // the scoreboard while a Map Viewer preview or session is showing a
   // different map -- only the mesh itself is hidden, since the live match's
@@ -8606,26 +8635,26 @@ function addPlayer(player) {
       rs: player.rotationSpeed || 0,
       vv: player.verticalVelocity || 0,
       vx: player.airVelocityX || 0,
-      vz: player.airVelocityZ || 0,
-      r: player.rotation,
-      d: player.slideDirection,
-      jumpDirection: player.jumpDirection ?? null
+      vy: player.airVelocityY || 0,
+      a: player.azimuth,
+      sd: player.slideAzimuth,
+      jumpAzimuth: player.jumpAzimuth ?? null
     }, 'received');
   }
 
-  if (player.jumpDirection !== null && player.jumpDirection !== undefined) {
+  if (player.jumpAzimuth !== null && player.jumpAzimuth !== undefined) {
     updateJumpPredictionDebug(tank, {
       x: player.x,
       y: player.y,
       z: player.z,
-      r: player.rotation,
+      azimuth: player.azimuth,
       forwardSpeed: player.forwardSpeed || 0,
       rotationSpeed: player.rotationSpeed || 0,
       verticalVelocity: player.verticalVelocity || 0,
-      jumpDirection: player.jumpDirection,
-      slideDirection: player.slideDirection,
+      jumpAzimuth: player.jumpAzimuth,
+      slideAzimuth: player.slideAzimuth,
       airVelocityX: player.airVelocityX || 0,
-      airVelocityZ: player.airVelocityZ || 0,
+      airVelocityY: player.airVelocityY || 0,
       flagType: getPlayerFlag(player.id)?.type ?? null
     }, player.id === myPlayerId ? 'sent' : 'received');
   } else {
@@ -8650,12 +8679,12 @@ function discardTank(tank, playerId = null) {
   if (!tank) return;
   clearJumpPredictionDebug(tank);
   if (tank.userData?.ghostMesh) {
-    renderManager.getWorldGroup().remove(tank.userData.ghostMesh);
+    tank.userData.ghostMesh.removeFromParent();
     tank.userData.ghostMesh = null;
   }
   renderManager.dropProjectedShadows(tank);
   renderManager.dropTankCrossingEffect(tank);
-  renderManager.getWorldGroup().remove(tank);
+  tank.removeFromParent();
   if (playerId !== null) tanks.delete(playerId);
 }
 
@@ -8728,7 +8757,7 @@ function createProjectile(data) {
     const segments = Array.isArray(data.segments) ? data.segments : traceBeam(
       { colliders: getCollisionColliders(), teleports: TELEPORTER_INDEX, mapSize: currentWorldMapSize ?? DEFAULT_MAP_SIZE },
       { x: data.x, y: data.y, z: data.z },
-      { x: data.dirX, y: Number.isFinite(data.dirY) ? data.dirY : 0, z: data.dirZ },
+      { x: data.dirX, y: data.dirY, z: Number.isFinite(data.dirZ) ? data.dirZ : 0 },
       data.speed * getShotLifetimeSeconds(data.flag ?? null),
       { ricochet: data.ricochet === true, throughBuildings: effects.throughBuildings === true },
     ).segments;
@@ -8764,10 +8793,10 @@ function createProjectile(data) {
       projectiles.delete(pending.id);
       // Re-anchor to authoritative spawn so replayed local shots follow
       // exactly the same path regardless of transient local frame timing.
-      localProjectile.position.set(data.x, data.y, data.z);
+      placeShot(localProjectile, data);
       localProjectile.userData.dirX = data.dirX;
-      localProjectile.userData.dirY = Number.isFinite(data.dirY) ? data.dirY : 0;
-      localProjectile.userData.dirZ = data.dirZ;
+      localProjectile.userData.dirY = data.dirY;
+      localProjectile.userData.dirZ = Number.isFinite(data.dirZ) ? data.dirZ : 0;
       localProjectile.userData.createdAt = data.createdAt;
       localProjectile.userData.pendingServerAck = false;
       localProjectile.userData.flag = data.flag ?? null;
@@ -8799,17 +8828,18 @@ function createProjectile(data) {
     })
     : renderManager.createProjectile({
       ...data,
-      x: data.x,
-      z: data.z,
       color: shotColor.getHex(),
       modelColor: new THREE.Color(getPlayerShotBaseColor(data.playerId, data.team)).getHex(),
       fireSound: effects.fireSound,
       guided: effects.guided,
     });
   if (!projectile) return;
+  projectile.userData.at = { x: data.x, y: data.y, z: data.z };
   projectile.userData.playerId = data.playerId;
   projectile.userData.createdAt = data.createdAt;
-  projectile.userData.dirY = Number.isFinite(data.dirY) ? data.dirY : 0;
+  projectile.userData.dirX = data.dirX;
+  projectile.userData.dirY = data.dirY;
+  projectile.userData.dirZ = Number.isFinite(data.dirZ) ? data.dirZ : 0;
   projectile.userData.radarColor = getShotRadarColor(projectile.userData.playerId, data.team);
   // The flag a shot was fired with, as upstream's FiringInfo carries it, and the
   // one thing bzo reads off it so far: whether the shot bounces.
@@ -8841,7 +8871,7 @@ function withShotFlight(data, effects) {
   return { ...data, dirX: flight.x, dirY: flight.y, dirZ: flight.z, speed: flight.speed };
 }
 
-function createLocalProjectile({ x, y, z, dirX, dirZ, dirY = 0, speed }) {
+function createLocalProjectile({ x, y, z, dirX, dirY, dirZ = 0, speed }) {
   if (myPlayerId === null || myPlayerId === undefined) return;
 
   const shotColor = getPlayerShotColor(myPlayerId);
@@ -8874,9 +8904,12 @@ function createLocalProjectile({ x, y, z, dirX, dirZ, dirY = 0, speed }) {
     });
   if (!projectile) return;
 
+  projectile.userData.at = { x, y, z };
   projectile.userData.playerId = myPlayerId;
   projectile.userData.createdAt = frameEpochMs;
-  projectile.userData.dirY = Number.isFinite(dirY) ? dirY : 0;
+  projectile.userData.dirX = dirX;
+  projectile.userData.dirY = dirY;
+  projectile.userData.dirZ = Number.isFinite(dirZ) ? dirZ : 0;
   projectile.userData.radarColor = getShotRadarColor(projectile.userData.playerId);
   projectile.userData.pendingServerAck = true;
   // The server decides this too, and says so in shotBegin; predicting it here is
@@ -8907,7 +8940,7 @@ function removeProjectile(id, reason = 1, x = null, y = null, z = null) {
   if (projectile) {
     // Use authoritative server coordinates for end-of-shot effects.
     if (hasServerImpactPosition) {
-      projectile.position.set(x, y, z);
+      placeShot(projectile, { x, y, z });
     }
     renderManager.removeProjectile(projectile, numericReason);
     projectiles.delete(id);
@@ -8917,7 +8950,7 @@ function removeProjectile(id, reason = 1, x = null, y = null, z = null) {
   // If we don't have the projectile object (rare race/id mismatch), still
   // render the authoritative impact effect so players always see shot ends.
   if (numericReason === 0 && hasServerImpactPosition) {
-    renderManager.createShotImpact(new THREE.Vector3(x, y, z));
+    renderManager.createShotImpact({ x, y, z });
   }
 }
 
@@ -9055,12 +9088,7 @@ function handlePlayerHit(message) {
     // apart from the death camera's own doing and bailed to first person.
     // Start it above and behind the body rather than letting the first frame
     // lerp in from wherever the tank's own view was standing.
-    if (victimTank) {
-      const vp = victimTank.position;
-      camera.position.set(vp.x, vp.y + 10, vp.z + 22);
-      camera.up.set(0, 1, 0);
-      camera.lookAt(vp.x, vp.y, vp.z);
-    }
+    if (victimTank) renderManager.startDeathCamera(victimTank.position);
   } else if (isCapture) {
     // Nothing to say: the capture itself was already announced.
   } else if (message.shooterId === myPlayerId) {
@@ -9179,7 +9207,7 @@ function handlePlayerHit(message) {
       deathCameraActive = true;
       deathFollowTarget = explosionResult?.followTarget || null;
       renderManager.deathFollowTarget = deathFollowTarget;
-      renderManager.deathFollowAnchor = victimTank.position.clone();
+      renderManager.setDeathFollowAnchor(victimTank.position);
       const vp = victimTank.position;
       debugLog(`deathCam playerPos=${vp.x.toFixed(1)},${vp.y.toFixed(1)},${vp.z.toFixed(1)} hasDebris=${!!deathFollowTarget}`, 'death');
       updateDeathCameraHudVisibility();
@@ -9210,15 +9238,14 @@ function handlePlayerRespawn(message) {
       // frame report the same water or death pad again.
       reportedOwnDeath = false;
     }
-    tank.position.set(message.player.x, message.player.y, message.player.z);
-    tank.rotation.y = message.player.rotation;
+    placeTank(tank, message.player.x, message.player.y, message.player.z, message.player.azimuth);
     tank.userData.verticalVelocity = message.player.verticalVelocity;
     tank.userData.forwardSpeed = message.player.forwardSpeed || 0;
     tank.userData.rotationSpeed = message.player.rotationSpeed || 0;
-    tank.userData.jumpDirection = message.player.jumpDirection ?? null;
-    tank.userData.slideDirection = message.player.slideDirection;
+    tank.userData.jumpAzimuth = message.player.jumpAzimuth ?? null;
+    tank.userData.slideAzimuth = message.player.slideAzimuth;
     tank.userData.airVelocityX = message.player.airVelocityX || 0;
-    tank.userData.airVelocityZ = message.player.airVelocityZ || 0;
+    tank.userData.airVelocityY = message.player.airVelocityY || 0;
 
     // Update player state with full respawn data (including alive = true).
     // Merged forward through the same helper addPlayer() uses, not a plain
@@ -9228,8 +9255,7 @@ function handlePlayerRespawn(message) {
 
     // Update ghost mesh position BEFORE making it visible
     if (tank.userData.ghostMesh) {
-      tank.userData.ghostMesh.position.set(message.player.x, message.player.y, message.player.z);
-      tank.userData.ghostMesh.rotation.y = message.player.rotation;
+      placeTank(tank.userData.ghostMesh, message.player.x, message.player.y, message.player.z, message.player.azimuth);
       tank.userData.ghostMesh.visible = showDebugGeometry;
     }
 
@@ -9238,7 +9264,7 @@ function handlePlayerRespawn(message) {
       x: message.player.x,
       y: message.player.y,
       z: message.player.z,
-      r: message.player.rotation
+      azimuth: message.player.azimuth
     };
 
     tank.visible = true;
@@ -9251,10 +9277,10 @@ function handlePlayerRespawn(message) {
   refreshScoreboards();
 
   if (message.player.id === myPlayerId) {
-    playerX = message.player.x;
-    playerY = message.player.y;
-    playerZ = message.player.z;
-    playerRotation = message.player.rotation;
+    myX = message.player.x;
+    myY = message.player.y;
+    myZ = message.player.z;
+    myAzimuth = message.player.azimuth;
     // The new life starts unpaused on both ends -- the server's own `respawn`
     // clears the pause and the countdown -- and then asks again for whatever is
     // still true: a menu still in front of the game, or the countdown the player
@@ -10438,7 +10464,7 @@ function rebuildTeleporterRuntimeState() {
 // A mesh has no `h` of its own, so `getObstacleHeight` reads its bounds
 // instead -- a real top rather than a zero-height ledge at its base.
 function getColliderTopY(obs) {
-  return (obs?.baseY || 0) + getObstacleHeight(obs);
+  return obs ? getObstacleBase(obs) + getObstacleHeight(obs) : 0;
 }
 
 // Phasing, for the local tank -- the only tank this client resolves
@@ -10523,11 +10549,13 @@ function getFiringStatusText() {
 // The first straddled obstacle wins. Upstream asks `hitBuilding` for one
 // obstacle and tests that; a tank in a corner is inside two, and either wall is
 // as good an answer as the guess `isCrossing` makes anyway.
-function findTankCrossingPlane(worldX, worldY, worldZ, rotation, tankScale) {
-  for (const obs of buildingsAt(worldX, worldY, worldZ, rotation, tankScale)) {
+function findTankCrossingPlane(tank, tankScale) {
+  const at = tankPoint(tank);
+  const azimuth = tankAzimuth(tank);
+  for (const obs of buildingsAt(at.x, at.y, at.z, azimuth, tankScale)) {
     const plane = obs.type === 'mesh'
-      ? getMeshCrossingPlane(obs, worldX, worldY, worldZ, rotation, tankScale)
-      : getBoxCrossingPlane(obs, worldX, worldY, worldZ, rotation, tankScale);
+      ? getMeshCrossingPlane(obs, at.x, at.y, at.z, azimuth, tankScale)
+      : getBoxCrossingPlane(obs, at.x, at.y, at.z, azimuth, tankScale);
     if (plane) return plane;
   }
   return null;
@@ -10539,8 +10567,8 @@ function findTankCrossingPlane(worldX, worldY, worldZ, rotation, tankScale) {
 const OBSERVER_POINT_SCALE = Object.freeze({ width: 0, length: 0 });
 
 // `drive`'s own test (collectInsideBuildings), against this client's world.
-function buildingsAt(x, y, z, rotation, tankScale = getMyTankScale()) {
-  return findInsideBuildings(getCollisionColliders(), getColliderTopY, x, y, z, rotation, tankScale);
+function buildingsAt(x, y, z, azimuth, tankScale = getMyTankScale()) {
+  return findInsideBuildings(getCollisionColliders(), getColliderTopY, x, y, z, azimuth, tankScale);
 }
 
 // doUpdateMotion's last act (LocalPlayer.cxx:854), with the tank where the frame
@@ -10573,9 +10601,9 @@ function updateInsideBuildings() {
   const phased = amPhased();
   const observer = isObserver();
   const found = phased
-    ? buildingsAt(playerX, playerY, playerZ, playerRotation)
+    ? buildingsAt(myX, myY, myZ, myAzimuth)
     : observer
-      ? buildingsAt(playerX, playerY, playerZ, playerRotation, OBSERVER_POINT_SCALE)
+      ? buildingsAt(myX, myY, myZ, myAzimuth, OBSERVER_POINT_SCALE)
       : [];
   if (found.length !== insideBuildings.length
     || !found.every((obs, i) => obs === insideBuildings[i])) {
@@ -10606,7 +10634,7 @@ let onObstacle = false;
 // `lastObstacle` (LocalPlayer.cxx:428): what the step last met, which is what
 // the debug overlay draws and what upstream's no-climb jump rule reads.
 let lastMotionObstacle = null;
-let jumpDirection = null; // Stores the direction at jump start
+let jumpAzimuth = null; // The azimuth a jump or fall left with
 // LocalPlayer::wingsFlapCount. Refilled to _wingsJumpCount on every tick the
 // tank spends on a surface and spent one per jump, take-off included. Only Wings
 // ever reads it, because every other tank is refused the moment it leaves the
@@ -10655,7 +10683,7 @@ function ensureTankDimensionState(tank) {
   if (!Number.isFinite(tank.userData.baseScaleX)) tank.userData.baseScaleX = tank.scale.x;
   if (!Number.isFinite(tank.userData.baseScaleY)) tank.userData.baseScaleY = tank.scale.y;
   if (!Number.isFinite(tank.userData.baseScaleZ)) tank.userData.baseScaleZ = tank.scale.z;
-  if (!Number.isFinite(tank.userData.landingSquishScaleY)) tank.userData.landingSquishScaleY = 1;
+  if (!Number.isFinite(tank.userData.landingSquishScaleZ)) tank.userData.landingSquishScaleZ = 1;
   if (!Number.isFinite(tank.userData.landingSquishRecoverRate)) tank.userData.landingSquishRecoverRate = 1 / landingSquishTime();
   if (!Number.isFinite(tank.userData.spawnScale)) tank.userData.spawnScale = 1;
   // Player::dimensionsScale / Target / Rate, for the drawn tank only. The
@@ -10765,9 +10793,9 @@ function applyLandingSquish(tank, impactSpeed = 0) {
   let k = 0.1 / (2 * gravity * gravity);
   k *= landingSquishFactor();
 
-  const targetScaleY = 1 / (1 + (k * velocity * velocity));
-  if (targetScaleY < tank.userData.landingSquishScaleY) {
-    tank.userData.landingSquishScaleY = targetScaleY;
+  const targetScaleZ = 1 / (1 + (k * velocity * velocity));
+  if (targetScaleZ < tank.userData.landingSquishScaleZ) {
+    tank.userData.landingSquishScaleZ = targetScaleZ;
   }
   tank.userData.landingSquishRecoverRate = 1 / landingSquishTime();
 }
@@ -10908,9 +10936,7 @@ function updateTankDimensions(deltaTime) {
     renderManager.setTankCrossingPlane(
       tank,
       tank.visible && drivesThroughBuildings(viewedFlag, viewedZoned)
-        ? findTankCrossingPlane(
-          tank.position.x, tank.position.y, tank.position.z, tank.rotation.y, crossingScale,
-        )
+        ? findTankCrossingPlane(tank, crossingScale)
         : null,
       !inCockpit,
     );
@@ -10919,15 +10945,15 @@ function updateTankDimensions(deltaTime) {
     const baseScaleY = tank.userData.baseScaleY;
     const baseScaleZ = tank.userData.baseScaleZ;
 
-    let squishScaleY = tank.userData.landingSquishScaleY;
-    if (!Number.isFinite(squishScaleY)) squishScaleY = 1;
+    let squishScaleZ = tank.userData.landingSquishScaleZ;
+    if (!Number.isFinite(squishScaleZ)) squishScaleZ = 1;
 
-    if (squishScaleY < 1) {
+    if (squishScaleZ < 1) {
       const recoverRate = Number.isFinite(tank.userData.landingSquishRecoverRate)
         ? tank.userData.landingSquishRecoverRate
         : (1 / landingSquishTime());
-      squishScaleY = Math.min(1, squishScaleY + recoverRate * deltaTime);
-      tank.userData.landingSquishScaleY = squishScaleY;
+      squishScaleZ = Math.min(1, squishScaleZ + recoverRate * deltaTime);
+      tank.userData.landingSquishScaleZ = squishScaleZ;
     }
 
     let spawnScale = tank.userData.spawnScale;
@@ -10938,14 +10964,14 @@ function updateTankDimensions(deltaTime) {
       tank.userData.spawnScale = spawnScale;
     }
 
-    // bzo's tank faces -Z, so the model's Z is its length and its X is its
-    // width -- the two axes a flag scales -- and the world's own tank size
-    // scales all three (`TANK.modelScale`).
+    // A tank faces +x, so its x is its length and its y its width -- the two
+    // axes a flag scales -- and the world's own tank size scales all three
+    // (`TANK.modelScale`).
     const { modelScale } = TANK;
     tank.scale.set(
-      baseScaleX * modelScale.width * tank.userData.dimensionScaleWidth * spawnScale,
-      baseScaleY * modelScale.height * squishScaleY * spawnScale,
-      baseScaleZ * modelScale.length * tank.userData.dimensionScaleLength * spawnScale
+      baseScaleX * modelScale.length * tank.userData.dimensionScaleLength * spawnScale,
+      baseScaleY * modelScale.width * tank.userData.dimensionScaleWidth * spawnScale,
+      baseScaleZ * modelScale.height * squishScaleZ * spawnScale,
     );
     counterScaleNameLabel(tank.userData.nameLabel, tank.scale);
 
@@ -10956,9 +10982,9 @@ function updateTankDimensions(deltaTime) {
     const ghost = tank.userData.ghostMesh;
     if (ghost) {
       ghost.scale.set(
+        GHOST_SCALE * modelScale.length * tank.userData.dimensionScaleLength,
         GHOST_SCALE * modelScale.width * tank.userData.dimensionScaleWidth,
         GHOST_SCALE * modelScale.height,
-        GHOST_SCALE * modelScale.length * tank.userData.dimensionScaleLength
       );
       counterScaleNameLabel(ghost.userData.nameLabel, ghost.scale);
     }
@@ -10975,14 +11001,14 @@ function updateTankDimensions(deltaTime) {
 // The world floor answers first and answers everywhere, which is why upstream
 // never asks this of a mark left on the ground.
 function isTrackSurfaceAt(x, y, z) {
-  if (Math.abs(y) <= TRACK_SURFACE_TOLERANCE) return true;
+  if (Math.abs(z) <= TRACK_SURFACE_TOLERANCE) return true;
   for (const obs of getCollisionColliders()) {
     // Nothing a tank drives through holds a mark up either, and a collider
     // missing a dimension has no top to be level with.
     if (obs.driveThrough) continue;
-    if (!Number.isFinite(obs.w) || !Number.isFinite(obs.d) || !Number.isFinite(obs.h)) continue;
-    if (Math.abs(y - getColliderTopY(obs)) > TRACK_SURFACE_TOLERANCE) continue;
-    if (isOverFlatTop(obs, x, z)) return true;
+    if (!obs.size || !obs.size.every(Number.isFinite)) continue;
+    if (Math.abs(z - getColliderTopY(obs)) > TRACK_SURFACE_TOLERANCE) continue;
+    if (isOverFlatTop(obs, x, y)) return true;
   }
   return false;
 }
@@ -11011,7 +11037,7 @@ function updateTrackMarks(deltaTime) {
 
     const falling = playerId === myPlayerId
       ? isInAir
-      : (tank.userData.jumpDirection !== null && tank.userData.jumpDirection !== undefined);
+      : (tank.userData.jumpAzimuth !== null && tank.userData.jumpAzimuth !== undefined);
     if (falling) return;
     const flag = getPlayerFlag(playerId);
     if (isZoned(flag?.type ?? null, flag?.zoned === true)) return;
@@ -11020,7 +11046,7 @@ function updateTrackMarks(deltaTime) {
       x: tank.position.x,
       y: tank.position.y,
       z: tank.position.z,
-      rotation: tank.rotation.y,
+      azimuth: tankAzimuth(tank),
       // Upstream's `relativeSpeed` is the velocity resolved along the heading,
       // in world units; bzo carries the same thing as a fraction of tank speed.
       speed: (tank.userData.forwardSpeed || 0) * gameConfig.TANK_SPEED,
@@ -11118,7 +11144,7 @@ function predictLocalPlayerTeleport(startState, endState, nowMs) {
   const deltaY = endState.y - startState.y;
   const deltaZ = endState.z - startState.z;
   const segmentLength = Math.hypot(deltaX, deltaY, deltaZ);
-  const planarDistance = Math.hypot(deltaX, deltaZ);
+  const planarDistance = Math.hypot(deltaX, deltaY);
   if (segmentLength <= 1e-6) {
     return {
       applied: false,
@@ -11194,8 +11220,8 @@ function predictLocalPlayerTeleport(startState, endState, nowMs) {
   const outState = {
     ...endState,
     x: transformed.pointOut.x + transformed.dirOut.x * exitAdvance,
-    y: Math.max(0, transformed.pointOut.y + transformed.dirOut.y * exitAdvance),
-    z: transformed.pointOut.z + transformed.dirOut.z * exitAdvance,
+    y: transformed.pointOut.y + transformed.dirOut.y * exitAdvance,
+    z: Math.max(0, transformed.pointOut.z + transformed.dirOut.z * exitAdvance),
   };
 
   const { rotateDelta } = transformed;
@@ -11263,7 +11289,7 @@ function getRoamCandidates() {
     candidates.push({
       id,
       x: tank.position.x,
-      z: tank.position.z,
+      y: tank.position.y,
       wins: state.wins || 0,
       losses: state.losses || 0,
       // The roaming leader is read off the scoreboard's own order
@@ -11422,10 +11448,8 @@ function identifyRoamTarget() {
   }
   const framing = getRoamFraming();
   if (!framing) return;
-  const forward = {
-    x: framing.look.x - framing.eye.x,
-    z: framing.look.z - framing.eye.z,
-  };
+  const { eye, look } = framing;
+  const forward = { x: look.x - eye.x, y: look.y - eye.y };
   // shouldTarget (playing.cxx:4239), and only here: blindness refuses every
   // target, and a stealthed or cloaked tank can only be locked onto with Seer.
   // Hiding from the eye and the radar would mean little if the flag that names
@@ -11436,7 +11460,7 @@ function identifyRoamTarget() {
     const theirFlag = getPlayerFlagType(candidate.id);
     return !hidesFromRadar(theirFlag) && !cloaksTheTank(theirFlag);
   });
-  const picked = pickTargetInSights(framing.eye, forward, targetable, TARGETING_ANGLE);
+  const picked = pickTargetInSights(eye, forward, targetable, TARGETING_ANGLE);
   if (picked === null) {
     setHudAlert(1, 'Looking at nothing', IDENTIFY_ALERT_SECONDS, false);
     return;
@@ -11483,7 +11507,8 @@ function getLockTargetTank(shooterId) {
 // the hit cylinder -- see `getLockAimPoint` in `server.js` for why bzo aims at
 // that rather than at a muzzle.
 function getLockAimPoint(tank) {
-  return { x: tank.position.x, y: tank.position.y + (TANK.height / 2), z: tank.position.z };
+  const at = tankPoint(tank);
+  return { x: at.x, y: at.y, z: at.z + (TANK.height / 2) };
 }
 
 // playing.cxx:3537. The tank a missile is coming for is told so -- once, and not
@@ -11531,8 +11556,9 @@ function showIdentifyResult(targetId, locked) {
 // one piece of code rather than two.
 function resolveOwnLockTarget() {
   if (!myTank) return { targetId: null, locked: false };
-  const eye = { x: myTank.position.x, z: myTank.position.z };
-  const forward = { x: -Math.sin(myTank.rotation.y), z: -Math.cos(myTank.rotation.y) };
+  const eye = tankPoint(myTank);
+  const azimuth = tankAzimuth(myTank);
+  const forward = { x: Math.cos(azimuth), y: Math.sin(azimuth) };
   const seer = isSeer();
 
   const lockable = [];
@@ -11542,7 +11568,8 @@ function resolveOwnLockTarget() {
     const state = tank.userData?.playerState;
     if (!state || !state.alive || state.paused) return;
     if (isObserverTeam(state.team)) return;
-    const candidate = { id: playerId, x: tank.position.x, z: tank.position.z };
+    const at = tankPoint(tank);
+    const candidate = { id: playerId, x: at.x, y: at.y };
     const theirFlag = getPlayerFlagType(playerId);
     // "can't lock on stealth" (playing.cxx:4426) -- and unlike the look below,
     // no flag sees through it, because a missile is not looking.
@@ -11608,7 +11635,7 @@ function updateLockOnMarker() {
     return;
   }
   renderManager.setLockOnMarker(
-    { x: target.position.x, y: target.position.y + (TANK.height / 2), z: target.position.z },
+    { x: target.position.x, y: target.position.y, z: target.position.z + (TANK.height / 2) },
     getLockTargetColor(target),
     gameConfig?.FORBID_MARKERS === true,
   );
@@ -11812,8 +11839,8 @@ function updateHuntBearing() {
 
   // The tank's own heading, not the camera's, which is what upstream scans
   // with -- a sighting is about where the barrel points.
-  const eye = { x: playerX, z: playerZ };
-  const forward = { x: -Math.sin(playerRotation), z: -Math.cos(playerRotation) };
+  const eye = { x: myX, y: myY };
+  const forward = { x: Math.cos(myAzimuth), y: Math.sin(myAzimuth) };
   const seer = isSeer();
   const candidates = [];
   tanks.forEach((tank, id) => {
@@ -11821,7 +11848,8 @@ function updateHuntBearing() {
     if (!state || id === myPlayerId || !state.alive || isObserverTeam(state.team)) return;
     // Stealth is out of the scan unless Seer is in hand (playing.cxx:4552).
     if (!seer && hidesFromRadar(getPlayerFlagType(id))) return;
-    candidates.push({ id, x: tank.position.x, z: tank.position.z });
+    const at = tankPoint(tank);
+    candidates.push({ id, x: at.x, y: at.y });
   });
 
   const spotted = pickTargetInSights(eye, forward, candidates, TARGETING_ANGLE);
@@ -11872,39 +11900,37 @@ function getRoamFraming() {
   if (roamViewNeedsTarget(roamView)) {
     const target = getRoamTargetTank();
     if (target) {
+      const targetAt = target.position;
       const targetEye = getTankEyeHeight(target);
-      const forward = {
-        x: -Math.sin(target.rotation.y),
-        z: -Math.cos(target.rotation.y),
-      };
+      const forward = getRoamForward(tankAzimuth(target));
       if (roamView === ROAM_VIEW.FPS) {
         const fpsEye = {
-          x: target.position.x,
-          y: target.position.y + targetEye,
-          z: target.position.z,
+          x: targetAt.x,
+          y: targetAt.y,
+          z: targetAt.z + targetEye,
         };
         return {
           eye: fpsEye,
-          look: { x: fpsEye.x + forward.x, y: fpsEye.y, z: fpsEye.z + forward.z },
+          look: { x: fpsEye.x + forward.x, y: fpsEye.y + forward.y, z: fpsEye.z },
         };
       }
       if (roamView === ROAM_VIEW.FOLLOW) {
         return {
           eye: {
-            x: target.position.x - forward.x * ROAM_FOLLOW_DISTANCE,
-            y: target.position.y + targetEye * ROAM_FOLLOW_HEIGHT_FACTOR,
-            z: target.position.z - forward.z * ROAM_FOLLOW_DISTANCE,
+            x: targetAt.x - forward.x * ROAM_FOLLOW_DISTANCE,
+            y: targetAt.y - forward.y * ROAM_FOLLOW_DISTANCE,
+            z: targetAt.z + targetEye * ROAM_FOLLOW_HEIGHT_FACTOR,
           },
-          look: { x: target.position.x, y: target.position.y, z: target.position.z },
+          look: { x: targetAt.x, y: targetAt.y, z: targetAt.z },
         };
       }
       // Track: the camera stays put and turns to keep the target in view.
       return {
         eye,
         look: {
-          x: target.position.x,
-          y: target.position.y + targetEye,
-          z: target.position.z,
+          x: targetAt.x,
+          y: targetAt.y,
+          z: targetAt.z + targetEye,
         },
       };
     }
@@ -11922,10 +11948,10 @@ function getRoamFraming() {
   // is what `Roaming::changeTarget` does when it finds no target. The look point
   // is one unit ahead at the eye's own height, so it travels with the camera --
   // forward, sideways and vertically -- exactly as a driving tank's does.
-  const heading = getRoamForward(roamCamera.theta);
+  const heading = getRoamForward(roamCamera.azimuth);
   return {
     eye,
-    look: { x: eye.x + heading.x, y: eye.y, z: eye.z + heading.z },
+    look: { x: eye.x + heading.x, y: eye.y + heading.y, z: eye.z },
   };
 }
 
@@ -12035,9 +12061,9 @@ function handleRoamMotion(deltaTime) {
   if (identifyHeld && !roamIdentifyWasHeld) identifyRoamTarget();
   roamIdentifyWasHeld = identifyHeld;
 
-  // The camera rides at a tank's eye height, so roamCamera.y is an eye and the
+  // The camera rides at a tank's eye height, so roamCamera.z is an eye and the
   // mesh below it stands on the ground -- the same relation first person has
-  // between myTank.position.y and cameraHeight.
+  // between myTank.position.z and cameraHeight.
   const eyeHeight = Number.isFinite(myTank.userData?.cameraHeight)
     ? myTank.userData.cameraHeight
     : TANK.muzzleHeight;
@@ -12049,9 +12075,9 @@ function handleRoamMotion(deltaTime) {
     roamCamera = {
       ...createRoamCamera(eyeHeight),
       x: myTank.position.x,
-      y: Math.max(eyeHeight, myTank.position.y + eyeHeight),
-      z: myTank.position.z,
-      theta: playerRotation,
+      y: myTank.position.y,
+      z: Math.max(eyeHeight, myTank.position.z + eyeHeight),
+      azimuth: myAzimuth,
     };
   }
 
@@ -12062,13 +12088,13 @@ function handleRoamMotion(deltaTime) {
 
   roamCamera = updateRoamCamera(roamCamera, input, deltaTime, {
     tankSpeed: gameConfig.TANK_SPEED,
-    floorY: eyeHeight,
+    floorZ: eyeHeight,
   });
 
   // An observer has no tank to show, with one exception. The mesh is still
   // moved, because the radar, the heading tape and the sound listener all read
   // its transform -- that is upstream's virtual tank -- but nothing draws it:
-  // not the tank, not its server-position ghost, which hangs off worldGroup
+  // not the tank, not its server-position ghost, which hangs off worldFrame
   // rather than off the tank and so does not inherit this.
   //
   // Overview is the exception. The whole point of that view is seeing the map
@@ -12091,14 +12117,13 @@ function handleRoamMotion(deltaTime) {
 
   // The virtual tank stands under the eye rather than at it, so it sits where a
   // driver's tank would relative to the camera.
-  playerX = eye.x;
-  playerY = eye.y - eyeHeight;
-  playerZ = eye.z;
-  playerRotation = framing
-    ? getRoamViewAngle(framing.eye, framing.look, roamCamera.theta)
-    : roamCamera.theta;
-  myTank.position.set(playerX, playerY, playerZ);
-  myTank.rotation.y = playerRotation;
+  myX = eye.x;
+  myY = eye.y;
+  myZ = eye.z - eyeHeight;
+  myAzimuth = framing
+    ? getRoamViewAngle(framing.eye, framing.look, roamCamera.azimuth)
+    : roamCamera.azimuth;
+  placeTank(myTank, myX, myY, myZ, myAzimuth);
 
   // `handleMotion` -- where this runs for a real tank -- returns immediately
   // for an observer, so it never reaches its own call to this.
@@ -12140,25 +12165,25 @@ function sendObserverUpdate() {
   const now = performance.now();
   const sinceLastSend = now - lastObserverHeartbeatAt;
   const drifted = Math.hypot(
-    playerX - lastObserverSentX,
-    playerY - lastObserverSentY,
-    playerZ - lastObserverSentZ,
+    myX - lastObserverSentX,
+    myY - lastObserverSentY,
+    myZ - lastObserverSentZ,
   ) >= OBSERVER_DRIFT_THRESHOLD;
   const due = drifted
     ? sinceLastSend >= OBSERVER_DRIFT_MIN_INTERVAL
     : sinceLastSend >= getMaxUpdateInterval();
   if (!due) return;
   lastObserverHeartbeatAt = now;
-  lastObserverSentX = playerX;
-  lastObserverSentY = playerY;
-  lastObserverSentZ = playerZ;
+  lastObserverSentX = myX;
+  lastObserverSentY = myY;
+  lastObserverSentZ = myZ;
   sendToServer({
     type: 'm',
     id: myPlayerId,
-    x: Number(playerX.toFixed(2)),
-    y: Number(playerY.toFixed(2)),
-    z: Number(playerZ.toFixed(2)),
-    r: Number(playerRotation.toFixed(2)),
+    x: Number(myX.toFixed(2)),
+    y: Number(myY.toFixed(2)),
+    z: Number(myZ.toFixed(2)),
+    a: Number(normalizeAngle(myAzimuth).toFixed(2)),
     fs: 0,
     rs: 0,
     vv: 0,
@@ -12345,13 +12370,14 @@ const autopilotProbes = createWorldProbes({
   topOf: getColliderTopY,
 });
 
+
 // A remote tank's motion now, from the last move it sent, by the same model
 // `extrapolatePosition` draws it with: in the air its packet's air velocity
 // and its vertical velocity run down by gravity since the packet, on the
 // ground its speed along its heading.
 function getTankMotion(tank, flagType, now) {
   const data = tank.userData;
-  const airborne = data.jumpDirection !== null && data.jumpDirection !== undefined;
+  const airborne = data.jumpAzimuth !== null && data.jumpAzimuth !== undefined;
   const gravity = hasAirControl(flagType) ? gameConfig.WINGS_GRAVITY : gameConfig.GRAVITY;
   if (airborne) {
     const elapsed = Math.max(0, (now - (data.lastUpdateTime || now)) / 1000);
@@ -12359,14 +12385,14 @@ function getTankMotion(tank, flagType, now) {
       airborne,
       gravity,
       vx: data.airVelocityX || 0,
-      vy: (data.verticalVelocity || 0) - (gravity * elapsed),
-      vz: data.airVelocityZ || 0,
+      vy: data.airVelocityY || 0,
+      vz: (data.verticalVelocity || 0) - (gravity * elapsed),
     };
   }
-  const direction = data.slideDirection ?? tank.rotation.y;
+  const azimuth = data.slideAzimuth ?? tankAzimuth(tank);
   const speed = (data.forwardSpeed || 0) * gameConfig.TANK_SPEED;
   return {
-    airborne, gravity, vx: -Math.sin(direction) * speed, vy: 0, vz: -Math.cos(direction) * speed,
+    airborne, gravity, vx: Math.cos(azimuth) * speed, vy: Math.sin(azimuth) * speed, vz: 0,
   };
 }
 
@@ -12384,9 +12410,7 @@ function buildAutopilotView() {
     const flag = getPlayerFlag(playerId);
     players.push({
       id: playerId,
-      x: tank.position.x,
-      y: tank.position.y,
-      z: tank.position.z,
+      ...tankPoint(tank),
       ...getTankMotion(tank, flag?.type ?? null, now),
       team: state.team,
       alive: state.alive === true,
@@ -12407,9 +12431,7 @@ function buildAutopilotView() {
       ownerId: data.playerId,
       ownerZoned: isZoned(ownerFlag?.type ?? null, ownerFlag?.zoned === true),
       flag: data.flag ?? null,
-      x: projectile.position.x,
-      y: projectile.position.y,
-      z: projectile.position.z,
+      ...data.at,
       vx: (data.dirX || 0) * data.speed,
       vy: (data.dirY || 0) * data.speed,
       vz: (data.dirZ || 0) * data.speed,
@@ -12434,10 +12456,10 @@ function buildAutopilotView() {
     now: now / 1000,
     self: {
       id: myPlayerId,
-      x: playerX,
-      y: myTank.position.y,
-      z: playerZ,
-      rotation: playerRotation,
+      x: myX,
+      y: myY,
+      z: myZ,
+      azimuth: myAzimuth,
       flag: myType,
       flagIndex: myFlag?.index ?? null,
       flagTeam: getFlagTeamIndex(myType),
@@ -12493,10 +12515,10 @@ function buildAutopilotView() {
       const base = OBSTACLES.find((obs) => obs.kind === 'base' && obs.team === myTeamColor);
       if (!base) return null;
       return {
-        x: base.x,
-        y: getColliderTopY(base),
-        z: base.z,
-        radius: Math.min(base.w, base.d) / 2,
+        x: base.pos[0],
+        y: base.pos[1],
+        z: getColliderTopY(base),
+        radius: Math.min(base.size[0], base.size[1]),
       };
     },
     ...autopilotProbes,
@@ -12537,13 +12559,13 @@ const autopilotTally = { kills: 0, deaths: 0 };
 // this one unless it is a followed server bot's.
 function drawAutopilotIntent(intent, nowMs, origin = null) {
   const segments = [];
-  const lift = (p, dy = AUTOPILOT_OVERLAY.lift) => ({ x: p.x, y: p.y + dy, z: p.z });
+  const lift = (p, dz = AUTOPILOT_OVERLAY.lift) => ({ x: p.x, y: p.y, z: p.z + dz });
   if (intent?.route?.length) {
-    let from = origin || { x: playerX, y: myTank.position.y, z: playerZ };
+    let from = origin || { x: myX, y: myY, z: myZ };
     for (const node of intent.route) {
       const color = node.jump
         ? AUTOPILOT_OVERLAY.jump
-        : (node.y > 0.33 ? AUTOPILOT_OVERLAY.raised : AUTOPILOT_OVERLAY.ground);
+        : (node.z > 0.33 ? AUTOPILOT_OVERLAY.raised : AUTOPILOT_OVERLAY.ground);
       segments.push({ a: lift(from), b: lift(node), color });
       from = node;
     }
@@ -12556,8 +12578,8 @@ function drawAutopilotIntent(intent, nowMs, origin = null) {
     const corners = [[r, 0], [0, r], [-r, 0], [0, -r], [r, 0]];
     for (let i = 0; i < 4; i++) {
       segments.push({
-        a: { x: t.x + corners[i][0], y: t.y + 0.5, z: t.z + corners[i][1] },
-        b: { x: t.x + corners[i + 1][0], y: t.y + 0.5, z: t.z + corners[i + 1][1] },
+        a: { x: t.x + corners[i][0], y: t.y + corners[i][1], z: t.z + 0.5 },
+        b: { x: t.x + corners[i + 1][0], y: t.y + corners[i + 1][1], z: t.z + 0.5 },
         color,
       });
     }
@@ -12565,8 +12587,8 @@ function drawAutopilotIntent(intent, nowMs, origin = null) {
   if (intent?.landing) {
     const l = intent.landing;
     const r = 2.5;
-    segments.push({ a: { x: l.x - r, y: l.y + 0.2, z: l.z - r }, b: { x: l.x + r, y: l.y + 0.2, z: l.z + r }, color: AUTOPILOT_OVERLAY.landing });
-    segments.push({ a: { x: l.x - r, y: l.y + 0.2, z: l.z + r }, b: { x: l.x + r, y: l.y + 0.2, z: l.z - r }, color: AUTOPILOT_OVERLAY.landing });
+    segments.push({ a: { x: l.x - r, y: l.y - r, z: l.z + 0.2 }, b: { x: l.x + r, y: l.y + r, z: l.z + 0.2 }, color: AUTOPILOT_OVERLAY.landing });
+    segments.push({ a: { x: l.x - r, y: l.y + r, z: l.z + 0.2 }, b: { x: l.x + r, y: l.y - r, z: l.z + 0.2 }, color: AUTOPILOT_OVERLAY.landing });
   }
   if (intent?.shot) {
     const shot = intent.shot;
@@ -12619,10 +12641,10 @@ function noteAutopilotFlight(wasInAir, nowInAir, rotationSpeed) {
     const plan = pilot?.lastFlight && (performance.now() / 1000) - pilot.lastFlight.at < 0.5 ? pilot.lastFlight : null;
     autopilotFlight = {
       at: performance.now(),
-      r: playerRotation,
+      azimuth: myAzimuth,
       rs: rotationSpeed,
-      x: playerX,
-      z: playerZ,
+      x: myX,
+      y: myY,
       plan,
       mode: autopilotOutput?.intent?.mode ?? '?',
     };
@@ -12633,16 +12655,16 @@ function noteAutopilotFlight(wasInAir, nowInAir, rotationSpeed) {
   autopilotFlight = null;
   const plan = flight.plan;
   const aim = plan?.aim;
-  const want = aim ? Math.atan2(-(aim.x - playerX), -(aim.z - playerZ)) : null;
-  const off = want === null ? null : Math.abs(normalizeAngle(playerRotation - want));
+  const want = aim ? Math.atan2(aim.y - myY, aim.x - myX) : null;
+  const off = want === null ? null : Math.abs(normalizeAngle(myAzimuth - want));
   sendToServer({
     type: 'debug',
     message: `[autopilot] flight (${flight.mode}${plan ? (plan.jump ? ', jump' : ', drive-off') : ', unplanned'}):`
-      + ` from (${flight.x.toFixed(0)},${flight.z.toFixed(0)}) r ${flight.r.toFixed(2)} rs ${flight.rs.toFixed(2)}`
-      + ` to (${playerX.toFixed(0)},${myTank.position.y.toFixed(0)},${playerZ.toFixed(0)}) r ${playerRotation.toFixed(2)}`
+      + ` from (${flight.x.toFixed(0)},${flight.y.toFixed(0)}) a ${flight.azimuth.toFixed(2)} rs ${flight.rs.toFixed(2)}`
+      + ` to (${myX.toFixed(0)},${myY.toFixed(0)},${myZ.toFixed(0)}) a ${myAzimuth.toFixed(2)}`
       + ` after ${((performance.now() - flight.at) / 1000).toFixed(2)}s`
       + (plan ? `; planned air ${plan.air.toFixed(2)}s turn ${deg(plan.turn)} deg cmd ${plan.rotation.toFixed(2)},`
-        + ` landing (${plan.landing.x},${plan.landing.y},${plan.landing.z}) aim (${aim.x},${aim.z}),`
+        + ` landing (${plan.landing.x},${plan.landing.y},${plan.landing.z}) aim (${aim.x},${aim.y}),`
         + ` facing ${deg(off)} deg off the aim` : ''),
   });
 }
@@ -12660,7 +12682,7 @@ function drawFollowedBotPlan() {
     followedBotPlanDrawn = false;
     return;
   }
-  drawAutopilotIntent(plan.intent, now, { x: tank.position.x, y: tank.position.y, z: tank.position.z });
+  drawAutopilotIntent(plan.intent, now, tank.position);
   followedBotPlanDrawn = true;
 }
 let followedBotPlanDrawn = false;
@@ -12780,14 +12802,14 @@ const myDrive = createDriveState();
 function loadMyDrive() {
   const data = myTank.userData;
   Object.assign(myDrive, {
-    x: playerX,
-    y: playerY,
-    z: playerZ,
-    rotation: playerRotation,
+    x: myX,
+    y: myY,
+    z: myZ,
+    azimuth: myAzimuth,
     verticalVelocity: data.verticalVelocity || 0,
     airVelocityX: data.airVelocityX || 0,
-    airVelocityZ: data.airVelocityZ || 0,
-    jumpDirection: jumpDirection ?? null,
+    airVelocityY: data.airVelocityY || 0,
+    jumpDirection: jumpAzimuth ?? null,
     onGround,
     onObstacle,
     inAir: isInAir,
@@ -12799,7 +12821,7 @@ function loadMyDrive() {
     agilityStartedAt: data.agilityStartedAt ?? -Infinity,
     jumpForwardSpeed: data.jumpForwardSpeed || 0,
     fallForwardSpeed: data.fallForwardSpeed || 0,
-    slideDirection: data.slideDirection,
+    slideDirection: data.slideAzimuth,
     forwardSpeed: data.forwardSpeed || 0,
     rotationSpeed: data.rotationSpeed || 0,
     stuckFrameCount: data.stuckFrameCount || 0,
@@ -12811,14 +12833,14 @@ function loadMyDrive() {
 }
 function storeMyDrive() {
   const data = myTank.userData;
-  playerX = myDrive.x;
-  playerY = myDrive.y;
-  playerZ = myDrive.z;
-  playerRotation = myDrive.rotation;
+  myX = myDrive.x;
+  myY = myDrive.y;
+  myZ = myDrive.z;
+  myAzimuth = myDrive.azimuth;
   data.verticalVelocity = myDrive.verticalVelocity;
   data.airVelocityX = myDrive.airVelocityX;
-  data.airVelocityZ = myDrive.airVelocityZ;
-  jumpDirection = myDrive.jumpDirection;
+  data.airVelocityY = myDrive.airVelocityY;
+  jumpAzimuth = myDrive.jumpDirection;
   onGround = myDrive.onGround;
   onObstacle = myDrive.onObstacle;
   isInAir = myDrive.inAir;
@@ -12833,7 +12855,7 @@ function storeMyDrive() {
   data.agilityStartedAt = myDrive.agilityStartedAt;
   data.jumpForwardSpeed = myDrive.jumpForwardSpeed;
   data.fallForwardSpeed = myDrive.fallForwardSpeed;
-  data.slideDirection = myDrive.slideDirection;
+  data.slideAzimuth = myDrive.slideDirection;
   data.forwardSpeed = myDrive.forwardSpeed;
   data.rotationSpeed = myDrive.rotationSpeed;
   data.stuckFrameCount = myDrive.stuckFrameCount;
@@ -12962,15 +12984,14 @@ function handleMotion(deltaTime) {
       x: Number(events.zoneToggle.x.toFixed(2)),
       y: Number(events.zoneToggle.y.toFixed(2)),
       z: Number(events.zoneToggle.z.toFixed(2)),
-      r: Number(events.zoneToggle.rotation.toFixed(2)),
+      a: Number(events.zoneToggle.azimuth.toFixed(2)),
     });
     // SFX_PHANTOM, in place of SFX_TELEPORT. Upstream plays one or the other.
     renderManager.playSound('phantom', myTank.position);
     showMessage(zoned ? 'Zoned' : 'Unzoned');
   }
 
-  myTank.position.set(playerX, playerY, playerZ);
-  myTank.rotation.y = playerRotation;
+  placeTank(myTank, myX, myY, myZ, myAzimuth);
 
   if (events.teleport) {
     renderManager.playSound('teleport', myTank.position);
@@ -12987,11 +13008,11 @@ function handleMotion(deltaTime) {
         x: Number(tp.source.x.toFixed(2)),
         y: Number(tp.source.y.toFixed(2)),
         z: Number(tp.source.z.toFixed(2)),
-        r: Number(tp.sourceRotation.toFixed(2)),
+        a: Number(tp.sourceAzimuth.toFixed(2)),
         vv: Number(tp.verticalVelocity.toFixed(2)),
         vx: Number(tp.airVelocityX.toFixed(2)),
-        vz: Number(tp.airVelocityZ.toFixed(2)),
-        jd: tp.jumpDirection !== null && tp.jumpDirection !== undefined ? Number(tp.jumpDirection.toFixed(2)) : null,
+        vy: Number(tp.airVelocityY.toFixed(2)),
+        ja: tp.jumpDirection !== null && tp.jumpDirection !== undefined ? Number(tp.jumpDirection.toFixed(2)) : null,
       });
     }
   } else {
@@ -13016,9 +13037,9 @@ function handleMotion(deltaTime) {
   const now = performance.now();
   const timeSinceLastSend = now - lastSentTime;
   const verticalVelocity = myTank ? (myTank.userData.verticalVelocity || 0) : 0;
-  const airborneState = jumpDirection !== null;
+  const airborneState = jumpAzimuth !== null;
   const airVelocityX = airborneState ? (myTank.userData.airVelocityX || 0) : 0;
-  const airVelocityZ = airborneState ? (myTank.userData.airVelocityZ || 0) : 0;
+  const airVelocityY = airborneState ? (myTank.userData.airVelocityY || 0) : 0;
 
   // Velocity-based dead reckoning: only send when velocities change (positions are extrapolated)
   const forwardSpeedDelta = Math.abs(forwardSpeed - lastSentForwardSpeed);
@@ -13027,15 +13048,15 @@ function handleMotion(deltaTime) {
   // predict from the last move -- its heading, turned at its rate since -- drifts
   // from the real one by more than `_angleTolerance` (0.05 rad by default).
   const angleTolerance = Number.isFinite(gameConfig?.ANGLE_TOLERANCE) ? gameConfig.ANGLE_TOLERANCE : 0.05;
-  const predictedHeading = lastSentHeading === null ? playerRotation
+  const predictedHeading = lastSentHeading === null ? myAzimuth
     : lastSentHeading + (lastSentRotationSpeed * (gameConfig?.TANK_ROTATION_SPEED || 0)
       * (timeSinceLastSend / 1000));
-  const headingDrift = Math.abs(normalizeAngle(playerRotation - predictedHeading));
+  const headingDrift = Math.abs(normalizeAngle(myAzimuth - predictedHeading));
   // Don't check vertical velocity changes while in air - gravity is extrapolated
   // Only jump/land transitions matter (handled by forceMoveSend)
   const verticalVelocityDelta = airborneState ? 0 : Math.abs(verticalVelocity - lastSentVerticalVelocity);
   const airVelocityDelta = airborneState
-    ? Math.hypot(airVelocityX - lastSentAirVelocityX, airVelocityZ - lastSentAirVelocityZ)
+    ? Math.hypot(airVelocityX - lastSentAirVelocityX, airVelocityY - lastSentAirVelocityY)
     : 0;
 
   const deadStickStopUpdate =
@@ -13169,13 +13190,7 @@ function handleMotion(deltaTime) {
     };
 
     if (myTank && myTank.userData.ghostMesh) {
-      const ghostX = Number(playerX.toFixed(2));
-      const ghostY = Number(playerY.toFixed(2));
-      const ghostZ = Number(playerZ.toFixed(2));
-      const ghostR = Number(playerRotation.toFixed(2));
-
-      myTank.userData.ghostMesh.position.set(ghostX, ghostY, ghostZ);
-      myTank.userData.ghostMesh.rotation.y = ghostR;
+      placeTank(myTank.userData.ghostMesh, movePacket.x, movePacket.y, movePacket.z, movePacket.a);
       myTank.userData.ghostMesh.userData.hasPacketState = true;
       myTank.userData.ghostMesh.visible = showDebugGeometry;
       updatePacketMotionDebug(myTank.userData.ghostMesh, {
@@ -13183,26 +13198,26 @@ function handleMotion(deltaTime) {
       rs: sentRS,
       vv: sentVV,
       vx: movePacket.vx,
-      vz: movePacket.vz,
-      r: movePacket.r,
-      d: movePacket.d,
-      jumpDirection
+      vy: movePacket.vy,
+      a: movePacket.a,
+      sd: movePacket.sd,
+      jumpAzimuth
       }, 'sent');
     }
 
-    if (jumpDirection !== null && jumpDirection !== undefined) {
+    if (jumpAzimuth !== null && jumpAzimuth !== undefined) {
       updateJumpPredictionDebug(myTank, {
         x: movePacket.x,
         y: movePacket.y,
         z: movePacket.z,
-        r: movePacket.r,
+        azimuth: movePacket.a,
         forwardSpeed: sentFS,
         rotationSpeed: sentRS,
         verticalVelocity: sentVV,
-        jumpDirection,
-        slideDirection: movePacket.d,
+        jumpAzimuth,
+        slideAzimuth: movePacket.sd,
         airVelocityX: movePacket.vx,
-        airVelocityZ: movePacket.vz
+        airVelocityY: movePacket.vy
       }, 'sent');
     } else {
       clearJumpPredictionDebug(myTank);
@@ -13212,10 +13227,10 @@ function handleMotion(deltaTime) {
     // Store the ROUNDED values we actually sent to prevent rounding-induced deltas
     lastSentForwardSpeed = sentFS;
     lastSentRotationSpeed = sentRS;
-    lastSentHeading = movePacket.r;
+    lastSentHeading = movePacket.a;
     lastSentVerticalVelocity = sentVV;
     lastSentAirVelocityX = movePacket.vx;
-    lastSentAirVelocityZ = movePacket.vz;
+    lastSentAirVelocityY = movePacket.vy;
     lastSentTime = now;
 
   }
@@ -13278,8 +13293,8 @@ function shoot() {
   // it has entered the game.
   if (!gameplayJoinConfirmed) return false;
 
-  const dirX = -Math.sin(playerRotation);
-  const dirZ = -Math.cos(playerRotation);
+  const dirX = Math.cos(myAzimuth);
+  const dirY = Math.sin(myAzimuth);
 
   const myShot = getShotEffects(getMyShotFlag());
 
@@ -13296,10 +13311,10 @@ function shoot() {
   // ends it rather than the shot's own ~3.5s range/speed lifetime. Accepted
   // for now rather than teaching it a real expiry.
   const shotMessage = shotFromTank({
-    x: playerX,
-    y: myTank ? myTank.position.y : 0,
-    z: playerZ,
-    rotation: playerRotation,
+    x: myX,
+    y: myY,
+    z: myTank ? myZ : 0,
+    azimuth: myAzimuth,
     tankVelocity: shotTankVelocity,
     config: gameConfig,
     shockwave: myShot.shockwave,
@@ -13311,7 +13326,7 @@ function shoot() {
   const shotZ = shotMessage.z;
   const velocity = { x: shotMessage.vx, y: shotMessage.vy, z: shotMessage.vz };
   const flight = getShotFlight(velocity, myShot, getShotSpeed(null))
-    || { x: dirX, y: 0, z: dirZ, speed: getShotSpeed(getMyShotFlag()) };
+    || { x: dirX, y: dirY, z: 0, speed: getShotSpeed(getMyShotFlag()) };
   if (!isObserver()) {
     sendToServer(shotMessage);
     rumble(myShot.fireSound);
@@ -13323,9 +13338,9 @@ function shoot() {
   // including a shock wave: it is a sphere that grows from a known point at a
   // known rate, so the shooter has no reason to wait a round trip to see it.
   if (myShot.beam) {
-    const muzzle = new THREE.Vector3(shotX, shotY, shotZ);
+    const muzzle = { x: shotX, y: shotY, z: shotZ };
     renderManager.playSound(myShot.fireSound, muzzle);
-    renderManager.createMuzzleFlash(muzzle, new THREE.Vector3(dirX, 0, dirZ));
+    renderManager.createMuzzleFlash(muzzle, { x: dirX, y: dirY, z: 0 });
     return true;
   }
 
@@ -13348,30 +13363,30 @@ function teleporterProximityRadius() {
 // teleporter into the yellow screen wash; Player::updateTranslucency turns
 // the same number into a tank's own alpha fade.
 function getTeleporterProximity(x, y, z, obs) {
-  const halfW = obs.w / 2;
+  const halfW = obs.size[0];
   const border = obs.border;
-  const activeHalfD = obs.d / 2 - border;
-  const activeH = obs.h - border;
+  const activeHalfD = obs.size[1] - border;
+  const activeH = obs.size[2] - border;
   const gate = 1.2 * teleporterProximityRadius();
 
-  const local = getColliderLocalPoint(x, z, obs);
-  if (!testOrigRectCircle(halfW, activeHalfD, local.x, local.z, gate)) return 0;
+  const local = getColliderLocalPoint(x, y, obs);
+  if (!testOrigRectCircle(halfW, activeHalfD, local.x, local.y, gate)) return 0;
 
-  const relY = y - (obs.baseY || 0);
-  if (relY < -gate || relY > activeH + gate) return 0;
+  const relZ = z - getObstacleBase(obs);
+  if (relZ < -gate || relZ > activeH + gate) return 0;
 
   const absX = Math.abs(local.x);
-  const absZ = Math.abs(local.z);
+  const absY = Math.abs(local.y);
   let t = 1.2 - absX / teleporterProximityRadius();
 
-  if (absZ > activeHalfD) {
-    const f = (2 / Math.PI) * Math.atan2(absX, absZ - activeHalfD);
+  if (absY > activeHalfD) {
+    const f = (2 / Math.PI) * Math.atan2(absX, absY - activeHalfD);
     t *= f * f;
-  } else if (relY < 0) {
-    const f = 1 + relY / gate;
+  } else if (relZ < 0) {
+    const f = 1 + relZ / gate;
     if (f >= 0 && f <= 1) t *= f * f;
-  } else if (relY > activeH) {
-    const f = 1 - (relY - activeH) / gate;
+  } else if (relZ > activeH) {
+    const f = 1 - (relZ - activeH) / gate;
     if (f >= 0 && f <= 1) t *= f * f;
   }
 
@@ -13573,17 +13588,15 @@ function refreshTankDisguises() {
       // the rebuild instead.
       addPlayer({
         ...state,
-        x: tank.position.x,
-        y: tank.position.y,
-        z: tank.position.z,
-        rotation: tank.rotation.y,
+        ...tankPoint(tank),
+        azimuth: tankAzimuth(tank),
         forwardSpeed: tank.userData.forwardSpeed,
         rotationSpeed: tank.userData.rotationSpeed,
         verticalVelocity: tank.userData.verticalVelocity,
-        jumpDirection: tank.userData.jumpDirection,
-        slideDirection: tank.userData.slideDirection,
+        jumpAzimuth: tank.userData.jumpAzimuth,
+        slideAzimuth: tank.userData.slideAzimuth,
         airVelocityX: tank.userData.airVelocityX,
-        airVelocityZ: tank.userData.airVelocityZ,
+        airVelocityY: tank.userData.airVelocityY,
       });
     }
   }
@@ -14015,8 +14028,8 @@ function describeBadFlagRelease() {
 // decision rather than a drop request the server would have to take on trust.
 function handleAntidoteFlag(message) {
   const position = message.position;
-  antidotePosition = position && Number.isFinite(position.x) && Number.isFinite(position.z)
-    ? { x: position.x, y: Number.isFinite(position.y) ? position.y : 0, z: position.z }
+  antidotePosition = position && Number.isFinite(position.x) && Number.isFinite(position.y)
+    ? { x: position.x, y: position.y, z: Number.isFinite(position.z) ? position.z : 0 }
     : null;
   if (!antidotePosition) renderManager.hideFlag(ANTIDOTE_FLAG_KEY);
 }
@@ -14027,9 +14040,7 @@ function handleAntidoteFlag(message) {
 function updateAntidoteFlag() {
   if (!antidotePosition) return;
   renderManager.showFlag(ANTIDOTE_FLAG_KEY, {
-    x: antidotePosition.x,
-    y: antidotePosition.y,
-    z: antidotePosition.z,
+    ...antidotePosition,
     color: ANTIDOTE_FLAG_COLOR,
   });
 }
@@ -14147,13 +14158,7 @@ function checkNearFlag() {
     lastIdentifiedFlagIndex = null;
     return;
   }
-  const closest = findNearestGroundFlag(
-    flags.values(),
-    playerX,
-    myTank.position.y,
-    playerZ,
-    getFlagTuning().identifyRange
-  );
+  const closest = findNearestGroundFlag(flags.values(), myX, myY, myZ, getFlagTuning().identifyRange);
   if (!closest) {
     lastIdentifiedFlagIndex = null;
     return;
@@ -14242,19 +14247,19 @@ function isSoughtTeamFlag(flag, myTeamIndex) {
 function getFlagHeadingMarkers() {
   if (!myTank) return EMPTY_HEADING_MARKERS;
   const markers = [];
-  const headingTo = (position) => Math.atan2(-(position.x - playerX), -(position.z - playerZ));
+  const azimuthTo = (position) => Math.atan2(position.y - myY, position.x - myX);
 
   const myTeamIndex = getMyTeamColorIndex();
   if (myTeamIndex !== null) {
     flags.forEach((flag) => {
       if (!isSoughtTeamFlag(flag, myTeamIndex)) return;
-      markers.push({ heading: headingTo(flag.position), color: teamFlagMarkerStyle });
+      markers.push({ azimuth: azimuthTo(flag.position), color: teamFlagMarkerStyle });
     });
   }
 
   if (antidotePosition) {
     markers.push({
-      heading: headingTo(antidotePosition),
+      azimuth: azimuthTo(antidotePosition),
       color: ANTIDOTE_FLAG_STYLE,
     });
   }
@@ -14266,7 +14271,7 @@ function getFlagHeadingMarkers() {
   const locked = getLockTargetTank(myPlayerId);
   if (locked) {
     markers.push({
-      heading: headingTo(locked.position),
+      azimuth: azimuthTo(tankPoint(locked)),
       color: colorToCSS(getLockTargetColor(locked)),
     });
   }
@@ -14307,8 +14312,8 @@ function getHuntBeaconColor(playerId, state) {
 function addSkyBeaconTarget(count, position, color) {
   const target = skyBeaconTargets[count] || (skyBeaconTargets[count] = { x: 0, y: 0, z: 0, color: 0 });
   target.x = position.x;
-  target.y = position.y + SKY_BEACON_CLEARANCE;
-  target.z = position.z;
+  target.y = position.y;
+  target.z = position.z + SKY_BEACON_CLEARANCE;
   target.color = color;
   return count + 1;
 }
@@ -14345,7 +14350,7 @@ function updateSkyBeacons() {
       if (!isHuntMarked(playerId) || !tank?.position || tank.visible === false) return;
       const state = tank.userData?.playerState;
       if (state && (!state.alive || isHiddenFromRadar(playerId))) return;
-      count = addSkyBeaconTarget(count, tank.position, getHuntBeaconColor(playerId, state));
+      count = addSkyBeaconTarget(count, tankPoint(tank), getHuntBeaconColor(playerId, state));
     });
   }
 
@@ -14361,7 +14366,7 @@ function checkFlagCapture() {
   const flagTeamIndex = getFlagTeamIndex(flag.type);
   if (flagTeamIndex === null) return;
 
-  const baseTeamIndex = getBaseTeamAtPoint(OBSTACLES, playerX, myTank.position.y, playerZ);
+  const baseTeamIndex = getBaseTeamAtPoint(OBSTACLES, myX, myY, myZ);
   if (baseTeamIndex === null) return;
 
   const myTeamIndex = getMyTeamColorIndex();
@@ -14386,19 +14391,18 @@ function checkFlagGrab() {
   checkFlagCapture();
   if (getMyFlag()) return;
   // Upstream only grabs from the ground or a building, never mid-jump.
-  if (jumpDirection !== null) return;
+  if (jumpAzimuth !== null) return;
 
   const now = performance.now();
   if (now - lastGrabRequestAt < FLAG_GRAB_INTERVAL_MS) return;
 
-  const tankY = myTank.position.y;
   const reachSquared = getFlagGrabRadius() * getFlagGrabRadius();
   flags.forEach((flag) => {
     if (flag.status !== FLAG_STATUS.ON_GROUND) return;
-    if (Math.abs(tankY - flag.position.y) >= FLAG_GRAB_LEVEL_TOLERANCE) return;
-    const dx = playerX - flag.position.x;
-    const dz = playerZ - flag.position.z;
-    if ((dx * dx) + (dz * dz) >= reachSquared) return;
+    if (Math.abs(myZ - flag.position.z) >= FLAG_GRAB_LEVEL_TOLERANCE) return;
+    const dx = myX - flag.position.x;
+    const dy = myY - flag.position.y;
+    if ((dx * dx) + (dy * dy) >= reachSquared) return;
     sendToServer({ type: 'grabFlag', index: flag.index });
     lastGrabRequestAt = now;
   });
@@ -14425,11 +14429,8 @@ function updateFlags(deltaTime) {
         renderManager.hideFlag(flag.index);
         return;
       }
-      flag.position = {
-        x: carrier.position.x,
-        y: carrier.position.y + FLAG_CARRY_HEIGHT,
-        z: carrier.position.z,
-      };
+      const at = tankPoint(carrier);
+      flag.position = { x: at.x, y: at.y, z: at.z + FLAG_CARRY_HEIGHT };
       flag.alpha = 1;
       flag.warp = 0;
     } else if (
@@ -14462,9 +14463,7 @@ function updateFlags(deltaTime) {
     }
 
     renderManager.showFlag(flag.index, {
-      x: flag.position.x,
-      y: flag.position.y,
-      z: flag.position.z,
+      ...flag.position,
       color: getKnownFlagColor(flag),
       alpha: flag.alpha,
       warp: flag.warp,
@@ -14551,7 +14550,7 @@ function checkOwnShotHit(shotId, projectile, from, to, bounces = null) {
       // first half and this is the second.
       paused: pauseState.paused,
       alive: true,
-      position: { x: myTank.position.x, y: myTank.position.y, z: myTank.position.z },
+      position: { ...tankPoint(myTank), azimuth: tankAzimuth(myTank) },
       flagType: myFlag?.type ?? null,
       zoned: amZoned(),
     },
@@ -14610,9 +14609,7 @@ function announceOwnGuidedTarget(shotId, projectile, target) {
     // The proxy's own id for this shot, handed back for it to unpick, exactly
     // as a death report hands one back.
     shotId,
-    x: projectile.position.x,
-    y: projectile.position.y,
-    z: projectile.position.z,
+    ...projectile.userData.at,
     // The missile's velocity, which is what upstream packs -- direction and
     // speed are separate here and multiplied back together on the way out.
     dirX: projectile.userData.dirX,
@@ -14713,9 +14710,7 @@ function checkOwnShockWaveHit(projectile, radius) {
     {
       playerId: projectile.userData.playerId,
       team: getPlayerTeamById(projectile.userData.playerId),
-      x: projectile.position.x,
-      y: projectile.position.y,
-      z: projectile.position.z,
+      ...projectile.userData.at,
       radius,
     },
     {
@@ -14723,7 +14718,7 @@ function checkOwnShockWaveHit(projectile, radius) {
       team: state.team,
       paused: pauseState.paused,
       alive: true,
-      position: { x: myTank.position.x, y: myTank.position.y, z: myTank.position.z },
+      position: tankPoint(myTank),
     },
     {
       noTeamKills: gameConfig?.NO_TEAM_KILLS === true,
@@ -14751,20 +14746,16 @@ function checkOwnShockWaveHit(projectile, radius) {
 // steamroller radius of every other tank every frame, and wants its own pass.
 function checkOwnEnvironmentDeath() {
   if (!ownTankCanDie()) return;
-  const driver = resolvePhysicsDriverAt(
-    lastMotionObstacle,
-    myTank.position.x,
-    myTank.position.y,
-    myTank.position.z,
-  );
+  const me = tankPoint(myTank);
+  const driver = resolvePhysicsDriverAt(lastMotionObstacle, me.x, me.y, me.z);
   if (driver && driver.death) {
     reportedOwnDeath = true;
     sendOwnDeath({ reason: 'physicsDriver', deathMessage: driver.death, phydrv: driver.index ?? -1 });
     return;
   }
   // `(waterLevel > 0.0f) && (myTank->getPosition()[2] <= waterLevel)`
-  // (playing.cxx:4196). bzo's y is upstream's z.
-  if (currentWorldWaterHeight > 0 && myTank.position.y <= currentWorldWaterHeight) {
+  // (playing.cxx:4196).
+  if (currentWorldWaterHeight > 0 && me.z <= currentWorldWaterHeight) {
     reportedOwnDeath = true;
     sendOwnDeath({ reason: 'water' });
     return;
@@ -14798,18 +14789,16 @@ function checkOwnRunOver() {
 
     const rollerFlag = getPlayerFlag(playerId);
     const rollerFlagType = rollerFlag?.type ?? null;
+    const roller = tankPoint(tank);
     if (!canRunOver(
       rollerFlagType,
       myFlagType,
-      tank.position.y,
+      roller.z,
       isZoned(rollerFlagType, rollerFlag?.zoned === true),
     )) continue;
 
-    const separation = getRunOverSeparation(
-      myTank.position.x - tank.position.x,
-      myTank.position.y - tank.position.y,
-      myTank.position.z - tank.position.z,
-    );
+    const me = tankPoint(myTank);
+    const separation = getRunOverSeparation(me.x - roller.x, me.y - roller.y, me.z - roller.z);
     if (separation >= getRunOverRadius(myFlagType, rollerFlagType, TANK.radius)) continue;
 
     reportedOwnDeath = true;
@@ -14853,7 +14842,7 @@ function updateProjectiles(deltaTime) {
             y: projectile.userData.dirY,
             z: projectile.userData.dirZ,
           },
-          projectile.position,
+          projectile.userData.at,
           target ? getLockAimPoint(target) : null,
           getShotEffects('GM').turnAngle,
           SHOT_SIM_STEP_SECONDS,
@@ -14865,11 +14854,7 @@ function updateProjectiles(deltaTime) {
       }
       const traced = traceShotThroughTeleporters(
         TELEPORTER_INDEX,
-        {
-          x: projectile.position.x,
-          y: projectile.position.y,
-          z: projectile.position.z,
-        },
+        projectile.userData.at,
         {
           x: Number.isFinite(projectile.userData.dirX) ? projectile.userData.dirX : 0,
           y: Number.isFinite(projectile.userData.dirY) ? projectile.userData.dirY : 0,
@@ -14926,9 +14911,7 @@ function updateProjectiles(deltaTime) {
           removeProjectile(id, 0, impact.x, impact.y, impact.z);
           return;
         } else {
-          projectile.position.x = impact.x;
-          projectile.position.y = impact.y;
-          projectile.position.z = impact.z;
+          placeShot(projectile, impact);
           projectile.userData.dirX = traced.direction.x;
           projectile.userData.dirY = traced.direction.y;
           projectile.userData.dirZ = traced.direction.z;
@@ -14936,9 +14919,7 @@ function updateProjectiles(deltaTime) {
         }
       }
 
-      projectile.position.x = frameBounceStart ? frameBounceStart.x : traced.point.x;
-      projectile.position.y = frameBounceStart ? frameBounceStart.y : traced.point.y;
-      projectile.position.z = frameBounceStart ? frameBounceStart.z : traced.point.z;
+      placeShot(projectile, frameBounceStart || traced.point);
       if (traced.teleports > 0) {
         renderManager.createShotTeleportEffect(projectile);
       }
@@ -14951,7 +14932,7 @@ function updateProjectiles(deltaTime) {
       if (traced.teleports > 0 && projectile?.userData?.playerId === myPlayerId && isShotTeleportDebugEnabled()) {
         sendToServer({
           type: 'debug',
-          message: `[SHOT_TP_CLIENT] id=${String(projectile?.userData?.pendingServerAck ? 'pending' : 'ack')} teleports=${traced.teleports} pos=(${projectile.position.x.toFixed(2)},${projectile.position.y.toFixed(2)},${projectile.position.z.toFixed(2)})`,
+          message: `[SHOT_TP_CLIENT] id=${String(projectile?.userData?.pendingServerAck ? 'pending' : 'ack')} teleports=${traced.teleports} pos=(${projectile.userData.at.x.toFixed(2)},${projectile.userData.at.y.toFixed(2)},${projectile.userData.at.z.toFixed(2)})`,
         });
       }
 
@@ -15001,16 +14982,14 @@ function updateProjectiles(deltaTime) {
       // its own shots at the edge.
       if (clientTracesShots && !ownRicochet && !currentWorldNoWalls) {
         const halfMap = (Number.isFinite(currentWorldMapSize) ? currentWorldMapSize : DEFAULT_MAP_SIZE) / 2;
-        if (Math.abs(step.x) > halfMap || Math.abs(step.z) > halfMap) {
+        if (Math.abs(step.x) > halfMap || Math.abs(step.y) > halfMap) {
           const edge = findMapEdgeImpactPoint(startX, startY, startZ, step.x, step.y, step.z, halfMap);
           removeProjectile(id, 0, edge.x, edge.y, edge.z);
           return;
         }
       }
       if (!ownRicochet && step.bounces === 0) return;
-      projectile.position.x = step.x;
-      projectile.position.y = step.y;
-      projectile.position.z = step.z;
+      placeShot(projectile, step);
       projectile.userData.dirX = step.dirX;
       projectile.userData.dirY = step.dirY;
       projectile.userData.dirZ = step.dirZ;
@@ -15018,9 +14997,10 @@ function updateProjectiles(deltaTime) {
         projectile.userData.bounces = (projectile.userData.bounces || 0) + step.bounces;
         // SegmentedShotStrategy plays SFX_RICOCHET at the start of the new
         // segment and throws the effect along the change in direction.
-        renderManager.playSound('ricochet', projectile.position);
+        const at = projectile.userData.at;
+        renderManager.playSound('ricochet', at);
         renderManager.createRicochetEffect(
-          projectile.position,
+          at,
           { x: step.dirX - traced.direction.x, y: step.dirY - traced.direction.y, z: step.dirZ - traced.direction.z }
         );
       }
@@ -15105,7 +15085,6 @@ function updatePausedSpheres() {
 
 function onWindowResize() {
   renderManager.handleResize();
-  camera = renderManager.getCamera();
   resizeRadar();
 }
 
@@ -15808,29 +15787,19 @@ function radarPixelsToWorldDistance(pixelDistance, radarDistance, radarWorldHalf
   return pixelDistance / Math.max(pixelsPerWorldUnit, 1e-6);
 }
 
-/**
- * Convert 3D world coordinates to 2D radar coordinates
- * @param {number} worldX - World X position
- * @param {number} worldZ - World Z position
- * @param {number} px - Player X position
- * @param {number} pz - Player Z position
- * @param {number} playerHeading - Player heading in radians
- * @param {number} [headingCos] - Cosine of playerHeading, if the caller holds it
- * @param {number} [headingSin] - Sine of playerHeading, if the caller holds it
- * @returns {{x: number, y: number}} Player-relative radar coordinates
- */
-function worldToRadarRelative(worldX, worldZ, px, pz, playerHeading, headingCos, headingSin) {
+// A world point (x, y) on the panel, relative to its centre at the player
+// (px, py) and turned so the player's azimuth points up: x to the right, y
+// down, as a canvas row runs.
+//
+// The azimuth is one value for the whole frame and this runs once per vertex
+// of every obstacle in the map, so a caller that draws more than one thing
+// hands its own sine and cosine in rather than paying for them again here.
+function worldToRadarRelative(worldX, worldY, px, py, azimuth, azimuthCos, azimuthSin) {
   const dx = worldX - px;
-  const dz = worldZ - pz;
-
-  // The heading is one value for the whole frame and this runs once per vertex
-  // of every obstacle in the map, so a caller that draws more than one thing
-  // hands its own sine and cosine in rather than paying for them again here.
-  const cos = headingCos === undefined ? Math.cos(playerHeading) : headingCos;
-  const sin = headingSin === undefined ? Math.sin(playerHeading) : headingSin;
-
-  // Rotate to player-relative coordinates (forward = up on radar)
-  return { x: (dx * cos) - (dz * sin), y: (dx * sin) + (dz * cos) };
+  const dy = worldY - py;
+  const cos = azimuthCos === undefined ? Math.cos(azimuth) : azimuthCos;
+  const sin = azimuthSin === undefined ? Math.sin(azimuth) : azimuthSin;
+  return { x: (dx * sin) - (dy * cos), y: 0 - ((dx * cos) + (dy * sin)) };
 }
 
 function radarRelativeToCanvas(radarX, radarY, center, radarWorldHalfExtent, radarDistance) {
@@ -15840,21 +15809,9 @@ function radarRelativeToCanvas(radarX, radarY, center, radarWorldHalfExtent, rad
   };
 }
 
-function world2Radar(worldX, worldZ, px, pz, playerHeading, center, radius, shotDistance, worldRotation = 0) {
-  const rel = worldToRadarRelative(worldX, worldZ, px, pz, playerHeading);
-  const worldHalfExtent = getRadarWorldHalfExtent(radius);
-  const panel = radarRelativeToCanvas(rel.x, rel.y, center, worldHalfExtent, shotDistance);
-
-  // Scale to radar size
-  const x = panel.x;
-  const y = panel.y;
-
-  // Rotation transform:
-  // - Negate worldRotation to account for Z-axis direction difference (Three.js vs canvas)
-  // - Add playerHeading so objects stay fixed in world space as radar rotates
-  const rotation = -worldRotation + playerHeading;
-
-  return { x, y, rotation };
+function world2Radar(worldX, worldY, px, py, azimuth, center, radius, shotDistance) {
+  const rel = worldToRadarRelative(worldX, worldY, px, py, azimuth);
+  return radarRelativeToCanvas(rel.x, rel.y, center, getRadarWorldHalfExtent(radius), shotDistance);
 }
 
 // RadarRenderer::colorScale and transScale. Anything at the player's own level
@@ -15866,15 +15823,15 @@ const RADAR_DEPTH_FACTOR = 40;
 const RADAR_OBJECT_DEPTH_FLOOR = 0.35;
 const RADAR_OBSTACLE_DEPTH_FLOOR = 0.5;
 
-function getRadarDepthScale(playerY, baseY, height, floor) {
-  const topY = baseY + height;
-  if (playerY >= baseY && playerY <= topY) return 1;
-  const gap = playerY > topY ? (playerY - topY) : (baseY - playerY);
+function getRadarDepthScale(playerZ, base, height, floor) {
+  const top = base + height;
+  if (playerZ >= base && playerZ <= top) return 1;
+  const gap = playerZ > top ? (playerZ - top) : (base - playerZ);
   return Math.max(floor, 1 - (gap / RADAR_DEPTH_FACTOR));
 }
 
-function getRadarOpacity(playerY, baseY = 0, height = 0) {
-  return getRadarDepthScale(playerY, baseY, height, RADAR_OBSTACLE_DEPTH_FLOOR);
+function getRadarOpacity(playerZ, base = 0, height = 0) {
+  return getRadarDepthScale(playerZ, base, height, RADAR_OBSTACLE_DEPTH_FLOOR);
 }
 
 // A top-down panel should read like a height map: where two obstacles overlap,
@@ -15912,8 +15869,8 @@ function getRadarBases() {
   return radarBaseList.list;
 }
 
-function getRadarObstacleTopY(obs) {
-  return (obs.baseY || 0) + getObstacleHeight(obs);
+function getRadarObstacleTop(obs) {
+  return getObstacleBase(obs) + getObstacleHeight(obs);
 }
 
 function getRadarObstacles() {
@@ -15927,7 +15884,7 @@ function getRadarObstacles() {
       // here -- it has no single footprint the way a box's `w`/`d` gives one.
       list: [...OBSTACLES]
         .filter((obs) => !obs.noRadar && obs.type !== 'mesh' && obs.kind !== 'base')
-        .sort((left, right) => getRadarObstacleTopY(left) - getRadarObstacleTopY(right))
+        .sort((left, right) => getRadarObstacleTop(left) - getRadarObstacleTop(right))
         .map((obs) => ({ obs, cullRadius: getRadarObstacleCullRadius(obs) })),
     };
   }
@@ -15979,7 +15936,7 @@ function getRadarMeshObstacles() {
       const arrays = meshArrays(obs);
       const faces = [];
       for (let f = 0; f < arrays.faceCount; f += 1) {
-        if (arrays.facePlanes[(f * 4) + 1] <= 0) continue;
+        if (arrays.facePlanes[(f * 4) + 2] <= 0) continue;
         if (arrays.faceFlags[f] & FACE_NO_RADAR) continue;
         const cornerCount = arrays.faceStart[f + 1] - arrays.faceStart[f];
         widestFace = Math.max(widestFace, cornerCount);
@@ -15999,7 +15956,7 @@ function getRadarMeshObstacles() {
     ensureRadarPolygonBuffers((widestFace * 2) + 8);
     radarMeshOrder = {
       source: OBSTACLES,
-      list: entries.sort((left, right) => left.obs.bounds.maxY - right.obs.bounds.maxY),
+      list: entries.sort((left, right) => left.obs.bounds.maxZ - right.obs.bounds.maxZ),
     };
   }
   return radarMeshOrder.list;
@@ -16026,7 +15983,7 @@ let radarObstacleCache = null;
 // Frames drawn each way since the last `renderer.stats` line.
 const radarCacheFrames = { cached: 0, live: 0, bakes: 0 };
 
-function getRadarObstacleCache({ mapSize, py, size, radarDistance, scale }) {
+function getRadarObstacleCache({ mapSize, pz, size, radarDistance, scale }) {
   const resolution = scale * RADAR_CACHE_OVERSAMPLE;
   const pixels = Math.ceil(mapSize * resolution);
   if (!(pixels > 0) || pixels > RADAR_CACHE_MAX_PIXELS) {
@@ -16048,20 +16005,20 @@ function getRadarObstacleCache({ mapSize, py, size, radarDistance, scale }) {
       canvas,
       ctx: canvas.getContext('2d'),
       resolution,
-      bakedPy: NaN,
-      lastPy: py,
+      bakedZ: NaN,
+      lastZ: pz,
       stillSince: now,
     };
     radarObstacleCache = cache;
   }
-  if (Math.abs(py - cache.lastPy) > 1e-3) {
-    cache.lastPy = py;
+  if (Math.abs(pz - cache.lastZ) > 1e-3) {
+    cache.lastZ = pz;
     cache.stillSince = now;
   }
   // Half an opacity step of `addRadarFill`'s rounding, in height: within it,
   // a live paint would round to the same fill the image holds.
   const heightTolerance = (RADAR_DEPTH_FACTOR / RADAR_FILL_ALPHA_STEPS) / 2;
-  if (Math.abs(py - cache.bakedPy) <= heightTolerance) {
+  if (Math.abs(pz - cache.bakedZ) <= heightTolerance) {
     radarCacheFrames.cached += 1;
     return { ready: true, canvas: cache.canvas };
   }
@@ -16074,7 +16031,7 @@ function getRadarObstacleCache({ mapSize, py, size, radarDistance, scale }) {
     ctx: cache.ctx,
     resolution: cache.resolution,
     markBaked: () => {
-      cache.bakedPy = py;
+      cache.bakedZ = pz;
       radarCacheFrames.bakes += 1;
     },
   };
@@ -16343,7 +16300,7 @@ function updateRadar() {
   // burrowed, "when burrowed, limit radar range". Upstream caps the range rather
   // than scaling it, so a player already zoomed further in than the cap keeps
   // their own setting, and gets it back untouched on surfacing.
-  const burrowed = (getMyFlag()?.type ?? null) === 'BU' && myTank.position.y < 0;
+  const burrowed = (getMyFlag()?.type ?? null) === 'BU' && myTank.position.z < 0;
   const maxRange = burrowed ? radarLimit * BURROW_RADAR_FACTOR : radarLimit;
   const radarDistance = Math.min(radarLimit * radarZoomLevel, maxRange);
   const tankArrowWorldMargin = radarPixelsToWorldDistance(
@@ -16354,25 +16311,25 @@ function updateRadar() {
   // A Map Viewer preview's own size (issue #68), not the live match's --
   // see currentWorldMapSize.
   const mapSize = currentWorldMapSize ?? DEFAULT_MAP_SIZE;
-  // Player world position and heading
+  // Where the player is and which way they face.
   const px = myTank.position.x;
   const py = myTank.position.y;
   const pz = myTank.position.z;
-  const playerHeading = myTank.rotation ? myTank.rotation.y : 0;
+  const azimuth = tankAzimuth(myTank);
   // One pair for the whole panel. The obstacle and mesh-face loops below run
   // over every obstacle in the map at four or more vertices each, and a sine
   // and a cosine per vertex is thousands of them for one value that does not
   // change inside a frame.
-  const headingCos = Math.cos(playerHeading);
-  const headingSin = Math.sin(playerHeading);
-  const toRadarRelative = (worldX, worldZ) => worldToRadarRelative(
+  const azimuthCos = Math.cos(azimuth);
+  const azimuthSin = Math.sin(azimuth);
+  const toRadarRelative = (worldX, worldY) => worldToRadarRelative(
     worldX,
-    worldZ,
+    worldY,
     px,
-    pz,
-    playerHeading,
-    headingCos,
-    headingSin,
+    py,
+    azimuth,
+    azimuthCos,
+    azimuthSin,
   );
   const radarToCanvas = (radarX, radarY) => radarRelativeToCanvas(
     radarX,
@@ -16381,7 +16338,6 @@ function updateRadar() {
     radarWorldHalfExtent,
     radarDistance,
   );
-  const getRadarObjectRotation = (worldRotation) => (-worldRotation) + playerHeading;
   const isOutsideRadarSquare = (radarX, radarY, margin = 0) => (
     isOutsideRadarSquareOf(radarX, radarY, radarDistance, margin)
   );
@@ -16461,7 +16417,6 @@ function updateRadar() {
       y: center + (ny / denom) * halfExtent,
     };
   };
-  // No radarRotation; use playerHeading directly
   drawRadarPanelBackground(size);
 
 
@@ -16471,86 +16426,47 @@ function updateRadar() {
     radarCtx.globalAlpha = 0.7;
     // Calculate visible world border segment within radar distance
     const border = mapSize / 2;
-    const left = Math.max(px - radarDistance, -border);
-    const right = Math.min(px + radarDistance, border);
-    const top = Math.max(pz - radarDistance, -border);
-    const bottom = Math.min(pz + radarDistance, border);
-
-    // Top edge (North, Z = -border)
-    if (top === -border) {
-      const p1 = world2Radar(left, -border, px, pz, playerHeading, center, radius, radarDistance);
-      const p2 = world2Radar(right, -border, px, pz, playerHeading, center, radius, radarDistance);
+    const west = Math.max(px - radarDistance, -border);
+    const east = Math.min(px + radarDistance, border);
+    const north = Math.min(py + radarDistance, border);
+    const south = Math.max(py - radarDistance, -border);
+    // One edge, dashed from world coordinates so the dashes stay put as the
+    // player moves.
+    const drawEdge = (x1, y1, x2, y2, color, dashOffset) => {
+      const p1 = world2Radar(x1, y1, px, py, azimuth, center, radius, radarDistance);
+      const p2 = world2Radar(x2, y2, px, py, azimuth, center, radius, radarDistance);
       radarCtx.save();
-      radarCtx.strokeStyle = '#B20000'; // North - red
+      radarCtx.strokeStyle = color;
       radarCtx.lineWidth = 2.5;
       radarCtx.setLineDash([6, 6]);
-      radarCtx.lineDashOffset = left * 2; // Anchor dashes to world coordinates
+      radarCtx.lineDashOffset = dashOffset;
       radarCtx.beginPath();
       radarCtx.moveTo(p1.x, p1.y);
       radarCtx.lineTo(p2.x, p2.y);
       radarCtx.stroke();
       radarCtx.restore();
-    }
-    // Bottom edge (South, Z = +border)
-    if (bottom === border) {
-      const p1 = world2Radar(left, border, px, pz, playerHeading, center, radius, radarDistance);
-      const p2 = world2Radar(right, border, px, pz, playerHeading, center, radius, radarDistance);
-      radarCtx.save();
-      radarCtx.strokeStyle = '#1976D2'; // South - blue
-      radarCtx.lineWidth = 2.5;
-      radarCtx.setLineDash([6, 6]);
-      radarCtx.lineDashOffset = left * 2; // Anchor dashes to world coordinates
-      radarCtx.beginPath();
-      radarCtx.moveTo(p1.x, p1.y);
-      radarCtx.lineTo(p2.x, p2.y);
-      radarCtx.stroke();
-      radarCtx.restore();
-    }
-    // Left edge (West, X = -border)
-    if (left === -border) {
-      const p1 = world2Radar(-border, top, px, pz, playerHeading, center, radius, radarDistance);
-      const p2 = world2Radar(-border, bottom, px, pz, playerHeading, center, radius, radarDistance);
-      radarCtx.save();
-      radarCtx.strokeStyle = '#9C27B0'; // West - purple
-      radarCtx.lineWidth = 2.5;
-      radarCtx.setLineDash([6, 6]);
-      radarCtx.lineDashOffset = top * 2; // Anchor dashes to world coordinates
-      radarCtx.beginPath();
-      radarCtx.moveTo(p1.x, p1.y);
-      radarCtx.lineTo(p2.x, p2.y);
-      radarCtx.stroke();
-      radarCtx.restore();
-    }
-    // Right edge (East, X = +border)
-    if (right === border) {
-      const p1 = world2Radar(border, top, px, pz, playerHeading, center, radius, radarDistance);
-      const p2 = world2Radar(border, bottom, px, pz, playerHeading, center, radius, radarDistance);
-      radarCtx.save();
-      radarCtx.strokeStyle = '#388E3C'; // East - green
-      radarCtx.lineWidth = 2.5;
-      radarCtx.setLineDash([6, 6]);
-      radarCtx.lineDashOffset = top * 2; // Anchor dashes to world coordinates
-      radarCtx.beginPath();
-      radarCtx.moveTo(p1.x, p1.y);
-      radarCtx.lineTo(p2.x, p2.y);
-      radarCtx.stroke();
-      radarCtx.restore();
-    }
+    };
+    if (north === border) drawEdge(west, border, east, border, '#B20000', west * 2);
+    if (south === -border) drawEdge(west, -border, east, -border, '#1976D2', west * 2);
+    if (west === -border) drawEdge(-border, north, -border, south, '#9C27B0', -north * 2);
+    if (east === border) drawEdge(border, north, border, south, '#388E3C', -north * 2);
     radarCtx.restore();
   }
 
-  // Draw cardinal direction letters (N/E/S/W) at border, facing outward, rotating with the map
+  // Draw cardinal direction letters (N/E/S/W) at border, facing outward,
+  // rotating with the map. Each at its own azimuth: the panel turns a
+  // direction `a` to `azimuth - a` clockwise from up.
   const cardinalLabels = [
     { angle: Math.PI / 2, label: 'N', color: '#B20000' },
-    { angle: Math.PI, label: 'E', color: '#388E3C' },
+    { angle: 0, label: 'E', color: '#388E3C' },
     { angle: -Math.PI / 2, label: 'S', color: '#1976D2' },
-    { angle: 0, label: 'W', color: '#9C27B0' },
+    { angle: Math.PI, label: 'W', color: '#9C27B0' },
   ];
   cardinalLabels.forEach(dir => {
     radarCtx.save();
     radarCtx.translate(center, center);
     // Rotate with the map/radar, so compass turns as player turns
-    radarCtx.rotate(playerHeading - Math.PI / 2 + dir.angle);
+    radarCtx.rotate(azimuth - dir.angle);
     radarCtx.textAlign = 'center';
     radarCtx.textBaseline = 'middle';
     radarCtx.font = `bold ${Math.round(radius * 0.22)}px sans-serif`;
@@ -16562,7 +16478,7 @@ function updateRadar() {
     radarCtx.save();
     radarCtx.translate(0, -labelRadius);
     // Keep letters upright (vertical) at top
-    radarCtx.rotate(-playerHeading + Math.PI / 2 - dir.angle);
+    radarCtx.rotate(dir.angle - azimuth);
     radarCtx.strokeText(dir.label, 0, 0);
     radarCtx.fillText(dir.label, 0, 0);
     radarCtx.restore();
@@ -16576,17 +16492,20 @@ function updateRadar() {
   // owns: a spinning one turns every frame, so the cache leaves it out and the
   // panel draws it live over the cached image.
   const paintRadarObstacleLayer = (view, spinning) => {
-    const { ox, oz, cos: viewCos, sin: viewSin, heading, half } = view;
-    const relative = (worldX, worldZ) => {
+    const { ox, oy, cos: viewCos, sin: viewSin, half } = view;
+    // `worldToRadarRelative` for this view, and the same turn for an offset.
+    const turnX = (dx, dy) => (dx * viewSin) - (dy * viewCos);
+    const turnY = (dx, dy) => 0 - ((dx * viewCos) + (dy * viewSin));
+    const relative = (worldX, worldY) => {
       const dx = worldX - ox;
-      const dz = worldZ - oz;
-      return { x: (dx * viewCos) - (dz * viewSin), y: (dx * viewSin) + (dz * viewCos) };
+      const dy = worldY - oy;
+      return { x: turnX(dx, dy), y: turnY(dx, dy) };
     };
     const outside = (x, y, margin) => isOutsideRadarSquareOf(x, y, half, margin);
 
     if (spinning !== 'only') {
       getRadarObstacles().forEach(({ obs, cullRadius }) => {
-        const centerRel = relative(obs.x, obs.z);
+        const centerRel = relative(obs.pos[0], obs.pos[1]);
         // The whole footprint against the square, so a long obstacle whose
         // centre is off it still draws the span of it that is on -- see
         // `getRadarObstacleCullRadius`. Ahead of the corner work rather than
@@ -16594,29 +16513,28 @@ function updateRadar() {
         // of range and costs one comparison rather than a clipped polygon.
         if (outside(centerRel.x, centerRel.y, cullRadius)) return;
 
-        const halfW = (obs.w || 8) / 2;
-        const halfD = (obs.d || 8) / 2;
-        const obstacleRadarRotation = (-obs.rotation) + heading;
-        const cosR = Math.cos(obstacleRadarRotation);
-        const sinR = Math.sin(obstacleRadarRotation);
+        const halfW = obs.size ? obs.size[0] : 4;
+        const halfD = obs.size ? obs.size[1] : 4;
+        const cosA = Math.cos(obs.angle || 0);
+        const sinA = Math.sin(obs.angle || 0);
         const scratch = radarPolygonScratch();
         for (let i = 0; i < 4; i += 1) {
-          const cornerX = RADAR_BOX_CORNERS[i * 2] * halfW;
-          const cornerZ = RADAR_BOX_CORNERS[(i * 2) + 1] * halfD;
-          scratch[i * 2] = centerRel.x + ((cornerX * cosR) - (cornerZ * sinR));
-          scratch[(i * 2) + 1] = centerRel.y + ((cornerX * sinR) + (cornerZ * cosR));
+          const localX = RADAR_BOX_CORNERS[i * 2] * halfW;
+          const localY = RADAR_BOX_CORNERS[(i * 2) + 1] * halfD;
+          const dx = (localX * cosA) - (localY * sinA);
+          const dy = (localX * sinA) + (localY * cosA);
+          scratch[i * 2] = centerRel.x + turnX(dx, dy);
+          scratch[(i * 2) + 1] = centerRel.y + turnY(dx, dy);
         }
         const clippedCount = clipPolygonToRadarSquare(scratch, 4, half);
         if (clippedCount < 3) return;
 
         // Opacity from the player's height against the obstacle's span.
-        const baseY = obs.baseY || 0;
-        const height = getObstacleHeight(obs);
         addRadarFill(
           getRadarClipBuffer(),
           clippedCount,
           getObstacleRadarFillStyle(obs),
-          getRadarOpacity(py, baseY, height),
+          getRadarOpacity(pz, getObstacleBase(obs), getObstacleHeight(obs)),
         );
       });
     }
@@ -16626,8 +16544,8 @@ function updateRadar() {
     // apply, unlike a box), so this projects them directly rather than
     // rotating a local rectangle the way the obstacle loop above does -- unless
     // the mesh itself has an `angvel` (#88), in which case its faces are
-    // rotated live about its own `spinPivot` first, the 2D (x/z) equivalent of
-    // `renderManager`'s own `rotation.y` on that mesh's 3D pivot group
+    // rotated live about its own `spinPivot` first, the flat equivalent of
+    // `renderManager`'s own turn about z on that mesh's 3D pivot group
     // (`meshSpinRadians` is the one shared formula both read).
     //
     // A mesh too small on the panel for its faces to separate draws its
@@ -16637,13 +16555,13 @@ function updateRadar() {
     // is, so the cache keeps exactly the detail the panel would draw.
     const worldToPanelPixels = radarWorldHalfExtent / radarDistance;
     getRadarMeshObstacles().forEach((entry) => {
-      const { obs, arrays, faces, footprint, footprintTint, cullX, cullZ, cullRadius } = entry;
+      const { obs, arrays, faces, footprint, footprintTint, cullX, cullY, cullRadius } = entry;
       const spins = Boolean(obs.angvel && obs.spinPivot);
       if ((spinning === 'skip' && spins) || (spinning === 'only' && !spins)) return;
       // Same rejection as the obstacle loop, on the circle the cached list
       // carries for this mesh -- a spinning one's is centred on the pivot, so
       // it holds whatever angle the mesh is at this frame.
-      const cullRel = relative(cullX, cullZ);
+      const cullRel = relative(cullX, cullY);
       if (outside(cullRel.x, cullRel.y, cullRadius)) return;
 
       const spinAngle = spins ? meshSpinRadians(obs.angvel) : 0;
@@ -16651,40 +16569,41 @@ function updateRadar() {
       const spinSin = Math.sin(spinAngle);
       // A tipped spin (#168) turns about a tilted axis, so the point's height
       // feeds its flat position: Rodrigues about `spinAxis`, then dropped to
-      // x/z like every other radar point. A down-pointing vertical axis is
+      // x/y like every other radar point. A down-pointing vertical axis is
       // the same turn the other way.
+      const pivot = obs.spinPivot;
       const tippedAxis = spinAngle && isTippedRadarSpin(obs) ? obs.spinAxis : null;
-      const flatSin = obs.spinAxis && obs.spinAxis.y < 0 ? -spinSin : spinSin;
-      // Projects one world (x, z) into the scratch buffer at `slot`, spinning
+      const flatSin = obs.spinAxis && obs.spinAxis.z < 0 ? -spinSin : spinSin;
+      // Projects one world point into the scratch buffer at `slot`, spinning
       // it about the mesh's pivot first where the mesh turns.
-      const project = (scratch, slot, worldX, worldZ, worldY = obs.spinPivot ? obs.spinPivot.y : 0) => {
+      const project = (scratch, slot, worldX, worldY, worldZ = pivot ? pivot.z : 0) => {
         let spunX = worldX;
-        let spunZ = worldZ;
+        let spunY = worldY;
         if (tippedAxis) {
-          const offX = worldX - obs.spinPivot.x;
-          const offY = worldY - obs.spinPivot.y;
-          const offZ = worldZ - obs.spinPivot.z;
+          const offX = worldX - pivot.x;
+          const offY = worldY - pivot.y;
+          const offZ = worldZ - pivot.z;
           const { x: ax, y: ay, z: az } = tippedAxis;
           const dot = ((ax * offX) + (ay * offY) + (az * offZ)) * (1 - spinCos);
-          spunX = obs.spinPivot.x + (offX * spinCos) + (((ay * offZ) - (az * offY)) * spinSin) + (ax * dot);
-          spunZ = obs.spinPivot.z + (offZ * spinCos) + (((ax * offY) - (ay * offX)) * spinSin) + (az * dot);
+          spunX = pivot.x + (offX * spinCos) + (((ay * offZ) - (az * offY)) * spinSin) + (ax * dot);
+          spunY = pivot.y + (offY * spinCos) + (((az * offX) - (ax * offZ)) * spinSin) + (ay * dot);
         } else if (spinAngle) {
-          const offsetX = worldX - obs.spinPivot.x;
-          const offsetZ = worldZ - obs.spinPivot.z;
-          spunX = obs.spinPivot.x + (offsetX * spinCos) + (offsetZ * flatSin);
-          spunZ = obs.spinPivot.z - (offsetX * flatSin) + (offsetZ * spinCos);
+          const offsetX = worldX - pivot.x;
+          const offsetY = worldY - pivot.y;
+          spunX = pivot.x + (offsetX * spinCos) - (offsetY * flatSin);
+          spunY = pivot.y + (offsetX * flatSin) + (offsetY * spinCos);
         }
         const dx = spunX - ox;
-        const dz = spunZ - oz;
-        scratch[slot * 2] = (dx * viewCos) - (dz * viewSin);
-        scratch[(slot * 2) + 1] = (dx * viewSin) + (dz * viewCos);
+        const dy = spunY - oy;
+        scratch[slot * 2] = turnX(dx, dy);
+        scratch[(slot * 2) + 1] = turnY(dx, dy);
       };
 
       // A single face has no height of its own to speak of -- upstream's own
       // `BZDBCache::useMeshForRadar` fallback for exactly this, using the
       // whole mesh's own vertical span instead of one infinitely thin face.
       // The footprint reads the same figure, being the same mesh.
-      const opacity = getRadarOpacity(py, obs.bounds.minY, obs.bounds.maxY - obs.bounds.minY);
+      const opacity = getRadarOpacity(pz, obs.bounds.minZ, obs.bounds.maxZ - obs.bounds.minZ);
 
       if ((cullRadius * 2 * worldToPanelPixels) < RADAR_MESH_FOOTPRINT_PIXELS) {
         const scratch = radarPolygonScratch();
@@ -16709,7 +16628,7 @@ function updateRadar() {
         const scratch = radarPolygonScratch();
         for (let i = 0; i < vertexCount; i += 1) {
           const v = arrays.corners[start + i] * 3;
-          project(scratch, i, arrays.vertices[v], arrays.vertices[v + 2], arrays.vertices[v + 1]);
+          project(scratch, i, arrays.vertices[v], arrays.vertices[v + 1], arrays.vertices[v + 2]);
         }
 
         const clippedCount = clipPolygonToRadarSquare(scratch, vertexCount, half);
@@ -16728,16 +16647,17 @@ function updateRadar() {
   };
 
   const panelView = {
-    ox: px, oz: pz, cos: headingCos, sin: headingSin, heading: playerHeading, half: radarDistance,
+    ox: px, oy: py, cos: azimuthCos, sin: azimuthSin, half: radarDistance,
   };
   if (typeof OBSTACLES !== 'undefined' && Array.isArray(OBSTACLES)) {
     const cache = getRadarObstacleCache({
-      mapSize, py, size, radarDistance, scale: radarWorldHalfExtent / radarDistance,
+      mapSize, pz, size, radarDistance, scale: radarWorldHalfExtent / radarDistance,
     });
     if (cache.ready) {
-      // One image for every obstacle that does not move: the world-space bake
-      // turned and placed the way the panel's own projection would put each
-      // polygon, clipped to the square the live path clips to.
+      // One image for every obstacle that does not move: the world-space bake,
+      // north up, turned and placed the way the panel's own projection would
+      // put each polygon, clipped to the square the live path clips to. The
+      // image holds (x, -y), so the player is at (px, -py) on it.
       const k = radarWorldHalfExtent / radarDistance;
       const halfMap = mapSize / 2;
       radarCtx.save();
@@ -16747,20 +16667,20 @@ function updateRadar() {
       radarCtx.clip();
       radarCtx.translate(center, center);
       radarCtx.scale(k, k);
-      radarCtx.rotate(playerHeading);
-      radarCtx.translate(-px, -pz);
+      radarCtx.rotate(azimuth - (Math.PI / 2));
+      radarCtx.translate(-px, py);
       radarCtx.drawImage(cache.canvas, -halfMap, -halfMap, mapSize, mapSize);
       radarCtx.restore();
       paintRadarObstacleLayer(panelView, 'only');
     } else {
       paintRadarObstacleLayer(panelView, 'all');
       if (cache.bakeNow) {
-        // Painted in the world's own frame: no heading, no player offset, the
+        // Painted in the world's own frame, north up: no player offset, the
         // map's whole square, a pixel per `cache.resolution` world units.
         const target = fillTarget;
         fillTarget = { ctx: cache.ctx, offset: (mapSize / 2) * cache.resolution, scale: cache.resolution };
         cache.ctx.clearRect(0, 0, cache.canvas.width, cache.canvas.height);
-        paintRadarObstacleLayer({ ox: 0, oz: 0, cos: 1, sin: 0, heading: 0, half: mapSize / 2 }, 'skip');
+        paintRadarObstacleLayer({ ox: 0, oy: 0, cos: 0, sin: 1, half: mapSize / 2 }, 'skip');
         fillTarget = target;
         cache.markBaked();
       }
@@ -16780,19 +16700,22 @@ function updateRadar() {
     radarCtx.lineWidth = RADAR_BASE_OUTLINE_WIDTH;
     radarCtx.lineJoin = 'miter';
     for (const { obs, cullRadius, stroke } of radarBases) {
-      const centerRel = toRadarRelative(obs.x, obs.z);
+      const centerRel = toRadarRelative(obs.pos[0], obs.pos[1]);
       if (isOutsideRadarSquare(centerRel.x, centerRel.y, cullRadius)) continue;
-      const halfW = (obs.w || 8) / 2;
-      const halfD = (obs.d || 8) / 2;
-      const rotation = getRadarObjectRotation(obs.rotation);
-      const cosR = Math.cos(rotation);
-      const sinR = Math.sin(rotation);
+      const halfW = obs.size ? obs.size[0] : 4;
+      const halfD = obs.size ? obs.size[1] : 4;
+      const cosA = Math.cos(obs.angle || 0);
+      const sinA = Math.sin(obs.angle || 0);
       radarCtx.beginPath();
       for (let i = 0; i < 4; i += 1) {
-        const cornerX = RADAR_BOX_CORNERS[i * 2] * halfW;
-        const cornerZ = RADAR_BOX_CORNERS[(i * 2) + 1] * halfD;
-        const relX = centerRel.x + ((cornerX * cosR) - (cornerZ * sinR));
-        const relY = centerRel.y + ((cornerX * sinR) + (cornerZ * cosR));
+        const localX = RADAR_BOX_CORNERS[i * 2] * halfW;
+        const localY = RADAR_BOX_CORNERS[(i * 2) + 1] * halfD;
+        const corner = toRadarRelative(
+          obs.pos[0] + (localX * cosA) - (localY * sinA),
+          obs.pos[1] + (localX * sinA) + (localY * cosA),
+        );
+        const relX = corner.x;
+        const relY = corner.y;
         const panelX = center + ((relX / radarDistance) * radarWorldHalfExtent);
         const panelY = center + ((relY / radarDistance) * radarWorldHalfExtent);
         if (i === 0) radarCtx.moveTo(panelX, panelY);
@@ -16828,8 +16751,9 @@ function updateRadar() {
       // ShockWaveStrategy::radarRender draws a circle of the current radius, as
       // its scene node is a sphere of it out the window. The radar's world-to-
       // canvas scale is uniform, so the radius scales with it.
+      const projAt = proj.position;
       if (proj.userData?.shockwave) {
-        const rel = toRadarRelative(proj.position.x, proj.position.z);
+        const rel = toRadarRelative(projAt.x, projAt.y);
         const waveRadius = Number.isFinite(proj.userData.shockWaveRadius)
           ? proj.userData.shockWaveRadius
           : 0;
@@ -16848,7 +16772,7 @@ function updateRadar() {
         return;
       }
       // A beam is a line on the radar, as its scene node is out the window. Its
-      // segments are already in world coordinates, so each one is two points.
+      // segments are each two points.
       if (proj.userData?.beam) {
         const segments = proj.userData.segments || [];
         if (segments.length === 0) return;
@@ -16858,8 +16782,8 @@ function updateRadar() {
         radarCtx.lineWidth = 2;
         radarCtx.beginPath();
         for (const segment of segments) {
-          const fromRel = toRadarRelative(segment.from.x, segment.from.z);
-          const toRel = toRadarRelative(segment.to.x, segment.to.z);
+          const fromRel = toRadarRelative(segment.from.x, segment.from.y);
+          const toRel = toRadarRelative(segment.to.x, segment.to.y);
           if (isOutsideRadarSquare(fromRel.x, fromRel.y) && isOutsideRadarSquare(toRel.x, toRel.y)) {
             continue;
           }
@@ -16872,7 +16796,7 @@ function updateRadar() {
         radarCtx.restore();
         return;
       }
-      const rel = toRadarRelative(proj.position.x, proj.position.z);
+      const rel = toRadarRelative(projAt.x, projAt.y);
       const lineLength = proj.userData?.guided
         ? shotLineWorldLength * RADAR_SHOT_LINE_GM_FACTOR
         : shotLineWorldLength;
@@ -16902,8 +16826,8 @@ function updateRadar() {
       if (dirLength > 1e-6) {
         const reach = lineLength / dirLength;
         const tipRel = toRadarRelative(
-          proj.position.x + (dirX * reach),
-          proj.position.z + (dirZ * reach),
+          projAt.x + (dirX * reach),
+          projAt.y + (dirY * reach),
         );
         const tipPos = radarToCanvas(tipRel.x, tipRel.y);
         radarCtx.strokeStyle = shotRadarColor;
@@ -16966,7 +16890,8 @@ function updateRadar() {
       playerColor = colorToCSS(getPlayerTeamRadarColor(PLAYER_TEAM.RABBIT));
     }
 
-    const rel = toRadarRelative(tank.position.x, tank.position.z);
+    const tankAt = tank.position;
+    const rel = toRadarRelative(tankAt.x, tankAt.y);
     const rotX = rel.x;
     const rotY = rel.y;
     const tankOutsideRadarSquare = isOutsideRadarSquare(rotX, rotY, tankArrowWorldMargin);
@@ -16993,7 +16918,7 @@ function updateRadar() {
 
     radarCtx.save();
     radarCtx.translate(pos.x, pos.y);
-    drawRadarHeightBox(tank.position.y, playerColor);
+    drawRadarHeightBox(tankAt.z, playerColor);
     if (playerId === myPlayerId) {
       // Player tank: always point up (no rotation needed)
       radarCtx.beginPath();
@@ -17005,8 +16930,9 @@ function updateRadar() {
       radarCtx.globalAlpha = 1;
       radarCtx.fill();
     } else {
-      // Other tanks: mirror rotation so heading 0 (north) points up, π/2 (west) points left
-      radarCtx.rotate(-(tank.rotation ? tank.rotation.y : 0) + playerHeading);
+      // Other tanks: turned by how far their azimuth is from the player's,
+      // clockwise on the panel as an azimuth runs counter-clockwise.
+      radarCtx.rotate(azimuth - tankAzimuth(tank));
       radarCtx.beginPath();
       radarCtx.moveTo(0, -10);
       radarCtx.lineTo(-6, 8);
@@ -17044,11 +16970,12 @@ function updateRadar() {
     };
     const drawRadarFlag = (flag) => {
       if (flag.status === FLAG_STATUS.NO_EXIST || flag.status === FLAG_STATUS.ON_TANK) return;
-      const rel = toRadarRelative(flag.position.x, flag.position.z);
+      const at = flag.position;
+      const rel = toRadarRelative(at.x, at.y);
       if (isOutsideRadarSquare(rel.x, rel.y)) return;
 
       const style = getFlagRadarStyle(flag);
-      const alpha = getRadarDepthScale(py, flag.position.y, 0, RADAR_OBJECT_DEPTH_FLOOR);
+      const alpha = getRadarDepthScale(pz, at.z, 0, RADAR_OBJECT_DEPTH_FLOOR);
       if (style !== batchStyle || alpha !== batchAlpha) {
         flushRadarFlags();
         radarCtx.globalAlpha = alpha;
@@ -17081,7 +17008,7 @@ function updateRadar() {
     // blip, which is upstream's own mark for a carried flag -- so the one
     // marker answers who has it and which way they went.
     const drawSoughtFlag = (position, style, onTank) => {
-      const rel = toRadarRelative(position.x, position.z);
+      const rel = toRadarRelative(position.x, position.y);
       const pos = isOutsideRadarSquare(rel.x, rel.y)
         ? projectToRadarEdge(rel.x, rel.y)
         : radarToCanvas(rel.x, rel.y);
@@ -17867,94 +17794,71 @@ function extrapolatePosition(player, dt) {
   if (!player || !gameConfig) return player;
 
   const {
-    x, y, z, r, forwardSpeed, rotationSpeed, verticalVelocity,
-    jumpDirection, slideDirection, airVelocityX, airVelocityZ, flagType
+    x, y, z, azimuth, forwardSpeed, rotationSpeed, verticalVelocity,
+    jumpAzimuth, slideAzimuth, airVelocityX, airVelocityY, flagType
   } = player;
 
   // getDeadReckoning (Player.cxx:1127): a paused tank does not move, whatever it
   // was doing when the pause landed. Without this a tank that paused while
   // rolling drifts away from where the server has it, and the sphere drawn
   // around it goes with it.
-  if (player.paused) return { x, y, z, r };
+  if (player.paused) return { x, y, z, azimuth };
 
   // Apply rotation
   const rotSpeed = gameConfig.TANK_ROTATION_SPEED || 1.5;
-  const newR = r + (rotationSpeed || 0) * rotSpeed * dt;
+  const newAzimuth = azimuth + (rotationSpeed || 0) * rotSpeed * dt;
 
-  // Determine if player is in air based on jumpDirection
-  const isInAir = jumpDirection !== null && jumpDirection !== undefined;
+  // Determine if player is in air based on jumpAzimuth
+  const isInAir = jumpAzimuth !== null && jumpAzimuth !== undefined;
 
   if (isInAir) {
-    const hasAirVelocity = Number.isFinite(airVelocityX) && Number.isFinite(airVelocityZ);
+    const hasAirVelocity = Number.isFinite(airVelocityX) && Number.isFinite(airVelocityY);
     const speed = gameConfig.TANK_SPEED || 15;
-    const moveDirection = slideDirection !== undefined ? slideDirection : jumpDirection;
-    const dx = hasAirVelocity ? airVelocityX * dt : -Math.sin(moveDirection) * (forwardSpeed || 0) * speed * dt;
-    const dz = hasAirVelocity ? airVelocityZ * dt : -Math.cos(moveDirection) * (forwardSpeed || 0) * speed * dt;
+    const moveAzimuth = slideAzimuth !== undefined ? slideAzimuth : jumpAzimuth;
+    const dx = hasAirVelocity ? airVelocityX * dt : Math.cos(moveAzimuth) * (forwardSpeed || 0) * speed * dt;
+    const dy = hasAirVelocity ? airVelocityY * dt : Math.sin(moveAzimuth) * (forwardSpeed || 0) * speed * dt;
 
     // Apply gravity to vertical velocity. Wings falls at _wingsGravity, which is
     // the world's own unless a server has said otherwise.
     const gravity = hasAirControl(flagType) ? gameConfig.WINGS_GRAVITY : gameConfig.GRAVITY;
     const vv = (verticalVelocity || 0) - gravity * dt;
-    const dy = ((verticalVelocity || 0) + vv) / 2 * dt; // Average velocity over dt
+    const dz = ((verticalVelocity || 0) + vv) / 2 * dt; // Average velocity over dt
 
     return {
       x: x + dx,
+      y: y + dy,
       // Don't go below this tank's own ground: Burrow's is `_burrowDepth`, and
       // getDeadReckoning clamps to the same limit (Player.cxx:1333) so a remote
       // burrowed tank is not drawn hovering at zero while the server has it in
       // its hole.
-      y: Math.max(getGroundLimit(flagType ?? null), y + dy),
-      z: z + dz,
-      r: newR
+      z: Math.max(getGroundLimit(flagType ?? null), z + dz),
+      azimuth: newAzimuth
     };
-  } else {
-    // On ground: circular arc or straight line
-    const speed = gameConfig.TANK_SPEED || 15;
-    const rs = rotationSpeed || 0;
-    const fs = forwardSpeed || 0;
-
-    // Use slide direction if present, otherwise use rotation
-    const moveDirection = slideDirection !== undefined ? slideDirection : r;
-
-    if (Math.abs(rs) < 0.001) {
-      // Straight line motion (or sliding)
-      const dx = -Math.sin(moveDirection) * fs * speed * dt;
-      const dz = -Math.cos(moveDirection) * fs * speed * dt;
-      return { x: x + dx, y: y, z: z + dz, r: newR };
-    } else {
-      // Circular arc motion
-      // Radius of curvature: R = |linear_velocity / angular_velocity|
-      // linear_velocity = fs * speed
-      // angular_velocity = rs * rotSpeed
-      const R = Math.abs((fs * speed) / (rs * rotSpeed));
-
-      // Arc angle traveled - this is also the rotation change!
-      const theta = rs * rotSpeed * dt;
-
-      // Center of circle in world space
-      // Forward is (-sin(r), -cos(r)), perpendicular at r - π/2
-      const perpAngle = r - Math.PI / 2;
-      const centerSign = -(rs * fs); // Negated to match correct circular motion
-      const cx = x + Math.sign(centerSign) * R * (-Math.sin(perpAngle));
-      const cz = z + Math.sign(centerSign) * R * (-Math.cos(perpAngle));
-
-      // New position rotated around center
-      // Negate theta for clockwise rotation (rs > 0 means turn right = clockwise)
-      const dx = x - cx;
-      const dz = z - cz;
-      const cosTheta = Math.cos(-theta);
-      const sinTheta = Math.sin(-theta);
-      const newDx = dx * cosTheta - dz * sinTheta;
-      const newDz = dx * sinTheta + dz * cosTheta;
-
-      return {
-        x: cx + newDx,
-        y: y,
-        z: cz + newDz,
-        r: r + theta  // Use theta directly - tank rotation matches arc traveled
-      };
-    }
   }
+  // On the ground: a straight line, or the arc a turning tank drives -- its
+  // heading turns at the angular rate and it moves along it, so the position
+  // is the integral of the heading over the time.
+  const speed = gameConfig.TANK_SPEED || 15;
+  const rs = rotationSpeed || 0;
+  const fs = forwardSpeed || 0;
+
+  // Use slide direction if present, otherwise the heading
+  const moveAzimuth = slideAzimuth !== undefined ? slideAzimuth : azimuth;
+
+  if (Math.abs(rs) < 0.001) {
+    const dx = Math.cos(moveAzimuth) * fs * speed * dt;
+    const dy = Math.sin(moveAzimuth) * fs * speed * dt;
+    return { x: x + dx, y: y + dy, z, azimuth: newAzimuth };
+  }
+  const angularVelocity = rs * rotSpeed;
+  const theta = angularVelocity * dt;
+  const reach = (fs * speed) / angularVelocity;
+  return {
+    x: x + (reach * (Math.sin(azimuth + theta) - Math.sin(azimuth))),
+    y: y - (reach * (Math.cos(azimuth + theta) - Math.cos(azimuth))),
+    z,
+    azimuth: azimuth + theta,
+  };
 }
 
 function runFallbackAnimationLoop(frameTime) {
@@ -18019,7 +17923,7 @@ function animate(frameTime) {
     updateChatWindow();
     updateAltitudeTape();
     updateAltimeter({ myTank });
-    updateDegreeBar({ myTank, playerRotation, markers: getFlagHeadingMarkers() });
+    updateDegreeBar({ myTank, azimuth: myAzimuth, markers: getFlagHeadingMarkers() });
     updateShotStatus({
       myPlayerId,
       slotFreeAt: myShotSlotFreeAt,
@@ -18056,17 +17960,17 @@ function animate(frameTime) {
       const remoteFS = tank.userData.forwardSpeed;
       const remoteRS = tank.userData.rotationSpeed;
       const remoteVV = tank.userData.verticalVelocity;
-      const remoteJumpDirection = tank.userData.jumpDirection;
+      const remoteJumpAzimuth = tank.userData.jumpAzimuth;
       const remoteAirVx = tank.userData.airVelocityX;
-      const remoteAirVz = tank.userData.airVelocityZ;
-      const remoteAirborne = remoteJumpDirection !== null && remoteJumpDirection !== undefined;
+      const remoteAirVy = tank.userData.airVelocityY;
+      const remoteAirborne = remoteJumpAzimuth !== null && remoteJumpAzimuth !== undefined;
       const remoteStopped =
         !remoteAirborne &&
         remoteFS === 0 &&
         remoteRS === 0 &&
         remoteVV === 0 &&
         remoteAirVx === 0 &&
-        remoteAirVz === 0;
+        remoteAirVy === 0;
       const clampedTimeSinceUpdate = remoteStopped
         ? Math.max(0, Math.min(timeSinceUpdate, MAX_REMOTE_EXTRAPOLATION_STOP_SECONDS))
         : Math.max(0, timeSinceUpdate);
@@ -18076,23 +17980,20 @@ function animate(frameTime) {
         x: tank.userData.serverPosition.x,
         y: tank.userData.serverPosition.y,
         z: tank.userData.serverPosition.z,
-        r: tank.userData.serverPosition.r,
+        azimuth: tank.userData.serverPosition.azimuth,
         forwardSpeed: remoteFS,
         rotationSpeed: remoteRS,
         verticalVelocity: remoteVV,
-        jumpDirection: remoteJumpDirection,
-        slideDirection: tank.userData.slideDirection,
+        jumpAzimuth: remoteJumpAzimuth,
+        slideAzimuth: tank.userData.slideAzimuth,
         airVelocityX: remoteAirVx,
-        airVelocityZ: remoteAirVz,
+        airVelocityY: remoteAirVy,
         flagType: getPlayerFlag(playerId)?.type ?? null
       }, clampedTimeSinceUpdate);
 
       // Update tank's rendered position smoothly
       if (extrapolated) {
-        tank.position.x = extrapolated.x;
-        tank.position.y = extrapolated.y;
-        tank.position.z = extrapolated.z;
-        tank.rotation.y = extrapolated.r;
+        placeTank(tank, extrapolated.x, extrapolated.y, extrapolated.z, extrapolated.azimuth);
       }
     });
   }
@@ -18120,9 +18021,8 @@ function animate(frameTime) {
   // Player::move (Player.cxx:276): recomputed off the tank's own position
   // every time it moves, not just when driving through a teleporter.
   if (myTank) {
-    renderManager.setTeleporterProximity(
-      getWorldTeleporterProximity(myTank.position.x, myTank.position.y, myTank.position.z)
-    );
+    const at = tankPoint(myTank);
+    renderManager.setTeleporterProximity(getWorldTeleporterProximity(at.x, at.y, at.z));
   }
   renderManager.updateExplosions(deltaTime);
   updatePausedSpheres();
@@ -18183,7 +18083,7 @@ function animate(frameTime) {
           : (isObservingOverview() ? 'overview'
             : (isObserver() ? 'roam' : cameraMode)),
     myTank,
-    playerRotation,
+    azimuth: myAzimuth,
     deathFollowTarget,
     // Overview frames the world itself, so it hands over no eye/look pair of
     // its own -- leaving it out is what lets the branch above take effect.

@@ -14,7 +14,9 @@
 //
 // `teleporters` is the world's teleporters by index and `links` the face each
 // face sends to (`buildTeleporterIndex`). A face id is `index * 2 + face`, face
-// 0 the front and 1 the back.
+// 0 the front -- the side the teleporter's own +X points to -- and 1 the back.
+//
+// Positions and directions are in upstream's frame: +Z up, +Y north.
 
 import { getColliderLocalPoint, getShotTeleporterDims } from './collision.mjs';
 
@@ -72,20 +74,25 @@ export function getSegmentBoxEntryTime(localStart, localEnd, bounds) {
 
 // The segment in the teleporter's own frame, and when it enters the frame's
 // outer block and the doorway's inner one.
+// Where a teleporter stands.
+function baseOf(obs) {
+  return (obs.pos && obs.pos[2]) || 0;
+}
+
 function teleporterEntries(start, end, obs) {
   const dims = getShotTeleporterDims(obs);
-  const startLocal = getColliderLocalPoint(start.x, start.z, obs);
-  const endLocal = getColliderLocalPoint(end.x, end.z, obs);
-  const base = obs.baseY || 0;
-  const localStart = { x: startLocal.x, y: start.y - base, z: startLocal.z };
-  const localEnd = { x: endLocal.x, y: end.y - base, z: endLocal.z };
+  const startLocal = getColliderLocalPoint(start.x, start.y, obs);
+  const endLocal = getColliderLocalPoint(end.x, end.y, obs);
+  const base = baseOf(obs);
+  const localStart = { x: startLocal.x, y: startLocal.y, z: start.z - base };
+  const localEnd = { x: endLocal.x, y: endLocal.y, z: end.z - base };
   const outer = getSegmentBoxEntryTime(localStart, localEnd, {
-    min: { x: -dims.halfW, y: 0, z: -dims.halfD },
-    max: { x: dims.halfW, y: dims.h, z: dims.halfD },
+    min: { x: -dims.halfW, y: -dims.halfD, z: 0 },
+    max: { x: dims.halfW, y: dims.halfD, z: dims.h },
   });
   const inner = getSegmentBoxEntryTime(localStart, localEnd, {
-    min: { x: -dims.halfW, y: 0, z: -dims.activeHalfD },
-    max: { x: dims.halfW, y: dims.activeH, z: dims.activeHalfD },
+    min: { x: -dims.halfW, y: -dims.activeHalfD, z: 0 },
+    max: { x: dims.halfW, y: dims.activeHalfD, z: dims.activeH },
   });
   return { localStart, localEnd, outer, inner };
 }
@@ -100,7 +107,8 @@ function pointAlong(start, end, t) {
 
 // Teleporter::isTeleported: the segment goes through the doorway -- the inner,
 // border-less block -- without first meeting the frame around it. Which face
-// it entered by is which side of the plane it was on.
+// it entered by is which side of the plane it was on: "if to east of
+// teleporter then face 0 else face 1", in the teleporter's own frame.
 export function getShotTeleporterCrossing(start, end, obs) {
   const { localStart, localEnd, outer, inner } = teleporterEntries(start, end, obs);
   if (inner === null || inner < 0 || inner > 1) return null;
@@ -126,34 +134,35 @@ export function getShotTeleporterFrameHit(start, end, obs) {
   return { t: outer, point: pointAlong(start, end, outer) };
 }
 
-export function rotateXZ(x, z, angle) {
+// A turn of `angle` counter-clockwise about +Z, upstream's `rotateZ`.
+export function rotateXY(x, y, angle) {
   const cos = Math.cos(angle);
   const sin = Math.sin(angle);
-  return { x: (cos * x) - (sin * z), z: (sin * x) + (cos * z) };
+  return { x: (cos * x) - (sin * y), y: (sin * x) + (cos * y) };
 }
 
 // Teleporter::getPointWRT: the point and direction coming out of `destFace` of
 // `destObs` for one going into `sourceFace` of `sourceObs` -- the same place in
 // the doorway, scaled to the destination's size, and turned by the difference
-// between the two faces' headings.
+// between the two faces' headings, `rotateDelta`, which a heading adds.
 export function transformShotThroughTeleporter(pointIn, dirIn, sourceObs, sourceFace, destObs, destFace) {
   const srcDims = getShotTeleporterDims(sourceObs);
   const dstDims = getShotTeleporterDims(destObs);
-  const radians1 = sourceObs.rotation + (sourceFace === 0 ? 0 : Math.PI);
-  const radians2 = destObs.rotation + (destFace === 1 ? 0 : Math.PI);
-  const local = rotateXZ(pointIn.x - sourceObs.x, pointIn.z - sourceObs.z, -radians1);
-  const relativeY = pointIn.y - (sourceObs.baseY || 0);
+  const radians1 = sourceObs.angle + (sourceFace === 0 ? 0 : Math.PI);
+  const radians2 = destObs.angle + (destFace === 1 ? 0 : Math.PI);
+  const local = rotateXY(pointIn.x - sourceObs.pos[0], pointIn.y - sourceObs.pos[1], -radians1);
+  const relativeZ = pointIn.z - baseOf(sourceObs);
   const breadthScale = srcDims.activeHalfD > 1e-6 ? (dstDims.activeHalfD / srcDims.activeHalfD) : 1;
   const heightScale = srcDims.activeH > 1e-6 ? (dstDims.activeH / srcDims.activeH) : 1;
-  const rotatedOut = rotateXZ(-dstDims.halfW, local.z * breadthScale, radians2);
+  const rotatedOut = rotateXY(-dstDims.halfW, local.y * breadthScale, radians2);
   const pointOut = {
-    x: destObs.x + rotatedOut.x,
-    y: (destObs.baseY || 0) + (relativeY * heightScale),
-    z: destObs.z + rotatedOut.z,
+    x: destObs.pos[0] + rotatedOut.x,
+    y: destObs.pos[1] + rotatedOut.y,
+    z: baseOf(destObs) + (relativeZ * heightScale),
   };
   const rotateDelta = radians2 - radians1;
-  const dirRotated = rotateXZ(dirIn.x, dirIn.z, rotateDelta);
-  return { pointOut, dirOut: { x: dirRotated.x, y: dirIn.y, z: dirRotated.z }, rotateDelta };
+  const dirRotated = rotateXY(dirIn.x, dirIn.y, rotateDelta);
+  return { pointOut, dirOut: { x: dirRotated.x, y: dirRotated.y, z: dirIn.z }, rotateDelta };
 }
 
 // How far something that has just come out of `destObs` travels before that

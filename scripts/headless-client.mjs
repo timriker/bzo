@@ -31,7 +31,9 @@
 // `--hop 3` taps jump every three seconds instead of sitting still, for a
 // target that is in the air on a schedule. `--fire 1` taps the trigger once a
 // second of the drive, and half a second into each hop, for a shot fired on the
-// move or in the air.
+// move or in the air. `--press KeyC,KeyC` presses those keys once each after
+// joining, for a probe that wants a particular view. `--autopilot 30` presses 9 instead and lets the default
+// pilot fly for that many seconds, logged the way a drive is.
 
 import { spawn } from 'node:child_process';
 import { setTimeout as sleep } from 'node:timers/promises';
@@ -181,8 +183,13 @@ for (let second = 0; second < 45; second += 1) {
 }
 // `code` alone is what input.js reads (`e.code`), so `key` here is cosmetic --
 // kept only because a real KeyboardEvent always carries one too.
-const KEY_CHARS = { KeyW: 'w', KeyA: 'a', KeyS: 's', KeyD: 'd' };
-const dispatchKey = (type, code) => send('Input.dispatchKeyEvent', { type, code, key: KEY_CHARS[code] });
+// The character a letter or digit key types, which handlers that read
+// `event.key` rather than `event.code` need.
+const keyChar = (code) => {
+  const match = /^(?:Key|Digit)(.)$/.exec(code);
+  return match ? match[1].toLowerCase() : undefined;
+};
+const dispatchKey = (type, code) => send('Input.dispatchKeyEvent', { type, code, key: keyChar(code) });
 const keyDown = (code) => dispatchKey('rawKeyDown', code);
 const keyUp = (code) => dispatchKey('keyUp', code);
 
@@ -235,7 +242,32 @@ if ((mvArgs || chatLine) && joined.startsWith('joined')) {
   }
 }
 
+const pressKeys = (args.get('press') || '').split(',').map((code) => code.trim()).filter(Boolean);
+if (pressKeys.length && joined.startsWith('joined')) {
+  if (!mvArgs && !chatLine) await sleep(2000);
+  for (const code of pressKeys) {
+    await keyDown(code);
+    await sleep(80);
+    await keyUp(code);
+    await sleep(200);
+  }
+}
+
 const driveLog = [];
+const autopilotSeconds = Number(args.get('autopilot') || 0);
+if (autopilotSeconds > 0 && joined.startsWith('joined')) {
+  await sleep(2000);
+  await keyDown('Digit9');
+  await sleep(60);
+  await keyUp('Digit9');
+  for (let second = 1; second <= Math.ceil(autopilotSeconds); second += 1) {
+    await sleep(1000);
+    const self = await fetchSelf();
+    driveLog.push(self
+      ? `t=${second}s x=${self.x.toFixed(2)} y=${self.y.toFixed(2)} z=${self.z.toFixed(2)} azimuth=${self.azimuth.toFixed(2)}`
+      : `t=${second}s: not in /api/players`);
+  }
+}
 if (driveSeconds > 0 && joined.startsWith('joined')) {
   await keyDown('KeyW');
   const pollMs = 1000;
@@ -252,13 +284,13 @@ if (driveSeconds > 0 && joined.startsWith('joined')) {
       continue;
     }
     driveLog.push(`t=${second}s x=${self.x.toFixed(2)} y=${self.y.toFixed(2)} z=${self.z.toFixed(2)}`
-      + ` rot=${self.rotation.toFixed(2)}`);
+      + ` azimuth=${self.azimuth.toFixed(2)}`);
     if (steerMode === 'center') {
-      // Forward at rotation r points along (-sin r, -cos r) (matches
-      // server/motion.cjs), so the heading toward the origin from (x, z) is
-      // atan2(x, z) -- the same formula solved for r.
-      const target = Math.atan2(self.x, self.z);
-      let diff = target - self.rotation;
+      // `/api/players` is in upstream's frame: forward at azimuth a is
+      // (cos a, sin a), so the heading toward the origin from (x, y) is
+      // atan2(-y, -x). A positive turn, `KeyA`, raises it.
+      const target = Math.atan2(-self.y, -self.x);
+      let diff = target - self.azimuth;
       while (diff > Math.PI) diff -= 2 * Math.PI;
       while (diff < -Math.PI) diff += 2 * Math.PI;
       if (Math.abs(diff) > 0.15) {

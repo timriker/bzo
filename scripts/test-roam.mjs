@@ -23,67 +23,68 @@ import {
 } from '../public/roam.mjs';
 
 const TANK_SPEED = 25;
-const FLOOR_Y = 1.57;
-const limits = { tankSpeed: TANK_SPEED, floorY: FLOOR_Y };
+const FLOOR_Z = 1.57;
+const limits = { tankSpeed: TANK_SPEED, floorZ: FLOOR_Z };
 const near = (actual, expected, message) => {
   assert.ok(Math.abs(actual - expected) < 1e-9, `${message}: ${actual} != ${expected}`);
 };
 const idle = { forward: 0, turn: 0, up: false, down: false };
 
 // The camera rests at tank eye height, as wide as the play view.
-const start = createRoamCamera(FLOOR_Y);
-assert.equal(start.y, FLOOR_Y);
+const start = createRoamCamera(FLOOR_Z);
+assert.equal(start.z, FLOOR_Z);
+near(start.azimuth, Math.PI / 2, 'facing north');
 assert.equal(start.zoom, ROAM_ZOOM_DEFAULT);
 assert.equal(start.phi, undefined, 'there is no pitch axis to carry');
 
-// bzo's heading: theta 0 faces -Z, and a positive theta turns left, toward -X.
-near(getRoamForward(0).x, 0, 'forward x at theta 0');
-near(getRoamForward(0).z, -1, 'forward z at theta 0');
-near(getRoamForward(Math.PI / 2).x, -1, 'forward x at theta 90');
-near(getRoamForward(Math.PI / 2).z, 0, 'forward z at theta 90');
+// An azimuth: pi/2 faces north (+y), and a positive turn is left, toward -x.
+near(getRoamForward(Math.PI / 2).x, 0, 'forward x facing north');
+near(getRoamForward(Math.PI / 2).y, 1, 'forward y facing north');
+near(getRoamForward(Math.PI).x, -1, 'forward x facing west');
+near(getRoamForward(Math.PI).y, 0, 'forward y facing west');
 
 // Roaming.cxx:6776 -- four times tank speed, so a full second at full stick
 // covers 100 units, and it goes where the camera is pointing.
 const ahead = updateRoamCamera(start, { ...idle, forward: 1 }, 1, limits);
-near(ahead.z, FLOOR_Y * 0 + start.z - ROAM_TRANSLATE_SPEED_FACTOR * TANK_SPEED, 'forward travel');
+near(ahead.y, start.y + ROAM_TRANSLATE_SPEED_FACTOR * TANK_SPEED, 'forward travel');
 near(ahead.x, 0, 'forward travel stays on the heading');
-assert.equal(ahead.y, FLOOR_Y, 'translating does not change height');
+assert.equal(ahead.z, FLOOR_Z, 'translating does not change height');
 
 // Reverse is not capped here: upstream inherits the tank's half-speed reverse by
 // accident, and a camera that backs up at half speed is only annoying.
 const back = updateRoamCamera(start, { ...idle, forward: -1 }, 1, limits);
-near(back.z, ROAM_TRANSLATE_SPEED_FACTOR * TANK_SPEED, 'reverse travel is symmetric');
+near(back.y, -ROAM_TRANSLATE_SPEED_FACTOR * TANK_SPEED, 'reverse travel is symmetric');
 
 // Roaming.cxx:6779 -- `zoom` degrees per second, so the default turns 60 deg/s.
 const turned = updateRoamCamera(start, { ...idle, turn: 1 }, 1, limits);
-near(turned.theta, (ROAM_ZOOM_DEFAULT * Math.PI) / 180, 'yaw rate tracks zoom');
+near(turned.azimuth - start.azimuth, (ROAM_ZOOM_DEFAULT * Math.PI) / 180, 'yaw rate tracks zoom');
 const turnedHalf = updateRoamCamera(start, { ...idle, turn: 0.5 }, 1, limits);
-near(turnedHalf.theta, (ROAM_ZOOM_DEFAULT * Math.PI) / 360, 'yaw is proportional');
+near(turnedHalf.azimuth - start.azimuth, (ROAM_ZOOM_DEFAULT * Math.PI) / 360, 'yaw is proportional');
 
 // A narrower view turns more slowly, which is the relation upstream ships.
 const zoomed = updateRoamCamera({ ...start, zoom: 30 }, { ...idle, turn: 1 }, 1, limits);
-near(zoomed.theta, (30 * Math.PI) / 180, 'yaw slows as the view narrows');
+near(zoomed.azimuth - start.azimuth, (30 * Math.PI) / 180, 'yaw slows as the view narrows');
 
 // Altitude climbs at tank speed, not upstream's four times, because it is on a
 // button rather than an axis.
 const up = updateRoamCamera(start, { ...idle, up: true }, 1, limits);
-near(up.y, FLOOR_Y + TANK_SPEED, 'climb rate');
+near(up.z, FLOOR_Z + TANK_SPEED, 'climb rate');
 
 // The floor is upstream's muzzle height: an observer never goes underground.
 const down = updateRoamCamera(start, { ...idle, down: true }, 1, limits);
-assert.equal(down.y, FLOOR_Y, 'the floor holds');
-const highUp = updateRoamCamera({ ...start, y: FLOOR_Y + 10 }, { ...idle, down: true }, 1, limits);
-near(highUp.y, FLOOR_Y, 'descending stops at the floor');
+assert.equal(down.z, FLOOR_Z, 'the floor holds');
+const highUp = updateRoamCamera({ ...start, z: FLOOR_Z + 10 }, { ...idle, down: true }, 1, limits);
+near(highUp.z, FLOOR_Z, 'descending stops at the floor');
 
 // Holding both cancels, as two opposed buttons should.
-const both = updateRoamCamera({ ...start, y: FLOOR_Y + 10 }, { ...idle, up: true, down: true }, 1, limits);
-near(both.y, FLOOR_Y + 10, 'up and down cancel');
+const both = updateRoamCamera({ ...start, z: FLOOR_Z + 10 }, { ...idle, up: true, down: true }, 1, limits);
+near(both.z, FLOOR_Z + 10, 'up and down cancel');
 
 // Climbing changes height and nothing else: the view stays level, as a driving
 // tank's does, so the look point rises with the camera rather than tilting down.
-assert.equal(up.theta, start.theta, 'climbing does not turn the view');
+assert.equal(up.azimuth, start.azimuth, 'climbing does not turn the view');
 assert.equal(up.x, start.x, 'climbing does not drift');
-assert.equal(up.z, start.z, 'climbing does not drift');
+assert.equal(up.y, start.y, 'climbing does not drift');
 
 // Zoom is held inside upstream's range even though nothing binds it yet.
 assert.equal(updateRoamCamera({ ...start, zoom: 5 }, idle, 1, limits).zoom, ROAM_ZOOM_MIN);
@@ -97,11 +98,11 @@ assert.deepEqual(garbage, start);
 
 // Integrating in steps matches one big step along a straight line, so the camera
 // does not depend on frame rate while driving forward.
-let stepwise = createRoamCamera(FLOOR_Y);
+let stepwise = createRoamCamera(FLOOR_Z);
 for (let i = 0; i < 100; i++) {
   stepwise = updateRoamCamera(stepwise, { ...idle, forward: 1 }, 0.01, limits);
 }
-near(stepwise.z, -ROAM_TRANSLATE_SPEED_FACTOR * TANK_SPEED, 'stepwise travel matches one step');
+near(stepwise.y, ROAM_TRANSLATE_SPEED_FACTOR * TANK_SPEED, 'stepwise travel matches one step');
 
 // Roaming.h:36 -- the cycle order, with the flag view dropped where there are no
 // team flags to track. `DRIVE_FP`/`DRIVE_TP` (issue #68's driveable phantom
@@ -221,28 +222,28 @@ assert.deepEqual(
 
 // The view angle is the inverse of the forward vector, so a heading survives the
 // round trip through a look point built one unit ahead of it.
-for (const theta of [0, 0.7, Math.PI / 2, -2.4, 3.0]) {
-  const forward = getRoamForward(theta);
-  const eye = { x: 12, y: 5, z: -8 };
-  const look = { x: eye.x + forward.x, y: eye.y, z: eye.z + forward.z };
-  near(getRoamViewAngle(eye, look, 99), theta, `view angle round trips at ${theta}`);
+for (const azimuth of [0, 0.7, Math.PI / 2, -2.4, 3.0]) {
+  const forward = getRoamForward(azimuth);
+  const eye = { x: 12, y: 8, z: 5 };
+  const look = { x: eye.x + forward.x, y: eye.y + forward.y, z: eye.z };
+  near(getRoamViewAngle(eye, look, 99), azimuth, `view angle round trips at ${azimuth}`);
 }
 
 // A tracking view faces its target rather than wherever the camera was flown.
 near(
-  getRoamViewAngle({ x: 0, y: 10, z: 40 }, { x: 0, y: 0, z: 0 }, 99),
-  0,
-  'a target due -Z reads as theta 0',
+  getRoamViewAngle({ x: 0, y: -40, z: 10 }, { x: 0, y: 0, z: 0 }, 99),
+  Math.PI / 2,
+  'a target due north faces north',
 );
 near(
-  getRoamViewAngle({ x: 30, y: 10, z: 0 }, { x: 0, y: 0, z: 0 }, 99),
-  Math.PI / 2,
-  'a target due -X reads as theta 90',
+  getRoamViewAngle({ x: 30, y: 0, z: 10 }, { x: 0, y: 0, z: 0 }, 99),
+  Math.PI,
+  'a target due west faces west',
 );
 
 // Straight down names no heading, so the caller's own is kept.
 assert.equal(
-  getRoamViewAngle({ x: 5, y: 20, z: 5 }, { x: 5, y: 0, z: 5 }, 1.25),
+  getRoamViewAngle({ x: 5, y: 5, z: 20 }, { x: 5, y: 5, z: 0 }, 1.25),
   1.25,
   'a look point overhead falls back',
 );

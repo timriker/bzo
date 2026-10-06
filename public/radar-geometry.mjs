@@ -108,7 +108,7 @@ export function isOutsideRadarSquare(radarX, radarY, halfExtent, margin = 0) {
 // outside the panel while a span of them is still on it, and anything that
 // tested the centre alone would blink them out from under the player.
 export function getRadarObstacleCullRadius(obs) {
-  return Math.hypot((obs.w || 8) / 2, (obs.d || 8) / 2);
+  return obs.size ? Math.hypot(obs.size[0], obs.size[1]) : Math.hypot(4, 4);
 }
 
 // The same rejection circle around a whole mesh, from the world-space vertex
@@ -120,25 +120,27 @@ export function getRadarObstacleCullRadius(obs) {
 // swings its points through height as well, so its rejection circle has to
 // hold the full 3D distance from the pivot rather than the flat one.
 export function isTippedRadarSpin(obs) {
-  return Boolean(obs.angvel && obs.spinPivot && obs.spinAxis && Math.abs(obs.spinAxis.y) < 0.999999);
+  return Boolean(obs.angvel && obs.spinPivot && obs.spinAxis && Math.abs(obs.spinAxis.z) < 0.999999);
 }
 
 export function getRadarMeshObstacleCull(obs) {
-  const { minX, maxX, minY, maxY, minZ, maxZ } = obs.bounds;
-  const footprint = [minX, minZ, maxX, minZ, maxX, maxZ, minX, maxZ];
+  const {
+    minX, maxX, minY, maxY, minZ, maxZ,
+  } = obs.bounds;
+  const footprint = [minX, maxY, maxX, maxY, maxX, minY, minX, minY];
   const spins = Boolean(obs.angvel && obs.spinPivot);
   const tipped = isTippedRadarSpin(obs);
   const cullX = spins ? obs.spinPivot.x : (minX + maxX) / 2;
-  const cullZ = spins ? obs.spinPivot.z : (minZ + maxZ) / 2;
-  const dy = tipped ? Math.max(Math.abs(minY - obs.spinPivot.y), Math.abs(maxY - obs.spinPivot.y)) : 0;
+  const cullY = spins ? obs.spinPivot.y : (minY + maxY) / 2;
+  const dz = tipped ? Math.max(Math.abs(minZ - obs.spinPivot.z), Math.abs(maxZ - obs.spinPivot.z)) : 0;
   let cullRadius = 0;
   for (let i = 0; i < 4; i += 1) {
     cullRadius = Math.max(
       cullRadius,
-      Math.hypot(footprint[i * 2] - cullX, footprint[(i * 2) + 1] - cullZ, dy),
+      Math.hypot(footprint[i * 2] - cullX, footprint[(i * 2) + 1] - cullY, dz),
     );
   }
-  return { cullX, cullZ, cullRadius, footprint };
+  return { cullX, cullY, cullRadius, footprint };
 }
 
 // The same rejection circle, built around one face's own vertices. A mesh with
@@ -152,26 +154,26 @@ export function getRadarMeshFaceCull(obs, arrays, f) {
   const start = arrays.faceStart[f];
   const end = arrays.faceStart[f + 1];
   let cullX = 0;
-  let cullZ = 0;
+  let cullY = 0;
   if (spins) {
     cullX = obs.spinPivot.x;
-    cullZ = obs.spinPivot.z;
+    cullY = obs.spinPivot.y;
   } else {
     for (let c = start; c < end; c += 1) {
       const v = arrays.corners[c] * 3;
       cullX += arrays.vertices[v];
-      cullZ += arrays.vertices[v + 2];
+      cullY += arrays.vertices[v + 1];
     }
     cullX /= (end - start);
-    cullZ /= (end - start);
+    cullY /= (end - start);
   }
   let cullRadius = 0;
   for (let c = start; c < end; c += 1) {
     const v = arrays.corners[c] * 3;
-    const dy = tipped ? arrays.vertices[v + 1] - obs.spinPivot.y : 0;
+    const dz = tipped ? arrays.vertices[v + 2] - obs.spinPivot.z : 0;
     cullRadius = Math.max(
-      cullRadius, Math.hypot(arrays.vertices[v] - cullX, arrays.vertices[v + 2] - cullZ, dy),
+      cullRadius, Math.hypot(arrays.vertices[v] - cullX, arrays.vertices[v + 1] - cullY, dz),
     );
   }
-  return { cullX, cullZ, cullRadius };
+  return { cullX, cullY, cullRadius };
 }

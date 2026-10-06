@@ -7,8 +7,8 @@
 
 // The observer's roaming camera, mirroring upstream's `RoamingCamera`
 // (`src/bzflag/Roaming.h`) and the free-roam half of `Roaming::updatePosition`
-// (`Roaming.cxx:328`) in bzo's coordinates: the ground plane is (x, z) and up is
-// y, where upstream has (pos[0], pos[1]) and pos[2].
+// (`Roaming.cxx:328`) in upstream's frame: the ground plane is (x, y), up is z,
+// and the camera faces an azimuth, counter-clockwise from +x.
 //
 // Upstream drives this from the tank's own two axes -- `myTank->getSpeed()` and
 // `getRotation()` in `setupRoamingCamera` (`playing.cxx:6666`) -- and remaps
@@ -161,35 +161,35 @@ function clampAxis(value) {
   return Math.max(-1, Math.min(1, value));
 }
 
-export function createRoamCamera(floorY) {
-  const y = Number.isFinite(floorY) ? floorY : 0;
-  return { x: 0, y, z: 0, theta: 0, zoom: ROAM_ZOOM_DEFAULT };
+export function createRoamCamera(floorZ) {
+  const z = Number.isFinite(floorZ) ? floorZ : 0;
+  return { x: 0, y: 0, z, azimuth: Math.PI / 2, zoom: ROAM_ZOOM_DEFAULT };
 }
 
-// bzo's heading convention, matching the look target `updateCamera` builds for a
-// driving tank: at theta 0 the camera faces -Z, and a positive theta turns left.
-export function getRoamForward(theta) {
-  return { x: -Math.sin(theta), z: -Math.cos(theta) };
+// Forward along an azimuth: a positive turn is left.
+export function getRoamForward(azimuth) {
+  return { x: Math.cos(azimuth), y: Math.sin(azimuth) };
 }
 
 // The heading a resolved view points, which is upstream's `roamViewAngle`
 // (playing.cxx:6088): the angle from the eye to the look point, so a view that
-// tracks a tank faces whatever it is watching. The inverse of getRoamForward, so
-// both axes go into atan2 negated. A look point standing exactly over the eye
-// names no heading of its own and `fallbackTheta` stands in -- upstream never
-// meets that case, because every one of its look points is offset horizontally.
-export function getRoamViewAngle(eye, look, fallbackTheta = 0) {
+// tracks a tank faces whatever it is watching. The inverse of getRoamForward. A
+// look point standing exactly over the eye names no heading of its own and
+// `fallbackAzimuth` stands in -- upstream never meets that case, because every
+// one of its look points is offset horizontally.
+export function getRoamViewAngle(eye, look, fallbackAzimuth = 0) {
   const dx = look.x - eye.x;
-  const dz = look.z - eye.z;
-  if (Math.hypot(dx, dz) < 1e-6) return fallbackTheta;
-  return Math.atan2(-dx, -dz);
+  const dy = look.y - eye.y;
+  if (Math.hypot(dx, dy) < 1e-6) return fallbackAzimuth;
+  return Math.atan2(dy, dx);
 }
 
 // Pure, so `scripts/test-roam.mjs` can hold the rates against upstream's without
-// a frame loop around them. `theta` is left unwrapped, as upstream leaves it.
+// a frame loop around them. `azimuth` is left unwrapped, as upstream leaves its
+// angle.
 export function updateRoamCamera(camera, input, deltaSeconds, limits) {
   const tankSpeed = Number.isFinite(limits?.tankSpeed) ? limits.tankSpeed : 0;
-  const floorY = Number.isFinite(limits?.floorY) ? limits.floorY : 0;
+  const floorZ = Number.isFinite(limits?.floorZ) ? limits.floorZ : 0;
   const step = Number.isFinite(deltaSeconds) && deltaSeconds > 0 ? deltaSeconds : 0;
 
   const forward = clampAxis(input?.forward);
@@ -197,17 +197,17 @@ export function updateRoamCamera(camera, input, deltaSeconds, limits) {
   const lift = (input?.up ? 1 : 0) - (input?.down ? 1 : 0);
 
   const yawRate = (camera.zoom * ROAM_YAW_DEGREES_PER_ZOOM) * (Math.PI / 180);
-  const theta = camera.theta + turn * yawRate * step;
+  const azimuth = camera.azimuth + turn * yawRate * step;
 
   const travel = forward * ROAM_TRANSLATE_SPEED_FACTOR * tankSpeed * step;
-  const direction = getRoamForward(theta);
-  const y = Math.max(floorY, camera.y + lift * ROAM_VERTICAL_SPEED_FACTOR * tankSpeed * step);
+  const direction = getRoamForward(azimuth);
+  const z = Math.max(floorZ, camera.z + lift * ROAM_VERTICAL_SPEED_FACTOR * tankSpeed * step);
 
   return {
     x: camera.x + direction.x * travel,
-    y,
-    z: camera.z + direction.z * travel,
-    theta,
+    y: camera.y + direction.y * travel,
+    z,
+    azimuth,
     zoom: Math.max(ROAM_ZOOM_MIN, Math.min(ROAM_ZOOM_MAX, camera.zoom)),
   };
 }

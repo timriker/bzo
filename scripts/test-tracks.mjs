@@ -29,7 +29,7 @@ const near = (actual, expected, message) => {
 };
 
 const tank = (over = {}) => ({
-  x: 0, y: 0, z: 0, rotation: 0, speed: 10, scaleLength: 1, scaleWidth: 1, ...over,
+  x: 0, y: 0, z: 0, azimuth: Math.PI / 2, speed: 10, scaleLength: 1, scaleWidth: 1, ...over,
 });
 
 // The constants are upstream's, and the trail's density and length come out of
@@ -48,37 +48,37 @@ assert.ok(getTrackMarkPlacement(tank({ speed: TRACK_MIN_SPEED + 1e-6 })));
 
 // Driving forward lays the mark at the back of the treads and reversing lays it
 // at the front, which is the end of the tread coming down on fresh ground.
-// bzo's heading 0 faces -Z, so forward is -Z and behind is +Z.
+// The tank faces north, +y, so behind it is -y.
 const forward = getTrackMarkPlacement(tank({ speed: 10 }));
 const reverse = getTrackMarkPlacement(tank({ speed: -10 }));
 near(forward.x, 0, 'a mark laid dead ahead does not wander sideways');
-near(forward.z, TANK_HALF_LENGTH * 0.8, 'forward leaves the mark behind the tank');
-near(reverse.z, -TANK_HALF_LENGTH * 0.8, 'reverse leaves the mark in front of it');
+near(forward.y, -TANK_HALF_LENGTH * 0.8, 'forward leaves the mark behind the tank');
+near(reverse.y, TANK_HALF_LENGTH * 0.8, 'reverse leaves the mark in front of it');
 
-// A quarter turn left points the tank at -X, so the mark goes to +X.
-const turned = getTrackMarkPlacement(tank({ rotation: Math.PI / 2, speed: 10 }));
+// A quarter turn left points the tank west, -x, so the mark goes to +x.
+const turned = getTrackMarkPlacement(tank({ azimuth: Math.PI, speed: 10 }));
 near(turned.x, TANK_HALF_LENGTH * 0.8, 'the mark follows the heading');
-near(turned.z, 0, 'and nothing is left on the old axis');
+near(turned.y, 0, 'and nothing is left on the old axis');
 
 // The tank's own scale reaches both the offset back to the treads and the width
 // the drawn mark is placed at, as `dimensions[0]` and `glScalef` do upstream.
 const tiny = getTrackMarkPlacement(tank({ speed: 10, scaleLength: 0.4, scaleWidth: 0.4 }));
-near(tiny.z, TANK_HALF_LENGTH * 0.8 * 0.4, 'a short tank lays its mark closer in');
+near(tiny.y, -TANK_HALF_LENGTH * 0.8 * 0.4, 'a short tank lays its mark closer in');
 near(tiny.scale, 0.4, 'the width scale rides along for the renderer');
 
 // `N` Narrow has no width to press into the ground, and `BU` Burrow is under it.
 assert.equal(getTrackMarkPlacement(tank({ speed: 10, scaleWidth: 0 })), null);
-assert.equal(getTrackMarkPlacement(tank({ speed: 10, y: -1.32 })), null);
+assert.equal(getTrackMarkPlacement(tank({ speed: 10, z: -1.32 })), null);
 
 // Every mark floats clear of the surface it was left on, and a tank settling the
 // last hair onto the floor still lays a mark coplanar with the rest of its trail.
-near(forward.y, TRACK_HEIGHT_OFFSET, 'a ground mark sits at the offset');
+near(forward.z, TRACK_HEIGHT_OFFSET, 'a ground mark sits at the offset');
 assert.equal(forward.onGround, true);
-const settling = getTrackMarkPlacement(tank({ speed: 10, y: TRACK_SURFACE_TOLERANCE / 2 }));
-near(settling.y, TRACK_HEIGHT_OFFSET, 'and so does one from a tank not quite down');
+const settling = getTrackMarkPlacement(tank({ speed: 10, z: TRACK_SURFACE_TOLERANCE / 2 }));
+near(settling.z, TRACK_HEIGHT_OFFSET, 'and so does one from a tank not quite down');
 assert.equal(settling.onGround, true);
-const roof = getTrackMarkPlacement(tank({ speed: 10, y: 4 }));
-near(roof.y, 4 + TRACK_HEIGHT_OFFSET, 'a roof mark sits the same distance over the roof');
+const roof = getTrackMarkPlacement(tank({ speed: 10, z: 4 }));
+near(roof.z, 4 + TRACK_HEIGHT_OFFSET, 'a roof mark sits the same distance over the roof');
 assert.equal(roof.onGround, false, 'and has to be culled against that roof');
 
 // The ground is under every point of the map, so a ground mark is never culled
@@ -88,7 +88,7 @@ assert.equal(getTrackMarkSides(forward, () => {
 }), TRACK_TREAD_BOTH);
 
 // On a roof each tread is asked for separately, at the middle of that tread.
-// Heading 0 faces -Z, so the left tread is at -X.
+// Facing north, the left tread is to the west, at -x.
 const asked = [];
 const sides = getTrackMarkSides(roof, (x, y, z) => {
   asked.push({ x, y, z });
@@ -97,20 +97,20 @@ const sides = getTrackMarkSides(roof, (x, y, z) => {
 assert.equal(sides, TRACK_TREAD_LEFT, 'only the tread with roof under it leaves a mark');
 assert.equal(asked.length, 2);
 near(asked[0].x, -TREAD_MIDDLE, 'the left tread is asked about first');
-near(asked[0].y, 4, 'and asked at the roof, not at the lifted mark');
+near(asked[0].z, 4, 'and asked at the roof, not at the lifted mark');
 near(asked[1].x, +TREAD_MIDDLE, 'the right tread is the other side of the tank');
 assert.equal(getTrackMarkSides(roof, (x) => x > 0), TRACK_TREAD_RIGHT);
 assert.equal(getTrackMarkSides(roof, () => false), 0, 'a mark over nothing is not laid');
 assert.equal(getTrackMarkSides(roof, () => true), TRACK_TREAD_BOTH);
 
-// A mark laid on a roof turned a quarter left has its treads on the Z axis.
-const turnedRoof = getTrackMarkPlacement(tank({ rotation: Math.PI / 2, speed: 10, y: 4 }));
+// A mark laid on a roof turned a quarter left has its treads on the y axis.
+const turnedRoof = getTrackMarkPlacement(tank({ azimuth: Math.PI, speed: 10, z: 4 }));
 const turnedAsked = [];
 getTrackMarkSides(turnedRoof, (x, y, z) => {
   turnedAsked.push({ x, y, z });
   return true;
 });
-near(turnedAsked[0].z - turnedRoof.z, TREAD_MIDDLE, 'the treads turn with the tank');
+near(turnedAsked[0].y - turnedRoof.y, -TREAD_MIDDLE, 'the treads turn with the tank');
 near(turnedAsked[0].x - turnedRoof.x, 0, 'and leave the axis they were on');
 
 // The fade is linear from opaque to gone over the whole of `_trackFade`.

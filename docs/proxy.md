@@ -417,14 +417,10 @@ longer line is split, each piece broken at the last space that fits
 is sent whole, since a second piece would arrive as chat; bzfs keeps the first
 127 bytes, and the player is told once.
 
-## The two conversions
+## The one conversion
 
-**Coordinates.** bzfs is right-handed with +Y north and +Z up; bzo is
-three.js's, -Z north and +Y up. `x` is `x`, `y` is bzfs's `z`, `z` is minus
-bzfs's `y` -- the same change the world importer makes as it reads a `.bzw`
-(`docs/bzw.md`, "Coordinates"). A heading is a quarter turn apart: bzfs
-measures counter-clockwise from +X, and a bzo rotation is a three.js rotation
-about Y whose zero faces -Z.
+Positions, velocities and headings pass through as they are. What changes is
+the shape of a move.
 
 **Inputs, not velocities.** bzfs sends the velocity a tank has; bzo's `fs` and
 `rs` are the *inputs* a client would have held, as a fraction of the tank's

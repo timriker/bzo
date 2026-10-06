@@ -33,6 +33,7 @@ const {
   buildCollisionColliders,
   configureTankDimensions,
   findShotSegmentImpact,
+  getObstacleBase,
 } = require('./collision.cjs');
 const { configureFlagEffects } = require('./flags.cjs');
 const { areFoes } = require('./teams.cjs');
@@ -49,8 +50,9 @@ const waiting = [];
 // The same rule `getColliderTopY` in server.js answers by: a mesh's top is its
 // bounds, everything else its base plus its height.
 function topOf(obs) {
-  if (obs?.type === 'mesh' && obs.bounds) return obs.bounds.maxY;
-  return (obs?.baseY || 0) + (Number.isFinite(obs?.h) ? obs.h : 0);
+  if (obs?.type === 'mesh' && obs.bounds) return obs.bounds.maxZ;
+  const height = obs?.size?.[2];
+  return getObstacleBase(obs || {}) + (Number.isFinite(height) ? height : 0);
 }
 
 function setWorld(next) {
@@ -103,7 +105,7 @@ function buildView(bot, self, shared) {
     myBase: () => {
       const base = world.obstacles.find((obs) => obs.kind === 'base' && obs.team === own.self.teamColor);
       if (!base) return null;
-      return { x: base.x, y: topOf(base), z: base.z, radius: Math.min(base.w, base.d) / 2 };
+      return { x: base.pos[0], y: base.pos[1], z: topOf(base), radius: Math.min(base.size[0], base.size[1]) };
     },
     ...getProbes(),
     findRoute: getRouter(),

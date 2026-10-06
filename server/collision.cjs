@@ -25,55 +25,85 @@ const NO_FACE = -1;
 //   - movingTankOverlapsHeight -> src/obstacle/BoxBuilding.cxx inMovingBox
 //   - crossedFlatTop        -> src/obstacle/Obstacle.cxx getHitNormal (roof)
 //
-// bzo stores pyramid height as a positive `h` plus an `inverted` flag, which is
-// what upstream calls ZFlip. bzo models tanks and shots as cylinders, so where
+// +Z is up, +Y north, and a heading is an azimuth, counter-clockwise from +X.
+// A box,
+// pyramid, base, teleporter or wall is read as upstream's `Obstacle` holds it:
+// `pos`, `size` (half width, half breadth, full height) and `angle`; a mesh by
+// its arrays and bounds, in the same frame.
+//
+// bzo stores pyramid height as a positive height plus an `inverted` flag, which
+// is what upstream calls ZFlip. bzo models shots as cylinders, so where
 // upstream tests a rotated rectangle (testRectRect) bzo tests a circle
 // (testRectCircle) against the same shrunk cross-section.
 //
-// Keep this file byte-identical in behavior with server/collision.cjs.
-// scripts/test-collision.mjs enforces that.
+// server/collision.cjs is this file mirrored; scripts/check-shared-pairs.mjs
+// enforces that.
 
 const ZERO_TOLERANCE = 1.0e-6;
 
-// Rotate a world point into an obstacle's local, axis-aligned frame.
-//
-// Upstream testRectCircle rotates by -angle; bzo rotates by +rotation. The
-// difference is a coordinate-layout artifact, not a different world.
-//
-// bzo is BZFlag's world relabeled for Three.js: bzo(x, y, z) = bzf(x, z, -y),
-// a proper rotation, not a mirror. But the ordered pair (x, z) viewed from +Y
-// has the opposite orientation to (x, y) viewed from +Z, so a Three.js rotation
-// about +Y is a negative 2D rotation in (x, z), and its inverse is +rotation.
-// render.js draws obstacles with `mesh.rotation.y = obs.rotation`, so the form
-// below is exactly the inverse of how the mesh is drawn. Do not "fix" the sign.
-function getColliderLocalPoint(x, z, obs) {
-  const rotation = obs.rotation;
-  const dx = x - obs.x;
-  const dz = z - obs.z;
-  const cos = Math.cos(rotation);
-  const sin = Math.sin(rotation);
+// An obstacle with no `position` line has no `pos`, and lands nowhere.
+const NO_POS = [NaN, NaN, 0];
+
+function obstaclePos(obs) {
+  return obs.pos || NO_POS;
+}
+
+// Where an obstacle stands: its `pos` height, or a mesh's lowest point.
+function getObstacleBase(obs) {
+  return obstacleBase(obs);
+}
+
+function obstacleBase(obs) {
+  if (obs.type === 'mesh') return obs.bounds ? obs.bounds.minZ : 0;
+  return obstaclePos(obs)[2] || 0;
+}
+
+// Half its width and breadth, and its height, as `size` states them -- NaN
+// for an obstacle that gave none, which tests as clear of everything.
+function halfWidthOf(obs) {
+  return obs.size ? obs.size[0] : NaN;
+}
+
+function halfBreadthOf(obs) {
+  return obs.size ? obs.size[1] : NaN;
+}
+
+// Whether (x, y) is further than `margin` outside a mesh's footprint.
+function outsideBounds(bounds, x, y, margin) {
+  return x + margin < bounds.minX || x - margin > bounds.maxX
+    || y + margin < bounds.minY || y - margin > bounds.maxY;
+}
+
+// Rotate a world point into an obstacle's local, axis-aligned frame --
+// upstream's own `testRectCircle` turn, by minus the obstacle's angle.
+function getColliderLocalPoint(x, y, obs) {
+  const pos = obstaclePos(obs);
+  const dx = x - pos[0];
+  const dy = y - pos[1];
+  const cos = Math.cos(obs.angle);
+  const sin = Math.sin(obs.angle);
   return {
-    x: dx * cos - dz * sin,
-    z: dx * sin + dz * cos
+    x: (dx * cos) + (dy * sin),
+    y: (dy * cos) - (dx * sin),
   };
 }
 
 // Squared distance from a local point to the nearest point of an axis-aligned
 // rectangle centered at the origin.
-function origRectPointDistanceSquared(halfW, halfD, localX, localZ) {
+function origRectPointDistanceSquared(halfW, halfD, localX, localY) {
   const closestX = Math.max(-halfW, Math.min(localX, halfW));
-  const closestZ = Math.max(-halfD, Math.min(localZ, halfD));
+  const closestY = Math.max(-halfD, Math.min(localY, halfD));
   const distX = localX - closestX;
-  const distZ = localZ - closestZ;
-  return distX * distX + distZ * distZ;
+  const distY = localY - closestY;
+  return distX * distX + distY * distY;
 }
 
 // True when an axis-aligned rectangle centered at the origin intersects a
 // circle of radius r centered at the local point.
-function testOrigRectCircle(halfW, halfD, localX, localZ, radius) {
+function testOrigRectCircle(halfW, halfD, localX, localY, radius) {
   // "circle origin in rect" is a hit whatever the radius (Intersect.cxx:125),
   // which is what makes a bare point -- a radius of 0 -- inside at all.
-  const distanceSquared = origRectPointDistanceSquared(halfW, halfD, localX, localZ);
+  const distanceSquared = origRectPointDistanceSquared(halfW, halfD, localX, localY);
   return distanceSquared === 0 || distanceSquared < radius * radius;
 }
 
@@ -95,17 +125,17 @@ const TANK_HEIGHT = 2.05;
 // ignored and carries on over it rather than bouncing back into the arena.
 const WORLD_WALL_HEIGHT = 3.0 * TANK_HEIGHT;
 
-// A rectangle centred at (localX, localZ), rotated so its lateral axis points
-// along (cos a, sin a), against the axis-aligned rectangle at the origin.
-// Ported from Intersect.cxx testOrigRectRect: dx1/dy1 are the rotated rect's
-// half-extents, dx2/dy2 the origin rect's.
-function testOrigRectRect(px, pz, angle, dx1, dy1, dx2, dy2) {
+// A rectangle centred at (px, py), rotated so its first axis points along
+// (cos a, sin a), against the axis-aligned rectangle at the origin. Ported from
+// Intersect.cxx testOrigRectRect: dx1/dy1 are the rotated rect's half-extents,
+// dx2/dy2 the origin rect's.
+function testOrigRectRect(px, py, angle, dx1, dy1, dx2, dy2) {
   const c = Math.cos(angle);
   const s = Math.sin(angle);
 
   // The origin rect's centre inside the rotated rect.
-  const sx = c * px + s * pz;
-  const sy = c * pz - s * px;
+  const sx = c * px + s * py;
+  const sy = c * py - s * px;
   if (Math.abs(sx) < dx1 && Math.abs(sy) < dy1) return true;
 
   // Corners of the rotated rect, classified against the origin rect.
@@ -114,12 +144,12 @@ function testOrigRectRect(px, pz, angle, dx1, dy1, dx2, dy2) {
   const region = [];
   for (let i = 0; i < 4; i++) {
     const cx = px + c * dx1 * box[i][0] - s * dy1 * box[i][1];
-    const cz = pz + s * dx1 * box[i][0] + c * dy1 * box[i][1];
-    corner.push([cx, cz]);
+    const cy = py + s * dx1 * box[i][0] + c * dy1 * box[i][1];
+    corner.push([cx, cy]);
     const rx = cx < -dx2 ? -1 : (cx > dx2 ? 1 : 0);
-    const rz = cz < -dy2 ? -1 : (cz > dy2 ? 1 : 0);
-    region.push([rx, rz]);
-    if (!rx && !rz) return true;
+    const ry = cy < -dy2 ? -1 : (cy > dy2 ? 1 : 0);
+    region.push([rx, ry]);
+    if (!rx && !ry) return true;
   }
 
   // Each edge of the rotated rect against the origin rect.
@@ -134,34 +164,35 @@ function testOrigRectRect(px, pz, angle, dx1, dy1, dx2, dy2) {
     }
 
     let c2x;
-    let c2z;
+    let c2y;
     if (region[i][0] === 0) {
       c2x = region[j][0] * dx2;
-      c2z = region[i][1] * dy2;
+      c2y = region[i][1] * dy2;
     } else if (region[j][0] === 0) {
       c2x = region[i][0] * dx2;
-      c2z = region[j][1] * dy2;
+      c2y = region[j][1] * dy2;
     } else if (region[i][1] === 0) {
       c2x = region[i][0] * dx2;
-      c2z = region[j][1] * dy2;
+      c2y = region[j][1] * dy2;
     } else {
       c2x = region[j][0] * dx2;
-      c2z = region[i][1] * dy2;
+      c2y = region[i][1] * dy2;
     }
 
     const ex = corner[j][0] - corner[i][0];
-    const ez = corner[j][1] - corner[i][1];
-    const a = ez * (c2x - corner[i][0]) - ex * (c2z - corner[i][1]);
-    const b = ez * (c2x + corner[i][0]) - ex * (c2z + corner[i][1]);
+    const ey = corner[j][1] - corner[i][1];
+    const a = ey * (c2x - corner[i][0]) - ex * (c2y - corner[i][1]);
+    const b = ey * (c2x + corner[i][0]) - ex * (c2y + corner[i][1]);
     if (a * b > 0.0) return true;
   }
   return false;
 }
 
 // The tank box against an obstacle, both expressed in the obstacle's local
-// frame. `rotation` is the tank's heading in bzo terms, where forward is
-// (-sin r, -cos r); the lateral axis leads by a quarter turn.
-function testOrigRectTank(halfW, halfD, localX, localZ, tankAngle, slack = 0, tankScale = null) {
+// frame. `tankAngle` is the tank's azimuth there (`getTankLocalAngle`), so its
+// half length lies along it and its half width across, as upstream's
+// `Player::getDimensions` orders them.
+function testOrigRectTank(halfW, halfD, localX, localY, tankAngle, slack = 0, tankScale = null) {
   // Player::getDimensions, which a flag scales on the lateral and forward axes
   // and never on height. `null` is the tank's own size, which is every tank
   // without one of the three dimension flags.
@@ -171,35 +202,34 @@ function testOrigRectTank(halfW, halfD, localX, localZ, tankAngle, slack = 0, ta
   // reduces the tested radius.
   const trim = Math.max(0, Math.min(slack, halfWidth));
   return testOrigRectRect(
-    localX, localZ, tankAngle,
-    halfWidth - trim, halfLength - trim,
+    localX, localY, tankAngle,
+    halfLength - trim, halfWidth - trim,
     halfW, halfD
   );
 }
 
-// A segment against an oriented box centred on a tank, in the same frame
-// testOrigRectTank works in: `angle` is what getTankLocalAngle returns, the
-// lateral axis, so `halfWidth` measures across the tank and `halfLength` along
-// it. Returns the fraction of the segment at first contact, 0 if it began
-// inside, or null if it never touches.
+// A segment against an oriented box centred on a tank: `angle` is the tank's
+// azimuth, so `halfLength` measures along it and `halfWidth` across. Returns
+// the fraction of the segment at first contact, 0 if it began inside, or null
+// if it never touches.
 //
 // This is timeRayHitsBlock reduced to two dimensions and a unit interval. The
 // caller owns the height gate, as it does for the cylinder.
 function getSegmentBoxHitFraction(
-  fromX, fromZ, toX, toZ, centreX, centreZ, angle, halfWidth, halfLength
+  fromX, fromY, toX, toY, centreX, centreY, angle, halfWidth, halfLength
 ) {
   const c = Math.cos(angle);
   const s = Math.sin(angle);
   // Both endpoints into the box's frame, the way testOrigRectRect rotates a
   // point into the rotated rect's.
   const px = fromX - centreX;
-  const pz = fromZ - centreZ;
+  const py = fromY - centreY;
   const qx = toX - centreX;
-  const qz = toZ - centreZ;
-  const ox = (c * px) + (s * pz);
-  const oz = (c * pz) - (s * px);
-  const ex = ((c * qx) + (s * qz)) - ox;
-  const ez = ((c * qz) - (s * qx)) - oz;
+  const qy = toY - centreY;
+  const ox = (c * px) + (s * py);
+  const oy = (c * py) - (s * px);
+  const ex = ((c * qx) + (s * qy)) - ox;
+  const ey = ((c * qy) - (s * qx)) - oy;
 
   let tMin = 0;
   let tMax = 1;
@@ -216,31 +246,31 @@ function getSegmentBoxHitFraction(
     if (far < tMax) tMax = far;
     return tMin <= tMax;
   };
-  if (!slab(ox, ex, halfWidth)) return null;
-  if (!slab(oz, ez, halfLength)) return null;
+  if (!slab(ox, ex, halfLength)) return null;
+  if (!slab(oy, ey, halfWidth)) return null;
   return tMin;
 }
 
-// The tank's lateral axis angle inside an obstacle's local frame.
-function getTankLocalAngle(rotation, obsRotation = 0) {
-  return Math.PI - rotation + (obsRotation || 0);
+// The tank's azimuth inside an obstacle's local frame.
+function getTankLocalAngle(azimuth, obsAngle = 0) {
+  return azimuth - (obsAngle || 0);
 }
 
 // Height of the pyramid's sloped surface above its base, at a local point.
 // Returns null outside the base footprint. This is the inverse of
 // pyramidShrinkFactor: the surface sits where the shrunk rectangle's edge
 // passes through the point.
-function getPyramidSurfaceLocalHeight(obs, localX, localZ) {
-  const halfW = obs.w / 2;
-  const halfD = obs.d / 2;
-  if (Math.abs(localX) > halfW || Math.abs(localZ) > halfD) return null;
+function getPyramidSurfaceLocalHeight(obs, localX, localY) {
+  const halfW = halfWidthOf(obs);
+  const halfD = halfBreadthOf(obs);
+  if (Math.abs(localX) > halfW || Math.abs(localY) > halfD) return null;
   const height = getPyramidHeight(obs);
-  const edgeFactor = Math.max(Math.abs(localX) / halfW, Math.abs(localZ) / halfD);
+  const edgeFactor = Math.max(Math.abs(localX) / halfW, Math.abs(localY) / halfD);
   return obs.inverted ? height * edgeFactor : height * (1 - edgeFactor);
 }
 
 function getPyramidHeight(obs) {
-  return Math.abs(obs.h || 0);
+  return Math.abs((obs.size && obs.size[2]) || 0);
 }
 
 // How tall an obstacle stands, and bzo's fallback for one whose map gave no
@@ -257,8 +287,9 @@ function getPyramidHeight(obs) {
 const DEFAULT_OBSTACLE_HEIGHT = 4;
 
 function getObstacleHeight(obs) {
-  if (obs?.type === 'mesh' && obs.bounds) return obs.bounds.maxY - obs.bounds.minY;
-  return Number.isFinite(obs?.h) ? obs.h : DEFAULT_OBSTACLE_HEIGHT;
+  if (obs?.type === 'mesh' && obs.bounds) return obs.bounds.maxZ - obs.bounds.minZ;
+  const height = obs?.size?.[2];
+  return Number.isFinite(height) ? height : DEFAULT_OBSTACLE_HEIGHT;
 }
 
 // Inverted pyramids present a flat top that can be driven on; upright ones come
@@ -267,21 +298,21 @@ function isPyramidFlatTop(obs) {
   return obs.inverted === true;
 }
 
-// Fraction the pyramid's cross-section is scaled to at world height y, for an
+// Fraction the pyramid's cross-section is scaled to at world height z, for an
 // occupant of the given height. Upstream PyramidBuilding::shrinkFactor.
-function pyramidShrinkFactor(obs, y, height = 0) {
+function pyramidShrinkFactor(obs, z, height = 0) {
   const oHeight = getPyramidHeight(obs);
   const flip = isPyramidFlatTop(obs);
   if (oHeight <= ZERO_TOLERANCE) return 1;
 
   // Height relative to the pyramid base, normalized.
-  let z = (y - (obs.baseY || 0)) / oHeight;
+  let rise = (z - obstacleBase(obs)) / oHeight;
 
   // When flipped, the widest intersection is at the top of the object, so the
   // occupant's own height is what reaches it.
-  if (flip) z += height / oHeight;
+  if (flip) rise += height / oHeight;
 
-  const shrink = flip ? z : 1 - z;
+  const shrink = flip ? rise : 1 - rise;
   if (shrink < 0) return 0;
   if (shrink > 1) return 1;
   return shrink;
@@ -291,31 +322,31 @@ function pyramidShrinkFactor(obs, y, height = 0) {
 // at the origin, for a point inside OR outside it. Mirrors
 // src/game/Intersect.cxx getNormalOrigRect -- note that upstream always yields a
 // normal, which is why a pyramid can never report "no surface" to slide on.
-function getOrigRectNormal(halfW, halfD, localX, localZ) {
-  const normalize = (x, z) => {
-    const length = Math.hypot(x, z);
-    return length > 0 ? { x: x / length, z: z / length } : { x: 1, z: 0 };
+function getOrigRectNormal(halfW, halfD, localX, localY) {
+  const normalize = (x, y) => {
+    const length = Math.hypot(x, y);
+    return length > 0 ? { x: x / length, y: y / length } : { x: 1, y: 0 };
   };
 
   if (localX > halfW) {
-    if (localZ > halfD) return normalize(localX - halfW, localZ - halfD);
-    if (localZ < -halfD) return normalize(localX - halfW, localZ + halfD);
-    return { x: 1, z: 0 };
+    if (localY > halfD) return normalize(localX - halfW, localY - halfD);
+    if (localY < -halfD) return normalize(localX - halfW, localY + halfD);
+    return { x: 1, y: 0 };
   }
   if (localX < -halfW) {
-    if (localZ > halfD) return normalize(localX + halfW, localZ - halfD);
-    if (localZ < -halfD) return normalize(localX + halfW, localZ + halfD);
-    return { x: -1, z: 0 };
+    if (localY > halfD) return normalize(localX + halfW, localY - halfD);
+    if (localY < -halfD) return normalize(localX + halfW, localY + halfD);
+    return { x: -1, y: 0 };
   }
-  if (localZ > halfD) return { x: 0, z: 1 };
-  if (localZ < -halfD) return { x: 0, z: -1 };
+  if (localY > halfD) return { x: 0, y: 1 };
+  if (localY < -halfD) return { x: 0, y: -1 };
 
   // Inside: pick the nearer wall, weighted by the rectangle's aspect so a long
   // thin rib resolves to its long face rather than its end cap.
-  if (halfD * Math.abs(localX) >= halfW * Math.abs(localZ)) {
-    return { x: localX >= 0 ? 1 : -1, z: 0 };
+  if (halfD * Math.abs(localX) >= halfW * Math.abs(localY)) {
+    return { x: localX >= 0 ? 1 : -1, y: 0 };
   }
-  return { x: 0, z: localZ >= 0 ? 1 : -1 };
+  return { x: 0, y: localY >= 0 ? 1 : -1 };
 }
 
 // True when a point lies over the pyramid's base footprint.
@@ -324,9 +355,9 @@ function getOrigRectNormal(halfW, halfD, localX, localZ) {
 // getPyramidFaceLocalNormal deliberately answers everywhere, so the slide
 // resolver always has a surface to work with. Support must additionally be
 // contained, or a tank can be "held up" by a pyramid it is nowhere near.
-function isWithinPyramidFootprint(obs, x, z) {
-  const local = getColliderLocalPoint(x, z, obs);
-  return Math.abs(local.x) <= obs.w / 2 && Math.abs(local.z) <= obs.d / 2;
+function isWithinPyramidFootprint(obs, x, y) {
+  const local = getColliderLocalPoint(x, y, obs);
+  return Math.abs(local.x) <= halfWidthOf(obs) && Math.abs(local.y) <= halfBreadthOf(obs);
 }
 
 // Outward normal of a pyramid face at a point, in the obstacle's local frame,
@@ -334,54 +365,54 @@ function isWithinPyramidFootprint(obs, x, z) {
 // getHitNormal: take the normal of the cross-section rectangle at the
 // occupant's height, then angle it by the slope of the wall.
 function getPyramidFaceLocalNormal(obs, x, y, z, height = 0) {
-  const shrink = pyramidShrinkFactor(obs, y, height);
-  const local = getColliderLocalPoint(x, z, obs);
-  const flat = getOrigRectNormal((obs.w / 2) * shrink, (obs.d / 2) * shrink, local.x, local.z);
+  const shrink = pyramidShrinkFactor(obs, z, height);
+  const local = getColliderLocalPoint(x, y, obs);
+  const flat = getOrigRectNormal(halfWidthOf(obs) * shrink, halfBreadthOf(obs) * shrink, local.x, local.y);
 
   // Upstream notes this assumes a square base.
   const pyramidHeight = getPyramidHeight(obs);
-  const baseHalfWidth = obs.w / 2;
+  const baseHalfWidth = halfWidthOf(obs);
   const scale = 1 / (Math.hypot(pyramidHeight, baseHalfWidth) || 1);
   return {
     x: flat.x * scale * pyramidHeight,
-    y: (isPyramidFlatTop(obs) ? -1 : 1) * scale * baseHalfWidth,
-    z: flat.z * scale * pyramidHeight
+    y: flat.y * scale * pyramidHeight,
+    z: (isPyramidFlatTop(obs) ? -1 : 1) * scale * baseHalfWidth,
   };
 }
 
-// True when a cylinder of the given radius and height, whose base sits at y,
+// True when a cylinder of the given radius and height, whose base sits at z,
 // intersects the solid volume of a pyramid. Upstream PyramidBuilding::inBox,
 // with a circle footprint instead of a rotated rectangle.
 function pyramidIntersectsCylinder(obs, x, y, z, radius, height) {
-  const baseY = obs.baseY || 0;
+  const base = obstacleBase(obs);
   // Occupant is entirely below the pyramid.
-  if (y + height < baseY) return false;
+  if (z + height < base) return false;
   // Occupant is entirely above the pyramid.
-  if (y >= baseY + getPyramidHeight(obs)) return false;
+  if (z >= base + getPyramidHeight(obs)) return false;
 
-  const shrink = pyramidShrinkFactor(obs, y, height);
+  const shrink = pyramidShrinkFactor(obs, z, height);
   if (shrink <= 0) return false;
 
-  const local = getColliderLocalPoint(x, z, obs);
-  return testOrigRectCircle((obs.w / 2) * shrink, (obs.d / 2) * shrink, local.x, local.z, radius);
+  const local = getColliderLocalPoint(x, y, obs);
+  return testOrigRectCircle(halfWidthOf(obs) * shrink, halfBreadthOf(obs) * shrink, local.x, local.y, radius);
 }
 
 // The tank box against a pyramid. The pyramid's cross-section shrinks with
 // height exactly as it does for the cylinder test, so only the shape tested
 // against it differs.
-function pyramidIntersectsTank(obs, x, y, z, rotation, height, slack = 0, tankScale = null) {
-  const baseY = obs.baseY || 0;
-  if (y + height < baseY) return false;
-  if (y >= baseY + getPyramidHeight(obs)) return false;
+function pyramidIntersectsTank(obs, x, y, z, azimuth, height, slack = 0, tankScale = null) {
+  const base = obstacleBase(obs);
+  if (z + height < base) return false;
+  if (z >= base + getPyramidHeight(obs)) return false;
 
-  const shrink = pyramidShrinkFactor(obs, y, height);
+  const shrink = pyramidShrinkFactor(obs, z, height);
   if (shrink <= 0) return false;
 
-  const local = getColliderLocalPoint(x, z, obs);
+  const local = getColliderLocalPoint(x, y, obs);
   return testOrigRectTank(
-    (obs.w / 2) * shrink, (obs.d / 2) * shrink,
-    local.x, local.z,
-    getTankLocalAngle(rotation, obs.rotation),
+    halfWidthOf(obs) * shrink, halfBreadthOf(obs) * shrink,
+    local.x, local.y,
+    getTankLocalAngle(azimuth, obs.angle),
     slack,
     tankScale
   );
@@ -510,10 +541,60 @@ function meshFaceHasPlane(arrays, f) {
     || arrays.facePlanes[(f * 4) + 2] !== 0;
 }
 
-function meshFaceBlocksDirection(arrays, f, direction, y) {
+// The height of a face's first corner, which for a flat face is its own.
+function faceHeight(arrays, f) {
+  return arrays.vertices[(arrays.corners[arrays.faceStart[f]] * 3) + 2];
+}
+
+// A face's corners relative to (x, y, z), and its plane through them -- the
+// form `testPolygonInAxisBox` takes, for a box at the origin.
+function faceLocalPoints(arrays, f, x, y, z) {
+  const points = [];
+  for (let c = arrays.faceStart[f]; c < arrays.faceStart[f + 1]; c += 1) {
+    const v = arrays.corners[c] * 3;
+    points.push([arrays.vertices[v] - x, arrays.vertices[v + 1] - y, arrays.vertices[v + 2] - z]);
+  }
+  return points;
+}
+
+function faceLocalPlane(arrays, f, x, y, z) {
+  const nx = arrays.facePlanes[f * 4];
+  const ny = arrays.facePlanes[(f * 4) + 1];
+  const nz = arrays.facePlanes[(f * 4) + 2];
+  return [nx, ny, nz, arrays.facePlanes[(f * 4) + 3] + (nx * x) + (ny * y) + (nz * z)];
+}
+
+// The same, turned by minus `azimuth` about the point as well, so the box at
+// the origin is a tank's: its length along local X, its width along local Y.
+// Upstream's own comment on `MeshFace::inBox` says why the polygon moves and
+// not the box: "this assumes that it is cheaper to move the polygon".
+function faceTankPoints(arrays, f, x, y, z, cos, sin) {
+  const points = [];
+  for (let c = arrays.faceStart[f]; c < arrays.faceStart[f + 1]; c += 1) {
+    const v = arrays.corners[c] * 3;
+    const dx = arrays.vertices[v] - x;
+    const dy = arrays.vertices[v + 1] - y;
+    points.push([(dx * cos) + (dy * sin), (dy * cos) - (dx * sin), arrays.vertices[v + 2] - z]);
+  }
+  return points;
+}
+
+function faceTankPlane(arrays, f, x, y, z, cos, sin) {
+  const nx = arrays.facePlanes[f * 4];
+  const ny = arrays.facePlanes[(f * 4) + 1];
+  const nz = arrays.facePlanes[(f * 4) + 2];
+  return [
+    (nx * cos) + (ny * sin),
+    (ny * cos) - (nx * sin),
+    nz,
+    arrays.facePlanes[(f * 4) + 3] + (nx * x) + (ny * y) + (nz * z),
+  ];
+}
+
+function meshFaceBlocksDirection(arrays, f, direction, z) {
   if (!direction) return true;
-  const planeY = arrays.facePlanes[(f * 4) + 1];
-  if (Math.abs(planeY) >= MESH_FLAT_PLANE_THRESHOLD) {
+  const up = arrays.facePlanes[(f * 4) + 2];
+  if (Math.abs(up) >= MESH_FLAT_PLANE_THRESHOLD) {
     // Upstream's own pair of tests, which ask what *height* the step began at
     // and never where it is horizontally (World.cxx:335-341):
     //
@@ -534,14 +615,14 @@ function meshFaceBlocksDirection(arrays, f, direction, y) {
     // faces left are the segments' end caps, which face straight back along
     // the walkway. Driving forward then resolves to a fraction of a metre
     // *backwards* every frame.
-    const faceY = arrays.vertices[(arrays.corners[arrays.faceStart[f]] * 3) + 1];
-    const startY = y - direction.y;
-    const goingDown = direction.y <= 0;
-    if (planeY > 0) return goingDown && startY >= faceY - 1e-3;
-    return !goingDown && startY < faceY;
+    const faceZ = faceHeight(arrays, f);
+    const startZ = z - direction.z;
+    const goingDown = direction.z <= 0;
+    if (up > 0) return goingDown && startZ >= faceZ - 1e-3;
+    return !goingDown && startZ < faceZ;
   }
-  const dot = (arrays.facePlanes[f * 4] * direction.x) + (planeY * direction.y)
-    + (arrays.facePlanes[(f * 4) + 2] * direction.z);
+  const dot = (arrays.facePlanes[f * 4] * direction.x) + (arrays.facePlanes[(f * 4) + 1] * direction.y)
+    + (up * direction.z);
   const reach = Math.sqrt((direction.x * direction.x) + (direction.y * direction.y)
     + (direction.z * direction.z));
   return dot < -MESH_GRAZE_TOLERANCE * reach;
@@ -551,8 +632,8 @@ function meshFaceBlocksDirection(arrays, f, direction, y) {
 // is itself `inBox(p, 0, radius, radius, height)` upstream (a square
 // footprint, not a true circle), so that is what this tests too: each face
 // translated into the cylinder's own frame (never rotated -- a cylinder has
-// none), against an axis-aligned box `radius` out on X and Z, `height` tall
-// on Y. `obs.bounds` rejects the whole mesh in one check before any face's
+// none), against an axis-aligned box `radius` out on X and Y, `height` tall
+// on Z. `obs.bounds` rejects the whole mesh in one check before any face's
 // own polygon test runs, the same win a broad-phase octree gives upstream --
 // see `docs/bzw-plan.md`'s "Mesh geometry". `passField` names whichever of a
 // face's own two passability flags this query cares about -- `driveThrough`
@@ -562,12 +643,9 @@ function meshFaceBlocksDirection(arrays, f, direction, y) {
 // through `meshFaceBlocksDirection` -- see its own comment.
 function findMeshHitFace(obs, x, y, z, radius, height, passField = 'driveThrough', direction = null) {
   const { bounds } = obs;
-  if (bounds && (x + radius < bounds.minX || x - radius > bounds.maxX
-    || z + radius < bounds.minZ || z - radius > bounds.maxZ)) {
-    return NO_FACE;
-  }
-  const boxMins = [-radius, 0, -radius];
-  const boxMaxs = [radius, height, radius];
+  if (bounds && outsideBounds(bounds, x, y, radius)) return NO_FACE;
+  const boxMins = [-radius, -radius, 0];
+  const boxMaxs = [radius, radius, height];
   // Read out of the mesh's flat arrays rather than its face objects (issue
   // #153) -- the same planes and corners, at 93 bytes a face instead of 2,134
   // and without touching an object per face on a path that runs over every
@@ -577,22 +655,10 @@ function findMeshHitFace(obs, x, y, z, radius, height, passField = 'driveThrough
   const pass = passField === 'shootThrough' ? FACE_SHOOT_THROUGH : FACE_DRIVE_THROUGH;
   for (let f = 0; f < arrays.faceCount; f += 1) {
     if (!meshFaceHasPlane(arrays, f) || (arrays.faceFlags[f] & pass)) continue;
-    if (!meshFaceBlocksDirection(arrays, f, direction, y)) continue;
-    const start = arrays.faceStart[f];
-    const end = arrays.faceStart[f + 1];
-    const localPoints = [];
-    for (let c = start; c < end; c += 1) {
-      const v = arrays.corners[c] * 3;
-      localPoints.push([
-        arrays.vertices[v] - x, arrays.vertices[v + 1] - y, arrays.vertices[v + 2] - z,
-      ]);
-    }
-    const nx = arrays.facePlanes[f * 4];
-    const ny = arrays.facePlanes[(f * 4) + 1];
-    const nz = arrays.facePlanes[(f * 4) + 2];
-    const localPlane = [nx, ny, nz,
-      arrays.facePlanes[(f * 4) + 3] + (nx * x) + (ny * y) + (nz * z)];
-    if (testPolygonInAxisBox(localPoints, localPlane, boxMins, boxMaxs)) return f;
+    if (!meshFaceBlocksDirection(arrays, f, direction, z)) continue;
+    if (testPolygonInAxisBox(
+      faceLocalPoints(arrays, f, x, y, z), faceLocalPlane(arrays, f, x, y, z), boxMins, boxMaxs,
+    )) return f;
   }
   return NO_FACE;
 }
@@ -615,28 +681,15 @@ function findMeshHitFace(obs, x, y, z, radius, height, passField = 'driveThrough
 // for "which face is under me right now."
 function findMeshFaceAt(obs, x, y, z, radius, height) {
   const { bounds } = obs;
-  if (bounds && (x + radius < bounds.minX || x - radius > bounds.maxX
-    || z + radius < bounds.minZ || z - radius > bounds.maxZ)) {
-    return NO_FACE;
-  }
-  const boxMins = [-radius, 0, -radius];
-  const boxMaxs = [radius, height, radius];
+  if (bounds && outsideBounds(bounds, x, y, radius)) return NO_FACE;
+  const boxMins = [-radius, -radius, 0];
+  const boxMaxs = [radius, radius, height];
   const arrays = meshArrays(obs);
   for (let f = 0; f < arrays.faceCount; f += 1) {
     if (!meshFaceHasPlane(arrays, f)) continue;
-    const localPoints = [];
-    for (let c = arrays.faceStart[f]; c < arrays.faceStart[f + 1]; c += 1) {
-      const v = arrays.corners[c] * 3;
-      localPoints.push([
-        arrays.vertices[v] - x, arrays.vertices[v + 1] - y, arrays.vertices[v + 2] - z,
-      ]);
-    }
-    const nx = arrays.facePlanes[f * 4];
-    const ny = arrays.facePlanes[(f * 4) + 1];
-    const nz = arrays.facePlanes[(f * 4) + 2];
-    const localPlane = [nx, ny, nz,
-      arrays.facePlanes[(f * 4) + 3] + (nx * x) + (ny * y) + (nz * z)];
-    if (testPolygonInAxisBox(localPoints, localPlane, boxMins, boxMaxs)) return f;
+    if (testPolygonInAxisBox(
+      faceLocalPoints(arrays, f, x, y, z), faceLocalPlane(arrays, f, x, y, z), boxMins, boxMaxs,
+    )) return f;
   }
   return NO_FACE;
 }
@@ -672,64 +725,40 @@ function meshIntersectsCylinder(obs, x, y, z, radius, height, passField = 'drive
 
 // The tank box against a mesh, face by face -- `MeshFace::inBox`
 // (MeshFace.cxx:454) with a real `_angle`, rather than the `inCylinder`
-// square it collapses to at zero. Upstream's own comment on why it rotates
-// the polygon rather than the box applies here too ("this assumes that it is
-// cheaper to move the polygon than the box"): each face's own vertices and
-// plane are translated to the tank's position and rotated by its heading, so
-// the box being tested against is the plain axis-aligned one below, aligned
-// with the tank's own lateral (X) and forward (Z) axes rather than the
-// world's. `rotation` is bzo's own tank heading (forward is
-// `(-sin r, -cos r)`, everywhere else in this file too) -- at `rotation`
-// zero that points forward at local -Z, which is why `halfLength` is this
-// box's Z half-extent and `halfWidth` its X one.
+// square it collapses to at zero: each face is moved into the tank's own
+// frame (`faceTankPoints`), where the box is axis-aligned with its length on
+// X and its width on Y.
 function findMeshHitFaceOriented(
-  obs, x, y, z, rotation, halfWidth, halfLength, height, passField = 'driveThrough', direction = null,
+  obs, x, y, z, azimuth, halfWidth, halfLength, height, passField = 'driveThrough', direction = null,
 ) {
   const { bounds } = obs;
   // A circular reject cheap enough to run before any face's own rotation --
   // the tank box's own bounding radius around its centre, so this never
   // rejects a face the precise test below would still have caught.
   const boundingRadius = Math.hypot(halfWidth, halfLength);
-  if (bounds && (x + boundingRadius < bounds.minX || x - boundingRadius > bounds.maxX
-    || z + boundingRadius < bounds.minZ || z - boundingRadius > bounds.maxZ)) {
-    return NO_FACE;
-  }
-  const cos = Math.cos(rotation);
-  const sin = Math.sin(rotation);
-  const boxMins = [-halfWidth, 0, -halfLength];
-  const boxMaxs = [halfWidth, height, halfLength];
+  if (bounds && outsideBounds(bounds, x, y, boundingRadius)) return NO_FACE;
+  const cos = Math.cos(azimuth);
+  const sin = Math.sin(azimuth);
+  const boxMins = [-halfLength, -halfWidth, 0];
+  const boxMaxs = [halfLength, halfWidth, height];
   const arrays = meshArrays(obs);
   const pass = passField === 'shootThrough' ? FACE_SHOOT_THROUGH : FACE_DRIVE_THROUGH;
   for (let f = 0; f < arrays.faceCount; f += 1) {
     if (!meshFaceHasPlane(arrays, f) || (arrays.faceFlags[f] & pass)) continue;
-    if (!meshFaceBlocksDirection(arrays, f, direction, y)) continue;
-    const localPoints = [];
-    for (let c = arrays.faceStart[f]; c < arrays.faceStart[f + 1]; c += 1) {
-      const v = arrays.corners[c] * 3;
-      const dx = arrays.vertices[v] - x;
-      const dz = arrays.vertices[v + 2] - z;
-      localPoints.push([(dx * cos) - (dz * sin), arrays.vertices[v + 1] - y, (dx * sin) + (dz * cos)]);
-    }
-    const nx = arrays.facePlanes[f * 4];
-    const ny = arrays.facePlanes[(f * 4) + 1];
-    const nz = arrays.facePlanes[(f * 4) + 2];
-    const localPlane = [
-      (nx * cos) - (nz * sin),
-      ny,
-      (nx * sin) + (nz * cos),
-      arrays.facePlanes[(f * 4) + 3] + (nx * x) + (ny * y) + (nz * z),
-    ];
-    if (testPolygonInAxisBox(localPoints, localPlane, boxMins, boxMaxs)) return f;
+    if (!meshFaceBlocksDirection(arrays, f, direction, z)) continue;
+    if (testPolygonInAxisBox(
+      faceTankPoints(arrays, f, x, y, z, cos, sin), faceTankPlane(arrays, f, x, y, z, cos, sin), boxMins, boxMaxs,
+    )) return f;
   }
   return NO_FACE;
 }
 
-function meshIntersectsTank(obs, x, y, z, rotation, height, slack = 0, tankScale = null, direction = null) {
+function meshIntersectsTank(obs, x, y, z, azimuth, height, slack = 0, tankScale = null, direction = null) {
   const halfWidth = TANK.halfWidth * (tankScale ? tankScale.width : 1);
   const halfLength = TANK.halfLength * (tankScale ? tankScale.length : 1);
   const trim = Math.max(0, Math.min(slack, halfWidth));
   return findMeshHitFaceOriented(
-    obs, x, y, z, rotation, halfWidth - trim, halfLength - trim, height, 'driveThrough', direction,
+    obs, x, y, z, azimuth, halfWidth - trim, halfLength - trim, height, 'driveThrough', direction,
   ) !== NO_FACE;
 }
 
@@ -740,40 +769,23 @@ function meshIntersectsTank(obs, x, y, z, rotation, height, slack = 0, tankScale
 // to out-rank a *different* mesh's flat top), so this is that function's own
 // loop body with `return` swapped for a push. Appends to `out` and returns it.
 function collectMeshHitFacesTank(
-  obs, x, y, z, rotation, halfWidth, halfLength, height, passField, direction, out,
+  obs, x, y, z, azimuth, halfWidth, halfLength, height, passField, direction, out,
 ) {
   const { bounds } = obs;
   const boundingRadius = Math.hypot(halfWidth, halfLength);
-  if (bounds && (x + boundingRadius < bounds.minX || x - boundingRadius > bounds.maxX
-    || z + boundingRadius < bounds.minZ || z - boundingRadius > bounds.maxZ)) {
-    return out;
-  }
-  const cos = Math.cos(rotation);
-  const sin = Math.sin(rotation);
-  const boxMins = [-halfWidth, 0, -halfLength];
-  const boxMaxs = [halfWidth, height, halfLength];
+  if (bounds && outsideBounds(bounds, x, y, boundingRadius)) return out;
+  const cos = Math.cos(azimuth);
+  const sin = Math.sin(azimuth);
+  const boxMins = [-halfLength, -halfWidth, 0];
+  const boxMaxs = [halfLength, halfWidth, height];
   const arrays = meshArrays(obs);
   const pass = passField === 'shootThrough' ? FACE_SHOOT_THROUGH : FACE_DRIVE_THROUGH;
   for (let f = 0; f < arrays.faceCount; f += 1) {
     if (!meshFaceHasPlane(arrays, f) || (arrays.faceFlags[f] & pass)) continue;
-    if (!meshFaceBlocksDirection(arrays, f, direction, y)) continue;
-    const localPoints = [];
-    for (let c = arrays.faceStart[f]; c < arrays.faceStart[f + 1]; c += 1) {
-      const v = arrays.corners[c] * 3;
-      const dx = arrays.vertices[v] - x;
-      const dz = arrays.vertices[v + 2] - z;
-      localPoints.push([(dx * cos) - (dz * sin), arrays.vertices[v + 1] - y, (dx * sin) + (dz * cos)]);
-    }
-    const nx = arrays.facePlanes[f * 4];
-    const ny = arrays.facePlanes[(f * 4) + 1];
-    const nz = arrays.facePlanes[(f * 4) + 2];
-    const localPlane = [
-      (nx * cos) - (nz * sin),
-      ny,
-      (nx * sin) + (nz * cos),
-      arrays.facePlanes[(f * 4) + 3] + (nx * x) + (ny * y) + (nz * z),
-    ];
-    if (testPolygonInAxisBox(localPoints, localPlane, boxMins, boxMaxs)) out.push({ obs, face: f });
+    if (!meshFaceBlocksDirection(arrays, f, direction, z)) continue;
+    if (testPolygonInAxisBox(
+      faceTankPoints(arrays, f, x, y, z, cos, sin), faceTankPlane(arrays, f, x, y, z, cos, sin), boxMins, boxMaxs,
+    )) out.push({ obs, face: f });
   }
   return out;
 }
@@ -783,30 +795,17 @@ function collectMeshHitFacesTank(
 // `findMeshHitFaceOriented`.
 function collectMeshHitFacesCylinder(obs, x, y, z, radius, height, passField, direction, out) {
   const { bounds } = obs;
-  if (bounds && (x + radius < bounds.minX || x - radius > bounds.maxX
-    || z + radius < bounds.minZ || z - radius > bounds.maxZ)) {
-    return out;
-  }
-  const boxMins = [-radius, 0, -radius];
-  const boxMaxs = [radius, height, radius];
+  if (bounds && outsideBounds(bounds, x, y, radius)) return out;
+  const boxMins = [-radius, -radius, 0];
+  const boxMaxs = [radius, radius, height];
   const arrays = meshArrays(obs);
   const pass = passField === 'shootThrough' ? FACE_SHOOT_THROUGH : FACE_DRIVE_THROUGH;
   for (let f = 0; f < arrays.faceCount; f += 1) {
     if (!meshFaceHasPlane(arrays, f) || (arrays.faceFlags[f] & pass)) continue;
-    if (!meshFaceBlocksDirection(arrays, f, direction, y)) continue;
-    const localPoints = [];
-    for (let c = arrays.faceStart[f]; c < arrays.faceStart[f + 1]; c += 1) {
-      const v = arrays.corners[c] * 3;
-      localPoints.push([
-        arrays.vertices[v] - x, arrays.vertices[v + 1] - y, arrays.vertices[v + 2] - z,
-      ]);
-    }
-    const nx = arrays.facePlanes[f * 4];
-    const ny = arrays.facePlanes[(f * 4) + 1];
-    const nz = arrays.facePlanes[(f * 4) + 2];
-    const localPlane = [nx, ny, nz,
-      arrays.facePlanes[(f * 4) + 3] + (nx * x) + (ny * y) + (nz * z)];
-    if (testPolygonInAxisBox(localPoints, localPlane, boxMins, boxMaxs)) {
+    if (!meshFaceBlocksDirection(arrays, f, direction, z)) continue;
+    if (testPolygonInAxisBox(
+      faceLocalPoints(arrays, f, x, y, z), faceLocalPlane(arrays, f, x, y, z), boxMins, boxMaxs,
+    )) {
       out.push({ obs, face: f });
     }
   }
@@ -839,12 +838,11 @@ function pickPriorityMeshCandidate(candidates, direction) {
     const nx = arrays.facePlanes[f * 4];
     const ny = arrays.facePlanes[(f * 4) + 1];
     const nz = arrays.facePlanes[(f * 4) + 2];
-    const isUp = ny >= MESH_FLAT_PLANE_THRESHOLD;
+    const isUp = nz >= MESH_FLAT_PLANE_THRESHOLD;
     const dot = direction
       ? (direction.x * nx) + (direction.y * ny) + (direction.z * nz)
       : -1;
-    const upHeight = isUp
-      ? arrays.vertices[(arrays.corners[arrays.faceStart[f]] * 3) + 1] : 0;
+    const upHeight = isUp ? faceHeight(arrays, f) : 0;
     return { ...candidate, isUp, dot, upHeight };
   });
   scored.sort((a, b) => {
@@ -879,22 +877,18 @@ function getMeshHitNormal(obs, x, y, z, radius, hitFace = NO_FACE) {
   // `>= 0` and not a truth test: face zero is a real face and a falsy number.
   const f = hitFace >= 0
     ? hitFace : findMeshHitFace(obs, x, y, z, radius, radius, 'shootThrough');
-  if (f === NO_FACE) return { x: 0, y: 1, z: 0 };
+  if (f === NO_FACE) return { x: 0, y: 0, z: 1 };
   const arrays = meshArrays(obs);
-  return {
-    x: arrays.facePlanes[f * 4],
-    y: arrays.facePlanes[(f * 4) + 1],
-    z: arrays.facePlanes[(f * 4) + 2],
-  };
+  return { x: arrays.facePlanes[f * 4], y: arrays.facePlanes[(f * 4) + 1], z: arrays.facePlanes[(f * 4) + 2] };
 }
 
-// A teleporter's frame and the opening inside it. The importer resolves the
-// frame itself into `w`/`d`/`h` before the world goes on the wire, so this
-// derives only the portal, which is the frame minus its border.
+// A teleporter's frame and the opening inside it. The importer grows `size` by
+// the border as `Teleporter::finalize` does, so this derives only the portal,
+// which is the frame minus its border.
 function getShotTeleporterDims(obs) {
-  const halfW = obs.w / 2;
-  const halfD = obs.d / 2;
-  const h = obs.h;
+  const halfW = halfWidthOf(obs);
+  const halfD = halfBreadthOf(obs);
+  const h = obs.size ? obs.size[2] : undefined;
   const border = obs.border;
   return {
     halfW,
@@ -915,12 +909,12 @@ function getShotTeleporterDims(obs) {
 // already drifted: the server tested every inverted pyramid as though it were
 // upright, and its vertical gate carried a slack the client's did not.
 //
-// The occupant is BZFlag's oriented 2.8 x 6.0 tank box (Obstacle::inBox) when a
-// `rotation` is given, and a cylinder of `radius` when it is not -- upstream's
+// The occupant is BZFlag's oriented 2.8 x 6.0 tank box (Obstacle::inBox) when an
+// `azimuth` is given, and a cylinder of `radius` when it is not -- upstream's
 // own split, `inBox` for a tank and `inCylinder` for a projectile. `height`
 // defaults to the radius, which is what the cylinder callers mean by it.
 //
-// `fromY` is where a step began, and it is what makes this Obstacle::inBox or
+// `fromZ` is where a step began, and it is what makes this Obstacle::inBox or
 // Obstacle::inMovingBox: given one, the vertical extent is the span the occupant
 // swept rather than the point it ended at, so a frame long enough to carry a
 // tank through a roof still reports the roof. Pyramids opt out exactly as
@@ -935,20 +929,20 @@ function getShotTeleporterDims(obs) {
 // `phased` is `OO` and a zoned `PZ`: a phased tank is not expelled by what it
 // drives into, so what it passes through is not something this can report.
 function findTankObstacle(obstacles, x, y, z, options = {}) {
-  const rotation = options.rotation;
-  const useTankBox = Number.isFinite(rotation);
+  const azimuth = options.azimuth;
+  const useTankBox = Number.isFinite(azimuth);
   const radius = Number.isFinite(options.radius) ? options.radius : 2;
   const height = Number.isFinite(options.height) ? options.height : radius;
-  const fromY = Number.isFinite(options.fromY) ? options.fromY : y;
+  const fromZ = Number.isFinite(options.fromZ) ? options.fromZ : z;
   const slack = Math.max(0, Math.min(options.slack || 0, radius));
   // The direction this particular query is travelling, for a mesh's own
   // `meshFaceBlocksDirection` filter -- null (always-blocking, upstream's
   // own `!directional`) unless the caller actually knows where it came
   // from. Only meaningful with a real step behind it, so a static "is this
-  // point clear" query (no `fromX`/`fromZ` given) still treats every
-  // touching face as a hit, same as before this existed.
-  const direction = (Number.isFinite(options.fromX) && Number.isFinite(options.fromZ))
-    ? { x: x - options.fromX, y: y - fromY, z: z - options.fromZ }
+  // point clear" query (no `fromX`/`fromY` given) still treats every
+  // touching face as a hit.
+  const direction = (Number.isFinite(options.fromX) && Number.isFinite(options.fromY))
+    ? { x: x - options.fromX, y: y - options.fromY, z: z - fromZ }
     : null;
   const tankScale = options.tankScale || null;
   const phased = options.phased === true;
@@ -989,34 +983,33 @@ function findTankObstacle(obstacles, x, y, z, options = {}) {
     // query's own reach -- can never hit, whatever shape the obstacle
     // actually is, so this runs before any type-specific narrow-phase test
     // below rather than duplicated inside each one.
-    if (obs.bounds && (x + boundsMargin < obs.bounds.minX || x - boundsMargin > obs.bounds.maxX
-      || z + boundsMargin < obs.bounds.minZ || z - boundsMargin > obs.bounds.maxZ)) continue;
+    if (obs.bounds && outsideBounds(obs.bounds, x, y, boundsMargin)) continue;
 
-    const obstacleBase = obs.baseY || 0;
-    const obstacleTop = obstacleBase + getObstacleHeight(obs);
+    const base = obstacleBase(obs);
+    const top = base + getObstacleHeight(obs);
     // A pyramid already tests the candidate height alone rather than sweeping
     // from `fromY`, because its cross-section changes with height and a stale
     // start height answers the wrong question. A teleporter's jamb needs the
     // same treatment for a different reason: it is tall (its active portal
     // spans nearly its own full height) and thin in the horizontal plane it
     // actually needs tunnelling protection on, so sweeping the *vertical* test
-    // from `fromY` buys nothing -- and once a tank is already embedded at some
+    // from `fromZ` buys nothing -- and once a tank is already embedded at some
     // height inside that tall span (jammed against the jamb, still falling),
-    // `fromY` stops being a known-clear starting point and starts being the
-    // stuck one. Every candidate the search then tries still has `fromY` as
+    // `fromZ` stops being a known-clear starting point and starts being the
+    // stuck one. Every candidate the search then tries still has `fromZ` as
     // one end of its swept range, so the sweep always crosses the whole active
     // band regardless of how far the candidate has actually fallen -- nothing
     // is ever "newly clear", and the tank is pinned at that height forever,
     // however much velocity gravity piles on. Testing the candidate alone, as
     // the pyramid already does, lets a tank slide down (or up past) a
     // teleporter's edge exactly as it would off any other obstacle's corner.
-    const spanFromY = (obs.type === 'pyramid' || obs.kind === 'teleporter') ? y : fromY;
+    const spanFromZ = (obs.type === 'pyramid' || obs.kind === 'teleporter') ? z : fromZ;
     if (!movingTankOverlapsHeight(
-      obstacleBase, obstacleTop, spanFromY, y, height, epsilon)) continue;
+      base, top, spanFromZ, z, height, epsilon)) continue;
 
     if (obs.type === 'pyramid') {
       const hits = useTankBox
-        ? pyramidIntersectsTank(obs, x, y, z, rotation, height, slack, tankScale)
+        ? pyramidIntersectsTank(obs, x, y, z, azimuth, height, slack, tankScale)
         : pyramidIntersectsCylinder(obs, x, y, z, radius - slack, height);
       if (hits) return obs;
       continue;
@@ -1028,7 +1021,7 @@ function findTankObstacle(obstacles, x, y, z, options = {}) {
         const halfLength = TANK.halfLength * (tankScale ? tankScale.length : 1);
         const trim = Math.max(0, Math.min(slack, halfWidth));
         collectMeshHitFacesTank(
-          obs, x, y, z, rotation, halfWidth - trim, halfLength - trim, height, 'driveThrough', direction,
+          obs, x, y, z, azimuth, halfWidth - trim, halfLength - trim, height, 'driveThrough', direction,
           meshCandidates,
         );
       } else {
@@ -1037,11 +1030,11 @@ function findTankObstacle(obstacles, x, y, z, options = {}) {
       continue;
     }
 
-    const local = getColliderLocalPoint(x, z, obs);
-    const tankAngle = useTankBox ? getTankLocalAngle(rotation, obs.rotation) : 0;
-    const hitsRect = (rectHalfW, rectHalfD, rectSlack, centerOffsetZ = 0) => (useTankBox
-      ? testOrigRectTank(rectHalfW, rectHalfD, local.x, local.z - centerOffsetZ, tankAngle, rectSlack, tankScale)
-      : testOrigRectCircle(rectHalfW, rectHalfD, local.x, local.z - centerOffsetZ, radius - rectSlack));
+    const local = getColliderLocalPoint(x, y, obs);
+    const tankAngle = useTankBox ? getTankLocalAngle(azimuth, obs.angle) : 0;
+    const hitsRect = (rectHalfW, rectHalfD, rectSlack, centerOffsetY = 0) => (useTankBox
+      ? testOrigRectTank(rectHalfW, rectHalfD, local.x, local.y - centerOffsetY, tankAngle, rectSlack, tankScale)
+      : testOrigRectCircle(rectHalfW, rectHalfD, local.x, local.y - centerOffsetY, radius - rectSlack));
 
     if (obs.kind === 'teleporter') {
       const dims = getShotTeleporterDims(obs);
@@ -1060,19 +1053,19 @@ function findTankObstacle(obstacles, x, y, z, options = {}) {
       const pillarR = dims.border / 2;
       const pillarOffset = dims.halfD - pillarR;
       const overlapsPillarBand = movingTankOverlapsHeight(
-        obstacleBase, obstacleBase + dims.activeH, spanFromY, y, height, epsilon);
+        base, base + dims.activeH, spanFromZ, z, height, epsilon);
       if (overlapsPillarBand && (
         hitsRect(pillarR, pillarR, 0, pillarOffset) || hitsRect(pillarR, pillarR, 0, -pillarOffset)
       )) return obs;
 
       const overlapsHeaderBand = movingTankOverlapsHeight(
-        obstacleBase + dims.activeH, obstacleTop, spanFromY, y, height, epsilon);
+        base + dims.activeH, top, spanFromZ, z, height, epsilon);
       if (overlapsHeaderBand && hitsRect(dims.halfW, dims.halfD, 0)) return obs;
 
       continue;
     }
 
-    if (hitsRect(obs.w / 2, obs.d / 2, slack)) return obs;
+    if (hitsRect(halfWidthOf(obs), halfBreadthOf(obs), slack)) return obs;
   }
   return pickPriorityMeshFace(meshCandidates, direction);
 }
@@ -1095,17 +1088,16 @@ function findTankObstacle(obstacles, x, y, z, options = {}) {
 function findPhysicsSurfaceObstacle(obstacles, x, y, z, radius = 2, height = 2) {
   for (const obs of obstacles) {
     if (!obs) continue;
-    if (obs.bounds && (x + radius < obs.bounds.minX || x - radius > obs.bounds.maxX
-      || z + radius < obs.bounds.minZ || z - radius > obs.bounds.maxZ)) continue;
+    if (obs.bounds && outsideBounds(obs.bounds, x, y, radius)) continue;
 
     if (obs.type === 'mesh') {
       if (findMeshFaceAt(obs, x, y, z, radius, height)) return obs;
       continue;
     }
 
-    const obstacleBase = obs.baseY || 0;
-    const obstacleTop = obstacleBase + getObstacleHeight(obs);
-    if (obstacleBase > y + height || obstacleTop < y) continue;
+    const base = obstacleBase(obs);
+    const top = base + getObstacleHeight(obs);
+    if (base > z + height || top < z) continue;
 
     if (obs.type === 'pyramid') {
       if (pyramidIntersectsCylinder(obs, x, y, z, radius, height)) return obs;
@@ -1113,8 +1105,8 @@ function findPhysicsSurfaceObstacle(obstacles, x, y, z, radius = 2, height = 2) 
     }
     if (obs.kind === 'teleporter' || obs.kind === 'base') continue;
 
-    const local = getColliderLocalPoint(x, z, obs);
-    if (testOrigRectCircle(obs.w / 2, obs.d / 2, local.x, local.z, radius)) return obs;
+    const local = getColliderLocalPoint(x, y, obs);
+    if (testOrigRectCircle(halfWidthOf(obs), halfBreadthOf(obs), local.x, local.y, radius)) return obs;
   }
   return null;
 }
@@ -1122,8 +1114,8 @@ function findPhysicsSurfaceObstacle(obstacles, x, y, z, radius = 2, height = 2) 
 // BaseBuilding, as World::whoseBase reads it (World.cxx:181). A base's top
 // surface is what counts: a tank captures by standing on it, not by driving
 // past its side.
-function getBaseTopY(obs) {
-  return (obs.baseY || 0) + (obs.h || 0);
+function getBaseTop(obs) {
+  return obstacleBase(obs) + ((obs.size && obs.size[2]) || 0);
 }
 
 // True when (x, y, z) is on this base's top face. Upstream tests the rotated
@@ -1132,10 +1124,10 @@ function getBaseTopY(obs) {
 const BASE_TOP_TOLERANCE = 0.1;
 
 function isOnBaseTop(obs, x, y, z) {
-  const { x: localX, z: localZ } = getColliderLocalPoint(x, z, obs);
-  if (Math.abs(localX) >= obs.w / 2) return false;
-  if (Math.abs(localZ) >= obs.d / 2) return false;
-  return Math.abs(y - getBaseTopY(obs)) < BASE_TOP_TOLERANCE;
+  const { x: localX, y: localY } = getColliderLocalPoint(x, y, obs);
+  if (Math.abs(localX) >= halfWidthOf(obs)) return false;
+  if (Math.abs(localY) >= halfBreadthOf(obs)) return false;
+  return Math.abs(z - getBaseTop(obs)) < BASE_TOP_TOLERANCE;
 }
 
 // Which team's base a point is standing on, as its BZFlag colour index, or null
@@ -1149,7 +1141,7 @@ function getBaseTeamAtPoint(obstacles, x, y, z) {
 }
 
 // MeshFace::isUpPlane's own threshold (MeshFace.cxx: `(fabsf(plane[2]) + fudge)
-// >= 1.0f`, upstream's Z being bzo's Y) -- a face this close to horizontal, and
+// >= 1.0f`) -- a face this close to horizontal, and
 // no closer, counts as a real flat top rather than a steep roof someone could
 // still stand near the peak of.
 const MESH_FLAT_TOP_MIN_UP = 1 - 1e-4;
@@ -1160,10 +1152,10 @@ const MESH_FLAT_TOP_MIN_UP = 1 - 1e-4;
 // the collision manager's ray test already hands back individual faces. bzo
 // has no per-face ray test to reuse here, so this walks every face itself and
 // asks the same two questions upstream's ray hit would have answered for it:
-// pointing up, and standing under (x, z). The point-in-polygon test reuses
+// pointing up, and standing under (x, y). The point-in-polygon test reuses
 // `testPolygonInAxisBox` with a box shrunk to a fleck -- the same call
 // `findMeshFaceAt` makes for a real occupant, just with no size of its own.
-// Every flat top this mesh presents over (x, z), as heights, highest last is not
+// Every flat top this mesh presents over (x, y), as heights, highest last is not
 // promised -- the caller sorts for the direction it is searching.
 //
 // Upstream never needs this: each mesh face is its own collision obstacle there
@@ -1173,61 +1165,45 @@ const MESH_FLAT_TOP_MIN_UP = 1 - 1e-4;
 // where the same expression gives the top of the entire object -- a mountain
 // peak rather than the ground you are standing on -- so the per-face heights
 // are gathered here instead and the caller picks among them as `dropIt` does.
-function meshFlatTopYsAt(obs, x, z) {
+function meshFlatTopsAt(obs, x, y) {
   const { bounds } = obs;
-  if (!bounds || x < bounds.minX || x > bounds.maxX || z < bounds.minZ || z > bounds.maxZ) {
-    return [];
-  }
+  if (!bounds || outsideBounds(bounds, x, y, 0)) return [];
   const speck = 1e-3;
   const tops = [];
   const arrays = meshArrays(obs);
   for (let f = 0; f < arrays.faceCount; f += 1) {
-    const ny = arrays.facePlanes[(f * 4) + 1];
-    if (!meshFaceHasPlane(arrays, f) || ny < MESH_FLAT_TOP_MIN_UP) continue;
-    const start = arrays.faceStart[f];
-    const end = arrays.faceStart[f + 1];
+    if (!meshFaceHasPlane(arrays, f) || arrays.facePlanes[(f * 4) + 2] < MESH_FLAT_TOP_MIN_UP) continue;
     // An up-plane is horizontal to within the same fudge at both ends, so every
     // vertex of one shares a height and the first is the face's own.
-    const y = arrays.vertices[(arrays.corners[start] * 3) + 1];
-    const localPoints = [];
-    for (let c = start; c < end; c += 1) {
-      const v = arrays.corners[c] * 3;
-      localPoints.push([
-        arrays.vertices[v] - x, arrays.vertices[v + 1] - y, arrays.vertices[v + 2] - z,
-      ]);
-    }
-    const nx = arrays.facePlanes[f * 4];
-    const nz = arrays.facePlanes[(f * 4) + 2];
-    const localPlane = [nx, ny, nz,
-      arrays.facePlanes[(f * 4) + 3] + (nx * x) + (ny * y) + (nz * z)];
+    const z = faceHeight(arrays, f);
     if (testPolygonInAxisBox(
-      localPoints,
-      localPlane,
+      faceLocalPoints(arrays, f, x, y, z),
+      faceLocalPlane(arrays, f, x, y, z),
       [-speck, -speck, -speck],
       [speck, speck, speck],
     )) {
-      tops.push(y);
+      tops.push(z);
     }
   }
   return tops;
 }
 // Whether any of them exists, which is all a footprint test needs.
-function isOverMeshFlatTopAt(obs, x, z) {
-  return meshFlatTopYsAt(obs, x, z).length > 0;
+function isOverMeshFlatTopAt(obs, x, y) {
+  return meshFlatTopsAt(obs, x, y).length > 0;
 }
 
 // The footprint test a flag drop uses, with no radius: DropGeometry gives a team
 // flag a radius of 0, so only the point itself has to be over the surface.
-function isOverFlatTop(obs, x, z) {
+function isOverFlatTop(obs, x, y) {
   if (obs.type === 'mesh') {
-    return isOverMeshFlatTopAt(obs, x, z);
+    return isOverMeshFlatTopAt(obs, x, y);
   }
   if (obs.type === 'pyramid') {
     if (!isPyramidFlatTop(obs)) return false;
-    return isWithinPyramidFootprint(obs, x, z);
+    return isWithinPyramidFootprint(obs, x, y);
   }
-  const { x: localX, z: localZ } = getColliderLocalPoint(x, z, obs);
-  return Math.abs(localX) < obs.w / 2 && Math.abs(localZ) < obs.d / 2;
+  const { x: localX, y: localY } = getColliderLocalPoint(x, y, obs);
+  return Math.abs(localX) < halfWidthOf(obs) && Math.abs(localY) < halfBreadthOf(obs);
 }
 
 // --- Swept motion -----------------------------------------------------------
@@ -1244,11 +1220,11 @@ function isOverFlatTop(obs, x, z) {
 //
 // `epsilon` is the caller's own vertical tolerance, so an occupant resting
 // exactly on a surface reads as on it rather than in it, as the point test does.
-function movingTankOverlapsHeight(obstacleBase, obstacleTop, fromY, toY, tankHeight, epsilon) {
-  const lowY = fromY < toY ? fromY : toY;
-  const highY = fromY < toY ? toY : fromY;
-  if (lowY >= obstacleTop - epsilon) return false;
-  if (highY + tankHeight <= obstacleBase + epsilon) return false;
+function movingTankOverlapsHeight(obstacleBottom, obstacleTop, fromZ, toZ, tankHeight, epsilon) {
+  const lowZ = fromZ < toZ ? fromZ : toZ;
+  const highZ = fromZ < toZ ? toZ : fromZ;
+  if (lowZ >= obstacleTop - epsilon) return false;
+  if (highZ + tankHeight <= obstacleBottom + epsilon) return false;
   return true;
 }
 
@@ -1261,8 +1237,8 @@ function movingTankOverlapsHeight(obstacleBase, obstacleTop, fromY, toY, tankHei
 // So a landing is a question about which plane the step crossed, not about how
 // near the top it started: a step beginning at or above the top and ending
 // below it landed on it, however far it fell.
-function crossedFlatTop(obstacleTop, fromY, toY) {
-  return fromY >= obstacleTop && toY < obstacleTop;
+function crossedFlatTop(obstacleTop, fromZ, toZ) {
+  return fromZ >= obstacleTop && toZ < obstacleTop;
 }
 
 // --- Phasing ----------------------------------------------------------------
@@ -1293,17 +1269,17 @@ function phasedObstacleExpels(obs, reversingOnGround = false) {
 // already in the obstacle's local frame. `testRectInRect` (Intersect.cxx), and
 // the reason a tank swallowed whole by a building gets no lights: every corner
 // is inside, so there is no wall for the effect to hang off.
-function tankRectInsideOrigRect(halfW, halfD, localX, localZ, tankAngle, tankScale = null) {
+function tankRectInsideOrigRect(halfW, halfD, localX, localY, tankAngle, tankScale = null) {
   const halfWidth = TANK.halfWidth * (tankScale ? tankScale.width : 1);
   const halfLength = TANK.halfLength * (tankScale ? tankScale.length : 1);
   const cos = Math.cos(tankAngle);
   const sin = Math.sin(tankAngle);
-  for (const [sw, sl] of [[1, 1], [1, -1], [-1, -1], [-1, 1]]) {
-    const cornerW = sw * halfWidth;
+  for (const [sl, sw] of [[1, 1], [1, -1], [-1, -1], [-1, 1]]) {
     const cornerL = sl * halfLength;
-    const cx = localX + cos * cornerW - sin * cornerL;
-    const cz = localZ + sin * cornerW + cos * cornerL;
-    if (Math.abs(cx) > halfW || Math.abs(cz) > halfD) return false;
+    const cornerW = sw * halfWidth;
+    const cx = localX + cos * cornerL - sin * cornerW;
+    const cy = localY + sin * cornerL + cos * cornerW;
+    if (Math.abs(cx) > halfW || Math.abs(cy) > halfD) return false;
   }
   return true;
 }
@@ -1319,7 +1295,8 @@ function tankRectInsideOrigRect(halfW, halfD, localX, localZ, tankAngle, tankSca
 // lights appear on the way in, vanish in the middle of a thick building and
 // appear again on the way out.
 //
-// The returned plane is `nx*x + ny*y + nz*z + d`, unit-length and signed
+// The returned plane is `nx*x + ny*y + nz*z + d` in upstream's frame,
+// unit-length and signed
 // positive on the *outside*: the tank's visible half is the positive one and
 // the half buried in the building is what a clip plane cuts away.
 //
@@ -1328,32 +1305,32 @@ function tankRectInsideOrigRect(halfW, halfD, localX, localZ, tankAngle, tankSca
 // wrong only for a tank straddling a corner, where either wall is defensible.
 // Kept as a guess deliberately, because the effect it feeds is decoration and
 // the careful test would be paid for by every phasing tank every frame.
-function getBoxCrossingPlane(obs, x, y, z, rotation, tankScale = null) {
+function getBoxCrossingPlane(obs, x, y, z, azimuth, tankScale = null) {
   if (!obs) return null;
-  const base = obs.baseY || 0;
+  const base = obstacleBase(obs);
   const height = getObstacleHeight(obs);
   // inBox's height term. A tank clear of the obstacle vertically is not in it,
   // whatever its footprint says -- this is what stops a tank driving over a
   // low wall from wearing lights.
-  if (y >= base + height || y + TANK.height <= base) return null;
+  if (z >= base + height || z + TANK.height <= base) return null;
 
-  const halfW = obs.w / 2;
-  const halfD = obs.d / 2;
-  const local = getColliderLocalPoint(x, z, obs);
-  const tankAngle = getTankLocalAngle(rotation, obs.rotation);
-  if (!testOrigRectTank(halfW, halfD, local.x, local.z, tankAngle, 0, tankScale)) return null;
-  if (tankRectInsideOrigRect(halfW, halfD, local.x, local.z, tankAngle, tankScale)) return null;
+  const halfW = halfWidthOf(obs);
+  const halfD = halfBreadthOf(obs);
+  const local = getColliderLocalPoint(x, y, obs);
+  const tankAngle = getTankLocalAngle(azimuth, obs.angle);
+  if (!testOrigRectTank(halfW, halfD, local.x, local.y, tankAngle, 0, tankScale)) return null;
+  if (tankRectInsideOrigRect(halfW, halfD, local.x, local.y, tankAngle, tankScale)) return null;
 
   // The nearer wall, measured from the centre to each face. Local, so the two
-  // candidates are the local x and z axes and the sign picks which of the pair.
+  // candidates are the local x and y axes and the sign picks which of the pair.
   let localNormalX = 0;
-  let localNormalZ = 0;
+  let localNormalY = 0;
   let reach = 0;
-  if (Math.abs(Math.abs(local.x) - halfW) < Math.abs(Math.abs(local.z) - halfD)) {
+  if (Math.abs(Math.abs(local.x) - halfW) < Math.abs(Math.abs(local.y) - halfD)) {
     localNormalX = local.x < 0 ? -1 : 1;
     reach = halfW;
   } else {
-    localNormalZ = local.z < 0 ? -1 : 1;
+    localNormalY = local.y < 0 ? -1 : 1;
     reach = halfD;
   }
 
@@ -1361,26 +1338,27 @@ function getBoxCrossingPlane(obs, x, y, z, rotation, tankScale = null) {
   // `plane[2] = h * getWidth()` with `h = 1/hypot(height, width)`, and its own
   // FIXME that this assumes a square base -- so a pyramid with w != d gets a
   // plane at the wrong angle here exactly as it does upstream.
-  let normalY = 0;
+  let normalZ = 0;
   let scale = 1;
   if (obs.type === 'pyramid' && height > 0) {
     // Upstream's `getWidth()` is the half-extent -- `pw = position + getWidth()
     // * normal` is a point on the wall -- so this reads halfW, not the span.
     const h = 1 / Math.hypot(height, halfW);
-    normalY = h * halfW;
+    normalZ = h * halfW;
     scale = h * height;
   }
   // rotateNormalToWorld normalises, so this is the wall's unit outward
   // direction whatever length goes in; `reach` turns it back into a distance.
-  const normal = rotateNormalToWorld(obs, localNormalX, 0, localNormalZ);
+  const normal = rotateNormalToWorld(obs, localNormalX, localNormalY, 0);
   const nx = normal.x * scale;
-  const nz = normal.z * scale;
+  const ny = normal.y * scale;
   // Through the point on the wall. `d` uses only the horizontal components
   // because that point has no height of its own, which is upstream's
   // arithmetic even where the plane is tilted.
-  const pointX = obs.x + normal.x * reach;
-  const pointZ = obs.z + normal.z * reach;
-  return { x: nx, y: normalY, z: nz, d: -(nx * pointX + nz * pointZ) };
+  const pos = obstaclePos(obs);
+  const pointX = pos[0] + normal.x * reach;
+  const pointY = pos[1] + normal.y * reach;
+  return { x: nx, y: ny, z: normalZ, d: -(nx * pointX + ny * pointY) };
 }
 
 // `getBoxCrossingPlane`'s own guess, generalized to a mesh (#77): a box or a
@@ -1394,7 +1372,7 @@ function getBoxCrossingPlane(obs, x, y, z, rotation, tankScale = null) {
 // because it is the same convention `meshFaceBlocksDirection` already needs
 // to tell a solid face's front from its back, so nothing here has to rebuild
 // it.
-function getMeshCrossingPlane(obs, x, y, z, rotation, tankScale = null) {
+function getMeshCrossingPlane(obs, x, y, z, azimuth, tankScale = null) {
   if (!obs) return null;
   const halfWidth = TANK.halfWidth * (tankScale ? tankScale.width : 1);
   const halfLength = TANK.halfLength * (tankScale ? tankScale.length : 1);
@@ -1413,17 +1391,17 @@ function getMeshCrossingPlane(obs, x, y, z, rotation, tankScale = null) {
   // long as it is inside, so the wall it is genuinely half-through is never
   // the first face hit.
   const hits = collectMeshHitFacesTank(
-    obs, x, y, z, rotation, halfWidth, halfLength, TANK.height, 'driveThrough', null, [],
+    obs, x, y, z, azimuth, halfWidth, halfLength, TANK.height, 'driveThrough', null, [],
   );
   if (!hits.length) return null;
 
-  const cos = Math.cos(rotation);
-  const sin = Math.sin(rotation);
+  const cos = Math.cos(azimuth);
+  const sin = Math.sin(azimuth);
   const corners = [];
-  for (const [sw, sl] of [[1, 1], [1, -1], [-1, -1], [-1, 1]]) {
-    const cornerW = sw * halfWidth;
+  for (const [sl, sw] of [[1, 1], [1, -1], [-1, -1], [-1, 1]]) {
     const cornerL = sl * halfLength;
-    corners.push([x + cos * cornerW - sin * cornerL, z + sin * cornerW + cos * cornerL]);
+    const cornerW = sw * halfWidth;
+    corners.push([x + cos * cornerL - sin * cornerW, y + sin * cornerL + cos * cornerW]);
   }
 
   const arrays = meshArrays(obs);
@@ -1436,10 +1414,10 @@ function getMeshCrossingPlane(obs, x, y, z, rotation, tankScale = null) {
     // `ZERO_TOLERANCE` and not `0` for the same reason the shot code uses it:
     // a corner sitting exactly on the face is on it, not out through it, and
     // a tank's feet are exactly on the floor it is standing on.
-    for (const [cx, cz] of corners) {
-      const horizontal = nx * cx + nz * cz + d;
-      if (horizontal + ny * y > ZERO_TOLERANCE
-        || horizontal + ny * (y + TANK.height) > ZERO_TOLERANCE) {
+    for (const [cx, cy] of corners) {
+      const horizontal = nx * cx + ny * cy + d;
+      if (horizontal + nz * z > ZERO_TOLERANCE
+        || horizontal + nz * (z + TANK.height) > ZERO_TOLERANCE) {
         return { x: nx, y: ny, z: nz, d };
       }
     }
@@ -1492,15 +1470,15 @@ const MAX_SHOT_BOUNCES_PER_STEP = 4;
 // same face pass after pass rather than actually leaving it (#93).
 const SHOT_BOUNCE_CLEARANCE = SHOT_COLLISION_RADIUS * 4;
 
-// An obstacle-local normal in world space, normalized. The rotation is the
-// inverse of getColliderLocalPoint's, so the sign follows the same reasoning.
+// An obstacle-local normal in world space, normalized: getColliderLocalPoint's
+// turn undone.
 function rotateNormalToWorld(obs, localX, localY, localZ) {
-  const cos = Math.cos(obs.rotation);
-  const sin = Math.sin(obs.rotation);
-  const worldX = localX * cos + localZ * sin;
-  const worldZ = -localX * sin + localZ * cos;
-  const length = Math.hypot(worldX, localY, worldZ) || 1;
-  return { x: worldX / length, y: localY / length, z: worldZ / length };
+  const cos = Math.cos(obs.angle);
+  const sin = Math.sin(obs.angle);
+  const worldX = localX * cos - localY * sin;
+  const worldY = localX * sin + localY * cos;
+  const length = Math.hypot(worldX, worldY, localZ) || 1;
+  return { x: worldX / length, y: worldY / length, z: localZ / length };
 }
 
 // True when a shot centred at (x, y, z) is inside this obstacle's solid volume.
@@ -1511,15 +1489,15 @@ function shotInsideObstacle(obs, x, y, z, radius) {
   if (obs.type === 'mesh') {
     return meshIntersectsCylinder(obs, x, y, z, radius, radius, 'shootThrough');
   }
-  const base = obs.baseY || 0;
+  const base = obstacleBase(obs);
   const top = base + getObstacleHeight(obs);
-  if (y + radius <= base + SHOT_VERTICAL_EPSILON) return false;
-  if (y >= top - SHOT_VERTICAL_EPSILON) return false;
+  if (z + radius <= base + SHOT_VERTICAL_EPSILON) return false;
+  if (z >= top - SHOT_VERTICAL_EPSILON) return false;
   if (obs.type === 'pyramid') {
     return pyramidIntersectsCylinder(obs, x, y, z, radius, radius);
   }
-  const local = getColliderLocalPoint(x, z, obs);
-  return testOrigRectCircle(obs.w / 2, obs.d / 2, local.x, local.z, radius);
+  const local = getColliderLocalPoint(x, y, obs);
+  return testOrigRectCircle(halfWidthOf(obs), halfBreadthOf(obs), local.x, local.y, radius);
 }
 
 // The obstacle a shot is inside, or null. Teleporters are never consulted here:
@@ -1550,11 +1528,11 @@ function findShotObstacle(obstacles, x, y, z, radius) {
 // the rest of the flight instead of registering the real crossing a step or
 // two later (#94).
 function shotExactlyInsideBox(obs, x, y, z) {
-  const base = obs.baseY || 0;
+  const base = obstacleBase(obs);
   const top = base + getObstacleHeight(obs);
-  if (y < base || y > top) return false;
-  const local = getColliderLocalPoint(x, z, obs);
-  return Math.abs(local.x) <= obs.w / 2 && Math.abs(local.z) <= obs.d / 2;
+  if (z < base || z > top) return false;
+  const local = getColliderLocalPoint(x, y, obs);
+  return Math.abs(local.x) <= halfWidthOf(obs) && Math.abs(local.y) <= halfBreadthOf(obs);
 }
 
 // The obstacle a shot's plain position (no radius) has to already be inside
@@ -1589,7 +1567,7 @@ function findShotEmbeddedObstacle(obstacles, x, y, z, radius) {
 // normal a bare ray would never actually meet at all, since
 // `timeRayHitsOrigBox` always resolves to exactly one axis (#94).
 //
-// The side (x/z) faces and the top/bottom planes are both tested, same as
+// The side (x/y) faces and the top/bottom planes are both tested, same as
 // upstream's own `timeRayHitsOrigBox` tests all three axes -- a box stacked
 // on, or under, another (a step, a raised platform, a floating ledge) needs
 // the roof and floor answered exactly too, not just the walls, or a shot
@@ -1606,9 +1584,9 @@ function findShotEmbeddedObstacle(obstacles, x, y, z, radius) {
 // on its way toward, still several segments off, is not a hit yet) -- which
 // leaves the occupant-cylinder bisection to answer instead.
 function exactBoxShotHit(obs, fromX, fromY, fromZ, toX, toY, toZ) {
-  const halfW = obs.w / 2;
-  const halfD = obs.d / 2;
-  const base = obs.baseY || 0;
+  const halfW = halfWidthOf(obs);
+  const halfD = halfBreadthOf(obs);
+  const base = obstacleBase(obs);
   const top = base + getObstacleHeight(obs);
   const vx = toX - fromX;
   const vy = toY - fromY;
@@ -1616,20 +1594,20 @@ function exactBoxShotHit(obs, fromX, fromY, fromZ, toX, toY, toZ) {
 
   let best = null;
 
-  const side = timeAndSideRayHitsRect(fromX, fromZ, vx, vz, obs, halfW, halfD);
+  const side = timeAndSideRayHitsRect(fromX, fromY, vx, vy, obs, halfW, halfD);
   if (side.side >= 0 && side.t <= 1) {
-    const y = fromY + (vy * side.t);
-    if (y >= base && y <= top) best = { fraction: side.t, face: side.side };
+    const z = fromZ + (vz * side.t);
+    if (z >= base && z <= top) best = { fraction: side.t, face: side.side };
   }
 
   let verticalT = -1;
-  if (fromY > top && vy < 0) verticalT = (top - fromY) / vy;
-  else if (fromY < base && vy > 0) verticalT = (base - fromY) / vy;
+  if (fromZ > top && vz < 0) verticalT = (top - fromZ) / vz;
+  else if (fromZ < base && vz > 0) verticalT = (base - fromZ) / vz;
   if (verticalT >= 0 && verticalT <= 1 && (!best || verticalT < best.fraction)) {
-    const local = getColliderLocalPoint(fromX + (vx * verticalT), fromZ + (vz * verticalT), obs);
-    if (Math.abs(local.x) <= halfW && Math.abs(local.z) <= halfD) {
+    const local = getColliderLocalPoint(fromX + (vx * verticalT), fromY + (vy * verticalT), obs);
+    if (Math.abs(local.x) <= halfW && Math.abs(local.y) <= halfD) {
       // `getShotObstacleNormal`'s own top/bottom check reads the hit point's
-      // `y` before it ever looks at `face`, so a roof or floor crossing needs
+      // `z` before it ever looks at `face`, so a roof or floor crossing needs
       // no face of its own here -- the fraction alone is enough to answer it.
       best = { fraction: verticalT, face: null };
     }
@@ -1844,14 +1822,14 @@ function findMeshRayImpact(obstacles, fromX, fromY, fromZ, toX, toY, toZ, radius
 // every obstacle reaching here is a box, a pyramid, a base or the world
 // border, all real solids with an actual bounding box to clip against.
 function getShotObstacleInterval(obs, from, to, radius) {
-  const base = obs.baseY || 0;
+  const base = obstacleBase(obs);
   const top = base + getObstacleHeight(obs);
   const lowest = base + SHOT_VERTICAL_EPSILON - radius;
   const highest = top - SHOT_VERTICAL_EPSILON;
   if (highest <= lowest) return null;
 
-  const start = getColliderLocalPoint(from.x, from.z, obs);
-  const end = getColliderLocalPoint(to.x, to.z, obs);
+  const start = getColliderLocalPoint(from.x, from.y, obs);
+  const end = getColliderLocalPoint(to.x, to.y, obs);
   let tMin = 0;
   let tMax = 1;
 
@@ -1870,9 +1848,9 @@ function getShotObstacleInterval(obs, from, to, radius) {
     return tMin <= tMax;
   };
 
-  if (!clip(start.x, end.x, -((obs.w / 2) + radius), (obs.w / 2) + radius)) return null;
-  if (!clip(start.z, end.z, -((obs.d / 2) + radius), (obs.d / 2) + radius)) return null;
-  if (!clip(from.y, to.y, lowest, highest)) return null;
+  if (!clip(start.x, end.x, -(halfWidthOf(obs) + radius), halfWidthOf(obs) + radius)) return null;
+  if (!clip(start.y, end.y, -(halfBreadthOf(obs) + radius), halfBreadthOf(obs) + radius)) return null;
+  if (!clip(from.z, to.z, lowest, highest)) return null;
   if (tMax < 0 || tMin > 1) return null;
   return { tMin: Math.max(0, tMin), tMax: Math.min(1, tMax) };
 }
@@ -1999,12 +1977,12 @@ function getShotObstacleNormal(obs, x, y, z, radius, hitFace = NO_FACE) {
     const dims = getShotTeleporterDims(obs);
     const pillarR = dims.border / 2;
     const pillarOffset = dims.halfD - pillarR;
-    const local = getColliderLocalPoint(x, z, obs);
-    const offsetZ = local.z >= 0 ? pillarOffset : -pillarOffset;
-    return getSideNormal(obs, x, z, null, pillarR, pillarR, offsetZ);
+    const local = getColliderLocalPoint(x, y, obs);
+    const offsetY = local.y >= 0 ? pillarOffset : -pillarOffset;
+    return getSideNormal(obs, x, y, null, pillarR, pillarR, offsetY);
   }
 
-  const base = obs.baseY || 0;
+  const base = obstacleBase(obs);
   const top = base + getObstacleHeight(obs);
 
   if (obs.type === 'pyramid') {
@@ -2012,8 +1990,8 @@ function getShotObstacleNormal(obs, x, y, z, radius, hitFace = NO_FACE) {
     // of an upright pyramid, the top of a flipped one -- before angling the
     // normal by the slope of the wall.
     const flip = isPyramidFlatTop(obs);
-    if (pyramidShrinkFactor(obs, y, radius) >= 1 - ZERO_TOLERANCE) {
-      return { x: 0, y: flip ? 1 : -1, z: 0 };
+    if (pyramidShrinkFactor(obs, z, radius) >= 1 - ZERO_TOLERANCE) {
+      return { x: 0, y: 0, z: flip ? 1 : -1 };
     }
     const face = getPyramidFaceLocalNormal(obs, x, y, z, radius);
     return rotateNormalToWorld(obs, face.x, face.y, face.z);
@@ -2021,8 +1999,8 @@ function getShotObstacleNormal(obs, x, y, z, radius, hitFace = NO_FACE) {
 
   // BoxBuilding::get3DNormal names the top and the bottom before falling
   // through to the side.
-  if (y >= top - SHOT_VERTICAL_EPSILON) return { x: 0, y: 1, z: 0 };
-  if (y + radius <= base + SHOT_VERTICAL_EPSILON) return { x: 0, y: -1, z: 0 };
+  if (z >= top - SHOT_VERTICAL_EPSILON) return { x: 0, y: 0, z: 1 };
+  if (z + radius <= base + SHOT_VERTICAL_EPSILON) return { x: 0, y: 0, z: -1 };
   // `hitFace`, when the caller already ran `exactBoxShotHit`'s bare-ray test,
   // names the one real face upstream would have hit. Without it (a caller
   // that never had a `from`/`to` to test, such as the debug outline's static
@@ -2033,22 +2011,22 @@ function getShotObstacleNormal(obs, x, y, z, radius, hitFace = NO_FACE) {
   // shot off a quarter-turn that is not there.
   if (Number.isInteger(hitFace) && hitFace >= 0) {
     const theta = hitFace * (Math.PI / 2);
-    return rotateNormalToWorld(obs, Math.cos(theta), 0, Math.sin(theta));
+    return rotateNormalToWorld(obs, Math.cos(theta), Math.sin(theta), 0);
   }
-  const local = getColliderLocalPoint(x, z, obs);
-  const side = getOrigRectNormal(obs.w / 2, obs.d / 2, local.x, local.z);
-  return rotateNormalToWorld(obs, side.x, 0, side.z);
+  const local = getColliderLocalPoint(x, y, obs);
+  const side = getOrigRectNormal(halfWidthOf(obs), halfBreadthOf(obs), local.x, local.y);
+  return rotateNormalToWorld(obs, side.x, side.y, 0);
 }
 
 const SWEPT_TANK_CORNERS = [[1, 1], [1, -1], [-1, -1], [-1, 1]];
 
 // Ported from Intersect.cxx timeAndSideRayHitsOrigRect: where a ray starting
-// at (px, pz) with direction (vx, vz) first crosses the axis-aligned
+// at (px, py) with direction (vx, vy) first crosses the axis-aligned
 // rectangle of half-extents (halfW, halfD) centred at the origin. `side` is
-// -1 (never crosses), -2 (already inside, t 0), or 0/1/2/3 for the +x/+z/-x/-z
+// -1 (never crosses), -2 (already inside, t 0), or 0/1/2/3 for the +x/+y/-x/-y
 // face -- the same face order getOrigRectNormal's axis-aligned cases use.
-function timeAndSideRayHitsOrigRect(px, pz, vx, vz, halfW, halfD) {
-  if (Math.abs(px) <= halfW && Math.abs(pz) <= halfD) return { t: 0, side: -2 };
+function timeAndSideRayHitsOrigRect(px, py, vx, vy, halfW, halfD) {
+  if (Math.abs(px) <= halfW && Math.abs(py) <= halfD) return { t: 0, side: -2 };
 
   let tx;
   if (px > halfW) {
@@ -2061,22 +2039,22 @@ function timeAndSideRayHitsOrigRect(px, pz, vx, vz, halfW, halfD) {
     tx = -1;
   }
 
-  let tz;
-  if (pz > halfD) {
-    if (vz >= 0) return { t: -1, side: -1 };
-    tz = (halfD - pz) / vz;
-  } else if (pz < -halfD) {
-    if (vz <= 0) return { t: -1, side: -1 };
-    tz = -(halfD + pz) / vz;
+  let ty;
+  if (py > halfD) {
+    if (vy >= 0) return { t: -1, side: -1 };
+    ty = (halfD - py) / vy;
+  } else if (py < -halfD) {
+    if (vy <= 0) return { t: -1, side: -1 };
+    ty = -(halfD + py) / vy;
   } else {
-    tz = -1;
+    ty = -1;
   }
 
-  if (Math.abs(pz + tx * vz) > halfD) tx = -1;
-  if (Math.abs(px + tz * vx) > halfW) tz = -1;
-  if (tx < 0 && tz < 0) return { t: -1, side: -1 };
+  if (Math.abs(py + tx * vy) > halfD) tx = -1;
+  if (Math.abs(px + ty * vx) > halfW) ty = -1;
+  if (tx < 0 && ty < 0) return { t: -1, side: -1 };
 
-  if (tx < 0 || (tz >= 0 && tz < tx)) return { t: tz, side: pz > halfD ? 1 : 3 };
+  if (tx < 0 || (ty >= 0 && ty < tx)) return { t: ty, side: py > halfD ? 1 : 3 };
   return { t: tx, side: px > halfW ? 0 : 2 };
 }
 
@@ -2084,52 +2062,53 @@ function timeAndSideRayHitsOrigRect(px, pz, vx, vz, halfW, halfD) {
 // test, for a rectangle that is `obs`'s own footprint rather than one already
 // sitting at the origin -- translates and rotates into `obs`'s local frame
 // (getColliderLocalPoint's own transform) and hands off to the Orig version.
-// `offsetZ` re-centres the rectangle along the obstacle's own local z axis --
+// `offsetY` re-centres the rectangle along the obstacle's own local y axis --
 // a teleporter's jamb pillar, rather than its full footprint.
-function timeAndSideRayHitsRect(px, pz, vx, vz, obs, halfW, halfD, offsetZ = 0) {
-  const local = getColliderLocalPoint(px, pz, obs);
-  const cos = Math.cos(obs.rotation);
-  const sin = Math.sin(obs.rotation);
-  const dirX = vx * cos - vz * sin;
-  const dirZ = vx * sin + vz * cos;
-  return timeAndSideRayHitsOrigRect(local.x, local.z - offsetZ, dirX, dirZ, halfW, halfD);
+function timeAndSideRayHitsRect(px, py, vx, vy, obs, halfW, halfD, offsetY = 0) {
+  const local = getColliderLocalPoint(px, py, obs);
+  const cos = Math.cos(obs.angle);
+  const sin = Math.sin(obs.angle);
+  const dirX = (vx * cos) + (vy * sin);
+  const dirY = (vy * cos) - (vx * sin);
+  return timeAndSideRayHitsOrigRect(local.x, local.y - offsetY, dirX, dirY, halfW, halfD);
 }
 
-// A tank corner's world position. `bx`/`bz` are one of SWEPT_TANK_CORNERS; the
-// tank's lateral (width) axis is (-cos az, sin az) and its length axis
-// (-sin az, -cos az) -- forward, this file's own heading convention (see
-// testOrigRectTank above).
-function sweptTankCornerWorld(cx, cz, az, bx, bz, halfWidth, halfLength) {
+// A tank corner's world position. `bl`/`bw` are one of SWEPT_TANK_CORNERS,
+// along the tank's length -- its azimuth, (cos az, sin az) -- and across it.
+function sweptTankCornerWorld(cx, cy, az, bl, bw, halfWidth, halfLength) {
   const cos = Math.cos(az);
   const sin = Math.sin(az);
   return {
-    x: cx - cos * halfWidth * bx - sin * halfLength * bz,
-    z: cz + sin * halfWidth * bx - cos * halfLength * bz,
+    x: cx + cos * halfLength * bl - sin * halfWidth * bw,
+    y: cy + sin * halfLength * bl + cos * halfWidth * bw,
   };
 }
 
 // An obstacle corner's world position -- getColliderLocalPoint's inverse.
-// `offsetZ` re-centres the rectangle along the obstacle's own local z axis,
+// `offsetY` re-centres the rectangle along the obstacle's own local y axis,
 // same as timeAndSideRayHitsRect's.
-function sweptObstacleCornerWorld(obs, halfW, halfD, bx, bz, offsetZ = 0) {
-  const cos = Math.cos(obs.rotation);
-  const sin = Math.sin(obs.rotation);
-  const lz = offsetZ + halfD * bz;
+function sweptObstacleCornerWorld(obs, halfW, halfD, bx, by, offsetY = 0) {
+  const cos = Math.cos(obs.angle);
+  const sin = Math.sin(obs.angle);
+  const lx = halfW * bx;
+  const ly = offsetY + halfD * by;
+  const pos = obstaclePos(obs);
   return {
-    x: obs.x + halfW * bx * cos + lz * sin,
-    z: obs.z - halfW * bx * sin + lz * cos,
+    x: pos[0] + lx * cos - ly * sin,
+    y: pos[1] + lx * sin + ly * cos,
   };
 }
 
-// A world point in the tank's own local axes -- sweptTankCornerWorld's inverse.
-function worldToTankLocal(wx, wz, cx, cz, az) {
+// A world point in the tank's own local axes, its length on X and its width
+// on Y -- sweptTankCornerWorld's inverse.
+function worldToTankLocal(wx, wy, cx, cy, az) {
   const dx = wx - cx;
-  const dz = wz - cz;
+  const dy = wy - cy;
   const cos = Math.cos(az);
   const sin = Math.sin(az);
   return {
-    x: -dx * cos + dz * sin,
-    z: -dx * sin - dz * cos,
+    x: (dx * cos) + (dy * sin),
+    y: (dy * cos) - (dx * sin),
   };
 }
 
@@ -2148,15 +2127,15 @@ function worldToTankLocal(wx, wz, cx, cz, az) {
 // that was never really there -- getOrigRectNormal's diagonal case), and a
 // tangential slide computed from the wrong one can point right back into the
 // solid it just met. The swept path only ever crosses one face.
-function getSweptSideNormal(obs, fromX, fromZ, fromAz, toX, toZ, toAz, halfWidth, halfLength, halfW, halfD, offsetZ = 0) {
+function getSweptSideNormal(obs, fromX, fromY, fromAz, toX, toY, toAz, halfWidth, halfLength, halfW, halfD, offsetY = 0) {
   let bestSide = -1;
   let minTime = 1;
   let bestIsTankFace = false;
 
-  for (const [bx, bz] of SWEPT_TANK_CORNERS) {
-    const p1 = sweptTankCornerWorld(fromX, fromZ, fromAz, bx, bz, halfWidth, halfLength);
-    const p2 = sweptTankCornerWorld(toX, toZ, toAz, bx, bz, halfWidth, halfLength);
-    const hit = timeAndSideRayHitsRect(p1.x, p1.z, p2.x - p1.x, p2.z - p1.z, obs, halfW, halfD, offsetZ);
+  for (const [bl, bw] of SWEPT_TANK_CORNERS) {
+    const p1 = sweptTankCornerWorld(fromX, fromY, fromAz, bl, bw, halfWidth, halfLength);
+    const p2 = sweptTankCornerWorld(toX, toY, toAz, bl, bw, halfWidth, halfLength);
+    const hit = timeAndSideRayHitsRect(p1.x, p1.y, p2.x - p1.x, p2.y - p1.y, obs, halfW, halfD, offsetY);
     if (hit.side >= 0 && hit.t <= minTime) {
       minTime = hit.t;
       bestSide = hit.side;
@@ -2164,11 +2143,11 @@ function getSweptSideNormal(obs, fromX, fromZ, fromAz, toX, toZ, toAz, halfWidth
     }
   }
 
-  for (const [bx, bz] of SWEPT_TANK_CORNERS) {
-    const world = sweptObstacleCornerWorld(obs, halfW, halfD, bx, bz, offsetZ);
-    const p1 = worldToTankLocal(world.x, world.z, fromX, fromZ, fromAz);
-    const p2 = worldToTankLocal(world.x, world.z, toX, toZ, toAz);
-    const hit = timeAndSideRayHitsOrigRect(p1.x, p1.z, p2.x - p1.x, p2.z - p1.z, halfWidth, halfLength);
+  for (const [bx, by] of SWEPT_TANK_CORNERS) {
+    const world = sweptObstacleCornerWorld(obs, halfW, halfD, bx, by, offsetY);
+    const p1 = worldToTankLocal(world.x, world.y, fromX, fromY, fromAz);
+    const p2 = worldToTankLocal(world.x, world.y, toX, toY, toAz);
+    const hit = timeAndSideRayHitsOrigRect(p1.x, p1.y, p2.x - p1.x, p2.y - p1.y, halfLength, halfWidth);
     if (hit.side >= 0 && hit.t <= minTime) {
       minTime = hit.t;
       bestSide = hit.side;
@@ -2180,14 +2159,14 @@ function getSweptSideNormal(obs, fromX, fromZ, fromAz, toX, toZ, toAz, halfWidth
 
   const theta = bestSide * (Math.PI / 2);
   if (!bestIsTankFace) {
-    return rotateNormalToWorld(obs, Math.cos(theta), 0, Math.sin(theta));
+    return rotateNormalToWorld(obs, Math.cos(theta), Math.sin(theta), 0);
   }
 
   // A face of the tank's own box, at the heading it had when the obstacle's
   // corner actually crossed it -- negated, since the outward direction wanted
   // here is away from the obstacle, not away from the tank.
   const impactAz = fromAz + minTime * (toAz - fromAz);
-  return { x: Math.cos(impactAz - theta), y: 0, z: -Math.sin(impactAz - theta) };
+  return { x: -Math.cos(impactAz + theta), y: -Math.sin(impactAz + theta), z: 0 };
 }
 
 // The horizontal normal of a box's (or a teleporter jamb's) side. `rectHalfW`/
@@ -2200,19 +2179,19 @@ function getSweptSideNormal(obs, fromX, fromZ, fromAz, toX, toZ, toAz, halfWidth
 // half-extents, and resolves it with getSweptSideNormal above; without one
 // (the debug outline's static position query has no step to sweep) or if the
 // sweep found no crossing, this falls back to the plain position read.
-function getSideNormal(obs, x, z, sweep, rectHalfW = obs.w / 2, rectHalfD = obs.d / 2, rectOffsetZ = 0) {
+function getSideNormal(obs, x, y, sweep, rectHalfW = halfWidthOf(obs), rectHalfD = halfBreadthOf(obs), rectOffsetY = 0) {
   if (sweep) {
     const swept = getSweptSideNormal(
-      obs, sweep.fromX, sweep.fromZ, sweep.fromAz,
-      sweep.toX, sweep.toZ, sweep.toAz,
+      obs, sweep.fromX, sweep.fromY, sweep.fromAz,
+      sweep.toX, sweep.toY, sweep.toAz,
       sweep.halfWidth, sweep.halfLength,
-      rectHalfW, rectHalfD, rectOffsetZ
+      rectHalfW, rectHalfD, rectOffsetY
     );
     if (swept) return swept;
   }
-  const local = getColliderLocalPoint(x, z, obs);
-  const side = getOrigRectNormal(rectHalfW, rectHalfD, local.x, local.z - rectOffsetZ);
-  return rotateNormalToWorld(obs, side.x, 0, side.z);
+  const local = getColliderLocalPoint(x, y, obs);
+  const side = getOrigRectNormal(rectHalfW, rectHalfD, local.x, local.y - rectOffsetY);
+  return rotateNormalToWorld(obs, side.x, side.y, 0);
 }
 
 // The outward unit normal of the surface a *tank's* step met, in world space.
@@ -2234,18 +2213,18 @@ function getSideNormal(obs, x, z, sweep, rectHalfW = obs.w / 2, rectHalfD = obs.
 // the slope of the wall. That upward tilt is the whole reason a pyramid face
 // reads as a landing rather than as a wall, at every slope.
 //
-// `y` and `z` are where the step was last clear; `toY` is where it hit.
+// (x, y, z) is where the step was last clear; `toZ` is the height it hit at.
 // `sweep`, when given, threads through to getSideNormal.
-function getTankHitNormal(obs, x, y, z, rotation, toY, height, sweep = null) {
-  const base = obs.baseY || 0;
-  const low = y > toY ? toY : y;
+function getTankHitNormal(obs, x, y, z, azimuth, toZ, height, sweep = null) {
+  const base = obstacleBase(obs);
+  const low = z > toZ ? toZ : z;
 
   if (obs.type === 'pyramid') {
     const pyramidHeight = getPyramidHeight(obs);
     const flip = isPyramidFlatTop(obs);
-    const high = y > toY ? y : toY;
-    if (flip && high >= base + pyramidHeight) return { x: 0, y: 1, z: 0 };
-    if (!flip && low + height < base) return { x: 0, y: -1, z: 0 };
+    const high = z > toZ ? z : toZ;
+    if (flip && high >= base + pyramidHeight) return { x: 0, y: 0, z: 1 };
+    if (!flip && low + height < base) return { x: 0, y: 0, z: -1 };
     const face = getPyramidFaceLocalNormal(obs, x, y, z, height);
     return rotateNormalToWorld(obs, face.x, face.y, face.z);
   }
@@ -2267,8 +2246,8 @@ function getTankHitNormal(obs, x, y, z, rotation, toY, height, sweep = null) {
     // tank moving along or away from it, not into it), which is exactly
     // backwards from what actually stopped the tank here.
     //
-    // Queried at `sweep.hitX`/`hitZ` -- the position the search actually
-    // confirmed as touching -- rather than `x`/`z`, the resolved *clear*
+    // Queried at `sweep.hitX`/`hitY` -- the position the search actually
+    // confirmed as touching -- rather than `x`/`y`, the resolved *clear*
     // position a few thousandths of a unit back from it: right at a
     // polygon's own edge (two mesh faces meeting at a corner, say) that
     // sliver is sometimes enough for the exact same SAT test to disagree
@@ -2298,29 +2277,25 @@ function getTankHitNormal(obs, x, y, z, rotation, toY, height, sweep = null) {
     // `findTankObstacle`'s own early return, before any face is weighed) and
     // neither did a box meeting a mesh; it took two meshes.
     const queryX = (sweep && Number.isFinite(sweep.hitX)) ? sweep.hitX : x;
-    const queryZ = (sweep && Number.isFinite(sweep.hitZ)) ? sweep.hitZ : z;
-    const direction = sweep ? { x: sweep.toX - sweep.fromX, y: toY - y, z: sweep.toZ - sweep.fromZ } : null;
+    const queryY = (sweep && Number.isFinite(sweep.hitY)) ? sweep.hitY : y;
+    const direction = sweep ? { x: sweep.toX - sweep.fromX, y: sweep.toY - sweep.fromY, z: toZ - z } : null;
     const candidates = [];
-    if (sweep && Number.isFinite(rotation)) {
+    if (sweep && Number.isFinite(azimuth)) {
       collectMeshHitFacesTank(
-        obs, queryX, low, queryZ, rotation, sweep.halfWidth, sweep.halfLength, height,
+        obs, queryX, queryY, low, azimuth, sweep.halfWidth, sweep.halfLength, height,
         'driveThrough', direction, candidates,
       );
     } else {
-      collectMeshHitFacesCylinder(obs, queryX, low, queryZ, height, height, 'driveThrough', direction, candidates);
+      collectMeshHitFacesCylinder(obs, queryX, queryY, low, height, height, 'driveThrough', direction, candidates);
     }
     const best = pickPriorityMeshCandidate(candidates, direction);
-    if (!best) return { x: 0, y: 1, z: 0 };
+    if (!best) return { x: 0, y: 0, z: 1 };
     const arrays = meshArrays(best.obs);
-    return {
-      x: arrays.facePlanes[best.face * 4],
-      y: arrays.facePlanes[(best.face * 4) + 1],
-      z: arrays.facePlanes[(best.face * 4) + 2],
-    };
+    return { x: arrays.facePlanes[best.face * 4], y: arrays.facePlanes[(best.face * 4) + 1], z: arrays.facePlanes[(best.face * 4) + 2] };
   }
 
-  if (crossedFlatTop(base + getObstacleHeight(obs), y, toY)) return { x: 0, y: 1, z: 0 };
-  if (low + height < base) return { x: 0, y: -1, z: 0 };
+  if (crossedFlatTop(base + getObstacleHeight(obs), z, toZ)) return { x: 0, y: 0, z: 1 };
+  if (low + height < base) return { x: 0, y: 0, z: -1 };
 
   // A teleporter is a frame around a portal, not a solid block: `findTankObstacle`
   // calls it solid whenever the swept height misses the portal's own active
@@ -2337,8 +2312,8 @@ function getTankHitNormal(obs, x, y, z, rotation, toY, height, sweep = null) {
     // is wider than. Test whichever pillar the tank's side sits nearer.
     const pillarR = dims.border / 2;
     const pillarOffset = dims.halfD - pillarR;
-    const local = getColliderLocalPoint(x, z, obs);
-    const overPillar = Math.abs(local.x) <= pillarR && Math.abs(Math.abs(local.z) - pillarOffset) <= pillarR;
+    const local = getColliderLocalPoint(x, y, obs);
+    const overPillar = Math.abs(local.x) <= pillarR && Math.abs(Math.abs(local.y) - pillarOffset) <= pillarR;
 
     // The ceiling only answers for a step that actually crosses into the
     // header band from below (`crossedFlatTop`'s own shape, the other
@@ -2352,16 +2327,16 @@ function getTankHitNormal(obs, x, y, z, rotation, toY, height, sweep = null) {
     // pillar (`overPillar`) reads its front face as the ordinary wall it is;
     // one that has actually cleared the pillar falls through to the
     // header's own front face below.
-    const high = y > toY ? y : toY;
+    const high = z > toZ ? z : toZ;
     if (low < base + dims.activeH && high >= base + dims.activeH && !overPillar) {
-      return { x: 0, y: -1, z: 0 };
+      return { x: 0, y: 0, z: -1 };
     }
 
-    const offsetZ = local.z >= 0 ? pillarOffset : -pillarOffset;
-    return getSideNormal(obs, x, z, sweep, pillarR, pillarR, offsetZ);
+    const offsetY = local.y >= 0 ? pillarOffset : -pillarOffset;
+    return getSideNormal(obs, x, y, sweep, pillarR, pillarR, offsetY);
   }
 
-  return getSideNormal(obs, x, z, sweep);
+  return getSideNormal(obs, x, y, sweep);
 }
 
 // ShotStrategy::reflect (ShotStrategy.cxx:140). The normal is a unit vector; the
@@ -2432,8 +2407,8 @@ function traceShotStep({
 
     // Upstream takes whichever of the ground and the first building the shot
     // reaches first, so the two are compared rather than ordered.
-    const groundFraction = (dY < 0 && toY < groundLimit)
-      ? (groundLimit - posY) / (dY * remaining)
+    const groundFraction = (dZ < 0 && toZ < groundLimit)
+      ? (groundLimit - posZ) / (dZ * remaining)
       : Infinity;
     const embedded = findShotEmbeddedObstacle(obstacles, posX, posY, posZ, radius);
     const impact = embedded
@@ -2490,8 +2465,8 @@ function traceShotStep({
     }
 
     posX += (toX - posX) * groundFraction;
-    posZ += (toZ - posZ) * groundFraction;
-    posY = groundLimit;
+    posY += (toY - posY) * groundFraction;
+    posZ = groundLimit;
     if (!ricochet) {
       ground = true;
       remaining = 0;
@@ -2499,8 +2474,8 @@ function traceShotStep({
     }
     // The ground's normal is straight up, so reflecting about it only flips the
     // vertical component.
-    dY = -dY;
-    posY = groundLimit + SHOT_BOUNCE_CLEARANCE;
+    dZ = -dZ;
+    posZ = groundLimit + SHOT_BOUNCE_CLEARANCE;
     remaining *= 1 - groundFraction;
     bounces++;
   }
@@ -2596,11 +2571,9 @@ function getSegmentTankHitFraction(from, to, tank, shape = {}) {
   // tank's full length, unscaled, because Narrow does not touch that axis.
   if (narrow) {
     return getSegmentBoxHitFraction(
-      from.x, from.z, to.x, to.z,
-      tank.x, tank.z,
-      // getExtrapolatedPosition names the heading `r`; a tank object straight off
-      // a player names it `rotation`. Both reach here.
-      getTankLocalAngle(Number.isFinite(tank.r) ? tank.r : (tank.rotation || 0)),
+      from.x, from.y, to.x, to.y,
+      tank.x, tank.y,
+      tank.azimuth || 0,
       shotRadius,
       TANK.halfLength
     );
@@ -2614,8 +2587,8 @@ function getSegmentTankHitFraction(from, to, tank, shape = {}) {
   const dy = to.y - from.y;
   const dz = to.z - from.z;
   const fx = from.x - tank.x;
-  const fy = from.y - ((tank.y || 0) + (TANK.hitHeight / 2));
-  const fz = from.z - tank.z;
+  const fy = from.y - tank.y;
+  const fz = from.z - ((tank.z || 0) + (TANK.hitHeight / 2));
   const a = (dx * dx) + (dy * dy) + (dz * dz);
   const b = (fx * dx) + (fy * dy) + (fz * dz);
   const c = (fx * fx) + (fy * fy) + (fz * fz) - (radius * radius);
@@ -2661,22 +2634,28 @@ function buildWorldBorderColliders(mapSize, noWalls = false, wallHeight = WORLD_
   const barrierHeight = 1000;
   const span = mapSize + (thickness * 2);
   const sides = [
-    { name: 'north', x: 0, z: -halfMap - (thickness / 2), w: span, d: thickness },
-    { name: 'south', x: 0, z: halfMap + (thickness / 2), w: span, d: thickness },
-    { name: 'east', x: halfMap + (thickness / 2), z: 0, w: thickness, d: span },
-    { name: 'west', x: -halfMap - (thickness / 2), z: 0, w: thickness, d: span },
+    { name: 'north', x: 0, y: halfMap + (thickness / 2), w: span, d: thickness },
+    { name: 'south', x: 0, y: -halfMap - (thickness / 2), w: span, d: thickness },
+    { name: 'east', x: halfMap + (thickness / 2), y: 0, w: thickness, d: span },
+    { name: 'west', x: -halfMap - (thickness / 2), y: 0, w: thickness, d: span },
   ];
   const colliders = [];
+  const wall = (side, height) => ({
+    type: 'box',
+    collisionKind: 'boundary',
+    pos: [side.x, side.y, 0],
+    size: [side.w / 2, side.d / 2, height],
+    angle: 0,
+  });
   for (const side of sides) {
-    const box = { type: 'box', collisionKind: 'boundary', x: side.x, z: side.z, w: side.w, d: side.d, baseY: 0, rotation: 0 };
     // The barrier that stops a tank at any altitude a map can reach, and lets
     // every shot through.
-    colliders.push({ ...box, name: `boundary_${side.name}`, shootThrough: true, h: barrierHeight });
+    colliders.push({ ...wall(side, barrierHeight), name: `boundary_${side.name}`, shootThrough: true });
     // And the wall a player can see, which is what a shot bounces off below
     // `_wallHeight` and nothing at all above it. Tanks are the barrier's job.
     // A world whose `_wallHeight` is 0 has none, and every shot leaves it.
     if (wallHeight > 0) {
-      colliders.push({ ...box, name: `boundary_${side.name}_wall`, driveThrough: true, h: wallHeight });
+      colliders.push({ ...wall(side, wallHeight), name: `boundary_${side.name}_wall`, driveThrough: true });
     }
   }
   return colliders;
@@ -2689,6 +2668,7 @@ function buildCollisionColliders(obstacles, mapSize, noWalls = false, wallHeight
 
 module.exports = {
   ZERO_TOLERANCE,
+  getObstacleBase,
   getColliderLocalPoint,
   testOrigRectCircle,
   TANK_HALF_LENGTH,
@@ -2727,11 +2707,11 @@ module.exports = {
   getShotTeleporterDims,
   findTankObstacle,
   findPhysicsSurfaceObstacle,
-  getBaseTopY,
+  getBaseTop,
   BASE_TOP_TOLERANCE,
   isOnBaseTop,
   getBaseTeamAtPoint,
-  meshFlatTopYsAt,
+  meshFlatTopsAt,
   isOverFlatTop,
   movingTankOverlapsHeight,
   crossedFlatTop,

@@ -27,7 +27,7 @@ import { fileURLToPath } from 'node:url';
 import {
   Ace, ACE_TUNING, createRouter, createWorldProbes,
 } from '../public/autopilot.mjs';
-import { findShotSegmentImpact } from '../public/collision.mjs';
+import { findShotSegmentImpact, getObstacleBase } from '../public/collision.mjs';
 
 const require = createRequire(import.meta.url);
 const { BotDriver } = require('../server/bots.cjs');
@@ -61,7 +61,7 @@ if (!entry) {
 }
 const world = JSON.parse(fs.readFileSync(path.join(root, `cache/maps/${entry.hash}.json`), 'utf8'));
 const obstacles = world.obstacles;
-const topOf = (obs) => ((obs.type === 'mesh' && obs.bounds) ? obs.bounds.maxY : (obs.baseY || 0) + (obs.h || 0));
+const topOf = (obs) => ((obs.type === 'mesh' && obs.bounds) ? obs.bounds.maxZ : getObstacleBase(obs) + (obs.size?.[2] || 0));
 const CONFIG = {
   TANK_SPEED: 25,
   TANK_ROTATION_SPEED: Math.PI / 4,
@@ -96,15 +96,15 @@ if (bases.length < 2) {
 function run(tuning, from, to) {
   let now = 100;
   const pilot = new Ace({ tuning });
-  const start = { x: from.x, y: topOf(from), z: from.z };
-  const target = { x: to.x, y: topOf(to), z: to.z };
+  const start = { x: from.pos[0], y: from.pos[1], z: topOf(from) };
+  const target = { x: to.pos[0], y: to.pos[1], z: topOf(to) };
   const driver = new BotDriver({
     pilot,
     env: {
       config: () => CONFIG,
       colliders: () => obstacles,
       topOf,
-      state: () => ({ alive: true, ...start, rotation: 0 }),
+      state: () => ({ alive: true, ...start, azimuth: Math.PI / 2 }),
       view: (self) => ({
         now,
         self: {
@@ -121,7 +121,7 @@ function run(tuning, from, to) {
           lockOnAngle: 0.15, shockOutRadius: 60, shakeTimeout: 0,
         },
         isFoe: () => true,
-        myBase: () => ({ ...start, radius: Math.min(from.w, from.d) / 2 }),
+        myBase: () => ({ ...start, radius: Math.min(from.size[0], from.size[1]) }),
         antidote: null,
         ...probes,
         findRoute,
@@ -141,7 +141,7 @@ function run(tuning, from, to) {
   let flightInfo = null;
   let wasAir = false;
   let travelled = 0;
-  let last = { x: start.x, z: start.z };
+  let last = { x: start.x, y: start.y };
   for (let t = 0; t < timeLimit; t += dt) {
     now += dt;
     driver.tick(dt);
@@ -154,30 +154,30 @@ function run(tuning, from, to) {
       phases.idle += dt;
       if (process.env.BENCH_TRACE && Math.round(t / dt) % 10 === 0) {
         console.log(`    idle t=${t.toFixed(1)} at (${driver.x.toFixed(0)},${driver.y.toFixed(0)},${driver.z.toFixed(0)})`
-          + ` rot=${out.rotation.toFixed(2)} mode=${out.intent.mode} next=${JSON.stringify(next)}`);
+          + ` turn=${out.rotation.toFixed(2)} mode=${out.intent.mode} next=${JSON.stringify(next)}`);
       }
     }
-    else if (driver.y > 0.33) phases.raised += dt;
+    else if (driver.z > 0.33) phases.raised += dt;
     else phases.ground += dt;
     if (process.env.BENCH_PATH && Math.round(t / dt) % 20 === 0) {
       console.log(`    t=${t.toFixed(0)} (${driver.x.toFixed(0)},${driver.y.toFixed(1)},${driver.z.toFixed(0)})`
         + ` ${out?.intent?.mode} next=${JSON.stringify(next)}`);
     }
-    travelled += Math.hypot(driver.x - last.x, driver.z - last.z);
-    last = { x: driver.x, z: driver.z };
+    travelled += Math.hypot(driver.x - last.x, driver.y - last.y);
+    last = { x: driver.x, y: driver.y };
     const air = driver.jumpDirection !== null;
     if (air && !wasAir) {
       const node = pilot.route?.nodes?.[pilot.route.at];
       flightAfter = node?.flight ? pilot.landingAim(pilot.route.nodes, pilot.route.at)
         : (pilot.route?.nodes?.[pilot.route.at] || null);
-      flightInfo = node?.flight ? { t, r: driver.r, w: driver.angVel, air: node.flight.air, jump: node.flight.jump,
-        landing: node, from: { x: driver.x, z: driver.z } }
-        : { t, r: driver.r, w: driver.angVel, air: 0, jump: driver.vy > 10, unplanned: true,
-          landing: node || { x: NaN, z: NaN }, from: { x: driver.x, z: driver.z }, y: driver.y };
-      if (driver.vy > 10) {
+      flightInfo = node?.flight ? { t, a: driver.azimuth, w: driver.angVel, air: node.flight.air, jump: node.flight.jump,
+        landing: node, from: { x: driver.x, y: driver.y } }
+        : { t, a: driver.azimuth, w: driver.angVel, air: 0, jump: driver.vz > 10, unplanned: true,
+          landing: node || { x: NaN, y: NaN }, from: { x: driver.x, y: driver.y }, z: driver.z };
+      if (driver.vz > 10) {
         jumps++;
         const node = pilot.route?.nodes?.[pilot.route.at];
-        jumpTarget = node?.jump ? node.y : null;
+        jumpTarget = node?.jump ? node.z : null;
       } else falls++;
     }
     if (!air && wasAir && process.env.BENCH_FACING) {
@@ -185,31 +185,31 @@ function run(tuning, from, to) {
       const next = flightAfter;
       flightAfter = null;
       if (next) {
-        const want = Math.atan2(-(next.x - driver.x), -(next.z - driver.z));
-        const off = Math.abs(((driver.r - want + (3 * Math.PI)) % (2 * Math.PI)) - Math.PI);
-        if (Math.hypot(next.x - driver.x, next.z - driver.z) > 2) {
+        const want = Math.atan2(next.y - driver.y, next.x - driver.x);
+        const off = Math.abs(((driver.azimuth - want + (3 * Math.PI)) % (2 * Math.PI)) - Math.PI);
+        if (Math.hypot(next.x - driver.x, next.y - driver.y) > 2) {
           const fi = flightInfo;
           console.log(`    landed facing ${(off * 180 / Math.PI).toFixed(0)} deg off the route,`
-            + ` at (${driver.x.toFixed(0)},${driver.z.toFixed(0)})`
+            + ` at (${driver.x.toFixed(0)},${driver.y.toFixed(0)})`
             + (fi ? ` | ${fi.unplanned ? 'UNPLANNED ' : ''}${fi.jump ? 'jump' : 'drive-off'} planned air ${fi.air.toFixed(2)} actual ${(t - fi.t).toFixed(2)}`
-              + ` r ${fi.r.toFixed(2)}->${driver.r.toFixed(2)} w ${fi.w.toFixed(2)} want ${want.toFixed(2)}`
-              + ` landing node (${fi.landing.x},${fi.landing.z}) after (${next.x},${next.z})`
-              + ` from (${fi.from.x.toFixed(0)},${fi.from.z.toFixed(0)})` : ''));
+              + ` a ${fi.a.toFixed(2)}->${driver.azimuth.toFixed(2)} w ${fi.w.toFixed(2)} want ${want.toFixed(2)}`
+              + ` landing node (${fi.landing.x},${fi.landing.y}) after (${next.x},${next.y})`
+              + ` from (${fi.from.x.toFixed(0)},${fi.from.y.toFixed(0)})` : ''));
         }
       }
     }
     if (!air && wasAir && jumpTarget !== null) {
-      if (Math.abs(driver.y - jumpTarget) > 0.5) {
+      if (Math.abs(driver.z - jumpTarget) > 0.5) {
         missed++;
         if (process.env.BENCH_JUMPS) {
-          console.log(`    missed jump to y=${jumpTarget} landed y=${driver.y.toFixed(1)} at (${driver.x.toFixed(0)},${driver.z.toFixed(0)})`);
+          console.log(`    missed jump to z=${jumpTarget} landed z=${driver.z.toFixed(1)} at (${driver.x.toFixed(0)},${driver.y.toFixed(0)})`);
         }
       }
       jumpTarget = null;
     }
     wasAir = air;
-    const radius = Math.min(to.w, to.d) / 2;
-    if (Math.hypot(driver.x - to.x, driver.z - to.z) < radius && Math.abs(driver.y - target.y) < 0.5) {
+    const radius = Math.min(to.size[0], to.size[1]);
+    if (Math.hypot(driver.x - target.x, driver.y - target.y) < radius && Math.abs(driver.z - target.z) < 0.5) {
       return { arrived: true, time: t, jumps, falls, missed, travelled, phases };
     }
   }

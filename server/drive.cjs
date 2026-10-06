@@ -24,6 +24,8 @@
 // Zone tank is zoned, and whether flaps never run out. `world` is { config,
 // colliders, topOf(obs), teleport?(from, to, state) }, `clock` { now, random() }
 // in seconds.
+//
+// A heading is an azimuth, counter-clockwise from +X, so forward is (cos, sin).
 
 const {
   applyAccelerationLimit,
@@ -50,10 +52,11 @@ const {
   findMeshHitFaceOriented,
   findTankObstacle,
   getColliderLocalPoint,
+  getObstacleBase,
   getTankHitNormal,
   getTankLocalAngle,
   isPyramidFlatTop,
-  meshFlatTopYsAt,
+  meshFlatTopsAt,
   movingTankOverlapsHeight,
   pyramidIntersectsTank,
   resolvePhysicsDriverAt,
@@ -73,19 +76,19 @@ const GROUND_LIMIT_TOLERANCE = 0.01;
 
 
 // A tank standing where it was put, at rest.
-function createDriveState({ x = 0, y = 0, z = 0, rotation = 0 } = {}) {
+function createDriveState({ x = 0, y = 0, z = 0, azimuth = 0 } = {}) {
   return {
     x,
     y,
     z,
-    rotation,
+    azimuth,
     verticalVelocity: 0,
     airVelocityX: 0,
-    airVelocityZ: 0,
+    airVelocityY: 0,
     // The heading a jump or a fall left with, and null on a surface.
     jumpDirection: null,
-    onGround: y <= 0,
-    onObstacle: y > 0,
+    onGround: z <= 0,
+    onObstacle: z > 0,
     inAir: false,
     lastObstacle: null,
     insideBuildings: [],
@@ -119,14 +122,14 @@ function createDriveState({ x = 0, y = 0, z = 0, rotation = 0 } = {}) {
 }
 
 // The air velocity, and the speed and direction a packet spells it as.
-function setAirVelocity(state, vx, vz, config) {
+function setAirVelocity(state, vx, vy, config) {
   state.airVelocityX = vx;
-  state.airVelocityZ = vz;
-  const horizontalSpeed = Math.hypot(vx, vz);
+  state.airVelocityY = vy;
+  const horizontalSpeed = Math.hypot(vx, vy);
   if (horizontalSpeed > 0.001 && config && config.TANK_SPEED) {
     state.jumpForwardSpeed = horizontalSpeed / config.TANK_SPEED;
     state.fallForwardSpeed = state.jumpForwardSpeed;
-    state.slideDirection = Math.atan2(-vx, -vz);
+    state.slideDirection = Math.atan2(vy, vx);
   } else {
     state.jumpForwardSpeed = 0;
     state.fallForwardSpeed = 0;
@@ -134,11 +137,11 @@ function setAirVelocity(state, vx, vz, config) {
   }
 }
 
-function airVelocityFor(rotation, normalizedSpeed, config) {
+function airVelocityFor(azimuth, normalizedSpeed, config) {
   const speed = config?.TANK_SPEED || 15;
   return {
-    x: -Math.sin(rotation) * normalizedSpeed * speed,
-    z: -Math.cos(rotation) * normalizedSpeed * speed,
+    x: Math.cos(azimuth) * normalizedSpeed * speed,
+    y: Math.sin(azimuth) * normalizedSpeed * speed,
   };
 }
 
@@ -147,9 +150,9 @@ function airVelocityFor(rotation, normalizedSpeed, config) {
 // what happens to a burrowed tank the moment it loses the flag: the limit
 // springs back to zero and this walks it up to the surface. A floor on the
 // velocity rather than a teleport, so the tank rises visibly.
-function applyGroundLimitCreep(verticalVelocity, y, groundLimit) {
-  if (!(y < groundLimit)) return verticalVelocity;
-  return Math.max(verticalVelocity, (-y / 2) + 0.5);
+function applyGroundLimitCreep(verticalVelocity, z, groundLimit) {
+  if (!(z < groundLimit)) return verticalVelocity;
+  return Math.max(verticalVelocity, (-z / 2) + 0.5);
 }
 
 // A tank under the floor it is allowed to rest on. That happens exactly once:
@@ -157,8 +160,8 @@ function applyGroundLimitCreep(verticalVelocity, y, groundLimit) {
 // tank still down at `_burrowDepth`. It keeps its steering there -- upstream's
 // `location` is still `OnGround` at a negative z -- and it must not be snapped
 // to the surface, because the creep is what lifts it out.
-function isBelowGroundLimit(y, groundLimit) {
-  return y < groundLimit - GROUND_LIMIT_TOLERANCE;
+function isBelowGroundLimit(z, groundLimit) {
+  return z < groundLimit - GROUND_LIMIT_TOLERANCE;
 }
 
 // Obstacle::isFlatTop for what a tank stands on: a box's or an arc's top, an
@@ -169,7 +172,7 @@ function standsOnFlatTop(obs, x, y, z) {
   if (!obs) return true;
   if (obs.type === 'pyramid') return isPyramidFlatTop(obs);
   if (obs.type === 'tetra') return false;
-  if (obs.type === 'mesh') return meshFlatTopYsAt(obs, x, z).some((top) => Math.abs(top - y) < 0.05);
+  if (obs.type === 'mesh') return meshFlatTopsAt(obs, x, y).some((top) => Math.abs(top - z) < 0.05);
   return true;
 }
 
@@ -186,10 +189,16 @@ function jumpVelocityFor(tank, airControl, verticalVelocity, config, clock) {
 // The gravity the tank falls under: Wings' own, or four times the world's for
 // a burrowing tank below ground level (LocalPlayer.cxx:332), so the descent
 // into the hole takes a fraction of a second.
-function gravityFor(tank, airControl, y, config) {
+function gravityFor(tank, airControl, z, config) {
   if (airControl) return config.WINGS_GRAVITY;
-  if (y < 0 && tank.flag === 'BU') return config.GRAVITY * BURROW_GRAVITY_FACTOR;
+  if (z < 0 && tank.flag === 'BU') return config.GRAVITY * BURROW_GRAVITY_FACTOR;
   return config.GRAVITY;
+}
+
+// A physics driver's `linear` push, [x, y, z].
+function driverLinear(driver) {
+  const [x, y, z] = driver.linear;
+  return { x, y, z };
 }
 
 // A physics driver's push, read off whatever the tank landed on last frame --
@@ -197,7 +206,7 @@ function gravityFor(tank, airControl, y, config) {
 // always applies; the horizontal only while resting on the driving surface.
 function isDrivenUpward(obstacle, x, y, z) {
   const driver = resolvePhysicsDriverAt(obstacle, x, y, z);
-  return !!(driver?.linear && driver.linear[1] > 0);
+  return !!(driver?.linear && driverLinear(driver).z > 0);
 }
 
 // LocalPlayer::collectInsideBuildings (LocalPlayer.cxx:966): every obstacle the
@@ -205,24 +214,24 @@ function isDrivenUpward(obstacle, x, y, z) {
 // takes all of them rather than the first -- a tank crossing a corner is inside
 // two buildings. The world border and teleporters are not buildings: both expel
 // a phased tank, so it can never be in one.
-function findInsideBuildings(colliders, topOf, x, y, z, rotation, tankScale) {
+function findInsideBuildings(colliders, topOf, x, y, z, azimuth, tankScale) {
   const found = [];
   for (const obs of colliders) {
     if (obs.driveThrough) continue;
     if (obs.collisionKind === 'boundary' || obs.kind === 'teleporter') continue;
-    if (!movingTankOverlapsHeight(obs.baseY || 0, topOf(obs), y, y, 2, 0.15)) continue;
+    if (!movingTankOverlapsHeight(getObstacleBase(obs), topOf(obs), z, z, 2, 0.15)) continue;
     if (obs.type === 'pyramid') {
-      if (!pyramidIntersectsTank(obs, x, y, z, rotation, 2, 0, tankScale)) continue;
+      if (!pyramidIntersectsTank(obs, x, y, z, azimuth, 2, 0, tankScale)) continue;
     } else if (obs.type === 'mesh') {
       // `< 0` and not a truth test: face zero is a real face (issue #153).
-      if (findMeshHitFaceOriented(obs, x, y, z, rotation,
+      if (findMeshHitFaceOriented(obs, x, y, z, azimuth,
         TANK.halfWidth * (tankScale ? tankScale.width : 1),
         TANK.halfLength * (tankScale ? tankScale.length : 1), 2) < 0) continue;
     } else {
-      const local = getColliderLocalPoint(x, z, obs);
+      const local = getColliderLocalPoint(x, y, obs);
       if (!testOrigRectTank(
-        obs.w / 2, obs.d / 2, local.x, local.z,
-        getTankLocalAngle(rotation, obs.rotation), 0, tankScale,
+        obs.size ? obs.size[0] : NaN, obs.size ? obs.size[1] : NaN, local.x, local.y,
+        getTankLocalAngle(azimuth, obs.angle), 0, tankScale,
       )) continue;
     }
     found.push(obs);
@@ -294,10 +303,11 @@ function resolveStep(state, velocityX, velocityY, velocityZ, angularVelocity, dt
   const onSupport = state.onGround || state.onObstacle;
   const driver = resolvePhysicsDriverAt(state.lastObstacle, state.x, state.y, state.z);
   if (driver && driver.linear) {
-    velocityY += driver.linear[1];
+    const push = driverLinear(driver);
+    velocityZ += push.z;
     if (onSupport) {
-      velocityX += driver.linear[0];
-      velocityZ += driver.linear[2];
+      velocityX += push.x;
+      velocityY += push.y;
     }
   }
   const tankScale = getTankDimensionScale(tank.flag ?? null);
@@ -306,7 +316,7 @@ function resolveStep(state, velocityX, velocityY, velocityZ, angularVelocity, dt
     x: state.x,
     y: state.y,
     z: state.z,
-    azimuth: state.rotation,
+    azimuth: state.azimuth,
     velocityX,
     velocityY,
     velocityZ,
@@ -316,22 +326,22 @@ function resolveStep(state, velocityX, velocityY, velocityZ, angularVelocity, dt
     // Resting on a building is resting, for the purpose of climbing the next
     // low ledge.
     onGround: onSupport,
-    // World::hitBuilding, with the step's own start height as `fromY`, so the
+    // World::hitBuilding, with the step's own start height as `fromZ`, so the
     // occupant's vertical extent covers the span it crossed -- what stops a
     // fast fall passing through a roof.
     hitTest: (fromX, fromY, fromZ, fromAz, toX, toY, toZ, toAz) => findTankObstacle(world.colliders, toX, toY, toZ, {
-      rotation: toAz,
-      fromY,
+      azimuth: toAz,
       fromX,
+      fromY,
       fromZ,
       radius: TANK.collisionHeight,
       tankScale,
       phased,
-      reversingOnGround: phased && intended.phasedReverse && toY <= 0,
+      reversingOnGround: phased && intended.phasedReverse && toZ <= 0,
     }),
-    getNormal: (obs, px, py, pz, paz, hitX, hitY, hitZ, hitAz, fromX, fromZ, fromAz, toX, toZ, toAz) => (
-      getTankHitNormal(obs, px, py, pz, paz, hitY, TANK.collisionHeight, {
-        fromX, fromZ, fromAz, toX, toZ, toAz, hitX, hitZ,
+    getNormal: (obs, px, py, pz, paz, hitX, hitY, hitZ, hitAz, fromX, fromY, fromAz, toX, toY, toAz) => (
+      getTankHitNormal(obs, px, py, pz, paz, hitZ, TANK.collisionHeight, {
+        fromX, fromY, fromAz, toX, toY, toAz, hitX, hitY,
         halfWidth: TANK.halfWidth * (tankScale ? tankScale.width : 1),
         halfLength: TANK.halfLength * (tankScale ? tankScale.length : 1),
       })),
@@ -374,7 +384,7 @@ function holdDrive(state) {
   state.rotationSpeed = 0;
   state.verticalVelocity = 0;
   state.airVelocityX = 0;
-  state.airVelocityZ = 0;
+  state.airVelocityY = 0;
   return noDriveEvents();
 }
 
@@ -406,7 +416,7 @@ function stepDrive(state, intended, tank, world, clock, dt) {
     setAirVelocity(state, 0, 0, config);
   }
 
-  const old = { x: state.x, y: state.y, z: state.z, rotation: state.rotation };
+  const old = { x: state.x, y: state.y, z: state.z, azimuth: state.azimuth };
 
   // The three good movement flags land here and nowhere else, because
   // `setDesiredSpeed` and `setDesiredAngVel` are the only places upstream
@@ -420,11 +430,11 @@ function stepDrive(state, intended, tank, world, clock, dt) {
   state.previousSpeedFraction = intended.forward;
   // Burrow's handicaps, read off where the tank is rather than off the flag:
   // holding the flag above ground costs nothing.
-  const burrow = getBurrowFactors(motionFlag, state.y);
+  const burrow = getBurrowFactors(motionFlag, state.z);
   const speedFactor = agility.factor * burrow.speed;
   const angVelFactor = getMaxAngVelFactor(motionFlag) * burrow.angVel;
   const priorAirVelocityX = state.airVelocityX || 0;
-  const priorAirVelocityZ = state.airVelocityZ || 0;
+  const priorAirVelocityY = state.airVelocityY || 0;
 
   // doMomentum (LocalPlayer.cxx:1537): the world's acceleration limit composed
   // with `M`, applied to the velocity rather than to the stick. With `-a 0 0`,
@@ -454,57 +464,57 @@ function stepDrive(state, intended, tank, world, clock, dt) {
   const coasting = state.inAir && state.jumpDirection !== null && !airControl;
   const sliding = state.inAir && airControl && config.WINGS_SLIDE_TIME > 0;
   let velocityX;
-  let velocityZ;
+  let velocityY;
   if (coasting) {
     // "can't control motion in air" (LocalPlayer.cxx:341): the velocity the
     // step that left the surface gave the tank, carried straight through.
     velocityX = priorAirVelocityX;
-    velocityZ = priorAirVelocityZ;
+    velocityY = priorAirVelocityY;
   } else if (sliding) {
     // _wingsSlideTime above zero: the stick adds to the velocity the tank
     // already has, so flight carries momentum.
-    const slid = getWingsSlideVelocity(priorAirVelocityX, priorAirVelocityZ, state.rotation,
+    const slid = getWingsSlideVelocity(priorAirVelocityX, priorAirVelocityY, state.azimuth,
       forwardInput * config.TANK_SPEED, config.TANK_SPEED, config.WINGS_SLIDE_TIME, dt);
     velocityX = slid.x;
-    velocityZ = slid.z;
+    velocityY = slid.y;
   } else {
-    velocityX = -Math.sin(state.rotation) * forwardInput * tankSpeedNow;
-    velocityZ = -Math.cos(state.rotation) * forwardInput * tankSpeedNow;
+    velocityX = Math.cos(state.azimuth) * forwardInput * tankSpeedNow;
+    velocityY = Math.sin(state.azimuth) * forwardInput * tankSpeedNow;
     // doFriction (LocalPlayer.cxx:1564), on the ground only, as upstream calls
     // it from the full-control branch: `_friction` -- `_momentumFriction` while
     // carrying `M` -- caps how fast the tank's velocity may change at 20 units
     // a second a second per unit of it. 0, upstream's default, is no cap.
     const friction = motionFlag === 'M' ? config.MOMENTUM_FRICTION : config.FRICTION;
     if (friction > 0 && dt > 0 && !state.inAir
-      && Number.isFinite(state.lastVelocityX) && Number.isFinite(state.lastVelocityZ)) {
+      && Number.isFinite(state.lastVelocityX) && Number.isFinite(state.lastVelocityY)) {
       const deltaX = velocityX - state.lastVelocityX;
-      const deltaZ = velocityZ - state.lastVelocityZ;
-      const accel = Math.hypot(deltaX, deltaZ) / dt;
+      const deltaY = velocityY - state.lastVelocityY;
+      const accel = Math.hypot(deltaX, deltaY) / dt;
       const limit = 20 * friction;
       if (accel > limit) {
         const ratio = limit / accel;
         velocityX = state.lastVelocityX + (deltaX * ratio);
-        velocityZ = state.lastVelocityZ + (deltaZ * ratio);
+        velocityY = state.lastVelocityY + (deltaY * ratio);
       }
     }
   }
 
   const groundLimit = getGroundLimit(tank.flag ?? null);
   const wasInAir = state.inAir;
-  if (!intended.jumpTriggered && state.y <= groundLimit && !isBelowGroundLimit(state.y, groundLimit)) {
+  if (!intended.jumpTriggered && state.z <= groundLimit && !isBelowGroundLimit(state.z, groundLimit)) {
     state.verticalVelocity = 0;
-    state.y = groundLimit;
+    state.z = groundLimit;
   }
   // Gravity in the full-control branch too whenever the tank is above its own
   // floor (LocalPlayer.cxx:334), which is what makes a Burrow tank sink into
   // the ground it stands on. Only a tank resting on the ground can sink: one on
   // a building is held up by the building.
-  const sinking = state.onGround && state.y > groundLimit;
+  const sinking = state.onGround && state.z > groundLimit;
   if (state.inAir || state.onObstacle || sinking) {
-    state.verticalVelocity -= gravityFor(tank, airControl, state.y, config) * dt;
+    state.verticalVelocity -= gravityFor(tank, airControl, state.z, config) * dt;
   }
-  if (state.y < groundLimit) {
-    state.verticalVelocity = applyGroundLimitCreep(state.verticalVelocity, state.y, groundLimit);
+  if (state.z < groundLimit) {
+    state.verticalVelocity = applyGroundLimitCreep(state.verticalVelocity, state.z, groundLimit);
   } else if (state.onGround && !intended.jumpTriggered && state.verticalVelocity > 0) {
     state.verticalVelocity = 0;
   }
@@ -520,7 +530,7 @@ function stepDrive(state, intended, tank, world, clock, dt) {
     state.verticalVelocity = jumpVelocityFor(tank, airControl, state.verticalVelocity || 0, config, clock);
     if (climbBlocked) {
       velocityX = 0;
-      velocityZ = 0;
+      velocityY = 0;
     }
     const launchSpeed = climbBlocked ? 0 : forwardInput;
     state.jumpForwardSpeed = launchSpeed;
@@ -532,10 +542,10 @@ function stepDrive(state, intended, tank, world, clock, dt) {
 
   // The velocity this step drives with, for the next step's friction.
   state.lastVelocityX = velocityX;
-  state.lastVelocityZ = velocityZ;
+  state.lastVelocityY = velocityY;
 
   // One pass: position, height and heading come back resolved together.
-  const step = resolveStep(state, velocityX, state.verticalVelocity || 0, velocityZ,
+  const step = resolveStep(state, velocityX, velocityY, state.verticalVelocity || 0,
     rotationInput * tankAngVelNow, dt, tank, world, intended, groundLimit);
   state.stuckFrameCount = step.stuckFrameCount;
   let result = {
@@ -545,33 +555,33 @@ function stepDrive(state, intended, tank, world, clock, dt) {
     // Whatever the resolver took away from the step, which the slide reporting
     // keys off.
     altered: Math.abs((step.x - state.x) - (velocityX * dt)) > 1e-6
-      || Math.abs((step.z - state.z) - (velocityZ * dt)) > 1e-6,
+      || Math.abs((step.y - state.y) - (velocityY * dt)) > 1e-6,
     trajectoryDeltaX: step.velocityX * dt,
-    trajectoryDeltaZ: step.velocityZ * dt,
+    trajectoryDeltaY: step.velocityY * dt,
   };
-  state.verticalVelocity = step.velocityY;
+  state.verticalVelocity = step.velocityZ;
 
   // A teleporter crossed on the way, where the world has teleporters to cross.
   // A Phantom Zone tank does not teleport: the crossing flips its zone and it
   // stays where it is (LocalPlayer.cxx:729).
   let rotateDelta = 0;
-  const sourceRotation = normalizeAngle(step.azimuth);
+  const sourceAzimuth = normalizeAngle(step.azimuth);
   const crossing = world.teleport
     ? world.teleport({ x: old.x, y: old.y, z: old.z }, { x: result.x, y: result.y, z: result.z }, state)
     : null;
   if (crossing?.applied) {
     if (togglesZoneOnTeleport(tank.flag ?? null)) {
-      events.zoneToggle = { ...crossing, x: result.x, y: result.y, z: result.z, rotation: sourceRotation };
+      events.zoneToggle = { ...crossing, x: result.x, y: result.y, z: result.z, azimuth: sourceAzimuth };
     } else {
       events.teleported = true;
       rotateDelta = crossing.rotateDelta || 0;
       events.teleport = {
         ...crossing,
         source: { x: result.x, y: result.y, z: result.z },
-        sourceRotation,
+        sourceAzimuth,
         verticalVelocity: state.verticalVelocity || 0,
         airVelocityX: state.airVelocityX || 0,
-        airVelocityZ: state.airVelocityZ || 0,
+        airVelocityY: state.airVelocityY || 0,
         jumpDirection: state.jumpDirection,
       };
       result = { ...result, x: crossing.state.x, y: crossing.state.y, z: crossing.state.z, altered: true };
@@ -583,14 +593,14 @@ function stepDrive(state, intended, tank, world, clock, dt) {
   // the resolver reports a surface met with an upward normal, upstream's
   // OnBuilding, and the rest is the height.
   const nextOnObstacle = step.onBuilding;
-  const nextOnGround = !nextOnObstacle && step.y <= groundLimit;
+  const nextOnGround = !nextOnObstacle && step.z <= groundLimit;
   const nextInAir = !nextOnObstacle && !nextOnGround;
 
   // `justLanded` (LocalPlayer.cxx:794): the frame the tank stops being in the air.
   if (wasInAir && !nextInAir) {
     events.forceSend = true;
     events.landed = {
-      impactSpeed: Math.abs(step.velocityY || 0), obstacle: step.obstacle || null, x: step.x, y: step.y, z: step.z,
+      impactSpeed: Math.abs(step.velocityZ || 0), obstacle: step.obstacle || null, x: step.x, y: step.y, z: step.z,
     };
     state.jumpDirection = null;
     state.verticalVelocity = 0;
@@ -602,9 +612,9 @@ function stepDrive(state, intended, tank, world, clock, dt) {
   if (fallStarted) {
     events.forceSend = true;
     events.fallStarted = true;
-    state.jumpDirection = state.rotation;
-    setAirVelocity(state, step.velocityX, step.velocityZ, config);
-    const carried = config.TANK_SPEED > 0 ? Math.hypot(step.velocityX, step.velocityZ) / config.TANK_SPEED : 0;
+    state.jumpDirection = state.azimuth;
+    setAirVelocity(state, step.velocityX, step.velocityY, config);
+    const carried = config.TANK_SPEED > 0 ? Math.hypot(step.velocityX, step.velocityY) / config.TANK_SPEED : 0;
     state.jumpForwardSpeed = carried;
     state.fallForwardSpeed = carried;
   }
@@ -619,47 +629,49 @@ function stepDrive(state, intended, tank, world, clock, dt) {
   state.z = result.z;
   // The heading the pass resolved, which is upstream's own: its search runs
   // over the azimuth too and leaves the turn out where the step hit something.
-  state.rotation = normalizeAngle(step.azimuth);
+  state.azimuth = normalizeAngle(step.azimuth);
   if (events.teleported) {
-    state.rotation = normalizeAngle(state.rotation + rotateDelta);
+    // The heading and the air velocity both turn left by the teleporter's
+    // own turn (`Teleporter::getPointWRT`'s `aOut` and `dOut`).
+    state.azimuth = normalizeAngle(state.azimuth + rotateDelta);
     if (state.jumpDirection !== null) state.jumpDirection = normalizeAngle(state.jumpDirection + rotateDelta);
     const c = Math.cos(rotateDelta);
     const s = Math.sin(rotateDelta);
     const ax = state.airVelocityX || 0;
-    const az = state.airVelocityZ || 0;
-    setAirVelocity(state, (c * ax) - (s * az), (s * ax) + (c * az), config);
+    const ay = state.airVelocityY || 0;
+    setAirVelocity(state, (c * ax) - (s * ay), (s * ax) + (c * ay), config);
     state.slideDirection = undefined;
   }
   if (jumpStarted) {
-    state.jumpDirection = state.rotation;
+    state.jumpDirection = state.azimuth;
     // The stick is a fraction of this tank's own maximum; the air velocity is a
     // fraction of the world's, so the boost comes with it.
     const v = airVelocityFor(state.jumpDirection, (climbBlocked ? 0 : forwardInput) * speedFactor, config);
-    setAirVelocity(state, v.x, v.z, config);
+    setAirVelocity(state, v.x, v.y, config);
   }
 
   const tankScale = getTankDimensionScale(tank.flag ?? null);
   state.insideBuildings = drivesThroughBuildings(tank.flag ?? null, tank.zoned === true)
-    ? findInsideBuildings(world.colliders, world.topOf, state.x, state.y, state.z, state.rotation, tankScale)
+    ? findInsideBuildings(world.colliders, world.topOf, state.x, state.y, state.z, state.azimuth, tankScale)
     : [];
 
   events.drivenUpward = isDrivenUpward(state.lastObstacle, state.x, state.y, state.z);
-  events.burrowEntered = old.y >= 0 && state.y < 0;
+  events.burrowEntered = old.z >= 0 && state.z < 0;
 
   const actualDeltaX = state.x - old.x;
-  const actualDeltaZ = state.z - old.z;
-  events.moved = Math.hypot(actualDeltaX, actualDeltaZ);
+  const actualDeltaY = state.y - old.y;
+  events.moved = Math.hypot(actualDeltaX, actualDeltaY);
   const trajectoryDeltaX = Number.isFinite(result.trajectoryDeltaX) ? result.trajectoryDeltaX : actualDeltaX;
-  const trajectoryDeltaZ = Number.isFinite(result.trajectoryDeltaZ) ? result.trajectoryDeltaZ : actualDeltaZ;
+  const trajectoryDeltaY = Number.isFinite(result.trajectoryDeltaY) ? result.trajectoryDeltaY : actualDeltaY;
 
   // Where the step slid the tank off its own heading -- off its jump's, in the
   // air -- the direction it actually went, for the packet.
   let slideDirection = null;
   if (result.altered && !events.teleported) {
-    const distance = Math.hypot(trajectoryDeltaX, trajectoryDeltaZ);
+    const distance = Math.hypot(trajectoryDeltaX, trajectoryDeltaY);
     if (distance > 0.001) {
-      const actual = Math.atan2(-trajectoryDeltaX, -trajectoryDeltaZ);
-      const expected = state.inAir && state.jumpDirection !== null ? state.jumpDirection : state.rotation;
+      const actual = Math.atan2(trajectoryDeltaY, trajectoryDeltaX);
+      const expected = state.inAir && state.jumpDirection !== null ? state.jumpDirection : state.azimuth;
       if (Math.abs(normalizeAngle(actual - expected)) > 0.01) slideDirection = actual;
     }
   }
@@ -672,17 +684,17 @@ function stepDrive(state, intended, tank, world, clock, dt) {
     } else if (airControl && !jumpStarted) {
       // Wings changes its horizontal velocity every frame, so what others
       // extrapolate from is this frame's actual travel.
-      setAirVelocity(state, actualDeltaX / dt, actualDeltaZ / dt, config);
+      setAirVelocity(state, actualDeltaX / dt, actualDeltaY / dt, config);
     } else if (result.altered) {
       const newX = trajectoryDeltaX / dt;
-      const newZ = trajectoryDeltaZ / dt;
-      setAirVelocity(state, newX, newZ, config);
-      if (Math.hypot(newX - priorAirVelocityX, newZ - priorAirVelocityZ) > AIR_VELOCITY_THRESHOLD) {
+      const newY = trajectoryDeltaY / dt;
+      setAirVelocity(state, newX, newY, config);
+      if (Math.hypot(newX - priorAirVelocityX, newY - priorAirVelocityY) > AIR_VELOCITY_THRESHOLD) {
         events.forceSend = true;
       }
     } else if (jumpStarted) {
       const v = airVelocityFor(state.jumpDirection, (climbBlocked ? 0 : intended.forward) * speedFactor, config);
-      setAirVelocity(state, v.x, v.z, config);
+      setAirVelocity(state, v.x, v.y, config);
     }
   }
 
@@ -694,13 +706,13 @@ function stepDrive(state, intended, tank, world, clock, dt) {
   if (dt > 0) {
     let forwardSpeed = 0;
     if (!state.inAir || airControl) {
-      const distance = Math.hypot(actualDeltaX, actualDeltaZ);
+      const distance = Math.hypot(actualDeltaX, actualDeltaY);
       if (distance > 0.001) {
         const actualSpeed = distance / dt;
         if (slideDirection !== null) {
           forwardSpeed = actualSpeed / config.TANK_SPEED;
         } else {
-          const dot = ((actualDeltaX * -Math.sin(state.rotation)) + (actualDeltaZ * -Math.cos(state.rotation))) / distance;
+          const dot = ((actualDeltaX * Math.cos(state.azimuth)) + (actualDeltaY * Math.sin(state.azimuth))) / distance;
           forwardSpeed = (dot * actualSpeed) / config.TANK_SPEED;
         }
         // A fraction of the world's base speed, so a boosted tank reports more
@@ -709,14 +721,14 @@ function stepDrive(state, intended, tank, world, clock, dt) {
         forwardSpeed = Math.max(-maxFS, Math.min(maxFS, forwardSpeed));
       }
     } else {
-      const airSpeed = Math.hypot(state.airVelocityX || 0, state.airVelocityZ || 0);
+      const airSpeed = Math.hypot(state.airVelocityX || 0, state.airVelocityY || 0);
       forwardSpeed = config.TANK_SPEED > 0 ? airSpeed / config.TANK_SPEED : 0;
     }
     state.forwardSpeed = forwardSpeed;
     if (!wasInAir || airControl) {
       // The short way round: a heading crossing +/-PI otherwise reads as a turn
       // of nearly a full circle the other way.
-      const turned = normalizeAngle(state.rotation - old.rotation);
+      const turned = normalizeAngle(state.azimuth - old.azimuth);
       const maxRS = getMaxAngVelFactor(motionFlag);
       state.rotationSpeed = Math.max(-maxRS, Math.min(maxRS, (turned / dt) / config.TANK_ROTATION_SPEED));
     }
@@ -733,12 +745,12 @@ function movePacketFields(state, { jumpStarted = false, stopped = false } = {}) 
     x: Number(state.x.toFixed(2)),
     y: Number(state.y.toFixed(2)),
     z: Number(state.z.toFixed(2)),
-    r: Number(state.rotation.toFixed(2)),
+    a: Number(state.azimuth.toFixed(2)),
     fs: stopped ? 0 : Number((jumpStarted ? state.jumpForwardSpeed || 0 : state.forwardSpeed).toFixed(2)),
     rs: stopped ? 0 : Number(state.rotationSpeed.toFixed(2)),
     vv: Number((state.verticalVelocity || 0).toFixed(2)),
     vx: Number((airborne ? state.airVelocityX || 0 : 0).toFixed(2)),
-    vz: Number((airborne ? state.airVelocityZ || 0 : 0).toFixed(2)),
+    vy: Number((airborne ? state.airVelocityY || 0 : 0).toFixed(2)),
     // Upstream's `PlayerState::Falling`: in the air, or in a building
     // (`LocalPlayer.cxx:819-823`). Only a proxied connection reads it -- a bzfs
     // skips the vertical part of its shot-origin check for a falling tank, so
@@ -746,7 +758,7 @@ function movePacketFields(state, { jumpStarted = false, stopped = false } = {}) 
     air: (state.onGround || state.onObstacle) ? 0 : 1,
   };
   const slide = airborne ? state.slideDirection : state.groundSlideDirection;
-  if (slide !== null && slide !== undefined) fields.d = Number(slide.toFixed(2));
+  if (slide !== null && slide !== undefined) fields.sd = Number(slide.toFixed(2));
   return fields;
 }
 
@@ -757,30 +769,30 @@ function movePacketFields(state, { jumpStarted = false, stopped = false } = {}) 
 // accepted, so the two never depend on separate guesses about whether the tank
 // is airborne.
 function packetVelocity(fields, config) {
-  if (fields.air === 1) return { x: fields.vx || 0, y: fields.vv || 0, z: fields.vz || 0 };
-  const heading = Number.isFinite(fields.d) ? fields.d : fields.r;
+  if (fields.air === 1) return { x: fields.vx || 0, y: fields.vy || 0, z: fields.vv || 0 };
+  const azimuth = Number.isFinite(fields.sd) ? fields.sd : fields.a;
   const speed = (fields.fs || 0) * (config.TANK_SPEED ?? 25);
-  return { x: -Math.sin(heading) * speed, y: 0, z: -Math.cos(heading) * speed };
+  return { x: Math.cos(azimuth) * speed, y: Math.sin(azimuth) * speed, z: 0 };
 }
 
 // A `shoot` message for a tank: from its muzzle -- under the tank for a shock
 // wave, which swells around it rather than leaving a barrel
 // (LocalPlayer.cxx:1230) -- with upstream's velocity, or none for a wave.
 function shotFromTank({
-  x, y, z, rotation, tankVelocity, config, shockwave = false,
+  x, y, z, azimuth, tankVelocity, config, shockwave = false,
   muzzleForward = TANK.muzzleForward, muzzleHeight = TANK.muzzleHeight,
 }) {
-  const dirX = -Math.sin(rotation);
-  const dirZ = -Math.cos(rotation);
+  const dirX = Math.cos(azimuth);
+  const dirY = Math.sin(azimuth);
   const velocity = shockwave
     ? { x: 0, y: 0, z: 0 }
-    : getMuzzleVelocity({ x: dirX, y: 0, z: dirZ }, tankVelocity,
+    : getMuzzleVelocity({ x: dirX, y: dirY, z: 0 }, tankVelocity,
       config.SHOT_SPEED ?? 100, config.SHOTS_KEEP_VERTICAL_VELOCITY === true);
   return {
     type: 'shoot',
     x: shockwave ? x : x + (dirX * muzzleForward),
-    y: y + (shockwave ? 0 : muzzleHeight),
-    z: shockwave ? z : z + (dirZ * muzzleForward),
+    y: shockwave ? y : y + (dirY * muzzleForward),
+    z: z + (shockwave ? 0 : muzzleHeight),
     vx: velocity.x,
     vy: velocity.y,
     vz: velocity.z,

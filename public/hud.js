@@ -608,7 +608,7 @@ export function updateDebugDisplay({
   playerX,
   playerY,
   playerZ,
-  playerRotation,
+  azimuth,
   myTank,
   cameraMode,
   OBSTACLES,
@@ -636,7 +636,7 @@ export function updateDebugDisplay({
       html += `<div><span class="label">Vertical:</span><span class="value">${myTank.userData.verticalSpeed.toFixed(2)} u/s</span></div>`;
     }
     html += `<div><span class="label">Position:</span><span class="value">(${playerX?.toFixed(1) ?? ''}, ${playerY?.toFixed(1) ?? ''}, ${playerZ?.toFixed(1) ?? ''})</span></div>`;
-    html += `<div><span class="label">Rotation:</span><span class="value">${playerRotation?.toFixed(2) ?? ''} rad</span></div>`;
+    html += `<div><span class="label">Azimuth:</span><span class="value">${azimuth?.toFixed(2) ?? ''} rad</span></div>`;
   }
   html += `<div><span class="label">Camera:</span><span class="value">${cameraMode ?? ''}</span></div>`;
   html += `<div><span class="label">Obs/Clouds:</span><span class="value">${OBSTACLES?.length ?? ''}/${clouds?.length ?? ''}</span></div>`;
@@ -1597,7 +1597,7 @@ function drawHeadingMarkers(ctx, markers, { barWidth, barBottom, pxPerDeg, halfS
 // moved forces one.
 function resolveHeadingMarkers(markers, centerDeg) {
   return markers.map((marker) => {
-    let relDeg = ((marker.heading * 180 / Math.PI) % 360) - centerDeg;
+    let relDeg = (((marker.azimuth - (Math.PI / 2)) * 180 / Math.PI) % 360) - centerDeg;
     while (relDeg > 180) relDeg -= 360;
     while (relDeg <= -180) relDeg += 360;
     return { relDeg, color: marker.color };
@@ -1605,7 +1605,10 @@ function resolveHeadingMarkers(markers, centerDeg) {
 }
 
 // Draws a degree bar above the control box
-export function updateDegreeBar({ myTank, playerRotation, markers = [] }) {
+// `azimuth` and each marker's are upstream's, counter-clockwise from east; the
+// tape reads as it always has, 0 north and 90 west.
+export function updateDegreeBar({ myTank, azimuth, markers = [] }) {
+  const playerRotation = (azimuth || 0) - (Math.PI / 2);
   const hud = getHudCanvasContext(degreeBarRenderState, 'degreeBar');
   if (!hud || !hud.controlBox || !myTank) return;
   const { canvas: degreeBar, controlBox, ctx } = hud;
@@ -1717,7 +1720,7 @@ export function updateAltimeter({ myTank, tickSpacing = 5 }) {
   // Show 30 units from top to bottom
   const unitsVisible = 30;
   const pixelsPerUnit = altHeight / unitsVisible;
-  const tankY = myTank.position.y;
+  const tankY = myTank.position.z;
   const centerY = altHeight / 2;
 
   // Get controlBox border color for altimeter lines/numbers

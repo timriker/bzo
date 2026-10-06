@@ -5,7 +5,7 @@
  * See LICENSE or https://www.gnu.org/licenses/agpl-3.0.html
  */
 
-import { getObstacleHeight } from './collision.mjs';
+import { getObstacleBase, getObstacleHeight } from './collision.mjs';
 
 // Faces nothing can ever see, left out of the world mesh.
 //
@@ -66,40 +66,37 @@ export function hidesGeometry(obs) {
 
 // The obstacle as the intersection of half-spaces, each `dot(normal, p) <= off`.
 // A box is six, a pyramid five: its cap and one per slanted side. Both shapes are
-// convex, which is what lets a triangle be tested by its corners alone.
+// convex, which is what lets a triangle be tested by its corners alone. In
+// upstream's frame, z up, as the triangles asked about are.
 export function getObstacleHalfSpaces(obs) {
   const height = getObstacleHeight(obs);
-  const baseY = obs.baseY || 0;
-  const topY = baseY + height;
-  const cos = Math.cos(obs.rotation || 0);
-  const sin = Math.sin(obs.rotation || 0);
-  const halfW = obs.w / 2;
-  const halfD = obs.d / 2;
-  // The obstacle's own axes in world space, and its centre. The handedness is
-  // `getColliderLocalPoint`'s, which is also what a Three rotation about +Y
-  // gives the obstacle's mesh -- the two have to agree or this would hide the
-  // faces of a box that is somewhere else, and only for obstacles turned by
-  // something other than a right angle, since a box is its own mirror at 90.
-  const ex = [cos, 0, -sin];
-  const ez = [sin, 0, cos];
-  const cx = obs.x;
-  const cz = obs.z;
+  const baseZ = getObstacleBase(obs);
+  const topZ = baseZ + height;
+  const cos = Math.cos(obs.angle || 0);
+  const sin = Math.sin(obs.angle || 0);
+  const halfW = obs.size[0];
+  const halfD = obs.size[1];
+  // The obstacle's own axes in world space, and its centre: `getColliderLocalPoint`'s.
+  const ex = [cos, sin, 0];
+  const ey = [-sin, cos, 0];
+  const cx = obs.pos[0];
+  const cy = obs.pos[1];
 
   if (obs.type === 'pyramid') {
     // The rectangle end and the point end. An inverted pyramid is the same solid
     // stood on its point, so only which end is which changes.
-    const ringY = obs.inverted ? topY : baseY;
-    const apex = [cx, obs.inverted ? baseY : topY, cz];
+    const ringZ = obs.inverted ? topZ : baseZ;
+    const apex = [cx, cy, obs.inverted ? baseZ : topZ];
     const planes = obs.inverted
-      ? [{ n: [0, 1, 0], off: topY }]
-      : [{ n: [0, -1, 0], off: -baseY }];
-    const ring = [[1, 1], [-1, 1], [-1, -1], [1, -1]].map(([sx, sz]) => [
-      cx + (ex[0] * halfW * sx) + (ez[0] * halfD * sz),
-      ringY,
-      cz + (ex[2] * halfW * sx) + (ez[2] * halfD * sz),
+      ? [{ n: [0, 0, 1], off: topZ }]
+      : [{ n: [0, 0, -1], off: -baseZ }];
+    const ring = [[1, 1], [-1, 1], [-1, -1], [1, -1]].map(([sx, sy]) => [
+      cx + (ex[0] * halfW * sx) + (ey[0] * halfD * sy),
+      cy + (ex[1] * halfW * sx) + (ey[1] * halfD * sy),
+      ringZ,
     ]);
     // A point known to be inside, to orient the slanted planes by.
-    const inside = [cx, (baseY + topY) / 2, cz];
+    const inside = [cx, cy, (baseZ + topZ) / 2];
     for (let i = 0; i < 4; i += 1) {
       const a = ring[i];
       const b = ring[(i + 1) % 4];
@@ -123,15 +120,15 @@ export function getObstacleHalfSpaces(obs) {
     return planes;
   }
 
-  const dotEx = (ex[0] * cx) + (ex[2] * cz);
-  const dotEz = (ez[0] * cx) + (ez[2] * cz);
+  const dotEx = (ex[0] * cx) + (ex[1] * cy);
+  const dotEy = (ey[0] * cx) + (ey[1] * cy);
   return [
     { n: ex, off: dotEx + halfW },
-    { n: [-ex[0], 0, -ex[2]], off: -dotEx + halfW },
-    { n: ez, off: dotEz + halfD },
-    { n: [-ez[0], 0, -ez[2]], off: -dotEz + halfD },
-    { n: [0, 1, 0], off: topY },
-    { n: [0, -1, 0], off: -baseY },
+    { n: [-ex[0], -ex[1], 0], off: -dotEx + halfW },
+    { n: ey, off: dotEy + halfD },
+    { n: [-ey[0], -ey[1], 0], off: -dotEy + halfD },
+    { n: [0, 0, 1], off: topZ },
+    { n: [0, 0, -1], off: -baseZ },
   ];
 }
 
@@ -140,20 +137,20 @@ export function getObstacleHalfSpaces(obs) {
 // cross-section is its rectangle end whichever way up it is.
 export function getObstacleBounds(obs) {
   const height = getObstacleHeight(obs);
-  const baseY = obs.baseY || 0;
-  const cos = Math.cos(obs.rotation || 0);
-  const sin = Math.sin(obs.rotation || 0);
-  const halfW = obs.w / 2;
-  const halfD = obs.d / 2;
+  const baseZ = getObstacleBase(obs);
+  const cos = Math.cos(obs.angle || 0);
+  const sin = Math.sin(obs.angle || 0);
+  const halfW = obs.size[0];
+  const halfD = obs.size[1];
   const spanX = (Math.abs(cos) * halfW) + (Math.abs(sin) * halfD);
-  const spanZ = (Math.abs(sin) * halfW) + (Math.abs(cos) * halfD);
+  const spanY = (Math.abs(sin) * halfW) + (Math.abs(cos) * halfD);
   return {
-    minX: obs.x - spanX,
-    maxX: obs.x + spanX,
-    minY: baseY,
-    maxY: baseY + height,
-    minZ: obs.z - spanZ,
-    maxZ: obs.z + spanZ,
+    minX: obs.pos[0] - spanX,
+    maxX: obs.pos[0] + spanX,
+    minY: obs.pos[1] - spanY,
+    maxY: obs.pos[1] + spanY,
+    minZ: baseZ,
+    maxZ: baseZ + height,
   };
 }
 

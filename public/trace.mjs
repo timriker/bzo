@@ -12,7 +12,8 @@
 // they go; a browser predicts its own shells and draws a beam it was not handed
 // by it -- one answer for both, so they cannot drift.
 //
-// `teleports` is `buildTeleporterIndex` (the `teleport` pair).
+// `teleports` is `buildTeleporterIndex` (the `teleport` pair). Positions and
+// directions are in upstream's frame: +Z up, +Y north.
 
 import {
   findShotEmbeddedObstacle,
@@ -69,13 +70,13 @@ export function findTeleporterEvent(teleports, from, to, blockedIndex, blockedDi
 // Where a segment leaving the world crosses its edge, by bisection; the end of
 // the segment where it did not start inside and leave.
 export function findMapEdgeImpactPoint(prevX, prevY, prevZ, nextX, nextY, nextZ, halfMap) {
-  const inside = (x, z) => Math.abs(x) <= halfMap && Math.abs(z) <= halfMap;
-  if (!inside(prevX, prevZ) || inside(nextX, nextZ)) return { x: nextX, y: nextY, z: nextZ };
+  const inside = (x, y) => Math.abs(x) <= halfMap && Math.abs(y) <= halfMap;
+  if (!inside(prevX, prevY) || inside(nextX, nextY)) return { x: nextX, y: nextY, z: nextZ };
   let lo = 0;
   let hi = 1;
   for (let i = 0; i < 8; i++) {
     const mid = (lo + hi) * 0.5;
-    if (inside(prevX + ((nextX - prevX) * mid), prevZ + ((nextZ - prevZ) * mid))) lo = mid;
+    if (inside(prevX + ((nextX - prevX) * mid), prevY + ((nextY - prevY) * mid))) lo = mid;
     else hi = mid;
   }
   return {
@@ -200,7 +201,7 @@ export function traceBeam(world, start, dir, range, options = {}) {
     // The ground and the buildings are asked over the whole reach and the
     // nearer of the two truncates the segment; the teleporters are asked over
     // what is left -- a portal behind a wall is not one the beam reaches.
-    const groundFraction = (direction.y < 0 && far.y < 0) ? (0 - point.y) / (direction.y * remaining) : Infinity;
+    const groundFraction = (direction.z < 0 && far.z < 0) ? (0 - point.z) / (direction.z * remaining) : Infinity;
     // A beam that begins inside something because it just came out of a
     // teleporter is carried through; anything else that started embedded --
     // the muzzle overlapping a thin wall -- is a hit right there.
@@ -226,8 +227,8 @@ export function traceBeam(world, start, dir, range, options = {}) {
     }
     let end = {
       x: point.x + ((far.x - point.x) * fraction),
-      y: reason === 'ground' ? 0 : point.y + ((far.y - point.y) * fraction),
-      z: point.z + ((far.z - point.z) * fraction),
+      y: point.y + ((far.y - point.y) * fraction),
+      z: reason === 'ground' ? 0 : point.z + ((far.z - point.z) * fraction),
     };
 
     const met = findTeleporterEvent(world.teleports, point, end, blockedIndex, blockedDistance, throughBuildings);
@@ -237,7 +238,7 @@ export function traceBeam(world, start, dir, range, options = {}) {
       obstacle = met.type === 'frameHit' ? met.obs : null;
       obstacleFace = -1;
     }
-    if (Math.abs(end.x) > halfMap || Math.abs(end.z) > halfMap) {
+    if (Math.abs(end.x) > halfMap || Math.abs(end.y) > halfMap) {
       end = findMapEdgeImpactPoint(point.x, point.y, point.z, end.x, end.y, end.z, halfMap);
       reason = 'out_of_bounds';
       obstacle = null;
@@ -287,7 +288,7 @@ export function traceBeam(world, start, dir, range, options = {}) {
     // perpendicular gap that decides whether the shot still reads as inside.
     if (ricochet && (reason === 'obstacle' || reason === 'ground' || reason === 'frame_hit')) {
       const normal = reason === 'ground'
-        ? { x: 0, y: 1, z: 0 }
+        ? { x: 0, y: 0, z: 1 }
         : getShotObstacleNormal(obstacle, end.x, end.y, end.z, SHOT_COLLISION_RADIUS, obstacleFace);
       direction = reflectShotDirection(direction.x, direction.y, direction.z, normal);
       drawFrom = { ...end };

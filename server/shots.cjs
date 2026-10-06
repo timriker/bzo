@@ -66,22 +66,18 @@ function getWorldMissileLifetimeSeconds(playerId, guided, mapSize, speed) {
 }
 
 // bz_vectorFromRotations (bzfsAPI.cxx:1845), which is how a world weapon's aim
-// becomes a direction, converted to bzo's axes.
-//
-// Upstream builds it in BZFlag's frame:
+// becomes a direction:
 //
 //   (cos(tilt) * cos(rot), cos(tilt) * sin(rot), sin(tilt))
 //
-// and bzo is that frame relabelled -- bzo(x, y, z) = bzf(x, z, -y) -- so the
-// second and third components swap and the new z takes the sign. `rotation` and
-// `tilt` are radians here; the BZW file states both in degrees and
-// `WorldFileLocation::read` and `CustomWeapon::read` convert.
+// `rotation` and `tilt` are radians here; the BZW file states both in degrees
+// and `WorldFileLocation::read` and `CustomWeapon::read` convert.
 function getWorldWeaponDirection(rotation, tilt) {
   const tiltFactor = Math.cos(tilt);
   return {
     x: tiltFactor * Math.cos(rotation),
-    y: Math.sin(tilt),
-    z: -tiltFactor * Math.sin(rotation),
+    y: tiltFactor * Math.sin(rotation),
+    z: Math.sin(tilt),
   };
 }
 
@@ -94,8 +90,8 @@ function getWorldWeaponDirection(rotation, tilt) {
 function getMuzzleVelocity(direction, tankVelocity, shotSpeed, keepVertical) {
   return {
     x: tankVelocity.x + (shotSpeed * direction.x),
-    y: keepVertical ? tankVelocity.y + (shotSpeed * direction.y) : 0,
-    z: tankVelocity.z + (shotSpeed * direction.z),
+    y: tankVelocity.y + (shotSpeed * direction.y),
+    z: keepVertical ? tankVelocity.z + (shotSpeed * direction.z) : 0,
   };
 }
 
@@ -297,8 +293,8 @@ function getShotTankHit(shot, from, to, tank, rules = {}) {
   // `_tankHeight` up from its feet (BaseLocalPlayer.cxx:110). The sphere below
   // reaches well above and below that, so this is what lets a level shell pass
   // over a tank at `_burrowDepth`.
-  if (Math.max(from.y, to.y) < tank.position.y
-    || Math.min(from.y, to.y) > tank.position.y + TANK.hitHeight) return null;
+  if (Math.max(from.z, to.z) < tank.position.z
+    || Math.min(from.z, to.z) > tank.position.z + TANK.hitHeight) return null;
 
   const narrow = usesNarrowHitBox(tank.flagType ?? null);
   const fraction = getSegmentTankHitFraction(from, to, tank.position, {
@@ -309,15 +305,15 @@ function getShotTankHit(shot, from, to, tank, rules = {}) {
   if (fraction === null) return null;
 
   // Narrow's box stands the tank's height; the sphere has its own.
-  const y = from.y + ((to.y - from.y) * fraction);
-  if (narrow && (y < tank.position.y || y > tank.position.y + TANK.hitHeight)) return null;
+  const z = from.z + ((to.z - from.z) * fraction);
+  if (narrow && (z < tank.position.z || z > tank.position.z + TANK.hitHeight)) return null;
 
   return {
     fraction,
     point: {
       x: from.x + ((to.x - from.x) * fraction),
-      y,
-      z: from.z + ((to.z - from.z) * fraction),
+      y: from.y + ((to.y - from.y) * fraction),
+      z,
     },
   };
 }

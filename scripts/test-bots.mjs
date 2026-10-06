@@ -47,7 +47,7 @@ function makeDriver(think, flag = null) {
       flag: () => flag,
       colliders: () => [],
       topOf: () => 0,
-      state: () => ({ alive: true, x: 0, y: 0, z: 0, rotation: 0 }),
+      state: () => ({ alive: true, x: 0, y: 0, z: 0, azimuth: Math.PI / 2 }),
       view: (self) => ({ self }),
       send: (message) => sent.push(message),
       act: () => {},
@@ -61,7 +61,7 @@ function makeDriver(think, flag = null) {
 {
   const { driver, sent } = makeDriver(() => ({ speed: 1, rotation: 0 }));
   for (let i = 0; i < 20; i++) driver.tick(0.05);
-  assert.ok(Math.abs(driver.z + 25) < 0.01, `drove to z=${driver.z}`);
+  assert.ok(Math.abs(driver.y - 25) < 0.01, `drove to y=${driver.y}`);
   assert.ok(Math.abs(driver.x) < 1e-9);
   const moves = sent.filter((message) => message.type === 'm');
   assert.ok(moves.length >= 1);
@@ -79,11 +79,11 @@ function makeDriver(think, flag = null) {
   let peak = 0;
   for (let i = 0; i < 100; i++) {
     driver.tick(0.05);
-    peak = Math.max(peak, driver.y);
+    peak = Math.max(peak, driver.z);
   }
   const expected = (CONFIG.JUMP_VELOCITY ** 2) / (2 * CONFIG.GRAVITY);
   assert.ok(Math.abs(peak - expected) < 1.5, `peak ${peak.toFixed(2)} near ${expected.toFixed(2)}`);
-  assert.equal(driver.y, 0, 'back on the ground');
+  assert.equal(driver.z, 0, 'back on the ground');
   assert.equal(driver.jumpDirection, null);
   const airborne = sent.filter((message) => message.type === 'm' && message.air === 1);
   assert.ok(airborne.length >= 1 && airborne[0].vv > 18, 'the take-off is reported');
@@ -95,9 +95,9 @@ function makeDriver(think, flag = null) {
   driver.tick(0.05);
   const shoot = sent.findIndex((message) => message.type === 'shoot');
   assert.ok(shoot > 0 && sent[shoot - 1].type === 'm', 'a move rides ahead of the shot');
-  assert.ok(Math.abs(sent[shoot].z + 3) < 1e-9 && Math.abs(sent[shoot].y - 1.57) < 1e-9);
+  assert.ok(Math.abs(sent[shoot].y - 3) < 1e-9 && Math.abs(sent[shoot].z - 1.57) < 1e-9);
   assert.deepEqual([sent[shoot].vx, sent[shoot].vy, sent[shoot].vz].map((v) => Math.round(v * 1e6) / 1e6),
-    [-0, 0, -100], 'a standing tank fires at the shot speed');
+    [0, 100, 0], 'a standing tank fires at the shot speed');
 }
 
 // A moving tank's shot carries its velocity on top of the shot speed, as the
@@ -109,8 +109,8 @@ function makeDriver(think, flag = null) {
   const shot = sent.at(-1);
   const move = sent.findLast((message) => message.type === 'm');
   assert.equal(shot.type, 'shoot');
-  assert.ok(Math.abs(shot.vz - (-100 - (move.fs * CONFIG.TANK_SPEED))) < 1e-9, `shot vz ${shot.vz}`);
-  assert.equal(shot.vy, 0, 'level unless the world keeps vertical velocity');
+  assert.ok(Math.abs(shot.vy - (100 + (move.fs * CONFIG.TANK_SPEED * Math.sin(move.a)))) < 1e-9, `shot vy ${shot.vy}`);
+  assert.equal(shot.vz, 0, 'level unless the world keeps vertical velocity');
 }
 
 // A bot drives by the same step as a browser's tank, flag and all: holding
@@ -118,7 +118,7 @@ function makeDriver(think, flag = null) {
 {
   const { driver } = makeDriver(() => ({ speed: 0, rotation: 1 }), { type: 'BU', zoned: false });
   for (let i = 0; i < 20; i++) driver.tick(0.05);
-  assert.ok(driver.y < -1, `burrowed to ${driver.y.toFixed(2)}`);
+  assert.ok(driver.z < -1, `burrowed to ${driver.z.toFixed(2)}`);
   const turnRate = driver.self().turnRate;
   assert.ok(turnRate < CONFIG.TANK_ROTATION_SPEED * 0.6, `turns at ${turnRate.toFixed(2)} underground`);
 }

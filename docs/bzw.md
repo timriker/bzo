@@ -67,14 +67,18 @@ of the rest (`WorldGenerators.cxx:422`); bzo builds them all the same height.
 
 ## Coordinates
 
-BZFlag's world is right-handed with +Y north and +Z up; bzo's is Three.js's,
-with -Z north and +Y up. The importer converts as it reads:
+bzo's world is upstream's: right-handed, +Y north and +Z up, a heading an
+azimuth counter-clockwise from +X (#182). A box, pyramid, base or teleporter
+keeps its placement as upstream's `Obstacle` holds it -- `pos`, `size` (half
+width, half breadth, full height; a teleporter's grown by its border, as
+`Teleporter::finalize` grows it) and `angle` -- and a mesh's vertices,
+normals, planes and bounds are in the same frame:
 
 | BZW | bzo | note |
 |---|---|---|
-| `position x y z`, or `pos` | `x`, `z = -y`, `baseY = z` | +Y north becomes -Z north |
-| `size x y z` | `w = 2x`, `d = 2y`, `h = z` | BZW's x/y are half extents, z is a full height |
-| `rotation deg`, or `rot` | `rotation = deg * pi/180 + pi` | degrees CCW about +Z, and the depth axis flips |
+| `position x y z`, or `pos` | `pos = [x, y, z]` | z is the base |
+| `size x y z` | `size = [x, y, z]` | BZW's x/y are half extents, z is a full height |
+| `rotation deg`, or `rot` | `angle = deg * pi/180` | counter-clockwise about +Z |
 | `world` / `size r` | `MAP_SIZE = 2r` | BZW states the half width; `CustomWorld.cxx:38` doubles it too |
 
 `pos` and `rot` are upstream's own aliases (`WorldFileLocation::read`), so a map
@@ -82,7 +86,7 @@ that uses the short spellings is not a map that arrives at the origin.
 
 A `pyramid` is flat-topped -- the kind you can drive on -- if it says `flipz`
 or gives a negative `size` height. Both are upstream's ZFlip, either may come
-first, and bzo stores the answer as a positive `h` with `inverted` set.
+first, and bzo stores the answer as a positive `size` height with `inverted` set.
 
 ## Obstacles
 
@@ -96,8 +100,10 @@ purple), and it is what makes a base a capture target for that team. A `base`
 with no `color` is red. A base is tinted by the team holding it, so it takes no
 colour of its own.
 
-**Every obstacle carries a `rotation`, whether or not the block gave one.** The
-importer states 0 for a block that says nothing, because everything downstream
+**Every obstacle carries an `angle`, whether or not the block gave one.** The
+importer states upstream's 0 for a block that says nothing, and a group
+member's is its group's angle plus its own, as
+`MeshTransform::Tool::modifyOldStyle` composes them. Everything downstream
 turns the field into a cosine: the collision pair, the renderer, the radar and
 the logs all read it directly, with no default of their own to fall back on.
 
@@ -737,8 +743,8 @@ collision-ready.** `Teleporter::finalize` grows the stated size by the border --
 `size[1] = origSize[1] + border * 2`, `size[2] = origSize[2] + border` -- and
 those grown values *are* the obstacle's extents upstream, so they are what
 collides, what holds a tank up and what is drawn. bzo therefore applies that
-growth once, at parse time, and a teleporter's `w`/`d`/`h` on the wire mean
-exactly what they mean on a box: the solid.
+growth once, at parse time, and a teleporter's `size` on the wire means
+exactly what it means on a box: the solid.
 
 BZW's convention is the opposite -- its stated size is the *opening*, and the
 frame is that plus the border -- which is a trap for every reader downstream.
@@ -747,7 +753,7 @@ support footprint, and the debug outline that is supposed to *show* the support
 footprint. `getShotTeleporterDims` is now a reader rather than a calculator;
 the only thing it still derives is the portal opening inside the frame, which
 is upstream's own `getBreadth() - border` subtraction. Anything that wants the
-solid can just read `w`/`d`/`h` and be right by default. A `link` block takes
+solid can just read `size` and be right by default. A `link` block takes
 `from` and `to`, either of which may be:
 
 - a face name, `ne_tele_low:f`;
@@ -1252,8 +1258,8 @@ driving it, and its shots kill whoever they reach.
 
 | BZW | bzo | notes |
 |---|---|---|
-| `position x y z` | the muzzle | BZW's `+Y` north is bzo's `-Z`, as for an obstacle |
-| `rotation deg` | the aim, around up | `bz_vectorFromRotations`, in bzo's axes |
+| `position x y z` | the muzzle | as for an obstacle |
+| `rotation deg` | the aim, around up | `bz_vectorFromRotations` |
 | `tilt deg` | the aim, up or down | 0 is level |
 | `type <abbrev>` | the firing flag | anything in the flag table; unknown fires a plain shell, as `Flags::Null` does |
 | `initdelay s` | the first shot | default 10, measured from when the world was built |

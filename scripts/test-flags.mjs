@@ -18,7 +18,7 @@ import {
   configureTankDimensions,
   TANK,
   getBaseTeamAtPoint,
-  getBaseTopY,
+  getBaseTop,
   isOnBaseTop,
   isOverFlatTop,
 } from '../public/collision.mjs';
@@ -35,8 +35,6 @@ import {
   GM_TURN_ANGLE,
   LOCK_ON_ANGLE,
   TARGETING_ANGLE,
-  pickTargetInSights,
-  steerGuidedShot,
   FLAG_ALTITUDE,
   FLAG_EFFECT_TIME,
   NARROW_FACTOR,
@@ -118,7 +116,6 @@ import {
   normalizeShakeTimeout,
   normalizeShakeWins,
   getFlagFlightHeight,
-  getFlagFlightState,
   getFlagHoverHeight,
   getFlagTeamIndex,
   getFlagType,
@@ -128,7 +125,6 @@ import {
   getShockWaveRadius,
   getTeamFlagAbbreviation,
   getWingsJumpVelocity,
-  getWingsSlideVelocity,
   hasAirControl,
   shotRicochets,
   shieldsAgainstShot,
@@ -169,6 +165,10 @@ import {
   keepFlagIdentity,
   formatFlagInfo,
   parseFlagInfo,
+  steerGuidedShot,
+  pickTargetInSights,
+  getWingsSlideVelocity,
+  getFlagFlightState,
 } from '../public/flags.mjs';
 
 const require = createRequire(import.meta.url);
@@ -176,6 +176,8 @@ const serverFlags = require('../server/flags.cjs');
 
 const GRAVITY = 9.8;
 const EPSILON = 1e-9;
+// Upstream's azimuth of due north: forward is (cos, sin), so +Y.
+const NORTH = Math.PI / 2;
 const close = (actual, expected, message, tolerance = 1e-6) => assert.ok(
   Math.abs(actual - expected) < tolerance,
   `${message}: expected ${expected}, got ${actual}`
@@ -779,14 +781,14 @@ for (const abbreviation of ['JP', 'US', 'ID', 'B*', null]) {
 
   // The separation weighs the vertical double, so a tank overhead is twice as
   // far as the same gap along the ground.
-  close(getRunOverSeparation(3, 0, 4), 5, 'flat ground is the plain distance');
-  close(getRunOverSeparation(0, 3, 0), 6, 'and height counts double');
+  close(getRunOverSeparation(3, 4, 0), 5, 'flat ground is the plain distance');
+  close(getRunOverSeparation(0, 0, 3), 6, 'and height counts double');
   close(getRunOverSeparation(0, 0, 0), 0);
   // Which is what stops a roller squashing somebody through a roof: a tank one
   // storey up is out of reach even standing on your head.
   const reach = getRunOverRadius(null, 'SR', R);
   assert.ok(getRunOverSeparation(0, 0, 0) < reach, 'standing on somebody squashes them');
-  assert.ok(getRunOverSeparation(0, 3.05, 0) >= reach, 'a storey up is out of reach');
+  assert.ok(getRunOverSeparation(0, 0, 3.05) >= reach, 'a storey up is out of reach');
   assert.ok(getRunOverSeparation(5.9, 0, 0) < reach, 'and the reach along the ground is nearly two tanks');
   assert.ok(getRunOverSeparation(6.1, 0, 0) >= reach);
 
@@ -807,32 +809,32 @@ for (const abbreviation of ['JP', 'US', 'ID', 'B*', null]) {
   close(getWingsJumpVelocity(flapVelocity, 30), 30, 'a flap while climbing faster is wasted');
 }
 
-// LocalPlayer::doSlideMotion. Forward in bzo is (-sin, -cos), so a tank at
-// heading 0 accelerates towards -z.
+// LocalPlayer::doSlideMotion. Forward is (cos, sin) of the azimuth, so a tank
+// facing north (azimuth pi/2) accelerates towards +y.
 {
   const maxSpeed = 25;
   const slideTime = 2;
   const dt = 0.5;
   // From a standstill, a quarter of the slide time buys a quarter of the ask.
-  const first = getWingsSlideVelocity(0, 0, 0, maxSpeed, maxSpeed, slideTime, dt);
-  close(first.x, 0, 'no sideways component at heading 0');
-  close(first.z, -maxSpeed * (dt / slideTime), 'a slide builds up over slideTime');
+  const first = getWingsSlideVelocity(0, 0, NORTH, maxSpeed, maxSpeed, slideTime, dt);
+  close(first.x, 0, 'no sideways component facing north');
+  close(first.y, maxSpeed * (dt / slideTime), 'a slide builds up over slideTime');
 
   // Asking for the same thing repeatedly converges on maxSpeed and stops there.
-  let velocity = { x: 0, z: 0 };
+  let velocity = { x: 0, y: 0 };
   for (let step = 0; step < 20; step += 1) {
-    velocity = getWingsSlideVelocity(velocity.x, velocity.z, 0, maxSpeed, maxSpeed, slideTime, dt);
+    velocity = getWingsSlideVelocity(velocity.x, velocity.y, NORTH, maxSpeed, maxSpeed, slideTime, dt);
   }
-  close(Math.hypot(velocity.x, velocity.z), maxSpeed, 'a slide is held at maxSpeed');
+  close(Math.hypot(velocity.x, velocity.y), maxSpeed, 'a slide is held at maxSpeed');
 
   // A tank thrown over the limit is bled back towards it rather than snapped.
-  const over = getWingsSlideVelocity(0, -100, 0, maxSpeed, maxSpeed, slideTime, dt);
-  close(Math.hypot(over.x, over.z), 100 - (maxSpeed * (dt / slideTime)), 'over the limit bleeds off');
+  const over = getWingsSlideVelocity(0, 100, NORTH, maxSpeed, maxSpeed, slideTime, dt);
+  close(Math.hypot(over.x, over.y), 100 - (maxSpeed * (dt / slideTime)), 'over the limit bleeds off');
 
   // Turning the stick off leaves the velocity alone, which is what momentum is.
-  const coasting = getWingsSlideVelocity(3, -4, 0, 0, maxSpeed, slideTime, dt);
+  const coasting = getWingsSlideVelocity(3, 4, NORTH, 0, maxSpeed, slideTime, dt);
   close(coasting.x, 3, 'no ask, no change in x');
-  close(coasting.z, -4, 'no ask, no change in z');
+  close(coasting.y, 4, 'no ask, no change in y');
 }
 
 // The table is the list of flags bzo implements, and every one of them needs a
@@ -914,12 +916,12 @@ for (const [abbreviation, type] of Object.entries(FLAG_TYPES)) {
   assert.equal(findNearestGroundFlag(world, 0, 0, 0, 3), null, 'nothing inside a shorter range');
   assert.equal(findNearestGroundFlag(world, 9, 0, 0, 50)?.index, 0, 'nearest is measured, not first');
   assert.equal(
-    findNearestGroundFlag([at(0, FLAG_STATUS.ON_GROUND, 0, 40, 0)], 0, 0, 0, 50)?.index,
+    findNearestGroundFlag([at(0, FLAG_STATUS.ON_GROUND, 0, 0, 40)], 0, 0, 0, 50)?.index,
     0,
     'a flag on a roof is in range by height alone'
   );
   assert.equal(
-    findNearestGroundFlag([at(0, FLAG_STATUS.ON_GROUND, 0, 60, 0)], 0, 0, 0, 50),
+    findNearestGroundFlag([at(0, FLAG_STATUS.ON_GROUND, 0, 0, 60)], 0, 0, 0, 50),
     null,
     'and out of it when the roof is high enough'
   );
@@ -951,28 +953,29 @@ assert.equal(isColorTeamIndex(5), false);
 assert.equal(isColorTeamIndex(null), false);
 
 // World::whoseBase -- a base is captured from its top surface. hix.bzw puts its
-// bases at z 26 with height 4, rotated 45 degrees, 70 units across.
-const redBase = { kind: 'base', team: 1, x: 0, z: -340, baseY: 26, h: 4, w: 70, d: 70, rotation: Math.PI / 4 };
-const blueBase = { kind: 'base', team: 3, x: 0, z: 340, baseY: 26, h: 4, w: 70, d: 70, rotation: 0 };
+// bases at z 26 with height 4, rotated 45 degrees, 70 units across. Obstacles
+// are upstream's pos (base centre), size (half extents and height) and angle.
+const redBase = { kind: 'base', team: 1, pos: [0, 340, 26], size: [35, 35, 4], angle: Math.PI / 4 };
+const blueBase = { kind: 'base', team: 3, pos: [0, -340, 26], size: [35, 35, 4], angle: 0 };
 const bases = [redBase, blueBase];
 
-close(getBaseTopY(redBase), 30, 'base top is its floor plus its height');
-assert.equal(isOnBaseTop(redBase, 0, 30, -340), true, 'dead centre on the top counts');
-assert.equal(isOnBaseTop(redBase, 0, 26, -340), false, 'standing at its foot does not');
-assert.equal(isOnBaseTop(redBase, 0, 30 + (BASE_TOP_TOLERANCE / 2), -340), true, 'within the epsilon counts');
-assert.equal(isOnBaseTop(redBase, 0, 31, -340), false, 'hovering above it does not');
-assert.equal(isOnBaseTop(blueBase, 34, 30, 340), true, 'inside the footprint counts');
-assert.equal(isOnBaseTop(blueBase, 36, 30, 340), false, 'outside the footprint does not');
-assert.equal(getBaseTeamAtPoint(bases, 0, 30, -340), 1, 'the red base answers red');
-assert.equal(getBaseTeamAtPoint(bases, 0, 30, 340), 3, 'the blue base answers blue');
-assert.equal(getBaseTeamAtPoint(bases, 0, 30, 0), null, 'open ground answers nobody');
-assert.equal(getBaseTeamAtPoint([{ ...redBase, kind: 'box' }], 0, 30, -340), null, 'a box is not a base');
+close(getBaseTop(redBase), 30, 'base top is its floor plus its height');
+assert.equal(isOnBaseTop(redBase, 0, 340, 30), true, 'dead centre on the top counts');
+assert.equal(isOnBaseTop(redBase, 0, 340, 26), false, 'standing at its foot does not');
+assert.equal(isOnBaseTop(redBase, 0, 340, 30 + (BASE_TOP_TOLERANCE / 2)), true, 'within the epsilon counts');
+assert.equal(isOnBaseTop(redBase, 0, 340, 31), false, 'hovering above it does not');
+assert.equal(isOnBaseTop(blueBase, 34, -340, 30), true, 'inside the footprint counts');
+assert.equal(isOnBaseTop(blueBase, 36, -340, 30), false, 'outside the footprint does not');
+assert.equal(getBaseTeamAtPoint(bases, 0, 340, 30), 1, 'the red base answers red');
+assert.equal(getBaseTeamAtPoint(bases, 0, -340, 30), 3, 'the blue base answers blue');
+assert.equal(getBaseTeamAtPoint(bases, 0, 0, 30), null, 'open ground answers nobody');
+assert.equal(getBaseTeamAtPoint([{ ...redBase, kind: 'box' }], 0, 340, 30), null, 'a box is not a base');
 
 // A drop looks for a flat top under the point, with no radius at all.
-assert.equal(isOverFlatTop(blueBase, 0, 340), true);
-assert.equal(isOverFlatTop(blueBase, 40, 340), false);
+assert.equal(isOverFlatTop(blueBase, 0, -340), true);
+assert.equal(isOverFlatTop(blueBase, 40, -340), false);
 assert.equal(
-  isOverFlatTop({ type: 'pyramid', x: 0, z: 0, baseY: 0, h: 10, w: 10, d: 10, rotation: 0 }, 0, 0),
+  isOverFlatTop({ type: 'pyramid', pos: [0, 0, 0], size: [5, 5, 10], angle: 0 }, 0, 0),
   false,
   'a pointed pyramid is no place to land'
 );
@@ -1046,25 +1049,25 @@ close(
 const thrown = {
   status: FLAG_STATUS.IN_AIR,
   position: { x: 0, y: 0, z: 0 },
-  launchPosition: { x: 10, y: 30, z: -5 },
-  landingPosition: { x: 10, y: 0, z: -5 },
+  launchPosition: { x: 10, y: 5, z: 30 },
+  landingPosition: { x: 10, y: 5, z: 0 },
   flightEnd: flight.flightEnd,
   initialVelocity: flight.initialVelocity,
 };
 
 const atLaunch = getFlagFlightState(thrown, 0, GRAVITY);
 close(atLaunch.x, 10, 'launch x');
-close(atLaunch.y, 30, 'launch altitude');
-close(atLaunch.z, -5, 'launch z');
+close(atLaunch.y, 5, 'launch y');
+close(atLaunch.z, 30, 'launch altitude');
 assert.equal(atLaunch.landed, false);
 
 const atApex = getFlagFlightState(thrown, flight.flightEnd / 2, GRAVITY);
-close(atApex.y, 15 + FLAG_ALTITUDE, 'apex is halfway down the lerp plus the throw');
+close(atApex.z, 15 + FLAG_ALTITUDE, 'apex is halfway down the lerp plus the throw');
 
 const atLanding = getFlagFlightState(thrown, flight.flightEnd, GRAVITY);
 close(atLanding.x, 10, 'landing x');
-close(atLanding.y, 0, 'landing altitude');
-close(atLanding.z, -5, 'landing z');
+close(atLanding.y, 5, 'landing y');
+close(atLanding.z, 0, 'landing altitude');
 assert.equal(atLanding.landed, true, 'the flight ends exactly at flightEnd');
 
 // Altitude never dips below the lerp between the two ends: the flag is thrown
@@ -1074,41 +1077,41 @@ for (let step = 0; step <= 60; step += 1) {
   const state = getFlagFlightState(thrown, elapsed, GRAVITY);
   const t = elapsed / flight.flightEnd;
   const lerped = ((1 - t) * 30) + (t * 0);
-  assert.ok(state.y >= lerped - EPSILON, `altitude dipped below the lerp at t=${t}`);
+  assert.ok(state.z >= lerped - EPSILON, `altitude dipped below the lerp at t=${t}`);
 }
 
 // A spawning flag: hovers at the apex over its landing spot for the first half,
 // fading in over the first quarter, then falls.
 const coming = {
   status: FLAG_STATUS.COMING,
-  position: { x: -20, y: 0, z: 40 },
-  launchPosition: { x: -20, y: 0, z: 40 },
-  landingPosition: { x: -20, y: 0, z: 40 },
+  position: { x: -20, y: -40, z: 0 },
+  launchPosition: { x: -20, y: -40, z: 0 },
+  landingPosition: { x: -20, y: -40, z: 0 },
   flightEnd: flight.flightEnd,
   initialVelocity: flight.initialVelocity,
 };
 const quarter = flight.flightEnd / 4;
 
 close(getFlagFlightState(coming, 0, GRAVITY).alpha, 0, 'a spawning flag starts invisible');
-close(getFlagFlightState(coming, 0, GRAVITY).y, FLAG_ALTITUDE, 'a spawning flag starts at the apex');
+close(getFlagFlightState(coming, 0, GRAVITY).z, FLAG_ALTITUDE, 'a spawning flag starts at the apex');
 close(getFlagFlightState(coming, quarter / 2, GRAVITY).alpha, 0.5, 'fades in over the first quarter');
 close(getFlagFlightState(coming, quarter, GRAVITY).warp, 1, 'the warp peaks a quarter in');
 close(getFlagFlightState(coming, 2 * quarter, GRAVITY).warp, 0, 'the warp is gone by the halfway point');
-close(getFlagFlightState(coming, 2 * quarter, GRAVITY).y, FLAG_ALTITUDE, 'the fall starts from the apex');
+close(getFlagFlightState(coming, 2 * quarter, GRAVITY).z, FLAG_ALTITUDE, 'the fall starts from the apex');
 assert.ok(
-  getFlagFlightState(coming, 3 * quarter, GRAVITY).y < FLAG_ALTITUDE,
+  getFlagFlightState(coming, 3 * quarter, GRAVITY).z < FLAG_ALTITUDE,
   'a spawning flag is falling in the second half'
 );
 const landedComing = getFlagFlightState(coming, flight.flightEnd, GRAVITY);
-close(landedComing.y, 0, 'a spawning flag settles at its landing altitude');
+close(landedComing.z, 0, 'a spawning flag settles at its landing altitude');
 assert.equal(landedComing.landed, true);
 close(landedComing.alpha, 1, 'a landed flag is opaque');
 
 // A vanishing flag is the reverse: it rises, the warp grows, then both fade.
 const going = { ...coming, status: FLAG_STATUS.GOING };
-close(getFlagFlightState(going, 0, GRAVITY).y, 0, 'a vanishing flag starts on the ground');
+close(getFlagFlightState(going, 0, GRAVITY).z, 0, 'a vanishing flag starts on the ground');
 close(getFlagFlightState(going, 0, GRAVITY).alpha, 1, 'a vanishing flag starts opaque');
-close(getFlagFlightState(going, 2 * quarter, GRAVITY).y, FLAG_ALTITUDE, 'it rises to the apex');
+close(getFlagFlightState(going, 2 * quarter, GRAVITY).z, FLAG_ALTITUDE, 'it rises to the apex');
 close(getFlagFlightState(going, 3 * quarter, GRAVITY).warp, 1, 'the warp peaks three quarters in');
 close(getFlagFlightState(going, 3.5 * quarter, GRAVITY).alpha, 0.5, 'it fades over the last quarter');
 const goneFlag = getFlagFlightState(going, flight.flightEnd, GRAVITY);
@@ -1119,8 +1122,8 @@ assert.equal(goneFlag.landed, true);
 for (const status of [FLAG_STATUS.ON_GROUND, FLAG_STATUS.ON_TANK, FLAG_STATUS.NO_EXIST]) {
   const still = getFlagFlightState({ ...coming, status }, 99, GRAVITY);
   close(still.x, -20, 'a resting flag keeps its x');
-  close(still.y, 0, 'a resting flag keeps its altitude');
-  close(still.z, 40, 'a resting flag keeps its z');
+  close(still.y, -40, 'a resting flag keeps its y');
+  close(still.z, 0, 'a resting flag keeps its altitude');
   assert.equal(still.landed, false, 'a resting flag is not landing');
 }
 
@@ -1166,10 +1169,10 @@ for (const verticalVelocity of [-30, -5, 0, 4, 30]) {
     'client/server wings jump velocity diverged'
   );
 }
-for (const [vx, vz, speed] of [[0, 0, 25], [0, -100, 25], [3, -4, 0], [10, 10, 12.5]]) {
+for (const [vx, vy, speed] of [[0, 0, 25], [0, 100, 25], [3, 4, 0], [10, -10, 12.5]]) {
   assert.deepEqual(
-    serverFlags.getWingsSlideVelocity(vx, vz, 0.5, speed, 25, 2, 0.5),
-    getWingsSlideVelocity(vx, vz, 0.5, speed, 25, 2, 0.5),
+    serverFlags.getWingsSlideVelocity(vx, vy, 0.5 + NORTH, speed, 25, 2, 0.5),
+    getWingsSlideVelocity(vx, vy, 0.5 + NORTH, speed, 25, 2, 0.5),
     'client/server wings slide diverged'
   );
 }
@@ -1330,40 +1333,40 @@ for (const theirs of ['ST', 'CL', 'MQ', 'SE', null]) {
   // setTarget() (playing.cxx:4390): the nearest tank inside the cone wins, and
   // anything behind the eye is ignored however close it is. The cone is the
   // caller's, so the same scan serves an observer's identify and a missile's lock.
-  const eye = { x: 0, z: 0 };
-  const north = { x: 0, z: -1 };
-  assert.equal(pickTargetInSights(eye, north, [{ id: 'a', x: 0, z: -50 }], TARGETING_ANGLE), 'a');
-  assert.equal(pickTargetInSights(eye, north, [{ id: 'behind', x: 0, z: 50 }], TARGETING_ANGLE), null);
+  const eye = { x: 0, y: 0, z: 0 };
+  const north = { x: 0, y: 1, z: 0 };
+  assert.equal(pickTargetInSights(eye, north, [{ id: 'a', x: 0, y: 50 }], TARGETING_ANGLE), 'a');
+  assert.equal(pickTargetInSights(eye, north, [{ id: 'behind', x: 0, y: -50 }], TARGETING_ANGLE), null);
   assert.equal(
-    pickTargetInSights(eye, north, [{ id: 'far', x: 0, z: -80 }, { id: 'near', x: 0, z: -20 }], TARGETING_ANGLE),
+    pickTargetInSights(eye, north, [{ id: 'far', x: 0, y: 80 }, { id: 'near', x: 0, y: 20 }], TARGETING_ANGLE),
     'near',
     'the nearest inside the cone wins',
   );
   // A candidate just inside the cone is taken, one just outside is not: at 100
   // ahead the cone half-width is 100 * tan(asin(0.3)).
   const coneHalfWidth = 100 * Math.tan(Math.asin(TARGETING_ANGLE));
-  assert.equal(pickTargetInSights(eye, north, [{ id: 'in', x: coneHalfWidth * 0.98, z: -100 }], TARGETING_ANGLE), 'in');
-  assert.equal(pickTargetInSights(eye, north, [{ id: 'out', x: coneHalfWidth * 1.02, z: -100 }], TARGETING_ANGLE), null);
+  assert.equal(pickTargetInSights(eye, north, [{ id: 'in', x: coneHalfWidth * 0.98, y: 100 }], TARGETING_ANGLE), 'in');
+  assert.equal(pickTargetInSights(eye, north, [{ id: 'out', x: coneHalfWidth * 1.02, y: 100 }], TARGETING_ANGLE), null);
   // A nearer tank outside the cone does not beat a further one inside it.
   assert.equal(
     pickTargetInSights(eye, north, [
-      { id: 'wide', x: 30, z: -10 },
-      { id: 'narrow', x: 0, z: -90 },
+      { id: 'wide', x: 30, y: 10 },
+      { id: 'narrow', x: 0, y: 90 },
     ], TARGETING_ANGLE),
     'narrow',
   );
   // The cone turns with the camera.
-  assert.equal(pickTargetInSights(eye, { x: -1, z: 0 }, [{ id: 'west', x: -40, z: 0 }], TARGETING_ANGLE), 'west');
-  assert.equal(pickTargetInSights(eye, north, [{ id: 'west', x: -40, z: 0 }], TARGETING_ANGLE), null);
+  assert.equal(pickTargetInSights(eye, { x: -1, y: 0, z: 0 }, [{ id: 'west', x: -40, y: 0 }], TARGETING_ANGLE), 'west');
+  assert.equal(pickTargetInSights(eye, north, [{ id: 'west', x: -40, y: 0 }], TARGETING_ANGLE), null);
   // Degenerate input is inert rather than throwing.
-  assert.equal(pickTargetInSights(eye, { x: 0, z: 0 }, [{ id: 'a', x: 0, z: -5 }], TARGETING_ANGLE), null);
+  assert.equal(pickTargetInSights(eye, { x: 0, y: 0, z: 0 }, [{ id: 'a', x: 0, y: 5 }], TARGETING_ANGLE), null);
   assert.equal(pickTargetInSights(eye, north, [], TARGETING_ANGLE), null);
   assert.equal(pickTargetInSights(eye, north, null, TARGETING_ANGLE), null);
 
   // The lock cone is half as wide, so a tank an observer would name is not
   // necessarily one a missile will follow. At 100 ahead: 15.3 units against 30.9.
   const lockHalfWidth = 100 * Math.tan(Math.asin(LOCK_ON_ANGLE));
-  const between = [{ id: 'wide', x: (lockHalfWidth + coneHalfWidth) / 2, z: -100 }];
+  const between = [{ id: 'wide', x: (lockHalfWidth + coneHalfWidth) / 2, y: 100 }];
   assert.equal(pickTargetInSights(eye, north, between, TARGETING_ANGLE), 'wide');
   assert.equal(pickTargetInSights(eye, north, between, LOCK_ON_ANGLE), null);
 }
@@ -1372,56 +1375,57 @@ for (const theirs of ['ST', 'CL', 'MQ', 'SE', null]) {
 // _gmTurnAngle a second in azimuth and in elevation, and no faster.
 {
   assert.equal(GM_TURN_ANGLE, 0.628319, '_gmTurnAngle');
-  const north = { x: 0, y: 0, z: -1 };
-  const from = { x: 0, y: 5, z: 0 };
+  const north = { x: 0, y: 1, z: 0 };
+  const from = { x: 0, y: 0, z: 5 };
+  const azimuthOf = (v) => Math.atan2(v.y, v.x);
 
   // Nothing locked: the missile keeps the heading it was fired with, and the
   // direction comes back normalized whatever went in.
   assert.deepEqual(steerGuidedShot(north, from, null, GM_TURN_ANGLE, 1), north);
-  const long = steerGuidedShot({ x: 0, y: 0, z: -7 }, from, null, GM_TURN_ANGLE, 1);
+  const long = steerGuidedShot({ x: 0, y: 7, z: 0 }, from, null, GM_TURN_ANGLE, 1);
   close(Math.hypot(long.x, long.y, long.z), 1, 'a steered direction is a unit vector');
 
   // A target dead ahead is already the heading, so nothing turns.
-  const ahead = steerGuidedShot(north, from, { x: 0, y: 5, z: -100 }, GM_TURN_ANGLE, 1);
+  const ahead = steerGuidedShot(north, from, { x: 0, y: 100, z: 5 }, GM_TURN_ANGLE, 1);
   close(ahead.x, 0);
-  close(ahead.z, -1);
+  close(ahead.y, 1);
 
   // A target off to the left, further than one second of turn: the missile
-  // turns exactly _gmTurnAngle and no further. bzo's azimuth 0 faces -Z and
-  // turns left as it grows, which is playerRotation's own convention.
-  const left = steerGuidedShot(north, from, { x: -100, y: 5, z: 0 }, GM_TURN_ANGLE, 1);
-  close(Math.atan2(-left.x, -left.z), GM_TURN_ANGLE, 'one second of turn, to the left');
-  const halfStep = steerGuidedShot(north, from, { x: -100, y: 5, z: 0 }, GM_TURN_ANGLE, 0.5);
-  close(Math.atan2(-halfStep.x, -halfStep.z), GM_TURN_ANGLE / 2, 'half a second, half the turn');
-  const right = steerGuidedShot(north, from, { x: 100, y: 5, z: 0 }, GM_TURN_ANGLE, 1);
-  close(Math.atan2(-right.x, -right.z), -GM_TURN_ANGLE, 'and the other way for the other side');
+  // turns exactly _gmTurnAngle and no further. The azimuth runs
+  // counter-clockwise from +X, so a left turn from north grows it.
+  const left = steerGuidedShot(north, from, { x: -100, y: 0, z: 5 }, GM_TURN_ANGLE, 1);
+  close(azimuthOf(left), NORTH + GM_TURN_ANGLE, 'one second of turn, to the left');
+  const halfStep = steerGuidedShot(north, from, { x: -100, y: 0, z: 5 }, GM_TURN_ANGLE, 0.5);
+  close(azimuthOf(halfStep), NORTH + (GM_TURN_ANGLE / 2), 'half a second, half the turn');
+  const right = steerGuidedShot(north, from, { x: 100, y: 0, z: 5 }, GM_TURN_ANGLE, 1);
+  close(azimuthOf(right), NORTH - GM_TURN_ANGLE, 'and the other way for the other side');
 
   // Within reach in one step, the missile snaps onto the target rather than
   // overshooting it -- the first branch of upstream's three.
-  const near = steerGuidedShot(north, from, { x: -1, y: 5, z: -100 }, GM_TURN_ANGLE, 1);
-  close(Math.atan2(-near.x, -near.z), Math.atan2(1, 100), 'a small correction is taken whole');
+  const near = steerGuidedShot(north, from, { x: -1, y: 100, z: 5 }, GM_TURN_ANGLE, 1);
+  close(azimuthOf(near), NORTH + Math.atan2(1, 100), 'a small correction is taken whole');
 
   // Azimuth and elevation are turned separately, so a target behind and above
   // gets both at once and neither faster than the rate.
-  const climbing = steerGuidedShot(north, from, { x: 0, y: 105, z: 100 }, GM_TURN_ANGLE, 1);
-  close(Math.asin(climbing.y), GM_TURN_ANGLE, 'a full step of climb');
-  close(Math.abs(Math.atan2(-climbing.x, -climbing.z)), GM_TURN_ANGLE, 'and a full step of turn');
+  const climbing = steerGuidedShot(north, from, { x: 0, y: -100, z: 105 }, GM_TURN_ANGLE, 1);
+  close(Math.asin(climbing.z), GM_TURN_ANGLE, 'a full step of climb');
+  close(Math.abs(azimuthOf(climbing) - NORTH), GM_TURN_ANGLE, 'and a full step of turn');
 
   // A target directly overhead has no bearing to steer toward, so the missile
-  // holds the one it has and climbs rather than swinging to due north.
-  const overhead = steerGuidedShot({ x: 1, y: 0, z: 0 }, from, { x: 0, y: 60, z: 0 }, GM_TURN_ANGLE, 1);
-  close(Math.atan2(-overhead.x, -overhead.z), -Math.PI / 2, 'the bearing is kept');
-  close(Math.asin(overhead.y), GM_TURN_ANGLE);
+  // holds the one it has and climbs rather than swinging to due east.
+  const overhead = steerGuidedShot({ x: 1, y: 0, z: 0 }, from, { x: 0, y: 0, z: 60 }, GM_TURN_ANGLE, 1);
+  close(azimuthOf(overhead), 0, 'the bearing is kept');
+  close(Math.asin(overhead.z), GM_TURN_ANGLE);
 
   // A direction with nothing in it cannot be turned, so it answers with one
   // that can be drawn rather than with NaN.
   assert.deepEqual(
-    steerGuidedShot({ x: 0, y: 0, z: 0 }, from, { x: 10, y: 5, z: 10 }, GM_TURN_ANGLE, 1),
-    { x: 0, y: 0, z: -1 },
+    steerGuidedShot({ x: 0, y: 0, z: 0 }, from, { x: 10, y: -10, z: 5 }, GM_TURN_ANGLE, 1),
+    { x: 0, y: 1, z: 0 },
   );
 
   // Both ends steer the same missile.
-  for (const to of [null, { x: -40, y: 6, z: -30 }, { x: 12, y: 0, z: 90 }]) {
+  for (const to of [null, { x: -40, y: 30, z: 6 }, { x: 12, y: -90, z: 0 }]) {
     assert.deepEqual(
       serverFlags.steerGuidedShot(north, from, to, GM_TURN_ANGLE, 1 / 60),
       steerGuidedShot(north, from, to, GM_TURN_ANGLE, 1 / 60),

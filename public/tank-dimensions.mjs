@@ -4,7 +4,7 @@
  * Source: https://github.com/timriker/bzflag/blob/master/LICENSE
  */
 
-// The outside measurements of BZFlag's own tank, in bzo's axes: +X right,
+// The outside measurements of BZFlag's own tank, in an OBJ file's axes: +X right,
 // +Y up, +Z toward the rear, so a smaller Z is further forward.
 //
 // Measured from the high level of detail in BZFlag's src/geometry/models/tank,
@@ -120,7 +120,7 @@ export function surfaceUnderPoint(triangles, x, z) {
 //
 // They belong on the turret. Upstream puts all three there -- white astern,
 // red to port, green to starboard, at [0, 2.1, 1.53] and [+-0.75, 2.1, -0.1]
-// in bzo's axes -- which is the highest part of the tank and the part that
+// in an OBJ file's axes -- which is the highest part of the tank and the part that
 // turns, so which way a tank is pointing reads at a range where its silhouette
 // does not. Placing them on the hull or the tracks instead hides them behind
 // the turret from most angles and stops them turning with the gun.

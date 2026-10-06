@@ -13,6 +13,9 @@
 const { BZDB_CONFIG_VARS, bzdbIsTrue, evalBzdb, gameplayFromBzdb, parseColorString, worldConfig } = require('./bzdb.cjs');
 const { encodeMeshArrays, meshArrays, meshDrawArrays } = require('./mesh-arrays.cjs');
 const { getObstacleHeight } = require('./collision.cjs');
+
+// Everything here is built in upstream's own frame, the one a `.bzw` is
+// written in: +Z up, +Y north, x east, an angle counter-clockwise about +Z.
 const crypto = require('crypto');
 const { parseBZWTeamMode, getTeamFromColorIndex } = require('./teams.cjs');
 const { normalizeShotSlotCount, WORLD_WEAPON_DEFAULT_DELAY, normalizeWorldWeaponDelays } = require('./shots.cjs');
@@ -86,9 +89,8 @@ const BZW_INERT_MATERIAL_KEYWORDS = new Set([
 // these has an exact answer on it, including the `shear` and the off-vertical
 // `spin` that have no place in bzo's axis-aligned box model.
 //
-// Everything here is in upstream's own frame (Z up), not bzo's --
-// `applyMeshTransform` converts each point across and back, so the matrix
-// and the map text agree axis for axis.
+// The matrix works on the map's own axes, the same frame every point here
+// is already in, so the matrix and the map text agree axis for axis.
 
 // `multiply` (`MeshTransform.cxx:154-168`), which composes the new transform
 // on the *left*: after `m = multiply(m, t)` the accumulated matrix applies
@@ -245,31 +247,24 @@ function readMeshTransformToken(target, token, words) {
   return false;
 }
 
-// bzo stores a mesh's points already turned into its own frame (BZW x stays
-// x, BZW z becomes up, BZW y becomes -z -- see the `vertex` line in the mesh
-// parser). The transform is upstream's and reads in upstream's frame, so each
-// point crosses over, moves, and crosses back rather than the matrix being
-// rewritten into bzo's axes: one conversion either side, stated once, instead
-// of a similarity transform nobody can check against the map text.
+// The folded matrix as three functions over `{x, y, z}` points: one for a
+// position, one for a surface normal, one for a direction.
 function meshTransformMovers(ops) {
   const tool = buildMeshTransformTool(ops);
   if (!tool) return null;
   const vm = tool.vertexMatrix;
   const nm = tool.normalMatrix;
 
-  const movePoint = (p) => {
-    const x = p.x; const y = -p.z; const z = p.y;
-    const tx = (x * vm[0][0]) + (y * vm[0][1]) + (z * vm[0][2]) + vm[0][3];
-    const ty = (x * vm[1][0]) + (y * vm[1][1]) + (z * vm[1][2]) + vm[1][3];
-    const tz = (x * vm[2][0]) + (y * vm[2][1]) + (z * vm[2][2]) + vm[2][3];
-    return { x: tx, y: tz, z: -ty };
-  };
+  const movePoint = ({ x, y, z }) => ({
+    x: (x * vm[0][0]) + (y * vm[0][1]) + (z * vm[0][2]) + vm[0][3],
+    y: (x * vm[1][0]) + (y * vm[1][1]) + (z * vm[1][2]) + vm[1][3],
+    z: (x * vm[2][0]) + (y * vm[2][1]) + (z * vm[2][2]) + vm[2][3],
+  });
 
   // `Tool::modifyNormal` (`:380-411`) -- cofactor, renormalize, and flip on a
   // mirroring transform. A normal that collapses to zero length falls back to
   // straight up, upstream's own "dunno, going with Z" case.
-  const moveNormal = (n) => {
-    const x = n.x; const y = -n.z; const z = n.y;
+  const moveNormal = ({ x, y, z }) => {
     let tx = (x * nm[0][0]) + (y * nm[0][1]) + (z * nm[0][2]);
     let ty = (x * nm[1][0]) + (y * nm[1][1]) + (z * nm[1][2]);
     let tz = (x * nm[2][0]) + (y * nm[2][1]) + (z * nm[2][2]);
@@ -282,19 +277,17 @@ function meshTransformMovers(ops) {
     if (tool.inverted) {
       tx = -tx; ty = -ty; tz = -tz;
     }
-    return { x: tx, y: tz, z: -ty };
+    return { x: tx, y: ty, z: tz };
   };
 
   // A direction carried by the matrix itself rather than as a surface normal
   // -- a spinning mesh's axis, which upstream turns with the mesh
   // (`MeshSceneNode`'s transform wrapped around `MeshDrawMgr`'s `glRotatef`).
-  const moveVector = (v) => {
-    const x = v.x; const y = -v.z; const z = v.y;
-    const tx = (x * vm[0][0]) + (y * vm[0][1]) + (z * vm[0][2]);
-    const ty = (x * vm[1][0]) + (y * vm[1][1]) + (z * vm[1][2]);
-    const tz = (x * vm[2][0]) + (y * vm[2][1]) + (z * vm[2][2]);
-    return { x: tx, y: tz, z: -ty };
-  };
+  const moveVector = ({ x, y, z }) => ({
+    x: (x * vm[0][0]) + (y * vm[0][1]) + (z * vm[0][2]),
+    y: (x * vm[1][0]) + (y * vm[1][1]) + (z * vm[1][2]),
+    z: (x * vm[2][0]) + (y * vm[2][1]) + (z * vm[2][2]),
+  });
 
   return { movePoint, moveNormal, moveVector };
 }
@@ -357,9 +350,7 @@ const bzwFaceMaterial = (m) => ({
 // wrote the four `vertex` lines. `TetraBuilding::checkVertexOrder` swaps
 // vertices 1 and 2 first (and their own face-material slots along with
 // them) whenever the raw order given would make every face point inward
-// instead of out -- bzo(x,y,z) is a proper rotation of upstream's own
-// (x,y,z) (see `getColliderLocalPoint`'s own comment in the collision
-// pair), so the same cross/dot sign test applies unchanged here. Module
+// instead of out -- the same cross/dot sign test, on the same axes. Module
 // scope rather than nested in `parseBZWMap`: neither this nor
 // `buildTetraMesh` below closes over anything of its own, and nesting a
 // `const` after the line-parsing loop that can call `buildTetraMesh` mid-
@@ -417,10 +408,9 @@ function buildTetraMesh(tetra) {
 
 // `ConeObstacle::makeMesh` (ConeObstacle.cxx:86-329), ported the same way as
 // `buildTetraMesh` above: every position/size/angle stays in upstream's own
-// BZW terms (Z up, degrees where upstream reads degrees) through the whole
-// generator, and only the finished vertices/normals are rotated into bzo's
-// axes at the very end -- `toBzo` below, the same single-purpose conversion
-// `buildTetraMesh` uses. `meshpyr` is the same generator upstream itself
+// BZW terms (degrees where upstream reads degrees) through the whole
+// generator, and the finished vertices/normals are only spun and shifted
+// into place at the very end -- `place` below. `meshpyr` is the same generator upstream itself
 // reuses (`CustomCone(true)`, `BZWReader.cxx`): 4 divisions, defaults pulled
 // from BZDB's `_pyrBase`/`_pyrHeight` (4x/5x `_tankHeight`, 2.05 -- 8.2 and
 // 10.25 here, since bzo has no BZDB to read them from live), and upstream
@@ -439,7 +429,7 @@ const MESHPYR_DEFAULT_BASE = 4.0 * 2.05;
 const MESHPYR_DEFAULT_HEIGHT = 5.0 * 2.05;
 
 function buildConeMesh(cone) {
-  const rawSize = cone.sizeBzf;
+  const rawSize = cone.extent;
   // `meshpyr` rebuilds with a sqrt(2)-scaled footprint (upstream's own
   // `CustomCone::writeToGroupDef` computes this `newSize` before ever
   // constructing the `ConeObstacle` that `makeMesh` below is ported from, so
@@ -473,7 +463,7 @@ function buildConeMesh(cone) {
   // start angle (exactly like a plain `cone` always does), then shift by
   // `position` once at the end -- the same net shape, since the 45-degree
   // twist never itself reads `position` or `rotation`.
-  const baseHeading = cone.isPyramid ? (Math.PI / 4) : cone.rotationRad;
+  const baseHeading = cone.isPyramid ? (Math.PI / 4) : cone.heading;
 
   let r = baseHeading;
   let a = cone.sweepDeg;
@@ -546,34 +536,29 @@ function buildConeMesh(cone) {
   // outer `MeshTransform` a `group` instance's own rotation goes through.
   // Composing that as a real transform stack is more machinery than baking
   // one more rotation into this same local-frame convention, so it lands
-  // here instead: spin around the vertical axis, then shift, then convert --
-  // a plain `cone`'s own `rotation` is already spent as `baseHeading`, so it
+  // here instead: spin around the vertical axis, then shift -- a plain `cone`'s own `rotation` is already spent as `baseHeading`, so it
   // spins by nothing extra here.
-  const pos = { ...cone.posBzf };
-  const spinAngle = cone.isPyramid ? cone.rotationRad : 0;
+  const pos = { ...cone.position };
+  const spinAngle = cone.isPyramid ? cone.heading : 0;
   const cosSpin = Math.cos(spinAngle);
   const sinSpin = Math.sin(spinAngle);
   const spin = (p) => (spinAngle === 0 ? p : {
     x: (p.x * cosSpin) - (p.y * sinSpin), y: (p.x * sinSpin) + (p.y * cosSpin), z: p.z,
   });
-  const toBzo = (p) => {
+  const place = (p) => {
     const s = spin(p);
-    return { x: s.x + pos.x, y: s.z + pos.z, z: -(s.y + pos.y) };
-  };
-  const toBzoDir = (n) => {
-    const s = spin(n);
-    return { x: s.x, y: s.z, z: -s.y };
+    return { x: s.x + pos.x, y: s.y + pos.y, z: s.z + pos.z };
   };
 
-  const vertices = ringVertsLocal.map(toBzo);
+  const vertices = ringVertsLocal.map(place);
   const vlen = vertices.length;
   const vbotIndex = vlen;
   const vtopIndex = vlen + 1;
-  vertices.push(toBzo({ x: 0, y: 0, z: ringZ }));
-  vertices.push(toBzo({ x: 0, y: 0, z: apexZ }));
+  vertices.push(place({ x: 0, y: 0, z: ringZ }));
+  vertices.push(place({ x: 0, y: 0, z: apexZ }));
 
   const normals = cone.useNormals
-    ? ringNormsLocal.map(toBzoDir).concat(centralNormsLocal.map(toBzoDir))
+    ? ringNormsLocal.map(spin).concat(centralNormsLocal.map(spin))
     : [];
 
   const texcoords = ringTexcoords.slice();
@@ -642,7 +627,7 @@ function buildConeMesh(cone) {
   const checkLocal = isCircle
     ? { x: 0, y: 0 }
     : { x: Math.cos(r + (0.5 * a)) * sz.x * 0.25, y: Math.sin(r + (0.5 * a)) * sz.y * 0.25 };
-  const checkPoint = toBzo({ x: checkLocal.x, y: checkLocal.y, z: (ringZ + apexZ) * 0.5 });
+  const checkPoint = place({ x: checkLocal.x, y: checkLocal.y, z: (ringZ + apexZ) * 0.5 });
 
   return {
     type: 'mesh', name: cone.name, definedIn: cone.definedIn,
@@ -883,7 +868,7 @@ function buildArcRingLocal(a, r, h, inrad, outrad, squish, texU, texV, divisions
 }
 
 function buildArcMesh(arc) {
-  const rawSize = arc.sizeBzf;
+  const rawSize = arc.extent;
   const sz = arc.isBox
     ? { x: Math.abs(rawSize.x) * Math.SQRT2, y: Math.abs(rawSize.y) * Math.SQRT2, z: Math.abs(rawSize.z) }
     : { x: Math.abs(rawSize.x), y: Math.abs(rawSize.y), z: Math.abs(rawSize.z) };
@@ -906,7 +891,7 @@ function buildArcMesh(arc) {
   }
   if (texV < 0) texV = -(sz.z / texV);
 
-  const baseHeading = arc.isBox ? (Math.PI / 4) : arc.rotationRad;
+  const baseHeading = arc.isBox ? (Math.PI / 4) : arc.heading;
   let r = baseHeading;
   let a = arc.sweepDeg;
   if (a > 360) a = 360;
@@ -942,24 +927,20 @@ function buildArcMesh(arc) {
   // See `buildConeMesh`'s own comment on `spinAngle` -- the same reasoning
   // applies here: a `meshbox`'s own `rotation` is upstream's own second
   // transform on top of the fixed 45-degree twist, not part of `baseHeading`.
-  const pos = { ...arc.posBzf };
-  const spinAngle = arc.isBox ? arc.rotationRad : 0;
+  const pos = { ...arc.position };
+  const spinAngle = arc.isBox ? arc.heading : 0;
   const cosSpin = Math.cos(spinAngle);
   const sinSpin = Math.sin(spinAngle);
   const spin = (p) => (spinAngle === 0 ? p : {
     x: (p.x * cosSpin) - (p.y * sinSpin), y: (p.x * sinSpin) + (p.y * cosSpin), z: p.z,
   });
-  const toBzo = (p) => {
+  const place = (p) => {
     const s = spin(p);
-    return { x: s.x + pos.x, y: s.z + pos.z, z: -(s.y + pos.y) };
-  };
-  const toBzoDir = (n) => {
-    const s = spin(n);
-    return { x: s.x, y: s.z, z: -s.y };
+    return { x: s.x + pos.x, y: s.y + pos.y, z: s.z + pos.z };
   };
 
-  const vertices = built.vertices.map(toBzo);
-  const normals = built.normals.map(toBzoDir);
+  const vertices = built.vertices.map(place);
+  const normals = built.normals.map(spin);
   const { texcoords } = built;
 
   const faceBase = {
@@ -971,7 +952,7 @@ function buildArcMesh(arc) {
     ...faceBase, ...face, ...matFields(arc.materials[side]),
   }));
 
-  const checkPoint = toBzo(built.checkPoint);
+  const checkPoint = place(built.checkPoint);
 
   return {
     type: 'mesh', name: arc.name, definedIn: arc.definedIn,
@@ -1005,7 +986,7 @@ const SPHERE_SIDE_NAMES = new Map([['edge', 0], ['bottom', 1]]);
 function buildSphereMesh(sphere) {
   const factor = sphere.hemisphere ? 1 : 2;
   const sz = {
-    x: Math.abs(sphere.sizeBzf.x), y: Math.abs(sphere.sizeBzf.y), z: Math.abs(sphere.sizeBzf.z),
+    x: Math.abs(sphere.extent.x), y: Math.abs(sphere.extent.y), z: Math.abs(sphere.extent.z),
   };
   let texU = sphere.texsize.u;
   let texV = sphere.texsize.v;
@@ -1022,7 +1003,7 @@ function buildSphereMesh(sphere) {
     return null;
   }
 
-  const r = sphere.rotationRad;
+  const r = sphere.heading;
   const { useNormals, hemisphere } = sphere;
   const vertices = [];
   const normals = useNormals ? [] : null;
@@ -1179,12 +1160,11 @@ function buildSphereMesh(sphere) {
     });
   }
 
-  const pos = { ...sphere.posBzf };
-  const toBzo = (p) => ({ x: p.x + pos.x, y: p.z + pos.z, z: -(p.y + pos.y) });
-  const toBzoDir = (n) => ({ x: n.x, y: n.z, z: -n.y });
+  const pos = { ...sphere.position };
+  const place = (p) => ({ x: p.x + pos.x, y: p.y + pos.y, z: p.z + pos.z });
 
-  const outVertices = vertices.map(toBzo);
-  const outNormals = useNormals ? normals.map(toBzoDir) : [];
+  const outVertices = vertices.map(place);
+  const outNormals = useNormals ? normals : [];
 
   const faceBase = {
     phydrv: sphere.phydrv, noclusters: false, smoothBounce: false,
@@ -1196,7 +1176,7 @@ function buildSphereMesh(sphere) {
   }));
 
   const checkLocal = { x: 0, y: 0, z: hemisphere ? 0.5 * sz.z : 0 };
-  const checkPoint = toBzo(checkLocal);
+  const checkPoint = place(checkLocal);
 
   return {
     type: 'mesh', name: sphere.name, definedIn: sphere.definedIn,
@@ -1534,13 +1514,10 @@ function parseBZWServerOptions(lines) {
 //
 // Every obstacle upstream reads inherits these, so a box, a pyramid, a base and
 // a teleporter all take them, and so do bzo's.
-// CustomGate's constructor defaults, in bzo's terms: BZW states half extents in
-// x and y and a full height in z, so the half width 0.56 and half breadth 4.48
-// double, and the height 2 * _teleportHeight carries over as it is.
+// CustomGate's constructor defaults, as a `size` line states them: half
+// width 0.56, half breadth 4.48, and a full height of 2 * _teleportHeight.
 const BZW_TELEPORTER_DEFAULTS = Object.freeze({
-  w: 2 * 0.56,
-  d: 2 * 4.48,
-  h: 2 * 10.08,
+  size: Object.freeze([0.56, 4.48, 2 * 10.08]),
   border: 2 * 0.56,
 });
 
@@ -1971,30 +1948,31 @@ function parseBZWMap(filename, { quiet = false, extraMessages = [], text: givenT
   // dimensions the same way regardless, before any group instance ever
   // copies or transforms it (`ObstacleMgr.cxx`'s `copyWithTransform`).
   function applyTeleporterDefaults(teleporter) {
-    if (!Number.isFinite(teleporter.w)) teleporter.w = BZW_TELEPORTER_DEFAULTS.w;
-    if (!Number.isFinite(teleporter.d)) teleporter.d = BZW_TELEPORTER_DEFAULTS.d;
-    if (!Number.isFinite(teleporter.h)) teleporter.h = BZW_TELEPORTER_DEFAULTS.h;
+    const stated = BZW_TELEPORTER_DEFAULTS.size.map((fallback, i) => (
+      Number.isFinite(teleporter.size?.[i]) ? teleporter.size[i] : fallback
+    ));
     if (!Number.isFinite(teleporter.border)) teleporter.border = BZW_TELEPORTER_DEFAULTS.border;
     // Teleporter::finalize (Teleporter.cxx). The border grows the solid --
     // `size[1] = origSize[1] + border * 2`, `size[2] = origSize[2] + border`
     // -- and those grown values *are* the obstacle's extents, so they are
     // what collides, what supports a tank and what is drawn.
     //
-    // Applied here, once, so `w`/`d`/`h` on a teleporter mean the same thing
-    // they mean on a box: the solid. Three separate readers each open-coded
-    // this and two of them got it wrong, because the stated size is the hole
-    // rather than the frame and reading it directly is the easy mistake.
-    // getShotTeleporterDims is now a reader rather than a calculator.
+    // Applied here, once, so `size` on a teleporter means the same thing it
+    // means on a box: the solid. The stated size is the hole rather than the
+    // frame, and reading it directly is the easy mistake, so no reader ever
+    // sees it.
     const statedBorder = Math.max(0.12, teleporter.border);
-    const statedHalfWidth = Math.max(0.25, teleporter.w / 2);
-    const statedHalfBreadth = Math.max(0.25, teleporter.d / 2);
-    const statedHeight = Math.max(1.0, teleporter.h);
+    const statedHalfWidth = Math.max(0.25, stated[0]);
+    const statedHalfBreadth = Math.max(0.25, stated[1]);
+    const statedHeight = Math.max(1.0, stated[2]);
     teleporter.border = statedBorder;
     // Upstream takes the larger of the border half-width and the stated
     // width for the x extent, which is its own line in finalize().
-    teleporter.w = Math.max(statedBorder * 0.5, statedHalfWidth) * 2;
-    teleporter.d = (statedHalfBreadth + (statedBorder * 2)) * 2;
-    teleporter.h = statedHeight + statedBorder;
+    teleporter.size = [
+      Math.max(statedBorder * 0.5, statedHalfWidth),
+      statedHalfBreadth + (statedBorder * 2),
+      statedHeight + statedBorder,
+    ];
   }
 
   // Gives a teleporter its place in the world's flat teleporter list -- a
@@ -2504,8 +2482,8 @@ function parseBZWMap(filename, { quiet = false, extraMessages = [], text: givenT
       if (token === 'position' || token === 'pos') {
         const [, x, y, z] = line.split(/\s+/);
         currentZone.x = parseFloat(x) || 0;
-        currentZone.z = -(parseFloat(y) || 0);
-        currentZone.y = parseFloat(z) || 0;
+        currentZone.y = parseFloat(y) || 0;
+        currentZone.z = parseFloat(z) || 0;
         continue;
       }
       if (token === 'size') {
@@ -2640,9 +2618,8 @@ function parseBZWMap(filename, { quiet = false, extraMessages = [], text: givenT
       if (token === 'position' || token === 'pos') {
         const [, x, y, z] = line.split(/\s+/);
         currentWeapon.x = parseFloat(x) || 0;
-        // BZFlag +Y north maps to bzo -Z north, as it does for an obstacle.
-        currentWeapon.z = -(parseFloat(y) || 0);
-        currentWeapon.y = parseFloat(z) || 0;
+        currentWeapon.y = parseFloat(y) || 0;
+        currentWeapon.z = parseFloat(z) || 0;
         continue;
       }
       if (token === 'rotation' || token === 'rot') {
@@ -2803,15 +2780,11 @@ function parseBZWMap(filename, { quiet = false, extraMessages = [], text: givenT
         continue;
       }
       if (token === 'linear') {
-        // BZFlag (x, y, z) -> bzo (x, y=vertical, z=-y): the same remap
-        // `position`/`shift` already apply, since a velocity and a
-        // displacement share the same axis convention.
-        const [, vx, vy, vz] = line.split(/\s+/).map(Number);
-        currentPhysicsDriver.linear = [
-          Number.isFinite(vx) ? vx : 0,
-          Number.isFinite(vz) ? vz : 0,
-          Number.isFinite(vy) ? -vy : 0,
-        ];
+        const [, vx, vy, vz] = line.split(/\s+/).map((word) => {
+          const value = Number(word);
+          return Number.isFinite(value) ? value : 0;
+        });
+        currentPhysicsDriver.linear = [vx, vy, vz];
         continue;
       }
       if (token === 'death') {
@@ -3037,9 +3010,7 @@ function parseBZWMap(filename, { quiet = false, extraMessages = [], text: givenT
         continue;
       }
       if (token === 'height') {
-        // BZW's height is bzo's own vertical axis already (`position x y z`'s
-        // `baseY = z`, docs/bzw.md's coordinate table) -- no sign flip, unlike
-        // the two horizontal axes.
+        // A height on the world's own +Z, the same axis as a `position`'s z.
         const [, height] = line.split(/\s+/).map(Number);
         if (Number.isFinite(height)) currentWaterLevel.height = height;
         continue;
@@ -3140,36 +3111,31 @@ function parseBZWMap(filename, { quiet = false, extraMessages = [], text: givenT
           mapFreeCtfSpawns = true;
         }
       }
-    // `rotation` is stated here rather than left to whether the block carries a
+    // `angle` is stated here rather than left to whether the block carries a
     // `rotation` line, because everything downstream turns it into a cosine: a
-    // box or a pyramid with no rotation is a box at rotation 0, and saying so
+    // box or a pyramid with no rotation is a box at angle 0, and saying so
     // once is what lets the client, the collision pair and every log read the
     // field instead of guessing a default for it. The rest of the shape has the
     // same treatment further down, where `end` fills in what the block left out.
     } else if (token === 'box') {
       // CustomBox's own size until a `size` line says otherwise (CustomBox.cxx:49).
-      current = {
-        type: 'box', rotation: 0, w: 2 * worldBoxBase, d: 2 * worldBoxBase, h: worldBoxHeight,
-      };
+      current = { type: 'box', angle: 0, size: [worldBoxBase, worldBoxBase, worldBoxHeight] };
     } else if (token === 'pyramid') {
       // CustomPyramid's, likewise (CustomPyramid.cxx:50).
-      current = {
-        type: 'pyramid', rotation: 0, w: 2 * worldPyrBase, d: 2 * worldPyrBase, h: worldPyrHeight,
-      };
+      current = { type: 'pyramid', angle: 0, size: [worldPyrBase, worldPyrBase, worldPyrHeight] };
     } else if (token === 'base') {
-      current = { type: 'box', kind: 'base', team: 1, rotation: 0 };
+      current = { type: 'box', kind: 'base', team: 1, angle: 0 };
     } else if (token === 'teleporter') {
-      current = { type: 'box', kind: 'teleporter', rotation: 0 };
+      current = { type: 'box', kind: 'teleporter', angle: 0 };
       const [, ...teleporterNameParts] = line.split(/\s+/);
       const inlineTeleporterName = teleporterNameParts.join(' ').replace(/"/g, '').trim();
       if (inlineTeleporterName) {
         current.name = inlineTeleporterName;
       }
     } else if (token === 'group') {
-      // `spin` is the group's own rotation kept in raw radians (no +π) --
-      // `rotation` below is the +π one every obstacle's own facing carries, and
-      // placing a member is a position rotation, a different operator. See the
-      // `rotation`/`rot` branch, where both get set from the same line.
+      // `spin` is the group's own rotation in radians, counter-clockwise about
+      // +Z -- it turns each member's position about the group's origin and
+      // adds to each member's own `angle`. See the `rotation`/`rot` branch.
       const [, groupDefName] = line.split(/\s+/);
       //
       // `transformOps` and `xformPos`/`xformSize`/`xformRotation` are the same
@@ -3177,7 +3143,7 @@ function parseBZWMap(filename, { quiet = false, extraMessages = [], text: givenT
       // beside the box-model fields above for the one case those cannot say:
       // a group spun off vertical or sheared, which tips every mesh it places.
       current = {
-        type: 'group', groupDefName: groupDefName || '', rotation: 0, spin: 0, scale: [1, 1, 1],
+        type: 'group', groupDefName: groupDefName || '', spin: 0, scale: [1, 1, 1],
         transformOps: [], xformPos: null, xformSize: null, xformRotation: 0, tipped: false,
       };
     } else if (token === 'tetra') {
@@ -3229,7 +3195,7 @@ function parseBZWMap(filename, { quiet = false, extraMessages = [], text: givenT
           warn(`Extra tetrahedron vertex in ${mapLabel}, ignoring`);
         } else {
           const [x, y, z] = words.slice(1).map(Number);
-          current.vertexPositions.push({ x: x || 0, y: z || 0, z: -(y || 0) });
+          current.vertexPositions.push({ x: x || 0, y: y || 0, z: z || 0 });
         }
       } else if (readMeshTransformToken(current, token, words)) {
         // See the same arm on `cone`/`arc`/`sphere` below.
@@ -3265,12 +3231,12 @@ function parseBZWMap(filename, { quiet = false, extraMessages = [], text: givenT
         type: 'cone', name: null,
         definedIn: currentDefine ? currentDefine.name : null,
         isPyramid,
-        posBzf: { x: 0, y: 0, z: 0 },
+        position: { x: 0, y: 0, z: 0 },
         transformOps: [],
-        sizeBzf: isPyramid
+        extent: isPyramid
           ? { x: MESHPYR_DEFAULT_BASE, y: MESHPYR_DEFAULT_BASE, z: MESHPYR_DEFAULT_HEIGHT }
           : { x: 10, y: 10, z: 10 },
-        rotationRad: 0,
+        heading: 0,
         sweepDeg: 360,
         divisions: isPyramid ? 4 : 16,
         texsize: { u: -8, v: -8 },
@@ -3303,7 +3269,7 @@ function parseBZWMap(filename, { quiet = false, extraMessages = [], text: givenT
         current = null;
       } else if (token === 'position' || token === 'pos') {
         const [x, y, z] = words.slice(1).map(Number);
-        current.posBzf = { x: x || 0, y: y || 0, z: z || 0 };
+        current.position = { x: x || 0, y: y || 0, z: z || 0 };
       } else if (readMeshTransformToken(current, token, words)) {
         // `shift`/`scale`/`shear`/`spin` -- the ordered transform list,
         // folded into one matrix and applied to the finished mesh at `end`,
@@ -3312,12 +3278,12 @@ function parseBZWMap(filename, { quiet = false, extraMessages = [], text: givenT
         // `MeshTransform` and then `append`s the stated list to it.
       } else if (token === 'size') {
         const [x, y, z] = words.slice(1).map(Number);
-        current.sizeBzf = { x: x || 0, y: y || 0, z: z || 0 };
+        current.extent = { x: x || 0, y: y || 0, z: z || 0 };
       } else if (token === 'rotation' || token === 'rot') {
         // Upstream's own raw convention -- degrees CCW about +Z, no sign or
         // offset fixup -- since `buildConeMesh` bakes this straight into the
         // sweep math in the same BZW terms everything else there uses.
-        current.rotationRad = (parseFloat(words[1]) || 0) * Math.PI / 180;
+        current.heading = (parseFloat(words[1]) || 0) * Math.PI / 180;
       } else if (token === 'divisions') {
         const n = parseInt(words[1], 10);
         if (Number.isInteger(n)) current.divisions = n;
@@ -3366,12 +3332,12 @@ function parseBZWMap(filename, { quiet = false, extraMessages = [], text: givenT
         type: 'arc', name: null,
         definedIn: currentDefine ? currentDefine.name : null,
         isBox,
-        posBzf: { x: 0, y: 0, z: 0 },
+        position: { x: 0, y: 0, z: 0 },
         transformOps: [],
-        sizeBzf: isBox
+        extent: isBox
           ? { x: worldBoxBase, y: worldBoxBase, z: worldBoxHeight }
           : { x: 10, y: 10, z: 10 },
-        rotationRad: 0,
+        heading: 0,
         sweepDeg: 360,
         ratio: 1,
         divisions: isBox ? 4 : 16,
@@ -3404,7 +3370,7 @@ function parseBZWMap(filename, { quiet = false, extraMessages = [], text: givenT
         current = null;
       } else if (token === 'position' || token === 'pos') {
         const [x, y, z] = words.slice(1).map(Number);
-        current.posBzf = { x: x || 0, y: y || 0, z: z || 0 };
+        current.position = { x: x || 0, y: y || 0, z: z || 0 };
       } else if (readMeshTransformToken(current, token, words)) {
         // `shift`/`scale`/`shear`/`spin` -- the ordered transform list,
         // folded into one matrix and applied to the finished mesh at `end`,
@@ -3413,9 +3379,9 @@ function parseBZWMap(filename, { quiet = false, extraMessages = [], text: givenT
         // `MeshTransform` and then `append`s the stated list to it.
       } else if (token === 'size') {
         const [x, y, z] = words.slice(1).map(Number);
-        current.sizeBzf = { x: x || 0, y: y || 0, z: z || 0 };
+        current.extent = { x: x || 0, y: y || 0, z: z || 0 };
       } else if (token === 'rotation' || token === 'rot') {
-        current.rotationRad = (parseFloat(words[1]) || 0) * Math.PI / 180;
+        current.heading = (parseFloat(words[1]) || 0) * Math.PI / 180;
       } else if (token === 'divisions') {
         const n = parseInt(words[1], 10);
         if (Number.isInteger(n)) current.divisions = n;
@@ -3461,10 +3427,10 @@ function parseBZWMap(filename, { quiet = false, extraMessages = [], text: givenT
       current = {
         type: 'sphere', name: null,
         definedIn: currentDefine ? currentDefine.name : null,
-        posBzf: { x: 0, y: 0, z: 10 },
+        position: { x: 0, y: 0, z: 10 },
         transformOps: [],
-        sizeBzf: { x: 10, y: 10, z: 10 },
-        rotationRad: 0,
+        extent: { x: 10, y: 10, z: 10 },
+        heading: 0,
         divisions: 4,
         hemisphere: false,
         texsize: { u: -4, v: -4 },
@@ -3494,7 +3460,7 @@ function parseBZWMap(filename, { quiet = false, extraMessages = [], text: givenT
         current = null;
       } else if (token === 'position' || token === 'pos') {
         const [x, y, z] = words.slice(1).map(Number);
-        current.posBzf = { x: x || 0, y: y || 0, z: z || 0 };
+        current.position = { x: x || 0, y: y || 0, z: z || 0 };
       } else if (readMeshTransformToken(current, token, words)) {
         // `shift`/`scale`/`shear`/`spin` -- the ordered transform list,
         // folded into one matrix and applied to the finished mesh at `end`,
@@ -3503,12 +3469,12 @@ function parseBZWMap(filename, { quiet = false, extraMessages = [], text: givenT
         // `MeshTransform` and then `append`s the stated list to it.
       } else if (token === 'size') {
         const [x, y, z] = words.slice(1).map(Number);
-        current.sizeBzf = { x: x || 0, y: y || 0, z: z || 0 };
+        current.extent = { x: x || 0, y: y || 0, z: z || 0 };
       } else if (token === 'radius') {
         const radius = parseFloat(words[1]);
-        if (!Number.isNaN(radius)) current.sizeBzf = { x: radius, y: radius, z: radius };
+        if (!Number.isNaN(radius)) current.extent = { x: radius, y: radius, z: radius };
       } else if (token === 'rotation' || token === 'rot') {
-        current.rotationRad = (parseFloat(words[1]) || 0) * Math.PI / 180;
+        current.heading = (parseFloat(words[1]) || 0) * Math.PI / 180;
       } else if (token === 'divisions') {
         const n = parseInt(words[1], 10);
         if (Number.isInteger(n)) current.divisions = n;
@@ -3673,16 +3639,16 @@ function parseBZWMap(filename, { quiet = false, extraMessages = [], text: givenT
         current = null;
       } else if (token === 'vertex') {
         const [x, y, z] = words.slice(1).map(Number);
-        current.vertices.push({ x: x || 0, y: z || 0, z: -(y || 0) });
+        current.vertices.push({ x: x || 0, y: y || 0, z: z || 0 });
       } else if (token === 'normal') {
         const [x, y, z] = words.slice(1).map(Number);
-        current.normals.push({ x: x || 0, y: z || 0, z: -(y || 0) });
+        current.normals.push({ x: x || 0, y: y || 0, z: z || 0 });
       } else if (token === 'texcoord') {
         const [u, v] = words.slice(1).map(Number);
         current.texcoords.push({ u: u || 0, v: v || 0 });
       } else if (token === 'inside' || token === 'outside') {
         const [x, y, z] = words.slice(1).map(Number);
-        current.checkPoints.push({ x: x || 0, y: z || 0, z: -(y || 0), inside: token === 'inside' });
+        current.checkPoints.push({ x: x || 0, y: y || 0, z: z || 0, inside: token === 'inside' });
       } else if (token === 'phydrv') {
         current.phydrv = words[1] || null;
       } else if (token === 'smoothbounce') {
@@ -3775,11 +3741,9 @@ function parseBZWMap(filename, { quiet = false, extraMessages = [], text: givenT
       // translation never distorts a shape, so reading it the same as
       // `position` is exact, not an approximation -- unlike `scale`/`spin`,
       // which only line up with `size`/`rotation` on a `group` (see the
-      // branches for each). BZFlag +Y north maps to our -Z north.
+      // branches for each).
       const [, x, y, z] = line.split(/\s+/);
-      current.x = parseFloat(x);
-      current.z = -parseFloat(y); // BZFlag +Y (north) -> our -Z (north)
-      current.baseY = parseFloat(z) || 0;
+      current.pos = [parseFloat(x), parseFloat(y), parseFloat(z) || 0];
       if (current.type === 'group') {
         const pos = [parseFloat(x) || 0, parseFloat(y) || 0, parseFloat(z) || 0];
         if (token === 'shift') current.transformOps.push({ type: 'shift', data: [...pos, 0] });
@@ -3791,9 +3755,7 @@ function parseBZWMap(filename, { quiet = false, extraMessages = [], text: givenT
       const rawW = parseFloat(w);
       const rawD = parseFloat(d);
       const rawH = parseFloat(h);
-      current.w = Math.abs(rawW) * 2;
-      current.d = Math.abs(rawD) * 2;
-      current.h = Math.abs(rawH);
+      current.size = [Math.abs(rawW), Math.abs(rawD), Math.abs(rawH)];
       if (current.type === 'pyramid') {
         // Deferred to `end` (see its own comment) -- whether a negative
         // height here means a real flip depends on whether a per-face
@@ -3802,10 +3764,9 @@ function parseBZWMap(filename, { quiet = false, extraMessages = [], text: givenT
         current.rawH = rawH;
       }
     } else if (current && (token === 'rotation' || token === 'rot')) {
-      // BZFlag rotation is CCW around +Z; our world maps BZFlag +Y (north) to -Z,
-      // which flips the depth axis. The correct conversion is +deg + π.
+      // rotation <deg>, counter-clockwise about +Z.
       const [, deg] = line.split(/\s+/);
-      current.rotation = (parseFloat(deg) || 0) * Math.PI / 180 + Math.PI;
+      current.angle = (parseFloat(deg) || 0) * Math.PI / 180;
       if (current.type === 'group') {
         current.spin = (parseFloat(deg) || 0) * Math.PI / 180;
         current.xformRotation = current.spin;
@@ -3827,7 +3788,7 @@ function parseBZWMap(filename, { quiet = false, extraMessages = [], text: givenT
       }
       if (isVertical) {
         const signedDeg = (rawAngle || 0) * Math.sign(rawAz);
-        current.rotation = (signedDeg * Math.PI / 180) + Math.PI;
+        current.angle = signedDeg * Math.PI / 180;
         if (current.type === 'group') {
           current.spin = signedDeg * Math.PI / 180;
         }
@@ -4010,10 +3971,7 @@ function parseBZWMap(filename, { quiet = false, extraMessages = [], text: givenT
         const instanceRequest = {
           groupDefName: current.groupDefName,
           name: current.name || null,
-          x: current.x || 0,
-          z: current.z || 0,
-          baseY: current.baseY || 0,
-          rotation: current.rotation || 0,
+          pos: [current.pos?.[0] || 0, current.pos?.[1] || 0, current.pos?.[2] || 0],
           spin: current.spin || 0,
           scale: current.scale || [1, 1, 1],
           driveThrough: !!current.driveThrough,
@@ -4064,20 +4022,19 @@ function parseBZWMap(filename, { quiet = false, extraMessages = [], text: givenT
         // stated position and base below it, base-down like every other
         // pyramid there.
         if (current.type === 'pyramid' && current.hasFaceCommand) {
-          const rawH = Number.isFinite(current.rawH) ? current.rawH : current.h;
-          const statedZ = current.baseY || 0;
+          const rawH = Number.isFinite(current.rawH) ? current.rawH : current.size[2];
+          const statedZ = current.pos?.[2] || 0;
           const flipActive = current.explicitFlipZ === true || rawH < 0;
           const apexZ = flipActive ? statedZ : statedZ + rawH;
           const baseZ = flipActive ? statedZ + rawH : statedZ;
-          current.baseY = Math.min(apexZ, baseZ);
+          current.pos = [current.pos?.[0], current.pos?.[1], Math.min(apexZ, baseZ)];
           current.inverted = apexZ < baseZ;
-          // `h` is already `Math.abs(rawH)` from the `size` line -- unchanged.
+          // `size[2]` is already `Math.abs(rawH)` from the `size` line -- unchanged.
         } else if (current.type === 'pyramid') {
           // Old-style pyramid (no per-face command at all): upstream's own
-          // `isOldPyramid` path, unchanged from bzo's original behavior --
-          // `position` is the base, and a negative height or literal `flipz`
-          // really does mean `setZFlip()`. `baseY` stays exactly as parsed.
-          const rawH = Number.isFinite(current.rawH) ? current.rawH : current.h;
+          // `isOldPyramid` path -- `position` is the base, and a negative height or literal `flipz`
+          // really does mean `setZFlip()`. `pos` stays exactly as parsed.
+          const rawH = Number.isFinite(current.rawH) ? current.rawH : current.size[2];
           current.inverted = rawH < 0 || current.explicitFlipZ === true;
         }
 
@@ -4098,7 +4055,7 @@ function parseBZWMap(filename, { quiet = false, extraMessages = [], text: givenT
         // every flush pad and not only of the ones somebody remembered to mark.
         // Teleporters are excluded because theirs are not final yet -- the block
         // below fills in a sizeless one from CustomGate's defaults.
-        if (current.kind !== 'teleporter' && current.h === 0 && (current.baseY || 0) === 0) {
+        if (current.kind !== 'teleporter' && current.size?.[2] === 0 && (current.pos?.[2] || 0) === 0) {
           current.driveThrough = true;
           current.shootThrough = true;
         }
@@ -4222,12 +4179,12 @@ function parseBZWMap(filename, { quiet = false, extraMessages = [], text: givenT
     }
     if (token === 'vertex') {
       const [x, y, z] = words.slice(1).map(Number);
-      info.vertices.push({ x: x || 0, y: z || 0, z: -(y || 0) });
+      info.vertices.push({ x: x || 0, y: y || 0, z: z || 0 });
       return;
     }
     if (token === 'normal') {
       const [x, y, z] = words.slice(1).map(Number);
-      info.normals.push({ x: x || 0, y: z || 0, z: -(y || 0) });
+      info.normals.push({ x: x || 0, y: y || 0, z: z || 0 });
       return;
     }
     if (token === 'texcoord') {
@@ -4378,34 +4335,29 @@ function parseBZWMap(filename, { quiet = false, extraMessages = [], text: givenT
     const sin = Math.sin(request.spin);
 
     return members.map((member, memberIndex) => {
-      // BZFlag's y (north) is bzo's z, so the group's scale.y stretches a
-      // member's z position and depth the way scale.x stretches x and width.
-      const localX = (member.x || 0) * scaleX;
-      const localZ = (member.z || 0) * scaleY;
-      const localY = (member.baseY || 0) * scaleZ;
-      // The same local-to-world rotation render.js/collision.cjs already use
-      // for an obstacle's own facing (`getColliderLocalPoint`'s inverse), here
-      // rotating a member's position around the group's origin rather than
-      // orienting a single shape -- a different operator, so it takes the raw
-      // spin rather than the +π `rotation` a facing carries.
-      const worldX = (localX * cos) + (localZ * sin);
-      const worldZ = (-localX * sin) + (localZ * cos);
+      // The spin is a plain counter-clockwise turn about +Z: it carries a
+      // member's position around the group's origin, and adds to the
+      // member's own facing.
+      const memberX = (member.pos?.[0] || 0) * scaleX;
+      const memberY = (member.pos?.[1] || 0) * scaleY;
+      const memberZ = (member.pos?.[2] || 0) * scaleZ;
+      const placed = {
+        pos: [
+          request.pos[0] + ((memberX * cos) - (memberY * sin)),
+          request.pos[1] + ((memberX * sin) + (memberY * cos)),
+          request.pos[2] + memberZ,
+        ],
+        angle: (member.angle || 0) + request.spin,
+      };
+      if (member.size) {
+        placed.size = [
+          member.size[0] * Math.abs(scaleX), member.size[1] * Math.abs(scaleY), member.size[2] * Math.abs(scaleZ),
+        ];
+      }
 
       return {
         ...member,
-        x: request.x + worldX,
-        z: request.z + worldZ,
-        baseY: request.baseY + localY,
-        // Composing two already-+π-adjusted facings by addition is off by one
-        // extra π from the true sum -- invisible here, since every shape a
-        // define may hold (box, pyramid) is symmetric under exactly that half
-        // turn, the same reason a box with no stated `rotation` line (0, not
-        // +π) already renders identically to one with an explicit `rotation 0`.
-        // The same holds at every nesting depth, for the same reason.
-        rotation: (member.rotation || 0) + request.rotation,
-        w: (member.w || 0) * Math.abs(scaleX),
-        d: (member.d || 0) * Math.abs(scaleY),
-        h: (member.h || 0) * Math.abs(scaleZ),
+        ...placed,
         // The group's own passability only adds permission -- true on every
         // member type, unlike matref/phydrv below, which upstream restricts
         // to a mesh member's own faces.
@@ -4425,20 +4377,19 @@ function parseBZWMap(filename, { quiet = false, extraMessages = [], text: givenT
 
   // A group instance's own scale/spin, applied to one point in the
   // definition's local frame -- a mesh vertex or checkpoint (translated by
-  // `request.x`/`baseY`/`z` after this, the same as a member's own position
-  // above) or a mesh normal (left untranslated, `scaleX`/`Y`/`Z` all 1 --
+  // `request.pos` after this, the same as a member's own position above) or
+  // a mesh normal (left untranslated, `scaleX`/`Y`/`Z` all 1 --
   // a direction has no position to scale, and no rigorous inverse-transpose
   // for a non-uniform one either; real local usage only ever scales a mesh
   // uniformly, so a plain rotation is exact there and a close approximation
   // otherwise).
   function transformGroupPoint(point, scaleX, scaleY, scaleZ, cos, sin) {
     const localX = (point.x || 0) * scaleX;
-    const localZ = (point.z || 0) * scaleY;
-    const localY = (point.y || 0) * scaleZ;
+    const localY = (point.y || 0) * scaleY;
     return {
-      x: (localX * cos) + (localZ * sin),
-      y: localY,
-      z: (-localX * sin) + (localZ * cos),
+      x: (localX * cos) - (localY * sin),
+      y: (localX * sin) + (localY * cos),
+      z: (point.z || 0) * scaleZ,
     };
   }
 
@@ -4452,7 +4403,7 @@ function parseBZWMap(filename, { quiet = false, extraMessages = [], text: givenT
     const sin = Math.sin(request.spin);
     let placePoint = (point) => {
       const local = transformGroupPoint(point, scaleX, scaleY, scaleZ, cos, sin);
-      return { x: request.x + local.x, y: request.baseY + local.y, z: request.z + local.z };
+      return { x: request.pos[0] + local.x, y: request.pos[1] + local.y, z: request.pos[2] + local.z };
     };
     let placeNormal = (n) => transformGroupPoint(n, 1, 1, 1, cos, sin);
     let placeVector = (v) => transformGroupPoint(v, scaleX, scaleY, scaleZ, cos, sin);
@@ -4468,7 +4419,7 @@ function parseBZWMap(filename, { quiet = false, extraMessages = [], text: givenT
     // through every enclosing group so a tipped group tips the spin too.
     let spinAxis = mesh.spinAxis;
     if (mesh.angvel) {
-      const axis = placeVector(mesh.spinAxis || { x: 0, y: 1, z: 0 });
+      const axis = placeVector(mesh.spinAxis || { x: 0, y: 0, z: 1 });
       const len = Math.hypot(axis.x, axis.y, axis.z);
       spinAxis = len > 0 ? { x: axis.x / len, y: axis.y / len, z: axis.z / len } : mesh.spinAxis;
     }
@@ -4662,13 +4613,14 @@ function parseBZWMap(filename, { quiet = false, extraMessages = [], text: givenT
     // silently flips for half of all possible face orientations (every axis
     // this picks the same way `computeMeshFacePlane`'s own right-hand-rule
     // cross product already does, just projected rather than kept in 3D).
+    // A tie between the vertical and north goes to the vertical.
     let pt;
     if (ax >= ay && ax >= az) {
       pt = (i) => { const v = vertices[i]; return pnx >= 0 ? [v.y, v.z] : [v.z, v.y]; };
-    } else if (ay >= ax && ay >= az) {
-      pt = (i) => { const v = vertices[i]; return pny >= 0 ? [v.z, v.x] : [v.x, v.z]; };
-    } else {
+    } else if (az >= ax && az >= ay) {
       pt = (i) => { const v = vertices[i]; return pnz >= 0 ? [v.x, v.y] : [v.y, v.x]; };
+    } else {
+      pt = (i) => { const v = vertices[i]; return pny >= 0 ? [v.z, v.x] : [v.x, v.z]; };
     }
     const cross2 = (o, a, b) => (((a[0] - o[0]) * (b[1] - o[1])) - ((a[1] - o[1]) * (b[0] - o[0])));
 
@@ -4733,9 +4685,7 @@ function parseBZWMap(filename, { quiet = false, extraMessages = [], text: givenT
   // transform, never on a `define`'s own still-local template
   // (`resolveDefineMeshes` holds those unfinalized, since the same
   // definition may be placed more than once, each landing somewhere
-  // different). `baseY` matches every other obstacle's own field, so
-  // `getObstacleHeight`/the collision pair's height gate read a mesh the
-  // same way they already read a box or a pyramid. A face that fails
+  // different). A face that fails
   // `isFaceConvex` is replaced here by its own triangulation, root and
   // branch, rather than finalized as-is -- so nothing downstream of this
   // function ever sees a concave face at all, the same guarantee upstream
@@ -4780,7 +4730,7 @@ function parseBZWMap(filename, { quiet = false, extraMessages = [], text: givenT
       const round = (n) => Math.round(n * 100);
       const invariant = [];
       for (let i = 0; i < v.length; i += 3) {
-        invariant.push(round(Math.hypot(v[i] - centre.x, v[i + 2] - centre.z)), round(v[i + 1] - centre.y));
+        invariant.push(round(Math.hypot(v[i] - centre.x, v[i + 1] - centre.y)), round(v[i + 2] - centre.z));
       }
       const hash = crypto.createHash('sha1');
       hash.update(invariant.join(','));
@@ -4796,42 +4746,43 @@ function parseBZWMap(filename, { quiet = false, extraMessages = [], text: givenT
     }
 
     // The turn about the vertical that carries the reference onto `entry`,
-    // in radians as the client's `rotation.y` reads it, or null where no turn
-    // does: every vertex and every normal has to land within tolerance.
+    // in radians counter-clockwise about +Z as an instance's `spin` reads it,
+    // or null where no turn does: every vertex and every normal has to land
+    // within tolerance.
     const solveTurn = (reference, entry) => {
       const rv = reference.arrays.vertices;
       const ev = entry.arrays.vertices;
       let pivot = -1;
       let best = 0;
       for (let i = 0; i < rv.length; i += 3) {
-        const r = Math.hypot(rv[i] - reference.centre.x, rv[i + 2] - reference.centre.z);
+        const r = Math.hypot(rv[i] - reference.centre.x, rv[i + 1] - reference.centre.y);
         if (r > best) { best = r; pivot = i; }
       }
       let angle = 0;
       if (pivot >= 0 && best > REPEAT_TOLERANCE) {
         const x = rv[pivot] - reference.centre.x;
-        const z = rv[pivot + 2] - reference.centre.z;
+        const y = rv[pivot + 1] - reference.centre.y;
         const tx = ev[pivot] - entry.centre.x;
-        const tz = ev[pivot + 2] - entry.centre.z;
-        angle = Math.atan2((z * tx) - (x * tz), (x * tx) + (z * tz));
+        const ty = ev[pivot + 1] - entry.centre.y;
+        angle = Math.atan2((x * ty) - (y * tx), (x * tx) + (y * ty));
       }
       const cos = Math.cos(angle);
       const sin = Math.sin(angle);
-      const turned = (x, z) => [(x * cos) + (z * sin), (-x * sin) + (z * cos)];
+      const turned = (x, y) => [(x * cos) - (y * sin), (x * sin) + (y * cos)];
       for (let i = 0; i < rv.length; i += 3) {
-        const [x, z] = turned(rv[i] - reference.centre.x, rv[i + 2] - reference.centre.z);
+        const [x, y] = turned(rv[i] - reference.centre.x, rv[i + 1] - reference.centre.y);
         if (Math.abs(x - (ev[i] - entry.centre.x)) > REPEAT_TOLERANCE
-          || Math.abs(z - (ev[i + 2] - entry.centre.z)) > REPEAT_TOLERANCE
-          || Math.abs((rv[i + 1] - reference.centre.y) - (ev[i + 1] - entry.centre.y)) > REPEAT_TOLERANCE) {
+          || Math.abs(y - (ev[i + 1] - entry.centre.y)) > REPEAT_TOLERANCE
+          || Math.abs((rv[i + 2] - reference.centre.z) - (ev[i + 2] - entry.centre.z)) > REPEAT_TOLERANCE) {
           return null;
         }
       }
       const rn = reference.arrays.normals;
       const en = entry.arrays.normals;
       for (let i = 0; i < rn.length; i += 3) {
-        const [x, z] = turned(rn[i], rn[i + 2]);
-        if (Math.abs(x - en[i]) > REPEAT_TOLERANCE || Math.abs(z - en[i + 2]) > REPEAT_TOLERANCE
-          || Math.abs(rn[i + 1] - en[i + 1]) > REPEAT_TOLERANCE) {
+        const [x, y] = turned(rn[i], rn[i + 1]);
+        if (Math.abs(x - en[i]) > REPEAT_TOLERANCE || Math.abs(y - en[i + 1]) > REPEAT_TOLERANCE
+          || Math.abs(rn[i + 2] - en[i + 2]) > REPEAT_TOLERANCE) {
           return null;
         }
       }
@@ -4884,7 +4835,6 @@ function parseBZWMap(filename, { quiet = false, extraMessages = [], text: givenT
 
   function finalizeMeshGeometry(mesh) {
     mesh.bounds = computeMeshBounds(mesh.vertices);
-    mesh.baseY = mesh.bounds ? mesh.bounds.minY : 0;
     // A mesh placed directly in the world, never through any `group`
     // instance, never runs `applyGroupInstanceTransformToMesh`'s own
     // `spinPivot` line above -- give it the same default that line would
@@ -5139,9 +5089,9 @@ function parseBZWMap(filename, { quiet = false, extraMessages = [], text: givenT
       } else {
       meshInstances.push({
         define: templateName,
-        x: request.x,
-        y: request.baseY,
-        z: request.z,
+        x: request.pos[0],
+        y: request.pos[1],
+        z: request.pos[2],
         spin: request.spin,
         scale: request.scale,
       });
@@ -5315,8 +5265,8 @@ function parseBZWMap(filename, { quiet = false, extraMessages = [], text: givenT
   // A world-space AABB for every obstacle, in the same `{minX, maxX, minY,
   // maxY, minZ, maxZ}` shape a mesh's own `.bounds` (`computeMeshBounds`,
   // above) already has -- computed once, here, rather than re-derived from
-  // `x`/`z`/`w`/`d`/`rotation` inside a hot collision loop every time a
-  // query happens to reach this obstacle. `xspan`/`zspan` is upstream's own
+  // `pos`/`size`/`angle` inside a hot collision loop every time a query
+  // happens to reach this obstacle. `xSpan`/`ySpan` is upstream's own
   // rotated-rectangle extent formula (`Obstacle::setExtents`,
   // `Obstacle.cxx:87-98`): the half-extent a box or a pyramid's own bounding
   // rectangle needs on each axis to contain every corner at any rotation,
@@ -5328,23 +5278,23 @@ function parseBZWMap(filename, { quiet = false, extraMessages = [], text: givenT
   // which of these shapes it actually is.
   for (const obstacle of obstacles) {
     if (obstacle.bounds) continue;
-    const x = obstacle.x || 0;
-    const z = obstacle.z || 0;
-    const rotation = obstacle.rotation || 0;
-    const halfW = (obstacle.w || 0) / 2;
-    const halfD = (obstacle.d || 0) / 2;
-    const cos = Math.abs(Math.cos(rotation));
-    const sin = Math.abs(Math.sin(rotation));
+    const x = obstacle.pos?.[0] || 0;
+    const y = obstacle.pos?.[1] || 0;
+    const base = obstacle.pos?.[2] || 0;
+    const angle = obstacle.angle || 0;
+    const halfW = obstacle.size?.[0] || 0;
+    const halfD = obstacle.size?.[1] || 0;
+    const cos = Math.abs(Math.cos(angle));
+    const sin = Math.abs(Math.sin(angle));
     const xSpan = (cos * halfW) + (sin * halfD);
-    const zSpan = (cos * halfD) + (sin * halfW);
-    const baseY = obstacle.baseY || 0;
+    const ySpan = (cos * halfD) + (sin * halfW);
     obstacle.bounds = {
       minX: x - xSpan,
       maxX: x + xSpan,
-      minY: baseY,
-      maxY: baseY + getObstacleHeight(obstacle),
-      minZ: z - zSpan,
-      maxZ: z + zSpan,
+      minY: y - ySpan,
+      maxY: y + ySpan,
+      minZ: base,
+      maxZ: base + getObstacleHeight(obstacle),
     };
   }
 
@@ -5426,7 +5376,7 @@ function parseBZWMap(filename, { quiet = false, extraMessages = [], text: givenT
   for (const obstacle of obstacles) {
     if (!obstacle.meshedByBzfs) continue;
     if (obstacle.type !== 'box' && obstacle.type !== 'pyramid') continue;
-    if (obstacle.w !== 0 && obstacle.d !== 0 && obstacle.h !== 0) continue;
+    if (obstacle.size?.[0] !== 0 && obstacle.size?.[1] !== 0 && obstacle.size?.[2] !== 0) continue;
     flushMeshedNames.push(obstacle.name || obstacle.type);
   }
   if (flushMeshedNames.length > 0) {
@@ -5525,7 +5475,7 @@ function parseBZWMap(filename, { quiet = false, extraMessages = [], text: givenT
   }
 
   const teleporterGraph = buildTeleporterLinks();
-  return {
+  const world = {
     obstacles,
     // A definition's geometry once, and the placements sharing it -- only
     // definitions nothing collides with, so these are never in `obstacles`
@@ -5550,7 +5500,14 @@ function parseBZWMap(filename, { quiet = false, extraMessages = [], text: givenT
     warnedMessages,
     instancing,
   };
+  attachMeshArrayPayloads(world);
+  return world;
 }
+
+// Which layout a world file is in. Raised whenever a parse of the same map
+// would come out different, so a server does not restore a world it wrote
+// in an older one: 2 is upstream's frame (#182).
+const WORLD_FORMAT = 3;
 
 // `instanced 18/22 groups, 15 templates, 52 faces` -- group instances drawn
 // from a shared template rather than a copy apiece (#153).
@@ -5606,18 +5563,18 @@ function attachMeshArrayPayloads(entry) {
 function getMaxObstacleTopY(obstacles = []) {
   return obstacles.reduce((maxTop, obstacle) => {
     // A mesh (a plain `mesh`, or any of the six generators, all of which
-    // finish as `type: 'mesh'`) has no `.h` at all -- its real extent is
+    // finish as `type: 'mesh'`) has no `size` at all -- its real extent is
     // `.bounds`, the world-space vertex box `computeMeshBounds` already
-    // computed. Falling through to the box/pyramid-style `baseY + h` below
+    // computed. Falling through to the box/pyramid-style `pos[2] + size[2]` below
     // for one of these silently answers 4 units tall regardless of its real
     // height (a tree, a tall building), which is short enough that clouds
     // end up level with a real map's own rooftops instead of above them.
-    if (obstacle?.bounds && Number.isFinite(obstacle.bounds.maxY)) {
-      return Math.max(maxTop, obstacle.bounds.maxY);
+    if (obstacle?.bounds && Number.isFinite(obstacle.bounds.maxZ)) {
+      return Math.max(maxTop, obstacle.bounds.maxZ);
     }
-    const baseY = Number.isFinite(obstacle?.baseY) ? obstacle.baseY : 0;
-    const height = Number.isFinite(obstacle?.h) ? obstacle.h : 4;
-    return Math.max(maxTop, baseY + height);
+    const base = Number.isFinite(obstacle?.pos?.[2]) ? obstacle.pos[2] : 0;
+    const height = Number.isFinite(obstacle?.size?.[2]) ? obstacle.size[2] : 4;
+    return Math.max(maxTop, base + height);
   }, 0);
 }
 
@@ -5654,22 +5611,21 @@ function generateClouds(cloudBaseY, random = Math.random) {
   const numClouds = 15;
 
   for (let i = 0; i < numClouds; i++) {
-    // Random position in sky
+    // Random position in sky. The rolls come in the order east, up, south,
+    // so a seed keeps the clouds it has always rolled.
     const x = (random() - 0.5) * 200;
-    const y = cloudBaseY + random() * 40;
-    const z = (random() - 0.5) * 200;
+    const z = cloudBaseY + random() * 40;
+    const y = 0 - ((random() - 0.5) * 200);
 
     // Fractal puffs (multiple spheres clustered together)
     const puffs = [];
     const numPuffs = 5 + Math.floor(random() * 8);
 
     for (let j = 0; j < numPuffs; j++) {
-      puffs.push({
-        offsetX: (random() - 0.5) * 10,
-        offsetY: (random() - 0.5) * 3,
-        offsetZ: (random() - 0.5) * 10,
-        radius: 2 + random() * 4
-      });
+      const offsetX = (random() - 0.5) * 10;
+      const offsetZ = (random() - 0.5) * 3;
+      const offsetY = 0 - ((random() - 0.5) * 10);
+      puffs.push({ offsetX, offsetY, offsetZ, radius: 2 + random() * 4 });
     }
 
     clouds.push({ x, y, z, puffs });
@@ -5880,6 +5836,7 @@ function buildWorldFile(map, { gameConfig, serverBzdb, puffClouds, defaultMapSiz
 }
 
 module.exports = {
+  WORLD_FORMAT,
   configureBzwParse,
   buildWorldFile,
   DEFAULT_WATER_TEXTURE_MATRIX,

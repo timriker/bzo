@@ -4,6 +4,19 @@
 The renderer should work across simple, detailed, and custom tracked vehicles by
 discovering these named parts instead of hardcoding a single model layout.
 
+A model is authored as an OBJ conventionally is: standing on +Y, facing -Z,
+with its starboard on +X. The renderer turns it once as it loads to stand as
+upstream's tank does, on +Z facing +X.
+
+That orientation is deliberate, though upstream's own `misc/tank.obj` stands
+on +Z facing +X. It is what Blender's OBJ importer and exporter assume by
+default (Up Y, Forward -Z), so a model opens upright and facing Blender's
+Front view, and saves back unchanged, with no axis settings to remember --
+and it is how most other tools and shared models write an OBJ. The scripts
+that extract upstream's tank (`scripts/split-bzflag-tank.mjs`,
+`scripts/extract-bzflag-lod-tanks.mjs`) turn it into this orientation. Do not
+store a model in upstream's axes.
+
 ## Goals
 
 - Preserve original BZFlag tank naming where it exists

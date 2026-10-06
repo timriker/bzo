@@ -6,8 +6,9 @@
  */
 
 // The autopilots' decisions (`public/autopilot.mjs`) against a hand-built view: an open
-// flat world unless a case puts something in it. Headings are bzo's, so 0 faces
-// north (-z) and a positive rotation turns left.
+// flat world unless a case puts something in it. In upstream's frame: north is
+// +y, up is z, the tank faces north (azimuth pi/2) unless a case turns it, and
+// a positive rotation turns left.
 
 import assert from 'node:assert/strict';
 import { Ace, Roger, createWorldProbes } from '../public/autopilot.mjs';
@@ -21,7 +22,7 @@ function makeView(overrides = {}) {
       x: 0,
       y: 0,
       z: 0,
-      rotation: 0,
+      azimuth: Math.PI / 2,
       flag: null,
       flagIndex: null,
       flagTeam: null,
@@ -62,9 +63,9 @@ function makeView(overrides = {}) {
   };
 }
 
-function enemy(x, z, extra = {}) {
+function enemy(x, y, extra = {}) {
   return {
-    id: 'foe', x, y: 0, z, vx: 0, vy: 0, vz: 0, team: 'red',
+    id: 'foe', x, y, z: 0, vx: 0, vy: 0, vz: 0, team: 'red',
     alive: true, paused: false, notResponding: false,
     flag: null, flagIndex: null, flagTeam: null, zoned: false, ...extra,
   };
@@ -72,7 +73,7 @@ function enemy(x, z, extra = {}) {
 
 // An enemy dead ahead is fired on, and chased at full speed.
 {
-  const out = new Roger().think(makeView({ players: [enemy(0, -150)] }));
+  const out = new Roger().think(makeView({ players: [enemy(0, 150)] }));
   assert.equal(out.fire, true, 'a foe in the sights is shot');
   assert.equal(out.targetId, 'foe');
   assert.ok(out.speed > 0, 'and driven towards');
@@ -83,10 +84,10 @@ function enemy(x, z, extra = {}) {
 {
   const out = new Roger().think(makeView({
     self: { flag: 'GM', flagIndex: 4 },
-    players: [enemy(0, -150, { y: 20 })],
+    players: [enemy(0, 150, { z: 20 })],
   }));
   assert.equal(out.shotTargetId, 'foe');
-  const plain = new Roger().think(makeView({ players: [enemy(0, -150, { y: 20 })] }));
+  const plain = new Roger().think(makeView({ players: [enemy(0, 150, { z: 20 })] }));
   assert.equal(plain.fire, false, 'a normal shot would fly under it');
 }
 
@@ -94,11 +95,11 @@ function enemy(x, z, extra = {}) {
 // 100-unit shot that lives 3.5 seconds carries about 350 past the muzzle.
 {
   const reach = { self: { shotSpeed: 100, shotLifetime: 3.5, muzzleForward: 3 } };
-  const near = new Ace().think(makeView({ ...reach, players: [enemy(0, -150)] }));
+  const near = new Ace().think(makeView({ ...reach, players: [enemy(0, 150)] }));
   assert.equal(near.fire, true, 'a foe in range is shot');
-  const far = new Ace().think(makeView({ ...reach, players: [enemy(0, -600)] }));
+  const far = new Ace().think(makeView({ ...reach, players: [enemy(0, 600)] }));
   assert.equal(far.fire, false, 'a foe out of range is not');
-  const roger = new Roger().think(makeView({ ...reach, players: [enemy(0, -600)] }));
+  const roger = new Roger().think(makeView({ ...reach, players: [enemy(0, 600)] }));
   assert.equal(roger.fire, true, 'Roger fires anyway, as upstream does');
 }
 
@@ -110,9 +111,9 @@ function enemy(x, z, extra = {}) {
   const frame = (now, speed) => {
     const view = makeView({
       now,
-      self: { shotSpeed: 100, shotLifetime: 3.5, muzzleForward: 4.42, topSpeed: 25, velocity: { x: 0, y: 0, z: -speed } },
-      players: [enemy(0, -415)],
-      firstHit: () => ({ y: 0 }),
+      self: { shotSpeed: 100, shotLifetime: 3.5, muzzleForward: 4.42, topSpeed: 25, velocity: { x: 0, y: speed, z: 0 } },
+      players: [enemy(0, 415)],
+      firstHit: () => ({ z: 0 }),
     });
     const ctx = {
       view,
@@ -131,7 +132,7 @@ function enemy(x, z, extra = {}) {
   assert.equal(frame(100.04, 25).speed, 0, 'then stops');
   const moving = new Ace();
   const ctx = {
-    view: makeView({ now: 100, self: { shotSpeed: 100, shotLifetime: 3.5 }, players: [enemy(0, -415, { vz: -10 })] }),
+    view: makeView({ now: 100, self: { shotSpeed: 100, shotLifetime: 3.5 }, players: [enemy(0, 415, { vy: 10 })] }),
     out: { rotation: 0, speed: 0, fire: false, intent: {} },
   };
   ctx.me = { ...ctx.view.self, azimuth: Math.PI / 2, vx: 0, vy: 0, vz: 0 };
@@ -149,7 +150,7 @@ function enemy(x, z, extra = {}) {
 // Behind a wall nobody is shot.
 {
   const out = new Roger().think(makeView({
-    players: [enemy(0, -150)],
+    players: [enemy(0, 150)],
     isObscured: () => true,
   }));
   assert.equal(out.fire, false, 'an obscured foe is not fired on');
@@ -158,7 +159,7 @@ function enemy(x, z, extra = {}) {
 // A teammate is neither chased nor shot.
 {
   const out = new Roger().think(makeView({
-    players: [enemy(0, -150)],
+    players: [enemy(0, 150)],
     isFoe: () => false,
   }));
   assert.equal(out.fire, false);
@@ -168,7 +169,10 @@ function enemy(x, z, extra = {}) {
 // A wall close ahead backs the tank off, towards the more open side.
 {
   const out = new Roger({ random: () => 0 }).think(makeView({
-    openDistance: (_pos, heading) => (Math.abs(heading) < 0.1 ? 2 : (heading > 0 ? 50 : 10)),
+    openDistance: (_pos, azimuth) => {
+      const off = azimuth - (Math.PI / 2);
+      return Math.abs(off) < 0.1 ? 2 : (off > 0 ? 50 : 10);
+    },
   }));
   assert.equal(out.speed, -0.5, 'stuck on a wall reverses');
   assert.equal(out.rotation, 1, 'towards the open left');
@@ -186,24 +190,24 @@ for (const flag of ['US', 'MG', 'ID']) {
 {
   const pilot = new Ace();
   pilot.think(makeView({ self: { flag: 'US', flagIndex: 3 } }));
-  const ground = { index: 3, type: null, team: null, onGround: true, x: 0, y: 0, z: -20 };
-  const out = pilot.think(makeView({ now: 200, self: { rotation: Math.PI / 2 }, flags: [ground] }));
+  const ground = { index: 3, type: null, team: null, onGround: true, x: 0, y: 20, z: 0 };
+  const out = pilot.think(makeView({ now: 200, self: { azimuth: Math.PI }, flags: [ground] }));
   assert.ok(Math.abs(out.rotation) < 1, 'navigates rather than turning to the flag');
   const fresh = new Ace().think(makeView({
-    self: { rotation: Math.PI / 2 },
+    self: { azimuth: Math.PI },
     flags: [ground],
   }));
   assert.ok(fresh.rotation < -1, 'a pilot that never saw it drives to it');
   const roger = new Roger();
   roger.think(makeView({ self: { flag: 'US', flagIndex: 3 } }));
-  const back = roger.think(makeView({ now: 200, self: { rotation: Math.PI / 2 }, flags: [ground] }));
+  const back = roger.think(makeView({ now: 200, self: { azimuth: Math.PI }, flags: [ground] }));
   assert.ok(back.rotation < -1, 'Roger forgets');
 }
 
 // A flag seen in someone else's hands is remembered too.
 {
   const pilot = new Ace();
-  pilot.think(makeView({ players: [enemy(500, 500, { alive: false, flag: 'B', flagIndex: 7 })] }));
+  pilot.think(makeView({ players: [enemy(500, -500, { alive: false, flag: 'B', flagIndex: 7 })] }));
   assert.equal(pilot.knownFlagTypes.get(7), 'B');
   assert.equal(pilot.wantsGroundFlag({ index: 7, type: null }), false, 'a bad flag is not wanted');
 }
@@ -220,7 +224,7 @@ for (const flag of ['US', 'MG', 'ID']) {
 
 // A shot coming straight at the tank is jumped where jumping is allowed.
 {
-  const shot = { ownerId: 'foe', ownerZoned: false, flag: null, x: 0, y: 1, z: -10, vx: 0, vy: 0, vz: 100 };
+  const shot = { ownerId: 'foe', ownerZoned: false, flag: null, x: 0, y: 10, z: 1, vx: 0, vy: -100, vz: 0 };
   const out = new Roger().think(makeView({ shots: [shot] }));
   assert.equal(out.jump, true);
   const grounded = new Roger().think(makeView({ shots: [shot], world: { allowJumping: false } }));
@@ -232,26 +236,26 @@ for (const flag of ['US', 'MG', 'ID']) {
 // nor dodges it -- that would lift him out of the one place it cannot reach.
 // A tank about to drive over him is the threat, and he drives out of its way.
 {
-  const shell = { ownerId: 'foe', ownerZoned: false, flag: null, x: 0, y: 1.57, z: -10, vx: 0, vy: 0, vz: 100 };
-  const under = new Ace().think(makeView({ self: { flag: 'BU', y: -1.32 }, shots: [shell] }));
+  const shell = { ownerId: 'foe', ownerZoned: false, flag: null, x: 0, y: 10, z: 1.57, vx: 0, vy: -100, vz: 0 };
+  const under = new Ace().think(makeView({ self: { flag: 'BU', z: -1.32 }, shots: [shell] }));
   assert.equal(under.jump, false, 'no jump out of the ground');
   assert.notEqual(under.intent.mode, 'dodge', 'and nothing to dodge');
   const above = new Ace().think(makeView({ shots: [shell] }));
   assert.equal(above.intent.mode, 'dodge', 'unburrowed, the same shell is dodged');
   // Crossing in front of him, he backs or drives out of its line.
-  const crossing = enemy(-20, -6, { vx: 20 });
-  const aside = new Ace().think(makeView({ self: { flag: 'BU', y: -1.32 }, players: [crossing] }));
+  const crossing = enemy(-20, 6, { vx: 20 });
+  const aside = new Ace().think(makeView({ self: { flag: 'BU', z: -1.32 }, players: [crossing] }));
   assert.equal(aside.intent.mode, 'dodge', 'a tank about to drive over him is got out of the way of');
   assert.equal(aside.jump, false, 'by driving, where driving does it');
   // Head on there is no driving clear, and a jump beats being flattened.
-  const headOn = new Ace().think(makeView({ self: { flag: 'BU', y: -1.32 }, players: [enemy(0, -20, { vz: 20 })] }));
+  const headOn = new Ace().think(makeView({ self: { flag: 'BU', z: -1.32 }, players: [enemy(0, 20, { vy: -20 })] }));
   assert.equal(headOn.jump, true, 'head on, he jumps');
 }
 
 // Water below the edge of a roof stops Ace. Roger's look-ahead has nothing to
 // say when it meets nothing.
 {
-  const view = makeView({ self: { y: 10 }, world: { waterLevel: 1 } });
+  const view = makeView({ self: { z: 10 }, world: { waterLevel: 1 } });
   assert.equal(new Ace().think(view).speed, 0, 'does not drive off into the water');
   assert.ok(new Roger().think(view).speed > 0);
 }
@@ -296,10 +300,10 @@ for (const flag of ['US', 'MG', 'ID']) {
 // Carrying a team flag, Ace heads home rather than after a foe -- but still
 // shoots one in its sights. Roger chases.
 {
-  const base = { x: 0, y: 0, z: 200, radius: 15 };
+  const base = { x: 0, y: -200, z: 0, radius: 15 };
   const view = makeView({
     self: { flag: 'R*', flagIndex: 0, flagTeam: 1, teamColor: 2 },
-    players: [enemy(0, -150)],
+    players: [enemy(0, 150)],
     myBase: () => base,
   });
   const ace = new Ace().think(view);
@@ -321,18 +325,18 @@ for (const flag of ['US', 'MG', 'ID']) {
   const shotSpeed = 100;
   const tankSpeed = 25;
   const frame = 1 / 30;
-  const run = (pilot, targetZ) => {
+  const run = (pilot, north) => {
     const fires = [];
     // Up to just past the landing: a shot that hit would have ended it there.
     for (let t = 0; t < 4.3; t += frame) {
-      const y = Math.max(0, (jumpVelocity * t) - (0.5 * g * t * t));
-      const airborne = y > 0 || t === 0;
+      const z = Math.max(0, (jumpVelocity * t) - (0.5 * g * t * t));
+      const airborne = z > 0 || t === 0;
       const view = makeView({
         now: 100 + t,
         self: { muzzleHeight, muzzleForward: 3, shotSpeed },
         world: { tankAngVel: Math.PI / 4 },
-        players: [enemy(0, targetZ, {
-          y, airborne, gravity: g, vy: airborne ? jumpVelocity - (g * t) : 0,
+        players: [enemy(0, north, {
+          z, airborne, gravity: g, vz: airborne ? jumpVelocity - (g * t) : 0,
         })],
       });
       const out = pilot.think(view);
@@ -342,22 +346,22 @@ for (const flag of ['US', 'MG', 'ID']) {
   };
   const landsAt = (2 * jumpVelocity) / g;
   const enterAt = (jumpVelocity + Math.sqrt((jumpVelocity ** 2) - (2 * g * muzzleHeight))) / g;
-  const check = (targetZ, label) => {
-    const fires = run(new Ace(), targetZ);
+  const check = (north, label) => {
+    const fires = run(new Ace(), north);
     assert.equal(fires.length, 1, `${label}: one shot for one jump, got ${fires.length}`);
     const [{ t, speed }] = fires;
-    const arrival = t + ((Math.abs(targetZ) - 3 - 2) / (shotSpeed + speed));
+    const arrival = t + ((north - 3 - 2) / (shotSpeed + speed));
     assert.ok(arrival >= enterAt - frame && arrival <= landsAt + 0.05,
       `${label}: shot arrives at ${arrival.toFixed(3)}s, tank is in its path from ${enterAt.toFixed(3)} to ${landsAt.toFixed(3)}`);
     return fires[0];
   };
-  const near = check(-120, 'near');
+  const near = check(120, 'near');
   assert.ok(near.speed < 0, `backs off to fire a near jumper sooner (speed ${near.speed})`);
   const standing = landsAt - ((120 - 3 - 2) / shotSpeed);
   assert.ok(near.t < standing - 0.1, `fires at ${near.t.toFixed(2)}s, not ${standing.toFixed(2)}s`);
-  const far = check(-430, 'far');
+  const far = check(430, 'far');
   assert.ok(far.speed > 0, `drives at a far jumper to reach it in time (speed ${far.speed})`);
-  const roger = run(new Roger(), -120);
+  const roger = run(new Roger(), 120);
   assert.ok(roger.length === 0 || roger[0].t > near.t, 'Roger fires later, if at all');
 }
 
@@ -380,17 +384,19 @@ for (const flag of ['US', 'MG', 'ID']) {
 // foe beyond its edge in plain view. With ricochet on, the shot would bounce
 // off the wall into him, so he holds fire; Roger shoots and finds out.
 {
-  const wall = { type: 'box', name: 'wall', x: 0, z: -20, w: 60, d: 2, h: 10, baseY: 0, rotation: 0 };
+  const wall = {
+    type: 'box', name: 'wall', pos: [0, 20, 0], size: [30, 1, 10], angle: 0,
+  };
   const probes = createWorldProbes({
     obstacles: () => [wall],
     colliders: () => [wall],
     mapSize: () => 800,
     findImpact: findShotSegmentImpact,
-    topOf: (obs) => (obs.baseY || 0) + obs.h,
+    topOf: (obs) => obs.pos[2] + obs.size[2],
   });
   const view = (ricochet) => makeView({
     self: { muzzleHeight: 1.57, muzzleForward: 3, shotSpeed: 100, shotLifetime: 3.5, ricochet },
-    players: [enemy(0, -150)],
+    players: [enemy(0, 150)],
     ...probes,
     isObscured: () => false,
   });
@@ -404,20 +410,20 @@ for (const flag of ['US', 'MG', 'ID']) {
 // shoot: a foe behind a wall is no reason to stop.
 {
   const redFlag = { index: 0, type: 'R*', team: 1, onGround: true, x: 300, y: 0, z: 0 };
-  const view = (z, extra = {}) => makeView({
+  const view = (north, extra = {}) => makeView({
     self: { teamColor: 2 },
-    players: [enemy(0, z)],
+    players: [enemy(0, north)],
     flags: [redFlag],
     world: { teamFlags: true },
     myBase: () => ({ x: -300, y: 0, z: 0, radius: 15 }),
     ...extra,
   });
   const ace = new Ace();
-  assert.equal(ace.think(view(-40)).intent.mode, 'fight');
-  assert.equal(ace.think(view(-60)).intent.mode, 'fight', 'kept until it is past 75');
-  assert.equal(ace.think(view(-80)).intent.mode, 'capture');
-  assert.equal(ace.think(view(-60)).intent.mode, 'capture', 'and not taken up again short of 50');
-  assert.equal(new Ace().think(view(-40, { isObscured: () => true })).intent.mode, 'capture');
+  assert.equal(ace.think(view(40)).intent.mode, 'fight');
+  assert.equal(ace.think(view(60)).intent.mode, 'fight', 'kept until it is past 75');
+  assert.equal(ace.think(view(80)).intent.mode, 'capture');
+  assert.equal(ace.think(view(60)).intent.mode, 'capture', 'and not taken up again short of 50');
+  assert.equal(new Ace().think(view(40, { isObscured: () => true })).intent.mode, 'capture');
 }
 
 // Grinding: asked for full speed, covering a unit and a half a second -- a
@@ -491,9 +497,9 @@ for (const flag of ['US', 'MG', 'ID']) {
     const h = (19 * t) - (4.9 * t * t);
     const out = ace.think(makeView({
       now: 100 + t,
-      self: { y: 30, rotation: Math.PI, muzzleHeight: 1.57, muzzleForward: 3, shotSpeed: 100, speed: 0, topSpeed: 25 },
+      self: { z: 30, azimuth: -Math.PI / 2, muzzleHeight: 1.57, muzzleForward: 3, shotSpeed: 100, speed: 0, topSpeed: 25 },
       world: { maxShots: 5, tankAngVel: Math.PI / 4 },
-      players: [enemy(0, 67, { y: 15 + h, airborne: true, gravity: 9.8, vy: 19 - (9.8 * t) })],
+      players: [enemy(0, -67, { z: 15 + h, airborne: true, gravity: 9.8, vz: 19 - (9.8 * t) })],
     }));
     if (out.fire) firedAt = t;
   }
@@ -507,7 +513,7 @@ for (const flag of ['US', 'MG', 'ID']) {
   const redFlag = { index: 0, type: 'R*', team: 1, onGround: true, x: 300, y: 0, z: 0 };
   const view = (x, speed = 0) => makeView({
     self: { x, flag: 'V', flagIndex: 9, teamColor: 2, speed },
-    players: [enemy(x, -100)],
+    players: [enemy(x, 100)],
     flags: [redFlag],
     world: { teamFlags: true },
     myBase: () => ({ x: -300, y: 0, z: 0, radius: 15 }),
@@ -522,12 +528,12 @@ for (const flag of ['US', 'MG', 'ID']) {
 // A raised flag: one a jump reaches is jumped for when the edge is in the
 // window, one too high is left alone.
 {
-  const flagAt = (height) => ({ index: 0, type: 'R*', team: 1, onGround: true, x: 0, y: height, z: -40 });
+  const flagAt = (height) => ({ index: 0, type: 'R*', team: 1, onGround: true, x: 0, y: 40, z: height });
   const view = (height, edgeDistance) => makeView({
     self: { teamColor: 2 },
     flags: [flagAt(height)],
     world: { teamFlags: true },
-    myBase: () => ({ x: 0, y: 0, z: 300, radius: 15 }),
+    myBase: () => ({ x: 0, y: -300, z: 0, radius: 15 }),
     firstBuilding: () => ({ isBox: true, top: height, distance: edgeDistance }),
   });
   const near = new Ace().think(view(5, 15));
@@ -540,11 +546,11 @@ for (const flag of ['US', 'MG', 'ID']) {
 
 // The intent: what the pilot is doing, for a client to draw and a log to read.
 {
-  const chase = new Roger().think(makeView({ players: [enemy(0, -150)] }));
+  const chase = new Roger().think(makeView({ players: [enemy(0, 150)] }));
   assert.equal(chase.intent.mode, 'chase');
   assert.equal(chase.intent.target.id, 'foe');
-  assert.ok(Math.abs(chase.intent.target.z + 150) < 1e-9, 'the target is in bzo\'s frame');
-  assert.ok(chase.intent.shot && Math.abs(chase.intent.shot.dir.z + 1) < 1e-9, 'a shot fired north');
+  assert.ok(Math.abs(chase.intent.target.y - 150) < 1e-9, 'the target is where the foe is');
+  assert.ok(chase.intent.shot && Math.abs(chase.intent.shot.dir.y - 1) < 1e-9, 'a shot fired north');
 
   const wander = new Roger().think(makeView());
   assert.equal(wander.intent.mode, 'wander');
@@ -573,7 +579,7 @@ for (const flag of ['US', 'MG', 'ID']) {
 // of and is jumped too.
 {
   const fromEast = (distance) => ({
-    ownerId: 'foe', ownerZoned: false, flag: null, x: distance, y: 1, z: 0, vx: -100, vy: 0, vz: 0,
+    ownerId: 'foe', ownerZoned: false, flag: null, x: distance, y: 0, z: 1, vx: -100, vy: 0, vz: 0,
   });
   const side = new Ace().think(makeView({ shots: [fromEast(40)] }));
   assert.equal(side.intent.mode, 'dodge');
@@ -583,10 +589,10 @@ for (const flag of ['US', 'MG', 'ID']) {
   const close = new Ace().think(makeView({ shots: [fromEast(12)] }));
   assert.equal(close.jump, true, 'too close to drive clear of: jump');
 
-  const headOn = { ownerId: 'foe', ownerZoned: false, flag: null, x: 0, y: 1, z: -40, vx: 0, vy: 0, vz: 100 };
+  const headOn = { ownerId: 'foe', ownerZoned: false, flag: null, x: 0, y: 40, z: 1, vx: 0, vy: -100, vz: 0 };
   assert.equal(new Ace().think(makeView({ shots: [headOn] })).jump, true, 'head-on: no way across, so up');
 
-  const wide = { ...fromEast(40), z: -10 };
+  const wide = { ...fromEast(40), y: 10 };
   assert.notEqual(new Ace().think(makeView({ shots: [wide] })).intent.mode, 'dodge', 'a shot that misses is ignored');
 }
 
@@ -595,7 +601,7 @@ for (const flag of ['US', 'MG', 'ID']) {
 {
   const view = (shakeTimeout) => makeView({
     self: { flag: 'B', flagIndex: 5 },
-    players: [enemy(0, -150)],
+    players: [enemy(0, 150)],
     world: { shakeTimeout },
     antidote: { x: 100, y: 0, z: 0 },
   });
@@ -611,7 +617,7 @@ for (const flag of ['US', 'MG', 'ID']) {
 {
   const out = new Ace().think(makeView({
     self: { team: 'hunter' },
-    players: [enemy(0, -600, { team: 'rabbit' })],
+    players: [enemy(0, 600, { team: 'rabbit' })],
   }));
   assert.equal(out.intent.mode, 'hunt', 'a far rabbit is hunted');
   assert.equal(out.targetId, 'foe');
@@ -621,16 +627,16 @@ for (const flag of ['US', 'MG', 'ID']) {
 {
   const out = new Ace().think(makeView({
     self: { team: 'rabbit' },
-    players: [enemy(0, -50, { team: 'hunter' })],
+    players: [enemy(0, 50, { team: 'hunter' })],
   }));
   assert.equal(out.intent.mode, 'flee', 'a near hunter is run from');
-  assert.ok(out.intent.target.z > 0, 'away from it, south when it is north');
+  assert.ok(out.intent.target.y < 0, 'away from it, south when it is north');
 }
 // ...turns on one that is closing on it...
 {
   const out = new Ace().think(makeView({
     self: { team: 'rabbit' },
-    players: [enemy(0, -50, { team: 'hunter', vz: 20 })],
+    players: [enemy(0, 50, { team: 'hunter', vy: -20 })],
   }));
   assert.equal(out.intent.mode, 'chase', 'a hunter coming for the rabbit is fought');
   assert.equal(out.targetId, 'foe');
@@ -639,7 +645,7 @@ for (const flag of ['US', 'MG', 'ID']) {
 {
   const out = new Ace().think(makeView({
     self: { team: 'rabbit' },
-    players: [enemy(0, -400, { team: 'hunter' })],
+    players: [enemy(0, 400, { team: 'hunter' })],
   }));
   assert.notEqual(out.intent.mode, 'flee', 'a hunter out of range is not run from');
 }
@@ -647,15 +653,15 @@ for (const flag of ['US', 'MG', 'ID']) {
 // On a server that allows several shots, Ace keeps some back: five slots
 // fire three and keep two, spent only on a foe close enough to need them.
 {
-  const view = (freeShots, z) => makeView({
+  const view = (freeShots, north) => makeView({
     self: { freeShots },
     world: { maxShots: 5 },
-    players: [enemy(0, z)],
+    players: [enemy(0, north)],
   });
-  assert.equal(new Ace().think(view(3, -150)).fire, true, 'a third shot goes');
-  assert.equal(new Ace().think(view(2, -150)).fire, false, 'the last two are kept from a far foe');
-  assert.equal(new Ace().think(view(2, -40)).fire, true, 'and spent on a close one');
-  const single = makeView({ self: { freeShots: 1 }, world: { maxShots: 1 }, players: [enemy(0, -150)] });
+  assert.equal(new Ace().think(view(3, 150)).fire, true, 'a third shot goes');
+  assert.equal(new Ace().think(view(2, 150)).fire, false, 'the last two are kept from a far foe');
+  assert.equal(new Ace().think(view(2, 40)).fire, true, 'and spent on a close one');
+  const single = makeView({ self: { freeShots: 1 }, world: { maxShots: 1 }, players: [enemy(0, 150)] });
   assert.equal(new Ace().think(single).fire, true, 'a single slot has nothing to keep');
 }
 // A kept shot is spent on a landing shot: a tank coming down cannot dodge.
@@ -663,13 +669,13 @@ for (const flag of ['US', 'MG', 'ID']) {
   const pilot = new Ace();
   let fired = 0;
   for (let t = 0; t < 4.3; t += 1 / 30) {
-    const y = Math.max(0, (19 * t) - (0.5 * 9.8 * t * t));
-    const airborne = y > 0 || t === 0;
+    const z = Math.max(0, (19 * t) - (0.5 * 9.8 * t * t));
+    const airborne = z > 0 || t === 0;
     const out = pilot.think(makeView({
       now: 100 + t,
       self: { muzzleHeight: 1.57, muzzleForward: 3, shotSpeed: 100, freeShots: 2 },
       world: { maxShots: 5, tankAngVel: Math.PI / 4 },
-      players: [enemy(0, -120, { y, airborne, gravity: 9.8, vy: airborne ? 19 - (9.8 * t) : 0 })],
+      players: [enemy(0, 120, { z, airborne, gravity: 9.8, vz: airborne ? 19 - (9.8 * t) : 0 })],
     }));
     if (out.fire) fired += 1;
   }

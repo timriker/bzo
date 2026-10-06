@@ -46,9 +46,12 @@ function nearZero(value) {
   return Math.abs(value) < ZERO_TOLERANCE;
 }
 
+// +Z is up. The heading is the caller's: this only turns it at
+// `angularVelocity` and hands it to the callbacks.
+//
 // `hitTest(fromX, fromY, fromZ, fromAz, toX, toY, toZ, toAz)` returns the
 // blocking obstacle or null. `getNormal(obstacle, x, y, z, az, hitX, hitY, hitZ,
-// hitAz, fromX, fromZ, fromAz, toX, toZ, toAz)` returns a unit {x, y, z}
+// hitAz, fromX, fromY, fromAz, toX, toY, toAz)` returns a unit {x, y, z}
 // pointing out of the surface -- the last six are this pass's own start and
 // original (pre-search) end, which a caller wanting a swept normal needs and
 // nothing here otherwise provides.
@@ -100,15 +103,15 @@ export function resolveTankMotion({
   let nextStuckFrameCount = restingHit ? stuckFrameCount + 1 : 0;
   if (nextStuckFrameCount > STUCK_FRAME_LIMIT) {
     nextStuckFrameCount = 0;
-    const escapeNormal = getNormal(restingHit, posX, posY, posZ, az, posX, posY, posZ, az, posX, posZ, az, posX, posZ, az);
+    const escapeNormal = getNormal(restingHit, posX, posY, posZ, az, posX, posY, posZ, az, posX, posY, az, posX, posY, az);
     if (escapeNormal) {
-      const desiredSpeed = Math.hypot(velX, velZ);
+      const desiredSpeed = Math.hypot(velX, velY);
       const delta = Math.min(remaining, STUCK_ESCAPE_MAX_DT);
       const movementMax = desiredSpeed * delta;
       posX += movementMax * escapeNormal.x;
-      posZ += movementMax * escapeNormal.z;
+      posY += movementMax * escapeNormal.y;
       velX = movementMax * escapeNormal.x;
-      velZ = movementMax * escapeNormal.z;
+      velY = movementMax * escapeNormal.y;
       remaining -= delta;
     }
   }
@@ -123,7 +126,7 @@ export function resolveTankMotion({
     let toX = fromX + remaining * velX;
     let toY = fromY + remaining * velY;
     let toZ = fromZ + remaining * velZ;
-    if (toY < groundLimit && velY < 0) toY = groundLimit;
+    if (toZ < groundLimit && velZ < 0) toZ = groundLimit;
 
     // The final pass of a slide normally ends clear, so remember the last
     // obstacle actually struck rather than whatever the last pass saw.
@@ -138,12 +141,12 @@ export function resolveTankMotion({
     // Drive over a low flat-topped ledge rather than stopping dead against it.
     if (onGround && isFlatTop(hit)) {
       const top = getObstacleTop(hit);
-      if (top !== fromY && top < fromY + maxBumpHeight) {
-        const bumpY = top;
-        if (!hitTest(fromX, bumpY, fromZ, fromAz, fromX, bumpY, fromZ, toAz)) {
+      if (top !== fromZ && top < fromZ + maxBumpHeight) {
+        const bumpZ = top;
+        if (!hitTest(fromX, fromY, bumpZ, fromAz, fromX, fromY, bumpZ, toAz)) {
           posX = fromX + velX * remaining * 0.5;
-          posY = bumpY;
-          posZ = fromZ + velZ * remaining * 0.5;
+          posZ = bumpZ;
+          posY = fromY + velY * remaining * 0.5;
           az = toAz;
           remaining = 0;
           // A bump is a landing too: without this the next frame finds the
@@ -169,9 +172,9 @@ export function resolveTankMotion({
       const t = searchTime + searchStep;
       const tryAz = fromAz + t * angVel;
       const tryX = fromX + t * velX;
-      let tryY = fromY + t * velY;
-      const tryZ = fromZ + t * velZ;
-      if (tryY < groundLimit && velY < 0) tryY = groundLimit;
+      const tryY = fromY + t * velY;
+      let tryZ = fromZ + t * velZ;
+      if (tryZ < groundLimit && velZ < 0) tryZ = groundLimit;
 
       const found = hitTest(fromX, fromY, fromZ, fromAz, tryX, tryY, tryZ, tryAz);
       if (!found) {
@@ -187,13 +190,13 @@ export function resolveTankMotion({
     posX = fromX + searchTime * velX;
     posY = fromY + searchTime * velY;
     posZ = fromZ + searchTime * velZ;
-    if (posY < groundLimit && velY < 0) posY = groundLimit;
+    if (posZ < groundLimit && velZ < 0) posZ = groundLimit;
     remaining -= searchTime;
 
-    const normal = getNormal(hit, posX, posY, posZ, az, hitX, hitY, hitZ, hitAz, fromX, fromZ, fromAz, toX, toZ, toAz);
+    const normal = getNormal(hit, posX, posY, posZ, az, hitX, hitY, hitZ, hitAz, fromX, fromY, fromAz, toX, toY, toAz);
     if (!normal) break;
 
-    if (posY > 0 && normal.y > 0.001) {
+    if (posZ > 0 && normal.z > 0.001) {
       // Landing on top of something rather than running into its side. Upstream
       // stops the fall and *keeps going* with the time the step has left
       // (LocalPlayer.cxx:617, then the loop turns over): the next pass moves
@@ -206,14 +209,14 @@ export function resolveTankMotion({
       // roof, and a step that ends at the hit has only travelled as far as the
       // fraction of the frame before the tank sank the first millimetre.
       onBuilding = true;
-      velY = 0;
+      velZ = 0;
       continue;
     }
 
-    let mag = normal.x * velX + normal.z * velZ;
-    if (!nearZero(normal.y)) {
+    let mag = normal.x * velX + normal.y * velY;
+    if (!nearZero(normal.z)) {
       // A surface below stops a fall, which is upstream's own test.
-      if (velY < 0 && velY - (mag + normal.y * velY) * normal.y > 0) velY = 0;
+      if (velZ < 0 && velZ - (mag + normal.z * velZ) * normal.z > 0) velZ = 0;
       // And a surface above stops a rise, which is bzo's one deviation here.
       // Upstream leaves the rise in place -- it only ever cancels downward
       // motion -- so a tank that jumps into an overhang stays pinned under it
@@ -225,17 +228,17 @@ export function resolveTankMotion({
       // the component heading into the slope is still the only one cancelled --
       // a tank that jumps into a ceiling while driving keeps its speed and
       // simply starts to fall. See AGENTS.md.
-      if (velY > 0 && normal.y < 0) velY = 0;
-      const horNormal = normal.x * normal.x + normal.z * normal.z;
+      if (velZ > 0 && normal.z < 0) velZ = 0;
+      const horNormal = normal.x * normal.x + normal.y * normal.y;
       if (!nearZero(horNormal)) mag /= horNormal;
     }
 
     if (mag < 0) {
       velX -= mag * normal.x;
-      velZ -= mag * normal.z;
+      velY -= mag * normal.y;
       // Back off a hair so the next pass does not re-hit the same face.
       posX -= TINY_DISTANCE * mag * normal.x;
-      posZ -= TINY_DISTANCE * mag * normal.z;
+      posY -= TINY_DISTANCE * mag * normal.y;
     }
     if (mag > -0.01) {
       // Nothing significant left to cancel, so stop turning too.

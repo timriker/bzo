@@ -122,6 +122,8 @@ for (let trial = 0; trial < 200000; trial += 1) {
   const headingCos = Math.cos(heading);
   const headingSin = Math.sin(heading);
 
+  // Drawn on the panel's plane, x east and z south, and stated to the cull
+  // as the obstacle upstream's frame has: `pos`, `size` and `angle`.
   const obs = {
     x: between(-250, 250),
     z: between(-250, 250),
@@ -129,6 +131,9 @@ for (let trial = 0; trial < 200000; trial += 1) {
     w: random() < 0.5 ? between(0.5, 8) : between(40, 300),
     d: random() < 0.5 ? between(0.5, 8) : between(40, 300),
   };
+  obs.pos = [obs.x, -obs.z, 0];
+  obs.size = [obs.w / 2, obs.d / 2, 1];
+  obs.angle = obs.rotation - Math.PI;
 
   const dx = obs.x - playerX;
   const dz = obs.z - playerZ;
@@ -156,14 +161,16 @@ assert.ok(culled > drawn, 'the rejection has to be worth making');
 
 // A spinning mesh's faces turn about `spinPivot`, so the circle is centred
 // there and one radius covers every angle the face is ever drawn at.
+// The mesh is in upstream's frame; the cull answers on the panel's plane,
+// where z is -y.
 const spinningMesh = {
   angvel: 1,
-  spinPivot: { x: 10, z: -4 },
+  spinPivot: { x: 10, y: 4, z: 0 },
   vertices: [
-    { x: 4, y: 0, z: -9 },
-    { x: 28, y: 0, z: -9 },
-    { x: 28, y: 0, z: 3 },
-    { x: 4, y: 0, z: 3 },
+    { x: 4, y: 9, z: 0 },
+    { x: 28, y: 9, z: 0 },
+    { x: 28, y: -3, z: 0 },
+    { x: 4, y: -3, z: 0 },
   ],
 };
 // The cull reads the mesh's flat arrays rather than a face object now
@@ -172,9 +179,9 @@ const spinningFace = { vertexIndices: [0, 1, 2, 3] };
 spinningMesh.faces = [spinningFace];
 const spinCull = getRadarMeshFaceCull(spinningMesh, meshArrays(spinningMesh), 0);
 assert.equal(spinCull.cullX, 10);
-assert.equal(spinCull.cullZ, -4);
+assert.equal(spinCull.cullY, 4);
 for (const vertex of spinningMesh.vertices) {
-  const reach = Math.hypot(vertex.x - spinCull.cullX, vertex.z - spinCull.cullZ);
+  const reach = Math.hypot(vertex.x - spinCull.cullX, vertex.y - spinCull.cullY);
   assert.ok(reach <= spinCull.cullRadius + 1e-9, 'a vertex reached outside the spin circle');
 }
 
@@ -183,14 +190,14 @@ const stillMesh = {
   vertices: [
     { x: 0, y: 0, z: 0 },
     { x: 10, y: 0, z: 0 },
-    { x: 10, y: 0, z: 6 },
-    { x: 0, y: 0, z: 6 },
+    { x: 10, y: -6, z: 0 },
+    { x: 0, y: -6, z: 0 },
   ],
 };
 stillMesh.faces = [{ vertexIndices: [0, 1, 2, 3] }];
 const stillCull = getRadarMeshFaceCull(stillMesh, meshArrays(stillMesh), 0);
 assert.equal(stillCull.cullX, 5);
-assert.equal(stillCull.cullZ, 3);
+assert.equal(stillCull.cullY, -3);
 assert.ok(Math.abs(stillCull.cullRadius - Math.hypot(5, 3)) < 1e-9);
 
 // A map whose widest face is wider than the buffers start out sizes them once,

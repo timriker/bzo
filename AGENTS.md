@@ -773,9 +773,10 @@ Because the client is unbundled ESM and the server is CommonJS, logic needed on
 both sides is kept as a **hand-maintained pair**: `public/<name>.mjs` and
 `server/<name>.cjs`. Current pairs include `shots`, `teams`, `collision`,
 `motion`, `drive`, `teleport`, `trace`, `headset`, `flags` and
-`voice-channels`; `MIRRORED` in `scripts/check-shared-pairs.mjs` lists the ones
-kept byte for byte, and `node scripts/mirror-pair.mjs <name>` writes such a
-pair's `.cjs` from its `.mjs`. `npm run check:shared-pairs` enforces them: the
+`voice-channels`; `MIRRORED` in
+`scripts/check-shared-pairs.mjs` lists the ones kept byte for byte, and
+`node scripts/mirror-pair.mjs <name>` writes such a pair's `.cjs` from its
+`.mjs`. `npm run check:shared-pairs` enforces them: the
 two mirrored pairs must match line for line, and any name a hand-written pair
 exports on both sides must agree in type and arity. A pair that drifts does not
 throw -- the client and server just quietly disagree about geometry, which
@@ -975,12 +976,12 @@ on them.
 to *compute* a teleporter's frame from the stated size and the border, and three
 consumers open-coded the same growth rather than asking it -- two of them wrongly,
 including the debug outline whose whole job is to show the surface a tank stands
-on. The importer now resolves the frame into `w`/`d`/`h` before the world goes on
+on. The importer now resolves the frame into `size` before the world goes on
 the wire, so a teleporter measures like a box and a consumer that reads the
 obvious field is right by default. **The delivered world should be as simple as
 possible for collision**: BZW is an import format and its conventions -- a stated
-size that means the opening, a half extent where bzo wants a full one, a rotation
-in degrees about a different axis -- belong in the importer and nowhere else.
+size that means the opening, a rotation in degrees -- belong in the importer and
+nowhere else.
 
 ## Visual effects
 
@@ -1397,7 +1398,7 @@ which is upstream's `myTank->move(virtPos, roamViewAngle)`, because the radar,
 the heading tape and the position other clients place this observer at all read
 that transform and so follow the camera without knowing roaming exists.
 **Nothing draws that mesh** -- not the tank, not its server-position ghost, which
-hangs off `worldGroup` rather than off the tank and so has to be hidden
+hangs off `worldFrame` rather than off the tank and so has to be hidden
 separately.
 
 **The eye is the running view's, not the roaming camera's.** `track`, `follow`,
@@ -3200,26 +3201,25 @@ join; `/mv` is the same thing without a restart, which is why it exists.
 with linked faces, and a command that named one would want it. Moving a tank to a
 coordinate is a different thing.
 
-Its coordinates are bzo's world coordinates, the ones `testSpawn` takes and every
-log line prints: `+X` east, `-Z` north, `+Y` up. Two values are `x,z`; three are
-`x,y,z`, the order the rest of bzo writes a position in, so the second value
-never changes axis between forms.
+Its coordinates are upstream's, the ones a `.bzw` writes, `testSpawn` takes and
+every log line prints: `+X` east, `+Y` north, `+Z` up. Two values are `x,y`;
+three are `x,y,z`, so the first two never change axis between forms.
 
 A facing is one of the eight compass points -- `n`, `ne`, `e` and so on -- or an
 exact angle, either in a fourth slot after all three coordinates or as a word
 after them.
 
-**A number is bzo's own rotation in degrees, not a compass bearing** (issue
-#109). That is the convention a Share View Link already writes: `?pos=x,y,z,deg`
-is `playerRotation` in degrees and `readViewPosTarget` reads it straight back,
-so the tail of a link pastes into `/mv` unchanged --
-`/mv -320.0,0.0,-310.3,-91.3`. The two conventions run opposite ways, so they
-agree at `0` (north) and `180` (south) and disagree at the quarters: bzo's `90`
-is *west*, where a bearing's is east. That is why the compass points stay -- a
-letter cannot be misread -- and why the reply names the facing the tank ended up
-with, so a number that meant the other thing says so in the answer.
+**A number is an azimuth in degrees, not a compass bearing** (issue #109):
+counter-clockwise from east, as a `.bzw`'s `rotation` is. That is the
+convention a Share View Link writes: `?pos=x,y,z,deg` ends in the tank's
+azimuth, so the tail of a link pastes into `/mv` unchanged --
+`/mv -320.0,310.3,0.0,178.7`. The two conventions run opposite ways and start a
+quarter turn apart: an azimuth's `90` is north, where a bearing's is east. That
+is why the compass points stay -- a letter cannot be misread -- and why the reply
+names the facing the tank ended up with, so a number that meant the other thing
+says so in the answer.
 
-`parseFacing` resolves both spellings to radians, `bearingToRotation` being the
+`parseFacing` resolves both spellings to radians, `bearingToAzimuth` being the
 compass half of it, so the command handler never sees which one was typed.
 
 ### Client-local commands -- `/silence`, `/unsilence`, `/highlight`, `/savemsgs`, `/cmds`
@@ -3984,15 +3984,16 @@ does this; see **Testing** below.
 
 **To put a test player somewhere specific, use `testSpawn`.** `getTestSpawn` in
 `server.js` matches one player by name and hands it a fixed `x`, `y`, `z` and
-`rotation` instead of a random spawn:
+`azimuth` instead of a random spawn, in upstream's frame (`+Z` up, the azimuth
+in radians counter-clockwise from east):
 
 ```json
-"testSpawn": { "name": "TestRogue", "x": 0, "y": 0, "z": 0, "rotation": 0 }
+"testSpawn": { "name": "TestRogue", "x": 0, "y": 0, "z": 0, "azimuth": 1.5708 }
 ```
 
 It is absent from `example-server.json`, so a real server never has one.
 
-**The `y` you write is a hint, not the answer.** The coordinates are typed
+**The `z` you write is a hint, not the answer.** The coordinates are typed
 against one map, so `rebuildTestSpawns` resolves each one against the geometry
 that actually loaded, once, when the world loads -- upstream's
 `DropGeometry::dropPlayer`, whose two branches both matter here: a clear point
@@ -4001,7 +4002,7 @@ the lowest flat top it fits on. A spawn at the origin on a map with a box there
 lands on the roof, and the load says so:
 
 ```
-Test spawn "Orin" dropped from y 0.00 to 10.00 at 0.00,0.00
+Test spawn "Orin" dropped from z 0.00 to 10.00 at 0.00,0.00
 ```
 
 `server.json` is never written back to -- the coordinates in it are what you
@@ -4177,8 +4178,8 @@ to.
 player at a fixed point, and a tank that spawns on a flag grabs it before it
 does anything else. It takes one entry or a list of them, so moving a probe
 from zone to zone does not disturb anybody else's fixed spawn -- add and remove
-the probe's entry and leave the rest alone. The zone coordinates are in the
-`.bzw`, which is BZW's axes: `bzo.x = bzw.x` and **`bzo.z = -bzw.y`**.
+the probe's entry and leave the rest alone. The zone coordinates are the
+`.bzw`'s own.
 `nodemon` watches `server.json`, so writing it restarts the server on its own
 -- and **put it back when the run is over**, since it is the running dev
 server's config and the name in it belongs to somebody's real client.
@@ -4218,23 +4219,21 @@ collects one by accident. That is not a cosmetic problem: `O` Obesity and `T`
 Tiny resize the tank box, so every collision height a run measures comes out
 wrong, and `BY` Bouncy jumps the tank on its own, which reads exactly like a
 motion bug you did not write. Two runs in this repo's history were thrown away
-to each of those. Drop first, then measure -- and bzo `x = 45` (any `z`) is the
+to each of those. Drop first, then measure -- and `x = 45` (any `y`) is the
 lane that misses every arm and every corner test alike, since it is neither of
 the two `x` values (`25`, `50`) an east/west arm sits at nor within reach of a
 north/south arm's own `x` extent (`+/-20` bad, `+/-30` good).
 
 ```
-say('/mv 40,0,25');   // x,y,z -- and `/mv 40,25` is x,z at y=0
-say('/mv 61,12,80,e');  // x,y,z,facing, cardinals only
+say('/mv 40,-25,0');   // x,y,z -- and `/mv 40,-25` is x,y on the ground
+say('/mv 61,-80,12,e');  // x,y,z,facing
 ```
 
 Three things about it that cost a probe time to rediscover:
 
-- **The coordinates are bzo's, not the `.bzw`'s.** A zone at `position 40 -25 0`
-  in the map is `/mv 40,0,25`, by the `bzo.z = -bzw.y` rule above. Two arguments
-  are `x,z`; three are `x,y,z`; four add the facing. Passing `x,z,0,e` when you
-  meant `x,0,z,e` puts the tank in the air at *y* = your z, which lands
-  somewhere plausible and wastes the run.
+- **The coordinates are the `.bzw`'s.** A zone at `position 40 -25 0` in the
+  map is `/mv 40,-25,0`. Two arguments are `x,y`; three are `x,y,z`; four add
+  the facing.
 - **It will not put a tank inside an obstacle.** The landing resolution lifts it
   to the surface above, which is the whole point of the command -- so to get a
   phasing tank *inside* a wall, move it onto the roof and let it sink through.
@@ -4305,7 +4304,7 @@ test is the one the server acted on. Joining is one message --
 - **A probe with no flag grabs the first zone it drives through**, which is how a
   baseline run ends up carrying Super Bullet. A probe that already has one never
   grabs another (`if (getMyFlag()) return;`), so only the baseline needs a route
-  that misses everything -- bzo `x = 45` again, from the flag section above.
+  that misses everything -- `x = 45` again, from the flag section above.
 - **Chrome takes the better part of a minute** to launch, load and join before
   `--eval` runs at all, so an observer window measured in seconds will close
   before the probe exists.
@@ -4484,43 +4483,33 @@ join/entry/scoreboard logic.**
 
 # World Coordinate System
 
-Standard Three.js coordinates for the game world (top-down view):
+Upstream's, as `.bzw` and bzfs are, everywhere: the data, the wire, the
+simulation and the renderer.
 
-- **+X = East** (right), **-X = West** (left)
-- **+Z = South** (toward camera), **-Z = North** (away from camera)
-- **+Y = Up**
+- **+X = East**, **+Y = North**, **+Z = Up**
+- A heading is an **azimuth**, radians counter-clockwise from +X: 0 east,
+  pi/2 north, pi west. Forward is `(cos a, sin a)`, and a positive turn is
+  left.
+- An obstacle is placed by `pos` `[x, y, z]`, `size` `[halfWidth,
+  halfBreadth, height]` and `angle`, as upstream's `Obstacle`.
 
-Rotation `r`, player facing direction:
-
-- `r = 0` → **North** (-Z)
-- `r = π/2` (1.57) → **West** (-X)
-- `r = π` (3.14) → **South** (+Z)
-- `r = 3π/2` (4.71) → **East** (+X)
-
-Movement vectors:
-
-- Moving north: Z becomes **more negative** (-10 to -20)
-- Moving south: Z becomes **more positive** (-10 to -5, or 0 to 10)
-- Moving east: X becomes **more positive**
-- Moving west: X becomes **more negative**
-
-Examples:
-
-- Position (30, -30): 30 units east of origin, 30 units north
-- Position (50, 10): 50 units east, 10 units south of origin
-- Intended vector (0, -5): moving north
-- Intended vector (0, 5): moving south
+three.js's own world is +Y up, as WebXR defines it, so the renderer draws
+everything in `worldFrame`, a child of `worldGroup` turned a quarter about X;
+XR moves and turns `worldGroup`. The camera is the one thing placed in
+three.js's world (`_toThree`). A tank model is turned as it loads to face +X
+on +Z, so a tank's `rotation.z` is its azimuth, and a shape three.js builds
+along +Y is stood on z as it is built (`standUpGeometry`).
 
 ---
 
-# Movement Direction Vector (`d`)
+# Movement Direction Vector (`sd`)
 
 **Status: IMPLEMENTED.**
 
 ## Problem
 
 When sliding along obstacles or boundaries, the player's actual movement
-direction differs from their rotation, but no packet is sent because `fs` and
+direction differs from their heading, but no packet is sent because `fs` and
 `rs` do not change. That gives the server a stale position (incorrect hit
 detection) and makes other clients extrapolate in the wrong direction (ghosting
 through obstacles). It is most noticeable when sliding along walls or jumping
@@ -4528,38 +4517,25 @@ diagonally into obstacles.
 
 ## Solution
 
-An optional `d` (direction) field on `move` messages, sent when actual movement
-direction differs from expected direction.
-
-Send `d` when:
-
-- `validateMove()` returns `altered: true` (a slide occurred), and
-- the actual direction from `(newX - oldX, newZ - oldZ)` differs from the
-  expected direction by more than `0.01` radians.
-
-Expected direction is `r` (rotation) on the ground, or `jumpDirection` (the
-frozen direction) in the air.
+An optional `sd` (slide azimuth) field on a move, sent when the actual movement
+direction differs from the expected one: the heading `a` on the ground, or the
+azimuth a jump left with in the air.
 
 ```javascript
 // Normal movement (no slide):
-{ type: 'move', x, y, z, r, fs, rs, vv }
+{ type: 'm', x, y, z, a, fs, rs, vv }
 
 // Sliding movement:
-{ type: 'move', x, y, z, r, fs, rs, vv, d: actualDirection }
+{ type: 'm', x, y, z, a, fs, rs, vv, sd: actualAzimuth }
 ```
 
-Server handling: if `d` is present, use it for extrapolation instead of `r`;
-validate it is reasonable (perpendicular to the collision normal when near
-obstacles); store as `player.slideDirection`; broadcast `d` in the `pm` message.
-
-Client extrapolation:
+The server uses `sd` for extrapolation instead of `a`, stores it as
+`player.slideAzimuth`, and relays it in `pm`. A client extrapolates along it:
 
 ```javascript
-const moveDirection = player.slideDirection !== undefined
-  ? player.slideDirection
-  : (player.jumpDirection !== null ? player.jumpDirection : player.r);
-const dx = -Math.sin(moveDirection) * fs * speed * dt;
-const dz = -Math.cos(moveDirection) * fs * speed * dt;
+const moveAzimuth = slideAzimuth !== undefined ? slideAzimuth : azimuth;
+const dx = Math.cos(moveAzimuth) * fs * speed * dt;
+const dy = Math.sin(moveAzimuth) * fs * speed * dt;
 ```
 
 ---

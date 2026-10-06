@@ -1277,47 +1277,45 @@ export function getShockWaveAlpha(radius) {
 // the server to decide where the missile is, each client to draw it there --
 // which is why it is here and not in `server.js`.
 //
-// The angles are bzo's, not upstream's: at azimuth 0 a tank and its shots face
-// -Z, and a positive azimuth turns left, exactly as `playerRotation` does. The
-// arithmetic is upstream's unchanged.
+// The azimuth is counter-clockwise from +X, the elevation up from the ground.
 //
 // `to` is the aim point rather than the target's position, because "right
 // between the eyes" is the caller's question: upstream adds the target's own
 // muzzle height, and a bzo tank has as many muzzle heights as it has models.
 // A null `to` is a missile with nothing locked, which flies straight.
 export function steerGuidedShot(direction, from, to, turnAngle, seconds) {
-  const length = Math.hypot(direction.x, direction.y ?? 0, direction.z);
-  if (!(length > 0)) return { x: 0, y: 0, z: -1 };
+  const length = Math.hypot(direction.x, direction.y, direction.z ?? 0);
+  if (!(length > 0)) return { x: 0, y: 1, z: 0 };
   const dir = {
     x: direction.x / length,
-    y: (direction.y ?? 0) / length,
-    z: direction.z / length,
+    y: direction.y / length,
+    z: (direction.z ?? 0) / length,
   };
   if (!to || !(turnAngle > 0) || !(seconds > 0)) return dir;
 
   const dx = to.x - from.x;
   const dy = to.y - from.y;
   const dz = to.z - from.z;
-  const ground = Math.hypot(dx, dz);
+  const ground = Math.hypot(dx, dy);
 
   const maxDelta = turnAngle * seconds;
   // A target directly overhead has no bearing to turn toward, so the missile
   // keeps the one it has and climbs. Upstream's atan2f(0, 0) answers zero here,
-  // which would swing the missile to due north instead.
+  // which would swing the missile to due east instead.
   const azimuth = ground > 1e-6
-    ? turnTowardAngle(Math.atan2(-dir.x, -dir.z), Math.atan2(-dx, -dz), maxDelta)
-    : Math.atan2(-dir.x, -dir.z);
+    ? turnTowardAngle(Math.atan2(dir.y, dir.x), Math.atan2(dy, dx), maxDelta)
+    : Math.atan2(dir.y, dir.x);
   const elevation = turnTowardAngle(
-    Math.atan2(dir.y, Math.hypot(dir.x, dir.z)),
-    Math.atan2(dy, ground),
+    Math.atan2(dir.z, Math.hypot(dir.x, dir.y)),
+    Math.atan2(dz, ground),
     maxDelta,
   );
 
   const cosElevation = Math.cos(elevation);
   return {
-    x: -Math.sin(azimuth) * cosElevation,
-    y: Math.sin(elevation),
-    z: -Math.cos(azimuth) * cosElevation,
+    x: Math.cos(azimuth) * cosElevation,
+    y: Math.sin(azimuth) * cosElevation,
+    z: Math.sin(elevation),
   };
 }
 
@@ -1347,24 +1345,24 @@ export const TARGETING_ANGLE = 0.3;
 // angle. The nearest candidate inside the cone wins, and anything behind the
 // eye is ignored.
 //
-// Candidates are `{id, x, z}`; who is eligible is the caller's question too,
+// Candidates are `{id, x, y}`; who is eligible is the caller's question too,
 // because the two callers disagree about it: a lock refuses a stealthed or
 // paused tank where a look does not.
 export function pickTargetInSights(eye, forward, candidates, sineLimit) {
-  const length = Math.hypot(forward.x, forward.z);
+  const length = Math.hypot(forward.x, forward.y);
   if (!(length > 0) || !Array.isArray(candidates)) return null;
   const fx = forward.x / length;
-  const fz = forward.z / length;
+  const fy = forward.y / length;
 
   let bestId = null;
   let bestDistance = Infinity;
   for (const candidate of candidates) {
     const dx = candidate.x - eye.x;
-    const dz = candidate.z - eye.z;
+    const dy = candidate.y - eye.y;
     // The camera frame: distance along the heading, and offset across it.
-    const ahead = (dx * fx) + (dz * fz);
+    const ahead = (dx * fx) + (dy * fy);
     if (ahead < 0) continue;
-    const lateral = (dx * fz) - (dz * fx);
+    const lateral = (dy * fx) - (dx * fy);
     const distance = Math.hypot(ahead, lateral);
     if (distance <= 0) continue;
     if (Math.abs(lateral) / distance >= sineLimit) continue;
@@ -1751,7 +1749,7 @@ export function getRunOverRadius(victimFlag, rollerFlag, tankRadius) {
 // roof. (Upstream calls the result `distSquared` and compares it to an unsquared
 // radius; the name is wrong and the comparison is right.)
 export function getRunOverSeparation(dx, dy, dz) {
-  return Math.hypot(dx, dz, dy * 2);
+  return Math.hypot(dx, dy, dz * 2);
 }
 
 // playing.cxx:2658. Killing one tank kills every tank on its team. Upstream
@@ -1783,25 +1781,25 @@ export function getWingsJumpVelocity(wingsJumpVelocity, verticalVelocity) {
 // _wingsSlideTime is above zero. The stick adds to the velocity rather than
 // replacing it, and the result is held at maxSpeed -- a tank already over that,
 // from a flap taken at speed, is bled back towards it over the same slide time
-// rather than snapped to it. Heading is bzo's, where forward is (-sin, -cos).
+// rather than snapped to it. The heading is an azimuth: forward is (cos, sin).
 export function getWingsSlideVelocity(
-  velocityX, velocityZ, heading, desiredSpeed, maxSpeed, slideTime, deltaTime
+  velocityX, velocityY, azimuth, desiredSpeed, maxSpeed, slideTime, deltaTime
 ) {
   const scale = deltaTime / slideTime;
   const speedAdjustment = desiredSpeed * scale;
-  let x = velocityX - (Math.sin(heading) * speedAdjustment);
-  let z = velocityZ - (Math.cos(heading) * speedAdjustment);
-  const newSpeed = Math.hypot(x, z);
+  let x = velocityX + (Math.cos(azimuth) * speedAdjustment);
+  let y = velocityY + (Math.sin(azimuth) * speedAdjustment);
+  const newSpeed = Math.hypot(x, y);
   if (newSpeed > maxSpeed) {
-    const oldSpeed = Math.hypot(velocityX, velocityZ);
+    const oldSpeed = Math.hypot(velocityX, velocityY);
     const adjustedSpeed = oldSpeed > maxSpeed
       ? Math.max(0, oldSpeed - (maxSpeed * scale))
       : maxSpeed;
     const speedScale = adjustedSpeed / newSpeed;
     x *= speedScale;
-    z *= speedScale;
+    y *= speedScale;
   }
-  return { x, z };
+  return { x, y };
 }
 
 // searchFlag()'s sweep (bzfs.cxx). The nearest flag lying on the ground within
@@ -1959,8 +1957,8 @@ export function getFlagFlightState(flag, elapsed, gravity) {
     const t = elapsed / flightEnd;
     return {
       x: lerp(launch.x, landing.x, t),
-      y: lerp(launch.y, landing.y, t) + getFlagFlightHeight(elapsed, flag.initialVelocity, gravity),
-      z: lerp(launch.z, landing.z, t),
+      y: lerp(launch.y, landing.y, t),
+      z: lerp(launch.z, landing.z, t) + getFlagFlightHeight(elapsed, flag.initialVelocity, gravity),
       alpha: 1,
       warp: 0,
       landed: false,
@@ -1982,18 +1980,18 @@ export function getFlagFlightState(flag, elapsed, gravity) {
     }
     if (elapsed >= half) {
       // Falling out of the hover.
-      const y = landing.y + getFlagFlightHeight(elapsed, flag.initialVelocity, gravity);
-      return { x: landing.x, y, z: landing.z, alpha: 1, warp: 0, landed: false };
+      const z = landing.z + getFlagFlightHeight(elapsed, flag.initialVelocity, gravity);
+      return { x: landing.x, y: landing.y, z, alpha: 1, warp: 0, landed: false };
     }
     // Hovering: the cloth fades in over the first quarter while the warp grows,
     // then the warp shrinks away over the second.
-    const y = landing.y + hover;
+    const z = landing.z + hover;
     if (elapsed >= quarter) {
       const t = (elapsed - quarter) / quarter;
-      return { x: landing.x, y, z: landing.z, alpha: 1, warp: 1 - t, landed: false };
+      return { x: landing.x, y: landing.y, z, alpha: 1, warp: 1 - t, landed: false };
     }
     const t = elapsed / quarter;
-    return { x: landing.x, y, z: landing.z, alpha: t, warp: t, landed: false };
+    return { x: landing.x, y: landing.y, z, alpha: t, warp: t, landed: false };
   }
 
   if (flag.status === FLAG_STATUS.GOING) {
@@ -2002,18 +2000,18 @@ export function getFlagFlightState(flag, elapsed, gravity) {
     }
     if (elapsed < half) {
       // Rising into the hover.
-      const y = landing.y + getFlagFlightHeight(elapsed, flag.initialVelocity, gravity);
-      return { x: landing.x, y, z: landing.z, alpha: 1, warp: 0, landed: false };
+      const z = landing.z + getFlagFlightHeight(elapsed, flag.initialVelocity, gravity);
+      return { x: landing.x, y: landing.y, z, alpha: 1, warp: 0, landed: false };
     }
     // Hovering: the warp grows over the third quarter, then the cloth fades out
     // with it over the fourth.
-    const y = landing.y + hover;
+    const z = landing.z + hover;
     if (elapsed < (3 * quarter)) {
       const t = ((3 * quarter) - elapsed) / quarter;
-      return { x: landing.x, y, z: landing.z, alpha: 1, warp: 1 - t, landed: false };
+      return { x: landing.x, y: landing.y, z, alpha: 1, warp: 1 - t, landed: false };
     }
     const t = (flightEnd - elapsed) / quarter;
-    return { x: landing.x, y, z: landing.z, alpha: t, warp: t, landed: false };
+    return { x: landing.x, y: landing.y, z, alpha: t, warp: t, landed: false };
   }
 
   return { x: position.x, y: position.y, z: position.z, alpha: 1, warp: 0, landed: false };

@@ -41,12 +41,13 @@ const STEP = 1 / 60;
 const SPEED = 25;
 
 // A rectangular slab as a real mesh: six faces, outward normals, the shape a
-// `.bzw` mesh arrives in (see any parsed map in `cache/maps`).
-function slab(name, minX, maxX, minZ, maxZ, top) {
+// `.bzw` mesh arrives in, in upstream's frame (+Z up) as the parser lays it
+// out.
+function slab(name, minX, maxX, minY, maxY, top) {
   const v = (x, y, z) => ({ x, y, z });
   const vertices = [
-    v(minX, 0, minZ), v(maxX, 0, minZ), v(maxX, 0, maxZ), v(minX, 0, maxZ),
-    v(minX, top, minZ), v(maxX, top, minZ), v(maxX, top, maxZ), v(minX, top, maxZ),
+    v(minX, maxY, 0), v(maxX, maxY, 0), v(maxX, minY, 0), v(minX, minY, 0),
+    v(minX, maxY, top), v(maxX, maxY, top), v(maxX, minY, top), v(minX, minY, top),
   ];
   // `edgePlanes` the way MeshFace.cxx:205-213 builds them -- one inward plane
   // per edge, `cross(edge, faceNormal)` normalised -- because a parsed mesh
@@ -74,25 +75,24 @@ function slab(name, minX, maxX, minZ, maxZ, top) {
     name,
     vertices,
     faces: [
-      face([0, 1, 5, 4], [0, 0, -1, minZ]),
+      face([0, 1, 5, 4], [0, 1, 0, -maxY]),
       face([1, 2, 6, 5], [1, 0, 0, -maxX]),
-      face([2, 3, 7, 6], [0, 0, 1, -maxZ]),
+      face([2, 3, 7, 6], [0, -1, 0, minY]),
       face([3, 0, 4, 7], [-1, 0, 0, minX]),
-      face([3, 2, 1, 0], [0, -1, 0, 0]),
-      face([4, 5, 6, 7], [0, 1, 0, -top]),
+      face([3, 2, 1, 0], [0, 0, -1, 0]),
+      face([4, 5, 6, 7], [0, 0, 1, -top]),
     ],
-    baseY: 0,
     driveThrough: false,
     shootThrough: false,
-    bounds: { minX, maxX, minY: 0, maxY: top, minZ, maxZ },
+    bounds: { minX, maxX, minY, maxY, minZ: 0, maxZ: top },
   };
 }
 
 // One tank, one heading, held forward. Returns how far it got along that
 // heading and the longest run of frames that went nowhere.
 function drive(obstacles, startX, startY, startZ, azimuth, seconds) {
-  const ux = -Math.sin(azimuth);
-  const uz = -Math.cos(azimuth);
+  const ux = Math.cos(azimuth);
+  const uy = Math.sin(azimuth);
   let state = { x: startX, y: startY, z: startZ, onSupport: true, stuckFrameCount: 0 };
   let progress = 0;
   let stall = 0;
@@ -105,27 +105,27 @@ function drive(obstacles, startX, startY, startZ, azimuth, seconds) {
       z: state.z,
       azimuth,
       velocityX: ux * SPEED,
+      velocityY: uy * SPEED,
       // The sink that makes the far deck's wall reachable at all. A tank on a
       // surface always carries a little downward velocity; without it this
       // drives along at exactly the top and never touches anything.
-      velocityY: -0.5,
-      velocityZ: uz * SPEED,
+      velocityZ: -0.5,
       angularVelocity: 0,
       timeStep: STEP,
       groundLimit: 0,
       onGround: state.onSupport,
       hitTest: (fx, fy, fz, faz, tx, ty, tz, taz) => C.findTankObstacle(
         obstacles, tx, ty, tz,
-        { rotation: taz, fromY: fy, fromX: fx, fromZ: fz, radius: TANK_HEIGHT },
+        { azimuth: taz, fromX: fx, fromY: fy, fromZ: fz, radius: TANK_HEIGHT },
       ),
-      getNormal: (obs, px, py, pz, paz, hx, hy, hz, haz, fx, fz, faz, tx, tz, taz) => (
-        C.getTankHitNormal(obs, px, py, pz, paz, hy, TANK_HEIGHT, {
-          fromX: fx, fromZ: fz, fromAz: faz, toX: tx, toZ: tz, toAz: taz, hitX: hx, hitZ: hz,
+      getNormal: (obs, px, py, pz, paz, hx, hy, hz, haz, fx, fy, faz, tx, ty, taz) => (
+        C.getTankHitNormal(obs, px, py, pz, paz, hz, TANK_HEIGHT, {
+          fromX: fx, fromY: fy, fromAz: faz, toX: tx, toY: ty, toAz: taz, hitX: hx, hitY: hy,
           halfWidth: C.TANK_HALF_WIDTH, halfLength: C.TANK_HALF_LENGTH,
         })
       ),
       isFlatTop: (obs) => (obs ? obs.type !== 'pyramid' : false),
-      getObstacleTop: (obs) => (obs.baseY || 0) + C.getObstacleHeight(obs),
+      getObstacleTop: (obs) => C.getObstacleBase(obs) + C.getObstacleHeight(obs),
       maxBumpHeight: 0.33,
       stuckFrameCount: state.stuckFrameCount,
     });
@@ -133,10 +133,10 @@ function drive(obstacles, startX, startY, startZ, azimuth, seconds) {
       x: result.x,
       y: result.y,
       z: result.z,
-      onSupport: result.onBuilding || result.y <= 0,
+      onSupport: result.onBuilding || result.z <= 0,
       stuckFrameCount: result.stuckFrameCount,
     };
-    const next = ((state.x - startX) * ux) + ((state.z - startZ) * uz);
+    const next = ((state.x - startX) * ux) + ((state.y - startY) * uy);
     if (next - progress < SPEED * STEP * 0.1) {
       stall += 1;
       if (stall > longestStall) longestStall = stall;
@@ -145,38 +145,39 @@ function drive(obstacles, startX, startY, startZ, azimuth, seconds) {
     }
     progress = next;
   }
-  return { progress, y: state.y, longestStall };
+  return { progress, z: state.z, longestStall };
 }
 
 const TOP = 12;
 let checks = 0;
 
 // Two decks sharing the whole edge at x = 0, and the same pair with a two-metre
-// gap. Driven both ways, and off-centre along the seam as well as through it.
+// gap. Driven both ways, and off-centre along the seam (in y) as well as
+// through it.
 for (const [label, west, east] of [
   ['abutting', slab('west', -40, 0, -20, 20, TOP), slab('east', 0, 40, -20, 20, TOP)],
   ['gapped', slab('west', -40, -1, -20, 20, TOP), slab('east', 1, 40, -20, 20, TOP)],
 ]) {
   const obstacles = [west, east];
   for (const offset of [-12, -6, 0, 6, 12]) {
-    // Heading 90 drives toward -x, heading 270 toward +x (forward at azimuth a
-    // is (-sin a, -cos a), matching server/motion.cjs).
-    for (const [heading, fromX] of [[Math.PI / 2, 20], [(3 * Math.PI) / 2, -20]]) {
-      const run = drive(obstacles, fromX, TOP, offset, heading, 1.5);
+    // Azimuth pi drives toward -x, azimuth 0 toward +x (forward at azimuth a
+    // is (cos a, sin a), matching server/motion.cjs).
+    for (const [azimuth, fromX] of [[Math.PI, 20], [0, -20]]) {
+      const run = drive(obstacles, fromX, offset, TOP, azimuth, 1.5);
       const direction = fromX > 0 ? 'east->west' : 'west->east';
       assert.ok(
         run.longestStall < 12,
-        `${label} ${direction} at z=${offset} stalled for ${run.longestStall} frames`,
+        `${label} ${direction} at y=${offset} stalled for ${run.longestStall} frames`,
       );
       // 1.5s at 25 u/s is 37.5 units; the far deck's own far edge is 40 away,
       // so a tank that crossed the seam has covered most of that.
       assert.ok(
         run.progress > 30,
-        `${label} ${direction} at z=${offset} only reached ${run.progress.toFixed(2)}`,
+        `${label} ${direction} at y=${offset} only reached ${run.progress.toFixed(2)}`,
       );
       assert.ok(
-        run.y > TOP - 0.5,
-        `${label} ${direction} at z=${offset} fell to y=${run.y.toFixed(2)}`,
+        run.z > TOP - 0.5,
+        `${label} ${direction} at y=${offset} fell to z=${run.z.toFixed(2)}`,
       );
       checks += 1;
     }
@@ -194,13 +195,13 @@ for (const [label, west, east] of [
   // index against those.
   const deckArrays = meshArrays(deck);
   const wall = 1;
-  const along = { x: 0, y: -0.5 * STEP, z: SPEED * STEP };
+  const along = { x: 0, y: -SPEED * STEP, z: -0.5 * STEP };
   assert.equal(
     C.meshFaceBlocksDirection(deckArrays, wall, along, TOP),
     false,
     'a face travelled exactly along must not block',
   );
-  const into = { x: -SPEED * STEP, y: -0.5 * STEP, z: 0 };
+  const into = { x: -SPEED * STEP, y: 0, z: -0.5 * STEP };
   assert.equal(
     C.meshFaceBlocksDirection(deckArrays, wall, into, TOP),
     true,

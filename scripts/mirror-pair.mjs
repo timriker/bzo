@@ -21,6 +21,10 @@ for (const name of process.argv.slice(2)) {
     /^import \{([^}]*)\} from '\.\/([a-z-]+)\.mjs';$/gm,
     (whole, names, module_) => `const {${names}} = require('./${module_}.cjs');`,
   );
+  source = source.replace(
+    /^import \* as ([A-Za-z_$][\w$]*) from '\.\/([a-z-]+)\.mjs';$/gm,
+    (whole, name_, module_) => `const ${name_} = require('./${module_}.cjs');`,
+  );
   const exported = [...source.matchAll(/^export (?:function|const|let) ([A-Za-z_$][\w$]*)/gm)].map((m) => m[1]);
   source = source.replace(/^export (function|const|let) /gm, '$1 ');
   source = `${source.replace(/\n+$/, '')}\n\nmodule.exports = {\n${exported.map((n) => `  ${n},\n`).join('')}};\n`;

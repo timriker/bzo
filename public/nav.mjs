@@ -25,6 +25,10 @@
 //
 // Teleporters are not followed yet.
 //
+// In upstream's frame, as the pilot is: (x, y) on the ground and z up. The
+// grid's rows run from the north edge south, so a map whose size is not a
+// whole number of columns is cut from its north-west corner.
+//
 // Built once per world. The moves are worked out the first time a route is
 // asked for, and each destination gets one backwards search, kept; a route
 // from anywhere to it is then a walk downhill.
@@ -32,9 +36,10 @@
 import {
   findTankObstacle,
   getColliderLocalPoint,
+  getObstacleBase,
   isPyramidFlatTop,
   getPyramidHeight,
-  meshFlatTopYsAt,
+  meshFlatTopsAt,
 } from './collision.mjs';
 
 export const NAV_CELL = 4;
@@ -131,48 +136,68 @@ export function planJump(jump, rise, edge) {
 }
 const JUMP_SPEED_SPARE = 1.1;
 
-// The heights the obstacles over (x, z) fill, a tank's radius out from it, as
+// The heights the obstacles over (x, y) fill, a tank's radius out from it, as
 // [bottom, top] pairs. A box, a base or a teleporter by its own footprint; a
 // pyramid as its whole height; a mesh by its bounds -- generous for both,
 // which only ever costs a flight that would have worked.
-function solidsAt(obstacles, x, z) {
+function solidsAt(obstacles, x, y) {
   const out = [];
   for (const obs of obstacles) {
     if (obs.driveThrough) continue;
-    const b = obstacleBounds(obs);
+    const b = obstacleFootprint(obs);
     if (x < b.minX - STAND_RADIUS || x > b.maxX + STAND_RADIUS
-      || z < b.minZ - STAND_RADIUS || z > b.maxZ + STAND_RADIUS) continue;
-    let bottom = obs.baseY || 0;
+      || y < b.minY - STAND_RADIUS || y > b.maxY + STAND_RADIUS) continue;
+    const bottom = getObstacleBase(obs);
     let top;
     if (obs.type === 'mesh') {
-      bottom = b.minY ?? bottom;
-      top = b.maxY;
+      top = meshTop(obs);
     } else {
-      const local = getColliderLocalPoint(x, z, obs);
-      if (Math.abs(local.x) > (obs.w / 2) + STAND_RADIUS || Math.abs(local.z) > (obs.d / 2) + STAND_RADIUS) continue;
-      top = bottom + (obs.type === 'pyramid' ? getPyramidHeight(obs) : (obs.h || 0));
+      const local = getColliderLocalPoint(x, y, obs);
+      if (Math.abs(local.x) > halfWidth(obs) + STAND_RADIUS
+        || Math.abs(local.y) > halfBreadth(obs) + STAND_RADIUS) continue;
+      top = bottom + (obs.type === 'pyramid' ? getPyramidHeight(obs) : height(obs));
     }
     if (Number.isFinite(top) && top > bottom) out.push([bottom, top]);
   }
   return out;
 }
 
-function obstacleBounds(obs) {
-  if (obs.bounds) return obs.bounds;
-  const reach = Math.hypot(obs.w || 0, obs.d || 0) / 2;
-  return { minX: obs.x - reach, maxX: obs.x + reach, minZ: obs.z - reach, maxZ: obs.z + reach };
+function halfWidth(obs) {
+  return obs.size ? obs.size[0] : NaN;
 }
 
-// The flat tops an obstacle offers over (x, z), as heights.
-function topsAt(obs, x, z) {
+function halfBreadth(obs) {
+  return obs.size ? obs.size[1] : NaN;
+}
+
+function height(obs) {
+  return (obs.size && obs.size[2]) || 0;
+}
+
+function meshTop(obs) {
+  return obs.bounds.maxZ;
+}
+
+// What an obstacle covers on the ground, as an axis-aligned box: a mesh's
+// bounds, and anything else a circle round its centre that holds every
+// corner whatever its angle.
+function obstacleFootprint(obs) {
+  if (obs.bounds) return obs.bounds;
+  const reach = obs.size ? Math.hypot(obs.size[0], obs.size[1]) : 0;
+  const pos = obs.pos || [NaN, NaN, 0];
+  return { minX: pos[0] - reach, maxX: pos[0] + reach, minY: pos[1] - reach, maxY: pos[1] + reach };
+}
+
+// The flat tops an obstacle offers over (x, y), as heights.
+function topsAt(obs, x, y) {
   if (obs.driveThrough || obs.kind === 'teleporter') return [];
-  if (obs.type === 'mesh') return meshFlatTopYsAt(obs, x, z);
-  const local = getColliderLocalPoint(x, z, obs);
-  if (Math.abs(local.x) > obs.w / 2 || Math.abs(local.z) > obs.d / 2) return [];
+  if (obs.type === 'mesh') return meshFlatTopsAt(obs, x, y);
+  const local = getColliderLocalPoint(x, y, obs);
+  if (Math.abs(local.x) > halfWidth(obs) || Math.abs(local.y) > halfBreadth(obs)) return [];
   if (obs.type === 'pyramid') {
-    return isPyramidFlatTop(obs) ? [(obs.baseY || 0) + getPyramidHeight(obs)] : [];
+    return isPyramidFlatTop(obs) ? [getObstacleBase(obs) + getPyramidHeight(obs)] : [];
   }
-  return [(obs.baseY || 0) + (obs.h || 0)];
+  return [getObstacleBase(obs) + height(obs)];
 }
 
 // `world`: { obstacles, mapSize, waterLevel?, jump: { velocity, gravity,
@@ -181,7 +206,10 @@ export function buildNavGraph(world) {
   const { obstacles, mapSize } = world;
   const half = mapSize / 2;
   const columns = Math.floor(mapSize / NAV_CELL);
+  // Column `cx` is centred at x = origin + cx * NAV_CELL, and row `cy` at
+  // y = north - cy * NAV_CELL.
   const origin = -half + (NAV_CELL / 2);
+  const north = -origin;
   const water = Number.isFinite(world.waterLevel) ? world.waterLevel : -Infinity;
 
   // Obstacles by area, so a standing test asks only the ones near it.
@@ -189,14 +217,14 @@ export function buildNavGraph(world) {
   const buckets = Array.from({ length: bucketCount * bucketCount }, () => []);
   const bucketOf = (value) => Math.max(0, Math.min(bucketCount - 1, Math.floor((value + half) / BUCKET)));
   for (const obs of obstacles) {
-    const b = obstacleBounds(obs);
+    const b = obstacleFootprint(obs);
     for (let bx = bucketOf(b.minX - STAND_RADIUS); bx <= bucketOf(b.maxX + STAND_RADIUS); bx++) {
-      for (let bz = bucketOf(b.minZ - STAND_RADIUS); bz <= bucketOf(b.maxZ + STAND_RADIUS); bz++) {
-        buckets[(bz * bucketCount) + bx].push(obs);
+      for (let by = bucketOf(b.minY - STAND_RADIUS); by <= bucketOf(b.maxY + STAND_RADIUS); by++) {
+        buckets[(by * bucketCount) + bx].push(obs);
       }
     }
   }
-  const near = (x, z) => buckets[(bucketOf(z) * bucketCount) + bucketOf(x)];
+  const near = (x, y) => buckets[(bucketOf(y) * bucketCount) + bucketOf(x)];
 
   // Every node, and each column's nodes from lowest to highest.
   const nodes = [];
@@ -208,25 +236,25 @@ export function buildNavGraph(world) {
   const solidStart = new Int32Array((columns * columns) + 1);
   const solidPairs = [];
   const edgeMargin = STAND_RADIUS + 0.5;
-  for (let cz = 0; cz < columns; cz++) {
+  for (let cy = 0; cy < columns; cy++) {
     for (let cx = 0; cx < columns; cx++) {
       const x = origin + (cx * NAV_CELL);
-      const z = origin + (cz * NAV_CELL);
-      solidStart[(cz * columns) + cx] = solidPairs.length;
-      if (Math.abs(x) > half - edgeMargin || Math.abs(z) > half - edgeMargin) continue;
-      const local = near(x, z);
+      const y = north - (cy * NAV_CELL);
+      solidStart[(cy * columns) + cx] = solidPairs.length;
+      if (Math.abs(x) > half - edgeMargin || Math.abs(y) > half - edgeMargin) continue;
+      const local = near(x, y);
       const levels = new Set([0]);
-      for (const obs of local) for (const top of topsAt(obs, x, z)) levels.add(Math.round(top * 100) / 100);
-      for (const [bottom, top] of solidsAt(local, x, z)) solidPairs.push(bottom, top);
+      for (const obs of local) for (const top of topsAt(obs, x, y)) levels.add(Math.round(top * 100) / 100);
+      for (const [bottom, top] of solidsAt(local, x, y)) solidPairs.push(bottom, top);
       const here = [];
-      for (const y of [...levels].sort((a, b) => a - b)) {
-        if (y <= water) continue;
-        if (findTankObstacle(local, x, y + 0.01, z, { radius: STAND_RADIUS })) continue;
+      for (const z of [...levels].sort((a, b) => a - b)) {
+        if (z <= water) continue;
+        if (findTankObstacle(local, x, y, z + 0.01, { radius: STAND_RADIUS })) continue;
         const id = nodes.length;
-        nodes.push({ id, cx, cz, x, y, z });
+        nodes.push({ id, cx, cy, x, y, z });
         here.push(id);
       }
-      if (here.length) columnNodes[(cz * columns) + cx] = here;
+      if (here.length) columnNodes[(cy * columns) + cx] = here;
     }
   }
   solidStart[columns * columns] = solidPairs.length;
@@ -235,9 +263,11 @@ export function buildNavGraph(world) {
   const jump = world.jump;
   const tankSpeed = world.tankSpeed ?? jump?.tankSpeed ?? 25;
   const gravity = world.gravity ?? jump?.gravity ?? 9.8;
-  const column = (cx, cz) => (cx < 0 || cz < 0 || cx >= columns || cz >= columns
+  const column = (cx, cy) => (cx < 0 || cy < 0 || cx >= columns || cy >= columns
     ? null
-    : columnNodes[(cz * columns) + cx] || null);
+    : columnNodes[(cy * columns) + cx] || null);
+  const columnOf = (x) => Math.round((x - origin) / NAV_CELL);
+  const rowOf = (y) => Math.round((north - y) / NAV_CELL);
 
   // The moves out of a node, worked out the first time a search reaches it
   // and kept: the jump scan is the expensive part of a search, and the world
@@ -249,7 +279,7 @@ export function buildNavGraph(world) {
   const moveCount = new Uint16Array(nodes.length);
   const moveTable = new PackedRows({ to: Int32Array, cost: Float64Array, kind: Uint8Array, flight: Int32Array });
   const flightTable = new PackedRows({
-    speed: Float64Array, dx: Float64Array, dz: Float64Array, launch: Float64Array, air: Float64Array,
+    speed: Float64Array, dx: Float64Array, dy: Float64Array, launch: Float64Array, air: Float64Array,
   });
   const ensureMoves = (id) => {
     if (moveStart[id] >= 0) return;
@@ -260,7 +290,7 @@ export function buildNavGraph(world) {
       let flight = -1;
       if (move.flight) {
         flight = flightTable.length;
-        flightTable.push(move.flight.speed, move.flight.dx, move.flight.dz, move.flight.launch, move.flight.air);
+        flightTable.push(move.flight.speed, move.flight.dx, move.flight.dy, move.flight.launch, move.flight.air);
       }
       moveTable.push(move.to, move.cost,
         (move.jump ? MOVE_JUMP : 0) | (move.bridge ? MOVE_BRIDGE : 0), flight);
@@ -278,7 +308,7 @@ export function buildNavGraph(world) {
         jump: (kind & MOVE_JUMP) !== 0,
         speed: flights.speed[f],
         dx: flights.dx[f],
-        dz: flights.dz[f],
+        dy: flights.dy[f],
         launch: flights.launch[f],
         air: flights.air[f],
       },
@@ -290,41 +320,42 @@ export function buildNavGraph(world) {
   const tight = (id) => {
     if (tightKnown[id] < 0) {
       const n = nodes[id];
-      tightKnown[id] = findTankObstacle(near(n.x, n.z), n.x, n.y + 0.01, n.z, { radius: TIGHT_RADIUS }) ? 1 : 0;
+      tightKnown[id] = findTankObstacle(near(n.x, n.y), n.x, n.y, n.z + 0.01, { radius: TIGHT_RADIUS }) ? 1 : 0;
     }
     return tightKnown[id] === 1;
   };
   const computeMoves = (node) => {
     const out = [];
-    for (const [dx, dz] of DIRECTIONS) {
-      const diagonal = dx !== 0 && dz !== 0;
-      const ahead = column(node.cx + dx, node.cz + dz);
+    // A direction is a step in columns and rows; a row step is south.
+    for (const [dx, dy] of DIRECTIONS) {
+      const diagonal = dx !== 0 && dy !== 0;
+      const ahead = column(node.cx + dx, node.cy + dy);
       if (ahead) {
         const step = NAV_CELL * (diagonal ? Math.SQRT2 : 1);
         // Same level or a step up: walk. A diagonal may not cut a corner.
         for (const id of ahead) {
-          const rise = nodes[id].y - node.y;
+          const rise = nodes[id].z - node.z;
           if (rise > STEP_UP || rise < -STEP_UP) continue;
-          if (diagonal && !(levelNear(column(node.cx + dx, node.cz), node.y)
-            && levelNear(column(node.cx, node.cz + dz), node.y))) continue;
+          if (diagonal && !(levelNear(column(node.cx + dx, node.cy), node.z)
+            && levelNear(column(node.cx, node.cy + dy), node.z))) continue;
           out.push({ to: id, cost: (step / tankSpeed) + (tight(id) ? TIGHT_COST : 0), jump: false });
         }
       }
       // Across a gap: a tank is held up while any of its box is over a
       // surface, so one longer than the gap drives straight over it. One
       // empty column, open air at this level, to the same level beyond.
-      if (!diagonal && !levelNear(ahead, node.y)) {
-        const beyond = column(node.cx + (dx * 2), node.cz + (dz * 2));
+      if (!diagonal && !levelNear(ahead, node.z)) {
+        const beyond = column(node.cx + (dx * 2), node.cy + (dy * 2));
         const gapX = node.x + (dx * NAV_CELL);
-        const gapZ = node.z + (dz * NAV_CELL);
-        if (beyond && !findTankObstacle(near(gapX, gapZ), gapX, node.y + 0.01, gapZ, { radius: STAND_RADIUS })) {
+        const gapY = node.y - (dy * NAV_CELL);
+        if (beyond && !findTankObstacle(near(gapX, gapY), gapX, gapY, node.z + 0.01, { radius: STAND_RADIUS })) {
           for (const id of beyond) {
-            if (Math.abs(nodes[id].y - node.y) > STEP_UP) continue;
+            if (Math.abs(nodes[id].z - node.z) > STEP_UP) continue;
             out.push({ to: id, cost: ((2 * NAV_CELL) / tankSpeed) + BRIDGE_COST, jump: false, bridge: true });
           }
         }
       }
-      flights(node, dx, dz, out);
+      flights(node, dx, dy, out);
     }
     return out;
   };
@@ -336,17 +367,17 @@ export function buildNavGraph(world) {
   // lands on the first surface it comes down onto; one that runs into
   // anything on the way is no flight. A direction with nothing but the same
   // floor ahead has no flight worth taking and is not flown at all.
-  const flights = (node, dx, dz, out) => {
+  const flights = (node, dx, dy, out) => {
     // Neighbouring columns fly nearly the same arcs, so flights leave from
     // every other column each way, and a route walks to one.
-    if (node.cx % FLIGHT_STRIDE !== 0 || node.cz % FLIGHT_STRIDE !== 0) return;
-    const length = Math.hypot(dx, dz);
+    if (node.cx % FLIGHT_STRIDE !== 0 || node.cy % FLIGHT_STRIDE !== 0) return;
+    const length = Math.hypot(dx, dy);
     const ux = dx / length;
-    const uz = dz / length;
+    const uy = -dy / length;
     const columnAt = (d) => {
-      const cx = Math.round((node.x + (ux * d) - origin) / NAV_CELL);
-      const cz = Math.round((node.z + (uz * d) - origin) / NAV_CELL);
-      return { cx, cz, ids: column(cx, cz), solid: inGrid(cx, cz) ? (cz * columns) + cx : -1 };
+      const cx = columnOf(node.x + (ux * d));
+      const cy = rowOf(node.y + (uy * d));
+      return { cx, cy, ids: column(cx, cy), solid: inGrid(cx, cy) ? (cy * columns) + cx : -1 };
     };
     // Where the surface underfoot ends along this line, and whether anything
     // different lies within a flight's reach at all.
@@ -354,13 +385,13 @@ export function buildNavGraph(world) {
     let different = false;
     for (let d = FLIGHT_STEP; d <= FLIGHT_REACH; d += FLIGHT_STEP) {
       const { ids } = columnAt(d);
-      const level = ids && ids.some((id) => Math.abs(nodes[id].y - node.y) <= STEP_UP);
+      const level = ids && ids.some((id) => Math.abs(nodes[id].z - node.z) <= STEP_UP);
       if (!level) {
         if (edge === null) edge = d;
         different = true;
         break;
       }
-      if (ids.some((id) => Math.abs(nodes[id].y - node.y) > STEP_UP)) different = true;
+      if (ids.some((id) => Math.abs(nodes[id].z - node.z) > STEP_UP)) different = true;
     }
     if (!different) return;
     const best = new Map();
@@ -372,22 +403,22 @@ export function buildNavGraph(world) {
         // A drive-off leaves when the tank's back clears the edge; a jump,
         // from where it stands.
         const launch = jumping ? 0 : edge - (NAV_CELL / 2) + JUMP_FRONT;
-        const vy = jumping ? jump.velocity : 0;
+        const vz = jumping ? jump.velocity : 0;
         // A step across, or a tenth of a second where that is shorter: a
         // slow jump climbs a couple of metres in one step across, which is
         // clean over a floor slab hanging above the takeoff.
         const dt = Math.min(FLIGHT_STEP / u, FLIGHT_MAX_STEP_SECONDS);
-        let previous = node.y;
+        let previous = node.z;
         let landed = null;
         let time = 0;
         for (let t = dt; t <= FLIGHT_MAX_SECONDS; t += dt) {
-          const y = node.y + (vy * t) - (0.5 * gravity * t * t);
+          const z = node.z + (vz * t) - (0.5 * gravity * t * t);
           const at = columnAt(launch + (u * t));
-          if (!inGrid(at.cx, at.cz)) break;
-          if (vy - (gravity * t) < 0 && at.ids) {
+          if (!inGrid(at.cx, at.cy)) break;
+          if (vz - (gravity * t) < 0 && at.ids) {
             for (const id of at.ids) {
-              const level = nodes[id].y;
-              if (level <= previous + 0.01 && level >= y) landed = id;
+              const level = nodes[id].z;
+              if (level <= previous + 0.01 && level >= z) landed = id;
             }
           }
           if (landed !== null) {
@@ -400,12 +431,12 @@ export function buildNavGraph(world) {
           // that clears it by a hair from the planned spot does not from a
           // pace further on, which is as close as a pilot takes off.
           const nose = columnAt(launch + (u * t) + JUMP_FRONT);
-          if (y < -1 || isBlocked(at.solid, y)
-            || (vy - (gravity * t) > 0 && isBlocked(nose.solid, y - JUMP_NOSE_CLEARANCE))) break;
-          previous = y;
+          if (z < -1 || isBlocked(at.solid, z)
+            || (vz - (gravity * t) > 0 && isBlocked(nose.solid, z - JUMP_NOSE_CLEARANCE))) break;
+          previous = z;
         }
         if (landed === null || landed === node.id) continue;
-        if (!jumping && nodes[landed].y >= node.y - STEP_UP) continue;
+        if (!jumping && nodes[landed].z >= node.z - STEP_UP) continue;
         const cost = (launch / u) + time + (jumping ? JUMP_SETUP_SECONDS : FLIGHT_SETUP_SECONDS);
         if ((best.get(landed)?.cost ?? Infinity) <= cost) continue;
         best.set(landed, {
@@ -413,7 +444,7 @@ export function buildNavGraph(world) {
           cost,
           jump: jumping,
           flight: {
-            jump: jumping, speed: share, dx: ux, dz: uz, launch, air: time,
+            jump: jumping, speed: share, dx: ux, dy: uy, launch, air: time,
           },
         });
       }
@@ -421,7 +452,7 @@ export function buildNavGraph(world) {
     for (const move of best.values()) out.push(move);
   };
 
-  const inGrid = (cx, cz) => cx >= 0 && cz >= 0 && cx < columns && cz < columns;
+  const inGrid = (cx, cy) => cx >= 0 && cy >= 0 && cx < columns && cy < columns;
   const isBlocked = (cell, bottom) => {
     if (cell < 0) return false;
     for (let i = solidStart[cell]; i < solidStart[cell + 1]; i += 2) {
@@ -430,9 +461,9 @@ export function buildNavGraph(world) {
     return false;
   };
 
-  function levelNear(ids, y) {
+  function levelNear(ids, z) {
     if (!ids) return false;
-    return ids.some((id) => Math.abs(nodes[id].y - y) <= STEP_UP);
+    return ids.some((id) => Math.abs(nodes[id].z - z) <= STEP_UP);
   }
 
   // The node a point is standing on: the surface nearest it, within a column
@@ -441,20 +472,20 @@ export function buildNavGraph(world) {
   // beam -- still has them in the next, and the ground under it is not where
   // the tank is.
   const nodeAt = (x, y, z) => {
-    const cx = Math.round((x - origin) / NAV_CELL);
-    const cz = Math.round((z - origin) / NAV_CELL);
+    const cx = columnOf(x);
+    const cy = rowOf(y);
     // Ring by ring: a tank against a wall stands where no column fits a
     // node, and the nearest that does may be a couple of columns off.
     let best = null;
     for (let ring = 1; ring <= NODE_SEARCH_RINGS && !best; ring++) {
       for (let ox = -ring; ox <= ring; ox++) {
-        for (let oz = -ring; oz <= ring; oz++) {
-          const ids = column(cx + ox, cz + oz);
+        for (let oy = -ring; oy <= ring; oy++) {
+          const ids = column(cx + ox, cy + oy);
           if (!ids) continue;
           for (const id of ids) {
             const node = nodes[id];
-            if (node.y > y + STEP_UP) continue;
-            const dist = Math.hypot(node.x - x, node.z - z) + (NODE_HEIGHT_WEIGHT * Math.abs(node.y - y));
+            if (node.z > z + STEP_UP) continue;
+            const dist = Math.hypot(node.x - x, node.y - y) + (NODE_HEIGHT_WEIGHT * Math.abs(node.z - z));
             if (!best || dist < best.dist) best = { id, dist };
           }
         }
@@ -553,19 +584,19 @@ export function buildNavGraph(world) {
   // which is what a grid route across a base or a field zigzags over.
   const straightWalk = (a, b) => {
     const dx = b.x - a.x;
-    const dz = b.z - a.z;
-    const steps = Math.ceil(Math.hypot(dx, dz) / STRAIGHT_SAMPLE);
+    const dy = b.y - a.y;
+    const steps = Math.ceil(Math.hypot(dx, dy) / STRAIGHT_SAMPLE);
     for (let i = 1; i < steps; i++) {
       const t = i / steps;
       const x = a.x + (dx * t);
-      const z = a.z + (dz * t);
-      const ids = column(Math.round((x - origin) / NAV_CELL), Math.round((z - origin) / NAV_CELL));
+      const y = a.y + (dy * t);
+      const ids = column(columnOf(x), rowOf(y));
       if (!ids) return false;
-      const level = ids.find((id) => Math.abs(nodes[id].y - a.y) <= STEP_UP);
+      const level = ids.find((id) => Math.abs(nodes[id].z - a.z) <= STEP_UP);
       if (level === undefined) return false;
       // Clear where the line actually runs, not at the column's centre, which
       // can be two units off it -- enough to shave a rib a column test passes.
-      if (findTankObstacle(near(x, z), x, a.y + 0.01, z, { radius: STRAIGHT_CLEARANCE })) return false;
+      if (findTankObstacle(near(x, y), x, y, a.z + 0.01, { radius: STRAIGHT_CLEARANCE })) return false;
     }
     return true;
   };
@@ -596,7 +627,7 @@ export function buildNavGraph(world) {
         // sharp corner a tank at speed swings wide of, into what it was
         // going round.
         if (tight(route[k - 1].id) || tight(next.id)) break;
-        if (Math.abs(next.y - anchor.y) > STEP_UP || !straightWalk(anchor, next)) break;
+        if (Math.abs(next.z - anchor.z) > STEP_UP || !straightWalk(anchor, next)) break;
         j = k;
       }
       out.push(route[j]);

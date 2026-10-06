@@ -7,8 +7,8 @@
 
 // Tank track marks: where a tread leaves a mark and how long it lasts. Ported
 // from BZFlag's `TrackMarks.cxx` and the `Player::updateTrackMarks`
-// (`Player.cxx:458`) that feeds it, in bzo's coordinates -- the ground plane is
-// (x, z) and up is y, where upstream has (pos[0], pos[1]) and pos[2].
+// (`Player.cxx:458`) that feeds it, in upstream's frame: the ground plane is
+// (x, y), up is z, and a heading is an azimuth, counter-clockwise from +x.
 //
 // Only the treads are here. Upstream has three track types and bzo can draw one
 // of them: `PuddleTrack` needs `_mirror` set to something other than "none"
@@ -82,16 +82,16 @@ export const TRACK_SURFACE_TOLERANCE = 0.1;
 // forward and in front of one reversing -- the end of the tread that is coming
 // down onto fresh ground either way.
 //
-// The returned `y` is already lifted by `TRACK_HEIGHT_OFFSET`. `onGround` says
+// The returned `z` is already lifted by `TRACK_HEIGHT_OFFSET`. `onGround` says
 // which of upstream's two lists the mark belongs to, and so whether it has to be
 // culled: the world floor is under every point of the map and needs no test.
 export function getTrackMarkPlacement({
-  x, y, z, rotation, speed, scaleLength, scaleWidth,
+  x, y, z, azimuth, speed, scaleLength, scaleWidth,
 }) {
   // `N` Narrow, and `BU` Burrow: a tank below the floor is under the ground its
   // treads would mark.
   if (!(scaleWidth >= TRACK_MIN_SCALE)) return null;
-  if (y < 0) return null;
+  if (z < 0) return null;
 
   let direction;
   if (speed > TRACK_MIN_SPEED) direction = -1;
@@ -99,19 +99,19 @@ export function getTrackMarkPlacement({
   else return null;
 
   const distance = direction * TANK.halfLength * scaleLength * TRACK_MARK_LENGTH_FRACTION;
-  const onGround = Math.abs(y) <= TRACK_SURFACE_TOLERANCE;
+  const onGround = Math.abs(z) <= TRACK_SURFACE_TOLERANCE;
   // A tank settling onto the floor sits a hair above zero for a frame or two,
   // and every mark of a trail on the flat should be coplanar with the rest of
   // it, so the floor's marks are laid at the floor rather than where the tank
   // happened to be.
-  const surfaceY = onGround ? 0 : y;
+  const surfaceZ = onGround ? 0 : z;
 
   return {
-    x: x + (-Math.sin(rotation) * distance),
-    y: surfaceY + TRACK_HEIGHT_OFFSET,
-    z: z + (-Math.cos(rotation) * distance),
-    surfaceY,
-    angle: rotation,
+    x: x + (Math.cos(azimuth) * distance),
+    y: y + (Math.sin(azimuth) * distance),
+    z: surfaceZ + TRACK_HEIGHT_OFFSET,
+    surfaceZ,
+    angle: azimuth,
     scale: scaleWidth,
     onGround,
   };
@@ -129,12 +129,13 @@ export function getTrackMarkPlacement({
 export function getTrackMarkSides(mark, isSupported) {
   if (mark.onGround) return TRACK_TREAD_BOTH;
 
-  const offsetX = -Math.cos(mark.angle) * TREAD_MIDDLE;
-  const offsetZ = Math.sin(mark.angle) * TREAD_MIDDLE;
+  // The left of the heading, a quarter turn counter-clockwise.
+  const offsetX = -Math.sin(mark.angle) * TREAD_MIDDLE;
+  const offsetY = Math.cos(mark.angle) * TREAD_MIDDLE;
 
   let sides = 0;
-  if (isSupported(mark.x + offsetX, mark.surfaceY, mark.z + offsetZ)) sides |= TRACK_TREAD_LEFT;
-  if (isSupported(mark.x - offsetX, mark.surfaceY, mark.z - offsetZ)) sides |= TRACK_TREAD_RIGHT;
+  if (isSupported(mark.x + offsetX, mark.y + offsetY, mark.surfaceZ)) sides |= TRACK_TREAD_LEFT;
+  if (isSupported(mark.x - offsetX, mark.y - offsetY, mark.surfaceZ)) sides |= TRACK_TREAD_RIGHT;
   return sides;
 }
 

@@ -41,16 +41,6 @@ const DEATH_REASONS = {
 // `NoTeam` (global.h), as MsgScoreOver packs it for a player's win.
 const NO_TEAM = 0xffff;
 
-// bzo is Y up, three.js style; bzfs is Z up. The proxy's `proxyPosition`
-// inverted.
-function toBzfsPosition(x, y, z) {
-  return [x, -z, y];
-}
-// A bzo rotation faces -Z at zero; a bzfs azimuth is counter-clockwise from
-// +X (`proxyRotation` inverted).
-function toBzfsAzimuth(r) {
-  return r + (Math.PI / 2);
-}
 
 class Writer {
   constructor(size = 256) {
@@ -110,57 +100,50 @@ function packTeams(teams) {
 }
 
 // A native client's own `PlayerState`, as the move bzo's browser would have
-// sent (`movePacketFields`, public/drive.mjs): the proxy's
-// `proxyOutboundMotion` run backwards. bzo carries a ground speed as a
-// fraction of the tank's top speed along its heading, or along `d` where the
-// tank is sliding some other way; in the air, the velocity itself.
+// sent: the proxy's `proxyOutboundMotion` run backwards. Both speak upstream's
+// frame. bzo carries a ground speed as a fraction of the tank's top speed
+// along its heading, or along `sd` where the tank is sliding some other way;
+// in the air, the velocity itself.
 function moveFromBzfs(update, config) {
-  const [px, py, pz] = update.pos;
-  const x = px;
-  const y = pz;
-  const z = -py;
-  const r = update.azimuth - (Math.PI / 2);
-  const vx = update.velocity[0];
-  const vz = -update.velocity[1];
-  const vv = update.velocity[2];
+  const [x, y, z] = update.pos;
+  const a = update.azimuth;
+  const [vx, vy, vv] = update.velocity;
   const air = (update.status & STATUS_FALLING) !== 0;
   const tankSpeed = Number(config.TANK_SPEED) || 25;
-  const forwardX = -Math.sin(r);
-  const forwardZ = -Math.cos(r);
-  const along = (vx * forwardX) + (vz * forwardZ);
-  const speed = Math.hypot(vx, vz);
+  const along = (vx * Math.cos(a)) + (vy * Math.sin(a));
+  const speed = Math.hypot(vx, vy);
   const round2 = (v) => Math.round(v * 100) / 100;
   const move = {
     type: 'm',
     x: round2(x),
     y: round2(y),
     z: round2(z),
-    r: round2(r),
+    a: round2(a),
     fs: round2(along / tankSpeed),
     rs: round2(update.angVel / (Number(config.TANK_ROTATION_SPEED) || 0.785398)),
     vv: round2(air ? vv : 0),
     vx: round2(air ? vx : 0),
-    vz: round2(air ? vz : 0),
+    vy: round2(air ? vy : 0),
     air: air ? 1 : 0,
     // The client's own clock, which bzo only ever differences.
     ct: Math.round(update.timestamp * 1000) / 1000,
   };
   // Sliding off its heading: the direction of travel and the speed along it.
   if (!air && speed > 0.01 && Math.abs(along) < speed * 0.995) {
-    move.d = round2(Math.atan2(-vx, -vz));
+    move.sd = round2(Math.atan2(vy, vx));
     move.fs = round2(speed / tankSpeed);
   }
   return move;
 }
 
 // A native client's `MsgShotBegin` (decoded as `decodeShotBegin` reads one) as
-// the `shoot` bzo's browser sends (`shotFromTank`, public/drive.mjs): where it
-// left the muzzle and its whole velocity, both in bzo's axes.
+// the `shoot` bzo's browser sends: where it left the muzzle and its whole
+// velocity.
 function shootFromBzfs(shot) {
-  const [px, py, pz] = shot.pos;
+  const [x, y, z] = shot.pos;
   const [vx, vy, vz] = shot.velocity;
   return {
-    type: 'shoot', x: px, y: pz, z: -py, vx, vy: vz, vz: -vy,
+    type: 'shoot', x, y, z, vx, vy, vz,
   };
 }
 
@@ -282,8 +265,8 @@ class NativeTranslator {
     this.write('gm', new Writer(32)
       .u8(known.shooter)
       .u16(known.id)
-      .vec3(toBzfsPosition(shot.x, shot.y, shot.z))
-      .vec3(toBzfsPosition(shot.dirX * speed, shot.dirY * speed, shot.dirZ * speed))
+      .vec3([shot.x, shot.y, shot.z])
+      .vec3([shot.dirX * speed, shot.dirY * speed, shot.dirZ * speed])
       .f32(0)
       .i16(this.teamIndex(shot.team))
       .u8(targetBzoId === null || targetBzoId === undefined ? NO_PLAYER : this.slotFor(targetBzoId))
@@ -339,7 +322,7 @@ class NativeTranslator {
 
   // `PlayerState::pack`, the full form, from bzo's own move fields.
   playerUpdate(move) {
-    const r = Number(move.r) || 0;
+    const a = Number(move.a) || 0;
     const config = this.config();
     const alive = this.players.get(String(move.id))?.alive !== false;
     let status = alive ? STATUS_ALIVE : 0;
@@ -356,9 +339,9 @@ class NativeTranslator {
       .u8(this.slotFor(move.id))
       .i32(order)
       .i16(status)
-      .vec3(toBzfsPosition(Number(move.x) || 0, Number(move.y) || 0, Number(move.z) || 0))
-      .vec3([Number(move.vx) || 0, -(Number(move.vz) || 0), Number(move.vv) || 0])
-      .f32(toBzfsAzimuth(r))
+      .vec3([Number(move.x) || 0, Number(move.y) || 0, Number(move.z) || 0])
+      .vec3([Number(move.vx) || 0, Number(move.vy) || 0, Number(move.vv) || 0])
+      .f32(a)
       .f32((Number(move.rs) || 0) * (config.TANK_ROTATION_SPEED || 0));
     this.write('pu', w.done());
   }
@@ -382,8 +365,8 @@ class NativeTranslator {
     if (String(record.id) === this.selfBzoId) this.clientDead = false;
     this.write('al', new Writer(17)
       .u8(this.slotFor(record.id))
-      .vec3(toBzfsPosition(record.x, record.y, record.z))
-      .f32(toBzfsAzimuth(record.rotation))
+      .vec3([record.x, record.y, record.z])
+      .f32(record.azimuth)
       .done());
   }
 
@@ -394,7 +377,7 @@ class NativeTranslator {
     } else {
       this.zonedFlags.delete(flag.index);
     }
-    const pos = (p) => (p ? toBzfsPosition(p.x, p.y, p.z) : [0, 0, 0]);
+    const pos = (p) => (p ? [p.x, p.y, p.z] : [0, 0, 0]);
     // A superflag nobody holds goes out as `PZ`, as bzfs's `fakePack` sends
     // it (Flag.cxx:265): a flag, of a type the client is not told.
     return w.u16(flag.index)
@@ -590,10 +573,10 @@ class NativeTranslator {
           .f32(this.timestamp())
           .u8(this.slotFor(message.playerId))
           .u16(this.shotId(message.id, message.shotSlot, this.slotFor(message.playerId)))
-          .vec3(toBzfsPosition(message.x, message.y, message.z))
+          .vec3([message.x, message.y, message.z])
           // The fired velocity, which `shotBegin` carries as MsgShotBegin does;
           // the client's strategy applies the flag.
-          .vec3(toBzfsPosition(Number(message.vx) || 0, Number(message.vy) || 0, Number(message.vz) || 0))
+          .vec3([Number(message.vx) || 0, Number(message.vy) || 0, Number(message.vz) || 0])
           .f32(0)
           .i16(this.teamIndex(message.team))
           .flag(message.flag)
@@ -673,7 +656,7 @@ class NativeTranslator {
         this.lastNearFlag = key;
         const name = Buffer.from(String(this.flagName(message.flagType)), 'latin1');
         const w = new Writer(16 + name.length)
-          .vec3(toBzfsPosition(message.position.x, message.position.y, message.position.z))
+          .vec3([message.position.x, message.position.y, message.position.z])
           .u32(name.length)
           .bytes(name);
         this.write('Nf', w.done());
@@ -693,8 +676,9 @@ class NativeTranslator {
         if (this.accepted && message.moved === true) {
           this.write('al', new Writer(17)
             .u8(this.selfSlot)
-            .vec3(toBzfsPosition(message.x, message.y, message.z))
-            .f32(toBzfsAzimuth(message.r))
+            .vec3([message.x, message.y, message.z])
+            .f32(message.a)
+
             .done());
         }
         break;
@@ -763,8 +747,6 @@ module.exports = {
   shootFromBzfs,
   decodeEnter,
   decodeClientMessage,
-  toBzfsPosition,
-  toBzfsAzimuth,
   ALL_PLAYERS,
   SERVER_PLAYER,
 };

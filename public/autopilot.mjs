@@ -13,11 +13,10 @@
 // everything arrives through a *view* (see `docs/bots-plan.md`), so a
 // server-launched bot can drive the same decisions from its own world.
 //
-// The logic runs in upstream's frame -- (x, y) on the ground, z up, azimuth
+// Everything is in upstream's frame -- (x, y) on the ground, z up, azimuth
 // counter-clockwise from +x -- so it reads line for line against
-// AutoPilot.cxx. The view speaks bzo's frame, and `toBzf`/`toBzoHeading` are
-// the only crossings: bzf(x, y, z) = (x, -z, y), and an azimuth is a heading
-// plus a quarter turn. A positive rotation turns left in both.
+// AutoPilot.cxx: the view, its probes, the routes `nav` plans, and the intent
+// the pilot reports. A positive rotation turns left.
 
 import {
   canRunOver, getFlagTuning, getRunOverRadius, isBadFlag,
@@ -29,13 +28,9 @@ import { isRabbitTeam } from './teams.mjs';
 
 const HALF_PI = Math.PI / 2;
 
-
-function toBzf(p) {
-  return { x: p.x, y: -p.z, z: p.y };
-}
-
-function toBzoHeading(azimuth) {
-  return azimuth - HALF_PI;
+// A position alone, for an intent: what the pilot reports carries nothing else.
+function pointOf(p) {
+  return { x: p.x, y: p.y, z: p.z };
 }
 
 function distance2D(a, b) {
@@ -74,11 +69,6 @@ function createStats() {
   return {
     modes: {}, shots: 0, jumps: 0, falls: 0, plans: 0, unreachable: 0, unsticks: 0, held: 0, kept: 0,
   };
-}
-
-// A point in upstream's frame, back in bzo's, for the intent.
-function toBzo(p) {
-  return { x: p.x, y: p.z, z: -p.y };
 }
 
 export class Roger {
@@ -133,9 +123,8 @@ export class Roger {
   // compares the base's x with the tank's, truncated, so the test passes over
   // half the map; that is Roger's, and kept.
   isHome(pos, base) {
-    const basePos = toBzf(base);
-    return Math.trunc(basePos.x) + 2 >= Math.trunc(pos.x)
-      || (basePos.x === pos.x && basePos.y === pos.y);
+    return Math.trunc(base.x) + 2 >= Math.trunc(pos.x)
+      || (base.x === pos.x && base.y === pos.y);
   }
 
   // avoidDeathFall's branch for a look-ahead that met nothing. Upstream's reads
@@ -150,17 +139,15 @@ export class Roger {
       view,
       me: {
         ...view.self,
-        ...toBzf(view.self),
-        azimuth: view.self.rotation + HALF_PI,
         vx: view.self.velocity?.x ?? 0,
-        vy: -(view.self.velocity?.z ?? 0),
-        vz: view.self.velocity?.y ?? 0,
+        vy: view.self.velocity?.y ?? 0,
+        vz: view.self.velocity?.z ?? 0,
       },
       out: {
         rotation: 0, speed: 0, jump: false, fire: false, dropFlag: false, targetId: null, shotTargetId: null,
         // What the pilot is doing and why, for whoever wants to show it: a
         // client draws it, a server bot reports it, and nothing reads it to
-        // decide anything. Points are in bzo's frame.
+        // decide anything.
         intent: {
           mode: null, target: null, route: null, shot: null, landing: null,
         },
@@ -184,18 +171,18 @@ export class Roger {
     return ctx.out;
   }
 
-  // Where a shot fired now leaves from and goes, in bzo's frame.
+  // Where a shot fired now leaves from and goes.
   muzzleRay(ctx) {
     const self = ctx.view.self;
-    const dirX = -Math.sin(self.rotation);
-    const dirZ = -Math.cos(self.rotation);
+    const dirX = Math.cos(self.azimuth);
+    const dirY = Math.sin(self.azimuth);
     return {
       from: {
         x: self.x + (dirX * (self.muzzleForward ?? 3)),
-        y: self.y + (self.muzzleHeight ?? 1.57),
-        z: self.z + (dirZ * (self.muzzleForward ?? 3)),
+        y: self.y + (dirY * (self.muzzleForward ?? 3)),
+        z: self.z + (self.muzzleHeight ?? 1.57),
       },
-      dir: { x: dirX, y: 0, z: dirZ },
+      dir: { x: dirX, y: dirY, z: 0 },
       segments: null,
     };
   }
@@ -228,18 +215,15 @@ export class Roger {
   }
 
   remotePlayers(view) {
-    return view.players.map((p) => ({ ...p, ...toBzf(p), vx: p.vx, vy: -p.vz, vz: p.vy }));
+    return view.players;
   }
 
-  // The view's ray, asked in upstream's frame.
   openDistance(ctx, pos, azimuth) {
-    return ctx.view.openDistance(
-      { x: pos.x, y: pos.z, z: -pos.y }, toBzoHeading(azimuth));
+    return ctx.view.openDistance(pos, azimuth);
   }
 
   isObscured(ctx, from, to) {
-    return ctx.view.isObscured(
-      { x: from.x, y: from.z, z: -from.y }, { x: to.x, y: to.z, z: -to.y });
+    return ctx.view.isObscured(from, to);
   }
 
   dropHardFlags(ctx) {
@@ -256,11 +240,11 @@ export class Roger {
       if (shot.flag === 'IB' && me.flag !== 'SE') continue;
       if (shot.ownerZoned && !me.zoned) continue;
       if (shot.flag === 'L' && me.flag === 'CL') continue;
-      const pos = toBzf(shot);
+      const pos = pointOf(shot);
       if (Math.abs(pos.z - me.z) > view.world.tankHeight && shot.flag !== 'GM') continue;
       const dist = distance2D(me, pos);
       if (dist >= minDistance || dist === 0) continue;
-      const shotAngle = Math.atan2(-shot.vz, shot.vx);
+      const shotAngle = Math.atan2(shot.vy, shot.vx);
       const dot = (((me.x - pos.x) / dist) * Math.cos(shotAngle))
         + (((me.y - pos.y) / dist) * Math.sin(shotAngle));
       // "pretty wide angle, evasive actions prolly aren't gonna work"
@@ -364,7 +348,7 @@ export class Roger {
     const target = this.findBestTarget(ctx, this.remotePlayers(view));
     if (!target) return false;
     out.targetId = target.id;
-    out.intent.target = { ...toBzo(target), id: target.id };
+    out.intent.target = { ...pointOf(target), id: target.id };
     const distance = distance2D(me, target);
     if (distance > 250) return false;
 
@@ -375,8 +359,7 @@ export class Roger {
     // jump over it"
     if (Math.abs(out.rotation) < view.world.lockOnAngle) {
       const d = distance - 5; // "Make sure building is REALLY in front of player"
-      const building = view.firstBuilding(
-        { x: me.x, y: me.z, z: -me.y }, toBzoHeading(me.azimuth), d);
+      const building = view.firstBuilding(me, me.azimuth, d);
       if (building && !me.zoned && me.flag !== 'OO') {
         // "If roger can drive around it, just do that"
         if (this.openDistance(ctx, me, me.azimuth + (Math.PI / 6)) > 2 * d) {
@@ -435,7 +418,7 @@ export class Roger {
       if (!flag.onGround) continue;
       if (flag.team !== null) teamFlag = flag;
       else if (!this.wantsGroundFlag(flag)) continue;
-      const fpos = toBzf(flag);
+      const fpos = pointOf(flag);
       // Upstream's `fpos[2] == pos[2]`: only a flag at the tank's own level.
       if (Math.abs(fpos.z - pos.z) > 0.01) continue;
       let dist = distance2D(pos, fpos);
@@ -449,7 +432,7 @@ export class Roger {
     if (!closest) return false;
     if (minDist < 10 && me.flag) out.dropFlag = true;
     out.intent.target = { x: closest.x, y: closest.y, z: closest.z, flag: closest.type ?? null };
-    const flagAzimuth = azimuthTo(pos, toBzf(closest));
+    const flagAzimuth = azimuthTo(pos, closest);
     out.rotation = normalizeAngle(flagAzimuth - me.azimuth);
     out.speed = HALF_PI - Math.abs(out.rotation);
     return true;
@@ -472,13 +455,13 @@ export class Roger {
     if (me.flagTeam !== null) {
       const base = view.myBase();
       out.intent.mode = 'home';
-      if (base) out.intent.target = { x: base.x, y: base.y, z: base.z };
+      if (base) out.intent.target = pointOf(base);
       if (!base) {
         out.dropFlag = true;
       } else if (me.flagTeam === me.teamColor && this.isHome(pos, base)) {
         out.dropFlag = true;
       } else {
-        out.rotation = normalizeAngle(azimuthTo(pos, toBzf(base)) - me.azimuth);
+        out.rotation = normalizeAngle(azimuthTo(pos, base) - me.azimuth);
         out.speed = HALF_PI - Math.abs(out.rotation);
       }
     } else {
@@ -499,16 +482,16 @@ export class Roger {
     let azimuth = me.azimuth;
     if (out.speed < 0) azimuth += Math.PI;
     const reach = 8 * view.world.tankHeight;
-    const from = { x: me.x, y: me.z + (10 * view.world.tankHeight), z: -me.y };
+    const from = { x: me.x, y: me.y, z: me.z + (10 * view.world.tankHeight) };
     const to = {
       x: me.x + (reach * Math.cos(azimuth)),
-      y: me.z + 0.01,
-      z: -(me.y + (reach * Math.sin(azimuth))),
+      y: me.y + (reach * Math.sin(azimuth)),
+      z: me.z + 0.01,
     };
     const hit = view.firstHit(from, to);
     if (hit) {
-      const groundY = Math.max(0, hit.y);
-      if (Number.isFinite(waterLevel) && groundY < waterLevel) out.speed = 0;
+      const ground = Math.max(0, hit.z);
+      if (Number.isFinite(waterLevel) && ground < waterLevel) out.speed = 0;
     } else {
       this.edgeAhead(ctx);
     }
@@ -833,10 +816,10 @@ export class Ace extends Roger {
       const t = (p.vz + Math.sqrt(disc)) / g;
       landing = { x: p.x + (p.vx * t), y: p.y + (p.vy * t), z: floor, t };
       const hit = ctx.view.firstHit(
-        { x: landing.x, y: apex + 0.5, z: -landing.y },
-        { x: landing.x, y: -0.1, z: -landing.y },
+        { x: landing.x, y: landing.y, z: apex + 0.5 },
+        { x: landing.x, y: landing.y, z: -0.1 },
       );
-      const surface = hit ? Math.max(0, hit.y) : 0;
+      const surface = hit ? Math.max(0, hit.z) : 0;
       if (Math.abs(surface - floor) < 0.01) break;
       floor = surface;
     }
@@ -1079,7 +1062,7 @@ export class Ace extends Roger {
   huntFar(ctx, quarry) {
     const { out } = ctx;
     out.targetId = quarry.id;
-    out.intent.target = { ...toBzo(quarry), id: quarry.id };
+    out.intent.target = { ...pointOf(quarry), id: quarry.id };
     out.intent.mode = 'hunt';
     const route = typeof ctx.view.findRoute === 'function'
       ? this.routeTo(ctx, quarry, CHASE_DEST_SLACK) : null;
@@ -1115,7 +1098,7 @@ export class Ace extends Roger {
       z: me.z,
     };
     out.intent.mode = 'flee';
-    out.intent.target = toBzo(point);
+    out.intent.target = point;
     const route = typeof view.findRoute === 'function'
       ? this.routeTo(ctx, point, CHASE_DEST_SLACK) : null;
     if (route && this.followRoute(ctx, route)) return true;
@@ -1179,7 +1162,7 @@ export class Ace extends Roger {
   fightClose(ctx, foe) {
     const { out } = ctx;
     out.targetId = foe.id;
-    out.intent.target = { ...toBzo(foe), id: foe.id };
+    out.intent.target = { ...pointOf(foe), id: foe.id };
     out.intent.mode = 'fight';
     this.aimAt(ctx, azimuthTo(ctx.me, predict(foe)));
     out.speed = 0;
@@ -1229,9 +1212,9 @@ export class Ace extends Roger {
   ambush(ctx, { p, plan }) {
     const { out } = ctx;
     out.targetId = p.id;
-    out.intent.target = { ...toBzo(p), id: p.id };
+    out.intent.target = { ...pointOf(p), id: p.id };
     out.intent.mode = 'ambush';
-    out.intent.landing = toBzo(plan.landing);
+    out.intent.landing = pointOf(plan.landing);
     const range = this.speedRange(ctx);
     const now = this.landingShotSpeed(ctx, plan, 0, range);
     const shot = this.shotToward(ctx, plan.landing, Number.isFinite(now.speed) ? now.speed : 0)
@@ -1322,14 +1305,16 @@ export class Ace extends Roger {
     });
     if (!target) return;
     if (this.openDistance(ctx, pos, me.azimuth) < LUNGE_CLEARANCE) return;
-    const ahead = this.surfaceAt(view, me.x + (LUNGE_CLEARANCE * Math.cos(me.azimuth)),
-      -(me.y + (LUNGE_CLEARANCE * Math.sin(me.azimuth))), me.z + 1);
+    const ahead = this.surfaceAt(view,
+      me.x + (LUNGE_CLEARANCE * Math.cos(me.azimuth)),
+      me.y + (LUNGE_CLEARANCE * Math.sin(me.azimuth)),
+      me.z + 1);
     if (Math.abs(ahead - me.z) > 0.5) return;
     this.lunge = { id: target.id, at: view.now };
     out.speed = 1;
     out.targetId = target.id;
     out.intent.mode = 'lunge';
-    out.intent.target = { ...toBzo(target), id: target.id };
+    out.intent.target = { ...pointOf(target), id: target.id };
   }
 
   // Whether the shot chosen this frame may go: always while more slots are
@@ -1348,24 +1333,24 @@ export class Ace extends Roger {
     return Boolean(target) && distance2D(me, target) <= SHOT_RESERVE_SPEND_RANGE;
   }
 
-  // The shot a trigger pulled this frame fires, in bzo's frame: upstream's
-  // velocity -- this frame's own speed along the barrel on the ground, the one
-  // he left with in the air -- as its strategy scales it.
+  // The shot a trigger pulled this frame fires: upstream's velocity -- this
+  // frame's own speed along the barrel on the ground, the one he left with in
+  // the air -- as its strategy scales it.
   shotVelocity(ctx) {
     const { view, me, out } = ctx;
     const self = view.self;
     const base = view.world.shotSpeed;
-    const dirX = -Math.sin(self.rotation);
-    const dirZ = -Math.cos(self.rotation);
+    const dirX = Math.cos(self.azimuth);
+    const dirY = Math.sin(self.azimuth);
     const range = this.speedRange(ctx);
     const own = me.inAir
-      ? { x: self.velocity?.x ?? 0, z: self.velocity?.z ?? 0 }
-      : { x: dirX * out.speed * range.top, z: dirZ * out.speed * range.top };
+      ? { x: self.velocity?.x ?? 0, y: self.velocity?.y ?? 0 }
+      : { x: dirX * out.speed * range.top, y: dirY * out.speed * range.top };
     const vx = own.x + (base * dirX);
-    const vz = own.z + (base * dirZ);
-    const length = Math.hypot(vx, vz) || 1;
+    const vy = own.y + (base * dirY);
+    const length = Math.hypot(vx, vy) || 1;
     return {
-      dir: { x: vx / length, y: 0, z: vz / length },
+      dir: { x: vx / length, y: vy / length, z: 0 },
       speed: me.flag === 'GM' ? base : length * (self.shotSpeed / base),
     };
   }
@@ -1377,12 +1362,12 @@ export class Ace extends Roger {
     const self = view.self;
     this.lastTrace = null;
     if (!self.ricochet || typeof view.traceShot !== 'function') return false;
-    const dirX = -Math.sin(self.rotation);
-    const dirZ = -Math.cos(self.rotation);
+    const dirX = Math.cos(self.azimuth);
+    const dirY = Math.sin(self.azimuth);
     const muzzle = {
       x: self.x + (dirX * self.muzzleForward),
-      y: self.y + self.muzzleHeight,
-      z: self.z + (dirZ * self.muzzleForward),
+      y: self.y + (dirY * self.muzzleForward),
+      z: self.z + self.muzzleHeight,
     };
     const reach = TANK.radius + SELF_HIT_MARGIN;
     const shot = this.shotVelocity(ctx);
@@ -1390,7 +1375,7 @@ export class Ace extends Roger {
     this.lastTrace = segments;
     for (const segment of segments) {
       if (segment.t0 < SELF_HIT_GRACE_SECONDS) continue;
-      if (segment.to.y > self.y + view.world.tankHeight + 1) continue;
+      if (segment.to.z > self.z + view.world.tankHeight + 1) continue;
       if (segmentDistance2D(segment.from, segment.to, self) < reach) return true;
     }
     return false;
@@ -1454,7 +1439,7 @@ export class Ace extends Roger {
     const uy = sy / length;
     const onLine = (p) => {
       const rx = p.x - me.x;
-      const ry = -p.z - me.y;
+      const ry = p.y - me.y;
       return (rx * ux) + (ry * uy) > 0 && Math.abs((rx * uy) - (ry * ux)) < TANK.radius * AIR_SHOT_SHARE;
     };
     // Roger fires at anything lined up, however far (AutoPilot.cxx:703). Ace
@@ -1464,17 +1449,16 @@ export class Ace extends Roger {
     // judges the aim, 0.3 seconds ahead.
     const travel = me.flag === 'GM' ? base : length * ((me.shotSpeed ?? base) / base);
     const reach = (me.muzzleForward ?? 0) + (travel * (me.shotLifetime ?? Infinity)) + TANK.radius;
-    // `view.players` is still in bzo's axes here, as `onLine` reads it.
     const inRange = (p) => me.flag === 'SW' || distance2D(me, {
       x: p.x + (0.3 * (p.vx ?? 0)),
-      y: -(p.z + (0.3 * (p.vz ?? 0))),
+      y: p.y + (0.3 * (p.vy ?? 0)),
     }) <= reach;
     const grounded = {
       ...view,
       players: view.players.filter((p) => !p.airborne
         && !(view.now <= (this.landingShots.get(p.id) ?? -Infinity) + 0.5)
         && inRange(p)
-        && (!me.inAir || (muzzle >= p.y && muzzle <= p.y + view.world.tankHeight && onLine(p)))),
+        && (!me.inAir || (muzzle >= p.z && muzzle <= p.z + view.world.tankHeight && onLine(p)))),
     };
     super.fireAtTank({ ...ctx, view: grounded });
   }
@@ -1571,9 +1555,8 @@ export class Ace extends Roger {
       if (shot.ownerId === me.id) continue;
       if (shot.ownerZoned && !me.zoned) continue;
       if (shot.flag === 'L' && me.flag === 'CL') continue;
-      const pos = toBzf(shot);
-      const vx = shot.vx;
-      const vy = -shot.vz;
+      const pos = pointOf(shot);
+      const { vx, vy } = shot;
       const speed2 = (vx * vx) + (vy * vy);
       if (speed2 < 1e-6) continue;
       // Only a shot at the height of his body: a burrowed tank's body is
@@ -1618,7 +1601,7 @@ export class Ace extends Roger {
     const { view, me } = ctx;
     const antidote = view.antidote;
     if (!antidote || !me.flag || !isBadFlag(me.flag)) return null;
-    const pos = toBzf(antidote);
+    const pos = pointOf(antidote);
     const drive = distance2D(me, pos) / (view.world.tankSpeed || 1);
     const timeout = view.world.shakeTimeout || 0;
     if (timeout > 0 && timeout < (drive * ANTIDOTE_DRIVE_FACTOR) + ANTIDOTE_SPARE_SECONDS) return null;
@@ -1638,7 +1621,7 @@ export class Ace extends Roger {
     let best = null;
     for (const flag of view.flags) {
       if (!flag.onGround || flag.team === null) continue;
-      const pos = toBzf(flag);
+      const pos = pointOf(flag);
       // With a route graph a flag is worth going for until no route reaches
       // it. Without one, only where driving straight at it gets there: down,
       // level, or up one jump.
@@ -1671,7 +1654,7 @@ export class Ace extends Roger {
     if (!target) return super.lookForFlag(ctx);
     const { me, out } = ctx;
     out.intent.mode = 'capture';
-    out.intent.target = { ...toBzo(target.pos), flag: target.flag.type ?? null };
+    out.intent.target = { ...target.pos, flag: target.flag.type ?? null };
     // One flag at a time: whatever is held goes when the team flag is in reach.
     if (target.dist < 10 && me.flag) out.dropFlag = true;
     if (typeof ctx.view.findRoute === 'function') {
@@ -1688,8 +1671,7 @@ export class Ace extends Roger {
     // clears the top on the way up and comes down on it before falling past.
     const rise = target.pos.z - me.z;
     if (rise > MAX_STEP_UP && Math.abs(out.rotation) < JUMP_AIM_TOLERANCE && !me.inAir) {
-      const edge = ctx.view.firstBuilding(
-        { x: me.x, y: me.z, z: -me.y }, toBzoHeading(me.azimuth), JUMP_LOOKAHEAD);
+      const edge = ctx.view.firstBuilding(me, me.azimuth, JUMP_LOOKAHEAD);
       if (edge && edge.top - me.z <= this.jumpReach(ctx)) this.takeJump(ctx, edge.top - me.z, edge.distance);
     }
     return true;
@@ -1699,7 +1681,7 @@ export class Ace extends Roger {
   goTo(ctx, pos, mode) {
     const { out, me } = ctx;
     out.intent.mode = mode;
-    out.intent.target = toBzo(pos);
+    out.intent.target = pointOf(pos);
     if (typeof ctx.view.findRoute === 'function') {
       const route = this.routeTo(ctx, pos);
       if (route && this.followRoute(ctx, route)) return true;
@@ -1718,26 +1700,26 @@ export class Ace extends Roger {
       const home = base && me.flagTeam === me.teamColor && this.isHome(pos, base);
       if (base && !home) {
         ctx.out.intent.mode = 'home';
-        ctx.out.intent.target = { x: base.x, y: base.y, z: base.z };
-        const route = this.routeTo(ctx, toBzf(base));
+        ctx.out.intent.target = pointOf(base);
+        const route = this.routeTo(ctx, pointOf(base));
         if (route && this.followRoute(ctx, route)) return true;
       }
     }
     return super.navigate(ctx);
   }
 
-  // The route to `dest` (upstream's frame), planned when the destination moves,
+  // The route to `dest`, planned when the destination moves,
   // when Ace has strayed from it, or every few seconds; a destination no route
   // reaches is not asked about again for a while.
   // `slack` is how far the destination may move before it is a new one: a
   // chased tank moves all the time, and every new destination costs a search.
   routeTo(ctx, dest, slack = ROUTE_DEST_SLACK) {
     const { view, me } = ctx;
-    const here = { x: me.x, y: me.z, z: -me.y };
-    const there = { x: dest.x, y: dest.z, z: -dest.y };
+    const here = pointOf(me);
+    const there = pointOf(dest);
     const current = this.route;
-    const sameDest = current && Math.hypot(current.dest.x - there.x, current.dest.z - there.z) < slack
-      && Math.abs(current.dest.y - there.y) < 1;
+    const sameDest = current && Math.hypot(current.dest.x - there.x, current.dest.y - there.y) < slack
+      && Math.abs(current.dest.z - there.z) < 1;
     if (sameDest && !current.nodes) {
       return view.now - current.plannedAt < UNREACHABLE_SECONDS ? null : this.plan(view, here, there);
     }
@@ -1772,17 +1754,17 @@ export class Ace extends Roger {
   // level, and up a jump when lined up for it. False once the route is run.
   followRoute(ctx, route) {
     const { me, out } = ctx;
-    const here = { x: me.x, y: me.z, z: -me.y };
+    const here = pointOf(me);
     const nodes = route.nodes;
     // Up off the ground, where an edge is a fall, a node counts only once Ace
     // is on it and the aim does not run ahead to cut a corner.
-    const raised = here.y > MAX_STEP_UP;
+    const raised = here.z > MAX_STEP_UP;
     const tuning = this.tuning;
     const reached = raised ? tuning.reachedRaised : tuning.reachedGround;
     while (route.at < nodes.length) {
       const node = nodes[route.at];
-      if (Math.abs(node.y - here.y) > 1) break;
-      const distance = Math.hypot(node.x - here.x, node.z - here.z);
+      if (Math.abs(node.z - here.z) > 1) break;
+      const distance = Math.hypot(node.x - here.x, node.y - here.y);
       if (distance <= reached) {
         route.at++;
         continue;
@@ -1792,7 +1774,7 @@ export class Ace extends Roger {
       // tank that turns an eighth of a circle a second spends its life.
       const after = nodes[route.at + 1];
       if (!after || distance > tuning.passRange) break;
-      const ahead = ((here.x - node.x) * (after.x - node.x)) + ((here.z - node.z) * (after.z - node.z));
+      const ahead = ((here.x - node.x) * (after.x - node.x)) + ((here.y - node.y) * (after.y - node.y));
       if (ahead <= 0) break;
       route.at++;
     }
@@ -1800,7 +1782,7 @@ export class Ace extends Roger {
     out.intent.route = nodes.slice(route.at);
     const next = nodes[route.at];
     if (next.flight && !me.inAir) {
-      if (next.y > MAX_STEP_UP) this.shedPhasingOnTakeoff(ctx);
+      if (next.z > MAX_STEP_UP) this.shedPhasingOnTakeoff(ctx);
       if (!next.flight.jump && this.driveOffDirect(ctx, here, next)) return true;
       this.fly(ctx, here, route.at > 0 ? nodes[route.at - 1] : here, next.flight, next,
         this.landingAim(nodes, route.at));
@@ -1814,7 +1796,7 @@ export class Ace extends Roger {
         aim = this.groundAim(ctx, here, nodes, route.at, tuning.groundLookahead);
       }
     }
-    out.rotation = normalizeAngle(azimuthTo(me, toBzf(aim)) - me.azimuth);
+    out.rotation = normalizeAngle(azimuthTo(me, aim) - me.azimuth);
     if (tuning.speed === 'arrival') {
       out.speed = this.arrivalSpeed(ctx, here, aim, out.rotation);
     } else {
@@ -1919,12 +1901,12 @@ export class Ace extends Roger {
       // A jump or a gap is entered from its takeoff node and nowhere else:
       // being level with some point along its leg is not being ready for it.
       if (b.jump || b.bridge) break;
-      if (Math.abs(b.y - here.y) > 1 && Math.abs(a.y - here.y) > 1) continue;
+      if (Math.abs(b.z - here.z) > 1 && Math.abs(a.z - here.z) > 1) continue;
       const dx = b.x - a.x;
-      const dz = b.z - a.z;
-      const lengthSquared = (dx * dx) + (dz * dz) || 1;
-      const t = Math.max(0, Math.min(1, (((here.x - a.x) * dx) + ((here.z - a.z) * dz)) / lengthSquared));
-      const distance = Math.hypot(a.x + (dx * t) - here.x, a.z + (dz * t) - here.z);
+      const dy = b.y - a.y;
+      const lengthSquared = (dx * dx) + (dy * dy) || 1;
+      const t = Math.max(0, Math.min(1, (((here.x - a.x) * dx) + ((here.y - a.y) * dy)) / lengthSquared));
+      const distance = Math.hypot(a.x + (dx * t) - here.x, a.y + (dy * t) - here.y);
       if (distance < best.distance) best = { leg: k, distance, t };
     }
     return best;
@@ -1935,7 +1917,7 @@ export class Ace extends Roger {
   // gap, a change of level. Short up on a walkway, so he stays over it; longer
   // on the ground, shortened while a tank's width to it is not clear.
   pursuitPoint(ctx, here, nodes, at, raised) {
-    const level = nodes[at].y;
+    const level = nodes[at].z;
     const { pursuitGround, pursuitRaised, pursuitMin } = this.tuning;
     for (let lead = raised ? pursuitRaised : pursuitGround; lead >= pursuitMin; lead /= 2) {
       let left = lead;
@@ -1943,11 +1925,11 @@ export class Ace extends Roger {
       let point = nodes[at];
       for (let k = at; k < nodes.length; k++) {
         const node = nodes[k];
-        if (k > at && (node.jump || node.bridge || Math.abs(node.y - level) > MAX_STEP_UP)) break;
-        const step = Math.hypot(node.x - from.x, node.z - from.z);
+        if (k > at && (node.jump || node.bridge || Math.abs(node.z - level) > MAX_STEP_UP)) break;
+        const step = Math.hypot(node.x - from.x, node.y - from.y);
         if (step >= left) {
           const t = left / step;
-          point = { x: from.x + ((node.x - from.x) * t), y: node.y, z: from.z + ((node.z - from.z) * t) };
+          point = { x: from.x + ((node.x - from.x) * t), y: from.y + ((node.y - from.y) * t), z: node.z };
           left = 0;
           break;
         }
@@ -1957,9 +1939,9 @@ export class Ace extends Roger {
       }
       if (raised) return point;
       const dx = point.x - here.x;
-      const dz = point.z - here.z;
-      const length = Math.hypot(dx, dz);
-      if (length < 1e-3 || this.laneClear(ctx, here, point, dx / length, dz / length)) return point;
+      const dy = point.y - here.y;
+      const length = Math.hypot(dx, dy);
+      if (length < 1e-3 || this.laneClear(ctx, here, point, dx / length, dy / length)) return point;
     }
     return nodes[at];
   }
@@ -1977,10 +1959,10 @@ export class Ace extends Roger {
     for (let k = at; k < nodes.length && travelled < cornerLookahead; k++) {
       const node = nodes[k];
       const dx = node.x - from.x;
-      const dz = node.z - from.z;
-      const step = Math.hypot(dx, dz);
+      const dy = node.y - from.y;
+      const step = Math.hypot(dx, dy);
       if (step < 1e-3) continue;
-      const direction = Math.atan2(dx, dz);
+      const direction = Math.atan2(dy, dx);
       if (heading !== null) sharpest = Math.max(sharpest, Math.abs(normalizeAngle(direction - heading)));
       heading = direction;
       travelled += step;
@@ -2000,7 +1982,7 @@ export class Ace extends Roger {
     const bearing = Math.abs(rotation);
     if (bearing >= HALF_PI) return 0;
     const turnRadius = (world.tankSpeed || 25) / (world.tankAngVel || (Math.PI / 4));
-    const distance = Math.hypot(aim.x - here.x, aim.z - here.z);
+    const distance = Math.hypot(aim.x - here.x, aim.y - here.y);
     const sine = Math.sin(bearing);
     if (sine < 1e-3) return 1;
     return Math.min(1, distance / (2 * sine * turnRadius));
@@ -2016,32 +1998,32 @@ export class Ace extends Roger {
   groundAim(ctx, here, nodes, at, lookahead) {
     const cached = this.aimCache;
     if (cached && cached.nodes === nodes && cached.at === at
-      && Math.hypot(cached.x - here.x, cached.z - here.z) < AIM_RECHECK_DISTANCE) {
+      && Math.hypot(cached.x - here.x, cached.y - here.y) < AIM_RECHECK_DISTANCE) {
       return nodes[cached.k];
     }
     const next = nodes[at];
     let k = at;
     for (let j = at + 1; j < Math.min(nodes.length, at + lookahead); j++) {
       const node = nodes[j];
-      if (node.jump || node.bridge || Math.abs(node.y - next.y) > 0.5) break;
-      const length = Math.hypot(node.x - here.x, node.z - here.z) || 1;
-      if (!this.laneClear(ctx, here, node, (node.x - here.x) / length, (node.z - here.z) / length,
+      if (node.jump || node.bridge || Math.abs(node.z - next.z) > 0.5) break;
+      const length = Math.hypot(node.x - here.x, node.y - here.y) || 1;
+      if (!this.laneClear(ctx, here, node, (node.x - here.x) / length, (node.y - here.y) / length,
         AIM_LANE_LIFT)) break;
       k = j;
     }
-    this.aimCache = { nodes, at, x: here.x, z: here.z, k };
+    this.aimCache = { nodes, at, x: here.x, y: here.y, k };
     return nodes[k];
   }
 
   // A tank's width of open drive from here to there: the centre line and one
   // either side, `lift` above the surface. Low enough to meet a pyramid's
   // sloping end, which a ray at a tank's middle passes over.
-  laneClear(ctx, here, there, ux, uz, lift = 1) {
+  laneClear(ctx, here, there, ux, uy, lift = 1) {
     for (const side of [0, -LANE_HALF_WIDTH, LANE_HALF_WIDTH]) {
-      const ox = -uz * side;
-      const oz = ux * side;
-      const from = { x: here.x + ox, y: here.y + lift, z: here.z + oz };
-      const to = { x: there.x + ox, y: there.y + lift, z: there.z + oz };
+      const ox = uy * side;
+      const oy = -ux * side;
+      const from = { x: here.x + ox, y: here.y + oy, z: here.z + lift };
+      const to = { x: there.x + ox, y: there.y + oy, z: there.z + lift };
       if (ctx.view.isObscured(from, to)) return false;
     }
     return true;
@@ -2091,36 +2073,36 @@ export class Ace extends Roger {
   // straight at it at that speed; otherwise the planned takeoff it is.
   driveOffDirect(ctx, here, landing) {
     const { view, me, out } = ctx;
-    const drop = here.y - landing.y;
+    const drop = here.z - landing.z;
     if (drop <= MAX_STEP_UP || !(view.world.gravity > 0)) return false;
     const dx = landing.x - here.x;
-    const dz = landing.z - here.z;
-    const length = Math.hypot(dx, dz);
+    const dy = landing.y - here.y;
+    const length = Math.hypot(dx, dy);
     if (length < NAV_CELL) return false;
     const ux = dx / length;
-    const uz = dz / length;
+    const uy = dy / length;
     let edge = null;
     for (let s = 1; s < length; s += 1) {
-      const y = this.surfaceAt(view, here.x + (ux * s), here.z + (uz * s), here.y);
-      if (Math.abs(y - here.y) > MAX_STEP_UP) {
+      const z = this.surfaceAt(view, here.x + (ux * s), here.y + (uy * s), here.z);
+      if (Math.abs(z - here.z) > MAX_STEP_UP) {
         edge = s;
         break;
       }
     }
     if (edge === null) return false;
-    const brink = { x: here.x + (ux * edge), y: here.y, z: here.z + (uz * edge) };
-    if (!this.laneClear(ctx, here, brink, ux, uz, AIM_LANE_LIFT)) return false;
+    const brink = { x: here.x + (ux * edge), y: here.y + (uy * edge), z: here.z };
+    if (!this.laneClear(ctx, here, brink, ux, uy, AIM_LANE_LIFT)) return false;
     const top = me.topSpeed ?? view.world.tankSpeed;
     const fall = Math.sqrt((2 * drop) / view.world.gravity);
     // The tank tips once its centre is past the edge.
     const leave = edge + DRIVE_OFF_TIP;
     const speed = Math.min(top, Math.max(DRIVE_OFF_SLOWEST * top, (length - leave) / fall));
     const reach = leave + (speed * fall);
-    const down = { x: here.x + (ux * reach), y: landing.y, z: here.z + (uz * reach) };
-    if (Math.abs(this.surfaceAt(view, down.x, down.z, here.y) - landing.y) > MAX_STEP_UP) return false;
-    const below = { x: brink.x, y: landing.y, z: brink.z };
-    if (!this.laneClear(ctx, below, down, ux, uz)) return false;
-    const bearing = normalizeAngle(Math.atan2(-dz, dx) - me.azimuth);
+    const down = { x: here.x + (ux * reach), y: here.y + (uy * reach), z: landing.z };
+    if (Math.abs(this.surfaceAt(view, down.x, down.y, here.z) - landing.z) > MAX_STEP_UP) return false;
+    const below = { x: brink.x, y: brink.y, z: landing.z };
+    if (!this.laneClear(ctx, below, down, ux, uy)) return false;
+    const bearing = normalizeAngle(Math.atan2(dy, dx) - me.azimuth);
     out.rotation = this.steer(ctx, bearing);
     // Square to it before going over: a tank keeps the turn it leaves the edge
     // with all the way down.
@@ -2130,17 +2112,17 @@ export class Ace extends Roger {
     if (lined) {
       this.lastFlight = {
         at: view.now, jump: false, air: fall, turn: 0, rotation: out.rotation,
-        aim: { x: landing.x, z: landing.z }, landing: { x: landing.x, y: landing.y, z: landing.z },
+        aim: { x: landing.x, y: landing.y }, landing: pointOf(landing),
       };
     }
     return true;
   }
 
-  // The height of whatever a tank would stand on at (x, z), looking down from
-  // just above `fromY`: the ground where there is nothing.
-  surfaceAt(view, x, z, fromY) {
-    const hit = view.firstHit({ x, y: fromY + 0.5, z }, { x, y: -0.1, z });
-    return hit ? Math.max(0, hit.y) : 0;
+  // The height of whatever a tank would stand on at (x, y), looking down from
+  // just above `fromZ`: the ground where there is nothing.
+  surfaceAt(view, x, y, fromZ) {
+    const hit = view.firstHit({ x, y, z: fromZ + 0.5 }, { x, y, z: -0.1 });
+    return hit ? Math.max(0, hit.z) : 0;
   }
 
   // When and where in a flight the tank's muzzle is level with the middle of
@@ -2150,29 +2132,29 @@ export class Ace extends Roger {
     const { view, me } = ctx;
     const g = view.world.gravity;
     if (!(g > 0)) return null;
-    const vy = flight.jump ? view.world.jumpVelocity : 0;
-    const rise = (foe.y + (view.world.tankHeight / 2) - (me.muzzleHeight ?? 1.57)) - here.y;
-    const disc = (vy * vy) - (2 * g * rise);
+    const vz = flight.jump ? view.world.jumpVelocity : 0;
+    const rise = (foe.z + (view.world.tankHeight / 2) - (me.muzzleHeight ?? 1.57)) - here.z;
+    const disc = (vz * vz) - (2 * g * rise);
     if (disc < 0) return null;
     const root = Math.sqrt(disc);
-    const up = (vy - root) / g;
-    const down = (vy + root) / g;
+    const up = (vz - root) / g;
+    const down = (vz + root) / g;
     const t = up > FOE_PASS_SOONEST ? up : down;
     if (!(t > FOE_PASS_SOONEST) || t > flight.air) return null;
     const travel = flight.speed * view.world.tankSpeed * t;
-    return { t, x: here.x + (flight.dx * travel), z: here.z + (flight.dz * travel) };
+    return { t, x: here.x + (flight.dx * travel), y: here.y + (flight.dy * travel) };
   }
 
   // The nearest live foe on the surface a flight comes down on, within
-  // `CAPTURE_CHASE_RANGE` of the landing, in bzo's frame -- or null.
+  // `CAPTURE_CHASE_RANGE` of the landing, or null.
   foeAtLanding(ctx, landing) {
     const { view, me } = ctx;
     let best = null;
     for (const p of view.players) {
       if (!p.alive || p.paused || !view.isFoe(p)) continue;
       if (p.zoned && !me.zoned) continue;
-      if (Math.abs(p.y - landing.y) > 1) continue;
-      const d = Math.hypot(p.x - landing.x, p.z - landing.z);
+      if (Math.abs(p.z - landing.z) > 1) continue;
+      const d = Math.hypot(p.x - landing.x, p.y - landing.y);
       if (d < CAPTURE_CHASE_RANGE && (!best || d < best.d)) best = { x: p.x, y: p.y, z: p.z, d };
     }
     return best;
@@ -2189,9 +2171,9 @@ export class Ace extends Roger {
     let aim = nodes[at + 1] || null;
     for (let k = at + 1; k < nodes.length; k++) {
       const node = nodes[k];
-      if (node.jump || node.flight || node.bridge || Math.abs(node.y - landing.y) > 0.5) break;
+      if (node.jump || node.flight || node.bridge || Math.abs(node.z - landing.z) > 0.5) break;
       aim = node;
-      if (Math.hypot(node.x - landing.x, node.z - landing.z) >= LANDING_AIM_REACH) break;
+      if (Math.hypot(node.x - landing.x, node.y - landing.y) >= LANDING_AIM_REACH) break;
     }
     return aim;
   }
@@ -2210,9 +2192,9 @@ export class Ace extends Roger {
     // the takeoff -- nor further on than the launch, for a drive-off, which is
     // that stretch of driving.
     const rx = here.x - takeoff.x;
-    const rz = here.z - takeoff.z;
-    const along = (rx * flight.dx) + (rz * flight.dz);
-    const across = Math.abs((rx * flight.dz) - (rz * flight.dx));
+    const ry = here.y - takeoff.y;
+    const along = (rx * flight.dx) + (ry * flight.dy);
+    const across = Math.abs((rx * flight.dy) - (ry * flight.dx));
     const furthest = flight.jump ? FLIGHT_TAKEOFF_SLACK : flight.launch + FLIGHT_TAKEOFF_SLACK + NAV_CELL;
     // Under an acceleration limit a jump needs a run-up to leave at its speed:
     // the distance that speed takes to reach, behind the takeoff.
@@ -2221,16 +2203,16 @@ export class Ace extends Roger {
     // A jump overshot by a little is backed straight up to, on its line: turning
     // round to drive back and turning again to face it costs more than either.
     if (flight.jump && across <= FLIGHT_TAKEOFF_SLACK && along > furthest && along < furthest + (2 * NAV_CELL)) {
-      this.aimAt(ctx, Math.atan2(-flight.dz, flight.dx));
+      this.aimAt(ctx, Math.atan2(flight.dy, flight.dx));
       out.speed = -0.5;
       return;
     }
     if (across > FLIGHT_TAKEOFF_SLACK || along < -(FLIGHT_TAKEOFF_SLACK + runup) || along > furthest) {
-      out.rotation = normalizeAngle(azimuthTo(me, toBzf(takeoff)) - me.azimuth);
+      out.rotation = normalizeAngle(azimuthTo(me, takeoff) - me.azimuth);
       out.speed = Math.abs(out.rotation) > this.tuning.turnInPlace ? 0 : HALF_PI - Math.abs(out.rotation);
       return;
     }
-    const heading = Math.atan2(-flight.dz, flight.dx);
+    const heading = Math.atan2(flight.dy, flight.dx);
     const speed = flight.speed;
     const off = this.aimAt(ctx, heading);
     const aligned = Math.abs(off) < FLIGHT_AIM_TOLERANCE;
@@ -2265,13 +2247,13 @@ export class Ace extends Roger {
       if (pass) {
         // The barrel that puts the shot -- the tank's velocity and its own --
         // on the foe from where the tank will be, not the bearing itself.
-        const toward = Math.atan2(-(foe.z - pass.z), foe.x - pass.x);
+        const toward = Math.atan2(foe.y - pass.y, foe.x - pass.x);
         const u = flight.speed * ctx.view.world.tankSpeed;
-        const barrel = skewedBarrel(flight.dx * u, -flight.dz * u, toward, ctx.view.world.shotSpeed);
+        const barrel = skewedBarrel(flight.dx * u, flight.dy * u, toward, ctx.view.world.shotSpeed);
         turn = normalizeAngle((barrel ? barrel.azimuth : toward) - heading);
         over = pass.t;
       } else {
-        turn = normalizeAngle(Math.atan2(-(after.z - landing.z), after.x - landing.x) - heading);
+        turn = normalizeAngle(Math.atan2(after.y - landing.y, after.x - landing.x) - heading);
         over = flight.air;
       }
       // Without Wings the turn through the air is only what the tank leaves
@@ -2288,7 +2270,7 @@ export class Ace extends Roger {
       // against what it did (client.js's flight log).
       this.lastFlight = {
         at: ctx.view.now, jump: flight.jump, air: flight.air, turn, rotation: out.rotation,
-        aim: { x: after.x, z: after.z }, landing: { x: landing.x, y: landing.y, z: landing.z },
+        aim: { x: after.x, y: after.y }, landing: pointOf(landing),
       };
     }
   }
@@ -2328,8 +2310,8 @@ export class Ace extends Roger {
       out.speed = 0;
       return;
     }
-    const edge = Math.hypot(landing.x - here.x, landing.z - here.z) - (NAV_CELL / 2);
-    this.takeJump(ctx, landing.y - here.y, edge);
+    const edge = Math.hypot(landing.x - here.x, landing.y - here.y) - (NAV_CELL / 2);
+    this.takeJump(ctx, landing.z - here.z, edge);
   }
 
   // Jump onto something `rise` up and `edge` away at the speed that lands it,
@@ -2358,7 +2340,7 @@ export class Ace extends Roger {
 
   // Home is on the base.
   isHome(pos, base) {
-    return distance2D(pos, toBzf(base)) <= base.radius;
+    return distance2D(pos, base) <= base.radius;
   }
 
   // Off the ground, Roger's look-ahead meets nothing whether or not an edge is
@@ -2399,25 +2381,25 @@ export function createWorldProbes({
     const impact = findImpact(obstacles(), from, to, 0);
     let fraction = impact ? impact.fraction : 1;
     const half = mapSize() / 2;
-    for (const axis of ['x', 'z']) {
+    for (const axis of ['x', 'y']) {
       const delta = to[axis] - from[axis];
       if (delta > 0 && to[axis] > half) fraction = Math.min(fraction, (half - from[axis]) / delta);
       if (delta < 0 && to[axis] < -half) fraction = Math.min(fraction, (-half - from[axis]) / delta);
     }
     return { fraction: Math.max(0, fraction), obstacle: impact ? impact.obstacle : null, hit: fraction < 1 };
   };
-  const ray = (pos, heading, range) => {
-    const from = { x: pos.x, y: pos.y + 0.1, z: pos.z };
+  const ray = (pos, azimuth, range) => {
+    const from = { x: pos.x, y: pos.y, z: pos.z + 0.1 };
     const to = {
-      x: from.x - (Math.sin(heading) * range),
-      y: from.y,
-      z: from.z - (Math.cos(heading) * range),
+      x: from.x + (Math.cos(azimuth) * range),
+      y: from.y + (Math.sin(azimuth) * range),
+      z: from.z,
     };
     return rayFraction(from, to);
   };
   return {
-    openDistance: (pos, heading) => {
-      const hit = ray(pos, heading, PROBE_RANGE);
+    openDistance: (pos, azimuth) => {
+      const hit = ray(pos, azimuth, PROBE_RANGE);
       return hit.hit ? hit.fraction * PROBE_RANGE : Infinity;
     },
     isObscured: (from, to) => rayFraction(from, to).hit,
@@ -2430,9 +2412,9 @@ export function createWorldProbes({
         z: from.z + ((to.z - from.z) * hit.fraction),
       };
     },
-    firstBuilding: (pos, heading, range) => {
+    firstBuilding: (pos, azimuth, range) => {
       if (!(range > 0)) return null;
-      const hit = ray(pos, heading, range);
+      const hit = ray(pos, azimuth, range);
       if (!hit.obstacle) return null;
       return {
         isBox: hit.obstacle.type === 'box',
@@ -2472,7 +2454,6 @@ export function createWorldProbes({
   };
 }
 
-// The nearest a segment comes to a point, on the ground plane.
 // The barrel heading that sends a shot along `toward` (an azimuth, upstream's
 // frame) from a tank moving at (vx, vy): the shot leaves with the tank's
 // velocity plus `base` along the barrel, so the part of the tank's velocity
@@ -2494,14 +2475,15 @@ function skewedBarrel(vx, vy, toward, base) {
   };
 }
 
+// The nearest a segment comes to a point, on the ground plane.
 function segmentDistance2D(from, to, point) {
   const dx = to.x - from.x;
-  const dz = to.z - from.z;
-  const lengthSquared = (dx * dx) + (dz * dz);
+  const dy = to.y - from.y;
+  const lengthSquared = (dx * dx) + (dy * dy);
   const t = lengthSquared > 0
-    ? Math.max(0, Math.min(1, (((point.x - from.x) * dx) + ((point.z - from.z) * dz)) / lengthSquared))
+    ? Math.max(0, Math.min(1, (((point.x - from.x) * dx) + ((point.y - from.y) * dy)) / lengthSquared))
     : 0;
-  return Math.hypot(from.x + (dx * t) - point.x, from.z + (dz * t) - point.z);
+  return Math.hypot(from.x + (dx * t) - point.x, from.y + (dy * t) - point.y);
 }
 
 // The view's `findRoute`, over whichever world the caller holds: the graph is

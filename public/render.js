@@ -52,6 +52,7 @@ import {
   findShotSegmentImpact,
   getObstacleHeight,
   getPyramidSurfaceLocalHeight,
+  getObstacleBase,
   TANK,
 } from './collision.mjs';
 import { createBuriedTriangleTest } from './face-trim.mjs';
@@ -115,6 +116,55 @@ import {
 // (see _computeMuzzleFromBarrel below), but a long-barreled model can compute
 // a value past *this* tank's own closest approach -- letting the shot spawn
 // inside or past a thin wall (issue #83). Clamp to bzo's own invariant.
+// A tank stands in `worldFrame` at the game's position, its model built
+// facing +X on +Z, so its `rotation.z` is its azimuth.
+function tankAzimuth(tank) {
+  return tank.rotation.z;
+}
+
+// An obstacle's footprint: `size` is upstream's half extents.
+function obstacleWidth(obs) {
+  return 2 * obs.size[0];
+}
+
+function obstacleBreadth(obs) {
+  return 2 * obs.size[1];
+}
+
+// A shape built about its own origin, placed at (x, y, z) and turned by
+// `angle` about z: as a matrix to bake into vertices, or as an object's pose.
+const PLACEMENT_QUATERNION = new THREE.Quaternion();
+const PLACEMENT_POSITION = new THREE.Vector3();
+const PLACEMENT_SCALE = new THREE.Vector3(1, 1, 1);
+const PLACEMENT_AXIS = new THREE.Vector3(0, 0, 1);
+function placementMatrix(x, y, z, angle, target = new THREE.Matrix4()) {
+  PLACEMENT_QUATERNION.setFromAxisAngle(PLACEMENT_AXIS, angle);
+  return target.compose(PLACEMENT_POSITION.set(x, y, z), PLACEMENT_QUATERNION, PLACEMENT_SCALE);
+}
+
+function placeObstacle(object, obs) {
+  object.position.set(obs.pos[0], obs.pos[1], getObstacleBase(obs));
+  object.rotation.set(0, 0, obs.angle || 0);
+  return object;
+}
+
+// A geometry three.js builds along +Y -- a cylinder, a cone -- turned to run
+// along +Z, the game's up: (x, y, z) becomes (x, -z, y).
+function standUpGeometry(geometry) {
+  return geometry.rotateX(Math.PI / 2);
+}
+
+// Turns an object so its own +Z runs along the unit direction (x, y, z), in
+// its parent's frame. Its roll about that axis is whatever the shortest turn
+// leaves, which is all a shape round that axis needs.
+const POINT_ALONG_FORWARD = new THREE.Vector3(0, 0, 1);
+const POINT_ALONG_SCRATCH = new THREE.Vector3();
+function pointAlong(object, x, y, z) {
+  object.quaternion.setFromUnitVectors(POINT_ALONG_FORWARD, POINT_ALONG_SCRATCH.set(x, y, z));
+  return object;
+}
+
+
 function maxMuzzleForward() {
   return (TANK.length / 2) + 0.1;
 }
@@ -130,20 +180,29 @@ const TREAD_UNITS_PER_TILE = 6.4;
 // `TankSceneNode::TankRenderNode::renderLights` (TankSceneNode.cxx:1391).
 // Aircraft-style navigation lights on the turret: white astern, red to port,
 // green to starboard, so which way a tank is pointing reads at a range where
-// its silhouette does not yet. Upstream's tank-space coordinates in bzo's
-// axes -- bzo's tank faces -Z and stands on +Y where upstream's faces +X and
-// stands on +Z, so upstream's forward x becomes -z and its portward y becomes
-// -x.
+// its silhouette does not yet. Upstream's tank-space coordinates: forward x,
+// portward y, up z.
 //
 // These are the fallback. Upstream can hard-code one height because it has
 // one tank; 2.1 clears bzflag-notracks.obj's turret by 0.02 and is buried inside the
 // turret of bzfourtank, bzship and modern. Every model bzo offers names its
 // own three lights, and these serve a model that does not.
 const TANK_NAV_LIGHTS = [
-  { role: 'rear', color: 0xffffff, position: [0, 2.1, 1.53] },
-  { role: 'port', color: 0xff0000, position: [-0.75, 2.1, -0.1] },
-  { role: 'starboard', color: 0x00ff00, position: [0.75, 2.1, -0.1] },
+  { role: 'rear', color: 0xffffff, position: [-1.53, 0, 2.1] },
+  { role: 'port', color: 0xff0000, position: [0.1, 0.75, 2.1] },
+  { role: 'starboard', color: 0x00ff00, position: [0.1, -0.75, 2.1] },
 ];
+
+// A tank model is authored as an OBJ conventionally is, standing on +Y and
+// facing -Z, with its starboard on +X. Each one is turned once as it loads to
+// stand as upstream's tank does, on +Z facing +X with its port on +Y:
+// (x, y, z) becomes (-z, -x, y).
+const TANK_MODEL_TO_GAME = new THREE.Matrix4().set(
+  0, 0, -1, 0,
+  -1, 0, 0, 0,
+  0, 1, 0, 0,
+  0, 0, 0, 1,
+);
 // `glPointSize(2.0f)`, and not scaled by distance: a nav light that shrank
 // with range would stop being readable at exactly the range it is there for.
 //
@@ -331,14 +390,13 @@ const BZFLAG_RICO_UV_BOTTOM = 0.5;              // draw(): bottomUV
 //   TankSceneNode.cxx:419   per-jet random length, roughly +/-25%
 //   Player.cxx:447          jetTime = 0.5 * (jumpVelocity / gravity)
 //   Player.cxx:847          fireJumpJets() sets the scale to 1
-// Upstream offsets are BZFlag tank-local (+X forward, +Y left, +Z up). bzo tank
-// models are BZFlag-sized but face -Z with +Y up, so bzf(x,y,z) -> bzo(-y,z,-x).
+// Upstream's tank-local offsets: +X forward, +Y left, +Z up.
 const BZFLAG_JUMPJET_TEXTURE = '/textures/jumpjets.png';
 const BZFLAG_JUMPJET_OFFSETS = [
-  { x: +0.6, y: 0.25, z: +1.5 },
-  { x: -0.6, y: 0.25, z: +1.5 },
-  { x: +0.6, y: 0.25, z: -1.5 },
-  { x: -0.6, y: 0.25, z: -1.5 },
+  { x: -1.5, y: -0.6, z: 0.25 },
+  { x: -1.5, y: +0.6, z: 0.25 },
+  { x: +1.5, y: -0.6, z: 0.25 },
+  { x: +1.5, y: +0.6, z: 0.25 },
 ];
 const BZFLAG_JUMPJET_HALF_WIDTH = 0.3;   // triangle half width at the nozzle
 const BZFLAG_JUMPJET_LENGTH = 1.0;       // triangle length before scaling
@@ -707,7 +765,7 @@ function shotExplosionSize() {
 }
 const BZFLAG_SHOT_EXPLOSION_DURATION = 0.8;
 const BZFLAG_SHOT_EXPLOSION_LIGHT_FADE_START_RATIO = 0.7;
-const PROJECTED_SHADOW_MIN_LIGHT_Y = 0.05;
+const PROJECTED_SHADOW_MIN_LIGHT_Z = 0.05;
 // The server-position ghost wraps the tank 5% out so both are visible at once.
 // It is exported because the ghost is a sibling of the tank, not a child, so
 // whoever scales the tank has to scale the ghost by the same factors.
@@ -720,11 +778,11 @@ const PROJECTED_SHADOW_STENCIL_REF = 1;
 // Write the stencil before the darkening overlay pass reads it.
 const PROJECTED_SHADOW_RENDER_ORDER = 10;
 const PROJECTED_SHADOW_DARKEN_OPACITY = 0.35;
-const PROJECTED_SHADOW_CASTER_Y = 0.01;
+const PROJECTED_SHADOW_CASTER_Z = 0.01;
 // Height above the tallest obstacle that a shadow caster can still reach, for
 // airborne tanks. Sizes the darkening pass, not the shadows themselves.
 const PROJECTED_SHADOW_CASTER_HEADROOM = 20;
-const PROJECTED_SHADOW_OVERLAY_Y = 0.03;
+const PROJECTED_SHADOW_OVERLAY_Z = 0.03;
 // A measurement knob, not a setting: `?renderScale=0.5` draws into a buffer half
 // the window on each axis and lets the browser scale it up to fill the window
 // unchanged. Resizing the window cannot answer the same question, because it
@@ -780,7 +838,7 @@ function readXRFramebufferScale() {
   return Math.min(XR_FRAMEBUFFER_SCALE_MAX, Math.max(XR_FRAMEBUFFER_SCALE_MIN, raw));
 }
 
-const GROUND_GRID_Y = 0.02;
+const GROUND_GRID_Z = 0.02;
 // How big the sun and moon look and how far away they sit, from
 // makeCelestialLists (BackgroundRenderer.cxx:1706 for the sun, :483 for the
 // moon): both are discs at twice the world size, sized by the angle they should
@@ -1307,9 +1365,7 @@ const GROUND_TEX_REPEAT = 0.05; // upstream groundHighResTexRepeat (defaultBZDB.
 // Upstream's five triangle strips over the four outer and four centre corners.
 const GROUND_EYE_SCRATCH = new THREE.Vector3();
 const SHOT_EXPLOSION_EYE_SCRATCH = new THREE.Vector3();
-const ROAM_FORWARD_SCRATCH = new THREE.Vector3();
 const FLAG_BILLBOARD_SCRATCH = new THREE.Vector3();
-const FLAG_BILLBOARD_QUATERNION = new THREE.Quaternion();
 const SKY_BEACON_SCRATCH = new THREE.Vector3();
 // One flag's place in the batch, written and handed over once per flag per
 // frame rather than allocated per flag.
@@ -1347,7 +1403,7 @@ const GROUND_RECEIVER_RING_SIZE = 1.2;        // receiverRingSize, in meters
 const GROUND_RECEIVER_MIN_LUMINANCE = 0.02;   // draw(): (I * maxVal) < 0.02f
 const GROUND_RECEIVER_SUN_DIMMING = 0.6;      // draw(): B = 1 - 0.6 * sunBrightness
 // Above the shadow darkening pass, so a shot lights ground it has just darkened.
-const GROUND_RECEIVER_Y = 0.04;
+const GROUND_RECEIVER_Z = 0.04;
 const GROUND_RECEIVER_RENDER_ORDER = 21;
 
 // Tank track marks. Upstream draws these last of the things that lie on the
@@ -1441,17 +1497,15 @@ const WEATHER_PRESETS = {
 };
 
 // The "cross" of three quads 120 degrees apart around the vertical axis,
-// standing upright -- `WeatherRenderer::buildDropList`'s non-billboard path,
-// translated through bzo's `(x, z, -y)` axis swap: upstream's vertical quad
-// spans its X and Z (up) axes at Y=0, which is bzo's X and Y (up) at Z=0, and
-// its `glRotatef(_, 0, 0, 1)` (about upstream's up axis) is a rotation about
-// bzo's Y for the same reason.
+// standing upright -- `WeatherRenderer::buildDropList`'s non-billboard path:
+// a vertical quad spanning X and Z (up) at Y=0, turned by
+// `glRotatef(_, 0, 0, 1)` about the up axis.
 function buildWeatherCrossGeometry(halfW, halfH) {
   const positions = [];
   const uvs = [];
   const indices = [];
   const corner = new THREE.Vector3();
-  const yAxis = new THREE.Vector3(0, 1, 0);
+  const zAxis = new THREE.Vector3(0, 0, 1);
   for (let plane = 0; plane < 3; plane += 1) {
     const angle = (plane * Math.PI * 2) / 3;
     const base = positions.length / 3;
@@ -1459,7 +1513,7 @@ function buildWeatherCrossGeometry(halfW, halfH) {
       [-halfW, -halfH], [halfW, -halfH], [-halfW, halfH], [halfW, halfH],
     ];
     for (const [x, y] of corners) {
-      corner.set(x, y, 0).applyAxisAngle(yAxis, angle);
+      corner.set(x, 0, y).applyAxisAngle(zAxis, angle);
       positions.push(corner.x, corner.y, corner.z);
     }
     uvs.push(0, 0, 1, 0, 0, 1, 1, 1);
@@ -1482,11 +1536,9 @@ function buildWeatherBillboardGeometry(halfW, halfH) {
 }
 
 // A flat decal on the ground -- `WeatherRenderer::buildPuddleList`, upstream's
-// own unit quad in its X-Y (ground) plane, which is bzo's X-Z.
+// own unit quad in its X-Y (ground) plane.
 function buildWeatherPuddleGeometry() {
-  const geometry = new THREE.PlaneGeometry(2, 2);
-  geometry.rotateX(-Math.PI / 2);
-  return geometry;
+  return new THREE.PlaneGeometry(2, 2);
 }
 
 const WEATHER_VERTEX_SHADER = `
@@ -1615,7 +1667,7 @@ void main() {
     (position.x * sin(spin)) + (position.y * cos(spin))
   );
   vec4 mvPosition = modelViewMatrix
-    * vec4(puffOrigin + vec3(0.0, ${BZFLAG_GM_PUFF_DRIFT.toFixed(4)} * age, 0.0), 1.0);
+    * vec4(puffOrigin + vec3(0.0, 0.0, ${BZFLAG_GM_PUFF_DRIFT.toFixed(4)} * age), 1.0);
   mvPosition.xy += corner * size;
   gl_Position = projectionMatrix * mvPosition;
   #include <fog_vertex>
@@ -1732,9 +1784,9 @@ function createWeatherMaterial(texture, tint = [1, 1, 1]) {
 // teleporters for the same reason `findShotSegmentImpact` already does
 // (`obs.kind === 'teleporter'`), "the physics for teles is whacked, imho".
 // Never negative, upstream's own floor.
-function getWeatherTopHeight(obstacles, x, z, maxHeight) {
+function getWeatherTopHeight(obstacles, x, y, maxHeight) {
   const impact = findShotSegmentImpact(
-    obstacles, { x, y: maxHeight, z }, { x, y: 0, z }, WEATHER_ROOF_RAY_RADIUS,
+    obstacles, { x, y, z: maxHeight }, { x, y, z: 0 }, WEATHER_ROOF_RAY_RADIUS,
   );
   if (!impact) return 0;
   return Math.max(0, maxHeight * (1 - impact.fraction));
@@ -1767,6 +1819,14 @@ const BZFLAG_LIGHT_DECAY = 2;
 // scene and dimmed to nothing when idle, is a count that never moves.
 const BZFLAG_MAX_DYNAMIC_LIGHTS = 7;
 const DYNAMIC_LIGHT_EYE = new THREE.Vector3();
+const GAME_UP = new THREE.Vector3(0, 0, 1);
+const THREE_UP = new THREE.Vector3(0, 1, 0);
+const CAMERA_EYE_SCRATCH = new THREE.Vector3();
+const CAMERA_TARGET_SCRATCH = new THREE.Vector3();
+const CAMERA_LOOK_SCRATCH = new THREE.Vector3();
+const CAMERA_FRAME_SCRATCH = new THREE.Quaternion();
+const WEATHER_BILLBOARD_QUATERNION = new THREE.Quaternion();
+const WEATHER_CAMERA_QUATERNION = new THREE.Quaternion();
 const DYNAMIC_LIGHT_FORWARD = new THREE.Vector3();
 const DYNAMIC_LIGHT_OFFSET = new THREE.Vector3();
 const DYNAMIC_LIGHT_QUATERNION = new THREE.Quaternion();
@@ -1832,34 +1892,35 @@ class RenderManager {
       return { forward: TANK.muzzleForward, height: TANK.muzzleHeight };
     }
 
+    // The barrel's tip is its furthest forward points, along the tank's +x.
     barrel.updateMatrix();
     const transformed = new THREE.Vector3();
-    let minZ = Number.POSITIVE_INFINITY;
+    let maxX = Number.NEGATIVE_INFINITY;
     const points = [];
 
     for (let i = 0; i < position.count; i += 1) {
       transformed.set(position.getX(i), position.getY(i), position.getZ(i)).applyMatrix4(barrel.matrix);
       points.push({ x: transformed.x, y: transformed.y, z: transformed.z });
-      if (transformed.z < minZ) minZ = transformed.z;
+      if (transformed.x > maxX) maxX = transformed.x;
     }
 
-    const tipPoints = points.filter((point) => point.z <= (minZ + MUZZLE_TIP_EPSILON));
+    const tipPoints = points.filter((point) => point.x >= (maxX - MUZZLE_TIP_EPSILON));
     if (tipPoints.length === 0) {
       return { forward: TANK.muzzleForward, height: TANK.muzzleHeight };
     }
 
     const avg = tipPoints.reduce((acc, point) => {
-      acc.y += point.y;
+      acc.x += point.x;
       acc.z += point.z;
       return acc;
-    }, { y: 0, z: 0 });
+    }, { x: 0, z: 0 });
 
-    const avgY = avg.y / tipPoints.length;
+    const avgX = avg.x / tipPoints.length;
     const avgZ = avg.z / tipPoints.length;
-    const forward = Number.isFinite(avgZ)
-      ? Math.min(maxMuzzleForward(), Math.max(0.5, -avgZ))
+    const forward = Number.isFinite(avgX)
+      ? Math.min(maxMuzzleForward(), Math.max(0.5, avgX))
       : TANK.muzzleForward;
-    const height = Number.isFinite(avgY) ? avgY : TANK.muzzleHeight;
+    const height = Number.isFinite(avgZ) ? avgZ : TANK.muzzleHeight;
 
     return { forward, height };
   }
@@ -1943,8 +2004,9 @@ class RenderManager {
     // lights a shot, an explosion and a jump jet add, which is the cost the
     // capability is about.
     // A Minecraft clock, not upstream's astronomy: 0 = 6:00, 6000 = noon,
-    // 12000 = 18:00, 18000 = midnight, sweeping a fixed arc in the world's X-Y
-    // plane with the moon exactly opposite the sun. See AGENTS.md.
+    // 12000 = 18:00, 18000 = midnight, sweeping a fixed arc in the world's X-Z
+    // plane, rising in the east, with the moon exactly opposite the sun. See
+    // AGENTS.md.
     //
     // The distance is upstream's, though: twice the world size, just inside the
     // mountains at 2.25 (BackgroundRenderer.cxx:1716, :1951). Further out than
@@ -1956,14 +2018,14 @@ class RenderManager {
     const moonAngle = sunAngle + Math.PI;
     // Sun position
     const sunX = Math.cos(sunAngle) * sunDistance;
-    const sunY = Math.sin(sunAngle) * sunDistance * 0.8; // Lower arc for realism
-    const sunZ = 0;
+    const sunY = 0;
+    const sunZ = Math.sin(sunAngle) * sunDistance * 0.8; // Lower arc for realism
     // Moon position
     const moonX = Math.cos(moonAngle) * moonDistance;
-    const moonY = Math.sin(moonAngle) * moonDistance * 0.8;
-    const moonZ = 0;
-    const sunElevation = Math.max(-1, Math.min(1, sunY / (sunDistance * 0.8 || 1)));
-    const moonElevation = Math.max(-1, Math.min(1, moonY / (moonDistance * 0.8 || 1)));
+    const moonY = 0;
+    const moonZ = Math.sin(moonAngle) * moonDistance * 0.8;
+    const sunElevation = Math.max(-1, Math.min(1, sunZ / (sunDistance * 0.8 || 1)));
+    const moonElevation = Math.max(-1, Math.min(1, moonZ / (moonDistance * 0.8 || 1)));
     const lerpTriplet = (from, to, t) => from.map((value, index) => value + (to[index] - value) * t);
     const toThreeColor = (triplet) => new THREE.Color().setRGB(triplet[0], triplet[1], triplet[2]);
 
@@ -2030,7 +2092,7 @@ class RenderManager {
     if (this.sunLight) {
       this.sunLight.position.set(sunX, sunY, sunZ);
       this.sunLight.target.position.set(0, 0, 0);
-      this.worldGroup.add(this.sunLight.target);
+      this.worldFrame.add(this.sunLight.target);
       this.sunLight.color.copy(directThreeColor);
       this.sunLight.intensity = sunElevation >= -0.009 ? Math.max(0.35, directBrightness) : 0.0;
       this.sunLight.castShadow = sunElevation > (0.5 * BZFLAG_DAY_ELEVATION);
@@ -2039,7 +2101,7 @@ class RenderManager {
     if (this.moonLight) {
       this.moonLight.position.set(moonX, moonY, moonZ);
       this.moonLight.target.position.set(0, 0, 0);
-      this.worldGroup.add(this.moonLight.target);
+      this.worldFrame.add(this.moonLight.target);
       this.moonLight.color.copy(toThreeColor(moonColor));
       this.moonLight.intensity = sunElevation < -0.009 && moonElevation > -0.009 ? 0.35 : 0.0;
       this.moonLight.castShadow = this.moonLight.intensity > 0;
@@ -2082,11 +2144,9 @@ class RenderManager {
     const julianDay = julianDayFromUnixSeconds(unixSeconds);
     const sunDir = getSunPosition(julianDay, latitude, longitude);
     const moonDir = getMoonPosition(julianDay, latitude, longitude);
-    // Upstream's x east, y north, z up, as bzo's x east, y up, z south.
-    const toScene = (v, scale = 1) => [v[0] * scale, v[2] * scale, -v[1] * scale];
     const distance = BZFLAG_CELESTIAL_DISTANCE_SCALE * worldSize;
-    const [sunX, sunY, sunZ] = toScene(sunDir, distance);
-    const [moonX, moonY, moonZ] = toScene(moonDir, distance);
+    const [sunX, sunY, sunZ] = sunDir.map((value) => value * distance);
+    const [moonX, moonY, moonZ] = moonDir.map((value) => value * distance);
     const sunUp = sunDir[2] >= SKY_BELOW_HORIZON;
     const moonUp = moonDir[2] > SKY_BELOW_HORIZON;
     const { color, ambient, brightness } = getSunColor(sunDir);
@@ -2103,7 +2163,7 @@ class RenderManager {
     if (this.sunLight) {
       this.sunLight.position.set(sunX, sunY, sunZ);
       this.sunLight.target.position.set(0, 0, 0);
-      this.worldGroup.add(this.sunLight.target);
+      this.worldFrame.add(this.sunLight.target);
       this.sunLight.color.copy(directColor);
       this.sunLight.intensity = sunUp ? Math.max(0.35, brightness) : 0.0;
       this.sunLight.castShadow = areShadowsCast(sunDir);
@@ -2111,7 +2171,7 @@ class RenderManager {
     if (this.moonLight) {
       this.moonLight.position.set(moonX, moonY, moonZ);
       this.moonLight.target.position.set(0, 0, 0);
-      this.worldGroup.add(this.moonLight.target);
+      this.worldFrame.add(this.moonLight.target);
       this.moonLight.color.copy(asColor(SKY_MOON_COLOR));
       this.moonLight.intensity = !sunUp && moonUp ? 0.35 : 0.0;
       this.moonLight.castShadow = false;
@@ -2173,14 +2233,14 @@ class RenderManager {
       this._skyPyramid = new THREE.Mesh(geometry, material);
       this._skyPyramid.renderOrder = SKY_RENDER_ORDER;
       this._skyPyramid.frustumCulled = false;
-      this.worldGroup.add(this._tagDraws(this._skyPyramid, 'scenery'));
+      this.worldFrame.add(this._tagDraws(this._skyPyramid, 'scenery'));
     }
     const [zenith, toward, away, across] = sky;
     const turn = ((Math.atan2(sunDir[1], sunDir[0]) * 180) / Math.PI + SKY_SUN_TURN_OFFSET_DEG) * (Math.PI / 180);
     const cos = Math.cos(turn);
     const sin = Math.sin(turn);
-    // A point in upstream's frame, turned toward the sun, in the scene's.
-    const at = (x, y, z) => [(x * cos) - (y * sin), z, -((x * sin) + (y * cos))];
+    // A point turned toward the sun.
+    const at = (x, y, z) => [(x * cos) - (y * sin), (x * sin) + (y * cos), z];
     const corner = SKY_SQUARE.map(([x, y]) => at(x, y, 0));
     const apex = at(0, 0, 1);
     const vertices = [];
@@ -2251,15 +2311,14 @@ class RenderManager {
       this._starField.renderOrder = STARS_RENDER_ORDER;
       this._starField.frustumCulled = false;
       this._starField.matrixAutoUpdate = false;
-      this.worldGroup.add(this._tagDraws(this._starField, 'scenery'));
+      this.worldFrame.add(this._tagDraws(this._starField, 'scenery'));
     }
     const m = getCelestialTransform(julianDay, latitude, longitude);
-    // Celestial into upstream's local sky, then into the scene's axes: x stays,
-    // up is upstream's z, and south is upstream's -y.
+    // Celestial into the local sky.
     this._starRotation = new THREE.Matrix4().set(
       m[0], m[1], m[2], 0,
+      m[3], m[4], m[5], 0,
       m[6], m[7], m[8], 0,
-      -m[3], -m[4], -m[5], 0,
       0, 0, 0, 1,
     );
     this._starField.userData.wanted = visible;
@@ -2284,14 +2343,13 @@ class RenderManager {
       this._phasedMoon = new THREE.Mesh(geometry, material);
       this._phasedMoon.renderOrder = CELESTIAL_RENDER_ORDER;
       this._phasedMoon.frustumCulled = false;
-      this.worldGroup.add(this._tagDraws(this._phasedMoon, 'scenery'));
+      this.worldFrame.add(this._tagDraws(this._phasedMoon, 'scenery'));
     }
     const { coverage, limbAngle, moonAzimuth, moonAltitude } = getMoonPhase(sunDir, moonDir);
     const cl = Math.cos(limbAngle); const sl = Math.sin(limbAngle);
     const ca = Math.cos(-moonAltitude); const sa = Math.sin(-moonAltitude);
     const cz = Math.cos(moonAzimuth); const sz = Math.sin(moonAzimuth);
-    // Rz(azimuth) * Ry(-altitude) * Rx(limb), upstream's three glRotatefs, then
-    // into the scene's axes.
+    // Rz(azimuth) * Ry(-altitude) * Rx(limb), upstream's three glRotatefs.
     const place = (x, y, z) => {
       const y1 = (y * cl) - (z * sl);
       const z1 = (y * sl) + (z * cl);
@@ -2299,7 +2357,7 @@ class RenderManager {
       const z2 = (-x * sa) + (z1 * ca);
       const x3 = (x2 * cz) - (y1 * sz);
       const y3 = (x2 * sz) + (y1 * cz);
-      return [x3, z2, -y3];
+      return [x3, y3, z2];
     };
     const points = [place(distance, 0, -radius)];
     for (let i = 0; i < MOON_SEGMENTS - 1; i += 1) {
@@ -2319,15 +2377,16 @@ class RenderManager {
 
   // Each frame: the sky pyramid and the stars stand around the eye, at the far
   // plane's reach, so they read as infinitely far away from wherever it goes.
-  // In the world group's own frame, since that group carries the world's turn
-  // in an XR session and the sky has to turn with the ground under it.
+  // In the game's frame, since the world groups carry the world's turn in an
+  // XR session and the sky has to turn with the ground under it.
   _followSky() {
-    if (!this.camera || !this.worldGroup) return;
+    if (!this.camera || !this.worldFrame) return;
     const pyramid = this._skyPyramid?.visible ? this._skyPyramid : null;
     const stars = this._starField?.visible ? this._starField : null;
     if (!pyramid && !stars) return;
     const eye = this.camera.getWorldPosition(SKY_EYE_SCRATCH);
-    this.worldGroup.worldToLocal(eye);
+    this.worldFrame.updateWorldMatrix(true, false);
+    this.worldFrame.worldToLocal(eye);
     const worldScale = this.worldGroup.scale.x || 1;
     const reach = (this.camera.far * 0.6) / worldScale;
     if (pyramid) {
@@ -2358,7 +2417,7 @@ class RenderManager {
     this.groundExtent = null;
     this.groundMapSize = null;
     this._groundCenterX = null;
-    this._groundCenterZ = null;
+    this._groundCenterY = null;
     this.gridHelper = null;
     this.obstacleMeshes = [];
     // A mesh face's or a box/pyramid's own `dyncol`/`texmat` (`docs/bzw.md`,
@@ -2388,7 +2447,7 @@ class RenderManager {
     this.cloudsHiddenForOverview = false;
     this.skyBeacons = [];
     this.skyBeaconGeometry = null;
-    this.skyBeaconTopY = 0;
+    this.skyBeaconTopZ = 0;
 
     this.compassMarkers = [];
     this.maxObstacleHeight = 0;
@@ -2460,6 +2519,12 @@ class RenderManager {
     // World group - translates all game content for XR positioning
     this.worldGroup = new THREE.Group();
     this.scene.add(this.worldGroup);
+    // The game's world, +Z up and +Y north, turned into three.js's own, which
+    // is +Y up as WebXR defines it. Everything the game draws stands in it by
+    // the game's own numbers; `worldGroup` is what XR moves and turns.
+    this.worldFrame = new THREE.Group();
+    this.worldFrame.rotation.x = -Math.PI / 2;
+    this.worldGroup.add(this.worldFrame);
 
     const viewport = this._getViewportSize();
 
@@ -2595,13 +2660,13 @@ class RenderManager {
     if (!this.scene) return;
     // Ambient, sun, and moon light will be updated dynamically
     this.ambientLight = new THREE.AmbientLight(0xffffff, 1.0);
-    this.worldGroup.add(this.ambientLight);
+    this.worldFrame.add(this.ambientLight);
     this.sunLight = new THREE.DirectionalLight(0xffffff, 1.0);
     this.sunLight.castShadow = false;
-    this.worldGroup.add(this.sunLight);
+    this.worldFrame.add(this.sunLight);
     this.moonLight = new THREE.DirectionalLight(0xffffff, 0.0);
     this.moonLight.castShadow = false;
-    this.worldGroup.add(this.moonLight);
+    this.worldFrame.add(this.moonLight);
   }
 
   preloadAudioBuffer(path) {
@@ -2656,10 +2721,11 @@ class RenderManager {
     sound.setRefDistance(SOUND_REF_DISTANCE);
     sound.setRolloffFactor(SOUND_ROLLOFF_FACTOR);
     sound.setVolume(MASTER_VOLUME);
-    if (position) sound.position.copy(position);
-    this.worldGroup.add(sound);
+    // `position` is upstream's, in `worldFrame`.
+    if (position) sound.position.set(position.x, position.y, position.z);
+    this.worldFrame.add(sound);
     sound.play();
-    sound.source.onended = () => { this.worldGroup.remove(sound); };
+    sound.source.onended = () => { this.worldFrame.remove(sound); };
   }
 
   // Non-positional variant, for sounds made by the player's own tank. BZFlag
@@ -2851,7 +2917,7 @@ class RenderManager {
   _getDynamicLightPool() {
     if (!this._dynamicLightingActive() || !this.worldGroup) {
       if (this._dynamicLightPool) {
-        this._dynamicLightPool.forEach((light) => this.worldGroup?.remove(light));
+        this._dynamicLightPool.forEach((light) => light.removeFromParent());
         this._dynamicLightPool = null;
       }
       return null;
@@ -2861,7 +2927,7 @@ class RenderManager {
     this._dynamicLightPool = [];
     for (let slot = 0; slot < BZFLAG_MAX_DYNAMIC_LIGHTS; slot += 1) {
       const light = new THREE.PointLight(0xffffff, 0, BZFLAG_LIGHT_MAX_DISTANCE, BZFLAG_LIGHT_DECAY);
-      this.worldGroup.add(light);
+      this.worldFrame.add(light);
       this._dynamicLightPool.push(light);
     }
     return this._dynamicLightPool;
@@ -2894,13 +2960,13 @@ class RenderManager {
       return;
     }
 
-    // The eye and where it looks, in the world group's own space, the way the
-    // flags take them: that group carries the player's heading in a session, so
-    // the camera's own world position is in a different frame from the lights'.
-    const inverse = DYNAMIC_LIGHT_QUATERNION.copy(this.worldGroup.quaternion).invert();
+    // The eye and where it looks, in the game's frame, where the lights are:
+    // the world groups carry the player's heading in a session, so the
+    // camera's own world position is in a different frame from the lights'.
+    this.worldFrame.updateWorldMatrix(true, false);
+    const inverse = DYNAMIC_LIGHT_QUATERNION.setFromRotationMatrix(this.worldFrame.matrixWorld).invert();
     const eye = DYNAMIC_LIGHT_EYE;
-    this.camera.getWorldPosition(eye);
-    eye.sub(this.worldGroup.position).applyQuaternion(inverse);
+    this.worldFrame.worldToLocal(this.camera.getWorldPosition(eye));
     const forward = DYNAMIC_LIGHT_FORWARD;
     this.camera.getWorldDirection(forward).applyQuaternion(inverse);
 
@@ -3004,7 +3070,7 @@ class RenderManager {
   }
 
   // --- Projected Planar Shadows (Stencil-style) ---
-  // Build each shadow in worldGroup-local space so XR can move the whole world
+  // Build each shadow in the game's frame so XR can move the whole world
   // without applying the camera transform to the shadow twice.
   _getProjectedShadowDirection(lightDirection) {
     if (!lightDirection) return null;
@@ -3016,21 +3082,21 @@ class RenderManager {
     dir.normalize();
     // A light at or below the horizon would produce an unbounded or inverted
     // projection. Keep the last valid shadow until the light rises again.
-    if (!Number.isFinite(dir.y) || dir.y <= PROJECTED_SHADOW_MIN_LIGHT_Y) return null;
+    if (!Number.isFinite(dir.z) || dir.z <= PROJECTED_SHADOW_MIN_LIGHT_Z) return null;
     return dir;
   }
 
   // Upstream does not move any vertices to project a shadow: drawGroundShadows
   // (BackgroundRenderer.cxx:1227) builds a degenerate matrix, multiplies it in,
-  // and redraws the same geometry. This is that matrix for a Y-up world, taking
-  // (x, y, z) to (x - y*dx/dy, casterY, z - y*dz/dy).
+  // and redraws the same geometry. This is that matrix, taking (x, y, z) to
+  // (x - z*dx/dz, y - z*dy/dz, casterZ).
   _setProjectedShadowFlattenMatrix(matrix, dir) {
-    const slopeX = dir.x / dir.y;
-    const slopeZ = dir.z / dir.y;
+    const slopeX = dir.x / dir.z;
+    const slopeY = dir.y / dir.z;
     return matrix.set(
-      1, -slopeX, 0, 0,
-      0, 0, 0, PROJECTED_SHADOW_CASTER_Y,
-      0, -slopeZ, 1, 0,
+      1, 0, -slopeX, 0,
+      0, 1, -slopeY, 0,
+      0, 0, 0, PROJECTED_SHADOW_CASTER_Z,
       0, 0, 0, 1,
     );
   }
@@ -3093,7 +3159,7 @@ class RenderManager {
     // and a shadow that pops out is worse than one that is always submitted.
     shadowMesh.frustumCulled = false;
     this._tagDraws(shadowMesh, 'shadow');
-    this.worldGroup.add(shadowMesh);
+    this.worldFrame.add(shadowMesh);
     mesh.userData.shadowMesh = shadowMesh;
     return shadowMesh;
   }
@@ -3101,7 +3167,7 @@ class RenderManager {
   _removeProjectedShadowMesh(mesh) {
     const shadowMesh = mesh?.userData?.shadowMesh;
     if (!shadowMesh) return;
-    this.worldGroup.remove(shadowMesh);
+    shadowMesh.removeFromParent();
     mesh.userData.shadowMesh = null;
   }
 
@@ -3167,7 +3233,7 @@ class RenderManager {
     shadowMesh.matrixWorldAutoUpdate = false;
     shadowMesh.renderOrder = PROJECTED_SHADOW_RENDER_ORDER;
     shadowMesh.frustumCulled = false;
-    this.worldGroup.add(shadowMesh);
+    this.worldFrame.add(shadowMesh);
     tank.userData.shadowMesh = shadowMesh;
     return shadowMesh;
   }
@@ -3222,7 +3288,7 @@ class RenderManager {
   _getProjectedShadowOverlayExtent() {
     const border = Number.isFinite(this.groundMapSize) ? this.groundMapSize / 2 : 100;
     const casterHeight = this.maxObstacleHeight + PROJECTED_SHADOW_CASTER_HEADROOM;
-    return Math.min(this.groundExtent, border + (casterHeight / PROJECTED_SHADOW_MIN_LIGHT_Y));
+    return Math.min(this.groundExtent, border + (casterHeight / PROJECTED_SHADOW_MIN_LIGHT_Z));
   }
 
   // Called again once the obstacles are in, because the tallest of them is what
@@ -3233,7 +3299,7 @@ class RenderManager {
     const extent = this._getProjectedShadowOverlayExtent();
     if (!this.projectedShadowOverlay) {
       this.projectedShadowOverlay = this._buildProjectedShadowOverlay(extent);
-      this.worldGroup.add(this._tagDraws(this.projectedShadowOverlay, 'shadow'));
+      this.worldFrame.add(this._tagDraws(this.projectedShadowOverlay, 'shadow'));
       return;
     }
     if (this.projectedShadowOverlay.userData.extent === extent) return;
@@ -3264,8 +3330,7 @@ class RenderManager {
     overlayMaterial.stencilZPass = THREE.KeepStencilOp;
 
     const overlayMesh = new THREE.Mesh(overlayGeometry, overlayMaterial);
-    overlayMesh.rotation.x = -Math.PI / 2;
-    overlayMesh.position.y = PROJECTED_SHADOW_OVERLAY_Y;
+    overlayMesh.position.z = PROJECTED_SHADOW_OVERLAY_Z;
     overlayMesh.renderOrder = 20;
     overlayMesh.userData.extent = overlayExtent;
     return overlayMesh;
@@ -3276,7 +3341,8 @@ class RenderManager {
     const gridSpacing = 5;
     const gridDivisions = Math.max(1, Math.round(mapSize / gridSpacing));
     const grid = new THREE.GridHelper(mapSize, gridDivisions, 0x000000, 0x555555);
-    grid.position.y = GROUND_GRID_Y;
+    standUpGeometry(grid.geometry);
+    grid.position.z = GROUND_GRID_Z;
     grid.renderOrder = GROUND_GRID_RENDER_ORDER;
     if (Array.isArray(grid.material)) {
       grid.material.forEach((material) => {
@@ -3294,7 +3360,7 @@ class RenderManager {
 
   _disposeGroundGrid() {
     if (!this.gridHelper) return;
-    this.worldGroup?.remove(this.gridHelper);
+    this.gridHelper.removeFromParent();
     this.gridHelper.geometry?.dispose();
     if (Array.isArray(this.gridHelper.material)) {
       this.gridHelper.material.forEach((material) => material.dispose());
@@ -3360,18 +3426,18 @@ class RenderManager {
     // Its own axes, for putting a world point in front of it -- forward is the
     // way it looks, up is perpendicular to that in the same vertical plane.
     const fits = (distance) => {
-      const eyeY = distance * sinPitch;
-      const eyeZ = distance * cosPitch;
+      const eyeHeight = distance * sinPitch;
+      const eyeSouth = distance * cosPitch;
       for (const cornerX of [-half, half]) {
-        for (const cornerZ of [-half, half]) {
+        for (const cornerY of [-half, half]) {
           const dx = cornerX;
-          const dy = -eyeY;
-          const dz = cornerZ - eyeZ;
-          // Depth along the view direction (0, -sin, -cos), and height along
-          // the camera's own up (0, cos, -sin).
-          const depth = (dy * -sinPitch) + (dz * -cosPitch);
+          const dy = cornerY + eyeSouth;
+          const dz = -eyeHeight;
+          // Depth along the view direction (0, cos, -sin), and height along
+          // the camera's own up (0, sin, cos).
+          const depth = (dy * cosPitch) + (dz * -sinPitch);
           if (depth <= 0) return false;
-          const up = (dy * cosPitch) + (dz * -sinPitch);
+          const up = (dy * sinPitch) + (dz * cosPitch);
           if (Math.abs(dx) > depth * tanHalfH) return false;
           if (Math.abs(up) > depth * tanHalfV) return false;
         }
@@ -3388,7 +3454,7 @@ class RenderManager {
     }
     const distance = high;
     const value = {
-      eye: new THREE.Vector3(0, distance * sinPitch, distance * cosPitch),
+      eye: new THREE.Vector3(0, 0 - (distance * cosPitch), distance * sinPitch),
       look: new THREE.Vector3(0, 0, 0),
     };
     this.worldFramingCache = { key: cacheKey, value };
@@ -3431,7 +3497,7 @@ class RenderManager {
 
   setGroundGridEnabled(enabled, mapSize = null) {
     this.showGroundGrid = !!enabled;
-    if (!this.scene || !this.worldGroup) return;
+    if (!this.scene || !this.worldFrame) return;
 
     if (!this.showGroundGrid) {
       this._disposeGroundGrid();
@@ -3448,7 +3514,7 @@ class RenderManager {
     const grid = this._buildGroundGrid(resolvedMapSize);
     if (!grid) return;
     this.gridHelper = grid;
-    this.worldGroup.add(this._tagDraws(grid, 'scenery'));
+    this.worldFrame.add(this._tagDraws(grid, 'scenery'));
   }
 
   // Every shadow in the frame shares one projection, so the traversal and the
@@ -3476,7 +3542,7 @@ class RenderManager {
     // Each shadow mesh writes the stencil the ground overlay reads. Without a
     // stencil buffer there is no overlay to read it, so the meshes would draw
     // for nothing.
-    if (!this._projectedShadowsActive() || !this.worldGroup) return;
+    if (!this._projectedShadowsActive() || !this.worldFrame) return;
     // Whichever light casts: the sun once it is high enough (`areShadowsCast`),
     // and the moon only on bzo's day clock -- upstream's moon casts none, so
     // under its sky a night has no shadows at all.
@@ -3498,10 +3564,10 @@ class RenderManager {
     }
 
     this._setProjectedShadowFlattenMatrix(this._projectedShadowFlatten, dir);
-    this._projectedShadowWorldToLocal.copy(this.worldGroup.matrixWorld).invert();
-    // Flatten in worldGroup space, whatever the world is doing in XR.
+    this._projectedShadowWorldToLocal.copy(this.worldFrame.matrixWorld).invert();
+    // Flatten in the game's frame, whatever the world is doing in XR.
     const projection = this._projectedShadowProjection
-      .multiplyMatrices(this.worldGroup.matrixWorld, this._projectedShadowFlatten)
+      .multiplyMatrices(this.worldFrame.matrixWorld, this._projectedShadowFlatten)
       .multiply(this._projectedShadowWorldToLocal);
 
     for (const mesh of this.obstacleMeshes) {
@@ -3526,16 +3592,16 @@ class RenderManager {
       // player's own heading, a shadow that appears stuck to the view. It comes
       // back when the tank does.
       //
-      // A Burrow tank sinks below ground (`position.y < 0`) and the ground
+      // A Burrow tank sinks below ground (`position.z < 0`) and the ground
       // already hides its mesh the ordinary way, by depth. The flatten matrix
-      // has no such test: it offsets every vertex by its own y, so a caster
+      // has no such test: it offsets every vertex by its own z, so a caster
       // below the plane shifts the other way along the light instead of
       // disappearing, and the result is the tank's full standing-height
       // silhouette drawn over the hole it is hiding in. Stop casting once the
       // tank is at or below ground rather than shrinking the shadow with it,
       // matching the mesh, which the ground occludes outright the moment it
       // dips under rather than fading it.
-      const burrowed = tank.position.y < 0;
+      const burrowed = tank.position.z < 0;
       this._projectShadowForMesh(tank, projection, tank.visible !== false && !burrowed);
     }
   }
@@ -3551,7 +3617,7 @@ class RenderManager {
         const radius = GROUND_RECEIVER_RING_SIZE * ring * ring;
         for (let slice = 0; slice < GROUND_RECEIVER_SLICES; slice += 1) {
           const angle = (slice / GROUND_RECEIVER_SLICES) * Math.PI * 2;
-          positions.push(Math.cos(angle) * radius, 0, Math.sin(angle) * radius);
+          positions.push(Math.cos(angle) * radius, 0 - (Math.sin(angle) * radius), 0);
         }
       }
 
@@ -3683,7 +3749,7 @@ class RenderManager {
     let used = 0;
 
     if (this._worldDraws('groundLights')) this._forEachPooledLight((light) => {
-      const height = light.position.y;
+      const height = light.position.z;
       if (!(height > 0)) return;
       const color = light.color;
       const peak = this._getGroundReceiverIntensity(height, dimming)
@@ -3694,10 +3760,10 @@ class RenderManager {
       if (!mesh) {
         mesh = new THREE.Mesh(this._getGroundReceiverGeometry(), this._getGroundReceiverMaterial());
         mesh.renderOrder = GROUND_RECEIVER_RENDER_ORDER;
-        this.worldGroup.add(this._tagDraws(mesh, 'effect'));
+        this.worldFrame.add(this._tagDraws(mesh, 'effect'));
         receivers[used] = mesh;
       }
-      mesh.position.set(light.position.x, GROUND_RECEIVER_Y, light.position.z);
+      mesh.position.set(light.position.x, light.position.y, GROUND_RECEIVER_Z);
       this._paintGroundReceiver(mesh, color, height, dimming);
       mesh.visible = true;
       used += 1;
@@ -3771,8 +3837,8 @@ class RenderManager {
     this._teleporterFlash.material.opacity = density;
   }
 
-  getWorldGroup() {
-    return this.worldGroup;
+  getWorldFrame() {
+    return this.worldFrame;
   }
 
   getCamera() {
@@ -3871,7 +3937,7 @@ class RenderManager {
 
   clearGround() {
     if (this.mirror) {
-      this.worldGroup.remove(this.mirror);
+      this.mirror.removeFromParent();
       this.mirror.dispose();
       this.mirror.geometry.dispose();
       this.mirror = null;
@@ -3885,7 +3951,7 @@ class RenderManager {
     this._zoneGroundTexture = null;
     this._zoneGroundActive = false;
     if (this.ground && this.scene) {
-      this.worldGroup.remove(this.ground);
+      this.ground.removeFromParent();
       this.ground.geometry.dispose();
       this.ground.material.dispose();
       this.ground = null;
@@ -3893,7 +3959,7 @@ class RenderManager {
       this.groundMapSize = null;
     }
     if (this.projectedShadowOverlay && this.scene) {
-      this.worldGroup.remove(this.projectedShadowOverlay);
+      this.projectedShadowOverlay.removeFromParent();
       this.projectedShadowOverlay.geometry.dispose();
       this.projectedShadowOverlay.material.dispose();
       this.projectedShadowOverlay = null;
@@ -4018,6 +4084,12 @@ class RenderManager {
   // as walls then caps. Vertices come out of BoxGeometry four to a face in the
   // order +X, -X, +Y, -Y, +Z, -Z, and the index buffer six to a face in the same
   // order, which is what both loops below count on.
+  // three.js's box, built as it builds one with its height on y, stood on z:
+  // its own +y cap is the top, and its -z face looks along +y.
+  _prepareStandingBoxGeometry(width, height, depth, options) {
+    return standUpGeometry(this._prepareBoxGeometry(width, height, depth, options));
+  }
+
   _prepareBoxGeometry(width, height, depth, { sideScale = 1, capScale = 1, omitFaces = [], capRepeat = null } = {}) {
     const geometry = new THREE.BoxGeometry(width, height, depth);
     // A base's caps take the picture once however large the base is, which is
@@ -4083,9 +4155,9 @@ class RenderManager {
     // than by two places agreeing to add the same border. The opening inside it
     // is upstream's scene generator subtraction, `getBreadth() - border` and
     // `getHeight() - border`.
-    const halfWidth = obs.w / 2;
-    const halfBreadth = obs.d / 2;
-    const height = obs.h;
+    const halfWidth = obs.size[0];
+    const halfBreadth = obs.size[1];
+    const height = obs.size[2];
     const border = obs.border;
 
     const innerBreadth = Math.max(0.1, halfBreadth - border);
@@ -4166,10 +4238,10 @@ class RenderManager {
         bucket = { material, renderOrder, positions: [], uvs: [], indices: [] };
         quadBuckets.set(material, bucket);
       }
-      const p0 = new THREE.Vector3(base[0], base[2], base[1]);
-      const p1 = new THREE.Vector3(base[0] + sEdge[0], base[2] + sEdge[2], base[1] + sEdge[1]);
-      const p2 = new THREE.Vector3(base[0] + sEdge[0] + tEdge[0], base[2] + sEdge[2] + tEdge[2], base[1] + sEdge[1] + tEdge[1]);
-      const p3 = new THREE.Vector3(base[0] + tEdge[0], base[2] + tEdge[2], base[1] + tEdge[1]);
+      const p0 = new THREE.Vector3(base[0], base[1], base[2]);
+      const p1 = new THREE.Vector3(base[0] + sEdge[0], base[1] + sEdge[1], base[2] + sEdge[2]);
+      const p2 = new THREE.Vector3(base[0] + sEdge[0] + tEdge[0], base[1] + sEdge[1] + tEdge[1], base[2] + sEdge[2] + tEdge[2]);
+      const p3 = new THREE.Vector3(base[0] + tEdge[0], base[1] + tEdge[1], base[2] + tEdge[2]);
 
       const first = bucket.positions.length / 3;
       bucket.positions.push(p0.x, p0.y, p0.z, p1.x, p1.y, p1.z, p2.x, p2.y, p2.z, p3.x, p3.y, p3.z);
@@ -4217,6 +4289,7 @@ class RenderManager {
       addQuad(quad.base, quad.s, quad.t, texCoords[index], material);
     });
 
+    // Each portal faces out of its own side of the frame.
     const addPortalFace = (xPos, material, facingNegativeX = false) => {
       const portalRepeatV = (height) / Math.max(0.1, 2.0 * innerBreadth);
       const baseY = facingNegativeX ? innerBreadth : -innerBreadth;
@@ -4231,14 +4304,14 @@ class RenderManager {
       );
     };
 
-    addPortalFace(halfWidth, centerMaterialFront, true);
-    addPortalFace(-halfWidth, centerMaterialBack, false);
+    addPortalFace(halfWidth, centerMaterialFront, false);
+    addPortalFace(-halfWidth, centerMaterialBack, true);
 
     buildQuadBuckets();
 
     teleporter.userData.portalMaterials = [centerMaterialFront, centerMaterialBack];
     teleporter.userData.portalTextures = [portalTextureFront, portalTextureBack];
-    teleporter.userData.portalPhase = (obs.x * 0.031) + (obs.z * 0.017);
+    teleporter.userData.portalPhase = (obs.pos[0] * 0.031) - (obs.pos[1] * 0.017);
 
     return teleporter;
   }
@@ -4300,7 +4373,7 @@ class RenderManager {
     for (const spin of this._meshSpins) {
       const radians = meshSpinRadians(spin.angvel, timeSeconds);
       if (spin.axis) spin.group.quaternion.setFromAxisAngle(spin.axis, radians);
-      else spin.group.rotation.y = radians;
+      else spin.group.rotation.z = radians;
     }
   }
 
@@ -4308,7 +4381,7 @@ class RenderManager {
     if (!object3D) return;
     this._removeProjectedShadowMesh(object3D);
     this._disposeObject3D(object3D);
-    this.worldGroup.remove(object3D);
+    object3D.removeFromParent();
   }
 
   // The ground's eight corners: four at the edge of the world, four around the
@@ -4318,7 +4391,7 @@ class RenderManager {
   _buildCenteredGroundGeometry(groundExtent) {
     const geometry = new THREE.BufferGeometry();
     const normals = new Float32Array(8 * 3);
-    for (let i = 0; i < 8; i++) normals[i * 3 + 1] = 1;
+    for (let i = 0; i < 8; i++) normals[i * 3 + 2] = 1;
     const indices = [];
     for (const [a, b, c, d] of GROUND_STRIPS) {
       indices.push(a, b, c, c, b, d);
@@ -4333,34 +4406,34 @@ class RenderManager {
     return geometry;
   }
 
-  _setGroundCorner(index, x, z) {
+  _setGroundCorner(index, x, y) {
     const { position, uv } = this.ground.geometry.attributes;
-    position.setXYZ(index, x, 0, z);
-    uv.setXY(index, x * GROUND_TEX_REPEAT, -z * GROUND_TEX_REPEAT);
+    position.setXYZ(index, x, y, 0);
+    uv.setXY(index, x * GROUND_TEX_REPEAT, y * GROUND_TEX_REPEAT);
   }
 
   // Keeps the centre patch under the eye, clamped so it never leaves the skirt
   // it is cut out of. Called once per frame, before the scene is drawn.
   updateGroundCenter() {
-    if (!this.ground || !this.camera || !this.worldGroup) return;
+    if (!this.ground || !this.camera || !this.worldFrame) return;
     const limit = this.groundExtent - GROUND_CENTER_SIZE;
     if (!(limit > 0)) return;
 
     this.camera.updateWorldMatrix(true, false);
-    this.worldGroup.updateWorldMatrix(true, false);
+    this.worldFrame.updateWorldMatrix(true, false);
     const eye = this.camera.getWorldPosition(GROUND_EYE_SCRATCH);
-    this.worldGroup.worldToLocal(eye);
+    this.worldFrame.worldToLocal(eye);
     const centerX = Math.max(-limit, Math.min(limit, eye.x));
-    const centerZ = Math.max(-limit, Math.min(limit, eye.z));
-    if (this._groundCenterX === centerX && this._groundCenterZ === centerZ) return;
+    const centerY = Math.max(-limit, Math.min(limit, eye.y));
+    if (this._groundCenterX === centerX && this._groundCenterY === centerY) return;
     this._groundCenterX = centerX;
-    this._groundCenterZ = centerZ;
+    this._groundCenterY = centerY;
 
     const size = GROUND_CENTER_SIZE;
-    this._setGroundCorner(4, centerX - size, centerZ + size);
-    this._setGroundCorner(5, centerX + size, centerZ + size);
-    this._setGroundCorner(6, centerX + size, centerZ - size);
-    this._setGroundCorner(7, centerX - size, centerZ - size);
+    this._setGroundCorner(4, centerX - size, centerY - size);
+    this._setGroundCorner(5, centerX + size, centerY - size);
+    this._setGroundCorner(6, centerX + size, centerY + size);
+    this._setGroundCorner(7, centerX - size, centerY + size);
     this.ground.geometry.attributes.position.needsUpdate = true;
     this.ground.geometry.attributes.uv.needsUpdate = true;
   }
@@ -4396,10 +4469,9 @@ class RenderManager {
       shader: BZFLAG_MIRROR_SHADER,
     });
     mirror.material.uniforms.tintAlpha.value = a;
-    mirror.rotation.x = -Math.PI / 2;
     mirror.receiveShadow = false;
     this.mirror = mirror;
-    this.worldGroup.add(this._tagDraws(mirror, 'world'));
+    this.worldFrame.add(this._tagDraws(mirror, 'world'));
   }
 
   buildGround(mapSize, groundMaterial = null) {
@@ -4463,13 +4535,13 @@ class RenderManager {
     this.groundExtent = groundExtent;
     this.groundMapSize = mapSize;
     this._groundCenterX = null;
-    this._groundCenterZ = null;
-    this._setGroundCorner(0, -groundExtent, groundExtent);
-    this._setGroundCorner(1, groundExtent, groundExtent);
-    this._setGroundCorner(2, groundExtent, -groundExtent);
-    this._setGroundCorner(3, -groundExtent, -groundExtent);
+    this._groundCenterY = null;
+    this._setGroundCorner(0, -groundExtent, -groundExtent);
+    this._setGroundCorner(1, groundExtent, -groundExtent);
+    this._setGroundCorner(2, groundExtent, groundExtent);
+    this._setGroundCorner(3, -groundExtent, groundExtent);
     this.updateGroundCenter();
-    this.worldGroup.add(this._tagDraws(this.ground, 'scenery'));
+    this.worldFrame.add(this._tagDraws(this.ground, 'scenery'));
 
     this._refreshProjectedShadowOverlay();
     this.setGroundGridEnabled(this.showGroundGrid, mapSize);
@@ -4478,7 +4550,7 @@ class RenderManager {
   clearWater() {
     this._animatedMaterials = this._animatedMaterials.filter((entry) => entry.source !== 'water');
     if (this.water && this.scene) {
-      this.worldGroup.remove(this.water);
+      this.water.removeFromParent();
       this.water.geometry.dispose();
       this.water.material.map?.dispose();
       this.water.material.dispose();
@@ -4501,7 +4573,6 @@ class RenderManager {
     if (!waterLevel || !Number.isFinite(waterLevel.height)) return;
 
     const geometry = new THREE.PlaneGeometry(mapSize, mapSize);
-    geometry.rotateX(-Math.PI / 2);
     const uv = geometry.attributes.uv;
     for (let i = 0; i < uv.count; i += 1) {
       uv.setXY(i, uv.getX(i) * 2, uv.getY(i) * 2);
@@ -4535,9 +4606,9 @@ class RenderManager {
     });
 
     this.water = new THREE.Mesh(geometry, material);
-    this.water.position.y = waterLevel.height;
+    this.water.position.z = waterLevel.height;
     this.water.frustumCulled = false;
-    this.worldGroup.add(this._tagDraws(this.water, 'scenery'));
+    this.worldFrame.add(this._tagDraws(this.water, 'scenery'));
 
     if (waterLevel.dynamicColor) {
       this._animatedMaterials.push({ material, dynamicColor: waterLevel.dynamicColor, source: 'water' });
@@ -4551,12 +4622,12 @@ class RenderManager {
   clearWeather() {
     const weather = this._weather;
     if (!weather) return;
-    this.worldGroup.remove(weather.dropMesh);
+    weather.dropMesh.removeFromParent();
     weather.dropMesh.geometry.dispose();
     weather.dropMesh.material.map?.dispose();
     weather.dropMesh.material.dispose();
     if (weather.puddleMesh) {
-      this.worldGroup.remove(weather.puddleMesh);
+      weather.puddleMesh.removeFromParent();
       weather.puddleMesh.geometry.dispose();
       weather.puddleMesh.material.map?.dispose();
       weather.puddleMesh.material.dispose();
@@ -4684,14 +4755,14 @@ class RenderManager {
     // visibly "fill in" from empty over the first few seconds.
     for (let i = 0; i < density; i += 1) {
       posX[i] = (Math.random() * 2 - 1) * spread;
-      posZ[i] = (Math.random() * 2 - 1) * spread;
-      posY[i] = startZ + (Math.random() * (endZ - startZ));
+      posY[i] = (Math.random() * 2 - 1) * spread;
+      posZ[i] = startZ + (Math.random() * (endZ - startZ));
       dropSpeed[i] = speed + ((Math.random() * 2 - 1) * speedMod);
-      roofTop[i] = (cullRoofTops && falling) ? getWeatherTopHeight(obstacles, posX[i], posZ[i], startZ) : 0;
+      roofTop[i] = (cullRoofTops && falling) ? getWeatherTopHeight(obstacles, posX[i], posY[i], startZ) : 0;
     }
 
-    this.worldGroup.add(this._tagDraws(dropMesh, 'effect'));
-    if (puddleMesh) this.worldGroup.add(this._tagDraws(puddleMesh, 'effect'));
+    this.worldFrame.add(this._tagDraws(dropMesh, 'effect'));
+    if (puddleMesh) this.worldFrame.add(this._tagDraws(puddleMesh, 'effect'));
 
     this._advanceWeatherDrops(this._weather, 0);
   }
@@ -4715,34 +4786,43 @@ class RenderManager {
       spread, startZ, endZ, falling, cullRoofTops, roofPuddles, doPuddles,
       spin, billboard, speed, speedMod, obstacles, dummy, lineRain, lineColors, lineHeight,
     } = weather;
-    const cameraQuaternion = billboard && this.camera ? this.camera.quaternion : null;
+    // A billboard faces the camera, which turns in three.js's world; the
+    // drops stand in the game's frame under the world groups.
+    let cameraQuaternion = null;
+    if (billboard && this.camera) {
+      this.worldFrame.updateWorldMatrix(true, false);
+      cameraQuaternion = WEATHER_BILLBOARD_QUATERNION
+        .setFromRotationMatrix(this.worldFrame.matrixWorld)
+        .invert()
+        .multiply(this.camera.getWorldQuaternion(WEATHER_CAMERA_QUATERNION));
+    }
     const dropAlpha = dropMesh.geometry.attributes.instanceAlpha;
     const linePositions = lineRain ? dropMesh.geometry.attributes.position : null;
     const lineRgba = lineRain ? dropMesh.geometry.attributes.color : null;
 
     for (let i = 0; i < density; i += 1) {
-      posY[i] += dropSpeed[i] * dt;
+      posZ[i] += dropSpeed[i] * dt;
       spinPhase[i] += dt;
 
       const groundLevel = cullRoofTops ? roofTop[i] : endZ;
-      const hitGround = falling ? posY[i] < groundLevel : posY[i] > endZ;
+      const hitGround = falling ? posZ[i] < groundLevel : posZ[i] > endZ;
       if (hitGround) {
         if (doPuddles && (roofPuddles || !(cullRoofTops && falling && roofTop[i] !== 0))) {
-          const puddleY = falling ? groundLevel + 0.05 : endZ;
-          this._addWeatherPuddle(weather, posX[i], puddleY, posZ[i]);
+          const puddleZ = falling ? groundLevel + 0.05 : endZ;
+          this._addWeatherPuddle(weather, posX[i], posY[i], puddleZ);
         }
         posX[i] = (Math.random() * 2 - 1) * spread;
-        posZ[i] = (Math.random() * 2 - 1) * spread;
-        posY[i] = startZ;
+        posY[i] = (Math.random() * 2 - 1) * spread;
+        posZ[i] = startZ;
         dropSpeed[i] = speed + ((Math.random() * 2 - 1) * speedMod);
         roofTop[i] = (cullRoofTops && falling)
-          ? getWeatherTopHeight(obstacles, posX[i], posZ[i], startZ)
+          ? getWeatherTopHeight(obstacles, posX[i], posY[i], startZ)
           : 0;
       }
 
       if (lineRain) {
         this._writeLineDrop(linePositions.array, lineRgba.array, i, posX[i], posY[i], posZ[i],
-          posY[i] + lineHeight - (dropSpeed[i] * 0.15), lineColors);
+          posZ[i] + lineHeight - (dropSpeed[i] * 0.15), lineColors);
         continue;
       }
 
@@ -4750,11 +4830,10 @@ class RenderManager {
       if (billboard) {
         dummy.quaternion.copy(cameraQuaternion || dummy.quaternion);
       } else if (spin) {
-        // Two of upstream's own three rotations survive the axis swap (see
-        // `buildWeatherCrossGeometry`); its billboard-path spin (an extra
-        // roll on top of facing the camera) is dropped as not worth the
-        // complication for a subtle, purely decorative tumble.
-        dummy.rotation.set(0, spinPhase[i] * dropSpeed[i] * 0.1, spinPhase[i] * dropSpeed[i] * 0.085);
+        // A turn about the up axis over a tip about -y. Its billboard-path
+        // spin (an extra roll on top of facing the camera) is dropped as not
+        // worth the complication for a subtle, purely decorative tumble.
+        dummy.rotation.set(0, 0 - (spinPhase[i] * dropSpeed[i] * 0.085), spinPhase[i] * dropSpeed[i] * 0.1, 'ZYX');
       } else {
         dummy.rotation.set(0, 0, 0);
       }
@@ -4763,7 +4842,7 @@ class RenderManager {
 
       // `drawDrop`'s own near-ground fade -- within the last 2 units of the
       // surface a drop is about to hit.
-      const heightAboveGround = falling ? (posY[i] - groundLevel) : (endZ - posY[i]);
+      const heightAboveGround = falling ? (posZ[i] - groundLevel) : (endZ - posZ[i]);
       dropAlpha.array[i] = heightAboveGround < 2 ? Math.max(0, heightAboveGround * 0.5) : 1;
     }
 
@@ -4779,11 +4858,11 @@ class RenderManager {
   // `drawDrop`'s line branch, near-ground term included as upstream has it:
   // below 5 units `1 - 5/z` goes negative, so a streak brightens as it
   // lands rather than fading.
-  _writeLineDrop(positions, rgba, i, x, y, z, topY, colors) {
-    const alphaMod = y < 5 ? 1 - (5 / y) : 0;
+  _writeLineDrop(positions, rgba, i, x, y, z, topZ, colors) {
+    const alphaMod = z < 5 ? 1 - (5 / z) : 0;
     const p = i * 6;
     positions[p] = x; positions[p + 1] = y; positions[p + 2] = z;
-    positions[p + 3] = x; positions[p + 4] = topY; positions[p + 5] = z;
+    positions[p + 3] = x; positions[p + 4] = y; positions[p + 5] = topZ;
     for (let end = 0; end < 2; end += 1) {
       const color = colors[end];
       const c = (i * 8) + (end * 4);
@@ -4814,7 +4893,7 @@ class RenderManager {
       // than starting full-size, `puddleSpeed` scaling how fast.
       const scale = Math.max(0.001, Math.abs(puddle.age * speed * 0.035 * puddleSpeed));
       dummy.position.set(puddle.x, puddle.y, puddle.z);
-      dummy.rotation.set(0, 0, 0);
+      dummy.rotation.set(0, 0, 0, 'XYZ');
       dummy.scale.set(scale, scale, scale);
       dummy.updateMatrix();
       puddleMesh.setMatrixAt(i, dummy.matrix);
@@ -4849,7 +4928,7 @@ class RenderManager {
     // Remove old compass markers if present
     if (!this.compassMarkers) this.compassMarkers = [];
     this.compassMarkers.forEach(marker => {
-      this.worldGroup.remove(marker);
+      marker.removeFromParent();
       if (marker.material && marker.material.map) marker.material.map.dispose();
       if (marker.material) marker.material.dispose();
     });
@@ -4862,10 +4941,10 @@ class RenderManager {
     // nothing of it stands above the ground.
     if (noWalls || !(wallHeight > 0)) {
       const markerHeight = Math.max(wallHeight + 8, this.maxObstacleHeight + 5);
-      this._addCompassMarker('N', 0xB20000, new THREE.Vector3(0, markerHeight, -mapSize / 2));
-      this._addCompassMarker('S', 0x1976D2, new THREE.Vector3(0, markerHeight, mapSize / 2));
-      this._addCompassMarker('E', 0x388E3C, new THREE.Vector3(mapSize / 2, markerHeight, 0));
-      this._addCompassMarker('W', 0x9C27B0, new THREE.Vector3(-mapSize / 2, markerHeight, 0));
+      this._addCompassMarker('N', 0xB20000, new THREE.Vector3(0, mapSize / 2, markerHeight));
+      this._addCompassMarker('S', 0x1976D2, new THREE.Vector3(0, -mapSize / 2, markerHeight));
+      this._addCompassMarker('E', 0x388E3C, new THREE.Vector3(mapSize / 2, 0, markerHeight));
+      this._addCompassMarker('W', 0x9C27B0, new THREE.Vector3(-mapSize / 2, 0, markerHeight));
       this.boundaryMeshes = boundaryMeshes;
       return;
     }
@@ -4889,60 +4968,65 @@ class RenderManager {
     // whole of it. The bottom sits at ground level, where the ground itself
     // already hides it, and above `wallHeight` there is nothing to stand on
     // or see from outside -- shots already pass over that same edge.
+    //
+    // A standing box's -z face is the one facing north.
+    const wallGeometry = (width, height, depth, omitFaces) => this._prepareStandingBoxGeometry(
+      width, height, depth, { ...BOX_TEXTURE_SCALES, omitFaces },
+    );
     const northWall = new THREE.Mesh(
-      this._prepareBoxGeometry(mapSize, wallHeight, wallThickness, { ...BOX_TEXTURE_SCALES, omitFaces: [BOX_FACE.NZ, BOX_FACE.PX, BOX_FACE.NX, BOX_FACE.PY, BOX_FACE.NY] }),
+      wallGeometry(mapSize, wallHeight, wallThickness, [BOX_FACE.NZ, BOX_FACE.PX, BOX_FACE.NX, BOX_FACE.PY, BOX_FACE.NY]),
       this._getSharedObstacleMaterials('boundary', createBoundaryTexture, createBoundaryTexture),
     );
-    northWall.position.set(0, wallHeight / 2, -mapSize / 2 - wallThickness / 2);
+    northWall.position.set(0, mapSize / 2 + wallThickness / 2, wallHeight / 2);
     northWall.castShadow = true;
     northWall.receiveShadow = true;
     northWall.name = 'North Wall';
-    this.worldGroup.add(this._tagDraws(northWall, 'scenery'));
+    this.worldFrame.add(this._tagDraws(northWall, 'scenery'));
     boundaryMeshes.push(northWall);
     const markerHeight = Math.max(wallHeight + 8, this.maxObstacleHeight + 5);
-    this._addCompassMarker('N', 0xB20000, new THREE.Vector3(0, markerHeight, -mapSize / 2));
+    this._addCompassMarker('N', 0xB20000, new THREE.Vector3(0, mapSize / 2, markerHeight));
     this._addDebugLabel(northWall, 'boundary');
 
 
     const southWall = new THREE.Mesh(
-      this._prepareBoxGeometry(mapSize, wallHeight, wallThickness, { ...BOX_TEXTURE_SCALES, omitFaces: [BOX_FACE.PZ, BOX_FACE.PX, BOX_FACE.NX, BOX_FACE.PY, BOX_FACE.NY] }),
+      wallGeometry(mapSize, wallHeight, wallThickness, [BOX_FACE.PZ, BOX_FACE.PX, BOX_FACE.NX, BOX_FACE.PY, BOX_FACE.NY]),
       this._getSharedObstacleMaterials('boundary', createBoundaryTexture, createBoundaryTexture),
     );
-    southWall.position.set(0, wallHeight / 2, mapSize / 2 + wallThickness / 2);
+    southWall.position.set(0, -mapSize / 2 - wallThickness / 2, wallHeight / 2);
     southWall.castShadow = true;
     southWall.receiveShadow = true;
-    this.worldGroup.add(this._tagDraws(southWall, 'scenery'));
+    this.worldFrame.add(this._tagDraws(southWall, 'scenery'));
     southWall.name = 'South Wall';
     boundaryMeshes.push(southWall);
-    this._addCompassMarker('S', 0x1976D2, new THREE.Vector3(0, markerHeight, mapSize / 2));
+    this._addCompassMarker('S', 0x1976D2, new THREE.Vector3(0, -mapSize / 2, markerHeight));
     this._addDebugLabel(southWall, 'boundary');
 
 
     const eastWall = new THREE.Mesh(
-      this._prepareBoxGeometry(wallThickness, wallHeight, mapSize, { ...BOX_TEXTURE_SCALES, omitFaces: [BOX_FACE.PX, BOX_FACE.PZ, BOX_FACE.NZ, BOX_FACE.PY, BOX_FACE.NY] }),
+      wallGeometry(wallThickness, wallHeight, mapSize, [BOX_FACE.PX, BOX_FACE.PZ, BOX_FACE.NZ, BOX_FACE.PY, BOX_FACE.NY]),
       this._getSharedObstacleMaterials('boundary', createBoundaryTexture, createBoundaryTexture),
     );
-    eastWall.position.set(mapSize / 2 + wallThickness / 2, wallHeight / 2, 0);
+    eastWall.position.set(mapSize / 2 + wallThickness / 2, 0, wallHeight / 2);
     eastWall.castShadow = true;
     eastWall.receiveShadow = true;
-    this.worldGroup.add(this._tagDraws(eastWall, 'scenery'));
+    this.worldFrame.add(this._tagDraws(eastWall, 'scenery'));
     eastWall.name = 'East Wall';
     boundaryMeshes.push(eastWall);
-    this._addCompassMarker('E', 0x388E3C, new THREE.Vector3(mapSize / 2, markerHeight, 0));
+    this._addCompassMarker('E', 0x388E3C, new THREE.Vector3(mapSize / 2, 0, markerHeight));
     this._addDebugLabel(eastWall, 'boundary');
 
 
     const westWall = new THREE.Mesh(
-      this._prepareBoxGeometry(wallThickness, wallHeight, mapSize, { ...BOX_TEXTURE_SCALES, omitFaces: [BOX_FACE.NX, BOX_FACE.PZ, BOX_FACE.NZ, BOX_FACE.PY, BOX_FACE.NY] }),
+      wallGeometry(wallThickness, wallHeight, mapSize, [BOX_FACE.NX, BOX_FACE.PZ, BOX_FACE.NZ, BOX_FACE.PY, BOX_FACE.NY]),
       this._getSharedObstacleMaterials('boundary', createBoundaryTexture, createBoundaryTexture),
     );
-    westWall.position.set(-mapSize / 2 - wallThickness / 2, wallHeight / 2, 0);
+    westWall.position.set(-mapSize / 2 - wallThickness / 2, 0, wallHeight / 2);
     westWall.castShadow = true;
     westWall.receiveShadow = true;
-    this.worldGroup.add(this._tagDraws(westWall, 'scenery'));
+    this.worldFrame.add(this._tagDraws(westWall, 'scenery'));
     westWall.name = 'West Wall';
     boundaryMeshes.push(westWall);
-    this._addCompassMarker('W', 0x9C27B0, new THREE.Vector3(-mapSize / 2, markerHeight, 0));
+    this._addCompassMarker('W', 0x9C27B0, new THREE.Vector3(-mapSize / 2, 0, markerHeight));
     this._addDebugLabel(westWall, 'boundary');
 
     this.boundaryMeshes = boundaryMeshes;
@@ -4977,7 +5061,7 @@ class RenderManager {
     sprite.position.copy(position);
     sprite.scale.set(20, 20, 1);
     sprite.userData = { letter, initialY: position.y }; // Store metadata
-    this.worldGroup.add(this._tagDraws(sprite, 'scenery'));
+    this.worldFrame.add(this._tagDraws(sprite, 'scenery'));
     if (!this.compassMarkers) this.compassMarkers = [];
     this.compassMarkers.push(sprite);
   }
@@ -4987,7 +5071,7 @@ class RenderManager {
     const wallHeight = 5;
     const markerHeight = Math.max(wallHeight + 8, this.maxObstacleHeight + 5);
     this.compassMarkers.forEach(marker => {
-      marker.position.y = markerHeight;
+      marker.position.z = markerHeight;
     });
   }
 
@@ -5058,14 +5142,14 @@ class RenderManager {
           bucket.positions.push(position.getX(vertex), position.getY(vertex), position.getZ(vertex));
           bucket.normals.push(normal.getX(vertex), normal.getY(vertex), normal.getZ(vertex));
           if (remapUv) {
-            // Wall normals are horizontal (ny ~ 0); rotating one by 90 degrees
-            // about Y gives the direction the wall runs in, so its dot with
-            // world XZ is a coordinate that agrees with whatever else shares
+            // Wall normals are horizontal (nz ~ 0); rotating one by 90 degrees
+            // about Z gives the direction the wall runs in, so its dot with
+            // world XY is a coordinate that agrees with whatever else shares
             // this plane, however many boxes it takes to build it.
             const nx = normal.getX(vertex);
-            const nz = normal.getZ(vertex);
-            const u = (position.getX(vertex) * nz) - (position.getZ(vertex) * nx);
-            const v = position.getY(vertex);
+            const ny = normal.getY(vertex);
+            const u = (position.getY(vertex) * nx) - (position.getX(vertex) * ny);
+            const v = position.getZ(vertex);
             const { sideScale } = this._boxTextureScales();
             bucket.uvs.push(u / sideScale, v / sideScale);
           } else {
@@ -5122,11 +5206,11 @@ class RenderManager {
 
       const mesh = this._tagDraws(new THREE.Mesh(geometry, materials), key === 'base' ? 'base' : 'world');
       mesh.name = `${key} fragment`;
-      // It is built in world space and never moves.
+      // It is built in `worldFrame`'s space and never moves.
       mesh.matrixAutoUpdate = false;
       mesh.castShadow = false;
       mesh.receiveShadow = false;
-      this.worldGroup.add(mesh);
+      this.worldFrame.add(mesh);
       this.obstacleMeshes.push(mesh);
     });
   }
@@ -5166,7 +5250,7 @@ class RenderManager {
     this.maxObstacleHeight = 0;
     obstacles.forEach((obs) => {
       const h = getObstacleHeight(obs);
-      const baseY = obs.baseY || 0;
+      const baseY = getObstacleBase(obs);
       const topY = baseY + h;
       if (topY > this.maxObstacleHeight) {
         this.maxObstacleHeight = topY;
@@ -5189,23 +5273,22 @@ class RenderManager {
     // Boxes and pyramids collect here and become two meshes at the end.
     const fragments = new Map();
     const fragmentMatrix = new THREE.Matrix4();
-    const fragmentPosition = new THREE.Vector3();
-    const fragmentRotation = new THREE.Quaternion();
-    const fragmentScale = new THREE.Vector3(1, 1, 1);
-    const fragmentEuler = new THREE.Euler();
 
     obstacles.forEach((obs, i) => {
       const h = getObstacleHeight(obs);
-      const baseY = obs.baseY || 0;
+      const baseY = getObstacleBase(obs);
+      const w = obstacleWidth(obs);
+      const d = obstacleBreadth(obs);
       let mesh = null;
+      // Where a label floats over it.
+      const labelAt = () => new THREE.Vector3(obs.pos[0], obs.pos[1], baseY + h + 2);
 
       // What the obstacle's own mesh transform would have been, baked into the
-      // vertices instead because the merged mesh cannot carry one per obstacle.
-      const obstacleMatrix = () => {
-        fragmentPosition.set(obs.x, baseY + h / 2, obs.z);
-        fragmentRotation.setFromEuler(fragmentEuler.set(0, obs.rotation, 0));
-        return fragmentMatrix.compose(fragmentPosition, fragmentRotation, fragmentScale);
-      };
+      // vertices instead because the merged mesh cannot carry one per obstacle:
+      // its shape, built about its centre, placed in `worldFrame`.
+      const obstacleMatrix = () => placementMatrix(
+        obs.pos[0], obs.pos[1], baseY + (h / 2), obs.angle || 0, fragmentMatrix,
+      );
 
       // The buried-face test bound to this obstacle, which is never counted as
       // hiding its own faces.
@@ -5217,14 +5300,12 @@ class RenderManager {
       const tint = getObstacleTint(obs);
 
       if (obs.kind === 'teleporter') {
-        mesh = this._createTeleporterMesh(obs, i + 1);
-        mesh.position.set(obs.x, baseY, obs.z);
-        mesh.rotation.y = obs.rotation;
+        mesh = placeObstacle(this._createTeleporterMesh(obs, i + 1), obs);
         mesh.name = obs.name || `Teleporter ${i + 1}`;
         mesh.userData.teleporter = {
           border: Number(obs.border) || 0,
         };
-        this.worldGroup.add(this._tagDraws(mesh, 'teleporter'));
+        this.worldFrame.add(this._tagDraws(mesh, 'teleporter'));
         this._addDebugLabel(mesh, 'obstacle');
       } else if (obs.kind === 'base') {
         // A base is tinted by the team that holds it rather than by anything the
@@ -5251,7 +5332,7 @@ class RenderManager {
           ),
           // BaseSceneNodeGenerator.cxx:74 leaves the bottom out of a base that
           // sits on the ground, where nothing can see it.
-          this._prepareBoxGeometry(obs.w, h, obs.d, {
+          this._prepareStandingBoxGeometry(w, h, d, {
             capRepeat: [1, 1],
             omitFaces: baseY > 0 ? [] : [BOX_FACE.NY],
           }),
@@ -5261,7 +5342,7 @@ class RenderManager {
         );
         this._addDebugLabelAt(
           obs.name || `Base ${i + 1}`,
-          new THREE.Vector3(obs.x, baseY + h + 2, obs.z),
+          labelAt(),
           'obstacle',
           baseTeamColor,
         );
@@ -5277,18 +5358,19 @@ class RenderManager {
         geometry.addGroup(0, pyramidSideIndexCount, 0);
         if (showPyramidBase) geometry.addGroup(pyramidSideIndexCount, 12, 1);
         geometry.rotateY(-Math.PI / 4);
-        if (obs.w > obs.d) {
+        if (w > d) {
           geometry.rotateY(Math.PI / 2);
         }
-        geometry.scale(2 * obs.w, 1, 2 * obs.d);
+        geometry.scale(2 * w, 1, 2 * d);
         if (obs.inverted) {
           geometry.rotateX(Math.PI);
         }
+        standUpGeometry(geometry);
 
         // The tiling rides on the vertices rather than on a texture of this
         // pyramid's own, so every pyramid in the world shares one pair of
         // materials. Same reasoning as the boxes above.
-        const pyramidBaseSpan = Math.max(obs.w, obs.d);
+        const pyramidBaseSpan = Math.max(w, d);
         const pyramidSlantHeight = Math.hypot(h, pyramidBaseSpan / 2);
         this._bakeGroupUvTransform(geometry, 0, {
           repeatX: pyramidBaseSpan / PYRAMID_TEXTURE_SCALE,
@@ -5296,8 +5378,8 @@ class RenderManager {
         });
         if (showPyramidBase) {
           this._bakeGroupUvTransform(geometry, 1, {
-            repeatX: obs.w / PYRAMID_ROOF_TEXTURE_SCALE,
-            repeatY: obs.d / PYRAMID_ROOF_TEXTURE_SCALE,
+            repeatX: w / PYRAMID_ROOF_TEXTURE_SCALE,
+            repeatY: d / PYRAMID_ROOF_TEXTURE_SCALE,
             // An inverted pyramid's base is seen from above, so its roof turns
             // with it.
             rotation: obs.inverted ? Math.PI : 0,
@@ -5366,7 +5448,7 @@ class RenderManager {
         );
         this._addDebugLabelAt(
           obs.name || `Pyramid ${i + 1}`,
-          new THREE.Vector3(obs.x, baseY + h + 2, obs.z),
+          labelAt(),
           'obstacle',
           getObstacleTintHex(obs),
         );
@@ -5443,7 +5525,7 @@ class RenderManager {
           ),
           // BoxSceneNodeGenerator.cxx:66, in its own words: "Don't generate the
           // bottom polygon if on the ground (or lower)".
-          this._prepareBoxGeometry(obs.w, h, obs.d, {
+          this._prepareStandingBoxGeometry(w, h, d, {
             ...this._boxTextureScales(),
             omitFaces: baseY > 0 ? [] : [BOX_FACE.NY],
           }),
@@ -5454,7 +5536,7 @@ class RenderManager {
         );
         this._addDebugLabelAt(
           obs.name || `Box ${i + 1}`,
-          new THREE.Vector3(obs.x, baseY + h + 2, obs.z),
+          labelAt(),
           'obstacle',
           getObstacleTintHex(obs),
         );
@@ -5542,7 +5624,7 @@ class RenderManager {
     const position = new THREE.Vector3();
     const quaternion = new THREE.Quaternion();
     const scaleVector = new THREE.Vector3();
-    const yAxis = new THREE.Vector3(0, 1, 0);
+    const zAxis = new THREE.Vector3(0, 0, 1);
     for (const [name, placements] of byDefine) {
       for (const prototype of built.get(name)) {
         const batch = new THREE.InstancedMesh(
@@ -5551,12 +5633,10 @@ class RenderManager {
         placements.forEach((instance, i) => {
           const scale = Array.isArray(instance.scale) ? instance.scale : [1, 1, 1];
           position.set(instance.x || 0, instance.y || 0, instance.z || 0);
-          quaternion.setFromAxisAngle(yAxis, instance.spin || 0);
-          // The map's `size` is x, depth, height; the scene's y is up, so the
-          // second and third swap -- the same swap `transformGroupPoint`
-          // makes. Composing scale, then rotation, then position is that same
-          // order as well.
-          scaleVector.set(scale[0] || 1, scale[2] || 1, scale[1] || 1);
+          quaternion.setFromAxisAngle(zAxis, instance.spin || 0);
+          // Scale, then spin about the vertical, then shift: the order
+          // `transformGroupPoint` places a group's meshes in.
+          scaleVector.set(scale[0] || 1, scale[1] || 1, scale[2] || 1);
           batch.setMatrixAt(i, matrix.compose(position, quaternion, scaleVector));
         });
         batch.instanceMatrix.needsUpdate = true;
@@ -5567,7 +5647,7 @@ class RenderManager {
         if (batch.computeBoundingSphere) batch.computeBoundingSphere();
         batch.castShadow = prototype.castShadow;
         batch.receiveShadow = prototype.receiveShadow;
-        this.worldGroup.add(this._tagDraws(batch, 'mesh'));
+        this.worldFrame.add(this._tagDraws(batch, 'mesh'));
         this.meshObjects.push(batch);
       }
     }
@@ -5589,7 +5669,7 @@ class RenderManager {
       const object3D = (meshObs.angvel && meshObs.spinPivot)
         ? this._wrapMeshSpin(meshMesh, meshObs.spinPivot, meshObs.angvel, meshObs.spinAxis)
         : meshMesh;
-      this.worldGroup.add(this._tagDraws(object3D, 'mesh'));
+      this.worldFrame.add(this._tagDraws(object3D, 'mesh'));
       this.meshObjects.push(object3D);
     });
   }
@@ -5612,11 +5692,11 @@ class RenderManager {
     meshMesh.position.set(-spinPivot.x, -spinPivot.y, -spinPivot.z);
     meshMesh.updateMatrix();
     group.add(meshMesh);
-    const axis = spinAxis && Math.abs(spinAxis.y) < 0.999999
+    const axis = spinAxis && Math.abs(spinAxis.z) < 0.999999
       ? new THREE.Vector3(spinAxis.x, spinAxis.y, spinAxis.z)
       : null;
     // An axis pointing down turns the other way, as upstream's would.
-    const signedAngvel = spinAxis && !axis && spinAxis.y < 0 ? -angvel : angvel;
+    const signedAngvel = spinAxis && !axis && spinAxis.z < 0 ? -angvel : angvel;
     this._meshSpins.push({ group, angvel: signedAngvel, axis });
     return group;
   }
@@ -6188,10 +6268,8 @@ class RenderManager {
   _filterBuriedShellGeometry(geometry, obs, height) {
     const isBuried = this._insideBuildingBuriedTest;
     if (!isBuried) return geometry;
-    const matrix = new THREE.Matrix4().compose(
-      new THREE.Vector3(obs.x, (obs.baseY || 0) + (height / 2), obs.z),
-      new THREE.Quaternion().setFromEuler(new THREE.Euler(0, obs.rotation || 0, 0)),
-      new THREE.Vector3(1, 1, 1),
+    const matrix = placementMatrix(
+      obs.pos[0], obs.pos[1], getObstacleBase(obs) + (height / 2), obs.angle || 0,
     );
     const wa = new THREE.Vector3();
     const wb = new THREE.Vector3();
@@ -6222,7 +6300,7 @@ class RenderManager {
     const groundEpsilon = 0.05;
     return this._filterShellTriangles(
       geometry,
-      (a, b, c) => a.y <= groundEpsilon && b.y <= groundEpsilon && c.y <= groundEpsilon,
+      (a, b, c) => a.z <= groundEpsilon && b.z <= groundEpsilon && c.z <= groundEpsilon,
     );
   }
 
@@ -6263,10 +6341,12 @@ class RenderManager {
   }
 
   _buildBoxInsideBuildingShell(obs, height) {
-    const geometry = this._filterBuriedShellGeometry(this._prepareBoxGeometry(obs.w, height, obs.d, {
-      ...this._boxTextureScales(),
-      omitFaces: (obs.baseY || 0) > 0 ? [] : [BOX_FACE.NY],
-    }), obs, height);
+    const geometry = this._filterBuriedShellGeometry(this._prepareStandingBoxGeometry(
+      obstacleWidth(obs), height, obstacleBreadth(obs), {
+        ...this._boxTextureScales(),
+        omitFaces: getObstacleBase(obs) > 0 ? [] : [BOX_FACE.NY],
+      },
+    ), obs, height);
     const wallTexture = resolveObstacleTextureFactory(
       obs.wallTexture || null, obs.wallTextureUrl || null, '/textures/boxwall.png', createBoxWallTexture,
     )();
@@ -6289,16 +6369,19 @@ class RenderManager {
     const geometry = new THREE.ConeGeometry(0.5 / Math.SQRT2, height, 4, 1);
     geometry.clearGroups();
     const pyramidSideIndexCount = geometry.index.count - 12;
-    const showPyramidBase = (obs.baseY || 0) > 0 || Boolean(obs.inverted);
+    const showPyramidBase = getObstacleBase(obs) > 0 || Boolean(obs.inverted);
     if (!showPyramidBase) geometry.setIndex(Array.from(geometry.index.array.slice(0, pyramidSideIndexCount)));
     geometry.addGroup(0, pyramidSideIndexCount, 0);
     if (showPyramidBase) geometry.addGroup(pyramidSideIndexCount, 12, 1);
+    const w = obstacleWidth(obs);
+    const d = obstacleBreadth(obs);
     geometry.rotateY(-Math.PI / 4);
-    if (obs.w > obs.d) geometry.rotateY(Math.PI / 2);
-    geometry.scale(2 * obs.w, 1, 2 * obs.d);
+    if (w > d) geometry.rotateY(Math.PI / 2);
+    geometry.scale(2 * w, 1, 2 * d);
     if (obs.inverted) geometry.rotateX(Math.PI);
+    standUpGeometry(geometry);
 
-    const pyramidBaseSpan = Math.max(obs.w, obs.d);
+    const pyramidBaseSpan = Math.max(w, d);
     const pyramidSlantHeight = Math.hypot(height, pyramidBaseSpan / 2);
     this._bakeGroupUvTransform(geometry, 0, {
       repeatX: pyramidBaseSpan / PYRAMID_TEXTURE_SCALE,
@@ -6306,8 +6389,8 @@ class RenderManager {
     });
     if (showPyramidBase) {
       this._bakeGroupUvTransform(geometry, 1, {
-        repeatX: obs.w / PYRAMID_ROOF_TEXTURE_SCALE,
-        repeatY: obs.d / PYRAMID_ROOF_TEXTURE_SCALE,
+        repeatX: w / PYRAMID_ROOF_TEXTURE_SCALE,
+        repeatY: d / PYRAMID_ROOF_TEXTURE_SCALE,
         rotation: obs.inverted ? Math.PI : 0,
         centerX: 0.5,
         centerY: 0.5,
@@ -6348,8 +6431,8 @@ class RenderManager {
     }
 
     const height = getObstacleHeight(obs);
-    const halfW = obs.w / 2;
-    const halfD = obs.d / 2;
+    const halfW = obs.size[0];
+    const halfD = obs.size[1];
     const pyramid = obs.type === 'pyramid';
     const count = pyramid
       ? BZFLAG_EIGHTH_DIM_PYRAMID_POLYGONS
@@ -6361,9 +6444,9 @@ class RenderManager {
     // its own geometry for rather than taking upstream's `slope * hypot(x, y)`:
     // that is a cone rather than a pyramid, and it knows nothing of an inverted
     // one, which bzo maps have.
-    const localSpan = (localX, localZ) => {
+    const localSpan = (localX, localY) => {
       if (!pyramid) return { low: 0, high: height };
-      const surface = getPyramidSurfaceLocalHeight(obs, localX, localZ) ?? 0;
+      const surface = getPyramidSurfaceLocalHeight(obs, localX, localY) ?? 0;
       return obs.inverted ? { low: surface, high: height } : { low: 0, high: surface };
     };
 
@@ -6373,9 +6456,9 @@ class RenderManager {
       // A triangle's centre, then three points scattered around it and clamped
       // back into the solid.
       const baseX = (halfW - 0.5 * polySize) * (2 * Math.random() - 1);
-      const baseZ = (halfD - 0.5 * polySize) * (2 * Math.random() - 1);
-      const baseSpan = localSpan(baseX, baseZ);
-      const baseY = baseSpan.low
+      const baseY = (halfD - 0.5 * polySize) * (2 * Math.random() - 1);
+      const baseSpan = localSpan(baseX, baseY);
+      const baseZ = baseSpan.low
         + Math.max(0, baseSpan.high - baseSpan.low - 0.5 * polySize) * Math.random();
       const red = BZFLAG_EIGHTH_DIM_COLOR_MIN + BZFLAG_EIGHTH_DIM_COLOR_RANGE * Math.random();
       const green = BZFLAG_EIGHTH_DIM_COLOR_MIN + BZFLAG_EIGHTH_DIM_COLOR_RANGE * Math.random();
@@ -6383,9 +6466,9 @@ class RenderManager {
       const alpha = BZFLAG_EIGHTH_DIM_ALPHA_MIN + BZFLAG_EIGHTH_DIM_ALPHA_RANGE * Math.random();
       for (let vertex = 0; vertex < 3; vertex += 1) {
         const x = Math.max(-halfW, Math.min(halfW, baseX + polySize * (Math.random() - 0.5)));
-        const z = Math.max(-halfD, Math.min(halfD, baseZ + polySize * (Math.random() - 0.5)));
-        const span = localSpan(x, z);
-        const y = Math.max(span.low, Math.min(span.high, baseY + polySize * (Math.random() - 0.5)));
+        const y = Math.max(-halfD, Math.min(halfD, baseY + polySize * (Math.random() - 0.5)));
+        const span = localSpan(x, y);
+        const z = Math.max(span.low, Math.min(span.high, baseZ + polySize * (Math.random() - 0.5)));
         positions.push(x, y, z);
         colors.push(red, green, blue, alpha);
       }
@@ -6410,23 +6493,23 @@ class RenderManager {
     // tank inside it can see. A box is its twelve edges; a pyramid is its base
     // and the four ribs to the apex, at the top for an upright one and at the
     // bottom for an inverted one.
-    const apexY = obs.inverted ? 0 : height;
-    const cornerY = obs.inverted ? height : 0;
+    const apexZ = obs.inverted ? 0 : height;
+    const cornerZ = obs.inverted ? height : 0;
     const corners = [
-      [halfW, cornerY, halfD],
-      [-halfW, cornerY, halfD],
-      [-halfW, cornerY, -halfD],
-      [halfW, cornerY, -halfD],
+      [halfW, -halfD, cornerZ],
+      [-halfW, -halfD, cornerZ],
+      [-halfW, halfD, cornerZ],
+      [halfW, halfD, cornerZ],
     ];
     const edges = [];
     for (let i = 0; i < 4; i += 1) {
       const next = (i + 1) % 4;
       edges.push(...corners[i], ...corners[next]);
       if (pyramid) {
-        edges.push(...corners[i], 0, apexY, 0);
+        edges.push(...corners[i], 0, 0, apexZ);
       } else {
-        const top = [corners[i][0], height, corners[i][2]];
-        const topNext = [corners[next][0], height, corners[next][2]];
+        const top = [corners[i][0], corners[i][1], height];
+        const topNext = [corners[next][0], corners[next][1], height];
         edges.push(...top, ...topNext);
         edges.push(...corners[i], ...top);
       }
@@ -6448,11 +6531,10 @@ class RenderManager {
     // centres the real one (`baseY + height / 2`), not based at `y = 0` the
     // way `node` itself is (matching the dot cloud and outline below) -- see
     // `_buildBoxInsideBuildingShell`.
-    shell.position.y = height / 2;
+    shell.position.z = height / 2;
 
-    node = new THREE.Group();
-    node.position.set(obs.x, obs.baseY || 0, obs.z);
-    node.rotation.y = obs.rotation;
+    // Built about the obstacle's base, and placed in `worldFrame`.
+    node = placeObstacle(new THREE.Group(), obs);
     // The obstacle it belongs to never moves, so neither does this.
     node.matrixAutoUpdate = false;
     node.updateMatrix();
@@ -6478,10 +6560,10 @@ class RenderManager {
   // stays in the map either way, so re-entering a building costs nothing.
   setInsideBuildings(obstacles = []) {
     if (!this.scene) return;
-    for (const node of this.visibleInsideBuildingNodes) this.worldGroup.remove(node);
+    for (const node of this.visibleInsideBuildingNodes) this.worldFrame.remove(node);
     this.visibleInsideBuildingNodes = obstacles.map((obs) => {
       const node = this._getInsideBuildingNode(obs);
-      this.worldGroup.add(node);
+      this.worldFrame.add(node);
       return node;
     });
   }
@@ -6557,8 +6639,12 @@ class RenderManager {
       });
     }
     if (plane) {
+      // three.js clips in its own world space, which is the game's frame
+      // carried by the world groups -- a headset's walk and turn included.
       state.crossingClipPlane.normal.set(plane.x, plane.y, plane.z);
       state.crossingClipPlane.constant = plane.d;
+      this.worldFrame.updateWorldMatrix(true, false);
+      state.crossingClipPlane.applyMatrix4(this.worldFrame.matrixWorld);
     } else {
       state.crossingClipPlane.normal.set(0, 1, 0);
       state.crossingClipPlane.constant = TANK_CLIP_DISABLED_CONSTANT;
@@ -6576,7 +6662,7 @@ class RenderManager {
       // `updateMatrixWorld` walks a parented node whatever its visibility. The
       // mesh and its buffer stay on the tank, so re-entering a wall costs
       // nothing.
-      if (state.crossingIDLMesh?.parent) this.worldGroup.remove(state.crossingIDLMesh);
+      state.crossingIDLMesh?.removeFromParent();
       return;
     }
     if (!state.crossingIDLMesh) state.crossingIDLMesh = this._createTankIDLMesh();
@@ -6585,10 +6671,10 @@ class RenderManager {
     if (written === 0) {
       // Straddling by the arithmetic, but no face actually cut: the tank is in
       // the wall's half-space without any of its silhouette crossing the plane.
-      if (mesh.parent) this.worldGroup.remove(mesh);
+      mesh.removeFromParent();
       return;
     }
-    if (!mesh.parent) this.worldGroup.add(mesh);
+    if (!mesh.parent) this.worldFrame.add(mesh);
   }
 
   _createTankIDLMesh() {
@@ -6628,17 +6714,14 @@ class RenderManager {
   // silhouette, the two points where its edges cross the wall, and a streak from
   // those out to where they project. Returns how many vertices were written.
   _fillTankIDLGeometry(geometry, tank, plane) {
-    const rotation = tank.userData.crossingHeading ?? tank.rotation.y;
+    const azimuth = tankAzimuth(tank);
     // The tank's own axes, so the silhouette can be placed without knowing
-    // which way a given tank model faces at rest. Forward is bzo's
-    // (-sin r, -cos r) and the lateral axis leads it by a quarter turn, which
-    // is upstream's +y.
-    const sin = Math.sin(rotation);
-    const cos = Math.cos(rotation);
-    const forwardX = -sin;
-    const forwardZ = -cos;
-    const leftX = -cos;
-    const leftZ = sin;
+    // which way a given tank model faces at rest: forward along the azimuth,
+    // left a quarter turn on.
+    const forwardX = Math.cos(azimuth);
+    const forwardY = Math.sin(azimuth);
+    const leftX = 0 - forwardY;
+    const leftY = forwardX;
     const originX = tank.position.x;
     const originY = tank.position.y;
     const originZ = tank.position.z;
@@ -6659,10 +6742,10 @@ class RenderManager {
       let crossings = 0;
       for (let i = 0, k = face.length - 1; i < face.length && crossings < 2; k = i, i += 1) {
         const worldK = this._tankIDLVertex(
-          face[k], originX, originY, originZ, forwardX, forwardZ, leftX, leftZ, 0,
+          face[k], originX, originY, originZ, forwardX, forwardY, leftX, leftY, 0,
         );
         const worldI = this._tankIDLVertex(
-          face[i], originX, originY, originZ, forwardX, forwardZ, leftX, leftZ, 1,
+          face[i], originX, originY, originZ, forwardX, forwardY, leftX, leftY, 1,
         );
         const dK = plane.x * worldK[0] + plane.y * worldK[1] + plane.z * worldK[2] + plane.d;
         const dI = plane.x * worldI[0] + plane.y * worldI[1] + plane.z * worldI[2] + plane.d;
@@ -6722,15 +6805,15 @@ class RenderManager {
   // One silhouette vertex in world space. Two scratch slots rather than one, so
   // an edge's two ends can be held at once without allocating a pair of arrays
   // every edge of every face of every frame.
-  _tankIDLVertex(index, originX, originY, originZ, forwardX, forwardZ, leftX, leftZ, slot) {
+  _tankIDLVertex(index, originX, originY, originZ, forwardX, forwardY, leftX, leftY, slot) {
     const base = index * 3;
     const along = TANK_IDL_VERTICES[base];
     const across = TANK_IDL_VERTICES[base + 1];
     const up = TANK_IDL_VERTICES[base + 2];
     const out = slot === 0 ? this._tankIDLScratchA : this._tankIDLScratchB;
     out[0] = originX + forwardX * along + leftX * across;
-    out[1] = originY + up;
-    out[2] = originZ + forwardZ * along + leftZ * across;
+    out[1] = originY + forwardY * along + leftY * across;
+    out[2] = originZ + up;
     return out;
   }
 
@@ -6748,16 +6831,16 @@ class RenderManager {
   }
 
   // For an obstacle with no mesh of its own, because it was merged into a
-  // fragment with every other obstacle of its kind. The position is in world
-  // space and the label hangs off the world group rather than off the obstacle.
+  // fragment with every other obstacle of its kind. The position is the
+  // game's, and the label hangs off `worldFrame` rather than off the obstacle.
   // `color` is the obstacle's own where it has one -- a base's team, or the
   // colour a map painted a box -- so the label reads as the thing it names.
   _addDebugLabelAt(name, position, type, color = undefined) {
     const label = this._tagDraws(this._createDebugLabelSprite(name, color ?? '#ffffff'), 'debug');
     label.position.copy(position);
-    this.worldGroup.add(label);
+    this.worldFrame.add(label);
     label.visible = this.debugLabelsEnabled;
-    this.debugLabels.push({ label, object3D: this.worldGroup, type });
+    this.debugLabels.push({ label, object3D: this.worldFrame, type });
   }
 
   _addDebugLabel(object3D, type) {
@@ -6768,17 +6851,18 @@ class RenderManager {
     // Ensure boundingBox is computed for label placement
     if (object3D.geometry && !object3D.geometry.boundingBox) object3D.geometry.computeBoundingBox();
     const box = object3D.geometry && object3D.geometry.boundingBox;
-    // A box/pyramid fragment's geometry is centred on its own local origin,
-    // with the object itself carrying the world position -- so the box's own
-    // x/z centre is always (0,0) there and this changes nothing for them. A
-    // mesh's geometry instead bakes absolute world coordinates straight in
-    // (see `_buildMeshObject`) with the object left at identity, so without
-    // its own x/z centre here every mesh label would float at the world
-    // origin instead of over the mesh it is meant to label.
-    const x = box ? (box.min.x + box.max.x) / 2 : 0;
-    const z = box ? (box.min.z + box.max.z) / 2 : 0;
-    const y = (box ? box.max.y : object3D.position.y) + 2;
-    label.position.set(x, y, z);
+    // A wall's geometry is centred on its own local origin, with the object
+    // itself carrying the world position -- so the box's own x/y centre is
+    // (0,0) there and this changes nothing for it. A mesh's geometry instead
+    // bakes absolute world coordinates straight in (see `_buildMeshObject`)
+    // with the object left at identity, so without its own x/y centre here
+    // every mesh label would float at the world origin instead of over the
+    // mesh it is meant to label.
+    label.position.set(
+      box ? (box.min.x + box.max.x) / 2 : 0,
+      box ? (box.min.y + box.max.y) / 2 : 0,
+      (box ? box.max.z : object3D.position.z) + 2,
+    );
     object3D.add(label);
     label.visible = this.debugLabelsEnabled;
     this.debugLabels.push({ label, object3D, type });
@@ -6813,7 +6897,7 @@ class RenderManager {
   clearMountains() {
     if (!this.scene) return;
     this.mountainMeshes.forEach((mesh) => {
-      this.worldGroup.remove(mesh);
+      mesh.removeFromParent();
       if (mesh.geometry) mesh.geometry.dispose();
       if (mesh.material) {
         if (Array.isArray(mesh.material)) {
@@ -6860,19 +6944,19 @@ class RenderManager {
     for (let i = 0; i <= segmentCount; i += 1) {
       const angle = startAngle + angleStep * i;
       const x = radius * Math.cos(angle);
-      const z = radius * Math.sin(angle);
+      const y = 0 - (radius * Math.sin(angle));
       const nx = -Math.SQRT1_2 * Math.cos(angle);
-      const nz = -Math.SQRT1_2 * Math.sin(angle);
+      const ny = Math.SQRT1_2 * Math.sin(angle);
       let u = i / segmentCount;
       if (MOUNTAIN_TEXTURE_PATHS.length !== 1) {
         u = (u * (textureWidth - 2) + 1) / textureWidth;
       }
 
-      positions.push(x, 0, z);
-      positions.push(x, height, z);
+      positions.push(x, y, 0);
+      positions.push(x, y, height);
 
-      normals.push(nx, Math.SQRT1_2, nz);
-      normals.push(nx, Math.SQRT1_2, nz);
+      normals.push(nx, ny, Math.SQRT1_2);
+      normals.push(nx, ny, Math.SQRT1_2);
 
       uvs.push(u, 0.02);
       uvs.push(u, 0.99);
@@ -6948,7 +7032,7 @@ class RenderManager {
       frontMountain.receiveShadow = false;
       frontMountain.castShadow = false;
       frontMountain.renderOrder = MOUNTAIN_RENDER_ORDER;
-      this.worldGroup.add(this._tagDraws(frontMountain, 'scenery'));
+      this.worldFrame.add(this._tagDraws(frontMountain, 'scenery'));
       this.mountainMeshes.push(frontMountain);
 
       const backGeometry = this._createMountainStripGeometry(
@@ -6962,7 +7046,7 @@ class RenderManager {
       backMountain.receiveShadow = false;
       backMountain.castShadow = false;
       backMountain.renderOrder = MOUNTAIN_RENDER_ORDER;
-      this.worldGroup.add(this._tagDraws(backMountain, 'scenery'));
+      this.worldFrame.add(this._tagDraws(backMountain, 'scenery'));
       this.mountainMeshes.push(backMountain);
     }
   }
@@ -6972,7 +7056,7 @@ class RenderManager {
     // All three share one sphere, so it is disposed once rather than per mesh.
     const geometries = new Set();
     this.celestialMeshes.forEach((mesh) => {
-      this.worldGroup.remove(mesh);
+      mesh.removeFromParent();
       if (mesh.geometry) geometries.add(mesh.geometry);
       if (mesh.material) mesh.material.dispose();
     });
@@ -6992,7 +7076,7 @@ class RenderManager {
     sunX, sunY, sunZ, moonX, moonY, moonZ, sunColor,
     sunRadius, moonRadius, sunVisible = true, moonVisible = true,
   }) {
-    if (!this.scene || !this.worldGroup) return;
+    if (!this.scene || !this.worldFrame) return;
     if (!this.celestialEnabled || !this._worldDraws('celestial') || !this._worldDraws('sky')) {
       this.clearCelestialBodies();
       return;
@@ -7005,7 +7089,7 @@ class RenderManager {
       const addCelestialMesh = (material, renderOrder) => {
         const mesh = this._tagDraws(new THREE.Mesh(celestialGeometry, material), 'scenery');
         mesh.renderOrder = renderOrder;
-        this.worldGroup.add(mesh);
+        this.worldFrame.add(mesh);
         this.celestialMeshes.push(mesh);
         return mesh;
       };
@@ -7052,10 +7136,10 @@ class RenderManager {
   }
 
   clearClouds() {
-    this.skyBeaconTopY = 0;
+    this.skyBeaconTopZ = 0;
     if (!this.scene) return;
     this.clouds.forEach((cloud) => {
-      this.worldGroup.remove(cloud);
+      cloud.removeFromParent();
       // A cloud owns its geometry outright; the material is the sky's.
       cloud.geometry.dispose();
     });
@@ -7133,7 +7217,7 @@ class RenderManager {
     // Inner corners 0-3 at full opacity, outer 4-7 faded to nothing.
     [inner, groundSize].forEach((extent, ring) => {
       corners.forEach(([cx, cz]) => {
-        positions.push(cx * extent, 0, cz * extent);
+        positions.push(cx * extent, 0 - (cz * extent), 0);
         uvs.push((cx * extent / groundSize) * BZFLAG_CLOUD_REPEATS, (cz * extent / groundSize) * BZFLAG_CLOUD_REPEATS);
         colors.push(1, 1, 1, ring === 0 ? 1 : 0);
       });
@@ -7179,17 +7263,17 @@ class RenderManager {
       );
     };
     const layer = new THREE.Mesh(geometry, material);
-    layer.position.y = BZFLAG_CLOUD_HEIGHT_TANK_HEIGHTS * TANK.height;
+    layer.position.z = BZFLAG_CLOUD_HEIGHT_TANK_HEIGHTS * TANK.height;
     layer.renderOrder = CLOUD_LAYER_RENDER_ORDER;
     layer.frustumCulled = false;
     layer.visible = !this.cloudsHiddenForOverview;
     this.cloudLayer = layer;
-    this.worldGroup.add(this._tagDraws(layer, 'scenery'));
+    this.worldFrame.add(this._tagDraws(layer, 'scenery'));
   }
 
   clearCloudLayer() {
     if (!this.cloudLayer) return;
-    this.worldGroup.remove(this.cloudLayer);
+    this.cloudLayer.removeFromParent();
     this.cloudLayer.geometry.dispose();
     this.cloudLayer.material.map?.dispose();
     this.cloudLayer.material.dispose();
@@ -7216,7 +7300,7 @@ class RenderManager {
       cloud.userData.velocity = 0.5 + Math.random() * 1.0;
       cloud.userData.startX = cloudData.x;
 
-      this.worldGroup.add(cloud);
+      this.worldFrame.add(cloud);
       this.clouds.push(cloud);
     });
 
@@ -7225,11 +7309,11 @@ class RenderManager {
     // reaches the bottom of the layer clears the map without being lost in it.
     // A world that sent no clouds leaves it on the ground and every beacon
     // falls back to a length of its own.
-    this.skyBeaconTopY = this.clouds.reduce(
-      (lowest, cloud) => Math.min(lowest, cloud.position.y),
+    this.skyBeaconTopZ = this.clouds.reduce(
+      (lowest, cloud) => Math.min(lowest, cloud.position.z),
       Number.isFinite(cloudBase) ? cloudBase : Infinity,
     );
-    if (!Number.isFinite(this.skyBeaconTopY)) this.skyBeaconTopY = 0;
+    if (!Number.isFinite(this.skyBeaconTopZ)) this.skyBeaconTopZ = 0;
   }
 
   getClouds() {
@@ -7391,6 +7475,11 @@ class RenderManager {
     this._tankModelLoadsInFlight.add(loadPath);
     const onLoad = (obj) => {
       this._generateMissingTankUVs(obj);
+      // OBJLoader leaves every part at the identity, so turning the geometry
+      // turns the model.
+      obj.traverse((child) => {
+        if (child.geometry) child.geometry.applyMatrix4(TANK_MODEL_TO_GAME);
+      });
       const cache = {};
       obj.traverse((child) => {
         if (child.isMesh) cache[child.name] = child.geometry;
@@ -7608,7 +7697,8 @@ class RenderManager {
 
         // Which of the six materials each triangle wants, by the axis its
         // normal leans on: a face pointing up or down is the belt the tread
-        // runs on, anything else is the side of it.
+        // runs on, anything else is the side of it. The material slots keep
+        // three.js's box order, where up is the third and down the fourth.
         const triangleMaterials = new Uint8Array(triangleCount);
         for (let triangleIndex = 0; triangleIndex < triangleCount; triangleIndex += 1) {
           const base = triangleIndex * 3;
@@ -7625,8 +7715,8 @@ class RenderManager {
           normal.crossVectors(ab, ac).normalize();
 
           let materialIndex = 0;
-          if (Math.abs(normal.y) >= Math.abs(normal.x) && Math.abs(normal.y) >= Math.abs(normal.z)) {
-            materialIndex = normal.y >= 0 ? 2 : 3;
+          if (Math.abs(normal.z) >= Math.abs(normal.x) && Math.abs(normal.z) >= Math.abs(normal.y)) {
+            materialIndex = normal.z >= 0 ? 2 : 3;
           }
 
           triangleMaterials[triangleIndex] = materialIndex;
@@ -7687,13 +7777,14 @@ class RenderManager {
       mesh.geometry.computeBoundingBox();
     }
 
+    // Outward is along the tank's y: +y to port, -y to starboard.
     const box = mesh.geometry.boundingBox;
-    const centerX = box ? (box.min.x + box.max.x) * 0.5 : 0;
-    const direction = directionHint || Math.sign(centerX);
+    const centerY = box ? (box.min.y + box.max.y) * 0.5 : 0;
+    const direction = directionHint || Math.sign(centerY);
     if (!direction) return;
 
     mesh.geometry = mesh.geometry.clone();
-    mesh.geometry.translate(direction * TANK_WHEEL_OUTWARD_NUDGE, 0, 0);
+    mesh.geometry.translate(0, direction * TANK_WHEEL_OUTWARD_NUDGE, 0);
   }
 
   _getTemplateMeshesByPrefix(prefix, modelPath = this._tankModelPath) {
@@ -7877,7 +7968,7 @@ class RenderManager {
     if (name) {
       const spriteMaterial = new THREE.SpriteMaterial({ ...LABEL_MATERIAL_DEPTH });
       const sprite = new THREE.Sprite(spriteMaterial);
-      sprite.position.set(0, 3, 0);
+      sprite.position.set(0, 0, 3);
       sprite.scale.set(2, 0.5, 1);
       tankGroup.add(sprite);
       tankGroup.userData.nameLabel = sprite;
@@ -7923,8 +8014,8 @@ class RenderManager {
     tankGroup.userData.leftTreadTextures = leftTread ? leftTread.textures : [];
     tankGroup.userData.rightTreadTextures = rightTread ? rightTread.textures : [];
 
-    const leftWheels = this._buildWheels(leftWheelParts, -1);
-    const rightWheels = this._buildWheels(rightWheelParts, 1);
+    const leftWheels = this._buildWheels(leftWheelParts, 1);
+    const rightWheels = this._buildWheels(rightWheelParts, -1);
     [...leftWheels.wheels, ...rightWheels.wheels].forEach((wheel) => tankGroup.add(wheel));
 
     tankGroup.userData.leftWheels = leftWheels.wheels;
@@ -7938,9 +8029,9 @@ class RenderManager {
     if (sampleWheel && sampleWheel.geometry) {
       if (!sampleWheel.geometry.boundingBox) sampleWheel.geometry.computeBoundingBox();
       const box = sampleWheel.geometry.boundingBox;
-      const radiusY = (box.max.y - box.min.y) * 0.5;
+      const radiusX = (box.max.x - box.min.x) * 0.5;
       const radiusZ = (box.max.z - box.min.z) * 0.5;
-      tankGroup.userData.wheelRadius = Math.max(0.05, Math.max(radiusY, radiusZ));
+      tankGroup.userData.wheelRadius = Math.max(0.05, Math.max(radiusX, radiusZ));
     } else {
       tankGroup.userData.wheelRadius = 0.42;
     }
@@ -8653,15 +8744,15 @@ class RenderManager {
       this._getShotTailSheet(color), capacity * BZFLAG_SHOT_TAIL_SEGMENTS,
       { cells: BZFLAG_SHOT_TAIL_CELLS, additive: true },
     );
-    this.worldGroup.add(this._tagDraws(entry.headMesh, 'effect'));
-    this.worldGroup.add(this._tagDraws(entry.tailMesh, 'effect'));
+    this.worldFrame.add(this._tagDraws(entry.headMesh, 'effect'));
+    this.worldFrame.add(this._tagDraws(entry.tailMesh, 'effect'));
     return entry;
   }
 
   _disposeShotBatch(entry) {
     for (const mesh of [entry.headMesh, entry.tailMesh]) {
       if (!mesh) continue;
-      this.worldGroup?.remove(mesh);
+      this.worldFrame?.remove(mesh);
       mesh.geometry.dispose();
       mesh.material.dispose();
       mesh.dispose();
@@ -8832,8 +8923,9 @@ class RenderManager {
     texture.offset.set(column / columns, row / rows);
   }
 
-  createShotImpact(position) {
-    if (!this.scene || !position) return;
+  createShotImpact(at) {
+    if (!this.scene || !at) return;
+    const position = at;
 
     const texture = this._createShotExplosionTexture();
     this._setSpriteAtlasFrame(texture, 0, 8, 8);
@@ -8855,7 +8947,7 @@ class RenderManager {
     sprite.position.copy(origin);
     sprite.scale.set(shotExplosionSize(), shotExplosionSize(), 1);
     sprite.renderOrder = SHOT_EXPLOSION_RENDER_ORDER;
-    this.worldGroup.add(this._tagDraws(sprite, 'effect'));
+    this.worldFrame.add(this._tagDraws(sprite, 'effect'));
     // A shot ends on the surface it struck, and a quad standing on that point
     // is half inside it. `_faceShotExplosion` lifts it clear -- see there.
     this._faceShotExplosion(sprite, origin);
@@ -8893,11 +8985,11 @@ class RenderManager {
   //
   // Every frame, because the eye moves even when the explosion does not.
   _faceShotExplosion(sprite, origin) {
-    if (!sprite || !origin || !this.camera || !this.worldGroup) return;
+    if (!sprite || !origin || !this.camera || !this.worldFrame) return;
     this.camera.updateWorldMatrix(true, false);
-    this.worldGroup.updateWorldMatrix(true, false);
+    this.worldFrame.updateWorldMatrix(true, false);
     const eye = this.camera.getWorldPosition(SHOT_EXPLOSION_EYE_SCRATCH);
-    this.worldGroup.worldToLocal(eye);
+    this.worldFrame.worldToLocal(eye);
     eye.sub(origin);
     const distance = eye.length();
     if (!(distance > 1e-6)) return;
@@ -9090,7 +9182,7 @@ class RenderManager {
     });
     const sphere = new THREE.Mesh(geometry, material);
     sphere.position.set(x, y, z);
-    this.worldGroup.add(this._tagDraws(sphere, 'effect'));
+    this.worldFrame.add(this._tagDraws(sphere, 'effect'));
     return sphere;
   }
 
@@ -9124,7 +9216,7 @@ class RenderManager {
       this.overlayLines = new THREE.LineSegments(geometry, material);
       this.overlayLines.frustumCulled = false;
       this.overlayLines.renderOrder = SHOT_RENDER_ORDER + 2;
-      this.worldGroup.add(this._tagDraws(this.overlayLines, 'effect'));
+      this.worldFrame.add(this._tagDraws(this.overlayLines, 'effect'));
     }
     const geometry = this.overlayLines.geometry;
     const positions = geometry.attributes.position.array;
@@ -9161,7 +9253,7 @@ class RenderManager {
       this.lockOnMarker = new THREE.Sprite(material);
       this.lockOnMarker.scale.set(BZFLAG_LOCKON_WORLD_SIZE, BZFLAG_LOCKON_WORLD_SIZE, 1);
       this.lockOnMarker.renderOrder = SHOT_RENDER_ORDER + 1;
-      this.worldGroup.add(this._tagDraws(this.lockOnMarker, 'effect'));
+      this.worldFrame.add(this._tagDraws(this.lockOnMarker, 'effect'));
     }
     this.lockOnMarker.visible = true;
     this.lockOnMarker.position.set(position.x, position.y, position.z);
@@ -9238,14 +9330,14 @@ class RenderManager {
     this._gmPuffMesh = buildGMPuffMesh(texture);
     this._gmPuffNext = 0;
     this._gmPuffClock = this._gmPuffClock || 0;
-    this.worldGroup.add(this._tagDraws(this._gmPuffMesh, 'effect'));
+    this.worldFrame.add(this._tagDraws(this._gmPuffMesh, 'effect'));
     return this._gmPuffMesh;
   }
 
   // One puff into the ring: where, when, and which quadrant of the sheet
   // upstream picked for it. The oldest slot is the one reused.
   createGMPuff(position) {
-    if (!this.scene || !this.worldGroup || !position) return;
+    if (!this.scene || !this.worldFrame || !position) return;
     const mesh = this._getGMPuffMesh();
     const { geometry } = mesh;
     const slot = this._gmPuffNext;
@@ -9287,13 +9379,13 @@ class RenderManager {
 
   removePausedSphere(sphere) {
     if (!sphere || !this.scene) return;
-    this.worldGroup.remove(sphere);
+    this.worldFrame.remove(sphere);
     if (sphere.geometry) sphere.geometry.dispose();
     if (sphere.material) sphere.material.dispose();
   }
 
-  createLandingEffect(position, intensity = 1, { local = false, silent = false } = {}) {
-    if (!this.scene || !position) return;
+  createLandingEffect(at, intensity = 1, { local = false, silent = false } = {}) {
+    if (!this.scene || !at) return;
     const clampedIntensity = Math.max(0.4, Math.min(1.6, intensity || 1));
     // BZFlag has no per-sound gain, so landing volume does not vary with impact
     // speed. The intensity argument still drives the visual landing effect.
@@ -9301,7 +9393,7 @@ class RenderManager {
     // effect still draws, since upstream's is not part of that else-chain.
     if (!silent) {
       if (local) this.playLocalSound('land');
-      else this.playSound('land', position);
+      else this.playSound('land', at);
     }
 
     // StdLandEffect (effectsRenderer.cxx:1379): drawRingXY builds a shell
@@ -9312,6 +9404,7 @@ class RenderManager {
     // is why a unit cylinder scaled by that one radius keeps the ratio.
     const ringGeometry = new THREE.CylinderGeometry(1.05, 1, 1, 32, 1, true);
     ringGeometry.translate(0, 0.5, 0);
+    standUpGeometry(ringGeometry);
     // `dusty_flare`, the same texture the shot-teleport collar wears -- a
     // speckle of dots dense at one edge and fading to nothing at the other,
     // which is what reads as thrown dirt rather than a flat lit ring.
@@ -9324,13 +9417,13 @@ class RenderManager {
       depthWrite: false
     });
     const ring = new THREE.Mesh(ringGeometry, ringMaterial);
-    ring.position.set(position.x, position.y + 0.03, position.z);
+    ring.position.set(at.x, at.y, at.z + 0.03);
 
     const startRadius = 2.5;
     // The top ring starts half a unit up (upstream's `0.5f + age`, age zero).
-    ring.scale.set(startRadius, 0.5, startRadius);
+    ring.scale.set(startRadius, startRadius, 0.5);
 
-    this.worldGroup.add(this._tagDraws(ring, 'effect'));
+    this.worldFrame.add(this._tagDraws(ring, 'effect'));
     this.activeLandingEffects.push({
       ring,
       geometry: ringGeometry,
@@ -9343,9 +9436,9 @@ class RenderManager {
     });
   }
 
-  createSpawnEffect(position, color = 0x4caf50) {
-    if (!this.scene || !position) return;
-    this.playSound('pop', position);
+  createSpawnEffect(at, color = 0x4caf50) {
+    if (!this.scene || !at) return;
+    this.playSound('pop', at);
 
     const tint = new THREE.Color(typeof color === 'number' ? color : 0x4caf50)
       .lerp(new THREE.Color(0xffffff), 0.35);
@@ -9360,11 +9453,10 @@ class RenderManager {
       blending: THREE.AdditiveBlending,
     });
     const ring = new THREE.Mesh(ringGeometry, ringMaterial);
-    ring.rotation.x = Math.PI / 2;
-    ring.position.set(position.x, position.y + 0.05, position.z);
+    ring.position.set(at.x, at.y, at.z + 0.05);
     ring.scale.set(0.7, 0.7, 1);
 
-    const columnGeometry = new THREE.CylinderGeometry(0.28, 0.55, 3.0, 18, 1, true);
+    const columnGeometry = standUpGeometry(new THREE.CylinderGeometry(0.28, 0.55, 3.0, 18, 1, true));
     const columnMaterial = new THREE.MeshBasicMaterial({
       color: tint,
       transparent: true,
@@ -9374,8 +9466,8 @@ class RenderManager {
       side: THREE.DoubleSide,
     });
     const column = new THREE.Mesh(columnGeometry, columnMaterial);
-    column.position.set(position.x, position.y + 1.5, position.z);
-    column.scale.set(0.4, 0.3, 0.4);
+    column.position.set(at.x, at.y, at.z + 1.5);
+    column.scale.set(0.4, 0.4, 0.3);
 
     const topRingGeometry = new THREE.RingGeometry(0.45, 0.78, 40);
     const topRingMaterial = new THREE.MeshBasicMaterial({
@@ -9387,13 +9479,12 @@ class RenderManager {
       blending: THREE.AdditiveBlending,
     });
     const topRing = new THREE.Mesh(topRingGeometry, topRingMaterial);
-    topRing.rotation.x = Math.PI / 2;
-    topRing.position.set(position.x, position.y + 1.35, position.z);
+    topRing.position.set(at.x, at.y, at.z + 1.35);
     topRing.scale.set(0.65, 0.65, 1);
 
-    this.worldGroup.add(this._tagDraws(ring, 'effect'));
-    this.worldGroup.add(this._tagDraws(column, 'effect'));
-    this.worldGroup.add(this._tagDraws(topRing, 'effect'));
+    this.worldFrame.add(this._tagDraws(ring, 'effect'));
+    this.worldFrame.add(this._tagDraws(column, 'effect'));
+    this.worldFrame.add(this._tagDraws(topRing, 'effect'));
 
     this.activeSpawnEffects.push({
       ring,
@@ -9414,12 +9505,14 @@ class RenderManager {
     if (!this.scene) return null;
     const projectileColor = typeof data.color === 'number' ? data.color : 0xffff00;
     const guided = data.guided === true;
+    // In `worldFrame`, at the game's position.
     const projectile = new THREE.Group();
     projectile.position.set(data.x, data.y, data.z);
 
-    const dir = new THREE.Vector3(data.dirX || 0, 0, data.dirZ || -1);
+    // The trail hangs level behind the shot.
+    const dir = new THREE.Vector3(data.dirX || 0, data.dirY || 1, 0);
     if (dir.lengthSq() < 0.0001) {
-      dir.set(0, 0, -1);
+      dir.set(0, 1, 0);
     } else {
       dir.normalize();
     }
@@ -9437,8 +9530,6 @@ class RenderManager {
     }
 
     projectile.userData = {
-      dirX: data.dirX,
-      dirZ: data.dirZ,
       color: projectileColor,
       // Where the trail hangs. Normalized at the muzzle and rewritten by
       // `aimProjectile` for a missile, which is the only shot that turns.
@@ -9496,7 +9587,7 @@ class RenderManager {
       if (!this.projectileLights) this.projectileLights = new Map();
       this.projectileLights.set(projectile, shotLight);
     }
-    this.worldGroup.add(this._tagDraws(projectile, 'effect'));
+    this.worldFrame.add(this._tagDraws(projectile, 'effect'));
     // Upstream picks the report off the firing flag rather than playing SFX_FIRE
     // for everything (playing.cxx:2956); a guided missile is the second shot bzo
     // has that takes a sound of its own.
@@ -9544,6 +9635,7 @@ class RenderManager {
     const beamColor = typeof data.color === 'number' ? data.color : 0xffff00;
     const segments = Array.isArray(data.segments) ? data.segments : [];
     const origin = segments.length > 0 ? segments[0].from : { x: data.x, y: data.y, z: data.z };
+    // In `worldFrame`, upstream's, as the segments are.
     const group = new THREE.Group();
     group.position.set(origin.x, origin.y, origin.z);
     group.renderOrder = SHOT_RENDER_ORDER;
@@ -9598,7 +9690,7 @@ class RenderManager {
     }
 
     group.userData = { beam: true, beamMaterials: materials, beamLayers: layers, color: beamColor };
-    this.worldGroup.add(this._tagDraws(group, 'effect'));
+    this.worldFrame.add(this._tagDraws(group, 'effect'));
     // The shooter has already heard and seen its own shot leave the barrel; this
     // message is what tells it where the beam went.
     if (!data.silent) {
@@ -9606,7 +9698,7 @@ class RenderManager {
       if (drawn.length > 0) {
         const first = drawn[0];
         const flashDir = new THREE.Vector3(
-          first.to.x - first.from.x, first.to.y - first.from.y, first.to.z - first.from.z
+          first.to.x - first.from.x, first.to.y - first.from.y, first.to.z - first.from.z,
         );
         this.createMuzzleFlash(group.position, flashDir.normalize());
       }
@@ -9619,7 +9711,7 @@ class RenderManager {
     // one), so upstream announces every bend at once and so does this.
     for (let i = 1; i < segments.length; i += 1) {
       const cause = segments[i - 1].end;
-      const at = new THREE.Vector3(segments[i].from.x, segments[i].from.y, segments[i].from.z);
+      const at = segments[i].from;
       if (cause === 'obstacle' || cause === 'ground') {
         this.playSound('ricochet', at);
         const before = segments[i - 1];
@@ -9664,12 +9756,13 @@ class RenderManager {
     mesh.frustumCulled = false;
     mesh.renderOrder = SHOT_RENDER_ORDER;
 
+    // In `worldFrame`, upstream's; a sphere has no up to stand.
     const group = new THREE.Group();
     group.position.set(data.x, data.y, data.z);
     group.renderOrder = SHOT_RENDER_ORDER;
     group.add(mesh);
     group.userData = { shockwave: true, shockWaveMesh: mesh, shockWaveMaterial: material, color: waveColor };
-    this.worldGroup.add(this._tagDraws(group, 'effect'));
+    this.worldFrame.add(this._tagDraws(group, 'effect'));
     // SFX_SHOCK, and no muzzle flash: the shot leaves no barrel. The shooter
     // has already heard its own, so only everybody else's arrives with the
     // message that announces it.
@@ -9688,18 +9781,19 @@ class RenderManager {
 
   removeProjectile(projectile, reason = 1) {
     if (!projectile || !this.scene) return;
+    const at = projectile.position;
     if (reason === 0) {
-      this.createShotImpact(projectile.position);
+      this.createShotImpact(at);
     }
     // BZFlag plays SFX_SHOT_BOOM when a shot ends. A shock wave is the exception:
     // it is expired by its own strategy at full size rather than ended on
     // anything, so it fades out of the world without a sound.
     if (!projectile.userData?.shockwave) {
-      this.playSound('shotBoom', projectile.position);
+      this.playSound('shotBoom', at);
     }
     // Remove point light from scene if present
     if (this.projectileLights) this.projectileLights.delete(projectile);
-    this.worldGroup.remove(projectile);
+    this.worldFrame.remove(projectile);
     if (projectile.userData?.shockwave) {
       // The sphere itself is shared between every wave ever drawn.
       projectile.userData.shockWaveMaterial?.dispose();
@@ -9734,11 +9828,12 @@ class RenderManager {
   // tumble (the body for all of it, as upstream's Exploding state lasts), and
   // `size` its `_tankExplosionSize`, which the burst scales with against
   // upstream's default of 3.5 tank lengths.
-  createExplosion(position, tank, sound = 'explosion', { explodeTime = 5, size = 21 } = {}) {
-    if (!this.scene || !position) return;
+  createExplosion(at, tank, sound = 'explosion', { explodeTime = 5, size = 21 } = {}) {
+    if (!this.scene || !at) return;
+    const position = new THREE.Vector3(at.x, at.y, at.z);
     const burst = size > 0 ? size / 21 : 1;
     const tumble = explodeTime >= 0 ? explodeTime / 5 : 1;
-    this.playSound(sound, position);
+    this.playSound(sound, at);
 
     // Dynamic lighting flash
     let explosionLight = null;
@@ -9757,7 +9852,7 @@ class RenderManager {
     const material = new THREE.MeshBasicMaterial({ color: 0xff4500, transparent: true, opacity: 0.8 });
     const explosion = new THREE.Mesh(geometry, material);
     explosion.position.copy(position);
-    this.worldGroup.add(this._tagDraws(explosion, 'effect'));
+    this.worldFrame.add(this._tagDraws(explosion, 'effect'));
 
     const shockwaveGeometry = new THREE.TorusGeometry(1.6 * burst, 0.12 * burst, 8, 48);
     const shockwaveMaterial = new THREE.MeshBasicMaterial({
@@ -9766,15 +9861,15 @@ class RenderManager {
       opacity: 0.8,
       depthWrite: false
     });
+    // A torus lies in its own x-y plane, which is the ground.
     const shockwave = new THREE.Mesh(shockwaveGeometry, shockwaveMaterial);
-    shockwave.rotation.x = Math.PI / 2;
-    shockwave.position.set(position.x, Math.max(0.08, position.y + 0.08), position.z);
-    this.worldGroup.add(this._tagDraws(shockwave, 'effect'));
+    shockwave.position.set(position.x, position.y, Math.max(0.08, position.z + 0.08));
+    this.worldFrame.add(this._tagDraws(shockwave, 'effect'));
 
     const debrisPieces = [];
     let followTarget = null;
     if (tank && tank.userData) {
-      const tankWorldPos = tank.position.clone();
+      const tankWorldPos = tank.position;
       const explodableParts = Array.isArray(tank.userData.explodableParts)
         ? tank.userData.explodableParts
         : [];
@@ -9789,8 +9884,8 @@ class RenderManager {
       const localQuat = new THREE.Quaternion();
       const localScale = new THREE.Vector3();
 
-      this.worldGroup.updateWorldMatrix(true, false);
-      parentInverseMatrix.copy(this.worldGroup.matrixWorld).invert();
+      this.worldFrame.updateWorldMatrix(true, false);
+      parentInverseMatrix.copy(this.worldFrame.matrixWorld).invert();
 
       // Player::addToScene (Player.cxx:888) keeps handing an exploding tank's
       // node the eased flag dimensions, so a tank that dies with Narrow, Tiny or
@@ -9857,7 +9952,7 @@ class RenderManager {
           debrisPiece.dimensions = dimensions;
           debrisPiece.dimensionSource = tank;
           debrisPiece.unflaggedScale = new THREE.Vector3(
-            tankScale.x / deathWidth, tankScale.y, tankScale.z / deathLength,
+            tankScale.x / deathLength, tankScale.y / deathWidth, tankScale.z,
           );
         }
         if (sourcePart === tank.userData.body && debrisPiece) {
@@ -9881,8 +9976,8 @@ class RenderManager {
       const speed = (Math.random() * 15 + 10) * burst;
       debris.velocity = new THREE.Vector3(
         Math.cos(angle) * Math.cos(elevation) * speed,
+        0 - (Math.sin(angle) * Math.cos(elevation) * speed),
         Math.sin(elevation) * speed + 5,
-        Math.sin(angle) * Math.cos(elevation) * speed,
       );
       debris.rotation.set(
         Math.random() * Math.PI,
@@ -9895,7 +9990,7 @@ class RenderManager {
         (Math.random() - 0.5) * 10,
       );
       debris.userData.isTankPart = false;
-      this.worldGroup.add(this._tagDraws(debris, 'effect'));
+      this.worldFrame.add(this._tagDraws(debris, 'effect'));
       debrisPieces.push({ mesh: debris, lifetime: 0, maxLifetime: 2.5 });
     }
 
@@ -9926,18 +10021,18 @@ class RenderManager {
       effect.ringMaterial.opacity = Math.max(0, 0.95 * (1 - progress));
 
       const columnPulse = 0.28 + (1 - progress) * 0.72;
-      effect.column.scale.set(0.4 * columnPulse, 0.3 + (1 - progress) * 1.25, 0.4 * columnPulse);
+      effect.column.scale.set(0.4 * columnPulse, 0.4 * columnPulse, 0.3 + (1 - progress) * 1.25);
       effect.columnMaterial.opacity = Math.max(0, 0.34 * (1 - progress));
 
       const topRingScale = 0.65 + progress * 1.45;
       effect.topRing.scale.set(topRingScale, topRingScale, 1);
-      effect.topRing.position.y += dt * 1.8;
+      effect.topRing.position.z += dt * 1.8;
       effect.topRingMaterial.opacity = Math.max(0, 0.55 * (1 - progress));
 
       if (progress >= 1) {
-        this.worldGroup.remove(effect.ring);
-        this.worldGroup.remove(effect.column);
-        this.worldGroup.remove(effect.topRing);
+        effect.ring.removeFromParent();
+        effect.column.removeFromParent();
+        effect.topRing.removeFromParent();
         effect.ringGeometry.dispose();
         effect.ringMaterial.dispose();
         effect.columnGeometry.dispose();
@@ -9954,13 +10049,13 @@ class RenderManager {
       const progress = Math.min(1, effect.lifetime / effect.maxLifetime);
       const radius = effect.startRadius + (effect.expansionRate * effect.lifetime);
       effect.ring.scale.x = radius;
-      effect.ring.scale.z = radius;
+      effect.ring.scale.y = radius;
       // Upstream's `0.5f + age`: the top ring keeps rising for the effect's
       // whole life, independent of how wide it has grown.
-      effect.ring.scale.y = 0.5 + effect.lifetime;
+      effect.ring.scale.z = 0.5 + effect.lifetime;
       effect.material.opacity = Math.max(0, 1.0 - progress);
       if (progress >= 1) {
-        this.worldGroup.remove(effect.ring);
+        effect.ring.removeFromParent();
         effect.geometry.dispose();
         effect.material.dispose();
         this.activeLandingEffects.splice(index, 1);
@@ -9975,7 +10070,7 @@ class RenderManager {
         explosion.sphereMaterial.opacity -= 1.5 * dt;
         explosion.sphere.scale.addScalar(3.8 * dt);
         if (explosion.sphereMaterial.opacity <= 0) {
-          this.worldGroup.remove(explosion.sphere);
+          explosion.sphere.removeFromParent();
           explosion.sphereGeometry.dispose();
           explosion.sphereMaterial.dispose();
           explosion.sphere = null;
@@ -9989,7 +10084,7 @@ class RenderManager {
         explosion.shockwave.scale.x += 5.5 * dt;
         explosion.shockwave.scale.y += 5.5 * dt;
         if (explosion.shockwaveMaterial.opacity <= 0) {
-          this.worldGroup.remove(explosion.shockwave);
+          explosion.shockwave.removeFromParent();
           explosion.shockwaveGeometry.dispose();
           explosion.shockwaveMaterial.dispose();
           explosion.shockwave = null;
@@ -10013,7 +10108,7 @@ class RenderManager {
           piece.lifetime += dt;
           const isPrimaryHull = Boolean(piece.mesh.userData?.isPrimaryHull);
           const gravity = isPrimaryHull ? 9 : 12;
-          piece.mesh.velocity.y -= gravity * dt;
+          piece.mesh.velocity.z -= gravity * dt;
           piece.mesh.position.x += piece.mesh.velocity.x * dt;
           piece.mesh.position.y += piece.mesh.velocity.y * dt;
           piece.mesh.position.z += piece.mesh.velocity.z * dt;
@@ -10023,9 +10118,9 @@ class RenderManager {
           if (piece.dimensions) {
             const { userData } = piece.dimensionSource;
             piece.dimensions.scale.set(
-              piece.unflaggedScale.x * (userData.dimensionScaleWidth ?? 1),
-              piece.unflaggedScale.y,
-              piece.unflaggedScale.z * (userData.dimensionScaleLength ?? 1),
+              piece.unflaggedScale.x * (userData.dimensionScaleLength ?? 1),
+              piece.unflaggedScale.y * (userData.dimensionScaleWidth ?? 1),
+              piece.unflaggedScale.z,
             );
           }
 
@@ -10038,28 +10133,28 @@ class RenderManager {
             });
           }
 
-          if (piece.mesh.position.y < 0) {
+          if (piece.mesh.position.z < 0) {
             if (isPrimaryHull) {
-              piece.mesh.position.y = 0;
+              piece.mesh.position.z = 0;
               const bounceCount = piece.mesh.userData.groundBounces || 0;
-              const verticalImpact = Math.abs(piece.mesh.velocity.y);
+              const verticalImpact = Math.abs(piece.mesh.velocity.z);
               if (bounceCount < 2 && verticalImpact > 1.2) {
                 piece.mesh.userData.groundBounces = bounceCount + 1;
                 piece.mesh.userData.grounded = false;
-                piece.mesh.velocity.y = verticalImpact * (bounceCount === 0 ? 0.38 : 0.24);
+                piece.mesh.velocity.z = verticalImpact * (bounceCount === 0 ? 0.38 : 0.24);
                 piece.mesh.velocity.x *= 0.82;
-                piece.mesh.velocity.z *= 0.82;
+                piece.mesh.velocity.y *= 0.82;
                 piece.mesh.rotationVelocity.multiplyScalar(0.72);
               } else {
                 piece.mesh.userData.grounded = true;
-                piece.mesh.velocity.y = 0;
+                piece.mesh.velocity.z = 0;
                 const skidDamping = Math.pow(0.22, dt / 0.016);
                 piece.mesh.velocity.x *= skidDamping;
-                piece.mesh.velocity.z *= skidDamping;
+                piece.mesh.velocity.y *= skidDamping;
                 piece.mesh.rotationVelocity.multiplyScalar(Math.pow(0.18, dt / 0.016));
-                if ((piece.mesh.velocity.x * piece.mesh.velocity.x) + (piece.mesh.velocity.z * piece.mesh.velocity.z) < 0.04) {
+                if ((piece.mesh.velocity.x * piece.mesh.velocity.x) + (piece.mesh.velocity.y * piece.mesh.velocity.y) < 0.04) {
                   piece.mesh.velocity.x = 0;
-                  piece.mesh.velocity.z = 0;
+                  piece.mesh.velocity.y = 0;
                   piece.mesh.rotationVelocity.set(0, 0, 0);
                 }
               }
@@ -10102,7 +10197,7 @@ class RenderManager {
       }
 
       if (progress >= 1) {
-        this.worldGroup.remove(effect.sprite);
+        effect.sprite.removeFromParent();
         if (effect.material) effect.material.dispose();
         // The texture is a clone sharing the session's one uploaded sheet, so
         // it is dropped rather than disposed: disposing the last clone would
@@ -10130,7 +10225,7 @@ class RenderManager {
   }
 
   _launchTankPart(part, centerPos, debrisPieces, speedMultiplier = 1.0, options = {}) {
-    this.worldGroup.add(this._tagDraws(part, 'effect'));
+    this.worldFrame.add(this._tagDraws(part, 'effect'));
     part.userData.isTankPart = true;
     part.userData.isPrimaryHull = Boolean(options.isFollowTarget);
     part.userData.groundBounces = 0;
@@ -10140,8 +10235,8 @@ class RenderManager {
     const speed = (Math.random() * 6 + 6) * speedMultiplier;
     part.velocity = new THREE.Vector3(
       Math.cos(angle) * Math.cos(elevation) * speed,
+      0 - (Math.sin(angle) * Math.cos(elevation) * speed),
       Math.sin(elevation) * speed + (options.isFollowTarget ? 7 : 5.5),
-      Math.sin(angle) * Math.cos(elevation) * speed,
     );
     part.rotationVelocity = new THREE.Vector3(
       (Math.random() - 0.5) * (options.isFollowTarget ? 2.5 : 4.5),
@@ -10161,7 +10256,7 @@ class RenderManager {
     if (mesh === this.deathFollowTarget) {
       this.deathFollowTarget = null;
     }
-    this.worldGroup.remove(mesh);
+    mesh.removeFromParent();
     if (mesh.userData && !mesh.userData.isTankPart) {
       if (mesh.geometry) mesh.geometry.dispose();
       if (mesh.material) {
@@ -10215,8 +10310,10 @@ class RenderManager {
     return geometry;
   }
 
-  createMuzzleFlash(position, direction) {
-    if (!this.scene || !position || !direction) return;
+  createMuzzleFlash(at, along) {
+    if (!this.scene || !at || !along) return;
+    const length = Math.hypot(along.x, along.y, along.z);
+    if (length <= 0) return;
 
     const material = new THREE.MeshBasicMaterial({
       map: this._getFlashTexture(),
@@ -10227,13 +10324,9 @@ class RenderManager {
       side: THREE.DoubleSide,
     });
     const mesh = new THREE.Mesh(this._buildMuzzleFlashGeometry(0), material);
-    mesh.position.copy(position);
-    mesh.lookAt(
-      position.x + direction.x,
-      position.y + direction.y,
-      position.z + direction.z
-    );
-    this.worldGroup.add(this._tagDraws(mesh, 'effect'));
+    mesh.position.set(at.x, at.y, at.z);
+    pointAlong(mesh, along.x / length, along.y / length, along.z / length);
+    this.worldFrame.add(this._tagDraws(mesh, 'effect'));
 
     if (!this.muzzleFlashes) this.muzzleFlashes = [];
     this.muzzleFlashes.push({ mesh, material, age: 0 });
@@ -10249,7 +10342,7 @@ class RenderManager {
       // lifetime elapses. Retire it once it is no longer worth drawing.
       const alpha = BZFLAG_SHOT_FLASH_START_ALPHA - (flash.age / BZFLAG_SHOT_FLASH_LIFETIME);
       if (alpha <= 0.001) {
-        this.worldGroup.remove(flash.mesh);
+        flash.mesh.removeFromParent();
         flash.mesh.geometry.dispose();
         flash.material.dispose();
         this.muzzleFlashes.splice(i, 1);
@@ -10288,9 +10381,9 @@ class RenderManager {
 
   // EffectsRenderer::addRicoEffect. `direction` is upstream's own aim for it:
   // the new shot direction minus the old one, which points out of the surface.
-  createRicochetEffect(position, direction) {
-    if (!this.scene || !position || !direction) return;
-    const length = Math.hypot(direction.x, direction.y, direction.z);
+  createRicochetEffect(at, along) {
+    if (!this.scene || !at || !along) return;
+    const length = Math.hypot(along.x, along.y, along.z);
     if (length <= 0) return;
 
     const material = new THREE.MeshBasicMaterial({
@@ -10302,13 +10395,9 @@ class RenderManager {
       side: THREE.DoubleSide,
     });
     const mesh = new THREE.Mesh(this._buildRicochetGeometry(0), material);
-    mesh.position.copy(position);
-    mesh.lookAt(
-      position.x + (direction.x / length),
-      position.y + (direction.y / length),
-      position.z + (direction.z / length)
-    );
-    this.worldGroup.add(this._tagDraws(mesh, 'effect'));
+    mesh.position.set(at.x, at.y, at.z);
+    pointAlong(mesh, along.x / length, along.y / length, along.z / length);
+    this.worldFrame.add(this._tagDraws(mesh, 'effect'));
 
     if (!this.ricochetEffects) this.ricochetEffects = [];
     this.ricochetEffects.push({ mesh, material, age: 0 });
@@ -10322,7 +10411,7 @@ class RenderManager {
 
       const alpha = BZFLAG_RICO_START_ALPHA - (effect.age / BZFLAG_RICO_LIFETIME);
       if (alpha <= 0.001) {
-        this.worldGroup.remove(effect.mesh);
+        effect.mesh.removeFromParent();
         effect.mesh.geometry.dispose();
         effect.material.dispose();
         this.ricochetEffects.splice(i, 1);
@@ -10348,10 +10437,11 @@ class RenderManager {
     const geometry = new THREE.BufferGeometry();
     const w = BZFLAG_JUMPJET_HALF_WIDTH;
     const l = BZFLAG_JUMPJET_LENGTH;
+    // Across the tank's y, hanging down its z.
     geometry.setAttribute('position', new THREE.Float32BufferAttribute([
-      +w, 0, 0,
-      -w, 0, 0,
-      0, -l, 0,
+      0, -w, 0,
+      0, +w, 0,
+      0, 0, -l,
     ], 3));
     geometry.setAttribute('uv', new THREE.Float32BufferAttribute([
       0, 1,
@@ -10415,7 +10505,7 @@ class RenderManager {
           continue;
         }
         jet.mesh.visible = true;
-        jet.mesh.scale.set(1, nextScale * jet.length, 1);
+        jet.mesh.scale.set(1, 1, nextScale * jet.length);
         // executeBillboard() upstream. Turning about the tank's up axis keeps
         // the flame hanging downward while still facing the camera.
         this._faceJetToCamera(tank, jet.mesh);
@@ -10430,10 +10520,11 @@ class RenderManager {
   // bringing the camera into that frame makes this a single atan2.
   _faceJetToCamera(tank, mesh) {
     if (!this.camera) return;
+    // The flame's face is its -x side.
     const cameraLocal = tank.worldToLocal(this.camera.getWorldPosition(new THREE.Vector3()));
-    mesh.rotation.y = Math.atan2(
-      cameraLocal.x - mesh.position.x,
-      cameraLocal.z - mesh.position.z
+    mesh.rotation.z = Math.atan2(
+      mesh.position.y - cameraLocal.y,
+      mesh.position.x - cameraLocal.x,
     );
   }
 
@@ -10458,8 +10549,8 @@ class RenderManager {
     // rides on the intensity instead.
     light.intensity = scale * bzflagLightIntensity(BZFLAG_JUMPJET_LIGHT_SCALE);
     // The light sat on the tank and rode along with it; now it is a request in
-    // the world group's own space, which is where the tank's position already
-    // is, and it stands only for the frame that asked.
+    // the game's frame, where the tank's position already is, and it stands
+    // only for the frame that asked.
     light.position.copy(tank.position);
     if (light.visible && light.intensity > 0) {
       if (!this._activeJumpJetLights) this._activeJumpJetLights = [];
@@ -10511,11 +10602,18 @@ class RenderManager {
       depthWrite: false,
       side: THREE.DoubleSide,
     });
+    // Along the shot, as upstream turns it by the shot's velocity; the collar
+    // spins about that axis inside its holder.
     const mesh = new THREE.Mesh(this._buildShotTeleportGeometry(0), material);
-    projectile.add(mesh);
+    const holder = new THREE.Group();
+    const { tailDirX = 0, tailDirY = 1, tailDirZ = 0 } = projectile.userData || {};
+    const length = Math.hypot(tailDirX, tailDirY, tailDirZ) || 1;
+    pointAlong(holder, tailDirX / length, tailDirY / length, tailDirZ / length);
+    holder.add(mesh);
+    projectile.add(holder);
 
     if (!this.shotTeleportEffects) this.shotTeleportEffects = [];
-    this.shotTeleportEffects.push({ mesh, material, projectile, age: 0 });
+    this.shotTeleportEffects.push({ mesh, holder, material, projectile, age: 0 });
   }
 
   updateShotTeleportEffects(deltaTime) {
@@ -10525,8 +10623,8 @@ class RenderManager {
       effect.age += deltaTime;
 
       // Drop it once it expires, or once the shot it rides on is gone.
-      if (effect.age >= BZFLAG_SHOT_TELEPORT_LIFETIME || !effect.mesh.parent) {
-        effect.mesh.parent?.remove(effect.mesh);
+      if (effect.age >= BZFLAG_SHOT_TELEPORT_LIFETIME || !effect.holder.parent) {
+        effect.holder.removeFromParent();
         effect.mesh.geometry.dispose();
         effect.material.dispose();
         this.shotTeleportEffects.splice(i, 1);
@@ -10619,8 +10717,8 @@ class RenderManager {
         const wave2 = wave0 + (damp * sinRipple2);
         const x = BZFLAG_FLAG_WIDTH * along;
         const poleSize = getFlagTuning().flagPoleSize;
-        positions.setXYZ(chunk * 2, x, poleSize + BZFLAG_FLAG_HEIGHT - wave0, wave1);
-        positions.setXYZ((chunk * 2) + 1, x, poleSize - wave0, wave2);
+        positions.setXYZ(chunk * 2, x, 0 - wave1, poleSize + BZFLAG_FLAG_HEIGHT - wave0);
+        positions.setXYZ((chunk * 2) + 1, x, 0 - wave2, poleSize - wave0);
       }
       positions.needsUpdate = true;
     });
@@ -10654,7 +10752,7 @@ class RenderManager {
       // which side of the flag it is on, purely so the nearest draws last. With
       // depth writing off and both sides visible that ordering is free, so the
       // stack always climbs.
-      mesh.position.y = ring * BZFLAG_FLAG_WARP_SPACING;
+      mesh.position.z = ring * BZFLAG_FLAG_WARP_SPACING;
       mesh.renderOrder = FLAG_RENDER_ORDER;
       group.add(mesh);
       return { mesh, material };
@@ -10670,7 +10768,7 @@ class RenderManager {
       const angle = (2 * Math.PI * segment) / BZFLAG_FLAG_WARP_SEGMENTS;
       const radius = BZFLAG_FLAG_WARP_SIZE
         * (BZFLAG_FLAG_WARP_WOBBLE_MIN + (BZFLAG_FLAG_WARP_WOBBLE_RANGE * Math.random()));
-      positions.setXYZ(segment + 1, radius * Math.cos(angle), 0, radius * Math.sin(angle));
+      positions.setXYZ(segment + 1, radius * Math.cos(angle), 0 - (radius * Math.sin(angle)), 0);
     }
     positions.needsUpdate = true;
   }
@@ -10704,8 +10802,8 @@ class RenderManager {
     // geometry and the instance matrix carries nothing but the flag's place and
     // the way it faces.
     const poleHeight = getFlagTuning().flagPoleSize + BZFLAG_FLAG_HEIGHT;
-    const poleGeometry = new THREE.PlaneGeometry(2 * FLAG_POLE_WIDTH, poleHeight)
-      .translate(0, poleHeight / 2, 0);
+    const poleGeometry = standUpGeometry(new THREE.PlaneGeometry(2 * FLAG_POLE_WIDTH, poleHeight)
+      .translate(0, poleHeight / 2, 0));
 
     const prepare = (mesh) => {
       this._tagDraws(mesh, 'flag');
@@ -10713,7 +10811,7 @@ class RenderManager {
       mesh.frustumCulled = false;
       mesh.renderOrder = FLAG_RENDER_ORDER;
       mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
-      this.getWorldGroup().add(mesh);
+      this.worldFrame.add(mesh);
       return mesh;
     };
 
@@ -10793,12 +10891,14 @@ class RenderManager {
       depthWrite: false,
     });
     const poleHeight = getFlagTuning().flagPoleSize + BZFLAG_FLAG_HEIGHT;
-    const pole = new THREE.Mesh(new THREE.PlaneGeometry(2 * FLAG_POLE_WIDTH, poleHeight), poleMaterial);
-    pole.position.y = poleHeight / 2;
+    const pole = new THREE.Mesh(
+      standUpGeometry(new THREE.PlaneGeometry(2 * FLAG_POLE_WIDTH, poleHeight)), poleMaterial,
+    );
+    pole.position.z = poleHeight / 2;
     pole.renderOrder = FLAG_RENDER_ORDER;
     group.add(pole);
 
-    this.getWorldGroup().add(this._tagDraws(group, 'flag'));
+    this.worldFrame.add(this._tagDraws(group, 'flag'));
     record.fade = { group, clothMaterial, poleMaterial, pole };
     return record.fade;
   }
@@ -10806,7 +10906,7 @@ class RenderManager {
   _ensureFlagWarp(record) {
     if (record.warp) return record.warp;
     record.warp = this._createFlagWarp();
-    this.getWorldGroup().add(record.warp.group);
+    this.worldFrame.add(record.warp.group);
     return record.warp;
   }
 
@@ -10814,13 +10914,13 @@ class RenderManager {
   // to say. Most flags in a world are unidentified, so a world of 200 would
   // otherwise pay for 200 label canvases to draw nothing.
   //
-  // It hangs off the world group rather than off the flag, because a flag is
+  // It hangs off `worldFrame` rather than off the flag, because a flag is
   // billboarded every frame and a child would be swung around with it.
   _ensureFlagLabel(record) {
     if (record.label) return record.label;
     const label = new THREE.Sprite(new THREE.SpriteMaterial({ ...LABEL_MATERIAL_DEPTH }));
     label.scale.set(4, 1, 1);
-    this.getWorldGroup().add(label);
+    this.worldFrame.add(label);
     record.label = label;
     return label;
   }
@@ -10838,7 +10938,9 @@ class RenderManager {
   // Nothing here touches a mesh: the cloth and the pole are written into the
   // batch once a frame by updateFlagVisuals, which is the only place that knows
   // which way each flag has to face.
-  showFlag(index, { x, y, z, color = SUPER_FLAG_COLOR, alpha = 1, warp = 0, label = null }) {
+  showFlag(index, {
+    x, y, z, color = SUPER_FLAG_COLOR, alpha = 1, warp = 0, label = null,
+  }) {
     const record = this._ensureFlagRecord(index);
     record.x = x;
     record.y = y;
@@ -10851,7 +10953,7 @@ class RenderManager {
     if (showLabel) {
       const sprite = this._ensureFlagLabel(record);
       this.updateSpriteLabel(sprite, label, color);
-      sprite.position.set(x, y + BZFLAG_FLAG_HEIGHT + getFlagTuning().flagPoleSize + 1, z);
+      sprite.position.set(x, y, z + BZFLAG_FLAG_HEIGHT + getFlagTuning().flagPoleSize + 1);
       sprite.visible = true;
     } else if (record.label) {
       record.label.visible = false;
@@ -10868,7 +10970,7 @@ class RenderManager {
       record.warp.rings.forEach((ring, index2) => {
         const size = warp - (BZFLAG_FLAG_WARP_STEP * index2);
         ring.mesh.visible = size > 0;
-        if (size > 0) ring.mesh.scale.set(size, 1, size);
+        if (size > 0) ring.mesh.scale.set(size, size, 1);
       });
     }
   }
@@ -10886,9 +10988,9 @@ class RenderManager {
   // the tip and scaled to whatever length the target's height leaves it.
   _getSkyBeaconGeometry() {
     if (!this.skyBeaconGeometry) {
-      this.skyBeaconGeometry = new THREE.ConeGeometry(1, 1, SKY_BEACON_SEGMENTS, 1, true)
+      this.skyBeaconGeometry = standUpGeometry(new THREE.ConeGeometry(1, 1, SKY_BEACON_SEGMENTS, 1, true)
         .rotateX(Math.PI)
-        .translate(0, 0.5, 0);
+        .translate(0, 0.5, 0));
     }
     return this.skyBeaconGeometry;
   }
@@ -10905,7 +11007,7 @@ class RenderManager {
       side: THREE.FrontSide,
     })), 'effect');
     mesh.renderOrder = FLAG_RENDER_ORDER;
-    this.getWorldGroup().add(mesh);
+    this.worldFrame.add(mesh);
     this.skyBeacons[index] = mesh;
     return mesh;
   }
@@ -10925,11 +11027,12 @@ class RenderManager {
     }
     if (count === 0) return;
 
-    const viewer = this._getViewerInWorldSpace(SKY_BEACON_SCRATCH);
+    const viewer = this._getViewerInWorldFrame(SKY_BEACON_SCRATCH);
     for (let index = 0; index < count; index += 1) {
       const target = targets[index];
+      const color = target.color;
       const mesh = this._ensureSkyBeacon(index);
-      const distance = Math.hypot(viewer.x - target.x, viewer.z - target.z);
+      const distance = Math.hypot(viewer.x - target.x, viewer.y - target.y);
       const fade = (distance - SKY_BEACON_FADE_NEAR) / (SKY_BEACON_FADE_FAR - SKY_BEACON_FADE_NEAR);
       const alpha = SKY_BEACON_OPACITY * Math.min(1, Math.max(0, fade));
       mesh.visible = alpha > 0;
@@ -10938,10 +11041,10 @@ class RenderManager {
       mesh.position.set(target.x, target.y, target.z);
       mesh.scale.set(
         SKY_BEACON_RADIUS,
-        Math.max(SKY_BEACON_MIN_LENGTH, this.skyBeaconTopY - target.y),
         SKY_BEACON_RADIUS,
+        Math.max(SKY_BEACON_MIN_LENGTH, this.skyBeaconTopZ - target.z),
       );
-      mesh.material.color.setHex(target.color);
+      mesh.material.color.setHex(color);
       mesh.material.opacity = alpha;
     }
   }
@@ -10994,18 +11097,13 @@ class RenderManager {
     this.flagRecords.clear();
   }
 
-  // Where the viewer stands, in worldGroup's own space. Read straight off the
-  // camera it would carry the player's heading twice in a session, because
-  // there it is worldGroup that turns.
-  //
-  // worldGroup is only ever translated and turned about the vertical, so its
-  // inverse is that by hand -- cheaper than updating the world matrix of every
-  // one of its children to ask `worldToLocal`.
-  _getViewerInWorldSpace(target) {
+  // Where the viewer stands, in the game's frame. Read straight off the camera
+  // it would carry the player's heading twice in a session, because there it
+  // is the world groups that turn.
+  _getViewerInWorldFrame(target) {
     this.camera.getWorldPosition(target);
-    return target.sub(this.worldGroup.position).applyQuaternion(
-      FLAG_BILLBOARD_QUATERNION.copy(this.worldGroup.quaternion).invert()
-    );
+    this.worldFrame.updateWorldMatrix(true, false);
+    return this.worldFrame.worldToLocal(target);
   }
 
   // One step for every flag in the world: the shared cloth ripples, each
@@ -11024,10 +11122,12 @@ class RenderManager {
     // it. Yaw towards the viewer does what the billboard is for -- the cloth
     // faces you -- and leaves the pole where the world put it.
     //
-    // The turn is measured in worldGroup's own space rather than the scene's,
-    // because in a session worldGroup carries the player's heading: reading the
-    // camera's orientation straight off would apply that heading a second time.
-    const camera = this._getViewerInWorldSpace(FLAG_BILLBOARD_SCRATCH);
+    // The turn is measured in the game's frame rather than the scene's,
+    // because in a session the world groups carry the player's heading:
+    // reading the camera's orientation straight off would apply that heading a
+    // second time. The cloth faces its own -y, so it turns that toward the
+    // viewer about the pole.
+    const camera = this._getViewerInWorldFrame(FLAG_BILLBOARD_SCRATCH);
 
     const batch = this._getFlagBatch(this.flagRecords.size);
     const matrix = FLAG_INSTANCE_MATRIX;
@@ -11042,8 +11142,8 @@ class RenderManager {
         return;
       }
 
-      const yaw = Math.atan2(camera.x - record.x, camera.z - record.z);
-      matrix.makeRotationY(yaw);
+      const yaw = Math.atan2(camera.x - record.x, record.y - camera.y);
+      matrix.makeRotationZ(yaw);
       matrix.setPosition(record.x, record.y, record.z);
 
       if (record.alpha >= 1) {
@@ -11062,7 +11162,7 @@ class RenderManager {
       const fade = this._ensureFlagFade(record);
       fade.group.visible = true;
       fade.group.position.set(record.x, record.y, record.z);
-      fade.group.rotation.set(0, yaw, 0);
+      fade.group.rotation.set(0, 0, yaw);
       fade.clothMaterial.color.setHex(record.color);
       fade.clothMaterial.opacity = record.alpha;
       fade.poleMaterial.opacity = record.alpha;
@@ -11190,7 +11290,7 @@ class RenderManager {
     // The live run: `count` slots starting at `tail`, wrapping.
     this._trackMarkTail = 0;
     this._trackMarkCount = 0;
-    this.getWorldGroup().add(mesh);
+    this.worldFrame.add(mesh);
     return mesh;
   }
 
@@ -11215,15 +11315,15 @@ class RenderManager {
     const colorArray = colors.array;
 
     // The tank's own axes. Upstream draws the quad in tank space and lets
-    // `glRotatef` place it; bzo writes world-space vertices, so the frame is
-    // spelled out here -- forward is bzo's (-sin r, -cos r) and the lateral axis
-    // leads it by a quarter turn, which is upstream's +y.
+    // `glRotatef` place it; bzo writes world-space vertices in `worldFrame`, so
+    // the frame is spelled out here -- forward along the azimuth, and the
+    // lateral axis leading it by a quarter turn, which is upstream's +y.
     const sin = Math.sin(mark.angle);
     const cos = Math.cos(mark.angle);
-    const forwardX = -sin;
-    const forwardZ = -cos;
-    const leftX = -cos;
-    const leftZ = sin;
+    const forwardX = cos;
+    const forwardY = sin;
+    const leftX = -sin;
+    const leftY = cos;
     // `glScalef(1, te.scale, 1)`: the tank's width scale reaches the lateral
     // offsets and nothing else, so a wide tank leaves its marks further apart
     // without making either of them longer.
@@ -11233,7 +11333,7 @@ class RenderManager {
 
     const writeQuad = (quad, near, far) => {
       let vertex = ((slot * TRACK_MARK_QUADS) + quad) * 4;
-      // Wound so the quad faces up: forward cross left is +y, so along the tread
+      // Wound so the quad faces up: forward cross left is +z, so along the tread
       // first and then across it is counter-clockwise seen from above.
       const corners = [
         -halfWidth, near,
@@ -11246,8 +11346,8 @@ class RenderManager {
         const across = corners[i + 1];
         const p = vertex * 3;
         positionArray[p] = mark.x + (forwardX * along) + (leftX * across);
-        positionArray[p + 1] = mark.y;
-        positionArray[p + 2] = mark.z + (forwardZ * along) + (leftZ * across);
+        positionArray[p + 1] = mark.y + (forwardY * along) + (leftY * across);
+        positionArray[p + 2] = mark.z;
         const c = vertex * 4;
         colorArray[c] = 0;
         colorArray[c + 1] = 0;
@@ -11381,7 +11481,36 @@ class RenderManager {
     });
   }
 
-  updateCamera({ cameraMode, myTank, playerRotation, deathFollowTarget, roamFraming }) {
+  // three.js's own world, where the camera and a headset's pose live, is Y-up;
+  // the game's frame is `worldFrame`. Every view is worked out in the game's
+  // frame, and crosses here, by `worldFrame`'s own turn, to be applied.
+  _toThree(p, target = new THREE.Vector3()) {
+    return target.set(p.x, p.y, p.z).applyQuaternion(this.worldFrame.quaternion);
+  }
+
+  // Aims the camera from `eye` at `look`, both in the game's frame, with the
+  // game's up as the camera's.
+  _aimCamera(eye, look) {
+    this.worldGroup.position.set(0, 0, 0);
+    this.worldGroup.quaternion.identity();
+    this._toThree(eye, this.camera.position);
+    this._toThree(GAME_UP, this.camera.up);
+    this.camera.lookAt(this._toThree(look, CAMERA_LOOK_SCRATCH));
+  }
+
+  // In a session the headset owns the camera, so the world moves instead: the
+  // game's point `eye` is put at the rig's origin, `drop` below it, turned so
+  // that `azimuth` is the way the rig faces. Only the heading is taken:
+  // tilting the world tilts the horizon, which is the nausea case, and the
+  // head already looks around.
+  _placeWorldAroundEye(eye, azimuth, drop = 0) {
+    const q = this.worldGroup.quaternion.setFromAxisAngle(THREE_UP, (Math.PI / 2) - azimuth);
+    const at = this._toThree(eye, CAMERA_EYE_SCRATCH).applyQuaternion(q);
+    this.worldGroup.position.set(0 - at.x, 0 - at.y - drop, 0 - at.z);
+  }
+
+  updateCamera({ cameraMode, myTank, azimuth, deathFollowTarget, roamFraming }) {
+    const heading = azimuth || 0;
     // Cleared here rather than in each branch that is not the world overview,
     // so a camera that never thinks about clouds cannot leave them hidden. The
     // one branch that wants them gone sets it again below.
@@ -11394,21 +11523,10 @@ class RenderManager {
       const { eye, look } = roamFraming;
       if (xrState.enabled) {
         // In XR the world moves and the camera does not, as in first person.
-        // Only the heading is taken: tilting worldGroup tilts the horizon, which
-        // is the nausea case, and the head already looks around.
-        const heading = Math.atan2(-(look.x - eye.x), -(look.z - eye.z));
-        const q = new THREE.Quaternion();
-        q.setFromAxisAngle(new THREE.Vector3(0, 1, 0), -heading);
-        this.worldGroup.quaternion.copy(q);
-        const eyeRotated = ROAM_FORWARD_SCRATCH.set(eye.x, 0, eye.z).applyQuaternion(q);
-        this.worldGroup.position.set(-eyeRotated.x, -eye.y, -eyeRotated.z);
+        this._placeWorldAroundEye(eye, Math.atan2(look.y - eye.y, look.x - eye.x));
         return;
       }
-      this.worldGroup.position.set(0, 0, 0);
-      this.worldGroup.quaternion.identity();
-      this.camera.position.set(eye.x, eye.y, eye.z);
-      this.camera.up.set(0, 1, 0);
-      this.camera.lookAt(look.x, look.y, look.z);
+      this._aimCamera(eye, look);
       return;
     }
     // Watching your own tank come apart. Its own mode rather than a second
@@ -11421,11 +11539,12 @@ class RenderManager {
     // it clears, and whatever the player had chosen is still there underneath.
     if (cameraMode === 'death') {
       const target = deathFollowTarget || this.deathFollowTarget;
+      // The debris stands in `worldFrame`, so its position is the game's.
       const focusPoint = target && target.parent
-        ? target.getWorldPosition(new THREE.Vector3())
+        ? target.position.clone()
         : this.deathFollowAnchor;
       if (target && target.parent) {
-        this.deathFollowAnchor = target.getWorldPosition(new THREE.Vector3());
+        this.deathFollowAnchor = target.position.clone();
       }
       // No body to watch -- it has been cleaned up, or there never was one.
       // Leave the camera wherever it is rather than throwing it somewhere: the
@@ -11447,11 +11566,9 @@ class RenderManager {
         // camera; on a head it reads as being thrown too.
         return;
       }
-      this.worldGroup.position.set(0, 0, 0);
-      this.worldGroup.quaternion.identity();
       const followOffset = velocity.lengthSq() > 0.1
-        ? velocity.clone().normalize().multiplyScalar(-20).add(new THREE.Vector3(0, 10, 0))
-        : new THREE.Vector3(0, 10, 22);
+        ? velocity.clone().normalize().multiplyScalar(-20).add(new THREE.Vector3(0, 0, 10))
+        : new THREE.Vector3(0, -22, 10);
       const desiredPosition = focusPoint.clone().add(followOffset);
       if (!this.deathCameraLogged) {
         const dl = window.gameDebugLog;
@@ -11460,9 +11577,8 @@ class RenderManager {
         }
         this.deathCameraLogged = true;
       }
-      this.camera.position.lerp(desiredPosition, 0.045);
-      this.camera.up.set(0, 1, 0);
-      this.camera.lookAt(focusPoint);
+      const eye = this.getCameraPosition() || desiredPosition;
+      this._aimCamera(eye.lerp(desiredPosition, 0.045), focusPoint);
       return;
     }
 
@@ -11470,8 +11586,6 @@ class RenderManager {
       this.deathFollowTarget = null;
       this.deathFollowAnchor = null;
       this.deathCameraLogged = false;
-      this.worldGroup.position.set(0, 0, 0);
-      this.worldGroup.quaternion.identity();
       // Nothing to frame but the world itself: the entry dialog's backdrop, the
       // map picker's preview, and the player's own third camera mode, which is
       // what `_frameWorldCamera` is for. It used to be `(0, 15, 20)` looking at
@@ -11488,64 +11602,47 @@ class RenderManager {
       if (!xrState.enabled) {
         this._setCloudsHidden(true);
         const { eye, look } = this._frameWorldCamera();
-        this.camera.position.copy(eye);
-        this.camera.up.set(0, 1, 0);
-        this.camera.lookAt(look);
+        this._aimCamera(eye, look);
+      } else {
+        this.worldGroup.position.set(0, 0, 0);
+        this.worldGroup.quaternion.identity();
       }
       return;
     }
 
     if (!myTank) return;
+    const tankAt = myTank.position;
+    const forwardX = Math.cos(heading);
+    const forwardY = Math.sin(heading);
     if (cameraMode === 'first-person') {
       if (xrState.enabled) {
         // In XR mode, keep tank visible and position camera above it
         if (myTank.userData.body) myTank.userData.body.visible = true;
         if (myTank.userData.turret) myTank.userData.turret.visible = true;
-
-        // Apply rotation first (around the camera/origin)
-        const q = new THREE.Quaternion();
-        q.setFromAxisAngle(new THREE.Vector3(0, 1, 0), -myTank.rotation.y);
-        this.worldGroup.quaternion.copy(q);
-
-        // Calculate where the tank ends up after rotation
-        const tankRotated = myTank.position.clone();
-        tankRotated.applyQuaternion(q);
-
-        // Translate to center the rotated tank at camera origin, with ground slightly below eye height
-        this.worldGroup.position.set(
-          -tankRotated.x,
-          -myTank.position.y - 0.6,
-          -tankRotated.z
-        );
+        // The ground slightly below eye height.
+        this._placeWorldAroundEye(tankAt, tankAzimuth(myTank), 0.6);
       } else {
         // In non-XR first-person, keep hull visible like BZFlag; hide turret to avoid center obstruction
         if (myTank.userData.body) myTank.userData.body.visible = true;
         if (myTank.userData.turret) myTank.userData.turret.visible = false;
-        // Reset world group for non-XR
-        this.worldGroup.position.set(0, 0, 0);
-        this.worldGroup.rotation.y = 0;
         const cameraHeight = Number.isFinite(myTank.userData.cameraHeight)
           ? myTank.userData.cameraHeight
           : TANK.muzzleHeight;
-        this.camera.position.set(
-          myTank.position.x,
-          myTank.position.y + cameraHeight,
-          myTank.position.z,
-        );
-        const lookTarget = new THREE.Vector3(
-          myTank.position.x - Math.sin(playerRotation) * 10,
-          myTank.position.y + cameraHeight,
-          myTank.position.z - Math.cos(playerRotation) * 10,
-        );
-        this.camera.lookAt(lookTarget);
+        const eye = CAMERA_EYE_SCRATCH.set(tankAt.x, tankAt.y, tankAt.z + cameraHeight);
+        this._aimCamera(eye, CAMERA_TARGET_SCRATCH.set(
+          tankAt.x + (forwardX * 10),
+          tankAt.y + (forwardY * 10),
+          tankAt.z + cameraHeight,
+        ));
       }
     } else {
       if (myTank.userData.body) myTank.userData.body.visible = true;
       if (myTank.userData.turret) myTank.userData.turret.visible = true;
-      const cameraOffset = new THREE.Vector3(
-        Math.sin(playerRotation) * THIRD_PERSON_DISTANCE,
-        THIRD_PERSON_HEIGHT,
-        Math.cos(playerRotation) * THIRD_PERSON_DISTANCE,
+      // Behind and above the tank.
+      const eye = CAMERA_EYE_SCRATCH.set(
+        tankAt.x - (forwardX * THIRD_PERSON_DISTANCE),
+        tankAt.y - (forwardY * THIRD_PERSON_DISTANCE),
+        tankAt.z + THIRD_PERSON_HEIGHT,
       );
       if (xrState.enabled) {
         // The headset owns the camera, so the world moves instead -- the same
@@ -11560,22 +11657,13 @@ class RenderManager {
         // XR floor, so a standing player's own height sits on top of it exactly
         // as it does in first person -- THIRD_PERSON_HEIGHT is the number to
         // tune if the view rides too high.
-        const eye = ROAM_FORWARD_SCRATCH.copy(myTank.position).add(cameraOffset);
-        const eyeY = eye.y;
-        const q = new THREE.Quaternion();
-        q.setFromAxisAngle(new THREE.Vector3(0, 1, 0), -playerRotation);
-        const eyeRotated = eye.set(eye.x, 0, eye.z).applyQuaternion(q);
-        this.worldGroup.quaternion.copy(q);
-        this.worldGroup.position.set(-eyeRotated.x, -eyeY, -eyeRotated.z);
+        this._placeWorldAroundEye(eye, heading);
         return;
       }
-      this.worldGroup.position.set(0, 0, 0);
-      this.worldGroup.quaternion.identity();
-      this.camera.position.copy(myTank.position).add(cameraOffset);
-      this.camera.lookAt(new THREE.Vector3(
-        myTank.position.x - Math.sin(playerRotation) * 10,
-        myTank.position.y + 3,
-        myTank.position.z - Math.cos(playerRotation) * 10,
+      this._aimCamera(eye, CAMERA_TARGET_SCRATCH.set(
+        tankAt.x + (forwardX * 10),
+        tankAt.y + (forwardY * 10),
+        tankAt.z + 3,
       ));
     }
   }
@@ -11594,9 +11682,25 @@ class RenderManager {
   // there is a rig-local constant, not a world one -- answering from it would
   // just be wrong. Nothing upstream of this depends on the answer never being
   // null; XR keeps exactly the tank-body-only behaviour it already had.
+  // The death camera's start, above and behind where the tank was, and the
+  // point it follows from: `at` is upstream's.
+  startDeathCamera(at) {
+    if (!this.camera) return;
+    this._aimCamera(new THREE.Vector3(at.x, at.y - 22, at.z + 10), at);
+  }
+
+  // Where the death camera looks from when it has no debris to follow.
+  setDeathFollowAnchor(at) {
+    this.deathFollowAnchor = at ? new THREE.Vector3(at.x, at.y, at.z) : null;
+  }
+
+  // In the game's frame. Outside a session the world groups sit still, so the
+  // camera's position is `worldFrame`'s turn of it.
   getCameraPosition() {
     if (!this.camera || xrState.enabled) return null;
-    return this.camera.position.clone();
+    return this.camera.position.clone().applyQuaternion(
+      CAMERA_FRAME_SCRATCH.copy(this.worldFrame.quaternion).invert(),
+    );
   }
 
 }

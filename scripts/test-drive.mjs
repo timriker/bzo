@@ -6,7 +6,8 @@
  * See LICENSE or https://www.gnu.org/licenses/agpl-3.0.html
  */
 
-// The `drive` pair's jump rules that depend on what the tank stands on.
+// The `drive` pair's jump rules that depend on what the tank stands on. In
+// upstream's frame: +Z up, a heading an azimuth counter-clockwise from +X.
 
 import assert from 'node:assert/strict';
 import { createDriveState, stepDrive } from '../public/drive.mjs';
@@ -19,12 +20,12 @@ const CONFIG = {
   ALLOW_JUMPING: true,
   MAX_BUMP_HEIGHT: 0.33,
 };
-const pyramid = { type: 'pyramid', x: 0, z: 0, baseY: 0, rotation: 0, w: 20, d: 20, h: 10 };
-const box = { type: 'box', x: 0, z: 0, baseY: 0, rotation: 0, w: 20, d: 20, h: 4 };
+const pyramid = { type: 'pyramid', pos: [0, 0, 0], size: [10, 10, 10], angle: 0 };
+const box = { type: 'box', pos: [0, 0, 0], size: [10, 10, 4], angle: 0 };
 
-// One frame of a jump at full speed ahead, standing on `support`.
+// One frame of a jump at full speed ahead -- north, +Y -- standing on `support`.
 function jumpFrom(support, config) {
-  const state = createDriveState({ x: 0, y: 4, z: 0, rotation: 0 });
+  const state = createDriveState({ x: 0, y: 0, z: 4, azimuth: Math.PI / 2 });
   state.onObstacle = true;
   state.onGround = false;
   state.inAir = false;
@@ -39,15 +40,15 @@ function jumpFrom(support, config) {
 {
   const state = jumpFrom(pyramid, CONFIG);
   assert.equal(state.jumpForwardSpeed, 0, 'no forward speed off a slope');
-  assert.ok(Math.abs(state.z) < 1e-9 && Math.abs(state.x) < 1e-9, `stayed put, at ${state.x},${state.z}`);
-  assert.ok(state.y > 4, 'but still rose');
+  assert.ok(Math.abs(state.y) < 1e-9 && Math.abs(state.x) < 1e-9, `stayed put, at ${state.x},${state.y}`);
+  assert.ok(state.z > 4, 'but still rose');
 }
 
 // A world that turns it off lets the tank jump up the slope.
 {
   const state = jumpFrom(pyramid, { ...CONFIG, NO_CLIMB: false });
   assert.ok(state.jumpForwardSpeed > 0.9);
-  assert.ok(state.z < -1, `moved forward, to z=${state.z}`);
+  assert.ok(state.y > 1, `moved forward, to y=${state.y}`);
 }
 
 // A flat top is not a slope: a box's, or an inverted pyramid's.

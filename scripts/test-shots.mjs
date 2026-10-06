@@ -9,15 +9,15 @@ import {
   WORLD_WEAPON_DEFAULT_DELAY,
   WORLD_WEAPON_MIN_DELAY,
   normalizeWorldWeaponDelays,
-  getWorldWeaponDirection,
   SHOT_TAP_SPACING_MS,
   getWorldReloadSeconds,
   getSlotReloadSeconds,
   findFreeShotSlot,
   getShotSlotProgress,
-  getShotTankHit,
   shockWaveHitsTank,
   shotIsActive,
+  getShotTankHit,
+  getWorldWeaponDirection,
 } from '../public/shots.mjs';
 
 const require = createRequire(import.meta.url);
@@ -83,31 +83,31 @@ for (const value of [1, 3, '3', MAX_SHOT_SLOTS, MAX_SHOT_SLOTS + 1, 0, '0', -1, 
   assert.equal(serverLimits.WORLD_WEAPON_NAME, WORLD_WEAPON_NAME);
   assert.equal(serverLimits.WORLD_WEAPON_TEAM, WORLD_WEAPON_TEAM);
 
-  // bz_vectorFromRotations, in bzo's axes. A weapon at rotation 0 fires along
-  // BZFlag +x, which is bzo +x.
+  // bz_vectorFromRotations, in upstream's axes. A weapon at rotation 0 fires
+  // along +x.
   const close = (a, b, message) => assert.ok(Math.abs(a - b) < 1e-9, `${message}: ${a} != ${b}`);
   const east = getWorldWeaponDirection(0, 0);
   close(east.x, 1, 'rotation 0 is +x');
-  close(east.y, 0, 'and level');
-  close(east.z, 0, 'and nothing across');
+  close(east.y, 0, 'and nothing across');
+  close(east.z, 0, 'and level');
 
-  // BZFlag +y is north, which is bzo -z, so rotation 90 fires at bzo -z. That is
-  // what aims `fountains.bzw`'s lasers down the length of the map: the one at
-  // BZW y -190 has rotation 90 and has to fire towards the middle.
+  // +y is north, so rotation 90 fires at +y. That is what aims
+  // `fountains.bzw`'s lasers down the length of the map: the one at BZW y -190
+  // has rotation 90 and has to fire towards the middle.
   const north = getWorldWeaponDirection(Math.PI / 2, 0);
   close(north.x, 0, 'rotation 90 has nothing along x');
-  close(north.z, -1, 'and fires towards bzo -z');
+  close(north.y, 1, 'and fires towards +y');
   const south = getWorldWeaponDirection(3 * Math.PI / 2, 0);
-  close(south.z, 1, 'rotation 270 fires the other way');
+  close(south.y, -1, 'rotation 270 fires the other way');
   const west = getWorldWeaponDirection(Math.PI, 0);
   close(west.x, -1, 'rotation 180 is -x');
 
-  // Tilt is the vertical angle, and it is bzo's +y.
+  // Tilt is the vertical angle, and it is +z.
   const up = getWorldWeaponDirection(0, Math.PI / 2);
-  close(up.y, 1, 'straight up');
+  close(up.z, 1, 'straight up');
   close(up.x, 0, 'with nothing left along the ground');
   const half = getWorldWeaponDirection(0, Math.PI / 4);
-  close(half.y, Math.SQRT1_2, 'and a unit vector at any tilt');
+  close(half.z, Math.SQRT1_2, 'and a unit vector at any tilt');
   close(half.x, Math.SQRT1_2);
   for (const [rotation, tilt] of [[0, 0], [1, 0.3], [2.5, -0.7], [Math.PI, 1.2]]) {
     const dir = getWorldWeaponDirection(rotation, tilt);
@@ -185,21 +185,24 @@ for (const value of [1, 3, '3', MAX_SHOT_SLOTS, MAX_SHOT_SLOTS + 1, 0, '0', -1, 
 // of its own, because bzfs takes the victim's word for a death.
 {
   const shooter = { playerId: '7', flag: null, steals: false, bounces: 0, team: 'red' };
-  // A tank at the origin, and a shot crossing it along +x from well outside.
+  // A tank at the origin facing north (+y), and a shot crossing it along +x
+  // from well outside, a unit above the ground (+z).
   const victim = {
     id: '3',
     team: 'green',
     paused: false,
     alive: true,
-    position: { x: 0, y: 0, z: 0 },
+    position: {
+      x: 0, y: 0, z: 0, azimuth: Math.PI / 2,
+    },
     flagType: null,
     zoned: false,
   };
-  const from = { x: -10, y: 1, z: 0 };
-  const to = { x: 10, y: 1, z: 0 };
+  const from = { x: -10, y: 0, z: 1 };
+  const to = { x: 10, y: 0, z: 1 };
 
   assert.ok(getShotTankHit(shooter, from, to, victim), 'a shot across a tank hits it');
-  assert.equal(getShotTankHit(shooter, from, { x: -6, y: 1, z: 0 }, victim), null,
+  assert.equal(getShotTankHit(shooter, from, { x: -6, y: 0, z: 1 }, victim), null,
     'a shot that stops short of the tank does not');
 
   // The states that are not a tank to hit.
@@ -250,14 +253,14 @@ for (const value of [1, 3, '3', MAX_SHOT_SLOTS, MAX_SHOT_SLOTS + 1, 0, '0', -1, 
     'a super bullet reaches it');
 
   // The height gate: a shot over the roof of the tank misses it.
-  assert.equal(getShotTankHit(shooter, { x: -10, y: 9, z: 0 }, { x: 10, y: 9, z: 0 }, victim),
+  assert.equal(getShotTankHit(shooter, { x: -10, y: 0, z: 9 }, { x: 10, y: 0, z: 9 }, victim),
     null, 'a shot above the tank misses');
   // Inside the sphere but over the tank's box: a muzzle-height shell passes a
   // tank at `_burrowDepth`, and a burrowed tank's own low shot still reaches it.
-  const burrowed = { ...victim, flagType: 'BU', position: { ...victim.position, y: -1.32 } };
-  assert.equal(getShotTankHit(shooter, { x: -10, y: 1.57, z: 0 }, { x: 10, y: 1.57, z: 0 }, burrowed),
+  const burrowed = { ...victim, flagType: 'BU', position: { ...victim.position, z: -1.32 } };
+  assert.equal(getShotTankHit(shooter, { x: -10, y: 0, z: 1.57 }, { x: 10, y: 0, z: 1.57 }, burrowed),
     null, 'a level shell passes over a burrowed tank');
-  assert.ok(getShotTankHit(shooter, { x: -10, y: 0.25, z: 0 }, { x: 10, y: 0.25, z: 0 }, burrowed),
+  assert.ok(getShotTankHit(shooter, { x: -10, y: 0, z: 0.25 }, { x: 10, y: 0, z: 0.25 }, burrowed),
     'a burrowed shooter hits a burrowed tank');
 
   // A guided missile is inert until its activation time is up, which is what
@@ -271,9 +274,8 @@ for (const value of [1, 3, '3', MAX_SHOT_SLOTS, MAX_SHOT_SLOTS + 1, 0, '0', -1, 
 
   // The client and server copies answer alike, which is the whole point of the
   // pair.
-  const serverShots = require('../server/shots.cjs');
   assert.deepEqual(
-    serverShots.getShotTankHit(shooter, from, to, victim),
+    serverLimits.getShotTankHit(shooter, from, to, victim),
     getShotTankHit(shooter, from, to, victim),
     'client and server disagree about a hit',
   );
