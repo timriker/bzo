@@ -6,6 +6,16 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
 
 ## [Unreleased]
 
+## [1.3.24] - 2026-10-06
+
+### Fixed
+- A tank that dies with Narrow, Tiny, Obesity or Thief no longer explodes
+  at that size: its wreckage grows back to the tank's own size as the flag
+  drops, as BZFlag's does. A Narrow tank's hull used to tumble as a flat
+  sheet (#181).
+- `proxy-addr` 2.0.8, for its IPv6 trust-subnet spoofing advisory. bzo does
+  not use Express's `trust proxy`, so it was not exposed.
+
 ## [1.3.23] - 2026-10-06
 
 ### Added
