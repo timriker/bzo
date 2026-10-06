@@ -691,6 +691,20 @@ export function updateXRControllerInput() {
   }
 }
 
+// Rumble every controller in the session: the tank is in neither hand.
+export function pulseXRControllers(intensity, ms) {
+  for (const controller of xrInputSources.values()) {
+    const gamepad = controller.inputSource?.gamepad;
+    const haptic = gamepad?.hapticActuators?.[0];
+    if (typeof haptic?.pulse === 'function') {
+      Promise.resolve(haptic.pulse(intensity, ms)).catch(() => {});
+    } else if (typeof gamepad?.vibrationActuator?.playEffect === 'function') {
+      gamepad.vibrationActuator.playEffect('dual-rumble', {
+        duration: ms, strongMagnitude: intensity, weakMagnitude: intensity,
+      }).catch(() => {});
+    }
+  }
+}
 
 // Get controller input for game
 export function getXRControllerInput() {

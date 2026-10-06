@@ -8,7 +8,7 @@
 // Handles keyboard, mouse, and touch input for the game.
 // Exports: setupInputHandlers, virtualInput, keys
 
-import { getXRControllerInput, xrState } from './webxr.js';
+import { getXRControllerInput, pulseXRControllers, xrState } from './webxr.js';
 import { focusDialogCloseControl, focusFirstDialogControl, getMenuClickDirection, getMenuClickZone, getVisibleDialogRoot, handleDialogControllerInput, handleDialogKeydown, hideDialog, showDialog } from './menus.js';
 import { initSettingsMenu } from './settings.js';
 import { INPUT_CONTEXT, InputContextManager } from './input-context.mjs';
@@ -45,6 +45,11 @@ let resetTouchState = () => {};
 const gameplayInputResetHandlers = new Set();
 let gamepadGameplayArmed = true;
 let xrGameplayArmed = true;
+// Upstream rumbles only when the joystick is the input method
+// (ForceFeedback.cxx:45). bzo has no such choice, so the pad is the input
+// method while it was the last thing touched: a key or a pointer hands it back.
+let gamepadIsActive = false;
+let rumbleEnabled = true;
 
 function resetInputValues(inputState) {
   inputState.forward = 0;
@@ -213,6 +218,10 @@ function setupInputLifecycleListeners() {
 function setupGamepadListeners() {
   if (gamepadListenersAttached) return;
 
+  const leaveGamepad = () => { gamepadIsActive = false; };
+  window.addEventListener('keydown', leaveGamepad, { capture: true });
+  window.addEventListener('pointerdown', leaveGamepad, { capture: true });
+
   // Listen for gamepad connections
   window.addEventListener('gamepadconnected', (e) => {
     console.log('[Gamepad] Connected:', e.gamepad.id);
@@ -285,6 +294,9 @@ export function updateVirtualInputFromGamepad() {
 
   const axes = gamepad.axes;
   const buttons = gamepad.buttons;
+  if (buttons.some((button) => button?.pressed) || axes.some((axis) => Math.abs(axis) >= 0.2)) {
+    gamepadIsActive = true;
+  }
 
   if (!isGameplayInputActive()) {
     handleDialogControllerInput({
@@ -396,6 +408,42 @@ export function updateVirtualInputFromGamepad() {
       console.log('[Gamepad] virtualInput:', `forward=${gamepadInput.forward.toFixed(2)}, turn=${gamepadInput.turn.toFixed(2)}, fire=${gamepadInput.fire}, jump=${gamepadInput.jump}`);
     }
   }
+}
+
+// ForceFeedback.cxx: seconds times count, and the strong and weak motors.
+const RUMBLE_EFFECTS = {
+  death: { ms: 1500, strong: 1, weak: 0 },
+  fire: { ms: 100, strong: 0, weak: 1 },
+  laser: { ms: 80, strong: 1, weak: 1 },
+  shock: { ms: 500, strong: 0, weak: 1 },
+};
+
+export function setRumbleEnabled(enabled) {
+  rumbleEnabled = Boolean(enabled);
+}
+
+export function isRumbleEnabled() {
+  return rumbleEnabled;
+}
+
+// Shake the pad the player is driving with. Like SDL_JoystickRumble, a new
+// effect replaces one still playing. In a headset the controllers are the only
+// input; each has one motor, so it takes the stronger of the two.
+export function rumble(kind) {
+  const effect = RUMBLE_EFFECTS[kind] || RUMBLE_EFFECTS.fire;
+  if (!rumbleEnabled) return;
+  if (xrState.enabled) {
+    pulseXRControllers(Math.max(effect.strong, effect.weak), effect.ms);
+    return;
+  }
+  if (!gamepadConnected || !gamepadIsActive || typeof navigator.getGamepads !== 'function') return;
+  const actuator = navigator.getGamepads()[gamepadIndex]?.vibrationActuator;
+  if (typeof actuator?.playEffect !== 'function') return;
+  actuator.playEffect('dual-rumble', {
+    duration: effect.ms,
+    strongMagnitude: effect.strong,
+    weakMagnitude: effect.weak,
+  }).catch(() => {});
 }
 
 // Get gamepad connection status

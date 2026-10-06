@@ -21,6 +21,7 @@ export const SETTINGS_MENU_ITEMS = Object.freeze([
   { id: 'radarZoomBtn', label: 'Radar Range', kind: 'choice' },
   { id: 'mouseBtn', label: 'Mouse Steering', kind: 'toggle' },
   { id: 'virtualControlsBtn', label: 'Virtual Controls', kind: 'toggle' },
+  { id: 'rumbleBtn', label: 'Rumble', kind: 'toggle' },
   { id: 'fullscreenBtn', label: 'Fullscreen', kind: 'toggle' },
   { id: 'installBtn', label: 'Install App', kind: 'action' },
   { id: 'debugBtn', label: 'Debug HUD', kind: 'toggle' },

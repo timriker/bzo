@@ -221,6 +221,13 @@ needs setting up.
 The sticks have a dead zone of a fifth of their travel, so a pad left on the
 desk does not creep. The right stick is free.
 
+The pad rumbles when you fire and when your tank dies, as BZFlag's does: a
+short buzz for a shot, longer for a shock wave, both motors for a laser, and
+one long, strong shake for a death. It rumbles only while it is what you are
+playing with -- a key or a click hands control back and keeps it quiet -- and
+never for an observer. **Rumble** in Settings turns it off. The browser has to
+support it; Chrome and Edge do.
+
 ## XR controllers
 
 In VR the controllers are the only input. Turning the tank is independent of
@@ -234,6 +241,8 @@ where you look.
 | `B` / `Y` (secondary face button) | open the XR menu | back, and close it from the top |
 | Either grip | jump | back |
 | Press either thumbstick | identify | |
+
+Both controllers pulse for the same events as a gamepad's rumble.
 
 Identify is on the thumbstick press because a thumb that is steering presses it
 by accident, and identifying costs nothing; the menu is on `B` for the same

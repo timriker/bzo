@@ -103,6 +103,9 @@ import {
   registerGameplayInputReset,
   setGameplayKeyState,
   getHeldKeyDebug,
+  isRumbleEnabled,
+  rumble,
+  setRumbleEnabled,
   setInputContext,
   syncInputContextFromUi,
   toggleOperatorPanel,
@@ -6405,6 +6408,16 @@ window.addEventListener('DOMContentLoaded', () => {
     unavailableTitle: 'Dynamic Lighting needs more shader uniforms than this browser reports',
   });
 
+  // BZDB `rumble`, on by default (defaultBZDB.cxx:79).
+  setRumbleEnabled(readStoredFlag('rumbleEnabled', true));
+  bindToggleButton(document.getElementById('rumbleBtn'), {
+    get: isRumbleEnabled,
+    set: setRumbleEnabled,
+    storageKey: 'rumbleEnabled',
+    onTitle: 'Disable Rumble',
+    offTitle: 'Enable Rumble',
+  });
+
   const refreshAnaglyphBtn = bindToggleButton(document.getElementById('anaglyphBtn'), {
     get: () => renderManager.getAnaglyphEnabled(),
     set: (value) => renderManager.setAnaglyphEnabled(value),
@@ -9160,6 +9173,9 @@ function handlePlayerHit(message) {
       },
     );
     if (message.victimId === myPlayerId) {
+      // ForceFeedback::death (playing.cxx:3936). Upstream also shakes a pad
+      // for the tank an observer is riding in; bzo keeps it to the player's own.
+      if (!isObserver()) rumble('death');
       deathCameraActive = true;
       deathFollowTarget = explosionResult?.followTarget || null;
       renderManager.deathFollowTarget = deathFollowTarget;
@@ -13296,7 +13312,10 @@ function shoot() {
   const velocity = { x: shotMessage.vx, y: shotMessage.vy, z: shotMessage.vz };
   const flight = getShotFlight(velocity, myShot, getShotSpeed(null))
     || { x: dirX, y: 0, z: dirZ, speed: getShotSpeed(getMyShotFlag()) };
-  if (!isObserver()) sendToServer(shotMessage);
+  if (!isObserver()) {
+    sendToServer(shotMessage);
+    rumble(myShot.fireSound);
+  }
   // A beam's path is the server's to trace -- it is a polyline through whatever
   // it met, not something the client can extrapolate from a direction -- so the
   // shooter gets the muzzle flash and the report at once and the beam itself
