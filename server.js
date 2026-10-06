@@ -11146,6 +11146,10 @@ function getForbiddenFlags() {
   // zones a tank, so on a map with none the flag can never be switched on --
   // which is the same reason `JP` goes out on a world that always jumps.
   if (!OBSTACLES.some((obs) => obs.kind === 'teleporter')) forbidden.push('PZ');
+  // `WA` Wide Angle has no effect in bzo (docs/flags.md), so like `JP` on a
+  // world that always jumps it is taken out rather than handed out to do
+  // nothing. A proxied or replayed target can still hand one over.
+  forbidden.push('WA');
   // `CB` and `MQ` are upstream's other two teamless voids and are deliberately
   // not taken: upstream's team mates share one colour, so with no teams both
   // flags say nothing, while bzo gives every player a colour of its own and both
@@ -15624,7 +15628,7 @@ function proxyMaxShots(session) {
   return decodeGameSettings(settings).maxShots;
 }
 
-function buildProxyInit(session, mapEntry, viewer, status, enterTeam) {
+function buildProxyInit(session, mapEntry, viewer, status, enterTeam, zonedOf) {
   const players = [...session.state.players.values()]
     .map((player) => proxyPlayerRecord(player, session.state.motion.get(player.id)));
   const self = players.find((record) => record.id === String(session.playerId));
@@ -15739,7 +15743,7 @@ function buildProxyInit(session, mapEntry, viewer, status, enterTeam) {
     // proxied connection's `currentMap` above is the *target's*, so the local
     // one has to be said separately.
     localMap: MAP_SOURCE,
-    flags: session.state.flags.filter(Boolean).map(proxyFlagState),
+    flags: session.state.flags.filter(Boolean).map((flag) => proxyFlagState(flag, zonedOf)),
     worldTime: currentWorldTime(),
     title: `${viewer.key} (${viewer.kind === 'replay' ? 'replay' : 'proxied'})`,
     motd: '',
@@ -15983,7 +15987,7 @@ async function handleProxyConnection(ws, req, request) {
       + ` ${state.players.size} players, ${state.flags.filter(Boolean).length} flags,`
       + ` world ${mapEntry.fileName}`);
     noteGuest({ watch: 'yes', watchDetail: '' });
-    send(buildProxyInit(session, mapEntry, viewer, targetStatus, enterTeam));
+    send(buildProxyInit(session, mapEntry, viewer, targetStatus, enterTeam, proxyZonedOf));
     // What the target said to us on the way in -- its own greeting, and
     // whether the callsign we gave it is registered there.
     for (const text of state.messages) {

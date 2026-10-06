@@ -962,9 +962,13 @@ puts one back, and `good` or `bad` takes a whole quality out at once. It filters
 the pool a slot draws from, next to the two types the game style already forbids
 (`JP` or `NJ` by the jumping switch, `R` on a `+r` world).
 
-Upstream's `+f <abbrev>[{count}]`, which pins a chosen number of one type in the
-world, is **not** read: bzo's flag model is one pool and one slot count, with no
-per-type counts to put them in.
+`+f <abbrev>[{count}]` pins that many of one type in the world, one by default;
+`+f good` or `+f bad` pins one of every type of that quality. They are placed
+after the team flags and before the zone flags, spawn anywhere a `flag` zone
+does not claim them, and a forbidden type is skipped (`addRequiredFlags` in
+`server/bzw-parse.cjs`). A map that names any `+f`, `-s` or `+s` decides its
+flags alone; one that names none takes `server.json`'s `requiredFlags` and
+`superFlags`.
 
 `-mp` with no explicit `-c` or `-offa` implies team play when it enables any
 team other than rogue and observer.

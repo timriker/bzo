@@ -1,8 +1,8 @@
 # Flags
 
 bzo carries every flag BZFlag has: the four team flags and all forty-two
-superflags. One of them, `WA` Wide Angle, is carried without being simulated,
-and the last section here says why.
+superflags. One of them, `WA` Wide Angle, is known but never spawned, and the
+last section here says why.
 
 This document holds the things the code cannot: the shape of the flag system, and
 the places where bzo's flags deliberately differ from BZFlag's. Per-flag
@@ -316,7 +316,7 @@ compares against the fraction the player actually asked for.
   cylinder is deliberately more generous, so a flag can only ever make it
   stricter than it needs to be.
 
-## `WA` Wide Angle is carried, but does nothing
+## `WA` Wide Angle is known, but never spawned
 
 Wide Angle widens the field of view to `_wideAngleAng` 1.745329 rad (100
 degrees). On a flat canvas that is one camera value. In a headset the runtime
@@ -329,24 +329,18 @@ would look like it works and the player could not tell. No acceptable XR
 answer was found, and keeping XR matters more than the effect, so the effect
 is out for good rather than pending.
 
-**The flag itself is in.** It has a `FLAG_TYPES` row like any other: sticky,
-bad, spawned from the ordinary pool, shown on the scoreboard and in the help
-panel. What it does not have is an effect, and its help text is what makes
-that fair -- a player who picks one up is told exactly what it does here:
+**So `WA` is always forbidden**, as `JP` is on a world where every tank already
+jumps: a flag that would do nothing is not handed out. It never comes from the
+pool, and a map's `+f WA` or `zoneflag WA` is skipped like any other forbidden
+type (`getForbiddenFlags` in `server.js`).
+
+**The row stays.** `WA` has a `FLAG_TYPES` entry like any other -- sticky, bad,
+on the scoreboard and in the help panel -- because a **proxied or watched
+player can be handed one by the target**, and a flag bzo has never heard of is
+one it cannot name, draw or explain. Its help text says what it does here:
 
 > Fish-eye lens distorts view.  bzo leaves the view alone, so this one only
 > costs you the time to shake it off.
-
-Two reasons to carry it rather than leave the row out. A **proxied or watched
-player can be handed one by the target**, and a flag bzo has never heard of
-is one it cannot name, draw on the scoreboard or explain -- which is worse
-for that player than an honest "this does nothing here". And `US` Useless is
-already a *good* flag that does nothing, by design and with a joke for a help
-line; a bad flag that does nothing is no worse, and now both say so.
-
-So a map written for BZFlag loads and plays complete: `zoneflag WA` places
-one, a map that forbids `WA` removes it from the pool, and nothing is dropped
-or logged as skipped.
 
 **Binoculars are absent for the same reason.** Upstream binds `B` to `viewZoom
 toggle`, which edits `displayFOV` -- the same axis `WA` moves, and the same
