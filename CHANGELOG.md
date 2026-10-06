@@ -6,6 +6,23 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
 
 ## [Unreleased]
 
+## [1.3.25] - 2026-10-06
+
+### Changed
+- bzo's world is in BZFlag's own coordinates throughout -- +Z up, +Y north,
+  headings as azimuths counter-clockwise from east -- in its data, its wire,
+  its simulation and its renderer, so the proxy and a native client's moves
+  pass positions and headings through unconverted (#182). A world file
+  cached by an older server is rebuilt.
+- A box's or pyramid's roof texture faces as BZFlag's does, a half turn from
+  before.
+
+### Fixed
+- Teleporters were drawn mirrored; each portal now faces out of its own side.
+- The collar a shot wears through a teleporter points along the shot.
+- A phasing tank's cut through a wall is in the right place in VR.
+- A Narrow tank's own hit test turns with the tank.
+
 ## [1.3.24] - 2026-10-06
 
 ### Fixed
