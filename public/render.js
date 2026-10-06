@@ -9792,6 +9792,22 @@ class RenderManager {
       this.worldGroup.updateWorldMatrix(true, false);
       parentInverseMatrix.copy(this.worldGroup.matrixWorld).invert();
 
+      // Player::addToScene (Player.cxx:888) keeps handing an exploding tank's
+      // node the eased flag dimensions, so a tank that dies with Narrow, Tiny or
+      // Obesity grows back to its own size over _flagEffectTime while it comes
+      // apart. Each piece therefore hangs in the tank's own frame, under a
+      // scale that follows the dead tank's dimensions rather than keeping the
+      // ones it died with.
+      tank.updateWorldMatrix(true, false);
+      const tankInverseMatrix = tank.matrixWorld.clone().invert();
+      const tankPos = new THREE.Vector3();
+      const tankQuat = new THREE.Quaternion();
+      const tankScale = new THREE.Vector3();
+      localMatrix.multiplyMatrices(parentInverseMatrix, tank.matrixWorld);
+      localMatrix.decompose(tankPos, tankQuat, tankScale);
+      const deathWidth = tank.userData.dimensionScaleWidth ?? 1;
+      const deathLength = tank.userData.dimensionScaleLength ?? 1;
+
       explodableParts.forEach((sourcePart) => {
         if (!sourcePart) return;
 
@@ -9814,19 +9830,36 @@ class RenderManager {
         localMatrix.multiplyMatrices(parentInverseMatrix, worldMatrix);
         localMatrix.decompose(localPos, localQuat, localScale);
 
-        part.position.copy(localPos);
-        part.quaternion.copy(localQuat);
-        part.scale.copy(localScale);
+        // The part's pose in the tank's unscaled frame, about its own origin.
+        localMatrix.multiplyMatrices(tankInverseMatrix, sourcePart.matrixWorld);
+        localMatrix.decompose(worldPos, worldQuat, worldScale);
+        part.position.set(0, 0, 0);
+        part.quaternion.copy(worldQuat);
+        part.scale.copy(worldScale);
+        const dimensions = new THREE.Group();
+        dimensions.scale.copy(tankScale);
+        dimensions.add(part);
+        const pivot = new THREE.Group();
+        pivot.position.copy(localPos);
+        pivot.quaternion.copy(tankQuat);
+        pivot.add(dimensions);
 
         let speedMultiplier = 0.9;
         if (sourcePart === tank.userData.body) speedMultiplier = 0.95;
         else if (sourcePart === tank.userData.turret) speedMultiplier = 0.8;
         else if (sourcePart === tank.userData.barrel) speedMultiplier = 0.6;
 
-        const debrisPiece = this._launchTankPart(part, tankWorldPos, debrisPieces, speedMultiplier, {
+        const debrisPiece = this._launchTankPart(pivot, tankWorldPos, debrisPieces, speedMultiplier, {
           isFollowTarget: sourcePart === tank.userData.body,
           maxLifetime: (sourcePart === tank.userData.body ? 5.0 : 3.2) * tumble
         });
+        if (debrisPiece) {
+          debrisPiece.dimensions = dimensions;
+          debrisPiece.dimensionSource = tank;
+          debrisPiece.unflaggedScale = new THREE.Vector3(
+            tankScale.x / deathWidth, tankScale.y, tankScale.z / deathLength,
+          );
+        }
         if (sourcePart === tank.userData.body && debrisPiece) {
           followTarget = debrisPiece.mesh;
         }
@@ -9987,6 +10020,14 @@ class RenderManager {
           piece.mesh.rotation.x += piece.mesh.rotationVelocity.x * dt;
           piece.mesh.rotation.y += piece.mesh.rotationVelocity.y * dt;
           piece.mesh.rotation.z += piece.mesh.rotationVelocity.z * dt;
+          if (piece.dimensions) {
+            const { userData } = piece.dimensionSource;
+            piece.dimensions.scale.set(
+              piece.unflaggedScale.x * (userData.dimensionScaleWidth ?? 1),
+              piece.unflaggedScale.y,
+              piece.unflaggedScale.z * (userData.dimensionScaleLength ?? 1),
+            );
+          }
 
           const fadeStart = piece.maxLifetime * 0.7;
           if (piece.lifetime > fadeStart) {
