@@ -6,6 +6,22 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
 
 ## [Unreleased]
 
+## [1.3.23] - 2026-10-06
+
+### Added
+- Gamepad and VR controller rumble, as BZFlag 2.4.30 does: on firing (longer
+  for a shock wave, both motors for a laser) and on death. Only for the
+  active player, never an observer, and only while the controller is the
+  input in use; Settings has a Rumble toggle, on by default (#179).
+
+### Changed
+- `WA` Wide Angle is never spawned: bzo gives it no effect, so a map's
+  `+f WA` or `zoneflag WA` is skipped like any other forbidden flag.
+
+### Fixed
+- A proxied or watched player's first flag list says which flags are
+  zoned, as the later updates already did.
+
 ## [1.3.22] - 2026-10-05
 
 ### Fixed
