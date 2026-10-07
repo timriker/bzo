@@ -349,13 +349,28 @@ class NativeTranslator {
     const key = String(move.id);
     const order = (this.orders.get(key) || 0) + 1;
     this.orders.set(key, order);
+    // The velocity a BZFlag client dead-reckons the tank by between updates
+    // (`Player::doDeadReckoning`), which upstream relays as the sender gave
+    // it. bzo's own move carries `vx`/`vy` in the air only; on the ground it
+    // is a speed as a fraction of the tank's top speed, along the heading or
+    // along `sd` where the tank slides -- `moveFromBzfs` run backwards. Without
+    // it a moving tank is predicted standing still and snaps at every update.
+    const vv = Number(move.vv) || 0;
+    let vx = Number(move.vx) || 0;
+    let vy = Number(move.vy) || 0;
+    if (vv === 0 && vx === 0 && vy === 0) {
+      const heading = typeof move.sd === 'number' && Number.isFinite(move.sd) ? move.sd : a;
+      const speed = (Number(move.fs) || 0) * (Number(config.TANK_SPEED) || 25);
+      vx = Math.cos(heading) * speed;
+      vy = Math.sin(heading) * speed;
+    }
     const w = new Writer(48)
       .f32(this.timestamp())
       .u8(this.slotFor(move.id))
       .i32(order)
       .i16(status)
       .vec3([Number(move.x) || 0, Number(move.y) || 0, Number(move.z) || 0])
-      .vec3([Number(move.vx) || 0, Number(move.vy) || 0, Number(move.vv) || 0])
+      .vec3([vx, vy, vv])
       .f32(a)
       .f32((Number(move.rs) || 0) * (config.TANK_ROTATION_SPEED || 0));
     this.write('pu', w.done());

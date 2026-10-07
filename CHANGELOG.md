@@ -6,6 +6,11 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
 
 ## [Unreleased]
 
+### Fixed
+- A tank driving on the ground jumped about on BZFlag clients' screens: bzo
+  told them its velocity was zero, so they held it still between updates.
+- `/mv`'s "Nowhere to stand" named the wrong coordinate.
+
 ## [1.3.29] - 2026-10-07
 
 ### Added

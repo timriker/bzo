@@ -9057,7 +9057,7 @@ defineCommand('/mv', COMMAND_TIER.OPERATOR,
       z = dropSpawnPosition(at.x, at.y, at.z === null ? 0 : at.z, azimuth);
     }
     if (z === null) {
-      replyToPlayer(player, `Nowhere to stand at ${parsed.x},${parsed.z}`);
+      replyToPlayer(player, `Nowhere to stand at ${parsed.x},${parsed.y}`);
       return;
     }
 
