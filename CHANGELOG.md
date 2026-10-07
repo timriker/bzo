@@ -6,6 +6,15 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
 
 ## [Unreleased]
 
+### Added
+- A `T` scoreboard column after the player number: what each player is
+  playing on -- `d` desktop, `m` mobile, `v` in VR or on a headset's browser,
+  `b` a BZFlag client, `r` a robot, `s` a server bot. A proxied server's
+  players are `b`, or `r` for its robots (#185).
+
+### Fixed
+- A robot from a BZFlag client joins as a robot rather than as a person.
+
 ## [1.3.25] - 2026-10-06
 
 ### Changed

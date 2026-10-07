@@ -10,6 +10,7 @@
 // flat HUD, the XR panel, the roaming leader and the Identify alerts -- so a
 // change that suits one and breaks another is exactly what these catch.
 
+import { createRequire } from 'node:module';
 import assert from 'node:assert/strict';
 import {
   HUD_ALERT_WARNING_COLOR,
@@ -294,27 +295,27 @@ assert.equal(formatRabbitRank(0.539), '53%');
 
   // The wide board, for someone who is not an admin: upstream's three columns
   // split so each carries its own label, plus the `#` upstream shows only to
-  // an admin and bzo shows to everyone.
-  assert.deepEqual(ids({}), ['number', 'player', 'score', 'record', 'tally']);
+  // an admin and bzo shows to everyone, and bzo's own `T` beside it.
+  assert.deepEqual(ids({}), ['number', 'type', 'player', 'score', 'record', 'tally']);
 
   // BZID is offered to an admin and to nobody else. It has no upstream
   // counterpart; the server is what withholds the value.
   assert.deepEqual(
     ids({ isAdmin: true }),
-    ['number', 'bzid', 'player', 'score', 'record', 'tally']
+    ['number', 'type', 'bzid', 'player', 'score', 'record', 'tally']
   );
 
   // The panel stops growing at 900px, so the two widest columns per unit of
   // information go -- the BZID even for an admin, and the head-to-head tally.
   assert.deepEqual(
     ids({ tier: SCOREBOARD_TIER.MEDIUM, isAdmin: true }),
-    ['number', 'player', 'score', 'record']
+    ['number', 'type', 'player', 'score', 'record']
   );
 
   // A phone gives up the record as well, leaving the name room to be a name.
   assert.deepEqual(
     ids({ tier: SCOREBOARD_TIER.NARROW, isAdmin: true }),
-    ['number', 'player', 'score']
+    ['number', 'type', 'player', 'score']
   );
 
   // The long label is what the wide column is sized for, and the short one is
@@ -345,6 +346,9 @@ assert.equal(formatRabbitRank(0.539), '53%');
   // and loses every column that describes a fight it cannot join.
   const observer = { id: '4', bzid: '55', wins: 9, losses: 1, isObserver: true };
   assert.equal(formatScoreboardCell(observer, 'number'), '4');
+  // What a player is playing on is said for an observer too.
+  assert.equal(formatScoreboardCell({ ...observer, clientType: 'v' }, 'type'), 'v');
+  assert.equal(formatScoreboardCell(row, 'type'), '');
   assert.equal(formatScoreboardCell(observer, 'bzid'), '55');
   assert.equal(formatScoreboardCell(observer, 'score'), '');
   assert.equal(formatScoreboardCell(observer, 'record'), '');
@@ -589,3 +593,17 @@ assert.equal(getPlayerStatusIndicator(null), '');
 }
 
 console.log('scoreboard tests passed');
+
+// The `T` letter: first match wins, so a bot is a bot whatever it runs in and
+// a headset is a headset even though its browser also says it is a phone.
+{
+  const { clientTypeOf } = createRequire(import.meta.url)('../server/client-type.cjs');
+  assert.equal(clientTypeOf({}), 'd');
+  assert.equal(clientTypeOf({ mobile: true }), 'm');
+  assert.equal(clientTypeOf({ mobile: true, headset: true }), 'v');
+  assert.equal(clientTypeOf({ xr: true }), 'v');
+  assert.equal(clientTypeOf({ native: true }), 'b');
+  assert.equal(clientTypeOf({ native: true, bot: true }), 'r');
+  assert.equal(clientTypeOf({ bot: true, xr: true }), 'r');
+  assert.equal(clientTypeOf({ serverBot: true, bot: true }), 's');
+}

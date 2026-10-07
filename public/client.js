@@ -135,6 +135,7 @@ import {
   compareScoreboardPlayers,
   formatPlayerLabel,
   formatScoreboardStats,
+  formatScoreboardCell,
   SCOREBOARD_TIER,
   getPlayerTeamMark,
   getPlayerStatusIndicator,
@@ -2656,6 +2657,7 @@ function maybeSendPendingJoinRequest() {
     type: 'joinGame',
     name: pendingJoinRequest.name,
     isMobile: pendingJoinRequest.isMobile,
+    xr: isXREnabled(),
     tankModel: pendingJoinRequest.tankModel,
     motto: pendingJoinRequest.motto,
     bot: IS_BOT_CLIENT,
@@ -6624,6 +6626,8 @@ window.addEventListener('DOMContentLoaded', () => {
     // parked when the player left it.
     resetMouseSteering();
     refreshHudButtons();
+    // Turns this player's scoreboard `T` to `v` and back, for everyone.
+    sendToServer({ type: 'xrSession', on: Boolean(event.detail?.enabled) });
     if (event.detail?.enabled) return;
     closeXRSettingsMenu();
     document.getElementById('xrTextInput')?.blur();
@@ -15632,9 +15636,12 @@ function ensureXRScoreboardOverlay() {
   ctx.save();
   ctx.font = '13px monospace';
   const numberWidth = ctx.measureText('###').width;
+  // The `T` letter after the number, as the flat board has it.
+  const typeWidth = ctx.measureText('T ').width;
   ctx.restore();
   ctx.fillText('#', margin, playerHeaderY);
-  ctx.fillText('Player', margin + numberWidth, playerHeaderY);
+  ctx.fillText('T', margin + numberWidth, playerHeaderY);
+  ctx.fillText('Player', margin + numberWidth + typeWidth, playerHeaderY);
   ctx.textAlign = 'right';
   // The flat board's heading, abbreviated to what fits a headset panel. Both
   // read it from the same place so they cannot name the columns differently.
@@ -15698,6 +15705,7 @@ function ensureXRScoreboardOverlay() {
     const nameWidth = contentRight - margin - columnGap
       - ctx.measureText(stats).width
       - numberWidth
+      - typeWidth
       - statusWidth
       - (flagLabel ? ctx.measureText(flagLabel).width : 0)
       - (pausedLabel ? ctx.measureText(pausedLabel).width : 0)
@@ -15708,7 +15716,8 @@ function ensureXRScoreboardOverlay() {
 
     ctx.fillStyle = rowColor;
     ctx.fillText(numberLabel, margin, y);
-    const nameLeft = margin + numberWidth;
+    ctx.fillText(formatScoreboardCell(player, 'type'), margin + numberWidth, y);
+    const nameLeft = margin + numberWidth + typeWidth;
     if (status) {
       ctx.fillStyle = colorToCSS(SCOREBOARD_STATUS_COLOR);
       ctx.fillText(status, nameLeft, y);

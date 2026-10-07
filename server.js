@@ -346,6 +346,7 @@ function computeClientBuild() {
   return hash.digest('hex').slice(0, 12);
 }
 const { isHeadsetBrowserUA } = require('./server/headset.cjs');
+const { clientTypeOf, CLIENT_TYPE } = require('./server/client-type.cjs');
 const { describeListenTarget, resolveListenTarget } = require('./server/listen-address.cjs');
 const {
   createBzflagServer, publishToBzflagList, REJECT_IP_BANNED, REJECT_ID_BANNED, packGameSettings,
@@ -7000,6 +7001,12 @@ class Player {
     // Joined as a robot tank, upstream's `ComputerPlayer` (`PlayerInfo::isBot`).
     // Declared at join and never changed; autopilot does not make a bot.
     this.bot = false;
+    // What the `T` column says this player is playing on
+    // (server/client-type.cjs): a headset's browser, from the handshake; a
+    // phone, from the join; and an XR session, for as long as one is open.
+    this.headset = false;
+    this.mobile = false;
+    this.xr = false;
     this.verticalVelocity = 0;
     this.isJumping = false;
     this.lastJumpTime = 0;
@@ -7319,6 +7326,10 @@ class Player {
       notResponding: this.notResponding,
       autopilot: this.autopilot,
       bot: this.bot,
+      clientType: clientTypeOf({
+        serverBot: bots.has(this.id), bot: this.bot, native: this.native,
+        xr: this.xr, headset: this.headset, mobile: this.mobile,
+      }),
       forwardSpeed: this.forwardSpeed,
       rotationSpeed: this.rotationSpeed,
       verticalVelocity: this.verticalVelocity,
@@ -11987,6 +11998,8 @@ async function seatNativeClient(link, payload) {
     + `${player.verified ? `, bzid=${player.bzid} admin=${player.admin}` : ''}`);
   say({
     type: 'joinGame', name: enter.callsign, team: askedTeam, motto: enter.motto, tankModel: 'bzflag',
+    // A robot from a BZFlag client is one here too (`PlayerInfo::isBot`).
+    bot: enter.type === BZFLAG_PLAYER_TYPE.COMPUTER,
   });
   if (!player.joined) return;
   if (login?.good) {
@@ -15281,7 +15294,9 @@ function guestCallsign(callsign) {
   return callsign ? `bzo-${callsign}`.slice(0, 31) : proxyViewerCallsign();
 }
 
-function proxyPlayerRecord(player, motion = null) {
+// `own` is this connection's own seat and the `T` letter its browser has
+// earned, because the target only knows it as a `TankPlayer`.
+function proxyPlayerRecord(player, motion = null, own = null) {
   const team = getTeamFromColorIndex(player.team) || PLAYER_TEAM.OBSERVER;
   const position = motion ? { x: motion.pos[0], y: motion.pos[1], z: motion.pos[2] } : { x: 0, y: 0, z: 0 };
   return {
@@ -15308,6 +15323,10 @@ function proxyPlayerRecord(player, motion = null) {
     tks: player.tks,
     paused: motion ? motion.paused : false,
     autopilot: player.autopilot === true,
+    // `MsgAddPlayer` says robot or not and nothing else, and anyone on a
+    // bzfs is a BZFlag client until something says otherwise.
+    clientType: player.type === COMPUTER_PLAYER ? CLIENT_TYPE.ROBOT
+      : (own && String(player.id) === String(own.id) ? own.type : CLIENT_TYPE.BZFLAG),
     forwardSpeed: 0,
     rotationSpeed: 0,
     verticalVelocity: motion ? round3(motion.velocity[2]) : 0,
@@ -15623,9 +15642,9 @@ function proxyMaxShots(session) {
   return decodeGameSettings(settings).maxShots;
 }
 
-function buildProxyInit(session, mapEntry, viewer, status, enterTeam, zonedOf) {
+function buildProxyInit(session, mapEntry, viewer, status, enterTeam, zonedOf, own = null) {
   const players = [...session.state.players.values()]
-    .map((player) => proxyPlayerRecord(player, session.state.motion.get(player.id)));
+    .map((player) => proxyPlayerRecord(player, session.state.motion.get(player.id), own));
   const self = players.find((record) => record.id === String(session.playerId));
   return {
     type: 'init',
@@ -15840,6 +15859,10 @@ async function handleProxyConnection(ws, req, request) {
     + `${pendingLogin ? ' with a forwarded token' : ''}`);
 
   let session = null;
+  // What this browser is playing on, for its own `T` letter: the target only
+  // knows it as a BZFlag client.
+  const ownClient = { headset: isHeadsetBrowserUA(req.headers['user-agent']), mobile: false, xr: false };
+  const ownSeat = () => ({ id: session?.playerId, type: clientTypeOf(ownClient) });
   // Reached from the browser's own message handler, which is outside the try
   // below: what a proxied player may say depends on the team its connection
   // entered on, and how its motion converts depends on the target's world.
@@ -15982,7 +16005,7 @@ async function handleProxyConnection(ws, req, request) {
       + ` ${state.players.size} players, ${state.flags.filter(Boolean).length} flags,`
       + ` world ${mapEntry.fileName}`);
     noteGuest({ watch: 'yes', watchDetail: '' });
-    send(buildProxyInit(session, mapEntry, viewer, targetStatus, enterTeam, proxyZonedOf));
+    send(buildProxyInit(session, mapEntry, viewer, targetStatus, enterTeam, proxyZonedOf, ownSeat()));
     // What the target said to us on the way in -- its own greeting, and
     // whether the callsign we gave it is registered there.
     for (const text of state.messages) {
@@ -16060,7 +16083,7 @@ async function handleProxyConnection(ws, req, request) {
       if (announcedAlive.get(id) !== motion.alive) {
         announcedAlive.set(id, motion.alive);
         const player = session.state.players.get(id);
-        if (player) send({ type: 'playerUpdated', player: proxyPlayerRecord(player, motion) });
+        if (player) send({ type: 'playerUpdated', player: proxyPlayerRecord(player, motion, ownSeat()) });
       }
       // One entry per mover per batch, newest wins -- an update that has been
       // superseded inside 50ms is one nobody needs to draw.
@@ -16088,7 +16111,7 @@ async function handleProxyConnection(ws, req, request) {
       }
       send({
         type: 'alive',
-        player: proxyPlayerRecord(player, session.state.motion.get(spawn.id)),
+        player: proxyPlayerRecord(player, session.state.motion.get(spawn.id), ownSeat()),
       });
     });
 
@@ -16135,10 +16158,10 @@ async function handleProxyConnection(ws, req, request) {
           : { x: 0, y: 0, z: 0 }),
       });
       if (victim) {
-        send({ type: 'playerUpdated', player: proxyPlayerRecord(victim, session.state.motion.get(death.victim)) });
+        send({ type: 'playerUpdated', player: proxyPlayerRecord(victim, session.state.motion.get(death.victim), ownSeat()) });
       }
       if (killer && killer !== victim) {
-        send({ type: 'playerUpdated', player: proxyPlayerRecord(killer, session.state.motion.get(death.killer)) });
+        send({ type: 'playerUpdated', player: proxyPlayerRecord(killer, session.state.motion.get(death.killer), ownSeat()) });
       }
     });
 
@@ -16170,7 +16193,7 @@ async function handleProxyConnection(ws, req, request) {
         if (!player) continue;
         send({
           type: 'playerUpdated',
-          player: proxyPlayerRecord(player, session.state.motion.get(score.id)),
+          player: proxyPlayerRecord(player, session.state.motion.get(score.id), ownSeat()),
         });
       }
     });
@@ -16181,7 +16204,7 @@ async function handleProxyConnection(ws, req, request) {
         if (!player) continue;
         send({
           type: 'playerUpdated',
-          player: proxyPlayerRecord(player, session.state.motion.get(entry.id)),
+          player: proxyPlayerRecord(player, session.state.motion.get(entry.id), ownSeat()),
         });
       }
     });
@@ -16388,7 +16411,7 @@ async function handleProxyConnection(ws, req, request) {
       if (player.id === session.playerId) return;
       send({
         type: 'playerJoined',
-        player: proxyPlayerRecord(player, session.state.motion.get(player.id)),
+        player: proxyPlayerRecord(player, session.state.motion.get(player.id), ownSeat()),
       });
     });
     // Addresses, for a proxied connection privileged enough to be told them.
@@ -16411,7 +16434,7 @@ async function handleProxyConnection(ws, req, request) {
         if (!player) continue;
         send({
           type: 'playerUpdated',
-          player: proxyPlayerRecord(player, session.state.motion.get(entry.id)),
+          player: proxyPlayerRecord(player, session.state.motion.get(entry.id), ownSeat()),
         });
       }
     });
@@ -16476,12 +16499,14 @@ async function handleProxyConnection(ws, req, request) {
     // client does not get to choose. Confirming it with the record the target
     // gave us is what lets the client out of its entry dialog.
     if (message.type === 'joinGame') {
+      ownClient.mobile = message.isMobile === true;
+      ownClient.xr = message.xr === true;
       const self = session.state.players.get(session.playerId);
       if (!self) return;
       send({
         type: 'playerJoined',
         player: {
-          ...proxyPlayerRecord(self, session.state.motion.get(session.playerId)),
+          ...proxyPlayerRecord(self, session.state.motion.get(session.playerId), ownSeat()),
           globalCallsign: viewer.globalCallsign,
         },
       });
@@ -16763,6 +16788,17 @@ async function handleProxyConnection(ws, req, request) {
       return;
     }
     if (message.type === 'nearFlag') return;
+    if (message.type === 'xrSession') {
+      ownClient.xr = message.on === true;
+      const self = session.state.players.get(session.playerId);
+      if (self) {
+        send({
+          type: 'playerUpdated',
+          player: proxyPlayerRecord(self, session.state.motion.get(session.playerId), ownSeat()),
+        });
+      }
+      return;
+    }
     // bzo's pause is a request its own server answers by flipping a flag; a
     // target keeps that flag itself, so the browser's toggle is applied here
     // and declared. Without it a "paused" browser is still alive on the
@@ -16979,6 +17015,7 @@ function acceptConnection(ws, req) {
   // What `/clientquery` says it runs: bzo's own build for a browser, and the
   // browser; a BZFlag client replaces it with what it sent (`seatNativeClient`).
   player.clientVersion = `${BZO_APP_VERSION} web, ${shortUserAgent(req.headers['user-agent'] || '')}`;
+  player.headset = isHeadsetBrowserUA(req.headers['user-agent']);
   player.localAdmin = isLocalAdminRequest(req.socket.remoteAddress, req.headers, {
     enabled: LOCAL_ADMIN,
     whitelist: ADMIN_WHITELIST,
@@ -17989,6 +18026,8 @@ function acceptConnection(ws, req) {
           player.voiceMicEnabled = false;
           player.joined = true;
           player.bot = message.bot === true;
+          player.mobile = message.isMobile === true;
+          player.xr = message.xr === true;
           player.voiceRosterSignature = '';
           reportToListServer('join');
           scheduleBotReconcile();
@@ -18146,6 +18185,16 @@ function acceptConnection(ws, req) {
         case 'autopilot':
           setAutopilot(player, message.on === true, message.pilot);
           break;
+
+        // An XR session opening or closing, which turns the player's `T`
+        // column to `v` and back.
+        case 'xrSession': {
+          const xr = message.on === true;
+          if (player.xr === xr) break;
+          player.xr = xr;
+          if (player.joined) broadcastPlayerRecord('playerUpdated', player);
+          break;
+        }
 
         case 'getMaps': {
           // Reply with all .bzw files in maps/ plus 'random', and indicate current map.

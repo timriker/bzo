@@ -935,6 +935,10 @@ export const SCOREBOARD_COLUMNS = Object.freeze([
   // read, so hiding it on screen buys nothing and costs the one column that
   // makes "kick 3" and "watch 3" say the same thing to everybody.
   Object.freeze({ id: 'number', label: '#', short: '#', width: 3, narrowWidth: 3, align: 'right' }),
+  // What the player is playing on, one letter the server decides
+  // (server/client-type.cjs, issue #185). bzo's own; upstream has no such
+  // column. Beside the number, where it is read at a glance, on every tier.
+  Object.freeze({ id: 'type', label: 'T', short: 'T', width: 1, narrowWidth: 1, align: 'center' }),
   // bzo's own, with no upstream counterpart. A callsign can change between
   // sessions and a BZID cannot, so it is what an admin needs to ban or trust
   // an account rather than a name -- and it is the same number the list-server
@@ -952,6 +956,17 @@ export const SCOREBOARD_COLUMNS = Object.freeze([
   // on top of upstream's own (issue #65).
   Object.freeze({ id: 'tally', label: '1-on-1', short: '1-on-1', width: 7, narrowWidth: 7, align: 'right' }),
 ]);
+
+// What each `T` letter stands for, for the hover text. The letters are the
+// server's (server/client-type.cjs).
+export const SCOREBOARD_CLIENT_TYPE_NAMES = Object.freeze({
+  d: 'desktop',
+  m: 'mobile',
+  v: 'VR headset',
+  b: 'BZFlag client',
+  r: 'robot',
+  s: 'server bot',
+});
 
 // How much room the surface has, which is the only thing that decides what it
 // draws. Three tiers rather than a width in pixels, so the flat board and the
@@ -1017,6 +1032,7 @@ export function formatPersonalTally(player) {
 // that cannot kill or die has no score rather than a score of zero.
 export function formatScoreboardCell(player, columnId) {
   if (columnId === 'number') return String(player.id ?? '');
+  if (columnId === 'type') return player.clientType || '';
   if (columnId === 'bzid') return player.bzid ? String(player.bzid) : '';
   if (player.isObserver) return '';
   if (columnId === 'score') {
@@ -1235,6 +1251,7 @@ export function buildScoreboardRows({
       // non-admin's roster never carries the field, so the column is empty
       // rather than withheld here.
       bzid: state.bzid ?? null,
+      clientType: typeof state.clientType === 'string' ? state.clientType : '',
       // The head-to-head record: my kills against this player and theirs
       // against me, tracked only for opponents (Player::localWins/
       // localLosses, playing.cxx:2556) -- and, on my own row, how many times
@@ -1335,6 +1352,10 @@ function writeScoreboardHeader(columns, rabbitChase, tier, huntSelecting) {
     // The rank rides inside the score column on a Rabbit Chase world, as
     // upstream draws it, so that is the one label the mode changes.
     cell.textContent = column.id === 'score' && rabbitChase ? `Rank ${label}` : label;
+    if (column.id === 'type') {
+      cell.title = Object.entries(SCOREBOARD_CLIENT_TYPE_NAMES)
+        .map(([letter, name]) => `${letter} ${name}`).join('\n');
+    }
     // `*SEL*` rides the name column's heading, which is the only one with room
     // to lend it, and goes out the moment the cursor closes.
     if (huntSelecting && column.id === 'player') {
@@ -1529,6 +1550,7 @@ export function updateScoreboard({
         cell.appendChild(labelSpan);
       } else {
         cell.textContent = formatScoreboardCell(player, column.id);
+        if (column.id === 'type') cell.title = SCOREBOARD_CLIENT_TYPE_NAMES[player.clientType] || '';
       }
       entry.appendChild(cell);
     });
