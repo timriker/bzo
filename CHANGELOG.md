@@ -6,6 +6,8 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
 
 ## [Unreleased]
 
+## [1.3.29] - 2026-10-07
+
 ### Added
 - Observers pitch and strafe: `Shift` with drive tilts the roaming camera up
   and down, with turn slides it sideways; travel stays level. Upstream's Ctrl
