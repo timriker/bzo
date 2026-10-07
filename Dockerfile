@@ -64,7 +64,7 @@ RUN mkdir -p /data /app/cache/br && chown -R "$APP_UID:$APP_GID" /app /data
 
 USER ${APP_UID}:${APP_GID}
 
-EXPOSE 3000 5154/tcp 5154/udp
+EXPOSE 3000 5153/udp 5154/tcp 5154/udp
 VOLUME ["/data"]
 
 CMD ["node", "server.js"]

@@ -121,6 +121,7 @@ import { getMenuClickDirection, playMenuBackSound, playMenuSelectSound, setMenuS
 
 setMenuSoundPlayer((name) => renderManager.playLocalSound(name));
 import { DestructCountdown, PauseState } from './pause.mjs';
+import { createMoveChannel } from './move-channel.mjs';
 import { HUNT_MARKER_COLOR, HuntState } from './hunt.mjs';
 import { XRMenuRenderer } from './xr-menu.js';
 import {
@@ -7343,7 +7344,49 @@ function init() {
   }
 }
 
+// Moves over a WebRTC data channel when the server offers one (#8,
+// move-channel.mjs); the WebSocket carries them otherwise, and the signalling
+// always.
+const moveChannel = createMoveChannel({
+  sendSignal: (signal) => sendToServer({ type: 'rtc', ...signal }),
+  onMessage: (text) => {
+    receivedBytes += text.length;
+    let message;
+    try {
+      message = JSON.parse(text);
+    } catch {
+      return;
+    }
+    if (MOVE_CHANNEL_DOWN_TYPES.has(message?.type)) handleServerMessage(message);
+  },
+  log: (text) => debugLog(text, 'rtc'),
+});
+
+// What the channel carries each way, upstream's UDP list (see server.js).
+const MOVE_CHANNEL_UP_TYPES = new Set(['m', 'shoot']);
+const MOVE_CHANNEL_DOWN_TYPES = new Set(['pmBatch', 'shotBegin', 'shotEnd', 'gmUpdate']);
+
+// Shots whose end came before their start, which a channel that does not keep
+// order can do. Upstream drops such an end (`endShot` finds no shot) and the
+// shot then flies its whole lifetime; remembering it lets the late start be
+// dropped instead. Kept for a while longer than any shot lives.
+const earlyShotEnds = new Map();
+const EARLY_SHOT_END_MS = 15000;
+
+// The newest batch each tank's moves came in (`n` on a 'pmBatch'). A channel
+// that does not keep order can deliver an old batch after a new one, and its
+// moves would put the tank back where it was.
+const lastMoveBatchById = new Map();
+
 function sendToServer(message) {
+  if (MOVE_CHANNEL_UP_TYPES.has(message.type) && moveChannel.isOpen()) {
+    const data = JSON.stringify(message);
+    if (moveChannel.send(data)) {
+      if (debugEnabled) packetsSent.set(message.type, (packetsSent.get(message.type) || 0) + 1);
+      sentBytes += data.length;
+      return;
+    }
+  }
   if (ws && ws.readyState === WebSocket.OPEN) {
     // Track sent packets
     if (debugEnabled) {
@@ -7453,6 +7496,7 @@ function connectToServer() {
   };
 
   ws.onclose = (event) => {
+    moveChannel.close();
     renderReadyForJoin = false;
     gameplayJoinConfirmed = false;
     activeInitSequence = 0;
@@ -7660,6 +7704,12 @@ function handleServerMessage(message) {
   switch (message.type) {
     case 'init': {
       if (!checkClientBuild(message.clientBuild)) return;
+      // A batch number and a shot id are this server process's; a new init
+      // may be another.
+      lastMoveBatchById.clear();
+      earlyShotEnds.clear();
+      if (!message.moveChannel) moveChannel.close();
+      else if (!moveChannel.isOpen()) void moveChannel.start();
       const operatorPanelTitleEl = document.getElementById('operatorPanelTitle');
       if (operatorPanelTitleEl && typeof message.serverVersion === 'string') {
         operatorPanelTitleEl.textContent = `Operator Panel (v${message.serverVersion})`;
@@ -8173,8 +8223,16 @@ function handleServerMessage(message) {
     case 'pmBatch':
       for (const move of message.moves || []) {
         if (move.id === myPlayerId) continue;
+        if (Number.isFinite(message.n)) {
+          if (message.n < (lastMoveBatchById.get(move.id) ?? -Infinity)) continue;
+          lastMoveBatchById.set(move.id, message.n);
+        }
         applyPlayerMoveMessage(move, false);
       }
+      break;
+
+    case 'rtc':
+      void moveChannel.signal(message);
       break;
 
     case 'positionCorrection':
@@ -8297,6 +8355,8 @@ function handleServerMessage(message) {
       // `myTank->getTarget()` otherwise (GuidedMissleStrategy.cxx:139-149). A
       // target has no target field in `MsgShotBegin` to relay, so taking an
       // answer back from it would clear the lock on every trigger pull.
+      // Ended already, its end having overtaken it on the move channel.
+      if (earlyShotEnds.delete(message.id)) break;
       if (message.flag === 'GM'
         && !(clientTracesShots && message.playerId === myPlayerId)) {
         setPlayerLockTarget(message.playerId, message.target ?? null);
@@ -8338,6 +8398,13 @@ function handleServerMessage(message) {
       break;
 
     case 'shotEnd':
+      if (!projectiles.has(message.id)) {
+        const now = performance.now();
+        for (const [id, at] of earlyShotEnds) {
+          if (now - at > EARLY_SHOT_END_MS) earlyShotEnds.delete(id);
+        }
+        earlyShotEnds.set(message.id, now);
+      }
       removeProjectile(message.id, message.reason, message.x, message.y, message.z);
       break;
 

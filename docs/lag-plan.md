@@ -135,17 +135,21 @@ require one:
   ordered, and so is a WebSocket bootstrapped over HTTP/3 (RFC 9220). Moving
   the existing traffic onto H3 would remove *cross-stream* head-of-line blocking
   and nothing else.
-- **WebTransport is the one that matters.** Its datagrams are unreliable and
-  unordered, which is upstream's UDP in a browser. The moment a move rides one,
-  `order` becomes necessary, `lostavg` from the update stream becomes real, and
+- **The move channel is built** (`webrtc.listen`, [network.md](network.md)):
+  a WebRTC data channel, unreliable and unordered, upstream's UDP in a
+  browser. The client's `ct` is its `order` -- the server drops a move not
+  newer than the last it took -- and `pmBatch`'s `n` orders the way down.
+  `lostavg` from the update stream is still to do.
+- **WebTransport would do the same.** Its datagrams are unreliable and
+  unordered too. On it, as on the channel, `order` is necessary, `lostavg`
+  from the update stream becomes real, and
   upstream's `state.order <= lastState.order` stale-packet drop has to exist or
   an old position will overwrite a new one.
 - **An intermediate step exists**: one QUIC stream per concern keeps reliability
   while stopping a stalled bulk transfer from delaying a move.
 
-None of that is buildable now -- Express does not speak H3 and Node's QUIC is
-experimental -- so the field is not worth adding yet. It is worth not designing
-it out.
+The QUIC paths are not buildable now -- Express does not speak H3 and Node's
+QUIC is experimental -- which is why the channel is WebRTC.
 
 ## One clock read per frame, one per handler
 

@@ -206,6 +206,23 @@ IPv6 anyway:
 
 The TLS name has to be on the relay's certificate too.
 
+### Moves over WebRTC
+
+Moves can ride a WebRTC data channel instead of the WebSocket, so a lost
+packet costs one move rather than holding back every move behind it:
+
+```json
+"webrtc": { "listen": "0.0.0.0:5153" }
+```
+
+Every player shares that one UDP port, IPv4 only. Forward it like the game
+port; no certificate is needed, and the reverse proxy is not involved. The
+server learns its public address from the `stun:` entries of
+`voiceIceServersIpv4`, or from `"iceServers": ["stun:host:3478"]` in the
+block. A player whose channel does not open plays on the WebSocket as before,
+and `/playerlist` shows ` udp+` for one whose channel did. Under Docker,
+publish `5153:5153/udp`. [network.md](network.md) has the details.
+
 ## Behind a reverse proxy
 
 Terminate TLS at the proxy and serve the game over `https://`; the client uses

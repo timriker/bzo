@@ -8,6 +8,8 @@ services:
       # game, UDP for its ping and the movement link.
       - "5154:5154/tcp"
       - "5154:5154/udp"
+      # Moves over WebRTC, when server.json has `webrtc.listen`.
+      - "5153:5153/udp"
     environment:
       PORT: "3000"
       SERVER_CONFIG_PATH: /data/server.json

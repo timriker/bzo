@@ -15,9 +15,33 @@ motion record. This file is bzo's half of that, plus the mapping between them.
 ## Transport
 
 One WebSocket per client, to the same host and port the page was served from
-(`public/client.js:5634` picks `wss:` for an `https:` page). There is no second
-channel: no UDP, no unreliable path, no separate control connection. A dropped
-frame is a dropped frame at the TCP layer and arrives late rather than never.
+(`public/client.js` picks `wss:` for an `https:` page). It carries everything,
+and moves too unless a move channel is open.
+
+**The move channel** (#8) is bzo's UDP: a WebRTC data channel, negotiated as
+id 0, neither ordered nor retried, when server.json has `webrtc.listen`. It
+carries what bzfs sends over UDP (`NetHandler::pwrite`): `m` and `shoot` up;
+`pmBatch`, `shotBegin`, `shotEnd` and `gmUpdate` down. Moves go out on it as
+they are accepted, gathered once per turn of the event loop, where the
+WebSocket gets the 16ms tick's batch -- bzfs relays on arrival too. A lost
+move is lost, where on the WebSocket it would arrive late and hold every move
+behind it. Signalling is
+`rtc` on the WebSocket: the client offers, the server answers. Every peer
+shares one UDP port, IPv4 only -- a phone on Verizon drops its data session
+over WebRTC on IPv6 -- and the server finds its public address with STUN
+(`webrtc.iceServers`, else the `stun:` entries of `voiceIceServersIpv4`).
+No certificate is needed: DTLS uses a throwaway one whose fingerprint rides
+the signalling. Order is kept by the clocks: the server drops a move whose
+`ct` is not newer than the last it took, and the client a batch whose `n` is
+older than the last it applied for that tank -- upstream's `order` on
+MsgPlayerUpdate. A `shotEnd` that overtakes its `shotBegin` is remembered and
+the late start dropped; upstream drops the end and the shot flies its
+lifetime. A message over one packet's worth, such as a laser's many-segment
+`shotBegin`, takes the WebSocket. With the channel on, every
+client sends at least one move a second (`MAX_UPDATE_INTERVAL`), so a lost
+stop is corrected within one. A client whose channel does not open in ten
+seconds stays on the WebSocket. `/playerlist` shows an open one as ` udp+`,
+as bzfs does a client's UDP link.
 
 `new WebSocketServer({ server })` (`server.js:1312`) takes ws's defaults, which
 means no `permessage-deflate` -- frames go out as uncompressed UTF-8 -- and
@@ -122,14 +146,16 @@ omitted rather than sent null.
 | `voiceState` | `channel`, `team`, `enabled`, `transmitting` | mic state |
 | `voiceOffer` / `voiceAnswer` | `channel`, `to`, `description` | WebRTC signalling |
 | `voiceIceCandidate` | `channel`, `to`, `candidate` | WebRTC signalling |
+| `rtc` | `sdp`,`sdpType` or `candidate`,`mid` | move channel signalling: the offer, then candidates |
 | `debug` | `message`, `name?` | client debug line, echoed to the server log |
 
 ## Server to client
 
 | type | fields | meaning |
 |---|---|---|
-| `init` | `clientBuild`, `serverVersion`, `player`, `players`, `config`, `bzdb`, `teamMode`, `teamScores`, `liveConfigKeys`, `operatorConfig`, `listServer`, `rabbitId`, `timeLeft`, `gameOver`, `voiceRtcConfig`, `world`, `viewableMaps`, `flags`, `worldTime`, `title`, `motd` | everything, once, on connect |
-| `pmBatch` | `moves` | one tick's accepted moves, one entry per mover. The normal motion path |
+| `init` | `clientBuild`, `serverVersion`, `player`, `players`, `config`, `bzdb`, `teamMode`, `teamScores`, `liveConfigKeys`, `operatorConfig`, `listServer`, `rabbitId`, `timeLeft`, `gameOver`, `voiceRtcConfig`, `moveChannel`, `world`, `viewableMaps`, `flags`, `worldTime`, `title`, `motd` | everything, once, on connect |
+| `pmBatch` | `n`, `moves` | one tick's accepted moves, one entry per mover, numbered by tick. The normal motion path; on a move channel, split so each message fits one packet |
+| `rtc` | `sdp`,`sdpType` or `candidate`,`mid` | move channel signalling: the answer, then candidates |
 | `pm` | `id`,`x`,`y`,`z`,`r`,`fs`,`rs`,`vv`,`vx`,`vz` | a single move, outside the batch |
 | `pt` | as `pm` plus `fromFaceId`,`toFaceId`,`jd`,`d?` | an accepted teleport |
 | `positionCorrection` | `x`,`y`,`z`,`r`,`vv` | the server moved you; the client snaps |
