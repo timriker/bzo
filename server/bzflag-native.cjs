@@ -312,6 +312,21 @@ class NativeTranslator {
     this.write('pb', new Writer(3).u8(1).u8(this.slotFor(record.id)).u8(properties).done());
   }
 
+  // A player on another team (`/setteam`). Upstream 2.4 has no message for it.
+  // This client's own: MsgAddPlayer for itself again, which `enteringServer`
+  // (playing.cxx:5058) answers by taking the team, colours and all, and
+  // leaves the tank alive. Anyone else: gone and back on the new team, where
+  // they stand -- a re-add arrives dead (`addPlayer`, playing.cxx).
+  teamChanged(record) {
+    if (this.isSelf(record)) {
+      this.addPlayer(record);
+      return;
+    }
+    this.removePlayer(record.id);
+    this.addPlayer(record);
+    if (record.alive) this.alive(record);
+  }
+
   removePlayer(bzoId) {
     const key = String(bzoId);
     if (!this.players.has(key)) return;
@@ -506,6 +521,10 @@ class NativeTranslator {
         break;
       case 'playerUpdated':
         if (this.accepted && message.player) {
+          const before = this.players.get(String(message.player.id));
+          if (before && this.teamIndex(before.team) !== this.teamIndex(message.player.team)) {
+            this.teamChanged(message.player);
+          }
           this.score(message.player);
           this.playerInfo(message.player);
         }

@@ -91,8 +91,10 @@ like its ring: everyone is hunting it, so everyone's mark over it says so.
 ### As an observer
 
 As an Observer you have no tank. Drive and turn fly the camera instead, `Tab`
-climbs and `Space` descends, and the camera rests at the eye height of a tank on
-the ground. Pausing and self-destruct do nothing.
+climbs and `Space` descends, and holding `Shift` makes drive tilt the view up
+and down and turn slide it sideways. The camera rests at the eye height of a
+tank on the ground, and travel stays level however the view is tilted.
+Pausing and self-destruct do nothing.
 
 - `Enter` or `C` — step through everything: in each view, the leader first, then
   every player, then on to the next view. The views are Free, Track, Follow,

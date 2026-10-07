@@ -1370,6 +1370,14 @@ which camera axis each feeds with Ctrl/Alt/Shift. Rates, with bzo's
 `z` is floored at muzzle height; x and y are never clamped and there is no
 collision, so the camera flies through buildings and past the world border.
 
+**bzo moves the modifiers.** A browser cannot have Ctrl (Ctrl+W closes the tab
+and cannot be refused; macOS takes Ctrl+arrows) or Alt (Alt+arrows is Back and
+Forward), so Shift carries both: Shift+drive is upstream's Ctrl pitch and
+Shift+turn its Alt strafe, while upstream's Shift vertical rides `Tab`/`Space`.
+Pitch is upstream's: two thirds of zoom degrees a second, forward looks up,
+travel stays level, clamped short of vertical. Strafe is four times tank speed,
+left on a left turn (`public/roam.mjs`).
+
 **Identify picks the tank centred in the sights.** `setTarget()`
 (`playing.cxx:4390`), bound to `I` and Right Mouse -- see the Keyboard section.
 
@@ -3213,11 +3221,13 @@ after them.
 counter-clockwise from east, as a `.bzw`'s `rotation` is. That is the
 convention a Share View Link writes: `?pos=x,y,z,deg` ends in the tank's
 azimuth, so the tail of a link pastes into `/mv` unchanged --
-`/mv -320.0,310.3,0.0,178.7`. The two conventions run opposite ways and start a
-quarter turn apart: an azimuth's `90` is north, where a bearing's is east. That
-is why the compass points stay -- a letter cannot be misread -- and why the reply
-names the facing the tank ended up with, so a number that meant the other thing
-says so in the answer.
+`/mv -320.0,310.3,0.0,178.7`. A tilted observer's link adds a fifth value, the
+pitch in degrees (up positive), which the viewer reads back into its roaming
+camera and `/mv` takes and ignores. The two conventions run opposite ways and
+start a quarter turn apart: an azimuth's `90` is north, where a bearing's is
+east. That is why the compass points stay -- a letter cannot be misread -- and
+why the reply names the facing the tank ended up with, so a number that meant
+the other thing says so in the answer.
 
 `parseFacing` resolves both spellings to radians, `bearingToAzimuth` being the
 compass half of it, so the command handler never sees which one was typed.

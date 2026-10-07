@@ -211,6 +211,8 @@ import {
   advanceRoamSelection,
   createRoamCamera,
   getRoamForward,
+  getRoamLook,
+  ROAM_PITCH_LIMIT,
   getRoamViewAngle,
   roamViewNeedsTarget,
   updateRoamCamera,
@@ -1092,21 +1094,24 @@ function readViewCamTarget() {
 }
 const autoViewCamTarget = readViewCamTarget();
 
-// `?pos=x,y,z,deg` -- where a shared Map Viewer link starts, and which way it
-// faces, in upstream's frame as a `.bzw` and `/mv` state it: `z` up, and the
-// facing an azimuth, counter-clockwise from east. Degrees rather than radians:
-// this is the one part of the link a person might actually read or type by
-// hand, the same reason a `.bzw`'s own `rotation` line is degrees and not
-// radians.
+// `?pos=x,y,z,deg[,pitch]` -- where a shared Map Viewer link starts, and which
+// way it faces, in upstream's frame as a `.bzw` and `/mv` state it: `z` up, and
+// the facing an azimuth, counter-clockwise from east. The optional fifth is an
+// observer's pitch, up positive (roam.mjs). Degrees rather than radians: this
+// is the one part of the link a person might actually read or type by hand, the
+// same reason a `.bzw`'s own `rotation` line is degrees and not radians.
 function readViewPosTarget() {
   const params = new URLSearchParams(window.location.search);
   if (!params.has('pos')) return null;
   const parts = (params.get('pos') || '').split(',').map(Number);
-  if (parts.length !== 4 || !parts.every(Number.isFinite)) return null;
-  const [x, y, z, deg] = parts;
-  return { x, y, z, azimuth: (deg * Math.PI) / 180 };
+  if ((parts.length !== 4 && parts.length !== 5) || !parts.every(Number.isFinite)) return null;
+  const [x, y, z, deg, pitchDeg = 0] = parts;
+  const pitch = Math.max(-ROAM_PITCH_LIMIT, Math.min(ROAM_PITCH_LIMIT, (pitchDeg * Math.PI) / 180));
+  return { x, y, z, azimuth: (deg * Math.PI) / 180, pitch };
 }
 const autoViewPosTarget = readViewPosTarget();
+// A link's pitch, held until the roaming camera is next made and taken once.
+let linkRoamPitch = null;
 // Set once a link's `pos=` has placed the viewer. A free camera is free: the
 // spot a link names is where its sender stood, outside the walls or not, so
 // `confineViewerToWorld` leaves it alone in that view.
@@ -1148,9 +1153,17 @@ function buildShareViewLink() {
     overview: 'overview',
   };
   const cam = isObserver() ? (camNames[roamView] || 'free') : playerCamNames[cameraMode];
-  // As `/mv` takes it -- see `readViewPosTarget`.
+  // As `/mv` takes it -- see `readViewPosTarget` -- with an observer's pitch
+  // after it when the view is tilted: the angle the view actually looks, so a
+  // link from a view riding a tank keeps the slope it was watching from.
   const deg = ((myAzimuth * 180) / Math.PI).toFixed(1);
-  const pos = `${myX.toFixed(1)},${myY.toFixed(1)},${myZ.toFixed(1)},${deg}`;
+  let pos = `${myX.toFixed(1)},${myY.toFixed(1)},${myZ.toFixed(1)},${deg}`;
+  const framing = isObserver() ? getRoamFraming() : null;
+  if (framing) {
+    const { eye, look } = framing;
+    const pitchDeg = (Math.atan2(look.z - eye.z, Math.hypot(look.x - eye.x, look.y - eye.y)) * 180) / Math.PI;
+    if (Math.abs(pitchDeg) >= 0.05) pos += `,${pitchDeg.toFixed(1)}`;
+  }
   const where = replaying ? `replay=${encodeURIComponent(replaying)}` : watching
     ? `watch=${encodeURIComponent(watching)}`
     : `viewmap=${encodeURIComponent(mapFile)}`;
@@ -8058,6 +8071,7 @@ function handleServerMessage(message) {
             myY = autoViewPosTarget.y;
             myZ = autoViewPosTarget.z;
             myAzimuth = autoViewPosTarget.azimuth;
+            linkRoamPitch = autoViewPosTarget.pitch;
             roamCamera = null;
             viewerPlacedByLink = true;
           }
@@ -8264,6 +8278,11 @@ function handleServerMessage(message) {
       break;
 
     case 'positionCorrection':
+      // An observer has a camera rather than a tank: `/mv` puts it there.
+      if (isObserver()) {
+        moveRoamCameraTo(message);
+        break;
+      }
       // Server corrected our position - update dead reckoning state
       myX = message.x;
       myY = message.y;
@@ -12045,13 +12064,9 @@ function getRoamFraming() {
 
   // Free roam, and the fallback whenever a view has nothing to point at, which
   // is what `Roaming::changeTarget` does when it finds no target. The look point
-  // is one unit ahead at the eye's own height, so it travels with the camera --
-  // forward, sideways and vertically -- exactly as a driving tank's does.
-  const heading = getRoamForward(roamCamera.azimuth);
-  return {
-    eye,
-    look: { x: eye.x + heading.x, y: eye.y + heading.y, z: eye.z },
-  };
+  // is one unit ahead, tilted by the camera's pitch, so it travels with the
+  // camera -- forward, sideways and vertically.
+  return { eye, look: getRoamLook(roamCamera) };
 }
 
 // getRoamingLabel() (Roaming.cxx:325). ScoreboardRenderer::getLeader prefixes
@@ -12115,6 +12130,29 @@ function getRoamLabelParts() {
 // the heading tape, and the sound listener all read the camera without knowing
 // about roaming. bzo does the same: the mesh is invisible while dead, and the
 // only thing sent for it is the position update at the bottom of this function.
+// `/mv` on an observer: the camera, in free roam, where it was sent -- at eye
+// height above the spot, as a camera made from a spawn is -- tilted when a
+// pitch came with it and as it was otherwise. Choosing for the player, as
+// picking a view does, so the leader default does not take it back.
+function moveRoamCameraTo(message) {
+  if (!myTank || ![message.x, message.y, message.z, message.a].every(Number.isFinite)) return;
+  const eyeHeight = Number.isFinite(myTank.userData?.cameraHeight)
+    ? myTank.userData.cameraHeight
+    : TANK.muzzleHeight;
+  roamCamera = {
+    ...createRoamCamera(eyeHeight),
+    x: message.x,
+    y: message.y,
+    z: Math.max(eyeHeight, message.z + eyeHeight),
+    azimuth: message.a,
+    pitch: Number.isFinite(message.pitch) ? message.pitch : (roamCamera?.pitch ?? 0),
+  };
+  roamView = ROAM_VIEW.FREE;
+  roamTargetId = null;
+  roamTargetFlagIndex = null;
+  roamViewDefaulted = false;
+}
+
 function handleRoamMotion(deltaTime) {
   if (!isObserver()) {
     roamCamera = null;
@@ -12177,7 +12215,9 @@ function handleRoamMotion(deltaTime) {
       y: myTank.position.y,
       z: Math.max(eyeHeight, myTank.position.z + eyeHeight),
       azimuth: myAzimuth,
+      pitch: linkRoamPitch ?? 0,
     };
+    linkRoamPitch = null;
   }
 
   // A dialog or the chat input owning the keyboard must not also fly the camera.
@@ -12873,6 +12913,9 @@ function gatherDriveInput({ player = true } = {}) {
 
   if (keys['Tab']) up = true;
   if (keys['Space']) down = true;
+  // Shift turns drive into pitch for an observer's camera (roam.mjs); a tank
+  // has no use for it.
+  const pitch = Boolean(keys['ShiftLeft'] || keys['ShiftRight']);
 
   // The autopilot takes the mouse box's place, last in line: a key or a stick
   // still owns its axis while it is held, so a player can turn a pilot out of
@@ -12882,7 +12925,7 @@ function gatherDriveInput({ player = true } = {}) {
   if (autopilotOn && autopilotOutput) {
     if (!forwardKeyHeld && stickForward === 0) forward = autopilotOutput.speed;
     if (!turnKeyHeld && stickTurn === 0) turn = autopilotOutput.rotation;
-    return { forward, turn, up: up || autopilotOutput.jump, down };
+    return { forward, turn, up: up || autopilotOutput.jump, down, pitch };
   }
 
   if (mouseSteeringActive()) {
@@ -12890,7 +12933,7 @@ function gatherDriveInput({ player = true } = {}) {
     if (!turnKeyHeld && stickTurn === 0) turn = -mouseX;
   }
 
-  return { forward, turn, up, down };
+  return { forward, turn, up, down, pitch };
 }
 
 // The local tank as the shared `drive` step sees it. The rest of client.js

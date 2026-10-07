@@ -36,6 +36,10 @@
 // pilot fly for that many seconds, logged the way a drive is. `--select-chat 1`
 // opens chat entry, drags across the last transcript line with real mouse
 // events, and reports what got selected and whether chat entry survived it.
+// `--hold ShiftLeft,KeyW --hold-ms 1500` holds those keys together, with a
+// screenshot before (`<shot>.before.png`) when `--shot` is given, and the
+// position from /api/players either side; `--free 1` first steps an observer
+// round to free roam.
 
 import { spawn } from 'node:child_process';
 import { setTimeout as sleep } from 'node:timers/promises';
@@ -298,6 +302,13 @@ if (args.get('select-chat') && joined.startsWith('joined')) {
       chatActive: document.body.classList.contains('chat-active'),
       focused: document.activeElement?.id || document.activeElement?.tagName,
     })`);
+    // Ctrl+C on the selection is a copy, not the camera key.
+    const camera = () => evaluate('document.getElementById("cameraBtn")?.title || ""');
+    const cameraBefore = await camera();
+    await send('Input.dispatchKeyEvent', { type: 'rawKeyDown', code: 'KeyC', key: 'c', windowsVirtualKeyCode: 67, modifiers: 2 });
+    await send('Input.dispatchKeyEvent', { type: 'keyUp', code: 'KeyC', key: 'c', windowsVirtualKeyCode: 67, modifiers: 2 });
+    await sleep(100);
+    const copied = (await camera()) === cameraBefore ? 'camera unchanged' : 'CAMERA CHANGED';
     // A key typed while the selection is held belongs back in the input.
     await send('Input.dispatchKeyEvent', { type: 'keyDown', code: 'KeyA', key: 'a', text: 'a' });
     await send('Input.dispatchKeyEvent', { type: 'keyUp', code: 'KeyA', key: 'a' });
@@ -307,8 +318,42 @@ if (args.get('select-chat') && joined.startsWith('joined')) {
       focused: document.activeElement?.id || document.activeElement?.tagName,
     })`);
     selectChatReport = `select-chat: line ${JSON.stringify(line.text.slice(0, 60))}, pressed on ${target},`
-      + ` chat active before ${before}, after ${after}, then typing "a" ${typed}`;
+      + ` chat active before ${before}, after ${after}, Ctrl+C ${copied}, then typing "a" ${typed}`;
   }
+}
+
+// `--hold`: keys held together for `--hold-ms`, for a probe of a chord such
+// as an observer's Shift+drive pitch.
+const holdKeys = (args.get('hold') || '').split(',').map((code) => code.trim()).filter(Boolean);
+let holdReport = '';
+if (holdKeys.length && joined.startsWith('joined')) {
+  if (!mvArgs && !chatLine && !pressKeys.length) await sleep(3000);
+  const where = async () => {
+    const self = await fetchSelf();
+    return self ? `x=${self.x.toFixed(2)} y=${self.y.toFixed(2)} z=${self.z.toFixed(2)}` : 'not in /api/players';
+  };
+  // `--free 1`: an observer stepped round to free roam first, which is the
+  // view its own keys fly -- it starts out following the leader.
+  if (args.get('free')) {
+    for (let press = 0; press < 40; press += 1) {
+      if (String(await evaluate('document.getElementById("cameraBtn")?.title')).includes('Roaming')) break;
+      await keyDown('KeyC');
+      await sleep(60);
+      await keyUp('KeyC');
+      await sleep(120);
+    }
+  }
+  if (shotPath) {
+    const { data } = await send('Page.captureScreenshot', { format: 'png' });
+    fs.writeFileSync(shotPath.replace(/\.png$/, '') + '.before.png', Buffer.from(data, 'base64'));
+  }
+  const before = await where();
+  for (const code of holdKeys) await keyDown(code);
+  await sleep(Number(args.get('hold-ms') || 1000));
+  for (const code of [...holdKeys].reverse()) await keyUp(code);
+  // Long enough for an observer's position to reach the server.
+  await sleep(1500);
+  holdReport = `hold ${holdKeys.join('+')}: before ${before}, after ${await where()}`;
 }
 
 const driveLog = [];
@@ -386,6 +431,7 @@ if (hopSeconds > 0 && joined.startsWith('joined')) {
 console.log(joined);
 if (driveLog.length) console.log(driveLog.join('\n'));
 if (selectChatReport) console.log(selectChatReport);
+if (holdReport) console.log(holdReport);
 if (evalExpression) console.log(`eval: ${JSON.stringify(await evaluate(evalExpression))}`);
 if (shotPath) {
   const { data } = await send('Page.captureScreenshot', { format: 'png' });

@@ -11,15 +11,23 @@ dispatcher are in `server.js`. The commands are `/?`, `/help` and
 `/<prefix>?`; the open tier `/uptime`, `/serverquery`, `/msg`, `/date`,
 `/time`, `/lagstats`, `/pos`; and the operator tier `/kill`, `/say`, `/mute`,
 `/unmute`, `/mutelist`, `/playerlist`, `/flag` (`reset`, `up`, `show`, `take`,
-`give`, `drop [player]`), `/set`, `/reset`, `/mv`, `/bot`, `/countdown` and
-`/gameover`, plus `/me`. The client-local table -- `/silence`, `/unsilence`,
+`give`, `drop [player]`), `/set`, `/reset`, `/mv`, `/setteam`, `/bot`,
+`/countdown` and `/gameover`, plus `/me`. The client-local table -- `/silence`, `/unsilence`,
 `/highlight`, `/savemsgs`, `/cmds` -- lives in `public/client.js` and never
 reaches the server. See "Server commands" in `AGENTS.md`.
 
 **`/mv` is bzo's own.** Upstream has no command that moves a tank -- not in bzfs,
 not in `BanCommands`, not in any plugin, and there is no API call for it either.
 It is here because bzo is developed by driving it: `testSpawn` in `server.json`
-does this on join, and `/mv` is the same thing without a restart.
+does this on join, and `/mv` is the same thing without a restart. On an
+observer it moves the roaming camera, into free roam, and a fifth value -- a
+Share View Link's pitch -- tilts it. Whoever was moved is told who did it.
+
+**`/setteam` is bzo's own too.** 2.5 lets a client change its own team
+(`MsgSetTeam`); nothing lets an operator. `/setteam <player> <team>` moves a
+player between playing teams in place: the flag drops, the tank takes the new
+colour and keeps driving. Observer, rabbit and hunter are out of its reach.
+A BZFlag client is covered in [bzflag-clients.md](bzflag-clients.md).
 
 A tank holding Oscillation Overthruster is placed exactly where it was asked
 to go, with no altitude resolved for it. Every other tank has its height

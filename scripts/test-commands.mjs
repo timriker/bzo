@@ -260,7 +260,7 @@ assert.equal(formatDuration('nonsense'), '');
     'a space splits the tokens, so this reads as coordinates and a bearing');
   assert.deepEqual(parseMoveCoordinates('0,,0'), { error: usage });
   assert.deepEqual(parseMoveCoordinates('0'), { error: usage }, 'one number is not a position');
-  assert.deepEqual(parseMoveCoordinates('1,2,3,4,5'), { error: usage });
+  assert.deepEqual(parseMoveCoordinates('1,2,3,4,5,6'), { error: usage });
   assert.deepEqual(parseMoveCoordinates('a,b'), { error: usage });
   assert.deepEqual(parseMoveCoordinates(''), { error: usage });
   assert.deepEqual(parseMoveCoordinates('0,0 sideways'), { error: notADirection('sideways') });
@@ -276,6 +276,12 @@ assert.equal(formatDuration('nonsense'), '');
     { x: -320, y: 310.3, z: 0, azimuth: deg(-1.3) });
   // And in the slot of its own, where a letter also goes.
   assert.deepEqual(parseMoveCoordinates('0,0 -1.3'), { x: 0, y: 0, z: null, azimuth: deg(-1.3) });
+  // A tilted observer's link carries a pitch after the facing, which an
+  // observer's camera takes and a tank ignores. It has to be a number.
+  assert.deepEqual(parseMoveCoordinates('-320.0,310.3,0.0,-1.3,-25.0'),
+    { x: -320, y: 310.3, z: 0, azimuth: deg(-1.3), pitch: (-25 * Math.PI) / 180 });
+  assert.ok(parseMoveCoordinates('0,0,0,90,down').error, 'a pitch is a number');
+  assert.ok(parseMoveCoordinates('0,0,0,90,5,6').error, 'six values is too many');
 
   // The two conventions start a quarter turn apart and run opposite ways.
   assert.equal(parseFacing('90'), parseFacing('n'), 'an azimuth of 90 is north');

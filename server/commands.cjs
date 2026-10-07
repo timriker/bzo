@@ -329,7 +329,9 @@ function azimuthToBearingName(azimuth) {
 //
 // A facing is a compass point or an angle -- see `parseFacing` for which way a
 // number runs. The four-value form is the one a Share View Link's `pos=` tail
-// pastes straight into: `/mv -320.0,310.3,0.0,-1.3` (issue #109).
+// pastes straight into: `/mv -320.0,310.3,0.0,-1.3` (issue #109). A link from
+// a tilted observer carries a fifth, the pitch in degrees, up positive: a
+// moved observer's camera takes it, and a tank ignores it.
 //
 // Two numbers leave the height out because that is the form worth typing: the
 // caller resolves it by dropping the tank onto whatever is at that point, so
@@ -339,7 +341,7 @@ function azimuthToBearingName(azimuth) {
 // of its own after the coordinates, which is the shorter thing to type.
 //
 // Returns `{ error }`, or `{ x, y, z, azimuth }` where `z` and `azimuth` are
-// null when they were not given. `azimuth` is radians, resolved here rather
+// null when they were not given, and `pitch` in radians only when it was. `azimuth` is radians, resolved here rather
 // than handed back as a bearing for the caller to convert: there are two
 // spellings of a facing and only one of them is a bearing.
 function parseMoveCoordinates(args) {
@@ -350,7 +352,13 @@ function parseMoveCoordinates(args) {
 
   const values = tokens[0].split(',').map((value) => value.trim());
   if (values.some((value) => value.length === 0)) return { error: usage };
-  if (values.length < 2 || values.length > 4) return { error: usage };
+  if (values.length < 2 || values.length > 5) return { error: usage };
+  let pitch = null;
+  if (values.length === 5) {
+    pitch = Number(values.pop());
+    if (!Number.isFinite(pitch)) return { error: usage };
+    pitch = (pitch * Math.PI) / 180;
+  }
 
   // Only the first three values are coordinates. A fourth is the facing, which
   // may be a compass point -- checking the whole list for finiteness would
@@ -377,7 +385,7 @@ function parseMoveCoordinates(args) {
     if (trailing === null) return { error: formatBearingError(tokens[1]) };
     azimuth = trailing;
   }
-  return { x, y, z, azimuth };
+  return pitch === null ? { x, y, z, azimuth } : { x, y, z, azimuth, pitch };
 }
 
 // FlagInfo::getTextualInfo (FlagInfo.cxx:284), which is the one line `/flag

@@ -159,7 +159,14 @@ own. Browsers rejoin by themselves; a BZFlag client does not.
   heard the client on UDP, ` udp+` once it sends to it there too.
 - **`/mv`.** Upstream has no message that moves a client's own tank but its
   spawn, so an operator moving a BZFlag player sends it `MsgAlive` at the
-  new spot.
+  new spot. A BZFlag observer cannot be moved: its camera is its own.
+- **`/setteam`.** 2.4 has no team change but a rejoin; 2.5's `MsgSetTeam`
+  is one 2.4 does not know. So a BZFlag player moved to another team is sent
+  its own `MsgAddPlayer` again, which `enteringServer` (`playing.cxx:5058`)
+  answers by taking the team: title, scoreboard, radar and tank all turn.
+  It also says the old team "was unavailable" and turns the radar, console
+  and flag displays back on. Other BZFlag clients see the player leave and
+  rejoin on the new team where it stands.
 - **Lag.** bzo's keep-alive ping is bzfs's `MsgLagPing` for a native
   client, a sequence number it echoes, so its lag is measured as a
   browser's is and shows in `/lagstats`.

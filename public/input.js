@@ -1913,6 +1913,9 @@ function bindHudElements() {
         return;
       }
       if (activeElement === chatInput) return;
+      // Chat entry open around a selection in its transcript: the focus has
+      // left the input, but the keyboard is still chat's -- Ctrl+C is a copy.
+      if (document.body.classList.contains('chat-active')) return;
       const entryInput = document.getElementById('entryInput');
       if (activeElement === entryInput) return;
       if (isOperatorPanelVisible()) return;

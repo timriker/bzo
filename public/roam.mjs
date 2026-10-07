@@ -12,11 +12,13 @@
 //
 // Upstream drives this from the tank's own two axes -- `myTank->getSpeed()` and
 // `getRotation()` in `setupRoamingCamera` (`playing.cxx:6666`) -- and remaps
-// which camera axis each feeds with Ctrl/Alt/Shift. bzo cannot spend those
-// modifiers, so altitude rides the two actions an observer has no other use
-// for, and there is no pitch axis at all: free roam looks level, exactly as a
-// driving tank does, and climbing carries the look point up with the camera
-// rather than tilting it toward the ground. See the Observer section of AGENTS.md.
+// which camera axis each feeds with Ctrl/Alt/Shift. A browser cannot have Ctrl
+// (Ctrl+W closes the tab; macOS takes Ctrl+arrows) or Alt (Alt+arrows is Back
+// and Forward), so altitude rides the two actions an observer has no other use
+// for, and Shift -- upstream's altitude -- takes the jobs of both: drive
+// pitches (upstream's Ctrl) and turn strafes (upstream's Alt). Travel stays
+// level whatever the pitch, as upstream's does. See the Observer section of
+// AGENTS.md.
 
 // Roaming.cxx:6776. Free roam translates at four times tank speed: a camera
 // crossing a map wants more reach than a tank does.
@@ -25,6 +27,12 @@ export const ROAM_TRANSLATE_SPEED_FACTOR = 4;
 // Roaming.cxx:6779 turns at `zoom` degrees per second, so the view slows as it
 // narrows. bzo keeps that relation even though it does not yet bind zoom.
 const ROAM_YAW_DEGREES_PER_ZOOM = 1;
+
+// Ctrl+drive upstream (playing.cxx:6779): two thirds of `zoom` degrees a
+// second, so pitch slows as the view narrows, as yaw does. Shift+drive here.
+const ROAM_PITCH_DEGREES_PER_ZOOM = 2 / 3;
+// Roaming.cxx:422: a thousandth of a degree short of straight up or down.
+export const ROAM_PITCH_LIMIT = ((90 - 1e-3) * Math.PI) / 180;
 
 // Upstream puts vertical on a proportional axis under Shift, also at four times
 // tank speed. bzo puts it on a button, which has no proportional control, so it
@@ -163,12 +171,24 @@ function clampAxis(value) {
 
 export function createRoamCamera(floorZ) {
   const z = Number.isFinite(floorZ) ? floorZ : 0;
-  return { x: 0, y: 0, z, azimuth: Math.PI / 2, zoom: ROAM_ZOOM_DEFAULT };
+  return { x: 0, y: 0, z, azimuth: Math.PI / 2, pitch: 0, zoom: ROAM_ZOOM_DEFAULT };
 }
 
 // Forward along an azimuth: a positive turn is left.
 export function getRoamForward(azimuth) {
   return { x: Math.cos(azimuth), y: Math.sin(azimuth) };
+}
+
+// Free roam's look point: a unit ahead on the heading, raised or lowered by the
+// pitch. The horizontal step stays a unit whatever the pitch, so the heading
+// read back from it (`getRoamViewAngle`) never degenerates.
+export function getRoamLook(camera) {
+  const heading = getRoamForward(camera.azimuth);
+  return {
+    x: camera.x + heading.x,
+    y: camera.y + heading.y,
+    z: camera.z + Math.tan(Number.isFinite(camera.pitch) ? camera.pitch : 0),
+  };
 }
 
 // The heading a resolved view points, which is upstream's `roamViewAngle`
@@ -194,20 +214,32 @@ export function updateRoamCamera(camera, input, deltaSeconds, limits) {
 
   const forward = clampAxis(input?.forward);
   const turn = clampAxis(input?.turn);
+  // Shift spends both axes: drive pitches instead of travelling, as upstream's
+  // `!control && !shift` guard on translation, and turn strafes instead of
+  // yawing, as upstream's Alt does -- `4 * rotation * tankSpeed` sideways,
+  // left for a positive turn (playing.cxx:6776-6778).
+  const pitching = input?.pitch === true;
   const lift = (input?.up ? 1 : 0) - (input?.down ? 1 : 0);
 
   const yawRate = (camera.zoom * ROAM_YAW_DEGREES_PER_ZOOM) * (Math.PI / 180);
-  const azimuth = camera.azimuth + turn * yawRate * step;
+  const azimuth = camera.azimuth + (pitching ? 0 : turn * yawRate * step);
+  const strafe = pitching ? turn * ROAM_TRANSLATE_SPEED_FACTOR * tankSpeed * step : 0;
 
-  const travel = forward * ROAM_TRANSLATE_SPEED_FACTOR * tankSpeed * step;
+  const travel = pitching ? 0 : forward * ROAM_TRANSLATE_SPEED_FACTOR * tankSpeed * step;
+  const pitchRate = (camera.zoom * ROAM_PITCH_DEGREES_PER_ZOOM) * (Math.PI / 180);
+  const pitchBefore = Number.isFinite(camera.pitch) ? camera.pitch : 0;
+  const pitch = Math.max(-ROAM_PITCH_LIMIT, Math.min(ROAM_PITCH_LIMIT,
+    pitchBefore + (pitching ? forward * pitchRate * step : 0)));
   const direction = getRoamForward(azimuth);
   const z = Math.max(floorZ, camera.z + lift * ROAM_VERTICAL_SPEED_FACTOR * tankSpeed * step);
 
+  // Left of the heading: the forward vector turned a quarter counter-clockwise.
   return {
-    x: camera.x + direction.x * travel,
-    y: camera.y + direction.y * travel,
+    x: camera.x + direction.x * travel - direction.y * strafe,
+    y: camera.y + direction.y * travel + direction.x * strafe,
     z,
     azimuth,
+    pitch,
     zoom: Math.max(ROAM_ZOOM_MIN, Math.min(ROAM_ZOOM_MAX, camera.zoom)),
   };
 }

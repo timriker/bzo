@@ -7872,6 +7872,74 @@ defineCommand('/lagstats', COMMAND_TIER.OPEN,
     if (showIndex && lastServerStats) replyToPlayer(player, `server: ${formatServerStats(lastServerStats)}`);
   });
 
+// `/setteam`, bzo's own: upstream 2.4 has no team change but a rejoin, and
+// 2.5's MsgSetTeam is the client asking for itself (bzfs.cxx, master). Between
+// playing teams only, in place: the tank keeps driving, drops its flag, and
+// takes the new team's colour. A browser rebuilds the tank from the record; a
+// BZFlag client is sent its own MsgAddPlayer again, which a 2.4 client answers
+// by taking the team (`enteringServer`, playing.cxx:5058) -- see
+// server/bzflag-native.cjs.
+defineCommand('/setteam', COMMAND_TIER.OPERATOR,
+  '<#slot|PlayerName|"Player Name"> <team> - move a player to another team',
+  (player, args) => {
+    const usage = 'Usage: /setteam <#slot|PlayerName> <team>';
+    const target = resolveCommandTarget(args.trim());
+    if (!target.id) {
+      replyToPlayer(player, target.error || usage);
+      return;
+    }
+    const subject = players.get(target.id);
+    const team = String(target.rest || '').trim().toLowerCase();
+    const playable = TEAM_MODE.teams.filter((name) => !isObserverTeam(name) && !isRabbitTeam(name)
+      && name !== PLAYER_TEAM.HUNTER);
+    if (!playable.includes(team)) {
+      replyToPlayer(player, `${usage} -- one of ${playable.join(', ')}`);
+      return;
+    }
+    if (!subject?.joined || isObserverTeam(subject.team) || isRabbitTeam(subject.team)
+      || subject.team === PLAYER_TEAM.HUNTER) {
+      replyToPlayer(player, `"${subject?.name}" is not on a team to move from`);
+      return;
+    }
+    if (subject.team === team) {
+      replyToPlayer(player, `"${subject.name}" is already ${team}`);
+      return;
+    }
+    const from = subject.team;
+    dropPlayerFlag(subject.id);
+    subject.team = team;
+    const color = getJoinPlayerColor(TEAM_MODE, team, from, (t) => Player.pickDistinctColor(t, subject));
+    if (color !== null) subject.color = color;
+    broadcastPlayerRecord('playerUpdated', subject);
+    broadcastTeamScores();
+    log(`[CMD] "${player.name}" moved "${subject.name}" from ${from} to ${team}`);
+    replyToPlayer(player, `"${subject.name}" moved to ${team}`);
+    if (subject !== player) replyToPlayer(subject, `@${player.name} moved you to ${team}`);
+  });
+
+// `/mv` on an observer moves its roaming camera there, in free roam, with the
+// pitch when one was given (public/roam.mjs). A camera flies through buildings,
+// so the spot is taken as it is; no height means the ground. Nobody else draws
+// an observer, so only the observer is told.
+function moveObserverCamera(player, subject, parsed) {
+  subject.x = parsed.x;
+  subject.y = parsed.y;
+  subject.z = parsed.z === null ? 0 : parsed.z;
+  if (parsed.azimuth !== null) subject.azimuth = parsed.azimuth;
+  sendToPlayer(subject, {
+    type: 'positionCorrection',
+    x: subject.x, y: subject.y, z: subject.z, a: subject.azimuth, vv: 0,
+    moved: true,
+    ...(parsed.pitch === undefined ? {} : { pitch: parsed.pitch }),
+  });
+  const tilt = parsed.pitch === undefined ? '' : ` pitch ${((parsed.pitch * 180) / Math.PI).toFixed(1)}`;
+  const where = `${subject.x.toFixed(1)},${subject.y.toFixed(1)},${subject.z.toFixed(1)}`
+    + ` facing ${azimuthToBearingName(subject.azimuth)}${tilt}`;
+  log(`[CMD] "${player.name}" moved "${subject.name}" to ${where}`);
+  replyToPlayer(player, subject === player ? `Moved to ${where}` : `"${subject.name}" moved to ${where}`);
+  if (subject !== player) replyToPlayer(subject, `@${player.name} moved you to ${where}`);
+}
+
 // MsgCommand (commands.cxx:916). The same private message the client can already
 // send by picking a name in the chat entry, reachable by typing -- which is what
 // makes it worth having: a script can send one, and so can a player who knows
@@ -8921,7 +8989,7 @@ defineCommand('/flag', COMMAND_TIER.OPERATOR,
 // driving it -- `testSpawn` in server.json does this on join, and this is the
 // same thing without a restart. See parseMoveCoordinates for the grammar.
 defineCommand('/mv', COMMAND_TIER.OPERATOR,
-  '[player] <x,y|x,y,z|x,y,z,facing> [facing] - move a tank to a position; height optional, facing a compass point or degrees',
+  '[player] <x,y|x,y,z|x,y,z,facing[,pitch]> [facing] - move a tank or an observer\'s camera; height optional, facing a compass point or degrees',
   (player, args) => {
     // A target is optional, so the first token is only a target if it does not
     // parse as coordinates.
@@ -8944,7 +9012,12 @@ defineCommand('/mv', COMMAND_TIER.OPERATOR,
       return;
     }
     if (subject.team === PLAYER_TEAM.OBSERVER) {
-      replyToPlayer(player, 'An observer has no tank to move');
+      // A BZFlag client's camera is its own; there is nothing to say it with.
+      if (subject.nativeLink) {
+        replyToPlayer(player, 'An observer has no tank to move');
+        return;
+      }
+      moveObserverCamera(player, subject, parsed);
       return;
     }
 
@@ -9036,7 +9109,7 @@ defineCommand('/mv', COMMAND_TIER.OPERATOR,
     replyToPlayer(player, subject === player
       ? `Moved to ${where}`
       : `"${subject.name}" moved to ${where}`);
-    if (subject !== player) replyToPlayer(subject, `An operator moved you to ${where}`);
+    if (subject !== player) replyToPlayer(subject, `@${player.name} moved you to ${where}`);
   });
 
 // `/pos` is bzo's own, the read half of `/mv` -- for the same reason `/mv`

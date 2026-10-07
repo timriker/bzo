@@ -18,7 +18,9 @@ import {
   ROAM_ZOOM_MIN,
   createRoamCamera,
   getRoamForward,
+  getRoamLook,
   getRoamViewAngle,
+  ROAM_PITCH_LIMIT,
   updateRoamCamera,
 } from '../public/roam.mjs';
 
@@ -35,7 +37,7 @@ const start = createRoamCamera(FLOOR_Z);
 assert.equal(start.z, FLOOR_Z);
 near(start.azimuth, Math.PI / 2, 'facing north');
 assert.equal(start.zoom, ROAM_ZOOM_DEFAULT);
-assert.equal(start.phi, undefined, 'there is no pitch axis to carry');
+assert.equal(start.pitch, 0, 'it starts level');
 
 // An azimuth: pi/2 faces north (+y), and a positive turn is left, toward -x.
 near(getRoamForward(Math.PI / 2).x, 0, 'forward x facing north');
@@ -247,5 +249,44 @@ assert.equal(
   1.25,
   'a look point overhead falls back',
 );
+
+// Shift+drive pitches (upstream's Ctrl): two thirds of zoom degrees a second,
+// looking up on forward, and no travel while it does.
+const pitched = updateRoamCamera(start, { ...idle, forward: 1, pitch: true }, 1, limits);
+near(pitched.pitch, (ROAM_ZOOM_DEFAULT * (2 / 3) * Math.PI) / 180, 'pitch rate tracks zoom');
+near(pitched.x, start.x, 'pitching does not travel');
+near(pitched.y, start.y, 'pitching does not travel');
+const narrowPitch = updateRoamCamera({ ...start, zoom: 30 }, { ...idle, forward: 1, pitch: true }, 1, limits);
+near(narrowPitch.pitch, (30 * (2 / 3) * Math.PI) / 180, 'pitch slows as the view narrows');
+const pitchAndTurn = updateRoamCamera(start, { ...idle, forward: -1, turn: 1, pitch: true }, 1, limits);
+assert.ok(pitchAndTurn.pitch < 0, 'reverse pitches down');
+
+// Shift+turn strafes (upstream's Alt): sideways at four times tank speed, left
+// for a positive turn, without turning. Facing north, left is -x.
+near(pitchAndTurn.azimuth, start.azimuth, 'strafing does not yaw');
+near(pitchAndTurn.x, start.x - ROAM_TRANSLATE_SPEED_FACTOR * TANK_SPEED, 'strafe left');
+near(pitchAndTurn.y, start.y, 'strafe is square to the heading');
+const strafeRight = updateRoamCamera(start, { ...idle, turn: -1, pitch: true }, 1, limits);
+near(strafeRight.x, start.x + ROAM_TRANSLATE_SPEED_FACTOR * TANK_SPEED, 'strafe right');
+near(strafeRight.pitch, 0, 'strafing alone leaves the pitch');
+
+// Clamped short of vertical, both ways.
+const straightUp = updateRoamCamera(start, { ...idle, forward: 1, pitch: true }, 10, limits);
+near(straightUp.pitch, ROAM_PITCH_LIMIT, 'pitch stops short of straight up');
+const straightDown = updateRoamCamera(start, { ...idle, forward: -1, pitch: true }, 10, limits);
+near(straightDown.pitch, -ROAM_PITCH_LIMIT, 'pitch stops short of straight down');
+
+// Pitch holds once let go, and travel stays level under it.
+const cruising = updateRoamCamera(pitched, { ...idle, forward: 1 }, 1, limits);
+near(cruising.pitch, pitched.pitch, 'pitch holds');
+near(cruising.z, pitched.z, 'travel stays level');
+near(cruising.y, pitched.y + ROAM_TRANSLATE_SPEED_FACTOR * TANK_SPEED, 'travel along the heading');
+
+// The look point: a unit ahead, raised by the pitch, its heading unchanged.
+const look = getRoamLook({ ...start, pitch: Math.PI / 4 });
+near(look.z - start.z, 1, 'forty-five degrees up is a unit up for a unit ahead');
+near(getRoamViewAngle(start, look, 0), start.azimuth, 'pitch leaves the heading alone');
+const nearlyDown = getRoamLook({ ...start, pitch: -ROAM_PITCH_LIMIT });
+near(getRoamViewAngle(start, nearlyDown, 0), start.azimuth, 'heading survives looking straight down');
 
 console.log('roaming camera tests passed');

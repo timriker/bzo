@@ -6,6 +6,23 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
 
 ## [Unreleased]
 
+### Added
+- Observers pitch and strafe: `Shift` with drive tilts the roaming camera up
+  and down, with turn slides it sideways; travel stays level. Upstream's Ctrl
+  and Alt jobs, on the one modifier a browser can spare. See #33.
+- A Share View Link carries the pitch of a tilted view as a fifth `pos=`
+  value, and opens tilted.
+- `/mv` moves an observer's camera, into free roam, taking that pitch.
+- `/setteam <player> <team>`: an operator moves a player between playing
+  teams in place. A BZFlag 2.4 client takes the team too.
+- Chat history can be selected and copied while chat is open.
+
+### Changed
+- `/mv` tells whoever was moved who did it.
+
+### Fixed
+- `Ctrl+C` on a chat selection changed the camera.
+
 ## [1.3.28] - 2026-10-07
 
 ### Added
