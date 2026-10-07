@@ -6,6 +6,8 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
 
 ## [Unreleased]
 
+## [1.3.28] - 2026-10-07
+
 ### Added
 - Moves and shots over WebRTC (`webrtc.listen`): a data channel that neither
   orders nor retries, on one IPv4 UDP port, carrying what bzfs sends over UDP
@@ -13,7 +15,7 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
   instead of stalling the WebSocket, and moves are relayed as they arrive
   rather than at the 16ms tick: 1.8ms against the WebSocket's 11.7ms, bzfs's
   own figure. Players whose channel does not open play as before;
-  `/playerlist` shows ` udp+` for those whose did. See #8.
+  `/playerlist` shows ` udp+` for those whose did. Closes #8.
 - `scripts/bench-moves.mjs`: move latency between bzo clients, over the
   WebSocket or the channel.
 

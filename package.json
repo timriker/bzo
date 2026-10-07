@@ -1,6 +1,6 @@
 {
   "name": "bzo",
-  "version": "1.3.27",
+  "version": "1.3.28",
   "description": "Web based BZFlag like 3D multiplayer tank game, Battlezone Online",
   "main": "server.js",
   "scripts": {
