@@ -6,6 +6,23 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
 
 ## [Unreleased]
 
+### Added
+- `bzflag.upnp`: bzfs's `-UPnP`. The router forwards the BZFlag port, TCP
+  and UDP, to this server. See #187.
+- A `[PERF]` line in server.log each minute while anyone plays (CPU,
+  event-loop delay, messages and bytes each way), also at the end of
+  `/lagstats` for an admin; `scripts/bench-relay.mjs` compares relay latency
+  and CPU against bzfs.
+
+### Changed
+- BZFlag clients get each move as it is accepted, as bzfs relays one, rather
+  than at the next 16ms tick, and their frames leave in one write per turn of
+  the event loop: half the latency and half the CPU per update.
+
+### Fixed
+- A proxied player's updates stayed on TCP: the session dropped bzfs's
+  MsgUDPLinkEstablished while waiting for the game settings.
+
 ## [1.3.26] - 2026-10-07
 
 ### Added

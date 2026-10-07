@@ -282,6 +282,13 @@ name has to resolve to this server's IPv4 address. BZFlag clients join and
 play beside bzo's own; [docs/bzflag-clients.md](bzflag-clients.md) has the
 details.
 
+Behind a home router, `"upnp": true` in the block asks it to forward the
+port, as bzfs's `-UPnP` does: `publicAddr`'s port (5154 without one) to
+`listen`'s, TCP and UDP, on a one-hour lease renewed every half hour and
+removed on shutdown. Without a `publicAddr` the router's external address is
+listed, by its reverse-DNS name where that name resolves back to it. Under
+Docker it needs host networking.
+
 ## Proxying BZFlag servers
 
 A bzo instance can carry a browser into an ordinary `bzfs` game. Name each

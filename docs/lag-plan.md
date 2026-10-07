@@ -225,6 +225,24 @@ Before building on it, read the `speedClamped` warnings off a live server and
 correlate them against flag losses. If it already fires there, that is a bug to
 fix rather than a window to widen.
 
+## The server's own share
+
+Lag a player measures includes time bzo spent before passing a packet on.
+`server/server-stats.cjs` counts it: CPU, event-loop busy and delay, and
+messages and bytes each way. A `[PERF]` line goes to `server.log` every minute
+while anyone is playing, and `/lagstats` ends with the latest for an admin.
+
+`scripts/bench-relay.mjs` puts the same load on bzfs and bzo over the BZFlag
+protocol and reports relay latency and server CPU per update:
+
+```sh
+node scripts/bench-relay.mjs --port 5155 --pid "$(pgrep -x bzfs)"
+node scripts/bench-relay.mjs --port 5154 --pid "$(pgrep -f '^/usr/bin/node server.js')"
+```
+
+A BZFlag client is sent each move as it is accepted, the way bzfs relays
+one; browsers get the tick's `pmBatch`.
+
 ## Staging
 
 3. **The bound window** as `enforceable: false`, sized from the measured round

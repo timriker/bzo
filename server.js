@@ -294,6 +294,9 @@ const {
   compareByLag,
   PING_INTERVAL_MS,
 } = require('./server/lag.cjs');
+const { createServerStats, formatServerStats } = require('./server/server-stats.cjs');
+const { createUpnpMapping, nameForAddress } = require('./server/upnp.cjs');
+const serverStats = createServerStats();
 const {
   COMMAND_TIER,
   parsePlayerTarget,
@@ -7849,6 +7852,8 @@ defineCommand('/lagstats', COMMAND_TIER.OPEN,
     for (const row of rows.sort(compareByLag)) {
       replyToPlayer(player, formatLagStats({ ...row, showIndex }));
     }
+    // The server's own share of everyone's lag, over the last PERF_LOG window.
+    if (showIndex && lastServerStats) replyToPlayer(player, `server: ${formatServerStats(lastServerStats)}`);
   });
 
 // MsgCommand (commands.cxx:916). The same private message the client can already
@@ -10882,9 +10887,33 @@ function broadcast(message, excludeWs = null) {
   recordBroadcast(data, message);
   players.forEach((player) => {
     if (player.ws !== excludeWs && player.ws.readyState === 1) {
-      player.ws.send(data);
+      sendBroadcast(player.ws, data, message);
     }
   });
+}
+
+// A BZFlag client's socket translates the message object itself
+// (`sendMessage`), so it is spared parsing the string every browser is sent.
+// The object is shared by every recipient and must not be changed.
+function sendBroadcast(ws, data, message) {
+  if (ws.sendMessage) ws.sendMessage(message);
+  else ws.send(data);
+}
+
+// What an in-process sender (a BZFlag client's link, a bot) says, as the
+// message handler would have parsed it off a browser's wire: a number JSON
+// cannot carry arrives as `null`, which every check already reads as missing.
+function asIfFromWire(value) {
+  if (typeof value === 'number') return Number.isFinite(value) ? value : null;
+  if (Array.isArray(value)) return value.map(asIfFromWire);
+  if (value && typeof value === 'object') {
+    const out = {};
+    for (const key of Object.keys(value)) {
+      if (value[key] !== undefined) out[key] = asIfFromWire(value[key]);
+    }
+    return out;
+  }
+  return value;
 }
 
 // One player's record, to everyone, in the shape each recipient is allowed to
@@ -10906,7 +10935,7 @@ function broadcastAll(message) {
   recordBroadcast(data, message);
   players.forEach((player) => {
     if (player.ws.readyState === 1) {
-      player.ws.send(data);
+      sendBroadcast(player.ws, data, message);
     }
   });
 }
@@ -11533,7 +11562,9 @@ function reportToListServer(reason) {
 // away, and publishes it to the BZFlag list server with bzfs's own key.
 const BZFLAG_CONFIG = serverConfig.bzflag && typeof serverConfig.bzflag === 'object'
   ? serverConfig.bzflag : null;
-const BZFLAG_PUBLIC_ADDR = typeof BZFLAG_CONFIG?.publicAddr === 'string' ? BZFLAG_CONFIG.publicAddr.trim() : '';
+// `let`: with `upnp` and no `publicAddr`, the gateway's external address
+// fills it in, as bzfs's `-UPnP` does (`UPnP::setRemoteInterface`).
+let bzflagPublicAddr = typeof BZFLAG_CONFIG?.publicAddr === 'string' ? BZFLAG_CONFIG.publicAddr.trim() : '';
 const BZFLAG_PUBLIC_KEY = typeof BZFLAG_CONFIG?.publicKey === 'string' ? BZFLAG_CONFIG.publicKey.trim() : '';
 const BZFLAG_LIST_URL = typeof BZFLAG_CONFIG?.listUrl === 'string' ? BZFLAG_CONFIG.listUrl : DEFAULT_LIST_SERVER;
 const BZFLAG_PLAYER_TYPE = { TANK: 0, COMPUTER: 1 };
@@ -11572,6 +11603,8 @@ if (BZFLAG_CONFIG?.listen) {
   GAME_CONFIG.MAX_UPDATE_INTERVAL = 1000;
   const { host, port } = resolveListenTarget({ configListen: String(BZFLAG_CONFIG.listen) });
   bzflagServer = createBzflagServer({
+    countIn: (bytes) => serverStats.countIn(bytes),
+    countOut: (bytes) => serverStats.countOut(bytes),
     getStatus: computeBzflagStatus,
     getPingStatus: () => computeBzflagStatus({ withBots: true }),
     getPlayers: () => [...players.values()]
@@ -11615,8 +11648,31 @@ if (BZFLAG_CONFIG?.listen) {
     log,
   });
   bzflagServer.listen(host, port)
-    .then(() => log(`[BZFLAG] listening on ${host}:${port}`))
+    .then(() => {
+      log(`[BZFLAG] listening on ${host}:${port}`);
+      if (BZFLAG_CONFIG.upnp === true) startBzflagUpnp(port);
+    })
     .catch((error) => logError(`[BZFLAG] listen on ${BZFLAG_CONFIG.listen} failed: ${error.message}`));
+}
+
+// `bzflag.upnp`, bzfs's `-UPnP`: the gateway forwards `publicAddr`'s port
+// (5154 without one, `UPnP::setPorts`) to the listening one, TCP and UDP.
+let bzflagUpnp = null;
+function startBzflagUpnp(localPort) {
+  const publicPort = Number(/:(\d+)$/.exec(bzflagPublicAddr)?.[1]) || 5154;
+  const mapping = createUpnpMapping({ publicPort, localPort, log });
+  mapping.start()
+    .then((externalAddress) => {
+      bzflagUpnp = mapping;
+      if (bzflagPublicAddr || !externalAddress) return;
+      return nameForAddress(externalAddress).then((name) => {
+        if (bzflagPublicAddr) return;
+        bzflagPublicAddr = `${name || externalAddress}:${publicPort}`;
+        log(`[UPNP] publicAddr ${bzflagPublicAddr}`);
+        if (serverIsReady) publishToBzflagListServer('boot');
+      });
+    })
+    .catch((error) => logError(`[UPNP] no port mapping: ${error.message}`));
 }
 
 // MsgGameSettings, as native clients and recordings are told it.
@@ -11799,9 +11855,23 @@ async function seatNativeClient(link, payload) {
         team: players.get(String(proj.playerId))?.team ?? null,
       })),
   });
-  socket.send = (data) => {
+  socket.send = (data) => socket.sendMessage(JSON.parse(data));
+  // Corked until the event loop moves on, so everything sent this turn --
+  // every move that arrived in the same poll -- leaves in one write rather
+  // than one each, for no more delay than the rest of the turn.
+  let corked = false;
+  const uncork = () => {
+    corked = false;
+    link.uncork();
+  };
+  socket.sendMessage = (message) => {
+    if (!corked) {
+      corked = true;
+      link.cork();
+      setImmediate(uncork);
+    }
     try {
-      translator.handle(JSON.parse(data));
+      translator.handle(message);
     } catch (error) {
       logError(`[BZFLAG] "${enter.callsign}": ${error.message}`);
     }
@@ -11829,7 +11899,7 @@ async function seatNativeClient(link, payload) {
   };
   socket.close = close;
   socket.terminate = close;
-  const say = (message) => socket.emit('message', Buffer.from(JSON.stringify(message)));
+  const say = (message) => socket.emit('message', asIfFromWire(message));
   link.onClose = close;
   link.onFrame = (code, body) => {
     if (code === 'ex') {
@@ -12120,7 +12190,7 @@ function applyNativeDeath(victim, body, translator) {
 let bzflagListInFlight = false;
 let bzflagListQueued = null;
 function publishToBzflagListServer(reason) {
-  if (!bzflagServer || !BZFLAG_PUBLIC_ADDR || !BZFLAG_PUBLIC_KEY) return;
+  if (!bzflagServer || !bzflagPublicAddr || !BZFLAG_PUBLIC_KEY) return;
   if (bzflagListInFlight && reason !== 'shutdown') {
     bzflagListQueued = reason;
     return;
@@ -12130,7 +12200,7 @@ function publishToBzflagListServer(reason) {
   publishToBzflagList({
     listUrl: BZFLAG_LIST_URL,
     action,
-    nameport: BZFLAG_PUBLIC_ADDR,
+    nameport: bzflagPublicAddr,
     key: BZFLAG_PUBLIC_KEY,
     title: bzflagListTitle(),
     status: computeBzflagStatus(),
@@ -14749,11 +14819,28 @@ function flushMoveBroadcasts() {
   if (pendingMoveBroadcasts.length === 0) return;
   const moves = pendingMoveBroadcasts;
   pendingMoveBroadcasts = [];
-  // broadcastAll, not `broadcast`: a mover's own id can ride in the same
+  // To everyone, the mover included: a mover's own id can ride in the same
   // batch as everyone else's, since the client skips its own id on the way
-  // in (see the 'pmBatch' case in client.js) -- the same exclusion `broadcast`
-  // used to give for free by skipping the origin socket.
-  broadcastAll({ type: 'pmBatch', moves });
+  // in (see the 'pmBatch' case in client.js). BZFlag clients are skipped,
+  // having had each move as it came (`sendMoveToBzflagClients`).
+  const message = { type: 'pmBatch', moves };
+  const data = JSON.stringify(message);
+  recordBroadcast(data, message);
+  players.forEach((player) => {
+    if (player.ws.readyState === 1 && !player.ws.sendMessage) player.ws.send(data);
+  });
+}
+
+// A move to every BZFlag client the moment it is accepted, as bzfs relays a
+// MsgPlayerUpdate on arrival. Batching saves them nothing -- each move is its
+// own frame to them either way -- and waiting for the tick costs up to 16ms.
+function sendMoveToBzflagClients(pmPacket) {
+  let message = null;
+  players.forEach((player) => {
+    if (player.ws.readyState !== 1 || !player.ws.sendMessage) return;
+    message = message || { type: 'pm', ...pmPacket };
+    player.ws.sendMessage(message);
+  });
 }
 
 function gameLoop() {
@@ -14819,6 +14906,18 @@ if (GAME_CONFIG.TIME_LIMIT > 0 && !GAME_CONFIG.TIME_MANUAL_START) {
 setInterval(gameLoop, 16); // ~60fps
 // Buffering from the first moment there is a game to record.
 recorder.start();
+
+// The server's own load (`server/server-stats.cjs`), logged while anybody is
+// playing so a slow evening can be read back against what the server was doing.
+// Every PERF_LOG_INTERVAL_MS, and the latest is what `/lagstats` shows admins.
+const PERF_LOG_INTERVAL_MS = 60000;
+const serverStatsWindow = serverStats.window();
+let lastServerStats = null;
+setInterval(() => {
+  lastServerStats = serverStatsWindow.read();
+  const playing = [...players.values()].filter((player) => player.joined && !bots.has(player.id)).length;
+  if (playing > 0) log(`[PERF] ${playing} player(s): ${formatServerStats(lastServerStats)}`);
+}, PERF_LOG_INTERVAL_MS).unref?.();
 
 // WebSocket keep-alive: periodically ping all clients and close dead connections
 setInterval(() => {
@@ -16936,7 +17035,17 @@ async function handleProxyConnection(ws, req, request) {
 // WebSocket connection handler
 // When a new player connects, assign a default name and number. Named, because
 // a server-run bot connects through it too (`addBot`).
-wss.on('connection', (ws, req) => acceptConnection(ws, req));
+wss.on('connection', (ws, req) => {
+  // A browser's traffic, counted at the socket so every send is, whichever
+  // of the many paths it took. BZFlag clients are counted by their listener.
+  ws.on('message', (data) => serverStats.countIn(data.length ?? 0));
+  const send = ws.send.bind(ws);
+  ws.send = (data, ...rest) => {
+    serverStats.countOut(data.length ?? 0);
+    return send(data, ...rest);
+  };
+  acceptConnection(ws, req);
+});
 
 function acceptConnection(ws, req) {
 
@@ -17172,7 +17281,8 @@ function acceptConnection(ws, req) {
   // Handle messages
   ws.on('message', (data) => {
     try {
-      const message = JSON.parse(data);
+      // A browser's frame, or an object from an in-process sender (`say`).
+      const message = Buffer.isBuffer(data) || typeof data === 'string' ? JSON.parse(data) : data;
 
       switch (message.type) {
 
@@ -17645,6 +17755,7 @@ function acceptConnection(ws, req) {
             // in `flushMoveBroadcasts`, called once from `gameLoop`, so a busy
             // tick costs one frame per connected client instead.
             pendingMoveBroadcasts.push(pmPacket);
+            sendMoveToBzflagClients(pmPacket);
 
             checkAntidote(player, now);
           } else {
@@ -18696,7 +18807,7 @@ function createBotSocket() {
   };
   socket.close = close;
   socket.terminate = close;
-  socket.say = (message) => socket.emit('message', Buffer.from(JSON.stringify(message)));
+  socket.say = (message) => socket.emit('message', asIfFromWire(message));
   return socket;
 }
 
@@ -19268,6 +19379,9 @@ function reportListServerShutdown(signal) {
   listServerShuttingDown = true;
   log(`[LISTSERVER] ${signal} received; reporting removal before exit`);
   reportToListServer('shutdown');
+  // Not on a nodemon restart (SIGUSR2): the next process maps the same port
+  // again, and a removal still in flight could undo its mapping.
+  void bzflagUpnp?.stop();
   sayServerIsGoing('shutting down');
   setTimeout(() => process.exit(0), 500);
 }

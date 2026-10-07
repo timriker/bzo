@@ -459,6 +459,7 @@ class BzfsSession {
   constructor({
     host, port, callsign, motto = '', token = '', version,
     team = OBSERVER_TEAM, type = TANK_PLAYER, timeout = JOIN_TIMEOUT_MS,
+    worldHash = false,
   }) {
     this.host = host;
     this.port = port;
@@ -469,6 +470,9 @@ class BzfsSession {
     this.team = team;
     this.type = type;
     this.timeout = timeout;
+    // Whether to ask for the world's hash before entering, as a BZFlag client
+    // does. bzo refuses an enter that skipped it; bzfs does not mind.
+    this.worldHash = worldHash;
     // Ours on the target, handed over in the handshake before anything else.
     // Every player in this session is named by a bzfs id, this one included.
     this.playerId = null;
@@ -566,11 +570,24 @@ class BzfsSession {
           // for it: which game type this is and which of upstream's switches
           // are on -- ricochet above all, since it changes how every shot
           // this session forwards behaves.
+          // Anything else that arrives meanwhile is still handled: the UDP
+          // link's MsgUDPLinkEstablished comes now, and dropping it leaves
+          // every update on TCP for the life of the session.
           sendFrame(socket, 'ws');
           for (;;) {
             const { code, payload } = await readFrame();
             if (code === 'gs') { this.state.gameSettings = payload; break; }
             if (code === 'sk' || code === 'rj') break;
+            this.handleFrame(code, payload);
+          }
+
+          if (this.worldHash) {
+            sendFrame(socket, 'wh');
+            for (;;) {
+              const { code, payload } = await readFrame();
+              if (code === 'wh' || code === 'sk' || code === 'rj') break;
+              this.handleFrame(code, payload);
+            }
           }
 
           sendFrame(socket, 'en', buildEnterPayload({

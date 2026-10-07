@@ -207,7 +207,7 @@ function packReject(reason, code = REJECT_BAD_REQUEST) {
 // every frame it sends.
 function createBzflagServer({
   getStatus, getPingStatus = getStatus, getPlayers, getTeams, getGameSettings, getWorld, getCacheUrl = () => null, onEnter,
-  reserveId, releaseId, rejectReason, log = () => {},
+  reserveId, releaseId, rejectReason, log = () => {}, countIn = () => {}, countOut = () => {},
 }) {
   const startedAt = Date.now();
   const connections = new Set();
@@ -289,9 +289,13 @@ function createBzflagServer({
           if (socket.destroyed) return;
           // The constant messages ride UDP once both ends have heard each
           // other there (`NetHandler::pwrite`); everything else stays on TCP.
+          countOut(4 + (body?.length ?? 0));
           if (connection.udpOut && UDP_CODES.has(frameCode)) sendUdp(connection.udpAddr, frameCode, body);
           else sendFrame(socket, frameCode, body);
         },
+        // Around a burst of frames, so they go out in one write.
+        cork: () => socket.cork(),
+        uncork: () => socket.uncork(),
         reject: (reason, code) => reject(connection, reason, code),
         // `getPlayerHostInfo`'s ` udp` and `+` (NetHandler.cxx:831): heard
         // from on UDP, and sent to on UDP.
@@ -367,7 +371,10 @@ function createBzflagServer({
         const code = connection.buffer.toString('latin1', 2, 4);
         const frame = Buffer.from(connection.buffer.subarray(4, 4 + length));
         connection.buffer = connection.buffer.subarray(4 + length);
-        connection.asked.push(code);
+        countIn(4 + length);
+        // Only for the hang-up line, which is only for a connection that
+        // never entered; a seated one would grow it by every update it sends.
+        if (!connection.link) connection.asked.push(code);
         if (!answer(connection, code, frame)) return;
       }
     });
@@ -418,6 +425,7 @@ function createBzflagServer({
         if (!connection.udpOut) log(`[BZFLAG] ${connection.address} on UDP`);
         connection.udpOut = true;
       } else if (UDP_CODES.has(code) && connection.link) {
+        countIn(4 + length);
         connection.link.onFrame?.(code, body);
       }
     }
