@@ -6,6 +6,8 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
 
 ## [Unreleased]
 
+## [1.3.26] - 2026-10-07
+
 ### Added
 - A `T` scoreboard column after the player number: what each player is
   playing on -- `d` desktop, `m` mobile, `v` in VR or on a headset's browser,
