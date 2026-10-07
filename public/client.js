@@ -65,6 +65,9 @@ let nemesisPlayerId = null;
 let chatInput = null;
 let sendBtn = null;
 let chatActive = false;
+// A press in the chat transcript, selecting text, which keeps chat entry open
+// through the input's blur (see the transcript's listeners).
+let chatSelectingTranscript = false;
 let virtualControlsEnabled = false;
 let latency = 0;
 let sentBps = 0;
@@ -7052,18 +7055,41 @@ function init() {
   const chatMessagesDiv = document.getElementById('chatMessages');
   if (chatMessagesDiv) {
     // The transcript only takes the pointer while chat entry is active, for
-    // selecting text out of it. A drag there is a copy and keeps its selection;
-    // a plain click is not, so the keyboard goes back to the input.
-    let chatEntryWasActive = false;
+    // selecting text out of it. Pressing there takes focus from the input,
+    // and the input's blur would end chat entry -- and with it the
+    // transcript's hold on the pointer -- in the middle of the drag. So a
+    // press in the transcript keeps chat entry through that blur. Released
+    // with nothing selected, the keyboard goes back to the input; with a
+    // selection, chat entry stays open around it for the copy.
     chatMessagesDiv.addEventListener('mousedown', () => {
-      chatEntryWasActive = chatActive;
+      if (chatActive) chatSelectingTranscript = true;
     });
-    chatMessagesDiv.addEventListener('mouseup', () => {
-      if (!chatEntryWasActive) return;
-      chatEntryWasActive = false;
+    window.addEventListener('mouseup', () => {
+      if (!chatSelectingTranscript) return;
+      chatSelectingTranscript = false;
       const selection = window.getSelection();
       if (selection && selection.toString().length > 0) return;
       chatInput.focus();
+    }, true);
+    // Holding a selection, the keyboard is the page's, not the input's: a
+    // shortcut (the copy) is left to the browser, Escape ends chat entry as it
+    // would from the input, and anything typed goes back into the input,
+    // character included.
+    document.addEventListener('keydown', (e) => {
+      if (!chatActive || document.activeElement === chatInput) return;
+      if (e.ctrlKey || e.metaKey || e.altKey) return;
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        window.getSelection()?.removeAllRanges();
+        setChatEntryActive(false);
+        syncInputContextFromUi();
+        return;
+      }
+      if (e.key.length === 1 || e.key === 'Enter' || e.key === 'Backspace') chatInput.focus();
+    }, true);
+    // Once copied, back to typing.
+    document.addEventListener('copy', () => {
+      if (chatActive && document.activeElement !== chatInput) setTimeout(() => chatInput.focus(), 0);
     });
   }
 
@@ -7121,6 +7147,8 @@ function init() {
     setInputContext(INPUT_CONTEXT.CHAT);
   });
   chatInput.addEventListener('blur', () => {
+    // A press in the transcript, selecting text to copy, is still chat.
+    if (chatSelectingTranscript) return;
     setChatEntryActive(false);
     syncInputContextFromUi();
   });

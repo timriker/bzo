@@ -33,7 +33,9 @@
 // second of the drive, and half a second into each hop, for a shot fired on the
 // move or in the air. `--press KeyC,KeyC` presses those keys once each after
 // joining, for a probe that wants a particular view. `--autopilot 30` presses 9 instead and lets the default
-// pilot fly for that many seconds, logged the way a drive is.
+// pilot fly for that many seconds, logged the way a drive is. `--select-chat 1`
+// opens chat entry, drags across the last transcript line with real mouse
+// events, and reports what got selected and whether chat entry survived it.
 
 import { spawn } from 'node:child_process';
 import { setTimeout as sleep } from 'node:timers/promises';
@@ -253,6 +255,62 @@ if (pressKeys.length && joined.startsWith('joined')) {
   }
 }
 
+// `--select-chat 1`: what a player copying out of the transcript gets. The
+// line dragged across is `/playerlist`'s reply, which only this probe sees.
+let selectChatReport = '';
+if (args.get('select-chat') && joined.startsWith('joined')) {
+  if (!mvArgs && !chatLine && !pressKeys.length) await sleep(2000);
+  await sendChat('/playerlist');
+  await sleep(800);
+  await evaluate('document.getElementById("chatInput").focus()');
+  await sleep(200);
+  const line = await evaluate(`(() => {
+    const lines = [...document.querySelectorAll('#chatMessages .chat-line')];
+    const el = lines[lines.length - 1];
+    if (!el) return null;
+    const r = el.getBoundingClientRect();
+    return { x: r.left + 2, y: r.top + r.height / 2, w: r.width, text: el.textContent };
+  })()`);
+  if (!line) {
+    selectChatReport = 'select-chat: no transcript line';
+  } else {
+    const mouse = (type, x, extra = {}) => send('Input.dispatchMouseEvent', {
+      type, x, y: line.y, button: 'left', clickCount: 1, ...extra,
+    });
+    const before = await evaluate('document.body.classList.contains("chat-active")');
+    // What the press lands on, which is what decides whether it can select.
+    const target = await evaluate(`(() => {
+      const el = document.elementFromPoint(${line.x}, ${line.y});
+      if (!el) return 'nothing';
+      const style = getComputedStyle(el);
+      return el.tagName + (el.id ? '#' + el.id : '') + (el.className ? '.' + String(el.className).split(' ').join('.') : '')
+        + ' user-select=' + style.userSelect + ' pointer-events=' + style.pointerEvents;
+    })()`);
+    await mouse('mousePressed', line.x, { buttons: 1 });
+    for (let step = 1; step <= 5; step += 1) {
+      await mouse('mouseMoved', line.x + (line.w * 0.6 * step) / 5, { buttons: 1 });
+      await sleep(30);
+    }
+    await mouse('mouseReleased', line.x + line.w * 0.6, { buttons: 0 });
+    await sleep(200);
+    const after = await evaluate(`JSON.stringify({
+      selected: String(window.getSelection()),
+      chatActive: document.body.classList.contains('chat-active'),
+      focused: document.activeElement?.id || document.activeElement?.tagName,
+    })`);
+    // A key typed while the selection is held belongs back in the input.
+    await send('Input.dispatchKeyEvent', { type: 'keyDown', code: 'KeyA', key: 'a', text: 'a' });
+    await send('Input.dispatchKeyEvent', { type: 'keyUp', code: 'KeyA', key: 'a' });
+    await sleep(100);
+    const typed = await evaluate(`JSON.stringify({
+      input: document.getElementById('chatInput').value,
+      focused: document.activeElement?.id || document.activeElement?.tagName,
+    })`);
+    selectChatReport = `select-chat: line ${JSON.stringify(line.text.slice(0, 60))}, pressed on ${target},`
+      + ` chat active before ${before}, after ${after}, then typing "a" ${typed}`;
+  }
+}
+
 const driveLog = [];
 const autopilotSeconds = Number(args.get('autopilot') || 0);
 if (autopilotSeconds > 0 && joined.startsWith('joined')) {
@@ -327,6 +385,7 @@ if (hopSeconds > 0 && joined.startsWith('joined')) {
 
 console.log(joined);
 if (driveLog.length) console.log(driveLog.join('\n'));
+if (selectChatReport) console.log(selectChatReport);
 if (evalExpression) console.log(`eval: ${JSON.stringify(await evaluate(evalExpression))}`);
 if (shotPath) {
   const { data } = await send('Page.captureScreenshot', { format: 'png' });

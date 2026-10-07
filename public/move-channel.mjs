@@ -50,11 +50,11 @@ export function createMoveChannel({
       channel = peer.createDataChannel(CHANNEL_LABEL, CHANNEL_OPTIONS);
       channel.onopen = () => {
         clearTimeout(timer);
-        log('moves on a data channel');
+        log('open');
       };
       channel.onclose = () => {
         if (pc === peer) {
-          log('moves back on the WebSocket');
+          log('closed');
           close();
         }
       };
@@ -71,7 +71,7 @@ export function createMoveChannel({
       };
       timer = setTimeout(() => {
         if (pc === peer && channel?.readyState !== 'open') {
-          log('no data channel; moves stay on the WebSocket');
+          log('timed out');
           close();
         }
       }, OPEN_TIMEOUT_MS);

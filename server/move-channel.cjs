@@ -52,18 +52,18 @@ function createMoveChannels({ listen, iceServers = [], log = () => {}, load = ()
   const bindAddress = host || '0.0.0.0';
   const udpPort = Number(port);
   if (!Number.isInteger(udpPort) || udpPort <= 0 || udpPort > 65535) {
-    log(`[RTC] webrtc.listen "${listen}" names no port; moves stay on the WebSocket`);
+    log(`[RTC] webrtc.listen "${listen}" names no port; off`);
     return null;
   }
   if (bindAddress.includes(':')) {
-    log(`[RTC] webrtc.listen "${listen}" is IPv6; moves stay on the WebSocket (IPv4 only, see docs/network.md)`);
+    log(`[RTC] webrtc.listen "${listen}" is IPv6; off (IPv4 only, see docs/network.md)`);
     return null;
   }
   let ndc;
   try {
     ndc = load();
   } catch (error) {
-    log(`[RTC] node-datachannel unavailable (${error.message}); moves stay on the WebSocket`);
+    log(`[RTC] node-datachannel unavailable (${error.message}); off`);
     return null;
   }
   const config = {
@@ -74,7 +74,7 @@ function createMoveChannels({ listen, iceServers = [], log = () => {}, load = ()
     portRangeEnd: udpPort,
   };
   const sessions = new Set();
-  log(`[RTC] moves on UDP ${bindAddress}:${udpPort}`);
+  log(`[RTC] UDP ${bindAddress}:${udpPort}`);
 
   // libdatachannel calls back from its own threads, and a throw inside one
   // of those aborts the process. Each callback is moved onto the event loop

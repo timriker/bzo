@@ -41,6 +41,8 @@ two in step.
 - `,` — message nemesis target
 - `Page Up` / `Page Down` — scroll chat history
 - `End` — jump chat to newest message
+- Drag across the history while chat is open to select it, then copy;
+  typing carries on in the input
 
 ### View and panels
 

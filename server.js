@@ -14947,11 +14947,12 @@ function openMoveChannel(player, ws) {
     sendSignal: (signal) => {
       if (ws.readyState === 1) ws.send(JSON.stringify({ type: 'rtc', ...signal }));
     },
-    onOpen: (remote) => log(`[RTC] "${player.name}" moves on a data channel${remote ? ` from ${remote}` : ''}`),
+    // Usually before the join completes, while the name is still a placeholder.
+    onOpen: (remote) => log(`[RTC] ${player.joined ? `"${player.name}"` : `#${player.id}`}${remote ? ` ${remote}` : ''}`),
     onClose: () => {
       if (player.moveChannel === session) {
         player.moveChannel = null;
-        if (player.joined) log(`[RTC] "${player.name}" moves back on the WebSocket`);
+        if (player.joined) log(`[RTC] "${player.name}" closed`);
       }
     },
     onMessage: (text) => {
