@@ -1,7 +1,7 @@
 # World viewer and editor
 
-Plan for inspecting a world (issue #183) and editing one in the browser (issue
-#184). Nothing here is built.
+Plan for inspecting a world (issue #183) and editing one in the browser
+(issue #184). Nothing here is built.
 
 ## What already exists
 
