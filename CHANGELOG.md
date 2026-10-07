@@ -6,9 +6,12 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
 
 ## [Unreleased]
 
+## [1.3.27] - 2026-10-07
+
 ### Added
 - `bzflag.upnp`: bzfs's `-UPnP`. The router forwards the BZFlag port, TCP
-  and UDP, to this server. See #187.
+  and UDP, to this server. Without a `publicAddr` the list gets the router's
+  reverse-DNS name where it resolves back, else its address. Closes #187.
 - A `[PERF]` line in server.log each minute while anyone plays (CPU,
   event-loop delay, messages and bytes each way), also at the end of
   `/lagstats` for an admin; `scripts/bench-relay.mjs` compares relay latency
