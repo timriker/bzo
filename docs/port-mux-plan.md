@@ -14,7 +14,7 @@ client, so the opening says which it is:
 |---|---|
 | `BZFLAG\r\n\r\n` | the BZFlag handler, as before |
 | a TLS ClientHello (`0x16 0x03`) | the HTTPS server, when `https` is set |
-| an HTTP request line (`GET `, `POST `, ...) | the web app's own `http.Server` |
+| an HTTP request line (`GET`, `POST`, ...) | the web app's own `http.Server` |
 | anything else | the BZFlag handler, which logs what was sent |
 
 bzfs does the same with its non-player connections (`bzfs.cxx:6153`), which
