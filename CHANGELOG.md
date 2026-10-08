@@ -6,11 +6,13 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
 
 ## [Unreleased]
 
+## [1.3.31] - 2026-10-08
+
 ### Added
 - One TCP port: the BZFlag port answers the web app too, plain HTTP or HTTPS
   (`https` in server.json), chosen by what a connection opens with; Express
   serves it the same either way. `"listen": false` turns the separate web
-  port off. See #190 and docs/port-mux-plan.md.
+  port off. Closes #190; docs/port-mux-plan.md has the UDP half (#189).
 
 ### Changed
 - A tank's shot now follows the move it was fired from, for everyone: the
