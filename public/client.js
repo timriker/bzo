@@ -13201,6 +13201,20 @@ function handleMotion(deltaTime) {
     ? Math.hypot(airVelocityX - lastSentAirVelocityX, airVelocityY - lastSentAirVelocityY)
     : 0;
 
+  // Stopped against moving, on either axis and in either direction, is sent
+  // whatever the size of the change. A viewer sees a tank held still that is
+  // creeping, or one creeping that has stopped, until the next heartbeat --
+  // and then it snaps. `VELOCITY_THRESHOLD` alone lets a slow start, or one
+  // axis stopping while the other carries on, slip under it. Throttled with
+  // the other velocity changes, so a stick hovering at the line cannot flood.
+  // Judged on the value as it goes on the wire, rounded to two places, or a
+  // speed just over the line that rounds onto it would never match what was
+  // sent and would be sent again every frame.
+  const movingAt = (speed) => Math.abs(Number(speed.toFixed(2))) > DEAD_STICK_STOP_THRESHOLD;
+  const stopStartCrossed = !airborneState && (
+    movingAt(forwardSpeed) !== movingAt(lastSentForwardSpeed)
+    || movingAt(rotationSpeed) !== movingAt(lastSentRotationSpeed));
+
   const deadStickStopUpdate =
     !airborneState &&
     Math.abs(forwardSpeed) <= DEAD_STICK_STOP_THRESHOLD &&
@@ -13271,6 +13285,10 @@ function handleMotion(deltaTime) {
 
   const shouldSendUpdate =
     forceMoveSend || // Force send on jump/land transitions
+    // A frame that fires sends its move first, always: upstream's
+    // `fireShot` sends a player update before every MsgShotBegin "to
+    // synchronize movement and shot start" (LocalPlayer.cxx:1266).
+    shotSlot >= 0 ||
     // Heartbeat every MAX_UPDATE_INTERVAL, on the ground or in the air. A
     // grounded tank already relies on this to say something when nothing else
     // has changed; an airborne one needs it too, because a jump's own forced
@@ -13283,6 +13301,7 @@ function handleMotion(deltaTime) {
     // that should have taken two seconds is still going after five.
     timeSinceLastSend > getMaxUpdateInterval() ||
     (canSendVelocityUpdate && (
+      stopStartCrossed ||
       forwardSpeedDelta > VELOCITY_THRESHOLD ||
       rotationSpeedDelta > VELOCITY_THRESHOLD ||
       verticalVelocityDelta > VERTICAL_VELOCITY_THRESHOLD ||

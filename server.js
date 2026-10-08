@@ -15,6 +15,7 @@ const logPath = process.env.SERVER_LOG_PATH
 // Clear server.log on restart
 require('fs').writeFileSync(logPath, '');
 const http = require('http');
+const https = require('https');
 const { URLSearchParams } = require('url');
 const { WebSocketServer } = require('ws');
 const {
@@ -3188,6 +3189,26 @@ wss.on('error', (err) => {
   logError(`WebSocket server error: ${err.message}`);
 });
 
+// `https: { cert, key }`, PEM files beside server.json or absolute: the same
+// app over TLS, answered on the BZFlag port alongside BZFlag and plain HTTP
+// (docs/port-mux-plan.md). A headset will not run WebXR without it. Its
+// WebSockets are the plain server's, handed to the same handler.
+function loadHttpsServer() {
+  const config = serverConfig.https;
+  if (!config || typeof config !== 'object') return null;
+  const read = (file) => fs.readFileSync(path.resolve(path.dirname(CONFIG_PATH), String(file)));
+  try {
+    const tlsServer = https.createServer({ cert: read(config.cert), key: read(config.key) }, app);
+    const wssTls = new WebSocketServer({ server: tlsServer });
+    wssTls.on('connection', (ws, req) => wss.emit('connection', ws, req));
+    wssTls.on('error', (err) => logError(`WebSocket server error: ${err.message}`));
+    return tlsServer;
+  } catch (error) {
+    logError(`[HTTPS] off: ${error.message}`);
+    return null;
+  }
+}
+
 // Game constants
 const GAME_CONFIG = {
   // `_worldSize` (global.cxx:184), which upstream defaults to 800 and states as
@@ -4257,9 +4278,16 @@ const { host: LISTEN_HOST, port: PORT, note: listenNote } = resolveListenTarget(
   configPort: serverConfig.port,
 });
 
-server.listen(PORT, LISTEN_HOST, () => {
-  if (listenNote) log(`[LISTEN] ${listenNote}`);
-  log(`Server running on ${describeListenTarget(LISTEN_HOST, PORT)}, client build ${CLIENT_BUILD}`);
+// `"listen": false` leaves the web app to the BZFlag port alone, which answers
+// it as well (docs/port-mux-plan.md): one TCP port for everything.
+const HTTP_PORT_OFF = serverConfig.listen === false && Boolean(serverConfig.bzflag?.listen);
+const onHttpListening = () => {
+  if (HTTP_PORT_OFF) {
+    log(`Web app on the BZFlag port only (${serverConfig.bzflag.listen}), client build ${CLIENT_BUILD}`);
+  } else {
+    if (listenNote) log(`[LISTEN] ${listenNote}`);
+    log(`Server running on ${describeListenTarget(LISTEN_HOST, PORT)}, client build ${CLIENT_BUILD}`);
+  }
   // After the port is open, never before it: the game is playable while the
   // sidecars are built, and a request that arrives first is served identity.
   //
@@ -4283,7 +4311,9 @@ server.listen(PORT, LISTEN_HOST, () => {
     bzfsWorlds.start();
   }
   serverReady.then(announceReadyServer);
-});
+};
+if (HTTP_PORT_OFF) setImmediate(onHttpListening);
+else server.listen(PORT, LISTEN_HOST, onHttpListening);
 
 // One report for both lists once ready, after the proxied targets have been
 // dialled so it carries their rows.
@@ -11710,7 +11740,11 @@ if (BZFLAG_CONFIG?.listen) {
   // pace, as a proxied one already does (`PROXY_MAX_UPDATE_INTERVAL`).
   GAME_CONFIG.MAX_UPDATE_INTERVAL = 1000;
   const { host, port } = resolveListenTarget({ configListen: String(BZFLAG_CONFIG.listen) });
+  const httpsServer = loadHttpsServer();
   bzflagServer = createBzflagServer({
+    // The rest of what the port is asked: the web app, plain or over TLS.
+    onHttp: (socket) => server.emit('connection', socket),
+    onTls: httpsServer ? (socket) => httpsServer.emit('connection', socket) : null,
     countIn: (bytes) => serverStats.countIn(bytes),
     countOut: (bytes) => serverStats.countOut(bytes),
     getStatus: computeBzflagStatus,
@@ -18092,6 +18126,14 @@ function acceptConnection(ws, req) {
             (proj.beam ? ` beam=${proj.segments.length}seg end=${proj.endReason}` : '') +
             (proj.shockwave ? ` shockwave life=${proj.lifetimeSeconds.toFixed(3)}s` : '')
           );
+          // The move that came with the shot goes out ahead of it, to everyone:
+          // upstream's client sends a player update before every shot
+          // (LocalPlayer.cxx:1266) and bzfs relays both as they come, so a
+          // tank is never seen behind its own muzzle. A BZFlag client already
+          // had the move (`sendMoveToBzflagClients`); a move channel's waits for
+          // the end of this turn and the WebSocket's for the tick.
+          flushChannelMoves();
+          flushMoveBroadcasts();
           broadcastAll({
             type: 'shotBegin',
             id: proj.id,

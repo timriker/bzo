@@ -15,8 +15,10 @@ motion record. This file is bzo's half of that, plus the mapping between them.
 ## Transport
 
 One WebSocket per client, to the same host and port the page was served from
-(`public/client.js` picks `wss:` for an `https:` page). It carries everything,
-and moves too unless a move channel is open.
+(`public/client.js` picks `wss:` for an `https:` page). That is the web port
+(`listen`) or the BZFlag port, which answers HTTP and HTTPS as well as BZFlag
+([port-mux-plan.md](port-mux-plan.md)). It carries everything, and moves too
+unless a move channel is open.
 
 **The move channel** (#8) is bzo's UDP: a WebRTC data channel, negotiated as
 id 0, neither ordered nor retried, when server.json has `webrtc.listen`. It

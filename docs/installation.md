@@ -14,8 +14,9 @@ Use [compose.yml](../compose.yml):
 docker compose up -d
 ```
 
-This starts the server on port 3000, with 5154 open for BZFlag clients, and
-stores runtime config in `./data/server.json`.
+This starts the server on port 3000, with 5154 open for BZFlag clients --
+which serves the web app too (see **One port** below) -- and stores runtime
+config in `./data/server.json`.
 
 On first start, the server copies [example-server.json](../example-server.json)
 to the configured runtime path if no config exists.
@@ -305,6 +306,20 @@ port, as bzfs's `-UPnP` does: `publicAddr`'s port (5154 without one) to
 removed on shutdown. Without a `publicAddr` the router's external address is
 listed, by its reverse-DNS name where that name resolves back to it. Under
 Docker it needs host networking.
+
+### One port
+
+The BZFlag port answers the web app too, plain or over TLS, so a server can
+run on that one TCP port: `"listen": false` turns the separate web port off,
+and a reverse proxy points at the BZFlag port instead. HTTPS needs a
+certificate and key, PEM files beside `server.json` or absolute -- a headset
+will not run WebXR without it:
+
+```json
+"https": { "cert": "fullchain.pem", "key": "privkey.pem" }
+```
+
+[port-mux-plan.md](port-mux-plan.md) has how, and the UDP half still to do.
 
 ## Proxying BZFlag servers
 

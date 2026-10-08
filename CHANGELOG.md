@@ -6,6 +6,19 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
 
 ## [Unreleased]
 
+### Added
+- One TCP port: the BZFlag port answers the web app too, plain HTTP or HTTPS
+  (`https` in server.json), chosen by what a connection opens with; Express
+  serves it the same either way. `"listen": false` turns the separate web
+  port off. See #190 and docs/port-mux-plan.md.
+
+### Changed
+- A tank's shot now follows the move it was fired from, for everyone: the
+  browser sends its move before every shot, as BZFlag's client does, and the
+  server relays the move ahead of the shot.
+- A tank starting to creep, or one axis stopping while the other carries on,
+  is sent at once rather than at the next heartbeat.
+
 ## [1.3.30] - 2026-10-07
 
 ### Fixed

@@ -5,7 +5,8 @@ services:
     ports:
       - "3000:3000"
       # BZFlag clients, when server.json has a `bzflag` block: TCP for the
-      # game, UDP for its ping and the movement link.
+      # game, UDP for its ping and the movement link. The TCP port answers the
+      # web app as well, so with `"listen": false` it is the only one needed.
       - "5154:5154/tcp"
       - "5154:5154/udp"
       # Moves over WebRTC, when server.json has `webrtc.listen`.

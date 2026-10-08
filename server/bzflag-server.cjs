@@ -22,6 +22,24 @@ const {
 
 // BZ_CONNECT_HEADER (version.h:31): what a client says first.
 const CONNECT_HEADER = 'BZFLAG\r\n\r\n';
+
+// How long a connection has to say what it is before it is dropped.
+const CLASSIFY_TIMEOUT_MS = 10000;
+const HTTP_METHODS = ['GET', 'HEAD', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH', 'TRACE', 'CONNECT'];
+
+// What a connection's opening bytes say it is: 'bzflag', 'tls', 'http',
+// 'other', or 'more' while too few have arrived to tell.
+function classifyOpening(buffer) {
+  if (buffer.length === 0) return 'more';
+  // A TLS record: handshake (22), then version major 3.
+  if (buffer[0] === 0x16) return buffer.length < 2 ? 'more' : (buffer[1] === 0x03 ? 'tls' : 'other');
+  const head = buffer.toString('latin1', 0, Math.min(buffer.length, CONNECT_HEADER.length));
+  if (CONNECT_HEADER.startsWith(head)) return head.length < CONNECT_HEADER.length ? 'more' : 'bzflag';
+  const space = buffer.indexOf(0x20);
+  const word = buffer.toString('latin1', 0, space < 0 ? Math.min(buffer.length, 8) : space);
+  if (space >= 0) return HTTP_METHODS.includes(word) ? 'http' : 'other';
+  return HTTP_METHODS.some((method) => method.startsWith(word)) && buffer.length < 8 ? 'more' : 'other';
+}
 // MessageLen (Protocol.h): the reject reason's fixed field.
 const MESSAGE_LEN = 128;
 const CALLSIGN_LEN = 32;
@@ -208,6 +226,7 @@ function packReject(reason, code = REJECT_BAD_REQUEST) {
 function createBzflagServer({
   getStatus, getPingStatus = getStatus, getPlayers, getTeams, getGameSettings, getWorld, getCacheUrl = () => null, onEnter,
   reserveId, releaseId, rejectReason, log = () => {}, countIn = () => {}, countOut = () => {},
+  onHttp = null, onTls = null,
 }) {
   const startedAt = Date.now();
   const connections = new Set();
@@ -380,7 +399,50 @@ function createBzflagServer({
     });
   }
 
-  const server = net.createServer(accept);
+  // One port for everything (#190, docs/port-mux-plan.md). Every protocol on
+  // it speaks first from the client, so its opening bytes say which it is:
+  // BZFlag's `BZFLAG\r\n\r\n`, a TLS ClientHello, or an HTTP request line.
+  // bzfs does the same with its non-player connections (bzfs.cxx:6153).
+  // Undecided or unknown goes to `accept`, which logs what was sent.
+  function classify(socket) {
+    let buffer = Buffer.alloc(0);
+    const timer = setTimeout(() => socket.destroy(), CLASSIFY_TIMEOUT_MS);
+    const handOff = (to) => {
+      clearTimeout(timer);
+      socket.off('data', onData);
+      socket.off('error', onError);
+      socket.pause();
+      socket.unshift(buffer);
+      to(socket);
+    };
+    // Node's HTTP server reads the socket's handle directly, past anything
+    // put back with `unshift`, but its parser still takes a `data` event: the
+    // bytes already read are handed to it that way.
+    const handOffHttp = () => {
+      clearTimeout(timer);
+      socket.off('data', onData);
+      socket.off('error', onError);
+      onHttp(socket);
+      socket.emit('data', buffer);
+    };
+    const onError = () => clearTimeout(timer);
+    const onData = (chunk) => {
+      buffer = Buffer.concat([buffer, chunk]);
+      const kind = classifyOpening(buffer);
+      if (kind === 'more') return;
+      if (kind === 'http' && onHttp) handOffHttp();
+      else if (kind === 'tls' && onTls) handOff(onTls);
+      else if (kind === 'tls') {
+        clearTimeout(timer);
+        log(`[MUX] ${socket.remoteAddress} asked for TLS; no https certificate configured`);
+        socket.destroy();
+      } else handOff((s) => { accept(s); s.resume(); });
+    };
+    socket.on('error', onError);
+    socket.on('data', onData);
+  }
+
+  const server = net.createServer(classify);
   let udp = null;
 
   function sendUdp(to, code, body = Buffer.alloc(0)) {
@@ -517,6 +579,7 @@ module.exports = {
   REJECT_IP_BANNED,
   REJECT_ID_BANNED,
   createBzflagServer,
+  classifyOpening,
   publishToBzflagList,
   packPingHex,
   packQueryGame,
