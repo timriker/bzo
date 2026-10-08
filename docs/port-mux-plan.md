@@ -62,14 +62,41 @@ ways through:
    table with an idle timeout -- and the port in the candidates it offers
    rewritten to the BZFlag port. ICE takes this: each STUN check is signed
    and carries the session's username. Every datagram crosses JavaScript
-   twice, so its CPU wants measuring on the Orin before it is built: a spike
-   relaying one client, then a bench. All bzo code; the likeliest route.
-2. **A JavaScript WebRTC stack** (werift) fed from bzo's own socket. Clean,
-   at a bigger CPU cost.
+   twice -- measured below.
+2. **A JavaScript WebRTC stack** (werift) fed from bzo's own socket: its
+   `UdpTransport.init` can be swapped for one on bzo's socket, routed by the
+   ICE username -- measured below.
 3. **libjuice taking external packets**: native work, upstream or a fork.
 4. **Kernel steering**: an iptables `u32` rule sending STUN and DTLS on the
    BZFlag port to the channel's port. No code, but per host, and awkward under
    Docker -- the opposite of the point.
+
+### Measured
+
+A spike ran 16 clients at 30 moves a second, the server relaying each to the
+other 15, on one x86 core:
+
+| server | CPU | relayed a second | p50 | p99 |
+|---|---|---|---|---|
+| libdatachannel on its own port | 39% | 7,080 | 3.0 ms | 9 ms |
+| relay through loopback | 94-99% | 7,075 | 11 ms | 31-43 ms |
+| werift on the shared socket | 136% | ~380 (3% delivered) | ~500 ms | ~23 s |
+
+Both shared sockets routed a BZFlag datagram to bzo rather than to WebRTC,
+so the sorting works; the cost is what fails. werift falls over under game
+load -- its DTLS and SCTP are JavaScript. The relay works at two and a half
+times the CPU and eight milliseconds more, which the Orin cannot spare, and
+it needs a loopback socket per client with libdatachannel seeing only
+127.0.0.1. The harness sent each move as its own message where bzo gathers
+them, so every figure would be lower in bzo; the order would not change.
+
+### Next
+
+The way to one UDP port at native cost is option 3: libjuice already runs
+every connection on one socket (`JUICE_CONCURRENCY_MODE_MUX`). It needs a
+callback for a datagram it does not recognise -- handing BZFlag's to bzo --
+and a send on that socket, so bzo answers from the same port. That is a small
+change, worth offering upstream, then exposing through node-datachannel.
 
 Until then WebRTC keeps its own port (`webrtc.listen`, 5153).
 
