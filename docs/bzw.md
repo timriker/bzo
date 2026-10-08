@@ -468,6 +468,14 @@ reads both:
   map's shrub texture for exactly this reason, so the path has a fixture to
   check itself against beyond a server survey.
 
+  **A nearly opaque texture draws in the opaque pass.** Where a texture's
+  most transparent pixel is still at least 0.85 and the face's own colour
+  cannot fade it, bzo blends it as above but writes depth, as `nosorting`
+  does (below). Upstream sorts each face of its blended pass by distance;
+  three.js sorts whole objects, and an instanced mesh sorts as one, so
+  ratsnest's barriers, opaque but for a one-pixel border, drew far walls over
+  near ones (issue #186).
+
 ### Animated materials: `dynamicColor` and `textureMatrix`
 
 Two named, time-varying blocks a `material`'s own `dyncol <name>`/

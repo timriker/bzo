@@ -1068,8 +1068,10 @@ function resolveAlphaTest(material, textureName) {
 //
 // Read off `userData` so the alpha callback, which fires a microtask or a
 // network round trip later, sees the same answer as the code below it.
-function setTransparentDepthWrite(material) {
-  if (material.userData?.noSorting) {
+// `opaquePass` puts a nearly opaque texture in the same pass; see
+// `applyTextureAlpha`.
+function setTransparentDepthWrite(material, opaquePass = material.userData?.noSorting) {
+  if (opaquePass) {
     material.transparent = false;
     material.blending = THREE.CustomBlending;
     material.blendEquation = THREE.AddEquation;
@@ -1085,7 +1087,15 @@ function setTransparentDepthWrite(material) {
   material.needsUpdate = true;
 }
 
-function applyTextureAlpha(material, hasAlpha, textureName = null) {
+// A texture whose most transparent pixel is still at least this opaque
+// draws in the opaque pass, blended but writing depth. Upstream sorts each
+// face of its blended pass by distance; three.js sorts whole objects, and an
+// instanced or merged mesh sorts as one, so a far wall could draw after --
+// and over -- a near one (issue #186). Writing depth makes order not matter,
+// which is right for a surface nothing shows through anyway.
+const OPAQUE_PASS_MIN_ALPHA = 0.85;
+
+function applyTextureAlpha(material, hasAlpha, textureName = null, minAlpha = 0) {
   if (!hasAlpha) return;
   material.transparent = true;
   // A pixel this discards never reaches the depth test at all, so it can
@@ -1105,8 +1115,11 @@ function applyTextureAlpha(material, hasAlpha, textureName = null) {
   // depth buffer. Depth *testing* stays on, so this still hides correctly
   // behind opaque scene geometry -- only writes are disabled. A material
   // whose map states `nosorting` opts out of that pass altogether; see
-  // `setTransparentDepthWrite`.
-  setTransparentDepthWrite(material);
+  // `setTransparentDepthWrite`. So does a nearly opaque texture on a face
+  // whose own colour can't fade it (`OPAQUE_PASS_MIN_ALPHA`).
+  const nearlyOpaque = minAlpha >= OPAQUE_PASS_MIN_ALPHA
+    && material.opacity === 1 && !material.userData.dynamicColor;
+  setTransparentDepthWrite(material, material.userData.noSorting || nearlyOpaque);
   material.needsUpdate = true;
 }
 
@@ -4007,12 +4020,12 @@ class RenderManager {
     let sideMaterial;
     let capMaterial;
     sideMaterial = new SideClass({
-      map: sideTextureFactory((hasAlpha) => applyTextureAlpha(sideMaterial, hasAlpha, key)),
+      map: sideTextureFactory((hasAlpha, minAlpha) => applyTextureAlpha(sideMaterial, hasAlpha, key, minAlpha)),
       ...options,
       ...(unlit.side ? {} : buildLightingMaterialOptions(lighting.wallSpecular, lighting.wallShininess, lighting.wallEmission)),
     });
     capMaterial = new CapClass({
-      map: topTextureFactory((hasAlpha) => applyTextureAlpha(capMaterial, hasAlpha, key)),
+      map: topTextureFactory((hasAlpha, minAlpha) => applyTextureAlpha(capMaterial, hasAlpha, key, minAlpha)),
       ...options,
       ...(unlit.cap ? {} : buildLightingMaterialOptions(lighting.capSpecular, lighting.capShininess, lighting.capEmission)),
     });
@@ -5895,8 +5908,8 @@ class RenderManager {
           // callback never actually fires until this statement (and `let`)
           // has finished, even when the answer was already known.
           material = new LitClass({
-            map: textureFactory((hasAlpha) => applyTextureAlpha(
-              material, hasAlpha && readsTextureAlpha, face.texture || face.textureUrl,
+            map: textureFactory((hasAlpha, minAlpha) => applyTextureAlpha(
+              material, hasAlpha && readsTextureAlpha, face.texture || face.textureUrl, minAlpha,
             )),
             ...lightingOptions,
           });
@@ -5959,6 +5972,7 @@ class RenderManager {
         // upstream's own `possibleAlpha` micro-optimization, which only ever
         // skips a sort pass bzo does not have.
         if (face.dynamicColor) {
+          material.userData.dynamicColor = true;
           material.transparent = true;
           setTransparentDepthWrite(material);
           this._animatedMaterials.push({ material, dynamicColor: face.dynamicColor, source: 'mesh' });

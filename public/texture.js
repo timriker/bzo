@@ -64,39 +64,46 @@ function resolveSharedTexture(entry) {
 // against real map textures -- some ship one anyway, an export artifact) is
 // not blend-worthy by this same upstream rule, and shouldn't cost every
 // other opaque texture the sorting/blending overhead transparency asks for.
+//
+// Returns the image's lowest alpha, 0-1, so 1 means fully opaque. A texture
+// that is only nearly opaque (ratsnest's `BarrierUV.png`, a one-pixel border
+// at 225-254) blends here as upstream's does, but draws in the opaque pass
+// (`applyTextureAlpha`, public/render.js).
 function detectImageAlpha(image) {
   try {
     const canvas = document.createElement('canvas');
     canvas.width = image.width;
     canvas.height = image.height;
     const ctx = canvas.getContext('2d');
-    if (!ctx) return false;
+    if (!ctx) return 1;
     ctx.drawImage(image, 0, 0);
     const { data } = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    let min = 255;
     for (let i = 3; i < data.length; i += 4) {
-      if (data[i] !== 255) return true;
+      if (data[i] < min) min = data[i];
     }
-    return false;
+    return min / 255;
   } catch {
     // A cross-origin image reaching here without a clean CORS response
     // would taint the canvas and throw -- shouldn't happen, since WebGL's
     // own upload already demands the same CORS response this read does, but
     // if it ever does, treat the texture as opaque rather than crash a
     // render loop over a picture that already displays fine on the GPU.
-    return false;
+    return 1;
   }
 }
 
 // Fires once a texture's `hasAlpha` is known (the moment its image decodes),
-// immediately if it already is. Any later caller sharing the same texture --
+// immediately if it already is, with its lowest alpha (`minAlpha`) as well. Any later caller sharing the same texture --
 // `resolveObstacleTextureFactory`'s callers, one per face group naming the
 // same picture -- gets the same answer without re-scanning pixels twice.
 function resolveTextureAlpha(entry) {
   if (entry.hasAlpha !== null || !entry.texture?.image) return;
-  entry.hasAlpha = detectImageAlpha(entry.texture.image);
+  entry.minAlpha = detectImageAlpha(entry.texture.image);
+  entry.hasAlpha = entry.minAlpha < 1;
   const callbacks = entry.alphaCallbacks;
   entry.alphaCallbacks = [];
-  callbacks.forEach((onAlpha) => onAlpha(entry.hasAlpha));
+  callbacks.forEach((onAlpha) => onAlpha(entry.hasAlpha, entry.minAlpha));
 }
 
 function registerAlphaCallback(entry, onAlpha) {
@@ -108,7 +115,7 @@ function registerAlphaCallback(entry, onAlpha) {
     // closes over yet -- a same-tick call would run into that variable's own
     // temporal dead zone. A microtask runs after the current synchronous
     // call chain returns, same as the genuinely-async case below always was.
-    queueMicrotask(() => onAlpha(entry.hasAlpha));
+    queueMicrotask(() => onAlpha(entry.hasAlpha, entry.minAlpha));
   } else {
     entry.alphaCallbacks.push(onAlpha);
   }
@@ -118,7 +125,7 @@ function loadTexture(path, onAlpha) {
   let entry = sharedTextures.get(path);
   if (!entry) {
     entry = {
-      texture: null, pending: [], hasAlpha: null, alphaCallbacks: [],
+      texture: null, pending: [], hasAlpha: null, minAlpha: 1, alphaCallbacks: [],
     };
     entry.texture = configureTexture(textureLoader.load(path, () => {
       resolveSharedTexture(entry);
@@ -305,7 +312,7 @@ export function loadExternalTexture(url, fallbackPath, onAlpha) {
   let entry = sharedExternalTextures.get(url);
   if (!entry) {
     entry = {
-      texture: null, pending: [], hasAlpha: null, alphaCallbacks: [],
+      texture: null, pending: [], hasAlpha: null, minAlpha: 1, alphaCallbacks: [],
     };
     entry.texture = configureTexture(textureLoader.load(
       url,
