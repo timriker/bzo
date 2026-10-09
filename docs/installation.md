@@ -333,8 +333,9 @@ Docker it needs host networking.
 ### HTTPS
 
 The BZFlag port answers the web app too, plain or over TLS, so a reverse
-proxy points at `listen` as before. HTTPS on it needs a certificate and key, PEM files beside `server.json` or absolute -- a headset
-will not run WebXR without it:
+proxy points at `listen` as before. HTTPS on it needs a certificate and
+key, PEM files beside `server.json` or absolute -- a headset will not run
+WebXR without it:
 
 ```json
 "https": { "cert": "fullchain.pem", "key": "privkey.pem" }
