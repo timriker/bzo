@@ -54,6 +54,9 @@ function splitHostPort(value) {
   if (bracketed) return { host: bracketed[1].trim(), port: bracketed[2] || '' };
 
   if (/^\d+$/.test(raw)) return { host: '', port: raw };
+  // `:::5154`, how `ss` and `netstat` write every IPv6 interface and a port:
+  // no address starts with three colons, so the last one is the port's.
+  if (/^:::\d+$/.test(raw)) return { host: '::', port: raw.slice(3) };
   if (/^:\d+$/.test(raw)) return { host: '', port: raw.slice(1) };
 
   // Two or more colons and no brackets is an IPv6 address written bare, which

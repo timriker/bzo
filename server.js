@@ -436,7 +436,7 @@ app.use(express.urlencoded({ extended: true }));
 function requestAddress(req) {
   const forwardedFor = req.headers['x-forwarded-for'];
   const forwarded = typeof forwardedFor === 'string' ? forwardedFor.split(',')[0].trim() : '';
-  return trustedClientAddress(req.socket.remoteAddress, req.headers, forwardedForPolicy)
+  return trustedClientAddress(req.socket.remoteAddress, req.headers, forwardedForPolicy, forwardedProxyPeer)
     || forwarded || req.socket.remoteAddress || 'unknown';
 }
 
@@ -4278,16 +4278,14 @@ const { host: LISTEN_HOST, port: PORT, note: listenNote } = resolveListenTarget(
   configPort: serverConfig.port,
 });
 
-// `"listen": false` leaves the web app to the BZFlag port alone, which answers
-// it as well (docs/port-mux-plan.md): one TCP port for everything.
-const HTTP_PORT_OFF = serverConfig.listen === false && Boolean(serverConfig.bzflag?.listen);
+// With a `bzflag` block, `listen` is a BZFlag port, TCP and UDP, that answers
+// the web app too, plain or over TLS (docs/port-mux-plan.md): it opens below,
+// with the BZFlag server, rather than here.
+const LISTEN_IS_BZFLAG = Boolean(serverConfig.bzflag && typeof serverConfig.bzflag === 'object');
 const onHttpListening = () => {
-  if (HTTP_PORT_OFF) {
-    log(`Web app on the BZFlag port only (${serverConfig.bzflag.listen}), client build ${CLIENT_BUILD}`);
-  } else {
-    if (listenNote) log(`[LISTEN] ${listenNote}`);
-    log(`Server running on ${describeListenTarget(LISTEN_HOST, PORT)}, client build ${CLIENT_BUILD}`);
-  }
+  if (listenNote) log(`[LISTEN] ${listenNote}`);
+  log(`Server running on ${describeListenTarget(LISTEN_HOST, PORT)}${LISTEN_IS_BZFLAG ? ' and BZFlag' : ''},`
+    + ` client build ${CLIENT_BUILD}`);
   // After the port is open, never before it: the game is playable while the
   // sidecars are built, and a request that arrives first is served identity.
   //
@@ -4312,8 +4310,7 @@ const onHttpListening = () => {
   }
   serverReady.then(announceReadyServer);
 };
-if (HTTP_PORT_OFF) setImmediate(onHttpListening);
-else server.listen(PORT, LISTEN_HOST, onHttpListening);
+if (!LISTEN_IS_BZFLAG) server.listen(PORT, LISTEN_HOST, onHttpListening);
 
 // One report for both lists once ready, after the proxied targets have been
 // dialled so it carries their rows.
@@ -4441,6 +4438,9 @@ const PUBLIC_URL = typeof serverConfig.publicUrl === 'string' ? serverConfig.pub
 // `probeAdminWhitelist` below proves otherwise; see isLocalAdminRequest for
 // what each value means.
 let forwardedForPolicy = 'distrust';
+// The proxy's own address, as the probe's requests arrived from it: the one
+// peer whose forwarding headers are read (`isLocalAdminRequest`).
+let forwardedProxyPeer = null;
 
 // issue #80: is whatever reverse proxy sits in front of this server (if any)
 // safe to trust X-Forwarded-For through, and if so, does it overwrite the
@@ -4552,9 +4552,16 @@ async function probeAdminWhitelist() {
           + ' admin whitelist stays limited to unproxied loopback');
         return;
       }
+      if (!plain.remoteAddress || normalizeAddress(plain.remoteAddress) !== normalizeAddress(poisoned.remoteAddress)) {
+        log(`[ADMIN] ${PUBLIC_URL}'s proxy reached this server from ${plain.remoteAddress} and then`
+          + ` ${poisoned.remoteAddress}; admin whitelist stays limited to unproxied loopback`);
+        return;
+      }
+      forwardedProxyPeer = normalizeAddress(plain.remoteAddress);
       forwardedForPolicy = poisonedChain.length === 1 ? 'trust-first' : 'trust-last';
-      log(`[ADMIN] ${PUBLIC_URL}'s proxy ${forwardedForPolicy === 'trust-first' ? 'overwrites' : 'appends to'}`
-        + ' X-Forwarded-For safely; admin whitelist active for loopback'
+      log(`[ADMIN] ${PUBLIC_URL}'s proxy at ${forwardedProxyPeer}`
+        + ` ${forwardedForPolicy === 'trust-first' ? 'overwrites' : 'appends to'} X-Forwarded-For safely;`
+        + ' admin whitelist active for loopback'
         + (ADMIN_WHITELIST.length > 0 ? ` and ${ADMIN_WHITELIST.length} whitelisted address(es)` : ''));
       return;
     } catch (error) {
@@ -4750,6 +4757,7 @@ function isLocalAdminHttp(req) {
     enabled: LOCAL_ADMIN,
     whitelist: ADMIN_WHITELIST,
     forwardedForPolicy,
+    proxyPeer: forwardedProxyPeer,
   });
 }
 
@@ -11732,14 +11740,13 @@ function bzflagTeamIndex(team) {
 }
 
 let bzflagServer = null;
-if (BZFLAG_CONFIG?.listen) {
+if (BZFLAG_CONFIG) {
   // A BZFlag client hears from every tank at least once a second
   // (`MaxUpdateTime`, Player.cxx:38) and dead-reckons from that; bzo's own
   // five-second heartbeat would leave a resting bzo tank stale on its screen.
   // So with native clients in the game, every bzo client keeps upstream's
   // pace, as a proxied one already does (`PROXY_MAX_UPDATE_INTERVAL`).
   GAME_CONFIG.MAX_UPDATE_INTERVAL = 1000;
-  const { host, port } = resolveListenTarget({ configListen: String(BZFLAG_CONFIG.listen) });
   const httpsServer = loadHttpsServer();
   bzflagServer = createBzflagServer({
     // The rest of what the port is asked: the web app, plain or over TLS.
@@ -11789,12 +11796,12 @@ if (BZFLAG_CONFIG?.listen) {
     rejectReason: () => `This world can't be sent to BZFlag clients yet; play in a browser at ${PUBLIC_URL || 'this server\'s web page'}`,
     log,
   });
-  bzflagServer.listen(host, port)
+  bzflagServer.listen(LISTEN_HOST, PORT)
     .then(() => {
-      log(`[BZFLAG] listening on ${host}:${port}`);
-      if (BZFLAG_CONFIG.upnp === true) startBzflagUpnp(port);
+      onHttpListening();
+      if (BZFLAG_CONFIG.upnp === true) startBzflagUpnp(PORT);
     })
-    .catch((error) => logError(`[BZFLAG] listen on ${BZFLAG_CONFIG.listen} failed: ${error.message}`));
+    .catch((error) => logError(`[BZFLAG] listen on ${describeListenTarget(LISTEN_HOST, PORT)} failed: ${error.message}`));
 }
 
 // `bzflag.upnp`, bzfs's `-UPnP`: the gateway forwards `publicAddr`'s port
@@ -15603,6 +15610,7 @@ async function authoriseProxyRequest(req, request) {
     enabled: LOCAL_ADMIN,
     whitelist: ADMIN_WHITELIST,
     forwardedForPolicy,
+    proxyPeer: forwardedProxyPeer,
   });
   if (!callsign && !localAdmin) return { allowed: false, error: 'Watching needs a global login.' };
   if (!localAdmin && !isAdminSession(session, ADMIN_GROUPS)) {
@@ -17375,7 +17383,7 @@ function acceptConnection(ws, req) {
   // it cannot be trusted. The header's first entry, which the log line above
   // shows, is the client's own claim behind an appending proxy.
   // docs/ban-plan.md.
-  player.clientIP = trustedClientAddress(req.socket.remoteAddress, req.headers, forwardedForPolicy);
+  player.clientIP = trustedClientAddress(req.socket.remoteAddress, req.headers, forwardedForPolicy, forwardedProxyPeer);
   player.claimedIP = clientIP;
   // What `/clientquery` says it runs: bzo's own build for a browser, and the
   // browser; a BZFlag client replaces it with what it sent (`seatNativeClient`).
@@ -17385,6 +17393,7 @@ function acceptConnection(ws, req) {
     enabled: LOCAL_ADMIN,
     whitelist: ADMIN_WHITELIST,
     forwardedForPolicy,
+    proxyPeer: forwardedProxyPeer,
   });
   if (player.localAdmin) {
     log(`Player ${player.playerNumber} is an operator: connected from this machine (localAdmin)`);

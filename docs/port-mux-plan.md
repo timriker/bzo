@@ -22,7 +22,7 @@ its HTTP API serves.
 
 The web app is Express either way: the port hands it the connection, so
 routes, ETags, `Cache-Control`, Brotli sidecars and WebSocket upgrades are
-identical on the BZFlag port and on `listen`. Node's HTTP server reads a
+the same as on a server with no `bzflag` block. Node's HTTP server reads a
 socket's handle directly, past bytes put back with `unshift`, so the bytes
 already read reach its parser as a `data` event; TLS reads through the stream
 and takes them back with `unshift`. `scripts/test-port-mux.mjs` holds the
@@ -30,8 +30,8 @@ classification.
 
 `https: { cert, key }` in `server.json` -- PEM files, beside it or absolute --
 serves the app over TLS on the BZFlag port. A headset needs it for WebXR.
-`"listen": false` turns the separate web port off, leaving one TCP port for
-everything; a reverse proxy then points at the BZFlag port.
+With a `bzflag` block, `listen` is the BZFlag port, so one TCP port carries
+everything; a reverse proxy points at it.
 
 Not done: HTTP/2. Node's `http2` with `allowHTTP1` would take it, but
 Express 4 only partly runs on the compatibility layer and `ws` has no

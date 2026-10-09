@@ -27,6 +27,12 @@ const CONNECT_HEADER = 'BZFLAG\r\n\r\n';
 const CLASSIFY_TIMEOUT_MS = 10000;
 const HTTP_METHODS = ['GET', 'HEAD', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH', 'TRACE', 'CONNECT'];
 
+// A dual-stack socket names an IPv4 peer as `::ffff:a.b.c.d`; logs, bans and
+// the UDP link's match all want the plain address.
+function peerAddress(address) {
+  return String(address || '').replace(/^::ffff:(?=\d+\.)/i, '');
+}
+
 // What a connection's opening bytes say it is: 'bzflag', 'tls', 'http',
 // 'other', or 'more' while too few have arrived to tell.
 function classifyOpening(buffer) {
@@ -302,7 +308,7 @@ function createBzflagServer({
       const link = {
         id: connection.id,
         address: connection.address,
-        remoteAddress: socket.remoteAddress,
+        remoteAddress: peerAddress(socket.remoteAddress),
         closed: false,
         send: (frameCode, body) => {
           if (socket.destroyed) return;
@@ -337,7 +343,7 @@ function createBzflagServer({
 
   function accept(socket) {
     const connection = {
-      socket, id: 0xff, address: `${socket.remoteAddress}:${socket.remotePort}`, buffer: Buffer.alloc(0), greeted: false,
+      socket, id: 0xff, address: `${peerAddress(socket.remoteAddress)}:${socket.remotePort}`, buffer: Buffer.alloc(0), greeted: false,
       asked: [],
     };
     socket.setNoDelay(true);
@@ -434,7 +440,7 @@ function createBzflagServer({
       else if (kind === 'tls' && onTls) handOff(onTls);
       else if (kind === 'tls') {
         clearTimeout(timer);
-        log(`[MUX] ${socket.remoteAddress} asked for TLS; no https certificate configured`);
+        log(`[MUX] ${peerAddress(socket.remoteAddress)} asked for TLS; no https certificate configured`);
         socket.destroy();
       } else handOff((s) => { accept(s); s.resume(); });
     };
@@ -462,7 +468,7 @@ function createBzflagServer({
   // constant messages go both ways on UDP. A datagram is whole frames, walked
   // in place.
   function receiveUdp(datagram, from) {
-    const sameHost = (a, b) => String(a).replace(/^::ffff:/i, '') === String(b).replace(/^::ffff:/i, '');
+    const sameHost = (a, b) => peerAddress(a) === peerAddress(b);
     let at = 0;
     while (at + 4 <= datagram.length) {
       const length = datagram.readUInt16BE(at);

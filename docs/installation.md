@@ -14,9 +14,9 @@ Use [compose.yml](../compose.yml):
 docker compose up -d
 ```
 
-This starts the server on port 3000, with 5154 open for BZFlag clients --
-which serves the web app too (see **One port** below) -- and stores runtime
-config in `./data/server.json`.
+This starts the server on port 3000 and stores runtime config in
+`./data/server.json`. A `bzflag` block turns `listen` into a BZFlag port as
+well (see **Ports** below); 5154 is BZFlag's usual one.
 
 On first start, the server copies [example-server.json](../example-server.json)
 to the configured runtime path if no config exists.
@@ -171,6 +171,27 @@ See [example-server.json](../example-server.json) for the supported shape.
 `"mapFile": "random"` generates a world as bzfs does, tuned by a
 `randomWorld` block -- see **Generated worlds** in [bzw.md](bzw.md).
 
+### Ports
+
+`listen` is the game's one TCP port: the web app, its WebSockets, and HTTPS
+when `https` is set. With a `bzflag` block it is a BZFlag port as well, TCP
+and UDP. Moves over WebRTC take a second port, UDP only, until #189 merges
+them:
+
+```json
+"listen": "[::]:5154",
+"webrtc": { "listen": "0.0.0.0:5153" }
+```
+
+An address and port is written `host:port`, with an IPv6 address in
+brackets: `[::]:5154`. `:::5154`, as `ss` prints it, means the same, and a
+bare `5154` is every interface. `::` is every interface in both families: an
+IPv4 peer arrives on it as itself, so IPv4 BZFlag clients still connect.
+`webrtc.listen` has to be IPv4 (`0.0.0.0`): some carriers drop a phone's
+data connection when WebRTC runs over its IPv6. The `LISTEN` and `PORT`
+environment variables override `listen`. Without one the server listens on
+`[::]:3000`.
+
 ### Voice
 
 Voice is peer to peer, and is offered only with at least one
@@ -253,11 +274,14 @@ loopback peer counts only with no `X-Forwarded-*` header, since a same-host
 proxy makes every request arrive from `127.0.0.1`.
 
 `adminWhitelist` widens it to more addresses: a list of IPv4 or IPv6
-addresses or CIDR blocks (`"192.168.1.0/24"`, `"2001:db8::/32"`). These
-arrive through the proxy, so they need `publicUrl`: at startup the server
-calls itself there, once with a forged `X-Forwarded-For`, and trusts the
-header only if the proxy replaced or appended to it as above. Until that
-probe passes, only unproxied loopback is admin. Bad entries are logged and
+addresses or CIDR blocks (`"192.168.1.0/24"`, `"2001:db8::/32"`). A direct
+connection is judged by its own address. One through the proxy needs
+`publicUrl`: at startup the server calls itself there, once with a forged
+`X-Forwarded-For`, and trusts the header only if the proxy replaced or
+appended to it as above, and only on connections from the address that call
+arrived from. Any other peer's forwarding headers are ignored, so a client
+on the BZFlag port cannot claim an address. Until that probe passes, no
+forwarded address is admin. Bad entries are logged and
 refused, and the log warns when the whitelist names non-loopback addresses
 but `localAdmin` is off, since it then does nothing. A whitelisted operator
 can also read and revoke list-server keys (`docs/list-server.md`).
@@ -288,14 +312,13 @@ A `bzflag` block also lists the server where BZFlag clients look, with a
 
 ```json
 "bzflag": {
-  "listen": "0.0.0.0:5154",
   "publicAddr": "your.host:5154",
   "publicKey": "<key>"
 }
 ```
 
 The list shows server.json's `title` with the map's name after it. The
-port, TCP and UDP, has to be reachable at `publicAddr`, and the host
+`listen` port, TCP and UDP, has to be reachable at `publicAddr`, and the host
 name has to resolve to this server's IPv4 address. BZFlag clients join and
 play beside bzo's own; [docs/bzflag-clients.md](bzflag-clients.md) has the
 details.
@@ -307,12 +330,10 @@ removed on shutdown. Without a `publicAddr` the router's external address is
 listed, by its reverse-DNS name where that name resolves back to it. Under
 Docker it needs host networking.
 
-### One port
+### HTTPS
 
-The BZFlag port answers the web app too, plain or over TLS, so a server can
-run on that one TCP port: `"listen": false` turns the separate web port off,
-and a reverse proxy points at the BZFlag port instead. HTTPS needs a
-certificate and key, PEM files beside `server.json` or absolute -- a headset
+The BZFlag port answers the web app too, plain or over TLS, so a reverse
+proxy points at `listen` as before. HTTPS on it needs a certificate and key, PEM files beside `server.json` or absolute -- a headset
 will not run WebXR without it:
 
 ```json

@@ -13,6 +13,7 @@ const {
   createSessionStore,
   isLoopbackAddress,
   isLocalAdminRequest,
+  trustedClientAddress,
   parseAdminWhitelist,
   addressMatchesWhitelist,
 } = require('../server/sessions.cjs');
@@ -251,6 +252,37 @@ assert.equal(isAdminSession(createSessionRecord({ bzid: '1', callsign: 'x' }, 10
     true,
     'a whitelisted CIDR block, once the forwarded address is trusted',
   );
+
+  // Only the proxy the probe saw has its headers read: any other peer came in
+  // directly, so a forged header is ignored and its own address is judged.
+  const viaProxy = (whitelist = []) => ({ ...opts('trust-last', whitelist), proxyPeer: '166.70.97.196' });
+  assert.equal(
+    isLocalAdminRequest('203.0.113.9', { 'x-forwarded-for': '127.0.0.1' }, viaProxy()),
+    false,
+    'a direct client forging a loopback X-Forwarded-For',
+  );
+  assert.equal(
+    isLocalAdminRequest('::ffff:166.70.97.196', { 'x-forwarded-for': '9.9.9.9, ::1' }, viaProxy()),
+    true,
+    'the proxy itself is read as before',
+  );
+  assert.equal(
+    isLocalAdminRequest('192.168.12.7', { 'x-forwarded-for': '203.0.113.9' }, viaProxy(['192.168.0.0/16'])),
+    true,
+    'a whitelisted client reaching this server directly, whatever it claims',
+  );
+  assert.equal(
+    isLocalAdminRequest('192.168.12.7', {}, opts('distrust', ['192.168.0.0/16'])),
+    true,
+    'a whitelisted direct peer with no forwarding header',
+  );
+  assert.equal(
+    isLocalAdminRequest('166.70.97.196', {}, viaProxy(['166.70.97.192/29'])),
+    false,
+    'the proxy saying nothing about its client is not whitelisted itself',
+  );
+  assert.equal(trustedClientAddress('203.0.113.9', { 'x-forwarded-for': '127.0.0.1' }, 'trust-last', '166.70.97.196'),
+    '203.0.113.9');
 }
 
 // `adminWhitelist` entries, validated the same way `adminGroups` is.

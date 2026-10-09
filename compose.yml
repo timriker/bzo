@@ -4,9 +4,9 @@ services:
     restart: unless-stopped
     ports:
       - "3000:3000"
-      # BZFlag clients, when server.json has a `bzflag` block: TCP for the
-      # game, UDP for its ping and the movement link. The TCP port answers the
-      # web app as well, so with `"listen": false` it is the only one needed.
+      # BZFlag clients, when server.json has a `bzflag` block and
+      # `"listen": "[::]:5154"`: TCP for the game and the web app, UDP for
+      # BZFlag's ping and movement link. Drop 3000 and PORT below then.
       - "5154:5154/tcp"
       - "5154:5154/udp"
       # Moves over WebRTC, when server.json has `webrtc.listen`.

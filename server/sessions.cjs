@@ -313,30 +313,52 @@ function addressMatchesWhitelist(address, entries) {
 // calls this server on its own public URL -- once plain, once with a poisoned
 // `X-Forwarded-For` -- to see whether the header that reaches this process can
 // be trusted, and if so, how a chain from it should be read. Until that probe
-// finishes, or when it finds the proxy unsafe, the policy is `'distrust'`:
-// unproxied loopback (no forwarded header at all) still gets admin, since that
-// needs no proxy trust to be safe, but a forwarded address never does.
+// finishes, or when it finds the proxy unsafe, the policy is `'distrust'` and a
+// forwarded address never counts.
+//
+// `proxyPeer` is the address that probe arrived from: the proxy itself. Only a
+// connection from it has its forwarding headers read. Any other peer reached
+// this server directly -- the BZFlag port answers the web app too -- so its
+// headers are its own invention and its socket address is the client's.
+//
+// A connection with no forwarding header, or a direct one, is judged by its
+// own address against loopback and the whitelist -- except one from the proxy
+// itself, which only speaks for a client when it says who, so counts only as
+// loopback.
 function isLocalAdminRequest(remoteAddress, headers = {}, options = {}) {
-  const { enabled = false, whitelist = [], forwardedForPolicy = 'distrust' } = options;
+  const { enabled = false, whitelist = [], forwardedForPolicy = 'distrust', proxyPeer = null } = options;
   if (enabled !== true) return false;
-  const hasForwarded = Object.keys(headers).some((name) => /^x-forwarded-/i.test(name));
-  if (!hasForwarded) return isLoopbackAddress(remoteAddress);
-  const address = trustedClientAddress(remoteAddress, headers, forwardedForPolicy);
+  const fromProxy = proxyPeer !== null && sameAddress(remoteAddress, proxyPeer);
+  if (!hasForwardedHeader(headers) || (proxyPeer !== null && !fromProxy)) {
+    if (isLoopbackAddress(remoteAddress)) return true;
+    return !fromProxy && addressMatchesWhitelist(remoteAddress, whitelist);
+  }
+  const address = trustedClientAddress(remoteAddress, headers, forwardedForPolicy, proxyPeer);
   if (!address) return false;
   if (isLoopbackAddress(address)) return true;
   return addressMatchesWhitelist(address, whitelist);
 }
 
+function hasForwardedHeader(headers) {
+  return Object.keys(headers).some((name) => /^x-forwarded-/i.test(name));
+}
+
+function sameAddress(a, b) {
+  const bare = (address) => String(address || '').trim().replace(/^::ffff:/i, '').replace(/^\[|\]$/g, '').toLowerCase();
+  return bare(a) !== '' && bare(a) === bare(b);
+}
+
 // The client's address as far as anything may rest on it -- the admin
 // whitelist above, an address ban, a saved score -- read by the same probe
-// result. Without a forwarded header it is the peer's own. Behind a proxy it
-// is the entry that proxy wrote: the only one under `trust-first`, the last
-// under `trust-last`. Under `distrust`, or with no X-Forwarded-For to read, a
-// forwarded connection has none, and null says so.
-function trustedClientAddress(remoteAddress, headers = {}, forwardedForPolicy = 'distrust') {
-  const hasForwarded = Object.keys(headers).some((name) => /^x-forwarded-/i.test(name));
-  if (!hasForwarded) return remoteAddress || null;
+// result. Without a forwarded header, or from a peer other than `proxyPeer`,
+// it is the peer's own. From the proxy it is the entry that proxy wrote: the
+// only one under `trust-first`, the last under `trust-last`. Under `distrust`,
+// or with no X-Forwarded-For to read, a forwarded connection has none, and
+// null says so.
+function trustedClientAddress(remoteAddress, headers = {}, forwardedForPolicy = 'distrust', proxyPeer = null) {
+  if (!hasForwardedHeader(headers)) return remoteAddress || null;
   if (forwardedForPolicy === 'distrust') return null;
+  if (proxyPeer !== null && !sameAddress(remoteAddress, proxyPeer)) return remoteAddress || null;
   const xff = headers['x-forwarded-for'];
   if (typeof xff !== 'string' || xff.trim() === '') return null;
   const parts = xff.split(',').map((part) => part.trim()).filter(Boolean);
