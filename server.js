@@ -277,8 +277,10 @@ const {
   trustedClientAddress,
   isLoopbackAddress,
   parseAdminWhitelist,
+  addressMatchesWhitelist,
   createSessionStore,
 } = require('./server/sessions.cjs');
+const { setSocketPeer } = require('./server/proxy-protocol.cjs');
 const {
   KEY_MAX_AGE_MS: LIST_SERVER_KEY_MAX_AGE_MS,
   signListServerChallenge,
@@ -3199,6 +3201,14 @@ function loadHttpsServer() {
   const read = (file) => fs.readFileSync(path.resolve(path.dirname(CONFIG_PATH), String(file)));
   try {
     const tlsServer = https.createServer({ cert: read(config.cert), key: read(config.key) }, app);
+    // A PROXY header renamed the socket underneath (proxy-protocol.cjs); the
+    // TLS socket over it asks the kernel instead, so it is told.
+    tlsServer.on('secureConnection', (tlsSocket) => {
+      const parent = tlsSocket._parent;
+      if (parent && Object.hasOwn(parent, 'remoteAddress')) {
+        setSocketPeer(tlsSocket, parent.remoteAddress, parent.remotePort);
+      }
+    });
     const wssTls = new WebSocketServer({ server: tlsServer });
     wssTls.on('connection', (ws, req) => wss.emit('connection', ws, req));
     wssTls.on('error', (err) => logError(`WebSocket server error: ${err.message}`));
@@ -11748,7 +11758,16 @@ if (BZFLAG_CONFIG) {
   // pace, as a proxied one already does (`PROXY_MAX_UPDATE_INTERVAL`).
   GAME_CONFIG.MAX_UPDATE_INTERVAL = 1000;
   const httpsServer = loadHttpsServer();
+  // `proxyProtocolFrom`: the TCP proxies, addresses or CIDR blocks, that may
+  // open a connection with a PROXY header naming the client.
+  const { entries: proxyProtocolFrom, refused: refusedProxyProtocolFrom } =
+    parseAdminWhitelist(serverConfig.proxyProtocolFrom);
+  if (refusedProxyProtocolFrom.length > 0) {
+    log(`proxyProtocolFrom entries refused (not an address or CIDR block):`
+      + ` ${refusedProxyProtocolFrom.map((entry) => JSON.stringify(entry)).join(', ')}`);
+  }
   bzflagServer = createBzflagServer({
+    trustsProxyHeader: (address) => addressMatchesWhitelist(address, proxyProtocolFrom),
     // The rest of what the port is asked: the web app, plain or over TLS.
     onHttp: (socket) => server.emit('connection', socket),
     onTls: httpsServer ? (socket) => httpsServer.emit('connection', socket) : null,

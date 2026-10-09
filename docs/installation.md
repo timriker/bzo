@@ -266,6 +266,23 @@ RequestHeader set X-Forwarded-For   "expr=%{REMOTE_ADDR}"
 
 `set` rather than `add`, so a header a client sent cannot survive the hop.
 
+### Behind a TCP proxy
+
+A TCP proxy in front of `listen` -- HAProxy, nginx's `stream` module -- can
+name each client with a PROXY header, v1 or v2 (HAProxy's `send-proxy` or
+`send-proxy-v2`). List the proxies allowed to send one:
+
+```json
+"proxyProtocolFrom": ["192.168.12.1"]
+```
+
+From those addresses or CIDR blocks a header is read and the connection is
+the client's from then on -- web app, HTTPS, BZFlag, and the BZFlag UDP link
+that has to come from the same address. A connection from one without a
+header stays the proxy's own. A header from anyone else is refused and
+logged. Anything else that reaches the port from a listed address, such as a
+router's NAT reflection, can name any client it likes.
+
 ### Admin without a login
 
 `"localAdmin": true` makes a connection from this machine an operator without

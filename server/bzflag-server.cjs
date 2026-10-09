@@ -19,6 +19,7 @@ const net = require('net');
 const {
   PROTOCOL_VERSION, GAME_STYLES, sendFrame,
 } = require('./remote-world-import.cjs');
+const { parseProxyHeader, setSocketPeer } = require('./proxy-protocol.cjs');
 
 // BZ_CONNECT_HEADER (version.h:31): what a client says first.
 const CONNECT_HEADER = 'BZFLAG\r\n\r\n';
@@ -228,11 +229,12 @@ function packReject(reason, code = REJECT_BAD_REQUEST) {
 // `getGameSettings()` is MsgGameSettings' fields; `getWorld()` resolves to
 // `{ blob, hash }` or null when this world cannot be sent; `onEnter(link,
 // payload)` seats a client that sent MsgEnter, and `link.onFrame` then takes
-// every frame it sends.
+// every frame it sends. `trustsProxyHeader(address)` says whether a peer may
+// open with a PROXY header naming its client (`proxyProtocolFrom`).
 function createBzflagServer({
   getStatus, getPingStatus = getStatus, getPlayers, getTeams, getGameSettings, getWorld, getCacheUrl = () => null, onEnter,
   reserveId, releaseId, rejectReason, log = () => {}, countIn = () => {}, countOut = () => {},
-  onHttp = null, onTls = null,
+  onHttp = null, onTls = null, trustsProxyHeader = () => false,
 }) {
   const startedAt = Date.now();
   const connections = new Set();
@@ -409,9 +411,18 @@ function createBzflagServer({
   // it speaks first from the client, so its opening bytes say which it is:
   // BZFlag's `BZFLAG\r\n\r\n`, a TLS ClientHello, or an HTTP request line.
   // bzfs does the same with its non-player connections (bzfs.cxx:6153).
-  // Undecided or unknown goes to `accept`, which logs what was sent.
+  // Undecided or unknown goes to `accept`, which logs what was sent. A PROXY
+  // header, from a peer allowed one, comes off first and renames the socket.
   function classify(socket) {
     let buffer = Buffer.alloc(0);
+    let proxyRead = false;
+    // A connection already reset by the time it is accepted -- a proxy's
+    // health check -- has no address left to read, nor anyone to answer.
+    const from = peerAddress(socket.remoteAddress);
+    if (!from) {
+      socket.destroy();
+      return;
+    }
     const timer = setTimeout(() => socket.destroy(), CLASSIFY_TIMEOUT_MS);
     const handOff = (to) => {
       clearTimeout(timer);
@@ -434,6 +445,24 @@ function createBzflagServer({
     const onError = () => clearTimeout(timer);
     const onData = (chunk) => {
       buffer = Buffer.concat([buffer, chunk]);
+      if (!proxyRead) {
+        const header = parseProxyHeader(buffer);
+        if (header.state === 'more') return;
+        proxyRead = true;
+        if (header.state !== 'none') {
+          const refusal = !trustsProxyHeader(from) ? 'not in proxyProtocolFrom'
+            : header.state === 'bad' ? header.reason : null;
+          if (refusal) {
+            clearTimeout(timer);
+            log(`[MUX] ${from} sent a PROXY header: ${refusal}`);
+            socket.destroy();
+            return;
+          }
+          if (header.address) setSocketPeer(socket, peerAddress(header.address), header.port);
+          buffer = buffer.subarray(header.length);
+          if (buffer.length === 0) return;
+        }
+      }
       const kind = classifyOpening(buffer);
       if (kind === 'more') return;
       if (kind === 'http' && onHttp) handOffHttp();
