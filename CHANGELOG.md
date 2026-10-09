@@ -6,6 +6,14 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
 
 ## [Unreleased]
 
+## [1.3.33] - 2026-10-09
+
+### Fixed
+- A proxy reaching the server from a second address, such as its other IP
+  family, could make every client behind it admin when that address was in
+  `adminWhitelist`. Forwarding headers from anyone but the proxy the startup
+  probe came through now never grant admin.
+
 ## [1.3.32] - 2026-10-09
 
 ### Changed
