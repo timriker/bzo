@@ -6,6 +6,14 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
 
 ## [Unreleased]
 
+## [1.3.34] - 2026-10-09
+
+### Added
+- PROXY protocol, v1 and v2, on the listen port: a TCP proxy such as
+  HAProxy (`send-proxy-v2`) listed in `proxyProtocolFrom` names each client,
+  for the web app, HTTPS and BZFlag alike. A header from anyone else is
+  refused. See **Behind a TCP proxy** in docs/installation.md.
+
 ## [1.3.33] - 2026-10-09
 
 ### Fixed
