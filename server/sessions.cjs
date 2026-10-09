@@ -321,18 +321,21 @@ function addressMatchesWhitelist(address, entries) {
 // this server directly -- the BZFlag port answers the web app too -- so its
 // headers are its own invention and its socket address is the client's.
 //
-// A connection with no forwarding header, or a direct one, is judged by its
-// own address against loopback and the whitelist -- except one from the proxy
-// itself, which only speaks for a client when it says who, so counts only as
-// loopback.
+// A connection with no forwarding header is judged by its own address against
+// loopback and the whitelist -- except one from the proxy itself, which only
+// speaks for a client when it says who, so counts only as loopback. One with
+// forwarding headers from any other peer is never admin: it is a client
+// inventing them, or a proxy reaching this server from a second address, and
+// a whitelisted proxy would otherwise hand admin to everyone behind it.
 function isLocalAdminRequest(remoteAddress, headers = {}, options = {}) {
   const { enabled = false, whitelist = [], forwardedForPolicy = 'distrust', proxyPeer = null } = options;
   if (enabled !== true) return false;
   const fromProxy = proxyPeer !== null && sameAddress(remoteAddress, proxyPeer);
-  if (!hasForwardedHeader(headers) || (proxyPeer !== null && !fromProxy)) {
+  if (!hasForwardedHeader(headers)) {
     if (isLoopbackAddress(remoteAddress)) return true;
     return !fromProxy && addressMatchesWhitelist(remoteAddress, whitelist);
   }
+  if (proxyPeer !== null && !fromProxy) return false;
   const address = trustedClientAddress(remoteAddress, headers, forwardedForPolicy, proxyPeer);
   if (!address) return false;
   if (isLoopbackAddress(address)) return true;

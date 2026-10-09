@@ -279,12 +279,13 @@ connection is judged by its own address. One through the proxy needs
 `publicUrl`: at startup the server calls itself there, once with a forged
 `X-Forwarded-For`, and trusts the header only if the proxy replaced or
 appended to it as above, and only on connections from the address that call
-arrived from. Any other peer's forwarding headers are ignored, so a client
-on the BZFlag port cannot claim an address. Until that probe passes, no
-forwarded address is admin. Bad entries are logged and
-refused, and the log warns when the whitelist names non-loopback addresses
-but `localAdmin` is off, since it then does nothing. A whitelisted operator
-can also read and revoke list-server keys (`docs/list-server.md`).
+arrived from. A connection from any other peer that carries forwarding
+headers is never admin, so a client on the BZFlag port cannot claim an
+address. Until that probe passes, no forwarded address is admin. Bad
+entries are logged and refused, and the log warns when the whitelist names
+non-loopback addresses but `localAdmin` is off, since it then does nothing.
+A whitelisted operator can also read and revoke list-server keys
+(`docs/list-server.md`).
 
 ## Listing your server
 

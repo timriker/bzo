@@ -268,8 +268,13 @@ assert.equal(isAdminSession(createSessionRecord({ bzid: '1', callsign: 'x' }, 10
   );
   assert.equal(
     isLocalAdminRequest('192.168.12.7', { 'x-forwarded-for': '203.0.113.9' }, viaProxy(['192.168.0.0/16'])),
+    false,
+    'forwarding headers from a whitelisted peer that is not the proxy: maybe the proxy by another address',
+  );
+  assert.equal(
+    isLocalAdminRequest('192.168.12.7', {}, viaProxy(['192.168.0.0/16'])),
     true,
-    'a whitelisted client reaching this server directly, whatever it claims',
+    'a whitelisted client reaching this server directly',
   );
   assert.equal(
     isLocalAdminRequest('192.168.12.7', {}, opts('distrust', ['192.168.0.0/16'])),
