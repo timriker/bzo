@@ -6,6 +6,24 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
 
 ## [Unreleased]
 
+## [1.3.32] - 2026-10-09
+
+### Changed
+- One port: with a `bzflag` block, `listen` is the BZFlag port too, TCP and
+  UDP, and also serves the web app and HTTPS. `bzflag.listen` and
+  `"listen": false` are gone: move the BZFlag port to `"listen": "[::]:5154"`.
+  `:::5154` means the same. docs/installation.md has a new Ports section.
+- IPv4 BZFlag clients on a dual-stack port show and are banned by their plain
+  address.
+- A direct connection from an `adminWhitelist` address is admin, not only
+  one through the proxy.
+
+### Fixed
+- A client connecting to the BZFlag port directly could claim a whitelisted
+  address in `X-Forwarded-For` and get admin. Forwarding headers are now read
+  only from the proxy the startup probe came through.
+- A nearly opaque texture no longer lets far walls show through near ones.
+
 ## [1.3.31] - 2026-10-08
 
 ### Added
