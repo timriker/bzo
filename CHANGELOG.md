@@ -6,6 +6,25 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
 
 ## [Unreleased]
 
+## [1.3.36] - 2026-10-10
+
+### Added
+- Ace camps: with nobody near it fetches flags until it has GM, L or SB,
+  then shoots from the best vantage point it can reach, leaving a spot after
+  shots it had to dodge or a Shock Wave in reach. Debug Geometry shows the
+  spots it weighed.
+- Routes go through teleporters, so a pilot uses lifts such as hix's corners.
+  Server bots now teleport at all, and lock a Guided Missile before firing.
+- A map's safety zones reach the browser, as they always reached BZFlag
+  clients. hix has one on each base.
+
+### Changed
+- Ace keeps a team flag until home, fighting on the way rather than dropping
+  it, and drops its own flag over an enemy base when it would land near home.
+- Ace fetches flags on other levels by route, and plans routes with the
+  jumping its own flag allows.
+- hix has jumping off for now, while the lifts are tested.
+
 ## [1.3.35] - 2026-10-10
 
 ### Added
