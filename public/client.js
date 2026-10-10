@@ -4743,7 +4743,8 @@ function getHudStatusParts(observing) {
   if (autopilotOn) {
     // Upstream's "AutoPilot on", naming the pilot and what it is doing.
     const mode = autopilotOutput?.intent?.mode;
-    const text = `AutoPilot ${getAutopilotName(autopilotId)}${mode ? `: ${mode}` : ''}`;
+    const reason = autopilotOutput?.intent?.reason;
+    const text = `AutoPilot ${getAutopilotName(autopilotId)}${mode ? `: ${describePilotIntent(mode, reason)}` : ''}`;
     return { text, segments: [{ text }] };
   }
   return { text: '', segments: [] };
@@ -6415,14 +6416,20 @@ function syncBotWatch() {
   }
 }
 
+// What a pilot is doing, and why when that is more than the nearest foe:
+// `chase (retaliate)`.
+function describePilotIntent(mode, reason) {
+  return reason && reason !== 'nearest' ? `${mode} (${reason})` : mode;
+}
+
 // A tank's name label: the name, and for a server bot under the debug labels
-// what it is doing -- `Ace1 · chase Tim`.
+// what it is doing -- `Ace1 · chase (leader) Tim`.
 function tankLabelText(playerId, name) {
   const intent = debugLabelsEnabled ? botIntents.get(playerId) : null;
   if (!intent?.mode) return name;
   const target = intent.targetId !== null && intent.targetId !== undefined
     ? tanks.get(intent.targetId)?.userData?.playerState?.name : null;
-  return `${name} · ${intent.mode}${target ? ` ${target}` : ''}`;
+  return `${name} · ${describePilotIntent(intent.mode, intent.reason)}${target ? ` ${target}` : ''}`;
 }
 
 function refreshTankNameLabel(playerId) {

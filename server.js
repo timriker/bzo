@@ -2640,6 +2640,11 @@ function renderListTables({ servers, bzoServers, canWatch }) {
     // merged list carries the figures and picture the list server measured.
     const relayed = proxy ? servers.find((b) => `${b.host}:${b.port}` === proxy.target) : null;
     const urlLink = `<a href="${escapeHtml(s.url)}">${escapeHtml(s.url)}</a>`;
+    // Every name the carrier answers on, each linking into this target the way
+    // the row does.
+    const carriers = [s.url, ...(Array.isArray(s.alsoAt) ? s.alsoAt : [])]
+      .map((url) => `<a href="${escapeHtml(proxy ? `${url}/?proxy=${encodeURIComponent(proxyUrlKey(proxy.target))}` : url)}">`
+        + `${escapeHtml(url)}</a>`).join('<br>');
     return {
       id: `bzo-pane-${index}`,
       addr: proxy ? proxy.target : s.url,
@@ -2690,7 +2695,7 @@ function renderListTables({ servers, bzoServers, canWatch }) {
         ? [
           ['BZFlag server', escapeHtml(proxy.target)],
           ['Owner', ownerLink(relayed?.owner)],
-          ['Carried by', urlLink],
+          ['Carried by', carriers],
           // A proxy row's world is the target's, so the figures are the ones
           // a bzfs row for the same address shows -- what the list server
           // measured, or else this instance's own import, the way the picture
@@ -2708,6 +2713,8 @@ function renderListTables({ servers, bzoServers, canWatch }) {
           ['Owner', describeOwner(s.owner, s.ownerBzid)],
           ['Voice chat', s.voiceEnabled ? 'configured' : ''],
           ['URL', urlLink],
+          ['Also at', (Array.isArray(s.alsoAt) ? s.alsoAt : [])
+            .map((url) => `<a href="${escapeHtml(url)}">${escapeHtml(url)}</a>`).join('<br>')],
           // What that instance says its own world costs. Reported rather
           // than measured here -- only the instance can see its own maps
           // directory -- and absent for one too old to be reporting it.
@@ -4332,7 +4339,7 @@ function announceReadyServer() {
     // above already refreshed it in-process, and validating it here would
     // be a real HTTP round trip to itself for something already current.
     const cutoff = Date.now() - LIST_SERVER_RECENT_CHECK_WINDOW_MS;
-    const recent = listServerKeys.listAll().filter((record) => record.url !== PUBLIC_URL
+    const recent = listServerKeys.listAll().filter((record) => !PUBLIC_URLS.includes(record.url)
       && (record.lastChecked ?? record.dateRequested) >= cutoff);
     log(`[LISTSERVER] polling ${recent.length} recently-active key(s) immediately after restart`);
     for (const record of recent) {
@@ -4439,9 +4446,12 @@ if (!LOCAL_ADMIN && nonLoopbackWhitelist.length > 0) {
 }
 
 // `publicUrl` in server.json: this server's own externally-reachable address,
-// e.g. `https://bz.rikers.org`. Used only for the startup probe below; nothing
-// else on this server needs to know its own public name.
-const PUBLIC_URL = typeof serverConfig.publicUrl === 'string' ? serverConfig.publicUrl.trim() : '';
+// e.g. `https://bz.rikers.org`, or a list of them. The first is the one the
+// startup probe below calls and every link names; the designated list server
+// lists each (`reportToListServer`).
+const PUBLIC_URLS = (Array.isArray(serverConfig.publicUrl) ? serverConfig.publicUrl : [serverConfig.publicUrl])
+  .filter((url) => typeof url === 'string' && url.trim() !== '').map((url) => url.trim());
+const PUBLIC_URL = PUBLIC_URLS[0] || '';
 
 // Whether a forwarded address can be trusted for `isLocalAdminRequest`, and
 // how to read one if so. Stays 'distrust' -- unproxied loopback only -- until
@@ -4671,12 +4681,12 @@ const LIST_SERVER_OWNER_CALLSIGN =
 const LIST_SERVER_RECENT_CHECK_WINDOW_MS = 2 * 24 * 60 * 60 * 1000;
 
 // Whether *this* instance is the one every other bzo server reports to.
-// Decided by comparing its own advertised address to the list server it is
-// configured to report to -- the same `publicUrl` the admin-whitelist probe
-// already uses -- rather than a second flag that could disagree with it.
-const IS_DESIGNATED_LIST_SERVER =
-  LIST_SERVER_URL !== '' && PUBLIC_URL !== ''
-  && LIST_SERVER_URL === PUBLIC_URL.trim().replace(/\/+$/, '');
+// Decided by comparing its own advertised addresses, any of them, to the list
+// server it is configured to report to -- `publicUrl`, which the
+// admin-whitelist probe already uses -- rather than a second flag that could
+// disagree with it.
+const IS_DESIGNATED_LIST_SERVER = LIST_SERVER_URL !== ''
+  && PUBLIC_URLS.some((url) => LIST_SERVER_URL === url.replace(/\/+$/, ''));
 
 // The designated instance's key registry. Persisted beside sessions.json for
 // the same reason: a restart should not silently revoke every operator's
@@ -4711,7 +4721,7 @@ if (IS_DESIGNATED_LIST_SERVER) {
   } catch (error) {
     logError(`Could not read list server keys from ${LIST_SERVER_KEYS_PATH}, starting empty:`, error);
   }
-  log(`[LISTSERVER] this instance is the designated bzo list server (${PUBLIC_URL})`);
+  log(`[LISTSERVER] this instance is the designated bzo list server (${PUBLIC_URLS.join(', ')})`);
 } else if (LIST_SERVER_URL) {
   log(`[LISTSERVER] reporting to ${LIST_SERVER_URL}`
     + (LIST_SERVER_KEY ? '' : ' (no listServerKey configured yet -- reports will not be sent)'));
@@ -4820,6 +4830,7 @@ function boundedTeamArray(value) {
   return value.map((entry) => boundedReportCount(entry, 255));
 }
 
+const MAX_REPORTED_URLS = 4;
 function sanitizeListServerStatus(body) {
   const players = Number(body?.players);
   const maxPlayers = Number(body?.maxPlayers);
@@ -4857,6 +4868,12 @@ function sanitizeListServerStatus(body) {
     // the way out, where it also drops the targets that were unreachable.
     proxies: Array.isArray(body?.proxies) ? body.proxies.slice(0, MAX_REPORTED_PROXIES) : [],
     voiceEnabled: body?.voiceEnabled === true,
+    // Claimed, not trusted: `verifyListServerAlternates` calls each one back
+    // before a row shows it.
+    urls: Array.isArray(body?.urls)
+      ? body.urls.filter((url) => typeof url === 'string' && /^https?:\/\/[^\s/]+$/.test(url.replace(/\/+$/, '')))
+        .map((url) => url.replace(/\/+$/, '').slice(0, 200)).slice(0, MAX_REPORTED_URLS)
+      : [],
     ...sanitizeListServerReadout(body),
   };
 }
@@ -5022,6 +5039,30 @@ function scheduleListServerRetry(record) {
   listServerRetries.set(record.url, { attempt, timer });
 }
 
+// The other names a validated instance reports (`urls`), each called back the
+// way its key's own URL is and kept only when it answers with that key: a
+// report can claim any host, and a row links to what it names.
+async function verifyListServerAlternates(record) {
+  const claimed = (record.live?.urls || []).filter((url) => url !== record.url);
+  const verified = [];
+  for (const url of claimed) {
+    const nonce = crypto.randomBytes(16).toString('hex');
+    try {
+      const response = await fetch(
+        `${url}/api/list-server/challenge?${new URLSearchParams({ nonce })}`,
+        { headers: { 'User-Agent': BZO_USER_AGENT }, signal: AbortSignal.timeout(8000) },
+      );
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      const body = await response.json();
+      if (!verifyListServerChallenge(record.key, nonce, body.signature)) throw new Error('signature mismatch');
+      verified.push(url);
+    } catch (error) {
+      log(`[LISTSERVER] ${record.url} also names ${url}, which did not verify: ${error.message}`);
+    }
+  }
+  record.alsoAt = verified;
+}
+
 async function validateListServerKey(record, { retry = false } = {}) {
   // A fresh report starts the retries over; a retry carries on its own count.
   if (!retry) {
@@ -5048,7 +5089,9 @@ async function validateListServerKey(record, { retry = false } = {}) {
       listServerKeys.report(record, sanitizeListServerStatus(body.status));
     }
     listServerRetries.delete(record.url);
-    log(`[LISTSERVER] validated ${record.url}`);
+    await verifyListServerAlternates(record);
+    log(`[LISTSERVER] validated ${record.url}`
+      + (record.alsoAt?.length ? ` and ${record.alsoAt.join(', ')}` : ''));
     // Only from here, which is the boot/periodic path and the daily poll --
     // never from a bare join or part, on the same rule that keeps an active
     // game from costing an outbound round trip per player. A world already
@@ -5164,6 +5207,8 @@ function listPublicListServerRows() {
     .map((record) => {
       return {
         url: record.url,
+        // Verified, and still named by the latest report.
+        alsoAt: (record.alsoAt || []).filter((url) => (record.live.urls || []).includes(url)),
         title: record.live.title,
         description: record.live.description,
         // Public, as the BZFlag list makes every bzfs server's owner. Only a
@@ -5239,7 +5284,7 @@ app.post('/api/list-server/report', listServerRateLimit, (req, res) => {
     // Absolute, not relative: this response is read by another instance's
     // log line, not rendered on this one's own page, so a bare "/list#keys"
     // would be ambiguous about which server it names.
-    res.status(403).json({ error: `Unknown or expired key. Generate a new one at ${PUBLIC_URL}/list#keys.` });
+    res.status(403).json({ error: `Unknown or expired key. Generate a new one at ${LIST_SERVER_URL}/list#keys.` });
     return;
   }
   const reason = LIST_SERVER_REPORT_REASONS.has(req.body?.reason) ? req.body.reason : 'periodic';
@@ -5370,7 +5415,7 @@ trusts one a report claims for itself.</p>
 <div id="newKeyFlash"></div>`
     : `<p class="muted">Log in above to register a server and generate a key.</p>`;
   return `<h1 id="keys">${admin ? 'All registered keys' : 'Your keys'}</h1>
-<p class="muted">This instance (<a href="${escapeHtml(PUBLIC_URL)}"><code>${escapeHtml(PUBLIC_URL)}</code></a>)
+<p class="muted">This instance (<a href="${escapeHtml(LIST_SERVER_URL)}"><code>${escapeHtml(LIST_SERVER_URL)}</code></a>)
 is the designated bzo list server -- every other bzo instance reports here, so its own
 <code>/list</code> can show the <a href="#bzo">bzo servers table</a> above.
 A <code>bzfs</code> server's key is a different one, from
@@ -11638,6 +11683,9 @@ function computeListServerStatus() {
     // anything but a LAN typically never completes, so this is "will voice
     // actually work here" rather than "does this build have the feature."
     voiceEnabled: VOICE_ICE_SERVERS.length > 0,
+    // Every name this instance answers on (`publicUrl`). The list server
+    // shows the ones it can verify beside the key's own.
+    urls: PUBLIC_URLS,
     // The rest of what /list's readout pane shows. A bzfs row gets all of
     // this free from its ping packet, so without it a bzo row -- the one this
     // instance knows most about -- was the thinner of the two.
@@ -11671,6 +11719,13 @@ function reportToListServer(reason) {
     // ever share this exact URL -- which also leaves bzid/callsign free to
     // change (`LIST_SERVER_OWNER_BZID`/`_CALLSIGN`, below) without breaking
     // the lookup.
+    // One row, under the first name, with the rest beside it: this server
+    // needs no call back to know its own names. A row left from a server
+    // listed under another of them is taken down.
+    for (const url of PUBLIC_URLS.slice(1)) {
+      const old = listServerKeys.listAll().find((record) => record.url === url);
+      if (old?.live) listServerKeys.unreport(old);
+    }
     if (!PUBLIC_URL) return;
     let self = listServerKeys.listAll().find((record) => record.url === PUBLIC_URL);
     if (!self) {
@@ -11694,6 +11749,7 @@ function reportToListServer(reason) {
     } else {
       listServerKeys.report(self, payload, Date.now(), reason);
       listServerKeys.markChecked(self, true);
+      self.alsoAt = PUBLIC_URLS.slice(1);
     }
     return;
   }
@@ -19253,6 +19309,8 @@ function botSharedView(now) {
       flagIndex: flag?.index ?? null,
       flagTeam: getFlagTeamIndex(flag?.type ?? null),
       zoned: isZoned(flag?.type ?? null, flag?.zoned === true),
+      // BZFlag's score: wins less losses.
+      score: (other.wins || 0) - (other.losses || 0),
     });
   }
   const shots = [];
@@ -19294,6 +19352,8 @@ function botSharedView(now) {
     shots,
     flags: viewFlags,
     teamsAllowed: TEAMS_ALLOWED,
+    // Each team's score, wins less losses, by team name.
+    teamScores: Object.fromEntries([...teamScores].map(([team, score]) => [team, score.wins - score.losses])),
     world: {
       allowJumping: GAME_CONFIG.ALLOW_JUMPING === true,
       teamFlags,
@@ -19372,7 +19432,7 @@ function applyBotResults(results) {
     } catch (err) {
       logError(`[BOT] "${bot.player.name}" ${err.stack || err.message}`);
     }
-    bot.lastOut = { mode: result.mode, targetId: result.targetId, intent: result.intent ?? null };
+    bot.lastOut = { mode: result.mode, reason: result.reason ?? null, targetId: result.targetId, intent: result.intent ?? null };
     if (result.report !== undefined) reportBot(bot, result.report);
   }
   broadcastBotIntents(now);
@@ -19567,6 +19627,7 @@ function broadcastBotIntents(now) {
   const summary = [...bots.values()].map((bot) => ({
     id: bot.player.id,
     mode: bot.lastOut?.mode ?? null,
+    reason: bot.lastOut?.reason ?? null,
     targetId: bot.lastOut?.targetId ?? null,
   }));
   const plain = JSON.stringify({ type: 'botIntents', bots: summary });

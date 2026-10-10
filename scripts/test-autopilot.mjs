@@ -682,4 +682,63 @@ for (const flag of ['US', 'MG', 'ID']) {
   assert.equal(fired, 1, 'the landing shot is fired from the kept ones');
 }
 
+// Whom Ace goes for, and why.
+{
+  const flagWorld = { world: { teamFlags: true }, self: { team: 'blue', teamColor: 0 } };
+  const homeFar = { myBase: () => ({ x: 0, y: -300, z: 0, radius: 20 }) };
+
+  // Whoever has Ace's flag, however far off, before any capture.
+  const carrier = enemy(0, 400, { flag: 'B*', flagTeam: 0 });
+  const enemyFlag = { index: 1, type: 'R*', team: 1, onGround: true, x: 0, y: 30, z: 0 };
+  const hunt = new Ace().think(makeView({ ...flagWorld, players: [carrier], flags: [enemyFlag] }));
+  assert.equal(hunt.targetId, 'foe', 'the carrier of our flag is chased past Roger\'s range');
+  assert.equal(hunt.intent.reason, 'ours-carrier');
+
+  // Ace's own flag away from home comes before an enemy flag not much nearer.
+  const ownFlag = { index: 0, type: 'B*', team: 0, onGround: true, x: 0, y: 100, z: 0 };
+  const near = { ...enemyFlag, y: 80 };
+  const back = new Ace().think(makeView({ ...flagWorld, ...homeFar, flags: [ownFlag, near] }));
+  assert.equal(back.intent.mode, 'return', 'our flag is fetched home first');
+  const muchNearer = { ...enemyFlag, y: 30 };
+  const grab = new Ace().think(makeView({ ...flagWorld, ...homeFar, flags: [ownFlag, muchNearer] }));
+  assert.equal(grab.intent.mode, 'capture', 'unless an enemy flag is much nearer');
+
+  // A foe that just shot at Ace is chased ahead of a nearer one.
+  const quiet = enemy(0, 100, { id: 'quiet' });
+  const shooter = enemy(0, 140, { id: 'shooter' });
+  const pilot = new Ace();
+  const incoming = { ownerId: 'shooter', x: 4, y: 130, z: 1, vx: 0, vy: -100, vz: 0 };
+  pilot.think(makeView({ players: [quiet, shooter], shots: [incoming] }));
+  const after = pilot.think(makeView({ now: 100.1, players: [quiet, shooter] }));
+  assert.equal(after.targetId, 'shooter', 'the tank shooting at Ace is shot back at');
+  assert.equal(after.intent.reason, 'retaliate', `mode ${after.intent.mode}`);
+  const later = pilot.think(makeView({ now: 120, players: [quiet, shooter] }));
+  assert.equal(later.targetId, 'quiet', 'and forgotten a while later');
+
+  // A runaway leader counts as nearer.
+  const leader = new Ace().think(makeView({
+    self: { score: 0 },
+    players: [enemy(0, 100, { id: 'low', score: 0 }), enemy(0, 140, { id: 'top', score: 10 })],
+  }));
+  assert.equal(leader.targetId, 'top', 'a foe far ahead on score is the one to stop');
+  assert.equal(leader.intent.reason, 'leader');
+
+  // A team behind keeps to its captures.
+  const close = enemy(0, 40);
+  const even = new Ace().think(makeView({
+    ...flagWorld, flags: [{ ...enemyFlag, y: 200 }], players: [close], teamScores: { blue: 3, red: 3 },
+  }));
+  assert.equal(even.intent.mode, 'fight', 'a foe this close stops a capture');
+  const behind = new Ace().think(makeView({
+    ...flagWorld, flags: [{ ...enemyFlag, y: 200 }], players: [close], teamScores: { blue: 0, red: 3 },
+  }));
+  assert.equal(behind.intent.mode, 'capture', 'unless the team is behind');
+
+  // Nothing near: hunt the foe that is there rather than wander.
+  const far = new Ace().think(makeView({ players: [enemy(0, 600)] }));
+  assert.equal(far.intent.mode, 'hunt', 'a foe far off is hunted');
+  const alone = new Ace().think(makeView());
+  assert.equal(alone.intent.mode, 'wander', 'and wandering is for an empty world');
+}
+
 console.log('autopilot tests passed');

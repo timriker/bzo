@@ -100,6 +100,7 @@ function buildView(bot, self, shared) {
     players: shared.players.filter((player) => player.id !== bot.id),
     shots: shared.shots.filter((shot) => shot.ownerId !== bot.id),
     flags: shared.flags,
+    teamScores: shared.teamScores || {},
     world: shared.world,
     isFoe: (player) => areFoes(player.team, own.self.team, shared.teamsAllowed),
     myBase: () => {
@@ -168,6 +169,7 @@ function tick({ dt, shared, bots: owns, followId }) {
       self: bot.self,
       post: bot.pre ? bot.sends : [],
       mode: bot.driver.lastOut?.intent?.mode ?? null,
+      reason: bot.driver.lastOut?.intent?.reason ?? null,
       targetId: bot.driver.lastOut?.targetId ?? null,
     };
     if (bot.id === followId && bot.driver.lastOut) result.intent = bot.driver.lastOut.intent;

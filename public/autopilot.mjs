@@ -149,7 +149,7 @@ export class Roger {
         // client draws it, a server bot reports it, and nothing reads it to
         // decide anything.
         intent: {
-          mode: null, target: null, route: null, shot: null, landing: null,
+          mode: null, reason: null, target: null, route: null, shot: null, landing: null,
         },
       },
     };
@@ -329,7 +329,7 @@ export class Roger {
       if (view.world.teamFlags && p.flagTeam !== null && p.flagTeam === me.teamColor) {
         return p;
       }
-      let d = distance2D(me, p);
+      let d = distance2D(me, p) * this.targetWeight(ctx, p);
       const obscured = this.isObscured(ctx, me, p);
       if (obscured) d *= 1.25; // demote the priority of obscured enemies
       if (d >= best) continue;
@@ -341,6 +341,12 @@ export class Roger {
       }
     }
     return target;
+  }
+
+  // How much nearer than it is a foe counts when choosing whom to chase.
+  // Upstream's pilot goes by distance alone.
+  targetWeight() {
+    return 1;
   }
 
   chasePlayer(ctx) {
@@ -577,6 +583,29 @@ const ANTIDOTE_SPARE_SECONDS = 2;
 // between the two at one distance.
 const CAPTURE_CHASE_RANGE = 50;
 const CAPTURE_RELEASE_RANGE = 75;
+// A team behind on score keeps to its captures: only a foe this much nearer
+// than `CAPTURE_CHASE_RANGE` turns Ace from one.
+const BEHIND_CHASE_SHARE = 0.6;
+// Ace's own flag lying away from home is fetched first, unless an enemy flag
+// is nearer than this share of the way to it.
+const RETURN_PREFERENCE = 0.5;
+// A shot that would pass this close to Ace, within this many seconds of
+// flight, marks whoever fired it; for this long after, that foe counts as
+// nearer by `RETALIATE_WEIGHT` while it is within `RETALIATE_RANGE` of Ace or
+// of the route ahead of him.
+const RETALIATE_MISS = 8;
+const RETALIATE_LOOKAHEAD = 2;
+const RETALIATE_SECONDS = 6;
+const RETALIATE_RANGE = 150;
+const RETALIATE_WEIGHT = 0.5;
+// A foe whose score is this far clear of everyone else's counts as nearer
+// by `LEADER_WEIGHT`.
+const LEADER_LEAD = 5;
+const LEADER_WEIGHT = 0.6;
+// How far upstream's pilot chases (AutoPilot.cxx); Ace hunts past it.
+const ROGER_CHASE_RANGE = 250;
+// The modes in which Ace is going after a tank.
+const TARGET_MODES = new Set(['chase', 'hunt', 'fight', 'ambush', 'lunge']);
 const CHASE_DEST_SLACK = 40;
 // Rabbit Chase: how near a hunter has to be before the rabbit runs from it,
 // how far ahead the rabbit aims each time it picks somewhere to run to, how
@@ -733,6 +762,8 @@ export class Ace extends Roger {
     // The foe Ace has stopped a capture to fight, until it is out of reach.
     this.fightId = null;
     this.lastThinkAt = null;
+    // Who has fired a shot that came near Ace, and until when that counts.
+    this.shotAtBy = new Map();
   }
 
   // Ace sees everything the view holds -- every tank, every shot, wherever
@@ -748,9 +779,93 @@ export class Ace extends Roger {
         this.knownFlagTypes.set(player.flagIndex, player.flag);
       }
     }
+    this.noteShooters(view);
     const out = super.think(view);
+    // A reason is why a tank was picked, so only while Ace is after one.
+    if (!TARGET_MODES.has(out.intent.mode)) out.intent.reason = null;
     this.paceAgility(view, out);
     return out;
+  }
+
+  // Every foe's shot that would pass within `RETALIATE_MISS` of Ace in the
+  // next `RETALIATE_LOOKAHEAD` seconds, as both keep going, marks its owner.
+  noteShooters(view) {
+    const me = view.self;
+    const mvx = me.velocity?.x ?? 0;
+    const mvy = me.velocity?.y ?? 0;
+    for (const [id, until] of this.shotAtBy) if (until <= view.now) this.shotAtBy.delete(id);
+    for (const shot of view.shots) {
+      const owner = view.players.find((p) => p.id === shot.ownerId);
+      if (!owner || !view.isFoe(owner)) continue;
+      const rx = shot.x - me.x;
+      const ry = shot.y - me.y;
+      const vx = shot.vx - mvx;
+      const vy = shot.vy - mvy;
+      const v2 = (vx * vx) + (vy * vy);
+      const t = v2 > 0 ? Math.max(0, Math.min(RETALIATE_LOOKAHEAD, -((rx * vx) + (ry * vy)) / v2)) : 0;
+      if (Math.hypot(rx + (vx * t), ry + (vy * t)) < RETALIATE_MISS) {
+        this.shotAtBy.set(owner.id, view.now + RETALIATE_SECONDS);
+      }
+    }
+  }
+
+  // A foe that shot at Ace lately and is close to him or to where he is going.
+  isRetaliationTarget(ctx, p) {
+    if (!((this.shotAtBy.get(p.id) ?? -Infinity) > ctx.view.now)) return false;
+    if (distance2D(ctx.me, p) < RETALIATE_RANGE) return true;
+    const nodes = this.route?.nodes;
+    if (!nodes) return false;
+    return nodes.slice(this.route.at).some((node) => distance2D(node, p) < RETALIATE_RANGE);
+  }
+
+  // The foe whose score is `LEADER_LEAD` clear of every other tank's, if any.
+  scoreLeader(ctx) {
+    const { view } = ctx;
+    const scored = view.players.filter((p) => Number.isFinite(p.score));
+    if (Number.isFinite(view.self.score)) scored.push(view.self);
+    if (scored.length < 2) return null;
+    scored.sort((a, b) => b.score - a.score);
+    const [top, next] = scored;
+    if (top === view.self || !view.isFoe(top) || top.score - next.score < LEADER_LEAD) return null;
+    return top;
+  }
+
+  // Whether Ace's team trails another team on score.
+  teamBehind(ctx) {
+    const scores = ctx.view.teamScores;
+    const mine = scores?.[ctx.me.team];
+    if (!Number.isFinite(mine)) return false;
+    return Object.entries(scores).some(([team, score]) => team !== ctx.me.team && score > mine);
+  }
+
+  // A foe carrying Ace's own team flag.
+  ourFlagCarrier(ctx) {
+    const { view, me } = ctx;
+    if (!view.world.teamFlags) return null;
+    return this.remotePlayers(view).find((p) => p.alive && !p.paused && view.isFoe(p)
+      && p.flagTeam !== null && p.flagTeam === me.teamColor) || null;
+  }
+
+  targetWeight(ctx, p) {
+    let weight = 1;
+    if (this.isRetaliationTarget(ctx, p)) weight *= RETALIATE_WEIGHT;
+    if (p.id === ctx.leaderId) weight *= LEADER_WEIGHT;
+    return weight;
+  }
+
+  findBestTarget(ctx, players) {
+    if (this.isRabbit(ctx)) return this.rabbitTarget(ctx, players);
+    ctx.leaderId = this.scoreLeader(ctx)?.id ?? null;
+    const target = super.findBestTarget(ctx, players);
+    if (target) ctx.out.intent.reason = this.targetReason(ctx, target);
+    return target;
+  }
+
+  targetReason(ctx, p) {
+    if (ctx.view.world.teamFlags && p.flagTeam !== null && p.flagTeam === ctx.me.teamColor) return 'ours-carrier';
+    if (this.isRetaliationTarget(ctx, p)) return 'retaliate';
+    if (p.id === ctx.leaderId) return 'leader';
+    return 'nearest';
   }
 
   // Agility multiplies the speed for a second whenever the asked-for speed
@@ -992,9 +1107,15 @@ export class Ace extends Roger {
   chasePlayer(ctx) {
     if (ctx.me.flagTeam !== null) return false;
     if (this.antidoteTarget(ctx)) return false;
+    // Whoever has Ace's flag comes before anything else, however far off.
+    const carrier = this.ourFlagCarrier(ctx);
+    if (carrier && distance2D(ctx.me, carrier) > ROGER_CHASE_RANGE) {
+      ctx.out.intent.reason = 'ours-carrier';
+      return this.huntFar(ctx, carrier);
+    }
     // A capture to make wins over a chase, except a foe close enough to be a
     // threat rather than a detour -- which he stands and fights.
-    if (this.captureTarget(ctx)) {
+    if (!carrier && this.captureTarget(ctx)) {
       const foe = this.closeFoe(ctx);
       return foe ? this.fightClose(ctx, foe) : false;
     }
@@ -1038,8 +1159,7 @@ export class Ace extends Roger {
 
   // The rabbit turns only on a tank that is coming for it -- the nearest one
   // closing on it. Anything else it would sooner leave behind than fight.
-  findBestTarget(ctx, players) {
-    if (!this.isRabbit(ctx)) return super.findBestTarget(ctx, players);
+  rabbitTarget(ctx, players) {
     const { me, view } = ctx;
     let target = null;
     let best = Infinity;
@@ -1138,6 +1258,7 @@ export class Ace extends Roger {
   // cannot shoot is only a reason to stall.
   closeFoe(ctx) {
     const { view, me } = ctx;
+    const share = this.teamBehind(ctx) ? BEHIND_CHASE_SHARE : 1;
     let nearest = null;
     let kept = null;
     for (const p of this.remotePlayers(view)) {
@@ -1145,10 +1266,10 @@ export class Ace extends Roger {
       if (p.zoned && !me.zoned) continue;
       if (Math.abs(p.z - me.z) >= 2 * view.world.tankHeight) continue;
       const d = distance2D(me, p);
-      if (d >= CAPTURE_RELEASE_RANGE) continue;
+      if (d >= CAPTURE_RELEASE_RANGE * share) continue;
       if (this.isObscured(ctx, { x: me.x, y: me.y, z: me.z + 1 }, { x: p.x, y: p.y, z: p.z + 1 })) continue;
       if (p.id === this.fightId) kept = p;
-      if (d < CAPTURE_CHASE_RANGE && (!nearest || d < nearest.d)) nearest = { p, d };
+      if (d < CAPTURE_CHASE_RANGE * share && (!nearest || d < nearest.d)) nearest = { p, d };
     }
     const foe = kept ?? nearest?.p ?? null;
     this.fightId = foe ? foe.id : null;
@@ -1619,6 +1740,7 @@ export class Ace extends Roger {
     const reach = this.jumpReach(ctx) * JUMP_REACH_SHARE;
     const routed = typeof view.findRoute === 'function';
     let best = null;
+    let ours = null;
     for (const flag of view.flags) {
       if (!flag.onGround || flag.team === null) continue;
       const pos = pointOf(flag);
@@ -1634,8 +1756,14 @@ export class Ace extends Roger {
         if (!base || this.isHome(pos, base)) continue;
       }
       const dist = distance2D(me, pos);
-      if (!best || dist < best.dist) best = { flag, pos, dist };
+      if (flag.team === me.teamColor) {
+        if (!ours || dist < ours.dist) ours = { flag, pos, dist };
+      } else if (!best || dist < best.dist) {
+        best = { flag, pos, dist };
+      }
     }
+    // Home first: Ace's own flag unless an enemy one is much nearer.
+    if (ours && (!best || best.dist >= ours.dist * RETURN_PREFERENCE)) return { ...ours, returning: true };
     return best;
   }
 
@@ -1653,7 +1781,7 @@ export class Ace extends Roger {
     const target = this.captureTarget(ctx);
     if (!target) return super.lookForFlag(ctx);
     const { me, out } = ctx;
-    out.intent.mode = 'capture';
+    out.intent.mode = target.returning ? 'return' : 'capture';
     out.intent.target = { ...target.pos, flag: target.flag.type ?? null };
     // One flag at a time: whatever is held goes when the team flag is in reach.
     if (target.dist < 10 && me.flag) out.dropFlag = true;
@@ -1704,6 +1832,12 @@ export class Ace extends Roger {
         const route = this.routeTo(ctx, pointOf(base));
         if (route && this.followRoute(ctx, route)) return true;
       }
+    }
+    // Nothing nearer to do: the best foe, wherever it is. Wandering is for a
+    // world with nobody to find.
+    if (me.flagTeam === null && !this.isRabbit(ctx)) {
+      const foe = this.findBestTarget(ctx, this.remotePlayers(view));
+      if (foe) return this.huntFar(ctx, foe);
     }
     return super.navigate(ctx);
   }

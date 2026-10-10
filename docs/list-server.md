@@ -18,11 +18,20 @@ is not built yet, see `docs/list-server-plan.md`.
 who wants the feature off sets it to `""`.
 
 Every instance decides for itself whether *it* is the designated one by
-comparing its own `publicUrl` against `listServerUrl`
+comparing its own `publicUrl` -- any of them, when it is a list -- against
+`listServerUrl`
 (`IS_DESIGNATED_LIST_SERVER`, `server.js:1914`) -- a derived fact, not a
 second flag that could disagree with the first. The designated instance runs
 the account UI and the registry endpoints below; every other instance is
 only ever a reporting client.
+
+`publicUrl` may be a list, `["https://bz.rikers.org:5154",
+"https://bz.rikers.org"]`: the first is the name its links and the
+admin-whitelist probe use. A report carries the whole list as `urls`, and
+each validation calls every other name back with the same signed challenge
+as the key's own URL. The row stays under the key's URL; the names that
+answered are under **Also at** in its details. The designated instance lists
+itself under its first name, with the rest beside it.
 
 ## Keys
 
