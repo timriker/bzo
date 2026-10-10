@@ -6,6 +6,23 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
 
 ## [Unreleased]
 
+## [1.3.35] - 2026-10-10
+
+### Added
+- `publicUrl` may be a list of a server's names. The bzo list checks each one
+  against the server's key and shows those that answer under **Also at**,
+  and under **Carried by** on a carried server's row.
+
+### Changed
+- Ace goes after whoever has its team's flag at any range, fetches its own
+  flag home before an enemy flag that is not much nearer, shoots back at a
+  foe that just shot at it, counts a runaway score leader as nearer, keeps
+  to captures when its team is behind, and hunts rather than wanders while
+  there is anyone to find.
+- The autopilot's HUD line and server bots' debug labels say why Ace picked
+  its target: `chase (retaliate)`, `hunt (ours-carrier)`, `chase (leader)`.
+- Release and CI images come from mirror.gcr.io rather than Docker Hub.
+
 ## [1.3.34] - 2026-10-09
 
 ### Added
