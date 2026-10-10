@@ -11,8 +11,9 @@
 // a positive rotation turns left.
 
 import assert from 'node:assert/strict';
-import { Ace, Roger, createWorldProbes } from '../public/autopilot.mjs';
+import { Ace, Roger, createWorldProbes, findVantagePoints } from '../public/autopilot.mjs';
 import { findShotSegmentImpact } from '../public/collision.mjs';
+import { buildNavGraph } from '../public/nav.mjs';
 
 function makeView(overrides = {}) {
   const view = {
@@ -739,6 +740,175 @@ for (const flag of ['US', 'MG', 'ID']) {
   assert.equal(far.intent.mode, 'hunt', 'a foe far off is hunted');
   const alone = new Ace().think(makeView());
   assert.equal(alone.intent.mode, 'wander', 'and wandering is for an empty world');
+}
+
+// A team flag is kept until home.
+{
+  const carrying = {
+    world: { teamFlags: true },
+    self: { team: 'blue', teamColor: 0, flag: 'R*', flagIndex: 1, flagTeam: 1 },
+    myBase: () => ({ x: 0, y: -300, z: 0, radius: 20 }),
+  };
+  const goodFlag = { index: 5, type: 'GM', team: null, onGround: true, x: 0, y: 5, z: 0 };
+  const passing = new Ace().think(makeView({ ...carrying, flags: [goodFlag] }));
+  assert.equal(passing.dropFlag, false, 'an enemy flag is not dropped for another flag');
+  assert.equal(passing.intent.mode, 'home', 'it is carried home');
+
+  const fight = new Ace().think(makeView({ ...carrying, players: [enemy(0, 30)] }));
+  assert.equal(fight.intent.mode, 'fight', 'a close foe is fought on the way');
+  assert.equal(fight.dropFlag, false, 'without letting go of the flag');
+
+  const ours = { ...carrying, self: { ...carrying.self, flag: 'B*', flagIndex: 0, flagTeam: 0, speed: 25 } };
+  const atHome = new Ace().think(makeView({ ...ours, myBase: () => ({ x: 0, y: 0, z: 0, radius: 20 }) }));
+  assert.equal(atHome.dropFlag, true, 'our own flag is put down on our base');
+}
+
+// Ace's own flag let go of over an enemy base, when it lands near home.
+{
+  const enemyBase = { team: 1, x: 0, y: 20, z: 0, halfWidth: 10, halfDepth: 10, rotation: 0 };
+  const nearHome = { x: 0, y: -290, z: 0, halfWidth: 5, halfDepth: 5, rotation: 0, teams: [0] };
+  const holding = (extra = {}) => makeView({
+    world: { teamFlags: true },
+    self: { team: 'blue', teamColor: 0, flag: 'B*', flagIndex: 0, flagTeam: 0, speed: 25 },
+    myBase: () => ({ x: 0, y: -300, z: 0, radius: 20 }),
+    bases: [enemyBase, { team: 0, x: 0, y: -300, z: 0, halfWidth: 20, halfDepth: 20, rotation: 0 }],
+    safetyZones: [nearHome],
+    ...extra,
+  });
+
+  const toward = new Ace().think(holding());
+  assert.equal(toward.intent.mode, 'drop-over', 'a close enemy base is driven to');
+  assert.equal(toward.dropFlag, false, 'not dropped short of it');
+
+  const over = new Ace().think(holding({ self: { team: 'blue', teamColor: 0, flag: 'B*', flagIndex: 0, flagTeam: 0, speed: 25, y: 20 } }));
+  assert.equal(over.dropFlag, true, 'and let go of over it');
+
+  const noZone = new Ace().think(holding({ safetyZones: [] }));
+  assert.equal(noZone.intent.mode, 'home', 'not when the flag would only land at the centre');
+
+  const guarded = new Ace().think(holding({ players: [enemy(10, 10)] }));
+  assert.notEqual(guarded.intent.mode, 'drop-over', 'nor with a foe close by');
+}
+
+// Camping: hunting for a flag to camp with, then shooting from a vantage point.
+{
+  const top = (obs) => obs.pos[2] + obs.size[2];
+  const spots = findVantagePoints([
+    { type: 'box', pos: [0, 0, 0], size: [10, 10, 10] },
+    { type: 'box', pos: [50, 0, 0], size: [2, 2, 20] },
+    { type: 'box', kind: 'base', team: 1, pos: [0, 300, 0], size: [20, 20, 5] },
+    { type: 'box', pos: [90, 0, 0], size: [10, 10, 1] },
+  ], top);
+  assert.deepEqual(spots, [{ x: 0, y: 0, z: 10 }], 'a tall, wide top; not a base, a post, or a step');
+
+  const far = enemy(0, 400);
+  const unknown = { index: 3, type: null, team: null, onGround: true, x: 0, y: 250, z: 0 };
+  const hunt = new Ace().think(makeView({ players: [far], flags: [unknown] }));
+  assert.equal(hunt.intent.mode, 'hunt-flag', 'with nobody near, a flag that might be one is fetched');
+  const knows = new Ace();
+  knows.knownFlagTypes.set(3, 'QT');
+  assert.equal(knows.think(makeView({ players: [far], flags: [unknown] })).intent.mode, 'hunt',
+    'a flag known to be no use for camping is left');
+
+  const vantages = [{ x: 0, y: 100, z: 10 }, { x: 100, y: 100, z: 2 }];
+  const gm = { self: { flag: 'GM', shotSpeed: 100, shotLifetime: 3.5 }, vantages };
+  const going = new Ace().think(makeView({ ...gm, players: [far] }));
+  assert.equal(going.intent.mode, 'camp', 'with a Guided Missile, Ace camps');
+  assert.deepEqual([going.intent.target.x, going.intent.target.y], [0, 100], 'on the higher spot');
+  assert.ok(going.intent.vantages.some((v) => v.chosen), 'and the intent says which spots it weighed');
+
+  const there = new Ace().think(makeView({ ...gm, self: { ...gm.self, y: 100, z: 10 }, players: [far] }));
+  assert.equal(there.intent.mode, 'camp');
+  assert.equal(there.targetId, 'foe', 'at the spot he turns on a foe in reach');
+  assert.equal(there.speed, 0, 'and holds it');
+
+  const close = new Ace().think(makeView({ ...gm, players: [enemy(0, 100)] }));
+  assert.notEqual(close.intent.mode, 'camp', 'a foe close by is fought instead');
+
+  const laser = { self: { flag: 'L', shotSpeed: 1000, shotLifetime: 3.5, y: 100, z: 10 }, vantages };
+  const backing = new Ace().think(makeView({ ...laser, players: [enemy(0, 260, { z: 0 })] }));
+  assert.equal(backing.intent.mode, 'camp');
+  assert.equal(backing.speed, 0, 'a laser holds a spot with the foe far off');
+
+  const sw = enemy(0, 160, { id: 'sw', flag: 'SW' });
+  const shocked = new Ace().think(makeView({ ...gm, world: { shockOutRadius: 60 }, players: [far, sw] }));
+  assert.deepEqual([shocked.intent.target.x, shocked.intent.target.y], [100, 100],
+    'a spot within a Shock Wave\'s reach is given up');
+
+  const pilot = new Ace();
+  pilot.think(makeView({ ...gm, players: [far] }));
+  const spot = pilot.camp.spot;
+  pilot.noteCampDodge({ self: { x: 0, y: 100, z: 10 }, now: 101 }, { intent: { mode: 'dodge' } });
+  pilot.noteCampDodge({ self: { x: 0, y: 100, z: 10 }, now: 103 }, { intent: { mode: 'dodge' } });
+  assert.ok(pilot.badSpots.has(spot.key), 'two dodges at the spot give it up');
+}
+
+// A flag on another level is driven to by its route, and a team flag at home
+// is not driven at at all.
+{
+  const raised = { index: 4, type: null, team: null, onGround: true, x: 0, y: 60, z: 30 };
+  const up = new Ace().think(makeView({ flags: [raised] }));
+  assert.equal(up.intent.mode, 'flag', 'a flag up on a platform is still one to fetch');
+  assert.equal(up.intent.target.z, 30);
+
+  const home = { myBase: () => ({ x: 0, y: 60, z: 30, radius: 20 }) };
+  const ownAtHome = { index: 0, type: 'R*', team: 0, onGround: true, x: 0, y: 60, z: 30 };
+  const idle = new Ace().think(makeView({ ...home, world: { teamFlags: true }, flags: [ownAtHome] }));
+  assert.notEqual(idle.intent.mode, 'flag', 'our flag on our raised base is not driven at');
+
+  const nowhere = { findRoute: () => null };
+  const blocked = new Ace().think(makeView({ ...nowhere, flags: [raised] }));
+  assert.notEqual(blocked.intent.mode, 'flag', 'a flag no route reaches is left');
+}
+
+// Jumping as the tank's own flag allows it.
+{
+  const asked = [];
+  const spy = (from, to, options) => { asked.push(options); return null; };
+  const far = enemy(0, 600);
+  new Ace().think(makeView({ findRoute: spy, players: [far], self: { flag: 'NJ' } }));
+  assert.equal(asked.at(-1).canJump, false, 'No Jumping plans routes without jump legs');
+  new Ace().think(makeView({ findRoute: spy, players: [far], world: { allowJumping: false }, self: { flag: 'JP' } }));
+  assert.equal(asked.at(-1).canJump, true, 'Jumping plans them where the world has none');
+
+  // Roger's chase jumps the building in the way; Ace does only where he may.
+  const wall = { firstBuilding: () => ({ top: 3, isBox: true, distance: 30 }), openDistance: () => 0 };
+  const ahead = enemy(0, 40);
+  const allowed = new Ace().think(makeView({ ...wall, players: [ahead] }));
+  assert.equal(allowed.jump, true, 'a building in the chase is jumped');
+  const grounded = new Ace().think(makeView({ ...wall, world: { allowJumping: false }, players: [ahead] }));
+  assert.equal(grounded.jump, false, 'not where jumping is off');
+
+  // A foe in sight but up out of reach is reached by route.
+  let routed = false;
+  const route = (from, to) => { routed = true; return [{ x: 0, y: 50, z: 0 }, { x: to.x, y: to.y, z: to.z }]; };
+  new Ace().think(makeView({ findRoute: route, players: [enemy(0, 100, { z: 20 })] }));
+  assert.ok(routed, 'a foe on a platform is chased by the way up');
+}
+
+// A teleporter is a way between levels: a lift up onto a platform no jump
+// reaches, as hix's corners are with jumping off.
+{
+  const tele = (index, x, z, height) => ({
+    type: 'box', kind: 'teleporter', teleporterIndex: index, angle: 0, pos: [x, 0, z],
+    size: [0.56, 6.72, height], border: 1.12,
+    bounds: { minX: x - 2, maxX: x + 2, minY: -8, maxY: 8, minZ: z, maxZ: z + height },
+  });
+  const platform = {
+    type: 'box', pos: [0, 0, 0], size: [20, 20, 10], angle: 0,
+    bounds: { minX: -20, maxX: 20, minY: -20, maxY: 20, minZ: 0, maxZ: 10 },
+  };
+  const obstacles = [platform, tele(0, 40, 0, 8), tele(1, 0, 10, 8)];
+  const links = [{ sourceFaceId: 0, destFaceId: 2 }];
+  const graph = (teleporterLinks) => buildNavGraph({ obstacles, mapSize: 200, waterLevel: null, jump: null, teleporterLinks });
+  const from = { x: 60, y: 0, z: 0 };
+  const to = { x: -10, y: 0, z: 10 };
+  assert.equal(graph([]).findRoute(from, to), null, 'without the teleporter the platform is out of reach');
+  const route = graph(links).findRoute(from, to);
+  assert.ok(route && route.some((node) => node.teleport), 'with it, the route goes through');
+  const leg = route.find((node) => node.teleport);
+  assert.equal(leg.z, 10, 'and comes out on the platform');
+  assert.deepEqual([leg.teleport.dx, leg.teleport.dy], [-1, -0], 'driven into the face from in front');
 }
 
 console.log('autopilot tests passed');

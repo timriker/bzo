@@ -602,10 +602,59 @@ const RETALIATE_WEIGHT = 0.5;
 // by `LEADER_WEIGHT`.
 const LEADER_LEAD = 5;
 const LEADER_WEIGHT = 0.6;
+// A teleport leg is driven square to the face: more than `TELEPORT_ALIGN`
+// off its centre line, and further out than `TELEPORT_ALIGN_RANGE`, Ace gets
+// back onto the line first; then he aims `TELEPORT_THROUGH` past the face.
+const TELEPORT_ALIGN = 1.5;
+const TELEPORT_ALIGN_RANGE = 3;
+const TELEPORT_THROUGH = 5;
 // How far upstream's pilot chases (AutoPilot.cxx); Ace hunts past it.
 const ROGER_CHASE_RANGE = 250;
+// Ace's own flag let go of over another team's base comes down where the
+// server puts it (bzfs `dropFlag`). Ace does that when such a base is within
+// `OVER_BASE_RANGE` of its edge, home is at least `OVER_BASE_MIN_HOME` away,
+// the flag would land within `OVER_BASE_LANDING_RANGE` of home, and no foe is
+// within `OVER_BASE_FOE_RANGE`.
+const OVER_BASE_RANGE = 30;
+const OVER_BASE_MIN_HOME = 150;
+const OVER_BASE_LANDING_RANGE = 50;
+const OVER_BASE_FOE_RANGE = 60;
+// Camping. With nobody within `CAMP_CLEAR_RANGE` and nobody running away
+// with the score, Ace goes looking for a flag to camp with; holding one, he
+// takes the best vantage point he can reach and shoots from there. The spot is
+// scored again every `CAMP_RESCORE_SECONDS`, and given up -- for
+// `CAMP_SPOT_COOLDOWN` seconds -- after `CAMP_AVOID_LIMIT` dodges there within
+// `CAMP_AVOID_WINDOW`, or when a foe with Shock Wave is within reach of it.
+const CAMP_FLAGS = new Set(['GM', 'L', 'SB']);
+// How far off a flag on the ground is worth a detour, as Roger's.
+const PICKUP_RANGE = 200;
+const CAMP_CLEAR_RANGE = 150;
+const CAMP_RESCORE_SECONDS = 3;
+const CAMP_SPOT_COOLDOWN = 30;
+const CAMP_AVOID_LIMIT = 2;
+const CAMP_AVOID_WINDOW = 10;
+const CAMP_ARRIVE = 4;
+// A Shock Wave holder this much past the wave's own radius can drive into
+// range before Ace could leave.
+const CAMP_SW_MARGIN = 1.5;
+// How a spot is scored: each foe it can shoot counts `CAMP_FOE_WEIGHT`, each
+// foe that can see it costs `CAMP_EXPOSURE_WEIGHT` -- half that from a spot
+// above the foe, which is harder to hit -- each unit above the highest foe is
+// worth `CAMP_HEIGHT_WEIGHT` (Guided Missile counts it double), each second of
+// driving there costs `CAMP_TRAVEL_WEIGHT`, and with a laser the share of its
+// reach the foes are away is worth `CAMP_LASER_RANGE_WEIGHT`.
+const CAMP_FOE_WEIGHT = 10;
+const CAMP_EXPOSURE_WEIGHT = 3;
+const CAMP_ELEVATED_EXPOSURE = 0.5;
+const CAMP_HEIGHT_WEIGHT = 0.5;
+const CAMP_TRAVEL_WEIGHT = 1;
+const CAMP_LASER_RANGE_WEIGHT = 10;
+// A laser holder backs off from a foe nearer than this.
+const LASER_BACKOFF_RANGE = 100;
+// How many scored spots the intent carries, for the debug overlay.
+const CAMP_SHOWN_SPOTS = 12;
 // The modes in which Ace is going after a tank.
-const TARGET_MODES = new Set(['chase', 'hunt', 'fight', 'ambush', 'lunge']);
+const TARGET_MODES = new Set(['chase', 'hunt', 'fight', 'ambush', 'lunge', 'camp']);
 const CHASE_DEST_SLACK = 40;
 // Rabbit Chase: how near a hunter has to be before the rabbit runs from it,
 // how far ahead the rabbit aims each time it picks somewhere to run to, how
@@ -764,6 +813,10 @@ export class Ace extends Roger {
     this.lastThinkAt = null;
     // Who has fired a shot that came near Ace, and until when that counts.
     this.shotAtBy = new Map();
+    // The spot Ace is camping at, when it was scored, the dodges he has made
+    // there, and the spots given up and until when.
+    this.camp = null;
+    this.badSpots = new Map();
   }
 
   // Ace sees everything the view holds -- every tank, every shot, wherever
@@ -780,9 +833,24 @@ export class Ace extends Roger {
       }
     }
     this.noteShooters(view);
+    this.heldFlag = view.self.flag;
     const out = super.think(view);
     // A reason is why a tank was picked, so only while Ace is after one.
     if (!TARGET_MODES.has(out.intent.mode)) out.intent.reason = null;
+    this.noteCampDodge(view, out);
+    // Roger's chase jumps a building in the way without asking whether the
+    // tank may jump.
+    if (out.jump && !canTankJump(view.world, view.self.flag)) out.jump = false;
+    // A team flag is only ever let go of at home: Ace's own on his base,
+    // where it is returned, or any one in a world with no base to take it to.
+    // An enemy one is captured by reaching the base, not by dropping it.
+    if (out.dropFlag && view.self.flagTeam !== null) {
+      const base = view.myBase();
+      const own = view.self.flagTeam === view.self.teamColor;
+      const home = base && own && this.isHome(view.self, base);
+      const overEnemy = own && (view.bases || []).some((b) => b.team !== view.self.teamColor && isOverBase(b, view.self));
+      if (base && !home && !overEnemy) out.dropFlag = false;
+    }
     this.paceAgility(view, out);
     return out;
   }
@@ -907,8 +975,10 @@ export class Ace extends Roger {
     return super.isObscured(ctx, { ...from, z: from.z + lift }, { ...to, z: to.z + lift });
   }
 
-  // A type this pilot has learned is one it can refuse.
+  // A type this pilot has learned is one it can refuse. Holding a flag to camp
+  // with, he wants no other.
   wantsGroundFlag(flag) {
+    if (CAMP_FLAGS.has(this.heldFlag)) return false;
     const type = flag.type ?? this.knownFlagTypes.get(flag.index) ?? null;
     if (!type) return true;
     if (isBadFlag(type) || HARD_FLAGS.has(type)) return false;
@@ -1105,7 +1175,12 @@ export class Ace extends Roger {
   // him and his team. Shooting is a separate step and still happens. And a foe
   // in the air is met where it will land rather than chased where it is.
   chasePlayer(ctx) {
-    if (ctx.me.flagTeam !== null) return false;
+    // Carrying a team flag, Ace stops only for a foe close enough to fight,
+    // and otherwise takes it home.
+    if (ctx.me.flagTeam !== null) {
+      const foe = this.closeFoe(ctx);
+      return foe ? this.fightClose(ctx, foe) : false;
+    }
     if (this.antidoteTarget(ctx)) return false;
     // Whoever has Ace's flag comes before anything else, however far off.
     const carrier = this.ourFlagCarrier(ctx);
@@ -1113,6 +1188,8 @@ export class Ace extends Roger {
       ctx.out.intent.reason = 'ours-carrier';
       return this.huntFar(ctx, carrier);
     }
+    // Holding a flag to camp with and with nobody near, the camp comes first.
+    if (!carrier && CAMP_FLAGS.has(ctx.me.flag) && this.campClear(ctx)) return false;
     // A capture to make wins over a chase, except a foe close enough to be a
     // threat rather than a detour -- which he stands and fights.
     if (!carrier && this.captureTarget(ctx)) {
@@ -1236,7 +1313,11 @@ export class Ace extends Roger {
     const { view, me } = ctx;
     if (typeof view.findRoute !== 'function') return false;
     const foe = this.remotePlayers({ players: [target] })[0];
-    if (!this.isObscured(ctx, { x: me.x, y: me.y, z: me.z + 1 }, { x: foe.x, y: foe.y, z: foe.z + 1 })) return false;
+    // In sight and on a level a shot reaches, Roger's straight chase does;
+    // on another level, the way up or down is a route too.
+    const otherLevel = Math.abs(foe.z - me.z) >= 2 * view.world.tankHeight;
+    if (!otherLevel
+      && !this.isObscured(ctx, { x: me.x, y: me.y, z: me.z + 1 }, { x: foe.x, y: foe.y, z: foe.z + 1 })) return false;
     const route = this.routeTo(ctx, { x: foe.x, y: foe.y, z: foe.z }, CHASE_DEST_SLACK);
     if (!route) return false;
     // Roger's chase may have asked for its jump over the building in the way,
@@ -1776,10 +1857,12 @@ export class Ace extends Roger {
   }
 
   lookForFlag(ctx) {
+    // A team flag in hand goes home before any other flag is looked at.
+    if (ctx.me.flagTeam !== null) return false;
     const antidote = this.antidoteTarget(ctx);
     if (antidote) return this.goTo(ctx, antidote, 'antidote');
     const target = this.captureTarget(ctx);
-    if (!target) return super.lookForFlag(ctx);
+    if (!target) return CAMP_FLAGS.has(ctx.me.flag) ? false : this.pickUpFlag(ctx);
     const { me, out } = ctx;
     out.intent.mode = target.returning ? 'return' : 'capture';
     out.intent.target = { ...target.pos, flag: target.flag.type ?? null };
@@ -1790,7 +1873,7 @@ export class Ace extends Roger {
       if (route && this.followRoute(ctx, route)) return true;
       if (!route) {
         this.unreachable.set(target.flag.index, ctx.view.now + UNREACHABLE_SECONDS);
-        return super.lookForFlag(ctx);
+        return CAMP_FLAGS.has(me.flag) ? false : this.pickUpFlag(ctx);
       }
     }
     out.rotation = normalizeAngle(azimuthTo(me, target.pos) - me.azimuth);
@@ -1802,6 +1885,39 @@ export class Ace extends Roger {
       const edge = ctx.view.firstBuilding(me, me.azimuth, JUMP_LOOKAHEAD);
       if (edge && edge.top - me.z <= this.jumpReach(ctx)) this.takeJump(ctx, edge.top - me.z, edge.distance);
     }
+    return true;
+  }
+
+  // A flag worth picking up nearby, on whatever level Ace can reach it.
+  // Roger looks only at his own level, and with nothing there drives straight
+  // at a team flag anywhere -- at a raised base, that is a wall. Team flags
+  // are `captureTarget`'s.
+  groundFlagTarget(ctx) {
+    const { view, me } = ctx;
+    let best = null;
+    for (const flag of view.flags) {
+      if (!flag.onGround || flag.team !== null || !this.wantsGroundFlag(flag)) continue;
+      if ((this.unreachable.get(flag.index) ?? -Infinity) > view.now) continue;
+      let d = distance2D(me, flag);
+      if (d >= PICKUP_RANGE) continue;
+      if (this.isObscured(ctx, me, pointOf(flag))) d *= 1.25;
+      if (!best || d < best.d) best = { flag, d };
+    }
+    return best?.flag ?? null;
+  }
+
+  pickUpFlag(ctx) {
+    const flag = this.groundFlagTarget(ctx);
+    if (!flag) return false;
+    const { me, out, view } = ctx;
+    const pos = pointOf(flag);
+    if (typeof view.findRoute === 'function' && !this.routeTo(ctx, pos)) {
+      this.unreachable.set(flag.index, view.now + UNREACHABLE_SECONDS);
+      return false;
+    }
+    if (me.flag && distance2D(me, pos) < 10) out.dropFlag = true;
+    this.goTo(ctx, pos, 'flag');
+    out.intent.target = { ...pos, flag: flag.type ?? null };
     return true;
   }
 
@@ -1819,9 +1935,221 @@ export class Ace extends Roger {
     return true;
   }
 
+  // Quiet enough to camp: nobody within `CAMP_CLEAR_RANGE`, nobody carrying
+  // Ace's flag, and no foe running away with the score.
+  campClear(ctx) {
+    const { view, me } = ctx;
+    if (this.ourFlagCarrier(ctx) || this.scoreLeader(ctx)) return false;
+    return !this.remotePlayers(view).some((p) => p.alive && !p.paused && view.isFoe(p)
+      && distance2D(me, p) < CAMP_CLEAR_RANGE);
+  }
+
+  // The nearest flag on the ground that might be one to camp with: any whose
+  // type Ace has not seen yet, and any he knows is.
+  campFlagTarget(ctx) {
+    const { view, me } = ctx;
+    let best = null;
+    for (const flag of view.flags) {
+      if (!flag.onGround || flag.team !== null) continue;
+      if ((this.unreachable.get(flag.index) ?? -Infinity) > view.now) continue;
+      const type = flag.type ?? this.knownFlagTypes.get(flag.index) ?? null;
+      if (type !== null && !CAMP_FLAGS.has(type)) continue;
+      const d = distance2D(me, flag);
+      if (!best || d < best.d) best = { flag, d };
+    }
+    return best?.flag ?? null;
+  }
+
+  // To a flag that may be one to camp with, letting go of whatever else is
+  // held once it is in reach.
+  huntFlag(ctx, flag) {
+    const { me, out } = ctx;
+    if (me.flag && distance2D(me, flag) < 10) out.dropFlag = true;
+    const pos = pointOf(flag);
+    if (typeof ctx.view.findRoute === 'function' && !this.routeTo(ctx, pos)) {
+      this.unreachable.set(flag.index, ctx.view.now + UNREACHABLE_SECONDS);
+    }
+    return this.goTo(ctx, pos, 'hunt-flag');
+  }
+
+  // Holding a flag to camp with: to the best spot, then shooting from it.
+  campAt(ctx) {
+    const { view, me, out } = ctx;
+    const now = view.now;
+    for (const [key, until] of this.badSpots) if (until <= now) this.badSpots.delete(key);
+    const flag = me.flag;
+    if (!this.camp || this.camp.flag !== flag || now - this.camp.scoredAt >= CAMP_RESCORE_SECONDS) {
+      const avoids = this.camp?.flag === flag ? this.camp.avoids : [];
+      const scored = this.scoreVantages(ctx);
+      const keep = this.camp?.spot && scored.find((s) => s.key === this.camp.spot.key);
+      // The spot held unless another now scores clearly better.
+      const spot = keep && scored[0] && scored[0].score < keep.score + CAMP_FOE_WEIGHT ? keep : (scored[0] ?? null);
+      this.camp = { flag, spot, scored: scored.slice(0, CAMP_SHOWN_SPOTS), scoredAt: now, avoids: spot === keep ? avoids : [] };
+    }
+    const { spot } = this.camp;
+    if (spot && this.swThreat(ctx, spot)) {
+      this.abandonSpot(now);
+      return this.campAt(ctx);
+    }
+    out.intent.reason = flag.toLowerCase();
+    out.intent.vantages = this.camp.scored.map((s) => ({ x: s.x, y: s.y, z: s.z, score: s.score, chosen: s === spot }));
+    if (spot && !(distance2D(me, spot) < CAMP_ARRIVE && Math.abs(me.z - spot.z) < 1)) {
+      const route = typeof view.findRoute === 'function' ? this.routeTo(ctx, pointOf(spot)) : null;
+      if (route === null && typeof view.findRoute === 'function') {
+        this.abandonSpot(now);
+        return this.campAt(ctx);
+      }
+      return this.goTo(ctx, pointOf(spot), 'camp');
+    }
+    // At the spot, or with none worth driving to: shoot from here. With no
+    // spot and nobody to shoot, there is no camp to make.
+    const target = this.campTarget(ctx);
+    if (!spot && !target) return false;
+    out.intent.mode = 'camp';
+    out.speed = 0;
+    if (!target) return true;
+    out.targetId = target.id;
+    out.intent.target = { ...pointOf(target), id: target.id };
+    this.aimAt(ctx, azimuthTo(me, predict(target)));
+    if (flag === 'L' && distance2D(me, target) < LASER_BACKOFF_RANGE) out.speed = -0.6;
+    return true;
+  }
+
+  // Every vantage point scored for the flag held, best first.
+  scoreVantages(ctx) {
+    const { view, me } = ctx;
+    const foes = this.remotePlayers(view).filter((p) => p.alive && !p.paused && view.isFoe(p));
+    if (foes.length === 0) return [];
+    const reach = (me.shotSpeed ?? view.world.shotSpeed) * (me.shotLifetime ?? 3.5);
+    const topFoe = Math.max(...foes.map((p) => p.z));
+    const speed = view.world.tankSpeed || 25;
+    const out = [];
+    for (const v of view.vantages || []) {
+      const key = `${v.x},${v.y},${v.z}`;
+      if (this.badSpots.has(key)) continue;
+      const eye = { x: v.x, y: v.y, z: v.z };
+      let shootable = 0;
+      let exposure = 0;
+      let away = 0;
+      for (const p of foes) {
+        const d = Math.hypot(p.x - v.x, p.y - v.y, p.z - v.z);
+        const seen = !this.isObscured(ctx, eye, p);
+        if (seen) exposure += p.z + view.world.tankHeight < v.z ? CAMP_ELEVATED_EXPOSURE : 1;
+        if (d <= reach && (seen || me.flag === 'SB')) {
+          shootable++;
+          away += Math.min(1, d / reach);
+        }
+      }
+      if (shootable === 0) continue;
+      const height = Math.max(0, v.z - topFoe) * (me.flag === 'GM' ? 2 : 1);
+      let score = (shootable * CAMP_FOE_WEIGHT) - (exposure * CAMP_EXPOSURE_WEIGHT)
+        + (height * CAMP_HEIGHT_WEIGHT) - ((distance2D(me, v) / speed) * CAMP_TRAVEL_WEIGHT);
+      if (me.flag === 'L') score += (away / shootable) * CAMP_LASER_RANGE_WEIGHT;
+      out.push({ ...v, key, score });
+    }
+    return out.sort((a, b) => b.score - a.score);
+  }
+
+  // Whom to shoot from the spot: with a laser the farthest foe in the clear,
+  // which nobody else can reach; otherwise the nearest.
+  campTarget(ctx) {
+    const { view, me } = ctx;
+    const reach = (me.shotSpeed ?? view.world.shotSpeed) * (me.shotLifetime ?? 3.5);
+    let best = null;
+    for (const p of this.remotePlayers(view)) {
+      if (!p.alive || p.paused || !view.isFoe(p)) continue;
+      const d = Math.hypot(p.x - me.x, p.y - me.y, p.z - me.z);
+      if (d > reach) continue;
+      if (me.flag !== 'SB' && this.isObscured(ctx, me, p)) continue;
+      const better = me.flag === 'L' ? (!best || d > best.d) : (!best || d < best.d);
+      if (better) best = { p, d };
+    }
+    return best?.p ?? null;
+  }
+
+  // A foe with Shock Wave that is, or could soon be, close enough to hit the
+  // spot.
+  swThreat(ctx, spot) {
+    const { view } = ctx;
+    const radius = (view.world.shockOutRadius || 0) * CAMP_SW_MARGIN;
+    return this.remotePlayers(view).some((p) => p.alive && view.isFoe(p) && p.flag === 'SW'
+      && Math.hypot(p.x - spot.x, p.y - spot.y, p.z - spot.z) < radius);
+  }
+
+  abandonSpot(now) {
+    if (this.camp?.spot) this.badSpots.set(this.camp.spot.key, now + CAMP_SPOT_COOLDOWN);
+    this.camp = null;
+  }
+
+  // A dodge made at the camping spot is a shot that was really coming: a
+  // shot passing below a raised tank is not one the dodge answers.
+  noteCampDodge(view, out) {
+    const spot = this.camp?.spot;
+    if (!spot || out.intent.mode !== 'dodge') return;
+    if (distance2D(view.self, spot) > CAMP_ARRIVE * 2) return;
+    const avoids = this.camp.avoids.filter((t) => view.now - t < CAMP_AVOID_WINDOW);
+    if (avoids.length === 0 || view.now - avoids[avoids.length - 1] > 1) avoids.push(view.now);
+    this.camp.avoids = avoids;
+    if (avoids.length >= CAMP_AVOID_LIMIT) this.abandonSpot(view.now);
+  }
+
+  // Where Ace's own flag comes down if let go of over another team's base,
+  // by the server's rule: the nearest of his team's safety zones, else the
+  // world's centre, else his own base when an enemy base covers the centre.
+  // A centre under water would send it home too; Ace does not count on that.
+  overBaseLanding(ctx, from) {
+    const { view, me } = ctx;
+    let best = null;
+    for (const zone of view.safetyZones || []) {
+      if (!zone.teams.includes(me.teamColor)) continue;
+      const d = Math.hypot(zone.x - from.x, zone.y - from.y, zone.z - from.z);
+      if (!best || d < best.d) best = { d, pos: { x: zone.x, y: zone.y, z: zone.z } };
+    }
+    if (best) return best.pos;
+    const centre = { x: 0, y: 0, z: 0 };
+    const covered = (view.bases || []).some((b) => b.team !== me.teamColor && isOverBase(b, { ...centre, z: b.z }));
+    return covered ? view.myBase() : centre;
+  }
+
+  // The enemy base to let Ace's own flag go over, when that sets it down
+  // near home for a short drive rather than a long carry.
+  dropOverBaseTarget(ctx) {
+    const { view, me } = ctx;
+    if (me.flagTeam === null || me.flagTeam !== me.teamColor) return null;
+    const home = view.myBase();
+    if (!home || distance2D(me, home) < OVER_BASE_MIN_HOME) return null;
+    let base = null;
+    let best = Infinity;
+    for (const b of view.bases || []) {
+      if (b.team === me.teamColor) continue;
+      const edge = distance2D(me, b) - Math.min(b.halfWidth, b.halfDepth);
+      if (edge < OVER_BASE_RANGE && edge < best) {
+        base = b;
+        best = edge;
+      }
+    }
+    if (!base) return null;
+    const landing = this.overBaseLanding(ctx, base);
+    if (!landing || distance2D(landing, home) > OVER_BASE_LANDING_RANGE) return null;
+    const threat = this.remotePlayers(view).some((p) => p.alive && !p.paused && view.isFoe(p)
+      && distance2D(me, p) < OVER_BASE_FOE_RANGE);
+    return threat ? null : base;
+  }
+
   // Carrying a team flag home, by the route there rather than straight at it.
   navigate(ctx) {
     const { view, me } = ctx;
+    const overBase = this.dropOverBaseTarget(ctx);
+    if (overBase) {
+      if (isOverBase(overBase, me)) {
+        ctx.out.intent.mode = 'drop-over';
+        ctx.out.intent.target = pointOf(overBase);
+        ctx.out.dropFlag = true;
+        ctx.out.speed = 1;
+        return true;
+      }
+      return this.goTo(ctx, { x: overBase.x, y: overBase.y, z: overBase.z }, 'drop-over');
+    }
     if (me.flagTeam !== null && typeof view.findRoute === 'function') {
       const base = view.myBase();
       const pos = { x: me.x, y: me.y, z: me.z };
@@ -1833,6 +2161,12 @@ export class Ace extends Roger {
         if (route && this.followRoute(ctx, route)) return true;
       }
     }
+    if (me.flagTeam === null && !this.isRabbit(ctx) && this.campClear(ctx)) {
+      if (CAMP_FLAGS.has(me.flag) && this.campAt(ctx)) return true;
+      const flag = this.campFlagTarget(ctx);
+      if (flag) return this.huntFlag(ctx, flag);
+    }
+    this.camp = null;
     // Nothing nearer to do: the best foe, wherever it is. Wandering is for a
     // world with nobody to find.
     if (me.flagTeam === null && !this.isRabbit(ctx)) {
@@ -1864,7 +2198,7 @@ export class Ace extends Roger {
   }
 
   plan(view, here, there) {
-    const nodes = view.findRoute(here, there);
+    const nodes = view.findRoute(here, there, { canJump: canTankJump(view.world, view.self.flag) });
     this.stats.plans++;
     if (!nodes) this.stats.unreachable++;
     this.route = { dest: there, from: here, nodes, at: 0, plannedAt: view.now };
@@ -1922,6 +2256,10 @@ export class Ace extends Roger {
         this.landingAim(nodes, route.at));
       return true;
     }
+    if (next.teleport && !me.inAir) {
+      this.driveThroughTeleporter(ctx, here, next.teleport);
+      return true;
+    }
     let aim = next;
     if (!next.jump && !next.bridge) {
       if (tuning.follow === 'pursuit') {
@@ -1954,6 +2292,22 @@ export class Ace extends Roger {
     // proportion to it.
     out.rotation = this.steer(ctx, out.rotation);
     return true;
+  }
+
+  // A teleport leg: onto the line square to the face, then straight through
+  // it, the way out being wherever the face sends. `face` is the face's
+  // centre and the way into it.
+  driveThroughTeleporter(ctx, here, face) {
+    const { me, out } = ctx;
+    const along = ((face.x - here.x) * face.dx) + ((face.y - here.y) * face.dy);
+    const lateral = ((here.x - face.x) * face.dy) - ((here.y - face.y) * face.dx);
+    const aim = Math.abs(lateral) > TELEPORT_ALIGN && along > TELEPORT_ALIGN_RANGE
+      ? { x: face.x - (face.dx * Math.max(TELEPORT_ALIGN_RANGE, along - TELEPORT_ALIGN_RANGE)),
+        y: face.y - (face.dy * Math.max(TELEPORT_ALIGN_RANGE, along - TELEPORT_ALIGN_RANGE)) }
+      : { x: face.x + (face.dx * TELEPORT_THROUGH), y: face.y + (face.dy * TELEPORT_THROUGH) };
+    const bearing = normalizeAngle(azimuthTo(me, aim) - me.azimuth);
+    out.speed = Math.abs(bearing) > this.tuning.turnInPlace ? 0 : HALF_PI - Math.abs(bearing);
+    out.rotation = this.steer(ctx, bearing);
   }
 
   // How fast this tank turns at full stick: the world's rate as its flag
@@ -2508,6 +2862,47 @@ const PROBE_RANGE = 1000;
 // for `traceShot`.
 const TRACE_STEP_SECONDS = 1 / 30;
 
+// Whether a tank may jump at all, as `jumpReach` and the dodge ask it.
+function canTankJump(world, flag) {
+  return (world.allowJumping || flag === 'JP' || flag === 'WG') && flag !== 'NJ';
+}
+
+// Every team base, as a pilot's view carries them: centre, top, half extents
+// and rotation, read from the world every client downloads.
+export function teamBasesOf(obstacles, topOf) {
+  return obstacles.filter((obs) => obs.kind === 'base' && Number.isInteger(obs.team)).map((obs) => ({
+    team: obs.team,
+    x: obs.pos[0],
+    y: obs.pos[1],
+    z: topOf(obs),
+    halfWidth: obs.size[0],
+    halfDepth: obs.size[1],
+    rotation: obs.angle || 0,
+  }));
+}
+
+// The flat tops a tank can stand on and shoot from: every box but a base,
+// highest first, as a pilot's view carries them.
+export function findVantagePoints(obstacles, topOf, { minHeight = 3, minHalfSize = 3, limit = 200 } = {}) {
+  return obstacles
+    .filter((obs) => obs.type === 'box' && obs.kind !== 'base' && !obs.driveThrough
+      && Array.isArray(obs.size) && Math.min(obs.size[0], obs.size[1]) >= minHalfSize)
+    .map((obs) => ({ x: obs.pos[0], y: obs.pos[1], z: topOf(obs) }))
+    .filter((spot) => spot.z >= minHeight)
+    .sort((a, b) => b.z - a.z)
+    .slice(0, limit);
+}
+
+// Whether `pos` is over a base's footprint, at or above its top.
+function isOverBase(base, pos) {
+  if (pos.z < base.z - 0.5) return false;
+  const dx = pos.x - base.x;
+  const dy = pos.y - base.y;
+  const cos = Math.cos(-base.rotation);
+  const sin = Math.sin(-base.rotation);
+  return Math.abs((dx * cos) - (dy * sin)) <= base.halfWidth && Math.abs((dx * sin) + (dy * cos)) <= base.halfDepth;
+}
+
 export function createWorldProbes({
   obstacles, colliders, mapSize, findImpact, topOf,
 }) {
@@ -2624,14 +3019,25 @@ function segmentDistance2D(from, to, point) {
 // built the first time a route is asked for and again only when the world
 // changes. `world()` returns { obstacles, mapSize, waterLevel, jump }, where
 // `obstacles` is the same array for as long as the world is the same.
+// `canJump` is the tank's own: a flag can take jumping away (NJ) or give it
+// where the world does not (JP, WG), so a route only has jump legs for a tank
+// that can take them. A graph is kept for each, rebuilt when the world or its
+// jump changes.
 export function createRouter(world) {
   let built = null;
-  return (from, to) => {
+  return (from, to, options = {}) => {
     const current = world();
-    if (!built || built.obstacles !== current.obstacles || built.mapSize !== current.mapSize) {
-      built = { obstacles: current.obstacles, mapSize: current.mapSize, graph: buildNavGraph(current) };
+    const canJump = options.canJump ?? current.allowJumping !== false;
+    const jumpKey = JSON.stringify(current.jump ?? null);
+    if (!built || built.obstacles !== current.obstacles || built.mapSize !== current.mapSize
+      || built.jumpKey !== jumpKey) {
+      built = { obstacles: current.obstacles, mapSize: current.mapSize, jumpKey, graphs: new Map() };
     }
-    return built.graph.smoothRoute(built.graph.findRoute(from, to), from);
+    const jump = canJump ? (current.jump ?? null) : null;
+    const key = jump ? 'jump' : 'ground';
+    if (!built.graphs.has(key)) built.graphs.set(key, buildNavGraph({ ...current, jump }));
+    const graph = built.graphs.get(key);
+    return graph.smoothRoute(graph.findRoute(from, to), from);
   };
 }
 

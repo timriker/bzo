@@ -146,6 +146,14 @@ class BotDriver {
     const out = this.pilot.think(this.env.view(this.self()));
     this.lastOut = out;
 
+    // A Guided Missile steers at a lock, which a player takes with Identify
+    // (`requestLockOn` in client.js): the pilot names whom it is about to
+    // shoot, and the server checks its sights.
+    if (out.shotTargetId !== null && out.shotTargetId !== undefined && this.env.flag()?.type === 'GM'
+      && this.clock - (this.lastLockAt ?? -Infinity) > 0.5) {
+      this.lastLockAt = this.clock;
+      this.env.send({ type: 'identify' });
+    }
     if (out.dropFlag && this.clock - this.lastDropAt > 1) {
       this.lastDropAt = this.clock;
       this.env.send({ type: 'dropFlag' });

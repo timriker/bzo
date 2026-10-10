@@ -165,6 +165,74 @@ export function transformShotThroughTeleporter(pointIn, dirIn, sourceObs, source
   return { pointOut, dirOut: { x: dirRotated.x, y: dirRotated.y, z: dirIn.z }, rotateDelta };
 }
 
+// A tank's crossing of teleporters between where it was and where it is
+// going, as a server bot drives through them: the earliest face crossed, where
+// the face it sends to puts the tank, and how far it turns. The local
+// player's prediction in client.js takes the same steps. Each tank keeps its
+// own: after one crossing nothing teleports it for `cooldownMs`, and the
+// teleporter it came out of does not take it back until it has moved
+// `reentryDistance` and `reentryMs` have passed.
+export const TANK_TELEPORT = Object.freeze({ reentryDistance: 5, reentryMs: 250, exitEpsilon: 0.08, cooldownMs: 1000 });
+
+export function createTankTeleporter(index) {
+  let cooldownUntil = 0;
+  let blockIndex = null;
+  let blockDistance = 0;
+  let blockUntil = 0;
+  const none = (state) => ({
+    applied: false, state, rotateDelta: 0, destinationObstacle: null,
+    destinationTeleporterIndex: null, fromFaceId: null, toFaceId: null,
+  });
+  return (start, end, nowMs) => {
+    if (nowMs < cooldownUntil) return none(end);
+    const dx = end.x - start.x;
+    const dy = end.y - start.y;
+    const dz = end.z - start.z;
+    const length = Math.hypot(dx, dy, dz);
+    if (length <= 1e-6) return none(end);
+    const { teleporters, links } = index();
+    let earliest = null;
+    for (const obs of teleporters.values()) {
+      const blocked = blockIndex === obs.teleporterIndex && (blockDistance > 1e-6 || nowMs < blockUntil);
+      if (blocked) continue;
+      const crossing = getShotTeleporterCrossing(start, end, obs);
+      if (crossing && (!earliest || crossing.t < earliest.crossing.t)) earliest = { obs, crossing };
+    }
+    const destFaceId = earliest ? getTeleportDestinationFace(links, earliest.crossing.sourceFaceId) : null;
+    const destObs = earliest ? teleporters.get(Math.floor(destFaceId / 2)) : null;
+    if (!destObs) {
+      blockDistance = Math.max(0, blockDistance - Math.hypot(dx, dy));
+      if (blockDistance <= 1e-6 && nowMs >= blockUntil) {
+        blockIndex = null;
+        blockDistance = 0;
+        blockUntil = 0;
+      }
+      return none(end);
+    }
+    const out = transformShotThroughTeleporter(earliest.crossing.point, { x: dx / length, y: dy / length, z: dz / length },
+      earliest.obs, earliest.crossing.sourceFaceId % 2, destObs, destFaceId % 2);
+    const advance = TANK_TELEPORT.exitEpsilon;
+    blockIndex = destObs.teleporterIndex;
+    blockDistance = Math.max(TANK_TELEPORT.reentryDistance, (getShotTeleporterDims(destObs).halfW * 2) + 0.25);
+    blockUntil = nowMs + TANK_TELEPORT.reentryMs;
+    cooldownUntil = nowMs + TANK_TELEPORT.cooldownMs;
+    return {
+      applied: true,
+      state: {
+        ...end,
+        x: out.pointOut.x + (out.dirOut.x * advance),
+        y: out.pointOut.y + (out.dirOut.y * advance),
+        z: Math.max(0, out.pointOut.z + (out.dirOut.z * advance)),
+      },
+      rotateDelta: out.rotateDelta,
+      destinationObstacle: destObs,
+      destinationTeleporterIndex: destObs.teleporterIndex,
+      fromFaceId: earliest.crossing.sourceFaceId,
+      toFaceId: destFaceId,
+    };
+  };
+}
+
 // How far something that has just come out of `destObs` travels before that
 // teleporter can take it again: past its own doorway.
 export function teleportReentryBlockDistance(destObs) {

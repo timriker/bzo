@@ -37,6 +37,7 @@ const {
 } = require('./collision.cjs');
 const { configureFlagEffects } = require('./flags.cjs');
 const { areFoes } = require('./teams.cjs');
+const { buildTeleporterIndex, createTankTeleporter } = require('./teleport.cjs');
 
 let autopilot = null;
 let world = null;
@@ -60,6 +61,29 @@ function setWorld(next) {
   colliders = buildCollisionColliders(world.obstacles, world.mapSize, world.noWalls, world.wallHeight);
   router = null;
   probes = null;
+  bases = null;
+  vantages = null;
+  teleporterIndex = null;
+}
+
+// The world's teleporters and where each face sends, for every bot's own
+// crossing of them.
+let teleporterIndex = null;
+function getTeleporterIndex() {
+  if (!teleporterIndex) teleporterIndex = buildTeleporterIndex(world.obstacles, world.teleporterLinks || []);
+  return teleporterIndex;
+}
+
+let vantages = null;
+function getVantages() {
+  if (!vantages) vantages = autopilot.findVantagePoints(world.obstacles, topOf);
+  return vantages;
+}
+
+let bases = null;
+function getBases() {
+  if (!bases) bases = autopilot.teamBasesOf(world.obstacles, topOf);
+  return bases;
 }
 
 function getRouter() {
@@ -68,9 +92,11 @@ function getRouter() {
       obstacles: world.obstacles,
       mapSize: world.mapSize,
       waterLevel: world.waterLevel,
-      jump: config.ALLOW_JUMPING
-        ? { velocity: config.JUMP_VELOCITY, gravity: config.GRAVITY, tankSpeed: config.TANK_SPEED }
-        : null,
+      teleporterLinks: world.teleporterLinks || [],
+      // The jump itself always, for a tank whose flag lets it jump where the
+      // world does not; whether this one may is the pilot's to say.
+      allowJumping: config.ALLOW_JUMPING === true,
+      jump: { velocity: config.JUMP_VELOCITY, gravity: config.GRAVITY, tankSpeed: config.TANK_SPEED },
     }));
   }
   return router;
@@ -108,6 +134,9 @@ function buildView(bot, self, shared) {
       if (!base) return null;
       return { x: base.pos[0], y: base.pos[1], z: topOf(base), radius: Math.min(base.size[0], base.size[1]) };
     },
+    bases: getBases(),
+    vantages: getVantages(),
+    safetyZones: world.safetyZones || [],
     ...getProbes(),
     findRoute: getRouter(),
     antidote: own.antidote,
@@ -121,12 +150,14 @@ function addBot({ id, pilotId }) {
     return;
   }
   const bot = { id, own: null, shared: null, sends: null, reportAt: 0 };
+  const teleporter = createTankTeleporter(getTeleporterIndex);
   bot.driver = new BotDriver({
     pilot: new entry.Pilot(),
     env: {
       config: () => config,
       colliders: () => colliders,
       topOf,
+      teleport: (from, to) => teleporter(from, to, Date.now()),
       state: () => bot.own.state,
       flag: () => bot.own.flag,
       view: (self) => buildView(bot, self, bot.shared),

@@ -407,7 +407,7 @@ import {
 } from './teleport.mjs';
 import { findMapEdgeImpactPoint, traceBeam, traceShotThroughTeleporters } from './trace.mjs';
 import {
-  AUTOPILOTS, DEFAULT_PILOT, createRouter, createWorldProbes,
+  AUTOPILOTS, DEFAULT_PILOT, createRouter, createWorldProbes, findVantagePoints, teamBasesOf,
 } from './autopilot.mjs';
 import {
   TRACK_SURFACE_TOLERANCE,
@@ -12504,7 +12504,11 @@ const autopilotRouter = createRouter(() => ({
   obstacles: OBSTACLES,
   mapSize: currentWorldMapSize || DEFAULT_MAP_SIZE,
   waterLevel: currentWorldWaterHeight > 0 ? currentWorldWaterHeight : null,
-  jump: gameConfig?.ALLOW_JUMPING
+  teleporterLinks: TELEPORTER_GRAPH?.links || [],
+  // The jump itself always, for a tank whose flag lets it jump where the
+  // world does not; whether this one may is the pilot's to say.
+  allowJumping: gameConfig?.ALLOW_JUMPING === true,
+  jump: gameConfig
     ? { velocity: gameConfig.JUMP_VELOCITY, gravity: gameConfig.GRAVITY, tankSpeed: gameConfig.TANK_SPEED }
     : null,
 }));
@@ -12667,6 +12671,9 @@ function buildAutopilotView() {
         radius: Math.min(base.size[0], base.size[1]),
       };
     },
+    bases: teamBasesOf(OBSTACLES, getColliderTopY),
+    vantages: autopilotVantages(),
+    safetyZones: liveWorldData?.safetyZones || [],
     ...autopilotProbes,
     findRoute: autopilotRouter,
     // Where this client's bad flag can be shed, which the server tells only
@@ -12681,7 +12688,19 @@ function buildAutopilotView() {
 // for, a cross where a jumper it is waiting on will land, and each shot's path
 // for a moment after it goes -- red for one it held back. None of this is the
 // server's business, so a server-run bot simply has no one to draw it for.
+// The flat tops the autopilot may camp on, found once per world.
+let autopilotVantageCache = { obstacles: null, spots: [] };
+function autopilotVantages() {
+  if (autopilotVantageCache.obstacles !== OBSTACLES) {
+    autopilotVantageCache = { obstacles: OBSTACLES, spots: findVantagePoints(OBSTACLES, getColliderTopY) };
+  }
+  return autopilotVantageCache.spots;
+}
+
 const AUTOPILOT_OVERLAY = Object.freeze({
+  vantage: 0x8080ff,
+  vantageChosen: 0x40ff40,
+  vantageHeight: 8,
   ground: 0x00e5ff,
   raised: 0xffd400,
   jump: 0xff40ff,
@@ -12727,6 +12746,21 @@ function drawAutopilotIntent(intent, nowMs, origin = null) {
         a: { x: t.x + corners[i][0], y: t.y + corners[i][1], z: t.z + 0.5 },
         b: { x: t.x + corners[i + 1][0], y: t.y + corners[i + 1][1], z: t.z + 0.5 },
         color,
+      });
+    }
+  }
+  // Camping spots the pilot scored: a post on each, taller for a better
+  // score, and the chosen one in its own colour.
+  if (intent?.vantages?.length) {
+    const top = Math.max(...intent.vantages.map((v) => v.score));
+    const low = Math.min(...intent.vantages.map((v) => v.score));
+    for (const v of intent.vantages) {
+      const share = top > low ? (v.score - low) / (top - low) : 1;
+      const height = AUTOPILOT_OVERLAY.vantageHeight * (0.3 + (0.7 * share));
+      segments.push({
+        a: lift(v, 0),
+        b: lift(v, height),
+        color: v.chosen ? AUTOPILOT_OVERLAY.vantageChosen : AUTOPILOT_OVERLAY.vantage,
       });
     }
   }

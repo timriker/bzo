@@ -22,6 +22,7 @@
 
 import fs from 'node:fs';
 import path from 'node:path';
+import { buildTeleporterIndex, createTankTeleporter } from '../public/teleport.mjs';
 import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
 import {
@@ -37,6 +38,9 @@ const args = new Map();
 for (let i = 2; i < process.argv.length; i += 2) args.set(process.argv[i].replace(/^--/, ''), process.argv[i + 1]);
 const mapName = args.get('map') || 'hix.bzw';
 const timeLimit = Number(args.get('seconds') || 150);
+// `--jumping off` drives as on a server without jumping: routes, and the lifts
+// a map has instead, are all a tank has to change level by.
+const jumping = args.get('jumping') !== 'off';
 const dt = 0.05;
 
 // The strategies compared, each a change from the defaults.
@@ -67,7 +71,7 @@ const CONFIG = {
   TANK_ROTATION_SPEED: Math.PI / 4,
   GRAVITY: 9.8,
   JUMP_VELOCITY: 19,
-  ALLOW_JUMPING: true,
+  ALLOW_JUMPING: jumping,
   MAX_BUMP_HEIGHT: 0.33,
   // BZFlag's `-a <linear> <angular>`, off unless BENCH_ACCEL says otherwise.
   LINEAR_ACCELERATION: Number((process.env.BENCH_ACCEL || '0 0').split(' ')[0]) || 0,
@@ -85,8 +89,11 @@ const findRoute = createRouter(() => ({
   obstacles,
   mapSize: world.mapSize,
   waterLevel: world.waterLevel?.height ?? null,
+  teleporterLinks: world.teleporterGraph?.links || [],
+  allowJumping: jumping,
   jump: { velocity: CONFIG.JUMP_VELOCITY, gravity: CONFIG.GRAVITY, tankSpeed: CONFIG.TANK_SPEED },
 }));
+const teleporterIndex = buildTeleporterIndex(obstacles, world.teleporterGraph?.links || []);
 const bases = obstacles.filter((obs) => obs.kind === 'base').sort((a, b) => a.team - b.team);
 if (bases.length < 2) {
   console.error(`${mapName} has ${bases.length} team base(s); this needs two or more`);
@@ -96,6 +103,7 @@ if (bases.length < 2) {
 function run(tuning, from, to) {
   let now = 100;
   const pilot = new Ace({ tuning });
+  const teleporter = createTankTeleporter(() => teleporterIndex);
   const start = { x: from.pos[0], y: from.pos[1], z: topOf(from) };
   const target = { x: to.pos[0], y: to.pos[1], z: topOf(to) };
   const driver = new BotDriver({
@@ -104,6 +112,7 @@ function run(tuning, from, to) {
       config: () => CONFIG,
       colliders: () => obstacles,
       topOf,
+      teleport: (a, b) => teleporter(a, b, now * 1000),
       state: () => ({ alive: true, ...start, azimuth: Math.PI / 2 }),
       view: (self) => ({
         now,
@@ -115,7 +124,7 @@ function run(tuning, from, to) {
         shots: [],
         flags: [{ index: 0, type: 'X*', team: to.team, onGround: true, ...target }],
         world: {
-          allowJumping: true, teamFlags: true, waterLevel: null, shotSpeed: 100, maxShots: 1,
+          allowJumping: jumping, teamFlags: true, waterLevel: null, shotSpeed: 100, maxShots: 1,
           tankHeight: 2.05, tankLength: 6, tankAngVel: CONFIG.TANK_ROTATION_SPEED,
           tankSpeed: CONFIG.TANK_SPEED, jumpVelocity: CONFIG.JUMP_VELOCITY, gravity: CONFIG.GRAVITY,
           lockOnAngle: 0.15, shockOutRadius: 60, shakeTimeout: 0,

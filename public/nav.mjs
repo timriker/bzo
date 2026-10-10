@@ -22,8 +22,11 @@
 //          drives across without falling
 //   jump   up onto a surface one jump reaches, from where a full-speed jump
 //          comes down on its edge
-//
-// Teleporters are not followed yet.
+//   teleport  through a teleporter's face, from in front of it to in front of
+//          the face it sends to (`world.teleporterLinks`), on whatever level
+//          that is -- on hix the corner teleporters are the lifts to the
+//          bases. Only a face that sends to one place: one that sends to
+//          several picks at random, and a route cannot count on it.
 //
 // In upstream's frame, as the pilot is: (x, y) on the ground and z up. The
 // grid's rows run from the north edge south, so a map whose size is not a
@@ -278,6 +281,8 @@ export function buildNavGraph(world) {
   const moveStart = new Int32Array(nodes.length).fill(-1);
   const moveCount = new Uint16Array(nodes.length);
   const moveTable = new PackedRows({ to: Int32Array, cost: Float64Array, kind: Uint8Array, flight: Int32Array });
+  // A teleport move's face, by its row: few enough to keep as objects.
+  const teleportRows = new Map();
   const flightTable = new PackedRows({
     speed: Float64Array, dx: Float64Array, dy: Float64Array, launch: Float64Array, air: Float64Array,
   });
@@ -292,6 +297,7 @@ export function buildNavGraph(world) {
         flight = flightTable.length;
         flightTable.push(move.flight.speed, move.flight.dx, move.flight.dy, move.flight.launch, move.flight.air);
       }
+      if (move.teleport) teleportRows.set(moveTable.length, move.teleport);
       moveTable.push(move.to, move.cost,
         (move.jump ? MOVE_JUMP : 0) | (move.bridge ? MOVE_BRIDGE : 0), flight);
     }
@@ -304,6 +310,7 @@ export function buildNavGraph(world) {
     return {
       jump: (kind & MOVE_JUMP) !== 0,
       bridge: (kind & MOVE_BRIDGE) !== 0,
+      teleport: teleportRows.get(row) ?? null,
       flight: f < 0 ? null : {
         jump: (kind & MOVE_JUMP) !== 0,
         speed: flights.speed[f],
@@ -357,7 +364,67 @@ export function buildNavGraph(world) {
       }
       flights(node, dx, dy, out);
     }
+    for (const move of teleportMoves().get(node.id) || []) out.push(move);
     return out;
+  };
+
+  // Every teleport move, by the node it leaves from, worked out once.
+  let teleports = null;
+  const teleportMoves = () => {
+    if (teleports) return teleports;
+    teleports = new Map();
+    const byIndex = new Map();
+    for (const obs of obstacles) {
+      if (obs.kind === 'teleporter' && Number.isInteger(obs.teleporterIndex)) byIndex.set(obs.teleporterIndex, obs);
+    }
+    const destinations = new Map();
+    for (const link of world.teleporterLinks || []) {
+      if (!destinations.has(link.sourceFaceId)) destinations.set(link.sourceFaceId, new Set());
+      destinations.get(link.sourceFaceId).add(link.destFaceId);
+    }
+    // Where a face is, and the way out of it: face 0 is the teleporter's
+    // local +x side, face 1 its -x side.
+    const faceOf = (faceId) => {
+      const obs = byIndex.get(Math.floor(faceId / 2));
+      if (!obs) return null;
+      const sign = faceId % 2 === 0 ? 1 : -1;
+      const angle = obs.angle || 0;
+      const nx = Math.cos(angle) * sign;
+      const ny = Math.sin(angle) * sign;
+      const half = obs.size[0] + (obs.border || 0);
+      return { x: obs.pos[0], y: obs.pos[1], z: obs.pos[2] || 0, nx, ny, half };
+    };
+    // A node on the face's own level and in front of it: the nearest node
+    // to a spot against a wall can be round the other side.
+    const frontNode = (face) => {
+      const id = nodeAt(face.x + (face.nx * (face.half + TELEPORT_APPROACH)),
+        face.y + (face.ny * (face.half + TELEPORT_APPROACH)), face.z + 0.01);
+      if (id === null || Math.abs(nodes[id].z - face.z) > STEP_UP) return null;
+      const ahead = ((nodes[id].x - face.x) * face.nx) + ((nodes[id].y - face.y) * face.ny);
+      return ahead > face.half ? id : null;
+    };
+    for (const [obsIndex] of byIndex) {
+      for (const faceId of [obsIndex * 2, (obsIndex * 2) + 1]) {
+        const linked = destinations.get(faceId);
+        if (linked && linked.size > 1) continue;
+        // A face with no link sends to its teleporter's other face.
+        const destId = linked ? [...linked][0] : faceId + (faceId % 2 === 0 ? 1 : -1);
+        const source = faceOf(faceId);
+        const dest = faceOf(destId);
+        if (!source || !dest) continue;
+        const from = frontNode(source);
+        const to = frontNode(dest);
+        if (from === null || to === null || from === to) continue;
+        if (!teleports.has(from)) teleports.set(from, []);
+        teleports.get(from).push({
+          to,
+          cost: ((2 * TELEPORT_APPROACH) / tankSpeed) + TELEPORT_COST,
+          jump: false,
+          teleport: { x: source.x, y: source.y, dx: -source.nx, dy: -source.ny },
+        });
+      }
+    }
+    return teleports;
   };
 
   // The flights out of a node along one of the eight directions: jumps from
@@ -612,7 +679,7 @@ export function buildNavGraph(world) {
     let i = 0;
     while (i < route.length) {
       const node = route[i];
-      if (node.jump || node.bridge || node.flight) {
+      if (node.jump || node.bridge || node.flight || node.teleport) {
         out.push(node);
         anchor = node;
         i++;
@@ -621,7 +688,7 @@ export function buildNavGraph(world) {
       let j = i;
       for (let k = i + 1; k < Math.min(route.length, i + SMOOTH_LOOKAHEAD); k++) {
         const next = route[k];
-        if (next.jump || next.bridge || next.flight) break;
+        if (next.jump || next.bridge || next.flight || next.teleport) break;
         // Where the grid route went close by something it is kept: its many
         // short legs are a curve round it, and a straight leg there is a
         // sharp corner a tank at speed swings wide of, into what it was
@@ -642,6 +709,11 @@ export function buildNavGraph(world) {
 
 const MOVE_JUMP = 1;
 const MOVE_BRIDGE = 2;
+// How far in front of a face a teleport move starts and ends, and what going
+// through costs beyond the drive: a moment, so a route takes one only where
+// it saves real distance.
+const TELEPORT_APPROACH = 4;
+const TELEPORT_COST = 1;
 
 // Rows of numbers, one typed array per column, grown by doubling.
 class PackedRows {

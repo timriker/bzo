@@ -5760,6 +5760,18 @@ function buildWorldFile(map, { gameConfig, serverBzdb, puffClouds, defaultMapSiz
     obstacles,
     teleporterGraph,
     teamMode: map.teamMode,
+    // The zones that are a team's safety, where its flag lands when dropped
+    // on another team's base. Upstream packs every zone into the world a
+    // client downloads (EntryZones::pack), so a client's autopilot may use it.
+    safetyZones: (map.zones || []).filter((zone) => zone.safety.size > 0).map((zone) => ({
+      x: zone.x,
+      y: zone.y,
+      z: zone.z,
+      halfWidth: zone.halfWidth,
+      halfDepth: zone.halfDepth,
+      rotation: zone.rotation,
+      teams: [...zone.safety],
+    })),
     // Where a sky beacon hangs from, and bzo's puffs float from when asked for.
     cloudBase,
     clouds: puffClouds ? generateClouds(cloudBase, seededRandom(seed)) : [],

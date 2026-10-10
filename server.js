@@ -6357,6 +6357,7 @@ const LIVE_MAP_ENTRY = registerMapFile(MAP_SOURCE, {
   serverOptions: mapServerOptions,
   meshTemplates: mapMeshTemplates,
   meshInstances: mapMeshInstances,
+  zones: MAP_ZONES,
 });
 
 // A Map Viewer's requested map file, checked against what this process has
@@ -19263,6 +19264,13 @@ function startBotWorker() {
       noWalls: mapNoWalls,
       wallHeight: GAME_CONFIG.WALL_HEIGHT,
       waterLevel: mapWaterLevel && mapWaterLevel.height > 0 ? mapWaterLevel.height : null,
+      teleporterLinks: TELEPORTER_GRAPH.links,
+      // What a client's world carries of the zones: the safety ones, as
+      // `buildWorldFile` writes them.
+      safetyZones: MAP_ZONES.filter((zone) => zone.safety.size > 0).map((zone) => ({
+        x: zone.x, y: zone.y, z: zone.z, halfWidth: zone.halfWidth, halfDepth: zone.halfDepth,
+        rotation: zone.rotation, teams: [...zone.safety],
+      })),
     },
   });
   log('[BOT] worker started');
@@ -19398,6 +19406,7 @@ function botOwnView(bot, now) {
       flagTeam: getFlagTeamIndex(myType),
       teamColor: getTeamColorIndex(me.team),
       team: me.team,
+      score: (me.wins || 0) - (me.losses || 0),
       zoned: isZoned(myType, myFlag?.zoned === true),
       shotSpeed: GAME_CONFIG.SHOT_SPEED * getShotEffects(myType).velocityFactor,
       shotLifetime: getWorldReloadSeconds(GAME_CONFIG) * getShotEffects(myType).lifeFactor,
