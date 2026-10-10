@@ -15,7 +15,7 @@ options
 	-fb
 	# Tanks may jump. bzo has jumping on unless server.json turns it off,
 	# so this is what turns it back on for this world.
-	-j
+	#-j
 	# Every shot ricochets, whatever flag fired it.
 	+r
 	# Five shots in the air at once, where bzfs gives one. The reload time
@@ -813,4 +813,29 @@ base
 	rotation 45.0
 	size 35.0 35.0 4.0
 	color 4
+end
+# safety zones: a team flag dropped on another team's base lands on its own
+zone
+	position 0.0 340.0 30.0
+	rotation 45.0
+	size 20.0 20.0 1.0
+	safety 1
+end
+zone
+	position 340.0 0.0 30.0
+	rotation 45.0
+	size 20.0 20.0 1.0
+	safety 2
+end
+zone
+	position 0.0 -340.0 30.0
+	rotation 45.0
+	size 20.0 20.0 1.0
+	safety 3
+end
+zone
+	position -340.0 0.0 30.0
+	rotation 45.0
+	size 20.0 20.0 1.0
+	safety 4
 end
