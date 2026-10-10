@@ -720,7 +720,7 @@ belong after `serverConfig` is read, beside `ADMIN_GROUPS` and the rest.
 ### Where the server answers
 
 `listen` in `server.json` carries a host and a port together, the way a proxy's
-own config writes it: `[::]:3000`, `127.0.0.1:3000`, `[::1]:3000`, `:3000`, or a
+own config writes it: `[::]:5154`, `127.0.0.1:5154`, `[::1]:5154`, `:5154`, or a
 bare host with no port. `port` still works and fills in whenever `listen` names
 no port. Both are read from the environment first -- `LISTEN` and `PORT` -- and
 `server.json` second, so a container is configured by its orchestration and a
@@ -728,7 +728,7 @@ server by its file. The `Dockerfile` deliberately sets neither, because setting
 one there would make the matching key in the operator's mounted
 `/data/server.json` permanently inert.
 
-The default is `[::]:3000`: every interface in both families, which is the only
+The default is `[::]:5154`: every interface in both families, which is the only
 answer that is right without being told, since a container has to be reachable
 on the network Docker gave it and a LAN game has to be reachable from the LAN. A
 dual-stack socket takes an IPv4 peer as an IPv4-mapped address, which is why a
@@ -738,8 +738,8 @@ Naming a loopback is how an operator behind a reverse proxy stops anyone
 stepping around it to the port -- where they would reach the uncompressed,
 uncertificated path, and where a browser offers neither brotli nor a service
 worker, both of which need a secure context. Bind one family and point the proxy
-at the same one: `127.0.0.1` with Caddy's `reverse_proxy 127.0.0.1:3000`, or
-`::1` with `[::1]:3000`. `localhost` is resolved to `127.0.0.1` and says so,
+at the same one: `127.0.0.1` with Caddy's `reverse_proxy 127.0.0.1:5154`, or
+`::1` with `[::1]:5154`. `localhost` is resolved to `127.0.0.1` and says so,
 because a socket binds one family and the name promises two.
 
 ### Assets are compressed once, not per request
@@ -3981,7 +3981,7 @@ regression check for rendering, prediction, and XR. Use
 
 ### Test against the running server
 
-**A dev server is already running on port 3000. Use it.** Do not start a private
+**A dev server is already running on port 5154. Use it.** Do not start a private
 instance on another port to keep a test tidy. The point of the shared one is that
 the user, a phone, and a headset are watching the same game: a scripted client
 that joins it can be *seen*, which is most of the value of running it at all. A
@@ -4117,7 +4117,7 @@ Things to reach for, in the order they cost:
   software rasteriser reports single-digit fps on a frame a GPU spends two
   milliseconds on.
 
-  It defaults to `http://localhost:3000`, which is the running dev server, and
+  It defaults to `http://localhost:5154`, which is the running dev server, and
   joins it as a real player named `headless` -- see **Test against the running
   server** above, which is the rule it follows: do not point it at a private
   instance started to keep a test tidy, and let it disconnect when it is done.

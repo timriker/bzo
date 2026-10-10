@@ -299,7 +299,7 @@ const {
 } = require('./server/lag.cjs');
 const { createServerStats, formatServerStats } = require('./server/server-stats.cjs');
 const { createUpnpMapping, nameForAddress } = require('./server/upnp.cjs');
-const { createMoveChannels } = require('./server/move-channel.cjs');
+const { createUdpChannels } = require('./server/udp-channel.cjs');
 const serverStats = createServerStats();
 const {
   COMMAND_TIER,
@@ -4265,7 +4265,8 @@ serverConfig.title = readServerTitle(serverConfig);
 // Where to answer, decided in one place because the two halves of an address
 // are one decision. The environment wins over `server.json` for both, which is
 // what lets a container be told by its orchestration what a server is otherwise
-// told by its file, and each falls back to answering everywhere on 3000.
+// told by its file, and each falls back to answering everywhere on 5154,
+// BZFlag's IANA port.
 //
 // A loopback address is how an operator behind a reverse proxy keeps anyone
 // from stepping around it to the port and reaching the uncertificated,
@@ -5733,20 +5734,20 @@ const VOICE_ICE_SERVERS_IPV4 = parseVoiceIceServers(
   process.env.VOICE_ICE_SERVERS_IPV4 ?? serverConfig.voiceIceServersIpv4
 );
 
-// `webrtc.listen` (#8): moves over a data channel on one IPv4 UDP port
-// (server/move-channel.cjs). Its STUN servers learn the public address to
+// `webrtc.listen` (#8): the UDP channel, a data channel on one IPv4 UDP port
+// (server/udp-channel.cjs). Its STUN servers learn the public address to
 // offer: `webrtc.iceServers`, or the STUN half of the IPv4 voice servers.
-const MOVE_CHANNEL_STUN = Array.isArray(serverConfig.webrtc?.iceServers)
+const UDP_CHANNEL_STUN = Array.isArray(serverConfig.webrtc?.iceServers)
   ? serverConfig.webrtc.iceServers.filter((url) => typeof url === 'string')
   : VOICE_ICE_SERVERS_IPV4.flatMap((server) => server.urls).filter((url) => /^stun:/i.test(url));
-const MOVE_CHANNELS = serverConfig.webrtc?.listen
-  ? createMoveChannels({ listen: serverConfig.webrtc.listen, iceServers: MOVE_CHANNEL_STUN, log })
+const UDP_CHANNELS = serverConfig.webrtc?.listen
+  ? createUdpChannels({ listen: serverConfig.webrtc.listen, iceServers: UDP_CHANNEL_STUN, log })
   : null;
 // A channel loses a move now and then, as UDP loses a MsgPlayerUpdate, and a
 // lost stop would leave a tank coasting on every screen until its next
 // update. Upstream's answer is an update at least once a second
 // (`MaxUpdateTime`, Player.cxx:38), so a resting tank is corrected within one.
-if (MOVE_CHANNELS) GAME_CONFIG.MAX_UPDATE_INTERVAL = Math.min(GAME_CONFIG.MAX_UPDATE_INTERVAL, 1000);
+if (UDP_CHANNELS) GAME_CONFIG.MAX_UPDATE_INTERVAL = Math.min(GAME_CONFIG.MAX_UPDATE_INTERVAL, 1000);
 
 function voiceRtcConfigFor(playerId) {
   if (!VOICE_TURN_SECRET) {
@@ -8810,11 +8811,11 @@ defineCommand('/playerlist', COMMAND_TIER.OPEN,
       ].filter(Boolean);
       // A BZFlag client's link as upstream's `/playerlist` says it
       // (`getPlayerHostInfo`): ` udp` once heard from on UDP, `+` once sent to.
-      // A browser's move channel (#8) is its UDP, and says so the same way.
+      // A browser's UDP channel (#8) counts as its UDP, and says so the same way.
       const link = other.nativeLink;
-      const udpIn = link ? link.udpIn() : Boolean(other.moveChannel && other.moveChannelHeard);
-      const udpOut = link ? link.udpOut() : Boolean(other.moveChannel?.isOpen());
-      const udp = udpIn ? ` udp${udpOut ? '+' : ''}` : '';
+      const udpIn = link ? link.udpIn() : Boolean(other.udpChannel && other.udpChannelHeard);
+      const udpOut = link ? link.udpOut() : Boolean(other.udpChannel?.isOpen());
+      const udp = `${udpIn ? ' udp' : ''}${udpOut ? '+' : ''}`;
       const address = other.clientIP || (other.claimedIP ? `${other.claimedIP} (unverified)` : 'unknown');
       replyToPlayer(player, `#${other.id} ${other.name} [${other.team}] ${address}${udp}`
         + (marks.length ? ` (${marks.join(', ')})` : ''));
@@ -11119,10 +11120,10 @@ function broadcastPlayerRecord(type, subject) {
 function broadcastAll(message) {
   const data = JSON.stringify(message);
   recordBroadcast(data, message);
-  const byChannel = MOVE_CHANNEL_DOWN_TYPES.has(message.type) && data.length <= MOVE_CHANNEL_CHUNK_BYTES;
+  const byChannel = UDP_CHANNEL_DOWN_TYPES.has(message.type) && data.length <= UDP_CHANNEL_CHUNK_BYTES;
   players.forEach((player) => {
     if (player.ws.readyState !== 1) return;
-    if (byChannel && player.moveChannel?.send(data)) {
+    if (byChannel && player.udpChannel?.send(data)) {
       serverStats.countOut(data.length);
       return;
     }
@@ -11130,17 +11131,17 @@ function broadcastAll(message) {
   });
 }
 
-// What rides a move channel, both ways: upstream's UDP list (`NetHandler::
+// What rides a UDP channel, both ways: upstream's UDP list (`NetHandler::
 // pwrite`, NetHandler.cxx:533, and `ServerLink::send`, ServerLink.cxx:429) --
 // player updates, shots, shot ends and guided missile updates. The lag ping
 // stays on the WebSocket, whose own ping it is. Upstream's client also sends
 // MsgGMUpdate; bzo's server steers its own missiles, so nothing goes up.
-const MOVE_CHANNEL_UP_TYPES = new Set(['m', 'shoot']);
-const MOVE_CHANNEL_DOWN_TYPES = new Set(['shotBegin', 'shotEnd', 'gmUpdate']);
+const UDP_CHANNEL_UP_TYPES = new Set(['m', 'shoot']);
+const UDP_CHANNEL_DOWN_TYPES = new Set(['shotBegin', 'shotEnd', 'gmUpdate']);
 // The most a channel message carries: one packet, since a message split
 // across packets is lost if any piece is. Anything larger -- a laser's
 // many-segment shotBegin -- takes the WebSocket.
-const MOVE_CHANNEL_CHUNK_BYTES = 1100;
+const UDP_CHANNEL_CHUNK_BYTES = 1100;
 
 // --- Flags -------------------------------------------------------------
 //
@@ -15054,22 +15055,22 @@ function flushMoveBroadcasts() {
   const message = { type: 'pmBatch', n: moveBatchNumber, moves };
   const data = JSON.stringify(message);
   recordBroadcast(data, message);
-  // Not to a BZFlag client nor to a browser with a move channel open: both
+  // Not to a BZFlag client nor to a browser with a UDP channel open: both
   // had each move as it was accepted (`sendMoveToBzflagClients`,
   // `queueChannelMove`).
   players.forEach((player) => {
-    if (player.ws.readyState !== 1 || player.ws.sendMessage || player.moveChannel?.isOpen()) return;
+    if (player.ws.readyState !== 1 || player.ws.sendMessage || player.udpChannel?.isOpen()) return;
     player.ws.send(data);
   });
 }
 
-// Moves for the move channels, sent once the event loop has taken what
+// Moves for the UDP channels, sent once the event loop has taken what
 // arrived with them -- no tick, as bzfs relays a MsgPlayerUpdate on arrival
 // (`relayPlayerPacket`, bzfs.cxx:1036), and one message per tank's worth
 // rather than one per move.
 let pendingChannelMoves = [];
 function queueChannelMove(pmPacket) {
-  if (!MOVE_CHANNELS) return;
+  if (!UDP_CHANNELS) return;
   if (pendingChannelMoves.length === 0) setImmediate(flushChannelMoves);
   pendingChannelMoves.push(pmPacket);
 }
@@ -15082,10 +15083,10 @@ function flushChannelMoves() {
   const n = moveBatchNumber;
   let chunks = null;
   players.forEach((player) => {
-    if (player.ws.readyState !== 1 || player.ws.sendMessage || !player.moveChannel?.isOpen()) return;
+    if (player.ws.readyState !== 1 || player.ws.sendMessage || !player.udpChannel?.isOpen()) return;
     chunks = chunks || moveBatchChunks(n, moves);
     for (const chunk of chunks) {
-      if (!player.moveChannel.send(chunk)) {
+      if (!player.udpChannel.send(chunk)) {
         // The channel went as this was sent: the WebSocket has it instead.
         player.ws.send(JSON.stringify({ type: 'pmBatch', n, moves }));
         return;
@@ -15109,7 +15110,7 @@ function moveBatchChunks(n, moves) {
     let j = i + 1;
     while (j < moves.length && moves[j].id === moves[i].id) j += 1;
     const group = moves.slice(i, j).map((move) => JSON.stringify(move)).join(',');
-    if (parts.length > 0 && size + group.length + 1 > MOVE_CHANNEL_CHUNK_BYTES) {
+    if (parts.length > 0 && size + group.length + 1 > UDP_CHANNEL_CHUNK_BYTES) {
       chunks.push(`${head}${parts.join(',')}]}`);
       parts = [];
       size = head.length + 2;
@@ -15123,16 +15124,16 @@ function moveBatchChunks(n, moves) {
 }
 
 // One offer per this long from a player, so a page cannot churn peers.
-const MOVE_CHANNEL_OFFER_INTERVAL_MS = 2000;
+const UDP_CHANNEL_OFFER_INTERVAL_MS = 2000;
 
 // A player's peer for moves. What it brings in is a move or a shot
-// (`MOVE_CHANNEL_UP_TYPES`), handed to the same handler a WebSocket frame
+// (`UDP_CHANNEL_UP_TYPES`), handed to the same handler a WebSocket frame
 // goes to -- except a move older than one already taken: on a channel that
 // does not keep order, a late move would put the tank back where it was. The
 // client's clock (`ct`) is what orders them, as `order` does a
 // MsgPlayerUpdate (bzfs.cxx:5299).
-function openMoveChannel(player, ws) {
-  const session = MOVE_CHANNELS.open({
+function openUdpChannel(player, ws) {
+  const session = UDP_CHANNELS.open({
     name: player.id,
     sendSignal: (signal) => {
       if (ws.readyState === 1) ws.send(JSON.stringify({ type: 'rtc', ...signal }));
@@ -15140,8 +15141,8 @@ function openMoveChannel(player, ws) {
     // Usually before the join completes, while the name is still a placeholder.
     onOpen: (remote) => log(`[RTC] ${player.joined ? `"${player.name}"` : `#${player.id}`}${remote ? ` ${remote}` : ''}`),
     onClose: () => {
-      if (player.moveChannel === session) {
-        player.moveChannel = null;
+      if (player.udpChannel === session) {
+        player.udpChannel = null;
         if (player.joined) log(`[RTC] "${player.name}" closed`);
       }
     },
@@ -15153,12 +15154,12 @@ function openMoveChannel(player, ws) {
       } catch {
         return;
       }
-      if (!message || !MOVE_CHANNEL_UP_TYPES.has(message.type)) return;
-      if (player.moveChannel === session) player.moveChannelHeard = true;
+      if (!message || !UDP_CHANNEL_UP_TYPES.has(message.type)) return;
+      if (player.udpChannel === session) player.udpChannelHeard = true;
       const ct = Number(message.ct);
       if (message.type === 'm' && Number.isFinite(ct)) {
-        if (Number.isFinite(player.moveChannelLastCt) && ct <= player.moveChannelLastCt) return;
-        player.moveChannelLastCt = ct;
+        if (Number.isFinite(player.udpChannelLastCt) && ct <= player.udpChannelLastCt) return;
+        player.udpChannelLastCt = ct;
       }
       ws.emit('message', message);
     },
@@ -17618,7 +17619,7 @@ function acceptConnection(ws, req) {
     localMap: MAP_SOURCE,
     // Whether to offer a data channel for moves ('rtc'); a proxied game has
     // none, since its moves go on to a bzfs over its own UDP.
-    moveChannel: Boolean(MOVE_CHANNELS),
+    udpChannel: Boolean(UDP_CHANNELS),
     flags: getFlagStates(),
     worldTime: currentWorldTime(),
     title: serverConfig.title || '',
@@ -17777,22 +17778,26 @@ function acceptConnection(ws, req) {
           break;
         }
         case 'rtc': {
-          // The browser's half of the move channel's signalling: an offer
+          // The browser's half of the UDP channel's signalling: an offer
           // opens a new peer in place of any earlier one, candidates follow.
-          if (!MOVE_CHANNELS) break;
+          if (!UDP_CHANNELS) break;
+          if (typeof message.cipher === 'string') {
+            if (/^[A-Z0-9_]{1,64}$/.test(message.cipher)) log(`[RTC] ${player.joined ? `"${player.name}"` : `#${player.id}`} ${message.cipher}`);
+            break;
+          }
           if (message.sdpType === 'offer') {
             const now = Date.now();
-            if (now - (player.moveChannelOfferAt || 0) < MOVE_CHANNEL_OFFER_INTERVAL_MS) break;
-            player.moveChannelOfferAt = now;
-            player.moveChannel?.close();
-            player.moveChannelHeard = false;
-            player.moveChannel = openMoveChannel(player, ws);
+            if (now - (player.udpChannelOfferAt || 0) < UDP_CHANNEL_OFFER_INTERVAL_MS) break;
+            player.udpChannelOfferAt = now;
+            player.udpChannel?.close();
+            player.udpChannelHeard = false;
+            player.udpChannel = openUdpChannel(player, ws);
           }
           try {
-            player.moveChannel?.signal(message);
+            player.udpChannel?.signal(message);
           } catch (error) {
             log(`[RTC] "${player.name}": ${error.message}`);
-            player.moveChannel?.close();
+            player.udpChannel?.close();
           }
           break;
         }
@@ -18218,7 +18223,7 @@ function acceptConnection(ws, req) {
           // upstream's client sends a player update before every shot
           // (LocalPlayer.cxx:1266) and bzfs relays both as they come, so a
           // tank is never seen behind its own muzzle. A BZFlag client already
-          // had the move (`sendMoveToBzflagClients`); a move channel's waits for
+          // had the move (`sendMoveToBzflagClients`); a UDP channel's waits for
           // the end of this turn and the WebSocket's for the tick.
           flushChannelMoves();
           flushMoveBroadcasts();
@@ -19076,7 +19081,7 @@ function acceptConnection(ws, req) {
 
   // Handle disconnect
   ws.on('close', () => {
-    player.moveChannel?.close();
+    player.udpChannel?.close();
     const playerName = player.name;
     const playerNum = player.playerNumber;
     const playerWins = player.wins

@@ -28,7 +28,7 @@
 //   node scripts/survey-live-maps.mjs
 //   node scripts/survey-live-maps.mjs --count 12
 //   node scripts/survey-live-maps.mjs --server bzflag.example.org:5154
-//   node scripts/survey-live-maps.mjs --base-url http://localhost:3000
+//   node scripts/survey-live-maps.mjs --base-url http://localhost:5154
 
 import fs from 'node:fs';
 import path from 'node:path';
@@ -46,7 +46,7 @@ for (let i = 2; i < process.argv.length; i += 2) {
 const serverCount = parseInt(args.get('count') || '10', 10);
 const singleServer = args.get('server') || null;
 const listServerUrl = args.get('list-server') || DEFAULT_LIST_SERVER;
-const baseUrl = (args.get('base-url') || 'http://localhost:3000').replace(/\/$/, '');
+const baseUrl = (args.get('base-url') || 'http://localhost:5154').replace(/\/$/, '');
 const mapsDir = args.get('maps-dir') || process.env.MAPS_PATH || 'maps';
 
 // The name the server gives an imported map, shared with `remoteMapFileName`

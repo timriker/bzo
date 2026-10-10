@@ -14,9 +14,9 @@ Use [compose.yml](../compose.yml):
 docker compose up -d
 ```
 
-This starts the server on port 3000 and stores runtime config in
-`./data/server.json`. A `bzflag` block turns `listen` into a BZFlag port as
-well (see **Ports** below); 5154 is BZFlag's usual one.
+This starts the server on port 5154, BZFlag's IANA port, and stores runtime
+config in `./data/server.json`. A `bzflag` block makes `listen` a BZFlag port
+as well (see **Ports** below).
 
 On first start, the server copies [example-server.json](../example-server.json)
 to the configured runtime path if no config exists.
@@ -32,7 +32,7 @@ one to move.
 
 Then open:
 
-- `http://localhost:3000`
+- `http://localhost:5154`
 
 The image is multi-arch (`linux/amd64` and `linux/arm64`), so Docker will pull the
 correct variant for your host by default.
@@ -53,14 +53,13 @@ services:
 ```bash
 docker run -d \
   --name bzo \
-  -p 3000:3000 \
   -p 5154:5154 -p 5154:5154/udp \
   -v bzo-data:/data \
   ghcr.io/timriker/bzo:latest
 ```
 
-Port 5154, TCP and UDP, is for BZFlag clients, and only does anything once
-server.json has a `bzflag` block (**On the BZFlag list** below).
+Port 5154 TCP serves the web app. BZFlag clients use it too, TCP and UDP,
+once server.json has a `bzflag` block (**On the BZFlag list** below).
 
 The image defaults to `SERVER_CONFIG_PATH=/data/server.json`.
 
@@ -70,7 +69,6 @@ To force a specific architecture when running directly:
 docker run -d \
   --name bzo \
   --platform linux/amd64 \
-  -p 3000:3000 \
   -p 5154:5154 -p 5154:5154/udp \
   -v bzo-data:/data \
   ghcr.io/timriker/bzo:latest
@@ -155,7 +153,7 @@ npm run dev
 
 Then open:
 
-- `http://localhost:3000`
+- `http://localhost:5154`
 
 ## Configuration
 
@@ -175,8 +173,8 @@ See [example-server.json](../example-server.json) for the supported shape.
 
 `listen` is the game's one TCP port: the web app, its WebSockets, and HTTPS
 when `https` is set. With a `bzflag` block it is a BZFlag port as well, TCP
-and UDP. Moves over WebRTC take a second port, UDP only, until #189 merges
-them:
+and UDP. The UDP channel, over WebRTC, takes a second UDP port until #189
+merges them:
 
 ```json
 "listen": "[::]:5154",
@@ -190,7 +188,7 @@ IPv4 peer arrives on it as itself, so IPv4 BZFlag clients still connect.
 `webrtc.listen` has to be IPv4 (`0.0.0.0`): some carriers drop a phone's
 data connection when WebRTC runs over its IPv6. The `LISTEN` and `PORT`
 environment variables override `listen`. Without one the server listens on
-`[::]:3000`.
+`[::]:5154`.
 
 ### Voice
 
@@ -228,10 +226,11 @@ IPv6 anyway:
 
 The TLS name has to be on the relay's certificate too.
 
-### Moves over WebRTC
+### UDP channel
 
-Moves can ride a WebRTC data channel instead of the WebSocket, so a lost
-packet costs one move rather than holding back every move behind it:
+Moves and shots can ride a WebRTC data channel instead of the WebSocket, as
+upstream sends them over UDP, so a lost packet costs one message rather than
+holding back every one behind it:
 
 ```json
 "webrtc": { "listen": "0.0.0.0:5153" }

@@ -29,7 +29,7 @@ const args = new Map();
 for (let i = 2; i < process.argv.length; i += 2) {
   args.set(process.argv[i].replace(/^--/, ''), process.argv[i + 1]);
 }
-const url = args.get('url') || 'ws://127.0.0.1:3000';
+const url = args.get('url') || 'ws://127.0.0.1:5154';
 const teams = (args.get('teams') || 'red,green,blue,purple,rogue').split(',').filter(Boolean);
 const each = Number(args.get('each') || 3);
 const prefix = args.get('prefix') || '';

@@ -5,21 +5,22 @@
  * See LICENSE or https://www.gnu.org/licenses/agpl-3.0.html
  */
 
-// Moves over a WebRTC data channel (#8; server/move-channel.cjs has why).
+// The UDP channel: upstream's UDP over a WebRTC data channel (#8;
+// server/udp-channel.cjs has why).
 // This end offers; the server answers and lists its IPv4 address and port,
 // so this end needs no ICE servers of its own -- the server is the one that
 // has to be reachable, and it hears this end's address from the checks.
 //
-// Until the channel opens, and for good if it never does, moves stay on
-// the WebSocket. Nothing here is required for play.
+// Until the channel opens, and for good if it never does, its messages stay
+// on the WebSocket. Nothing here is required for play.
 
-const CHANNEL_LABEL = 'moves';
+const CHANNEL_LABEL = 'udp';
 const CHANNEL_OPTIONS = { negotiated: true, id: 0, ordered: false, maxRetransmits: 0 };
 // Long enough for ICE to try every pair; a channel not open by then is
 // behind something that will not pass it.
 const OPEN_TIMEOUT_MS = 10000;
 
-export function createMoveChannel({
+export function createUdpChannel({
   sendSignal, onMessage, log = () => {}, PeerConnection = globalThis.RTCPeerConnection,
 }) {
   let pc = null;
@@ -51,6 +52,15 @@ export function createMoveChannel({
       channel.onopen = () => {
         clearTimeout(timer);
         log('open');
+        // The DTLS cipher the browser settled on, for the server's log.
+        peer.getStats().then((stats) => {
+          for (const report of stats.values()) {
+            if (report.type === 'transport' && report.dtlsCipher && pc === peer) {
+              sendSignal({ cipher: report.dtlsCipher });
+              return;
+            }
+          }
+        }).catch(() => {});
       };
       channel.onclose = () => {
         if (pc === peer) {

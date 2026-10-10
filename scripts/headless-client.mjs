@@ -52,7 +52,7 @@ const args = new Map();
 for (let i = 2; i < process.argv.length; i += 2) {
   args.set(process.argv[i].replace(/^--/, ''), process.argv[i + 1]);
 }
-const url = args.get('url') || 'http://localhost:3000';
+const url = args.get('url') || 'http://localhost:5154';
 const playerName = args.get('name') || 'headless';
 // The team to join as, for a probe that has to look like a particular team
 // rather than whatever Automatic hands out.

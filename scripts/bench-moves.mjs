@@ -5,7 +5,7 @@
  * See LICENSE or https://www.gnu.org/licenses/agpl-3.0.html
  */
 // How long a bzo client's move takes to reach the other bzo clients, over the
-// WebSocket or over the move channel (#8) -- scripts/bench-relay.mjs's
+// WebSocket or over the UDP channel (#8) -- scripts/bench-relay.mjs's
 // question for browsers rather than BZFlag clients.
 //
 //   node scripts/bench-moves.mjs                       # moves on the WebSocket
@@ -14,18 +14,18 @@
 //
 // Each tank joins as a browser does and spins on the spot at --rate moves a
 // second, the turn the server allows, with its sequence number in its
-// azimuth. --channel opens the channel through public/move-channel.mjs, the
+// azimuth. --channel opens the channel through public/udp-channel.mjs, the
 // browser's own code, on node-datachannel's RTCPeerConnection. Server bots
 // shoot, so a quiet server measures cleaner.
 import WebSocket from 'ws';
 import { RTCPeerConnection } from 'node-datachannel/polyfill';
-import { createMoveChannel } from '../public/move-channel.mjs';
+import { createUdpChannel } from '../public/udp-channel.mjs';
 
 const args = Object.fromEntries(process.argv.slice(2).reduce((pairs, arg, i, all) => {
   if (arg.startsWith('--')) pairs.push([arg.slice(2), all[i + 1]?.startsWith('--') || all[i + 1] === undefined ? 'true' : all[i + 1]]);
   return pairs;
 }, []));
-const URL_ = args.url || 'ws://127.0.0.1:3000/';
+const URL_ = args.url || 'ws://127.0.0.1:5154/';
 const TANKS = Number(args.tanks || 6);
 const RATE = Number(args.rate || 30);
 const SECONDS = Number(args.seconds || 20);
@@ -64,8 +64,8 @@ function join(index) {
     const onMessage = (message) => {
       if (message.type === 'init') {
         tank.id = message.player?.id ?? null;
-        if (CHANNEL && message.moveChannel) {
-          tank.channel = createMoveChannel({
+        if (CHANNEL && message.udpChannel) {
+          tank.channel = createUdpChannel({
             sendSignal: (signal) => ws.send(JSON.stringify({ type: 'rtc', ...signal })),
             onMessage: (text) => onMessage(JSON.parse(text)),
             PeerConnection: RTCPeerConnection,

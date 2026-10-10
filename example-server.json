@@ -43,7 +43,7 @@
   "listServerOwnerBzid": "",
   "listServerOwnerCallsign": "",
   "listServerUrl": "https://bz.rikers.org",
-  "listen": "[::]:3000",
+  "listen": "[::]:5154",
   "localAdmin": false,
   "mapFile": "bzo.bzw",
   "maxPlayerScore": 0,

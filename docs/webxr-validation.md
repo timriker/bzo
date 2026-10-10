@@ -8,7 +8,7 @@ or deployment configuration.
 
 - Install dependencies with `npm install`.
 - Run `npm run check` and resolve any failure before starting a session.
-- Use `http://localhost:3000` for local checks, or an HTTPS deployment for a
+- Use `http://localhost:5154` for local checks, or an HTTPS deployment for a
   remote headset.
 - Record the browser, headset, browser version, page origin, and test date.
 - `/test.html` lists the measurement knobs as links, so a headset can pick one

@@ -89,4 +89,3 @@ as who banned it.
 
 - `/hostban` (reverse DNS names) and `/masterban` (the list server's shared
   list).
-- Browsers on IPv6: port 3000 listens on IPv4 only today.

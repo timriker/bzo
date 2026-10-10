@@ -7,8 +7,8 @@
 
 // listen-address.cjs - Where the game answers: one address, host and port.
 //
-// `listen` carries both, the way a proxy's own config writes it -- `3000`,
-// `:3000`, `127.0.0.1:3000`, `[::1]:3000`, or a bare host with no port at all.
+// `listen` carries both, the way a proxy's own config writes it -- `5154`,
+// `:5154`, `127.0.0.1:5154`, `[::1]:5154`, or a bare host with no port at all.
 // One setting, because a host and a port are one decision, and an operator who
 // moves a server between machines moves both or neither.
 //
@@ -31,21 +31,21 @@
 'use strict';
 
 const DEFAULT_HOST = '::';
-const DEFAULT_PORT = 3000;
+const DEFAULT_PORT = 5154;
 
 // A socket binds one address family. `localhost` names both loopbacks and
 // resolves to whichever the host puts first, so a server told to bind it would
 // answer on one and refuse the other -- and the refused one is exactly where a
 // proxy configured the other way is knocking. Resolved to the IPv4 loopback,
 // which is what a proxy pointed at `localhost` most often reaches (Caddy's
-// `reverse_proxy localhost:3000` connects to 127.0.0.1), and said out loud
+// `reverse_proxy localhost:5154` connects to 127.0.0.1), and said out loud
 // rather than left to be found as a connection refused.
 const LOCALHOST_HOST = '127.0.0.1';
 
 // Splits what an operator wrote into a host and a port, either of which may be
 // absent. Brackets are what tell an IPv6 address from a host and port, which is
-// why a URL uses them and why this does too: `::1` is an address, `[::1]:3000`
-// is an address and a port, and `3000` on its own is a port.
+// why a URL uses them and why this does too: `::1` is an address, `[::1]:5154`
+// is an address and a port, and `5154` on its own is a port.
 function splitHostPort(value) {
   const raw = typeof value === 'string' ? value.trim() : '';
   if (raw === '') return { host: '', port: '' };
@@ -81,7 +81,7 @@ function normalizePort(value) {
 
 // The environment first, `server.json` second, and within each the address's
 // own port ahead of the separate `port`. Anything unanswered falls through to
-// every interface on 3000.
+// every interface on 5154.
 function resolveListenTarget({
   envListen, envPort, configListen, configPort,
 } = {}) {
@@ -111,7 +111,7 @@ function resolveListenTarget({
   return { host, port, note: notes.join(' ') };
 }
 
-// `http://[::1]:3000` -- an IPv6 literal is bracketed inside a URL and an IPv4
+// `http://[::1]:5154` -- an IPv6 literal is bracketed inside a URL and an IPv4
 // address is not, so the line the server logs at startup can be pasted into a
 // browser.
 function describeListenTarget(host, port) {

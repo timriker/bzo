@@ -25,7 +25,7 @@ FROM mirror.gcr.io/library/ubuntu:26.04
 # first and `server.json` second, so setting either here would make the matching
 # key in the operator's mounted `/data/server.json` permanently inert -- and
 # that file is exactly where someone would go to change it. Unset, the defaults
-# are port 3000 on every interface, which is what a container needs anyway, and
+# are port 5154 on every interface, which is what a container needs anyway, and
 # `docker run -e PORT=... -e LISTEN=...` still overrides the file.
 ENV NODE_ENV=production \
   SERVER_CONFIG_PATH=/data/server.json \
@@ -64,7 +64,7 @@ RUN mkdir -p /data /app/cache/br && chown -R "$APP_UID:$APP_GID" /app /data
 
 USER ${APP_UID}:${APP_GID}
 
-EXPOSE 3000 5153/udp 5154/tcp 5154/udp
+EXPOSE 5153/udp 5154/tcp 5154/udp
 VOLUME ["/data"]
 
 CMD ["node", "server.js"]

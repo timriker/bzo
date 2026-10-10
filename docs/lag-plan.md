@@ -135,7 +135,7 @@ require one:
   ordered, and so is a WebSocket bootstrapped over HTTP/3 (RFC 9220). Moving
   the existing traffic onto H3 would remove *cross-stream* head-of-line blocking
   and nothing else.
-- **The move channel is built** (`webrtc.listen`, [network.md](network.md)):
+- **The UDP channel is built** (`webrtc.listen`, [network.md](network.md)):
   a WebRTC data channel, unreliable and unordered, upstream's UDP in a
   browser. The client's `ct` is its `order` -- the server drops a move not
   newer than the last it took -- and `pmBatch`'s `n` orders the way down.

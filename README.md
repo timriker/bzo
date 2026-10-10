@@ -61,7 +61,7 @@ game, `/` or `?` shows the keyboard's.
 ## WebXR
 
 The VR mode uses native WebXR and requires a browser and headset that support
-`immersive-vr`. For local validation, open the game at `http://localhost:3000`.
+`immersive-vr`. For local validation, open the game at `http://localhost:5154`.
 For remote access, terminate TLS at the reverse proxy and open the game over
 `https://`; the client automatically uses `wss://` for its WebSocket connection
 when the page is served over HTTPS.

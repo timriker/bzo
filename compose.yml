@@ -3,16 +3,14 @@ services:
     image: ghcr.io/timriker/bzo:latest
     restart: unless-stopped
     ports:
-      - "3000:3000"
-      # BZFlag clients, when server.json has a `bzflag` block and
-      # `"listen": "[::]:5154"`: TCP for the game and the web app, UDP for
-      # BZFlag's ping and movement link. Drop 3000 and PORT below then.
+      # The web app, and BZFlag clients when server.json has a `bzflag`
+      # block: TCP for the game and the web app, UDP for BZFlag's ping and
+      # movement link.
       - "5154:5154/tcp"
       - "5154:5154/udp"
-      # Moves over WebRTC, when server.json has `webrtc.listen`.
+      # The UDP channel over WebRTC, when server.json has `webrtc.listen`.
       - "5153:5153/udp"
     environment:
-      PORT: "3000"
       SERVER_CONFIG_PATH: /data/server.json
     volumes:
       - ./data:/data

@@ -18,10 +18,11 @@ One WebSocket per client, to the same host and port the page was served from
 (`public/client.js` picks `wss:` for an `https:` page). That is the web port
 (`listen`) or the BZFlag port, which answers HTTP and HTTPS as well as BZFlag
 ([port-mux-plan.md](port-mux-plan.md)). It carries everything, and moves too
-unless a move channel is open.
+unless a UDP channel is open.
 
-**The move channel** (#8) is bzo's UDP: a WebRTC data channel, negotiated as
-id 0, neither ordered nor retried, when server.json has `webrtc.listen`. It
+**The UDP channel** (#8) is upstream's UDP for a browser: a WebRTC data
+channel, negotiated as id 0, neither ordered nor retried, when server.json has
+`webrtc.listen`. It
 carries what bzfs sends over UDP (`NetHandler::pwrite`): `m` and `shoot` up;
 `pmBatch`, `shotBegin`, `shotEnd` and `gmUpdate` down. Moves go out on it as
 they are accepted, gathered once per turn of the event loop, where the
@@ -42,8 +43,8 @@ lifetime. A message over one packet's worth, such as a laser's many-segment
 `shotBegin`, takes the WebSocket. With the channel on, every
 client sends at least one move a second (`MAX_UPDATE_INTERVAL`), so a lost
 stop is corrected within one. A client whose channel does not open in ten
-seconds stays on the WebSocket. `/playerlist` shows an open one as ` udp+`,
-as bzfs does a client's UDP link.
+seconds stays on the WebSocket. `/playerlist` shows an open one as `+`, and
+` udp+` once a move has come over it, as bzfs does a client's UDP link.
 
 `new WebSocketServer({ server })` (`server.js:1312`) takes ws's defaults, which
 means no `permessage-deflate` -- frames go out as uncompressed UTF-8 -- and
@@ -148,16 +149,16 @@ omitted rather than sent null.
 | `voiceState` | `channel`, `team`, `enabled`, `transmitting` | mic state |
 | `voiceOffer` / `voiceAnswer` | `channel`, `to`, `description` | WebRTC signalling |
 | `voiceIceCandidate` | `channel`, `to`, `candidate` | WebRTC signalling |
-| `rtc` | `sdp`,`sdpType` or `candidate`,`mid` | move channel signalling: the offer, then candidates |
+| `rtc` | `sdp`,`sdpType` or `candidate`,`mid` | UDP channel signalling: the offer, then candidates |
 | `debug` | `message`, `name?` | client debug line, echoed to the server log |
 
 ## Server to client
 
 | type | fields | meaning |
 |---|---|---|
-| `init` | `clientBuild`, `serverVersion`, `player`, `players`, `config`, `bzdb`, `teamMode`, `teamScores`, `liveConfigKeys`, `operatorConfig`, `listServer`, `rabbitId`, `timeLeft`, `gameOver`, `voiceRtcConfig`, `moveChannel`, `world`, `viewableMaps`, `flags`, `worldTime`, `title`, `motd` | everything, once, on connect |
-| `pmBatch` | `n`, `moves` | one tick's accepted moves, one entry per mover, numbered by tick. The normal motion path; on a move channel, split so each message fits one packet |
-| `rtc` | `sdp`,`sdpType` or `candidate`,`mid` | move channel signalling: the answer, then candidates |
+| `init` | `clientBuild`, `serverVersion`, `player`, `players`, `config`, `bzdb`, `teamMode`, `teamScores`, `liveConfigKeys`, `operatorConfig`, `listServer`, `rabbitId`, `timeLeft`, `gameOver`, `voiceRtcConfig`, `udpChannel`, `world`, `viewableMaps`, `flags`, `worldTime`, `title`, `motd` | everything, once, on connect |
+| `pmBatch` | `n`, `moves` | one tick's accepted moves, one entry per mover, numbered by tick. The normal motion path; on a UDP channel, split so each message fits one packet |
+| `rtc` | `sdp`,`sdpType` or `candidate`,`mid` | UDP channel signalling: the answer, then candidates |
 | `pm` | `id`,`x`,`y`,`z`,`r`,`fs`,`rs`,`vv`,`vx`,`vz` | a single move, outside the batch |
 | `pt` | as `pm` plus `fromFaceId`,`toFaceId`,`jd`,`d?` | an accepted teleport |
 | `positionCorrection` | `x`,`y`,`z`,`r`,`vv` | the server moved you; the client snaps |

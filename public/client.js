@@ -124,7 +124,7 @@ import { getMenuClickDirection, playMenuBackSound, playMenuSelectSound, setMenuS
 
 setMenuSoundPlayer((name) => renderManager.playLocalSound(name));
 import { DestructCountdown, PauseState } from './pause.mjs';
-import { createMoveChannel } from './move-channel.mjs';
+import { createUdpChannel } from './udp-channel.mjs';
 import { HUNT_MARKER_COLOR, HuntState } from './hunt.mjs';
 import { XRMenuRenderer } from './xr-menu.js';
 import {
@@ -7402,10 +7402,10 @@ function init() {
   }
 }
 
-// Moves over a WebRTC data channel when the server offers one (#8,
-// move-channel.mjs); the WebSocket carries them otherwise, and the signalling
-// always.
-const moveChannel = createMoveChannel({
+// Upstream's UDP messages over a WebRTC data channel when the server offers
+// one (#8, udp-channel.mjs); the WebSocket carries them otherwise, and the
+// signalling always.
+const udpChannel = createUdpChannel({
   sendSignal: (signal) => sendToServer({ type: 'rtc', ...signal }),
   onMessage: (text) => {
     receivedBytes += text.length;
@@ -7415,14 +7415,14 @@ const moveChannel = createMoveChannel({
     } catch {
       return;
     }
-    if (MOVE_CHANNEL_DOWN_TYPES.has(message?.type)) handleServerMessage(message);
+    if (UDP_CHANNEL_DOWN_TYPES.has(message?.type)) handleServerMessage(message);
   },
   log: (text) => debugLog(text, 'rtc'),
 });
 
 // What the channel carries each way, upstream's UDP list (see server.js).
-const MOVE_CHANNEL_UP_TYPES = new Set(['m', 'shoot']);
-const MOVE_CHANNEL_DOWN_TYPES = new Set(['pmBatch', 'shotBegin', 'shotEnd', 'gmUpdate']);
+const UDP_CHANNEL_UP_TYPES = new Set(['m', 'shoot']);
+const UDP_CHANNEL_DOWN_TYPES = new Set(['pmBatch', 'shotBegin', 'shotEnd', 'gmUpdate']);
 
 // Shots whose end came before their start, which a channel that does not keep
 // order can do. Upstream drops such an end (`endShot` finds no shot) and the
@@ -7437,9 +7437,9 @@ const EARLY_SHOT_END_MS = 15000;
 const lastMoveBatchById = new Map();
 
 function sendToServer(message) {
-  if (MOVE_CHANNEL_UP_TYPES.has(message.type) && moveChannel.isOpen()) {
+  if (UDP_CHANNEL_UP_TYPES.has(message.type) && udpChannel.isOpen()) {
     const data = JSON.stringify(message);
-    if (moveChannel.send(data)) {
+    if (udpChannel.send(data)) {
       if (debugEnabled) packetsSent.set(message.type, (packetsSent.get(message.type) || 0) + 1);
       sentBytes += data.length;
       return;
@@ -7558,7 +7558,7 @@ function connectToServer() {
   };
 
   ws.onclose = (event) => {
-    moveChannel.close();
+    udpChannel.close();
     renderReadyForJoin = false;
     gameplayJoinConfirmed = false;
     activeInitSequence = 0;
@@ -7770,8 +7770,8 @@ function handleServerMessage(message) {
       // may be another.
       lastMoveBatchById.clear();
       earlyShotEnds.clear();
-      if (!message.moveChannel) moveChannel.close();
-      else if (!moveChannel.isOpen()) void moveChannel.start();
+      if (!message.udpChannel) udpChannel.close();
+      else if (!udpChannel.isOpen()) void udpChannel.start();
       const operatorPanelTitleEl = document.getElementById('operatorPanelTitle');
       if (operatorPanelTitleEl && typeof message.serverVersion === 'string') {
         operatorPanelTitleEl.textContent = `Operator Panel (v${message.serverVersion})`;
@@ -8295,7 +8295,7 @@ function handleServerMessage(message) {
       break;
 
     case 'rtc':
-      void moveChannel.signal(message);
+      void udpChannel.signal(message);
       break;
 
     case 'positionCorrection':
@@ -8423,7 +8423,7 @@ function handleServerMessage(message) {
       // `myTank->getTarget()` otherwise (GuidedMissleStrategy.cxx:139-149). A
       // target has no target field in `MsgShotBegin` to relay, so taking an
       // answer back from it would clear the lock on every trigger pull.
-      // Ended already, its end having overtaken it on the move channel.
+      // Ended already, its end having overtaken it on the UDP channel.
       if (earlyShotEnds.delete(message.id)) break;
       if (message.flag === 'GM'
         && !(clientTracesShots && message.playerId === myPlayerId)) {

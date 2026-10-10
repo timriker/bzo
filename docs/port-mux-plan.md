@@ -33,79 +33,121 @@ serves the app over TLS on the BZFlag port. A headset needs it for WebXR.
 With a `bzflag` block, `listen` is the BZFlag port, so one TCP port carries
 everything; a reverse proxy points at it.
 
-Not done: HTTP/2. Node's `http2` with `allowHTTP1` would take it, but
-Express 4 only partly runs on the compatibility layer and `ws` has no
-WebSockets over HTTP/2, so it would speed asset loads and nothing else.
+Not done: HTTP/2 and HTTP/3 for the web app. The client's startup checks
+whether each shared asset (images, audio, models) changed; over HTTP/1.1
+those revalidations queue a few at a time on each connection, where HTTP/2
+or HTTP/3 runs them all at once on one. Node's `http2` with `allowHTTP1`
+would take HTTP/2, but Express 4 only partly runs on its compatibility layer
+and `ws` has no WebSockets over HTTP/2. HTTP/3 comes with WebTransport below,
+announced by an `Alt-Svc` header over HTTPS.
 
 ## UDP: to do (#189)
 
-Telling the traffic apart is settled (RFC 7983, RFC 9443), by the first byte:
+One UDP port carrying BZFlag, WebTransport and WebRTC, a browser taking the
+best that connects:
+
+1. **WebTransport** (HTTP/3) on the BZFlag port: datagrams for what bzfs
+   sends over UDP, a stream for the rest. Every current browser has it;
+   Safari since 26.4.
+2. **WebRTC** (the UDP channel) on the same port, where WebTransport does not
+   connect.
+3. **WebRTC through TURN over UDP**, the voice servers' relay, for a network
+   that passes UDP to the relay but not to the game. TURN over TCP or TLS is
+   no better than the WebSocket, so not that.
+4. **The WebSocket**, which opens first in every case and carries everything
+   until one of the above does. It stays: a network with no UDP, a reverse
+   proxy (Apache does not pass QUIC), and an older browser all need it.
+
+### Telling the traffic apart
+
+RFC 7983 and RFC 9443, by the first byte:
 
 | first byte | traffic |
 |---|---|
-| 0-3 | STUN, or a BZFlag frame (its length is under 1024); STUN carries the magic cookie `0x2112A442` at bytes 4-7 |
+| 0-3 | STUN or BZFlag, by bytes 2-3 (below) |
 | 20-63 | DTLS: WebRTC's data |
-| 64-127, 192-255 | QUIC: HTTP/3 |
+| 64-127, 192-255 | QUIC: HTTP/3 and WebTransport |
 
-Owning the socket is not. A datagram goes to one socket only, so there is
-nothing to push back the way TCP's opening bytes are. node-datachannel binds
-its own UDP port, and neither it nor libjuice beneath it takes a socket or a
-packet from outside: its bindings offer `IceUdpMuxListener`, which reports
-only unknown STUN back, and `proxyServer`, which is for going out through an
-HTTP or SOCKS proxy; libjuice's `juice.h` has no external socket and no
-user-fed packets, and every `concurrency_mode` keeps the socket inside. The
-ways through:
+A BZFlag datagram starts with its length (bytes 0-1, under 1024) and its
+code (bytes 2-3, two ASCII letters, 0x4141 or more). STUN starts with its
+type, then its length after the 20-byte header (bytes 2-3, under 1500), then
+the magic cookie `0x2112A442` (bytes 4-7). So bytes 2-3 settle it: a known
+BZFlag UDP code whose length fits the datagram goes to the BZFlag handler,
+and the cookie confirms STUN. QUIC must not negotiate `grease_quic_bit`
+(RFC 9287), which would let its first byte fall below 64. Bytes 64-79 are
+also TURN channel data, which only matters to a TURN server on this port.
 
-1. **A relay in bzo.** bzo owns the BZFlag port and forwards STUN and DTLS to
-   libdatachannel on loopback, sending its replies back out. One loopback
-   socket per client, so each client is a distinct peer to it -- a small NAT
-   table with an idle timeout -- and the port in the candidates it offers
-   rewritten to the BZFlag port. ICE takes this: each STUN check is signed
-   and carries the session's username. Every datagram crosses JavaScript
-   twice -- measured below.
-2. **A JavaScript WebRTC stack** (werift) fed from bzo's own socket: its
-   `UdpTransport.init` can be swapped for one on bzo's socket, routed by the
-   ICE username -- measured below.
-3. **libjuice taking external packets**: native work, upstream or a fork.
-4. **Kernel steering**: an iptables `u32` rule sending STUN and DTLS on the
-   BZFlag port to the channel's port. No code, but per host, and awkward under
-   Docker -- the opposite of the point.
+STUN finds its WebRTC peer by the ICE username it carries, this end's ufrag
+first, and from then on that peer owns the sender's address, which is how
+DTLS from it is routed. QUIC goes to the one HTTP/3 server, which keeps its
+own connections by ID.
+
+### Owning the socket
+
+A datagram reaches one socket, so whatever serves WebRTC and WebTransport has
+to take its packets from bzo's socket and send through it:
+
+- **werift**, WebRTC in JavaScript: its `UdpTransport.init` is swapped for a
+  view of the shared socket. DTLS's AES-GCM runs in Node's `crypto`; SCTP and
+  ICE are JavaScript.
+- **@fails-components/webtransport** over its quiche transport: QUIC and
+  HTTP/3 are native, and its server socket is a Node `dgram` socket read in
+  JavaScript, so its `init` takes the shared socket in place of binding one.
+- **libdatachannel** (node-datachannel, what `webrtc.listen` runs today)
+  binds its own socket, and neither it nor libjuice takes packets from
+  outside. It stays on its own port.
 
 ### Measured
 
-A spike ran 16 clients at 30 moves a second, the server relaying each to the
-other 15, on one x86 core:
+`scripts/bench-udp-stack.mjs`: the server a child process, measured alone;
+tanks at 30 moves a second, each move relayed to every tank, gathered once
+per turn of the event loop and split to fit a packet as bzo does. One x86
+core, the dev server running beside it, one run each. CPU is the server
+process, 100% one core; delay is p99.
 
-| server | CPU | relayed a second | p50 | p99 |
-|---|---|---|---|---|
-| libdatachannel on its own port | 39% | 7,080 | 3.0 ms | 9 ms |
-| relay through loopback | 94-99% | 7,075 | 11 ms | 31-43 ms |
-| werift on the shared socket | 136% | ~380 (3% delivered) | ~500 ms | ~23 s |
+| tanks | libdatachannel, own port | werift, own sockets | werift, shared | WebTransport, shared | half each, shared |
+|---|---|---|---|---|---|
+| 2 | 4%, 1.5 ms | 11%, 2.8 ms | 11%, 2.6 ms | 8%, 3.0 ms | 11%, 2.9 ms |
+| 8 | 15%, 1.8 ms | 38%, 5.1 ms | 36%, 5.4 ms | 39%, 5.4 ms | 32%, 6.7 ms |
+| 16 | 33%, 2.6 ms | 66%, 12.2 ms | 66%, 10.0 ms | 69%, 12.5 ms | 79%, 10.9 ms |
 
-Both shared sockets routed a BZFlag datagram to bzo rather than to WebRTC,
-so the sorting works; the cost is what fails. werift falls over under game
-load -- its DTLS and SCTP are JavaScript. The relay works at two and a half
-times the CPU and eight milliseconds more, which the Orin cannot spare, and
-it needs a loopback socket per client with libdatachannel seeing only
-127.0.0.1. The harness sent each move as its own message where bzo gathers
-them, so every figure would be lower in bzo; the order would not change.
+Every stack delivered every move at every load, and the shared socket held
+one bound port for all of them. Sharing costs nothing over werift's own
+sockets. werift and WebTransport cost about twice libdatachannel, and add up
+to ten milliseconds at sixteen tanks; WebTransport's quiche is native, so its
+cost is crossing into JavaScript for each datagram through web streams.
+
+### Ciphers
+
+Encryption is about 2% of the server's CPU on every stack at sixteen tanks
+(perf, symbols summed): libdatachannel 2.5%, werift 2.1%, WebTransport under
+2.5% (quiche's header protection, plus at most the 2% of its module perf
+cannot name). The cost is per packet -- the stack, the system calls, the
+crossings into JavaScript -- not per byte, so ordering ciphers buys a
+fraction of that 2%. Each stack already takes the cheap one where it can:
+
+- werift has only AES-128-GCM.
+- QUIC is TLS 1.3, and BoringSSL under quiche takes AES-128-GCM on a CPU
+  with AES instructions and ChaCha20 on one without, as browsers ask.
+- libdatachannel offers `ALL:...:@STRENGTH`, 256-bit first, and browsers
+  settle on ChaCha20 with it (`[RTC]` logs each one's). Changing that means
+  patching it, which moving off it makes moot.
 
 ### Next
 
-The way to one UDP port at native cost is option 3: libjuice already runs
-every connection on one socket (`JUICE_CONCURRENCY_MODE_MUX`). It needs a
-callback for a datagram it does not recognise -- handing BZFlag's to bzo --
-and a send on that socket, so bzo answers from the same port. That is a small
-change, worth offering upstream, then exposing through node-datachannel.
+WebTransport and werift on the BZFlag port, behind the BZFlag handler's own
+check, retire `webrtc.listen` and its second port. Before that:
 
-Until then WebRTC keeps its own port (`webrtc.listen`, 5153).
+- the same load on the Orin, which is where CPU runs out;
+- a browser end: Chrome and the Quest on WebTransport to this server (the
+  Node client above is quiche too), and whether they send the
+  `:protocol = "webtransport"` token it accepts;
+- quiche's native module on arm64, which the image builds for;
+- WebTransport's certificate: the `https` one, valid for the name a player
+  uses, since the reverse proxy cannot carry QUIC.
 
-Listening dual-stack is fine; clients still come in on IPv4 -- BZFlag cannot
-do IPv6, and the move channel offers IPv4 only (a phone on Verizon drops its
-data session over WebRTC on IPv6).
+## HTTP/3
 
-## HTTP/3: after both
-
-QUIC needs the UDP socket (#189), a certificate (the `https` above), and a
-QUIC stack in userland, since Node's is experimental. A browser finds it
-through an `Alt-Svc` header sent over HTTPS.
+WebTransport brings an HTTP/3 server on the BZFlag port. Serving the web app
+over it as well, found through `Alt-Svc`, is the HTTP/2 and HTTP/3 item
+under TCP above.

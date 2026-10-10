@@ -24,38 +24,38 @@ const {
 // address and a port.
 const splits = [
   ['', '', ''],
-  ['3000', '', '3000'],
-  [':3000', '', '3000'],
+  ['5154', '', '5154'],
+  [':5154', '', '5154'],
   ['127.0.0.1', '127.0.0.1', ''],
-  ['127.0.0.1:3000', '127.0.0.1', '3000'],
+  ['127.0.0.1:5154', '127.0.0.1', '5154'],
   ['0.0.0.0:8080', '0.0.0.0', '8080'],
-  ['localhost:3000', 'localhost', '3000'],
+  ['localhost:5154', 'localhost', '5154'],
   // Bare IPv6 carries no port: there would be no way to tell where it ended.
   ['::', '::', ''],
   ['::1', '::1', ''],
   ['2603:1020:c01:6::2', '2603:1020:c01:6::2', ''],
   // Bracketed, which is how a port is added to one.
   ['[::]', '::', ''],
-  ['[::]:3000', '::', '3000'],
-  ['::3000', '::3000', ''],
-  [':::3000', '::', '3000'],
-  ['[::1]:3000', '::1', '3000'],
+  ['[::]:5154', '::', '5154'],
+  ['::5154', '::5154', ''],
+  [':::5154', '::', '5154'],
+  ['[::1]:5154', '::1', '5154'],
   ['[2603:1020:c01:6::2]:8080', '2603:1020:c01:6::2', '8080'],
-  ['  [::1]:3000  ', '::1', '3000'],
+  ['  [::1]:5154  ', '::1', '5154'],
 ];
 for (const [input, host, port] of splits) {
   const got = splitHostPort(input);
   assert.deepEqual(got, { host, port }, `splitHostPort(${JSON.stringify(input)})`);
 }
 
-// Nothing configured: every interface, both families, on 3000 -- what a
+// Nothing configured: every interface, both families, on 5154 -- what a
 // container needs and what a LAN game needs.
 assert.equal(DEFAULT_HOST, '::');
-assert.equal(DEFAULT_PORT, 3000);
+assert.equal(DEFAULT_PORT, 5154);
 for (const absent of [undefined, {}, { envListen: '', configListen: '   ' }]) {
   const got = resolveListenTarget(absent);
   assert.equal(got.host, '::');
-  assert.equal(got.port, 3000);
+  assert.equal(got.port, 5154);
   assert.equal(got.note, '');
 }
 
@@ -67,7 +67,7 @@ assert.deepEqual(
 assert.equal(resolveListenTarget({ configListen: '[::1]:3001' }).host, '::1');
 assert.equal(resolveListenTarget({ configListen: '[::1]:3001' }).port, 3001);
 // A host on its own keeps the default port; a port on its own keeps every interface.
-assert.equal(resolveListenTarget({ configListen: '::1' }).port, 3000);
+assert.equal(resolveListenTarget({ configListen: '::1' }).port, 5154);
 assert.equal(resolveListenTarget({ configListen: '3001' }).host, '::');
 assert.equal(resolveListenTarget({ configListen: '3001' }).port, 3001);
 
@@ -93,21 +93,21 @@ assert.equal(resolveListenTarget({ configListen: 'LOCALHOST:9001' }).port, 9001)
 
 // A loopback is the whole point of the setting: it must never widen to every
 // interface, which would expose the port the proxy exists to cover.
-for (const loopback of ['127.0.0.1', '::1', 'localhost', '[::1]:3000', '127.0.0.1:3000']) {
+for (const loopback of ['127.0.0.1', '::1', 'localhost', '[::1]:5154', '127.0.0.1:5154']) {
   assert.notEqual(resolveListenTarget({ configListen: loopback }).host, '::', loopback);
 }
 
 // A port that is not a port is said out loud rather than silently becoming NaN,
 // which `listen` would take as "any free port" and nobody would ever find.
-for (const bad of ['http', '-1', '70000', '3000.5']) {
+for (const bad of ['http', '-1', '70000', '5154.5']) {
   const got = resolveListenTarget({ configPort: bad });
-  assert.equal(got.port, 3000, `${bad} falls back`);
+  assert.equal(got.port, 5154, `${bad} falls back`);
   assert.match(got.note, /not a port/);
 }
 
 // The startup line is meant to be pasteable.
-assert.equal(describeListenTarget('::', 3000), 'http://[::]:3000');
-assert.equal(describeListenTarget('::1', 3000), 'http://[::1]:3000');
+assert.equal(describeListenTarget('::', 5154), 'http://[::]:5154');
+assert.equal(describeListenTarget('::1', 5154), 'http://[::1]:5154');
 assert.equal(describeListenTarget('127.0.0.1', 8080), 'http://127.0.0.1:8080');
 
 console.log('listen address tests passed');
