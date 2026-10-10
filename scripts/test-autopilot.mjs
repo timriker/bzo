@@ -825,7 +825,8 @@ for (const flag of ['US', 'MG', 'ID']) {
   const close = new Ace().think(makeView({ ...gm, players: [enemy(0, 100)] }));
   assert.notEqual(close.intent.mode, 'camp', 'a foe close by is fought instead');
 
-  const laser = { self: { flag: 'L', shotSpeed: 1000, shotLifetime: 3.5, y: 100, z: 10 }, vantages };
+  // A laser flies level, so its spot is on the foes' level.
+  const laser = { self: { flag: 'L', shotSpeed: 1000, shotLifetime: 3.5, y: 100, z: 2 }, vantages: [{ x: 0, y: 100, z: 2 }] };
   const holding = new Ace().think(makeView({ ...laser, players: [enemy(0, 700, { z: 0 })] }));
   assert.equal(holding.intent.mode, 'camp');
   assert.equal(holding.speed, 0, 'a laser holds its spot with the foe beyond a shot\'s reach');
@@ -955,6 +956,20 @@ for (const flag of ['US', 'MG', 'ID']) {
   const later = new Ace().think(makeView({ now: 100.2, findRoute: back, players: [enemy(0, 600)] }));
   assert.ok(later.speed > 0, 'a face it did not just leave is driven into');
 
+  // Level shots: a foe up on a platform is no camp target for a laser on
+  // the ground, and a camp that never fires is given up.
+  const lofty = new Ace().think(makeView({
+    self: { flag: 'L', shotSpeed: 1000, shotLifetime: 3.5 }, vantages: [], players: [enemy(0, 400, { z: 30 })],
+  }));
+  assert.notEqual(lofty.intent.mode, 'camp', 'no camping on a foe a level shot cannot reach');
+  const idle = new Ace();
+  idle.fireAtTank = () => {}; // a camp whose shots never go
+  const quiet = { self: { flag: 'GM', shotSpeed: 100, shotLifetime: 3.5 }, vantages: [], players: [enemy(0, 300)] };
+  const modes = [];
+  for (let t = 0; t <= 12; t += 0.5) modes.push(idle.think(makeView({ ...quiet, now: 100 + t })).intent.mode);
+  assert.equal(modes[0], 'camp');
+  assert.notEqual(modes.at(-1), 'camp', 'a camp with no shot in 8 seconds is given up');
+
   // A camp shoots from the muzzle: a line clear at the feet but not at the
   // barrel is no target.
   const muzzleBlocked = { isObscured: (from) => from.z > 1 };
@@ -993,6 +1008,35 @@ for (const flag of ['US', 'MG', 'ID']) {
     closest = Math.min(closest, Math.hypot(tank.x - flag.x, tank.y - flag.y));
   }
   assert.ok(closest <= 1.5, `reached the flag (closest ${closest.toFixed(1)})`);
+}
+
+// Home is the base's footprint, corners and all; and a one-way turn goes the
+// long way round.
+{
+  const turned = { team: 0, x: 0, y: 340, z: 30, halfWidth: 35, halfDepth: 35, rotation: Math.PI / 4 };
+  const corner = new Ace().think(makeView({
+    world: { teamFlags: true },
+    self: { team: 'red', teamColor: 0, flag: 'R*', flagIndex: 0, flagTeam: 0, x: 17.8, y: 309.8, z: 30, speed: 25 },
+    myBase: () => ({ x: 0, y: 340, z: 30, radius: 35 }),
+    bases: [turned],
+  }));
+  assert.equal(corner.dropFlag, true, 'our flag is put down on a turned base\'s corner, outside its inner circle');
+
+  const right = enemy(100, 0);
+  const lt = new Ace().think(makeView({ self: { flag: 'LT' }, players: [right] }));
+  assert.equal(lt.rotation, 1, 'Left Turn Only turns left to face a foe on the right');
+  assert.equal(lt.speed, 0, 'on the spot');
+  const left = new Ace().think(makeView({ self: { flag: 'LT' }, players: [enemy(-100, 0)] }));
+  assert.ok(left.rotation > 0, 'and turns left as usual where left is the way');
+}
+
+// Reverse Only backs towards where it is going.
+{
+  const flag = { index: 9, type: null, team: null, onGround: true, x: 0, y: -60, z: 0 };
+  const ro = new Ace().think(makeView({ self: { flag: 'RO', azimuth: Math.PI / 2 }, flags: [flag] }));
+  assert.ok(ro.speed < 0, 'a flag behind a Reverse Only tank is backed towards');
+  assert.ok(Math.abs(ro.rotation) < 0.2, 'without turning round');
+  assert.equal(ro.fire, false);
 }
 
 console.log('autopilot tests passed');

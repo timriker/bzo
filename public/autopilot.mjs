@@ -624,6 +624,9 @@ const OO_SHED_RANGE = 40;
 const TELEPORT_REENTRY_SECONDS = 1.2;
 const TELEPORT_REENTRY_CLEAR = 6;
 const TELEPORT_JUMP = 8;
+// With a one-way turning flag, a correction the wrong way smaller than this
+// stick share is dropped rather than turned the long way round.
+const ONE_WAY_SLACK = 0.15;
 // After a teleport onto a raised level, how long Ace turns to the route on
 // the spot rather than drive while more than `TELEPORT_SETTLE_TURN` off it.
 const TELEPORT_SETTLE_SECONDS = 3;
@@ -848,6 +851,10 @@ export class Ace extends Roger {
     this.camp = null;
     this.badSpots = new Map();
     this.campOffUntil = -Infinity;
+    this.campIdleSince = null;
+    // When a shot last actually went out: Roger's `lastShot` moves for a shot
+    // considered and then held.
+    this.lastFiredAt = -Infinity;
     // When Ace last came out of a teleporter, and where he was last frame.
     this.lastTeleportAt = -Infinity;
     // The flag on the ground being fetched.
@@ -872,16 +879,32 @@ export class Ace extends Roger {
         this.knownFlagTypes.set(player.flagIndex, player.flag);
       }
     }
+    this.viewBases = view.bases;
+    this.teamColor = view.self.teamColor;
     this.noteShooters(view);
     this.noteTeleport(view);
     this.heldFlag = view.self.flag;
-    const out = super.think(view);
+    // Reverse Only drives backwards and nothing else: everything is decided
+    // as if the tank faced the other way, and the speed it asks for then
+    // drives it backwards along that. Its barrel still points the real way,
+    // so it holds its fire rather than aim behind it.
+    const reversed = view.self.flag === 'RO';
+    const out = super.think(reversed
+      ? { ...view, self: { ...view.self, azimuth: normalizeAngle(view.self.azimuth + Math.PI) } }
+      : view);
+    if (reversed) {
+      out.speed = out.speed > 0 ? -out.speed : 0;
+      out.fire = false;
+      out.shotTargetId = null;
+    }
+    if (out.fire) this.lastFiredAt = view.now;
     // A reason is why a tank was picked, so only while Ace is after one.
     if (!TARGET_MODES.has(out.intent.mode)) out.intent.reason = null;
     this.noteCampDodge(view, out);
     // Roger's chase jumps a building in the way without asking whether the
     // tank may jump.
     if (out.jump && !canTankJump(view.world, view.self.flag)) out.jump = false;
+    this.oneWayTurn(view.self.flag, out);
     // A team flag is only ever let go of at home: Ace's own on his base,
     // where it is returned, or any one in a world with no base to take it to.
     // An enemy one is captured by reaching the base, not by dropping it.
@@ -894,6 +917,21 @@ export class Ace extends Roger {
     }
     this.paceAgility(view, out);
     return out;
+  }
+
+  // Left Turn Only and Right Turn Only refuse the other way, so a turn that
+  // way is made the long way round, on the spot -- every pilot decision asks
+  // for the short way, and a tank that cannot take it never turns at all. A
+  // small correction the wrong way is let go rather than costing a circle.
+  oneWayTurn(flag, out) {
+    const sign = flag === 'LT' ? 1 : (flag === 'RT' ? -1 : 0);
+    if (sign === 0 || out.rotation * sign >= 0) return;
+    if (Math.abs(out.rotation) < ONE_WAY_SLACK) {
+      out.rotation = 0;
+      return;
+    }
+    out.rotation = sign;
+    out.speed = 0;
   }
 
   // A position that jumped further than a frame's driving is a teleport.
@@ -2084,12 +2122,15 @@ export class Ace extends Roger {
     // Held without a shot for `CAMP_IDLE_SECONDS`, the camp is not working:
     // given up for as long, and Ace goes about the rest.
     if (now < this.campOffUntil) return false;
-    if (this.lastShot !== null && this.lastShot !== undefined && now - this.lastShot < CAMP_IDLE_SECONDS) {
-      this.camp.idleSince = null;
+    // Kept on the pilot, not the camp: the camp is scored afresh every few
+    // seconds, and a clock kept in it never ran long enough to matter.
+    if (now - this.lastFiredAt < CAMP_IDLE_SECONDS) {
+      this.campIdleSince = null;
     } else {
-      this.camp.idleSince ??= now;
-      if (now - this.camp.idleSince > CAMP_IDLE_SECONDS) {
+      this.campIdleSince ??= now;
+      if (now - this.campIdleSince > CAMP_IDLE_SECONDS) {
         this.campOffUntil = now + CAMP_IDLE_SECONDS;
+        this.campIdleSince = null;
         this.camp = null;
         return false;
       }
@@ -2162,7 +2203,8 @@ export class Ace extends Roger {
         const d = Math.hypot(p.x - v.x, p.y - v.y, p.z - v.z);
         const seen = !this.isObscured(ctx, eye, p);
         if (seen) exposure += p.z + view.world.tankHeight < v.z ? CAMP_ELEVATED_EXPOSURE : 1;
-        if (d <= reach && (seen || me.flag === 'SB')) {
+        const level = me.flag === 'GM' || Math.abs(p.z - v.z) < 2 * view.world.tankHeight;
+        if (d <= reach && level && (seen || me.flag === 'SB')) {
           shootable++;
           away += Math.min(1, d / reach);
         }
@@ -2191,6 +2233,8 @@ export class Ace extends Roger {
       if (!p.alive || p.paused || !view.isFoe(p)) continue;
       const d = Math.hypot(p.x - me.x, p.y - me.y, p.z - me.z);
       if (d > reach) continue;
+      // A shot flies level; only a Guided Missile climbs or dives to a foe.
+      if (me.flag !== 'GM' && Math.abs(p.z - me.z) >= 2 * view.world.tankHeight) continue;
       if (me.flag !== 'SB' && this.isObscured(ctx, me, p)) continue;
       const better = me.flag === 'L' ? (!best || d > best.d) : (!best || d < best.d);
       if (better) best = { p, d };
@@ -3054,7 +3098,12 @@ export class Ace extends Roger {
 
 
   // Home is on the base.
+  // On one of Ace's own team's bases, by its real footprint where the view
+  // has the bases -- a base turned 45 degrees, as on hix, has corners well
+  // outside the circle that fits inside it -- and by that circle where not.
   isHome(pos, base) {
+    const own = (this.viewBases || []).filter((b) => b.team === this.teamColor);
+    if (own.length > 0) return own.some((b) => isOverBase(b, { x: pos.x, y: pos.y, z: pos.z ?? b.z }));
     return distance2D(pos, base) <= base.radius;
   }
 
