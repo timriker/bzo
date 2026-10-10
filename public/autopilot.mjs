@@ -608,6 +608,27 @@ const LEADER_WEIGHT = 0.6;
 const TELEPORT_ALIGN = 1.5;
 const TELEPORT_ALIGN_RANGE = 3;
 const TELEPORT_THROUGH = 5;
+// How far off square to a face Ace will come in, to come out facing the way on.
+const TELEPORT_ENTRY_MAX = Math.PI / 4;
+// How far ahead on a raised leg's line Ace aims (`lineAim`), on a leg at
+// least `RAISED_LINE_MIN` long -- a walkway; a short leg between jumps is
+// left to its own aim.
+const RAISED_LINE_LEAD = 8;
+const RAISED_LINE_MIN = 40;
+// How far from a lift Oscillation Overthruster is let go of, and how long a
+// flag let go of on purpose is left lying.
+const OO_SHED_RANGE = 40;
+// A teleporter's re-entry block (`TANK_TELEPORT` in teleport.mjs): how long
+// after a teleport, and how far out from a face, before Ace drives back into
+// it; and how far a frame's move must jump to be a teleport at all.
+const TELEPORT_REENTRY_SECONDS = 1.2;
+const TELEPORT_REENTRY_CLEAR = 6;
+const TELEPORT_JUMP = 8;
+// After a teleport onto a raised level, how long Ace turns to the route on
+// the spot rather than drive while more than `TELEPORT_SETTLE_TURN` off it.
+const TELEPORT_SETTLE_SECONDS = 3;
+const TELEPORT_SETTLE_TURN = 0.15;
+const SHED_FORGET_SECONDS = 30;
 // How far upstream's pilot chases (AutoPilot.cxx); Ace hunts past it.
 const ROGER_CHASE_RANGE = 250;
 // Ace's own flag let go of over another team's base comes down where the
@@ -626,14 +647,19 @@ const OVER_BASE_FOE_RANGE = 60;
 // `CAMP_SPOT_COOLDOWN` seconds -- after `CAMP_AVOID_LIMIT` dodges there within
 // `CAMP_AVOID_WINDOW`, or when a foe with Shock Wave is within reach of it.
 const CAMP_FLAGS = new Set(['GM', 'L', 'SB']);
-// How far off a flag on the ground is worth a detour, as Roger's.
+// How far off a flag on the ground is worth a detour, as Roger's, and how
+// much nearer another must be to be gone for instead of the one chosen.
 const PICKUP_RANGE = 200;
+const PICKUP_SWITCH_SHARE = 0.5;
 const CAMP_CLEAR_RANGE = 150;
 const CAMP_RESCORE_SECONDS = 3;
 const CAMP_SPOT_COOLDOWN = 30;
 const CAMP_AVOID_LIMIT = 2;
 const CAMP_AVOID_WINDOW = 10;
 const CAMP_ARRIVE = 4;
+// How long a camp may go without a shot before it is given up, and for how
+// long it then is.
+const CAMP_IDLE_SECONDS = 8;
 // A Shock Wave holder this much past the wave's own radius can drive into
 // range before Ace could leave.
 const CAMP_SW_MARGIN = 1.5;
@@ -649,8 +675,12 @@ const CAMP_ELEVATED_EXPOSURE = 0.5;
 const CAMP_HEIGHT_WEIGHT = 0.5;
 const CAMP_TRAVEL_WEIGHT = 1;
 const CAMP_LASER_RANGE_WEIGHT = 10;
-// A laser holder backs off from a foe nearer than this.
-const LASER_BACKOFF_RANGE = 100;
+// A laser outreaches every other shot, so its holder keeps just outside the
+// furthest a foe's shot carries -- a lunge's, with the foe's full speed in it
+// -- plus `LASER_STANDOFF_MARGIN`: backing off inside it, closing in when
+// `LASER_STANDOFF_SLACK` past it and with no spot to hold.
+const LASER_STANDOFF_MARGIN = 20;
+const LASER_STANDOFF_SLACK = 60;
 // How many scored spots the intent carries, for the debug overlay.
 const CAMP_SHOWN_SPOTS = 12;
 // The modes in which Ace is going after a tank.
@@ -817,6 +847,16 @@ export class Ace extends Roger {
     // there, and the spots given up and until when.
     this.camp = null;
     this.badSpots = new Map();
+    this.campOffUntil = -Infinity;
+    // When Ace last came out of a teleporter, and where he was last frame.
+    this.lastTeleportAt = -Infinity;
+    // The flag on the ground being fetched.
+    this.pickupIndex = null;
+    this.lastAt = null;
+    this.teleportBackingOff = false;
+    // Flags let go of on purpose -- Oscillation Overthruster before a way up
+    // -- and until when they are left where they fell.
+    this.shedFlags = new Map();
   }
 
   // Ace sees everything the view holds -- every tank, every shot, wherever
@@ -833,6 +873,7 @@ export class Ace extends Roger {
       }
     }
     this.noteShooters(view);
+    this.noteTeleport(view);
     this.heldFlag = view.self.flag;
     const out = super.think(view);
     // A reason is why a tank was picked, so only while Ace is after one.
@@ -853,6 +894,15 @@ export class Ace extends Roger {
     }
     this.paceAgility(view, out);
     return out;
+  }
+
+  // A position that jumped further than a frame's driving is a teleport.
+  noteTeleport(view) {
+    const at = { x: view.self.x, y: view.self.y, z: view.self.z };
+    if (this.lastAt && Math.hypot(at.x - this.lastAt.x, at.y - this.lastAt.y, at.z - this.lastAt.z) > TELEPORT_JUMP) {
+      this.lastTeleportAt = view.now;
+    }
+    this.lastAt = at;
   }
 
   // Every foe's shot that would pass within `RETALIATE_MISS` of Ace in the
@@ -979,6 +1029,7 @@ export class Ace extends Roger {
   // with, he wants no other.
   wantsGroundFlag(flag) {
     if (CAMP_FLAGS.has(this.heldFlag)) return false;
+    if ((this.shedFlags.get(flag.index) ?? -Infinity) > this.lastThinkAt) return false;
     const type = flag.type ?? this.knownFlagTypes.get(flag.index) ?? null;
     if (!type) return true;
     if (isBadFlag(type) || HARD_FLAGS.has(type)) return false;
@@ -1892,18 +1943,29 @@ export class Ace extends Roger {
   // Roger looks only at his own level, and with nothing there drives straight
   // at a team flag anywhere -- at a raised base, that is a wall. Team flags
   // are `captureTarget`'s.
+  // Only empty-handed: a good flag in hand is kept rather than traded for the
+  // next one passed -- a bad one is shed on its own, and camping trades up
+  // for its own flags (`huntFlag`). The flag chosen stays chosen while it
+  // lies there, unless another is much nearer: a nearest-flag pick made
+  // afresh each frame flips as the tank changes level, and a route up a lift
+  // and back down again is the result.
   groundFlagTarget(ctx) {
     const { view, me } = ctx;
+    if (me.flag) return null;
     let best = null;
+    let kept = null;
     for (const flag of view.flags) {
       if (!flag.onGround || flag.team !== null || !this.wantsGroundFlag(flag)) continue;
       if ((this.unreachable.get(flag.index) ?? -Infinity) > view.now) continue;
       let d = distance2D(me, flag);
       if (d >= PICKUP_RANGE) continue;
       if (this.isObscured(ctx, me, pointOf(flag))) d *= 1.25;
+      if (flag.index === this.pickupIndex) kept = { flag, d };
       if (!best || d < best.d) best = { flag, d };
     }
-    return best?.flag ?? null;
+    const chosen = kept && !(best.d < kept.d * PICKUP_SWITCH_SHARE) ? kept : best;
+    this.pickupIndex = chosen?.flag.index ?? null;
+    return chosen?.flag ?? null;
   }
 
   pickUpFlag(ctx) {
@@ -1931,8 +1993,22 @@ export class Ace extends Roger {
       if (route && this.followRoute(ctx, route)) return true;
     }
     out.rotation = normalizeAngle(azimuthTo(me, pos) - me.azimuth);
-    out.speed = HALF_PI - Math.abs(out.rotation);
+    out.speed = Math.min(HALF_PI - Math.abs(out.rotation), this.arcSpeed(ctx, pointOf(me), pos, out.rotation));
     return true;
+  }
+
+  // The fastest Ace can drive and still turn onto `aim`: a tank turning at
+  // full stick runs round a circle of its speed over its turn rate, and a
+  // point closer in than that circle reaches, off to one side, is driven
+  // round rather than onto -- a flag circled instead of picked up. Behind
+  // him, it is a turn on the spot.
+  arcSpeed(ctx, here, aim, bearing) {
+    const off = Math.abs(bearing);
+    if (off >= HALF_PI) return 0;
+    if (off < 1e-3) return Infinity;
+    const d = Math.hypot(aim.x - here.x, aim.y - here.y);
+    const top = ctx.me.topSpeed ?? ctx.view.world.tankSpeed ?? 25;
+    return (this.turnRate(ctx) * d) / (2 * Math.sin(off) * top);
   }
 
   // Quiet enough to camp: nobody within `CAMP_CLEAR_RANGE`, nobody carrying
@@ -2005,18 +2081,69 @@ export class Ace extends Roger {
     // spot and nobody to shoot, there is no camp to make.
     const target = this.campTarget(ctx);
     if (!spot && !target) return false;
+    // Held without a shot for `CAMP_IDLE_SECONDS`, the camp is not working:
+    // given up for as long, and Ace goes about the rest.
+    if (now < this.campOffUntil) return false;
+    if (this.lastShot !== null && this.lastShot !== undefined && now - this.lastShot < CAMP_IDLE_SECONDS) {
+      this.camp.idleSince = null;
+    } else {
+      this.camp.idleSince ??= now;
+      if (now - this.camp.idleSince > CAMP_IDLE_SECONDS) {
+        this.campOffUntil = now + CAMP_IDLE_SECONDS;
+        this.camp = null;
+        return false;
+      }
+    }
     out.intent.mode = 'camp';
     out.speed = 0;
     if (!target) return true;
     out.targetId = target.id;
     out.intent.target = { ...pointOf(target), id: target.id };
     this.aimAt(ctx, azimuthTo(me, predict(target)));
-    if (flag === 'L' && distance2D(me, target) < LASER_BACKOFF_RANGE) out.speed = -0.6;
+    if (flag === 'L') out.speed = this.laserStandoffSpeed(ctx, Boolean(spot));
     return true;
+  }
+
+  // Sight as a shot has it, muzzle to muzzle (`chooseShot`): from the ground,
+  // a line clear at the tank's feet can still meet something at its barrel.
+  withMuzzleSight(ctx, fn) {
+    const lift = this.sightLift;
+    this.sightLift = ctx.me.muzzleHeight ?? 1.57;
+    try {
+      return fn();
+    } finally {
+      this.sightLift = lift;
+    }
+  }
+
+  // How far a foe's shot carries: the world's range, plus the foe's own speed
+  // for the shot's life, which a lunge puts into it.
+  foeShotReach(ctx) {
+    const { world } = ctx.view;
+    const range = world.shotRange ?? 350;
+    const speed = world.shotSpeed || 100;
+    return range + ((world.tankSpeed || 25) * (range / speed));
+  }
+
+  // A laser holder's speed, facing the foe it shoots: back off from a foe
+  // inside a shot's reach, close in on one well beyond it when there is no
+  // spot being held, and otherwise stand.
+  laserStandoffSpeed(ctx, holdingSpot) {
+    const { view, me } = ctx;
+    const nearest = Math.min(...this.remotePlayers(view)
+      .filter((p) => p.alive && !p.paused && view.isFoe(p)).map((p) => distance2D(me, p)));
+    const standoff = this.foeShotReach(ctx) + LASER_STANDOFF_MARGIN;
+    if (nearest < standoff) return -0.6;
+    if (!holdingSpot && nearest > standoff + LASER_STANDOFF_SLACK) return 0.6;
+    return 0;
   }
 
   // Every vantage point scored for the flag held, best first.
   scoreVantages(ctx) {
+    return this.withMuzzleSight(ctx, () => this.scoreVantagesSighted(ctx));
+  }
+
+  scoreVantagesSighted(ctx) {
     const { view, me } = ctx;
     const foes = this.remotePlayers(view).filter((p) => p.alive && !p.paused && view.isFoe(p));
     if (foes.length === 0) return [];
@@ -2053,6 +2180,10 @@ export class Ace extends Roger {
   // Whom to shoot from the spot: with a laser the farthest foe in the clear,
   // which nobody else can reach; otherwise the nearest.
   campTarget(ctx) {
+    return this.withMuzzleSight(ctx, () => this.campTargetSighted(ctx));
+  }
+
+  campTargetSighted(ctx) {
     const { view, me } = ctx;
     const reach = (me.shotSpeed ?? view.world.shotSpeed) * (me.shotLifetime ?? 3.5);
     let best = null;
@@ -2120,8 +2251,12 @@ export class Ace extends Roger {
     if (!home || distance2D(me, home) < OVER_BASE_MIN_HOME) return null;
     let base = null;
     let best = Infinity;
+    const reach = Math.max(MAX_STEP_UP, this.jumpReach(ctx));
     for (const b of view.bases || []) {
       if (b.team === me.teamColor) continue;
+      // Near it across, and up to its top from here: under a raised base is
+      // not near it at all.
+      if (b.z - me.z > reach) continue;
       const edge = distance2D(me, b) - Math.min(b.halfWidth, b.halfDepth);
       if (edge < OVER_BASE_RANGE && edge < best) {
         base = b;
@@ -2256,8 +2391,18 @@ export class Ace extends Roger {
         this.landingAim(nodes, route.at));
       return true;
     }
+    // Oscillation Overthruster on top of where a lift goes is a tank inside
+    // the floor, so it goes before the way up, with time for the drop to land.
+    const lift = nodes.slice(route.at, route.at + 4).find((node) => node.teleport);
+    if (lift && me.flag === 'OO' && lift.z > here.z + MAX_STEP_UP
+      && Math.hypot(lift.teleport.x - here.x, lift.teleport.y - here.y) < OO_SHED_RANGE) {
+      out.dropFlag = true;
+      this.noteShed(ctx);
+    }
     if (next.teleport && !me.inAir) {
-      this.driveThroughTeleporter(ctx, here, next.teleport);
+      const after = nodes[route.at + 1];
+      const exitHeading = after ? Math.atan2(after.y - next.y, after.x - next.x) : null;
+      this.driveThroughTeleporter(ctx, here, next.teleport, exitHeading);
       return true;
     }
     let aim = next;
@@ -2266,6 +2411,12 @@ export class Ace extends Roger {
         aim = this.pursuitPoint(ctx, here, nodes, route.at, raised);
       } else if (!raised) {
         aim = this.groundAim(ctx, here, nodes, route.at, tuning.groundLookahead);
+      } else {
+        const prev = route.at > 0 ? nodes[route.at - 1] : route.from;
+        // Not into a takeoff, which lines itself up (`lineUpJump`, `fly`).
+        const takeoff = nodes[route.at + 1]?.jump || nodes[route.at + 1]?.flight;
+        if (prev && !takeoff && Math.abs(prev.z - next.z) <= MAX_STEP_UP
+          && Math.hypot(next.x - prev.x, next.y - prev.y) >= RAISED_LINE_MIN) aim = this.lineAim(here, prev, next);
       }
     }
     out.rotation = normalizeAngle(azimuthTo(me, aim) - me.azimuth);
@@ -2276,6 +2427,14 @@ export class Ace extends Roger {
       // or, past a right angle, backwards away from the route.
       out.speed = Math.abs(out.rotation) > tuning.turnInPlace ? 0 : HALF_PI - Math.abs(out.rotation);
     }
+    // Out of a teleporter onto a raised level -- a lift's landing, a walkway
+    // a tank wide -- the tank faces wherever the face sent it. Turned to the
+    // route on the spot first: turning while driving drifts it off the side.
+    if (raised && ctx.view.now - this.lastTeleportAt < TELEPORT_SETTLE_SECONDS
+      && Math.abs(out.rotation) > TELEPORT_SETTLE_TURN) out.speed = 0;
+    // The last node, where the route ends on what it was for: onto it, not
+    // round it.
+    if (route.at === nodes.length - 1) out.speed = Math.min(out.speed, this.arcSpeed(ctx, here, next, out.rotation));
     if (raised && tuning.raised === 'curve') {
       out.speed = Math.min(out.speed, this.cornerSpeed(here, nodes, route.at, out.rotation));
     } else if (raised && Math.abs(out.rotation) > tuning.raisedTurn) {
@@ -2294,20 +2453,82 @@ export class Ace extends Roger {
     return true;
   }
 
+  // On a raised leg, a point a little ahead on the leg's own line rather than
+  // its far end: a long walkway's end is so far off that aiming at it barely
+  // corrects a tank a few units to one side, and a walkway is not much wider
+  // than the tank.
+  lineAim(here, from, to) {
+    const dx = to.x - from.x;
+    const dy = to.y - from.y;
+    const length = Math.hypot(dx, dy);
+    if (length < 1e-3) return to;
+    const ux = dx / length;
+    const uy = dy / length;
+    const t = ((here.x - from.x) * ux) + ((here.y - from.y) * uy);
+    const ahead = Math.min(length, Math.max(0, t) + RAISED_LINE_LEAD);
+    return { x: from.x + (ux * ahead), y: from.y + (uy * ahead), z: to.z };
+  }
+
   // A teleport leg: onto the line square to the face, then straight through
   // it, the way out being wherever the face sends. `face` is the face's
   // centre and the way into it.
-  driveThroughTeleporter(ctx, here, face) {
-    const { me, out } = ctx;
-    const along = ((face.x - here.x) * face.dx) + ((face.y - here.y) * face.dy);
-    const lateral = ((here.x - face.x) * face.dy) - ((here.y - face.y) * face.dx);
+  driveThroughTeleporter(ctx, here, face, exitHeading = null) {
+    const { me, out, view } = ctx;
+    // The way in: square to the face, or -- where the route goes on from the
+    // far side -- at the heading the crossing turns into that way on, so the
+    // tank comes out already facing along a lift's walkway. Kept within
+    // `TELEPORT_ENTRY_MAX` of square, which is still clean through the face.
+    const square = Math.atan2(face.dy, face.dx);
+    let heading = square;
+    if (exitHeading !== null && Number.isFinite(face.turn)) {
+      const wanted = normalizeAngle(exitHeading - face.turn - square);
+      heading = square + Math.max(-TELEPORT_ENTRY_MAX, Math.min(TELEPORT_ENTRY_MAX, wanted));
+    }
+    const way = { dx: Math.cos(heading), dy: Math.sin(heading) };
+    const along = ((face.x - here.x) * way.dx) + ((face.y - here.y) * way.dy);
+    // Just out of a teleporter, it will not take the tank again until it has
+    // gone `TELEPORT_REENTRY_CLEAR` and a moment has passed: driving back in
+    // sooner leaves it inside the frame. Back off first.
+    if (view.now - this.lastTeleportAt < TELEPORT_REENTRY_SECONDS || along < TELEPORT_REENTRY_CLEAR) {
+      if (view.now - this.lastTeleportAt < TELEPORT_REENTRY_SECONDS || this.teleportBackingOff) {
+        this.teleportBackingOff = along < TELEPORT_REENTRY_CLEAR + 2;
+        const away = this.backOffPoint(ctx, here, face);
+        if (!away) {
+          // Floor on no side: stand and let the block run down.
+          out.speed = 0;
+          out.rotation = 0;
+          return;
+        }
+        const bearing = normalizeAngle(azimuthTo(me, away) - me.azimuth);
+        out.speed = Math.abs(bearing) > this.tuning.turnInPlace ? 0 : HALF_PI - Math.abs(bearing);
+        out.rotation = this.steer(ctx, bearing);
+        return;
+      }
+    }
+    this.teleportBackingOff = false;
+    const lateral = ((here.x - face.x) * way.dy) - ((here.y - face.y) * way.dx);
     const aim = Math.abs(lateral) > TELEPORT_ALIGN && along > TELEPORT_ALIGN_RANGE
-      ? { x: face.x - (face.dx * Math.max(TELEPORT_ALIGN_RANGE, along - TELEPORT_ALIGN_RANGE)),
-        y: face.y - (face.dy * Math.max(TELEPORT_ALIGN_RANGE, along - TELEPORT_ALIGN_RANGE)) }
-      : { x: face.x + (face.dx * TELEPORT_THROUGH), y: face.y + (face.dy * TELEPORT_THROUGH) };
+      ? { x: face.x - (way.dx * Math.max(TELEPORT_ALIGN_RANGE, along - TELEPORT_ALIGN_RANGE)),
+        y: face.y - (way.dy * Math.max(TELEPORT_ALIGN_RANGE, along - TELEPORT_ALIGN_RANGE)) }
+      : { x: face.x + (way.dx * TELEPORT_THROUGH), y: face.y + (way.dy * TELEPORT_THROUGH) };
     const bearing = normalizeAngle(azimuthTo(me, aim) - me.azimuth);
     out.speed = Math.abs(bearing) > this.tuning.turnInPlace ? 0 : HALF_PI - Math.abs(bearing);
     out.rotation = this.steer(ctx, bearing);
+  }
+
+  // Somewhere to back off a teleporter's face to, on the floor Ace stands
+  // on: straight out from the face, else along it either way. Up on a lift's
+  // landing, straight out can be a drop.
+  backOffPoint(ctx, here, face) {
+    const reach = TELEPORT_REENTRY_CLEAR + 4;
+    const ways = [[-face.dx, -face.dy], [face.dy, -face.dx], [-face.dy, face.dx]];
+    for (const [ux, uy] of ways) {
+      const point = { x: here.x + (ux * reach), y: here.y + (uy * reach) };
+      const hit = ctx.view.firstHit({ ...point, z: here.z + 1 }, { ...point, z: here.z - 1 });
+      const floor = hit ? hit.z : 0;
+      if (Math.abs(floor - here.z) <= MAX_STEP_UP) return point;
+    }
+    return null;
   }
 
   // How fast this tank turns at full stick: the world's rate as its flag
@@ -2786,7 +3007,13 @@ export class Ace extends Roger {
     if (me.inAir) {
       this.shedAirborne = true;
       out.dropFlag = true;
+      this.noteShed(ctx);
     }
+  }
+
+  // A flag let go of on purpose is not one to go straight back for.
+  noteShed(ctx) {
+    if (Number.isInteger(ctx.me.flagIndex)) this.shedFlags.set(ctx.me.flagIndex, ctx.view.now + SHED_FORGET_SECONDS);
   }
 
   // A jump is taken square to it and from inside its window: turn to face it,

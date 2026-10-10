@@ -12827,6 +12827,11 @@ function noteAutopilotFlight(wasInAir, nowInAir, rotationSpeed) {
       y: myY,
       plan,
       mode: autopilotOutput?.intent?.mode ?? '?',
+      // What the route asked for as the tank left the surface, for an
+      // unplanned one: the next node, and whether it was backing off a face.
+      next: autopilotOutput?.intent?.route?.[0] ?? null,
+      backingOff: pilot?.teleportBackingOff === true
+        || (pilot?.lastThinkAt ?? 0) - (pilot?.lastTeleportAt ?? -Infinity) < 1.5,
     };
     return;
   }
@@ -12845,7 +12850,9 @@ function noteAutopilotFlight(wasInAir, nowInAir, rotationSpeed) {
       + ` after ${((performance.now() - flight.at) / 1000).toFixed(2)}s`
       + (plan ? `; planned air ${plan.air.toFixed(2)}s turn ${deg(plan.turn)} deg cmd ${plan.rotation.toFixed(2)},`
         + ` landing (${plan.landing.x},${plan.landing.y},${plan.landing.z}) aim (${aim.x},${aim.y}),`
-        + ` facing ${deg(off)} deg off the aim` : ''),
+        + ` facing ${deg(off)} deg off the aim` : '')
+      + (!plan && flight.next ? `; next (${flight.next.x},${flight.next.y},${flight.next.z})`
+        + `${flight.next.teleport ? ' teleport' : ''}${flight.backingOff ? ', just teleported' : ''}` : ''),
   });
 }
 

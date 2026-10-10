@@ -392,7 +392,12 @@ export function buildNavGraph(world) {
       const nx = Math.cos(angle) * sign;
       const ny = Math.sin(angle) * sign;
       const half = obs.size[0] + (obs.border || 0);
-      return { x: obs.pos[0], y: obs.pos[1], z: obs.pos[2] || 0, nx, ny, half };
+      // The frame a crossing turns by, as `transformShotThroughTeleporter`
+      // has it: in through face 0 or out through face 1 at the teleporter's
+      // own angle, the other way round half a turn off it.
+      const inAngle = angle + (faceId % 2 === 0 ? 0 : Math.PI);
+      const outAngle = angle + (faceId % 2 === 1 ? 0 : Math.PI);
+      return { x: obs.pos[0], y: obs.pos[1], z: obs.pos[2] || 0, nx, ny, half, inAngle, outAngle };
     };
     // A node on the face's own level and in front of it: the nearest node
     // to a spot against a wall can be round the other side.
@@ -420,7 +425,9 @@ export function buildNavGraph(world) {
           to,
           cost: ((2 * TELEPORT_APPROACH) / tankSpeed) + TELEPORT_COST,
           jump: false,
-          teleport: { x: source.x, y: source.y, dx: -source.nx, dy: -source.ny },
+          // `turn`: how far the crossing turns the tank, so a pilot can come
+          // in at the heading that leaves it facing the way on.
+          teleport: { x: source.x, y: source.y, dx: -source.nx, dy: -source.ny, turn: dest.outAngle - source.inAngle },
         });
       }
     }

@@ -826,9 +826,15 @@ for (const flag of ['US', 'MG', 'ID']) {
   assert.notEqual(close.intent.mode, 'camp', 'a foe close by is fought instead');
 
   const laser = { self: { flag: 'L', shotSpeed: 1000, shotLifetime: 3.5, y: 100, z: 10 }, vantages };
-  const backing = new Ace().think(makeView({ ...laser, players: [enemy(0, 260, { z: 0 })] }));
-  assert.equal(backing.intent.mode, 'camp');
-  assert.equal(backing.speed, 0, 'a laser holds a spot with the foe far off');
+  const holding = new Ace().think(makeView({ ...laser, players: [enemy(0, 700, { z: 0 })] }));
+  assert.equal(holding.intent.mode, 'camp');
+  assert.equal(holding.speed, 0, 'a laser holds its spot with the foe beyond a shot\'s reach');
+  const backing = new Ace().think(makeView({ ...laser, players: [enemy(0, 400, { z: 0 })] }));
+  assert.ok(backing.speed < 0, 'and backs off from one inside a lunge shot\'s reach');
+  const open = { self: { flag: 'L', shotSpeed: 1000, shotLifetime: 3.5 }, vantages: [] };
+  const closing = new Ace().think(makeView({ ...open, players: [enemy(0, 800)] }));
+  assert.equal(closing.intent.mode, 'camp');
+  assert.ok(closing.speed > 0, 'with no spot to hold, it closes in to just outside that reach');
 
   const sw = enemy(0, 160, { id: 'sw', flag: 'SW' });
   const shocked = new Ace().think(makeView({ ...gm, world: { shockOutRadius: 60 }, players: [far, sw] }));
@@ -909,6 +915,84 @@ for (const flag of ['US', 'MG', 'ID']) {
   const leg = route.find((node) => node.teleport);
   assert.equal(leg.z, 10, 'and comes out on the platform');
   assert.deepEqual([leg.teleport.dx, leg.teleport.dy], [-1, -0], 'driven into the face from in front');
+}
+
+// Oscillation Overthruster goes before a lift up, and is not fetched again.
+{
+  const up = () => [{ x: 0, y: 20, z: 0 }, { x: 0, y: 30, z: 30, teleport: { x: 0, y: 25, dx: 0, dy: 1 } }];
+  const level = () => [{ x: 0, y: 20, z: 0 }, { x: 0, y: 30, z: 0, teleport: { x: 0, y: 25, dx: 0, dy: 1 } }];
+  const holding = { self: { flag: 'OO', flagIndex: 7, speed: 25 } };
+  const pilot = new Ace();
+  const lifting = pilot.think(makeView({ ...holding, findRoute: up, players: [enemy(0, 600, { z: 30 })] }));
+  assert.equal(lifting.dropFlag, true, 'OO is let go of before a lift up');
+  const after = pilot.think(makeView({
+    now: 101, flags: [{ index: 7, type: 'OO', team: null, onGround: true, x: 0, y: 10, z: 0 }],
+  }));
+  assert.notEqual(after.intent.mode, 'flag', 'and left where it fell');
+  const flat = new Ace().think(makeView({ ...holding, findRoute: level, players: [enemy(0, 600)] }));
+  assert.equal(flat.dropFlag, false, 'but kept through a teleporter on the same level');
+}
+
+// What the live games on hix turned up.
+{
+  // Under a raised enemy base is not near it.
+  const raisedBase = { team: 1, x: 0, y: 20, z: 26, halfWidth: 10, halfDepth: 10, rotation: 0 };
+  const under = new Ace().think(makeView({
+    world: { teamFlags: true, allowJumping: false },
+    self: { team: 'blue', teamColor: 0, flag: 'B*', flagIndex: 0, flagTeam: 0, speed: 25 },
+    myBase: () => ({ x: 0, y: -300, z: 0, radius: 20 }),
+    bases: [raisedBase],
+    safetyZones: [{ x: 0, y: -290, z: 0, halfWidth: 5, halfDepth: 5, rotation: 0, teams: [0] }],
+  }));
+  assert.notEqual(under.intent.mode, 'drop-over', 'a base no jump reaches the top of is not dropped over');
+
+  // Just out of a teleporter, Ace backs off before going back into it.
+  const back = () => [{ x: 0, y: 30, z: 0, teleport: { x: 0, y: 3, dx: 0, dy: 1 } }];
+  const pilot = new Ace();
+  pilot.lastTeleportAt = 100;
+  const out = pilot.think(makeView({ now: 100.2, findRoute: back, players: [enemy(0, 600)] }));
+  assert.ok(out.speed <= 0, 'not straight back into the face it came out of');
+  const later = new Ace().think(makeView({ now: 100.2, findRoute: back, players: [enemy(0, 600)] }));
+  assert.ok(later.speed > 0, 'a face it did not just leave is driven into');
+
+  // A camp shoots from the muzzle: a line clear at the feet but not at the
+  // barrel is no target.
+  const muzzleBlocked = { isObscured: (from) => from.z > 1 };
+  const gm = { self: { flag: 'GM', shotSpeed: 100, shotLifetime: 3.5 }, vantages: [] };
+  const blind = new Ace().think(makeView({ ...gm, ...muzzleBlocked, players: [enemy(0, 300)] }));
+  assert.notEqual(blind.intent.mode, 'camp', 'no camp on a foe the barrel cannot see');
+}
+
+// A good flag in hand is kept, and a chosen flag stays chosen.
+{
+  const near = { index: 8, type: null, team: null, onGround: true, x: 0, y: 40, z: 0 };
+  const holding = new Ace().think(makeView({ self: { flag: 'SH', flagIndex: 3 }, flags: [near], players: [enemy(0, 100)] }));
+  assert.notEqual(holding.intent.mode, 'flag', 'no trading a good flag for the next one passed');
+  const pilot = new Ace();
+  const a = { index: 1, type: null, team: null, onGround: true, x: 0, y: 100, z: 0 };
+  const b = { index: 2, type: null, team: null, onGround: true, x: 0, y: -110, z: 0 };
+  pilot.think(makeView({ flags: [a, b] }));
+  const kept = pilot.think(makeView({ now: 100.1, self: { y: -10 }, flags: [a, b] }));
+  assert.equal(kept.intent.target.y, 100, 'the flag chosen is kept while another is only a little nearer');
+}
+
+// A flag close by and off to one side is driven onto, not round.
+{
+  const pilot = new Ace();
+  const flag = { index: 9, type: null, team: null, onGround: true, x: 8, y: 4, z: 0 };
+  const tank = { x: 0, y: 0, azimuth: Math.PI / 2 };
+  const turnRate = Math.PI / 4;
+  const dt = 0.05;
+  let closest = Infinity;
+  for (let i = 0; i < 160 && closest > 1.5; i++) {
+    const out = pilot.think(makeView({ now: 100 + (i * dt), self: { ...tank }, flags: [flag] }));
+    tank.azimuth += Math.max(-1, Math.min(1, out.rotation)) * turnRate * dt;
+    const speed = Math.max(-1, Math.min(1, out.speed)) * 25;
+    tank.x += Math.cos(tank.azimuth) * speed * dt;
+    tank.y += Math.sin(tank.azimuth) * speed * dt;
+    closest = Math.min(closest, Math.hypot(tank.x - flag.x, tank.y - flag.y));
+  }
+  assert.ok(closest <= 1.5, `reached the flag (closest ${closest.toFixed(1)})`);
 }
 
 console.log('autopilot tests passed');
