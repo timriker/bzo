@@ -6,6 +6,20 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
 
 ## [Unreleased]
 
+## [1.3.37] - 2026-10-10
+
+### Fixed
+- Ace no longer gets stuck inside a lift's teleporter going straight back
+  down, falls off a walkway after a lift, circles a flag instead of picking it
+  up, trades one good flag for the next, rides a lift up and down chasing a
+  flag, or camps at a foe its barrel cannot see.
+- Ace drops Oscillation Overthruster before a lift up, and no longer tries to
+  drop its flag over a raised base it cannot get onto.
+
+### Changed
+- Ace comes into a lift at the angle that leaves it facing the way on, and
+  with a laser keeps just outside a foe's lunge-shot reach.
+
 ## [1.3.36] - 2026-10-10
 
 ### Added
