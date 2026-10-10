@@ -6,6 +6,14 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
 
 ## [Unreleased]
 
+## [1.3.38] - 2026-10-10
+
+### Fixed
+- Ace no longer holds its own flag on a corner of its base without putting it
+  down, sits stuck with Left or Right Turn Only or Reverse Only, or camps at a
+  foe on another level that a level shot cannot reach. A camp that never
+  fires is now given up.
+
 ## [1.3.37] - 2026-10-10
 
 ### Fixed
