@@ -6,6 +6,14 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
 
 ## [Unreleased]
 
+## [1.3.39] - 2026-10-10
+
+### Fixed
+- Playing on a watched BZFlag server: Player Options now offers the teams
+  that server runs, and /list's **Play** uses the team chosen there instead
+  of always Automatic. A team the server does not run places the player
+  rather than leaving them watching.
+
 ## [1.3.38] - 2026-10-10
 
 ### Fixed
