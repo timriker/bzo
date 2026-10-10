@@ -6,7 +6,7 @@
 # Node is Ubuntu's own `nodejs`, the one a server running bzo from source on
 # Ubuntu 26.04 already has. npm comes along only in this stage, to install the
 # dependencies; the image itself carries Node alone.
-FROM ubuntu:26.04 AS deps
+FROM mirror.gcr.io/library/ubuntu:26.04 AS deps
 
 ENV DEBIAN_FRONTEND=noninteractive
 
@@ -19,7 +19,7 @@ WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci --omit=dev --ignore-scripts
 
-FROM ubuntu:26.04
+FROM mirror.gcr.io/library/ubuntu:26.04
 
 # PORT and LISTEN are deliberately absent. Both are read from the environment
 # first and `server.json` second, so setting either here would make the matching
