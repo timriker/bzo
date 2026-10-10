@@ -1017,6 +1017,12 @@ function readStoredPlayerTeam() {
     return null;
   }
 }
+// The team a Play link plays on: the player's own choice, unless that is to
+// watch, which a Play link is not.
+function playLinkTeam() {
+  const team = selectedPlayerTeam;
+  return team && !isObserverTeam(team) && team !== PLAYER_TEAM.MAP_VIEWER ? team : PLAYER_TEAM.AUTOMATIC;
+}
 function storePlayerTeamChoice(team) {
   try {
     // Map Viewer needs its map, which its own link carries; without one the
@@ -1353,9 +1359,13 @@ function destinationLabel(destination) {
 // anywhere else it is what that destination said about itself, which is the
 // best anyone can know before arriving.
 function getDestinationTeams(destination) {
-  // A watcher observes and nothing else -- no token, so the target would
-  // refuse a spawn even if one were asked for.
-  if (destination.startsWith('watch:')) return [PLAYER_TEAM.OBSERVER];
+  // A watched server is played as an unregistered guest where it lets guests
+  // spawn (`guestCallsign`, docs/proxy.md) -- the /list row's Play -- so the
+  // page already on one offers what that server runs, which `init` said.
+  // Anywhere else watched is only somewhere to watch from here.
+  if (destination.startsWith('watch:')) {
+    return destination === currentDestination() ? availablePlayerTeams : [PLAYER_TEAM.OBSERVER];
+  }
   // Nobody plays in a recording.
   if (destination.startsWith('replay:')) return [PLAYER_TEAM.OBSERVER];
   if (destination === currentDestination()) return availablePlayerTeams;
@@ -7502,7 +7512,11 @@ function connectToServer() {
   // ways a proxied connection announces itself at all, so it says only that --
   // see `proxyMotto`.
   // A team on a watch link is an admin playing there rather than watching.
-  const watchTeam = watchTarget ? params.get('team') : null;
+  // `team=play`, the /list row's Play, is the team Player Options holds --
+  // Automatic where that is to watch -- so the link carries no choice of its
+  // own to override the player's.
+  const linkTeam = watchTarget ? params.get('team') : null;
+  const watchTeam = linkTeam === 'play' ? playLinkTeam() : linkTeam;
   // `?replay=` rides on the socket for the same reason again, and carries no
   // team: a replay is only ever watched.
   const replayName = params.get('replay');

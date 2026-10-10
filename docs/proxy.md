@@ -133,8 +133,10 @@ the connection announces itself, and it says only that.
   ordinary server message and reaches the browser like any other, so nothing
   here has to explain it. Watching works on both.
 
-**Playing as a guest.** `&team=` (the /list row's **Play**) enters on that
-team as `bzo-<callsign>`, unregistered. A forum callsign is registered, and
+**Playing as a guest.** `&team=` enters on that team as `bzo-<callsign>`,
+unregistered. The /list row's **Play** is `&team=play`: the team the player
+keeps in Player Options, or Automatic where that is to watch, and a team the
+target does not run lets the target place them. A forum callsign is registered, and
 bzfs removes a registered name that has not identified the moment it spawns;
 the token that would identify it cannot be forwarded to a server outside this
 instance's network (above). An unregistered name spawns wherever the server

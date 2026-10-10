@@ -2613,7 +2613,7 @@ function renderListTables({ servers, bzoServers, canWatch }) {
             // Playing there as `bzo-<callsign>`, unregistered, which a server
             // that keeps guests out refuses (`guestSpawn`).
             + (entryGuestSpawn(s) === 'no' ? ''
-              : `<a class="action" href="/?watch=${encodeURIComponent(`${s.host}_${s.port}`)}&amp;team=automatic">Play</a>`)
+              : `<a class="action" href="/?watch=${encodeURIComponent(`${s.host}_${s.port}`)}&amp;team=play">Play</a>`)
           : '')
         + `<form method="post" action="/list/import" class="inlineForm">`
         + `<input type="hidden" name="host" value="${escapeHtml(s.host)}">`
@@ -16382,9 +16382,12 @@ async function handleProxyConnection(ws, req, request) {
     // name play. A registered one still cannot without its token.
     const cannotSpawn = !viewer.token && (target.requireLogin || viewer.globalCallsign !== null);
     const wanted = cannotSpawn ? PLAYER_TEAM.OBSERVER : team;
+    // A playing team the target does not run is a player still wanting to
+    // play -- a Play link carries the team they keep in Player Options, made
+    // for some other server -- so the target places them.
     const enterTeam = (wanted === PLAYER_TEAM.AUTOMATIC || offered.includes(wanted))
       ? wanted
-      : PLAYER_TEAM.OBSERVER;
+      : (wanted === PLAYER_TEAM.OBSERVER ? PLAYER_TEAM.OBSERVER : PLAYER_TEAM.AUTOMATIC);
     if (cannotSpawn && team !== PLAYER_TEAM.OBSERVER && !options.watch) {
       log(`[PROXY] ${key}: "${viewer.callsign}" carries no global login,`
         + ` so watching rather than ${team}`);
