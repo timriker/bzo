@@ -162,7 +162,9 @@ pipeline include:
 
 ## Renderer Behavior
 
-- `body` and `turret` use the tintable BZFlag-derived body texture
+- `body` and `turret` use the team's BZFlag body texture in the player's
+  shade: the standard camo or one of 2.5's skins (`public/tank-skins.mjs`), so
+  a model's UVs should suit a repeating pattern
 - `barrel` is flat dark, and carries no texture at all
 - tread belt surfaces use the animated tread texture
 - tread caps use darker mechanical tread-cap materials

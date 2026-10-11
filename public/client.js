@@ -178,6 +178,7 @@ import {
   reportAlphaWithoutThreshold, TANK_NAV_LIGHTS_NAME,
 } from './render.js';
 import { CAMO_SOURCE_TEXTURE } from './camo.mjs';
+import { TANK_SKINS, getTankSkin, getTankSkinTexture, normalizeTankSkinId } from './tank-skins.mjs';
 import { describeMeasurements, describeRenderCapabilities } from './capabilities.mjs';
 import {
   describeGrowth,
@@ -2497,6 +2498,15 @@ function bindAudioControls() {
   }
   syncPlayerTeamSelector();
 
+  const skinSelector = document.getElementById('entrySkinSelector');
+  if (skinSelector) {
+    skinSelector.addEventListener('click', (event) => cycleTankSkin(getMenuClickDirection(event)));
+    skinSelector.addEventListener('menuadjust', (event) => {
+      cycleTankSkin(Number(event.detail?.direction) < 0 ? -1 : 1);
+      event.preventDefault();
+    });
+  }
+  syncTankSkinSelector();
 
   const loginRow = document.getElementById('entryLoginRow');
   if (loginRow) {
@@ -2628,6 +2638,8 @@ function syncTankSelectorForDestination() {
   const selector = document.getElementById('tankSelector');
   const proxied = stagedDestinationIsRemote();
   if (selector) selector.style.display = proxied ? 'none' : '';
+  const skinSelector = document.getElementById('entrySkinSelector');
+  if (skinSelector) skinSelector.style.display = proxied ? 'none' : '';
   // Follows the destination rather than the page, the way the team row does.
   // Staging this server from a proxied page is about to go somewhere the
   // choice means something again, so it comes back -- and comes back as the
@@ -2673,6 +2685,7 @@ function setPendingJoinRequest(name) {
     name,
     isMobile,
     tankModel: selectedTankModelId,
+    skin: selectedTankSkinId,
     motto: myPlayerMotto,
   };
 }
@@ -2686,6 +2699,7 @@ function maybeSendPendingJoinRequest() {
     isMobile: pendingJoinRequest.isMobile,
     xr: isXREnabled(),
     tankModel: pendingJoinRequest.tankModel,
+    skin: pendingJoinRequest.skin,
     motto: pendingJoinRequest.motto,
     bot: IS_BOT_CLIENT,
     page: PAGE_TOKEN,
@@ -2996,6 +3010,13 @@ async function prepareInitialRender(message, sequenceId) {
     '/textures/roof.png',
     '/textures/pyrwall.png',
     CAMO_SOURCE_TEXTURE,
+    // Each tank's skin as its team paints it, and the blue file any colour off
+    // its team's shades is painted from.
+    ...new Set((message.players || []).flatMap((player) => [
+      getTankSkinTexture(getTankSkin(player.skin), player.team),
+      getTankSkinTexture(getTankSkin(player.skin)),
+    ])),
+    getTankSkinTexture(getTankSkin(selectedTankSkinId)),
     '/textures/green_bolt.png',
     '/textures/shot_tail.png',
     '/textures/explode1.png',
@@ -4355,6 +4376,7 @@ function openEntryDialog(name = '') {
     name: myPlayerName,
     team: getSelectedPlayerTeam(),
     tankModel: selectedTankModelId,
+    skin: selectedTankSkinId,
     motto: myPlayerMotto,
   };
   setInputContext(INPUT_CONTEXT.ENTRY);
@@ -4392,6 +4414,8 @@ function closeEntryDialog({ revert = true } = {}) {
     // Nothing was applied, so putting the draft back is the id and the two
     // pieces of the dialog that were drawn from it.
     selectedTankModelId = entrySnapshot.tankModel;
+    selectedTankSkinId = entrySnapshot.skin;
+    syncTankSkinSelector();
     updateSelectedTankOptionUI();
     loadTankPreviewModel(getTankModelPathById(selectedTankModelId));
   }
@@ -4431,6 +4455,7 @@ function applyEntrySelections() {
   if (selectedTankModelId !== snapshot.tankModel) {
     applySelectedTankModel(selectedTankModelId);
   }
+  if (selectedTankSkinId !== snapshot.skin) applySelectedTankSkin(selectedTankSkinId);
 
   const rejoin = !gameplayJoinConfirmed
     || myPlayerName !== snapshot.name
@@ -4463,6 +4488,7 @@ function resetEntrySelectionsToDefault() {
   storePlayerTeamChoice(selectedPlayerTeam);
   syncPlayerTeamSelector();
   setSelectedTankModel(getDefaultTankModel().id);
+  setSelectedTankSkin(TANK_SKINS[0].id);
 }
 
 function toggleEntryDialog(name = '') {
@@ -4991,6 +5017,46 @@ function setSelectedTankModel(modelId) {
   updateSelectedTankOptionUI();
 }
 
+// The skin works as the model does: staged while the entry dialog is open,
+// applied at once from XR Player Options, and changed within a life.
+let selectedTankSkinId = normalizeTankSkinId(readStoredTankSkin());
+
+function readStoredTankSkin() {
+  try {
+    return localStorage.getItem('tankSkinId');
+  } catch {
+    return null;
+  }
+}
+
+function applySelectedTankSkin(skinId) {
+  try {
+    localStorage.setItem('tankSkinId', skinId);
+  } catch {
+    // Kept for this page only.
+  }
+  if (gameplayJoinConfirmed) sendToServer({ type: 'setTankSkin', skin: skinId });
+}
+
+function setSelectedTankSkin(skinId) {
+  selectedTankSkinId = normalizeTankSkinId(skinId);
+  if (pendingJoinRequest) pendingJoinRequest.skin = selectedTankSkinId;
+  if (!isEntryDialogOpen()) applySelectedTankSkin(selectedTankSkinId);
+  syncTankSkinSelector();
+  refreshTankPreviewColor();
+}
+
+function cycleTankSkin(direction) {
+  const index = TANK_SKINS.findIndex((skin) => skin.id === selectedTankSkinId);
+  const next = (index + direction + TANK_SKINS.length) % TANK_SKINS.length;
+  setSelectedTankSkin(TANK_SKINS[next].id);
+}
+
+function syncTankSkinSelector() {
+  const value = document.getElementById('entrySkinValue');
+  if (value) value.textContent = getTankSkin(selectedTankSkinId).label;
+}
+
 // The model a player is looking at, and the ones a single step either side of
 // it, because those are the only ones the carousel can reach next.
 //
@@ -5075,8 +5141,15 @@ function getPreviewTankColor() {
 // before there is one, and a rogue is not what either of those is.
 function getPreviewTankCamoOptions() {
   const team = getSelectedPlayerTeam();
+  const teams = availablePlayerTeams.some(isColorTeam);
+  // Automatic names no team, so the preview is the tank already in play: its
+  // own shade (getPreviewTankColor) of the team it is on.
+  const drawnAs = team === PLAYER_TEAM.AUTOMATIC && gameplayJoinConfirmed ? playerTeam : team;
   return {
-    rogue: team === PLAYER_TEAM.ROGUE && availablePlayerTeams.some(isColorTeam),
+    rogue: team === PLAYER_TEAM.ROGUE && teams,
+    skin: getTankSkin(selectedTankSkinId),
+    team: teams ? drawnAs : null,
+    teamColor: PLAYER_TEAM_COLORS[drawnAs],
   };
 }
 
@@ -8749,9 +8822,10 @@ function addPlayer(player) {
   // texture and the name label are both generated from it, so there is nothing
   // cheaper to tweak in place.
   const effectiveColor = getEffectiveTankColor(player.id, player.color);
-  const camoOptions = getTankCamoOptions(player.id);
+  const camoOptions = { ...getTankCamoOptions(player.id), skin: getTankSkin(player.skin) };
   const tankColorChanged = tank?.userData?.builtColor !== effectiveColor
-    || tank?.userData?.builtRogue !== camoOptions.rogue;
+    || tank?.userData?.builtRogue !== camoOptions.rogue
+    || tank?.userData?.builtSkin !== camoOptions.skin.id;
   if (tank && tank.userData && (tank.userData.tankModel !== playerTankModelId || tankColorChanged)) {
     discardTank(tank, player.id);
     tank = null;
@@ -8768,6 +8842,7 @@ function addPlayer(player) {
     if (!tank) return;
     tank.userData.builtColor = effectiveColor;
     tank.userData.builtRogue = camoOptions.rogue;
+    tank.userData.builtSkin = camoOptions.skin.id;
     renderManager.getWorldFrame().add(tank);
     tanks.set(player.id, tank);
 
@@ -9903,6 +9978,7 @@ function viewMapFile(file) {
       name: myPlayerName,
       isMobile,
       tankModel: selectedTankModelId,
+      skin: selectedTankSkinId,
       motto: myPlayerMotto,
       bot: IS_BOT_CLIENT,
       page: PAGE_TOKEN,
@@ -13945,9 +14021,8 @@ function getEffectiveTankColor(playerId, color) {
 
 // Upstream's `visualTeam` (Player.cxx:790): the team a tank is *drawn* as,
 // which is not always the team it is on. Upstream needs it to choose which of
-// its seven team textures to load; bzo needs it for the one thing its generated
-// camo still varies by team, which is whether a tank is a rogue and so painted
-// nearly black -- see ROGUE_CAMO_SATURATION in render.js.
+// its seven team textures to load, and bzo for the same: a shade of this team
+// wears the team's own skin file (getTankCamoOptions).
 //
 // This is getEffectiveTankColor's twin and has to keep its branches, in the
 // same order: every case there swaps a colour and a team together, so a tank
@@ -13982,10 +14057,17 @@ function getEffectiveTankTeam(playerId) {
 // upstream's near-black would throw away the distinction bzo exists to draw.
 // Rogue is only a team, and only worth drawing as one, where there are other
 // teams for it not to be.
+// `team` is upstream's `visualTeam`, whose own skin file a tank wears when its
+// colour is one of that team's shades. On a world with no colour teams every
+// rogue has a colour off the whole wheel, so none of them is one.
 function getTankCamoOptions(playerId) {
+  const teams = availablePlayerTeams.some(isColorTeam);
+  const team = getEffectiveTankTeam(playerId);
+  const ownFile = teams || isRabbitTeam(team) || team === PLAYER_TEAM.HUNTER;
   return {
-    rogue: availablePlayerTeams.some(isColorTeam)
-      && getEffectiveTankTeam(playerId) === PLAYER_TEAM.ROGUE,
+    rogue: teams && team === PLAYER_TEAM.ROGUE,
+    team: ownFile ? team : null,
+    teamColor: PLAYER_TEAM_COLORS[team],
   };
 }
 
@@ -17481,6 +17563,13 @@ function getXRPlayerOptionsMenuItems() {
       // `syncTankSelectorForDestination`.
       disabled: selectedDestination !== DESTINATION_LOCAL,
     },
+    {
+      id: 'skinXR',
+      label: 'Skin',
+      value: getTankSkin(selectedTankSkinId).label,
+      adjustable: true,
+      disabled: selectedDestination !== DESTINATION_LOCAL,
+    },
     { id: 'rejoinXR', label: gameplayJoinConfirmed ? 'Apply & Rejoin' : 'Join', value: '' },
     { id: 'backXR', label: 'Back', value: '' },
   ];
@@ -17718,6 +17807,10 @@ function adjustXRSettingsMenuItem(item, direction) {
     cycleTankModel(direction);
     return true;
   }
+  if (item.id === 'skinXR') {
+    cycleTankSkin(direction);
+    return true;
+  }
   if (item.id === 'voiceInputXR') {
     return cycleSelectElement(document.getElementById('voiceInputDevice'), direction);
   }
@@ -17804,6 +17897,7 @@ function applyXRJoinSelection() {
     name: myPlayerName,
     isMobile,
     tankModel: selectedTankModelId,
+    skin: selectedTankSkinId,
     motto: myPlayerMotto,
     bot: IS_BOT_CLIENT,
     page: PAGE_TOKEN,

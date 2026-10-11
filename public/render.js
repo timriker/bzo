@@ -57,13 +57,15 @@ import {
 } from './collision.mjs';
 import { createBuriedTriangleTest } from './face-trim.mjs';
 import {
-  CAMO_SOURCE_TEXTURE,
   camoColor,
   camoPaintColor,
+  isTeamShade,
   referenceHue,
   rgbToHsv,
+  teamShadeColor,
   wrapSignedTurns,
 } from './camo.mjs';
+import { TANK_SKIN_TEAMS, getTankSkin, getTankSkinTexture } from './tank-skins.mjs';
 import {
   TRACK_TREAD_LEFT,
   TRACK_TREAD_RIGHT,
@@ -8053,12 +8055,10 @@ class RenderManager {
     tankGroup.userData.treadGroups = [leftTread?.group, rightTread?.group].filter(Boolean);
     tankGroup.userData.treadGroups.forEach((group) => tankGroup.add(group));
 
-    const turretTexture = bodyTexture.clone();
-    turretTexture.wrapS = THREE.RepeatWrapping;
-    turretTexture.wrapT = THREE.RepeatWrapping;
-    turretTexture.repeat.set(6.28 / 4, 0.8 / 4);
-    turretTexture.needsUpdate = true;
-    const turretMaterial = new THREE.MeshLambertMaterial({ map: turretTexture });
+    // The body's texture on the turret's own coordinates, unscaled, as
+    // upstream draws it: `setupTextureMatrix` (TankSceneNode.cxx) moves only
+    // the treads and wheels.
+    const turretMaterial = new THREE.MeshLambertMaterial({ map: bodyTexture });
     const turret = this._cloneTemplateMesh(templateParts.turret, turretMaterial);
     tankGroup.add(turret);
     tankGroup.userData.turret = turret;
@@ -8389,6 +8389,7 @@ class RenderManager {
       // Signed, so a patch painted above the reference hue stays above the
       // player's and one painted below stays below.
       hueOffset: Float32Array.from(hue, (h) => wrapSignedTurns(h - reference)),
+      hue: Float32Array.from(hue),
       saturation: Float32Array.from(saturation),
       value: Float32Array.from(value),
       rgb: new Uint8ClampedArray(hue.length * 3),
@@ -8406,17 +8407,18 @@ class RenderManager {
       return;
     }
 
-    const source = this._getCamoSource(CAMO_SOURCE_TEXTURE, image);
+    const source = this._getCamoSource(options.texture, image);
     const base = new THREE.Color(baseColor);
     const player = rgbToHsv(base.r, base.g, base.b);
 
     // A rogue is drained and darkened rather than given a pattern of its own,
     // so its camo still falls in the same places as everyone else's.
     const palette = source.rgb;
+    const { teamHsv } = options;
     for (let i = 0; i < source.hueOffset.length; i += 1) {
-      const rgb = camoColor(
-        source.hueOffset[i], source.saturation[i], source.value[i], player, options.rogue,
-      );
+      const rgb = teamHsv
+        ? teamShadeColor(source.hue[i], source.saturation[i], source.value[i], options.playerHsv, teamHsv)
+        : camoColor(source.hueOffset[i], source.saturation[i], source.value[i], player, options.rogue);
       palette[i * 3] = rgb.r * 255;
       palette[(i * 3) + 1] = rgb.g * 255;
       palette[(i * 3) + 2] = rgb.b * 255;
@@ -8435,11 +8437,35 @@ class RenderManager {
     ctx.putImageData(imageData, 0, 0);
   }
 
+  // `options.skin` is a tank-skins.mjs entry (the standard camo with none), and
+  // `options.team` the team the tank is drawn as. A shade of a team upstream
+  // paints a tank for (not observer or Map Viewer) wears the
+  // team's own file, moved by its distance from `options.teamColor`; any other
+  // colour has the blue file repainted for it.
   _createTankTexture(baseColor, options = {}) {
+    const skin = options.skin || getTankSkin();
+    let texture = getTankSkinTexture(skin);
+    let teamHsv = null;
+    let playerHsv = null;
+    // In the file's own sRGB, not THREE's linear working space: the team's
+    // file is moved by the ratio of the two colours, and a ratio taken in
+    // linear light roughly doubles every step between shades.
+    const srgbHsv = (hex) => rgbToHsv(((hex >> 16) & 255) / 255, ((hex >> 8) & 255) / 255, (hex & 255) / 255);
+    if (TANK_SKIN_TEAMS.includes(options.team) && Number.isFinite(options.teamColor) && Number.isFinite(baseColor)) {
+      const candidate = srgbHsv(options.teamColor);
+      const player = srgbHsv(baseColor);
+      if (isTeamShade(player, candidate)) {
+        texture = getTankSkinTexture(skin, options.team);
+        teamHsv = candidate;
+        playerHsv = player;
+      }
+    }
+    const paintOptions = { ...options, texture, teamHsv, playerHsv };
+    const size = skin.size;
     return this._createTintedTexture(
-      CAMO_SOURCE_TEXTURE, 128, 128,
+      texture, size, size,
       function paint(ctx, canvas, image, color) {
-        this._paintCamoTankTexture(ctx, canvas, image, color, options);
+        this._paintCamoTankTexture(ctx, canvas, image, color, paintOptions);
       },
       baseColor,
       { srgb: false });

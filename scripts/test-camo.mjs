@@ -17,8 +17,10 @@ import { inflateSync } from 'zlib';
 import { resolve, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import {
-  CAMO_SOURCE_TEXTURE, camoColor, camoPaintColor, referenceHue, rgbToHsv, wrapSignedTurns,
+  CAMO_SOURCE_TEXTURE, camoColor, camoPaintColor, isTeamShade, referenceHue, rgbToHsv, teamShadeColor,
+  wrapSignedTurns,
 } from '../public/camo.mjs';
+import { TANK_SKINS, TANK_SKIN_TEAMS, getTankSkinTexture } from '../public/tank-skins.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -301,6 +303,49 @@ for (const [name, color] of PLAYERS) {
   const { entries } = paint(source, [204, 204, 204]);
   const boldest = Math.max(...entries.map((entry) => rgbToHsv(...Object.values(entry.rgb)).s));
   check(boldest < 0.02, `a colourless player stays colourless (saturation ${boldest.toFixed(3)})`);
+}
+
+// 10. Every skin's file, for every team, is the size its entry says, since the
+//     tank's canvas is made that size and filled texel for texel from it.
+for (const skin of TANK_SKINS) {
+  const sizes = TANK_SKIN_TEAMS.map((team) => {
+    const header = readFileSync(resolve(__dirname, '..', 'public', getTankSkinTexture(skin, team).slice(1)));
+    return `${header.readUInt32BE(16)}x${header.readUInt32BE(20)}`;
+  });
+  const wanted = `${skin.size}x${skin.size}`;
+  check(sizes.every((size) => size === wanted), `${skin.id} is ${wanted} for every team (${[...new Set(sizes)].join(', ')})`);
+}
+
+// 11. A tank at its team's own colour wears the team's file unchanged, and a
+//     shade of it is moved by no more than its distance from that colour.
+{
+  const hsv = (rgb) => rgbToHsv(rgb[0] / 255, rgb[1] / 255, rgb[2] / 255);
+  const red = hsv([255, 0, 0]);
+  const texel = { h: 0.02, s: 0.6, v: 0.7 };
+  const same = teamShadeColor(texel.h, texel.s, texel.v, red, red);
+  const back = rgbToHsv(same.r, same.g, same.b);
+  check(Math.abs(back.h - texel.h) < 1e-6 && Math.abs(back.s - texel.s) < 1e-6 && Math.abs(back.v - texel.v) < 1e-6,
+    'the team colour leaves its own file as painted');
+  const shade = hsv([230, 20, 30]);
+  check(isTeamShade(shade, red), 'a shade of red is one of red\'s shades');
+  check(!isTeamShade(hsv([0, 200, 255]), red), 'a sky blue is not one of red\'s shades');
+  const same3 = (rgb, h, s_, v) => {
+    const got = rgbToHsv(rgb.r, rgb.g, rgb.b);
+    return Math.abs(got.s - s_) < 1e-6 && Math.abs(got.v - v) < 1e-6 && (s_ === 0 || Math.abs(got.h - h) < 1e-6);
+  };
+  check(same3(teamShadeColor(0, 0.04, 0.4, shade, red), 0, 0.04, 0.4), 'a grey patch stays as painted on a shade');
+  const green = hsv([0, 255, 0]);
+  const yellow = { h: 48 / 360, s: 1, v: 0.95 };
+  check(same3(teamShadeColor(yellow.h, yellow.s, yellow.v, hsv([20, 200, 40]), green), yellow.h, yellow.s, yellow.v),
+    'green\'s yellow patch stays yellow on a shade of green');
+  const darker = hsv([200, 0, 0]);
+  const bright = teamShadeColor(0, 1, 1, darker, red);
+  const dark = teamShadeColor(0, 1, 0.4, darker, red);
+  check(Math.abs(rgbToHsv(bright.r, bright.g, bright.b).v - darker.v) < 1e-6
+    && Math.abs(rgbToHsv(dark.r, dark.g, dark.b).v - 0.4 * darker.v) < 1e-6,
+  'bright red becomes the shade, and dark red the shade darkened as much');
+  const rabbit = hsv([204, 204, 204]);
+  check(isTeamShade(rabbit, rabbit), 'the rabbit wears its own file');
 }
 
 console.log(failed ? '\ncamo: FAILED' : '\ncamo: all checks passed');

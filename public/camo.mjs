@@ -17,10 +17,12 @@
 // (129,120,138); blue_tank.png sets a deep blue against a cyan highlight and a
 // grey-blue shadow. That works upstream because eight teams need eight files.
 //
-// bzo gives every player a distinct shade of their team's colour, so there is
-// no file to paint per player and the body texture is generated from the colour
-// instead. Tinting one grey ramp -- which is what bzo did before -- can only
-// ever produce a single hue, and the camo reads as one flat colour dimmed and
+// bzo gives every player a distinct shade of their team's colour. A shade of a
+// team wears that team's file, moved by its distance from the team colour
+// (teamShadeColor, at the end of this file). A colour off every team's shades --
+// a free-for-all's whole wheel -- has no file to paint it, so its body texture
+// is generated from the colour instead. Tinting one grey ramp can only ever
+// produce a single hue, and the camo reads as one flat colour dimmed and
 // brightened.
 //
 // So a source texture is retargeted in HSV rather than tinted: its hue is
@@ -219,5 +221,53 @@ export function camoColor(hueOffset, saturation, value, player, rogue = false) {
       * Math.min(1, (saturation ** CAMO_SATURATION_CONTRAST) * CAMO_SATURATION_GAIN
         * (1 - (CAMO_HIGHLIGHT_WASH * value))),
     Math.min(1, value * player.v * CAMO_VALUE_SCALE * (rogue ? ROGUE_CAMO_VALUE : 1)),
+  );
+}
+
+// A team's own skin file is upstream's painting for that team (`<team>_tank*.png`)
+// and wants moving only as far as a player's shade is from the team colour:
+// at the team colour itself it is upstream's file texel for texel. How far a
+// shade may sit from its team's hue and still count as one of its shades is
+// the server's band (`TEAM_SHADE_HUE_SPREAD`, server/teams.cjs) with room for
+// the trip through RGB.
+export const TEAM_FILE_HUE_REACH = 20 / 360;
+// Below this the team colour has no hue to measure a shade from: the rabbit's
+// grey, which every rabbit wears exactly.
+const TEAM_FILE_MIN_SATURATION = 0.15;
+
+export function isTeamShade(player, team) {
+  if (team.s < TEAM_FILE_MIN_SATURATION) return true;
+  return Math.abs(wrapSignedTurns(player.h - team.h)) <= TEAM_FILE_HUE_REACH;
+}
+
+// How much of an entry is the team's colour, from 0 to 1: its hue within
+// TEAM_HUE_FULL of the team's counts whole and fades out by TEAM_HUE_NONE, and
+// its saturation fades in between TEAM_SATURATION_NONE and TEAM_SATURATION_FULL.
+// A grey patch, or one painted in another colour -- the yellow in green's camo,
+// the beige in red's -- is not the team's, and stays as painted.
+const TEAM_HUE_FULL = 25 / 360;
+const TEAM_HUE_NONE = 50 / 360;
+const TEAM_SATURATION_NONE = 0.1;
+const TEAM_SATURATION_FULL = 0.35;
+
+const ramp = (x, from, to) => Math.max(0, Math.min(1, (x - from) / (to - from)));
+
+export function teamColorWeight(hue, saturation, team) {
+  const away = Math.abs(wrapSignedTurns(hue - team.h));
+  return (1 - ramp(away, TEAM_HUE_FULL, TEAM_HUE_NONE))
+    * ramp(saturation, TEAM_SATURATION_NONE, TEAM_SATURATION_FULL);
+}
+
+// One entry of a team's file moved by the player's distance from the team
+// colour, as far as the entry is the team's colour: the hue turned by the
+// difference, saturation and value scaled by the ratio, so the team's bright
+// and dark become the player's bright and dark and everything else is left.
+export function teamShadeColor(hue, saturation, value, player, team) {
+  const weight = team.s < TEAM_FILE_MIN_SATURATION ? 0 : teamColorWeight(hue, saturation, team);
+  const toward = (ratio) => 1 + ((ratio - 1) * weight);
+  return hsvToRgb(
+    hue + (wrapSignedTurns(player.h - team.h) * weight),
+    Math.min(1, saturation * toward(player.s / team.s)),
+    team.v > 0 ? Math.min(1, value * toward(player.v / team.v)) : value,
   );
 }

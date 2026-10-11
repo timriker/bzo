@@ -259,6 +259,7 @@ const {
   teamScoreMovesOnKill,
   areFoes,
 } = require('./server/teams.cjs');
+const { DEFAULT_TANK_SKIN, normalizeTankSkinId } = require('./server/tank-skins.cjs');
 const { parseProxies, proxyUrlKey } = require('./server/proxies.cjs');
 const {
   ALL_PLAYERS,
@@ -7146,6 +7147,7 @@ class Player {
     this.onObstacle = false;
     this.connectDate = new Date();
     this.tankModel = 'bzflag';
+    this.skin = DEFAULT_TANK_SKIN;
     // A tagline the player writes for themselves, drawn beside their name on
     // the scoreboard. Upstream's `motto`, which is why it travels under that
     // name to a proxied target (`proxyMotto`) and arrives under it from one
@@ -7477,6 +7479,7 @@ class Player {
       connectDate: this.connectDate ? this.connectDate.toISOString() : undefined,
       color: this.color,
       tankModel: this.tankModel,
+      skin: this.skin,
       motto: this.motto,
       team: this.team,
       voiceMicEnabled: this.voiceMicEnabled,
@@ -18750,6 +18753,7 @@ function acceptConnection(ws, req) {
           player.tankModel = isAllowedTankModel(requestedTankModel)
             ? requestedTankModel
             : 'bzflag';
+          player.skin = normalizeTankSkinId(message.skin);
           player.team = assignedTeam;
           // `player` is already in the roster here, so it is excluded from the
           // colours to stay clear of. A null answer leaves the colour it has.
@@ -18839,6 +18843,7 @@ function acceptConnection(ws, req) {
           // line says what a player is driving without the log having to be
           // read backwards for a change that may never have happened.
           const joinTags = [`[${player.team.toUpperCase()}]`, `[${player.tankModel}]`];
+          if (player.skin !== DEFAULT_TANK_SKIN) joinTags.push(`[${player.skin}]`);
           if (message.isMobile) joinTags.push('[MOBILE]');
           if (player.bot) joinTags.push('[BOT]');
           log(`Player ${player.id} joining as "${joinName}" ${joinTags.join(' ')}`);
@@ -18915,6 +18920,16 @@ function acceptConnection(ws, req) {
           player.nextTeam = team;
           log(`Player ${player.id} "${player.name}" asks for ${team}`);
           replyToPlayer(player, `You will join ${team} when you next spawn`);
+          break;
+        }
+
+        // The skin changes in a life as the model does; a join carries it too.
+        case 'setTankSkin': {
+          const skin = normalizeTankSkinId(message.skin);
+          if (player.skin === skin) break;
+          log(`Player ${player.id} "${player.name}" skin ${player.skin} -> ${skin}`);
+          player.skin = skin;
+          if (player.joined) broadcastPlayerRecord('playerUpdated', player);
           break;
         }
 

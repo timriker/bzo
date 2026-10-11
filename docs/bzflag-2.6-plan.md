@@ -109,7 +109,7 @@ review doc.
 | Server bots that play (Roger and Ace) through the same move and shot checks as a browser | `server/bots.cjs`, `docs/bots-plan.md` | Seen as `[auto]` players | Server-side players (blast: loading R2 crashes the server) |
 | Team change without a rejoin: between playing teams at the next spawn, to observer killing a live tank | `server.js` (`setTeam`, `changePlayerTeam`) | No | MsgSetTeam |
 | Automatic team pick by size, then score | `server/teams.cjs` | Yes | Automatic team assignment |
-| OBJ tank models, chosen per player, and camo | `docs/tank-model-format.md`, `public/camo.mjs` | No | OBJ loading, skins |
+| OBJ tank models, chosen per player; upstream's team textures and 2.5 skins, each player's shade moved from the team colour | `docs/tank-model-format.md`, `public/camo.mjs`, `public/tank-skins.mjs` | No | OBJ loading, skins |
 | Worlds served by content hash, compressed, cached forever; native clients get it through MsgCacheURL | `docs/network.md`, `docs/bzflag-clients.md` | Yes | Faster map transfer (2.6 drops the cache URL instead) |
 
 bzo-only, with no 2.6 counterpart: WebXR, touch, installable app, voice chat,
@@ -140,22 +140,16 @@ maps, custom flags or a flag effect field, an unknown-flag type, and
 
 Each works for browsers on its own and costs a 2.4 native client nothing.
 
-1. **Skins.** Upstream's 28 PNGs (`data/<team>_tank_{hex,digital,facet,solid}.png`,
-   LGPL/MPL, about 3.2 MB) into `public/textures`, loaded only when a tank uses
-   one. A Skin picker next to the tank model, kept with the other join
-   choices, relayed to every browser. bzo numbers its own skins and maps them
-   to 2.6's 0-4 later, since blast is still deciding on them. 2.4 clients see
-   the standard texture.
-2. **Locale at join**, as part of `docs/i18n-plan.md`.
-3. **Normal and specular maps in BZW.** Parse `normalmap` and `specularmap`
+1. **Locale at join**, as part of `docs/i18n-plan.md`.
+2. **Normal and specular maps in BZW.** Parse `normalmap` and `specularmap`
    (`src/bzfs/ParseMaterial.cxx:198`) and carry them in the world. Render
    only when a map uses them, after measuring the cost on Quest: it means
    Phong or Standard materials instead of Lambert.
-4. **Flag effects.** Describe each flag by an effect plus parameters, so a
+3. **Flag effects.** Describe each flag by an effect plus parameters, so a
    custom flag can reuse an effect; add the unknown-flag type. Keep Genocide
    built in and follow blast's plugin work.
-5. **`-noSelfKills`** as a server setting.
-6. **Shot ids as 2.6 assigns them:** a global u16 per shot, with the client's
+4. **`-noSelfKills`** as a server setting.
+5. **Shot ids as 2.6 assigns them:** a global u16 per shot, with the client's
    slot as its local id. bzo already owns shots, so this is mostly naming,
    and it makes the 2.6 translation trivial.
 

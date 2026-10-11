@@ -454,30 +454,33 @@ const reVertex = new RegExp(`doVertex3f\\s*\\(\\s*${NUMBER}\\s*,\\s*${NUMBER}\\s
 // A new face has to be painted at the size its neighbours are painted, and
 // CAMO_UNITS_PER_TILE is not that size: upstream's coordinates index a skin
 // rather than tile a pattern, so they have no single scale. The body runs
-// about 2.4 world units to a unit of texture and the turret nearer 3.8, and a
+// about 3.1 world units to a unit of texture and the turret nearer 4.2, and a
 // patch laid at 4 on either reads as the wrong size against everything around
-// it. Averaged over every edge that has both a length and a texture length.
+// it. Taken by area, over every face that has both, so a face given
+// coordinates here carries as much of the texture per unit of surface as
+// upstream's own faces do. Averaging edge lengths instead weights long thin
+// faces' long edges and comes out more than twice as dense.
 function uvScaleOf(triangles, fallback = CAMO_UNITS_PER_TILE) {
   let world = 0;
   let texture = 0;
   for (const triangle of triangles) {
     if (triangle.some((v) => v.texcoord === null)) continue;
-    for (let i = 0; i < 3; i += 1) {
-      const a = triangle[i];
-      const b = triangle[(i + 1) % 3];
-      const d = Math.hypot(
-        b.position[0] - a.position[0],
-        b.position[1] - a.position[1],
-        b.position[2] - a.position[2],
-      );
-      const t = Math.hypot(b.texcoord[0] - a.texcoord[0], b.texcoord[1] - a.texcoord[1]);
-      if (d > 1e-6 && t > 1e-6) {
-        world += d;
-        texture += t;
-      }
+    const [p0, p1, p2] = triangle.map((v) => v.position);
+    const [t0, t1, t2] = triangle.map((v) => v.texcoord);
+    const e1 = [p1[0] - p0[0], p1[1] - p0[1], p1[2] - p0[2]];
+    const e2 = [p2[0] - p0[0], p2[1] - p0[1], p2[2] - p0[2]];
+    const area = Math.hypot(
+      (e1[1] * e2[2]) - (e1[2] * e2[1]),
+      (e1[2] * e2[0]) - (e1[0] * e2[2]),
+      (e1[0] * e2[1]) - (e1[1] * e2[0]),
+    ) / 2;
+    const texels = Math.abs(((t1[0] - t0[0]) * (t2[1] - t0[1])) - ((t2[0] - t0[0]) * (t1[1] - t0[1]))) / 2;
+    if (area > 1e-9 && texels > 1e-9) {
+      world += area;
+      texture += texels;
     }
   }
-  return texture > 0 ? world / texture : fallback;
+  return texture > 0 ? Math.sqrt(world / texture) : fallback;
 }
 
 // The edges a part leaves open: edges belonging to exactly one triangle.
