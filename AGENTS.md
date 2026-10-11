@@ -1328,6 +1328,16 @@ An observer has no tank. It joins, chats, and flies a
 roaming camera over the map. Work tracked as GitHub issue #33; reference it from
 observer commits.
 
+### Changing team without a rejoin
+
+2.5's `changeTeam` (`bzfs.cxx`, master), from the entry dialog or XR Player
+Options. Between playing teams the client sends `setTeam` and the tank keeps
+its life and score; `respawn()` moves it (`changePlayerTeam`, which `/setteam`
+calls at once). To or from observer is still a `joinGame`, since the camera
+changes, but with the name unchanged it leaves nobody on the rejoin list, and a
+live tank going to observer self-destructs first, as upstream kills it. An
+unchanged team and name is no rejoin at all, so a tank change costs no life.
+
 ### What upstream does
 
 **An observer always roams.** `Roaming::setMode` (`Roaming.cxx:54`) refuses

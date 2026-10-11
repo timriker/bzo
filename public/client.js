@@ -2693,6 +2693,24 @@ function maybeSendPendingJoinRequest() {
   });
 }
 
+// MsgSetTeam (bzfs.cxx, master): a tank moving between playing teams keeps
+// its life and its score, and the server moves it at its next spawn. True when
+// that, or nothing, answers what was staged; a new name or motto, observing,
+// or Map Viewer still rejoins.
+function isSwitchableTeam(team) {
+  return team === PLAYER_TEAM.ROGUE || isColorTeam(team);
+}
+
+function sendTeamChangeInPlace() {
+  const state = myTank?.userData?.playerState;
+  const team = getSelectedPlayerTeam();
+  if (!gameplayJoinConfirmed || !state) return false;
+  if (myPlayerName !== state.name || (myPlayerMotto || '') !== (state.motto || '')) return false;
+  if (!isSwitchableTeam(playerTeam) || !isSwitchableTeam(team)) return false;
+  if (!proxyTeamChangeNavigated(team)) sendToServer({ type: 'setTeam', team });
+  return true;
+}
+
 // Keyed by content hash, so a Map Viewer choosing the live match's own map,
 // or a reconnect within the same tab, never re-fetches a world it already
 // holds -- on top of the browser's own HTTP cache, which is what makes a
@@ -4418,7 +4436,7 @@ function applyEntrySelections() {
     || myPlayerName !== snapshot.name
     || myPlayerMotto !== snapshot.motto
     || getSelectedPlayerTeam() !== snapshot.team;
-  if (!rejoin) return;
+  if (!rejoin || sendTeamChangeInPlace()) return;
   // The join is the authority on both, and it is refused while the client still
   // believes it is in the game.
   gameplayJoinConfirmed = false;
@@ -17777,9 +17795,10 @@ function applyXRJoinSelection() {
   // cannot give back, because `PauseState.syncMenu` will not claim a tank that
   // is already frozen.
   closeXRSettingsMenu();
+  applySelectedTankModel(selectedTankModelId);
+  if (sendTeamChangeInPlace()) return;
   gameplayJoinConfirmed = false;
   if (proxyTeamChangeNavigated(getJoinTeamFields().team)) return;
-  applySelectedTankModel(selectedTankModelId);
   sendToServer({
     type: 'joinGame',
     name: myPlayerName,

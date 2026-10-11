@@ -7153,6 +7153,8 @@ class Player {
     this.motto = '';
     // Teams are server-authoritative. Observer is receive-only and non-combatant.
     this.team = 'rogue';
+    // A team asked for with `setTeam`, taken at the next spawn.
+    this.nextTeam = null;
     // Set on a Map Viewer join (issue #68), cleared on any other -- see
     // `getState()`.
     this.viewMap = null;
@@ -7408,6 +7410,9 @@ class Player {
     clearPauseTimers(this);
     this.paused = false;
     this.pauseCountdownStart = 0;
+    // PlayerInfo::setAlive (PlayerInfo.cxx:110): a team asked for in the last
+    // life is taken as the next one starts, before it picks where to spawn.
+    if (this.nextTeam) changePlayerTeam(this, this.nextTeam);
     const spawnPos = getSpawnPosition(this);
     this.x = spawnPos.x;
     this.y = spawnPos.y;
@@ -7984,13 +7989,39 @@ defineCommand('/lagstats', COMMAND_TIER.OPEN,
     if (showIndex && lastServerStats) replyToPlayer(player, `server: ${formatServerStats(lastServerStats)}`);
   });
 
+// Between playing teams, in place: the tank keeps whatever life it has, drops
+// its flag, and takes the new team's colour. A browser rebuilds the tank from
+// the record; a BZFlag client is sent its own MsgAddPlayer again, which a 2.4
+// client answers by taking the team (`enteringServer`, playing.cxx:5058) -- see
+// server/bzflag-native.cjs. `/setteam` calls it at once, and a player's own
+// `setTeam` at their next spawn, as upstream's `changeTeam` (bzfs.cxx, master)
+// does with `setNextTeam`.
+function changePlayerTeam(subject, team) {
+  const from = subject.team;
+  subject.nextTeam = null;
+  if (from === team) return;
+  dropPlayerFlag(subject.id);
+  // bzfs.cxx:2478 and :2966: a team's flag follows its population.
+  const arrivingFirst = isColorTeam(team) && isTeamEmpty(getTeamColorIndex(team));
+  subject.team = team;
+  const color = getJoinPlayerColor(TEAM_MODE, team, from, (t) => Player.pickDistinctColor(t, subject));
+  if (color !== null) subject.color = color;
+  if (arrivingFirst) resetTeamFlags(getTeamColorIndex(team));
+  if (isColorTeam(from)) retireTeamFlags(getTeamColorIndex(from));
+  broadcastPlayerRecord('playerUpdated', subject);
+  broadcastTeamScores();
+  log(`Player ${subject.id} "${subject.name}" team ${from} -> ${team}`);
+}
+
+// The teams a tank may move between without a rejoin: not observer, which has
+// no tank, and not Rabbit Chase's, which the server hands out.
+function isSwitchableTeam(team) {
+  return TEAM_MODE.teams.includes(team) && !isObserverTeam(team) && !isRabbitTeam(team)
+    && team !== PLAYER_TEAM.HUNTER;
+}
+
 // `/setteam`, bzo's own: upstream 2.4 has no team change but a rejoin, and
-// 2.5's MsgSetTeam is the client asking for itself (bzfs.cxx, master). Between
-// playing teams only, in place: the tank keeps driving, drops its flag, and
-// takes the new team's colour. A browser rebuilds the tank from the record; a
-// BZFlag client is sent its own MsgAddPlayer again, which a 2.4 client answers
-// by taking the team (`enteringServer`, playing.cxx:5058) -- see
-// server/bzflag-native.cjs.
+// 2.5's MsgSetTeam is the client asking for itself (`setTeam` below).
 defineCommand('/setteam', COMMAND_TIER.OPERATOR,
   '<#slot|PlayerName|"Player Name"> <team> - move a player to another team',
   (player, args) => {
@@ -8002,14 +8033,11 @@ defineCommand('/setteam', COMMAND_TIER.OPERATOR,
     }
     const subject = players.get(target.id);
     const team = String(target.rest || '').trim().toLowerCase();
-    const playable = TEAM_MODE.teams.filter((name) => !isObserverTeam(name) && !isRabbitTeam(name)
-      && name !== PLAYER_TEAM.HUNTER);
-    if (!playable.includes(team)) {
-      replyToPlayer(player, `${usage} -- one of ${playable.join(', ')}`);
+    if (!isSwitchableTeam(team)) {
+      replyToPlayer(player, `${usage} -- one of ${TEAM_MODE.teams.filter(isSwitchableTeam).join(', ')}`);
       return;
     }
-    if (!subject?.joined || isObserverTeam(subject.team) || isRabbitTeam(subject.team)
-      || subject.team === PLAYER_TEAM.HUNTER) {
+    if (!subject?.joined || !isSwitchableTeam(subject.team)) {
       replyToPlayer(player, `"${subject?.name}" is not on a team to move from`);
       return;
     }
@@ -8018,12 +8046,7 @@ defineCommand('/setteam', COMMAND_TIER.OPERATOR,
       return;
     }
     const from = subject.team;
-    dropPlayerFlag(subject.id);
-    subject.team = team;
-    const color = getJoinPlayerColor(TEAM_MODE, team, from, (t) => Player.pickDistinctColor(t, subject));
-    if (color !== null) subject.color = color;
-    broadcastPlayerRecord('playerUpdated', subject);
-    broadcastTeamScores();
+    changePlayerTeam(subject, team);
     log(`[CMD] "${player.name}" moved "${subject.name}" from ${from} to ${team}`);
     replyToPlayer(player, `"${subject.name}" moved to ${team}`);
     if (subject !== player) replyToPlayer(subject, `@${player.name} moved you to ${team}`);
@@ -14663,6 +14686,8 @@ function applyDeath(victim, killerId, hit) {
     // while the game is over" (docs/game-modes-plan.md, "Match end") means for
     // a death already in flight when the clock hit zero.
     if (matchClock.gameOver) return;
+    // Gone to observer, or back in through a join, since it died.
+    if (isObserverTeam(victim.team) || victim.alive) return;
     victim.respawn();
     broadcastPlayerRecord('alive', victim);
   }, GAME_CONFIG.RESPAWN_DELAY);
@@ -18644,9 +18669,13 @@ function acceptConnection(ws, req) {
             ? normalizeTankModelId(message.tankModel)
             : 'bzflag';
           const previousTeam = player.joined ? player.team : null;
-          // Coming back through the entry dialog is upstream's leave and arrival.
-          if (player.joined) noteRejoinWait(player);
           const requestedTeam = normalizePlayerTeamSelection(message.team);
+          // Coming back through the entry dialog is upstream's leave and arrival,
+          // unless the name stays and only observing starts or stops: that is
+          // 2.5's `changeTeam`, which leaves nobody on the rejoin list.
+          const observingChange = previousTeam !== null && joinName === player.name
+            && isObserverTeam(previousTeam) !== (requestedTeam === PLAYER_TEAM.OBSERVER);
+          if (player.joined && !observingChange) noteRejoinWait(player);
           // autoTeamSelect (bzfs.cxx:1923) refuses nothing in Rabbit Chase: asking
           // for observer gives observer and asking for anything else means "play",
           // which is a hunter. So the availability check is skipped there and
@@ -18691,6 +18720,13 @@ function acceptConnection(ws, req) {
           if (previousTeam && previousTeam !== assignedTeam) {
             dropPlayerFlag(player.id);
           }
+          // changeTeam (bzfs.cxx, master): "If we're switching to observer and
+          // they're alive, kill 'em", as a self-destruct, so nobody watches a
+          // tank vanish and a shot already on its way is not dodged.
+          if (player.alive && previousTeam && isObserverTeam(assignedTeam)) {
+            killPlayer(player, player, DEATH_REASON.SELF_DESTRUCT);
+          }
+          player.nextTeam = null;
           player.name = joinName;
           // Bounded here rather than trusted: it reaches every other player's
           // scoreboard, and a proxied one carries it to a target that has its
@@ -18850,6 +18886,35 @@ function acceptConnection(ws, req) {
           handleRabbitSpawn(player);
           broadcastTeamScores();
           refreshVoiceRosters(true);
+          break;
+        }
+
+        // MsgSetTeam (bzfs.cxx, master): a tank asking for another playing
+        // team gets it at its next spawn, keeping its score. Observing starts
+        // and stops through `joinGame`, which the camera needs.
+        case 'setTeam': {
+          const team = normalizePlayerTeamSelection(message.team);
+          if (!player.joined || !isSwitchableTeam(player.team)) break;
+          if (!isSwitchableTeam(team) || TEAM_MODE.autoTeam) {
+            replyToPlayer(player, `Team is not available: ${team}`);
+            break;
+          }
+          if (team === player.team) {
+            if (player.nextTeam) replyToPlayer(player, `You stay ${team}`);
+            player.nextTeam = null;
+            break;
+          }
+          let onTeam = 0;
+          players.forEach((other) => {
+            if (other !== player && other.joined && (other.nextTeam || other.team) === team) onTeam += 1;
+          });
+          if (onTeam >= TEAM_MODE.limits[team]) {
+            replyToPlayer(player, `Team is full: ${team}`);
+            break;
+          }
+          player.nextTeam = team;
+          log(`Player ${player.id} "${player.name}" asks for ${team}`);
+          replyToPlayer(player, `You will join ${team} when you next spawn`);
           break;
         }
 

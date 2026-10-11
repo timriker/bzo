@@ -24,7 +24,7 @@ observer it moves the roaming camera, into free roam, and a fifth value -- a
 Share View Link's pitch -- tilts it. Whoever was moved is told who did it.
 
 **`/setteam` is bzo's own too.** 2.5 lets a client change its own team
-(`MsgSetTeam`); nothing lets an operator. `/setteam <player> <team>` moves a
+(`MsgSetTeam`, bzo's `setTeam`); nothing lets an operator. `/setteam <player> <team>` moves a
 player between playing teams in place: the flag drops, the tank takes the new
 colour and keeps driving. Observer, rabbit and hunter are out of its reach.
 A BZFlag client is covered in [bzflag-clients.md](bzflag-clients.md).
