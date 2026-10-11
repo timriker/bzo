@@ -6,6 +6,22 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
 
 ## [Unreleased]
 
+## [1.3.42] - 2026-10-11
+
+### Added
+- A player changes team without a rejoin, as BZFlag 2.5 does: between
+  playing teams the tank keeps its life and score and takes the new team at
+  its next spawn; going to observer self-destructs a live tank; to and from
+  observer has no rejoin wait.
+
+### Changed
+- Paused and not-responding tanks are dimmed on the radar, as upstream
+  draws them.
+- hix's and bzo.bzw's walkway grid is see-through in BZFlag clients too.
+
+### Fixed
+- Changing only the tank in XR Player Options no longer respawns it.
+
 ## [1.3.41] - 2026-10-11
 
 ### Changed
