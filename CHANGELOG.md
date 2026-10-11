@@ -6,6 +6,22 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
 
 ## [Unreleased]
 
+## [1.3.43] - 2026-10-11
+
+### Added
+- Tank skins, as in BZFlag 2.5: Standard, Hex, Digital, Facet and Solid,
+  chosen in the entry dialog or XR Player Options and changed without a
+  respawn.
+
+### Changed
+- Tanks wear upstream's texture for their team; only its team-coloured
+  patches follow each player's shade. Free-for-all colours keep the
+  repainted camo.
+
+### Fixed
+- The turret's camo is no longer stretched, and the hull faces bzo fills in
+  carry the pattern at upstream's size.
+
 ## [1.3.42] - 2026-10-11
 
 ### Added
