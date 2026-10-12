@@ -58,6 +58,21 @@ const box = (name, x, y, w, d, h, base = 0) => ({
   assert.equal(grounded.findRoute({ x: -80, y: 0, z: 0 }, { x: 0, y: 0, z: 10 }), null, 'nor anything, with no jumping');
 }
 
+// Wings: a flap at the top of the arc reaches the tower one jump does not,
+// in one flight; a flap a world does not give is not planned on.
+{
+  const tower = [box('tower', 0, 0, 40, 40, 30)];
+  const nav = buildNavGraph({ obstacles: tower, mapSize: 200, jump: { ...JUMP, flaps: 1 } });
+  const route = nav.findRoute({ x: -80, y: 0, z: 0 }, { x: 0, y: 0, z: 30 });
+  assert.ok(route, 'one flap reaches 30');
+  const flights = route.filter((node) => node.flight);
+  assert.equal(flights.length, 1, 'in one flight');
+  assert.equal(flights[0].flight.flaps, 1);
+  assert.equal(flights[0].z, 30);
+  const none = buildNavGraph({ obstacles: tower, mapSize: 200, jump: { ...JUMP, flaps: 0 } });
+  assert.equal(none.findRoute({ x: -80, y: 0, z: 0 }, { x: 0, y: 0, z: 30 }), null, 'no flaps, no way up');
+}
+
 // Two steps up: a jump to a ledge, and another from the ledge.
 {
   const nav = buildNavGraph({

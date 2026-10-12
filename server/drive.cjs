@@ -256,6 +256,9 @@ function readDriveInput(state, controls, tank, world, clock) {
   const { config } = world;
   const airControl = hasAirControl(tank.motionFlag ?? null);
   const inside = state.insideBuildings.length > 0;
+  // "can't jump while burrowed" (LocalPlayer.cxx:1406), whatever the flag:
+  // every jump, Bouncy's and a Wings flap included, goes through that test.
+  const burrowed = (state.z ?? 0) < 0;
   let forward = 0;
   let rotation = 0;
   let jumpTriggered = false;
@@ -273,7 +276,7 @@ function readDriveInput(state, controls, tank, world, clock) {
     const clamped = applyMotionInput(tank.motionFlag ?? null, controls.forward || 0, controls.turn || 0, inside);
     forward = clamped.forward;
     rotation = clamped.turn;
-    if (controls.up && !state.jumpWasHeld
+    if (controls.up && !state.jumpWasHeld && !burrowed
       && canJump(tank.motionFlag ?? null, config.ALLOW_JUMPING, state.jumpDirection !== null,
         state.wingsFlapsLeft, inside)) {
       jumpTriggered = true;
@@ -292,7 +295,7 @@ function readDriveInput(state, controls, tank, world, clock) {
     const bounce = getBounceState(
       tank.motionFlag ?? null, !state.inAir, state.wasAirborne, state.bounceReadyAt ?? 0, clock.now);
     state.bounceReadyAt = bounce.bounceReadyAt;
-    if (bounce.jump && canJump(tank.motionFlag ?? null, config.ALLOW_JUMPING, false, state.wingsFlapsLeft, inside)) {
+    if (bounce.jump && !burrowed && canJump(tank.motionFlag ?? null, config.ALLOW_JUMPING, false, state.wingsFlapsLeft, inside)) {
       jumpTriggered = true;
       state.wingsFlapsLeft--;
     }

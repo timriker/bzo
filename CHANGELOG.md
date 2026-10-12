@@ -6,6 +6,23 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
 
 ## [Unreleased]
 
+### Added
+- Ace plans Wings jumps that flap at the top of the arc, as many times as
+  `_wingsJumpCount` allows: at 2, he goes from hix's floor to a base in one
+  flight.
+
+### Fixed
+- Ace no longer replans a route in the air, which could start it from a
+  surface he was only passing over.
+- Ace's jumps no longer clip a roof edge with the back of the tank.
+- Ace's jumps land with Wings: he flies them straight at the speed he left
+  with, where he used to brake and turn in the air and drop short.
+- A burrowed tank can no longer jump, as upstream: anything under z 0.
+
+### Changed
+- `npm run bench:stuck` takes `--wings <count>`, `_wingsJumpCount`; Wings
+  never left the ground in it before.
+
 ## [1.3.45] - 2026-10-12
 
 ### Fixed

@@ -107,6 +107,7 @@ function getRouter() {
       // world does not; whether this one may is the pilot's to say.
       allowJumping: config.ALLOW_JUMPING === true,
       jump: { velocity: config.JUMP_VELOCITY, gravity: config.GRAVITY, tankSpeed: config.TANK_SPEED },
+      wings: { velocity: config.WINGS_JUMP_VELOCITY, gravity: config.WINGS_GRAVITY, count: config.WINGS_JUMP_COUNT },
     }));
   }
   return router;

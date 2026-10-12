@@ -19,7 +19,7 @@
 // the pilot reports. A positive rotation turns left.
 
 import {
-  canRunOver, getFlagGrabRadius, getFlagTuning, getRunOverRadius, isBadFlag,
+  canRunOver, getFlagGrabRadius, getFlagTuning, getRunOverRadius, hasAirControl, isBadFlag,
 } from './flags.mjs';
 import { SHOT_COLLISION_RADIUS, traceShotStep, TANK } from './collision.mjs';
 import { buildNavGraph, NAV_CELL, planJump } from './nav.mjs';
@@ -950,6 +950,7 @@ export class Ace extends Roger {
       out.fire = false;
       out.shotTargetId = null;
     }
+    this.holdAirStick(view.self, out);
     if (out.fire) this.lastFiredAt = view.now;
     // A reason is why a tank was picked, so only while Ace is after one.
     if (!TARGET_MODES.has(out.intent.mode)) out.intent.reason = null;
@@ -2444,6 +2445,36 @@ export class Ace extends Roger {
 
   // A dodge made at the camping spot is a shot that was really coming: a
   // shot passing below a raised tank is not one the dodge answers.
+  // Every jump and drop is planned as a straight coast at the speed it left
+  // with. Wings steers in the air, its velocity following the stick and the
+  // heading, so whatever Ace asks for there -- braking at a route point,
+  // turning toward the next -- would bend that arc and drop him short. He
+  // holds the speed he left with and does not turn. A flight planned with
+  // flaps (`nav.mjs`) takes each at the top of the arc before it: the first
+  // frame he is no longer rising. A flap is a fresh press, so the frame after
+  // one lets go; the only other one is a dodge's.
+  holdAirStick(self, out) {
+    if (!self.inAir) {
+      this.airSpeed = out.speed;
+      if (!out.jump) this.flapsPlanned = 0;
+      this.flapped = false;
+      return;
+    }
+    if (!hasAirControl(self.flag) || this.airSpeed === undefined) return;
+    out.speed = this.airSpeed;
+    out.rotation = 0;
+    if (!this.flapped && this.flapsPlanned > 0 && (self.velocity?.z ?? 0) <= 0) {
+      out.jump = true;
+      this.flapped = true;
+      this.flapsPlanned--;
+    } else if (out.intent.mode !== 'dodge') {
+      // Nothing else flaps: a route's next takeoff, pressed the frame he
+      // comes down, would leave from the air at the speed he flew in with.
+      out.jump = false;
+      this.flapped = false;
+    }
+  }
+
   noteCampDodge(view, out) {
     const spot = this.camp?.spot;
     if (!spot || out.intent.mode !== 'dodge') return;
@@ -2597,12 +2628,17 @@ export class Ace extends Roger {
     if (sameDest && view.now - current.plannedAt < ROUTE_REPLAN_SECONDS && !this.strayed(current, here)) {
       return current;
     }
+    // Not from the air: a search starts from the node under the tank, which
+    // mid-flight is some surface it is only passing over, and the flight it
+    // is on already goes where the old route goes.
+    if (current?.nodes && me.inAir) return current;
     return this.plan(view, here, there);
   }
 
   plan(view, here, there) {
     const canJump = canTankJump(view.world, view.self.flag);
-    let nodes = view.findRoute(here, there, { canJump });
+    const wings = hasAirControl(view.self.flag);
+    let nodes = view.findRoute(here, there, { canJump, wings });
     // A jump is a second or more Ace cannot steer, and comes down where it
     // was always going to: one whose landing a foe has a level, clear shot
     // at is taken only when the way round on the ground is much longer.
@@ -3305,8 +3341,12 @@ export class Ace extends Roger {
     // Leaving now: a jump at once, a drive-off on its last frame of ground.
     const step = flight.speed * ctx.view.world.tankSpeed * (this.frameSeconds || 0.05);
     const leaving = flight.jump || along >= flight.launch - (FLIGHT_SPIN_FRAMES * step);
-    if (flight.jump && atSpeed) out.jump = true;
-    if (leaving && after && flight.air > 0) {
+    if (flight.jump && atSpeed) {
+      out.jump = true;
+      this.flapsPlanned = flight.flaps || 0;
+    }
+    // Not under Wings, whose turn would bend the arc rather than the heading.
+    if (leaving && after && flight.air > 0 && !hasAirControl(me.flag)) {
       const rate = this.turnRate(ctx);
       // A foe on the level being landed on is the reason for the turn: the
       // tank is turned to face it at the moment its muzzle passes through the
@@ -3667,13 +3707,23 @@ export function createRouter(world) {
   return (from, to, options = {}) => {
     const current = world();
     const canJump = options.canJump ?? current.allowJumping !== false;
-    const jumpKey = JSON.stringify(current.jump ?? null);
+    const jumpKey = JSON.stringify([current.jump ?? null, current.wings ?? null]);
     if (!built || built.obstacles !== current.obstacles || built.mapSize !== current.mapSize
       || built.jumpKey !== jumpKey) {
       built = { obstacles: current.obstacles, mapSize: current.mapSize, jumpKey, graphs: new Map() };
     }
-    const jump = canJump ? (current.jump ?? null) : null;
-    const key = jump ? 'jump' : 'ground';
+    // Wings jumps at its own velocity and falls at its own gravity, and every
+    // `_wingsJumpCount` past the take-off is a flap a flight can plan on.
+    const wings = canJump && options.wings && current.jump && current.wings ? current.wings : null;
+    const jump = !canJump ? null : wings
+      ? {
+        ...current.jump,
+        velocity: wings.velocity ?? current.jump.velocity,
+        gravity: wings.gravity ?? current.jump.gravity,
+        flaps: Math.max(0, (wings.count ?? 1) - 1),
+      }
+      : (current.jump ?? null);
+    const key = wings ? 'wings' : jump ? 'jump' : 'ground';
     if (!built.graphs.has(key)) built.graphs.set(key, buildNavGraph({ ...current, jump }));
     const graph = built.graphs.get(key);
     return graph.smoothRoute(graph.findRoute(from, to), from);

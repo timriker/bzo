@@ -16,6 +16,7 @@
 //   node scripts/bench-stuck.mjs --map hix.bzw --runs 200 --seed 7
 //   node scripts/bench-stuck.mjs --seed 3 --runs 15 --trace 14
 //   node scripts/bench-stuck.mjs --flag V          # holding High Speed
+//   node scripts/bench-stuck.mjs --flag WG --wings 2  # Wings, one flap
 //   node scripts/bench-stuck.mjs --to 396,396,30   # always to one spot
 //
 // The world is the server's cached conversion (`cache/map-index.json`), so a
@@ -63,6 +64,11 @@ const CONFIG = {
   JUMP_VELOCITY: 19,
   ALLOW_JUMPING: jumping,
   MAX_BUMP_HEIGHT: 0.33,
+  // `_wingsJumpCount`: the take-off and each flap. Stock is 1; `--wings 2`
+  // gives one flap, as bz.rikers.org's server.json does.
+  WINGS_JUMP_COUNT: Number(args.get('wings') || 1),
+  WINGS_JUMP_VELOCITY: 19,
+  WINGS_GRAVITY: 9.8,
   // BZFlag's `-a <linear> <angular>`, off unless BENCH_ACCEL says otherwise.
   LINEAR_ACCELERATION: Number((process.env.BENCH_ACCEL || '0 0').split(' ')[0]) || 0,
   ANGULAR_ACCELERATION: Number((process.env.BENCH_ACCEL || '0 0').split(' ')[1]) || 0,
@@ -82,6 +88,7 @@ const findRoute = createRouter(() => ({
   teleporterLinks: world.teleporterGraph?.links || [],
   allowJumping: jumping,
   jump: { velocity: CONFIG.JUMP_VELOCITY, gravity: CONFIG.GRAVITY, tankSpeed: CONFIG.TANK_SPEED },
+  wings: { velocity: CONFIG.WINGS_JUMP_VELOCITY, gravity: CONFIG.WINGS_GRAVITY, count: CONFIG.WINGS_JUMP_COUNT },
 }));
 const teleporterIndex = buildTeleporterIndex(obstacles, world.teleporterGraph?.links || []);
 

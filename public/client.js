@@ -12673,6 +12673,9 @@ const autopilotRouter = createRouter(() => ({
   jump: gameConfig
     ? { velocity: gameConfig.JUMP_VELOCITY, gravity: gameConfig.GRAVITY, tankSpeed: gameConfig.TANK_SPEED }
     : null,
+  wings: gameConfig
+    ? { velocity: gameConfig.WINGS_JUMP_VELOCITY, gravity: gameConfig.WINGS_GRAVITY, count: gameConfig.WINGS_JUMP_COUNT }
+    : null,
 }));
 const autopilotProbes = createWorldProbes({
   obstacles: () => OBSTACLES,

@@ -36,6 +36,7 @@
 // asked for, and each destination gets one backwards search, kept; a route
 // from anywhere to it is then a walk downhill.
 
+import { getWingsJumpVelocity } from './flags.mjs';
 import { getShotTeleporterCrossing } from './teleport.mjs';
 import {
   findTankObstacle,
@@ -216,7 +217,8 @@ function topsAt(obs, x, y) {
 }
 
 // `world`: { obstacles, mapSize, waterLevel?, jump: { velocity, gravity,
-// tankSpeed } | null }. `jump` null is a world nobody jumps in.
+// tankSpeed, flaps? } | null }. `jump` null is a world nobody jumps in;
+// `flaps`, for Wings, is how many more jumps it takes in the air.
 export function buildNavGraph(world) {
   const { obstacles, mapSize } = world;
   const half = mapSize / 2;
@@ -287,7 +289,10 @@ export function buildNavGraph(world) {
 
   const jump = world.jump;
   const tankSpeed = world.tankSpeed ?? jump?.tankSpeed ?? 25;
-  const gravity = world.gravity ?? jump?.gravity ?? 9.8;
+  const gravity = jump?.gravity ?? world.gravity ?? 9.8;
+  // Flaps a jump may take in the air: Wings' `_wingsJumpCount` less the
+  // take-off.
+  const jumpFlaps = Math.max(0, Math.floor(jump?.flaps ?? 0));
   const column = (cx, cy) => (cx < 0 || cy < 0 || cx >= columns || cy >= columns
     ? null
     : columnNodes[(cy * columns) + cx] || null);
@@ -307,6 +312,7 @@ export function buildNavGraph(world) {
   const teleportRows = new Map();
   const flightTable = new PackedRows({
     speed: Float64Array, dx: Float64Array, dy: Float64Array, launch: Float64Array, air: Float64Array,
+    flaps: Uint8Array,
   });
   const ensureMoves = (id) => {
     if (moveStart[id] >= 0) return;
@@ -317,7 +323,8 @@ export function buildNavGraph(world) {
       let flight = -1;
       if (move.flight) {
         flight = flightTable.length;
-        flightTable.push(move.flight.speed, move.flight.dx, move.flight.dy, move.flight.launch, move.flight.air);
+        flightTable.push(move.flight.speed, move.flight.dx, move.flight.dy, move.flight.launch, move.flight.air,
+          move.flight.flaps ?? 0);
       }
       if (move.teleport) teleportRows.set(moveTable.length, move.teleport);
       moveTable.push(move.to, move.cost,
@@ -340,6 +347,7 @@ export function buildNavGraph(world) {
         dy: flights.dy[f],
         launch: flights.launch[f],
         air: flights.air[f],
+        flaps: flights.flaps[f],
       },
     };
   };
@@ -512,7 +520,9 @@ export function buildNavGraph(world) {
     const launches = jump ? [false, true] : [false];
     for (const jumping of launches) {
       if (!jumping && (edge === null || walled)) continue;
-      for (const share of FLIGHT_SPEEDS) {
+      // Wings flaps on the way: none, and then each count up to what the
+      // world allows, every one at the top of the arc before it.
+      for (let flaps = 0; flaps <= (jumping ? jumpFlaps : 0); flaps++) for (const share of FLIGHT_SPEEDS) {
         const u = share * tankSpeed;
         // A drive-off leaves when the tank's back clears the edge; a jump,
         // from where it stands.
@@ -525,11 +535,24 @@ export function buildNavGraph(world) {
         let previous = node.z;
         let landed = null;
         let time = 0;
-        for (let t = dt; t <= FLIGHT_MAX_SECONDS; t += dt) {
-          const z = node.z + (vz * t) - (0.5 * gravity * t * t);
+        // The arc since the last flap: from `z0` at `t0`, rising at `v0`.
+        let t0 = 0;
+        let z0 = node.z;
+        let v0 = vz;
+        let flapsLeft = flaps;
+        const longest = FLIGHT_MAX_SECONDS + (flaps * 2 * (jump?.velocity ?? 0) / gravity);
+        for (let t = dt; t <= longest; t += dt) {
+          if (flapsLeft > 0 && v0 - (gravity * (t - t0)) <= 0) {
+            z0 += (v0 * (t - t0)) - (0.5 * gravity * (t - t0) * (t - t0));
+            v0 = getWingsJumpVelocity(jump.velocity, v0 - (gravity * (t - t0)));
+            t0 = t;
+            flapsLeft--;
+          }
+          const rising = v0 - (gravity * (t - t0));
+          const z = z0 + (v0 * (t - t0)) - (0.5 * gravity * (t - t0) * (t - t0));
           const at = columnAt(launch + (u * t));
           if (!inGrid(at.cx, at.cy)) break;
-          if (vz - (gravity * t) < 0 && at.ids) {
+          if (rising < 0 && at.ids) {
             for (const id of at.ids) {
               const level = nodes[id].z;
               if (level <= previous + 0.01 && level >= z) landed = id;
@@ -544,12 +567,15 @@ export function buildNavGraph(world) {
           // the edge can still meet the box's face with its nose, and one
           // that clears it by a hair from the planned spot does not from a
           // pace further on, which is as close as a pilot takes off.
+          // And its back, rising: a jump from under a roof's edge has its
+          // centre out from under it while its tail still meets it.
           const nose = columnAt(launch + (u * t) + JUMP_FRONT);
+          const tail = columnAt(launch + (u * t) - JUMP_FRONT);
           if (z < -1 || isBlocked(at.solid, z)
-            || (vz - (gravity * t) > 0 && isBlocked(nose.solid, z - JUMP_NOSE_CLEARANCE))) break;
+            || (rising > 0 && (isBlocked(nose.solid, z - JUMP_NOSE_CLEARANCE) || isBlocked(tail.solid, z)))) break;
           previous = z;
         }
-        if (landed === null || landed === node.id) continue;
+        if (landed === null || landed === node.id || flapsLeft > 0) continue;
         if (!jumping && nodes[landed].z >= node.z - STEP_UP) continue;
         if (!landingHasRoom(nodes[landed], ux, uy)) continue;
         const cost = (launch / u) + time + (jumping ? JUMP_SETUP_SECONDS : FLIGHT_SETUP_SECONDS);
@@ -559,7 +585,7 @@ export function buildNavGraph(world) {
           cost,
           jump: jumping,
           flight: {
-            jump: jumping, speed: share, dx: ux, dy: uy, launch, air: time,
+            jump: jumping, speed: share, dx: ux, dy: uy, launch, air: time, flaps,
           },
         });
       }

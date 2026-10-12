@@ -11,7 +11,7 @@
 
 import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
-import { createDriveState, stepDrive } from '../public/drive.mjs';
+import { createDriveState, readDriveInput, stepDrive } from '../public/drive.mjs';
 
 const CONFIG = {
   TANK_SPEED: 25,
@@ -69,6 +69,20 @@ for (const support of [box, { ...pyramid, inverted: true }]) {
   stepDrive(state, { forward: 1, rotation: 0, jumpTriggered: true }, { flag: null, motionFlag: null },
     { config: CONFIG, colliders: [], topOf: () => 30 }, { now: 0, random: () => 0.5 }, 0.05);
   assert.ok(state.jumpForwardSpeed > 0.9, `off the bar's edge at speed (${state.jumpForwardSpeed})`);
+}
+
+// "can't jump while burrowed" (LocalPlayer.cxx:1406): below z 0, whatever the
+// flag, a Wings flap included.
+for (const flag of ['BU', 'WG']) {
+  const jumps = (z) => {
+    const state = createDriveState({ x: 0, y: 0, z });
+    state.wingsFlapsLeft = 2;
+    const world = { config: CONFIG };
+    const tank = { flag: { type: flag }, motionFlag: flag };
+    return readDriveInput(state, { forward: 0, turn: 0, up: true }, tank, world, { now: 0 }).jumpTriggered;
+  };
+  assert.equal(jumps(-0.5), false, `${flag} below ground does not jump`);
+  assert.equal(jumps(0), true, `${flag} on the ground does`);
 }
 
 console.log('drive tests passed');

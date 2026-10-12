@@ -78,6 +78,13 @@ Roger stays upstream's; these go into Ace. In order of payoff:
    turn for the next leg put on as he leaves, since a tank keeps turning
    through the air.
 
+   Wings has a graph of its own, at `_wingsJumpVelocity` and
+   `_wingsGravity`, whose jumps also fly with each flap `_wingsJumpCount`
+   leaves after the take-off, every one at the top of the arc before it: at
+   2, hix's floor reaches a base in one flight. Wings steers in the air, so
+   Ace holds the speed he left with, does not turn, and presses only for a
+   planned flap or a dodge. No route is planned from the air.
+
    Not yet: teleporters; surfaces narrower than a tank, which a person
    drives along hanging over both edges; building off the main thread, which
    the first route on the Orin will feel; and Ace using routes to chase or
