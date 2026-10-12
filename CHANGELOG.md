@@ -6,6 +6,24 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
 
 ## [Unreleased]
 
+## [1.3.44] - 2026-10-12
+
+### Added
+- Per-flag shot limits, as bzfs's `-sl`: `shotLimits` in `server.json` or
+  `-sl <flag> <count>` in a map. The last shot uses the flag up. Where any
+  limit is set, the HUD shows "N left" or "unlimited" above the reload bars.
+- Scores survive a restart for new code (nodemon, a Docker upgrade), but not
+  a map or server option change.
+- `docs/bzfs-options.md`: every bzfs option and what bzo has for it.
+
+### Changed
+- Server bots take the highest free player slots and are named for them
+  (`Ace41`), so a bot that leaves and comes back keeps its score.
+
+### Fixed
+- A bot reaching a base no longer has its capture logged as "standing on no
+  base".
+
 ## [1.3.43] - 2026-10-11
 
 ### Added
