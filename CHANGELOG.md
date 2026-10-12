@@ -6,6 +6,17 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
 
 ## [Unreleased]
 
+## [1.3.45] - 2026-10-12
+
+### Fixed
+- Ace's jumps land where he planned while carrying High Speed or Thief;
+  before, he flew half again past the landing.
+- Ace reaches a flag behind hix's corner teleporters, on the ground and on
+  the upper level, instead of driving into the teleporter or its frame.
+
+### Changed
+- `npm run bench:stuck` takes `--flag <abbreviation>` and `--to x,y,z`.
+
 ## [1.3.44] - 2026-10-12
 
 ### Added
