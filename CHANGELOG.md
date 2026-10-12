@@ -6,6 +6,8 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
 
 ## [Unreleased]
 
+## [1.3.47] - 2026-10-12
+
 ### Added
 - Ace answers a camper: a foe who kills twice in three minutes with Guided
   Missile, Laser or Super Bullet -- of Ace, as a rogue; of his side and
