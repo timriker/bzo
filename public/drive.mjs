@@ -309,6 +309,10 @@ export function readDriveInput(state, controls, tank, world, clock) {
 
 // The collision pass, against the world as this tank meets it: its flag's size,
 // whether it phases through buildings, and the physics driver it stands on.
+// LocalPlayer.cxx:467, `setDesiredSpeed(0.25f)`: a wedged tank creeps out at
+// a quarter of the world's tank speed.
+const STUCK_ESCAPE_SPEED_SHARE = 0.25;
+
 function resolveStep(state, velocityX, velocityY, velocityZ, angularVelocity, dt, tank, world, intended, groundLimit) {
   const { config } = world;
   const onSupport = state.onGround || state.onObstacle;
@@ -364,6 +368,8 @@ function resolveStep(state, velocityX, velocityY, velocityZ, angularVelocity, dt
     getObstacleTop: (obs) => world.topOf(obs),
     maxBumpHeight: config.MAX_BUMP_HEIGHT,
     stuckFrameCount: state.stuckFrameCount || 0,
+    stuckEscapeSpeed: STUCK_ESCAPE_SPEED_SHARE * (config.TANK_SPEED || 0),
+    stuckEscapeVertical: canJump(tank.motionFlag ?? null, config.ALLOW_JUMPING, false, 1, false),
   });
 }
 

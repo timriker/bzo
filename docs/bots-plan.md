@@ -85,6 +85,16 @@ Roger stays upstream's; these go into Ace. In order of payoff:
    Ace holds the speed he left with, does not turn, and presses only for a
    planned flap or a dodge. No route is planned from the air.
 
+   Campers: a foe who kills twice in three minutes with a flag to camp with
+   (Guided Missile, Laser, Super Bullet) -- of Ace, as a rogue; of Ace's
+   side and three clear on score, in team play -- is hunted wherever he is.
+   Ace keeps or goes for what beats his flag, Stealth against Guided
+   Missile and Cloaking against Laser, and counts the shots the camper has
+   fired with the flag he holds: under a shot limit, with two or a fifth
+   left, he is waited out and hunted once it drops. The kill feed, every
+   shot fired and the shot limits are in the pilot's view, as a player has
+   them. Not yet: closing on a camper by cover.
+
    Not yet: teleporters; surfaces narrower than a tank, which a person
    drives along hanging over both edges; building off the main thread, which
    the first route on the Orin will feel; and Ace using routes to chase or

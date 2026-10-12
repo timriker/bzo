@@ -6,6 +6,38 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
 
 ## [Unreleased]
 
+### Added
+- Ace answers a camper: a foe who kills twice in three minutes with Guided
+  Missile, Laser or Super Bullet -- of Ace, as a rogue; of his side and
+  three clear of every other tank on score, in team play. He hunts him
+  wherever he is, keeps or goes for what beats his flag (Stealth against
+  Guided Missile, Cloaking against Laser), and with the camper's flag all
+  but spent under a shot limit he waits it out, then hunts him once it
+  drops. Bots and the browser autopilot see the kill feed, every shot fired
+  and the server's shot limits, as a player does.
+- Ace runs over a burrowed foe, whom his shells fly over, backing up when
+  that is sooner than turning round: come down past him from a jump, he
+  reverses over him instead of circling back.
+
+### Fixed
+- A tank wedged into a wall while falling straight down is shoved out, as
+  upstream shoves it, at a quarter of tank speed. The shove went at the
+  tank's own speed across, which falling straight down is none, so it hung
+  in the air for good: Orin, backed into hix's north-east corner.
+- Ace no longer asks to drop a bad flag, which only its shake countdown, a
+  kill or an antidote takes off: the browser autopilot asked again every
+  second and was told no each time.
+- Ace's landing shots aim inside the moment the foe comes down through the
+  shot's height, not at its edge. From a burrowed tank's low muzzle that
+  moment is a hundredth of a second, and a shot timed to its last instant
+  arrived just as a hopping foe left the ground again.
+- Ace with Burrow no longer dodges tanks that cannot drive over him: one on
+  a deck above, crossing his line, counted as a threat. Head on, with no way
+  to drive clear, he fights rather than stand still trying to jump out of
+  the ground, which upstream does not allow.
+- Ace as a rogue no longer goes after team flags: a capture is only made on
+  the carrier's own base, which a rogue has none of. He plays for kills.
+
 ## [1.3.46] - 2026-10-12
 
 ### Added

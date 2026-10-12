@@ -11,6 +11,7 @@
 
 import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
+import { buildCollisionColliders, getObstacleBase } from '../public/collision.mjs';
 import { createDriveState, readDriveInput, stepDrive } from '../public/drive.mjs';
 
 const CONFIG = {
@@ -69,6 +70,30 @@ for (const support of [box, { ...pyramid, inverted: true }]) {
   stepDrive(state, { forward: 1, rotation: 0, jumpTriggered: true }, { flag: null, motionFlag: null },
     { config: CONFIG, colliders: [], topOf: () => 30 }, { now: 0, random: () => 0.5 }, 0.05);
   assert.ok(state.jumpForwardSpeed > 0.9, `off the bar's edge at speed (${state.jumpForwardSpeed})`);
+}
+
+// Wedged against the map's edge while falling straight down, as a tank backed
+// into hix's north-east corner was: nothing moves across, so the shove out is
+// upstream's fixed creep (LocalPlayer.cxx:467), not the tank's own speed --
+// which is none, and left it falling in place for good.
+{
+  const { parseBZWMap } = createRequire(import.meta.url)('../server/bzw-parse.cjs');
+  const hix = parseBZWMap(new URL('../maps/hix.bzw', import.meta.url).pathname, { quiet: true });
+  const colliders = buildCollisionColliders(hix.obstacles, hix.mapSize ?? 800, false, undefined);
+  const state = createDriveState({ x: 396.85, y: 386.95, z: 30, azimuth: 2.67 });
+  Object.assign(state, {
+    inAir: true, onGround: false, onObstacle: false, jumpDirection: 2.67, verticalVelocity: -0.16,
+  });
+  const world = {
+    config: { ...CONFIG, WINGS_JUMP_COUNT: 1 },
+    colliders,
+    topOf: (obs) => ((obs.type === 'mesh' && obs.bounds) ? obs.bounds.maxZ : getObstacleBase(obs) + (obs.size?.[2] || 0)),
+  };
+  for (let i = 0; i < 600 && state.inAir; i++) {
+    stepDrive(state, { forward: 0, rotation: 0, jumpTriggered: false }, { flag: null, motionFlag: null },
+      world, { now: i / 60, random: () => 0.5 }, 1 / 60);
+  }
+  assert.equal(state.inAir, false, `out of the wall and down, at ${state.x},${state.y},${state.z}`);
 }
 
 // "can't jump while burrowed" (LocalPlayer.cxx:1406): below z 0, whatever the

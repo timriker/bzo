@@ -19,7 +19,8 @@
 // the pilot reports. A positive rotation turns left.
 
 import {
-  canRunOver, getFlagGrabRadius, getFlagTuning, getRunOverRadius, hasAirControl, isBadFlag,
+  canRunOver, FLAG_ENDURANCE, getFlagEndurance, getFlagGrabRadius, getFlagTuning, getRunOverRadius,
+  getRunOverSeparation, hasAirControl, isBadFlag,
 } from './flags.mjs';
 import { SHOT_COLLISION_RADIUS, traceShotStep, TANK } from './collision.mjs';
 import { buildNavGraph, NAV_CELL, planJump } from './nav.mjs';
@@ -555,6 +556,27 @@ export class Roger {
 // than LUNGE_STILL_SPEED, since a shot at that range is three seconds in the
 // air; given up if no shot goes within LUNGE_SECONDS; not where the ground
 // ahead within LUNGE_CLEARANCE drops away or is blocked.
+// Campers. A foe who kills with a flag to camp with (`CAMP_FLAGS`)
+// `CAMPER_KILLS` times within `CAMPER_WINDOW_SECONDS` -- of Ace, as a rogue;
+// of Ace's side and `CAMPER_LEAD` clear of every other tank on score, in team
+// play -- is camping. What beats his flag: Stealth, which no missile locks on
+// (GuidedMissleStrategy.cxx:169), and Cloaking, which a laser passes through.
+// His flag is all but spent at `CAMPER_SPENT_SHOTS` shots left or
+// `CAMPER_SPENT_SHARE` of its limit, whichever is more. Hunted, he counts as
+// nearer by `DOMINANT_WEIGHT`; waited out, as further by
+// `CAMPER_WAIT_WEIGHT`. A flag known to beat his counts as nearer by
+// `CAMPER_COUNTER_PULL`.
+const CAMPER_KILLS = 2;
+const CAMPER_WINDOW_SECONDS = 180;
+const CAMPER_LEAD = 3;
+const CAMPER_COUNTERS = { GM: 'ST', L: 'CL' };
+const CAMPER_SPENT_SHOTS = 2;
+const CAMPER_SPENT_SHARE = 0.2;
+const CAMPER_WAIT_WEIGHT = 3;
+const CAMPER_COUNTER_PULL = 0.5;
+// How far inside a landing shot's window, in seconds, Ace aims its arrival
+// when he can choose: at most half the window.
+const LANDING_SHOT_MARGIN = 0.03;
 const LUNGE_STILL_SPEED = 1;
 const LUNGE_HOLD_SPEED = 0.05;
 const LUNGE_SECONDS = 0.3;
@@ -705,6 +727,9 @@ const LASER_STANDOFF_SLACK = 60;
 // How many scored spots the intent carries, for the debug overlay.
 const CAMP_SHOWN_SPOTS = 12;
 // The modes in which Ace is going after a tank.
+// The fastest a tank backs up, as a share of its top speed: upstream's
+// `setDesiredSpeed` clamp (LocalPlayer.cxx:1096).
+const REVERSE_SPEED_SHARE = 0.5;
 const TARGET_MODES = new Set(['chase', 'hunt', 'fight', 'ambush', 'lunge', 'camp']);
 const CHASE_DEST_SLACK = 40;
 // Rabbit Chase: how near a hunter has to be before the rabbit runs from it,
@@ -870,6 +895,12 @@ export class Ace extends Roger {
     // its type hidden, so this is how a pilot that dropped a flag knows not to
     // drive straight back over it.
     this.knownFlagTypes = new Map();
+    // Campers: the kills each foe made with a flag to camp with, newest last,
+    // and the shots each has fired with the flag he holds now.
+    this.campKills = new Map();
+    this.seenKills = new Set();
+    this.flagShots = new Map();
+    this.camper = null;
     // A lunge under way: who it is for and when it began; and whether to stop
     // on the next frame, the shot having gone.
     this.lunge = null;
@@ -935,6 +966,7 @@ export class Ace extends Roger {
     this.viewBases = view.bases;
     this.teamColor = view.self.teamColor;
     this.noteShooters(view);
+    this.noteCampers(view);
     this.noteTeleport(view);
     this.heldFlag = view.self.flag;
     // Reverse Only drives backwards and nothing else: everything is decided
@@ -959,6 +991,12 @@ export class Ace extends Roger {
     // tank may jump.
     if (out.jump && !canTankJump(view.world, view.self.flag)) out.jump = false;
     this.oneWayTurn(view.self.flag, out);
+    // A sticky flag does not answer the drop control (cmdDrop): only its shake
+    // countdown, a kill or an antidote takes it off, and the countdown drops it
+    // by itself. Asking anyway is refused every time.
+    if (out.dropFlag && view.self.flag && getFlagEndurance(view.self.flag) === FLAG_ENDURANCE.STICKY) {
+      out.dropFlag = false;
+    }
     // A team flag is only ever let go of at home: Ace's own on his base,
     // where it is returned, or any one in a world with no base to take it to.
     // An enemy one is captured by reaching the base, not by dropping it.
@@ -1017,6 +1055,87 @@ export class Ace extends Roger {
         this.shotAtBy.set(owner.id, view.now + RETALIATE_SECONDS);
       }
     }
+  }
+
+  // Kills made with a flag to camp with, from the kill feed, and every shot
+  // each foe has fired since he took the flag he holds: what a player keeps
+  // count of. A flag changes hands, and the count starts again.
+  noteCampers(view) {
+    const me = view.self;
+    for (const kill of view.kills || []) {
+      const key = `${kill.at}:${kill.killerId}:${kill.victimId}`;
+      if (this.seenKills.has(key)) continue;
+      this.seenKills.add(key);
+      if (!CAMP_FLAGS.has(kill.flag) || String(kill.killerId) === String(me.id)) continue;
+      const onMe = String(kill.victimId) === String(me.id);
+      const victim = view.players.find((p) => String(p.id) === String(kill.victimId));
+      const onSide = onMe || (victim ? !view.isFoe(victim) : false);
+      const list = this.campKills.get(String(kill.killerId)) || [];
+      list.push({ at: kill.at, onMe, onSide });
+      this.campKills.set(String(kill.killerId), list);
+    }
+    for (const [id, list] of this.campKills) {
+      const kept = list.filter((k) => k.at > view.now - CAMPER_WINDOW_SECONDS);
+      if (kept.length) this.campKills.set(id, kept);
+      else this.campKills.delete(id);
+    }
+    if (this.seenKills.size > 500) this.seenKills.clear();
+    for (const shot of view.fired || []) {
+      const owner = view.players.find((p) => p.id === shot.ownerId);
+      if (!owner || owner.flagIndex === null || owner.flagIndex === undefined) continue;
+      let count = this.flagShots.get(owner.id);
+      if (!count || count.flagIndex !== owner.flagIndex) {
+        count = { flagIndex: owner.flagIndex, ids: new Set() };
+        this.flagShots.set(owner.id, count);
+      }
+      count.ids.add(shot.id);
+    }
+    this.camper = this.findCamper(view);
+  }
+
+  // The foe camping on Ace, or null: one who has killed him
+  // `CAMPER_KILLS` times lately with a flag to camp with, as a rogue -- with
+  // no team's flags to weigh it against, that is enough -- and in team play
+  // one who has killed that many of Ace's side and leads every other tank by
+  // `CAMPER_LEAD`. With it, what he holds, what beats it, and whether its
+  // shots are all but spent (`shotLimits`, counted as they are fired).
+  findCamper(view) {
+    const me = view.self;
+    const rogue = me.team === 'rogue';
+    let best = null;
+    // Dead between kills he is still the camper: the flag that beats his is
+    // as worth having while he waits to spawn.
+    for (const p of view.players) {
+      if (!view.isFoe(p)) continue;
+      const kills = this.campKills.get(String(p.id));
+      if (!kills) continue;
+      const count = kills.filter((k) => (rogue ? k.onMe : k.onSide)).length;
+      if (count < CAMPER_KILLS) continue;
+      if (!rogue) {
+        const others = [view.self, ...view.players.filter((q) => q !== p)]
+          .map((q) => q.score).filter(Number.isFinite);
+        if (!Number.isFinite(p.score) || (others.length && p.score - Math.max(...others) < CAMPER_LEAD)) continue;
+      }
+      if (best && count <= best.count) continue;
+      const holding = CAMP_FLAGS.has(p.flag);
+      const limit = holding ? view.world.shotLimits?.[p.flag] : undefined;
+      const shots = this.flagShots.get(p.id);
+      const used = shots && shots.flagIndex === p.flagIndex ? shots.ids.size : 0;
+      const left = Number.isFinite(limit) ? Math.max(0, limit - used) : Infinity;
+      const spent = left <= Math.max(CAMPER_SPENT_SHOTS, CAMPER_SPENT_SHARE * limit);
+      best = { id: p.id, count, flag: holding ? p.flag : null, counter: CAMPER_COUNTERS[p.flag] ?? null, left, spent };
+    }
+    return best;
+  }
+
+  // Against a camper: hunt him while his flag has shots to spare or Ace holds
+  // what beats it; with it all but spent, keep clear and let it run out --
+  // he is an ordinary tank once it drops, and hunted then.
+  camperStance(me) {
+    const camper = this.camper;
+    if (!camper) return null;
+    if (camper.flag && camper.spent && me.flag !== camper.counter) return 'wait';
+    return 'hunt';
   }
 
   // A foe that shot at Ace lately and is close to him or to where he is going.
@@ -1114,6 +1233,9 @@ export class Ace extends Roger {
 
   targetWeight(ctx, p) {
     let weight = 1;
+    if (this.camper && p.id === this.camper.id) {
+      return this.camperStance(ctx.me) === 'wait' ? CAMPER_WAIT_WEIGHT : DOMINANT_WEIGHT;
+    }
     if (this.isRetaliationTarget(ctx, p)) weight *= RETALIATE_WEIGHT;
     if (p.id === ctx.leaderId) weight *= ctx.leaderLead >= DOMINANT_LEAD ? DOMINANT_WEIGHT : LEADER_WEIGHT;
     return weight;
@@ -1215,6 +1337,9 @@ export class Ace extends Roger {
     if (CAMP_FLAGS.has(this.heldFlag)) return false;
     if ((this.shedFlags.get(flag.index) ?? -Infinity) > this.lastThinkAt) return false;
     const type = this.knownType(flag);
+    // What beats a camper's flag is worth having, whatever it has done for Ace
+    // before, and worth trading Identify for.
+    if (type && type === this.camper?.counter) return true;
     if (this.heldFlag === 'ID') return ID_TRADE_FLAGS.has(type);
     if (!type) return true;
     // Identify is worth going for only with nothing better to do: ahead of
@@ -1379,18 +1504,26 @@ export class Ace extends Roger {
       return { ...shot, flight: plan.reach / shot.speed, speed };
     };
     const fits = (shot) => shot && shot.flight >= plan.enter && shot.flight <= latest;
+    // Where the speed is his to choose, it is chosen inside the window by a
+    // margin, not on its edge: the foe's track arrives late and its touchdown
+    // is a guess, and from a low muzzle -- a burrowed tank's, 0.25 up -- the
+    // window is a hundredth of a second, so its edge is a miss.
+    const margin = Math.min(LANDING_SHOT_MARGIN, Math.max(0, latest - plan.enter) / 2);
+    const early = plan.enter + margin;
+    const last = latest - margin;
     const want = Math.max(range.low, Math.min(range.high, preferred));
     const atWant = flightAt(want);
-    if (fixed || fits(atWant)) {
+    if (fixed) {
       if (fits(atWant)) return atWant;
       return { late: !atWant || atWant.flight > latest, early: !!atWant && atWant.flight < plan.enter };
     }
+    if (atWant && atWant.flight >= early && atWant.flight <= last) return atWant;
     // Shot speed is the tank's plus a constant, so the speeds that fit are one
     // interval: the slowest shot that is not late to the fastest not early.
     const scale = ctx.me.shotSpeed / ctx.view.world.shotSpeed;
     const base = ctx.view.world.shotSpeed;
-    const slowest = (plan.reach / latest) / scale - base;
-    const fastest = plan.enter > 0 ? (plan.reach / plan.enter) / scale - base : Infinity;
+    const slowest = (plan.reach / last) / scale - base;
+    const fastest = early > 0 ? (plan.reach / early) / scale - base : Infinity;
     const low = Math.max(range.low, slowest);
     const high = Math.min(range.high, fastest);
     if (low > high) return { late: range.high < slowest, early: range.low > fastest };
@@ -1432,6 +1565,13 @@ export class Ace extends Roger {
       ctx.out.intent.reason = 'ours-carrier';
       return this.huntFar(ctx, carrier);
     }
+    // A camper is hunted wherever he is, unless his flag is all but spent.
+    const camper = carrier || this.camperStance(ctx.me) !== 'hunt' ? null
+      : this.remotePlayers(ctx.view).find((p) => p.id === this.camper.id && p.alive && !p.paused);
+    if (camper && distance2D(ctx.me, camper) > ROGER_CHASE_RANGE) {
+      ctx.out.intent.reason = 'camper';
+      return this.huntFar(ctx, camper);
+    }
     // A foe running away with the game is hunted wherever he is.
     const dominant = carrier ? null : this.dominantFoe(ctx);
     if (dominant && distance2D(ctx.me, dominant) > ROGER_CHASE_RANGE) {
@@ -1470,7 +1610,9 @@ export class Ace extends Roger {
       }
     }
     const target = ctx.view.players.find((p) => p.id === ctx.out.targetId);
-    if (chased && target && !target.airborne) return this.chaseAround(ctx, target) || chased;
+    if (chased && target && !target.airborne) {
+      return this.chaseAround(ctx, target) || this.runOver(ctx, target) || chased;
+    }
     if (!chased || !target?.airborne) return chased;
     // An airborne foe with no landing shot to wait for -- out of reach, or
     // already shot at -- is nothing to do until it lands, so Ace gets on with
@@ -1591,6 +1733,31 @@ export class Ace extends Roger {
       return false;
     }
     ctx.out.intent.mode = 'chase';
+    return true;
+  }
+
+  // A burrowed foe is under every shell Ace fires, so the kill is driving
+  // over him (`canRunOver`), and driving over him backwards does it as well
+  // as forwards. Behind him -- come down past him from a jump, say -- backing
+  // up can be sooner than turning round: reverse is half speed (upstream's
+  // -0.5 clamp), and a half turn is four seconds. Whichever arrives first is
+  // taken; forwards is Roger's chase, as it was.
+  runOver(ctx, target) {
+    const { view, me, out } = ctx;
+    if (target.flag !== 'BU' || !(target.z < 0)) return false;
+    if (!canRunOver(me.flag ?? null, 'BU', me.z, me.zoned === true)) return false;
+    const distance = distance2D(me, target);
+    const top = me.topSpeed ?? view.world.tankSpeed;
+    const rate = this.turnRate(ctx);
+    if (!(top > 0) || !(rate > 0)) return false;
+    const ahead = normalizeAngle(azimuthTo(me, target) - me.azimuth);
+    const behind = normalizeAngle(ahead + Math.PI);
+    const forward = (Math.abs(ahead) / rate) + (distance / top);
+    const reverse = (Math.abs(behind) / rate) + (distance / (REVERSE_SPEED_SHARE * top));
+    if (reverse >= forward) return false;
+    out.rotation = this.steer(ctx, behind);
+    out.speed = -REVERSE_SPEED_SHARE * Math.max(0, Math.cos(behind));
+    out.intent.reason = 'run-over';
     return true;
   }
 
@@ -1970,15 +2137,11 @@ export class Ace extends Roger {
         return true;
       }
     }
-    // Underground and about to be driven over with no way to drive clear --
-    // head on, forward is into it and reverse is too slow -- a jump is the way
-    // out: shots may find him up there, the tank certainly would down here.
-    if (threat === squash) {
-      if (me.inAir || this.jumpReach(ctx) <= 0) return false;
-      out.jump = true;
-      out.speed = 0;
-      return true;
-    }
+    // About to be driven over with no way to drive clear -- head on, forward
+    // is into it and reverse is too slow. Underground there is no jumping
+    // (LocalPlayer.cxx:1406), so nothing is left to dodge with: he gets on
+    // with the fight, which is a shot at the tank coming.
+    if (threat === squash) return false;
     if (burrowed) return false;
     if (this.canJumpClear(ctx, threat)) {
       out.jump = true;
@@ -2009,7 +2172,10 @@ export class Ace extends Roger {
       const mx = rx - (p.vx * time);
       const my = ry - (p.vy * time);
       const miss = Math.hypot(mx, my);
-      if (miss >= clearance) continue;
+      // The kill's own distance, with the height between them counted double
+      // (`getRunOverSeparation`): a tank crossing on a deck above passes over
+      // him and nothing more.
+      if (getRunOverSeparation(mx, my, me.z - p.z) >= clearance) continue;
       if (best && time >= best.time) continue;
       const length = Math.sqrt(speed2);
       const away = miss > 1e-6 ? { x: mx / miss, y: my / miss } : { x: -p.vy / length, y: p.vx / length };
@@ -2083,12 +2249,15 @@ export class Ace extends Roger {
 
   // The team flag worth fetching: an enemy's on the ground anywhere, or Ace's
   // own lying away from home. Roger only looks at a team flag he is all but
-  // standing on, so he hardly ever makes a capture.
+  // standing on, so he hardly ever makes a capture. Every capture is made on
+  // the carrier's own base (playing.cxx:4110), so a tank without one -- a
+  // rogue -- has none to make, and plays for kills instead.
   captureTarget(ctx) {
     const { view, me } = ctx;
     if (!view.world.teamFlags || me.flagTeam !== null) return null;
     if (me.flag && isBadFlag(me.flag)) return null;
     const base = view.myBase();
+    if (!base) return null;
     const reach = this.jumpReach(ctx) * JUMP_REACH_SHARE;
     const routed = typeof view.findRoute === 'function';
     let best = null;
@@ -2182,6 +2351,7 @@ export class Ace extends Roger {
       let d = distance2D(me, flag);
       if (d >= PICKUP_RANGE) continue;
       if (this.isObscured(ctx, me, pointOf(flag))) d *= 1.25;
+      if (this.camper?.counter && this.knownType(flag) === this.camper.counter) d *= CAMPER_COUNTER_PULL;
       if (flag.index === this.pickupIndex) kept = { flag, d };
       if (!best || d < best.d) best = { flag, d };
     }
@@ -2572,7 +2742,10 @@ export class Ace extends Roger {
         if (route && this.followRoute(ctx, route)) return true;
       }
     }
-    if (me.flagTeam === null && !this.isRabbit(ctx) && this.campClear(ctx)) {
+    // Holding what beats a camper's flag, he keeps it rather than trade it for
+    // one to camp with himself.
+    const countering = this.camper?.counter && me.flag === this.camper.counter;
+    if (me.flagTeam === null && !this.isRabbit(ctx) && !countering && this.campClear(ctx)) {
       if (CAMP_FLAGS.has(me.flag) && this.campAt(ctx)) return true;
       const flag = this.campFlagTarget(ctx);
       if (flag) return this.huntFlag(ctx, flag);
@@ -3152,6 +3325,12 @@ export class Ace extends Roger {
 
   dropOnTheMove(ctx) {
     const { view, me, out } = ctx;
+    // Nothing to drive for with a flag that will not drop (see `think`).
+    if (me.flag && getFlagEndurance(me.flag) === FLAG_ENDURANCE.STICKY) {
+      out.dropFlag = false;
+      this.dropDriveUntil = -Infinity;
+      return;
+    }
     const turn = (rotation) => Math.max(-DROP_MAX_TURN, Math.min(DROP_MAX_TURN, rotation));
     if (view.now < this.dropDriveUntil) {
       out.speed = 1;

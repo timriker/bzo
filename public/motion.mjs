@@ -74,6 +74,11 @@ export function resolveTankMotion({
   // the caller carries across frames and hands back in -- this function is
   // otherwise stateless, so it cannot count consecutive frames itself.
   stuckFrameCount = 0,
+  // The wedged shove's speed and whether it may lift: upstream's
+  // `setDesiredSpeed(0.25f)`, a quarter of `_tankSpeed`, and its
+  // `newVelocity[2]` only where this tank may jump (LocalPlayer.cxx:467-481).
+  stuckEscapeSpeed = 0,
+  stuckEscapeVertical = false,
 }) {
   let posX = x;
   let posY = y;
@@ -105,11 +110,13 @@ export function resolveTankMotion({
     nextStuckFrameCount = 0;
     const escapeNormal = getNormal(restingHit, posX, posY, posZ, az, posX, posY, posZ, az, posX, posY, az, posX, posY, az);
     if (escapeNormal) {
-      const desiredSpeed = Math.hypot(velX, velY);
+      // A fixed creep, never the tank's own speed: a tank wedged while falling
+      // straight down has none across, and would never be shoved out.
       const delta = Math.min(remaining, STUCK_ESCAPE_MAX_DT);
-      const movementMax = desiredSpeed * delta;
+      const movementMax = stuckEscapeSpeed * delta;
       posX += movementMax * escapeNormal.x;
       posY += movementMax * escapeNormal.y;
+      if (stuckEscapeVertical) posZ += movementMax * (escapeNormal.z || 0);
       velX = movementMax * escapeNormal.x;
       velY = movementMax * escapeNormal.y;
       remaining -= delta;

@@ -14767,6 +14767,18 @@ const DEATH_REASON = Object.freeze({
 // with it, its flag goes, the rabbit is re-anointed if the rabbit is what died,
 // the clients are told and the respawn is queued.
 //
+// The kills every client is told of, for the last `BOT_KILL_FEED_SECONDS`:
+// who, whom, and with what flag in hand -- what a player reads off the kill
+// messages, and what a bot's pilot weighs a camper by. A capture is not a kill.
+const BOT_KILL_FEED_SECONDS = 300;
+const botKillFeed = [];
+function noteBotKill(victimId, killerId, hit) {
+  if (hit.captured || killerId === WORLD_WEAPON_PLAYER_ID) return;
+  const at = Date.now() / 1000;
+  botKillFeed.push({ killerId, victimId, flag: hit.shooterFlag ?? null, at });
+  while (botKillFeed.length && botKillFeed[0].at < at - BOT_KILL_FEED_SECONDS) botKillFeed.shift();
+}
+
 // Every death in bzo runs this and nothing runs a copy of it -- a shot and a
 // self-destruct both call it, so the lock clearing, the flag drop, the rabbit
 // reassignment and the respawn queue can never drift out of step between the
@@ -14782,6 +14794,7 @@ const DEATH_REASON = Object.freeze({
 // team loss is the whole penalty".
 function applyDeath(victim, killerId, hit) {
   victim.alive = false;
+  noteBotKill(victim.id, killerId, hit);
   // playing.cxx:3827. A dead tank has nothing locked, so the marker goes with
   // it and a respawn starts clean. Missiles already in the air fly straight from
   // here, which is what upstream's `setTarget(NULL)` does to them too.
@@ -19744,7 +19757,11 @@ function botSharedView(now) {
     });
   }
   const shots = [];
-  for (const proj of projectiles.values()) {
+  // Every shot in the air by id, beams and waves too: what a player counts a
+  // flag's shots by.
+  const fired = [];
+  for (const [id, proj] of projectiles) {
+    fired.push({ id, ownerId: proj.playerId });
     if (proj.beam || proj.shockwave) continue;
     const owner = getPlayerFlag(proj.playerId);
     shots.push({
@@ -19780,6 +19797,8 @@ function botSharedView(now) {
     now: now / 1000,
     players: others,
     shots,
+    fired,
+    kills: botKillFeed,
     flags: viewFlags,
     teamsAllowed: TEAMS_ALLOWED,
     // Each team's score, wins less losses, by team name.
@@ -19798,6 +19817,7 @@ function botSharedView(now) {
       jumpVelocity: GAME_CONFIG.JUMP_VELOCITY,
       gravity: GAME_CONFIG.GRAVITY,
       lockOnAngle: getFlagTuning().lockOnAngle,
+      shotLimits: Object.fromEntries(SHOT_LIMITS),
       mapSize: GAME_CONFIG.MAP_SIZE,
       shockOutRadius: getShotEffects('SW').shockOutRadius,
     },

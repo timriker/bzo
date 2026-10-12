@@ -248,9 +248,138 @@ for (const flag of ['US', 'MG', 'ID']) {
   const aside = new Ace().think(makeView({ self: { flag: 'BU', z: -1.32 }, players: [crossing] }));
   assert.equal(aside.intent.mode, 'dodge', 'a tank about to drive over him is got out of the way of');
   assert.equal(aside.jump, false, 'by driving, where driving does it');
-  // Head on there is no driving clear, and a jump beats being flattened.
+  // Head on there is no driving clear, and underground no jumping either: no
+  // dodge to stand still in.
   const headOn = new Ace().think(makeView({ self: { flag: 'BU', z: -1.32 }, players: [enemy(0, 20, { vy: -20 })] }));
-  assert.equal(headOn.jump, true, 'head on, he jumps');
+  assert.equal(headOn.jump, false, 'head on, no jump out of the ground');
+  assert.notEqual(headOn.intent.mode, 'dodge', 'and no dodge');
+  // A tank crossing on a deck above passes over him: not a threat at all.
+  const overhead = new Ace().think(makeView({
+    self: { flag: 'BU', z: -1.32 }, players: [enemy(-20, 6, { vx: 20, z: 15 })],
+  }));
+  assert.notEqual(overhead.intent.mode, 'dodge', 'a tank on a deck above is nothing to dodge');
+}
+
+// A burrowed foe is under every shell, so the kill is driving over him.
+// Close behind -- come down past him from a jump -- Ace backs over him rather
+// than spend four seconds turning round; ahead, or far enough behind that the
+// turn pays for itself, he drives forward as Roger does.
+{
+  const burrowed = (x, y) => enemy(x, y, { flag: 'BU', z: -1.32 });
+  const behind = new Ace().think(makeView({ players: [burrowed(0, -30)] }));
+  assert.equal(behind.intent.reason, 'run-over');
+  assert.ok(behind.speed < 0, `backs over him (speed ${behind.speed})`);
+  assert.ok(Math.abs(behind.rotation) < 0.1, 'without turning');
+  const ahead = new Ace().think(makeView({ players: [burrowed(0, 30)] }));
+  assert.notEqual(ahead.intent.reason, 'run-over', 'ahead, the chase as before');
+  const far = new Ace().think(makeView({ players: [burrowed(0, -240)] }));
+  assert.notEqual(far.intent.reason, 'run-over', 'far behind, the turn pays');
+  const standing = new Ace().think(makeView({ players: [enemy(0, -30)] }));
+  assert.notEqual(standing.intent.reason, 'run-over', 'a foe above ground is shot, so faced');
+}
+
+// A landing shot from a low muzzle -- burrowed, 0.25 up -- has a window of a
+// hundredth of a second. Ace picks his speed to land it in the middle of the
+// window, not on its edge, where a late track of the foe makes it a miss.
+{
+  const ace = new Ace();
+  const ctx = {
+    view: { world: { shotSpeed: 100 } },
+    me: { x: 0, y: 0, z: -1.32, azimuth: Math.PI / 2, inAir: false, flag: 'BU', shotSpeed: 100 },
+  };
+  const plan = { landing: { x: 0, y: 160, z: 0, t: 1.7 }, reach: 160, enter: 1.69 };
+  const range = { low: -10, high: 20, top: 20 };
+  // At -5.88 the shot takes 1.7 s: touchdown exactly, the window's last instant.
+  const shot = ace.landingShotSpeed(ctx, plan, -5.88, range);
+  assert.ok(Number.isFinite(shot.speed), 'a shot');
+  assert.ok(shot.flight > plan.enter + 0.002 && shot.flight < plan.landing.t - 0.002,
+    `inside the window, not on its edge (${shot.flight})`);
+}
+
+// Campers. A rogue killed twice by a foe holding a flag to camp with marks
+// him: hunted wherever he is. With his flag's shots all but spent he is waited
+// out -- unless Ace holds what beats it. In team play the kills are on Ace's
+// side and the camper must lead every other tank by three.
+{
+  const camper = (extra = {}) => enemy(0, 400, { id: 'gm', flag: 'GM', flagIndex: 7, score: 6, ...extra });
+  const kills = [
+    { killerId: 'gm', victimId: 'me', flag: 'GM', at: 50 },
+    { killerId: 'gm', victimId: 'me', flag: 'GM', at: 80 },
+  ];
+  const rogue = { team: 'rogue', score: 0 };
+  const hunted = new Ace().think(makeView({ self: rogue, players: [camper()], kills }));
+  assert.equal(hunted.intent.reason, 'camper', `a rogue hunts the camper (${hunted.intent.reason})`);
+  assert.equal(hunted.targetId, 'gm');
+
+  const once = new Ace().think(makeView({ self: rogue, players: [camper()], kills: kills.slice(1) }));
+  assert.notEqual(once.intent.reason, 'camper', 'one kill is not camping');
+  const stale = new Ace().think(makeView({ now: 400, self: rogue, players: [camper()], kills }));
+  assert.notEqual(stale.intent.reason, 'camper', 'nor kills long ago');
+
+  // Eight of his ten shots fired since he took the flag: wait him out.
+  const fired = Array.from({ length: 8 }, (_, i) => ({ id: `s${i}`, ownerId: 'gm' }));
+  const spent = { self: rogue, players: [camper()], kills, fired, world: { shotLimits: { GM: 10 } } };
+  const waiting = new Ace().think(makeView(spent));
+  assert.notEqual(waiting.intent.reason, 'camper', 'a spent flag is waited out');
+  const stealthy = new Ace().think(makeView({ ...spent, self: { ...rogue, flag: 'ST' } }));
+  assert.equal(stealthy.intent.reason, 'camper', 'unless Ace holds Stealth, which no missile locks on');
+  // A fresh flag starts the count again.
+  const counting = new Ace();
+  counting.think(makeView(spent));
+  const fresh = counting.think(makeView({ ...spent, now: 100.1, fired: [], players: [camper({ flagIndex: 8 })] }));
+  assert.equal(fresh.intent.reason, 'camper', 'a new flag has all its shots');
+
+  // Team play: two of Ace's side killed, and three clear of every other tank.
+  const mate = { ...enemy(10, 10, { id: 'mate', team: 'blue', score: 0 }) };
+  const teamKills = [
+    { killerId: 'gm', victimId: 'mate', flag: 'GM', at: 50 },
+    { killerId: 'gm', victimId: 'me', flag: 'GM', at: 80 },
+  ];
+  const team = (score) => makeView({
+    self: { team: 'blue', score: 0 },
+    players: [camper({ score }), mate],
+    kills: teamKills,
+    isFoe: (p) => p.team !== 'blue',
+  });
+  assert.equal(new Ace().think(team(6)).intent.reason, 'camper', 'clear on score, a camper');
+  assert.notEqual(new Ace().think(team(2)).intent.reason, 'camper', 'not clear, not yet');
+}
+
+// What beats a camper's flag is gone for ahead of a nearer flag.
+{
+  const kills = [
+    { killerId: 'gm', victimId: 'me', flag: 'GM', at: 50 },
+    { killerId: 'gm', victimId: 'me', flag: 'GM', at: 80 },
+  ];
+  const ace = new Ace();
+  ace.knownFlagTypes.set(2, { type: 'ST' });
+  const out = ace.think(makeView({
+    self: { team: 'rogue', score: 0 },
+    players: [enemy(0, 600, { id: 'gm', flag: 'GM', flagIndex: 7, score: 6, alive: false })],
+    kills,
+    flags: [
+      { index: 1, type: null, team: null, onGround: true, x: 30, y: 0, z: 0 },
+      { index: 2, type: null, team: null, onGround: true, x: -50, y: 0, z: 0 },
+    ],
+  }));
+  assert.equal(out.intent.target?.x, -50, `Stealth over a nearer unknown (${JSON.stringify(out.intent.target)})`);
+}
+
+// A bad flag cannot be dropped -- only shaken off by its countdown, a kill or
+// an antidote -- so Ace never asks to, even beside a flag he would rather have.
+{
+  const view = (flag) => makeView({
+    self: { flag, speed: 25 },
+    flags: [{ index: 1, type: 'GM', team: null, onGround: true, x: 0, y: 5, z: 0 }],
+  });
+  assert.equal(new Ace().think(view('V')).dropFlag, true, 'a good flag goes for a Guided Missile');
+  const stuck = new Ace().think(view('RT'));
+  assert.equal(stuck.dropFlag, false, 'Right Turn Only does not');
+  const still = new Ace().think(makeView({
+    self: { flag: 'RT', speed: 0 },
+    flags: [{ index: 1, type: 'GM', team: null, onGround: true, x: 0, y: 5, z: 0 }],
+  }));
+  assert.equal(still.dropFlag, false, 'nor drives off to drop it at speed');
 }
 
 // Water below the edge of a roof stops Ace. Roger's look-ahead has nothing to
@@ -548,7 +677,12 @@ for (const flag of ['US', 'MG', 'ID']) {
   ];
   const flag = { index: 0, type: 'R*', team: 1, onGround: true, x: 0, y: 70, z: 15 };
   const view = (now, self) => makeView({
-    now, world: { teamFlags: true }, flags: [flag], self: { teamColor: 2, ...self }, findRoute: () => nodes,
+    now,
+    world: { teamFlags: true },
+    flags: [flag],
+    self: { teamColor: 2, ...self },
+    myBase: () => ({ x: 0, y: -300, z: 0, radius: 15 }),
+    findRoute: () => nodes,
   });
   const pilot = new Ace();
   pilot.think(view(100, { y: 30, z: 18, inAir: true }));
@@ -777,6 +911,16 @@ for (const flag of ['US', 'MG', 'ID']) {
   const report = ace.takeReport();
   assert.match(report, /^capture 100%; shots 0, jumps 0, falls 0, routes 1 \(0 none\)/);
   assert.match(ace.takeReport(), /^idle;/, 'a report starts the count again');
+
+  // A rogue has no base to capture on, so a team flag is nothing to him.
+  const rogue = new Ace().think(makeView({
+    self: { teamColor: 0 },
+    flags: [redFlag],
+    world: { teamFlags: true },
+    myBase: () => null,
+    findRoute: () => [{ x: 4, y: 0, z: 0, jump: false }, { x: 300, y: 0, z: 0, jump: false }],
+  }));
+  assert.notEqual(rogue.intent.mode, 'capture', 'a rogue does not go for a team flag');
 }
 
 // Staying alive: a shot from the side is driven out of the way, not jumped;
@@ -889,8 +1033,8 @@ for (const flag of ['US', 'MG', 'ID']) {
 
 // Whom Ace goes for, and why.
 {
-  const flagWorld = { world: { teamFlags: true }, self: { team: 'blue', teamColor: 0 } };
   const homeFar = { myBase: () => ({ x: 0, y: -300, z: 0, radius: 20 }) };
+  const flagWorld = { world: { teamFlags: true }, self: { team: 'blue', teamColor: 0 }, ...homeFar };
 
   // Whoever has Ace's flag, however far off, before any capture.
   const carrier = enemy(0, 400, { flag: 'B*', flagTeam: 0 });

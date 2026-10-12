@@ -136,6 +136,8 @@ function buildView(bot, self, shared) {
     self: { ...self, ...own.self },
     players: shared.players.filter((player) => player.id !== bot.id),
     shots: shared.shots.filter((shot) => shot.ownerId !== bot.id),
+    fired: (shared.fired || []).filter((shot) => shot.ownerId !== bot.id),
+    kills: shared.kills || [],
     // The one its Identify names comes with its type.
     flags: own.identified
       ? shared.flags.map((flag) => (flag.index === own.identified.index ? { ...flag, type: own.identified.type } : flag))

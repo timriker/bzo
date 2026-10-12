@@ -8622,6 +8622,7 @@ function handleServerMessage(message) {
       break;
 
     case 'killed':
+      noteAutopilotKill(message);
       handlePlayerHit(message);
       break;
 
@@ -12711,6 +12712,23 @@ function getTankMotion(tank, flagType, now) {
   };
 }
 
+// The kills this client was told of, for the last five minutes: who, whom,
+// and with what flag in hand. The autopilot weighs a camper by them, as a
+// player reads them off the kill messages.
+const AUTOPILOT_KILL_FEED_SECONDS = 300;
+const autopilotKillFeed = [];
+function noteAutopilotKill(message) {
+  if (message.captured || message.shooterId === null || message.shooterId === undefined) return;
+  if (String(message.shooterId) === String(WORLD_WEAPON_PLAYER_ID)) return;
+  const at = performance.now() / 1000;
+  autopilotKillFeed.push({
+    killerId: message.shooterId, victimId: message.victimId, flag: message.shooterFlag ?? null, at,
+  });
+  while (autopilotKillFeed.length && autopilotKillFeed[0].at < at - AUTOPILOT_KILL_FEED_SECONDS) {
+    autopilotKillFeed.shift();
+  }
+}
+
 function buildAutopilotView() {
   const myFlag = getMyFlag();
   const myType = myFlag?.type ?? null;
@@ -12740,6 +12758,13 @@ function buildAutopilotView() {
     });
   }
   const shots = [];
+  // Every shot in the air by id, beams and waves too: what a player counts a
+  // flag's shots by.
+  const fired = [];
+  for (const [id, projectile] of projectiles) {
+    const owner = projectile.userData?.playerId;
+    if (owner !== undefined && owner !== myPlayerId) fired.push({ id, ownerId: owner });
+  }
   for (const projectile of projectiles.values()) {
     const data = projectile.userData;
     if (!data || data.playerId === myPlayerId || !Number.isFinite(data.speed)) continue;
@@ -12810,6 +12835,8 @@ function buildAutopilotView() {
     },
     players,
     shots,
+    fired,
+    kills: autopilotKillFeed,
     flags: groundFlags,
     world: {
       allowJumping: gameConfig.ALLOW_JUMPING === true,
@@ -12825,6 +12852,7 @@ function buildAutopilotView() {
       jumpVelocity: gameConfig.JUMP_VELOCITY,
       gravity: gameConfig.GRAVITY,
       lockOnAngle: getFlagTuning().lockOnAngle,
+      shotLimits: gameConfig.SHOT_LIMITS || {},
       mapSize: Number.isFinite(currentWorldMapSize) ? currentWorldMapSize : DEFAULT_MAP_SIZE,
       shockOutRadius: getShotEffects('SW').shockOutRadius,
     },
