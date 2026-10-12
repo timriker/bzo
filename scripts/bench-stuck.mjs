@@ -15,6 +15,8 @@
 //   node scripts/bench-stuck.mjs                  # hix, 80 runs
 //   node scripts/bench-stuck.mjs --map hix.bzw --runs 200 --seed 7
 //   node scripts/bench-stuck.mjs --seed 3 --runs 15 --trace 14
+//   node scripts/bench-stuck.mjs --flag V          # holding High Speed
+//   node scripts/bench-stuck.mjs --to 396,396,30   # always to one spot
 //
 // The world is the server's cached conversion (`cache/map-index.json`), so a
 // map has to have been served once. Nobody shoots, nobody else drives.
@@ -38,6 +40,11 @@ const timeLimit = Number(args.get('seconds') || 90);
 // `--jumping off` drives as on a server without jumping: routes, and the lifts
 // a map has instead, are all a tank has to change level by.
 const jumping = args.get('jumping') !== 'off';
+// `--flag V` drives holding that flag, for one that changes how the tank moves.
+const heldFlag = args.get('flag') ? args.get('flag').toUpperCase() : null;
+// `--to x,y,z` sends every run to that one spot, for a place `spot` does not
+// reach or a flag that is hard to get to.
+const fixedTo = args.get('to') ? (([x, y, z]) => ({ x, y, z: z || 0 }))(args.get('to').split(',').map(Number)) : null;
 const dt = 0.05;
 
 const index = JSON.parse(fs.readFileSync(path.join(root, 'cache/map-index.json'), 'utf8'));
@@ -105,6 +112,7 @@ function run(from, to, trace = false) {
     pilot,
     env: {
       config: () => CONFIG,
+      flag: () => (heldFlag ? { type: heldFlag, zoned: false } : null),
       colliders: () => obstacles,
       topOf,
       teleport: (a, b) => teleporter(a, b, now * 1000),
@@ -112,7 +120,7 @@ function run(from, to, trace = false) {
       view: (self) => ({
         now,
         self: {
-          ...self, id: 'me', flag: null, flagIndex: null, flagTeam: null, teamColor: 0,
+          ...self, id: 'me', flag: heldFlag, flagIndex: null, flagTeam: null, teamColor: 0,
           zoned: false, shotSpeed: 100, shotLifetime: 3.5, ricochet: false, canFire: false,
         },
         players: [],
@@ -181,7 +189,7 @@ for (let i = 0; i < runs; i++) {
   // was and two runs of this compare trip for trip.
   seed = (baseSeed * 7919) + i;
   const from = spot();
-  const to = spot();
+  const to = fixedTo || spot();
   // `--trace <run>`: that run's drive, every half second.
   const result = run(from, to, String(i) === args.get('trace'));
   if (result.arrived) arrived++;

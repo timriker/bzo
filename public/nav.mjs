@@ -36,6 +36,7 @@
 // asked for, and each destination gets one backwards search, kept; a route
 // from anywhere to it is then a walk downhill.
 
+import { getShotTeleporterCrossing } from './teleport.mjs';
 import {
   findTankObstacle,
   getColliderLocalPoint,
@@ -226,6 +227,16 @@ export function buildNavGraph(world) {
   const north = -origin;
   const water = Number.isFinite(world.waterLevel) ? world.waterLevel : -Infinity;
 
+  // A tank whose centre crosses a teleporter's face is sent through it, so a
+  // walk or a straight drive across one is not a move on this level at all:
+  // the only way through a face is a teleport move, below. Only the posts
+  // round a face collide, so without this a teleporter reads as open ground,
+  // and on hix every route into a corner went straight through the lift there.
+  // The same doorway test a tank is teleported by (`createTankTeleporter`).
+  const teleporters = obstacles.filter((obs) => obs.kind === 'teleporter');
+  const crossesTeleporter = (ax, ay, bx, by, z) => teleporters.some((obs) => getShotTeleporterCrossing(
+    { x: ax, y: ay, z: z + 0.01 }, { x: bx, y: by, z: z + 0.01 }, obs) !== null);
+
   // Obstacles by area, so a standing test asks only the ones near it.
   const bucketCount = Math.ceil(mapSize / BUCKET);
   const buckets = Array.from({ length: bucketCount * bucketCount }, () => []);
@@ -249,7 +260,7 @@ export function buildNavGraph(world) {
   // `solidStart[c]` to `solidStart[c + 1]`.
   const solidStart = new Int32Array((columns * columns) + 1);
   const solidPairs = [];
-  const edgeMargin = STAND_RADIUS + 0.5;
+  const edgeMargin = STAND_RADIUS + 0.3;
   for (let cy = 0; cy < columns; cy++) {
     for (let cx = 0; cx < columns; cx++) {
       const x = origin + (cx * NAV_CELL);
@@ -356,6 +367,7 @@ export function buildNavGraph(world) {
           if (rise > STEP_UP || rise < -STEP_UP) continue;
           if (diagonal && !(levelNear(column(node.cx + dx, node.cy), node.z)
             && levelNear(column(node.cx, node.cy + dy), node.z))) continue;
+          if (crossesTeleporter(node.x, node.y, nodes[id].x, nodes[id].y, node.z)) continue;
           out.push({ to: id, cost: (step / tankSpeed) + (tight(id) ? TIGHT_COST : 0), jump: false });
         }
       }
@@ -369,6 +381,7 @@ export function buildNavGraph(world) {
         if (beyond && !findTankObstacle(near(gapX, gapY), gapX, gapY, node.z + 0.01, { radius: STAND_RADIUS })) {
           for (const id of beyond) {
             if (Math.abs(nodes[id].z - node.z) > STEP_UP) continue;
+            if (crossesTeleporter(node.x, node.y, nodes[id].x, nodes[id].y, node.z)) continue;
             out.push({ to: id, cost: ((2 * NAV_CELL) / tankSpeed) + BRIDGE_COST, jump: false, bridge: true });
           }
         }
@@ -698,6 +711,7 @@ export function buildNavGraph(world) {
   // leans out over an edge and stays up. A line through open floor, then,
   // which is what a grid route across a base or a field zigzags over.
   const straightWalk = (a, b) => {
+    if (crossesTeleporter(a.x, a.y, b.x, b.y, a.z)) return false;
     const dx = b.x - a.x;
     const dy = b.y - a.y;
     const steps = Math.ceil(Math.hypot(dx, dy) / STRAIGHT_SAMPLE);

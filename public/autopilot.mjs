@@ -23,6 +23,7 @@ import {
 } from './flags.mjs';
 import { SHOT_COLLISION_RADIUS, traceShotStep, TANK } from './collision.mjs';
 import { buildNavGraph, NAV_CELL, planJump } from './nav.mjs';
+import { getShotTeleporterCrossing, getShotTeleporterFrameHit } from './teleport.mjs';
 import { normalizeAngle } from './motion.mjs';
 import { isRabbitTeam } from './teams.mjs';
 
@@ -3062,6 +3063,7 @@ export class Ace extends Roger {
       const from = { x: here.x + ox, y: here.y + oy, z: here.z + lift };
       const to = { x: there.x + ox, y: there.y + oy, z: there.z + lift };
       if (ctx.view.isObscured(from, to)) return false;
+      if (ctx.view.teleporterInWay?.(from, to)) return false;
     }
     return true;
   }
@@ -3284,7 +3286,7 @@ export class Ace extends Roger {
       return;
     }
     const heading = Math.atan2(flight.dy, flight.dx);
-    const speed = flight.speed;
+    const speed = this.speedFraction(ctx, planned);
     const off = this.aimAt(ctx, heading);
     const aligned = Math.abs(off) < FLIGHT_AIM_TOLERANCE;
     out.speed = aligned ? speed : 0;
@@ -3395,8 +3397,8 @@ export class Ace extends Roger {
   // Jump onto something `rise` up and `edge` away at the speed that lands it,
   // or back off or drive in until there is one.
   takeJump(ctx, rise, edge) {
-    const { view, out } = ctx;
-    const plan = planJump(this.jumpParams(view), rise, edge);
+    const { out } = ctx;
+    const plan = planJump(this.jumpParams(ctx), rise, edge);
     if (!plan) return false;
     if (plan.tooClose) {
       out.speed = -0.5;
@@ -3410,8 +3412,25 @@ export class Ace extends Roger {
     return true;
   }
 
-  jumpParams(view) {
-    return { velocity: view.world.jumpVelocity, gravity: view.world.gravity, tankSpeed: view.world.tankSpeed };
+  // At the tank's own top speed: a flag that changes it (High Speed, Thief)
+  // changes what a fraction of it drives at, and a jump keeps the speed it
+  // leaves with.
+  jumpParams(ctx) {
+    const { view, me } = ctx;
+    return {
+      velocity: view.world.jumpVelocity,
+      gravity: view.world.gravity,
+      tankSpeed: me.topSpeed ?? view.world.tankSpeed,
+    };
+  }
+
+  // The fraction of the tank's top speed that drives at `planned` units a
+  // second. A route's flights are planned at the world's tank speed, so with
+  // High Speed or Thief the same fraction leaves half again as fast and lands
+  // past the landing. Above 1 the flight is out of this tank's reach.
+  speedFraction(ctx, planned) {
+    const top = ctx.me.topSpeed ?? ctx.view.world.tankSpeed;
+    return top > 0 ? Math.min(1, planned / top) : 0;
   }
 
 
@@ -3547,6 +3566,11 @@ export function createWorldProbes({
       return hit.hit ? hit.fraction * PROBE_RANGE : Infinity;
     },
     isObscured: (from, to) => rayFraction(from, to).hit,
+    // Whether a teleporter is in the way of a drive from one point to the
+    // other: sent through its doorway, or into the frame round it. A ray
+    // reads both as open air, so a lane that is clear can still be a lift.
+    teleporterInWay: (from, to) => obstacles().some((obs) => obs.kind === 'teleporter'
+      && (getShotTeleporterCrossing(from, to, obs) !== null || getShotTeleporterFrameHit(from, to, obs) !== null)),
     firstHit: (from, to) => {
       const hit = rayFraction(from, to);
       if (!hit.hit) return null;
