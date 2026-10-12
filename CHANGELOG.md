@@ -6,6 +6,8 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
 
 ## [Unreleased]
 
+## [1.3.46] - 2026-10-12
+
 ### Added
 - Ace plans Wings jumps that flap at the top of the arc, as many times as
   `_wingsJumpCount` allows: at 2, he goes from hix's floor to a base in one
