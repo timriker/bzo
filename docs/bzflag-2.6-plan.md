@@ -148,10 +148,42 @@ Each works for browsers on its own and costs a 2.4 native client nothing.
 3. **Flag effects.** Describe each flag by an effect plus parameters, so a
    custom flag can reuse an effect; add the unknown-flag type. Keep Genocide
    built in and follow blast's plugin work.
-4. **`-noSelfKills`** as a server setting.
+4. **`-noSelfKills`** as a server setting. Not built yet; the approach is
+   under "No self kills" below.
 5. **Shot ids as 2.6 assigns them:** a global u16 per shot, with the client's
    slot as its local id. bzo already owns shots, so this is mostly naming,
    and it makes the 2.6 translation trivial.
+
+## No self kills
+
+Upstream's `-noSelfKills` is all on the client: bzfs only sets
+`NoSelfKillsGameStyle` (0x0200), and a master client skips its own shot in
+`LocalPlayer::checkHit` (`LocalPlayer.cxx:1576`). 0x0200 is unused in 2.4
+(`global.h:104-111`), so a 2.4 client never honours it.
+
+- **Browsers and bots:** bzo's server decides their hits, so it skips a
+  shooter's own shot. Nothing else.
+- **2.6 clients:** the bit, as upstream.
+- **2.4 clients** decide their own deaths, and nothing stops the explosion.
+  `gotBlowedUp` (`playing.cxx:3874`) sends MsgDropFlag if it holds a flag,
+  explodes locally with its sound and notice, then sends MsgKilled; its own
+  score only moves on the server's echo. So bzo:
+  1. Refuses the self-kill in `applyNativeDeath`: no MsgKilled goes out, so
+     no score or kill line anywhere; a MsgScore of the unchanged score keeps
+     the client's scoreboard honest.
+  2. Sends MsgAlive at its last position, as `/mv` does, and frees its shot
+     slots on the server, since `LocalPlayer::restart` empties them on the
+     client.
+  3. Undoes the drop that came just before the claim: a native drop keeps a
+     snapshot of the flag (grabs left, shots fired, sticky state) for a
+     moment, and a refused self-kill restores it and gives the flag back.
+     Without the snapshot the drop has already cost a grab, or made a fired
+     limited flag vanish.
+
+  The self-killer still sees its explosion and notice, a respawn in place,
+  and its shells in flight vanish on its screen while the server keeps
+  flying them. Others see no explosion, only the tank stopping and its flag
+  coming off and back.
 
 ## Steps for 2.6 clients
 
