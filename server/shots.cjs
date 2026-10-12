@@ -16,6 +16,15 @@ const { areFoes, isObserverTeam } = require('./teams.cjs');
 
 const MAX_SHOT_SLOTS = 64;
 
+// `-sl <flag> <count>` (CmdLineOptions.cxx:1221): how many shots a flag of
+// that type fires before it is used up. Upstream raises anything below 1 to 1
+// and refuses a count that does not start with a digit; null is the refusal.
+function normalizeShotLimit(value) {
+  const count = typeof value === 'number' ? value : (/^\s*\d/.test(String(value ?? '')) ? parseInt(value, 10) : NaN);
+  if (!Number.isFinite(count)) return null;
+  return Math.max(1, Math.floor(count));
+}
+
 // Zero survives: `-ms 0` means "tanks cannot shoot" upstream
 // (`CmdLineOptions.cxx:897-909`, which warns and then honours it), and it is
 // only a *negative* or unparseable count that upstream turns into one shot.
@@ -350,6 +359,7 @@ function shockWaveHitsTank(shot, tank, rules = {}) {
 module.exports = {
   MAX_SHOT_SLOTS,
   normalizeShotSlotCount,
+  normalizeShotLimit,
   WORLD_WEAPON_PLAYER_ID,
   getWorldMissileLifetimeSeconds,
   WORLD_WEAPON_NAME,

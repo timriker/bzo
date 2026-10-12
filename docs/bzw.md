@@ -783,7 +783,9 @@ dropped.
 
 ## The `options` block
 
-Read as a bzfs command line, one option a line. Everything bzo understands:
+Read as a bzfs command line, one option a line. Every bzfs option, read or
+not and why, is in [bzfs-options.md](bzfs-options.md). Everything bzo
+understands:
 
 | option | effect |
 |---|---|
@@ -806,6 +808,7 @@ Read as a bzfs command line, one option a line. Everything bzo understands:
 | `-mps <score>` | ends the match when any player's wins minus losses reaches it |
 | `-mts <score>` | ends the match when any colour team's wins minus losses reaches it |
 | `-ms <count>` | how many shots a tank may have in the air at once |
+| `-sl <flag> <count>` | a flag of that type is used up after `count` shots; one line per flag |
 | `-s <count>`, `+s <count>` | how many superflag slots the world holds |
 | `-f <flag>` | take a flag type out of the pool; `flag` is its abbreviation, or `good` or `bad` for a whole quality |
 | `+f <flag>[{count}]` | `flag` as for `-f`: flags of a type always in the world, one or `count` of them, with no zone of their own (see **Flag spawn zones**); `team` is not read |
@@ -882,6 +885,8 @@ fire rate from `shotRange / shotSpeed / shotMaxActive`, since `maxShots` slots
 each held for one reload works out to one shot per `_reloadTime / maxShots`; a
 `shotReloadTime` pinned in `server.json` still wins, and a map stating
 `_reloadTime` replaces the basis -- see **Shots** in [bzdb.md](bzdb.md).
+`-sl` replaces the config's `shotLimits` for the flag it names and leaves the
+others as the config set them.
 `-ms 0` means "tanks cannot shoot", and bzo reads it that way too
 (`CmdLineOptions.cxx:897-909`, which warns and then honours it). Only a
 *negative* or unparseable count becomes one shot, upstream's own split. A

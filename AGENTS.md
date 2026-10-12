@@ -35,6 +35,11 @@ answers everything, and a spare one is a real cost on a phone.
 
 These are deliberate. Do not "fix" them without being asked.
 
+- **Server bots take the highest free player slots.** Upstream gives a
+  server-side player the lowest, like anyone else. A bot here counts down from
+  the top of the player limit (never 216 or above, a 2.4 client's array) and
+  is named for its slot, so the same bot comes back to the same slot and its
+  score waits for it with no time limit. See `getBotPlayerNumber`.
 - **Clients rejoin without waiting for a click.** BZFlag makes the player
   confirm before respawning; bzo respawns automatically after the same 5 second
   delay.

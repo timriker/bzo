@@ -27,6 +27,11 @@ assert.equal(planBotFill({ fill: 0, humans: 0, bots: 2 }), -2);
   const sizes = new Map([['red', 3], ['blue', 1]]);
   const chosen = pickBotToRemove([{ id: 'a', team: 'blue' }, { id: 'b', team: 'red' }], sizes);
   assert.equal(chosen.id, 'b');
+  // On one team, the lowest slot goes first: the last bot added.
+  const tied = pickBotToRemove([
+    { id: 'x', team: 'red', slot: 41 }, { id: 'y', team: 'red', slot: 39 }, { id: 'z', team: 'red', slot: 40 },
+  ], sizes);
+  assert.equal(tied.id, 'y');
 }
 
 const CONFIG = {
@@ -38,7 +43,7 @@ const CONFIG = {
   MAX_BUMP_HEIGHT: 0.33,
 };
 
-function makeDriver(think, flag = null) {
+function makeDriver(think, flag = null, baseAt = undefined) {
   const sent = [];
   const driver = new BotDriver({
     pilot: { think },
@@ -51,6 +56,7 @@ function makeDriver(think, flag = null) {
       view: (self) => ({ self }),
       send: (message) => sent.push(message),
       act: () => {},
+      baseAt,
     },
   });
   return { driver, sent };
@@ -121,6 +127,24 @@ function makeDriver(think, flag = null) {
   assert.ok(driver.z < -1, `burrowed to ${driver.z.toFixed(2)}`);
   const turnRate = driver.self().turnRate;
   assert.ok(turnRate < CONFIG.TANK_ROTATION_SPEED * 0.6, `turns at ${turnRate.toFixed(2)} underground`);
+}
+
+// Driving onto a base sends the move that tick, with no speed change and no
+// heartbeat due, so the server has the tank on the base before the capture
+// the same tick claims (`whoseBase(lastState.pos)`, bzfs.cxx:3929).
+{
+  const { driver, sent } = makeDriver(() => ({ speed: 1, rotation: 0 }), null, (x, y) => (y > 10 ? 1 : null));
+  let crossedAt = null;
+  for (let i = 0; i < 20; i++) {
+    const before = sent.length;
+    driver.tick(0.05);
+    if (crossedAt === null && driver.y > 10) {
+      crossedAt = i;
+      const move = sent.slice(before).find((message) => message.type === 'm');
+      assert.ok(move && move.y > 10, 'the move onto the base goes out on the tick it crosses');
+    }
+  }
+  assert.notEqual(crossedAt, null);
 }
 
 console.log('bot tests passed');

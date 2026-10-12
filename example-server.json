@@ -57,6 +57,7 @@
   "rabbit": false,
   "reverseSpeedRatio": 0.5,
   "ricochet": false,
+  "shotLimits": {},
   "shotMaxActive": 1,
   "shotTailLength": 4,
   "sky": "upstream",

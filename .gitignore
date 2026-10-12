@@ -8,6 +8,7 @@ sessions.json
 uploads.json
 list-server-keys.json
 bans.json
+scores.json
 data/
 cache/
 

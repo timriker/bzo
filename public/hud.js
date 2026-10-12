@@ -1851,8 +1851,18 @@ export function updateAltimeter({ myTank, tickSpacing = 5 }) {
   ctx.restore();
 }
 
+// The shot-limit line's colour: green with no limit on what is being fired,
+// yellow counting down, red on the last shot.
+export function getShotLimitColor(label) {
+  if (label === 'unlimited') return 'rgba(0, 255, 0, 0.8)';
+  if (label.startsWith('1 ') || label.startsWith('0 ')) return 'rgba(255, 64, 64, 0.9)';
+  return 'rgba(255, 255, 0, 0.8)';
+}
+
+// `shotsLabel` is the shot-limit line (`-sl`) -- "N left" or "unlimited" --
+// or null for none: drawn on top of the bars.
 export function updateShotStatus({
-  myPlayerId, slotFreeAt, slotReloadMs, gameConfig, now = Date.now(),
+  myPlayerId, slotFreeAt, slotReloadMs, gameConfig, shotsLabel = null, now = Date.now(),
 }) {
   const hud = getHudCanvasContext(shotStatusRenderState, 'shotStatus');
   if (!hud || !myPlayerId || !gameConfig) return;
@@ -1873,11 +1883,14 @@ export function updateShotStatus({
   const indicatorHeight = Math.max(8, Math.round(window.innerHeight / 80));
   const indicatorSpace = Math.max(2, Math.round(indicatorHeight / 10) + 2);
   const totalHeight = (indicatorHeight * maxSlots) + (indicatorSpace * Math.max(0, maxSlots - 1));
-  if (shotStatus.style.width !== `${indicatorWidth}px`) {
-    shotStatus.style.width = `${indicatorWidth}px`;
+  const countFont = Math.max(10, Math.round(indicatorHeight * 1.2));
+  const countHeight = shotsLabel === null ? 0 : indicatorSpace + countFont + 2;
+  const canvasWidth = shotsLabel === null ? indicatorWidth : Math.max(indicatorWidth, countFont * 5);
+  if (shotStatus.style.width !== `${canvasWidth}px`) {
+    shotStatus.style.width = `${canvasWidth}px`;
   }
-  if (shotStatus.style.height !== `${totalHeight}px`) {
-    shotStatus.style.height = `${totalHeight}px`;
+  if (shotStatus.style.height !== `${totalHeight + countHeight}px`) {
+    shotStatus.style.height = `${totalHeight + countHeight}px`;
   }
   const statusRect = shotStatus.getBoundingClientRect();
   const statusWidth = Math.round(statusRect.width);
@@ -1906,7 +1919,8 @@ export function updateShotStatus({
     shotStatus.style.visibility = '';
   }
   {
-    const topPx = Math.round(boxRect.top + ((boxRect.height - totalHeight) / 2));
+    // Centred on the bars alone; the shot-limit line sits above them.
+    const topPx = Math.round(boxRect.top + ((boxRect.height - totalHeight) / 2)) - countHeight;
     const leftPx = Math.round(boxRect.right + indicatorWidth + 16);
     if (shotStatusRenderState.topPx !== topPx) {
       shotStatus.style.top = `${topPx}px`;
@@ -1939,7 +1953,7 @@ export function updateShotStatus({
   // "the first one moves more slowly and then skips ahead".
   slotProgress.sort((a, b) => a - b);
 
-  const stateKey = `${maxSlots}:${slotProgress.map((value) => value.toFixed(2)).join('|')}`;
+  const stateKey = `${maxSlots}:${shotsLabel}:${slotProgress.map((value) => value.toFixed(2)).join('|')}`;
   const colorKey = 'bzflag-shot-slots';
   if (!resized && shotStatusRenderState.stateKey === stateKey && shotStatusRenderState.colorKey === colorKey) {
     return;
@@ -1959,7 +1973,7 @@ export function updateShotStatus({
   ctx.save();
   for (let i = 0; i < maxSlots; i++) {
     const x = 0;
-    const y = i * (slotHeight + indicatorSpace);
+    const y = countHeight + (i * (slotHeight + indicatorSpace));
     const progress = slotProgress[i];
     const available = progress >= 1;
 
@@ -1972,6 +1986,12 @@ export function updateShotStatus({
       ctx.fillStyle = reloadFillColor;
       ctx.fillRect(x, y, slotWidth * progress, slotHeight);
     }
+  }
+  if (shotsLabel !== null) {
+    ctx.fillStyle = getShotLimitColor(shotsLabel);
+    ctx.font = `${countFont}px sans-serif`;
+    ctx.textBaseline = 'top';
+    ctx.fillText(shotsLabel, 0, 0);
   }
   ctx.restore();
 }

@@ -161,6 +161,7 @@ import {
   updateAltimeter,
   updateDegreeBar,
   updateShotStatus,
+  getShotLimitColor,
   roundedRect,
   readStoredFlag,
   bindToggleButton,
@@ -853,6 +854,25 @@ let xrSettingsMenuBackLatched = false;
 // about the shot itself worth keeping here. Cleared on spawn, as
 // `LocalPlayer::restart` clears it.
 let myShotSlotFreeAt = [];
+// `-sl`: the shots the flag this tank holds has left, as the server last said
+// (`shotsLeft`). Counted only while that flag is still the one held.
+let myFlagShotsLeft = null;
+// The line on top of the reload bars: nothing on a server without shot limits;
+// with any, the held flag's count, or "unlimited" for every other way to be
+// shooting, so the line stays put as flags come and go.
+function getShotLimitLabel() {
+  const limits = gameConfig?.SHOT_LIMITS;
+  let limited = false;
+  for (const type in limits) {
+    if (Object.hasOwn(limits, type)) { limited = true; break; }
+  }
+  if (!limited) return null;
+  const flag = getMyFlag();
+  const limit = flag ? limits[flag.type] : undefined;
+  if (limit === undefined) return 'unlimited';
+  const left = myFlagShotsLeft?.flag === flag.index ? myFlagShotsLeft.left : limit;
+  return `${left} left`;
+}
 // The reload each slot was filled on, kept beside it because a bar reads its
 // own shot's `ShotPath::reloadTime` and not the tank's current one: fire with a
 // Machine Gun and drop it, and those slots still come back at a Machine Gun's
@@ -8494,6 +8514,10 @@ function handleServerMessage(message) {
     // MsgTransferFlag. A thief's shot moved a flag from one tank to another
     // without it ever touching the ground, so there is no grab and no drop to
     // repaint from -- this is the only message that says so.
+    case 'shotsLeft':
+      myFlagShotsLeft = { flag: message.flag, left: message.left };
+      break;
+
     case 'transferFlag':
       handleFlagTransferred(message);
       refreshScoreboards();
@@ -15855,13 +15879,16 @@ function ensureXRShotStatusOverlay() {
   const barHeight = 7;
   const barWidth = 32;
   const totalHeight = maxSlots * barHeight + Math.max(0, maxSlots - 1) * barGap;
-  canvas.width = barWidth;
-  canvas.height = Math.max(32, totalHeight);
+  // The shot-limit line goes on top of the bars, as on the flat HUD.
+  const shotsLabel = getShotLimitLabel();
+  const countHeight = shotsLabel === null ? 0 : 12;
+  canvas.width = shotsLabel === null ? barWidth : 56;
+  canvas.height = Math.max(32, totalHeight + countHeight);
 
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
   slotProgress.forEach((progress, index) => {
-    const y = index * (barHeight + barGap);
+    const y = countHeight + (index * (barHeight + barGap));
     if (progress >= 1) {
       ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
       ctx.fillRect(0, y, barWidth, barHeight);
@@ -15872,6 +15899,12 @@ function ensureXRShotStatusOverlay() {
     ctx.fillStyle = 'rgba(0, 255, 0, 0.5)';
     ctx.fillRect(0, y, barWidth * Math.max(0, Math.min(1, progress)), barHeight);
   });
+  if (shotsLabel !== null) {
+    ctx.fillStyle = getShotLimitColor(shotsLabel);
+    ctx.font = '10px sans-serif';
+    ctx.textBaseline = 'top';
+    ctx.fillText(shotsLabel, 0, 0);
+  }
 
   xrShotStatusPanel.texture.needsUpdate = true;
 
@@ -15881,11 +15914,16 @@ function ensureXRShotStatusOverlay() {
   const radarRightEdge = radarMesh
     ? radarMesh.position.x + (radarPlaneWidth / 2)
     : xrHudEdge(XR_HUD_ANGLE_X);
+  // The bars keep their place when the line widens and lengthens the panel:
+  // its left edge stays, and it grows upward by the line's height.
+  const barsHeight = Math.min(0.18, 0.02 + maxSlots * 0.015);
+  const panelWidth = shotWidth * (canvas.width / barWidth);
+  const panelHeight = barsHeight * (canvas.height / Math.max(32, totalHeight));
   placeXRHudPanel(xrShotStatusPanel, {
-    width: shotWidth,
-    height: Math.min(0.18, 0.02 + maxSlots * 0.015),
-    x: radarRightEdge - (shotWidth / 2),
-    y: 0.02,
+    width: panelWidth,
+    height: panelHeight,
+    x: radarRightEdge - shotWidth + (panelWidth / 2),
+    y: 0.02 + (barsHeight / 2) - (panelHeight / 2) + (panelHeight * (countHeight / canvas.height)),
   });
 }
 
@@ -18325,6 +18363,7 @@ function animate(frameTime) {
       slotFreeAt: myShotSlotFreeAt,
       slotReloadMs: myShotSlotReloadMs,
       gameConfig,
+      shotsLabel: getShotLimitLabel(),
       now: frameEpochMs,
     });
   }

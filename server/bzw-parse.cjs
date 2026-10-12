@@ -18,7 +18,9 @@ const { getObstacleHeight } = require('./collision.cjs');
 // written in: +Z up, +Y north, x east, an angle counter-clockwise about +Z.
 const crypto = require('crypto');
 const { parseBZWTeamMode, getTeamFromColorIndex } = require('./teams.cjs');
-const { normalizeShotSlotCount, WORLD_WEAPON_DEFAULT_DELAY, normalizeWorldWeaponDelays } = require('./shots.cjs');
+const {
+  normalizeShotLimit, normalizeShotSlotCount, WORLD_WEAPON_DEFAULT_DELAY, normalizeWorldWeaponDelays,
+} = require('./shots.cjs');
 const { FLAG_ABBREVIATIONS, normalizeShakeTimeout, normalizeShakeWins, getFlagType, isBadFlag, isTeamFlag } = require('./flags.cjs');
 const fs = require('fs');
 const mapOverview = require('./map-overview.cjs');
@@ -1227,7 +1229,7 @@ function parseBZWServerOptions(lines) {
     // Server options in the map's own `options` block that no test above
     // claims, by option, so a map says which of its settings bzo ignored.
     unreadOptions: new Map(),
-    forbiddenFlags: [], requiredFlagCounts: {}, unreadBZDBVars: [], serverMessages: [], adMessages: [], gameplay: {},
+    forbiddenFlags: [], requiredFlagCounts: {}, shotLimits: {}, unreadBZDBVars: [], serverMessages: [], adMessages: [], gameplay: {},
   };
   // Every `-set`, in order, so a value may be a formula over the others and
   // upstream's defaults -- `12*_muzzleHeight` -- evaluated as BZDB evaluates
@@ -1334,6 +1336,14 @@ function parseBZWServerOptions(lines) {
         // its rate rather than the live match's -- see `worldConfig`.
         options.gameplay.SHOT_MAX_ACTIVE = options.shotMaxActive;
       }
+    }
+    // -sl <abbreviation> <count>: a flag of that type is used up after that many
+    // shots (CmdLineOptions.cxx:1221). A later line for the same flag replaces
+    // an earlier one, as upstream's map of them does.
+    if (readOption('-sl')) {
+      const abbreviation = String(value || '').toUpperCase();
+      const limit = normalizeShotLimit(setValue);
+      if (getFlagType(abbreviation) && limit !== null) options.shotLimits[abbreviation] = limit;
     }
     // -s <count>, and +s <count>: how many superflag slots the world holds,
     // upstream's numExtraFlags. The count is optional and anything that is not a

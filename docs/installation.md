@@ -165,7 +165,8 @@ You can override the path with:
 SERVER_CONFIG_PATH=/path/to/server.json npm start
 ```
 
-See [example-server.json](../example-server.json) for the supported shape.
+See [example-server.json](../example-server.json) for the supported shape,
+and [bzfs-options.md](bzfs-options.md) for the key each bzfs option became.
 `"mapFile": "random"` generates a world as bzfs does, tuned by a
 `randomWorld` block -- see **Generated worlds** in [bzw.md](bzw.md).
 
@@ -435,7 +436,10 @@ The server can keep its game at a size with bots of its own:
 That is four players: a bot for each place people leave empty, and none once
 four people are playing. Observers watch rather than take a place. With nobody
 connected the bots idle until somebody arrives. `pilot` is `roger` (upstream's
-autopilot) or `ace`.
+autopilot) or `ace`. A bot takes the highest free player slot and is named
+for it (`Ace41`); the fill drops one from the biggest team, its lowest slot
+first, and one that comes back -- or returns after a restart -- has its own
+slot and score again.
 
 An operator changes it live with `/bot fill <n> [pilot]`, adds bots outside
 the fill with `/bot add [pilot] [team] [count]`, removes them with

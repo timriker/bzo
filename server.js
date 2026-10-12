@@ -71,6 +71,7 @@ const {
   WORLD_WEAPON_PLAYER_ID,
   getWorldMissileLifetimeSeconds,
   WORLD_WEAPON_TEAM,
+  normalizeShotLimit,
   getShotFlight,
   getWorldReloadSeconds,
   getSlotReloadSeconds,
@@ -6512,6 +6513,9 @@ function buildClientConfig(config) {
     // connection would be two rules wearing one name.
     NO_TEAM_KILLS,
     TEAMS_ALLOWED,
+    // `-sl`, so the HUD knows whether to say anything about shots left at all.
+    // This server's own: a proxied game's limits are its target's, unknown.
+    SHOT_LIMITS: Object.fromEntries(SHOT_LIMITS),
   };
 }
 
@@ -6975,8 +6979,10 @@ function scoreSaveTimeMs() {
   return (Number.isFinite(seconds) ? seconds : 0) * 1000;
 }
 
+// A server bot's record too: its name is its slot (`getBotPlayerNumber`), so
+// the bot that takes that slot next is the same bot, and its record waits for
+// it however long that takes.
 function saveScore(player) {
-  if (bots.has(player.id)) return;
   const key = String(player.name || '').toLowerCase();
   const saved = savedScores.get(key);
   if (saved && isObserverTeam(player.team)) {
@@ -6984,16 +6990,77 @@ function saveScore(player) {
   } else if (player.wins || player.losses) {
     savedScores.set(key, {
       address: player.clientIP, wins: player.wins, losses: player.losses, tks: player.tks, leftAt: Date.now(),
+      ...(player.serverBot ? { serverBot: true } : {}),
     });
   }
 }
+
+// A restart for new code -- nodemon, or a Docker upgrade -- is everyone leaving
+// and coming straight back, so it keeps scores the way a leave does: what is
+// waiting, and everyone still connected as the process goes, written to
+// `scores.json` beside `bans.json` and read back on boot. A changed map or
+// changed server options start a new game instead, as a bzfs started on them
+// would: the scores are kept only when this process booted on the same
+// `server.json` and the same world as the one that saved them.
+const SCORES_PATH = path.join(path.dirname(configPath), 'scores.json');
+const BOOT_GAME_FINGERPRINT = (() => {
+  const hash = crypto.createHash('sha256');
+  try {
+    hash.update(fs.readFileSync(configPath));
+  } catch {
+    hash.update('no config');
+  }
+  hash.update('\0');
+  try {
+    hash.update(RANDOM_WORLD_BZW ?? (mapPath ? fs.readFileSync(mapPath) : MAP_SOURCE));
+  } catch {
+    hash.update(MAP_SOURCE);
+  }
+  return hash.digest('hex');
+})();
+let scoresSavedForRestart = false;
+
+function saveScoresForRestart() {
+  if (scoresSavedForRestart) return;
+  scoresSavedForRestart = true;
+  for (const player of players.values()) {
+    if (player.joined) saveScore(player);
+  }
+  const records = [...savedScores].map(([key, record]) => ({ key, ...record }));
+  try {
+    if (records.length === 0) fs.rmSync(SCORES_PATH, { force: true });
+    else fs.writeFileSync(SCORES_PATH, JSON.stringify({ game: BOOT_GAME_FINGERPRINT, records }));
+  } catch (err) {
+    logError(`[SCORES] could not save for the restart: ${err.message}`);
+  }
+}
+
+function loadScoresAfterRestart() {
+  let saved;
+  try {
+    saved = JSON.parse(fs.readFileSync(SCORES_PATH, 'utf8'));
+  } catch {
+    return;
+  }
+  fs.rmSync(SCORES_PATH, { force: true });
+  if (saved?.game !== BOOT_GAME_FINGERPRINT || !Array.isArray(saved.records)) {
+    log('[SCORES] not kept: the map or the server options changed');
+    return;
+  }
+  for (const { key, ...record } of saved.records) {
+    if (typeof key === 'string' && Number.isFinite(record.leftAt)) savedScores.set(key, record);
+  }
+  if (savedScores.size > 0) log(`[SCORES] ${savedScores.size} kept across the restart`);
+}
+loadScoresAfterRestart();
+process.on('exit', saveScoresForRestart);
 
 // The record's words to say to it, or null.
 function restoreScore(player, now = Date.now()) {
   const key = String(player.name || '').toLowerCase();
   const saved = savedScores.get(key);
   if (!saved) return null;
-  if (saved.leftAt + scoreSaveTimeMs() <= now) {
+  if (scoreSaveTimeMs() <= 0 || (!saved.serverBot && saved.leftAt + scoreSaveTimeMs() <= now)) {
     savedScores.delete(key);
     return null;
   }
@@ -11378,6 +11445,23 @@ GAME_CONFIG.FLAG_SHAKE_WINS = FLAG_SHAKE_WINS;
 const ANTIDOTE_FLAGS = serverConfig.antidoteFlags === true
   || mapServerOptions.antidoteFlags === true;
 GAME_CONFIG.ANTIDOTE_FLAGS = ANTIDOTE_FLAGS;
+// -sl upstream, shot limits: a flag of a limited type is used up after that
+// many shots. `shotLimits` in `server.json` ({ "GM": 5 }) and `-sl GM 5` in a
+// map's `options` block; the map's count for a flag replaces the config's, as
+// upstream reads a map's options after the command line.
+const SHOT_LIMITS = new Map();
+for (const source of [serverConfig.shotLimits, mapServerOptions.shotLimits]) {
+  if (!source || typeof source !== 'object') continue;
+  for (const [abbreviation, count] of Object.entries(source)) {
+    const type = String(abbreviation).toUpperCase();
+    const limit = normalizeShotLimit(count);
+    if (!getFlagType(type) || limit === null) {
+      logError(`[CONFIG] shot limit ignored: ${abbreviation} ${count}`);
+      continue;
+    }
+    SHOT_LIMITS.set(type, limit);
+  }
+}
 // -time upstream, the match clock: seconds until the match ends. Off by
 // default -- no limit -- and reached the same two ways as -st: a map may only
 // raise it, never shrink an operator's own setting.
@@ -13082,9 +13166,44 @@ function grabFlag(player, flag, now = Date.now(), { checkPos = true } = {}) {
   flag.flightStartedAt = 0;
   flag.grabbedAt = now;
   flag.zoned = false;
+  // FlagInfo::grab: a grab starts the shot count again.
+  flag.shots = 0;
   armBadFlagRelease(player, flag);
   log(`"${player.name}" grabbed ${getFlagType(flag.type).name} flag ${flag.index}`);
   broadcastAll({ type: 'grabFlag', playerId: player.id, flag: getFlagState(flag) });
+  sendShotsLeft(player, flag);
+}
+
+// The shots a held flag of a limited type has left, to its holder's HUD. A
+// BZFlag client has no counter and is told in chat instead (countFlagShot).
+function sendShotsLeft(player, flag) {
+  const limit = SHOT_LIMITS.get(flag.type);
+  if (limit === undefined || player.native) return;
+  sendToPlayer(player, { type: 'shotsLeft', flag: flag.index, left: Math.max(0, limit - (flag.shots || 0)) });
+}
+
+// bzfs.cxx:4266. Every shot fired while holding a flag counts against it,
+// whatever the shot itself turned out to be. Upstream's messages go out on the
+// first shot, every fifth and each of the last three; the last shot drops the
+// flag where the tank is, used up, so it leaves the world.
+function countFlagShot(player) {
+  const flag = getPlayerFlag(player.id);
+  if (!flag) return;
+  flag.shots = (flag.shots || 0) + 1;
+  const limit = SHOT_LIMITS.get(flag.type);
+  if (limit === undefined) return;
+  const left = limit - flag.shots;
+  if (left > 0) {
+    if (player.native && (left % 5 === 0 || left <= 3 || left === limit - 1)) {
+      replyToPlayer(player, left > 1 ? `${left} shots left` : '1 shot left');
+    }
+    sendShotsLeft(player, flag);
+    return;
+  }
+  if (left < 0) return;
+  sendShotsLeft(player, flag);
+  flag.grabs = 0;
+  dropFlag(flag);
 }
 
 // LocalPlayer::setFlag's antidote placement, moved to the server. Upstream picks
@@ -13299,6 +13418,9 @@ function dropFlag(flag, now = Date.now()) {
     // wherever the ray put it rather than falling to the floor. Open water is
     // the same kind of nowhere -- `landingY === null` -- whether or not
     // buildings are otherwise allowed.
+    // bzfs.cxx:3764: a limited flag that has been fired is used up when it
+    // is dropped, however many shots it had left.
+    if (SHOT_LIMITS.has(flag.type) && flag.shots > 0) flag.grabs = 0;
     flag.grabs -= 1;
     if (flag.grabs <= 0 || landingY === null) {
       vanish = true;
@@ -14858,6 +14980,8 @@ function stealFlag(proj, victim) {
   stolen.status = FLAG_STATUS.ON_TANK;
   stolen.flightStartedAt = 0;
   stolen.grabbedAt = Date.now();
+  // MsgTransferFlag hands over the flag as it is (bzfs.cxx:5177): a stolen
+  // flag keeps the shots already fired from it.
   armBadFlagRelease(thief, stolen);
   log(`"${thief.name}" stole ${getFlagType(stolen.type).name} flag ${stolen.index} from "${victim.name}"`);
   broadcastAll({
@@ -14866,6 +14990,7 @@ function stealFlag(proj, victim) {
     toId: thief.id,
     flag: getFlagState(stolen),
   });
+  sendShotsLeft(thief, stolen);
   return true;
 }
 
@@ -18487,6 +18612,7 @@ function acceptConnection(ws, req) {
             createdAt: proj.createdAt
           });
           if (beamHit) applyShotPlayerHit(proj, id, beamHit.player, beamHit.point);
+          countFlagShot(player);
           break;
         }
 
@@ -18838,7 +18964,7 @@ function acceptConnection(ws, req) {
           player.lag.resetUpdateGap();
           player.losses = 0;
           player.wins = 0;
-          const scoreRestored = previousTeam === null && !bots.has(player.id) ? restoreScore(player) : null;
+          const scoreRestored = previousTeam === null ? restoreScore(player) : null;
           // The tank is named here as well as on a later change, so a join
           // line says what a player is driving without the log having to be
           // read backwards for a change that may never have happened.
@@ -19781,19 +19907,48 @@ function botCheckEnvironment(bot, self) {
   }
 }
 
+// How many player slots a BZFlag 2.4 client holds (`maxRemotePlayers`,
+// global.h:40): it files a player under its id and checks only for a negative
+// one, so no id may reach this.
+const BZFLAG_CLIENT_PLAYER_SLOTS = 216;
+
+// A bot's slot: the highest free one under the server's player limit, counting
+// down, where upstream gives a server-side player the lowest like anyone else.
+// People count up from 0, so the two meet only on a nearly full server. A slot
+// whose bot left a score waiting comes first, so the bot that went is the one
+// that comes back -- the fill takes bots from the biggest team, not from the
+// top, so the highest free slot need not be the one it emptied.
+function getBotPlayerNumber(pilotName) {
+  const taken = new Set([...players.values()].map((other) => other.playerNumber));
+  for (const number of reservedPlayerNumbers) taken.add(number);
+  let highest = null;
+  for (let number = Math.min(MAX_TOTAL_PLAYERS, BZFLAG_CLIENT_PLAYER_SLOTS) - 1; number >= 0; number--) {
+    if (taken.has(number)) continue;
+    if (savedScores.get(`${pilotName}${number}`.toLowerCase())?.serverBot) return number;
+    if (highest === null) highest = number;
+  }
+  return highest;
+}
+
 function addBot(pilotId = botFillPilot, team = PLAYER_TEAM.AUTOMATIC, { auto = false } = {}) {
   const entry = findAutopilot(pilotId);
   if (!entry) return { error: `no pilot "${pilotId}"` };
   if (botsDisabled()) return { error: 'bots are disabled on this server (-disableBots)' };
+  const number = getBotPlayerNumber(entry.name);
+  if (number === null) return { error: 'no free player slot for a bot' };
   const socket = createBotSocket();
+  socket.reservedPlayerNumber = number;
   acceptConnection(socket, BOT_FAKE_REQUEST);
   const player = [...players.values()].find((candidate) => candidate.ws === socket);
   if (!player) return { error: 'the bot could not connect' };
   player.clientVersion = `${BZO_APP_VERSION} bot, ${entry.name}`;
-  let name;
-  do {
-    name = `${entry.name}${nextBotNumber++}`;
-  } while ([...players.values()].some((other) => other.name === name));
+  player.serverBot = true;
+  // Named for its slot; a person already called that leaves the bot a counted
+  // name instead, which keeps no record.
+  let name = `${entry.name}${player.playerNumber}`;
+  while ([...players.values()].some((other) => other !== player && other.name === name)) {
+    name = `${entry.name}${player.playerNumber}-${nextBotNumber++}`;
+  }
   const bot = {
     player,
     socket,
@@ -19810,6 +19965,9 @@ function addBot(pilotId = botFillPilot, team = PLAYER_TEAM.AUTOMATIC, { auto = f
   socket.say({
     type: 'joinGame', name, team, tankModel: 'bzflag', motto: entry.name, bot: true,
   });
+  // A restored score is not this report period's kills and deaths.
+  bot.reportedWins = player.wins;
+  bot.reportedLosses = player.losses;
   return { bot };
 }
 
@@ -19861,7 +20019,7 @@ function reconcileBots() {
       }
     });
     const candidates = [...bots.values()].filter((bot) => bot.auto)
-      .map((bot) => ({ bot, team: bot.player.team }));
+      .map((bot) => ({ bot, team: bot.player.team, slot: bot.player.playerNumber }));
     const chosen = pickBotToRemove(candidates, teamSizes);
     if (!chosen) return;
     removeBot(chosen.bot);
@@ -20083,6 +20241,8 @@ process.on('SIGINT', () => reportListServerShutdown('SIGINT'));
 // nodemon restarts with SIGUSR2: tell every client the server is going, then
 // let the signal end the process as it would have.
 process.once('SIGUSR2', () => {
+  // The signal ends the process without an `exit` event, so the scores go now.
+  saveScoresForRestart();
   sayServerIsGoing('restarting');
   setTimeout(() => process.kill(process.pid, 'SIGUSR2'), 100);
 });

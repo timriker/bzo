@@ -306,4 +306,20 @@ for (const value of [1, 3, '3', MAX_SHOT_SLOTS, MAX_SHOT_SLOTS + 1, 0, '0', -1, 
     'client and server disagree about a shock wave');
 }
 
+// `-sl <flag> <count>` (CmdLineOptions.cxx:1221): below 1 is 1, a count that
+// does not start with a digit is refused, and an unknown flag is ignored.
+{
+  const { normalizeShotLimit } = require('../server/shots.cjs');
+  assert.equal(normalizeShotLimit(5), 5);
+  assert.equal(normalizeShotLimit('3'), 3);
+  assert.equal(normalizeShotLimit(0), 1, 'upstream raises 0 to 1');
+  assert.equal(normalizeShotLimit('abc'), null);
+  assert.equal(normalizeShotLimit(undefined), null);
+  const { parseBZWServerOptions } = require('../server/bzw-parse.cjs');
+  const { shotLimits } = parseBZWServerOptions([
+    'options', '-sl GM 5', '-sl l 2', '-sl GM 7', '-sl XX 3', '-sl SW x', 'end',
+  ]);
+  assert.deepEqual(shotLimits, { GM: 7, L: 2 }, 'a later line for a flag replaces the earlier one');
+}
+
 console.log('Shot slot limit tests passed');

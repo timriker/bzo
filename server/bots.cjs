@@ -38,7 +38,11 @@ function pickBotToRemove(bots, teamSizes) {
   let best = null;
   for (const bot of bots) {
     const size = teamSizes.get(bot.team) || 0;
-    if (!best || size > best.size) best = { bot, size };
+    // Within a team, the lowest slot: bots are added from the top down, so the
+    // last one added is the first to go.
+    if (!best || size > best.size || (size === best.size && (bot.slot ?? 0) < (best.bot.slot ?? 0))) {
+      best = { bot, size };
+    }
   }
   return best ? best.bot : null;
 }
@@ -65,6 +69,7 @@ const round = (value, places) => Number(value.toFixed(places));
 //   view(self)      the pilot's view, given the bot's own idea of itself
 //   send(message)   a message as though the bot's client had sent it
 //   act(self)       the per-frame checks a client makes: grab, capture
+//   baseAt?(x, y, z) the team colour of the base at a point, or null
 //   teleport?(from, to, state) a teleporter crossed on the way, as `drive` asks
 class BotDriver {
   constructor({ pilot, env }) {
@@ -92,6 +97,7 @@ class BotDriver {
   respawn(state) {
     this.drive = createDriveState({ x: state.x, y: state.y, z: state.z, azimuth: state.azimuth });
     this.lastSent = null;
+    this.sentBase = undefined;
   }
 
   tankFor() {
@@ -182,14 +188,21 @@ class BotDriver {
         ja: tp.jumpDirection === null ? null : round(tp.jumpDirection, 2),
       });
     }
-    this.report(dt, events.forceSend || out.fire, Boolean(events.jumpStarted));
+    // Onto or off a base the move goes out at once: a capture is claimed
+    // against where the server last heard the tank was (`whoseBase`,
+    // bzfs.cxx:3929), and a heartbeat can be a second old.
+    const base = this.env.baseAt ? this.env.baseAt(this.drive.x, this.drive.y, this.drive.z) : null;
+    const crossed = base !== this.sentBase;
+    this.report(dt, events.forceSend || out.fire || crossed, Boolean(events.jumpStarted));
+    if (this.lastSentAt === this.clock) this.sentBase = base;
 
     this.env.act(this.self());
     if (out.fire) this.fire();
   }
 
   // A move packet, sent as a client sends one: when a speed changed, on a jump
-  // or a landing, before a shot, and otherwise as a heartbeat.
+  // or a landing, before a shot, onto or off a base, and otherwise as a
+  // heartbeat.
   report(dt, force, jumpStarted = false) {
     const packet = {
       type: 'm',

@@ -315,12 +315,11 @@ one part of it bzo could use today: see "Admins and the admin channel" in
 ## Adjacent switches, deliberately out of scope
 
 - **`-g`**, serve one game and exit. Not worth having: bzo's server is a web
-  server that reloads its clients on restart. Read the switch, log that it is
-  ignored, and say so in `docs/bzw.md`'s ignored list.
+  server that reloads its clients on restart. Recorded as intentional in
+  [bzfs-options.md](bzfs-options.md).
 - **`-sb`**, tanks respawning on buildings. A spawn rule rather than a game
   mode, but it is the one remaining spawn switch bzo does not read; worth its
   own small change alongside the spawn code, not here.
 - **`-tkkr`** and **`-tkannounce`** -- kicking and announcing team killers. Both
   are cheap now that there is an admin channel to announce into, and both belong
   with the team-kill code rather than with game modes.
-- **`-mp`** is already read, per team, from `server.json` and from a map.

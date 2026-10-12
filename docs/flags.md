@@ -127,6 +127,17 @@ counted on the server alone, since the server is what decides a kill happened.
 The antidote travels to its owner as `antidoteFlag`, and arrival is detected
 off position updates the way Identify's sweep is.
 
+Upstream's `-sl <flag> <count>` limits how many shots a flag of a type fires:
+`shotLimits` in `server.json` (`{ "GM": 5 }`) or `-sl` in a map's `options`
+block, the map's count winning for its flag. A grab starts the count, a
+Thief's steal keeps it, and the last shot drops the flag used up, so it leaves
+the world; a limited flag dropped after any shot leaves too. On a server with
+any limit a browser shows a line on top of the reload bars: "N left" while holding
+a limited flag (yellow, red on the last shot) and "unlimited" (green)
+otherwise; with none it shows nothing. A
+BZFlag client gets upstream's "N shots left" in chat on the first shot, every
+fifth and each of the last three.
+
 ## Intentional differences from BZFlag
 
 Each of these is deliberate. Do not "fix" one without being asked.

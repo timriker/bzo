@@ -33,6 +33,7 @@ const {
   buildCollisionColliders,
   configureTankDimensions,
   findShotSegmentImpact,
+  getBaseTeamAtPoint,
   getObstacleBase,
 } = require('./collision.cjs');
 const { configureFlagEffects } = require('./flags.cjs');
@@ -62,6 +63,7 @@ function setWorld(next) {
   router = null;
   probes = null;
   bases = null;
+  baseObstacles = null;
   vantages = null;
   teleporterIndex = null;
 }
@@ -78,6 +80,14 @@ let vantages = null;
 function getVantages() {
   if (!vantages) vantages = autopilot.findVantagePoints(world.obstacles, topOf);
   return vantages;
+}
+
+// The bases alone, so a bot asking every tick where it stands walks four
+// obstacles rather than the map.
+let baseObstacles = null;
+function getBaseObstacles() {
+  if (!baseObstacles) baseObstacles = world.obstacles.filter((obs) => obs.kind === 'base');
+  return baseObstacles;
 }
 
 let bases = null;
@@ -167,6 +177,7 @@ function addBot({ id, pilotId }) {
       flag: () => bot.own.flag,
       view: (self) => buildView(bot, self, bot.shared),
       send: (message) => bot.sends.push(message),
+      baseAt: (x, y, z) => getBaseTeamAtPoint(getBaseObstacles(), x, y, z),
       // The server makes these checks itself, with the tank where this tick
       // left it: everything sent so far goes before them, the rest after.
       act: (self) => {
