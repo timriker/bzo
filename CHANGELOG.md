@@ -6,6 +6,8 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
 
 ## [Unreleased]
 
+## [1.3.48] - 2026-10-13
+
 ### Fixed
 - A paused tank keeps telling the server where it is, as upstream's does, so
   a long pause is no longer taken for a lost connection and its flag
