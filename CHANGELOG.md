@@ -6,6 +6,8 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
 
 ## [Unreleased]
 
+## [1.3.49] - 2026-10-13
+
 ### Added
 - Ace banks landing shots off walls: with ricochet on, a foe coming down out
   of sight is shot off one or two walls, timed to the touchdown.
