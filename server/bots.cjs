@@ -22,7 +22,9 @@ const {
   stepDrive,
 } = require('./drive.cjs');
 const { TANK } = require('./collision.cjs');
-const { getFiredShotFlag, getShotEffects, getTankDimensionScale } = require('./flags.cjs');
+const {
+  FLAG_ENDURANCE, getFiredShotFlag, getFlagEndurance, getShotEffects, getTankDimensionScale, normalizeShakeTimeout,
+} = require('./flags.cjs');
 
 // The fill rule: bots make up the playing roster to `fill`, and there are none
 // once the people do. Returns how many to add (positive) or take away
@@ -135,6 +137,27 @@ class BotDriver {
     };
   }
 
+  // The shake countdown a client runs (`updateFlagShake` in client.js,
+  // LocalPlayer::doUpdate): a bad flag held for `_shakeTimeout` is asked to
+  // drop, once a second until the server agrees, as a player's client asks.
+  // Without it a bot only ever shook one off by its wins.
+  shakeBadFlag(dt, config) {
+    const flag = this.env.flag ? this.env.flag() : null;
+    const timeout = normalizeShakeTimeout(config.FLAG_SHAKE_TIMEOUT);
+    if (!flag || timeout === 0 || getFlagEndurance(flag.type) !== FLAG_ENDURANCE.STICKY) {
+      this.shakeIndex = null;
+      return;
+    }
+    if (flag.index !== this.shakeIndex) {
+      this.shakeIndex = flag.index;
+      this.shakeLeft = timeout;
+    }
+    this.shakeLeft -= dt;
+    if (this.shakeLeft > 0 || this.clock - (this.lastShakeAt ?? -Infinity) < 1) return;
+    this.lastShakeAt = this.clock;
+    this.env.send({ type: 'dropFlag' });
+  }
+
   // One frame, as a browser's: the pilot decides, the shared step drives, and
   // the move goes out before anything that rides on it.
   tick(dt) {
@@ -164,6 +187,7 @@ class BotDriver {
       this.lastDropAt = this.clock;
       this.env.send({ type: 'dropFlag' });
     }
+    this.shakeBadFlag(dt, config);
 
     const tank = this.tankFor();
     const world = this.worldFor(config);

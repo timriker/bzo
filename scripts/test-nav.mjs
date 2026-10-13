@@ -58,6 +58,12 @@ const box = (name, x, y, w, d, h, base = 0) => ({
   assert.equal(grounded.findRoute({ x: -80, y: 0, z: 0 }, { x: 0, y: 0, z: 10 }), null, 'nor anything, with no jumping');
 }
 
+// A burrowed tank, 1.32 under the ground, is routed from the ground above it.
+{
+  const nav = buildNavGraph({ obstacles: [], mapSize: 200, jump: JUMP });
+  assert.ok(nav.findRoute({ x: -60, y: 0, z: -1.32 }, { x: 60, y: 0, z: 0 }), 'a route from under the ground');
+}
+
 // Wings: a flap at the top of the arc reaches the tower one jump does not,
 // in one flight; a flap a world does not give is not planned on.
 {

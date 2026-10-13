@@ -365,6 +365,17 @@ for (const flag of ['US', 'MG', 'ID']) {
   assert.equal(out.intent.target?.x, -50, `Stealth over a nearer unknown (${JSON.stringify(out.intent.target)})`);
 }
 
+// Reversed Controls: what Ace asks for is negated before the tank reads it,
+// so he asks for the opposite, and the tank does what he meant.
+{
+  const view = (flag) => makeView({ self: { flag }, players: [enemy(40, 150)] });
+  const plain = new Ace().think(view(null));
+  const reversed = new Ace().think(view('RC'));
+  assert.ok(plain.speed > 0, 'a foe ahead is driven at');
+  assert.equal(reversed.speed, -plain.speed, 'reversed, the stick goes the other way');
+  assert.equal(reversed.rotation, -plain.rotation);
+}
+
 // A bad flag cannot be dropped -- only shaken off by its countdown, a kill or
 // an antidote -- so Ace never asks to, even beside a flag he would rather have.
 {
@@ -380,6 +391,22 @@ for (const flag of ['US', 'MG', 'ID']) {
     flags: [{ index: 1, type: 'GM', team: null, onGround: true, x: 0, y: 5, z: 0 }],
   }));
   assert.equal(still.dropFlag, false, 'nor drives off to drop it at speed');
+}
+
+// A shot is a threat where it meets the path he is on, not where he stands.
+// Driving north at full speed: one crossing 12.5 ahead meets him in half a
+// second, so he stops short of it; one crossing where he is now passes
+// behind him, so he drives on and does not jump.
+{
+  const driving = { velocity: { x: 0, y: 25, z: 0 }, speed: 25 };
+  const shot = (y) => ({ ownerId: 'foe', ownerZoned: false, flag: null, x: -50, y, z: 1, vx: 100, vy: 0, vz: 0 });
+  const ahead = new Ace().think(makeView({ self: driving, shots: [shot(12.5)] }));
+  assert.equal(ahead.intent.mode, 'dodge', 'the shot ahead is dodged');
+  assert.ok(ahead.speed < 1, `by not driving into it (speed ${ahead.speed})`);
+  assert.equal(ahead.jump, false, 'without a jump');
+  const behind = new Ace().think(makeView({ self: driving, shots: [shot(0)] }));
+  assert.notEqual(behind.intent.mode, 'dodge', 'a shot he is driving clear of is left alone');
+  assert.equal(behind.jump, false);
 }
 
 // Water below the edge of a roof stops Ace. Roger's look-ahead has nothing to
@@ -533,6 +560,63 @@ for (const flag of ['US', 'MG', 'ID']) {
   assert.equal(new Ace().think(view(true)).fire, false, 'Ace holds a shot that would come back');
   assert.equal(new Ace().think(view(false)).fire, true, 'without ricochet it cannot come back');
   assert.equal(new Roger().think(view(true)).fire, true, 'Roger fires anyway');
+}
+
+// Point blank: burrowed with a wall a hand's breadth past the muzzle, the
+// shot is back in a hundredth of a second -- Orin killed himself three times
+// so. Every bounce counts, however soon.
+{
+  const wall = {
+    type: 'box', name: 'wall', pos: [0, 4.6, 0], size: [30, 1, 10], angle: 0,
+  };
+  const probes = createWorldProbes({
+    obstacles: () => [wall],
+    colliders: () => [wall],
+    mapSize: () => 800,
+    findImpact: findShotSegmentImpact,
+    topOf: (obs) => obs.pos[2] + obs.size[2],
+  });
+  const out = new Ace().think(makeView({
+    self: {
+      z: -1.32, flag: 'BU', muzzleHeight: 1.57, muzzleForward: 3, shotSpeed: 100, shotLifetime: 3.5, ricochet: true,
+    },
+    players: [enemy(0, 150)],
+    ...probes,
+    isObscured: () => false,
+  }));
+  assert.equal(out.fire, false, 'a wall at point blank sends it straight back');
+}
+
+// A landing behind a wall is shot off another: with ricochet on, Ace finds
+// the heading that bounces off the long wall beside it into the touchdown,
+// times it, and fires -- no line of sight needed.
+{
+  const box = (name, x, y, w, d) => ({ type: 'box', name, pos: [x, y, 0], size: [w / 2, d / 2, 10], angle: 0 });
+  const obstacles = [box('blocker', 0, 30, 20, 1), box('mirror', 30.5, 30, 1, 120)];
+  const probes = createWorldProbes({
+    obstacles: () => obstacles,
+    colliders: () => obstacles,
+    mapSize: () => 800,
+    findImpact: findShotSegmentImpact,
+    topOf: (obs) => obs.pos[2] + obs.size[2],
+  });
+  const ace = new Ace();
+  let fired = null;
+  for (let frame = 0; frame < 60 && !fired; frame++) {
+    const t = frame * 0.05;
+    const out = ace.think(makeView({
+      now: 100 + t,
+      self: {
+        azimuth: 0.79, muzzleHeight: 1.57, muzzleForward: 3, shotSpeed: 100, shotLifetime: 3.5, ricochet: true,
+      },
+      players: [enemy(0, 60, { z: 40 - (4.9 * t * t), vz: -9.8 * t, airborne: true, gravity: 9.8 })],
+      ...probes,
+    }));
+    if (out.fire) fired = out;
+  }
+  assert.ok(fired, 'a bank shot at the landing behind the wall');
+  const { dir } = fired.intent.shot;
+  assert.ok(Math.abs(Math.atan2(dir.y, dir.x) - Math.atan2(60, 60)) < 0.02, 'off the wall beside it');
 }
 
 // A foe near a capture is fought where it stands, from 50 until it is past 75

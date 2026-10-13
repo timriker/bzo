@@ -6,6 +6,25 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
 
 ## [Unreleased]
 
+### Added
+- Ace banks landing shots off walls: with ricochet on, a foe coming down out
+  of sight is shot off one or two walls, timed to the touchdown.
+
+### Fixed
+- Server bots shake off a bad flag after the shake timeout, as a player's
+  client does; they only ever lost one by their kills.
+- Ace drives with Reversed Controls: he asks for the opposite of what he
+  wants, and gets where he is going instead of backing into walls.
+- Ace dodges a shot only where it meets the path he is driving, by the
+  speed nearest his own that clears every shot in sight; a jump is the last
+  resort, since a tank in the air is the easiest one to hit next.
+- Ace's landing shots check the line at the muzzle's height: along the
+  ground it grazed the foot of a wall and took a shot that would hit it.
+- Ace no longer shoots himself at point blank: a shot that bounces straight
+  back off a wall or a pyramid a hand's breadth away is held, as one from
+  further off already was. Orin did it three times in one game with Burrow.
+- A burrowed Ace has routes again: under the ground, no route started at all.
+
 ## [1.3.48] - 2026-10-13
 
 ### Fixed

@@ -62,6 +62,36 @@ function makeDriver(think, flag = null, baseAt = undefined) {
   return { driver, sent };
 }
 
+// A bad flag is shaken off after `_shakeTimeout`, as a player's client does:
+// a drop asked for once the time is up, and not before. A good flag never is.
+{
+  const shake = (flag) => {
+    const sent = [];
+    const driver = new BotDriver({
+      pilot: { think: () => ({ speed: 0, rotation: 0 }) },
+      env: {
+        config: () => ({ ...CONFIG, FLAG_SHAKE_TIMEOUT: 5 }),
+        flag: () => flag,
+        colliders: () => [],
+        topOf: () => 0,
+        state: () => ({ alive: true, x: 0, y: 0, z: 0, azimuth: 0 }),
+        view: (self) => ({ self }),
+        send: (message) => sent.push(message),
+        act: () => {},
+      },
+    });
+    const drops = (seconds) => {
+      for (let t = 0; t < seconds; t += 0.05) driver.tick(0.05);
+      return sent.filter((m) => m.type === 'dropFlag').length;
+    };
+    return drops;
+  };
+  const bad = shake({ type: 'RC', zoned: false, index: 3 });
+  assert.equal(bad(4.5), 0, 'not before the timeout');
+  assert.ok(bad(1) >= 1, 'asked to drop once it is up');
+  assert.equal(shake({ type: 'V', zoned: false, index: 4 })(10), 0, 'a good flag is kept');
+}
+
 // Full speed ahead for a second covers the world's tank speed, northwards, and
 // says so on the wire.
 {

@@ -574,6 +574,21 @@ const CAMPER_SPENT_SHOTS = 2;
 const CAMPER_SPENT_SHARE = 0.2;
 const CAMPER_WAIT_WEIGHT = 3;
 const CAMPER_COUNTER_PULL = 0.5;
+// Bank shots at a landing (`bankPlans`): the sweep's step round Ace, how near
+// a sampled path must pass to be refined, how finely, how near the refined
+// one must pass, how many bounces are tried and how many paths are kept, and
+// how far Ace may move before they are looked for again.
+const BANK_SWEEP_STEP = Math.PI / 90;
+const BANK_COARSE_MISS = 6;
+const BANK_REFINE_STEPS = 8;
+const BANK_MAX_BOUNCES = 2;
+const BANK_KEEP = 3;
+// How long one frame may spend on the sweep, in ms: the Jetson's browser is
+// short of CPU before any of it.
+const BANK_BUDGET_MS = 3;
+const BANK_RECHECK_DISTANCE = 2;
+// How far past a bounce `traceLegs` starts the next leg's trace.
+const BANK_LEG_CLEAR = 1;
 // How far inside a landing shot's window, in seconds, Ace aims its arrival
 // when he can choose: at most half the window.
 const LANDING_SHOT_MARGIN = 0.03;
@@ -879,7 +894,6 @@ const SPAWN_WATCH_RANGE = 60;
 // and passed with this much room past the grab radius.
 const BAD_FLAG_LOOKAHEAD_SECONDS = 1;
 const BAD_FLAG_MARGIN = 1.5;
-const SELF_HIT_GRACE_SECONDS = 0.1;
 // How far past a foe's body a level shot's height may be and still be taken:
 // a tank on a gentle slope or a step's edge sits that little off level.
 const LEVEL_SHOT_SLACK = 0.1;
@@ -901,6 +915,8 @@ export class Ace extends Roger {
     this.seenKills = new Set();
     this.flagShots = new Map();
     this.camper = null;
+    // Bank shots found for each foe's jump (`bankPlans`).
+    this.bankCache = new Map();
     // A lunge under way: who it is for and when it began; and whether to stop
     // on the next frame, the shot having gone.
     this.lunge = null;
@@ -991,6 +1007,12 @@ export class Ace extends Roger {
     // tank may jump.
     if (out.jump && !canTankJump(view.world, view.self.flag)) out.jump = false;
     this.oneWayTurn(view.self.flag, out);
+    // Reversed Controls negates both sticks before the tank reads them
+    // (`applyMotionInput`), so Ace asks for the opposite of what he wants.
+    if (view.self.flag === 'RC') {
+      out.speed = -out.speed;
+      out.rotation = -out.rotation;
+    }
     // A sticky flag does not answer the drop control (cmdDrop): only its shake
     // countdown, a kill or an antidote takes it off, and the countdown drops it
     // by itself. Asking anyway is refused every time.
@@ -1396,6 +1418,129 @@ export class Ace extends Roger {
     return { landing, reach, enter, distance: distance2D(me, landing) };
   }
 
+  // Whether a level shot from the muzzle has a wall between it and a landing:
+  // asked at the muzzle's height, since along the ground a ray only grazes
+  // the foot of a wall it would hit.
+  landingHidden(ctx, landing) {
+    const { me } = ctx;
+    const z = me.z + (me.muzzleHeight ?? TANK.muzzleHeight);
+    return this.isObscured(ctx, { x: me.x, y: me.y, z }, { x: landing.x, y: landing.y, z });
+  }
+
+  // Landing shots off walls: with ricochet on, the headings from which a shot
+  // fired now passes through the landing after one or two bounces, at the
+  // muzzle's height. Swept every `BANK_SWEEP_STEP` round him with the shot's
+  // own trace, no further than it could fly before the touchdown, and each
+  // near pass refined to the heading that goes through the middle. Each is a
+  // plan in the shape of a direct one: its point lies along the first leg as
+  // far as the whole path, so the aim, the speed and the timing are worked
+  // out as for any other; only the line of sight is not asked. Found once a
+  // jump, and again only if Ace moves.
+  bankPlans(ctx, p, direct, landsAt) {
+    const { view, me } = ctx;
+    if (!me.ricochet || me.inAir || typeof view.traceLegs !== 'function') return [];
+    const key = p.id;
+    let cached = this.bankCache.get(key);
+    if (!cached || Math.abs(cached.landsAt - landsAt) >= 0.5
+      || Math.hypot(cached.x - me.x, cached.y - me.y) >= BANK_RECHECK_DISTANCE) {
+      cached = { landsAt, x: me.x, y: me.y, sweep: { samples: [] }, found: null };
+      this.bankCache.set(key, cached);
+    }
+    if (!cached.found) cached.found = this.findBanks(ctx, direct.landing, cached.sweep);
+    const found = cached.found || [];
+    const muzzleZ = me.z + me.muzzleHeight;
+    return found.map(({ azimuth, along, bounces }) => {
+      const distance = along + me.muzzleForward;
+      return {
+        landing: {
+          x: me.x + (Math.cos(azimuth) * distance),
+          y: me.y + (Math.sin(azimuth) * distance),
+          z: muzzleZ,
+          t: direct.landing.t,
+        },
+        reach: Math.max(0, along - TANK.radius),
+        enter: direct.enter,
+        distance,
+        landsAt,
+        level: true,
+        bank: bounces,
+      };
+    });
+  }
+
+  // The sweep and the refinement behind `bankPlans`, as many headings each
+  // call as fit in `BANK_BUDGET_MS`, so no one frame pays for all of it:
+  // `state` carries the sweep from call to call, and the paths come back once
+  // it is done -- null until then.
+  findBanks(ctx, landing, state = { samples: [] }) {
+    const { view, me } = ctx;
+    if (typeof view.traceLegs !== 'function') return [];
+    const muzzleZ = me.z + me.muzzleHeight;
+    const tall = view.world.tankHeight;
+    const speed = (me.shotSpeed ?? view.world.shotSpeed) + (me.topSpeed ?? view.world.tankSpeed);
+    const range = speed * Math.min(me.shotLifetime ?? Infinity, landing.t + 0.1);
+    // How near a heading's path comes to the landing after its first bounce
+    // and before its third, and how far along the path that is.
+    const pass = (azimuth) => {
+      const dir = { x: Math.cos(azimuth), y: Math.sin(azimuth), z: 0 };
+      const muzzle = { x: me.x + (dir.x * me.muzzleForward), y: me.y + (dir.y * me.muzzleForward), z: muzzleZ };
+      let along = 0;
+      let best = null;
+      view.traceLegs(muzzle, dir, range, BANK_MAX_BOUNCES).forEach(({ from, to }, bounces) => {
+        const dx = to.x - from.x;
+        const dy = to.y - from.y;
+        const length = Math.hypot(dx, dy);
+        if (bounces >= 1 && length > 1e-6) {
+          const u = Math.max(0, Math.min(1, (((landing.x - from.x) * dx) + ((landing.y - from.y) * dy)) / (length * length)));
+          const z = from.z + ((to.z - from.z) * u);
+          const miss = Math.hypot(from.x + (dx * u) - landing.x, from.y + (dy * u) - landing.y);
+          if (z >= landing.z && z <= landing.z + tall && (!best || miss < best.miss)) {
+            best = { miss, along: along + (length * u), bounces };
+          }
+        }
+        along += length;
+      });
+      return best;
+    };
+    const step = BANK_SWEEP_STEP;
+    const total = Math.round((2 * Math.PI) / step);
+    const { samples } = state;
+    const startedAt = performance.now();
+    for (let n = 0; samples.length < total && (n === 0 || performance.now() - startedAt < BANK_BUDGET_MS); n++) {
+      const a = -Math.PI + (samples.length * step);
+      samples.push({ a, r: pass(a) });
+    }
+    if (samples.length < total) return null;
+    // The near passes, each the nearest of its neighbours: one refined a call.
+    if (!state.candidates) {
+      state.found = [];
+      state.candidates = samples.filter((sample, i) => {
+        const { r } = sample;
+        if (!r || r.miss > BANK_COARSE_MISS) return false;
+        const before = samples[(i + samples.length - 1) % samples.length].r;
+        const after = samples[(i + 1) % samples.length].r;
+        return !((before && before.miss < r.miss) || (after && after.miss <= r.miss));
+      });
+    }
+    const sample = state.candidates.shift();
+    if (sample) {
+      // Ternary search on the miss across the neighbouring samples.
+      let lo = sample.a - step;
+      let hi = sample.a + step;
+      for (let k = 0; k < BANK_REFINE_STEPS; k++) {
+        const m1 = lo + ((hi - lo) / 3);
+        const m2 = hi - ((hi - lo) / 3);
+        if ((pass(m1)?.miss ?? Infinity) < (pass(m2)?.miss ?? Infinity)) hi = m2;
+        else lo = m1;
+      }
+      const azimuth = (lo + hi) / 2;
+      const best = pass(azimuth);
+      if (best && best.miss < TANK.radius / 2) state.found.push({ azimuth, along: best.along, bounces: best.bounces });
+      if (state.candidates.length) return null;
+    }
+    return state.found.sort((a, b) => a.along - b.along).slice(0, BANK_KEEP);
+  }
+
   // Every chance a level shot fired now has at an airborne foe: where it
   // lands, if it lands with the muzzle's height inside its body, and each
   // stretch of its flight when its body passes through the muzzle's height,
@@ -1414,6 +1559,10 @@ export class Ace extends Roger {
     const plans = [];
     const atLanding = this.planLandingShot(ctx, p);
     if (atLanding) plans.push({ ...atLanding, landsAt, level: true });
+    // A landing out of sight may still be reached off a wall or two.
+    if (atLanding && this.landingHidden(ctx, atLanding.landing)) {
+      plans.push(...this.bankPlans(ctx, p, atLanding, landsAt));
+    }
     const muzzleZ = me.z + me.muzzleHeight;
     const tall = view.world.tankHeight;
     const g = p.gravity;
@@ -1829,7 +1978,7 @@ export class Ace extends Roger {
         };
         if (this.landingShotSpeed(ctx, aimed, 0, full).late) continue;
         if (plan.reach > (me.shotSpeed + top) * (me.shotLifetime ?? Infinity)) continue;
-        if (this.isObscured(ctx, { x: me.x, y: me.y, z: me.z }, plan.landing)) continue;
+        if (!plan.bank && this.landingHidden(ctx, plan.landing)) continue;
         // The soonest chance at this foe is the one to line up for.
         if (!best || plan.distance < best.plan.distance) best = { p, plan };
         break;
@@ -2006,9 +2155,13 @@ export class Ace extends Roger {
     const shot = this.shotVelocity(ctx);
     const segments = view.traceShot(muzzle, shot.dir, shot.speed, self.shotLifetime, true);
     this.lastTrace = segments;
-    for (const segment of segments) {
-      if (segment.t0 < SELF_HIT_GRACE_SECONDS) continue;
-      if (segment.to.z > self.z + view.world.tankHeight + 1) continue;
+    // The first leg leaves from the muzzle, so it is beside him by
+    // definition; every bounce after it counts, however soon -- fired into a
+    // wall at point blank, the shot is back in a hundredth of a second. A
+    // leg is judged by its lowest end: one that bounces up off a slope
+    // passes through him on its way up.
+    for (const segment of segments.slice(1)) {
+      if (Math.min(segment.from.z, segment.to.z) > self.z + view.world.tankHeight + 1) continue;
       if (segmentDistance2D(segment.from, segment.to, self) < reach) return true;
     }
     return false;
@@ -2034,7 +2187,7 @@ export class Ace extends Roger {
         if (!Number.isFinite(shot.flight)) continue;
         const miss = plan.distance * Math.abs(Math.sin(normalizeAngle(shot.azimuth - me.azimuth)));
         if (miss > TANK.radius / 2) continue;
-        if (this.isObscured(ctx, { x: me.x, y: me.y, z: me.z }, plan.landing)) continue;
+        if (!plan.bank && this.landingHidden(ctx, plan.landing)) continue;
         out.fire = true;
         out.shotTargetId = p.id;
         this.landingShotChosen = true;
@@ -2105,13 +2258,36 @@ export class Ace extends Roger {
 
   // Staying alive comes first, and moving out of a shot's way before jumping
   // over it: a tank in the air cannot steer, so it is the easiest one to hit
-  // next. For the shot that would hit soonest, Ace drives forward or back --
-  // whichever clears its line first -- if that clears it in time and the way
-  // is open; jumps only if not, and only where the jump is above the shot
-  // before it arrives; and otherwise dodges as Roger does.
+  // next -- a dodge jump comes down three seconds later where every foe can
+  // see it coming. A shot is a threat only where it meets the path he is on,
+  // so a shot he is already driving clear of is left alone. One that meets
+  // it is answered by the speed nearest the one he has -- keep it, stop,
+  // full ahead, back -- that clears every shot in sight and has the room;
+  // then forward or back across the soonest's line in time; a jump only if
+  // none does, and only where it is above the shot before it arrives; and
+  // otherwise Roger's dodge.
   avoidBullet(ctx) {
     const { view, me, out } = ctx;
-    const shot = this.soonestHit(ctx);
+    const top = me.topSpeed ?? view.world.tankSpeed;
+    const heading = { x: Math.cos(me.azimuth), y: Math.sin(me.azimuth) };
+    const along = me.inAir ? 0 : ((me.vx ?? 0) * heading.x) + ((me.vy ?? 0) * heading.y);
+    const moving = { x: heading.x * along, y: heading.y * along };
+    const shot = this.soonestHit(ctx, moving);
+    if (shot && !me.inAir && top > 0) {
+      const current = along / top;
+      const speeds = [...new Set([current, 0, 1, -REVERSE_SPEED_SHARE])]
+        .sort((a, b) => Math.abs(a - current) - Math.abs(b - current));
+      for (const speed of speeds) {
+        const v = { x: heading.x * speed * top, y: heading.y * speed * top };
+        if (this.soonestHit(ctx, v)) continue;
+        const travel = Math.abs(speed) * top * Math.min(DODGE_HORIZON_SECONDS, shot.time + 1);
+        const way = speed >= 0 ? me.azimuth : me.azimuth + Math.PI;
+        if (speed !== 0 && this.openDistance(ctx, me, way) <= travel + 2) continue;
+        out.speed = speed;
+        out.rotation = 0;
+        return true;
+      }
+    }
     const squash = this.squashThreat(ctx);
     const threat = squash && (!shot || squash.time < shot.time) ? squash : shot;
     if (!threat) return false;
@@ -2119,7 +2295,6 @@ export class Ace extends Roger {
     // a jump would lift him into all of them: he drives out of the way or
     // takes it.
     const burrowed = me.flag === 'BU' && me.z < 0;
-    const heading = { x: Math.cos(me.azimuth), y: Math.sin(me.azimuth) };
     let lateral = (heading.x * threat.away.x) + (heading.y * threat.away.y);
     // Dead on, neither side is nearer, so take the one ahead: forward is
     // twice reverse.
@@ -2186,7 +2361,8 @@ export class Ace extends Roger {
 
   // Of the shots Ace can see, the one that will hit him soonest if he stays
   // put: when it passes closest, by how much, and which way is away from it.
-  soonestHit(ctx) {
+  // `own` is the velocity Ace keeps meanwhile: still, by default.
+  soonestHit(ctx, own = { x: 0, y: 0 }) {
     const { view, me } = ctx;
     const clearance = TANK.radius + SHOT_COLLISION_RADIUS + DODGE_CLEARANCE;
     let best = null;
@@ -2204,18 +2380,23 @@ export class Ace extends Roger {
       // thing Burrow is for.
       if (shot.flag !== 'GM' && (pos.z < me.z - SHOT_COLLISION_RADIUS
         || pos.z > me.z + view.world.tankHeight + SHOT_COLLISION_RADIUS)) continue;
+      // Both moving: the shot as he sees it from his own path.
+      const rvx = vx - own.x;
+      const rvy = vy - own.y;
+      const rv2 = (rvx * rvx) + (rvy * rvy);
+      if (rv2 < 1e-6) continue;
       const rx = me.x - pos.x;
       const ry = me.y - pos.y;
-      const time = ((rx * vx) + (ry * vy)) / speed2;
+      const time = ((rx * rvx) + (ry * rvy)) / rv2;
       if (time <= 0 || time > DODGE_HORIZON_SECONDS) continue;
-      const mx = rx - (vx * time);
-      const my = ry - (vy * time);
+      const mx = rx - (rvx * time);
+      const my = ry - (rvy * time);
       const miss = Math.hypot(mx, my);
       if (miss >= clearance) continue;
       if (best && time >= best.time) continue;
-      const length = Math.sqrt(speed2);
+      const length = Math.sqrt(rv2);
       // Dead on, either side is away; take the left of the shot.
-      const away = miss > 1e-6 ? { x: mx / miss, y: my / miss } : { x: -vy / length, y: vx / length };
+      const away = miss > 1e-6 ? { x: mx / miss, y: my / miss } : { x: -rvy / length, y: rvx / length };
       best = { time, miss, away, clearance, height: pos.z - me.z };
     }
     return best;
@@ -3812,6 +3993,59 @@ export function createWorldProbes({
     // Where a shot goes over its life, bounces and all, by the tracer the
     // shot itself is flown with: a list of `{ t0, t1, from, to }`, seconds
     // after firing. Teleporters are not followed.
+    // A level shot's path leg by leg, wall to wall: each leg run to its first
+    // impact in one test, and the bounce taken from a step across that
+    // impact with ricochet on. For searching many headings at once, where
+    // stepping a whole shot's life at a time costs a second on hix.
+    traceLegs: (from, dir, range, maxBounces) => {
+      const solids = colliders();
+      const legs = [];
+      // Where the leg is drawn from, and where its trace starts: a unit past
+      // the bounce, clear of the wall it came off.
+      let start = { ...from };
+      let point = { ...from };
+      let direction = { ...dir };
+      let left = range;
+      for (let leg = 0; leg <= maxBounces && left > 1e-3; leg++) {
+        const stop = traceShotStep({
+          obstacles: solids,
+          x: point.x,
+          y: point.y,
+          z: point.z,
+          dirX: direction.x,
+          dirY: direction.y,
+          dirZ: direction.z,
+          distance: left,
+          radius: SHOT_COLLISION_RADIUS,
+          ricochet: false,
+        });
+        const to = { x: stop.x, y: stop.y, z: stop.z };
+        const length = Math.hypot(to.x - point.x, to.y - point.y, to.z - point.z);
+        legs.push({ from: start, to });
+        left -= length;
+        if (!stop.obstacle || left <= 1e-3) break;
+        const back = Math.min(length, 0.5);
+        const bounce = traceShotStep({
+          obstacles: solids,
+          x: to.x - (direction.x * back),
+          y: to.y - (direction.y * back),
+          z: to.z - (direction.z * back),
+          dirX: direction.x,
+          dirY: direction.y,
+          dirZ: direction.z,
+          distance: back + BANK_LEG_CLEAR,
+          radius: SHOT_COLLISION_RADIUS,
+          ricochet: true,
+        });
+        if (!bounce.bounces) break;
+        const norm = Math.hypot(bounce.dirX, bounce.dirY, bounce.dirZ) || 1;
+        direction = { x: bounce.dirX / norm, y: bounce.dirY / norm, z: bounce.dirZ / norm };
+        start = to;
+        point = { x: bounce.x, y: bounce.y, z: bounce.z };
+        left -= BANK_LEG_CLEAR;
+      }
+      return legs;
+    },
     traceShot: (from, dir, speed, lifetime, ricochet) => {
       const solids = colliders();
       const segments = [];

@@ -19904,7 +19904,7 @@ function botOwnView(bot, now) {
     },
     // The flag it drives by, as a client's tank does: Burrow takes it under,
     // Agility gives it the burst, Wings flies it.
-    flag: myFlag ? { type: myType, zoned: myFlag.zoned === true } : null,
+    flag: myFlag ? { type: myType, zoned: myFlag.zoned === true, index: myFlag.index } : null,
     antidote: me.antidote ? { x: me.antidote.x, y: me.antidote.y, z: me.antidote.z } : null,
     // What Identify names, as `searchFlag` tells a person carrying it: the
     // nearest flag on the ground in range, to this bot alone.

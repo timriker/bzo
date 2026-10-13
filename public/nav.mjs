@@ -625,7 +625,9 @@ export function buildNavGraph(world) {
   // surface too narrow for a node of its own in this column -- a bridge, a
   // beam -- still has them in the next, and the ground under it is not where
   // the tank is.
-  const nodeAt = (x, y, z) => {
+  const nodeAt = (x, y, given) => {
+    // A burrowed tank, under the ground, stands on it: nothing is lower.
+    const z = Math.max(0, given);
     const cx = columnOf(x);
     const cy = rowOf(y);
     // Ring by ring: a tank against a wall stands where no column fits a
