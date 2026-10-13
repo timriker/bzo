@@ -6,6 +6,21 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
 
 ## [Unreleased]
 
+### Fixed
+- A paused tank keeps telling the server where it is, as upstream's does, so
+  a long pause is no longer taken for a lost connection and its flag
+  dropped; the HUD says Paused while it lasts.
+
+### Changed
+- `GET /api/players` is public, for sites that poll servers: everything a
+  client in the game is sent, now with each player's BZID, motto, team
+  kills, autopilot, connect time and `/lagstats` figures, and never an
+  address. Built at most twice a second, with CORS open. docs/api.md lists
+  what a poller can ask a bzo server.
+- A player's connect time is kept across a restart, as scores are.
+- `/api/list-server/list` gives a BZFlag server's world variables as name
+  to value rather than as pairs; `/list` reads either.
+
 ## [1.3.47] - 2026-10-12
 
 ### Added

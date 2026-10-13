@@ -10817,8 +10817,13 @@ function amInsideBuilding() {
 // be somebody else's business. `!isObserver()` is upstream's `!roaming` guard,
 // and it is also what keeps this from contradicting the roaming label sharing
 // the column with it.
+//
+// A paused tank says so here too. It is a state, lasting exactly as long as the
+// pause, and nothing else on screen says it: the autopilot's label stays up
+// over a tank its pilot cannot fly.
 function getFiringStatusText() {
   if (isObserver() || !isMyTankAlive()) return '';
+  if (pauseState.paused) return 'Paused';
   if (amInsideBuilding() && !amZoned()) return 'Sealed';
   return '';
 }
@@ -13322,6 +13327,45 @@ function handleInputEvents() {
   phasedReverse = intended.phasedReverse;
 }
 
+// A paused tank, or one counting down to a pause, stands still but is still
+// playing, and the server marks a playing tank unheard from for
+// `_notRespondingTime` as not responding and drops its flag. Upstream keeps
+// talking through a pause for the same reason: `isDeadReckoningWrong`
+// (LocalPlayer.cxx) answers yes once `MaxUpdateTime` has passed, paused or
+// not. So the frozen tank says where it stands on the same heartbeat a still
+// one does, with no motion, since it has none. The drive keeps the speeds it
+// froze with for the resume; the last-sent speeds read zero, so the first
+// frame back reports them at once.
+//
+// The frame it freezes it says so at once rather than a heartbeat later: the
+// server goes on extrapolating the last speeds it was sent, and a tank that
+// stopped a second before saying so is a second's drive from where the server
+// has it.
+let frozenHeartbeatStarted = false;
+
+function sendFrozenHeartbeat() {
+  if (isObserver() || !gameplayJoinConfirmed || !ws || ws.readyState !== WebSocket.OPEN) return;
+  const now = performance.now();
+  if (frozenHeartbeatStarted && now - lastSentTime <= getMaxUpdateInterval()) return;
+  frozenHeartbeatStarted = true;
+  loadMyDrive();
+  const motionFields = movePacketFields(myDrive, { stopped: true });
+  sendToServer({
+    type: 'm',
+    id: myPlayerId,
+    ...motionFields,
+    sdt: Number(((now - lastSentTime) / 1000).toFixed(3)),
+    ct: Number(((frameEpochMs - clientClockOrigin) / 1000).toFixed(3)),
+  });
+  lastSentForwardSpeed = motionFields.fs;
+  lastSentRotationSpeed = motionFields.rs;
+  lastSentHeading = motionFields.a;
+  lastSentVerticalVelocity = motionFields.vv;
+  lastSentAirVelocityX = motionFields.vx;
+  lastSentAirVelocityY = motionFields.vy;
+  lastSentTime = now;
+}
+
 function handleMotion(deltaTime) {
   if (!myTank || !gameConfig) return;
   // A driving observer (issue #68) runs this whole pass unmodified -- the
@@ -13331,7 +13375,12 @@ function handleMotion(deltaTime) {
   // `isObserver()` alone rather than this, since driving never sends any of
   // them.
   if (isObserver() && !isPhantomDriving()) return;
-  if (pauseState.isFrozen() || entryDialogFreeze) return;
+  if (entryDialogFreeze) return;
+  if (pauseState.isFrozen()) {
+    sendFrozenHeartbeat();
+    return;
+  }
+  frozenHeartbeatStarted = false;
 
   // The motion is the shared `drive` step's (public/drive.mjs), the one every
   // tank drives by -- this browser's, a server bot's, a practice Worker's. What

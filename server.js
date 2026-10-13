@@ -1289,25 +1289,25 @@ app.get('/api/replays', async (req, res) => {
   }
 });
 
-// whoever is watching from this machine while testing rather than typing
-// `/mv` and `/lagstats` and squinting at server.log. Loopback only, and not
-// gated behind `localAdmin`: a position is not an admin power, but it is
-// exactly what a wallhack wants, so the same untamperable signal
-// `isLocalAdminRequest` uses -- loopback, and no proxy hop -- applies
-// regardless of that setting.
-app.get('/api/players', (req, res) => {
-  if (!isLoopbackAddress(req.socket.remoteAddress)
-    || Object.keys(req.headers).some((name) => /^x-forwarded-/i.test(name))) {
-    res.status(404).end();
-    return;
-  }
-  res.set('Cache-Control', 'no-store');
-  res.json({
+// Everyone in the game as a client sees them, for a site that polls servers
+// (docs/api.md). Nothing here is private: every client is sent every tank's
+// moves, flag and score, and Stealth and Cloaking only change what an
+// unmodified client draws. A player's address is the one thing left out --
+// that is for operators. Built at most every `PLAYERS_API_MS`, so a poller
+// costs one build however often it asks.
+const PLAYERS_API_MS = 500;
+let playersApiCache = null;
+function playersApiBody(now) {
+  if (playersApiCache && now - playersApiCache.at < PLAYERS_API_MS) return playersApiCache.body;
+  const body = JSON.stringify({
+    now,
     players: [...players.values()].filter((player) => player.joined).map((player) => {
       const flag = getPlayerFlag(player.id);
       return {
         id: player.id,
         name: player.name,
+        bzid: player.bzid ?? null,
+        motto: player.motto || '',
         team: player.team,
         x: player.x,
         y: player.y,
@@ -1319,14 +1319,30 @@ app.get('/api/players', (req, res) => {
         alive: player.alive,
         wins: player.wins,
         losses: player.losses,
+        tks: player.tks,
         paused: player.paused,
+        autopilot: player.autopilot === true,
+        // When this connection was made, ms since 1970, as `now` is.
+        connectedAt: player.connectDate ? player.connectDate.getTime() : null,
         flag: flag ? { type: flag.type, zoned: flag.zoned === true } : null,
         // The scoreboard's `T` column: client type, then UDP (`playerLink`).
         clientType: playerClientType(player),
         link: playerLink(player),
+        // `/lagstats`, which any player may ask for.
+        lag: player.lag.hasSamples() ? player.lag.getLag(now) : null,
+        jitter: player.lag.hasSamples() ? player.lag.getJitter() : null,
+        loss: player.lag.hasSamples() ? player.lag.getLoss() : null,
       };
     }),
   });
+  playersApiCache = { at: now, body };
+  return body;
+}
+
+app.get('/api/players', (req, res) => {
+  res.set('Cache-Control', 'public, max-age=1');
+  res.set('Access-Control-Allow-Origin', '*');
+  res.type('application/json').send(playersApiBody(Date.now()));
 });
 
 // The cheapest thing a client can ask to find out whether the server is
@@ -1448,7 +1464,9 @@ function publishWorldFacts(host, port) {
     bzw: measured.bzw || record?.bzw || 0,
     json: measured.json || record?.json || 0,
     brotli: measured.brotli || record?.brotli || 0,
-    variables: record?.variables?.length ? record.variables : undefined,
+    // Name to value, in the order the server sent them. Kept as pairs, read
+    // either way (`variablePairs`): an instance from before this sent pairs.
+    variables: record?.variables?.length ? Object.fromEntries(record.variables) : undefined,
     // bzfs's own `getAppVersion()`, from `/serverquery` on a visit.
     version: record?.serverVersion || undefined,
     // What an unregistered player may do there, where a visit has found out
@@ -1610,8 +1628,16 @@ function getUnreadWorldVariables(variables) {
 // `8/14 set`: how many of a world's variables bzo reads, of all it sets. A tap
 // or a click opens the list -- read ones in the accent, ignored ones muted --
 // which a hover title could not do on a phone.
-function describeVariableCount(variables) {
-  if (!Array.isArray(variables) || !variables.length) return '';
+// A world's variables as `[name, value]` pairs, from the name-to-value object
+// the list carries or the pairs an older instance's list did.
+function variablePairs(variables) {
+  if (Array.isArray(variables)) return variables;
+  return variables && typeof variables === 'object' ? Object.entries(variables) : [];
+}
+
+function describeVariableCount(given) {
+  const variables = variablePairs(given);
+  if (!variables.length) return '';
   const unread = getUnreadWorldVariables(variables);
   const read = variables.filter(([name]) => !unread.has(name)).length;
   const rows = variables.map(([name, value]) => `<li class="${unread.has(name) ? 'var-unread' : 'var-read'}"`
@@ -2556,12 +2582,12 @@ function renderListTables({ servers, bzoServers, canWatch }) {
       hash: world.hash || '',
       owner: s.owner || '',
       ip: s.ip || '',
-      variables: world.variables,
+      variables: variablePairs(world.variables),
       // `_disableBots` read as BZDB.isTrue does.
-      disableBots: Array.isArray(world.variables)
-        && world.variables.some(([name, value]) => name === '_disableBots' && bzdbIsTrue(value)),
+      disableBots: variablePairs(world.variables)
+        .some(([name, value]) => name === '_disableBots' && bzdbIsTrue(value)),
       // Only a server whose variables bzo has read can be said to allow bots.
-      botsKnown: Array.isArray(world.variables) && world.variables.length > 0,
+      botsKnown: variablePairs(world.variables).length > 0,
       guestWatch: guestAnswer(world.guestWatch),
       guestChat: guestAnswer(world.guestChat),
       guestSpawn: guestAnswer(world.guestSpawn),
@@ -7020,16 +7046,44 @@ const BOOT_GAME_FINGERPRINT = (() => {
 })();
 let scoresSavedForRestart = false;
 
+// When each player connected, kept across a restart the same way, matched by
+// callsign and address, so `/api/players` says how long somebody has been on
+// rather than how long since the last restart. A connection is not a game: a
+// changed map keeps it. Only taken back within `CONNECT_CARRY_MS` of the save.
+const CONNECT_CARRY_MS = 5 * 60 * 1000;
+const savedConnects = new Map();
+
+function restoreConnectTime(player, now = Date.now()) {
+  const key = String(player.name || '').toLowerCase();
+  const saved = savedConnects.get(key);
+  if (!saved) return;
+  savedConnects.delete(key);
+  if (now - saved.savedAt > CONNECT_CARRY_MS) return;
+  if ((saved.address ?? null) !== (player.clientIP ?? null)) return;
+  if (Number.isFinite(saved.connectedAt)) player.connectDate = new Date(saved.connectedAt);
+}
+
 function saveScoresForRestart() {
   if (scoresSavedForRestart) return;
   scoresSavedForRestart = true;
+  const savedAt = Date.now();
+  const connects = [];
   for (const player of players.values()) {
-    if (player.joined) saveScore(player);
+    if (!player.joined) continue;
+    saveScore(player);
+    if (player.connectDate) {
+      connects.push({
+        key: String(player.name || '').toLowerCase(),
+        address: player.clientIP ?? null,
+        connectedAt: player.connectDate.getTime(),
+        savedAt,
+      });
+    }
   }
   const records = [...savedScores].map(([key, record]) => ({ key, ...record }));
   try {
-    if (records.length === 0) fs.rmSync(SCORES_PATH, { force: true });
-    else fs.writeFileSync(SCORES_PATH, JSON.stringify({ game: BOOT_GAME_FINGERPRINT, records }));
+    if (records.length === 0 && connects.length === 0) fs.rmSync(SCORES_PATH, { force: true });
+    else fs.writeFileSync(SCORES_PATH, JSON.stringify({ game: BOOT_GAME_FINGERPRINT, records, connects }));
   } catch (err) {
     logError(`[SCORES] could not save for the restart: ${err.message}`);
   }
@@ -7043,6 +7097,9 @@ function loadScoresAfterRestart() {
     return;
   }
   fs.rmSync(SCORES_PATH, { force: true });
+  for (const { key, ...connect } of Array.isArray(saved?.connects) ? saved.connects : []) {
+    if (typeof key === 'string' && Number.isFinite(connect.savedAt)) savedConnects.set(key, connect);
+  }
   if (saved?.game !== BOOT_GAME_FINGERPRINT || !Array.isArray(saved.records)) {
     log('[SCORES] not kept: the map or the server options changed');
     return;
@@ -10714,7 +10771,14 @@ function validateMovement(player, newX, newY, newZ, newAzimuth, extrapolationSec
   // A paused tank is invulnerable, so driving while paused is worth a warning,
   // but an unmodified client also sends the odd in-flight move as the pause
   // takes effect. Warning mode wants to see how often that is what this is.
-  if (player.paused && reportCheat(player, 'movedWhilePaused', 'MOVED WHILE PAUSED', [
+  // A paused tank still sends its heartbeat (`sendFrozenHeartbeat` in
+  // client.js) from where it stands, which is no move at all: only a pose
+  // that differs from the stored one, past the wire's rounding, is reported.
+  const movedFromStored = Math.abs(newX - player.x) > 0.01
+    || Math.abs(newY - player.y) > 0.01
+    || Math.abs(newZ - player.z) > 0.01
+    || Math.abs(normalizeAngle(newAzimuth - player.azimuth)) > 0.01;
+  if (player.paused && movedFromStored && reportCheat(player, 'movedWhilePaused', 'MOVED WHILE PAUSED', [
     `Recvd: (${newX.toFixed(2)}, ${newY.toFixed(2)}, ${newZ.toFixed(2)}, azimuth=${newAzimuth.toFixed(2)})`,
   ])) {
     return false;
@@ -13626,10 +13690,11 @@ function setPaused(player, paused) {
   clearPauseTimers(player);
   player.paused = paused;
   player.pauseCountdownStart = 0;
-  // A paused tank sends no position updates, so the first move message after a
-  // pause arrives however long the pause lasted after the last one -- and the
-  // drift check reads that whole gap through the stored velocities, which would
-  // carry a tank that was rolling when it paused clean across the map. The
+  // The clock restarts here so the drift check never reads the gap since the
+  // last move through the stored velocities, which would carry a tank that was
+  // rolling when it paused clean across the map. A paused tank's heartbeats
+  // then arrive from where it stands, with no motion (`sendFrozenHeartbeat` in
+  // client.js), and keep it from being marked not responding. The
   // velocities themselves are left alone, as LocalPlayer.cxx:284 leaves them
   // alone ("set dt to zero instead of clearing velocity ... for when we
   // resume"): both ends kept them, so both ends still agree.
@@ -18978,6 +19043,7 @@ function acceptConnection(ws, req) {
           player.losses = 0;
           player.wins = 0;
           const scoreRestored = previousTeam === null ? restoreScore(player) : null;
+          if (previousTeam === null) restoreConnectTime(player);
           // The tank is named here as well as on a later change, so a join
           // line says what a player is driving without the log having to be
           // read backwards for a change that may never have happened.

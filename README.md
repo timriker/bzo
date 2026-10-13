@@ -35,6 +35,9 @@ checkout. Docker is the better install and update path for most people.
 running behind a reverse proxy, listing your server, proxying BZFlag servers,
 and updating.
 
+A site that polls servers -- stats, a server browser -- finds what it can ask
+in [docs/api.md](docs/api.md).
+
 `/list`'s **Launch** links open a BZFlag server in an installed BZFlag client;
 [docs/bzflag-links.md](docs/bzflag-links.md) sets up `bzflag://` on Linux,
 Windows and macOS.

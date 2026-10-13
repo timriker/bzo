@@ -3927,7 +3927,8 @@ variant nobody turns off.
 - Because `npm run dev` is used, edits to watched files usually restart or reload
   the running server automatically. **Do not start duplicate dev servers** unless
   explicitly asked.
-- The development server is typically already running in GNU Screen session `0`.
+- The development server is typically already running in tmux session `0`,
+  window `0` (named `bzo`).
 - Gameplay logs stream to `server.log`, which is cleared on each server boot.
 - **A quoted name in a log line is a player; do not also write "Player".**
   `"Orin" grabbed Shock Wave flag 12`, not `Player "Orin" grabbed ...`. The quotes
@@ -4016,34 +4017,23 @@ reason to move off it. Name them so they are obviously yours, and disconnect the
 when the check is done. `scripts/headless-client.mjs` is the scripted client that
 does this; see **Testing** below.
 
-**To put a test player somewhere specific, use `testSpawn`.** `getTestSpawn` in
-`server.js` matches one player by name and hands it a fixed `x`, `y`, `z` and
-`azimuth` instead of a random spawn, in upstream's frame (`+Z` up, the azimuth
-in radians counter-clockwise from east):
+**To put a test player somewhere specific, use `/mv`, not `testSpawn`.** `/mv`
+is typed on the chat line and moves the tank at once, with no restart -- see
+**Server commands** for its coordinates and facings. It is OPERATOR, and a
+loopback connection is an admin through `localAdmin` (on in the dev server's
+`server.json`), so a scripted client on the dev machine can always use it.
 
-```json
-"testSpawn": { "name": "TestRogue", "x": 0, "y": 0, "z": 0, "azimuth": 1.5708 }
-```
+**Do not edit `server.json` to add a `testSpawn` for a test.** nodemon watches
+`server.json`, so writing it restarts the server: every client reloads and the
+game in progress, `server.log` with it, is gone. `testSpawn` stays in
+`server.js` for an operator who wants a fixed spawn, but it is not a test tool.
 
-It is absent from `example-server.json`, so a real server never has one.
-
-**The `z` you write is a hint, not the answer.** The coordinates are typed
-against one map, so `rebuildTestSpawns` resolves each one against the geometry
-that actually loaded, once, when the world loads -- upstream's
-`DropGeometry::dropPlayer`, whose two branches both matter here: a clear point
-falls to the highest flat top under it, and a point *inside* a building climbs to
-the lowest flat top it fits on. A spawn at the origin on a map with a box there
-lands on the roof, and the load says so:
-
-```
-Test spawn "Orin" dropped from z 0.00 to 10.00 at 0.00,0.00
-```
-
-`server.json` is never written back to -- the coordinates in it are what you
-meant -- and a spawn with nowhere at all to stand is named on load, with that
-player spawning at random instead. Watch for the roof you land on being under
-something: on `fountains.bzw` the origin drops onto the box whose shock wave is
-mounted on that very roof.
+**The `z` you give is a hint, not the answer.** `/mv` resolves it with
+`dropSpawnPosition`, upstream's `DropGeometry::dropPlayer`: a clear point is
+honoured, a point *inside* a building climbs to the lowest flat top it fits on,
+and a point given without a `z` starts from the ground. Watch for the roof you
+land on being under something: on `fountains.bzw` the origin drops onto the box
+whose shock wave is mounted on that very roof.
 
 Do not
 instead fake movement packets to walk a test player into place -- a live player's
@@ -4054,14 +4044,31 @@ one that fails.
 
 An observer is the exception, and often the easier probe: its heartbeat is
 unvalidated by design, so a scripted observer can be flown anywhere without a
-`testSpawn` at all. Where a test needs a *tank* at a known spot relative to
+`/mv` at all. Where a test needs a *tank* at a known spot relative to
 something, it is usually simpler to read the tank's spawn out of the join
 response and fly the observer to it.
 
-`server.js` watches itself, `public/` and the loaded map, and restarts or reloads
-clients on a change -- so it is already serving the working tree. It does **not**
-watch `server.json`, so a new `testSpawn` needs the server restarted by hand, and
-that interrupts whoever is playing. Undo the `testSpawn` afterwards.
+`server.js` watches itself, `server/`, `public/`, `server.json` and the loaded
+map, and restarts or reloads clients on a change -- so it is already serving the
+working tree, and any of those edits interrupts whoever is playing.
+
+### Record a replay before changing code
+
+**When asked to review or investigate behaviour, save a recording first.** A
+code change restarts the server, and a restart clears `server.log` and the
+recording buffer, so whatever showed the behaviour is gone the moment the first
+edit lands. Save it before touching anything:
+
+```
+/record save <topic>-<yyyymmdd> [seconds]
+```
+
+typed on the chat line by an admin -- a loopback probe is one -- writes the
+buffer, or its last `seconds`, to `replays/<name>.rec`. Copy the `server.log`
+lines that matter out with `grep` at the same time. A recording can then be
+watched at `?replay=<name>` or read by `scripts/test-bzfs-replay.mjs` after any
+number of restarts. See **Recording bzo's own games** in
+[docs/replay.md](docs/replay.md).
 
 ## Committing
 
@@ -4145,7 +4152,7 @@ Things to reach for, in the order they cost:
   joins it as a real player named `headless` -- see **Test against the running
   server** above, which is the rule it follows: do not point it at a private
   instance started to keep a test tidy, and let it disconnect when it is done.
-  Use `testSpawn` to put it somewhere specific.
+  Use `/mv` to put it somewhere specific.
 
   A probe has admin, so **give it the flag the test needs rather than driving
   to one**: `/flag give <probe name> <FlagAbbr>` typed into the chat line puts
@@ -4208,21 +4215,12 @@ draws from the pool for one -- so it always comes back as the flag its zone
 declared and repeated runs cannot exhaust it, whatever `_maxFlagGrabs` is set
 to.
 
-**Point `testSpawn` at the zone.** `testSpawn` in `server.json` spawns a named
-player at a fixed point, and a tank that spawns on a flag grabs it before it
-does anything else. It takes one entry or a list of them, so moving a probe
-from zone to zone does not disturb anybody else's fixed spawn -- add and remove
-the probe's entry and leave the rest alone. The zone coordinates are the
-`.bzw`'s own.
-`nodemon` watches `server.json`, so writing it restarts the server on its own
--- and **put it back when the run is over**, since it is the running dev
-server's config and the name in it belongs to somebody's real client.
-
-**Or `/mv` there, which needs no restart at all.** `/mv` moves a tank anywhere
-from the chat line, so a probe can put itself on a zone, pick the flag up, and go
-somewhere else to use it -- all inside one `--eval`, with nothing written to
-`server.json` and nobody else's spawn touched. It is the first thing to reach
-for now; `testSpawn` is for the case where the tank has to *start* somewhere.
+**`/mv` to the zone.** `/mv` moves a tank anywhere from the chat line, so a
+probe can put itself on a zone, pick the flag up, and go somewhere else to use
+it -- all inside one `--eval`, with no restart, nothing written to `server.json`
+and nobody else's spawn touched. The zone coordinates are the `.bzw`'s own.
+Do not use `testSpawn` for this: writing `server.json` restarts the server (see
+**Test against the running server**).
 
 **`/flag give` is the short way to a flag.** `/flag give <player> <FlagAbbr>`
 hands one straight to a tank -- no zone, no drive, no waiting on the flight --

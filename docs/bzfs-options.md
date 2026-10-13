@@ -87,7 +87,7 @@ give a number, `-st`, `-sw`, `-time`, `-mps` and `-mts` take the larger and
 | `-masterBanURL`, `-noMasterBanlist` | -- | not yet: [ban-plan.md](ban-plan.md), "Then" |
 | `-poll` | `poll`; `banTime` for its `bantime` | yes |
 | `-reportfile`, `-reportpipe` | -- | not yet: [commands-plan.md](commands-plan.md), reports |
-| `-printscore` | -- | intentional: scores are in `server.log` and `/api/players` |
+| `-printscore` | -- | intentional: scores are in `server.log` and [`/api/players`](api.md) |
 
 ## Network and the list
 
