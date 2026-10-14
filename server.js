@@ -8848,12 +8848,43 @@ defineCommand('/clientquery', COMMAND_TIER.OPERATOR,
     }
   });
 
-// CountdownCommand (commands.cxx:1252). Upstream's own pre-match delay -- the
-// "3...2...1...GO" chat countdown before the clock actually starts -- is not
-// reproduced here; the bare form starts the match at once. `pause`/`resume`
-// are the two upstream verbs that still mean something without it.
+// CountdownCommand (commands.cxx:1252), and bzfs's own count to the start
+// (bzfs.cxx:7063). `/countdown <seconds>` counts down in chat once a second --
+// "Start your engines!......", then "N..." -- and starts the match at zero;
+// bare, it is upstream's ten where there is a clock to start and at once where
+// there is not. Up to `COUNTDOWN_MAX_SECONDS`, as upstream clamps it. `cancel`
+// stops a count, and `pause`/`resume` hold and release a running clock.
+//
+// Two departures, both for a server without limits, which upstream leaves no
+// way to start fresh: it runs whether or not `-timemanual` was set, and it
+// clears every player's score rather than only the teams'. A timed match
+// already running is refused, as upstream refuses it.
+const COUNTDOWN_DEFAULT_SECONDS = 10;
+const COUNTDOWN_MAX_SECONDS = 120;
+let countdown = null;
+
+function cancelMatchCountdown(by) {
+  if (!countdown) return false;
+  clearInterval(countdown.timer);
+  countdown = null;
+  announceToAll(by ? `Countdown cancelled by ${by}.` : 'Countdown cancelled');
+  return true;
+}
+
+// The match begins: every score back to nothing, and the scores held for
+// players who left as well (`savedScores`), so nobody comes back into this
+// match with the last one's. Here and not in `startMatch`, whose boot
+// auto-start must keep what a restart carried over.
+function beginCountedMatch(starter) {
+  countdown = null;
+  const held = savedScores.size;
+  savedScores.clear();
+  startMatch();
+  log(`[CMD] "${starter}" started the match${held ? `, clearing ${held} held score(s)` : ''}`);
+}
+
 defineCommand('/countdown', COMMAND_TIER.OPERATOR,
-  '[pause|resume] - (re)start, pause, or resume the match clock',
+  '[<seconds>|pause|resume|cancel] - count down to a fresh match, or pause, resume or cancel',
   (player, args) => {
     const arg = args.trim().toLowerCase();
     if (arg === 'pause') {
@@ -8872,12 +8903,58 @@ defineCommand('/countdown', COMMAND_TIER.OPERATOR,
       log(`[CMD] "${player.name}" resumed the match`);
       return;
     }
-    if (arg) {
-      replyToPlayer(player, 'Usage: /countdown [pause|resume]');
+    if (arg === 'cancel') {
+      if (!cancelMatchCountdown(player.name)) replyToPlayer(player, 'There is no running countdown to cancel');
+      else log(`[CMD] "${player.name}" cancelled the countdown`);
       return;
     }
-    startMatch();
-    log(`[CMD] "${player.name}" started the match`);
+    let seconds = GAME_CONFIG.TIME_LIMIT > 0 ? COUNTDOWN_DEFAULT_SECONDS : 0;
+    if (arg) {
+      seconds = Number(arg);
+      if (!/^-?\d+$/.test(arg)) {
+        replyToPlayer(player, 'Usage: /countdown [<seconds>|pause|resume|cancel]');
+        return;
+      }
+    }
+    if (countdown) {
+      replyToPlayer(player, 'There is a countdown already in progress');
+      return;
+    }
+    if (GAME_CONFIG.TIME_LIMIT > 0 && matchClock.active && !matchClock.gameOver) {
+      replyToPlayer(player, 'A game is already in progress');
+      return;
+    }
+    if (seconds > COUNTDOWN_MAX_SECONDS) {
+      replyToPlayer(player, `Countdown set to ${COUNTDOWN_MAX_SECONDS} instead of ${seconds}`);
+      seconds = COUNTDOWN_MAX_SECONDS;
+    } else if (seconds < 0) {
+      replyToPlayer(player, `Countdown set to 0 instead of ${seconds}`);
+      seconds = 0;
+    }
+    if (seconds === 0) {
+      beginCountedMatch(player.name);
+      return;
+    }
+    // Upstream's words less "Team scores reset", which here happens at zero:
+    // a count cancelled first resets nothing.
+    announceToAll(`Countdown started by ${player.name}.`);
+    announceToAll(`Match begins in about ${formatDuration(seconds)}`);
+    log(`[CMD] "${player.name}" started a ${seconds}s countdown`);
+    const starter = player.name;
+    countdown = { left: seconds, first: true, timer: null };
+    countdown.timer = setInterval(() => {
+      if (!countdown) return;
+      if (countdown.left <= 0) {
+        clearInterval(countdown.timer);
+        announceToAll('The match has started!...Good Luck Teams!');
+        beginCountedMatch(starter);
+        return;
+      }
+      if (countdown.first) announceToAll('Start your engines!......');
+      countdown.first = false;
+      announceToAll(`${countdown.left}...`);
+      countdown.left--;
+    }, 1000);
   });
 
 // GameOverCommand (commands.cxx). Upstream's own /gameover, alongside

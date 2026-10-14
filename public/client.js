@@ -8343,13 +8343,19 @@ function handleServerMessage(message) {
       break;
 
     case 'matchStart':
-      // resetPlayerScores: everybody back to nothing, as on the server.
+      // resetPlayerScores: everybody back to nothing, as on the server -- and
+      // the counts only this client keeps (`CLIENT_LOCAL_PLAYER_STATE_FIELDS`):
+      // my self-kills, and my kills of and by each player, are the last
+      // match's too.
       for (const id of [myPlayerId, ...tanks.keys()]) {
         const state = getPlayerStateOf(id);
         if (!state) continue;
         state.wins = 0;
         state.losses = 0;
         state.tks = 0;
+        state.selfKills = 0;
+        state.localWins = 0;
+        state.localLosses = 0;
       }
       refreshScoreboards();
       break;
@@ -8823,10 +8829,21 @@ function handleServerMessage(message) {
 // this instead of copying the field list three times.
 const CLIENT_LOCAL_PLAYER_STATE_FIELDS = ['localWins', 'localLosses', 'selfKills', 'voiceSpeaking'];
 
+// A record that brings a score back to nothing -- a team change starts the
+// player over -- starts these over with it: the kills of and by that player,
+// and my own self-kills, belong to the score that went.
+const CLIENT_SCORE_COUNT_FIELDS = new Set(['localWins', 'localLosses', 'selfKills']);
+
+function hasScore(state) {
+  return Boolean(state && (state.wins || state.losses || state.tks));
+}
+
 function withClientLocalPlayerState(previousState, serverPlayer) {
   if (!previousState) return serverPlayer;
+  const reset = hasScore(previousState) && !hasScore(serverPlayer);
   const preserved = {};
   for (const field of CLIENT_LOCAL_PLAYER_STATE_FIELDS) {
+    if (reset && CLIENT_SCORE_COUNT_FIELDS.has(field)) continue;
     if (previousState[field] !== undefined) preserved[field] = previousState[field];
   }
   return { ...serverPlayer, ...preserved };
@@ -15552,14 +15569,60 @@ function onWindowResize() {
   resizeRadar();
 }
 
+// The radar's size: half again its base size (`RADAR_BASE_SHARE` of the
+// smaller screen dimension, `RADAR_BASE_MIN` to `RADAR_BASE_MAX`) as far as
+// it stays clear of the targeting box and what hangs off its right -- the
+// altimeter, and the reload bars with their shot-limit line. Each is cleared
+// one way or the other: the radar in its corner ends left of it or above it,
+// whichever lets it grow more. Never smaller than the base. The size is
+// published as `--radar-size`, which the debug HUD below it measures its
+// height against.
+const RADAR_BASE_SHARE = 0.375;
+const RADAR_BASE_MIN = 120;
+const RADAR_BASE_MAX = 390;
+const RADAR_GROWTH = 1.5;
+const RADAR_HUD_EDGE = 10;
+const RADAR_BOX_GAP = 10;
+
+function radarSizeFor(width, height) {
+  const base = Math.max(RADAR_BASE_MIN, Math.min(RADAR_BASE_MAX, Math.round(Math.min(width, height) * RADAR_BASE_SHARE)));
+  // The box as styles.css draws it: `--motion-box` is 74 units of
+  // min(width / 256, height / 192), and `--altimeter-width` 8 of them,
+  // between 14 and 48 pixels.
+  const unit = Math.min(width / 256, height / 192);
+  const box = 74 * unit;
+  const boxRight = (width / 2) + (box / 2);
+  const altimeter = Math.max(14, Math.min(48, 8 * unit));
+  // The reload bars as `updateShotStatus` (hud.js) places them: a bar's width
+  // and 16 off the box, as wide as five of the shot-limit line's characters,
+  // the bars centred on the box -- five of them at most -- and the line above.
+  const bar = Math.max(18, Math.round(width / 50));
+  const barHeight = Math.max(8, Math.round(height / 80));
+  const barSpace = Math.max(2, Math.round(barHeight / 10) + 2);
+  const font = Math.max(10, Math.round(barHeight * 1.2));
+  const bars = (5 * barHeight) + (4 * barSpace);
+  const blockers = [
+    { right: boxRight + altimeter, top: (height / 2) - (box / 2) },
+    {
+      right: boxRight + bar + 16 + Math.max(bar, 5 * font),
+      top: (height / 2) - (bars / 2) - (barSpace + font + 2),
+    },
+  ];
+  const room = Math.floor(Math.min(...blockers.map(({ right, top }) => Math.max(
+    width - RADAR_HUD_EDGE - right - RADAR_BOX_GAP,
+    top - RADAR_HUD_EDGE - RADAR_BOX_GAP,
+  ))));
+  return Math.max(base, Math.min(Math.round(base * RADAR_GROWTH), room));
+}
+
 function resizeRadar() {
   if (!radarCanvas) return;
-  const smallerDimension = Math.min(window.innerWidth, window.innerHeight);
-  const size = Math.max(120, Math.min(390, Math.round(smallerDimension * 0.375)));
+  const size = radarSizeFor(window.innerWidth, window.innerHeight);
   radarCanvas.width = size;
   radarCanvas.height = size;
   radarCanvas.style.width = size + 'px';
   radarCanvas.style.height = size + 'px';
+  document.documentElement.style.setProperty('--radar-size', `${size}px`);
 }
 
 // Every XR HUD overlay is the same object: a 2D canvas wrapped in a

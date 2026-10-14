@@ -43,8 +43,10 @@ html, body {
      geometry back off these boxes, so the drawn edge is where the input
      saturates. */
   /* The radar's own size, shared so the debug HUD can stop short of it rather
-     than guess. Matches what #radar asks for: square, and clamped at both ends. */
-  --radar-size: clamp(90px, min(52.5vw, 52.5vh), 360px);
+     than guess. `resizeRadar` in client.js sets it to the size it gives the
+     radar, which grows into the room the targeting box leaves; this is only
+     what it starts as. */
+  --radar-size: clamp(120px, min(37.5vw, 37.5vh), 390px);
   --hud-edge-gap: 10px;
 
   --motion-unit: min(calc(100vw / 256), calc(100vh / 192));

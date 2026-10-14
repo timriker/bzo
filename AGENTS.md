@@ -3641,10 +3641,13 @@ does not do because it has no `ServerCommand` for it.
 `server.json`, `-time`/`-timemanual`/`-mps`/`-mts` in a map's `options` block.
 Upstream's clock (issue #66) and score limits (issue #67).
 
-- **No pre-match delay.** Upstream counts down "3...2...1...GO" in chat before
-  the clock actually starts; `/countdown` here starts it at once. `pause` and
-  `resume` are the two upstream verbs that still mean something without that
-  delay, and are the only arguments it takes.
+- **The pre-match count is upstream's.** `/countdown [<seconds>|pause|resume|
+  cancel]`: a count in chat once a second ("Start your engines!......", then
+  "N..."), clamped to 120, then the match starts; bare, ten seconds where there
+  is a clock and at once where there is not. Unlike upstream it runs without
+  `-timemanual` and clears every player's score and the held ones
+  (`savedScores`), not only the teams', since a server without limits has no
+  other way to start fresh.
 - **The hold is server-side**, because bzo respawns without a click. `endMatch`
   kills every non-observer through the ordinary death path -- so the flag, the
   lock and the rabbit resolve exactly as any other death resolves -- and the

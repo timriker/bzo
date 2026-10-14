@@ -20,7 +20,7 @@
 
 import {
   canRunOver, FLAG_ENDURANCE, getFlagEndurance, getFlagGrabRadius, getFlagTuning, getRunOverRadius,
-  getRunOverSeparation, hasAirControl, isBadFlag,
+  getRunOverSeparation, getTankHitRadiusScale, hasAirControl, isBadFlag, usesNarrowHitBox,
 } from './flags.mjs';
 import { SHOT_COLLISION_RADIUS, traceShotStep, TANK } from './collision.mjs';
 import { buildNavGraph, NAV_CELL, planJump } from './nav.mjs';
@@ -608,6 +608,17 @@ const DODGE_CLEARANCE = 1;
 const DODGE_HORIZON_SECONDS = 3;
 const DODGE_MARGIN_SECONDS = 0.1;
 const DODGE_DEAD_ON = 0.5;
+// The dodge's search (`dodgePath`): the speeds and turns tried, as shares of
+// full stick, how finely each path is driven out, and what a unit of turn
+// costs against a unit of speed when choosing between clear ones.
+const DODGE_SPEEDS = [1, 0.5, 0, -0.5];
+const DODGE_TURNS = [0, -0.5, 0.5, -1, 1];
+const DODGE_STEP_SECONDS = 0.05;
+const DODGE_TURN_COST = 0.5;
+// The room a dodge leaves past where a shot would hit, and how many times
+// within a step a shot is tested.
+const DODGE_HIT_MARGIN = 0.8;
+const DODGE_HIT_STEPS = 5;
 // Burrowed: how far ahead a tank about to drive over him is looked for, and
 // the room past its reach he wants.
 const SQUASH_HORIZON_SECONDS = 1.5;
@@ -742,6 +753,9 @@ const LASER_STANDOFF_SLACK = 60;
 // How many scored spots the intent carries, for the debug overlay.
 const CAMP_SHOWN_SPOTS = 12;
 // The modes in which Ace is going after a tank.
+// How soon Ace means to have his sights back on a foe he is tracking: the
+// angle off over this, as a turn rate, is the stick.
+const TRACK_TURN_SECONDS = 0.25;
 // The fastest a tank backs up, as a share of its top speed: upstream's
 // `setDesiredSpeed` clamp (LocalPlayer.cxx:1096).
 const REVERSE_SPEED_SHARE = 0.5;
@@ -1760,7 +1774,9 @@ export class Ace extends Roger {
     }
     const target = ctx.view.players.find((p) => p.id === ctx.out.targetId);
     if (chased && target && !target.airborne) {
-      return this.chaseAround(ctx, target) || this.runOver(ctx, target) || chased;
+      if (this.chaseAround(ctx, target) || this.runOver(ctx, target)) return true;
+      this.trackFoe(ctx, target);
+      return chased;
     }
     if (!chased || !target?.airborne) return chased;
     // An airborne foe with no landing shot to wait for -- out of reach, or
@@ -1883,6 +1899,31 @@ export class Ace extends Roger {
     }
     ctx.out.intent.mode = 'chase';
     return true;
+  }
+
+  // Roger turns by the angle to the foe as a share of full stick, so a foe
+  // crossing in front is chased a step behind for as long as he keeps moving:
+  // 0.3 radians off is three tenths of a turn, slower than a tank at speed
+  // fifty units away sweeps across the sights. In sight and in reach, Ace
+  // steers at where a shot would meet him, hard while off it, and turns with
+  // the foe's own sweep on top, so the sights stay on him and the shot goes.
+  trackFoe(ctx, foe) {
+    const { view, me, out } = ctx;
+    if (Math.abs(foe.z - me.z) >= 2 * view.world.tankHeight) return;
+    const d = distance2D(me, foe);
+    const shotSpeed = me.shotSpeed ?? view.world.shotSpeed;
+    if (!(d > 0) || !(shotSpeed > 0) || d > shotSpeed * (me.shotLifetime ?? Infinity)) return;
+    if (this.isObscured(ctx, { x: me.x, y: me.y, z: me.z + 1 }, { x: foe.x, y: foe.y, z: foe.z + 1 })) return;
+    // The shot keeps Ace's own velocity, so the lead is the foe's against his.
+    const rvx = (foe.vx ?? 0) - (me.vx ?? 0);
+    const rvy = (foe.vy ?? 0) - (me.vy ?? 0);
+    const t = d / shotSpeed;
+    const bearing = normalizeAngle(azimuthTo(me, { x: foe.x + (rvx * t), y: foe.y + (rvy * t) }) - me.azimuth);
+    const rx = foe.x - me.x;
+    const ry = foe.y - me.y;
+    const sweep = ((rx * rvy) - (ry * rvx)) / (d * d);
+    const rate = this.turnRate(ctx);
+    out.rotation = Math.max(-1, Math.min(1, (bearing / (rate * TRACK_TURN_SECONDS)) + (sweep / rate)));
   }
 
   // A burrowed foe is under every shell Ace fires, so the kill is driving
@@ -2256,74 +2297,189 @@ export class Ace extends Roger {
     super.fireAtTank({ ...ctx, view: grounded });
   }
 
-  // Staying alive comes first, and moving out of a shot's way before jumping
-  // over it: a tank in the air cannot steer, so it is the easiest one to hit
-  // next -- a dodge jump comes down three seconds later where every foe can
-  // see it coming. A shot is a threat only where it meets the path he is on,
-  // so a shot he is already driving clear of is left alone. One that meets
-  // it is answered by the speed nearest the one he has -- keep it, stop,
-  // full ahead, back -- that clears every shot in sight and has the room;
-  // then forward or back across the soonest's line in time; a jump only if
-  // none does, and only where it is above the shot before it arrives; and
-  // otherwise Roger's dodge.
+  // Staying alive comes first, and driving out of a shot's way before
+  // jumping over it: a dodge keeps him in control, where a tank in the air
+  // cannot steer and comes down three seconds later where any foe can wait
+  // for it. A shot is a threat only where it meets the path he is on, so one
+  // he is already driving clear of is left alone. Otherwise every speed and
+  // turn he could put on (`dodgePath`) is driven out against every shot in
+  // sight, and the clear one nearest what he is doing is taken. A jump only
+  // when none is clear -- however the landing looks, since the shot is
+  // certain and the landing is not -- and only where it is above the shot
+  // before it arrives; and otherwise Roger's dodge.
   avoidBullet(ctx) {
     const { view, me, out } = ctx;
     const top = me.topSpeed ?? view.world.tankSpeed;
     const heading = { x: Math.cos(me.azimuth), y: Math.sin(me.azimuth) };
     const along = me.inAir ? 0 : ((me.vx ?? 0) * heading.x) + ((me.vy ?? 0) * heading.y);
-    const moving = { x: heading.x * along, y: heading.y * along };
-    const shot = this.soonestHit(ctx, moving);
-    if (shot && !me.inAir && top > 0) {
-      const current = along / top;
-      const speeds = [...new Set([current, 0, 1, -REVERSE_SPEED_SHARE])]
-        .sort((a, b) => Math.abs(a - current) - Math.abs(b - current));
-      for (const speed of speeds) {
-        const v = { x: heading.x * speed * top, y: heading.y * speed * top };
-        if (this.soonestHit(ctx, v)) continue;
-        const travel = Math.abs(speed) * top * Math.min(DODGE_HORIZON_SECONDS, shot.time + 1);
-        const way = speed >= 0 ? me.azimuth : me.azimuth + Math.PI;
-        if (speed !== 0 && this.openDistance(ctx, me, way) <= travel + 2) continue;
-        out.speed = speed;
-        out.rotation = 0;
-        return true;
-      }
-    }
+    const shot = this.soonestHit(ctx, { x: heading.x * along, y: heading.y * along });
     const squash = this.squashThreat(ctx);
-    const threat = squash && (!shot || squash.time < shot.time) ? squash : shot;
-    if (!threat) return false;
-    // Underground nothing but another burrowed tank's shot reaches him, and
-    // a jump would lift him into all of them: he drives out of the way or
-    // takes it.
-    const burrowed = me.flag === 'BU' && me.z < 0;
-    let lateral = (heading.x * threat.away.x) + (heading.y * threat.away.y);
-    // Dead on, neither side is nearer, so take the one ahead: forward is
-    // twice reverse.
-    if (threat.miss < DODGE_DEAD_ON && lateral < 0) lateral = -lateral;
-    const needed = threat.clearance - threat.miss;
-    const forwardRate = view.world.tankSpeed * lateral;
-    const reverseRate = -0.5 * view.world.tankSpeed * lateral;
-    const [speed, rate] = forwardRate >= reverseRate ? [1, forwardRate] : [-0.5, reverseRate];
-    if (rate > 0 && needed / rate < threat.time - DODGE_MARGIN_SECONDS) {
-      const travel = (needed / rate) * Math.abs(speed) * view.world.tankSpeed;
-      const way = speed > 0 ? me.azimuth : me.azimuth + Math.PI;
-      if (this.openDistance(ctx, me, way) > travel + 2) {
-        out.speed = speed;
-        out.rotation = 0;
+    if (!shot && !squash) return false;
+    if (shot && !me.inAir && top > 0) {
+      const path = this.dodgePath(ctx, top, along / top);
+      if (path) {
+        out.speed = path.speed;
+        out.rotation = path.turn;
         return true;
       }
     }
-    // About to be driven over with no way to drive clear -- head on, forward
-    // is into it and reverse is too slow. Underground there is no jumping
-    // (LocalPlayer.cxx:1406), so nothing is left to dodge with: he gets on
-    // with the fight, which is a shot at the tank coming.
-    if (threat === squash) return false;
-    if (burrowed) return false;
-    if (this.canJumpClear(ctx, threat)) {
+    // Underground nothing but another burrowed tank's shot reaches him, and
+    // nothing lifts him out: he drives clear of a tank coming over him, or
+    // takes it.
+    if (squash && (!shot || squash.time < shot.time)) {
+      let lateral = (heading.x * squash.away.x) + (heading.y * squash.away.y);
+      // Dead on, neither side is nearer, so take the one ahead: forward is
+      // twice reverse.
+      if (squash.miss < DODGE_DEAD_ON && lateral < 0) lateral = -lateral;
+      const needed = squash.clearance - squash.miss;
+      const forwardRate = view.world.tankSpeed * lateral;
+      const reverseRate = -0.5 * view.world.tankSpeed * lateral;
+      const [speed, rate] = forwardRate >= reverseRate ? [1, forwardRate] : [-0.5, reverseRate];
+      if (rate > 0 && needed / rate < squash.time - DODGE_MARGIN_SECONDS) {
+        const travel = (needed / rate) * Math.abs(speed) * view.world.tankSpeed;
+        const way = speed > 0 ? me.azimuth : me.azimuth + Math.PI;
+        if (this.openDistance(ctx, me, way) > travel + 2) {
+          out.speed = speed;
+          out.rotation = 0;
+          return true;
+        }
+      }
+      // Head on, forward is into it and reverse is too slow, and there is no
+      // jumping underground (LocalPlayer.cxx:1406): he gets on with the
+      // fight, which is a shot at the tank coming.
+      return false;
+    }
+    if (me.flag === 'BU' && me.z < 0) return false;
+    if (this.canJumpClear(ctx, shot)) {
+      // Straight up, turning: a tank keeps through the air the turn it left
+      // with, so the one put on now brings his sights onto the shooter as his
+      // muzzle comes down to the shooter's height -- the moment a shot from
+      // the air can hit him, and `fireAtTank` takes it then, before the
+      // landing he is waiting for; and again on the ground.
       out.jump = true;
-      out.speed = speed;
+      out.speed = 0;
+      out.rotation = this.jumpTurnToward(ctx, shot.ownerId) ?? 0;
       return true;
     }
     return super.avoidBullet(ctx);
+  }
+
+  // The turn to leave the ground with, as a share of full stick, that faces
+  // where a shot fired on the way down meets the foe `id`: when the muzzle
+  // falls to the top of his body, aimed ahead of him by the shot's flight.
+  // Null when there is no such foe or the jump never comes down that low.
+  jumpTurnToward(ctx, id) {
+    const { view, me } = ctx;
+    if (id === undefined || id === null) return null;
+    const foe = this.remotePlayers(view).find((p) => p.id === id);
+    if (!foe || !foe.alive || foe.paused) return null;
+    const g = view.world.gravity;
+    const v = view.world.jumpVelocity;
+    const rate = this.turnRate(ctx);
+    if (!(g > 0) || !(rate > 0)) return null;
+    const drop = (me.z + (me.muzzleHeight ?? TANK.muzzleHeight)) - (foe.z + view.world.tankHeight);
+    const disc = (v * v) + (2 * g * drop);
+    if (disc < 0) return null;
+    const t = (v + Math.sqrt(disc)) / g;
+    const shotSpeed = me.shotSpeed ?? view.world.shotSpeed;
+    const ahead = { x: foe.x + ((foe.vx ?? 0) * t), y: foe.y + ((foe.vy ?? 0) * t) };
+    const flight = shotSpeed > 0 ? distance2D(me, ahead) / shotSpeed : 0;
+    const aim = { x: ahead.x + ((foe.vx ?? 0) * flight), y: ahead.y + ((foe.vy ?? 0) * flight) };
+    const turn = normalizeAngle(azimuthTo(me, aim) - me.azimuth);
+    return Math.max(-1, Math.min(1, turn / (rate * t)));
+  }
+
+  // The dodge: of every speed and turn Ace could hold (`DODGE_SPEEDS` by
+  // `DODGE_TURNS`), the one nearest what he is doing whose path -- driven out
+  // every `DODGE_STEP_SECONDS` to just past the last shot that could reach
+  // him -- no shot in sight hits, and that runs into nothing. A hit is the
+  // one a shot really makes (`getSegmentTankHitFraction`): within 0.99 of
+  // the tank's radius of its middle, half its height up -- a sphere, so a
+  // level shell's reach across is less than the radius by its height off
+  // the middle -- or, holding Narrow, within the shell's radius of a box the
+  // tank's length long; with `DODGE_HIT_MARGIN` of room either way, which is
+  // all a dodge needs where the old test asked for a unit more. Null when
+  // there is none.
+  dodgePath(ctx, top, current) {
+    const { view, me } = ctx;
+    const narrow = usesNarrowHitBox(me.flag ?? null);
+    const radius = 0.99 * TANK.radius * getTankHitRadiusScale(me.flag ?? null);
+    const middle = me.z + (TANK.hitHeight / 2);
+    const shots = [];
+    let horizon = 0;
+    for (const shot of view.shots) {
+      if (shot.ownerId === me.id) continue;
+      if (shot.ownerZoned && !me.zoned) continue;
+      if (shot.flag === 'L' && me.flag === 'CL') continue;
+      if (shot.flag !== 'GM' && (shot.z < me.z - SHOT_COLLISION_RADIUS
+        || shot.z > me.z + view.world.tankHeight + SHOT_COLLISION_RADIUS)) continue;
+      const speed2 = (shot.vx * shot.vx) + (shot.vy * shot.vy);
+      if (speed2 < 1e-6) continue;
+      // When it is nearest where he stands, as a bound on how long to look.
+      const t = (((me.x - shot.x) * shot.vx) + ((me.y - shot.y) * shot.vy)) / speed2;
+      if (t + DODGE_MARGIN_SECONDS < 0) continue;
+      const dz = shot.z - middle;
+      const reach = narrow ? null : Math.sqrt(Math.max(0, (radius * radius) - (dz * dz))) + DODGE_HIT_MARGIN;
+      shots.push({ ...shot, reach });
+      horizon = Math.max(horizon, t + DODGE_MARGIN_SECONDS);
+    }
+    horizon = Math.min(DODGE_HORIZON_SECONDS, Math.max(horizon, DODGE_STEP_SECONDS * 4));
+    const rate = this.turnRate(ctx);
+    const turning = rate > 0 ? (me.angVel ?? 0) / rate : 0;
+    const z = me.z + 1;
+    let best = null;
+    for (const speed of DODGE_SPEEDS) {
+      for (const turn of DODGE_TURNS) {
+        let x = me.x;
+        let y = me.y;
+        let azimuth = me.azimuth;
+        let clear = true;
+        let margin = Infinity;
+        let from = { x, y, z };
+        for (let t = DODGE_STEP_SECONDS; t <= horizon + 1e-9 && clear; t += DODGE_STEP_SECONDS) {
+          // A shot crosses more than a tank's width in one step, so each is
+          // tested at `DODGE_HIT_SECONDS` through it.
+          for (let k = 1; k <= DODGE_HIT_STEPS && clear; k++) {
+            const dt = (DODGE_STEP_SECONDS * k) / DODGE_HIT_STEPS;
+            const a = azimuth + (turn * rate * dt);
+            const px = x + (Math.cos(a) * speed * top * dt);
+            const py = y + (Math.sin(a) * speed * top * dt);
+            const at = t - DODGE_STEP_SECONDS + dt;
+            const c = Math.cos(a);
+            const sn = Math.sin(a);
+            for (const shot of shots) {
+              const rx = shot.x + (shot.vx * at) - px;
+              const ry = shot.y + (shot.vy * at) - py;
+              if (shot.reach !== null) {
+                const miss = Math.hypot(rx, ry) - shot.reach;
+                margin = Math.min(margin, miss);
+                if (miss < 0) clear = false;
+              } else {
+                const lengthwise = Math.abs((rx * c) + (ry * sn)) - (TANK.halfLength + DODGE_HIT_MARGIN);
+                const sideways = Math.abs((ry * c) - (rx * sn)) - (SHOT_COLLISION_RADIUS + DODGE_HIT_MARGIN);
+                margin = Math.min(margin, Math.max(lengthwise, sideways));
+                if (lengthwise < 0 && sideways < 0) clear = false;
+              }
+            }
+          }
+          azimuth += turn * rate * DODGE_STEP_SECONDS;
+          x += Math.cos(azimuth) * speed * top * DODGE_STEP_SECONDS;
+          y += Math.sin(azimuth) * speed * top * DODGE_STEP_SECONDS;
+          // Walls, every half second of the path and at its end.
+          if (clear && speed !== 0 && (t % 0.5 < DODGE_STEP_SECONDS || t + DODGE_STEP_SECONDS > horizon)) {
+            const to = { x, y, z };
+            if (this.isObscured(ctx, from, to)) clear = false;
+            from = to;
+          }
+        }
+        if (!clear) continue;
+        const cost = Math.abs(speed - current) + (DODGE_TURN_COST * Math.abs(turn - turning));
+        if (!best || cost < best.cost || (cost === best.cost && margin > best.margin)) {
+          best = { speed, turn, cost, margin };
+        }
+      }
+    }
+    return best;
   }
 
   // Burrowed, the one thing that kills him from above ground is being driven
@@ -2397,7 +2553,7 @@ export class Ace extends Roger {
       const length = Math.sqrt(rv2);
       // Dead on, either side is away; take the left of the shot.
       const away = miss > 1e-6 ? { x: mx / miss, y: my / miss } : { x: -rvy / length, y: rvx / length };
-      best = { time, miss, away, clearance, height: pos.z - me.z };
+      best = { time, miss, away, clearance, height: pos.z - me.z, ownerId: shot.ownerId };
     }
     return best;
   }

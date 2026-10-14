@@ -6,6 +6,33 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
 
 ## [Unreleased]
 
+### Fixed
+- Ace dodges by driving whenever any drive clears: every speed and turn is
+  tried against every shot in sight, judged by the hit a shot really makes,
+  and the clear one nearest what he is doing is taken. Against a live
+  player, most of the bots' deaths were landing shots on dodge jumps that a
+  turn would have avoided; on random shots he now jumps half as often.
+- A jump Ace cannot avoid goes straight up with a turn on it that brings his
+  sights onto the shooter as his muzzle comes down to the shooter's height,
+  and he fires then, before the landing the shooter is waiting for.
+- Ace keeps his sights on a foe circling him: he steered by the angle off
+  as a share of a turn, which left him a third of a radian behind a tank
+  going round at speed, trailing it without a shot. He now turns onto where
+  his shot would meet it, with its own sweep on top.
+
+### Changed
+- The radar is half again as large wherever that leaves the targeting box,
+  the altimeter and the reload bars clear, and the debug HUD below it is
+  shortened to match.
+- `/countdown` also clears the scores held for players who left, so nobody
+  rejoins into the new match with the last one's score, and each browser's
+  own self-kill count and kills of and by each player.
+- A browser's one-on-one count with a player, and its own self-kill count,
+  start over whenever that player's score does, as on a team change.
+- `/countdown <seconds>` counts down in chat before the match starts, as
+  upstream's does, ten seconds by default where there is a clock, and
+  `/countdown cancel` stops it.
+
 ## [1.3.49] - 2026-10-13
 
 ### Added

@@ -376,6 +376,98 @@ for (const flag of ['US', 'MG', 'ID']) {
   assert.equal(reversed.rotation, -plain.rotation);
 }
 
+// A foe circling at speed is tracked, not trailed. Driving after one going
+// round a sixty-unit circle at full speed, Roger's stick -- the angle as a
+// share of a turn -- leaves Ace over a third of a radian behind and shooting
+// now and then; the sights stay on where the shot meets him, and it goes.
+{
+  const ace = new Ace();
+  const rate = Math.PI / 4;
+  const radius = 60;
+  let x = 0;
+  let y = -radius - 45;
+  let azimuth = 0.6;
+  let lastShot = -Infinity;
+  let shots = 0;
+  const offs = [];
+  for (let frame = 0; frame < 300; frame++) {
+    const t = frame / 30;
+    const a = (-Math.PI / 2) + ((25 / radius) * t);
+    const foe = enemy(radius * Math.cos(a), radius * Math.sin(a), { vx: -25 * Math.sin(a), vy: 25 * Math.cos(a) });
+    const out = ace.think(makeView({
+      now: 100 + t,
+      self: { x, y, azimuth, turnRate: rate, shotSpeed: 100, shotLifetime: 3.5, canFire: t - lastShot > 0.7 },
+      players: [foe],
+      world: { maxShots: 5 },
+    }));
+    if (out.fire) lastShot = t;
+    const speed = Math.max(-0.5, Math.min(1, out.speed)) * 25;
+    azimuth += Math.max(-1, Math.min(1, out.rotation)) * rate / 30;
+    x += Math.cos(azimuth) * speed / 30;
+    y += Math.sin(azimuth) * speed / 30;
+    if (frame < 60) continue;
+    const lead = Math.hypot(foe.x - x, foe.y - y) / 100;
+    const aim = Math.atan2(foe.y + (foe.vy * lead) - y, foe.x + (foe.vx * lead) - x);
+    offs.push(Math.abs(Math.atan2(Math.sin(aim - azimuth), Math.cos(aim - azimuth))));
+    if (out.fire) shots++;
+  }
+  offs.sort((p, q) => p - q);
+  assert.ok(offs[offs.length >> 1] < 0.15, `the sights on him, ${offs[offs.length >> 1].toFixed(2)} off`);
+  assert.ok(shots > 15, `and shooting (${shots})`);
+}
+
+// A dodge before a jump, always: a shot coming straight down his heading,
+// which no speed along it escapes, is turned out of; a jump is only for a
+// shot nothing on the ground clears in time -- even with its shooter loaded
+// and watching where he comes down, since the shot is certain.
+{
+  const view = (y) => makeView({
+    shots: [{ ownerId: 'foe', ownerZoned: false, flag: null, x: 0, y, z: 1.5, vx: 0, vy: -100, vz: 0 }],
+    players: [enemy(0, y + 50)],
+    fired: [{ id: 's1', ownerId: 'foe' }],
+    world: { maxShots: 3 },
+  });
+  const far = new Ace().think(view(100));
+  assert.equal(far.intent.mode, 'dodge');
+  assert.equal(far.jump, false, 'a shot a second away is driven out of');
+  assert.notEqual(far.rotation, 0, 'by turning off its line');
+  const near = new Ace().think(view(12));
+  assert.equal(near.jump, true, 'one with no time to drive clear is jumped');
+}
+
+// A jump he cannot avoid is turned on the way up, so that coming down his
+// sights are on the shooter as his muzzle falls to the shooter's height --
+// and he fires then, from the air, before the landing the shooter waits for.
+{
+  const foe = enemy(60, 0);
+  const self = { muzzleHeight: 1.57, muzzleForward: 3, shotSpeed: 100, shotLifetime: 3.5, turnRate: Math.PI / 4 };
+  const shot = { ownerId: 'foe', ownerZoned: false, flag: null, x: 12, y: 0, z: 1.5, vx: -100, vy: 0, vz: 0 };
+  const ace = new Ace();
+  const takeoff = ace.think(makeView({ self, players: [foe], shots: [shot], world: { maxShots: 5 } }));
+  assert.equal(takeoff.jump, true);
+  assert.ok(takeoff.rotation < 0, 'turning right, toward the shooter');
+  let azimuth = Math.PI / 2;
+  let z = 0;
+  let vz = 19;
+  let firedAt = null;
+  for (let frame = 1; frame < 300 && firedAt === null; frame++) {
+    const dt = 1 / 60;
+    azimuth += takeoff.rotation * (Math.PI / 4) * dt;
+    z += vz * dt;
+    vz -= 9.8 * dt;
+    if (z <= 0) break;
+    const out = ace.think(makeView({
+      now: 100 + (frame * dt),
+      self: { ...self, azimuth, z, inAir: true, velocity: { x: 0, y: 0, z: vz } },
+      players: [foe],
+      world: { maxShots: 5 },
+    }));
+    if (out.fire) firedAt = { z, off: Math.abs(Math.atan2(Math.sin(azimuth), Math.cos(azimuth))) };
+  }
+  assert.ok(firedAt, 'a shot from the air before the landing');
+  assert.ok(firedAt.off < 0.05, `on him (${firedAt?.off})`);
+}
+
 // A bad flag cannot be dropped -- only shaken off by its countdown, a kill or
 // an antidote -- so Ace never asks to, even beside a flag he would rather have.
 {
@@ -1017,7 +1109,7 @@ for (const flag of ['US', 'MG', 'ID']) {
   const side = new Ace().think(makeView({ shots: [fromEast(40)] }));
   assert.equal(side.intent.mode, 'dodge');
   assert.equal(side.jump, false, 'a shot from the side is driven out of');
-  assert.equal(side.speed, 1, 'forward, which is across its line');
+  assert.ok(side.speed > 0, 'forward, which is across its line');
 
   const close = new Ace().think(makeView({ shots: [fromEast(12)] }));
   assert.equal(close.jump, true, 'too close to drive clear of: jump');
