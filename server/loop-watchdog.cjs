@@ -11,6 +11,10 @@
 // running however stuck the main one is, writes `[LOOP]` to the log once the
 // counter has stood still for `stallMs`. The main thread logs how long it was
 // gone when it comes back, if it does.
+//
+// Armed by the first tick, not by starting: the rest of boot runs before the
+// event loop takes its first turn, and on a slow machine that is seconds of
+// work which is not a stall -- the server is not up yet to stall.
 
 const { Worker } = require('node:worker_threads');
 
@@ -21,14 +25,17 @@ const beat = new Int32Array(workerData.buffer);
 let seen = Atomics.load(beat, 0);
 let since = Date.now();
 let reported = false;
+let armed = false;
 setInterval(() => {
   const now = Atomics.load(beat, 0);
   if (now !== seen) {
     seen = now;
     since = Date.now();
     reported = false;
+    armed = true;
     return;
   }
+  if (!armed) return;
   const stalled = Date.now() - since;
   if (reported || stalled < workerData.stallMs) return;
   reported = true;
@@ -43,11 +50,12 @@ function startLoopWatchdog({ logPath, log = () => {}, stallMs = 2000, beatMs = 2
   const worker = new Worker(WORKER, { eval: true, workerData: { buffer: beat.buffer, logPath, stallMs } });
   worker.unref();
   worker.on('error', (error) => log(`[LOOP] watchdog stopped: ${error.message}`));
-  let last = Date.now();
+  // Null until the first tick, which is the end of boot rather than a return.
+  let last = null;
   setInterval(() => {
     Atomics.add(beat, 0, 1);
     const now = Date.now();
-    const gone = now - last - beatMs;
+    const gone = last === null ? 0 : now - last - beatMs;
     last = now;
     if (gone >= stallMs) log(`[LOOP] main thread back after ${gone}ms`);
   }, beatMs).unref();

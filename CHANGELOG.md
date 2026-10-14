@@ -6,6 +6,10 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
 
 ## [Unreleased]
 
+### Fixed
+- A server on a slow machine no longer logs its own boot as a `[LOOP]`
+  stall: the watchdog counts from the event loop's first turn.
+
 ## [1.3.51] - 2026-10-14
 
 ### Added
