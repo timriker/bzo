@@ -6,6 +6,8 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
 
 ## [Unreleased]
 
+## [1.3.50] - 2026-10-14
+
 ### Fixed
 - Ace dodges by driving whenever any drive clears: every speed and turn is
   tried against every shot in sight, judged by the hit a shot really makes,
