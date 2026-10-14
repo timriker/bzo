@@ -6,6 +6,8 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
 
 ## [Unreleased]
 
+## [1.3.51] - 2026-10-14
+
 ### Added
 - A link to a bzo server shows its icon, name and description in Teams,
   Slack, Discord and the like: the page carries Open Graph tags, written for
