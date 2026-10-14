@@ -1511,6 +1511,19 @@ body.scoreboard-collapsed #mainhud {
   text-align: center;
 }
 
+/* What the game is, and where to read more: for a newcomer, and the first
+   words a search engine or an AI finds on the page. */
+#entryAbout {
+  margin: -12px 0 14px 0;
+  font-size: 0.9em;
+  text-align: center;
+  color: #888;
+}
+
+#entryAbout a {
+  color: #4CAF50;
+}
+
 /* The dialog's two text fields, name and motto. One rule rather than two
    copies: they are the same control asked twice, and a second copy is how
    they drift apart. */

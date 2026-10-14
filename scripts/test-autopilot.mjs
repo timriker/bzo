@@ -468,6 +468,30 @@ for (const flag of ['US', 'MG', 'ID']) {
   assert.ok(firedAt.off < 0.05, `on him (${firedAt?.off})`);
 }
 
+// A Shield takes one hit for its holder, so a shielded foe coming down gets
+// two landing shots where an unshielded one gets one.
+{
+  const shots = (flag) => {
+    const ace = new Ace();
+    let fired = 0;
+    for (let frame = 0; frame < 200; frame++) {
+      const t = frame / 60;
+      const z = 30 - (4.9 * t * t);
+      if (z <= 0) break;
+      const out = ace.think(makeView({
+        now: 100 + t,
+        self: { muzzleHeight: 1.57, muzzleForward: 3, shotSpeed: 100, shotLifetime: 3.5 },
+        players: [enemy(0, 80, { z, vz: -9.8 * t, airborne: true, gravity: 9.8, flag, flagIndex: flag ? 3 : null })],
+        world: { maxShots: 5 },
+      }));
+      if (out.fire) fired++;
+    }
+    return fired;
+  };
+  assert.equal(shots(null), 1, 'one shot at a landing');
+  assert.equal(shots('SH'), 2, 'two at a shielded one');
+}
+
 // A bad flag cannot be dropped -- only shaken off by its countdown, a kill or
 // an antidote -- so Ace never asks to, even beside a flag he would rather have.
 {

@@ -1,12 +1,23 @@
 # Battlezone Online
 
-Battlezone Online is a real-time multiplayer tank game built with Node.js,
-WebSockets, and Three.js.
+A free 3D multiplayer tank game in the browser -- on a desktop, a phone or a
+VR headset -- that plays with [BZFlag](https://www.bzflag.org/) clients and
+servers. Nothing to install.
+
+**Play now: <https://bz.rikers.org>** ·
+[Servers](https://bz.rikers.org/list) ·
+[Help: controls and flags](https://bz.rikers.org/help)
+
+![A match on hix, from the north base: the radar, the targeting box and a red
+tank's wreck](docs/screenshot.jpg)
 
 ## Try it
 
 <https://bz.rikers.org/list> lists the public bzo servers, and the BZFlag
 servers any of them proxies. Click a row to enter that game.
+
+The server is Node.js; the client is Three.js, over WebSockets, WebTransport
+and WebRTC.
 
 ## Release contents
 

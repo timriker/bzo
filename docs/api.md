@@ -89,6 +89,21 @@ What bzfs answers on its port, bzo answers the same way:
   ([bzflag-clients.md](bzflag-clients.md)). bzfs's own sources are the
   reference for the formats.
 
+## Discovery
+
+What a search engine, an AI or a link preview reads, served by every bzo
+instance for itself (`server/discovery.cjs`):
+
+- `/`, `/list` and `/help` carry a description, an Open Graph card and
+  schema.org JSON-LD: the game on `/` and `/help`, and on `/list` every public
+  bzo server as an entry with its URL, title and player count.
+- `/help` is the controls ([controls.md](controls.md)) and every flag, as a
+  page.
+- `/robots.txt` and `/sitemap.xml` offer those three pages and keep crawlers
+  off the API, maps, replays, images and sounds.
+- `/llms.txt` ([llmstxt.org](https://llmstxt.org/)) says what bzo is and where
+  to read more; `/llms-full.txt` inlines the controls and the flags.
+
 ## Being polite
 
 The players reply is the cheapest of these on a bzo server. Once every few

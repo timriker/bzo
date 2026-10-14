@@ -255,7 +255,7 @@ function parseWhitelistEntry(raw) {
     const mask = prefix === 0 ? 0 : (0xffffffff << (32 - prefix)) >>> 0;
     return { family: 4, network: value & mask, mask };
   }
-  const bare = addr.replace(/^::ffff:/i, '').replace(/^\[|\]$/g, '');
+  const bare = addr.replace(/^::ffff:/i, '').replace(/^\[|\]$/g, '').replace(/%.*$/, '');
   const value = ipv6ToBigInt(bare);
   if (value === null) return null;
   const prefix = prefixRaw === undefined ? 128 : Number(prefixRaw);
@@ -281,7 +281,9 @@ function parseAdminWhitelist(list) {
 
 function addressMatchesWhitelist(address, entries) {
   if (typeof address !== 'string' || address === '') return false;
-  const bare = address.replace(/^::ffff:/i, '').replace(/^\[|\]$/g, '');
+  // A link-local peer arrives with its zone -- `fe80::1%ens18`, the
+  // interface it came in on -- which names no address and is left off.
+  const bare = address.replace(/^::ffff:/i, '').replace(/^\[|\]$/g, '').replace(/%.*$/, '');
   const ipv4Match = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/.exec(bare);
   const asIpv4 = ipv4Match
     ? (ipv4Match.slice(1).map(Number).reduce((acc, octet) => (acc << 8) | octet, 0) >>> 0)

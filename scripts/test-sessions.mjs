@@ -319,6 +319,11 @@ assert.equal(isAdminSession(createSessionRecord({ bzid: '1', callsign: 'x' }, 10
   assert.equal(addressMatchesWhitelist('2607:fa18:a000::1', v6), false, 'outside the /48');
   assert.equal(addressMatchesWhitelist('fd00::1', v6), true, 'inside fc00::/7');
   assert.equal(addressMatchesWhitelist('fe00::1', v6), false, 'outside fc00::/7');
+
+  // A link-local peer carries its zone, the interface it arrived on.
+  const { entries: linkLocal } = parseAdminWhitelist(['fe80::/10']);
+  assert.equal(addressMatchesWhitelist('fe80::9a90:96ff:fedb:85ad%ens18', linkLocal), true, 'the zone is not the address');
+  assert.equal(addressMatchesWhitelist('fe80::9a90:96ff:fedb:85ad%ens18', v6), false, 'and not on a list without it');
 }
 
 console.log('session tests passed');

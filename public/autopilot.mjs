@@ -951,8 +951,9 @@ export class Ace extends Roger {
     this.extraReport = (stats) => `, routes ${stats.plans} (${stats.unreachable} none`
       + `${stats.safer ? `, ${stats.safer} round a covered jump` : ''}),`
       + ` unsticks ${stats.unsticks}, held shots ${stats.held}, kept shots ${stats.kept}`;
-    // The landing each airborne foe has been shot at for, as a clock time, so
-    // one jump costs one shot.
+    // The landing each airborne foe has been shot at for, as a clock time, and
+    // how many shots it has had, so a jump costs the shots it takes to kill
+    // (`shotsToKill`) and no more.
     this.landingShots = new Map();
     // The foe Ace has stopped a capture to fight, until it is out of reach.
     this.fightId = null;
@@ -2006,8 +2007,7 @@ export class Ace extends Roger {
       if (p.zoned && !me.zoned) continue;
       for (const plan of this.planShots(ctx, p)) {
         if (level && !plan.level) continue;
-        const shotAt = this.landingShots.get(p.id);
-        if (shotAt !== undefined && Math.abs(shotAt - plan.landsAt) < 0.5) break;
+        if (this.landingShotsSpent(p, plan.landsAt) >= this.shotsToKill(p)) break;
         // Judged from when he will be facing it, since turning takes time too.
         const turn = Math.abs(normalizeAngle(azimuthTo(me, plan.landing) - me.azimuth))
           / this.turnRate(ctx);
@@ -2208,8 +2208,21 @@ export class Ace extends Roger {
     return false;
   }
 
-  // Roger's trigger for every foe on the ground; one timed shot for a foe in
-  // the air, and nothing else at it.
+  // A Shield takes a hit for its holder -- the flag goes and the tank lives
+  // (`gotBlowedUp`, playing.cxx:3918) -- so a foe holding one is worth two:
+  // the second follows the first into the same landing.
+  shotsToKill(p) {
+    return p.flag === 'SH' ? 2 : 1;
+  }
+
+  // The shots already fired at the landing at `landsAt`.
+  landingShotsSpent(p, landsAt) {
+    const entry = this.landingShots.get(p.id);
+    return entry && Math.abs(entry.landsAt - landsAt) < 0.5 ? entry.count : 0;
+  }
+
+  // Roger's trigger for every foe on the ground; for a foe in the air, timed
+  // shots at its landing -- as many as `shotsToKill` -- and nothing else.
   chooseShot(ctx) {
     const { view, me, out } = ctx;
     const players = this.remotePlayers(view);
@@ -2217,8 +2230,7 @@ export class Ace extends Roger {
       if (!p.airborne || !p.alive || p.paused || !view.isFoe(p)) continue;
       if (!me.canFire) continue;
       for (const plan of this.planShots(ctx, p)) {
-        const shotAt = this.landingShots.get(p.id);
-        if (shotAt !== undefined && Math.abs(shotAt - plan.landsAt) < 0.5) break;
+        if (this.landingShotsSpent(p, plan.landsAt) >= this.shotsToKill(p)) break;
         // Late is a miss; early waits for a later frame. A dodge has already
         // picked the speed, and the shot has to make do with it.
         const range = this.speedRange(ctx);
@@ -2233,7 +2245,9 @@ export class Ace extends Roger {
         out.shotTargetId = p.id;
         this.landingShotChosen = true;
         if (!me.inAir) out.speed = shot.speed / range.top;
-        this.landingShots.set(p.id, plan.landsAt);
+        this.landingShots.set(p.id, {
+          landsAt: plan.landsAt, count: this.landingShotsSpent(p, plan.landsAt) + 1,
+        });
         this.lastShot = view.now;
         return;
       }
@@ -2288,7 +2302,8 @@ export class Ace extends Roger {
     const grounded = {
       ...view,
       players: view.players.filter((p) => !p.airborne
-        && !(view.now <= (this.landingShots.get(p.id) ?? -Infinity) + 0.5)
+        && !(view.now <= (this.landingShots.get(p.id)?.landsAt ?? -Infinity) + 0.5
+          && this.landingShotsSpent(p, this.landingShots.get(p.id).landsAt) >= this.shotsToKill(p))
         && inRange(p)
         && (levelShot === false || (muzzle >= p.z - LEVEL_SHOT_SLACK
           && muzzle <= p.z + view.world.tankHeight + LEVEL_SHOT_SLACK))

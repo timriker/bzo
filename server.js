@@ -91,6 +91,7 @@ const {
   FLAG_GRAB_INTERVAL_MS,
   SHOCK_OUT_RADIUS,
   FLAG_RADIUS,
+  FLAG_QUALITY,
   FLAG_STATUS,
   FLAG_TYPES,
   findNearestGroundFlag,
@@ -179,6 +180,7 @@ const {
   sanitizeHost,
   shortHostName,
 } = require('./server/server-name.cjs');
+const discovery = require('./server/discovery.cjs');
 const {
   SHOT_COLLISION_RADIUS,
   SHOT_BOUNCE_CLEARANCE,
@@ -710,6 +712,11 @@ const INDEX_APPLE_TITLE = '<meta name="apple-mobile-web-app-title" content="Batt
 // The client needs the build id before it opens a socket, because the service
 // worker's cache is keyed to it and registration happens at load.
 const INDEX_BUILD = '<meta name="bzo-build" content="dev">';
+// What a search engine, an AI or a link preview reads (`server/discovery.cjs`):
+// the description, the Open Graph card and the structured data, with URLs
+// absolute, so they are written for the host and scheme the page was asked
+// for. The template's own description line is where they go.
+const INDEX_DISCOVERY = '<meta name="description" content="Web based BZFlag like 3D multiplayer tank game, Battlezone Online">';
 let indexTemplate = null;
 let indexTemplateMtime = 0;
 
@@ -717,7 +724,7 @@ function readIndexTemplate() {
   const { mtimeMs } = fs.statSync(INDEX_PATH);
   if (indexTemplate === null || mtimeMs !== indexTemplateMtime) {
     const html = fs.readFileSync(INDEX_PATH, 'utf8');
-    for (const marker of [INDEX_TITLE, INDEX_APPLE_TITLE, INDEX_BUILD]) {
+    for (const marker of [INDEX_TITLE, INDEX_APPLE_TITLE, INDEX_BUILD, INDEX_DISCOVERY]) {
       if (!html.includes(marker)) {
         throw new Error(`public/index.html is missing the marker: ${marker}`);
       }
@@ -728,14 +735,32 @@ function readIndexTemplate() {
   return indexTemplate;
 }
 
-function renderIndex(host) {
+function renderIndex(host, scheme = 'https') {
+  const base = `${scheme}://${host}`;
+  const title = documentTitle(host);
+  const description = discovery.serverDescription(serverConfig.title);
+  const head = discovery.pageHead({
+    base, path: '/', title, description,
+    jsonLd: [discovery.gameJsonLd({ base, name: title, description, version: SERVER_VERSION })],
+  });
   return readIndexTemplate()
-    .replace(INDEX_TITLE, `<title>${escapeHtml(documentTitle(host))}</title>`)
+    .replace(INDEX_TITLE, `<title>${escapeHtml(title)}</title>`)
+    .replace(INDEX_DISCOVERY, head.replace(/\n/g, '\n  '))
     .replace(
       INDEX_APPLE_TITLE,
       `<meta name="apple-mobile-web-app-title" content="${escapeHtml(shortHostName(host))}">`
     )
     .replace(INDEX_BUILD, `<meta name="bzo-build" content="${CLIENT_BUILD}">`);
+}
+
+// The scheme and host a page was asked for, for the absolute URLs a preview,
+// a sitemap or llms.txt has to carry: TLS here, or a proxy's word that the
+// request reached it over TLS. Only those links depend on the scheme.
+function requestBase(req) {
+  const host = requestHost(req);
+  if (!host) return null;
+  const forwarded = String(req.get('x-forwarded-proto') || '').split(',')[0].trim().toLowerCase();
+  return `${req.secure || forwarded === 'https' ? 'https' : 'http'}://${host}`;
 }
 
 // The browser sets Host from the address the player typed, so it is the name
@@ -754,7 +779,7 @@ app.get(['/', '/index.html'], (req, res) => {
   // res.send generates an ETag for this body, so an unchanged page still costs
   // one conditional request and a bodiless 304.
   res.set('Cache-Control', REVALIDATE);
-  res.type('html').send(renderIndex(host));
+  res.type('html').send(renderIndex(host, requestBase(req).split('://')[0]));
 });
 
 
@@ -2786,6 +2811,7 @@ function renderListTables({ servers, bzoServers, canWatch }) {
 
 function renderListPage({
   servers, bzoServers, cacheAgeSeconds, imported, importError, session, admin, canWatch, replays = [],
+  discoveryHead = '',
 }) {
   const tables = renderListTables({ servers, bzoServers, canWatch });
 
@@ -2822,6 +2848,7 @@ function renderListPage({
 <head>
 <meta charset="utf-8">
 <title>bzo servers</title>
+${discoveryHead}
 <link rel="icon" type="image/svg+xml" href="/favicon.svg">
 <style>
   /* bzo's own palette (public/styles.css) -- this page links straight into the
@@ -3095,6 +3122,27 @@ source at <a href="https://github.com/timriker/bzo">github.com/timriker/bzo</a>.
 </html>`;
 }
 
+// The list as a search engine reads it: the card, and every public bzo server
+// as an entry with its own URL, so each is found from here.
+function listDiscoveryHead(req, bzoServers) {
+  const base = requestBase(req);
+  if (!base) return '';
+  const description = 'Every public Battlezone Online (bzo) server, and the BZFlag servers:'
+    + ' who is playing, on what map, and a link straight into each game.';
+  return discovery.pageHead({
+    base,
+    path: '/list',
+    title: 'bzo servers -- Battlezone Online',
+    description,
+    jsonLd: [discovery.serverListJsonLd({
+      base,
+      servers: bzoServers.filter((server) => server.url).map((server) => ({
+        url: server.url, title: server.title, description: server.description, players: server.players,
+      })),
+    })],
+  });
+}
+
 app.get('/list', async (req, res) => {
   res.set('Cache-Control', 'no-store');
   try {
@@ -3117,6 +3165,7 @@ app.get('/list', async (req, res) => {
       // `bzo-view-<tag>`, which says it is nobody in particular.
       canWatch: admin,
       replays: await listReplays(),
+      discoveryHead: listDiscoveryHead(req, bzoServers),
     }));
   } catch (error) {
     logError('/list failed to reach the list server:', error);
@@ -3149,6 +3198,65 @@ app.post('/list/import', (req, res) => {
     logError(`Remote map import from ${host}:${port} failed (via /list):`, error);
     res.redirect(302, `/list?${new URLSearchParams({ error: error.message })}`);
   });
+});
+
+// The pages a search engine or an AI reads (`server/discovery.cjs`, and
+// docs/api.md, "Discovery"): /help from the controls doc and the flag table,
+// robots.txt and a sitemap of the pages worth reading, and llms.txt. The
+// controls doc is read when it changes, not on every request.
+const CONTROLS_DOC_PATH = path.join(__dirname, 'docs', 'controls.md');
+let controlsDoc = { mtimeMs: -1, text: '' };
+function controlsMarkdown() {
+  try {
+    const { mtimeMs } = fs.statSync(CONTROLS_DOC_PATH);
+    if (mtimeMs !== controlsDoc.mtimeMs) {
+      controlsDoc = { mtimeMs, text: fs.readFileSync(CONTROLS_DOC_PATH, 'utf8') };
+    }
+  } catch {
+    controlsDoc = { mtimeMs: -1, text: '' };
+  }
+  return controlsDoc.text;
+}
+
+function discoveryContext(req) {
+  const base = requestBase(req);
+  if (!base) return null;
+  const host = requestHost(req);
+  return {
+    base,
+    name: documentTitle(host),
+    title: serverConfig.title || '',
+    description: discovery.serverDescription(serverConfig.title),
+    version: SERVER_VERSION,
+    listServerUrl: IS_DESIGNATED_LIST_SERVER || !LIST_SERVER_URL ? base : LIST_SERVER_URL,
+    controlsMarkdown: controlsMarkdown(),
+    flagTypes: FLAG_TYPES,
+    badQuality: FLAG_QUALITY.BAD,
+  };
+}
+
+function sendDiscovery(req, res, type, build) {
+  const context = discoveryContext(req);
+  if (!context) {
+    res.status(400).type('text/plain').send('Malformed Host header');
+    return;
+  }
+  res.set('Cache-Control', REVALIDATE);
+  res.type(type).send(build(context));
+}
+
+app.get('/help', (req, res) => sendDiscovery(req, res, 'html', discovery.helpPage));
+app.get('/robots.txt', (req, res) => sendDiscovery(req, res, 'text/plain', ({ base }) => discovery.robotsTxt(base)));
+app.get('/sitemap.xml', (req, res) => sendDiscovery(req, res, 'application/xml',
+  ({ base }) => discovery.sitemapXml(base, new Date(SERVER_START_TIME).toISOString().slice(0, 10))));
+app.get('/llms.txt', (req, res) => sendDiscovery(req, res, 'text/markdown; charset=utf-8', discovery.llmsTxt));
+app.get('/llms-full.txt', (req, res) => sendDiscovery(req, res, 'text/markdown; charset=utf-8', discovery.llmsFullTxt));
+
+// Safari, iMessage and link-preview crawlers ask the site root for these
+// without reading the page, which links the 180 one under icons/.
+app.get(['/apple-touch-icon.png', '/apple-touch-icon-precomposed.png'], (req, res) => {
+  res.set('Cache-Control', REVALIDATE);
+  res.sendFile(path.join(__dirname, 'public', 'icons', 'apple-touch-icon-180.png'));
 });
 
 // The manifest is generated per request so the installed app is named after the

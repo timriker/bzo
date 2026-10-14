@@ -6,6 +6,27 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
 
 ## [Unreleased]
 
+### Added
+- A link to a bzo server shows its icon, name and description in Teams,
+  Slack, Discord and the like: the page carries Open Graph tags, written for
+  the host it was asked for.
+- Search engines and AIs can find and describe every bzo server: its pages
+  carry schema.org data -- the game, and on `/list` every public server --
+  `/help` is the controls and every flag as a page, and each server answers
+  `/robots.txt`, `/sitemap.xml`, `/llms.txt` and `/llms-full.txt`. The entry
+  dialog says in a line what the game is, with links to help, the servers
+  and the source.
+- `/apple-touch-icon.png` and `/apple-touch-icon-precomposed.png` answer at
+  the site root, where Safari and link-preview crawlers look without reading
+  the page.
+
+### Fixed
+- `adminWhitelist` matches a link-local IPv6 peer: its address arrives with
+  the interface it came in on (`fe80::1%ens18`), which made it match
+  nothing, `fe80::/10` included.
+- Ace fires two landing shots at a foe holding Shield, which takes one hit
+  for its holder; he fired one, and the foe landed with only its flag gone.
+
 ## [1.3.50] - 2026-10-14
 
 ### Fixed
