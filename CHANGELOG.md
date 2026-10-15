@@ -6,6 +6,16 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
 
 ## [Unreleased]
 
+## [1.3.54] - 2026-10-15
+
+### Changed
+- A tank is seen on the radar or out of the window, and lost only when both
+  are gone: Jamming against Cloaking, or Blindness against Stealth. Bots and
+  the autopilot do not chase, shoot or steer by a tank they cannot see, and
+  identify and missile lock skip it.
+- Ace dodges an invisible bullet, which only the radar hides, unless it is
+  blind.
+
 ## [1.3.53] - 2026-10-15
 
 ### Added
