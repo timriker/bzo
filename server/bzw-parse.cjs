@@ -5554,6 +5554,11 @@ function parseBZWMap(filename, { quiet = false, extraMessages = [], text: givenT
     groundMaterial: mapGroundMaterial,
     messages,
     warnedMessages,
+    // Every material in file order with its name and its block in the file,
+    // for the world viewer to name the materials an obstacle refers to.
+    materialSources: materialRegistry.map((material) => ({ name: material.name, source: material.source || null })),
+    // Texture names that resolved to nothing, for the world viewer's summary.
+    unresolvedTextureNames: Array.from(unresolvedTextureNames).sort(),
     instancing,
   };
   attachMeshArrayPayloads(world);

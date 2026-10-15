@@ -295,6 +295,16 @@ export function isExternalTextureUrlLoadable(url) {
 
 const sharedExternalTextures = new Map();
 
+// Every map-named texture URL this browser could not load, for the world
+// viewer's summary.
+export const failedTextureUrls = new Set();
+
+// Whether a texture name is one of bzo's own, which a map may name without a
+// URL.
+export function isStockTextureName(name) {
+  return STOCK_MATERIAL_TEXTURE_FILES.has(name);
+}
+
 // `fallbackPath` is what this obstacle's own type would have drawn with no
 // material override at all (`/textures/boxwall.png`, `/textures/pyrwall.png`,
 // ...) -- used both for a malformed URL/scheme, which is never even
@@ -323,6 +333,7 @@ export function loadExternalTexture(url, fallbackPath, onAlpha) {
       undefined,
       () => {
         console.warn(`External texture blocked or failed to load, using this obstacle's plain default instead: ${url}`);
+        failedTextureUrls.add(url);
         // Every clone already handed out for this URL still points at
         // `entry.texture`'s ORIGINAL `Source` object -- `clone()`/`copy()`
         // only copies the reference at the moment it runs (Texture.js's

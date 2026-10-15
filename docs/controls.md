@@ -104,6 +104,10 @@ Pausing and self-destruct do nothing.
   map file with the `group` blocks that placed it
 - Right-click or tap an obstacle anywhere on screen, in any view and the
   Overview most of all, to show it the same way
+- Pick nothing -- the sky, or empty ground in the Overview -- or press the
+  panel's **World** button for the whole world: what is in it, faces,
+  textures, the map file's warnings and its largest meshes, each of which
+  shows that mesh
 - Click a scoreboard row to watch that player; click the marked row again to go
   back to following the leader
 

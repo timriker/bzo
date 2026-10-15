@@ -26,6 +26,9 @@ const flat = (span) => (span ? [span.startLine, span.endLine, span.start, span.e
 parentPort.postMessage({
   text,
   bzfsHash: bzfsWorldHashOfBzw(fs.readFileSync(filePath, 'latin1')),
+  missingTextures: map.unresolvedTextureNames,
+  materials: map.materialSources.map((material) => [material.name, ...flat(material.source)]),
+  warnings: map.warnedMessages,
   spans: map.obstacles.map((obstacle) => [
     ...flat(obstacle.source),
     ...(obstacle.placedBy || []).flatMap(flat),

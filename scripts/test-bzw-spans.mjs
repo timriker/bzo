@@ -58,6 +58,13 @@ physics
   name slide
   linear 1 0 0
 end
+material
+  name stone
+  color 0.5 0.5 0.5
+end
+material
+  color 1 0 0
+end
 `;
 const block = (s) => text.slice(s.start, s.end);
 const lineOf = (needle) => text.slice(0, text.indexOf(needle)).split('\n').length;
@@ -91,10 +98,17 @@ const slide = Object.values(map.physicsDrivers).find((d) => d.name === 'slide') 
 assert.equal(slide.source.startLine, lineOf('physics'));
 assert.equal(block(slide.source), 'physics\n  name slide\n  linear 1 0 0\nend\n');
 
+// Materials in file order, named or not, each with its block.
+assert.deepEqual(map.materialSources.map((m) => m.name), ['stone', null]);
+assert.equal(block(map.materialSources[0].source), 'material\n  name stone\n  color 0.5 0.5 0.5\nend\n');
+assert.equal(map.materialSources[1].source.startLine, lineOf('material\n  color 1 0 0'));
+
 // Hidden from JSON, so the world sent to clients and its cache hash are
 // unchanged.
-assert.ok(!JSON.stringify(map).includes('startLine'));
-assert.ok(!JSON.stringify(map).includes('placedBy'));
+const { materialSources, ...rest } = map;
+assert.ok(materialSources.length);
+assert.ok(!JSON.stringify(rest).includes('startLine'));
+assert.ok(!JSON.stringify(rest).includes('placedBy'));
 
 // Every shipped map: every obstacle has a span that reads as a whole block.
 for (const file of ['bzo.bzw', 'hix.bzw', 'pizza_box.bzw']) {

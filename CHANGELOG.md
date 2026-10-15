@@ -6,6 +6,15 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
 
 ## [Unreleased]
 
+### Added
+- The world viewer's summary (#183): pick nothing, or press World on the
+  panel, for what a world holds -- counts by type, faces, textures by use,
+  missing textures, the map file's warnings and its largest meshes, each of
+  which shows that mesh.
+- The obstacle panel lists a box's or pyramid's wall and roof textures, and
+  textures named by URL; names the materials it uses, with their blocks from
+  the map file; and says what shape a mesh was made from (arc, cone...).
+
 ## [1.3.52] - 2026-10-15
 
 ### Added

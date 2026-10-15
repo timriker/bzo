@@ -312,7 +312,10 @@ import {
 } from './flags.mjs';
 import { steerGuidedShot, pickTargetInSights, getFlagFlightState } from './flags.mjs';
 import { pickObstacle } from './world-pick.mjs';
-import { showInspectPanel, hideInspectPanel } from './inspect-panel.mjs';
+import {
+  showInspectPanel, hideInspectPanel, showWorldSummary, setInspectHandlers,
+} from './inspect-panel.mjs';
+import { summarizeWorld } from './world-summary.mjs';
 import {
   normalizeShotSlotCount,
   WORLD_WEAPON_PLAYER_ID,
@@ -11804,11 +11807,12 @@ function identifyRoamTarget() {
     inspectObstacle(obstacle.index);
     return;
   }
-  inspectObstacle(null);
   if (picked === null) {
-    setHudAlert(1, 'Looking at nothing', IDENTIFY_ALERT_SECONDS, false);
+    // Nothing in the sights at all: the world as a whole.
+    showWorldSummaryPanel();
     return;
   }
+  inspectObstacle(null);
   nemesisPlayerId = picked;
   adoptRoamTarget(picked);
   // playing.cxx:4479. Colourblindness costs Identify its answer: upstream drops
@@ -11832,10 +11836,31 @@ function obstacleInSights(eye, look) {
 function inspectObstacleAt(clientX, clientY) {
   const ray = renderManager.worldRayAt(clientX, clientY);
   const hit = ray && pickObstacle(OBSTACLES, ray.origin, ray.dir);
-  if (!hit) return false;
-  inspectObstacle(hit.index);
-  return true;
+  if (hit) {
+    inspectObstacle(hit.index);
+    return true;
+  }
+  // The overview has no sights to fall back on: empty ground is the world.
+  if (roamView === ROAM_VIEW.OVERVIEW) {
+    showWorldSummaryPanel();
+    return true;
+  }
+  return false;
 }
+
+// The world viewer's summary of the world on screen, worked out once a world.
+const worldSummaries = new WeakMap();
+function showWorldSummaryPanel() {
+  if (!currentWorldData) return;
+  let summary = worldSummaries.get(currentWorldData);
+  if (!summary) {
+    summary = summarizeWorld(currentWorldData);
+    worldSummaries.set(currentWorldData, summary);
+  }
+  renderManager.setInspectHighlight(null);
+  showWorldSummary(summary, worldHashes.get(currentWorldData) || null);
+}
+setInspectHandlers({ onWorld: showWorldSummaryPanel, onPick: (index) => inspectObstacle(index) });
 
 // Shows one obstacle in the viewer's panel, with its block from the map file
 // and an outline in the world; null closes both.

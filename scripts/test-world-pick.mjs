@@ -8,11 +8,13 @@
 
 // The world viewer's pick (public/world-pick.mjs): the first obstacle a ray
 // meets, by its real shape -- a box turned as it is, a pyramid's slopes, a
-// mesh's faces -- and drive-through ones too.
+// mesh's faces -- and drive-through ones too; and its summary of a world
+// (public/world-summary.mjs).
 
 import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
 import { pickObstacle } from '../public/world-pick.mjs';
+import { summarizeWorld, obstacleTextures } from '../public/world-summary.mjs';
 
 const require = createRequire(import.meta.url);
 const { parseBZWMap } = require('../server/bzw-parse.cjs');
@@ -83,5 +85,16 @@ assert.equal(name(down(0, -100)), null);
 assert.equal(name(pickObstacle(obstacles, [-50, 0, 2], [1, 0, 0])), 'turned');
 assert.equal(name(pickObstacle(obstacles, [300, 0, 2], [-1, 0, 0])), 'cup');
 assert.equal(pickObstacle(obstacles, [0, 0, 100], [0, 0, 1]), null);
+
+// The summary of the same world: counts by type, the arc's faces, and the
+// largest mesh pointing back at it.
+const summary = summarizeWorld({ obstacles, mapSize: 400 });
+assert.equal(summary.obstacles, 5);
+assert.deepEqual(summary.types, [['box', 2], ['pyramid', 2], ['mesh', 1]]);
+assert.ok(summary.meshFaces > 16);
+assert.equal(summary.largestMeshes[0].name, 'ring');
+assert.equal(obstacles[summary.largestMeshes[0].index].name, 'ring');
+assert.deepEqual(obstacleTextures({ wallTexture: 'boxwall', capTextureUrl: '//x/roof.png', capTexture: 'roof' }),
+  ['boxwall', '//x/roof.png']);
 
 console.log('world pick ok');

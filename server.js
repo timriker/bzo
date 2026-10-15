@@ -1370,6 +1370,28 @@ app.get('/api/players', (req, res) => {
   res.type('application/json').send(playersApiBody(Date.now()));
 });
 
+// What only the map file knows about a world, for the viewer's summary: the
+// file, the texture names that resolved to nothing, and the parse's warnings.
+app.get('/api/world/:hash/summary', async (req, res) => {
+  const { hash } = req.params;
+  if (!/^[0-9a-f]{12}$/.test(hash)) {
+    res.status(400).json({ error: 'bad request' });
+    return;
+  }
+  const sources = await obstacleSourcesFor(hash);
+  if (!sources) {
+    res.status(404).json({ error: 'no map file for that world' });
+    return;
+  }
+  res.set('Cache-Control', 'public, max-age=60');
+  res.json({
+    file: sources.fileName,
+    lines: sources.text.split('\n').length,
+    missingTextures: sources.missingTextures,
+    warnings: sources.warnings,
+  });
+});
+
 // One obstacle's block in its map file (`obstacleSourceFor`), by world hash
 // and its index in that world's `obstacles`.
 app.get('/api/world/:hash/obstacles/:index/source', async (req, res) => {
@@ -3999,7 +4021,14 @@ function obstacleSourcesFor(hash) {
     worker.on('error', (error) => logError(`Could not read source spans of ${entry.fileName}:`, error));
     worker.on('exit', () => {
       const current = result && (!entry.bzfsHash || result.bzfsHash === entry.bzfsHash);
-      resolve(current ? { fileName: entry.fileName, text: result.text, spans: result.spans } : null);
+      resolve(current ? {
+        fileName: entry.fileName,
+        text: result.text,
+        spans: result.spans,
+        missingTextures: result.missingTextures,
+        warnings: result.warnings,
+        materials: result.materials,
+      } : null);
     });
   });
   obstacleSources.set(hash, pending);
@@ -4016,8 +4045,7 @@ async function obstacleSourceFor(hash, index) {
   const sources = await obstacleSourcesFor(hash);
   const flat = sources?.spans[index];
   if (!flat) return null;
-  const block = (at) => {
-    const [startLine, endLine, start, end] = flat.slice(at, at + 4);
+  const block = ([startLine, endLine, start, end]) => {
     const lines = sources.text.slice(start, end).replace(/\r?\n$/, '').split(/\r?\n/);
     // A member of a `define` reads from its own first column.
     const indent = Math.min(...lines.filter((line) => line.trim()).map((line) => /^[ \t]*/.exec(line)[0].length));
@@ -4030,9 +4058,41 @@ async function obstacleSourceFor(hash, index) {
       ...(lines.length > shown.length ? { moreLines: lines.length - shown.length } : {}),
     };
   };
+  const own = block(flat.slice(0, 4));
   const placedBy = [];
-  for (let at = 4; at < flat.length; at += 4) placedBy.push(block(at));
-  return { file: sources.fileName, ...block(0), placedBy };
+  for (let at = 4; at < flat.length; at += 4) placedBy.push(block(flat.slice(at, at + 4)));
+  return { file: sources.fileName, ...own, placedBy, materials: referencedMaterials(sources, [own, ...placedBy], block) };
+}
+
+// Every material the blocks name with `matref`, and the materials those name
+// in turn, each with its own block: a name as `findMaterial` reads it, a
+// leading digit an index into the file's materials, the last of a name the
+// one it finds. A name the file never defines comes back `missing`.
+function referencedMaterials(sources, blocks, block) {
+  const byName = new Map();
+  sources.materials.forEach((material, index) => {
+    if (material[0]) byName.set(material[0].toLowerCase(), index);
+  });
+  const found = [];
+  const seen = new Set();
+  const queue = blocks.map((b) => b.text);
+  while (queue.length) {
+    for (const match of queue.shift().matchAll(/\bmatref\s+"?([^\s"]+)/gi)) {
+      const ref = match[1];
+      if (ref === '-1' || seen.has(ref.toLowerCase())) continue;
+      seen.add(ref.toLowerCase());
+      const index = /^[0-9]/.test(ref) ? parseInt(ref, 10) : byName.get(ref.toLowerCase());
+      const material = sources.materials[index];
+      if (!material || !material[1]) {
+        found.push({ ref, missing: true });
+        continue;
+      }
+      const materialBlock = block(material.slice(1, 5));
+      found.push({ ref, name: material[0], ...materialBlock });
+      queue.push(materialBlock.text);
+    }
+  }
+  return found;
 }
 
 function reuseCachedImport(host, port) {

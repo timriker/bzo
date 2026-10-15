@@ -77,9 +77,18 @@ The recordings this server holds ([replay.md](replay.md)): `name`, `start`
 
 Where obstacle `index` of the world `/maps/<hash>.json` came from in its map
 file: `file`, `startLine`, `endLine` and `text` of its block, and `placedBy`,
-the same for each `group` that placed it, outermost first. A long block stops
+the same for each `group` that placed it, outermost first, and `materials`,
+each material a `matref` in those blocks names (and those it names in turn):
+`ref` as written, `name`, and its block, or `missing` when the file defines
+none by that name. A long block stops
 at 400 lines and says how many more in `moreLines`. 404 for a generated world
 or a file changed since. The first ask for a world parses its file again.
+
+### `GET /api/world/<hash>/summary`
+
+What only the map file knows about that world: `file`, its `lines`,
+`missingTextures` (texture names that resolved to nothing) and the parse's
+`warnings`. 404 as above.
 
 ### `GET /api/ready`
 

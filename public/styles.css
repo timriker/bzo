@@ -2613,3 +2613,49 @@ body.autopiloting #roamStatus {
   overflow-x: auto;
   font-size: 12px;
 }
+
+.inspectButtons {
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.inspectWorldBtn,
+.inspectPick {
+  border: 1px solid var(--color-accent);
+  border-radius: 5px;
+  background: var(--color-btn-bg);
+  color: var(--color-fg);
+  cursor: pointer;
+  font: inherit;
+}
+
+.inspectRows dd {
+  white-space: pre-line;
+}
+
+.inspectMissing {
+  color: var(--color-state-off);
+}
+
+.inspectPicks {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-top: 2px;
+}
+
+.inspectPick {
+  text-align: left;
+  white-space: pre;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.inspectPanel pre.inspectWarnings {
+  margin: 2px 0 0;
+  padding: 4px 6px;
+  background: rgba(255, 255, 255, 0.06);
+  white-space: pre-wrap;
+  font-size: 12px;
+}
