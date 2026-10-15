@@ -20,7 +20,8 @@
 
 import {
   canRunOver, FLAG_ENDURANCE, getFlagEndurance, getFlagGrabRadius, getFlagTuning, getRunOverRadius,
-  getRunOverSeparation, getTankHitRadiusScale, hasAirControl, isBadFlag, usesNarrowHitBox,
+  canSeeShot, canSeeTank, getRunOverSeparation, getTankHitRadiusScale, hasAirControl, isBadFlag, seenOnRadar,
+  usesNarrowHitBox,
 } from './flags.mjs';
 import { SHOT_COLLISION_RADIUS, traceShotStep, TANK } from './collision.mjs';
 import { buildNavGraph, NAV_CELL, planJump } from './nav.mjs';
@@ -216,8 +217,15 @@ export class Roger {
     return report;
   }
 
+  // The tanks this one can see at all (`canSeeTank`), once per view. Kills,
+  // scores and who fired a shot are on the scoreboard and in the shots, so
+  // those read `view.players` whole.
   remotePlayers(view) {
-    return view.players;
+    if (this.seenView !== view) {
+      this.seenView = view;
+      this.seenPlayers = view.players.filter((p) => canSeeTank(view.self.flag, p.flag));
+    }
+    return this.seenPlayers;
   }
 
   openDistance(ctx, pos, azimuth) {
@@ -336,8 +344,9 @@ export class Roger {
       if (obscured) d *= 1.25; // demote the priority of obscured enemies
       if (d >= best) continue;
       // Upstream compares a radian angle against 30 here, so a stealthed tank
-      // is chased whenever it is in plain sight; that is kept.
-      if (p.flag !== 'ST' || me.flag === 'SE' || !obscured) {
+      // is chased whenever it is in plain sight; that is kept, and holds for
+      // any tank off this one's radar, a jammed one's included.
+      if (seenOnRadar(me.flag, p.flag) || !obscured) {
         target = p;
         best = d;
       }
@@ -1080,6 +1089,7 @@ export class Ace extends Roger {
     const mvy = me.velocity?.y ?? 0;
     for (const [id, until] of this.shotAtBy) if (until <= view.now) this.shotAtBy.delete(id);
     for (const shot of view.shots) {
+      if (!canSeeShot(me.flag, shot.flag)) continue;
       const owner = view.players.find((p) => p.id === shot.ownerId);
       if (!owner || !view.isFoe(owner)) continue;
       const rx = shot.x - me.x;
@@ -1773,7 +1783,7 @@ export class Ace extends Roger {
         return this.huntFar(ctx, far);
       }
     }
-    const target = ctx.view.players.find((p) => p.id === ctx.out.targetId);
+    const target = this.remotePlayers(ctx.view).find((p) => p.id === ctx.out.targetId);
     if (chased && target && !target.airborne) {
       if (this.chaseAround(ctx, target) || this.runOver(ctx, target)) return true;
       this.trackFoe(ctx, target);
@@ -1881,7 +1891,7 @@ export class Ace extends Roger {
   chaseAround(ctx, target) {
     const { view, me } = ctx;
     if (typeof view.findRoute !== 'function') return false;
-    const foe = this.remotePlayers({ players: [target] })[0];
+    const foe = target;
     // In sight and on a level a shot reaches, Roger's straight chase does;
     // on another level, the way up or down is a route too.
     const otherLevel = Math.abs(foe.z - me.z) >= 2 * view.world.tankHeight;
@@ -2301,7 +2311,7 @@ export class Ace extends Roger {
     }) <= reach;
     const grounded = {
       ...view,
-      players: view.players.filter((p) => !p.airborne
+      players: this.remotePlayers(view).filter((p) => !p.airborne
         && !(view.now <= (this.landingShots.get(p.id)?.landsAt ?? -Infinity) + 0.5
           && this.landingShotsSpent(p, this.landingShots.get(p.id).landsAt) >= this.shotsToKill(p))
         && inRange(p)
@@ -2423,6 +2433,7 @@ export class Ace extends Roger {
     const shots = [];
     let horizon = 0;
     for (const shot of view.shots) {
+      if (!canSeeShot(me.flag, shot.flag)) continue;
       if (shot.ownerId === me.id) continue;
       if (shot.ownerZoned && !me.zoned) continue;
       if (shot.flag === 'L' && me.flag === 'CL') continue;
@@ -2538,6 +2549,7 @@ export class Ace extends Roger {
     const clearance = TANK.radius + SHOT_COLLISION_RADIUS + DODGE_CLEARANCE;
     let best = null;
     for (const shot of view.shots) {
+      if (!canSeeShot(me.flag, shot.flag)) continue;
       if (shot.ownerId === me.id) continue;
       if (shot.ownerZoned && !me.zoned) continue;
       if (shot.flag === 'L' && me.flag === 'CL') continue;
@@ -3193,7 +3205,7 @@ export class Ace extends Roger {
       if (!node.jump) continue;
       const reach = view.world.shotSpeed * (view.self.shotLifetime ?? 3.5);
       const tall = view.world.tankHeight;
-      return view.players.some((p) => p.alive && !p.paused && view.isFoe(p)
+      return this.remotePlayers(view).some((p) => p.alive && !p.paused && view.isFoe(p)
         && Math.abs(p.z - node.z) < tall
         && distance2D(p, node) <= reach
         && (p.flag === 'SB' || !view.isObscured(
@@ -3790,7 +3802,7 @@ export class Ace extends Roger {
   foeAtLanding(ctx, landing) {
     const { view, me } = ctx;
     let best = null;
-    for (const p of view.players) {
+    for (const p of this.remotePlayers(view)) {
       if (!p.alive || p.paused || !view.isFoe(p)) continue;
       if (p.zoned && !me.zoned) continue;
       if (Math.abs(p.z - landing.z) > 1) continue;

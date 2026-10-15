@@ -81,6 +81,29 @@ function enemy(x, y, extra = {}) {
   assert.equal(out.shotTargetId, 'foe', 'the shot names who it was fired at');
 }
 
+// A tank lost to both senses is not there: Jamming against Cloaking, or
+// Blindness against Stealth. One sense left is enough, though a tank off the
+// radar must be in plain sight to be chased.
+{
+  for (const Pilot of [Roger, Ace]) {
+    for (const [mine, theirs] of [['JM', 'CL'], ['B', 'ST']]) {
+      const out = new Pilot().think(makeView({
+        self: { flag: mine, flagIndex: 4 }, players: [enemy(0, 150, { flag: theirs, flagIndex: 5 })],
+      }));
+      assert.equal(out.targetId, null, `${Pilot.name} with ${mine} cannot see ${theirs}`);
+      assert.equal(out.fire, false, `${Pilot.name} with ${mine} does not shoot ${theirs}`);
+    }
+    const seen = new Pilot().think(makeView({
+      self: { flag: 'JM', flagIndex: 4 }, players: [enemy(0, 150, { flagIndex: 5, flag: 'ST' })],
+    }));
+    assert.equal(seen.targetId, 'foe', `${Pilot.name} with JM sees ST out of the window`);
+    const hidden = new Pilot().think(makeView({
+      self: { flag: 'JM', flagIndex: 4 }, players: [enemy(0, 150)], isObscured: () => true,
+    }));
+    assert.notEqual(hidden.targetId, 'foe', `${Pilot.name} with JM does not chase a foe behind a wall`);
+  }
+}
+
 // With a Guided Missile the height gate is off: a foe on a roof is fired on.
 {
   const out = new Roger().think(makeView({
@@ -231,6 +254,18 @@ for (const flag of ['US', 'MG', 'ID']) {
   const grounded = new Roger().think(makeView({ shots: [shot], world: { allowJumping: false } }));
   assert.equal(grounded.jump, false);
   assert.ok(Math.abs(grounded.rotation) > 1, 'and dodged sideways where it is not');
+}
+
+// An invisible bullet is off the radar but not out of the window, so Ace
+// dodges it unless he is blind, when it is not there to him at all.
+{
+  const bullet = { ownerId: 'foe', ownerZoned: false, flag: 'IB', x: 0, y: 10, z: 1.57, vx: 0, vy: -100, vz: 0 };
+  const seen = new Ace().think(makeView({ self: { flag: 'JM', flagIndex: 4 }, shots: [bullet] }));
+  assert.equal(seen.intent.mode, 'dodge', 'a jammed Ace dodges an invisible bullet');
+  const blind = new Ace().think(makeView({ self: { flag: 'B', flagIndex: 4 }, shots: [bullet] }));
+  assert.notEqual(blind.intent.mode, 'dodge', 'a blind Ace cannot see an invisible bullet');
+  const radar = new Ace().think(makeView({ self: { flag: 'B', flagIndex: 4 }, shots: [{ ...bullet, flag: null }] }));
+  assert.equal(radar.intent.mode, 'dodge', 'a blind Ace dodges a plain shot off the radar');
 }
 
 // Burrowed, a tank on the ground's shell flies over him, so Ace neither jumps

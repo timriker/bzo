@@ -134,6 +134,7 @@ const {
   getFiredShotFlag,
   isZoned,
   togglesZoneOnTeleport,
+  canSeeTank,
   hidesFromRadar,
   seesThroughDisguises,
   getTankDimensionScale,
@@ -15046,13 +15047,18 @@ function setPlayerTarget(player) {
   const at = player.getExtrapolatedPosition(now);
   const eye = { x: at.x, y: at.y };
   const forward = { x: Math.cos(at.azimuth), y: Math.sin(at.azimuth) };
-  const seer = seesThroughDisguises(getPlayerFlag(player.id)?.type ?? null);
+  const viewerFlag = getPlayerFlag(player.id)?.type ?? null;
+  const seer = seesThroughDisguises(viewerFlag);
 
   const lockable = [];
   const visible = [];
   players.forEach((other) => {
     if (other.id === player.id || !other.joined) return;
     if (isObserverTeam(other.team) || !other.alive) return;
+    // Not a tank this one can see at all, on the radar or out of the window
+    // (`canSeeTank`): upstream's scan never asks, so a jammed tank names a
+    // cloaked one it has no way to know is there.
+    if (!canSeeTank(viewerFlag, getPlayerFlag(other.id)?.type ?? null)) return;
     const position = other.getExtrapolatedPosition(now);
     const candidate = { id: other.id, x: position.x, y: position.y };
 

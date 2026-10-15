@@ -875,6 +875,35 @@ export function hidesTeamColors(abbreviation) {
   return abbreviation === 'CB';
 }
 
+// Whether a tank carrying `viewerFlag` can see one carrying `targetFlag`, on
+// the radar or out of the window. Each sense is the two rules above read
+// together: the radar loses a stealthed tank and a jammed radar loses everyone,
+// the window loses a cloaked tank and a blind one loses everyone, and `SE` gets
+// back what the target's flag took. A tank lost to both senses is not there to
+// whoever is asking: Jamming against Cloaking, or Blindness against Stealth.
+// Upstream's robots never ask; bzo's pilots and the server's identify do.
+export function seenOnRadar(viewerFlag, targetFlag) {
+  if (jamsTheRadar(viewerFlag)) return false;
+  return !hidesFromRadar(targetFlag) || seesThroughDisguises(viewerFlag);
+}
+
+export function seenInWindow(viewerFlag, targetFlag) {
+  if (blanksTheView(viewerFlag)) return false;
+  return !cloaksTheTank(targetFlag) || seesThroughDisguises(viewerFlag);
+}
+
+export function canSeeTank(viewerFlag, targetFlag) {
+  return seenOnRadar(viewerFlag, targetFlag) || seenInWindow(viewerFlag, targetFlag);
+}
+
+// The same for a shot. `IB` keeps a shot off the radar and nothing else
+// (RadarRenderer.cxx:664 skips it unless the viewer has `SE`), so only a blind
+// tank loses one entirely.
+export function canSeeShot(viewerFlag, shotFlag) {
+  if (!blanksTheView(viewerFlag)) return true;
+  return !jamsTheRadar(viewerFlag) && (shotFlag !== 'IB' || seesThroughDisguises(viewerFlag));
+}
+
 // RadarRenderer::render (RadarRenderer.cxx:433). A jammed radar is noise on most
 // frames and the real thing on a few, and `decay` is the chance of a good one.
 // It starts at 0.01 and the noise branch leaves it there, so roughly one frame in

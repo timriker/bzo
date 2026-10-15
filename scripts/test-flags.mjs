@@ -44,6 +44,8 @@ import {
   RADAR_JAM_DECAY_MIN,
   SEER_REVEAL_ALPHA,
   blanksTheView,
+  canSeeShot,
+  canSeeTank,
   cloaksTheTank,
   fakesTeamColor,
   getNextRadarJamDecay,
@@ -53,6 +55,8 @@ import {
   getTankDimensionEase,
   hidesTeamColors,
   jamsTheRadar,
+  seenInWindow,
+  seenOnRadar,
   seesThroughDisguises,
   getTankDimensionScale,
   getTankHitRadiusScale,
@@ -1309,6 +1313,35 @@ assert.equal(SEER_REVEAL_ALPHA, 1, 'a seer sees a cloaked tank solid');
 // solid to everyone -- it was never the window it was hiding from.
 assert.equal(getVisibleTankAlpha(null, 1, 'SE'), 1);
 assert.equal(getVisibleTankAlpha('ST', 1, null), 1);
+
+// One sense lost to the viewer's flag and the other to the target's leaves
+// nothing: a jammed tank cannot see a cloaked one, nor a blind one a stealthed
+// one. A seer gets back what the target's flag took, never its own.
+assert.equal(canSeeTank('JM', 'CL'), false, 'jammed radar and a cloak hide a tank');
+assert.equal(canSeeTank('B', 'ST'), false, 'blindness and stealth hide a tank');
+assert.equal(canSeeTank('JM', 'ST'), true, 'a jammed tank still sees stealth out of the window');
+assert.equal(canSeeTank('B', 'CL'), true, 'a blind tank still sees a cloak on the radar');
+assert.equal(canSeeTank(null, 'CL'), true);
+assert.equal(canSeeTank(null, 'ST'), true);
+assert.equal(seenOnRadar(null, 'ST'), false);
+assert.equal(seenOnRadar('SE', 'ST'), true);
+assert.equal(seenInWindow(null, 'CL'), false);
+assert.equal(seenInWindow('SE', 'CL'), true);
+// `IB` only leaves the radar, so a shot is lost only to a blind tank.
+assert.equal(canSeeShot('B', 'IB'), false, 'a blind tank cannot see an invisible bullet');
+assert.equal(canSeeShot('B', null), true, 'a blind tank sees a shot on the radar');
+assert.equal(canSeeShot('JM', 'IB'), true, 'a jammed tank sees an invisible bullet out of the window');
+assert.equal(canSeeShot(null, 'IB'), true);
+for (const mine of ['JM', 'B', 'SE', null]) {
+  for (const theirs of ['IB', null]) {
+    assert.equal(serverFlags.canSeeShot(mine, theirs), canSeeShot(mine, theirs));
+  }
+}
+for (const mine of ['JM', 'B', 'SE', null]) {
+  for (const theirs of ['ST', 'CL', null]) {
+    assert.equal(serverFlags.canSeeTank(mine, theirs), canSeeTank(mine, theirs));
+  }
+}
 
 for (const theirs of ['ST', 'CL', 'MQ', 'SE', null]) {
   assert.equal(serverFlags.hidesFromRadar(theirs), hidesFromRadar(theirs));
