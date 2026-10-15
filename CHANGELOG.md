@@ -6,6 +6,8 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
 
 ## [Unreleased]
 
+## [1.3.53] - 2026-10-15
+
 ### Added
 - The world viewer's summary (#183): pick nothing, or press World on the
   panel, for what a world holds -- counts by type, faces, textures by use,
