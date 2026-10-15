@@ -6,6 +6,15 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
 
 ## [Unreleased]
 
+### Added
+- The world viewer's first step (#183): an observer right-clicks or taps an
+  obstacle in any view, the Overview most of all, or presses `I` in the Free
+  view, and sees it outlined, with a panel of what it is and its block from
+  the map file, with the `group` blocks that placed it.
+- The map parser records where every object came from in its file, for the
+  viewer and the editor to come; the world JSON is unchanged.
+- `/api/world/<hash>/obstacles/<index>/source` answers one obstacle's block.
+
 ### Fixed
 - A server on a slow machine no longer logs its own boot as a `[LOOP]`
   stall: the watchdog counts from the event loop's first turn.

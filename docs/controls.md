@@ -99,7 +99,11 @@ Pausing and self-destruct do nothing.
 - `Enter` or `C` — step through everything: in each view, the leader first, then
   every player, then on to the next view. The views are Free, Track, Follow,
   Driving with, and Flag where a map has team flags
-- `I` or right-click — in the Free view, watch the tank in your sights
+- `I` or right-click — in the Free view, watch the tank in your sights, or show
+  the obstacle there: what it is, an outline round it, and its block from the
+  map file with the `group` blocks that placed it
+- Right-click or tap an obstacle anywhere on screen, in any view and the
+  Overview most of all, to show it the same way
 - Click a scoreboard row to watch that player; click the marked row again to go
   back to following the leader
 

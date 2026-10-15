@@ -73,6 +73,14 @@ polling faster gets nothing new. CORS is open.
 The recordings this server holds ([replay.md](replay.md)): `name`, `start`
 (ms), `seconds`, `players`, `map`, `viewers`.
 
+### `GET /api/world/<hash>/obstacles/<index>/source`
+
+Where obstacle `index` of the world `/maps/<hash>.json` came from in its map
+file: `file`, `startLine`, `endLine` and `text` of its block, and `placedBy`,
+the same for each `group` that placed it, outermost first. A long block stops
+at 400 lines and says how many more in `moreLines`. 404 for a generated world
+or a file changed since. The first ask for a world parses its file again.
+
 ### `GET /api/ready`
 
 200 once the server is serving. For a health check.

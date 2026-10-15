@@ -1723,6 +1723,21 @@ function faceMaxCrossSqr(vertices, indices) {
 // Upstream's own threshold, `MeshFace.cxx:114`.
 const MIN_FACE_CROSS_SQR = 1.0e-20;
 
+// A block's place in the file (`source`) and, for a copy a `group` placed, the
+// `group` blocks that placed it, outermost first (`placedBy`). Hidden from
+// JSON: the world sent to clients and hashed for the cache stays as it was.
+function setHidden(target, key, value) {
+  Object.defineProperty(target, key, { value, enumerable: false, writable: true, configurable: true });
+  return target;
+}
+
+function carrySource(target, from, request) {
+  if (from.source) setHidden(target, 'source', from.source);
+  if (request) setHidden(target, 'placedBy', [request.source || null, ...(from.placedBy || [])]);
+  else if (from.placedBy) setHidden(target, 'placedBy', from.placedBy);
+  return target;
+}
+
 // `text` is a world given rather than read from `filename`, which then only
 // names it: a generated one (server/world-generator.cjs).
 function parseBZWMap(filename, { quiet = false, extraMessages = [], text: givenText = null } = {}) {
@@ -2425,7 +2440,35 @@ function parseBZWMap(filename, { quiet = false, extraMessages = [], text: givenT
   // block being skipped keeps a keyword another pass already read out of the
   // unread tally, where it would otherwise look like a gap that is not there.
   let consumedBlock = null;
+  // Where each block came from in the file: its first and last line and the
+  // character range between them, for an editor that rewrites one block and
+  // leaves the rest of the file as it was (docs/editor-plan.md, "Source
+  // spans"). A block opens on the line that sets one of these to a new object
+  // and closes on the line that lets it go; both are seen at the top of the
+  // next line, which is the one place every line passes through.
+  const lineStarts = [0];
+  for (let at = text.indexOf('\n'); at !== -1; at = text.indexOf('\n', at + 1)) lineStarts.push(at + 1);
+  const spanOpen = {};
+  const noteSpans = (lineIndex) => {
+    for (const [slot, value] of [['current', current], ['link', currentLink],
+      ['zone', currentZone], ['define', currentDefine], ['weapon', currentWeapon],
+      ['material', currentMaterial], ['physicsDriver', currentPhysicsDriver],
+      ['dynamicColor', currentDynamicColor], ['textureMatrix', currentTextureMatrix]]) {
+      const was = spanOpen[slot];
+      if (value === was) continue;
+      if (was?.source && was.source.endLine === null) {
+        was.source.endLine = lineIndex + 1;
+        was.source.end = lineStarts[lineIndex + 1] ?? text.length;
+      }
+      if (value && !value.source) {
+        setHidden(value, 'source',
+          { startLine: lineIndex + 1, endLine: null, start: lineStarts[lineIndex], end: null });
+      }
+      spanOpen[slot] = value;
+    }
+  };
   for (let i = 0; i < lines.length; i++) {
+    if (i > 0) noteSpans(i - 1);
     const line = lines[i].trim();
     if (!line || line.startsWith('#')) {
       continue;
@@ -3190,7 +3233,7 @@ function parseBZWMap(filename, { quiet = false, extraMessages = [], text: givenT
         if (current.vertexPositions.length < 4) {
           warn(`Not creating tetrahedron in ${mapLabel}, not enough vertices (${current.vertexPositions.length})`);
         } else {
-          const tetraMesh = buildTetraMesh(current);
+          const tetraMesh = carrySource(buildTetraMesh(current), current);
           tetraMesh.transformOps = current.transformOps;
           applyMeshTransform(tetraMesh);
           if (currentDefine) {
@@ -3264,7 +3307,7 @@ function parseBZWMap(filename, { quiet = false, extraMessages = [], text: givenT
     } else if (current && current.type === 'cone') {
       const words = line.split(/\s+/);
       if (token === 'end') {
-        const coneMesh = buildConeMesh(current);
+        const coneMesh = carrySource(buildConeMesh(current), current);
         if (!coneMesh) {
           warn(`Not creating ${current.isPyramid ? 'meshpyr' : 'cone'} in ${mapLabel}, invalid size/divisions/texsize`);
         } else {
@@ -3365,7 +3408,7 @@ function parseBZWMap(filename, { quiet = false, extraMessages = [], text: givenT
     } else if (current && current.type === 'arc') {
       const words = line.split(/\s+/);
       if (token === 'end') {
-        const arcMesh = buildArcMesh(current);
+        const arcMesh = carrySource(buildArcMesh(current), current);
         if (!arcMesh) {
           warn(`Not creating ${current.isBox ? 'meshbox' : 'arc'} in ${mapLabel}, invalid size/divisions/ratio/texsize`);
         } else {
@@ -3455,7 +3498,7 @@ function parseBZWMap(filename, { quiet = false, extraMessages = [], text: givenT
     } else if (current && current.type === 'sphere') {
       const words = line.split(/\s+/);
       if (token === 'end') {
-        const sphereMesh = buildSphereMesh(current);
+        const sphereMesh = carrySource(buildSphereMesh(current), current);
         if (!sphereMesh) {
           warn(`Not creating sphere in ${mapLabel}, invalid size/divisions/texsize`);
         } else {
@@ -4000,6 +4043,7 @@ function parseBZWMap(filename, { quiet = false, extraMessages = [], text: givenT
             ...current.transformOps,
           ] : null,
         };
+        carrySource(instanceRequest, current);
         if (currentDefine) {
           currentDefine.groupInstances.push(instanceRequest);
         } else {
@@ -4117,6 +4161,7 @@ function parseBZWMap(filename, { quiet = false, extraMessages = [], text: givenT
       unreadKeywordCounts.set(token, (unreadKeywordCounts.get(token) || 0) + 1);
     }
   }
+  noteSpans(lines.length - 1);
 
   // One line inside a `drawInfo { ... }` block (`MeshDrawInfo::parse`,
   // `MeshDrawInfo.cxx:874-1029`, with `parseDrawLod`/`parseDrawSet` for the
@@ -4307,7 +4352,7 @@ function parseBZWMap(filename, { quiet = false, extraMessages = [], text: givenT
     const hasMaterialOverride = !!request.materialOverride;
     const tint = request.tint || null;
     if (!hasPhydrvOverride && !hasMaterialOverride && !tint) return member;
-    return {
+    return carrySource({
       ...member,
       faces: member.faces.map((face) => {
         const next = { ...face };
@@ -4335,7 +4380,7 @@ function parseBZWMap(filename, { quiet = false, extraMessages = [], text: givenT
         }
         return next;
       }),
-    };
+    }, member);
   }
 
   function applyGroupInstanceTransform(members, request, instanceLabel) {
@@ -4365,7 +4410,7 @@ function parseBZWMap(filename, { quiet = false, extraMessages = [], text: givenT
         ];
       }
 
-      return {
+      return carrySource({
         ...member,
         ...placed,
         // The group's own passability only adds permission -- true on every
@@ -4381,7 +4426,7 @@ function parseBZWMap(filename, { quiet = false, extraMessages = [], text: givenT
         // `GroupDefinition::makeTeleName`) rather than a type-letter one.
         name: `${instanceLabel}:${member.name
           || (member.kind === 'teleporter' ? `t${memberIndex}` : `${(member.type || 'O')[0].toUpperCase()}${memberIndex}`)}`,
-      };
+      }, member, request);
     }).map((member) => applyGroupMeshModifiers(member, request));
   }
 
@@ -4458,6 +4503,7 @@ function parseBZWMap(filename, { quiet = false, extraMessages = [], text: givenT
       spinPivot: mesh.angvel ? placePoint(mesh.spinPivot || { x: 0, y: 0, z: 0 }) : mesh.spinPivot,
       spinAxis,
     };
+    carrySource(placedMesh, mesh, request);
     // The instance's own `phydrv`/`matref` override, same rule and same
     // helper `applyGroupInstanceTransform` uses for a nested plain-obstacle
     // group whose member happens to be a mesh -- this is the direct path a
@@ -4831,9 +4877,9 @@ function parseBZWMap(filename, { quiet = false, extraMessages = [], text: givenT
         const name = `repeat#${shapeCount}:${first.name || 'mesh'}`;
         meshTemplates.set(name, [template]);
         for (const { entry, angle } of members) {
-          meshInstances.push({
+          meshInstances.push(carrySource({
             define: name, x: entry.centre.x, y: entry.centre.y, z: entry.centre.z, spin: angle, scale: [1, 1, 1],
-          });
+          }, entry.mesh));
           entry.mesh.drawnByInstance = true;
         }
         meshCount += members.length;
@@ -5076,7 +5122,7 @@ function parseBZWMap(filename, { quiet = false, extraMessages = [], text: givenT
         // overwrite the first's.
         const templateMeshes = resolveDefineMeshes(request.groupDefName, new Set())
           .map((mesh) => applyGroupMeshModifiers(
-            { ...mesh, faces: mesh.faces.map((f) => ({ ...f })) }, request,
+            carrySource({ ...mesh, faces: mesh.faces.map((f) => ({ ...f })) }, mesh), request,
           ))
           .map((mesh) => finalizeMeshGeometry(mesh));
         // A definition made of boxes and pyramids has no meshes to batch --
@@ -5097,14 +5143,14 @@ function parseBZWMap(filename, { quiet = false, extraMessages = [], text: givenT
         // leave out either.
         instancedMeshMembers = false;
       } else {
-      meshInstances.push({
+      meshInstances.push(carrySource({
         define: templateName,
         x: request.pos[0],
         y: request.pos[1],
         z: request.pos[2],
         spin: request.spin,
         scale: request.scale,
-      });
+      }, request));
       passableInstances += 1;
       // Nothing collides with a passable definition, so its copies need not
       // exist at all. A solid one still has to be expanded -- collision on

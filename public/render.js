@@ -5254,6 +5254,67 @@ class RenderManager {
     this._clearDebugLabels('obstacle');
   }
 
+  // The ray from the camera through a point on the page, in the game's own
+  // frame (z up), for the world viewer to pick with: `{ origin, dir }`, each
+  // [x, y, z] with `dir` unit length, or null off the canvas.
+  worldRayAt(clientX, clientY) {
+    if (!this.renderer || !this.camera || !this.worldFrame) return null;
+    const rect = this.renderer.domElement.getBoundingClientRect();
+    if (!(rect.width > 0 && rect.height > 0)) return null;
+    const ndc = new THREE.Vector2(
+      (((clientX - rect.left) / rect.width) * 2) - 1,
+      -((((clientY - rect.top) / rect.height) * 2) - 1),
+    );
+    if (Math.abs(ndc.x) > 1 || Math.abs(ndc.y) > 1) return null;
+    this.camera.updateMatrixWorld();
+    this.worldFrame.updateMatrixWorld();
+    const raycaster = new THREE.Raycaster();
+    raycaster.setFromCamera(ndc, this.camera);
+    const origin = this.worldFrame.worldToLocal(raycaster.ray.origin.clone());
+    const ahead = this.worldFrame.worldToLocal(raycaster.ray.origin.clone().add(raycaster.ray.direction));
+    const dir = ahead.sub(origin).normalize();
+    return { origin: [origin.x, origin.y, origin.z], dir: [dir.x, dir.y, dir.z] };
+  }
+
+  // The world viewer's outline of the obstacle it is showing: its own box,
+  // turned as it is, or a mesh's bounds. Drawn through everything else so it
+  // reads from behind a wall too. Null clears it.
+  setInspectHighlight(obs) {
+    if (this._inspectHighlight) {
+      this.worldFrame.remove(this._inspectHighlight);
+      this._inspectHighlight.geometry.dispose();
+      this._inspectHighlight.material.dispose();
+      this._inspectHighlight = null;
+    }
+    if (!obs || !this.worldFrame) return;
+    let size;
+    let centre;
+    let angle = 0;
+    if (obs.type !== 'mesh' && obs.pos && obs.size) {
+      const height = Math.max(Math.abs(obs.size[2] || 0), 0.05);
+      size = [obs.size[0] * 2, obs.size[1] * 2, height];
+      centre = [obs.pos[0], obs.pos[1], obs.pos[2] + (height / 2)];
+      angle = obs.angle || 0;
+    } else if (obs.bounds) {
+      const b = obs.bounds;
+      size = [b.maxX - b.minX, b.maxY - b.minY, Math.max(b.maxZ - b.minZ, 0.05)];
+      centre = [(b.minX + b.maxX) / 2, (b.minY + b.maxY) / 2, (b.minZ + b.maxZ) / 2];
+    } else {
+      return;
+    }
+    const box = new THREE.BoxGeometry(...size);
+    const outline = new THREE.LineSegments(
+      new THREE.EdgesGeometry(box),
+      new THREE.LineBasicMaterial({ color: 0xffeb3b, depthTest: false, transparent: true }),
+    );
+    box.dispose();
+    outline.position.set(...centre);
+    outline.rotation.z = angle;
+    outline.renderOrder = 10;
+    this.worldFrame.add(outline);
+    this._inspectHighlight = outline;
+  }
+
   setObstacles(obstacles = []) {
     if (!this.scene) return;
     this.clearObstacles();

@@ -311,6 +311,8 @@ import {
   configureFlagEffects,
 } from './flags.mjs';
 import { steerGuidedShot, pickTargetInSights, getFlagFlightState } from './flags.mjs';
+import { pickObstacle } from './world-pick.mjs';
+import { showInspectPanel, hideInspectPanel } from './inspect-panel.mjs';
 import {
   normalizeShotSlotCount,
   WORLD_WEAPON_PLAYER_ID,
@@ -2763,7 +2765,10 @@ const worldFileCache = new Map();
 // js/request-forgery query is right that an unchecked `fetch(worldRef.url)`
 // is one bug away from following whatever a compromised or spoofed
 // connection put there instead.
-const WORLD_FILE_URL_RE = /^\/maps\/[0-9a-f]{12}\.json$/;
+const WORLD_FILE_URL_RE = /^\/maps\/([0-9a-f]{12})\.json$/;
+// Each world's hash, by world, for asking the server about it later (the
+// world viewer's obstacle source).
+const worldHashes = new WeakMap();
 
 async function loadWorldFile(worldRef) {
   if (!worldRef || !worldRef.url) return null;
@@ -2786,6 +2791,7 @@ async function loadWorldFile(worldRef) {
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
     const world = await response.json();
     if (worldRef.hash) worldFileCache.set(worldRef.hash, world);
+    worldHashes.set(world, WORLD_FILE_URL_RE.exec(worldRef.url)[1]);
     return world;
   } catch (error) {
     console.error('Failed to load world file', worldRef.url, error);
@@ -2863,6 +2869,7 @@ function announceWorldMessages(world) {
 // match state and does not come from here.
 function applyWorldData(world) {
   currentWorldData = world;
+  inspectObstacle(null);
   // The world's own scene switches and track fade, before anything below
   // builds the scenery they switch.
   const sceneConfig = configForWorld(world) || {};
@@ -7189,6 +7196,21 @@ function init() {
     messagesDiv.scrollTop += chatTouchY - touch.clientY;
     chatTouchY = touch.clientY;
   }, { passive: true });
+  // An observer's tap on the world shows the obstacle under it, as a
+  // right-click does: a short touch that stayed put, on the canvas itself
+  // rather than a control over it.
+  let worldTap = null;
+  window.addEventListener('pointerdown', (e) => {
+    worldTap = e.pointerType !== 'mouse' && e.target === renderManager.renderer?.domElement
+      ? { x: e.clientX, y: e.clientY, at: e.timeStamp } : null;
+  }, { passive: true });
+  window.addEventListener('pointerup', (e) => {
+    const tap = worldTap;
+    worldTap = null;
+    if (!tap || !isObserver() || !isGameplayInputActive()) return;
+    if (e.timeStamp - tap.at > 400 || Math.hypot(e.clientX - tap.x, e.clientY - tap.y) > 12) return;
+    inspectObstacleAt(e.clientX, e.clientY);
+  }, { passive: true });
   const endChatTouch = () => { chatTouchY = null; };
   window.addEventListener('touchend', endChatTouch, { passive: true });
   window.addEventListener('touchcancel', endChatTouch, { passive: true });
@@ -7441,7 +7463,11 @@ function init() {
     // Upstream's other `identify` binding (ActionBinding.cxx:97). It goes to the
     // same held input the on-screen and XR buttons use, so an observer picks a
     // roaming target with it and a guided missile will lock with it.
-    if (e.button === 2) setPointerIdentify(true);
+    // An observer's right-click on an obstacle shows it instead (the world
+    // viewer); anywhere else it identifies from the centre of the view.
+    if (e.button === 2 && !(isObserver() && inspectObstacleAt(e.clientX, e.clientY))) {
+      setPointerIdentify(true);
+    }
     // Upstream's default "Middle Mouse" -> drop binding (ActionBinding.cxx:95),
     // alongside Space -- a discrete action on press, not a held key, so this
     // asks for it once per click rather than tracking mouseup at all.
@@ -11771,6 +11797,14 @@ function identifyRoamTarget() {
     return !hidesFromRadar(theirFlag) && !cloaksTheTank(theirFlag);
   });
   const picked = pickTargetInSights(eye, forward, targetable, TARGETING_ANGLE);
+  // An obstacle nearer than the tank hides it, and is what is being looked at.
+  const obstacle = obstacleInSights(eye, look);
+  const tankAt = tanks.has(picked) ? tankPoint(tanks.get(picked)) : null;
+  if (obstacle && (!tankAt || obstacle.distance < Math.hypot(tankAt.x - eye.x, tankAt.y - eye.y))) {
+    inspectObstacle(obstacle.index);
+    return;
+  }
+  inspectObstacle(null);
   if (picked === null) {
     setHudAlert(1, 'Looking at nothing', IDENTIFY_ALERT_SECONDS, false);
     return;
@@ -11781,6 +11815,35 @@ function identifyRoamTarget() {
   // to "Looking at a tank" rather than naming the callsign, because the name
   // would give away the team the colour no longer does.
   showIdentifyAlert('Looking at', picked);
+}
+
+// The world viewer (docs/editor-plan.md): the obstacle at the centre of the
+// view, `{ index, distance }` in world units, or null.
+function obstacleInSights(eye, look) {
+  const dir = [look.x - eye.x, look.y - eye.y, look.z - eye.z];
+  const length = Math.hypot(...dir);
+  if (!(length > 0)) return null;
+  return pickObstacle(OBSTACLES, [eye.x, eye.y, eye.z], dir.map((value) => value / length));
+}
+
+// The obstacle under a point on the page, for an observer's right-click or
+// tap away from the centre of the view -- in the overview, anywhere on the
+// map. Returns whether there was one.
+function inspectObstacleAt(clientX, clientY) {
+  const ray = renderManager.worldRayAt(clientX, clientY);
+  const hit = ray && pickObstacle(OBSTACLES, ray.origin, ray.dir);
+  if (!hit) return false;
+  inspectObstacle(hit.index);
+  return true;
+}
+
+// Shows one obstacle in the viewer's panel, with its block from the map file
+// and an outline in the world; null closes both.
+function inspectObstacle(index) {
+  const obs = index === null ? null : OBSTACLES[index];
+  if (obs) showInspectPanel(obs, index, worldHashes.get(currentWorldData) || null);
+  else hideInspectPanel();
+  renderManager.setInspectHighlight(obs);
 }
 
 // LocalPlayer::target, mirrored per player. The server owns the lock -- it is

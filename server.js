@@ -1370,6 +1370,24 @@ app.get('/api/players', (req, res) => {
   res.type('application/json').send(playersApiBody(Date.now()));
 });
 
+// One obstacle's block in its map file (`obstacleSourceFor`), by world hash
+// and its index in that world's `obstacles`.
+app.get('/api/world/:hash/obstacles/:index/source', async (req, res) => {
+  const { hash } = req.params;
+  const index = Number(req.params.index);
+  if (!/^[0-9a-f]{12}$/.test(hash) || !Number.isInteger(index) || index < 0) {
+    res.status(400).json({ error: 'bad request' });
+    return;
+  }
+  const source = await obstacleSourceFor(hash, index);
+  if (!source) {
+    res.status(404).json({ error: 'no source for that obstacle' });
+    return;
+  }
+  res.set('Cache-Control', 'public, max-age=60');
+  res.json(source);
+});
+
 // The cheapest thing a client can ask to find out whether the server is
 // serving. A reload is what a restarted client does, and a reload that lands
 // while the server is still coming back is a browser error page -- with no
@@ -3952,6 +3970,69 @@ function prepareMapForView(fileName) {
     mapViewPreparations.set(fileName, pending);
   }
   return pending;
+}
+
+// Where one obstacle of a registered world came from in its map file, for the
+// world viewer (docs/editor-plan.md): the block's lines and text, and the
+// `group` blocks that placed it, outermost first. The world JSON does not
+// carry this; a worker parses the file again on the first ask for a world
+// and the spans stay for the next few. Null when the world has no file (a
+// generated one) or the file has changed since the world was built.
+const OBSTACLE_SOURCE_WORLDS = 4;
+const OBSTACLE_SOURCE_MAX_LINES = 400;
+const obstacleSources = new Map();
+function obstacleSourcesFor(hash) {
+  const cached = obstacleSources.get(hash);
+  if (cached) return cached;
+  let entry = null;
+  for (const candidate of MAP_REGISTRY.values()) {
+    if (candidate.hash === hash) entry = candidate;
+  }
+  const filePath = entry && resolveMapFilePath(entry.fileName);
+  if (!filePath) return Promise.resolve(null);
+  const pending = new Promise((resolve) => {
+    const worker = new Worker(path.join(__dirname, 'server', 'map-spans-worker.cjs'), {
+      workerData: { filePath, gameConfigDefaults: GAME_CONFIG_DEFAULTS },
+    });
+    let result = null;
+    worker.on('message', (message) => { result = message; });
+    worker.on('error', (error) => logError(`Could not read source spans of ${entry.fileName}:`, error));
+    worker.on('exit', () => {
+      const current = result && (!entry.bzfsHash || result.bzfsHash === entry.bzfsHash);
+      resolve(current ? { fileName: entry.fileName, text: result.text, spans: result.spans } : null);
+    });
+  });
+  obstacleSources.set(hash, pending);
+  pending.then((sources) => {
+    if (!sources) obstacleSources.delete(hash);
+  });
+  while (obstacleSources.size > OBSTACLE_SOURCE_WORLDS) {
+    obstacleSources.delete(obstacleSources.keys().next().value);
+  }
+  return pending;
+}
+
+async function obstacleSourceFor(hash, index) {
+  const sources = await obstacleSourcesFor(hash);
+  const flat = sources?.spans[index];
+  if (!flat) return null;
+  const block = (at) => {
+    const [startLine, endLine, start, end] = flat.slice(at, at + 4);
+    const lines = sources.text.slice(start, end).replace(/\r?\n$/, '').split(/\r?\n/);
+    // A member of a `define` reads from its own first column.
+    const indent = Math.min(...lines.filter((line) => line.trim()).map((line) => /^[ \t]*/.exec(line)[0].length));
+    for (let i = 0; i < lines.length; i += 1) lines[i] = lines[i].slice(Math.min(indent, /^[ \t]*/.exec(lines[i])[0].length));
+    const shown = lines.slice(0, OBSTACLE_SOURCE_MAX_LINES);
+    return {
+      startLine,
+      endLine,
+      text: shown.join('\n'),
+      ...(lines.length > shown.length ? { moreLines: lines.length - shown.length } : {}),
+    };
+  };
+  const placedBy = [];
+  for (let at = 4; at < flat.length; at += 4) placedBy.push(block(at));
+  return { file: sources.fileName, ...block(0), placedBy };
 }
 
 function reuseCachedImport(host, port) {

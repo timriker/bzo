@@ -1,7 +1,7 @@
 # World viewer and editor
 
 Plan for inspecting a world (issue #183) and editing one in the browser
-(issue #184). Nothing here is built.
+(issue #184). Source spans and the first of the viewer are built.
 
 ## What already exists
 
@@ -32,20 +32,39 @@ Plan for inspecting a world (issue #183) and editing one in the browser
 
 ## Source spans
 
-The parser records where each object came from: file, byte range and line
-range of its block. Both the viewer and the editor need it. It is fetched on
-demand, never added to the world JSON, which already reaches 74 MB on the
-largest map.
+The parser records where each object came from. Both the viewer and the
+editor need it. It is fetched on demand, never added to the world JSON, which
+already reaches 74 MB on the largest map.
+
+`parseBZWMap` (`server/bzw-parse.cjs`) gives every obstacle, mesh instance,
+zone, link, weapon, material, physics driver, dynamic colour and texture
+matrix a `source`: `startLine` and `endLine` (1-based) and `start` and `end`,
+the character range from the block's first line through its `end` line. A
+copy a `group` placed also has `placedBy`, the `source` of each `group` that
+placed it, outermost first; a member's `source` is its block in the `define`.
+Both are non-enumerable, so `JSON.stringify` leaves them out
+(`scripts/test-bzw-spans.mjs`).
 
 ## Viewer (#183)
 
-- Pick an object with the roaming camera, or a pointer ray in XR.
-- Panel: type, name, group path, source line, position, size, rotation,
-  drivethrough and shootthrough, material, textures, physics driver.
+Built: an observer's right-click or tap picks the obstacle under it, in any
+view and the Overview most of all, and in the Free view `I` picks the one at
+the centre (`public/world-pick.mjs`). It is outlined and shown in a panel
+(`public/inspect-panel.mjs`): type, name, position, size, rotation, flags,
+textures, physics driver, and its block from the map file with the `group`
+blocks that placed it, from `/api/world/<hash>/obstacles/<index>/source`
+([api.md](api.md)). A nearer obstacle wins over a tank in the sights.
+Values are BZFlag's own frame (#182), so nothing is converted; a group
+member's position is where its group placed it.
+
+Still to do:
+
+- A pointer ray in XR, and the panel there.
+- Material names, not only textures; a mesh's source shape (arc, cone).
+- Definitions placed by a passable instance are drawn but not picked: they
+  have no obstacle in the world (`meshInstances`).
 - World summary: counts by type, face counts, materials, missing textures, the
   largest meshes.
-- Values are shown as written in the BZW. bzo uses BZFlag's coordinate frame
-  (#182), so nothing is converted.
 
 ## User maps
 
