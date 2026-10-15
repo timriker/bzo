@@ -6,6 +6,8 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
 
 ## [Unreleased]
 
+## [1.3.52] - 2026-10-15
+
 ### Added
 - The world viewer's first step (#183): an observer right-clicks or taps an
   obstacle in any view, the Overview most of all, or presses `I` in the Free
