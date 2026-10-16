@@ -19,7 +19,7 @@
 // the pilot reports. A positive rotation turns left.
 
 import {
-  canRunOver, FLAG_ENDURANCE, getFlagEndurance, getFlagGrabRadius, getFlagTuning, getRunOverRadius,
+  canRunOver, firesContinuously, FLAG_ENDURANCE, getFlagEndurance, getFlagGrabRadius, getFlagTuning, getRunOverRadius,
   canSeeShot, canSeeTank, getRunOverSeparation, getTankHitRadiusScale, hasAirControl, isBadFlag, seenOnRadar,
   usesNarrowHitBox,
 } from './flags.mjs';
@@ -70,7 +70,7 @@ const HARD_FLAGS = new Set(['US', 'MG', 'ID']);
 
 function createStats() {
   return {
-    modes: {}, shots: 0, jumps: 0, falls: 0, plans: 0, unreachable: 0, unsticks: 0, held: 0, kept: 0, safer: 0,
+    modes: {}, shots: 0, jumps: 0, falls: 0, plans: 0, unreachable: 0, waits: 0, unsticks: 0, held: 0, kept: 0, safer: 0,
   };
 }
 
@@ -601,6 +601,11 @@ const BANK_LEG_CLEAR = 1;
 // How far inside a landing shot's window, in seconds, Ace aims its arrival
 // when he can choose: at most half the window.
 const LANDING_SHOT_MARGIN = 0.03;
+// How far behind the real foe a landing shot's plan starts, in seconds, on
+// top of the round trip: a foe's move is dated when it arrives, and the hit
+// is judged where the foe really is. Measured from a client on the server's
+// own machine, whose shots came 0.07 late.
+const LANDING_SHOT_BIAS = 0.07;
 const LUNGE_STILL_SPEED = 1;
 const LUNGE_HOLD_SPEED = 0.05;
 const LUNGE_SECONDS = 0.3;
@@ -610,6 +615,12 @@ const LUNGE_CLEARANCE = 4;
 // he may have moved a little by then -- and how long a shot is clear of its
 // own muzzle.
 const SELF_HIT_MARGIN = 2;
+// Trigger Happy: how far ahead the heading of its next shot is judged, in
+// seconds, the steps the headings round him are tried in, and the least time
+// a turn to one is spread over.
+const TRIGGER_HAPPY_LEAD = 1;
+const TRIGGER_HAPPY_STEP = Math.PI / 18;
+const TRIGGER_HAPPY_STEP_SECONDS = 0.1;
 // Dodging: how far past a hit a shot must pass to count as missing, how far
 // ahead a shot is worth worrying about, and how much time a move out of its
 // way must leave to spare.
@@ -958,7 +969,8 @@ export class Ace extends Roger {
     this.dropDriveUntil = -Infinity;
     this.lastTrace = null;
     this.extraReport = (stats) => `, routes ${stats.plans} (${stats.unreachable} none`
-      + `${stats.safer ? `, ${stats.safer} round a covered jump` : ''}),`
+      + `${stats.safer ? `, ${stats.safer} round a covered jump` : ''}`
+      + `${stats.waits ? `, ${stats.waits} frames waiting` : ''}),`
       + ` unsticks ${stats.unsticks}, held shots ${stats.held}, kept shots ${stats.kept}`;
     // The landing each airborne foe has been shot at for, as a clock time, and
     // how many shots it has had, so a jump costs the shots it takes to kill
@@ -1026,6 +1038,7 @@ export class Ace extends Roger {
     if (out.fire) this.lastFiredAt = view.now;
     // A reason is why a tank was picked, so only while Ace is after one.
     if (!TARGET_MODES.has(out.intent.mode)) out.intent.reason = null;
+    this.aimTriggerHappy(view, out);
     this.noteCampDodge(view, out);
     // Roger's chase jumps a building in the way without asking whether the
     // tank may jump.
@@ -1055,6 +1068,39 @@ export class Ace extends Roger {
     }
     this.paceAgility(view, out);
     return out;
+  }
+
+  // Trigger Happy fires whenever a slot is free, so the check `fireAtTank`
+  // makes cannot hold a shot that would come back: instead the barrel is
+  // kept off such a heading. Where the turn he is making has it when the
+  // next shot goes, he turns instead for the nearest heading whose shot
+  // does not return -- the one he can reach soonest.
+  aimTriggerHappy(view, out) {
+    const self = view.self;
+    if (!firesContinuously(self.flag) || !self.ricochet || self.inAir) return;
+    // A dodge is out of a shot already coming, which comes first.
+    if (out.intent.mode === 'dodge') return;
+    const ctx = { view, me: self, out };
+    const rate = this.turnRate(ctx);
+    const lead = Math.min(TRIGGER_HAPPY_LEAD, Math.max(0, self.nextShotIn ?? 0));
+    const trace = this.lastTrace;
+    const unsafe = (turn) => this.shotEndangersSelf(ctx, self.azimuth + turn);
+    const planned = out.rotation * rate * lead;
+    if (!unsafe(planned)) {
+      this.lastTrace = trace;
+      return;
+    }
+    let turn = null;
+    for (let step = TRIGGER_HAPPY_STEP; step <= Math.PI + 1e-9 && turn === null; step += TRIGGER_HAPPY_STEP) {
+      // The way he is already turning first.
+      const first = out.rotation < 0 ? -1 : 1;
+      if (!unsafe(first * step)) turn = first * step;
+      else if (!unsafe(-first * step)) turn = -first * step;
+    }
+    this.lastTrace = trace;
+    if (turn === null) return;
+    out.rotation = Math.max(-1, Math.min(1, turn / (rate * Math.max(lead, TRIGGER_HAPPY_STEP_SECONDS))));
+    out.intent.reason = 'trigger-happy';
   }
 
   // Left Turn Only and Right Turn Only refuse the other way, so a turn that
@@ -1576,8 +1622,14 @@ export class Ace extends Roger {
   // `landingShotSpeed` reads, earliest first: up the way it rose is the
   // soonest kill. `landsAt` is the jump's own landing, which one shot per jump
   // is counted against.
-  planShots(ctx, p) {
+  //
+  // The foe in the view is as it was a round trip and a little ago
+  // (`LANDING_SHOT_BIAS`), so it is flown on that far first: a plan for where
+  // it was is a shot that arrives after it has landed and driven off.
+  planShots(ctx, seen) {
     const { view, me } = ctx;
+    const p = this.landingLead(ctx, seen);
+    if (!p) return [];
     const landing = this.predictLanding(ctx, p);
     if (!landing) return [];
     const landsAt = view.now + landing.t;
@@ -1618,6 +1670,23 @@ export class Ace extends Roger {
     }
     if (start !== null) piece(start, landing.t);
     return plans.sort((a, b) => a.enter - b.enter);
+  }
+
+  // An airborne foe as it is now rather than as the view last heard of it:
+  // on along its arc by the round trip and `LANDING_SHOT_BIAS`. Null when it
+  // is down by then.
+  landingLead(ctx, p) {
+    const lead = Math.max(0, ctx.view.self.lag ?? 0) + LANDING_SHOT_BIAS;
+    if (!p.airborne || !(p.gravity > 0)) return p;
+    const first = this.predictLanding(ctx, p);
+    if (!first || first.t <= lead) return null;
+    return {
+      ...p,
+      x: p.x + (p.vx * lead),
+      y: p.y + (p.vy * lead),
+      z: p.z + (p.vz * lead) - (0.5 * p.gravity * lead * lead),
+      vz: p.vz - (p.gravity * lead),
+    };
   }
 
   // A shot's speed is its tank's velocity plus the shot speed (FiringInfo,
@@ -2169,12 +2238,12 @@ export class Ace extends Roger {
   // The shot a trigger pulled this frame fires: upstream's velocity -- this
   // frame's own speed along the barrel on the ground, the one he left with in
   // the air -- as its strategy scales it.
-  shotVelocity(ctx) {
+  shotVelocity(ctx, azimuth = ctx.view.self.azimuth) {
     const { view, me, out } = ctx;
     const self = view.self;
     const base = view.world.shotSpeed;
-    const dirX = Math.cos(self.azimuth);
-    const dirY = Math.sin(self.azimuth);
+    const dirX = Math.cos(azimuth);
+    const dirY = Math.sin(azimuth);
     const range = this.speedRange(ctx);
     const own = me.inAir
       ? { x: self.velocity?.x ?? 0, y: self.velocity?.y ?? 0 }
@@ -2188,22 +2257,23 @@ export class Ace extends Roger {
     };
   }
 
-  // Whether the shot about to be fired comes back to where Ace is. Only a
-  // ricochet can, and only once it has had time to turn round.
-  shotEndangersSelf(ctx) {
+  // Whether the shot about to be fired, or one fired facing `azimuth`, comes
+  // back to where Ace is. Only a ricochet can, and only once it has had time
+  // to turn round.
+  shotEndangersSelf(ctx, azimuth = ctx.view.self.azimuth) {
     const { view } = ctx;
     const self = view.self;
     this.lastTrace = null;
     if (!self.ricochet || typeof view.traceShot !== 'function') return false;
-    const dirX = Math.cos(self.azimuth);
-    const dirY = Math.sin(self.azimuth);
+    const dirX = Math.cos(azimuth);
+    const dirY = Math.sin(azimuth);
     const muzzle = {
       x: self.x + (dirX * self.muzzleForward),
       y: self.y + (dirY * self.muzzleForward),
       z: self.z + self.muzzleHeight,
     };
     const reach = TANK.radius + SELF_HIT_MARGIN;
-    const shot = this.shotVelocity(ctx);
+    const shot = this.shotVelocity(ctx, azimuth);
     const segments = view.traceShot(muzzle, shot.dir, shot.speed, self.shotLifetime, true);
     this.lastTrace = segments;
     // The first leg leaves from the muzzle, so it is beside him by
@@ -2433,8 +2503,7 @@ export class Ace extends Roger {
     const shots = [];
     let horizon = 0;
     for (const shot of view.shots) {
-      if (!canSeeShot(me.flag, shot.flag)) continue;
-      if (shot.ownerId === me.id) continue;
+      if (shot.ownerId !== me.id && !canSeeShot(me.flag, shot.flag)) continue;
       if (shot.ownerZoned && !me.zoned) continue;
       if (shot.flag === 'L' && me.flag === 'CL') continue;
       if (shot.flag !== 'GM' && (shot.z < me.z - SHOT_COLLISION_RADIUS
@@ -2543,14 +2612,15 @@ export class Ace extends Roger {
 
   // Of the shots Ace can see, the one that will hit him soonest if he stays
   // put: when it passes closest, by how much, and which way is away from it.
+  // His own are in the view once they have bounced, and count like any
+  // other: Roger, as upstream's does, never looks at his own.
   // `own` is the velocity Ace keeps meanwhile: still, by default.
   soonestHit(ctx, own = { x: 0, y: 0 }) {
     const { view, me } = ctx;
     const clearance = TANK.radius + SHOT_COLLISION_RADIUS + DODGE_CLEARANCE;
     let best = null;
     for (const shot of view.shots) {
-      if (!canSeeShot(me.flag, shot.flag)) continue;
-      if (shot.ownerId === me.id) continue;
+      if (shot.ownerId !== me.id && !canSeeShot(me.flag, shot.flag)) continue;
       if (shot.ownerZoned && !me.zoned) continue;
       if (shot.flag === 'L' && me.flag === 'CL') continue;
       const pos = pointOf(shot);
@@ -3159,6 +3229,8 @@ export class Ace extends Roger {
     const current = this.route;
     const sameDest = current && Math.hypot(current.dest.x - there.x, current.dest.y - there.y) < slack
       && Math.abs(current.dest.z - there.z) < 1;
+    // Waiting on a router: asked again every frame until it answers.
+    if (sameDest && current.pending) return this.plan(view, here, there);
     if (sameDest && !current.nodes) {
       return view.now - current.plannedAt < UNREACHABLE_SECONDS ? null : this.plan(view, here, there);
     }
@@ -3176,12 +3248,13 @@ export class Ace extends Roger {
     const canJump = canTankJump(view.world, view.self.flag);
     const wings = hasAirControl(view.self.flag);
     let nodes = view.findRoute(here, there, { canJump, wings });
+    if (nodes === ROUTE_PENDING) return this.awaitRoute(view, here, there);
     // A jump is a second or more Ace cannot steer, and comes down where it
     // was always going to: one whose landing a foe has a level, clear shot
     // at is taken only when the way round on the ground is much longer.
     if (canJump && nodes && this.exposedJump(view, here, nodes)) {
       const ground = view.findRoute(here, there, { canJump: false });
-      if (ground && routeLength(here, ground) <= (routeLength(here, nodes) * SAFE_DETOUR_SHARE) + SAFE_DETOUR_EXTRA) {
+      if (ground && ground !== ROUTE_PENDING && routeLength(here, ground) <= (routeLength(here, nodes) * SAFE_DETOUR_SHARE) + SAFE_DETOUR_EXTRA) {
         nodes = ground;
         this.stats.safer++;
       }
@@ -3190,6 +3263,22 @@ export class Ace extends Roger {
     if (!nodes) this.stats.unreachable++;
     this.route = { dest: there, from: here, nodes, at: 0, plannedAt: view.now };
     return nodes ? this.route : null;
+  }
+
+  // While a router works a route out, Ace keeps moving: on along the route
+  // he has to the same place, or else straight at it, which a wall in the way
+  // turns into an unstick -- any motion is better than sitting still.
+  awaitRoute(view, here, there) {
+    this.stats.waits++;
+    const current = this.route;
+    if (current?.nodes && !current.pending
+      && Math.hypot(current.dest.x - there.x, current.dest.y - there.y) < ROUTE_DEST_SLACK) {
+      return current;
+    }
+    this.route = {
+      dest: there, from: here, nodes: [{ x: there.x, y: there.y, z: here.z }], at: 0, plannedAt: view.now, pending: true,
+    };
+    return this.route;
   }
 
   // The next jump on `nodes`, within `JUMP_RISK_LOOKAHEAD` of driving, if a
@@ -4324,6 +4413,56 @@ export function createRouter(world) {
     const graph = built.graphs.get(key);
     return graph.smoothRoute(graph.findRoute(from, to), from);
   };
+}
+
+// What a router run elsewhere answers while the route is still being worked
+// out: not "none", which is a route nobody can drive.
+export const ROUTE_PENDING = 'pending';
+
+// How far a tank may have come, and its destination moved, since a route was
+// asked for and still take that route as the answer.
+const ANSWER_FROM_SLACK = 10;
+const ANSWER_TO_SLACK = ROUTE_DEST_SLACK;
+
+// `createRouter`'s, with the work done by `post`, a worker: a graph's first
+// route builds every move on the map, seconds on a slow device, and a main
+// thread that does it freezes the game. The world goes over when it changes,
+// a route request one at a time, and `receive` takes each answer. A route is
+// answered from the last answer for its graph -- ground, jump or Wings -- that
+// started and ended near enough; anything else is `ROUTE_PENDING` and asked.
+export function createAsyncRouter(world, post) {
+  let sent = null;
+  let asking = null;
+  let nextId = 0;
+  const answers = new Map();
+  const near = (a, b, slack) => Math.hypot(a.x - b.x, a.y - b.y) < slack && Math.abs(a.z - b.z) < 1;
+  const router = (from, to, options = {}) => {
+    const current = world();
+    const { obstacles, teleporterLinks, ...rest } = current;
+    const shape = JSON.stringify(rest);
+    if (!sent || sent.obstacles !== obstacles || sent.teleporterLinks !== teleporterLinks || sent.shape !== shape) {
+      sent = { obstacles, teleporterLinks, shape };
+      asking = null;
+      answers.clear();
+      post({ type: 'world', world: current });
+    }
+    const key = `${options.canJump ?? current.allowJumping !== false}:${Boolean(options.wings)}`;
+    const answer = answers.get(key);
+    if (answer && near(answer.from, from, ANSWER_FROM_SLACK) && near(answer.to, to, ANSWER_TO_SLACK)) {
+      return answer.nodes;
+    }
+    if (!asking) {
+      asking = { id: ++nextId, key, from, to };
+      post({ type: 'route', id: asking.id, from, to, options });
+    }
+    return ROUTE_PENDING;
+  };
+  router.receive = ({ id, nodes }) => {
+    if (!asking || id !== asking.id) return;
+    answers.set(asking.key, { from: asking.from, to: asking.to, nodes });
+    asking = null;
+  };
+  return router;
 }
 
 // The pilot used where nobody has chosen one: `9` with the Settings row on

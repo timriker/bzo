@@ -7685,6 +7685,7 @@ class RenderManager {
         depthWrite: false,
         fog: true,
       });
+      this._tankNavLightMaterial.userData.shared = true;
     }
     return this._tankNavLightMaterial;
   }
@@ -8088,6 +8089,12 @@ class RenderManager {
       rearCap: templateParts.rightTreadRearCap,
     }, treadMaterials) : null;
 
+    // What `recolorTank` repaints: the materials a colour reaches.
+    tankGroup.userData.colorMaterials = {
+      body: [bodyMaterial],
+      treadCap: treadMaterials.treadCapMat,
+      treadCapSide: treadMaterials.treadCapMatSide,
+    };
     tankGroup.userData.leftTreadTextures = leftTread ? leftTread.textures : [];
     tankGroup.userData.rightTreadTextures = rightTread ? rightTread.textures : [];
 
@@ -8120,6 +8127,7 @@ class RenderManager {
     // upstream draws it: `setupTextureMatrix` (TankSceneNode.cxx) moves only
     // the treads and wheels.
     const turretMaterial = new THREE.MeshLambertMaterial({ map: bodyTexture });
+    tankGroup.userData.colorMaterials.body.push(turretMaterial);
     const turret = this._cloneTemplateMesh(templateParts.turret, turretMaterial);
     tankGroup.add(turret);
     tankGroup.userData.turret = turret;
@@ -8157,7 +8165,76 @@ class RenderManager {
     const tank = this._createTankFromTemplate(color, name, modelPath, options);
     if (!tank) return null;
     tank.userData.modelPath = modelPath;
+    tank.userData.ownedResources = this._tankOwnedResources(tank, modelPath);
     return tank;
+  }
+
+  // What a tank was built with that is its alone: every texture and material
+  // made for it -- body, treads, caps, wheels, label -- and each geometry that
+  // is not the model's own, which every tank shares. A shared material is
+  // left out, and so is anything added to the tank later.
+  _tankOwnedResources(tank, modelPath) {
+    const templateGeometries = new Set();
+    this._tankTemplateByPath.get(modelPath)?.traverse((node) => {
+      if (node.geometry) templateGeometries.add(node.geometry);
+    });
+    const owned = { geometries: new Set(), materials: new Set(), textures: new Set() };
+    tank.traverse((node) => {
+      if (node.geometry && !templateGeometries.has(node.geometry)) owned.geometries.add(node.geometry);
+      for (const material of Array.isArray(node.material) ? node.material : [node.material]) {
+        if (!material || material.userData?.shared) continue;
+        owned.materials.add(material);
+        for (const value of Object.values(material)) if (value?.isTexture) owned.textures.add(value);
+      }
+    });
+    // Kept on the tank but not on any mesh: the wheels' textures for each
+    // face are swapped in as they turn.
+    for (const key of ['leftWheelTextures', 'rightWheelTextures', 'leftWheelSideTextures', 'rightWheelSideTextures']) {
+      for (const texture of tank.userData[key] || []) if (texture?.isTexture) owned.textures.add(texture);
+    }
+    return owned;
+  }
+
+  // A tank in a new colour, rogue look or skin, on the tank it already is:
+  // the colour is in the body's texture and the tread caps' and nothing else
+  // (the label is the caller's), so those two are painted again and swapped
+  // in and the old ones let go -- where a rebuild makes every texture, wheels
+  // and treads included, and every geometry, again. A disguise flag repaints
+  // every tank in sight.
+  recolorTank(tank, color, options = {}) {
+    const materials = tank?.userData?.colorMaterials;
+    if (!materials) return false;
+    const owned = tank.userData.ownedResources;
+    const swap = (material, texture) => {
+      const old = material.map;
+      material.map = texture;
+      material.needsUpdate = true;
+      if (old && old !== texture && owned?.textures.delete(old)) old.dispose();
+      owned?.textures.add(texture);
+    };
+    const body = this._createTankTexture(color, options);
+    materials.body.forEach((material) => swap(material, body));
+    const cap = this._createTreadCapTexture(color, options);
+    const side = cap.clone();
+    side.repeat.set(3.0, 1.0);
+    side.wrapS = THREE.RepeatWrapping;
+    side.wrapT = THREE.RepeatWrapping;
+    side.needsUpdate = true;
+    swap(materials.treadCap, cap);
+    swap(materials.treadCapSide, side);
+    return true;
+  }
+
+  // A tank let go of for good (`discardTank`): what `_tankOwnedResources`
+  // says it was built with, disposed. Its debris, still flying, shares the
+  // geometry and textures, and three uploads them again for as long as it does.
+  disposeTank(tank) {
+    const owned = tank?.userData?.ownedResources;
+    if (!owned) return;
+    tank.userData.ownedResources = null;
+    owned.geometries.forEach((geometry) => geometry.dispose());
+    owned.materials.forEach((material) => material.dispose());
+    owned.textures.forEach((texture) => texture.dispose());
   }
 
   createGhostMesh(tank) {
@@ -10358,6 +10435,14 @@ class RenderManager {
       this.deathFollowTarget = null;
     }
     mesh.removeFromParent();
+    // A tank part is a clone sharing the live tank's geometry and textures,
+    // with materials of its own (`createExplosion`): those go, nothing else.
+    if (mesh.userData?.isTankPart) {
+      mesh.traverse((node) => {
+        if (!node.isMesh || !node.material) return;
+        (Array.isArray(node.material) ? node.material : [node.material]).forEach((mat) => mat.dispose());
+      });
+    }
     if (mesh.userData && !mesh.userData.isTankPart) {
       if (mesh.geometry) mesh.geometry.dispose();
       if (mesh.material) {

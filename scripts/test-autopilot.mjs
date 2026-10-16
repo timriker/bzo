@@ -11,7 +11,9 @@
 // a positive rotation turns left.
 
 import assert from 'node:assert/strict';
-import { Ace, Roger, createWorldProbes, findVantagePoints } from '../public/autopilot.mjs';
+import {
+  Ace, Roger, ROUTE_PENDING, createAsyncRouter, createWorldProbes, findVantagePoints,
+} from '../public/autopilot.mjs';
 import { findShotSegmentImpact } from '../public/collision.mjs';
 import { buildNavGraph } from '../public/nav.mjs';
 
@@ -736,6 +738,92 @@ for (const flag of ['US', 'MG', 'ID']) {
     isObscured: () => false,
   }));
   assert.equal(out.fire, false, 'a wall at point blank sends it straight back');
+}
+
+// Trigger Happy fires whether or not he holds it, so Ace turns the barrel
+// off a wall that would send the shot straight back -- Orin killed himself
+// twice so -- and leaves it alone on an open heading.
+{
+  const wall = {
+    type: 'box', name: 'wall', pos: [0, 8, 0], size: [30, 1, 10], angle: 0,
+  };
+  const probes = createWorldProbes({
+    obstacles: () => [wall],
+    colliders: () => [wall],
+    mapSize: () => 800,
+    findImpact: findShotSegmentImpact,
+    topOf: (obs) => obs.pos[2] + obs.size[2],
+  });
+  const self = {
+    flag: 'TR', muzzleHeight: 1.57, muzzleForward: 3, shotSpeed: 100, shotLifetime: 3.5, ricochet: true,
+    nextShotIn: 0.5, turnRate: Math.PI / 4,
+  };
+  const out = new Ace().think(makeView({ self, ...probes, isObscured: () => false }));
+  assert.equal(out.intent.reason, 'trigger-happy', 'facing the wall, he turns away');
+  assert.ok(Math.abs(out.rotation) > 0.5, 'hard');
+  const open = new Ace().think(makeView({ self: { ...self, azimuth: -Math.PI / 2 }, ...probes, isObscured: () => false }));
+  assert.notEqual(open.intent.reason, 'trigger-happy', 'facing away, nothing to do');
+}
+
+// A router in a worker: the world goes over once, one route is asked at a
+// time, and an answer serves while the tank and its destination stay near
+// where it was asked from and to.
+{
+  const posted = [];
+  const world = { obstacles: [], mapSize: 800, allowJumping: true, jump: null };
+  const router = createAsyncRouter(() => world, (message) => posted.push(message));
+  const a = { x: 0, y: 0, z: 0 };
+  const b = { x: 100, y: 0, z: 0 };
+  assert.equal(router(a, b), ROUTE_PENDING);
+  assert.equal(router(a, b), ROUTE_PENDING);
+  assert.deepEqual(posted.map((m) => m.type), ['world', 'route'], 'one request in flight');
+  router.receive({ id: posted[1].id, nodes: [b] });
+  assert.deepEqual(router({ x: 3, y: 0, z: 0 }, b), [b], 'answered from near where it was asked');
+  assert.equal(router({ x: 50, y: 0, z: 0 }, b), ROUTE_PENDING, 'and asked again from further on');
+  assert.equal(router(a, b, { canJump: false }), ROUTE_PENDING, 'each graph its own');
+}
+
+// While the route is worked out Ace still has somewhere to drive: on along
+// the route he has to the same place, or else straight at it -- where "no
+// route" is none.
+{
+  const dest = { x: 0, y: 200, z: 0 };
+  const at = (findRoute) => {
+    const view = makeView({ findRoute });
+    return { view, me: view.self, out: {} };
+  };
+  assert.equal(new Ace().routeTo(at(() => null), dest), null, 'unreachable');
+  const ace = new Ace();
+  const waiting = ace.routeTo(at(() => ROUTE_PENDING), dest);
+  assert.ok(waiting?.pending, 'a stand-in while it is pending');
+  assert.deepEqual([waiting.nodes[0].x, waiting.nodes[0].y], [0, 200], 'straight at it');
+  const known = [{ x: 50, y: 100, z: 0 }, { ...dest }];
+  ace.route = { dest, from: { x: 0, y: 0, z: 0 }, nodes: known, at: 0, plannedAt: 0 };
+  assert.equal(ace.routeTo(at(() => ROUTE_PENDING), dest).nodes, known, 'the old route kept meanwhile');
+}
+
+// Landing shots are planned for the foe as it is now: the one in the view is
+// a round trip and a little behind, so its touchdown comes that much sooner,
+// and one already down by then is no shot at all.
+{
+  const falling = (vz) => enemy(0, 60, { z: 5, vz, airborne: true, gravity: 9.8 });
+  const self = { muzzleHeight: 1.57, muzzleForward: 3, shotSpeed: 100 };
+  const plans = (lag, foe) => {
+    const view = makeView({ self: { ...self, lag } });
+    return new Ace().planShots({ view, me: view.self, out: {} }, foe);
+  };
+  const slow = plans(0, falling(0))[0].landsAt;
+  const laggy = plans(0.2, falling(0))[0].landsAt;
+  assert.ok(Math.abs((slow - laggy) - 0.2) < 0.02, `touchdown 0.2 sooner with 0.2 of lag (${slow - laggy})`);
+  // Down from 5 at -40 lands in an eighth of a second, inside the lead.
+  assert.deepEqual(plans(0.2, falling(-40)), [], 'already down');
+}
+
+// His own shot, once it has bounced, is dodged like anyone's.
+{
+  const own = { ownerId: 'me', ownerZoned: false, flag: null, bounces: 1, x: 0, y: 30, z: 1.5, vx: 0, vy: -100, vz: 0 };
+  const out = new Ace().think(makeView({ shots: [own] }));
+  assert.equal(out.intent.mode, 'dodge', 'his own ricochet coming back');
 }
 
 // A landing behind a wall is shot off another: with ricochet on, Ace finds

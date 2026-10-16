@@ -414,7 +414,7 @@ import {
 } from './teleport.mjs';
 import { findMapEdgeImpactPoint, traceBeam, traceShotThroughTeleporters } from './trace.mjs';
 import {
-  AUTOPILOTS, DEFAULT_PILOT, createRouter, createWorldProbes, findVantagePoints, teamBasesOf,
+  AUTOPILOTS, DEFAULT_PILOT, createAsyncRouter, createRouter, createWorldProbes, findVantagePoints, teamBasesOf,
 } from './autopilot.mjs';
 import {
   TRACK_SURFACE_TOLERANCE,
@@ -1680,8 +1680,8 @@ function getPlayerTeamById(playerId) {
   return tanks.get(playerId)?.userData?.playerState?.team ?? null;
 }
 
-// A tank is built from its colour rather than tinted, so a tank whose effective
-// colour just changed has to be rebuilt. `refreshTankDisguises` does that once a
+// A tank is painted from its colour rather than tinted, so a tank whose
+// effective colour just changed is painted again. `refreshTankDisguises` does that once a
 // frame for remote tanks and skips the local one on purpose -- you cannot see
 // your own disguise -- but being the rabbit is a team, not a disguise, so this is
 // the path the rabbit's repaint takes for either.
@@ -1699,7 +1699,7 @@ function rebuildTankColor(playerId) {
     ...tankPoint(tank),
     azimuth: tankAzimuth(tank),
   });
-  // addPlayer *replaces* the mesh when the colour changed, so every caller that
+  // addPlayer *replaces* the mesh when it cannot repaint it, so every caller that
   // can rebuild the local tank has to re-point `myTank` at the new one -- the old
   // one is out of `tanks` and out of the scene. Miss this and the movement code
   // goes on writing positions onto an orphan while the camera reads myX/Y/Z:
@@ -1871,6 +1871,16 @@ function getHeldTriggerIntervalMs() {
 // keeps a Trigger Happy tank's shots from going off together.
 function forceReload(seconds) {
   shotJamUntil = Math.max(shotJamUntil, sampleEpochClock() + (seconds * 1000));
+}
+
+function nextShotSeconds() {
+  const slots = normalizeShotSlotCount(gameConfig?.SHOT_MAX_ACTIVE);
+  let freeAt = Infinity;
+  for (let slot = 0; slot < slots; slot++) {
+    const at = Number(myShotSlotFreeAt[slot]);
+    freeAt = Math.min(freeAt, Number.isFinite(at) ? at : 0);
+  }
+  return Math.max(0, (Math.max(freeAt, shotJamUntil) - frameEpochMs) / 1000);
 }
 
 function getVoiceAudioSettings() {
@@ -5284,6 +5294,7 @@ function loadTankPreviewModel(modelPath) {
 
     if (tankPreviewCard.modelRoot) {
       scene.remove(tankPreviewCard.modelRoot);
+      renderManager.disposeTank(tankPreviewCard.modelInner);
       tankPreviewCard.modelRoot = null;
       tankPreviewCard.modelInner = null;
       tankPreviewCard.modelMeasure = null;
@@ -8889,15 +8900,23 @@ function addPlayer(player) {
   // The colour the tank is actually built from, which is rogue for everyone else
   // while colourblind. Comparing against the effective colour rather than the
   // player's own is what makes picking the flag up a colour change, so the same
-  // rebuild path that handles a real recolour handles this too -- the body
-  // texture and the name label are both generated from it, so there is nothing
-  // cheaper to tweak in place.
+  // repaint that handles a real recolour handles this too. A new colour, rogue
+  // look or skin repaints the tank it is (`recolorTank`); only a new model
+  // builds another.
   const effectiveColor = getEffectiveTankColor(player.id, player.color);
   const camoOptions = { ...getTankCamoOptions(player.id), skin: getTankSkin(player.skin) };
   const tankColorChanged = tank?.userData?.builtColor !== effectiveColor
     || tank?.userData?.builtRogue !== camoOptions.rogue
     || tank?.userData?.builtSkin !== camoOptions.skin.id;
-  if (tank && tank.userData && (tank.userData.tankModel !== playerTankModelId || tankColorChanged)) {
+  if (tank && tank.userData && tank.userData.tankModel !== playerTankModelId) {
+    discardTank(tank, player.id);
+    tank = null;
+  } else if (tank && tankColorChanged
+    && renderManager.recolorTank(tank, effectiveColor, camoOptions)) {
+    tank.userData.builtColor = effectiveColor;
+    tank.userData.builtRogue = camoOptions.rogue;
+    tank.userData.builtSkin = camoOptions.skin.id;
+  } else if (tank && tankColorChanged) {
     discardTank(tank, player.id);
     tank = null;
   }
@@ -9018,6 +9037,7 @@ function discardTank(tank, playerId = null) {
   renderManager.dropProjectedShadows(tank);
   renderManager.dropTankCrossingEffect(tank);
   tank.removeFromParent();
+  renderManager.disposeTank(tank);
   if (playerId !== null) tanks.delete(playerId);
 }
 
@@ -12773,7 +12793,7 @@ function selectAutopilotRow() {
   return true;
 }
 
-const autopilotRouter = createRouter(() => ({
+const autopilotWorld = () => ({
   obstacles: OBSTACLES,
   mapSize: currentWorldMapSize || DEFAULT_MAP_SIZE,
   waterLevel: currentWorldWaterHeight > 0 ? currentWorldWaterHeight : null,
@@ -12787,7 +12807,34 @@ const autopilotRouter = createRouter(() => ({
   wings: gameConfig
     ? { velocity: gameConfig.WINGS_JUMP_VELOCITY, gravity: gameConfig.WINGS_GRAVITY, count: gameConfig.WINGS_JUMP_COUNT }
     : null,
-}));
+});
+// Routes are worked out in a worker, started the first time one is asked
+// for: a graph's first route takes seconds on a slow device. Where the worker
+// cannot start or fails, the page works them out itself.
+let autopilotRouteWorker = null;
+let autopilotRouterInPage = null;
+const autopilotRouterInWorker = createAsyncRouter(autopilotWorld, (message) => {
+  if (!autopilotRouteWorker) {
+    autopilotRouteWorker = new Worker(new URL('./route-worker.mjs', import.meta.url), { type: 'module' });
+    autopilotRouteWorker.onmessage = ({ data }) => autopilotRouterInWorker.receive(data);
+    autopilotRouteWorker.onerror = (event) => {
+      debugLog(`[autopilot] route worker failed: ${event.message || 'error'}; routing in the page`);
+      autopilotRouterInPage = createRouter(autopilotWorld);
+    };
+  }
+  autopilotRouteWorker.postMessage(message);
+});
+function autopilotRouter(from, to, options) {
+  if (!autopilotRouterInPage && typeof Worker !== 'function') autopilotRouterInPage = createRouter(autopilotWorld);
+  if (autopilotRouterInPage) return autopilotRouterInPage(from, to, options);
+  try {
+    return autopilotRouterInWorker(from, to, options);
+  } catch (error) {
+    debugLog(`[autopilot] route worker unavailable: ${error.message}; routing in the page`);
+    autopilotRouterInPage = createRouter(autopilotWorld);
+    return autopilotRouterInPage(from, to, options);
+  }
+}
 const autopilotProbes = createWorldProbes({
   obstacles: () => OBSTACLES,
   colliders: getCollisionColliders,
@@ -12875,9 +12922,11 @@ function buildAutopilotView() {
     const owner = projectile.userData?.playerId;
     if (owner !== undefined && owner !== myPlayerId) fired.push({ id, ownerId: owner });
   }
+  // Its own shots too, once they have bounced: only then can one hit it.
   for (const projectile of projectiles.values()) {
     const data = projectile.userData;
-    if (!data || data.playerId === myPlayerId || !Number.isFinite(data.speed)) continue;
+    if (!data || !Number.isFinite(data.speed)) continue;
+    if (data.playerId === myPlayerId && !(data.bounces > 0)) continue;
     const ownerFlag = getPlayerFlag(data.playerId);
     shots.push({
       ownerId: data.playerId,
@@ -12929,6 +12978,11 @@ function buildAutopilotView() {
         myShotSlotFreeAt, normalizeShotSlotCount(gameConfig.SHOT_MAX_ACTIVE), frameEpochMs) >= 0,
       freeShots: countFreeShotSlots(
         myShotSlotFreeAt, normalizeShotSlotCount(gameConfig.SHOT_MAX_ACTIVE), frameEpochMs),
+      // The round trip to the server, in seconds, which a foe's last move is
+      // that far behind.
+      lag: Number.isFinite(latency) ? latency / 1000 : 0,
+      // Seconds until the next shot can go, which Trigger Happy fires then.
+      nextShotIn: nextShotSeconds(),
       // How the tank is moving, which a shot inherits: its velocity as of the
       // last move, its speed along the barrel, how fast it can go and how fast
       // that speed may change (0, no limit).

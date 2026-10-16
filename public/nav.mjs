@@ -235,9 +235,15 @@ export function buildNavGraph(world) {
   // round a face collide, so without this a teleporter reads as open ground,
   // and on hix every route into a corner went straight through the lift there.
   // The same doorway test a tank is teleported by (`createTankTeleporter`).
-  const teleporters = obstacles.filter((obs) => obs.kind === 'teleporter');
-  const crossesTeleporter = (ax, ay, bx, by, z) => teleporters.some((obs) => getShotTeleporterCrossing(
-    { x: ax, y: ay, z: z + 0.01 }, { x: bx, y: by, z: z + 0.01 }, obs) !== null);
+  // Each is asked only of a move that comes within its footprint, which on
+  // its own is most of the time a graph takes to build.
+  const teleporters = obstacles.filter((obs) => obs.kind === 'teleporter')
+    .map((obs) => ({ obs, box: obstacleFootprint(obs), pad: (obs.border || 0) + 1 }));
+  const crossesTeleporter = (ax, ay, bx, by, z) => teleporters.some(({ obs, box, pad }) => {
+    if (Math.max(ax, bx) < box.minX - pad || Math.min(ax, bx) > box.maxX + pad
+      || Math.max(ay, by) < box.minY - pad || Math.min(ay, by) > box.maxY + pad) return false;
+    return getShotTeleporterCrossing({ x: ax, y: ay, z: z + 0.01 }, { x: bx, y: by, z: z + 0.01 }, obs) !== null;
+  });
 
   // Obstacles by area, so a standing test asks only the ones near it.
   const bucketCount = Math.ceil(mapSize / BUCKET);
@@ -485,6 +491,13 @@ export function buildNavGraph(world) {
       const cy = rowOf(node.y + (uy * d));
       return { cx, cy, ids: column(cx, cy), solid: inGrid(cx, cy) ? (cy * columns) + cx : -1 };
     };
+    // The same column's solids alone, for the arcs' inner loop: -1 off the
+    // grid, as `isBlocked` takes it.
+    const solidAt = (d) => {
+      const cx = columnOf(node.x + (ux * d));
+      const cy = rowOf(node.y + (uy * d));
+      return inGrid(cx, cy) ? (cy * columns) + cx : -1;
+    };
     // Where the surface underfoot ends along this line, and whether anything
     // different lies within a flight's reach at all.
     let edge = null;
@@ -550,10 +563,11 @@ export function buildNavGraph(world) {
           }
           const rising = v0 - (gravity * (t - t0));
           const z = z0 + (v0 * (t - t0)) - (0.5 * gravity * (t - t0) * (t - t0));
-          const at = columnAt(launch + (u * t));
-          if (!inGrid(at.cx, at.cy)) break;
-          if (rising < 0 && at.ids) {
-            for (const id of at.ids) {
+          const solid = solidAt(launch + (u * t));
+          if (solid < 0) break;
+          const ids = rising < 0 ? columnNodes[solid] : null;
+          if (ids) {
+            for (const id of ids) {
               const level = nodes[id].z;
               if (level <= previous + 0.01 && level >= z) landed = id;
             }
@@ -569,10 +583,9 @@ export function buildNavGraph(world) {
           // pace further on, which is as close as a pilot takes off.
           // And its back, rising: a jump from under a roof's edge has its
           // centre out from under it while its tail still meets it.
-          const nose = columnAt(launch + (u * t) + JUMP_FRONT);
-          const tail = columnAt(launch + (u * t) - JUMP_FRONT);
-          if (z < -1 || isBlocked(at.solid, z)
-            || (rising > 0 && (isBlocked(nose.solid, z - JUMP_NOSE_CLEARANCE) || isBlocked(tail.solid, z)))) break;
+          if (z < -1 || isBlocked(solid, z)) break;
+          if (rising > 0 && (isBlocked(solidAt(launch + (u * t) + JUMP_FRONT), z - JUMP_NOSE_CLEARANCE)
+            || isBlocked(solidAt(launch + (u * t) - JUMP_FRONT), z))) break;
           previous = z;
         }
         if (landed === null || landed === node.id || flapsLeft > 0) continue;

@@ -74,6 +74,16 @@ module.exports = [
         URLSearchParams: "readonly",
         window: "readonly",
         WebSocket: "readonly",
+        Worker: "readonly",
+      },
+    },
+  },
+  {
+    // The autopilot's route worker: a module worker.
+    files: ["public/route-worker.mjs"],
+    languageOptions: {
+      globals: {
+        self: "readonly",
       },
     },
   },

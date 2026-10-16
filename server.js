@@ -20172,6 +20172,7 @@ function botSharedView(now) {
       vx: proj.dirX * proj.speed,
       vy: proj.dirY * proj.speed,
       vz: proj.dirZ * proj.speed,
+      bounces: proj.bounces,
     });
   }
   let teamFlags = false;

@@ -127,15 +127,16 @@ function getProbes() {
 }
 
 // The pilot's view, as `buildBotView` in server.js once built it in place:
-// the shared snapshot less the bot itself and its own shots, with its own
-// state laid over the tank's.
+// the shared snapshot less the bot itself and its own shots but those that
+// have bounced, the only ones that can hit it, with its own state laid over
+// the tank's.
 function buildView(bot, self, shared) {
   const own = bot.own;
   return {
     now: shared.now,
     self: { ...self, ...own.self },
     players: shared.players.filter((player) => player.id !== bot.id),
-    shots: shared.shots.filter((shot) => shot.ownerId !== bot.id),
+    shots: shared.shots.filter((shot) => shot.ownerId !== bot.id || shot.bounces > 0),
     fired: (shared.fired || []).filter((shot) => shot.ownerId !== bot.id),
     kills: shared.kills || [],
     // The one its Identify names comes with its type.
