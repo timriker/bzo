@@ -6,6 +6,25 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
 
 ## [Unreleased]
 
+## [1.3.56] - 2026-10-16
+
+### Changed
+- With Shock Wave the autopilot drives at a foe rather than aiming, fires
+  when the foe will be inside the sphere -- measured in three dimensions, as
+  the wave hits -- and holds while a team mate could be caught, unless the
+  server has team kills off.
+- Against a burrowed foe the autopilot jumps to land on him, including as
+  the dodge to his shot, instead of hopping in place.
+- Burrowed, the autopilot no longer fires along the floor at a foe who can
+  hop the shot; it keeps its landing shots.
+- Landing shots allow for a slow frame as well as lag, and where the window
+  is narrower than the connection's jitter and a frame, two go, one either
+  side of the moment.
+
+### Fixed
+- The autopilot no longer tries to jump while burrowed, nor plans a route
+  with jumps from under the ground.
+
 ## [1.3.55] - 2026-10-16
 
 ### Changed
