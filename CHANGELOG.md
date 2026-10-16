@@ -6,6 +6,25 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
 
 ## [Unreleased]
 
+## [1.3.55] - 2026-10-16
+
+### Changed
+- The autopilot plans its routes in a worker, so a slow device no longer
+  freezes for seconds on its first route or on picking up Wings, and it keeps
+  driving while it waits. Route graphs also build in about half the time.
+- The autopilot leads a landing shot by its own lag, so a laggy or slow
+  client stops arriving after the tank has landed and driven off.
+- A disguise (Masquerade, Colorblindness, Seer) repaints the tanks it changes
+  instead of rebuilding them.
+
+### Fixed
+- The autopilot no longer kills itself with Trigger Happy: it turns the barrel
+  off any heading whose shot would come back, and it and the bots dodge their
+  own ricochets.
+- Textures and geometry no longer pile up over a session: a removed tank,
+  explosion debris and the tank picker's preview are freed. A slow device's
+  frame rate no longer falls the longer it plays.
+
 ## [1.3.54] - 2026-10-15
 
 ### Changed
