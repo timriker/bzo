@@ -70,6 +70,7 @@ let chatActive = false;
 let chatSelectingTranscript = false;
 let virtualControlsEnabled = false;
 let latency = 0;
+let latencyJitter = 0;
 let sentBps = 0;
 let sentBytes = 0;
 let lastSentBytesUpdate = performance.now();
@@ -8654,6 +8655,7 @@ function handleServerMessage(message) {
     // the number it would be judged by.
     case 'lag':
       if (Number.isFinite(message.lagMs)) latency = message.lagMs;
+      if (Number.isFinite(message.jitterMs)) latencyJitter = message.jitterMs;
       break;
 
     case 'shotEnd':
@@ -12981,6 +12983,8 @@ function buildAutopilotView() {
       // The round trip to the server, in seconds, which a foe's last move is
       // that far behind.
       lag: Number.isFinite(latency) ? latency / 1000 : 0,
+      // How much that varies, in seconds.
+      jitter: Number.isFinite(latencyJitter) ? latencyJitter / 1000 : 0,
       // Seconds until the next shot can go, which Trigger Happy fires then.
       nextShotIn: nextShotSeconds(),
       // How the tank is moving, which a shot inherits: its velocity as of the
@@ -13019,6 +13023,7 @@ function buildAutopilotView() {
       shotLimits: gameConfig.SHOT_LIMITS || {},
       mapSize: Number.isFinite(currentWorldMapSize) ? currentWorldMapSize : DEFAULT_MAP_SIZE,
       shockOutRadius: getShotEffects('SW').shockOutRadius,
+      noTeamKills: gameConfig?.NO_TEAM_KILLS === true,
     },
     // Each team's score, wins less losses, by team name.
     teamScores: Object.fromEntries(teamScores.map((entry) => [entry.team, entry.wins - entry.losses])),

@@ -18204,7 +18204,7 @@ function acceptConnection(ws, req) {
     // The client is *shown* the answer, never asked for it (docs/lag-plan.md):
     // this is the player's own figure only, not a broadcast to the roster, so
     // it carries no anti-cheat weight -- it just fills in the debug HUD's ping.
-    sendToPlayer(player, { type: 'lag', lagMs: player.lag.getLag(now) });
+    sendToPlayer(player, { type: 'lag', lagMs: player.lag.getLag(now), jitterMs: player.lag.getJitter() });
   });
 
   // Nobody is told about this player yet. bzfs's sendPlayerUpdate returns
@@ -20219,6 +20219,7 @@ function botSharedView(now) {
       shotLimits: Object.fromEntries(SHOT_LIMITS),
       mapSize: GAME_CONFIG.MAP_SIZE,
       shockOutRadius: getShotEffects('SW').shockOutRadius,
+      noTeamKills: NO_TEAM_KILLS,
     },
   };
 }

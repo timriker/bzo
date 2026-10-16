@@ -638,7 +638,7 @@ for (const flag of ['US', 'MG', 'ID']) {
   const run = (pilot, north) => {
     const fires = [];
     // Up to just past the landing: a shot that hit would have ended it there.
-    for (let t = 0; t < 4.3; t += frame) {
+    for (let t = 0; t < 4.25; t += frame) {
       const z = Math.max(0, (jumpVelocity * t) - (0.5 * g * t * t));
       const airborne = z > 0 || t === 0;
       const view = makeView({
@@ -817,6 +817,99 @@ for (const flag of ['US', 'MG', 'ID']) {
   assert.ok(Math.abs((slow - laggy) - 0.2) < 0.02, `touchdown 0.2 sooner with 0.2 of lag (${slow - laggy})`);
   // Down from 5 at -40 lands in an eighth of a second, inside the lead.
   assert.deepEqual(plans(0.2, falling(-40)), [], 'already down');
+}
+
+// Burrowed, a route has no jumps in it: nobody jumps from under the ground.
+{
+  const asked = [];
+  const view = (z) => makeView({ self: { flag: 'BU', z }, findRoute: (a, b, options) => asked.push(options) && null });
+  new Ace().routeTo({ view: view(-1.32), me: view(-1.32).self, out: {} }, { x: 0, y: 200, z: 0 });
+  new Ace().routeTo({ view: view(0), me: view(0).self, out: {} }, { x: 0, y: 200, z: 0 });
+  assert.deepEqual(asked.map((o) => o.canJump), [false, true], 'under the ground, then on it');
+}
+
+// A Shock Wave goes for a foe inside its sphere -- in three dimensions, so
+// not one on a tower overhead -- and never with a team mate inside, in the air
+// or out of sight, unless the server has team kills off.
+{
+  const sw = (players, world = {}) => new Ace().think(makeView({
+    self: { flag: 'SW', azimuth: 0 }, players, world: { maxShots: 3, ...world },
+    isFoe: (p) => p.team !== 'blue',
+  })).fire;
+  assert.equal(sw([enemy(0, 30)]), true, 'a foe inside');
+  assert.equal(sw([enemy(0, 10, { z: 70 })]), false, 'a foe overhead, outside the sphere');
+  const mate = enemy(20, 0, { id: 'mate', team: 'blue' });
+  assert.equal(sw([enemy(0, 30), mate]), false, 'a team mate inside');
+  assert.equal(sw([enemy(0, 30), { ...mate, z: 8, airborne: true, flag: 'ST' }]), false, 'one jumping, or stealthed');
+  assert.equal(sw([enemy(0, 30), { ...mate, x: 300 }]), true, 'one far off');
+  assert.equal(sw([enemy(0, 30), mate], { noTeamKills: true }), true, 'team kills off');
+}
+
+// Holding a Shock Wave Ace drives at a foe, where he faces not mattering --
+// one in the air too, which a gun leaves alone until it lands.
+{
+  const out = new Ace().think(makeView({
+    self: { flag: 'SW', azimuth: 0, canFire: false },
+    players: [enemy(80, 0, { z: 10, airborne: true, gravity: 9.8 })],
+  }));
+  assert.ok(out.speed > 0.5 && out.targetId === 'foe', `driving at it (${out.intent.mode} ${out.speed})`);
+}
+
+// Burrowed, Ace does not fire along the floor at a foe who can hop it, and
+// does at one who cannot.
+{
+  const fire = (world) => new Ace().think(makeView({
+    self: { flag: 'BU', z: -1.32, muzzleHeight: 1.57, muzzleForward: 3, shotSpeed: 100, shotLifetime: 3.5 },
+    players: [enemy(0, 60)], world,
+  })).fire;
+  assert.equal(fire({ allowJumping: true }), false, 'he would hop it');
+  assert.equal(fire({ allowJumping: false }), true, 'he cannot');
+}
+
+// A burrowed foe within a jump is jumped onto: the arc's time is fixed, so
+// the speed is the one that covers the distance -- 60 units in 3.88 seconds
+// is 0.62 of full. His shot coming, that is the jump that clears it too. Too
+// far round to line up quickly, the jump is not taken.
+{
+  const burrowed = (x, y, extra = {}) => enemy(x, y, { flag: 'BU', z: -1.32, ...extra });
+  const t = (2 * 19) / 9.8;
+  const chase = new Ace().think(makeView({ players: [burrowed(0, 60)] }));
+  assert.equal(chase.jump, true, `jumped onto (${chase.intent.mode} ${chase.intent.reason})`);
+  assert.ok(Math.abs(chase.speed - ((60 / t) / 25)) < 0.01, `at the speed that lands on him (${chase.speed})`);
+  const low = { ownerId: 'foe', ownerZoned: false, flag: null, x: 0, y: 70, z: 0.21, vx: 0, vy: -100, vz: 0 };
+  const dodge = new Ace().think(makeView({ players: [burrowed(0, 80)], shots: [low] }));
+  assert.equal(dodge.jump, true, 'his shot jumped');
+  assert.ok(Math.abs(dodge.speed - ((80 / t) / 25)) < 0.01, `onto him (${dodge.speed})`);
+  const aside = new Ace().think(makeView({ players: [burrowed(60, 0)] }));
+  assert.equal(aside.jump, false, 'a quarter turn away, no squash jump');
+}
+
+// Burrowed, a landing's window is a hundredth of a second, narrower than the
+// timing is sure to: two shots go, one either side of the planned moment.
+{
+  const g = 9.8;
+  const v = 19;
+  const frame = 1 / 30;
+  const run = (jitter) => {
+    const ace = new Ace();
+    const arrivals = [];
+    for (let t = 0; t < 3.9; t += frame) {
+      const z = Math.max(0, (v * t) - (0.5 * g * t * t));
+      const airborne = z > 0 || t === 0;
+      const out = ace.think(makeView({
+        now: 100 + t,
+        self: { flag: 'BU', z: -1.32, muzzleHeight: 1.57, muzzleForward: 3, shotSpeed: 100, jitter },
+        world: { maxShots: 3, tankAngVel: Math.PI / 4 },
+        players: [enemy(0, 120, { z, airborne, gravity: g, vz: airborne ? v - (g * t) : 0 })],
+      }));
+      if (out.fire) arrivals.push(t + ((120 - 3 - 2) / (100 + (out.speed * 25))));
+    }
+    return arrivals;
+  };
+  const pair = run(0.02);
+  assert.equal(pair.length, 2, `two shots for a narrow window (${pair.length})`);
+  assert.ok(Math.abs((pair[1] - pair[0]) - (0.02 + frame)) < 0.02,
+    `arriving the spread apart (${(pair[1] - pair[0]).toFixed(3)})`);
 }
 
 // His own shot, once it has bounced, is dodged like anyone's.

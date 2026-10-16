@@ -558,6 +558,12 @@ export class Roger {
   }
 }
 
+// A landing shot's plan aimed `early` seconds sooner: the same spot, the
+// window moved.
+function shiftPlan(plan, early) {
+  return { ...plan, enter: plan.enter - early, landing: { ...plan.landing, t: plan.landing.t - early } };
+}
+
 // A lunge (`startLunge`): Ace, holding still, drives forward for a moment so
 // that a shot carries the tank's speed to a foe a standing shot falls short of
 // -- base to base on HiX. The move the shot goes with states that speed, so it
@@ -606,6 +612,9 @@ const LANDING_SHOT_MARGIN = 0.03;
 // is judged where the foe really is. Measured from a client on the server's
 // own machine, whose shots came 0.07 late.
 const LANDING_SHOT_BIAS = 0.07;
+// How far outside a Shock Wave a team mate has to be for it to go: he moves
+// between the look-ahead and the wave reaching him.
+const SHOCK_WAVE_TEAM_MARGIN = 10;
 const LUNGE_STILL_SPEED = 1;
 const LUNGE_HOLD_SPEED = 0.05;
 const LUNGE_SECONDS = 0.3;
@@ -643,6 +652,10 @@ const DODGE_HIT_STEPS = 5;
 // the room past its reach he wants.
 const SQUASH_HORIZON_SECONDS = 1.5;
 const SQUASH_MARGIN = 1;
+// Nearer a burrowed foe than this Ace drives over him rather than jumping.
+const SQUASH_JUMP_MIN = 15;
+// How far round Ace turns on the spot to line a squash jump up.
+const SQUASH_JUMP_TURN = Math.PI / 4;
 // The antidote is worth the drive when shaking the flag off takes longer than
 // the drive there, with this much to spare.
 const ANTIDOTE_DRIVE_FACTOR = 1.5;
@@ -1042,7 +1055,7 @@ export class Ace extends Roger {
     this.noteCampDodge(view, out);
     // Roger's chase jumps a building in the way without asking whether the
     // tank may jump.
-    if (out.jump && !canTankJump(view.world, view.self.flag)) out.jump = false;
+    if (out.jump && !canTankJump(view.world, view.self.flag, view.self.z)) out.jump = false;
     this.oneWayTurn(view.self.flag, out);
     // Reversed Controls negates both sticks before the tank reads them
     // (`applyMotionInput`), so Ace asks for the opposite of what he wants.
@@ -1673,10 +1686,13 @@ export class Ace extends Roger {
   }
 
   // An airborne foe as it is now rather than as the view last heard of it:
-  // on along its arc by the round trip and `LANDING_SHOT_BIAS`. Null when it
-  // is down by then.
+  // on along its arc by the round trip, `LANDING_SHOT_BIAS` and a slow frame.
+  // Null when it is down by then.
   landingLead(ctx, p) {
-    const lead = Math.max(0, ctx.view.self.lag ?? 0) + LANDING_SHOT_BIAS;
+    // A frame slower than the 60 a second the bias was measured at is that
+    // much older again by the time the shot goes.
+    const lead = Math.max(0, ctx.view.self.lag ?? 0) + LANDING_SHOT_BIAS
+      + Math.max(0, (this.frameSeconds || 0) - (1 / 60));
     if (!p.airborne || !(p.gravity > 0)) return p;
     const first = this.predictLanding(ctx, p);
     if (!first || first.t <= lead) return null;
@@ -1853,6 +1869,7 @@ export class Ace extends Roger {
       }
     }
     const target = this.remotePlayers(ctx.view).find((p) => p.id === ctx.out.targetId);
+    if (chased && target && ctx.me.flag === 'SW') return this.closeWithShockWave(ctx, target, 'chase');
     if (chased && target && !target.airborne) {
       if (this.chaseAround(ctx, target) || this.runOver(ctx, target)) return true;
       this.trackFoe(ctx, target);
@@ -2017,6 +2034,7 @@ export class Ace extends Roger {
     if (target.flag !== 'BU' || !(target.z < 0)) return false;
     if (!canRunOver(me.flag ?? null, 'BU', me.z, me.zoned === true)) return false;
     const distance = distance2D(me, target);
+    if (distance > SQUASH_JUMP_MIN && this.takeSquashJump(ctx, target)) return true;
     const top = me.topSpeed ?? view.world.tankSpeed;
     const rate = this.turnRate(ctx);
     if (!(top > 0) || !(rate > 0)) return false;
@@ -2028,6 +2046,52 @@ export class Ace extends Roger {
     out.rotation = this.steer(ctx, behind);
     out.speed = -REVERSE_SPEED_SHARE * Math.max(0, Math.cos(behind));
     out.intent.reason = 'run-over';
+    return true;
+  }
+
+  // A jump that comes down on a burrowed foe squashes him, and all the way
+  // there Ace is over every shot he can fire, which skims the floor. The arc
+  // is a jump from where Ace stands to the ground the foe is under, so its
+  // time is fixed, and the speed it leaves with is the one that covers the
+  // distance to where the foe will be by then -- within one jump's reach, and
+  // lined up closely enough that the miss across is inside the run-over
+  // reach. `aligned` false is a jump in reach that wants turning to first.
+  // Null when no jump does it.
+  squashJump(ctx, foe) {
+    const { view, me } = ctx;
+    if (!foe || foe.flag !== 'BU' || !(foe.z < 0)) return null;
+    if (me.inAir || !canTankJump(view.world, me.flag, me.z)) return null;
+    if (!canRunOver(me.flag ?? null, 'BU', 0, me.zoned === true)) return null;
+    const v = view.world.jumpVelocity;
+    const g = view.world.gravity;
+    if (!(v > 0) || !(g > 0)) return null;
+    const t = (v + Math.sqrt((v * v) + (2 * g * Math.max(0, me.z)))) / g;
+    const at = { x: foe.x + ((foe.vx ?? 0) * t), y: foe.y + ((foe.vy ?? 0) * t), z: 0 };
+    const distance = distance2D(me, at);
+    const speed = distance / t;
+    if (speed > (me.topSpeed ?? view.world.tankSpeed)) return null;
+    const bearing = normalizeAngle(azimuthTo(me, at) - me.azimuth);
+    // Inside the reach with room to spare: the separation counts the foe's
+    // depth double (`getRunOverSeparation`).
+    const reach = getRunOverRadius('BU', me.flag ?? null, TANK.radius);
+    const depth = 2 * Math.abs(foe.z);
+    const across = Math.sqrt(Math.max(0, (reach * reach) - (depth * depth))) / 2;
+    const aligned = Math.cos(bearing) > 0 && distance * Math.abs(Math.sin(bearing)) < across;
+    return { speed, t, at, bearing, aligned };
+  }
+
+  // The squash jump, taken: lined up, at its speed, and up once the tank is
+  // going that fast. False when there is none to take.
+  takeSquashJump(ctx, foe) {
+    const { me, out } = ctx;
+    const jump = this.squashJump(ctx, foe);
+    // Not worth a slow turn on the spot: the ground has its own ways over him.
+    if (!jump || Math.abs(jump.bearing) > SQUASH_JUMP_TURN) return false;
+    this.aimAt(ctx, normalizeAngle(me.azimuth + jump.bearing));
+    out.speed = jump.aligned ? this.speedFraction(ctx, jump.speed) : 0;
+    out.jump = jump.aligned
+      && (!(me.accel > 0) || Math.abs((me.speed ?? jump.speed) - jump.speed) <= JUMP_SPEED_SLACK);
+    out.intent.reason = 'squash';
     return true;
   }
 
@@ -2059,11 +2123,49 @@ export class Ace extends Roger {
   // only carry Ace out past the release range and back to the capture that
   // brought him in again. He holds his ground and turns on it instead; a shot
   // coming at him is the dodge's business, which comes first.
+  // Holding a Shock Wave the way Ace faces does not matter, only how far the
+  // foe is: he drives at it, round what is in the way, with no aiming and no
+  // lining up, and `fireShockWave` sets it off once it is inside.
+  closeWithShockWave(ctx, foe, mode) {
+    ctx.out.targetId = foe.id;
+    ctx.out.intent.target = { ...pointOf(foe), id: foe.id };
+    return this.goTo(ctx, pointOf(foe), mode);
+  }
+
+  // A Shock Wave is a sphere about where it went off, growing to
+  // `shockOutRadius` and killing everything inside, building or no, team mate
+  // or no (ShockWaveStrategy::checkHit). It goes when a foe will be inside it
+  // -- upstream's 0.3 seconds ahead, in three dimensions as the hit is, where
+  // upstream measures across the ground -- and never while a team mate is
+  // inside it or near the edge, where team kills count: every team mate on
+  // the roster, in the air or out of sight too, since the wave finds him
+  // whether Ace sees him or not.
+  fireShockWave(ctx) {
+    const { view, me, out } = ctx;
+    if (!me.canFire || view.now - this.lastShot < 1 / view.world.maxShots) return;
+    const radius = view.world.shockOutRadius;
+    if (!(radius > 0)) return;
+    const pos = { x: me.x, y: me.y, z: me.z < 0 ? 0 : me.z };
+    const reach = (p) => {
+      const at = predict(p);
+      return Math.hypot(at.x - pos.x, at.y - pos.y, at.z - pos.z);
+    };
+    if (!view.world.noTeamKills && view.players.some((p) => p.alive && !p.paused && !view.isFoe(p)
+      && reach(p) <= radius + SHOCK_WAVE_TEAM_MARGIN)) return;
+    const target = this.remotePlayers(view).find((p) => p.alive && !p.paused && !p.notResponding
+      && view.isFoe(p) && reach(p) <= radius);
+    if (!target) return;
+    out.fire = true;
+    out.shotTargetId = target.id;
+    this.lastShot = view.now;
+  }
+
   fightClose(ctx, foe) {
     const { out } = ctx;
     out.targetId = foe.id;
     out.intent.target = { ...pointOf(foe), id: foe.id };
     out.intent.mode = 'fight';
+    if (ctx.me.flag === 'SW') return this.closeWithShockWave(ctx, foe, 'fight');
     this.aimAt(ctx, azimuthTo(ctx.me, predict(foe)));
     out.speed = 0;
     return true;
@@ -2078,6 +2180,8 @@ export class Ace extends Roger {
   // than one met on the way past at another.
   ambushTarget(ctx, { level = false } = {}) {
     const { view, me } = ctx;
+    // A Shock Wave has no landing to aim at: it reaches every way at once.
+    if (me.flag === 'SW') return null;
     const top = me.topSpeed ?? view.world.tankSpeed;
     const full = { low: -0.5 * top, high: top, top };
     let best = null;
@@ -2305,12 +2409,26 @@ export class Ace extends Roger {
   // shots at its landing -- as many as `shotsToKill` -- and nothing else.
   chooseShot(ctx) {
     const { view, me, out } = ctx;
+    if (me.flag === 'SW') {
+      this.fireShockWave(ctx);
+      return;
+    }
     const players = this.remotePlayers(view);
     for (const p of players) {
       if (!p.airborne || !p.alive || p.paused || !view.isFoe(p)) continue;
       if (!me.canFire) continue;
-      for (const plan of this.planShots(ctx, p)) {
-        if (this.landingShotsSpent(p, plan.landsAt) >= this.shotsToKill(p)) break;
+      for (const planned of this.planShots(ctx, p)) {
+        // How far the shot's arrival may be off, from the network's jitter
+        // and a frame's wait: a touchdown window narrower than that -- a
+        // burrowed muzzle's hundredth of a second -- gets two shots, one aimed
+        // half of it early and one half of it late, so one of them lands in
+        // it. (A piece of a pass through the muzzle's height is short only by
+        // cutting; the next piece carries on where it stops.)
+        const spread = Math.max(0, ctx.view.self.jitter ?? 0) + (this.frameSeconds || 0);
+        const paired = (planned.level || planned.bank) && planned.landing.t - planned.enter < spread;
+        const spent = this.landingShotsSpent(p, planned.landsAt);
+        if (spent >= this.shotsToKill(p) * (paired ? 2 : 1)) break;
+        const plan = paired ? shiftPlan(planned, (spent % 2 === 0 ? 1 : -1) * (spread / 2)) : planned;
         // Late is a miss; early waits for a later frame. A dodge has already
         // picked the speed, and the shot has to make do with it.
         const range = this.speedRange(ctx);
@@ -2385,6 +2503,10 @@ export class Ace extends Roger {
         && !(view.now <= (this.landingShots.get(p.id)?.landsAt ?? -Infinity) + 0.5
           && this.landingShotsSpent(p, this.landingShots.get(p.id).landsAt) >= this.shotsToKill(p))
         && inRange(p)
+        // From under the ground the shot skims the floor, and a foe who can
+        // jump hops it once he sees it coming: only a landing shot, which
+        // meets him as he comes down, is worth the slot.
+        && !(me.z < 0 && canTankJump(view.world, p.flag, p.z))
         && (levelShot === false || (muzzle >= p.z - LEVEL_SHOT_SLACK
           && muzzle <= p.z + view.world.tankHeight + LEVEL_SHOT_SLACK))
         && (!me.inAir || onLine(p))),
@@ -2410,6 +2532,18 @@ export class Ace extends Roger {
     const shot = this.soonestHit(ctx, { x: heading.x * along, y: heading.y * along });
     const squash = this.squashThreat(ctx);
     if (!shot && !squash) return false;
+    // A burrowed foe's shot skims the floor: the jump over it is the one that
+    // comes down on him, when there is one lined up.
+    const shooter = shot && this.remotePlayers(view).find((p) => p.id === shot.ownerId);
+    const onto = shooter ? this.squashJump(ctx, shooter) : null;
+    if (onto?.aligned && this.canJumpClear(ctx, shot)) {
+      out.jump = true;
+      out.speed = this.speedFraction(ctx, onto.speed);
+      out.rotation = 0;
+      out.targetId = shooter.id;
+      out.intent.reason = 'squash';
+      return true;
+    }
     if (shot && !me.inAir && top > 0) {
       const path = this.dodgePath(ctx, top, along / top);
       if (path) {
@@ -3245,7 +3379,7 @@ export class Ace extends Roger {
   }
 
   plan(view, here, there) {
-    const canJump = canTankJump(view.world, view.self.flag);
+    const canJump = canTankJump(view.world, view.self.flag, view.self.z);
     const wings = hasAirControl(view.self.flag);
     let nodes = view.findRoute(here, there, { canJump, wings });
     if (nodes === ROUTE_PENDING) return this.awaitRoute(view, here, there);
@@ -4148,9 +4282,10 @@ const PROBE_RANGE = 1000;
 // for `traceShot`.
 const TRACE_STEP_SECONDS = 1 / 30;
 
-// Whether a tank may jump at all, as `jumpReach` and the dodge ask it.
-function canTankJump(world, flag) {
-  return (world.allowJumping || flag === 'JP' || flag === 'WG') && flag !== 'NJ';
+// Whether a tank may jump at all, as `jumpReach` and the dodge ask it: nobody
+// jumps from under the ground (LocalPlayer.cxx:1406), whatever the flag.
+function canTankJump(world, flag, z = 0) {
+  return (world.allowJumping || flag === 'JP' || flag === 'WG') && flag !== 'NJ' && !(z < 0);
 }
 
 // Every team base, as a pilot's view carries them: centre, top, half extents
