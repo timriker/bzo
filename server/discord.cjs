@@ -7,7 +7,7 @@
 
 // Discord Linked Roles: a Discord member proves which BZFlag account is theirs,
 // and the Discord server can make roles that require it. See
-// docs/discord-plan.md (issue #193).
+// docs/chat-bridge-plan.md (issue #193).
 //
 // Three requests, each one leg of a round trip through somebody else's login:
 //

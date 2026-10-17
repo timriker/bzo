@@ -8,7 +8,7 @@
 // A connection to Discord's gateway, the WebSocket a bot hears messages on.
 // Only as much of the protocol as reading one channel takes: hello and
 // heartbeat, identify and resume, and dispatches handed to `onDispatch`.
-// See docs/discord-plan.md, "Discord to game" (issue #193).
+// See docs/chat-bridge-plan.md, "Discord to game" (issue #193).
 //
 // The session is saved (`store`) after every event, so a server that restarts
 // -- a dev server does on every edit -- resumes it rather than identifying

@@ -6,7 +6,7 @@
  */
 
 // A game's public chat, mirrored into one Discord channel through that
-// channel's webhook. See docs/discord-plan.md, "Game to Discord" (issue #193).
+// channel's webhook. See docs/chat-bridge-plan.md, "Game to Discord" (issue #193).
 //
 // Only what `deliverChatMessage` sends to every player arrives here: team
 // chat, private messages, the admin channel, a muted player and every command

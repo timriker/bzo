@@ -4699,7 +4699,7 @@ if (refusedAdminGroups.length > 0) {
     + ` ${refusedAdminGroups.map((group) => JSON.stringify(group)).join(', ')}`);
 }
 
-// Discord Linked Roles (server/discord.cjs, docs/discord-plan.md), when
+// Discord Linked Roles (server/discord.cjs, docs/chat-bridge-plan.md), when
 // server.json has a `discord` block with the app's credentials. The links are
 // kept beside bans.json; the same sign-in path and the same admin groups as
 // /login decide who is who.

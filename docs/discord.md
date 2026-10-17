@@ -1,9 +1,9 @@
 # Discord
 
-What bzo supports for Discord today: Linked Roles, which let a Discord member
-prove which BZFlag account is theirs so a Discord server can make roles that
-require it. What is still to come -- a chat bridge per game server, commands
-from linked members, IRC -- is `docs/discord-plan.md` (issue #193).
+Linked Roles, which let a Discord member prove which BZFlag account is theirs
+so a Discord server can make roles that require it; their callsign as their
+nickname; and a game server's public chat both ways. Commands from linked
+members, Matrix and IRC are `docs/chat-bridge-plan.md` (issue #193).
 
 ## Setting it up
 
@@ -122,7 +122,7 @@ server. Mentions, channels and custom emoji read as names. Three lines of a
 message at most, each up to 200 characters, and an attachment alone reads as
 `[attachment]`. A bot's posts and the mirror's own never come back. A line
 that starts with `/` is a command and is not relayed: running commands for
-linked members is still to come (`docs/discord-plan.md`).
+linked members is still to come (`docs/chat-bridge-plan.md`).
 
 The gateway session is kept in `discord-gateway.json` beside `server.json`, so
 a restart resumes it, and Discord then sends what was said while the server
