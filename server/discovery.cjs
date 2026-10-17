@@ -215,7 +215,7 @@ function flagTableHtml(flagTypes, badQuality) {
 
 function flagTableMarkdown(flagTypes, badQuality) {
   const rows = flagRows(flagTypes).map((flag) => `| ${flag.abbreviation} | ${flag.name} | `
-    + `${flag.quality === badQuality ? 'bad' : 'good'} | ${String(flag.help || '').replace(/\s+/g, ' ').replace(/\|/g, '\\|')} |`);
+    + `${flag.quality === badQuality ? 'bad' : 'good'} | ${String(flag.help || '').replace(/\s+/g, ' ').replace(/\\/g, '\\\\').replace(/\|/g, '\\|')} |`);
   return ['| Flag | Name | Kind | What it does |', '| --- | --- | --- | --- |', ...rows].join('\n');
 }
 

@@ -7393,7 +7393,12 @@ function init() {
     scene = renderManager.getScene();
     const debugContent = document.getElementById('debugContent');
     if (debugContent) {
-      debugContent.innerHTML = `<p>3D renderer failed to initialize.</p><p>${reason}</p><p>Open the game in an external browser window for full WebGL support.</p>`;
+      // The browser's own words, as text: an exception message is not markup.
+      debugContent.replaceChildren(...[
+        '3D renderer failed to initialize.',
+        reason,
+        'Open the game in an external browser window for full WebGL support.',
+      ].map((text) => Object.assign(document.createElement('p'), { textContent: text })));
       const debugHud = document.getElementById('debugHud');
       if (debugHud) debugHud.style.display = 'block';
     }

@@ -5126,6 +5126,15 @@ function boundedTeamArray(value) {
 }
 
 const MAX_REPORTED_URLS = 4;
+// A reported URL, as long as any URL an instance has; and the same URL
+// without the slashes it may end with, counted off rather than matched.
+const MAX_REPORTED_URL_LENGTH = 200;
+function withoutTrailingSlashes(text) {
+  let end = text.length;
+  while (end > 0 && text[end - 1] === '/') end -= 1;
+  return text.slice(0, end);
+}
+
 function sanitizeListServerStatus(body) {
   const players = Number(body?.players);
   const maxPlayers = Number(body?.maxPlayers);
@@ -5165,9 +5174,13 @@ function sanitizeListServerStatus(body) {
     voiceEnabled: body?.voiceEnabled === true,
     // Claimed, not trusted: `verifyListServerAlternates` calls each one back
     // before a row shows it.
+    // Length first: a pattern run over a long run of slashes takes time in the
+    // square of its length, and a report's body may be 100 KB.
     urls: Array.isArray(body?.urls)
-      ? body.urls.filter((url) => typeof url === 'string' && /^https?:\/\/[^\s/]+$/.test(url.replace(/\/+$/, '')))
-        .map((url) => url.replace(/\/+$/, '').slice(0, 200)).slice(0, MAX_REPORTED_URLS)
+      ? body.urls.filter((url) => typeof url === 'string' && url.length <= MAX_REPORTED_URL_LENGTH)
+        .map(withoutTrailingSlashes)
+        .filter((url) => /^https?:\/\/[^\s/]+$/.test(url))
+        .slice(0, MAX_REPORTED_URLS)
       : [],
     ...sanitizeListServerReadout(body),
   };
