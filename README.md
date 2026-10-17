@@ -6,7 +6,8 @@ servers. Nothing to install.
 
 **Play now: <https://bz.rikers.org>** ·
 [Servers](https://bz.rikers.org/list) ·
-[Help: controls and flags](https://bz.rikers.org/help)
+[Help: controls and flags](https://bz.rikers.org/help) ·
+[BZFlag Discord](https://discord.gg/6DHkggcXM9)
 
 ![A match on hix, from the north base: the radar, the targeting box and a red
 tank's wreck](docs/screenshot.jpg)
