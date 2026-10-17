@@ -6,6 +6,30 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
 
 ## [Unreleased]
 
+## [1.3.57] - 2026-10-17
+
+### Added
+- Discord (#193, see docs/discord.md): members of a Discord server link their
+  bzflag.org account through Linked Roles, for a BZFlag player role and a
+  BZFlag admin one, and get their callsign as their nickname there.
+- A server's public chat is mirrored to its Discord channel, marked `@` for
+  admins and `+` for signed-in players, and the channel's messages come back
+  into the game -- on bzo's Chat tab, and as server messages for BZFlag
+  clients.
+- /help links the BZFlag Discord, and the account link where it is set up.
+
+### Changed
+- On a screen narrower than 16:9, a phone held upright most of all, the
+  third-person and observer Follow cameras come closer, and third person
+  tilts up to show the tank and the way ahead rather than the ground behind.
+- A burrowed autopilot fires along the floor again at foes who can hop the
+  shot, from one slot only, keeping two for a landing-shot pair.
+
+### Fixed
+- A list-server report full of slashes could hold the server up for seconds.
+- A renderer error shown in the debug panel is text, not markup, and the
+  flags table on /help escapes backslashes.
+
 ## [1.3.56] - 2026-10-16
 
 ### Changed
