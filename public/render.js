@@ -1392,6 +1392,24 @@ const FLAG_INSTANCE_COLOR = new THREE.Color();
 // different views under one name.
 const THIRD_PERSON_DISTANCE = 12;
 const THIRD_PERSON_HEIGHT = 4;
+// A chase camera's distance and height are for a 16:9 screen. bzo keeps the
+// horizontal field of view at BZFlag's 60 degrees, so a narrower screen sees
+// more top to bottom and the tank it follows shrinks in it -- a phone held
+// upright sees two and a half times as much. Narrower than this, the chase
+// comes in by the fourth root of the ratio, 0.87 on a 9:16 phone: by the whole
+// ratio the tank keeps its share of the height and fills the narrow width,
+// hiding the way ahead, and the tilt below does most of the rest. Never past
+// 0.6, which on the tallest phones still keeps the third-person eye well
+// clear of its own tank.
+const CHASE_REFERENCE_ASPECT = 16 / 9;
+const CHASE_SCALE_MIN = 0.6;
+// A tall view looks as far down as up, and from behind the tank most of what
+// lies below its middle is the ground between the eye and the tank. The chase
+// camera is tilted up until the bottom of the view meets the ground this many
+// degrees short of the tank's rear (half a tank, BZFlag's 6 long, behind its
+// middle) -- on a 16:9 screen it already does, and nothing changes.
+const CHASE_TILT_MARGIN_DEGREES = 5;
+const CHASE_TANK_REAR = 3;
 const GROUND_STRIPS = [
   [4, 5, 7, 6],
   [0, 1, 4, 5],
@@ -1890,6 +1908,16 @@ function bzflagLightIntensity(colorScale) {
 }
 
 class RenderManager {
+  // How far in a chase camera comes for this screen's shape (see
+  // CHASE_REFERENCE_ASPECT): 1 on 16:9 and wider, and in a headset, whose
+  // own optics set what it sees.
+  getChaseScale() {
+    if (xrState.enabled) return 1;
+    const aspect = this.camera?.aspect;
+    if (!(aspect > 0)) return 1;
+    return Math.max(CHASE_SCALE_MIN, Math.min(1, Math.sqrt(Math.sqrt(aspect / CHASE_REFERENCE_ASPECT))));
+  }
+
   _getVerticalFovForAspect(aspect) {
     const safeAspect = Number.isFinite(aspect) && aspect > 0 ? aspect : (16 / 9);
     const halfHorizontalRadians = THREE.MathUtils.degToRad(BZFlag_DEFAULT_HORIZONTAL_FOV * 0.5);
@@ -11824,11 +11852,12 @@ class RenderManager {
     } else {
       if (myTank.userData.body) myTank.userData.body.visible = true;
       if (myTank.userData.turret) myTank.userData.turret.visible = true;
-      // Behind and above the tank.
+      // Behind and above the tank, nearer on a narrow screen.
+      const chase = this.getChaseScale();
       const eye = CAMERA_EYE_SCRATCH.set(
-        tankAt.x - (forwardX * THIRD_PERSON_DISTANCE),
-        tankAt.y - (forwardY * THIRD_PERSON_DISTANCE),
-        tankAt.z + THIRD_PERSON_HEIGHT,
+        tankAt.x - (forwardX * THIRD_PERSON_DISTANCE * chase),
+        tankAt.y - (forwardY * THIRD_PERSON_DISTANCE * chase),
+        tankAt.z + (THIRD_PERSON_HEIGHT * chase),
       );
       if (xrState.enabled) {
         // The headset owns the camera, so the world moves instead -- the same
@@ -11846,10 +11875,21 @@ class RenderManager {
         this._placeWorldAroundEye(eye, heading);
         return;
       }
+      // Ten ahead of the tank, three up -- or higher on a tall screen, by the
+      // tilt that brings the bottom of the view up to the tank's rear.
+      const behind = THIRD_PERSON_DISTANCE * chase;
+      const eyeHeight = THIRD_PERSON_HEIGHT * chase;
+      const reach = behind + 10;
+      let aimZ = tankAt.z + 3;
+      const halfView = THREE.MathUtils.degToRad(this._getVerticalFovForAspect(this.camera.aspect) / 2);
+      const toRear = Math.atan2(eyeHeight, Math.max(1, behind - CHASE_TANK_REAR));
+      const tilt = halfView - toRear - THREE.MathUtils.degToRad(CHASE_TILT_MARGIN_DEGREES);
+      const level = Math.atan2((tankAt.z + 3) - (tankAt.z + eyeHeight), reach);
+      if (tilt > level) aimZ = tankAt.z + eyeHeight + (Math.tan(tilt) * reach);
       this._aimCamera(eye, CAMERA_TARGET_SCRATCH.set(
         tankAt.x + (forwardX * 10),
         tankAt.y + (forwardY * 10),
-        tankAt.z + 3,
+        aimZ,
       ));
     }
   }

@@ -12335,11 +12335,13 @@ function getRoamFraming() {
         };
       }
       if (roamView === ROAM_VIEW.FOLLOW) {
+        // Upstream's distances on a 16:9 screen, nearer on a narrower one.
+        const chase = renderManager.getChaseScale();
         return {
           eye: {
-            x: targetAt.x - forward.x * ROAM_FOLLOW_DISTANCE,
-            y: targetAt.y - forward.y * ROAM_FOLLOW_DISTANCE,
-            z: targetAt.z + targetEye * ROAM_FOLLOW_HEIGHT_FACTOR,
+            x: targetAt.x - forward.x * ROAM_FOLLOW_DISTANCE * chase,
+            y: targetAt.y - forward.y * ROAM_FOLLOW_DISTANCE * chase,
+            z: targetAt.z + targetEye * ROAM_FOLLOW_HEIGHT_FACTOR * chase,
           },
           look: { x: targetAt.x, y: targetAt.y, z: targetAt.z },
         };
