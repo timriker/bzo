@@ -2497,6 +2497,9 @@ export class Ace extends Roger {
       x: p.x + (0.3 * (p.vx ?? 0)),
       y: p.y + (0.3 * (p.vy ?? 0)),
     }) <= reach;
+    const free = view.self.freeShots;
+    const keep = Math.min(2, (view.world.maxShots ?? 1) - 1);
+    const floorShotSpare = !Number.isFinite(free) || free - 1 >= keep;
     const grounded = {
       ...view,
       players: this.remotePlayers(view).filter((p) => !p.airborne
@@ -2504,9 +2507,10 @@ export class Ace extends Roger {
           && this.landingShotsSpent(p, this.landingShots.get(p.id).landsAt) >= this.shotsToKill(p))
         && inRange(p)
         // From under the ground the shot skims the floor, and a foe who can
-        // jump hops it once he sees it coming: only a landing shot, which
-        // meets him as he comes down, is worth the slot.
-        && !(me.z < 0 && canTankJump(view.world, p.flag, p.z))
+        // jump may hop it once he sees it coming. It goes all the same, from
+        // one slot: the rest are kept for the pair a landing shot takes
+        // (`chooseShot`), which meets him as he comes down.
+        && !(me.z < 0 && canTankJump(view.world, p.flag, p.z) && !floorShotSpare)
         && (levelShot === false || (muzzle >= p.z - LEVEL_SHOT_SLACK
           && muzzle <= p.z + view.world.tankHeight + LEVEL_SHOT_SLACK))
         && (!me.inAir || onLine(p))),

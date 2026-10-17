@@ -855,15 +855,19 @@ for (const flag of ['US', 'MG', 'ID']) {
   assert.ok(out.speed > 0.5 && out.targetId === 'foe', `driving at it (${out.intent.mode} ${out.speed})`);
 }
 
-// Burrowed, Ace does not fire along the floor at a foe who can hop it, and
-// does at one who cannot.
+// Burrowed, Ace fires along the floor at a foe who can hop it from one slot
+// only, keeping two for a landing shot's pair; at one who cannot, from any.
 {
-  const fire = (world) => new Ace().think(makeView({
-    self: { flag: 'BU', z: -1.32, muzzleHeight: 1.57, muzzleForward: 3, shotSpeed: 100, shotLifetime: 3.5 },
-    players: [enemy(0, 60)], world,
+  const fire = (world, freeShots) => new Ace().think(makeView({
+    self: {
+      flag: 'BU', z: -1.32, muzzleHeight: 1.57, muzzleForward: 3, shotSpeed: 100, shotLifetime: 3.5, freeShots,
+    },
+    players: [enemy(0, 60)], world: { maxShots: 3, ...world },
   })).fire;
-  assert.equal(fire({ allowJumping: true }), false, 'he would hop it');
-  assert.equal(fire({ allowJumping: false }), true, 'he cannot');
+  assert.equal(fire({ allowJumping: true }, 3), true, 'a slot to spare');
+  assert.equal(fire({ allowJumping: true }, 2), false, 'two kept for the pair');
+  assert.equal(fire({ allowJumping: false }, 2), true, 'he cannot hop it');
+  assert.equal(fire({ allowJumping: true, maxShots: 1 }, 1), true, 'one shot is no pair to keep');
 }
 
 // A burrowed foe within a jump is jumped onto: the arc's time is fixed, so
