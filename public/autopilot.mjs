@@ -36,6 +36,13 @@ function pointOf(p) {
   return { x: p.x, y: p.y, z: p.z };
 }
 
+// The surface a tank drives on. A burrowed tank is below it, and a probe cast
+// from down there passes under every obstacle, all of which start at 0 or
+// above: he would see open ground through a wall and drive into it.
+function surfaceZ(z) {
+  return Math.max(z, 0);
+}
+
 function distance2D(a, b) {
   return Math.hypot(b.x - a.x, b.y - a.y);
 }
@@ -3811,15 +3818,15 @@ export class Ace extends Roger {
   }
 
   // The fastest Ace can drive and still turn onto a point: at full turn a tank
-  // runs a circle of `tankSpeed / turnRate` times its speed, and to come round
+  // runs a circle of `topSpeed / turnRate` times its speed, and to come round
   // onto a point `d` off at bearing `b` that circle can be at most
   // `d / (2 sin b)` across. Faster than that, he orbits it and never arrives;
-  // past a right angle he turns where he is.
+  // past a right angle he turns where he is. The rates are the tank's own, so
+  // a flag that slows his turn more than his drive -- Burrow -- widens it.
   arrivalSpeed(ctx, here, aim, rotation) {
-    const { world } = ctx.view;
     const bearing = Math.abs(rotation);
     if (bearing >= HALF_PI) return 0;
-    const turnRadius = (world.tankSpeed || 25) / (world.tankAngVel || (Math.PI / 4));
+    const turnRadius = (ctx.me.topSpeed || ctx.view.world.tankSpeed || 25) / this.turnRate(ctx);
     const distance = Math.hypot(aim.x - here.x, aim.y - here.y);
     const sine = Math.sin(bearing);
     if (sine < 1e-3) return 1;
@@ -3860,8 +3867,8 @@ export class Ace extends Roger {
     for (const side of [0, -LANE_HALF_WIDTH, LANE_HALF_WIDTH]) {
       const ox = uy * side;
       const oy = -ux * side;
-      const from = { x: here.x + ox, y: here.y + oy, z: here.z + lift };
-      const to = { x: there.x + ox, y: there.y + oy, z: there.z + lift };
+      const from = { x: here.x + ox, y: here.y + oy, z: surfaceZ(here.z) + lift };
+      const to = { x: there.x + ox, y: there.y + oy, z: surfaceZ(there.z) + lift };
       if (ctx.view.isObscured(from, to)) return false;
       if (ctx.view.teleporterInWay?.(from, to)) return false;
     }
@@ -4363,7 +4370,7 @@ export function createWorldProbes({
     return { fraction: Math.max(0, fraction), obstacle: impact ? impact.obstacle : null, hit: fraction < 1 };
   };
   const ray = (pos, azimuth, range) => {
-    const from = { x: pos.x, y: pos.y, z: pos.z + 0.1 };
+    const from = { x: pos.x, y: pos.y, z: surfaceZ(pos.z) + 0.1 };
     const to = {
       x: from.x + (Math.cos(azimuth) * range),
       y: from.y + (Math.sin(azimuth) * range),

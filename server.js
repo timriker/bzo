@@ -11296,8 +11296,13 @@ function validateMovement(player, newX, newY, newZ, newAzimuth, extrapolationSec
     // handing itself the flag's entire effect without carrying it. Reported as
     // the same class of finding as a collision, because it is the same thing:
     // the two ends disagreeing about where this tank is allowed to be.
+    // Two honest ways under without the flag, both upstream's: a tank killed
+    // while burrowed explodes where it died, and one that loses the flag
+    // creeps back up (`applyGroundLimitCreep`). The creep is checked, not just
+    // allowed, so staying down is still reported.
     const groundLimit = getPlayerGroundLimit(player);
-    if (newZ < groundLimit - ANTICHEAT_GROUND_SLACK) {
+    if (newZ >= groundLimit - ANTICHEAT_GROUND_SLACK) player.groundCreep = null;
+    else if (player.alive && !isCreepingUp(player, newZ, groundLimit, now)) {
       const refused = reportCheat(player, 'collision',
         `BELOW GROUND: z ${newZ.toFixed(2)} < ${groundLimit.toFixed(2)}`
         + ` carrying ${getPlayerFlag(player.id)?.type ?? 'no flag'}`);
@@ -11380,6 +11385,22 @@ function validateMovement(player, newX, newY, newZ, newAzimuth, extrapolationSec
 // rounded packet lands a hundredth either side of it, so the slack is a frame's
 // worth of settling rather than a tolerance for anything a client could use.
 const ANTICHEAT_GROUND_SLACK = 0.2;
+// How much of the time since a tank went under the creep is not counted on,
+// for the jitter in when updates arrive.
+const ANTICHEAT_CREEP_JITTER = 0.25;
+
+// Whether a tank below its ground limit has come up at least as far as the
+// creep takes it: `vz >= -z / 2 + 0.5` (LocalPlayer.cxx:376), which from `z0`
+// over `t` seconds is at least `1 - (1 - z0) e^(-t/2)`. Measured from where
+// and when it was first seen under, so a tank that holds still is reported
+// however often it sends; a tank that arrives under is not creeping.
+function isCreepingUp(player, toZ, groundLimit, now) {
+  if (!(player.z < groundLimit)) return false;
+  if (!player.groundCreep) player.groundCreep = { z: player.z, at: now };
+  const t = Math.max(0, ((now - player.groundCreep.at) / 1000) - ANTICHEAT_CREEP_JITTER);
+  const floor = Math.min(groundLimit, 1 - ((1 - player.groundCreep.z) * Math.exp(-t / 2)));
+  return toZ >= floor - ANTICHEAT_GROUND_SLACK;
+}
 
 // Validate shot
 // Every rejection here is a client/server inconsistency: an unmodified client

@@ -178,7 +178,8 @@ function run(from, to, trace = false) {
       jumpTarget = null;
     }
     wasAir = air;
-    if (Math.hypot(driver.x - to.x, driver.y - to.y) < 3 && Math.abs(driver.z - to.z) < 0.5) {
+    // A burrowed tank is on the ground below it, at the burrow depth.
+    if (Math.hypot(driver.x - to.x, driver.y - to.y) < 3 && Math.abs(Math.max(driver.z, 0) - to.z) < 0.5) {
       return { arrived: true, time: t, events };
     }
   }
