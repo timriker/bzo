@@ -478,6 +478,11 @@ BZFlag's `-poll` settings, and `"voteTime": 0` turns polls off:
 "poll": { "voteTime": 60, "vetoTime": 2, "votesRequired": 2, "votePercentage": 50.1, "voteRepeatTime": 300 }
 ```
 
+## Discord
+
+A `discord` block in `server.json` lets members of a Discord server link
+their BZFlag account for roles: [discord.md](discord.md).
+
 ## Updating
 
 ### Source installs

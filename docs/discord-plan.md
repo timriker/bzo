@@ -1,10 +1,11 @@
 # Discord -- plan
 
-Issue #193. Nothing here is built. This is how bzo would connect to a
-Discord server: members proving which BZFlag account is theirs, and a channel
-that carries a game's public chat both ways. The BZFlag Discord
-(<https://discord.gg/6DHkggcXM9>) is the first one it is for, with
-bz.rikers.org the server doing the work.
+Issue #193. Linked Roles, nicknames for linked members and a game's public chat
+both ways are built and are `docs/discord.md`; commands from Discord, IRC and
+voice are not. This is how bzo connects to a Discord server: members proving
+which BZFlag account is theirs, and a channel that carries a game's public chat
+both ways. The BZFlag Discord (<https://discord.gg/6DHkggcXM9>) is the first
+one it is for, with bz.rikers.org the server doing the work.
 
 GitHub events already reach the BZFlag Discord's #bzo-dev channel through a
 repository webhook pointed at Discord's `/github` endpoint. That needs nothing

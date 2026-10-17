@@ -68,12 +68,17 @@ function isExpired(session, now) {
 // that grants nothing, which is the common case.
 function isAdminSession(session, adminGroups, now = Date.now()) {
   if (isExpired(session, now)) return false;
+  return groupsGrantAdmin(session.groups, adminGroups);
+}
+
+// The membership half on its own, for a check that has no session: a Discord
+// link (discord.cjs) asks it of the groups CHECKTOKENS just named.
+function groupsGrantAdmin(groups, adminGroups) {
   if (!Array.isArray(adminGroups) || adminGroups.length === 0) return false;
-  const groups = Array.isArray(session.groups) ? session.groups : [];
   // Case-insensitively, because the list server's spelling of a group is not
   // documented and a server.json that differs in case means the operator's
   // intent, not a non-member.
-  const held = new Set(groups.map((group) => String(group).toLowerCase()));
+  const held = new Set((Array.isArray(groups) ? groups : []).map((group) => String(group).toLowerCase()));
   return adminGroups.some((group) => held.has(String(group).toLowerCase()));
 }
 
@@ -386,6 +391,7 @@ module.exports = {
   parseCookies,
   isExpired,
   isAdminSession,
+  groupsGrantAdmin,
   createSessionRecord,
   createSessionStore,
 };

@@ -9,6 +9,8 @@ uploads.json
 list-server-keys.json
 bans.json
 scores.json
+discord-links.json
+discord-gateway.json
 data/
 cache/
 

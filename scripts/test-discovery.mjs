@@ -76,6 +76,9 @@ const ldBlocks = (html) => [...html.matchAll(/<script type="application\/ld\+jso
   const flags = Object.values(FLAG_TYPES).filter((flag) => flag.team === null || flag.team === undefined);
   for (const flag of flags) assert.ok(html.includes(`<td>${flag.name}</td>`), `${flag.name} listed`);
   assert.equal(ldBlocks(html).length, 1);
+  assert.match(html, /<a href="https:\/\/discord\.gg\/6DHkggcXM9">BZFlag Discord<\/a>/);
+  assert.doesNotMatch(html, /\/discord\/link/, 'no account link where Linked Roles is off');
+  assert.match(discovery.helpPage({ ...context, discordLink: true }), /<a href="\/discord\/link">link your bzflag\.org account<\/a>/);
 }
 
 // Markdown the docs use.

@@ -274,11 +274,15 @@ const {
   NO_PLAYER,
   isRealPlayerId,
 } = require('./server/player-ids.cjs');
+const { createDiscordLink, discordLinkConfigured } = require('./server/discord.cjs');
+const { createChatMirror, createDiscordToGame } = require('./server/discord-bridge.cjs');
+const { createGateway } = require('./server/discord-gateway.cjs');
 const {
   SESSION_COOKIE_NAME,
   SESSION_TTL_MS,
   parseCookies,
   isAdminSession,
+  groupsGrantAdmin,
   isLocalAdminRequest,
   trustedClientAddress,
   isLoopbackAddress,
@@ -3273,6 +3277,7 @@ function discoveryContext(req) {
     controlsMarkdown: controlsMarkdown(),
     flagTypes: FLAG_TYPES,
     badQuality: FLAG_QUALITY.BAD,
+    discordLink: Boolean(discordLink),
   };
 }
 
@@ -4692,6 +4697,109 @@ const refusedAdminGroups = (Array.isArray(serverConfig.adminGroups) ? serverConf
 if (refusedAdminGroups.length > 0) {
   log(`Admin groups refused (a group name may not contain a colon or a newline):`
     + ` ${refusedAdminGroups.map((group) => JSON.stringify(group)).join(', ')}`);
+}
+
+// Discord Linked Roles (server/discord.cjs, docs/discord-plan.md), when
+// server.json has a `discord` block with the app's credentials. The links are
+// kept beside bans.json; the same sign-in path and the same admin groups as
+// /login decide who is who.
+const DISCORD_LINKS_PATH = path.join(path.dirname(CONFIG_PATH), 'discord-links.json');
+const discordLink = discordLinkConfigured(serverConfig.discord)
+  ? createDiscordLink({
+    config: serverConfig.discord,
+    checkToken: async (callsign, token) => {
+      const { status, body } = await checkGlobalToken(callsign, token, ADMIN_GROUPS);
+      const parsed = parseGlobalTokenReply(body);
+      log(`[DISCORD] CHECKTOKENS ${status} good=${parsed.good} bzid=${parsed.bzid || 'none'}`
+        + ` callsign="${parsed.callsign || ''}" groups=${parsed.groups.join(',') || 'none'}`);
+      return parsed;
+    },
+    isAdmin: (groups) => groupsGrantAdmin(groups, ADMIN_GROUPS),
+    store: {
+      load: () => (fs.existsSync(DISCORD_LINKS_PATH)
+        ? JSON.parse(fs.readFileSync(DISCORD_LINKS_PATH, 'utf8')) : {}),
+      save: (links) => fs.writeFileSync(DISCORD_LINKS_PATH, `${JSON.stringify(links, null, 2)}\n`, { mode: 0o600 }),
+    },
+    log,
+    logError,
+  })
+  : null;
+if (discordLink) {
+  const withHost = (handler) => (req, res) => {
+    const host = requestHost(req);
+    if (!host) {
+      res.status(400).type('text/plain').send('Malformed Host header');
+      return;
+    }
+    handler(req, res, host);
+  };
+  app.get('/discord/link', loginRateLimit, withHost(discordLink.start));
+  app.get('/discord/link/callback', loginRateLimit, withHost(discordLink.discordCallback));
+  app.get('/discord/link/bzflag/:key', loginRateLimit, (req, res) => discordLink.bzflagCallback(req, res));
+  log(`Discord: Linked Roles on, ${discordLink.size} linked`);
+  discordLink.registerMetadata().catch((err) => logError('[DISCORD] role metadata failed', err));
+}
+
+// Public chat mirrored to a Discord channel (server/discord-bridge.cjs), when
+// `discord.bridge.webhookUrl` names that channel's webhook. Fed from
+// `deliverChatMessage`'s all-players branch and nowhere else.
+const DISCORD_BRIDGE_WEBHOOK = serverConfig.discord?.bridge?.webhookUrl;
+const chatMirror = typeof DISCORD_BRIDGE_WEBHOOK === 'string'
+  && DISCORD_BRIDGE_WEBHOOK.startsWith('https://discord.com/api/webhooks/')
+  ? createChatMirror({
+    webhookUrl: DISCORD_BRIDGE_WEBHOOK,
+    serverName: serverConfig.title || 'bzo',
+    log,
+    logError,
+  })
+  : null;
+if (chatMirror) log('Discord: public chat mirrored to a channel');
+
+// And the channel's own messages back into the game, through the bot's
+// gateway connection (server/discord-gateway.cjs), when there is a bot token
+// as well. The channel is the one the mirror's webhook posts to, asked of the
+// webhook itself. The gateway session is kept beside bans.json so a restart
+// resumes it.
+const DISCORD_GATEWAY_PATH = path.join(path.dirname(CONFIG_PATH), 'discord-gateway.json');
+if (chatMirror && typeof serverConfig.discord?.botToken === 'string' && serverConfig.discord.botToken) {
+  fetch(DISCORD_BRIDGE_WEBHOOK, { signal: AbortSignal.timeout(10000) })
+    .then((response) => response.json())
+    .then((webhook) => {
+      if (!webhook.channel_id) throw new Error('the bridge webhook named no channel');
+      const onMessage = createDiscordToGame({
+        channelId: webhook.channel_id,
+        nameFor: (message) => {
+          const linked = discordLink?.linkFor(message.author?.id);
+          if (linked) return `${linked.admin ? '@' : '+'}${linked.callsign}`;
+          return message.member?.nick || message.author?.global_name || message.author?.username;
+        },
+        // A server message, so a native BZFlag client shows it as one; the
+        // `discord` part is for bzo's own, which puts it with the chat.
+        announce: ({ name, line, text }) => {
+          log(`[CHAT] ${text}`);
+          broadcastAll({
+            type: 'message', src: SERVER_PLAYER, dst: ALL_PLAYERS, msgType: 'server', text,
+            discord: { name, text: line }, ts: Date.now(),
+          });
+        },
+        log,
+      });
+      createGateway({
+        token: serverConfig.discord.botToken,
+        onDispatch: (type, data) => {
+          if (type === 'MESSAGE_CREATE') onMessage(data);
+        },
+        store: {
+          load: () => (fs.existsSync(DISCORD_GATEWAY_PATH)
+            ? JSON.parse(fs.readFileSync(DISCORD_GATEWAY_PATH, 'utf8')) : null),
+          save: (session) => fs.writeFileSync(DISCORD_GATEWAY_PATH, JSON.stringify(session), { mode: 0o600 }),
+        },
+        log,
+        logError,
+      }).start();
+      log('Discord: channel messages relayed into the game');
+    })
+    .catch((err) => logError('[DISCORD] could not start the channel relay', err));
 }
 
 // The bzfs servers this instance may proxy, from `proxies` in `server.json`
@@ -10342,6 +10450,7 @@ function deliverChatMessage(player, targetId, msgType, text) {
 
   if (targetId === ALL_PLAYERS) {
     log(`[CHAT] "${fromName}"->ALL: ${text}`);
+    chatMirror?.relay(fromName, text, msgType, isAdmin(player) ? '@' : (player.verified ? '+' : ''));
     broadcastAll({
       type: 'message',
       src: fromId,

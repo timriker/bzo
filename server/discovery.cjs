@@ -21,6 +21,8 @@ const BZFLAG_URL = 'https://www.bzflag.org/';
 const LICENSE_URL = 'https://www.gnu.org/licenses/agpl-3.0.html';
 
 const GAME_NAME = 'Battlezone Online';
+// The BZFlag community's Discord server.
+const DISCORD_INVITE_URL = 'https://discord.gg/6DHkggcXM9';
 const GAME_DESCRIPTION = 'Battlezone Online (bzo) is a free, open-source 3D'
   + ' multiplayer tank game that runs in the browser -- on a desktop, a phone'
   + ' or a VR headset -- and plays with BZFlag clients and servers.';
@@ -219,7 +221,7 @@ function flagTableMarkdown(flagTypes, badQuality) {
   return ['| Flag | Name | Kind | What it does |', '| --- | --- | --- | --- |', ...rows].join('\n');
 }
 
-function helpPage({ base, name, description, version, controlsMarkdown, flagTypes, badQuality }) {
+function helpPage({ base, name, description, version, controlsMarkdown, flagTypes, badQuality, discordLink = false }) {
   const title = `Help -- ${name}`;
   const head = pageHead({
     base, path: '/help', title, description,
@@ -247,13 +249,18 @@ ${head}
 <body>
 <h1>${escapeHtml(name)}</h1>
 <p>${escapeHtml(description)}</p>
-<nav><a href="/">Play</a> · <a href="/list">Servers</a> · <a href="#controls">Controls</a> · <a href="#flags">Flags</a> · <a href="/source">Source</a></nav>
+<nav><a href="/">Play</a> · <a href="/list">Servers</a> · <a href="#controls">Controls</a> · <a href="#flags">Flags</a> · <a href="#discord">Discord</a> · <a href="/source">Source</a></nav>
 <h2 id="controls">Controls</h2>
 ${markdownToHtml(controlsMarkdown.replace(/^# .*\n/, ''))}
 <h2 id="flags">Flags</h2>
 <p>Drive over a flag to pick it up. Good flags help; bad flags hinder, and stay until they shake off, you kill, or you die.
 Team flags are captured by carrying an enemy's to your own base.</p>
 ${flagTableHtml(flagTypes, badQuality)}
+<h2 id="discord">Discord</h2>
+<p>Talk with other players on the <a href="${DISCORD_INVITE_URL}">BZFlag Discord</a>.${discordLink
+    ? ' Once you are there, <a href="/discord/link">link your bzflag.org account</a> for the BZFlag player role,'
+      + ' and your callsign as your name there.'
+    : ''}</p>
 <p>${escapeHtml(GAME_NAME)} ${escapeHtml(version)} · <a href="${REPO_URL}">Source</a>, AGPL-3.0</p>
 </body>
 </html>

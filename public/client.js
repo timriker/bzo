@@ -36,6 +36,8 @@ const CHAT_KIND_DIRECT_OUT = 'direct-out';
 const CLIENT_COPYRIGHT = 'Copyright (C) 2025-2026 Tim Riker <timriker@gmail.com>';
 const CLIENT_LICENSE = 'AGPL-3.0-only';
 const CLIENT_LICENSE_URL = 'https://www.gnu.org/licenses/agpl-3.0.html';
+// Discord's own blurple, on the label of a line said in its channel.
+const DISCORD_LABEL_COLOR = '#5865f2';
 const CHAT_TABS = [
   { id: 'all', label: 'All' },
   { id: 'chat', label: 'Chat' },
@@ -3928,6 +3930,18 @@ function formatNetworkMessage(message) {
   const toSuffix = toMark ? ` ${toMark.label}` : '';
   const markSegment = (mark) => (mark ? [{ text: ` ${mark.label}`, color: colorToCSS(mark.color) }] : []);
 
+  // A line said in the server's Discord channel (docs/discord.md). The server
+  // sends it as a server message, which is what a BZFlag client shows; the
+  // `discord` part puts it with the chat here, as what it is.
+  if (message.discord && typeof message.discord.name === 'string' && typeof message.discord.text === 'string') {
+    const { name, text: said } = message.discord;
+    return {
+      text: `[Discord] ${name}: ${said}`,
+      tabs: ['chat', 'all'],
+      kind: CHAT_KIND_CHAT,
+      segments: [{ text: '[Discord]', color: DISCORD_LABEL_COLOR }, { text: ` ${name}: ${said}` }],
+    };
+  }
   if (msgType === CHAT_KIND_SERVER || src === CHAT_TARGET_SERVER) {
     return { text: `[SERVER] ${text}`, tabs: ['server', 'all'], kind: CHAT_KIND_SERVER };
   }
