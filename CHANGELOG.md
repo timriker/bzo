@@ -6,6 +6,16 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
 
 ## [Unreleased]
 
+## [1.3.58] - 2026-10-17
+
+### Fixed
+- A burrowed autopilot no longer drives into walls, pyramid ribs and box
+  corners he took for open ground, and turns onto a point at his own,
+  slower, rate rather than circling it.
+- The anticheat no longer warns about a tank below ground after it lost
+  Burrow while it is dead or climbing back out; one that stays down is still
+  reported.
+
 ## [1.3.57] - 2026-10-17
 
 ### Added
