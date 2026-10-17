@@ -32,8 +32,16 @@
 // target that is in the air on a schedule. `--fire 1` taps the trigger once a
 // second of the drive, and half a second into each hop, for a shot fired on the
 // move or in the air. `--press KeyC,KeyC` presses those keys once each after
-// joining, for a probe that wants a particular view. `--autopilot 30` presses 9 instead and lets the default
-// pilot fly for that many seconds, logged the way a drive is. `--select-chat 1`
+// joining, for a probe that wants a particular view. `--autopilot 30` turns the default
+// pilot on and lets it fly for that many seconds, logged the way a drive is;
+// `--burst <dir>`
+// saves a screenshot every `--burst-ms` (400) of it, and `--burst-cameras`
+// takes turns with camera modes; `--burst-for 4` bursts without the pilot,
+// firing once as it starts. `--mobile 1` joins as a
+// phone, the window its screen: `--window 540,960 --mobile 1` is one upright.
+// `--camera third-person` sets the camera mode once joined.
+// `--css '#scoreboard { display: none }'` adds a style sheet once joined,
+// to leave what is not wanted out of a screenshot. `--select-chat 1`
 // opens chat entry, drags across the last transcript line with real mouse
 // events, and reports what got selected and whether chat entry survived it.
 // `--hold ShiftLeft,KeyW --hold-ms 1500` holds those keys together, with a
@@ -156,6 +164,18 @@ await send('Page.enable');
 // anything focused after that first paint, like the chat input, silently does
 // not.
 await send('Emulation.setFocusEmulationEnabled', { enabled: true });
+// `--mobile 1`: a phone, as far as bzo can tell -- its user agent, which is
+// what picks the touch layout (`isMobileBrowser`), touch points, and the
+// window as its screen, so `--window 540,960` is a phone held upright.
+if (args.get('mobile')) {
+  const [width, height] = windowSize.split(',').map(Number);
+  await send('Emulation.setUserAgentOverride', {
+    userAgent: 'Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko)'
+      + ' Chrome/155.0.0.0 Mobile Safari/537.36',
+  });
+  await send('Emulation.setDeviceMetricsOverride', { width, height, deviceScaleFactor: 1, mobile: true });
+  await send('Emulation.setTouchEmulationEnabled', { enabled: true, maxTouchPoints: 5 });
+}
 // Joined as a robot tank (`?bot`), so a probe is counted apart from the people
 // playing on the list and in the log -- unless `--human 1` says it is standing
 // in for one, which is how the bot fill is tested.
@@ -168,6 +188,13 @@ await send('Page.navigate', { url: pageUrl.href });
 let joined = 'entry dialog never appeared';
 for (let second = 0; second < 45; second += 1) {
   await sleep(1000);
+  // A phone joining as a bot skips the dialog and is in the game already,
+  // under a name of its own choosing rather than `--name`.
+  const inGameAs = await evaluate('document.getElementById("playerName")?.textContent');
+  if (inGameAs && inGameAs !== 'Player') {
+    joined = `joined as ${inGameAs}`;
+    break;
+  }
   if (await evaluate('document.getElementById("entryDialog")?.style.display') !== 'block') continue;
   // Typed rather than built into the expression. `JSON.stringify` into a string
   // of code is an escape that only mostly works, and `Input.insertText` carries
@@ -200,7 +227,7 @@ const keyDown = (code) => dispatchKey('rawKeyDown', code);
 const keyUp = (code) => dispatchKey('keyUp', code);
 
 const fetchSelf = async () => {
-  const { players } = await (await fetch(`${url}/api/players`)).json();
+  const { players } = await (await fetch(new URL('/api/players', url))).json();
   return players.find((player) => player.name === playerName);
 };
 
@@ -230,6 +257,12 @@ const sendChat = async (line) => {
   await sleep(500);
 };
 
+const extraCss = args.get('css') || '';
+if (extraCss && joined.startsWith('joined')) {
+  await evaluate(`(() => { const style = document.createElement('style');
+    style.textContent = ${JSON.stringify(extraCss)}; document.head.append(style); })()`);
+}
+
 // `/mv` is bzo's own chat command for teleporting a tank, and keeps its own
 // option because placing the tank is what most probes want. `--chat` is the
 // same path for anything else; both run before the drive, `--mv` first.
@@ -245,6 +278,19 @@ if ((mvArgs || chatLine) && joined.startsWith('joined')) {
   // it, put it down -- is one option rather than one run each.
   for (const line of chatLine.split('\n').map((text) => text.trim()).filter(Boolean)) {
     await sendChat(line);
+  }
+}
+
+// `--camera third-person` (or first-person, overview): C until the page says
+// so, whatever mode it started in.
+const cameraWanted = args.get('camera') || '';
+if (cameraWanted && joined.startsWith('joined')) {
+  for (let press = 0; press < 3
+    && await evaluate('localStorage.getItem("cameraMode")') !== cameraWanted; press += 1) {
+    await keyDown('KeyC');
+    await sleep(60);
+    await keyUp('KeyC');
+    await sleep(200);
   }
 }
 
@@ -358,13 +404,59 @@ if (holdKeys.length && joined.startsWith('joined')) {
 
 const driveLog = [];
 const autopilotSeconds = Number(args.get('autopilot') || 0);
+// `--burst <dir>`: a screenshot every `--burst-ms` (400) for as long as the
+// pilot flies, numbered in order, for picking the frames worth keeping.
+const burstDir = args.get('burst') || '';
+const burstMs = Number(args.get('burst-ms') || 400);
+// `--burst-cameras first-person,third-person` takes turns with those camera
+// modes, `--burst-switch` (15) seconds each: C until the page says the next.
+const burstCameras = (args.get('burst-cameras') || '').split(',').map((mode) => mode.trim()).filter(Boolean);
+const burstSwitch = Number(args.get('burst-switch') || 15);
+const cameraMode = () => evaluate('localStorage.getItem("cameraMode")');
+const setCamera = async (mode) => {
+  for (let press = 0; press < 3 && await cameraMode() !== mode; press += 1) {
+    await keyDown('KeyC');
+    await sleep(60);
+    await keyUp('KeyC');
+    await sleep(200);
+  }
+};
+let burstCount = 0;
+let burstSeconds = 0;
+const waitSecond = async () => {
+  if (burstCameras.length && burstSeconds % burstSwitch === 0) {
+    await setCamera(burstCameras[Math.floor(burstSeconds / burstSwitch) % burstCameras.length]);
+  }
+  burstSeconds += 1;
+  if (!burstDir) {
+    await sleep(1000);
+    return;
+  }
+  const until = Date.now() + 1000;
+  while (Date.now() < until) {
+    const { data } = await send('Page.captureScreenshot', { format: 'jpeg', quality: 90 });
+    burstCount += 1;
+    fs.writeFileSync(`${burstDir}/${String(burstCount).padStart(4, '0')}.jpg`, Buffer.from(data, 'base64'));
+    await sleep(Math.max(0, Math.min(burstMs, until - Date.now())));
+  }
+};
+if (burstDir) fs.mkdirSync(burstDir, { recursive: true });
+// `--burst-for 4` with no pilot: that long of screenshots, the trigger
+// pulled as it starts, for a scene set up with `--chat`.
+const burstFor = Number(args.get('burst-for') || 0);
+if (burstDir && burstFor > 0 && !(autopilotSeconds > 0) && joined.startsWith('joined')) {
+  await keyDown('Enter');
+  await sleep(60);
+  await keyUp('Enter');
+  for (let second = 0; second < burstFor; second += 1) await waitSecond();
+}
 if (autopilotSeconds > 0 && joined.startsWith('joined')) {
   await sleep(2000);
-  await keyDown('Digit9');
-  await sleep(60);
-  await keyUp('Digit9');
+  // The command rather than 9, which toggles: a phone joining as a bot has its
+  // pilot on already.
+  await sendChat('/autopilot ace');
   for (let second = 1; second <= Math.ceil(autopilotSeconds); second += 1) {
-    await sleep(1000);
+    await waitSecond();
     const self = await fetchSelf();
     driveLog.push(self
       ? `t=${second}s x=${self.x.toFixed(2)} y=${self.y.toFixed(2)} z=${self.z.toFixed(2)} azimuth=${self.azimuth.toFixed(2)}`
