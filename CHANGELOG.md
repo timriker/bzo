@@ -6,6 +6,23 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
 
 ## [Unreleased]
 
+## [1.3.59] - 2026-10-18
+
+### Changed
+- The autopilot's reports name the two modes it keeps switching between,
+  and where each was headed.
+
+### Fixed
+- A burrowed autopilot no longer drives into a teleporter it cannot use, and
+  lets Burrow go when its goal is somewhere a burrowed tank cannot reach.
+- An autopilot rocking back and forth in one place backs out and tries again.
+- An autopilot no longer fires into a teleporter whose shot comes back
+  through it and kills him.
+- A tank could spawn half inside a wall and hang there, unable to fall or
+  drive.
+- The anticheat no longer warns about a tank still sinking just after it
+  dropped Burrow.
+
 ## [1.3.58] - 2026-10-17
 
 ### Fixed
