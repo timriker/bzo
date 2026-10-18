@@ -10850,10 +10850,16 @@ function findSafeSpawnPosition(player, nextCandidate) {
   } while (Date.now() - started <= budgetMs);
   const chosen = best || last;
   const enemy = nearestSpawnEnemy(player, chosen);
-  const azimuth = isSpawnImminentlyDangerous(chosen) && enemy.azimuth !== null
+  const wanted = isSpawnImminentlyDangerous(chosen) && enemy.azimuth !== null
     ? enemy.azimuth + Math.PI
     : Math.random() * Math.PI * 2;
-  return { ...chosen, azimuth };
+  // A spot is found clear at the heading it was tried at: upstream's clearance
+  // is a circle, bzo's is the tank's own box, and a tank six long beside a
+  // wall fits one way and not another. Turned into the wall, it spawns inside
+  // it and hangs there, unable to fall or drive.
+  const fits = !Number.isFinite(chosen.azimuth)
+    || !checkCollision(chosen.x, chosen.y, chosen.z, 2, { azimuth: wanted, suppressLog: true });
+  return { ...chosen, azimuth: fits ? wanted : chosen.azimuth };
 }
 
 // SpawnPolicy::isFacing: whether a tank at `enemy`, heading `rotation`, points
@@ -11397,7 +11403,11 @@ const ANTICHEAT_CREEP_JITTER = 0.25;
 function isCreepingUp(player, toZ, groundLimit, now) {
   if (!(player.z < groundLimit)) return false;
   if (!player.groundCreep) player.groundCreep = { z: player.z, at: now };
-  const t = Math.max(0, ((now - player.groundCreep.at) / 1000) - ANTICHEAT_CREEP_JITTER);
+  const elapsed = (now - player.groundCreep.at) / 1000;
+  // Moves the client sent before it heard the flag was gone are still
+  // burrowed ones, sinking as far as the burrow depth.
+  if (elapsed <= ANTICHEAT_CREEP_JITTER) return toZ >= getGroundLimit('BU') - ANTICHEAT_GROUND_SLACK;
+  const t = elapsed - ANTICHEAT_CREEP_JITTER;
   const floor = Math.min(groundLimit, 1 - ((1 - player.groundCreep.z) * Math.exp(-t / 2)));
   return toZ >= floor - ANTICHEAT_GROUND_SLACK;
 }
