@@ -12,10 +12,11 @@
 
 import assert from 'node:assert/strict';
 import {
-  Ace, Roger, ROUTE_PENDING, createAsyncRouter, createWorldProbes, findVantagePoints,
+  Ace, Roger, ROUTE_PENDING, createAsyncRouter, createRouter, createWorldProbes, findVantagePoints,
 } from '../public/autopilot.mjs';
 import { findShotSegmentImpact } from '../public/collision.mjs';
 import { buildNavGraph } from '../public/nav.mjs';
+import { buildTeleporterIndex } from '../public/teleport.mjs';
 
 function makeView(overrides = {}) {
   const view = {
@@ -1329,7 +1330,7 @@ for (const flag of ['US', 'MG', 'ID']) {
   assert.equal(capture.intent.route.length, 2, 'the route left to drive');
 
   const report = ace.takeReport();
-  assert.match(report, /^capture 100%; shots 0, jumps 0, falls 0, routes 1 \(0 none\)/);
+  assert.match(report, /^capture 100%; shots 0, jumps 0, falls 0, switches 0, routes 1 \(0 none\)/);
   assert.match(ace.takeReport(), /^idle;/, 'a report starts the count again');
 
   // A rogue has no base to capture on, so a team flag is nothing to him.
@@ -1684,6 +1685,84 @@ for (const flag of ['US', 'MG', 'ID']) {
   const leg = route.find((node) => node.teleport);
   assert.equal(leg.z, 10, 'and comes out on the platform');
   assert.deepEqual([leg.teleport.dx, leg.teleport.dy], [-1, -0], 'driven into the face from in front');
+  // Burrowed, a tank passes under the doorway (Teleporter.cxx:361).
+  const router = createRouter(() => ({ obstacles, mapSize: 200, waterLevel: null, teleporterLinks: links, allowJumping: false }));
+  assert.ok(router(from, to), 'a router takes the lift');
+  assert.equal(router(from, to, { burrowed: true }), null, 'but not for a burrowed tank');
+}
+
+// A shell is traced through teleporters as the server flies it: one fired
+// into a doorway can come back out of it, off a wall beyond the far end.
+{
+  const tele = (index, x, y) => ({
+    type: 'box', kind: 'teleporter', teleporterIndex: index, angle: 0, pos: [x, y, 0],
+    size: [0.56, 6.72, 10], border: 1.12,
+    bounds: { minX: x - 2, maxX: x + 2, minY: y - 8, maxY: y + 8, minZ: 0, maxZ: 10 },
+  });
+  const wall = {
+    type: 'box', pos: [60, 50, 0], size: [1, 15, 20], angle: 0,
+    bounds: { minX: 59, maxX: 61, minY: 35, maxY: 65, minZ: 0, maxZ: 20 },
+  };
+  const obstacles = [tele(0, 10, 0), tele(1, 100, 50), wall];
+  const links = [0, 1, 2, 3].map((face) => ({ sourceFaceId: face, destFaceId: face ^ 2 }));
+  const back = (teleports) => {
+    const probes = createWorldProbes({
+      obstacles: () => obstacles, colliders: () => obstacles, mapSize: () => 400,
+      findImpact: findShotSegmentImpact, topOf: () => 10, teleports: () => teleports,
+    });
+    return probes.traceShot({ x: 3, y: 0, z: 1.57 }, { x: 1, y: 0, z: 0 }, 100, 3.5, true)
+      .slice(1).some((segment) => Math.abs(segment.to.x) < 3 && Math.abs(segment.to.y) < 3);
+  };
+  assert.equal(back(null), false, 'without the teleporters the shot leaves');
+  assert.equal(back(buildTeleporterIndex(obstacles, links)), true, 'through them it comes back to the muzzle');
+}
+
+// Burrowed with nowhere to go underground, Ace lets Burrow go.
+{
+  const raised = { index: 4, type: null, team: null, onGround: true, x: 0, y: 60, z: 10 };
+  const pilot = new Ace();
+  const burrowed = { self: { flag: 'BU', flagIndex: 2, z: -1.32 }, flags: [raised], findRoute: () => null };
+  pilot.think(makeView(burrowed));
+  const still = pilot.think(makeView({ ...burrowed, now: 100.05 }));
+  assert.equal(still.dropFlag, false, 'not while standing, where the flag lands underneath');
+  const out = pilot.think(makeView({ ...burrowed, now: 100.1, self: { ...burrowed.self, speed: 20 } }));
+  assert.equal(out.dropFlag, true, 'Burrow is dropped when no route goes underground, once moving');
+}
+
+// Rocking -- ahead, back, ahead -- passes the half-second progress check, but
+// three seconds of it in one place is stuck.
+{
+  const rock = (mode) => {
+    const pilot = new Ace();
+    pilot.frameSeconds = 0.05;
+    pilot.openDistance = () => 10;
+    let x = 0;
+    for (let i = 0; i < 100; i++) {
+      const back = Math.floor(i / 3) % 2 === 1;
+      x += back ? -0.62 : 0.65;
+      const ctx = {
+        view: { now: 100 + (i * 0.05), world: { tankSpeed: 25 } },
+        me: { x, y: 0, z: 0, azimuth: i % 2 ? 0.06 : -0.06, topSpeed: 25, inAir: false },
+        out: { rotation: 0.02, speed: back ? -0.5 : 0.6, intent: { mode } },
+      };
+      pilot.checkProgress(ctx);
+      if (ctx.out.intent.mode === 'unstick') return i * 0.05;
+    }
+    return null;
+  };
+  const at = rock('capture');
+  assert.ok(at !== null && at < 3.5, 'rocking in place is backed out of');
+  assert.equal(rock('ambush'), null, 'but not an ambush timing its shot');
+}
+
+// Two modes taking turns are named in the report, with where each was going.
+{
+  const pilot = new Ace();
+  for (let i = 0; i < 20; i++) {
+    const mode = i % 2 ? 'flag' : 'hunt-flag';
+    pilot.count({ me: { inAir: false }, out: { fire: false, jump: false, intent: { mode, target: { x: i % 2 ? 10 : -10, y: 5 } } } });
+  }
+  assert.match(pilot.takeReport(), /switches 19 \(flag\/hunt-flag 19: flag to 10,5, hunt-flag to -10,5\)/);
 }
 
 // Oscillation Overthruster goes before a lift up, and is not fetched again.

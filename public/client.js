@@ -12864,6 +12864,7 @@ const autopilotProbes = createWorldProbes({
   mapSize: () => currentWorldMapSize || DEFAULT_MAP_SIZE,
   findImpact: findShotSegmentImpact,
   topOf: getColliderTopY,
+  teleports: () => TELEPORTER_INDEX,
 });
 
 

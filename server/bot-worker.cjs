@@ -121,6 +121,7 @@ function getProbes() {
       mapSize: () => world.mapSize,
       findImpact: findShotSegmentImpact,
       topOf,
+      teleports: getTeleporterIndex,
     });
   }
   return probes;

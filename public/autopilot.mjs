@@ -23,9 +23,12 @@ import {
   canSeeShot, canSeeTank, getRunOverSeparation, getTankHitRadiusScale, hasAirControl, isBadFlag, seenOnRadar,
   usesNarrowHitBox,
 } from './flags.mjs';
-import { SHOT_COLLISION_RADIUS, traceShotStep, TANK } from './collision.mjs';
+import {
+  getShotObstacleNormal, reflectShotDirection, SHOT_BOUNCE_CLEARANCE, SHOT_COLLISION_RADIUS, traceShotStep, TANK,
+} from './collision.mjs';
 import { buildNavGraph, NAV_CELL, planJump } from './nav.mjs';
 import { getShotTeleporterCrossing, getShotTeleporterFrameHit } from './teleport.mjs';
+import { traceShotThroughTeleporters } from './trace.mjs';
 import { normalizeAngle } from './motion.mjs';
 import { isRabbitTeam } from './teams.mjs';
 
@@ -78,7 +81,19 @@ const HARD_FLAGS = new Set(['US', 'MG', 'ID']);
 function createStats() {
   return {
     modes: {}, shots: 0, jumps: 0, falls: 0, plans: 0, unreachable: 0, waits: 0, unsticks: 0, held: 0, kept: 0, safer: 0,
+    switches: 0, pairs: {}, targets: {},
   };
+}
+
+// The pair of modes that traded places most, once it has done so often enough
+// to be a tank going nowhere, and where each was headed.
+const FLIP_REPORT_MIN = 10;
+
+function flipReport(stats) {
+  const top = Object.entries(stats.pairs).sort((a, b) => b[1] - a[1])[0];
+  if (!top || top[1] < FLIP_REPORT_MIN) return '';
+  const where = top[0].split('/').map((mode) => `${mode} ${stats.targets[mode] ? `to ${stats.targets[mode]}` : 'untargeted'}`);
+  return ` (${top[0]} ${top[1]}: ${where.join(', ')})`;
 }
 
 export class Roger {
@@ -98,6 +113,7 @@ export class Roger {
     this.stats = createStats();
     this.wasInAir = false;
     this.jumpedLast = false;
+    this.lastMode = null;
   }
 
   // teachAutoPilot: +1 for a kill made with a flag, -1 for dying holding it.
@@ -201,7 +217,18 @@ export class Roger {
   count(ctx) {
     const { me, out } = ctx;
     const stats = this.stats;
-    stats.modes[out.intent.mode] = (stats.modes[out.intent.mode] || 0) + 1;
+    const mode = out.intent.mode;
+    stats.modes[mode] = (stats.modes[mode] || 0) + 1;
+    // Which modes trade places, and where each was headed: two decisions
+    // taking turns frame by frame leave the tank where it is.
+    if (this.lastMode && mode !== this.lastMode) {
+      stats.switches++;
+      const pair = [this.lastMode, mode].sort().join('/');
+      stats.pairs[pair] = (stats.pairs[pair] || 0) + 1;
+    }
+    this.lastMode = mode;
+    const target = out.intent.target;
+    if (target && Number.isFinite(target.x)) stats.targets[mode] = `${Math.round(target.x)},${Math.round(target.y)}`;
     if (out.fire) stats.shots++;
     if (out.jump && !me.inAir) stats.jumps++;
     if (me.inAir && !this.wasInAir && !this.jumpedLast) stats.falls++;
@@ -219,6 +246,7 @@ export class Roger {
       .map(([mode, n]) => `${mode} ${Math.round((100 * n) / frames)}%`)
       .join(', ');
     const report = `${modes || 'idle'}; shots ${stats.shots}, jumps ${stats.jumps}, falls ${stats.falls}`
+      + `, switches ${stats.switches}${flipReport(stats)}`
       + (this.extraReport ? this.extraReport(stats) : '');
     this.stats = createStats();
     return report;
@@ -876,6 +904,18 @@ const UNSTICK_MOVE = 0.3;
 // however far it comes to: a tank grinding along a wall at full throttle
 // covers a unit or two a second where it asked for twenty-five.
 const UNSTICK_SHARE = 0.25;
+// A tank that rocks -- ahead, back, ahead -- moves and turns enough in each
+// half second to pass the check above and never gets anywhere: asked to drive
+// `STALL_ASKED` units over `STALL_SECONDS` and still within `STALL_RADIUS` of
+// where it began, it is stuck. A tank holding still on purpose asks for no
+// distance; an ambush and a dodge rock on purpose.
+const STALL_SECONDS = 3;
+const STALL_ASKED = 15;
+const STALL_RADIUS = 3;
+const STALL_EXEMPT = new Set(['ambush', 'dodge', 'unstick']);
+// A gap this long between frames is a pilot that was not driving -- paused,
+// switched off, or a test asking twice -- and starts the count again.
+const STALL_GAP_SECONDS = 0.5;
 const ROUTE_LOOKAHEAD = 16;
 // How Ace drives a route, as numbers a benchmark can vary
 // (scripts/bench-pilot.mjs): `follow` is `nodes` -- the next node, or a few
@@ -986,6 +1026,8 @@ export class Ace extends Roger {
     this.aimCache = null;
     this.shedOnTakeoff = false;
     this.shedAirborne = false;
+    this.shedBurrow = false;
+    this.drift = null;
     this.dropDriveUntil = -Infinity;
     this.lastTrace = null;
     this.extraReport = (stats) => `, routes ${stats.plans} (${stats.unreachable} none`
@@ -2391,9 +2433,11 @@ export class Ace extends Roger {
     // definition; every bounce after it counts, however soon -- fired into a
     // wall at point blank, the shot is back in a hundredth of a second. A
     // leg is judged by its lowest end: one that bounces up off a slope
-    // passes through him on its way up.
+    // passes through him on its way up. One wholly below him is on another
+    // level -- out of a teleporter's lower end, under him in plan.
     for (const segment of segments.slice(1)) {
       if (Math.min(segment.from.z, segment.to.z) > self.z + view.world.tankHeight + 1) continue;
+      if (Math.max(segment.from.z, segment.to.z) < self.z - 1) continue;
       if (segmentDistance2D(segment.from, segment.to, self) < reach) return true;
     }
     return false;
@@ -3392,8 +3436,12 @@ export class Ace extends Roger {
   plan(view, here, there) {
     const canJump = canTankJump(view.world, view.self.flag, view.self.z);
     const wings = hasAirControl(view.self.flag);
-    let nodes = view.findRoute(here, there, { canJump, wings });
+    const burrowed = view.self.z < 0;
+    let nodes = view.findRoute(here, there, { canJump, wings, burrowed });
     if (nodes === ROUTE_PENDING) return this.awaitRoute(view, here, there);
+    // Nowhere to go underground -- a raised base, a lift's far end -- is
+    // somewhere Burrow keeps him from: it goes, and the tank comes up.
+    if (!nodes && burrowed) this.shedBurrow = true;
     // A jump is a second or more Ace cannot steer, and comes down where it
     // was always going to: one whose landing a foe has a level, clear shot
     // at is taken only when the way round on the ground is much longer.
@@ -3682,6 +3730,7 @@ export class Ace extends Roger {
     const { view, me, out } = ctx;
     if (view.now < this.unstickUntil + UNSTICK_DRIVE_SECONDS) return;
     const top = me.topSpeed ?? view.world.tankSpeed;
+    if (this.checkStall(ctx, top)) return;
     const sample = this.progress;
     const trying = Math.abs(out.rotation) > 0.1 || Math.abs(out.speed) > 0.1;
     const restart = () => {
@@ -3699,6 +3748,28 @@ export class Ace extends Roger {
       return;
     }
     if (view.now - sample.t <= UNSTICK_SECONDS) return;
+    this.unstick(ctx);
+  }
+
+  // Rocking in place: see `STALL_SECONDS`.
+  checkStall(ctx, top) {
+    const { view, me, out } = ctx;
+    const drift = this.drift;
+    if (!drift || me.inAir || STALL_EXEMPT.has(out.intent.mode)
+      || view.now - drift.last > STALL_GAP_SECONDS
+      || Math.hypot(me.x - drift.x, me.y - drift.y) > STALL_RADIUS) {
+      this.drift = { t: view.now, last: view.now, x: me.x, y: me.y, asked: 0 };
+      return false;
+    }
+    drift.last = view.now;
+    drift.asked += Math.abs(out.speed) * top * (this.frameSeconds || 0);
+    if (view.now - drift.t < STALL_SECONDS || drift.asked < STALL_ASKED) return false;
+    this.unstick(ctx);
+    return true;
+  }
+
+  unstick(ctx) {
+    const { view, me, out } = ctx;
     // Back off turning: the way it was trying to turn, where a wall refused
     // the turn, and otherwise toward the more open side, as Roger chooses.
     if (Math.abs(out.rotation) > 0.2) {
@@ -3710,6 +3781,7 @@ export class Ace extends Roger {
     }
     this.unstickUntil = view.now + UNSTICK_BACKOFF_SECONDS;
     this.progress = null;
+    this.drift = null;
     this.stats.unsticks++;
     this.strikeGoalFlag(view.now, me);
     out.speed = UNSTICK_SPEED;
@@ -4180,6 +4252,16 @@ export class Ace extends Roger {
     const { me, out } = ctx;
     // Roger has no use for Identify; Ace does.
     if (me.flag !== 'ID') super.dropHardFlags(ctx);
+    // Asked for until it is gone: a drop waits for the tank to be moving
+    // (`dropOnTheMove`), and the goal that set this is not asked for again.
+    if (this.shedBurrow) {
+      if (me.flag === 'BU') {
+        out.dropFlag = true;
+        this.noteShed(ctx);
+      } else {
+        this.shedBurrow = false;
+      }
+    }
     if (!this.shedOnTakeoff) return;
     if (me.flag !== 'OO' || (this.shedAirborne && !me.inAir)) {
       this.shedOnTakeoff = false;
@@ -4356,7 +4438,7 @@ function isOverBase(base, pos) {
 }
 
 export function createWorldProbes({
-  obstacles, colliders, mapSize, findImpact, topOf,
+  obstacles, colliders, mapSize, findImpact, topOf, teleports = () => null,
 }) {
   const rayFraction = (from, to) => {
     const impact = findImpact(obstacles(), from, to, 0);
@@ -4464,26 +4546,61 @@ export function createWorldProbes({
       }
       return legs;
     },
+    // A shell's flight as the server flies it (`server.js`, its step): through
+    // the teleporters first, off a teleporter's frame as off any wall, then
+    // the step. A step that crossed a portal is measured back from where it
+    // came out, so its segment lies on the far side.
     traceShot: (from, dir, speed, lifetime, ricochet) => {
       const solids = colliders();
+      const portals = teleports();
       const segments = [];
       let point = { ...from };
       let direction = { ...dir };
+      let blockedIndex = null;
+      let blockedDistance = 0;
+      const distance = speed * TRACE_STEP_SECONDS;
       for (let t = 0; t < lifetime; t += TRACE_STEP_SECONDS) {
+        let start = point;
+        let length = distance;
+        if (portals) {
+          const traced = traceShotThroughTeleporters(portals, point, direction, distance, blockedIndex, blockedDistance);
+          direction = traced.direction;
+          blockedIndex = traced.reentryBlockTeleporterIndex;
+          blockedDistance = traced.reentryBlockDistance;
+          if (traced.frameHit) {
+            const impact = traced.point;
+            segments.push({ t0: t, t1: t + TRACE_STEP_SECONDS, from: point, to: impact });
+            if (!ricochet) break;
+            const normal = getShotObstacleNormal(traced.frameHitObstacle, impact.x, impact.y, impact.z, SHOT_COLLISION_RADIUS);
+            direction = reflectShotDirection(direction.x, direction.y, direction.z, normal);
+            start = {
+              x: impact.x + (normal.x * SHOT_BOUNCE_CLEARANCE),
+              y: impact.y + (normal.y * SHOT_BOUNCE_CLEARANCE),
+              z: impact.z + (normal.z * SHOT_BOUNCE_CLEARANCE),
+            };
+            length = traced.frameHitRemaining;
+          } else if (traced.teleports > 0) {
+            start = {
+              x: traced.point.x - (direction.x * distance),
+              y: traced.point.y - (direction.y * distance),
+              z: traced.point.z - (direction.z * distance),
+            };
+          }
+        }
         const step = traceShotStep({
           obstacles: solids,
-          x: point.x,
-          y: point.y,
-          z: point.z,
+          x: start.x,
+          y: start.y,
+          z: start.z,
           dirX: direction.x,
           dirY: direction.y,
           dirZ: direction.z,
-          distance: speed * TRACE_STEP_SECONDS,
+          distance: length,
           radius: SHOT_COLLISION_RADIUS,
           ricochet,
         });
         const to = { x: step.x, y: step.y, z: step.z };
-        segments.push({ t0: t, t1: t + TRACE_STEP_SECONDS, from: point, to });
+        segments.push({ t0: t, t1: t + TRACE_STEP_SECONDS, from: start, to });
         if ((step.obstacle || step.ground) && (!ricochet || step.bounces === 0)) break;
         point = to;
         direction = { x: step.dirX, y: step.dirY, z: step.dirZ };
@@ -4537,7 +4654,11 @@ export function createRouter(world) {
   let built = null;
   return (from, to, options = {}) => {
     const current = world();
-    const canJump = options.canJump ?? current.allowJumping !== false;
+    // Burrowed, a tank passes under every teleporter's doorway rather than
+    // through it (`Teleporter::isTeleported`, Teleporter.cxx:361) and cannot
+    // jump: the ground it is on is all it can reach.
+    const burrowed = options.burrowed === true;
+    const canJump = !burrowed && (options.canJump ?? current.allowJumping !== false);
     const jumpKey = JSON.stringify([current.jump ?? null, current.wings ?? null]);
     if (!built || built.obstacles !== current.obstacles || built.mapSize !== current.mapSize
       || built.jumpKey !== jumpKey) {
@@ -4554,8 +4675,10 @@ export function createRouter(world) {
         flaps: Math.max(0, (wings.count ?? 1) - 1),
       }
       : (current.jump ?? null);
-    const key = wings ? 'wings' : jump ? 'jump' : 'ground';
-    if (!built.graphs.has(key)) built.graphs.set(key, buildNavGraph({ ...current, jump }));
+    const key = burrowed ? 'burrowed' : wings ? 'wings' : jump ? 'jump' : 'ground';
+    if (!built.graphs.has(key)) {
+      built.graphs.set(key, buildNavGraph({ ...current, jump, teleporterLinks: burrowed ? [] : current.teleporterLinks }));
+    }
     const graph = built.graphs.get(key);
     return graph.smoothRoute(graph.findRoute(from, to), from);
   };
@@ -4592,7 +4715,7 @@ export function createAsyncRouter(world, post) {
       answers.clear();
       post({ type: 'world', world: current });
     }
-    const key = `${options.canJump ?? current.allowJumping !== false}:${Boolean(options.wings)}`;
+    const key = `${options.canJump ?? current.allowJumping !== false}:${Boolean(options.wings)}:${options.burrowed === true}`;
     const answer = answers.get(key);
     if (answer && near(answer.from, from, ANSWER_FROM_SLACK) && near(answer.to, to, ANSWER_TO_SLACK)) {
       return answer.nodes;

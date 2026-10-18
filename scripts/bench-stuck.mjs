@@ -18,6 +18,7 @@
 //   node scripts/bench-stuck.mjs --flag V          # holding High Speed
 //   node scripts/bench-stuck.mjs --flag WG --wings 2  # Wings, one flap
 //   node scripts/bench-stuck.mjs --to 396,396,30   # always to one spot
+//   node scripts/bench-stuck.mjs --from -315,-315,30 --to -311,-371,0
 //
 // The world is the server's cached conversion (`cache/map-index.json`), so a
 // map has to have been served once. Nobody shoots, nobody else drives.
@@ -27,7 +28,7 @@ import path from 'node:path';
 import { buildTeleporterIndex, createTankTeleporter } from '../public/teleport.mjs';
 import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
-import { Ace, createRouter, createWorldProbes } from '../public/autopilot.mjs';
+import { Ace, createAsyncRouter, createRouter, createWorldProbes } from '../public/autopilot.mjs';
 import { findShotSegmentImpact, findTankObstacle, getObstacleBase } from '../public/collision.mjs';
 
 const require = createRequire(import.meta.url);
@@ -46,6 +47,12 @@ const heldFlag = args.get('flag') ? args.get('flag').toUpperCase() : null;
 // `--to x,y,z` sends every run to that one spot, for a place `spot` does not
 // reach or a flag that is hard to get to.
 const fixedTo = args.get('to') ? (([x, y, z]) => ({ x, y, z: z || 0 }))(args.get('to').split(',').map(Number)) : null;
+// `--flags x,y,z;x,y,z` lays more flags of unknown type beside the target, for
+// a choice between flags that a lone one never offers.
+const extraFlags = (args.get('flags') || '').split(';').filter(Boolean)
+  .map((spec, i) => (([x, y, z]) => ({ index: i + 1, type: null, team: null, onGround: true, x, y, z: z || 0 }))(spec.split(',').map(Number)));
+// `--from x,y,z` starts every run there, for a place a live game caught him.
+const fixedFrom = args.get('from') ? (([x, y, z]) => ({ x, y, z: z || 0 }))(args.get('from').split(',').map(Number)) : null;
 const dt = 0.05;
 
 const index = JSON.parse(fs.readFileSync(path.join(root, 'cache/map-index.json'), 'utf8'));
@@ -81,7 +88,7 @@ const probes = createWorldProbes({
   topOf,
 });
 // One router for every run, so the graph and each base's field are built once.
-const findRoute = createRouter(() => ({
+const routerWorld = {
   obstacles,
   mapSize: world.mapSize,
   waterLevel: world.waterLevel?.height ?? null,
@@ -89,7 +96,23 @@ const findRoute = createRouter(() => ({
   allowJumping: jumping,
   jump: { velocity: CONFIG.JUMP_VELOCITY, gravity: CONFIG.GRAVITY, tankSpeed: CONFIG.TANK_SPEED },
   wings: { velocity: CONFIG.WINGS_JUMP_VELOCITY, gravity: CONFIG.WINGS_GRAVITY, count: CONFIG.WINGS_JUMP_COUNT },
-}));
+};
+const findRoute = createRouter(() => routerWorld);
+// `--route-frames N`: routes answered N frames after they are asked, through
+// the browser's `createAsyncRouter`, as a worker answers a client's autopilot.
+// 0 answers at once, as a server bot's router does.
+const routeFrames = Number(args.get('route-frames') || 0);
+const routeQueue = [];
+const asyncRoute = routeFrames > 0 ? createAsyncRouter(() => routerWorld, (message) => {
+  if (message.type === 'route') routeQueue.push({ message, due: routeFrames });
+}) : null;
+function answerRoutes() {
+  for (const entry of routeQueue) entry.due--;
+  while (routeQueue.length && routeQueue[0].due <= 0) {
+    const { message } = routeQueue.shift();
+    asyncRoute.receive({ id: message.id, nodes: findRoute(message.from, message.to, message.options) });
+  }
+}
 const teleporterIndex = buildTeleporterIndex(obstacles, world.teleporterGraph?.links || []);
 
 // A seeded spot on whatever surface is uppermost at a random point.
@@ -114,12 +137,14 @@ function spot() {
 function run(from, to, trace = false) {
   let now = 100;
   const pilot = new Ace();
+  // The flag held, until the pilot drops it.
+  let held = heldFlag;
   const teleporter = createTankTeleporter(() => teleporterIndex);
   const driver = new BotDriver({
     pilot,
     env: {
       config: () => CONFIG,
-      flag: () => (heldFlag ? { type: heldFlag, zoned: false } : null),
+      flag: () => (held ? { type: held, zoned: false } : null),
       colliders: () => obstacles,
       topOf,
       teleport: (a, b) => teleporter(a, b, now * 1000),
@@ -127,12 +152,12 @@ function run(from, to, trace = false) {
       view: (self) => ({
         now,
         self: {
-          ...self, id: 'me', flag: heldFlag, flagIndex: null, flagTeam: null, teamColor: 0,
+          ...self, id: 'me', flag: held, flagIndex: null, flagTeam: null, teamColor: 0,
           zoned: false, shotSpeed: 100, shotLifetime: 3.5, ricochet: false, canFire: false,
         },
         players: [],
         shots: [],
-        flags: [{ index: 0, type: null, team: null, onGround: true, ...to }],
+        flags: [{ index: 0, type: null, team: null, onGround: true, ...to }, ...extraFlags],
         world: {
           allowJumping: jumping, teamFlags: false, waterLevel: null, shotSpeed: 100, maxShots: 1,
           tankHeight: 2.05, tankLength: 6, tankAngVel: CONFIG.TANK_ROTATION_SPEED,
@@ -143,9 +168,11 @@ function run(from, to, trace = false) {
         myBase: () => null,
         antidote: null,
         ...probes,
-        findRoute,
+        findRoute: asyncRoute || findRoute,
       }),
-      send: () => {},
+      send: (message) => {
+        if (message.type === 'dropFlag') held = null;
+      },
       act: () => {},
     },
   });
@@ -155,6 +182,7 @@ function run(from, to, trace = false) {
   let jumpTarget = null;
   for (let t = 0; t < timeLimit; t += dt) {
     now += dt;
+    if (asyncRoute) answerRoutes();
     driver.tick(dt);
     const out = driver.lastOut;
     const at = { x: driver.x, y: driver.y, z: driver.z };
@@ -196,7 +224,7 @@ for (let i = 0; i < runs; i++) {
   // Each run its own seed, so a change to Ace leaves every other trip as it
   // was and two runs of this compare trip for trip.
   seed = (baseSeed * 7919) + i;
-  const from = spot();
+  const from = fixedFrom || spot();
   const to = fixedTo || spot();
   // `--trace <run>`: that run's drive, every half second.
   const result = run(from, to, String(i) === args.get('trace'));
