@@ -590,7 +590,9 @@ can carry both.
 `docs/bots-plan.md` is the plan for the autopilot and for bots (issue #151).
 `public/autopilot.mjs` reads the world only through a view, so the client's
 autopilot and the server's own bots (`server/bots.cjs`) drive the same
-decisions -- keep it that way:
+decisions -- keep it that way. The routers and the view's probes are
+`public/autopilot-world.mjs`, which a route worker loads without either
+pilot; `docs/refactor-plan.md` is how the rest is being split:
 
 - **Roger is upstream's `AutoPilot.cxx`**, decision for decision, quirks
   included; he is the reference. **Ace** extends him and is where

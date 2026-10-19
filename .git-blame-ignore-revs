@@ -1,0 +1,5 @@
+# Commits that only move code. GitHub's blame view skips these; locally:
+#   git config blame.ignoreRevsFile .git-blame-ignore-revs
+
+# public/autopilot-world.mjs split out of public/autopilot.mjs
+2300301747e6ccaf817931740717da19df519d4c
