@@ -594,12 +594,13 @@ decisions -- keep it that way. The routers and the view's probes are
 `public/autopilot-world.mjs`, which a route worker loads without either
 pilot; `docs/refactor-plan.md` is how the rest is being split:
 
-- **Roger is upstream's `AutoPilot.cxx`**, decision for decision, quirks
-  included; he is the reference. **Ace** extends him and is where
-  improvements go, each overriding one Roger decision. Where bzo forces
-  Roger off upstream: he presses Identify before a GM shot, since bzo's
-  server allows a lock only on a tank in your sights; the server refuses
-  autopilot with upstream's words under `DISABLE_BOTS` rather than kicking.
+- **Roger (`public/roger.mjs`) is upstream's `AutoPilot.cxx`**, decision
+  for decision, quirks included; he is the reference. **Ace** extends him
+  and is where improvements go, each overriding one Roger decision. Where
+  bzo forces Roger off upstream: he presses Identify before a GM shot,
+  since bzo's server allows a lock only on a tank in your sights; the server
+  refuses autopilot with upstream's words under `DISABLE_BOTS` rather than
+  kicking.
 - **`think(view)` returns `{ rotation, speed, jump, fire, dropFlag, targetId,
   shotTargetId }`** and the client feeds it where a stick would go, so the
   server's movement checks see an ordinary tank. The view (`now`, `self`,

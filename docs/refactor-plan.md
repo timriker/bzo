@@ -13,8 +13,8 @@ must give byte-identical output before and after each step.
 
 1. The world a pilot asks about -- routers, probes, team bases, vantage
    points -- is `public/autopilot-world.mjs`. Done.
-2. Roger, upstream's `AutoPilot.cxx`, in a file of his own with his
-   constants, so the reference reads on its own.
+2. Roger, upstream's `AutoPilot.cxx`, is `public/roger.mjs`, with the
+   geometry he and Ace share. Done.
 3. Ace in layers, each a subclass of the one before, one commit each:
    driving (routes, jumps, flights, unstick), fighting (shot planning,
    firing, chase, ambush, evasion), then Ace (`think`, targets, flags,
