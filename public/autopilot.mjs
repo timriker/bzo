@@ -902,7 +902,8 @@ const STALL_ASKED = 15;
 const STALL_RADIUS = 3;
 const STALL_EXEMPT = new Set(['ambush', 'dodge', 'unstick']);
 // A gap this long between frames is a pilot that was not driving -- paused,
-// switched off, or a test asking twice -- and starts the count again.
+// switched off, a server's bots idle with nobody playing, or a test asking
+// twice -- and starts both progress counts again.
 const STALL_GAP_SECONDS = 0.5;
 const ROUTE_LOOKAHEAD = 16;
 // How Ace drives a route, as numbers a benchmark can vary
@@ -3721,12 +3722,13 @@ export class Ace extends Roger {
     const sample = this.progress;
     const trying = Math.abs(out.rotation) > 0.1 || Math.abs(out.speed) > 0.1;
     const restart = () => {
-      this.progress = { t: view.now, x: me.x, y: me.y, azimuth: me.azimuth, asked: 0 };
+      this.progress = { t: view.now, last: view.now, x: me.x, y: me.y, azimuth: me.azimuth, asked: 0 };
     };
-    if (!sample || !trying || me.inAir) {
+    if (!sample || !trying || me.inAir || view.now - sample.last > STALL_GAP_SECONDS) {
       restart();
       return;
     }
+    sample.last = view.now;
     sample.asked += Math.abs(out.speed) * top * (this.frameSeconds || 0);
     const turned = Math.abs(normalizeAngle(me.azimuth - sample.azimuth));
     const moved = Math.hypot(me.x - sample.x, me.y - sample.y);

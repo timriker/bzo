@@ -1756,6 +1756,25 @@ for (const flag of ['US', 'MG', 'ID']) {
   assert.equal(rock('ambush'), null, 'but not an ambush timing its shot');
 }
 
+// A pilot that was not driving -- bots idle with nobody playing -- does not
+// come back to a progress sample from before and back straight off.
+{
+  const pilot = new Ace();
+  pilot.frameSeconds = 0.05;
+  pilot.openDistance = () => 10;
+  const frame = (now) => {
+    const ctx = {
+      view: { now, world: { tankSpeed: 25 } },
+      me: { x: 0, y: 0, z: 0, azimuth: 0, topSpeed: 25, inAir: false },
+      out: { rotation: 0, speed: 1, intent: { mode: 'hunt' } },
+    };
+    pilot.checkProgress(ctx);
+    return ctx.out.intent.mode;
+  };
+  frame(100);
+  assert.equal(frame(200), 'hunt', 'the first frame after an idle is not a stall');
+}
+
 // Two modes taking turns are named in the report, with where each was going.
 {
   const pilot = new Ace();
