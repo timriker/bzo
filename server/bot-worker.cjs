@@ -41,6 +41,7 @@ const { areFoes } = require('./teams.cjs');
 const { buildTeleporterIndex, createTankTeleporter } = require('./teleport.cjs');
 
 let autopilot = null;
+let pilotWorld = null;
 let world = null;
 let config = null;
 let colliders = [];
@@ -78,7 +79,7 @@ function getTeleporterIndex() {
 
 let vantages = null;
 function getVantages() {
-  if (!vantages) vantages = autopilot.findVantagePoints(world.obstacles, topOf);
+  if (!vantages) vantages = pilotWorld.findVantagePoints(world.obstacles, topOf);
   return vantages;
 }
 
@@ -92,13 +93,13 @@ function getBaseObstacles() {
 
 let bases = null;
 function getBases() {
-  if (!bases) bases = autopilot.teamBasesOf(world.obstacles, topOf);
+  if (!bases) bases = pilotWorld.teamBasesOf(world.obstacles, topOf);
   return bases;
 }
 
 function getRouter() {
   if (!router) {
-    router = autopilot.createRouter(() => ({
+    router = pilotWorld.createRouter(() => ({
       obstacles: world.obstacles,
       mapSize: world.mapSize,
       waterLevel: world.waterLevel,
@@ -115,7 +116,7 @@ function getRouter() {
 
 function getProbes() {
   if (!probes) {
-    probes = autopilot.createWorldProbes({
+    probes = pilotWorld.createWorldProbes({
       obstacles: () => world.obstacles,
       colliders: () => colliders,
       mapSize: () => world.mapSize,
@@ -279,8 +280,9 @@ parentPort.on('message', (message) => {
   else waiting.push(message);
 });
 
-import('../public/autopilot.mjs').then((module) => {
-  autopilot = module;
+Promise.all([import('../public/autopilot.mjs'), import('../public/autopilot-world.mjs')]).then(([pilots, worldModule]) => {
+  autopilot = pilots;
+  pilotWorld = worldModule;
   for (const message of waiting.splice(0)) handle(message);
 }).catch((error) => {
   parentPort.postMessage({ type: 'error', id: null, message: `pilots did not load: ${error.message}` });

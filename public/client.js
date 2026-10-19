@@ -416,9 +416,10 @@ import {
   transformShotThroughTeleporter,
 } from './teleport.mjs';
 import { findMapEdgeImpactPoint, traceBeam, traceShotThroughTeleporters } from './trace.mjs';
+import { AUTOPILOTS, DEFAULT_PILOT } from './autopilot.mjs';
 import {
-  AUTOPILOTS, DEFAULT_PILOT, createAsyncRouter, createRouter, createWorldProbes, findVantagePoints, teamBasesOf,
-} from './autopilot.mjs';
+  createAsyncRouter, createRouter, createWorldProbes, findVantagePoints, teamBasesOf,
+} from './autopilot-world.mjs';
 import {
   TRACK_SURFACE_TOLERANCE,
   TRACK_UPDATE_TIME,

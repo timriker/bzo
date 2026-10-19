@@ -1,7 +1,7 @@
 // The autopilot's router off the main thread (`createAsyncRouter`): the
 // world as the page last sent it, and each route asked for, answered in turn.
 
-import { createRouter } from './autopilot.mjs';
+import { createRouter } from './autopilot-world.mjs';
 
 let world = null;
 const router = createRouter(() => world);

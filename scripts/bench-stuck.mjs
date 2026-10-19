@@ -28,7 +28,8 @@ import path from 'node:path';
 import { buildTeleporterIndex, createTankTeleporter } from '../public/teleport.mjs';
 import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
-import { Ace, createAsyncRouter, createRouter, createWorldProbes } from '../public/autopilot.mjs';
+import { Ace } from '../public/autopilot.mjs';
+import { createAsyncRouter, createRouter, createWorldProbes } from '../public/autopilot-world.mjs';
 import { findShotSegmentImpact, findTankObstacle, getObstacleBase } from '../public/collision.mjs';
 
 const require = createRequire(import.meta.url);

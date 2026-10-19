@@ -11,9 +11,10 @@
 // a positive rotation turns left.
 
 import assert from 'node:assert/strict';
+import { Ace, Roger } from '../public/autopilot.mjs';
 import {
-  Ace, Roger, ROUTE_PENDING, createAsyncRouter, createRouter, createWorldProbes, findVantagePoints,
-} from '../public/autopilot.mjs';
+  ROUTE_PENDING, createAsyncRouter, createRouter, createWorldProbes, findVantagePoints,
+} from '../public/autopilot-world.mjs';
 import { findShotSegmentImpact } from '../public/collision.mjs';
 import { buildNavGraph } from '../public/nav.mjs';
 import { buildTeleporterIndex } from '../public/teleport.mjs';
