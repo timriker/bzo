@@ -6,6 +6,18 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
 
 ## [Unreleased]
 
+## [1.3.63] - 2026-10-25
+
+### Added
+- Tanks fade toward a quarter as they near a teleporter, as BZFlag's do
+  (docs/effects.md).
+- A page that cannot reach its server says so -- "Offline" or "Cannot reach"
+  the host -- and keeps trying, instead of showing an empty sky.
+
+### Changed
+- The server loads the shared client/server modules from `public/js/`, so
+  each has one copy; running from source needs Node 22.12 or later.
+
 ## [1.3.62] - 2026-10-25
 
 ### Changed
