@@ -6,6 +6,17 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
 
 ## [Unreleased]
 
+## [1.3.60] - 2026-10-25
+
+### Changed
+- The autopilot's code is split by concern -- the world it asks about, Roger
+  (upstream's AutoPilot.cxx), and Ace's driving, fighting and choosing --
+  with no change in how it plays (docs/refactor-plan.md).
+
+### Fixed
+- A server's bots no longer back straight off on their first frame when
+  somebody arrives to play after they have been idle.
+
 ## [1.3.59] - 2026-10-18
 
 ### Changed
