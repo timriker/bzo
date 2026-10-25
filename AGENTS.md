@@ -596,7 +596,9 @@ pilot; `docs/refactor-plan.md` is how the rest is being split:
 
 - **Roger (`public/roger.mjs`) is upstream's `AutoPilot.cxx`**, decision
   for decision, quirks included; he is the reference. **Ace** extends him
-  and is where improvements go, each overriding one Roger decision. Where
+  and is where improvements go, each overriding one Roger decision; he is
+  built in layers -- driving (`ace-driver.mjs`), fighting
+  (`ace-fighter.mjs`), and what he chooses to do (`autopilot.mjs`). Where
   bzo forces Roger off upstream: he presses Identify before a GM shot,
   since bzo's server allows a lock only on a tank in your sights; the server
   refuses autopilot with upstream's words under `DISABLE_BOTS` rather than

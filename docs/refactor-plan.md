@@ -15,10 +15,12 @@ must give byte-identical output before and after each step.
    points -- is `public/autopilot-world.mjs`. Done.
 2. Roger, upstream's `AutoPilot.cxx`, is `public/roger.mjs`, with the
    geometry he and Ace share. Done.
-3. Ace in layers, each a subclass of the one before, one commit each:
-   driving (routes, jumps, flights, unstick), fighting (shot planning,
-   firing, chase, ambush, evasion), then Ace (`think`, targets, flags,
-   camping). `autopilot.mjs` stays the module everyone imports pilots from.
+3. Ace in layers, each a subclass of the one before: `AceDriver`
+   (`public/ace-driver.mjs`: routes, jumps, flights, unstick), `AceFighter`
+   (`public/ace-fighter.mjs`: shot planning, firing, chase, ambush, evasion),
+   then `Ace` in `autopilot.mjs` (`think`, targets, flags, camping), which
+   stays the module everyone imports pilots from. No layer calls a method of
+   one above it. Done.
 
 ## Server and client
 
