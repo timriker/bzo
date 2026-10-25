@@ -6,6 +6,21 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
 
 ## [Unreleased]
 
+## [1.3.62] - 2026-10-25
+
+### Changed
+- The server's and the client's message handling, the radar, and the
+  renderer are split into modules by subsystem, with no change in play
+  (docs/refactor-plan.md).
+
+### Security
+- A message `type` such as `toString` names no handler on the server or the
+  client.
+- body-parser 1.20.9, past a denial of service by trailing bytes after a
+  compressed request body.
+- The Discord gateway's heartbeat stays between 1 s and 5 min whatever
+  interval Discord's hello names.
+
 ## [1.3.61] - 2026-10-25
 
 ### Changed
