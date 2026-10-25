@@ -11197,17 +11197,22 @@ function updateTankDimensions(deltaTime) {
     // applies to the tank driving it as much as to the ones looking at it.
     const viewedFlag = getPlayerFlagType(playerId);
     const viewedZoned = getPlayerFlag(playerId)?.zoned === true;
-    applyTankAlpha(
-      tank,
-      playerId === myPlayerId && !isZoned(viewedFlag, viewedZoned)
-        ? 1
-        : getVisibleTankAlpha(
-          viewedFlag,
-          tank.userData.cloakAlpha,
-          getMyFlag()?.type ?? null,
-          viewedZoned
-        )
-    );
+    const zoned = isZoned(viewedFlag, viewedZoned);
+    const alpha = playerId === myPlayerId && !zoned
+      ? 1
+      : getVisibleTankAlpha(
+        viewedFlag,
+        tank.userData.cloakAlpha,
+        getMyFlag()?.type ?? null,
+        viewedZoned
+      );
+    // Player::updateTranslucency's `teleAlpha` (Player.cxx:642): every tank
+    // fades toward a quarter as it nears a portal, Seer's view included
+    // (:915). A zoned tank keeps its flat quarter, whatever it is near.
+    const teleAlpha = zoned || alpha <= 0 || tank.userData.playerState?.alive === false
+      ? 1
+      : 1 - (0.75 * getWorldTeleporterProximity(tank.position.x, tank.position.y, tank.position.z));
+    applyTankAlpha(tank, alpha * teleAlpha);
     // And the ground the local tank is driving over, which is the whole of
     // upstream's zoned screen effect.
     if (playerId === myPlayerId) renderManager.setZoneGround(viewedZoned);

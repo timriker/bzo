@@ -1,15 +1,10 @@
 # Effects
 
-What upstream BZFlag draws that bzo does not, and what each one is worth
-building. Upstream references are paths under `$HOME/bzflag/`.
+The visual effects upstream BZFlag draws, and where bzo draws each. Upstream
+references are paths under `$HOME/bzflag/`.
 
-Flags (#6) and tank tracks (#24) are closed.
-Nothing left in this document has a tracker.
-
-## The audit
-
-Two subsystems hold almost every visual effect upstream has, and bzo is complete
-on one of them.
+Two subsystems hold almost every visual effect upstream has, and bzo has all of
+both.
 
 **`effectsRenderer.cxx` -- all seven families, all present.** Each is chosen by a
 BZDB index into a list where 0 is off, and bzo implements the default variant of
@@ -29,22 +24,14 @@ Note `deathEffect` has only one live variant: `SquishDeathEffect`, `FadeToHeaven
 and `SpikesDeathEffect` exist but their selection is commented out
 (`effectsRenderer.cxx:487`), so `RingsDeathEffect` is what upstream always draws.
 
-**`Player::addToScene` -- the per-tank visuals, and where the gaps are.** bzo has
-the cloak alpha with its ease, the zoned quarter-alpha, and the dimension
-scaling, including `O` Obesity's and `T` Tiny's (`public/js/flags.mjs`). Only the
-teleporter alpha fade is missing.
+**`Player::addToScene` -- the per-tank visuals.** bzo has the cloak alpha with
+its ease, the zoned quarter-alpha, the dimension scaling, including `O`
+Obesity's and `T` Tiny's (`public/js/flags.mjs`), and the teleporter alpha fade
+(`updateTankDimensions` in `client.js`).
 
 **Elsewhere:** bzo has `FlagWarpSceneNode`, the animated treads, and the eighth
 dimension. `_mirror` defaults to `none` so a map has to ask for reflections, and
 nothing else in `src/geometry` is an effect bzo lacks.
-
-## Still missing
-
-| missing | upstream | worth |
-|---|---|---|
-| tank alpha fade | `Player.cxx:642` | the minor half of teleporter proximity, below |
-
-That is the whole list.
 
 ## Teleporter proximity is two effects, not one
 
@@ -63,18 +50,10 @@ There is a lateral gate at `1.2 * radius` against the portal rect, an
 | 1.94 units | 0.75 |
 | 0.86 units | 1.0 |
 
-The screen flash half is built (see "Teleporter flash" in `AGENTS.md`).
+The screen flash is "Teleporter flash" in `AGENTS.md`.
 
-### The tank alpha fade
-
-`teleAlpha = 1.0f - (0.75f * teleporterProximity)`, multiplied into `color[3]`
-alongside the cloak alpha, so every tank fades toward 25% over the same band. It
-carries real information -- a tank about to vanish shows it -- but it is subtle
-and brief for a tank at speed. `getWorldTeleporterProximity` is already there for
-it; what is missing is a hook into wherever bzo sets a tank's own alpha
-(`GHOST_ALPHA_SCALE` and the cloak/zoned alpha in `render.js`) to blend it in per
-tank, for every tank, not just the local one.
-
-## Order
-
-1. **The tank alpha fade**, with `getProximity` already there.
+The tank fade is `teleAlpha = 1.0f - (0.75f * teleporterProximity)`
+(`Player.cxx:642`), multiplied into the cloak alpha, so every tank -- your own
+included -- fades toward a quarter over the same band. Seer sees the fade but
+not the cloak (`:915`), and a zoned tank keeps its flat quarter whatever it is
+near.
