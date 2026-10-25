@@ -14,7 +14,7 @@
 
 'use strict';
 
-const { evalBzdb } = require('./bzdb.cjs');
+const { evalBzdb } = require('../public/js/bzdb.mjs');
 
 // `DEFAULT_WORLD` (global.h:84): the world size the city density is scaled
 // against.

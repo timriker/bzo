@@ -61,8 +61,8 @@ the tile but loses the silhouette a phone still needs.
 
 The two demands are opposite and the manifest has one slot for them, so the
 manifest -- already generated per request, to name the app after its host --
-branches on the user agent. `server/headset.cjs` decides, sharing its
-patterns with the client copy the XR controls use, and the response carries
+branches on the user agent. `public/js/headset.mjs` decides, the same
+patterns the XR controls use, and the response carries
 `Vary: User-Agent` so a shared cache cannot hand one device the other's icons.
 A headset is served `tile-*.png` for every entry, whatever `purpose`
 says, because which one a launcher reads is not documented and not worth

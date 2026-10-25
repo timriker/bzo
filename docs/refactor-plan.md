@@ -51,9 +51,10 @@ must give byte-identical output before and after each step.
    range, size, obstacle cache and drawing -- is `public/js/radar.js`, handed
    what it needs by `useRadarClient`. Done.
 
-## Mirrored pairs (to try)
+## Mirrored pairs
 
-The `.mjs`/`.cjs` pairs (`scripts/check-shared-pairs.mjs`) exist because the
-server is CommonJS. Node 22 can `require()` an ES module, which would let the
-server load the `.mjs` copies and drop the mirrors -- if the Node in the
-Docker image does it without a flag. Tested before anything moves.
+7. The server loads each shared module from `public/js/` with `require()`,
+   which Node 22.12 and later do without a flag -- the image's Ubuntu `nodejs`
+   is 22.22 -- so the generated `.cjs` mirrors and `scripts/mirror-pair.mjs`
+   are gone. Done. `shots`, `teams` and `player-ids` stay pairs: each side
+   carries helpers only it needs.

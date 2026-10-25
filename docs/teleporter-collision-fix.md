@@ -18,10 +18,9 @@ references are paths under `$HOME/bzflag/`.
    height would hang completely at the jamb/header boundary; backing off or
    releasing forward thrust freed it.
 
-All three traced back to the same file pair, `public/js/collision.mjs` /
-`server/collision.cjs` (a hand-maintained mirror, checked by
-`scripts/check-shared-pairs.mjs`) and `public/js/motion.mjs` /
-`server/motion.cjs`, but three distinct defects.
+All three traced back to `public/js/collision.mjs` and
+`public/js/motion.mjs`, which client and server share, but three distinct
+defects.
 
 ## Defect 1: a static classifier instead of a swept one
 

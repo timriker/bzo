@@ -12,7 +12,7 @@
 // they go; a browser predicts its own shells and draws a beam it was not handed
 // by it -- one answer for both, so they cannot drift.
 //
-// `teleports` is `buildTeleporterIndex` (the `teleport` pair). Positions and
+// `teleports` is `buildTeleporterIndex` (the `teleport` module). Positions and
 // directions are in upstream's frame: +Z up, +Y north.
 
 import {

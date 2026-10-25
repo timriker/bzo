@@ -6,7 +6,7 @@
  * See LICENSE or https://www.gnu.org/licenses/agpl-3.0.html
  */
 
-// The `trace` pair: a shell's step through teleporters, and a beam's whole
+// The `trace` module: a shell's step through teleporters, and a beam's whole
 // path through teleporters, off buildings and out at the world's edge.
 
 import assert from 'node:assert/strict';

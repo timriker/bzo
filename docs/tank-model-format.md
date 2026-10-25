@@ -234,8 +234,8 @@ a broken model as working and leaves the fault to be found in play.
 A model that does not name `body`, `turret` and `barrel`, or that names no
 running gear on both sides, is therefore **not offered**: the server checks each
 file in `public/obj/` as it lists the models and logs the roles the file is
-missing instead of listing it. `public/js/tank-parts.mjs` and its
-`server/tank-parts.cjs` mirror hold the check both ends read, and
+missing instead of listing it. `public/js/tank-parts.mjs` holds the
+check both ends read, and
 `npm run test:tank-models` holds every shipped model to it.
 
 Reaching the renderer with an unbuildable model is an error there too:

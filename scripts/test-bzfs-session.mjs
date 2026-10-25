@@ -23,7 +23,7 @@ const {
   decodeCapture,
   decodeShotEnd,
 } = require('../server/bzfs-session.cjs');
-const { bzdbIsTrue } = require('../server/bzdb.cjs');
+const { bzdbIsTrue } = require('../public/js/bzdb.mjs');
 
 // A chat line is read a byte at a time by `isSpamOrGarbage` and every byte is
 // asked `TextUtils::isVisible`, whose character classes stop at 126 -- so one

@@ -11,7 +11,7 @@
 // acceptConnection (server.js) calls it by the message's `type`, through
 // MESSAGE_HANDLERS.
 
-const { DEFAULT_TANK_SKIN, normalizeTankSkinId } = require('./tank-skins.cjs');
+const { DEFAULT_TANK_SKIN, normalizeTankSkinId } = require('../public/js/tank-skins.mjs');
 const {
   FLAG_ENDURANCE,
   applyAccelerationLimit,
@@ -25,7 +25,7 @@ const {
   getShotEffects,
   hasAirControl,
   togglesZoneOnTeleport,
-} = require('./flags.cjs');
+} = require('../public/js/flags.mjs');
 const {
   PLAYER_TEAM,
   getJoinPlayerColor,

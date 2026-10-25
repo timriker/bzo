@@ -25,8 +25,8 @@
 // is.
 
 const { getTeamFromColorIndex, getPlayerTeamRadarColor } = require('./teams.cjs');
-const { meshArrays, FACE_NO_RADAR, NO_INDEX } = require('./mesh-arrays.cjs');
-const { getObstacleBase } = require('./collision.cjs');
+const { meshArrays, FACE_NO_RADAR, NO_INDEX } = require('../public/js/mesh-arrays.mjs');
+const { getObstacleBase } = require('../public/js/collision.mjs');
 
 // The grid, and so the picture, in pixels square. 256 is what `/list`'s pane
 // shows and about where the rectangle encoding stops paying for itself: 512

@@ -7,7 +7,7 @@ const {
   findPublicServer, collectNonDefaultVariables, OBSTACLE_ORDER,
   parseWorldDatabase, buildBZWText,
 } = require('../server/remote-world-import.cjs');
-const { BZDB_DEFAULTS } = require('../server/bzdb-defaults.cjs');
+const { BZDB_DEFAULTS } = require('../public/js/bzdb-defaults.mjs');
 
 const publicServers = [
   { host: 'example.org', port: 5154, title: 'Example' },

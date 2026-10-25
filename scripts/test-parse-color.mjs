@@ -13,7 +13,7 @@ import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
 
 const require = createRequire(import.meta.url);
-const { parseColorString } = require('../server/bzdb.cjs');
+const { parseColorString } = require('../public/js/bzdb.mjs');
 
 assert.deepEqual(parseColorString('0.5 0.25 1'), [0.5, 0.25, 1, 1]);
 assert.deepEqual(parseColorString('.1 .2 .3 .4'), [0.1, 0.2, 0.3, 0.4]);

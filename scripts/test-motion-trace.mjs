@@ -7,7 +7,7 @@
  */
 
 // Drives seeded tanks and fires seeded shots through real maps with the shared
-// `drive` and `collision` pairs, and compares every sample with the baseline in
+// `drive` and `collision` modules, and compares every sample with the baseline in
 // scripts/fixtures/motion-trace.json, so a change that moves a tank or a shot
 // anywhere at all shows up. Code that adds or turns in a different order rounds
 // differently, so values get a tolerance far below any change a player could

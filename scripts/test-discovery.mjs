@@ -17,7 +17,7 @@ import { createRequire } from 'node:module';
 
 const require = createRequire(import.meta.url);
 const discovery = require('../server/discovery.cjs');
-const { FLAG_TYPES, FLAG_QUALITY } = require('../server/flags.cjs');
+const { FLAG_TYPES, FLAG_QUALITY } = require('../public/js/flags.mjs');
 
 const base = 'https://bz.example.org';
 const controlsMarkdown = fs.readFileSync(new URL('../docs/controls.md', import.meta.url), 'utf8');

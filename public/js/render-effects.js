@@ -1528,7 +1528,7 @@ export class EffectsRendering {
   }
 
   // ShockWaveStrategy's scene node: one translucent team-coloured sphere sitting
-  // where the tank fired it, scaled to the radius the flags pair computes and
+  // where the tank fired it, scaled to the radius the flags module computes and
   // faded as it swells. `getShockWaveAlpha` says why this is upstream's low
   // quality wave rather than its default one -- the default inverts the colour
   // of everything inside the sphere, and WebGL has no logic op to invert with.

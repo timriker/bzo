@@ -8,7 +8,7 @@
 // teleport.mjs - Teleporters as something passes through them: whether a
 // segment goes through one's doorway or hits its frame (Teleporter::isTeleported),
 // where it comes out of the linked face and heading which way
-// (Teleporter::getPointWRT). A shot's flight through them is the `trace` pair's,
+// (Teleporter::getPointWRT). A shot's flight through them is the `trace` module's,
 // and a tank's crossing the server's and the client's -- all of them by this
 // one geometry.
 //

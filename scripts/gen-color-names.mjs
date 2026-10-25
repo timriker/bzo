@@ -8,13 +8,12 @@
 
 // Turns upstream's colour-name table (`colorSets` in
 // `src/common/ParseColor.cxx`, generated there from X11's rgb.txt) into
-// `public/js/color-names.mjs` (mirrored to `server/color-names.cjs`), so a map's `color red` or `-set _skyColor grey3`
+// `public/js/color-names.mjs`, so a map's `color red` or `-set _skyColor grey3`
 // names the colour upstream would. Kept as generated source for the same
-// reason `server/bzdb-defaults.cjs` is: bzo does not depend on a BZFlag
+// reason `public/js/bzdb-defaults.mjs` is: bzo does not depend on a BZFlag
 // checkout. Regenerate with:
 //
 //   node scripts/gen-color-names.mjs ~/bzflag > public/js/color-names.mjs
-//   node scripts/mirror-pair.mjs color-names
 
 import fs from 'node:fs';
 import path from 'node:path';

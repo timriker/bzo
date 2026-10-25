@@ -232,7 +232,7 @@ section, none of them `angular`, `radial`, or `slide`). `phydrv` resolves
 against a named driver registry the same digit-first-then-name way `matref`
 resolves, and a `group` instance's own `phydrv` reaches a mesh member's
 faces on upstream's own terms -- see "Physics drivers" in `docs/bzw.md`.
-`resolvePhysicsDriverAt` (the shared `collision` pair) resolves a driver off
+`resolvePhysicsDriverAt` (the shared `collision` module) resolves a driver off
 an obstacle/face both sides already agree they found, and can't disagree
 about -- but the two sides find that obstacle two different ways, matching
 two different upstream mechanisms rather than one:
@@ -242,7 +242,7 @@ two different upstream mechanisms rather than one:
   surface the tank was actually expelled by/rests on (`LocalPlayer.cxx:
   617-624`), never a `driveThrough` one.
 - The server's death check (and its anti-cheat `linear` drift allowance)
-  uses `findPhysicsSurfaceObstacle` (server.js/collision.cjs only -- the
+  uses `findPhysicsSurfaceObstacle` (server.js only -- the
   server has no swept-motion tracking of its own to reuse), a static
   overlap test matching upstream's *other* mechanism,
   `LocalPlayer::getHitBuilding`/`collectInsideBuildings` (LocalPlayer.cxx:
@@ -274,7 +274,7 @@ What's left:
 
 ## BZDB variables
 
-Native bzfs variables (`server/bzdb-defaults.cjs`) that public servers set to
+Native bzfs variables (`public/js/bzdb-defaults.mjs`) that public servers set to
 something other than upstream's default and bzo does not yet read from a map's
 `-set` lines. Counts are servers of the 231 bzo had variables for on
 2026-10-02; plugin variables are left out. What bzo does read is

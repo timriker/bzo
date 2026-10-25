@@ -126,7 +126,8 @@ that. The Operator panel deletes only what it uploaded, which it records in
 
 ### Prerequisites
 
-- Node.js 22 and npm, as Ubuntu 26.04 ships them: `sudo apt install nodejs npm`
+- Node.js 22.12 or later and npm, as Ubuntu 26.04 ships them:
+  `sudo apt install nodejs npm`
 
 ### Setup
 

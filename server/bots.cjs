@@ -20,11 +20,11 @@ const {
   readDriveInput,
   shotFromTank,
   stepDrive,
-} = require('./drive.cjs');
-const { TANK } = require('./collision.cjs');
+} = require('../public/js/drive.mjs');
+const { TANK } = require('../public/js/collision.mjs');
 const {
   FLAG_ENDURANCE, getFiredShotFlag, getFlagEndurance, getShotEffects, getTankDimensionScale, normalizeShakeTimeout,
-} = require('./flags.cjs');
+} = require('../public/js/flags.mjs');
 
 // The fill rule: bots make up the playing roster to `fill`, and there are none
 // once the people do. Returns how many to add (positive) or take away

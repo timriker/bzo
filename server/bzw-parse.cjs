@@ -10,9 +10,9 @@
 // worker thread (`server/map-convert-worker.cjs`) as well as in the server.
 // The two things it needs from the server it is given (`configureBzwParse`).
 
-const { BZDB_CONFIG_VARS, bzdbIsTrue, evalBzdb, gameplayFromBzdb, parseColorString, worldConfig } = require('./bzdb.cjs');
-const { encodeMeshArrays, meshArrays, meshDrawArrays } = require('./mesh-arrays.cjs');
-const { getObstacleHeight } = require('./collision.cjs');
+const { BZDB_CONFIG_VARS, bzdbIsTrue, evalBzdb, gameplayFromBzdb, parseColorString, worldConfig } = require('../public/js/bzdb.mjs');
+const { encodeMeshArrays, meshArrays, meshDrawArrays } = require('../public/js/mesh-arrays.mjs');
+const { getObstacleHeight } = require('../public/js/collision.mjs');
 
 // Everything here is built in upstream's own frame, the one a `.bzw` is
 // written in: +Z up, +Y north, x east, an angle counter-clockwise about +Z.
@@ -21,7 +21,7 @@ const { parseBZWTeamMode, getTeamFromColorIndex } = require('./teams.cjs');
 const {
   normalizeShotLimit, normalizeShotSlotCount, WORLD_WEAPON_DEFAULT_DELAY, normalizeWorldWeaponDelays,
 } = require('./shots.cjs');
-const { FLAG_ABBREVIATIONS, normalizeShakeTimeout, normalizeShakeWins, getFlagType, isBadFlag, isTeamFlag } = require('./flags.cjs');
+const { FLAG_ABBREVIATIONS, normalizeShakeTimeout, normalizeShakeWins, getFlagType, isBadFlag, isTeamFlag } = require('../public/js/flags.mjs');
 const fs = require('fs');
 const mapOverview = require('./map-overview.cjs');
 const path = require('path');
@@ -3167,7 +3167,7 @@ function parseBZWMap(filename, { quiet = false, extraMessages = [], text: givenT
     // `angle` is stated here rather than left to whether the block carries a
     // `rotation` line, because everything downstream turns it into a cosine: a
     // box or a pyramid with no rotation is a box at angle 0, and saying so
-    // once is what lets the client, the collision pair and every log read the
+    // once is what lets the client, the collision module and every log read the
     // field instead of guessing a default for it. The rest of the shape has the
     // same treatment further down, where `end` fills in what the block left out.
     } else if (token === 'box') {
@@ -4523,7 +4523,7 @@ function parseBZWMap(filename, { quiet = false, extraMessages = [], text: givenT
   // builds the same thing by expanding over every face's extents, and prints
   // it back as a real map's own `# mins`/`# maxs` comment. Used as a cheap
   // whole-mesh reject before a collision check ever looks at an individual
-  // face -- see `meshIntersectsCylinder` in the collision pair -- so a tank
+  // face -- see `meshIntersectsCylinder` in the collision module -- so a tank
   // nowhere near a 100-face mesh costs one bounds check, not 100 polygon ones.
   function computeMeshBounds(vertices) {
     if (!vertices.length) return null;
@@ -5328,7 +5328,7 @@ function parseBZWMap(filename, { quiet = false, extraMessages = [], text: givenT
   // rectangle needs on each axis to contain every corner at any rotation,
   // exact rather than a looser circle. A mesh already has a real one from
   // its own vertices and is left alone. This is what lets the shared
-  // `findTankObstacle` loop (`server/collision.cjs`/`public/js/collision.mjs`)
+  // `findTankObstacle` loop (`public/js/collision.mjs`)
   // reject an obstacle that is entirely out of range on any one axis --
   // above, below, or to any one side -- the same one-line way regardless of
   // which of these shapes it actually is.

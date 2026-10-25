@@ -1555,7 +1555,7 @@ export function applyMotionInput(abbreviation, forward, turn, insideBuilding = f
 
 // doUpdateMotion's `phased` (LocalPlayer.cxx:271). What stops an obstacle
 // expelling the tank, which is the whole of driving through a building --
-// `phasedObstacleExpels` in the collision pair is the other half, and it is
+// `phasedObstacleExpels` in the collision module is the other half, and it is
 // there because what a phased tank is still thrown out of is a question about
 // the obstacle. Upstream phases a dead or exploding tank by the same switch, for
 // tank pieces that fly through walls; bzo's explosion is its own animation and

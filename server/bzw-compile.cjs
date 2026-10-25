@@ -18,9 +18,9 @@
 
 'use strict';
 
-const { BZDB_DEFAULTS } = require('./bzdb-defaults.cjs');
-const { COLOR_NAMES } = require('./color-names.cjs');
-const { FLAG_TYPES, FLAG_QUALITY, FLAG_ENDURANCE } = require('./flags.cjs');
+const { BZDB_DEFAULTS } = require('../public/js/bzdb-defaults.mjs');
+const { COLOR_NAMES } = require('../public/js/color-names.mjs');
+const { FLAG_TYPES, FLAG_QUALITY, FLAG_ENDURANCE } = require('../public/js/flags.mjs');
 
 const f = Math.fround;
 const MAX_EXTENT = f(1.0e30);

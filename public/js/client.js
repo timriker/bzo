@@ -2807,7 +2807,7 @@ function applyWorldData(world) {
   } else {
     OBSTACLES = [];
   }
-  // `OBSTACLES` includes `type === 'mesh'` entries now (the collision pair
+  // `OBSTACLES` includes `type === 'mesh'` entries now (the collision module
   // itself skips them explicitly -- see collision.mjs), but `setObstacles`'s
   // own box/pyramid/teleporter/base dispatch has no case for one and would
   // build a NaN-filled box from its missing w/d/h/rotation, corrupting the
@@ -5923,7 +5923,7 @@ function getMotionSurfaceOutlinePoints(obstacle) {
   // is a heading to orient it by, the plain cylinder otherwise).
   //
   // A stop square-on to a face backs the tank off by `TINY_DISTANCE * mag`
-  // (motion.cjs), and `mag` there is the *full* velocity dotted against the
+  // (motion.mjs), and `mag` there is the *full* velocity dotted against the
   // normal -- largest precisely when the hit is square-on, smallest at a
   // shallow slide. A re-query at the tank's exact resting spot, with no
   // slack of its own, finds a shallow-angle face fine and just misses a
@@ -13892,7 +13892,7 @@ function shoot() {
 
   const myShot = getShotEffects(getMyShotFlag());
 
-  // The shot every tank fires (`shotFromTank` in the shared drive pair): from
+  // The shot every tank fires (`shotFromTank` in the shared drive module): from
   // the muzzle this tank's model reports -- under the tank for a shock wave,
   // which swells around it rather than leaving a barrel -- with upstream's
   // velocity, the tank's own plus the shot speed along the barrel.

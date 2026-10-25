@@ -362,7 +362,7 @@ These are deliberate. Do not "fix" them without being asked.
   drawn result is identical either way: every superflag is white.
 
 - **The flag grab radius is BZFlag's, not bzo's.** `FLAG_GRAB_RADIUS` in the
-  `flags` pair is `4.32 + 2.5`, built from BZFlag's tank radius rather than
+  `flags` module is `4.32 + 2.5`, built from BZFlag's tank radius rather than
   bzo's 2, for the same reason the sound reference distance keeps `86.4`: the
   figure scales with the world, not the vehicle. A bzo tank would otherwise have
   to be almost centred on a flag to take it.
@@ -630,7 +630,7 @@ pilot; `docs/refactor-plan.md` is how the rest is being split:
 - **A server bot is a client whose socket never leaves the process.**
   `acceptConnection` takes it like a browser's and it sends a browser's
   messages, so validation, anti-cheat, scoring and the list treat it as any
-  player. `BotDriver` steps it with the `drive` pair; `planBotFill` is the
+  player. `BotDriver` steps it with the `drive` module; `planBotFill` is the
   fill rule (`docs/installation.md`).
 - **A bot is a player that joined as one** (`joinGame`'s `bot`, which `?bot`
   sets), upstream's `ComputerPlayer` -- not one on autopilot. The list's
@@ -642,7 +642,7 @@ pilot; `docs/refactor-plan.md` is how the rest is being split:
 **One tank, one motion.** What a tank's controls do -- the flags' clamps and
 factors, Agility, Burrow, Wings, Bouncy, momentum, coasting, jumping, the
 collision pass, landing and falling, the measured speeds a move reports -- is
-the `drive` pair (`public/js/drive.mjs`, mirrored to `server/drive.cjs`), and
+the `drive` module (`public/js/drive.mjs`), and
 every tank drives by it: the browser's (`handleInputEvents`/`handleMotion` in
 `client.js`), a server bot's (`BotDriver`), and a practice Worker's. So are the
 move packet's motion fields (`movePacketFields`), the velocity a shot inherits
@@ -654,7 +654,7 @@ never into one host.
 
 **One BZDB.** A world's variables are upstream's: names to raw strings, a
 map's `-set` lines, the server's `/set`s, or a bzfs target's whole table. The
-`bzdb` pair (`evalBzdb`, `bzdbIsTrue`, `parseColorString`, `BZDB_CONFIG_VARS`,
+`bzdb` module (`evalBzdb`, `bzdbIsTrue`, `parseColorString`, `BZDB_CONFIG_VARS`,
 `worldConfig`) turns them into config, and the server and every browser run it
 over the same strings -- `init.bzdb` and `setVar` carry them raw, as upstream
 carries them in `MsgSetVar`. A new world variable bzo reads is a row in
@@ -662,7 +662,7 @@ carries them in `MsgSetVar`. A new world variable bzo reads is a row in
 `docs/bzdb.md`, the one place a variable's meaning and default are written.
 
 **One world's tank and flags.** The tank's size is `TANK` in the `collision`
-pair, and a flag's numbers are the `flags` pair's own (`getShotEffects`,
+pair, and a flag's numbers are the `flags` module's own (`getShotEffects`,
 `getMotionEffects`, `getFlagTuning`), all set from a world's config by
 `configureTankDimensions` and `configureFlagEffects` -- the server on its live
 map, a browser on whatever world it shows. A module reads them there, never
@@ -803,18 +803,18 @@ runs.
 
 ### Shared client/server modules
 
-Because the client is unbundled ESM and the server is CommonJS, logic needed on
-both sides is kept as a **hand-maintained pair**: `public/<name>.mjs` and
-`server/<name>.cjs`. Current pairs include `shots`, `teams`, `collision`,
-`motion`, `drive`, `teleport`, `trace`, `headset`, `flags` and
-`voice-channels`; `MIRRORED` in
-`scripts/check-shared-pairs.mjs` lists the ones kept byte for byte, and
-`node scripts/mirror-pair.mjs <name>` writes such a pair's `.cjs` from its
-`.mjs`. `npm run check:shared-pairs` enforces them: the
-two mirrored pairs must match line for line, and any name a hand-written pair
-exports on both sides must agree in type and arity. A pair that drifts does not
-throw -- the client and server just quietly disagree about geometry, which
-surfaces as position corrections.
+Logic needed on both sides is one **shared module**, `public/js/<name>.mjs`,
+which the browser imports and the CommonJS server loads with `require()` (Node
+22.12 or later): `collision`, `motion`, `drive`, `teleport`, `trace`, `flags`,
+`bzdb`, `mesh-arrays` and the rest. A shared module must import only other
+shared modules and must not use top-level `await`, which `require()` refuses.
+
+Three are still **hand-written pairs**, `public/js/<name>.mjs` and
+`server/<name>.cjs`, because each side carries helpers only it needs: `shots`,
+`teams` and `player-ids`. `npm run check:shared-pairs` holds any name a pair
+exports on both sides to the same type and arity. A pair that drifts does not
+throw -- the client and server just quietly disagree, which surfaces as
+position corrections.
 
 **Any such pair must have a parity test** in `scripts/` that loads both copies
 and asserts they agree across a shared input table. See
@@ -824,7 +824,7 @@ skipping the `trim()` the server performed.
 
 ### Collision geometry follows BZFlag
 
-Obstacle geometry lives in the `collision` pair and mirrors upstream
+Obstacle geometry lives in the `collision` module and mirrors upstream
 BZFlag (`src/obstacle/`, `src/game/Intersect.cxx`). The client resolves moves and
 the server rejects them -- different jobs -- but both must agree about which
 volume is solid, because every disagreement is either an honest player wrongly
@@ -853,9 +853,9 @@ how `render.js` draws obstacles (`mesh.rotation.y = obs.rotation`).
 
 `doUpdateMotion` (`LocalPlayer.cxx:498`) builds a velocity and hands the whole
 step to a single search that resolves position, height and heading together.
-`resolveTankMotion` in the `motion` pair is that loop; `resolveTankStep` in
+`resolveTankMotion` in the `motion` module is that loop; `resolveTankStep` in
 `client.js` is only the world it looks at, and `getTankHitNormal` in the
-`collision` pair is upstream's `Obstacle::getHitNormal`. The sign of that
+`collision` module is upstream's `Obstacle::getHitNormal`. The sign of that
 normal's `y` is the whole of what decides a landing -- upstream's
 `newPos[2] > 0 && normal[2] > 0.001` -- so there is no support surface, no snap
 window, no on-top tolerance and no fall sentinel anywhere in the path.
@@ -966,17 +966,17 @@ The consequences, each of which was once a bug:
 logic. A helper both ends need goes into a shared pair, and what is left on
 each side is only which world to look at, and the host's own logging, caching
 and tolerances: `getCollisionColliders` is `buildCollisionColliders` in the
-`collision` pair over this host's obstacles, map size and walls, and
-`normalizeAngle` is the `motion` pair's.
+`collision` module over this host's obstacles, map size and walls, and
+`normalizeAngle` is the `motion` module's.
 
 Teleporter geometry and shot flight live in the `teleport` and
-`trace` pairs: a shell's step through teleporters and a beam's whole path are
+`trace` modules: a shell's step through teleporters and a beam's whole path are
 one trace, which the server flies every shot by and a client predicts its own
 shells and draws an unhanded beam by. The server's part is only the tank test
 (`findHit`) and the `[SHOT_TP]` log (`onTeleport`).
 
 **`checkCollision` is the pattern to follow.**
-`findTankObstacle` in the `collision` pair is `World::hitBuilding`, and both ends
+`findTankObstacle` in the `collision` module is `World::hitBuilding`, and both ends
 call it: what is left on each side is only which world to look at, what the
 occupant is, and -- on the server -- the logging and the tolerances. The two
 copies had already drifted exactly as this section warns, twice over: the server
@@ -1246,7 +1246,7 @@ shrinks a section at a time as each moves into `docs/bzw.md` proper.
 **A guided missile is the one shot whose path both ends integrate.** Every other
 shot is a direction and a speed decided at the muzzle; `GM`'s heading is turned
 toward its locked target every simulation step, so `steerGuidedShot` lives in the
-flags pair and the server and each client run it against the same target. The
+flags module and the server and each client run it against the same target. The
 lock itself is the *server's* -- upstream picks it on the shooter's client, but a
 lock steers a real weapon -- and it is broadcast as `lockTarget` because every
 client steers every missile. Whether a lock is still live (`canLockOn`,
@@ -1255,7 +1255,7 @@ both ends drop a dead or unlockable target on the same step with no packet. See
 the plan's phase 12 for the whole of it, including why the lock-on bracket stands
 in the world rather than on the screen.
 
-Shots against solid geometry live in the `collision` pair, not in either
+Shots against solid geometry live in the `collision` module, not in either
 `server.js` or `client.js`: `traceShotStep` advances a shot over one fixed step,
 finds what it met, and reflects it about the surface normal when the shot
 ricochets. Both sides call it, because a bounce the client draws one way and the
@@ -1691,9 +1691,9 @@ but `finalizeMeshGeometry` converts each mesh as its faces settle, and
 `attachMeshArrayPayloads` deletes `faces`, `vertices`, `normals`,
 `texcoords` and the four `draw*` pools once the arrays are encoded. So the
 JSON, the wire and `MAP_REGISTRY` all carry only `arrays` (plus
-`drawArrays` for a `drawInfo` mesh). `public/js/mesh-arrays.mjs` and
-`server/mesh-arrays.cjs` are the mirrored pair that build, encode and
-decode them, and a face is an index into them from there on -- collision,
+`drawArrays` for a `drawInfo` mesh). `public/js/mesh-arrays.mjs`, shared by
+both sides, builds, encodes and decodes them, and a face is an index into them from
+there on -- collision,
 the renderer, the radar, the overview picture and the map summary all read
 them that way, and nothing reads a face object. A parsed face cost about
 2,134 bytes against the arrays' 93; the registry holds every map it has
@@ -2051,7 +2051,7 @@ act on is not.
 
 ### Inertia is BZFlag's, and both ends run the same model
 
-There is one acceleration model, `doMomentum`, and it lives in the flags pair so
+There is one acceleration model, `doMomentum`, and it lives in the flags module so
 the client that drives the tank and the server that checks it are running the
 same code against the same numbers. The rule is upstream's: a limit in units per
 second squared, applied to the *velocity*, with **zero meaning no limit at all**.
@@ -2070,7 +2070,7 @@ say otherwise. The point of one model is that "feels like BZFlag" is a thing
 that can be checked rather than tuned by ear.
 
 `M` Momentum composes with the world's limit rather than replacing it -- see the
-flags pair -- so it is a handicap on every map instead of upstream's
+flags module -- so it is a handicap on every map instead of upstream's
 do-nothing-here, upgrade-there.
 
 ### The acceleration check cannot see the stick
@@ -2110,7 +2110,7 @@ the tread animation all correct with no flag state of their own -- the number on
 the wire already says how fast the tank is going.
 
 The server holds the reading to the flag's *largest* factor rather than its
-instantaneous one (`getMaxSpeedFactor` in the flags pair). Agility's window is
+instantaneous one (`getMaxSpeedFactor` in the flags module). Agility's window is
 the client's to run: a bound costs no state, and the alternative is the server
 mirroring a one-second timer off packets that do not carry the stick. It is a
 looser gate than upstream's -- a modified client could hold the boost -- and it

@@ -199,7 +199,7 @@ omitted rather than sent null.
 | `message` | `src`, `dst`, `msgType`, `text`, `ts` | chat, in and out |
 | `lag` | `lagMs` | the server's measurement of *your* lag |
 | `serverConfigUpdate` | `title`, `motd`, `shotMaxActive`, `ricochet`, `timeLimit`, `timeManualStart`, `maxPlayerScore`, `maxTeamScore` | live config changed |
-| `setVar` | `name`, `value` | one world variable set, or with a null value reset (`MsgSetVar`); the client evaluates it with the `bzdb` pair |
+| `setVar` | `name`, `value` | one world variable set, or with a null value reset (`MsgSetVar`); the client evaluates it with the `bzdb` module |
 | `mapList` | `maps`, `viewableMaps`, `currentMap`, `shotMaxActive`, `ricochet` | operator map list |
 | `remoteServerList` | `servers` | the list-server answer |
 | `importMapResult` / `importMapForViewResult` | `success`, `file`, ... | import outcome |
@@ -383,7 +383,7 @@ server: one observer slot named `bzo-import`, one join and one part in
 everybody's chat, then `MsgExit`. The same visit asks what a guest may do
 there (docs/proxy.md, "Guest access"). What comes back is written into the
 exported map as `-set` lines -- only the values that differ from upstream's
-own defaults (`server/bzdb-defaults.cjs`, generated from `globalDBItems` by
+own defaults (`public/js/bzdb-defaults.mjs`, generated from `globalDBItems` by
 `scripts/gen-bzdb-defaults.mjs`), and including names bzo does not read
 itself, because a map played at `_tankSpeed 40` should say so in the file.
 A rejected or timed-out join costs the import nothing: everything above it

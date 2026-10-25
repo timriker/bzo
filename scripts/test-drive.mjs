@@ -6,7 +6,7 @@
  * See LICENSE or https://www.gnu.org/licenses/agpl-3.0.html
  */
 
-// The `drive` pair's jump rules that depend on what the tank stands on. In
+// The `drive` module's jump rules that depend on what the tank stands on. In
 // upstream's frame: +Z up, a heading an azimuth counter-clockwise from +X.
 
 import assert from 'node:assert/strict';

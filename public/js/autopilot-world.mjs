@@ -31,7 +31,7 @@ export const ROUTE_DEST_SLACK = 8;
 // The view's four probes, against the solids a shot meets and the world's
 // walls -- upstream's walls are obstacles and bzo's are not. Built from
 // whichever world the caller holds, so the client and a server-run bot ask the
-// same questions the same way. `findImpact` is the `collision` pair's
+// same questions the same way. `findImpact` is the `collision` module's
 // `findShotSegmentImpact`; `topOf` an obstacle's top height.
 const PROBE_RANGE = 1000;
 

@@ -6,16 +6,17 @@
  * See LICENSE or https://www.gnu.org/licenses/agpl-3.0.html
  */
 
-// Parity test for the voice-channels pair. The client offers the channels and
-// the server enforces them, so the two copies disagreeing means a player is
-// shown a room the server will not put them in.
+// The voice-channels module, as the client imports it and as the server
+// requires it. The client offers the channels and the server enforces them,
+// so a disagreement means a player is shown a room the server will not put
+// them in.
 
 import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
 import * as client from '../public/js/voice-channels.mjs';
 
 const require = createRequire(import.meta.url);
-const server = require('../server/voice-channels.cjs');
+const server = require('../public/js/voice-channels.mjs');
 
 const NEARBY_RADIUS = 60;
 

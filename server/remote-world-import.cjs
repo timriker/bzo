@@ -30,7 +30,7 @@
 
 const dgram = require('node:dgram');
 const net = require('node:net');
-const { BZDB_DEFAULTS } = require('./bzdb-defaults.cjs');
+const { BZDB_DEFAULTS } = require('../public/js/bzdb-defaults.mjs');
 const zlib = require('node:zlib');
 
 const PROTOCOL_VERSION = 'BZFS0221';

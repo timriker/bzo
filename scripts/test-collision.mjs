@@ -6,11 +6,10 @@
  * See LICENSE or https://www.gnu.org/licenses/agpl-3.0.html
  */
 
-// public/js/collision.mjs and server/collision.cjs are a
-// hand-maintained pair, so compare them directly. The client resolves moves and
-// the server rejects them, but both must agree about which volume is solid --
-// a disagreement is either an honest player wrongly rejected or a cheater
-// wrongly allowed.
+// public/js/collision.mjs, which the server loads with require() -- `server`
+// below is that load. The client resolves moves and the server rejects them,
+// but both must agree about which volume is solid -- a disagreement is either
+// an honest player wrongly rejected or a cheater wrongly allowed.
 //
 // Every case is in upstream's frame: +X east, +Y north, +Z up, a heading an
 // azimuth counter-clockwise from +X, and an obstacle placed by `pos` (its base
@@ -22,8 +21,8 @@ import * as client from '../public/js/collision.mjs';
 import { resolveTankMotion } from '../public/js/motion.mjs';
 
 const require = createRequire(import.meta.url);
-const server = require('../server/collision.cjs');
-const serverMotion = require('../server/motion.cjs');
+const server = require('../public/js/collision.mjs');
+const serverMotion = require('../public/js/motion.mjs');
 
 const HALF_PI = Math.PI / 2;
 // The azimuth of a tank facing north, along +Y.

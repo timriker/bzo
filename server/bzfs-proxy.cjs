@@ -52,16 +52,16 @@ const {
   splitBzfsChat,
   toBzfsChatText,
 } = require('./bzfs-session.cjs');
-const { bzdbIsTrue, evalBzdb, worldConfig } = require('./bzdb.cjs');
+const { bzdbIsTrue, evalBzdb, worldConfig } = require('../public/js/bzdb.mjs');
 const { CLIENT_TYPE, clientTypeOf } = require('./client-type.cjs');
-const { DEFAULT_VOICE_CHANNEL } = require('./voice-channels.cjs');
+const { DEFAULT_VOICE_CHANNEL } = require('../public/js/voice-channels.mjs');
 const {
   isAdminSession,
   isLocalAdminRequest,
   parseCookies,
   SESSION_COOKIE_NAME,
 } = require('./sessions.cjs');
-const { isHeadsetBrowserUA } = require('./headset.cjs');
+const { isHeadsetBrowserUA } = require('../public/js/headset.mjs');
 const { proxyUrlKey } = require('./proxies.cjs');
 const { ReplaySession } = require('./bzfs-replay-room.cjs');
 const { sanitizeHost } = require('./server-name.cjs');
@@ -71,7 +71,7 @@ const {
   getFlagTeamIndex,
   shotRicochets,
   togglesZoneOnTeleport,
-} = require('./flags.cjs');
+} = require('../public/js/flags.mjs');
 
 // What it needs of server.js, from `useServer`. The three that change while
 // the server runs -- `MAP_SOURCE`, `forwardedForPolicy`, `forwardedProxyPeer`

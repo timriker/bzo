@@ -5,7 +5,7 @@
  * See LICENSE or https://www.gnu.org/licenses/agpl-3.0.html
  */
 
-// `server/mesh-arrays.cjs` against the object form it replaced (issue #153).
+// `public/js/mesh-arrays.mjs` against the object form it replaced (issue #153).
 //
 // A hand-built mesh, covering every field with values chosen to be wrong in
 // an obvious way if they land in the wrong slot. It states its own faces, so
@@ -32,7 +32,7 @@ const require = createRequire(import.meta.url);
 const {
   buildMeshArrays, decodeMeshArrays, encodeMeshArrays, meshArrayBytes,
   FACE_SHOOT_THROUGH, FACE_DRIVE_THROUGH, FACE_NO_RADAR, NO_PHYDRV, NO_INDEX,
-} = require('../server/mesh-arrays.cjs');
+} = require('../public/js/mesh-arrays.mjs');
 
 const root = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
 

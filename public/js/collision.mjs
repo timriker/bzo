@@ -36,8 +36,7 @@ const NO_FACE = -1;
 // upstream tests a rotated rectangle (testRectRect) bzo tests a circle
 // (testRectCircle) against the same shrunk cross-section.
 //
-// server/collision.cjs is this file mirrored; scripts/check-shared-pairs.mjs
-// enforces that.
+// The server loads this same file, so both sides test the same geometry.
 
 export const ZERO_TOLERANCE = 1.0e-6;
 

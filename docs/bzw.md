@@ -104,7 +104,7 @@ colour of its own.
 importer states upstream's 0 for a block that says nothing, and a group
 member's is its group's angle plus its own, as
 `MeshTransform::Tool::modifyOldStyle` composes them. Everything downstream
-turns the field into a cosine: the collision pair, the renderer, the radar and
+turns the field into a cosine: the collision module, the renderer, the radar and
 the logs all read it directly, with no default of their own to fall back on.
 
 **A zero height is a real height.** `size w d 0` is upstream's own default for a
@@ -1041,7 +1041,7 @@ a colour, is quoted.
 **A world's variables travel as upstream's do: raw.** The server sends its
 BZDB in `init` as names and strings (`bzdb`), and each `/set` or `/reset`
 after it as a `setVar`, as upstream sends `MsgSetVar`. The browser evaluates
-them itself with the same `bzdb` pair the server uses (`worldConfig`), over
+them itself with the same `bzdb` module the server uses (`worldConfig`), over
 the server's settings that are not BZDB. A proxied connection gets a bzfs
 target's own table the same way, every variable it sent.
 
@@ -1164,7 +1164,7 @@ size, and puddle colour, each a comment's citation away from the
 
 **Roof culling is a downward raycast against the same obstacles a shot
 collides with**, not upstream's own octree (`RoofTops::getTopHeight`) --
-`findShotSegmentImpact` from the `collision` pair, re-used rather than ported,
+`findShotSegmentImpact` from the `collision` module, re-used rather than ported,
 skipping teleporters exactly as upstream's own comment says to ("the physics
 for teles is whacked"). Asked once per drop, when it starts a new fall, not
 every frame.
@@ -1523,7 +1523,7 @@ mesh states one it is what upstream *draws*. `MeshSceneNode` is built from
 it, and the mesh's own `face` list is left to collision alone;
 `MeshSceneNodeGenerator`, the per-face path everything else in this document
 describes, is what a mesh *without* one takes. bzo splits the same way:
-these faces reach the screen, the `face` list reaches the collision pair.
+these faces reach the screen, the `face` list reaches the collision module.
 
 **A mesh may state nothing else.** Every tank model in `RatsNest.bzw` is
 written that way -- vertices, normals, texcoords and a `drawInfo`, with no

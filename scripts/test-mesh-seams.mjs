@@ -32,8 +32,8 @@ import { createRequire } from 'node:module';
 import { meshArrays } from '../public/js/mesh-arrays.mjs';
 
 const require = createRequire(import.meta.url);
-const C = require('../server/collision.cjs');
-const { resolveTankMotion } = require('../server/motion.cjs');
+const C = require('../public/js/collision.mjs');
+const { resolveTankMotion } = require('../public/js/motion.mjs');
 const clientCollision = await import('../public/js/collision.mjs');
 
 const TANK_HEIGHT = 2;
@@ -161,7 +161,7 @@ for (const [label, west, east] of [
   const obstacles = [west, east];
   for (const offset of [-12, -6, 0, 6, 12]) {
     // Azimuth pi drives toward -x, azimuth 0 toward +x (forward at azimuth a
-    // is (cos a, sin a), matching server/motion.cjs).
+    // is (cos a, sin a), matching public/js/motion.mjs).
     for (const [azimuth, fromX] of [[Math.PI, 20], [0, -20]]) {
       const run = drive(obstacles, fromX, offset, TOP, azimuth, 1.5);
       const direction = fromX > 0 ? 'east->west' : 'west->east';

@@ -20,7 +20,7 @@ import {
 // centre), `size` (half width, half breadth, height) and `angle`.
 
 const require = createRequire(import.meta.url);
-const serverMotion = require('../server/motion.cjs');
+const serverMotion = require('../public/js/motion.mjs');
 
 // Box slabs, as obstacles the resolver can query.
 function makeWorld(obstacles) {

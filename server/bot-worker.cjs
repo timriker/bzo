@@ -35,10 +35,10 @@ const {
   findShotSegmentImpact,
   getBaseTeamAtPoint,
   getObstacleBase,
-} = require('./collision.cjs');
-const { configureFlagEffects } = require('./flags.cjs');
+} = require('../public/js/collision.mjs');
+const { configureFlagEffects } = require('../public/js/flags.mjs');
 const { areFoes } = require('./teams.cjs');
-const { buildTeleporterIndex, createTankTeleporter } = require('./teleport.cjs');
+const { buildTeleporterIndex, createTankTeleporter } = require('../public/js/teleport.mjs');
 
 let autopilot = null;
 let pilotWorld = null;

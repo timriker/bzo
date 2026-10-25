@@ -5,13 +5,13 @@
  * See LICENSE or https://www.gnu.org/licenses/agpl-3.0.html
  */
 
-const { getSegmentTankHitFraction, TANK } = require('./collision.cjs');
+const { getSegmentTankHitFraction, TANK } = require('../public/js/collision.mjs');
 const {
   cloaksTheTank,
   getTankHitRadiusScale,
   shotPassesThroughTank,
   usesNarrowHitBox,
-} = require('./flags.cjs');
+} = require('../public/js/flags.mjs');
 const { areFoes, isObserverTeam } = require('./teams.cjs');
 
 const MAX_SHOT_SLOTS = 64;

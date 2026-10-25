@@ -10,7 +10,7 @@
 // sent the message, their socket and the message; acceptConnection (server.js)
 // calls it by the message's `type`, through MESSAGE_HANDLERS.
 
-const { normalizeVoiceChannel } = require('./voice-channels.cjs');
+const { normalizeVoiceChannel } = require('../public/js/voice-channels.mjs');
 
 // What the handlers need of server.js, from `useServer`.
 let broadcastAll;

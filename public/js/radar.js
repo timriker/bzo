@@ -691,7 +691,7 @@ export function updateRadar() {
 
   // `bzfrand() > decay` is upstream's roll, and the decay it leaves behind is
   // what makes a jammed radar break through for a frame or two at a time rather
-  // than flicker evenly. Kept out of the flags pair only in its randomness: the
+  // than flicker evenly. Kept out of the flags module only in its randomness: the
   // decay rule itself is shared, so both copies agree on the cadence.
   if (isRadarJammed()) {
     const showNoise = Math.random() > radarJamDecay;

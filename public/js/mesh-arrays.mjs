@@ -9,8 +9,8 @@
 // face (issue #153).
 //
 // A parsed face carries twenty-six properties and costs about 2,134 bytes;
-// collision reads five of them. Counted over `public/js/collision.mjs` and
-// `server/collision.cjs`: `plane` sixty-four times, `vertexIndices` eighteen,
+// collision reads five of them. Counted over `public/js/collision.mjs`:
+// `plane` sixty-four times, `vertexIndices` eighteen,
 // `edgePlanes` six, `shootThrough` twice and `phydrv` twice. Everything else
 // on a face is for the renderer, which builds its own typed arrays from them
 // anyway -- so the object graph exists to be walked once into the two things
@@ -288,19 +288,18 @@ export function meshDrawArrays(mesh) {
 // smaller than the numbers spelled out, which is what a plain JSON array
 // would cost. Brotli takes most of that third back.
 //
-// `Buffer` where there is one and a hand-rolled pass where there is not: this
-// file is one of the client/server pairs, compared line for line, so it
-// cannot branch on which side it is running.
+// `Buffer` where there is one and a hand-rolled pass where there is not: the
+// server and the browser load this same file, so it cannot branch on which
+// side it is running.
 
 // `Buffer` exists only on the server and `atob` only in the browser, and each
 // use below is guarded by the check for the one it needs -- so both are named
-// here rather than splitting this file, which is one of the pairs compared
-// line for line.
+// here rather than splitting this file, which both sides load.
 const BASE64_ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
 
 /* eslint-disable no-undef -- `Buffer` is the server's and `atob` the
-   browser's, and each use is guarded by the check for the one it needs. This
-   file is one of the pairs compared line for line, so it cannot be split. */
+   browser's, and each use is guarded by the check for the one it needs. Both
+   sides load this one file, so it cannot be split. */
 function bytesToBase64(view) {
   const bytes = new Uint8Array(view.buffer, view.byteOffset, view.byteLength);
   if (typeof Buffer !== 'undefined') return Buffer.from(bytes).toString('base64');

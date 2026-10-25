@@ -5,10 +5,10 @@
  * See LICENSE or https://www.gnu.org/licenses/agpl-3.0.html
  */
 
-// Holds the flag flight math against BZFlag's own numbers, and holds the two
-// copies of the pair against each other. The server computes a flight once and
-// the client integrates it every frame, so a divergence here is a flag that
-// lands somewhere other than where it is drawn.
+// Holds the flag flight math against BZFlag's own numbers, through both the
+// client's import and the server's require(). The server computes a flight
+// once and the client integrates it every frame, so a divergence here is a
+// flag that lands somewhere other than where it is drawn.
 
 import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
@@ -176,7 +176,7 @@ import {
 } from '../public/js/flags.mjs';
 
 const require = createRequire(import.meta.url);
-const serverFlags = require('../server/flags.cjs');
+const serverFlags = require('../public/js/flags.mjs');
 
 const GRAVITY = 9.8;
 const EPSILON = 1e-9;

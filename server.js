@@ -153,8 +153,8 @@ const {
   SHOCK_IN_RADIUS,
   MACHINE_GUN_AD_VEL,
   MACHINE_GUN_AD_RATE,
-} = require('./server/flags.cjs');
-const { steerGuidedShot, pickTargetInSights } = require('./server/flags.cjs');
+} = require('./public/js/flags.mjs');
+const { steerGuidedShot, pickTargetInSights } = require('./public/js/flags.mjs');
 const {
   documentTitle,
   escapeHtml,
@@ -184,28 +184,28 @@ const {
   configureTankDimensions,
   WORLD_WALL_HEIGHT,
   TANK,
-} = require('./server/collision.cjs');
+} = require('./public/js/collision.mjs');
 const {
   buildTeleporterIndex,
   getTeleportDestinationFace,
   rotateXY,
   transformShotThroughTeleporter,
-} = require('./server/teleport.cjs');
+} = require('./public/js/teleport.mjs');
 const {
   findMapEdgeImpactPoint,
   traceBeam,
   traceShotThroughTeleporters,
-} = require('./server/trace.cjs');
-const { MAX_BUMP_HEIGHT: DEFAULT_MAX_BUMP_HEIGHT, normalizeAngle } = require('./server/motion.cjs');
-const { packetVelocity } = require('./server/drive.cjs');
-const { BZDB_DEFAULTS } = require('./server/bzdb-defaults.cjs');
+} = require('./public/js/trace.mjs');
+const { MAX_BUMP_HEIGHT: DEFAULT_MAX_BUMP_HEIGHT, normalizeAngle } = require('./public/js/motion.mjs');
+const { packetVelocity } = require('./public/js/drive.mjs');
+const { BZDB_DEFAULTS } = require('./public/js/bzdb-defaults.mjs');
 const {
   BZDB_CONFIG_VARS,
   bzdbIsTrue,
   worldConfig,
-} = require('./server/bzdb.cjs');
+} = require('./public/js/bzdb.mjs');
 const { POLL_DEFAULTS, VotingArbiter, parseVoteAnswer } = require('./server/polls.cjs');
-const { getKillScoreDeltas } = require('./server/scoring.cjs');
+const { getKillScoreDeltas } = require('./public/js/scoring.mjs');
 const { createBanStore, parseDuration } = require('./server/bans.cjs');
 const {
   clampPlayingLimits,
@@ -239,7 +239,7 @@ const {
   teamScoreMovesOnKill,
   areFoes,
 } = require('./server/teams.cjs');
-const { DEFAULT_TANK_SKIN } = require('./server/tank-skins.cjs');
+const { DEFAULT_TANK_SKIN } = require('./public/js/tank-skins.mjs');
 const { parseProxies, proxyUrlKey } = require('./server/proxies.cjs');
 const {
   ALL_PLAYERS,
@@ -315,7 +315,7 @@ const {
 const {
   missingTankParts,
   readObjObjectNames,
-} = require('./server/tank-parts.cjs');
+} = require('./public/js/tank-parts.mjs');
 const path = require('path');
 const fs = require('fs');
 const crypto = require('crypto');
@@ -349,7 +349,7 @@ function computeClientBuild() {
   precompress.assetRoots().forEach(hashTree);
   return hash.digest('hex').slice(0, 12);
 }
-const { isHeadsetBrowserUA } = require('./server/headset.cjs');
+const { isHeadsetBrowserUA } = require('./public/js/headset.mjs');
 const { clientTypeOf } = require('./server/client-type.cjs');
 const { describeListenTarget, resolveListenTarget } = require('./server/listen-address.cjs');
 const {
@@ -365,7 +365,7 @@ const { packWorldDatabase, bzfsWorldHashOfBzw } = require('./server/bzflag-world
 const {
   DEFAULT_VOICE_CHANNEL,
   areVoicePeers,
-} = require('./server/voice-channels.cjs');
+} = require('./public/js/voice-channels.mjs');
 
 
 // Neither console nor server.log should ever show this install's own
@@ -3424,7 +3424,7 @@ const GAME_CONFIG = {
   TANK_ROTATION_SPEED: 0.785398, // BZFlag _tankAngVel default (radians per second)
   REVERSE_SPEED_RATIO: 0.5, // Max reverse speed as fraction of forward speed
   // -a <vel> <rot> upstream: the acceleration limit, zero meaning none, which is
-  // upstream's default and so bzo's. See the flags pair for what the numbers
+  // upstream's default and so bzo's. See the flags module for what the numbers
   // mean and why the linear one is scaled by 20.
   LINEAR_ACCELERATION: 0,
   ANGULAR_ACCELERATION: 0,
@@ -7311,7 +7311,7 @@ log(`${MAP_SOURCE}: obstacles/meshes/links/zones/weapons  `
 
 let TELEPORTER_OBSTACLES_BY_INDEX = new Map();
 let TELEPORTER_LINKS_BY_SOURCE_FACE = new Map();
-// Both, as the shared `teleport` pair reads them.
+// Both, as the shared `teleport` module reads them.
 let TELEPORTER_INDEX = { teleporters: TELEPORTER_OBSTACLES_BY_INDEX, links: TELEPORTER_LINKS_BY_SOURCE_FACE };
 
 function rebuildTeleporterRuntimeState() {
@@ -10449,7 +10449,7 @@ function deliverChatMessage(player, targetId, msgType, text) {
 
   // Team chat. bzfs's own team dispatch sends to every player whose
   // `isTeam(_team)` matches the destination, with no exception for Rogue or
-  // Observer -- which is the rule the `voice-channels` pair already spells out
+  // Observer -- which is the rule the `voice-channels` module already spells out
   // for the Team voice channel, so both use it. The sender is included: a
   // message you cannot see you have sent is worse than one echoed back.
   if (targetId === FIRST_TEAM) {
@@ -10705,7 +10705,7 @@ function getColliderTopY(obs) {
 }
 
 // The solid an occupant is inside of, or false. The loop is `findTankObstacle`
-// in the shared `collision` pair and the client calls the same one: this says
+// in the shared `collision` module and the client calls the same one: this says
 // which world to look at, and logs, which the client has no reason to.
 //
 // `tankRadius` is the occupant's radius *and* its height -- 2 for a tank, much
@@ -10763,7 +10763,7 @@ function checkCollision(x, y, z, tankRadius = 2, options = {}) {
 // The one physics-driver lookup the server side needs -- `findPhysicsSurfaceObstacle`
 // stands in for the "what is this tank currently resting on" concept the
 // client tracks as `lastMotionObstacle` (`resolvePhysicsDriverAt` in the
-// shared `collision` pair is the rest of it, and is what guarantees the two
+// shared `collision` module is the rest of it, and is what guarantees the two
 // sides can never disagree about which driver, if any, applies). Not
 // `checkCollision`: that is an anti-cheat penetration test, deliberately
 // forgiving of a tank resting exactly on solid ground, which is the one
@@ -13817,7 +13817,7 @@ function recordShakeWin(player) {
 // than one per flag per pass along a row of them.
 //
 // The sweep is still upstream's and still the server's: `findNearestGroundFlag`
-// in the flags pair, over the range and the states upstream uses, so a client
+// in the flags module, over the range and the states upstream uses, so a client
 // cannot ask about a flag it is nowhere near or one that is not lying on the
 // ground. What arrives from the client is the question, never the answer.
 //
@@ -14466,7 +14466,7 @@ function updateFlags(now) {
 // Audio media remains on the WebRTC connection, not on this socket.
 //
 // The channel rides on every message. Which players a channel puts together is
-// server/voice-channels.cjs, mirrored to public/js/voice-channels.mjs, and the
+// public/js/voice-channels.mjs, which both sides load, and the
 // server is the side that enforces it: withholding the roster and the signalling
 // is the only lever there is, because the media never passes through here.
 const VOICE_ROSTER_REFRESH_INTERVAL = 200;
@@ -15611,7 +15611,7 @@ function applyShockWaveHits(proj, id, radius, now) {
 
 
 // A beam's whole path, walked when the trigger is pulled (`traceBeam` in the
-// shared `trace` pair, which a browser draws an unhanded beam by too), with the
+// shared `trace` module, which a browser draws an unhanded beam by too), with the
 // tanks it can reach as this server decides them. The segments go onto the
 // projectile for the client to draw; the tank it reached comes back for the
 // caller to resolve once `shotBegin` has gone out -- the client has to have the

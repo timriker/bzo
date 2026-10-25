@@ -89,7 +89,7 @@ soon as their victims quit, which reads backwards.
 ### Both ends derive it; neither end derives it from a derivation
 
 The client computes its own handicap from the integers it was **told**, through
-a shared pure function in the `flags` pair, exactly as it derives speed, size
+a shared pure function in the `flags` module, exactly as it derives speed, size
 and hit radius from the flag letter it was told. Integer arithmetic on identical
 inputs cannot drift, so the client's multiplier and the server's bound agree by
 construction.
@@ -113,7 +113,7 @@ a divergence there is a bug report rather than a silent drift.
 ### Where it plugs in
 
 Everything is keyed on one value already, so the composition is a handful of
-signatures in the `flags` pair:
+signatures in the `flags` module:
 
 - `getMaxSpeedFactor` and `getMaxAngVelFactor` take the handicap beside the
   flag. `fs` and `rs` are fractions of the world's *base* speed and turn rate
@@ -167,7 +167,7 @@ Fifty *net* deaths against the field is tuned for a large public server grinding
 for an hour. At a relative score of 10 the normalized handicap is 0.2: speed
 1.2x, turn 1.1x. On a four-player game nobody reaches 50 and the feature never
 engages. All four `_handicap*` figures belong in `GAME_CONFIG`, which already
-ships in `init`, rather than as constants in the `flags` pair -- both because
+ships in `init`, rather than as constants in the `flags` module -- both because
 the client must derive from the same curve the server used, and because this one
 needs retuning against a real game before parity means anything.
 

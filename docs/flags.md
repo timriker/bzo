@@ -12,16 +12,15 @@ cannot drift out of step with the behaviour.
 
 ## Where it lives
 
-- **`public/js/flags.mjs` + `server/flags.cjs`** are a mirrored pair, byte-identical
-  in behaviour and checked by `npm run check:shared-pairs`. They hold the flag
+- **`public/js/flags.mjs`** is one module that the browser imports and the
+  server loads with `require()`. It holds the flag
   table, the enums, the world constants and every pure rule: what a flag does to
   a shot, to a tank's speed and size, to what its carrier can see, and to who can
-  hit whom. Both ends read the same copy, so a rule cannot be enforced one way by
+  hit whom. Both ends read the same file, so a rule cannot be enforced one way by
   the client and another by the server.
-- **`scripts/test-flags.mjs`** covers the pair against upstream's own numbers,
-  and asserts both copies agree.
-- **`public/js/collision.mjs` + `server/collision.cjs`** hold the obstacle geometry
-  the phasing flags need, in the same mirrored arrangement.
+- **`scripts/test-flags.mjs`** covers it against upstream's own numbers.
+- **`public/js/collision.mjs`** holds the obstacle geometry the phasing flags
+  need, shared the same way.
 - **`server.js`** owns everything stateful: the flag array, the pool, spawning,
   landing-spot search, grab and drop validation, and every hit and kill.
 - **`public/js/client.js`** animates. It integrates a flight, draws the
@@ -40,7 +39,7 @@ as the Identify that stood there before it.
 **Identify is asked for, not pushed.** Upstream's `searchFlag` sweeps for every
 player on every position update and sends the answer whether or not the client
 could already give it. bzo's client makes the same sweep -- `findNearestGroundFlag`
-in the flags pair, so neither end can pick a different flag -- names the nearest
+in the flags module, so neither end can pick a different flag -- names the nearest
 one itself when its record knows the type, and sends a `nearFlag` only for one it
 cannot name. The server answers by sweeping its own copy of that tank's position,
 so the request carries nothing to validate.
@@ -82,7 +81,7 @@ wherever it appears -- in the world, on the radar and on the scoreboards -- so a
 slot that has been identified looks different from one that has not.
 
 Identify is asked for rather than pushed. The client sweeps for the nearest
-flag with `findNearestGroundFlag` from the flags pair, names it from its own
+flag with `findNearestGroundFlag` from the flags module, names it from its own
 record when it can, and sends a `nearFlag` only for one it cannot name; the
 server answers by making the same sweep against its own copy of that tank's
 position. Upstream sends the answer off every position update instead, which is
