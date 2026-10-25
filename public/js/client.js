@@ -7640,8 +7640,10 @@ function connectToServer() {
         + (IS_BOT_CLIENT ? '&bot' : '')
       : '');
   ws = new WebSocket(`${protocol}//${window.location.host}${query}`);
+  let opened = false;
 
   ws.onopen = () => {
+    opened = true;
     botWatchSent = null;
     callVoiceManager('start');
     showMessage('Connected to server!');
@@ -7689,6 +7691,19 @@ function connectToServer() {
         setTimeout(connectToServer, delay);
       });
     };
+    // An attempt that never opened is no disconnect: there was nothing to
+    // leave, and no score to report. The overlay says what is wrong instead
+    // of an empty sky, and stays up until an attempt gets through.
+    if (!opened) {
+      setLoadingOverlayState({
+        visible: true,
+        progress: 0,
+        status: navigator.onLine === false ? 'Offline' : `Cannot reach ${window.location.host}`,
+        detail: 'Trying again...',
+      });
+      scheduleReconnect(3000);
+      return;
+    }
     // Ignore 503 (Service Unavailable) and silently retry
     if (event.code === 1008 || event.reason === '503') {
       console.log('Server temporarily unavailable (503), retrying...');

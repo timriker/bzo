@@ -16,7 +16,7 @@ server reachable, an installed client offers the same from the maps it holds.
 - **The world in the browser.** Map Viewer builds any world from its
   `{url, hash}`, and `public/sw.js` keeps `/maps/<hash>.json` once fetched.
 - **The tank.** The client predicts its own motion, shots and flag effects
-  against the `collision`, `motion`, `shots` and `flags` pairs, and Map
+  against the `collision`, `motion`, `shots` and `flags` modules, and Map
   Viewer's phantom tank already drives with no game behind it (issue #68).
 - **The bots.** `public/js/autopilot.mjs` (Roger and Ace) and `public/js/nav.mjs`
   (routes) are browser ESM already, and so is how a tank moves: the `drive`
@@ -119,7 +119,7 @@ it could have.
    1. spawn selection
    2. kills declared, respawns, scores
    3. flags: spawning, grab, drop, capture, antidote, shake (the effects are
-      already the `flags` pair)
+      already the `flags` module)
    4. match rules: clock, rabbit, team scores
 3. **Bots that declare their own deaths.** A bot steps the shots it is told
    about with `traceShotStep` and tests them against its own tank with
@@ -134,8 +134,8 @@ it could have.
 6. **Offline.** The service worker precaches the core, the pilots and the route
    graph; the client remembers the worlds it has played (the `worldRef`s from
    `init`); an installed client with no server offers Practice on those.
-   [tutorial-plan.md](tutorial-plan.md) stages 1 and 2 -- saying it is offline,
-   free drive on the last map -- come for free on the way.
+   [tutorial-plan.md](tutorial-plan.md) stage 2 -- free drive on the last
+   map -- comes for free on the way.
 
 ## What it costs and what it buys
 

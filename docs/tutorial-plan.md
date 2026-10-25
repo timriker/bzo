@@ -12,19 +12,13 @@ The service worker precaches the shell -- `index.html`, `client.js`,
 `styles.css`, Three -- and caches everything else on first use, so the page
 itself loads with no server. Then `connectToServer` opens a WebSocket to the
 same host, it fails, and `ws.onclose` schedules another attempt in three
-seconds, forever. The entry dialog's server name, description and MOTD are
-filled from the `init` message, so it never fills. The player is left on
-"Loading World / Connecting render systems..." with nothing saying why.
+seconds, forever. An attempt that never opened puts the loading overlay up
+with "Offline" (or "Cannot reach <host>") and "Trying again...", until one
+gets through.
 
 `/manifest.webmanifest` is deliberately never intercepted, so a cold first
 visit with no network cannot install either. That is correct -- the manifest is
 generated per request and names the server -- and it is not worth changing.
-
-## Stage 1: say so
-
-Honest text on the loading overlay once a connection attempt has failed, rather
-than a spinner that means "connecting" and "there is nothing to connect to"
-equally. Independent of everything below, and worth doing on its own.
 
 ## Stage 2: free drive on the last map
 
@@ -61,7 +55,7 @@ answer.
 
 Static targets and local shot-vs-body hit tests, plus whatever scripting states
 a lesson's goal and notices it being met. The geometry is already client-side:
-`public/js/collision.mjs` is half of the `collision` pair and is what resolves
+`public/js/collision.mjs` is the `collision` module and is what resolves
 every move today. What is new is a small loop that decides "that hit", against
 targets that belong to nobody.
 
