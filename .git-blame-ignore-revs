@@ -21,3 +21,6 @@ d89198144e4f130d7bf2d209e5ebb39eab754891
 
 # public/js/radar.js split out of client.js
 c3bb2c4b116cf44108e51bcb7233bfe0dd18d28a
+
+# public/js/render-*.js split out of render.js
+65025bade770849219584f3380162caca50c3c00
