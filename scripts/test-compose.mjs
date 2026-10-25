@@ -15,7 +15,7 @@ import {
   WORD_KIND,
   completeCompose,
   wordKindsFor,
-} from '../public/compose.mjs';
+} from '../public/js/compose.mjs';
 
 const VOCABULARY = {
   [WORD_KIND.COMMAND]: ['/msg', '/mute', '/mutelist', '/kill', '/flag'],

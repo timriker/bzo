@@ -241,7 +241,7 @@ const sendChat = async (line) => {
   // again before `Input.insertText` arrives, and the text lands nowhere with
   // no error to say so -- the command simply never reaches the server.
   // `chatInput`'s own submit is a plain `keydown` listener on the element
-  // (public/client.js), so a synthetic `KeyboardEvent` drives the same path a
+  // (public/js/client.js), so a synthetic `KeyboardEvent` drives the same path a
   // real Enter does.
   const sent = await evaluate(`(() => {
     const el = document.getElementById('chatInput');

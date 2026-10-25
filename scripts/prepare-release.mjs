@@ -15,7 +15,7 @@ const rootDir = resolve(__dirname, '..');
 const packageJsonPath = resolve(rootDir, 'package.json');
 const packageLockPath = resolve(rootDir, 'package-lock.json');
 const changelogPath = resolve(rootDir, 'CHANGELOG.md');
-const clientVersionPath = resolve(rootDir, 'public', 'version.mjs');
+const clientVersionPath = resolve(rootDir, 'public', 'js', 'version.mjs');
 
 function fail(message) {
   console.error(`Release prepare failed: ${message}`);

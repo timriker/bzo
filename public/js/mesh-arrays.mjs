@@ -9,7 +9,7 @@
 // face (issue #153).
 //
 // A parsed face carries twenty-six properties and costs about 2,134 bytes;
-// collision reads five of them. Counted over `public/collision.mjs` and
+// collision reads five of them. Counted over `public/js/collision.mjs` and
 // `server/collision.cjs`: `plane` sixty-four times, `vertexIndices` eighteen,
 // `edgePlanes` six, `shootThrough` twice and `phydrv` twice. Everything else
 // on a face is for the renderer, which builds its own typed arrays from them

@@ -6,8 +6,8 @@ places bzo is a web game first.
 
 ## What is there to build on
 
-Voice (`public/voice.js`) is peer to peer: each browser holds one WebRTC
-connection to every player in its voice channel (`public/voice-channels.mjs`:
+Voice (`public/js/voice.js`) is peer to peer: each browser holds one WebRTC
+connection to every player in its voice channel (`public/js/voice-channels.mjs`:
 All, Nearby, Team), signalled over the WebSocket, with no server in the
 media path. Phones relay through the IPv4 TURN servers
 (`voiceIceServersIpv4`). Who is talking is read off each incoming track's

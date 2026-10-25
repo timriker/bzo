@@ -18,7 +18,7 @@
 // The server is a child process, so its CPU (utime+stime, every thread, from
 // /proc) is its own. It relays each move to every peer, gathered once per
 // turn of the event loop and split to fit a packet, as bzo's
-// `flushChannelMoves` does. The tanks are werift peers in this process, opened through public/udp-channel.mjs, the browser's own code;
+// `flushChannelMoves` does. The tanks are werift peers in this process, opened through public/js/udp-channel.mjs, the browser's own code;
 // WebTransport tanks are the library's Node client, trusting a throwaway
 // certificate by its hash as a browser's `serverCertificateHashes` does.
 // Latency is send to receive on this process's clock.
@@ -315,7 +315,7 @@ function makeCertificate() {
   return { dir, cert, key, hash: new Uint8Array(hash) };
 }
 
-// A WebTransport tank, shaped like public/udp-channel.mjs's channel.
+// A WebTransport tank, shaped like public/js/udp-channel.mjs's channel.
 function createWtClient({ hash, onMessage }) {
   let transport = null;
   let writer = null;
@@ -360,7 +360,7 @@ function cpuTicks(pid) {
 
 async function runOnce(stack, tanks) {
   const { RTCPeerConnection } = require('werift');
-  const { createUdpChannel } = await import('../public/udp-channel.mjs');
+  const { createUdpChannel } = await import('../public/js/udp-channel.mjs');
   const certificate = makeCertificate();
   const child = fork(fileURLToPath(import.meta.url), ['--role', 'server', '--stack', stack, '--port', String(PORT),
     '--cert', certificate.cert, '--key', certificate.key], { stdio: ['ignore', 'ignore', 'inherit', 'ipc'] });

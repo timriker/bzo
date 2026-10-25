@@ -17,8 +17,8 @@ import {
   setFlagHelp,
   updateFlagHelpHud,
   wrapText,
-} from '../public/hud.js';
-import { FLAG_TYPES } from '../public/flags.mjs';
+} from '../public/js/hud.js';
+import { FLAG_TYPES } from '../public/js/flags.mjs';
 
 // FlagHelpDuration (playing.cxx:98, callbacks.cxx:43). A minute, not the few
 // seconds the flag name alert beside it gets: this is a sentence to read, and

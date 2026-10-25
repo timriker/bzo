@@ -10,8 +10,8 @@
 // path through teleporters, off buildings and out at the world's edge.
 
 import assert from 'node:assert/strict';
-import { buildTeleporterIndex } from '../public/teleport.mjs';
-import { traceBeam, traceShotThroughTeleporters } from '../public/trace.mjs';
+import { buildTeleporterIndex } from '../public/js/teleport.mjs';
+import { traceBeam, traceShotThroughTeleporters } from '../public/js/trace.mjs';
 import { createRequire } from 'node:module';
 
 const { parseBZWMap } = createRequire(import.meta.url)('../server/bzw-parse.cjs');

@@ -7,17 +7,17 @@ same commit -- checked by output that must not change, and listed in
 
 ## Autopilot
 
-`public/autopilot.mjs` holds both pilots. Seeded `scripts/bench-stuck.mjs`
+`public/js/autopilot.mjs` holds both pilots. Seeded `scripts/bench-stuck.mjs`
 runs with `--trace`, `scripts/bench-pilot.mjs` and `scripts/test-autopilot.mjs`
 must give byte-identical output before and after each step.
 
 1. The world a pilot asks about -- routers, probes, team bases, vantage
-   points -- is `public/autopilot-world.mjs`. Done.
-2. Roger, upstream's `AutoPilot.cxx`, is `public/roger.mjs`, with the
+   points -- is `public/js/autopilot-world.mjs`. Done.
+2. Roger, upstream's `AutoPilot.cxx`, is `public/js/roger.mjs`, with the
    geometry he and Ace share. Done.
 3. Ace in layers, each a subclass of the one before: `AceDriver`
-   (`public/ace-driver.mjs`: routes, jumps, flights, unstick), `AceFighter`
-   (`public/ace-fighter.mjs`: shot planning, firing, chase, ambush, evasion),
+   (`public/js/ace-driver.mjs`: routes, jumps, flights, unstick), `AceFighter`
+   (`public/js/ace-fighter.mjs`: shot planning, firing, chase, ambush, evasion),
    then `Ace` in `autopilot.mjs` (`think`, targets, flags, camping), which
    stays the module everyone imports pilots from. No layer calls a method of
    one above it. Done.
@@ -34,9 +34,9 @@ must give byte-identical output before and after each step.
    diffing the moved code against what it replaced -- only the lines that
    read the server's changing state differ -- by `npm run check`, and by a
    proxied game and a replay joined live on the dev server.
-5. `public/render.js`: `RenderManager` is split by subsystem -- world
+5. `public/js/render.js`: `RenderManager` is split by subsystem -- world
    geometry, tanks, effects and weather, XR -- as objects it owns.
-6. `public/client.js`: `handleServerMessage` becomes a handler table, and
+6. `public/js/client.js`: `handleServerMessage` becomes a handler table, and
    the radar a module of its own.
 
 ## Mirrored pairs (to try)

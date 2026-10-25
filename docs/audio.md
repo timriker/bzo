@@ -3,7 +3,7 @@
 The sound effects in `public/audio/` come from upstream BZFlag
 (`bzflag/data/*.wav`) so that bzo sounds like the game it mirrors. Below is
 every sample, the name `playSound()` asks for it by, the BZFlag `SFX_*` code
-it answers, and the event bzo plays it for. The manifest in `public/audio.js`
+it answers, and the event bzo plays it for. The manifest in `public/js/audio.js`
 holds the same mapping in code, with each sound's distance and volume.
 
 This lives here rather than beside the samples because everything under
@@ -51,10 +51,10 @@ attenuation, from `getWorldStuff()` in `src/bzflag/sound.cxx`, is
 (`20 * 4.32`). That is the Web Audio `inverse` distance model with
 `refDistance = 86.4` and `rolloffFactor = 1`, which reproduces the curve exactly.
 The constant scales with the world, not the vehicle, so it stays `4.32` when a
-world resizes the tank. Tune `MASTER_VOLUME` in `public/audio.js`, not
+world resizes the tank. Tune `MASTER_VOLUME` in `public/js/audio.js`, not
 individual sounds.
 
-**A limiter holds the mix** (`GAME_LIMITER`, `public/audio.js`). The samples
+**A limiter holds the mix** (`GAME_LIMITER`, `public/js/audio.js`). The samples
 peak at full scale, so an explosion beside another sound sums past it; clipped,
 that is a pop, and on some outputs a second of near silence after. A
 compressor just under full scale between the Game volume and the speakers

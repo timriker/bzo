@@ -13,7 +13,7 @@ import {
   describeRenderCapabilities,
   supportsDynamicLighting,
   supportsProjectedShadows,
-} from '../public/capabilities.mjs';
+} from '../public/js/capabilities.mjs';
 
 // A stand-in for the parts of a WebGL context the detection reads.
 function fakeRenderer({ attributes = {}, parameters = {}, extensions = {}, webgl2 = true } = {}) {

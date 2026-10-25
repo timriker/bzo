@@ -5,7 +5,7 @@
  * See LICENSE or https://www.gnu.org/licenses/agpl-3.0.html
  */
 // The UDP channel (#8): which candidates the server will use, and one round
-// trip with public/udp-channel.mjs -- the browser's offer, candidates in
+// trip with public/js/udp-channel.mjs -- the browser's offer, candidates in
 // either order, the server's answer, and a message each way on the channel --
 // against server/udp-channel.cjs on a socket shared the way the BZFlag port
 // shares its own (#189). werift plays the browser too, on sockets of its own.
@@ -30,7 +30,7 @@ try {
   console.log('test-udp-channel: ok (werift absent; round trip skipped)');
   process.exit(0);
 }
-const { createUdpChannel } = await import('../public/udp-channel.mjs');
+const { createUdpChannel } = await import('../public/js/udp-channel.mjs');
 
 // One message each way between a browser's channel and the server's.
 function roundTrip(channels) {

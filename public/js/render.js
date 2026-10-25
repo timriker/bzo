@@ -5995,7 +5995,7 @@ class RenderManager {
           );
           // `material` declared before the factory runs, same reason
           // `_getSharedObstacleMaterials` does: `registerAlphaCallback`
-          // (`public/texture.js`) always defers to a microtask, so the
+          // (`public/js/texture.js`) always defers to a microtask, so the
           // callback never actually fires until this statement (and `let`)
           // has finished, even when the answer was already known.
           material = new LitClass({

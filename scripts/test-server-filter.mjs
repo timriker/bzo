@@ -19,7 +19,7 @@ import path from 'node:path';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 
-// `public/list-page.js` is a browser script that hangs its entry points off
+// `public/js/list-page.js` is a browser script that hangs its entry points off
 // `window`, so it is run here against stubs rather than imported: every
 // `getElementById` comes back empty, which makes each `attachList` at the
 // bottom of it return before touching anything.
@@ -30,7 +30,7 @@ const context = {
 context.window.document = context.document;
 vm.createContext(context);
 vm.runInContext(
-  fs.readFileSync(path.join(here, '..', 'public', 'list-page.js'), 'utf8'),
+  fs.readFileSync(path.join(here, '..', 'public', 'js', 'list-page.js'), 'utf8'),
   context,
   { filename: 'list-page.js' },
 );

@@ -4,7 +4,7 @@
  * Source: https://github.com/timriker/bzo
  * See LICENSE or https://www.gnu.org/licenses/agpl-3.0.html
  */
-// The XR chat panel's own fixed window (public/client.js's flat one scrolls
+// The XR chat panel's own fixed window (public/js/client.js's flat one scrolls
 // natively and keeps the whole scrollback instead -- see `updateChatWindow`).
 const CHAT_VISIBLE_MESSAGES = 6;
 const CHAT_SCROLLBACK_LIMIT = 600;
@@ -1557,7 +1557,7 @@ function isPhantomDriving() {
 
 // The observer/Map Viewer end of the world-framing camera -- true only while
 // an observer has actually cycled to it, so a playing tank's own Overview
-// (`cameraMode`, public/input.js) is untouched and comes back unchanged on
+// (`cameraMode`, public/js/input.js) is untouched and comes back unchanged on
 // joining a team.
 function isObservingOverview() {
   return isObserver() && roamView === ROAM_VIEW.OVERVIEW;
@@ -3734,7 +3734,7 @@ function tryLocalChatCommand(text) {
 }
 
 // The lines this client has sent, and the words Tab reaches from the chat
-// entry. `public/compose.mjs` holds both rules; what is here is where the words
+// entry. `public/js/compose.mjs` holds both rules; what is here is where the words
 // come from -- who is on the server, what this server answers, what the flags
 // are called.
 const composeHistory = new ComposeHistory();
@@ -12657,7 +12657,7 @@ function sendObserverUpdate() {
 //
 // Roger (`AutoPilot.cxx`) and the pilots built on him, chosen on the Settings
 // row and toggled by `9` or `/autopilot`. The decisions live in
-// `public/autopilot.mjs` behind a view of this client's world, so a
+// `public/js/autopilot.mjs` behind a view of this client's world, so a
 // server-launched bot can drive the same code; this is the view, and the seam
 // where its answer replaces the sticks. One of each pilot for the session, so
 // what one has learned about flags survives switching it off and on, as
@@ -13569,7 +13569,7 @@ function handleMotion(deltaTime) {
   }
   frozenHeartbeatStarted = false;
 
-  // The motion is the shared `drive` step's (public/drive.mjs), the one every
+  // The motion is the shared `drive` step's (public/js/drive.mjs), the one every
   // tank drives by -- this browser's, a server bot's, a practice Worker's. What
   // stays here is what only a browser does with it: the sounds, the jets and
   // rings, the packets, and the tank's mesh.

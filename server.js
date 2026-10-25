@@ -2037,7 +2037,7 @@ function renderListActions(entry, hidden) {
 // The local maps list, given the same shape as the two server lists above: one
 // line per map, a readout pane for the selected one, a sortable header and the
 // filter box. The row carries the three numbers the in-client View picker
-// shows in columns (`populateViewMapTable`, public/client.js) and the pane
+// shows in columns (`populateViewMapTable`, public/js/client.js) and the pane
 // carries the rest -- including what that picker only puts in a row tooltip.
 // The pane's third column is the map's own overview picture
 // (`server/map-overview.cjs`).
@@ -3135,10 +3135,10 @@ ${tables.mapsTable}
 it; Watch plays it to everyone watching that replay.</p>
 ${renderReplayList('replayList', 'replayFilter', replays)}
 
-<!-- Sorting, selection and the filter language: public/list-page.js. A plain
+<!-- Sorting, selection and the filter language: public/js/list-page.js. A plain
      classic script, not a module, so it is defined before the key admin
      section's own inline script below calls attachTable. -->
-<script src="/list-page.js"></script>
+<script src="/js/list-page.js"></script>
 
 ${renderListServerKeyAdminSection({ session, admin })}
 
@@ -8537,7 +8537,7 @@ defineCommand('/setteam', COMMAND_TIER.OPERATOR,
   });
 
 // `/mv` on an observer moves its roaming camera there, in free roam, with the
-// pitch when one was given (public/roam.mjs). A camera flies through buildings,
+// pitch when one was given (public/js/roam.mjs). A camera flies through buildings,
 // so the spot is taken as it is; no height means the ground. Nobody else draws
 // an observer, so only the observer is told.
 function moveObserverCamera(player, subject, parsed) {
@@ -12705,7 +12705,7 @@ function getBzflagWorld() {
         : bzfsCacheout(mapPath, `the compiler cannot reproduce ${[...new Set(tree.unsupported)].join(', ')}`);
     } else {
       // bzo's compass letters, which its browsers draw for themselves, at the
-      // height they draw them (`_addCompassMarker`, public/render.js).
+      // height they draw them (`_addCompassMarker`, public/js/render.js).
       const tallest = OBSTACLES.reduce((top, obstacle) => Math.max(top, obstacle.bounds?.maxZ ?? 0), 0);
       addCardinalLetters(tree, {
         mapSize: GAME_CONFIG.MAP_SIZE,
@@ -14467,7 +14467,7 @@ function updateFlags(now) {
 // Audio media remains on the WebRTC connection, not on this socket.
 //
 // The channel rides on every message. Which players a channel puts together is
-// server/voice-channels.cjs, mirrored to public/voice-channels.mjs, and the
+// server/voice-channels.cjs, mirrored to public/js/voice-channels.mjs, and the
 // server is the side that enforces it: withholding the roster and the signalling
 // is the only lever there is, because the media never passes through here.
 const VOICE_ROSTER_REFRESH_INTERVAL = 200;
@@ -18833,7 +18833,7 @@ function broadcastBotIntents(now) {
   }
 }
 
-import('./public/autopilot.mjs').then((module) => {
+import('./public/js/autopilot.mjs').then((module) => {
   AUTOPILOT_MODULE = module;
   botFillPilot = botFillPilot ?? module.DEFAULT_PILOT;
   if (botFill > 0) log(`[BOT] fill ${botFill} with ${botFillPilot}`);

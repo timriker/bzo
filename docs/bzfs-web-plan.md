@@ -115,7 +115,7 @@ The web client needs the textures and sounds the native client ships in
 
 ## The bzo client
 
-The browser speaks bzo's JSON today (`public/client.js`);
+The browser speaks bzo's JSON today (`public/js/client.js`);
 `server/bzflag-native.cjs` and `server/bzfs-session.cjs` translate to and
 from the BZFlag wire on the server. Talking to bzfs directly means moving
 those codecs into the client and speaking `Msg*` frames end to end, the same

@@ -172,7 +172,7 @@ Matrix calls and IRC have their own answers, but every one costs far more
 than everything above together.
 
 bzo's voice is peer to peer: each browser sends to the others over WebRTC
-(`public/voice.js`), All, Nearby and Team decide who hears whom, and the server
+(`public/js/voice.js`), All, Nearby and Team decide who hears whom, and the server
 only introduces the peers -- it never carries or hears audio. A bridge would
 have to be a participant on both sides at once: a voice peer in bzo, most
 simply a headless browser on the All channel, mixing every bzo speaker into one

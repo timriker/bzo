@@ -18,7 +18,7 @@ import {
   shotIsActive,
   getShotTankHit,
   getWorldWeaponDirection,
-} from '../public/shots.mjs';
+} from '../public/js/shots.mjs';
 
 const require = createRequire(import.meta.url);
 const serverLimits = require('../server/shots.cjs');

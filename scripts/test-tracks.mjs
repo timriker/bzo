@@ -21,8 +21,8 @@ import {
   setTrackFadeTime,
   getTrackMarkPlacement,
   getTrackMarkSides,
-} from '../public/tracks.mjs';
-import { TANK_HALF_LENGTH } from '../public/collision.mjs';
+} from '../public/js/tracks.mjs';
+import { TANK_HALF_LENGTH } from '../public/js/collision.mjs';
 
 const near = (actual, expected, message) => {
   assert.ok(Math.abs(actual - expected) < 1e-9, `${message}: ${actual} != ${expected}`);

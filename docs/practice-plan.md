@@ -18,13 +18,13 @@ server reachable, an installed client offers the same from the maps it holds.
 - **The tank.** The client predicts its own motion, shots and flag effects
   against the `collision`, `motion`, `shots` and `flags` pairs, and Map
   Viewer's phantom tank already drives with no game behind it (issue #68).
-- **The bots.** `public/autopilot.mjs` (Roger and Ace) and `public/nav.mjs`
+- **The bots.** `public/js/autopilot.mjs` (Roger and Ace) and `public/js/nav.mjs`
   (routes) are browser ESM already, and so is how a tank moves: the `drive`
-  pair (`public/drive.mjs`), which the browser's tank and `server/bots.cjs`'s
+  pair (`public/js/drive.mjs`), which the browser's tank and `server/bots.cjs`'s
   `BotDriver` both step, along with the move packet and the shot it builds.
   `BotDriver` is small and talks to its game only through messages a client
   would send.
-- **The seam.** `sendToServer` and `handleServerMessage` in `public/client.js`
+- **The seam.** `sendToServer` and `handleServerMessage` in `public/js/client.js`
   are the client's whole conversation with a game; a server bot already joins
   through `acceptConnection` on a socket that never leaves the process.
 

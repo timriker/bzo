@@ -49,8 +49,8 @@ Both are non-enumerable, so `JSON.stringify` leaves them out
 
 Built: an observer's right-click or tap picks the obstacle under it, in any
 view and the Overview most of all, and in the Free view `I` picks the one at
-the centre (`public/world-pick.mjs`). It is outlined and shown in a panel
-(`public/inspect-panel.mjs`): type, name, position, size, rotation, flags,
+the centre (`public/js/world-pick.mjs`). It is outlined and shown in a panel
+(`public/js/inspect-panel.mjs`): type, name, position, size, rotation, flags,
 textures, physics driver, the shape a mesh was made from (arc, cone...), the
 materials it names, and its block from the map file with the `group` blocks
 that placed it and the blocks of those materials, from `/api/world/<hash>/obstacles/<index>/source`
@@ -59,7 +59,7 @@ Values are BZFlag's own frame (#182), so nothing is converted; a group
 member's position is where its group placed it.
 
 Picking nothing, or the panel's World button, shows the world summary
-(`public/world-summary.mjs`): counts by type, mesh faces, batched
+(`public/js/world-summary.mjs`): counts by type, mesh faces, batched
 placements, links, zones, textures by use with any this browser failed to
 load, and the largest meshes, each a button that picks it; and from the map
 file, through `/api/world/<hash>/summary`, its texture names that resolved to

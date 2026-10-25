@@ -15,7 +15,7 @@ motion record. This file is bzo's half of that, plus the mapping between them.
 ## Transport
 
 One WebSocket per client, to the same host and port the page was served from
-(`public/client.js` picks `wss:` for an `https:` page): `listen`, which with a
+(`public/js/client.js` picks `wss:` for an `https:` page): `listen`, which with a
 `bzflag` block is also the BZFlag port, answering HTTP, HTTPS (HTTP/2 or
 HTTP/1.1; a WebSocket comes over HTTP/1.1) and BZFlag on TCP, and BZFlag,
 WebTransport and WebRTC on UDP ([port-mux-plan.md](port-mux-plan.md)). The
@@ -72,7 +72,7 @@ protocol version and one byte of player id before any message.
 
 JSON text, one object per frame, discriminated by a `type` string. No binary
 frames, no length prefix, no message codes. `sendToServer`
-(`public/client.js:5622`) and `broadcast`/`broadcastAll`/`sendToPlayer`
+(`public/js/client.js:5622`) and `broadcast`/`broadcastAll`/`sendToPlayer`
 (`server.js:10767`, `:10777`, `:12289`) are the only ways anything reaches the
 socket.
 
@@ -313,7 +313,7 @@ instead:
   base64 `arrays` (and `drawArrays` where a `drawInfo` block states a second
   geometry to draw) holding vertices, corner spans, planes, edge planes,
   per-face flags, and indices into small side tables of materials and
-  physics drivers. `public/mesh-arrays.mjs` decodes them and is the only way
+  physics drivers. `public/js/mesh-arrays.mjs` decodes them and is the only way
   in -- a face is an index, and collision, the renderer, the radar and the
   overview picture all read it that way. A parsed face object cost about
   2,134 bytes against the arrays' 93, and the server no longer builds the

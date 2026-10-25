@@ -19,7 +19,7 @@ Prefer upstream naming too -- see `docs/tank-model-format.md` for tank part name
 
 ### Capability, not cost
 
-`public/capabilities.mjs` reads what the machine can do from the
+`public/js/capabilities.mjs` reads what the machine can do from the
 renderer's own WebGL context, and answers only **can this run here**, never
 **is this fast enough here**. Where a capability is missing, disable the feature
 *and* the UI that offers it -- a row that promises what the context cannot draw
@@ -76,7 +76,7 @@ These are deliberate. Do not "fix" them without being asked.
   window while a menu is open and showing it again leaves the tank paused,
   because the menu still is. The pause countdown itself lives on the server,
   unlike upstream's, because the server is what decides whether a tank may be
-  hit -- so the client keeps a copy of it, and `public/pause.mjs` holds the
+  hit -- so the client keeps a copy of it, and `public/js/pause.mjs` holds the
   rules over both, which is what stops the two ways to pause drifting apart.
 
   **A pause belongs to the life it was taken in, and the asking outlives it.**
@@ -150,7 +150,7 @@ These are deliberate. Do not "fix" them without being asked.
   intentionally keeps bzo's own "roof" texture, at a box cap's tighter -2
   scale, matching what a box's own two caps wear instead. Deliberate, not a
   parity gap -- do not "fix" the base cap to match upstream's `pyrwall`
-  again; see `PYRAMID_ROOF_TEXTURE_SCALE` in `public/render.js`.
+  again; see `PYRAMID_ROOF_TEXTURE_SCALE` in `public/js/render.js`.
 - **Tanks are selectable OBJ models, not one compiled-in model.** BZFlag draws
   one tank, compiled in at three LODs from `src/geometry/models/tank/` and
   varied only by `animatedTreads` and `treadStyle`. It also ships
@@ -168,7 +168,7 @@ These are deliberate. Do not "fix" them without being asked.
   `createTank` with one is a console error. Do not add a procedural tank or
   substitute another model for one that failed -- the rule the audio has.
 
-- **The sky is upstream's** (#166). `public/daylight.mjs` is `daylight.cxx`
+- **The sky is upstream's** (#166). `public/js/daylight.mjs` is `daylight.cxx`
   ported line for line: the sun and moon from a Julian day, Greenwich sidereal
   time and the world's `_latitude`/`_longitude` (west positive), the light and
   ambient colours off the sun's height, the four sky colours and the sunset
@@ -181,7 +181,7 @@ These are deliberate. Do not "fix" them without being asked.
   The renderer draws it as `BackgroundRenderer` does, ahead of the world by
   render order and without depth: the colour pyramid around the eye
   (`drawSky`, its turn toward the sun included), then upstream's 400 stars
-  (`public/stars.mjs`, from `stars.cxx`) turned by `getCelestialTransform` and
+  (`public/js/stars.mjs`, from `stars.cxx`) turned by `getCelestialTransform` and
   shown while the sun is down, then the sun and the phased moon -- the flat
   strip `makeCelestialLists` builds, lit edge to the sun, added to the sky.
   The pyramid and the stars follow the eye at the far plane's reach. The sun
@@ -449,7 +449,7 @@ These are deliberate. Do not "fix" them without being asked.
   on the ground (`BoxSceneNodeGenerator.cxx:66`) and a pyramid's base unless it
   is raised or stood on its point (`PyramidSceneNodeGenerator.cxx:109`). Both are
   the same question with the answer worked out by hand. bzo asks it of the whole
-  world in `public/face-trim.mjs`: a triangle every point of which lies inside
+  world in `public/js/face-trim.mjs`: a triangle every point of which lies inside
   the solid part of other obstacles cannot be seen from any position outside
   them, so `_addObstacleFragment` never copies it into the world mesh.
 
@@ -512,7 +512,7 @@ may change once that stops being the dominant cost.
   server a map was imported from, or a mapper hand-writing a `.bzw` -- has
   no channel to tell bzo "trust this one too." A fixed allowlist here would
   only ever be bzo guessing on their behalf, so `isExternalTextureUrlLoadable`
-  in `public/texture.js` checks the URL is well-formed `http`/`https` and
+  in `public/js/texture.js` checks the URL is well-formed `http`/`https` and
   nothing else. Anyone who wants a picture blocked can already do that on
   their own end -- an ad blocker, a browser's own site permissions -- the
   same as any other third-party image on the web. See "Materials" in
@@ -538,8 +538,8 @@ may change once that stops being the dominant cost.
 - **Always remove trailing whitespace from edits.** No line ends with a space or
   tab.
 - **Module file names are short.** Drop any qualifier the directory or the
-  module's own role already supplies: `public/collision.mjs`, not
-  `collision-geometry.mjs`; `public/motion.mjs`, not `tank-motion.mjs`. Keep a
+  module's own role already supplies: `public/js/collision.mjs`, not
+  `collision-geometry.mjs`; `public/js/motion.mjs`, not `tank-motion.mjs`. Keep a
   qualifier only where the bare noun would be ambiguous in its directory, as
   `input-context.mjs` is. Names are kebab-case, matching the rest of `public/`.
 - **Do not put style information in `public/index.html`.** Presentation rules
@@ -588,13 +588,13 @@ can carry both.
 `docs/video-plan.md` is the plan for camera video beside voice (issue #188).
 
 `docs/bots-plan.md` is the plan for the autopilot and for bots (issue #151).
-`public/autopilot.mjs` reads the world only through a view, so the client's
+`public/js/autopilot.mjs` reads the world only through a view, so the client's
 autopilot and the server's own bots (`server/bots.cjs`) drive the same
 decisions -- keep it that way. The routers and the view's probes are
-`public/autopilot-world.mjs`, which a route worker loads without either
+`public/js/autopilot-world.mjs`, which a route worker loads without either
 pilot; `docs/refactor-plan.md` is how the rest is being split:
 
-- **Roger (`public/roger.mjs`) is upstream's `AutoPilot.cxx`**, decision
+- **Roger (`public/js/roger.mjs`) is upstream's `AutoPilot.cxx`**, decision
   for decision, quirks included; he is the reference. **Ace** extends him
   and is where improvements go, each overriding one Roger decision; he is
   built in layers -- driving (`ace-driver.mjs`), fighting
@@ -628,7 +628,7 @@ pilot; `docs/refactor-plan.md` is how the rest is being split:
 **One tank, one motion.** What a tank's controls do -- the flags' clamps and
 factors, Agility, Burrow, Wings, Bouncy, momentum, coasting, jumping, the
 collision pass, landing and falling, the measured speeds a move reports -- is
-the `drive` pair (`public/drive.mjs`, mirrored to `server/drive.cjs`), and
+the `drive` pair (`public/js/drive.mjs`, mirrored to `server/drive.cjs`), and
 every tank drives by it: the browser's (`handleInputEvents`/`handleMotion` in
 `client.js`), a server bot's (`BotDriver`), and a practice Worker's. So are the
 move packet's motion fields (`movePacketFields`), the velocity a shot inherits
@@ -661,23 +661,23 @@ reaches collision, hits, bots, the autopilot and the drawing at once.
 |---|---|
 | `server.js` | Express + WebSocket server, game loop, collision/shot validation, BZW parsing |
 | `server/*.cjs` | Server-side copies of logic shared with the client |
-| `public/client.js` | Scene setup, WebSocket handling, HUD orchestration, local prediction, XR menu screens |
-| `public/render.js` | `RenderManager` class: Three.js scene, tanks, obstacles, teleporters, explosions, camera |
-| `public/input.js` | All input ownership and routing; `setupInputHandlers`, `virtualInput`, `keys` |
-| `public/hud.js` | HUD drawing helpers (scoreboard, altimeter, degree bar, shot status, debug) |
-| `public/menus.js` | Shared dialog lifecycle, focus, and keyboard/controller navigation |
-| `public/settings.js` | Declarative Settings rows + DOM renderer |
-| `public/xr-menu.js` | `XRMenuRenderer`: CanvasTexture menu panel for immersive XR |
-| `public/webxr.js` | XR session lifecycle and controller input |
-| `public/capabilities.mjs` | What the WebGL context supports; gates features and their UI |
-| `public/voice.js` | WebRTC nearby-voice manager |
-| `public/udp-channel.mjs` | The UDP channel's browser end: WebTransport, else WebRTC |
-| `public/audio.js` | Gameplay sound manifest, attenuation, and buffer loading |
-| `public/volume.mjs` | The 0..10 audio level model shared by the Audio dialog, XR, renderer, and voice |
-| `public/voice-channels.mjs` | Which players hear each other: All, Nearby, Team |
-| `public/compose.mjs` | The chat entry's line recall and word completion |
+| `public/js/client.js` | Scene setup, WebSocket handling, HUD orchestration, local prediction, XR menu screens |
+| `public/js/render.js` | `RenderManager` class: Three.js scene, tanks, obstacles, teleporters, explosions, camera |
+| `public/js/input.js` | All input ownership and routing; `setupInputHandlers`, `virtualInput`, `keys` |
+| `public/js/hud.js` | HUD drawing helpers (scoreboard, altimeter, degree bar, shot status, debug) |
+| `public/js/menus.js` | Shared dialog lifecycle, focus, and keyboard/controller navigation |
+| `public/js/settings.js` | Declarative Settings rows + DOM renderer |
+| `public/js/xr-menu.js` | `XRMenuRenderer`: CanvasTexture menu panel for immersive XR |
+| `public/js/webxr.js` | XR session lifecycle and controller input |
+| `public/js/capabilities.mjs` | What the WebGL context supports; gates features and their UI |
+| `public/js/voice.js` | WebRTC nearby-voice manager |
+| `public/js/udp-channel.mjs` | The UDP channel's browser end: WebTransport, else WebRTC |
+| `public/js/audio.js` | Gameplay sound manifest, attenuation, and buffer loading |
+| `public/js/volume.mjs` | The 0..10 audio level model shared by the Audio dialog, XR, renderer, and voice |
+| `public/js/voice-channels.mjs` | Which players hear each other: All, Nearby, Team |
+| `public/js/compose.mjs` | The chat entry's line recall and word completion |
 | `public/package.json` | `{"type":"module"}` only, so Node can import `public/*.js` in tests |
-| `public/install.js` | Offers installing the game as an app, from the Settings menu |
+| `public/js/install.js` | Offers installing the game as an app, from the Settings menu |
 | `public/sw.js` | Service worker: install support and asset caching |
 | `public/icons/` | Installed-app icons; see `docs/icons.md` |
 | `public/*.mjs` | Client-side copies of logic shared with the server |
@@ -691,7 +691,7 @@ reaches collision, hits, bots, the autopilot and the drawing at once.
 One WebSocket per client, JSON objects discriminated by a `type` field and no
 binary frames, plus the UDP channel for what bzfs sends over UDP -- moves and
 shots, the same JSON -- over WebTransport or else WebRTC, on the BZFlag port
-(`public/udp-channel.mjs`, `server/webtransport.cjs`,
+(`public/js/udp-channel.mjs`, `server/webtransport.cjs`,
 `server/udp-channel.cjs`). `docs/network.md` documents it: every
 message in both directions, where the motion packet's fields come from, and
 the mapping to the 56 binary codes bzfs speaks (`include/Protocol.h:187-317`,
@@ -948,10 +948,10 @@ The consequences, each of which was once a bug:
 
 ### Known duplication (none; do not add any)
 
-`server.js` and `public/client.js` carry no copy of each other's world logic. A
-helper both ends need goes into a shared pair, and what is left on each side is
-only which world to look at, and the host's own logging, caching and
-tolerances: `getCollisionColliders` is `buildCollisionColliders` in the
+`server.js` and `public/js/client.js` carry no copy of each other's world
+logic. A helper both ends need goes into a shared pair, and what is left on
+each side is only which world to look at, and the host's own logging, caching
+and tolerances: `getCollisionColliders` is `buildCollisionColliders` in the
 `collision` pair over this host's obstacles, map size and walls, and
 `normalizeAngle` is the `motion` pair's.
 
@@ -1023,7 +1023,7 @@ that rides along with the shot for four seconds, not a flash at the portal.
 | tank track marks | `TrackMarks` | `TrackMarks.cxx:320` |
 
 Textures come from `$HOME/bzflag/data/` into `public/textures/`, and belong in
-the map-entry preload list in `public/client.js`. Effect timings are hardcoded
+the map-entry preload list in `public/js/client.js`. Effect timings are hardcoded
 constants upstream, so keep them as constants here, each annotated with the
 upstream line it came from.
 
@@ -1036,7 +1036,7 @@ anywhere in the upstream tree, its texture a FIXME and nothing ever asking for
 one. What is left is the treads, which is the effect the issue is about.
 
 The split follows upstream's. `Player::updateTrackMarks` decides where a tank's
-next mark goes and whether there is one to lay, and that is `public/tracks.mjs`
+next mark goes and whether there is one to lay, and that is `public/js/tracks.mjs`
 called from `client.js`, which is the side that knows a tank's flag, its ground
 state and the obstacle list. `TrackMarks.cxx` ages the marks and draws them, and
 that is `render.js`.
@@ -1129,7 +1129,7 @@ top-down panel reads better as a height map, so `getRadarObstacles` sorts by top
 altitude once per map.
 
 **The panel is the client's own biggest phase on a large map, so it drops what it
-can and batches the rest.** `public/radar-geometry.mjs` holds both parts.
+can and batches the rest.** `public/js/radar-geometry.mjs` holds both parts.
 Rejection is a circle around an obstacle's whole footprint, tested against the
 panel's square before anything is projected -- **never the obstacle's centre
 alone**: hix's walkways are long enough that their centres sit well off the
@@ -1406,7 +1406,7 @@ Forward), so Shift carries both: Shift+drive is upstream's Ctrl pitch and
 Shift+turn its Alt strafe, while upstream's Shift vertical rides `Tab`/`Space`.
 Pitch is upstream's: two thirds of zoom degrees a second, forward looks up,
 travel stays level, clamped short of vertical. Strafe is four times tank speed,
-left on a left turn (`public/roam.mjs`).
+left on a left turn (`public/js/roam.mjs`).
 
 **Identify picks the tank centred in the sights.** `setTarget()`
 (`playing.cxx:4390`), bound to `I` and Right Mouse -- see the Keyboard section.
@@ -1430,7 +1430,7 @@ facing the way a tank would, not at the origin, which is where upstream's
 `resetCamera()` puts it. Upstream gets away with the origin because its default
 view is `fps` and never `free`.
 
-The camera lives only on the client: `public/roam.mjs`, pure and covered by
+The camera lives only on the client: `public/js/roam.mjs`, pure and covered by
 `scripts/test-roam.mjs`. Each frame the tank mesh is moved to the eye point,
 which is upstream's `myTank->move(virtPos, roamViewAngle)`, because the radar,
 the heading tape and the position other clients place this observer at all read
@@ -1635,7 +1635,7 @@ would have to be hand-carried into the roam camera's target list, the radar's
 flag draw, and the join dialog's own team enum -- three places that would each
 need to remember it again the next time one of them changed.
 
-`PLAYER_TEAM.MAP_VIEWER` (`'mapviewer'`) exists only in `public/teams.mjs`, a
+`PLAYER_TEAM.MAP_VIEWER` (`'mapviewer'`) exists only in `public/js/teams.mjs`, a
 client-only sentinel: it drives the entry dialog's own selection cycle and
 map picker, round-trips through `normalizePlayerTeam` (`ALL_PLAYER_TEAMS`, not
 `PLAYER_TEAMS`, so the server never offers or accepts it as an askable team),
@@ -1677,7 +1677,7 @@ but `finalizeMeshGeometry` converts each mesh as its faces settle, and
 `attachMeshArrayPayloads` deletes `faces`, `vertices`, `normals`,
 `texcoords` and the four `draw*` pools once the arrays are encoded. So the
 JSON, the wire and `MAP_REGISTRY` all carry only `arrays` (plus
-`drawArrays` for a `drawInfo` mesh). `public/mesh-arrays.mjs` and
+`drawArrays` for a `drawInfo` mesh). `public/js/mesh-arrays.mjs` and
 `server/mesh-arrays.cjs` are the mirrored pair that build, encode and
 decode them, and a face is an index into them from there on -- collision,
 the renderer, the radar, the overview picture and the map summary all read
@@ -2141,7 +2141,7 @@ its `-ms` together, in one pass, so changing `shotMaxActive`, `_shotSpeed` or
 
 ### A shot slot is a clock on the weapon, not a live shell
 
-`findFreeShotSlot` in `public/shots.mjs` is the rule, and both ends keep their
+`findFreeShotSlot` in `public/js/shots.mjs` is the rule, and both ends keep their
 own copy of the same clock: `player.shotSlotFreeAt` on the server,
 `myShotSlotFreeAt` on the client. A slot is taken when it is fired and comes
 back when its own reload runs out.
@@ -2232,7 +2232,7 @@ deliberately wants a non-BZFlag fire rate -- in particular do not add it to
 
 ## Keyboard
 
-`GAMEPLAY_OWNED_KEYS` in `public/input.js` lists every key gameplay consumes,
+`GAMEPLAY_OWNED_KEYS` in `public/js/input.js` lists every key gameplay consumes,
 and the keydown listener calls `preventDefault` on the whole set once the
 guards have established that no dialog or text field wants the event. **Add a
 key there in the same change that binds it.** Several defaults break play
@@ -2269,7 +2269,7 @@ cost something.
 
 ### Sideways operates a row, up and down move between rows
 
-`handleDialogKeydown` in `public/menus.js` is the one focus model every dialog
+`handleDialogKeydown` in `public/js/menus.js` is the one focus model every dialog
 shares, and the split is the same one an XR thumbstick reads -- one habit works
 on every surface:
 
@@ -2339,7 +2339,7 @@ nothing to do here and the binding is purely `identify`.
 `_targetingAngle` 0.3, about 17.5 degrees, anything behind ignored -- and sets
 nemesis as a side effect (`setTarget`, `playing.cxx:4390`). It is one action with
 two meanings, not two bindings: the roam target picker in observer mode, and the
-guided-missile lock once those land. `pickTargetInSights` in `public/roam.mjs`
+guided-missile lock once those land. `pickTargetInSights` in `public/js/roam.mjs`
 holds the cone, so the missile path reuses it rather than growing a second copy.
 It also rides `virtualInput.identify`, which is where the touch button, the
 gamepad shoulders, the XR B button and a right click arrive. The mouse is not
@@ -2549,7 +2549,7 @@ are events, not something every frame pays.
 
 ### Reading a `renderer.stats` line
 
-`public/perf.js` splits each frame into phases and averages them over a second.
+`public/js/perf.js` splits each frame into phases and averages them over a second.
 The phases run in frame order -- `xr`, `hud`, `input`, `matrix`, `shadows`,
 `sim`, `radar`, `worldfx`, `draw` -- and `outside` is everything between one
 frame callback ending and the next starting: waiting for the GPU and the
@@ -3264,7 +3264,7 @@ compass half of it, so the command handler never sees which one was typed.
 
 ### Client-local commands -- `/silence`, `/unsilence`, `/highlight`, `/savemsgs`, `/cmds`
 
-`LOCAL_COMMANDS` (`public/client.js`) is the table upstream's own client claims
+`LOCAL_COMMANDS` (`public/js/client.js`) is the table upstream's own client claims
 a composed line against before anything is ever sent (`ComposeDefaultKey.cxx:98`).
 `tryLocalChatCommand` runs ahead of `sendChatInputText`'s own `sendToServer`, so
 a match never reaches the server at all -- these are the commands where asking
@@ -3293,7 +3293,7 @@ and step 4 of that plan -- this whole table -- is now done.
   which is not what anyone typing `/silence` would expect. `applySilenceToVoice`
   calls `voiceManager.setPeerMuted(id, muted)`, which forces one peer's
   `<audio>` element to `0` -- the same element `applyVoicePlaybackVolume`
-  (`public/voice.js`) already sets the shared playback level on, so a muted
+  (`public/js/voice.js`) already sets the shared playback level on, so a muted
   peer just reads `0` there instead of the level everyone else does. Muting
   reaches a peer whether or not its connection exists yet: the mute is a `Set`
   the manager already consults at connection time and on every volume change,
@@ -3333,7 +3333,7 @@ a download under the same name, out of a `Blob` and an `<a download>`. `-t`
 stamps each line as upstream's `formatTimestamp` mode 2 does. `-s` is accepted
 so the habit still works and does nothing: bzo carries a line's colours in its
 segments rather than in ANSI escapes inside the text, so what is written is
-already stripped. The formatting is in `public/chat-cache.mjs` beside the cache,
+already stripped. The formatting is in `public/js/chat-cache.mjs` beside the cache,
 since both turn the same entries into something outside the tab.
 
 #### `/cmds`
@@ -3346,7 +3346,7 @@ chat path, so the server's existing "never broadcast a `/` line" rule and
 `replyToPlayer`'s private reply are exactly what a player typing `/?` by hand
 would get.
 
-### Recall and completion in the chat entry -- `public/compose.mjs`
+### Recall and completion in the chat entry -- `public/js/compose.mjs`
 
 Upstream splits these two over `ComposeDefaultKey` (the history) and
 `AutoCompleter` (the completion); bzo keeps both in one client-side module,
@@ -3404,7 +3404,7 @@ never quoted; `@Some One` is prose.
 so fixing a word in the middle of a finished sentence does not eat the end of it.
 Upstream completes the whole compose string, having no caret to speak of.
 
-### The chat transcript across a reload -- `public/chat-cache.mjs`
+### The chat transcript across a reload -- `public/js/chat-cache.mjs`
 
 Upstream persists no chat at all: `ControlPanel`'s messages live and die with
 the process, and `/savemsgs` is the only way to keep a copy. That is enough
@@ -3718,7 +3718,7 @@ Upstream's clock (issue #66) and score limits (issue #67).
 
 ## Scoreboard columns
 
-One list in `public/hud.js` -- `SCOREBOARD_COLUMNS` -- decides what every
+One list in `public/js/hud.js` -- `SCOREBOARD_COLUMNS` -- decides what every
 surface draws and what each column is called. The flat board lays it out as
 flex tracks, the headset panel measures the same cells, and the header row is
 built from the same list, so a column cannot appear in one place under a name
@@ -3800,7 +3800,7 @@ standings.
 
 `docs/audio.md` is every sample, the name `playSound()` asks for it by, the
 BZFlag `SFX_*` code it answers, the event it plays for, and the four upstream
-ships that nothing triggers. The manifest in `public/audio.js` is the same
+ships that nothing triggers. The manifest in `public/js/audio.js` is the same
 mapping in code, with each sound's distance and volume; `render.js` plays
 everything through `playSound()` / `playLocalSound()` rather than bespoke
 per-sound methods.
@@ -3895,7 +3895,7 @@ variant nobody turns off.
   as counting for the user activation `requestSession` demands, but a Quest 2
   installed from the browser reports `navigator.userActivation` as
   `false/false` half a second into the launch and refuses the request.
-  `public/xr-launch.js` runs ahead of `client.js`, on a module graph small
+  `public/js/xr-launch.js` runs ahead of `client.js`, on a module graph small
   enough to execute before three finishes loading, asks immediately, and then
   again on window load, focus, page show, visibility change, and the Launch
   Handler; `startXRSession` adopts whichever session results. Read
@@ -4298,7 +4298,7 @@ no shot is fired. Import the live module instead:
 
 ```
 node scripts/headless-client.mjs --name probe --seconds 4 --eval '(async () => {
-  const input = await import("/input.js");
+  const input = await import("/js/input.js");
   input.setGameplayKeyState("KeyW", true);
   await new Promise(r => setTimeout(r, 4000));
   input.setGameplayKeyState("KeyW", false);
@@ -4448,7 +4448,7 @@ Raising `WG`'s flap count to test it is `/set _wingsJumpCount <n>`, or a
   statements and the client handlers, and update debug HUD counters if needed.
 - The controls list currently exists in several places: `docs/controls.md`,
   the help `<ul>` in `public/index.html`, `XR_HELP_ITEMS` in
-  `public/client.js`, and the regex pairs in `scripts/check-controls-docs.mjs`.
+  `public/js/client.js`, and the regex pairs in `scripts/check-controls-docs.mjs`.
   Only the first two are cross-checked. When changing a control, update all four.
   The doc and the in-game help stay two copies until a help system (#64) makes
   one of them data the other is built from.

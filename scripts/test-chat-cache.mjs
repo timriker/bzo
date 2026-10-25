@@ -20,7 +20,7 @@ import {
   packChatCache,
   transcriptFilename,
   unpackChatCache,
-} from '../public/chat-cache.mjs';
+} from '../public/js/chat-cache.mjs';
 
 // The tabs as client.js holds them: one entry object pushed into each tab it
 // belongs to, which is what makes identity the way to find its tabs.

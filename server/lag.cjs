@@ -30,7 +30,7 @@ const LOSS_DECAY = 0.99;
 // about a client's send cadence and bzo's is different. A bzflag client sends
 // continuously, so two seconds of silence means a pause; a bzo client that is
 // not being driven sends a heartbeat every `MAX_UPDATE_INTERVAL` (5 seconds,
-// `public/client.js`, or one where BZFlag clients play too), and gating at two would throw away every sample from
+// `public/js/client.js`, or one where BZFlag clients play too), and gating at two would throw away every sample from
 // every idle tank and freeze the average at whatever it last held. This is that
 // heartbeat with half as much again for the network, so an ordinary quiet tank
 // is measured and a genuinely interrupted stream is not.

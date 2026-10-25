@@ -13,7 +13,7 @@ dispatcher are in `server.js`. The commands are `/?`, `/help` and
 `/unmute`, `/mutelist`, `/playerlist`, `/flag` (`reset`, `up`, `show`, `take`,
 `give`, `drop [player]`), `/set`, `/reset`, `/mv`, `/setteam`, `/bot`,
 `/countdown` and `/gameover`, plus `/me`. The client-local table -- `/silence`, `/unsilence`,
-`/highlight`, `/savemsgs`, `/cmds` -- lives in `public/client.js` and never
+`/highlight`, `/savemsgs`, `/cmds` -- lives in `public/js/client.js` and never
 reaches the server. See "Server commands" in `AGENTS.md`.
 
 **`/mv` is bzo's own.** Upstream has no command that moves a tank -- not in bzfs,
@@ -172,7 +172,7 @@ Operator panel.
 |---|---|---|
 | `/?`, `/help` | open | `/?` lists the table; `/help` needs pages, and bzo's Help menu is where the text already lives |
 | `/uptime` | open | process start time |
-| `/serverquery` | open | bzo's version is `public/version.mjs` and rides `init` already |
+| `/serverquery` | open | bzo's version is `public/js/version.mjs` and rides `init` already |
 | `/msg <nick> text` | open | bzo already has private messages by `dst`; this is the same action typed |
 | `/me <action>` | `actionMessage` | **not a command**: upstream reformats it in the message path so it keeps its destination (`bzfs.cxx:1490`), and bzo does the same. The wire already carried `msgType: 'action'` and the client already rendered it, so this was an entry point and nothing more |
 | `/owner` | open | a `serverOwner` string in `server.json`, or drop it |

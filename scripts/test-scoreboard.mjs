@@ -37,8 +37,8 @@ import {
   setHudAlert,
   updateAlertHud,
   updateFiringStatusHud,
-} from '../public/hud.js';
-import { PLAYER_TEAM, getPlayerRanking } from '../public/teams.mjs';
+} from '../public/js/hud.js';
+import { PLAYER_TEAM, getPlayerRanking } from '../public/js/teams.mjs';
 
 const row = (over = {}) => ({
   id: 'x', wins: 0, losses: 0, rank: null, isObserver: false,

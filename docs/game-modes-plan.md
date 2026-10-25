@@ -223,7 +223,7 @@ trip that sizes it.
 ### Order
 
 1. Absolute scores on the kill message, and delete the unused
-   `getTeamScoreDeltasForCapture` export from `public/teams.mjs` -- a mirrored
+   `getTeamScoreDeltasForCapture` export from `public/js/teams.mjs` -- a mirrored
    copy of authoritative scoring logic that nothing calls.
 2. The bound window as `enforceable: false` (`docs/lag-plan.md` step 3),
    sized from the measured round trip.

@@ -32,8 +32,8 @@ import { readFileSync, writeFileSync, existsSync } from 'fs';
 import { resolve, dirname, join } from 'path';
 import { fileURLToPath } from 'url';
 import { homedir } from 'os';
-import { navLightPositions, navLightSpot } from '../public/tank-dimensions.mjs';
-import { CAMO_UNITS_PER_TILE } from '../public/tank-uv.mjs';
+import { navLightPositions, navLightSpot } from '../public/js/tank-dimensions.mjs';
+import { CAMO_UNITS_PER_TILE } from '../public/js/tank-uv.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const srcRoot = process.env.BZFLAG_SRC || join(homedir(), 'bzflag');

@@ -6,7 +6,7 @@
  * See LICENSE or https://www.gnu.org/licenses/agpl-3.0.html
  */
 
-// public/collision.mjs and server/collision.cjs are a
+// public/js/collision.mjs and server/collision.cjs are a
 // hand-maintained pair, so compare them directly. The client resolves moves and
 // the server rejects them, but both must agree about which volume is solid --
 // a disagreement is either an honest player wrongly rejected or a cheater
@@ -18,8 +18,8 @@
 
 import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
-import * as client from '../public/collision.mjs';
-import { resolveTankMotion } from '../public/motion.mjs';
+import * as client from '../public/js/collision.mjs';
+import { resolveTankMotion } from '../public/js/motion.mjs';
 
 const require = createRequire(import.meta.url);
 const server = require('../server/collision.cjs');

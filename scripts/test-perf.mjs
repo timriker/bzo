@@ -11,7 +11,7 @@
 // leaking, because a line full of `+0` is a line nobody reads.
 
 import assert from 'node:assert/strict';
-import { describeGrowth, getHeapUsedMB, noteGrowth } from '../public/perf.js';
+import { describeGrowth, getHeapUsedMB, noteGrowth } from '../public/js/perf.js';
 
 // The first sighting of a counter is the baseline, and a baseline is not growth.
 assert.equal(noteGrowth('a', 100), null, 'the first sample sets the baseline');

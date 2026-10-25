@@ -20,7 +20,7 @@ import {
   missingTankParts,
   readObjObjectNames,
   tankRunningGear,
-} from '../public/tank-parts.mjs';
+} from '../public/js/tank-parts.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const objDir = path.join(__dirname, '..', 'public', 'obj');
@@ -271,14 +271,14 @@ assert.deepEqual(
   ['barrel'],
 );
 
-// public/client.js keeps a hardcoded TANK_MODELS array as the tank it renders
+// public/js/client.js keeps a hardcoded TANK_MODELS array as the tank it renders
 // before /api/tank-models answers (and if that call ever fails), falling back
 // to server.js's live directory scan once it does. Nothing else keeps that
 // array in sync with public/obj, so a renamed or removed file here would
 // silently break the very first frame until the async fetch corrects it.
-const clientSource = readFileSync(path.join(__dirname, '..', 'public', 'client.js'), 'utf8');
+const clientSource = readFileSync(path.join(__dirname, '..', 'public', 'js', 'client.js'), 'utf8');
 const arrayLiteral = clientSource.match(/let TANK_MODELS = (\[[\s\S]*?\]);/)?.[1];
-assert.ok(arrayLiteral, 'public/client.js should declare a TANK_MODELS fallback array');
+assert.ok(arrayLiteral, 'public/js/client.js should declare a TANK_MODELS fallback array');
 const fallbackModels = new Function(`return ${arrayLiteral}`)();
 
 const offeredLower = new Set(offered.map((name) => name.toLowerCase()));

@@ -4,7 +4,7 @@ import {
   MAX_BUMP_HEIGHT,
   TINY_DISTANCE,
   resolveTankMotion,
-} from '../public/motion.mjs';
+} from '../public/js/motion.mjs';
 import {
   TANK_HALF_LENGTH,
   TANK_HALF_WIDTH,
@@ -13,7 +13,7 @@ import {
   getOrigRectNormal,
   getTankLocalAngle,
   testOrigRectTank,
-} from '../public/collision.mjs';
+} from '../public/js/collision.mjs';
 
 // In upstream's frame throughout: +X east, +Y north, +Z up, a heading an
 // azimuth counter-clockwise from +X, and an obstacle by `pos` (its base

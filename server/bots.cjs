@@ -6,7 +6,7 @@
  */
 
 // Bots this server runs itself (docs/bots-plan.md, step 2): upstream's
-// `bz_ServerSidePlayerHandler` with one of `public/autopilot.mjs`'s pilots as
+// `bz_ServerSidePlayerHandler` with one of `public/js/autopilot.mjs`'s pilots as
 // its brain. A bot is a client in every way the server can see -- it joins,
 // moves and shoots through the same messages a browser sends, on a socket that
 // never leaves the process -- so validation, broadcast, scoring and the list
@@ -58,7 +58,7 @@ const VELOCITY_THRESHOLD = 0.01;
 
 const round = (value, places) => Number(value.toFixed(places));
 
-// One bot's tank. It drives by the shared `drive` step (public/drive.mjs), the
+// One bot's tank. It drives by the shared `drive` step (public/js/drive.mjs), the
 // one a browser's tank drives by, so a bot carrying Burrow goes underground and
 // one carrying Agility gets the burst exactly as a person's tank does; what is
 // here is only what a client does around that step -- ask its pilot, say where

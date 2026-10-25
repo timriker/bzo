@@ -1582,7 +1582,7 @@ function parseBzwColor(words) {
   // meant to be invisible -- `diffuse 0 0 0 0`, a common "solid for
   // collision/radar, drawn as nothing" trick -- actually renders as nothing
   // in bzo too, instead of the fully opaque black RGB-only would otherwise
-  // produce (see `_buildMeshObject` in public/render.js, the one reader of
+  // produce (see `_buildMeshObject` in public/js/render.js, the one reader of
   // this fourth value).
   return [r, g, b, a === undefined ? 1 : a].map((value) => Math.max(0, Math.min(1, value)));
 }
@@ -1592,11 +1592,11 @@ function parseBzwColor(words) {
 // the wild (docs/bzw-plan.md's "Evidence from real maps"), because there is
 // no way to predict which one a map maker reaches for. bzo runtime-colours a
 // tank/shot's own grey base per team rather than shipping one file per
-// colour (`loadTintedTexture`/`getBaseTeamTint`, public/texture.js) -- but a
+// colour (`loadTintedTexture`/`getBaseTeamTint`, public/js/texture.js) -- but a
 // material block names a *file*, not a game concept, so a map that puts
 // "the blue shot" on a wall as decoration needs `blue_bolt` to be a real
 // picture regardless of how bzo's own shot rendering gets its colour.
-// Kept in sync with `STOCK_MATERIAL_TEXTURE_FILES` in `public/texture.js`,
+// Kept in sync with `STOCK_MATERIAL_TEXTURE_FILES` in `public/js/texture.js`,
 // which is the other half of this: this set decides what a map is *allowed*
 // to name, that one decides what picture the name actually draws.
 //
@@ -1635,7 +1635,7 @@ function resolveBzwStockTexture(rawName) {
 // `http://images.bzflag.org/astevens/pine.png`). This is a syntax check
 // only -- the server never fetches it, upstream's `ftp` is dropped since no
 // browser still fetches it for an image, and whether the picture actually
-// *loads* is `isExternalTextureUrlLoadable` in `public/texture.js`, a
+// *loads* is `isExternalTextureUrlLoadable` in `public/js/texture.js`, a
 // separate decision made in the browser rather than here (every host is
 // attempted; see that file for why), so bzo's own server is never the one
 // making an outbound request on a mapper's say-so.
@@ -1647,7 +1647,7 @@ function parseBzwTextureUrl(rawName) {
   // confirm the rest still parses as a real URL, and forwards the original
   // protocol-relative string rather than the resolved one. Each connected
   // client re-resolves it against its own `window.location.href`
-  // (`isExternalTextureUrlLoadable`, public/texture.js), which is what lets
+  // (`isExternalTextureUrlLoadable`, public/js/texture.js), which is what lets
   // the same map serve `http://` on a plain local server and `https://` on
   // one that terminates TLS, from the one line a mapper wrote.
   if (rawName.startsWith('//')) {
@@ -1670,7 +1670,7 @@ function parseBzwTextureUrl(rawName) {
     // notably), so this strips the scheme down to protocol-relative before
     // forwarding -- exactly the form a mapper-written `//host/path` line
     // already takes above, and each client already re-resolves against its
-    // own page's protocol (`isExternalTextureUrlLoadable`, public/texture.js).
+    // own page's protocol (`isExternalTextureUrlLoadable`, public/js/texture.js).
     return rawName.replace(/^https?:/i, '');
   } catch {
     return null;
@@ -1940,7 +1940,7 @@ function parseBZWMap(filename, { quiet = false, extraMessages = [], text: givenT
   // client as-is (see `resolveBzwTextureName`) rather than resolved here:
   // the server never fetches one, and whether it actually loads is each
   // client's own decision (`isExternalTextureUrlLoadable` in
-  // `public/texture.js` -- every host is attempted, so this is a CORS/
+  // `public/js/texture.js` -- every host is attempted, so this is a CORS/
   // load-failure outcome, not a host it refused to try). Named on load so
   // it is visible that a map asked for one at all.
   const externalTextureUrls = new Set();
@@ -2891,7 +2891,7 @@ function parseBZWMap(filename, { quiet = false, extraMessages = [], text: givenT
       if (token === 'red' || token === 'green' || token === 'blue' || token === 'alpha') {
         // `DynamicColor::read` -- each channel line names its own sub-type
         // (`limits`, `sinusoid`, `clampup`/`clampdown`, `sequence`), any
-        // number of times each; `update` (`public/render.js`) combines
+        // number of times each; `update` (`public/js/render.js`) combines
         // every one of them each frame rather than the last stated winning.
         const [, sub, ...nums] = line.split(/\s+/);
         const values = nums.map(Number);
@@ -5284,7 +5284,7 @@ function parseBZWMap(filename, { quiet = false, extraMessages = [], text: givenT
     // Counted by host, not listed one URL at a time -- a real map can name a
     // few dozen of these (every one of `import-xs.bzexcess.com_5155.bzw`'s
     // own materials does), and every client already attempts every host
-    // regardless (`isExternalTextureUrlLoadable`, public/texture.js) -- what
+    // regardless (`isExternalTextureUrlLoadable`, public/js/texture.js) -- what
     // is worth a player's attention on join is which hosts this map trusted,
     // not each individual picture.
     const hostCounts = new Map();
@@ -5328,7 +5328,7 @@ function parseBZWMap(filename, { quiet = false, extraMessages = [], text: givenT
   // rectangle needs on each axis to contain every corner at any rotation,
   // exact rather than a looser circle. A mesh already has a real one from
   // its own vertices and is left alone. This is what lets the shared
-  // `findTankObstacle` loop (`server/collision.cjs`/`public/collision.mjs`)
+  // `findTankObstacle` loop (`server/collision.cjs`/`public/js/collision.mjs`)
   // reject an obstacle that is entirely out of range on any one axis --
   // above, below, or to any one side -- the same one-line way regardless of
   // which of these shapes it actually is.

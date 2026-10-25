@@ -68,7 +68,7 @@ function resolveSharedTexture(entry) {
 // Returns the image's lowest alpha, 0-1, so 1 means fully opaque. A texture
 // that is only nearly opaque (ratsnest's `BarrierUV.png`, a one-pixel border
 // at 225-254) blends here as upstream's does, but draws in the opaque pass
-// (`applyTextureAlpha`, public/render.js).
+// (`applyTextureAlpha`, public/js/render.js).
 function detectImageAlpha(image) {
   try {
     const canvas = document.createElement('canvas');

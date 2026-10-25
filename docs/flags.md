@@ -12,7 +12,7 @@ cannot drift out of step with the behaviour.
 
 ## Where it lives
 
-- **`public/flags.mjs` + `server/flags.cjs`** are a mirrored pair, byte-identical
+- **`public/js/flags.mjs` + `server/flags.cjs`** are a mirrored pair, byte-identical
   in behaviour and checked by `npm run check:shared-pairs`. They hold the flag
   table, the enums, the world constants and every pure rule: what a flag does to
   a shot, to a tank's speed and size, to what its carrier can see, and to who can
@@ -20,13 +20,13 @@ cannot drift out of step with the behaviour.
   the client and another by the server.
 - **`scripts/test-flags.mjs`** covers the pair against upstream's own numbers,
   and asserts both copies agree.
-- **`public/collision.mjs` + `server/collision.cjs`** hold the obstacle geometry
+- **`public/js/collision.mjs` + `server/collision.cjs`** hold the obstacle geometry
   the phasing flags need, in the same mirrored arrangement.
 - **`server.js`** owns everything stateful: the flag array, the pool, spawning,
   landing-spot search, grab and drop validation, and every hit and kill.
-- **`public/client.js`** animates. It integrates a flight, draws the effects, and
-  refuses locally anything the server would refuse, so an unmodified client never
-  sends a packet the server has to argue with.
+- **`public/js/client.js`** animates. It integrates a flight, draws the
+  effects, and refuses locally anything the server would refuse, so an
+  unmodified client never sends a packet the server has to argue with.
 
 **Flag ownership lives only in the server's `flags` array.** There is no second
 copy on the player. A client's *knowledge* of a flag's identity lives in its own

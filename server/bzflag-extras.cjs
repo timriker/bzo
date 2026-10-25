@@ -13,7 +13,7 @@
 
 'use strict';
 
-// bzo's compass letters (`_addCompassMarker`, public/render.js): N red, S
+// bzo's compass letters (`_addCompassMarker`, public/js/render.js): N red, S
 // blue, E green, W purple, white edged, over the middle of each wall at
 // `max(wall + 8, tallest + 5)`.
 const LETTERS = [

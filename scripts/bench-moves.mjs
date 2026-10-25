@@ -14,12 +14,12 @@
 //
 // Each tank joins as a browser does and spins on the spot at --rate moves a
 // second, the turn the server allows, with its sequence number in its
-// azimuth. --channel opens the channel through public/udp-channel.mjs, the
+// azimuth. --channel opens the channel through public/js/udp-channel.mjs, the
 // browser's own code, on werift's RTCPeerConnection. Server bots
 // shoot, so a quiet server measures cleaner.
 import WebSocket from 'ws';
 import werift from 'werift';
-import { createUdpChannel } from '../public/udp-channel.mjs';
+import { createUdpChannel } from '../public/js/udp-channel.mjs';
 
 const args = Object.fromEntries(process.argv.slice(2).reduce((pairs, arg, i, all) => {
   if (arg.startsWith('--')) pairs.push([arg.slice(2), all[i + 1]?.startsWith('--') || all[i + 1] === undefined ? 'true' : all[i + 1]]);

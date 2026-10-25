@@ -6,15 +6,15 @@
  * See LICENSE or https://www.gnu.org/licenses/agpl-3.0.html
  */
 
-// The world viewer's pick (public/world-pick.mjs): the first obstacle a ray
+// The world viewer's pick (public/js/world-pick.mjs): the first obstacle a ray
 // meets, by its real shape -- a box turned as it is, a pyramid's slopes, a
 // mesh's faces -- and drive-through ones too; and its summary of a world
-// (public/world-summary.mjs).
+// (public/js/world-summary.mjs).
 
 import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
-import { pickObstacle } from '../public/world-pick.mjs';
-import { summarizeWorld, obstacleTextures } from '../public/world-summary.mjs';
+import { pickObstacle } from '../public/js/world-pick.mjs';
+import { summarizeWorld, obstacleTextures } from '../public/js/world-summary.mjs';
 
 const require = createRequire(import.meta.url);
 const { parseBZWMap } = require('../server/bzw-parse.cjs');

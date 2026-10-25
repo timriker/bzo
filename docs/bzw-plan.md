@@ -198,7 +198,7 @@ set almost the whole of what a real map's `material` block asks for, with an
 absolute URL -- the one thing left outside that asset set -- read too, but
 never fetched by bzo's own server: see "Materials" in `docs/bzw.md` for the
 client-side loadability check (`isExternalTextureUrlLoadable` in
-`public/texture.js` -- every host is attempted now, a deliberate deviation
+`public/js/texture.js` -- every host is attempted now, a deliberate deviation
 from upstream's own allowlist) and its own CORS check, which
 `images.bzflag.org` passes. Geometry-wise, two of the four
 sampled maps were pure box/pyramid plus `group`, zero mesh; the other two

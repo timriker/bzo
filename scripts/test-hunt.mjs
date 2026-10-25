@@ -11,7 +11,7 @@
 // what these hold: which sound each step owes, and what is marked afterwards.
 
 import assert from 'node:assert/strict';
-import { HUNT_STATE, HuntState } from '../public/hunt.mjs';
+import { HUNT_STATE, HuntState } from '../public/js/hunt.mjs';
 
 const CANDIDATES = ['a', 'b', 'c'];
 const marked = (hunt) => [...hunt.hunted].sort();

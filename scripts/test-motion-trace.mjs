@@ -19,8 +19,8 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import { createRequire } from 'node:module';
-import { createDriveState, readDriveInput, stepDrive } from '../public/drive.mjs';
-import { buildCollisionColliders, traceShotStep, SHOT_COLLISION_RADIUS } from '../public/collision.mjs';
+import { createDriveState, readDriveInput, stepDrive } from '../public/js/drive.mjs';
+import { buildCollisionColliders, traceShotStep, SHOT_COLLISION_RADIUS } from '../public/js/collision.mjs';
 
 const require = createRequire(import.meta.url);
 const { parseBZWMap } = require('../server/bzw-parse.cjs');

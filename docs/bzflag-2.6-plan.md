@@ -90,7 +90,7 @@ port serve both; before it, 2.6 needs its own port anyway.
 bzo's browser client and server ship together and never version-negotiate
 (`docs/network.md`, "lockstep"). The server serves the client, and a build hash
 in `init` reloads every browser on its next connect after a change
-(`checkClientBuild`, `public/client.js`). A protocol change lands on both ends
+(`checkClientBuild`, `public/js/client.js`). A protocol change lands on both ends
 in one commit and every player is on it within a restart.
 
 So bzo can try a 2.6 idea, such as server-assigned shot ids, flag
@@ -109,7 +109,7 @@ review doc.
 | Server bots that play (Roger and Ace) through the same move and shot checks as a browser | `server/bots.cjs`, `docs/bots-plan.md` | Seen as `[auto]` players | Server-side players (blast: loading R2 crashes the server) |
 | Team change without a rejoin: between playing teams at the next spawn, to observer killing a live tank | `server.js` (`setTeam`, `changePlayerTeam`) | No | MsgSetTeam |
 | Automatic team pick by size, then score | `server/teams.cjs` | Yes | Automatic team assignment |
-| OBJ tank models, chosen per player; upstream's team textures and 2.5 skins, each player's shade moved from the team colour | `docs/tank-model-format.md`, `public/camo.mjs`, `public/tank-skins.mjs` | No | OBJ loading, skins |
+| OBJ tank models, chosen per player; upstream's team textures and 2.5 skins, each player's shade moved from the team colour | `docs/tank-model-format.md`, `public/js/camo.mjs`, `public/js/tank-skins.mjs` | No | OBJ loading, skins |
 | Worlds served by content hash, compressed, cached forever; native clients get it through MsgCacheURL | `docs/network.md`, `docs/bzflag-clients.md` | Yes | Faster map transfer (2.6 drops the cache URL instead) |
 
 bzo-only, with no 2.6 counterpart: WebXR, touch, installable app, voice chat,

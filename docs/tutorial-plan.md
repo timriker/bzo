@@ -30,7 +30,7 @@ equally. Independent of everything below, and worth doing on its own.
 
 The world is already in the browser. `init` carries a `worldRef` of
 `{url, hash}` and the client fetches the world itself (`loadWorldFile` in
-`public/client.js`), from `/maps/<12 hex>.json` -- express serves that URL space
+`public/js/client.js`), from `/maps/<12 hex>.json` -- express serves that URL space
 out of `cache/maps/`, where a file is named for its own content hash and
 answered `immutable`. `public/sw.js` serves `/maps/` cache-first for exactly
 that reason, so a map the player has seen is on disk and needs no request.
@@ -61,7 +61,7 @@ answer.
 
 Static targets and local shot-vs-body hit tests, plus whatever scripting states
 a lesson's goal and notices it being met. The geometry is already client-side:
-`public/collision.mjs` is half of the `collision` pair and is what resolves
+`public/js/collision.mjs` is half of the `collision` pair and is what resolves
 every move today. What is new is a small loop that decides "that hit", against
 targets that belong to nobody.
 

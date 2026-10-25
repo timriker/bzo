@@ -181,7 +181,7 @@ own. Browsers rejoin by themselves; a BZFlag client does not.
   build and the browser, a bot's as bzo's build and its pilot.
 - **Player scores.** bzo's browsers tally scores themselves from `killed`
   with the server's own rule (`server/scoring.cjs`, mirrored to
-  `public/scoring.mjs`). A BZFlag client tallies nothing, so the translator
+  `public/js/scoring.mjs`). A BZFlag client tallies nothing, so the translator
   sends it bzfs's `MsgScore` for killer and victim after every kill, from
   the server's tally, and everybody's zeros when a match starts.
 - **Team scores and the match's end.** `MsgTeamUpdate` on arrival and on

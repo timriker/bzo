@@ -11,8 +11,8 @@
 
 import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
-import { buildCollisionColliders, getObstacleBase } from '../public/collision.mjs';
-import { createDriveState, readDriveInput, stepDrive } from '../public/drive.mjs';
+import { buildCollisionColliders, getObstacleBase } from '../public/js/collision.mjs';
+import { createDriveState, readDriveInput, stepDrive } from '../public/js/drive.mjs';
 
 const CONFIG = {
   TANK_SPEED: 25,

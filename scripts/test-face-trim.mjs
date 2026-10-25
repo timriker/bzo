@@ -11,8 +11,8 @@ import {
   getObstacleBounds,
   getObstacleHalfSpaces,
   hidesGeometry,
-} from '../public/face-trim.mjs';
-import { getColliderLocalPoint, getPyramidSurfaceLocalHeight } from '../public/collision.mjs';
+} from '../public/js/face-trim.mjs';
+import { getColliderLocalPoint, getPyramidSurfaceLocalHeight } from '../public/js/collision.mjs';
 
 // Obstacles in upstream's frame, as the importer leaves them: `pos`, `size` as
 // half extents and height, and `angle`. The full extents ride along for the

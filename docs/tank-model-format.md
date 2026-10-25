@@ -163,7 +163,7 @@ pipeline include:
 ## Renderer Behavior
 
 - `body` and `turret` use the team's BZFlag body texture in the player's
-  shade: the standard camo or one of 2.5's skins (`public/tank-skins.mjs`), so
+  shade: the standard camo or one of 2.5's skins (`public/js/tank-skins.mjs`), so
   a model's UVs should suit a repeating pattern
 - `barrel` is flat dark, and carries no texture at all
 - tread belt surfaces use the animated tread texture
@@ -234,7 +234,7 @@ a broken model as working and leaves the fault to be found in play.
 A model that does not name `body`, `turret` and `barrel`, or that names no
 running gear on both sides, is therefore **not offered**: the server checks each
 file in `public/obj/` as it lists the models and logs the roles the file is
-missing instead of listing it. `public/tank-parts.mjs` and its
+missing instead of listing it. `public/js/tank-parts.mjs` and its
 `server/tank-parts.cjs` mirror hold the check both ends read, and
 `npm run test:tank-models` holds every shipped model to it.
 

@@ -29,12 +29,12 @@
 
 import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
-import { meshArrays } from '../public/mesh-arrays.mjs';
+import { meshArrays } from '../public/js/mesh-arrays.mjs';
 
 const require = createRequire(import.meta.url);
 const C = require('../server/collision.cjs');
 const { resolveTankMotion } = require('../server/motion.cjs');
-const clientCollision = await import('../public/collision.mjs');
+const clientCollision = await import('../public/js/collision.mjs');
 
 const TANK_HEIGHT = 2;
 const STEP = 1 / 60;

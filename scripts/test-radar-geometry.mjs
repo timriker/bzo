@@ -21,8 +21,8 @@ import {
   getRadarObstacleCullRadius,
   getRadarPolygonScratch,
   isOutsideRadarSquare,
-} from '../public/radar-geometry.mjs';
-import { meshArrays } from '../public/mesh-arrays.mjs';
+} from '../public/js/radar-geometry.mjs';
+import { meshArrays } from '../public/js/mesh-arrays.mjs';
 
 // Deterministic PRNG so a failure is reproducible from the printed seed.
 function makeRandom(seed) {

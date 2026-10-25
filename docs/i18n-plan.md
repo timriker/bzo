@@ -34,7 +34,7 @@ from the same gettext catalogs BZFlag already ships.
   a first-run player should not have to find a menu.
 - Flag names and descriptions are localized. Upstream's catalogs already carry
   them ("Rapid Fire" is translated in every locale), and in bzo they are client
-  data in `public/flags.mjs` rather than strings from the server.
+  data in `public/js/flags.mjs` rather than strings from the server.
 
 ## Locale Negotiation
 

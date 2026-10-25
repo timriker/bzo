@@ -22,7 +22,7 @@ import {
   getRoamViewAngle,
   ROAM_PITCH_LIMIT,
   updateRoamCamera,
-} from '../public/roam.mjs';
+} from '../public/js/roam.mjs';
 
 const TANK_SPEED = 25;
 const FLOOR_Z = 1.57;

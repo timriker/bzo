@@ -12,7 +12,7 @@
 
 import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
-import * as client from '../public/voice-channels.mjs';
+import * as client from '../public/js/voice-channels.mjs';
 
 const require = createRequire(import.meta.url);
 const server = require('../server/voice-channels.cjs');

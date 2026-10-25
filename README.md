@@ -145,10 +145,10 @@ That updates:
 
 - `package.json`
 - `package-lock.json`
-- `public/version.mjs`
+- `public/js/version.mjs`
 - `CHANGELOG.md`
 
-All four go in the release commit. `public/version.mjs` is the one easy to
+All four go in the release commit. `public/js/version.mjs` is the one easy to
 leave behind, and a tag without it ships a client reporting the version before
 it.
 
@@ -165,7 +165,7 @@ npm run release:check:increment -- v1.0.1
 Then commit, tag, and push:
 
 ```bash
-git add package.json package-lock.json public/version.mjs CHANGELOG.md
+git add package.json package-lock.json public/js/version.mjs CHANGELOG.md
 git commit -m "Release v1.0.1 - short description. Closes #1"
 git tag v1.0.1
 git push
@@ -196,7 +196,7 @@ do not delete or move a published tag, and do not backfill a GitHub release for
 one that never built. [CHANGELOG.md](CHANGELOG.md) is the record either way, and
 it already carries the section for the version that failed.
 
-`public/version.mjs` is written by `scripts/prepare-release.mjs` and verified
+`public/js/version.mjs` is written by `scripts/prepare-release.mjs` and verified
 against the tag by `scripts/check-release.mjs`. Do not edit it by hand, and do
 not reintroduce a hardcoded client version string elsewhere.
 

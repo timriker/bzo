@@ -5,19 +5,19 @@
  * See LICENSE or https://www.gnu.org/licenses/agpl-3.0.html
  */
 
-// The autopilots' decisions (`public/autopilot.mjs`) against a hand-built view: an open
+// The autopilots' decisions (`public/js/autopilot.mjs`) against a hand-built view: an open
 // flat world unless a case puts something in it. In upstream's frame: north is
 // +y, up is z, the tank faces north (azimuth pi/2) unless a case turns it, and
 // a positive rotation turns left.
 
 import assert from 'node:assert/strict';
-import { Ace, Roger } from '../public/autopilot.mjs';
+import { Ace, Roger } from '../public/js/autopilot.mjs';
 import {
   ROUTE_PENDING, createAsyncRouter, createRouter, createWorldProbes, findVantagePoints,
-} from '../public/autopilot-world.mjs';
-import { findShotSegmentImpact } from '../public/collision.mjs';
-import { buildNavGraph } from '../public/nav.mjs';
-import { buildTeleporterIndex } from '../public/teleport.mjs';
+} from '../public/js/autopilot-world.mjs';
+import { findShotSegmentImpact } from '../public/js/collision.mjs';
+import { buildNavGraph } from '../public/js/nav.mjs';
+import { buildTeleporterIndex } from '../public/js/teleport.mjs';
 
 function makeView(overrides = {}) {
   const view = {

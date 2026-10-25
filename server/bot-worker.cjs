@@ -280,7 +280,7 @@ parentPort.on('message', (message) => {
   else waiting.push(message);
 });
 
-Promise.all([import('../public/autopilot.mjs'), import('../public/autopilot-world.mjs')]).then(([pilots, worldModule]) => {
+Promise.all([import('../public/js/autopilot.mjs'), import('../public/js/autopilot-world.mjs')]).then(([pilots, worldModule]) => {
   autopilot = pilots;
   pilotWorld = worldModule;
   for (const message of waiting.splice(0)) handle(message);

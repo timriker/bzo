@@ -5,12 +5,12 @@
  * See LICENSE or https://www.gnu.org/licenses/agpl-3.0.html
  */
 
-// The route graph (`public/nav.mjs`) on small built worlds: what it walks,
+// The route graph (`public/js/nav.mjs`) on small built worlds: what it walks,
 // what it jumps, and what it leaves alone.
 
 import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
-import { buildNavGraph } from '../public/nav.mjs';
+import { buildNavGraph } from '../public/js/nav.mjs';
 
 const JUMP = { velocity: 19, gravity: 9.8, tankSpeed: 25 };
 // A box `w` across in x and `d` in y, standing `h` tall on `base`.

@@ -43,7 +43,7 @@ Lessons want a few knobs the pilot doesn't have yet:
 
 Roger stays upstream's; these go into Ace. In order of payoff:
 
-1. **Path finding (started).** `public/nav.mjs`: a grid of 4-unit columns, a
+1. **Path finding (started).** `public/js/nav.mjs`: a grid of 4-unit columns, a
    node for each surface a tank fits on in each, and the only moves that change
    a tank's level -- a step no taller than `_maxBumpHeight`, a drop, and a jump
    -- plus a bridge straight over a gap one column wide, which a tank longer
@@ -57,7 +57,7 @@ Roger stays upstream's; these go into Ace. In order of payoff:
    How fast he drives one is measured, not guessed: `npm run bench:pilot`
    (`scripts/bench-pilot.mjs`) runs every base-to-base pair of a map with
    the server bot's physics and Ace's driving strategies side by side --
-   `ACE_TUNING` in `public/autopilot.mjs` holds the choices. On hix the
+   `ACE_TUNING` in `public/js/autopilot.mjs` holds the choices. On hix the
    defaults arrive 12 of 12, in 27 to 32 seconds: the straight line a
    person drives -- jump down onto the box in front of the base, drive off
    it, jump onto the box in front of the other base, and up again.

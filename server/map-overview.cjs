@@ -74,7 +74,7 @@ const DATUM_AREA_PERCENTILE = 0.1;
 const CEILING_UNITS = 48;
 const ROOF_AREA_SHARE = 0.25;
 
-// `RADAR_NEUTRAL_FILL_RGB` and `RADAR_TINT_STRENGTH` (public/client.js): a
+// `RADAR_NEUTRAL_FILL_RGB` and `RADAR_TINT_STRENGTH` (public/js/client.js): a
 // surface on the panel keeps reading as ground rather than as a tank because
 // whatever colour it has is shaded most of the way to a neutral grey. Same
 // here, for the same reason and out of the same numbers.

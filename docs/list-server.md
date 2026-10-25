@@ -440,7 +440,7 @@ moving as a pane grows or shrinks. A bzfs row offers **View map** and
 in-client View list makes (`canWatchRemoteServers`), because watching sends
 that server a callsign bzo has verified (`docs/proxy.md`).
 
-Sorting, selection and the filter parser are `public/list-page.js`, served as
+Sorting, selection and the filter parser are `public/js/list-page.js`, served as
 a file rather than inlined in the page: the parser is long enough that
 escaping it into `server.js`'s template literal would be the hardest part of
 reading it. What each row is judged by rides in a JSON block beside the list,

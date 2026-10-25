@@ -6,7 +6,7 @@
  */
 
 import assert from 'node:assert/strict';
-import { DestructCountdown, PauseState } from '../public/pause.mjs';
+import { DestructCountdown, PauseState } from '../public/js/pause.mjs';
 
 // The server's countdown, arriving as the client sees it: the toggle goes out,
 // `pauseCountdown` comes back, and five seconds later `playerPaused` does.

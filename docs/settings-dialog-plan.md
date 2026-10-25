@@ -19,11 +19,11 @@ and XR controllers.
 
 ## Module Boundaries
 
-- `public/menus.js`: shared menu lifecycle, focus, keyboard navigation,
+- `public/js/menus.js`: shared menu lifecycle, focus, keyboard navigation,
   controller navigation, and back/close behavior.
-- `public/settings.js`: declarative Settings rows, values, and the DOM
+- `public/js/settings.js`: declarative Settings rows, values, and the DOM
   renderer. The XR renderer consumes the same rows.
-- `public/input.js`: input ownership and routing; it does not define menu contents.
+- `public/js/input.js`: input ownership and routing; it does not define menu contents.
 - Feature modules continue to own the actions and state behind individual
   settings until those features have a natural smaller owner.
 
@@ -40,7 +40,7 @@ Only the active context receives input. Opening or closing a context clears
 gameplay keyboard, mouse, touch, gamepad, and XR state. The gameplay frame also
 checks the context and consumes neutral input unless gameplay owns input.
 
-Keyboard events have one document listener in `public/input.js`. Application
+Keyboard events have one document listener in `public/js/input.js`. Application
 commands are callbacks registered with that input layer rather than separate
 document listeners. Gamepad and XR polling use the same context and route
 navigation, activation, and back actions to the active dialog.

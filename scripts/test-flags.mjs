@@ -21,12 +21,12 @@ import {
   getBaseTop,
   isOnBaseTop,
   isOverFlatTop,
-} from '../public/collision.mjs';
+} from '../public/js/collision.mjs';
 import {
   getTeamColorIndex,
   getTeamFromColorIndex,
   isColorTeamIndex,
-} from '../public/teams.mjs';
+} from '../public/js/teams.mjs';
 import {
   configureFlagEffects,
   getFlagTuning,
@@ -173,7 +173,7 @@ import {
   pickTargetInSights,
   getWingsSlideVelocity,
   getFlagFlightState,
-} from '../public/flags.mjs';
+} from '../public/js/flags.mjs';
 
 const require = createRequire(import.meta.url);
 const serverFlags = require('../server/flags.cjs');
@@ -1134,7 +1134,7 @@ for (const status of [FLAG_STATUS.ON_GROUND, FLAG_STATUS.ON_TANK, FLAG_STATUS.NO
 // Client/server parity across the whole table of inputs.
 for (const [name, value] of Object.entries(serverFlags)) {
   if (typeof value === 'number') {
-    const clientValue = (await import('../public/flags.mjs'))[name];
+    const clientValue = (await import('../public/js/flags.mjs'))[name];
     assert.equal(value, clientValue, `${name} diverged between the copies`);
   }
 }

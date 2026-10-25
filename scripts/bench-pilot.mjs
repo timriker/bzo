@@ -22,12 +22,12 @@
 
 import fs from 'node:fs';
 import path from 'node:path';
-import { buildTeleporterIndex, createTankTeleporter } from '../public/teleport.mjs';
+import { buildTeleporterIndex, createTankTeleporter } from '../public/js/teleport.mjs';
 import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
-import { Ace, ACE_TUNING } from '../public/autopilot.mjs';
-import { createRouter, createWorldProbes } from '../public/autopilot-world.mjs';
-import { findShotSegmentImpact, getObstacleBase } from '../public/collision.mjs';
+import { Ace, ACE_TUNING } from '../public/js/autopilot.mjs';
+import { createRouter, createWorldProbes } from '../public/js/autopilot-world.mjs';
+import { findShotSegmentImpact, getObstacleBase } from '../public/js/collision.mjs';
 
 const require = createRequire(import.meta.url);
 const { BotDriver } = require('../server/bots.cjs');

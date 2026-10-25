@@ -6,7 +6,7 @@
  * See LICENSE or https://www.gnu.org/licenses/agpl-3.0.html
  */
 
-// Checks the camo rule in public/camo.mjs against the texture it actually runs
+// Checks the camo rule in public/js/camo.mjs against the texture it actually runs
 // on. The properties below are the reasons the rule exists, so they are worth
 // more than the numbers they currently produce: a tank has to come out in its
 // player's colour, the areas an artist left grey have to stay grey on every
@@ -19,8 +19,8 @@ import { fileURLToPath } from 'url';
 import {
   CAMO_SOURCE_TEXTURE, camoColor, camoPaintColor, isTeamShade, referenceHue, rgbToHsv, teamShadeColor,
   wrapSignedTurns,
-} from '../public/camo.mjs';
-import { TANK_SKINS, TANK_SKIN_TEAMS, getTankSkinTexture } from '../public/tank-skins.mjs';
+} from '../public/js/camo.mjs';
+import { TANK_SKINS, TANK_SKIN_TEAMS, getTankSkinTexture } from '../public/js/tank-skins.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 

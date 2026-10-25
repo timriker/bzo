@@ -2550,7 +2550,7 @@ body.autopiloting #roamStatus {
   }
 }
 
-/* The world viewer's panel (public/inspect-panel.mjs): beside the game, not
+/* The world viewer's panel (public/js/inspect-panel.mjs): beside the game, not
    over it, so the camera can keep moving while it is open: under the radar,
    and down to chat (`fitPanel`). */
 .inspectPanel {

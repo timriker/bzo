@@ -31,7 +31,7 @@ and `SpikesDeathEffect` exist but their selection is commented out
 
 **`Player::addToScene` -- the per-tank visuals, and where the gaps are.** bzo has
 the cloak alpha with its ease, the zoned quarter-alpha, and the dimension
-scaling, including `O` Obesity's and `T` Tiny's (`public/flags.mjs`). Only the
+scaling, including `O` Obesity's and `T` Tiny's (`public/js/flags.mjs`). Only the
 teleporter alpha fade is missing.
 
 **Elsewhere:** bzo has `FlagWarpSceneNode`, the animated treads, and the eighth

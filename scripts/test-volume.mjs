@@ -19,7 +19,7 @@ import {
   stepVolumeLevel,
   volumeLevelToGain,
   writeVolumeLevel,
-} from '../public/volume.mjs';
+} from '../public/js/volume.mjs';
 
 // Every channel needs its own storage key, DOM ids, and XR row id, or two
 // sliders end up driving one level.

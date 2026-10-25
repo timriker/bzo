@@ -52,7 +52,7 @@ export const ROAM_ZOOM_MAX = 120;
 // observer is flying rather than a real one, driven by the same local physics
 // a playing tank uses. `OVERVIEW` is bzo-only too -- the world-framing camera
 // a playing tank already reaches as the third entry in its own `C` cycle
-// (`CAMERA_MODE_ORDER`, public/input.js), which an observer had no way to ask
+// (`CAMERA_MODE_ORDER`, public/js/input.js), which an observer had no way to ask
 // for because an observer's `C` cycles this list instead. None of the three
 // needs a subject the way TRACK/FOLLOW/FPS/FLAG do, so `roamViewNeedsTarget`
 // leaves them out and they are never excluded by `allowTargeted`.

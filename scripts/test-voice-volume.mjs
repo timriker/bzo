@@ -12,14 +12,14 @@
 // gain node spliced between capture and the track sent to peers.
 
 import assert from 'node:assert/strict';
-import { volumeLevelToGain } from '../public/volume.mjs';
+import { volumeLevelToGain } from '../public/js/volume.mjs';
 import {
   VOICE_DISTANCE_MODEL,
   VOICE_PANNING_MODEL,
   VOICE_REF_DISTANCE,
   VOICE_ROLLOFF_FACTOR,
-} from '../public/audio.js';
-import { createVoiceManager } from '../public/voice.js';
+} from '../public/js/audio.js';
+import { createVoiceManager } from '../public/js/voice.js';
 
 const audios = [];
 const body = {

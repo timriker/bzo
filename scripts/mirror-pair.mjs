@@ -16,7 +16,7 @@
 import fs from 'node:fs';
 
 for (const name of process.argv.slice(2)) {
-  let source = fs.readFileSync(`public/${name}.mjs`, 'utf8');
+  let source = fs.readFileSync(`public/js/${name}.mjs`, 'utf8');
   source = source.replace(
     /^import \{([^}]*)\} from '\.\/([a-z-]+)\.mjs';$/gm,
     (whole, names, module_) => `const {${names}} = require('./${module_}.cjs');`,

@@ -80,7 +80,7 @@ module.exports = [
   },
   {
     // The autopilot's route worker: a module worker.
-    files: ["public/route-worker.mjs"],
+    files: ["public/js/route-worker.mjs"],
     languageOptions: {
       globals: {
         self: "readonly",

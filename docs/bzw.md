@@ -373,7 +373,7 @@ reads both:
 
 - A stock name bzo also ships a picture for (six of upstream's) resolves to
   that local asset -- see `resolveBzwStockTexture` in `server.js`, and
-  `STOCK_MATERIAL_TEXTURE_FILES` in `public/texture.js`, which must name the
+  `STOCK_MATERIAL_TEXTURE_FILES` in `public/js/texture.js`, which must name the
   same set. A stock name outside that set (`mesh`, upstream's own
   wireframe/grid texture, most notably: a mapper who means "textureless
   grid" is naming a completely different thing than bzo's own mesh
@@ -422,7 +422,7 @@ reads both:
   source server a map was imported from, or a mapper hand-writing a `.bzw`
   -- has no channel to tell bzo "trust this one too": a fixed allowlist here
   would just be bzo guessing on their behalf, backwards from what an
-  allowlist is for. `isExternalTextureUrlLoadable` in `public/texture.js`
+  allowlist is for. `isExternalTextureUrlLoadable` in `public/js/texture.js`
   therefore only checks that the URL parses and names `http`/`https`; see
   "Intentional deviations from BZFlag" in `AGENTS.md`. Anyone who wants a
   picture blocked can already do that on their own end -- an ad blocker, a
@@ -444,7 +444,7 @@ reads both:
   load -- the obstacle falls back to its type's plain default texture,
   logged once to the console for the second case
   (`loadExternalTexture`/`STOCK_MATERIAL_TEXTURE_FILES` in
-  `public/texture.js`) rather than left blank; the first is silent, since a
+  `public/js/texture.js`) rather than left blank; the first is silent, since a
   malformed line is a mapper's own typo rather than a remote host's
   behavior worth a runtime warning.
 
@@ -455,7 +455,7 @@ reads both:
   signage -- none of bzo's own stock assets among them (all six are opaque
   by construction), and 42 more with an alpha channel present but every
   pixel opaque, an export artifact rather than real transparency. Once a
-  texture's image decodes, `detectImageAlpha` in `public/texture.js` scans
+  texture's image decodes, `detectImageAlpha` in `public/js/texture.js` scans
   it for any pixel that is not fully opaque -- the same test upstream's own
   `OpenGLTexture::getBestFormat` runs (`OpenGLTexture.cxx:336-351`) to set
   `imageInfo.alpha`, which `MeshSceneNode::updateMaterial`
@@ -505,7 +505,7 @@ Every frame, a channel's value is `low*(1-factor) + high*factor`: `factor` is
 `0`/`1`/`0.5` while a clamp (or a sequence slot) forces it, otherwise the sum
 of every `sinusoid`'s own `weight * cos(phase * 2π)`, centred and clamped
 into `[0, 1]` (`DynamicColor::update`, `DynamicColor.cxx:371-463`) -- ported
-in `public/render.js`'s `evaluateDynamicColor`. `dyncol` on a material
+in `public/js/render.js`'s `evaluateDynamicColor`. `dyncol` on a material
 **replaces its whole diffuse tint outright**, every frame
 (`MeshSceneNode.cxx:487-491`), not a multiply against a static `color`/
 `diffuse` line stated alongside it -- and every material naming the same
@@ -521,10 +521,10 @@ frame (a `scale` below `1.0` is ignored the same way). `texmat` on a material
 layers this on top of whatever UVs the geometry already carries -- a real
 texture-matrix transform (`OpenGLGState.cxx:536-544`,
 `TextureMatrix::update`, `TextureMatrix.cxx:405-444`), not a change to the
-texture's own tiling -- ported as `applyTextureMatrix` in `public/render.js`.
+texture's own tiling -- ported as `applyTextureMatrix` in `public/js/render.js`.
 
 **A box/pyramid's own wall or cap animates too, one assumption narrower than
-a mesh face.** `_getSharedObstacleMaterials` in `public/render.js` reads
+a mesh face.** `_getSharedObstacleMaterials` in `public/js/render.js` reads
 `wallDynamicColor`/`capDynamicColor`/`wallTextureMatrix`/`capTextureMatrix`
 the same way `_buildMeshObject` reads a mesh face's own -- `maps/bzo.bzw`'s
 own `PD_Conveyor`/`PD_Death` pads are the real fixture for this side of it,
@@ -554,7 +554,7 @@ whichever material class the face ends up with (`MeshLambertMaterial` has an
 `emissive` slot too, so a merely-emissive, non-specular face costs nothing
 extra). A face with no real specular stays `MeshLambertMaterial`, visually
 identical to a `MeshPhongMaterial` whose own specular is black but cheaper to
-draw -- `hasRealSpecular`/`pickLitMaterialClass` in `public/render.js`.
+draw -- `hasRealSpecular`/`pickLitMaterialClass` in `public/js/render.js`.
 
 **`ambient` is read and dropped, deliberately.** It is the fourth of
 `BzMaterial`'s own coefficients, but it never reaches a `glMaterial` call

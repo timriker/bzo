@@ -19,8 +19,8 @@ import {
   isObserverTeam,
   normalizePlayerTeam,
   normalizePlayerTeamSelection,
-} from '../public/teams.mjs';
-import { getKillScoreDeltas } from '../public/scoring.mjs';
+} from '../public/js/teams.mjs';
+import { getKillScoreDeltas } from '../public/js/scoring.mjs';
 
 const require = createRequire(import.meta.url);
 const serverTeams = require('../server/teams.cjs');
@@ -77,7 +77,7 @@ assert.equal(normalizePlayerTeam(PLAYER_TEAM.MAP_VIEWER), PLAYER_TEAM.MAP_VIEWER
 assert.equal(PLAYER_TEAMS.includes(PLAYER_TEAM.MAP_VIEWER), false);
 assert.equal('MAP_VIEWER' in serverTeams.PLAYER_TEAM, false);
 
-// public/teams.mjs and server/teams.cjs are hand-maintained copies
+// public/js/teams.mjs and server/teams.cjs are hand-maintained copies
 // of the same normalization rules. Compare the shared surface directly so the
 // two cannot drift the way they did before (the client used to skip trimming).
 // `MAP_VIEWER` is the one deliberate exception -- see its own comment above --
@@ -242,7 +242,7 @@ assert.deepEqual(getTeamScoreDeltasForCapture(RED, ROGUE), [{ team: RED, wins: 1
 assert.deepEqual(getTeamScoreDeltasForCapture(ROGUE, ROGUE), []);
 
 // The client and the server must agree about both rules.
-const { getTeamScoreDeltasForCapture: clientCaptureRule } = await import('../public/teams.mjs');
+const { getTeamScoreDeltasForCapture: clientCaptureRule } = await import('../public/js/teams.mjs');
 for (const capping of [RED, BLUE, ROGUE, PLAYER_TEAM.OBSERVER, null, undefined]) {
   for (const capped of [RED, BLUE, ROGUE, PLAYER_TEAM.OBSERVER]) {
     assert.deepEqual(

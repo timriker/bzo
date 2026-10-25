@@ -19,7 +19,7 @@ let failed = false;
 const fail = (msg) => { console.error(msg); failed = true; };
 
 for (const name of [...MIRRORED, ...HAND_WRITTEN]) {
-  const client = await import(`../public/${name}.mjs`);
+  const client = await import(`../public/js/${name}.mjs`);
   const server = require(`../server/${name}.cjs`);
 
   const mirrored = MIRRORED.includes(name);
@@ -76,7 +76,7 @@ for (const name of MIRRORED) {
     )
     .replace(/\nmodule\.exports = \{[\s\S]*?\};\s*$/, '')
     .trim();
-  const a = normalize(readFileSync(`public/${name}.mjs`, 'utf8')).split('\n');
+  const a = normalize(readFileSync(`public/js/${name}.mjs`, 'utf8')).split('\n');
   const b = normalize(readFileSync(`server/${name}.cjs`, 'utf8')).split('\n');
   const at = a.findIndex((line, i) => line !== b[i]);
   if (at !== -1 || a.length !== b.length) {

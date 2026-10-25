@@ -11,8 +11,8 @@ import * as THREE from 'three';
 import { fileURLToPath } from 'url';
 import { dirname, resolve } from 'path';
 import { writeFileSync } from 'fs';
-import { tileTankUVsByPosition } from '../public/tank-uv.mjs';
-import { UPSTREAM_TANK, fitGeometryAxes, navLightPositions, navLightSpot, surfaceUnderPoint } from '../public/tank-dimensions.mjs';
+import { tileTankUVsByPosition } from '../public/js/tank-uv.mjs';
+import { UPSTREAM_TANK, fitGeometryAxes, navLightPositions, navLightSpot, surfaceUnderPoint } from '../public/js/tank-dimensions.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const BODY_WIDTH = 1.755;
@@ -229,7 +229,7 @@ function makeTreadCapGeometry(thetaStart) {
 
 // The camo-skinned parts take their texture coordinates from the shared rule
 // rather than from whatever the primitive handed back, so a patch is the same
-// size on every part of every tank. See public/tank-uv.mjs.
+// size on every part of every tank. See public/js/tank-uv.mjs.
 function tileCamo(geometry) {
   const position = geometry.attributes.position;
   const normal = geometry.attributes.normal;

@@ -6,7 +6,7 @@
  */
 
 import assert from 'node:assert/strict';
-import { INPUT_CONTEXT, InputContextManager } from '../public/input-context.mjs';
+import { INPUT_CONTEXT, InputContextManager } from '../public/js/input-context.mjs';
 
 let resetCount = 0;
 const manager = new InputContextManager({
