@@ -38,8 +38,12 @@ must give byte-identical output before and after each step.
    proxied game and a replay joined live on the dev server.
 5. `public/js/render.js`: `RenderManager` is split by subsystem -- world
    geometry, tanks, effects and weather, XR -- as objects it owns.
-6. `public/js/client.js`: `handleServerMessage` becomes a handler table, and
-   the radar a module of its own.
+6. `public/js/client.js`: `handleServerMessage` looks each message up in
+   `SERVER_MESSAGE_HANDLERS`, one `receive` function per type, kept in
+   `client.js`: they set 76 of its variables, which a module of their own
+   would reach only through getters and setters. Done. The radar -- its
+   range, size, obstacle cache and drawing -- is `public/js/radar.js`, handed
+   what it needs by `useRadarClient`. Done.
 
 ## Mirrored pairs (to try)
 

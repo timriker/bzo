@@ -618,6 +618,10 @@ pilot; `docs/refactor-plan.md` is how the rest is being split:
   `messages-chat.cjs`, `messages-play.cjs` and `messages-operator.cjs`. A
   handler takes the player, their socket and the message; what it needs of
   `server.js` it is handed by `useServer`.
+- **A server message is handled by `type`** in `client.js`:
+  `handleServerMessage` looks each up in `SERVER_MESSAGE_HANDLERS`, one
+  `receive` function per type. The radar is `public/js/radar.js`, handed what
+  it needs of the client by `useRadarClient`.
 - **A server bot is a client whose socket never leaves the process.**
   `acceptConnection` takes it like a browser's and it sends a browser's
   messages, so validation, anti-cheat, scoring and the list treat it as any
