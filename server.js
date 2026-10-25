@@ -12704,7 +12704,7 @@ function getBzflagWorld() {
         : bzfsCacheout(mapPath, `the compiler cannot reproduce ${[...new Set(tree.unsupported)].join(', ')}`);
     } else {
       // bzo's compass letters, which its browsers draw for themselves, at the
-      // height they draw them (`_addCompassMarker`, public/js/render.js).
+      // height they draw them (`_addCompassMarker`, public/js/render-world.js).
       const tallest = OBSTACLES.reduce((top, obstacle) => Math.max(top, obstacle.bounds?.maxZ ?? 0), 0);
       addCardinalLetters(tree, {
         mapSize: GAME_CONFIG.MAP_SIZE,

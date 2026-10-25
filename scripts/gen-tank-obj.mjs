@@ -142,7 +142,7 @@ class OBJBuilder {
   build() { return this.out; }
 }
 
-// ── geometry parameters (mirror render.js createTank) ────────────────────────
+// ── geometry parameters (mirror render-tanks.js createTank) ────────────────────────
 // BZFlag exposed tread dimensions (from AnimatedTreads.cxx, Exposed style)
 const treadHeight = 1.2;              // BZFlag treadHeight (exposed)
 const treadCapRadius = treadHeight / 2;

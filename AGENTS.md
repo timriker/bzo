@@ -150,7 +150,7 @@ These are deliberate. Do not "fix" them without being asked.
   intentionally keeps bzo's own "roof" texture, at a box cap's tighter -2
   scale, matching what a box's own two caps wear instead. Deliberate, not a
   parity gap -- do not "fix" the base cap to match upstream's `pyrwall`
-  again; see `PYRAMID_ROOF_TEXTURE_SCALE` in `public/js/render.js`.
+  again; see `PYRAMID_ROOF_TEXTURE_SCALE` in `public/js/render-world.js`.
 - **Tanks are selectable OBJ models, not one compiled-in model.** BZFlag draws
   one tank, compiled in at three LODs from `src/geometry/models/tank/` and
   varied only by `animatedTreads` and `treadStyle`. It also ships
@@ -618,6 +618,11 @@ pilot; `docs/refactor-plan.md` is how the rest is being split:
   `messages-chat.cjs`, `messages-play.cjs` and `messages-operator.cjs`. A
   handler takes the player, their socket and the message; what it needs of
   `server.js` it is handed by `useServer`.
+- **`RenderManager` is spread over `public/js/render-*.js`**: sky and
+  weather, lighting, world, tanks, effects and flags each keep their methods
+  in a class whose methods `render.js` installs on `RenderManager.prototype`.
+  `this` is the RenderManager in all of them; a new method goes in the file
+  of its subsystem.
 - **A server message is handled by `type`** in `client.js`:
   `handleServerMessage` looks each up in `SERVER_MESSAGE_HANDLERS`, one
   `receive` function per type. The radar is `public/js/radar.js`, handed what

@@ -36,8 +36,14 @@ must give byte-identical output before and after each step.
    diffing the moved code against what it replaced -- only the lines that
    read the server's changing state differ -- by `npm run check`, and by a
    proxied game and a replay joined live on the dev server.
-5. `public/js/render.js`: `RenderManager` is split by subsystem -- world
-   geometry, tanks, effects and weather, XR -- as objects it owns.
+5. `public/js/render.js`: `RenderManager`'s methods are split by subsystem
+   into `render-sky.js`, `render-lighting.js`, `render-world.js`,
+   `render-tanks.js`, `render-effects.js` and `render-flags.js`, each a class
+   whose methods `render.js` installs on `RenderManager.prototype`, unchanged,
+   with the constants only they use. The constructor, `init`, audio, the
+   frame and the camera stay in `render.js`. Done. Objects it owns, each with
+   its own state, would rewrite every `this.` the methods share; the move
+   leaves that for a subsystem that needs it.
 6. `public/js/client.js`: `handleServerMessage` looks each message up in
    `SERVER_MESSAGE_HANDLERS`, one `receive` function per type, kept in
    `client.js`: they set 76 of its variables, which a module of their own

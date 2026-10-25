@@ -46,7 +46,7 @@ function configureBzwParse(options) {
 // `WorldInfo::makeWaterMaterial`'s own texture matrix (`WorldInfo.cxx:150-153`):
 // `texmat->setDynamicShift(0.05f, 0.0f)`, a scroll along U alone, forever --
 // `TextureMatrix::update`'s `ushf = fmod(t * uShiftFreq, 1.0)` is the same
-// continuous cycle `applyTextureMatrix` in `render.js` already ports for every
+// continuous cycle `applyTextureMatrix` in `render-world.js` already ports for every
 // other `texmat` reference. Shared rather than rebuilt per map: nothing ever
 // mutates the object itself, only replaces a `currentWaterLevel.textureMatrix`
 // reference that pointed at it (a `texmat` line on the block does that, the
@@ -1582,7 +1582,7 @@ function parseBzwColor(words) {
   // meant to be invisible -- `diffuse 0 0 0 0`, a common "solid for
   // collision/radar, drawn as nothing" trick -- actually renders as nothing
   // in bzo too, instead of the fully opaque black RGB-only would otherwise
-  // produce (see `_buildMeshObject` in public/js/render.js, the one reader of
+  // produce (see `_buildMeshObject` in public/js/render-world.js, the one reader of
   // this fourth value).
   return [r, g, b, a === undefined ? 1 : a].map((value) => Math.max(0, Math.min(1, value)));
 }
@@ -2360,7 +2360,7 @@ function parseBZWMap(filename, { quiet = false, extraMessages = [], text: givenT
       // `glDepthMask(GL_FALSE)`. What that means for a single-list renderer
       // like bzo's is exactly the depth mask: a `nosorting` face goes on
       // writing depth even once its texture or its tint turns it
-      // transparent. See `applyTextureAlpha` in `render.js`.
+      // transparent. See `applyTextureAlpha` in `render-world.js`.
       target.noSorting = true;
       return true;
     }
@@ -5518,7 +5518,7 @@ function parseBZWMap(filename, { quiet = false, extraMessages = [], text: givenT
       textureUrl: groundMaterialBlock.textureUrl,
       color: groundMaterialBlock.color,
       // A `GroundMaterial`'s own `dyncol`/`texmat` (resolved above like any
-      // other material's) -- `render.js`'s `buildGround` registers these
+      // other material's) -- `render-world.js`'s `buildGround` registers these
       // with `_animatedMaterials` the same way `buildWater` already does.
       dynamicColor: groundMaterialBlock.dynamicColor,
       textureMatrix: groundMaterialBlock.textureMatrix,
@@ -5857,20 +5857,20 @@ function buildWorldFile(map, { gameConfig, serverBzdb, puffClouds, defaultMapSiz
     mapSize: Number.isFinite(map.mapSize) ? map.mapSize : defaultMapSize,
     // `noWalls` -- read here rather than derived from `mapSize`, since a Map
     // Viewer preview builds this same border from this same JSON (see
-    // `applyWorldData`/`createMapBoundaries` in client.js/render.js) and has
+    // `applyWorldData`/`createMapBoundaries` in client.js/render-world.js) and has
     // no other way to know a map asked for none.
     noWalls: !!map.noWalls,
     // `waterLevel` -- a Map Viewer preview draws the plane from this same
-    // JSON too (see `applyWorldData`/`buildWater` in client.js/render.js),
+    // JSON too (see `applyWorldData`/`buildWater` in client.js/render-world.js),
     // `null` when the map states none.
     waterLevel: map.waterLevel || null,
     // `weather` -- a Map Viewer preview draws it from this same JSON too (see
-    // `applyWorldData`/`buildWeather` in client.js/render.js), `null` when the
+    // `applyWorldData`/`buildWeather` in client.js/render-sky.js), `null` when the
     // map states no `_rainType`. Purely a client render: no collision, so
     // there is no server-side equivalent of `mapWaterLevel`'s kill check.
     weather: map.weather || null,
     // `groundMaterial` -- a Map Viewer preview draws it from this same JSON
-    // too (see `applyWorldData`/`buildGround` in client.js/render.js),
+    // too (see `applyWorldData`/`buildGround` in client.js/render-world.js),
     // `null` when the map states no `-gndtex` or `GroundMaterial` block.
     groundMaterial: map.groundMaterial || null,
     // `gameplay` -- how this map drives and shoots, for a Map Viewer preview

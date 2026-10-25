@@ -6,7 +6,7 @@
  */
 
 // How big one camo patch is, in world units, wherever camo is drawn. The treads
-// already work this way -- TREAD_UNITS_PER_TILE in render.js sizes a tread link
+// already work this way -- TREAD_UNITS_PER_TILE in render-tanks.js sizes a tread link
 // so a longer track carries more links rather than the same few stretched
 // further -- and a camo patch is the same kind of thing: a feature of the
 // material, not of the part it happens to be painted on.

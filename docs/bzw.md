@@ -505,7 +505,7 @@ Every frame, a channel's value is `low*(1-factor) + high*factor`: `factor` is
 `0`/`1`/`0.5` while a clamp (or a sequence slot) forces it, otherwise the sum
 of every `sinusoid`'s own `weight * cos(phase * 2π)`, centred and clamped
 into `[0, 1]` (`DynamicColor::update`, `DynamicColor.cxx:371-463`) -- ported
-in `public/js/render.js`'s `evaluateDynamicColor`. `dyncol` on a material
+in `public/js/render-world.js`'s `evaluateDynamicColor`. `dyncol` on a material
 **replaces its whole diffuse tint outright**, every frame
 (`MeshSceneNode.cxx:487-491`), not a multiply against a static `color`/
 `diffuse` line stated alongside it -- and every material naming the same
@@ -521,10 +521,10 @@ frame (a `scale` below `1.0` is ignored the same way). `texmat` on a material
 layers this on top of whatever UVs the geometry already carries -- a real
 texture-matrix transform (`OpenGLGState.cxx:536-544`,
 `TextureMatrix::update`, `TextureMatrix.cxx:405-444`), not a change to the
-texture's own tiling -- ported as `applyTextureMatrix` in `public/js/render.js`.
+texture's own tiling -- ported as `applyTextureMatrix` in `public/js/render-world.js`.
 
 **A box/pyramid's own wall or cap animates too, one assumption narrower than
-a mesh face.** `_getSharedObstacleMaterials` in `public/js/render.js` reads
+a mesh face.** `_getSharedObstacleMaterials` in `public/js/render-world.js` reads
 `wallDynamicColor`/`capDynamicColor`/`wallTextureMatrix`/`capTextureMatrix`
 the same way `_buildMeshObject` reads a mesh face's own -- `maps/bzo.bzw`'s
 own `PD_Conveyor`/`PD_Death` pads are the real fixture for this side of it,
@@ -554,7 +554,7 @@ whichever material class the face ends up with (`MeshLambertMaterial` has an
 `emissive` slot too, so a merely-emissive, non-specular face costs nothing
 extra). A face with no real specular stays `MeshLambertMaterial`, visually
 identical to a `MeshPhongMaterial` whose own specular is black but cheaper to
-draw -- `hasRealSpecular`/`pickLitMaterialClass` in `public/js/render.js`.
+draw -- `hasRealSpecular`/`pickLitMaterialClass` in `public/js/render-world.js`.
 
 **`ambient` is read and dropped, deliberately.** It is the fourth of
 `BzMaterial`'s own coefficients, but it never reaches a `glMaterial` call
@@ -827,7 +827,7 @@ register a material named `GroundMaterial`, and upstream's
 looks it up by that exact name to texture the ground plane and tint it from
 the material's own `diffuse`/`color` -- the same lookup bzo's own
 `parseBZWMap` performs (against `materialsByName`, case-insensitively) to
-build the `groundMaterial` that `render.js`'s `buildGround` textures the
+build the `groundMaterial` that `render-world.js`'s `buildGround` textures the
 plane from. A map that gives neither keeps the `std_ground` checkerboard
 every other map already gets.
 
@@ -1120,7 +1120,7 @@ property in `render.js` instead of something a tint line can override.
 **The surface scrolls, by default.** `WorldInfo::makeWaterMaterial` also seeds
 a texture matrix (`texmat->setDynamicShift(0.05f, 0.0f)`) alongside the tint,
 a steady drift along U with no motion on V -- the same continuous
-`fmod(t * shiftU, 1.0)` cycle `applyTextureMatrix` in `render.js` already
+`fmod(t * shiftU, 1.0)` cycle `applyTextureMatrix` in `render-world.js` already
 drives for a mapper's own `texmat`. bzo seeds this default the same way it
 seeds the texture and the tint, so a bare `waterLevel` block scrolls without a
 mapper asking; a `texmat <name>` line on the block replaces it with a
@@ -1133,7 +1133,7 @@ on every move, not a surface anything bounces off or stops at.
 
 **The plane can be seen through, from above or below**, unlike upstream's own
 single-sided, depth-writing quad -- a deliberate keep rather than an unnoticed
-side effect of `DoubleSide`/`depthWrite: false` in `render.js`'s `buildWater`.
+side effect of `DoubleSide`/`depthWrite: false` in `render-world.js`'s `buildWater`.
 See "Intentional deviations from BZFlag" in `AGENTS.md`.
 
 ## Weather

@@ -901,7 +901,7 @@ const partName = (part) => PART_NAMES[part] || part;
 // here as on every other tank.
 //
 // Measured off the models rather than taken from TREAD_UNITS_PER_TILE in
-// render.js, which is 6.4: that constant is what `_projectTankUVsAroundBelt`
+// render-tanks.js, which is 6.4: that constant is what `_projectTankUVsAroundBelt`
 // uses for a model that ships no texture coordinates of its own, and the
 // models that do ship them are laid out differently. Modern and Simple run
 // four tiles round a belt of 13.36, which is this.
