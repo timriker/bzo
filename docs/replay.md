@@ -39,10 +39,10 @@ node scripts/test-bzfs-replay.mjs ~/.bzf/recordings/<name>
 clock per file. Anyone may watch; nobody plays. The room
 (`server/bzfs-replay-room.cjs`) gives each browser a `ReplaySession`, a
 `BzfsSession` that never dials, and feeds it the packets bzfs would have sent.
-`handleProxyConnection` in `server.js` then runs as it does for `?proxy=`, so
-every translation a proxied match gets, a replay gets: the browser
-dead-reckons tanks between recorded updates as it does for any proxied tank,
-since bzfs only relayed what the clients sent.
+`handleProxyConnection` (`server/bzfs-proxy.cjs`) then runs as it does for
+`?proxy=`, so every translation a proxied match gets, a replay gets: the
+browser dead-reckons tanks between recorded updates as it does for any proxied
+tank, since bzfs only relayed what the clients sent.
 
 - **World:** the recording's own, written as
   `maps/import-replay-<world hash>.bzw` and registered like an import. Two

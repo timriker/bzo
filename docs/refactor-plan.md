@@ -24,10 +24,16 @@ must give byte-identical output before and after each step.
 
 ## Server and client
 
-4. `server.js`: the message cases in `acceptConnection` become a table of
-   handlers in `server/` modules, grouped by voice, chat and commands, and
-   play; the bzfs proxy (`handleProxyConnection`) moves to a module of its
-   own.
+4. `server.js`: the bzfs proxy -- `handleProxyConnection` and the helpers
+   only it uses -- is `server/bzfs-proxy.cjs`, handed what it needs of the
+   server by `useServer`. Done. Then the message cases in `acceptConnection`
+   become a table of handlers in `server/` modules, grouped by voice, chat and
+   commands, and play.
+
+   The server has no seeded bench to compare, so each move is checked by
+   diffing the moved code against what it replaced -- only the lines that
+   read the server's changing state differ -- by `npm run check`, and by a
+   proxied game and a replay joined live on the dev server.
 5. `public/render.js`: `RenderManager` is split by subsystem -- world
    geometry, tanks, effects and weather, XR -- as objects it owns.
 6. `public/client.js`: `handleServerMessage` becomes a handler table, and

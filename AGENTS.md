@@ -714,12 +714,13 @@ bzo also speaks the bzfs wire as a client, in two places.
 `server/remote-world-import.cjs` fetches a world and hangs up;
 `server/bzfs-session.cjs` joins a server and stays, which is what a browser
 watching a real BZFlag match through bzo (`?proxy=<host_port>`) is connected
-to. That connection is never a player in this server's own game -- it is not
-in `players` at all -- and its `init` is synthesized from what its target says
-to a joining player. `docs/proxy.md` is what it supports and
-`docs/proxy-plan.md` what it does not; issue #82. `docs/replay.md` is how
-bzo reads a bzfs recording and plays it to `?replay=<name>` through the same
-path, and `docs/replay-plan.md` what is left; issue #172.
+to, through `server/bzfs-proxy.cjs`. That connection is never a player in this
+server's own game -- it is not in `players` at all -- and its `init` is
+synthesized from what its target says to a joining player. `docs/proxy.md` is
+what it supports and `docs/proxy-plan.md` what it does not; issue #82.
+`docs/replay.md` is how bzo reads a bzfs recording and plays it to
+`?replay=<name>` through the same path, and `docs/replay-plan.md` what is left;
+issue #172.
 
 **`node --check` parses; it does not boot.** A module-level `const` that reads
 something initialized further down the file passes every static check and
