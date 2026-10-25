@@ -6,3 +6,6 @@
 
 # public/roger.mjs split out of public/autopilot.mjs
 d6f0c399f2bd3cf8c917f7d35b442d144cebd5d3
+
+# public/ace-driver.mjs and public/ace-fighter.mjs split out of public/autopilot.mjs
+12f9ec5762266239f48e0c3ed5b1c0d8a22456ad
