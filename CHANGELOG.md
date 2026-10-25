@@ -6,6 +6,15 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
 
 ## [Unreleased]
 
+## [1.3.61] - 2026-10-25
+
+### Changed
+- The client's scripts are served from `/js/` (`public/js/`); only the
+  service worker stays at the site's root.
+- The bzfs proxy -- a browser on a real BZFlag server or a replay -- is its
+  own server module, `server/bzfs-proxy.cjs`, with no change in how it plays
+  (docs/refactor-plan.md).
+
 ## [1.3.60] - 2026-10-25
 
 ### Changed
