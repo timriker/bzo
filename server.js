@@ -16699,8 +16699,8 @@ function acceptConnection(ws, req) {
       const message = Buffer.isBuffer(data) || typeof data === 'string' ? JSON.parse(data) : data;
 
       // The handler for this type of message (server/messages-*.cjs), if any.
-      const handle = MESSAGE_HANDLERS[message.type];
-      if (handle) handle(player, ws, message);
+      // Own properties only: a `type` such as `toString` names nothing here.
+      if (Object.hasOwn(MESSAGE_HANDLERS, message.type)) MESSAGE_HANDLERS[message.type](player, ws, message);
     } catch (err) {
       logError('Error handling message:', err.stack || err.message);
     }

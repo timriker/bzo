@@ -7965,919 +7965,959 @@ function handleServerMessage(message) {
     return;
   }
 
-  switch (message.type) {
-    case 'init': {
-      if (!checkClientBuild(message.clientBuild)) return;
-      // A batch number and a shot id are this server process's; a new init
-      // may be another.
-      lastMoveBatchById.clear();
-      earlyShotEnds.clear();
-      if (!message.udpChannel && !message.webTransport) udpChannel.close();
-      else if (!udpChannel.isOpen()) void udpChannel.start(message);
-      const operatorPanelTitleEl = document.getElementById('operatorPanelTitle');
-      if (operatorPanelTitleEl && typeof message.serverVersion === 'string') {
-        operatorPanelTitleEl.textContent = `Operator Panel (v${message.serverVersion})`;
-      }
-      const sequenceId = ++initSequence;
-      activeInitSequence = sequenceId;
-      // A fresh world clears every tank, so anything queued against the old one
-      // is about players who no longer exist here.
-      rosterSnapshotPending = true;
-      queuedRosterMessages = [];
-      renderReadyForJoin = false;
-      gameplayJoinConfirmed = false;
-      pendingJoinRequest = null;
+  // Own properties only: a `type` such as `toString` names nothing here.
+  if (Object.hasOwn(SERVER_MESSAGE_HANDLERS, message.type)) SERVER_MESSAGE_HANDLERS[message.type](message);
+  else console.warn('Unknown message type from server:', message);
+}
 
-      // Show server info in entryDialog
-      const serverTitleEl = document.getElementById('serverTitle');
-      const serverMotdEl = document.getElementById('serverMotd');
-      serverMotdText = message.motd || '';
-      serverTitleText = message.title || '';
-      if (serverTitleEl) serverTitleEl.textContent = serverTitleText;
-      if (serverMotdEl) serverMotdEl.textContent = serverMotdText;
-      announceServerTextIfChanged();
-      worldTime = message.worldTime;
-      // Every map hashed so far (issue #68's Map Viewer picker) -- a fresh
-      // connection, a fresh list, and no preview staged against the old one.
-      availableViewMaps = Array.isArray(message.viewableMaps) ? message.viewableMaps : [];
-      // Which of them the live match is on, so a share link made without ever
-      // opening the View dialog still names the world it was made in.
-      currentMapFile = message.currentMap || '';
-      selectedViewMapFile = null;
-      previewedMapFile = null;
-      liveWorldData = null;
-      // Clear any existing tanks from previous connections
-      tanks.forEach((tank) => discardTank(tank));
-      tanks.clear();
+// Each message the server sends, by its `type`.
+const SERVER_MESSAGE_HANDLERS = Object.freeze({
+  init: receiveInit,
+  playerJoined: receivePlayerJoined,
+  teamUpdate: receiveTeamUpdate,
+  newRabbit: receiveNewRabbit,
+  matchStart: receiveMatchStart,
+  timeUpdate: receiveTimeUpdate,
+  scoreOver: receiveScoreOver,
+  playerLeft: receivePlayerLeft,
+  playerUpdated: receivePlayerUpdated,
+  pm: receivePt,
+  pt: receivePt,
+  teleport: receiveTeleport,
+  pmBatch: receivePmBatch,
+  rtc: receiveRtc,
+  positionCorrection: receivePositionCorrection,
+  flagUpdate: receiveFlagUpdate,
+  grabFlag: receiveGrabFlag,
+  shotsLeft: receiveShotsLeft,
+  transferFlag: receiveTransferFlag,
+  captureFlag: receiveCaptureFlag,
+  nearFlag: receiveNearFlag,
+  antidoteFlag: receiveAntidoteFlag,
+  dropFlag: receiveDropFlag,
+  shotBegin: receiveShotBegin,
+  botIntents: receiveBotIntents,
+  gmUpdate: receiveGmUpdate,
+  identifyResult: receiveIdentifyResult,
+  lag: receiveLag,
+  shotEnd: receiveShotEnd,
+  killed: receiveKilled,
+  alive: receiveAlive,
+  playerList: receivePlayerList,
+  autopilot: receiveAutopilot,
+  pauseCountdown: receivePauseCountdown,
+  pauseCancelled: receivePauseCancelled,
+  playerPaused: receivePlayerPaused,
+  playerUnpaused: receivePlayerUnpaused,
+  voiceMicToggled: receiveVoiceMicToggled,
+  message: receiveMessage,
+  mapList: receiveMapList,
+  remoteServerList: receiveRemoteServerList,
+  importMapResult: receiveImportMapResult,
+  importMapForViewResult: receiveImportMapForViewResult,
+  serverConfigUpdate: receiveServerConfigUpdate,
+  setVar: receiveSetVar,
+  superKill: receiveSuperKill,
+  reload: receiveReload,
+});
 
-      // Clear any existing projectiles
-      projectiles.forEach((projectile) => {
-        renderManager.removeProjectile(projectile);
-      });
-      projectiles.clear();
-      pendingLocalProjectiles = [];
+function receiveInit(message) {
+  if (!checkClientBuild(message.clientBuild)) return;
+  // A batch number and a shot id are this server process's; a new init
+  // may be another.
+  lastMoveBatchById.clear();
+  earlyShotEnds.clear();
+  if (!message.udpChannel && !message.webTransport) udpChannel.close();
+  else if (!udpChannel.isOpen()) void udpChannel.start(message);
+  const operatorPanelTitleEl = document.getElementById('operatorPanelTitle');
+  if (operatorPanelTitleEl && typeof message.serverVersion === 'string') {
+    operatorPanelTitleEl.textContent = `Operator Panel (v${message.serverVersion})`;
+  }
+  const sequenceId = ++initSequence;
+  activeInitSequence = sequenceId;
+  // A fresh world clears every tank, so anything queued against the old one
+  // is about players who no longer exist here.
+  rosterSnapshotPending = true;
+  queuedRosterMessages = [];
+  renderReadyForJoin = false;
+  gameplayJoinConfirmed = false;
+  pendingJoinRequest = null;
 
-      // Clear any existing shields
-      playerPausedSpheres.forEach((sphere) => {
-        renderManager.removePausedSphere(sphere);
-      });
-      playerPausedSpheres.clear();
+  // Show server info in entryDialog
+  const serverTitleEl = document.getElementById('serverTitle');
+  const serverMotdEl = document.getElementById('serverMotd');
+  serverMotdText = message.motd || '';
+  serverTitleText = message.title || '';
+  if (serverTitleEl) serverTitleEl.textContent = serverTitleText;
+  if (serverMotdEl) serverMotdEl.textContent = serverMotdText;
+  announceServerTextIfChanged();
+  worldTime = message.worldTime;
+  // Every map hashed so far (issue #68's Map Viewer picker) -- a fresh
+  // connection, a fresh list, and no preview staged against the old one.
+  availableViewMaps = Array.isArray(message.viewableMaps) ? message.viewableMaps : [];
+  // Which of them the live match is on, so a share link made without ever
+  // opening the View dialog still names the world it was made in.
+  currentMapFile = message.currentMap || '';
+  selectedViewMapFile = null;
+  previewedMapFile = null;
+  liveWorldData = null;
+  // Clear any existing tanks from previous connections
+  tanks.forEach((tank) => discardTank(tank));
+  tanks.clear();
 
-      // Clear any existing clouds
-      renderManager.clearClouds();
+  // Clear any existing projectiles
+  projectiles.forEach((projectile) => {
+    renderManager.removeProjectile(projectile);
+  });
+  projectiles.clear();
+  pendingLocalProjectiles = [];
 
-      clearFlags();
-      message.flags.forEach((state) => setFlagState(state));
+  // Clear any existing shields
+  playerPausedSpheres.forEach((sphere) => {
+    renderManager.removePausedSphere(sphere);
+  });
+  playerPausedSpheres.clear();
 
-      myPlayerId = message.player.id;
-      worldBaseConfig = message.config;
-      liveBzdb = bzdbFromObject(message.bzdb);
-      serverBzdb = bzdbFromObject(message.serverBzdb);
-      recomputeLiveConfig();
-      // Whatever world is already on screen keeps its own physics: the entry
-      // dialog renders a preview before a join, so `init` can arrive with a
-      // previewed map already applied underneath it.
-      applyWorldGameplay(currentWorldData);
-      setAvailablePlayerTeams(message.teamMode.teams);
-      setAvailableProxies(message.proxies, message.localTeams, message.localMap);
-      teamScores = message.teamScores || [];
-      // bzfs.cxx:2437 sends MsgNewRabbit to a joining player for the same reason:
-      // who the rabbit is is world state rather than an event. Set directly --
-      // there is no roster yet to repaint and nothing to announce about a rabbit
-      // that was chosen before this client arrived.
-      rabbitPlayerId = message.rabbitId ?? null;
-      rabbitChaseEnabled = Boolean(message.teamMode.rabbitSelection);
-      // huntReset (ScoreboardRenderer.cxx:333) -- joining a server. Nothing
-      // marked here is about the world that is arriving, and a reconnect is a
-      // join: the ids it would keep belong to whoever holds them now.
-      huntState.reset();
-      if (rabbitPlayerId !== null) {
-        huntState.rabbitChanged(rabbitPlayerId, {
-          iAmTheRabbit: rabbitPlayerId === myPlayerId,
-          observing: isObserver(),
-        });
-      }
-      matchTimeLeft = typeof message.timeLeft === 'number' ? message.timeLeft : null;
-      matchTimeReceivedAt = sampleEpochClock();
-      matchGameOver = Boolean(message.gameOver);
-      clientTracesShots = message.clientTracesShots === true;
-      if (Array.isArray(message.liveConfigKeys)) liveConfigKeys = message.liveConfigKeys;
-      if (message.operatorConfig && typeof message.operatorConfig === 'object') {
-        serverOperatorConfig = message.operatorConfig;
-      }
-      // The panel is wired before the first `init` arrives, so its rows start on
-      // placeholders. This is where the server's real values first exist.
-      if (!operatorStaged) syncOperatorPanelFromServer();
-      // Admin-only (server.js's `init` deliberately omits this for anyone
-      // `isAdmin` refuses) -- see docs/list-server-plan.md. The row stays
-      // hidden for everyone else.
-      syncListServerRow(message.listServer || null);
-      if (message.voiceRtcConfig && typeof message.voiceRtcConfig === 'object') {
-        // Phones keep voice on IPv4 (voice.js `ipFamily`), through the relay by
-        // its IPv4-only names when the server has them.
-        const { ipv4IceServers, ...sharedConfig } = message.voiceRtcConfig;
-        const baseConfig = VOICE_IP_FAMILY === '4' && Array.isArray(ipv4IceServers)
-          ? { ...sharedConfig, iceServers: ipv4IceServers }
-          : sharedConfig;
-        voiceRtcConfig = VOICE_MODE === 'relay'
-          ? { ...baseConfig, iceTransportPolicy: 'relay' }
-          : VOICE_MODE === 'direct' || VOICE_MODE === 'ipv6'
-            ? { ...baseConfig, iceServers: [] }
-            : VOICE_MODE === 'google'
-              ? { ...baseConfig, iceServers: [{ urls: ['stun:stun.l.google.com:19302'] }] }
-              : baseConfig;
-        callVoiceManager('setRtcConfig', voiceRtcConfig);
-      }
-      // Keep the requested team until the server confirms the joined player.
-      // The initial handshake describes the temporary connection player.
-      updateVoiceIdentity();
-      renderManager._applyFogConfig(gameConfig);
-      applyRicochetSetting(gameConfig.ALL_SHOTS_RICOCHET === true);
-      refreshCollisionColliders();
-      myX = message.player.x;
-      myY = message.player.y;
-      myAzimuth = message.player.azimuth;
+  // Clear any existing clouds
+  renderManager.clearClouds();
 
-      // Known from the handshake cookie, before any join -- set here rather
-      // than waiting for `playerJoined` so the entry dialog below locks the
-      // name field to a verified session's callsign from the moment it is
-      // first shown, including right after the redirect back from weblogin
-      // (issue #75).
-      amVerified = !!message.player.verified;
-      amAdmin = !!message.player.admin;
-      // What this server answers, for the chat entry's Tab. A proxied session
-      // sends none, because the commands there are the target's.
-      serverCommands = message.commands;
-      myGlobalCallsign = message.player.globalCallsign || null;
-      applyAdminUi();
+  clearFlags();
+  message.flags.forEach((state) => setFlagState(state));
 
-      // A proxied connection is already on a team -- the target decided it when
-      // it answered `MsgEnter` -- so the dialog shows what this connection is,
-      // not what localStorage remembers wanting. Anything else would read as a
-      // team change the moment Join was pressed and bounce the page for no
-      // reason (`proxyTeamChangeNavigated`).
-      if (isProxiedPage()) {
-        proxyEnteredTeam = message.player.team;
-        selectedPlayerTeam = proxyEnteredTeam;
-        syncPlayerTeamSelector();
-      }
-      syncTankSelectorForDestination();
-      syncMottoForDestination();
+  myPlayerId = message.player.id;
+  worldBaseConfig = message.config;
+  liveBzdb = bzdbFromObject(message.bzdb);
+  serverBzdb = bzdbFromObject(message.serverBzdb);
+  recomputeLiveConfig();
+  // Whatever world is already on screen keeps its own physics: the entry
+  // dialog renders a preview before a join, so `init` can arrive with a
+  // previewed map already applied underneath it.
+  applyWorldGameplay(currentWorldData);
+  setAvailablePlayerTeams(message.teamMode.teams);
+  setAvailableProxies(message.proxies, message.localTeams, message.localMap);
+  teamScores = message.teamScores || [];
+  // bzfs.cxx:2437 sends MsgNewRabbit to a joining player for the same reason:
+  // who the rabbit is is world state rather than an event. Set directly --
+  // there is no roster yet to repaint and nothing to announce about a rabbit
+  // that was chosen before this client arrived.
+  rabbitPlayerId = message.rabbitId ?? null;
+  rabbitChaseEnabled = Boolean(message.teamMode.rabbitSelection);
+  // huntReset (ScoreboardRenderer.cxx:333) -- joining a server. Nothing
+  // marked here is about the world that is arriving, and a reconnect is a
+  // join: the ids it would keep belong to whoever holds them now.
+  huntState.reset();
+  if (rabbitPlayerId !== null) {
+    huntState.rabbitChanged(rabbitPlayerId, {
+      iAmTheRabbit: rabbitPlayerId === myPlayerId,
+      observing: isObserver(),
+    });
+  }
+  matchTimeLeft = typeof message.timeLeft === 'number' ? message.timeLeft : null;
+  matchTimeReceivedAt = sampleEpochClock();
+  matchGameOver = Boolean(message.gameOver);
+  clientTracesShots = message.clientTracesShots === true;
+  if (Array.isArray(message.liveConfigKeys)) liveConfigKeys = message.liveConfigKeys;
+  if (message.operatorConfig && typeof message.operatorConfig === 'object') {
+    serverOperatorConfig = message.operatorConfig;
+  }
+  // The panel is wired before the first `init` arrives, so its rows start on
+  // placeholders. This is where the server's real values first exist.
+  if (!operatorStaged) syncOperatorPanelFromServer();
+  // Admin-only (server.js's `init` deliberately omits this for anyone
+  // `isAdmin` refuses) -- see docs/list-server-plan.md. The row stays
+  // hidden for everyone else.
+  syncListServerRow(message.listServer || null);
+  if (message.voiceRtcConfig && typeof message.voiceRtcConfig === 'object') {
+    // Phones keep voice on IPv4 (voice.js `ipFamily`), through the relay by
+    // its IPv4-only names when the server has them.
+    const { ipv4IceServers, ...sharedConfig } = message.voiceRtcConfig;
+    const baseConfig = VOICE_IP_FAMILY === '4' && Array.isArray(ipv4IceServers)
+      ? { ...sharedConfig, iceServers: ipv4IceServers }
+      : sharedConfig;
+    voiceRtcConfig = VOICE_MODE === 'relay'
+      ? { ...baseConfig, iceTransportPolicy: 'relay' }
+      : VOICE_MODE === 'direct' || VOICE_MODE === 'ipv6'
+        ? { ...baseConfig, iceServers: [] }
+        : VOICE_MODE === 'google'
+          ? { ...baseConfig, iceServers: [{ urls: ['stun:stun.l.google.com:19302'] }] }
+          : baseConfig;
+    callVoiceManager('setRtcConfig', voiceRtcConfig);
+  }
+  // Keep the requested team until the server confirms the joined player.
+  // The initial handshake describes the temporary connection player.
+  updateVoiceIdentity();
+  renderManager._applyFogConfig(gameConfig);
+  applyRicochetSetting(gameConfig.ALL_SHOTS_RICOCHET === true);
+  refreshCollisionColliders();
+  myX = message.player.x;
+  myY = message.player.y;
+  myAzimuth = message.player.azimuth;
 
-      // A server that does not offer the observer team cannot honour the
-      // spectator link, so the page joins as it otherwise would rather than
-      // asking for a team and being refused.
-      const autoObserving = (autoFollowTarget !== null || autoRoamView !== null)
-        && availablePlayerTeams.includes(PLAYER_TEAM.OBSERVER);
-      if (autoObserving) {
-        // Staged the way the dialog stages it, and not saved: the link decides
-        // this page load and nothing after it.
-        selectedPlayerTeam = PLAYER_TEAM.OBSERVER;
-        syncPlayerTeamSelector();
-      }
-      // `?viewmap=` (issue #68), the same shape of link: Map Viewer is
-      // Observer on the wire, offered wherever Observer is, so it only means
-      // something if the server offers Observer at all and has actually
-      // hashed the requested file by now.
-      const autoViewingMapAvailable = autoViewMapTarget !== null
-        && availablePlayerTeams.includes(PLAYER_TEAM.OBSERVER)
-        && availableViewMaps.some((entry) => entry.file === autoViewMapTarget);
+  // Known from the handshake cookie, before any join -- set here rather
+  // than waiting for `playerJoined` so the entry dialog below locks the
+  // name field to a verified session's callsign from the moment it is
+  // first shown, including right after the redirect back from weblogin
+  // (issue #75).
+  amVerified = !!message.player.verified;
+  amAdmin = !!message.player.admin;
+  // What this server answers, for the chat entry's Tab. A proxied session
+  // sends none, because the commands there are the target's.
+  serverCommands = message.commands;
+  myGlobalCallsign = message.player.globalCallsign || null;
+  applyAdminUi();
 
-      // The rest of this handler decides how to join, which depends on
-      // whether Map Viewer staged -- so it wraps in a closure rather than
-      // running inline, and runs either now (the ordinary case) or once a
-      // pending remote re-import settles (`requestMapImportForView` below).
-      const finishInit = (autoViewingMap) => {
-        if (autoViewingMap) {
-          selectedPlayerTeam = PLAYER_TEAM.MAP_VIEWER;
-          selectedViewMapFile = autoViewMapTarget;
-          syncPlayerTeamSelector();
-        }
+  // A proxied connection is already on a team -- the target decided it when
+  // it answered `MsgEnter` -- so the dialog shows what this connection is,
+  // not what localStorage remembers wanting. Anything else would read as a
+  // team change the moment Join was pressed and bounce the page for no
+  // reason (`proxyTeamChangeNavigated`).
+  if (isProxiedPage()) {
+    proxyEnteredTeam = message.player.team;
+    selectedPlayerTeam = proxyEnteredTeam;
+    syncPlayerTeamSelector();
+  }
+  syncTankSelectorForDestination();
+  syncMottoForDestination();
 
-        // Only send join if there is a saved name of the player's own choosing
-        const savedName = getSavedJoinableName();
-        if (savedName) {
-          myPlayerName = savedName;
-        }
-        // A verified session's name is not saved from a choice, it is forced --
-        // overriding whatever a previous, unauthenticated visit left in
-        // localStorage, the same way `resolveJoinName` would at join time.
-        if (amVerified && myGlobalCallsign) {
-          myPlayerName = myGlobalCallsign;
-        }
-        if (!isDefaultPlayerName(myPlayerName)) {
-          setPendingJoinRequest(myPlayerName);
-        } else if (autoObserving || autoViewingMap) {
-          // The name the server gave this connection, which is the one the entry
-          // dialog would have offered. A spectator arriving on a handed-out link
-          // has no name to be asked for.
-          myPlayerName = message.player.name;
-          setPendingJoinRequest(myPlayerName);
-        } else {
-          // Ask for a name: in XR on the menu panel, otherwise in the 2D dialog
-          myPlayerName = message.player.name;
-          if (isXREnabled()) openXRJoinMenu();
-          else toggleEntryDialog(myPlayerName);
-        }
+  // A server that does not offer the observer team cannot honour the
+  // spectator link, so the page joins as it otherwise would rather than
+  // asking for a team and being refused.
+  const autoObserving = (autoFollowTarget !== null || autoRoamView !== null)
+    && availablePlayerTeams.includes(PLAYER_TEAM.OBSERVER);
+  if (autoObserving) {
+    // Staged the way the dialog stages it, and not saved: the link decides
+    // this page load and nothing after it.
+    selectedPlayerTeam = PLAYER_TEAM.OBSERVER;
+    syncPlayerTeamSelector();
+  }
+  // `?viewmap=` (issue #68), the same shape of link: Map Viewer is
+  // Observer on the wire, offered wherever Observer is, so it only means
+  // something if the server offers Observer at all and has actually
+  // hashed the requested file by now.
+  const autoViewingMapAvailable = autoViewMapTarget !== null
+    && availablePlayerTeams.includes(PLAYER_TEAM.OBSERVER)
+    && availableViewMaps.some((entry) => entry.file === autoViewMapTarget);
 
-        // Initialize dead reckoning state (velocity-based)
-        lastSentForwardSpeed = 0;
-        lastSentRotationSpeed = 0;
-        lastSentHeading = null;
-        lastSentVerticalVelocity = 0;
-        lastSentTime = performance.now();
-        void prepareInitialRender(message, sequenceId);
-      };
-
-      if (autoViewingMapAvailable) {
-        finishInit(true);
-      } else if (autoViewMapTarget !== null && availablePlayerTeams.includes(PLAYER_TEAM.OBSERVER)) {
-        // Not already hashed -- but a remote import's own name still says
-        // which server to ask (see `parseImportMapFileName` in server.js),
-        // and bzo only keeps that cache for an hour (`IMPORT_REUSE_MS`), so a
-        // shared link outliving it asks the server to fetch it again rather
-        // than silently falling through to an ordinary join.
-        requestMapImportForView(autoViewMapTarget, sequenceId, () => finishInit(true), () => finishInit(false));
-      } else {
-        // An unknown name that is not a remote import's own, or a server
-        // that refuses Observer entirely: nothing to fetch, so fall through
-        // to a normal join rather than staging a team the server would refuse.
-        finishInit(false);
-      }
-      break;
+  // The rest of this handler decides how to join, which depends on
+  // whether Map Viewer staged -- so it wraps in a closure rather than
+  // running inline, and runs either now (the ordinary case) or once a
+  // pending remote re-import settles (`requestMapImportForView` below).
+  const finishInit = (autoViewingMap) => {
+    if (autoViewingMap) {
+      selectedPlayerTeam = PLAYER_TEAM.MAP_VIEWER;
+      selectedViewMapFile = autoViewMapTarget;
+      syncPlayerTeamSelector();
     }
 
-    case 'playerJoined':
-      // A join is always unpaused on the server (server.js's own `joinGame`
-      // resets `player.paused` unconditionally), but the paused sphere is
-      // event-driven -- only 'playerPaused'/'playerUnpaused' touch it -- so a
-      // pause picked up in a previous life would otherwise hang on the tank
-      // forever, having no unpause event left to answer to.
-      setTankPausedState(message.player.id, false);
-      removePausedSphere(message.player.id);
-      if (message.player.id === myPlayerId) {
-        gameplayJoinConfirmed = true;
-        syncBotWatch();
-        // The moment this join is confirmed, not before -- whatever is
-        // already applied (the live world on a fresh connection, or
-        // whichever map the entry dialog's Map Viewer preview settled on) is
-        // what this join is actually for, so its message says exactly once,
-        // never once per map cycled through while still choosing.
-        announceWorldMessages(currentWorldData);
+    // Only send join if there is a saved name of the player's own choosing
+    const savedName = getSavedJoinableName();
+    if (savedName) {
+      myPlayerName = savedName;
+    }
+    // A verified session's name is not saved from a choice, it is forced --
+    // overriding whatever a previous, unauthenticated visit left in
+    // localStorage, the same way `resolveJoinName` would at join time.
+    if (amVerified && myGlobalCallsign) {
+      myPlayerName = myGlobalCallsign;
+    }
+    if (!isDefaultPlayerName(myPlayerName)) {
+      setPendingJoinRequest(myPlayerName);
+    } else if (autoObserving || autoViewingMap) {
+      // The name the server gave this connection, which is the one the entry
+      // dialog would have offered. A spectator arriving on a handed-out link
+      // has no name to be asked for.
+      myPlayerName = message.player.name;
+      setPendingJoinRequest(myPlayerName);
+    } else {
+      // Ask for a name: in XR on the menu panel, otherwise in the 2D dialog
+      myPlayerName = message.player.name;
+      if (isXREnabled()) openXRJoinMenu();
+      else toggleEntryDialog(myPlayerName);
+    }
+
+    // Initialize dead reckoning state (velocity-based)
+    lastSentForwardSpeed = 0;
+    lastSentRotationSpeed = 0;
+    lastSentHeading = null;
+    lastSentVerticalVelocity = 0;
+    lastSentTime = performance.now();
+    void prepareInitialRender(message, sequenceId);
+  };
+
+  if (autoViewingMapAvailable) {
+    finishInit(true);
+  } else if (autoViewMapTarget !== null && availablePlayerTeams.includes(PLAYER_TEAM.OBSERVER)) {
+    // Not already hashed -- but a remote import's own name still says
+    // which server to ask (see `parseImportMapFileName` in server.js),
+    // and bzo only keeps that cache for an hour (`IMPORT_REUSE_MS`), so a
+    // shared link outliving it asks the server to fetch it again rather
+    // than silently falling through to an ordinary join.
+    requestMapImportForView(autoViewMapTarget, sequenceId, () => finishInit(true), () => finishInit(false));
+  } else {
+    // An unknown name that is not a remote import's own, or a server
+    // that refuses Observer entirely: nothing to fetch, so fall through
+    // to a normal join rather than staging a team the server would refuse.
+    finishInit(false);
+  }
+}
+
+function receivePlayerJoined(message) {
+  // A join is always unpaused on the server (server.js's own `joinGame`
+  // resets `player.paused` unconditionally), but the paused sphere is
+  // event-driven -- only 'playerPaused'/'playerUnpaused' touch it -- so a
+  // pause picked up in a previous life would otherwise hang on the tank
+  // forever, having no unpause event left to answer to.
+  setTankPausedState(message.player.id, false);
+  removePausedSphere(message.player.id);
+  if (message.player.id === myPlayerId) {
+    gameplayJoinConfirmed = true;
+    syncBotWatch();
+    // The moment this join is confirmed, not before -- whatever is
+    // already applied (the live world on a fresh connection, or
+    // whichever map the entry dialog's Map Viewer preview settled on) is
+    // what this join is actually for, so its message says exactly once,
+    // never once per map cycled through while still choosing.
+    announceWorldMessages(currentWorldData);
+    playerTeam = normalizePlayerTeam(message.player.team);
+    // A reconnect is a new player to the server, but the same pilot here;
+    // a reload finds it in storage, and is not a fresh enable. An observer
+    // has no tank to fly (issue #164): the pilot lands, and is kept --
+    // in storage too -- to take the controls again the next time this
+    // player joins to play.
+    if (isObserver()) {
+      if (autopilotOn) {
+        autopilotRestoreId = autopilotId;
+        setAutopilot(null, { remember: false });
+      }
+    } else {
+      if (autopilotOn) {
+        sendToServer({ type: 'autopilot', on: true, pilot: getAutopilotName(autopilotId) });
+      } else if (autopilotRestoreId && canUseAutopilot()) {
+        setAutopilot(autopilotRestoreId);
+      }
+      autopilotRestoreId = null;
+    }
+    // The view the spectator link asked for. Applied on every join rather
+    // than once: a reconnect is how this client comes back from a server
+    // restart, and a link left running on a screen somewhere should come
+    // back watching rather than staring at the spawn it landed on.
+    if ((autoFollowTarget === AUTO_FOLLOW_LEADER || autoRoamView !== null)
+      && isObserverTeam(playerTeam)) {
+      roamView = autoRoamView || ROAM_VIEW.FOLLOW;
+      roamTargetId = null;
+      roamTargetFlagIndex = null;
+    }
+    // No link asked for a view: the default, which follows the game.
+    roamViewDefaulted = isObserverTeam(playerTeam)
+      && autoFollowTarget !== AUTO_FOLLOW_LEADER && autoRoamView === null
+      && !autoViewCamTarget && !autoViewMapTarget;
+    if (roamViewDefaulted) applyDefaultRoamView();
+    amAdmin = message.player.admin === true;
+    amVerified = message.player.verified === true;
+    myGlobalCallsign = amVerified ? message.player.name : null;
+    applyAdminUi();
+    teamFlagMarkerStyle = colorToCSS(getPlayerTeamColor(playerTeam));
+    syncPlayerTeamSelector();
+    updateVoiceIdentity();
+    const wasAliveBefore = !!(myTank && myTank.userData?.playerState?.alive);
+    addPlayer(message.player);
+
+    // This is our join confirmation, update our tank and finish join
+    myPlayerName = message.player.name;
+    myX = message.player.x;
+    myY = message.player.y;
+    myZ = message.player.z;
+    myAzimuth = message.player.azimuth;
+
+    // The view a shared Map Viewer link asked for -- applied on every
+    // join, same reasoning as `autoFollowTarget` just above. A position
+    // override resets `roamCamera` too, so free-roam's own lazy pickup
+    // (`handleRoamMotion`) re-derives from the new spot on its next
+    // frame rather than the one still sitting in it from before.
+    if (isObserverTeam(playerTeam)) {
+      if (autoViewCamTarget) {
+        roamView = autoViewCamTarget;
+      } else if (autoViewMapTarget) {
+        // A bare `?viewmap=` with no explicit `cam=` starts driving
+        // rather than free-floating -- closer to "walk around and look"
+        // than a spawn in empty air pointed at nothing in particular.
+        roamView = ROAM_VIEW.DRIVE_FP;
+      }
+      if (autoViewPosTarget) {
+        myX = autoViewPosTarget.x;
+        myY = autoViewPosTarget.y;
+        myZ = autoViewPosTarget.z;
+        myAzimuth = autoViewPosTarget.azimuth;
+        linkRoamPitch = autoViewPosTarget.pitch;
+        roamCamera = null;
+        viewerPlacedByLink = true;
+      }
+      // Whatever this join settled on -- the server's spawn, chosen
+      // against the live match's world, or a `pos=` copied off a link to
+      // some other map entirely -- is a position in a world that may not
+      // be the one about to be drawn. See `confineViewerToWorld`.
+      confineViewerToWorld();
+    }
+
+    // Saved only when it is a name the player chose. A `Player n` the server
+    // handed out because ours was taken -- on a quick reconnect, by this
+    // player's own previous connection, not yet timed out -- would
+    // otherwise replace the real one, and every later join would ask for
+    // `Player n` too.
+    if (!isDefaultPlayerName(myPlayerName) || isDefaultPlayerName(pendingJoinRequest?.name)) {
+      localStorage.setItem('playerName', myPlayerName);
+    }
+    pendingJoinRequest = null;
+
+    // Update player name display
+    document.getElementById('playerName').textContent = myPlayerName;
+
+    // Reuse and update my tank
+    myTank = tanks.get(myPlayerId);
+    if (myTank) {
+      placeTank(myTank, myX, myY, myZ, myAzimuth);
+      myTank.userData.verticalVelocity = message.player.verticalVelocity || 0;
+      myTank.userData.playerState = withClientLocalPlayerState(myTank.userData.playerState, message.player);
+
+      // Update name label with confirmed name from server
+      if (myTank.userData.nameLabel && myTank.userData.nameLabel.material) {
+        renderManager.updateSpriteLabel(myTank.userData.nameLabel, message.player.name, message.player.color);
+      }
+
+      // Create ghost mesh for local player to visualize what others see
+      if (!myTank.userData.ghostMesh) {
+        const ghostTank = renderManager.createGhostMesh(myTank);
+        // Reset rotation to 0 to ensure we're setting absolute values
+        ghostTank.rotation.set(0, 0, 0);
+        placeTank(ghostTank, myX, myY, myZ, myAzimuth);
+        ghostTank.visible = showDebugGeometry;
+        renderManager.getWorldFrame().add(ghostTank);
+        myTank.userData.ghostMesh = ghostTank;
+      }
+
+      // Update ghost mesh name label too
+      if (myTank.userData.ghostMesh && myTank.userData.ghostMesh.userData.nameLabel &&
+          myTank.userData.ghostMesh.userData.nameLabel.material) {
+        renderManager.updateSpriteLabel(myTank.userData.ghostMesh.userData.nameLabel, message.player.name, message.player.color);
+      }
+
+      myTank.userData.forwardSpeed = message.player.forwardSpeed || 0;
+      myTank.userData.rotationSpeed = message.player.rotationSpeed || 0;
+      myTank.userData.jumpAzimuth = message.player.jumpAzimuth ?? null;
+      myTank.userData.slideAzimuth = message.player.slideAzimuth;
+      myTank.userData.airVelocityX = message.player.airVelocityX || 0;
+      myTank.userData.airVelocityY = message.player.airVelocityY || 0;
+      myTank.visible = true;
+      localTeleportReentryBlockTeleporterIndex = null;
+      localTeleportReentryBlockDistance = 0;
+      localTeleportReentryBlockUntil = 0;
+      localTeleportCooldownUntil = 0;
+      suppressLocalTeleportFxUntil = 0;
+
+      if (!wasAliveBefore && message.player.alive) {
+        triggerSpawnEffectForTank(myTank, message.player.color);
+      }
+    }
+    // A join is a new life on both ends -- the server's own join handler
+    // clears its copy of the pause the same way `respawned()` does for a
+    // respawn -- but nothing did that here on the client, so a pause or
+    // countdown picked up moments earlier (staging a team in the entry
+    // dialog while still on a live tank, say) would otherwise survive a
+    // join that has nothing to do with it and show as already paused.
+    if (pauseState.respawned({
+      covered: shouldAutoPause(),
+      alive: isMyTankAlive(),
+      observer: isObserver(),
+    })) {
+      sendToServer({ type: 'pause' });
+    }
+    refreshScoreboards();
+  } else {
+    // Another player joined: update their info and create their tank if needed
+    const existingTank = tanks.get(message.player.id);
+    const wasAliveBefore = !!(existingTank && existingTank.userData?.playerState?.alive);
+    addPlayer(message.player);
+    const joinedTank = tanks.get(message.player.id);
+    if (!wasAliveBefore && message.player.alive && joinedTank) {
+      triggerSpawnEffectForTank(joinedTank, message.player.color);
+    }
+    refreshScoreboards();
+    noticeAbout(null, [describePlayer(message.player.id), ' joined'], 0, false);
+  }
+  // Someone arriving is a game to follow, for an observer still on the default.
+  refreshDefaultRoamView();
+}
+
+function receiveTeamUpdate(message) {
+  teamScores = message.teams || [];
+  refreshScoreboards();
+}
+
+function receiveNewRabbit(message) {
+  applyNewRabbit(message.playerId ?? null);
+}
+
+function receiveMatchStart() {
+  // resetPlayerScores: everybody back to nothing, as on the server -- and
+  // the counts only this client keeps (`CLIENT_LOCAL_PLAYER_STATE_FIELDS`):
+  // my self-kills, and my kills of and by each player, are the last
+  // match's too.
+  for (const id of [myPlayerId, ...tanks.keys()]) {
+    const state = getPlayerStateOf(id);
+    if (!state) continue;
+    state.wins = 0;
+    state.losses = 0;
+    state.tks = 0;
+    state.selfKills = 0;
+    state.localWins = 0;
+    state.localLosses = 0;
+  }
+  refreshScoreboards();
+}
+
+function receiveTimeUpdate(message) {
+  applyMatchTimeUpdate(typeof message.timeLeft === 'number' ? message.timeLeft : null);
+}
+
+function receiveScoreOver(message) {
+  applyScoreOver(message.playerId ?? null, message.team ?? null);
+}
+
+function receivePlayerLeft(message) {
+  // Show the player's name before removing
+  // Described before the tank goes, since that is where the colour, the flag
+  // and the team are read from.
+  noticeAbout(null, [describePlayer(message.id), ' left'], 0, false);
+  removePlayer(message.id);
+  // The last player gone leaves nothing to follow but the map.
+  refreshDefaultRoamView();
+}
+
+function receivePlayerUpdated(message) {
+  if (message.player) {
+    // Upstream's own lines when a tank goes quiet and comes back
+    // (playing.cxx:7323-7329).
+    const before = tanks.get(message.player.id)?.userData?.playerState;
+    if (before && message.player.id !== myPlayerId
+      && typeof message.player.notResponding === 'boolean'
+      && Boolean(before.notResponding) !== message.player.notResponding) {
+      addChatEntry(['server', 'all'],
+        `${message.player.name} ${message.player.notResponding ? 'not responding' : 'okay'}`,
+        CHAT_KIND_SERVER);
+    }
+    addPlayer(message.player);
+    if (message.player.id === myPlayerId) {
+      myTank = tanks.get(myPlayerId);
+      if (message.player.team !== undefined) {
         playerTeam = normalizePlayerTeam(message.player.team);
-        // A reconnect is a new player to the server, but the same pilot here;
-        // a reload finds it in storage, and is not a fresh enable. An observer
-        // has no tank to fly (issue #164): the pilot lands, and is kept --
-        // in storage too -- to take the controls again the next time this
-        // player joins to play.
-        if (isObserver()) {
-          if (autopilotOn) {
-            autopilotRestoreId = autopilotId;
-            setAutopilot(null, { remember: false });
-          }
-        } else {
-          if (autopilotOn) {
-            sendToServer({ type: 'autopilot', on: true, pilot: getAutopilotName(autopilotId) });
-          } else if (autopilotRestoreId && canUseAutopilot()) {
-            setAutopilot(autopilotRestoreId);
-          }
-          autopilotRestoreId = null;
-        }
-        // The view the spectator link asked for. Applied on every join rather
-        // than once: a reconnect is how this client comes back from a server
-        // restart, and a link left running on a screen somewhere should come
-        // back watching rather than staring at the spawn it landed on.
-        if ((autoFollowTarget === AUTO_FOLLOW_LEADER || autoRoamView !== null)
-          && isObserverTeam(playerTeam)) {
-          roamView = autoRoamView || ROAM_VIEW.FOLLOW;
-          roamTargetId = null;
-          roamTargetFlagIndex = null;
-        }
-        // No link asked for a view: the default, which follows the game.
-        roamViewDefaulted = isObserverTeam(playerTeam)
-          && autoFollowTarget !== AUTO_FOLLOW_LEADER && autoRoamView === null
-          && !autoViewCamTarget && !autoViewMapTarget;
-        if (roamViewDefaulted) applyDefaultRoamView();
         amAdmin = message.player.admin === true;
         amVerified = message.player.verified === true;
         myGlobalCallsign = amVerified ? message.player.name : null;
         applyAdminUi();
-        teamFlagMarkerStyle = colorToCSS(getPlayerTeamColor(playerTeam));
         syncPlayerTeamSelector();
         updateVoiceIdentity();
-        const wasAliveBefore = !!(myTank && myTank.userData?.playerState?.alive);
-        addPlayer(message.player);
-
-        // This is our join confirmation, update our tank and finish join
-        myPlayerName = message.player.name;
-        myX = message.player.x;
-        myY = message.player.y;
-        myZ = message.player.z;
-        myAzimuth = message.player.azimuth;
-
-        // The view a shared Map Viewer link asked for -- applied on every
-        // join, same reasoning as `autoFollowTarget` just above. A position
-        // override resets `roamCamera` too, so free-roam's own lazy pickup
-        // (`handleRoamMotion`) re-derives from the new spot on its next
-        // frame rather than the one still sitting in it from before.
-        if (isObserverTeam(playerTeam)) {
-          if (autoViewCamTarget) {
-            roamView = autoViewCamTarget;
-          } else if (autoViewMapTarget) {
-            // A bare `?viewmap=` with no explicit `cam=` starts driving
-            // rather than free-floating -- closer to "walk around and look"
-            // than a spawn in empty air pointed at nothing in particular.
-            roamView = ROAM_VIEW.DRIVE_FP;
-          }
-          if (autoViewPosTarget) {
-            myX = autoViewPosTarget.x;
-            myY = autoViewPosTarget.y;
-            myZ = autoViewPosTarget.z;
-            myAzimuth = autoViewPosTarget.azimuth;
-            linkRoamPitch = autoViewPosTarget.pitch;
-            roamCamera = null;
-            viewerPlacedByLink = true;
-          }
-          // Whatever this join settled on -- the server's spawn, chosen
-          // against the live match's world, or a `pos=` copied off a link to
-          // some other map entirely -- is a position in a world that may not
-          // be the one about to be drawn. See `confineViewerToWorld`.
-          confineViewerToWorld();
-        }
-
-        // Saved only when it is a name the player chose. A `Player n` the server
-        // handed out because ours was taken -- on a quick reconnect, by this
-        // player's own previous connection, not yet timed out -- would
-        // otherwise replace the real one, and every later join would ask for
-        // `Player n` too.
-        if (!isDefaultPlayerName(myPlayerName) || isDefaultPlayerName(pendingJoinRequest?.name)) {
-          localStorage.setItem('playerName', myPlayerName);
-        }
-        pendingJoinRequest = null;
-
-        // Update player name display
-        document.getElementById('playerName').textContent = myPlayerName;
-
-        // Reuse and update my tank
-        myTank = tanks.get(myPlayerId);
-        if (myTank) {
-          placeTank(myTank, myX, myY, myZ, myAzimuth);
-          myTank.userData.verticalVelocity = message.player.verticalVelocity || 0;
-          myTank.userData.playerState = withClientLocalPlayerState(myTank.userData.playerState, message.player);
-
-          // Update name label with confirmed name from server
-          if (myTank.userData.nameLabel && myTank.userData.nameLabel.material) {
-            renderManager.updateSpriteLabel(myTank.userData.nameLabel, message.player.name, message.player.color);
-          }
-
-          // Create ghost mesh for local player to visualize what others see
-          if (!myTank.userData.ghostMesh) {
-            const ghostTank = renderManager.createGhostMesh(myTank);
-            // Reset rotation to 0 to ensure we're setting absolute values
-            ghostTank.rotation.set(0, 0, 0);
-            placeTank(ghostTank, myX, myY, myZ, myAzimuth);
-            ghostTank.visible = showDebugGeometry;
-            renderManager.getWorldFrame().add(ghostTank);
-            myTank.userData.ghostMesh = ghostTank;
-          }
-
-          // Update ghost mesh name label too
-          if (myTank.userData.ghostMesh && myTank.userData.ghostMesh.userData.nameLabel &&
-              myTank.userData.ghostMesh.userData.nameLabel.material) {
-            renderManager.updateSpriteLabel(myTank.userData.ghostMesh.userData.nameLabel, message.player.name, message.player.color);
-          }
-
-          myTank.userData.forwardSpeed = message.player.forwardSpeed || 0;
-          myTank.userData.rotationSpeed = message.player.rotationSpeed || 0;
-          myTank.userData.jumpAzimuth = message.player.jumpAzimuth ?? null;
-          myTank.userData.slideAzimuth = message.player.slideAzimuth;
-          myTank.userData.airVelocityX = message.player.airVelocityX || 0;
-          myTank.userData.airVelocityY = message.player.airVelocityY || 0;
-          myTank.visible = true;
-          localTeleportReentryBlockTeleporterIndex = null;
-          localTeleportReentryBlockDistance = 0;
-          localTeleportReentryBlockUntil = 0;
-          localTeleportCooldownUntil = 0;
-          suppressLocalTeleportFxUntil = 0;
-
-          if (!wasAliveBefore && message.player.alive) {
-            triggerSpawnEffectForTank(myTank, message.player.color);
-          }
-        }
-        // A join is a new life on both ends -- the server's own join handler
-        // clears its copy of the pause the same way `respawned()` does for a
-        // respawn -- but nothing did that here on the client, so a pause or
-        // countdown picked up moments earlier (staging a team in the entry
-        // dialog while still on a live tank, say) would otherwise survive a
-        // join that has nothing to do with it and show as already paused.
-        if (pauseState.respawned({
-          covered: shouldAutoPause(),
-          alive: isMyTankAlive(),
-          observer: isObserver(),
-        })) {
-          sendToServer({ type: 'pause' });
-        }
-        refreshScoreboards();
-      } else {
-        // Another player joined: update their info and create their tank if needed
-        const existingTank = tanks.get(message.player.id);
-        const wasAliveBefore = !!(existingTank && existingTank.userData?.playerState?.alive);
-        addPlayer(message.player);
-        const joinedTank = tanks.get(message.player.id);
-        if (!wasAliveBefore && message.player.alive && joinedTank) {
-          triggerSpawnEffectForTank(joinedTank, message.player.color);
-        }
-        refreshScoreboards();
-        noticeAbout(null, [describePlayer(message.player.id), ' joined'], 0, false);
       }
-      // Someone arriving is a game to follow, for an observer still on the default.
-      refreshDefaultRoamView();
-      break;
-
-    case 'teamUpdate':
-      teamScores = message.teams || [];
-      refreshScoreboards();
-      break;
-
-    case 'newRabbit':
-      applyNewRabbit(message.playerId ?? null);
-      break;
-
-    case 'matchStart':
-      // resetPlayerScores: everybody back to nothing, as on the server -- and
-      // the counts only this client keeps (`CLIENT_LOCAL_PLAYER_STATE_FIELDS`):
-      // my self-kills, and my kills of and by each player, are the last
-      // match's too.
-      for (const id of [myPlayerId, ...tanks.keys()]) {
-        const state = getPlayerStateOf(id);
-        if (!state) continue;
-        state.wins = 0;
-        state.losses = 0;
-        state.tks = 0;
-        state.selfKills = 0;
-        state.localWins = 0;
-        state.localLosses = 0;
-      }
-      refreshScoreboards();
-      break;
-
-    case 'timeUpdate':
-      applyMatchTimeUpdate(typeof message.timeLeft === 'number' ? message.timeLeft : null);
-      break;
-
-    case 'scoreOver':
-      applyScoreOver(message.playerId ?? null, message.team ?? null);
-      break;
-
-    case 'playerLeft': {
-      // Show the player's name before removing
-      // Described before the tank goes, since that is where the colour, the flag
-      // and the team are read from.
-      noticeAbout(null, [describePlayer(message.id), ' left'], 0, false);
-      removePlayer(message.id);
-      // The last player gone leaves nothing to follow but the map.
-      refreshDefaultRoamView();
-      break;
     }
-
-    case 'playerUpdated':
-      if (message.player) {
-        // Upstream's own lines when a tank goes quiet and comes back
-        // (playing.cxx:7323-7329).
-        const before = tanks.get(message.player.id)?.userData?.playerState;
-        if (before && message.player.id !== myPlayerId
-          && typeof message.player.notResponding === 'boolean'
-          && Boolean(before.notResponding) !== message.player.notResponding) {
-          addChatEntry(['server', 'all'],
-            `${message.player.name} ${message.player.notResponding ? 'not responding' : 'okay'}`,
-            CHAT_KIND_SERVER);
-        }
-        addPlayer(message.player);
-        if (message.player.id === myPlayerId) {
-          myTank = tanks.get(myPlayerId);
-          if (message.player.team !== undefined) {
-            playerTeam = normalizePlayerTeam(message.player.team);
-            amAdmin = message.player.admin === true;
-            amVerified = message.player.verified === true;
-            myGlobalCallsign = amVerified ? message.player.name : null;
-            applyAdminUi();
-            syncPlayerTeamSelector();
-            updateVoiceIdentity();
-          }
-        }
-        refreshScoreboards();
-      }
-      break;
-
-    case 'pm':
-    case 'pt':
-      applyPlayerMoveMessage(message, message.type === 'pt');
-      break;
-
-    // `MsgTeleport` from a proxied target: who went through, with no position.
-    // bzo's own `pt` above carries one because this server decides where a
-    // tank lands; a target decides for itself and the player updates either
-    // side of this already move the tank. So this is the sound and nothing
-    // else, which is all upstream's own handler does (`playing.cxx:3085`) --
-    // see the note in `applyPlayerMoveMessage` for why there is no effect.
-    case 'teleport': {
-      const tank = tanks.get(message.playerId);
-      if (tank) renderManager.playSound('teleport', tank.position);
-      break;
-    }
-
-    // One WebSocket frame per tick carrying every other tank's move instead
-    // of one frame per move (server.js batches `pendingMoveBroadcasts` in
-    // `gameLoop`). The sender's own id can appear here -- unlike plain 'pm',
-    // this is broadcastAll -- and is skipped for the same reason 'pm' was
-    // never sent back to its origin: applying it would fight local prediction.
-    case 'pmBatch':
-      for (const move of message.moves || []) {
-        if (move.id === myPlayerId) continue;
-        if (Number.isFinite(message.n)) {
-          if (message.n < (lastMoveBatchById.get(move.id) ?? -Infinity)) continue;
-          lastMoveBatchById.set(move.id, message.n);
-        }
-        applyPlayerMoveMessage(move, false);
-      }
-      break;
-
-    case 'rtc':
-      void rtcChannel.signal(message);
-      break;
-
-    case 'positionCorrection':
-      // An observer has a camera rather than a tank: `/mv` puts it there.
-      if (isObserver()) {
-        moveRoamCameraTo(message);
-        break;
-      }
-      // Server corrected our position - update dead reckoning state
-      myX = message.x;
-      myY = message.y;
-      myZ = message.z;
-      myAzimuth = message.a;
-      // Don't reset velocity tracking - the correction is only for position/rotation drift
-      // Resetting velocities to 0 would trigger immediate resend of current velocities
-      // Only update lastSentTime to prevent immediate heartbeat trigger
-      lastSentTime = performance.now();
-      if (myTank) {
-        placeTank(myTank, myX, myY, myZ, myAzimuth);
-        myTank.userData.verticalVelocity = message.vv || 0;
-        myTank.userData.airVelocityX = 0;
-        myTank.userData.airVelocityY = 0;
-        myTank.userData.jumpAzimuth = null;
-        myTank.userData.slideAzimuth = undefined;
-        localTeleportReentryBlockTeleporterIndex = null;
-        localTeleportReentryBlockDistance = 0;
-        localTeleportReentryBlockUntil = 0;
-        localTeleportCooldownUntil = 0;
-        suppressLocalTeleportFxUntil = 0;
-        clearJumpPredictionDebug(myTank);
-        deathCameraActive = false;
-        deathFollowTarget = null;
-        renderManager.deathFollowTarget = null;
-        renderManager.deathFollowAnchor = null;
-        updateDeathCameraHudVisibility();
-      }
-      break;
-
-    case 'flagUpdate':
-      message.flags.forEach((state) => setFlagState(state));
-      // MsgDropFlag still names its owner, so the drop that precedes this
-      // repaints the scoreboard while the flag is still on the tank. This is
-      // the message that makes it anonymous, so this is the one that has to
-      // repaint -- otherwise a shaken flag stays on the scoreboard until some
-      // unrelated event happens to redraw it.
-      refreshScoreboards();
-      break;
-
-    case 'grabFlag': {
-      const flag = setFlagState(message.flag);
-      // The player in their roster colour and the flag in its own, as every other
-      // notice that names a tank does. `flag: null` because the sentence names
-      // the flag already, and a callsign wearing it too would say it twice.
-      //
-      // No trailing " flag", which upstream appends (`playing.cxx:2736`).
-      // `Red Team` and `MG/Machine Gun` are already flag names and nothing
-      // else in the game is called either, so the word is a fifth of the line
-      // spent saying what the line already said -- and a line this one shares
-      // with three others on a phone.
-      noticeAbout(
-        null,
-        [describePlayer(message.playerId, { flag: null }), ' grabbed ', describeFlagForNotice(flag)],
-        0,
-        false,
-      );
-      // After the notice, not before it: what this adds for a bad flag is a
-      // sentence about the flag the line above just named, and it read
-      // backwards arriving first.
-      handleFlagGrabbedAlerts(message.playerId, flag);
-      // The scoreboard names the carried flag, and it only repaints on events.
-      refreshScoreboards();
-      break;
-    }
-
-    // MsgTransferFlag. A thief's shot moved a flag from one tank to another
-    // without it ever touching the ground, so there is no grab and no drop to
-    // repaint from -- this is the only message that says so.
-    case 'shotsLeft':
-      myFlagShotsLeft = { flag: message.flag, left: message.left };
-      break;
-
-    case 'transferFlag':
-      handleFlagTransferred(message);
-      refreshScoreboards();
-      break;
-
-    case 'captureFlag':
-      handleFlagCaptured(message);
-      refreshScoreboards();
-      break;
-
-    case 'nearFlag':
-      handleNearFlag(message);
-      break;
-
-    case 'antidoteFlag':
-      handleAntidoteFlag(message);
-      break;
-
-    case 'dropFlag': {
-      const flag = setFlagState(message.flag);
-      if (message.playerId === myPlayerId) {
-        renderManager.playLocalSound('flagDrop');
-        // handleFlagDropped's "make sure the player must reload after theft"
-        // (playing.cxx:3823). Charged when the flag leaves the tank, which after
-        // a successful steal is the moment the theft spends it.
-        if (flag.type === 'TH') {
-          forceReload(getThiefDropReloadSeconds(getShotLifetimeSeconds(null)));
-        }
-      }
-      // Terse for the same reason the grab above is: see that comment.
-      noticeAbout(
-        null,
-        [describePlayer(message.playerId, { flag: null }), ' dropped ', describeFlagForNotice(flag)],
-        0,
-        false,
-      );
-      refreshScoreboards();
-      break;
-    }
-
-    case 'shotBegin':
-      // A missile arrives already locked, so the map is seeded before the shot
-      // is drawn and its first step is aimed.
-      //
-      // Except my own, where this client is the one that decided the lock.
-      // That is upstream's own split: `GuidedMissileStrategy::update` reads
-      // `lastTarget` off the wire only `if (isRemote)`, and asks
-      // `myTank->getTarget()` otherwise (GuidedMissleStrategy.cxx:139-149). A
-      // target has no target field in `MsgShotBegin` to relay, so taking an
-      // answer back from it would clear the lock on every trigger pull.
-      // Ended already, its end having overtaken it on the UDP channel.
-      if (earlyShotEnds.delete(message.id)) break;
-      if (message.flag === 'GM'
-        && !(clientTracesShots && message.playerId === myPlayerId)) {
-        setPlayerLockTarget(message.playerId, message.target ?? null);
-      }
-      createProjectile(message);
-      if (message.flag === 'GM') warnLockedOnMe(message.playerId, message.target ?? null);
-      break;
-
-    // MsgGMUpdate's target half (GuidedMissleStrategy.cxx:430). Who a player has
-    // locked, so every client steers that player's missiles at the same tank and
-    // the shooter's own gets the marker. Named after the message it answers to,
-    // which is what the rest of bzo's wire does (`docs/network.md`): on a
-    // proxied server it *is* that message, and a name of bzo's own would be one
-    // more thing to map.
-    case 'botIntents': {
-      followedBotPlan = message.plan ? { ...message.plan, at: performance.now() } : null;
-      const previous = botIntents;
-      botIntents = new Map(debugLabelsEnabled ? (message.bots || []).map((bot) => [bot.id, bot]) : []);
-      new Set([...previous.keys(), ...botIntents.keys()]).forEach(refreshTankNameLabel);
-      break;
-    }
-    case 'gmUpdate':
-      setPlayerLockTarget(message.playerId, message.targetId ?? null);
-      warnLockedOnMe(message.playerId, message.targetId ?? null);
-      break;
-
-    // setTarget()'s answer to the identify press, for a tank. The server ran the
-    // scan; this is only the alert it puts on slot 1 for two seconds.
-    case 'identifyResult':
-      showIdentifyResult(message.targetId ?? null, message.locked === true);
-      break;
-
-    // The server's own measurement of this connection's round trip
-    // (docs/lag-plan.md) -- riding the existing keep-alive ping, not a
-    // client-side measurement, since a client cannot be trusted to report on
-    // the number it would be judged by.
-    case 'lag':
-      if (Number.isFinite(message.lagMs)) latency = message.lagMs;
-      if (Number.isFinite(message.jitterMs)) latencyJitter = message.jitterMs;
-      break;
-
-    case 'shotEnd':
-      if (!projectiles.has(message.id)) {
-        const now = performance.now();
-        for (const [id, at] of earlyShotEnds) {
-          if (now - at > EARLY_SHOT_END_MS) earlyShotEnds.delete(id);
-        }
-        earlyShotEnds.set(message.id, now);
-      }
-      removeProjectile(message.id, message.reason, message.x, message.y, message.z);
-      break;
-
-    case 'killed':
-      noteAutopilotKill(message);
-      handlePlayerHit(message);
-      break;
-
-    case 'alive':
-      handlePlayerRespawn(message);
-      break;
-
-    case 'playerList':
-      applyPlayerList(message.players || []);
-      break;
-
-    // MsgAutoPilot (playing.cxx:2423), and upstream's own words for it.
-    case 'autopilot': {
-      const tank = tanks.get(message.playerId);
-      if (tank?.userData?.playerState) tank.userData.playerState.autopilot = message.on;
-      // Upstream's words, with the pilot's own name where it is not Roger.
-      noticeAbout(null, [describePlayer(message.playerId),
-        `: ${message.pilot || 'Roger'} ${message.on ? 'taking' : 'releasing'} controls`], 0, false);
-      break;
-    }
-
-    case 'pauseCountdown':
-      if (message.playerId === myPlayerId) {
-        pauseState.countdownStarted(sampleEpochClock());
-        pauseAlertSecondsShown = 0;
-        updatePauseCountdown();
-      }
-      break;
-
-    // Either the player pressed pause again or the tank had driven somewhere it
-    // may not pause from. Upstream shows both on the pause alert slot.
-    case 'pauseCancelled':
-      if (message.playerId === myPlayerId) {
-        pauseState.cancelledByServer();
-        pauseAlertSecondsShown = 0;
-        setHudAlert(PAUSE_ALERT_SLOT, message.reason, PAUSE_ALERT_SECONDS, false);
-        showMessage(message.reason);
-      }
-      break;
-
-    case 'playerPaused':
-      if (message.playerId === myPlayerId) {
-        pauseState.pausedByServer();
-        pauseAlertSecondsShown = 0;
-        // setAlert(1, NULL) clears the countdown the moment it runs out.
-        setHudAlert(PAUSE_ALERT_SLOT, null, 0);
-      }
-      // One line, whoever paused. A `local:` line saying "Paused" beside
-      // everyone else's "<name> paused" said the same thing twice as far as
-      // the transcript is concerned, and in a different voice.
-      noticeAbout(null, [describePlayer(message.playerId), ' paused'], 0, false);
-      setTankPausedState(message.playerId, true, message);
-      createPausedSphere(message.playerId, message.x, message.y, message.z);
-      refreshScoreboards();
-      break;
-
-    case 'playerUnpaused':
-      if (message.playerId === myPlayerId) {
-        pauseState.unpausedByServer();
-        pauseAlertSecondsShown = 0;
-      }
-      noticeAbout(null, [describePlayer(message.playerId), ' unpaused'], 0, false);
-      setTankPausedState(message.playerId, false);
-      removePausedSphere(message.playerId);
-      refreshScoreboards();
-      break;
-
-    case 'voiceMicToggled': {
-      const state = tanks.get(message.playerId)?.userData?.playerState;
-      if (state) {
-        state.voiceMicEnabled = message.enabled === true;
-        refreshScoreboards();
-      }
-      break;
-    }
-
-    case 'message': {
-      const srcId = normalizeMessageEndpoint(message.src ?? message.from, CHAT_TARGET_SERVER);
-      const dstId = normalizeMessageEndpoint(message.dst ?? message.to, CHAT_TARGET_ALL);
-      // playing.cxx:3116-3150: only chat and action messages are ever
-      // filtered -- never a server-originated one (`src: -1` normalizes to
-      // `CHAT_TARGET_SERVER`, never a player id, so `isPlayerSilenced` cannot
-      // match it anyway).
-      if ((message.msgType === CHAT_KIND_CHAT || message.msgType === CHAT_KIND_ACTION)
-        && typeof srcId === 'string' && isPlayerSilenced(srcId)) {
-        break;
-      }
-      if (typeof srcId === 'string' && dstId === myPlayerId && srcId !== myPlayerId) {
-        lastDirectSenderId = srcId;
-      }
-      // playing.cxx:3259, :3276 and :3296. Three sounds, each only when somebody
-      // else sent it, and each on a clock of its own -- upstream keeps a separate
-      // `static lastMsg` per branch, so a team message does not silence the
-      // private one that arrives beside it.
-      if (srcId !== myPlayerId) {
-        const now = performance.now();
-        const throttled = (last) => now - last >= MESSAGE_SOUND_INTERVAL_MS;
-        if (dstId === CHAT_TARGET_TEAM && throttled(lastTeamMessageSoundAt)) {
-          lastTeamMessageSoundAt = now;
-          renderManager.playLocalSound('messageTeam');
-        } else if (dstId === CHAT_TARGET_ADMIN && throttled(lastAdminMessageSoundAt)) {
-          lastAdminMessageSoundAt = now;
-          renderManager.playLocalSound('messageAdmin');
-        } else if (dstId === myPlayerId && typeof srcId === 'string'
-          && throttled(lastPrivateMessageSoundAt)) {
-          // A message addressed to me by a player. Upstream refuses this one for
-          // a message from the *server* unless `beepOnServerMsg` is set, which
-          // is a setting bzo does not ship -- and `srcId` being a player id
-          // rather than a channel is the same test.
-          lastPrivateMessageSoundAt = now;
-          renderManager.playLocalSound('messagePrivate');
-        }
-      }
-      // `/flag show`'s answer names every flag, and it is the only thing that
-      // ever names an unidentified superflag: both bzo and bzfs hide one from
-      // every flag update while nobody is carrying it. Reading the reply is
-      // what puts those identities on the field, and it is one reader for
-      // both -- bzo says this in upstream's own shape (`formatFlagInfo`), so
-      // a proxied server's reply lands here the same way.
-      //
-      // Only a line from the server counts. A player typing something that
-      // looks like one is a player talking.
-      if (srcId === CHAT_TARGET_SERVER) applyFlagInfoLine(message.text);
-      const formatted = formatNetworkMessage(message);
-      addChatEntry(formatted.tabs, formatted.text, formatted.kind, formatted.segments);
-      updateChatWindow();
-      break;
-    }
-
-    case 'mapList':
-      handleMapsList(message);
-      break;
-
-    case 'remoteServerList':
-      handleRemoteServerList(message);
-      break;
-
-    case 'importMapResult':
-      importMapResultReceived(message);
-      break;
-
-    case 'importMapForViewResult':
-      worldFilePrepared(message);
-      handleImportMapForViewResult(message);
-      break;
-
-    case 'serverConfigUpdate':
-      handleServerConfigUpdate(message);
-      break;
-
-    // MsgSetVar: one world variable set, or with a null value reset, by the
-    // server's `/set` or a bzfs target's. The live world is rebuilt under it,
-    // so its scenery switches and sizes follow too; a preview keeps its own
-    // map's until it ends.
-    case 'setVar':
-      if (typeof message.name !== 'string') break;
-      if (message.value === null || message.value === undefined) liveBzdb.delete(message.name);
-      else liveBzdb.set(message.name, String(message.value));
-      recomputeLiveConfig();
-      if (!isPreviewingAltWorld() && currentWorldData) {
-        applyWorldData(currentWorldData);
-      } else {
-        applyWorldGameplay(currentWorldData);
-      }
-      break;
-
-    case 'superKill':
-      // MsgSuperKill's words (playing.cxx:2115); the reason came before it
-      // as a server message.
-      serverForcedDisconnect = true;
-      // A kick or a ban: come back only when the player asks, as a BZFlag
-      // client must, rather than straight back into what removed it.
-      waitToRejoin = message.rejoin === false;
-      showMessage('Server forced a disconnect', 'death');
-      break;
-
-    case 'reload':
-      // The server usually says this on its way out -- a map change restarts it
-      // -- so the reload waits for it to come back rather than racing it.
-      showMessage('Server updated - reloading...', 'death');
-      setTimeout(reloadWhenServerIsUp, 1000);
-      break;
-
-    default:
-      console.warn('Unknown message type from server:', message);
-      break;
+    refreshScoreboards();
   }
+}
+
+function receivePt(message) {
+  applyPlayerMoveMessage(message, message.type === 'pt');
+}
+
+// `MsgTeleport` from a proxied target: who went through, with no position.
+// bzo's own `pt` above carries one because this server decides where a
+// tank lands; a target decides for itself and the player updates either
+// side of this already move the tank. So this is the sound and nothing
+// else, which is all upstream's own handler does (`playing.cxx:3085`) --
+// see the note in `applyPlayerMoveMessage` for why there is no effect.
+function receiveTeleport(message) {
+  const tank = tanks.get(message.playerId);
+  if (tank) renderManager.playSound('teleport', tank.position);
+}
+
+// One WebSocket frame per tick carrying every other tank's move instead
+// of one frame per move (server.js batches `pendingMoveBroadcasts` in
+// `gameLoop`). The sender's own id can appear here -- unlike plain 'pm',
+// this is broadcastAll -- and is skipped for the same reason 'pm' was
+// never sent back to its origin: applying it would fight local prediction.
+function receivePmBatch(message) {
+  for (const move of message.moves || []) {
+    if (move.id === myPlayerId) continue;
+    if (Number.isFinite(message.n)) {
+      if (message.n < (lastMoveBatchById.get(move.id) ?? -Infinity)) continue;
+      lastMoveBatchById.set(move.id, message.n);
+    }
+    applyPlayerMoveMessage(move, false);
+  }
+}
+
+function receiveRtc(message) {
+  void rtcChannel.signal(message);
+}
+
+function receivePositionCorrection(message) {
+  // An observer has a camera rather than a tank: `/mv` puts it there.
+  if (isObserver()) {
+    moveRoamCameraTo(message);
+    return;
+  }
+  // Server corrected our position - update dead reckoning state
+  myX = message.x;
+  myY = message.y;
+  myZ = message.z;
+  myAzimuth = message.a;
+  // Don't reset velocity tracking - the correction is only for position/rotation drift
+  // Resetting velocities to 0 would trigger immediate resend of current velocities
+  // Only update lastSentTime to prevent immediate heartbeat trigger
+  lastSentTime = performance.now();
+  if (myTank) {
+    placeTank(myTank, myX, myY, myZ, myAzimuth);
+    myTank.userData.verticalVelocity = message.vv || 0;
+    myTank.userData.airVelocityX = 0;
+    myTank.userData.airVelocityY = 0;
+    myTank.userData.jumpAzimuth = null;
+    myTank.userData.slideAzimuth = undefined;
+    localTeleportReentryBlockTeleporterIndex = null;
+    localTeleportReentryBlockDistance = 0;
+    localTeleportReentryBlockUntil = 0;
+    localTeleportCooldownUntil = 0;
+    suppressLocalTeleportFxUntil = 0;
+    clearJumpPredictionDebug(myTank);
+    deathCameraActive = false;
+    deathFollowTarget = null;
+    renderManager.deathFollowTarget = null;
+    renderManager.deathFollowAnchor = null;
+    updateDeathCameraHudVisibility();
+  }
+}
+
+function receiveFlagUpdate(message) {
+  message.flags.forEach((state) => setFlagState(state));
+  // MsgDropFlag still names its owner, so the drop that precedes this
+  // repaints the scoreboard while the flag is still on the tank. This is
+  // the message that makes it anonymous, so this is the one that has to
+  // repaint -- otherwise a shaken flag stays on the scoreboard until some
+  // unrelated event happens to redraw it.
+  refreshScoreboards();
+}
+
+function receiveGrabFlag(message) {
+  const flag = setFlagState(message.flag);
+  // The player in their roster colour and the flag in its own, as every other
+  // notice that names a tank does. `flag: null` because the sentence names
+  // the flag already, and a callsign wearing it too would say it twice.
+  //
+  // No trailing " flag", which upstream appends (`playing.cxx:2736`).
+  // `Red Team` and `MG/Machine Gun` are already flag names and nothing
+  // else in the game is called either, so the word is a fifth of the line
+  // spent saying what the line already said -- and a line this one shares
+  // with three others on a phone.
+  noticeAbout(
+    null,
+    [describePlayer(message.playerId, { flag: null }), ' grabbed ', describeFlagForNotice(flag)],
+    0,
+    false,
+  );
+  // After the notice, not before it: what this adds for a bad flag is a
+  // sentence about the flag the line above just named, and it read
+  // backwards arriving first.
+  handleFlagGrabbedAlerts(message.playerId, flag);
+  // The scoreboard names the carried flag, and it only repaints on events.
+  refreshScoreboards();
+}
+
+// MsgTransferFlag. A thief's shot moved a flag from one tank to another
+// without it ever touching the ground, so there is no grab and no drop to
+// repaint from -- this is the only message that says so.
+function receiveShotsLeft(message) {
+  myFlagShotsLeft = { flag: message.flag, left: message.left };
+}
+
+function receiveTransferFlag(message) {
+  handleFlagTransferred(message);
+  refreshScoreboards();
+}
+
+function receiveCaptureFlag(message) {
+  handleFlagCaptured(message);
+  refreshScoreboards();
+}
+
+function receiveNearFlag(message) {
+  handleNearFlag(message);
+}
+
+function receiveAntidoteFlag(message) {
+  handleAntidoteFlag(message);
+}
+
+function receiveDropFlag(message) {
+  const flag = setFlagState(message.flag);
+  if (message.playerId === myPlayerId) {
+    renderManager.playLocalSound('flagDrop');
+    // handleFlagDropped's "make sure the player must reload after theft"
+    // (playing.cxx:3823). Charged when the flag leaves the tank, which after
+    // a successful steal is the moment the theft spends it.
+    if (flag.type === 'TH') {
+      forceReload(getThiefDropReloadSeconds(getShotLifetimeSeconds(null)));
+    }
+  }
+  // Terse for the same reason the grab above is: see that comment.
+  noticeAbout(
+    null,
+    [describePlayer(message.playerId, { flag: null }), ' dropped ', describeFlagForNotice(flag)],
+    0,
+    false,
+  );
+  refreshScoreboards();
+}
+
+function receiveShotBegin(message) {
+  // A missile arrives already locked, so the map is seeded before the shot
+  // is drawn and its first step is aimed.
+  //
+  // Except my own, where this client is the one that decided the lock.
+  // That is upstream's own split: `GuidedMissileStrategy::update` reads
+  // `lastTarget` off the wire only `if (isRemote)`, and asks
+  // `myTank->getTarget()` otherwise (GuidedMissleStrategy.cxx:139-149). A
+  // target has no target field in `MsgShotBegin` to relay, so taking an
+  // answer back from it would clear the lock on every trigger pull.
+  // Ended already, its end having overtaken it on the UDP channel.
+  if (earlyShotEnds.delete(message.id)) return;
+  if (message.flag === 'GM'
+    && !(clientTracesShots && message.playerId === myPlayerId)) {
+    setPlayerLockTarget(message.playerId, message.target ?? null);
+  }
+  createProjectile(message);
+  if (message.flag === 'GM') warnLockedOnMe(message.playerId, message.target ?? null);
+}
+
+// MsgGMUpdate's target half (GuidedMissleStrategy.cxx:430). Who a player has
+// locked, so every client steers that player's missiles at the same tank and
+// the shooter's own gets the marker. Named after the message it answers to,
+// which is what the rest of bzo's wire does (`docs/network.md`): on a
+// proxied server it *is* that message, and a name of bzo's own would be one
+// more thing to map.
+function receiveBotIntents(message) {
+  followedBotPlan = message.plan ? { ...message.plan, at: performance.now() } : null;
+  const previous = botIntents;
+  botIntents = new Map(debugLabelsEnabled ? (message.bots || []).map((bot) => [bot.id, bot]) : []);
+  new Set([...previous.keys(), ...botIntents.keys()]).forEach(refreshTankNameLabel);
+}
+
+function receiveGmUpdate(message) {
+  setPlayerLockTarget(message.playerId, message.targetId ?? null);
+  warnLockedOnMe(message.playerId, message.targetId ?? null);
+}
+
+// setTarget()'s answer to the identify press, for a tank. The server ran the
+// scan; this is only the alert it puts on slot 1 for two seconds.
+function receiveIdentifyResult(message) {
+  showIdentifyResult(message.targetId ?? null, message.locked === true);
+}
+
+// The server's own measurement of this connection's round trip
+// (docs/lag-plan.md) -- riding the existing keep-alive ping, not a
+// client-side measurement, since a client cannot be trusted to report on
+// the number it would be judged by.
+function receiveLag(message) {
+  if (Number.isFinite(message.lagMs)) latency = message.lagMs;
+  if (Number.isFinite(message.jitterMs)) latencyJitter = message.jitterMs;
+}
+
+function receiveShotEnd(message) {
+  if (!projectiles.has(message.id)) {
+    const now = performance.now();
+    for (const [id, at] of earlyShotEnds) {
+      if (now - at > EARLY_SHOT_END_MS) earlyShotEnds.delete(id);
+    }
+    earlyShotEnds.set(message.id, now);
+  }
+  removeProjectile(message.id, message.reason, message.x, message.y, message.z);
+}
+
+function receiveKilled(message) {
+  noteAutopilotKill(message);
+  handlePlayerHit(message);
+}
+
+function receiveAlive(message) {
+  handlePlayerRespawn(message);
+}
+
+function receivePlayerList(message) {
+  applyPlayerList(message.players || []);
+}
+
+// MsgAutoPilot (playing.cxx:2423), and upstream's own words for it.
+function receiveAutopilot(message) {
+  const tank = tanks.get(message.playerId);
+  if (tank?.userData?.playerState) tank.userData.playerState.autopilot = message.on;
+  // Upstream's words, with the pilot's own name where it is not Roger.
+  noticeAbout(null, [describePlayer(message.playerId),
+    `: ${message.pilot || 'Roger'} ${message.on ? 'taking' : 'releasing'} controls`], 0, false);
+}
+
+function receivePauseCountdown(message) {
+  if (message.playerId === myPlayerId) {
+    pauseState.countdownStarted(sampleEpochClock());
+    pauseAlertSecondsShown = 0;
+    updatePauseCountdown();
+  }
+}
+
+// Either the player pressed pause again or the tank had driven somewhere it
+// may not pause from. Upstream shows both on the pause alert slot.
+function receivePauseCancelled(message) {
+  if (message.playerId === myPlayerId) {
+    pauseState.cancelledByServer();
+    pauseAlertSecondsShown = 0;
+    setHudAlert(PAUSE_ALERT_SLOT, message.reason, PAUSE_ALERT_SECONDS, false);
+    showMessage(message.reason);
+  }
+}
+
+function receivePlayerPaused(message) {
+  if (message.playerId === myPlayerId) {
+    pauseState.pausedByServer();
+    pauseAlertSecondsShown = 0;
+    // setAlert(1, NULL) clears the countdown the moment it runs out.
+    setHudAlert(PAUSE_ALERT_SLOT, null, 0);
+  }
+  // One line, whoever paused. A `local:` line saying "Paused" beside
+  // everyone else's "<name> paused" said the same thing twice as far as
+  // the transcript is concerned, and in a different voice.
+  noticeAbout(null, [describePlayer(message.playerId), ' paused'], 0, false);
+  setTankPausedState(message.playerId, true, message);
+  createPausedSphere(message.playerId, message.x, message.y, message.z);
+  refreshScoreboards();
+}
+
+function receivePlayerUnpaused(message) {
+  if (message.playerId === myPlayerId) {
+    pauseState.unpausedByServer();
+    pauseAlertSecondsShown = 0;
+  }
+  noticeAbout(null, [describePlayer(message.playerId), ' unpaused'], 0, false);
+  setTankPausedState(message.playerId, false);
+  removePausedSphere(message.playerId);
+  refreshScoreboards();
+}
+
+function receiveVoiceMicToggled(message) {
+  const state = tanks.get(message.playerId)?.userData?.playerState;
+  if (state) {
+    state.voiceMicEnabled = message.enabled === true;
+    refreshScoreboards();
+  }
+}
+
+function receiveMessage(message) {
+  const srcId = normalizeMessageEndpoint(message.src ?? message.from, CHAT_TARGET_SERVER);
+  const dstId = normalizeMessageEndpoint(message.dst ?? message.to, CHAT_TARGET_ALL);
+  // playing.cxx:3116-3150: only chat and action messages are ever
+  // filtered -- never a server-originated one (`src: -1` normalizes to
+  // `CHAT_TARGET_SERVER`, never a player id, so `isPlayerSilenced` cannot
+  // match it anyway).
+  if ((message.msgType === CHAT_KIND_CHAT || message.msgType === CHAT_KIND_ACTION)
+    && typeof srcId === 'string' && isPlayerSilenced(srcId)) {
+    return;
+  }
+  if (typeof srcId === 'string' && dstId === myPlayerId && srcId !== myPlayerId) {
+    lastDirectSenderId = srcId;
+  }
+  // playing.cxx:3259, :3276 and :3296. Three sounds, each only when somebody
+  // else sent it, and each on a clock of its own -- upstream keeps a separate
+  // `static lastMsg` per branch, so a team message does not silence the
+  // private one that arrives beside it.
+  if (srcId !== myPlayerId) {
+    const now = performance.now();
+    const throttled = (last) => now - last >= MESSAGE_SOUND_INTERVAL_MS;
+    if (dstId === CHAT_TARGET_TEAM && throttled(lastTeamMessageSoundAt)) {
+      lastTeamMessageSoundAt = now;
+      renderManager.playLocalSound('messageTeam');
+    } else if (dstId === CHAT_TARGET_ADMIN && throttled(lastAdminMessageSoundAt)) {
+      lastAdminMessageSoundAt = now;
+      renderManager.playLocalSound('messageAdmin');
+    } else if (dstId === myPlayerId && typeof srcId === 'string'
+      && throttled(lastPrivateMessageSoundAt)) {
+      // A message addressed to me by a player. Upstream refuses this one for
+      // a message from the *server* unless `beepOnServerMsg` is set, which
+      // is a setting bzo does not ship -- and `srcId` being a player id
+      // rather than a channel is the same test.
+      lastPrivateMessageSoundAt = now;
+      renderManager.playLocalSound('messagePrivate');
+    }
+  }
+  // `/flag show`'s answer names every flag, and it is the only thing that
+  // ever names an unidentified superflag: both bzo and bzfs hide one from
+  // every flag update while nobody is carrying it. Reading the reply is
+  // what puts those identities on the field, and it is one reader for
+  // both -- bzo says this in upstream's own shape (`formatFlagInfo`), so
+  // a proxied server's reply lands here the same way.
+  //
+  // Only a line from the server counts. A player typing something that
+  // looks like one is a player talking.
+  if (srcId === CHAT_TARGET_SERVER) applyFlagInfoLine(message.text);
+  const formatted = formatNetworkMessage(message);
+  addChatEntry(formatted.tabs, formatted.text, formatted.kind, formatted.segments);
+  updateChatWindow();
+}
+
+function receiveMapList(message) {
+  handleMapsList(message);
+}
+
+function receiveRemoteServerList(message) {
+  handleRemoteServerList(message);
+}
+
+function receiveImportMapResult(message) {
+  importMapResultReceived(message);
+}
+
+function receiveImportMapForViewResult(message) {
+  worldFilePrepared(message);
+  handleImportMapForViewResult(message);
+}
+
+function receiveServerConfigUpdate(message) {
+  handleServerConfigUpdate(message);
+}
+
+// MsgSetVar: one world variable set, or with a null value reset, by the
+// server's `/set` or a bzfs target's. The live world is rebuilt under it,
+// so its scenery switches and sizes follow too; a preview keeps its own
+// map's until it ends.
+function receiveSetVar(message) {
+  if (typeof message.name !== 'string') return;
+  if (message.value === null || message.value === undefined) liveBzdb.delete(message.name);
+  else liveBzdb.set(message.name, String(message.value));
+  recomputeLiveConfig();
+  if (!isPreviewingAltWorld() && currentWorldData) {
+    applyWorldData(currentWorldData);
+  } else {
+    applyWorldGameplay(currentWorldData);
+  }
+}
+
+function receiveSuperKill(message) {
+  // MsgSuperKill's words (playing.cxx:2115); the reason came before it
+  // as a server message.
+  serverForcedDisconnect = true;
+  // A kick or a ban: come back only when the player asks, as a BZFlag
+  // client must, rather than straight back into what removed it.
+  waitToRejoin = message.rejoin === false;
+  showMessage('Server forced a disconnect', 'death');
+}
+
+function receiveReload() {
+  // The server usually says this on its way out -- a map change restarts it
+  // -- so the reload waits for it to come back rather than racing it.
+  showMessage('Server updated - reloading...', 'death');
+  setTimeout(reloadWhenServerIsUp, 1000);
 }
 
 // Fields the server's own state carries no opinion about, because they are
