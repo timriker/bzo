@@ -613,6 +613,11 @@ pilot; `docs/refactor-plan.md` is how the rest is being split:
 - **A shot always rides with a move**, for every tank, as upstream sends a
   player update before every shot (`LocalPlayer.cxx:1268`); otherwise a tank
   that turned since its last move fires from where the server does not put it.
+- **A connection's messages are handled by `type`**: `acceptConnection` looks
+  each up in `MESSAGE_HANDLERS`, from `server/messages-voice.cjs`,
+  `messages-chat.cjs`, `messages-play.cjs` and `messages-operator.cjs`. A
+  handler takes the player, their socket and the message; what it needs of
+  `server.js` it is handed by `useServer`.
 - **A server bot is a client whose socket never leaves the process.**
   `acceptConnection` takes it like a browser's and it sends a browser's
   messages, so validation, anti-cheat, scoring and the list treat it as any

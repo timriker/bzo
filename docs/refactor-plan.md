@@ -26,9 +26,11 @@ must give byte-identical output before and after each step.
 
 4. `server.js`: the bzfs proxy -- `handleProxyConnection` and the helpers
    only it uses -- is `server/bzfs-proxy.cjs`, handed what it needs of the
-   server by `useServer`. Done. Then the message cases in `acceptConnection`
-   become a table of handlers in `server/` modules, grouped by voice, chat and
-   commands, and play.
+   server by `useServer`. Done. The message cases in `acceptConnection` are
+   a table of handlers, `MESSAGE_HANDLERS`, in `server/messages-voice.cjs`,
+   `messages-chat.cjs`, `messages-play.cjs` and `messages-operator.cjs`, each
+   handed what it needs by `useServer` and reading what changes as the server
+   runs through `MESSAGE_SERVER`. Done.
 
    The server has no seeded bench to compare, so each move is checked by
    diffing the moved code against what it replaced -- only the lines that

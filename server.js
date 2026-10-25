@@ -60,7 +60,6 @@ const {
   getWorldMissileLifetimeSeconds,
   WORLD_WEAPON_TEAM,
   normalizeShotLimit,
-  getShotFlight,
   getWorldReloadSeconds,
   getSlotReloadSeconds,
   findFreeShotSlot,
@@ -91,8 +90,6 @@ const {
   SUPER_FLAG_HALF_LIFE_SECONDS,
   ANTIDOTE_PLACEMENT_ATTEMPTS,
   getFlagGrabRadius,
-  canJump,
-  canShakeFlag,
   computeFlagFlight,
   getAntidoteCoordinate,
   hasAirControl,
@@ -109,11 +106,6 @@ const {
   getFlagThrownAltitude,
   getFlagType,
   getShotEffects,
-  getMotionEffects,
-  getAccelerationLimits,
-  applyAccelerationLimit,
-  getMaxAngVelFactor,
-  getMaxSpeedFactor,
   getShockWaveRadius,
   drivesThroughBuildings,
   canRunOver,
@@ -216,13 +208,11 @@ const { POLL_DEFAULTS, VotingArbiter, parseVoteAnswer } = require('./server/poll
 const { getKillScoreDeltas } = require('./server/scoring.cjs');
 const { createBanStore, parseDuration } = require('./server/bans.cjs');
 const {
-  normalizePlayerTeamSelection,
   clampPlayingLimits,
   normalizeRabbitSelection,
   normalizeTeamLimits,
   resolveTeamMode,
   teamModeFromMaximums,
-  selectPlayerTeam,
   getPlayerTeamColor,
   getInitialPlayerColor,
   getJoinPlayerColor,
@@ -233,7 +223,6 @@ const {
   TEAM_SHADE_MIN_SATURATION,
   isColorTeam,
   isObserverTeam,
-  isColorTeamIndex,
   isRabbitTeam,
   getTeamColorIndex,
   getTeamFromColorIndex,
@@ -250,7 +239,7 @@ const {
   teamScoreMovesOnKill,
   areFoes,
 } = require('./server/teams.cjs');
-const { DEFAULT_TANK_SKIN, normalizeTankSkinId } = require('./server/tank-skins.cjs');
+const { DEFAULT_TANK_SKIN } = require('./server/tank-skins.cjs');
 const { parseProxies, proxyUrlKey } = require('./server/proxies.cjs');
 const {
   ALL_PLAYERS,
@@ -262,6 +251,17 @@ const { createDiscordLink, discordLinkConfigured } = require('./server/discord.c
 const { createChatMirror, createDiscordToGame } = require('./server/discord-bridge.cjs');
 const bzfsProxy = require('./server/bzfs-proxy.cjs');
 const { sanitizeMotto, resolveProxyRequest, handleProxyConnection } = bzfsProxy;
+const messagesVoice = require('./server/messages-voice.cjs');
+const messagesChat = require('./server/messages-chat.cjs');
+const messagesPlay = require('./server/messages-play.cjs');
+const messagesOperator = require('./server/messages-operator.cjs');
+// Every message a connection may send, by its `type`.
+const MESSAGE_HANDLERS = Object.freeze({
+  ...messagesVoice.MESSAGE_HANDLERS,
+  ...messagesChat.MESSAGE_HANDLERS,
+  ...messagesPlay.MESSAGE_HANDLERS,
+  ...messagesOperator.MESSAGE_HANDLERS,
+});
 const { createGateway } = require('./server/discord-gateway.cjs');
 const {
   SESSION_COOKIE_NAME,
@@ -365,7 +365,6 @@ const { packWorldDatabase, bzfsWorldHashOfBzw } = require('./server/bzflag-world
 const {
   DEFAULT_VOICE_CHANNEL,
   areVoicePeers,
-  normalizeVoiceChannel,
 } = require('./server/voice-channels.cjs');
 
 
@@ -16699,1502 +16698,9 @@ function acceptConnection(ws, req) {
       // A browser's frame, or an object from an in-process sender (`say`).
       const message = Buffer.isBuffer(data) || typeof data === 'string' ? JSON.parse(data) : data;
 
-      switch (message.type) {
-
-        case 'message': {
-          const rawTarget = message.dst ?? message.to;
-          // The destinations that are not a player, on upstream's own numbers
-          // (`server/player-ids.cjs`). Both spellings, because a `<select>`
-          // hands its value over as a string.
-          const matches = (value) => rawTarget === value || rawTarget === String(value);
-          const isAllTarget = matches(ALL_PLAYERS)
-            || rawTarget === null || rawTarget === undefined || rawTarget === '';
-          const isServerTarget = matches(SERVER_PLAYER);
-          const isTeamTarget = matches(FIRST_TEAM);
-          const isAdminTarget = matches(ADMIN_PLAYERS);
-          const targetId = isAllTarget || isServerTarget || isTeamTarget || isAdminTarget
-            // A destination rather than a player: a number, and `ALL` even
-            // when nothing named one.
-            ? (isAllTarget ? ALL_PLAYERS : Number(rawTarget))
-            : String(rawTarget);
-          const msgType = message.msgType === 'action' ? 'action' : 'chat';
-          const text = typeof message.text === 'string' ? message.text.trim() : '';
-          if (text.length === 0) break;
-
-          // `/me` before the command dispatcher, because it is the one `/` line
-          // that keeps its destination: upstream reformats it here for exactly
-          // that reason (bzfs.cxx:1490). `/mefoo` is not `/me` and falls through
-          // to the dispatcher -- upstream's "don't intercept other messages
-          // beginning with /me...".
-          if (/^\/me(\s|$)/i.test(text)) {
-            deliverActionMessage(player, targetId, text.slice(3));
-            break;
-          }
-
-          // Step 1 of docs/commands-plan.md, and the reason it goes first: a line
-          // beginning with `/` is a command whatever channel it was aimed at, and
-          // it is never said out loud -- a mistyped `/kick bob` must never
-          // announce itself to the room as chat.
-          if (handleServerCommand(player, text)) break;
-
-          deliverChatMessage(player, targetId, msgType, text);
-          break;
-        }
-        case 'voiceState': {
-          if (!player.joined) break;
-
-          // An unrecognized channel normalizes to the default rather than being
-          // rejected, so an older or newer client lands somewhere valid instead
-          // of silently having no voice at all.
-          if (message.channel !== undefined) {
-            player.voiceChannel = normalizeVoiceChannel(message.channel);
-          }
-          player.voiceMicEnabled = message.enabled === true;
-          sendVoiceStateUpdate(player);
-          // A channel change rewrites other players' rosters too, not just this
-          // one's, so every roster is reconsidered rather than only the sender's.
-          refreshVoiceRosters();
-          // sendVoiceStateUpdate only reaches this player's current voice
-          // peers, because that message is also what negotiates the WebRTC
-          // roster. The scoreboard's mic glyph is for every player in the
-          // match, on any channel or out of Nearby range alike, so it needs
-          // its own broadcast rather than reusing that one.
-          broadcastAll({
-            type: 'voiceMicToggled', playerId: player.id, enabled: player.voiceMicEnabled,
-          });
-          break;
-        }
-        case 'voiceOffer':
-        case 'voiceAnswer':
-        case 'voiceIceCandidate': {
-          forwardVoiceSignal(player, message);
-          break;
-        }
-        // A client showing its debug labels asks for the server bots' plans
-        // (`broadcastBotIntents`); nobody else is sent them.
-        case 'watchBots':
-          player.watchBots = message.on === true;
-          player.watchBotFollow = typeof message.follow === 'string' ? message.follow : null;
-          break;
-        case 'debug': {
-          // Log debug messages from clients
-          const payloadName = typeof message.name === 'string' ? message.name.trim() : '';
-          const debugFrom = payloadName || player.name || `Player ${player.playerNumber}`;
-          log(`[DEBUG] "${debugFrom}": ${message.message || ''}`);
-          break;
-        }
-        case 'tp': {
-          if (isObserverTeam(player.team)) break;
-
-          const now = Date.now();
-          const sourceState = {
-            x: Number(message.x),
-            y: Number(message.y),
-            z: Number(message.z),
-            azimuth: Number(message.a),
-            airVelocityX: Number(message.vx),
-            airVelocityY: Number(message.vy),
-            jumpAzimuth: message.ja === null ? null : Number(message.ja),
-            vv: Number(message.vv),
-          };
-          const fromFaceId = Number(message.fromFaceId);
-          const toFaceId = Number(message.toFaceId);
-          const teleportResult = applyPlayerTeleportMessage(player, sourceState, fromFaceId, toFaceId, now);
-
-          if (!teleportResult.ok) {
-            ws.send(JSON.stringify({
-              type: 'positionCorrection',
-              x: player.x,
-              y: player.y,
-              z: player.z,
-              a: player.azimuth,
-              vv: player.verticalVelocity || 0,
-            }));
-            if (teleportResult.reason !== 'cooldown' && teleportResult.reason !== 'reentry_block') {
-              log(`[PLAYER_TP_REJECT] player=${player.id} fromFace=${fromFaceId} toFace=${toFaceId} reason=${teleportResult.reason}`);
-            }
-            break;
-          }
-
-          const ptPacket = {
-            type: 'pt',
-            id: player.id,
-            x: player.x,
-            y: player.y,
-            z: player.z,
-            a: player.azimuth,
-            fs: player.forwardSpeed || 0,
-            rs: player.rotationSpeed || 0,
-            vv: player.verticalVelocity || 0,
-            vx: player.airVelocityX || 0,
-            vy: player.airVelocityY || 0,
-            fromFaceId: teleportResult.fromFaceId,
-            toFaceId: teleportResult.toFaceId,
-            ja: player.jumpAzimuth,
-          };
-          if (player.slideAzimuth !== undefined) {
-            ptPacket.sd = player.slideAzimuth;
-          }
-
-
-          broadcastAll(ptPacket);
-          log(
-            `[PLAYER_TP] player=${player.id} srcFace=${teleportResult.fromFaceId} ` +
-            `dstFace=${teleportResult.toFaceId} pos=(${player.x.toFixed(2)},${player.y.toFixed(2)},${player.z.toFixed(2)})`
-          );
-          break;
-        }
-        case 'rtc': {
-          // The browser's half of the UDP channel's signalling: an offer
-          // opens a new peer in place of any earlier one, candidates follow.
-          if (!UDP_CHANNELS) break;
-          if (typeof message.cipher === 'string') {
-            if (/^[A-Z0-9_]{1,64}$/.test(message.cipher)) log(`[RTC] ${player.joined ? `"${player.name}"` : `#${player.id}`} ${message.cipher}`);
-            break;
-          }
-          if (message.sdpType === 'offer') {
-            const now = Date.now();
-            if (now - (player.udpChannelOfferAt || 0) < UDP_CHANNEL_OFFER_INTERVAL_MS) break;
-            player.udpChannelOfferAt = now;
-            player.udpChannel?.close();
-            player.udpChannelHeard = false;
-            player.udpChannel = openUdpChannel(player, ws);
-          }
-          try {
-            player.udpChannel?.signal(message);
-          } catch (error) {
-            log(`[RTC] "${player.name}": ${error.message}`);
-            player.udpChannel?.close();
-          }
-          break;
-        }
-
-        case 'm': {
-          // A connection that has not joined has no tank for a move to be
-          // about: its stored position is still the default, so judging one
-          // reports the client's previous session as drift.
-          if (!player.joined) break;
-          noteHeardFrom(player);
-          if (isObserverTeam(player.team)) {
-            applyObserverHeartbeat(player, message, ws);
-            break;
-          }
-
-          const now = Date.now();
-          // Calculate deltaTime based on server's last update time
-          const deltaTime = (now - player.lastUpdate) / 1000;
-          // DON'T update player.lastUpdate here - it breaks extrapolation in validateMovement!
-
-          // The interval the drift check extrapolates over: the client's own
-          // clock between this move and the last *accepted* one (see
-          // `lastClientTimestamp`), clamped to no more than the server's own
-          // arrival gap plus SDT_JITTER_ALLOWANCE -- the claim may only widen
-          // the window the server itself measured, and only by that much, the
-          // same bound the acceleration check already trusts `sdt` with.
-          // `ct` is already seconds relative to the client's own origin (see
-          // `clientClockOrigin` in client.js) -- only ever differenced against
-          // this client's own previous value, never read as an absolute time.
-          // docs/lag-plan.md, "Extrapolate on the client's clock, not ours".
-          const clientTimestamp = Number(message.ct);
-          const hasClientTimestamp = Number.isFinite(clientTimestamp) && Number.isFinite(player.lastClientTimestamp);
-          const clientElapsed = hasClientTimestamp
-            ? clampToArrivalGap(deltaTime, clientTimestamp - player.lastClientTimestamp)
-            : deltaTime;
-
-          // Only accept new compact field names. `r` is the heading, an
-          // azimuth, read off the wire's `a`.
-          const x = Number(message.x);
-          const y = Number(message.y);
-          const z = Number(message.z);
-          const r = Number(message.a);
-          const reverseSpeedRatio = Number.isFinite(GAME_CONFIG.REVERSE_SPEED_RATIO)
-            ? GAME_CONFIG.REVERSE_SPEED_RATIO
-            : 0.5;
-          // `fs` and `rs` are fractions of the world's *base* speed and turn
-          // rate, so a tank carrying `V`, `QT` or `A` reports more than 1 and
-          // `getExtrapolatedPosition` places it correctly with no flag state of
-          // its own. What the server needs here is only the bound, and only the
-          // flag's largest -- Agility's window is the client's to run, and a
-          // ceiling costs nothing to hold.
-          const motionFlag = getPlayerFlag(player.id)?.type ?? null;
-          const maxSpeedFactor = getMaxSpeedFactor(motionFlag);
-          const maxAngVelFactor = getMaxAngVelFactor(motionFlag);
-          const requestedFS = Math.max(
-            -reverseSpeedRatio * maxSpeedFactor,
-            Math.min(maxSpeedFactor, Number(message.fs)));
-          const requestedRS = Math.max(
-            -maxAngVelFactor, Math.min(maxAngVelFactor, Number(message.rs)));
-          let fs = requestedFS;
-          let rs = requestedRS;
-          const vv = Number(message.vv);
-
-          if (!Number.isFinite(requestedFS) || !Number.isFinite(requestedRS) || !Number.isFinite(vv)) {
-            logMalformed(player, 'MOVE', `velocities fs=${message.fs} rs=${message.rs} vv=${message.vv}`);
-            break;
-          }
-
-          // The client sends the speed it actually reached, not the key it is
-          // holding, so a speed that changed faster than the tank can change
-          // speed is a disagreement worth reporting. Only strict mode rewrites
-          // it: silently substituting the server's value in warning mode moves
-          // the tank the client never asked to move, and then reports the
-          // difference back as drift.
-          const accelWindow = getAccelerationWindow(deltaTime, message.sdt);
-          // `LagInfo::updateLag` (LagInfo.cxx:214). Upstream differences the
-          // client's absolute timestamp against its own arrival time; bzo has
-          // the same two intervals already -- how long the server waited for
-          // this packet, and how long the client says it took to send it -- so
-          // jitter needs no field the move does not carry. Measured whatever
-          // the anti-cheat mode is: it is a statistic, not a judgement.
-          const stall = player.lag.recordUpdate(now, Number(message.sdt));
-          // A move held up on TCP: logged, at most once a second a player, to
-          // judge whether moves need a lossy transport (docs/lag-plan.md).
-          // A server bot's moves never cross a network, so it is left out.
-          if (stall && !bots.has(player.id) && now - (player.lastStallLogAt || 0) >= 1000) {
-            player.lastStallLogAt = now;
-            log(`[LAG] "${player.name}" stalled ${stall.waitedMs}ms (sent ${stall.sentMs}ms apart)`);
-          }
-          // A third thing the acceleration model has no term for, beside the two
-          // in "The acceleration check cannot see the stick": air control. A
-          // `WG` tank steers in mid air, and with `_wingsSlideTime` 0 -- which is
-          // upstream's default and bzo's -- its velocity follows the stick with
-          // no ramp at all, so a full reversal in one frame is correct rather
-          // than impossible. No acceleration bound can describe that, so while
-          // such a tank is off the ground the bound does not apply. Refusing it
-          // in strict mode would rubber-band the one flag whose whole point is
-          // steering where nothing else can.
-          const airborne = player.jumpAzimuth !== null && player.jumpAzimuth !== undefined;
-          const steeringInAir = airborne && hasAirControl(getPlayerFlag(player.id)?.type ?? null);
-          // `_disableSpeedChecks` turns the speed check off outright, as
-          // upstream's sets its tolerance to infinity (bzfs.cxx:4442).
-          if (ANTICHEAT_CONFIG.mode !== 'disabled' && accelWindow > 0 && !steeringInAir
-            && GAME_CONFIG.DISABLE_SPEED_CHECKS !== true) {
-            // The stick is not in the packet, so the server cannot tell which of
-            // the client's rates applied (`updateMovement` in `client.js` picks
-            // deceleration by the *desired* input, which the server never sees,
-            // and both decelerations are faster than their accelerations). It
-            // therefore allows the fastest rate any stick position could have
-            // produced. Anything tighter refuses a tank that is merely letting
-            // go of a key.
-            //
-            // The bound is `doMomentum`'s own, run against the same limits the
-            // client drove with: the world's `-a`, composed with `M` if the tank
-            // is carrying it. With `-a 0 0` -- upstream's default and bzo's --
-            // there is no limit, `applyAccelerationLimit` returns what was asked
-            // for, and this check finds nothing. That is correct rather than
-            // lax: a tank with no inertia really can reach full speed in a
-            // frame, and what bounds it then is the speed clamp above.
-            //
-            // In real units on both sides, because that is what a limit is
-            // expressed in. `fs` and `rs` come off the wire as fractions of the
-            // world's base speed and turn rate, so they are converted here and
-            // back again.
-            const limits = getAccelerationLimits(
-              motionFlag, GAME_CONFIG.LINEAR_ACCELERATION, GAME_CONFIG.ANGULAR_ACCELERATION);
-            const tankSpeed = GAME_CONFIG.TANK_SPEED || 1;
-            const tankAngVel = GAME_CONFIG.TANK_ROTATION_SPEED || 1;
-
-            // Agility's boost lands all at once -- the window opens and the tank
-            // is 2.25x faster in that same frame -- so no acceleration bound can
-            // describe it, which is the Wings exemption above for a different
-            // reason. Only the forward half is exempt; Agility does not touch
-            // turning, so that bound still holds.
-            const burstsSpeed = getMotionEffects(motionFlag).agility;
-
-            let limitedFS = burstsSpeed ? requestedFS : applyAccelerationLimit(
-              (player.forwardSpeed || 0) * tankSpeed,
-              requestedFS * tankSpeed,
-              limits.linear,
-              accelWindow,
-            ) / tankSpeed;
-            let limitedRS = applyAccelerationLimit(
-              (player.rotationSpeed || 0) * tankAngVel,
-              requestedRS * tankAngVel,
-              limits.angular,
-              accelWindow,
-            ) / tankAngVel;
-
-            limitedFS = Math.max(
-              -reverseSpeedRatio * maxSpeedFactor, Math.min(maxSpeedFactor, limitedFS));
-            limitedRS = Math.max(-maxAngVelFactor, Math.min(maxAngVelFactor, limitedRS));
-
-            // Both endpoints are quantized to 0.01 by the sender, so the
-            // difference carries up to 0.02 that is rounding, not a finding.
-            const fsExceeded = Math.abs(limitedFS - requestedFS) > SPEED_QUANTIZATION_SLACK;
-            const rsExceeded = Math.abs(limitedRS - requestedRS) > SPEED_QUANTIZATION_SLACK;
-            if (fsExceeded || rsExceeded) {
-              // `_speedChecksLogOnly`: upstream's speed check logs and does
-              // not kick (bzfs.cxx:5404), so this one logs and does not refuse.
-              const refused = reportCheat(player, 'speedClamped',
-                `SPEED CHANGED TOO FAST: fs ${(player.forwardSpeed || 0).toFixed(2)}->${requestedFS.toFixed(2)}`
-                + ` (limit ${limitedFS.toFixed(2)}),`
-                + ` rs ${(player.rotationSpeed || 0).toFixed(2)}->${requestedRS.toFixed(2)}`
-                + ` (limit ${limitedRS.toFixed(2)}),`
-                + ` window=${accelWindow.toFixed(3)}s (arrival ${deltaTime.toFixed(3)}s, client ${message.sdt})`,
-                null, GAME_CONFIG.SPEED_CHECKS_LOG_ONLY !== true);
-              if (refused) {
-                fs = limitedFS;
-                rs = limitedRS;
-              }
-            } else {
-              fs = limitedFS;
-              rs = limitedRS;
-            }
-          }
-
-          // Optional slide heading, and the air velocity.
-          const d = message.sd !== undefined ? Number(message.sd) : undefined;
-          const vx = message.vx !== undefined ? Number(message.vx) : undefined;
-          const vy = message.vy !== undefined ? Number(message.vy) : undefined;
-          const hasAirVelocity = Number.isFinite(vx) && Number.isFinite(vy);
-
-          const previousState = {
-            x: player.x,
-            y: player.y,
-            z: player.z,
-            azimuth: player.azimuth,
-          };
-
-          const teleportReentryActive = player.teleportReentryBlockTeleporterIndex !== null
-            && (player.teleportReentryBlockDistance > 1e-6 || now < (player.teleportReentryBlockUntil || 0));
-
-          // Track jump direction for extrapolation
-          const oldVV = player.verticalVelocity || 0;
-          // A tank that was not already climbing and now is has jumped: a
-          // grounded one reports exactly 0 and a falling one reports negative,
-          // both quantized to two decimals by the sender.
-          //
-          // The threshold is a tenth of the world's own jump velocity rather
-          // than a fixed number, because `BY` Bouncy's bounce is a random
-          // quarter-to-full of that velocity and starts as low as 4.75 at bzo's
-          // default -- a fixed threshold high enough to clear the quantization
-          // would miss those jumps and go on extrapolating the tank along the
-          // ground while it was in the air. A tenth is clear of the
-          // quantization, under anything that could be a real jump, and follows
-          // a server that has tuned the jump.
-          const isJumpStart = oldVV <= 0 && vv > JUMP_START_VERTICAL_VELOCITY;
-          const isLanding = player.jumpAzimuth !== null && vv === 0; // Transition from air to ground
-          const isFallStart = player.jumpAzimuth === null && vv < 0; // Started falling (drove off edge)
-
-          // Log jump/land/fall events but DON'T update jumpDirection yet - must validate first
-          if (isJumpStart) {
-            // Calculate expected landing position (assuming ~2 second flight)
-            const jumpTime = 2.05; // Approximate jump duration
-            const speed = GAME_CONFIG.TANK_SPEED || 15;
-            const rotSpeed = GAME_CONFIG.TANK_ROTATION_SPEED || 1.5;
-            const dx = Math.cos(r) * fs * speed * jumpTime;
-            const dy = Math.sin(r) * fs * speed * jumpTime;
-            const expectedLandX = x + dx;
-            const expectedLandY = y + dy;
-            const expectedLandR = r + rs * rotSpeed * jumpTime;
-            log(`[JUMP] "${player.name}" jumped: pos=(${x.toFixed(2)},${y.toFixed(2)},${z.toFixed(2)}), r=${r.toFixed(2)}, fs=${fs.toFixed(2)}, rs=${rs.toFixed(2)}, vv=${vv.toFixed(2)}`);
-            log(`[JUMP] Expected landing: pos=(${expectedLandX.toFixed(2)},${expectedLandY.toFixed(2)}), r=${expectedLandR.toFixed(2)}`);
-          } else if (isLanding) {
-            log(`[LAND] "${player.name}" landed: pos=(${x.toFixed(2)},${y.toFixed(2)},${z.toFixed(2)}), r=${r.toFixed(2)}, fs=${fs.toFixed(2)}, rs=${rs.toFixed(2)}, vv=${vv.toFixed(2)}`);
-          } else if (isFallStart) {
-            log(`[FALL] "${player.name}" started falling: pos=(${x.toFixed(2)},${y.toFixed(2)},${z.toFixed(2)}), r=${r.toFixed(2)}, fs=${fs.toFixed(2)}, rs=${rs.toFixed(2)}, vv=${vv.toFixed(2)}`);
-          }
-
-          // Check if velocities changed significantly - if so, use looser validation
-          const fsChanged = Math.abs(fs - (player.forwardSpeed || 0)) > 0.1;
-          const rsChanged = Math.abs(rs - (player.rotationSpeed || 0)) > 0.1;
-          const vvChanged = Math.abs(vv - (player.verticalVelocity || 0)) > 0.5;
-          const isSliding = d !== undefined; // Use loose validation whenever sliding (extrapolation may not match)
-          const velocityChanged = fsChanged || rsChanged || vvChanged || isSliding;
-
-          // Whether this tank may leave a surface at all. The flap count is not
-          // tracked here -- following it would mean running the client's whole
-          // ground/air state machine off position updates -- so the server asks
-          // the weaker question it can answer, and Wings is taken at its word
-          // about how many flaps it has left.
-          const carriedFlagType = getPlayerFlag(player.id)?.type ?? null;
-          const mayNotJump = isJumpStart
-            && !canJump(carriedFlagType, ALLOW_JUMPING, false, GAME_CONFIG.WINGS_JUMP_COUNT,
-              isPlayerInsideBuilding(player, x, y, z, r));
-          const jumpRefused = mayNotJump && reportJumpRejection(player, carriedFlagType);
-
-          // Extrapolate over the client's own clamped interval where the
-          // packet carries one, the server's arrival gap otherwise -- see
-          // `clientElapsed` above. Either way the extrapolated position
-          // accounts for the full interval using OLD velocities.
-          if (!jumpRefused && validateMovement(
-            player,
-            x,
-            y,
-            z,
-            r,
-            clientElapsed,
-            velocityChanged,
-            { ignoreTeleporters: teleportReentryActive },
-            now
-          )) {
-            // Validation passed - now update jumpDirection
-            if (isJumpStart) {
-              player.jumpAzimuth = r; // Store the heading at jump start
-            } else if (isFallStart) {
-              player.jumpAzimuth = r; // Store the heading at fall start (same as jump)
-            } else if (isLanding) {
-              player.jumpAzimuth = null; // Clear jump direction on landing
-            }
-
-            // Update position/rotation AND velocities for next extrapolation
-            player.x = x;
-            player.y = y;
-            player.z = z;
-            player.azimuth = r;
-            player.forwardSpeed = fs;
-            player.rotationSpeed = rs;
-            player.verticalVelocity = vv;
-            player.slideAzimuth = d; // Store slide direction (undefined if not sliding)
-            // The accepted move as the shot check reads it: a shot the client
-            // fires next inherits the velocity these numbers state
-            // (`packetVelocity`), whatever the server's own reading of the jump.
-            // As the move states them, which `moveVelocity` reads.
-            player.lastMoveFields = {
-              a: r, fs, sd: d, vv, vx, vy, air: Number(message.air) === 1 ? 1 : 0, at: now,
-            };
-            if (hasAirVelocity) {
-              player.airVelocityX = vx;
-              player.airVelocityY = vy;
-            } else if (player.jumpAzimuth !== null) {
-              const speed = GAME_CONFIG.TANK_SPEED || 15;
-              const moveAzimuth = d !== undefined ? d : player.jumpAzimuth;
-              player.airVelocityX = Math.cos(moveAzimuth) * fs * speed;
-              player.airVelocityY = Math.sin(moveAzimuth) * fs * speed;
-            } else {
-              player.airVelocityX = 0;
-              player.airVelocityY = 0;
-            }
-
-            const movedPlanarDistance = Math.hypot(player.x - previousState.x, player.y - previousState.y);
-            decayPlayerTeleportReentryBlock(player, movedPlanarDistance, now);
-
-            player.lastUpdate = now; // Update timestamp AFTER accepting the move
-            if (Number.isFinite(clientTimestamp)) player.lastClientTimestamp = clientTimestamp;
-
-            const pmPacket = {
-              id: player.id,
-              x,
-              y,
-              z,
-              a: r,
-              fs,
-              rs,
-              vv,
-              vx: player.airVelocityX,
-              vy: player.airVelocityY,
-            };
-
-            // Include optional slide heading if present
-            if (d !== undefined) {
-              pmPacket.sd = d;
-            }
-
-            // Queued rather than broadcast here: one WS frame per move meant
-            // one per recipient per move, O(players^2) frames a tick. Batched
-            // in `flushMoveBroadcasts`, called once from `gameLoop`, so a busy
-            // tick costs one frame per connected client instead.
-            pendingMoveBroadcasts.push(pmPacket);
-            sendMoveToBzflagClients(pmPacket);
-            queueChannelMove(pmPacket);
-
-            checkAntidote(player, now);
-          } else {
-            // Validation failed - jumpDirection unchanged (no update needed)
-            // Send correction back to client
-            // Reset velocities and timestamp so next extrapolation starts from corrected state
-            player.forwardSpeed = 0;
-            player.rotationSpeed = 0;
-            player.verticalVelocity = 0;
-            player.airVelocityX = 0;
-            player.airVelocityY = 0;
-            player.lastUpdate = now;
-            ws.send(JSON.stringify({
-              type: 'positionCorrection',
-              x: player.x,
-              y: player.y,
-              z: player.z,
-              a: player.azimuth,
-              vv: 0,
-            }));
-
-          }
-          break;
-        }
-
-        case 'shoot': {
-          // message: { type: 'shoot', x, y, z, vx, vy, vz }
-          const now = Date.now();
-          const from = { x: Number(message.x), y: Number(message.y), z: Number(message.z) };
-          const shotRejection = getShotRejection(player, from.x, from.y, from.z, now);
-          if (shotRejection
-            && reportShotRejection(player, shotRejection.reason, message, shotRejection.fatal)) {
-            break;
-          }
-          const velocity = { x: Number(message.vx), y: Number(message.vy), z: Number(message.vz) };
-          if (!Number.isFinite(velocity.x) || !Number.isFinite(velocity.y) || !Number.isFinite(velocity.z)) {
-            reportShotRejection(player, 'shot velocity is not a finite number', message, true);
-            break;
-          }
-          const shotFlag = getShotFlagFor(player);
-          const shotEffects = getShotEffects(shotFlag);
-          // LocalPlayer::fireShot makes a shock wave stationary whatever the
-          // tank was doing, and so does the flight below; there is no speed of
-          // its own to check.
-          const velocityRejection = shotEffects.shockwave ? null : getShotVelocityRejection(player, velocity, now);
-          if (velocityRejection && reportShotRejection(player, velocityRejection, message, false)) break;
-          const flight = getShotFlight(velocity, shotEffects, GAME_CONFIG.SHOT_SPEED);
-          if (!flight) {
-            reportShotRejection(player, 'shot velocity has no direction', message, true);
-            break;
-          }
-          // A shot allowed past the slot check in warning mode has no slot left
-          // to take. It flies with slot -1: the reload bar ignores it, and the
-          // log above already says the client thought it had one.
-          const shotSlot = getAvailableShotSlot(player, now);
-          occupyShotSlot(player, shotSlot, shotFlag, now);
-          const id = (++projectileIdCounter).toString();
-          const proj = new Projectile(
-            id,
-            player.id,
-            shotSlot,
-            from.x,
-            from.y,
-            from.z,
-            flight.x,
-            flight.y,
-            flight.z,
-            // ShotPath::FiringInfo (ShotPath.cxx:46): an unzoned Phantom Zone
-            // tank fires ordinary shells, so the flag a shot is fired under is
-            // not always the flag its shooter is holding.
-            shotFlag,
-            now,
-            flight.speed
-          );
-          projectiles.set(id, proj);
-          // A beam is already everywhere it is going to be, so its path is walked
-          // here and travels with the message that announces it. The tank it
-          // reached is resolved after that message, because the client has to
-          // have the shot before it is told the shot killed somebody.
-          const beamHit = proj.beam ? traceShotBeam(proj, proj.createdAt) : null;
-          log(
-            `[shotBegin] id=${proj.id} player=${proj.playerId} slot=${proj.shotSlot}` +
-            ` pos=${formatShotPoint(proj.x, proj.y, proj.z)}` +
-            ` dir=(${proj.dirX.toFixed(4)},${proj.dirY.toFixed(4)},${proj.dirZ.toFixed(4)})` +
-            ` speed=${proj.speed.toFixed(2)}` +
-            ` flag=${proj.flag || 'none'}${proj.ricochet ? ' ricochet' : ''}` +
-            (proj.beam ? ` beam=${proj.segments.length}seg end=${proj.endReason}` : '') +
-            (proj.shockwave ? ` shockwave life=${proj.lifetimeSeconds.toFixed(3)}s` : '')
-          );
-          // The move that came with the shot goes out ahead of it, to everyone:
-          // upstream's client sends a player update before every shot
-          // (LocalPlayer.cxx:1266) and bzfs relays both as they come, so a
-          // tank is never seen behind its own muzzle. A BZFlag client already
-          // had the move (`sendMoveToBzflagClients`); a UDP channel's waits for
-          // the end of this turn and the WebSocket's for the tick.
-          flushChannelMoves();
-          flushMoveBroadcasts();
-          broadcastAll({
-            type: 'shotBegin',
-            id: proj.id,
-            playerId: proj.playerId,
-            shotSlot: proj.shotSlot,
-            ...wireShot(proj),
-            flag: proj.flag,
-            ricochet: proj.ricochet,
-
-            // FiringInfo's `shot.team`: the shooter's team as it fired. Only
-            // carried, as upstream's is -- who a shot may hit is still asked of
-            // the shooter (`getShotTeam`).
-            team: player.team,
-            // Who the shooter has locked, so a client that has not seen a
-            // `gmUpdate` for them yet still steers this missile from its first
-            // frame -- and so the tank being shot at learns of it, which is when
-            // upstream warns them rather than when the lock was taken.
-            target: proj.guided ? (getLockTarget(proj.playerId)?.id ?? null) : null,
-            createdAt: proj.createdAt
-          });
-          if (beamHit) applyShotPlayerHit(proj, id, beamHit.player, beamHit.point);
-          countFlagShot(player);
-          break;
-        }
-
-        // MsgQueryPlayers (`bzfs.cxx:3145`). Upstream answers it with the team
-        // table and one MsgAddPlayer per player -- the whole roster, on demand.
-        // Its game client never asks, because its world arrives before it
-        // enters and nothing can land in between; a bzo client builds the world
-        // after it is already receiving, so it asks once it is ready to draw
-        // everyone, and that is what guarantees a full scoreboard however the
-        // reconnects raced.
-        // setTarget() on upstream's `identify` binding (ActionBinding.cxx:97).
-        // An observer picks its roaming target on its own client, where the free
-        // camera it aims with lives; a tank asks here, because the answer steers
-        // a guided missile.
-        case 'identify': {
-          if (isObserverTeam(player.team) || !player.alive || player.paused) break;
-          setPlayerTarget(player);
-          break;
-        }
-
-        case 'queryPlayers': {
-          ws.send(JSON.stringify({
-            type: 'playerList',
-            players: getRosterFor(player),
-          }));
-          // sendQueryPlayers sends the team table with the roster, directed at
-          // the one player who asked rather than broadcast.
-          if (TEAM_MODE.enabled) {
-            ws.send(JSON.stringify({ type: 'teamUpdate', teams: getTeamScoreState() }));
-          }
-          break;
-        }
-
-        // The Identify flag asking what the nearest flag is. The client sweeps
-        // for itself and only asks about one it cannot already name, so this
-        // arrives once per flag rather than on every position update the way
-        // upstream's own push does.
-        case 'nearFlag': {
-          if (!player.joined) break;
-          searchFlag(player);
-          break;
-        }
-
-        case 'grabFlag': {
-          if (!player.joined) break;
-          const requestedIndex = Number(message.index);
-          if (!Number.isInteger(requestedIndex)) break;
-          const flag = flags[requestedIndex];
-          if (!flag) break;
-          grabFlag(player, flag, Date.now());
-          break;
-        }
-
-        case 'captureFlag': {
-          if (!player.joined) break;
-          const baseTeam = Number(message.team);
-          if (!isColorTeamIndex(baseTeam)) break;
-          captureFlag(player, baseTeam);
-          break;
-        }
-
-        case 'dropFlag': {
-          if (!player.joined) break;
-          if (!player.alive) break;
-          const flag = getPlayerFlag(player.id);
-          if (!flag) break;
-          const now = Date.now();
-          // A sticky flag cannot be dropped on request; only its shake timeout
-          // or a kill gets rid of it. The client runs the countdown, as upstream
-          // does, so the server runs the same clock against the moment it saw
-          // the grab -- otherwise a modified client sheds a bad flag on contact.
-          if (flag.endurance === FLAG_ENDURANCE.STICKY) {
-            const held = (now - flag.grabbedAt) / 1000;
-            // A BZFlag client's own antidote spot is one this server never
-            // saw, so its drop there is taken as bzfs takes any drop.
-            const name = getFlagType(flag.type).name;
-            if (canShakeFlag(flag.type, FLAG_SHAKE_TIMEOUT, held)) {
-              log(`"${player.name}" shook off ${name} after ${held.toFixed(2)}s`);
-            } else if (player.native && ANTIDOTE_FLAGS) {
-              log(`"${player.name}" dropped ${name} at its own antidote after ${held.toFixed(2)}s`);
-            } else {
-              const refused = reportCheat(player, 'flagRejected',
-                `SHAKE REJECTED ${name} held ${held.toFixed(2)}s of ${FLAG_SHAKE_TIMEOUT}s`);
-              if (refused) break;
-              log(`"${player.name}" shook off ${name} after ${held.toFixed(2)}s`);
-            }
-          }
-          // cmdDrop's `!myTank->isPhantomZoned()`: a zoned tank cannot put the
-          // flag down at all. Dropping it would leave the tank phased with
-          // nothing to unphase it, since only the flag can cross a teleporter.
-          if (isPlayerZoned(player)) {
-            const refused = reportCheat(player, 'flagRejected', 'DROP REJECTED: zoned');
-            if (refused) break;
-          }
-          // cmdDrop (clientCommands.cxx:355): a flag dropped inside a building
-          // would land inside it, where nothing could reach it again. The client
-          // refuses the control, so this only catches a modified one.
-          if (isPlayerInsideBuilding(player, player.x, player.y, player.z, player.azimuth)) {
-            const refused = reportCheat(player, 'flagRejected',
-              'DROP REJECTED: inside a building');
-            if (refused) break;
-          }
-          dropFlag(flag, now);
-          break;
-        }
-
-        // doUpdateMotion's teleporter branch (LocalPlayer.cxx:729). A Phantom
-        // Zone tank crossing a teleporter is not moved: the zone toggles
-        // instead. The client detects the crossing, as it does for an ordinary
-        // teleport, and this is the server agreeing to it -- the state is the
-        // server's because being zoned is what decides who can shoot you.
-        case 'zone': {
-          if (!player.joined) break;
-          if (!player.alive) break;
-          const flag = getPlayerFlag(player.id);
-          if (!flag || !togglesZoneOnTeleport(flag.type)) {
-            reportCheat(player, 'flagRejected',
-              `ZONE REJECTED: carrying ${flag ? getFlagType(flag.type).name : 'no flag'}`);
-            break;
-          }
-          // The crossing itself is the whole claim, so it is the whole check:
-          // the face has to be a teleporter, the point the client says it
-          // crossed at has to be inside that teleporter's portal, and the point
-          // has to be somewhere the tank could legally be. That is exactly what
-          // `applyPlayerTeleportMessage` asks of a tank that does move -- there
-          // is simply no destination to transform to here.
-          const zoneAt = {
-            x: Number(message.x),
-            y: Number(message.y),
-            z: Number(message.z),
-            azimuth: Number(message.a),
-
-          };
-
-          const now = Date.now();
-          const zoneRefusal = getZoneRefusal(player, zoneAt, Number(message.fromFaceId), now);
-          if (zoneRefusal) {
-            reportCheat(player, 'flagRejected', `ZONE REJECTED: ${zoneRefusal}`);
-            break;
-          }
-          flag.zoned = !flag.zoned;
-          log(`"${player.name}" ${flag.zoned ? 'zoned' : 'unzoned'}`);
-          broadcastFlagUpdate(flag);
-          break;
-        }
-
-        case 'selfDestruct': {
-          // An observer has no tank to destroy. The dead tank is killPlayer's own
-          // guard, and it is only repeated here so a request that will do nothing
-          // is not logged as though it did.
-          if (isObserverTeam(player.team)) break;
-          if (!player.alive) break;
-          log(`"${player.name}" self-destructed.`);
-          // playing.cxx:6966 is `gotBlowedUp(myTank, SelfDestruct, myTank->getId())`
-          // -- upstream's suicide is a kill whose killer is the victim, and it goes
-          // through playerKilled like every other death. So this is one call into
-          // the one death path: the loss, the flag, the lock, the rabbit and the
-          // respawn all happen there, and cannot be forgotten here.
-          killPlayer(player, player, DEATH_REASON.SELF_DESTRUCT);
-          break;
-        }
-
-        case 'joinGame': {
-          // checkBan (bzfs.cxx:2257): a banned BZID is turned away at the join,
-          // so a signed-in player can still reach the dialog to sign out.
-          const ipBan = bans.ipBanned(player.clientIP);
-          if (ipBan) {
-            log(`Player ${player.id} refused: ${player.clientIP} is banned (${ipBan.mask})`);
-            replyToPlayer(player, bans.ipBanRefusal(ipBan));
-            removeFromServer(player);
-            break;
-          }
-          const idBan = bans.idBanned(player.bzid);
-          if (idBan) {
-            log(`Player ${player.id} refused: BZID ${player.bzid} is banned`);
-            replyToPlayer(player, idBanRefusal(idBan));
-            removeFromServer(player);
-            break;
-          }
-          supersedeEarlierConnection(player, message.page);
-          let joinName = resolveJoinName(player, message.name);
-          const requestedTankModel = typeof message.tankModel === 'string'
-            ? normalizeTankModelId(message.tankModel)
-            : 'bzflag';
-          const previousTeam = player.joined ? player.team : null;
-          const requestedTeam = normalizePlayerTeamSelection(message.team);
-          // Coming back through the entry dialog is upstream's leave and arrival,
-          // unless the name stays and only observing starts or stops: that is
-          // 2.5's `changeTeam`, which leaves nobody on the rejoin list.
-          const observingChange = previousTeam !== null && joinName === player.name
-            && isObserverTeam(previousTeam) !== (requestedTeam === PLAYER_TEAM.OBSERVER);
-          if (player.joined && !observingChange) noteRejoinWait(player);
-          // autoTeamSelect (bzfs.cxx:1923) refuses nothing in Rabbit Chase: asking
-          // for observer gives observer and asking for anything else means "play",
-          // which is a hunter. So the availability check is skipped there and
-          // selectPlayerTeam answers on its own.
-          if (!RABBIT_SELECTION && requestedTeam !== 'automatic'
-            && !TEAM_MODE.teams.includes(requestedTeam)) {
-            ws.send(JSON.stringify({ error: `Team is not available: ${requestedTeam}` }));
-            break;
-          }
-          const teamCounts = {};
-          // What the players on each team have scored between them, which is
-          // what auto-assignment balances on. Not the team score.
-          const teamPlayerScores = {};
-          players.forEach((candidate) => {
-            if (!candidate.joined || candidate.id === player.id) return;
-            teamCounts[candidate.team] = (teamCounts[candidate.team] || 0) + 1;
-            teamPlayerScores[candidate.team] = (teamPlayerScores[candidate.team] || 0) + candidate.wins - candidate.losses;
-          });
-          // bzfs.cxx:2339. The total -- tanks and observers together -- is what
-          // refuses an arrival outright; the playing limit inside
-          // selectPlayerTeam only turns one into a spectator. Asked of arrivals
-          // alone, since a player already in the game re-sending their name, team
-          // and tank is not a new one, and `teamCounts` above already leaves them
-          // out of the count.
-          const roster = Object.values(teamCounts).reduce((total, count) => total + count, 0);
-          if (!player.joined && roster >= MAX_TOTAL_PLAYERS) {
-            ws.send(JSON.stringify({ error: 'This game is full. Try again later.' }));
-            break;
-          }
-          const assignedTeam = selectPlayerTeam(
-            requestedTeam, TEAM_MODE, teamCounts, teamPlayerScores, getTeamBaseCenters());
-          if (!assignedTeam) {
-            ws.send(JSON.stringify({ error: `Team is full: ${requestedTeam}` }));
-            break;
-          }
-          // A team change takes the tank out of play, so it gives up its flag
-          // like every other such path. This is keyed on the team actually
-          // changing rather than on the join, because Player Options carries
-          // name, team, and tank together and re-sends all three -- a player
-          // changing only their tank keeps the flag. It runs before the spawn
-          // below, since dropFlag() casts its ray from the owner's position.
-          if (previousTeam && previousTeam !== assignedTeam) {
-            dropPlayerFlag(player.id);
-          }
-          // changeTeam (bzfs.cxx, master): "If we're switching to observer and
-          // they're alive, kill 'em", as a self-destruct, so nobody watches a
-          // tank vanish and a shot already on its way is not dodged.
-          if (player.alive && previousTeam && isObserverTeam(assignedTeam)) {
-            killPlayer(player, player, DEATH_REASON.SELF_DESTRUCT);
-          }
-          player.nextTeam = null;
-          player.name = joinName;
-          // Bounded here rather than trusted: it reaches every other player's
-          // scoreboard, and a proxied one carries it to a target that has its
-          // own `MOTTO_LEN` to respect.
-          player.motto = sanitizeMotto(message.motto);
-          // A rejoin while flying keeps the pilot on the scoreboard, and the
-          // motto it brought is the one to give back on landing -- unless it is
-          // a rejoin as an observer, who has no tank to fly: the pilot lands,
-          // and everyone is told, as upstream's autopilot can only fly a tank.
-          if (player.autopilot && isObserverTeam(assignedTeam)) {
-            const previousName = player.autopilotName;
-            player.autopilot = false;
-            player.autopilotName = null;
-            player.savedMotto = null;
-            log(`Player ${player.id} "${joinName}" autopilot off (observing)`);
-            broadcastAll({ type: 'autopilot', playerId: player.id, on: false, pilot: previousName });
-          } else if (player.autopilot) {
-            player.savedMotto = player.motto;
-            player.motto = player.autopilotName;
-          }
-          player.tankModel = isAllowedTankModel(requestedTankModel)
-            ? requestedTankModel
-            : 'bzflag';
-          player.skin = normalizeTankSkinId(message.skin);
-          player.team = assignedTeam;
-          // `player` is already in the roster here, so it is excluded from the
-          // colours to stay clear of. A null answer leaves the colour it has.
-          const joinColor = getJoinPlayerColor(
-            TEAM_MODE, assignedTeam, previousTeam,
-            (team) => Player.pickDistinctColor(team, player));
-          if (joinColor !== null) player.color = joinColor;
-          // bzfs.cxx:2377 resets a team the moment its size becomes one.
-          // `teamCounts` excludes this player, so a lone player rejoining
-          // their own team resets it too, as a leave and join would upstream.
-          if (TEAM_MODE.enabled && !teamCounts[assignedTeam] && isColorTeam(assignedTeam)) {
-            teamScores.delete(assignedTeam);
-          }
-          player.voiceMicEnabled = false;
-          player.joined = true;
-          player.bot = message.bot === true;
-          player.mobile = message.isMobile === true;
-          player.xr = message.xr === true;
-          player.voiceRosterSignature = '';
-          reportToListServer('join');
-          scheduleBotReconcile();
-          // An observer never comes alive. Not alive is the state the join flow
-          // already renders as a scoreboard entry with an invisible tank, which
-          // is exactly what an observer wants, and it leaves every path that
-          // tests it refusing on its own.
-          //
-          // It still gets a spawn position, because that is where its camera
-          // starts: an observer should arrive standing on the field facing the
-          // way a tank would, not hovering at the origin. After that the camera
-          // lives on the client and reports itself every five seconds; see
-          // applyObserverHeartbeat.
-          // A player who arrives while the game is over gets the same
-          // non-combatant state an observer gets -- a spectator on the standing
-          // result rather than a fresh spawn -- until the next /countdown.
-          const joinAsObserver = isObserverTeam(assignedTeam);
-          player.alive = !(joinAsObserver || matchClock.gameOver);
-          // MsgAlive from a callsign on the rejoin list (bzfs.cxx:4851).
-          const rejoinWait = player.alive && !bots.has(player.id) ? rejoinWaitMs(joinName) : 0;
-          if (rejoinWait > 0) player.alive = false;
-          if (player.alive) player.hasSpawned = true;
-          // PlayerInfo::resetPlayer(ctf) puts every CTF spawn on the team base.
-          player.restartOnBase = !joinAsObserver && CTF_ENABLED;
-          // Map Viewer (issue #68) is Observer on the wire -- same team limit,
-          // same team chat, same white colour, every gate above unchanged --
-          // distinguished only by this field, which names the map the client
-          // asked to look at instead of the live match. Validated against
-          // `MAP_REGISTRY` the same way an operator's own map picks are; a
-          // stale or invalid request is simply not a Map Viewer, since the
-          // client already validated its own choice against `init.viewableMaps`
-          // before ever asking. Nothing else about the join reads this -- the
-          // world it names is the client's business entirely, not the
-          // server's.
-          player.viewMap = joinAsObserver ? resolveViewMapChoice(message.viewMap) : null;
-          const spawnPos = getSpawnPosition(player);
-          player.x = spawnPos.x;
-          player.y = spawnPos.y;
-          player.z = spawnPos.z;
-          player.azimuth = spawnPos.azimuth;
-          player.verticalVelocity = 0;
-          player.isJumping = false;
-          player.onObstacle = false;
-          // A join is a new life, and a pause belongs to the life it was taken
-          // in. Reopening the entry dialog pauses the tank standing in the
-          // world; pressing OK is what ends both the dialog and the pause.
-          clearPauseTimers(player);
-          player.paused = false;
-          player.pauseCountdownStart = 0;
-          player.forwardSpeed = 0;
-          player.rotationSpeed = 0;
-          player.jumpAzimuth = null;
-          player.slideAzimuth = undefined;
-          player.airVelocityX = 0;
-          player.airVelocityY = 0;
-
-          player.teleportReentryBlockTeleporterIndex = null;
-          player.teleportReentryBlockDistance = 0;
-          player.teleportReentryBlockUntil = 0;
-          player.teleportCooldownUntil = 0;
-          player.lastUpdate = Date.now();
-          player.lastHeardAt = player.lastUpdate;
-          player.notResponding = false;
-          player.lag.resetUpdateGap();
-          player.losses = 0;
-          player.wins = 0;
-          const scoreRestored = previousTeam === null ? restoreScore(player) : null;
-          if (previousTeam === null) restoreConnectTime(player);
-          // The tank is named here as well as on a later change, so a join
-          // line says what a player is driving without the log having to be
-          // read backwards for a change that may never have happened.
-          const joinTags = [`[${player.team.toUpperCase()}]`, `[${player.tankModel}]`];
-          if (player.skin !== DEFAULT_TANK_SKIN) joinTags.push(`[${player.skin}]`);
-          if (message.isMobile) joinTags.push('[MOBILE]');
-          if (player.bot) joinTags.push('[BOT]');
-          log(`Player ${player.id} joining as "${joinName}" ${joinTags.join(' ')}`);
-
-          // broadcast join to all (full player info)
-          // bzfs.cxx:2478 and :2966: a team's flag follows its population. The
-          // first player to arrive brings it back, and a team left empty by
-          // someone switching away loses theirs.
-          if (isColorTeam(assignedTeam) && !teamCounts[assignedTeam]) {
-            resetTeamFlags(getTeamColorIndex(assignedTeam));
-          }
-          if (previousTeam && previousTeam !== assignedTeam) {
-            retireTeamFlags(getTeamColorIndex(previousTeam));
-          }
-
-          broadcastPlayerRecord('playerJoined', player);
-          if (scoreRestored) replyToPlayer(player, scoreRestored);
-          clearTimeout(player.rejoinTimer);
-          if (rejoinWait > 0) {
-            replyToPlayer(player, `You are unable to begin playing for ${(rejoinWait / 1000).toFixed(1)} seconds.`);
-            log(`[REJOIN] "${joinName}" waits ${(rejoinWait / 1000).toFixed(1)}s to spawn`);
-            player.rejoinTimer = setTimeout(() => {
-              if (players.get(player.id) !== player || !player.joined || player.alive || matchClock.gameOver) return;
-              player.respawn();
-              broadcastPlayerRecord('alive', player);
-            }, rejoinWait);
-          }
-          // `init` went out before this player had joined, and `isAdmin`
-          // refuses anyone who has not -- so an admin's opening roster was
-          // built without the admin-only fields. One roster replay after the
-          // join is what fills the BZID column in for the players who were
-          // already here; everyone who arrives later rides in on
-          // `broadcastPlayerRecord`.
-          if (isAdmin(player)) {
-            ws.send(JSON.stringify({ type: 'playerList', players: getRosterFor(player) }));
-          }
-          // After the join is on the wire, so `newRabbit` never names a player the
-          // other clients have not heard of yet.
-          //
-          // A rejoin arrives as a hunter, and upstream's own rejoin is a leave and
-          // an arrival -- `removePlayer` deposes the rabbit (bzfs.cxx:3001). So a
-          // rabbit that reopened the entry dialog puts the post up for anointing
-          // and is disfavoured for it, keeping it only if nobody else qualifies.
-          if (RABBIT_SELECTION && rabbitPlayerId === player.id) anointNewRabbit();
-          handleRabbitSpawn(player);
-          broadcastTeamScores();
-          refreshVoiceRosters(true);
-          break;
-        }
-
-        // MsgSetTeam (bzfs.cxx, master): a tank asking for another playing
-        // team gets it at its next spawn, keeping its score. Observing starts
-        // and stops through `joinGame`, which the camera needs.
-        case 'setTeam': {
-          const team = normalizePlayerTeamSelection(message.team);
-          if (!player.joined || !isSwitchableTeam(player.team)) break;
-          if (!isSwitchableTeam(team) || TEAM_MODE.autoTeam) {
-            replyToPlayer(player, `Team is not available: ${team}`);
-            break;
-          }
-          if (team === player.team) {
-            if (player.nextTeam) replyToPlayer(player, `You stay ${team}`);
-            player.nextTeam = null;
-            break;
-          }
-          let onTeam = 0;
-          players.forEach((other) => {
-            if (other !== player && other.joined && (other.nextTeam || other.team) === team) onTeam += 1;
-          });
-          if (onTeam >= TEAM_MODE.limits[team]) {
-            replyToPlayer(player, `Team is full: ${team}`);
-            break;
-          }
-          player.nextTeam = team;
-          log(`Player ${player.id} "${player.name}" asks for ${team}`);
-          replyToPlayer(player, `You will join ${team} when you next spawn`);
-          break;
-        }
-
-        // The skin changes in a life as the model does; a join carries it too.
-        case 'setTankSkin': {
-          const skin = normalizeTankSkinId(message.skin);
-          if (player.skin === skin) break;
-          log(`Player ${player.id} "${player.name}" skin ${player.skin} -> ${skin}`);
-          player.skin = skin;
-          if (player.joined) broadcastPlayerRecord('playerUpdated', player);
-          break;
-        }
-
-        case 'setTankModel': {
-          const requestedTankModel = typeof message.tankModel === 'string'
-            ? normalizeTankModelId(message.tankModel)
-            : '';
-          if (!isAllowedTankModel(requestedTankModel)) {
-            ws.send(JSON.stringify({ error: 'Invalid tank model' }));
-            break;
-          }
-
-          if (player.tankModel !== requestedTankModel) {
-            const previousTankModel = player.tankModel;
-            player.tankModel = requestedTankModel;
-            // What a client is drawing is the first thing wanted of a report
-            // that it is drawing slowly, and a model is the one part of that
-            // no client-side stats line can carry: every tank in the scene may
-            // be a different one, so the answer is per player and belongs
-            // here, where every player's is in the same log.
-            log(`Player ${player.id} "${player.name}" tank model`
-              + ` ${previousTankModel} -> ${requestedTankModel}`);
-            // Same rule as sendPlayerUpdate: nobody hears about a player who is
-            // not in the game. A tank picked in the entry dialog before joining
-            // travels with the join itself.
-            if (player.joined) {
-              broadcastPlayerRecord('playerUpdated', player);
-            }
-          }
-          break;
-        }
-
-        case 'pause':
-          requestPause(player);
-          break;
-
-        case 'autopilot':
-          setAutopilot(player, message.on === true, message.pilot);
-          break;
-
-        // An XR session opening or closing, which turns the player's `T`
-        // column to `v` and back.
-        case 'xrSession': {
-          const xr = message.on === true;
-          if (player.xr === xr) break;
-          player.xr = xr;
-          if (player.joined) broadcastPlayerRecord('playerUpdated', player);
-          break;
-        }
-
-        case 'getMaps': {
-          // Reply with all .bzw files in maps/ plus 'random', and indicate current map.
-          // Open to every player -- browsing and the View dialog need this list, and
-          // only `setMap` (switching the live match) stays operator-only below.
-          sendMapList(ws);
-          break;
-        }
-        case 'setMap': {
-          if (refuseNonOperator(ws, player, 'setMap')) break;
-          // Admin: set map
-          const mapFile = typeof message.mapFile === 'string' ? message.mapFile.trim() : '';
-          const safeMapFile = path.basename(mapFile);
-          if (!mapFile || mapFile !== safeMapFile || (mapFile !== 'random' && !mapFile.endsWith('.bzw'))) {
-            ws.send(JSON.stringify({ error: 'Invalid map file' }));
-            break;
-          }
-          if (mapFile !== 'random') {
-            const selectedMapPath = resolveMapFilePath(mapFile);
-            if (!selectedMapPath) {
-              ws.send(JSON.stringify({ error: 'Map file not found' }));
-              break;
-            }
-          }
-          try {
-            const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
-            config.mapFile = mapFile;
-            writeServerConfig(config);
-            ws.send(JSON.stringify({ success: true }));
-            log(`Admin set map to ${mapFile}. Server restart required.`);
-            requestServerRestart(`admin map change to ${mapFile}`);
-          } catch (error) {
-            logError(`Failed to update config at ${configPath}:`, error);
-            ws.send(JSON.stringify({ error: 'Failed to update config' }));
-          }
-          break;
-        }
-        // The Operator panel's Match Timer buttons and their XR equivalents.
-        // `/countdown`/`/gameover` reach the same four functions from the chat
-        // entry; this is the panel's front end for them.
-        case 'matchControl': {
-          if (refuseNonOperator(ws, player, 'matchControl')) break;
-          const actions = {
-            start: startMatch,
-            pause: pauseMatch,
-            resume: resumeMatch,
-            gameover: endMatch,
-          };
-          const run = actions[message.action];
-          if (!run) {
-            ws.send(JSON.stringify({ error: 'Invalid match control action' }));
-            break;
-          }
-          if (!run()) {
-            replyToPlayer(player, 'No change: check the time limit and the match state');
-            break;
-          }
-          log(`[OPERATOR] "${player.name}" used the panel's match control: ${message.action}`);
-          break;
-        }
-
-        case 'uploadMap': {
-          if (refuseNonOperator(ws, player, 'uploadMap')) break;
-          // Admin: upload map
-          const { mapName, mapContent } = message;
-          const normalizedMapName = typeof mapName === 'string' ? mapName.trim() : '';
-          const safeMapName = path.basename(normalizedMapName);
-          if (!normalizedMapName || normalizedMapName !== safeMapName || !safeMapName.endsWith('.bzw') || !mapContent) {
-            ws.send(JSON.stringify({ error: 'Invalid map upload' }));
-            break;
-          }
-          const uploadMapPath = path.join(RUNTIME_MAPS_DIR, safeMapName);
-          fs.writeFile(uploadMapPath, mapContent, err => {
-            if (err) {
-              logError('Map upload failed:', err);
-              ws.send(JSON.stringify({ error: 'Failed to save map' }));
-              return;
-            }
-            log(`Admin uploaded new map: ${safeMapName}`);
-            uploads.add('maps', safeMapName);
-            ws.send(JSON.stringify({ success: true }));
-            // Send direct chat message to uploader
-            ws.send(JSON.stringify({
-              type: 'message',
-              src: SERVER_PLAYER,
-              dst: player.id,
-              msgType: 'server',
-              text: `Upload ${safeMapName} with ${Buffer.byteLength(mapContent, 'utf8')} bytes`
-            }));
-            // Send updated map list (mapList reply)
-            sendMapList(ws);
-            // Queue the new file for hashing so it becomes viewable (issue
-            // #68) without a restart -- setMap still needs one, this doesn't.
-            hashRemainingMapsInBackground();
-          });
-          break;
-        }
-
-        // A bzfs recording, base64 over the socket since it is binary. Read
-        // before it is kept, so a file that is not a recording is refused here
-        // rather than listed as unreadable.
-        case 'uploadReplay': {
-          if (refuseNonOperator(ws, player, 'uploadReplay')) break;
-          const said = (text) => ws.send(JSON.stringify({
-            type: 'message', src: SERVER_PLAYER, dst: player.id, msgType: 'server', text,
-          }));
-          const name = typeof message.replayName === 'string'
-            ? path.basename(message.replayName.trim()).replace(/\.rec$/i, '') : '';
-          if (!/^[A-Za-z0-9_-][A-Za-z0-9._-]{0,99}$/.test(name) || typeof message.content !== 'string') {
-            said('Upload refused: a replay name is letters, digits, ".", "_" and "-".');
-            break;
-          }
-          const bytes = Buffer.from(message.content, 'base64');
-          if (bytes.length > REPLAY_UPLOAD_MAX_BYTES) {
-            said(`Upload refused: ${name} is over ${REPLAY_UPLOAD_MAX_BYTES / (1024 * 1024)} MB.`);
-            break;
-          }
-          try {
-            readReplay(bytes);
-          } catch (error) {
-            said(`Upload refused: ${name} is not a bzfs recording (${error.message}).`);
-            break;
-          }
-          if (replayRooms.has(name)) {
-            said(`Upload refused: ${name} is being watched.`);
-            break;
-          }
-          fs.promises.mkdir(RUNTIME_REPLAYS_DIR, { recursive: true })
-            .then(() => fs.promises.writeFile(path.join(RUNTIME_REPLAYS_DIR, `${name}.rec`), bytes))
-            .then(() => {
-              uploads.add('replays', name);
-              log(`Admin "${player.name}" uploaded replay ${name}.rec, ${bytes.length} bytes`);
-              said(`Uploaded replay ${name} with ${bytes.length} bytes`);
-              invalidateListTables();
-              sendMapList(ws);
-            })
-            .catch((error) => {
-              logError('Replay upload failed:', error);
-              said(`Upload failed: ${error.message}`);
-            });
-          break;
-        }
-
-        // The panel's Save Recording: `/record save`, answered the same way.
-        case 'saveRecording': {
-          if (refuseNonOperator(ws, player, 'saveRecording')) break;
-          const said = (text) => ws.send(JSON.stringify({
-            type: 'message', src: SERVER_PLAYER, dst: player.id, msgType: 'server', text,
-          }));
-          const name = recordingName(message.name);
-          const seconds = Number.isInteger(message.seconds) && message.seconds > 0 ? message.seconds : null;
-          if (!name) {
-            said('Save refused: a recording name is letters, digits, ".", "_" and "-".');
-            break;
-          }
-          if (!recorder.recording || recorder.entries.length === 0) {
-            said('No buffer to save');
-            break;
-          }
-          saveRecording(name, { seconds, callsign: player.name })
-            .then(() => {
-              said(`Record buffer saved to: ${name}`);
-              log(`[OPERATOR] "${player.name}" saved recording ${name}`);
-              sendMapList(ws);
-            })
-            .catch((error) => said(`Could not open for writing: ${name} (${error.message})`));
-          break;
-        }
-
-        // What the Operator panel uploaded, and only that (`uploads`): never
-        // a bundled file, never the map being played, never a replay being
-        // watched.
-        case 'deleteUpload': {
-          if (refuseNonOperator(ws, player, 'deleteUpload')) break;
-          const said = (text) => ws.send(JSON.stringify({
-            type: 'message', src: SERVER_PLAYER, dst: player.id, msgType: 'server', text,
-          }));
-          const kind = message.kind === 'replays' ? 'replays' : (message.kind === 'maps' ? 'maps' : null);
-          const name = typeof message.name === 'string' ? message.name : '';
-          if (!kind || !uploads.has(kind, name)) {
-            said(`Delete refused: ${name || 'that'} was not uploaded here.`);
-            break;
-          }
-          if (kind === 'maps' && name === MAP_SOURCE) {
-            said(`Delete refused: ${name} is the map being played.`);
-            break;
-          }
-          if (kind === 'replays' && replayRooms.has(name)) {
-            said(`Delete refused: ${name} is being watched.`);
-            break;
-          }
-          const filePath = kind === 'maps'
-            ? path.join(RUNTIME_MAPS_DIR, name)
-            : path.join(RUNTIME_REPLAYS_DIR, `${name}.rec`);
-          fs.promises.rm(filePath, { force: true })
-            .then(() => {
-              uploads.remove(kind, name);
-              if (kind === 'maps') {
-                MAP_REGISTRY.delete(name);
-                sweepMapCache();
-              } else {
-                replaySummaries.delete(name);
-              }
-              invalidateListTables();
-              log(`Admin "${player.name}" deleted ${kind === 'maps' ? 'map' : 'replay'} ${name}`);
-              said(`Deleted ${kind === 'maps' ? 'map' : 'replay'} ${name}`);
-              sendMapList(ws);
-            })
-            .catch((error) => {
-              logError(`Deleting ${name} failed:`, error);
-              said(`Delete failed: ${error.message}`);
-            });
-          break;
-        }
-
-        // The View dialog's remote-server list -- decoded entirely from the
-        // list server's own reply, so this never connects to any of the
-        // servers it names. Open to every player, same as `getMaps`: viewing
-        // and importing cost the requester (a fetch, a render), not the live
-        // match, so only `setMap` needs an operator.
-        case 'listRemoteServers': {
-          getRemoteServerList().then((servers) => {
-            const summarized = servers
-              .map((s) => ({
-                host: s.host,
-                port: s.port,
-                title: s.title,
-                style: s.info?.style ?? null,
-                players: s.info?.players ?? null,
-                maxPlayers: s.info?.maxPlayers ?? null,
-              }))
-              .sort((a, b) => (b.players ?? -1) - (a.players ?? -1));
-            ws.send(JSON.stringify({ type: 'remoteServerList', servers: summarized }));
-          }).catch((error) => {
-            logError('Fetching the remote server list failed:', error);
-            ws.send(JSON.stringify({ error: 'Could not reach the BZFlag list server' }));
-          });
-          break;
-        }
-
-        // Downloads a live BZFlag server's world over the real wire protocol
-        // (see server/remote-world-import.cjs) and saves it as an ordinary
-        // .bzw -- one step, same as `uploadMap`. Open to every player, but
-        // `performRemoteMapImport` fetches only from an exact host:port in
-        // the public list. It costs this server one fetch and one file (capped by
-        // MAX_WORLD_DATABASE_BYTES in remote-world-import.cjs), not the live
-        // match, so there is nothing here that needs an operator. It does not
-        // touch the live match or select the new file anywhere -- switching
-        // the match to it is still `setMap`, still operator-only.
-        // `performRemoteMapImport` hashes the file synchronously, so it is
-        // viewable the moment this reply arrives, not after a background
-        // trickle or a reload.
-        case 'importMap': {
-          const target = parseHostPort(message.hostPort);
-          if (!target) {
-            ws.send(JSON.stringify({ error: 'Expected host:port' }));
-            break;
-          }
-          const { host, port } = target;
-          log(`"${player.name}" is importing a remote map from ${host}:${port}`);
-          performRemoteMapImport(host, port).then(({ safeMapName, byteLength, reused }) => {
-            log(reused
-              ? `"${player.name}" reused the cached copy of ${host}:${port}, ${safeMapName} (${byteLength} bytes)`
-              : `"${player.name}" imported remote map ${host}:${port} as ${safeMapName} (${byteLength} bytes)`);
-            ws.send(JSON.stringify({ type: 'importMapResult', success: true, file: safeMapName }));
-            replyToPlayer(player, reused
-              ? `${host}:${port} is no longer in the public list, so ${safeMapName} is the copy already `
-                + `here (${byteLength} bytes). It is ready to View now.`
-              : `Imported ${safeMapName} from ${host}:${port} (${byteLength} bytes). It is ready to View now.`);
-            sendMapList(ws);
-          }).catch((error) => {
-            logError(`Remote map import from ${host}:${port} failed:`, error);
-            ws.send(JSON.stringify({ error: `Import failed: ${error.message}` }));
-          });
-          break;
-        }
-
-        // A `?viewmap=` link's own answer to "the file it named isn't
-        // registered": the name is `import-<host>_<port>.bzw`
-        // (`remoteMapFileName`), so it still says which server to ask even
-        // once bzo has let its cached copy go, or never fetched it in this
-        // process at all. Reused rather than re-fetched inside
-        // `IMPORT_REUSE_MS` of its last import -- the same server's world is
-        // not worth downloading twice in the same sitting -- otherwise this
-        // is `performRemoteMapImport` again, including its public-list check
-        // -- which an unlisted server's own already-cached file satisfies,
-        // so a link outlives the target leaving the list, not just bzo's
-        // reuse window -- just triggered by a link instead of a click.
-        case 'importMapForView': {
-          const file = typeof message.file === 'string' ? message.file : '';
-          // `reason`, not `error`: a bare top-level `error` string is the
-          // generic admin-response shortcut (handleServerMessage's own
-          // "Some admin/operator responses are sent without a message type"
-          // check) and would short-circuit past `type` entirely, so this
-          // reply would never reach `handleImportMapForViewResult` and the
-          // client's pending join would wait forever.
-          const reply = (success, extra = {}) => {
-            ws.send(JSON.stringify({ type: 'importMapForViewResult', file, success, ...extra }));
-          };
-          const target = parseImportMapFileName(file);
-          if (!target) {
-            // One of this server's own maps: the same request and the same
-            // reply, with the conversion standing where the download would.
-            prepareMapForView(file).then((prepared) => {
-              if (prepared) reply(true, { viewableMaps: getViewableMapsList() });
-              else reply(false, { reason: 'no such map' });
-            });
-            break;
-          }
-          const { host, port } = target;
-          const existing = MAP_REGISTRY.get(file);
-          if (existing && (Date.now() - existing.registeredAt) < IMPORT_REUSE_MS) {
-            reply(true, { viewableMaps: getViewableMapsList() });
-            break;
-          }
-          // Not parsed at boot (`listLocalMapFiles`), but a copy fetched inside
-          // the reuse window is still on disk: read it back rather than
-          // download the same world again.
-          (existing ? Promise.resolve(false) : registerFreshImportFromDisk(file)).then((fromDisk) => {
-            if (fromDisk) {
-              reply(true, { viewableMaps: getViewableMapsList() });
-              return null;
-            }
-            log(`A viewmap link is importing a remote map from ${host}:${port}`);
-            return performRemoteMapImport(host, port).then(({ safeMapName, byteLength, reused }) => {
-              log(reused
-                ? `Viewmap link reused the cached copy of ${host}:${port}, ${safeMapName} (${byteLength} bytes)`
-                : `Viewmap link imported remote map ${host}:${port} as ${safeMapName} (${byteLength} bytes)`);
-              reply(true, { viewableMaps: getViewableMapsList() });
-            });
-          }).catch((error) => {
-            logError(`Remote map import from ${host}:${port} for a viewmap link failed:`, error);
-            reply(false, { reason: error.message });
-          });
-          break;
-        }
-
-        case 'setOperatorConfig': {
-          if (refuseNonOperator(ws, player, 'setOperatorConfig')) break;
-          const requested = {};
-          for (const key of OPERATOR_CONFIG_KEYS) {
-            if (Object.prototype.hasOwnProperty.call(message, key)) requested[key] = message[key];
-          }
-          if (Object.keys(requested).length === 0) {
-            ws.send(JSON.stringify({ error: 'No supported operator setting provided' }));
-            break;
-          }
-          const outcome = applyServerConfigChanges(requested, `operator "${player.name}"`);
-          if (outcome.error) {
-            ws.send(JSON.stringify({ error: outcome.error }));
-            break;
-          }
-          // Nothing to send after a restart: the clients are already reloading,
-          // and a map list for a world that is going away is noise.
-          if (!outcome.restarted) sendMapList(ws);
-          ws.send(JSON.stringify({ success: true, restarted: Boolean(outcome.restarted) }));
-          break;
-        }
-
-        // Deliberately not part of `setOperatorConfig`/`OPERATOR_CONFIG_KEYS`:
-        // that state rides in `init.operatorConfig`, sent to every connecting
-        // player (see getOperatorConfigState), and this server's own list
-        // server credential must never reach a client that is not this
-        // operator. Applied live -- "no restart, no new auth surface" -- and
-        // only ever echoed back as whether a key is now configured, never the
-        // value itself.
-        case 'setListServerKey': {
-          if (refuseNonOperator(ws, player, 'setListServerKey')) break;
-          const key = typeof message.key === 'string' ? message.key.trim() : '';
-          try {
-            const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
-            config.listServerKey = key;
-            writeServerConfig(config);
-          } catch (error) {
-            logError(`Failed to update config at ${configPath}:`, error);
-            ws.send(JSON.stringify({ error: 'Failed to update config' }));
-            break;
-          }
-          LIST_SERVER_KEY = key;
-          serverConfig.listServerKey = key;
-          log(`[LISTSERVER] key ${key ? 'configured' : 'cleared'} by operator "${player.name}"`);
-          if (key) reportToListServer('boot');
-          ws.send(JSON.stringify({ success: true, listServerKeyConfigured: Boolean(key) }));
-          break;
-        }
-      }
+      // The handler for this type of message (server/messages-*.cjs), if any.
+      const handle = MESSAGE_HANDLERS[message.type];
+      if (handle) handle(player, ws, message);
     } catch (err) {
       logError('Error handling message:', err.stack || err.message);
     }
@@ -18291,6 +16797,169 @@ const BOT_FAKE_REQUEST = Object.freeze({
 });
 let AUTOPILOT_MODULE = null;
 const bots = new Map();
+
+// What the message handlers need of the server (server/messages-*.cjs), handed
+// over before the first connection -- a bot connects in-process, so not before
+// `bots`. `MESSAGE_SERVER` holds what changes while the server runs.
+const MESSAGE_SERVER = {
+  get LIST_SERVER_KEY() { return LIST_SERVER_KEY; },
+  set LIST_SERVER_KEY(value) { LIST_SERVER_KEY = value; },
+  get MAP_SOURCE() { return MAP_SOURCE; },
+  get UDP_CHANNELS() { return UDP_CHANNELS; },
+  get pendingMoveBroadcasts() { return pendingMoveBroadcasts; },
+  get projectileIdCounter() { return projectileIdCounter; },
+  set projectileIdCounter(value) { projectileIdCounter = value; },
+  get rabbitPlayerId() { return rabbitPlayerId; },
+  get serverConfig() { return serverConfig; },
+};
+messagesVoice.useServer({
+  broadcastAll,
+  forwardVoiceSignal,
+  refreshVoiceRosters,
+  sendVoiceStateUpdate,
+});
+messagesChat.useServer({
+  deliverActionMessage,
+  deliverChatMessage,
+  handleServerCommand,
+  log,
+});
+messagesPlay.useServer({
+  ALLOW_JUMPING,
+  ANTICHEAT_CONFIG,
+  ANTIDOTE_FLAGS,
+  CTF_ENABLED,
+  DEATH_REASON,
+  FLAG_SHAKE_TIMEOUT,
+  GAME_CONFIG,
+  JUMP_START_VERTICAL_VELOCITY,
+  MAX_TOTAL_PLAYERS,
+  Player,
+  Projectile,
+  RABBIT_SELECTION,
+  SPEED_QUANTIZATION_SLACK,
+  TEAM_MODE,
+  UDP_CHANNEL_OFFER_INTERVAL_MS,
+  anointNewRabbit,
+  applyObserverHeartbeat,
+  applyPlayerTeleportMessage,
+  applyShotPlayerHit,
+  bans,
+  bots,
+  broadcastAll,
+  broadcastFlagUpdate,
+  broadcastPlayerRecord,
+  broadcastTeamScores,
+  captureFlag,
+  checkAntidote,
+  clampToArrivalGap,
+  clearPauseTimers,
+  countFlagShot,
+  decayPlayerTeleportReentryBlock,
+  dropFlag,
+  dropPlayerFlag,
+  flags,
+  flushChannelMoves,
+  flushMoveBroadcasts,
+  formatShotPoint,
+  getAccelerationWindow,
+  getAvailableShotSlot,
+  getLockTarget,
+  getPlayerFlag,
+  getRosterFor,
+  getShotFlagFor,
+  getShotRejection,
+  getShotVelocityRejection,
+  getSpawnPosition,
+  getTeamBaseCenters,
+  getTeamScoreState,
+  getZoneRefusal,
+  grabFlag,
+  handleRabbitSpawn,
+  idBanRefusal,
+  isAdmin,
+  isAllowedTankModel,
+  isPlayerInsideBuilding,
+  isPlayerZoned,
+  isSwitchableTeam,
+  killPlayer,
+  log,
+  logMalformed,
+  matchClock,
+  normalizeTankModelId,
+  noteHeardFrom,
+  noteRejoinWait,
+  occupyShotSlot,
+  openUdpChannel,
+  players,
+  projectiles,
+  queueChannelMove,
+  refreshVoiceRosters,
+  rejoinWaitMs,
+  removeFromServer,
+  replyToPlayer,
+  reportCheat,
+  reportJumpRejection,
+  reportShotRejection,
+  reportToListServer,
+  requestPause,
+  resetTeamFlags,
+  resolveJoinName,
+  resolveViewMapChoice,
+  restoreConnectTime,
+  restoreScore,
+  retireTeamFlags,
+  sanitizeMotto,
+  scheduleBotReconcile,
+  searchFlag,
+  sendMoveToBzflagClients,
+  setAutopilot,
+  setPlayerTarget,
+  supersedeEarlierConnection,
+  teamScores,
+  traceShotBeam,
+  validateMovement,
+  wireShot,
+}, MESSAGE_SERVER);
+messagesOperator.useServer({
+  IMPORT_REUSE_MS,
+  MAP_REGISTRY,
+  OPERATOR_CONFIG_KEYS,
+  REPLAY_UPLOAD_MAX_BYTES,
+  RUNTIME_MAPS_DIR,
+  RUNTIME_REPLAYS_DIR,
+  applyServerConfigChanges,
+  configPath,
+  endMatch,
+  getRemoteServerList,
+  getViewableMapsList,
+  hashRemainingMapsInBackground,
+  invalidateListTables,
+  log,
+  logError,
+  parseHostPort,
+  parseImportMapFileName,
+  pauseMatch,
+  performRemoteMapImport,
+  prepareMapForView,
+  recorder,
+  recordingName,
+  refuseNonOperator,
+  registerFreshImportFromDisk,
+  replayRooms,
+  replaySummaries,
+  replyToPlayer,
+  reportToListServer,
+  requestServerRestart,
+  resolveMapFilePath,
+  resumeMatch,
+  saveRecording,
+  sendMapList,
+  startMatch,
+  sweepMapCache,
+  uploads,
+  writeServerConfig,
+}, MESSAGE_SERVER);
 let botFill = Math.max(0, Math.floor(Number(serverConfig.bots?.fill) || 0));
 // `bots.pilot`, or the pilots' own default once they load.
 let botFillPilot = typeof serverConfig.bots?.pilot === 'string' ? serverConfig.bots.pilot : null;

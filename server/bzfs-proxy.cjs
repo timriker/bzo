@@ -6,9 +6,9 @@
  */
 
 // The bzfs proxy: a browser playing on a real BZFlag server, or watching a
-// recording, through this one (docs/proxy-plan.md, docs/replay.md). Moved
-// whole out of server.js (docs/refactor-plan.md); what it needs of the server
-// it is handed by `useServer`, once, before the first connection.
+// recording, through this one (docs/proxy-plan.md, docs/replay.md). What it
+// needs of the server it is handed by `useServer`, once, before the first
+// connection.
 
 const crypto = require('crypto');
 const { URLSearchParams } = require('url');
