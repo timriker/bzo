@@ -12,3 +12,6 @@ d6f0c399f2bd3cf8c917f7d35b442d144cebd5d3
 
 # server/bzfs-proxy.cjs split out of server.js
 8815e2911d0c6eed35c5c1e746c7afbfa624a024
+
+# server/messages-*.cjs split out of server.js
+a7b9da3877e02b5595f50ea2db3d036ba820a2dc
