@@ -32,6 +32,12 @@ const INTENTS = (1 << 0) | (1 << 9) | (1 << 15);
 // app was not granted, a gateway version gone.
 const FATAL_CLOSES = new Set([4004, 4010, 4011, 4012, 4013, 4014]);
 
+// The heartbeat interval Discord's hello names, about 41 s, kept within these
+// bounds: a missing or absurd one would beat every millisecond, or never.
+const HEARTBEAT_MIN_MS = 1000;
+const HEARTBEAT_MAX_MS = 5 * 60 * 1000;
+const HEARTBEAT_DEFAULT_MS = 41250;
+
 const RETRY_MIN_MS = 2000;
 const RETRY_MAX_MS = 5 * 60 * 1000;
 
@@ -91,8 +97,10 @@ function createGateway({
     retryMs = Math.min(RETRY_MAX_MS, retryMs * 2);
   }
 
-  function beat(intervalMs) {
+  function beat(offeredMs) {
     stopHeartbeat();
+    let intervalMs = HEARTBEAT_DEFAULT_MS;
+    if (offeredMs >= HEARTBEAT_MIN_MS && offeredMs <= HEARTBEAT_MAX_MS) intervalMs = offeredMs;
     acked = true;
     const tick = () => {
       // No acknowledgement since the last one: the connection is a zombie, so
@@ -116,7 +124,7 @@ function createGateway({
     }
     switch (op) {
       case OP.HELLO:
-        beat(d.heartbeat_interval);
+        beat(Number(d?.heartbeat_interval));
         if (session.sessionId && session.seq !== undefined) {
           send(OP.RESUME, { token, session_id: session.sessionId, seq: session.seq });
         } else {
