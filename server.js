@@ -2457,11 +2457,19 @@ function renderFilterHelp(listId) {
 function renderServerList(listId, filterId, unsorted) {
   if (!unsorted.length) return `<p class="muted">None.</p>`;
   // Most players first, which is the order the `P` header starts out marked as
-  // and the only order upstream ever shows (`ServerItem::getSortFactor`). Done
-  // here rather than upstream of it so the mark cannot disagree with the rows:
-  // a bzo instance and the servers it proxies arrive grouped, and each of
-  // those is its own row with its own count.
-  const entries = [...unsorted].sort((a, b) => (b.players ?? -1) - (a.players ?? -1));
+  // and upstream's own (`ServerItem::getSortFactor`); then most observers and
+  // most bots, so a server somebody is watching or bots are playing on comes
+  // ahead of an empty one; then by name and address. Done here rather than
+  // upstream of it so the mark cannot disagree with the rows: a bzo instance
+  // and the servers it proxies arrive grouped, and each of those is its own
+  // row with its own count.
+  const count = (value) => (typeof value === 'number' ? value : -1);
+  const label = (entry) => (entry.desc || entry.addr || '').toLowerCase();
+  const entries = [...unsorted].sort((a, b) => (count(b.players) - count(a.players))
+    || (count(b.observers) - count(a.observers))
+    || (count(b.bots) - count(a.bots))
+    || label(a).localeCompare(label(b))
+    || String(a.addr || '').localeCompare(String(b.addr || ''), undefined, { numeric: true }));
   const bits = (entry) => entry.gameOptionsBits || 0;
   const set = (entry, bit) => ((bits(entry) & bit) !== 0 ? 1 : 0);
   // What sorting and the filter language judge a row by, as one JSON block
