@@ -630,8 +630,11 @@ pilot; `docs/refactor-plan.md` is how the rest is being split:
 - **A server bot is a client whose socket never leaves the process.**
   `acceptConnection` takes it like a browser's and it sends a browser's
   messages, so validation, anti-cheat, scoring and the list treat it as any
-  player. `BotDriver` steps it with the `drive` module; `planBotFill` is the
-  fill rule (`docs/installation.md`).
+  player. `BotDriver` (`public/js/bot-driver.mjs`) steps it with the `drive`
+  module, and `public/js/bot-host.mjs` holds every bot and the world it
+  drives in, for the server's bot thread (`server/bot-worker.cjs`) and
+  offline play's Worker alike; `planBotFill` is the fill rule
+  (`docs/installation.md`).
 - **A bot is a player that joined as one** (`joinGame`'s `bot`, which `?bot`
   sets), upstream's `ComputerPlayer` -- not one on autopilot. The list's
   `players` leaves bots out; team counts keep them, as upstream's ping does.
