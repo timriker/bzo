@@ -6,6 +6,21 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
 
 ## [Unreleased]
 
+## [1.3.65] - 2026-10-26
+
+### Changed
+- `/list` orders both server lists by players, then observers, then bots,
+  then name, so a server somebody is watching or bots are playing on comes
+  ahead of an empty one.
+- The admin whitelist probe runs once the server is ready, beside the
+  list-server announcement, and a proxy it cannot confirm is logged with
+  what the probe saw.
+
+### Fixed
+- The designated list server removes its own old row under another of its
+  public URLs, which failed every check with 404. A server whose primary URL
+  changes requests a new key.
+
 ## [1.3.64] - 2026-10-26
 
 ### Added
