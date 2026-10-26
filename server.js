@@ -4601,7 +4601,6 @@ const onHttpListening = () => {
     log(`[BR] ${compressed} asset sidecar(s) built, ${Math.round(raw / 1024)}KB -> `
       + `${Math.round(br / 1024)}KB in ${(ms / 1000).toFixed(1)}s`);
   }).catch((error) => logError(`[BR] ${error.message}`));
-  probeAdminWhitelist().catch((error) => logError(`[ADMIN] probe failed: ${error.message}`));
   // Only the designated instance keeps BZFlag worlds fresh, for the same
   // reason it is the only one that draws bzo rows' pictures: every instance
   // doing it would mean every instance dialling every listed server, which is
@@ -4617,6 +4616,9 @@ const onHttpListening = () => {
 // One report for both lists once ready, after the proxied targets have been
 // dialled so it carries their rows.
 function announceReadyServer() {
+  // The admin probe goes through the public URL and its proxy, as the list
+  // server's own check of this instance does, so it waits for the same moment.
+  probeAdminWhitelist().catch((error) => logError(`[ADMIN] probe failed: ${error.message}`));
   log('[LISTSERVER] ready; announcing');
   refreshProxyStatuses().finally(() => reportToListServer('boot'));
   if (IS_DESIGNATED_LIST_SERVER) {
@@ -4944,7 +4946,8 @@ async function probeAdminWhitelist() {
       const expected = plainChain[plainChain.length - 1] ?? null;
       const last = poisonedChain[poisonedChain.length - 1] ?? null;
       if (last === null || last === ADMIN_PROBE_SENTINEL || expected === null || last !== expected) {
-        log(`[ADMIN] ${PUBLIC_URL} does not confirm its proxy replaces X-Forwarded-For;`
+        log(`[ADMIN] ${PUBLIC_URL} does not confirm its proxy replaces X-Forwarded-For`
+          + ` (plain ${plain.xForwardedFor ?? 'none'}, forged ${poisoned.xForwardedFor ?? 'none'});`
           + ' admin whitelist stays limited to unproxied loopback');
         return;
       }
