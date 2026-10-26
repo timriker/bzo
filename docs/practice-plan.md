@@ -20,10 +20,11 @@ server reachable, an installed client offers the same from the maps it holds.
   Viewer's phantom tank already drives with no game behind it (issue #68).
 - **The bots.** `public/js/autopilot.mjs` (Roger and Ace) and `public/js/nav.mjs`
   (routes) are browser ESM already, and so is how a tank moves: the `drive`
-  pair (`public/js/drive.mjs`), which the browser's tank and `server/bots.cjs`'s
-  `BotDriver` both step, along with the move packet and the shot it builds.
-  `BotDriver` is small and talks to its game only through messages a client
-  would send.
+  module (`public/js/drive.mjs`), which the browser's tank and `BotDriver`
+  (`public/js/bot-driver.mjs`) both step, along with the move packet and the
+  shot it builds. `public/js/bot-host.mjs` runs the bots for the server's bot
+  thread and offline play's Worker alike, and talks to its game only through
+  messages a client would send.
 - **The seam.** `sendToServer` and `handleServerMessage` in `public/js/client.js`
   are the client's whole conversation with a game; a server bot already joins
   through `acceptConnection` on a socket that never leaves the process.
@@ -101,8 +102,8 @@ death it is told about, as bzfs does. A host gives it
 with a socket-shaped object, so a browser, a server bot and a practice bot are
 the same thing to it, which is already true of the server.
 
-`BotDriver` moves next to the pilots as browser ESM, and `server/bots.cjs`
-keeps only the fill rule and its own wiring.
+`BotDriver` and the bot host are browser ESM next to the pilots, and
+`server/bots.cjs` keeps only the fill rule.
 
 ## Steps
 
@@ -110,9 +111,12 @@ Each slice is moved and the server switched to it in the same change, checked
 against live play: every game bzo runs goes through it, which is the best test
 it could have.
 
-1. **Loopback.** A `MessagePort` transport behind `sendToServer` and
-   `handleServerMessage`, so the client can talk to a Worker exactly as it
-   talks to a socket. Nothing else in the client changes.
+1. **Loopback.** `public/js/port-transport.mjs` is a WebSocket-shaped
+   connection over a `MessagePort` or a `Worker`, so `ws` can be either and
+   nothing that sends or receives knows which. `?loopback` on the game's URL
+   puts every game through it: `public/js/loopback-worker.mjs` relays the
+   port to the server's socket, and UDP stays off so nothing goes around it.
+   Done; a practice Worker answers on the same port.
 2. **The core, in slices**, in order of what a first match needs. Each takes
    what a player tells it, as bzfs does; the server goes on deciding its own
    game's shots and deaths around it.
@@ -121,21 +125,25 @@ it could have.
    3. flags: spawning, grab, drop, capture, antidote, shake (the effects are
       already the `flags` module)
    4. match rules: clock, rabbit, team scores
-3. **Bots that declare their own deaths.** A bot steps the shots it is told
-   about with `traceShotStep` and tests them against its own tank with
-   `getShotTankHit`, as the proxied browser does -- the shot-flight half of
-   the browser's code moves into a shared module so the two are one.
-4. **Practice host.** A Worker that runs the core with a world and a config,
-   relays shots, and fills the game with bots. The human's client joins it in
-   `clientTracesShots` mode, as through a proxy. First playable: free-for-all
-   against bots, no flags -- slices 1 and 2.
+3. **Bots that declare their own deaths.** Built for plain shells:
+   `offline-worker.mjs` steps every shell with `traceShotStep` and tests it
+   against each bot with `getShotTankHit`, as the proxied browser does for
+   itself. Left: teleporters, guided missiles, lasers and the rest of a
+   flagged shot's flight, which is when the browser's own stepping moves into
+   a shared module so the two are one.
+4. **Practice host.** Built as offline play: `offline-worker.mjs` seats the
+   player in `clientTracesShots` mode and runs three Ace bots on
+   `bot-host.mjs`, free-for-all, no flags, with its own spawn pick (open
+   ground and the server's saved spawns, farthest from every live tank) and
+   its own respawns and tallies. Those rules are the worker's own until step
+   2's slices replace them.
 5. **The entry.** A "Practice" choice beside Map Viewer: the map, how many bots,
    which pilot, teams or not. The settings are the same names as `server.json`'s.
 6. **Offline.** The service worker precaches the core, the pilots and the route
    graph; the client remembers the worlds it has played (the `worldRef`s from
    `init`); an installed client with no server offers Practice on those.
    [tutorial-plan.md](tutorial-plan.md) stage 2 -- free drive on the last
-   map -- comes for free on the way.
+   map, `offline-worker.mjs` -- is built already, and is what this grows from.
 
 ## What it costs and what it buys
 

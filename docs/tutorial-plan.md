@@ -4,52 +4,51 @@ Plan for issue #129: what an installed client does when the server it was
 installed from is unreachable, and what tutorial levels are built on top of
 that. Upstream references are paths under `$HOME/bzflag/`.
 
-Only the caching step is built. Everything from "Say so" down is a plan.
+Saying it is offline, and an offline game on the last map against bots, are
+built. Stage 3 and the lessons are a plan.
 
 ## What an offline launch does today
 
 The service worker precaches the shell -- `index.html`, `client.js`,
-`styles.css`, Three -- and caches everything else on first use, so the page
-itself loads with no server. Then `connectToServer` opens a WebSocket to the
-same host, it fails, and `ws.onclose` schedules another attempt in three
-seconds, forever. An attempt that never opened puts the loading overlay up
-with "Offline" (or "Cannot reach <host>") and "Trying again...", until one
-gets through.
+`styles.css`, Three, and the offline host below -- and caches everything else
+on first use, so the page itself loads with no server. Then `connectToServer`
+opens a WebSocket to the same host, it fails, and `ws.onclose` schedules
+another attempt in three seconds. An attempt that never opened puts the
+loading overlay up with "Offline" (or "Cannot reach <host>") and "Trying
+again...".
+
+A page that has never reached a server, and is offline or has failed three
+attempts, then drives the last world it played instead (stage 2, below).
 
 `/manifest.webmanifest` is deliberately never intercepted, so a cold first
 visit with no network cannot install either. That is correct -- the manifest is
 generated per request and names the server -- and it is not worth changing.
 
-## Stage 2: free drive on the last map
+## Stage 2: the last map, offline
 
-The world is already in the browser. `init` carries a `worldRef` of
-`{url, hash}` and the client fetches the world itself (`loadWorldFile` in
-`public/js/client.js`), from `/maps/<12 hex>.json` -- express serves that URL space
-out of `cache/maps/`, where a file is named for its own content hash and
-answered `immutable`. `public/sw.js` serves `/maps/` cache-first for exactly
-that reason, so a map the player has seen is on disk and needs no request.
+Built. Online, the client keeps the last game's `init` in `localStorage`
+(`offlineWorld`), without other players, flags or anything about the
+connection, plus up to 16 places the server spawned this player on that world
+-- spots the server checked against the whole world, so the offline host needs
+no collision of its own to pick one. The map is already on disk: `init`
+carries a `worldRef` of `{url, hash}`, and `public/sw.js` serves `/maps/`
+cache-first because a file there is named for its own content hash.
 
-**What is missing offline is the pointer, not the payload.** `worldRef` arrives
-inside `init`, over the socket that is down. Two ways to hold one without the
-server:
+Offline, `public/js/offline-worker.mjs` answers on the same port the loopback
+uses (practice-plan.md, step 1): it replays the saved `init` with
+`clientTracesShots`, seats the player, spawns them on a saved spot, echoes
+their shots and brings them back after a death they declare, as the proxy does
+for a bzfs. Three Ace bots play against them (stage 4). The map is also kept
+in a cache of its own (`bzo-offline`, which `public/sw.js` never drops), so an
+update does not leave an installed app with nothing to drive.
 
-- Remember the last `worldRef` in `localStorage`. Gives the player the map they
-  were actually on, and costs nothing until it is needed.
-- Pin a tutorial map's hash in the worker's `PRECACHE`. Survives the cache wipe
-  a build-id change performs, which the incidental copy does not, and is what a
-  tutorial needs anyway: a map whose layout the lesson can depend on.
+Left:
 
-A tutorial wants both. With a `worldRef` in hand, the client synthesizes an
-`init` and `applyWorldData` runs unchanged -- Map Viewer already builds a world
-from a URL with no match behind it, and already has a driveable phantom tank
-(issue #68). The socket sites are already guarded by `ws.readyState` checks;
-what they need is for the absence of a socket to be an expected state rather
-than a failed one.
-
-**This must not fight the reconnect loop.** Auto-rejoin is deliberate, so the
-socket can come back mid-drive. Offline play has to decide what happens then;
-yanking a player out of a tutorial because the network returned is the wrong
-answer.
+- **A tutorial map pinned in `PRECACHE`.** The saved world is whatever the
+  player last played. A lesson needs a map whose layout it can depend on.
+- **Coming back online.** An offline game stays offline until a reload, rather
+  than being yanked out from under the player when the network returns. A
+  quiet "server reachable" notice would be the friendly half of that.
 
 ## Stage 3: practice range
 
@@ -61,11 +60,12 @@ targets that belong to nobody.
 
 ## Stage 4: bots, and a real offline match
 
-Opponents and adjudication. The opponents exist now -- the autopilot's pilots
-and the server's bots ([bots-plan.md](bots-plan.md)) -- and
-[practice-plan.md](practice-plan.md) is the plan for the adjudication: the game's
+A free-for-all against three Ace bots, no flags, is built: the offline Worker
+runs the server's own bot host and decides each bot's death the way a proxied
+browser decides its own. What is left is the rest of a match -- flags, teams,
+the clock -- which [practice-plan.md](practice-plan.md) plans as the game's
 rules out of `server.js` into one module the server and a browser Worker both
-run. This is the expensive tier.
+run.
 
 ## What the client already has
 

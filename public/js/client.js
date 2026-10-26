@@ -406,6 +406,7 @@ import {
 } from './teleport.mjs';
 import { findMapEdgeImpactPoint, traceBeam, traceShotThroughTeleporters } from './trace.mjs';
 import { AUTOPILOTS, DEFAULT_PILOT } from './autopilot.mjs';
+import { createPortTransport } from './port-transport.mjs';
 import {
   createAsyncRouter, createRouter, createWorldProbes, findVantagePoints, teamBasesOf,
 } from './autopilot-world.mjs';
@@ -585,7 +586,25 @@ let localProjectileCounter = 0;
 const SHOT_SIM_STEP_SECONDS = 1 / 60;
 const SHOT_SIM_MAX_STEPS_PER_FRAME = 8;
 let projectileSimAccumulator = 0;
+// The game connection: a WebSocket, or with `?loopback` a port to a Worker
+// that relays it (`loopback-worker.mjs`), which answers to the same calls.
 let ws = null;
+const LOOPBACK = new URLSearchParams(window.location.search).has('loopback');
+
+// Offline play: the last world played online, and the spawn points the
+// server picked on it, kept so a page that cannot reach any server can still
+// play it (`offline-worker.mjs`). The map itself is in the service worker's
+// cache, under the `worldRef` the saved `init` names.
+const OFFLINE_WORLD_KEY = 'offlineWorld';
+const OFFLINE_SPAWNS_KEPT = 16;
+// The service worker's cache that outlives a build change (`OFFLINE_CACHE` in
+// sw.js), holding the saved world's map and nothing else.
+const OFFLINE_MAP_CACHE = 'bzo-offline';
+// Whether this page has ever had a server answer, so a server restarting under
+// a game is waited for rather than mistaken for being offline.
+let everConnected = false;
+let failedConnectAttempts = 0;
+let offlinePlay = false;
 let gameConfig = null;
 // The live match's own config, exactly as `init` sent it. `gameConfig` is
 // that with the currently-applied world's own physics laid over the top, so
@@ -7519,7 +7538,8 @@ const udpChannel = {
   // one, for testing a path.
   async start(offer) {
     const only = new URLSearchParams(window.location.search).get('udp');
-    if (only === 'ws') return;
+    // A loopback's whole game goes through its port, so nothing goes around it.
+    if (only === 'ws' || LOOPBACK) return;
     if (only !== 'rtc' && only !== 'turn' && offer.webTransport && webTransportChannel.available()) {
       if (webTransportChannel.isOpen()) return;
       const { port, token } = offer.webTransport;
@@ -7601,6 +7621,82 @@ function onNextPlayerAction(run) {
   session?.addEventListener('select', once);
 }
 
+function readOfflineWorld() {
+  try {
+    const world = JSON.parse(localStorage.getItem(OFFLINE_WORLD_KEY));
+    return world?.init?.world && world.spawns?.length > 0 ? world : null;
+  } catch {
+    return null;
+  }
+}
+
+function writeOfflineWorld(world) {
+  try {
+    localStorage.setItem(OFFLINE_WORLD_KEY, JSON.stringify(world));
+  } catch {
+    // A full store keeps whatever world it had.
+  }
+}
+
+// An `init` from a game this page is playing, kept without what is about
+// other players or this connection. A watch, a replay or a bot is not a game
+// the player would drive again.
+function saveOfflineWorld(init) {
+  if (offlinePlay || IS_BOT_CLIENT || !init.world?.hash) return;
+  const params = new URLSearchParams(window.location.search);
+  if (params.has('watch') || params.has('replay')) return;
+  const kept = { ...init };
+  for (const key of ['clientBuild', 'players', 'flags', 'viewableMaps', 'proxies', 'voiceRtcConfig',
+    'udpChannel', 'udpChannelIceServers', 'webTransport', 'listServer']) {
+    delete kept[key];
+  }
+  let previous = null;
+  try {
+    previous = JSON.parse(localStorage.getItem(OFFLINE_WORLD_KEY));
+  } catch {
+    previous = null;
+  }
+  const spawns = previous?.init?.world?.hash === init.world.hash ? previous.spawns || [] : [];
+  writeOfflineWorld({ init: kept, spawns });
+  void keepOfflineMap(init.world.url).catch(() => {});
+}
+
+// The saved world's map, copied where an update will not drop it.
+async function keepOfflineMap(url) {
+  if (!url || !window.caches) return;
+  const cache = await window.caches.open(OFFLINE_MAP_CACHE);
+  const kept = await cache.keys();
+  if (kept.some((request) => new URL(request.url).pathname === url)) return;
+  const response = await fetch(url);
+  if (!response.ok) return;
+  await Promise.all(kept.map((request) => cache.delete(request)));
+  await cache.put(url, response);
+}
+
+// Where the server just put this player: a spot it checked against the whole
+// world, so a good one to spawn on offline.
+function noteOfflineSpawn(player) {
+  if (offlinePlay || !player?.alive || !Number.isFinite(player.x)) return;
+  let world = null;
+  try {
+    world = JSON.parse(localStorage.getItem(OFFLINE_WORLD_KEY));
+  } catch {
+    world = null;
+  }
+  if (!world?.init) return;
+  world.spawns = [...(world.spawns || []), { x: player.x, y: player.y, z: player.z }]
+    .slice(-OFFLINE_SPAWNS_KEPT);
+  writeOfflineWorld(world);
+}
+
+// A page that has never reached a server, and is offline or has failed three
+// times, drives the last world it played instead -- if it has one.
+function shouldPlayOffline() {
+  if (everConnected || offlinePlay) return false;
+  if (navigator.onLine !== false && failedConnectAttempts < 3) return false;
+  return readOfflineWorld() !== null;
+}
+
 function connectToServer() {
   const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
   // `?proxy=<target>` rides on the socket as well as the page: it is how the
@@ -7639,11 +7735,24 @@ function connectToServer() {
       ? `/?proxy=${encodeURIComponent(proxyTarget)}${proxyTeam ? `&team=${encodeURIComponent(proxyTeam)}` : ''}`
         + (IS_BOT_CLIENT ? '&bot' : '')
       : '');
-  ws = new WebSocket(`${protocol}//${window.location.host}${query}`);
+  const socketUrl = `${protocol}//${window.location.host}${query}`;
+  if (offlinePlay) {
+    const host = new Worker(new URL('./offline-worker.mjs', import.meta.url), { type: 'module' });
+    host.postMessage({ world: readOfflineWorld() });
+    ws = createPortTransport(host);
+  } else if (LOOPBACK) {
+    const relay = new Worker(new URL('./loopback-worker.mjs', import.meta.url), { type: 'module' });
+    relay.postMessage({ url: socketUrl });
+    ws = createPortTransport(relay);
+  } else {
+    ws = new WebSocket(socketUrl);
+  }
   let opened = false;
 
   ws.onopen = () => {
     opened = true;
+    if (!offlinePlay) everConnected = true;
+    failedConnectAttempts = 0;
     botWatchSent = null;
     callVoiceManager('start');
     showMessage('Connected to server!');
@@ -7695,6 +7804,12 @@ function connectToServer() {
     // leave, and no score to report. The overlay says what is wrong instead
     // of an empty sky, and stays up until an attempt gets through.
     if (!opened) {
+      failedConnectAttempts += 1;
+      if (shouldPlayOffline()) {
+        offlinePlay = true;
+        connectToServer();
+        return;
+      }
       setLoadingOverlayState({
         visible: true,
         progress: 0,
@@ -7947,6 +8062,7 @@ const SERVER_MESSAGE_HANDLERS = Object.freeze({
 
 function receiveInit(message) {
   if (!checkClientBuild(message.clientBuild)) return;
+  saveOfflineWorld(message);
   // A batch number and a shot id are this server process's; a new init
   // may be another.
   lastMoveBatchById.clear();
@@ -8194,6 +8310,7 @@ function receivePlayerJoined(message) {
   setTankPausedState(message.player.id, false);
   removePausedSphere(message.player.id);
   if (message.player.id === myPlayerId) {
+    noteOfflineSpawn(message.player);
     gameplayJoinConfirmed = true;
     syncBotWatch();
     // The moment this join is confirmed, not before -- whatever is
@@ -9559,6 +9676,7 @@ function handlePlayerRespawn(message) {
   if (tank) {
     clearJumpPredictionDebug(tank);
     if (message.player.id === myPlayerId) {
+      noteOfflineSpawn(message.player);
       deathCameraActive = false;
       deathFollowTarget = null;
       renderManager.deathFollowTarget = null;

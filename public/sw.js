@@ -26,6 +26,12 @@
 
 const VERSION = new URL(self.location.href).searchParams.get('v') || 'dev';
 const CACHE = `bzo-v${VERSION}`;
+// The map offline free drive needs, which the page keeps here itself
+// (`keepOfflineMap` in client.js). Not versioned and never dropped with the
+// others: a map file is named for its own content hash, so no build can make
+// it stale, and dropping it would leave an updated app with nothing to drive
+// until it was played online again.
+const OFFLINE_CACHE = 'bzo-offline';
 
 // The shell needed to boot the game. Assets discovered later (textures, models,
 // audio, addons) join the cache on first use rather than being listed here.
@@ -37,6 +43,11 @@ const PRECACHE = [
   '/js/xr-launch.js',
   '/js/webxr.js',
   '/js/install.js',
+  // Fetched only once a page finds itself offline, so never on first use.
+  '/js/offline-worker.mjs',
+  '/js/bot-host.mjs',
+  '/js/bot-driver.mjs',
+  '/js/player-ids.mjs',
   '/vendor/three/three.module.js',
   '/vendor/three/three.core.js',
   '/favicon.svg',
@@ -60,7 +71,7 @@ self.addEventListener('install', (event) => {
     // closes -- an installed app on a phone may not close for days -- and until
     // it activates those older caches are still reachable.
     const names = await caches.keys();
-    await Promise.all(names.filter((n) => n !== CACHE).map((n) => caches.delete(n)));
+    await Promise.all(names.filter((n) => n !== CACHE && n !== OFFLINE_CACHE).map((n) => caches.delete(n)));
     // Individually, so one missing asset does not fail the whole install.
     const cache = await caches.open(CACHE);
     await Promise.all(PRECACHE.map((url) => cache.add(url).catch(() => {})));
@@ -73,7 +84,7 @@ self.addEventListener('activate', (event) => {
   // than swapping the game's code out from under a running match.
   event.waitUntil((async () => {
     const names = await caches.keys();
-    await Promise.all(names.filter((n) => n !== CACHE).map((n) => caches.delete(n)));
+    await Promise.all(names.filter((n) => n !== CACHE && n !== OFFLINE_CACHE).map((n) => caches.delete(n)));
     await self.clients.claim();
   })());
 });
@@ -112,7 +123,14 @@ async function networkFirst(request) {
 async function cacheFirst(request) {
   const cached = await matchThisVersion(request);
   if (cached) return cached;
-  const response = await fetch(request, { cache: 'no-cache' });
+  let response;
+  try {
+    response = await fetch(request, { cache: 'no-cache' });
+  } catch (err) {
+    const kept = await (await caches.open(OFFLINE_CACHE)).match(request);
+    if (kept) return kept;
+    throw err;
+  }
   if (response.ok) {
     const cache = await caches.open(CACHE);
     cache.put(request, response.clone());

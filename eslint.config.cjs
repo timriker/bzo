@@ -79,8 +79,9 @@ module.exports = [
     },
   },
   {
-    // The autopilot's route worker: a module worker.
-    files: ["public/js/route-worker.mjs"],
+    // The module workers: the autopilot's router, the loopback relay and the
+    // offline host.
+    files: ["public/js/route-worker.mjs", "public/js/loopback-worker.mjs", "public/js/offline-worker.mjs"],
     languageOptions: {
       globals: {
         self: "readonly",
