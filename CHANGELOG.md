@@ -6,6 +6,20 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
 
 ## [Unreleased]
 
+## [1.3.64] - 2026-10-26
+
+### Added
+- Offline play: an installed app with no server plays the last map it played
+  online against three Ace bots, free-for-all with no flags
+  (docs/tutorial-plan.md). The map is kept where an update does not drop it.
+- `?loopback` on the game's URL relays a live game through a browser Worker,
+  for testing the connection offline play uses.
+
+### Changed
+- The server's bots run on `public/js/bot-host.mjs` and
+  `public/js/bot-driver.mjs`, which offline play's bots run on too; they play
+  as before.
+
 ## [1.3.63] - 2026-10-25
 
 ### Added
