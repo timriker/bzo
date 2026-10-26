@@ -12397,11 +12397,15 @@ function reportToListServer(reason) {
     // change (`LIST_SERVER_OWNER_BZID`/`_CALLSIGN`, below) without breaking
     // the lookup.
     // One row, under the first name, with the rest beside it: this server
-    // needs no call back to know its own names. A row left from a server
-    // listed under another of them is taken down.
+    // needs no call back to know its own names. A row under another of them
+    // is this server's own from when that name came first, and is removed:
+    // its key could never pass a check, since this server holds no key to
+    // answer the challenge with.
     for (const url of PUBLIC_URLS.slice(1)) {
       const old = listServerKeys.listAll().find((record) => record.url === url);
-      if (old?.live) listServerKeys.unreport(old);
+      if (!old) continue;
+      listServerKeys.revoke(old.id);
+      log(`[LISTSERVER] removed the old row for ${url}, now listed under ${PUBLIC_URL}`);
     }
     if (!PUBLIC_URL) return;
     let self = listServerKeys.listAll().find((record) => record.url === PUBLIC_URL);
