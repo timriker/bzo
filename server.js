@@ -176,8 +176,6 @@ const {
   getObstacleHeight,
   getShotObstacleNormal,
   isOverFlatTop,
-  meshFlatTopsAt,
-  isPyramidFlatTop,
   reflectShotDirection,
   traceShotStep,
   buildCollisionColliders,
@@ -196,6 +194,13 @@ const {
   traceBeam,
   traceShotThroughTeleporters,
 } = require('./public/js/trace.mjs');
+const {
+  SPAWN_DROP_FUDGE,
+  dropSpawnPosition: dropSpawnPositionOn,
+  getRandomZonePoint,
+  pickSpawnPosition,
+  teamSpawnZones,
+} = require('./public/js/spawn.mjs');
 const { MAX_BUMP_HEIGHT: DEFAULT_MAX_BUMP_HEIGHT, normalizeAngle } = require('./public/js/motion.mjs');
 const { packetVelocity } = require('./public/js/drive.mjs');
 const { BZDB_DEFAULTS } = require('./public/js/bzdb-defaults.mjs');
@@ -10814,125 +10819,21 @@ function getSpawnPosition(player) {
   // only forces `restartOnBase` back to true on a capture, never on a kill --
   // so a `team` zone is what a self-destructed or shot-down colour tank comes
   // back on, not only what rogue always does.
-  return findSafeSpawnPosition(player,
-    () => getTeamZoneSpawnPosition(colorIndex) || findValidSpawnPosition());
-}
-
-// SpawnPolicy::getPosition's search (SpawnPolicy.cxx:83): try spots for as long
-// as `_spawnMaxCompTime` allows, refuse any that is imminently dangerous, and
-// keep the one farthest from the nearest enemy -- done as soon as one is
-// `worldSize / _spawnSafeSRMod` clear, with that bar lowered by 1% a try. Out
-// of time with nothing safe, the last spot is used anyway, upstream's "drop
-// the sucka in, and pray". A spot the player is put in danger at faces away
-// from the nearest enemy (`getAzimuth`); any other faces anywhere.
-function findSafeSpawnPosition(player, nextCandidate) {
-  const started = Date.now();
-  const budgetMs = Number.isFinite(GAME_CONFIG.SPAWN_MAX_COMP_TIME) ? GAME_CONFIG.SPAWN_MAX_COMP_TIME : 10;
-  let minProximity = GAME_CONFIG.MAP_SIZE / (GAME_CONFIG.SPAWN_SAFE_SR_MOD || 3);
-  let best = null;
-  let bestDist = -1;
-  let last = null;
-  do {
-    const spot = nextCandidate();
-    last = spot;
-    if (isSpawnImminentlyDangerous(spot)) continue;
-    const { distance: dist } = nearestSpawnEnemy(player, spot);
-    if (dist > bestDist) {
-      bestDist = dist;
-      best = spot;
-    }
-    if (bestDist >= minProximity) break;
-    minProximity *= 0.99;
-  } while (Date.now() - started <= budgetMs);
-  const chosen = best || last;
-  const enemy = nearestSpawnEnemy(player, chosen);
-  const wanted = isSpawnImminentlyDangerous(chosen) && enemy.azimuth !== null
-    ? enemy.azimuth + Math.PI
-    : Math.random() * Math.PI * 2;
-  // A spot is found clear at the heading it was tried at: upstream's clearance
-  // is a circle, bzo's is the tank's own box, and a tank six long beside a
-  // wall fits one way and not another. Turned into the wall, it spawns inside
-  // it and hangs there, unable to fall or drive.
-  const fits = !Number.isFinite(chosen.azimuth)
-    || !checkCollision(chosen.x, chosen.y, chosen.z, 2, { azimuth: wanted, suppressLog: true });
-  return { ...chosen, azimuth: fits ? wanted : chosen.azimuth };
-}
-
-// SpawnPolicy::isFacing: whether a tank at `enemy`, heading `rotation`, points
-// within `deviation` of the spot, ignoring one more than two tank heights above
-// or below it.
-function isFacingSpawn(enemy, spot, deviation) {
-  if (Math.abs(enemy.z - spot.z) > 2 * TANK.height) return false;
-  const toX = spot.x - enemy.x;
-  const toY = spot.y - enemy.y;
-  const length = Math.hypot(toX, toY);
-  if (length < 1e-6) return true;
-  const forwardX = Math.cos(enemy.azimuth);
-  const forwardY = Math.sin(enemy.azimuth);
-  const cos = ((forwardX * toX) + (forwardY * toY)) / length;
-  return Math.acos(Math.max(-1, Math.min(1, cos))) < deviation / 2;
-}
-
-// SpawnPolicy::isImminentlyDangerous, over every living tank, foe or not, as
-// upstream's is: a Laser looking at the spot, a Shock Wave that reaches it, a
-// Steamroller or Burrow tank close enough to squash or be squashed, or any tank
-// within `_spawnSafeRadMod` tank radii looking at it.
-function isSpawnImminentlyDangerous(spot) {
-  const twentyDegrees = Math.PI / 9;
-  const tankRadius = TANK.radius;
-  const safeDistance = tankRadius * GAME_CONFIG.SPAWN_SAFE_RAD_MOD;
-  const safeSRRadius = tankRadius * GAME_CONFIG.SPAWN_SAFE_SR_MOD;
-  const safeSWRadius = (getShotEffects('SW').shockOutRadius + tankRadius) * GAME_CONFIG.SPAWN_SAFE_SW_MOD;
-  for (const other of players.values()) {
-    if (!other.joined || !other.alive || isObserverTeam(other.team)) continue;
-    const distance3 = Math.hypot(other.x - spot.x, other.y - spot.y, other.z - spot.z);
-    const flag = getPlayerFlag(other.id)?.type ?? null;
-    if (flag === 'L' && isFacingSpawn(other, spot, twentyDegrees)) return true;
-    if (flag === 'SW' && distance3 < safeSWRadius) return true;
-    if ((flag === 'SR' || flag === 'BU') && distance3 < safeSRRadius) return true;
-    if (distance3 < safeDistance && isFacingSpawn(other, spot, twentyDegrees)) return true;
-  }
-  return false;
-}
-
-// SpawnPolicy::enemyProximityCheck: the nearest living foe on the spot's own
-// level, and the way it faces; no foe is as far as can be.
-function nearestSpawnEnemy(player, spot) {
-  let best = Infinity;
-  let azimuth = null;
-  for (const other of players.values()) {
-    if (other === player || !other.joined || !other.alive) continue;
-    if (!areFoes(other.team, player.team, TEAMS_ALLOWED)) continue;
-    if (Math.abs(other.z - spot.z) >= 1) continue;
-    const dist = Math.hypot(other.x - spot.x, other.y - spot.y);
-    if (dist < best) {
-      best = dist;
-      azimuth = other.azimuth;
-    }
-  }
-  return { distance: best === Infinity ? 1e12 : best, azimuth };
-}
-
-// WorldInfo::getPlayerSpawnPoint, picked uniformly among every zone that
-// listed this team -- not area-weighted, the same simplification
-// `getRandomTeamBase` already makes among a team's bases. Dropped onto
-// whatever the zone actually sits on, since a zone's own y is only ever a
-// mapper's guess at the ground.
-function getTeamZoneSpawnPosition(colorIndex) {
-  if (colorIndex === null) return null;
-  const matches = MAP_ZONES.filter((zone) => zone.teams.has(colorIndex));
-  if (matches.length === 0) return null;
-  const zone = matches[Math.floor(Math.random() * matches.length)];
-  // findFlagSpawnPosition's own re-roll: a crowded zone is not a reason to
-  // leave it after one unlucky point, so this tries several before giving up
-  // to the map-wide random search.
-  for (let attempt = 0; attempt < 20; attempt++) {
-    const spot = getRandomZonePoint(zone);
-    const azimuth = Math.random() * Math.PI * 2;
-    const droppedZ = dropSpawnPosition(spot.x, spot.y, spot.z, azimuth);
-    if (droppedZ !== null) return { x: spot.x, y: spot.y, z: droppedZ, azimuth };
-  }
-  return null;
+  const tanks = [...players.values()]
+    .filter((other) => other !== player && other.joined && other.alive && !isObserverTeam(other.team))
+    .map((other) => ({
+      x: other.x, y: other.y, z: other.z, azimuth: other.azimuth, team: other.team,
+      flag: getPlayerFlag(other.id)?.type ?? null,
+    }));
+  return pickSpawnPosition({
+    colliders: getCollisionColliders(),
+    mapSize: GAME_CONFIG.MAP_SIZE,
+    waterLevel: mapWaterLevel?.height,
+    zones: teamSpawnZones(MAP_ZONES, colorIndex),
+    config: GAME_CONFIG,
+    tanks,
+    isFoe: (other) => areFoes(other.team, player.team, TEAMS_ALLOWED),
+  });
 }
 
 // A fixed spawn for automated testing, so a probe always starts at a known
@@ -10952,86 +10853,9 @@ function getTestSpawn(name) {
   return TEST_SPAWNS.get(name) || null;
 }
 
-// DropGeometry::dropPlayer (DropGeometry.cxx:67), for a hand-written spawn. The
-// tank's own height and radius, plus upstream's `fudge` so a tank does not spawn
-// welded to the surface it landed on.
-// Upstream's is a float epsilon, because a `MeshFace` there is infinitely thin
-// and a tank resting exactly on one is clear of it. bzo's collision reads a tank
-// sitting exactly on a surface as inside it -- see the "resting exactly on a
-// surface" note in AGENTS.md, which is unfixed -- so a drop tested at the
-// surface height rejects every real landing and falls through to the ground.
-// Five centimetres is under the height a tank settles through in one frame, and
-// it is the one place that behaviour has to be worked around rather than
-// inherited: the alternative is every spawn landing under a mesh floor.
-const SPAWN_DROP_FUDGE = 0.05;
-
-// Where a tank put at this point would actually stand. Upstream's `dropIt`
-// (DropGeometry.cxx:210) has two branches and both matter here:
-//
-//   - the point is **clear**, so the tank falls: take the highest flat top
-//     under it, or the ground.
-//   - the point is **blocked**, so the tank climbs: take the lowest flat top at
-//     or above it that the tank fits on.
-//
-// The second is the one a hand-written coordinate needs. A `testSpawn` is typed
-// against a map's coordinates, and a point inside a building spawns a tank that
-// cannot move -- which is what `server.json`'s own spawn at the origin does on
-// `fountains.bzw`, where a 60-unit box sits there. Upstream climbs it out onto
-// the roof, and so does this.
-//
-// Returns the resolved y, or null when there is nowhere: the caller falls back
-// to a random spawn rather than putting a tank somewhere it is stuck.
+// `dropSpawnPosition` in public/js/spawn.mjs, on this world.
 function dropSpawnPosition(x, y, z, azimuth) {
-  const clearance = (atZ) => !checkCollision(x, y, atZ, 2, {
-    azimuth,
-    suppressLog: true,
-  });
-
-  // isValidLanding(): a flat top that is not drive-through. The world boundary
-  // and a teleporter are not surfaces a tank is put on, which is the same set
-  // `findFlagLandingZ` refuses.
-  const tops = [];
-  for (const obs of getCollisionColliders()) {
-    if (obs.driveThrough) continue;
-    if (obs.collisionKind === 'boundary' || obs.kind === 'teleporter') continue;
-    if (obs.type === 'pyramid' && !isPyramidFlatTop(obs)) continue;
-    // A mesh offers one landing per flat face, which is what upstream's ray
-    // gets back: each face is an obstacle of its own there. Asking this one for
-    // `baseY + height` answers the top of the whole object instead -- the peak
-    // of a mountain range rather than the valley floor under the tank.
-    if (obs.type === 'mesh') {
-      for (const top of meshFlatTopsAt(obs, x, y)) tops.push(top);
-      continue;
-    }
-    if (!isOverFlatTop(obs, x, y)) continue;
-    tops.push(getObstacleBase(obs) + getObstacleHeight(obs));
-  }
-
-  // `waterLevel` -- a floating-point tank has no ground to fall to under a
-  // map with one; upstream's own `minZ = waterLevel` for exactly this search
-  // (`RandomSpawnPolicy.cxx:93-96`, `SpawnPolicy.cxx:116-119`), so bzo's own
-  // "else the ground" floor moves up to the water's own surface rather than
-  // leaving one that only ever resolves to an instant `WaterDeath`.
-  const groundLevel = (mapWaterLevel && mapWaterLevel.height > 0) ? mapWaterLevel.height : 0;
-
-  if (clearance(z)) {
-    // Falling: highest top below the start, else the ground.
-    const below = tops.filter((top) => top <= z).sort((a, b) => b - a);
-    for (const top of below) {
-      if (clearance(top + SPAWN_DROP_FUDGE)) return top + SPAWN_DROP_FUDGE;
-    }
-    if (z >= groundLevel && clearance(groundLevel + SPAWN_DROP_FUDGE)) {
-      return groundLevel + SPAWN_DROP_FUDGE;
-    }
-    return z + SPAWN_DROP_FUDGE;
-  }
-
-  // Climbing: lowest top at or above the start that the tank fits on.
-  const above = tops.filter((top) => top >= z).sort((a, b) => a - b);
-  for (const top of above) {
-    if (clearance(top + SPAWN_DROP_FUDGE)) return top + SPAWN_DROP_FUDGE;
-  }
-  return null;
+  return dropSpawnPositionOn(getCollisionColliders(), x, y, z, azimuth, mapWaterLevel?.height);
 }
 
 // Resolved once, when the world is loaded, and held in memory for as long as
@@ -11070,74 +10894,6 @@ function rebuildTestSpawns() {
     }
     TEST_SPAWNS.set(spawn.name, { x: at.x, y: at.y, z: droppedY, azimuth });
   }
-}
-
-// SpawnPolicy::getPosition's random search (SpawnPolicy.cxx:97-124): a random
-// point on the map, a random height over it, and then a drop. The drop is the
-// part bzo went without -- it spawned every tank on the flat world ground, which
-// is correct only on a map whose ground *is* the floor. On a mesh-terrain map
-// the floor is the mesh, tens of units up, and a mesh is a shell rather than a
-// solid: a tank at ground level under one collides with nothing, so the spot
-// passed and the tank spawned beneath the world.
-function findValidSpawnPosition(tankRadius = 2) {
-  const halfMap = GAME_CONFIG.MAP_SIZE / 2;
-  const maxAttempts = 100;
-  // `waterLevel`, as `dropSpawnPosition`'s own floor is.
-  const groundLevel = (mapWaterLevel && mapWaterLevel.height > 0) ? mapWaterLevel.height : 0;
-  const ceiling = getWorldMaxHeight();
-
-  for (let attempt = 0; attempt < maxAttempts; attempt++) {
-    const x = Math.random() * (GAME_CONFIG.MAP_SIZE - tankRadius * 4) - (halfMap - tankRadius * 2);
-    const y = Math.random() * (GAME_CONFIG.MAP_SIZE - tankRadius * 4) - (halfMap - tankRadius * 2);
-    const azimuth = Math.random() * Math.PI * 2;
-    // `bzfrand() * maxHeight`, so a multi-level map is entered at every level
-    // rather than only on its roof.
-    const startZ = Math.random() * ceiling;
-
-    const z = dropSpawnPosition(x, y, startZ, azimuth);
-    if (z === null) continue;
-    // The one place bzo refuses what upstream would accept. Starting below the
-    // terrain, `dropIt` skips every surface above the start and lands on bare
-    // ground -- under the world, which is the bug being fixed rather than
-    // behaviour worth copying. Landing on a real surface at any level is still
-    // allowed, so a tank may still spawn under a bridge.
-    if (z <= groundLevel + 1 && hasFlatTopAbove(x, y, z)) continue;
-    if (!checkCollision(x, y, z, tankRadius, { azimuth })) {
-      return { x, y, z, azimuth };
-    }
-  }
-
-  // If we couldn't find a valid position after many attempts, return a safe default
-  return { x: 0, y: 0, z: groundLevel, azimuth: 0 };
-}
-
-// Whether the world puts anything drivable over this point, which is what
-// separates "standing on the map's ground" from "standing under the map".
-function hasFlatTopAbove(x, y, z) {
-  for (const obs of getCollisionColliders()) {
-    if (obs.driveThrough) continue;
-    if (obs.collisionKind === 'boundary' || obs.kind === 'teleporter') continue;
-    if (obs.type === 'mesh') {
-      if (meshFlatTopsAt(obs, x, y).some((top) => top > z + 1)) return true;
-      continue;
-    }
-    if (obs.type === 'pyramid' && !isPyramidFlatTop(obs)) continue;
-    if (!isOverFlatTop(obs, x, y)) continue;
-    if (getObstacleBase(obs) + getObstacleHeight(obs) > z + 1) return true;
-
-  }
-  return false;
-}
-
-// `world->getMaxWorldHeight()` -- how high the drop starts looking from.
-function getWorldMaxHeight() {
-  let max = 0;
-  for (const obs of getCollisionColliders()) {
-    if (obs.collisionKind === 'boundary') continue;
-    const top = getColliderTopY(obs);
-    if (Number.isFinite(top) && top > max) max = top;
-  }
-  return max;
 }
 
 // Anti-cheat mode decides what happens to a packet the server believes an
@@ -13231,20 +12987,6 @@ function hasFlagClearance(x, y, z, radius = FLAG_DROP_TEST_RADIUS) {
 // x and y, and lets the downward ray decide which surface under it the flag
 // actually settles on. With flags on buildings off it passes maxZ = 0 instead,
 // which skips the ray and forces the ground.
-// CustomZone::getRandomPoint. A point anywhere in the zone's footprint, at the
-// zone's own altitude: an offset in the zone's own axes, turned by its angle.
-function getRandomZonePoint(zone) {
-  const offsetX = ((Math.random() * 2) - 1) * zone.halfWidth;
-  const offsetY = ((Math.random() * 2) - 1) * zone.halfDepth;
-  const cos = Math.cos(zone.rotation);
-  const sin = Math.sin(zone.rotation);
-  return {
-    x: zone.x + ((offsetX * cos) - (offsetY * sin)),
-    y: zone.y + ((offsetX * sin) + (offsetY * cos)),
-    z: zone.z,
-  };
-}
-
 // WorldInfo::getFlagSpawnPoint. Upstream asks the flag-id qualifier `#<index>`
 // first, which for a `zoneflag` slot names exactly one zone, then -- for a
 // flag that is not a team's -- the type qualifier `f<abbv>` the `flag` keyword

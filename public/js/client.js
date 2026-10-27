@@ -383,6 +383,7 @@ import {
   findShotSegmentImpact,
   getObstacleBase,
 } from './collision.mjs';
+import { pickSpawnPosition } from './spawn.mjs';
 import { meshArrays } from './mesh-arrays.mjs';
 import {
   AIR_VELOCITY_THRESHOLD,
@@ -2937,6 +2938,20 @@ function currentWallHeight() {
 // a couple of tank lengths, so the camera is plainly inside the world rather
 // than embedded in the wall it just came through.
 const WORLD_REENTRY_MARGIN = 10;
+
+// Where a Map Viewer starts, on the map it is viewing. The server's spawn was
+// chosen on the live match's world, so it says nothing about this one. The
+// viewer has no team, so any spawn zone will do -- on a map with one over a
+// table, that is the table rather than the death floor under it.
+function pickViewerSpawn() {
+  return pickSpawnPosition({
+    colliders: getCollisionColliders(),
+    mapSize: Number.isFinite(currentWorldMapSize) ? currentWorldMapSize : DEFAULT_MAP_SIZE,
+    waterLevel: currentWorldWaterHeight,
+    zones: currentWorldData?.spawnZones || [],
+    config: gameConfig || {},
+  });
+}
 
 // A Map Viewer or an observer keeps whatever position it already had when the
 // world underneath it changes -- issue #68 lets the map change without
@@ -8392,6 +8407,11 @@ function receivePlayerJoined(message) {
         linkRoamPitch = autoViewPosTarget.pitch;
         roamCamera = null;
         viewerPlacedByLink = true;
+      }
+      else if (isPreviewingAltWorld()) {
+        const spawn = pickViewerSpawn();
+        if (spawn) ({ x: myX, y: myY, z: myZ, azimuth: myAzimuth } = spawn);
+        roamCamera = null;
       }
       // Whatever this join settled on -- the server's spawn, chosen
       // against the live match's world, or a `pos=` copied off a link to

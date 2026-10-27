@@ -22,11 +22,12 @@
 
 import * as botHost from './bot-host.mjs';
 import { DEFAULT_PILOT } from './autopilot.mjs';
-import { TANK, buildCollisionColliders, findTankObstacle, traceShotStep } from './collision.mjs';
+import { TANK, buildCollisionColliders, traceShotStep } from './collision.mjs';
 import { getFlagTuning, getShotEffects } from './flags.mjs';
 import { ALL_PLAYERS, SERVER_PLAYER } from './player-ids.mjs';
 import { getShotTankHit, getWorldReloadSeconds, normalizeShotSlotCount } from './shots.mjs';
-import { getTeamColorIndex } from './teams.mjs';
+import { pickSpawnPosition, teamSpawnZones } from './spawn.mjs';
+import { areFoes, getTeamColorIndex } from './teams.mjs';
 
 const PLAYER_ID = '0';
 const BOT_COUNT = 3;
@@ -39,6 +40,7 @@ let world = null;
 let config = null;
 let colliders = [];
 let waterLevel = null;
+let spawnZones = [];
 let player = null;
 let human = null;
 let nextShotId = 0;
@@ -56,42 +58,24 @@ function serverMessage(text) {
   send({ type: 'message', src: SERVER_PLAYER, dst: ALL_PLAYERS, msgType: 'server', text, ts: Date.now() });
 }
 
-// A spot to spawn on, as far from every live tank as a few tries find --
-// `findSafeSpawnPosition`'s aim in server.js. The candidates are the places
-// the server spawned the player on this world, which it checked against every
-// obstacle at the time, and open ground clear of anything solid; no ground
-// spot on a world under water.
-const SPAWN_TRIES = 24;
-function pickSpawn(forId = null) {
-  const tanks = liveTanks().filter((tank) => tank.id !== forId);
-  const half = (Number(config.MAP_SIZE) || 800) / 2 - 10;
-  const candidates = [...world.spawns];
-  if (colliders.length > 0 && !(waterLevel > 0)) {
-    for (let i = 0; i < SPAWN_TRIES; i++) {
-      const x = (Math.random() * 2 - 1) * half;
-      const y = (Math.random() * 2 - 1) * half;
-      if (!findTankObstacle(colliders, x, y, 0, { radius: 2 * TANK.radius })) candidates.push({ x, y, z: 0 });
-    }
+// Where a tank spawns: the server's own search (public/js/spawn.mjs), against
+// every other living tank here.
+function pickSpawn({ id = null, team = null } = {}) {
+  const others = [...bots].filter(([botId, bot]) => botId !== id && bot.record.alive)
+    .map(([, bot]) => ({ ...bot.record, flag: null }));
+  if (id !== PLAYER_ID && player?.alive && human) {
+    others.push({ ...human, team: player.team, flag: null });
   }
-  let best = candidates[0];
-  let bestDistance = -1;
-  for (const spot of candidates) {
-    const distance = tanks.length === 0
-      ? Math.random()
-      : Math.min(...tanks.map((tank) => Math.hypot(tank.x - spot.x, tank.y - spot.y)));
-    if (distance > bestDistance) {
-      bestDistance = distance;
-      best = spot;
-    }
-  }
-  return { x: best.x, y: best.y, z: best.z, azimuth: Math.random() * Math.PI * 2 };
-}
-
-function liveTanks() {
-  const tanks = [...bots].filter(([, bot]) => bot.record.alive)
-    .map(([id, bot]) => ({ id, x: bot.record.x, y: bot.record.y }));
-  if (player?.alive && human) tanks.push({ id: PLAYER_ID, x: human.x, y: human.y });
-  return tanks;
+  const spot = pickSpawnPosition({
+    colliders,
+    mapSize: Number(config.MAP_SIZE) || 800,
+    waterLevel,
+    zones: teamSpawnZones(spawnZones, getTeamColorIndex(team)),
+    config,
+    tanks: others,
+    isFoe: (other) => areFoes(other.team, team, teamsAllowed()),
+  });
+  return { x: spot.x, y: spot.y, z: spot.z, azimuth: spot.azimuth };
 }
 
 function playingTeams() {
@@ -138,6 +122,7 @@ async function loadWorld() {
     spawnZones: file.spawnZones || [],
   };
   waterLevel = shared.waterLevel;
+  spawnZones = shared.spawnZones;
   colliders = buildCollisionColliders(shared.obstacles, shared.mapSize, shared.noWalls, shared.wallHeight);
   botHost.setConfig(config);
   botHost.setWorld(shared);
@@ -190,7 +175,7 @@ function join(message) {
     name: typeof message.name === 'string' && message.name ? message.name : player.name,
     team,
     alive: playing,
-    ...(playing ? pickSpawn() : {}),
+    ...(playing ? pickSpawn({ id: PLAYER_ID, team }) : {}),
   };
   human = playing ? { x: player.x, y: player.y, z: player.z, azimuth: player.azimuth, at: Date.now() } : null;
   send({ type: 'playerJoined', player });
@@ -215,7 +200,7 @@ function addBots() {
       wins: 0,
       losses: 0,
       tks: 0,
-      ...pickSpawn(),
+      ...pickSpawn({ id, team }),
     };
     const error = botHost.addBot({ id, pilotId: DEFAULT_PILOT });
     if (error) {
@@ -410,7 +395,7 @@ function die(message) {
     suicide: killerId === PLAYER_ID,
   });
   setTimeout(() => {
-    player = { ...player, alive: true, ...pickSpawn(PLAYER_ID) };
+    player = { ...player, alive: true, ...pickSpawn({ id: PLAYER_ID, team: player.team }) };
     human = { x: player.x, y: player.y, z: player.z, azimuth: player.azimuth, at: Date.now() };
     send({ type: 'alive', player });
   }, respawnDelay());
@@ -566,10 +551,10 @@ function tick() {
   const dt = lastTickAt ? Math.min((now - lastTickAt) / 1000, MAX_TICK_SECONDS) : TICK_SECONDS;
   lastTickAt = now;
   stepShots(dt, now);
-  for (const [id, bot] of bots) {
+  for (const bot of bots.values()) {
     if (bot.record.alive || bot.respawnAt === null || now < bot.respawnAt) continue;
     bot.respawnAt = null;
-    bot.record = { ...bot.record, alive: true, ...pickSpawn(id) };
+    bot.record = { ...bot.record, alive: true, ...pickSpawn(bot.record) };
     bot.slotFreeAt = [];
     send({ type: 'alive', player: bot.record });
   }
