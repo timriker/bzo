@@ -1790,8 +1790,15 @@ function buildBZWText(serverMeta, tree, fetchedAt) {
     return item && item.name ? item.name : String(idx);
   }
 
+  // An identity step -- a zero shift or shear, a unit scale, a zero spin --
+  // changes nothing in the product, so it is left out.
+  const isIdentityOp = (op) => (op.type === 0 || op.type === 2 ? op.data.every((v) => v === 0)
+    : op.type === 1 ? op.data.every((v) => v === 1)
+      : op.type === 3 ? op.spin === 0 : false);
+
   function printTransformOps(lines, ops, indent) {
     for (const op of ops) {
+      if (isIdentityOp(op)) continue;
       if (op.type === 0) lines.push(`${indent}  shift ${fmt3(op.data)}`);
       else if (op.type === 1) lines.push(`${indent}  scale ${fmt3(op.data)}`);
       else if (op.type === 2) lines.push(`${indent}  shear ${fmt3(op.data)}`);
@@ -1896,7 +1903,11 @@ function buildBZWText(serverMeta, tree, fetchedAt) {
     lines.push(`${indent}  texsize ${o.texsize.map(fmt).join(' ')}`);
     const sideNames = kind === 'arc' ? ['top', 'bottom', 'inside', 'outside', 'startside', 'endside']
       : kind === 'cone' ? ['edge', 'bottom', 'startside', 'endside'] : ['edge', 'bottom'];
-    sideNames.forEach((side, i) => lines.push(`${indent}  ${side} matref ${ref(materials, o.materials[i])}`));
+    // One bare `matref` sets every side (`parseMaterials` over the whole
+    // array, CustomArc.cxx), so a uniform object needs only the one line.
+    const sideRefs = sideNames.map((side, i) => ref(materials, o.materials[i]));
+    if (sideRefs.every((r) => r === sideRefs[0])) lines.push(`${indent}  matref ${sideRefs[0]}`);
+    else sideNames.forEach((side, i) => lines.push(`${indent}  ${side} matref ${sideRefs[i]}`));
     if (o.phydrv >= 0 && physicsDrivers[o.phydrv]) lines.push(`${indent}  phydrv ${ref(physicsDrivers, o.phydrv)}`);
     if (o.smoothBounce) lines.push(`${indent}  smoothBounce`);
     if (o.driveThrough) lines.push(`${indent}  driveThrough`);
@@ -1998,12 +2009,16 @@ function buildBZWText(serverMeta, tree, fetchedAt) {
     lines.push('material');
     if (m.name) lines.push(`  name ${m.name}`);
     if (m.dynamicColor >= 0) lines.push(`  dyncol ${ref(dynamicColors, m.dynamicColor)}`);
-    lines.push(`  ambient ${m.ambient.map(fmt).join(' ')}`);
+    // `BzMaterial::reset`'s defaults are left out; diffuse is always written.
+    const isColor = (c, r, g, b, a) => c[0] === r && c[1] === g && c[2] === b && c[3] === a;
+    if (!m.ambient.every((v, i) => Math.fround(v) === Math.fround([0.2, 0.2, 0.2, 1][i]))) {
+      lines.push(`  ambient ${m.ambient.map(fmt).join(' ')}`);
+    }
     lines.push(`  diffuse ${m.diffuse.map(fmt).join(' ')}`);
-    lines.push(`  specular ${m.specular.map(fmt).join(' ')}`);
-    lines.push(`  emission ${m.emission.map(fmt).join(' ')}`);
-    lines.push(`  shininess ${fmt(m.shininess)}`);
-    lines.push(`  alphathresh ${fmt(m.alphaThreshold)}`);
+    if (!isColor(m.specular, 0, 0, 0, 1)) lines.push(`  specular ${m.specular.map(fmt).join(' ')}`);
+    if (!isColor(m.emission, 0, 0, 0, 1)) lines.push(`  emission ${m.emission.map(fmt).join(' ')}`);
+    if (m.shininess !== 0) lines.push(`  shininess ${fmt(m.shininess)}`);
+    if (m.alphaThreshold !== 0) lines.push(`  alphathresh ${fmt(m.alphaThreshold)}`);
     if (m.occluder) lines.push('  occluder');
     if (m.groupAlpha) lines.push('  groupAlpha');
     if (m.noRadar) lines.push('  noradar');
