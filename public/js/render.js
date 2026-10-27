@@ -1386,13 +1386,12 @@ class RenderManager {
       if (xrState.enabled) {
         // In XR mode, keep tank visible and position camera above it
         if (myTank.userData.body) myTank.userData.body.visible = true;
-        if (myTank.userData.turret) myTank.userData.turret.visible = true;
         // The ground slightly below eye height.
         this._placeWorldAroundEye(tankAt, tankAzimuth(myTank), 0.6);
       } else {
-        // In non-XR first-person, keep hull visible like BZFlag; hide turret to avoid center obstruction
+        // The hull stays, as in BZFlag. The turret and barrel are client.js's
+        // cockpit rule, which covers an observer's ride too.
         if (myTank.userData.body) myTank.userData.body.visible = true;
-        if (myTank.userData.turret) myTank.userData.turret.visible = false;
         const cameraHeight = Number.isFinite(myTank.userData.cameraHeight)
           ? myTank.userData.cameraHeight
           : TANK.muzzleHeight;
@@ -1405,7 +1404,6 @@ class RenderManager {
       }
     } else {
       if (myTank.userData.body) myTank.userData.body.visible = true;
-      if (myTank.userData.turret) myTank.userData.turret.visible = true;
       // Behind and above the tank, nearer on a narrow screen.
       const chase = this.getChaseScale();
       const eye = CAMERA_EYE_SCRATCH.set(

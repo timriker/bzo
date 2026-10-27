@@ -9649,8 +9649,9 @@ function handlePlayerHit(message) {
     if (victimTank.userData.playerState) victimTank.userData.playerState.alive = false;
     // Immediately hide the tank from the scene
     victimTank.visible = false;
-    // Create explosion with tank parts
-    const explosionResult = renderManager.createExplosion(
+    // Create explosion with tank parts -- not into a Map Viewer's world,
+    // where the live match's coordinates describe nothing.
+    const explosionResult = isPreviewingAltWorld() ? null : renderManager.createExplosion(
       victimTank.position, victimTank, deathSound, {
         explodeTime: Number.isFinite(gameConfig?.RESPAWN_DELAY) ? gameConfig.RESPAWN_DELAY / 1000 : 5,
         size: Number.isFinite(gameConfig?.TANK_EXPLOSION_SIZE) ? gameConfig.TANK_EXPLOSION_SIZE : 3.5 * TANK.length,
@@ -9724,9 +9725,11 @@ function handlePlayerRespawn(message) {
       azimuth: message.player.azimuth
     };
 
-    tank.visible = true;
+    // A spawn in the live match lands at live coordinates, which describe
+    // nothing in a Map Viewer's world; see isPreviewingAltWorld.
+    tank.visible = !isPreviewingAltWorld();
 
-    if (message.player.alive) {
+    if (message.player.alive && tank.visible) {
       triggerSpawnEffectForTank(tank, message.player.color);
     }
   }
@@ -11187,7 +11190,8 @@ function applyTankAlpha(tank, alpha) {
     // `!== false` rather than a truth test: only an explicit "not alive" hides
     // a tank here. A path that has not said either way is left alone, which is
     // what the local tank relies on.
-    tank.visible = !hidden && tank.userData.playerState?.alive !== false;
+    // Nor does it overrule a Map Viewer preview, which hides every tank.
+    tank.visible = !hidden && tank.userData.playerState?.alive !== false && !isPreviewingAltWorld();
   }
   // The tank's own shadow needs no help: _projectShadowForMesh already refuses
   // to project from a mesh whose `visible` is false, so hiding the tank takes
@@ -11399,8 +11403,13 @@ function updateTankDimensions(deltaTime) {
     // says where the tank is pointing -- there is no screen HUD to fall back
     // on. A head that moves can look over the barrel rather than
     // along it, which is the thing a fixed screen camera cannot do.
-    const ownBarrel = tank.userData.barrel;
-    if (ownBarrel) ownBarrel.visible = !inCockpit || isXREnabled();
+    //
+    // The turret goes with it off XR: the eye is inside it, so at best it is
+    // invisible and on a model whose turret reaches past the eye it is a slab
+    // across the bottom of the view. A headset keeps it with the barrel.
+    const showGun = !inCockpit || isXREnabled();
+    if (tank.userData.barrel) tank.userData.barrel.visible = showGun;
+    if (tank.userData.turret) tank.userData.turret.visible = showGun;
     renderManager.setTankCrossingPlane(
       tank,
       tank.visible && drivesThroughBuildings(viewedFlag, viewedZoned)
@@ -11572,7 +11581,7 @@ function updateAltitudeTape() {
 // runs `EFFECTS.addLandEffect` for any landing (LocalPlayer.cxx:799-801) and
 // only the sound is skipped, so the ring and the squish stay.
 function triggerLandingFeedback(tank, impactSpeed = 0, { local = false, silent = false } = {}) {
-  if (!tank?.position) return;
+  if (!tank?.position || isPreviewingAltWorld()) return;
   const clampedImpact = Math.max(0, impactSpeed || 0);
   const intensity = 1.0;
   applyLandingSquish(tank, clampedImpact);
@@ -11823,7 +11832,9 @@ function getRoamTargetTank() {
 // tank from outside, which is upstream's non-FP case, and keeps the cut.
 function isTankInCockpit(playerId) {
   if (isObserver()) {
-    if (roamView !== ROAM_VIEW.FPS && roamView !== ROAM_VIEW.DRIVE_FP) return false;
+    // Drive-FP is the observer's own phantom tank, not a ride on anyone.
+    if (roamView === ROAM_VIEW.DRIVE_FP) return playerId === myPlayerId;
+    if (roamView !== ROAM_VIEW.FPS) return false;
     return getRoamTargetId() === playerId;
   }
   return playerId === myPlayerId && cameraMode === 'first-person';

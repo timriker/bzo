@@ -1707,6 +1707,9 @@ export class EffectsRendering {
         if (!sourcePart) return;
 
         const part = sourcePart.clone(true);
+        // The cockpit view hides its own turret and barrel, and a clone copies
+        // that; the debris flies either way.
+        part.visible = true;
         this._stripTankNavLights(part);
         part.traverse((node) => {
           if (node.isMesh && node.material) {
