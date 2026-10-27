@@ -1731,7 +1731,10 @@ function setHidden(target, key, value) {
   return target;
 }
 
+// A builder's null -- a shape upstream's `makeMesh` would refuse -- passes
+// through, for the caller's "Not creating" warning.
 function carrySource(target, from, request) {
+  if (!target) return target;
   if (from.source) setHidden(target, 'source', from.source);
   if (request) setHidden(target, 'placedBy', [request.source || null, ...(from.placedBy || [])]);
   else if (from.placedBy) setHidden(target, 'placedBy', from.placedBy);
