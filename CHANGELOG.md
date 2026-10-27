@@ -6,6 +6,13 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
 
 ## [Unreleased]
 
+## [1.3.69] - 2026-10-27
+
+### Changed
+- `/origin` uses the proxyOrigin plugin's format: signed over the address,
+  BZID and time, with a 32-hex MAC and the address in its shortest form, so
+  every IPv6 address fits a bzfs message.
+
 ## [1.3.68] - 2026-10-27
 
 ### Added
