@@ -6,6 +6,22 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
 
 ## [Unreleased]
 
+## [1.3.66] - 2026-10-27
+
+### Changed
+- The favicon is BZFlag's own tank in the PWA icon's green.
+- A Map Viewer starts where a player would spawn on the viewed map, and
+  offline play spawns by the server's rule.
+- Imported worlds leave out default values and repeated per-side materials.
+- First person off XR hides the turret as well as the barrel.
+
+### Fixed
+- An arc, meshbox, cone or sphere too small for upstream to build is dropped
+  with a warning instead of failing the map import.
+- Viewing another map no longer shows the live match's tanks or effects.
+- Drive-FP hid the leader's barrel instead of your own.
+- Death debris kept the turret and barrel a first-person view had hidden.
+
 ## [1.3.65] - 2026-10-26
 
 ### Changed
