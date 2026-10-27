@@ -6,6 +6,16 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
 
 ## [Unreleased]
 
+## [1.3.70] - 2026-10-27
+
+### Added
+- Each proxied server on `/list` has a **Login and Play** button: the forum
+  login first, then the join with its token, so a registered callsign spawns.
+
+### Fixed
+- A proxied server's login no longer replaces the bzo session, so the BZID
+  bzo verified still reaches `/origin`.
+
 ## [1.3.69] - 2026-10-27
 
 ### Changed
