@@ -1060,8 +1060,14 @@ app.get('/login/:returnPage?/:returnView?/:returnTeam?', loginRateLimit, async (
     const id = stashProxyLogin(req.params.returnPage, callsign, token);
     // And a session for the callsign alone, with no BZID, because bzo checked
     // nothing: it is what keeps the name across a reconnect or a restart,
-    // once the token that could only be answered once is gone.
-    const sessionId = sessions.create({ bzid: null, callsign, groups: [] });
+    // once the token that could only be answered once is gone. A session this
+    // browser already holds for the same callsign is kept instead, so a BZID
+    // bzo verified at its own /login survives for `/origin`.
+    const heldId = parseCookies(req.headers.cookie)[SESSION_COOKIE_NAME];
+    const held = sessions.get(heldId);
+    const sessionId = held && held.callsign === callsign
+      ? heldId
+      : sessions.create({ bzid: null, callsign, groups: [] });
     log(`[PROXY] ${req.params.returnPage}: holding a login for "${callsign}"`);
     res.cookie(PROXY_LOGIN_COOKIE, id, {
       httpOnly: true,
@@ -2768,9 +2774,13 @@ function renderListTables({ servers, bzoServers, canWatch }) {
       owner: (proxy ? relayed?.owner : s.owner) || '',
       action: 'Enter game',
       // A carried target is a real BZFlag server, so a BZFlag client can go
-      // straight there.
+      // straight there. Playing it from a browser under a registered callsign
+      // needs a global login bzfs can check itself (`playerAlive`,
+      // bzfs.cxx:3199), so the carrier's own `/login/<target>/-/automatic`
+      // takes the forum login first and comes back joining with its token.
       actions: proxy
-        ? `<a class="action" href="${escapeHtml(`bzflag://${proxy.target}`)}">Launch</a>`
+        ? `<a class="action" href="${escapeHtml(`${s.url}/login/${encodeURIComponent(proxyUrlKey(proxy.target))}/-/automatic`)}">Login and Play</a>`
+          + `<a class="action" href="${escapeHtml(`bzflag://${proxy.target}`)}">Launch</a>`
         : '',
       style: game.style,
       maxShots: game.maxShots,

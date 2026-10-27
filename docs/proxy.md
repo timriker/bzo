@@ -493,15 +493,20 @@ The token is deliberately not in a bzo session: sessions are written to
 credential -- it is what this browser is called over there, and it should
 survive a reconnect and a restart even though the verification cannot. A
 session with no BZID grants nothing in bzo's own game, which is the whole
-point: bzo checked nothing, so bzo claims nothing. For the same reason the
-`-`/`+`/`@` marks come from the target's `MsgPlayerInfo` rather than from bzo
-assuming its token worked.
+point: bzo checked nothing, so bzo claims nothing. A session the browser
+already holds for the same callsign is kept instead, so a BZID bzo verified
+at its own `/login` still reaches [`/origin`](proxy-origin.md). For the same
+reason the `-`/`+`/`@` marks come from the target's `MsgPlayerInfo` rather
+than from bzo assuming its token worked.
 
-`/login/<host_port>[/<view>]` and `/logout/<host_port>[/<view>]` return to the
-match being watched rather than to this server's own game, carrying the roam
-view in the path because bzflag.org's callback may hold only one query
-parameter. `/login/probe-<host_port>` is the diagnostic that proves a new
-target will accept a forwarded token at all: it joins, reads the verdict, and
+`/login/<host_port>[/<view>[/<team>]]` and `/logout/<host_port>[/<view>]`
+return to the match being watched rather than to this server's own game,
+carrying the roam view and team in the path because bzflag.org's callback may
+hold only one query parameter. Each proxied row on `/list` has a **Login and
+Play** button, `/login/<host_port>/-/automatic`: the forum login first, then
+the join with its token, so a registered callsign spawns.
+`/login/probe-<host_port>` is the diagnostic that proves a new target will
+accept a forwarded token at all: it joins, reads the verdict, and
 prints it as plain text without creating a session.
 
 ## What is not supported
