@@ -6,6 +6,19 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
 
 ## [Unreleased]
 
+## [1.3.67] - 2026-10-27
+
+### Changed
+- A map's unsupported `-set` variables are counted in the line players see,
+  and listed by name only in server.log.
+
+### Fixed
+- The bzfs proxy crashed the server on the first update from a proxied
+  player; `npm run check` now catches an import a module does not export.
+- A proxied bzfs's plugin flags are named instead of "unidentified".
+- A BZDB value longer than 255 characters no longer fails the join; it is
+  truncated with a warning.
+
 ## [1.3.66] - 2026-10-27
 
 ### Changed
