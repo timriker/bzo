@@ -70,6 +70,10 @@ one target, which is what a test server wants:
 }
 ```
 
+`originKey` shares a secret with a target running the proxyOrigin plugin, so
+bzo can tell it each player's own address and BZID
+([proxy-origin.md](proxy-origin.md)).
+
 The map is the allowlist, and the only thing that makes a target nameable:
 `?proxy=`, `/login/<name>` and `/logout/<name>` all refuse a name that is not
 a key -- under its link spelling, and a refusal names the ones that are -- so

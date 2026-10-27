@@ -60,7 +60,9 @@ const {
   isLocalAdminRequest,
   parseCookies,
   SESSION_COOKIE_NAME,
+  trustedClientAddress,
 } = require('./sessions.cjs');
+const { buildOriginCommand, isOriginCommand, speaksOrigin } = require('./proxy-origin.cjs');
 const { isHeadsetBrowserUA } = require('../public/js/headset.mjs');
 const { proxyUrlKey } = require('./proxies.cjs');
 const { ReplaySession } = require('./bzfs-replay-room.cjs');
@@ -1113,6 +1115,18 @@ async function handleProxyConnection(ws, req, request) {
     for (const text of state.messages) {
       send({ type: 'message', src: SERVER_PLAYER, dst: ALL_PLAYERS, msgType: 'server', text, ts: Date.now() });
     }
+    // The player's own address and, where bzo verified the forum login under
+    // this very callsign, its BZID -- told to a target whose proxyOrigin
+    // plugin shares a key with this instance (docs/proxy-origin.md).
+    if (target.originKey && speaksOrigin(state.vars)) {
+      const callsign = state.players.get(session.playerId)?.callsign || viewer.callsign;
+      const bzid = !options.guest && loginSession?.bzid && loginSession.callsign === callsign
+        ? loginSession.bzid : 0;
+      const ip = trustedClientAddress(req.socket.remoteAddress, req.headers,
+        server.forwardedForPolicy, server.forwardedProxyPeer) || req.socket.remoteAddress;
+      session.sendChat(BZFS_SERVER_PLAYER, buildOriginCommand(target.originKey, { ip, bzid, callsign }));
+      log(`[PROXY] ${key}: sent /origin for "${callsign}"${bzid ? ` (BZID ${bzid})` : ''}`);
+    }
     // Said once, because being quietly seated on a team you did not pick is
     // worse than being refused out loud. A global login is spent the first
     // time it is offered, so a bzo restart leaves the name behind and takes
@@ -1685,6 +1699,7 @@ async function handleProxyConnection(ws, req, request) {
       // A command is one line or it is nothing: a second piece would arrive
       // as ordinary chat. It goes whole and bzfs keeps what fits, as an
       // upstream client's own input would have stopped it there.
+      if (isOriginCommand(body)) return;
       if (!action && body.startsWith('/')) {
         if (body.length > CHAT_TEXT_MAX && !warnedAboutChatLength) {
           warnedAboutChatLength = true;

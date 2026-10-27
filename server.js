@@ -4818,7 +4818,7 @@ const {
 } = parseProxies(serverConfig.proxies);
 for (const target of Object.values(PROXY_TARGETS)) {
   log(`Proxy: "${target.key}" reached at ${target.host}:${target.port}`
-    + `, linked as ?proxy=${target.urlKey}`);
+    + `, linked as ?proxy=${target.urlKey}${target.originKey ? ', with an originKey' : ''}`);
 }
 for (const { key, reason } of proxyWarnings) {
   log(`Proxy: "${key}" -- ${reason}`);

@@ -32,6 +32,10 @@
 // player plays. False lets a connection with no global login play there too,
 // which a test server wants and bzfs itself allows.
 //
+// `originKey` is the secret shared with that server's proxyOrigin plugin,
+// which lets bzo tell it each player's own address and BZID
+// (docs/proxy-origin.md). Never sent to a browser.
+//
 // The map is also the allowlist. A target not named here cannot be proxied,
 // linked to, or logged in to, which is what keeps `?proxy=` from being an
 // invitation to dial anywhere.
@@ -106,6 +110,9 @@ function parseProxies(raw) {
         reason: `${dial.host} is not a private address, so a forwarded global login will not verify`,
       });
     }
+    if (typeof spec.originKey === 'string' && spec.originKey && spec.originKey.length < 16) {
+      warnings.push({ key, reason: 'its originKey is short; use 32 or more random characters' });
+    }
     const urlKey = proxyUrlKey(key);
     if (byUrlKey[urlKey]) {
       refused.push({ key, reason: `its link would collide with "${byUrlKey[urlKey].key}"` });
@@ -119,6 +126,7 @@ function parseProxies(raw) {
       host: dial.host,
       port: dial.port,
       requireLogin: spec.requireLogin !== false,
+      originKey: typeof spec.originKey === 'string' && spec.originKey ? spec.originKey : null,
     });
     targets[key] = target;
     byUrlKey[urlKey] = target;
