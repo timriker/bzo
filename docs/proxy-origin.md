@@ -40,22 +40,13 @@ about a key under 16.
   a guest, a player not logged in to bzo, or a login made only for the
   proxied server, whose token bzfs checks itself.
 - `<unixtime>`: seconds since 1970.
-- `<mac>`: the first 32 lowercase hex characters (128 bits) of HMAC-SHA256,
-  keyed with the shared secret, over these four lines joined by `\n` with no
-  trailing newline:
+- `<mac>`: the first 32 lowercase hex characters (128 bits) of the
+  HMAC-SHA256, keyed with the shared secret, of the three fields exactly as
+  sent, one space apart: `<ip> <bzid> <unixtime>`.
 
-  ```text
-  <ip>
-  <bzid>
-  <unixtime>
-  <callsign>
-  ```
-
-  `<ip>` and `<bzid>` exactly as sent; `<callsign>` as the server has it, so a
-  line cannot be reused for another player.
-
-The MAC is cut to 32 characters so the widest line, an IPv6 address with an
-eight-digit BZID, fits bzfs's 128-byte message.
+bzo sends the address in its shortest form, compressed and lowercase. bzfs
+keeps a message's first 127 bytes, and the widest line -- the longest IPv6
+address and a 12-digit BZID -- is 104.
 
 ## What the plugin should do with it
 

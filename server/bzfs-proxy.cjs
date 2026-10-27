@@ -1124,8 +1124,16 @@ async function handleProxyConnection(ws, req, request) {
         ? loginSession.bzid : 0;
       const ip = trustedClientAddress(req.socket.remoteAddress, req.headers,
         server.forwardedForPolicy, server.forwardedProxyPeer) || req.socket.remoteAddress;
-      session.sendChat(BZFS_SERVER_PLAYER, buildOriginCommand(target.originKey, { ip, bzid, callsign }));
-      log(`[PROXY] ${key}: sent /origin for "${callsign}"${bzid ? ` (BZID ${bzid})` : ''}`);
+      const line = buildOriginCommand(target.originKey, { ip, bzid });
+      // bzfs keeps a line's first CHAT_TEXT_MAX bytes and a cut signature is
+      // only a refusal. Every address fits today (104 at the widest); this is
+      // the guard should the format ever grow.
+      if (line.length > CHAT_TEXT_MAX) {
+        log(`[PROXY] ${key}: /origin for "${callsign}" is ${line.length} characters, too long to send`);
+      } else {
+        session.sendChat(BZFS_SERVER_PLAYER, line);
+        log(`[PROXY] ${key}: sent /origin for "${callsign}"${bzid ? ` (BZID ${bzid})` : ''}`);
+      }
     }
     // Said once, because being quietly seated on a team you did not pick is
     // worse than being refused out loud. A global login is spent the first

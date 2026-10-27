@@ -23,23 +23,28 @@ const { parseProxies } = require('../server/proxies.cjs');
 const key = 'a-shared-secret-of-thirty-two-chars';
 const now = Date.UTC(2026, 9, 27, 12, 0, 0);
 
-const line = buildOriginCommand(key, { ip: '203.0.113.7', bzid: 12345, callsign: 'Tim', now });
+const line = buildOriginCommand(key, { ip: '203.0.113.7', bzid: 12345, now });
 const [command, ip, bzid, time, mac] = line.split(' ');
 assert.equal(command, '/origin');
 assert.equal(ip, '203.0.113.7');
 assert.equal(bzid, '12345');
 assert.equal(time, String(now / 1000));
-const expected = crypto.createHmac('sha256', key).update(`203.0.113.7\n12345\n${time}\nTim`).digest('hex');
-assert.equal(mac, expected.slice(0, 32), 'the first 32 hex of HMAC-SHA256 over ip, bzid, time, callsign');
+const expected = crypto.createHmac('sha256', key).update(`203.0.113.7 12345 ${time}`).digest('hex');
+assert.equal(mac, expected.slice(0, 32), 'the first 32 hex of HMAC-SHA256 over "<ip> <bzid> <unixtime>"');
 
-assert.equal(buildOriginCommand(key, { ip: '203.0.113.7', bzid: null, callsign: 'Tim', now }).split(' ')[2], '0',
+assert.equal(buildOriginCommand(key, { ip: '203.0.113.7', bzid: null, now }).split(' ')[2], '0',
   'no forum login is BZID 0');
 assert.equal(originAddress('::ffff:198.51.100.2'), '198.51.100.2', 'a v4-mapped address goes as IPv4');
+assert.equal(originAddress('::ffff:c633:6402'), '198.51.100.2', 'in either spelling');
+assert.equal(originAddress('2001:0DB8:85a3:0000:0000:8a2e:0370:7334'), '2001:db8:85a3::8a2e:370:7334',
+  'IPv6 compressed and lowercase');
+assert.equal(originAddress('[2001:db8::1]'), '2001:db8::1', 'without brackets');
+assert.equal(originAddress('fe80::1%eth0'), 'fe80::1', 'without a zone id');
 
 const widest = buildOriginCommand(key, {
-  ip: 'ffff:ffff:ffff:ffff:ffff:ffff:ffff:ffff', bzid: 99999999, callsign: 'x'.repeat(31), now,
+  ip: 'ffff:ffff:ffff:ffff:ffff:ffff:ffff:ffff', bzid: 999999999999, now,
 });
-assert.ok(widest.length <= CHAT_TEXT_MAX, `the widest line fits a bzfs message: ${widest.length}`);
+assert.ok(widest.length <= CHAT_TEXT_MAX, `the widest IPv6 line fits a bzfs message: ${widest.length}`);
 
 assert.ok(speaksOrigin(new Map([['_proxyOrigin', '1']])));
 assert.ok(!speaksOrigin(new Map()), 'no variable, no /origin');
