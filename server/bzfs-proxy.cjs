@@ -1337,6 +1337,8 @@ async function handleProxyConnection(ws, req, request) {
       });
     });
 
+    session.on('warning', (text) => log(`[PROXY] ${key}: ${text}`));
+
     session.on('flags', (flags) => {
       send({ type: 'flagUpdate', flags: flags.map((flag) => proxyFlagState(flag, proxyZonedOf)) });
     });

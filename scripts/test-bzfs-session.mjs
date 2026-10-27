@@ -24,6 +24,7 @@ const {
   decodeShotEnd,
 } = require('../server/bzfs-session.cjs');
 const { bzdbIsTrue } = require('../public/js/bzdb.mjs');
+const { decodeSetVars } = require('../server/remote-world-import.cjs');
 
 // A chat line is read a byte at a time by `isSpamOrGarbage` and every byte is
 // asked `TextUtils::isVisible`, whose character classes stop at 126 -- so one
@@ -112,5 +113,35 @@ assert.deepEqual(splitBzfsChat(''), [], 'nothing to say is no message');
 assert.deepEqual(splitBzfsChat('aaaa bbbb cccc', 9), ['aaaa bbbb', 'cccc'], 'breaks at the last space that fits');
 assert.deepEqual(splitBzfsChat('x'.repeat(20), 8), ['xxxxxxxx', 'xxxxxxxx', 'xxxx'], 'one word longer than a message is cut');
 assert.deepEqual(splitBzfsChat('aaaa bbbb', 4), ['aaaa', 'bbbb'], 'a space exactly at the limit breaks there');
+
+// MsgSetVar as `PackVars` writes it: each length a uint8, each string whole --
+// so a value of 342 says 86 (PackVars.h:68-71).
+{
+  const setVars = (pairs) => {
+    const count = Buffer.alloc(2);
+    count.writeUInt16BE(pairs.length);
+    return Buffer.concat([count, ...pairs.flatMap(([name, value]) => [
+      Buffer.from([name.length & 0xff]), Buffer.from(name, 'latin1'),
+      Buffer.from([value.length & 0xff]), Buffer.from(value, 'latin1'),
+    ])]);
+  };
+  const long = 'x'.repeat(100) + 'y'.repeat(242);
+  const warnings = [];
+  const vars = decodeSetVars(setVars([['_gravity', '-9.8'], ['_motd', long], ['_tankSpeed', '25']]),
+    new Map(), (text) => warnings.push(text));
+  assert.equal(vars.get('_gravity'), '-9.8', 'the var before it');
+  assert.equal(vars.get('_tankSpeed'), '25', 'the var after it, read at the right place');
+  assert.equal(vars.get('_motd'), long.slice(0, 255), 'the long one, truncated');
+  assert.equal(warnings.length, 1, 'and said so');
+  assert.match(warnings[0], /_motd is 342 characters/);
+
+  const last = decodeSetVars(setVars([['_a', '1'], ['_motd', long]]), new Map(), () => {});
+  assert.equal(last.get('_motd').length, 255, 'a long value last in the packet');
+
+  const broken = [];
+  const partial = decodeSetVars(Buffer.from([0, 2, 2, 0x5f, 0x61, 1, 0x31, 9]), new Map(), (text) => broken.push(text));
+  assert.equal(partial.get('_a'), '1', 'what parses is kept');
+  assert.equal(broken.length, 1, 'a packet nothing can read is a warning, not a throw');
+}
 
 console.log('bzfs session tests passed');

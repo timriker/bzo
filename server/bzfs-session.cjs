@@ -635,7 +635,7 @@ class BzfsSession {
         // MsgSetVar: the burst every joiner gets, and each `/set` after it,
         // passed on so a browser keeps the same BZDB this session does.
         const changed = new Map();
-        decodeSetVars(payload, changed);
+        decodeSetVars(payload, changed, (text) => this.emit('warning', text));
         for (const [name, value] of changed) this.state.vars.set(name, value);
         this.emit('vars', changed);
         break;

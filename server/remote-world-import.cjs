@@ -367,13 +367,64 @@ function buildEnterPayload({
 // MsgSetVar: a u16 pair count, then that many (u8 length, bytes) pairs. Sent
 // in as many frames as it takes to stay under MaxPacketLen (`PackVars.h`), so
 // every frame between MsgAccept and the first non-MsgSetVar reply counts.
-function decodeSetVars(payload, into) {
-  const r = new Reader(payload);
-  const count = r.u16();
-  for (let i = 0; i < count; i += 1) {
-    const name = r.bytes(r.u8()).toString('latin1');
-    const value = r.bytes(r.u8()).toString('latin1');
-    if (name) into.set(name, value);
+// A BZDB value longer than a byte can count: `PackVars` writes its length as a
+// uint8 and then the whole string (PackVars.h:68-71), so the length on the
+// wire is the real one less some multiple of 256 and a reader that trusts it
+// lands in the middle of the value. Upstream's own client misreads it the same
+// way. Every byte is still in the packet, so the real boundary is the one, of
+// the length plus 0, 256, 512..., at which the rest of the packet parses
+// exactly. The value is kept to what a byte can count, so it can be passed on.
+const SET_VAR_VALUE_MAX = 255;
+const SET_VAR_NAME = /^[\x21-\x7e]+$/;
+
+// `dead` holds the (offset, remaining) pairs already shown to lead nowhere, so
+// a hostile packet cannot make the search exponential.
+function decodeSetVarPairs(buf, offset, remaining, dead = new Set()) {
+  if (remaining === 0) return offset === buf.length ? [] : null;
+  if (offset >= buf.length) return null;
+  const key = offset * 65536 + remaining;
+  if (dead.has(key)) return null;
+  const nameLength = buf[offset];
+  const nameEnd = offset + 1 + nameLength;
+  if (nameEnd >= buf.length) return null;
+  const name = buf.toString('latin1', offset + 1, nameEnd);
+  if (!SET_VAR_NAME.test(name)) {
+    dead.add(key);
+    return null;
+  }
+  for (let length = buf[nameEnd]; nameEnd + 1 + length <= buf.length; length += 256) {
+    const valueEnd = nameEnd + 1 + length;
+    const rest = decodeSetVarPairs(buf, valueEnd, remaining - 1, dead);
+    if (rest) return [{ name, value: buf.toString('latin1', nameEnd + 1, valueEnd) }, ...rest];
+  }
+  dead.add(key);
+  return null;
+}
+
+function decodeSetVars(payload, into, warn = (text) => console.warn(text)) {
+  const count = payload.length >= 2 ? payload.readUInt16BE(0) : 0;
+  const pairs = decodeSetVarPairs(payload, 2, count);
+  if (!pairs) {
+    // Nothing reads the whole packet: keep the pairs that parse as written.
+    const r = new Reader(payload);
+    r.skip(2);
+    let kept = 0;
+    try {
+      for (; kept < count; kept += 1) {
+        const name = r.bytes(r.u8()).toString('latin1');
+        const value = r.bytes(r.u8()).toString('latin1');
+        if (r.o > payload.length) break;
+        if (name) into.set(name, value);
+      }
+    } catch { /* ran off the end */ }
+    warn(`MsgSetVar unreadable after ${kept} of ${count} variables`);
+    return into;
+  }
+  for (const { name, value } of pairs) {
+    if (value.length > SET_VAR_VALUE_MAX) {
+      warn(`BZDB ${name} is ${value.length} characters, more than MsgSetVar can count; truncated to ${SET_VAR_VALUE_MAX}`);
+    }
+    into.set(name, value.slice(0, SET_VAR_VALUE_MAX));
   }
   return into;
 }
