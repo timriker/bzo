@@ -22,9 +22,12 @@ const {
   decodeScores,
   decodeCapture,
   decodeShotEnd,
+  decodeFlagType,
+  NEGOTIATE_FLAGS_PAYLOAD,
 } = require('../server/bzfs-session.cjs');
 const { bzdbIsTrue } = require('../public/js/bzdb.mjs');
 const { decodeSetVars } = require('../server/remote-world-import.cjs');
+const { FLAG_TYPES, getFlagType, isBadFlag, setCustomFlagTypes } = require('../public/js/flags.mjs');
 
 // A chat line is read a byte at a time by `isSpamOrGarbage` and every byte is
 // asked `TextUtils::isVisible`, whose character classes stop at 126 -- so one
@@ -113,6 +116,35 @@ assert.deepEqual(splitBzfsChat(''), [], 'nothing to say is no message');
 assert.deepEqual(splitBzfsChat('aaaa bbbb cccc', 9), ['aaaa bbbb', 'cccc'], 'breaks at the last space that fits');
 assert.deepEqual(splitBzfsChat('x'.repeat(20), 8), ['xxxxxxxx', 'xxxxxxxx', 'xxxx'], 'one word longer than a message is cut');
 assert.deepEqual(splitBzfsChat('aaaa bbbb', 4), ['aaaa', 'bbbb'], 'a space exactly at the limit breaks there');
+
+// MsgNegotiateFlags: every flag bzo knows, two bytes each, a one-letter one
+// padded with a NUL as `FlagType::pack` writes it.
+assert.equal(NEGOTIATE_FLAGS_PAYLOAD.length, Object.keys(FLAG_TYPES).length * 2, 'two bytes a flag');
+assert.ok(NEGOTIATE_FLAGS_PAYLOAD.includes(Buffer.from('L\0', 'latin1')), 'a one-letter flag is padded');
+
+// MsgFlagType: `FlagType::packCustom` -- abbreviation, quality, shot type,
+// then name and help as `nboPackStdString` writes them.
+{
+  const str = (text) => {
+    const body = Buffer.from(text, 'utf8');
+    const len = Buffer.alloc(4);
+    len.writeUInt32BE(body.length);
+    return Buffer.concat([len, body]);
+  };
+  const payload = Buffer.concat([Buffer.from('ZZ', 'latin1'), Buffer.from([1, 0]),
+    str('Zigzag'), str('Your shots wander.')]);
+  const type = decodeFlagType(payload);
+  assert.deepEqual(type, { abbreviation: 'ZZ', quality: 1, shot: 0, name: 'Zigzag', help: 'Your shots wander.' });
+
+  assert.equal(getFlagType('ZZ'), null, 'unknown before the server names it');
+  setCustomFlagTypes([type]);
+  assert.equal(getFlagType('ZZ').name, 'Zigzag', 'named once announced');
+  assert.ok(isBadFlag('ZZ'), 'a bad plugin flag reads as bad');
+  setCustomFlagTypes([{ ...type, abbreviation: 'L', name: 'Not Laser' }]);
+  assert.equal(getFlagType('L').name, FLAG_TYPES.L.name, 'a plugin cannot rename a built-in flag');
+  setCustomFlagTypes([], { replace: true });
+  assert.equal(getFlagType('ZZ'), null, 'a new server starts with none');
+}
 
 // MsgSetVar as `PackVars` writes it: each length a uint8, each string whole --
 // so a value of 342 says 86 (PackVars.h:68-71).

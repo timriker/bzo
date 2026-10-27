@@ -721,8 +721,31 @@ export const FLAG_TYPES = Object.freeze({
 
 export const FLAG_ABBREVIATIONS = Object.freeze(Object.keys(FLAG_TYPES));
 
+// Flag types a bzfs plugin registered (`bz_RegisterCustomFlag`), as the
+// target announced them through the proxy (MsgFlagType). The server runs
+// them; all a client needs is their name, help and quality, so a grab of one
+// is named rather than "unidentified".
+const customFlagTypes = new Map();
+
+export function setCustomFlagTypes(types = [], { replace = false } = {}) {
+  if (replace) customFlagTypes.clear();
+  for (const type of types) {
+    if (!type?.abbreviation || FLAG_TYPES[type.abbreviation]) continue;
+    const bad = type.quality === FLAG_QUALITY.BAD;
+    customFlagTypes.set(type.abbreviation, Object.freeze({
+      abbreviation: type.abbreviation,
+      name: type.name || type.abbreviation,
+      endurance: bad ? FLAG_ENDURANCE.STICKY : FLAG_ENDURANCE.UNSTABLE,
+      quality: bad ? FLAG_QUALITY.BAD : FLAG_QUALITY.GOOD,
+      team: null,
+      help: type.help || '',
+      custom: true,
+    }));
+  }
+}
+
 export function getFlagType(abbreviation) {
-  return FLAG_TYPES[abbreviation] || null;
+  return FLAG_TYPES[abbreviation] || customFlagTypes.get(abbreviation) || null;
 }
 
 export function isTeamFlag(abbreviation) {

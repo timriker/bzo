@@ -26,6 +26,7 @@ const {
   TANK_PLAYER,
   decodeSetVars,
 } = require('./remote-world-import.cjs');
+const { FLAG_TYPES } = require('../public/js/flags.mjs');
 // Upstream's own defaults, for a name the target never mentioned.
 
 // `CtfTeams` (`global.h`): the teams MsgTeamUpdate can carry, which stops
@@ -56,6 +57,25 @@ const ACTION_MESSAGE = 1;
 
 // The codes `ServerLink::send` puts on UDP: shots, player updates, guided
 // missile updates, and the link handshake itself.
+// MsgNegotiateFlags: every flag type bzo knows, two bytes each as
+// `FlagType::pack` writes them (`sendFlagNegotiation`, playing.cxx:5268).
+// bzfs answers with a MsgFlagType for each custom flag a plugin registered
+// that is not on this list, which is the one way a session learns their names.
+const NEGOTIATE_FLAGS_PAYLOAD = Buffer.concat(Object.keys(FLAG_TYPES)
+  .map((abbreviation) => Buffer.from(abbreviation.padEnd(2, '\0'), 'latin1')));
+
+// FlagType::unpackCustom (Flag.cxx:291): a plugin's flag type, which a bad one
+// makes sticky.
+function decodeFlagType(payload) {
+  const r = new Reader(payload);
+  const abbreviation = r.flagAbbv();
+  const quality = r.u8();
+  const shot = r.u8();
+  const name = r.str();
+  const help = r.str();
+  return { abbreviation, quality, shot, name, help };
+}
+
 const UDP_CODES = new Set(['sb', 'se', 'pu', 'ps', 'gm', 'of', 'og']);
 
 // How long the join may take before the browser is told it failed. The same
@@ -492,6 +512,8 @@ class BzfsSession {
       rabbitId: null,
       timeLeft: null,
       messages: [],
+      // Plugin flag types bzfs announced (MsgFlagType), by abbreviation.
+      customFlagTypes: new Map(),
     };
     this.socket = null;
     // The unreliable half, once bzfs has confirmed it (`openUdpLink`).
@@ -573,6 +595,13 @@ class BzfsSession {
           // Anything else that arrives meanwhile is still handled: the UDP
           // link's MsgUDPLinkEstablished comes now, and dropping it leaves
           // every update on TCP for the life of the session.
+          sendFrame(socket, 'nf', NEGOTIATE_FLAGS_PAYLOAD);
+          for (;;) {
+            const { code, payload } = await readFrame();
+            if (code === 'nf' || code === 'sk' || code === 'rj') break;
+            this.handleFrame(code, payload);
+          }
+
           sendFrame(socket, 'ws');
           for (;;) {
             const { code, payload } = await readFrame();
@@ -811,6 +840,14 @@ class BzfsSession {
       case 'Nf':
         this.emit('nearFlag', decodeNearFlag(payload));
         break;
+      // At flag negotiation, and again whenever a plugin registers one while
+      // this session is in (bzfsAPI.cxx:4565).
+      case 'ft': {
+        const type = decodeFlagType(payload);
+        this.state.customFlagTypes.set(type.abbreviation, type);
+        this.emit('flagType', type);
+        break;
+      }
       case 'nR':
         this.state.rabbitId = payload.readUInt8(0);
         this.emit('rabbit', this.state.rabbitId);
@@ -1123,6 +1160,8 @@ class BzfsSession {
 
 
 module.exports = {
+  decodeFlagType,
+  NEGOTIATE_FLAGS_PAYLOAD,
   BzfsSession,
   OBSERVER_TEAM,
   toBzfsChatText,

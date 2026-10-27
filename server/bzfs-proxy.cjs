@@ -786,6 +786,8 @@ function buildProxyInit(session, mapEntry, viewer, status, enterTeam, zonedOf, o
     // the target's. Completion falls back to the client's local commands and
     // the callsigns it can see.
     commands: [],
+    // The target's plugin flags, which bzo's own table has never heard of.
+    customFlagTypes: [...session.state.customFlagTypes.values()],
     // The target knows this viewer under the callsign it was given and on the
     // team it entered with, and the browser is told exactly that -- including
     // the name, which is why the entry dialog cannot rename it.
@@ -1338,6 +1340,10 @@ async function handleProxyConnection(ws, req, request) {
     });
 
     session.on('warning', (text) => log(`[PROXY] ${key}: ${text}`));
+
+    session.on('flagType', (flagType) => {
+      send({ type: 'customFlagTypes', types: [flagType] });
+    });
 
     session.on('flags', (flags) => {
       send({ type: 'flagUpdate', flags: flags.map((flag) => proxyFlagState(flag, proxyZonedOf)) });

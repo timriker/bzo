@@ -269,6 +269,7 @@ import {
   getFlagEndurance,
   getFlagTeamIndex,
   getFlagType,
+  setCustomFlagTypes,
   getShotEffects,
   getThiefDropReloadSeconds,
   firesContinuously,
@@ -8027,6 +8028,7 @@ function handleServerMessage(message) {
 // Each message the server sends, by its `type`.
 const SERVER_MESSAGE_HANDLERS = Object.freeze({
   init: receiveInit,
+  customFlagTypes: (message) => setCustomFlagTypes(message.types),
   playerJoined: receivePlayerJoined,
   teamUpdate: receiveTeamUpdate,
   newRabbit: receiveNewRabbit,
@@ -8082,6 +8084,8 @@ function receiveInit(message) {
   // may be another.
   lastMoveBatchById.clear();
   earlyShotEnds.clear();
+  // A proxied bzfs's plugin flags; any other server has none.
+  setCustomFlagTypes(message.customFlagTypes, { replace: true });
   if (!message.udpChannel && !message.webTransport) udpChannel.close();
   else if (!udpChannel.isOpen()) void udpChannel.start(message);
   const operatorPanelTitleEl = document.getElementById('operatorPanelTitle');
