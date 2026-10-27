@@ -6,6 +6,13 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
 
 ## [Unreleased]
 
+## [1.3.68] - 2026-10-27
+
+### Added
+- A proxied bzfs running the proxyOrigin plugin is told each player's own
+  address and, when they are logged in to bzo, their BZID. Set `originKey` on
+  the target's `proxies` entry; see `docs/proxy-origin.md`.
+
 ## [1.3.67] - 2026-10-27
 
 ### Changed
