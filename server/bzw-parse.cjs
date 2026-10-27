@@ -5470,11 +5470,12 @@ function parseBZWMap(filename, { quiet = false, extraMessages = [], text: givenT
     warn(`${mapLabel} ignored options: ${unreadOptionList}`);
   }
 
+  // A plugin-heavy server sets hundreds of these, so a player is told how
+  // many and server.log keeps the names.
   if (serverOptions.unreadBZDBVars && serverOptions.unreadBZDBVars.length > 0) {
-    warn(
-      `${mapLabel} ignored -set variables: `
-      + Array.from(new Set(serverOptions.unreadBZDBVars)).sort().join(', ')
-    );
+    const names = Array.from(new Set(serverOptions.unreadBZDBVars)).sort();
+    warn(`${mapLabel}: ${names.length} unsupported -set variable${names.length === 1 ? '' : 's'}`);
+    if (!quiet) log(`${mapLabel} ignored -set variables: ${names.join(', ')}`);
   }
 
   if (unreadKeywordCounts.size > 0) {
