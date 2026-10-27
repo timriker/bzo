@@ -234,7 +234,7 @@ function helpPage({ base, name, description, version, controlsMarkdown, flagType
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>${escapeHtml(title)}</title>
 ${head}
-<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<link rel="icon" sizes="16x16 32x32 48x48" href="/favicon.ico">
 <style>
   body { font: 15px/1.5 Arial, sans-serif; margin: 2rem auto; max-width: 60rem; padding: 0 1rem; color: #fff; background: #000; }
   a { color: #81c784; }

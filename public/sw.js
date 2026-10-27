@@ -51,6 +51,7 @@ const PRECACHE = [
   '/vendor/three/three.module.js',
   '/vendor/three/three.core.js',
   '/favicon.svg',
+  '/favicon.ico',
 ];
 
 // Paths whose contents change only on release, and which cannot cause a

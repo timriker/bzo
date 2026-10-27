@@ -2892,7 +2892,7 @@ function renderListPage({
 <meta charset="utf-8">
 <title>bzo servers</title>
 ${discoveryHead}
-<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<link rel="icon" sizes="16x16 32x32 48x48" href="/favicon.ico">
 <style>
   /* bzo's own palette (public/styles.css) -- this page links straight into the
      game (View, /?viewmap=), so it reads as the same product rather than a
