@@ -6,6 +6,8 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
 
 ## [Unreleased]
 
+## [1.3.72] - 2026-10-29
+
 ### Added
 - `/list`, and the frame and game summary of `/help`, in the reader's
   language.
