@@ -873,7 +873,6 @@ export class EffectsRendering {
         ctx.fillRect(0, 0, canvas.width, canvas.height);
       }
     });
-    texture.colorSpace = THREE.SRGBColorSpace;
 
     if (!source.loaded) {
       source.listeners.push(redraw);
@@ -1092,7 +1091,6 @@ export class EffectsRendering {
       ctx.stroke();
     }
     this._lockOnTexture = new THREE.CanvasTexture(canvas);
-    this._lockOnTexture.colorSpace = THREE.SRGBColorSpace;
     return this._lockOnTexture;
   }
 

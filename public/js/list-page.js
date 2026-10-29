@@ -10,6 +10,20 @@
 
 'use strict';
 
+// The page's own words in the reader's language. The server embeds each
+// msgid this script passes to `t` with its translation, as `list-l10n`
+// (`l10n.scriptMsgids`); where there is no such element -- this script
+// loaded on its own, as the filter test does -- the msgid is the English.
+const LIST_MESSAGES = (() => {
+  const node = typeof document !== 'undefined' && document.getElementById('list-l10n');
+  return node ? JSON.parse(node.textContent) : {};
+})();
+
+function t(msgid, params) {
+  const text = LIST_MESSAGES[msgid] || msgid;
+  return params ? text.replace(/\{(\w+)\}/g, (whole, name) => (name in params ? String(params[name]) : whole)) : text;
+}
+
 // A sortable table, for the two tables left on the page (local maps, and the
 // key admin section's own table, which fetches its rows in later and calls
 // this itself). Rows with a `data-href` navigate on click.
@@ -166,7 +180,7 @@ function parseFilterSet(text, errors) {
     if (token[0] === '+' || token[0] === '-') {
       const key = BOOL_LABELS[token.slice(1)];
       if (!key) {
-        errors.push(`unknown boolean label, '${token.slice(1)}'`);
+        errors.push(t("unknown boolean label, '{label}'", { label: token.slice(1) }));
         return;
       }
       bools[key] = token[0] === '+';
@@ -177,7 +191,7 @@ function parseFilterSet(text, errors) {
     // underscore, and that character is the operator.
     const match = token.match(/^([A-Za-z0-9_]*)(<=|>=|[<>=)\]])([\s\S]*)$/);
     if (!match) {
-      errors.push(`invalid filter, '${token}'`);
+      errors.push(t("invalid filter, '{filter}'", { filter: token }));
       return;
     }
     const [, label, op, param] = match;
@@ -185,7 +199,7 @@ function parseFilterSet(text, errors) {
     if (op === ')' || op === ']') {
       const key = PATTERN_LABELS[label.toLowerCase()];
       if (!key) {
-        errors.push(`unknown pattern label, '${label}'`);
+        errors.push(t("unknown pattern label, '{label}'", { label }));
         return;
       }
       // A capitalised label asks for a case-sensitive match, which is the one
@@ -196,18 +210,18 @@ function parseFilterSet(text, errors) {
           ? globToRegExp(param, noCase)
           : new RegExp(param, noCase ? 'i' : '');
       } catch (error) {
-        errors.push(`bad regex, ${error.message}`);
+        errors.push(t('bad regex, {error}', { error: error.message }));
       }
       return;
     }
 
     const key = RANGE_LABELS[label];
     if (!key) {
-      errors.push(`unknown range label, '${label}'`);
+      errors.push(t("unknown range label, '{label}'", { label }));
       return;
     }
     if (!/^-?\d+(\.\d+)?$/.test(param)) {
-      errors.push(`bad range value, '${param}'`);
+      errors.push(t("bad range value, '{value}'", { value: param }));
       return;
     }
     const bounds = rangeBounds(op, Number(param));
@@ -481,7 +495,7 @@ window.attachList = function attachList(listId, filterId) {
       });
       select(shown()[0] || null, false);
       if (countNode) {
-        countNode.textContent = filterInput.value.trim() ? `, filtered ${shown().length}` : '';
+        countNode.textContent = filterInput.value.trim() ? t(', filtered {count}', { count: shown().length }) : '';
       }
     });
   }
@@ -517,8 +531,8 @@ function addClearButtons() {
     const clear = document.createElement('button');
     clear.type = 'button';
     clear.textContent = '\u00d7';
-    clear.title = 'Clear';
-    clear.setAttribute('aria-label', 'Clear filter');
+    clear.title = t('Clear');
+    clear.setAttribute('aria-label', t('Clear filter'));
     box.appendChild(clear);
     const sync = () => { clear.hidden = input.value === ''; };
     input.addEventListener('input', sync);

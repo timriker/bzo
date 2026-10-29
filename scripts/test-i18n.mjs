@@ -90,6 +90,13 @@ assert.equal(l10n.negotiateLocale(request('cs')), 'cs_CZ', 'a bare language reac
 assert.equal(l10n.negotiateLocale(request('en-US')), 'en', 'a joke locale is never negotiated');
 assert.equal(l10n.negotiateLocale(request('es', 'en_US_l33t')), 'en_US_l33t');
 assert.equal(l10n.negotiateLocale(request('es', 'xx')), 'es');
+// The Settings cookie outranks `?lang=` and the browser, and is ignored when
+// asking what Automatic would pick.
+const withCookie = (cookie, acceptLanguage, lang) => ({ ...request(acceptLanguage, lang), headers: { cookie } });
+assert.equal(l10n.negotiateLocale(withCookie('a=1; bzo_lang=de', 'es', 'fr')), 'de');
+assert.equal(l10n.negotiateLocale(withCookie('bzo_lang=de', 'es'), { cookie: false }), 'es');
+assert.equal(l10n.negotiateLocale(withCookie('bzo_lang=xx', 'es')), 'es', 'an unknown cookie is ignored');
+assert.equal(l10n.catalogFor('de', 'es').browser, 'es');
 
 for (const { id, name } of l10n.catalogFor('en').locales) {
   if (id !== 'en') assert.notEqual(name, id, `l10n/bzo_${id}.po translates its own id`);

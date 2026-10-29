@@ -29,6 +29,8 @@ const context = {
   listServerUrl: 'https://list.example.org',
   pages: helpDocs.renderPages('en'),
   helpMarkdown: helpDocs.helpMarkdown(),
+  // English, the msgids themselves: the help frame's words as written.
+  t: require('../server/l10n.cjs').translator('en'),
 };
 
 const ldBlocks = (html) => [...html.matchAll(/<script type="application\/ld\+json">(.*?)<\/script>/gs)]

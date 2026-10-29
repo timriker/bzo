@@ -1010,7 +1010,6 @@ export class SkyRendering {
     const texture = new THREE.Texture();
     texture.wrapS = THREE.ClampToEdgeWrapping;
     texture.wrapT = THREE.ClampToEdgeWrapping;
-    texture.colorSpace = THREE.SRGBColorSpace;
 
     const applyImage = (image) => {
       if (!image) return;

@@ -1561,12 +1561,11 @@ export class TankRendering {
 
   // Tint a BZFlag source texture into a canvas-backed texture. The image may
   // still be loading, so the painter runs once now and again when it arrives.
-  _createTintedTexture(path, width, height, paint, baseColor, { srgb = true } = {}) {
+  _createTintedTexture(path, width, height, paint, baseColor) {
     const source = this._getSharedImage(path);
     const { texture, redraw } = this._createCanvasBackedImageTexture(width, height, (ctx, canvas) => {
       paint.call(this, ctx, canvas, source.loaded ? source.image : null, baseColor);
     });
-    if (srgb) texture.colorSpace = THREE.SRGBColorSpace;
 
     if (!source.loaded) {
       source.listeners.push(redraw);
@@ -1716,8 +1715,7 @@ export class TankRendering {
       function paint(ctx, canvas, image, color) {
         this._paintCamoTankTexture(ctx, canvas, image, color, paintOptions);
       },
-      baseColor,
-      { srgb: false });
+      baseColor);
   }
 
   _paintTintedBZFlagBoltTexture(ctx, canvas, image, baseColor) {

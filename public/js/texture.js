@@ -27,7 +27,6 @@ const sharedTextures = new Map();
 const sharedTintedTextures = new Map();
 
 function configureTexture(texture) {
-  texture.colorSpace = THREE.SRGBColorSpace;
   texture.wrapS = THREE.RepeatWrapping;
   texture.wrapT = THREE.RepeatWrapping;
   return texture;

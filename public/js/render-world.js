@@ -350,6 +350,14 @@ function buildLightingMaterialOptions(specular, shininess, emission) {
   return options;
 }
 
+// GL adds emission before the texture modulates the lit colour, so a
+// material's glow carries its texture's pattern; Three adds `emissive` after
+// the map, flat, unless the same map is its `emissiveMap` too.
+function emitThroughTexture(material) {
+  const { emissive, map } = material;
+  if (map && emissive && (emissive.r > 0 || emissive.g > 0 || emissive.b > 0)) material.emissiveMap = map;
+}
+
 // A shared obstacle material is cached by `key` alone (`_getSharedObstacleMaterials`),
 // so two obstacles whose specular/shininess/emission differ need different keys
 // or they would silently share whichever one built the material first.
@@ -622,7 +630,10 @@ export class WorldRendering {
       ...(unlit.cap ? {} : buildLightingMaterialOptions(lighting.capSpecular, lighting.capShininess, lighting.capEmission)),
     });
     const materials = [sideMaterial, capMaterial];
-    materials.forEach((material) => { material.userData.shared = true; });
+    materials.forEach((material) => {
+      material.userData.shared = true;
+      emitThroughTexture(material);
+    });
     const { wallDynamicColor, capDynamicColor, wallTextureMatrix, capTextureMatrix } = animation;
     if (wallDynamicColor) {
       sideMaterial.transparent = true;
@@ -2244,15 +2255,20 @@ export class WorldRendering {
         + `|${animIdentityKey(face.dynamicColor)}|${animIdentityKey(face.textureMatrix)}`
         + `|${materialLightingKey(face.specular, face.shininess, face.emission)}`
         + `|${face.noSorting ? 's' : ''}${face.useTextureAlpha === false ? 'a' : ''}`
-        + `${face.useColorOnTexture === false ? 'd' : ''}${face.noCulling ? 'c' : ''}`;
+        + `${face.useColorOnTexture === false ? 'd' : ''}${face.noCulling ? 'c' : ''}${face.noLighting ? 'n' : ''}`
+        + `${face.noShadow ? 'h' : ''}`;
       let materialIndex = materialIndexByKey.get(key);
       if (materialIndex === undefined) {
         // A generic `mesh` face with no `texture`/`addtexture` at all (unlike
         // box/pyramid, which upstream always textures with a stock default)
         // is meant to be flat-colored -- falling back to the boxwall texture
         // here would draw a wall pattern the map never asked for.
-        const LitClass = pickLitMaterialClass(face.specular);
-        const lightingOptions = buildLightingMaterialOptions(face.specular, face.shininess, face.emission);
+        // `nolighting` draws the diffuse as it is, whatever the sun is doing
+        // (`MeshSceneNode.cxx:461`), so emission and specular
+        // have nothing to add.
+        const LitClass = face.noLighting ? THREE.MeshBasicMaterial : pickLitMaterialClass(face.specular);
+        const lightingOptions = face.noLighting ? {}
+          : buildLightingMaterialOptions(face.specular, face.shininess, face.emission);
         // `noculling`, which only a face built from a `drawInfo` block ever
         // carries: that is the one path where upstream's own scene node has
         // no plane cull in front of it, so the flag can actually show a far
@@ -2283,6 +2299,7 @@ export class WorldRendering {
             )),
             ...lightingOptions,
           });
+          emitThroughTexture(material);
         } else {
           material = new LitClass(lightingOptions);
         }
@@ -2295,6 +2312,9 @@ export class WorldRendering {
         // `nosorting` -- same reason as the threshold above: the alpha
         // callback runs long after this returns and needs the answer then.
         if (face.noSorting) material.userData.noSorting = true;
+        // `noshadow`: the face casts none (`MeshSceneNode.cxx:530`); see
+        // `_shadowMaterialFor`.
+        if (face.noShadow) material.userData.noShadow = true;
         // `alphathresh` is an alpha *test*, and upstream sets it from the
         // material unconditionally -- `WallSceneNode::setupBlending`
         // (`:369-370`) and `MeshSceneNode.cxx:523-525` both apply

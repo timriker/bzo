@@ -319,9 +319,10 @@ export class LightingRendering {
     // `matrixWorld * instanceMatrix * position` composes with the flattening
     // matrix exactly as a plain caster's `matrixWorld` does, since that
     // product is associative either way.
+    const shadowMaterial = this._shadowMaterialFor(mesh);
     const shadowMesh = mesh.isInstancedMesh
-      ? new THREE.InstancedMesh(mesh.geometry, this._getProjectedShadowMaterial(), mesh.count)
-      : new THREE.Mesh(mesh.geometry, this._getProjectedShadowMaterial());
+      ? new THREE.InstancedMesh(mesh.geometry, shadowMaterial, mesh.count)
+      : new THREE.Mesh(mesh.geometry, shadowMaterial);
     if (mesh.isInstancedMesh) shadowMesh.instanceMatrix = mesh.instanceMatrix;
     // Its placement is written straight into matrixWorld below, so Three has
     // nothing to recompute for it.
@@ -335,6 +336,19 @@ export class LightingRendering {
     this.worldFrame.add(shadowMesh);
     mesh.userData.shadowMesh = shadowMesh;
     return shadowMesh;
+  }
+
+  // A caster's faces whose material says `noshadow` cast nothing, as
+  // upstream's do (`MeshSceneNode.cxx:530`): in a multi-material mesh their
+  // groups draw with a material that is never drawn. A map's ground layers
+  // are the case that shows -- sheets a hair above the ground, each throwing
+  // a shadow the size of the map for the darkening pass to fill.
+  _shadowMaterialFor(mesh) {
+    const shadow = this._getProjectedShadowMaterial();
+    if (!Array.isArray(mesh.material)) return shadow;
+    if (!mesh.material.some((material) => material.userData?.noShadow)) return shadow;
+    if (!this._noShadowMaterial) this._noShadowMaterial = new THREE.MeshBasicMaterial({ visible: false });
+    return mesh.material.map((material) => (material.userData?.noShadow ? this._noShadowMaterial : shadow));
   }
 
   _removeProjectedShadowMesh(mesh) {
@@ -438,7 +452,8 @@ export class LightingRendering {
       mesh.children.forEach((child) => this._projectShadowForMesh(child, projection, casting));
       return;
     }
-    if (!casting || mesh.visible === false) {
+    const castsNone = !isTank && !Array.isArray(mesh.material) && mesh.material?.userData?.noShadow;
+    if (!casting || mesh.visible === false || castsNone) {
       const shadowMesh = mesh.userData.shadowMesh;
       if (shadowMesh) shadowMesh.visible = false;
       return;

@@ -122,12 +122,31 @@ export function localized(msgid, params) {
 
 let messages = {};
 let currentLocale = 'en';
-let servedLocale = 'en';
+// What Automatic means for this reader: the server's pick from `?lang=` and
+// Accept-Language, without the Settings cookie.
+let browserLocale = 'en';
 let locales = [{ id: 'en', name: 'English' }];
 const listeners = new Set();
 
-const STORAGE_KEY = 'locale';
+// Settings' choice, in a cookie so `/help`, `/list` and the game's first paint
+// all follow it (server/l10n.cjs reads it). No cookie is Automatic.
+const LOCALE_COOKIE = 'bzo_lang';
+const LOCALE_COOKIE_MAX_AGE = 400 * 24 * 60 * 60;
+// Where the choice lived before the cookie, moved over once.
+const LEGACY_STORAGE_KEY = 'locale';
 export const AUTOMATIC_LOCALE = 'auto';
+
+function readLocaleCookie() {
+  const match = document.cookie.match(new RegExp(`(?:^|;\\s*)${LOCALE_COOKIE}=([^;]*)`));
+  return match ? decodeURIComponent(match[1]) : null;
+}
+
+function writeLocaleCookie(locale) {
+  const secure = document.location.protocol === 'https:' ? '; Secure' : '';
+  document.cookie = locale
+    ? `${LOCALE_COOKIE}=${encodeURIComponent(locale)}; Path=/; Max-Age=${LOCALE_COOKIE_MAX_AGE}; SameSite=Lax${secure}`
+    : `${LOCALE_COOKIE}=; Path=/; Max-Age=0; SameSite=Lax${secure}`;
+}
 
 export function t(msgid, params) {
   return formatMessage(messages[msgid] || msgid, params, (inner) => messages[inner] || inner);
@@ -159,24 +178,20 @@ export function onLocaleChange(listener) {
   return () => listeners.delete(listener);
 }
 
-// What the player chose in Settings: a locale id, or `auto` to follow what the
-// server negotiated from Accept-Language and `?lang=`.
+// What the player chose in Settings: a locale id, or `auto` to follow the
+// browser.
 export function getLocalePreference() {
-  try {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    return stored && locales.some((entry) => entry.id === stored) ? stored : AUTOMATIC_LOCALE;
-  } catch {
-    return AUTOMATIC_LOCALE;
-  }
+  const chosen = readLocaleCookie();
+  return chosen && locales.some((entry) => entry.id === chosen) ? chosen : AUTOMATIC_LOCALE;
 }
 
+// Choosing Automatic clears the cookie, and so does choosing the language the
+// browser already asks for: a choice that only repeats it would pin the game to
+// it after the browser's own setting moved on.
 export async function setLocalePreference(choice) {
-  try {
-    localStorage.setItem(STORAGE_KEY, choice);
-  } catch {
-    // Private browsing: the choice lasts for this page only.
-  }
-  await setLocale(choice === AUTOMATIC_LOCALE ? servedLocale : choice);
+  const automatic = choice === AUTOMATIC_LOCALE || choice === browserLocale;
+  writeLocaleCookie(automatic ? null : choice);
+  await setLocale(automatic ? browserLocale : choice);
 }
 
 function applyCatalog(catalog) {
@@ -246,11 +261,18 @@ function initFromPage() {
   const inline = document.getElementById('bzo-l10n');
   if (!inline) return;
   const catalog = JSON.parse(inline.textContent);
-  servedLocale = catalog.locale;
+  browserLocale = catalog.browser;
   applyCatalog(catalog);
-  const preference = getLocalePreference();
-  if (preference !== AUTOMATIC_LOCALE && preference !== servedLocale) {
-    setLocale(preference).catch((error) => console.warn(error.message));
+  let legacy = null;
+  try {
+    legacy = localStorage.getItem(LEGACY_STORAGE_KEY);
+    localStorage.removeItem(LEGACY_STORAGE_KEY);
+  } catch {
+    // No storage: nothing to move.
+  }
+  if (legacy && legacy !== AUTOMATIC_LOCALE && readLocaleCookie() === null
+    && locales.some((entry) => entry.id === legacy)) {
+    setLocalePreference(legacy).catch((error) => console.warn(error.message));
   }
 }
 

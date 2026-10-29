@@ -5,6 +5,7 @@
  * See LICENSE or https://www.gnu.org/licenses/agpl-3.0.html
  */
 import * as THREE from 'three';
+import { DISPLAY_OUTPUT_COLOR_SPACE } from './color-management.mjs';
 import { AnaglyphEffect } from './anaglyph.js';
 import { xrState } from './webxr.js';
 import { markFramePhase, noteProgramCount } from './perf.js';
@@ -334,6 +335,9 @@ const GROUND_GRID_RENDER_ORDER = -1;
 // the quadratic term. Closer in upstream flattens at 1/c where Three keeps
 // climbing, and both are far past white either way.
 // Constant, linear, quadratic; shared with the ground receiver pass.
+const CAMERA_NEAR = 1;
+const CAMERA_NEAR_INSIDE_TANK = 0.25;
+const CAMERA_NEAR_XR = 0.1;
 export const BZFLAG_LIGHT_ATTENUATION = [0.05, 0.0, 0.03];
 const GAME_UP = new THREE.Vector3(0, 0, 1);
 const THREE_UP = new THREE.Vector3(0, 1, 0);
@@ -523,7 +527,7 @@ class RenderManager {
     const viewport = this._getViewportSize();
 
     const verticalFov = this._getVerticalFovForAspect(viewport.width / viewport.height);
-    this.camera = new THREE.PerspectiveCamera(verticalFov, viewport.width / viewport.height, 0.1, 1000);
+    this.camera = new THREE.PerspectiveCamera(verticalFov, viewport.width / viewport.height, CAMERA_NEAR, 1000);
     this.camera.position.set(0, 15, 20);
     this.camera.lookAt(0, 0, 0);
     this.scene.add(this.camera);
@@ -545,6 +549,7 @@ class RenderManager {
       throw wrappedError;
     }
 
+    this.renderer.outputColorSpace = DISPLAY_OUTPUT_COLOR_SPACE;
     this.renderer.xr.enabled = true;
     // Set before any session starts, because it is read when the session builds
     // its framebuffer and changing it afterwards does nothing.
@@ -1088,6 +1093,19 @@ class RenderManager {
     markFramePhase('matrix');
   }
 
+  // Upstream's near planes (`playing.cxx:175-176`): 1, or 0.25 from inside a
+  // tank whose own hull is drawn. Depth precision at range goes as the near
+  // plane, so a smaller one loses layers a hair apart -- a map's ground
+  // sheets stacked 0.01 high flicker into each other a few hundred units out.
+  // XR keeps 0.1, for the panels and hands within a metre of the eyes.
+  _setNearPlane(insideTank) {
+    let near = insideTank ? CAMERA_NEAR_INSIDE_TANK : CAMERA_NEAR;
+    if (xrState.enabled) near = CAMERA_NEAR_XR;
+    if (this.camera.near === near) return;
+    this.camera.near = near;
+    this.camera.updateProjectionMatrix();
+  }
+
   getScene() {
     return this.scene;
   }
@@ -1277,8 +1295,11 @@ class RenderManager {
     this.worldGroup.position.set(0 - at.x, 0 - at.y - drop, 0 - at.z);
   }
 
-  updateCamera({ cameraMode, myTank, azimuth, deathFollowTarget, roamFraming }) {
+  updateCamera({ cameraMode, myTank, azimuth, deathFollowTarget, roamFraming, roamInsideTank = false }) {
     const heading = azimuth || 0;
+    if (this.camera) {
+      this._setNearPlane(cameraMode === 'first-person' || (cameraMode === 'roam' && roamInsideTank));
+    }
     // Cleared here rather than in each branch that is not the world overview,
     // so a camera that never thinks about clouds cannot leave them hidden. The
     // one branch that wants them gone sets it again below.

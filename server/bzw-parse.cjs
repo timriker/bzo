@@ -337,6 +337,7 @@ const bzwFaceMaterial = (m) => ({
   color: m.color,
   noRadar: m.noRadar,
   noLighting: m.noLighting,
+  noShadow: !!m.noShadow,
   dynamicColor: m.dynamicColor ?? null,
   textureMatrix: m.textureMatrix ?? null,
   specular: m.specular ?? null,
@@ -4366,6 +4367,7 @@ function parseBZWMap(filename, { quiet = false, extraMessages = [], text: givenT
           next.color = request.materialOverride.color;
           next.noRadar = request.materialOverride.noRadar;
           next.noLighting = request.materialOverride.noLighting;
+          next.noShadow = request.materialOverride.noShadow;
           next.specular = request.materialOverride.specular;
           next.emission = request.materialOverride.emission;
           next.shininess = request.materialOverride.shininess;
@@ -5571,8 +5573,9 @@ function parseBZWMap(filename, { quiet = false, extraMessages = [], text: givenT
 
 // Which layout a world file is in. Raised whenever a parse of the same map
 // would come out different, so a server does not restore a world it wrote
-// in an older one: 2 is upstream's frame (#182).
-const WORLD_FORMAT = 3;
+// in an older one: 2 is upstream's frame (#182), 4 keeps a mesh face's
+// `nolighting`, 5 its `noshadow`.
+const WORLD_FORMAT = 5;
 
 // `instanced 18/22 groups, 15 templates, 52 faces` -- group instances drawn
 // from a shared template rather than a copy apiece (#153).

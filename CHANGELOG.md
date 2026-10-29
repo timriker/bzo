@@ -6,6 +6,36 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
 
 ## [Unreleased]
 
+### Added
+- `/list`, and the frame and game summary of `/help`, in the reader's
+  language.
+- A `?viewmap=` link to a remote server's map no longer downloads the world
+  again when the cached copy is over an hour old: it asks the server's world
+  hash first, and downloads only if the world has changed.
+- **Settings > Language** now carries to `/help` and `/list` too. Choosing
+  Automatic, or the language the browser already asks for, clears it, so the
+  game follows the browser again.
+- `/renderer-bench.html`, linked from `/test.html`: one map drawn by three's
+  WebGL renderer or its WebGPU one, timing each frame, and
+  `/api/world/file/<file>` to name a map for it.
+
+### Changed
+- The world is lit the way BZFlag lights it: colours, lights and textures
+  are mixed as the numbers on screen, a light of 1 lights a face fully, and
+  the lit colour stops at the texture's own. Shaded faces are darker and
+  maps have upstream's contrast, where they read washed out before.
+
+### Fixed
+- A face whose material says `noshadow` casts no shadow, as in BZFlag. A
+  map's see-through ground layers -- snow, leaves, puddles -- threw shadows
+  the size of the map, and the darkening pass greyed them out past a line
+  that followed the camera.
+- The camera's near plane is upstream's: 1, or 0.25 in a first-person view,
+  so surfaces a hair apart stay apart further out (XR keeps 0.1).
+- A mesh face whose material says `nolighting` draws at its full colour, as
+  BZFlag draws it, instead of shaded by the sun: torch flames and other
+  glowing parts no longer look muted, indoors especially.
+
 ## [1.3.71] - 2026-10-29
 
 ### Added

@@ -15,6 +15,9 @@
 // person or a model reads are offered; images, sounds, models, maps and
 // replays are not.
 
+const { html } = require('./l10n.cjs');
+const { N_, formatMessage } = require('../public/js/i18n.mjs');
+
 const REPO_URL = 'https://github.com/timriker/bzo';
 const DOCS_URL = `${REPO_URL}/blob/main/docs`;
 const BZFLAG_URL = 'https://www.bzflag.org/';
@@ -23,9 +26,9 @@ const LICENSE_URL = 'https://www.gnu.org/licenses/agpl-3.0.html';
 const GAME_NAME = 'Battlezone Online';
 // The BZFlag community's Discord server.
 const DISCORD_INVITE_URL = 'https://discord.gg/6DHkggcXM9';
-const GAME_DESCRIPTION = 'Battlezone Online (bzo) is a free, open-source 3D'
+const GAME_DESCRIPTION = N_('Battlezone Online (bzo) is a free, open-source 3D'
   + ' multiplayer tank game that runs in the browser -- on a desktop, a phone'
-  + ' or a VR headset -- and plays with BZFlag clients and servers.';
+  + ' or a VR headset -- and plays with BZFlag clients and servers.');
 
 // The pages offered, in the order a sitemap and llms.txt list them.
 const PAGES = [
@@ -43,9 +46,12 @@ function escapeHtml(text) {
     .replace(/'/g, '&#39;');
 }
 
-// A server's own line about itself, after the game's.
-function serverDescription(title) {
-  return title ? `${GAME_DESCRIPTION} This server: ${title}.` : GAME_DESCRIPTION;
+// A server's own line about itself, after the game's, in the language of the
+// page it heads (`l10n.translator`); English for llms.txt and anything else
+// that passes no `t`. The operator's title is theirs and is never translated.
+function serverDescription(title, t = formatMessage) {
+  const game = t(GAME_DESCRIPTION);
+  return title ? t('{game} This server: {title}.', { game, title }) : game;
 }
 
 // JSON inside a <script>: `</` would end the element early.
@@ -215,17 +221,22 @@ function markdownToHtml(markdown, { translate = (text) => text, markers = {}, ..
 }
 
 // `/help` and `/help/<page>`: the help pages (server/help-docs.cjs), already
-// rendered in the reader's language, each under its own heading.
-function helpPage({ base, name, description, version, pages, path = '/help', lang = 'en', discordLink = false }) {
-  const title = pages.length === 1 ? `${pages[0].title} -- ${name}` : `Help -- ${name}`;
+// rendered in the reader's language, each under its own heading, in a frame
+// whose words `t` translates (`l10n.translator`).
+function helpPage({
+  base, name, description, version, pages, path = '/help', lang = 'en', dir = 'ltr', discordLink = false, t,
+}) {
+  const title = pages.length === 1
+    ? t('{page} -- {name}', { page: pages[0].title, name })
+    : t('Help -- {name}', { name });
   const head = pageHead({
     base, path, title, description,
     jsonLd: [gameJsonLd({ base, name, description, version })],
   });
   const single = pages.length === 1;
-  const nav = single ? '<a href="/help">Help</a>' : pages.map((page) => `<a href="#${page.slug}">${escapeHtml(page.title)}</a>`).join(' · ');
+  const nav = single ? `<a href="/help">${escapeHtml(t('Help'))}</a>` : pages.map((page) => `<a href="#${page.slug}">${escapeHtml(page.title)}</a>`).join(' · ');
   return `<!doctype html>
-<html lang="${escapeHtml(lang)}">
+<html lang="${escapeHtml(lang)}" dir="${escapeHtml(dir)}">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -251,14 +262,15 @@ ${head}
 <body>
 <h1>${escapeHtml(name)}</h1>
 <p>${escapeHtml(description)}</p>
-<nav><a href="/">Play</a> · <a href="/list">Servers</a> · ${nav}${single ? '' : ' · <a href="#discord">Discord</a>'} · <a href="/source">Source</a></nav>
+<nav><a href="/">${escapeHtml(t('Play'))}</a> · <a href="/list">${escapeHtml(t('Servers'))}</a> · ${nav}${single ? '' : ' · <a href="#discord">Discord</a>'} · <a href="/source">${escapeHtml(t('Source'))}</a></nav>
 ${pages.map((page) => `<h2 id="${page.slug}"><a href="/help/${page.slug}">${escapeHtml(page.title)}</a></h2>\n${page.html}`).join('\n')}
 ${single ? '' : `<h2 id="discord">Discord</h2>
-<p>Talk with other players on the <a href="${DISCORD_INVITE_URL}">BZFlag Discord</a>.${discordLink
-    ? ' Once you are there, <a href="/discord/link">link your bzflag.org account</a> for the BZFlag player role,'
-      + ' and your callsign as your name there.'
+<p>${html(t('Talk with other players on the {discord}.'), { discord: `<a href="${DISCORD_INVITE_URL}">BZFlag Discord</a>` })}${discordLink
+    ? ` ${html(t('Once you are there, {link} for the BZFlag player role, and your callsign as your name there.'), {
+      link: `<a href="/discord/link">${escapeHtml(t('link your bzflag.org account'))}</a>`,
+    })}`
     : ''}</p>`}
-<p>${escapeHtml(GAME_NAME)} ${escapeHtml(version)} · <a href="${REPO_URL}">Source</a>, AGPL-3.0</p>
+<p>${escapeHtml(GAME_NAME)} ${escapeHtml(version)} · <a href="${REPO_URL}">${escapeHtml(t('Source'))}</a>, AGPL-3.0</p>
 </body>
 </html>
 `;

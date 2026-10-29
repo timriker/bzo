@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>bzo renderer bench</title>
+  <style>
+    html, body { margin: 0; height: 100%; overflow: hidden; background: #000; }
+    #benchReport { position: fixed; top: 8px; left: 8px; z-index: 10; margin: 0; padding: 8px;
+      color: #cfc; background: rgba(0, 0, 0, 0.7); font: 13px monospace; white-space: pre; }
+  </style>
+</head>
+<body>
+  <pre id="benchReport">loading...</pre>
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "/vendor/three/three.module.js",
+        "three/webgpu": "/vendor/three/three.webgpu.js",
+        "three/addons/": "/vendor/three/addons/"
+      }
+    }
+  </script>
+  <script type="module" src="js/renderer-bench.mjs"></script>
+</body>
+</html>

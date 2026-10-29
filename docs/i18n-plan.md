@@ -40,16 +40,19 @@ from the same gettext catalogs BZFlag already ships.
 
 Precedence, highest first:
 
-1. The player's stored choice (`localStorage` key `locale`), when it is not
-   `auto`. They picked it; nothing should second-guess that.
+1. The player's choice in Settings, the `bzo_lang` cookie. They picked it;
+   nothing should second-guess that. A cookie rather than local storage so
+   every page the server renders -- `/help`, `/list`, the game's first paint
+   -- follows it, not only the game.
 2. `?lang=` on the URL. Lets a share-view link carry a language and makes any
    locale testable from a browser that will not send the header.
 3. `Accept-Language`, matched with `req.acceptsLanguages()` against the locales
    found at startup.
 4. `en`.
 
-The server resolves 2-4 while rendering `index.html`, which is already a
-per-request template. Two more markers join `bzo-build`:
+The server resolves all four while rendering `index.html`, which is already a
+per-request template, and hands the client what 2-4 alone pick as `browser`,
+which is what Automatic means. Two more markers join `bzo-build`:
 
 - `<html lang="en">` becomes the negotiated tag and its `dir`, so screen
   readers, spellcheck and CSS `:lang()` are right from the first byte.
@@ -63,9 +66,9 @@ without a reload.
 
 Two cache rules follow and are easy to miss:
 
-- The index response must carry `Vary: Accept-Language` alongside its existing
-  `Cache-Control: no-cache`, or a proxy will hand one player's German page to
-  the next player. `Vary: User-Agent` is already set elsewhere for a similar
+- Every negotiated response carries `Vary: Accept-Language, Cookie` beside its
+  `Cache-Control`, or a proxy will hand one player's German page to the next
+  player. `Vary: User-Agent` is already set elsewhere for a similar
   reason.
 - `sw.js` serves `/` network-first, so a negotiated page is normal. Only the
   offline fallback can be in a stale language. That is acceptable and should be
@@ -164,8 +167,11 @@ Settings gains one row, matching upstream's Options menu:
 { id: 'languageBtn', label: 'Language', kind: 'choice' }
 ```
 
-cycling Automatic and the available locales, stored in `localStorage` under
-`locale`. Automatic means "follow `Accept-Language`" and is the default.
+cycling Automatic and the available locales. Automatic, the default, means
+"follow the browser" and is no cookie at all; choosing the language the
+browser already asks for clears the cookie too, so a choice that only repeats
+the browser does not pin the game once the browser's setting moves on. A
+choice an older client left in `localStorage` is moved to the cookie once.
 
 ## Where Each String Lives
 
@@ -353,6 +359,18 @@ Pages are translated a paragraph at a time, as po4a would, without po4a:
   `/help` stays `en` until a locale's doc catalog has anything in it
 - heading anchors stay English, so a link to `controls.md#hunting` works in
   every language
+
+## Pages the Server Renders
+
+`/list` and `/help` negotiate the reader's language as the game page does,
+send `Vary: Accept-Language`, and translate with `l10n.translator(locale)` --
+a `t` like the client's, so `l10n-update` extracts their strings with
+everything else. Server names, maps, callsigns and addresses are data and
+stay as they are. `/list`'s browser script reads its strings from a JSON
+block the page embeds, built from the script's own `t('...')` calls
+(`l10n.scriptMsgids`). The game's summary heads both pages and the game
+page's link preview in the reader's language; llms.txt, the sitemap and
+robots.txt stay English for the machines that read them.
 
 ## Asking for Translations
 

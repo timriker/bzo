@@ -131,14 +131,15 @@ function writeMarkupPot(file) {
   fs.writeFileSync(file, entries.join('\n'));
 }
 
-// The client, and the server's replies: `replyToPlayer`'s text and
-// `localized`'s msgid are what a bzo client looks up.
+// The client, the server's replies -- `replyToPlayer`'s text and
+// `localized`'s msgid, which a bzo client looks up -- and the pages the server
+// renders in the reader's language with `t` from `l10n.translator`.
 function sources() {
   const list = (dir, pattern) => fs.readdirSync(path.join(rootDir, dir))
     .filter((name) => pattern.test(name))
     .sort()
     .map((name) => path.join(dir, name));
-  const replies = (file) => /\b(replyToPlayer|localized)\(/.test(fs.readFileSync(path.join(rootDir, file), 'utf8'));
+  const replies = (file) => /\b(replyToPlayer|localized)\(|\bt\('/.test(fs.readFileSync(path.join(rootDir, file), 'utf8'));
   return [...list('public/js', /\.(m?js)$/), ...['server.js', ...list('server', /\.cjs$/)].filter(replies)];
 }
 

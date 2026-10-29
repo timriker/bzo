@@ -736,10 +736,10 @@ function readIndexTemplate() {
   return indexTemplate;
 }
 
-function renderIndex(host, scheme, locale) {
+function renderIndex(host, scheme, locale, browserLocale) {
   const base = `${scheme}://${host}`;
   const title = documentTitle(host);
-  const description = discovery.serverDescription(serverConfig.title);
+  const description = discovery.serverDescription(serverConfig.title, l10n.translator(locale));
   const head = discovery.pageHead({
     base, path: '/', title, description,
     jsonLd: [discovery.gameJsonLd({ base, name: title, description, version: SERVER_VERSION })],
@@ -753,7 +753,7 @@ function renderIndex(host, scheme, locale) {
     )
     .replace(INDEX_BUILD, `<meta name="bzo-build" content="${CLIENT_BUILD}">`)
     .replace(INDEX_LANG, `<html lang="${escapeHtml(l10n.languageTag(locale))}" dir="${l10n.textDirection(locale)}">`)
-    .replace(INDEX_L10N, () => `<script type="application/json" id="bzo-l10n">${l10n.inlineJson(l10n.catalogFor(locale))}</script>`);
+    .replace(INDEX_L10N, () => `<script type="application/json" id="bzo-l10n">${l10n.inlineJson(l10n.catalogFor(locale, browserLocale))}</script>`);
 }
 
 // The scheme and host a page was asked for, for the absolute URLs a preview,
@@ -783,8 +783,9 @@ app.get(['/', '/index.html'], (req, res) => {
   // one conditional request and a bodiless 304.
   res.set('Cache-Control', REVALIDATE);
   // Or a proxy hands one player's Spanish page to the next player.
-  res.vary('Accept-Language');
-  res.type('html').send(renderIndex(host, requestBase(req).split('://')[0], l10n.negotiateLocale(req)));
+  res.vary('Accept-Language').vary('Cookie');
+  res.type('html').send(renderIndex(host, requestBase(req).split('://')[0], l10n.negotiateLocale(req),
+    l10n.negotiateLocale(req, { cookie: false })));
 });
 
 // The same catalog the page inlines, for changing language without a reload.
@@ -1414,6 +1415,24 @@ app.get('/api/world/:hash/summary', async (req, res) => {
   });
 });
 
+// A map's world by its file name, or `live` for the match being played, for
+// pages that name a map rather than a hash (public/renderer-bench.html). An
+// import is found while its world is held; a local map nobody has viewed is
+// converted first, as `?viewmap=` would.
+app.get('/api/world/file/:file', async (req, res) => {
+  const { file } = req.params;
+  const held = MAP_REGISTRY.get(file);
+  const entry = file === 'live' ? LIVE_MAP_ENTRY
+    : held && fs.existsSync(path.join(MAP_CACHE_DIR, `${held.hash}.json`)) ? held
+      : await prepareMapForView(file);
+  if (!entry || !entry.hash) {
+    res.status(404).json({ error: 'no such map' });
+    return;
+  }
+  res.set('Cache-Control', 'no-store');
+  res.json({ file: entry.fileName || MAP_SOURCE, hash: entry.hash, url: entry.url });
+});
+
 // One obstacle's block in its map file (`obstacleSourceFor`), by world hash
 // and its index in that world's `obstacles`.
 app.get('/api/world/:hash/obstacles/:index/source', async (req, res) => {
@@ -1665,8 +1684,8 @@ function describeReportedWorld(world) {
 // what bzo made of it -- the reconstructed `.bzw`, the parsed world, and what
 // that world costs on the wire once brotli has it. A row nobody has imported
 // has none of it, which is itself the answer.
-function describeImportedWorld(host, port) {
-  return describeRelayedWorld(publishWorldFacts(host, port) || {});
+function describeImportedWorld(host, port, t) {
+  return describeRelayedWorld(publishWorldFacts(host, port) || {}, t);
 }
 
 // The same lines for an instance reading the merged list rather than holding
@@ -1686,10 +1705,10 @@ function splitHostPort(target) {
 // labels: the hash is bzo's own, not the one bzfs names a world by, and
 // "World sent"/"World inflated" describe a transfer that never happened --
 // an instance serves the world it already has.
-function describeOwnWorld(world) {
+function describeOwnWorld(world, t) {
   if (!world) return [];
   return [
-    ['Map hash', escapeHtml(world.hash || '')],
+    [t('Map hash'), escapeHtml(world.hash || '')],
     ['bzw/json/br', escapeHtml(joinSizes(world.bzw, world.json, world.brotli))],
   ];
 }
@@ -1722,15 +1741,16 @@ function variablePairs(variables) {
   return variables && typeof variables === 'object' ? Object.entries(variables) : [];
 }
 
-function describeVariableCount(given) {
+function describeVariableCount(given, t) {
   const variables = variablePairs(given);
   if (!variables.length) return '';
   const unread = getUnreadWorldVariables(variables);
   const read = variables.filter(([name]) => !unread.has(name)).length;
   const rows = variables.map(([name, value]) => `<li class="${unread.has(name) ? 'var-unread' : 'var-read'}"`
-    + ` title="${unread.has(name) ? 'ignored by bzo' : 'read by bzo'}">`
+    + ` title="${escapeHtml(unread.has(name) ? t('ignored by bzo') : t('read by bzo'))}">`
     + `${escapeHtml(name)} ${escapeHtml(String(value))}</li>`).join('');
-  return `<details class="vars"><summary>${read}/${variables.length} set</summary><ul>${rows}</ul></details>`;
+  return `<details class="vars"><summary>${escapeHtml(t('{read}/{total} set', { read, total: variables.length }))}</summary>`
+    + `<ul>${rows}</ul></details>`;
 }
 
 // The bzflag.org account a server's key belongs to, as its forum profile: one
@@ -1749,17 +1769,17 @@ function isForumBzid(bzid) {
   return /^\d+$/.test(String(bzid ?? ''));
 }
 
-function describeRelayedWorld(world) {
+function describeRelayedWorld(world, t) {
   return [
-    ['Version', escapeHtml(String(world.version || '').slice(0, 80))],
-    ['BZFlag hash', escapeHtml(world.hash || '')],
+    [t('Version'), escapeHtml(String(world.version || '').slice(0, 80))],
+    [t('BZFlag hash'), escapeHtml(world.hash || '')],
     // A `t` hash is a world bzfs generated rather than read from a file, which
     // usually changes when that server restarts (`isBzfsWorldHash`).
-    ['World', /^t/i.test(world.hash || '') ? 'temporary' : ''],
+    [t('World'), /^t/i.test(world.hash || '') ? escapeHtml(t('temporary')) : ''],
     // How many bzo reads of how many are set; the names open under it, and
     // are in the filter too (`v)`).
-    ['Variables', describeVariableCount(world.variables)],
-    ['sent/inflated', escapeHtml(joinSizes(world.sent, world.inflated))],
+    [t('Variables'), describeVariableCount(world.variables, t)],
+    [t('sent/inflated'), escapeHtml(joinSizes(world.sent, world.inflated))],
     ['bzw/json/br', escapeHtml(joinSizes(world.bzw, world.json, world.brotli))],
   ];
 }
@@ -1803,10 +1823,10 @@ function statMtimeOrBlank(filePath) {
 // PageUp/PageDown is how a fixed-height HUD shows a long list, and a web page
 // scrolls.
 const GAME_STYLE_NAMES = Object.freeze({
-  ClassicCTF: 'Classic Capture-the-Flag',
-  RabbitChase: 'Rabbit Chase',
-  OpenFFA: 'Open (Teamless) Free-For-All',
-  TeamFFA: 'Free-style',
+  ClassicCTF: N_('Classic Capture-the-Flag'),
+  RabbitChase: N_('Rabbit Chase'),
+  OpenFFA: N_('Open (Teamless) Free-For-All'),
+  TeamFFA: N_('Free-style'),
 });
 
 // `BrightColors` (src/3D/FontManager.cxx:40) -- the RGB upstream's own ANSI
@@ -1829,15 +1849,15 @@ const ANSI_DIM_WHITE = '#666';
 // Rarest first, so sorting on this column brings the unusual games up.
 function listGameMark(entry) {
   if (entry.observerMax === 16 && entry.maxPlayers === 200) {
-    return { color: ANSI_RGB.cyan, rank: 3, title: 'Replay server' };
+    return { color: ANSI_RGB.cyan, rank: 3, title: N_('Replay server') };
   }
   if (entry.style === 'ClassicCTF') {
-    return { color: ANSI_RGB.red, rank: 2, title: 'Classic Capture-the-Flag' };
+    return { color: ANSI_RGB.red, rank: 2, title: N_('Classic Capture-the-Flag') };
   }
   if (entry.style === 'RabbitChase') {
-    return { color: ANSI_RGB.white, rank: 1, title: 'Rabbit Chase' };
+    return { color: ANSI_RGB.white, rank: 1, title: N_('Rabbit Chase') };
   }
-  return { color: ANSI_RGB.yellow, rank: 0, title: 'Free-for-all' };
+  return { color: ANSI_RGB.yellow, rank: 0, title: N_('Free-for-all') };
 }
 
 // The description's colour *is* the shot count: purple for zero through
@@ -1870,8 +1890,10 @@ function listOptionLetter(text, on, onColor) {
 function listHashLetter(hash) {
   return listOptionLetter('H', Boolean(hash), ANSI_RGB.white);
 }
-const LIST_HASH_HEADER = `<button class="opt" data-field="hs" data-text`
-  + ` title="World hash: sorts rows sharing a world together, unhashed last">H</button>`;
+function listHashHeader(t) {
+  return `<button class="opt" data-field="hs" data-text`
+    + ` title="${escapeHtml(t('World hash: sorts rows sharing a world together, unhashed last'))}">H</button>`;
+}
 
 function listOptionLetters(bits, imported) {
   const letter = (text, bit, onColor) => listOptionLetter(text, (bits & bit) !== 0, onColor);
@@ -1889,14 +1911,14 @@ function listOptionLetters(bits, imported) {
 // figure would only invite reading it as more exact than a report cadence can
 // make it. Nothing at all when no boot has been observed -- a blank line is
 // honest where a zero would not be.
-function formatUptime(since, now = Date.now()) {
+function formatUptime(since, t, now = Date.now()) {
   if (!Number.isFinite(since)) return '';
   const minutes = Math.floor((now - since) / 60000);
-  if (minutes < 1) return 'just started';
-  if (minutes < 60) return `${minutes}m`;
+  if (minutes < 1) return t('just started');
+  if (minutes < 60) return t('{minutes}m', { minutes });
   const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours}h ${minutes % 60}m`;
-  return `${Math.floor(hours / 24)}d ${hours % 24}h`;
+  if (hours < 24) return t('{hours}h {minutes}m', { hours, minutes: minutes % 60 });
+  return t('{days}d {hours}h', { days: Math.floor(hours / 24), hours: hours % 24 });
 }
 
 // h:mm:ss, m:ss or 0:ss, as upstream formats a time limit
@@ -1920,7 +1942,7 @@ function listTeamCell(count, max, maxPlayers) {
   return `${count}/${max}`;
 }
 
-const LIST_TEAM_LABELS = Object.freeze(['Rogue', 'Red', 'Green', 'Blue', 'Purple', 'Observers']);
+const LIST_TEAM_LABELS = Object.freeze([N_('Rogue'), N_('Red'), N_('Green'), N_('Blue'), N_('Purple'), N_('Observers')]);
 
 // How wide a numeric column has to be: its own header, or its widest value,
 // whichever needs more characters. The rows are monospace, so `ch` is exact
@@ -1938,13 +1960,16 @@ function listColumnWidth(header, values) {
 // are playing on them. Observers are not players and are counted nowhere here
 // -- the same line `-mp` itself draws, where the playing limit caps the tanks
 // and says nothing about who is watching (CmdLineOptions.cxx:458).
-function listHeadingCount(entries) {
-  if (!entries.length) return 'none';
+function listHeadingCount(entries, t) {
+  if (!entries.length) return t('none');
   const players = entries.reduce((sum, entry) => sum + (Number(entry.players) || 0), 0);
   const bots = entries.reduce((sum, entry) => sum + (Number(entry.bots) || 0), 0);
-  return `${entries.length} with ${players} ${players === 1 ? 'player' : 'players'}`
-    + (bots > 0 ? `, ${bots} ${bots === 1 ? 'bot' : 'bots'}` : '')
-    + missingOverviewCount(entries);
+  const servers = entries.length;
+  return (players === 1
+    ? t('{servers} with {players} player', { servers, players })
+    : t('{servers} with {players} players', { servers, players }))
+    + (bots > 0 ? (bots === 1 ? t(', {bots} bot', { bots }) : t(', {bots} bots', { bots })) : '')
+    + missingOverviewCount(entries, t);
 }
 
 // How many rows in a table are still waiting for their overview picture, said
@@ -1952,14 +1977,14 @@ function listHeadingCount(entries) {
 // at all and is not waiting for anything; `null` is one whose picture has not
 // been drawn yet, which for a bzfs row means nobody has imported that world
 // and for a bzo row that the list server has not fetched it.
-function missingOverviewCount(entries) {
+function missingOverviewCount(entries, t) {
   const waiting = entries.filter((entry) => entry.overviewUrl === null).length;
-  return waiting ? `, ${waiting} without overview` : '';
+  return waiting ? t(', {waiting} without overview', { waiting }) : '';
 }
 
 // The readout pane for one row: upstream's own panel, in upstream's order,
 // plus the handful of fields only bzo has (`extras`).
-function renderListReadout(entry, hidden) {
+function renderListReadout(entry, hidden, t) {
   const bits = entry.gameOptionsBits || 0;
   const has = (bit) => (bits & bit) !== 0;
   const counts = Array.isArray(entry.teamCounts) ? entry.teamCounts : [];
@@ -1969,7 +1994,7 @@ function renderListReadout(entry, hidden) {
   // which is what stops the pane changing height as the selection moves down
   // the list.
   const teamRows = LIST_TEAM_LABELS.map((label, index) => `<div class="paneRow">`
-    + `<span>${label}</span>`
+    + `<span>${escapeHtml(t(label))}</span>`
     + `<span>${escapeHtml(listTeamCell(counts[index], maxima[index], entry.maxPlayers))}</span>`
     + `</div>`).join('');
 
@@ -1980,43 +2005,49 @@ function renderListReadout(entry, hidden) {
   // twice), so the second always overwrites the first, and it takes the
   // timeout's plural from `shakeWins`.
   const words = [];
-  if (has(GAME_OPTION_BITS.flags)) words.push('Super Flags');
-  if (has(GAME_OPTION_BITS.antidote)) words.push('Antidote Flags');
+  if (has(GAME_OPTION_BITS.flags)) words.push(t('Super Flags'));
+  if (has(GAME_OPTION_BITS.antidote)) words.push(t('Antidote Flags'));
   if (has(GAME_OPTION_BITS.shaking) && entry.shakeTimeout > 0) {
     const secs = (entry.shakeTimeout / 10).toFixed(1);
-    words.push(`${secs} ${entry.shakeTimeout === 10 ? 'sec' : 'secs'} To Drop Bad Flag`);
+    words.push(entry.shakeTimeout === 10
+      ? t('{secs} sec To Drop Bad Flag', { secs })
+      : t('{secs} secs To Drop Bad Flag', { secs }));
   }
   if (has(GAME_OPTION_BITS.shaking) && entry.shakeWins > 0) {
-    words.push(`${entry.shakeWins} ${entry.shakeWins === 1 ? 'Win' : 'Wins'} Drops Bad Flag`);
+    const wins = entry.shakeWins;
+    words.push(wins === 1 ? t('{wins} Win Drops Bad Flag', { wins }) : t('{wins} Wins Drops Bad Flag', { wins }));
   }
-  if (has(GAME_OPTION_BITS.noTeamKills)) words.push('No Teamkills');
-  if (has(GAME_OPTION_BITS.jumping)) words.push('Jumping');
-  if (has(GAME_OPTION_BITS.ricochet)) words.push('Ricochet');
-  if (has(GAME_OPTION_BITS.handicap)) words.push('Handicap');
-  if (has(GAME_OPTION_BITS.inertia)) words.push('Inertia');
+  if (has(GAME_OPTION_BITS.noTeamKills)) words.push(t('No Teamkills'));
+  if (has(GAME_OPTION_BITS.jumping)) words.push(t('Jumping'));
+  if (has(GAME_OPTION_BITS.ricochet)) words.push(t('Ricochet'));
+  if (has(GAME_OPTION_BITS.handicap)) words.push(t('Handicap'));
+  if (has(GAME_OPTION_BITS.inertia)) words.push(t('Inertia'));
   // Upstream's one switch for both (`-disableBots`: "disallow clients from
   // using autopilot or robots"), so one word for both.
-  if (entry.disableBots) words.push('No Bots');
+  if (entry.disableBots) words.push(t('No Bots'));
   // Whether a player without a bzflag.org login may play and talk there, which
   // no bzfs publishes and bzo learns by asking (`enterAndProbe`). Nothing at
   // all where it has not found out.
-  if (entry.guestWatch === 'yes') words.push('Guests Watch');
-  if (entry.guestWatch === 'no') words.push('No Guests');
-  if (entry.guestSpawn === 'yes') words.push('Guests Play');
-  if (entry.guestSpawn === 'no') words.push('Registered Only');
-  if (entry.guestChat === 'yes') words.push('Guests Chat');
-  if (entry.guestChat === 'no') words.push('Guests Muted');
+  if (entry.guestWatch === 'yes') words.push(t('Guests Watch'));
+  if (entry.guestWatch === 'no') words.push(t('No Guests'));
+  if (entry.guestSpawn === 'yes') words.push(t('Guests Play'));
+  if (entry.guestSpawn === 'no') words.push(t('Registered Only'));
+  if (entry.guestChat === 'yes') words.push(t('Guests Chat'));
+  if (entry.guestChat === 'no') words.push(t('Guests Muted'));
 
   const limits = [
-    ['Time limit', formatMatchDuration(entry.maxTime)],
-    ['Max team score', entry.maxTeamScore > 0 ? String(entry.maxTeamScore) : ''],
-    ['Max player score', entry.maxPlayerScore > 0 ? String(entry.maxPlayerScore) : ''],
+    [t('Time limit'), formatMatchDuration(entry.maxTime)],
+    [t('Max team score'), entry.maxTeamScore > 0 ? String(entry.maxTeamScore) : ''],
+    [t('Max player score'), entry.maxPlayerScore > 0 ? String(entry.maxPlayerScore) : ''],
     ...(entry.extras || []),
   ].filter(([, value]) => value)
     .map(([label, value]) => `<div class="paneRow"><span>${escapeHtml(label)}</span><span>${value}</span></div>`)
     .join('');
 
-  const shots = `${entry.maxShots || 0} ${entry.maxShots === 1 ? 'Shot' : 'Shots'}`;
+  const shots = entry.maxShots === 1
+    ? t('{shots} Shot', { shots: 1 })
+    : t('{shots} Shots', { shots: entry.maxShots || 0 });
+  const style = GAME_STYLE_NAMES[entry.style] ? t(GAME_STYLE_NAMES[entry.style]) : (entry.style || '');
   // Two columns, as upstream's own panel has it: who is playing on the left,
   // what the game is on the right (`ServerMenu.cxx:214-238`), and for a row
   // that can have one, the world's overview picture third. `null` is a world
@@ -2035,22 +2066,22 @@ function renderListReadout(entry, hidden) {
     // whatever observer slots it holds. There is no reliable way to take
     // those back off: plenty of servers report an observer maximum equal to
     // `maxPlayers` outright, which would leave a playing limit of zero.
-    + `<div class="paneRow"><span>Players</span>`
+    + `<div class="paneRow"><span>${escapeHtml(t('Players'))}</span>`
     + `<span>${typeof entry.players === 'number' ? entry.players : '?'}/${entry.maxPlayers || 0}</span></div>`
     // A bzo instance reports these; a bzfs row's are its UDP ping less its
     // list row (`countServerBots`).
-    + (entry.bots > 0 ? `<div class="paneRow"><span>Bots</span><span>${entry.bots}</span></div>` : '')
+    + (entry.bots > 0 ? `<div class="paneRow"><span>${escapeHtml(t('Bots'))}</span><span>${entry.bots}</span></div>` : '')
     + teamRows
     + `</div>`
     + `<div class="paneCol">`
-    + `<p class="paneWords">${escapeHtml(shots)} &middot; ${escapeHtml(GAME_STYLE_NAMES[entry.style] || entry.style || '')}</p>`
+    + `<p class="paneWords">${escapeHtml(shots)} &middot; ${escapeHtml(style)}</p>`
     + (words.length ? `<p class="paneWords">${words.map(escapeHtml).join(' &middot; ')}</p>` : '')
     + limits
     + `</div>`
     + `</div></div>`
     + (entry.overviewUrl === undefined
       ? ''
-      : renderOverview(entry.overviewUrl, entry.desc || entry.addr))
+      : renderOverview(entry.overviewUrl, entry.desc || entry.addr, t))
     + `</div></div>`;
 }
 
@@ -2065,6 +2096,11 @@ function renderListActions(entry, hidden) {
     + `</div>`;
 }
 
+// The filter box over each list.
+function listFilterInput(filterId, t) {
+  return `<input id="${escapeHtml(filterId)}" class="clearable" type="text" placeholder="${escapeHtml(t('Filter…'))}">`;
+}
+
 // The local maps list, given the same shape as the two server lists above: one
 // line per map, a readout pane for the selected one, a sortable header and the
 // filter box. The row carries the three numbers the in-client View picker
@@ -2072,8 +2108,8 @@ function renderListActions(entry, hidden) {
 // carries the rest -- including what that picker only puts in a row tooltip.
 // The pane's third column is the map's own overview picture
 // (`server/map-overview.cjs`).
-function renderMapList(listId, filterId, maps) {
-  if (!maps.length) return `<p class="muted">None.</p>`;
+function renderMapList(listId, filterId, maps, t) {
+  if (!maps.length) return `<p class="muted">${escapeHtml(t('None.'))}</p>`;
   const entries = maps.map((map) => {
     const registered = MAP_REGISTRY.get(map.fileName);
     const stats = registered ? registered.stats : null;
@@ -2109,7 +2145,7 @@ function renderMapList(listId, filterId, maps) {
   // A row is only here once it is registered, or while the background pass is
   // still working through the list -- which is the one case with no stats to
   // read a style off.
-  const mapStyleLabel = (entry) => (entry.stats ? entry.stats.style || '' : 'hashing…');
+  const mapStyleLabel = (entry) => (entry.stats ? entry.stats.style || '' : t('hashing…'));
   const rows = entries.map((entry, index) => {
     const stats = entry.stats;
     // A map still being hashed has no cached world to show, so its row leads
@@ -2128,30 +2164,33 @@ function renderMapList(listId, filterId, maps) {
       + `</a></li>`;
   }).join('\n');
 
+  const objLabel = t('Obj');
+  const facesLabel = t('Faces');
+  const sizeLabel = t('Size');
   const head = `<div class="shead">`
-    + `<button class="num col-obj" data-field="o" title="Obstacles in the world">Obj</button>`
-    + `<button class="num col-fa" data-field="fa" title="Mesh faces in the world">Faces</button>`
-    + `<button class="num col-sz" data-field="sz" title="World size">Size</button>`
-    + LIST_HASH_HEADER
-    + `<button class="name" data-field="n" data-text title="Map file name">Name</button>`
-    + `<button class="name" data-field="d" data-text title="Game style the map sets">Style</button>`
+    + `<button class="num col-obj" data-field="o" title="${escapeHtml(t('Obstacles in the world'))}">${escapeHtml(objLabel)}</button>`
+    + `<button class="num col-fa" data-field="fa" title="${escapeHtml(t('Mesh faces in the world'))}">${escapeHtml(facesLabel)}</button>`
+    + `<button class="num col-sz" data-field="sz" title="${escapeHtml(t('World size'))}">${escapeHtml(sizeLabel)}</button>`
+    + listHashHeader(t)
+    + `<button class="name" data-field="n" data-text title="${escapeHtml(t('Map file name'))}">${escapeHtml(t('Name'))}</button>`
+    + `<button class="name" data-field="d" data-text title="${escapeHtml(t('Game style the map sets'))}">${escapeHtml(t('Style'))}</button>`
     + `</div>`;
 
   // A map still being hashed has no numbers at all, so a blank contributes
   // nothing here and the header word is what sets each of these three.
-  const widths = `--col-obj:${listColumnWidth('Obj', data.map((entry) => entry.o || ''))};`
-    + `--col-fa:${listColumnWidth('Faces', data.map((entry) => entry.fa || ''))};`
-    + `--col-sz:${listColumnWidth('Size', data.map((entry) => entry.sz || ''))}`;
+  const widths = `--col-obj:${listColumnWidth(objLabel, data.map((entry) => entry.o || ''))};`
+    + `--col-fa:${listColumnWidth(facesLabel, data.map((entry) => entry.fa || ''))};`
+    + `--col-sz:${listColumnWidth(sizeLabel, data.map((entry) => entry.sz || ''))}`;
   return `<div class="listWrap" id="${escapeHtml(listId)}" style="${widths}">`
     + `<div class="panes">${entries
-      .map((entry, index) => renderMapReadout(entry, index, index !== 0)).join('\n')}</div>`
+      .map((entry, index) => renderMapReadout(entry, index, index !== 0, t)).join('\n')}</div>`
     + `<div class="listBar">`
-    + `<input id="${escapeHtml(filterId)}" class="clearable" type="text" placeholder="Filter…">`
+    + listFilterInput(filterId, t)
     + entries.map((entry, index) => `<div class="rowActions" id="map-pane-${index}-actions"`
       + `${index !== 0 ? ' hidden' : ''}>`
       + (entry.hashed
-        ? `<a class="action" href="/?viewmap=${encodeURIComponent(entry.file)}">View map</a>`
-        : `<span class="muted">Still hashing</span>`)
+        ? `<a class="action" href="/?viewmap=${encodeURIComponent(entry.file)}">${escapeHtml(t('View map'))}</a>`
+        : `<span class="muted">${escapeHtml(t('Still hashing'))}</span>`)
       + `</div>`).join('')
     + `</div>`
     + head
@@ -2235,13 +2274,13 @@ function localMapOverviewUrl(fileName) {
 // after a boot can reach the page before the picture for a given map exists.
 // The mark rather than a word: the slot is a picture, and a picture that says
 // "not yet" without making anyone read anything is what belongs in it.
-function renderOverview(url, label) {
+function renderOverview(url, label, t) {
   if (!url) {
     return `<div class="overview overviewWaiting">`
       + `<img src="/favicon.svg" alt="" width="64" height="64"></div>`;
   }
   return `<div class="overview"><img src="${escapeHtml(url)}" width="256"`
-    + ` height="256" alt="Overview of ${escapeHtml(label)}" loading="lazy"></div>`;
+    + ` height="256" alt="${escapeHtml(t('Overview of {name}', { name: label }))}" loading="lazy"></div>`;
 }
 
 // A recording's moment, as the Local maps table writes a file's: UTC, to the
@@ -2260,8 +2299,8 @@ function formatReplayLength(seconds) {
 // recording, a pane for the selected one, the sortable header and the filter
 // box. A replay is local to this instance (docs/replay-plan.md), so this
 // list is built here and never published to the list server.
-function renderReplayList(listId, filterId, replays) {
-  if (!replays.length) return `<p class="muted">None.</p>`;
+function renderReplayList(listId, filterId, replays, t) {
+  if (!replays.length) return `<p class="muted">${escapeHtml(t('None.'))}</p>`;
   const data = replays.map((entry) => ({
     a: entry.name,
     d: entry.map || '',
@@ -2273,8 +2312,8 @@ function renderReplayList(listId, filterId, replays) {
   }));
   const rows = replays.map((entry, index) => {
     const summary = entry.summary;
-    const desc = entry.error ? `unreadable: ${entry.error}` : (entry.map || '');
-    const live = entry.playing ? ` -- ${entry.playing.viewers} watching` : '';
+    const desc = entry.error ? t('unreadable: {error}', { error: entry.error }) : (entry.map || '');
+    const live = entry.playing ? t(' -- {viewers} watching', { viewers: entry.playing.viewers }) : '';
     return `<li>`
       + `<a class="srow${index === 0 ? ' selected' : ''}" href="/?replay=${encodeURIComponent(entry.name)}"`
       + ` data-pane="replay-pane-${index}" data-i="${index}">`
@@ -2285,26 +2324,28 @@ function renderReplayList(listId, filterId, replays) {
       + `<span class="desc dim">${escapeHtml(desc + live)}</span>`
       + `</a></li>`;
   }).join('\n');
+  const playersLabel = t('Players');
   const head = `<div class="shead">`
-    + `<button class="num col-date" data-field="t" title="When it was recorded (UTC)">Date</button>`
-    + `<button class="num col-len" data-field="len" title="How long it runs">Length</button>`
-    + `<button class="num col-pl" data-field="pl" title="Players in it, observers not counted">Players</button>`
-    + `<button class="name" data-field="n" data-text title="Replay file name">Name</button>`
-    + `<button class="name" data-field="d" data-text title="The map it was played on">Map</button>`
+    + `<button class="num col-date" data-field="t" title="${escapeHtml(t('When it was recorded (UTC)'))}">${escapeHtml(t('Date'))}</button>`
+    + `<button class="num col-len" data-field="len" title="${escapeHtml(t('How long it runs'))}">${escapeHtml(t('Length'))}</button>`
+    + `<button class="num col-pl" data-field="pl" title="${escapeHtml(t('Players in it, observers not counted'))}">`
+    + `${escapeHtml(playersLabel)}</button>`
+    + `<button class="name" data-field="n" data-text title="${escapeHtml(t('Replay file name'))}">${escapeHtml(t('Name'))}</button>`
+    + `<button class="name" data-field="d" data-text title="${escapeHtml(t('The map it was played on'))}">${escapeHtml(t('Map'))}</button>`
     + `</div>`;
-  const widths = `--col-pl:${listColumnWidth('Players', data.map((entry) => entry.pl || ''))}`;
+  const widths = `--col-pl:${listColumnWidth(playersLabel, data.map((entry) => entry.pl || ''))}`;
   return `<div class="listWrap" id="${escapeHtml(listId)}" style="${widths}">`
     + `<div class="panes">${replays
-      .map((entry, index) => renderReplayReadout(entry, index, index !== 0)).join('\n')}</div>`
+      .map((entry, index) => renderReplayReadout(entry, index, index !== 0, t)).join('\n')}</div>`
     + `<div class="listBar">`
-    + `<input id="${escapeHtml(filterId)}" class="clearable" type="text" placeholder="Filter…">`
+    + listFilterInput(filterId, t)
     + replays.map((entry, index) => `<div class="rowActions" id="replay-pane-${index}-actions"`
       + `${index !== 0 ? ' hidden' : ''}>`
       + (entry.summary
-        ? `<a class="action" href="/?replay=${encodeURIComponent(entry.name)}">Watch</a>`
-        : `<span class="muted">Unreadable</span>`)
+        ? `<a class="action" href="/?replay=${encodeURIComponent(entry.name)}">${escapeHtml(t('Watch'))}</a>`
+        : `<span class="muted">${escapeHtml(t('Unreadable'))}</span>`)
       + (entry.summary && replayLocalMapFile(entry.map)
-        ? ` <a class="action" href="/?viewmap=${encodeURIComponent(replayLocalMapFile(entry.map))}">View map</a>`
+        ? ` <a class="action" href="/?viewmap=${encodeURIComponent(replayLocalMapFile(entry.map))}">${escapeHtml(t('View map'))}</a>`
         : '')
       + `</div>`).join('')
     + `</div>`
@@ -2323,18 +2364,22 @@ function replayLocalMapFile(mapName) {
   return MAP_REGISTRY.has(fileName) && listLocalMapFiles().includes(fileName) ? fileName : null;
 }
 
+// One labelled line of a readout pane, both halves text.
+function paneRow(label, value) {
+  return `<div class="paneRow"><span>${escapeHtml(label)}</span>`
+    + `<span>${escapeHtml(value === undefined || value === null ? '' : String(value))}</span></div>`;
+}
+
 // What the recording is on the left, who was in it on the right, and the map's
 // picture beside them. A player who left early is listed with the score they
 // left with.
-function renderReplayReadout(entry, index, hidden) {
+function renderReplayReadout(entry, index, hidden, t) {
   const summary = entry.summary || { players: [], observers: [] };
-  const row = (label, value) => `<div class="paneRow"><span>${label}</span>`
-    + `<span>${escapeHtml(value === undefined || value === null ? '' : String(value))}</span></div>`;
   const playing = entry.playing
-    ? `${entry.playing.viewers} watching, at ${formatReplayLength(entry.playing.played)}`
+    ? t('{viewers} watching, at {time}', { viewers: entry.playing.viewers, time: formatReplayLength(entry.playing.played) })
     : '';
-  const players = summary.players.map((player) => row(
-    escapeHtml(player.callsign),
+  const players = summary.players.map((player) => paneRow(
+    player.callsign,
     `${player.wins - player.losses} (${player.wins}-${player.losses})`
       + ` ${getTeamFromColorIndex(player.team) || ''}`,
   )).join('');
@@ -2343,19 +2388,19 @@ function renderReplayReadout(entry, index, hidden) {
     + `<p class="paneTitle">${escapeHtml(entry.name)}</p>`
     + `<div class="paneCols">`
     + `<div class="paneCol">`
-    + row('Date', formatReplayDate(summary.start))
-    + row('Length', formatReplayLength(summary.seconds))
-    + row('Map', entry.map || '')
-    + row('Recorded by', summary.recordedBy || '')
-    + row('bzfs', [summary.appVersion, summary.protocol].filter(Boolean).join(' '))
-    + row('Observers', summary.observers.join(', '))
-    + row('Now', playing)
-    + row('Size', entry.size ? formatByteSize(entry.size) : '')
-    + (entry.error ? row('Error', entry.error) : '')
+    + paneRow(t('Date'), formatReplayDate(summary.start))
+    + paneRow(t('Length'), formatReplayLength(summary.seconds))
+    + paneRow(t('Map'), entry.map || '')
+    + paneRow(t('Recorded by'), summary.recordedBy || '')
+    + paneRow('bzfs', [summary.appVersion, summary.protocol].filter(Boolean).join(' '))
+    + paneRow(t('Observers'), summary.observers.join(', '))
+    + paneRow(t('Now'), playing)
+    + paneRow(t('Size'), entry.size ? formatByteSize(entry.size) : '')
+    + (entry.error ? paneRow(t('Error'), entry.error) : '')
     + `</div>`
-    + `<div class="paneCol">${players || row('Players', 'none')}</div>`
+    + `<div class="paneCol">${players || paneRow(t('Players'), t('none'))}</div>`
     + `</div></div>`
-    + renderOverview(entry.overviewUrl, entry.name)
+    + renderOverview(entry.overviewUrl, entry.name, t)
     + `</div></div>`;
 }
 
@@ -2363,40 +2408,39 @@ function renderReplayReadout(entry, index, hidden) {
 // columns a server's pane has -- and the overview picture beside them. Every
 // label is always present, blank where the map says nothing, so the pane keeps
 // its height as the selection moves.
-function renderMapReadout(entry, index, hidden) {
+function renderMapReadout(entry, index, hidden, t) {
   const stats = entry.stats || {};
   const counts = stats.counts || {};
-  const row = (label, value) => `<div class="paneRow"><span>${label}</span>`
-    + `<span>${escapeHtml(value === undefined || value === null ? '' : String(value))}</span></div>`;
   const count = (value) => (value ? String(value) : '');
+  const featureNames = { water: t('water'), weather: t('weather'), ground: t('custom ground') };
   const features = ['water', 'weather', 'ground']
     .filter((key) => stats[key])
-    .map((key) => (key === 'ground' ? 'custom ground' : key))
+    .map((key) => featureNames[key])
     .join(', ');
   return `<div class="pane" id="map-pane-${index}"${hidden ? ' hidden' : ''}>`
     + `<div class="paneMain"><div class="paneBody">`
     + `<p class="paneTitle">${escapeHtml(entry.file)}</p>`
     + `<div class="paneCols">`
     + `<div class="paneCol">`
-    + row('Objects', count(stats.objects))
-    + row('Faces', count(stats.faces))
-    + row('Boxes', count(counts.box))
-    + row('Pyramids', count(counts.pyramid))
-    + row('Meshes', count(counts.mesh))
-    + row('Bases', count(stats.bases))
-    + row('Teleporters', count(stats.teleporters))
+    + paneRow(t('Objects'), count(stats.objects))
+    + paneRow(t('Faces'), count(stats.faces))
+    + paneRow(t('Boxes'), count(counts.box))
+    + paneRow(t('Pyramids'), count(counts.pyramid))
+    + paneRow(t('Meshes'), count(counts.mesh))
+    + paneRow(t('Bases'), count(stats.bases))
+    + paneRow(t('Teleporters'), count(stats.teleporters))
     + `</div>`
     + `<div class="paneCol">`
-    + row('Style', stats.style || '')
-    + row('World size', count(stats.size))
-    + row('Has', features)
-    + row('Hashed', entry.file === 'random' ? 'generated at boot' : (entry.hashed ? 'yes' : 'not yet'))
-    + row('Hash', entry.hash)
-    + row('Modified', entry.modified)
-    + row('bzw/json/br', joinSizes(entry.bzw, entry.json, entry.brotli))
+    + paneRow(t('Style'), stats.style || '')
+    + paneRow(t('World size'), count(stats.size))
+    + paneRow(t('Has'), features)
+    + paneRow(t('Hashed'), entry.file === 'random' ? t('generated at boot') : (entry.hashed ? t('yes') : t('not yet')))
+    + paneRow(t('Hash'), entry.hash)
+    + paneRow(t('Modified'), entry.modified)
+    + paneRow('bzw/json/br', joinSizes(entry.bzw, entry.json, entry.brotli))
     + `</div>`
     + `</div></div>`
-    + renderOverview(entry.overviewUrl, entry.file)
+    + renderOverview(entry.overviewUrl, entry.file, t)
     + `</div></div>`;
 }
 
@@ -2405,80 +2449,88 @@ function renderMapReadout(entry, index, hidden) {
 // in-client help menu prints, in the place the person typing a filter is
 // looking. Folded away until asked for: it is a page of syntax beside a box
 // most visitors will type a word into.
-function renderFilterHelp(listId) {
+function renderFilterHelp(listId, t) {
+  const code = (text) => `<code>${text}</code>`;
   const group = (title, rows) => `<p class="helpGroup">${title}</p>`
     + rows.map(([names, what]) => `<div class="helpRow">`
       + `<span><code>${names}</code></span><span>${what}</span></div>`).join('');
   return `<div class="filterHelp" id="${escapeHtml(listId)}-help" hidden>`
-    + `<p>Plain text is a glob over the address, description, version, hash and owner --`
-    + ` <code>league</code>, <code>*.org</code>, <code>bz?.</code> -- and a word`
-    + ` with no <code>*</code> or <code>?</code> in it is wrapped in both, so it`
-    + ` matches anywhere. A leading <code>/</code> starts filters instead:`
-    + ` comma-separated, combined with <em>and</em>. A second <code>/</code>`
-    + ` starts another set, and a server matching either set is shown.`
-    + ` <code>#</code> begins a comment.</p>`
-    + group('Booleans -- <code>+name</code> for on, <code>-name</code> for off', [
-      ['F ffa', 'Free-for-all with teams'],
-      ['O offa', 'Open free-for-all, no teams'],
-      ['C ctf', 'Capture-the-flag'],
-      ['R rabbit', 'Rabbit chase'],
-      ['j jump', 'Tanks can jump unaided'],
-      ['r rico', 'Shots ricochet'],
-      ['h handicap', 'Score affects tank performance'],
-      ['i inertia', 'Tanks have inertia'],
-      ['a antidote', 'Antidote flags are spawned'],
-      ['P replay', 'A replay server'],
-      ['ov overview', 'The pane has a map overview'],
-      ['t temp', 'A generated world, which usually changes on restart'],
-      ['b bots', 'Autopilot and robots allowed'],
-      ['gw guestWatch', 'Players with no bzflag.org login may join to observe'],
-      ['gu guests', 'Players with no bzflag.org login may spawn'],
-      ['gc guestChat', 'Players with no bzflag.org login may chat'],
+    + `<p>${l10n.html(t('Plain text is a glob over the address, description, version, hash and owner -- {examples} -- and a word with no {star} or {query} in it is wrapped in both, so it matches anywhere.'), {
+      examples: `${code('league')}, ${code('*.org')}, ${code('bz?.')}`, star: code('*'), query: code('?'),
+    })}`
+    + ` ${l10n.html(t('A leading {slash} starts filters instead: comma-separated, combined with {and}.'), {
+      slash: code('/'), and: `<em>${escapeHtml(t('and'))}</em>`,
+    })}`
+    + ` ${l10n.html(t('A second {slash} starts another set, and a server matching either set is shown.'), { slash: code('/') })}`
+    + ` ${l10n.html(t('{hash} begins a comment.'), { hash: code('#') })}</p>`
+    + group(l10n.html(t('Booleans -- {on} for on, {off} for off'), { on: code('+name'), off: code('-name') }), [
+      ['F ffa', escapeHtml(t('Free-for-all with teams'))],
+      ['O offa', escapeHtml(t('Open free-for-all, no teams'))],
+      ['C ctf', escapeHtml(t('Capture-the-flag'))],
+      ['R rabbit', escapeHtml(t('Rabbit chase'))],
+      ['j jump', escapeHtml(t('Tanks can jump unaided'))],
+      ['r rico', escapeHtml(t('Shots ricochet'))],
+      ['h handicap', escapeHtml(t('Score affects tank performance'))],
+      ['i inertia', escapeHtml(t('Tanks have inertia'))],
+      ['a antidote', escapeHtml(t('Antidote flags are spawned'))],
+      ['P replay', escapeHtml(t('A replay server'))],
+      ['ov overview', escapeHtml(t('The pane has a map overview'))],
+      ['t temp', escapeHtml(t('A generated world, which usually changes on restart'))],
+      ['b bots', escapeHtml(t('Autopilot and robots allowed'))],
+      ['gw guestWatch', escapeHtml(t('Players with no bzflag.org login may join to observe'))],
+      ['gu guests', escapeHtml(t('Players with no bzflag.org login may spawn'))],
+      ['gc guestChat', escapeHtml(t('Players with no bzflag.org login may chat'))],
     ])
-    + `<p>For <code>bots</code>, <code>guestWatch</code>, <code>guests</code> and <code>guestChat</code>,`
-    + ` a server bzo has not found out about matches neither <code>+</code> nor`
-    + ` <code>-</code>.</p>`
-    + group('Numbers -- a name, then <code>&lt;</code> <code>&lt;=</code>'
-      + ' <code>&gt;</code> <code>&gt;=</code> <code>=</code>, then a number', [
-      ['s shots', 'Active shots a tank may have'],
-      ['p players', 'Players now, observers excluded'],
-      ['bc botCount', 'Bots now'],
-      ['f freeSlots', 'Playing slots still free'],
-      ['vt validTeams', 'Colour teams the server offers'],
-      ['mt maxTime', 'Time limit, in seconds'],
-      ['mp maxPlayers', 'The server\'s own player ceiling'],
-      ['mts maxTeamScore', 'Team score that ends the game'],
-      ['mps maxPlayerScore', 'Player score that ends the game'],
-      ['sw shakeWins', 'Kills that shed a bad flag'],
-      ['st shakeTime', 'Tenths of a second to shed a bad flag'],
-      ['Rp rp gp bp pp op', 'Players on rogue, red, green, blue, purple, observer'],
-      ['Rm rm gm bm pm om', 'That team\'s maximum'],
-      ['Rf rf gf bf pf of', 'That team\'s free slots'],
+    + `<p>${l10n.html(t('For {bots}, {guestWatch}, {guests} and {guestChat}, a server bzo has not found out about matches neither {plus} nor {minus}.'), {
+      bots: code('bots'), guestWatch: code('guestWatch'), guests: code('guests'), guestChat: code('guestChat'),
+      plus: code('+'), minus: code('-'),
+    })}</p>`
+    + group(l10n.html(t('Numbers -- a name, then {operators}, then a number'), {
+      operators: ['&lt;', '&lt;=', '&gt;', '&gt;=', '='].map(code).join(' '),
+    }), [
+      ['s shots', escapeHtml(t('Active shots a tank may have'))],
+      ['p players', escapeHtml(t('Players now, observers excluded'))],
+      ['bc botCount', escapeHtml(t('Bots now'))],
+      ['f freeSlots', escapeHtml(t('Playing slots still free'))],
+      ['vt validTeams', escapeHtml(t('Colour teams the server offers'))],
+      ['mt maxTime', escapeHtml(t('Time limit, in seconds'))],
+      ['mp maxPlayers', escapeHtml(t("The server's own player ceiling"))],
+      ['mts maxTeamScore', escapeHtml(t('Team score that ends the game'))],
+      ['mps maxPlayerScore', escapeHtml(t('Player score that ends the game'))],
+      ['sw shakeWins', escapeHtml(t('Kills that shed a bad flag'))],
+      ['st shakeTime', escapeHtml(t('Tenths of a second to shed a bad flag'))],
+      ['Rp rp gp bp pp op', escapeHtml(t('Players on rogue, red, green, blue, purple, observer'))],
+      ['Rm rm gm bm pm om', escapeHtml(t("That team's maximum"))],
+      ['Rf rf gf bf pf of', escapeHtml(t("That team's free slots"))],
     ])
-    + group('Patterns -- a name, then <code>)</code> for a glob or'
-      + ' <code>]</code> for a regular expression', [
-      ['a addr address', 'The address, host and port'],
-      ['d desc description', 'The description'],
-      ['ad addrdesc', 'Either one'],
-      ['hs hash', 'The world hash the pane shows'],
-      ['ve ver version', 'The server\'s version: <code>bzo-*</code> or bzfs\'s own build'],
-      ['ow owner', 'The bzflag.org account that registered it'],
-      ['ip', 'The IP address the list server has for it'],
-      ['v var', 'Any one world variable it sets, as <code>name=value</code>'],
+    + group(l10n.html(t('Patterns -- a name, then {glob} for a glob or {regex} for a regular expression'), {
+      glob: code(')'), regex: code(']'),
+    }), [
+      ['a addr address', escapeHtml(t('The address, host and port'))],
+      ['d desc description', escapeHtml(t('The description'))],
+      ['ad addrdesc', escapeHtml(t('Either one'))],
+      ['hs hash', escapeHtml(t('The world hash the pane shows'))],
+      ['ve ver version', l10n.html(t("The server's version: {bzo} or bzfs's own build"), { bzo: code('bzo-*') })],
+      ['ow owner', escapeHtml(t('The bzflag.org account that registered it'))],
+      ['ip', escapeHtml(t('The IP address the list server has for it'))],
+      ['v var', l10n.html(t('Any one world variable it sets, as {pair}'), { pair: code('name=value') })],
     ])
-    + `<p>A capitalised pattern name matches case-sensitively:`
-    + ` <code>d)league</code> ignores case, <code>D)League</code> does not.</p>`
-    + group('Examples', [
-      ['/p&gt;1,s&gt;1,s&lt;4', 'Two or three shots, and somebody playing'],
-      ['/+ctf,vt=2', 'Capture-the-flag between exactly two teams'],
-      ['/d)*league*', 'Leagues, by description'],
-      ['/ve)bzo-*', 'bzo servers only'],
-      ['/ve]^$', 'No version known yet'],
-      ['/op&gt;0', 'Somebody is watching'],
-      ['/+rabbit,+rico,s=3', 'Rabbit chase, ricochet, three shots'],
-      ['/+ctf/+rabbit', 'Either capture-the-flag or rabbit chase'],
-      ['/-overview', 'No map overview yet'],
-      ['/v)_disableBots=*', 'Lists <code>_disableBots</code> at all, on or off; <code>-b</code> is the one that means off'],
+    + `<p>${l10n.html(t('A capitalised pattern name matches case-sensitively: {lower} ignores case, {upper} does not.'), {
+      lower: code('d)league'), upper: code('D)League'),
+    })}</p>`
+    + group(escapeHtml(t('Examples')), [
+      ['/p&gt;1,s&gt;1,s&lt;4', escapeHtml(t('Two or three shots, and somebody playing'))],
+      ['/+ctf,vt=2', escapeHtml(t('Capture-the-flag between exactly two teams'))],
+      ['/d)*league*', escapeHtml(t('Leagues, by description'))],
+      ['/ve)bzo-*', escapeHtml(t('bzo servers only'))],
+      ['/ve]^$', escapeHtml(t('No version known yet'))],
+      ['/op&gt;0', escapeHtml(t('Somebody is watching'))],
+      ['/+rabbit,+rico,s=3', escapeHtml(t('Rabbit chase, ricochet, three shots'))],
+      ['/+ctf/+rabbit', escapeHtml(t('Either capture-the-flag or rabbit chase'))],
+      ['/-overview', escapeHtml(t('No map overview yet'))],
+      ['/v)_disableBots=*', l10n.html(t('Lists {variable} at all, on or off; {off} is the one that means off'), {
+        variable: code('_disableBots'), off: code('-b'),
+      })],
     ])
     + `</div>`;
 }
@@ -2486,8 +2538,8 @@ function renderFilterHelp(listId) {
 // The list itself: one anchor-shaped row per server, each naming the pane it
 // reveals. Selection is a class, so with scripting off every row still links
 // straight to what it did before.
-function renderServerList(listId, filterId, unsorted) {
-  if (!unsorted.length) return `<p class="muted">None.</p>`;
+function renderServerList(listId, filterId, unsorted, t) {
+  if (!unsorted.length) return `<p class="muted">${escapeHtml(t('None.'))}</p>`;
   // Most players first, which is the order the `P` header starts out marked as
   // and upstream's own (`ServerItem::getSortFactor`); then most observers and
   // most bots, so a server somebody is watching or bots are playing on comes
@@ -2568,7 +2620,7 @@ function renderServerList(listId, filterId, unsorted) {
       // would be a claim rather than a gap.
       + `<span class="count col-o">${typeof entry.observers === 'number' ? entry.observers : ''}</span>`
       + `<span class="count col-b">${typeof entry.bots === 'number' ? entry.bots : ''}</span>`
-      + `<span class="mark" style="color:${mark.color}" title="${escapeHtml(mark.title)}">*</span>`
+      + `<span class="mark" style="color:${mark.color}" title="${escapeHtml(t(mark.title))}">*</span>`
       + listOptionLetters(bits(entry), entry.imported)
       + listHashLetter(entry.hash)
       + `<span class="addr">${escapeHtml(entry.addr)}</span>`
@@ -2579,20 +2631,22 @@ function renderServerList(listId, filterId, unsorted) {
   // starts out the active one because the page arrives sorted by it -- which
   // is also the only order upstream ever shows
   // (`ServerItem::getSortFactor`).
+  const title = (msgid) => `title="${escapeHtml(msgid)}"`;
   const head = `<div class="shead">`
-    + `<button class="count col-p active" data-field="p" title="Players">P</button>`
-    + `<button class="count col-o" data-field="ob" title="Observers">O</button>`
-    + `<button class="count col-b" data-field="bt" title="Bots, blank where unknown">B</button>`
-    + `<button class="mark" data-field="rank" title="Game type: yellow free-for-all, red capture-the-flag, white rabbit chase, cyan replay">*</button>`
-    + `<button class="opt" data-field="j" title="Jumping">J</button>`
-    + `<button class="opt" data-field="fl" title="Superflags">F</button>`
-    + `<button class="opt" data-field="r" title="Ricochet">R</button>`
+    + `<button class="count col-p active" data-field="p" ${title(t('Players'))}>P</button>`
+    + `<button class="count col-o" data-field="ob" ${title(t('Observers'))}>O</button>`
+    + `<button class="count col-b" data-field="bt" ${title(t('Bots, blank where unknown'))}>B</button>`
+    + `<button class="mark" data-field="rank"`
+    + ` ${title(t('Game type: yellow free-for-all, red capture-the-flag, white rabbit chase, cyan replay'))}>*</button>`
+    + `<button class="opt" data-field="j" ${title(t('Jumping'))}>J</button>`
+    + `<button class="opt" data-field="fl" ${title(t('Superflags'))}>F</button>`
+    + `<button class="opt" data-field="r" ${title(t('Ricochet'))}>R</button>`
     + (hasImports
-      ? `<button class="opt" data-field="im" title="This server already holds an import of that map">I</button>`
+      ? `<button class="opt" data-field="im" ${title(t('This server already holds an import of that map'))}>I</button>`
       : '')
-    + LIST_HASH_HEADER
+    + listHashHeader(t)
     + `<button class="name" data-field="n" data-text`
-    + ` title="The name, or the address when a server has none">Name &amp; Description</button>`
+    + ` ${title(t('The name, or the address when a server has none'))}>${escapeHtml(t('Name & Description'))}</button>`
     + `</div>`;
   // One column down the left, in the order you use it: the summary of the row
   // you picked, the filter that narrows what you are picking from, then the
@@ -2600,15 +2654,15 @@ function renderServerList(listId, filterId, unsorted) {
   // the three stay together as one control.
   return `<div class="listWrap" id="${escapeHtml(listId)}" style="${widths}">`
     + `<div class="panes">${entries
-      .map((entry, index) => renderListReadout(entry, index !== 0)).join('\n')}</div>`
+      .map((entry, index) => renderListReadout(entry, index !== 0, t)).join('\n')}</div>`
     + `<div class="listBar">`
-    + `<input id="${escapeHtml(filterId)}" class="clearable" type="text" placeholder="Filter…">`
+    + listFilterInput(filterId, t)
     + `<button type="button" data-help="${escapeHtml(listId)}-help"`
-    + ` title="Filter syntax">?</button>`
+    + ` title="${escapeHtml(t('Filter syntax'))}">?</button>`
     + entries.map((entry, index) => renderListActions(entry, index !== 0)).join('')
     + `</div>`
     + `<p class="filterError" id="${escapeHtml(filterId)}Error" hidden></p>`
-    + renderFilterHelp(listId)
+    + renderFilterHelp(listId, t)
     + head
     + `<ul class="srows">\n${rows}\n</ul>`
     + `<script type="application/json" id="${escapeHtml(listId)}-data">`
@@ -2634,8 +2688,9 @@ function invalidateListTables() {
   listTablesCache.clear();
 }
 
-function renderListTables({ servers, bzoServers, canWatch }) {
-  const cached = listTablesCache.get(canWatch);
+function renderListTables({ servers, bzoServers, canWatch, locale }) {
+  const cacheKey = `${locale} ${canWatch}`;
+  const cached = listTablesCache.get(cacheKey);
   if (cached && Date.now() - cached.at < LIST_TABLES_TTL_MS) return cached.tables;
   // `random` is in `listAvailableMapFiles` because it is a map an operator can
   // *serve* -- the instruction to generate a world, which the Operator panel's
@@ -2663,6 +2718,8 @@ function renderListTables({ servers, bzoServers, canWatch }) {
     .filter((s) => s.owner && isForumBzid(s.ownerBzid))
     .map((s) => [s.owner.toLowerCase(), s.ownerBzid]));
   const ownerLink = (owner) => describeOwner(owner, ownerBzids.get(String(owner || '').toLowerCase()));
+  const t = l10n.translator(locale);
+  const action = (href, msgid) => `<a class="action" href="${escapeHtml(href)}">${escapeHtml(msgid)}</a>`;
   const bzfsEntries = servers.map((s, index) => {
     const info = s.info || {};
     const importFileName = remoteMapFileName(s.host, s.port);
@@ -2692,7 +2749,7 @@ function renderListTables({ servers, bzoServers, canWatch }) {
       // imports on demand (`importMapForView`) the moment nothing this fresh
       // is registered yet, so there is no state where following it is wrong.
       href: `/?viewmap=${encodeURIComponent(importFileName)}`,
-      action: 'View map',
+      action: t('View map'),
       // The picture of this server's world, when this instance holds an import
       // of it: an import is parsed and registered like any other map, so it
       // already has an overview drawn beside its JSON and there is nothing
@@ -2725,13 +2782,13 @@ function renderListTables({ servers, bzoServers, canWatch }) {
       // an hour ago is not the map that server is running now, and it is the
       // same mtime `sweepStaleImports` ages it out by.
       extras: [
-        ['Address', escapeHtml(`${s.host}:${s.port}`)],
+        [t('Address'), escapeHtml(`${s.host}:${s.port}`)],
         ['IP', escapeHtml(s.ip || '')],
-        ['Owner', ownerLink(s.owner)],
-        ['Imported', escapeHtml(importedPath ? statMtimeOrBlank(importedPath) : '')],
+        [t('Owner'), ownerLink(s.owner)],
+        [t('Imported'), escapeHtml(importedPath ? statMtimeOrBlank(importedPath) : '')],
         // What this server holds of that world, and what it cost -- see
         // `describeImportedWorld`.
-        ...describeRelayedWorld(world),
+        ...describeRelayedWorld(world, t),
       ],
       imported: Boolean(importedPath),
       // Watching is the live game rather than the map: a real observer
@@ -2742,18 +2799,18 @@ function renderListTables({ servers, bzoServers, canWatch }) {
       // search for the address instead of showing it.
       // Hands the address to an installed BZFlag client, so it is offered to
       // everyone: nothing on this server is involved.
-      actions: `<a class="action" href="${escapeHtml(`bzflag://${s.host}:${s.port}`)}">Launch</a>`
+      actions: action(`bzflag://${s.host}:${s.port}`, t('Launch'))
         + (canWatch
-          ? `<a class="action" href="/?watch=${encodeURIComponent(`${s.host}_${s.port}`)}">Watch</a>`
+          ? action(`/?watch=${encodeURIComponent(`${s.host}_${s.port}`)}`, t('Watch'))
             // Playing there as `bzo-<callsign>`, unregistered, which a server
             // that keeps guests out refuses (`guestSpawn`).
             + (entryGuestSpawn(s) === 'no' ? ''
-              : `<a class="action" href="/?watch=${encodeURIComponent(`${s.host}_${s.port}`)}&amp;team=play">Play</a>`)
+              : action(`/?watch=${encodeURIComponent(`${s.host}_${s.port}`)}&team=play`, t('Play')))
           : '')
         + `<form method="post" action="/list/import" class="inlineForm">`
         + `<input type="hidden" name="host" value="${escapeHtml(s.host)}">`
         + `<input type="hidden" name="port" value="${s.port}">`
-        + `<button type="submit">${importedPath ? 'Re-import' : 'Import'}</button></form>`,
+        + `<button type="submit">${escapeHtml(importedPath ? t('Re-import') : t('Import'))}</button></form>`,
     };
   });
 
@@ -2793,15 +2850,15 @@ function renderListTables({ servers, bzoServers, canWatch }) {
         : (s.world || {})).hash || '',
       href,
       owner: (proxy ? relayed?.owner : s.owner) || '',
-      action: 'Enter game',
+      action: t('Enter game'),
       // A carried target is a real BZFlag server, so a BZFlag client can go
       // straight there. Playing it from a browser under a registered callsign
       // needs a global login bzfs can check itself (`playerAlive`,
       // bzfs.cxx:3199), so the carrier's own `/login/<target>/-/automatic`
       // takes the forum login first and comes back joining with its token.
       actions: proxy
-        ? `<a class="action" href="${escapeHtml(`${s.url}/login/${encodeURIComponent(proxyUrlKey(proxy.target))}/-/automatic`)}">Login and Play</a>`
-          + `<a class="action" href="${escapeHtml(`bzflag://${proxy.target}`)}">Launch</a>`
+        ? action(`${s.url}/login/${encodeURIComponent(proxyUrlKey(proxy.target))}/-/automatic`, t('Login and Play'))
+          + action(`bzflag://${proxy.target}`, t('Launch'))
         : '',
       style: game.style,
       maxShots: game.maxShots,
@@ -2832,32 +2889,32 @@ function renderListTables({ servers, bzoServers, canWatch }) {
         : (s.overviewUrl || null),
       extras: proxy
         ? [
-          ['BZFlag server', escapeHtml(proxy.target)],
-          ['Owner', ownerLink(relayed?.owner)],
-          ['Carried by', carriers],
+          [t('BZFlag server'), escapeHtml(proxy.target)],
+          [t('Owner'), ownerLink(relayed?.owner)],
+          [t('Carried by'), carriers],
           // A proxy row's world is the target's, so the figures are the ones
           // a bzfs row for the same address shows -- what the list server
           // measured, or else this instance's own import, the way the picture
           // above is. Nothing here fetches, and a proxy row is not a reason to.
           ...(relayed?.world
-            ? describeRelayedWorld(relayed.world)
-            : describeImportedWorld(...splitHostPort(proxy.target))),
+            ? describeRelayedWorld(relayed.world, t)
+            : describeImportedWorld(...splitHostPort(proxy.target), t)),
         ]
         : [
-          ['Map', escapeHtml(String(s.map || '').replace(/\.bzw$/, ''))],
-          ['Version', escapeHtml(s.version || '')],
+          [t('Map'), escapeHtml(String(s.map || '').replace(/\.bzw$/, ''))],
+          [t('Version'), escapeHtml(s.version || '')],
           // Only a bzo row can have this: a bzfs server holds no key and sends
           // no report, and the public BZFlag list carries no uptime.
-          ['Up', escapeHtml(formatUptime(s.upSince))],
-          ['Owner', describeOwner(s.owner, s.ownerBzid)],
-          ['Voice chat', s.voiceEnabled ? 'configured' : ''],
+          [t('Up'), escapeHtml(formatUptime(s.upSince, t))],
+          [t('Owner'), describeOwner(s.owner, s.ownerBzid)],
+          [t('Voice chat'), s.voiceEnabled ? escapeHtml(t('configured')) : ''],
           ['URL', urlLink],
-          ['Also at', (Array.isArray(s.alsoAt) ? s.alsoAt : [])
+          [t('Also at'), (Array.isArray(s.alsoAt) ? s.alsoAt : [])
             .map((url) => `<a href="${escapeHtml(url)}">${escapeHtml(url)}</a>`).join('<br>')],
           // What that instance says its own world costs. Reported rather
           // than measured here -- only the instance can see its own maps
           // directory -- and absent for one too old to be reporting it.
-          ...describeOwnWorld(s.world),
+          ...describeOwnWorld(s.world, t),
         ],
     };
   };
@@ -2870,34 +2927,44 @@ function renderListTables({ servers, bzoServers, canWatch }) {
   });
 
   const tables = {
-    bzoHeading: listHeadingCount(bzoEntries),
-    bzoTable: renderServerList('bzoServerList', 'bzoServerFilter', bzoEntries),
-    bzfsHeading: listHeadingCount(bzfsEntries),
-    bzfsTable: renderServerList('serverList', 'serverFilter', bzfsEntries),
+    bzoHeading: listHeadingCount(bzoEntries, t),
+    bzoTable: renderServerList('bzoServerList', 'bzoServerFilter', bzoEntries, t),
+    bzfsHeading: listHeadingCount(bzfsEntries, t),
+    bzfsTable: renderServerList('serverList', 'serverFilter', bzfsEntries, t),
     mapsHeading: `${localMaps.length}${missingOverviewCount(localMaps.map(
       (map) => ({ overviewUrl: localMapOverviewUrl(map.fileName) }),
-    ))}`,
-    mapsTable: renderMapList('mapList', 'mapFilter', localMaps),
+    ), t)}`,
+    mapsTable: renderMapList('mapList', 'mapFilter', localMaps, t),
   };
-  listTablesCache.set(canWatch, { at: Date.now(), tables });
+  listTablesCache.set(cacheKey, { at: Date.now(), tables });
   return tables;
 }
 
+// The strings `public/js/list-page.js` writes itself, by the msgids it looks
+// them up under, which the page embeds translated as `list-l10n`.
+const LIST_PAGE_MSGIDS = l10n.scriptMsgids(path.join(__dirname, 'public', 'js', 'list-page.js'));
+
 function renderListPage({
   servers, bzoServers, cacheAgeSeconds, imported, importError, session, admin, canWatch, replays = [],
-  discoveryHead = '',
+  discoveryHead = '', locale,
 }) {
-  const tables = renderListTables({ servers, bzoServers, canWatch });
+  const tables = renderListTables({
+    servers, bzoServers, canWatch, locale,
+  });
+  const t = l10n.translator(locale);
+  const link = (href, text) => `<a href="${escapeHtml(href)}">${escapeHtml(text)}</a>`;
+  const code = (text) => `<code>${escapeHtml(text)}</code>`;
 
   // One nav line at the very top: a jump link to each section below, then
   // this instance's own login state last -- it authenticates this instance's
   // bzflag.org session either way, but only unlocks the key admin section
   // when this instance is the designated one.
   const identityBlock = session
-    ? `<strong>${escapeHtml(session.callsign)}</strong>${admin ? ' (admin)' : ''}`
-      + ` -- <a href="/logout">Log out</a>`
-    : `<a href="/login/list">Log in with your bzflag.org account</a>`
-      + `${IS_DESIGNATED_LIST_SERVER ? ' to register a server' : ''}`;
+    ? `<strong>${escapeHtml(session.callsign)}</strong>${admin ? ` ${escapeHtml(t('(admin)'))}` : ''}`
+      + ` -- ${link('/logout', t('Log out'))}`
+    : link('/login/list', IS_DESIGNATED_LIST_SERVER
+      ? t('Log in with your bzflag.org account to register a server')
+      : t('Log in with your bzflag.org account'));
   // "keys" is the one link here that is not always this page's own section:
   // key admin only exists on the designated instance, so anywhere else it
   // jumps straight to the real thing rather than to this page's own
@@ -2905,23 +2972,25 @@ function renderListPage({
   // instance actually has those three itself.
   const keysHref = IS_DESIGNATED_LIST_SERVER || !LIST_SERVER_URL
     ? '#keys'
-    : `${escapeHtml(LIST_SERVER_URL)}/list#keys`;
+    : `${LIST_SERVER_URL}/list#keys`;
+  // bzo and bzflag are names; the rest are words.
   const navBlock = `<p class="nav">`
-    + `<a href="#bzo">bzo</a> | <a href="#bzflag">bzflag</a> | <a href="#maps">maps</a> | <a href="#replays">replays</a>`
-    + ` | <a href="${keysHref}">keys</a> | <a href="/help">help</a>`
+    + `<a href="#bzo">bzo</a> | <a href="#bzflag">bzflag</a> | ${link('#maps', t('maps'))} | ${link('#replays', t('replays'))}`
+    + ` | ${link(keysHref, t('keys'))} | ${link('/help', t('help'))}`
     + ` | ${identityBlock}</p>`;
 
   const flash = imported
-    ? `<p class="flash success">Imported <code>${escapeHtml(imported)}</code> -- it is in the local maps table below.</p>`
+    ? `<p class="flash success">${l10n.html(t('Imported {file} -- it is in the local maps table below.'), { file: code(imported) })}</p>`
     : importError
-      ? `<p class="flash error">Import failed: ${escapeHtml(importError)}</p>`
+      ? `<p class="flash error">${escapeHtml(t('Import failed: {error}', { error: importError }))}</p>`
       : '';
+  const listMessages = Object.fromEntries(LIST_PAGE_MSGIDS.map((msgid) => [msgid, t(msgid)]));
 
   return `<!doctype html>
-<html>
+<html lang="${escapeHtml(l10n.languageTag(locale))}" dir="${l10n.textDirection(locale)}">
 <head>
 <meta charset="utf-8">
-<title>bzo servers</title>
+<title>${escapeHtml(t('bzo servers'))}</title>
 ${discoveryHead}
 <link rel="icon" sizes="16x16 32x32 48x48" href="/favicon.ico">
 <style>
@@ -3154,43 +3223,49 @@ ${discoveryHead}
 </head>
 <body>
 ${navBlock}
-<h1 id="bzo">Public bzo servers - ${tables.bzoHeading}<span id="bzoServerList-count"></span></h1>
-<p class="muted">From the designated bzo list server, ${LIST_SERVER_URL
-    ? `<a href="${escapeHtml(LIST_SERVER_URL)}/list">${escapeHtml(LIST_SERVER_URL)}</a>`
-    : 'disabled on this instance'} --
-pick a row to read it; Enter, or the pane's own link, goes in.</p>
+<h1 id="bzo">${escapeHtml(t('Public bzo servers - {count}', { count: tables.bzoHeading }))}<span id="bzoServerList-count"></span></h1>
+<p class="muted">${l10n.html(t("From the designated bzo list server, {server} -- pick a row to read it; Enter, or the pane's own link, goes in."), {
+    server: LIST_SERVER_URL ? link(`${LIST_SERVER_URL}/list`, LIST_SERVER_URL) : escapeHtml(t('disabled on this instance')),
+  })}</p>
 ${tables.bzoTable}
 
-<h1 id="bzflag">Public BZFlag servers - ${tables.bzfsHeading}<span id="serverList-count"></span></h1>
-<p class="muted">From the public list server (my.bzflag.org), cached ${cacheAgeSeconds}s ago --
-<a href="/list">refresh</a>. Pick a row to read it; its link views that map, and does
-not enter that game.</p>
+<h1 id="bzflag">${escapeHtml(t('Public BZFlag servers - {count}', { count: tables.bzfsHeading }))}<span id="serverList-count"></span></h1>
+<p class="muted">${l10n.html(t('From the public list server (my.bzflag.org), cached {seconds}s ago -- {refresh}.'), {
+    seconds: cacheAgeSeconds, refresh: link('/list', t('refresh')),
+  })}
+${escapeHtml(t('Pick a row to read it; its link views that map, and does not enter that game.'))}</p>
 ${flash}
 ${tables.bzfsTable}
 
-<h1 id="maps">Local maps - ${tables.mapsHeading}<span id="mapList-count"></span></h1>
-<p class="muted">Already in this server's <code>maps/</code> -- pick a row to read it; its link
-views that map.</p>
+<h1 id="maps">${escapeHtml(t('Local maps - {count}', { count: tables.mapsHeading }))}<span id="mapList-count"></span></h1>
+<p class="muted">${l10n.html(t("Already in this server's {directory} -- pick a row to read it; its link views that map."), {
+    directory: code('maps/'),
+  })}</p>
 ${tables.mapsTable}
 
-<h1 id="replays">Local replays - ${replays.length}<span id="replayList-count"></span></h1>
-<p class="muted">bzfs recordings in this server's <code>replays/</code> -- pick a row to read
-it; Watch plays it to everyone watching that replay.</p>
-${renderReplayList('replayList', 'replayFilter', replays)}
+<h1 id="replays">${escapeHtml(t('Local replays - {count}', { count: replays.length }))}<span id="replayList-count"></span></h1>
+<p class="muted">${l10n.html(t("bzfs recordings in this server's {directory} -- pick a row to read it; Watch plays it to everyone watching that replay."), {
+    directory: code('replays/'),
+  })}</p>
+${renderReplayList('replayList', 'replayFilter', replays, t)}
 
 <!-- Sorting, selection and the filter language: public/js/list-page.js. A plain
      classic script, not a module, so it is defined before the key admin
-     section's own inline script below calls attachTable. -->
+     section's own inline script below calls attachTable. Its own words come
+     translated in list-l10n, which has to be in the page before it runs. -->
+<script type="application/json" id="list-l10n">${l10n.inlineJson(listMessages)}</script>
 <script src="/js/list-page.js"></script>
 
-${renderListServerKeyAdminSection({ session, admin })}
+${renderListServerKeyAdminSection({ session, admin, t })}
 
 <footer class="muted">
-<p>bzo ${escapeHtml(SERVER_VERSION)} (build ${escapeHtml(CLIENT_BUILD)}): BZFlag in the browser, on desktop,
-phone and headset, and this list of the servers to play it on.</p>
-<p>Copyright (C) 2025-2026 Tim Riker. Free software under the
-<a href="https://www.gnu.org/licenses/agpl-3.0.html">GNU AGPL v3</a>;
-source at <a href="https://github.com/timriker/bzo">github.com/timriker/bzo</a>.</p>
+<p>${escapeHtml(t('bzo {version} (build {build}): BZFlag in the browser, on desktop, phone and headset, and this list of the servers to play it on.', {
+    version: SERVER_VERSION, build: CLIENT_BUILD,
+  }))}</p>
+<p>${l10n.html(t('Copyright (C) 2025-2026 Tim Riker. Free software under the {license}; source at {source}.'), {
+    license: link('https://www.gnu.org/licenses/agpl-3.0.html', 'GNU AGPL v3'),
+    source: link('https://github.com/timriker/bzo', 'github.com/timriker/bzo'),
+  })}</p>
 </footer>
 </body>
 </html>`;
@@ -3219,6 +3294,8 @@ function listDiscoveryHead(req, bzoServers) {
 
 app.get('/list', async (req, res) => {
   res.set('Cache-Control', 'no-store');
+  res.vary('Accept-Language').vary('Cookie');
+  const locale = l10n.negotiateLocale(req);
   try {
     const lists = await getDisplayServerLists();
     const servers = [...lists.bzfs]
@@ -3240,10 +3317,12 @@ app.get('/list', async (req, res) => {
       canWatch: admin,
       replays: await listReplays(),
       discoveryHead: listDiscoveryHead(req, bzoServers),
+      locale,
     }));
   } catch (error) {
     logError('/list failed to reach the list server:', error);
-    res.status(502).type('text/plain').send('Could not reach the BZFlag list server. Try again shortly.\n');
+    const t = l10n.translator(locale);
+    res.status(502).type('text/plain').send(`${t('Could not reach the BZFlag list server. Try again shortly.')}\n`);
   }
 });
 
@@ -3313,9 +3392,16 @@ function sendHelp(req, res, slug) {
     res.status(404).type('text/plain').send('No such help page');
     return;
   }
-  res.vary('Accept-Language');
+  res.vary('Accept-Language').vary('Cookie');
+  const docLocale = helpDocs.docLocale(locale);
   sendDiscovery(req, res, 'html', (context) => discovery.helpPage({
-    ...context, pages, path: slug ? `/help/${slug}` : '/help', lang: l10n.languageTag(helpDocs.docLocale(locale)),
+    ...context,
+    pages,
+    path: slug ? `/help/${slug}` : '/help',
+    lang: l10n.languageTag(docLocale),
+    dir: l10n.textDirection(docLocale),
+    t: l10n.translator(locale),
+    description: discovery.serverDescription(serverConfig.title, l10n.translator(locale)),
   }));
 }
 app.get('/help', (req, res) => sendHelp(req, res, null));
@@ -3324,7 +3410,7 @@ app.get('/help', (req, res) => sendHelp(req, res, null));
 app.get('/help.json', (req, res) => {
   const locale = l10n.negotiateLocale(req);
   res.set('Cache-Control', REVALIDATE);
-  res.vary('Accept-Language');
+  res.vary('Accept-Language').vary('Cookie');
   res.json({
     locale: helpDocs.docLocale(locale),
     pages: helpDocs.renderPages(locale, { live: true }),
@@ -3928,12 +4014,13 @@ function parseImportMapFileName(fileName) {
   return remoteMapFileName(host, port) === fileName ? { host, port } : null;
 }
 
-// How long a remote import is worth reusing rather than fetched again: long
-// enough that following the same shared link twice in a sitting never
-// re-downloads, short enough that the file is not worth keeping past it --
-// `maps/import-*.bzw` is a regeneratable cache (see .gitignore), not
-// something worth pruning on its own schedule, since `parseImportMapFileName`
-// above is what lets a link outlive this window instead of just going stale.
+// How long a remote import is reused without asking its server anything: long
+// enough that following the same shared link twice in a sitting costs nothing.
+// Past it, a `?viewmap=` link asks the server's world hash first and keeps the
+// copy when it has not changed (`confirmImportUnchanged`), so only a changed
+// world is downloaded again. `maps/import-*.bzw` is a regeneratable cache (see
+// .gitignore), and `parseImportMapFileName` above is what lets a link outlive
+// this window rather than just going stale.
 const IMPORT_REUSE_MS = 60 * 60 * 1000;
 
 // Twice the reuse window: an import nobody has asked for again in the time
@@ -3999,6 +4086,60 @@ async function registerFreshImportFromDisk(fileName) {
   } catch {
     return false;
   }
+}
+
+// The world hash an import was saved with: the `# world hash` line its header
+// carries (remote-world-import.cjs), read without reading the whole world.
+function importedWorldHash(fileName) {
+  let fd = null;
+  try {
+    fd = fs.openSync(path.join(RUNTIME_MAPS_DIR, fileName), 'r');
+    const head = Buffer.alloc(4096);
+    const length = fs.readSync(fd, head, 0, head.length, 0);
+    return head.toString('utf8', 0, length).match(/^# world hash ([pt][0-9a-f]{32})$/m)?.[1] || '';
+  } catch {
+    return '';
+  } finally {
+    if (fd !== null) fs.closeSync(fd);
+  }
+}
+
+// An import past `IMPORT_REUSE_MS` whose server still runs the world it was
+// saved from is not stale, it is only old: the hash says so for one short
+// dial (`MsgWantWHash`), or for nothing when the world tracker asked inside
+// the same window. Then the copy on disk is kept, its age reset, and the
+// world is not downloaded again. A hash that differs or cannot be had --
+// no header, a server that will not answer -- falls through to the download.
+async function confirmImportUnchanged(fileName, host, port) {
+  const saved = importedWorldHash(fileName);
+  if (!isBzfsWorldHash(saved)) return false;
+  const record = bzfsWorlds.recordFor(host, port);
+  let current = record && Date.now() - (record.checkedAt || 0) < IMPORT_REUSE_MS ? record.worldHash : '';
+  if (!current) {
+    try {
+      current = (await queryServerStatus(host, port)).worldHash;
+    } catch {
+      return false;
+    }
+  }
+  if (current !== saved) return false;
+  // What the tracker would have learned from the same dial.
+  bzfsWorlds.noteImport(host, port, current);
+  const filePath = path.join(RUNTIME_MAPS_DIR, fileName);
+  try {
+    const now = new Date();
+    fs.utimesSync(filePath, now, now);
+  } catch {
+    return false;
+  }
+  // An entry only listed, never kept (`keptAt`), has no world JSON to serve.
+  const registered = MAP_REGISTRY.get(fileName);
+  if (registered?.keptAt && fs.existsSync(path.join(MAP_CACHE_DIR, `${registered.hash}.json`))) {
+    registered.registeredAt = Date.now();
+    registered.keptAt = Date.now();
+    return true;
+  }
+  return Boolean(await parseAndRegisterMap(fileName, filePath));
 }
 
 // Converts a map file nobody is playing and registers it: quiet, because its
@@ -5854,42 +5995,64 @@ if (IS_DESIGNATED_LIST_SERVER) {
 // own list-server key admin. Login lives at the top of the page now, not
 // here -- this section only ever assumes a session exists when it needs one,
 // for the register-a-key form.
-function renderListServerKeyAdminSection({ session, admin }) {
+function renderListServerKeyAdminSection({ session, admin, t }) {
+  const code = (text) => `<code>${escapeHtml(text)}</code>`;
   if (!IS_DESIGNATED_LIST_SERVER) {
-    return `<h1 id="keys">List server key</h1>
+    return `<h1 id="keys">${escapeHtml(t('List server key'))}</h1>
 ${LIST_SERVER_URL
-    ? `<p class="muted">This instance is not the designated bzo list server. Manage this server's key at `
-      + `<a href="${escapeHtml(LIST_SERVER_URL)}/list#keys">${escapeHtml(LIST_SERVER_URL)}/list</a>.</p>`
-    : `<p class="muted">The list server is disabled on this instance (<code>listServerUrl</code> is empty).</p>`}`;
+    ? `<p class="muted">${l10n.html(t("This instance is not the designated bzo list server. Manage this server's key at {link}."), {
+      link: `<a href="${escapeHtml(LIST_SERVER_URL)}/list#keys">${escapeHtml(LIST_SERVER_URL)}/list</a>`,
+    })}</p>`
+    : `<p class="muted">${l10n.html(t('The list server is disabled on this instance ({setting} is empty).'), {
+      setting: code('listServerUrl'),
+    })}</p>`}`;
   }
   const formBlock = session
     ? `<form id="addForm">
 <input id="urlInput" type="text" placeholder="https://your-server.example.com" required>
-<button type="submit">Generate key</button>
+<button type="submit">${escapeHtml(t('Generate key'))}</button>
 </form>
-<p class="muted">Enter the server's own <code>publicUrl</code> -- the same address it already answers
-admin-whitelist probes on. The list server calls this address back to validate a report; it never
-trusts one a report claims for itself.</p>
+<p class="muted">${l10n.html(t("Enter the server's own {setting} -- the same address it already answers admin-whitelist probes on."), {
+      setting: code('publicUrl'),
+    })}
+${escapeHtml(t('The list server calls this address back to validate a report; it never trusts one a report claims for itself.'))}</p>
 <div id="newKeyFlash"></div>`
-    : `<p class="muted">Log in above to register a server and generate a key.</p>`;
-  return `<h1 id="keys">${admin ? 'All registered keys' : 'Your keys'}</h1>
-<p class="muted">This instance (<a href="${escapeHtml(LIST_SERVER_URL)}"><code>${escapeHtml(LIST_SERVER_URL)}</code></a>)
-is the designated bzo list server -- every other bzo instance reports here, so its own
-<code>/list</code> can show the <a href="#bzo">bzo servers table</a> above.
-A <code>bzfs</code> server's key is a different one, from
-<a href="https://my.bzflag.org/listkeys/">my.bzflag.org/listkeys</a>.</p>
-<input id="keyFilter" class="clearable" type="text" placeholder="Filter…">
+    : `<p class="muted">${escapeHtml(t('Log in above to register a server and generate a key.'))}</p>`;
+  // What the table script below writes itself.
+  const messages = {
+    never: t('never'),
+    stale: t('stale'),
+    players: t('{players}/{max} players'),
+    neverReported: t('never reported'),
+    revoke: t('Revoke'),
+    failed: t('Failed'),
+    keyFor: t('Key for {url}: {key}'),
+    paste: t("Paste this into that server's Operator panel -- also readable from the table above any time."),
+  };
+  return `<h1 id="keys">${escapeHtml(admin ? t('All registered keys') : t('Your keys'))}</h1>
+<p class="muted">${l10n.html(t('This instance ({url}) is the designated bzo list server -- every other bzo instance reports here, so its own {list} can show the {table} above.'), {
+    url: `<a href="${escapeHtml(LIST_SERVER_URL)}">${code(LIST_SERVER_URL)}</a>`,
+    list: code('/list'),
+    table: `<a href="#bzo">${escapeHtml(t('bzo servers table'))}</a>`,
+  })}
+${l10n.html(t("A {bzfs} server's key is a different one, from {link}."), {
+    bzfs: code('bzfs'),
+    link: '<a href="https://my.bzflag.org/listkeys/">my.bzflag.org/listkeys</a>',
+  })}</p>
+${listFilterInput('keyFilter', t)}
 <table id="keyTable">
-<thead><tr><th>URL</th>${admin ? '<th>Owner</th>' : ''}<th>Key</th><th>Requested</th><th>Last checked</th>
-<th>Status</th><th></th></tr></thead>
+<thead><tr><th>URL</th>${admin ? `<th>${escapeHtml(t('Owner'))}</th>` : ''}<th>${escapeHtml(t('Key'))}</th>`
+    + `<th>${escapeHtml(t('Requested'))}</th><th>${escapeHtml(t('Last checked'))}</th>
+<th>${escapeHtml(t('Status'))}</th><th></th></tr></thead>
 <tbody></tbody>
 </table>
 ${formBlock}
 <script>
 var admin = ${admin ? 'true' : 'false'};
+var L = ${l10n.inlineJson(messages)};
 // ISO-ish, the same reason /list's own "Modified" column (Local maps table)
 // is: it sorts correctly as plain text, unlike a locale-formatted string.
-function fmt(ts) { return ts ? new Date(ts).toISOString().replace('T', ' ').slice(0, 19) : 'never'; }
+function fmt(ts) { return ts ? new Date(ts).toISOString().replace('T', ' ').slice(0, 19) : esc(L.never); }
 // A row's url/callsign/lastError all come from whoever registered or ran
 // that server, not from bzo itself -- escaped before going into innerHTML
 // the same reason the server side does it with escapeHtml everywhere else.
@@ -5903,8 +6066,9 @@ function renderRows(keys) {
   tbody.innerHTML = '';
   keys.forEach(function (row) {
     var tr = document.createElement('tr');
-    var status = row.stale ? '<span class="stale">stale' + (row.lastError ? ' (' + esc(row.lastError) + ')' : '') + '</span>'
-      : row.live ? (row.live.players + '/' + row.live.maxPlayers + ' players') : 'never reported';
+    var status = row.stale ? '<span class="stale">' + esc(L.stale) + (row.lastError ? ' (' + esc(row.lastError) + ')' : '') + '</span>'
+      : row.live ? esc(L.players).replace('{players}', row.live.players).replace('{max}', row.live.maxPlayers)
+        : esc(L.neverReported);
     // A real forum BZID is numeric -- linked to its profile so an admin can
     // see who they're looking at. (Two backslashes in this source: this text
     // is itself inside server.js's own template literal, which would eat a
@@ -5919,7 +6083,7 @@ function renderRows(keys) {
       + '<td>' + fmt(row.dateRequested) + '</td>'
       + '<td>' + fmt(row.lastChecked) + '</td>'
       + '<td>' + status + '</td>'
-      + '<td><button type="button" data-id="' + row.id + '">Revoke</button></td>';
+      + '<td><button type="button" data-id="' + row.id + '">' + esc(L.revoke) + '</button></td>';
     tbody.appendChild(tr);
   });
 }
@@ -5952,11 +6116,13 @@ if (addForm) {
       .then(function (result) {
         var flash = document.getElementById('newKeyFlash');
         if (!result.ok) {
-          flash.innerHTML = '<p class="flash error">' + (result.data.error || 'Failed') + '</p>';
+          flash.innerHTML = '<p class="flash error">' + (result.data.error || esc(L.failed)) + '</p>';
           return;
         }
-        flash.innerHTML = '<p class="flash success">Key for ' + result.data.url + ': <code>' + result.data.key
-          + '</code><br>Paste this into that server\\'s Operator panel -- also readable from the table above any time.</p>';
+        flash.innerHTML = '<p class="flash success">'
+          + esc(L.keyFor).replace('{url}', function () { return result.data.url; })
+            .replace('{key}', function () { return '<code>' + result.data.key + '</code>'; })
+          + '<br>' + esc(L.paste) + '</p>';
         // Left filled in, the field reads as "still registering this one" --
         // clearing it is what makes a second submit type a fresh URL instead
         // of appending to the one just registered.
@@ -16835,6 +17001,7 @@ messagesOperator.useServer({
   recordingName,
   refuseNonOperator,
   registerFreshImportFromDisk,
+  confirmImportUnchanged,
   replayRooms,
   replaySummaries,
   replyToPlayer,

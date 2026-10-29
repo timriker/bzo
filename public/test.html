@@ -209,6 +209,25 @@
   </section>
 
   <section>
+    <h2>Renderer bench</h2>
+    <p>
+      Not the game: one map drawn along a fixed 20-second camera path, timing
+      each frame's <code>render()</code> on the CPU. WebGL is what bzo uses;
+      the WebGPU renderer is three's other one, and the last link is that
+      renderer on its WebGL fallback. Compare the same map in the same browser.
+    </p>
+    <div class="modes">
+      <a class="mode default" href="/renderer-bench.html?renderer=webgl"><b>WebGL, live map</b><span>?renderer=webgl</span></a>
+      <a class="mode" href="/renderer-bench.html?renderer=webgpu"><b>WebGPU, live map</b><span>?renderer=webgpu</span></a>
+      <a class="mode" href="/renderer-bench.html?map=ahs3_Paradise_Valley.bzw&amp;renderer=webgl">
+        <b>WebGL, large map</b><span>?map=ahs3_Paradise_Valley.bzw&amp;renderer=webgl</span></a>
+      <a class="mode" href="/renderer-bench.html?map=ahs3_Paradise_Valley.bzw&amp;renderer=webgpu">
+        <b>WebGPU, large map</b><span>?map=ahs3_Paradise_Valley.bzw&amp;renderer=webgpu</span></a>
+      <a class="mode" href="/renderer-bench.html?renderer=webgpu-gl"><b>WebGPU renderer on WebGL</b><span>?renderer=webgpu-gl</span></a>
+    </div>
+  </section>
+
+  <section>
     <h2><code>voicemode</code></h2>
     <p>
       For a network that drops when voice starts. Relay sends this client's

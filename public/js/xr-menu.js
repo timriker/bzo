@@ -22,7 +22,6 @@ export class XRMenuRenderer {
     this.canvas.height = CANVAS_HEIGHT;
     this.context = this.canvas.getContext('2d');
     this.texture = new THREE.CanvasTexture(this.canvas);
-    this.texture.colorSpace = THREE.SRGBColorSpace;
     this.mesh = new THREE.Mesh(
       new THREE.PlaneGeometry(PANEL_WIDTH_METERS, PANEL_HEIGHT_METERS),
       new THREE.MeshBasicMaterial({

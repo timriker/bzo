@@ -44,6 +44,7 @@ let recorder;
 let recordingName;
 let refuseNonOperator;
 let registerFreshImportFromDisk;
+let confirmImportUnchanged;
 let replayRooms;
 let replaySummaries;
 let replyToPlayer;
@@ -85,6 +86,7 @@ function useServer(deps, live) {
     recordingName,
     refuseNonOperator,
     registerFreshImportFromDisk,
+    confirmImportUnchanged,
     replayRooms,
     replaySummaries,
     replyToPlayer,
@@ -421,23 +423,31 @@ function handleImportMapForView(player, ws, message) {
   }
   // Not parsed at boot (`listLocalMapFiles`), but a copy fetched inside
   // the reuse window is still on disk: read it back rather than
-  // download the same world again.
-  (existing ? Promise.resolve(false) : registerFreshImportFromDisk(file)).then((fromDisk) => {
-    if (fromDisk) {
-      reply(true, { viewableMaps: getViewableMapsList() });
-      return null;
-    }
-    log(`A viewmap link is importing a remote map from ${host}:${port}`);
-    return performRemoteMapImport(host, port).then(({ safeMapName, byteLength, reused }) => {
-      log(reused
-        ? `Viewmap link reused the cached copy of ${host}:${port}, ${safeMapName} (${byteLength} bytes)`
-        : `Viewmap link imported remote map ${host}:${port} as ${safeMapName} (${byteLength} bytes)`);
-      reply(true, { viewableMaps: getViewableMapsList() });
+  // download the same world again. Older than that, a copy whose server
+  // still reports the same world hash is kept too.
+  const kept = existing ? Promise.resolve(false) : registerFreshImportFromDisk(file);
+  kept
+    .then((fromDisk) => fromDisk || confirmImportUnchanged(file, host, port).then((same) => {
+      if (same) log(`Viewmap link kept the cached copy of ${host}:${port}: its world hash is unchanged`);
+      return same;
+    }))
+    .then((reusable) => {
+      if (reusable) {
+        reply(true, { viewableMaps: getViewableMapsList() });
+        return null;
+      }
+      log(`A viewmap link is importing a remote map from ${host}:${port}`);
+      return performRemoteMapImport(host, port).then(({ safeMapName, byteLength, reused }) => {
+        log(reused
+          ? `Viewmap link reused the cached copy of ${host}:${port}, ${safeMapName} (${byteLength} bytes)`
+          : `Viewmap link imported remote map ${host}:${port} as ${safeMapName} (${byteLength} bytes)`);
+        reply(true, { viewableMaps: getViewableMapsList() });
+      });
+    })
+    .catch((error) => {
+      logError(`Remote map import from ${host}:${port} for a viewmap link failed:`, error);
+      reply(false, { reason: error.message });
     });
-  }).catch((error) => {
-    logError(`Remote map import from ${host}:${port} for a viewmap link failed:`, error);
-    reply(false, { reason: error.message });
-  });
   return;
 }
 

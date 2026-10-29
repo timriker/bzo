@@ -15,11 +15,16 @@
 
 const fs = require('fs');
 const path = require('path');
-const { parsePo, languageTag, textDirection } = require('../public/js/i18n.mjs');
+const { formatMessage, parsePo, languageTag, textDirection } = require('../public/js/i18n.mjs');
+const { escapeHtml } = require('./server-name.cjs');
+const { parseCookies } = require('./sessions.cjs');
 
 const L10N_DIR = path.join(__dirname, '..', 'l10n');
 const CATALOG_FILE = /^bzo_(\w+)\.po$/;
 const DEFAULT_LOCALE = 'en';
+// The language a player chose in Settings, which every page the server renders
+// follows (public/js/i18n.mjs writes it). Absent means Automatic.
+const LOCALE_COOKIE = 'bzo_lang';
 
 const parsed = new Map();
 
@@ -75,8 +80,19 @@ function catalogMessages(locale, domain = 'bzo') {
   return messages;
 }
 
-function catalogFor(locale) {
-  return { locale, locales: listLocales(), messages: catalogMessages(locale) };
+// `t` for a page the server renders in `locale`, as the client's `t` is:
+// `const t = l10n.translator(locale)` -- named `t` so the strings are
+// extracted with the client's.
+function translator(locale) {
+  const messages = catalogMessages(locale);
+  const lookup = (msgid) => messages[msgid] || msgid;
+  return (msgid, params) => formatMessage(lookup(msgid), params, lookup);
+}
+
+// `browser` is the language Automatic means for this reader, so Settings can
+// tell a choice that only repeats it from one that overrides it.
+function catalogFor(locale, browser = locale) {
+  return { locale, browser, locales: listLocales(), messages: catalogMessages(locale) };
 }
 
 // Browser tags that mean a catalog without naming it: Hong Kong and Macau
@@ -88,12 +104,16 @@ const TAG_ALIASES = Object.freeze({
   'zh-Hans': 'zh_CN', 'zh-Hans-CN': 'zh_CN', 'zh-Hans-SG': 'zh_CN', 'zh-SG': 'zh_CN',
 });
 
-// `?lang=` first, so a link can carry a language and any locale can be tried
-// from a browser that will not send it; then Accept-Language. Private-use
-// tags (the joke locales) are offered to `?lang=` and Settings only -- no
-// browser asks for them, and `en` must never match one by prefix.
-function negotiateLocale(req) {
+// The player's own choice first -- the Settings cookie; they picked it, and
+// nothing should second-guess that. Then `?lang=`, so a link can carry a
+// language and any locale can be tried from a browser that will not send it;
+// then Accept-Language. `{ cookie: false }` is what Automatic would pick.
+// Private-use tags (the joke locales) are offered to the cookie and `?lang=`
+// only -- no browser asks for them, and `en` must never match one by prefix.
+function negotiateLocale(req, { cookie = true } = {}) {
   const ids = localeIds();
+  const chosen = cookie ? parseCookies(req.headers?.cookie)[LOCALE_COOKIE] : '';
+  if (chosen && ids.includes(chosen)) return chosen;
   const asked = typeof req.query?.lang === 'string' ? req.query.lang.replace(/-/g, '_') : '';
   if (asked && ids.includes(asked)) return asked;
   const byTag = new Map();
@@ -108,9 +128,29 @@ function negotiateLocale(req) {
   return (best && byTag.get(best)) || DEFAULT_LOCALE;
 }
 
+// A translated sentence in an HTML page: the sentence escaped, and each
+// `{name}` filled with HTML the caller already built and escaped -- a link, a
+// `<code>`. `l10n.html(t('Talk on the {link}.'), { link })`: `t` with no
+// params hands back the sentence with its placeholders still in it.
+function html(template, params) {
+  return formatMessage(escapeHtml(template), params);
+}
+
+// The msgids a browser script looks up with its own literal `t('...')` calls,
+// read out of its source the way xgettext reads them, so the page that loads
+// it can embed their translations (`list-page.js`, `list-l10n`).
+const QUOTED_T_CALL = /\bt\((['"])((?:\\.|(?!\1)[^\\])*)\1/g;
+function scriptMsgids(file) {
+  const source = fs.readFileSync(file, 'utf8');
+  return [...new Set([...source.matchAll(QUOTED_T_CALL)].map((match) => match[2].replace(/\\(.)/g, '$1')))];
+}
+
 // JSON inside a <script> element: nothing in it may close the element.
 function inlineJson(value) {
   return JSON.stringify(value).replace(/</g, '\\u003c');
 }
 
-module.exports = { catalogFor, catalogMessages, hasLocale, negotiateLocale, inlineJson, languageTag, textDirection, DEFAULT_LOCALE };
+module.exports = {
+  catalogFor, catalogMessages, translator, hasLocale, negotiateLocale, html, scriptMsgids, inlineJson,
+  languageTag, textDirection, DEFAULT_LOCALE, LOCALE_COOKIE,
+};

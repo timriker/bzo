@@ -80,6 +80,8 @@ let receivedBps = 0;
 let receivedBytes = 0;
 let lastReceivedBytesUpdate = performance.now();
 
+// First: no `THREE.Color` may be made before colour management is off.
+import { DISPLAY_OUTPUT_COLOR_SPACE } from './color-management.mjs';
 import {
   setupInputHandlers,
   virtualInput,
@@ -5420,6 +5422,7 @@ async function initTankSelector() {
   const height = Math.max(80, Math.floor(canvas.clientHeight || 80));
 
   const renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true });
+  renderer.outputColorSpace = DISPLAY_OUTPUT_COLOR_SPACE;
   renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
   renderer.setSize(width, height, false);
 
@@ -5429,7 +5432,7 @@ async function initTankSelector() {
   camera.up.set(0, 0, 1);
   camera.lookAt(TANK_PREVIEW_LOOK_AT);
 
-  const ambient = new THREE.AmbientLight(0xffffff, 0.8);
+  const ambient = new THREE.AmbientLight(0xffffff, 0.4);
   scene.add(ambient);
   const keyLight = new THREE.DirectionalLight(0xffffff, 0.7);
   keyLight.position.set(3, -4, 5);
@@ -15874,7 +15877,6 @@ function ensureXRHudPanel(panel, { canvas = null, canvasWidth = 0, canvasHeight 
 
   if (!panel.texture) {
     panel.texture = new THREE.CanvasTexture(panel.canvas);
-    panel.texture.colorSpace = THREE.SRGBColorSpace;
   }
 
   if (!panel.mesh) {
@@ -17566,6 +17568,8 @@ function animate(frameTime) {
       && !isObservingOverview())
       ? getRoamFraming()
       : null,
+    // Riding another tank's eye, inside its hull: the close near plane.
+    roamInsideTank: roamView === ROAM_VIEW.FPS,
   });
   // After the camera, not with the rest of the flag work: a flag turns to face
   // wherever the viewer ended up this frame, and in a session that is decided by

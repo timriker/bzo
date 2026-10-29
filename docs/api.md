@@ -90,6 +90,13 @@ What only the map file knows about that world: `file`, its `lines`,
 `missingTextures` (texture names that resolved to nothing) and the parse's
 `warnings`. 404 as above.
 
+### `GET /api/world/file/<file>`
+
+A map's world by its file name in `maps/`, or `live` for the match being
+played: `file`, `hash` and `url` (`/maps/<hash>.json`). A map nobody has
+viewed is converted first; an import is found only while its world is held.
+404 otherwise.
+
 ### `GET /api/ready`
 
 200 once the server is serving. For a health check.
