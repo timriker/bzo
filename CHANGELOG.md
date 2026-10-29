@@ -6,36 +6,27 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
 
 ## [Unreleased]
 
+## [1.3.71] - 2026-10-29
+
 ### Added
-- The interface follows the browser's language, starting with Spanish: the
-  Settings menu and the entry dialog so far. **Settings > Language** overrides
-  it, and `?lang=es` picks one for a link. See `docs/i18n-plan.md`.
-- Help is pages: `docs/help/*.md`, at `/help`, `/help/<page>` and in the
-  game's help panel, which now has a button per page and a search. `/list`
-  links it. Pages are translated a paragraph at a time, and read in English
-  until they are.
-- Every language upstream BZFlag ships: Czech, Danish, German, French,
-  Italian, Lithuanian, Dutch, Portuguese, Russian, Slovak, Swedish and
-  Klingon, alongside Spanish -- the interface and the help pages, with proper
-  accents and Cyrillic where upstream's catalogs were ASCII.
-- Thai.
-- Server replies -- command answers, polls, match and operator notices --
-  in each player's language. The server still sends English, which is what
-  BZFlag clients, the log, replays and Discord see; a bzo client translates.
-- The rest of the game's interface in every language: the loading screen,
-  HUD alerts, the chat notices the game writes, scoreboard headers, and the
-  operator, audio and map-viewer dialogs.
-- Flag names and help, team names, voice channels, the observer camera's
-  labels and the World button in every language. The flag list shows each
-  flag's abbreviation and English name beside its translated name and help,
-  and is one list for `/help`, the help panel and llms-full.txt.
-- `npm run l10n:review` lists which translations still want a native
-  speaker; each catalog marks its own doubts.
-- Flag help in a headset wraps Thai, Chinese and Japanese between words.
-- Chinese (Simplified and Traditional), Japanese and Korean. Hong Kong, Macau
-  and Traditional-script browsers get Traditional Chinese.
-- Chat, callsign, motto and the other text fields follow the direction of
-  what is typed in them, so Arabic or Hebrew reads right to left.
+- bzo in 20 languages: Spanish, Portuguese, French, Italian, German, Dutch,
+  Danish, Swedish, Czech, Slovak, Lithuanian, Russian, Simplified and
+  Traditional Chinese, Japanese, Korean and Thai, plus Klingon, l337 and
+  Redneck. The browser's language picks one; **Settings > Language**
+  overrides it, and `?lang=` picks one for a link. Machine-translated, from
+  upstream BZFlag's catalogs where they had the term, with accents and native
+  scripts restored; `npm run l10n:review` lists what wants a native speaker.
+  See `docs/i18n-plan.md`.
+- Server replies -- command answers, polls, match and operator notices -- in
+  each player's language. The server still sends English, which is what
+  BZFlag clients, the log, replays and Discord see.
+- Help is pages: `docs/help/*.md`, at `/help` and `/help/<page>`, linked from
+  `/list`, and in the help panel with a button per page and a search. The flag
+  list shows each flag's abbreviation and English name beside its translated
+  name and help.
+- Text fields follow the direction of what is typed in them, so Arabic or
+  Hebrew reads right to left; flag help in a headset wraps Thai, Chinese and
+  Japanese between words.
 
 ## [1.3.70] - 2026-10-27
 
