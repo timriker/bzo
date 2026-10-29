@@ -14,6 +14,7 @@ import { TANK, getObstacleBase, getObstacleHeight } from './collision.mjs';
 import { ANTIDOTE_FLAG_COLOR, BURROW_RADAR_FACTOR, FLAG_RADIUS, FLAG_STATUS, RADAR_JAM_DECAY_MIN, getFlagTeamIndex, getNextRadarJamDecay } from './flags.mjs';
 import { colorToCSS } from './hud.js';
 import { HUNT_MARKER_COLOR } from './hunt.mjs';
+import { N_, onLocaleChange, t } from './i18n.mjs';
 import { FACE_NO_RADAR, meshArrays } from './mesh-arrays.mjs';
 import { RADAR_BOX_CORNERS, clipPolygonToRadarSquare, ensureRadarPolygonBuffers, getRadarClipBuffer, getRadarMeshFaceCull, getRadarMeshObstacleCull, getRadarObstacleCullRadius, getRadarPolygonScratch, isOutsideRadarSquare as isOutsideRadarSquareOf, isTippedRadarSpin } from './radar-geometry.mjs';
 import { meshSpinRadians } from './render.js';
@@ -28,7 +29,7 @@ export function useRadarClient(deps, liveClient) {
 }
 
 const RADAR_ZOOM_LEVELS = [0.25, 0.5, 1.0];
-const RADAR_ZOOM_LABELS = ['Short', 'Medium', 'Long'];
+const RADAR_ZOOM_LABELS = [N_('Short'), N_('Medium'), N_('Long')];
 // BZFlag's displayRadarRange default (defaultBZDB.cxx). The level is deliberately
 // not persisted: a headset has no key or button to zoom with, so every session
 // starts at a range that reads well on every device.
@@ -69,10 +70,15 @@ function getRadarZoomLabel(level = radarZoomLevel) {
 export function updateRadarZoomButton() {
   const radarZoomBtn = document.getElementById('radarZoomBtn');
   if (!radarZoomBtn) return;
-  const label = getRadarZoomLabel();
-  radarZoomBtn.textContent = `Radar: ${label}`;
-  radarZoomBtn.title = `Radar range preset: ${label}`;
+  // The English preset rides on the button for the Settings row to read; the
+  // text and title are the player's language.
+  const preset = getRadarZoomLabel();
+  const label = t(preset);
+  radarZoomBtn.dataset.radarRange = preset;
+  radarZoomBtn.textContent = t('Radar: {range}', { range: label });
+  radarZoomBtn.title = t('Radar range preset: {range}', { range: label });
 }
+onLocaleChange(updateRadarZoomButton);
 
 export function setRadarZoomLevel(level, { announce = true } = {}) {
   const normalized = normalizeRadarZoomLevel(level);
@@ -80,7 +86,7 @@ export function setRadarZoomLevel(level, { announce = true } = {}) {
   radarZoomLevel = normalized;
   updateRadarZoomButton();
   if (announce) {
-    showMessage(`Radar range: ${getRadarZoomLabel(radarZoomLevel)}`);
+    showMessage(t('Radar range: {range}', { range: t(getRadarZoomLabel(radarZoomLevel)) }));
   }
   return true;
 }
@@ -868,10 +874,14 @@ export function updateRadar() {
   // rotating with the map. Each at its own azimuth: the panel turns a
   // direction `a` to `azimuth - a` clockwise from up.
   const cardinalLabels = [
-    { angle: Math.PI / 2, label: 'N', color: '#B20000' },
-    { angle: 0, label: 'E', color: '#388E3C' },
-    { angle: -Math.PI / 2, label: 'S', color: '#1976D2' },
-    { angle: Math.PI, label: 'W', color: '#9C27B0' },
+    // TRANSLATORS: compass point on the radar, north; one letter.
+    { angle: Math.PI / 2, label: t('N'), color: '#B20000' },
+    // TRANSLATORS: compass point on the radar, east; one letter.
+    { angle: 0, label: t('E'), color: '#388E3C' },
+    // TRANSLATORS: compass point on the radar, south; one letter.
+    { angle: -Math.PI / 2, label: t('S'), color: '#1976D2' },
+    // TRANSLATORS: compass point on the radar, west; one letter.
+    { angle: Math.PI, label: t('W'), color: '#9C27B0' },
   ];
   cardinalLabels.forEach(dir => {
     client.radarCtx.save();

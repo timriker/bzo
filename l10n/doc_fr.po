@@ -1,0 +1,1033 @@
+msgid ""
+msgstr ""
+"Project-Id-Version: bzo\n"
+"Report-Msgid-Bugs-To: https://github.com/timriker/bzo/issues\n"
+"Language: fr\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Review: machine-translated, not yet read by a native speaker\n"
+
+#: docs/help/controls.md
+msgid "Controls"
+msgstr "Commandes"
+
+#: docs/help/controls.md
+msgid ""
+"One client runs on a desktop, a phone and a headset, so every action has a "
+"way in from each of them. The keyboard has the most; touch, a gamepad and "
+"the XR controllers carry the actions a match needs, and the Settings menu "
+"reaches the rest -- including from a headset, where there is no keyboard at "
+"all. This page is also the in-game help's (`/` or `?`)."
+msgstr ""
+"Un seul client tourne sur ordinateur, téléphone et casque, donc chaque "
+"action est accessible depuis chacun d'eux. Le clavier en offre le plus ; le "
+"tactile, la manette et les contrôleurs XR portent les actions dont une "
+"partie a besoin, et le menu Paramètres atteint le reste -- y compris depuis "
+"un casque, où il n'y a pas de clavier du tout. Cette page est aussi l'aide "
+"du jeu (`/` ou `?`)."
+
+#: docs/help/controls.md
+msgid "Keyboard"
+msgstr "Clavier"
+
+#: docs/help/controls.md
+msgid "Driving"
+msgstr "Conduite"
+
+#: docs/help/controls.md
+msgid "`W` / `S` or `Up` / `Down` — move forward/backward"
+msgstr "`W` / `S` ou `Up` / `Down` — avancer/reculer"
+
+#: docs/help/controls.md
+msgid "`A` / `D` or `Left` / `Right` — turn left/right"
+msgstr "`A` / `D` ou `Left` / `Right` — tourner à gauche/droite"
+
+#: docs/help/controls.md
+msgid "`Enter` — shoot"
+msgstr "`Enter` — tirer"
+
+#: docs/help/controls.md
+msgid "`Tab` — jump"
+msgstr "`Tab` — sauter"
+
+#: docs/help/controls.md
+msgid "`Space` — drop flag"
+msgstr "`Space` — lâcher le drapeau"
+
+#: docs/help/controls.md
+msgid ""
+"`I` or right-click — identify the tank in your sights, and lock a Guided "
+"Missile onto it"
+msgstr ""
+"`I` ou clic droit — identifier le tank dans ton viseur et y verrouiller un "
+"Missile guidé"
+
+#: docs/help/controls.md
+msgid ""
+"`Delete` — self-destruct, after a five second countdown; `Delete` again "
+"calls it off"
+msgstr ""
+"`Delete` — autodestruction, après un compte à rebours de cinq secondes ; "
+"`Delete` à nouveau l'annule"
+
+#: docs/help/controls.md
+msgid ""
+"`9` or `/autopilot [roger|ace]` — autopilot: the pilot drives, aims and "
+"shoots until pressed again. `Settings -> Autopilot` chooses the pilot "
+"without a keyboard. You can still drive while it does, to help it out of a "
+"corner -- see [Combining inputs](#combining-inputs)"
+msgstr ""
+"`9` ou `/autopilot [roger|ace]` — pilote automatique : le pilote conduit, "
+"vise et tire jusqu'à ce que tu appuies à nouveau. `Settings -> Autopilot` "
+"choisit le pilote sans clavier. Tu peux toujours conduire pendant ce temps, "
+"pour l'aider à sortir d'un coin -- voir [Combiner les entrées](#combining-"
+"inputs)"
+
+#: docs/help/controls.md
+msgid "`P` — pause/resume"
+msgstr "`P` — pause/reprise"
+
+#: docs/help/controls.md
+msgid "Chat"
+msgstr "Chat"
+
+#: docs/help/controls.md
+msgid "`N` — open chat (or click the `Send` button)"
+msgstr "`N` — ouvrir le chat (ou cliquer sur le bouton `Send`)"
+
+#: docs/help/controls.md
+msgid ""
+"`Enter` — send chat (while chat input is focused, or click `Send` again)"
+msgstr ""
+"`Enter` — envoyer le message (quand la saisie du chat a le focus, ou cliquer "
+"à nouveau sur `Send`)"
+
+#: docs/help/controls.md
+msgid ""
+"`1` / `2` / `3` / `4` / `5` — switch chat tab (`All` / `Chat` / `Server` / "
+"`Misc` / `Debug`)"
+msgstr ""
+"`1` / `2` / `3` / `4` / `5` — changer d'onglet de chat (`All` / `Chat` / "
+"`Server` / `Misc` / `Debug`)"
+
+#: docs/help/controls.md
+msgid "`[` / `]` — previous/next chat tab"
+msgstr "`[` / `]` — onglet de chat précédent/suivant"
+
+#: docs/help/controls.md
+msgid ""
+"`Tab` — while typing, complete a player, command or flag name; `@` starts a "
+"mention and `#` a player's slot number"
+msgstr ""
+"`Tab` — pendant la saisie, compléter un nom de joueur, de commande ou de "
+"drapeau ; `@` commence une mention et `#` le numéro d'emplacement d'un joueur"
+
+#: docs/help/controls.md
+msgid ""
+"`Up` / `Down` — while typing, recall earlier lines; type the start of a line "
+"first to recall only the ones beginning that way"
+msgstr ""
+"`Up` / `Down` — pendant la saisie, rappeler les lignes précédentes ; tape "
+"d'abord le début d'une ligne pour ne rappeler que celles qui commencent ainsi"
+
+#: docs/help/controls.md
+msgid "`.` — reply to last direct-message sender"
+msgstr "`.` — répondre au dernier expéditeur d'un message privé"
+
+#: docs/help/controls.md
+msgid "`,` — message nemesis target"
+msgstr "`,` — envoyer un message à ta némésis"
+
+#: docs/help/controls.md
+msgid "`Page Up` / `Page Down` — scroll chat history"
+msgstr "`Page Up` / `Page Down` — faire défiler l'historique du chat"
+
+#: docs/help/controls.md
+msgid "`End` — jump chat to newest message"
+msgstr "`End` — aller au message le plus récent"
+
+#: docs/help/controls.md
+msgid ""
+"Drag across the history while chat is open to select it, then copy; typing "
+"carries on in the input"
+msgstr ""
+"Fais glisser sur l'historique quand le chat est ouvert pour le sélectionner, "
+"puis copie ; la saisie continue dans le champ"
+
+#: docs/help/controls.md
+msgid "View and panels"
+msgstr "Vue et panneaux"
+
+#: docs/help/controls.md
+msgid ""
+"`Esc` — back out one step: exit chat input, leave fullscreen, leave mouse "
+"steering, then open Settings. Pressing it again closes Settings, so it is "
+"always safe to press one more time"
+msgstr ""
+"`Esc` — revenir d'un pas : quitter la saisie du chat, sortir du plein écran, "
+"quitter le pilotage à la souris, puis ouvrir les Paramètres. Appuyer encore "
+"ferme les Paramètres, donc tu peux toujours appuyer une fois de plus sans "
+"risque"
+
+#: docs/help/controls.md
+msgid "`M` — toggle mouse steering"
+msgstr "`M` — activer/désactiver le pilotage à la souris"
+
+#: docs/help/controls.md
+msgid "`C` — cycle camera mode"
+msgstr "`C` — changer de mode de caméra"
+
+#: docs/help/controls.md
+msgid "`O` — toggle operator panel"
+msgstr "`O` — afficher/masquer le panneau opérateur"
+
+#: docs/help/controls.md
+msgid "`F` — toggle fullscreen"
+msgstr "`F` — activer/désactiver le plein écran"
+
+#: docs/help/controls.md
+msgid "`` ` `` — toggle debug HUD"
+msgstr "`` ` `` — afficher/masquer le HUD de débogage"
+
+#: docs/help/controls.md
+msgid "`=` or `+` or `Numpad +` — zoom radar out (increase range)"
+msgstr "`=` ou `+` ou `Numpad +` — dézoomer le radar (augmenter la portée)"
+
+#: docs/help/controls.md
+msgid "`-` or `Numpad -` — zoom radar in (decrease range)"
+msgstr "`-` ou `Numpad -` — zoomer le radar (réduire la portée)"
+
+#: docs/help/controls.md
+msgid ""
+"`\\` — reset radar zoom to the default medium range (half the world's radar "
+"limit, which is the world size unless the map says otherwise)"
+msgstr ""
+"`\\` — remettre le zoom du radar à la portée moyenne par défaut (la moitié "
+"de la limite radar du monde, qui est la taille du monde sauf si la carte en "
+"décide autrement)"
+
+#: docs/help/controls.md
+msgid "`Settings -> Radar: ...` — cycle Short/Medium/Long radar presets"
+msgstr ""
+"`Settings -> Radar: ...` — parcourir les préréglages radar Courte/Moyenne/"
+"Longue"
+
+#: docs/help/controls.md
+msgid "`B` — toggle the voice microphone"
+msgstr "`B` — activer/désactiver le micro vocal"
+
+#: docs/help/controls.md
+msgid ""
+"`Settings -> Audio Settings` — set the game, voice, and microphone levels, "
+"and choose the voice channel: All, Nearby, or Team"
+msgstr ""
+"`Settings -> Audio Settings` — régler les volumes du jeu, de la voix et du "
+"micro, et choisir le canal vocal : Tous, Proches ou Équipe"
+
+#: docs/help/controls.md
+msgid "`/` or `?` — show/hide help panel"
+msgstr "`/` ou `?` — afficher/masquer le panneau d'aide"
+
+#: docs/help/controls.md
+msgid ""
+"`🎤` beside the gear — the microphone, as `B` is: a green border means you "
+"are transmitting and a red one means you are not, and the hover text names "
+"the channel it would speak on"
+msgstr ""
+"`🎤` à côté de l'engrenage — le micro, comme `B` : une bordure verte "
+"signifie que tu transmets et une rouge que tu ne transmets pas, et "
+"l'infobulle indique le canal sur lequel il parlerait"
+
+#: docs/help/controls.md
+msgid ""
+"`▲` beside the gear — hide the scoreboard and chat, leaving the name row and "
+"the chat tabs; `▼` brings them back. Typing a message borrows the chat "
+"window until you are done with it, and `U` or `7` borrows the scoreboard "
+"until the hunt cursor closes; tapping a chat tab opens chat for good. Small "
+"screens start collapsed"
+msgstr ""
+"`▲` à côté de l'engrenage — masquer le tableau des scores et le chat, en "
+"laissant la ligne des noms et les onglets du chat ; `▼` les fait revenir. "
+"Taper un message emprunte la fenêtre du chat jusqu'à ce que tu aies fini, et "
+"`U` ou `7` emprunte le tableau des scores jusqu'à la fermeture du curseur de "
+"traque ; toucher un onglet du chat ouvre le chat pour de bon. Les petits "
+"écrans démarrent repliés"
+
+#: docs/help/controls.md
+msgid ""
+"`Settings -> Anaglyph 3D` — red/cyan glasses; `Settings -> VR Mode` enters a "
+"WebXR headset"
+msgstr ""
+"`Settings -> Anaglyph 3D` — lunettes rouge/cyan ; `Settings -> VR Mode` "
+"entre dans un casque WebXR"
+
+#: docs/help/controls.md
+msgid "Menus"
+msgstr "Menus"
+
+#: docs/help/controls.md
+msgid ""
+"`Up` / `Down` — previous/next control, including from inside a text field"
+msgstr ""
+"`Up` / `Down` — contrôle précédent/suivant, y compris depuis un champ de "
+"texte"
+
+#: docs/help/controls.md
+msgid ""
+"`Left` / `Right` — change the focused control: move a slider, pick the next "
+"choice. In a text field they move the cursor instead"
+msgstr ""
+"`Left` / `Right` — modifier le contrôle actif : déplacer un curseur, choisir "
+"l'option suivante. Dans un champ de texte, elles déplacent plutôt le curseur "
+"de saisie"
+
+#: docs/help/controls.md
+msgid "`Tab` / `Shift+Tab` — previous/next control"
+msgstr "`Tab` / `Shift+Tab` — contrôle précédent/suivant"
+
+#: docs/help/controls.md
+msgid "`Home` / `End` — first/last control"
+msgstr "`Home` / `End` — premier/dernier contrôle"
+
+#: docs/help/controls.md
+msgid "`Enter` or `Space` — press the focused control"
+msgstr "`Enter` ou `Space` — activer le contrôle actif"
+
+#: docs/help/controls.md
+msgid ""
+"Click or tap a row that walks a list: the title steps back and the current "
+"option steps forward. The `‹` and `›` on the row mark the two halves"
+msgstr ""
+"Clique ou touche une ligne qui parcourt une liste : le titre recule d'un "
+"cran et l'option actuelle avance. Les `‹` et `›` de la ligne marquent les "
+"deux moitiés"
+
+#: docs/help/controls.md
+msgid ""
+"The help panel is read rather than operated, so there the arrows scroll it "
+"and only `Left` / `Right` move focus"
+msgstr ""
+"Le panneau d'aide se lit plutôt qu'il ne se manipule : les flèches le font "
+"défiler et seules `Left` / `Right` déplacent le focus"
+
+#: docs/help/controls.md
+msgid "Hunting"
+msgstr "Traque"
+
+#: docs/help/controls.md
+msgid ""
+"Marking a player puts a cyan `◎` on their scoreboard row, a cyan ring on "
+"their radar blip, and a beacon in the sky over them in their own tank colour "
+"-- so several marked at once are still told apart at a glance. While one of "
+"them is in your sights the HUD says **SPOTTED:** and a ping sounds once a "
+"second from where they are. In Rabbit Chase the rabbit is marked for you, "
+"and its beacon is cyan like its ring: everyone is hunting it, so everyone's "
+"mark over it says so."
+msgstr ""
+"Marquer un joueur place un `◎` cyan sur sa ligne du tableau des scores, un "
+"anneau cyan sur son point radar et une balise dans le ciel au-dessus de lui, "
+"à la couleur de son tank -- ainsi plusieurs joueurs marqués en même temps se "
+"distinguent d'un coup d'œil. Quand l'un d'eux est dans ton viseur, le HUD "
+"affiche **REPÉRÉ :** et un bip retentit chaque seconde depuis sa position. En "
+"Rabbit Chase, le lapin est marqué pour toi, et sa balise est cyan comme son "
+"anneau : tout le monde le traque, donc la marque de chacun au-dessus de lui "
+"l'indique."
+
+#: docs/help/controls.md
+msgid ""
+"`U` — hunt: open the scoreboard cursor, and press it again on a running hunt "
+"to clear every mark"
+msgstr ""
+"`U` — traque : ouvrir le curseur du tableau des scores, et appuyer à nouveau "
+"pendant une traque en cours pour effacer toutes les marques"
+
+#: docs/help/controls.md
+msgid ""
+"`7` — add hunt: the same cursor, but committing adds to what is marked "
+"rather than replacing it, and committing on a row already marked takes it off"
+msgstr ""
+"`7` — ajouter à la traque : le même curseur, mais valider ajoute aux marques "
+"existantes au lieu de les remplacer, et valider sur une ligne déjà marquée "
+"la retire"
+
+#: docs/help/controls.md
+msgid ""
+"`Settings -> Hunt` — the same thing without a keyboard, for a phone or a "
+"headset. Left and right step through `Clear` and then the players in "
+"alphabetical order; select marks or unmarks whoever is shown, or clears "
+"every mark on `Clear`. On a touch screen or with a mouse, tap a chevron to "
+"step and anywhere else on the row to select"
+msgstr ""
+"`Settings -> Hunt` — la même chose sans clavier, pour un téléphone ou un "
+"casque. Gauche et droite parcourent `Clear` puis les joueurs par ordre "
+"alphabétique ; sélectionner marque ou démarque le joueur affiché, ou efface "
+"toutes les marques sur `Clear`. Sur un écran tactile ou à la souris, touche "
+"un chevron pour avancer et n'importe où ailleurs sur la ligne pour "
+"sélectionner"
+
+#: docs/help/controls.md
+msgid ""
+"With the cursor open, the board's heading reads `*SEL*` and a pulsing `○` "
+"sits on the row it is on, filling in to `◎` when you commit. `Up` / `Down` "
+"move it, `Enter` commits, and `U` or `7` backs out keeping whatever was "
+"already marked. `I` and `Space` move the cursor too, so a surface without "
+"arrow keys can reach it"
+msgstr ""
+"Avec le curseur ouvert, l'en-tête du tableau affiche `*SEL*` et un `○` "
+"pulsant se trouve sur la ligne visée ; il se remplit en `◎` quand tu "
+"valides. `Up` / `Down` le déplacent, `Enter` valide, et `U` ou `7` quitte en "
+"gardant ce qui était déjà marqué. `I` et `Space` déplacent aussi le curseur, "
+"pour qu'un appareil sans touches fléchées puisse l'atteindre"
+
+#: docs/help/controls.md
+msgid "As an observer"
+msgstr "En observateur"
+
+#: docs/help/controls.md
+msgid ""
+"As an Observer you have no tank. Drive and turn fly the camera instead, "
+"`Tab` climbs and `Space` descends, and holding `Shift` makes drive tilt the "
+"view up and down and turn slide it sideways. The camera rests at the eye "
+"height of a tank on the ground, and travel stays level however the view is "
+"tilted. Pausing and self-destruct do nothing."
+msgstr ""
+"En Observateur, tu n'as pas de tank. Avancer et tourner déplacent la caméra "
+"à la place, `Tab` monte et `Space` descend, et en maintenant `Shift`, "
+"avancer incline la vue vers le haut ou le bas et tourner la fait glisser sur "
+"le côté. La caméra reste à hauteur des yeux d'un tank au sol, et le "
+"déplacement reste horizontal quelle que soit l'inclinaison de la vue. La "
+"pause et l'autodestruction n'ont aucun effet."
+
+#: docs/help/controls.md
+msgid ""
+"`Enter` or `C` — step through everything: in each view, the leader first, "
+"then every player, then on to the next view. The views are Free, Track, "
+"Follow, Driving with, and Flag where a map has team flags"
+msgstr ""
+"`Enter` ou `C` — tout parcourir : dans chaque vue, le leader d'abord, puis "
+"chaque joueur, puis la vue suivante. Les vues sont Vue libre, Surveillance, "
+"Derrière, À bord avec, et Surveillance d'un drapeau quand une carte a des "
+"drapeaux d'équipe"
+
+#: docs/help/controls.md
+msgid ""
+"`I` or right-click — in the Free view, watch the tank in your sights, or "
+"show the obstacle there: what it is, an outline round it, and its block from "
+"the map file with the `group` blocks that placed it"
+msgstr ""
+"`I` ou clic droit — dans la vue Libre, regarder le tank dans ton viseur, ou "
+"montrer l'obstacle visé : ce que c'est, un contour autour, et son bloc dans "
+"le fichier de carte avec les blocs `group` qui l'ont placé"
+
+#: docs/help/controls.md
+msgid ""
+"Right-click or tap an obstacle anywhere on screen, in any view and the "
+"Overview most of all, to show it the same way"
+msgstr ""
+"Fais un clic droit ou touche un obstacle n'importe où à l'écran, dans "
+"n'importe quelle vue et surtout la vue d'ensemble, pour l'afficher de la "
+"même façon"
+
+#: docs/help/controls.md
+msgid ""
+"Pick nothing -- the sky, or empty ground in the Overview -- or press the "
+"panel's **World** button for the whole world: what is in it, faces, "
+"textures, the map file's warnings and its largest meshes, each of which "
+"shows that mesh"
+msgstr ""
+"Ne vise rien -- le ciel, ou le sol vide dans la Vue d'ensemble -- ou appuie "
+"sur le bouton **Monde** du panneau pour le monde entier : ce qu'il contient, "
+"faces, textures, les avertissements du fichier de carte et ses plus grands "
+"maillages, chacun affichant ce maillage"
+
+#: docs/help/controls.md
+msgid ""
+"Click a scoreboard row to watch that player; click the marked row again to "
+"go back to following the leader"
+msgstr ""
+"Clique sur une ligne du tableau des scores pour regarder ce joueur ; clique "
+"à nouveau sur la ligne marquée pour revenir au suivi du meneur"
+
+#: docs/help/controls.md
+msgid "Mouse"
+msgstr "Souris"
+
+#: docs/help/controls.md
+msgid ""
+"`M` turns mouse steering on and off, and nothing else does: the keys never "
+"take it away behind your back."
+msgstr ""
+"`M` active et désactive le pilotage à la souris, et rien d'autre ne le "
+"fait : les touches ne te le retirent jamais dans ton dos."
+
+#: docs/help/controls.md
+msgid "The targeting box"
+msgstr "La boîte de visée"
+
+#: docs/help/controls.md
+msgid ""
+"The two boxes in the middle of the screen are the steering, as in BZFlag. "
+"Where the cursor sits relative to their centre is what the tank does:"
+msgstr ""
+"Les deux cadres au milieu de l'écran servent à diriger, comme dans BZFlag. "
+"La position du curseur par rapport à leur centre détermine ce que fait le "
+"tank :"
+
+#: docs/help/controls.md
+msgid ""
+"**Inside the inner box, nothing.** It is the dead zone: park the cursor "
+"there to stop."
+msgstr ""
+"**Dans le cadre intérieur, rien.** C'est la zone morte : laisse le curseur "
+"là pour t'arrêter."
+
+#: docs/help/controls.md
+msgid ""
+"**Between the boxes, more the further out.** Up is forward and down is "
+"reverse; left and right turn. Each grows evenly from nothing at the inner "
+"box's edge to full at the outer box's."
+msgstr ""
+"**Entre les cadres, d'autant plus qu'on s'éloigne.** Le haut fait avancer et "
+"le bas reculer ; gauche et droite font tourner. Chacun croît régulièrement "
+"de zéro au bord du cadre intérieur jusqu'au maximum au bord du cadre "
+"extérieur."
+
+#: docs/help/controls.md
+msgid ""
+"**At or past the outer box, full.** Each axis stops growing on its own, so "
+"running the cursor out past the top keeps the tank at full speed and leaves "
+"left and right free to steer."
+msgstr ""
+"**Sur ou au-delà du cadre extérieur, maximum.** Chaque axe cesse de croître "
+"indépendamment, donc pousser le curseur au-delà du haut garde le tank à "
+"pleine vitesse et laisse gauche et droite libres pour diriger."
+
+#: docs/help/controls.md
+msgid ""
+"**Reverse is half speed**, as it is from the keys, however far down the "
+"cursor goes."
+msgstr ""
+"**La marche arrière est à mi-vitesse**, comme avec les touches, quelle que "
+"soit la distance du curseur vers le bas."
+
+#: docs/help/controls.md
+msgid ""
+"**The box sets the speed asked for, not the speed you get at once.** A world "
+"with an acceleration limit (BZFlag's `-a`, off by default) brings the tank "
+"up to it over time, the same as it does from the keys."
+msgstr ""
+"**Le cadre fixe la vitesse demandée, pas celle obtenue tout de suite.** Un "
+"monde avec une limite d'accélération (`-a` de BZFlag, désactivée par défaut) "
+"y amène le tank progressivement, comme avec les touches."
+
+#: docs/help/controls.md
+msgid ""
+"The boxes are BZFlag's own sizes, scaled to the window. BZFlag also holds "
+"the cursor inside the box; a browser cannot without taking the pointer over, "
+"so in bzo the cursor can leave it -- the steering simply stays at full, and "
+"the cost is a longer move back to the centre."
+msgstr ""
+"Les cadres ont les tailles de BZFlag, mises à l'échelle de la fenêtre. "
+"BZFlag retient aussi le curseur dans le cadre ; un navigateur ne le peut pas "
+"sans capturer le pointeur, donc dans bzo le curseur peut en sortir -- la "
+"direction reste simplement au maximum, au prix d'un plus long trajet pour "
+"revenir au centre."
+
+#: docs/help/controls.md
+msgid ""
+"With the keys, the mouse keeps whichever axis no key is holding -- see "
+"[Combining inputs](#combining-inputs)."
+msgstr ""
+"Avec les touches, la souris garde l'axe qu'aucune touche ne tient -- voir "
+"[Combiner les entrées](#combining-inputs)."
+
+#: docs/help/controls.md
+msgid "Clicks"
+msgstr "Clics"
+
+#: docs/help/controls.md
+msgid ""
+"Left click shoots wherever the cursor is, whether mouse steering is on or "
+"not, unless the click lands on the chat panel or a button. Right click "
+"identifies. Mouse steering is unavailable with no mouse attached, in VR, and "
+"while the on-screen controls are up, since those steer instead; a click that "
+"misses one of their buttons does nothing rather than firing."
+msgstr ""
+"Le clic gauche tire là où se trouve le curseur, que le pilotage à la souris "
+"soit activé ou non, sauf si le clic tombe sur le panneau de chat ou un "
+"bouton. Le clic droit identifie. Le pilotage à la souris est indisponible "
+"sans souris branchée, en VR, et tant que les commandes à l'écran sont "
+"affichées, puisque ce sont elles qui dirigent ; un clic qui manque l'un de "
+"leurs boutons ne fait rien au lieu de tirer."
+
+#: docs/help/controls.md
+msgid "Combining inputs"
+msgstr "Combiner les entrées"
+
+#: docs/help/controls.md
+msgid ""
+"Every input drives at once, and nothing switches between them on its own: "
+"`M` and the Settings rows are the only things that change which ones are on."
+msgstr ""
+"Toutes les entrées conduisent en même temps, et rien ne bascule de l'une à "
+"l'autre tout seul : `M` et les lignes des Paramètres sont les seules choses "
+"qui changent celles qui sont actives."
+
+#: docs/help/controls.md
+msgid ""
+"**Driving is shared out an axis at a time** -- forward/back, and turn, each "
+"on its own. On each, the first of these with something to say wins:"
+msgstr ""
+"**La conduite se partage axe par axe** -- avant/arrière et rotation, chacun "
+"séparément. Sur chacun, la première de ces sources qui a quelque chose à "
+"dire l'emporte :"
+
+#: docs/help/controls.md
+msgid ""
+"**Keys.** A held drive key owns its axis, and holding both of a pair (`W` "
+"and `S`, or `A` and `D`) is a deliberate stop on that axis."
+msgstr ""
+"**Les touches.** Une touche de conduite maintenue possède son axe, et "
+"maintenir les deux d'une paire (`W` et `S`, ou `A` et `D`) est un arrêt "
+"volontaire sur cet axe."
+
+#: docs/help/controls.md
+msgid ""
+"**The stick:** the XR controllers in VR, otherwise a connected gamepad, "
+"otherwise the on-screen stick. Only one of the three is read at a time -- "
+"they are not added together."
+msgstr ""
+"**Le stick :** les contrôleurs XR en VR, sinon une manette connectée, sinon "
+"le stick à l'écran. Un seul des trois est lu à la fois -- ils ne "
+"s'additionnent pas."
+
+#: docs/help/controls.md
+msgid "**The mouse**, in the targeting box, with mouse steering on."
+msgstr ""
+"**La souris**, dans la boîte de visée, avec le pilotage à la souris activé."
+
+#: docs/help/controls.md
+msgid ""
+"So you can drive with `W` while the mouse steers, turn with `A`/`D` while "
+"the mouse sets the speed, or steer a gamepad's turn while a key holds the "
+"speed. A stick let go reads zero and gives the axis to the mouse; the mouse "
+"box holds whatever the cursor's place says, which is why it comes last."
+msgstr ""
+"Tu peux donc avancer avec `W` pendant que la souris dirige, tourner avec `A`/"
+"`D` pendant que la souris règle la vitesse, ou tourner avec une manette "
+"pendant qu'une touche tient la vitesse. Un stick relâché vaut zéro et cède "
+"l'axe à la souris ; le cadre de la souris maintient ce que dit la position "
+"du curseur, c'est pourquoi il passe en dernier."
+
+#: docs/help/controls.md
+msgid ""
+"**Buttons add up.** Shoot fires from `Enter`, a left click, or the stick "
+"source's own fire button; jump from `Tab` or the stick source's; identify "
+"from `I`, a right click, or the stick source's. Any of them will do."
+msgstr ""
+"**Les boutons s'additionnent.** Tirer se fait avec `Enter`, un clic gauche "
+"ou le bouton de tir de la source du stick ; sauter avec `Tab` ou celui de la "
+"source du stick ; identifier avec `I`, un clic droit ou celui de la source "
+"du stick. N'importe lequel fait l'affaire."
+
+#: docs/help/controls.md
+msgid ""
+"**With the autopilot on**, the pilot takes the mouse's place, last in line: "
+"a drive key or the stick you hold still owns its axis, and the pilot has the "
+"rest. So when it is wedged against something you can hold `A` to turn it "
+"out, or `S` to back it off, while it keeps the other axis, and let go to "
+"hand it back -- it carries on from wherever you left it, re-planning its "
+"route if you took it somewhere else. Your shots, jumps and drops add to its "
+"own. The mouse box does not steer while the autopilot drives: it holds an "
+"offset wherever the cursor is parked, so it would never hand anything back."
+msgstr ""
+"**Avec le pilote automatique activé**, le pilote prend la place de la "
+"souris, en dernier : une touche de conduite ou le stick que tu tiens possède "
+"toujours son axe, et le pilote a le reste. Donc quand il est coincé contre "
+"quelque chose, tu peux maintenir `A` pour le faire tourner, ou `S` pour le "
+"faire reculer, pendant qu'il garde l'autre axe, puis relâcher pour lui "
+"rendre la main -- il reprend là où tu l'as laissé, en recalculant son "
+"itinéraire si tu l'as emmené ailleurs. Tes tirs, sauts et lâchers de drapeau "
+"s'ajoutent aux siens. Le cadre de la souris ne dirige pas pendant que le "
+"pilote automatique conduit : il maintient un décalage là où le curseur est "
+"posé, donc il ne rendrait jamais la main."
+
+#: docs/help/controls.md
+msgid ""
+"**Menus don't stop the autopilot.** Opening Settings, or any other menu, "
+"normally pauses your tank. With the autopilot driving, the menu takes the "
+"keys and the pilot goes on driving. With a pilot chosen on the `Settings -> "
+"Autopilot` row but not driving, opening a menu turns the autopilot on, and "
+"closing the menu turns it off again -- so a menu means \"drive for me a "
+"moment\" rather than \"stop\". With the row on `None`, the default, or on a "
+"server that refuses bots (`-disableBots`), menus pause as they always have. "
+"A hidden window still pauses either way: the browser stops drawing it, and "
+"the pilot with it."
+msgstr ""
+"**Les menus n'arrêtent pas le pilote automatique.** Ouvrir les Paramètres, "
+"ou tout autre menu, met normalement ton tank en pause. Quand le pilote "
+"automatique conduit, le menu prend les touches et le pilote continue de "
+"conduire. Avec un pilote choisi sur la ligne `Settings -> Autopilot` mais "
+"qui ne conduit pas, ouvrir un menu active le pilote automatique, et fermer "
+"le menu le désactive -- un menu signifie donc « conduis pour moi un "
+"instant » plutôt que « arrête ». Avec la ligne sur `None`, la valeur par "
+"défaut, ou sur un serveur qui refuse les bots (`-disableBots`), les menus "
+"mettent en pause comme toujours. Une fenêtre masquée met en pause dans tous "
+"les cas : le navigateur arrête de la dessiner, et le pilote avec."
+
+#: docs/help/controls.md
+msgid ""
+"**Three keys at once.** Many keyboards cannot report some three-key "
+"combinations at all -- the third key's press never reaches the browser -- so "
+"a held turn and reverse can swallow a jump (#146). The debug HUD (`` ` ``) "
+"shows how many keys the browser saw held at once, which tells the keyboard's "
+"limit from bzo's."
+msgstr ""
+"**Trois touches à la fois.** Beaucoup de claviers ne peuvent pas du tout "
+"signaler certaines combinaisons de trois touches -- l'appui sur la troisième "
+"n'atteint jamais le navigateur -- donc maintenir une rotation et la marche "
+"arrière peut avaler un saut (#146). Le HUD de débogage (`` ` ``) montre "
+"combien de touches le navigateur a vues maintenues en même temps, ce qui "
+"distingue la limite du clavier de celle de bzo."
+
+#: docs/help/controls.md
+msgid "Touch: the on-screen controls"
+msgstr "Tactile : les commandes à l'écran"
+
+#: docs/help/controls.md
+msgid ""
+"A phone starts with them on; anywhere else `Settings -> Virtual Controls` "
+"turns them on and off."
+msgstr ""
+"Un téléphone démarre avec elles activées ; ailleurs, `Settings -> Virtual "
+"Controls` les active et les désactive."
+
+#: docs/help/controls.md
+msgid ""
+"**The stick**, bottom left: push it to drive and turn, as far as you push "
+"it. A mouse can drag it too."
+msgstr ""
+"**Le stick**, en bas à gauche : pousse-le pour avancer et tourner, d'autant "
+"plus que tu le pousses loin. Une souris peut aussi le faire glisser."
+
+#: docs/help/controls.md
+msgid ""
+"**`●`** — shoot. Tapping fires as fast as clicking a mouse; holding fires at "
+"the world's sustained rate"
+msgstr ""
+"**`●`** — tirer. Toucher tire aussi vite qu'un clic de souris ; maintenir "
+"tire à la cadence soutenue du monde"
+
+#: docs/help/controls.md
+msgid "**`⤒`** — jump"
+msgstr "**`⤒`** — sauter"
+
+#: docs/help/controls.md
+msgid "**`⚑`** — drop flag"
+msgstr "**`⚑`** — lâcher le drapeau"
+
+#: docs/help/controls.md
+msgid "**`◎`** — identify, and lock a Guided Missile"
+msgstr "**`◎`** — identifier, et verrouiller un Missile guidé"
+
+#: docs/help/controls.md
+msgid ""
+"Everything else -- camera, radar range, chat, hunting, autopilot, pausing -- "
+"is a row in Settings, which a tap reaches."
+msgstr ""
+"Tout le reste -- caméra, portée radar, chat, traque, pilote automatique, "
+"pause -- est une ligne des Paramètres, accessible d'un toucher."
+
+#: docs/help/controls.md
+msgid "Gamepad"
+msgstr "Manette"
+
+#: docs/help/controls.md
+msgid ""
+"Any controller the browser reports in the standard layout (most USB and "
+"Bluetooth pads, and iOS MFi controllers). Plugging one in turns it on; "
+"nothing needs setting up."
+msgstr ""
+"Toute manette que le navigateur signale avec la disposition standard (la "
+"plupart des manettes USB et Bluetooth, et les manettes iOS MFi). La brancher "
+"l'active ; rien à configurer."
+
+#: docs/help/controls.md
+msgid "Control"
+msgstr "Commande"
+
+#: docs/help/controls.md
+msgid "In a menu"
+msgstr "Dans un menu"
+
+#: docs/help/controls.md
+msgid "Left stick"
+msgstr "Stick gauche"
+
+#: docs/help/controls.md
+msgid "forward/backward and turn"
+msgstr "avancer/reculer et tourner"
+
+#: docs/help/controls.md
+msgid "move between rows, change a row"
+msgstr "passer d'une ligne à l'autre, modifier une ligne"
+
+#: docs/help/controls.md
+msgid "`A` / Cross, or right trigger"
+msgstr "`A` / Croix, ou gâchette droite"
+
+#: docs/help/controls.md
+msgid "shoot"
+msgstr "tirer"
+
+#: docs/help/controls.md
+msgid "select"
+msgstr "sélectionner"
+
+#: docs/help/controls.md
+msgid "`B` / Circle, or left trigger"
+msgstr "`B` / Rond, ou gâchette gauche"
+
+#: docs/help/controls.md
+msgid "jump"
+msgstr "sauter"
+
+#: docs/help/controls.md
+msgid "back"
+msgstr "retour"
+
+#: docs/help/controls.md
+msgid "`X` / Square"
+msgstr "`X` / Carré"
+
+#: docs/help/controls.md
+msgid "drop flag"
+msgstr "lâcher le drapeau"
+
+# review: gâchette haute
+#: docs/help/controls.md
+msgid "Either shoulder"
+msgstr "Une gâchette haute"
+
+#: docs/help/controls.md
+msgid "identify"
+msgstr "identifier"
+
+#: docs/help/controls.md
+msgid ""
+"The sticks have a dead zone of a fifth of their travel, so a pad left on the "
+"desk does not creep. The right stick is free."
+msgstr ""
+"Les sticks ont une zone morte d'un cinquième de leur course, pour qu'une "
+"manette posée sur le bureau ne fasse pas dériver le tank. Le stick droit est "
+"libre."
+
+#: docs/help/controls.md
+msgid ""
+"The pad rumbles when you fire and when your tank dies, as BZFlag's does: a "
+"short buzz for a shot, longer for a shock wave, both motors for a laser, and "
+"one long, strong shake for a death. It rumbles only while it is what you are "
+"playing with -- a key or a click hands control back and keeps it quiet -- "
+"and never for an observer. **Rumble** in Settings turns it off. The browser "
+"has to support it; Chrome and Edge do."
+msgstr ""
+"La manette vibre quand tu tires et quand ton tank meurt, comme celle de "
+"BZFlag : un bref bourdonnement pour un tir, plus long pour une onde de choc, "
+"les deux moteurs pour un laser, et une longue et forte secousse pour une "
+"mort. Elle ne vibre que lorsque c'est elle que tu utilises -- une touche ou "
+"un clic reprend la main et la fait taire -- et jamais pour un observateur. "
+"**Vibration** dans les Paramètres la désactive. Le navigateur doit la "
+"prendre en charge ; Chrome et Edge le font."
+
+#: docs/help/controls.md
+msgid "XR controllers"
+msgstr "Contrôleurs XR"
+
+#: docs/help/controls.md
+msgid ""
+"In VR the controllers are the only input. Turning the tank is independent of "
+"where you look."
+msgstr ""
+"En VR, les contrôleurs sont la seule entrée. La rotation du tank est "
+"indépendante de l'endroit où tu regardes."
+
+#: docs/help/controls.md
+msgid "In the XR menu"
+msgstr "Dans le menu XR"
+
+#: docs/help/controls.md
+msgid "Either thumbstick"
+msgstr "L'un ou l'autre stick"
+
+#: docs/help/controls.md
+msgid "forward/backward and turn -- the right stick if both are pushed"
+msgstr "avancer/reculer et tourner -- le stick droit si les deux sont poussés"
+
+#: docs/help/controls.md
+msgid "Either trigger"
+msgstr "L'une ou l'autre gâchette"
+
+#: docs/help/controls.md
+msgid "`A` / `X` (primary face button)"
+msgstr "`A` / `X` (bouton principal)"
+
+#: docs/help/controls.md
+msgid "`B` / `Y` (secondary face button)"
+msgstr "`B` / `Y` (bouton secondaire)"
+
+#: docs/help/controls.md
+msgid "open the XR menu"
+msgstr "ouvrir le menu XR"
+
+#: docs/help/controls.md
+msgid "back, and close it from the top"
+msgstr "retour, et le fermer depuis le premier niveau"
+
+#: docs/help/controls.md
+msgid "Either grip"
+msgstr "L'une ou l'autre poignée"
+
+#: docs/help/controls.md
+msgid "Press either thumbstick"
+msgstr "Appuyer sur l'un des sticks"
+
+#: docs/help/controls.md
+msgid "Both controllers pulse for the same events as a gamepad's rumble."
+msgstr "Les deux contrôleurs vibrent pour les mêmes événements que la manette."
+
+#: docs/help/controls.md
+msgid ""
+"Identify is on the thumbstick press because a thumb that is steering presses "
+"it by accident, and identifying costs nothing; the menu is on `B` for the "
+"same reason. Typing -- a name, a MOTD -- uses the headset's own system "
+"keyboard, raised when the row takes focus; see the README's WebXR section "
+"for headsets that have none."
+msgstr ""
+"Identifier est sur l'appui du stick car un pouce qui dirige l'enfonce par "
+"accident, et identifier ne coûte rien ; le menu est sur `B` pour la même "
+"raison. La saisie -- un nom, un MOTD -- utilise le clavier système du "
+"casque, qui apparaît quand la ligne prend le focus ; voir la section WebXR "
+"du README pour les casques qui n'en ont pas."
+
+#: docs/help/flags.md
+msgid "Flags"
+msgstr "Drapeaux"
+
+#: docs/help/flags.md
+msgid ""
+"Drive over a flag to pick it up, and `Space` to drop it. Good flags help; "
+"bad flags hinder, and stay until they shake off, you kill, or you die. A "
+"superflag on the ground is white and tells you nothing about itself until "
+"somebody picks it up. Team flags are captured by carrying an enemy's to your "
+"own base."
+msgstr ""
+"Roule sur un drapeau pour le ramasser, et `Space` pour le lâcher. Les bons "
+"drapeaux aident ; les mauvais handicapent, et restent jusqu'à ce qu'ils se "
+"détachent, que tu tues ou que tu meures. Un superdrapeau au sol est blanc et "
+"ne révèle rien de lui-même tant que personne ne l'a ramassé. Les drapeaux "
+"d'équipe se capturent en rapportant celui d'un ennemi à ta propre base."
+
+#: docs/help/scoreboard.md
+msgid "Scoreboard"
+msgstr "Tableau des scores"
+
+# review: Éliminations
+#: docs/help/scoreboard.md
+msgid ""
+"Each row's numbers read **Kills / Deaths**, then **[Team Kills]** once you "
+"have any, then your own record against that one opponent: **wins~losses**, "
+"blank until you've actually fought them. Your own row shows a self-destruct "
+"count there instead, since you have no record against yourself. Rabbit Chase "
+"adds a rank percentage in front of the kill count."
+msgstr ""
+"Les chiffres de chaque ligne se lisent **Éliminations / Morts**, puis "
+"**[Éliminations d'équipiers]** dès que tu en as, puis ton propre bilan "
+"contre cet adversaire précis : **victoires~défaites**, vide tant que tu ne "
+"l'as pas vraiment affronté. Ta propre ligne affiche à la place un nombre "
+"d'autodestructions, puisque tu n'as pas de bilan contre toi-même. Rabbit "
+"Chase ajoute un pourcentage de classement devant le nombre d'éliminations."
+
+#: docs/help/scoreboard.md
+msgid ""
+"Before a name, in cyan: `@` means that player is an admin, `+` means they're "
+"signed in with a verified callsign this session. Neither shows for anyone "
+"else."
+msgstr ""
+"Avant un nom, en cyan : `@` signifie que ce joueur est admin, `+` qu'il est "
+"connecté avec un pseudo vérifié pendant cette session. Aucun des deux ne "
+"s'affiche pour les autres."
+
+#: docs/help/scoreboard.md
+msgid ""
+"Right after the name itself: a `/XX` is the flag they're carrying, in that "
+"flag's own colour -- see [Flags](flags.md) for what each abbreviation means."
+msgstr ""
+"Juste après le nom : un `/XX` est le drapeau qu'il porte, dans la couleur "
+"propre à ce drapeau -- voir [Drapeaux](flags.md) pour la signification de "
+"chaque abréviation."
+
+#: docs/help/scoreboard.md
+msgid ""
+"Further along the name: 🎤 means that player's microphone is on, and 🔊 "
+"replaces it the moment they're actually speaking. ⏳ means paused. A hunted "
+"player wears a cyan `◎` -- see [Hunting](controls.md#hunting)."
+msgstr ""
+"Plus loin sur le nom : 🎤 signifie que le micro de ce joueur est allumé, et "
+"🔊 le remplace dès qu'il parle vraiment. ⏳ signifie en pause. Un joueur "
+"traqué porte un `◎` cyan -- voir [Traque](controls.md#hunting)."
+
+#: docs/help/voice.md
+msgid "Audio and voice"
+msgstr "Audio et voix"
+
+#: docs/help/voice.md
+msgid ""
+"`Settings -> Audio Settings` — game, voice, and microphone levels, each from "
+"Off to 100%"
+msgstr ""
+"`Settings -> Audio Settings` — volumes du jeu, de la voix et du micro, "
+"chacun de coupé à 100 %"
+
+#: docs/help/voice.md
+msgid ""
+"**Voice channel** — **All** is everyone on the server, **Nearby** is only "
+"players within earshot, **Team** is your own team anywhere on the map"
+msgstr ""
+"**Canal vocal** — **Tous** correspond à tout le serveur, **Proches** "
+"seulement aux joueurs à portée de voix, **Équipe** à ta propre équipe "
+"n'importe où sur la carte"
+
+#: docs/help/voice.md
+msgid "`B` — toggle the microphone"
+msgstr "`B` — activer/désactiver le micro"
+
+#: docs/help/voice.md
+msgid ""
+"Voice is available after microphone permission is granted. Observers talk "
+"and listen on the same terms as everyone else."
+msgstr ""
+"La voix est disponible une fois l'accès au micro autorisé. Les observateurs "
+"parlent et écoutent dans les mêmes conditions que tout le monde."
+
+#: docs/help/about.md
+msgid "About"
+msgstr "À propos"
+
+#: docs/help/about.md
+msgid ""
+"Battlezone Online is a free 3D tank game in the browser that plays with "
+"[BZFlag](https://www.bzflag.org/)."
+msgstr ""
+"Battlezone Online est un jeu de tanks 3D gratuit dans le navigateur, "
+"compatible avec [BZFlag](https://www.bzflag.org/)."
+
+#: docs/help/about.md
+msgid ""
+"It is free software licensed under the [GNU Affero General Public License "
+"v3.0](https://www.gnu.org/licenses/agpl-3.0.html). Source code is available "
+"at [github.com/timriker/bzo](/source)."
+msgstr ""
+"C'est un logiciel libre sous licence [GNU Affero General Public License v3.0]"
+"(https://www.gnu.org/licenses/agpl-3.0.html). Le code source est disponible "
+"sur [github.com/timriker/bzo](/source)."

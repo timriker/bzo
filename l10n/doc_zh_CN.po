@@ -1,0 +1,920 @@
+msgid ""
+msgstr ""
+"Project-Id-Version: bzo\n"
+"Report-Msgid-Bugs-To: https://github.com/timriker/bzo/issues\n"
+"Language: zh_CN\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Review: machine-translated, not yet read by a native speaker\n"
+
+#: docs/help/controls.md
+msgid "Controls"
+msgstr "操作"
+
+#: docs/help/controls.md
+msgid ""
+"One client runs on a desktop, a phone and a headset, so every action has a "
+"way in from each of them. The keyboard has the most; touch, a gamepad and "
+"the XR controllers carry the actions a match needs, and the Settings menu "
+"reaches the rest -- including from a headset, where there is no keyboard at "
+"all. This page is also the in-game help's (`/` or `?`)."
+msgstr ""
+"同一个客户端可在桌面电脑、手机和头显上运行，因此每个操作在每种设备上都有对应"
+"的方式。键盘的功能最全；触屏、手柄和 XR 控制器承担对局所需的操作，其余的则通"
+"过设置菜单完成——在没有键盘的头显上也是如此。本页也是游戏内帮助（`/` 或 `?`）"
+"的内容。"
+
+#: docs/help/controls.md
+msgid "Keyboard"
+msgstr "键盘"
+
+#: docs/help/controls.md
+msgid "Driving"
+msgstr "驾驶"
+
+#: docs/help/controls.md
+msgid "`W` / `S` or `Up` / `Down` — move forward/backward"
+msgstr "`W` / `S` 或 `Up` / `Down` — 前进/后退"
+
+#: docs/help/controls.md
+msgid "`A` / `D` or `Left` / `Right` — turn left/right"
+msgstr "`A` / `D` 或 `Left` / `Right` — 左转/右转"
+
+#: docs/help/controls.md
+msgid "`Enter` — shoot"
+msgstr "`Enter` — 射击"
+
+#: docs/help/controls.md
+msgid "`Tab` — jump"
+msgstr "`Tab` — 跳跃"
+
+#: docs/help/controls.md
+msgid "`Space` — drop flag"
+msgstr "`Space` — 丢弃旗帜"
+
+#: docs/help/controls.md
+msgid ""
+"`I` or right-click — identify the tank in your sights, and lock a Guided "
+"Missile onto it"
+msgstr "`I` 或右键 — 识别准星中的坦克，并让制导导弹锁定它"
+
+#: docs/help/controls.md
+msgid ""
+"`Delete` — self-destruct, after a five second countdown; `Delete` again "
+"calls it off"
+msgstr "`Delete` — 自毁，五秒倒计时后执行；再按一次 `Delete` 取消"
+
+#: docs/help/controls.md
+msgid ""
+"`9` or `/autopilot [roger|ace]` — autopilot: the pilot drives, aims and "
+"shoots until pressed again. `Settings -> Autopilot` chooses the pilot "
+"without a keyboard. You can still drive while it does, to help it out of a "
+"corner -- see [Combining inputs](#combining-inputs)"
+msgstr ""
+"`9` 或 `/autopilot [roger|ace]` — 自动驾驶：由驾驶员代你驾驶、瞄准和射击，再"
+"按一次停止。`Settings -> Autopilot` 可在没有键盘时选择驾驶员。它驾驶时你仍可"
+"操控，帮它脱离角落——参见[组合输入](#combining-inputs)"
+
+#: docs/help/controls.md
+msgid "`P` — pause/resume"
+msgstr "`P` — 暂停/继续"
+
+#: docs/help/controls.md
+msgid "Chat"
+msgstr "聊天"
+
+#: docs/help/controls.md
+msgid "`N` — open chat (or click the `Send` button)"
+msgstr "`N` — 打开聊天（或点击 `Send` 按钮）"
+
+#: docs/help/controls.md
+msgid ""
+"`Enter` — send chat (while chat input is focused, or click `Send` again)"
+msgstr "`Enter` — 发送聊天（聊天输入框获得焦点时，或再次点击 `Send`）"
+
+#: docs/help/controls.md
+msgid ""
+"`1` / `2` / `3` / `4` / `5` — switch chat tab (`All` / `Chat` / `Server` / "
+"`Misc` / `Debug`)"
+msgstr ""
+"`1` / `2` / `3` / `4` / `5` — 切换聊天标签页（`All` / `Chat` / `Server` / "
+"`Misc` / `Debug`）"
+
+#: docs/help/controls.md
+msgid "`[` / `]` — previous/next chat tab"
+msgstr "`[` / `]` — 上一个/下一个聊天标签页"
+
+#: docs/help/controls.md
+msgid ""
+"`Tab` — while typing, complete a player, command or flag name; `@` starts a "
+"mention and `#` a player's slot number"
+msgstr ""
+"`Tab` — 输入时补全玩家、命令或旗帜名称；`@` 开始提及，`#` 开始玩家的槽位编号"
+
+#: docs/help/controls.md
+msgid ""
+"`Up` / `Down` — while typing, recall earlier lines; type the start of a line "
+"first to recall only the ones beginning that way"
+msgstr ""
+"`Up` / `Down` — 输入时调出之前输入过的内容；先输入开头，则只调出以此开头的内"
+"容"
+
+#: docs/help/controls.md
+msgid "`.` — reply to last direct-message sender"
+msgstr "`.` — 回复最后一位私信发送者"
+
+# review: 宿敌
+#: docs/help/controls.md
+msgid "`,` — message nemesis target"
+msgstr "`,` — 给宿敌目标发消息"
+
+#: docs/help/controls.md
+msgid "`Page Up` / `Page Down` — scroll chat history"
+msgstr "`Page Up` / `Page Down` — 滚动聊天记录"
+
+#: docs/help/controls.md
+msgid "`End` — jump chat to newest message"
+msgstr "`End` — 跳到最新的聊天消息"
+
+#: docs/help/controls.md
+msgid ""
+"Drag across the history while chat is open to select it, then copy; typing "
+"carries on in the input"
+msgstr "聊天打开时在记录上拖动即可选中并复制；输入框中的输入不受影响"
+
+#: docs/help/controls.md
+msgid "View and panels"
+msgstr "视图与面板"
+
+#: docs/help/controls.md
+msgid ""
+"`Esc` — back out one step: exit chat input, leave fullscreen, leave mouse "
+"steering, then open Settings. Pressing it again closes Settings, so it is "
+"always safe to press one more time"
+msgstr ""
+"`Esc` — 后退一步：退出聊天输入、退出全屏、退出鼠标操控，然后打开设置。再按一"
+"次会关闭设置，所以多按一次总是安全的"
+
+#: docs/help/controls.md
+msgid "`M` — toggle mouse steering"
+msgstr "`M` — 开关鼠标操控"
+
+#: docs/help/controls.md
+msgid "`C` — cycle camera mode"
+msgstr "`C` — 切换视角模式"
+
+#: docs/help/controls.md
+msgid "`O` — toggle operator panel"
+msgstr "`O` — 开关管理员面板"
+
+#: docs/help/controls.md
+msgid "`F` — toggle fullscreen"
+msgstr "`F` — 开关全屏"
+
+#: docs/help/controls.md
+msgid "`` ` `` — toggle debug HUD"
+msgstr "`` ` `` — 开关调试 HUD"
+
+#: docs/help/controls.md
+msgid "`=` or `+` or `Numpad +` — zoom radar out (increase range)"
+msgstr "`=` 或 `+` 或 `Numpad +` — 雷达缩小（扩大范围）"
+
+#: docs/help/controls.md
+msgid "`-` or `Numpad -` — zoom radar in (decrease range)"
+msgstr "`-` 或 `Numpad -` — 雷达放大（缩小范围）"
+
+#: docs/help/controls.md
+msgid ""
+"`\\` — reset radar zoom to the default medium range (half the world's radar "
+"limit, which is the world size unless the map says otherwise)"
+msgstr ""
+"`\\` — 将雷达缩放重置为默认的中等范围（世界雷达上限的一半；除非地图另有设定，"
+"上限即世界大小）"
+
+#: docs/help/controls.md
+msgid "`Settings -> Radar: ...` — cycle Short/Medium/Long radar presets"
+msgstr "`Settings -> Radar: ...` — 在短/中/长雷达预设间切换"
+
+#: docs/help/controls.md
+msgid "`B` — toggle the voice microphone"
+msgstr "`B` — 开关语音麦克风"
+
+#: docs/help/controls.md
+msgid ""
+"`Settings -> Audio Settings` — set the game, voice, and microphone levels, "
+"and choose the voice channel: All, Nearby, or Team"
+msgstr ""
+"`Settings -> Audio Settings`（音频设置）— 设置游戏、语音和麦克风音量，并选择"
+"语音频道：全部、附近或队伍"
+
+#: docs/help/controls.md
+msgid "`/` or `?` — show/hide help panel"
+msgstr "`/` 或 `?` — 显示/隐藏帮助面板"
+
+#: docs/help/controls.md
+msgid ""
+"`🎤` beside the gear — the microphone, as `B` is: a green border means you "
+"are transmitting and a red one means you are not, and the hover text names "
+"the channel it would speak on"
+msgstr ""
+"齿轮旁的 `🎤` — 麦克风，作用与 `B` 相同：绿色边框表示正在发送，红色表示未发"
+"送，悬停文字会显示它将使用的频道"
+
+#: docs/help/controls.md
+msgid ""
+"`▲` beside the gear — hide the scoreboard and chat, leaving the name row and "
+"the chat tabs; `▼` brings them back. Typing a message borrows the chat "
+"window until you are done with it, and `U` or `7` borrows the scoreboard "
+"until the hunt cursor closes; tapping a chat tab opens chat for good. Small "
+"screens start collapsed"
+msgstr ""
+"齿轮旁的 `▲` — 隐藏记分板和聊天，只保留名字行和聊天标签页；`▼` 恢复显示。输入"
+"消息时会临时显示聊天窗口直到输入完毕，`U` 或 `7` 会临时显示记分板直到追踪光标"
+"关闭；点击聊天标签页则会一直打开聊天。小屏幕默认收起"
+
+#: docs/help/controls.md
+msgid ""
+"`Settings -> Anaglyph 3D` — red/cyan glasses; `Settings -> VR Mode` enters a "
+"WebXR headset"
+msgstr ""
+"`Settings -> Anaglyph 3D` — 红/青眼镜；`Settings -> VR Mode` 进入 WebXR 头显"
+
+#: docs/help/controls.md
+msgid "Menus"
+msgstr "菜单"
+
+#: docs/help/controls.md
+msgid ""
+"`Up` / `Down` — previous/next control, including from inside a text field"
+msgstr "`Up` / `Down` — 上一个/下一个控件，在文本框内也可用"
+
+#: docs/help/controls.md
+msgid ""
+"`Left` / `Right` — change the focused control: move a slider, pick the next "
+"choice. In a text field they move the cursor instead"
+msgstr ""
+"`Left` / `Right` — 更改当前控件：移动滑块、选择下一项。在文本框中则移动光标"
+
+#: docs/help/controls.md
+msgid "`Tab` / `Shift+Tab` — previous/next control"
+msgstr "`Tab` / `Shift+Tab` — 上一个/下一个控件"
+
+#: docs/help/controls.md
+msgid "`Home` / `End` — first/last control"
+msgstr "`Home` / `End` — 第一个/最后一个控件"
+
+#: docs/help/controls.md
+msgid "`Enter` or `Space` — press the focused control"
+msgstr "`Enter` 或 `Space` — 按下当前控件"
+
+#: docs/help/controls.md
+msgid ""
+"Click or tap a row that walks a list: the title steps back and the current "
+"option steps forward. The `‹` and `›` on the row mark the two halves"
+msgstr ""
+"点击或轻触一个在列表中切换的行：点标题后退一项，点当前选项前进一项。行上的 "
+"`‹` 和 `›` 标示这两半"
+
+#: docs/help/controls.md
+msgid ""
+"The help panel is read rather than operated, so there the arrows scroll it "
+"and only `Left` / `Right` move focus"
+msgstr ""
+"帮助面板用于阅读而非操作，所以在其中方向键用于滚动，只有 `Left` / `Right` 移"
+"动焦点"
+
+#: docs/help/controls.md
+msgid "Hunting"
+msgstr "追踪"
+
+#: docs/help/controls.md
+msgid ""
+"Marking a player puts a cyan `◎` on their scoreboard row, a cyan ring on "
+"their radar blip, and a beacon in the sky over them in their own tank colour "
+"-- so several marked at once are still told apart at a glance. While one of "
+"them is in your sights the HUD says **SPOTTED:** and a ping sounds once a "
+"second from where they are. In Rabbit Chase the rabbit is marked for you, "
+"and its beacon is cyan like its ring: everyone is hunting it, so everyone's "
+"mark over it says so."
+msgstr ""
+"标记一名玩家后，其记分板行会出现青色 `◎`，雷达光点上出现青色圆环，其上方天空"
+"中出现一道该坦克颜色的信标——所以同时标记多人也能一眼分辨。当其中一人在你的准"
+"星中时，HUD 会显示 **发现：**，并每秒从其所在位置发出一次提示音。在 Rabbit "
+"Chase 中，兔子已自动为你标记，其信标和圆环一样是青色：所有人都在追它，所以每"
+"个人对它的标记都这样显示。"
+
+#: docs/help/controls.md
+msgid ""
+"`U` — hunt: open the scoreboard cursor, and press it again on a running hunt "
+"to clear every mark"
+msgstr "`U` — 追踪：打开记分板光标；追踪进行中再按一次则清除所有标记"
+
+#: docs/help/controls.md
+msgid ""
+"`7` — add hunt: the same cursor, but committing adds to what is marked "
+"rather than replacing it, and committing on a row already marked takes it off"
+msgstr ""
+"`7` — 添加追踪：同样的光标，但确认时会加入已有标记而不是替换；在已标记的行上"
+"确认则取消标记"
+
+#: docs/help/controls.md
+msgid ""
+"`Settings -> Hunt` — the same thing without a keyboard, for a phone or a "
+"headset. Left and right step through `Clear` and then the players in "
+"alphabetical order; select marks or unmarks whoever is shown, or clears "
+"every mark on `Clear`. On a touch screen or with a mouse, tap a chevron to "
+"step and anywhere else on the row to select"
+msgstr ""
+"`Settings -> Hunt` — 无需键盘的同一功能，适用于手机或头显。左右依次切换 "
+"`Clear` 和按字母顺序排列的玩家；选择会标记或取消标记当前显示的玩家，在 "
+"`Clear` 上选择则清除所有标记。在触屏上或用鼠标时，点箭头切换，点行的其他位置"
+"选择"
+
+#: docs/help/controls.md
+msgid ""
+"With the cursor open, the board's heading reads `*SEL*` and a pulsing `○` "
+"sits on the row it is on, filling in to `◎` when you commit. `Up` / `Down` "
+"move it, `Enter` commits, and `U` or `7` backs out keeping whatever was "
+"already marked. `I` and `Space` move the cursor too, so a surface without "
+"arrow keys can reach it"
+msgstr ""
+"光标打开时，记分板标题显示 `*SEL*`，所在行有一个闪动的 `○`，确认时变成 `◎`。"
+"`Up` / `Down` 移动光标，`Enter` 确认，`U` 或 `7` 退出并保留已有标记。`I` 和 "
+"`Space` 也能移动光标，没有方向键的设备也能使用"
+
+#: docs/help/controls.md
+msgid "As an observer"
+msgstr "作为观察者"
+
+#: docs/help/controls.md
+msgid ""
+"As an Observer you have no tank. Drive and turn fly the camera instead, "
+"`Tab` climbs and `Space` descends, and holding `Shift` makes drive tilt the "
+"view up and down and turn slide it sideways. The camera rests at the eye "
+"height of a tank on the ground, and travel stays level however the view is "
+"tilted. Pausing and self-destruct do nothing."
+msgstr ""
+"观察者没有坦克。前进和转向改为控制摄像机飞行，`Tab` 上升，`Space` 下降；按住 "
+"`Shift` 时，前进键改为上下俯仰视角，转向键改为横向平移。摄像机停在地面坦克的"
+"视线高度，无论视角如何倾斜，移动始终保持水平。暂停和自毁无效。"
+
+#: docs/help/controls.md
+msgid ""
+"`Enter` or `C` — step through everything: in each view, the leader first, "
+"then every player, then on to the next view. The views are Free, Track, "
+"Follow, Driving with, and Flag where a map has team flags"
+msgstr ""
+"`Enter` 或 `C` — 依次切换所有对象：在每个视图中先是领先者，然后是每位玩家，再"
+"进入下一个视图。视图包括自由视角、追踪、跟随、同乘，以及地图有队伍旗帜时的追"
+"踪旗帜"
+
+#: docs/help/controls.md
+msgid ""
+"`I` or right-click — in the Free view, watch the tank in your sights, or "
+"show the obstacle there: what it is, an outline round it, and its block from "
+"the map file with the `group` blocks that placed it"
+msgstr ""
+"`I` 或右键 — 在自由视图中观看准星中的坦克，或显示该处的障碍物：它是什么、它的"
+"轮廓，以及它在地图文件中的代码块和放置它的 `group` 块"
+
+#: docs/help/controls.md
+msgid ""
+"Right-click or tap an obstacle anywhere on screen, in any view and the "
+"Overview most of all, to show it the same way"
+msgstr ""
+"在任意视图（尤其是俯瞰视图）中右键或轻触屏幕上任意障碍物，都能以同样方式显示"
+"它"
+
+#: docs/help/controls.md
+msgid ""
+"Pick nothing -- the sky, or empty ground in the Overview -- or press the "
+"panel's **World** button for the whole world: what is in it, faces, "
+"textures, the map file's warnings and its largest meshes, each of which "
+"shows that mesh"
+msgstr ""
+"什么都不选——天空，或俯瞰视图中的空地——或者按面板上的**世界**按钮来查看整个世"
+"界：其中的内容、面数、纹理、地图文件的警告和最大的网格，每个网格都可点开显示"
+
+#: docs/help/controls.md
+msgid ""
+"Click a scoreboard row to watch that player; click the marked row again to "
+"go back to following the leader"
+msgstr "点击记分板行观看该玩家；再次点击已标记的行则返回跟随领先者"
+
+#: docs/help/controls.md
+msgid "Mouse"
+msgstr "鼠标"
+
+#: docs/help/controls.md
+msgid ""
+"`M` turns mouse steering on and off, and nothing else does: the keys never "
+"take it away behind your back."
+msgstr "只有 `M` 能开关鼠标操控：其他按键绝不会在你不知情时关掉它。"
+
+#: docs/help/controls.md
+msgid "The targeting box"
+msgstr "瞄准框"
+
+#: docs/help/controls.md
+msgid ""
+"The two boxes in the middle of the screen are the steering, as in BZFlag. "
+"Where the cursor sits relative to their centre is what the tank does:"
+msgstr ""
+"屏幕中央的两个框就是方向控制，和 BZFlag 一样。光标相对于框中心的位置决定坦克"
+"的动作："
+
+#: docs/help/controls.md
+msgid ""
+"**Inside the inner box, nothing.** It is the dead zone: park the cursor "
+"there to stop."
+msgstr "**在内框里，不动。** 这是死区：把光标停在这里即可停车。"
+
+#: docs/help/controls.md
+msgid ""
+"**Between the boxes, more the further out.** Up is forward and down is "
+"reverse; left and right turn. Each grows evenly from nothing at the inner "
+"box's edge to full at the outer box's."
+msgstr ""
+"**在两框之间，越往外越大。** 向上前进，向下倒车；左右转向。每个方向从内框边缘"
+"的零均匀增加到外框边缘的最大值。"
+
+#: docs/help/controls.md
+msgid ""
+"**At or past the outer box, full.** Each axis stops growing on its own, so "
+"running the cursor out past the top keeps the tank at full speed and leaves "
+"left and right free to steer."
+msgstr ""
+"**在外框上或外框外，最大。** 每个轴各自封顶，所以光标移出上方时坦克保持全速，"
+"左右仍可自由转向。"
+
+#: docs/help/controls.md
+msgid ""
+"**Reverse is half speed**, as it is from the keys, however far down the "
+"cursor goes."
+msgstr "**倒车为半速**，与按键相同，无论光标往下移多远。"
+
+#: docs/help/controls.md
+msgid ""
+"**The box sets the speed asked for, not the speed you get at once.** A world "
+"with an acceleration limit (BZFlag's `-a`, off by default) brings the tank "
+"up to it over time, the same as it does from the keys."
+msgstr ""
+"**框设定的是目标速度，而不是立即达到的速度。** 有加速度限制的世界（BZFlag 的 "
+"`-a`，默认关闭）会让坦克逐渐加速到该速度，与按键操作相同。"
+
+#: docs/help/controls.md
+msgid ""
+"The boxes are BZFlag's own sizes, scaled to the window. BZFlag also holds "
+"the cursor inside the box; a browser cannot without taking the pointer over, "
+"so in bzo the cursor can leave it -- the steering simply stays at full, and "
+"the cost is a longer move back to the centre."
+msgstr ""
+"框的大小与 BZFlag 相同，并按窗口缩放。BZFlag 还会把光标限制在框内；浏览器若不"
+"接管指针就做不到，所以在 bzo 中光标可以移出框——方向控制只是保持最大值，代价是"
+"移回中心的距离更长。"
+
+#: docs/help/controls.md
+msgid ""
+"With the keys, the mouse keeps whichever axis no key is holding -- see "
+"[Combining inputs](#combining-inputs)."
+msgstr ""
+"同时使用按键时，鼠标保留没有按键占用的那个轴——参见[组合输入](#combining-"
+"inputs)。"
+
+#: docs/help/controls.md
+msgid "Clicks"
+msgstr "点击"
+
+#: docs/help/controls.md
+msgid ""
+"Left click shoots wherever the cursor is, whether mouse steering is on or "
+"not, unless the click lands on the chat panel or a button. Right click "
+"identifies. Mouse steering is unavailable with no mouse attached, in VR, and "
+"while the on-screen controls are up, since those steer instead; a click that "
+"misses one of their buttons does nothing rather than firing."
+msgstr ""
+"无论鼠标操控是否开启，左键都会向光标所在处射击，除非点在聊天面板或按钮上。右"
+"键用于识别。没有连接鼠标、在 VR 中、或屏幕控件显示时，鼠标操控不可用，因为此"
+"时由它们负责操控；没点中屏幕按钮的点击什么也不做，不会射击。"
+
+#: docs/help/controls.md
+msgid "Combining inputs"
+msgstr "组合输入"
+
+#: docs/help/controls.md
+msgid ""
+"Every input drives at once, and nothing switches between them on its own: "
+"`M` and the Settings rows are the only things that change which ones are on."
+msgstr ""
+"所有输入同时生效，不会自行切换：只有 `M` 和设置中的选项能改变启用哪些输入。"
+
+#: docs/help/controls.md
+msgid ""
+"**Driving is shared out an axis at a time** -- forward/back, and turn, each "
+"on its own. On each, the first of these with something to say wins:"
+msgstr ""
+"**驾驶按轴分配**——前进/后退和转向各自独立。在每个轴上，以下来源中第一个有输入"
+"的生效："
+
+#: docs/help/controls.md
+msgid ""
+"**Keys.** A held drive key owns its axis, and holding both of a pair (`W` "
+"and `S`, or `A` and `D`) is a deliberate stop on that axis."
+msgstr ""
+"**按键。** 按住的驾驶键占用其轴；同时按住一对键（`W` 和 `S`，或 `A` 和 `D`）"
+"表示在该轴上刻意停止。"
+
+#: docs/help/controls.md
+msgid ""
+"**The stick:** the XR controllers in VR, otherwise a connected gamepad, "
+"otherwise the on-screen stick. Only one of the three is read at a time -- "
+"they are not added together."
+msgstr ""
+"**摇杆：** VR 中为 XR 控制器，否则为已连接的手柄，否则为屏幕摇杆。三者同一时"
+"间只读取一个——不会叠加。"
+
+#: docs/help/controls.md
+msgid "**The mouse**, in the targeting box, with mouse steering on."
+msgstr "**鼠标**，在瞄准框中，且鼠标操控已开启。"
+
+#: docs/help/controls.md
+msgid ""
+"So you can drive with `W` while the mouse steers, turn with `A`/`D` while "
+"the mouse sets the speed, or steer a gamepad's turn while a key holds the "
+"speed. A stick let go reads zero and gives the axis to the mouse; the mouse "
+"box holds whatever the cursor's place says, which is why it comes last."
+msgstr ""
+"所以你可以用 `W` 前进同时用鼠标转向，用 `A`/`D` 转向同时用鼠标控制速度，或用"
+"手柄转向同时用按键保持速度。松开的摇杆读数为零，把轴交给鼠标；鼠标框始终按光"
+"标位置给出数值，所以它排在最后。"
+
+#: docs/help/controls.md
+msgid ""
+"**Buttons add up.** Shoot fires from `Enter`, a left click, or the stick "
+"source's own fire button; jump from `Tab` or the stick source's; identify "
+"from `I`, a right click, or the stick source's. Any of them will do."
+msgstr ""
+"**按钮叠加。** 射击可用 `Enter`、左键或摇杆来源自带的射击键；跳跃可用 `Tab` "
+"或摇杆来源的跳跃键；识别可用 `I`、右键或摇杆来源的识别键。任何一个都行。"
+
+#: docs/help/controls.md
+msgid ""
+"**With the autopilot on**, the pilot takes the mouse's place, last in line: "
+"a drive key or the stick you hold still owns its axis, and the pilot has the "
+"rest. So when it is wedged against something you can hold `A` to turn it "
+"out, or `S` to back it off, while it keeps the other axis, and let go to "
+"hand it back -- it carries on from wherever you left it, re-planning its "
+"route if you took it somewhere else. Your shots, jumps and drops add to its "
+"own. The mouse box does not steer while the autopilot drives: it holds an "
+"offset wherever the cursor is parked, so it would never hand anything back."
+msgstr ""
+"**自动驾驶开启时**，驾驶员取代鼠标的位置，排在最后：你按住的驾驶键或摇杆仍占"
+"用其轴，其余交给驾驶员。所以它卡住时，你可以按住 `A` 把它转出来，或按住 `S` "
+"让它倒车，同时它保持另一个轴，松开即交还——它会从你离开的地方继续，如果你把它"
+"带到了别处，会重新规划路线。你的射击、跳跃和丢旗会与它自己的叠加。自动驾驶时"
+"鼠标框不参与操控：光标停在哪里它就保持一个偏移，因此永远不会交还控制。"
+
+#: docs/help/controls.md
+msgid ""
+"**Menus don't stop the autopilot.** Opening Settings, or any other menu, "
+"normally pauses your tank. With the autopilot driving, the menu takes the "
+"keys and the pilot goes on driving. With a pilot chosen on the `Settings -> "
+"Autopilot` row but not driving, opening a menu turns the autopilot on, and "
+"closing the menu turns it off again -- so a menu means \"drive for me a "
+"moment\" rather than \"stop\". With the row on `None`, the default, or on a "
+"server that refuses bots (`-disableBots`), menus pause as they always have. "
+"A hidden window still pauses either way: the browser stops drawing it, and "
+"the pilot with it."
+msgstr ""
+"**菜单不会停止自动驾驶。** 打开设置或其他任何菜单通常会暂停你的坦克。自动驾驶"
+"运行时，菜单接管按键，驾驶员继续驾驶。如果在 `Settings -> Autopilot` 行选择了"
+"驾驶员但未在驾驶，打开菜单会开启自动驾驶，关闭菜单又会关闭它——所以菜单意味着"
+"“帮我开一会儿”而不是“停下”。当该行为默认的 `None`，或服务器禁止机器人（`-"
+"disableBots`）时，菜单照常暂停。窗口隐藏时无论如何都会暂停：浏览器停止绘制"
+"它，驾驶员也随之停止。"
+
+#: docs/help/controls.md
+msgid ""
+"**Three keys at once.** Many keyboards cannot report some three-key "
+"combinations at all -- the third key's press never reaches the browser -- so "
+"a held turn and reverse can swallow a jump (#146). The debug HUD (`` ` ``) "
+"shows how many keys the browser saw held at once, which tells the keyboard's "
+"limit from bzo's."
+msgstr ""
+"**同时按三个键。** 许多键盘根本无法识别某些三键组合——第三个键的按下永远传不到"
+"浏览器——所以按住转向和倒车时可能吞掉跳跃（#146）。调试 HUD（`` ` ``）会显示浏"
+"览器同时检测到多少个按键，可借此分辨是键盘的限制还是 bzo 的问题。"
+
+#: docs/help/controls.md
+msgid "Touch: the on-screen controls"
+msgstr "触屏：屏幕控件"
+
+#: docs/help/controls.md
+msgid ""
+"A phone starts with them on; anywhere else `Settings -> Virtual Controls` "
+"turns them on and off."
+msgstr "手机默认开启；其他设备用 `Settings -> Virtual Controls` 开关。"
+
+#: docs/help/controls.md
+msgid ""
+"**The stick**, bottom left: push it to drive and turn, as far as you push "
+"it. A mouse can drag it too."
+msgstr ""
+"**摇杆**，在左下角：推动它来前进和转向，推多远就有多大幅度。鼠标也可以拖动"
+"它。"
+
+#: docs/help/controls.md
+msgid ""
+"**`●`** — shoot. Tapping fires as fast as clicking a mouse; holding fires at "
+"the world's sustained rate"
+msgstr "**`●`** — 射击。点按的射速与点击鼠标一样快；按住则以世界的持续射速开火"
+
+#: docs/help/controls.md
+msgid "**`⤒`** — jump"
+msgstr "**`⤒`** — 跳跃"
+
+#: docs/help/controls.md
+msgid "**`⚑`** — drop flag"
+msgstr "**`⚑`** — 丢弃旗帜"
+
+#: docs/help/controls.md
+msgid "**`◎`** — identify, and lock a Guided Missile"
+msgstr "**`◎`** — 识别，并锁定制导导弹"
+
+#: docs/help/controls.md
+msgid ""
+"Everything else -- camera, radar range, chat, hunting, autopilot, pausing -- "
+"is a row in Settings, which a tap reaches."
+msgstr ""
+"其他一切——视角、雷达范围、聊天、追踪、自动驾驶、暂停——都是设置中的选项，轻触"
+"即可进入。"
+
+#: docs/help/controls.md
+msgid "Gamepad"
+msgstr "手柄"
+
+#: docs/help/controls.md
+msgid ""
+"Any controller the browser reports in the standard layout (most USB and "
+"Bluetooth pads, and iOS MFi controllers). Plugging one in turns it on; "
+"nothing needs setting up."
+msgstr ""
+"浏览器识别为标准布局的任何控制器（大多数 USB 和蓝牙手柄，以及 iOS MFi 控制"
+"器）。插上即启用，无需设置。"
+
+#: docs/help/controls.md
+msgid "Control"
+msgstr "按键"
+
+#: docs/help/controls.md
+msgid "In a menu"
+msgstr "在菜单中"
+
+#: docs/help/controls.md
+msgid "Left stick"
+msgstr "左摇杆"
+
+#: docs/help/controls.md
+msgid "forward/backward and turn"
+msgstr "前进/后退和转向"
+
+#: docs/help/controls.md
+msgid "move between rows, change a row"
+msgstr "在行间移动，更改选项"
+
+#: docs/help/controls.md
+msgid "`A` / Cross, or right trigger"
+msgstr "`A` / 叉键，或右扳机"
+
+#: docs/help/controls.md
+msgid "shoot"
+msgstr "射击"
+
+#: docs/help/controls.md
+msgid "select"
+msgstr "选择"
+
+#: docs/help/controls.md
+msgid "`B` / Circle, or left trigger"
+msgstr "`B` / 圆圈键，或左扳机"
+
+#: docs/help/controls.md
+msgid "jump"
+msgstr "跳跃"
+
+#: docs/help/controls.md
+msgid "back"
+msgstr "返回"
+
+#: docs/help/controls.md
+msgid "`X` / Square"
+msgstr "`X` / 方块键"
+
+#: docs/help/controls.md
+msgid "drop flag"
+msgstr "丢弃旗帜"
+
+#: docs/help/controls.md
+msgid "Either shoulder"
+msgstr "任一肩键"
+
+#: docs/help/controls.md
+msgid "identify"
+msgstr "识别"
+
+#: docs/help/controls.md
+msgid ""
+"The sticks have a dead zone of a fifth of their travel, so a pad left on the "
+"desk does not creep. The right stick is free."
+msgstr "摇杆有五分之一行程的死区，所以放在桌上的手柄不会漂移。右摇杆未使用。"
+
+#: docs/help/controls.md
+msgid ""
+"The pad rumbles when you fire and when your tank dies, as BZFlag's does: a "
+"short buzz for a shot, longer for a shock wave, both motors for a laser, and "
+"one long, strong shake for a death. It rumbles only while it is what you are "
+"playing with -- a key or a click hands control back and keeps it quiet -- "
+"and never for an observer. **Rumble** in Settings turns it off. The browser "
+"has to support it; Chrome and Edge do."
+msgstr ""
+"开火和坦克被摧毁时手柄会震动，与 BZFlag 相同：射击短震一下，冲击波更长，激光"
+"双马达震动，阵亡则是一次长而强的震动。只有在你正用它操作时才会震动——按键或点"
+"击会收回控制并让它安静——观察者永远不会震动。设置中的**震动**可将其关闭。需要"
+"浏览器支持；Chrome 和 Edge 均支持。"
+
+#: docs/help/controls.md
+msgid "XR controllers"
+msgstr "XR 控制器"
+
+#: docs/help/controls.md
+msgid ""
+"In VR the controllers are the only input. Turning the tank is independent of "
+"where you look."
+msgstr "在 VR 中控制器是唯一的输入。坦克转向与你看向哪里无关。"
+
+#: docs/help/controls.md
+msgid "In the XR menu"
+msgstr "在 XR 菜单中"
+
+#: docs/help/controls.md
+msgid "Either thumbstick"
+msgstr "任一摇杆"
+
+#: docs/help/controls.md
+msgid "forward/backward and turn -- the right stick if both are pushed"
+msgstr "前进/后退和转向——两个都推时以右摇杆为准"
+
+#: docs/help/controls.md
+msgid "Either trigger"
+msgstr "任一扳机"
+
+#: docs/help/controls.md
+msgid "`A` / `X` (primary face button)"
+msgstr "`A` / `X`（正面主按键）"
+
+#: docs/help/controls.md
+msgid "`B` / `Y` (secondary face button)"
+msgstr "`B` / `Y`（正面副按键）"
+
+#: docs/help/controls.md
+msgid "open the XR menu"
+msgstr "打开 XR 菜单"
+
+#: docs/help/controls.md
+msgid "back, and close it from the top"
+msgstr "返回，在顶层则关闭"
+
+#: docs/help/controls.md
+msgid "Either grip"
+msgstr "任一握把键"
+
+#: docs/help/controls.md
+msgid "Press either thumbstick"
+msgstr "按下任一摇杆"
+
+#: docs/help/controls.md
+msgid "Both controllers pulse for the same events as a gamepad's rumble."
+msgstr "两个控制器会在与手柄震动相同的事件上产生脉冲震动。"
+
+#: docs/help/controls.md
+msgid ""
+"Identify is on the thumbstick press because a thumb that is steering presses "
+"it by accident, and identifying costs nothing; the menu is on `B` for the "
+"same reason. Typing -- a name, a MOTD -- uses the headset's own system "
+"keyboard, raised when the row takes focus; see the README's WebXR section "
+"for headsets that have none."
+msgstr ""
+"识别放在按下摇杆上，因为正在操控的拇指常会误按，而识别没有代价；菜单放在 `B` "
+"上也是同样原因。输入文字——名字、MOTD——使用头显自带的系统键盘，在选项获得焦点"
+"时弹出；没有系统键盘的头显请参阅 README 的 WebXR 部分。"
+
+#: docs/help/flags.md
+msgid "Flags"
+msgstr "旗帜"
+
+#: docs/help/flags.md
+msgid ""
+"Drive over a flag to pick it up, and `Space` to drop it. Good flags help; "
+"bad flags hinder, and stay until they shake off, you kill, or you die. A "
+"superflag on the ground is white and tells you nothing about itself until "
+"somebody picks it up. Team flags are captured by carrying an enemy's to your "
+"own base."
+msgstr ""
+"开过旗帜即可拾取，按 `Space` 丢弃。好旗帜有帮助；坏旗帜是阻碍，会一直留着，直"
+"到自行脱落、你击杀对手或你阵亡。地上的超级旗帜是白色的，在有人拾起前不会透露"
+"任何信息。把敌方的队伍旗帜带回自己的基地即为夺旗。"
+
+#: docs/help/scoreboard.md
+msgid "Scoreboard"
+msgstr "记分板"
+
+#: docs/help/scoreboard.md
+msgid ""
+"Each row's numbers read **Kills / Deaths**, then **[Team Kills]** once you "
+"have any, then your own record against that one opponent: **wins~losses**, "
+"blank until you've actually fought them. Your own row shows a self-destruct "
+"count there instead, since you have no record against yourself. Rabbit Chase "
+"adds a rank percentage in front of the kill count."
+msgstr ""
+"每行的数字依次为**击杀 / 阵亡**，有队友击杀后接着是**[队友击杀]**，然后是你对"
+"该对手的战绩：**胜~负**，真正交手前为空。你自己的行在此处显示自毁次数，因为你"
+"没有对自己的战绩。Rabbit Chase 会在击杀数前加上排名百分比。"
+
+#: docs/help/scoreboard.md
+msgid ""
+"Before a name, in cyan: `@` means that player is an admin, `+` means they're "
+"signed in with a verified callsign this session. Neither shows for anyone "
+"else."
+msgstr ""
+"名字前的青色符号：`@` 表示该玩家是管理员，`+` 表示其本次会话已用认证呼号登"
+"录。其他人不显示这些符号。"
+
+#: docs/help/scoreboard.md
+msgid ""
+"Right after the name itself: a `/XX` is the flag they're carrying, in that "
+"flag's own colour -- see [Flags](flags.md) for what each abbreviation means."
+msgstr ""
+"紧跟名字之后：`/XX` 是其携带的旗帜，以该旗帜自己的颜色显示——各缩写的含义参见"
+"[旗帜](flags.md)。"
+
+#: docs/help/scoreboard.md
+msgid ""
+"Further along the name: 🎤 means that player's microphone is on, and 🔊 "
+"replaces it the moment they're actually speaking. ⏳ means paused. A hunted "
+"player wears a cyan `◎` -- see [Hunting](controls.md#hunting)."
+msgstr ""
+"名字后面更远处：🎤 表示该玩家的麦克风已开启，正在说话时会变为 🔊。⏳ 表示暂"
+"停。被追踪的玩家带有青色 `◎`——参见[追踪](controls.md#hunting)。"
+
+#: docs/help/voice.md
+msgid "Audio and voice"
+msgstr "音频与语音"
+
+#: docs/help/voice.md
+msgid ""
+"`Settings -> Audio Settings` — game, voice, and microphone levels, each from "
+"Off to 100%"
+msgstr ""
+"`Settings -> Audio Settings`（音频设置）— 游戏、语音和麦克风音量，均可从关闭"
+"调到 100%"
+
+#: docs/help/voice.md
+msgid ""
+"**Voice channel** — **All** is everyone on the server, **Nearby** is only "
+"players within earshot, **Team** is your own team anywhere on the map"
+msgstr ""
+"**语音频道** — **全部**是服务器上的所有人，**附近**仅限听力范围内的玩家，**队"
+"伍**是你自己队伍的所有人，不论在地图何处"
+
+#: docs/help/voice.md
+msgid "`B` — toggle the microphone"
+msgstr "`B` — 开关麦克风"
+
+#: docs/help/voice.md
+msgid ""
+"Voice is available after microphone permission is granted. Observers talk "
+"and listen on the same terms as everyone else."
+msgstr "授予麦克风权限后即可使用语音。观察者与其他人一样可以说话和收听。"
+
+#: docs/help/about.md
+msgid "About"
+msgstr "关于"
+
+#: docs/help/about.md
+msgid ""
+"Battlezone Online is a free 3D tank game in the browser that plays with "
+"[BZFlag](https://www.bzflag.org/)."
+msgstr ""
+"Battlezone Online 是一款可与 [BZFlag](https://www.bzflag.org/) 联机的免费浏览"
+"器 3D 坦克游戏。"
+
+#: docs/help/about.md
+msgid ""
+"It is free software licensed under the [GNU Affero General Public License "
+"v3.0](https://www.gnu.org/licenses/agpl-3.0.html). Source code is available "
+"at [github.com/timriker/bzo](/source)."
+msgstr ""
+"它是以 [GNU Affero 通用公共许可证 v3.0](https://www.gnu.org/licenses/"
+"agpl-3.0.html) 授权的自由软件。源代码可在 [github.com/timriker/bzo](/source) "
+"获取。"

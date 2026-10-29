@@ -9,6 +9,7 @@
 
 import { normalizeShotSlotCount, getShotSlotProgress } from './shots.mjs';
 import { HUNT_MARKER_COLOR } from './hunt.mjs';
+import { N_, onLocaleChange, t } from './i18n.mjs';
 import {
   PLAYER_TEAM,
   PLAYER_TEAM_COLORS,
@@ -117,28 +118,40 @@ export function fitText(context, text, maxWidth) {
   return `${result}...`;
 }
 
+// Where a line may break: between words, which for Thai, Chinese and Japanese
+// is not at a space, since those scripts write none. The browser's segmenter
+// knows each script's rule; whitespace alone is the fallback.
+const WORD_SEGMENTER = typeof Intl.Segmenter === 'function'
+  ? new Intl.Segmenter(undefined, { granularity: 'word' })
+  : null;
+
+function wordPieces(text) {
+  if (WORD_SEGMENTER) return Array.from(WORD_SEGMENTER.segment(text), (piece) => piece.segment);
+  return text.split(/( )/);
+}
+
 // Break `text` into lines no wider than `maxWidth` in the context's current
-// font, at spaces, which is how makeHelpString wraps the flag help
+// font, between words, which is how makeHelpString wraps the flag help
 // (HUDRenderer.cxx:581). Runs of whitespace collapse to one space -- upstream's
 // wrap does the same with the double spaces its help strings put between
 // sentences. A word wider than the line keeps its own long line rather than
 // being cut: a reader is better served by a line that overhangs than by half a
 // word, and nothing in the flag table has one.
 export function wrapText(context, text, maxWidth) {
-  const words = String(text || '').split(/\s+/).filter(Boolean);
-  if (words.length === 0) return [];
+  const source = String(text || '').replace(/\s+/g, ' ').trim();
+  if (!source) return [];
   const lines = [];
-  let line = words[0];
-  for (let index = 1; index < words.length; index++) {
-    const candidate = `${line} ${words[index]}`;
-    if (context.measureText(candidate).width <= maxWidth) {
-      line = candidate;
+  let line = '';
+  for (const piece of wordPieces(source)) {
+    const candidate = line + piece;
+    if (!line.trim() || context.measureText(candidate.trimEnd()).width <= maxWidth) {
+      line = candidate.trimStart();
       continue;
     }
-    lines.push(line);
-    line = words[index];
+    lines.push(line.trimEnd());
+    line = piece.trimStart();
   }
-  lines.push(line);
+  if (line.trim()) lines.push(line.trimEnd());
   return lines;
 }
 
@@ -161,7 +174,7 @@ export function toggleDebugLabels({ debugLabelsEnabled, setDebugLabelsEnabled, u
   setDebugLabelsEnabled(!debugLabelsEnabled);
   localStorage.setItem('debugLabelsEnabled', (!debugLabelsEnabled).toString());
   updateHudButtons();
-  showMessage(`Debug Labels: ${!debugLabelsEnabled ? 'ON' : 'OFF'}`);
+  showMessage(!debugLabelsEnabled ? t('Debug Labels: ON') : t('Debug Labels: OFF'));
 }
 // Set button active/inactive and update title
 export function setActive(btn, active, activeTitle, inactiveTitle) {
@@ -186,7 +199,9 @@ export function readStoredFlag(key, fallback = false) {
 // title in step. `available` is re-read on every refresh, so a gate that changes
 // during play -- entering VR -- lands without a second listener; the returned
 // refresh is what such a listener calls. A button whose gate is closed goes
-// dead rather than promising what the context cannot do.
+// dead rather than promising what the context cannot do. The titles are
+// msgids, marked with N_() by the caller and translated here on every refresh,
+// so a language change lands with the next one.
 export function bindToggleButton(btn, {
   get,
   set,
@@ -205,7 +220,8 @@ export function bindToggleButton(btn, {
     if (!usable && forceOffWhenUnavailable && get()) set(false);
     btn.disabled = !usable;
     setActive(btn, get());
-    btn.title = usable ? (get() ? onTitle : offTitle) : unavailableTitle;
+    const title = usable ? (get() ? onTitle : offTitle) : unavailableTitle;
+    btn.title = title ? t(title) : '';
   };
 
   btn.addEventListener('click', () => {
@@ -218,6 +234,7 @@ export function bindToggleButton(btn, {
   });
 
   refresh();
+  onLocaleChange(refresh);
   return refresh;
 }
 
@@ -261,7 +278,7 @@ function applyHudCollapse() {
   const collapsed = isHudCollapsed();
   const glyph = btn.querySelector('.settingsIcon');
   if (glyph) glyph.textContent = collapsed ? '▼' : '▲';
-  btn.title = collapsed ? 'Show the scoreboard and chat' : 'Hide the scoreboard and chat';
+  btn.title = collapsed ? t('Show the scoreboard and chat') : t('Hide the scoreboard and chat');
   btn.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
 }
 
@@ -534,25 +551,26 @@ export function updateHudButtons({
   // reads Unavailable, and the focus walks past it. Same as the rows gated on
   // what the renderer can draw.
   if (mouseBtn) mouseBtn.disabled = !mouseAvailable;
-  setActive(mouseBtn, mouseControlEnabled, 'Disable Mouse Steering (M)', 'Enable Mouse Steering (M)');
+  setActive(mouseBtn, mouseControlEnabled, t('Disable Mouse Steering (M)'), t('Enable Mouse Steering (M)'));
   if (mouseBtn && !mouseAvailable && mouseUnavailableTitle) mouseBtn.title = mouseUnavailableTitle;
   // The motion box wears the mode, set from here because this is what every
   // change to the mode already goes through.
   document.getElementById('controlBox')?.classList.toggle('keyboard-mode', !mouseControlEnabled);
-  setActive(debugBtn, debugEnabled, 'Hide Debug HUD (`)', 'Show Debug HUD (`)');
+  setActive(debugBtn, debugEnabled, t('Hide Debug HUD (`)'), t('Show Debug HUD (`)'));
   if (fullscreenBtn) fullscreenBtn.disabled = !fullscreenAvailable;
-  setActive(fullscreenBtn, document.fullscreenElement, 'Exit Fullscreen (F)', 'Toggle Fullscreen (F)');
+  setActive(fullscreenBtn, document.fullscreenElement, t('Exit Fullscreen (F)'), t('Toggle Fullscreen (F)'));
   if (cameraBtn) {
     // While roaming this arrives already spelled as a view name, because an
     // observer's camera modes are the roaming views rather than these three.
     const CAMERA_MODE_LABELS = {
-      'first-person': 'First Person',
-      'third-person': 'Third Person',
-      overview: 'Overview',
+      'first-person': N_('First Person'),
+      'third-person': N_('Third Person'),
+      overview: N_('Overview'),
     };
-    let camTitle = 'Toggle Camera View (C)';
+    let camTitle = t('Toggle Camera View (C)');
     if (typeof cameraMode !== 'undefined') {
-      camTitle = `Camera: ${CAMERA_MODE_LABELS[cameraMode] || cameraMode} (C)`;
+      const mode = CAMERA_MODE_LABELS[cameraMode] ? t(CAMERA_MODE_LABELS[cameraMode]) : cameraMode;
+      camTitle = t('Camera: {mode} (C)', { mode });
     }
     cameraBtn.title = camTitle;
   }
@@ -574,7 +592,7 @@ export function toggleDebugHud({ debugEnabled, setDebugEnabled, updateHudButtons
     window.debugUpdateInterval = null;
   }
   updateHudButtons();
-  showMessage(`Debug Mode: ${!debugEnabled ? 'ON' : 'OFF'}`);
+  showMessage(!debugEnabled ? t('Debug Mode: ON') : t('Debug Mode: OFF'));
 }
 
 // Formats world time (0-23999 ticks) as HH:MM. Minecraft: 0 = 6:00, 6000 = noon.
@@ -737,10 +755,10 @@ export function updateDebugDisplay({
 // and relies on the row's colour; a colour word is what survives a player who
 // cannot see the difference.
 const TEAM_SCORE_LABELS = Object.freeze({
-  [PLAYER_TEAM.RED]: 'Red',
-  [PLAYER_TEAM.GREEN]: 'Green',
-  [PLAYER_TEAM.BLUE]: 'Blue',
-  [PLAYER_TEAM.PURPLE]: 'Purple',
+  [PLAYER_TEAM.RED]: N_('Red'),
+  [PLAYER_TEAM.GREEN]: N_('Green'),
+  [PLAYER_TEAM.BLUE]: N_('Blue'),
+  [PLAYER_TEAM.PURPLE]: N_('Purple'),
 });
 
 // Updates the scoreboard with current player stats
@@ -751,7 +769,7 @@ export function getTeamScoreRows(teamScores) {
     .filter((entry) => entry && entry.size > 0 && isColorTeam(entry.team))
     .map((entry) => ({
       ...entry,
-      label: TEAM_SCORE_LABELS[entry.team] || PLAYER_TEAM_LABELS[entry.team] || entry.team,
+      label: t(TEAM_SCORE_LABELS[entry.team] || PLAYER_TEAM_LABELS[entry.team] || entry.team),
       score: entry.wins - entry.losses,
     }))
     .sort((a, b) => b.score - a.score);
@@ -793,7 +811,7 @@ function updateMatchClock(timeLeft, gameOver) {
   el.classList.remove('matchClockHidden');
   // The board keeps saying so after the transient alert times out, until the
   // next /countdown's timeUpdate clears it.
-  el.textContent = gameOver ? 'GAME OVER' : (formatMatchClock(timeLeft) || '');
+  el.textContent = gameOver ? t('GAME OVER') : (formatMatchClock(timeLeft) || '');
 }
 
 function updateTeamScoreboard(rows) {
@@ -807,10 +825,10 @@ function updateTeamScoreboard(rows) {
   header.className = 'teamScoreHeader';
   const headerName = document.createElement('span');
   headerName.className = 'scoreboardName';
-  headerName.textContent = 'Teams';
+  headerName.textContent = t('Teams');
   const headerStats = document.createElement('span');
   headerStats.className = 'scoreboardStats';
-  headerStats.textContent = 'Score (W-L) Size';
+  headerStats.textContent = t('Score (W-L) Size');
   header.appendChild(headerName);
   header.appendChild(headerStats);
   container.appendChild(header);
@@ -910,8 +928,8 @@ export function formatRabbitRank(rank) {
 // `abbreviated` is the headset's, where the panel is a few hundred pixels wide
 // and the long labels would crowd the names they sit over.
 export function getScoreboardStatsHeader(rabbitChase = false, abbreviated = false) {
-  const score = abbreviated ? 'K-D' : 'Kills-Deaths';
-  return rabbitChase ? `Rank ${score}` : score;
+  const score = abbreviated ? t('K-D') : t('Kills-Deaths');
+  return rabbitChase ? t('Rank {score}', { score }) : score;
 }
 
 // Which columns a surface draws, and what each one is called. One list, read by
@@ -949,39 +967,39 @@ export const SCOREBOARD_COLUMNS = Object.freeze([
   // account page already shows them. Admin-only, enforced on the server: a
   // non-admin's roster never carries the field at all.
   Object.freeze({ id: 'bzid', label: 'BZID', short: 'BZID', width: 7, narrowWidth: 7, align: 'right' }),
-  Object.freeze({ id: 'player', label: 'Player', short: 'Player', width: 0, narrowWidth: 0, align: 'left' }),
+  Object.freeze({ id: 'player', label: N_('Player'), short: N_('Player'), width: 0, narrowWidth: 0, align: 'left' }),
   // `getScore()` is `wins - losses` (Player.h:486), the number upstream puts
   // in front of the record and sorts the board by. bzo sorted by it already
   // and never showed it.
-  Object.freeze({ id: 'score', label: 'Score', short: 'Score', width: 5, narrowWidth: 5, align: 'right' }),
-  Object.freeze({ id: 'record', label: 'Kills-Deaths', short: 'K-D', width: 12, narrowWidth: 7, align: 'right' }),
+  Object.freeze({ id: 'score', label: N_('Score'), short: N_('Score'), width: 5, narrowWidth: 5, align: 'right' }),
+  Object.freeze({ id: 'record', label: N_('Kills-Deaths'), short: N_('K-D'), width: 12, narrowWidth: 7, align: 'right' }),
   // Upstream's second column, the head-to-head record against me. The first
   // thing a narrow board gives up, because it is the only one here bzo added
   // on top of upstream's own (issue #65).
-  Object.freeze({ id: 'tally', label: '1-on-1', short: '1-on-1', width: 7, narrowWidth: 7, align: 'right' }),
+  Object.freeze({ id: 'tally', label: N_('1-on-1'), short: N_('1-on-1'), width: 7, narrowWidth: 7, align: 'right' }),
 ]);
 
 // What each `T` letter stands for, for the hover text. The letters are the
 // server's (server/client-type.cjs).
 export const SCOREBOARD_CLIENT_TYPE_NAMES = Object.freeze({
-  d: 'desktop',
-  m: 'mobile',
-  v: 'VR headset',
-  b: 'BZFlag client',
-  r: 'robot',
-  s: 'server bot',
+  d: N_('desktop'),
+  m: N_('mobile'),
+  v: N_('VR headset'),
+  b: N_('BZFlag client'),
+  r: N_('robot'),
+  s: N_('server bot'),
 });
 
 // And what follows it.
 const SCOREBOARD_LINK_NAMES = Object.freeze({
-  u: 'UDP in',
-  '+': 'UDP both ways',
+  u: N_('UDP in'),
+  '+': N_('UDP both ways'),
   r: 'WebRTC',
-  'r+': 'WebRTC both ways',
-  t: 'WebRTC through TURN',
-  't+': 'WebRTC through TURN both ways',
+  'r+': N_('WebRTC both ways'),
+  t: N_('WebRTC through TURN'),
+  't+': N_('WebRTC through TURN both ways'),
   h: 'WebTransport',
-  'h+': 'WebTransport both ways',
+  'h+': N_('WebTransport both ways'),
 });
 
 // How much room the surface has, which is the only thing that decides what it
@@ -1018,7 +1036,7 @@ export function getScoreboardColumns({ tier = SCOREBOARD_TIER.WIDE, isAdmin = fa
 // the label is the wider of the two, which is the whole reason a wide board can
 // say `Kills-Deaths` and a narrow one says `K-D`.
 export function getScoreboardColumnLabel(column, tier) {
-  return tier === SCOREBOARD_TIER.WIDE ? column.label : column.short;
+  return t(tier === SCOREBOARD_TIER.WIDE ? column.label : column.short);
 }
 
 export function getScoreboardColumnWidth(column, tier) {
@@ -1035,7 +1053,7 @@ export function getScoreboardColumnWidth(column, tier) {
 // happened.
 export function formatPersonalTally(player) {
   if (player.isObserver) return '';
-  if (player.isCurrent) return player.selfKills > 0 ? `${player.selfKills} self` : '';
+  if (player.isCurrent) return player.selfKills > 0 ? t('{n} self', { n: player.selfKills }) : '';
   if (!player.localWins && !player.localLosses) return '';
   return `${player.localWins}~${player.localLosses}`;
 }
@@ -1089,10 +1107,11 @@ export function formatScoreboardStats(player, options = {}) {
 // marks is the *hunted* row, which bzo now draws as well -- and in Rabbit Chase
 // the two land on the same row, because the rabbit is hunted automatically.
 // The heading over a replay's live viewers, on both boards.
-export const SCOREBOARD_WATCHING_LABEL = 'Watching';
+export const SCOREBOARD_WATCHING_LABEL = N_('Watching');
 
+// The label is read where it is drawn, so it is always the current language.
 export const SCOREBOARD_RABBIT_MARK = Object.freeze({
-  label: '(rabbit)',
+  get label() { return t('(rabbit)'); },
   color: PLAYER_TEAM_COLORS[PLAYER_TEAM.RABBIT],
 });
 
@@ -1318,7 +1337,7 @@ export function buildScoreboardRows({
   if (myPlayerId && myTank) addRow(myPlayerId, myPlayerName, myTank.userData.playerState, true);
   tanks.forEach((tank, id) => {
     if (id === myPlayerId) return;
-    addRow(id, tank.userData.playerState?.name || 'Player', tank.userData.playerState, false);
+    addRow(id, tank.userData.playerState?.name || t('Player'), tank.userData.playerState, false);
   });
 
   rows.sort(compareScoreboardPlayers);
@@ -1372,10 +1391,10 @@ function writeScoreboardHeader(columns, rabbitChase, tier, huntSelecting) {
     const label = getScoreboardColumnLabel(column, tier);
     // The rank rides inside the score column on a Rabbit Chase world, as
     // upstream draws it, so that is the one label the mode changes.
-    cell.textContent = column.id === 'score' && rabbitChase ? `Rank ${label}` : label;
+    cell.textContent = column.id === 'score' && rabbitChase ? t('Rank {score}', { score: label }) : label;
     if (column.id === 'type') {
       cell.title = Object.entries(SCOREBOARD_CLIENT_TYPE_NAMES)
-        .map(([letter, name]) => `${letter} ${name}`).join('\n');
+        .map(([letter, name]) => `${letter} ${t(name)}`).join('\n');
     }
     // `*SEL*` rides the name column's heading, which is the only one with room
     // to lend it, and goes out the moment the cursor closes.
@@ -1475,7 +1494,7 @@ export function updateScoreboard({
     if (player.startsWatching) {
       const label = document.createElement('div');
       label.className = 'scoreboardGroupLabel';
-      label.textContent = SCOREBOARD_WATCHING_LABEL;
+      label.textContent = t(SCOREBOARD_WATCHING_LABEL);
       scoreboardList.appendChild(label);
     }
     const entry = document.createElement('div');
@@ -1573,7 +1592,7 @@ export function updateScoreboard({
         cell.textContent = formatScoreboardCell(player, column.id);
         if (column.id === 'type') {
           cell.title = [SCOREBOARD_CLIENT_TYPE_NAMES[player.clientType], SCOREBOARD_LINK_NAMES[player.link]]
-            .filter(Boolean).join(', ');
+            .filter(Boolean).map((name) => t(name)).join(', ');
         }
       }
       entry.appendChild(cell);
@@ -1852,10 +1871,13 @@ export function updateAltimeter({ myTank, tickSpacing = 5 }) {
 }
 
 // The shot-limit line's colour: green with no limit on what is being fired,
-// yellow counting down, red on the last shot.
+// yellow counting down, red on the last shot. Read from the count in the line,
+// which is digits in every language, rather than from its words: "unlimited"
+// is the only form that carries no number.
 export function getShotLimitColor(label) {
-  if (label === 'unlimited') return 'rgba(0, 255, 0, 0.8)';
-  if (label.startsWith('1 ') || label.startsWith('0 ')) return 'rgba(255, 64, 64, 0.9)';
+  const left = /\d+/.exec(label);
+  if (!left) return 'rgba(0, 255, 0, 0.8)';
+  if (Number(left[0]) <= 1) return 'rgba(255, 64, 64, 0.9)';
   return 'rgba(255, 255, 0, 0.8)';
 }
 

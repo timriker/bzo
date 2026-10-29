@@ -1,0 +1,3893 @@
+msgid ""
+msgstr ""
+"Project-Id-Version: bzo\n"
+"Report-Msgid-Bugs-To: https://github.com/timriker/bzo/issues\n"
+"Language: lt\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Review: machine-translated, not yet read by a native speaker\n"
+
+#: public/index.html:36
+msgid "Title:"
+msgstr "Pavadinimas:"
+
+#: public/index.html:37
+msgid "What this server is"
+msgstr "Kas yra šis serveris"
+
+#: public/index.html:40
+msgid "Set MOTD:"
+msgstr "Nustatyti MOTD:"
+
+#: public/index.html:41
+msgid "Message of the day"
+msgstr "Dienos žinutė"
+
+#: public/index.html:47
+msgid "Shot Max Active:"
+msgstr "Daugiausia aktyvių šūvių:"
+
+#: public/index.html:56
+msgid "All shots ricochet"
+msgstr "Visi šūviai atšoka"
+
+#: public/index.html:60
+msgid "Map:"
+msgstr "Žemėlapis:"
+
+#: public/index.html:69
+msgid "Teams"
+msgstr "Komandos"
+
+#: public/index.html:73
+msgid "Rabbit Chase:"
+msgstr "Triušio gaudynės:"
+
+#: public/index.html:75
+msgid "Off"
+msgstr "Išjungta"
+
+#: public/index.html:76
+msgid "Score"
+msgstr "Pagal taškus"
+
+#: public/index.html:77
+msgid "Killer"
+msgstr "Žudikas"
+
+#: public/index.html:78
+msgid "Random"
+msgstr "Atsitiktinai"
+
+#: public/index.html:84
+msgid "Jumping"
+msgstr "Šuoliai"
+
+#: public/index.html:91
+msgid "Playing Limit:"
+msgstr "Žaidėjų limitas:"
+
+#: public/index.html:101
+msgid "Upload Map:"
+msgstr "Įkelti žemėlapį:"
+
+#: public/index.html:103 public/index.html:108
+msgid "Upload"
+msgstr "Įkelti"
+
+#: public/index.html:106
+msgid "Upload Replay:"
+msgstr "Įkelti įrašą:"
+
+#: public/index.html:113
+msgid "Save Recording:"
+msgstr "Išsaugoti įrašą:"
+
+#: public/index.html:114
+msgid "name"
+msgstr "pavadinimas"
+
+#: public/index.html:115
+msgid "all"
+msgstr "visi"
+
+#: public/index.html:116
+msgid "Save"
+msgstr "Išsaugoti"
+
+#: public/index.html:122
+msgid "Delete Upload:"
+msgstr "Ištrinti įkeltą:"
+
+#: public/index.html:124
+msgid "Delete"
+msgstr "Ištrinti"
+
+#: public/index.html:128
+msgid "Time Limit:"
+msgstr "Laiko limitas:"
+
+#: public/index.html:137
+msgid "Manual Start (wait for /countdown)"
+msgstr "Rankinis startas (laukti /countdown)"
+
+#: public/index.html:141
+msgid "Player Score Limit:"
+msgstr "Žaidėjo taškų limitas:"
+
+#: public/index.html:148
+msgid "Team Score Limit:"
+msgstr "Komandos taškų limitas:"
+
+#: public/index.html:157
+msgid "Bot Fill:"
+msgstr "Botų užpildymas:"
+
+#: public/index.html:164
+msgid "Bot Pilot:"
+msgstr "Botų pilotas:"
+
+#: public/index.html:172
+msgid "Match Timer:"
+msgstr "Mačo laikmatis:"
+
+#: public/index.html:173
+msgid "Start"
+msgstr "Pradėti"
+
+#: public/index.html:174
+msgid "Pause"
+msgstr "Pauzė"
+
+#: public/index.html:175
+msgid "Resume"
+msgstr "Tęsti"
+
+#: public/index.html:176
+msgid "End Match"
+msgstr "Baigti mačą"
+
+#: public/index.html:183
+msgid "List Server Key:"
+msgstr "Sąrašo serverio raktas:"
+
+#: public/index.html:184
+msgid "paste key from /list-server"
+msgstr "įklijuok raktą iš /list-server"
+
+#: public/index.html:185
+msgid "Set"
+msgstr "Nustatyti"
+
+#: public/index.html:193
+msgid "Apply"
+msgstr "Taikyti"
+
+#: public/index.html:194 public/index.html:489
+msgid "Cancel"
+msgstr "Atšaukti"
+
+#: public/index.html:208
+msgid "View"
+msgstr "Peržiūra"
+
+#: public/index.html:210
+msgid "Running BZFlag servers"
+msgstr "Veikiantys BZFlag serveriai"
+
+#: public/index.html:212 public/index.html:226 public/index.html:239
+msgid "Filter…"
+msgstr "Filtras…"
+
+#: public/index.html:213
+msgid "Refresh"
+msgstr "Atnaujinti"
+
+#: public/index.html:218 public/index.html:245
+msgid "Players"
+msgstr "Žaidėjai"
+
+#: public/index.html:218
+msgid "Max"
+msgstr "Maks."
+
+#: public/index.html:218 public/index.html:232
+msgid "Style"
+msgstr "Stilius"
+
+#: public/index.html:219
+msgid "Title"
+msgstr "Pavadinimas"
+
+#: public/index.html:219
+msgid "Host"
+msgstr "Serveris"
+
+#: public/index.html:219
+msgid "Port"
+msgstr "Prievadas"
+
+#: public/index.html:224
+msgid "Local maps"
+msgstr "Vietiniai žemėlapiai"
+
+#: public/index.html:231 public/index.html:244
+msgid "File"
+msgstr "Failas"
+
+#: public/index.html:231
+msgid "Size"
+msgstr "Dydis"
+
+#: public/index.html:231
+msgid "Objects"
+msgstr "Objektai"
+
+#: public/index.html:232
+msgid "Faces"
+msgstr "Paviršiai"
+
+#: public/index.html:237
+msgid "Local replays"
+msgstr "Vietiniai įrašai"
+
+#: public/index.html:244
+msgid "Date"
+msgstr "Data"
+
+#: public/index.html:244
+msgid "Length"
+msgstr "Trukmė"
+
+#: public/index.html:245
+msgid "Map"
+msgstr "Žemėlapis"
+
+#: public/index.html:258 public/index.html:283
+msgid "Settings"
+msgstr "Nustatymai"
+
+#: public/index.html:262 public/index.html:386
+msgid "Microphone off"
+msgstr "Mikrofonas išjungtas"
+
+#: public/index.html:263
+msgid "Enter WebXR VR Mode"
+msgstr "Įeiti į WebXR VR režimą"
+
+#: public/index.html:267
+msgid "Open Settings"
+msgstr "Atidaryti nustatymus"
+
+#: public/index.html:271
+msgid "Hide the scoreboard and chat"
+msgstr "Slėpti rezultatų lentelę ir pokalbį"
+
+#: public/index.html:289
+msgid "Gamepad and VR controller rumble"
+msgstr "Pultelio ir VR valdiklio vibracija"
+
+#: public/index.html:291
+msgid "Install as an app"
+msgstr "Įdiegti kaip programą"
+
+#: public/index.html:293
+msgid "Show Debug Geometry"
+msgstr "Rodyti derinimo geometriją"
+
+#: public/index.html:298
+msgid ""
+"Hunt: step through players and Clear with the arrows, select to mark, unmark "
+"or clear"
+msgstr ""
+"Medžioklė: rodyklėmis pereik per žaidėjus ir Išvalyti, pasirinkimu pažymėk, "
+"atžymėk arba išvalyk"
+
+#: public/index.html:299
+msgid ""
+"Autopilot: choose None or a pilot with the arrows, select to turn it on or "
+"off"
+msgstr ""
+"Autopilotas: rodyklėmis pasirink Nėra arba pilotą, pasirinkimu įjunk arba "
+"išjunk"
+
+#: public/index.html:303
+msgid "Copy a link back to this map, camera and position"
+msgstr "Kopijuoti nuorodą į šį žemėlapį, kamerą ir vietą"
+
+#: public/index.html:304
+msgid "Wireframe Mode"
+msgstr "Karkaso režimas"
+
+#: public/index.html:305
+msgid "Anaglyph 3D"
+msgstr "Anaglifinis 3D"
+
+#: public/index.html:306
+msgid "Dynamic Lighting"
+msgstr "Dinaminis apšvietimas"
+
+#: public/index.html:308
+msgid "Open Audio Settings"
+msgstr "Atidaryti garso nustatymus"
+
+#: public/index.html:315
+msgid "Audio Settings"
+msgstr "Garso nustatymai"
+
+#: public/index.html:317
+msgid ""
+"Each level runs from Off to 100%. Nearby voice uses your microphone only "
+"after you grant permission. Use B to toggle your microphone."
+msgstr ""
+"Kiekvienas lygis nuo Išjungta iki 100 %. Artimasis balsas naudoja mikrofoną "
+"tik tau leidus. Mikrofoną įjunk arba išjunk klavišu B."
+
+#: public/index.html:321
+msgid "Game volume"
+msgstr "Žaidimo garsumas"
+
+#: public/index.html:328
+msgid "Gameplay sound effects."
+msgstr "Žaidimo garso efektai."
+
+#: public/index.html:331
+msgid "Voice volume"
+msgstr "Balso garsumas"
+
+#: public/index.html:338
+msgid "How loud nearby players sound to you."
+msgstr "Kaip garsiai tau girdisi netoliese esantys žaidėjai."
+
+#: public/index.html:341
+msgid "Microphone volume"
+msgstr "Mikrofono garsumas"
+
+#: public/index.html:348
+msgid "How loud you are to nearby players."
+msgstr "Kaip garsiai tave girdi netoliese esantys žaidėjai."
+
+#: public/index.html:351
+msgid "Voice channel"
+msgstr "Balso kanalas"
+
+#: public/index.html:353
+msgid "All"
+msgstr "Visi"
+
+#: public/index.html:354
+msgid "Nearby"
+msgstr "Šalia"
+
+#: public/index.html:355
+msgid "Team"
+msgstr "Komanda"
+
+#: public/index.html:357
+msgid "Players within earshot, whatever team they are on."
+msgstr "Girdimu atstumu esantys žaidėjai, kad ir kokioje komandoje."
+
+#: public/index.html:360
+msgid "Microphone input"
+msgstr "Mikrofono įvestis"
+
+#: public/index.html:364
+msgid "Choose the microphone used for voice chat."
+msgstr "Pasirink mikrofoną balso pokalbiui."
+
+#: public/index.html:367
+msgid "Native audio processing"
+msgstr "Naršyklės garso apdorojimas"
+
+#: public/index.html:370
+msgid "Echo cancellation"
+msgstr "Aido slopinimas"
+
+#: public/index.html:374
+msgid "Noise suppression"
+msgstr "Triukšmo slopinimas"
+
+#: public/index.html:378
+msgid "Automatic gain control"
+msgstr "Automatinis stiprinimo valdymas"
+
+#: public/index.html:380
+msgid "Native browser processing is enabled when supported."
+msgstr "Kai palaikoma, įjungtas naršyklės apdorojimas."
+
+#: public/index.html:385
+msgid "Enable microphone"
+msgstr "Įjungti mikrofoną"
+
+#: public/index.html:390
+msgid "Microphone permission has not been requested."
+msgstr "Leidimo naudoti mikrofoną dar neprašyta."
+
+#: public/index.html:404
+msgid "Send"
+msgstr "Siųsti"
+
+#: public/index.html:404
+msgid "Type a chat message, then send it"
+msgstr "Įvesk pokalbio žinutę ir išsiųsk"
+
+#: public/index.html:408
+msgid "ALL"
+msgstr "VISI"
+
+#: public/index.html:409
+msgid "TEAM"
+msgstr "KOMANDA"
+
+#: public/index.html:410
+msgid "ADMIN"
+msgstr "ADMIN"
+
+#: public/index.html:411
+msgid "SERVER"
+msgstr "SERVERIS"
+
+#: public/index.html:425
+msgid "Loading World"
+msgstr "Įkeliamas pasaulis"
+
+#: public/index.html:426
+msgid "Connecting render systems..."
+msgstr "Jungiamos vaizdavimo sistemos..."
+
+#: public/index.html:435 public/index.html:502
+msgid "Close"
+msgstr "Uždaryti"
+
+#: public/index.html:436
+msgid "A free 3D tank game in the browser that plays with BZFlag."
+msgstr "Nemokamas 3D tankų žaidimas naršyklėje, suderinamas su BZFlag."
+
+#: public/index.html:437 public/index.html:502
+msgid "Help"
+msgstr "Pagalba"
+
+#: public/index.html:437
+msgid "Servers"
+msgstr "Serveriai"
+
+#: public/index.html:437
+msgid "Source"
+msgstr "Išeities kodas"
+
+#: public/index.html:442
+msgid "Enter your name"
+msgstr "Įvesk savo vardą"
+
+#: public/index.html:447
+msgid "Motto (optional)"
+msgstr "Šūkis (neprivaloma)"
+
+#: public/index.html:455
+msgid "Server:"
+msgstr "Serveris:"
+
+#: public/index.html:459
+msgid "Team:"
+msgstr "Komanda:"
+
+# review: Visuotinis prisijungimas
+#: public/index.html:467
+msgid "Global login:"
+msgstr "Visuotinis prisijungimas:"
+
+# review: Dažymas
+#: public/index.html:473
+msgid "Skin:"
+msgstr "Dažymas:"
+
+#: public/index.html:477
+msgid "Choose Tank"
+msgstr "Pasirink tanką"
+
+#: public/index.html:479
+msgid "Previous tank"
+msgstr "Ankstesnis tankas"
+
+#: public/index.html:484
+msgid "Next tank"
+msgstr "Kitas tankas"
+
+#: public/index.html:488
+msgid "OK"
+msgstr "Gerai"
+
+#: public/index.html:490
+msgid "Default"
+msgstr "Numatytasis"
+
+#: public/index.html:504
+msgid "Search help"
+msgstr "Ieškoti pagalboje"
+
+#: public/index.html:541
+msgid "Identify: lock a Guided Missile onto the tank in your sights"
+msgstr "Atpažinimas: nutaikyk valdomą raketą į tanką taikiklyje"
+
+#: public/index.html:542
+msgid "Drop flag"
+msgstr "Numesti vėliavą"
+
+#. TRANSLATORS: name of the R* flag; the abbreviation stays as it is
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "Red Team"
+msgstr "Raudonoji komanda"
+
+#. TRANSLATORS: name of the G* flag; the abbreviation stays as it is
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "Green Team"
+msgstr "Žalioji komanda"
+
+#. TRANSLATORS: name of the B* flag; the abbreviation stays as it is
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "Blue Team"
+msgstr "Mėlynoji komanda"
+
+#. TRANSLATORS: name of the P* flag; the abbreviation stays as it is
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "Purple Team"
+msgstr "Violetinė komanda"
+
+#. TRANSLATORS: name of the F flag; the abbreviation stays as it is
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "Rapid Fire"
+msgstr "Greita ugnis"
+
+#. TRANSLATORS: name of the MG flag; the abbreviation stays as it is
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "Machine Gun"
+msgstr "Kulkosvaidis"
+
+#. TRANSLATORS: name of the GM flag; the abbreviation stays as it is
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "Guided Missile"
+msgstr "Valdoma raketa"
+
+#. TRANSLATORS: name of the L flag; the abbreviation stays as it is
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "Laser"
+msgstr "Lazeris"
+
+#. TRANSLATORS: name of the R flag; the abbreviation stays as it is
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "Ricochet"
+msgstr "Rikošetas"
+
+#. TRANSLATORS: name of the SB flag; the abbreviation stays as it is
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "Super Bullet"
+msgstr "Superšovinys"
+
+#. TRANSLATORS: name of the IB flag; the abbreviation stays as it is
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "Invisible Bullet"
+msgstr "Nematomi šoviniai"
+
+#. TRANSLATORS: name of the SW flag; the abbreviation stays as it is
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "Shock Wave"
+msgstr "Smūgio banga"
+
+#. TRANSLATORS: name of the SH flag; the abbreviation stays as it is
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "Shield"
+msgstr "Skydas"
+
+#. TRANSLATORS: name of the V flag; the abbreviation stays as it is
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "High Speed"
+msgstr "Didelis greitis"
+
+#. TRANSLATORS: name of the QT flag; the abbreviation stays as it is
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "Quick Turn"
+msgstr "Greitas posūkis"
+
+#. TRANSLATORS: name of the OO flag; the abbreviation stays as it is
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "Oscillation Overthruster"
+msgstr "Kiaurai sienas"
+
+#. TRANSLATORS: name of the BU flag; the abbreviation stays as it is
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "Burrow"
+msgstr "Įsirausimas"
+
+#. TRANSLATORS: name of the PZ flag; the abbreviation stays as it is
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "Phantom Zone"
+msgstr "Fantomų zona"
+
+#. TRANSLATORS: name of the A flag; the abbreviation stays as it is
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "Agility"
+msgstr "Vikrumas"
+
+#. TRANSLATORS: name of the SR flag; the abbreviation stays as it is
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "Steamroller"
+msgstr "Volas"
+
+#. TRANSLATORS: name of the G flag; the abbreviation stays as it is
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "Genocide"
+msgstr "Genocidas"
+
+#. TRANSLATORS: name of the ID flag; the abbreviation stays as it is
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "Identify"
+msgstr "Atpažinimas"
+
+#. TRANSLATORS: name of the US flag; the abbreviation stays as it is
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "Useless"
+msgstr "Nenaudinga"
+
+#. TRANSLATORS: name of the WG flag; the abbreviation stays as it is
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "Wings"
+msgstr "Sparnai"
+
+#. TRANSLATORS: name of the T flag; the abbreviation stays as it is
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "Tiny"
+msgstr "Mažylis"
+
+#. TRANSLATORS: name of the N flag; the abbreviation stays as it is
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "Narrow"
+msgstr "Siauras"
+
+#. TRANSLATORS: name of the RC flag; the abbreviation stays as it is
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "ReverseControls"
+msgstr "Atvirkštinis valdymas"
+
+#. TRANSLATORS: name of the FO flag; the abbreviation stays as it is
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "Forward Only"
+msgstr "Tik pirmyn"
+
+#. TRANSLATORS: name of the RO flag; the abbreviation stays as it is
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "ReverseOnly"
+msgstr "Tik atgal"
+
+#. TRANSLATORS: name of the LT flag; the abbreviation stays as it is
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "Left Turn Only"
+msgstr "Tik į kairę"
+
+#. TRANSLATORS: name of the RT flag; the abbreviation stays as it is
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "Right Turn Only"
+msgstr "Tik į dešinę"
+
+#. TRANSLATORS: name of the BY flag; the abbreviation stays as it is
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "Bouncy"
+msgstr "Strykčiojimas"
+
+#. TRANSLATORS: name of the TR flag; the abbreviation stays as it is
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "Trigger Happy"
+msgstr "Lengvas gaidukas"
+
+#. TRANSLATORS: name of the M flag; the abbreviation stays as it is
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "Momentum"
+msgstr "Inercija"
+
+#. TRANSLATORS: name of the NJ flag; the abbreviation stays as it is
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "No Jumping"
+msgstr "Be šuolių"
+
+#. TRANSLATORS: name of the O flag; the abbreviation stays as it is
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "Obesity"
+msgstr "Nutukimas"
+
+#. TRANSLATORS: name of the CB flag; the abbreviation stays as it is
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "Colorblindness"
+msgstr "Daltonizmas"
+
+#. TRANSLATORS: name of the B flag; the abbreviation stays as it is
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "Blindness"
+msgstr "Aklumas"
+
+#. TRANSLATORS: name of the ST flag; the abbreviation stays as it is
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "Stealth"
+msgstr "Slaptumas"
+
+#. TRANSLATORS: name of the CL flag; the abbreviation stays as it is
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "Cloaking"
+msgstr "Nematomumas"
+
+#. TRANSLATORS: name of the MQ flag; the abbreviation stays as it is
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "Masquerade"
+msgstr "Maskaradas"
+
+#. TRANSLATORS: name of the SE flag; the abbreviation stays as it is
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "Seer"
+msgstr "Aiškiaregys"
+
+#. TRANSLATORS: name of the TH flag; the abbreviation stays as it is
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "Thief"
+msgstr "Vagis"
+
+#. TRANSLATORS: name of the JM flag; the abbreviation stays as it is
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "Jamming"
+msgstr "Trukdžiai"
+
+#. TRANSLATORS: name of the WA flag; the abbreviation stays as it is
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "Wide Angle"
+msgstr "Platus kampas"
+
+#. TRANSLATORS: what the R* flag (Red Team) does
+#: public/js/flags.mjs public/js/teams.mjs
+msgid ""
+"If it's yours, prevent other teams from taking it. If it's not take it to "
+"your base to capture it!"
+msgstr ""
+"Jei ji tavo, neleisk kitoms komandoms jos paimti. Jei ne, nunešk ją į savo "
+"bazę ir užgrobk!"
+
+#. TRANSLATORS: what the F flag (Rapid Fire) does
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "Shoots more often.  Shells go faster but not as far."
+msgstr "Šaudo dažniau. Sviediniai skrieja greičiau, bet ne taip toli."
+
+#. TRANSLATORS: what the MG flag (Machine Gun) does
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "Very fast reload and very short range."
+msgstr "Labai greitas užtaisymas ir labai trumpas nuotolis."
+
+#. TRANSLATORS: what the GM flag (Guided Missile) does
+#: public/js/flags.mjs public/js/teams.mjs
+msgid ""
+"Shots track a target.  Lock on with right button.  Can lock on or retarget "
+"after firing."
+msgstr ""
+"Šūviai seka taikinį. Užsitaikyk dešiniu mygtuku. Užsitaikyti ar pakeisti "
+"taikinį galima ir po šūvio."
+
+#. TRANSLATORS: what the L flag (Laser) does
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "Shoots a laser.  Infinite speed and range but long reload time."
+msgstr "Šaudo lazeriu. Begalinis greitis ir nuotolis, bet ilgas užtaisymas."
+
+#. TRANSLATORS: what the R flag (Ricochet) does
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "Shots bounce off walls.  Don't shoot yourself!"
+msgstr "Šūviai atšoka nuo sienų. Nepašauk savęs!"
+
+#. TRANSLATORS: what the SB flag (Super Bullet) does
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "Shoots through buildings.  Can kill Phantom Zone."
+msgstr "Šauna kiaurai pastatus. Gali nužudyti tanką fantomų zonoje."
+
+#. TRANSLATORS: what the IB flag (Invisible Bullet) does
+#: public/js/flags.mjs public/js/teams.mjs
+msgid ""
+"Your shots don't appear on other radars.  Can still see them out window."
+msgstr "Tavo šūviai nesimato kitų radaruose. Pro langą juos vis tiek matyti."
+
+#. TRANSLATORS: what the SW flag (Shock Wave) does
+#: public/js/flags.mjs public/js/teams.mjs
+msgid ""
+"Firing destroys all tanks nearby.  Don't kill teammates!  Can kill tanks on/"
+"in buildings."
+msgstr ""
+"Šūvis sunaikina visus netoliese esančius tankus. Nenužudyk komandos draugų! "
+"Gali nužudyti tankus ant pastatų ir juose."
+
+#. TRANSLATORS: what the SH flag (Shield) does
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "Getting hit only drops flag.  Flag flies an extra-long time."
+msgstr "Pataikius tik numetama vėliava. Vėliava skrenda itin ilgai."
+
+#. TRANSLATORS: what the V flag (High Speed) does
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "Tank moves faster.  Outrun bad guys."
+msgstr "Tankas važiuoja greičiau. Pabėk nuo blogiukų."
+
+#. TRANSLATORS: what the QT flag (Quick Turn) does
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "Tank turns faster.  Good for dodging."
+msgstr "Tankas sukasi greičiau. Tinka išsisukinėti."
+
+#. TRANSLATORS: what the OO flag (Oscillation Overthruster) does
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "Can drive through buildings.  Can't back up or shoot while inside."
+msgstr ""
+"Gali važiuoti kiaurai pastatus. Viduje negali važiuoti atgal ar šaudyti."
+
+#. TRANSLATORS: what the BU flag (Burrow) does
+#: public/js/flags.mjs public/js/teams.mjs
+msgid ""
+"Tank burrows underground, impervious to normal shots, but can be steamrolled "
+"by anyone!"
+msgstr ""
+"Tankas įsirausia į žemę, įprasti šūviai jo neveikia, bet bet kas gali jį "
+"pervažiuoti!"
+
+#. TRANSLATORS: what the PZ flag (Phantom Zone) does
+#: public/js/flags.mjs public/js/teams.mjs
+msgid ""
+"Teleporting toggles Zoned effect.  Zoned tank can drive through buildings.  "
+"Zoned tank shoots Zoned bullets and can't be shot (except by superbullet, "
+"shock wave, and other Zoned tanks)."
+msgstr ""
+"Teleportavimasis įjungia ir išjungia fantomų zoną. Tankas fantomų zonoje "
+"važiuoja kiaurai pastatus, šaudo fantominiais šūviais ir į jį negalima "
+"pataikyti (išskyrus superšovinį, smūgio bangą ir kitus tankus fantomų "
+"zonoje)."
+
+#. TRANSLATORS: what the A flag (Agility) does
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "Tank is quick and nimble making it easier to dodge."
+msgstr "Tankas greitas ir vikrus, todėl lengviau išsisukinėja."
+
+#. TRANSLATORS: what the SR flag (Steamroller) does
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "Destroys tanks you touch but you have to get really close."
+msgstr "Sunaikina tankus, kuriuos paliečia, bet turi prisiartinti tikrai arti."
+
+#. TRANSLATORS: what the G flag (Genocide) does
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "Killing one tank kills that tank's whole team."
+msgstr "Nužudžius vieną tanką žūva visa jo komanda."
+
+#. TRANSLATORS: what the JP flag (Jumping) does
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "Tank can jump.  Use Tab key.  Can't steer in the air."
+msgstr "Tankas gali šokti. Naudok klavišą Tab. Ore vairuoti negalima."
+
+#. TRANSLATORS: what the ID flag (Identify) does
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "Identifies type of nearest flag."
+msgstr "Atpažįsta artimiausios vėliavos tipą."
+
+#. TRANSLATORS: what the US flag (Useless) does
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "You have found the useless flag. Use it wisely."
+msgstr "Radai nenaudingą vėliavą. Naudok ją išmintingai."
+
+#. TRANSLATORS: what the WG flag (Wings) does
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "Tank can drive in air."
+msgstr "Tankas gali važiuoti ore."
+
+#. TRANSLATORS: what the T flag (Tiny) does
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "Tank is small and can get through small openings.  Very hard to hit."
+msgstr "Tankas mažas ir pralenda pro mažas angas. Į jį labai sunku pataikyti."
+
+#. TRANSLATORS: what the N flag (Narrow) does
+#: public/js/flags.mjs public/js/teams.mjs
+msgid ""
+"Tank is super thin.  Very hard to hit from front but is normal size from "
+"side.  Can get through small openings."
+msgstr ""
+"Tankas itin plonas. Iš priekio labai sunku pataikyti, bet iš šono jis "
+"įprasto dydžio. Pralenda pro mažas angas."
+
+#. TRANSLATORS: what the RC flag (ReverseControls) does
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "Tank driving controls are reversed."
+msgstr "Tanko valdymas sukeistas."
+
+#. TRANSLATORS: what the FO flag (Forward Only) does
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "Can't drive in reverse."
+msgstr "Negali važiuoti atgal."
+
+#. TRANSLATORS: what the RO flag (ReverseOnly) does
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "Can't drive forward."
+msgstr "Negali važiuoti pirmyn."
+
+#. TRANSLATORS: what the LT flag (Left Turn Only) does
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "Can't turn right."
+msgstr "Negali sukti į dešinę."
+
+#. TRANSLATORS: what the RT flag (Right Turn Only) does
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "Can't turn left."
+msgstr "Negali sukti į kairę."
+
+#. TRANSLATORS: what the BY flag (Bouncy) does
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "Tank can't stop bouncing."
+msgstr "Tankas negali liautis strykčiojęs."
+
+#. TRANSLATORS: what the TR flag (Trigger Happy) does
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "Tank can't stop firing."
+msgstr "Tankas negali liautis šaudęs."
+
+#. TRANSLATORS: what the M flag (Momentum) does
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "Tank has inertia.  Acceleration is limited."
+msgstr "Tankas turi inerciją. Pagreitis ribotas."
+
+#. TRANSLATORS: what the NJ flag (No Jumping) does
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "Tank can't jump."
+msgstr "Tankas negali šokti."
+
+#. TRANSLATORS: what the O flag (Obesity) does
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "Tank becomes very large.  Can't fit through teleporters."
+msgstr "Tankas tampa labai didelis. Netelpa pro teleportus."
+
+#. TRANSLATORS: what the CB flag (Colorblindness) does
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "Can't tell team colors.  Don't shoot teammates!"
+msgstr "Neskiri komandų spalvų. Nešaudyk į komandos draugus!"
+
+#. TRANSLATORS: what the B flag (Blindness) does
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "Can't see out window.  Radar still works."
+msgstr "Pro langą nieko nematai. Radaras vis dar veikia."
+
+#. TRANSLATORS: what the ST flag (Stealth) does
+#: public/js/flags.mjs public/js/teams.mjs
+msgid ""
+"Tank is invisible on radar.  Shots are still visible.  Sneak up behind "
+"enemies!"
+msgstr ""
+"Tankas nematomas radare. Šūviai vis tiek matomi. Prisėlink prie priešų iš už "
+"nugaros!"
+
+#. TRANSLATORS: what the CL flag (Cloaking) does
+#: public/js/flags.mjs public/js/teams.mjs
+msgid ""
+"Tank is invisible out window.  Shots are still visible.  Sneak up behind "
+"enemies!"
+msgstr ""
+"Tankas nematomas pro langą. Šūviai vis tiek matomi. Prisėlink prie priešų iš "
+"už nugaros!"
+
+#. TRANSLATORS: what the MQ flag (Masquerade) does
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "In opponent's hud, you appear as a teammate."
+msgstr "Priešininko HUD tu atrodai kaip jo komandos draugas."
+
+#. TRANSLATORS: what the SE flag (Seer) does
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "See stealthed, cloaked and masquerading tanks as normal."
+msgstr "Mato slaptus, nematomus ir užsimaskavusius tankus kaip įprastus."
+
+#. TRANSLATORS: what the TH flag (Thief) does
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "Steal flags.  Small and fast but can't kill."
+msgstr "Vagia vėliavas. Mažas ir greitas, bet negali žudyti."
+
+#. TRANSLATORS: what the JM flag (Jamming) does
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "Radar doesn't work.  Can still see."
+msgstr "Radaras neveikia. Matyti vis tiek gali."
+
+#. TRANSLATORS: what the WA flag (Wide Angle) does
+#: public/js/flags.mjs public/js/teams.mjs
+msgid ""
+"Fish-eye lens distorts view.  bzo leaves the view alone, so this one only "
+"costs you the time to shake it off."
+msgstr ""
+"Žuvies akies objektyvas iškraipo vaizdą. bzo vaizdo nekeičia, tad ši "
+"kainuoja tik laiką, kol jos atsikratai."
+
+#. TRANSLATORS: a team, or the team choice
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "Automatic"
+msgstr "Automatiškai"
+
+# review: Vienišiai ("loners")
+#. TRANSLATORS: a team, or the team choice
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "Rogue"
+msgstr "Vienišiai"
+
+#. TRANSLATORS: a team, or the team choice
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "Observer"
+msgstr "Stebėtojas"
+
+#. TRANSLATORS: a team, or the team choice
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "Map Viewer"
+msgstr "Žemėlapio peržiūra"
+
+#. TRANSLATORS: a team, or the team choice
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "Rabbit"
+msgstr "Triušis"
+
+#. TRANSLATORS: a team, or the team choice
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "Hunter"
+msgstr "Medžiotojas"
+
+#. TRANSLATORS: a team named inside a sentence, lower case where the language allows
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "automatic"
+msgstr "automatiškai"
+
+#. TRANSLATORS: a team named inside a sentence, lower case where the language allows
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "rogue"
+msgstr "vienišiai"
+
+#. TRANSLATORS: a team named inside a sentence, lower case where the language allows
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "observer"
+msgstr "stebėtojas"
+
+#. TRANSLATORS: a team named inside a sentence, lower case where the language allows
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "mapviewer"
+msgstr "žemėlapio peržiūra"
+
+#. TRANSLATORS: a team named inside a sentence, lower case where the language allows
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "red"
+msgstr "raudona"
+
+#. TRANSLATORS: a team named inside a sentence, lower case where the language allows
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "blue"
+msgstr "mėlyna"
+
+#. TRANSLATORS: a team named inside a sentence, lower case where the language allows
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "green"
+msgstr "žalia"
+
+#. TRANSLATORS: a team named inside a sentence, lower case where the language allows
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "purple"
+msgstr "violetinė"
+
+#. TRANSLATORS: a team named inside a sentence, lower case where the language allows
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "rabbit"
+msgstr "triušis"
+
+#. TRANSLATORS: a team named inside a sentence, lower case where the language allows
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "hunter"
+msgstr "medžiotojas"
+
+#. TRANSLATORS: the name of this language, written in it
+msgid "cs_CZ"
+msgstr ""
+
+#. TRANSLATORS: the name of this language, written in it
+msgid "da"
+msgstr ""
+
+#. TRANSLATORS: the name of this language, written in it
+msgid "de"
+msgstr ""
+
+#. TRANSLATORS: the name of this language, written in it
+msgid "en_US_l33t"
+msgstr ""
+
+#. TRANSLATORS: the name of this language, written in it
+msgid "en_US_redneck"
+msgstr ""
+
+#. TRANSLATORS: the name of this language, written in it
+msgid "es"
+msgstr ""
+
+#. TRANSLATORS: the name of this language, written in it
+msgid "fr"
+msgstr ""
+
+#. TRANSLATORS: the name of this language, written in it
+msgid "it"
+msgstr ""
+
+#. TRANSLATORS: the name of this language, written in it
+msgid "ja"
+msgstr ""
+
+#. TRANSLATORS: the name of this language, written in it
+msgid "ko"
+msgstr ""
+
+#. TRANSLATORS: the name of this language, written in it
+msgid "lt"
+msgstr "Lietuvių"
+
+#. TRANSLATORS: the name of this language, written in it
+msgid "nl"
+msgstr ""
+
+#. TRANSLATORS: the name of this language, written in it
+msgid "pt"
+msgstr ""
+
+#. TRANSLATORS: the name of this language, written in it
+msgid "ru"
+msgstr ""
+
+#. TRANSLATORS: the name of this language, written in it
+msgid "sk"
+msgstr ""
+
+#. TRANSLATORS: the name of this language, written in it
+msgid "sv"
+msgstr ""
+
+#. TRANSLATORS: the name of this language, written in it
+msgid "th"
+msgstr ""
+
+#. TRANSLATORS: the name of this language, written in it
+msgid "tlh"
+msgstr ""
+
+#. TRANSLATORS: the name of this language, written in it
+msgid "zh_CN"
+msgstr ""
+
+#. TRANSLATORS: the name of this language, written in it
+msgid "zh_TW"
+msgstr ""
+
+#: public/js/client.js:43
+msgid "Chat"
+msgstr "Pokalbis"
+
+#: public/js/client.js:44
+msgid "Server"
+msgstr "Serveris"
+
+#: public/js/client.js:45
+msgid "Misc"
+msgstr "Kita"
+
+#: public/js/client.js:46
+msgid "Debug"
+msgstr "Derinimas"
+
+#: public/js/client.js:868
+msgid "unlimited"
+msgstr "neribota"
+
+#: public/js/client.js:870
+msgid "{count} left"
+msgstr "liko: {count}"
+
+#: public/js/client.js:982
+msgid "this is the designated list server"
+msgstr "tai paskirtasis sąrašo serveris"
+
+#. TRANSLATORS: listServerUrl is a server.json setting; keep it as written
+#: public/js/client.js:985
+msgid "disabled (no listServerUrl)"
+msgstr "išjungta (nėra listServerUrl)"
+
+#: public/js/client.js:987
+msgid "reporting to {url}: key configured"
+msgstr "pranešama į {url}: raktas nustatytas"
+
+#: public/js/client.js:988
+msgid "reporting to {url}: no key yet"
+msgstr "pranešama į {url}: rakto dar nėra"
+
+#: public/js/client.js:1010
+msgid "{team} won the game"
+msgstr "Laimėjo {team}"
+
+#: public/js/client.js:1015
+msgid "{player} won the game"
+msgstr "Laimėjo {player}"
+
+#: public/js/client.js:1236
+msgid "Team: {team}"
+msgstr "Komanda: {team}"
+
+#: public/js/client.js:1363
+msgid "watching {server}"
+msgstr "stebimas {server}"
+
+#: public/js/client.js:1365 public/js/client.js:9922
+msgid "replay {name}"
+msgstr "įrašas {name}"
+
+#: public/js/client.js:1375
+msgid "local {map}"
+msgstr "vietinis {map}"
+
+#: public/js/client.js:1375
+msgid "This server"
+msgstr "Šis serveris"
+
+#: public/js/client.js:1443
+msgid "Server: {server}"
+msgstr "Serveris: {server}"
+
+#: public/js/client.js:1498
+msgid "Sign in & Play"
+msgstr "Prisijungti ir žaisti"
+
+#: public/js/client.js:1500
+msgid ""
+"Playing here needs a bzflag.org global login. This signs you in, then joins "
+"on the team you picked."
+msgstr ""
+"Norint čia žaisti, reikia bzflag.org visuotinio prisijungimo. Jis tave "
+"prijungs ir įtrauks į pasirinktą komandą."
+
+#: public/js/client.js:1613 public/js/client.js:1631
+msgid "a tank"
+msgstr "tankas"
+
+#: public/js/client.js:1762
+msgid "You are now the rabbit."
+msgstr "Dabar tu esi triušis."
+
+#: public/js/client.js:1768
+msgid "{player} is now the rabbit"
+msgstr "{player} dabar yra triušis"
+
+#: public/js/client.js:1779
+msgid "operation failed"
+msgstr "operacija nepavyko"
+
+#: public/js/client.js:1779
+msgid "Voice error: {error}"
+msgstr "Balso klaida: {error}"
+
+#: public/js/client.js:2284
+msgid "Default microphone"
+msgstr "Numatytasis mikrofonas"
+
+#: public/js/client.js:2292 public/js/voice.js:1218
+msgid "Microphone"
+msgstr "Mikrofonas"
+
+#: public/js/client.js:2325 public/js/client.js:2340
+msgid "Receive only"
+msgstr "Tik klausytis"
+
+#: public/js/client.js:2327 public/js/client.js:2366
+msgid "Microphone on"
+msgstr "Mikrofonas įjungtas"
+
+#: public/js/client.js:2329
+msgid "Permission denied"
+msgstr "Leidimas atmestas"
+
+#: public/js/client.js:2331 public/js/client.js:2333
+msgid "Microphone unavailable"
+msgstr "Mikrofonas nepasiekiamas"
+
+#: public/js/client.js:2341
+msgid "Mic blocked"
+msgstr "Mikrofonas užblokuotas"
+
+#: public/js/client.js:2342
+msgid "Mic unavailable"
+msgstr "Mikrofonas nepasiekiamas"
+
+#: public/js/client.js:2343
+msgid "Disable Mic"
+msgstr "Išjungti mikrofoną"
+
+#: public/js/client.js:2343
+msgid "Enable Mic"
+msgstr "Įjungti mikrofoną"
+
+#: public/js/client.js:2352
+msgid "{action} - {channel}"
+msgstr "{action} – {channel}"
+
+#: public/js/client.js:2353
+msgid "{channel} voice channel, {status}"
+msgstr "Balso kanalas {channel}, {status}"
+
+#: public/js/client.js:2361
+msgid "Microphone permission granted"
+msgstr "Leidimas naudoti mikrofoną suteiktas"
+
+#: public/js/client.js:2374
+msgid "Microphone is transmitting on the {channel} channel."
+msgstr "Mikrofonas transliuoja kanale {channel}."
+
+#: public/js/client.js:2375
+msgid "Microphone permission granted; transmission is off."
+msgstr "Leidimas naudoti mikrofoną suteiktas; transliacija išjungta."
+
+#: public/js/client.js:2377
+msgid "Microphone permission was denied by the browser."
+msgstr "Naršyklė atmetė leidimą naudoti mikrofoną."
+
+#: public/js/client.js:2379
+msgid "Microphone capture is unavailable in this browser or context."
+msgstr "Mikrofono įrašymas šioje naršyklėje ar aplinkoje nepasiekiamas."
+
+#: public/js/client.js:2392
+msgid "Voice operation failed."
+msgstr "Balso operacija nepavyko."
+
+#: public/js/client.js:2639
+msgid ""
+"A proxied connection tells the target which bzo it came through, and nothing "
+"else. Your own motto is used on this server."
+msgstr ""
+"Per tarpinį serverį perduotas ryšys praneša tikslui tik tai, per kurį bzo "
+"jis atėjo. Šiame serveryje naudojamas tavo paties šūkis."
+
+#: public/js/client.js:3065
+msgid "Preparing battlefield..."
+msgstr "Ruošiamas mūšio laukas..."
+
+#: public/js/client.js:3066
+msgid "Building world geometry"
+msgstr "Kuriama pasaulio geometrija"
+
+#: public/js/client.js:3075
+msgid "Placing obstacles..."
+msgstr "Statomos kliūtys..."
+
+#: public/js/client.js:3076
+msgid "Synchronizing world objects"
+msgstr "Sinchronizuojami pasaulio objektai"
+
+#: public/js/client.js:3104
+msgid "Loading vehicle systems..."
+msgstr "Įkeliamos transporto sistemos..."
+
+#: public/js/client.js:3105
+msgid "Preparing tank models, textures, and audio"
+msgstr "Ruošiami tankų modeliai, tekstūros ir garsai"
+
+#: public/js/client.js:3122
+msgid "Assembling tanks..."
+msgstr "Surenkami tankai..."
+
+#: public/js/client.js:3123
+msgid "Creating player vehicles"
+msgstr "Kuriamos žaidėjų mašinos"
+
+#: public/js/client.js:3136
+msgid "Entering battle..."
+msgstr "Įžengiama į mūšį..."
+
+#: public/js/client.js:3136
+msgid "Render ready"
+msgstr "Vaizdavimas paruoštas"
+
+#: public/js/client.js:3137
+msgid "Joining game"
+msgstr "Jungiamasi prie žaidimo"
+
+#: public/js/client.js:3137
+msgid "Waiting for player name"
+msgstr "Laukiama žaidėjo vardo"
+
+#. TRANSLATORS: prefix on a chat line this client wrote itself, not the server
+#: public/js/client.js:3408
+msgid "local: {message}"
+msgstr "vietinis: {message}"
+
+#: public/js/client.js:3415
+msgid "client version: {version}"
+msgstr "kliento versija: {version}"
+
+#: public/js/client.js:3416
+msgid "copyright: {copyright}"
+msgstr "autorių teisės: {copyright}"
+
+#: public/js/client.js:3417
+msgid "license: {license} ({url})"
+msgstr "licencija: {license} ({url})"
+
+#: public/js/client.js:3564
+msgid "Usage: {command}"
+msgstr "Naudojimas: {command}"
+
+#. TRANSLATORS: /silence and - stay as written
+#: public/js/client.js:3576
+msgid "Usage: /silence <callsign>|-"
+msgstr "Naudojimas: /silence <šaukinys>|-"
+
+#: public/js/client.js:3583
+msgid "Silencing every unauthenticated player"
+msgstr "Nutildomi visi neautentifikuoti žaidėjai"
+
+#: public/js/client.js:3589
+msgid "Silenced \"{callsign}\""
+msgstr "Nutildytas „{callsign}“"
+
+#. TRANSLATORS: /unsilence and - stay as written
+#: public/js/client.js:3596
+msgid "Usage: /unsilence <callsign>|-"
+msgstr "Naudojimas: /unsilence <šaukinys>|-"
+
+#: public/js/client.js:3603
+msgid "No longer silencing unauthenticated players"
+msgstr "Neautentifikuoti žaidėjai nebetildomi"
+
+#: public/js/client.js:3609
+msgid "Unsilenced \"{callsign}\""
+msgstr "Nebetildomas „{callsign}“"
+
+#: public/js/client.js:3666
+msgid "Highlight cleared"
+msgstr "Paryškinimas išvalytas"
+
+#: public/js/client.js:3668
+msgid "Invalid highlight pattern: {pattern}"
+msgstr "Netinkamas paryškinimo šablonas: {pattern}"
+
+#: public/js/client.js:3670
+msgid "Highlighting \"{pattern}\""
+msgstr "Paryškinama „{pattern}“"
+
+#: public/js/client.js:3694
+msgid "Saved messages to: {filename}"
+msgstr "Žinutės išsaugotos: {filename}"
+
+#: public/js/client.js:3702
+msgid "Client-side commands: {commands}"
+msgstr "Kliento komandos: {commands}"
+
+#: public/js/client.js:3850
+msgid "No recent direct sender to reply to"
+msgstr "Nėra paskutinio asmeninės žinutės siuntėjo, kuriam atsakyti"
+
+#: public/js/client.js:3858
+msgid "No nemesis target available"
+msgstr "Nėra priešo taikinio"
+
+#: public/js/client.js:4052 public/js/input.js:1509
+msgid "Show Operator Panel (O)"
+msgstr "Rodyti operatoriaus skydelį (O)"
+
+#: public/js/client.js:4053
+msgid ""
+"Operator: sign in with a bzflag.org global callsign that the server grants "
+"admin to"
+msgstr ""
+"Operatorius: prisijunk su bzflag.org visuotiniu šaukiniu, kuriam serveris "
+"suteikia administratoriaus teises"
+
+#: public/js/client.js:4094 public/js/client.js:4113
+msgid "Sign in"
+msgstr "Prisijungti"
+
+#: public/js/client.js:4097
+msgid "Global login for {server}"
+msgstr "Visuotinis prisijungimas prie {server}"
+
+#: public/js/client.js:4098
+msgid ""
+"Sign in at bzflag.org to play on {server}. A login is needed for each "
+"target, and bzo never sees your password."
+msgstr ""
+"Prisijunk bzflag.org, kad galėtum žaisti {server}. Kiekvienam tikslui reikia "
+"atskiro prisijungimo, o bzo niekada nemato tavo slaptažodžio."
+
+#: public/js/client.js:4106
+msgid "Signed in as {callsign}. Activate to sign out."
+msgstr "Prisijungta kaip {callsign}. Vykdyk, kad atsijungtum."
+
+#: public/js/client.js:4108
+msgid "Signed in, and an admin on this server. Click to sign out."
+msgstr ""
+"Prisijungta, esi šio serverio administratorius. Spustelėk, kad atsijungtum."
+
+#: public/js/client.js:4109
+msgid "Signed in with a bzflag.org global callsign. Click to sign out."
+msgstr ""
+"Prisijungta su bzflag.org visuotiniu šaukiniu. Spustelėk, kad atsijungtum."
+
+#: public/js/client.js:4116
+msgid "Global login: sign in"
+msgstr "Visuotinis prisijungimas: prisijungti"
+
+#: public/js/client.js:4117
+msgid ""
+"Sign in at bzflag.org with a global callsign. bzo never sees your password."
+msgstr ""
+"Prisijunk bzflag.org su visuotiniu šaukiniu. bzo niekada nemato tavo "
+"slaptažodžio."
+
+#: public/js/client.js:4137
+msgid "Signing out leaves VR. Exit the headset session first."
+msgstr "Atsijungus išeinama iš VR. Pirmiausia baik sesiją akiniuose."
+
+#: public/js/client.js:4138
+msgid "Global login leaves VR. Exit the headset session first."
+msgstr ""
+"Visuotinis prisijungimas išeina iš VR. Pirmiausia baik sesiją akiniuose."
+
+#: public/js/client.js:4577 public/js/client.js:10145
+msgid "Fetching remote server's map..."
+msgstr "Gaunamas nutolusio serverio žemėlapis..."
+
+#: public/js/client.js:4737
+msgid "Pausing in {seconds}"
+msgstr "Pauzė po {seconds}"
+
+#: public/js/client.js:4761 public/js/client.js:6433
+msgid "Self Destructing in {seconds}"
+msgstr "Susinaikinimas po {seconds}"
+
+#: public/js/client.js:4843
+msgid "AutoPilot {pilot}: {intent}"
+msgstr "Autopilotas {pilot}: {intent}"
+
+#: public/js/client.js:4844
+msgid "AutoPilot {pilot}"
+msgstr "Autopilotas {pilot}"
+
+#: public/js/client.js:6435
+msgid "Self Destruct cancelled"
+msgstr "Susinaikinimas atšauktas"
+
+#: public/js/client.js:6594
+msgid "Hide Debug Labels"
+msgstr "Slėpti derinimo žymes"
+
+#: public/js/client.js:6597
+msgid "Show Debug Labels"
+msgstr "Rodyti derinimo žymes"
+
+#: public/js/client.js:6614
+msgid "Disable Dynamic Lighting"
+msgstr "Išjungti dinaminį apšvietimą"
+
+#: public/js/client.js:6615
+msgid "Enable Dynamic Lighting"
+msgstr "Įjungti dinaminį apšvietimą"
+
+#: public/js/client.js:6617
+msgid "Dynamic Lighting needs more shader uniforms than this browser reports"
+msgstr ""
+"Dinaminiam apšvietimui reikia daugiau šešėliavimo uniform kintamųjų, nei "
+"praneša ši naršyklė"
+
+#: public/js/client.js:6626
+msgid "Disable Rumble"
+msgstr "Išjungti vibraciją"
+
+#: public/js/client.js:6627
+msgid "Enable Rumble"
+msgstr "Įjungti vibraciją"
+
+#: public/js/client.js:6633
+msgid "Disable Anaglyph 3D"
+msgstr "Išjungti anaglifinį 3D"
+
+#: public/js/client.js:6634
+msgid "Enable Anaglyph 3D"
+msgstr "Įjungti anaglifinį 3D"
+
+#: public/js/client.js:6637
+msgid "Anaglyph 3D is unavailable in VR mode"
+msgstr "Anaglifinis 3D VR režime nepasiekiamas"
+
+#: public/js/client.js:6646
+msgid "Hide Debug Geometry"
+msgstr "Slėpti derinimo geometriją"
+
+#: public/js/client.js:6723
+msgid "Confirm"
+msgstr "Patvirtinti"
+
+#: public/js/client.js:6779
+msgid "Share View Link: only available while viewing a map"
+msgstr "Dalintis vaizdo nuoroda: galima tik peržiūrint žemėlapį"
+
+#: public/js/client.js:6784
+msgid "View link copied to clipboard"
+msgstr "Vaizdo nuoroda nukopijuota į iškarpinę"
+
+#: public/js/client.js:6813
+msgid "WebXR: {mode}"
+msgstr "WebXR: {mode}"
+
+#: public/js/client.js:6819
+msgid "WebXR not supported on this device"
+msgstr "WebXR šiame įrenginyje nepalaikomas"
+
+#: public/js/client.js:6824
+msgid "Requesting VR..."
+msgstr "Prašoma VR..."
+
+#: public/js/client.js:6827
+msgid "Error: Renderer not available"
+msgstr "Klaida: vaizdavimo variklis nepasiekiamas"
+
+#: public/js/client.js:6840
+msgid "✓ WebXR VR Mode: ON"
+msgstr "✓ WebXR VR režimas: ĮJUNGTAS"
+
+#: public/js/client.js:6846
+msgid "✗ VR request failed - check server.log"
+msgstr "✗ VR užklausa nepavyko – žr. server.log"
+
+#: public/js/client.js:6848 public/js/client.js:17058
+msgid "WebXR VR Mode: OFF"
+msgstr "WebXR VR režimas: IŠJUNGTAS"
+
+#: public/js/client.js:7394
+msgid "3D renderer unavailable: {reason}"
+msgstr "3D vaizdavimas nepasiekiamas: {reason}"
+
+#: public/js/client.js:7401
+msgid "3D renderer failed to initialize."
+msgstr "Nepavyko paleisti 3D vaizdavimo."
+
+#: public/js/client.js:7403
+msgid "Open the game in an external browser window for full WebGL support."
+msgstr "Atidaryk žaidimą išorinės naršyklės lange, kad veiktų visas WebGL."
+
+#: public/js/client.js:7818
+msgid "Connected to server!"
+msgstr "Prisijungta prie serverio!"
+
+#: public/js/client.js:7824
+msgid "Connected to server"
+msgstr "Prisijungta prie serverio"
+
+#: public/js/client.js:7825
+msgid "Waiting for world state"
+msgstr "Laukiama pasaulio būsenos"
+
+#: public/js/client.js:7876
+msgid "Offline"
+msgstr "Neprisijungta"
+
+#: public/js/client.js:7876
+msgid "Cannot reach {host}"
+msgstr "Nepavyksta pasiekti {host}"
+
+#: public/js/client.js:7877
+msgid "Trying again..."
+msgstr "Bandoma dar kartą..."
+
+#: public/js/client.js:7888
+msgid "Disconnected from server | Kills: {kills} | Deaths: {deaths}"
+msgstr "Atsijungta nuo serverio | Nužudymai: {kills} | Žūtys: {deaths}"
+
+#: public/js/client.js:7893
+msgid "Press a key, tap or pull a trigger to rejoin"
+msgstr "Paspausk klavišą, bakstelėk arba nuspausk gaiduką, kad grįžtum"
+
+#: public/js/client.js:8053
+msgid "Server error: {error}"
+msgstr "Serverio klaida: {error}"
+
+#: public/js/client.js:8058
+msgid "Server: action completed successfully"
+msgstr "Serveris: veiksmas sėkmingai atliktas"
+
+#: public/js/client.js:8137
+msgid "Operator Panel (v{version})"
+msgstr "Operatoriaus skydelis (v{version})"
+
+#: public/js/client.js:8554
+msgid "{player} joined"
+msgstr "{player} prisijungė"
+
+#: public/js/client.js:8599
+msgid "{player} left"
+msgstr "{player} išėjo"
+
+#: public/js/client.js:8615
+msgid "{callsign} not responding"
+msgstr "{callsign} neatsako"
+
+#: public/js/client.js:8616
+msgid "{callsign} okay"
+msgstr "{callsign} vėl atsako"
+
+#: public/js/client.js:8730
+msgid "{player} grabbed {flag}"
+msgstr "{player} paėmė {flag}"
+
+#: public/js/client.js:8781
+msgid "{player} dropped {flag}"
+msgstr "{player} numetė {flag}"
+
+#: public/js/client.js:8872
+msgid "{player}: {pilot} taking controls"
+msgstr "{player}: {pilot} perima valdymą"
+
+#: public/js/client.js:8873
+msgid "{player}: {pilot} releasing controls"
+msgstr "{player}: {pilot} atiduoda valdymą"
+
+#: public/js/client.js:8905
+msgid "{player} paused"
+msgstr "{player} sustabdė žaidimą"
+
+#: public/js/client.js:8916
+msgid "{player} unpaused"
+msgstr "{player} tęsia žaidimą"
+
+#: public/js/client.js:9026
+msgid "Server forced a disconnect"
+msgstr "Serveris nutraukė ryšį"
+
+#: public/js/client.js:9032
+msgid "Server updated - reloading..."
+msgstr "Serveris atnaujintas – įkeliama iš naujo..."
+
+#: public/js/client.js:9552
+msgid "Got flattened by {player}"
+msgstr "Tave sutraiškė {player}"
+
+#: public/js/client.js:9553
+msgid "Teammate hit with Genocide by {player}"
+msgstr "Komandos draugą Genocidu pakirto {player}"
+
+#: public/js/client.js:9554
+msgid "Got shot by {player}"
+msgstr "Tave nušovė {player}"
+
+#: public/js/client.js:9556
+msgid "Got flattened by teammate {player}"
+msgstr "Tave sutraiškė komandos draugas {player}"
+
+#: public/js/client.js:9557
+msgid "Teammate hit with Genocide by teammate {player}"
+msgstr "Komandos draugą Genocidu pakirto komandos draugas {player}"
+
+#: public/js/client.js:9558
+msgid "Got shot by teammate {player}"
+msgstr "Tave nušovė komandos draugas {player}"
+
+#: public/js/client.js:9594
+msgid "Your team flag was captured!"
+msgstr "Tavo komandos vėliava užgrobta!"
+
+#: public/js/client.js:9596
+msgid "Time Expired - GAME OVER"
+msgstr "Laikas baigėsi – ŽAIDIMAS BAIGTAS"
+
+#: public/js/client.js:9598
+msgid "Tank Self Destructed"
+msgstr "Tankas susinaikino"
+
+#: public/js/client.js:9600
+msgid "Tank Rusted"
+msgstr "Tankas surūdijo"
+
+#: public/js/client.js:9603 public/js/client.js:9607
+msgid "Killed by the server"
+msgstr "Nužudė serveris"
+
+#: public/js/client.js:9634
+msgid "You killed {player}"
+msgstr "Tu nužudei {player}"
+
+#: public/js/client.js:9646
+msgid "{player} self-destructed"
+msgstr "{player} susinaikino"
+
+#: public/js/client.js:9650
+msgid "{player} fell in the water"
+msgstr "{player} įkrito į vandenį"
+
+#: public/js/client.js:9655
+msgid "{player}: {message}"
+msgstr "{player}: {message}"
+
+#: public/js/client.js:9658
+msgid "killed by the server"
+msgstr "nužudė serveris"
+
+#: public/js/client.js:9664
+msgid "{player} was killed by the server"
+msgstr "{player}: nužudė serveris"
+
+#: public/js/client.js:9669
+msgid "{killer} killed {victim}"
+msgstr "{killer} nužudė {victim}"
+
+#: public/js/client.js:9834
+msgid "You respawned!"
+msgstr "Tu vėl atgimei!"
+
+#: public/js/client.js:9921
+msgid "map {name}"
+msgstr "žemėlapis {name}"
+
+#: public/js/client.js:9926
+msgid "nothing uploaded"
+msgstr "nieko neįkelta"
+
+#: public/js/client.js:9953 public/js/client.js:10428
+msgid "MOTD: {motd}"
+msgstr "MOTD: {motd}"
+
+#: public/js/client.js:10028
+msgid "{count} box"
+msgstr "{count} dėžė"
+
+#: public/js/client.js:10028
+msgid "{count} boxes"
+msgstr "dėžių: {count}"
+
+#: public/js/client.js:10029
+msgid "{count} pyramid"
+msgstr "{count} piramidė"
+
+#: public/js/client.js:10029
+msgid "{count} pyramids"
+msgstr "piramidžių: {count}"
+
+#: public/js/client.js:10030
+msgid "{count} mesh"
+msgstr "{count} tinklas"
+
+#: public/js/client.js:10030
+msgid "{count} meshes"
+msgstr "tinklų: {count}"
+
+#: public/js/client.js:10035
+msgid "{count} base"
+msgstr "{count} bazė"
+
+#: public/js/client.js:10035
+msgid "{count} bases"
+msgstr "bazių: {count}"
+
+#: public/js/client.js:10037
+msgid "{count} teleporter"
+msgstr "{count} teleportas"
+
+#: public/js/client.js:10037
+msgid "{count} teleporters"
+msgstr "teleportų: {count}"
+
+#: public/js/client.js:10040
+msgid "water"
+msgstr "vanduo"
+
+#: public/js/client.js:10041
+msgid "weather"
+msgstr "orai"
+
+#: public/js/client.js:10042
+msgid "custom ground"
+msgstr "savas pagrindas"
+
+#: public/js/client.js:10080 public/js/client.js:10159
+msgid "View {map}"
+msgstr "Peržiūrėti {map}"
+
+#: public/js/client.js:10157
+msgid "{server} did not answer"
+msgstr "{server} neatsakė"
+
+#: public/js/client.js:10169
+msgid "Watch"
+msgstr "Stebėti"
+
+#: public/js/client.js:10170
+msgid "Watch the live game on {server}"
+msgstr "Stebėti tiesioginį žaidimą serveryje {server}"
+
+#: public/js/client.js:10188 public/js/client.js:10196
+msgid "Re-import"
+msgstr "Importuoti iš naujo"
+
+#: public/js/client.js:10192
+msgid "Importing…"
+msgstr "Importuojama…"
+
+#: public/js/client.js:10235
+msgid "Loading map..."
+msgstr "Įkeliamas žemėlapis..."
+
+#: public/js/client.js:10243
+msgid "Building world geometry..."
+msgstr "Kuriama pasaulio geometrija..."
+
+#: public/js/client.js:10307
+msgid "{count} watching now"
+msgstr "dabar žiūri: {count}"
+
+#: public/js/client.js:10310
+msgid "Watch {name}"
+msgstr "Stebėti {name}"
+
+#: public/js/client.js:10346
+msgid "That server's map could not be fetched"
+msgstr "To serverio žemėlapio gauti nepavyko"
+
+#: public/js/client.js:10364
+msgid "import failed"
+msgstr "importas nepavyko"
+
+#: public/js/client.js:10364
+msgid "Could not load that server's map: {reason}"
+msgstr "Nepavyko įkelti to serverio žemėlapio: {reason}"
+
+#: public/js/client.js:10562
+msgid "{team} Limit:"
+msgstr "{team}: limitas"
+
+#: public/js/client.js:10643
+msgid "No limit"
+msgstr "Be limito"
+
+#: public/js/client.js:10734
+msgid "Restart"
+msgstr "Paleisti iš naujo"
+
+#: public/js/client.js:10738
+msgid "Starts a new game: every player reloads into the new settings"
+msgstr ""
+"Pradeda naują žaidimą: visi žaidėjai persikrauna su naujais nustatymais"
+
+#: public/js/client.js:10739
+msgid "Applies the staged changes"
+msgstr "Pritaiko paruoštus pakeitimus"
+
+#: public/js/client.js:11080
+msgid "Paused"
+msgstr "Pauzė"
+
+#: public/js/client.js:11081
+msgid "Sealed"
+msgstr "Užblokuotas"
+
+#: public/js/client.js:12006
+msgid "Already following someone"
+msgstr "Jau seki kažką"
+
+#: public/js/client.js:12042 public/js/client.js:12162
+msgid "Looking at {player}"
+msgstr "Žiūri į {player}"
+
+#: public/js/client.js:12146
+msgid "{player} locked on me"
+msgstr "{player} nusitaikė į mane"
+
+#: public/js/client.js:12156
+msgid "Looking at nothing"
+msgstr "Niekur nežiūri"
+
+#: public/js/client.js:12162
+msgid "Locked on {player}"
+msgstr "Nusitaikyta į {player}"
+
+#: public/js/client.js:12398
+msgid "Clear ({count})"
+msgstr "Išvalyti ({count})"
+
+#: public/js/client.js:12398
+msgid "Clear"
+msgstr "Išvalyti"
+
+#: public/js/client.js:12498
+msgid "SPOTTED: {player}"
+msgstr "PASTEBĖTAS: {player}"
+
+#: public/js/client.js:12613 public/js/client.js:12619
+msgid "nobody"
+msgstr "niekas"
+
+#: public/js/client.js:12623
+msgid "Leader {who}"
+msgstr "Lyderis: {who}"
+
+#: public/js/client.js:12625 public/js/client.js:12630
+msgid "Tracking {who}"
+msgstr "Stebima: {who}"
+
+#: public/js/client.js:12626
+msgid "Following {who}"
+msgstr "Iš paskos: {who}"
+
+#: public/js/client.js:12627
+msgid "Driving with {who}"
+msgstr "Važiuoju su: {who}"
+
+#: public/js/client.js:12632 public/js/hud.js:566 public/js/input.js:1387
+msgid "First Person"
+msgstr "Pirmuoju asmeniu"
+
+#: public/js/client.js:12633 public/js/hud.js:567 public/js/input.js:1388
+msgid "Third Person"
+msgstr "Trečiuoju asmeniu"
+
+#: public/js/client.js:12634 public/js/hud.js:568 public/js/input.js:1389
+msgid "Overview"
+msgstr "Apžvalga"
+
+#: public/js/client.js:12635
+msgid "Roaming"
+msgstr "Laisvas skrydis"
+
+#: public/js/client.js:12924 public/js/client.js:12998
+msgid "autopilot disabled"
+msgstr "autopilotas išjungtas"
+
+#: public/js/client.js:12933
+msgid "autopilot not allowed on this server"
+msgstr "autopilotas šiame serveryje neleidžiamas"
+
+#: public/js/client.js:12945
+msgid "{pilot} has the controls"
+msgstr "{pilot} perėmė valdymą"
+
+#: public/js/client.js:12950
+msgid "You may not enable the Autopilot more than once every five seconds."
+msgstr "Autopiloto negalima įjungti dažniau nei kas penkias sekundes."
+
+#: public/js/client.js:12955
+msgid "autopilot enabled"
+msgstr "autopilotas įjungtas"
+
+#: public/js/client.js:12978
+msgid "Not allowed"
+msgstr "Neleidžiama"
+
+#: public/js/client.js:12978 public/js/input.js:1092 public/js/input.js:1102
+#: public/js/input.js:1106
+msgid "Unavailable"
+msgstr "Nepasiekiama"
+
+#: public/js/client.js:12981
+msgid "None"
+msgstr "Nėra"
+
+#: public/js/client.js:13803
+msgid "Zoned"
+msgstr "Fantomų zonoje"
+
+#: public/js/client.js:13803
+msgid "Unzoned"
+msgstr "Ne fantomų zonoje"
+
+#: public/js/client.js:14604 public/js/client.js:14621
+msgid "unidentified"
+msgstr "neatpažinta"
+
+#: public/js/client.js:14641
+msgid "unknown"
+msgstr "nežinoma"
+
+#: public/js/client.js:14652
+msgid ""
+"This server bounces every shot off walls, whatever flag fired it, so the "
+"Ricochet flag is not in play here."
+msgstr ""
+"Šis serveris kiekvieną šūvį atmuša nuo sienų, kad ir kokia vėliava jį "
+"iššovė, todėl Rikošeto vėliava čia nenaudojama."
+
+#: public/js/client.js:14653
+msgid "On this server only the Ricochet flag bounces shots off walls."
+msgstr "Šiame serveryje šūvius nuo sienų atmuša tik Rikošeto vėliava."
+
+#: public/js/client.js:14720
+msgid "{flag} {release}"
+msgstr "{flag}: {release}"
+
+#: public/js/client.js:14731
+msgid "Can't drop the flag while zoned"
+msgstr "Negalima numesti vėliavos fantomų zonoje"
+
+#: public/js/client.js:14735
+msgid "Can't drop a flag while inside a building"
+msgstr "Negalima numesti vėliavos pastato viduje"
+
+#: public/js/client.js:14785
+msgid "in {seconds}s"
+msgstr "po {seconds} s"
+
+#: public/js/client.js:14786
+msgid "after {count} kill"
+msgstr "po {count} nužudymo"
+
+#: public/js/client.js:14786
+msgid "after {count} kills"
+msgstr "po {count} nužudymų"
+
+#: public/js/client.js:14787
+msgid "on the antidote"
+msgstr "ant priešnuodžio"
+
+#: public/js/client.js:14788
+msgid "stays until it kills you"
+msgstr "lieka, kol tave nužudo"
+
+#: public/js/client.js:14789
+msgid "{first} or {second}"
+msgstr "{first} arba {second}"
+
+#: public/js/client.js:14790
+msgid "shakes off {ways}"
+msgstr "nusikratoma {ways}"
+
+#: public/js/client.js:14846
+msgid "Flag Alert!!!"
+msgstr "Vėliavos pavojus!!!"
+
+#: public/js/client.js:14854
+msgid "Team Grab!!!"
+msgstr "Komanda paėmė!!!"
+
+#: public/js/client.js:14870
+msgid "{thief} stole {victim}'s {flag} flag"
+msgstr "{thief} pavogė žaidėjo {victim} vėliavą {flag}"
+
+#: public/js/client.js:14901
+msgid "Closest Flag: {flag}"
+msgstr "Artimiausia vėliava: {flag}"
+
+#: public/js/client.js:14963
+msgid "{player} took their own flag into {team} territory"
+msgstr "{player} nunešė savo vėliavą į komandos {team} teritoriją"
+
+#: public/js/client.js:14971
+msgid "Don't capture your own flag!!!"
+msgstr "Neužgrobk savo vėliavos!!!"
+
+#: public/js/client.js:14977
+msgid "{player} captured the {team} flag"
+msgstr "{player} užgrobė komandos {team} vėliavą"
+
+#: public/js/client.js:16554 public/js/client.js:16555
+msgid "Exit WebXR VR Mode"
+msgstr "Išeiti iš WebXR VR režimo"
+
+#: public/js/flags.mjs:2091
+msgid "Team Flags"
+msgstr "Komandų vėliavos"
+
+#: public/js/flags.mjs:2092
+msgid "Good Flags"
+msgstr "Geros vėliavos"
+
+#: public/js/flags.mjs:2093
+msgid "Bad Flags"
+msgstr "Blogos vėliavos"
+
+#: public/js/help.js:97
+msgid "Nothing found"
+msgstr "Nieko nerasta"
+
+#: public/js/help.js:114
+msgid "Help is unavailable: {error}"
+msgstr "Pagalba nepasiekiama: {error}"
+
+#: public/js/hud.js:177
+msgid "Debug Labels: ON"
+msgstr "Derinimo žymės: ĮJUNGTOS"
+
+#: public/js/hud.js:177
+msgid "Debug Labels: OFF"
+msgstr "Derinimo žymės: IŠJUNGTOS"
+
+#: public/js/hud.js:281
+msgid "Show the scoreboard and chat"
+msgstr "Rodyti rezultatų lentelę ir pokalbį"
+
+#: public/js/hud.js:554
+msgid "Disable Mouse Steering (M)"
+msgstr "Išjungti valdymą pele (M)"
+
+#: public/js/hud.js:554
+msgid "Enable Mouse Steering (M)"
+msgstr "Įjungti valdymą pele (M)"
+
+#: public/js/hud.js:559
+msgid "Hide Debug HUD (`)"
+msgstr "Slėpti derinimo HUD (`)"
+
+#: public/js/hud.js:559
+msgid "Show Debug HUD (`)"
+msgstr "Rodyti derinimo HUD (`)"
+
+#: public/js/hud.js:561
+msgid "Exit Fullscreen (F)"
+msgstr "Išeiti iš viso ekrano (F)"
+
+#: public/js/hud.js:561
+msgid "Toggle Fullscreen (F)"
+msgstr "Visas ekranas (F)"
+
+#: public/js/hud.js:570
+msgid "Toggle Camera View (C)"
+msgstr "Perjungti kameros vaizdą (C)"
+
+#: public/js/hud.js:573
+msgid "Camera: {mode} (C)"
+msgstr "Kamera: {mode} (C)"
+
+#: public/js/hud.js:595
+msgid "Debug Mode: ON"
+msgstr "Derinimo režimas: ĮJUNGTAS"
+
+#: public/js/hud.js:595
+msgid "Debug Mode: OFF"
+msgstr "Derinimo režimas: IŠJUNGTAS"
+
+#: public/js/hud.js:758
+msgid "Red"
+msgstr "Raudona"
+
+#: public/js/hud.js:759
+msgid "Green"
+msgstr "Žalia"
+
+#: public/js/hud.js:760
+msgid "Blue"
+msgstr "Mėlyna"
+
+#: public/js/hud.js:761
+msgid "Purple"
+msgstr "Violetinė"
+
+#: public/js/hud.js:814
+msgid "GAME OVER"
+msgstr "ŽAIDIMAS BAIGTAS"
+
+#: public/js/hud.js:831
+msgid "Score (W-L) Size"
+msgstr "Taškai (L-P) Dydis"
+
+#: public/js/hud.js:931 public/js/hud.js:975
+msgid "K-D"
+msgstr "N-Ž"
+
+#: public/js/hud.js:931 public/js/hud.js:975
+msgid "Kills-Deaths"
+msgstr "Nužudymai-Žūtys"
+
+#: public/js/hud.js:932 public/js/hud.js:1394
+msgid "Rank {score}"
+msgstr "Vieta {score}"
+
+#: public/js/hud.js:970 public/js/hud.js:1340
+msgid "Player"
+msgstr "Žaidėjas"
+
+#: public/js/hud.js:979
+msgid "1-on-1"
+msgstr "1 prieš 1"
+
+#: public/js/hud.js:985
+msgid "desktop"
+msgstr "kompiuteris"
+
+#: public/js/hud.js:986
+msgid "mobile"
+msgstr "mobilusis"
+
+#: public/js/hud.js:987
+msgid "VR headset"
+msgstr "VR akiniai"
+
+#: public/js/hud.js:988
+msgid "BZFlag client"
+msgstr "BZFlag klientas"
+
+#: public/js/hud.js:989
+msgid "robot"
+msgstr "robotas"
+
+#: public/js/hud.js:990
+msgid "server bot"
+msgstr "serverio botas"
+
+#: public/js/hud.js:995
+msgid "UDP in"
+msgstr "UDP į"
+
+#: public/js/hud.js:996
+msgid "UDP both ways"
+msgstr "UDP abiem kryptimis"
+
+#: public/js/hud.js:998
+msgid "WebRTC both ways"
+msgstr "WebRTC abiem kryptimis"
+
+#: public/js/hud.js:999
+msgid "WebRTC through TURN"
+msgstr "WebRTC per TURN"
+
+#: public/js/hud.js:1000
+msgid "WebRTC through TURN both ways"
+msgstr "WebRTC per TURN abiem kryptimis"
+
+#: public/js/hud.js:1002
+msgid "WebTransport both ways"
+msgstr "WebTransport abiem kryptimis"
+
+#: public/js/hud.js:1056
+msgid "{n} self"
+msgstr "savižud.: {n}"
+
+#: public/js/hud.js:1110
+msgid "Watching"
+msgstr "Žiūri"
+
+#: public/js/hud.js:1114
+msgid "(rabbit)"
+msgstr "(triušis)"
+
+#: public/js/input.js:940
+msgid "Mouse steering is unavailable in VR: there is no cursor to read"
+msgstr "VR režime valdymas pele nepasiekiamas: nėra žymeklio"
+
+#: public/js/input.js:941
+msgid "Virtual controls steer instead of the mouse"
+msgstr "Vietoj pelės vairuoja ekrano valdikliai"
+
+#: public/js/input.js:942
+msgid "Mouse steering needs a mouse attached"
+msgstr "Valdymui pele reikia prijungtos pelės"
+
+#: public/js/input.js:1080
+msgid "No players"
+msgstr "Nėra žaidėjų"
+
+#: public/js/input.js:1088 public/js/radar.js:32
+msgid "Medium"
+msgstr "Vidutinis"
+
+#: public/js/input.js:1093 public/js/input.js:1095 public/js/input.js:1107
+msgid "On"
+msgstr "Įjungta"
+
+#: public/js/input.js:1098
+msgid "Installed"
+msgstr "Įdiegta"
+
+#: public/js/input.js:1099
+msgid "Install"
+msgstr "Įdiegti"
+
+#: public/js/input.js:1099
+msgid "Browser menu"
+msgstr "Naršyklės meniu"
+
+#: public/js/input.js:1103 public/js/input.js:1117
+msgid "Exit VR"
+msgstr "Išeiti iš VR"
+
+#: public/js/input.js:1103
+msgid "Enter VR"
+msgstr "Įeiti į VR"
+
+#: public/js/input.js:1109 public/js/settings.js:60
+msgid "Open >"
+msgstr "Atidaryti >"
+
+# review: Vykdyti
+#: public/js/input.js:1111 public/js/settings.js:62
+msgid "Activate"
+msgstr "Vykdyti"
+
+#: public/js/input.js:1169
+msgid "Hide Settings"
+msgstr "Slėpti nustatymus"
+
+#: public/js/input.js:1169
+msgid "Show Settings"
+msgstr "Rodyti nustatymus"
+
+#: public/js/input.js:1183
+msgid "Settings: Hidden"
+msgstr "Nustatymai: paslėpti"
+
+#: public/js/input.js:1183
+msgid "Settings: Shown"
+msgstr "Nustatymai: rodomi"
+
+#: public/js/input.js:1209
+msgid "Hide Audio Settings"
+msgstr "Slėpti garso nustatymus"
+
+#: public/js/input.js:1218
+msgid "Audio Settings: Hidden"
+msgstr "Garso nustatymai: paslėpti"
+
+#: public/js/input.js:1223
+msgid "Audio Settings: Shown"
+msgstr "Garso nustatymai: rodomi"
+
+#: public/js/input.js:1232
+msgid "Hide Help (?)"
+msgstr "Slėpti pagalbą (?)"
+
+#: public/js/input.js:1232
+msgid "Show Help (?)"
+msgstr "Rodyti pagalbą (?)"
+
+#: public/js/input.js:1241
+msgid "Help Panel: Hidden"
+msgstr "Pagalbos skydelis: paslėptas"
+
+#: public/js/input.js:1247
+msgid "Help Panel: Shown"
+msgstr "Pagalbos skydelis: rodomas"
+
+#: public/js/input.js:1284
+msgid "iOS: use Share, Add to Home Screen for fullscreen"
+msgstr "iOS: visam ekranui naudok Bendrinti, Įtraukti į pradžios ekraną"
+
+#: public/js/input.js:1430
+msgid "Camera: {mode}"
+msgstr "Kamera: {mode}"
+
+#: public/js/input.js:1457
+msgid "Controls: Mouse and keyboard"
+msgstr "Valdymas: pelė ir klaviatūra"
+
+#: public/js/input.js:1457
+msgid "Controls: Keyboard"
+msgstr "Valdymas: klaviatūra"
+
+#: public/js/input.js:1465
+msgid "Hide Virtual Controls"
+msgstr "Slėpti ekrano valdiklius"
+
+#: public/js/input.js:1465
+msgid "Show Virtual Controls"
+msgstr "Rodyti ekrano valdiklius"
+
+#: public/js/input.js:1502
+msgid "Virtual Controls: Enabled"
+msgstr "Ekrano valdikliai: įjungti"
+
+#: public/js/input.js:1502
+msgid "Virtual Controls: Disabled"
+msgstr "Ekrano valdikliai: išjungti"
+
+#: public/js/input.js:1509
+msgid "Hide Operator Panel (O)"
+msgstr "Slėpti operatoriaus skydelį (O)"
+
+#: public/js/input.js:1516
+msgid "Hide View"
+msgstr "Slėpti peržiūrą"
+
+#: public/js/input.js:1516
+msgid "Show View"
+msgstr "Rodyti peržiūrą"
+
+#: public/js/input.js:1527
+msgid "Operator: enter a name to become an operator on this server"
+msgstr "Operatorius: įvesk vardą, kad taptum šio serverio operatoriumi"
+
+#: public/js/input.js:1538
+msgid "Operator Panel: Hidden"
+msgstr "Operatoriaus skydelis: paslėptas"
+
+#: public/js/input.js:1561
+msgid "Operator Panel: Shown"
+msgstr "Operatoriaus skydelis: rodomas"
+
+#: public/js/input.js:1578
+msgid "View: Hidden"
+msgstr "Peržiūra: paslėpta"
+
+#: public/js/input.js:1584
+msgid "View: Shown"
+msgstr "Peržiūra: rodoma"
+
+#: public/js/inspect-panel.mjs:67
+msgid "Type"
+msgstr "Tipas"
+
+#: public/js/inspect-panel.mjs:70
+msgid "Bounds"
+msgstr "Ribos"
+
+#: public/js/inspect-panel.mjs:70
+msgid "{min} to {max}"
+msgstr "nuo {min} iki {max}"
+
+#: public/js/inspect-panel.mjs:73
+msgid "Position"
+msgstr "Padėtis"
+
+#: public/js/inspect-panel.mjs:75
+msgid "Rotation"
+msgstr "Pasukimas"
+
+#: public/js/inspect-panel.mjs:80
+msgid "Flags"
+msgstr "Požymiai"
+
+#: public/js/inspect-panel.mjs:82
+msgid "Textures"
+msgstr "Tekstūros"
+
+#: public/js/inspect-panel.mjs:83
+msgid "Physics"
+msgstr "Fizika"
+
+#: public/js/inspect-panel.mjs:90
+msgid "{label} line {line}"
+msgstr "{label}, eilutė {line}"
+
+#: public/js/inspect-panel.mjs:91
+msgid "{label} lines {start}-{end}"
+msgstr "{label}, eilutės {start}-{end}"
+
+#: public/js/inspect-panel.mjs:95
+msgid "{n} more lines"
+msgstr "dar eilučių: {n}"
+
+#: public/js/inspect-panel.mjs:123 public/js/inspect-panel.mjs:188
+msgid "World"
+msgstr "Pasaulis"
+
+#: public/js/inspect-panel.mjs:143
+msgid "unnamed {type}"
+msgstr "{type} be pavadinimo"
+
+#: public/js/inspect-panel.mjs:146 public/js/inspect-panel.mjs:197
+msgid "Reading the map file..."
+msgstr "Skaitomas žemėlapio failas..."
+
+#: public/js/inspect-panel.mjs:146 public/js/inspect-panel.mjs:197
+#: public/js/inspect-panel.mjs:232
+msgid "No map file for this world"
+msgstr "Šis pasaulis neturi žemėlapio failo"
+
+#: public/js/inspect-panel.mjs:157
+msgid "No source for this obstacle"
+msgstr "Ši kliūtis neturi šaltinio"
+
+#: public/js/inspect-panel.mjs:164
+msgid "Shape"
+msgstr "Forma"
+
+#: public/js/inspect-panel.mjs:167
+msgid "Materials"
+msgstr "Medžiagos"
+
+#: public/js/inspect-panel.mjs:167
+msgid "{name} (not defined)"
+msgstr "{name} (neapibrėžta)"
+
+#: public/js/inspect-panel.mjs:176
+msgid "placed by"
+msgstr "išdėstyta per"
+
+#: public/js/inspect-panel.mjs:178
+msgid "material {name}"
+msgstr "medžiaga {name}"
+
+#: public/js/inspect-panel.mjs:189
+msgid "Obstacles"
+msgstr "Kliūtys"
+
+#: public/js/inspect-panel.mjs:191
+msgid "Mesh faces"
+msgstr "Tinklų paviršiai"
+
+#: public/js/inspect-panel.mjs:192
+msgid "Batched"
+msgstr "Sugrupuota"
+
+#: public/js/inspect-panel.mjs:192
+msgid "{instances} placements of {templates} definitions"
+msgstr "išdėstymų: {instances}, apibrėžimų: {templates}"
+
+#: public/js/inspect-panel.mjs:193
+msgid "Links"
+msgstr "Ryšiai"
+
+#: public/js/inspect-panel.mjs:195
+msgid "Zones"
+msgstr "Zonos"
+
+#: public/js/inspect-panel.mjs:196
+msgid "Map size"
+msgstr "Žemėlapio dydis"
+
+#: public/js/inspect-panel.mjs:202
+msgid "Textures ({n}), by obstacles using each"
+msgstr "Tekstūros ({n}) pagal jas naudojančias kliūtis"
+
+#: public/js/inspect-panel.mjs:207
+msgid "{texture} (failed to load)"
+msgstr "{texture} (nepavyko įkelti)"
+
+#: public/js/inspect-panel.mjs:211
+msgid "{n} more"
+msgstr "dar {n}"
+
+#: public/js/inspect-panel.mjs:215
+msgid "Largest meshes, by faces"
+msgstr "Didžiausi tinklai pagal paviršius"
+
+#: public/js/inspect-panel.mjs:218
+msgid "unnamed mesh #{index}"
+msgstr "bevardis tinklas #{index}"
+
+#: public/js/inspect-panel.mjs:235
+msgid "{file}, {lines} lines"
+msgstr "{file}, eilučių: {lines}"
+
+#: public/js/inspect-panel.mjs:236
+msgid "Missing"
+msgstr "Trūksta"
+
+#: public/js/inspect-panel.mjs:239
+msgid "Warnings ({n})"
+msgstr "Įspėjimai ({n})"
+
+#: public/js/install.js:53
+msgid "Already installed"
+msgstr "Jau įdiegta"
+
+#: public/js/install.js:58
+msgid "Install from the browser menu"
+msgstr "Įdiek per naršyklės meniu"
+
+#: public/js/radar.js:32
+msgid "Short"
+msgstr "Trumpas"
+
+#: public/js/radar.js:32
+msgid "Long"
+msgstr "Ilgas"
+
+#: public/js/radar.js:78
+msgid "Radar: {range}"
+msgstr "Radaras: {range}"
+
+#: public/js/radar.js:79
+msgid "Radar range preset: {range}"
+msgstr "Radaro nuotolio nustatymas: {range}"
+
+#: public/js/radar.js:89
+msgid "Radar range: {range}"
+msgstr "Radaro nuotolis: {range}"
+
+#. TRANSLATORS: compass point on the radar, north; one letter.
+#: public/js/radar.js:878
+msgid "N"
+msgstr "Š"
+
+#. TRANSLATORS: compass point on the radar, east; one letter.
+#: public/js/radar.js:880
+msgid "E"
+msgstr "R"
+
+#. TRANSLATORS: compass point on the radar, south; one letter.
+#: public/js/radar.js:882
+msgid "S"
+msgstr "P"
+
+#. TRANSLATORS: compass point on the radar, west; one letter.
+#: public/js/radar.js:884
+msgid "W"
+msgstr "V"
+
+#: public/js/settings.js:11
+msgid "Player Options"
+msgstr "Žaidėjo parinktys"
+
+#: public/js/settings.js:12
+msgid "Camera"
+msgstr "Kamera"
+
+# review: Medžioklė
+#: public/js/settings.js:19
+msgid "Hunt"
+msgstr "Medžioklė"
+
+#: public/js/settings.js:22
+msgid "Autopilot"
+msgstr "Autopilotas"
+
+#: public/js/settings.js:23
+msgid "Radar Range"
+msgstr "Radaro nuotolis"
+
+#: public/js/settings.js:25
+msgid "Language"
+msgstr "Kalba"
+
+#: public/js/settings.js:26
+msgid "Mouse Steering"
+msgstr "Valdymas pele"
+
+#: public/js/settings.js:27
+msgid "Virtual Controls"
+msgstr "Ekrano valdikliai"
+
+#: public/js/settings.js:28
+msgid "Rumble"
+msgstr "Vibracija"
+
+#: public/js/settings.js:29
+msgid "Fullscreen"
+msgstr "Visas ekranas"
+
+#: public/js/settings.js:30
+msgid "Install App"
+msgstr "Įdiegti programą"
+
+#: public/js/settings.js:31
+msgid "Debug HUD"
+msgstr "Derinimo HUD"
+
+#: public/js/settings.js:32
+msgid "Debug Geometry"
+msgstr "Derinimo geometrija"
+
+#: public/js/settings.js:33
+msgid "Debug Labels"
+msgstr "Derinimo žymės"
+
+# review: Karkasas
+#: public/js/settings.js:34
+msgid "Wireframe"
+msgstr "Karkasas"
+
+#: public/js/settings.js:39
+msgid "Operator"
+msgstr "Operatorius"
+
+#: public/js/settings.js:41
+msgid "Share View Link"
+msgstr "Dalintis vaizdo nuoroda"
+
+#: public/js/settings.js:42
+msgid "VR Mode"
+msgstr "VR režimas"
+
+#: public/js/voice-channels.mjs:37
+msgid "Every player on the server, however far away."
+msgstr "Kiekvienas serverio žaidėjas, kad ir kaip toli."
+
+#: public/js/voice-channels.mjs:47
+msgid "Your own team, however far away."
+msgstr "Tavo komanda, kad ir kaip toli."
+
+#: public/js/voice.js:651
+msgid "Could not set voice direction for {peer}"
+msgstr "Nepavyko nustatyti balso krypties su {peer}"
+
+#: public/js/voice.js:662
+msgid "Could not update voice track for {peer}"
+msgstr "Nepavyko atnaujinti balso takelio su {peer}"
+
+#: public/js/voice.js:672
+msgid "Could not add voice track for {peer}"
+msgstr "Nepavyko pridėti balso takelio su {peer}"
+
+#: public/js/voice.js:705
+msgid "RTCPeerConnection is not available in this browser."
+msgstr "RTCPeerConnection šioje naršyklėje nepasiekiamas."
+
+#: public/js/voice.js:713
+msgid "Could not create a voice peer for {peer}"
+msgstr "Nepavyko sukurti balso ryšio su {peer}"
+
+#: public/js/voice.js:782
+msgid "Could not play nearby voice from {peer}"
+msgstr "Nepavyko paleisti artimojo balso iš {peer}"
+
+#: public/js/voice.js:874
+msgid "Could not prepare voice media for {peer}"
+msgstr "Nepavyko paruošti balso medijos su {peer}"
+
+#: public/js/voice.js:920
+msgid "Could not add an ICE candidate for {peer}"
+msgstr "Nepavyko pridėti ICE kandidato su {peer}"
+
+#: public/js/voice.js:942
+msgid "Could not create a voice offer for {peer}"
+msgstr "Nepavyko sukurti balso pasiūlymo su {peer}"
+
+#: public/js/voice.js:983
+msgid "Could not handle a voice offer from {peer}"
+msgstr "Nepavyko apdoroti balso pasiūlymo iš {peer}"
+
+#: public/js/voice.js:998
+msgid "Could not handle a voice answer from {peer}"
+msgstr "Nepavyko apdoroti balso atsakymo iš {peer}"
+
+#: public/js/voice.js:1016
+msgid "Could not add an ICE candidate from {peer}"
+msgstr "Nepavyko pridėti ICE kandidato iš {peer}"
+
+#: public/js/voice.js:1080
+msgid "This browser does not provide microphone capture."
+msgstr "Ši naršyklė nepalaiko mikrofono įrašymo."
+
+#: public/js/voice.js:1105
+msgid "The selected input device has no audio track."
+msgstr "Pasirinktas įvesties įrenginys neturi garso takelio."
+
+#: public/js/voice.js:1133
+msgid "Microphone permission was denied."
+msgstr "Leidimas naudoti mikrofoną atmestas."
+
+#: public/js/voice.js:1133
+msgid "Could not start microphone capture."
+msgstr "Nepavyko pradėti mikrofono įrašymo."
+
+#: public/js/voice.js:1224
+msgid "Could not enumerate microphone devices."
+msgstr "Nepavyko išvardyti mikrofonų."
+
+#: server.js:7180
+msgid "Match duration is {duration}"
+msgstr "Mačo trukmė: {duration}"
+
+#: server.js:7190
+msgid "Match started"
+msgstr "Mačas prasidėjo"
+
+#: server.js:7538
+msgid "Your score record will be saved while you are in observer mode."
+msgstr "Tavo taškai bus išsaugoti, kol esi stebėtojo režime."
+
+#: server.js:7543
+msgid "Your score has been restored."
+msgstr "Tavo taškai atkurti."
+
+#. TRANSLATORS: /me is a command name; keep it as it is
+#: server.js:8309
+msgid "{player}, the /me command requires an argument"
+msgstr "{player}, komandai /me reikia argumento"
+
+#: server.js:8350
+msgid "Commands (use /<command>? for one of them):"
+msgstr "Komandos (vienos aprašui naudok /<command>?):"
+
+#: server.js:8395
+msgid "Recording started"
+msgstr "Įrašymas pradėtas"
+
+#: server.js:8403 server.js:8460 server/messages-operator.cjs:268
+msgid "Could not open for writing: {name} ({error})"
+msgstr "Nepavyko atidaryti rašymui: {name} ({error})"
+
+#: server.js:8407
+msgid "Recording stopped"
+msgstr "Įrašymas sustabdytas"
+
+#: server.js:8415
+msgid "Record size set to {mbytes}"
+msgstr "Įrašo dydis nustatytas: {mbytes}"
+
+#: server.js:8423
+msgid "Record rate set to {seconds}"
+msgstr "Įrašo dažnis nustatytas: {seconds}"
+
+#: server.js:8427
+msgid "Not Recording"
+msgstr "Neįrašoma"
+
+#: server.js:8431
+msgid "Filename:  {name}"
+msgstr "   Failas:  {name}"
+
+#: server.js:8432
+msgid "   saved:  {bytes} bytes / {packets} packets / {seconds} seconds"
+msgstr "Išsaugota:  {bytes} baitų / {packets} paketų / {seconds} sekundžių"
+
+#: server.js:8438
+msgid "Buffered:  {bytes} bytes / {packets} packets / {seconds} seconds"
+msgstr " Buferyje:  {bytes} baitų / {packets} paketų / {seconds} sekundžių"
+
+#: server.js:8452 server/messages-operator.cjs:259
+msgid "No buffer to save"
+msgstr "Nėra buferio, kurį būtų galima išsaugoti"
+
+#: server.js:8457 server/messages-operator.cjs:264
+msgid "Record buffer saved to: {name}"
+msgstr "Įrašo buferis išsaugotas: {name}"
+
+#: server.js:8471
+msgid "Recording to file: {name}"
+msgstr "Įrašoma į failą: {name}"
+
+#: server.js:8494 server.js:9335
+msgid "BZFS Version: {version}"
+msgstr "BZFS versija: {version}"
+
+#: server.js:8532 server.js:9534
+msgid "Nobody is here"
+msgstr "Čia nieko nėra"
+
+#: server.js:8539
+msgid "server: {stats}"
+msgstr "serveris: {stats}"
+
+#: server.js:8581
+msgid "Usage: /setteam <#slot|PlayerName> <team>"
+msgstr "Naudojimas: /setteam <#slot|PlayerName> <team>"
+
+#. TRANSLATORS: /setteam is a command name and {teams} lists team names as typed
+#: server.js:8588
+msgid "Usage: /setteam <#slot|PlayerName> <team> -- one of {teams}"
+msgstr "Naudojimas: /setteam <#slot|PlayerName> <team> -- viena iš: {teams}"
+
+#: server.js:8594
+msgid "\"{player}\" is not on a team to move from"
+msgstr "„{player}“ nėra jokioje komandoje, iš kurios būtų galima perkelti"
+
+#: server.js:8598
+msgid "\"{player}\" is already {team}"
+msgstr "„{player}“ jau yra komandoje: {team}"
+
+#: server.js:8604
+msgid "\"{player}\" moved to {team}"
+msgstr "„{player}“ perkeltas į komandą: {team}"
+
+#: server.js:8605
+msgid "@{player} moved you to {team}"
+msgstr "@{player} perkėlė tave į komandą: {team}"
+
+#: server.js:8634
+msgid "Moved to {position} facing {bearing}"
+msgstr "Perkelta į {position}, kryptis {bearing}"
+
+#: server.js:8637
+msgid "\"{player}\" moved to {position} facing {bearing}"
+msgstr "„{player}“ perkeltas į {position}, kryptis {bearing}"
+
+#: server.js:8638
+msgid "@{player} moved you to {position} facing {bearing}"
+msgstr "@{player} perkėlė tave į {position}, kryptis {bearing}"
+
+#: server.js:8651
+msgid "Usage: /msg \"some callsign\" some message"
+msgstr "Naudojimas: /msg \"šaukinys\" žinutė"
+
+#: server.js:8698
+msgid "Usage: /kill <#slot|PlayerName> [reason]"
+msgstr "Naudojimas: /kill <#slot|PlayerName> [reason]"
+
+#: server.js:8703
+msgid "An observer has no tank to kill"
+msgstr "Stebėtojas neturi tanko, kurį būtų galima sunaikinti"
+
+#: server.js:8707
+msgid "\"{player}\" is already dead"
+msgstr "„{player}“ jau žuvęs"
+
+#: server.js:8714
+msgid "\"{player}\" killed"
+msgstr "„{player}“ nužudytas"
+
+#: server.js:8715
+msgid "You were killed by an operator: {reason}"
+msgstr "Tave nužudė operatorius: {reason}"
+
+#: server.js:8716
+msgid "You were killed by an operator"
+msgstr "Tave nužudė operatorius"
+
+#: server.js:8764
+msgid "You were banned from this server"
+msgstr "Tau uždrausta jungtis prie šio serverio"
+
+#: server.js:8765 server.js:8788
+msgid "Reason given: {reason}"
+msgstr "Nurodyta priežastis: {reason}"
+
+#: server.js:8766
+msgid "{player} banned by {admin}, reason: {reason}"
+msgstr "{admin} užblokavo žaidėją {player}, priežastis: {reason}"
+
+#: server.js:8778
+msgid "Syntax: /kick <#slot | PlayerName | \"Player Name\"> <reason>"
+msgstr "Sintaksė: /kick <#slot | PlayerName | \"Player Name\"> <reason>"
+
+#: server.js:8779 server.js:8808
+msgid "\tPlease keep in mind that reason is displayed to the user."
+msgstr "\tAtmink, kad priežastis rodoma naudotojui."
+
+#: server.js:8782
+msgid "player \"{player}\" not found"
+msgstr "žaidėjas „{player}“ nerastas"
+
+#: server.js:8787
+msgid "You were kicked off the server"
+msgstr "Tave išmetė iš serverio"
+
+#: server.js:8789
+msgid "{player} kicked by {admin}, reason: {reason}"
+msgstr "{admin} išmetė žaidėją {player}, priežastis: {reason}"
+
+#: server.js:8803
+msgid ""
+"Syntax: /ban <#slot | PlayerName | \"Player Name\" | ip> <duration> <reason>"
+msgstr ""
+"Sintaksė: /ban <#slot | PlayerName | \"Player Name\" | ip> <duration> "
+"<reason>"
+
+#: server.js:8804
+msgid "\t<duration> can be 'short' or 'default' for the default ban time "
+msgstr ""
+"\t<duration> gali būti 'short' arba 'default' – numatytoji draudimo trukmė "
+
+#: server.js:8805
+msgid "\tor 'forever' or 'max' for infinite bans "
+msgstr "\tarba 'forever' ar 'max' – neribotas draudimas "
+
+#: server.js:8806
+msgid "\tor a time in the format <weeks>W<days>D<hours>H<minutes>M "
+msgstr "\tarba laikas formatu <weeks>W<days>D<hours>H<minutes>M "
+
+#: server.js:8807
+msgid "\tor just a number of minutes "
+msgstr "\tarba tiesiog minučių skaičius "
+
+#: server.js:8830 server.js:8938
+msgid "Error: invalid ban duration"
+msgstr "Klaida: netinkama draudimo trukmė"
+
+#: server.js:8831 server.js:8939
+msgid "Duration examples:  30m 1h  1d  1w  and mixing: 1w2d4h 1w2d1m"
+msgstr "Trukmės pavyzdžiai:  30m 1h  1d  1w  ir derinant: 1w2d4h 1w2d1m"
+
+#: server.js:8840 server.js:9154
+msgid "{player} has no trusted address to ban"
+msgstr "{player} neturi patikimo adreso, kurį būtų galima užblokuoti"
+
+#: server.js:8846 server.js:8948
+msgid "Pattern added to the BZID banlist"
+msgstr "Šablonas įtrauktas į BZID draudimų sąrašą"
+
+#: server.js:8852
+msgid "Malformed address or invalid Player/Slot: {target}"
+msgstr "Netinkamas adresas arba neteisingas žaidėjas / vieta: {target}"
+
+#: server.js:8856
+msgid "Pattern added to the IP banlist"
+msgstr "Šablonas įtrauktas į IP draudimų sąrašą"
+
+#: server.js:8867
+msgid "Removed IP pattern from the ban list"
+msgstr "IP šablonas pašalintas iš draudimų sąrašo"
+
+#: server.js:8869 server.js:8958
+msgid "No pattern removed"
+msgstr "Joks šablonas nepašalintas"
+
+#: server.js:8884
+msgid "Syntax: /checkip <ip>"
+msgstr "Sintaksė: /checkip <ip>"
+
+#: server.js:8889
+msgid "{address} is not banned."
+msgstr "{address} neužblokuotas."
+
+#: server.js:8892
+msgid "{address} is banned:"
+msgstr "{address} užblokuotas:"
+
+#: server.js:8900
+msgid ""
+"Syntax: /idban <#slot|+id|PlayerName|\"Player Name\"> <duration> <reason>"
+msgstr ""
+"Sintaksė: /idban <#slot|+id|PlayerName|\"Player Name\"> <duration> <reason>"
+
+#: server.js:8901
+msgid "  Please keep in mind that reason is displayed to the user."
+msgstr "  Atmink, kad priežastis rodoma naudotojui."
+
+#: server.js:8912
+msgid "Error: invalid id pattern"
+msgstr "Klaida: netinkamas ID šablonas"
+
+#: server.js:8920
+msgid "could not find player ({player})"
+msgstr "žaidėjas nerastas ({player})"
+
+#: server.js:8925
+msgid "no BZID for player ({player})"
+msgstr "žaidėjas neturi BZID ({player})"
+
+#: server.js:8956
+msgid "Removed id from the ban list"
+msgstr "ID pašalintas iš draudimų sąrašo"
+
+#: server.js:8995
+msgid "Usage: /poll vote yes|no"
+msgstr "Naudojimas: /poll vote yes|no"
+
+#: server.js:8996
+msgid "    or /poll ban playername"
+msgstr "    arba /poll ban playername"
+
+#: server.js:8997
+msgid "    or /poll kick playername"
+msgstr "    arba /poll kick playername"
+
+#: server.js:8998
+msgid "    or /poll kill playername"
+msgstr "    arba /poll kill playername"
+
+#: server.js:8999
+msgid "    or /poll set variable value"
+msgstr "    arba /poll set variable value"
+
+#: server.js:9000
+msgid "    or /poll flagreset"
+msgstr "    arba /poll flagreset"
+
+#. TRANSLATORS: /vote is a command name; keep it as it is
+#: server.js:9008
+msgid "{player}, you are presently not authorized to run /vote"
+msgstr "{player}, šiuo metu neturi teisės vykdyti /vote"
+
+#: server.js:9012 server.js:9052 server.js:9078
+msgid "ERROR: the poll arbiter has disappeared (this should never happen)"
+msgstr "KLAIDA: balsavimo arbitras dingo (taip neturėtų nutikti niekada)"
+
+#: server.js:9016
+msgid "A poll is not presently in progress.  There is nothing to vote on"
+msgstr "Šiuo metu nevyksta joks balsavimas. Nėra dėl ko balsuoti"
+
+#: server.js:9021
+msgid "{player}, you did not vote in favor or in opposition"
+msgstr "{player}, nebalsavai nei už, nei prieš"
+
+#: server.js:9022
+msgid "{player}, you did not provide a vote answer"
+msgstr "{player}, nenurodei atsakymo"
+
+#: server.js:9023
+msgid "Usage: /vote yes|no|y|n|1|0|yea|nay|si|ja|nein|oui|non|sim|nao"
+msgstr "Naudojimas: /vote yes|no|y|n|1|0|yea|nay|si|ja|nein|oui|non|sim|nao"
+
+#. TRANSLATORS: {action} is a /poll keyword (ban, kick, kill, set, reset), sent as typed
+#: server.js:9030
+msgid "{player}, your vote in favor of the {action} has been recorded"
+msgstr "{player}, tavo balsas už „{action}“ užregistruotas"
+
+#: server.js:9031
+msgid "{player}, your vote in opposition of the {action} has been recorded"
+msgstr "{player}, tavo balsas prieš „{action}“ užregistruotas"
+
+#: server.js:9033
+msgid "{player}, you have already voted on the poll to {action} {target}"
+msgstr "{player}, balsavime „{action} {target}“ jau balsavai"
+
+#: server.js:9037
+msgid ""
+"{player}, there was an error while voting on the poll to {action} {target}"
+msgstr "{player}, balsuojant „{action} {target}“ įvyko klaida"
+
+#. TRANSLATORS: /veto is a command name; keep it as it is
+#: server.js:9048
+msgid "{player}, you are presently not authorized to run /veto"
+msgstr "{player}, šiuo metu neturi teisės vykdyti /veto"
+
+#: server.js:9056
+msgid "{player}, there is presently no active poll to veto"
+msgstr "{player}, šiuo metu nėra aktyvaus balsavimo, kurį būtų galima vetuoti"
+
+#: server.js:9059
+msgid "{player}, you have cancelled the poll to {action} {target}"
+msgstr "{player}, atšaukei balsavimą „{action} {target}“"
+
+#: server.js:9065
+msgid "The poll was cancelled by {player}"
+msgstr "Balsavimą atšaukė {player}"
+
+#. TRANSLATORS: /poll is a command name; keep it as it is
+#: server.js:9074
+msgid "{player}, you are presently not authorized to run /poll"
+msgstr "{player}, šiuo metu neturi teisės vykdyti /poll"
+
+#: server.js:9094
+msgid "A poll to {action} {target} is presently in progress"
+msgstr "Šiuo metu vyksta balsavimas „{action} {target}“"
+
+#: server.js:9097
+msgid "Unable to start a new poll until the current one is over"
+msgstr "Naujo balsavimo pradėti negalima, kol nesibaigė dabartinis"
+
+#: server.js:9102
+msgid ""
+"Unable to initiate a new poll.  There are not enough registered players "
+"playing."
+msgstr ""
+"Naujo balsavimo pradėti negalima. Žaidžia per mažai registruotų žaidėjų."
+
+#: server.js:9106
+msgid ""
+"There needs to be at least {required} other player and only {others} is "
+"available."
+msgstr "Reikia kitų žaidėjų: bent {required}, yra: {others}."
+
+#: server.js:9107
+msgid ""
+"There needs to be at least {required} other player and only {others} are "
+"available."
+msgstr "Reikia kitų žaidėjų: bent {required}, yra: {others}."
+
+#: server.js:9109
+msgid ""
+"There needs to be at least {required} other players and only {others} is "
+"available."
+msgstr "Reikia kitų žaidėjų: bent {required}, yra: {others}."
+
+#: server.js:9111
+msgid ""
+"There needs to be at least {required} other players and only {others} are "
+"available."
+msgstr "Reikia kitų žaidėjų: bent {required}, yra: {others}."
+
+#: server.js:9120
+msgid "/poll: incorrect syntax, argument required."
+msgstr "/poll: neteisinga sintaksė, reikia argumento."
+
+#: server.js:9126
+msgid "{player}, no target was specified for the [{action}] vote"
+msgstr "{player}, balsavimui [{action}] nenurodytas taikinys"
+
+#. TRANSLATORS: /poll and {action} are a command as typed; keep them as they are
+#: server.js:9128
+msgid "Usage: /poll {action} target"
+msgstr "Naudojimas: /poll {action} target"
+
+#. TRANSLATORS: /poll {action} is a command as typed; keep it as it is
+#: server.js:9133
+msgid "{player}, you may not /poll {action} on this server"
+msgstr "{player}, šiame serveryje negalima /poll {action}"
+
+#: server.js:9140
+msgid "The player specified for a {action} vote is not here"
+msgstr "Balsavimui „{action}“ nurodyto žaidėjo čia nėra"
+
+#: server.js:9144
+msgid "You can't kill an observer!"
+msgstr "Stebėtojo nužudyti negalima!"
+
+#: server.js:9150
+msgid "{player} is protected from being polled against."
+msgstr "{player} apsaugotas nuo balsavimų prieš jį."
+
+#: server.js:9166
+msgid "You are not able to request a {action} poll right now, {player}"
+msgstr "{player}, balsavimo „{action}“ dabar pradėti negali"
+
+#: server.js:9170
+msgid "A poll to {action} {target} has been requested by {player}"
+msgstr "{player} pradėjo balsavimą „{action} {target}“"
+
+#: server.js:9178
+msgid ""
+"{available} player is available, {needed} additional affirming vote required "
+"to pass the poll ({percentage} %)"
+msgstr ""
+"Žaidėjų yra: {available}, balsavimui priimti trūksta balsų už: {needed} "
+"({percentage} %)"
+
+#: server.js:9179
+msgid ""
+"{available} player is available, {needed} additional affirming votes "
+"required to pass the poll ({percentage} %)"
+msgstr ""
+"Žaidėjų yra: {available}, balsavimui priimti trūksta balsų už: {needed} "
+"({percentage} %)"
+
+#: server.js:9182
+msgid ""
+"{available} players are available, {needed} additional affirming vote "
+"required to pass the poll ({percentage} %)"
+msgstr ""
+"Žaidėjų yra: {available}, balsavimui priimti trūksta balsų už: {needed} "
+"({percentage} %)"
+
+#: server.js:9183
+msgid ""
+"{available} players are available, {needed} additional affirming votes "
+"required to pass the poll ({percentage} %)"
+msgstr ""
+"Žaidėjų yra: {available}, balsavimui priimti trūksta balsų už: {needed} "
+"({percentage} %)"
+
+#: server.js:9188
+msgid "Unable to automatically place your vote for some unknown reason"
+msgstr "Dėl nežinomos priežasties nepavyko automatiškai atiduoti tavo balso"
+
+#: server.js:9215
+msgid ""
+"You have been temporarily banned due to sufficient votes to have you removed"
+msgstr ""
+"Tau laikinai uždrausta jungtis, nes pakankamai žaidėjų balsavo už tavo "
+"pašalinimą"
+
+#: server.js:9221
+msgid "You have been kicked due to sufficient votes to have you removed"
+msgstr "Tave išmetė, nes pakankamai žaidėjų balsavo už tavo pašalinimą"
+
+#: server.js:9227
+msgid "You have been killed due to sufficient votes"
+msgstr "Tave nužudė balsavimo sprendimu"
+
+#: server.js:9250
+msgid ""
+"A poll to {action} {target} has begun.  Players have up to {seconds} seconds "
+"to vote."
+msgstr ""
+"Prasidėjo balsavimas „{action} {target}“. Žaidėjai turi {seconds} s balsuoti."
+
+#: server.js:9258
+msgid "{seconds} seconds remain in the poll to {action} {target}."
+msgstr "Iki balsavimo „{action} {target}“ pabaigos liko {seconds} s."
+
+#: server.js:9266
+msgid "Enough votes were collected to {action} {target} early."
+msgstr "Surinkta pakankamai balsų, „{action} {target}“ įvyks anksčiau."
+
+#: server.js:9267
+msgid "Enough votes were collected to reset all unused flags early."
+msgstr ""
+"Surinkta pakankamai balsų, visos nenaudojamos vėliavos bus atstatytos "
+"anksčiau."
+
+#: server.js:9273
+msgid "Poll Results: {yes} in favor, {no} oppose, {abstain} abstain"
+msgstr "Balsavimo rezultatai: už {yes}, prieš {no}, susilaikė {abstain}"
+
+#: server.js:9281
+msgid "The poll to {action} {target} was not successful"
+msgstr "Balsavimas „{action} {target}“ nepavyko"
+
+#: server.js:9290
+msgid ""
+"The poll is now closed and was successful.  {target} is scheduled to be "
+"temporarily banned."
+msgstr ""
+"Balsavimas baigtas sėkmingai. {target}: bus laikinai uždrausta jungtis."
+
+#: server.js:9291
+msgid ""
+"The poll is now closed and was successful.  {target} is scheduled to be "
+"kicked."
+msgstr "Balsavimas baigtas sėkmingai. {target}: bus išmestas."
+
+#: server.js:9292
+msgid ""
+"The poll is now closed and was successful.  {target} is scheduled to be "
+"killed."
+msgstr "Balsavimas baigtas sėkmingai. {target}: bus nužudytas."
+
+#: server.js:9295
+msgid ""
+"The poll is now closed and was successful.  {target} is scheduled to be "
+"{action}."
+msgstr "Balsavimas baigtas sėkmingai. Laukia „{action}“: {target}."
+
+#: server.js:9303
+msgid "{target} has been kicked."
+msgstr "{target}: išmestas."
+
+#: server.js:9304
+msgid "{target} has been killed."
+msgstr "{target}: nužudytas."
+
+#: server.js:9306
+msgid "{target} has been {action}"
+msgstr "Atlikta „{action}“: {target}"
+
+#: server.js:9321
+msgid "{player}'s client version:"
+msgstr "Žaidėjo {player} kliento versija:"
+
+#: server.js:9322
+msgid "  {version}"
+msgstr "  {version}"
+
+#: server.js:9323
+msgid "  unknown"
+msgstr "  nežinoma"
+
+#: server.js:9329
+msgid "Player not found."
+msgstr "Žaidėjas nerastas."
+
+#: server.js:9360
+msgid "Countdown cancelled by {player}."
+msgstr "Atgalinį skaičiavimą atšaukė {player}."
+
+#: server.js:9360
+msgid "Countdown cancelled"
+msgstr "Atgalinis skaičiavimas atšauktas"
+
+#: server.js:9382
+msgid "No match is running to pause"
+msgstr "Nevyksta joks mačas, kurį būtų galima pristabdyti"
+
+#: server.js:9390
+msgid "No paused match to resume"
+msgstr "Nėra pristabdyto mačo, kurį būtų galima tęsti"
+
+#: server.js:9397
+msgid "There is no running countdown to cancel"
+msgstr "Nevyksta joks atgalinis skaičiavimas, kurį būtų galima atšaukti"
+
+#: server.js:9405
+msgid "Usage: /countdown [<seconds>|pause|resume|cancel]"
+msgstr "Naudojimas: /countdown [<seconds>|pause|resume|cancel]"
+
+#: server.js:9410
+msgid "There is a countdown already in progress"
+msgstr "Atgalinis skaičiavimas jau vyksta"
+
+#: server.js:9414
+msgid "A game is already in progress"
+msgstr "Žaidimas jau vyksta"
+
+#: server.js:9418 server.js:9421
+msgid "Countdown set to {seconds} instead of {asked}"
+msgstr "Atgalinis skaičiavimas nustatytas: {seconds} vietoj {asked}"
+
+#: server.js:9430
+msgid "Countdown started by {player}."
+msgstr "Atgalinį skaičiavimą pradėjo {player}."
+
+#: server.js:9431
+msgid "Match begins in about {duration}"
+msgstr "Mačas prasidės maždaug po {duration}"
+
+#: server.js:9439
+msgid "The match has started!...Good Luck Teams!"
+msgstr "Mačas prasidėjo!...Sėkmės, komandos!"
+
+#: server.js:9443
+msgid "Start your engines!......"
+msgstr "Užveskite variklius!......"
+
+#: server.js:9445
+msgid "{seconds}..."
+msgstr "{seconds}..."
+
+#: server.js:9457
+msgid "No match is running"
+msgstr "Nevyksta joks mačas"
+
+#: server.js:9469
+msgid "Usage: /say <message>"
+msgstr "Naudojimas: /say <message>"
+
+#: server.js:9485
+msgid "Usage: /mute <#slot|PlayerName>"
+msgstr "Naudojimas: /mute <#slot|PlayerName>"
+
+#: server.js:9491
+msgid "\"{player}\" is now muted"
+msgstr "„{player}“ dabar nutildytas"
+
+#: server.js:9492
+msgid "You have been muted by an operator"
+msgstr "Tave nutildė operatorius"
+
+#: server.js:9501
+msgid "Usage: /unmute <#slot|PlayerName>"
+msgstr "Naudojimas: /unmute <#slot|PlayerName>"
+
+#: server.js:9507
+msgid "\"{player}\" is no longer muted"
+msgstr "„{player}“ nebetildomas"
+
+#: server.js:9508
+msgid "You are no longer muted"
+msgstr "Tu nebetildomas"
+
+#: server.js:9516
+msgid "Nobody is muted"
+msgstr "Niekas nenutildytas"
+
+#: server.js:9629
+msgid "Usage: /flag drop [#slot|PlayerName]"
+msgstr "Naudojimas: /flag drop [#slot|PlayerName]"
+
+#: server.js:9636
+msgid "You are not carrying a flag"
+msgstr "Tu neneši vėliavos"
+
+#: server.js:9637
+msgid "\"{player}\" is not carrying a flag"
+msgstr "„{player}“ neneša vėliavos"
+
+#: server.js:9646
+msgid "Dropped {flag} from \"{player}\""
+msgstr "„{player}“: vėliava {flag} numesta"
+
+#: server.js:9647
+msgid "Your {flag} flag was dropped"
+msgstr "Tavo vėliava {flag} numesta"
+
+#: server.js:9661
+msgid "{count} flags sent up"
+msgstr "Vėliavų pakelta į orą: {count}"
+
+#: server.js:9671
+msgid "{count} flags reset"
+msgstr "Vėliavų atstatyta: {count}"
+
+#: server.js:9676
+msgid "No flags are in the world"
+msgstr "Pasaulyje nėra vėliavų"
+
+#: server.js:9694
+msgid "Usage: /flag take <#slot|PlayerName>"
+msgstr "Naudojimas: /flag take <#slot|PlayerName>"
+
+#. TRANSLATORS: /flag take is a command name; keep it as it is
+#: server.js:9701
+msgid "/flag take: player ({player}) does not have a flag"
+msgstr "/flag take: žaidėjas ({player}) neturi vėliavos"
+
+#: server.js:9710
+msgid "{admin} took flag {flag}/{slot} from {player}"
+msgstr "{admin} atėmė vėliavą {flag}/{slot} iš žaidėjo {player}"
+
+#: server.js:9722
+msgid "Usage: /flag give <#slot|PlayerName> <#flagId|FlagAbbr> [force]"
+msgstr "Naudojimas: /flag give <#slot|PlayerName> <#flagId|FlagAbbr> [force]"
+
+#: server.js:9738
+msgid "flag {flag} is not in this world"
+msgstr "vėliavos {flag} šiame pasaulyje nėra"
+
+#: server.js:9745 server.js:9783
+msgid "you may need to use the force"
+msgstr "gali tekti naudoti force"
+
+#: server.js:9752
+msgid "flag {flag} is an empty slot"
+msgstr "vėliava {flag} – tuščia vieta"
+
+#: server.js:9758
+msgid "bad flag type"
+msgstr "netinkamas vėliavos tipas"
+
+#: server.js:9780
+msgid "flag type not found"
+msgstr "vėliavos tipas nerastas"
+
+#: server.js:9789
+msgid "An observer has no tank to carry a flag"
+msgstr "Stebėtojas neturi tanko, kuris neštų vėliavą"
+
+#. TRANSLATORS: /flag give is a command name; keep it as it is
+#: server.js:9796
+msgid "/flag give: player ({player}) is not alive"
+msgstr "/flag give: žaidėjas ({player}) negyvas"
+
+#: server.js:9817
+msgid "{admin} gave flag {flag}/{slot} to {player}"
+msgstr "{admin} davė vėliavą {flag}/{slot} žaidėjui {player}"
+
+#: server.js:9844
+msgid "Usage: /mv [player] <x,y> [facing]"
+msgstr "Naudojimas: /mv [player] <x,y> [facing]"
+
+#: server.js:9859
+msgid "An observer has no tank to move"
+msgstr "Stebėtojas neturi tanko, kurį būtų galima perkelti"
+
+#: server.js:9902
+msgid "Nowhere to stand at {x},{y}"
+msgstr "Taške {x},{y} nėra kur stovėti"
+
+#: server.js:9969
+msgid "Checking another player's position requires operator status"
+msgstr "Kito žaidėjo padėtį gali tikrinti tik operatorius"
+
+#: server.js:9975
+msgid "Usage: /pos [player]"
+msgstr "Naudojimas: /pos [player]"
+
+#: server.js:9981
+msgid "An observer has no tank position"
+msgstr "Stebėtojas neturi tanko padėties"
+
+#: server.js:9989
+msgid "You are at {position} facing {bearing}"
+msgstr "Esi {position}, kryptis {bearing}"
+
+#: server.js:9990
+msgid "\"{player}\" is at {position} facing {bearing}"
+msgstr "„{player}“ yra {position}, kryptis {bearing}"
+
+#: server.js:10283
+msgid "All shots now ricochet"
+msgstr "Dabar visi šūviai atšoka"
+
+#: server.js:10283
+msgid "Shots no longer ricochet"
+msgstr "Šūviai nebeatšoka"
+
+#: server.js:10412
+msgid "usage: set <name> [<value>]"
+msgstr "naudojimas: set <name> [<value>]"
+
+#: server.js:10413
+msgid "bzo's own: {variables}"
+msgstr "bzo nuosavi: {variables}"
+
+#. TRANSLATORS: /set is a command name; keep it as it is
+#: server.js:10433
+msgid "/set failed, reason: variable {name} does not exist"
+msgstr "/set nepavyko, priežastis: kintamojo {name} nėra"
+
+#: server.js:10434 server.js:10468
+msgid "variable {name} does not exist"
+msgstr "kintamojo {name} nėra"
+
+#: server.js:10438
+msgid "{name} is {value}"
+msgstr "{name} = {value}"
+
+#. TRANSLATORS: /set is a command name; keep it as it is
+#: server.js:10443
+msgid "/set failed, reason: variable {name} is not writeable"
+msgstr "/set nepavyko, priežastis: kintamojo {name} keisti negalima"
+
+#: server.js:10449
+msgid "{name} set"
+msgstr "{name} nustatytas"
+
+#: server.js:10450
+msgid "Variable Modification Notice by {player} of set {name} {value}"
+msgstr "Kintamojo keitimo pranešimas, {player}: set {name} {value}"
+
+#: server.js:10460
+msgid "usage: reset <name>"
+msgstr "naudojimas: reset <name>"
+
+#: server.js:10471
+msgid "variable {name} is not writeable"
+msgstr "kintamojo {name} keisti negalima"
+
+#: server.js:10477
+msgid "all variables reset"
+msgstr "visi kintamieji atstatyti"
+
+#: server.js:10478
+msgid "{name} reset"
+msgstr "{name} atstatytas"
+
+#: server.js:10482
+msgid "Variable Reset Notice by {player} of reset {name}"
+msgstr "Kintamojo atstatymo pranešimas, {player}: reset {name}"
+
+#: server.js:10509
+msgid "No command starting with {prefix}"
+msgstr "Nėra komandos, prasidedančios {prefix}"
+
+#: server.js:10531
+msgid "You do not have permission to run the {command} command"
+msgstr "Neturi teisės vykdyti komandos {command}"
+
+#: server.js:10556
+msgid "We're sorry, you are not allowed to talk!"
+msgstr "Atsiprašome, tau neleidžiama kalbėti!"
+
+#: server.js:10624
+msgid "You do not have permission to speak on the admin channel."
+msgstr "Neturi teisės rašyti administratorių kanale."
+
+#: server.js:10786
+msgid "You signed in as {player} on another device."
+msgstr "Kitame įrenginyje prisijungei kaip {player}."
+
+#: server.js:10808
+msgid "{player} signed in with that name, so yours is now {name}."
+msgstr "{player} prisijungė šiuo vardu, todėl tavo vardas dabar {name}."
+
+#: server.js:12935
+msgid "Global login approved!"
+msgstr "Visuotinis prisijungimas patvirtintas!"
+
+#: server.js:12937
+msgid "Global login rejected, bad token."
+msgstr "Visuotinis prisijungimas atmestas, blogas žetonas."
+
+#: server.js:12939
+msgid "This callsign is not registered."
+msgstr "Šis šaukinys neregistruotas."
+
+#: server.js:12940
+msgid "You can register it at https://forums.bzflag.org/"
+msgstr "Užregistruoti jį gali https://forums.bzflag.org/"
+
+#: server.js:13612
+msgid "{count} shots left"
+msgstr "Liko šūvių: {count}"
+
+#: server.js:13613
+msgid "1 shot left"
+msgstr "Liko 1 šūvis"
+
+#: server.js:13885
+msgid ""
+"Team flags cannot be grabbed for {seconds} seconds after they were last "
+"capped."
+msgstr "Komandų vėliavų negalima paimti {seconds} s nuo paskutinio užgrobimo."
+
+#: server.js:13886
+msgid "You cannot grab the {team} team flag for another ~{seconds} seconds"
+msgstr "Komandos {team} vėliavos negali paimti dar ~{seconds} s"
+
+#: server.js:14100
+msgid "I'm sorry, we do not allow autopilot on this server."
+msgstr "Atsiprašome, šiame serveryje autopilotas neleidžiamas."
+
+#: server.js:16138
+msgid "Server restarting: {reason}"
+msgstr "Serveris paleidžiamas iš naujo: {reason}"
+
+#: server.js:17412
+msgid "The pilots have not loaded"
+msgstr "Pilotai neįkelti"
+
+#. TRANSLATORS: a command's syntax; keep it as it is
+#: server.js:17424
+msgid "Usage: /bot fill <0-{max}> [{pilots}]"
+msgstr "Naudojimas: /bot fill <0-{max}> [{pilots}]"
+
+#: server.js:17428
+msgid "No pilot \"{pilot}\"; one of {pilots}"
+msgstr "Piloto „{pilot}“ nėra; galimi: {pilots}"
+
+#. TRANSLATORS: a command's syntax; keep /bot add as it is
+#: server.js:17450
+msgid "Usage: /bot add [{pilots}] [team] [count]"
+msgstr "Naudojimas: /bot add [{pilots}] [team] [count]"
+
+#: server.js:17471
+msgid "Usage: /bot remove <name|all>"
+msgstr "Naudojimas: /bot remove <name|all>"
+
+#. TRANSLATORS: a command's syntax; keep /bot, fill, add, remove and all as they are
+#: server.js:17483
+msgid ""
+"Usage: /bot [fill <n> [{pilots}] | add [{pilots}] [team] [count] | remove "
+"<name|all>]"
+msgstr ""
+"Naudojimas: /bot [fill <n> [{pilots}] | add [{pilots}] [team] [count] | "
+"remove <name|all>]"
+
+#: server.js:17510
+msgid "Server shutting down"
+msgstr "Serveris išjungiamas"
+
+#: server.js:17520
+msgid "Server restarting"
+msgstr "Serveris paleidžiamas iš naujo"
+
+#: server/messages-operator.cjs:159
+msgid "No change: check the time limit and the match state"
+msgstr "Nepakeista: patikrink laiko limitą ir mačo būseną"
+
+#: server/messages-operator.cjs:193
+msgid "Upload {map} with {bytes} bytes"
+msgstr "Įkelta: {map} ({bytes} baitų)"
+
+#: server/messages-operator.cjs:214
+msgid ""
+"Upload refused: a replay name is letters, digits, \".\", \"_\" and \"-\"."
+msgstr ""
+"Įkėlimas atmestas: įrašo pavadinime gali būti tik raidės, skaitmenys, \".\", "
+"\"_\" ir \"-\"."
+
+#: server/messages-operator.cjs:219
+msgid "Upload refused: {name} is over {megabytes} MB."
+msgstr "Įkėlimas atmestas: {name} didesnis nei {megabytes} MB."
+
+#: server/messages-operator.cjs:225
+msgid "Upload refused: {name} is not a bzfs recording ({error})."
+msgstr "Įkėlimas atmestas: {name} nėra bzfs įrašas ({error})."
+
+#: server/messages-operator.cjs:229
+msgid "Upload refused: {name} is being watched."
+msgstr "Įkėlimas atmestas: {name} dabar stebimas."
+
+#: server/messages-operator.cjs:237
+msgid "Uploaded replay {name} with {bytes} bytes"
+msgstr "Įkeltas įrašas {name} ({bytes} baitų)"
+
+#: server/messages-operator.cjs:243
+msgid "Upload failed: {error}"
+msgstr "Įkelti nepavyko: {error}"
+
+#: server/messages-operator.cjs:255
+msgid ""
+"Save refused: a recording name is letters, digits, \".\", \"_\" and \"-\"."
+msgstr ""
+"Išsaugojimas atmestas: įrašo pavadinime gali būti tik raidės, skaitmenys, \"."
+"\", \"_\" ir \"-\"."
+
+#: server/messages-operator.cjs:282
+msgid "Delete refused: {name} was not uploaded here."
+msgstr "Ištrynimas atmestas: {name} buvo įkeltas ne čia."
+
+#: server/messages-operator.cjs:283
+msgid "Delete refused: that was not uploaded here."
+msgstr "Ištrynimas atmestas: tai buvo įkelta ne čia."
+
+#: server/messages-operator.cjs:287
+msgid "Delete refused: {name} is the map being played."
+msgstr "Ištrynimas atmestas: {name} – dabar žaidžiamas žemėlapis."
+
+#: server/messages-operator.cjs:291
+msgid "Delete refused: {name} is being watched."
+msgstr "Ištrynimas atmestas: {name} dabar stebimas."
+
+#: server/messages-operator.cjs:308
+msgid "Deleted map {name}"
+msgstr "Ištrintas žemėlapis {name}"
+
+#: server/messages-operator.cjs:308
+msgid "Deleted replay {name}"
+msgstr "Ištrintas įrašas {name}"
+
+#: server/messages-operator.cjs:313
+msgid "Delete failed: {error}"
+msgstr "Ištrinti nepavyko: {error}"
+
+#: server/messages-operator.cjs:371
+msgid ""
+"{server} is no longer in the public list, so {map} is the copy already here "
+"({bytes} bytes). It is ready to View now."
+msgstr ""
+"{server} nebėra viešajame sąraše, todėl {map} – čia jau esanti kopija "
+"({bytes} baitų). Galima peržiūrėti."
+
+#: server/messages-operator.cjs:374
+msgid "Imported {map} from {server} ({bytes} bytes). It is ready to View now."
+msgstr "Importuota: {map} iš {server} ({bytes} baitų). Galima peržiūrėti."
+
+#: server/messages-play.cjs:1154
+msgid "You are unable to begin playing for {seconds} seconds."
+msgstr "Žaisti galėsi pradėti tik po {seconds} s."
+
+#: server/messages-play.cjs:1192
+msgid "Team is not available: {team}"
+msgstr "Komanda neprieinama: {team}"
+
+#: server/messages-play.cjs:1196
+msgid "You stay {team}"
+msgstr "Lieki komandoje: {team}"
+
+#: server/messages-play.cjs:1205
+msgid "Team is full: {team}"
+msgstr "Komanda pilna: {team}"
+
+#: server/messages-play.cjs:1210
+msgid "You will join {team} when you next spawn"
+msgstr "Kitą kartą atsiradęs prisijungsi prie komandos: {team}"

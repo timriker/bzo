@@ -13,6 +13,8 @@
 // and Firefox never fire it and have no programmatic install, so the row reads
 // Unavailable there and the player uses the browser's own menu.
 
+import { N_, onLocaleChange, t } from './i18n.mjs';
+
 // An installed launch runs in its own window rather than a browser tab. The
 // manifest asks for `display: fullscreen`, and the Fullscreen API reports that
 // same display mode, so the reading is taken once here, at load, before
@@ -48,12 +50,12 @@ function installState() {
 }
 
 const INSTALL_TITLES = {
-  installed: 'Already installed',
-  available: 'Install as an app',
+  installed: N_('Already installed'),
+  available: N_('Install as an app'),
   // Safari, Firefox and the headset browsers install from their own menus and
   // never offer the event, so the row cannot do it for the player. Point at the
   // menu that can rather than reporting a dead end.
-  unavailable: 'Install from the browser menu',
+  unavailable: N_('Install from the browser menu'),
 };
 
 function refreshInstallButton() {
@@ -61,9 +63,11 @@ function refreshInstallButton() {
   const state = installState();
   installButton.dataset.installState = state;
   installButton.disabled = state !== 'available';
-  installButton.title = INSTALL_TITLES[state];
+  installButton.title = t(INSTALL_TITLES[state]);
   onStateChange?.();
 }
+
+onLocaleChange(refreshInstallButton);
 
 export function setupInstallPrompt(button, notifyStateChange) {
   installButton = button;

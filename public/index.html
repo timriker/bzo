@@ -7,6 +7,9 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Battlezone Online">
   <meta name="bzo-build" content="dev">
+  <!-- The interface's catalog, negotiated and filled in by the server
+       (server/l10n.cjs); public/js/i18n.mjs reads it. -->
+  <script type="application/json" id="bzo-l10n">{}</script>
   <title>Battlezone Online</title>
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="theme-color" content="#4caf50">
@@ -30,18 +33,18 @@
              registered, as the title on /list's bzo-servers table
              (docs/list-server.md) -- so it's live, the same as MOTD. -->
         <div class="operatorRow operatorConfigRow">
-          <label for="serverTitleInput">Title:</label>
-          <input type="text" id="serverTitleInput" maxlength="100" placeholder="What this server is">
+          <label for="serverTitleInput" data-i18n>Title:</label>
+          <input type="text" id="serverTitleInput" dir="auto" maxlength="100" placeholder="What this server is" data-i18n-placeholder>
         </div>
         <div class="operatorRow operatorConfigRow">
-          <label for="motdInput">Set MOTD:</label>
-          <input type="text" id="motdInput" maxlength="140" placeholder="Message of the day">
+          <label for="motdInput" data-i18n>Set MOTD:</label>
+          <input type="text" id="motdInput" dir="auto" maxlength="140" placeholder="Message of the day" data-i18n-placeholder>
         </div>
         <!-- A range input, which is the same control the audio sliders use: it
              drags with a mouse, steps with the arrow keys once focused, and is
              one element rather than three that can wrap onto separate lines. -->
         <div class="operatorRow operatorConfigRow" data-menu-row="shotMaxActive" data-menu-kind="range">
-          <label for="shotMaxActiveSlider">Shot Max Active:</label>
+          <label for="shotMaxActiveSlider" data-i18n>Shot Max Active:</label>
           <div class="volumeControl">
             <input id="shotMaxActiveSlider" class="volumeSlider" type="range" min="1" max="10" step="1" value="1">
             <output id="shotMaxActiveValue" class="volumeValue" for="shotMaxActiveSlider">1</output>
@@ -50,11 +53,11 @@
         <div class="operatorRow" data-menu-row="ricochet" data-menu-kind="choice">
           <label class="operatorToggle" for="ricochetInput">
             <input type="checkbox" id="ricochetInput">
-            All shots ricochet
+            <span data-i18n>All shots ricochet</span>
           </label>
         </div>
         <div class="operatorRow" data-menu-row="map" data-menu-kind="choice">
-          <label for="mapList">Map:</label>
+          <label for="mapList" data-i18n>Map:</label>
           <select id="mapList"></select>
         </div>
         <!-- The game's shape, which every row below is part of: staging any of
@@ -63,29 +66,29 @@
         <div class="operatorRow" data-menu-row="teams" data-menu-kind="choice">
           <label class="operatorToggle" for="teamsInput">
             <input type="checkbox" id="teamsInput">
-            Teams
+            <span data-i18n>Teams</span>
           </label>
         </div>
         <div class="operatorRow" data-menu-row="rabbit" data-menu-kind="choice">
-          <label for="rabbitSelect">Rabbit Chase:</label>
+          <label for="rabbitSelect" data-i18n>Rabbit Chase:</label>
           <select id="rabbitSelect">
-            <option value="off">Off</option>
-            <option value="score">Score</option>
-            <option value="killer">Killer</option>
-            <option value="random">Random</option>
+            <option value="off" data-i18n>Off</option>
+            <option value="score" data-i18n>Score</option>
+            <option value="killer" data-i18n>Killer</option>
+            <option value="random" data-i18n>Random</option>
           </select>
         </div>
         <div class="operatorRow" data-menu-row="jumping" data-menu-kind="choice">
           <label class="operatorToggle" for="jumpingInput">
             <input type="checkbox" id="jumpingInput">
-            Jumping
+            <span data-i18n>Jumping</span>
           </label>
         </div>
         <!-- How many tanks may play, observers excluded -- upstream's own
              `maxRealPlayers`. The total a server holds is this plus the observer
              limit below, which is arithmetic and so is not a row. -->
         <div class="operatorRow operatorConfigRow" data-menu-row="maxPlayers" data-menu-kind="range">
-          <label for="maxPlayersSlider">Playing Limit:</label>
+          <label for="maxPlayersSlider" data-i18n>Playing Limit:</label>
           <div class="volumeControl">
             <input id="maxPlayersSlider" class="volumeSlider" type="range" min="1" max="200" step="1" value="16">
             <output id="maxPlayersValue" class="volumeValue" for="maxPlayersSlider">16</output>
@@ -95,34 +98,34 @@
              offer a team the client does not know about. -->
         <div id="operatorTeamLimits"></div>
         <div class="operatorRow">
-          <label for="uploadMap">Upload Map:</label>
+          <label for="uploadMap" data-i18n>Upload Map:</label>
           <input type="file" id="uploadMap" accept=".bzw,.txt">
-          <button id="uploadBtn" class="btn">Upload</button>
+          <button id="uploadBtn" class="btn" data-i18n>Upload</button>
         </div>
         <div class="operatorRow">
-          <label for="uploadReplay">Upload Replay:</label>
+          <label for="uploadReplay" data-i18n>Upload Replay:</label>
           <input type="file" id="uploadReplay" accept=".rec">
-          <button id="uploadReplayBtn" class="btn">Upload</button>
+          <button id="uploadReplayBtn" class="btn" data-i18n>Upload</button>
         </div>
         <!-- `/record save` from the panel: the buffer bzo keeps from boot, or
              its last N seconds, to replays/<name>.rec. -->
         <div class="operatorRow">
-          <label for="saveRecordingName">Save Recording:</label>
-          <input type="text" id="saveRecordingName" placeholder="name" maxlength="100">
-          <input type="number" id="saveRecordingSeconds" placeholder="all" min="1" step="1">
-          <button id="saveRecordingBtn" class="btn">Save</button>
+          <label for="saveRecordingName" data-i18n>Save Recording:</label>
+          <input type="text" id="saveRecordingName" dir="auto" placeholder="name" data-i18n-placeholder maxlength="100">
+          <input type="number" id="saveRecordingSeconds" placeholder="all" data-i18n-placeholder min="1" step="1">
+          <button id="saveRecordingBtn" class="btn" data-i18n>Save</button>
         </div>
         <!-- Only what this panel uploaded: never a bundled map or replay, the
              map being played, or a replay being watched (server.js,
              `deleteUpload`). -->
         <div class="operatorRow">
-          <label for="deleteUploadSelect">Delete Upload:</label>
+          <label for="deleteUploadSelect" data-i18n>Delete Upload:</label>
           <select id="deleteUploadSelect"></select>
-          <button id="deleteUploadBtn" class="btn">Delete</button>
+          <button id="deleteUploadBtn" class="btn" data-i18n>Delete</button>
         </div>
         <!-- Staged like every row above: 0 is upstream's own "no limit". -->
         <div class="operatorRow operatorConfigRow" data-menu-row="timeLimit" data-menu-kind="range">
-          <label for="timeLimitSlider">Time Limit:</label>
+          <label for="timeLimitSlider" data-i18n>Time Limit:</label>
           <div class="volumeControl">
             <input id="timeLimitSlider" class="volumeSlider" type="range" min="0" max="3600" step="15" value="0">
             <output id="timeLimitValue" class="volumeValue" for="timeLimitSlider">No limit</output>
@@ -131,18 +134,18 @@
         <div class="operatorRow" data-menu-row="timeManualStart" data-menu-kind="choice">
           <label class="operatorToggle" for="timeManualStartInput">
             <input type="checkbox" id="timeManualStartInput">
-            Manual Start (wait for /countdown)
+            <span data-i18n>Manual Start (wait for /countdown)</span>
           </label>
         </div>
         <div class="operatorRow operatorConfigRow" data-menu-row="maxPlayerScore" data-menu-kind="range">
-          <label for="maxPlayerScoreSlider">Player Score Limit:</label>
+          <label for="maxPlayerScoreSlider" data-i18n>Player Score Limit:</label>
           <div class="volumeControl">
             <input id="maxPlayerScoreSlider" class="volumeSlider" type="range" min="0" max="100" step="1" value="0">
             <output id="maxPlayerScoreValue" class="volumeValue" for="maxPlayerScoreSlider">No limit</output>
           </div>
         </div>
         <div class="operatorRow operatorConfigRow" data-menu-row="maxTeamScore" data-menu-kind="range">
-          <label for="maxTeamScoreSlider">Team Score Limit:</label>
+          <label for="maxTeamScoreSlider" data-i18n>Team Score Limit:</label>
           <div class="volumeControl">
             <input id="maxTeamScoreSlider" class="volumeSlider" type="range" min="0" max="100" step="1" value="0">
             <output id="maxTeamScoreValue" class="volumeValue" for="maxTeamScoreSlider">No limit</output>
@@ -151,14 +154,14 @@
         <!-- The server's own bots: how many places they keep filled, and who
              flies them. Live, like the rows above it. -->
         <div class="operatorRow operatorConfigRow" data-menu-row="botFill" data-menu-kind="range">
-          <label for="botFillSlider">Bot Fill:</label>
+          <label for="botFillSlider" data-i18n>Bot Fill:</label>
           <div class="volumeControl">
             <input id="botFillSlider" class="volumeSlider" type="range" min="0" max="16" step="1" value="0">
             <output id="botFillValue" class="volumeValue" for="botFillSlider">Off</output>
           </div>
         </div>
         <div class="operatorRow" data-menu-row="botPilot" data-menu-kind="choice">
-          <label for="botPilotSelect">Bot Pilot:</label>
+          <label for="botPilotSelect" data-i18n>Bot Pilot:</label>
           <select id="botPilotSelect"></select>
         </div>
         <!-- Immediate actions, like Upload above -- nothing here is staged, so
@@ -166,20 +169,20 @@
              on a world with a time limit configured (`timeLimit` in
              server.json or `-time` in the map); see "Match end" in AGENTS.md. -->
         <div class="operatorRow">
-          <label>Match Timer:</label>
-          <button id="matchStartBtn" class="btn" type="button">Start</button>
-          <button id="matchPauseBtn" class="btn" type="button">Pause</button>
-          <button id="matchResumeBtn" class="btn" type="button">Resume</button>
-          <button id="matchGameOverBtn" class="btn" type="button">End Match</button>
+          <label data-i18n>Match Timer:</label>
+          <button id="matchStartBtn" class="btn" type="button" data-i18n>Start</button>
+          <button id="matchPauseBtn" class="btn" type="button" data-i18n>Pause</button>
+          <button id="matchResumeBtn" class="btn" type="button" data-i18n>Resume</button>
+          <button id="matchGameOverBtn" class="btn" type="button" data-i18n>End Match</button>
         </div>
         <!-- Also immediate, not staged -- see setListServerKey in server.js.
              This row only ever appears for an operator: `init.listServer` is
              admin-only, and this row's container starts hidden until that
              field shows up. docs/list-server-plan.md. -->
         <div id="listServerRow" class="operatorRow" hidden>
-          <label for="listServerKeyInput">List Server Key:</label>
-          <input type="password" id="listServerKeyInput" placeholder="paste key from /list-server">
-          <button id="listServerKeySetBtn" class="btn" type="button">Set</button>
+          <label for="listServerKeyInput" data-i18n>List Server Key:</label>
+          <input type="password" id="listServerKeyInput" placeholder="paste key from /list-server" data-i18n-placeholder>
+          <button id="listServerKeySetBtn" class="btn" type="button" data-i18n>Set</button>
           <span id="listServerKeyStatus"></span>
         </div>
         <!-- One confirm, labelled by what it is about to do: Apply while every
@@ -187,8 +190,8 @@
              X abort everything, so changing a row and thinking better of it costs
              nothing. -->
         <div class="operatorRow operatorConfirmRow">
-          <button id="operatorApplyBtn" class="btn" type="button">Apply</button>
-          <button id="operatorCancelBtn" class="btn" type="button">Cancel</button>
+          <button id="operatorApplyBtn" class="btn" type="button" data-i18n>Apply</button>
+          <button id="operatorCancelBtn" class="btn" type="button" data-i18n>Cancel</button>
         </div>
       </div>
     </div>
@@ -202,44 +205,44 @@
          dialog's Map Viewer team -- reachable mid-game is the point of this
          dialog existing at all. -->
     <div id="viewOverlay" class="dialog">
-      <div class="dialogTitle">View <button id="closeViewBtn" class="closeBtn">&times;</button></div>
+      <div class="dialogTitle"><span data-i18n>View</span> <button id="closeViewBtn" class="closeBtn">&times;</button></div>
       <div class="dialogContent">
-        <h3>Running BZFlag servers</h3>
+        <h3 data-i18n>Running BZFlag servers</h3>
         <div class="operatorRow">
-          <input type="text" id="viewServerFilter" placeholder="Filter…">
-          <button id="viewServerRefreshBtn" class="btn" type="button">Refresh</button>
+          <input type="text" id="viewServerFilter" placeholder="Filter…" data-i18n-placeholder>
+          <button id="viewServerRefreshBtn" class="btn" type="button" data-i18n>Refresh</button>
         </div>
         <div class="viewTableScroll">
         <table id="viewServerTable" class="viewTable">
           <thead><tr>
-            <th data-sort="num">Players</th><th data-sort="num">Max</th><th>Style</th>
-            <th>Title</th><th>Host</th><th data-sort="num">Port</th><th></th>
+            <th data-sort="num" data-i18n>Players</th><th data-sort="num" data-i18n>Max</th><th data-i18n>Style</th>
+            <th data-i18n>Title</th><th data-i18n>Host</th><th data-sort="num" data-i18n>Port</th><th></th>
           </tr></thead>
           <tbody></tbody>
         </table>
         </div>
-        <h3>Local maps</h3>
+        <h3 data-i18n>Local maps</h3>
         <div class="operatorRow">
-          <input type="text" id="viewMapFilter" placeholder="Filter…">
+          <input type="text" id="viewMapFilter" placeholder="Filter…" data-i18n-placeholder>
         </div>
         <div class="viewTableScroll">
         <table id="viewMapTable" class="viewTable">
           <thead><tr>
-            <th>File</th><th data-sort="num">Size</th><th data-sort="num">Objects</th>
-            <th data-sort="num">Faces</th><th>Style</th>
+            <th data-i18n>File</th><th data-sort="num" data-i18n>Size</th><th data-sort="num" data-i18n>Objects</th>
+            <th data-sort="num" data-i18n>Faces</th><th data-i18n>Style</th>
           </tr></thead>
           <tbody></tbody>
         </table>
         </div>
-        <h3>Local replays</h3>
+        <h3 data-i18n>Local replays</h3>
         <div class="operatorRow">
-          <input type="text" id="viewReplayFilter" placeholder="Filter…">
+          <input type="text" id="viewReplayFilter" placeholder="Filter…" data-i18n-placeholder>
         </div>
         <div class="viewTableScroll">
         <table id="viewReplayTable" class="viewTable">
           <thead><tr>
-            <th>File</th><th>Date</th><th data-sort="num">Length</th>
-            <th data-sort="num">Players</th><th>Map</th>
+            <th data-i18n>File</th><th data-i18n>Date</th><th data-sort="num" data-i18n>Length</th>
+            <th data-sort="num" data-i18n>Players</th><th data-i18n>Map</th>
           </tr></thead>
           <tbody></tbody>
         </table>
@@ -252,20 +255,20 @@
          and the control that puts the panel away sits at the far edge. -->
     <div id="stats">
       <div class="hudButtons">
-        <button id="settingsBtn" title="Settings"><span class="settingsIcon">&#9881;</span></button>
+        <button id="settingsBtn" title="Settings" data-i18n-title><span class="settingsIcon">&#9881;</span></button>
         <!-- Microphone: the border is the state, green transmitting and red
              not, which is what the voice panel out in the middle of the screen
              used to say at much greater cost. -->
-        <button id="micBtn" type="button" class="micBtn micBtn--off" aria-pressed="false" title="Microphone off"><span class="settingsIcon">&#127908;</span></button>
-        <button id="xrQuickBtn" title="Enter WebXR VR Mode"><span class="settingsIcon">&#129405;</span></button>
+        <button id="micBtn" type="button" class="micBtn micBtn--off" aria-pressed="false" title="Microphone off" data-i18n-title><span class="settingsIcon">&#127908;</span></button>
+        <button id="xrQuickBtn" title="Enter WebXR VR Mode" data-i18n-title><span class="settingsIcon">&#129405;</span></button>
       </div>
       <!-- `@` for an admin and `+` for a signed-in player, before the name and
            in cyan, exactly as a scoreboard row writes it. -->
-      <span id="playerLabel" class="playerLabel" title="Open Settings"><span id="playerStatus" class="scoreboardStatus"></span><span id="playerName">Player</span><span id="playerFlag" class="scoreboardFlag"></span></span>
+      <span id="playerLabel" class="playerLabel" title="Open Settings" data-i18n-title><span id="playerStatus" class="scoreboardStatus"></span><span id="playerName">Player</span><span id="playerFlag" class="scoreboardFlag"></span></span>
       <div class="hudButtons">
         <!-- Hides the roster below it and the chat folder at the foot of the
              screen together, leaving this row and the chat tabs behind. -->
-        <button id="hudCollapseBtn" type="button" aria-expanded="true" title="Hide the scoreboard and chat"><span class="settingsIcon">&#9650;</span></button>
+        <button id="hudCollapseBtn" type="button" aria-expanded="true" title="Hide the scoreboard and chat" data-i18n-title><span class="settingsIcon">&#9650;</span></button>
       </div>
     </div>
     <div id="scoreboard">
@@ -277,113 +280,114 @@
   </div>
 
   <div id="settingsHud" class="dialog" role="dialog" aria-modal="true" aria-labelledby="settingsMenuTitle">
-    <div id="settingsMenuTitle" class="dialogTitle">Settings <button id="closeSettingsTitleBtn" class="closeBtn" type="button">&times;</button></div>
+    <div id="settingsMenuTitle" class="dialogTitle"><span data-i18n>Settings</span> <button id="closeSettingsTitleBtn" class="closeBtn" type="button">&times;</button></div>
     <div class="settingsHudContent">
       <div class="settingsMenuList" role="menu">
         <button id="playerOptionsBtn" class="settingsHudBtn">Player Options</button>
         <button id="virtualControlsBtn" class="settingsHudBtn">Virtual Controls</button>
         <button id="mouseBtn" class="settingsHudBtn">Mouse Steering</button>
-        <button id="rumbleBtn" class="settingsHudBtn" title="Gamepad and VR controller rumble">Rumble</button>
+        <button id="rumbleBtn" class="settingsHudBtn" title="Gamepad and VR controller rumble" data-i18n-title>Rumble</button>
         <button id="fullscreenBtn" class="settingsHudBtn">Fullscreen</button>
-        <button id="installBtn" class="settingsHudBtn" title="Install as an app">Install</button>
+        <button id="installBtn" class="settingsHudBtn" title="Install as an app" data-i18n-title>Install</button>
         <button id="debugBtn" class="settingsHudBtn">Debug</button>
-        <button id="debugGeometryBtn" class="settingsHudBtn" title="Show Debug Geometry">Debug Geometry</button>
+        <button id="debugGeometryBtn" class="settingsHudBtn" title="Show Debug Geometry" data-i18n-title>Debug Geometry</button>
         <button id="debugLabelsBtn" class="settingsHudBtn">Debug Labels</button>
         <button id="radarZoomBtn" class="settingsHudBtn" title="Radar range preset">Radar: Medium</button>
+        <button id="languageBtn" class="settingsHudBtn">Language</button>
         <button id="cameraBtn" class="settingsHudBtn">Camera</button>
-        <button id="huntBtn" class="settingsHudBtn" title="Hunt: step through players and Clear with the arrows, select to mark, unmark or clear">Hunt</button>
-        <button id="autopilotBtn" class="settingsHudBtn" title="Autopilot: choose None or a pilot with the arrows, select to turn it on or off">Autopilot</button>
+        <button id="huntBtn" class="settingsHudBtn" title="Hunt: step through players and Clear with the arrows, select to mark, unmark or clear" data-i18n-title>Hunt</button>
+        <button id="autopilotBtn" class="settingsHudBtn" title="Autopilot: choose None or a pilot with the arrows, select to turn it on or off" data-i18n-title>Autopilot</button>
         <button id="helpBtn" class="settingsHudBtn">Help</button>
         <button id="operatorBtn" class="settingsHudBtn">Operator</button>
         <button id="viewBtn" class="settingsHudBtn">View</button>
-        <button id="shareViewBtn" class="settingsHudBtn" title="Copy a link back to this map, camera and position">Share View Link</button>
-        <button id="wireframeBtn" class="settingsHudBtn" title="Wireframe Mode">Wireframe</button>
-        <button id="anaglyphBtn" class="settingsHudBtn" title="Anaglyph 3D">Anaglyph 3D</button>
-        <button id="dynamicLightingBtn" class="settingsHudBtn" title="Dynamic Lighting">Dynamic Lighting</button>
+        <button id="shareViewBtn" class="settingsHudBtn" title="Copy a link back to this map, camera and position" data-i18n-title>Share View Link</button>
+        <button id="wireframeBtn" class="settingsHudBtn" title="Wireframe Mode" data-i18n-title>Wireframe</button>
+        <button id="anaglyphBtn" class="settingsHudBtn" title="Anaglyph 3D" data-i18n-title>Anaglyph 3D</button>
+        <button id="dynamicLightingBtn" class="settingsHudBtn" title="Dynamic Lighting" data-i18n-title>Dynamic Lighting</button>
         <button id="xrBtn" class="settingsHudBtn" title="Enter WebXR VR Mode">VR Mode</button>
-        <button id="audioBtn" class="settingsHudBtn" title="Open Audio Settings">Audio</button>
+        <button id="audioBtn" class="settingsHudBtn" title="Open Audio Settings" data-i18n-title>Audio</button>
         <button id="closeSettingsHud" class="settingsHudBtn">Close</button>
       </div>
     </div>
   </div>
 
   <div id="audioOverlay" class="dialog">
-    <div class="dialogTitle">Audio Settings <button id="closeAudioBtn" class="closeBtn">&times;</button></div>
+    <div class="dialogTitle"><span data-i18n>Audio Settings</span> <button id="closeAudioBtn" class="closeBtn">&times;</button></div>
     <div class="dialogContent audioSettings">
-      <p id="audioSettingsDescription" class="audioSettingsDescription">
+      <p id="audioSettingsDescription" class="audioSettingsDescription" data-i18n>
         Each level runs from Off to 100%. Nearby voice uses your microphone only after you grant permission. Use B to toggle your microphone.
       </p>
       <div class="audioSettingRow">
-        <label for="gameVolumeSlider">Game volume</label>
+        <label for="gameVolumeSlider" data-i18n>Game volume</label>
         <div class="volumeControl">
           <input id="gameVolumeSlider" class="volumeSlider" type="range" min="0" max="10" step="1" value="10"
             data-menu-row="gameVolumeSlider" data-menu-kind="range"
             aria-describedby="gameVolumeDescription" aria-valuetext="100%">
           <output id="gameVolumeValue" class="volumeValue" for="gameVolumeSlider">100%</output>
         </div>
-        <span id="gameVolumeDescription" class="audioSettingHint">Gameplay sound effects.</span>
+        <span id="gameVolumeDescription" class="audioSettingHint" data-i18n>Gameplay sound effects.</span>
       </div>
       <div class="audioSettingRow">
-        <label for="voiceVolumeSlider">Voice volume</label>
+        <label for="voiceVolumeSlider" data-i18n>Voice volume</label>
         <div class="volumeControl">
           <input id="voiceVolumeSlider" class="volumeSlider" type="range" min="0" max="10" step="1" value="10"
             data-menu-row="voiceVolumeSlider" data-menu-kind="range"
             aria-describedby="voiceVolumeDescription" aria-valuetext="100%">
           <output id="voiceVolumeValue" class="volumeValue" for="voiceVolumeSlider">100%</output>
         </div>
-        <span id="voiceVolumeDescription" class="audioSettingHint">How loud nearby players sound to you.</span>
+        <span id="voiceVolumeDescription" class="audioSettingHint" data-i18n>How loud nearby players sound to you.</span>
       </div>
       <div class="audioSettingRow">
-        <label for="microphoneVolumeSlider">Microphone volume</label>
+        <label for="microphoneVolumeSlider" data-i18n>Microphone volume</label>
         <div class="volumeControl">
           <input id="microphoneVolumeSlider" class="volumeSlider" type="range" min="0" max="10" step="1" value="10"
             data-menu-row="microphoneVolumeSlider" data-menu-kind="range"
             aria-describedby="microphoneVolumeDescription" aria-valuetext="100%">
           <output id="microphoneVolumeValue" class="volumeValue" for="microphoneVolumeSlider">100%</output>
         </div>
-        <span id="microphoneVolumeDescription" class="audioSettingHint">How loud you are to nearby players.</span>
+        <span id="microphoneVolumeDescription" class="audioSettingHint" data-i18n>How loud you are to nearby players.</span>
       </div>
       <div class="audioSettingRow">
-        <label for="voiceChannelSelect">Voice channel</label>
+        <label for="voiceChannelSelect" data-i18n>Voice channel</label>
         <select id="voiceChannelSelect" aria-describedby="voiceChannelDescription">
-          <option value="all">All</option>
-          <option value="nearby" selected>Nearby</option>
-          <option value="team">Team</option>
+          <option value="all" data-i18n>All</option>
+          <option value="nearby" selected data-i18n>Nearby</option>
+          <option value="team" data-i18n>Team</option>
         </select>
-        <span id="voiceChannelDescription" class="audioSettingHint">Players within earshot, whatever team they are on.</span>
+        <span id="voiceChannelDescription" class="audioSettingHint" data-i18n>Players within earshot, whatever team they are on.</span>
       </div>
       <div class="audioSettingRow">
-        <label for="voiceInputDevice">Microphone input</label>
+        <label for="voiceInputDevice" data-i18n>Microphone input</label>
         <select id="voiceInputDevice" aria-describedby="voiceInputDeviceDescription">
           <option value="">Default microphone</option>
         </select>
-        <span id="voiceInputDeviceDescription" class="audioSettingHint">Choose the microphone used for voice chat.</span>
+        <span id="voiceInputDeviceDescription" class="audioSettingHint" data-i18n>Choose the microphone used for voice chat.</span>
       </div>
       <div class="audioSettingRow audioProcessingOptions" role="group" aria-labelledby="audioProcessingTitle">
-        <span id="audioProcessingTitle" class="audioSettingLabel">Native audio processing</span>
+        <span id="audioProcessingTitle" class="audioSettingLabel" data-i18n>Native audio processing</span>
         <label class="audioCheckboxLabel" for="voiceEchoCancellation">
           <input id="voiceEchoCancellation" type="checkbox" checked>
-          Echo cancellation
+          <span data-i18n>Echo cancellation</span>
         </label>
         <label class="audioCheckboxLabel" for="voiceNoiseSuppression">
           <input id="voiceNoiseSuppression" type="checkbox" checked>
-          Noise suppression
+          <span data-i18n>Noise suppression</span>
         </label>
         <label class="audioCheckboxLabel" for="voiceAutoGainControl">
           <input id="voiceAutoGainControl" type="checkbox" checked>
-          Automatic gain control
+          <span data-i18n>Automatic gain control</span>
         </label>
-        <span id="audioProcessingStatus" class="audioSettingHint" role="status" aria-live="polite">
+        <span id="audioProcessingStatus" class="audioSettingHint" role="status" aria-live="polite" data-i18n>
           Native browser processing is enabled when supported.
         </span>
       </div>
       <div class="audioSettingActions">
-        <button id="voiceRequestPermissionBtn" class="settingsHudBtn" type="button">Enable microphone</button>
-        <button id="voiceMicToggle" class="settingsHudBtn voiceMicToggle" type="button" aria-pressed="false" disabled>
+        <button id="voiceRequestPermissionBtn" class="settingsHudBtn" type="button" data-i18n>Enable microphone</button>
+        <button id="voiceMicToggle" class="settingsHudBtn voiceMicToggle" type="button" aria-pressed="false" disabled data-i18n>
           Microphone off
         </button>
       </div>
-      <p id="voicePermissionStatus" class="voicePermissionStatus" role="status" aria-live="polite">
+      <p id="voicePermissionStatus" class="voicePermissionStatus" role="status" aria-live="polite" data-i18n>
         Microphone permission has not been requested.
       </p>
     </div>
@@ -397,16 +401,16 @@
     <div id="chatBody">
       <div id="chatMessages"></div>
       <div class="chat-input-row">
-        <button id="sendBtn" type="button" aria-pressed="false" title="Type a chat message, then send it">Send</button>
+        <button id="sendBtn" type="button" aria-pressed="false" title="Type a chat message, then send it" data-i18n-title data-i18n>Send</button>
         <!-- Upstream's own PlayerId destinations (Address.h:73-78); see
              CHAT_TARGET_ALL and friends in client.js. -->
         <select id="chatTarget">
-          <option value="254">ALL</option>
-          <option value="251">TEAM</option>
-          <option value="252">ADMIN</option>
-          <option value="253">SERVER</option>
+          <option value="254" data-i18n>ALL</option>
+          <option value="251" data-i18n>TEAM</option>
+          <option value="252" data-i18n>ADMIN</option>
+          <option value="253" data-i18n>SERVER</option>
         </select>
-        <input id="chatInput" type="text" />
+        <input id="chatInput" dir="auto" type="text" />
       </div>
     </div>
   </div>
@@ -418,8 +422,8 @@
 
   <div id="loadingOverlay" aria-live="polite">
     <div class="loadingPanel">
-      <div class="loadingTitle">Loading World</div>
-      <div id="loadingStatus">Connecting render systems...</div>
+      <div class="loadingTitle" data-i18n>Loading World</div>
+      <div id="loadingStatus" data-i18n>Connecting render systems...</div>
       <div id="loadingDetail"></div>
       <div class="loadingBarTrack">
         <div id="loadingBarFill"></div>
@@ -428,19 +432,19 @@
   </div>
 
   <div id="entryDialog">
-    <h2>Battlezone Online <button id="closeEntryBtn" class="closeBtn" type="button" aria-label="Close">&times;</button></h2>
-    <p id="entryAbout">A free 3D tank game in the browser that plays with BZFlag.
-      <a href="/help">Help</a> · <a href="/list">Servers</a> · <a href="/source">Source</a></p>
+    <h2>Battlezone Online <button id="closeEntryBtn" class="closeBtn" type="button" aria-label="Close" data-i18n-aria-label>&times;</button></h2>
+    <p id="entryAbout"><span data-i18n>A free 3D tank game in the browser that plays with BZFlag.</span>
+      <a href="/help" data-i18n>Help</a> · <a href="/list" data-i18n>Servers</a> · <a href="/source" data-i18n>Source</a></p>
     <div id="serverInfo">
       <span id="serverTitle"></span><br>
       <span id="serverMotd"></span>
     </div>
-    <input type="text" id="entryInput" maxlength="20" placeholder="Enter your name">
+    <input type="text" id="entryInput" dir="auto" maxlength="20" placeholder="Enter your name" data-i18n-placeholder>
     <!-- Upstream's own name for it: a short line a player writes about
          themselves, drawn beside their callsign on the scoreboard. It travels
          to a proxied or watched server as the `motto` that field has always
          been, alongside the attribution this instance adds. -->
-    <input type="text" id="entryMottoInput" maxlength="40" placeholder="Motto (optional)">
+    <input type="text" id="entryMottoInput" dir="auto" maxlength="40" placeholder="Motto (optional)" data-i18n-placeholder>
     <!-- Where this browser is pointed: this server's own game, or one of the
          bzfs servers it proxies (`proxies` on `init`). Hidden when there is
          only one destination, which is every instance that proxies nothing.
@@ -448,11 +452,11 @@
          socket, because a proxied target is fixed before the socket opens --
          see docs/proxy-plan.md, "How the selector behaves". -->
     <button id="entryDestinationSelector" class="entryTeamSelector" type="button" data-menu-row="destination" data-menu-kind="choice" hidden>
-      <span class="entryTeamLabel">Server:</span>
+      <span class="entryTeamLabel" data-i18n>Server:</span>
       <span id="entryDestinationValue" class="entryTeamValue">This server</span>
     </button>
     <button id="entryTeamSelector" class="entryTeamSelector" type="button" data-team="automatic" data-menu-row="team" data-menu-kind="choice">
-      <span class="entryTeamLabel">Team:</span>
+      <span class="entryTeamLabel" data-i18n>Team:</span>
       <span id="entryTeamValue" class="entryTeamValue">Automatic</span>
     </button>
     <!-- A bzflag.org global callsign. An action rather than a choice: it leaves
@@ -460,234 +464,47 @@
          an identity without ever seeing a password. The server decides what it
          is worth; this row only reports what the server said. -->
     <button id="entryLoginRow" class="entryTeamSelector" type="button" data-menu-row="login" data-menu-kind="action">
-      <span class="entryTeamLabel">Global login:</span>
+      <span class="entryTeamLabel" data-i18n>Global login:</span>
       <span id="entryLoginValue" class="entryTeamValue">Sign in</span>
     </button>
     <!-- 2.5's Skin row (JoinMenu.cxx:99): the pattern on the tank's body,
          in the player's own colour. -->
     <button id="entrySkinSelector" class="entryTeamSelector" type="button" data-menu-row="skin" data-menu-kind="choice">
-      <span class="entryTeamLabel">Skin:</span>
+      <span class="entryTeamLabel" data-i18n>Skin:</span>
       <span id="entrySkinValue" class="entryTeamValue">Standard</span>
     </button>
     <div id="tankSelector" data-menu-row="tank" data-menu-kind="choice">
-      <div id="tankSelectorTitle">Choose Tank</div>
+      <div id="tankSelectorTitle" data-i18n>Choose Tank</div>
       <div id="tankSelectorCarousel">
-        <button id="tankPrevBtn" class="tankArrowBtn" type="button" aria-label="Previous tank">◀</button>
+        <button id="tankPrevBtn" class="tankArrowBtn" type="button" aria-label="Previous tank" data-i18n-aria-label>◀</button>
         <div class="tankOption" id="tankCurrentOption">
           <canvas class="tankPreviewCanvas" id="tankPreviewCanvas"></canvas>
           <span class="tankOptionLabel" id="tankOptionLabel">Default</span>
         </div>
-        <button id="tankNextBtn" class="tankArrowBtn" type="button" aria-label="Next tank">▶</button>
+        <button id="tankNextBtn" class="tankArrowBtn" type="button" aria-label="Next tank" data-i18n-aria-label>▶</button>
       </div>
     </div>
     <div class="entryDialogButtons">
-      <button id="entryOkButton">OK</button>
-      <button id="entryCancelButton">Cancel</button>
-      <button id="entryDefaultButton">Default</button>
+      <button id="entryOkButton" data-i18n>OK</button>
+      <button id="entryCancelButton" data-i18n>Cancel</button>
+      <button id="entryDefaultButton" data-i18n>Default</button>
     </div>
   </div>
 
   <!-- Raises the headset's system keyboard for the XR menus. It has to be a
        real, laid-out field for focus to reach it, and one the page never
        scrolls to, so it sits invisible in the corner of the viewport. -->
-  <input type="text" id="xrTextInput" class="xrTextField" maxlength="140" autocomplete="off" aria-hidden="true" tabindex="-1">
+  <input type="text" id="xrTextInput" dir="auto" class="xrTextField" maxlength="140" autocomplete="off" aria-hidden="true" tabindex="-1">
 
+  <!-- The pages are docs/help/*.md, fetched from /help.json when the panel
+       first opens (public/js/help.js), so /help and this panel are one copy. -->
   <div id="helpPanel" data-dialog-kind="document">
-    <div class="dialogTitle">Help <button id="closeHelpBtn" class="closeBtn" type="button">&times;</button></div>
-    <div id="helpContent" class="dialogContent">
-      <h2>HUD Buttons</h2>
-      <ul>
-        <li><strong>F</strong> — <b>Fullscreen</b> (or click the Fullscreen button)</li>
-        <li><strong>`</strong> — <b>Debug HUD</b> (or click the Debug button)</li>
-        <li><strong>M</strong> — <b>Mouse Steering</b> (or click the Mouse Steering button)</li>
-        <li><strong>-</strong>/<strong>=</strong> or <strong>Numpad -/+</strong> — <b>Radar Zoom</b></li>
-        <li><strong>\</strong> — <b>Radar Zoom Reset (Medium)</b></li>
-        <li><strong>Radar: ...</strong> button in Settings — <b>Cycle Short/Medium/Long presets</b></li>
-        <li><strong>C</strong> — <b>Camera View</b> (or click the Camera button)</li>
-        <li><strong>O</strong> — <b>Operator Panel</b> (or click the Operator button)</li>
-        <li><strong>/</strong> or <strong>?</strong> — <b>Show/Hide Help</b> (or click the Help button)</li>
-        <li><strong>&#127908;</strong> beside the gear — <b>Microphone</b> (or <strong>B</strong>): a green
-          border means you are transmitting and a red one means you are not, and the hover text names
-          the channel it would speak on</li>
-        <li><strong>&#9650;</strong> beside the gear — <b>Hide the scoreboard and chat</b>, leaving the
-          name row and the chat tabs; <strong>&#9660;</strong> brings them back. Typing a message borrows
-          the chat window until you are done with it, and <strong>U</strong> or <strong>7</strong> borrows
-          the scoreboard until the hunt cursor closes; tapping a chat tab opens chat for good. Small
-          screens start collapsed.</li>
-      </ul>
-
-      <h2>Movement & Actions</h2>
-      <ul>
-        <li><strong>W/S</strong> or <strong>Up/Down</strong> — Move Forward/Backward</li>
-        <li><strong>A/D</strong> or <strong>Left/Right</strong> — Turn Left/Right</li>
-        <li><strong>Enter</strong> — Shoot</li>
-        <li><strong>Tab</strong> — Jump</li>
-        <li><strong>Space</strong> — Drop Flag</li>
-        <li><strong>I</strong> — Identify: names the tank in your sights, and locks a Guided Missile onto it</li>
-        <li><strong>U</strong> — Hunt: open the scoreboard cursor; press it again on a running hunt to clear every mark</li>
-        <li><strong>7</strong> — Add Hunt: the same cursor, but committing adds to what is marked rather than replacing it</li>
-        <li><strong>Delete</strong> — Self-Destruct: five seconds, and <strong>Delete</strong> again calls it off</li>
-        <li><strong>9</strong> — Autopilot: the pilot chosen in Settings drives, aims and shoots until pressed again</li>
-        <li><strong>C</strong> — Toggle Camera View</li>
-        <li><strong>P</strong> — Pause Game</li>
-        <li><strong>O</strong> — Operator Panel</li>
-      </ul>
-
-      <h2>Hunting</h2>
-      <p>A hunted player wears a cyan <strong>&#9678;</strong> on their scoreboard row,
-        a cyan ring on the radar, and a beacon in the sky in their own tank colour, so
-        several marked at once are still told apart. While one is in your sights the HUD
-        says <strong>SPOTTED:</strong> and a ping sounds once a second from where they
-        are. In Rabbit Chase the rabbit is marked for you, and its beacon is cyan like
-        its ring.</p>
-      <ul>
-        <li><strong>U</strong> — Hunt: open the cursor, or clear a running hunt</li>
-        <li><strong>7</strong> — Add Hunt: open the cursor in add mode, where committing
-          adds a target and committing on one already marked takes it off</li>
-        <li><strong>Up</strong> / <strong>Down</strong> — move the cursor; the heading reads
-          <strong>*SEL*</strong> and a pulsing <strong>&#9675;</strong> sits on the row it is
-          on, which fills in to <strong>&#9678;</strong> when you commit</li>
-        <li><strong>Enter</strong> — commit the row the cursor is on</li>
-        <li><strong>U</strong> or <strong>7</strong> — back out, keeping whatever was already marked</li>
-        <li><strong>I</strong> and <strong>Space</strong> move the cursor too, so a surface
-          without arrow keys can reach it</li>
-        <li><strong>Settings &rarr; Hunt</strong> — the same thing without a keyboard, for a
-          phone or a headset. Left and right step through <strong>Clear</strong> and then the
-          players in alphabetical order; select marks or unmarks whoever is shown, or clears
-          every mark on <strong>Clear</strong>. Tap a chevron to step and anywhere else on the
-          row to select</li>
-      </ul>
-
-      <h2>Flags</h2>
-      <p>Drive over a flag to pick it up, and <strong>Space</strong> to drop it.
-        A superflag on the ground is white and tells you nothing about itself
-        until somebody picks it up.</p>
-      <div id="helpFlags"></div>
-      <p id="helpRicochet"></p>
-
-      <h2>Mobile On-Screen Controls</h2>
-      <ul>
-        <li><strong>⤒</strong> — Jump (tap button)</li>
-        <li><strong>●</strong> — Fire (tap button)</li>
-        <li><strong>⚑</strong> — Drop Flag (tap button)</li>
-        <li><strong>◎</strong> — Identify (tap button)</li>
-        <li>Use on-screen joystick to move/turn</li>
-      </ul>
-
-      <h2>Mouse Steering</h2>
-      <ul>
-        <li><strong>M</strong> or the <b>Mouse Steering</b> row — Enable/Disable</li>
-        <li><strong>ESC</strong> — Leave mouse steering (see Dialogs &amp; Menus)</li>
-        <li><strong>Mouse Up/Down</strong> — Control Speed</li>
-        <li><strong>Mouse Left/Right</strong> — Turn Tank</li>
-        <li><strong>Targeting Box</strong> — Inside the small box the tank holds still; the outer box edge is full turn and full speed, and going further out adds nothing</li>
-        <li>The keys still drive: hold a key and it owns that axis, let go and the
-          mouse has it back. Steer with the mouse while holding <strong>W</strong>,
-          or turn with <strong>A</strong>/<strong>D</strong> while the mouse sets the speed.</li>
-        <li><strong>Left Click</strong> — Shoot, anywhere on screen unless chat is
-          active or the on-screen controls are up</li>
-        <li><strong>Right Click</strong> — Identify: locks a Guided Missile onto the tank in your sights, and picks the roaming target while observing</li>
-        <li>The row is unavailable with no mouse attached, in VR, or while the
-          on-screen controls are up, since those steer instead</li>
-      </ul>
-
-      <h2>Dialogs &amp; Menus</h2>
-      <ul>
-        <li><strong>ESC</strong> — Back out one step, and <b>Settings</b> is the last stop:
-          leave chat, leave fullscreen, leave mouse steering, then open Settings. One more
-          press closes it, so pressing ESC once too often costs nothing</li>
-        <li><strong>Up/Down</strong> — Previous/next control, including from inside a text field</li>
-        <li><strong>Left/Right</strong> — Change the focused control: move a slider, pick the next
-          choice. In a text field they move the cursor instead</li>
-        <li><strong>Tab</strong> / <strong>Shift+Tab</strong> — Previous/next control</li>
-        <li><strong>Home</strong> / <strong>End</strong> — First/last control</li>
-        <li><strong>Enter</strong> or <strong>Space</strong> — Press the focused control</li>
-        <li><strong>Click</strong> or <strong>tap</strong> — On a row that walks a list, the title
-          steps back and the current option steps forward. The <b>&lsaquo;</b> and <b>&rsaquo;</b>
-          on the row mark the two halves</li>
-        <li>This Help panel is read rather than operated, so here the arrows scroll it and
-          only Left/Right move focus</li>
-      </ul>
-
-      <h2>Chat & Misc</h2>
-      <ul>
-        <li><strong>N</strong> — Open Chat (or click the Send button)</li>
-        <li><strong>Enter</strong> — Send Chat (or click the Send button again)</li>
-        <li><strong>ESC</strong> — Exit Chat Input</li>
-        <li><strong>Tab</strong> — Complete a player, command or flag name while typing.
-          <b>@</b> starts a mention, <b>#</b> a player's slot number</li>
-        <li><strong>Up</strong> / <strong>Down</strong> — Recall what you typed before.
-          Type the start of a line first to recall only lines beginning that way</li>
-        <li><strong>1</strong>/<strong>2</strong>/<strong>3</strong>/<strong>4</strong>/<strong>5</strong> — Chat tabs: All/Chat/Server/Misc/Debug</li>
-        <li><strong>[</strong> / <strong>]</strong> — Previous/Next chat tab</li>
-        <li><strong>.</strong> — Reply to last direct-message sender</li>
-        <li><strong>,</strong> — Message nemesis target</li>
-        <li><strong>Page Up</strong> / <strong>Page Down</strong> — Chat scrollback</li>
-        <li><strong>End</strong> — Jump chat to newest message</li>
-        <li><strong>Click Player Name</strong> — Open Settings</li>
-      </ul>
-
-      <h2>Scoreboard</h2>
-      <p>Each row's numbers read <strong>Kills / Deaths</strong>, then
-        <strong>[Team Kills]</strong> once you have any, then your own record against
-        that one opponent: <strong>wins~losses</strong>, blank until you've actually
-        fought them. Your own row shows a self-destruct count there instead, since you
-        have no record against yourself. Rabbit Chase adds a rank percentage in front
-        of the kill count.</p>
-      <p>Before a name, in cyan: <strong>@</strong> means that player is an admin,
-        <strong>+</strong> means they're signed in with a verified callsign this
-        session. Neither shows for anyone else.</p>
-      <p>Right after the name itself: a <strong>/XX</strong> is the flag they're
-        carrying, in that flag's own colour -- see Flags above for what each
-        abbreviation means.</p>
-      <p>Further along the name: 🎤 means that player's microphone is on, and 🔊
-        replaces it the moment they're actually speaking. ⏳ means paused.</p>
-
-      <h2>Observer</h2>
-      <ul>
-        <li><strong>Drive / Turn</strong> — Fly the camera; an Observer has no tank</li>
-        <li><strong>Tab</strong> / <strong>Space</strong> — Climb / Descend</li>
-        <li><strong>Enter</strong> or <strong>C</strong> — Step through views and players: leader, each player, next view</li>
-        <li>Views: Free, Track, Follow, Driving with, Flag</li>
-        <li><strong>I</strong> or <strong>Right Click</strong> — In the Free view, watch the tank in your sights, or show the obstacle there with its lines from the map file</li>
-        <li><strong>Right Click</strong> or tap on an obstacle — In any view, the Overview most of all, show that obstacle</li>
-        <li>Pick nothing, or press <b>World</b> on the panel — Show the whole world: contents, faces, textures, warnings and largest meshes</li>
-        <li><strong>Click a scoreboard row</strong> — Watch that player; click it again for the leader</li>
-        <li>The camera rests at the eye height of a tank on the ground.</li>
-      </ul>
-
-      <h2>Audio</h2>
-      <ul>
-        <li><strong>Settings -&gt; Audio Settings</strong> — <b>Game, voice, and microphone levels</b>, each from Off to 100%</li>
-        <li><strong>Voice channel</strong> — <b>All</b> is everyone on the server, <b>Nearby</b> is only players within earshot, <b>Team</b> is your own team anywhere on the map</li>
-        <li><strong>B</strong> — <b>Toggle Microphone</b></li>
-        <li>Voice is available after microphone permission is granted.</li>
-        <li>Observers talk and listen on the same terms as everyone else.</li>
-      </ul>
-
-      <h2>VR &amp; Gamepad</h2>
-      <ul>
-        <li><strong>Either trigger</strong> — Shoot</li>
-        <li><strong>Grip</strong> — Jump</li>
-        <li><strong>A</strong> — Drop Flag</li>
-        <li><strong>Either thumbstick press</strong> — Identify</li>
-        <li><strong>B</strong> — VR menu</li>
-        <li>On a gamepad: <strong>either shoulder</strong> — Identify</li>
-      </ul>
-
-      <h2>3D Viewing Modes</h2>
-      <ul>
-        <li><strong>Anaglyph 3D</strong> — Red/Cyan glasses for 3D effect</li>
-        <li><strong>VR Mode</strong> — WebXR-compatible headsets</li>
-      </ul>
-
-      <h2>Source Code</h2>
-      <p>This game is free software licensed under the
-        <a href="https://www.gnu.org/licenses/agpl-3.0.html" target="_blank" rel="noopener">GNU Affero General Public License v3.0</a>.
-        Source code is available at
-        <a href="/source" target="_blank" rel="noopener">github.com/timriker/bzo</a>.
-      </p>
+    <div class="dialogTitle"><span data-i18n>Help</span> <button id="closeHelpBtn" class="closeBtn" type="button" aria-label="Close" data-i18n-aria-label>&times;</button></div>
+    <div id="helpNav" class="helpNav">
+      <input type="search" id="helpSearch" dir="auto" placeholder="Search help" data-i18n-placeholder autocomplete="off">
     </div>
+    <div id="helpContent" class="dialogContent"></div>
+  </div>
   </div>
 
   <canvas id="degreeBar"></canvas>
@@ -721,8 +538,8 @@
   <div class="mobile-joystick" id="joystick">
     <div class="joystick-knob" id="joystickKnob"></div>
   </div>
-  <button class="mobile-btn" id="identifyBtn" title="Identify: lock a Guided Missile onto the tank in your sights">◎</button>
-  <button class="mobile-btn" id="dropBtn" title="Drop flag">⚑</button>
+  <button class="mobile-btn" id="identifyBtn" title="Identify: lock a Guided Missile onto the tank in your sights" data-i18n-title>◎</button>
+  <button class="mobile-btn" id="dropBtn" title="Drop flag" data-i18n-title>⚑</button>
   <button class="mobile-btn" id="jumpBtn">⤒</button>
   <button class="mobile-btn" id="fireBtn">●</button>
 </div>

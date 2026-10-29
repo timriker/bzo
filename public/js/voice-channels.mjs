@@ -21,6 +21,8 @@
 // message dispatch in src/bzfs/bzfs.cxx sends to every player whose
 // `isTeam(_team)` matches, with no exception for either.
 
+import { N_ } from './i18n.mjs';
+
 export const VOICE_CHANNEL_ALL = 'all';
 export const VOICE_CHANNEL_NEARBY = 'nearby';
 export const VOICE_CHANNEL_TEAM = 'team';
@@ -31,18 +33,18 @@ export const DEFAULT_VOICE_CHANNEL = VOICE_CHANNEL_ALL;
 export const VOICE_CHANNELS = Object.freeze([
   Object.freeze({
     id: VOICE_CHANNEL_ALL,
-    label: 'All',
-    hint: 'Every player on the server, however far away.',
+    label: N_('All'),
+    hint: N_('Every player on the server, however far away.'),
   }),
   Object.freeze({
     id: VOICE_CHANNEL_NEARBY,
-    label: 'Nearby',
-    hint: 'Players within earshot, whatever team they are on.',
+    label: N_('Nearby'),
+    hint: N_('Players within earshot, whatever team they are on.'),
   }),
   Object.freeze({
     id: VOICE_CHANNEL_TEAM,
-    label: 'Team',
-    hint: 'Your own team, however far away.',
+    label: N_('Team'),
+    hint: N_('Your own team, however far away.'),
   }),
 ]);
 

@@ -51,14 +51,14 @@ Precedence, highest first:
 The server resolves 2-4 while rendering `index.html`, which is already a
 per-request template. Two more markers join `bzo-build`:
 
-- `<html lang="en">` becomes the negotiated tag, so screen readers, spellcheck
-  and CSS `:lang()` are right from the first byte.
-- `<meta name="bzo-locale" content="...">` tells the client what it was served.
+- `<html lang="en">` becomes the negotiated tag and its `dir`, so screen
+  readers, spellcheck and CSS `:lang()` are right from the first byte.
+- `<script type="application/json" id="bzo-l10n">` carries the catalog:
+  `{ locale, locales, messages }`, the locale being what the client was
+  served. It is tens of kilobytes, it saves a round trip, and it means no
+  frame is ever painted in the wrong language.
 
-The catalog itself is inlined into the page as
-`<script type="application/json" id="bzo-l10n">`. It is tens of kilobytes,
-it saves a round trip, and it means no frame is ever painted in the wrong
-language. `GET /l10n/<locale>.json` serves the same data for switching language
+`GET /l10n/<locale>.json` serves the same object for switching language
 without a reload.
 
 Two cache rules follow and are easy to miss:
@@ -98,13 +98,18 @@ rules for every locale.
 The GNU gettext tools are already installed and do the whole authoring loop, so
 no custom extractor is needed:
 
-- `xgettext -L JavaScript --keyword=t` over `public/*.js` and `public/*.mjs`
-  regenerates `l10n/bzo.pot`.
+- `xgettext -L JavaScript --keyword=t --keyword=N_` over `public/js/`
+  regenerates `l10n/bzo.pot`. `N_()` marks a msgid looked up later, as the
+  Settings rows' labels are. The `data-i18n` markup in `index.html` is
+  gathered by the same script, since xgettext cannot read HTML.
 - `msgmerge` folds the new template into each existing catalog.
-- `msgfmt -c` validates.
+- `msgfmt --check-format` validates.
 
-One import script, `scripts/l10n-import-bzflag.mjs`, seeds our catalogs from
-`$BZFLAG/data/l10n/*.po` by matching msgids. Terminology should follow whatever
+`npm run l10n:update` runs all three.
+
+One import script, `npm run l10n:import-bzflag -- <locale>...`, seeds our
+catalogs from `$BZFLAG/data/l10n/*.po` (default `$HOME/bzflag`) by matching
+msgids. Terminology should follow whatever
 upstream already chose for a locale, so this runs before anyone translates
 anything new. It is a one-time seeding tool, not a dependency, and po4a has no
 part in it: upstream's catalogs are already `.po`, so importing them is msgid
@@ -143,12 +148,15 @@ did: a new untagged string fails `npm run check` rather than quietly shipping.
 
 ## Client Runtime
 
-`public/i18n.mjs` owns it: `t(msgid, params)`, `setLocale(locale)`, and one pass
-over the DOM at boot for `data-i18n`, `data-i18n-title`, and
-`data-i18n-placeholder` attributes in `index.html`. About 178 text nodes today,
-but roughly half of them are the help panel and leave with #64.
+`public/js/i18n.mjs` owns it: `t(msgid, params)`, `setLocale(locale)`, and one
+pass over the DOM at boot for `data-i18n`, `data-i18n-title`,
+`data-i18n-placeholder` and `data-i18n-aria-label` attributes in `index.html`.
+About 178 text nodes today, but roughly half of them are the help panel and
+leave with #64.
 `setLocale()` fetches `/l10n/<locale>.json`, re-runs the DOM pass, and repaints
-the HUD; no reload.
+the HUD; no reload. The pass rewrites only text that still says what it last
+wrote: text script has since changed -- the mic button's state, Apply turned
+Restart -- is its owner's to repaint on `onLocaleChange`.
 
 Settings gains one row, matching upstream's Options menu:
 
@@ -201,18 +209,17 @@ Upstream never translates what the server says, and the first draft of this
 plan copied that. It is worth reconsidering, because bzo's server and client
 ship from one repo in lockstep and the msgids are English source strings.
 
-There are 66 `replyToPlayer()` calls -- every command answer -- and they already
-travel with `msgType: 'server'`, which separates a system reply from player
-chat on the wire. The client can therefore look any `msgType: 'server'` line up
-in its own catalog with no protocol change at all: the text the server sent is
-the msgid, and a line with no translation falls through as the English it
-already is.
+There are about 200 `replyToPlayer()` calls -- every command answer -- and
+they already travel with `msgType: 'server'`, which separates a system reply
+from player chat on the wire. The client can therefore look any
+`msgType: 'server'` line up in its own catalog with no protocol change at all:
+the text the server sent is the msgid, and a line with no translation falls
+through as the English it already is.
 
-Of the 66: 22 are plain literals and work that way immediately. 25 are template
-literals, and those need the server to send `{ msgid, params }` rather than a
-finished string, because a language will not put the substitutions in our
-order. The remaining 19 are assembled from variables and want looking at one at
-a time.
+Plain literals work that way immediately. Template literals need the server
+to send `{ msgid, params }` rather than a finished string, because a language
+will not put the substitutions in our order. Lines assembled from variables
+want looking at one at a time.
 
 The boundary inside this category matters more than the category:
 
@@ -234,160 +241,57 @@ one from the other is what makes both bad.
 
 ## Help Is Documents
 
-Issue #64 wants the help pages split up, searchable, and readable at `/doc/`
-without entering the game. It has to be settled here, because the current help
-panel is about 190 lines of prose inline in `index.html` and prose is the one
-thing that must not go through gettext. Long paragraphs with markup inside them
-make terrible msgids: any edit to the English invalidates every translation, and
-a translator is working a sentence at a time with no context.
+Issue #64 wanted the help split into pages, searchable, and readable without
+entering the game. It had to be settled here, because prose is the one thing
+that must not go through gettext as strings: long paragraphs with markup in
+them make terrible msgids, and a translator working a sentence at a time has no
+context.
 
-So help is translated as whole files, not as strings:
+- `docs/help/*.md` are the pages, one file each: controls, flags, scoreboard,
+  voice, about. `server/help-docs.cjs` lists them in order.
+- `/help` is all of them on one page, `/help/<page>` one alone, both in the
+  negotiated language. `/list`'s nav links it, so a visitor can read it without
+  launching anything.
+- The in-game panel fetches `/help.json` the first time it opens and shows a
+  page at a time, with a button for each and a search over all of them
+  (`public/js/help.js`). A link between pages stays in the panel.
+- `llms-full.txt` is the same pages as one Markdown file.
 
-- `docs/help/en/*.md` -- one file per page (controls, movement, flags,
-  teams, chat, commands, XR), which is the split #64 asks for.
-- `docs/help/<locale>/*.md` overlays it. A file that does not exist falls back
-  to the English one, marked as untranslated in the page list rather than
-  silently served as English.
-- Express serves `/doc/` from the negotiated locale, browsable outside the game.
-  The in-game help panel fetches the same documents, so there is one copy.
-- Search is client-side over an index of the current locale's pages, built when
-  the catalogs are; a few dozen kilobytes for a locale.
-
-This also retires a duplication that already exists: the controls list lives in
-both `README.md` and the help panel, kept in step by
-`scripts/check-controls-docs.mjs` and its regex pairs. Once the pages are the
-source, README links to them and that checker goes away rather than being
-extended to every locale.
+That retired `scripts/check-controls-docs.mjs`: the panel no longer has a copy
+of the controls to drift from `docs/help/controls.md`.
 
 ### Which Documents
 
-`docs/` is about 9000 lines, and nearly all of it is repo documentation: the
-`*-plan.md` files, `AGENTS.md`, `bzw.md`, `list-server.md`, `login.md`,
-`tank-model-format.md`. Those are for people working on bzo or running a
-server, they belong on GitHub in English, and none of them is a help page.
+The rest of `docs/` is repo documentation -- the `*-plan.md` files, `bzw.md`,
+`list-server.md`, `login.md` -- for people working on bzo or running a server.
+It belongs on GitHub in English and none of it is a help page. Only
+`docs/help/` is player documentation, and only it is translated.
 
-Only `docs/help/**` is player documentation, and only it is translated. A few
-existing files have player-facing halves -- `flags.md` most of all -- and those
-get split rather than moved wholesale.
-
-### Markdown, Rendered at Build Time
+### Rendered at Request Time
 
 Markdown is the source format. It diffs a sentence at a time, translators can
 work it without knowing our markup, and the same file is readable on GitHub.
-HTML source would avoid a renderer but makes every one of those worse.
 
-Nothing renders markdown at runtime. `npm run build:docs` turns
-`docs/help/**/*.md` into one artifact per locale, `public/doc/<locale>.json`,
-holding each page's HTML fragment, its XR block list, and the search index.
-The server reads those at startup and wraps a fragment in a page shell for
-`/doc/` the way it already wraps `/list`; the client fetches the bundle whole,
-because search needs every page anyway.
+`server/discovery.cjs` already rendered `docs/controls.md` for `/help` with a
+small renderer of its own, so the pages go through it too: read when their
+mtime moves, rendered per request, as the `.po` catalogs are. No build step, no
+generated artifact, no devDependency, nothing for the image to do but copy
+`docs/help/`. An edited page shows on the next load without moving the client
+build id.
 
-The bundles are generated, not committed. `public/doc/` is gitignored, the way
-`cache/` and the imported maps already are: derived from files in the tree, and
-rebuilt by whoever is running the tree. `server/precompress.cjs` is the same
-idea one step further along -- it already runs as a build step inside the image
-and its output is likewise never committed.
-
-So `marked` is a devDependency. The runtime dependency list stays `express`,
-`express-rate-limit`, `three`, `ws`, and that mostly settles the renderer
-question: 250 lines of our own to avoid a dependency that does not ship is a
-bad trade, particularly when the lexer is what produces the XR block list.
-
-Three places have to run the generator, and each is a real place:
-
-- **A working tree.** `npm run dev` builds every locale's pages, and rebuilds
-  when a page or a catalog changes. nodemon already watches `public/` and
-  restarts on any change there, so the same reflex that picks up an edited
-  client file picks up an edited help page:
-
-  - `nodemon.json` watches `docs/help/` and `l10n/`, and adds `md` and `po`
-    to `ext`
-  - it runs `npm run build:docs && node server.js` rather than the server
-    alone, so every restart regenerates
-  - it ignores `public/doc/`, or the build's own output triggers the restart
-    that triggers the build
-
-  bz.rikers.org runs that loop, so it gets fresh docs without anyone
-  remembering a step.
-- **The image.** `Dockerfile` gains a builder stage that installs the full
-  dependency set, copies `docs/`, runs the generator, and copies
-  `public/doc/` into the runtime stage. The markdown sources never enter the
-  shipped image, which they do not today either.
-- **A bare `npm start`.** The generator must be able to say "marked is not
-  installed" and exit cleanly rather than failing the boot, and the server must
-  serve a missing bundle as an absent help system rather than a crash. Someone
-  will `npm ci --omit=dev && npm start`, and that should give them a running
-  game with no docs, not a stack trace.
-
-Nothing then needs a staleness check. There is no committed artifact to fall
-behind, and a translation that has fallen behind its English is a fuzzy entry
-in a catalog rather than a file nobody noticed.
-
-One artifact per locale is the right shape whether or not it is prebuilt: the
-help panel, search, and XR all want the whole locale at once, not a page at a
-time.
-
-### The Bundles Are Ordinary Assets
-
-Putting the output under `public/` means the rest of the pipeline already
-handles it, and the ordering is the only thing to get right.
-
-`precompress.cjs` matches `.json` in `COMPRESSIBLE` and `assetRoots()` walks
-`public/`, so the bundles get brotli sidecars with no change to either. Text
-like this is where brotli pays best. The constraint is ordering: the generator
-runs before `RUN node server/precompress.cjs` in the image, and before the
-server boots anywhere else, since `computeClientBuild()` walks the same tree at
-module load.
-
-That walk is also what the client build id hashes, so an edited help page moves
-the build id, which keys the service worker cache and prompts connected clients
-to reload. That is the correct behavior and it is not new -- editing
-`styles.css` does exactly the same today -- but help text is the lowest-stakes
-content in the tree and this makes it as disruptive to change as client code.
-Worth knowing before someone fixes a typo mid-match.
-
-The bundles also belong in the service worker's `ASSET_PATHS`. That list is
-specifically the paths that "change only on release and cannot cause a protocol
-desync if they lag", and a build-keyed help bundle is exactly that. Adding
-`/doc/` makes help available offline and stops it being refetched every
-session; leaving it out means network-first, which merely wastes a request.
-
-### Four Consumers, One Source
-
-The same markdown has to serve four readers, and they differ in what they can
-render, not in what they say:
-
-| Reader | Form | How it gets there |
-| --- | --- | --- |
-| GitHub | markdown, as committed | nothing to do; keep the files readable raw |
-| `/doc/` | full HTML page | server wraps the prebuilt fragment in a shell |
-| Help panel | HTML fragment | same bundle, fetched by the client |
-| XR | text blocks on a canvas | same bundle, serialized by the same build |
-
-`/list` gains a `docs` entry in its nav line (`bzo | bzflag | maps | keys`), so
-a visitor who came to see what is running can read the documentation without
-launching anything. That page is server-rendered per request already, so it
-negotiates its own locale the same way `index.html` does -- which means the
-*server* needs the catalog too, not just the client. It is parsing the `.po`
-files anyway, so this costs nothing but saying so.
-
-Four renderings and one parse is the argument that settles the renderer
-question: `marked` exposes its lexer, so the token stream is available without
-a second pass. HTML falls out of it for the web readers and a block list falls
-out of it for XR, both in one build. A hand-rolled renderer would owe both, and
-would now be 250 lines of our own code to avoid a dependency that does not ship
-anyway.
+A line that is only `<!-- name -->` is a marker for what a page cannot hold:
+`flags.md`'s `<!-- flags -->` is the flag table on `/help`, and in the panel
+the place the client builds its live list, which knows the world's ricochet
+rule.
 
 ### XR Reads Differently
 
 XR is where a documentation system usually stops pretending, so it is worth
 being concrete.
 
-Today XR's "Help" is not the help panel at all. It is `XR_HELP_ITEMS` in
-`client.js`: eleven hand-written rows of controller bindings, a third copy of
-material that also lives in `README.md` and in the help panel, and the regex
-checker that guards the other two does not know it exists.
+XR's "Help" is not the help panel at all. It is `XR_HELP_ITEMS` in
+`client.js`: eleven hand-written rows of controller bindings, a second copy of
+what `docs/help/controls.md` says.
 
 That split is right and should be kept, because the two things are genuinely
 different:
@@ -399,62 +303,56 @@ different:
   read no matter how it is drawn, but it should be possible rather than absent.
 
 So XR gets both. The cheat sheet stays a row screen. Documents get a second
-screen kind in `XRMenuRenderer`: word-wrapped text blocks from the lexer token
-list, paged with the stick, headings and list items distinguished by size and
-indent rather than by markup. No new parser, no DOM -- immersive sessions on a
-standalone headset have no `dom-overlay` to fall back on.
+screen kind in `XRMenuRenderer`: word-wrapped text blocks from the same walk
+the renderer makes, paged with the stick, headings and list items
+distinguished by size and indent rather than by markup. No new parser, no DOM
+-- immersive sessions on a standalone headset have no `dom-overlay` to fall
+back on.
 
 ### Controls Are Data, Not Prose
 
-The cheat sheet, `docs/controls.md` and the help panel's controls list are three
-copies of one table, and `scripts/check-controls-docs.mjs` exists only because
-they drift. Translating them would make it three copies per locale.
+The cheat sheet and `docs/help/controls.md` are two copies of one table, and
+translating them would make it two copies per locale.
 
 Controls are structured -- action, keyboard, gamepad, XR controller -- so they
 should be a table in code that the three renderings are generated from. Only
 the action names are translatable strings; `W/S`, `Tab` and "either trigger"
-are not, in any locale. That retires the checker rather than extending it, and
-it is the one piece of help that should *not* be a markdown file.
+are not, in any locale. It is the one piece of help that should *not* be a
+markdown file, and it is not built yet.
+
+### What Is Still Written Twice
+
+Issue #64 asked for split pages, search, reading outside the game and room
+for languages, and all four are built. What is left is help that exists both as
+markdown and as HTML or code:
+
+- **Discord** is HTML in `helpPage()`, not a page. It belongs in `about.md`,
+  with a marker for the account-link sentence that only some servers offer.
+- **The XR cheat sheet.** `XR_HELP_ITEMS` repeats the "XR controllers" table
+  in `controls.md`. Rather than a controls table in code (below), the rows can
+  be read from that markdown table, so the page stays the one source and its
+  cells are already doc-catalog entries.
+- **The tagline.** "A free 3D tank game in the browser that plays with BZFlag"
+  is in `index.html`, `about.md` and `GAME_DESCRIPTION`.
+
+Issue #64 suggested `/doc/`; `/help` is the address, reachable from `/list`
+and from the game, and needs no alias.
 
 ### Translating Prose
 
-po4a is an authoring tool, never a runtime one. It belongs beside `xgettext`
-and `msgmerge`: it runs on somebody's machine when the English changes, and the
-server never hears of it. The question is not runtime versus dev, it is whether
-it belongs in `build:docs`, and it does not -- that would make an apt package a
-prerequisite for `npm run dev` and for the image's builder stage, which is a
-far larger imposition than a devDependency.
+Pages are translated a paragraph at a time, as po4a would, without po4a:
 
-What po4a does is worth copying even if the program is not used. It turns a
-markdown file into a `.po` keyed by paragraph, so:
-
-- a translator works in the same format and the same tool as the UI strings
-- an untranslated paragraph falls back to English by itself, with no
-  per-file staleness bookkeeping
-- editing one English paragraph marks that paragraph fuzzy and leaves the rest
-  of the page translated
-
-That last property is the one whole-file translation cannot have at any price,
-and it is why this is the right model.
-
-The build can do it without po4a. `build:docs` already walks `marked`'s token
-stream to emit HTML and XR blocks; emitting each text block as a msgid is the
-same walk, and applying a translation is a lookup on the way past. Code fences
-and inline code are skipped, table cells are extracted individually. The `.po`
-reader this plan already needs for the UI catalog is the same reader.
-
-So:
-
-- `l10n/doc_<locale>.po` are the translations, committed, one per locale.
-- `npm run build:docs -- --extract` regenerates `l10n/doc.pot` from the English
-  pages; `msgmerge` folds it into each catalog, exactly as for UI strings.
-- Nothing generated is committed, and no drift hash is needed: a stale
-  paragraph is a fuzzy entry, which is a thing gettext tools already show.
-- `docs/help/<locale>/` does not exist. There is one set of English pages and a
-  catalog per language.
-
-po4a stays a reasonable fallback if our extractor turns out to mis-handle
-something, and adopting it later changes only where the `.pot` comes from.
+- the renderer hands each block -- heading, paragraph, list item, table cell --
+  to a `translate` function before rendering it, and `npm run l10n:update`
+  extracts `l10n/doc.pot` by running the same walk with a collecting one, so
+  the two cannot disagree about where a paragraph ends
+- `l10n/doc_<locale>.po` holds the translations, one per interface locale,
+  merged with fuzzy matching on, so editing an English paragraph marks that
+  paragraph fuzzy and leaves the rest of the page translated
+- an untranslated or fuzzy paragraph is the English one; `<html lang>` on
+  `/help` stays `en` until a locale's doc catalog has anything in it
+- heading anchors stay English, so a link to `controls.md#hunting` works in
+  every language
 
 ## Asking for Translations
 
@@ -463,11 +361,32 @@ without asking anyone anything, so the path has to be written down and short:
 
 - what to edit -- `l10n/bzo_<locale>.po` for the interface,
   `l10n/doc_<locale>.po` for the help pages, and nothing else
-- how to start a language that does not exist yet -- `msginit`, one command
+- how to start a language that does not exist yet -- copy `l10n/bzo.pot` to
+  `l10n/bzo_<locale>.po`, set its `Language:`, and run `npm run l10n:update`,
+  which makes the `doc_` catalog beside it. Not `msginit`: for an English
+  locale it copies every msgid into the msgstr and the catalog looks finished
 - how to see it -- `npm run dev`, then `?lang=<locale>`, with no build step to
   understand and nothing to install beyond what the repo already needs
 - what not to touch -- command names, flag abbreviations, callsigns, anything
   inside `{braces}`
+
+## Reviewing
+
+Every catalog but English was machine-written, so each says so and says where
+it is least sure, in the catalog itself, where a translator is already looking
+and where gettext keeps it across every merge:
+
+- a catalog nobody fluent has read has `X-Review:` in its header; the reviewer
+  deletes the field when they have read it all
+- an entry with a doubt has a translator comment, `# review: <why>`, above it;
+  the reviewer fixes the entry and deletes the comment
+- `npm run l10n:review` prints a line per locale: translated, fuzzy and
+  flagged counts, and whether it is reviewed. Naming locales
+  (`npm run l10n:review -- fr ja`) lists each flagged entry with its note
+
+An issue would go stale the first time an English string moved; the comment
+moves with the entry. Untranslated and fuzzy entries need no comment, since
+both already read as English and the report counts them.
 
 When the work lands, this plan becomes `docs/i18n.md`, following the pairs the
 tree already has (`login-plan.md` and `login.md`, `list-server-plan.md` and
@@ -479,17 +398,19 @@ No locale we would ship is RTL. Upstream has 16 and none of them is Arabic,
 Hebrew or Persian, so this is about not building a corner to paint ourselves
 into, not about work to do now.
 
-The DOM half is cheap and worth doing immediately:
+The DOM half is cheap, and most of it is done:
 
-- The server already computes the locale for `<html lang>`; stamping `dir`
-  beside it is the same line.
-- `styles.css` has 40 physical `left`/`right` declarations and no logical ones.
-  Converting them to `inline-start`/`inline-end` as they are touched costs
-  nothing and is a small improvement on its own terms.
-- Chat input and the callsign field want `dir="auto"` now, regardless of UI
-  language. A player typing Arabic should see Arabic behave, even when
-  everything around it is English. That is one attribute and it is the single
-  most likely RTL encounter we will actually have.
+- `<html dir>` is stamped beside `lang`, from `textDirection()` in
+  `public/js/i18n.mjs`, and set again when the language changes.
+- Every free-text field -- chat, callsign, motto, server title, MOTD, the
+  recording name, help search, the XR keyboard field -- has `dir="auto"`. A
+  player typing Arabic sees Arabic behave even when everything around it is
+  English, which is the most likely RTL encounter we will actually have.
+- Each coloured run in a chat line is `unicode-bidi: isolate`, so a
+  right-to-left callsign cannot reorder the words beside it.
+- Left: `styles.css` has about 45 physical `left`/`right` declarations and no
+  logical ones. Converting them to `inline-start`/`inline-end` as they are
+  touched costs nothing and is a small improvement on its own terms.
 
 The canvas half is where RTL costs real work, and it is worth naming the three
 problems separately because they are not the same problem:
@@ -520,37 +441,61 @@ nobody has to rediscover it.
 - Callsigns, server name, MOTD, map names -- operator and player content, even
   when it appears inside a translated sentence.
 - Command names. `/kill` is `/kill` in every locale.
-- Callsigns, server name, MOTD, map names -- operator and player content.
 - Flag abbreviations (`RF`, `GM`). They are protocol, shown on the flag itself
-  and in radar; the name and description beside them are translated.
+  and in radar. They are made from the English name, so wherever a flag is
+  explained -- the help pages, the flag list -- the English name stays beside
+  the abbreviation to say where it comes from, followed by the translated name
+  and description: `RF -- Rapid Fire -- Disparo rápido -- ...`. Where space is
+  short, as in a HUD alert, the translated name and the abbreviation are
+  enough.
 
 ## Order of Work
 
-1. **Negotiation and runtime.** `i18n.mjs`, the `.po` reader, `/l10n/:locale
-   .json`, the inlined catalog, `<html lang>`, `Vary`, `?lang=`, the Settings
-   row. Ships with `en` and `es`, the latter seeded from upstream, so the
-   machinery is provable before any bulk tagging and the result has a
-   reviewer.
-2. **Help pages out of `index.html`** (#64). Split into `docs/help/en/*.md`,
-   add `build:docs`, serve `/doc/` from the bundle, link it from `/list`'s nav,
-   point the help panel at the same bundle, add search, give `Dockerfile` its
-   builder stage before its precompress step, add `/doc/` to the service
-   worker's `ASSET_PATHS`, move the controls table into code and generate its
-   three renderings from it, retire `check-controls-docs.mjs`. Doing this
-   before tagging markup means the help prose never enters a catalog in the
-   first place, and what is left of `index.html` is chrome labels.
-3. **Declarative surfaces.** `settings.js`, `flags.mjs`, `teams.mjs`, and the
-   `index.html` attributes. This is where upstream's import pays for itself --
-   menu verbs, team names and flag names are the strings it already has.
-4. **Runtime strings**, a file at a time: `client.js` (~200), `input.js`,
-   `hud.js`, `voice.js`, `render.js`.
-5. **Server replies.** Translate `msgType: 'server'` on receipt, which needs no
-   server change, then convert the 25 interpolated `replyToPlayer()` calls to
-   `{ msgid, params }`.
+1. **Negotiation and runtime.** Built: `public/js/i18n.mjs`,
+   `server/l10n.cjs`, `/l10n/:locale.json`, the inlined catalog,
+   `<html lang dir>`, `Vary`, `?lang=`, the Language row, and
+   `scripts/test-i18n.mjs`. Tagged so far: the Settings rows and values and
+   the entry dialog. Ships `es`, `en_US_l33t` and `en_US_redneck` seeded from
+   upstream; the Spanish upstream lacked is new and wants review.
+2. **Help pages out of `index.html`** (#64). Built: `docs/help/*.md`,
+   `server/help-docs.cjs`, `/help`, `/help/<page>`, `/help.json`, the panel's
+   page buttons and search, the `/list` nav link, `l10n/doc.pot` and a
+   `doc_<locale>.po` per locale, all empty so far; `check-controls-docs.mjs`
+   is retired. Left: the controls table in code (see "Controls Are Data, Not
+   Prose"), which waits for XR.
+3. **Declarative surfaces.** Built: flag names and help, team names and the
+   scoreboard's colour words, the voice channels and their hints, the
+   observer camera labels (`{who}` placed per language, the callsign keeping
+   its colour), and the inspect panel's World button. `l10n-update` lists the
+   flag and team tables' strings with a note on each. The flag list is
+   `flagHelpGroups()` in `public/js/flags.mjs`, rendered by
+   `server/help-docs.cjs` for `/help`, the panel and llms-full.txt alike, in
+   the form "Not Localized" below gives.
+4. **Runtime strings.** Built: about 450 strings across `client.js`,
+   `index.html`, `input.js`, `hud.js`, `voice.js`, `radar.js`,
+   `inspect-panel.mjs` and `install.js` -- the loading screen, HUD alerts,
+   the chat notices the client writes (whole sentences, the callsign keeping
+   its colour wherever a language puts it), the operator, audio and view
+   dialogs, and voice errors (English in the log, translated on screen).
+   Left: `list-page.js`, a plain script on the server-rendered `/list` page
+   that cannot import the runtime; the "Default microphone" option, whose
+   text code reads back; and XR (step 7).
+5. **Server replies.** Built. The server sends English as it always has --
+   a BZFlag client, the log, a replay and the Discord bridge read only
+   `text` -- and beside it `msgid` and `params` (`localized` in
+   `public/js/i18n.mjs`; `replyToPlayer(player, msgid, params)`), which the
+   client translates with the callsigns and numbers put back untouched. A
+   param that is itself `{ msgid }` -- a team, on/off -- is translated too.
+   A server line with no msgid is looked up whole. `l10n-update` extracts
+   `replyToPlayer`'s and `localized`'s literals from the server. Left as
+   English: data listings (`/playerlist`, ban lists, `/help` lines), the
+   lines the client parses back (`/flag show`), upstream-shaped refusals,
+   and errors built inside `server/commands.cjs` and the config validator,
+   whose return shapes the tests pin.
 6. **The check**, once enough is tagged for it to pass: `check:i18n` in
    `npm run check`.
 7. **XR.** Tag `xr-menu.js` and the canvas-drawn labels in `client.js`, then
-   add the document screen so `/doc/` pages are readable in a headset.
+   add the document screen so the help pages are readable in a headset.
 
 ## HUD Text Size
 
@@ -577,14 +522,23 @@ truncation. Nothing else here waits on #113, and #113 does not wait on this.
   costs nothing: paragraph-level fallback means a page with two translated
   paragraphs is a page with two translated paragraphs, not a broken one. So
   ask, and take whatever arrives.
-- **Ship `en`, `es`, `en_US_l33t` and `en_US_redneck`, and grow from there.**
-  The locale list is whatever `l10n/` holds, so adding a language is adding a
-  file and no code changes to make room for it. Four is enough to prove
-  negotiation, the Settings override, and fallback, without presenting a menu
-  of half-finished languages. The joke locales are already translated upstream
-  and are the cheapest possible test that switching works, since a reviewer who
-  speaks no second language can still see whether the menus changed. The rest
-  arrive as people contribute them.
+- **Chinese, Japanese and Korean ship too** as `zh_CN`, `zh_TW`, `ja` and
+  `ko`, which upstream never had. Chinese is two catalogs, each in its own
+  region's vocabulary rather than a character conversion of the other, and
+  `TAG_ALIASES` in `server/l10n.cjs` sends `zh-HK`, `zh-MO` and any `zh-Hant`
+  tag to Traditional, `zh-SG` and `zh-Hans` to Simplified, and a bare `zh` to
+  Simplified.
+- **Every upstream catalog ships.** `npm run l10n:import-bzflag` seeded all
+  of them; `xx` is upstream's untranslated template and is not a language.
+  Klingon comes in as `tlh`, its ISO code, because upstream's `kg` is Kongo's
+  and a Kongo browser would be handed Klingon. Each names itself in its own
+  language, overriding the English names some upstream catalogs carry.
+  Upstream's catalogs are ASCII only, so Czech, Slovak and Lithuanian lost
+  their diacritics and Russian was transliterated into Latin; bzo renders
+  through the browser and every catalog is UTF-8 in its own script. Every
+  string the interface and the help pages have so far is translated in every
+  locale, machine-written from upstream's terms where they fit, and wants a
+  native speaker's review.
 - **Spanish is the first real locale.** Upstream's `es` catalog is its largest
   at 936 msgids, and it has a reviewer here, which no other language does. It
   is the locale the machinery gets proved against.

@@ -587,6 +587,10 @@ can carry both.
 
 `docs/video-plan.md` is the plan for camera video beside voice (issue #188).
 
+`docs/i18n-plan.md` is the plan for the interface and help in the player's
+language (issue #44), and `docs/chat-translation-plan.md` for translating
+player chat.
+
 `docs/bots-plan.md` is the plan for the autopilot and for bots (issue #151).
 `public/js/autopilot.mjs` reads the world only through a view, so the client's
 autopilot and the server's own bots (`server/bots.cjs`) drive the same
@@ -3981,7 +3985,6 @@ That runs, in order:
 |---|---|
 | `npm run check:server` | `node --check server.js` |
 | `npm run lint` | ESLint across server, `public/`, and `scripts/` |
-| `npm run check:controls-docs` | `docs/controls.md` matches the in-game help panel |
 | `npm run check:shared-pairs` | Each `public/<name>.mjs` and `server/<name>.cjs` still agree |
 | `npm run check:markdown` | markdownlint (`mdl`) over every `.md` but CHANGELOG.md, under `.mdl-style.rb`; skipped with a warning when `mdl` is not installed |
 | `npm run test:volume` | Audio level clamping, curve, formatting, and persistence |
@@ -4151,8 +4154,6 @@ Things to reach for, in the order they cost:
 - **`npm run check:boot`** after touching anything `server.js` runs at module
   level -- `--check` parses without running, and the first thing that actually
   runs the file is nodemon, on the live server.
-- **`node scripts/check-controls-docs.mjs`**, which holds the controls list in
-  `index.html` to the bindings in `input.js`.
 - **`node scripts/headless-client.mjs`**, which joins the running server in a
   headless Chrome and reports every console error and uncaught exception. Chrome
   is installed and speaks CDP over a WebSocket, and `ws` is already a dependency,
@@ -4463,12 +4464,11 @@ Raising `WG`'s flap count to test it is `/set _wingsJumpCount <n>`, or a
 
 - When adding network messages, document them in both the server switch
   statements and the client handlers, and update debug HUD counters if needed.
-- The controls list currently exists in several places: `docs/controls.md`,
-  the help `<ul>` in `public/index.html`, `XR_HELP_ITEMS` in
-  `public/js/client.js`, and the regex pairs in `scripts/check-controls-docs.mjs`.
-  Only the first two are cross-checked. When changing a control, update all four.
-  The doc and the in-game help stay two copies until a help system (#64) makes
-  one of them data the other is built from.
+- The controls are written in two places: `docs/help/controls.md`, which is
+  also `/help` and the in-game help panel, and `XR_HELP_ITEMS` in
+  `public/js/client.js`, the headset's cheat sheet. When changing a control,
+  update both. The help pages are `docs/help/*.md`, served by
+  `server/help-docs.cjs`; docs/i18n-plan.md is how they are translated.
 
 ## Persistent Project Decisions
 
@@ -4627,9 +4627,10 @@ Integration points:
 
 ## Controller mapping
 
-`docs/controls.md` is the one description of the XR controllers' mapping, as of
-every other input. Tank rotation is independent of head direction; Three.js
-positions the camera for stereo rendering and head tracking automatically.
+`docs/help/controls.md` is the one description of the XR controllers'
+mapping, as of every other input. Tank rotation is independent of head
+direction; Three.js positions the camera for stereo rendering and head tracking
+automatically.
 
 ## Future work
 

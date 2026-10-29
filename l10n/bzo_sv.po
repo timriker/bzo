@@ -1,0 +1,3899 @@
+msgid ""
+msgstr ""
+"Project-Id-Version: bzo\n"
+"Report-Msgid-Bugs-To: https://github.com/timriker/bzo/issues\n"
+"Language: sv\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Review: machine-translated, not yet read by a native speaker\n"
+
+#: public/index.html:36
+msgid "Title:"
+msgstr "Titel:"
+
+#: public/index.html:37
+msgid "What this server is"
+msgstr "Vad den här servern är"
+
+#: public/index.html:40
+msgid "Set MOTD:"
+msgstr "Ange MOTD:"
+
+#: public/index.html:41
+msgid "Message of the day"
+msgstr "Dagens meddelande"
+
+#: public/index.html:47
+msgid "Shot Max Active:"
+msgstr "Max aktiva skott:"
+
+#: public/index.html:56
+msgid "All shots ricochet"
+msgstr "Alla skott rikoschetterar"
+
+#: public/index.html:60
+msgid "Map:"
+msgstr "Karta:"
+
+#: public/index.html:69
+msgid "Teams"
+msgstr "Lag"
+
+#: public/index.html:73
+msgid "Rabbit Chase:"
+msgstr "Rabbit Chase:"
+
+#: public/index.html:75
+msgid "Off"
+msgstr "Av"
+
+#: public/index.html:76
+msgid "Score"
+msgstr "Poäng"
+
+#: public/index.html:77
+msgid "Killer"
+msgstr "Dödare"
+
+#: public/index.html:78
+msgid "Random"
+msgstr "Slumpmässig"
+
+#: public/index.html:84
+msgid "Jumping"
+msgstr "Hoppa"
+
+#: public/index.html:91
+msgid "Playing Limit:"
+msgstr "Spelargräns:"
+
+#: public/index.html:101
+msgid "Upload Map:"
+msgstr "Ladda upp karta:"
+
+#: public/index.html:103 public/index.html:108
+msgid "Upload"
+msgstr "Ladda upp"
+
+#: public/index.html:106
+msgid "Upload Replay:"
+msgstr "Ladda upp repris:"
+
+#: public/index.html:113
+msgid "Save Recording:"
+msgstr "Spara inspelning:"
+
+#: public/index.html:114
+msgid "name"
+msgstr "namn"
+
+#: public/index.html:115
+msgid "all"
+msgstr "alla"
+
+#: public/index.html:116
+msgid "Save"
+msgstr "Spara"
+
+#: public/index.html:122
+msgid "Delete Upload:"
+msgstr "Ta bort uppladdning:"
+
+#: public/index.html:124
+msgid "Delete"
+msgstr "Ta bort"
+
+#: public/index.html:128
+msgid "Time Limit:"
+msgstr "Tidsgräns:"
+
+#: public/index.html:137
+msgid "Manual Start (wait for /countdown)"
+msgstr "Manuell start (vänta på /countdown)"
+
+#: public/index.html:141
+msgid "Player Score Limit:"
+msgstr "Poänggräns per spelare:"
+
+#: public/index.html:148
+msgid "Team Score Limit:"
+msgstr "Poänggräns per lag:"
+
+#: public/index.html:157
+msgid "Bot Fill:"
+msgstr "Fyll med bottar:"
+
+#: public/index.html:164
+msgid "Bot Pilot:"
+msgstr "Bottpilot:"
+
+#: public/index.html:172
+msgid "Match Timer:"
+msgstr "Matchtimer:"
+
+#: public/index.html:173
+msgid "Start"
+msgstr "Starta"
+
+#: public/index.html:174
+msgid "Pause"
+msgstr "Pausa"
+
+#: public/index.html:175
+msgid "Resume"
+msgstr "Återuppta"
+
+#: public/index.html:176
+msgid "End Match"
+msgstr "Avsluta match"
+
+#: public/index.html:183
+msgid "List Server Key:"
+msgstr "Listserverns nyckel:"
+
+#: public/index.html:184
+msgid "paste key from /list-server"
+msgstr "klistra in nyckel från /list-server"
+
+#: public/index.html:185
+msgid "Set"
+msgstr "Ange"
+
+#: public/index.html:193
+msgid "Apply"
+msgstr "Verkställ"
+
+#: public/index.html:194 public/index.html:489
+msgid "Cancel"
+msgstr "Avbryt"
+
+#: public/index.html:208
+msgid "View"
+msgstr "Visa"
+
+#: public/index.html:210
+msgid "Running BZFlag servers"
+msgstr "BZFlag-servrar i drift"
+
+#: public/index.html:212 public/index.html:226 public/index.html:239
+msgid "Filter…"
+msgstr "Filtrera…"
+
+#: public/index.html:213
+msgid "Refresh"
+msgstr "Uppdatera"
+
+#: public/index.html:218 public/index.html:245
+msgid "Players"
+msgstr "Spelare"
+
+#: public/index.html:218
+msgid "Max"
+msgstr "Max"
+
+#: public/index.html:218 public/index.html:232
+msgid "Style"
+msgstr "Stil"
+
+#: public/index.html:219
+msgid "Title"
+msgstr "Titel"
+
+#: public/index.html:219
+msgid "Host"
+msgstr "Värd"
+
+#: public/index.html:219
+msgid "Port"
+msgstr "Port"
+
+#: public/index.html:224
+msgid "Local maps"
+msgstr "Lokala kartor"
+
+#: public/index.html:231 public/index.html:244
+msgid "File"
+msgstr "Fil"
+
+#: public/index.html:231
+msgid "Size"
+msgstr "Storlek"
+
+#: public/index.html:231
+msgid "Objects"
+msgstr "Objekt"
+
+#: public/index.html:232
+msgid "Faces"
+msgstr "Ytor"
+
+#: public/index.html:237
+msgid "Local replays"
+msgstr "Lokala repriser"
+
+#: public/index.html:244
+msgid "Date"
+msgstr "Datum"
+
+#: public/index.html:244
+msgid "Length"
+msgstr "Längd"
+
+#: public/index.html:245
+msgid "Map"
+msgstr "Karta"
+
+#: public/index.html:258 public/index.html:283
+msgid "Settings"
+msgstr "Inställningar"
+
+#: public/index.html:262 public/index.html:386
+msgid "Microphone off"
+msgstr "Mikrofon av"
+
+#: public/index.html:263
+msgid "Enter WebXR VR Mode"
+msgstr "Starta WebXR VR-läge"
+
+#: public/index.html:267
+msgid "Open Settings"
+msgstr "Öppna inställningar"
+
+#: public/index.html:271
+msgid "Hide the scoreboard and chat"
+msgstr "Dölj resultattavla och chatt"
+
+#: public/index.html:289
+msgid "Gamepad and VR controller rumble"
+msgstr "Vibration i handkontroll och VR-kontroll"
+
+#: public/index.html:291
+msgid "Install as an app"
+msgstr "Installera som app"
+
+#: public/index.html:293
+msgid "Show Debug Geometry"
+msgstr "Visa felsökningsgeometri"
+
+#: public/index.html:298
+msgid ""
+"Hunt: step through players and Clear with the arrows, select to mark, unmark "
+"or clear"
+msgstr ""
+"Jakt: bläddra mellan spelare och Rensa med pilarna, välj för att markera, "
+"avmarkera eller rensa"
+
+#: public/index.html:299
+msgid ""
+"Autopilot: choose None or a pilot with the arrows, select to turn it on or "
+"off"
+msgstr ""
+"Autopilot: välj Ingen eller en pilot med pilarna, välj för att slå på eller "
+"av den"
+
+#: public/index.html:303
+msgid "Copy a link back to this map, camera and position"
+msgstr "Kopiera en länk tillbaka till den här kartan, kameran och positionen"
+
+#: public/index.html:304
+msgid "Wireframe Mode"
+msgstr "Trådmodell"
+
+#: public/index.html:305
+msgid "Anaglyph 3D"
+msgstr "Anaglyf 3D"
+
+#: public/index.html:306
+msgid "Dynamic Lighting"
+msgstr "Dynamisk belysning"
+
+#: public/index.html:308
+msgid "Open Audio Settings"
+msgstr "Öppna ljudinställningar"
+
+#: public/index.html:315
+msgid "Audio Settings"
+msgstr "Ljudinställningar"
+
+#: public/index.html:317
+msgid ""
+"Each level runs from Off to 100%. Nearby voice uses your microphone only "
+"after you grant permission. Use B to toggle your microphone."
+msgstr ""
+"Varje nivå går från Av till 100%. Röst i närheten använder din mikrofon "
+"först när du har gett tillstånd. Använd B för att slå på/av mikrofonen."
+
+#: public/index.html:321
+msgid "Game volume"
+msgstr "Spelvolym"
+
+#: public/index.html:328
+msgid "Gameplay sound effects."
+msgstr "Ljudeffekter i spelet."
+
+#: public/index.html:331
+msgid "Voice volume"
+msgstr "Röstvolym"
+
+#: public/index.html:338
+msgid "How loud nearby players sound to you."
+msgstr "Hur högt spelare i närheten låter för dig."
+
+#: public/index.html:341
+msgid "Microphone volume"
+msgstr "Mikrofonvolym"
+
+#: public/index.html:348
+msgid "How loud you are to nearby players."
+msgstr "Hur högt du låter för spelare i närheten."
+
+#: public/index.html:351
+msgid "Voice channel"
+msgstr "Röstkanal"
+
+#: public/index.html:353
+msgid "All"
+msgstr "Alla"
+
+#: public/index.html:354
+msgid "Nearby"
+msgstr "I närheten"
+
+#: public/index.html:355
+msgid "Team"
+msgstr "Lag"
+
+#: public/index.html:357
+msgid "Players within earshot, whatever team they are on."
+msgstr "Spelare inom hörhåll, oavsett lag."
+
+#: public/index.html:360
+msgid "Microphone input"
+msgstr "Mikrofoningång"
+
+#: public/index.html:364
+msgid "Choose the microphone used for voice chat."
+msgstr "Välj mikrofonen som används för röstchatt."
+
+#: public/index.html:367
+msgid "Native audio processing"
+msgstr "Webbläsarens ljudbehandling"
+
+#: public/index.html:370
+msgid "Echo cancellation"
+msgstr "Ekoreducering"
+
+#: public/index.html:374
+msgid "Noise suppression"
+msgstr "Brusreducering"
+
+#: public/index.html:378
+msgid "Automatic gain control"
+msgstr "Automatisk nivåkontroll"
+
+#: public/index.html:380
+msgid "Native browser processing is enabled when supported."
+msgstr "Webbläsarens egen behandling är på där den stöds."
+
+#: public/index.html:385
+msgid "Enable microphone"
+msgstr "Slå på mikrofonen"
+
+#: public/index.html:390
+msgid "Microphone permission has not been requested."
+msgstr "Mikrofontillstånd har inte begärts."
+
+#: public/index.html:404
+msgid "Send"
+msgstr "Skicka"
+
+#: public/index.html:404
+msgid "Type a chat message, then send it"
+msgstr "Skriv ett chattmeddelande och skicka det"
+
+#: public/index.html:408
+msgid "ALL"
+msgstr "ALLA"
+
+#: public/index.html:409
+msgid "TEAM"
+msgstr "LAG"
+
+#: public/index.html:410
+msgid "ADMIN"
+msgstr "ADMIN"
+
+#: public/index.html:411
+msgid "SERVER"
+msgstr "SERVER"
+
+#: public/index.html:425
+msgid "Loading World"
+msgstr "Läser in världen"
+
+#: public/index.html:426
+msgid "Connecting render systems..."
+msgstr "Ansluter renderingssystem..."
+
+#: public/index.html:435 public/index.html:502
+msgid "Close"
+msgstr "Stäng"
+
+#: public/index.html:436
+msgid "A free 3D tank game in the browser that plays with BZFlag."
+msgstr ""
+"Ett gratis 3D-stridsvagnsspel i webbläsaren som spelar ihop med BZFlag."
+
+#: public/index.html:437 public/index.html:502
+msgid "Help"
+msgstr "Hjälp"
+
+#: public/index.html:437
+msgid "Servers"
+msgstr "Servrar"
+
+#: public/index.html:437
+msgid "Source"
+msgstr "Källkod"
+
+#: public/index.html:442
+msgid "Enter your name"
+msgstr "Ange ditt namn"
+
+#: public/index.html:447
+msgid "Motto (optional)"
+msgstr "Motto (valfritt)"
+
+#: public/index.html:455
+msgid "Server:"
+msgstr "Server:"
+
+#: public/index.html:459
+msgid "Team:"
+msgstr "Lag:"
+
+#: public/index.html:467
+msgid "Global login:"
+msgstr "Global inloggning:"
+
+# review: Mönster
+#: public/index.html:473
+msgid "Skin:"
+msgstr "Mönster:"
+
+#: public/index.html:477
+msgid "Choose Tank"
+msgstr "Välj stridsvagn"
+
+#: public/index.html:479
+msgid "Previous tank"
+msgstr "Föregående stridsvagn"
+
+#: public/index.html:484
+msgid "Next tank"
+msgstr "Nästa stridsvagn"
+
+#: public/index.html:488
+msgid "OK"
+msgstr "OK"
+
+#: public/index.html:490
+msgid "Default"
+msgstr "Standard"
+
+#: public/index.html:504
+msgid "Search help"
+msgstr "Sök i hjälpen"
+
+#: public/index.html:541
+msgid "Identify: lock a Guided Missile onto the tank in your sights"
+msgstr "Identifiera: lås en målsökande robot på stridsvagnen i siktet"
+
+#: public/index.html:542
+msgid "Drop flag"
+msgstr "Släpp flagga"
+
+#. TRANSLATORS: name of the R* flag; the abbreviation stays as it is
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "Red Team"
+msgstr "Rött lag"
+
+#. TRANSLATORS: name of the G* flag; the abbreviation stays as it is
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "Green Team"
+msgstr "Grönt lag"
+
+#. TRANSLATORS: name of the B* flag; the abbreviation stays as it is
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "Blue Team"
+msgstr "Blått lag"
+
+#. TRANSLATORS: name of the P* flag; the abbreviation stays as it is
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "Purple Team"
+msgstr "Lila lag"
+
+#. TRANSLATORS: name of the F flag; the abbreviation stays as it is
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "Rapid Fire"
+msgstr "Hög eldhastighet"
+
+#. TRANSLATORS: name of the MG flag; the abbreviation stays as it is
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "Machine Gun"
+msgstr "Maskingevär"
+
+#. TRANSLATORS: name of the GM flag; the abbreviation stays as it is
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "Guided Missile"
+msgstr "Målsökande robot"
+
+#. TRANSLATORS: name of the L flag; the abbreviation stays as it is
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "Laser"
+msgstr "Laser"
+
+#. TRANSLATORS: name of the R flag; the abbreviation stays as it is
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "Ricochet"
+msgstr "Rikoschett"
+
+#. TRANSLATORS: name of the SB flag; the abbreviation stays as it is
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "Super Bullet"
+msgstr "Superkula"
+
+#. TRANSLATORS: name of the IB flag; the abbreviation stays as it is
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "Invisible Bullet"
+msgstr "Osynliga skott"
+
+#. TRANSLATORS: name of the SW flag; the abbreviation stays as it is
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "Shock Wave"
+msgstr "Chockvåg"
+
+#. TRANSLATORS: name of the SH flag; the abbreviation stays as it is
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "Shield"
+msgstr "Sköld"
+
+#. TRANSLATORS: name of the V flag; the abbreviation stays as it is
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "High Speed"
+msgstr "Hög hastighet"
+
+#. TRANSLATORS: name of the QT flag; the abbreviation stays as it is
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "Quick Turn"
+msgstr "Snabb sväng"
+
+#. TRANSLATORS: name of the OO flag; the abbreviation stays as it is
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "Oscillation Overthruster"
+msgstr "Oscillation Overthruster"
+
+#. TRANSLATORS: name of the BU flag; the abbreviation stays as it is
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "Burrow"
+msgstr "Nedgrävning"
+
+#. TRANSLATORS: name of the PZ flag; the abbreviation stays as it is
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "Phantom Zone"
+msgstr "Fantomzon"
+
+#. TRANSLATORS: name of the A flag; the abbreviation stays as it is
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "Agility"
+msgstr "Smidighet"
+
+#. TRANSLATORS: name of the SR flag; the abbreviation stays as it is
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "Steamroller"
+msgstr "Ångvält"
+
+#. TRANSLATORS: name of the G flag; the abbreviation stays as it is
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "Genocide"
+msgstr "Massmord"
+
+#. TRANSLATORS: name of the ID flag; the abbreviation stays as it is
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "Identify"
+msgstr "Identifiera"
+
+#. TRANSLATORS: name of the US flag; the abbreviation stays as it is
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "Useless"
+msgstr "Oanvändbar"
+
+#. TRANSLATORS: name of the WG flag; the abbreviation stays as it is
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "Wings"
+msgstr "Vingar"
+
+#. TRANSLATORS: name of the T flag; the abbreviation stays as it is
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "Tiny"
+msgstr "Liten"
+
+#. TRANSLATORS: name of the N flag; the abbreviation stays as it is
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "Narrow"
+msgstr "Smal"
+
+#. TRANSLATORS: name of the RC flag; the abbreviation stays as it is
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "ReverseControls"
+msgstr "Omvänd styrning"
+
+#. TRANSLATORS: name of the FO flag; the abbreviation stays as it is
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "Forward Only"
+msgstr "Endast framåt"
+
+#. TRANSLATORS: name of the RO flag; the abbreviation stays as it is
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "ReverseOnly"
+msgstr "Endast bakåt"
+
+#. TRANSLATORS: name of the LT flag; the abbreviation stays as it is
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "Left Turn Only"
+msgstr "Endast vänstersväng"
+
+#. TRANSLATORS: name of the RT flag; the abbreviation stays as it is
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "Right Turn Only"
+msgstr "Endast högersväng"
+
+#. TRANSLATORS: name of the BY flag; the abbreviation stays as it is
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "Bouncy"
+msgstr "Studsig"
+
+#. TRANSLATORS: name of the TR flag; the abbreviation stays as it is
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "Trigger Happy"
+msgstr "Skjutglad"
+
+#. TRANSLATORS: name of the M flag; the abbreviation stays as it is
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "Momentum"
+msgstr "Tröghet"
+
+#. TRANSLATORS: name of the NJ flag; the abbreviation stays as it is
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "No Jumping"
+msgstr "Ingen hoppning"
+
+#. TRANSLATORS: name of the O flag; the abbreviation stays as it is
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "Obesity"
+msgstr "Förstoring"
+
+#. TRANSLATORS: name of the CB flag; the abbreviation stays as it is
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "Colorblindness"
+msgstr "Färgblindhet"
+
+#. TRANSLATORS: name of the B flag; the abbreviation stays as it is
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "Blindness"
+msgstr "Blindhet"
+
+#. TRANSLATORS: name of the ST flag; the abbreviation stays as it is
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "Stealth"
+msgstr "Osynlig för radar"
+
+#. TRANSLATORS: name of the CL flag; the abbreviation stays as it is
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "Cloaking"
+msgstr "Osynlighet"
+
+#. TRANSLATORS: name of the MQ flag; the abbreviation stays as it is
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "Masquerade"
+msgstr "Maskerad"
+
+#. TRANSLATORS: name of the SE flag; the abbreviation stays as it is
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "Seer"
+msgstr "Siare"
+
+#. TRANSLATORS: name of the TH flag; the abbreviation stays as it is
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "Thief"
+msgstr "Tjuv"
+
+#. TRANSLATORS: name of the JM flag; the abbreviation stays as it is
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "Jamming"
+msgstr "Radarstörning"
+
+#. TRANSLATORS: name of the WA flag; the abbreviation stays as it is
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "Wide Angle"
+msgstr "Vidvinkel"
+
+#. TRANSLATORS: what the R* flag (Red Team) does
+#: public/js/flags.mjs public/js/teams.mjs
+msgid ""
+"If it's yours, prevent other teams from taking it. If it's not take it to "
+"your base to capture it!"
+msgstr ""
+"Om den är din, hindra andra lag från att ta den. Om inte, ta den till din "
+"bas för att erövra den!"
+
+#. TRANSLATORS: what the F flag (Rapid Fire) does
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "Shoots more often.  Shells go faster but not as far."
+msgstr "Skjuter oftare. Granaterna går snabbare men inte lika långt."
+
+#. TRANSLATORS: what the MG flag (Machine Gun) does
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "Very fast reload and very short range."
+msgstr "Mycket snabb omladdning och mycket kort räckvidd."
+
+#. TRANSLATORS: what the GM flag (Guided Missile) does
+#: public/js/flags.mjs public/js/teams.mjs
+msgid ""
+"Shots track a target.  Lock on with right button.  Can lock on or retarget "
+"after firing."
+msgstr ""
+"Skotten följer ett mål. Lås med höger knapp. Kan låsa eller byta mål efter "
+"avfyrning."
+
+#. TRANSLATORS: what the L flag (Laser) does
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "Shoots a laser.  Infinite speed and range but long reload time."
+msgstr ""
+"Skjuter en laser. Oändlig hastighet och räckvidd men lång omladdningstid."
+
+#. TRANSLATORS: what the R flag (Ricochet) does
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "Shots bounce off walls.  Don't shoot yourself!"
+msgstr "Skotten studsar mot väggar. Skjut inte dig själv!"
+
+#. TRANSLATORS: what the SB flag (Super Bullet) does
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "Shoots through buildings.  Can kill Phantom Zone."
+msgstr "Skjuter genom byggnader. Kan döda stridsvagnar i fantomzonen."
+
+#. TRANSLATORS: what the IB flag (Invisible Bullet) does
+#: public/js/flags.mjs public/js/teams.mjs
+msgid ""
+"Your shots don't appear on other radars.  Can still see them out window."
+msgstr ""
+"Dina skott syns inte på andras radar. De syns fortfarande genom fönstret."
+
+#. TRANSLATORS: what the SW flag (Shock Wave) does
+#: public/js/flags.mjs public/js/teams.mjs
+msgid ""
+"Firing destroys all tanks nearby.  Don't kill teammates!  Can kill tanks on/"
+"in buildings."
+msgstr ""
+"Avfyrning förstör alla stridsvagnar i närheten. Döda inte lagkamrater! "
+"Träffar även stridsvagnar på/i byggnader."
+
+#. TRANSLATORS: what the SH flag (Shield) does
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "Getting hit only drops flag.  Flag flies an extra-long time."
+msgstr "En träff tappar bara flaggan. Flaggan flyger extra länge."
+
+#. TRANSLATORS: what the V flag (High Speed) does
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "Tank moves faster.  Outrun bad guys."
+msgstr "Stridsvagnen kör snabbare. Spring ifrån skurkarna."
+
+#. TRANSLATORS: what the QT flag (Quick Turn) does
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "Tank turns faster.  Good for dodging."
+msgstr "Stridsvagnen svänger snabbare. Bra för att undvika skott."
+
+#. TRANSLATORS: what the OO flag (Oscillation Overthruster) does
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "Can drive through buildings.  Can't back up or shoot while inside."
+msgstr "Kan köra genom byggnader. Kan inte backa eller skjuta inuti dem."
+
+#. TRANSLATORS: what the BU flag (Burrow) does
+#: public/js/flags.mjs public/js/teams.mjs
+msgid ""
+"Tank burrows underground, impervious to normal shots, but can be steamrolled "
+"by anyone!"
+msgstr ""
+"Stridsvagnen gräver ner sig, immun mot vanliga skott, men vem som helst kan "
+"köra över den!"
+
+#. TRANSLATORS: what the PZ flag (Phantom Zone) does
+#: public/js/flags.mjs public/js/teams.mjs
+msgid ""
+"Teleporting toggles Zoned effect.  Zoned tank can drive through buildings.  "
+"Zoned tank shoots Zoned bullets and can't be shot (except by superbullet, "
+"shock wave, and other Zoned tanks)."
+msgstr ""
+"Teleportering slår på eller av zoneffekten. En stridsvagn i zonen kan köra "
+"genom byggnader. Den skjuter zonskott och kan inte träffas (utom av "
+"superkula, chockvåg och andra stridsvagnar i zonen)."
+
+#. TRANSLATORS: what the A flag (Agility) does
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "Tank is quick and nimble making it easier to dodge."
+msgstr "Stridsvagnen är snabb och vig, så det är lättare att undvika skott."
+
+#. TRANSLATORS: what the SR flag (Steamroller) does
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "Destroys tanks you touch but you have to get really close."
+msgstr "Förstör stridsvagnar du rör vid, men du måste komma riktigt nära."
+
+#. TRANSLATORS: what the G flag (Genocide) does
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "Killing one tank kills that tank's whole team."
+msgstr "Dödar du en stridsvagn dödar du hela dess lag."
+
+#. TRANSLATORS: what the JP flag (Jumping) does
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "Tank can jump.  Use Tab key.  Can't steer in the air."
+msgstr ""
+"Stridsvagnen kan hoppa. Använd Tab-tangenten. Går inte att styra i luften."
+
+#. TRANSLATORS: what the ID flag (Identify) does
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "Identifies type of nearest flag."
+msgstr "Identifierar typen av närmaste flagga."
+
+#. TRANSLATORS: what the US flag (Useless) does
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "You have found the useless flag. Use it wisely."
+msgstr "Du har hittat den oanvändbara flaggan. Använd den klokt."
+
+#. TRANSLATORS: what the WG flag (Wings) does
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "Tank can drive in air."
+msgstr "Stridsvagnen kan köra i luften."
+
+#. TRANSLATORS: what the T flag (Tiny) does
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "Tank is small and can get through small openings.  Very hard to hit."
+msgstr ""
+"Stridsvagnen är liten och tar sig genom små öppningar. Mycket svår att "
+"träffa."
+
+#. TRANSLATORS: what the N flag (Narrow) does
+#: public/js/flags.mjs public/js/teams.mjs
+msgid ""
+"Tank is super thin.  Very hard to hit from front but is normal size from "
+"side.  Can get through small openings."
+msgstr ""
+"Stridsvagnen är supertunn. Mycket svår att träffa framifrån men normalstor "
+"från sidan. Tar sig genom små öppningar."
+
+#. TRANSLATORS: what the RC flag (ReverseControls) does
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "Tank driving controls are reversed."
+msgstr "Stridsvagnens styrning är omvänd."
+
+#. TRANSLATORS: what the FO flag (Forward Only) does
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "Can't drive in reverse."
+msgstr "Kan inte backa."
+
+#. TRANSLATORS: what the RO flag (ReverseOnly) does
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "Can't drive forward."
+msgstr "Kan inte köra framåt."
+
+#. TRANSLATORS: what the LT flag (Left Turn Only) does
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "Can't turn right."
+msgstr "Kan inte svänga höger."
+
+#. TRANSLATORS: what the RT flag (Right Turn Only) does
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "Can't turn left."
+msgstr "Kan inte svänga vänster."
+
+#. TRANSLATORS: what the BY flag (Bouncy) does
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "Tank can't stop bouncing."
+msgstr "Stridsvagnen kan inte sluta studsa."
+
+#. TRANSLATORS: what the TR flag (Trigger Happy) does
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "Tank can't stop firing."
+msgstr "Stridsvagnen kan inte sluta skjuta."
+
+#. TRANSLATORS: what the M flag (Momentum) does
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "Tank has inertia.  Acceleration is limited."
+msgstr "Stridsvagnen är trög. Accelerationen är begränsad."
+
+#. TRANSLATORS: what the NJ flag (No Jumping) does
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "Tank can't jump."
+msgstr "Stridsvagnen kan inte hoppa."
+
+#. TRANSLATORS: what the O flag (Obesity) does
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "Tank becomes very large.  Can't fit through teleporters."
+msgstr "Stridsvagnen blir mycket stor. Får inte plats genom teleportrar."
+
+#. TRANSLATORS: what the CB flag (Colorblindness) does
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "Can't tell team colors.  Don't shoot teammates!"
+msgstr "Kan inte skilja lagfärger åt. Skjut inte lagkamrater!"
+
+#. TRANSLATORS: what the B flag (Blindness) does
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "Can't see out window.  Radar still works."
+msgstr "Kan inte se genom fönstret. Radarn fungerar fortfarande."
+
+#. TRANSLATORS: what the ST flag (Stealth) does
+#: public/js/flags.mjs public/js/teams.mjs
+msgid ""
+"Tank is invisible on radar.  Shots are still visible.  Sneak up behind "
+"enemies!"
+msgstr ""
+"Stridsvagnen är osynlig på radarn. Skotten syns fortfarande. Smyg dig på "
+"fiender bakifrån!"
+
+#. TRANSLATORS: what the CL flag (Cloaking) does
+#: public/js/flags.mjs public/js/teams.mjs
+msgid ""
+"Tank is invisible out window.  Shots are still visible.  Sneak up behind "
+"enemies!"
+msgstr ""
+"Stridsvagnen är osynlig genom fönstret. Skotten syns fortfarande. Smyg dig "
+"på fiender bakifrån!"
+
+#. TRANSLATORS: what the MQ flag (Masquerade) does
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "In opponent's hud, you appear as a teammate."
+msgstr "I motståndarens HUD ser du ut som en lagkamrat."
+
+#. TRANSLATORS: what the SE flag (Seer) does
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "See stealthed, cloaked and masquerading tanks as normal."
+msgstr "Ser radarosynliga, osynliga och maskerade stridsvagnar som vanligt."
+
+#. TRANSLATORS: what the TH flag (Thief) does
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "Steal flags.  Small and fast but can't kill."
+msgstr "Stjäl flaggor. Liten och snabb men kan inte döda."
+
+#. TRANSLATORS: what the JM flag (Jamming) does
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "Radar doesn't work.  Can still see."
+msgstr "Radarn fungerar inte. Kan fortfarande se."
+
+#. TRANSLATORS: what the WA flag (Wide Angle) does
+#: public/js/flags.mjs public/js/teams.mjs
+msgid ""
+"Fish-eye lens distorts view.  bzo leaves the view alone, so this one only "
+"costs you the time to shake it off."
+msgstr ""
+"En fisheyelins förvränger sikten. bzo låter sikten vara, så den här kostar "
+"dig bara tiden det tar att bli av med den."
+
+#. TRANSLATORS: a team, or the team choice
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "Automatic"
+msgstr "Automatisk"
+
+#. TRANSLATORS: a team, or the team choice
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "Rogue"
+msgstr "Laglös"
+
+#. TRANSLATORS: a team, or the team choice
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "Observer"
+msgstr "Åskådare"
+
+#. TRANSLATORS: a team, or the team choice
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "Map Viewer"
+msgstr "Kartvisare"
+
+#. TRANSLATORS: a team, or the team choice
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "Rabbit"
+msgstr "Kanin"
+
+#. TRANSLATORS: a team, or the team choice
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "Hunter"
+msgstr "Jägare"
+
+#. TRANSLATORS: a team named inside a sentence, lower case where the language allows
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "automatic"
+msgstr "automatisk"
+
+#. TRANSLATORS: a team named inside a sentence, lower case where the language allows
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "rogue"
+msgstr "laglös"
+
+#. TRANSLATORS: a team named inside a sentence, lower case where the language allows
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "observer"
+msgstr "åskådare"
+
+#. TRANSLATORS: a team named inside a sentence, lower case where the language allows
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "mapviewer"
+msgstr "kartvisare"
+
+#. TRANSLATORS: a team named inside a sentence, lower case where the language allows
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "red"
+msgstr "röda"
+
+#. TRANSLATORS: a team named inside a sentence, lower case where the language allows
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "blue"
+msgstr "blå"
+
+#. TRANSLATORS: a team named inside a sentence, lower case where the language allows
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "green"
+msgstr "gröna"
+
+#. TRANSLATORS: a team named inside a sentence, lower case where the language allows
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "purple"
+msgstr "lila"
+
+#. TRANSLATORS: a team named inside a sentence, lower case where the language allows
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "rabbit"
+msgstr "kanin"
+
+#. TRANSLATORS: a team named inside a sentence, lower case where the language allows
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "hunter"
+msgstr "jägare"
+
+#. TRANSLATORS: the name of this language, written in it
+msgid "cs_CZ"
+msgstr ""
+
+#. TRANSLATORS: the name of this language, written in it
+msgid "da"
+msgstr ""
+
+#. TRANSLATORS: the name of this language, written in it
+msgid "de"
+msgstr ""
+
+#. TRANSLATORS: the name of this language, written in it
+msgid "en_US_l33t"
+msgstr ""
+
+#. TRANSLATORS: the name of this language, written in it
+msgid "en_US_redneck"
+msgstr ""
+
+#. TRANSLATORS: the name of this language, written in it
+msgid "es"
+msgstr ""
+
+#. TRANSLATORS: the name of this language, written in it
+msgid "fr"
+msgstr ""
+
+#. TRANSLATORS: the name of this language, written in it
+msgid "it"
+msgstr ""
+
+#. TRANSLATORS: the name of this language, written in it
+msgid "ja"
+msgstr ""
+
+#. TRANSLATORS: the name of this language, written in it
+msgid "ko"
+msgstr ""
+
+#. TRANSLATORS: the name of this language, written in it
+msgid "lt"
+msgstr ""
+
+#. TRANSLATORS: the name of this language, written in it
+msgid "nl"
+msgstr ""
+
+#. TRANSLATORS: the name of this language, written in it
+msgid "pt"
+msgstr ""
+
+#. TRANSLATORS: the name of this language, written in it
+msgid "ru"
+msgstr ""
+
+#. TRANSLATORS: the name of this language, written in it
+msgid "sk"
+msgstr ""
+
+#. TRANSLATORS: the name of this language, written in it
+msgid "sv"
+msgstr "Svenska"
+
+#. TRANSLATORS: the name of this language, written in it
+msgid "th"
+msgstr ""
+
+#. TRANSLATORS: the name of this language, written in it
+msgid "tlh"
+msgstr ""
+
+#. TRANSLATORS: the name of this language, written in it
+msgid "zh_CN"
+msgstr ""
+
+#. TRANSLATORS: the name of this language, written in it
+msgid "zh_TW"
+msgstr ""
+
+#: public/js/client.js:43
+msgid "Chat"
+msgstr "Chatt"
+
+#: public/js/client.js:44
+msgid "Server"
+msgstr "Server"
+
+#: public/js/client.js:45
+msgid "Misc"
+msgstr "Övrigt"
+
+#: public/js/client.js:46
+msgid "Debug"
+msgstr "Felsökning"
+
+#: public/js/client.js:868
+msgid "unlimited"
+msgstr "obegränsat"
+
+#: public/js/client.js:870
+msgid "{count} left"
+msgstr "{count} kvar"
+
+#: public/js/client.js:982
+msgid "this is the designated list server"
+msgstr "detta är den utsedda listservern"
+
+#. TRANSLATORS: listServerUrl is a server.json setting; keep it as written
+#: public/js/client.js:985
+msgid "disabled (no listServerUrl)"
+msgstr "avstängd (ingen listServerUrl)"
+
+#: public/js/client.js:987
+msgid "reporting to {url}: key configured"
+msgstr "rapporterar till {url}: nyckel konfigurerad"
+
+#: public/js/client.js:988
+msgid "reporting to {url}: no key yet"
+msgstr "rapporterar till {url}: ingen nyckel än"
+
+#: public/js/client.js:1010
+msgid "{team} won the game"
+msgstr "{team} vann spelet"
+
+#: public/js/client.js:1015
+msgid "{player} won the game"
+msgstr "{player} vann spelet"
+
+#: public/js/client.js:1236
+msgid "Team: {team}"
+msgstr "Lag: {team}"
+
+#: public/js/client.js:1363
+msgid "watching {server}"
+msgstr "tittar på {server}"
+
+#: public/js/client.js:1365 public/js/client.js:9922
+msgid "replay {name}"
+msgstr "repris {name}"
+
+#: public/js/client.js:1375
+msgid "local {map}"
+msgstr "lokal {map}"
+
+#: public/js/client.js:1375
+msgid "This server"
+msgstr "Den här servern"
+
+#: public/js/client.js:1443
+msgid "Server: {server}"
+msgstr "Server: {server}"
+
+#: public/js/client.js:1498
+msgid "Sign in & Play"
+msgstr "Logga in och spela"
+
+#: public/js/client.js:1500
+msgid ""
+"Playing here needs a bzflag.org global login. This signs you in, then joins "
+"on the team you picked."
+msgstr ""
+"För att spela här behöver du en global inloggning på bzflag.org. Den loggar "
+"in dig och går sedan med i laget du valde."
+
+#: public/js/client.js:1613 public/js/client.js:1631
+msgid "a tank"
+msgstr "en stridsvagn"
+
+#: public/js/client.js:1762
+msgid "You are now the rabbit."
+msgstr "Du är nu kaninen."
+
+#: public/js/client.js:1768
+msgid "{player} is now the rabbit"
+msgstr "{player} är nu kaninen"
+
+#: public/js/client.js:1779
+msgid "operation failed"
+msgstr "åtgärden misslyckades"
+
+#: public/js/client.js:1779
+msgid "Voice error: {error}"
+msgstr "Röstfel: {error}"
+
+#: public/js/client.js:2284
+msgid "Default microphone"
+msgstr "Standardmikrofon"
+
+#: public/js/client.js:2292 public/js/voice.js:1218
+msgid "Microphone"
+msgstr "Mikrofon"
+
+#: public/js/client.js:2325 public/js/client.js:2340
+msgid "Receive only"
+msgstr "Endast mottagning"
+
+#: public/js/client.js:2327 public/js/client.js:2366
+msgid "Microphone on"
+msgstr "Mikrofon på"
+
+#: public/js/client.js:2329
+msgid "Permission denied"
+msgstr "Tillstånd nekat"
+
+#: public/js/client.js:2331 public/js/client.js:2333
+msgid "Microphone unavailable"
+msgstr "Mikrofon ej tillgänglig"
+
+#: public/js/client.js:2341
+msgid "Mic blocked"
+msgstr "Mikrofon blockerad"
+
+#: public/js/client.js:2342
+msgid "Mic unavailable"
+msgstr "Ingen mikrofon"
+
+#: public/js/client.js:2343
+msgid "Disable Mic"
+msgstr "Stäng av mikrofon"
+
+#: public/js/client.js:2343
+msgid "Enable Mic"
+msgstr "Slå på mikrofon"
+
+#: public/js/client.js:2352
+msgid "{action} - {channel}"
+msgstr "{action} - {channel}"
+
+#: public/js/client.js:2353
+msgid "{channel} voice channel, {status}"
+msgstr "Röstkanal {channel}, {status}"
+
+#: public/js/client.js:2361
+msgid "Microphone permission granted"
+msgstr "Mikrofontillstånd beviljat"
+
+#: public/js/client.js:2374
+msgid "Microphone is transmitting on the {channel} channel."
+msgstr "Mikrofonen sänder på kanalen {channel}."
+
+#: public/js/client.js:2375
+msgid "Microphone permission granted; transmission is off."
+msgstr "Mikrofontillstånd beviljat; sändning är av."
+
+#: public/js/client.js:2377
+msgid "Microphone permission was denied by the browser."
+msgstr "Webbläsaren nekade mikrofontillstånd."
+
+#: public/js/client.js:2379
+msgid "Microphone capture is unavailable in this browser or context."
+msgstr ""
+"Mikrofoninspelning är inte tillgänglig i den här webbläsaren eller miljön."
+
+#: public/js/client.js:2392
+msgid "Voice operation failed."
+msgstr "Röståtgärden misslyckades."
+
+#: public/js/client.js:2639
+msgid ""
+"A proxied connection tells the target which bzo it came through, and nothing "
+"else. Your own motto is used on this server."
+msgstr ""
+"En proxyanslutning berättar bara för målet vilken bzo den kom via, inget "
+"annat. Ditt eget motto används på den här servern."
+
+#: public/js/client.js:3065
+msgid "Preparing battlefield..."
+msgstr "Förbereder slagfältet..."
+
+#: public/js/client.js:3066
+msgid "Building world geometry"
+msgstr "Bygger världsgeometri"
+
+#: public/js/client.js:3075
+msgid "Placing obstacles..."
+msgstr "Placerar hinder..."
+
+#: public/js/client.js:3076
+msgid "Synchronizing world objects"
+msgstr "Synkroniserar världsobjekt"
+
+#: public/js/client.js:3104
+msgid "Loading vehicle systems..."
+msgstr "Läser in fordonssystem..."
+
+#: public/js/client.js:3105
+msgid "Preparing tank models, textures, and audio"
+msgstr "Förbereder stridsvagnsmodeller, texturer och ljud"
+
+#: public/js/client.js:3122
+msgid "Assembling tanks..."
+msgstr "Monterar stridsvagnar..."
+
+#: public/js/client.js:3123
+msgid "Creating player vehicles"
+msgstr "Skapar spelarfordon"
+
+#: public/js/client.js:3136
+msgid "Entering battle..."
+msgstr "Går ut i strid..."
+
+#: public/js/client.js:3136
+msgid "Render ready"
+msgstr "Rendering klar"
+
+#: public/js/client.js:3137
+msgid "Joining game"
+msgstr "Går med i spelet"
+
+#: public/js/client.js:3137
+msgid "Waiting for player name"
+msgstr "Väntar på spelarnamn"
+
+#. TRANSLATORS: prefix on a chat line this client wrote itself, not the server
+#: public/js/client.js:3408
+msgid "local: {message}"
+msgstr "lokalt: {message}"
+
+#: public/js/client.js:3415
+msgid "client version: {version}"
+msgstr "klientversion: {version}"
+
+#: public/js/client.js:3416
+msgid "copyright: {copyright}"
+msgstr "upphovsrätt: {copyright}"
+
+#: public/js/client.js:3417
+msgid "license: {license} ({url})"
+msgstr "licens: {license} ({url})"
+
+#: public/js/client.js:3564
+msgid "Usage: {command}"
+msgstr "Användning: {command}"
+
+#. TRANSLATORS: /silence and - stay as written
+#: public/js/client.js:3576
+msgid "Usage: /silence <callsign>|-"
+msgstr "Användning: /silence <användarnamn>|-"
+
+#: public/js/client.js:3583
+msgid "Silencing every unauthenticated player"
+msgstr "Tystar alla oautentiserade spelare"
+
+#: public/js/client.js:3589
+msgid "Silenced \"{callsign}\""
+msgstr "Tystade \"{callsign}\""
+
+#. TRANSLATORS: /unsilence and - stay as written
+#: public/js/client.js:3596
+msgid "Usage: /unsilence <callsign>|-"
+msgstr "Användning: /unsilence <användarnamn>|-"
+
+#: public/js/client.js:3603
+msgid "No longer silencing unauthenticated players"
+msgstr "Tystar inte längre oautentiserade spelare"
+
+#: public/js/client.js:3609
+msgid "Unsilenced \"{callsign}\""
+msgstr "Slutade tysta \"{callsign}\""
+
+#: public/js/client.js:3666
+msgid "Highlight cleared"
+msgstr "Markering rensad"
+
+#: public/js/client.js:3668
+msgid "Invalid highlight pattern: {pattern}"
+msgstr "Ogiltigt markeringsmönster: {pattern}"
+
+#: public/js/client.js:3670
+msgid "Highlighting \"{pattern}\""
+msgstr "Markerar \"{pattern}\""
+
+#: public/js/client.js:3694
+msgid "Saved messages to: {filename}"
+msgstr "Sparade meddelanden i: {filename}"
+
+#: public/js/client.js:3702
+msgid "Client-side commands: {commands}"
+msgstr "Klientkommandon: {commands}"
+
+#: public/js/client.js:3850
+msgid "No recent direct sender to reply to"
+msgstr "Ingen nylig avsändare att svara"
+
+#: public/js/client.js:3858
+msgid "No nemesis target available"
+msgstr "Inget nemesis-mål tillgängligt"
+
+#: public/js/client.js:4052 public/js/input.js:1509
+msgid "Show Operator Panel (O)"
+msgstr "Visa operatörspanel (O)"
+
+#: public/js/client.js:4053
+msgid ""
+"Operator: sign in with a bzflag.org global callsign that the server grants "
+"admin to"
+msgstr ""
+"Operatör: logga in med ett globalt bzflag.org-användarnamn som servern ger "
+"adminrätt"
+
+#: public/js/client.js:4094 public/js/client.js:4113
+msgid "Sign in"
+msgstr "Logga in"
+
+#: public/js/client.js:4097
+msgid "Global login for {server}"
+msgstr "Global inloggning för {server}"
+
+#: public/js/client.js:4098
+msgid ""
+"Sign in at bzflag.org to play on {server}. A login is needed for each "
+"target, and bzo never sees your password."
+msgstr ""
+"Logga in på bzflag.org för att spela på {server}. Varje mål kräver en "
+"inloggning, och bzo ser aldrig ditt lösenord."
+
+#: public/js/client.js:4106
+msgid "Signed in as {callsign}. Activate to sign out."
+msgstr "Inloggad som {callsign}. Aktivera för att logga ut."
+
+#: public/js/client.js:4108
+msgid "Signed in, and an admin on this server. Click to sign out."
+msgstr "Inloggad och admin på den här servern. Klicka för att logga ut."
+
+#: public/js/client.js:4109
+msgid "Signed in with a bzflag.org global callsign. Click to sign out."
+msgstr ""
+"Inloggad med ett globalt bzflag.org-användarnamn. Klicka för att logga ut."
+
+#: public/js/client.js:4116
+msgid "Global login: sign in"
+msgstr "Global inloggning: logga in"
+
+#: public/js/client.js:4117
+msgid ""
+"Sign in at bzflag.org with a global callsign. bzo never sees your password."
+msgstr ""
+"Logga in på bzflag.org med ett globalt användarnamn. bzo ser aldrig ditt "
+"lösenord."
+
+#: public/js/client.js:4137
+msgid "Signing out leaves VR. Exit the headset session first."
+msgstr "Utloggning lämnar VR. Avsluta headset-sessionen först."
+
+#: public/js/client.js:4138
+msgid "Global login leaves VR. Exit the headset session first."
+msgstr "Global inloggning lämnar VR. Avsluta headset-sessionen först."
+
+#: public/js/client.js:4577 public/js/client.js:10145
+msgid "Fetching remote server's map..."
+msgstr "Hämtar fjärrserverns karta..."
+
+#: public/js/client.js:4737
+msgid "Pausing in {seconds}"
+msgstr "Pausar om {seconds}"
+
+#: public/js/client.js:4761 public/js/client.js:6433
+msgid "Self Destructing in {seconds}"
+msgstr "Självförstörelse om {seconds}"
+
+#: public/js/client.js:4843
+msgid "AutoPilot {pilot}: {intent}"
+msgstr "Autopilot {pilot}: {intent}"
+
+#: public/js/client.js:4844
+msgid "AutoPilot {pilot}"
+msgstr "Autopilot {pilot}"
+
+#: public/js/client.js:6435
+msgid "Self Destruct cancelled"
+msgstr "Självförstörelse avbruten"
+
+#: public/js/client.js:6594
+msgid "Hide Debug Labels"
+msgstr "Dölj felsökningsetiketter"
+
+#: public/js/client.js:6597
+msgid "Show Debug Labels"
+msgstr "Visa felsökningsetiketter"
+
+#: public/js/client.js:6614
+msgid "Disable Dynamic Lighting"
+msgstr "Stäng av dynamisk belysning"
+
+#: public/js/client.js:6615
+msgid "Enable Dynamic Lighting"
+msgstr "Slå på dynamisk belysning"
+
+#: public/js/client.js:6617
+msgid "Dynamic Lighting needs more shader uniforms than this browser reports"
+msgstr "Dynamisk belysning kräver fler shader-uniforms än webbläsaren anger"
+
+#: public/js/client.js:6626
+msgid "Disable Rumble"
+msgstr "Stäng av vibration"
+
+#: public/js/client.js:6627
+msgid "Enable Rumble"
+msgstr "Slå på vibration"
+
+#: public/js/client.js:6633
+msgid "Disable Anaglyph 3D"
+msgstr "Stäng av anaglyf 3D"
+
+#: public/js/client.js:6634
+msgid "Enable Anaglyph 3D"
+msgstr "Slå på anaglyf 3D"
+
+#: public/js/client.js:6637
+msgid "Anaglyph 3D is unavailable in VR mode"
+msgstr "Anaglyf 3D är inte tillgängligt i VR-läge"
+
+#: public/js/client.js:6646
+msgid "Hide Debug Geometry"
+msgstr "Dölj felsökningsgeometri"
+
+#: public/js/client.js:6723
+msgid "Confirm"
+msgstr "Bekräfta"
+
+#: public/js/client.js:6779
+msgid "Share View Link: only available while viewing a map"
+msgstr "Dela visningslänk: bara tillgänglig när du visar en karta"
+
+#: public/js/client.js:6784
+msgid "View link copied to clipboard"
+msgstr "Visningslänk kopierad till urklipp"
+
+#: public/js/client.js:6813
+msgid "WebXR: {mode}"
+msgstr "WebXR: {mode}"
+
+#: public/js/client.js:6819
+msgid "WebXR not supported on this device"
+msgstr "WebXR stöds inte på den här enheten"
+
+#: public/js/client.js:6824
+msgid "Requesting VR..."
+msgstr "Begär VR..."
+
+#: public/js/client.js:6827
+msgid "Error: Renderer not available"
+msgstr "Fel: Renderaren är inte tillgänglig"
+
+#: public/js/client.js:6840
+msgid "✓ WebXR VR Mode: ON"
+msgstr "✓ WebXR VR-läge: PÅ"
+
+#: public/js/client.js:6846
+msgid "✗ VR request failed - check server.log"
+msgstr "✗ VR-begäran misslyckades - se server.log"
+
+#: public/js/client.js:6848 public/js/client.js:17058
+msgid "WebXR VR Mode: OFF"
+msgstr "WebXR VR-läge: AV"
+
+#: public/js/client.js:7394
+msgid "3D renderer unavailable: {reason}"
+msgstr "3D-renderare inte tillgänglig: {reason}"
+
+#: public/js/client.js:7401
+msgid "3D renderer failed to initialize."
+msgstr "3D-renderaren kunde inte starta."
+
+#: public/js/client.js:7403
+msgid "Open the game in an external browser window for full WebGL support."
+msgstr "Öppna spelet i ett externt webbläsarfönster för fullt WebGL-stöd."
+
+#: public/js/client.js:7818
+msgid "Connected to server!"
+msgstr "Ansluten till servern!"
+
+#: public/js/client.js:7824
+msgid "Connected to server"
+msgstr "Ansluten till servern"
+
+#: public/js/client.js:7825
+msgid "Waiting for world state"
+msgstr "Väntar på världens tillstånd"
+
+#: public/js/client.js:7876
+msgid "Offline"
+msgstr "Offline"
+
+#: public/js/client.js:7876
+msgid "Cannot reach {host}"
+msgstr "Kan inte nå {host}"
+
+#: public/js/client.js:7877
+msgid "Trying again..."
+msgstr "Försöker igen..."
+
+#: public/js/client.js:7888
+msgid "Disconnected from server | Kills: {kills} | Deaths: {deaths}"
+msgstr "Frånkopplad från servern | Dödade: {kills} | Döda: {deaths}"
+
+#: public/js/client.js:7893
+msgid "Press a key, tap or pull a trigger to rejoin"
+msgstr ""
+"Tryck på en tangent, tryck på skärmen eller en avtryckare för att gå med igen"
+
+#: public/js/client.js:8053
+msgid "Server error: {error}"
+msgstr "Serverfel: {error}"
+
+#: public/js/client.js:8058
+msgid "Server: action completed successfully"
+msgstr "Server: åtgärden slutfördes"
+
+#: public/js/client.js:8137
+msgid "Operator Panel (v{version})"
+msgstr "Operatörspanel (v{version})"
+
+#: public/js/client.js:8554
+msgid "{player} joined"
+msgstr "{player} gick med"
+
+#: public/js/client.js:8599
+msgid "{player} left"
+msgstr "{player} lämnade"
+
+#: public/js/client.js:8615
+msgid "{callsign} not responding"
+msgstr "{callsign} svarar inte"
+
+#: public/js/client.js:8616
+msgid "{callsign} okay"
+msgstr "{callsign} okej"
+
+#: public/js/client.js:8730
+msgid "{player} grabbed {flag}"
+msgstr "{player} tog {flag}"
+
+#: public/js/client.js:8781
+msgid "{player} dropped {flag}"
+msgstr "{player} släppte {flag}"
+
+#: public/js/client.js:8872
+msgid "{player}: {pilot} taking controls"
+msgstr "{player}: {pilot} tar över styrningen"
+
+#: public/js/client.js:8873
+msgid "{player}: {pilot} releasing controls"
+msgstr "{player}: {pilot} släpper styrningen"
+
+#: public/js/client.js:8905
+msgid "{player} paused"
+msgstr "{player} pausade"
+
+#: public/js/client.js:8916
+msgid "{player} unpaused"
+msgstr "{player} fortsatte"
+
+#: public/js/client.js:9026
+msgid "Server forced a disconnect"
+msgstr "Servern bröt anslutningen"
+
+#: public/js/client.js:9032
+msgid "Server updated - reloading..."
+msgstr "Servern uppdaterad - laddar om..."
+
+#: public/js/client.js:9552
+msgid "Got flattened by {player}"
+msgstr "Blev tillplattad av {player}"
+
+#: public/js/client.js:9553
+msgid "Teammate hit with Genocide by {player}"
+msgstr "Lagkamrat träffad med Massmord av {player}"
+
+#: public/js/client.js:9554
+msgid "Got shot by {player}"
+msgstr "Blev skjuten av {player}"
+
+#: public/js/client.js:9556
+msgid "Got flattened by teammate {player}"
+msgstr "Blev tillplattad av lagkamraten {player}"
+
+#: public/js/client.js:9557
+msgid "Teammate hit with Genocide by teammate {player}"
+msgstr "Lagkamrat träffad med Massmord av lagkamraten {player}"
+
+#: public/js/client.js:9558
+msgid "Got shot by teammate {player}"
+msgstr "Blev skjuten av lagkamraten {player}"
+
+#: public/js/client.js:9594
+msgid "Your team flag was captured!"
+msgstr "Din lagflagga erövrades!"
+
+#: public/js/client.js:9596
+msgid "Time Expired - GAME OVER"
+msgstr "Tiden är ute - SPELET ÄR SLUT"
+
+#: public/js/client.js:9598
+msgid "Tank Self Destructed"
+msgstr "Stridsvagnen självförstördes"
+
+#: public/js/client.js:9600
+msgid "Tank Rusted"
+msgstr "Stridsvagnen rostade"
+
+#: public/js/client.js:9603 public/js/client.js:9607
+msgid "Killed by the server"
+msgstr "Dödad av servern"
+
+#: public/js/client.js:9634
+msgid "You killed {player}"
+msgstr "Du dödade {player}"
+
+#: public/js/client.js:9646
+msgid "{player} self-destructed"
+msgstr "{player} självförstördes"
+
+#: public/js/client.js:9650
+msgid "{player} fell in the water"
+msgstr "{player} föll i vattnet"
+
+#: public/js/client.js:9655
+msgid "{player}: {message}"
+msgstr "{player}: {message}"
+
+#: public/js/client.js:9658
+msgid "killed by the server"
+msgstr "dödad av servern"
+
+#: public/js/client.js:9664
+msgid "{player} was killed by the server"
+msgstr "{player} dödades av servern"
+
+#: public/js/client.js:9669
+msgid "{killer} killed {victim}"
+msgstr "{killer} dödade {victim}"
+
+#: public/js/client.js:9834
+msgid "You respawned!"
+msgstr "Du är tillbaka!"
+
+#: public/js/client.js:9921
+msgid "map {name}"
+msgstr "karta {name}"
+
+#: public/js/client.js:9926
+msgid "nothing uploaded"
+msgstr "inget uppladdat"
+
+#: public/js/client.js:9953 public/js/client.js:10428
+msgid "MOTD: {motd}"
+msgstr "MOTD: {motd}"
+
+#: public/js/client.js:10028
+msgid "{count} box"
+msgstr "{count} låda"
+
+#: public/js/client.js:10028
+msgid "{count} boxes"
+msgstr "{count} lådor"
+
+#: public/js/client.js:10029
+msgid "{count} pyramid"
+msgstr "{count} pyramid"
+
+#: public/js/client.js:10029
+msgid "{count} pyramids"
+msgstr "{count} pyramider"
+
+#: public/js/client.js:10030
+msgid "{count} mesh"
+msgstr "{count} mesh"
+
+#: public/js/client.js:10030
+msgid "{count} meshes"
+msgstr "{count} mesher"
+
+#: public/js/client.js:10035
+msgid "{count} base"
+msgstr "{count} bas"
+
+#: public/js/client.js:10035
+msgid "{count} bases"
+msgstr "{count} baser"
+
+#: public/js/client.js:10037
+msgid "{count} teleporter"
+msgstr "{count} teleporter"
+
+#: public/js/client.js:10037
+msgid "{count} teleporters"
+msgstr "{count} teleportrar"
+
+#: public/js/client.js:10040
+msgid "water"
+msgstr "vatten"
+
+#: public/js/client.js:10041
+msgid "weather"
+msgstr "väder"
+
+#: public/js/client.js:10042
+msgid "custom ground"
+msgstr "anpassad mark"
+
+#: public/js/client.js:10080 public/js/client.js:10159
+msgid "View {map}"
+msgstr "Visa {map}"
+
+#: public/js/client.js:10157
+msgid "{server} did not answer"
+msgstr "{server} svarade inte"
+
+#: public/js/client.js:10169
+msgid "Watch"
+msgstr "Titta"
+
+#: public/js/client.js:10170
+msgid "Watch the live game on {server}"
+msgstr "Titta på spelet live på {server}"
+
+#: public/js/client.js:10188 public/js/client.js:10196
+msgid "Re-import"
+msgstr "Importera igen"
+
+#: public/js/client.js:10192
+msgid "Importing…"
+msgstr "Importerar…"
+
+#: public/js/client.js:10235
+msgid "Loading map..."
+msgstr "Läser in karta..."
+
+#: public/js/client.js:10243
+msgid "Building world geometry..."
+msgstr "Bygger världsgeometri..."
+
+#: public/js/client.js:10307
+msgid "{count} watching now"
+msgstr "{count} tittar nu"
+
+#: public/js/client.js:10310
+msgid "Watch {name}"
+msgstr "Titta på {name}"
+
+#: public/js/client.js:10346
+msgid "That server's map could not be fetched"
+msgstr "Den serverns karta kunde inte hämtas"
+
+#: public/js/client.js:10364
+msgid "import failed"
+msgstr "importen misslyckades"
+
+#: public/js/client.js:10364
+msgid "Could not load that server's map: {reason}"
+msgstr "Kunde inte läsa in den serverns karta: {reason}"
+
+#: public/js/client.js:10562
+msgid "{team} Limit:"
+msgstr "Gräns för {team}:"
+
+#: public/js/client.js:10643
+msgid "No limit"
+msgstr "Ingen gräns"
+
+#: public/js/client.js:10734
+msgid "Restart"
+msgstr "Starta om"
+
+#: public/js/client.js:10738
+msgid "Starts a new game: every player reloads into the new settings"
+msgstr ""
+"Startar ett nytt spel: alla spelare laddas om med de nya inställningarna"
+
+#: public/js/client.js:10739
+msgid "Applies the staged changes"
+msgstr "Verkställer de förberedda ändringarna"
+
+#: public/js/client.js:11080
+msgid "Paused"
+msgstr "Pausad"
+
+#: public/js/client.js:11081
+msgid "Sealed"
+msgstr "Försluten"
+
+#: public/js/client.js:12006
+msgid "Already following someone"
+msgstr "Följer redan någon"
+
+#: public/js/client.js:12042 public/js/client.js:12162
+msgid "Looking at {player}"
+msgstr "Tittar på {player}"
+
+#: public/js/client.js:12146
+msgid "{player} locked on me"
+msgstr "{player} har låst på mig"
+
+#: public/js/client.js:12156
+msgid "Looking at nothing"
+msgstr "Tittar inte på någon"
+
+#: public/js/client.js:12162
+msgid "Locked on {player}"
+msgstr "Låst på {player}"
+
+#: public/js/client.js:12398
+msgid "Clear ({count})"
+msgstr "Rensa ({count})"
+
+#: public/js/client.js:12398
+msgid "Clear"
+msgstr "Rensa"
+
+#: public/js/client.js:12498
+msgid "SPOTTED: {player}"
+msgstr "UPPTÄCKT: {player}"
+
+#: public/js/client.js:12613 public/js/client.js:12619
+msgid "nobody"
+msgstr "ingen"
+
+#: public/js/client.js:12623
+msgid "Leader {who}"
+msgstr "Ledare: {who}"
+
+#: public/js/client.js:12625 public/js/client.js:12630
+msgid "Tracking {who}"
+msgstr "Bevakar {who}"
+
+#: public/js/client.js:12626
+msgid "Following {who}"
+msgstr "Följer {who}"
+
+#: public/js/client.js:12627
+msgid "Driving with {who}"
+msgstr "Åker med {who}"
+
+#: public/js/client.js:12632 public/js/hud.js:566 public/js/input.js:1387
+msgid "First Person"
+msgstr "Förstaperson"
+
+#: public/js/client.js:12633 public/js/hud.js:567 public/js/input.js:1388
+msgid "Third Person"
+msgstr "Tredjeperson"
+
+#: public/js/client.js:12634 public/js/hud.js:568 public/js/input.js:1389
+msgid "Overview"
+msgstr "Översikt"
+
+#: public/js/client.js:12635
+msgid "Roaming"
+msgstr "Fri kamera"
+
+#: public/js/client.js:12924 public/js/client.js:12998
+msgid "autopilot disabled"
+msgstr "autopilot av"
+
+#: public/js/client.js:12933
+msgid "autopilot not allowed on this server"
+msgstr "autopilot är inte tillåten på den här servern"
+
+#: public/js/client.js:12945
+msgid "{pilot} has the controls"
+msgstr "{pilot} har styrningen"
+
+#: public/js/client.js:12950
+msgid "You may not enable the Autopilot more than once every five seconds."
+msgstr "Du får inte slå på autopiloten mer än en gång var femte sekund."
+
+#: public/js/client.js:12955
+msgid "autopilot enabled"
+msgstr "autopilot på"
+
+#: public/js/client.js:12978
+msgid "Not allowed"
+msgstr "Inte tillåtet"
+
+#: public/js/client.js:12978 public/js/input.js:1092 public/js/input.js:1102
+#: public/js/input.js:1106
+msgid "Unavailable"
+msgstr "Inte tillgänglig"
+
+#: public/js/client.js:12981
+msgid "None"
+msgstr "Ingen"
+
+#: public/js/client.js:13803
+msgid "Zoned"
+msgstr "I fantomzonen"
+
+#: public/js/client.js:13803
+msgid "Unzoned"
+msgstr "Ute ur fantomzonen"
+
+#: public/js/client.js:14604 public/js/client.js:14621
+msgid "unidentified"
+msgstr "oidentifierad"
+
+#: public/js/client.js:14641
+msgid "unknown"
+msgstr "okänd"
+
+#: public/js/client.js:14652
+msgid ""
+"This server bounces every shot off walls, whatever flag fired it, so the "
+"Ricochet flag is not in play here."
+msgstr ""
+"Den här servern låter alla skott studsa mot väggar, oavsett vilken flagga "
+"som avfyrade dem, så Rikoschett-flaggan är inte med i spelet här."
+
+#: public/js/client.js:14653
+msgid "On this server only the Ricochet flag bounces shots off walls."
+msgstr ""
+"På den här servern är det bara Rikoschett-flaggan som låter skott studsa mot "
+"väggar."
+
+#: public/js/client.js:14720
+msgid "{flag} {release}"
+msgstr "{flag} {release}"
+
+#: public/js/client.js:14731
+msgid "Can't drop the flag while zoned"
+msgstr "Kan inte släppa flaggan i fantomzonen"
+
+#: public/js/client.js:14735
+msgid "Can't drop a flag while inside a building"
+msgstr "Kan inte släppa en flagga inne i en byggnad"
+
+#: public/js/client.js:14785
+msgid "in {seconds}s"
+msgstr "om {seconds} s"
+
+#: public/js/client.js:14786
+msgid "after {count} kill"
+msgstr "efter {count} dödad"
+
+#: public/js/client.js:14786
+msgid "after {count} kills"
+msgstr "efter {count} dödade"
+
+#: public/js/client.js:14787
+msgid "on the antidote"
+msgstr "på motgiftet"
+
+#: public/js/client.js:14788
+msgid "stays until it kills you"
+msgstr "sitter kvar tills den dödar dig"
+
+#: public/js/client.js:14789
+msgid "{first} or {second}"
+msgstr "{first} eller {second}"
+
+#: public/js/client.js:14790
+msgid "shakes off {ways}"
+msgstr "skakas av {ways}"
+
+#: public/js/client.js:14846
+msgid "Flag Alert!!!"
+msgstr "Flaggvarning!!!"
+
+#: public/js/client.js:14854
+msgid "Team Grab!!!"
+msgstr "Lagflagga tagen!!!"
+
+#: public/js/client.js:14870
+msgid "{thief} stole {victim}'s {flag} flag"
+msgstr "{thief} stal flaggan {flag} från {victim}"
+
+#: public/js/client.js:14901
+msgid "Closest Flag: {flag}"
+msgstr "Närmaste flagga: {flag}"
+
+#: public/js/client.js:14963
+msgid "{player} took their own flag into {team} territory"
+msgstr "{player} tog sin egen flagga in på territoriet för {team}"
+
+#: public/js/client.js:14971
+msgid "Don't capture your own flag!!!"
+msgstr "Erövra inte din egen flagga!!!"
+
+#: public/js/client.js:14977
+msgid "{player} captured the {team} flag"
+msgstr "{player} erövrade flaggan för {team}"
+
+#: public/js/client.js:16554 public/js/client.js:16555
+msgid "Exit WebXR VR Mode"
+msgstr "Avsluta WebXR VR-läge"
+
+#: public/js/flags.mjs:2091
+msgid "Team Flags"
+msgstr "Lagflaggor"
+
+#: public/js/flags.mjs:2092
+msgid "Good Flags"
+msgstr "Bra flaggor"
+
+#: public/js/flags.mjs:2093
+msgid "Bad Flags"
+msgstr "Dåliga flaggor"
+
+#: public/js/help.js:97
+msgid "Nothing found"
+msgstr "Inget hittades"
+
+#: public/js/help.js:114
+msgid "Help is unavailable: {error}"
+msgstr "Hjälpen är inte tillgänglig: {error}"
+
+#: public/js/hud.js:177
+msgid "Debug Labels: ON"
+msgstr "Felsökningsetiketter: PÅ"
+
+#: public/js/hud.js:177
+msgid "Debug Labels: OFF"
+msgstr "Felsökningsetiketter: AV"
+
+#: public/js/hud.js:281
+msgid "Show the scoreboard and chat"
+msgstr "Visa resultattavla och chatt"
+
+#: public/js/hud.js:554
+msgid "Disable Mouse Steering (M)"
+msgstr "Stäng av musstyrning (M)"
+
+#: public/js/hud.js:554
+msgid "Enable Mouse Steering (M)"
+msgstr "Slå på musstyrning (M)"
+
+#: public/js/hud.js:559
+msgid "Hide Debug HUD (`)"
+msgstr "Dölj felsöknings-HUD (`)"
+
+#: public/js/hud.js:559
+msgid "Show Debug HUD (`)"
+msgstr "Visa felsöknings-HUD (`)"
+
+#: public/js/hud.js:561
+msgid "Exit Fullscreen (F)"
+msgstr "Avsluta helskärm (F)"
+
+#: public/js/hud.js:561
+msgid "Toggle Fullscreen (F)"
+msgstr "Helskärm på/av (F)"
+
+#: public/js/hud.js:570
+msgid "Toggle Camera View (C)"
+msgstr "Byt kameravy (C)"
+
+#: public/js/hud.js:573
+msgid "Camera: {mode} (C)"
+msgstr "Kamera: {mode} (C)"
+
+#: public/js/hud.js:595
+msgid "Debug Mode: ON"
+msgstr "Felsökning: PÅ"
+
+#: public/js/hud.js:595
+msgid "Debug Mode: OFF"
+msgstr "Felsökning: AV"
+
+#: public/js/hud.js:758
+msgid "Red"
+msgstr "Röda"
+
+#: public/js/hud.js:759
+msgid "Green"
+msgstr "Gröna"
+
+#: public/js/hud.js:760
+msgid "Blue"
+msgstr "Blå"
+
+#: public/js/hud.js:761
+msgid "Purple"
+msgstr "Lila"
+
+#: public/js/hud.js:814
+msgid "GAME OVER"
+msgstr "SPELET ÄR SLUT"
+
+#: public/js/hud.js:831
+msgid "Score (W-L) Size"
+msgstr "Poäng (V-F) Antal"
+
+#: public/js/hud.js:931 public/js/hud.js:975
+msgid "K-D"
+msgstr "D-D"
+
+#: public/js/hud.js:931 public/js/hud.js:975
+msgid "Kills-Deaths"
+msgstr "Dödade-döda"
+
+#: public/js/hud.js:932 public/js/hud.js:1394
+msgid "Rank {score}"
+msgstr "Rang {score}"
+
+#: public/js/hud.js:970 public/js/hud.js:1340
+msgid "Player"
+msgstr "Spelare"
+
+#: public/js/hud.js:979
+msgid "1-on-1"
+msgstr "1 mot 1"
+
+#: public/js/hud.js:985
+msgid "desktop"
+msgstr "dator"
+
+#: public/js/hud.js:986
+msgid "mobile"
+msgstr "mobil"
+
+#: public/js/hud.js:987
+msgid "VR headset"
+msgstr "VR-headset"
+
+#: public/js/hud.js:988
+msgid "BZFlag client"
+msgstr "BZFlag-klient"
+
+#: public/js/hud.js:989
+msgid "robot"
+msgstr "robot"
+
+#: public/js/hud.js:990
+msgid "server bot"
+msgstr "serverbott"
+
+#: public/js/hud.js:995
+msgid "UDP in"
+msgstr "UDP in"
+
+#: public/js/hud.js:996
+msgid "UDP both ways"
+msgstr "UDP åt båda hållen"
+
+#: public/js/hud.js:998
+msgid "WebRTC both ways"
+msgstr "WebRTC åt båda hållen"
+
+#: public/js/hud.js:999
+msgid "WebRTC through TURN"
+msgstr "WebRTC via TURN"
+
+#: public/js/hud.js:1000
+msgid "WebRTC through TURN both ways"
+msgstr "WebRTC via TURN åt båda hållen"
+
+#: public/js/hud.js:1002
+msgid "WebTransport both ways"
+msgstr "WebTransport åt båda hållen"
+
+#: public/js/hud.js:1056
+msgid "{n} self"
+msgstr "{n} själv"
+
+#: public/js/hud.js:1110
+msgid "Watching"
+msgstr "Tittar"
+
+#: public/js/hud.js:1114
+msgid "(rabbit)"
+msgstr "(kanin)"
+
+#: public/js/input.js:940
+msgid "Mouse steering is unavailable in VR: there is no cursor to read"
+msgstr ""
+"Musstyrning är inte tillgänglig i VR: det finns ingen markör att läsa av"
+
+#: public/js/input.js:941
+msgid "Virtual controls steer instead of the mouse"
+msgstr "Skärmkontrollerna styr i stället för musen"
+
+#: public/js/input.js:942
+msgid "Mouse steering needs a mouse attached"
+msgstr "Musstyrning kräver en ansluten mus"
+
+#: public/js/input.js:1080
+msgid "No players"
+msgstr "Inga spelare"
+
+#: public/js/input.js:1088 public/js/radar.js:32
+msgid "Medium"
+msgstr "Medel"
+
+#: public/js/input.js:1093 public/js/input.js:1095 public/js/input.js:1107
+msgid "On"
+msgstr "På"
+
+#: public/js/input.js:1098
+msgid "Installed"
+msgstr "Installerad"
+
+#: public/js/input.js:1099
+msgid "Install"
+msgstr "Installera"
+
+#: public/js/input.js:1099
+msgid "Browser menu"
+msgstr "Webbläsarmeny"
+
+#: public/js/input.js:1103 public/js/input.js:1117
+msgid "Exit VR"
+msgstr "Lämna VR"
+
+#: public/js/input.js:1103
+msgid "Enter VR"
+msgstr "Starta VR"
+
+#: public/js/input.js:1109 public/js/settings.js:60
+msgid "Open >"
+msgstr "Öppna >"
+
+#: public/js/input.js:1111 public/js/settings.js:62
+msgid "Activate"
+msgstr "Aktivera"
+
+#: public/js/input.js:1169
+msgid "Hide Settings"
+msgstr "Dölj inställningar"
+
+#: public/js/input.js:1169
+msgid "Show Settings"
+msgstr "Visa inställningar"
+
+#: public/js/input.js:1183
+msgid "Settings: Hidden"
+msgstr "Inställningar: dolda"
+
+#: public/js/input.js:1183
+msgid "Settings: Shown"
+msgstr "Inställningar: visas"
+
+#: public/js/input.js:1209
+msgid "Hide Audio Settings"
+msgstr "Dölj ljudinställningar"
+
+#: public/js/input.js:1218
+msgid "Audio Settings: Hidden"
+msgstr "Ljudinställningar: dolda"
+
+#: public/js/input.js:1223
+msgid "Audio Settings: Shown"
+msgstr "Ljudinställningar: visas"
+
+#: public/js/input.js:1232
+msgid "Hide Help (?)"
+msgstr "Dölj hjälp (?)"
+
+#: public/js/input.js:1232
+msgid "Show Help (?)"
+msgstr "Visa hjälp (?)"
+
+#: public/js/input.js:1241
+msgid "Help Panel: Hidden"
+msgstr "Hjälppanel: dold"
+
+#: public/js/input.js:1247
+msgid "Help Panel: Shown"
+msgstr "Hjälppanel: visas"
+
+#: public/js/input.js:1284
+msgid "iOS: use Share, Add to Home Screen for fullscreen"
+msgstr "iOS: använd Dela, Lägg till på hemskärmen för helskärm"
+
+#: public/js/input.js:1430
+msgid "Camera: {mode}"
+msgstr "Kamera: {mode}"
+
+#: public/js/input.js:1457
+msgid "Controls: Mouse and keyboard"
+msgstr "Styrning: mus och tangentbord"
+
+#: public/js/input.js:1457
+msgid "Controls: Keyboard"
+msgstr "Styrning: tangentbord"
+
+#: public/js/input.js:1465
+msgid "Hide Virtual Controls"
+msgstr "Dölj skärmkontroller"
+
+#: public/js/input.js:1465
+msgid "Show Virtual Controls"
+msgstr "Visa skärmkontroller"
+
+#: public/js/input.js:1502
+msgid "Virtual Controls: Enabled"
+msgstr "Skärmkontroller: på"
+
+#: public/js/input.js:1502
+msgid "Virtual Controls: Disabled"
+msgstr "Skärmkontroller: av"
+
+#: public/js/input.js:1509
+msgid "Hide Operator Panel (O)"
+msgstr "Dölj operatörspanel (O)"
+
+#: public/js/input.js:1516
+msgid "Hide View"
+msgstr "Dölj vy"
+
+#: public/js/input.js:1516
+msgid "Show View"
+msgstr "Visa vy"
+
+#: public/js/input.js:1527
+msgid "Operator: enter a name to become an operator on this server"
+msgstr "Operatör: ange ett namn för att bli operatör på den här servern"
+
+#: public/js/input.js:1538
+msgid "Operator Panel: Hidden"
+msgstr "Operatörspanel: dold"
+
+#: public/js/input.js:1561
+msgid "Operator Panel: Shown"
+msgstr "Operatörspanel: visas"
+
+#: public/js/input.js:1578
+msgid "View: Hidden"
+msgstr "Vy: dold"
+
+#: public/js/input.js:1584
+msgid "View: Shown"
+msgstr "Vy: visas"
+
+#: public/js/inspect-panel.mjs:67
+msgid "Type"
+msgstr "Typ"
+
+#: public/js/inspect-panel.mjs:70
+msgid "Bounds"
+msgstr "Gränser"
+
+#: public/js/inspect-panel.mjs:70
+msgid "{min} to {max}"
+msgstr "{min} till {max}"
+
+#: public/js/inspect-panel.mjs:73
+msgid "Position"
+msgstr "Position"
+
+#: public/js/inspect-panel.mjs:75
+msgid "Rotation"
+msgstr "Rotation"
+
+#: public/js/inspect-panel.mjs:80
+msgid "Flags"
+msgstr "Flaggor"
+
+#: public/js/inspect-panel.mjs:82
+msgid "Textures"
+msgstr "Texturer"
+
+#: public/js/inspect-panel.mjs:83
+msgid "Physics"
+msgstr "Fysik"
+
+#: public/js/inspect-panel.mjs:90
+msgid "{label} line {line}"
+msgstr "{label} rad {line}"
+
+#: public/js/inspect-panel.mjs:91
+msgid "{label} lines {start}-{end}"
+msgstr "{label} rad {start}-{end}"
+
+#: public/js/inspect-panel.mjs:95
+msgid "{n} more lines"
+msgstr "{n} rader till"
+
+#: public/js/inspect-panel.mjs:123 public/js/inspect-panel.mjs:188
+msgid "World"
+msgstr "Värld"
+
+#: public/js/inspect-panel.mjs:143
+msgid "unnamed {type}"
+msgstr "namnlös {type}"
+
+#: public/js/inspect-panel.mjs:146 public/js/inspect-panel.mjs:197
+msgid "Reading the map file..."
+msgstr "Läser kartfilen..."
+
+#: public/js/inspect-panel.mjs:146 public/js/inspect-panel.mjs:197
+#: public/js/inspect-panel.mjs:232
+msgid "No map file for this world"
+msgstr "Ingen kartfil för den här världen"
+
+#: public/js/inspect-panel.mjs:157
+msgid "No source for this obstacle"
+msgstr "Ingen källa för det här hindret"
+
+#: public/js/inspect-panel.mjs:164
+msgid "Shape"
+msgstr "Form"
+
+#: public/js/inspect-panel.mjs:167
+msgid "Materials"
+msgstr "Material"
+
+#: public/js/inspect-panel.mjs:167
+msgid "{name} (not defined)"
+msgstr "{name} (inte definierat)"
+
+#: public/js/inspect-panel.mjs:176
+msgid "placed by"
+msgstr "placerat av"
+
+#: public/js/inspect-panel.mjs:178
+msgid "material {name}"
+msgstr "material {name}"
+
+#: public/js/inspect-panel.mjs:189
+msgid "Obstacles"
+msgstr "Hinder"
+
+#: public/js/inspect-panel.mjs:191
+msgid "Mesh faces"
+msgstr "Mesh-ytor"
+
+#: public/js/inspect-panel.mjs:192
+msgid "Batched"
+msgstr "Sammanslaget"
+
+#: public/js/inspect-panel.mjs:192
+msgid "{instances} placements of {templates} definitions"
+msgstr "{instances} placeringar av {templates} definitioner"
+
+#: public/js/inspect-panel.mjs:193
+msgid "Links"
+msgstr "Länkar"
+
+#: public/js/inspect-panel.mjs:195
+msgid "Zones"
+msgstr "Zoner"
+
+#: public/js/inspect-panel.mjs:196
+msgid "Map size"
+msgstr "Kartstorlek"
+
+#: public/js/inspect-panel.mjs:202
+msgid "Textures ({n}), by obstacles using each"
+msgstr "Texturer ({n}), efter antal hinder som använder dem"
+
+#: public/js/inspect-panel.mjs:207
+msgid "{texture} (failed to load)"
+msgstr "{texture} (kunde inte läsas in)"
+
+#: public/js/inspect-panel.mjs:211
+msgid "{n} more"
+msgstr "{n} till"
+
+#: public/js/inspect-panel.mjs:215
+msgid "Largest meshes, by faces"
+msgstr "Största mesher, efter ytor"
+
+#: public/js/inspect-panel.mjs:218
+msgid "unnamed mesh #{index}"
+msgstr "namnlös mesh #{index}"
+
+#: public/js/inspect-panel.mjs:235
+msgid "{file}, {lines} lines"
+msgstr "{file}, {lines} rader"
+
+#: public/js/inspect-panel.mjs:236
+msgid "Missing"
+msgstr "Saknas"
+
+#: public/js/inspect-panel.mjs:239
+msgid "Warnings ({n})"
+msgstr "Varningar ({n})"
+
+#: public/js/install.js:53
+msgid "Already installed"
+msgstr "Redan installerad"
+
+#: public/js/install.js:58
+msgid "Install from the browser menu"
+msgstr "Installera från webbläsarmenyn"
+
+#: public/js/radar.js:32
+msgid "Short"
+msgstr "Kort"
+
+#: public/js/radar.js:32
+msgid "Long"
+msgstr "Lång"
+
+#: public/js/radar.js:78
+msgid "Radar: {range}"
+msgstr "Radar: {range}"
+
+#: public/js/radar.js:79
+msgid "Radar range preset: {range}"
+msgstr "Radarräckvidd: {range}"
+
+#: public/js/radar.js:89
+msgid "Radar range: {range}"
+msgstr "Radarräckvidd: {range}"
+
+#. TRANSLATORS: compass point on the radar, north; one letter.
+#: public/js/radar.js:878
+msgid "N"
+msgstr "N"
+
+#. TRANSLATORS: compass point on the radar, east; one letter.
+#: public/js/radar.js:880
+msgid "E"
+msgstr "Ö"
+
+#. TRANSLATORS: compass point on the radar, south; one letter.
+#: public/js/radar.js:882
+msgid "S"
+msgstr "S"
+
+#. TRANSLATORS: compass point on the radar, west; one letter.
+#: public/js/radar.js:884
+msgid "W"
+msgstr "V"
+
+#: public/js/settings.js:11
+msgid "Player Options"
+msgstr "Spelaralternativ"
+
+#: public/js/settings.js:12
+msgid "Camera"
+msgstr "Kamera"
+
+#: public/js/settings.js:19
+msgid "Hunt"
+msgstr "Jakt"
+
+#: public/js/settings.js:22
+msgid "Autopilot"
+msgstr "Autopilot"
+
+#: public/js/settings.js:23
+msgid "Radar Range"
+msgstr "Radarräckvidd"
+
+#: public/js/settings.js:25
+msgid "Language"
+msgstr "Språk"
+
+#: public/js/settings.js:26
+msgid "Mouse Steering"
+msgstr "Musstyrning"
+
+# review: Skärmkontroller
+#: public/js/settings.js:27
+msgid "Virtual Controls"
+msgstr "Skärmkontroller"
+
+#: public/js/settings.js:28
+msgid "Rumble"
+msgstr "Vibration"
+
+#: public/js/settings.js:29
+msgid "Fullscreen"
+msgstr "Helskärm"
+
+#: public/js/settings.js:30
+msgid "Install App"
+msgstr "Installera app"
+
+#: public/js/settings.js:31
+msgid "Debug HUD"
+msgstr "Felsöknings-HUD"
+
+#: public/js/settings.js:32
+msgid "Debug Geometry"
+msgstr "Felsök geometri"
+
+#: public/js/settings.js:33
+msgid "Debug Labels"
+msgstr "Felsök etiketter"
+
+#: public/js/settings.js:34
+msgid "Wireframe"
+msgstr "Trådmodell"
+
+#: public/js/settings.js:39
+msgid "Operator"
+msgstr "Operatör"
+
+#: public/js/settings.js:41
+msgid "Share View Link"
+msgstr "Dela visningslänk"
+
+#: public/js/settings.js:42
+msgid "VR Mode"
+msgstr "VR-läge"
+
+#: public/js/voice-channels.mjs:37
+msgid "Every player on the server, however far away."
+msgstr "Alla spelare på servern, oavsett avstånd."
+
+#: public/js/voice-channels.mjs:47
+msgid "Your own team, however far away."
+msgstr "Ditt eget lag, oavsett avstånd."
+
+#: public/js/voice.js:651
+msgid "Could not set voice direction for {peer}"
+msgstr "Kunde inte ställa in röstriktning för {peer}"
+
+#: public/js/voice.js:662
+msgid "Could not update voice track for {peer}"
+msgstr "Kunde inte uppdatera röstspåret för {peer}"
+
+#: public/js/voice.js:672
+msgid "Could not add voice track for {peer}"
+msgstr "Kunde inte lägga till röstspår för {peer}"
+
+#: public/js/voice.js:705
+msgid "RTCPeerConnection is not available in this browser."
+msgstr "RTCPeerConnection är inte tillgänglig i den här webbläsaren."
+
+#: public/js/voice.js:713
+msgid "Could not create a voice peer for {peer}"
+msgstr "Kunde inte skapa en röstanslutning till {peer}"
+
+#: public/js/voice.js:782
+msgid "Could not play nearby voice from {peer}"
+msgstr "Kunde inte spela upp röst i närheten från {peer}"
+
+#: public/js/voice.js:874
+msgid "Could not prepare voice media for {peer}"
+msgstr "Kunde inte förbereda röstmedia för {peer}"
+
+#: public/js/voice.js:920
+msgid "Could not add an ICE candidate for {peer}"
+msgstr "Kunde inte lägga till en ICE-kandidat för {peer}"
+
+#: public/js/voice.js:942
+msgid "Could not create a voice offer for {peer}"
+msgstr "Kunde inte skapa ett rösterbjudande till {peer}"
+
+#: public/js/voice.js:983
+msgid "Could not handle a voice offer from {peer}"
+msgstr "Kunde inte hantera ett rösterbjudande från {peer}"
+
+#: public/js/voice.js:998
+msgid "Could not handle a voice answer from {peer}"
+msgstr "Kunde inte hantera ett röstsvar från {peer}"
+
+#: public/js/voice.js:1016
+msgid "Could not add an ICE candidate from {peer}"
+msgstr "Kunde inte lägga till en ICE-kandidat från {peer}"
+
+#: public/js/voice.js:1080
+msgid "This browser does not provide microphone capture."
+msgstr "Den här webbläsaren stöder inte mikrofoninspelning."
+
+#: public/js/voice.js:1105
+msgid "The selected input device has no audio track."
+msgstr "Den valda ingångsenheten har inget ljudspår."
+
+#: public/js/voice.js:1133
+msgid "Microphone permission was denied."
+msgstr "Mikrofontillstånd nekades."
+
+#: public/js/voice.js:1133
+msgid "Could not start microphone capture."
+msgstr "Kunde inte starta mikrofoninspelning."
+
+#: public/js/voice.js:1224
+msgid "Could not enumerate microphone devices."
+msgstr "Kunde inte lista mikrofonenheter."
+
+#: server.js:7180
+msgid "Match duration is {duration}"
+msgstr "Matchens längd är {duration}"
+
+#: server.js:7190
+msgid "Match started"
+msgstr "Matchen har startat"
+
+#: server.js:7538
+msgid "Your score record will be saved while you are in observer mode."
+msgstr "Ditt resultat sparas medan du är åskådare."
+
+#: server.js:7543
+msgid "Your score has been restored."
+msgstr "Ditt resultat har återställts."
+
+#. TRANSLATORS: /me is a command name; keep it as it is
+#: server.js:8309
+msgid "{player}, the /me command requires an argument"
+msgstr "{player}, kommandot /me kräver ett argument"
+
+#: server.js:8350
+msgid "Commands (use /<command>? for one of them):"
+msgstr "Kommandon (använd /<command>? för ett av dem):"
+
+#: server.js:8395
+msgid "Recording started"
+msgstr "Inspelning startad"
+
+#: server.js:8403 server.js:8460 server/messages-operator.cjs:268
+msgid "Could not open for writing: {name} ({error})"
+msgstr "Kunde inte öppna för skrivning: {name} ({error})"
+
+#: server.js:8407
+msgid "Recording stopped"
+msgstr "Inspelning stoppad"
+
+#: server.js:8415
+msgid "Record size set to {mbytes}"
+msgstr "Inspelningsstorlek satt till {mbytes}"
+
+#: server.js:8423
+msgid "Record rate set to {seconds}"
+msgstr "Inspelningstakt satt till {seconds}"
+
+#: server.js:8427
+msgid "Not Recording"
+msgstr "Spelar inte in"
+
+#: server.js:8431
+msgid "Filename:  {name}"
+msgstr "Filnamn:  {name}"
+
+#: server.js:8432
+msgid "   saved:  {bytes} bytes / {packets} packets / {seconds} seconds"
+msgstr " sparat:  {bytes} byte / {packets} paket / {seconds} sekunder"
+
+#: server.js:8438
+msgid "Buffered:  {bytes} bytes / {packets} packets / {seconds} seconds"
+msgstr "Buffrat:  {bytes} byte / {packets} paket / {seconds} sekunder"
+
+#: server.js:8452 server/messages-operator.cjs:259
+msgid "No buffer to save"
+msgstr "Ingen buffert att spara"
+
+#: server.js:8457 server/messages-operator.cjs:264
+msgid "Record buffer saved to: {name}"
+msgstr "Inspelningsbuffert sparad i: {name}"
+
+#: server.js:8471
+msgid "Recording to file: {name}"
+msgstr "Spelar in till fil: {name}"
+
+#: server.js:8494 server.js:9335
+msgid "BZFS Version: {version}"
+msgstr "BZFS-version: {version}"
+
+#: server.js:8532 server.js:9534
+msgid "Nobody is here"
+msgstr "Ingen är här"
+
+#: server.js:8539
+msgid "server: {stats}"
+msgstr "server: {stats}"
+
+#: server.js:8581
+msgid "Usage: /setteam <#slot|PlayerName> <team>"
+msgstr "Användning: /setteam <#slot|PlayerName> <team>"
+
+#. TRANSLATORS: /setteam is a command name and {teams} lists team names as typed
+#: server.js:8588
+msgid "Usage: /setteam <#slot|PlayerName> <team> -- one of {teams}"
+msgstr "Användning: /setteam <#slot|PlayerName> <team> -- en av {teams}"
+
+#: server.js:8594
+msgid "\"{player}\" is not on a team to move from"
+msgstr "\"{player}\" är inte med i något lag att flytta från"
+
+#: server.js:8598
+msgid "\"{player}\" is already {team}"
+msgstr "\"{player}\" är redan {team}"
+
+#: server.js:8604
+msgid "\"{player}\" moved to {team}"
+msgstr "\"{player}\" flyttad till {team}"
+
+#: server.js:8605
+msgid "@{player} moved you to {team}"
+msgstr "@{player} flyttade dig till {team}"
+
+#: server.js:8634
+msgid "Moved to {position} facing {bearing}"
+msgstr "Flyttad till {position} med riktning {bearing}"
+
+#: server.js:8637
+msgid "\"{player}\" moved to {position} facing {bearing}"
+msgstr "\"{player}\" flyttad till {position} med riktning {bearing}"
+
+#: server.js:8638
+msgid "@{player} moved you to {position} facing {bearing}"
+msgstr "@{player} flyttade dig till {position} med riktning {bearing}"
+
+#: server.js:8651
+msgid "Usage: /msg \"some callsign\" some message"
+msgstr "Användning: /msg \"ett användarnamn\" ett meddelande"
+
+#: server.js:8698
+msgid "Usage: /kill <#slot|PlayerName> [reason]"
+msgstr "Användning: /kill <#slot|PlayerName> [reason]"
+
+#: server.js:8703
+msgid "An observer has no tank to kill"
+msgstr "En åskådare har ingen stridsvagn att döda"
+
+#: server.js:8707
+msgid "\"{player}\" is already dead"
+msgstr "\"{player}\" är redan död"
+
+#: server.js:8714
+msgid "\"{player}\" killed"
+msgstr "\"{player}\" dödad"
+
+#: server.js:8715
+msgid "You were killed by an operator: {reason}"
+msgstr "Du dödades av en operatör: {reason}"
+
+#: server.js:8716
+msgid "You were killed by an operator"
+msgstr "Du dödades av en operatör"
+
+#: server.js:8764
+msgid "You were banned from this server"
+msgstr "Du har bannats från den här servern"
+
+#: server.js:8765 server.js:8788
+msgid "Reason given: {reason}"
+msgstr "Angiven anledning: {reason}"
+
+#: server.js:8766
+msgid "{player} banned by {admin}, reason: {reason}"
+msgstr "{player} bannad av {admin}, anledning: {reason}"
+
+#: server.js:8778
+msgid "Syntax: /kick <#slot | PlayerName | \"Player Name\"> <reason>"
+msgstr "Syntax: /kick <#slot | PlayerName | \"Player Name\"> <reason>"
+
+#: server.js:8779 server.js:8808
+msgid "\tPlease keep in mind that reason is displayed to the user."
+msgstr "\tTänk på att anledningen visas för spelaren."
+
+#: server.js:8782
+msgid "player \"{player}\" not found"
+msgstr "spelaren \"{player}\" hittades inte"
+
+#: server.js:8787
+msgid "You were kicked off the server"
+msgstr "Du sparkades ut från servern"
+
+#: server.js:8789
+msgid "{player} kicked by {admin}, reason: {reason}"
+msgstr "{player} utsparkad av {admin}, anledning: {reason}"
+
+#: server.js:8803
+msgid ""
+"Syntax: /ban <#slot | PlayerName | \"Player Name\" | ip> <duration> <reason>"
+msgstr ""
+"Syntax: /ban <#slot | PlayerName | \"Player Name\" | ip> <duration> <reason>"
+
+#: server.js:8804
+msgid "\t<duration> can be 'short' or 'default' for the default ban time "
+msgstr "\t<duration> kan vara 'short' eller 'default' för standardtiden  "
+
+#: server.js:8805
+msgid "\tor 'forever' or 'max' for infinite bans "
+msgstr "\teller 'forever' eller 'max' för permanent bannlysning  "
+
+#: server.js:8806
+msgid "\tor a time in the format <weeks>W<days>D<hours>H<minutes>M "
+msgstr "\teller en tid i formatet <weeks>W<days>D<hours>H<minutes>M  "
+
+#: server.js:8807
+msgid "\tor just a number of minutes "
+msgstr "\teller bara ett antal minuter  "
+
+#: server.js:8830 server.js:8938
+msgid "Error: invalid ban duration"
+msgstr "Fel: ogiltig längd på bannlysning"
+
+#: server.js:8831 server.js:8939
+msgid "Duration examples:  30m 1h  1d  1w  and mixing: 1w2d4h 1w2d1m"
+msgstr "Exempel på längd:  30m 1h  1d  1w  och blandat: 1w2d4h 1w2d1m"
+
+#: server.js:8840 server.js:9154
+msgid "{player} has no trusted address to ban"
+msgstr "{player} har ingen betrodd adress att banna"
+
+#: server.js:8846 server.js:8948
+msgid "Pattern added to the BZID banlist"
+msgstr "Mönster tillagt i BZID-bannlistan"
+
+#: server.js:8852
+msgid "Malformed address or invalid Player/Slot: {target}"
+msgstr "Felaktig adress eller ogiltig spelare/slot: {target}"
+
+#: server.js:8856
+msgid "Pattern added to the IP banlist"
+msgstr "Mönster tillagt i IP-bannlistan"
+
+#: server.js:8867
+msgid "Removed IP pattern from the ban list"
+msgstr "IP-mönster borttaget från bannlistan"
+
+#: server.js:8869 server.js:8958
+msgid "No pattern removed"
+msgstr "Inget mönster borttaget"
+
+#: server.js:8884
+msgid "Syntax: /checkip <ip>"
+msgstr "Syntax: /checkip <ip>"
+
+#: server.js:8889
+msgid "{address} is not banned."
+msgstr "{address} är inte bannad."
+
+#: server.js:8892
+msgid "{address} is banned:"
+msgstr "{address} är bannad:"
+
+#: server.js:8900
+msgid ""
+"Syntax: /idban <#slot|+id|PlayerName|\"Player Name\"> <duration> <reason>"
+msgstr ""
+"Syntax: /idban <#slot|+id|PlayerName|\"Player Name\"> <duration> <reason>"
+
+#: server.js:8901
+msgid "  Please keep in mind that reason is displayed to the user."
+msgstr "  Tänk på att anledningen visas för spelaren."
+
+#: server.js:8912
+msgid "Error: invalid id pattern"
+msgstr "Fel: ogiltigt id-mönster"
+
+#: server.js:8920
+msgid "could not find player ({player})"
+msgstr "kunde inte hitta spelaren ({player})"
+
+#: server.js:8925
+msgid "no BZID for player ({player})"
+msgstr "inget BZID för spelaren ({player})"
+
+#: server.js:8956
+msgid "Removed id from the ban list"
+msgstr "Id borttaget från bannlistan"
+
+#: server.js:8995
+msgid "Usage: /poll vote yes|no"
+msgstr "Användning: /poll vote yes|no"
+
+#: server.js:8996
+msgid "    or /poll ban playername"
+msgstr "    eller /poll ban playername"
+
+#: server.js:8997
+msgid "    or /poll kick playername"
+msgstr "    eller /poll kick playername"
+
+#: server.js:8998
+msgid "    or /poll kill playername"
+msgstr "    eller /poll kill playername"
+
+#: server.js:8999
+msgid "    or /poll set variable value"
+msgstr "    eller /poll set variable value"
+
+#: server.js:9000
+msgid "    or /poll flagreset"
+msgstr "    eller /poll flagreset"
+
+#. TRANSLATORS: /vote is a command name; keep it as it is
+#: server.js:9008
+msgid "{player}, you are presently not authorized to run /vote"
+msgstr "{player}, du får inte använda /vote just nu"
+
+#: server.js:9012 server.js:9052 server.js:9078
+msgid "ERROR: the poll arbiter has disappeared (this should never happen)"
+msgstr "FEL: omröstningsledaren har försvunnit (detta ska aldrig hända)"
+
+#: server.js:9016
+msgid "A poll is not presently in progress.  There is nothing to vote on"
+msgstr "Ingen omröstning pågår. Det finns inget att rösta om"
+
+#: server.js:9021
+msgid "{player}, you did not vote in favor or in opposition"
+msgstr "{player}, du röstade varken för eller emot"
+
+#: server.js:9022
+msgid "{player}, you did not provide a vote answer"
+msgstr "{player}, du angav ingen röst"
+
+#: server.js:9023
+msgid "Usage: /vote yes|no|y|n|1|0|yea|nay|si|ja|nein|oui|non|sim|nao"
+msgstr "Användning: /vote yes|no|y|n|1|0|yea|nay|si|ja|nein|oui|non|sim|nao"
+
+#. TRANSLATORS: {action} is a /poll keyword (ban, kick, kill, set, reset), sent as typed
+#: server.js:9030
+msgid "{player}, your vote in favor of the {action} has been recorded"
+msgstr "{player}, din röst för \"{action}\" har registrerats"
+
+#: server.js:9031
+msgid "{player}, your vote in opposition of the {action} has been recorded"
+msgstr "{player}, din röst emot \"{action}\" har registrerats"
+
+#: server.js:9033
+msgid "{player}, you have already voted on the poll to {action} {target}"
+msgstr "{player}, du har redan röstat i omröstningen \"{action} {target}\""
+
+#: server.js:9037
+msgid ""
+"{player}, there was an error while voting on the poll to {action} {target}"
+msgstr ""
+"{player}, ett fel uppstod när du röstade i omröstningen \"{action} {target}\""
+
+#. TRANSLATORS: /veto is a command name; keep it as it is
+#: server.js:9048
+msgid "{player}, you are presently not authorized to run /veto"
+msgstr "{player}, du får inte använda /veto just nu"
+
+#: server.js:9056
+msgid "{player}, there is presently no active poll to veto"
+msgstr "{player}, det finns ingen aktiv omröstning att lägga veto mot"
+
+#: server.js:9059
+msgid "{player}, you have cancelled the poll to {action} {target}"
+msgstr "{player}, du har avbrutit omröstningen \"{action} {target}\""
+
+#: server.js:9065
+msgid "The poll was cancelled by {player}"
+msgstr "Omröstningen avbröts av {player}"
+
+#. TRANSLATORS: /poll is a command name; keep it as it is
+#: server.js:9074
+msgid "{player}, you are presently not authorized to run /poll"
+msgstr "{player}, du får inte använda /poll just nu"
+
+#: server.js:9094
+msgid "A poll to {action} {target} is presently in progress"
+msgstr "En omröstning \"{action} {target}\" pågår"
+
+#: server.js:9097
+msgid "Unable to start a new poll until the current one is over"
+msgstr "Kan inte starta en ny omröstning förrän den nuvarande är slut"
+
+#: server.js:9102
+msgid ""
+"Unable to initiate a new poll.  There are not enough registered players "
+"playing."
+msgstr ""
+"Kan inte starta en ny omröstning. Det spelar inte tillräckligt många "
+"registrerade spelare."
+
+#: server.js:9106
+msgid ""
+"There needs to be at least {required} other player and only {others} is "
+"available."
+msgstr ""
+"Det behövs minst {required} annan spelare och bara {others} är tillgänglig."
+
+#: server.js:9107
+msgid ""
+"There needs to be at least {required} other player and only {others} are "
+"available."
+msgstr ""
+"Det behövs minst {required} annan spelare och bara {others} är tillgängliga."
+
+#: server.js:9109
+msgid ""
+"There needs to be at least {required} other players and only {others} is "
+"available."
+msgstr ""
+"Det behövs minst {required} andra spelare och bara {others} är tillgänglig."
+
+#: server.js:9111
+msgid ""
+"There needs to be at least {required} other players and only {others} are "
+"available."
+msgstr ""
+"Det behövs minst {required} andra spelare och bara {others} är tillgängliga."
+
+#: server.js:9120
+msgid "/poll: incorrect syntax, argument required."
+msgstr "/poll: felaktig syntax, argument krävs."
+
+#: server.js:9126
+msgid "{player}, no target was specified for the [{action}] vote"
+msgstr "{player}, inget mål angavs för omröstningen [{action}]"
+
+#. TRANSLATORS: /poll and {action} are a command as typed; keep them as they are
+#: server.js:9128
+msgid "Usage: /poll {action} target"
+msgstr "Användning: /poll {action} target"
+
+#. TRANSLATORS: /poll {action} is a command as typed; keep it as it is
+#: server.js:9133
+msgid "{player}, you may not /poll {action} on this server"
+msgstr "{player}, du får inte använda /poll {action} på den här servern"
+
+#: server.js:9140
+msgid "The player specified for a {action} vote is not here"
+msgstr "Spelaren för omröstningen \"{action}\" är inte här"
+
+#: server.js:9144
+msgid "You can't kill an observer!"
+msgstr "Du kan inte döda en åskådare!"
+
+#: server.js:9150
+msgid "{player} is protected from being polled against."
+msgstr "{player} är skyddad mot omröstningar."
+
+#: server.js:9166
+msgid "You are not able to request a {action} poll right now, {player}"
+msgstr "Du kan inte begära en omröstning \"{action}\" just nu, {player}"
+
+#: server.js:9170
+msgid "A poll to {action} {target} has been requested by {player}"
+msgstr "{player} har begärt en omröstning \"{action} {target}\""
+
+#: server.js:9178
+msgid ""
+"{available} player is available, {needed} additional affirming vote required "
+"to pass the poll ({percentage} %)"
+msgstr ""
+"{available} spelare är tillgänglig, {needed} röst till för krävs för att "
+"omröstningen ska gå igenom ({percentage} %)"
+
+#: server.js:9179
+msgid ""
+"{available} player is available, {needed} additional affirming votes "
+"required to pass the poll ({percentage} %)"
+msgstr ""
+"{available} spelare är tillgänglig, {needed} röster till för krävs för att "
+"omröstningen ska gå igenom ({percentage} %)"
+
+#: server.js:9182
+msgid ""
+"{available} players are available, {needed} additional affirming vote "
+"required to pass the poll ({percentage} %)"
+msgstr ""
+"{available} spelare är tillgängliga, {needed} röst till för krävs för att "
+"omröstningen ska gå igenom ({percentage} %)"
+
+#: server.js:9183
+msgid ""
+"{available} players are available, {needed} additional affirming votes "
+"required to pass the poll ({percentage} %)"
+msgstr ""
+"{available} spelare är tillgängliga, {needed} röster till för krävs för att "
+"omröstningen ska gå igenom ({percentage} %)"
+
+#: server.js:9188
+msgid "Unable to automatically place your vote for some unknown reason"
+msgstr "Din röst kunde av okänd anledning inte läggas automatiskt"
+
+#: server.js:9215
+msgid ""
+"You have been temporarily banned due to sufficient votes to have you removed"
+msgstr "Du har tillfälligt bannats eftersom tillräckligt många röstade för det"
+
+#: server.js:9221
+msgid "You have been kicked due to sufficient votes to have you removed"
+msgstr "Du har sparkats ut eftersom tillräckligt många röstade för det"
+
+#: server.js:9227
+msgid "You have been killed due to sufficient votes"
+msgstr "Du har dödats eftersom tillräckligt många röstade för det"
+
+#: server.js:9250
+msgid ""
+"A poll to {action} {target} has begun.  Players have up to {seconds} seconds "
+"to vote."
+msgstr ""
+"Omröstningen \"{action} {target}\" har börjat. Spelarna har upp till "
+"{seconds} sekunder att rösta."
+
+#: server.js:9258
+msgid "{seconds} seconds remain in the poll to {action} {target}."
+msgstr "{seconds} sekunder kvar av omröstningen \"{action} {target}\"."
+
+#: server.js:9266
+msgid "Enough votes were collected to {action} {target} early."
+msgstr "Tillräckligt många röster för \"{action} {target}\" i förtid."
+
+#: server.js:9267
+msgid "Enough votes were collected to reset all unused flags early."
+msgstr ""
+"Tillräckligt många röster för att återställa alla oanvända flaggor i förtid."
+
+#: server.js:9273
+msgid "Poll Results: {yes} in favor, {no} oppose, {abstain} abstain"
+msgstr "Resultat: {yes} för, {no} emot, {abstain} avstod"
+
+#: server.js:9281
+msgid "The poll to {action} {target} was not successful"
+msgstr "Omröstningen \"{action} {target}\" gick inte igenom"
+
+#: server.js:9290
+msgid ""
+"The poll is now closed and was successful.  {target} is scheduled to be "
+"temporarily banned."
+msgstr ""
+"Omröstningen är avslutad och gick igenom. {target} kommer att bannas "
+"tillfälligt."
+
+#: server.js:9291
+msgid ""
+"The poll is now closed and was successful.  {target} is scheduled to be "
+"kicked."
+msgstr ""
+"Omröstningen är avslutad och gick igenom. {target} kommer att sparkas ut."
+
+#: server.js:9292
+msgid ""
+"The poll is now closed and was successful.  {target} is scheduled to be "
+"killed."
+msgstr "Omröstningen är avslutad och gick igenom. {target} kommer att dödas."
+
+#: server.js:9295
+msgid ""
+"The poll is now closed and was successful.  {target} is scheduled to be "
+"{action}."
+msgstr "Omröstningen är avslutad och gick igenom. {target}: {action} följer."
+
+#: server.js:9303
+msgid "{target} has been kicked."
+msgstr "{target} har sparkats ut."
+
+#: server.js:9304
+msgid "{target} has been killed."
+msgstr "{target} har dödats."
+
+#: server.js:9306
+msgid "{target} has been {action}"
+msgstr "{target}: {action} utfört"
+
+#: server.js:9321
+msgid "{player}'s client version:"
+msgstr "{player}s klientversion:"
+
+#: server.js:9322
+msgid "  {version}"
+msgstr "  {version}"
+
+#: server.js:9323
+msgid "  unknown"
+msgstr "  okänd"
+
+#: server.js:9329
+msgid "Player not found."
+msgstr "Spelaren hittades inte."
+
+#: server.js:9360
+msgid "Countdown cancelled by {player}."
+msgstr "Nedräkningen avbröts av {player}."
+
+#: server.js:9360
+msgid "Countdown cancelled"
+msgstr "Nedräkningen avbröts"
+
+#: server.js:9382
+msgid "No match is running to pause"
+msgstr "Ingen pågående match att pausa"
+
+#: server.js:9390
+msgid "No paused match to resume"
+msgstr "Ingen pausad match att återuppta"
+
+#: server.js:9397
+msgid "There is no running countdown to cancel"
+msgstr "Det finns ingen pågående nedräkning att avbryta"
+
+#: server.js:9405
+msgid "Usage: /countdown [<seconds>|pause|resume|cancel]"
+msgstr "Användning: /countdown [<seconds>|pause|resume|cancel]"
+
+#: server.js:9410
+msgid "There is a countdown already in progress"
+msgstr "En nedräkning pågår redan"
+
+#: server.js:9414
+msgid "A game is already in progress"
+msgstr "Ett spel pågår redan"
+
+#: server.js:9418 server.js:9421
+msgid "Countdown set to {seconds} instead of {asked}"
+msgstr "Nedräkningen satt till {seconds} i stället för {asked}"
+
+#: server.js:9430
+msgid "Countdown started by {player}."
+msgstr "Nedräkning startad av {player}."
+
+#: server.js:9431
+msgid "Match begins in about {duration}"
+msgstr "Matchen börjar om ungefär {duration}"
+
+#: server.js:9439
+msgid "The match has started!...Good Luck Teams!"
+msgstr "Matchen har börjat!...Lycka till, lag!"
+
+#: server.js:9443
+msgid "Start your engines!......"
+msgstr "Starta motorerna!......"
+
+#: server.js:9445
+msgid "{seconds}..."
+msgstr "{seconds}..."
+
+#: server.js:9457
+msgid "No match is running"
+msgstr "Ingen match pågår"
+
+#: server.js:9469
+msgid "Usage: /say <message>"
+msgstr "Användning: /say <message>"
+
+#: server.js:9485
+msgid "Usage: /mute <#slot|PlayerName>"
+msgstr "Användning: /mute <#slot|PlayerName>"
+
+#: server.js:9491
+msgid "\"{player}\" is now muted"
+msgstr "\"{player}\" är nu tystad"
+
+#: server.js:9492
+msgid "You have been muted by an operator"
+msgstr "En operatör har tystat dig"
+
+#: server.js:9501
+msgid "Usage: /unmute <#slot|PlayerName>"
+msgstr "Användning: /unmute <#slot|PlayerName>"
+
+#: server.js:9507
+msgid "\"{player}\" is no longer muted"
+msgstr "\"{player}\" är inte längre tystad"
+
+#: server.js:9508
+msgid "You are no longer muted"
+msgstr "Du är inte längre tystad"
+
+#: server.js:9516
+msgid "Nobody is muted"
+msgstr "Ingen är tystad"
+
+#: server.js:9629
+msgid "Usage: /flag drop [#slot|PlayerName]"
+msgstr "Användning: /flag drop [#slot|PlayerName]"
+
+#: server.js:9636
+msgid "You are not carrying a flag"
+msgstr "Du bär ingen flagga"
+
+#: server.js:9637
+msgid "\"{player}\" is not carrying a flag"
+msgstr "\"{player}\" bär ingen flagga"
+
+#: server.js:9646
+msgid "Dropped {flag} from \"{player}\""
+msgstr "{flag} släppt från \"{player}\""
+
+#: server.js:9647
+msgid "Your {flag} flag was dropped"
+msgstr "Din {flag}-flagga släpptes"
+
+#: server.js:9661
+msgid "{count} flags sent up"
+msgstr "{count} flaggor skickade upp"
+
+#: server.js:9671
+msgid "{count} flags reset"
+msgstr "{count} flaggor återställda"
+
+#: server.js:9676
+msgid "No flags are in the world"
+msgstr "Det finns inga flaggor i världen"
+
+#: server.js:9694
+msgid "Usage: /flag take <#slot|PlayerName>"
+msgstr "Användning: /flag take <#slot|PlayerName>"
+
+#. TRANSLATORS: /flag take is a command name; keep it as it is
+#: server.js:9701
+msgid "/flag take: player ({player}) does not have a flag"
+msgstr "/flag take: spelaren ({player}) har ingen flagga"
+
+#: server.js:9710
+msgid "{admin} took flag {flag}/{slot} from {player}"
+msgstr "{admin} tog flaggan {flag}/{slot} från {player}"
+
+#: server.js:9722
+msgid "Usage: /flag give <#slot|PlayerName> <#flagId|FlagAbbr> [force]"
+msgstr "Användning: /flag give <#slot|PlayerName> <#flagId|FlagAbbr> [force]"
+
+#: server.js:9738
+msgid "flag {flag} is not in this world"
+msgstr "flaggan {flag} finns inte i den här världen"
+
+#: server.js:9745 server.js:9783
+msgid "you may need to use the force"
+msgstr "du kan behöva använda force"
+
+#: server.js:9752
+msgid "flag {flag} is an empty slot"
+msgstr "flaggan {flag} är en tom plats"
+
+#: server.js:9758
+msgid "bad flag type"
+msgstr "ogiltig flaggtyp"
+
+#: server.js:9780
+msgid "flag type not found"
+msgstr "flaggtypen hittades inte"
+
+#: server.js:9789
+msgid "An observer has no tank to carry a flag"
+msgstr "En åskådare har ingen stridsvagn som kan bära en flagga"
+
+#. TRANSLATORS: /flag give is a command name; keep it as it is
+#: server.js:9796
+msgid "/flag give: player ({player}) is not alive"
+msgstr "/flag give: spelaren ({player}) lever inte"
+
+#: server.js:9817
+msgid "{admin} gave flag {flag}/{slot} to {player}"
+msgstr "{admin} gav flaggan {flag}/{slot} till {player}"
+
+#: server.js:9844
+msgid "Usage: /mv [player] <x,y> [facing]"
+msgstr "Användning: /mv [player] <x,y> [facing]"
+
+#: server.js:9859
+msgid "An observer has no tank to move"
+msgstr "En åskådare har ingen stridsvagn att flytta"
+
+#: server.js:9902
+msgid "Nowhere to stand at {x},{y}"
+msgstr "Ingenstans att stå vid {x},{y}"
+
+#: server.js:9969
+msgid "Checking another player's position requires operator status"
+msgstr "Att se en annan spelares position kräver operatörsstatus"
+
+#: server.js:9975
+msgid "Usage: /pos [player]"
+msgstr "Användning: /pos [player]"
+
+#: server.js:9981
+msgid "An observer has no tank position"
+msgstr "En åskådare har ingen stridsvagnsposition"
+
+#: server.js:9989
+msgid "You are at {position} facing {bearing}"
+msgstr "Du är vid {position} med riktning {bearing}"
+
+#: server.js:9990
+msgid "\"{player}\" is at {position} facing {bearing}"
+msgstr "\"{player}\" är vid {position} med riktning {bearing}"
+
+#: server.js:10283
+msgid "All shots now ricochet"
+msgstr "Alla skott studsar nu"
+
+#: server.js:10283
+msgid "Shots no longer ricochet"
+msgstr "Skotten studsar inte längre"
+
+#: server.js:10412
+msgid "usage: set <name> [<value>]"
+msgstr "användning: set <name> [<value>]"
+
+#: server.js:10413
+msgid "bzo's own: {variables}"
+msgstr "bzo:s egna: {variables}"
+
+#. TRANSLATORS: /set is a command name; keep it as it is
+#: server.js:10433
+msgid "/set failed, reason: variable {name} does not exist"
+msgstr "/set misslyckades, anledning: variabeln {name} finns inte"
+
+#: server.js:10434 server.js:10468
+msgid "variable {name} does not exist"
+msgstr "variabeln {name} finns inte"
+
+#: server.js:10438
+msgid "{name} is {value}"
+msgstr "{name} är {value}"
+
+#. TRANSLATORS: /set is a command name; keep it as it is
+#: server.js:10443
+msgid "/set failed, reason: variable {name} is not writeable"
+msgstr "/set misslyckades, anledning: variabeln {name} är skrivskyddad"
+
+#: server.js:10449
+msgid "{name} set"
+msgstr "{name} satt"
+
+#: server.js:10450
+msgid "Variable Modification Notice by {player} of set {name} {value}"
+msgstr "Variabel ändrad av {player}: set {name} {value}"
+
+#: server.js:10460
+msgid "usage: reset <name>"
+msgstr "användning: reset <name>"
+
+#: server.js:10471
+msgid "variable {name} is not writeable"
+msgstr "variabeln {name} är skrivskyddad"
+
+#: server.js:10477
+msgid "all variables reset"
+msgstr "alla variabler återställda"
+
+#: server.js:10478
+msgid "{name} reset"
+msgstr "{name} återställd"
+
+#: server.js:10482
+msgid "Variable Reset Notice by {player} of reset {name}"
+msgstr "Variabel återställd av {player}: reset {name}"
+
+#: server.js:10509
+msgid "No command starting with {prefix}"
+msgstr "Inget kommando börjar med {prefix}"
+
+#: server.js:10531
+msgid "You do not have permission to run the {command} command"
+msgstr "Du har inte behörighet att köra kommandot {command}"
+
+#: server.js:10556
+msgid "We're sorry, you are not allowed to talk!"
+msgstr "Tyvärr, du får inte prata!"
+
+#: server.js:10624
+msgid "You do not have permission to speak on the admin channel."
+msgstr "Du har inte behörighet att prata i adminkanalen."
+
+#: server.js:10786
+msgid "You signed in as {player} on another device."
+msgstr "Du loggade in som {player} på en annan enhet."
+
+#: server.js:10808
+msgid "{player} signed in with that name, so yours is now {name}."
+msgstr "{player} loggade in med det namnet, så ditt är nu {name}."
+
+#: server.js:12935
+msgid "Global login approved!"
+msgstr "Global inloggning godkänd!"
+
+#: server.js:12937
+msgid "Global login rejected, bad token."
+msgstr "Global inloggning nekad, ogiltig token."
+
+#: server.js:12939
+msgid "This callsign is not registered."
+msgstr "Det här användarnamnet är inte registrerat."
+
+#: server.js:12940
+msgid "You can register it at https://forums.bzflag.org/"
+msgstr "Du kan registrera det på https://forums.bzflag.org/"
+
+#: server.js:13612
+msgid "{count} shots left"
+msgstr "{count} skott kvar"
+
+#: server.js:13613
+msgid "1 shot left"
+msgstr "1 skott kvar"
+
+#: server.js:13885
+msgid ""
+"Team flags cannot be grabbed for {seconds} seconds after they were last "
+"capped."
+msgstr ""
+"Lagflaggor kan inte tas förrän {seconds} sekunder efter senaste erövring."
+
+#: server.js:13886
+msgid "You cannot grab the {team} team flag for another ~{seconds} seconds"
+msgstr "Du kan inte ta lag {team}s flagga förrän om ~{seconds} sekunder"
+
+#: server.js:14100
+msgid "I'm sorry, we do not allow autopilot on this server."
+msgstr "Tyvärr, autopilot är inte tillåten på den här servern."
+
+#: server.js:16138
+msgid "Server restarting: {reason}"
+msgstr "Servern startar om: {reason}"
+
+#: server.js:17412
+msgid "The pilots have not loaded"
+msgstr "Piloterna har inte laddats"
+
+#. TRANSLATORS: a command's syntax; keep it as it is
+#: server.js:17424
+msgid "Usage: /bot fill <0-{max}> [{pilots}]"
+msgstr "Användning: /bot fill <0-{max}> [{pilots}]"
+
+#: server.js:17428
+msgid "No pilot \"{pilot}\"; one of {pilots}"
+msgstr "Ingen pilot \"{pilot}\"; en av {pilots}"
+
+#. TRANSLATORS: a command's syntax; keep /bot add as it is
+#: server.js:17450
+msgid "Usage: /bot add [{pilots}] [team] [count]"
+msgstr "Användning: /bot add [{pilots}] [team] [count]"
+
+#: server.js:17471
+msgid "Usage: /bot remove <name|all>"
+msgstr "Användning: /bot remove <name|all>"
+
+#. TRANSLATORS: a command's syntax; keep /bot, fill, add, remove and all as they are
+#: server.js:17483
+msgid ""
+"Usage: /bot [fill <n> [{pilots}] | add [{pilots}] [team] [count] | remove "
+"<name|all>]"
+msgstr ""
+"Användning: /bot [fill <n> [{pilots}] | add [{pilots}] [team] [count] | "
+"remove <name|all>]"
+
+#: server.js:17510
+msgid "Server shutting down"
+msgstr "Servern stängs av"
+
+#: server.js:17520
+msgid "Server restarting"
+msgstr "Servern startar om"
+
+#: server/messages-operator.cjs:159
+msgid "No change: check the time limit and the match state"
+msgstr "Ingen ändring: kontrollera tidsgränsen och matchens läge"
+
+#: server/messages-operator.cjs:193
+msgid "Upload {map} with {bytes} bytes"
+msgstr "Ladda upp {map} med {bytes} byte"
+
+#: server/messages-operator.cjs:214
+msgid ""
+"Upload refused: a replay name is letters, digits, \".\", \"_\" and \"-\"."
+msgstr ""
+"Uppladdning nekad: ett reprisnamn består av bokstäver, siffror, \".\", \"_\" "
+"och \"-\"."
+
+#: server/messages-operator.cjs:219
+msgid "Upload refused: {name} is over {megabytes} MB."
+msgstr "Uppladdning nekad: {name} är större än {megabytes} MB."
+
+#: server/messages-operator.cjs:225
+msgid "Upload refused: {name} is not a bzfs recording ({error})."
+msgstr "Uppladdning nekad: {name} är ingen bzfs-inspelning ({error})."
+
+#: server/messages-operator.cjs:229
+msgid "Upload refused: {name} is being watched."
+msgstr "Uppladdning nekad: {name} visas just nu."
+
+#: server/messages-operator.cjs:237
+msgid "Uploaded replay {name} with {bytes} bytes"
+msgstr "Repris {name} uppladdad med {bytes} byte"
+
+#: server/messages-operator.cjs:243
+msgid "Upload failed: {error}"
+msgstr "Uppladdning misslyckades: {error}"
+
+#: server/messages-operator.cjs:255
+msgid ""
+"Save refused: a recording name is letters, digits, \".\", \"_\" and \"-\"."
+msgstr ""
+"Sparande nekat: ett inspelningsnamn består av bokstäver, siffror, \".\", "
+"\"_\" och \"-\"."
+
+#: server/messages-operator.cjs:282
+msgid "Delete refused: {name} was not uploaded here."
+msgstr "Borttagning nekad: {name} laddades inte upp här."
+
+#: server/messages-operator.cjs:283
+msgid "Delete refused: that was not uploaded here."
+msgstr "Borttagning nekad: det laddades inte upp här."
+
+#: server/messages-operator.cjs:287
+msgid "Delete refused: {name} is the map being played."
+msgstr "Borttagning nekad: {name} är kartan som spelas."
+
+#: server/messages-operator.cjs:291
+msgid "Delete refused: {name} is being watched."
+msgstr "Borttagning nekad: {name} visas just nu."
+
+#: server/messages-operator.cjs:308
+msgid "Deleted map {name}"
+msgstr "Kartan {name} borttagen"
+
+#: server/messages-operator.cjs:308
+msgid "Deleted replay {name}"
+msgstr "Reprisen {name} borttagen"
+
+#: server/messages-operator.cjs:313
+msgid "Delete failed: {error}"
+msgstr "Borttagning misslyckades: {error}"
+
+#: server/messages-operator.cjs:371
+msgid ""
+"{server} is no longer in the public list, so {map} is the copy already here "
+"({bytes} bytes). It is ready to View now."
+msgstr ""
+"{server} finns inte längre i den publika listan, så {map} är kopian som "
+"redan finns här ({bytes} byte). Den kan visas nu."
+
+#: server/messages-operator.cjs:374
+msgid "Imported {map} from {server} ({bytes} bytes). It is ready to View now."
+msgstr "{map} importerad från {server} ({bytes} byte). Den kan visas nu."
+
+#: server/messages-play.cjs:1154
+msgid "You are unable to begin playing for {seconds} seconds."
+msgstr "Du kan inte börja spela förrän om {seconds} sekunder."
+
+#: server/messages-play.cjs:1192
+msgid "Team is not available: {team}"
+msgstr "Laget är inte tillgängligt: {team}"
+
+#: server/messages-play.cjs:1196
+msgid "You stay {team}"
+msgstr "Du stannar i {team}"
+
+#: server/messages-play.cjs:1205
+msgid "Team is full: {team}"
+msgstr "Laget är fullt: {team}"
+
+#: server/messages-play.cjs:1210
+msgid "You will join {team} when you next spawn"
+msgstr "Du går med i {team} nästa gång du spawnar"

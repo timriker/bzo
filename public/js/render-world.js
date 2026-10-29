@@ -18,6 +18,7 @@ import { createBaseTopTexture, createBaseWallTexture, createBoundaryTexture, cre
 import * as THREE from 'three';
 import { Reflector } from 'three/addons/objects/Reflector.js';
 import { LABEL_MATERIAL_DEPTH, meshSpinRadians, onAlphaWithoutThreshold, standUpGeometry } from './render.js';
+import { t } from './i18n.mjs';
 
 // An obstacle's footprint: `size` is upstream's half extents.
 function obstacleWidth(obs) {
@@ -1364,8 +1365,10 @@ export class WorldRendering {
     ctx.fillStyle = `#${color.toString(16).padStart(6, '0')}`;
     ctx.strokeStyle = '#ffffff';
     ctx.lineWidth = 10;
-    ctx.strokeText(letter, 128, 128);
-    ctx.fillText(letter, 128, 128);
+    // The radar's compass letters, so the two agree in every language.
+    const shown = t(letter);
+    ctx.strokeText(shown, 128, 128);
+    ctx.fillText(shown, 128, 128);
 
     const texture = new THREE.CanvasTexture(canvas);
     const material = new THREE.SpriteMaterial({

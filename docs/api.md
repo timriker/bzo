@@ -114,12 +114,13 @@ instance for itself (`server/discovery.cjs`):
 - `/`, `/list` and `/help` carry a description, an Open Graph card and
   schema.org JSON-LD: the game on `/` and `/help`, and on `/list` every public
   bzo server as an entry with its URL, title and player count.
-- `/help` is the controls ([controls.md](controls.md)) and every flag, as a
-  page.
+- `/help` is the help pages ([help/](help/)): the controls, every flag and
+  the rest, in the reader's language where translated; `/help/<page>` is one
+  of them, and `/help.json` all of them for the in-game panel.
 - `/robots.txt` and `/sitemap.xml` offer those three pages and keep crawlers
   off the API, maps, replays, images and sounds.
 - `/llms.txt` ([llmstxt.org](https://llmstxt.org/)) says what bzo is and where
-  to read more; `/llms-full.txt` inlines the controls and the flags.
+  to read more; `/llms-full.txt` inlines the help pages.
 
 ## Being polite
 

@@ -1,0 +1,3880 @@
+msgid ""
+msgstr ""
+"Project-Id-Version: bzo\n"
+"Report-Msgid-Bugs-To: https://github.com/timriker/bzo/issues\n"
+"Language: ja\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Review: machine-translated, not yet read by a native speaker\n"
+
+#: public/index.html:36
+msgid "Title:"
+msgstr "タイトル："
+
+#: public/index.html:37
+msgid "What this server is"
+msgstr "このサーバーの説明"
+
+#: public/index.html:40
+msgid "Set MOTD:"
+msgstr "MOTD設定："
+
+#: public/index.html:41
+msgid "Message of the day"
+msgstr "今日のメッセージ"
+
+#: public/index.html:47
+msgid "Shot Max Active:"
+msgstr "最大同時弾数："
+
+#: public/index.html:56
+msgid "All shots ricochet"
+msgstr "全弾跳弾"
+
+#: public/index.html:60
+msgid "Map:"
+msgstr "マップ："
+
+#: public/index.html:69
+msgid "Teams"
+msgstr "チーム"
+
+#: public/index.html:73
+msgid "Rabbit Chase:"
+msgstr "Rabbit Chase："
+
+#: public/index.html:75
+msgid "Off"
+msgstr "オフ"
+
+#: public/index.html:76
+msgid "Score"
+msgstr "スコア"
+
+#: public/index.html:77
+msgid "Killer"
+msgstr "キラー"
+
+#: public/index.html:78
+msgid "Random"
+msgstr "ランダム"
+
+#: public/index.html:84
+msgid "Jumping"
+msgstr "ジャンプ"
+
+#: public/index.html:91
+msgid "Playing Limit:"
+msgstr "プレイ人数上限："
+
+#: public/index.html:101
+msgid "Upload Map:"
+msgstr "マップをアップロード："
+
+#: public/index.html:103 public/index.html:108
+msgid "Upload"
+msgstr "アップロード"
+
+#: public/index.html:106
+msgid "Upload Replay:"
+msgstr "リプレイをアップロード："
+
+#: public/index.html:113
+msgid "Save Recording:"
+msgstr "録画を保存："
+
+#: public/index.html:114
+msgid "name"
+msgstr "名前"
+
+#: public/index.html:115
+msgid "all"
+msgstr "すべて"
+
+#: public/index.html:116
+msgid "Save"
+msgstr "保存"
+
+#: public/index.html:122
+msgid "Delete Upload:"
+msgstr "アップロードを削除："
+
+#: public/index.html:124
+msgid "Delete"
+msgstr "削除"
+
+#: public/index.html:128
+msgid "Time Limit:"
+msgstr "制限時間："
+
+#: public/index.html:137
+msgid "Manual Start (wait for /countdown)"
+msgstr "手動開始（/countdown を待つ）"
+
+#: public/index.html:141
+msgid "Player Score Limit:"
+msgstr "プレイヤースコア上限："
+
+#: public/index.html:148
+msgid "Team Score Limit:"
+msgstr "チームスコア上限："
+
+#: public/index.html:157
+msgid "Bot Fill:"
+msgstr "ボット補充："
+
+#: public/index.html:164
+msgid "Bot Pilot:"
+msgstr "ボットパイロット："
+
+#: public/index.html:172
+msgid "Match Timer:"
+msgstr "試合タイマー："
+
+#: public/index.html:173
+msgid "Start"
+msgstr "開始"
+
+#: public/index.html:174
+msgid "Pause"
+msgstr "一時停止"
+
+#: public/index.html:175
+msgid "Resume"
+msgstr "再開"
+
+#: public/index.html:176
+msgid "End Match"
+msgstr "試合終了"
+
+#: public/index.html:183
+msgid "List Server Key:"
+msgstr "リストサーバーキー："
+
+#: public/index.html:184
+msgid "paste key from /list-server"
+msgstr "/list-server のキーを貼り付け"
+
+#: public/index.html:185
+msgid "Set"
+msgstr "設定"
+
+#: public/index.html:193
+msgid "Apply"
+msgstr "適用"
+
+#: public/index.html:194 public/index.html:489
+msgid "Cancel"
+msgstr "キャンセル"
+
+# review: ビューア, the map viewer
+#: public/index.html:208
+msgid "View"
+msgstr "ビューア"
+
+#: public/index.html:210
+msgid "Running BZFlag servers"
+msgstr "稼働中のBZFlagサーバー"
+
+#: public/index.html:212 public/index.html:226 public/index.html:239
+msgid "Filter…"
+msgstr "絞り込み…"
+
+#: public/index.html:213
+msgid "Refresh"
+msgstr "更新"
+
+#: public/index.html:218 public/index.html:245
+msgid "Players"
+msgstr "プレイヤー"
+
+#: public/index.html:218
+msgid "Max"
+msgstr "最大"
+
+#: public/index.html:218 public/index.html:232
+msgid "Style"
+msgstr "スタイル"
+
+#: public/index.html:219
+msgid "Title"
+msgstr "タイトル"
+
+#: public/index.html:219
+msgid "Host"
+msgstr "ホスト"
+
+#: public/index.html:219
+msgid "Port"
+msgstr "ポート"
+
+#: public/index.html:224
+msgid "Local maps"
+msgstr "ローカルマップ"
+
+#: public/index.html:231 public/index.html:244
+msgid "File"
+msgstr "ファイル"
+
+#: public/index.html:231
+msgid "Size"
+msgstr "サイズ"
+
+#: public/index.html:231
+msgid "Objects"
+msgstr "オブジェクト"
+
+#: public/index.html:232
+msgid "Faces"
+msgstr "面"
+
+#: public/index.html:237
+msgid "Local replays"
+msgstr "ローカルリプレイ"
+
+#: public/index.html:244
+msgid "Date"
+msgstr "日付"
+
+#: public/index.html:244
+msgid "Length"
+msgstr "長さ"
+
+#: public/index.html:245
+msgid "Map"
+msgstr "マップ"
+
+#: public/index.html:258 public/index.html:283
+msgid "Settings"
+msgstr "設定"
+
+#: public/index.html:262 public/index.html:386
+msgid "Microphone off"
+msgstr "マイクオフ"
+
+#: public/index.html:263
+msgid "Enter WebXR VR Mode"
+msgstr "WebXR VRモードを開始"
+
+#: public/index.html:267
+msgid "Open Settings"
+msgstr "設定を開く"
+
+#: public/index.html:271
+msgid "Hide the scoreboard and chat"
+msgstr "スコアボードとチャットを隠す"
+
+#: public/index.html:289
+msgid "Gamepad and VR controller rumble"
+msgstr "ゲームパッドとVRコントローラーの振動"
+
+#: public/index.html:291
+msgid "Install as an app"
+msgstr "アプリとしてインストール"
+
+#: public/index.html:293
+msgid "Show Debug Geometry"
+msgstr "デバッグ形状を表示"
+
+#: public/index.html:298
+msgid ""
+"Hunt: step through players and Clear with the arrows, select to mark, unmark "
+"or clear"
+msgstr "ハント：矢印でプレイヤーとクリアを切り替え、選択でマーク・解除・クリア"
+
+#: public/index.html:299
+msgid ""
+"Autopilot: choose None or a pilot with the arrows, select to turn it on or "
+"off"
+msgstr "オートパイロット：矢印でなしかパイロットを選び、選択でオン／オフ"
+
+#: public/index.html:303
+msgid "Copy a link back to this map, camera and position"
+msgstr "このマップ・カメラ・位置へのリンクをコピー"
+
+#: public/index.html:304
+msgid "Wireframe Mode"
+msgstr "ワイヤーフレームモード"
+
+#: public/index.html:305
+msgid "Anaglyph 3D"
+msgstr "アナグリフ3D"
+
+#: public/index.html:306
+msgid "Dynamic Lighting"
+msgstr "動的ライティング"
+
+#: public/index.html:308
+msgid "Open Audio Settings"
+msgstr "オーディオ設定を開く"
+
+#: public/index.html:315
+msgid "Audio Settings"
+msgstr "オーディオ設定"
+
+#: public/index.html:317
+msgid ""
+"Each level runs from Off to 100%. Nearby voice uses your microphone only "
+"after you grant permission. Use B to toggle your microphone."
+msgstr ""
+"各レベルはオフから100%まで調整できます。近くのボイスは、許可した後にだけマイ"
+"クを使います。Bでマイクを切り替えます。"
+
+#: public/index.html:321
+msgid "Game volume"
+msgstr "ゲーム音量"
+
+#: public/index.html:328
+msgid "Gameplay sound effects."
+msgstr "ゲームプレイの効果音。"
+
+#: public/index.html:331
+msgid "Voice volume"
+msgstr "ボイス音量"
+
+#: public/index.html:338
+msgid "How loud nearby players sound to you."
+msgstr "近くのプレイヤーの声の大きさ。"
+
+#: public/index.html:341
+msgid "Microphone volume"
+msgstr "マイク音量"
+
+#: public/index.html:348
+msgid "How loud you are to nearby players."
+msgstr "近くのプレイヤーに届く自分の声の大きさ。"
+
+#: public/index.html:351
+msgid "Voice channel"
+msgstr "ボイスチャンネル"
+
+#: public/index.html:353
+msgid "All"
+msgstr "全員"
+
+#: public/index.html:354
+msgid "Nearby"
+msgstr "近く"
+
+#: public/index.html:355
+msgid "Team"
+msgstr "チーム"
+
+#: public/index.html:357
+msgid "Players within earshot, whatever team they are on."
+msgstr "声が届く範囲のプレイヤー（チームに関係なく）。"
+
+#: public/index.html:360
+msgid "Microphone input"
+msgstr "マイク入力"
+
+#: public/index.html:364
+msgid "Choose the microphone used for voice chat."
+msgstr "ボイスチャットに使うマイクを選びます。"
+
+#: public/index.html:367
+msgid "Native audio processing"
+msgstr "ネイティブ音声処理"
+
+#: public/index.html:370
+msgid "Echo cancellation"
+msgstr "エコーキャンセル"
+
+#: public/index.html:374
+msgid "Noise suppression"
+msgstr "ノイズ抑制"
+
+#: public/index.html:378
+msgid "Automatic gain control"
+msgstr "自動ゲイン調整"
+
+#: public/index.html:380
+msgid "Native browser processing is enabled when supported."
+msgstr "対応していれば、ブラウザのネイティブ処理が有効になります。"
+
+#: public/index.html:385
+msgid "Enable microphone"
+msgstr "マイクを有効にする"
+
+#: public/index.html:390
+msgid "Microphone permission has not been requested."
+msgstr "マイクの許可はまだ求めていません。"
+
+#: public/index.html:404
+msgid "Send"
+msgstr "送信"
+
+#: public/index.html:404
+msgid "Type a chat message, then send it"
+msgstr "チャットメッセージを入力して送信"
+
+#: public/index.html:408
+msgid "ALL"
+msgstr "全員"
+
+#: public/index.html:409
+msgid "TEAM"
+msgstr "チーム"
+
+#: public/index.html:410
+msgid "ADMIN"
+msgstr "管理者"
+
+#: public/index.html:411
+msgid "SERVER"
+msgstr "サーバー"
+
+#: public/index.html:425
+msgid "Loading World"
+msgstr "ワールドを読み込み中"
+
+#: public/index.html:426
+msgid "Connecting render systems..."
+msgstr "描画システムに接続中..."
+
+#: public/index.html:435 public/index.html:502
+msgid "Close"
+msgstr "閉じる"
+
+#: public/index.html:436
+msgid "A free 3D tank game in the browser that plays with BZFlag."
+msgstr "ブラウザで遊べる無料の3D戦車ゲーム。BZFlagと一緒にプレイできます。"
+
+#: public/index.html:437 public/index.html:502
+msgid "Help"
+msgstr "ヘルプ"
+
+#: public/index.html:437
+msgid "Servers"
+msgstr "サーバー"
+
+#: public/index.html:437
+msgid "Source"
+msgstr "ソース"
+
+#: public/index.html:442
+msgid "Enter your name"
+msgstr "名前を入力"
+
+#: public/index.html:447
+msgid "Motto (optional)"
+msgstr "モットー（任意）"
+
+#: public/index.html:455
+msgid "Server:"
+msgstr "サーバー："
+
+#: public/index.html:459
+msgid "Team:"
+msgstr "チーム："
+
+#: public/index.html:467
+msgid "Global login:"
+msgstr "グローバルログイン："
+
+#: public/index.html:473
+msgid "Skin:"
+msgstr "スキン："
+
+#: public/index.html:477
+msgid "Choose Tank"
+msgstr "戦車を選択"
+
+#: public/index.html:479
+msgid "Previous tank"
+msgstr "前の戦車"
+
+#: public/index.html:484
+msgid "Next tank"
+msgstr "次の戦車"
+
+#: public/index.html:488
+msgid "OK"
+msgstr "OK"
+
+#: public/index.html:490
+msgid "Default"
+msgstr "デフォルト"
+
+#: public/index.html:504
+msgid "Search help"
+msgstr "ヘルプを検索"
+
+#: public/index.html:541
+msgid "Identify: lock a Guided Missile onto the tank in your sights"
+msgstr "識別：照準内の戦車に誘導ミサイルをロックオン"
+
+#: public/index.html:542
+msgid "Drop flag"
+msgstr "フラグを捨てる"
+
+#. TRANSLATORS: name of the R* flag; the abbreviation stays as it is
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "Red Team"
+msgstr "レッドチーム"
+
+#. TRANSLATORS: name of the G* flag; the abbreviation stays as it is
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "Green Team"
+msgstr "グリーンチーム"
+
+#. TRANSLATORS: name of the B* flag; the abbreviation stays as it is
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "Blue Team"
+msgstr "ブルーチーム"
+
+#. TRANSLATORS: name of the P* flag; the abbreviation stays as it is
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "Purple Team"
+msgstr "パープルチーム"
+
+#. TRANSLATORS: name of the F flag; the abbreviation stays as it is
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "Rapid Fire"
+msgstr "ラピッドファイア"
+
+#. TRANSLATORS: name of the MG flag; the abbreviation stays as it is
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "Machine Gun"
+msgstr "マシンガン"
+
+#. TRANSLATORS: name of the GM flag; the abbreviation stays as it is
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "Guided Missile"
+msgstr "誘導ミサイル"
+
+#. TRANSLATORS: name of the L flag; the abbreviation stays as it is
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "Laser"
+msgstr "レーザー"
+
+#. TRANSLATORS: name of the R flag; the abbreviation stays as it is
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "Ricochet"
+msgstr "跳弾"
+
+#. TRANSLATORS: name of the SB flag; the abbreviation stays as it is
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "Super Bullet"
+msgstr "スーパーバレット"
+
+#. TRANSLATORS: name of the IB flag; the abbreviation stays as it is
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "Invisible Bullet"
+msgstr "透明弾"
+
+#. TRANSLATORS: name of the SW flag; the abbreviation stays as it is
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "Shock Wave"
+msgstr "ショックウェーブ"
+
+#. TRANSLATORS: name of the SH flag; the abbreviation stays as it is
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "Shield"
+msgstr "シールド"
+
+#. TRANSLATORS: name of the V flag; the abbreviation stays as it is
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "High Speed"
+msgstr "高速"
+
+#. TRANSLATORS: name of the QT flag; the abbreviation stays as it is
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "Quick Turn"
+msgstr "クイックターン"
+
+#. TRANSLATORS: name of the OO flag; the abbreviation stays as it is
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "Oscillation Overthruster"
+msgstr "オシレーション・オーバースラスター"
+
+# review: 地中潜行, no settled Japanese name
+#. TRANSLATORS: name of the BU flag; the abbreviation stays as it is
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "Burrow"
+msgstr "地中潜行"
+
+#. TRANSLATORS: name of the PZ flag; the abbreviation stays as it is
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "Phantom Zone"
+msgstr "ファントムゾーン"
+
+#. TRANSLATORS: name of the A flag; the abbreviation stays as it is
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "Agility"
+msgstr "機敏"
+
+#. TRANSLATORS: name of the SR flag; the abbreviation stays as it is
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "Steamroller"
+msgstr "スチームローラー"
+
+#. TRANSLATORS: name of the G flag; the abbreviation stays as it is
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "Genocide"
+msgstr "ジェノサイド"
+
+#. TRANSLATORS: name of the ID flag; the abbreviation stays as it is
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "Identify"
+msgstr "識別"
+
+#. TRANSLATORS: name of the US flag; the abbreviation stays as it is
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "Useless"
+msgstr "役立たず"
+
+#. TRANSLATORS: name of the WG flag; the abbreviation stays as it is
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "Wings"
+msgstr "ウイング"
+
+#. TRANSLATORS: name of the T flag; the abbreviation stays as it is
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "Tiny"
+msgstr "極小"
+
+#. TRANSLATORS: name of the N flag; the abbreviation stays as it is
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "Narrow"
+msgstr "薄型"
+
+#. TRANSLATORS: name of the RC flag; the abbreviation stays as it is
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "ReverseControls"
+msgstr "操作反転"
+
+#. TRANSLATORS: name of the FO flag; the abbreviation stays as it is
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "Forward Only"
+msgstr "前進のみ"
+
+#. TRANSLATORS: name of the RO flag; the abbreviation stays as it is
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "ReverseOnly"
+msgstr "後退のみ"
+
+#. TRANSLATORS: name of the LT flag; the abbreviation stays as it is
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "Left Turn Only"
+msgstr "左折のみ"
+
+#. TRANSLATORS: name of the RT flag; the abbreviation stays as it is
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "Right Turn Only"
+msgstr "右折のみ"
+
+#. TRANSLATORS: name of the BY flag; the abbreviation stays as it is
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "Bouncy"
+msgstr "バウンド"
+
+#. TRANSLATORS: name of the TR flag; the abbreviation stays as it is
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "Trigger Happy"
+msgstr "乱射"
+
+#. TRANSLATORS: name of the M flag; the abbreviation stays as it is
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "Momentum"
+msgstr "慣性"
+
+#. TRANSLATORS: name of the NJ flag; the abbreviation stays as it is
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "No Jumping"
+msgstr "ジャンプ不可"
+
+#. TRANSLATORS: name of the O flag; the abbreviation stays as it is
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "Obesity"
+msgstr "肥大"
+
+#. TRANSLATORS: name of the CB flag; the abbreviation stays as it is
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "Colorblindness"
+msgstr "カラーブラインド"
+
+#. TRANSLATORS: name of the B flag; the abbreviation stays as it is
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "Blindness"
+msgstr "盲目"
+
+#. TRANSLATORS: name of the ST flag; the abbreviation stays as it is
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "Stealth"
+msgstr "ステルス"
+
+#. TRANSLATORS: name of the CL flag; the abbreviation stays as it is
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "Cloaking"
+msgstr "クローキング"
+
+#. TRANSLATORS: name of the MQ flag; the abbreviation stays as it is
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "Masquerade"
+msgstr "変装"
+
+#. TRANSLATORS: name of the SE flag; the abbreviation stays as it is
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "Seer"
+msgstr "透視"
+
+#. TRANSLATORS: name of the TH flag; the abbreviation stays as it is
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "Thief"
+msgstr "シーフ"
+
+#. TRANSLATORS: name of the JM flag; the abbreviation stays as it is
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "Jamming"
+msgstr "ジャミング"
+
+#. TRANSLATORS: name of the WA flag; the abbreviation stays as it is
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "Wide Angle"
+msgstr "広角"
+
+#. TRANSLATORS: what the R* flag (Red Team) does
+#: public/js/flags.mjs public/js/teams.mjs
+msgid ""
+"If it's yours, prevent other teams from taking it. If it's not take it to "
+"your base to capture it!"
+msgstr ""
+"自チームのフラグなら他チームに奪われないよう守り、そうでなければ自分の基地へ"
+"運んでキャプチャーしましょう！"
+
+#. TRANSLATORS: what the F flag (Rapid Fire) does
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "Shoots more often.  Shells go faster but not as far."
+msgstr "発射間隔が短くなります。弾は速くなりますが、射程は短くなります。"
+
+#. TRANSLATORS: what the MG flag (Machine Gun) does
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "Very fast reload and very short range."
+msgstr "リロードが非常に速く、射程が非常に短くなります。"
+
+#. TRANSLATORS: what the GM flag (Guided Missile) does
+#: public/js/flags.mjs public/js/teams.mjs
+msgid ""
+"Shots track a target.  Lock on with right button.  Can lock on or retarget "
+"after firing."
+msgstr ""
+"弾が標的を追尾します。右ボタンでロックオン。発射後もロックオンや標的の変更が"
+"できます。"
+
+#. TRANSLATORS: what the L flag (Laser) does
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "Shoots a laser.  Infinite speed and range but long reload time."
+msgstr ""
+"レーザーを発射します。弾速と射程は無限ですが、リロードに時間がかかります。"
+
+#. TRANSLATORS: what the R flag (Ricochet) does
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "Shots bounce off walls.  Don't shoot yourself!"
+msgstr "弾が壁で跳ね返ります。自分を撃たないように！"
+
+#. TRANSLATORS: what the SB flag (Super Bullet) does
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "Shoots through buildings.  Can kill Phantom Zone."
+msgstr "建物を貫通して撃てます。ファントムゾーンの戦車も倒せます。"
+
+#. TRANSLATORS: what the IB flag (Invisible Bullet) does
+#: public/js/flags.mjs public/js/teams.mjs
+msgid ""
+"Your shots don't appear on other radars.  Can still see them out window."
+msgstr "自分の弾が他のプレイヤーのレーダーに映りません。目視では見えます。"
+
+#. TRANSLATORS: what the SW flag (Shock Wave) does
+#: public/js/flags.mjs public/js/teams.mjs
+msgid ""
+"Firing destroys all tanks nearby.  Don't kill teammates!  Can kill tanks on/"
+"in buildings."
+msgstr ""
+"発射すると周囲の戦車をすべて破壊します。味方を倒さないように！建物の上や中の"
+"戦車も倒せます。"
+
+#. TRANSLATORS: what the SH flag (Shield) does
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "Getting hit only drops flag.  Flag flies an extra-long time."
+msgstr "被弾してもフラグを落とすだけで済みます。フラグは特に長く飛びます。"
+
+#. TRANSLATORS: what the V flag (High Speed) does
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "Tank moves faster.  Outrun bad guys."
+msgstr "戦車が速く走ります。敵を振り切りましょう。"
+
+#. TRANSLATORS: what the QT flag (Quick Turn) does
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "Tank turns faster.  Good for dodging."
+msgstr "戦車の旋回が速くなります。回避に便利です。"
+
+#. TRANSLATORS: what the OO flag (Oscillation Overthruster) does
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "Can drive through buildings.  Can't back up or shoot while inside."
+msgstr "建物を通り抜けられます。中にいる間は後退も射撃もできません。"
+
+#. TRANSLATORS: what the BU flag (Burrow) does
+#: public/js/flags.mjs public/js/teams.mjs
+msgid ""
+"Tank burrows underground, impervious to normal shots, but can be steamrolled "
+"by anyone!"
+msgstr "戦車が地中に潜り、通常弾が効かなくなりますが、誰にでも踏み潰されます！"
+
+#. TRANSLATORS: what the PZ flag (Phantom Zone) does
+#: public/js/flags.mjs public/js/teams.mjs
+msgid ""
+"Teleporting toggles Zoned effect.  Zoned tank can drive through buildings.  "
+"Zoned tank shoots Zoned bullets and can't be shot (except by superbullet, "
+"shock wave, and other Zoned tanks)."
+msgstr ""
+"テレポートするとゾーン状態が切り替わります。ゾーン状態の戦車は建物を通り抜け"
+"られます。ゾーン状態の戦車はゾーン弾を撃ち、撃たれません（スーパーバレット、"
+"ショックウェーブ、他のゾーン状態の戦車は例外）。"
+
+#. TRANSLATORS: what the A flag (Agility) does
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "Tank is quick and nimble making it easier to dodge."
+msgstr "戦車が素早く機敏に動き、回避しやすくなります。"
+
+#. TRANSLATORS: what the SR flag (Steamroller) does
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "Destroys tanks you touch but you have to get really close."
+msgstr "触れた戦車を破壊しますが、かなり近づく必要があります。"
+
+#. TRANSLATORS: what the G flag (Genocide) does
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "Killing one tank kills that tank's whole team."
+msgstr "戦車を1台倒すと、そのチーム全員が倒れます。"
+
+#. TRANSLATORS: what the JP flag (Jumping) does
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "Tank can jump.  Use Tab key.  Can't steer in the air."
+msgstr "戦車がジャンプできます。Tabキーを使います。空中では操縦できません。"
+
+#. TRANSLATORS: what the ID flag (Identify) does
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "Identifies type of nearest flag."
+msgstr "最も近いフラグの種類を識別します。"
+
+#. TRANSLATORS: what the US flag (Useless) does
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "You have found the useless flag. Use it wisely."
+msgstr "役立たずフラグを見つけました。賢く使いましょう。"
+
+#. TRANSLATORS: what the WG flag (Wings) does
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "Tank can drive in air."
+msgstr "戦車が空中を走行できます。"
+
+#. TRANSLATORS: what the T flag (Tiny) does
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "Tank is small and can get through small openings.  Very hard to hit."
+msgstr "戦車が小さくなり、狭い隙間を通れます。非常に当たりにくくなります。"
+
+#. TRANSLATORS: what the N flag (Narrow) does
+#: public/js/flags.mjs public/js/teams.mjs
+msgid ""
+"Tank is super thin.  Very hard to hit from front but is normal size from "
+"side.  Can get through small openings."
+msgstr ""
+"戦車が極薄になります。正面からは非常に当たりにくいですが、側面からは通常の大"
+"きさです。狭い隙間を通れます。"
+
+#. TRANSLATORS: what the RC flag (ReverseControls) does
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "Tank driving controls are reversed."
+msgstr "戦車の操縦が反転します。"
+
+#. TRANSLATORS: what the FO flag (Forward Only) does
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "Can't drive in reverse."
+msgstr "後退できません。"
+
+#. TRANSLATORS: what the RO flag (ReverseOnly) does
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "Can't drive forward."
+msgstr "前進できません。"
+
+#. TRANSLATORS: what the LT flag (Left Turn Only) does
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "Can't turn right."
+msgstr "右に曲がれません。"
+
+#. TRANSLATORS: what the RT flag (Right Turn Only) does
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "Can't turn left."
+msgstr "左に曲がれません。"
+
+#. TRANSLATORS: what the BY flag (Bouncy) does
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "Tank can't stop bouncing."
+msgstr "戦車が跳ね続けます。"
+
+#. TRANSLATORS: what the TR flag (Trigger Happy) does
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "Tank can't stop firing."
+msgstr "戦車が撃ち続けます。"
+
+#. TRANSLATORS: what the M flag (Momentum) does
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "Tank has inertia.  Acceleration is limited."
+msgstr "戦車に慣性がかかります。加速が制限されます。"
+
+#. TRANSLATORS: what the NJ flag (No Jumping) does
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "Tank can't jump."
+msgstr "戦車がジャンプできません。"
+
+#. TRANSLATORS: what the O flag (Obesity) does
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "Tank becomes very large.  Can't fit through teleporters."
+msgstr "戦車が非常に大きくなります。テレポーターを通れません。"
+
+#. TRANSLATORS: what the CB flag (Colorblindness) does
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "Can't tell team colors.  Don't shoot teammates!"
+msgstr "チームの色が見分けられません。味方を撃たないように！"
+
+#. TRANSLATORS: what the B flag (Blindness) does
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "Can't see out window.  Radar still works."
+msgstr "外が見えません。レーダーは機能します。"
+
+#. TRANSLATORS: what the ST flag (Stealth) does
+#: public/js/flags.mjs public/js/teams.mjs
+msgid ""
+"Tank is invisible on radar.  Shots are still visible.  Sneak up behind "
+"enemies!"
+msgstr "戦車がレーダーに映りません。弾は見えます。敵の背後に忍び寄りましょう！"
+
+#. TRANSLATORS: what the CL flag (Cloaking) does
+#: public/js/flags.mjs public/js/teams.mjs
+msgid ""
+"Tank is invisible out window.  Shots are still visible.  Sneak up behind "
+"enemies!"
+msgstr "戦車が目視では見えません。弾は見えます。敵の背後に忍び寄りましょう！"
+
+#. TRANSLATORS: what the MQ flag (Masquerade) does
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "In opponent's hud, you appear as a teammate."
+msgstr "敵のHUDでは、あなたが味方に見えます。"
+
+#. TRANSLATORS: what the SE flag (Seer) does
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "See stealthed, cloaked and masquerading tanks as normal."
+msgstr "ステルス、クローキング、変装中の戦車が普通に見えます。"
+
+#. TRANSLATORS: what the TH flag (Thief) does
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "Steal flags.  Small and fast but can't kill."
+msgstr "フラグを盗みます。小さく速いですが、敵を倒せません。"
+
+#. TRANSLATORS: what the JM flag (Jamming) does
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "Radar doesn't work.  Can still see."
+msgstr "レーダーが機能しません。目視はできます。"
+
+#. TRANSLATORS: what the WA flag (Wide Angle) does
+#: public/js/flags.mjs public/js/teams.mjs
+msgid ""
+"Fish-eye lens distorts view.  bzo leaves the view alone, so this one only "
+"costs you the time to shake it off."
+msgstr ""
+"魚眼レンズで視界が歪みます。bzo は視界を変えないので、このフラグは振り落とす"
+"までの時間を失うだけです。"
+
+#. TRANSLATORS: a team, or the team choice
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "Automatic"
+msgstr "自動"
+
+#. TRANSLATORS: a team, or the team choice
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "Rogue"
+msgstr "ローグ"
+
+#. TRANSLATORS: a team, or the team choice
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "Observer"
+msgstr "観戦者"
+
+#. TRANSLATORS: a team, or the team choice
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "Map Viewer"
+msgstr "マップビューア"
+
+#. TRANSLATORS: a team, or the team choice
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "Rabbit"
+msgstr "ラビット"
+
+#. TRANSLATORS: a team, or the team choice
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "Hunter"
+msgstr "ハンター"
+
+#. TRANSLATORS: a team named inside a sentence, lower case where the language allows
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "automatic"
+msgstr "自動"
+
+#. TRANSLATORS: a team named inside a sentence, lower case where the language allows
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "rogue"
+msgstr "ローグ"
+
+#. TRANSLATORS: a team named inside a sentence, lower case where the language allows
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "observer"
+msgstr "観戦者"
+
+#. TRANSLATORS: a team named inside a sentence, lower case where the language allows
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "mapviewer"
+msgstr "マップビューア"
+
+#. TRANSLATORS: a team named inside a sentence, lower case where the language allows
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "red"
+msgstr "レッド"
+
+#. TRANSLATORS: a team named inside a sentence, lower case where the language allows
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "blue"
+msgstr "ブルー"
+
+#. TRANSLATORS: a team named inside a sentence, lower case where the language allows
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "green"
+msgstr "グリーン"
+
+#. TRANSLATORS: a team named inside a sentence, lower case where the language allows
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "purple"
+msgstr "パープル"
+
+#. TRANSLATORS: a team named inside a sentence, lower case where the language allows
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "rabbit"
+msgstr "ラビット"
+
+#. TRANSLATORS: a team named inside a sentence, lower case where the language allows
+#: public/js/flags.mjs public/js/teams.mjs
+msgid "hunter"
+msgstr "ハンター"
+
+#. TRANSLATORS: the name of this language, written in it
+msgid "cs_CZ"
+msgstr ""
+
+#. TRANSLATORS: the name of this language, written in it
+msgid "da"
+msgstr ""
+
+#. TRANSLATORS: the name of this language, written in it
+msgid "de"
+msgstr ""
+
+#. TRANSLATORS: the name of this language, written in it
+msgid "en_US_l33t"
+msgstr ""
+
+#. TRANSLATORS: the name of this language, written in it
+msgid "en_US_redneck"
+msgstr ""
+
+#. TRANSLATORS: the name of this language, written in it
+msgid "es"
+msgstr ""
+
+#. TRANSLATORS: the name of this language, written in it
+msgid "fr"
+msgstr ""
+
+#. TRANSLATORS: the name of this language, written in it
+msgid "it"
+msgstr ""
+
+#. TRANSLATORS: the name of this language, written in it
+msgid "ja"
+msgstr "日本語"
+
+#. TRANSLATORS: the name of this language, written in it
+msgid "ko"
+msgstr ""
+
+#. TRANSLATORS: the name of this language, written in it
+msgid "lt"
+msgstr ""
+
+#. TRANSLATORS: the name of this language, written in it
+msgid "nl"
+msgstr ""
+
+#. TRANSLATORS: the name of this language, written in it
+msgid "pt"
+msgstr ""
+
+#. TRANSLATORS: the name of this language, written in it
+msgid "ru"
+msgstr ""
+
+#. TRANSLATORS: the name of this language, written in it
+msgid "sk"
+msgstr ""
+
+#. TRANSLATORS: the name of this language, written in it
+msgid "sv"
+msgstr ""
+
+#. TRANSLATORS: the name of this language, written in it
+msgid "th"
+msgstr ""
+
+#. TRANSLATORS: the name of this language, written in it
+msgid "tlh"
+msgstr ""
+
+#. TRANSLATORS: the name of this language, written in it
+msgid "zh_CN"
+msgstr ""
+
+#. TRANSLATORS: the name of this language, written in it
+msgid "zh_TW"
+msgstr ""
+
+#: public/js/client.js:43
+msgid "Chat"
+msgstr "チャット"
+
+#: public/js/client.js:44
+msgid "Server"
+msgstr "サーバー"
+
+#: public/js/client.js:45
+msgid "Misc"
+msgstr "その他"
+
+#: public/js/client.js:46
+msgid "Debug"
+msgstr "デバッグ"
+
+#: public/js/client.js:868
+msgid "unlimited"
+msgstr "無制限"
+
+#: public/js/client.js:870
+msgid "{count} left"
+msgstr "残り{count}"
+
+#: public/js/client.js:982
+msgid "this is the designated list server"
+msgstr "ここが指定のリストサーバーです"
+
+#. TRANSLATORS: listServerUrl is a server.json setting; keep it as written
+#: public/js/client.js:985
+msgid "disabled (no listServerUrl)"
+msgstr "無効（listServerUrl なし）"
+
+#: public/js/client.js:987
+msgid "reporting to {url}: key configured"
+msgstr "{url} に報告中：キー設定済み"
+
+#: public/js/client.js:988
+msgid "reporting to {url}: no key yet"
+msgstr "{url} に報告中：キー未設定"
+
+#: public/js/client.js:1010
+msgid "{team} won the game"
+msgstr "{team}の勝利"
+
+#: public/js/client.js:1015
+msgid "{player} won the game"
+msgstr "{player}の勝利"
+
+#: public/js/client.js:1236
+msgid "Team: {team}"
+msgstr "チーム：{team}"
+
+#: public/js/client.js:1363
+msgid "watching {server}"
+msgstr "{server}を観戦中"
+
+#: public/js/client.js:1365 public/js/client.js:9922
+msgid "replay {name}"
+msgstr "リプレイ {name}"
+
+#: public/js/client.js:1375
+msgid "local {map}"
+msgstr "ローカル {map}"
+
+#: public/js/client.js:1375
+msgid "This server"
+msgstr "このサーバー"
+
+#: public/js/client.js:1443
+msgid "Server: {server}"
+msgstr "サーバー：{server}"
+
+#: public/js/client.js:1498
+msgid "Sign in & Play"
+msgstr "ログインしてプレイ"
+
+#: public/js/client.js:1500
+msgid ""
+"Playing here needs a bzflag.org global login. This signs you in, then joins "
+"on the team you picked."
+msgstr ""
+"ここでプレイするには bzflag.org のグローバルログインが必要です。ログインして"
+"から、選んだチームで参加します。"
+
+#: public/js/client.js:1613 public/js/client.js:1631
+msgid "a tank"
+msgstr "戦車"
+
+#: public/js/client.js:1762
+msgid "You are now the rabbit."
+msgstr "あなたがラビットになりました。"
+
+#: public/js/client.js:1768
+msgid "{player} is now the rabbit"
+msgstr "{player}がラビットになりました"
+
+#: public/js/client.js:1779
+msgid "operation failed"
+msgstr "操作に失敗しました"
+
+#: public/js/client.js:1779
+msgid "Voice error: {error}"
+msgstr "ボイスエラー：{error}"
+
+#: public/js/client.js:2284
+msgid "Default microphone"
+msgstr "既定のマイク"
+
+#: public/js/client.js:2292 public/js/voice.js:1218
+msgid "Microphone"
+msgstr "マイク"
+
+#: public/js/client.js:2325 public/js/client.js:2340
+msgid "Receive only"
+msgstr "受信のみ"
+
+#: public/js/client.js:2327 public/js/client.js:2366
+msgid "Microphone on"
+msgstr "マイクオン"
+
+#: public/js/client.js:2329
+msgid "Permission denied"
+msgstr "許可されていません"
+
+#: public/js/client.js:2331 public/js/client.js:2333
+msgid "Microphone unavailable"
+msgstr "マイクを利用できません"
+
+#: public/js/client.js:2341
+msgid "Mic blocked"
+msgstr "マイク拒否"
+
+#: public/js/client.js:2342
+msgid "Mic unavailable"
+msgstr "マイク不可"
+
+#: public/js/client.js:2343
+msgid "Disable Mic"
+msgstr "マイクを無効化"
+
+#: public/js/client.js:2343
+msgid "Enable Mic"
+msgstr "マイクを有効化"
+
+#: public/js/client.js:2352
+msgid "{action} - {channel}"
+msgstr "{action} - {channel}"
+
+#: public/js/client.js:2353
+msgid "{channel} voice channel, {status}"
+msgstr "{channel}ボイスチャンネル、{status}"
+
+#: public/js/client.js:2361
+msgid "Microphone permission granted"
+msgstr "マイクが許可されました"
+
+#: public/js/client.js:2374
+msgid "Microphone is transmitting on the {channel} channel."
+msgstr "マイクは{channel}チャンネルで送信中です。"
+
+#: public/js/client.js:2375
+msgid "Microphone permission granted; transmission is off."
+msgstr "マイクは許可済みですが、送信はオフです。"
+
+#: public/js/client.js:2377
+msgid "Microphone permission was denied by the browser."
+msgstr "ブラウザがマイクの許可を拒否しました。"
+
+#: public/js/client.js:2379
+msgid "Microphone capture is unavailable in this browser or context."
+msgstr "このブラウザまたは環境ではマイクを取り込めません。"
+
+#: public/js/client.js:2392
+msgid "Voice operation failed."
+msgstr "ボイス操作に失敗しました。"
+
+#: public/js/client.js:2639
+msgid ""
+"A proxied connection tells the target which bzo it came through, and nothing "
+"else. Your own motto is used on this server."
+msgstr ""
+"プロキシ接続では、どの bzo を経由したかだけが接続先に伝わり、それ以外は伝わり"
+"ません。このサーバーでは自分のモットーが使われます。"
+
+#: public/js/client.js:3065
+msgid "Preparing battlefield..."
+msgstr "戦場を準備中..."
+
+#: public/js/client.js:3066
+msgid "Building world geometry"
+msgstr "ワールドの形状を構築中"
+
+#: public/js/client.js:3075
+msgid "Placing obstacles..."
+msgstr "障害物を配置中..."
+
+#: public/js/client.js:3076
+msgid "Synchronizing world objects"
+msgstr "ワールドオブジェクトを同期中"
+
+#: public/js/client.js:3104
+msgid "Loading vehicle systems..."
+msgstr "車両システムを読み込み中..."
+
+#: public/js/client.js:3105
+msgid "Preparing tank models, textures, and audio"
+msgstr "戦車のモデル・テクスチャ・音声を準備中"
+
+#: public/js/client.js:3122
+msgid "Assembling tanks..."
+msgstr "戦車を組み立て中..."
+
+#: public/js/client.js:3123
+msgid "Creating player vehicles"
+msgstr "プレイヤーの車両を作成中"
+
+#: public/js/client.js:3136
+msgid "Entering battle..."
+msgstr "戦闘に突入..."
+
+#: public/js/client.js:3136
+msgid "Render ready"
+msgstr "描画準備完了"
+
+#: public/js/client.js:3137
+msgid "Joining game"
+msgstr "ゲームに参加中"
+
+#: public/js/client.js:3137
+msgid "Waiting for player name"
+msgstr "プレイヤー名を待っています"
+
+#. TRANSLATORS: prefix on a chat line this client wrote itself, not the server
+#: public/js/client.js:3408
+msgid "local: {message}"
+msgstr "ローカル：{message}"
+
+#: public/js/client.js:3415
+msgid "client version: {version}"
+msgstr "クライアントバージョン：{version}"
+
+#: public/js/client.js:3416
+msgid "copyright: {copyright}"
+msgstr "著作権：{copyright}"
+
+#: public/js/client.js:3417
+msgid "license: {license} ({url})"
+msgstr "ライセンス：{license}（{url}）"
+
+#: public/js/client.js:3564
+msgid "Usage: {command}"
+msgstr "使い方：{command}"
+
+#. TRANSLATORS: /silence and - stay as written
+#: public/js/client.js:3576
+msgid "Usage: /silence <callsign>|-"
+msgstr "使い方：/silence <コールサイン>|-"
+
+#: public/js/client.js:3583
+msgid "Silencing every unauthenticated player"
+msgstr "未認証のプレイヤー全員をミュートします"
+
+#: public/js/client.js:3589
+msgid "Silenced \"{callsign}\""
+msgstr "「{callsign}」をミュートしました"
+
+#. TRANSLATORS: /unsilence and - stay as written
+#: public/js/client.js:3596
+msgid "Usage: /unsilence <callsign>|-"
+msgstr "使い方：/unsilence <コールサイン>|-"
+
+#: public/js/client.js:3603
+msgid "No longer silencing unauthenticated players"
+msgstr "未認証のプレイヤーのミュートを解除しました"
+
+#: public/js/client.js:3609
+msgid "Unsilenced \"{callsign}\""
+msgstr "「{callsign}」のミュートを解除しました"
+
+#: public/js/client.js:3666
+msgid "Highlight cleared"
+msgstr "ハイライトを解除しました"
+
+#: public/js/client.js:3668
+msgid "Invalid highlight pattern: {pattern}"
+msgstr "無効なハイライトパターン：{pattern}"
+
+#: public/js/client.js:3670
+msgid "Highlighting \"{pattern}\""
+msgstr "「{pattern}」をハイライト中"
+
+#: public/js/client.js:3694
+msgid "Saved messages to: {filename}"
+msgstr "メッセージを保存しました：{filename}"
+
+#: public/js/client.js:3702
+msgid "Client-side commands: {commands}"
+msgstr "クライアント側コマンド：{commands}"
+
+#: public/js/client.js:3850
+msgid "No recent direct sender to reply to"
+msgstr "返信できる最近の個人メッセージ送信者がいません"
+
+#: public/js/client.js:3858
+msgid "No nemesis target available"
+msgstr "宿敵（ネメシス）がいません"
+
+#: public/js/client.js:4052 public/js/input.js:1509
+msgid "Show Operator Panel (O)"
+msgstr "オペレーターパネルを表示 (O)"
+
+#: public/js/client.js:4053
+msgid ""
+"Operator: sign in with a bzflag.org global callsign that the server grants "
+"admin to"
+msgstr ""
+"オペレーター：このサーバーで管理者権限のある bzflag.org グローバルコールサイ"
+"ンでログイン"
+
+#: public/js/client.js:4094 public/js/client.js:4113
+msgid "Sign in"
+msgstr "ログイン"
+
+#: public/js/client.js:4097
+msgid "Global login for {server}"
+msgstr "{server}のグローバルログイン"
+
+#: public/js/client.js:4098
+msgid ""
+"Sign in at bzflag.org to play on {server}. A login is needed for each "
+"target, and bzo never sees your password."
+msgstr ""
+"{server}でプレイするには bzflag.org でログインしてください。接続先ごとにログ"
+"インが必要で、bzo がパスワードを見ることはありません。"
+
+#: public/js/client.js:4106
+msgid "Signed in as {callsign}. Activate to sign out."
+msgstr "{callsign}としてログイン中。実行でログアウト。"
+
+#: public/js/client.js:4108
+msgid "Signed in, and an admin on this server. Click to sign out."
+msgstr "ログイン中で、このサーバーの管理者です。クリックでログアウト。"
+
+#: public/js/client.js:4109
+msgid "Signed in with a bzflag.org global callsign. Click to sign out."
+msgstr "bzflag.org グローバルコールサインでログイン中。クリックでログアウト。"
+
+#: public/js/client.js:4116
+msgid "Global login: sign in"
+msgstr "グローバルログイン：ログイン"
+
+#: public/js/client.js:4117
+msgid ""
+"Sign in at bzflag.org with a global callsign. bzo never sees your password."
+msgstr ""
+"bzflag.org でグローバルコールサインでログインします。bzo がパスワードを見るこ"
+"とはありません。"
+
+#: public/js/client.js:4137
+msgid "Signing out leaves VR. Exit the headset session first."
+msgstr ""
+"ログアウトするとVRを抜けます。先にヘッドセットのセッションを終了してくださ"
+"い。"
+
+#: public/js/client.js:4138
+msgid "Global login leaves VR. Exit the headset session first."
+msgstr ""
+"グローバルログインするとVRを抜けます。先にヘッドセットのセッションを終了して"
+"ください。"
+
+#: public/js/client.js:4577 public/js/client.js:10145
+msgid "Fetching remote server's map..."
+msgstr "リモートサーバーのマップを取得中..."
+
+#: public/js/client.js:4737
+msgid "Pausing in {seconds}"
+msgstr "{seconds}秒後に一時停止"
+
+#: public/js/client.js:4761 public/js/client.js:6433
+msgid "Self Destructing in {seconds}"
+msgstr "{seconds}秒後に自爆"
+
+#: public/js/client.js:4843
+msgid "AutoPilot {pilot}: {intent}"
+msgstr "オートパイロット {pilot}：{intent}"
+
+#: public/js/client.js:4844
+msgid "AutoPilot {pilot}"
+msgstr "オートパイロット {pilot}"
+
+#: public/js/client.js:6435
+msgid "Self Destruct cancelled"
+msgstr "自爆を取り消しました"
+
+#: public/js/client.js:6594
+msgid "Hide Debug Labels"
+msgstr "デバッグラベルを隠す"
+
+#: public/js/client.js:6597
+msgid "Show Debug Labels"
+msgstr "デバッグラベルを表示"
+
+#: public/js/client.js:6614
+msgid "Disable Dynamic Lighting"
+msgstr "動的ライティングを無効化"
+
+#: public/js/client.js:6615
+msgid "Enable Dynamic Lighting"
+msgstr "動的ライティングを有効化"
+
+#: public/js/client.js:6617
+msgid "Dynamic Lighting needs more shader uniforms than this browser reports"
+msgstr ""
+"動的ライティングには、このブラウザが報告するより多くのシェーダーユニフォーム"
+"が必要です"
+
+#: public/js/client.js:6626
+msgid "Disable Rumble"
+msgstr "振動を無効化"
+
+#: public/js/client.js:6627
+msgid "Enable Rumble"
+msgstr "振動を有効化"
+
+#: public/js/client.js:6633
+msgid "Disable Anaglyph 3D"
+msgstr "アナグリフ3Dを無効化"
+
+#: public/js/client.js:6634
+msgid "Enable Anaglyph 3D"
+msgstr "アナグリフ3Dを有効化"
+
+#: public/js/client.js:6637
+msgid "Anaglyph 3D is unavailable in VR mode"
+msgstr "VRモードではアナグリフ3Dを使えません"
+
+#: public/js/client.js:6646
+msgid "Hide Debug Geometry"
+msgstr "デバッグ形状を隠す"
+
+#: public/js/client.js:6723
+msgid "Confirm"
+msgstr "確認"
+
+#: public/js/client.js:6779
+msgid "Share View Link: only available while viewing a map"
+msgstr "ビューのリンクを共有：マップ表示中のみ利用できます"
+
+#: public/js/client.js:6784
+msgid "View link copied to clipboard"
+msgstr "ビューのリンクをクリップボードにコピーしました"
+
+#: public/js/client.js:6813
+msgid "WebXR: {mode}"
+msgstr "WebXR：{mode}"
+
+#: public/js/client.js:6819
+msgid "WebXR not supported on this device"
+msgstr "このデバイスはWebXRに対応していません"
+
+#: public/js/client.js:6824
+msgid "Requesting VR..."
+msgstr "VRを要求中..."
+
+#: public/js/client.js:6827
+msgid "Error: Renderer not available"
+msgstr "エラー：レンダラーを利用できません"
+
+#: public/js/client.js:6840
+msgid "✓ WebXR VR Mode: ON"
+msgstr "✓ WebXR VRモード：オン"
+
+#: public/js/client.js:6846
+msgid "✗ VR request failed - check server.log"
+msgstr "✗ VRの要求に失敗 - server.log を確認"
+
+#: public/js/client.js:6848 public/js/client.js:17058
+msgid "WebXR VR Mode: OFF"
+msgstr "WebXR VRモード：オフ"
+
+#: public/js/client.js:7394
+msgid "3D renderer unavailable: {reason}"
+msgstr "3Dレンダラーを利用できません：{reason}"
+
+#: public/js/client.js:7401
+msgid "3D renderer failed to initialize."
+msgstr "3Dレンダラーの初期化に失敗しました。"
+
+#: public/js/client.js:7403
+msgid "Open the game in an external browser window for full WebGL support."
+msgstr ""
+"WebGLを完全に使うには、外部のブラウザウィンドウでゲームを開いてください。"
+
+#: public/js/client.js:7818
+msgid "Connected to server!"
+msgstr "サーバーに接続しました！"
+
+#: public/js/client.js:7824
+msgid "Connected to server"
+msgstr "サーバーに接続済み"
+
+#: public/js/client.js:7825
+msgid "Waiting for world state"
+msgstr "ワールドの状態を待っています"
+
+#: public/js/client.js:7876
+msgid "Offline"
+msgstr "オフライン"
+
+#: public/js/client.js:7876
+msgid "Cannot reach {host}"
+msgstr "{host}に接続できません"
+
+#: public/js/client.js:7877
+msgid "Trying again..."
+msgstr "再試行中..."
+
+#: public/js/client.js:7888
+msgid "Disconnected from server | Kills: {kills} | Deaths: {deaths}"
+msgstr "サーバーから切断されました | キル：{kills} | デス：{deaths}"
+
+#: public/js/client.js:7893
+msgid "Press a key, tap or pull a trigger to rejoin"
+msgstr "キーを押す、タップする、またはトリガーを引くと再参加します"
+
+#: public/js/client.js:8053
+msgid "Server error: {error}"
+msgstr "サーバーエラー：{error}"
+
+#: public/js/client.js:8058
+msgid "Server: action completed successfully"
+msgstr "サーバー：操作が完了しました"
+
+#: public/js/client.js:8137
+msgid "Operator Panel (v{version})"
+msgstr "オペレーターパネル (v{version})"
+
+#: public/js/client.js:8554
+msgid "{player} joined"
+msgstr "{player}が参加しました"
+
+#: public/js/client.js:8599
+msgid "{player} left"
+msgstr "{player}が退出しました"
+
+#: public/js/client.js:8615
+msgid "{callsign} not responding"
+msgstr "{callsign}が応答していません"
+
+#: public/js/client.js:8616
+msgid "{callsign} okay"
+msgstr "{callsign}が復帰しました"
+
+#: public/js/client.js:8730
+msgid "{player} grabbed {flag}"
+msgstr "{player}が{flag}を獲得"
+
+#: public/js/client.js:8781
+msgid "{player} dropped {flag}"
+msgstr "{player}が{flag}を捨てた"
+
+#: public/js/client.js:8872
+msgid "{player}: {pilot} taking controls"
+msgstr "{player}：{pilot}が操縦を開始"
+
+#: public/js/client.js:8873
+msgid "{player}: {pilot} releasing controls"
+msgstr "{player}：{pilot}が操縦を返却"
+
+#: public/js/client.js:8905
+msgid "{player} paused"
+msgstr "{player}が一時停止"
+
+#: public/js/client.js:8916
+msgid "{player} unpaused"
+msgstr "{player}が再開"
+
+#: public/js/client.js:9026
+msgid "Server forced a disconnect"
+msgstr "サーバーにより切断されました"
+
+#: public/js/client.js:9032
+msgid "Server updated - reloading..."
+msgstr "サーバーが更新されました - 再読み込み中..."
+
+#: public/js/client.js:9552
+msgid "Got flattened by {player}"
+msgstr "{player}に踏み潰された"
+
+#: public/js/client.js:9553
+msgid "Teammate hit with Genocide by {player}"
+msgstr "味方が{player}のジェノサイドを受けた"
+
+#: public/js/client.js:9554
+msgid "Got shot by {player}"
+msgstr "{player}に撃たれた"
+
+#: public/js/client.js:9556
+msgid "Got flattened by teammate {player}"
+msgstr "味方の{player}に踏み潰された"
+
+#: public/js/client.js:9557
+msgid "Teammate hit with Genocide by teammate {player}"
+msgstr "味方が味方の{player}のジェノサイドを受けた"
+
+#: public/js/client.js:9558
+msgid "Got shot by teammate {player}"
+msgstr "味方の{player}に撃たれた"
+
+#: public/js/client.js:9594
+msgid "Your team flag was captured!"
+msgstr "自チームのフラグがキャプチャーされた！"
+
+#: public/js/client.js:9596
+msgid "Time Expired - GAME OVER"
+msgstr "時間切れ - ゲームオーバー"
+
+#: public/js/client.js:9598
+msgid "Tank Self Destructed"
+msgstr "戦車が自爆した"
+
+#: public/js/client.js:9600
+msgid "Tank Rusted"
+msgstr "戦車が錆びついた"
+
+#: public/js/client.js:9603 public/js/client.js:9607
+msgid "Killed by the server"
+msgstr "サーバーに倒された"
+
+#: public/js/client.js:9634
+msgid "You killed {player}"
+msgstr "{player}を倒した"
+
+#: public/js/client.js:9646
+msgid "{player} self-destructed"
+msgstr "{player}が自爆"
+
+#: public/js/client.js:9650
+msgid "{player} fell in the water"
+msgstr "{player}が水に落ちた"
+
+#: public/js/client.js:9655
+msgid "{player}: {message}"
+msgstr "{player}：{message}"
+
+#: public/js/client.js:9658
+msgid "killed by the server"
+msgstr "サーバーに倒された"
+
+#: public/js/client.js:9664
+msgid "{player} was killed by the server"
+msgstr "{player}がサーバーに倒された"
+
+#: public/js/client.js:9669
+msgid "{killer} killed {victim}"
+msgstr "{killer}が{victim}を撃破"
+
+#: public/js/client.js:9834
+msgid "You respawned!"
+msgstr "リスポーンしました！"
+
+#: public/js/client.js:9921
+msgid "map {name}"
+msgstr "マップ {name}"
+
+#: public/js/client.js:9926
+msgid "nothing uploaded"
+msgstr "アップロードなし"
+
+#: public/js/client.js:9953 public/js/client.js:10428
+msgid "MOTD: {motd}"
+msgstr "MOTD：{motd}"
+
+#: public/js/client.js:10028
+msgid "{count} box"
+msgstr "ボックス{count}個"
+
+#: public/js/client.js:10028
+msgid "{count} boxes"
+msgstr "ボックス{count}個"
+
+#: public/js/client.js:10029
+msgid "{count} pyramid"
+msgstr "ピラミッド{count}個"
+
+#: public/js/client.js:10029
+msgid "{count} pyramids"
+msgstr "ピラミッド{count}個"
+
+#: public/js/client.js:10030
+msgid "{count} mesh"
+msgstr "メッシュ{count}個"
+
+#: public/js/client.js:10030
+msgid "{count} meshes"
+msgstr "メッシュ{count}個"
+
+#: public/js/client.js:10035
+msgid "{count} base"
+msgstr "基地{count}個"
+
+#: public/js/client.js:10035
+msgid "{count} bases"
+msgstr "基地{count}個"
+
+#: public/js/client.js:10037
+msgid "{count} teleporter"
+msgstr "テレポーター{count}個"
+
+#: public/js/client.js:10037
+msgid "{count} teleporters"
+msgstr "テレポーター{count}個"
+
+#: public/js/client.js:10040
+msgid "water"
+msgstr "水"
+
+#: public/js/client.js:10041
+msgid "weather"
+msgstr "天候"
+
+#: public/js/client.js:10042
+msgid "custom ground"
+msgstr "カスタム地面"
+
+#: public/js/client.js:10080 public/js/client.js:10159
+msgid "View {map}"
+msgstr "{map}を表示"
+
+#: public/js/client.js:10157
+msgid "{server} did not answer"
+msgstr "{server}から応答がありません"
+
+#: public/js/client.js:10169
+msgid "Watch"
+msgstr "観戦"
+
+#: public/js/client.js:10170
+msgid "Watch the live game on {server}"
+msgstr "{server}のライブゲームを観戦"
+
+#: public/js/client.js:10188 public/js/client.js:10196
+msgid "Re-import"
+msgstr "再インポート"
+
+#: public/js/client.js:10192
+msgid "Importing…"
+msgstr "インポート中…"
+
+#: public/js/client.js:10235
+msgid "Loading map..."
+msgstr "マップを読み込み中..."
+
+#: public/js/client.js:10243
+msgid "Building world geometry..."
+msgstr "ワールドの形状を構築中..."
+
+#: public/js/client.js:10307
+msgid "{count} watching now"
+msgstr "{count}人が観戦中"
+
+#: public/js/client.js:10310
+msgid "Watch {name}"
+msgstr "{name}を観戦"
+
+#: public/js/client.js:10346
+msgid "That server's map could not be fetched"
+msgstr "そのサーバーのマップを取得できませんでした"
+
+#: public/js/client.js:10364
+msgid "import failed"
+msgstr "インポートに失敗しました"
+
+#: public/js/client.js:10364
+msgid "Could not load that server's map: {reason}"
+msgstr "そのサーバーのマップを読み込めませんでした：{reason}"
+
+#: public/js/client.js:10562
+msgid "{team} Limit:"
+msgstr "{team}上限："
+
+#: public/js/client.js:10643
+msgid "No limit"
+msgstr "無制限"
+
+#: public/js/client.js:10734
+msgid "Restart"
+msgstr "リスタート"
+
+#: public/js/client.js:10738
+msgid "Starts a new game: every player reloads into the new settings"
+msgstr "新しいゲームを開始：全プレイヤーが新しい設定で再読み込みします"
+
+#: public/js/client.js:10739
+msgid "Applies the staged changes"
+msgstr "保留中の変更を適用します"
+
+#: public/js/client.js:11080
+msgid "Paused"
+msgstr "一時停止中"
+
+#: public/js/client.js:11081
+msgid "Sealed"
+msgstr "建物内"
+
+#: public/js/client.js:12006
+msgid "Already following someone"
+msgstr "すでに誰かを追従中"
+
+#: public/js/client.js:12042 public/js/client.js:12162
+msgid "Looking at {player}"
+msgstr "{player}を注視中"
+
+#: public/js/client.js:12146
+msgid "{player} locked on me"
+msgstr "{player}が自分をロックオン"
+
+#: public/js/client.js:12156
+msgid "Looking at nothing"
+msgstr "何も見ていません"
+
+#: public/js/client.js:12162
+msgid "Locked on {player}"
+msgstr "{player}をロックオン"
+
+#: public/js/client.js:12398
+msgid "Clear ({count})"
+msgstr "クリア（{count}）"
+
+#: public/js/client.js:12398
+msgid "Clear"
+msgstr "クリア"
+
+# review: was left in English to match the help page; now translated
+#: public/js/client.js:12498
+msgid "SPOTTED: {player}"
+msgstr "発見: {player}"
+
+#: public/js/client.js:12613 public/js/client.js:12619
+msgid "nobody"
+msgstr "なし"
+
+#: public/js/client.js:12623
+msgid "Leader {who}"
+msgstr "トップ: {who}"
+
+#: public/js/client.js:12625 public/js/client.js:12630
+msgid "Tracking {who}"
+msgstr "{who}を追跡"
+
+#: public/js/client.js:12626
+msgid "Following {who}"
+msgstr "{who}を追従"
+
+#: public/js/client.js:12627
+msgid "Driving with {who}"
+msgstr "{who}に同乗"
+
+#: public/js/client.js:12632 public/js/hud.js:566 public/js/input.js:1387
+msgid "First Person"
+msgstr "一人称"
+
+#: public/js/client.js:12633 public/js/hud.js:567 public/js/input.js:1388
+msgid "Third Person"
+msgstr "三人称"
+
+# review: 俯瞰
+#: public/js/client.js:12634 public/js/hud.js:568 public/js/input.js:1389
+msgid "Overview"
+msgstr "俯瞰"
+
+#: public/js/client.js:12635
+msgid "Roaming"
+msgstr "自由視点"
+
+#: public/js/client.js:12924 public/js/client.js:12998
+msgid "autopilot disabled"
+msgstr "オートパイロット無効"
+
+#: public/js/client.js:12933
+msgid "autopilot not allowed on this server"
+msgstr "このサーバーではオートパイロットは使えません"
+
+#: public/js/client.js:12945
+msgid "{pilot} has the controls"
+msgstr "{pilot}が操縦中"
+
+#: public/js/client.js:12950
+msgid "You may not enable the Autopilot more than once every five seconds."
+msgstr "オートパイロットは5秒に1回までしか有効にできません。"
+
+#: public/js/client.js:12955
+msgid "autopilot enabled"
+msgstr "オートパイロット有効"
+
+#: public/js/client.js:12978
+msgid "Not allowed"
+msgstr "許可されていません"
+
+#: public/js/client.js:12978 public/js/input.js:1092 public/js/input.js:1102
+#: public/js/input.js:1106
+msgid "Unavailable"
+msgstr "利用不可"
+
+#: public/js/client.js:12981
+msgid "None"
+msgstr "なし"
+
+#: public/js/client.js:13803
+msgid "Zoned"
+msgstr "ゾーン突入"
+
+#: public/js/client.js:13803
+msgid "Unzoned"
+msgstr "ゾーン解除"
+
+#: public/js/client.js:14604 public/js/client.js:14621
+msgid "unidentified"
+msgstr "不明"
+
+#: public/js/client.js:14641
+msgid "unknown"
+msgstr "不明"
+
+#: public/js/client.js:14652
+msgid ""
+"This server bounces every shot off walls, whatever flag fired it, so the "
+"Ricochet flag is not in play here."
+msgstr ""
+"このサーバーでは、どのフラグの弾でもすべて壁で跳ね返るため、跳弾フラグは使わ"
+"れません。"
+
+#: public/js/client.js:14653
+msgid "On this server only the Ricochet flag bounces shots off walls."
+msgstr "このサーバーでは、跳弾フラグだけが弾を壁で跳ね返します。"
+
+#: public/js/client.js:14720
+msgid "{flag} {release}"
+msgstr "{flag}は{release}"
+
+#: public/js/client.js:14731
+msgid "Can't drop the flag while zoned"
+msgstr "ゾーン内ではフラグを捨てられません"
+
+#: public/js/client.js:14735
+msgid "Can't drop a flag while inside a building"
+msgstr "建物の中ではフラグを捨てられません"
+
+#: public/js/client.js:14785
+msgid "in {seconds}s"
+msgstr "{seconds}秒後"
+
+#: public/js/client.js:14786
+msgid "after {count} kill"
+msgstr "{count}キル後"
+
+#: public/js/client.js:14786
+msgid "after {count} kills"
+msgstr "{count}キル後"
+
+#: public/js/client.js:14787
+msgid "on the antidote"
+msgstr "解毒フラグ取得時"
+
+#: public/js/client.js:14788
+msgid "stays until it kills you"
+msgstr "倒されるまで外れません"
+
+#: public/js/client.js:14789
+msgid "{first} or {second}"
+msgstr "{first}か{second}"
+
+#: public/js/client.js:14790
+msgid "shakes off {ways}"
+msgstr "{ways}に外れます"
+
+#: public/js/client.js:14846
+msgid "Flag Alert!!!"
+msgstr "フラグ警報!!!"
+
+#: public/js/client.js:14854
+msgid "Team Grab!!!"
+msgstr "チームフラグ奪取!!!"
+
+#: public/js/client.js:14870
+msgid "{thief} stole {victim}'s {flag} flag"
+msgstr "{thief}が{victim}の{flag}フラグを盗んだ"
+
+#: public/js/client.js:14901
+msgid "Closest Flag: {flag}"
+msgstr "最寄りのフラグ：{flag}"
+
+#: public/js/client.js:14963
+msgid "{player} took their own flag into {team} territory"
+msgstr "{player}が自チームのフラグを{team}の陣地に持ち込んだ"
+
+#: public/js/client.js:14971
+msgid "Don't capture your own flag!!!"
+msgstr "自分のフラグをキャプチャーするな!!!"
+
+#: public/js/client.js:14977
+msgid "{player} captured the {team} flag"
+msgstr "{player}が{team}のフラグをキャプチャー"
+
+#: public/js/client.js:16554 public/js/client.js:16555
+msgid "Exit WebXR VR Mode"
+msgstr "WebXR VRモードを終了"
+
+#: public/js/flags.mjs:2091
+msgid "Team Flags"
+msgstr "チームフラグ"
+
+#: public/js/flags.mjs:2092
+msgid "Good Flags"
+msgstr "グッドフラグ"
+
+#: public/js/flags.mjs:2093
+msgid "Bad Flags"
+msgstr "バッドフラグ"
+
+#: public/js/help.js:97
+msgid "Nothing found"
+msgstr "見つかりません"
+
+#: public/js/help.js:114
+msgid "Help is unavailable: {error}"
+msgstr "ヘルプを利用できません：{error}"
+
+#: public/js/hud.js:177
+msgid "Debug Labels: ON"
+msgstr "デバッグラベル：オン"
+
+#: public/js/hud.js:177
+msgid "Debug Labels: OFF"
+msgstr "デバッグラベル：オフ"
+
+#: public/js/hud.js:281
+msgid "Show the scoreboard and chat"
+msgstr "スコアボードとチャットを表示"
+
+#: public/js/hud.js:554
+msgid "Disable Mouse Steering (M)"
+msgstr "マウス操縦を無効化 (M)"
+
+#: public/js/hud.js:554
+msgid "Enable Mouse Steering (M)"
+msgstr "マウス操縦を有効化 (M)"
+
+#: public/js/hud.js:559
+msgid "Hide Debug HUD (`)"
+msgstr "デバッグHUDを隠す (`)"
+
+#: public/js/hud.js:559
+msgid "Show Debug HUD (`)"
+msgstr "デバッグHUDを表示 (`)"
+
+#: public/js/hud.js:561
+msgid "Exit Fullscreen (F)"
+msgstr "全画面を終了 (F)"
+
+#: public/js/hud.js:561
+msgid "Toggle Fullscreen (F)"
+msgstr "全画面の切り替え (F)"
+
+#: public/js/hud.js:570
+msgid "Toggle Camera View (C)"
+msgstr "カメラ視点の切り替え (C)"
+
+#: public/js/hud.js:573
+msgid "Camera: {mode} (C)"
+msgstr "カメラ：{mode} (C)"
+
+#: public/js/hud.js:595
+msgid "Debug Mode: ON"
+msgstr "デバッグモード：オン"
+
+#: public/js/hud.js:595
+msgid "Debug Mode: OFF"
+msgstr "デバッグモード：オフ"
+
+#: public/js/hud.js:758
+msgid "Red"
+msgstr "レッド"
+
+#: public/js/hud.js:759
+msgid "Green"
+msgstr "グリーン"
+
+#: public/js/hud.js:760
+msgid "Blue"
+msgstr "ブルー"
+
+#: public/js/hud.js:761
+msgid "Purple"
+msgstr "パープル"
+
+#: public/js/hud.js:814
+msgid "GAME OVER"
+msgstr "ゲームオーバー"
+
+#: public/js/hud.js:831
+msgid "Score (W-L) Size"
+msgstr "スコア (勝-敗) 人数"
+
+#: public/js/hud.js:931 public/js/hud.js:975
+msgid "K-D"
+msgstr "K-D"
+
+#: public/js/hud.js:931 public/js/hud.js:975
+msgid "Kills-Deaths"
+msgstr "キル-デス"
+
+#: public/js/hud.js:932 public/js/hud.js:1394
+msgid "Rank {score}"
+msgstr "ランク {score}"
+
+#: public/js/hud.js:970 public/js/hud.js:1340
+msgid "Player"
+msgstr "プレイヤー"
+
+#: public/js/hud.js:979
+msgid "1-on-1"
+msgstr "1対1"
+
+#: public/js/hud.js:985
+msgid "desktop"
+msgstr "デスクトップ"
+
+#: public/js/hud.js:986
+msgid "mobile"
+msgstr "モバイル"
+
+#: public/js/hud.js:987
+msgid "VR headset"
+msgstr "VRヘッドセット"
+
+#: public/js/hud.js:988
+msgid "BZFlag client"
+msgstr "BZFlagクライアント"
+
+#: public/js/hud.js:989
+msgid "robot"
+msgstr "ロボット"
+
+#: public/js/hud.js:990
+msgid "server bot"
+msgstr "サーバーボット"
+
+#: public/js/hud.js:995
+msgid "UDP in"
+msgstr "UDP受信"
+
+#: public/js/hud.js:996
+msgid "UDP both ways"
+msgstr "UDP双方向"
+
+#: public/js/hud.js:998
+msgid "WebRTC both ways"
+msgstr "WebRTC双方向"
+
+#: public/js/hud.js:999
+msgid "WebRTC through TURN"
+msgstr "WebRTC（TURN経由）"
+
+#: public/js/hud.js:1000
+msgid "WebRTC through TURN both ways"
+msgstr "WebRTC双方向（TURN経由）"
+
+#: public/js/hud.js:1002
+msgid "WebTransport both ways"
+msgstr "WebTransport双方向"
+
+#: public/js/hud.js:1056
+msgid "{n} self"
+msgstr "自爆{n}"
+
+#: public/js/hud.js:1110
+msgid "Watching"
+msgstr "観戦中"
+
+#: public/js/hud.js:1114
+msgid "(rabbit)"
+msgstr "（ラビット）"
+
+#: public/js/input.js:940
+msgid "Mouse steering is unavailable in VR: there is no cursor to read"
+msgstr "VRではマウス操縦を使えません：読み取るカーソルがありません"
+
+#: public/js/input.js:941
+msgid "Virtual controls steer instead of the mouse"
+msgstr "マウスの代わりに画面コントロールで操縦します"
+
+#: public/js/input.js:942
+msgid "Mouse steering needs a mouse attached"
+msgstr "マウス操縦にはマウスの接続が必要です"
+
+#: public/js/input.js:1080
+msgid "No players"
+msgstr "プレイヤーなし"
+
+# review: 中距離
+#: public/js/input.js:1088 public/js/radar.js:32
+msgid "Medium"
+msgstr "中距離"
+
+#: public/js/input.js:1093 public/js/input.js:1095 public/js/input.js:1107
+msgid "On"
+msgstr "オン"
+
+#: public/js/input.js:1098
+msgid "Installed"
+msgstr "インストール済み"
+
+#: public/js/input.js:1099
+msgid "Install"
+msgstr "インストール"
+
+#: public/js/input.js:1099
+msgid "Browser menu"
+msgstr "ブラウザメニュー"
+
+#: public/js/input.js:1103 public/js/input.js:1117
+msgid "Exit VR"
+msgstr "VRを終了"
+
+#: public/js/input.js:1103
+msgid "Enter VR"
+msgstr "VRを開始"
+
+#: public/js/input.js:1109 public/js/settings.js:60
+msgid "Open >"
+msgstr "開く >"
+
+#: public/js/input.js:1111 public/js/settings.js:62
+msgid "Activate"
+msgstr "実行"
+
+#: public/js/input.js:1169
+msgid "Hide Settings"
+msgstr "設定を隠す"
+
+#: public/js/input.js:1169
+msgid "Show Settings"
+msgstr "設定を表示"
+
+#: public/js/input.js:1183
+msgid "Settings: Hidden"
+msgstr "設定：非表示"
+
+#: public/js/input.js:1183
+msgid "Settings: Shown"
+msgstr "設定：表示"
+
+#: public/js/input.js:1209
+msgid "Hide Audio Settings"
+msgstr "オーディオ設定を隠す"
+
+#: public/js/input.js:1218
+msgid "Audio Settings: Hidden"
+msgstr "オーディオ設定：非表示"
+
+#: public/js/input.js:1223
+msgid "Audio Settings: Shown"
+msgstr "オーディオ設定：表示"
+
+#: public/js/input.js:1232
+msgid "Hide Help (?)"
+msgstr "ヘルプを隠す (?)"
+
+#: public/js/input.js:1232
+msgid "Show Help (?)"
+msgstr "ヘルプを表示 (?)"
+
+#: public/js/input.js:1241
+msgid "Help Panel: Hidden"
+msgstr "ヘルプパネル：非表示"
+
+#: public/js/input.js:1247
+msgid "Help Panel: Shown"
+msgstr "ヘルプパネル：表示"
+
+#: public/js/input.js:1284
+msgid "iOS: use Share, Add to Home Screen for fullscreen"
+msgstr "iOS：全画面にするには「共有」→「ホーム画面に追加」"
+
+#: public/js/input.js:1430
+msgid "Camera: {mode}"
+msgstr "カメラ：{mode}"
+
+#: public/js/input.js:1457
+msgid "Controls: Mouse and keyboard"
+msgstr "操作：マウスとキーボード"
+
+#: public/js/input.js:1457
+msgid "Controls: Keyboard"
+msgstr "操作：キーボード"
+
+#: public/js/input.js:1465
+msgid "Hide Virtual Controls"
+msgstr "画面コントロールを隠す"
+
+#: public/js/input.js:1465
+msgid "Show Virtual Controls"
+msgstr "画面コントロールを表示"
+
+#: public/js/input.js:1502
+msgid "Virtual Controls: Enabled"
+msgstr "画面コントロール：有効"
+
+#: public/js/input.js:1502
+msgid "Virtual Controls: Disabled"
+msgstr "画面コントロール：無効"
+
+#: public/js/input.js:1509
+msgid "Hide Operator Panel (O)"
+msgstr "オペレーターパネルを隠す (O)"
+
+#: public/js/input.js:1516
+msgid "Hide View"
+msgstr "ビューアを隠す"
+
+#: public/js/input.js:1516
+msgid "Show View"
+msgstr "ビューアを表示"
+
+#: public/js/input.js:1527
+msgid "Operator: enter a name to become an operator on this server"
+msgstr "オペレーター：このサーバーのオペレーターになるには名前を入力"
+
+#: public/js/input.js:1538
+msgid "Operator Panel: Hidden"
+msgstr "オペレーターパネル：非表示"
+
+#: public/js/input.js:1561
+msgid "Operator Panel: Shown"
+msgstr "オペレーターパネル：表示"
+
+#: public/js/input.js:1578
+msgid "View: Hidden"
+msgstr "ビューア：非表示"
+
+#: public/js/input.js:1584
+msgid "View: Shown"
+msgstr "ビューア：表示"
+
+#: public/js/inspect-panel.mjs:67
+msgid "Type"
+msgstr "種類"
+
+#: public/js/inspect-panel.mjs:70
+msgid "Bounds"
+msgstr "範囲"
+
+#: public/js/inspect-panel.mjs:70
+msgid "{min} to {max}"
+msgstr "{min}～{max}"
+
+#: public/js/inspect-panel.mjs:73
+msgid "Position"
+msgstr "位置"
+
+#: public/js/inspect-panel.mjs:75
+msgid "Rotation"
+msgstr "回転"
+
+#: public/js/inspect-panel.mjs:80
+msgid "Flags"
+msgstr "フラグ"
+
+#: public/js/inspect-panel.mjs:82
+msgid "Textures"
+msgstr "テクスチャ"
+
+#: public/js/inspect-panel.mjs:83
+msgid "Physics"
+msgstr "物理"
+
+#: public/js/inspect-panel.mjs:90
+msgid "{label} line {line}"
+msgstr "{label} {line}行目"
+
+#: public/js/inspect-panel.mjs:91
+msgid "{label} lines {start}-{end}"
+msgstr "{label} {start}～{end}行目"
+
+#: public/js/inspect-panel.mjs:95
+msgid "{n} more lines"
+msgstr "他{n}行"
+
+#: public/js/inspect-panel.mjs:123 public/js/inspect-panel.mjs:188
+msgid "World"
+msgstr "ワールド"
+
+#: public/js/inspect-panel.mjs:143
+msgid "unnamed {type}"
+msgstr "名前なしの{type}"
+
+#: public/js/inspect-panel.mjs:146 public/js/inspect-panel.mjs:197
+msgid "Reading the map file..."
+msgstr "マップファイルを読み込み中..."
+
+#: public/js/inspect-panel.mjs:146 public/js/inspect-panel.mjs:197
+#: public/js/inspect-panel.mjs:232
+msgid "No map file for this world"
+msgstr "このワールドのマップファイルはありません"
+
+#: public/js/inspect-panel.mjs:157
+msgid "No source for this obstacle"
+msgstr "この障害物のソースはありません"
+
+#: public/js/inspect-panel.mjs:164
+msgid "Shape"
+msgstr "形状"
+
+#: public/js/inspect-panel.mjs:167
+msgid "Materials"
+msgstr "マテリアル"
+
+#: public/js/inspect-panel.mjs:167
+msgid "{name} (not defined)"
+msgstr "{name}（未定義）"
+
+#: public/js/inspect-panel.mjs:176
+msgid "placed by"
+msgstr "配置元"
+
+#: public/js/inspect-panel.mjs:178
+msgid "material {name}"
+msgstr "マテリアル {name}"
+
+#: public/js/inspect-panel.mjs:189
+msgid "Obstacles"
+msgstr "障害物"
+
+#: public/js/inspect-panel.mjs:191
+msgid "Mesh faces"
+msgstr "メッシュの面"
+
+#: public/js/inspect-panel.mjs:192
+msgid "Batched"
+msgstr "バッチ化"
+
+#: public/js/inspect-panel.mjs:192
+msgid "{instances} placements of {templates} definitions"
+msgstr "{templates}個の定義を{instances}か所に配置"
+
+#: public/js/inspect-panel.mjs:193
+msgid "Links"
+msgstr "リンク"
+
+#: public/js/inspect-panel.mjs:195
+msgid "Zones"
+msgstr "ゾーン"
+
+#: public/js/inspect-panel.mjs:196
+msgid "Map size"
+msgstr "マップサイズ"
+
+#: public/js/inspect-panel.mjs:202
+msgid "Textures ({n}), by obstacles using each"
+msgstr "テクスチャ（{n}）、使用する障害物数順"
+
+#: public/js/inspect-panel.mjs:207
+msgid "{texture} (failed to load)"
+msgstr "{texture}（読み込み失敗）"
+
+#: public/js/inspect-panel.mjs:211
+msgid "{n} more"
+msgstr "他{n}件"
+
+#: public/js/inspect-panel.mjs:215
+msgid "Largest meshes, by faces"
+msgstr "面数の多いメッシュ"
+
+#: public/js/inspect-panel.mjs:218
+msgid "unnamed mesh #{index}"
+msgstr "名前なしメッシュ #{index}"
+
+#: public/js/inspect-panel.mjs:235
+msgid "{file}, {lines} lines"
+msgstr "{file}、{lines}行"
+
+#: public/js/inspect-panel.mjs:236
+msgid "Missing"
+msgstr "欠落"
+
+#: public/js/inspect-panel.mjs:239
+msgid "Warnings ({n})"
+msgstr "警告（{n}）"
+
+#: public/js/install.js:53
+msgid "Already installed"
+msgstr "インストール済み"
+
+#: public/js/install.js:58
+msgid "Install from the browser menu"
+msgstr "ブラウザメニューからインストール"
+
+# review: 近距離
+#: public/js/radar.js:32
+msgid "Short"
+msgstr "近距離"
+
+# review: 遠距離
+#: public/js/radar.js:32
+msgid "Long"
+msgstr "遠距離"
+
+#: public/js/radar.js:78
+msgid "Radar: {range}"
+msgstr "レーダー：{range}"
+
+#: public/js/radar.js:79
+msgid "Radar range preset: {range}"
+msgstr "レーダー範囲プリセット：{range}"
+
+#: public/js/radar.js:89
+msgid "Radar range: {range}"
+msgstr "レーダー範囲：{range}"
+
+#. TRANSLATORS: compass point on the radar, north; one letter.
+#: public/js/radar.js:878
+msgid "N"
+msgstr "北"
+
+#. TRANSLATORS: compass point on the radar, east; one letter.
+#: public/js/radar.js:880
+msgid "E"
+msgstr "東"
+
+#. TRANSLATORS: compass point on the radar, south; one letter.
+#: public/js/radar.js:882
+msgid "S"
+msgstr "南"
+
+#. TRANSLATORS: compass point on the radar, west; one letter.
+#: public/js/radar.js:884
+msgid "W"
+msgstr "西"
+
+#: public/js/settings.js:11
+msgid "Player Options"
+msgstr "プレイヤー設定"
+
+#: public/js/settings.js:12
+msgid "Camera"
+msgstr "カメラ"
+
+#: public/js/settings.js:19
+msgid "Hunt"
+msgstr "ハント"
+
+#: public/js/settings.js:22
+msgid "Autopilot"
+msgstr "オートパイロット"
+
+#: public/js/settings.js:23
+msgid "Radar Range"
+msgstr "レーダー範囲"
+
+#: public/js/settings.js:25
+msgid "Language"
+msgstr "言語"
+
+#: public/js/settings.js:26
+msgid "Mouse Steering"
+msgstr "マウス操縦"
+
+# review: 画面コントロール
+#: public/js/settings.js:27
+msgid "Virtual Controls"
+msgstr "画面コントロール"
+
+# review: 振動
+#: public/js/settings.js:28
+msgid "Rumble"
+msgstr "振動"
+
+#: public/js/settings.js:29
+msgid "Fullscreen"
+msgstr "全画面"
+
+#: public/js/settings.js:30
+msgid "Install App"
+msgstr "アプリをインストール"
+
+#: public/js/settings.js:31
+msgid "Debug HUD"
+msgstr "デバッグHUD"
+
+# review: デバッグ形状
+#: public/js/settings.js:32
+msgid "Debug Geometry"
+msgstr "デバッグ形状"
+
+#: public/js/settings.js:33
+msgid "Debug Labels"
+msgstr "デバッグラベル"
+
+#: public/js/settings.js:34
+msgid "Wireframe"
+msgstr "ワイヤーフレーム"
+
+#: public/js/settings.js:39
+msgid "Operator"
+msgstr "オペレーター"
+
+#: public/js/settings.js:41
+msgid "Share View Link"
+msgstr "ビューのリンクを共有"
+
+#: public/js/settings.js:42
+msgid "VR Mode"
+msgstr "VRモード"
+
+#: public/js/voice-channels.mjs:37
+msgid "Every player on the server, however far away."
+msgstr "サーバー上の全プレイヤー（距離に関係なく）。"
+
+#: public/js/voice-channels.mjs:47
+msgid "Your own team, however far away."
+msgstr "自分のチーム（距離に関係なく）。"
+
+#: public/js/voice.js:651
+msgid "Could not set voice direction for {peer}"
+msgstr "{peer}のボイス方向を設定できませんでした"
+
+#: public/js/voice.js:662
+msgid "Could not update voice track for {peer}"
+msgstr "{peer}のボイストラックを更新できませんでした"
+
+#: public/js/voice.js:672
+msgid "Could not add voice track for {peer}"
+msgstr "{peer}のボイストラックを追加できませんでした"
+
+#: public/js/voice.js:705
+msgid "RTCPeerConnection is not available in this browser."
+msgstr "このブラウザではRTCPeerConnectionを利用できません。"
+
+#: public/js/voice.js:713
+msgid "Could not create a voice peer for {peer}"
+msgstr "{peer}のボイスピアを作成できませんでした"
+
+#: public/js/voice.js:782
+msgid "Could not play nearby voice from {peer}"
+msgstr "{peer}からの近くのボイスを再生できませんでした"
+
+#: public/js/voice.js:874
+msgid "Could not prepare voice media for {peer}"
+msgstr "{peer}のボイスメディアを準備できませんでした"
+
+#: public/js/voice.js:920
+msgid "Could not add an ICE candidate for {peer}"
+msgstr "{peer}のICE候補を追加できませんでした"
+
+#: public/js/voice.js:942
+msgid "Could not create a voice offer for {peer}"
+msgstr "{peer}へのボイスオファーを作成できませんでした"
+
+#: public/js/voice.js:983
+msgid "Could not handle a voice offer from {peer}"
+msgstr "{peer}からのボイスオファーを処理できませんでした"
+
+#: public/js/voice.js:998
+msgid "Could not handle a voice answer from {peer}"
+msgstr "{peer}からのボイスアンサーを処理できませんでした"
+
+#: public/js/voice.js:1016
+msgid "Could not add an ICE candidate from {peer}"
+msgstr "{peer}からのICE候補を追加できませんでした"
+
+#: public/js/voice.js:1080
+msgid "This browser does not provide microphone capture."
+msgstr "このブラウザはマイク入力に対応していません。"
+
+#: public/js/voice.js:1105
+msgid "The selected input device has no audio track."
+msgstr "選択した入力デバイスに音声トラックがありません。"
+
+#: public/js/voice.js:1133
+msgid "Microphone permission was denied."
+msgstr "マイクの許可が拒否されました。"
+
+#: public/js/voice.js:1133
+msgid "Could not start microphone capture."
+msgstr "マイク入力を開始できませんでした。"
+
+#: public/js/voice.js:1224
+msgid "Could not enumerate microphone devices."
+msgstr "マイクデバイスを列挙できませんでした。"
+
+#: server.js:7180
+msgid "Match duration is {duration}"
+msgstr "試合時間は{duration}です"
+
+#: server.js:7190
+msgid "Match started"
+msgstr "試合開始"
+
+#: server.js:7538
+msgid "Your score record will be saved while you are in observer mode."
+msgstr "観戦者モードの間、スコア記録は保存されます。"
+
+#: server.js:7543
+msgid "Your score has been restored."
+msgstr "スコアが復元されました。"
+
+#. TRANSLATORS: /me is a command name; keep it as it is
+#: server.js:8309
+msgid "{player}, the /me command requires an argument"
+msgstr "{player}さん、/me コマンドには引数が必要です"
+
+#: server.js:8350
+msgid "Commands (use /<command>? for one of them):"
+msgstr "コマンド（個別の説明は /<command>?）："
+
+#: server.js:8395
+msgid "Recording started"
+msgstr "録画開始"
+
+#: server.js:8403 server.js:8460 server/messages-operator.cjs:268
+msgid "Could not open for writing: {name} ({error})"
+msgstr "書き込み用に開けません：{name}（{error}）"
+
+#: server.js:8407
+msgid "Recording stopped"
+msgstr "録画停止"
+
+#: server.js:8415
+msgid "Record size set to {mbytes}"
+msgstr "録画サイズを{mbytes}に設定"
+
+#: server.js:8423
+msgid "Record rate set to {seconds}"
+msgstr "録画レートを{seconds}に設定"
+
+#: server.js:8427
+msgid "Not Recording"
+msgstr "録画していません"
+
+#: server.js:8431
+msgid "Filename:  {name}"
+msgstr "ファイル名:  {name}"
+
+#: server.js:8432
+msgid "   saved:  {bytes} bytes / {packets} packets / {seconds} seconds"
+msgstr "   保存済み:  {bytes} バイト / {packets} パケット / {seconds} 秒"
+
+#: server.js:8438
+msgid "Buffered:  {bytes} bytes / {packets} packets / {seconds} seconds"
+msgstr "バッファ:  {bytes} バイト / {packets} パケット / {seconds} 秒"
+
+#: server.js:8452 server/messages-operator.cjs:259
+msgid "No buffer to save"
+msgstr "保存するバッファがありません"
+
+#: server.js:8457 server/messages-operator.cjs:264
+msgid "Record buffer saved to: {name}"
+msgstr "録画バッファを保存しました：{name}"
+
+#: server.js:8471
+msgid "Recording to file: {name}"
+msgstr "ファイルに録画中：{name}"
+
+#: server.js:8494 server.js:9335
+msgid "BZFS Version: {version}"
+msgstr "BZFS バージョン：{version}"
+
+#: server.js:8532 server.js:9534
+msgid "Nobody is here"
+msgstr "誰もいません"
+
+#: server.js:8539
+msgid "server: {stats}"
+msgstr "サーバー：{stats}"
+
+#: server.js:8581
+msgid "Usage: /setteam <#slot|PlayerName> <team>"
+msgstr "使い方：/setteam <#slot|PlayerName> <team>"
+
+#. TRANSLATORS: /setteam is a command name and {teams} lists team names as typed
+#: server.js:8588
+msgid "Usage: /setteam <#slot|PlayerName> <team> -- one of {teams}"
+msgstr "使い方：/setteam <#slot|PlayerName> <team> -- {teams} のいずれか"
+
+#: server.js:8594
+msgid "\"{player}\" is not on a team to move from"
+msgstr "「{player}」は移動元のチームに所属していません"
+
+#: server.js:8598
+msgid "\"{player}\" is already {team}"
+msgstr "「{player}」はすでに{team}です"
+
+#: server.js:8604
+msgid "\"{player}\" moved to {team}"
+msgstr "「{player}」を{team}に移動しました"
+
+#: server.js:8605
+msgid "@{player} moved you to {team}"
+msgstr "@{player}があなたを{team}に移動しました"
+
+#: server.js:8634
+msgid "Moved to {position} facing {bearing}"
+msgstr "{position}へ移動、向き {bearing}"
+
+#: server.js:8637
+msgid "\"{player}\" moved to {position} facing {bearing}"
+msgstr "「{player}」を{position}へ移動、向き {bearing}"
+
+#: server.js:8638
+msgid "@{player} moved you to {position} facing {bearing}"
+msgstr "@{player}があなたを{position}へ移動、向き {bearing}"
+
+#: server.js:8651
+msgid "Usage: /msg \"some callsign\" some message"
+msgstr "使い方：/msg \"some callsign\" some message"
+
+#: server.js:8698
+msgid "Usage: /kill <#slot|PlayerName> [reason]"
+msgstr "使い方：/kill <#slot|PlayerName> [reason]"
+
+#: server.js:8703
+msgid "An observer has no tank to kill"
+msgstr "観戦者には倒す戦車がありません"
+
+#: server.js:8707
+msgid "\"{player}\" is already dead"
+msgstr "「{player}」はすでに倒されています"
+
+#: server.js:8714
+msgid "\"{player}\" killed"
+msgstr "「{player}」を倒しました"
+
+#: server.js:8715
+msgid "You were killed by an operator: {reason}"
+msgstr "オペレーターに倒されました：{reason}"
+
+#: server.js:8716
+msgid "You were killed by an operator"
+msgstr "オペレーターに倒されました"
+
+#: server.js:8764
+msgid "You were banned from this server"
+msgstr "このサーバーからBANされました"
+
+#: server.js:8765 server.js:8788
+msgid "Reason given: {reason}"
+msgstr "理由：{reason}"
+
+#: server.js:8766
+msgid "{player} banned by {admin}, reason: {reason}"
+msgstr "{player}は{admin}によりBANされました。理由：{reason}"
+
+#: server.js:8778
+msgid "Syntax: /kick <#slot | PlayerName | \"Player Name\"> <reason>"
+msgstr "構文：/kick <#slot | PlayerName | \"Player Name\"> <reason>"
+
+#: server.js:8779 server.js:8808
+msgid "\tPlease keep in mind that reason is displayed to the user."
+msgstr "\t理由はユーザーに表示されることに注意してください。"
+
+#: server.js:8782
+msgid "player \"{player}\" not found"
+msgstr "プレイヤー「{player}」が見つかりません"
+
+#: server.js:8787
+msgid "You were kicked off the server"
+msgstr "サーバーからキックされました"
+
+#: server.js:8789
+msgid "{player} kicked by {admin}, reason: {reason}"
+msgstr "{player}は{admin}によりキックされました。理由：{reason}"
+
+#: server.js:8803
+msgid ""
+"Syntax: /ban <#slot | PlayerName | \"Player Name\" | ip> <duration> <reason>"
+msgstr ""
+"構文：/ban <#slot | PlayerName | \"Player Name\" | ip> <duration> <reason>"
+
+#: server.js:8804
+msgid "\t<duration> can be 'short' or 'default' for the default ban time "
+msgstr "\t<duration> は既定のBAN時間なら 'short' または 'default' "
+
+#: server.js:8805
+msgid "\tor 'forever' or 'max' for infinite bans "
+msgstr "\t無期限なら 'forever' または 'max' "
+
+#: server.js:8806
+msgid "\tor a time in the format <weeks>W<days>D<hours>H<minutes>M "
+msgstr "\tまたは <weeks>W<days>D<hours>H<minutes>M 形式の時間 "
+
+#: server.js:8807
+msgid "\tor just a number of minutes "
+msgstr "\tまたは分単位の数値のみ "
+
+#: server.js:8830 server.js:8938
+msgid "Error: invalid ban duration"
+msgstr "エラー：無効なBAN期間"
+
+#: server.js:8831 server.js:8939
+msgid "Duration examples:  30m 1h  1d  1w  and mixing: 1w2d4h 1w2d1m"
+msgstr "期間の例：  30m 1h  1d  1w  組み合わせ：1w2d4h 1w2d1m"
+
+#: server.js:8840 server.js:9154
+msgid "{player} has no trusted address to ban"
+msgstr "{player}にはBANできる信頼済みアドレスがありません"
+
+#: server.js:8846 server.js:8948
+msgid "Pattern added to the BZID banlist"
+msgstr "BZID BANリストにパターンを追加しました"
+
+#: server.js:8852
+msgid "Malformed address or invalid Player/Slot: {target}"
+msgstr "不正なアドレス、または無効なプレイヤー/スロット：{target}"
+
+#: server.js:8856
+msgid "Pattern added to the IP banlist"
+msgstr "IP BANリストにパターンを追加しました"
+
+#: server.js:8867
+msgid "Removed IP pattern from the ban list"
+msgstr "BANリストからIPパターンを削除しました"
+
+#: server.js:8869 server.js:8958
+msgid "No pattern removed"
+msgstr "削除されたパターンはありません"
+
+#: server.js:8884
+msgid "Syntax: /checkip <ip>"
+msgstr "構文：/checkip <ip>"
+
+#: server.js:8889
+msgid "{address} is not banned."
+msgstr "{address} はBANされていません。"
+
+#: server.js:8892
+msgid "{address} is banned:"
+msgstr "{address} はBANされています："
+
+#: server.js:8900
+msgid ""
+"Syntax: /idban <#slot|+id|PlayerName|\"Player Name\"> <duration> <reason>"
+msgstr ""
+"構文：/idban <#slot|+id|PlayerName|\"Player Name\"> <duration> <reason>"
+
+#: server.js:8901
+msgid "  Please keep in mind that reason is displayed to the user."
+msgstr "  理由はユーザーに表示されることに注意してください。"
+
+#: server.js:8912
+msgid "Error: invalid id pattern"
+msgstr "エラー：無効なIDパターン"
+
+#: server.js:8920
+msgid "could not find player ({player})"
+msgstr "プレイヤーが見つかりません（{player}）"
+
+#: server.js:8925
+msgid "no BZID for player ({player})"
+msgstr "プレイヤーにBZIDがありません（{player}）"
+
+#: server.js:8956
+msgid "Removed id from the ban list"
+msgstr "BANリストからIDを削除しました"
+
+#: server.js:8995
+msgid "Usage: /poll vote yes|no"
+msgstr "使い方：/poll vote yes|no"
+
+#: server.js:8996
+msgid "    or /poll ban playername"
+msgstr "    または /poll ban playername"
+
+#: server.js:8997
+msgid "    or /poll kick playername"
+msgstr "    または /poll kick playername"
+
+#: server.js:8998
+msgid "    or /poll kill playername"
+msgstr "    または /poll kill playername"
+
+#: server.js:8999
+msgid "    or /poll set variable value"
+msgstr "    または /poll set variable value"
+
+#: server.js:9000
+msgid "    or /poll flagreset"
+msgstr "    または /poll flagreset"
+
+#. TRANSLATORS: /vote is a command name; keep it as it is
+#: server.js:9008
+msgid "{player}, you are presently not authorized to run /vote"
+msgstr "{player}さん、現在 /vote を実行する権限がありません"
+
+#: server.js:9012 server.js:9052 server.js:9078
+msgid "ERROR: the poll arbiter has disappeared (this should never happen)"
+msgstr "エラー：投票の管理役が消えました（本来起こりえません）"
+
+#: server.js:9016
+msgid "A poll is not presently in progress.  There is nothing to vote on"
+msgstr "進行中の投票はありません。投票するものがありません"
+
+#: server.js:9021
+msgid "{player}, you did not vote in favor or in opposition"
+msgstr "{player}さん、賛成も反対も投票していません"
+
+#: server.js:9022
+msgid "{player}, you did not provide a vote answer"
+msgstr "{player}さん、投票内容が指定されていません"
+
+#: server.js:9023
+msgid "Usage: /vote yes|no|y|n|1|0|yea|nay|si|ja|nein|oui|non|sim|nao"
+msgstr "使い方：/vote yes|no|y|n|1|0|yea|nay|si|ja|nein|oui|non|sim|nao"
+
+#. TRANSLATORS: {action} is a /poll keyword (ban, kick, kill, set, reset), sent as typed
+#: server.js:9030
+msgid "{player}, your vote in favor of the {action} has been recorded"
+msgstr "{player}さん、{action} への賛成票を記録しました"
+
+#: server.js:9031
+msgid "{player}, your vote in opposition of the {action} has been recorded"
+msgstr "{player}さん、{action} への反対票を記録しました"
+
+#: server.js:9033
+msgid "{player}, you have already voted on the poll to {action} {target}"
+msgstr "{player}さん、{target} の {action} 投票にはすでに投票済みです"
+
+#: server.js:9037
+msgid ""
+"{player}, there was an error while voting on the poll to {action} {target}"
+msgstr "{player}さん、{target} の {action} 投票中にエラーが発生しました"
+
+#. TRANSLATORS: /veto is a command name; keep it as it is
+#: server.js:9048
+msgid "{player}, you are presently not authorized to run /veto"
+msgstr "{player}さん、現在 /veto を実行する権限がありません"
+
+#: server.js:9056
+msgid "{player}, there is presently no active poll to veto"
+msgstr "{player}さん、拒否できる進行中の投票はありません"
+
+#: server.js:9059
+msgid "{player}, you have cancelled the poll to {action} {target}"
+msgstr "{player}さん、{target} の {action} 投票を取り消しました"
+
+#: server.js:9065
+msgid "The poll was cancelled by {player}"
+msgstr "投票は{player}により取り消されました"
+
+#. TRANSLATORS: /poll is a command name; keep it as it is
+#: server.js:9074
+msgid "{player}, you are presently not authorized to run /poll"
+msgstr "{player}さん、現在 /poll を実行する権限がありません"
+
+#: server.js:9094
+msgid "A poll to {action} {target} is presently in progress"
+msgstr "{target} の {action} 投票が進行中です"
+
+#: server.js:9097
+msgid "Unable to start a new poll until the current one is over"
+msgstr "現在の投票が終わるまで新しい投票は開始できません"
+
+#: server.js:9102
+msgid ""
+"Unable to initiate a new poll.  There are not enough registered players "
+"playing."
+msgstr "新しい投票を開始できません。プレイ中の登録プレイヤーが足りません。"
+
+#: server.js:9106
+msgid ""
+"There needs to be at least {required} other player and only {others} is "
+"available."
+msgstr "他のプレイヤーが最低{required}人必要ですが、{others}人しかいません。"
+
+#: server.js:9107
+msgid ""
+"There needs to be at least {required} other player and only {others} are "
+"available."
+msgstr "他のプレイヤーが最低{required}人必要ですが、{others}人しかいません。"
+
+#: server.js:9109
+msgid ""
+"There needs to be at least {required} other players and only {others} is "
+"available."
+msgstr "他のプレイヤーが最低{required}人必要ですが、{others}人しかいません。"
+
+#: server.js:9111
+msgid ""
+"There needs to be at least {required} other players and only {others} are "
+"available."
+msgstr "他のプレイヤーが最低{required}人必要ですが、{others}人しかいません。"
+
+#: server.js:9120
+msgid "/poll: incorrect syntax, argument required."
+msgstr "/poll：構文が正しくありません。引数が必要です。"
+
+#: server.js:9126
+msgid "{player}, no target was specified for the [{action}] vote"
+msgstr "{player}さん、[{action}] 投票の対象が指定されていません"
+
+#. TRANSLATORS: /poll and {action} are a command as typed; keep them as they are
+#: server.js:9128
+msgid "Usage: /poll {action} target"
+msgstr "使い方：/poll {action} target"
+
+#. TRANSLATORS: /poll {action} is a command as typed; keep it as it is
+#: server.js:9133
+msgid "{player}, you may not /poll {action} on this server"
+msgstr "{player}さん、このサーバーでは /poll {action} は使えません"
+
+#: server.js:9140
+msgid "The player specified for a {action} vote is not here"
+msgstr "{action} 投票の対象プレイヤーはここにいません"
+
+#: server.js:9144
+msgid "You can't kill an observer!"
+msgstr "観戦者は倒せません！"
+
+#: server.js:9150
+msgid "{player} is protected from being polled against."
+msgstr "{player}は投票の対象にできません。"
+
+#: server.js:9166
+msgid "You are not able to request a {action} poll right now, {player}"
+msgstr "{player}さん、今は {action} 投票を要求できません"
+
+#: server.js:9170
+msgid "A poll to {action} {target} has been requested by {player}"
+msgstr "{player}が {target} の {action} 投票を要求しました"
+
+#: server.js:9178
+msgid ""
+"{available} player is available, {needed} additional affirming vote required "
+"to pass the poll ({percentage} %)"
+msgstr ""
+"{available}人が投票可能。可決にはあと{needed}票の賛成が必要です"
+"（{percentage} %）"
+
+#: server.js:9179
+msgid ""
+"{available} player is available, {needed} additional affirming votes "
+"required to pass the poll ({percentage} %)"
+msgstr ""
+"{available}人が投票可能。可決にはあと{needed}票の賛成が必要です"
+"（{percentage} %）"
+
+#: server.js:9182
+msgid ""
+"{available} players are available, {needed} additional affirming vote "
+"required to pass the poll ({percentage} %)"
+msgstr ""
+"{available}人が投票可能。可決にはあと{needed}票の賛成が必要です"
+"（{percentage} %）"
+
+#: server.js:9183
+msgid ""
+"{available} players are available, {needed} additional affirming votes "
+"required to pass the poll ({percentage} %)"
+msgstr ""
+"{available}人が投票可能。可決にはあと{needed}票の賛成が必要です"
+"（{percentage} %）"
+
+#: server.js:9188
+msgid "Unable to automatically place your vote for some unknown reason"
+msgstr "不明な理由で自動投票できませんでした"
+
+#: server.js:9215
+msgid ""
+"You have been temporarily banned due to sufficient votes to have you removed"
+msgstr "退出させる票が集まったため、一時的にBANされました"
+
+#: server.js:9221
+msgid "You have been kicked due to sufficient votes to have you removed"
+msgstr "退出させる票が集まったため、キックされました"
+
+#: server.js:9227
+msgid "You have been killed due to sufficient votes"
+msgstr "十分な票が集まったため、倒されました"
+
+#: server.js:9250
+msgid ""
+"A poll to {action} {target} has begun.  Players have up to {seconds} seconds "
+"to vote."
+msgstr ""
+"{target} の {action} 投票が始まりました。投票時間は最大{seconds}秒です。"
+
+#: server.js:9258
+msgid "{seconds} seconds remain in the poll to {action} {target}."
+msgstr "{target} の {action} 投票は残り{seconds}秒です。"
+
+#: server.js:9266
+msgid "Enough votes were collected to {action} {target} early."
+msgstr "票が十分集まったため、{target} の {action} を早期に実行します。"
+
+#: server.js:9267
+msgid "Enough votes were collected to reset all unused flags early."
+msgstr "票が十分集まったため、未使用のフラグをすべて早期にリセットします。"
+
+#: server.js:9273
+msgid "Poll Results: {yes} in favor, {no} oppose, {abstain} abstain"
+msgstr "投票結果：賛成 {yes}、反対 {no}、棄権 {abstain}"
+
+#: server.js:9281
+msgid "The poll to {action} {target} was not successful"
+msgstr "{target} の {action} 投票は否決されました"
+
+#: server.js:9290
+msgid ""
+"The poll is now closed and was successful.  {target} is scheduled to be "
+"temporarily banned."
+msgstr "投票は終了し、可決されました。{target}は一時BANされます。"
+
+#: server.js:9291
+msgid ""
+"The poll is now closed and was successful.  {target} is scheduled to be "
+"kicked."
+msgstr "投票は終了し、可決されました。{target}はキックされます。"
+
+#: server.js:9292
+msgid ""
+"The poll is now closed and was successful.  {target} is scheduled to be "
+"killed."
+msgstr "投票は終了し、可決されました。{target}は倒されます。"
+
+#: server.js:9295
+msgid ""
+"The poll is now closed and was successful.  {target} is scheduled to be "
+"{action}."
+msgstr "投票は終了し、可決されました。{target}に {action} が実行されます。"
+
+#: server.js:9303
+msgid "{target} has been kicked."
+msgstr "{target}はキックされました。"
+
+#: server.js:9304
+msgid "{target} has been killed."
+msgstr "{target}は倒されました。"
+
+#: server.js:9306
+msgid "{target} has been {action}"
+msgstr "{target}に {action} が実行されました"
+
+#: server.js:9321
+msgid "{player}'s client version:"
+msgstr "{player}のクライアントバージョン："
+
+#: server.js:9322
+msgid "  {version}"
+msgstr "  {version}"
+
+#: server.js:9323
+msgid "  unknown"
+msgstr "  不明"
+
+#: server.js:9329
+msgid "Player not found."
+msgstr "プレイヤーが見つかりません。"
+
+#: server.js:9360
+msgid "Countdown cancelled by {player}."
+msgstr "{player}がカウントダウンを中止しました。"
+
+#: server.js:9360
+msgid "Countdown cancelled"
+msgstr "カウントダウン中止"
+
+#: server.js:9382
+msgid "No match is running to pause"
+msgstr "一時停止できる試合はありません"
+
+#: server.js:9390
+msgid "No paused match to resume"
+msgstr "再開できる一時停止中の試合はありません"
+
+#: server.js:9397
+msgid "There is no running countdown to cancel"
+msgstr "中止できるカウントダウンはありません"
+
+#: server.js:9405
+msgid "Usage: /countdown [<seconds>|pause|resume|cancel]"
+msgstr "使い方：/countdown [<seconds>|pause|resume|cancel]"
+
+#: server.js:9410
+msgid "There is a countdown already in progress"
+msgstr "すでにカウントダウン中です"
+
+#: server.js:9414
+msgid "A game is already in progress"
+msgstr "すでに試合中です"
+
+#: server.js:9418 server.js:9421
+msgid "Countdown set to {seconds} instead of {asked}"
+msgstr "カウントダウンを{asked}ではなく{seconds}に設定しました"
+
+#: server.js:9430
+msgid "Countdown started by {player}."
+msgstr "{player}がカウントダウンを開始しました。"
+
+#: server.js:9431
+msgid "Match begins in about {duration}"
+msgstr "約{duration}後に試合開始"
+
+#: server.js:9439
+msgid "The match has started!...Good Luck Teams!"
+msgstr "試合開始！…各チーム、健闘を祈ります！"
+
+#: server.js:9443
+msgid "Start your engines!......"
+msgstr "エンジン始動！……"
+
+#: server.js:9445
+msgid "{seconds}..."
+msgstr "{seconds}..."
+
+#: server.js:9457
+msgid "No match is running"
+msgstr "試合は行われていません"
+
+#: server.js:9469
+msgid "Usage: /say <message>"
+msgstr "使い方：/say <message>"
+
+#: server.js:9485
+msgid "Usage: /mute <#slot|PlayerName>"
+msgstr "使い方：/mute <#slot|PlayerName>"
+
+#: server.js:9491
+msgid "\"{player}\" is now muted"
+msgstr "「{player}」をミュートしました"
+
+#: server.js:9492
+msgid "You have been muted by an operator"
+msgstr "オペレーターによりミュートされました"
+
+#: server.js:9501
+msgid "Usage: /unmute <#slot|PlayerName>"
+msgstr "使い方：/unmute <#slot|PlayerName>"
+
+#: server.js:9507
+msgid "\"{player}\" is no longer muted"
+msgstr "「{player}」のミュートを解除しました"
+
+#: server.js:9508
+msgid "You are no longer muted"
+msgstr "ミュートが解除されました"
+
+#: server.js:9516
+msgid "Nobody is muted"
+msgstr "ミュート中のプレイヤーはいません"
+
+#: server.js:9629
+msgid "Usage: /flag drop [#slot|PlayerName]"
+msgstr "使い方：/flag drop [#slot|PlayerName]"
+
+#: server.js:9636
+msgid "You are not carrying a flag"
+msgstr "フラグを持っていません"
+
+#: server.js:9637
+msgid "\"{player}\" is not carrying a flag"
+msgstr "「{player}」はフラグを持っていません"
+
+#: server.js:9646
+msgid "Dropped {flag} from \"{player}\""
+msgstr "「{player}」の{flag}を捨てさせました"
+
+#: server.js:9647
+msgid "Your {flag} flag was dropped"
+msgstr "{flag}フラグが捨てられました"
+
+#: server.js:9661
+msgid "{count} flags sent up"
+msgstr "{count}個のフラグを空へ飛ばしました"
+
+#: server.js:9671
+msgid "{count} flags reset"
+msgstr "{count}個のフラグをリセットしました"
+
+#: server.js:9676
+msgid "No flags are in the world"
+msgstr "マップ上にフラグがありません"
+
+#: server.js:9694
+msgid "Usage: /flag take <#slot|PlayerName>"
+msgstr "使い方：/flag take <#slot|PlayerName>"
+
+#. TRANSLATORS: /flag take is a command name; keep it as it is
+#: server.js:9701
+msgid "/flag take: player ({player}) does not have a flag"
+msgstr "/flag take：プレイヤー（{player}）はフラグを持っていません"
+
+#: server.js:9710
+msgid "{admin} took flag {flag}/{slot} from {player}"
+msgstr "{admin}が{player}からフラグ {flag}/{slot} を取り上げました"
+
+#: server.js:9722
+msgid "Usage: /flag give <#slot|PlayerName> <#flagId|FlagAbbr> [force]"
+msgstr "使い方：/flag give <#slot|PlayerName> <#flagId|FlagAbbr> [force]"
+
+#: server.js:9738
+msgid "flag {flag} is not in this world"
+msgstr "フラグ {flag} はこのワールドにありません"
+
+#: server.js:9745 server.js:9783
+msgid "you may need to use the force"
+msgstr "force が必要かもしれません"
+
+#: server.js:9752
+msgid "flag {flag} is an empty slot"
+msgstr "フラグ {flag} は空きスロットです"
+
+#: server.js:9758
+msgid "bad flag type"
+msgstr "不正なフラグの種類"
+
+#: server.js:9780
+msgid "flag type not found"
+msgstr "フラグの種類が見つかりません"
+
+#: server.js:9789
+msgid "An observer has no tank to carry a flag"
+msgstr "観戦者にはフラグを運ぶ戦車がありません"
+
+#. TRANSLATORS: /flag give is a command name; keep it as it is
+#: server.js:9796
+msgid "/flag give: player ({player}) is not alive"
+msgstr "/flag give：プレイヤー（{player}）は生存していません"
+
+#: server.js:9817
+msgid "{admin} gave flag {flag}/{slot} to {player}"
+msgstr "{admin}が{player}にフラグ {flag}/{slot} を与えました"
+
+#: server.js:9844
+msgid "Usage: /mv [player] <x,y> [facing]"
+msgstr "使い方：/mv [player] <x,y> [facing]"
+
+#: server.js:9859
+msgid "An observer has no tank to move"
+msgstr "観戦者には動かす戦車がありません"
+
+#: server.js:9902
+msgid "Nowhere to stand at {x},{y}"
+msgstr "{x},{y} には立てる場所がありません"
+
+#: server.js:9969
+msgid "Checking another player's position requires operator status"
+msgstr "他のプレイヤーの位置を確認するにはオペレーター権限が必要です"
+
+#: server.js:9975
+msgid "Usage: /pos [player]"
+msgstr "使い方：/pos [player]"
+
+#: server.js:9981
+msgid "An observer has no tank position"
+msgstr "観戦者には戦車の位置がありません"
+
+#: server.js:9989
+msgid "You are at {position} facing {bearing}"
+msgstr "現在地 {position}、向き {bearing}"
+
+#: server.js:9990
+msgid "\"{player}\" is at {position} facing {bearing}"
+msgstr "「{player}」の位置 {position}、向き {bearing}"
+
+#: server.js:10283
+msgid "All shots now ricochet"
+msgstr "すべての弾が跳弾するようになりました"
+
+#: server.js:10283
+msgid "Shots no longer ricochet"
+msgstr "弾は跳弾しなくなりました"
+
+#: server.js:10412
+msgid "usage: set <name> [<value>]"
+msgstr "使い方：set <name> [<value>]"
+
+#: server.js:10413
+msgid "bzo's own: {variables}"
+msgstr "bzo 独自：{variables}"
+
+#. TRANSLATORS: /set is a command name; keep it as it is
+#: server.js:10433
+msgid "/set failed, reason: variable {name} does not exist"
+msgstr "/set 失敗、理由：変数 {name} は存在しません"
+
+#: server.js:10434 server.js:10468
+msgid "variable {name} does not exist"
+msgstr "変数 {name} は存在しません"
+
+#: server.js:10438
+msgid "{name} is {value}"
+msgstr "{name} は {value} です"
+
+#. TRANSLATORS: /set is a command name; keep it as it is
+#: server.js:10443
+msgid "/set failed, reason: variable {name} is not writeable"
+msgstr "/set 失敗、理由：変数 {name} は書き込み不可です"
+
+#: server.js:10449
+msgid "{name} set"
+msgstr "{name} を設定しました"
+
+#: server.js:10450
+msgid "Variable Modification Notice by {player} of set {name} {value}"
+msgstr "変数変更通知：{player} が set {name} {value} を実行"
+
+#: server.js:10460
+msgid "usage: reset <name>"
+msgstr "使い方：reset <name>"
+
+#: server.js:10471
+msgid "variable {name} is not writeable"
+msgstr "変数 {name} は書き込み不可です"
+
+#: server.js:10477
+msgid "all variables reset"
+msgstr "すべての変数をリセットしました"
+
+#: server.js:10478
+msgid "{name} reset"
+msgstr "{name} をリセットしました"
+
+#: server.js:10482
+msgid "Variable Reset Notice by {player} of reset {name}"
+msgstr "変数リセット通知：{player} が reset {name} を実行"
+
+#: server.js:10509
+msgid "No command starting with {prefix}"
+msgstr "{prefix} で始まるコマンドはありません"
+
+#: server.js:10531
+msgid "You do not have permission to run the {command} command"
+msgstr "{command} コマンドを実行する権限がありません"
+
+#: server.js:10556
+msgid "We're sorry, you are not allowed to talk!"
+msgstr "申し訳ありませんが、発言は許可されていません！"
+
+#: server.js:10624
+msgid "You do not have permission to speak on the admin channel."
+msgstr "管理者チャンネルで発言する権限がありません。"
+
+#: server.js:10786
+msgid "You signed in as {player} on another device."
+msgstr "別のデバイスで{player}としてログインしました。"
+
+#: server.js:10808
+msgid "{player} signed in with that name, so yours is now {name}."
+msgstr ""
+"{player}がその名前でログインしたため、あなたの名前は{name}になりました。"
+
+#: server.js:12935
+msgid "Global login approved!"
+msgstr "グローバルログインが承認されました！"
+
+#: server.js:12937
+msgid "Global login rejected, bad token."
+msgstr "グローバルログインが拒否されました（無効なトークン）。"
+
+#: server.js:12939
+msgid "This callsign is not registered."
+msgstr "このコールサインは登録されていません。"
+
+#: server.js:12940
+msgid "You can register it at https://forums.bzflag.org/"
+msgstr "https://forums.bzflag.org/ で登録できます"
+
+#: server.js:13612
+msgid "{count} shots left"
+msgstr "残り{count}発"
+
+#: server.js:13613
+msgid "1 shot left"
+msgstr "残り1発"
+
+#: server.js:13885
+msgid ""
+"Team flags cannot be grabbed for {seconds} seconds after they were last "
+"capped."
+msgstr "チームフラグは最後にキャプチャーされてから{seconds}秒間取れません。"
+
+#: server.js:13886
+msgid "You cannot grab the {team} team flag for another ~{seconds} seconds"
+msgstr "あと約{seconds}秒は{team}チームのフラグを取れません"
+
+#: server.js:14100
+msgid "I'm sorry, we do not allow autopilot on this server."
+msgstr "申し訳ありませんが、このサーバーではオートパイロットは使えません。"
+
+#: server.js:16138
+msgid "Server restarting: {reason}"
+msgstr "サーバー再起動：{reason}"
+
+#: server.js:17412
+msgid "The pilots have not loaded"
+msgstr "パイロットが読み込まれていません"
+
+#. TRANSLATORS: a command's syntax; keep it as it is
+#: server.js:17424
+msgid "Usage: /bot fill <0-{max}> [{pilots}]"
+msgstr "使い方：/bot fill <0-{max}> [{pilots}]"
+
+#: server.js:17428
+msgid "No pilot \"{pilot}\"; one of {pilots}"
+msgstr "パイロット「{pilot}」はありません。{pilots} のいずれか"
+
+#. TRANSLATORS: a command's syntax; keep /bot add as it is
+#: server.js:17450
+msgid "Usage: /bot add [{pilots}] [team] [count]"
+msgstr "使い方：/bot add [{pilots}] [team] [count]"
+
+#: server.js:17471
+msgid "Usage: /bot remove <name|all>"
+msgstr "使い方：/bot remove <name|all>"
+
+#. TRANSLATORS: a command's syntax; keep /bot, fill, add, remove and all as they are
+#: server.js:17483
+msgid ""
+"Usage: /bot [fill <n> [{pilots}] | add [{pilots}] [team] [count] | remove "
+"<name|all>]"
+msgstr ""
+"使い方：/bot [fill <n> [{pilots}] | add [{pilots}] [team] [count] | remove "
+"<name|all>]"
+
+#: server.js:17510
+msgid "Server shutting down"
+msgstr "サーバー停止中"
+
+#: server.js:17520
+msgid "Server restarting"
+msgstr "サーバー再起動中"
+
+#: server/messages-operator.cjs:159
+msgid "No change: check the time limit and the match state"
+msgstr "変更なし：制限時間と試合の状態を確認してください"
+
+#: server/messages-operator.cjs:193
+msgid "Upload {map} with {bytes} bytes"
+msgstr "{map} をアップロード（{bytes} バイト）"
+
+#: server/messages-operator.cjs:214
+msgid ""
+"Upload refused: a replay name is letters, digits, \".\", \"_\" and \"-\"."
+msgstr ""
+"アップロード拒否：リプレイ名に使えるのは英字、数字、\".\"、\"_\"、\"-\" で"
+"す。"
+
+#: server/messages-operator.cjs:219
+msgid "Upload refused: {name} is over {megabytes} MB."
+msgstr "アップロード拒否：{name} は {megabytes} MB を超えています。"
+
+#: server/messages-operator.cjs:225
+msgid "Upload refused: {name} is not a bzfs recording ({error})."
+msgstr "アップロード拒否：{name} は bzfs の録画ではありません（{error}）。"
+
+#: server/messages-operator.cjs:229
+msgid "Upload refused: {name} is being watched."
+msgstr "アップロード拒否：{name} は視聴中です。"
+
+#: server/messages-operator.cjs:237
+msgid "Uploaded replay {name} with {bytes} bytes"
+msgstr "リプレイ {name} をアップロードしました（{bytes} バイト）"
+
+#: server/messages-operator.cjs:243
+msgid "Upload failed: {error}"
+msgstr "アップロード失敗：{error}"
+
+#: server/messages-operator.cjs:255
+msgid ""
+"Save refused: a recording name is letters, digits, \".\", \"_\" and \"-\"."
+msgstr "保存拒否：録画名に使えるのは英字、数字、\".\"、\"_\"、\"-\" です。"
+
+#: server/messages-operator.cjs:282
+msgid "Delete refused: {name} was not uploaded here."
+msgstr "削除拒否：{name} はここでアップロードされたものではありません。"
+
+#: server/messages-operator.cjs:283
+msgid "Delete refused: that was not uploaded here."
+msgstr "削除拒否：それはここでアップロードされたものではありません。"
+
+#: server/messages-operator.cjs:287
+msgid "Delete refused: {name} is the map being played."
+msgstr "削除拒否：{name} はプレイ中のマップです。"
+
+#: server/messages-operator.cjs:291
+msgid "Delete refused: {name} is being watched."
+msgstr "削除拒否：{name} は視聴中です。"
+
+#: server/messages-operator.cjs:308
+msgid "Deleted map {name}"
+msgstr "マップ {name} を削除しました"
+
+#: server/messages-operator.cjs:308
+msgid "Deleted replay {name}"
+msgstr "リプレイ {name} を削除しました"
+
+#: server/messages-operator.cjs:313
+msgid "Delete failed: {error}"
+msgstr "削除失敗：{error}"
+
+#: server/messages-operator.cjs:371
+msgid ""
+"{server} is no longer in the public list, so {map} is the copy already here "
+"({bytes} bytes). It is ready to View now."
+msgstr ""
+"{server} は公開リストにないため、{map} はここにある既存のコピーです（{bytes} "
+"バイト）。今すぐ「表示」できます。"
+
+#: server/messages-operator.cjs:374
+msgid "Imported {map} from {server} ({bytes} bytes). It is ready to View now."
+msgstr ""
+"{server} から {map} をインポートしました（{bytes} バイト）。今すぐ「表示」で"
+"きます。"
+
+#: server/messages-play.cjs:1154
+msgid "You are unable to begin playing for {seconds} seconds."
+msgstr "あと{seconds}秒はプレイを開始できません。"
+
+#: server/messages-play.cjs:1192
+msgid "Team is not available: {team}"
+msgstr "利用できないチーム：{team}"
+
+#: server/messages-play.cjs:1196
+msgid "You stay {team}"
+msgstr "{team}のままです"
+
+#: server/messages-play.cjs:1205
+msgid "Team is full: {team}"
+msgstr "チームが満員です：{team}"
+
+#: server/messages-play.cjs:1210
+msgid "You will join {team} when you next spawn"
+msgstr "次のスポーン時に{team}に参加します"

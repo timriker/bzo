@@ -12,15 +12,14 @@
 // point at the pages and nothing else.
 
 import assert from 'node:assert/strict';
-import fs from 'node:fs';
 import { createRequire } from 'node:module';
 
 const require = createRequire(import.meta.url);
 const discovery = require('../server/discovery.cjs');
-const { FLAG_TYPES, FLAG_QUALITY } = require('../public/js/flags.mjs');
+const { FLAG_TYPES } = require('../public/js/flags.mjs');
 
 const base = 'https://bz.example.org';
-const controlsMarkdown = fs.readFileSync(new URL('../docs/controls.md', import.meta.url), 'utf8');
+const helpDocs = require('../server/help-docs.cjs');
 const context = {
   base,
   name: 'bz.example.org -- Battlezone Online',
@@ -28,9 +27,8 @@ const context = {
   description: discovery.serverDescription('An example server'),
   version: '1.2.3',
   listServerUrl: 'https://list.example.org',
-  controlsMarkdown,
-  flagTypes: FLAG_TYPES,
-  badQuality: FLAG_QUALITY.BAD,
+  pages: helpDocs.renderPages('en'),
+  helpMarkdown: helpDocs.helpMarkdown(),
 };
 
 const ldBlocks = (html) => [...html.matchAll(/<script type="application\/ld\+json">(.*?)<\/script>/gs)]
@@ -66,19 +64,38 @@ const ldBlocks = (html) => [...html.matchAll(/<script type="application\/ld\+jso
   assert.equal(list.itemListElement[0].item.numberOfPlayers, 3);
 }
 
-// /help: the controls doc's own headings and keys, and every flag that is not
-// a team's.
+// /help: every page under its own heading -- the controls doc's own headings
+// and keys, and every flag that is not a team's -- and one page alone.
 {
   const html = discovery.helpPage(context);
+  assert.deepEqual([...html.matchAll(/<h2 id="([\w-]+)"><a href="\/help\/\1">/g)].map((m) => m[1]), helpDocs.HELP_PAGES);
   assert.match(html, /<h3 id="keyboard">Keyboard<\/h3>/);
+  assert.match(html, /see <a href="\/help\/flags">Flags<\/a>/, 'a link between help pages stays on the site');
   assert.match(html, /<li><code>Enter<\/code> — shoot<\/li>/);
   assert.match(html, /<code>&#96;<\/code> — toggle debug HUD/, 'a backtick written as a double-backtick span');
   const flags = Object.values(FLAG_TYPES).filter((flag) => flag.team === null || flag.team === undefined);
-  for (const flag of flags) assert.ok(html.includes(`<td>${flag.name}</td>`), `${flag.name} listed`);
+  for (const flag of flags) assert.ok(html.includes(`<strong>${flag.abbreviation}</strong> — <span`), `${flag.name} listed`);
+  assert.match(html, /<span class="flagBad">Blindness<\/span>/, 'a bad flag in the warning colour');
+  assert.match(html, /<span class="flagTeam1">Red Team<\/span>/, 'a team flag in its team colour');
+  assert.doesNotMatch(html, /id="helpRicochet"/, 'the ricochet line is the panel\'s alone');
+  assert.match(helpDocs.renderPages('en', { live: true })[1].html, /<p id="helpRicochet"><\/p>/);
   assert.equal(ldBlocks(html).length, 1);
   assert.match(html, /<a href="https:\/\/discord\.gg\/6DHkggcXM9">BZFlag Discord<\/a>/);
   assert.doesNotMatch(html, /\/discord\/link/, 'no account link where Linked Roles is off');
   assert.match(discovery.helpPage({ ...context, discordLink: true }), /<a href="\/discord\/link">link your bzflag\.org account<\/a>/);
+  const one = discovery.helpPage({ ...context, pages: context.pages.filter((page) => page.slug === 'flags'), path: '/help/flags' });
+  assert.match(one, /<title>Flags -- /);
+  assert.match(one, /<link rel="canonical" href="https:\/\/bz\.example\.org\/help\/flags">/);
+  assert.doesNotMatch(one, /id="keyboard"/);
+}
+
+// A translation replaces a block whole, and anything untranslated is English.
+{
+  const html = discovery.markdownToHtml('## Keys\n\nPress `B`.\n\n- one\n- two\n\n<!-- flags -->\n', {
+    translate: (text) => ({ 'Press `B`.': 'Pulsa `B`.', one: 'uno' }[text] || text),
+    markers: { flags: '<div id="helpFlags"></div>' },
+  });
+  assert.equal(html, '<h3 id="keys">Keys</h3>\n<p>Pulsa <code>B</code>.</p>\n<ul><li>uno</li><li>two</li></ul>\n<div id="helpFlags"></div>');
 }
 
 // Markdown the docs use.
@@ -102,7 +119,9 @@ const ldBlocks = (html) => [...html.matchAll(/<script type="application\/ld\+jso
   assert.match(llms, /\(https:\/\/list\.example\.org\/api\/list-server\/list\)/);
   const full = discovery.llmsFullTxt(context);
   assert.match(full, /^## Flags$/m);
-  assert.match(full, /\| GM \| Guided Missile \| good \|/);
+  assert.match(full, /^### Keyboard$/m);
+  assert.match(full, /^### Good Flags$/m);
+  assert.match(full, /\| GM \| Guided Missile \| /);
 }
 
 console.log('discovery tests passed');

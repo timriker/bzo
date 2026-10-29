@@ -1,0 +1,984 @@
+msgid ""
+msgstr ""
+"Project-Id-Version: bzo\n"
+"Report-Msgid-Bugs-To: https://github.com/timriker/bzo/issues\n"
+"Language: ja\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Review: machine-translated, not yet read by a native speaker\n"
+
+#: docs/help/controls.md
+msgid "Controls"
+msgstr "操作方法"
+
+#: docs/help/controls.md
+msgid ""
+"One client runs on a desktop, a phone and a headset, so every action has a "
+"way in from each of them. The keyboard has the most; touch, a gamepad and "
+"the XR controllers carry the actions a match needs, and the Settings menu "
+"reaches the rest -- including from a headset, where there is no keyboard at "
+"all. This page is also the in-game help's (`/` or `?`)."
+msgstr ""
+"1つのクライアントがデスクトップ、スマートフォン、ヘッドセットで動くので、どの"
+"操作にもそれぞれの機器からの入力方法があります。キーボードが最も多くの操作に"
+"対応し、タッチ、ゲームパッド、XRコントローラーは試合に必要な操作を担当し、残"
+"りは設定メニューから使えます。キーボードがまったくないヘッドセットからも同じ"
+"です。このページはゲーム内ヘルプ（`/` または `?`）でもあります。"
+
+#: docs/help/controls.md
+msgid "Keyboard"
+msgstr "キーボード"
+
+#: docs/help/controls.md
+msgid "Driving"
+msgstr "走行"
+
+#: docs/help/controls.md
+msgid "`W` / `S` or `Up` / `Down` — move forward/backward"
+msgstr "`W` / `S` または `Up` / `Down` — 前進／後退"
+
+#: docs/help/controls.md
+msgid "`A` / `D` or `Left` / `Right` — turn left/right"
+msgstr "`A` / `D` または `Left` / `Right` — 左／右に旋回"
+
+#: docs/help/controls.md
+msgid "`Enter` — shoot"
+msgstr "`Enter` — 発射"
+
+#: docs/help/controls.md
+msgid "`Tab` — jump"
+msgstr "`Tab` — ジャンプ"
+
+#: docs/help/controls.md
+msgid "`Space` — drop flag"
+msgstr "`Space` — フラグを捨てる"
+
+#: docs/help/controls.md
+msgid ""
+"`I` or right-click — identify the tank in your sights, and lock a Guided "
+"Missile onto it"
+msgstr "`I` または右クリック — 照準内の戦車を識別し、誘導ミサイルをロックオン"
+
+#: docs/help/controls.md
+msgid ""
+"`Delete` — self-destruct, after a five second countdown; `Delete` again "
+"calls it off"
+msgstr "`Delete` — 5秒のカウントダウン後に自爆。もう一度 `Delete` で取り消し"
+
+#: docs/help/controls.md
+msgid ""
+"`9` or `/autopilot [roger|ace]` — autopilot: the pilot drives, aims and "
+"shoots until pressed again. `Settings -> Autopilot` chooses the pilot "
+"without a keyboard. You can still drive while it does, to help it out of a "
+"corner -- see [Combining inputs](#combining-inputs)"
+msgstr ""
+"`9` または `/autopilot [roger|ace]` — オートパイロット：もう一度押すまで、パ"
+"イロットが走行・照準・射撃を行います。`Settings -> Autopilot` でキーボードな"
+"しでもパイロットを選べます。作動中も自分で操縦でき、角から抜け出す手助けがで"
+"きます。[入力の組み合わせ](#combining-inputs)を参照"
+
+#: docs/help/controls.md
+msgid "`P` — pause/resume"
+msgstr "`P` — 一時停止／再開"
+
+#: docs/help/controls.md
+msgid "Chat"
+msgstr "チャット"
+
+#: docs/help/controls.md
+msgid "`N` — open chat (or click the `Send` button)"
+msgstr "`N` — チャットを開く（または `Send` ボタンをクリック）"
+
+#: docs/help/controls.md
+msgid ""
+"`Enter` — send chat (while chat input is focused, or click `Send` again)"
+msgstr ""
+"`Enter` — チャットを送信（入力欄にフォーカスがあるとき。または `Send` をもう"
+"一度クリック）"
+
+#: docs/help/controls.md
+msgid ""
+"`1` / `2` / `3` / `4` / `5` — switch chat tab (`All` / `Chat` / `Server` / "
+"`Misc` / `Debug`)"
+msgstr ""
+"`1` / `2` / `3` / `4` / `5` — チャットタブを切り替え（`All` / `Chat` / "
+"`Server` / `Misc` / `Debug`）"
+
+#: docs/help/controls.md
+msgid "`[` / `]` — previous/next chat tab"
+msgstr "`[` / `]` — 前／次のチャットタブ"
+
+#: docs/help/controls.md
+msgid ""
+"`Tab` — while typing, complete a player, command or flag name; `@` starts a "
+"mention and `#` a player's slot number"
+msgstr ""
+"`Tab` — 入力中に、プレイヤー名・コマンド・フラグ名を補完。`@` でメンション、"
+"`#` でプレイヤーのスロット番号"
+
+#: docs/help/controls.md
+msgid ""
+"`Up` / `Down` — while typing, recall earlier lines; type the start of a line "
+"first to recall only the ones beginning that way"
+msgstr ""
+"`Up` / `Down` — 入力中に、以前の行を呼び出し。先に行の頭を入力すると、そう始"
+"まる行だけを呼び出します"
+
+#: docs/help/controls.md
+msgid "`.` — reply to last direct-message sender"
+msgstr "`.` — 最後にダイレクトメッセージを送ってきた相手に返信"
+
+#: docs/help/controls.md
+msgid "`,` — message nemesis target"
+msgstr "`,` — 宿敵（ネメシス）にメッセージ"
+
+#: docs/help/controls.md
+msgid "`Page Up` / `Page Down` — scroll chat history"
+msgstr "`Page Up` / `Page Down` — チャット履歴をスクロール"
+
+#: docs/help/controls.md
+msgid "`End` — jump chat to newest message"
+msgstr "`End` — チャットを最新メッセージへ移動"
+
+#: docs/help/controls.md
+msgid ""
+"Drag across the history while chat is open to select it, then copy; typing "
+"carries on in the input"
+msgstr ""
+"チャットを開いた状態で履歴をドラッグすると選択でき、コピーできます。入力は入"
+"力欄でそのまま続けられます"
+
+#: docs/help/controls.md
+msgid "View and panels"
+msgstr "表示とパネル"
+
+#: docs/help/controls.md
+msgid ""
+"`Esc` — back out one step: exit chat input, leave fullscreen, leave mouse "
+"steering, then open Settings. Pressing it again closes Settings, so it is "
+"always safe to press one more time"
+msgstr ""
+"`Esc` — 1段階戻る：チャット入力を抜ける、全画面を解除、マウス操縦を解除、そし"
+"て設定を開く。もう一度押すと設定が閉じるので、いつでももう1回押して大丈夫です"
+
+#: docs/help/controls.md
+msgid "`M` — toggle mouse steering"
+msgstr "`M` — マウス操縦の切り替え"
+
+#: docs/help/controls.md
+msgid "`C` — cycle camera mode"
+msgstr "`C` — カメラモードを切り替え"
+
+#: docs/help/controls.md
+msgid "`O` — toggle operator panel"
+msgstr "`O` — オペレーターパネルの切り替え"
+
+#: docs/help/controls.md
+msgid "`F` — toggle fullscreen"
+msgstr "`F` — 全画面の切り替え"
+
+#: docs/help/controls.md
+msgid "`` ` `` — toggle debug HUD"
+msgstr "`` ` `` — デバッグHUDの切り替え"
+
+#: docs/help/controls.md
+msgid "`=` or `+` or `Numpad +` — zoom radar out (increase range)"
+msgstr ""
+"`=` または `+` または `Numpad +` — レーダーをズームアウト（範囲を広げる）"
+
+#: docs/help/controls.md
+msgid "`-` or `Numpad -` — zoom radar in (decrease range)"
+msgstr "`-` または `Numpad -` — レーダーをズームイン（範囲を狭める）"
+
+#: docs/help/controls.md
+msgid ""
+"`\\` — reset radar zoom to the default medium range (half the world's radar "
+"limit, which is the world size unless the map says otherwise)"
+msgstr ""
+"`\\` — レーダーのズームを既定の中距離にリセット（ワールドのレーダー上限の半"
+"分。マップに指定がなければワールドの大きさです）"
+
+#: docs/help/controls.md
+msgid "`Settings -> Radar: ...` — cycle Short/Medium/Long radar presets"
+msgstr ""
+"`Settings -> Radar: ...` — 近距離／中距離／遠距離のレーダープリセットを切り替"
+"え"
+
+#: docs/help/controls.md
+msgid "`B` — toggle the voice microphone"
+msgstr "`B` — ボイスのマイクを切り替え"
+
+#: docs/help/controls.md
+msgid ""
+"`Settings -> Audio Settings` — set the game, voice, and microphone levels, "
+"and choose the voice channel: All, Nearby, or Team"
+msgstr ""
+"`Settings -> Audio Settings` — ゲーム、ボイス、マイクの音量を設定し、ボイス"
+"チャンネル（全員・近く・チーム）を選択"
+
+#: docs/help/controls.md
+msgid "`/` or `?` — show/hide help panel"
+msgstr "`/` または `?` — ヘルプパネルの表示／非表示"
+
+#: docs/help/controls.md
+msgid ""
+"`🎤` beside the gear — the microphone, as `B` is: a green border means you "
+"are transmitting and a red one means you are not, and the hover text names "
+"the channel it would speak on"
+msgstr ""
+"歯車の横の `🎤` — `B` と同じくマイクです。緑の枠は送信中、赤の枠は送信してい"
+"ないことを示し、ホバーテキストに話すチャンネルが表示されます"
+
+#: docs/help/controls.md
+msgid ""
+"`▲` beside the gear — hide the scoreboard and chat, leaving the name row and "
+"the chat tabs; `▼` brings them back. Typing a message borrows the chat "
+"window until you are done with it, and `U` or `7` borrows the scoreboard "
+"until the hunt cursor closes; tapping a chat tab opens chat for good. Small "
+"screens start collapsed"
+msgstr ""
+"歯車の横の `▲` — スコアボードとチャットを隠し、名前の行とチャットタブだけを残"
+"します。`▼` で元に戻ります。メッセージを入力している間はチャットウィンドウが"
+"一時的に表示され、`U` または `7` でハントカーソルを閉じるまでスコアボードが表"
+"示されます。チャットタブをタップするとチャットは開いたままになります。小さな"
+"画面では最初から折りたたまれています"
+
+#: docs/help/controls.md
+msgid ""
+"`Settings -> Anaglyph 3D` — red/cyan glasses; `Settings -> VR Mode` enters a "
+"WebXR headset"
+msgstr ""
+"`Settings -> Anaglyph 3D` — 赤／シアンのメガネ用。`Settings -> VR Mode` で"
+"WebXRヘッドセットに入ります"
+
+#: docs/help/controls.md
+msgid "Menus"
+msgstr "メニュー"
+
+#: docs/help/controls.md
+msgid ""
+"`Up` / `Down` — previous/next control, including from inside a text field"
+msgstr "`Up` / `Down` — 前／次の項目（テキスト欄の中からでも）"
+
+#: docs/help/controls.md
+msgid ""
+"`Left` / `Right` — change the focused control: move a slider, pick the next "
+"choice. In a text field they move the cursor instead"
+msgstr ""
+"`Left` / `Right` — フォーカス中の項目を変更：スライダーを動かす、次の選択肢を"
+"選ぶ。テキスト欄ではカーソルを移動します"
+
+#: docs/help/controls.md
+msgid "`Tab` / `Shift+Tab` — previous/next control"
+msgstr "`Tab` / `Shift+Tab` — 前／次の項目"
+
+#: docs/help/controls.md
+msgid "`Home` / `End` — first/last control"
+msgstr "`Home` / `End` — 最初／最後の項目"
+
+#: docs/help/controls.md
+msgid "`Enter` or `Space` — press the focused control"
+msgstr "`Enter` または `Space` — フォーカス中の項目を押す"
+
+#: docs/help/controls.md
+msgid ""
+"Click or tap a row that walks a list: the title steps back and the current "
+"option steps forward. The `‹` and `›` on the row mark the two halves"
+msgstr ""
+"リストを切り替える行をクリックまたはタップすると、タイトル側では1つ戻り、現在"
+"の選択肢側では1つ進みます。行の `‹` と `›` がその左右を示します"
+
+#: docs/help/controls.md
+msgid ""
+"The help panel is read rather than operated, so there the arrows scroll it "
+"and only `Left` / `Right` move focus"
+msgstr ""
+"ヘルプパネルは操作するより読むものなので、矢印キーでスクロールし、フォーカス"
+"を移動するのは `Left` / `Right` だけです"
+
+#: docs/help/controls.md
+msgid "Hunting"
+msgstr "ハント"
+
+#: docs/help/controls.md
+msgid ""
+"Marking a player puts a cyan `◎` on their scoreboard row, a cyan ring on "
+"their radar blip, and a beacon in the sky over them in their own tank colour "
+"-- so several marked at once are still told apart at a glance. While one of "
+"them is in your sights the HUD says **SPOTTED:** and a ping sounds once a "
+"second from where they are. In Rabbit Chase the rabbit is marked for you, "
+"and its beacon is cyan like its ring: everyone is hunting it, so everyone's "
+"mark over it says so."
+msgstr ""
+"プレイヤーをマークすると、スコアボードの行にシアンの `◎`、レーダーの点にシア"
+"ンのリング、そしてその上空にその戦車の色のビーコンが付きます。複数マークして"
+"も一目で区別できます。そのうち1人が照準に入ると、HUDに **発見:** と表示さ"
+"れ、その位置から毎秒1回ピン音が鳴ります。Rabbit Chaseではラビットが自動でマー"
+"クされ、そのビーコンはリングと同じシアンです。全員がラビットを追っているの"
+"で、全員のマークがそれを示します。"
+
+#: docs/help/controls.md
+msgid ""
+"`U` — hunt: open the scoreboard cursor, and press it again on a running hunt "
+"to clear every mark"
+msgstr ""
+"`U` — ハント：スコアボードのカーソルを開く。ハント中にもう一度押すとすべての"
+"マークを解除"
+
+#: docs/help/controls.md
+msgid ""
+"`7` — add hunt: the same cursor, but committing adds to what is marked "
+"rather than replacing it, and committing on a row already marked takes it off"
+msgstr ""
+"`7` — ハント追加：同じカーソルですが、確定すると置き換えではなく追加になり、"
+"すでにマーク済みの行で確定するとマークを外します"
+
+#: docs/help/controls.md
+msgid ""
+"`Settings -> Hunt` — the same thing without a keyboard, for a phone or a "
+"headset. Left and right step through `Clear` and then the players in "
+"alphabetical order; select marks or unmarks whoever is shown, or clears "
+"every mark on `Clear`. On a touch screen or with a mouse, tap a chevron to "
+"step and anywhere else on the row to select"
+msgstr ""
+"`Settings -> Hunt` — キーボードなしで同じことができます（スマートフォンやヘッ"
+"ドセット向け）。左右で `Clear`、続いてプレイヤーをアルファベット順に切り替え"
+"ます。選択すると表示中のプレイヤーをマーク／解除し、`Clear` ではすべてのマー"
+"クを解除します。タッチ画面やマウスでは、矢印をタップで切り替え、行のそれ以外"
+"の場所をタップで選択します"
+
+#: docs/help/controls.md
+msgid ""
+"With the cursor open, the board's heading reads `*SEL*` and a pulsing `○` "
+"sits on the row it is on, filling in to `◎` when you commit. `Up` / `Down` "
+"move it, `Enter` commits, and `U` or `7` backs out keeping whatever was "
+"already marked. `I` and `Space` move the cursor too, so a surface without "
+"arrow keys can reach it"
+msgstr ""
+"カーソルを開くと、ボードの見出しが `*SEL*` になり、カーソルのある行に点滅す"
+"る `○` が付き、確定すると `◎` に変わります。`Up` / `Down` で移動、`Enter` で"
+"確定、`U` または `7` でマーク済みのものをそのままにして抜けます。`I` と "
+"`Space` でもカーソルを動かせるので、矢印キーのない機器でも使えます"
+
+#: docs/help/controls.md
+msgid "As an observer"
+msgstr "観戦者として"
+
+#: docs/help/controls.md
+msgid ""
+"As an Observer you have no tank. Drive and turn fly the camera instead, "
+"`Tab` climbs and `Space` descends, and holding `Shift` makes drive tilt the "
+"view up and down and turn slide it sideways. The camera rests at the eye "
+"height of a tank on the ground, and travel stays level however the view is "
+"tilted. Pausing and self-destruct do nothing."
+msgstr ""
+"観戦者には戦車がありません。走行と旋回でカメラを飛ばし、`Tab` で上昇、"
+"`Space` で下降します。`Shift` を押している間は、走行で視点を上下に傾け、旋回"
+"で横にスライドします。カメラは地上の戦車の目の高さにあり、視点をどう傾けても"
+"水平に移動します。一時停止と自爆は効きません。"
+
+#: docs/help/controls.md
+msgid ""
+"`Enter` or `C` — step through everything: in each view, the leader first, "
+"then every player, then on to the next view. The views are Free, Track, "
+"Follow, Driving with, and Flag where a map has team flags"
+msgstr ""
+"`Enter` または `C` — すべてを順に切り替え：各ビューでまずトップ、次に全プレイ"
+"ヤー、そして次のビューへ。ビューは自由視点、追跡、追従、同乗、そしてチームフ"
+"ラグのあるマップではフラグの追跡です"
+
+#: docs/help/controls.md
+msgid ""
+"`I` or right-click — in the Free view, watch the tank in your sights, or "
+"show the obstacle there: what it is, an outline round it, and its block from "
+"the map file with the `group` blocks that placed it"
+msgstr ""
+"`I` または右クリック — Freeビューで、照準内の戦車を観戦するか、そこにある障害"
+"物を表示：種類、輪郭、そしてそれを配置した `group` ブロックを含む、マップファ"
+"イル内のブロック"
+
+#: docs/help/controls.md
+msgid ""
+"Right-click or tap an obstacle anywhere on screen, in any view and the "
+"Overview most of all, to show it the same way"
+msgstr ""
+"画面上のどこでも障害物を右クリックまたはタップすると、どのビューでも（特に俯"
+"瞰で）同じように表示します"
+
+#: docs/help/controls.md
+msgid ""
+"Pick nothing -- the sky, or empty ground in the Overview -- or press the "
+"panel's **World** button for the whole world: what is in it, faces, "
+"textures, the map file's warnings and its largest meshes, each of which "
+"shows that mesh"
+msgstr ""
+"何も選ばない（空、または俯瞰での何もない地面）か、パネルの **ワールド** ボタ"
+"ンを押すと、ワールド全体を表示：含まれるもの、面、テクスチャ、マップファイル"
+"の警告、最大のメッシュ（それぞれそのメッシュを表示します）"
+
+#: docs/help/controls.md
+msgid ""
+"Click a scoreboard row to watch that player; click the marked row again to "
+"go back to following the leader"
+msgstr ""
+"スコアボードの行をクリックするとそのプレイヤーを観戦。マークされた行をもう一"
+"度クリックするとリーダーの追従に戻ります"
+
+#: docs/help/controls.md
+msgid "Mouse"
+msgstr "マウス"
+
+#: docs/help/controls.md
+msgid ""
+"`M` turns mouse steering on and off, and nothing else does: the keys never "
+"take it away behind your back."
+msgstr ""
+"マウス操縦のオン／オフは `M` だけで切り替わります。キー操作で勝手に解除される"
+"ことはありません。"
+
+#: docs/help/controls.md
+msgid "The targeting box"
+msgstr "照準ボックス"
+
+#: docs/help/controls.md
+msgid ""
+"The two boxes in the middle of the screen are the steering, as in BZFlag. "
+"Where the cursor sits relative to their centre is what the tank does:"
+msgstr ""
+"画面中央の2つのボックスは、BZFlagと同じく操縦用です。中心に対するカーソルの位"
+"置で戦車の動きが決まります："
+
+#: docs/help/controls.md
+msgid ""
+"**Inside the inner box, nothing.** It is the dead zone: park the cursor "
+"there to stop."
+msgstr ""
+"**内側のボックスの中では何もしません。** デッドゾーンです。止まりたいときはこ"
+"こにカーソルを置きます。"
+
+#: docs/help/controls.md
+msgid ""
+"**Between the boxes, more the further out.** Up is forward and down is "
+"reverse; left and right turn. Each grows evenly from nothing at the inner "
+"box's edge to full at the outer box's."
+msgstr ""
+"**ボックスの間では、外側ほど強く。** 上が前進、下が後退、左右が旋回です。それ"
+"ぞれ内側のボックスの縁でゼロ、外側のボックスの縁で最大まで均等に増えます。"
+
+#: docs/help/controls.md
+msgid ""
+"**At or past the outer box, full.** Each axis stops growing on its own, so "
+"running the cursor out past the top keeps the tank at full speed and leaves "
+"left and right free to steer."
+msgstr ""
+"**外側のボックス以上では最大。** 各軸は個別に頭打ちになるので、カーソルを上に"
+"突き抜けさせても全速のまま、左右で自由に操縦できます。"
+
+#: docs/help/controls.md
+msgid ""
+"**Reverse is half speed**, as it is from the keys, however far down the "
+"cursor goes."
+msgstr ""
+"**後退は半分の速度です。** キーと同じく、カーソルをどれだけ下げても変わりませ"
+"ん。"
+
+#: docs/help/controls.md
+msgid ""
+"**The box sets the speed asked for, not the speed you get at once.** A world "
+"with an acceleration limit (BZFlag's `-a`, off by default) brings the tank "
+"up to it over time, the same as it does from the keys."
+msgstr ""
+"**ボックスが決めるのは要求する速度で、すぐにその速度になるわけではありませ"
+"ん。** 加速制限のあるワールド（BZFlagの `-a`、既定ではオフ）では、キーと同じ"
+"く時間をかけて加速します。"
+
+#: docs/help/controls.md
+msgid ""
+"The boxes are BZFlag's own sizes, scaled to the window. BZFlag also holds "
+"the cursor inside the box; a browser cannot without taking the pointer over, "
+"so in bzo the cursor can leave it -- the steering simply stays at full, and "
+"the cost is a longer move back to the centre."
+msgstr ""
+"ボックスの大きさはBZFlagと同じで、ウィンドウに合わせて拡大縮小します。BZFlag"
+"はカーソルをボックス内に留めますが、ブラウザはポインターを占有しない限りそれ"
+"ができないため、bzoではカーソルがボックスの外に出られます。その場合も操縦は最"
+"大のままで、中心に戻すのに少し長く動かす必要があるだけです。"
+
+#: docs/help/controls.md
+msgid ""
+"With the keys, the mouse keeps whichever axis no key is holding -- see "
+"[Combining inputs](#combining-inputs)."
+msgstr ""
+"キーと併用すると、どのキーも押していない軸はマウスが担当します。[入力の組み合"
+"わせ](#combining-inputs)を参照。"
+
+#: docs/help/controls.md
+msgid "Clicks"
+msgstr "クリック"
+
+#: docs/help/controls.md
+msgid ""
+"Left click shoots wherever the cursor is, whether mouse steering is on or "
+"not, unless the click lands on the chat panel or a button. Right click "
+"identifies. Mouse steering is unavailable with no mouse attached, in VR, and "
+"while the on-screen controls are up, since those steer instead; a click that "
+"misses one of their buttons does nothing rather than firing."
+msgstr ""
+"左クリックは、マウス操縦のオン／オフに関わらずカーソルの位置に発射します。た"
+"だしチャットパネルやボタンの上では発射しません。右クリックは識別です。マウス"
+"が接続されていないとき、VR中、画面コントロールが表示されているとき（それで操"
+"縦するため）はマウス操縦を使えません。そのボタンを外れたクリックは発射せず、"
+"何もしません。"
+
+#: docs/help/controls.md
+msgid "Combining inputs"
+msgstr "入力の組み合わせ"
+
+#: docs/help/controls.md
+msgid ""
+"Every input drives at once, and nothing switches between them on its own: "
+"`M` and the Settings rows are the only things that change which ones are on."
+msgstr ""
+"すべての入力が同時に効き、勝手に切り替わることはありません。どれを有効にする"
+"かを変えるのは `M` と設定の項目だけです。"
+
+#: docs/help/controls.md
+msgid ""
+"**Driving is shared out an axis at a time** -- forward/back, and turn, each "
+"on its own. On each, the first of these with something to say wins:"
+msgstr ""
+"**走行は軸ごとに分担されます**：前後と旋回をそれぞれ別に。各軸では、次のうち"
+"入力のある最初のものが優先されます："
+
+#: docs/help/controls.md
+msgid ""
+"**Keys.** A held drive key owns its axis, and holding both of a pair (`W` "
+"and `S`, or `A` and `D`) is a deliberate stop on that axis."
+msgstr ""
+"**キー。** 押している走行キーがその軸を担当し、対になるキーを両方押す（`W` "
+"と `S`、または `A` と `D`）と、その軸で意図的に停止します。"
+
+#: docs/help/controls.md
+msgid ""
+"**The stick:** the XR controllers in VR, otherwise a connected gamepad, "
+"otherwise the on-screen stick. Only one of the three is read at a time -- "
+"they are not added together."
+msgstr ""
+"**スティック：** VRではXRコントローラー、それ以外では接続されたゲームパッド、"
+"なければ画面上のスティック。読み取るのは3つのうち1つだけで、合算はされませ"
+"ん。"
+
+#: docs/help/controls.md
+msgid "**The mouse**, in the targeting box, with mouse steering on."
+msgstr "**マウス**：マウス操縦がオンのとき、照準ボックスで。"
+
+#: docs/help/controls.md
+msgid ""
+"So you can drive with `W` while the mouse steers, turn with `A`/`D` while "
+"the mouse sets the speed, or steer a gamepad's turn while a key holds the "
+"speed. A stick let go reads zero and gives the axis to the mouse; the mouse "
+"box holds whatever the cursor's place says, which is why it comes last."
+msgstr ""
+"つまり、`W` で走りながらマウスで操縦したり、マウスで速度を決めながら `A`/`D` "
+"で旋回したり、キーで速度を保ちながらゲームパッドで旋回したりできます。離した"
+"スティックはゼロになり、その軸をマウスに譲ります。マウスのボックスは常にカー"
+"ソルの位置どおりの値を出すので、順番は最後です。"
+
+#: docs/help/controls.md
+msgid ""
+"**Buttons add up.** Shoot fires from `Enter`, a left click, or the stick "
+"source's own fire button; jump from `Tab` or the stick source's; identify "
+"from `I`, a right click, or the stick source's. Any of them will do."
+msgstr ""
+"**ボタンは合算されます。** 発射は `Enter`、左クリック、またはスティック側の発"
+"射ボタン。ジャンプは `Tab` またはスティック側のボタン。識別は `I`、右クリッ"
+"ク、またはスティック側のボタン。どれでも使えます。"
+
+#: docs/help/controls.md
+msgid ""
+"**With the autopilot on**, the pilot takes the mouse's place, last in line: "
+"a drive key or the stick you hold still owns its axis, and the pilot has the "
+"rest. So when it is wedged against something you can hold `A` to turn it "
+"out, or `S` to back it off, while it keeps the other axis, and let go to "
+"hand it back -- it carries on from wherever you left it, re-planning its "
+"route if you took it somewhere else. Your shots, jumps and drops add to its "
+"own. The mouse box does not steer while the autopilot drives: it holds an "
+"offset wherever the cursor is parked, so it would never hand anything back."
+msgstr ""
+"**オートパイロット作動中は**、パイロットがマウスの位置、つまり最後に入りま"
+"す。押している走行キーやスティックはその軸を担当し続け、残りをパイロットが担"
+"当します。何かに引っかかったときは `A` を押して向きを変えたり、`S` で後退させ"
+"たりでき、その間パイロットはもう一方の軸を操作します。離せば制御が戻り、離し"
+"た場所から続行し、別の場所に連れて行った場合はルートを計画し直します。あなた"
+"の射撃・ジャンプ・フラグ捨ては、パイロット自身のものに加わります。オートパイ"
+"ロット走行中はマウスのボックスで操縦しません。カーソルを置いた位置のオフセッ"
+"トを出し続け、制御を返さなくなるためです。"
+
+#: docs/help/controls.md
+msgid ""
+"**Menus don't stop the autopilot.** Opening Settings, or any other menu, "
+"normally pauses your tank. With the autopilot driving, the menu takes the "
+"keys and the pilot goes on driving. With a pilot chosen on the `Settings -> "
+"Autopilot` row but not driving, opening a menu turns the autopilot on, and "
+"closing the menu turns it off again -- so a menu means \"drive for me a "
+"moment\" rather than \"stop\". With the row on `None`, the default, or on a "
+"server that refuses bots (`-disableBots`), menus pause as they always have. "
+"A hidden window still pauses either way: the browser stops drawing it, and "
+"the pilot with it."
+msgstr ""
+"**メニューを開いてもオートパイロットは止まりません。** 通常、設定などのメ"
+"ニューを開くと戦車は一時停止します。オートパイロット走行中は、メニューがキー"
+"を受け取り、パイロットは走行を続けます。`Settings -> Autopilot` の項目でパイ"
+"ロットを選んでいて走行していない場合、メニューを開くとオートパイロットがオン"
+"になり、閉じるとオフに戻ります。つまりメニューは「止まれ」ではなく「ちょっと"
+"運転して」という意味になります。項目が既定の `None` のとき、またはボットを拒"
+"否するサーバー（`-disableBots`）では、メニューはこれまでどおり一時停止しま"
+"す。ウィンドウが隠れているときはどちらでも一時停止します。ブラウザが描画を止"
+"め、パイロットも一緒に止まるためです。"
+
+#: docs/help/controls.md
+msgid ""
+"**Three keys at once.** Many keyboards cannot report some three-key "
+"combinations at all -- the third key's press never reaches the browser -- so "
+"a held turn and reverse can swallow a jump (#146). The debug HUD (`` ` ``) "
+"shows how many keys the browser saw held at once, which tells the keyboard's "
+"limit from bzo's."
+msgstr ""
+"**3キーの同時押し。** 多くのキーボードは一部の3キーの組み合わせをまったく検出"
+"できず、3つ目のキーがブラウザに届きません。そのため旋回と後退を押しながらだと"
+"ジャンプが消えることがあります（#146）。デバッグHUD（`` ` ``）にはブラウザが"
+"同時に検出したキーの数が表示されるので、キーボードの限界かbzoの問題かを見分け"
+"られます。"
+
+#: docs/help/controls.md
+msgid "Touch: the on-screen controls"
+msgstr "タッチ：画面コントロール"
+
+#: docs/help/controls.md
+msgid ""
+"A phone starts with them on; anywhere else `Settings -> Virtual Controls` "
+"turns them on and off."
+msgstr ""
+"スマートフォンでは最初からオンです。それ以外では `Settings -> Virtual "
+"Controls` でオン／オフを切り替えます。"
+
+#: docs/help/controls.md
+msgid ""
+"**The stick**, bottom left: push it to drive and turn, as far as you push "
+"it. A mouse can drag it too."
+msgstr ""
+"**スティック**（左下）：倒した分だけ走行・旋回します。マウスでドラッグするこ"
+"ともできます。"
+
+#: docs/help/controls.md
+msgid ""
+"**`●`** — shoot. Tapping fires as fast as clicking a mouse; holding fires at "
+"the world's sustained rate"
+msgstr ""
+"**`●`** — 発射。タップするとマウスのクリックと同じ速さで発射でき、長押しする"
+"とワールドの持続発射レートで撃ちます"
+
+#: docs/help/controls.md
+msgid "**`⤒`** — jump"
+msgstr "**`⤒`** — ジャンプ"
+
+#: docs/help/controls.md
+msgid "**`⚑`** — drop flag"
+msgstr "**`⚑`** — フラグを捨てる"
+
+#: docs/help/controls.md
+msgid "**`◎`** — identify, and lock a Guided Missile"
+msgstr "**`◎`** — 識別と誘導ミサイルのロックオン"
+
+#: docs/help/controls.md
+msgid ""
+"Everything else -- camera, radar range, chat, hunting, autopilot, pausing -- "
+"is a row in Settings, which a tap reaches."
+msgstr ""
+"それ以外（カメラ、レーダー範囲、チャット、ハント、オートパイロット、一時停"
+"止）はすべて設定の項目で、タップで操作できます。"
+
+#: docs/help/controls.md
+msgid "Gamepad"
+msgstr "ゲームパッド"
+
+#: docs/help/controls.md
+msgid ""
+"Any controller the browser reports in the standard layout (most USB and "
+"Bluetooth pads, and iOS MFi controllers). Plugging one in turns it on; "
+"nothing needs setting up."
+msgstr ""
+"ブラウザが標準レイアウトとして認識するコントローラーなら使えます（多くのUSB・"
+"Bluetoothパッド、iOSのMFiコントローラー）。接続するだけで有効になり、設定は不"
+"要です。"
+
+#: docs/help/controls.md
+msgid "Control"
+msgstr "操作"
+
+#: docs/help/controls.md
+msgid "In a menu"
+msgstr "メニュー内"
+
+#: docs/help/controls.md
+msgid "Left stick"
+msgstr "左スティック"
+
+#: docs/help/controls.md
+msgid "forward/backward and turn"
+msgstr "前進／後退と旋回"
+
+#: docs/help/controls.md
+msgid "move between rows, change a row"
+msgstr "項目間の移動、項目の変更"
+
+#: docs/help/controls.md
+msgid "`A` / Cross, or right trigger"
+msgstr "`A` / ×ボタン、または右トリガー"
+
+#: docs/help/controls.md
+msgid "shoot"
+msgstr "発射"
+
+#: docs/help/controls.md
+msgid "select"
+msgstr "決定"
+
+#: docs/help/controls.md
+msgid "`B` / Circle, or left trigger"
+msgstr "`B` / ○ボタン、または左トリガー"
+
+#: docs/help/controls.md
+msgid "jump"
+msgstr "ジャンプ"
+
+#: docs/help/controls.md
+msgid "back"
+msgstr "戻る"
+
+#: docs/help/controls.md
+msgid "`X` / Square"
+msgstr "`X` / □ボタン"
+
+#: docs/help/controls.md
+msgid "drop flag"
+msgstr "フラグを捨てる"
+
+#: docs/help/controls.md
+msgid "Either shoulder"
+msgstr "左右どちらかのショルダーボタン"
+
+#: docs/help/controls.md
+msgid "identify"
+msgstr "識別"
+
+#: docs/help/controls.md
+msgid ""
+"The sticks have a dead zone of a fifth of their travel, so a pad left on the "
+"desk does not creep. The right stick is free."
+msgstr ""
+"スティックには可動域の5分の1のデッドゾーンがあるので、机に置いたパッドで勝手"
+"に動くことはありません。右スティックは使いません。"
+
+#: docs/help/controls.md
+msgid ""
+"The pad rumbles when you fire and when your tank dies, as BZFlag's does: a "
+"short buzz for a shot, longer for a shock wave, both motors for a laser, and "
+"one long, strong shake for a death. It rumbles only while it is what you are "
+"playing with -- a key or a click hands control back and keeps it quiet -- "
+"and never for an observer. **Rumble** in Settings turns it off. The browser "
+"has to support it; Chrome and Edge do."
+msgstr ""
+"BZFlagと同じく、発射時と戦車が破壊されたときにパッドが振動します：通常弾は短"
+"く、ショックウェーブは長めに、レーザーは両方のモーターで、破壊時は長く強く1"
+"回。振動するのはそのパッドで操作しているときだけで（キーやクリックで操作が戻"
+"ると静かになります）、観戦者では振動しません。設定の **振動** でオフにできま"
+"す。ブラウザの対応が必要です（ChromeとEdgeは対応しています）。"
+
+#: docs/help/controls.md
+msgid "XR controllers"
+msgstr "XRコントローラー"
+
+#: docs/help/controls.md
+msgid ""
+"In VR the controllers are the only input. Turning the tank is independent of "
+"where you look."
+msgstr ""
+"VRではコントローラーが唯一の入力です。戦車の旋回は見ている方向とは関係ありま"
+"せん。"
+
+#: docs/help/controls.md
+msgid "In the XR menu"
+msgstr "XRメニュー内"
+
+#: docs/help/controls.md
+msgid "Either thumbstick"
+msgstr "どちらかのサムスティック"
+
+#: docs/help/controls.md
+msgid "forward/backward and turn -- the right stick if both are pushed"
+msgstr "前進／後退と旋回（両方倒したときは右スティック）"
+
+#: docs/help/controls.md
+msgid "Either trigger"
+msgstr "どちらかのトリガー"
+
+#: docs/help/controls.md
+msgid "`A` / `X` (primary face button)"
+msgstr "`A` / `X`（プライマリボタン）"
+
+#: docs/help/controls.md
+msgid "`B` / `Y` (secondary face button)"
+msgstr "`B` / `Y`（セカンダリボタン）"
+
+#: docs/help/controls.md
+msgid "open the XR menu"
+msgstr "XRメニューを開く"
+
+#: docs/help/controls.md
+msgid "back, and close it from the top"
+msgstr "戻る。最上位では閉じる"
+
+#: docs/help/controls.md
+msgid "Either grip"
+msgstr "どちらかのグリップ"
+
+#: docs/help/controls.md
+msgid "Press either thumbstick"
+msgstr "どちらかのサムスティックを押し込む"
+
+#: docs/help/controls.md
+msgid "Both controllers pulse for the same events as a gamepad's rumble."
+msgstr ""
+"両方のコントローラーが、ゲームパッドの振動と同じタイミングで振動します。"
+
+#: docs/help/controls.md
+msgid ""
+"Identify is on the thumbstick press because a thumb that is steering presses "
+"it by accident, and identifying costs nothing; the menu is on `B` for the "
+"same reason. Typing -- a name, a MOTD -- uses the headset's own system "
+"keyboard, raised when the row takes focus; see the README's WebXR section "
+"for headsets that have none."
+msgstr ""
+"識別がサムスティックの押し込みなのは、操縦中の親指がうっかり押してしまって"
+"も、識別なら何も損をしないからです。メニューが `B` なのも同じ理由です。名前や"
+"MOTDなどの入力には、項目にフォーカスが当たると表示されるヘッドセット本体のシ"
+"ステムキーボードを使います。キーボードのないヘッドセットについてはREADMEの"
+"WebXRの節を参照してください。"
+
+#: docs/help/flags.md
+msgid "Flags"
+msgstr "フラグ"
+
+#: docs/help/flags.md
+msgid ""
+"Drive over a flag to pick it up, and `Space` to drop it. Good flags help; "
+"bad flags hinder, and stay until they shake off, you kill, or you die. A "
+"superflag on the ground is white and tells you nothing about itself until "
+"somebody picks it up. Team flags are captured by carrying an enemy's to your "
+"own base."
+msgstr ""
+"フラグの上を走ると拾い、`Space` で捨てます。グッドフラグは有利に、バッドフラ"
+"グは不利に働き、振り落とすか、敵を倒すか、自分が倒されるまで外れません。地面"
+"にあるスーパーフラグは白く、誰かが拾うまで正体はわかりません。チームフラグ"
+"は、敵のフラグを自分の基地まで運ぶとキャプチャーできます。"
+
+#: docs/help/scoreboard.md
+msgid "Scoreboard"
+msgstr "スコアボード"
+
+#: docs/help/scoreboard.md
+msgid ""
+"Each row's numbers read **Kills / Deaths**, then **[Team Kills]** once you "
+"have any, then your own record against that one opponent: **wins~losses**, "
+"blank until you've actually fought them. Your own row shows a self-destruct "
+"count there instead, since you have no record against yourself. Rabbit Chase "
+"adds a rank percentage in front of the kill count."
+msgstr ""
+"各行の数字は **キル／デス**、チームキルがあれば **[チームキル]**、続いてその"
+"相手に対するあなたの戦績 **勝ち~負け** です（実際に戦うまでは空欄）。自分の行"
+"には、自分自身との戦績はないので代わりに自爆回数が表示されます。Rabbit Chase"
+"ではキル数の前に順位のパーセンテージが付きます。"
+
+#: docs/help/scoreboard.md
+msgid ""
+"Before a name, in cyan: `@` means that player is an admin, `+` means they're "
+"signed in with a verified callsign this session. Neither shows for anyone "
+"else."
+msgstr ""
+"名前の前のシアンの記号：`@` はそのプレイヤーが管理者、`+` はこのセッションで"
+"認証済みのコールサインでログインしていることを示します。それ以外のプレイヤー"
+"には表示されません。"
+
+#: docs/help/scoreboard.md
+msgid ""
+"Right after the name itself: a `/XX` is the flag they're carrying, in that "
+"flag's own colour -- see [Flags](flags.md) for what each abbreviation means."
+msgstr ""
+"名前のすぐ後ろ：`/XX` はそのプレイヤーが持っているフラグで、そのフラグの色で"
+"表示されます。各略号の意味は[フラグ](flags.md)を参照してください。"
+
+#: docs/help/scoreboard.md
+msgid ""
+"Further along the name: 🎤 means that player's microphone is on, and 🔊 "
+"replaces it the moment they're actually speaking. ⏳ means paused. A hunted "
+"player wears a cyan `◎` -- see [Hunting](controls.md#hunting)."
+msgstr ""
+"名前のさらに後ろ：🎤 はそのプレイヤーのマイクがオン、実際に話している間は 🔊 "
+"に変わります。⏳ は一時停止中です。ハント対象のプレイヤーにはシアンの `◎` が"
+"付きます。[ハント](controls.md#hunting)を参照してください。"
+
+#: docs/help/voice.md
+msgid "Audio and voice"
+msgstr "オーディオとボイス"
+
+#: docs/help/voice.md
+msgid ""
+"`Settings -> Audio Settings` — game, voice, and microphone levels, each from "
+"Off to 100%"
+msgstr ""
+"`Settings -> Audio Settings` — ゲーム、ボイス、マイクの音量。それぞれオフから"
+"100%まで"
+
+#: docs/help/voice.md
+msgid ""
+"**Voice channel** — **All** is everyone on the server, **Nearby** is only "
+"players within earshot, **Team** is your own team anywhere on the map"
+msgstr ""
+"**ボイスチャンネル** — **全員**はサーバー上の全員、**近く**は声が届く範囲のプ"
+"レイヤーだけ、**チーム**はマップ上のどこにいても自分のチーム"
+
+#: docs/help/voice.md
+msgid "`B` — toggle the microphone"
+msgstr "`B` — マイクの切り替え"
+
+#: docs/help/voice.md
+msgid ""
+"Voice is available after microphone permission is granted. Observers talk "
+"and listen on the same terms as everyone else."
+msgstr ""
+"ボイスはマイクの使用を許可すると使えます。観戦者も他の人と同じ条件で話したり"
+"聞いたりできます。"
+
+#: docs/help/about.md
+msgid "About"
+msgstr "このゲームについて"
+
+#: docs/help/about.md
+msgid ""
+"Battlezone Online is a free 3D tank game in the browser that plays with "
+"[BZFlag](https://www.bzflag.org/)."
+msgstr ""
+"Battlezone Onlineは、ブラウザで遊べる無料の3D戦車ゲームで、[BZFlag](https://"
+"www.bzflag.org/)と一緒にプレイできます。"
+
+#: docs/help/about.md
+msgid ""
+"It is free software licensed under the [GNU Affero General Public License "
+"v3.0](https://www.gnu.org/licenses/agpl-3.0.html). Source code is available "
+"at [github.com/timriker/bzo](/source)."
+msgstr ""
+"これは[GNU Affero General Public License v3.0](https://www.gnu.org/licenses/"
+"agpl-3.0.html)でライセンスされたフリーソフトウェアです。ソースコードは"
+"[github.com/timriker/bzo](/source)で入手できます。"

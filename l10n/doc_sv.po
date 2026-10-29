@@ -1,0 +1,1004 @@
+msgid ""
+msgstr ""
+"Project-Id-Version: bzo\n"
+"Report-Msgid-Bugs-To: https://github.com/timriker/bzo/issues\n"
+"Language: sv\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Review: machine-translated, not yet read by a native speaker\n"
+
+#: docs/help/controls.md
+msgid "Controls"
+msgstr "Kontroller"
+
+#: docs/help/controls.md
+msgid ""
+"One client runs on a desktop, a phone and a headset, so every action has a "
+"way in from each of them. The keyboard has the most; touch, a gamepad and "
+"the XR controllers carry the actions a match needs, and the Settings menu "
+"reaches the rest -- including from a headset, where there is no keyboard at "
+"all. This page is also the in-game help's (`/` or `?`)."
+msgstr ""
+"En och samma klient körs på dator, telefon och headset, så varje handling "
+"går att nå från alla tre. Tangentbordet har flest; pekskärm, handkontroll "
+"och XR-kontrollerna täcker det en match kräver, och menyn Inställningar når "
+"resten -- även från ett headset, där det inte finns något tangentbord alls. "
+"Den här sidan är också spelets hjälp (`/` eller `?`)."
+
+#: docs/help/controls.md
+msgid "Keyboard"
+msgstr "Tangentbord"
+
+#: docs/help/controls.md
+msgid "Driving"
+msgstr "Körning"
+
+#: docs/help/controls.md
+msgid "`W` / `S` or `Up` / `Down` — move forward/backward"
+msgstr "`W` / `S` eller `Up` / `Down` — kör framåt/bakåt"
+
+#: docs/help/controls.md
+msgid "`A` / `D` or `Left` / `Right` — turn left/right"
+msgstr "`A` / `D` eller `Left` / `Right` — sväng vänster/höger"
+
+#: docs/help/controls.md
+msgid "`Enter` — shoot"
+msgstr "`Enter` — skjut"
+
+#: docs/help/controls.md
+msgid "`Tab` — jump"
+msgstr "`Tab` — hoppa"
+
+#: docs/help/controls.md
+msgid "`Space` — drop flag"
+msgstr "`Space` — släpp flaggan"
+
+#: docs/help/controls.md
+msgid ""
+"`I` or right-click — identify the tank in your sights, and lock a Guided "
+"Missile onto it"
+msgstr ""
+"`I` eller högerklick — identifiera stridsvagnen i siktet och lås en Guided "
+"Missile på den"
+
+#: docs/help/controls.md
+msgid ""
+"`Delete` — self-destruct, after a five second countdown; `Delete` again "
+"calls it off"
+msgstr ""
+"`Delete` — självförstörelse efter fem sekunders nedräkning; `Delete` igen "
+"avbryter"
+
+#: docs/help/controls.md
+msgid ""
+"`9` or `/autopilot [roger|ace]` — autopilot: the pilot drives, aims and "
+"shoots until pressed again. `Settings -> Autopilot` chooses the pilot "
+"without a keyboard. You can still drive while it does, to help it out of a "
+"corner -- see [Combining inputs](#combining-inputs)"
+msgstr ""
+"`9` eller `/autopilot [roger|ace]` — autopilot: piloten kör, siktar och "
+"skjuter tills du trycker igen. `Settings -> Autopilot` väljer pilot utan "
+"tangentbord. Du kan fortfarande köra samtidigt för att hjälpa den ut ur ett "
+"hörn -- se [Kombinera indata](#combining-inputs)"
+
+#: docs/help/controls.md
+msgid "`P` — pause/resume"
+msgstr "`P` — pausa/fortsätt"
+
+#: docs/help/controls.md
+msgid "Chat"
+msgstr "Chatt"
+
+#: docs/help/controls.md
+msgid "`N` — open chat (or click the `Send` button)"
+msgstr "`N` — öppna chatten (eller klicka på knappen `Send`)"
+
+#: docs/help/controls.md
+msgid ""
+"`Enter` — send chat (while chat input is focused, or click `Send` again)"
+msgstr ""
+"`Enter` — skicka chattmeddelande (när chattfältet har fokus, eller klicka på "
+"`Send` igen)"
+
+#: docs/help/controls.md
+msgid ""
+"`1` / `2` / `3` / `4` / `5` — switch chat tab (`All` / `Chat` / `Server` / "
+"`Misc` / `Debug`)"
+msgstr ""
+"`1` / `2` / `3` / `4` / `5` — byt chattflik (`All` / `Chat` / `Server` / "
+"`Misc` / `Debug`)"
+
+#: docs/help/controls.md
+msgid "`[` / `]` — previous/next chat tab"
+msgstr "`[` / `]` — föregående/nästa chattflik"
+
+#: docs/help/controls.md
+msgid ""
+"`Tab` — while typing, complete a player, command or flag name; `@` starts a "
+"mention and `#` a player's slot number"
+msgstr ""
+"`Tab` — medan du skriver: komplettera ett spelar-, kommando- eller "
+"flaggnamn; `@` inleder ett omnämnande och `#` en spelares platsnummer"
+
+#: docs/help/controls.md
+msgid ""
+"`Up` / `Down` — while typing, recall earlier lines; type the start of a line "
+"first to recall only the ones beginning that way"
+msgstr ""
+"`Up` / `Down` — medan du skriver: hämta tidigare rader; skriv början av en "
+"rad först för att bara hämta de som börjar så"
+
+#: docs/help/controls.md
+msgid "`.` — reply to last direct-message sender"
+msgstr "`.` — svara avsändaren av det senaste direktmeddelandet"
+
+#: docs/help/controls.md
+msgid "`,` — message nemesis target"
+msgstr "`,` — skicka meddelande till din nemesis"
+
+#: docs/help/controls.md
+msgid "`Page Up` / `Page Down` — scroll chat history"
+msgstr "`Page Up` / `Page Down` — rulla chatthistoriken"
+
+#: docs/help/controls.md
+msgid "`End` — jump chat to newest message"
+msgstr "`End` — hoppa till det senaste chattmeddelandet"
+
+#: docs/help/controls.md
+msgid ""
+"Drag across the history while chat is open to select it, then copy; typing "
+"carries on in the input"
+msgstr ""
+"Dra över historiken medan chatten är öppen för att markera och kopiera; det "
+"du skriver fortsätter i inmatningsfältet"
+
+#: docs/help/controls.md
+msgid "View and panels"
+msgstr "Vy och paneler"
+
+#: docs/help/controls.md
+msgid ""
+"`Esc` — back out one step: exit chat input, leave fullscreen, leave mouse "
+"steering, then open Settings. Pressing it again closes Settings, so it is "
+"always safe to press one more time"
+msgstr ""
+"`Esc` — backa ett steg: lämna chattfältet, lämna helskärm, stäng av "
+"musstyrning och öppna sedan Inställningar. Ett tryck till stänger "
+"Inställningar, så det är alltid ofarligt att trycka en gång till"
+
+#: docs/help/controls.md
+msgid "`M` — toggle mouse steering"
+msgstr "`M` — slå på/av musstyrning"
+
+#: docs/help/controls.md
+msgid "`C` — cycle camera mode"
+msgstr "`C` — byt kameraläge"
+
+#: docs/help/controls.md
+msgid "`O` — toggle operator panel"
+msgstr "`O` — visa/dölj operatörspanelen"
+
+#: docs/help/controls.md
+msgid "`F` — toggle fullscreen"
+msgstr "`F` — slå på/av helskärm"
+
+#: docs/help/controls.md
+msgid "`` ` `` — toggle debug HUD"
+msgstr "`` ` `` — visa/dölj felsöknings-HUD"
+
+#: docs/help/controls.md
+msgid "`=` or `+` or `Numpad +` — zoom radar out (increase range)"
+msgstr "`=` eller `+` eller `Numpad +` — zooma ut radarn (större räckvidd)"
+
+#: docs/help/controls.md
+msgid "`-` or `Numpad -` — zoom radar in (decrease range)"
+msgstr "`-` eller `Numpad -` — zooma in radarn (mindre räckvidd)"
+
+#: docs/help/controls.md
+msgid ""
+"`\\` — reset radar zoom to the default medium range (half the world's radar "
+"limit, which is the world size unless the map says otherwise)"
+msgstr ""
+"`\\` — återställ radarzoomen till standardräckvidden Medel (halva världens "
+"radargräns, vilket är världens storlek om inte kartan säger annat)"
+
+#: docs/help/controls.md
+msgid "`Settings -> Radar: ...` — cycle Short/Medium/Long radar presets"
+msgstr "`Settings -> Radar: ...` — växla mellan radarlägena Kort/Medel/Lång"
+
+#: docs/help/controls.md
+msgid "`B` — toggle the voice microphone"
+msgstr "`B` — slå på/av röstmikrofonen"
+
+#: docs/help/controls.md
+msgid ""
+"`Settings -> Audio Settings` — set the game, voice, and microphone levels, "
+"and choose the voice channel: All, Nearby, or Team"
+msgstr ""
+"`Settings -> Audio Settings` (Ljudinställningar) — ställ in nivåerna för "
+"spel, röst och mikrofon, och välj röstkanal: Alla, I närheten eller Lag"
+
+#: docs/help/controls.md
+msgid "`/` or `?` — show/hide help panel"
+msgstr "`/` eller `?` — visa/dölj hjälppanelen"
+
+#: docs/help/controls.md
+msgid ""
+"`🎤` beside the gear — the microphone, as `B` is: a green border means you "
+"are transmitting and a red one means you are not, and the hover text names "
+"the channel it would speak on"
+msgstr ""
+"`🎤` bredvid kugghjulet — mikrofonen, precis som `B`: en grön kant betyder "
+"att du sänder och en röd att du inte gör det, och hovringstexten anger "
+"kanalen den skulle tala på"
+
+#: docs/help/controls.md
+msgid ""
+"`▲` beside the gear — hide the scoreboard and chat, leaving the name row and "
+"the chat tabs; `▼` brings them back. Typing a message borrows the chat "
+"window until you are done with it, and `U` or `7` borrows the scoreboard "
+"until the hunt cursor closes; tapping a chat tab opens chat for good. Small "
+"screens start collapsed"
+msgstr ""
+"`▲` bredvid kugghjulet — dölj resultattavlan och chatten, så att bara "
+"namnraden och chattflikarna finns kvar; `▼` tar tillbaka dem. När du skriver "
+"ett meddelande lånar du chattfönstret tills du är klar, och `U` eller `7` "
+"lånar resultattavlan tills jaktmarkören stängs; ett tryck på en chattflik "
+"öppnar chatten för gott. Små skärmar startar hopfällda"
+
+#: docs/help/controls.md
+msgid ""
+"`Settings -> Anaglyph 3D` — red/cyan glasses; `Settings -> VR Mode` enters a "
+"WebXR headset"
+msgstr ""
+"`Settings -> Anaglyph 3D` — röda/cyan glasögon; `Settings -> VR Mode` går in "
+"i ett WebXR-headset"
+
+#: docs/help/controls.md
+msgid "Menus"
+msgstr "Menyer"
+
+#: docs/help/controls.md
+msgid ""
+"`Up` / `Down` — previous/next control, including from inside a text field"
+msgstr "`Up` / `Down` — föregående/nästa kontroll, även inifrån ett textfält"
+
+#: docs/help/controls.md
+msgid ""
+"`Left` / `Right` — change the focused control: move a slider, pick the next "
+"choice. In a text field they move the cursor instead"
+msgstr ""
+"`Left` / `Right` — ändra kontrollen som har fokus: flytta ett reglage, välj "
+"nästa alternativ. I ett textfält flyttar de markören i stället"
+
+#: docs/help/controls.md
+msgid "`Tab` / `Shift+Tab` — previous/next control"
+msgstr "`Tab` / `Shift+Tab` — föregående/nästa kontroll"
+
+#: docs/help/controls.md
+msgid "`Home` / `End` — first/last control"
+msgstr "`Home` / `End` — första/sista kontrollen"
+
+#: docs/help/controls.md
+msgid "`Enter` or `Space` — press the focused control"
+msgstr "`Enter` eller `Space` — tryck på kontrollen som har fokus"
+
+#: docs/help/controls.md
+msgid ""
+"Click or tap a row that walks a list: the title steps back and the current "
+"option steps forward. The `‹` and `›` on the row mark the two halves"
+msgstr ""
+"Klicka eller tryck på en rad som stegar genom en lista: rubriken stegar "
+"bakåt och det aktuella alternativet framåt. `‹` och `›` på raden markerar de "
+"två halvorna"
+
+#: docs/help/controls.md
+msgid ""
+"The help panel is read rather than operated, so there the arrows scroll it "
+"and only `Left` / `Right` move focus"
+msgstr ""
+"Hjälppanelen är till för att läsas, inte manövreras, så där rullar pilarna "
+"den och bara `Left` / `Right` flyttar fokus"
+
+#: docs/help/controls.md
+msgid "Hunting"
+msgstr "Jakt"
+
+#: docs/help/controls.md
+msgid ""
+"Marking a player puts a cyan `◎` on their scoreboard row, a cyan ring on "
+"their radar blip, and a beacon in the sky over them in their own tank colour "
+"-- so several marked at once are still told apart at a glance. While one of "
+"them is in your sights the HUD says **SPOTTED:** and a ping sounds once a "
+"second from where they are. In Rabbit Chase the rabbit is marked for you, "
+"and its beacon is cyan like its ring: everyone is hunting it, so everyone's "
+"mark over it says so."
+msgstr ""
+"Att markera en spelare sätter en cyan `◎` på spelarens rad i resultattavlan, "
+"en cyan ring på radarpricken och en fyr på himlen ovanför i spelarens egen "
+"stridsvagnsfärg -- så att flera markerade samtidigt ändå kan skiljas åt med "
+"en blick. När någon av dem är i siktet visar HUD:en **UPPTÄCKT:** och ett pip "
+"hörs en gång i sekunden från där spelaren är. I Rabbit Chase är haren "
+"markerad åt dig, och dess fyr är cyan som dess ring: alla jagar den, så "
+"allas markering över den säger just det."
+
+#: docs/help/controls.md
+msgid ""
+"`U` — hunt: open the scoreboard cursor, and press it again on a running hunt "
+"to clear every mark"
+msgstr ""
+"`U` — jakt: öppna markören i resultattavlan, och tryck igen under en "
+"pågående jakt för att rensa alla markeringar"
+
+#: docs/help/controls.md
+msgid ""
+"`7` — add hunt: the same cursor, but committing adds to what is marked "
+"rather than replacing it, and committing on a row already marked takes it off"
+msgstr ""
+"`7` — lägg till jakt: samma markör, men ett val läggs till det som redan är "
+"markerat i stället för att ersätta det, och ett val på en redan markerad rad "
+"tar bort markeringen"
+
+#: docs/help/controls.md
+msgid ""
+"`Settings -> Hunt` — the same thing without a keyboard, for a phone or a "
+"headset. Left and right step through `Clear` and then the players in "
+"alphabetical order; select marks or unmarks whoever is shown, or clears "
+"every mark on `Clear`. On a touch screen or with a mouse, tap a chevron to "
+"step and anywhere else on the row to select"
+msgstr ""
+"`Settings -> Hunt` (Jakt) — samma sak utan tangentbord, för telefon eller "
+"headset. Vänster och höger stegar genom `Clear` och sedan spelarna i "
+"bokstavsordning; välj markerar eller avmarkerar den som visas, eller rensar "
+"alla markeringar på `Clear`. På pekskärm eller med mus trycker du på en "
+"vinkelpil för att stega och någon annanstans på raden för att välja"
+
+#: docs/help/controls.md
+msgid ""
+"With the cursor open, the board's heading reads `*SEL*` and a pulsing `○` "
+"sits on the row it is on, filling in to `◎` when you commit. `Up` / `Down` "
+"move it, `Enter` commits, and `U` or `7` backs out keeping whatever was "
+"already marked. `I` and `Space` move the cursor too, so a surface without "
+"arrow keys can reach it"
+msgstr ""
+"När markören är öppen står det `*SEL*` i tavlans rubrik och en pulserande "
+"`○` står på raden den är på, och fylls i till `◎` när du bekräftar. `Up` / "
+"`Down` flyttar den, `Enter` bekräftar och `U` eller `7` backar ut och "
+"behåller det som redan var markerat. `I` och `Space` flyttar också markören, "
+"så att en enhet utan piltangenter kan nå den"
+
+#: docs/help/controls.md
+msgid "As an observer"
+msgstr "Som åskådare"
+
+#: docs/help/controls.md
+msgid ""
+"As an Observer you have no tank. Drive and turn fly the camera instead, "
+"`Tab` climbs and `Space` descends, and holding `Shift` makes drive tilt the "
+"view up and down and turn slide it sideways. The camera rests at the eye "
+"height of a tank on the ground, and travel stays level however the view is "
+"tilted. Pausing and self-destruct do nothing."
+msgstr ""
+"Som åskådare har du ingen stridsvagn. Kör och sväng flyger kameran i "
+"stället, `Tab` stiger och `Space` sjunker, och håller du `Shift` lutar kör "
+"vyn upp och ned medan sväng skjuter den i sidled. Kameran vilar i ögonhöjd "
+"för en stridsvagn på marken, och förflyttningen förblir vågrät hur vyn än "
+"lutas. Paus och självförstörelse gör ingenting."
+
+#: docs/help/controls.md
+msgid ""
+"`Enter` or `C` — step through everything: in each view, the leader first, "
+"then every player, then on to the next view. The views are Free, Track, "
+"Follow, Driving with, and Flag where a map has team flags"
+msgstr ""
+"`Enter` eller `C` — stega genom allt: i varje vy först ledaren, sedan varje "
+"spelare och sedan vidare till nästa vy. Vyerna är Fri kamera, Bevakar, "
+"Följer, Åker med och Bevakar en flagga där kartan har lagflaggor"
+
+#: docs/help/controls.md
+msgid ""
+"`I` or right-click — in the Free view, watch the tank in your sights, or "
+"show the obstacle there: what it is, an outline round it, and its block from "
+"the map file with the `group` blocks that placed it"
+msgstr ""
+"`I` eller högerklick — i Fri-vyn: följ stridsvagnen i siktet, eller visa "
+"hindret där: vad det är, en kontur runt det och dess block från kartfilen "
+"med de `group`-block som placerade det"
+
+#: docs/help/controls.md
+msgid ""
+"Right-click or tap an obstacle anywhere on screen, in any view and the "
+"Overview most of all, to show it the same way"
+msgstr ""
+"Högerklicka eller tryck på ett hinder var som helst på skärmen, i vilken vy "
+"som helst och allra helst i Översikt, för att visa det på samma sätt"
+
+#: docs/help/controls.md
+msgid ""
+"Pick nothing -- the sky, or empty ground in the Overview -- or press the "
+"panel's **World** button for the whole world: what is in it, faces, "
+"textures, the map file's warnings and its largest meshes, each of which "
+"shows that mesh"
+msgstr ""
+"Välj ingenting -- himlen, eller tom mark i Översikt -- eller tryck på "
+"panelens knapp **Värld** för hela världen: vad den innehåller, ytor, "
+"texturer, kartfilens varningar och dess största mesher, där var och en visar "
+"den meshen"
+
+#: docs/help/controls.md
+msgid ""
+"Click a scoreboard row to watch that player; click the marked row again to "
+"go back to following the leader"
+msgstr ""
+"Klicka på en rad i resultattavlan för att följa den spelaren; klicka på den "
+"markerade raden igen för att återgå till att följa ledaren"
+
+#: docs/help/controls.md
+msgid "Mouse"
+msgstr "Mus"
+
+#: docs/help/controls.md
+msgid ""
+"`M` turns mouse steering on and off, and nothing else does: the keys never "
+"take it away behind your back."
+msgstr ""
+"`M` slår på och av musstyrning, och inget annat gör det: tangenterna tar den "
+"aldrig ifrån dig bakom din rygg."
+
+#: docs/help/controls.md
+msgid "The targeting box"
+msgstr "Siktrutan"
+
+#: docs/help/controls.md
+msgid ""
+"The two boxes in the middle of the screen are the steering, as in BZFlag. "
+"Where the cursor sits relative to their centre is what the tank does:"
+msgstr ""
+"De två rutorna mitt på skärmen är styrningen, som i BZFlag. Var markören "
+"står i förhållande till deras mitt avgör vad stridsvagnen gör:"
+
+#: docs/help/controls.md
+msgid ""
+"**Inside the inner box, nothing.** It is the dead zone: park the cursor "
+"there to stop."
+msgstr ""
+"**Inom den inre rutan: ingenting.** Det är dödzonen: parkera markören där "
+"för att stanna."
+
+#: docs/help/controls.md
+msgid ""
+"**Between the boxes, more the further out.** Up is forward and down is "
+"reverse; left and right turn. Each grows evenly from nothing at the inner "
+"box's edge to full at the outer box's."
+msgstr ""
+"**Mellan rutorna: mer ju längre ut.** Upp är framåt och ned är backning; "
+"vänster och höger svänger. Var och en ökar jämnt från ingenting vid den inre "
+"rutans kant till fullt vid den yttres."
+
+#: docs/help/controls.md
+msgid ""
+"**At or past the outer box, full.** Each axis stops growing on its own, so "
+"running the cursor out past the top keeps the tank at full speed and leaves "
+"left and right free to steer."
+msgstr ""
+"**Vid eller utanför den yttre rutan: fullt.** Varje axel slutar öka för sig, "
+"så om du för markören upp förbi toppen håller stridsvagnen full fart och "
+"vänster och höger är fortfarande fria att styra."
+
+#: docs/help/controls.md
+msgid ""
+"**Reverse is half speed**, as it is from the keys, however far down the "
+"cursor goes."
+msgstr ""
+"**Backning går i halv fart**, precis som med tangenterna, hur långt ned "
+"markören än går."
+
+#: docs/help/controls.md
+msgid ""
+"**The box sets the speed asked for, not the speed you get at once.** A world "
+"with an acceleration limit (BZFlag's `-a`, off by default) brings the tank "
+"up to it over time, the same as it does from the keys."
+msgstr ""
+"**Rutan anger den begärda farten, inte den fart du får direkt.** En värld "
+"med accelerationsgräns (BZFlags `-a`, avstängd som standard) för upp "
+"stridsvagnen till den med tiden, precis som med tangenterna."
+
+#: docs/help/controls.md
+msgid ""
+"The boxes are BZFlag's own sizes, scaled to the window. BZFlag also holds "
+"the cursor inside the box; a browser cannot without taking the pointer over, "
+"so in bzo the cursor can leave it -- the steering simply stays at full, and "
+"the cost is a longer move back to the centre."
+msgstr ""
+"Rutorna har BZFlags egna storlekar, skalade efter fönstret. BZFlag håller "
+"också markören inne i rutan; det kan en webbläsare inte utan att ta över "
+"pekaren, så i bzo kan markören lämna den -- styrningen stannar helt enkelt "
+"på fullt, och priset är en längre väg tillbaka till mitten."
+
+#: docs/help/controls.md
+msgid ""
+"With the keys, the mouse keeps whichever axis no key is holding -- see "
+"[Combining inputs](#combining-inputs)."
+msgstr ""
+"Tillsammans med tangenterna behåller musen den axel som ingen tangent håller "
+"-- se [Kombinera indata](#combining-inputs)."
+
+#: docs/help/controls.md
+msgid "Clicks"
+msgstr "Klick"
+
+#: docs/help/controls.md
+msgid ""
+"Left click shoots wherever the cursor is, whether mouse steering is on or "
+"not, unless the click lands on the chat panel or a button. Right click "
+"identifies. Mouse steering is unavailable with no mouse attached, in VR, and "
+"while the on-screen controls are up, since those steer instead; a click that "
+"misses one of their buttons does nothing rather than firing."
+msgstr ""
+"Vänsterklick skjuter dit markören pekar, oavsett om musstyrning är på eller "
+"inte, om inte klicket hamnar på chattpanelen eller en knapp. Högerklick "
+"identifierar. Musstyrning är inte tillgänglig utan ansluten mus, i VR och "
+"medan skärmkontrollerna visas, eftersom de styr i stället; ett klick som "
+"missar deras knappar gör ingenting i stället för att skjuta."
+
+#: docs/help/controls.md
+msgid "Combining inputs"
+msgstr "Kombinera indata"
+
+#: docs/help/controls.md
+msgid ""
+"Every input drives at once, and nothing switches between them on its own: "
+"`M` and the Settings rows are the only things that change which ones are on."
+msgstr ""
+"All indata styr samtidigt, och inget växlar mellan dem av sig självt: `M` "
+"och raderna i Inställningar är det enda som ändrar vilka som är på."
+
+#: docs/help/controls.md
+msgid ""
+"**Driving is shared out an axis at a time** -- forward/back, and turn, each "
+"on its own. On each, the first of these with something to say wins:"
+msgstr ""
+"**Körningen fördelas en axel i taget** -- framåt/bakåt och sväng, var för "
+"sig. På varje axel vinner den första av dessa som har något att säga:"
+
+#: docs/help/controls.md
+msgid ""
+"**Keys.** A held drive key owns its axis, and holding both of a pair (`W` "
+"and `S`, or `A` and `D`) is a deliberate stop on that axis."
+msgstr ""
+"**Tangenter.** En nedhållen körtangent äger sin axel, och att hålla båda i "
+"ett par (`W` och `S`, eller `A` och `D`) är ett avsiktligt stopp på den "
+"axeln."
+
+#: docs/help/controls.md
+msgid ""
+"**The stick:** the XR controllers in VR, otherwise a connected gamepad, "
+"otherwise the on-screen stick. Only one of the three is read at a time -- "
+"they are not added together."
+msgstr ""
+"**Spaken:** XR-kontrollerna i VR, annars en ansluten handkontroll, annars "
+"spaken på skärmen. Bara en av de tre läses åt gången -- de läggs inte ihop."
+
+#: docs/help/controls.md
+msgid "**The mouse**, in the targeting box, with mouse steering on."
+msgstr "**Musen**, i siktrutan, med musstyrning på."
+
+#: docs/help/controls.md
+msgid ""
+"So you can drive with `W` while the mouse steers, turn with `A`/`D` while "
+"the mouse sets the speed, or steer a gamepad's turn while a key holds the "
+"speed. A stick let go reads zero and gives the axis to the mouse; the mouse "
+"box holds whatever the cursor's place says, which is why it comes last."
+msgstr ""
+"Så du kan köra med `W` medan musen styr, svänga med `A`/`D` medan musen "
+"bestämmer farten, eller svänga med en handkontroll medan en tangent håller "
+"farten. En släppt spak ger noll och lämnar axeln till musen; musrutan håller "
+"vad markörens position säger, och därför kommer den sist."
+
+#: docs/help/controls.md
+msgid ""
+"**Buttons add up.** Shoot fires from `Enter`, a left click, or the stick "
+"source's own fire button; jump from `Tab` or the stick source's; identify "
+"from `I`, a right click, or the stick source's. Any of them will do."
+msgstr ""
+"**Knappar läggs ihop.** Skott avfyras med `Enter`, ett vänsterklick eller "
+"spakkällans egen avfyrningsknapp; hopp med `Tab` eller spakkällans; "
+"identifiering med `I`, ett högerklick eller spakkällans. Vilken som helst av "
+"dem fungerar."
+
+#: docs/help/controls.md
+msgid ""
+"**With the autopilot on**, the pilot takes the mouse's place, last in line: "
+"a drive key or the stick you hold still owns its axis, and the pilot has the "
+"rest. So when it is wedged against something you can hold `A` to turn it "
+"out, or `S` to back it off, while it keeps the other axis, and let go to "
+"hand it back -- it carries on from wherever you left it, re-planning its "
+"route if you took it somewhere else. Your shots, jumps and drops add to its "
+"own. The mouse box does not steer while the autopilot drives: it holds an "
+"offset wherever the cursor is parked, so it would never hand anything back."
+msgstr ""
+"**Med autopiloten på** tar piloten musens plats, sist i ledet: en körtangent "
+"eller spaken du håller äger fortfarande sin axel, och piloten har resten. Så "
+"när den har kört fast mot något kan du hålla `A` för att svänga loss den "
+"eller `S` för att backa undan den medan den behåller den andra axeln, och "
+"släppa för att lämna tillbaka den -- den fortsätter där du lämnade den och "
+"planerar om rutten om du tog den någon annanstans. Dina skott, hopp och "
+"flaggsläpp läggs till dess egna. Musrutan styr inte medan autopiloten kör: "
+"den håller en förskjutning var markören än är parkerad, så den skulle aldrig "
+"lämna tillbaka något."
+
+#: docs/help/controls.md
+msgid ""
+"**Menus don't stop the autopilot.** Opening Settings, or any other menu, "
+"normally pauses your tank. With the autopilot driving, the menu takes the "
+"keys and the pilot goes on driving. With a pilot chosen on the `Settings -> "
+"Autopilot` row but not driving, opening a menu turns the autopilot on, and "
+"closing the menu turns it off again -- so a menu means \"drive for me a "
+"moment\" rather than \"stop\". With the row on `None`, the default, or on a "
+"server that refuses bots (`-disableBots`), menus pause as they always have. "
+"A hidden window still pauses either way: the browser stops drawing it, and "
+"the pilot with it."
+msgstr ""
+"**Menyer stoppar inte autopiloten.** Att öppna Inställningar eller någon "
+"annan meny pausar normalt din stridsvagn. När autopiloten kör tar menyn "
+"tangenterna och piloten fortsätter köra. Om en pilot är vald på raden "
+"`Settings -> Autopilot` men inte kör slår en öppnad meny på autopiloten, och "
+"när menyn stängs slås den av igen -- så en meny betyder ”kör åt mig en "
+"stund” i stället för ”stanna”. Står raden på `None`, som är standard, eller "
+"på en server som nekar bottar (`-disableBots`), pausar menyer som de alltid "
+"har gjort. Ett dolt fönster pausar ändå i båda fallen: webbläsaren slutar "
+"rita det, och piloten med det."
+
+#: docs/help/controls.md
+msgid ""
+"**Three keys at once.** Many keyboards cannot report some three-key "
+"combinations at all -- the third key's press never reaches the browser -- so "
+"a held turn and reverse can swallow a jump (#146). The debug HUD (`` ` ``) "
+"shows how many keys the browser saw held at once, which tells the keyboard's "
+"limit from bzo's."
+msgstr ""
+"**Tre tangenter samtidigt.** Många tangentbord kan inte alls rapportera "
+"vissa kombinationer av tre tangenter -- den tredje tangentens tryck når "
+"aldrig webbläsaren -- så en nedhållen sväng och backning kan svälja ett hopp "
+"(#146). Felsöknings-HUD:en (`` ` ``) visar hur många tangenter webbläsaren "
+"såg nedhållna samtidigt, vilket skiljer tangentbordets gräns från bzo:s."
+
+#: docs/help/controls.md
+msgid "Touch: the on-screen controls"
+msgstr "Pekskärm: skärmkontrollerna"
+
+#: docs/help/controls.md
+msgid ""
+"A phone starts with them on; anywhere else `Settings -> Virtual Controls` "
+"turns them on and off."
+msgstr ""
+"En telefon startar med dem på; överallt annars slår `Settings -> Virtual "
+"Controls` på och av dem."
+
+#: docs/help/controls.md
+msgid ""
+"**The stick**, bottom left: push it to drive and turn, as far as you push "
+"it. A mouse can drag it too."
+msgstr ""
+"**Spaken**, nere till vänster: skjut den för att köra och svänga, så mycket "
+"som du skjuter. En mus kan också dra i den."
+
+#: docs/help/controls.md
+msgid ""
+"**`●`** — shoot. Tapping fires as fast as clicking a mouse; holding fires at "
+"the world's sustained rate"
+msgstr ""
+"**`●`** — skjut. Tryck avfyrar lika snabbt som musklick; håll nere avfyrar i "
+"världens uthålliga takt"
+
+#: docs/help/controls.md
+msgid "**`⤒`** — jump"
+msgstr "**`⤒`** — hoppa"
+
+#: docs/help/controls.md
+msgid "**`⚑`** — drop flag"
+msgstr "**`⚑`** — släpp flaggan"
+
+#: docs/help/controls.md
+msgid "**`◎`** — identify, and lock a Guided Missile"
+msgstr "**`◎`** — identifiera och lås en Guided Missile"
+
+#: docs/help/controls.md
+msgid ""
+"Everything else -- camera, radar range, chat, hunting, autopilot, pausing -- "
+"is a row in Settings, which a tap reaches."
+msgstr ""
+"Allt annat -- kamera, radarräckvidd, chatt, jakt, autopilot, paus -- är en "
+"rad i Inställningar, som nås med ett tryck."
+
+#: docs/help/controls.md
+msgid "Gamepad"
+msgstr "Handkontroll"
+
+#: docs/help/controls.md
+msgid ""
+"Any controller the browser reports in the standard layout (most USB and "
+"Bluetooth pads, and iOS MFi controllers). Plugging one in turns it on; "
+"nothing needs setting up."
+msgstr ""
+"Alla kontroller som webbläsaren rapporterar i standardlayouten (de flesta "
+"USB- och Bluetooth-handkontroller samt iOS MFi-kontroller). Den slås på när "
+"du ansluter den; inget behöver ställas in."
+
+#: docs/help/controls.md
+msgid "Control"
+msgstr "Kontroll"
+
+#: docs/help/controls.md
+msgid "In a menu"
+msgstr "I en meny"
+
+#: docs/help/controls.md
+msgid "Left stick"
+msgstr "Vänster spak"
+
+#: docs/help/controls.md
+msgid "forward/backward and turn"
+msgstr "framåt/bakåt och sväng"
+
+#: docs/help/controls.md
+msgid "move between rows, change a row"
+msgstr "flytta mellan rader, ändra en rad"
+
+#: docs/help/controls.md
+msgid "`A` / Cross, or right trigger"
+msgstr "`A` / Kryss, eller höger avtryckare"
+
+#: docs/help/controls.md
+msgid "shoot"
+msgstr "skjut"
+
+#: docs/help/controls.md
+msgid "select"
+msgstr "välj"
+
+#: docs/help/controls.md
+msgid "`B` / Circle, or left trigger"
+msgstr "`B` / Cirkel, eller vänster avtryckare"
+
+#: docs/help/controls.md
+msgid "jump"
+msgstr "hoppa"
+
+#: docs/help/controls.md
+msgid "back"
+msgstr "tillbaka"
+
+#: docs/help/controls.md
+msgid "`X` / Square"
+msgstr "`X` / Fyrkant"
+
+#: docs/help/controls.md
+msgid "drop flag"
+msgstr "släpp flaggan"
+
+#: docs/help/controls.md
+msgid "Either shoulder"
+msgstr "Valfri axelknapp"
+
+#: docs/help/controls.md
+msgid "identify"
+msgstr "identifiera"
+
+#: docs/help/controls.md
+msgid ""
+"The sticks have a dead zone of a fifth of their travel, so a pad left on the "
+"desk does not creep. The right stick is free."
+msgstr ""
+"Spakarna har en dödzon på en femtedel av sitt utslag, så att en handkontroll "
+"som ligger på bordet inte kryper. Höger spak är ledig."
+
+#: docs/help/controls.md
+msgid ""
+"The pad rumbles when you fire and when your tank dies, as BZFlag's does: a "
+"short buzz for a shot, longer for a shock wave, both motors for a laser, and "
+"one long, strong shake for a death. It rumbles only while it is what you are "
+"playing with -- a key or a click hands control back and keeps it quiet -- "
+"and never for an observer. **Rumble** in Settings turns it off. The browser "
+"has to support it; Chrome and Edge do."
+msgstr ""
+"Handkontrollen vibrerar när du skjuter och när din stridsvagn dör, precis "
+"som i BZFlag: ett kort surr för ett skott, längre för en chockvåg, båda "
+"motorerna för en laser och en lång, kraftig skakning för en död. Den "
+"vibrerar bara medan det är den du spelar med -- en tangent eller ett klick "
+"tar tillbaka kontrollen och håller den tyst -- och aldrig för en åskådare. "
+"**Vibration** i Inställningar stänger av det. Webbläsaren måste stödja det; "
+"Chrome och Edge gör det."
+
+#: docs/help/controls.md
+msgid "XR controllers"
+msgstr "XR-kontroller"
+
+#: docs/help/controls.md
+msgid ""
+"In VR the controllers are the only input. Turning the tank is independent of "
+"where you look."
+msgstr ""
+"I VR är kontrollerna den enda indatan. Att svänga stridsvagnen är oberoende "
+"av var du tittar."
+
+#: docs/help/controls.md
+msgid "In the XR menu"
+msgstr "I XR-menyn"
+
+#: docs/help/controls.md
+msgid "Either thumbstick"
+msgstr "Valfri tumspak"
+
+#: docs/help/controls.md
+msgid "forward/backward and turn -- the right stick if both are pushed"
+msgstr "framåt/bakåt och sväng -- höger spak om båda trycks"
+
+#: docs/help/controls.md
+msgid "Either trigger"
+msgstr "Valfri avtryckare"
+
+#: docs/help/controls.md
+msgid "`A` / `X` (primary face button)"
+msgstr "`A` / `X` (primär knapp)"
+
+#: docs/help/controls.md
+msgid "`B` / `Y` (secondary face button)"
+msgstr "`B` / `Y` (sekundär knapp)"
+
+#: docs/help/controls.md
+msgid "open the XR menu"
+msgstr "öppna XR-menyn"
+
+#: docs/help/controls.md
+msgid "back, and close it from the top"
+msgstr "tillbaka, och stäng den från översta nivån"
+
+#: docs/help/controls.md
+msgid "Either grip"
+msgstr "Valfritt grepp"
+
+#: docs/help/controls.md
+msgid "Press either thumbstick"
+msgstr "Tryck ned valfri tumspak"
+
+#: docs/help/controls.md
+msgid "Both controllers pulse for the same events as a gamepad's rumble."
+msgstr ""
+"Båda kontrollerna pulserar vid samma händelser som en handkontrolls "
+"vibration."
+
+#: docs/help/controls.md
+msgid ""
+"Identify is on the thumbstick press because a thumb that is steering presses "
+"it by accident, and identifying costs nothing; the menu is on `B` for the "
+"same reason. Typing -- a name, a MOTD -- uses the headset's own system "
+"keyboard, raised when the row takes focus; see the README's WebXR section "
+"for headsets that have none."
+msgstr ""
+"Identifiera ligger på tryck på tumspaken eftersom en tumme som styr trycker "
+"på den av misstag, och att identifiera kostar ingenting; menyn ligger på `B` "
+"av samma skäl. Inmatning -- ett namn, ett MOTD -- använder headsetets eget "
+"systemtangentbord, som visas när raden får fokus; se README:ns WebXR-avsnitt "
+"för headset som saknar ett."
+
+#: docs/help/flags.md
+msgid "Flags"
+msgstr "Flaggor"
+
+#: docs/help/flags.md
+msgid ""
+"Drive over a flag to pick it up, and `Space` to drop it. Good flags help; "
+"bad flags hinder, and stay until they shake off, you kill, or you die. A "
+"superflag on the ground is white and tells you nothing about itself until "
+"somebody picks it up. Team flags are captured by carrying an enemy's to your "
+"own base."
+msgstr ""
+"Kör över en flagga för att plocka upp den, och tryck `Space` för att släppa "
+"den. Bra flaggor hjälper; dåliga flaggor stjälper och sitter kvar tills de "
+"skakas av, du dödar eller du dör. En superflagga på marken är vit och "
+"avslöjar inget om sig själv förrän någon plockar upp den. Lagflaggor erövras "
+"genom att bära en fiendes flagga till din egen bas."
+
+#: docs/help/scoreboard.md
+msgid "Scoreboard"
+msgstr "Resultattavla"
+
+# review: Dödade / Döda
+#: docs/help/scoreboard.md
+msgid ""
+"Each row's numbers read **Kills / Deaths**, then **[Team Kills]** once you "
+"have any, then your own record against that one opponent: **wins~losses**, "
+"blank until you've actually fought them. Your own row shows a self-destruct "
+"count there instead, since you have no record against yourself. Rabbit Chase "
+"adds a rank percentage in front of the kill count."
+msgstr ""
+"Varje rads siffror lyder **Dödade / Döda**, sedan **[Lagdödade]** när du har "
+"några, och sedan ditt eget resultat mot just den motståndaren: "
+"**vinster~förluster**, tomt tills ni faktiskt har stridit. Din egen rad "
+"visar i stället antalet självförstörelser, eftersom du inte har något "
+"resultat mot dig själv. Rabbit Chase lägger till en rangprocent framför "
+"antalet dödade."
+
+#: docs/help/scoreboard.md
+msgid ""
+"Before a name, in cyan: `@` means that player is an admin, `+` means they're "
+"signed in with a verified callsign this session. Neither shows for anyone "
+"else."
+msgstr ""
+"Före ett namn, i cyan: `@` betyder att spelaren är admin, `+` att spelaren "
+"är inloggad med ett verifierat användarnamn den här sessionen. Ingetdera "
+"visas för någon annan."
+
+#: docs/help/scoreboard.md
+msgid ""
+"Right after the name itself: a `/XX` is the flag they're carrying, in that "
+"flag's own colour -- see [Flags](flags.md) for what each abbreviation means."
+msgstr ""
+"Direkt efter själva namnet: ett `/XX` är flaggan spelaren bär, i flaggans "
+"egen färg -- se [Flaggor](flags.md) för vad varje förkortning betyder."
+
+#: docs/help/scoreboard.md
+msgid ""
+"Further along the name: 🎤 means that player's microphone is on, and 🔊 "
+"replaces it the moment they're actually speaking. ⏳ means paused. A hunted "
+"player wears a cyan `◎` -- see [Hunting](controls.md#hunting)."
+msgstr ""
+"Längre bort längs namnet: 🎤 betyder att spelarens mikrofon är på, och 🔊 "
+"ersätter den i samma stund som spelaren faktiskt pratar. ⏳ betyder pausad. "
+"En jagad spelare bär en cyan `◎` -- se [Jakt](controls.md#hunting)."
+
+#: docs/help/voice.md
+msgid "Audio and voice"
+msgstr "Ljud och röst"
+
+#: docs/help/voice.md
+msgid ""
+"`Settings -> Audio Settings` — game, voice, and microphone levels, each from "
+"Off to 100%"
+msgstr ""
+"`Settings -> Audio Settings` (Ljudinställningar) — nivåer för spel, röst och "
+"mikrofon, var och en från Av till 100%"
+
+#: docs/help/voice.md
+msgid ""
+"**Voice channel** — **All** is everyone on the server, **Nearby** is only "
+"players within earshot, **Team** is your own team anywhere on the map"
+msgstr ""
+"**Röstkanal** — **Alla** är alla på servern, **I närheten** är bara spelare "
+"inom hörhåll, **Lag** är ditt eget lag var som helst på kartan"
+
+#: docs/help/voice.md
+msgid "`B` — toggle the microphone"
+msgstr "`B` — slå på/av mikrofonen"
+
+#: docs/help/voice.md
+msgid ""
+"Voice is available after microphone permission is granted. Observers talk "
+"and listen on the same terms as everyone else."
+msgstr ""
+"Röst är tillgänglig när mikrofonbehörighet har getts. Åskådare pratar och "
+"lyssnar på samma villkor som alla andra."
+
+#: docs/help/about.md
+msgid "About"
+msgstr "Om"
+
+#: docs/help/about.md
+msgid ""
+"Battlezone Online is a free 3D tank game in the browser that plays with "
+"[BZFlag](https://www.bzflag.org/)."
+msgstr ""
+"Battlezone Online är ett gratis 3D-stridsvagnsspel i webbläsaren som spelar "
+"ihop med [BZFlag](https://www.bzflag.org/)."
+
+#: docs/help/about.md
+msgid ""
+"It is free software licensed under the [GNU Affero General Public License "
+"v3.0](https://www.gnu.org/licenses/agpl-3.0.html). Source code is available "
+"at [github.com/timriker/bzo](/source)."
+msgstr ""
+"Det är fri programvara licensierad under [GNU Affero General Public License "
+"v3.0](https://www.gnu.org/licenses/agpl-3.0.html). Källkoden finns på "
+"[github.com/timriker/bzo](/source)."

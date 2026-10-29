@@ -196,7 +196,7 @@ omitted rather than sent null.
 | `playerPaused` / `playerUnpaused` / `pauseCountdown` / `pauseCancelled` | `playerId` (+ position on pause) | pause state |
 | `autopilot` | `playerId`,`on`,`pilot` | somebody's autopilot changed, or its pilot did |
 | `botIntents` | `bots` (`id`,`mode`,`targetId`), `plan?` (`id`,`intent`) | each server bot's current mode and target, twice a second, only to a client that sent `watchBots`; `plan` is the followed bot's whole intent (route, target, landing, shot) |
-| `message` | `src`, `dst`, `msgType`, `text`, `ts` | chat, in and out |
+| `message` | `src`, `dst`, `msgType`, `text`, `ts`, `msgid?`, `params?` | chat, in and out. A server line carries `msgid` and `params` beside its English `text` for the client to translate (`localized` in `public/js/i18n.mjs`); a BZFlag client reads only `text` |
 | `lag` | `lagMs` | the server's measurement of *your* lag |
 | `serverConfigUpdate` | `title`, `motd`, `shotMaxActive`, `ricochet`, `timeLimit`, `timeManualStart`, `maxPlayerScore`, `maxTeamScore` | live config changed |
 | `setVar` | `name`, `value` | one world variable set, or with a null value reset (`MsgSetVar`); the client evaluates it with the `bzdb` module |

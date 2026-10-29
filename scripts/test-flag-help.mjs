@@ -99,6 +99,13 @@ for (const [abbreviation, type] of Object.entries(FLAG_TYPES)) {
   assert.deepEqual(wrapText(context, 'one.  two', 100), ['one. two']);
   // A word wider than the line keeps its own line rather than being cut.
   assert.deepEqual(wrapText(context, 'a supercalifragilistic b', 5), ['a', 'supercalifragilistic', 'b']);
+  // Thai and Japanese write no spaces, and still break between words, never
+  // inside one.
+  for (const text of ['ภาษาไทยไม่มีการเว้นวรรคระหว่างคำ', '日本語の文章はスペースなしで書かれます。']) {
+    const lines = wrapText(context, text, 8);
+    assert.ok(lines.length > 1, `${text} wraps`);
+    assert.equal(lines.join(''), text, 'nothing is lost or added at a break');
+  }
 }
 
 console.log('flag help tests passed');

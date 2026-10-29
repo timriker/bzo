@@ -6,6 +6,7 @@
  */
 
 import { TANK } from './collision.mjs';
+import { N_ } from './i18n.mjs';
 
 // Flag types, statuses, world constants, and the flight math. Mirrors BZFlag's
 // include/Flag.h, src/common/Flag.cxx and src/bzfs/FlagInfo.cxx.
@@ -2067,4 +2068,30 @@ export function getFlagFlightState(flag, elapsed, gravity) {
   }
 
   return { x: position.x, y: position.y, z: position.z, alpha: 1, warp: 0, landed: false };
+}
+
+// HelpMenu's flag pages, as data for every place that lists them: `/help`, the
+// in-game help panel and llms-full.txt (server/help-docs.cjs). The table is the
+// list of flags bzo implements, so the help cannot document a flag the server
+// will not hand out, or miss one it will.
+//
+// Team flags keep BZFlag's own team order -- red, green, blue, purple -- and
+// share one help string upstream, so it is given once for the group. The
+// superflags are sorted by abbreviation, the column the list leads with and
+// what the code, the config and the scoreboard all use. HelpMenu splits good
+// and bad across two pages (HelpMenu.cxx:416, :453); here the bad ones come
+// last, so the flag you are looking up to avoid is not among the ones you want.
+export function flagHelpGroups() {
+  const abbreviations = Object.keys(FLAG_TYPES);
+  const byAbbreviation = (a, b) => a.localeCompare(b);
+  const team = abbreviations.filter((abbreviation) => isTeamFlag(abbreviation));
+  const good = abbreviations.filter((abbreviation) => !isTeamFlag(abbreviation) && !isBadFlag(abbreviation));
+  const bad = abbreviations.filter((abbreviation) => isBadFlag(abbreviation));
+  return [
+    { kind: 'team', title: N_('Team Flags'), help: FLAG_TYPES[team[0]]?.help ?? null, flags: team },
+    { kind: 'good', title: N_('Good Flags'), help: null, flags: good.sort(byAbbreviation) },
+    { kind: 'bad', title: N_('Bad Flags'), help: null, flags: bad.sort(byAbbreviation) },
+  ]
+    .filter((group) => group.flags.length > 0)
+    .map((group) => ({ ...group, flags: group.flags.map((abbreviation) => FLAG_TYPES[abbreviation]) }));
 }

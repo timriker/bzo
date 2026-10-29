@@ -22,6 +22,7 @@ import {
   volumeLevelToGain,
 } from './volume.mjs';
 import { DEFAULT_VOICE_CHANNEL, normalizeVoiceChannel } from './voice-channels.mjs';
+import { N_, formatMessage, t } from './i18n.mjs';
 
 // Mic-on only says a peer's microphone is live, not that anyone is talking
 // right now. Whether they are is read off the remote track's own audio
@@ -129,9 +130,13 @@ function serializeDescription(description, filter = {}) {
   };
 }
 
-function createVoiceError(code, message, cause) {
-  const error = new Error(message);
+// `message` is the English, for the log; `msgid` and `params` are what a
+// display site hands `t()`, so the player reads it in their own language.
+function createVoiceError(code, msgid, cause, params) {
+  const error = new Error(formatMessage(msgid, params));
   error.code = code;
+  error.msgid = msgid;
+  if (params) error.params = params;
   if (cause) error.cause = cause;
   return error;
 }
@@ -401,6 +406,8 @@ export function createVoiceManager(options = {}) {
     lastError = {
       code: error && error.code ? error.code : 'voice_error',
       message: error && error.message ? error.message : String(error),
+      msgid: error?.msgid,
+      params: error?.params,
     };
     invoke('onError', error);
     emitState();
@@ -641,7 +648,7 @@ export function createVoiceManager(options = {}) {
     try {
       entry.transceiver.direction = 'sendrecv';
     } catch (error) {
-      reportError(createVoiceError('voice_direction_failed', `Could not set voice direction for ${entry.peerId}`, error));
+      reportError(createVoiceError('voice_direction_failed', N_('Could not set voice direction for {peer}'), error, { peer: entry.peerId }));
     }
   }
 
@@ -652,7 +659,7 @@ export function createVoiceManager(options = {}) {
         setTransceiverDirection(entry);
         return;
       } catch (error) {
-        reportError(createVoiceError('voice_track_replace_failed', `Could not update voice track for ${entry.peerId}`, error));
+        reportError(createVoiceError('voice_track_replace_failed', N_('Could not update voice track for {peer}'), error, { peer: entry.peerId }));
       }
     }
 
@@ -662,7 +669,7 @@ export function createVoiceManager(options = {}) {
       try {
         entry.sender = entry.pc.addTrack(track, localStream);
       } catch (error) {
-        reportError(createVoiceError('voice_track_add_failed', `Could not add voice track for ${entry.peerId}`, error));
+        reportError(createVoiceError('voice_track_add_failed', N_('Could not add voice track for {peer}'), error, { peer: entry.peerId }));
       }
     }
   }
@@ -695,7 +702,7 @@ export function createVoiceManager(options = {}) {
 
   function createPeer(peerId, metadata = {}) {
     if (!PeerConnection) {
-      reportError(createVoiceError('webrtc_unavailable', 'RTCPeerConnection is not available in this browser.'));
+      reportError(createVoiceError('webrtc_unavailable', N_('RTCPeerConnection is not available in this browser.')));
       return null;
     }
 
@@ -703,7 +710,7 @@ export function createVoiceManager(options = {}) {
     try {
       pc = new PeerConnection(rtcConfig);
     } catch (error) {
-      reportError(createVoiceError('peer_create_failed', `Could not create a voice peer for ${peerId}`, error));
+      reportError(createVoiceError('peer_create_failed', N_('Could not create a voice peer for {peer}'), error, { peer: peerId }));
       return null;
     }
 
@@ -772,7 +779,7 @@ export function createVoiceManager(options = {}) {
       const playPromise = entry.remoteAudio.play && entry.remoteAudio.play();
       if (playPromise && typeof playPromise.catch === 'function') {
         playPromise.catch((error) => {
-          reportError(createVoiceError('remote_audio_playback_failed', `Could not play nearby voice from ${peerId}`, error));
+          reportError(createVoiceError('remote_audio_playback_failed', N_('Could not play nearby voice from {peer}'), error, { peer: peerId }));
         });
       }
       invoke('onRemoteTrack', { peerId, stream, track: event.track, element: entry.remoteAudio });
@@ -864,7 +871,7 @@ export function createVoiceManager(options = {}) {
         // it up.
         if (getTransmitting()) void replacePeerTrack(entry, localStream.getAudioTracks()[0]);
       } catch (error) {
-        reportError(createVoiceError('voice_transceiver_failed', `Could not prepare voice media for ${peerId}`, error));
+        reportError(createVoiceError('voice_transceiver_failed', N_('Could not prepare voice media for {peer}'), error, { peer: peerId }));
       }
     } else if (getTransmitting() && localStream && typeof pc.addTrack === 'function') {
       entry.sender = pc.addTrack(localStream.getAudioTracks()[0], localStream);
@@ -910,7 +917,7 @@ export function createVoiceManager(options = {}) {
       try {
         await entry.pc.addIceCandidate(candidate);
       } catch (error) {
-        reportError(createVoiceError('voice_ice_failed', `Could not add an ICE candidate for ${entry.peerId}`, error));
+        reportError(createVoiceError('voice_ice_failed', N_('Could not add an ICE candidate for {peer}'), error, { peer: entry.peerId }));
       }
     }
   }
@@ -932,7 +939,7 @@ export function createVoiceManager(options = {}) {
       });
       entry.initialOfferSent = true;
     } catch (error) {
-      reportError(createVoiceError('voice_offer_failed', `Could not create a voice offer for ${entry.peerId}`, error));
+      reportError(createVoiceError('voice_offer_failed', N_('Could not create a voice offer for {peer}'), error, { peer: entry.peerId }));
     } finally {
       entry.makingOffer = false;
     }
@@ -973,7 +980,7 @@ export function createVoiceManager(options = {}) {
       });
       updatePeerState(entry, { signalingState: entry.pc.signalingState });
     } catch (error) {
-      reportError(createVoiceError('voice_offer_handling_failed', `Could not handle a voice offer from ${peerId}`, error));
+      reportError(createVoiceError('voice_offer_handling_failed', N_('Could not handle a voice offer from {peer}'), error, { peer: peerId }));
     }
   }
 
@@ -988,7 +995,7 @@ export function createVoiceManager(options = {}) {
       await flushCandidates(entry);
       updatePeerState(entry, { signalingState: entry.pc.signalingState });
     } catch (error) {
-      reportError(createVoiceError('voice_answer_handling_failed', `Could not handle a voice answer from ${peerId}`, error));
+      reportError(createVoiceError('voice_answer_handling_failed', N_('Could not handle a voice answer from {peer}'), error, { peer: peerId }));
     }
   }
 
@@ -1006,7 +1013,7 @@ export function createVoiceManager(options = {}) {
     try {
       await entry.pc.addIceCandidate(candidate);
     } catch (error) {
-      reportError(createVoiceError('voice_ice_failed', `Could not add an ICE candidate from ${peerId}`, error));
+      reportError(createVoiceError('voice_ice_failed', N_('Could not add an ICE candidate from {peer}'), error, { peer: peerId }));
     }
   }
 
@@ -1070,7 +1077,7 @@ export function createVoiceManager(options = {}) {
   async function requestMicrophone({ enable = false } = {}) {
     if (microphoneRequest) return microphoneRequest;
     if (typeof navigator === 'undefined' || !navigator.mediaDevices || typeof navigator.mediaDevices.getUserMedia !== 'function') {
-      const error = createVoiceError('microphone_unavailable', 'This browser does not provide microphone capture.');
+      const error = createVoiceError('microphone_unavailable', N_('This browser does not provide microphone capture.'));
       microphonePermission = 'unavailable';
       reportError(error);
       return false;
@@ -1095,7 +1102,7 @@ export function createVoiceManager(options = {}) {
           captureStream = null;
           localStream = null;
           microphoneEnabled = false;
-          const error = createVoiceError('microphone_track_missing', 'The selected input device has no audio track.');
+          const error = createVoiceError('microphone_track_missing', N_('The selected input device has no audio track.'));
           reportError(error);
           return false;
         }
@@ -1123,7 +1130,7 @@ export function createVoiceManager(options = {}) {
         microphonePermission = denied ? 'denied' : 'unavailable';
         reportError(createVoiceError(
           denied ? 'microphone_permission_denied' : 'microphone_capture_failed',
-          denied ? 'Microphone permission was denied.' : 'Could not start microphone capture.',
+          denied ? N_('Microphone permission was denied.') : N_('Could not start microphone capture.'),
           cause,
         ));
         return false;
@@ -1208,13 +1215,13 @@ export function createVoiceManager(options = {}) {
         .filter((device) => device.kind === 'audioinput')
         .map((device) => ({
           deviceId: device.deviceId,
-          label: device.label || 'Microphone',
+          label: device.label || t('Microphone'),
           groupId: device.groupId,
         }));
       invoke('onInputDevices', inputs);
       return inputs;
     } catch (error) {
-      reportError(createVoiceError('microphone_devices_failed', 'Could not enumerate microphone devices.', error));
+      reportError(createVoiceError('microphone_devices_failed', N_('Could not enumerate microphone devices.'), error));
       return [];
     }
   }

@@ -120,18 +120,26 @@ function pageHead({ base, path, title, description, jsonLd = [] }) {
 }
 
 // Markdown as the docs write it -- headings, lists, numbered lists, tables,
-// paragraphs, `code`, **bold** and links -- to HTML, for `/help`. A link to
-// another doc goes to it on GitHub; one within the page stays on the page.
-function inlineMarkdown(text, docsUrl) {
+// paragraphs, `code`, **bold** and links -- to HTML, for `/help`. A link to a
+// help page (`pageLinks`) goes to it under `/help`, one to another doc goes to
+// it on GitHub, and one within the page or the site stays where it is.
+//
+// `translate` sees each block's markdown -- a heading, a paragraph, a list
+// item, a table cell -- before it is rendered: docs/i18n-plan.md,
+// "Translating Prose". A line that is only `<!-- name -->` becomes
+// `markers[name]`, for content the page cannot hold, such as the flag table.
+function inlineMarkdown(text, { docsUrl = DOCS_URL, pageLinks = [] } = {}) {
   let html = escapeHtml(text);
   // A double-backtick span first: it is how a backtick itself is written.
   html = html.replace(/``\s?(.+?)\s?``/g, (whole, code) => `<code>${code.replace(/`/g, '&#96;')}</code>`);
   html = html.replace(/`([^`]+)`/g, '<code>$1</code>');
   html = html.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
   html = html.replace(/\[([^\]]+)\]\(([^)\s]+)\)/g, (whole, label, href) => {
-    const target = href.startsWith('#') || /^[a-z]+:/i.test(href)
-      ? href
-      : `${docsUrl}/${href.replace(/^\.\//, '')}`;
+    const page = /^(?:\.\/)?([\w-]+)\.md(#.*)?$/.exec(href);
+    let target;
+    if (page && pageLinks.includes(page[1])) target = `/help/${page[1]}${page[2] || ''}`;
+    else if (/^[#/]/.test(href) || /^[a-z]+:/i.test(href)) target = href;
+    else target = `${docsUrl}/${href.replace(/^\.\//, '')}`;
     return `<a href="${target}">${label}</a>`;
   });
   return html;
@@ -141,21 +149,28 @@ function slug(text) {
   return text.toLowerCase().replace(/<[^>]+>/g, '').replace(/[^a-z0-9 -]/g, '').trim().replace(/\s+/g, '-');
 }
 
-function markdownToHtml(markdown, docsUrl = DOCS_URL) {
+function markdownToHtml(markdown, { translate = (text) => text, markers = {}, ...links } = {}) {
   const lines = markdown.split('\n');
   const out = [];
   let i = 0;
-  const isBlockStart = (line) => /^(#{1,6} |\s*[-*] |\s*\d+\. |\|)/.test(line) || line.trim() === '';
+  const inline = (text) => inlineMarkdown(translate(text), links);
+  const isBlockStart = (line) => /^(#{1,6} |\s*[-*] |\s*\d+\. |\||<!--)/.test(line) || line.trim() === '';
   while (i < lines.length) {
     const line = lines[i];
     if (line.trim() === '') {
       i++;
       continue;
     }
+    const marker = /^<!--\s*([\w-]+)\s*-->$/.exec(line.trim());
+    if (marker) {
+      if (markers[marker[1]]) out.push(markers[marker[1]]);
+      i++;
+      continue;
+    }
     const heading = /^(#{1,6}) (.*)$/.exec(line);
     if (heading) {
       const level = Math.min(6, heading[1].length + 1);
-      out.push(`<h${level} id="${slug(heading[2])}">${inlineMarkdown(heading[2], docsUrl)}</h${level}>`);
+      out.push(`<h${level} id="${slug(heading[2])}">${inline(heading[2])}</h${level}>`);
       i++;
       continue;
     }
@@ -166,8 +181,8 @@ function markdownToHtml(markdown, docsUrl = DOCS_URL) {
       const body = rows.filter((row) => !/^\|[\s:|-]+\|$/.test(row));
       const [head, ...rest] = body;
       out.push('<table>');
-      if (head) out.push(`<tr>${cells(head).map((c) => `<th>${inlineMarkdown(c, docsUrl)}</th>`).join('')}</tr>`);
-      for (const row of rest) out.push(`<tr>${cells(row).map((c) => `<td>${inlineMarkdown(c, docsUrl)}</td>`).join('')}</tr>`);
+      if (head) out.push(`<tr>${cells(head).map((c) => `<th>${inline(c)}</th>`).join('')}</tr>`);
+      for (const row of rest) out.push(`<tr>${cells(row).map((c) => `<td>${inline(c)}</td>`).join('')}</tr>`);
       out.push('</table>');
       continue;
     }
@@ -188,47 +203,29 @@ function markdownToHtml(markdown, docsUrl = DOCS_URL) {
         }
       }
       const tag = ordered ? 'ol' : 'ul';
-      out.push(`<${tag}>${items.map((text) => `<li>${inlineMarkdown(text, docsUrl)}</li>`).join('')}</${tag}>`);
+      out.push(`<${tag}>${items.map((text) => `<li>${inline(text)}</li>`).join('')}</${tag}>`);
       continue;
     }
     const paragraph = [line.trim()];
     i++;
     while (i < lines.length && !isBlockStart(lines[i])) paragraph.push(lines[i++].trim());
-    out.push(`<p>${inlineMarkdown(paragraph.join(' '), docsUrl)}</p>`);
+    out.push(`<p>${inline(paragraph.join(' '))}</p>`);
   }
   return out.join('\n');
 }
 
-// Every flag but the team flags, good ones first, by name.
-function flagRows(flagTypes) {
-  return Object.values(flagTypes)
-    .filter((flag) => flag.team === null || flag.team === undefined)
-    .sort((a, b) => (a.quality - b.quality) || a.name.localeCompare(b.name));
-}
-
-function flagTableHtml(flagTypes, badQuality) {
-  const rows = flagRows(flagTypes).map((flag) => '<tr>'
-    + `<td><code>${escapeHtml(flag.abbreviation)}</code></td>`
-    + `<td>${escapeHtml(flag.name)}</td>`
-    + `<td>${flag.quality === badQuality ? 'bad' : 'good'}</td>`
-    + `<td>${escapeHtml(String(flag.help || '').replace(/\s+/g, ' '))}</td></tr>`);
-  return `<table>\n<tr><th>Flag</th><th>Name</th><th>Kind</th><th>What it does</th></tr>\n${rows.join('\n')}\n</table>`;
-}
-
-function flagTableMarkdown(flagTypes, badQuality) {
-  const rows = flagRows(flagTypes).map((flag) => `| ${flag.abbreviation} | ${flag.name} | `
-    + `${flag.quality === badQuality ? 'bad' : 'good'} | ${String(flag.help || '').replace(/\s+/g, ' ').replace(/\\/g, '\\\\').replace(/\|/g, '\\|')} |`);
-  return ['| Flag | Name | Kind | What it does |', '| --- | --- | --- | --- |', ...rows].join('\n');
-}
-
-function helpPage({ base, name, description, version, controlsMarkdown, flagTypes, badQuality, discordLink = false }) {
-  const title = `Help -- ${name}`;
+// `/help` and `/help/<page>`: the help pages (server/help-docs.cjs), already
+// rendered in the reader's language, each under its own heading.
+function helpPage({ base, name, description, version, pages, path = '/help', lang = 'en', discordLink = false }) {
+  const title = pages.length === 1 ? `${pages[0].title} -- ${name}` : `Help -- ${name}`;
   const head = pageHead({
-    base, path: '/help', title, description,
+    base, path, title, description,
     jsonLd: [gameJsonLd({ base, name, description, version })],
   });
+  const single = pages.length === 1;
+  const nav = single ? '<a href="/help">Help</a>' : pages.map((page) => `<a href="#${page.slug}">${escapeHtml(page.title)}</a>`).join(' · ');
   return `<!doctype html>
-<html lang="en">
+<html lang="${escapeHtml(lang)}">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -244,23 +241,23 @@ ${head}
   th, td { border: 1px solid #333; padding: 0.3rem 0.5rem; text-align: left; vertical-align: top; }
   th { background: #111; }
   nav { margin-bottom: 1.5rem; }
+  .flagTeam1 { color: #ff0000; }
+  .flagTeam2 { color: #00ff00; }
+  .flagTeam3 { color: #3355ff; }
+  .flagTeam4 { color: #ff00ff; }
+  .flagBad { color: #ffa020; }
 </style>
 </head>
 <body>
 <h1>${escapeHtml(name)}</h1>
 <p>${escapeHtml(description)}</p>
-<nav><a href="/">Play</a> · <a href="/list">Servers</a> · <a href="#controls">Controls</a> · <a href="#flags">Flags</a> · <a href="#discord">Discord</a> · <a href="/source">Source</a></nav>
-<h2 id="controls">Controls</h2>
-${markdownToHtml(controlsMarkdown.replace(/^# .*\n/, ''))}
-<h2 id="flags">Flags</h2>
-<p>Drive over a flag to pick it up. Good flags help; bad flags hinder, and stay until they shake off, you kill, or you die.
-Team flags are captured by carrying an enemy's to your own base.</p>
-${flagTableHtml(flagTypes, badQuality)}
-<h2 id="discord">Discord</h2>
+<nav><a href="/">Play</a> · <a href="/list">Servers</a> · ${nav}${single ? '' : ' · <a href="#discord">Discord</a>'} · <a href="/source">Source</a></nav>
+${pages.map((page) => `<h2 id="${page.slug}"><a href="/help/${page.slug}">${escapeHtml(page.title)}</a></h2>\n${page.html}`).join('\n')}
+${single ? '' : `<h2 id="discord">Discord</h2>
 <p>Talk with other players on the <a href="${DISCORD_INVITE_URL}">BZFlag Discord</a>.${discordLink
     ? ' Once you are there, <a href="/discord/link">link your bzflag.org account</a> for the BZFlag player role,'
       + ' and your callsign as your name there.'
-    : ''}</p>
+    : ''}</p>`}
 <p>${escapeHtml(GAME_NAME)} ${escapeHtml(version)} · <a href="${REPO_URL}">Source</a>, AGPL-3.0</p>
 </body>
 </html>
@@ -335,20 +332,11 @@ ${PAGES.map((page) => `- [${page.title}](${base}${page.path}): ${page.note}`).jo
 `;
 }
 
-function llmsFullTxt({ controlsMarkdown, flagTypes, badQuality, ...rest }) {
+// The help pages as one Markdown file, each page's own headings a level down
+// so they sit under the file's.
+function llmsFullTxt({ helpMarkdown, ...rest }) {
   return `${llmsTxt(rest)}
-## Controls
-
-${controlsMarkdown.replace(/^# .*\n/, '').replace(/^(#+) /gm, '#$1 ')}
-
-## Flags
-
-Drive over a flag to pick it up. Good flags help; bad flags hinder, and stay
-until they shake off, you kill, or you die. Team flags are captured by carrying
-an enemy's to your own base.
-
-${flagTableMarkdown(flagTypes, badQuality)}
-`;
+${helpMarkdown.replace(/^(#+) /gm, '#$1 ')}`;
 }
 
 module.exports = {

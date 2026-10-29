@@ -52,8 +52,9 @@ COPY public ./public
 COPY maps ./maps
 COPY replays ./replays
 COPY server ./server
+COPY l10n ./l10n
 # /help and llms-full.txt render the controls from it.
-COPY docs/controls.md ./docs/controls.md
+COPY docs/help ./docs/help
 COPY example-server.json ./example-server.json
 COPY server.js ./server.js
 COPY LICENSE ./LICENSE

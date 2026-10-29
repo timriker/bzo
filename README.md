@@ -69,9 +69,10 @@ headset owns the projection.
 
 ## Controls
 
-[docs/controls.md](docs/controls.md) has every control: the keyboard and
-mouse, the on-screen touch controls, gamepads, and the XR controllers. In the
-game, `/` or `?` shows the keyboard's.
+[docs/help/controls.md](docs/help/controls.md) has every control: the
+keyboard and mouse, the on-screen touch controls, gamepads, and the XR
+controllers. It is also `/help` on any server, and the in-game help (`/` or
+`?`).
 
 ## WebXR
 

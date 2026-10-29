@@ -20,6 +20,8 @@
 // them before there was a setting. So level 10 is unity here: gain is
 // (level / 10)^2, which is upstream's curve scaled to end at 1 instead of 2.
 
+import { N_ } from './i18n.mjs';
+
 export const VOLUME_MIN_LEVEL = 0;
 export const VOLUME_MAX_LEVEL = 10;
 export const DEFAULT_VOLUME_LEVEL = VOLUME_MAX_LEVEL;
@@ -30,7 +32,7 @@ export const DEFAULT_VOLUME_LEVEL = VOLUME_MAX_LEVEL;
 export const VOLUME_CHANNELS = Object.freeze([
   {
     id: 'game',
-    label: 'Game volume',
+    label: N_('Game volume'),
     storageKey: 'bzo.volume.game',
     sliderId: 'gameVolumeSlider',
     valueId: 'gameVolumeValue',
@@ -38,7 +40,7 @@ export const VOLUME_CHANNELS = Object.freeze([
   },
   {
     id: 'voice',
-    label: 'Voice volume',
+    label: N_('Voice volume'),
     storageKey: 'bzo.volume.voice',
     sliderId: 'voiceVolumeSlider',
     valueId: 'voiceVolumeValue',
@@ -46,7 +48,7 @@ export const VOLUME_CHANNELS = Object.freeze([
   },
   {
     id: 'microphone',
-    label: 'Microphone volume',
+    label: N_('Microphone volume'),
     storageKey: 'bzo.volume.microphone',
     sliderId: 'microphoneVolumeSlider',
     valueId: 'microphoneVolumeValue',

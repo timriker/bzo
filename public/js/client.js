@@ -39,11 +39,11 @@ const CLIENT_LICENSE_URL = 'https://www.gnu.org/licenses/agpl-3.0.html';
 // Discord's own blurple, on the label of a line said in its channel.
 const DISCORD_LABEL_COLOR = '#5865f2';
 const CHAT_TABS = [
-  { id: 'all', label: 'All' },
-  { id: 'chat', label: 'Chat' },
-  { id: 'server', label: 'Server' },
-  { id: 'misc', label: 'Misc' },
-  { id: 'debug', label: 'Debug' },
+  { id: 'all', label: N_('All') },
+  { id: 'chat', label: N_('Chat') },
+  { id: 'server', label: N_('Server') },
+  { id: 'misc', label: N_('Misc') },
+  { id: 'debug', label: N_('Debug') },
 ];
 const chatState = {
   activeTab: 'all',
@@ -124,6 +124,8 @@ import {
   FIRST_TEAM,
 } from './player-ids.mjs';
 import { getMenuClickDirection, playMenuBackSound, playMenuSelectSound, setMenuSoundPlayer } from './menus.js';
+import { N_, onLocaleChange, t, translateServerText } from './i18n.mjs';
+import { initHelpPanel } from './help.js';
 
 setMenuSoundPlayer((name) => renderManager.playLocalSound(name));
 import { DestructCountdown, PauseState } from './pause.mjs';
@@ -863,9 +865,9 @@ function getShotLimitLabel() {
   if (!limited) return null;
   const flag = getMyFlag();
   const limit = flag ? limits[flag.type] : undefined;
-  if (limit === undefined) return 'unlimited';
+  if (limit === undefined) return t('unlimited');
   const left = myFlagShotsLeft?.flag === flag.index ? myFlagShotsLeft.left : limit;
-  return `${left} left`;
+  return t('{count} left', { count: left });
 }
 // The reload each slot was filled on, kept beside it because a bar reads its
 // own shot's `ShotPath::reloadTime` and not the tank's current one: fire with a
@@ -975,11 +977,15 @@ function syncListServerRow(listServer) {
   if (!row) return;
   row.hidden = !listServer;
   if (!listServer || !status) return;
+  const url = listServer.url;
   status.textContent = listServer.designated
-    ? 'this is the designated list server'
-    : !listServer.url
-      ? 'disabled (no listServerUrl)'
-      : `reporting to ${listServer.url}: ${listServer.keyConfigured ? 'key configured' : 'no key yet'}`;
+    ? t('this is the designated list server')
+    : !url
+      // TRANSLATORS: listServerUrl is a server.json setting; keep it as written
+      ? t('disabled (no listServerUrl)')
+      : listServer.keyConfigured
+        ? t('reporting to {url}: key configured', { url })
+        : t('reporting to {url}: no key yet', { url });
 }
 
 function applyMatchTimeUpdate(timeLeft) {
@@ -1001,12 +1007,12 @@ function applyScoreOver(playerId, team) {
   matchGameOver = true;
   refreshScoreboards();
   const text = team
-    ? `The ${PLAYER_TEAM_LABELS[team] || team} team won the game`
+    ? t('{team} won the game', { team: PLAYER_TEAM_LABELS[team] ? t(PLAYER_TEAM_LABELS[team]) : team })
     : null;
   if (text) {
     noticeAbout(0, [text], DEATH_ALERT_SECONDS, true);
   } else if (playerId) {
-    noticeAbout(0, [describePlayer(playerId), ' won the game'], DEATH_ALERT_SECONDS, true);
+    noticeAbout(0, sentenceParts(t('{player} won the game'), { player: describePlayer(playerId) }), DEATH_ALERT_SECONDS, true);
   }
 }
 
@@ -1224,10 +1230,10 @@ function getSelectedPlayerTeam() {
 function syncPlayerTeamSelector() {
   const teamSelector = document.getElementById('entryTeamSelector');
   const teamValue = document.getElementById('entryTeamValue');
-  const label = PLAYER_TEAM_LABELS[selectedPlayerTeam];
+  const label = t(PLAYER_TEAM_LABELS[selectedPlayerTeam]);
   if (teamSelector) {
     teamSelector.dataset.team = selectedPlayerTeam;
-    teamSelector.setAttribute('aria-label', `Team: ${label}`);
+    teamSelector.setAttribute('aria-label', t('Team: {team}', { team: label }));
   }
   if (teamValue) teamValue.textContent = label;
   // The preview tank wears the staged team's colour, so the row above changing
@@ -1354,9 +1360,9 @@ function findProxyDestination(destination) {
 
 function destinationLabel(destination) {
   if (destination.startsWith('watch:')) {
-    return `watching ${destination.slice('watch:'.length).replace(/_(\d+)$/, ':$1')}`;
+    return t('watching {server}', { server: destination.slice('watch:'.length).replace(/_(\d+)$/, ':$1') });
   }
-  if (destination.startsWith('replay:')) return `replay ${destination.slice('replay:'.length)}`;
+  if (destination.startsWith('replay:')) return t('replay {name}', { name: destination.slice('replay:'.length) });
   const proxy = findProxyDestination(destination);
   // `host:port`, not the title the public list carries. A title is a
   // description -- two servers may well share one, and "bzo compatibilty
@@ -1366,7 +1372,7 @@ function destinationLabel(destination) {
   // This instance has no `host:port` to show for itself -- it is the page you
   // are already on -- so its map is what distinguishes it from the targets
   // beside it.
-  return localDestinationMap ? `local ${localDestinationMap}` : 'This server';
+  return localDestinationMap ? t('local {map}', { map: localDestinationMap }) : t('This server');
 }
 
 // The teams the chosen destination would accept. For wherever this connection
@@ -1434,7 +1440,7 @@ function syncDestinationSelector() {
   const choices = getDestinationChoices();
   row.hidden = choices.length < 2;
   value.textContent = destinationLabel(selectedDestination);
-  row.setAttribute('aria-label', `Server: ${value.textContent}`);
+  row.setAttribute('aria-label', t('Server: {server}', { server: value.textContent }));
 }
 
 function selectRelativeDestination(direction) {
@@ -1489,12 +1495,15 @@ function syncEntryActions() {
   // action answers it; a greyed button whose remedy is another row does not.
   const signsIn = destinationNeedsLogin(selectedDestination, team);
   ok.disabled = false;
-  ok.textContent = signsIn ? 'Sign in & Play' : 'OK';
+  ok.textContent = signsIn ? t('Sign in & Play') : t('OK');
   ok.title = signsIn
-    ? 'Playing here needs a bzflag.org global login. This signs you in, then'
-      + ' joins on the team you picked.'
+    ? t('Playing here needs a bzflag.org global login. This signs you in, then joins on the team you picked.')
     : '';
 }
+// After the markup's own pass, which only knows the button as "OK".
+onLocaleChange(syncEntryActions);
+onLocaleChange(() => syncPlayerTeamSelector());
+onLocaleChange(() => syncDestinationSelector());
 
 function getDialogTeamSelections() {
   return getPlayerTeamSelections(getDestinationTeams(selectedDestination));
@@ -1601,7 +1610,7 @@ function isHuntMarked(playerId) {
 // a moment that has already passed -- a kill message carries the flag from the
 // server for exactly that reason.
 function describePlayer(playerId, { blind = isColorblind(), flag } = {}) {
-  if (blind) return { text: 'a tank', segments: null };
+  if (blind) return { text: t('a tank'), segments: null };
   const state = playerId === myPlayerId
     ? myTank?.userData?.playerState
     : tanks.get(playerId)?.userData?.playerState;
@@ -1619,7 +1628,7 @@ function describePlayer(playerId, { blind = isColorblind(), flag } = {}) {
 // <callsign>" carries neither team nor flag: we are already the same team, and
 // which of us it was is the whole of what went wrong.
 function describePlayerName(playerId) {
-  if (isColorblind()) return { text: 'a tank', segments: null };
+  if (isColorblind()) return { text: t('a tank'), segments: null };
   const state = playerId === myPlayerId
     ? myTank?.userData?.playerState
     : tanks.get(playerId)?.userData?.playerState;
@@ -1629,17 +1638,33 @@ function describePlayerName(playerId) {
   });
 }
 
-// A notice that names a player, on both surfaces at once: the alert slot the eye
-// is on, and the chat line that keeps it after the alert times out. `parts` is
-// the sentence as `[string | describePlayer(...)]`, so a caller writes the words
-// and names the tanks without composing colours itself.
-function noticeAbout(slot, parts, seconds, warning, kind = CHAT_KIND_MISC) {
+// A translated sentence as `noticeAbout` parts: each `{name}` becomes its param
+// -- a string or a `describePlayer(...)` -- wherever the language put it, so a
+// coloured callsign keeps its colour inside any word order.
+function sentenceParts(text, params) {
+  return text.split(/\{(\w+)\}/)
+    .map((piece, index) => (index % 2 ? params[piece] ?? `{${piece}}` : piece))
+    .filter((part) => part !== '');
+}
+
+// `[string | describePlayer(...)]` as the coloured segments an alert or a chat
+// line draws.
+function partsToSegments(parts) {
   const segments = [];
   for (const part of parts) {
     if (typeof part === 'string') segments.push({ text: part });
     else if (part?.segments) segments.push(...part.segments);
     else if (part) segments.push({ text: part.text });
   }
+  return segments;
+}
+
+// A notice that names a player, on both surfaces at once: the alert slot the eye
+// is on, and the chat line that keeps it after the alert times out. `parts` is
+// the sentence as `[string | describePlayer(...)]`, so a caller writes the words
+// and names the tanks without composing colours itself.
+function noticeAbout(slot, parts, seconds, warning, kind = CHAT_KIND_MISC) {
+  const segments = partsToSegments(parts);
   const text = segments.map((segment) => segment.text).join('');
   if (slot !== null) setHudAlert(slot, text, seconds, warning, segments);
   addChatEntry(['misc', 'all'], text, kind, segments);
@@ -1647,17 +1672,19 @@ function noticeAbout(slot, parts, seconds, warning, kind = CHAT_KIND_MISC) {
   return text;
 }
 
-// The Identify alerts, on both surfaces: a prefix in the alert's own colour and
-// then the player, coloured as their scoreboard row is. The prefix segment
-// carries no colour of its own, which is how it inherits the alert's.
-function showIdentifyAlert(prefix, playerId) {
+// The Identify alerts, on both surfaces: a translated `{player}` sentence whose
+// words are in the alert's own colour and whose player is coloured as their
+// scoreboard row is. The word segments carry no colour of their own, which is
+// how they inherit the alert's.
+function showIdentifyAlert(template, playerId) {
   const described = describePlayer(playerId);
+  const segments = partsToSegments(sentenceParts(template, { player: described }));
   setHudAlert(
     1,
-    `${prefix} ${described.text}`,
+    segments.map((segment) => segment.text).join(''),
     IDENTIFY_ALERT_SECONDS,
     false,
-    described.segments ? [{ text: `${prefix} ` }, ...described.segments] : null,
+    described.segments ? segments : null,
   );
 }
 
@@ -1732,13 +1759,13 @@ function applyNewRabbit(nextRabbitId) {
 
   if (nextRabbitId === null || nextRabbitId === previousRabbitId) return;
   if (nextRabbitId === myPlayerId) {
-    setHudAlert(0, 'You are now the rabbit.', RABBIT_ALERT_SECONDS, false);
+    setHudAlert(0, t('You are now the rabbit.'), RABBIT_ALERT_SECONDS, false);
     renderManager.playLocalSound('huntSelect');
   }
   // addMessage(rabbit, "is now the rabbit") sits outside upstream's own branch,
   // so the new rabbit reads the line as well as hearing the alert. The mark the
   // description carries is `(rabbit)` by now, which is the point of the line.
-  noticeAbout(null, [describePlayer(nextRabbitId), ' is now the rabbit'], 0, false);
+  noticeAbout(null, sentenceParts(t('{player} is now the rabbit'), { player: describePlayer(nextRabbitId) }), 0, false);
 }
 
 function callVoiceManager(method, ...args) {
@@ -1749,7 +1776,7 @@ function callVoiceManager(method, ...args) {
     return { called: true, value: voiceManager[method](...args) };
   } catch (error) {
     console.error(`[Voice] ${method} failed:`, error);
-    showMessage(`Voice error: ${error.message || 'operation failed'}`);
+    showMessage(t('Voice error: {error}', { error: error.msgid ? t(error.msgid, error.params) : (error.message || t('operation failed')) }));
     return { called: true, value: undefined };
   }
 }
@@ -2217,7 +2244,7 @@ function setVoiceChannel(nextChannel) {
   const select = document.getElementById('voiceChannelSelect');
   if (select && select.value !== normalized) select.value = normalized;
   const hint = document.getElementById('voiceChannelDescription');
-  if (hint) hint.textContent = getVoiceChannel(normalized).hint;
+  if (hint) hint.textContent = t(getVoiceChannel(normalized).hint);
   if (changed) {
     callVoiceManager('setChannel', normalized);
     logVoiceEvent(`channel: ${getVoiceChannel(normalized).label}`);
@@ -2254,7 +2281,7 @@ function updateVoiceInputDevices(devices = []) {
 
   const defaultOption = document.createElement('option');
   defaultOption.value = '';
-  defaultOption.textContent = 'Default microphone';
+  defaultOption.textContent = t('Default microphone');
   input.appendChild(defaultOption);
 
   if (Array.isArray(devices)) {
@@ -2262,7 +2289,7 @@ function updateVoiceInputDevices(devices = []) {
       if (!device || typeof device.deviceId !== 'string') return;
       const option = document.createElement('option');
       option.value = device.deviceId;
-      option.textContent = device.label || 'Microphone';
+      option.textContent = device.label || t('Microphone');
       input.appendChild(option);
     });
   }
@@ -2289,31 +2316,31 @@ function updateVoiceHud(nextState = null) {
   const channelSelect = document.getElementById('voiceChannelSelect');
   const microphoneSlider = document.getElementById('microphoneVolumeSlider');
 
-  const channelLabel = getVoiceChannel(selectedVoiceChannel).label;
+  const channelLabel = t(getVoiceChannel(selectedVoiceChannel).label);
   const team = normalizePlayerTeam(state.team || playerTeam);
   const transmitting = Boolean(state.transmitting);
   const permission = state.microphonePermission || 'prompt';
-  let status = 'Microphone off';
+  let status = t('Microphone off');
   if (isObserverTeam(team)) {
-    status = 'Receive only';
+    status = t('Receive only');
   } else if (transmitting) {
-    status = 'Microphone on';
+    status = t('Microphone on');
   } else if (permission === 'denied') {
-    status = 'Permission denied';
+    status = t('Permission denied');
   } else if (permission === 'unavailable') {
-    status = 'Microphone unavailable';
+    status = t('Microphone unavailable');
   } else if (state.lastError && state.lastError.message) {
-    status = 'Microphone unavailable';
+    status = t('Microphone unavailable');
   }
 
   // What the hover says is what the click would do, then the channel it would
   // do it on: `Disable Mic - Nearby`. Where the click cannot do anything --
   // an observer, a blocked or missing microphone -- it says the reason instead
   // of promising a toggle that will not happen.
-  const micActionLabel = isObserverTeam(team) ? 'Receive only'
-    : permission === 'denied' ? 'Mic blocked'
-      : permission === 'unavailable' ? 'Mic unavailable'
-        : transmitting ? 'Disable Mic' : 'Enable Mic';
+  const micActionLabel = isObserverTeam(team) ? t('Receive only')
+    : permission === 'denied' ? t('Mic blocked')
+      : permission === 'unavailable' ? t('Mic unavailable')
+        : transmitting ? t('Disable Mic') : t('Enable Mic');
 
   // The whole of the on-screen voice display: a red or green border in the HUD
   // row. The channel is in the hover text rather than on the button, that being
@@ -2322,43 +2349,54 @@ function updateVoiceHud(nextState = null) {
     micButton.classList.toggle('micBtn--on', transmitting);
     micButton.classList.toggle('micBtn--off', !transmitting);
     micButton.setAttribute('aria-pressed', transmitting ? 'true' : 'false');
-    micButton.title = `${micActionLabel} - ${channelLabel}`;
-    micButton.setAttribute('aria-label', `${channelLabel} voice channel, ${status.toLowerCase()}`);
+    micButton.title = t('{action} - {channel}', { action: micActionLabel, channel: channelLabel });
+    micButton.setAttribute('aria-label', t('{channel} voice channel, {status}', { channel: channelLabel, status }));
   }
   if (channelSelect) {
     channelSelect.value = selectedVoiceChannel;
   }
   const channelHint = document.getElementById('voiceChannelDescription');
-  if (channelHint) channelHint.textContent = getVoiceChannel(selectedVoiceChannel).hint;
+  if (channelHint) channelHint.textContent = t(getVoiceChannel(selectedVoiceChannel).hint);
   if (permissionButton) {
-    permissionButton.textContent = permission === 'granted' ? 'Microphone permission granted' : 'Enable microphone';
+    permissionButton.textContent = permission === 'granted' ? t('Microphone permission granted') : t('Enable microphone');
   }
   if (microphoneButton) {
     const permissionGranted = permission === 'granted';
     microphoneButton.disabled = !permissionGranted && !state.hasLocalStream;
-    microphoneButton.textContent = transmitting ? 'Microphone on' : 'Microphone off';
+    microphoneButton.textContent = transmitting ? t('Microphone on') : t('Microphone off');
     microphoneButton.setAttribute('aria-pressed', transmitting ? 'true' : 'false');
   }
   if (inputDevice) inputDevice.disabled = false;
   if (microphoneSlider) microphoneSlider.disabled = false;
   if (permissionStatus) {
     if (permission === 'granted') {
-      permissionStatus.textContent = transmitting ? `Microphone is transmitting on the ${channelLabel} channel.` : 'Microphone permission granted; transmission is off.';
+      permissionStatus.textContent = transmitting
+        ? t('Microphone is transmitting on the {channel} channel.', { channel: channelLabel })
+        : t('Microphone permission granted; transmission is off.');
     } else if (permission === 'denied') {
-      permissionStatus.textContent = 'Microphone permission was denied by the browser.';
+      permissionStatus.textContent = t('Microphone permission was denied by the browser.');
     } else if (permission === 'unavailable') {
-      permissionStatus.textContent = 'Microphone capture is unavailable in this browser or context.';
+      permissionStatus.textContent = t('Microphone capture is unavailable in this browser or context.');
     } else {
-      permissionStatus.textContent = 'Microphone permission has not been requested.';
+      permissionStatus.textContent = t('Microphone permission has not been requested.');
     }
   }
+}
+
+onLocaleChange(() => updateVoiceHud());
+
+// What the player reads for a voice error: voice.js's msgid in their
+// language, where it gave one, since `message` is the English kept for logs.
+function describeVoiceError(error) {
+  if (error.msgid) return t(error.msgid, error.params);
+  return error.message || t('Voice operation failed.');
 }
 
 function handleVoiceError(error) {
   if (!error) return;
   const message = error.message || 'Voice operation failed.';
   updateVoiceHud(getVoiceState());
-  showMessage(message);
+  showMessage(describeVoiceError(error));
   // reportError (voice.js) never logs itself, only sets state and shows this
   // one on-screen toast -- easy to miss mid-session and invisible to
   // server.log. Every voice error is worth having in the same trail the
@@ -2598,8 +2636,7 @@ function syncMottoForDestination() {
   input.disabled = remote;
   input.value = remote ? `via ${window.location.origin}` : myPlayerMotto;
   input.title = remote
-    ? 'A proxied connection tells the target which bzo it came through, and'
-      + ' nothing else. Your own motto is used on this server.'
+    ? t('A proxied connection tells the target which bzo it came through, and nothing else. Your own motto is used on this server.')
     : '';
 }
 
@@ -3025,8 +3062,8 @@ async function prepareInitialRender(message, sequenceId) {
   setLoadingOverlayState({
     visible: true,
     progress: 0.05,
-    status: 'Preparing battlefield...',
-    detail: 'Building world geometry',
+    status: t('Preparing battlefield...'),
+    detail: t('Building world geometry'),
   });
 
   await waitForAnimationFrame();
@@ -3035,8 +3072,8 @@ async function prepareInitialRender(message, sequenceId) {
   setLoadingOverlayState({
     visible: true,
     progress: 0.3,
-    status: 'Placing obstacles...',
-    detail: 'Synchronizing world objects',
+    status: t('Placing obstacles...'),
+    detail: t('Synchronizing world objects'),
   });
 
   // `init` carries only a { hash, url } reference (see `MAP_REGISTRY` in
@@ -3064,8 +3101,8 @@ async function prepareInitialRender(message, sequenceId) {
   setLoadingOverlayState({
     visible: true,
     progress: 0.55,
-    status: 'Loading vehicle systems...',
-    detail: 'Preparing tank models, textures, and audio',
+    status: t('Loading vehicle systems...'),
+    detail: t('Preparing tank models, textures, and audio'),
   });
 
   try {
@@ -3082,8 +3119,8 @@ async function prepareInitialRender(message, sequenceId) {
   setLoadingOverlayState({
     visible: true,
     progress: 0.82,
-    status: 'Assembling tanks...',
-    detail: 'Creating player vehicles',
+    status: t('Assembling tanks...'),
+    detail: t('Creating player vehicles'),
   });
 
   applyRosterSnapshot(message.players);
@@ -3096,8 +3133,8 @@ async function prepareInitialRender(message, sequenceId) {
   setLoadingOverlayState({
     visible: true,
     progress: 1,
-    status: pendingJoinRequest ? 'Entering battle...' : 'Render ready',
-    detail: pendingJoinRequest ? 'Joining game' : 'Waiting for player name',
+    status: pendingJoinRequest ? t('Entering battle...') : t('Render ready'),
+    detail: pendingJoinRequest ? t('Joining game') : t('Waiting for player name'),
   });
   maybeSendPendingJoinRequest();
   // Ready to draw everyone, so ask who everyone is. Anything the snapshot and
@@ -3367,16 +3404,17 @@ function scrollChatToNewest() {
 }
 
 function routeLocalHudMessage(text) {
-  addChatEntry(['misc', 'all'], `local: ${text}`, CHAT_KIND_MISC);
+  // TRANSLATORS: prefix on a chat line this client wrote itself, not the server
+  addChatEntry(['misc', 'all'], t('local: {message}', { message: text }), CHAT_KIND_MISC);
   updateChatWindow();
 }
 
 function announceBuildInfoOnce() {
   if (startupBuildInfoAnnounced) return;
   startupBuildInfoAnnounced = true;
-  addChatEntry(['misc', 'all'], `client version: ${CLIENT_VERSION}`, CHAT_KIND_MISC);
-  addChatEntry(['misc', 'all'], `copyright: ${CLIENT_COPYRIGHT}`, CHAT_KIND_MISC);
-  addChatEntry(['misc', 'all'], `license: ${CLIENT_LICENSE} (${CLIENT_LICENSE_URL})`, CHAT_KIND_MISC);
+  addChatEntry(['misc', 'all'], t('client version: {version}', { version: CLIENT_VERSION }), CHAT_KIND_MISC);
+  addChatEntry(['misc', 'all'], t('copyright: {copyright}', { copyright: CLIENT_COPYRIGHT }), CHAT_KIND_MISC);
+  addChatEntry(['misc', 'all'], t('license: {license} ({url})', { license: CLIENT_LICENSE, url: CLIENT_LICENSE_URL }), CHAT_KIND_MISC);
   updateChatWindow();
 }
 
@@ -3523,7 +3561,7 @@ defineLocalCommand('/autopilot', (args) => {
   }
   const entry = AUTOPILOTS.find((candidate) => candidate.id === name);
   if (!entry) {
-    showMessage(`Usage: /autopilot [${AUTOPILOTS.map((candidate) => candidate.id).join('|')}]`);
+    showMessage(t('Usage: {command}', { command: `/autopilot [${AUTOPILOTS.map((candidate) => candidate.id).join('|')}]` }));
     return;
   }
   autopilotRowId = entry.id;
@@ -3534,39 +3572,41 @@ defineLocalCommand('/autopilot', (args) => {
 defineLocalCommand('/silence', (args) => {
   const target = args.trim();
   if (!target) {
-    showMessage('Usage: /silence <callsign>|-');
+    // TRANSLATORS: /silence and - stay as written
+    showMessage(t('Usage: /silence <callsign>|-'));
     return;
   }
   if (target === '-') {
     silenceUnverified = true;
     saveSilenceState();
     refreshAllSilencedVoice();
-    showMessage('Silencing every unauthenticated player');
+    showMessage(t('Silencing every unauthenticated player'));
     return;
   }
   silencedCallsigns.add(target.toLowerCase());
   saveSilenceState();
   refreshAllSilencedVoice();
-  showMessage(`Silenced "${target}"`);
+  showMessage(t('Silenced "{callsign}"', { callsign: target }));
 });
 
 defineLocalCommand('/unsilence', (args) => {
   const target = args.trim();
   if (!target) {
-    showMessage('Usage: /unsilence <callsign>|-');
+    // TRANSLATORS: /unsilence and - stay as written
+    showMessage(t('Usage: /unsilence <callsign>|-'));
     return;
   }
   if (target === '-') {
     silenceUnverified = false;
     saveSilenceState();
     refreshAllSilencedVoice();
-    showMessage('No longer silencing unauthenticated players');
+    showMessage(t('No longer silencing unauthenticated players'));
     return;
   }
   silencedCallsigns.delete(target.toLowerCase());
   saveSilenceState();
   refreshAllSilencedVoice();
-  showMessage(`Unsilenced "${target}"`);
+  showMessage(t('Unsilenced "{callsign}"', { callsign: target }));
 });
 
 // HighlightCommand (CommandsImplementation.cxx:184): one regular expression,
@@ -3623,11 +3663,11 @@ defineLocalCommand('/highlight', (args) => {
   chatWindowDirty = true;
   updateChatWindow();
   if (!highlightPattern) {
-    showMessage('Highlight cleared');
+    showMessage(t('Highlight cleared'));
   } else if (!highlightRegex) {
-    showMessage(`Invalid highlight pattern: ${highlightPattern}`);
+    showMessage(t('Invalid highlight pattern: {pattern}', { pattern: highlightPattern }));
   } else {
-    showMessage(`Highlighting "${highlightPattern}"`);
+    showMessage(t('Highlighting "{pattern}"', { pattern: highlightPattern }));
   }
 });
 
@@ -3651,7 +3691,7 @@ defineLocalCommand('/savemsgs', (args) => {
   // The click is synchronous, but the fetch the browser starts from it is not,
   // so the URL outlives this turn of the loop.
   setTimeout(() => URL.revokeObjectURL(url), 0);
-  showMessage(`Saved messages to: ${filename}`);
+  showMessage(t('Saved messages to: {filename}', { filename }));
 });
 
 // CommandList (CommandsImplementation.cxx:201-269): upstream prints its own
@@ -3659,7 +3699,7 @@ defineLocalCommand('/savemsgs', (args) => {
 // answering only one half of "what commands are there".
 defineLocalCommand('/cmds', () => {
   const names = [...LOCAL_COMMANDS.keys()].sort();
-  addChatEntry(['misc', 'all'], `Client-side commands: ${names.join(', ')}`, CHAT_KIND_MISC);
+  addChatEntry(['misc', 'all'], t('Client-side commands: {commands}', { commands: names.join(', ') }), CHAT_KIND_MISC);
   updateChatWindow();
   sendToServer({ type: 'message', dst: CHAT_TARGET_ALL, msgType: CHAT_KIND_CHAT, text: '/?' });
 });
@@ -3807,7 +3847,7 @@ function toggleChatEntry() {
 
 function handleReplyToLastSender() {
   if (typeof lastDirectSenderId !== 'string' || lastDirectSenderId.length === 0) {
-    showMessage('No recent direct sender to reply to');
+    showMessage(t('No recent direct sender to reply to'));
     return;
   }
   focusChatWithTarget(lastDirectSenderId);
@@ -3815,7 +3855,7 @@ function handleReplyToLastSender() {
 
 function handleMessageNemesisTarget() {
   if (typeof nemesisPlayerId !== 'string' || nemesisPlayerId.length === 0) {
-    showMessage('No nemesis target available');
+    showMessage(t('No nemesis target available'));
     return;
   }
   focusChatWithTarget(nemesisPlayerId);
@@ -3888,7 +3928,7 @@ function formatNetworkMessage(message) {
     };
   }
   if (msgType === CHAT_KIND_SERVER || src === CHAT_TARGET_SERVER) {
-    return { text: `[SERVER] ${text}`, tabs: ['server', 'all'], kind: CHAT_KIND_SERVER };
+    return { text: `[SERVER] ${translateServerText(message)}`, tabs: ['server', 'all'], kind: CHAT_KIND_SERVER };
   }
   // playing.cxx:3286. A team message is marked `[Team]` and goes to the Chat tab
   // like any other -- upstream has no team tab, and neither does bzo.
@@ -4009,8 +4049,8 @@ function applyAdminUi() {
   if (operatorBtn) {
     operatorBtn.disabled = !amAdmin;
     operatorBtn.title = amAdmin
-      ? 'Show Operator Panel (O)'
-      : 'Operator: sign in with a bzflag.org global callsign that the server grants admin to';
+      ? t('Show Operator Panel (O)')
+      : t('Operator: sign in with a bzflag.org global callsign that the server grants admin to');
   }
   applyLoginUi();
 }
@@ -4051,12 +4091,11 @@ function applyLoginUi() {
   const stagedProxy = findProxyDestination(selectedDestination);
   const goingElsewhere = stagedProxy && `proxy:${stagedProxy.key}` !== currentDestination();
   if (goingElsewhere) {
-    value.textContent = 'Sign in';
+    value.textContent = t('Sign in');
     if (row) {
       delete row.dataset.loggedIn;
-      row.setAttribute('aria-label', `Global login for ${stagedProxy.name}`);
-      row.title = `Sign in at bzflag.org to play on ${stagedProxy.name}.`
-        + ' A login is needed for each target, and bzo never sees your password.';
+      row.setAttribute('aria-label', t('Global login for {server}', { server: stagedProxy.name }));
+      row.title = t('Sign in at bzflag.org to play on {server}. A login is needed for each target, and bzo never sees your password.', { server: stagedProxy.name });
     }
     return;
   }
@@ -4064,20 +4103,21 @@ function applyLoginUi() {
     value.textContent = `${amAdmin ? '@' : '+'}${myGlobalCallsign || myPlayerName}`;
     if (row) {
       row.dataset.loggedIn = 'true';
-      row.setAttribute('aria-label', `Signed in as ${myGlobalCallsign || myPlayerName}. Activate to sign out.`);
+      row.setAttribute('aria-label', t('Signed in as {callsign}. Activate to sign out.', { callsign: myGlobalCallsign || myPlayerName }));
       row.title = amAdmin
-        ? 'Signed in, and an admin on this server. Click to sign out.'
-        : 'Signed in with a bzflag.org global callsign. Click to sign out.';
+        ? t('Signed in, and an admin on this server. Click to sign out.')
+        : t('Signed in with a bzflag.org global callsign. Click to sign out.');
     }
     return;
   }
-  value.textContent = 'Sign in';
+  value.textContent = t('Sign in');
   if (row) {
     delete row.dataset.loggedIn;
-    row.setAttribute('aria-label', 'Global login: sign in');
-    row.title = 'Sign in at bzflag.org with a global callsign. bzo never sees your password.';
+    row.setAttribute('aria-label', t('Global login: sign in'));
+    row.title = t('Sign in at bzflag.org with a global callsign. bzo never sees your password.');
   }
 }
+onLocaleChange(() => applyAdminUi());
 
 // Signed out: leaving for bzflag.org's own login form, which
 // `misc/checkToken.php` requires -- a site that collects the password itself is
@@ -4094,8 +4134,8 @@ function applyLoginUi() {
 function startGlobalLogin() {
   if (isXREnabled()) {
     setHudAlert(2, amVerified
-      ? 'Signing out leaves VR. Exit the headset session first.'
-      : 'Global login leaves VR. Exit the headset session first.', 5, true);
+      ? t('Signing out leaves VR. Exit the headset session first.')
+      : t('Global login leaves VR. Exit the headset session first.'), 5, true);
     return;
   }
   // Back to the page this started on, still watching what it was watching. A
@@ -4534,7 +4574,7 @@ function requestMapImportForView(file, sequenceId, onSuccess, onFailure) {
   setLoadingOverlayState({
     visible: true,
     progress: 0.02,
-    status: 'Fetching remote server\'s map...',
+    status: t('Fetching remote server\'s map...'),
     detail: file,
   });
   sendToServer({ type: 'importMapForView', file });
@@ -4694,7 +4734,7 @@ function updatePauseCountdown() {
   const seconds = Math.max(1, Math.ceil(remaining / 1000));
   if (seconds === pauseAlertSecondsShown) return;
   pauseAlertSecondsShown = seconds;
-  setHudAlert(PAUSE_ALERT_SLOT, `Pausing in ${seconds}`, 1, false);
+  setHudAlert(PAUSE_ALERT_SLOT, t('Pausing in {seconds}', { seconds }), 1, false);
 }
 
 // updateDestructCountdown (playing.cxx:6950), which bzo ends differently: where
@@ -4718,7 +4758,7 @@ function updateDestructCountdown() {
   const seconds = destructCountdown.secondsLeft(frameEpochMs);
   if (seconds === pauseAlertSecondsShown) return;
   pauseAlertSecondsShown = seconds;
-  setHudAlert(PAUSE_ALERT_SLOT, `Self Destructing in ${seconds}`, 1, false);
+  setHudAlert(PAUSE_ALERT_SLOT, t('Self Destructing in {seconds}', { seconds }), 1, false);
 }
 let playerPausedSpheres = new Map(); // Map of playerId to its paused sphere
 let deathFollowTarget = null;
@@ -4798,7 +4838,10 @@ function getHudStatusParts(observing) {
     // Upstream's "AutoPilot on", naming the pilot and what it is doing.
     const mode = autopilotOutput?.intent?.mode;
     const reason = autopilotOutput?.intent?.reason;
-    const text = `AutoPilot ${getAutopilotName(autopilotId)}${mode ? `: ${describePilotIntent(mode, reason)}` : ''}`;
+    const pilot = getAutopilotName(autopilotId);
+    const text = mode
+      ? t('AutoPilot {pilot}: {intent}', { pilot, intent: describePilotIntent(mode, reason) })
+      : t('AutoPilot {pilot}', { pilot });
     return { text, segments: [{ text }] };
   }
   return { text: '', segments: [] };
@@ -4825,7 +4868,8 @@ function updateFlagHelp() {
   const flagType = getMyFlag()?.type ?? null;
   if (flagType === lastFlagHelpType) return;
   lastFlagHelpType = flagType;
-  setFlagHelp(getFlagType(flagType)?.help || '', FLAG_HELP_SECONDS);
+  const help = getFlagType(flagType)?.help;
+  setFlagHelp(help ? t(help) : '', FLAG_HELP_SECONDS);
 }
 
 // Mouse control
@@ -6386,9 +6430,9 @@ function handleGameplayKeydown(event) {
     if (outcome === 'started') {
       const seconds = destructCountdown.secondsLeft(frameEpochMs);
       pauseAlertSecondsShown = seconds;
-      setHudAlert(PAUSE_ALERT_SLOT, `Self Destructing in ${seconds}`, 1, false);
+      setHudAlert(PAUSE_ALERT_SLOT, t('Self Destructing in {seconds}', { seconds }), 1, false);
     } else if (outcome === 'cancelled') {
-      setHudAlert(PAUSE_ALERT_SLOT, 'Self Destruct cancelled', 1.5, true);
+      setHudAlert(PAUSE_ALERT_SLOT, t('Self Destruct cancelled'), 1.5, true);
     }
     return true;
   }
@@ -6547,10 +6591,10 @@ function updateDebugLabelsButton() {
   if (!btn) return;
   if (debugLabelsEnabled) {
     btn.classList.add('active');
-    btn.title = 'Hide Debug Labels';
+    btn.title = t('Hide Debug Labels');
   } else {
     btn.classList.remove('active');
-    btn.title = 'Show Debug Labels';
+    btn.title = t('Show Debug Labels');
   }
 }
 
@@ -6567,10 +6611,10 @@ window.addEventListener('DOMContentLoaded', () => {
     get: () => renderManager.dynamicLightingEnabled,
     set: (value) => { renderManager.dynamicLightingEnabled = value; },
     storageKey: 'dynamicLightingEnabled',
-    onTitle: 'Disable Dynamic Lighting',
-    offTitle: 'Enable Dynamic Lighting',
+    onTitle: N_('Disable Dynamic Lighting'),
+    offTitle: N_('Enable Dynamic Lighting'),
     available: () => canLight,
-    unavailableTitle: 'Dynamic Lighting needs more shader uniforms than this browser reports',
+    unavailableTitle: N_('Dynamic Lighting needs more shader uniforms than this browser reports'),
   });
 
   // BZDB `rumble`, on by default (defaultBZDB.cxx:79).
@@ -6579,18 +6623,18 @@ window.addEventListener('DOMContentLoaded', () => {
     get: isRumbleEnabled,
     set: setRumbleEnabled,
     storageKey: 'rumbleEnabled',
-    onTitle: 'Disable Rumble',
-    offTitle: 'Enable Rumble',
+    onTitle: N_('Disable Rumble'),
+    offTitle: N_('Enable Rumble'),
   });
 
   const refreshAnaglyphBtn = bindToggleButton(document.getElementById('anaglyphBtn'), {
     get: () => renderManager.getAnaglyphEnabled(),
     set: (value) => renderManager.setAnaglyphEnabled(value),
-    onTitle: 'Disable Anaglyph 3D',
-    offTitle: 'Enable Anaglyph 3D',
+    onTitle: N_('Disable Anaglyph 3D'),
+    offTitle: N_('Enable Anaglyph 3D'),
     // The headset draws its own stereo pair, so anaglyph has nothing to add.
     available: () => !isXREnabled(),
-    unavailableTitle: 'Anaglyph 3D is unavailable in VR mode',
+    unavailableTitle: N_('Anaglyph 3D is unavailable in VR mode'),
     forceOffWhenUnavailable: true,
   });
   window.addEventListener('webxrsessionchange', refreshAnaglyphBtn);
@@ -6599,8 +6643,8 @@ window.addEventListener('DOMContentLoaded', () => {
     get: () => showDebugGeometry,
     set: (value) => { showDebugGeometry = value; },
     storageKey: 'showDebugGeometry',
-    onTitle: 'Hide Debug Geometry',
-    offTitle: 'Show Debug Geometry',
+    onTitle: N_('Hide Debug Geometry'),
+    offTitle: N_('Show Debug Geometry'),
     onChange: updateDebugGeometryVisibility,
   });
 
@@ -6668,7 +6712,7 @@ window.addEventListener('DOMContentLoaded', () => {
     const disarm = () => {
       armedValue = null;
       clearTimeout(armTimer);
-      deleteUploadBtn.textContent = 'Delete';
+      deleteUploadBtn.textContent = t('Delete');
     };
     deleteUploadSelect.addEventListener('change', disarm);
     deleteUploadBtn.addEventListener('click', () => {
@@ -6676,7 +6720,7 @@ window.addEventListener('DOMContentLoaded', () => {
       if (armedValue !== deleteUploadSelect.value) {
         disarm();
         armedValue = deleteUploadSelect.value;
-        deleteUploadBtn.textContent = 'Confirm';
+        deleteUploadBtn.textContent = t('Confirm');
         armTimer = setTimeout(disarm, 4000);
         return;
       }
@@ -6732,12 +6776,12 @@ window.addEventListener('DOMContentLoaded', () => {
   document.getElementById('shareViewBtn')?.addEventListener('click', async () => {
     const link = buildShareViewLink();
     if (!link) {
-      showMessage('Share View Link: only available while viewing a map');
+      showMessage(t('Share View Link: only available while viewing a map'));
       return;
     }
     try {
       await navigator.clipboard.writeText(link);
-      showMessage('View link copied to clipboard');
+      showMessage(t('View link copied to clipboard'));
     } catch {
       // No clipboard permission (or no secure context) -- the chat log is
       // still a place to read it from and select it by hand.
@@ -6766,21 +6810,21 @@ window.addEventListener('DOMContentLoaded', () => {
   });
 
   initXR().then(mode => {
-    showMessage(`WebXR: ${mode}`, 'info');
+    showMessage(t('WebXR: {mode}', { mode }), 'info');
     const xrBtn = document.getElementById('xrBtn');
     const xrQuickBtn = document.getElementById('xrQuickBtn');
     if (mode === 'none') {
       if (xrBtn) {
         xrBtn.disabled = true;
-        xrBtn.title = 'WebXR not supported on this device';
+        xrBtn.title = t('WebXR not supported on this device');
         xrBtn.classList.add('disabled');
       }
     } else {
       const toggleXRFromUi = async ({ announceFailure = true } = {}) => {
-        showMessage('Requesting VR...');
+        showMessage(t('Requesting VR...'));
         const renderer = renderManager.getRenderer();
         if (!renderer) {
-          showMessage('Error: Renderer not available');
+          showMessage(t('Error: Renderer not available'));
           return false;
         }
 
@@ -6793,15 +6837,15 @@ window.addEventListener('DOMContentLoaded', () => {
           cameraMode = 'first-person';
           // Whatever the 2D dialog was asking for, ask for it on the XR panel.
           if (isEntryDialogOpen()) openXRJoinMenu();
-          showMessage('✓ WebXR VR Mode: ON');
+          showMessage(t('✓ WebXR VR Mode: ON'));
           return true;
         }
 
         setXRButtonState(false);
         if (!wasEnabled && announceFailure) {
-          showMessage('✗ VR request failed - check server.log');
+          showMessage(t('✗ VR request failed - check server.log'));
         }
-        showMessage('WebXR VR Mode: OFF');
+        showMessage(t('WebXR VR Mode: OFF'));
         return false;
       };
       const xrClickHandler = () => {
@@ -6869,7 +6913,7 @@ function init() {
     }
   }, { passive: false });
 
-  buildFlagHelp();
+  initHelpPanel({ onShown: updateRicochetHelp });
   setupInputHandlers();
   bindAudioControls();
   initializeVoiceManager();
@@ -7347,16 +7391,16 @@ function init() {
   } catch (error) {
     console.error('Failed to initialize 3D renderer:', error);
     const reason = error && error.message ? error.message : 'Unknown renderer initialization error';
-    showMessage(`3D renderer unavailable: ${reason}`);
+    showMessage(t('3D renderer unavailable: {reason}', { reason }));
     debugLog(`renderer.init.failed reason="${reason}"`);
     scene = renderManager.getScene();
     const debugContent = document.getElementById('debugContent');
     if (debugContent) {
       // The browser's own words, as text: an exception message is not markup.
       debugContent.replaceChildren(...[
-        '3D renderer failed to initialize.',
+        t('3D renderer failed to initialize.'),
         reason,
-        'Open the game in an external browser window for full WebGL support.',
+        t('Open the game in an external browser window for full WebGL support.'),
       ].map((text) => Object.assign(document.createElement('p'), { textContent: text })));
       const debugHud = document.getElementById('debugHud');
       if (debugHud) debugHud.style.display = 'block';
@@ -7771,14 +7815,14 @@ function connectToServer() {
     failedConnectAttempts = 0;
     botWatchSent = null;
     callVoiceManager('start');
-    showMessage('Connected to server!');
+    showMessage(t('Connected to server!'));
     debugLog(`ws.open host=${window.location.host} protocol=${window.location.protocol}`);
     flushDebugPacketQueue();
     setLoadingOverlayState({
       visible: true,
       progress: 0.02,
-      status: 'Connected to server',
-      detail: 'Waiting for world state',
+      status: t('Connected to server'),
+      detail: t('Waiting for world state'),
     });
   };
 
@@ -7829,8 +7873,8 @@ function connectToServer() {
       setLoadingOverlayState({
         visible: true,
         progress: 0,
-        status: navigator.onLine === false ? 'Offline' : `Cannot reach ${window.location.host}`,
-        detail: 'Trying again...',
+        status: navigator.onLine === false ? t('Offline') : t('Cannot reach {host}', { host: window.location.host }),
+        detail: t('Trying again...'),
       });
       scheduleReconnect(3000);
       return;
@@ -7841,12 +7885,12 @@ function connectToServer() {
       scheduleReconnect(2000);
       return;
     }
-    if (!serverForcedDisconnect) showMessage(`Disconnected from server | Kills: ${wins} | Deaths: ${losses}`, 'death');
+    if (!serverForcedDisconnect) showMessage(t('Disconnected from server | Kills: {kills} | Deaths: {deaths}', { kills: wins, deaths: losses }), 'death');
     serverForcedDisconnect = false;
     if (waitToRejoin) {
       waitToRejoin = false;
       setTimeout(() => {
-        showMessage('Press a key, tap or pull a trigger to rejoin', 'death');
+        showMessage(t('Press a key, tap or pull a trigger to rejoin'), 'death');
         onNextPlayerAction(() => scheduleReconnect(0));
       }, 3000);
       return;
@@ -8006,12 +8050,12 @@ function handleServerMessage(message) {
   // Some admin/operator responses are sent without a message type.
   if (typeof message?.error === 'string' && message.error.length > 0) {
     console.error('Server error response:', message.error, message);
-    showMessage(`Server error: ${message.error}`);
+    showMessage(t('Server error: {error}', { error: message.error }));
     return;
   }
 
   if (message?.success === true && typeof message.type !== 'string') {
-    showMessage('Server: action completed successfully');
+    showMessage(t('Server: action completed successfully'));
     return;
   }
 
@@ -8090,7 +8134,7 @@ function receiveInit(message) {
   else if (!udpChannel.isOpen()) void udpChannel.start(message);
   const operatorPanelTitleEl = document.getElementById('operatorPanelTitle');
   if (operatorPanelTitleEl && typeof message.serverVersion === 'string') {
-    operatorPanelTitleEl.textContent = `Operator Panel (v${message.serverVersion})`;
+    operatorPanelTitleEl.textContent = t('Operator Panel (v{version})', { version: message.serverVersion });
   }
   const sequenceId = ++initSequence;
   activeInitSequence = sequenceId;
@@ -8507,7 +8551,7 @@ function receivePlayerJoined(message) {
       triggerSpawnEffectForTank(joinedTank, message.player.color);
     }
     refreshScoreboards();
-    noticeAbout(null, [describePlayer(message.player.id), ' joined'], 0, false);
+    noticeAbout(null, sentenceParts(t('{player} joined'), { player: describePlayer(message.player.id) }), 0, false);
   }
   // Someone arriving is a game to follow, for an observer still on the default.
   refreshDefaultRoamView();
@@ -8552,7 +8596,7 @@ function receivePlayerLeft(message) {
   // Show the player's name before removing
   // Described before the tank goes, since that is where the colour, the flag
   // and the team are read from.
-  noticeAbout(null, [describePlayer(message.id), ' left'], 0, false);
+  noticeAbout(null, sentenceParts(t('{player} left'), { player: describePlayer(message.id) }), 0, false);
   removePlayer(message.id);
   // The last player gone leaves nothing to follow but the map.
   refreshDefaultRoamView();
@@ -8567,7 +8611,9 @@ function receivePlayerUpdated(message) {
       && typeof message.player.notResponding === 'boolean'
       && Boolean(before.notResponding) !== message.player.notResponding) {
       addChatEntry(['server', 'all'],
-        `${message.player.name} ${message.player.notResponding ? 'not responding' : 'okay'}`,
+        message.player.notResponding
+          ? t('{callsign} not responding', { callsign: message.player.name })
+          : t('{callsign} okay', { callsign: message.player.name }),
         CHAT_KIND_SERVER);
     }
     addPlayer(message.player);
@@ -8681,7 +8727,7 @@ function receiveGrabFlag(message) {
   // with three others on a phone.
   noticeAbout(
     null,
-    [describePlayer(message.playerId, { flag: null }), ' grabbed ', describeFlagForNotice(flag)],
+    sentenceParts(t('{player} grabbed {flag}'), { player: describePlayer(message.playerId, { flag: null }), flag: describeFlagForNotice(flag) }),
     0,
     false,
   );
@@ -8732,7 +8778,7 @@ function receiveDropFlag(message) {
   // Terse for the same reason the grab above is: see that comment.
   noticeAbout(
     null,
-    [describePlayer(message.playerId, { flag: null }), ' dropped ', describeFlagForNotice(flag)],
+    sentenceParts(t('{player} dropped {flag}'), { player: describePlayer(message.playerId, { flag: null }), flag: describeFlagForNotice(flag) }),
     0,
     false,
   );
@@ -8821,8 +8867,10 @@ function receiveAutopilot(message) {
   const tank = tanks.get(message.playerId);
   if (tank?.userData?.playerState) tank.userData.playerState.autopilot = message.on;
   // Upstream's words, with the pilot's own name where it is not Roger.
-  noticeAbout(null, [describePlayer(message.playerId),
-    `: ${message.pilot || 'Roger'} ${message.on ? 'taking' : 'releasing'} controls`], 0, false);
+  const parts = { player: describePlayer(message.playerId), pilot: message.pilot || 'Roger' };
+  noticeAbout(null, message.on
+    ? sentenceParts(t('{player}: {pilot} taking controls'), parts)
+    : sentenceParts(t('{player}: {pilot} releasing controls'), parts), 0, false);
 }
 
 function receivePauseCountdown(message) {
@@ -8854,7 +8902,7 @@ function receivePlayerPaused(message) {
   // One line, whoever paused. A `local:` line saying "Paused" beside
   // everyone else's "<name> paused" said the same thing twice as far as
   // the transcript is concerned, and in a different voice.
-  noticeAbout(null, [describePlayer(message.playerId), ' paused'], 0, false);
+  noticeAbout(null, sentenceParts(t('{player} paused'), { player: describePlayer(message.playerId) }), 0, false);
   setTankPausedState(message.playerId, true, message);
   createPausedSphere(message.playerId, message.x, message.y, message.z);
   refreshScoreboards();
@@ -8865,7 +8913,7 @@ function receivePlayerUnpaused(message) {
     pauseState.unpausedByServer();
     pauseAlertSecondsShown = 0;
   }
-  noticeAbout(null, [describePlayer(message.playerId), ' unpaused'], 0, false);
+  noticeAbout(null, sentenceParts(t('{player} unpaused'), { player: describePlayer(message.playerId) }), 0, false);
   setTankPausedState(message.playerId, false);
   removePausedSphere(message.playerId);
   refreshScoreboards();
@@ -8975,13 +9023,13 @@ function receiveSuperKill(message) {
   // A kick or a ban: come back only when the player asks, as a BZFlag
   // client must, rather than straight back into what removed it.
   waitToRejoin = message.rejoin === false;
-  showMessage('Server forced a disconnect', 'death');
+  showMessage(t('Server forced a disconnect'), 'death');
 }
 
 function receiveReload() {
   // The server usually says this on its way out -- a map change restarts it
   // -- so the reload waits for it to come back rather than racing it.
-  showMessage('Server updated - reloading...', 'death');
+  showMessage(t('Server updated - reloading...'), 'death');
   setTimeout(reloadWhenServerIsUp, 1000);
 }
 
@@ -9480,7 +9528,7 @@ function handlePlayerHit(message) {
   // kill still says.
   const isMatchEnd = deathReason === 'gameOver';
   // A `death` physics driver -- no killer, and its own mapper-authored
-  // message (`message.deathMessage`) rather than a `deathPrefix`-templated
+  // message (`message.deathMessage`) rather than a `deathTemplate`-built
   // one, the same "whole phrase" treatment `killedByWorld` gets below.
   const isPhysicsDriverDeath = deathReason === 'physicsDriver';
   // `waterLevel` -- no killer, and a fixed message rather than a mapper's
@@ -9497,11 +9545,17 @@ function handlePlayerHit(message) {
   // comes back empty. Upstream's exact words, and the reason a world weapon
   // needs no name in the message.
   // blowedUpMessage[] (playing.cxx:186) is a *prefix*; the killer is described
-  // after it, which is where the team and the flag go.
-  const deathPrefix = {
-    runOver: 'Got flattened by ',
-    genocide: 'Teammate hit with Genocide by ',
-  }[deathReason] || 'Got shot by ';
+  // after it, which is where the team and the flag go. Here each is a whole
+  // sentence with the killer as `{player}`, so a language puts the name where
+  // its grammar wants it.
+  const deathTemplate = {
+    runOver: N_('Got flattened by {player}'),
+    genocide: N_('Teammate hit with Genocide by {player}'),
+  }[deathReason] || N_('Got shot by {player}');
+  const teammateDeathTemplate = {
+    runOver: N_('Got flattened by teammate {player}'),
+    genocide: N_('Teammate hit with Genocide by teammate {player}'),
+  }[deathReason] || N_('Got shot by teammate {player}');
   // "matching the team-display style of other kill messages" (playing.cxx:4008):
   // a killer on my own team is named `teammate <callsign>` and gets neither team
   // nor flag, because which of us it was is the whole of what went wrong.
@@ -9537,27 +9591,27 @@ function handlePlayerHit(message) {
     // Local player was killed. gotBlowedUp() puts this on the alert HUD for four
     // seconds as a warning (playing.cxx:4028), which is where the eye is.
     if (isCapture) {
-      noticeAbout(0, ['Your team flag was captured!'], DEATH_ALERT_SECONDS, true);
+      noticeAbout(0, [t('Your team flag was captured!')], DEATH_ALERT_SECONDS, true);
     } else if (isMatchEnd) {
-      noticeAbout(0, ['Time Expired - GAME OVER'], DEATH_ALERT_SECONDS, true);
+      noticeAbout(0, [t('Time Expired - GAME OVER')], DEATH_ALERT_SECONDS, true);
     } else if (isSelfDestruct) {
-      noticeAbout(0, ['Tank Self Destructed'], DEATH_ALERT_SECONDS, true);
+      noticeAbout(0, [t('Tank Self Destructed')], DEATH_ALERT_SECONDS, true);
     } else if (isWaterDeath) {
-      noticeAbout(0, ['Tank Rusted'], DEATH_ALERT_SECONDS, true);
+      noticeAbout(0, [t('Tank Rusted')], DEATH_ALERT_SECONDS, true);
     } else if (isPhysicsDriverDeath) {
       noticeAbout(0, [typeof message.deathMessage === 'string' && message.deathMessage
-        ? message.deathMessage : 'Killed by the server'], DEATH_ALERT_SECONDS, true);
+        ? message.deathMessage : t('Killed by the server')], DEATH_ALERT_SECONDS, true);
     } else if (killedByWorld) {
       // "Killed by the server" -- gotBlowedUp throws the whole prefix away when
       // the killer has no roster entry, which is every world weapon.
-      noticeAbout(0, ['Killed by the server'], DEATH_ALERT_SECONDS, true);
+      noticeAbout(0, [t('Killed by the server')], DEATH_ALERT_SECONDS, true);
     } else if (shotByTeammate) {
       noticeAbout(
-        0, [deathPrefix, 'teammate ', describePlayerName(message.shooterId)],
+        0, sentenceParts(t(teammateDeathTemplate), { player: describePlayerName(message.shooterId) }),
         DEATH_ALERT_SECONDS, true);
     } else {
       noticeAbout(
-        0, [deathPrefix, describePlayer(message.shooterId, { flag: shooterFlag })],
+        0, sentenceParts(t(deathTemplate), { player: describePlayer(message.shooterId, { flag: shooterFlag }) }),
         DEATH_ALERT_SECONDS, true);
     }
     // The death camera is asked for while there is a body to watch, and
@@ -9577,7 +9631,7 @@ function handlePlayerHit(message) {
     // victim is described exactly as the killer is in the notice above.
     if (!isSelfDestruct) {
       noticeAbout(
-        0, ['You killed ', describePlayer(message.victimId, { flag: victimFlag })],
+        0, sentenceParts(t('You killed {player}'), { player: describePlayer(message.victimId, { flag: victimFlag }) }),
         KILL_ALERT_SECONDS, false);
     }
   } else if (isMatchEnd) {
@@ -9589,32 +9643,33 @@ function handlePlayerHit(message) {
     // Somebody else's death: chat only, since upstream warns you about your own
     // and nobody else's.
     noticeAbout(
-      null, [describePlayer(message.victimId, { flag: victimFlag }), ' self-destructed'],
+      null, sentenceParts(t('{player} self-destructed'), { player: describePlayer(message.victimId, { flag: victimFlag }) }),
       0, false);
   } else if (isWaterDeath) {
     noticeAbout(
-      null, [describePlayer(message.victimId, { flag: victimFlag }), ' fell in the water'],
+      null, sentenceParts(t('{player} fell in the water'), { player: describePlayer(message.victimId, { flag: victimFlag }) }),
       0, false);
   } else if (isPhysicsDriverDeath) {
     noticeAbout(
       null,
-      [describePlayer(message.victimId, { flag: victimFlag }), ': ',
-        typeof message.deathMessage === 'string' && message.deathMessage
-          ? message.deathMessage : 'killed by the server'],
+      sentenceParts(t('{player}: {message}'), {
+        player: describePlayer(message.victimId, { flag: victimFlag }),
+        message: typeof message.deathMessage === 'string' && message.deathMessage
+          ? message.deathMessage : t('killed by the server'),
+      }),
       0, false);
   } else if (killedByWorld) {
     noticeAbout(
       null,
-      [describePlayer(message.victimId, { flag: victimFlag }), ' was killed by the server'],
+      sentenceParts(t('{player} was killed by the server'), { player: describePlayer(message.victimId, { flag: victimFlag }) }),
       0, false);
   } else {
     noticeAbout(
       null,
-      [
-        describePlayer(message.shooterId, { flag: shooterFlag }),
-        ' killed ',
-        describePlayer(message.victimId, { flag: victimFlag }),
-      ],
+      sentenceParts(t('{killer} killed {victim}'), {
+        killer: describePlayer(message.shooterId, { flag: shooterFlag }),
+        victim: describePlayer(message.victimId, { flag: victimFlag }),
+      }),
       0, false);
   }
   // Update other players' stats
@@ -9776,7 +9831,7 @@ function handlePlayerRespawn(message) {
     })) {
       sendToServer({ type: 'pause' });
     }
-    showMessage('You respawned!');
+    showMessage(t('You respawned!'));
     // Nothing to restore: `cameraMode` was never taken away. Clearing the body
     // is what ends the death camera, and the view the player chose -- Overview
     // included -- is the one they come back to.
@@ -9863,12 +9918,12 @@ function populateDeleteUploadSelect(uploaded) {
     option.textContent = label;
     select.appendChild(option);
   };
-  for (const name of uploaded?.maps || []) add('maps', name, `map ${name}`);
-  for (const name of uploaded?.replays || []) add('replays', name, `replay ${name}`);
+  for (const name of uploaded?.maps || []) add('maps', name, t('map {name}', { name }));
+  for (const name of uploaded?.replays || []) add('replays', name, t('replay {name}', { name }));
   if (select.options.length === 0) {
     const none = document.createElement('option');
     none.value = '';
-    none.textContent = 'nothing uploaded';
+    none.textContent = t('nothing uploaded');
     select.appendChild(none);
   }
 }
@@ -9895,7 +9950,7 @@ function handleMapsList(message) {
 
   const motdEl = document.getElementById('motd');
   const motdInput = document.getElementById('motdInput');
-  if (motdEl) motdEl.textContent = `MOTD: ${serverMotdText}`;
+  if (motdEl) motdEl.textContent = t('MOTD: {motd}', { motd: serverMotdText });
   if (motdInput) motdInput.value = serverMotdText;
 
   if (typeof message.ricochet === 'boolean') {
@@ -9966,23 +10021,25 @@ function canWatchRemoteServers() {
 function describeMapStats(stats) {
   const parts = [];
   const counts = stats.counts || {};
-  // Spelled out rather than suffixed: "box" takes -es and "pyramid" takes -s.
+  // Spelled out rather than suffixed: "box" takes -es and "pyramid" takes -s,
+  // and a language has its own singular and plural forms for each.
+  const counted = (count, one, many) => t(count === 1 ? one : many, { count: count.toLocaleString() });
   for (const [key, one, many] of [
-    ['box', 'box', 'boxes'],
-    ['pyramid', 'pyramid', 'pyramids'],
-    ['mesh', 'mesh', 'meshes'],
+    ['box', N_('{count} box'), N_('{count} boxes')],
+    ['pyramid', N_('{count} pyramid'), N_('{count} pyramids')],
+    ['mesh', N_('{count} mesh'), N_('{count} meshes')],
   ]) {
     const count = counts[key];
-    if (count) parts.push(`${count.toLocaleString()} ${count === 1 ? one : many}`);
+    if (count) parts.push(counted(count, one, many));
   }
-  if (stats.bases) parts.push(`${stats.bases} base${stats.bases === 1 ? '' : 's'}`);
+  if (stats.bases) parts.push(counted(stats.bases, N_('{count} base'), N_('{count} bases')));
   if (stats.teleporters) {
-    parts.push(`${stats.teleporters} teleporter${stats.teleporters === 1 ? '' : 's'}`);
+    parts.push(counted(stats.teleporters, N_('{count} teleporter'), N_('{count} teleporters')));
   }
   const has = [];
-  if (stats.water) has.push('water');
-  if (stats.weather) has.push('weather');
-  if (stats.ground) has.push('custom ground');
+  if (stats.water) has.push(t('water'));
+  if (stats.weather) has.push(t('weather'));
+  if (stats.ground) has.push(t('custom ground'));
   if (has.length) parts.push(has.join(', '));
   return parts.join(' | ');
 }
@@ -10020,7 +10077,7 @@ function populateViewMapTable(viewableMaps) {
       // The row is the button. A table where every row carries an identical
       // one-word control is a table with a column of noise in it, and `/list`
       // already treats a row as the way in (`tbody tr.clickable`, server.js).
-      makeRowActivate(row, () => viewMapFile(entry.file), `View ${entry.file}`);
+      makeRowActivate(row, () => viewMapFile(entry.file), t('View {map}', { map: entry.file }));
       row.append(
         nameCell,
         numberCell(stats?.size),
@@ -10085,7 +10142,7 @@ function renderServerTable() {
       setLoadingOverlayState({
         visible: true,
         progress: 0.02,
-        status: 'Fetching remote server\'s map...',
+        status: t('Fetching remote server\'s map...'),
         detail: `${server.host}:${server.port}`,
       });
       sendToServer({ type: 'importMap', hostPort: `${server.host}:${server.port}` });
@@ -10097,9 +10154,9 @@ function renderServerTable() {
         pendingRemoteView = null;
         fetching = false;
         hideLoadingOverlay();
-        showMessage(`${server.host}:${server.port} did not answer`);
+        showMessage(t('{server} did not answer', { server: `${server.host}:${server.port}` }));
       }, 15000);
-    }, `View ${server.title || server.host}`);
+    }, t('View {map}', { map: server.title || server.host }));
     // Watching is the live game rather than the map: a real observer
     // connection to that server, carrying the forum callsign bzo verified
     // (`docs/list-server-plan.md`). Offered only to an admin of this instance
@@ -10109,8 +10166,8 @@ function renderServerTable() {
     if (canWatchRemoteServers()) {
       const watchBtn = document.createElement('button');
       watchBtn.type = 'button';
-      watchBtn.textContent = 'Watch';
-      watchBtn.title = `Watch the live game on ${server.host}:${server.port}`;
+      watchBtn.textContent = t('Watch');
+      watchBtn.title = t('Watch the live game on {server}', { server: `${server.host}:${server.port}` });
       watchBtn.addEventListener('click', (event) => {
         event.stopPropagation();
         // A navigation like every other destination change: the target has to
@@ -10128,15 +10185,15 @@ function renderServerTable() {
     if (alreadyImported) {
       const importBtn = document.createElement('button');
       importBtn.type = 'button';
-      importBtn.textContent = 'Re-import';
+      importBtn.textContent = t('Re-import');
       importBtn.addEventListener('click', (event) => {
         event.stopPropagation();
         importBtn.disabled = true;
-        importBtn.textContent = 'Importing…';
+        importBtn.textContent = t('Importing…');
         sendToServer({ type: 'importMap', hostPort: `${server.host}:${server.port}` });
         setTimeout(() => {
           importBtn.disabled = false;
-          importBtn.textContent = 'Re-import';
+          importBtn.textContent = t('Re-import');
         }, 4000);
       });
       actionCell.appendChild(importBtn);
@@ -10175,7 +10232,7 @@ function viewMapFile(file) {
   setLoadingOverlayState({
     visible: true,
     progress: 0.05,
-    status: 'Loading map...',
+    status: t('Loading map...'),
     detail: file,
   });
   const worldPromise = entry
@@ -10183,7 +10240,7 @@ function viewMapFile(file) {
       setLoadingOverlayState({
         visible: true,
         progress: 0.4,
-        status: 'Building world geometry...',
+        status: t('Building world geometry...'),
         detail: file,
       });
       return applyWorldData(world);
@@ -10247,10 +10304,10 @@ async function refreshViewReplayTable() {
       cell(String(entry.players || 0), entry.players || 0),
       cell(entry.map || ''),
     );
-    if (entry.viewers) row.title = `${entry.viewers} watching now`;
+    if (entry.viewers) row.title = t('{count} watching now', { count: entry.viewers });
     makeRowActivate(row, () => {
       window.location.href = `${window.location.pathname}?replay=${encodeURIComponent(entry.name)}`;
-    }, `Watch ${entry.name}`);
+    }, t('Watch {name}', { name: entry.name }));
     tbody.appendChild(row);
   }
 }
@@ -10286,7 +10343,7 @@ function importMapResultReceived(message) {
   pendingRemoteView = null;
   waiting.done?.();
   hideLoadingOverlay();
-  showMessage('That server\'s map could not be fetched');
+  showMessage(t('That server\'s map could not be fetched'));
 }
 
 // The reply to `requestMapImportForView`. Ignored if it is not an answer to
@@ -10304,7 +10361,7 @@ function handleImportMapForViewResult(message) {
     if (Array.isArray(message.viewableMaps)) availableViewMaps = message.viewableMaps;
     pending.onSuccess();
   } else {
-    setHudAlert(2, `Could not load that server's map: ${message.reason || 'import failed'}`, 6, true);
+    setHudAlert(2, t('Could not load that server\'s map: {reason}', { reason: message.reason || t('import failed') }), 6, true);
     pending.onFailure();
   }
 }
@@ -10368,7 +10425,7 @@ function handleServerConfigUpdate(message) {
     const motdEl = document.getElementById('motd');
     const motdInput = document.getElementById('motdInput');
     if (serverMotdEl) serverMotdEl.textContent = serverMotdText;
-    if (motdEl) motdEl.textContent = `MOTD: ${serverMotdText}`;
+    if (motdEl) motdEl.textContent = t('MOTD: {motd}', { motd: serverMotdText });
     if (motdInput) motdInput.value = serverMotdText;
   }
 
@@ -10502,7 +10559,7 @@ function getOperatorLimitLabel(team, rabbit) {
   const label = rabbit && team === PLAYER_TEAM.ROGUE
     ? PLAYER_TEAM_LABELS[PLAYER_TEAM.HUNTER]
     : PLAYER_TEAM_LABELS[team];
-  return `${label} Limit:`;
+  return t('{team} Limit:', { team: t(label) });
 }
 
 // What a row's stepper may reach. In one place so the slider, the arrow keys and
@@ -10583,7 +10640,7 @@ function setOperatorRangeRow(key, value, { disabled = false, max = null } = {}) 
 function setOperatorNoLimitLabel(outputId, value, format = String) {
   const output = document.getElementById(outputId);
   if (!output) return;
-  output.textContent = value > 0 ? format(value) : 'No limit';
+  output.textContent = value > 0 ? format(value) : t('No limit');
 }
 
 // The staged keys that differ from what the server has. Empty means the confirm
@@ -10636,7 +10693,7 @@ function paintOperatorRows(state) {
   setOperatorNoLimitLabel('maxTeamScoreValue', state.maxTeamScore);
   setOperatorRangeRow('botFill', state.botFill, { max: getOperatorNumberBounds('botFill', state).max });
   const botFillValue = document.getElementById('botFillValue');
-  if (botFillValue && !(state.botFill > 0)) botFillValue.textContent = 'Off';
+  if (botFillValue && !(state.botFill > 0)) botFillValue.textContent = t('Off');
   const botPilotSelect = document.getElementById('botPilotSelect');
   if (botPilotSelect) botPilotSelect.value = state.botPilot;
   const rabbitSelect = document.getElementById('rabbitSelect');
@@ -10674,12 +10731,12 @@ function syncOperatorPanel() {
   const restart = operatorChangesNeedRestart(changes);
   const apply = document.getElementById('operatorApplyBtn');
   if (apply) {
-    apply.textContent = restart ? 'Restart' : 'Apply';
+    apply.textContent = restart ? t('Restart') : t('Apply');
     apply.classList.toggle('startsNewGame', restart);
     apply.disabled = changes.length === 0;
     apply.title = restart
-      ? 'Starts a new game: every player reloads into the new settings'
-      : 'Applies the staged changes';
+      ? t('Starts a new game: every player reloads into the new settings')
+      : t('Applies the staged changes');
   }
 }
 
@@ -10695,7 +10752,7 @@ function syncOperatorPanelFromServer() {
   paintOperatorRows(getOperatorServerState());
   const apply = document.getElementById('operatorApplyBtn');
   if (apply) {
-    apply.textContent = 'Apply';
+    apply.textContent = t('Apply');
     apply.classList.remove('startsNewGame');
     apply.disabled = true;
   }
@@ -11020,8 +11077,8 @@ function amInsideBuilding() {
 // over a tank its pilot cannot fly.
 function getFiringStatusText() {
   if (isObserver() || !isMyTankAlive()) return '';
-  if (pauseState.paused) return 'Paused';
-  if (amInsideBuilding() && !amZoned()) return 'Sealed';
+  if (pauseState.paused) return t('Paused');
+  if (amInsideBuilding() && !amZoned()) return t('Sealed');
   return '';
 }
 
@@ -11946,7 +12003,7 @@ function identifyRoamTarget() {
   // setTarget() answers on alert slot 1 for two seconds (playing.cxx:4471), so
   // the reply to a button press lands where the eye is rather than in a chat tab.
   if (roamViewNeedsTarget(roamView)) {
-    setHudAlert(1, 'Already following someone', IDENTIFY_ALERT_SECONDS, false);
+    setHudAlert(1, t('Already following someone'), IDENTIFY_ALERT_SECONDS, false);
     return;
   }
   const framing = getRoamFraming();
@@ -11982,7 +12039,7 @@ function identifyRoamTarget() {
   // playing.cxx:4479. Colourblindness costs Identify its answer: upstream drops
   // to "Looking at a tank" rather than naming the callsign, because the name
   // would give away the team the colour no longer does.
-  showIdentifyAlert('Looking at', picked);
+  showIdentifyAlert(t('Looking at {player}'), picked);
 }
 
 // The world viewer (docs/editor-plan.md): the obstacle at the centre of the
@@ -12086,7 +12143,7 @@ function warnLockedOnMe(shooterId, targetId) {
   if (now - lastLockWarningAt < LOCK_WARNING_INTERVAL_MS) return;
   lastLockWarningAt = now;
   renderManager.playLocalSound('lock');
-  noticeAbout(1, [describePlayer(shooterId), ' locked on me'], IDENTIFY_ALERT_SECONDS, true);
+  noticeAbout(1, sentenceParts(t('{player} locked on me'), { player: describePlayer(shooterId) }), IDENTIFY_ALERT_SECONDS, true);
 }
 
 // setTarget()'s two messages (playing.cxx:4451 and :4489), composed here because
@@ -12096,13 +12153,13 @@ function warnLockedOnMe(shooterId, targetId) {
 // give away the team the colour no longer does.
 function showIdentifyResult(targetId, locked) {
   if (targetId === null) {
-    setHudAlert(1, 'Looking at nothing', IDENTIFY_ALERT_SECONDS, false);
+    setHudAlert(1, t('Looking at nothing'), IDENTIFY_ALERT_SECONDS, false);
     return;
   }
   // setNemesis() is inside setTarget()'s locked branch alone (playing.cxx:4450):
   // a lock names your enemy, a look does not.
   if (locked) nemesisPlayerId = targetId;
-  showIdentifyAlert(locked ? 'Locked on' : 'Looking at', targetId);
+  showIdentifyAlert(locked ? t('Locked on {player}') : t('Looking at {player}'), targetId);
 }
 
 // `setTarget` (playing.cxx:4390), which is upstream's own client-side answer and
@@ -12338,7 +12395,7 @@ function getHuntRowValue() {
   const target = getHuntRowTarget();
   if (!target) return null;
   if (target.clear) {
-    return huntState.hasHunted() ? `Clear (${huntState.hunted.size})` : 'Clear';
+    return huntState.hasHunted() ? t('Clear ({count})', { count: huntState.hunted.size }) : t('Clear');
   }
   const mark = getScoreboardHuntLabel({
     hunted: huntState.isHunted(target.id),
@@ -12438,12 +12495,13 @@ function updateHuntBearing() {
 // and the roster describe the same player the same way.
 function showHuntAlert(playerId) {
   const described = describePlayer(playerId);
+  const segments = partsToSegments(sentenceParts(t('SPOTTED: {player}'), { player: described }));
   setHudAlert(
     1,
-    `SPOTTED: ${described.text}`,
+    segments.map((segment) => segment.text).join(''),
     HUNT_ALERT_SECONDS,
     false,
-    described.segments ? [{ text: 'SPOTTED: ' }, ...described.segments] : null,
+    described.segments ? segments : null,
   );
 }
 
@@ -12540,35 +12598,41 @@ function getRoamLabelParts() {
     }
     return { text: segments.map((segment) => segment.text).join(''), segments };
   };
+  // A translated sentence with the coloured name put where that language puts
+  // it: the words either side of `{who}` stay plain.
+  const around = (template, who) => {
+    const [before, after = ''] = t(template).split('{who}');
+    return join(before, who, after);
+  };
 
   const targetId = getRoamTargetId();
   const target = getRoamTargetTank();
   const state = target?.userData?.playerState;
   const named = target
     ? formatPlayerLabel({
-      name: state?.name || 'nobody',
+      name: state?.name || t('nobody'),
       nameColor: Number.isFinite(state?.color) ? state.color : null,
       flag: getPlayerFlagLabel(targetId),
       mark: getPlayerTeamMark(getPlayerTeamById(targetId)),
       status: getPlayerStatusIndicator(state),
     })
-    : plain('nobody');
+    : plain(t('nobody'));
   // `Leader` is the automatic target rather than one picked by hand, the same
   // distinction `ScoreboardRenderer::getLeader` draws -- a word about the
   // choice, not part of the callsign, so it stays uncoloured.
-  const who = roamTargetId === null && target ? join('Leader ', named) : named;
+  const who = roamTargetId === null && target ? around(N_('Leader {who}'), named) : named;
 
-  if (roamView === ROAM_VIEW.TRACK && target) return join('Tracking ', who);
-  if (roamView === ROAM_VIEW.FOLLOW && target) return join('Following ', who);
-  if (roamView === ROAM_VIEW.FPS && target) return join('Driving with ', who);
+  if (roamView === ROAM_VIEW.TRACK && target) return around(N_('Tracking {who}'), who);
+  if (roamView === ROAM_VIEW.FOLLOW && target) return around(N_('Following {who}'), who);
+  if (roamView === ROAM_VIEW.FPS && target) return around(N_('Driving with {who}'), who);
   if (roamView === ROAM_VIEW.FLAG) {
     const flag = getRoamTargetFlag();
-    if (flag) return plain(`Tracking ${describeFlag(flag)}`);
+    if (flag) return around(N_('Tracking {who}'), plain(describeFlag(flag)));
   }
-  if (roamView === ROAM_VIEW.DRIVE_FP) return plain('First Person');
-  if (roamView === ROAM_VIEW.DRIVE_TP) return plain('Third Person');
-  if (roamView === ROAM_VIEW.OVERVIEW) return plain('Overview');
-  return plain('Roaming');
+  if (roamView === ROAM_VIEW.DRIVE_FP) return plain(t('First Person'));
+  if (roamView === ROAM_VIEW.DRIVE_TP) return plain(t('Third Person'));
+  if (roamView === ROAM_VIEW.OVERVIEW) return plain(t('Overview'));
+  return plain(t('Roaming'));
 }
 
 // Upstream moves the observer's own tank to the eye point every frame --
@@ -12857,7 +12921,7 @@ function toggleAutopilot(id = autopilotRowId ?? DEFAULT_PILOT) {
   if (!gameplayJoinConfirmed || isObserver()) return;
   if (autopilotOn) {
     setAutopilot(null);
-    setHudAlert(0, 'autopilot disabled', 1);
+    setHudAlert(0, t('autopilot disabled'), 1);
     return;
   }
   engageAutopilot(id);
@@ -12866,7 +12930,7 @@ function toggleAutopilot(id = autopilotRowId ?? DEFAULT_PILOT) {
 function engageAutopilot(id) {
   if (!gameplayJoinConfirmed || isObserver()) return;
   if (gameConfig?.DISABLE_BOTS === true) {
-    setHudAlert(0, 'autopilot not allowed on this server', 1);
+    setHudAlert(0, t('autopilot not allowed on this server'), 1);
     return;
   }
   // Changing pilot in flight is not enabling the autopilot, so it does not
@@ -12878,17 +12942,17 @@ function engageAutopilot(id) {
     autopilotMenuEngaged = false;
     storeAutopilot(id);
     sendToServer({ type: 'autopilot', on: true, pilot: getAutopilotName(id) });
-    setHudAlert(0, `${getAutopilotName(id)} has the controls`, 1);
+    setHudAlert(0, t('{pilot} has the controls', { pilot: getAutopilotName(id) }), 1);
     return;
   }
   const now = performance.now();
   if (now - autopilotEnabledAt <= AUTOPILOT_ENABLE_INTERVAL_MS) {
-    showMessage('You may not enable the Autopilot more than once every five seconds.');
+    showMessage(t('You may not enable the Autopilot more than once every five seconds.'));
     return;
   }
   autopilotEnabledAt = now;
   setAutopilot(id);
-  setHudAlert(0, 'autopilot enabled', 1);
+  setHudAlert(0, t('autopilot enabled'), 1);
 }
 
 function setAutopilot(id, { remember = true } = {}) {
@@ -12911,10 +12975,10 @@ function getAutopilotRowChoices() {
 }
 
 function getAutopilotRowValue() {
-  if (!canUseAutopilot()) return gameConfig?.DISABLE_BOTS === true ? 'Not allowed' : 'Unavailable';
+  if (!canUseAutopilot()) return gameConfig?.DISABLE_BOTS === true ? t('Not allowed') : t('Unavailable');
   const flying = autopilotOn ? autopilotId : null;
   const mark = autopilotRowId === flying ? '◎' : '○';
-  return `${autopilotRowId === null ? 'None' : getAutopilotName(autopilotRowId)} ${mark}`;
+  return `${autopilotRowId === null ? t('None') : getAutopilotName(autopilotRowId)} ${mark}`;
 }
 
 function stepAutopilotRow(direction) {
@@ -12931,7 +12995,7 @@ function selectAutopilotRow() {
   if (autopilotRowId === null || (autopilotOn && autopilotId === autopilotRowId)) {
     if (autopilotOn) {
       setAutopilot(null);
-      setHudAlert(0, 'autopilot disabled', 1);
+      setHudAlert(0, t('autopilot disabled'), 1);
     }
     return true;
   }
@@ -13736,7 +13800,7 @@ function handleMotion(deltaTime) {
     });
     // SFX_PHANTOM, in place of SFX_TELEPORT. Upstream plays one or the other.
     renderManager.playSound('phantom', myTank.position);
-    showMessage(zoned ? 'Zoned' : 'Unzoned');
+    showMessage(zoned ? t('Zoned') : t('Unzoned'));
   }
 
   placeTank(myTank, myX, myY, myZ, myAzimuth);
@@ -14537,7 +14601,7 @@ function getKnownFlagColor(flag) {
 
 function describeFlag(flag) {
   const type = getFlagType(flag?.type);
-  return type ? type.name : 'unidentified';
+  return type ? t(type.name) : t('unidentified');
 }
 
 // The chat form: `ID/Identify`, pairing the abbreviation the scoreboard shows
@@ -14554,9 +14618,9 @@ function describeFlag(flag) {
 // against "Red Team" would teach a string that never appears again.
 function describeFlagForChat(flag) {
   const type = getFlagType(flag?.type);
-  if (!type) return 'unidentified';
-  if (type.team) return type.name;
-  return `${type.abbreviation}/${type.name}`;
+  if (!type) return t('unidentified');
+  if (type.team) return t(type.name);
+  return `${type.abbreviation}/${t(type.name)}`;
 }
 
 // The flag a notice is about, as a coloured part `noticeAbout` takes -- the same
@@ -14574,78 +14638,8 @@ function describeFlagForNotice(flag) {
 // way to read which pair that was.
 function describeTeamForNotice(colorIndex) {
   const team = getTeamFromColorIndex(colorIndex);
-  if (!team) return { text: 'unknown', segments: null };
+  if (!team) return { text: t('unknown'), segments: null };
   return { text: team, segments: [{ text: team, color: colorToCSS(getPlayerTeamColor(team)) }] };
-}
-
-// HelpMenu's flag pages, built from the shared flag table rather than written
-// out in index.html. The table is the list of flags bzo implements, so the help
-// cannot document a flag the server will not hand out, or miss one it will.
-//
-// Team flags share a single help string upstream, so it is printed once for the
-// group instead of four times. Each name is drawn in the flag's own colour, as
-// the scoreboard draws it.
-function buildFlagHelp() {
-  const container = document.getElementById('helpFlags');
-  if (!container) return;
-  container.replaceChildren();
-
-  const abbreviations = Object.keys(FLAG_TYPES);
-  // Team flags keep BZFlag's own team order -- red, green, blue, purple -- which
-  // is the numbering every other part of the game counts in. The superflags have
-  // no such order to keep: upstream walks a `std::set<FlagType*>`, so its own
-  // help is in pointer order, and bzo's table was in whatever order the phases
-  // landed. Sorted by abbreviation, because the abbreviation is the column the
-  // list leads with and what the code, the config and the scoreboard all use.
-  const byAbbreviation = (a, b) => a.localeCompare(b);
-  const teamAbbreviations = abbreviations.filter((abbreviation) => isTeamFlag(abbreviation));
-  const superAbbreviations = abbreviations.filter(
-    (abbreviation) => !isTeamFlag(abbreviation) && !isBadFlag(abbreviation),
-  ).sort(byAbbreviation);
-  const badAbbreviations = abbreviations
-    .filter((abbreviation) => isBadFlag(abbreviation))
-    .sort(byAbbreviation);
-
-  const addSection = (title, listAbbreviations, sharedHelp) => {
-    if (listAbbreviations.length === 0) return;
-    const heading = document.createElement('h3');
-    heading.textContent = title;
-    container.appendChild(heading);
-
-    if (sharedHelp) {
-      const shared = document.createElement('p');
-      shared.textContent = sharedHelp;
-      container.appendChild(shared);
-    }
-
-    const list = document.createElement('ul');
-    listAbbreviations.forEach((abbreviation) => {
-      const type = FLAG_TYPES[abbreviation];
-      const item = document.createElement('li');
-      const code = document.createElement('strong');
-      code.textContent = abbreviation;
-      const name = document.createElement('b');
-      name.textContent = type.name;
-      // The colour a flag is drawn in everywhere else it appears, which for a
-      // bad one is the warning it wears in the world and on the scoreboards.
-      name.style.color = colorToCSS(
-        isBadFlag(abbreviation) ? BAD_FLAG_COLOR : getFlagColor(abbreviation),
-      );
-      item.append(code, ' — ', name);
-      if (!sharedHelp) item.append(` — ${type.help}`);
-      list.appendChild(item);
-    });
-    container.appendChild(list);
-  };
-
-  // HelpMenu splits these across two pages, Good Flags then Bad Flags
-  // (HelpMenu.cxx:416, :453). bzo's help is one scrolling panel rather than
-  // pages, so the split is a heading and the bad flags go last: the thing you
-  // are looking one up to avoid should not be mixed in among the ones you want.
-  addSection('Team Flags', teamAbbreviations, FLAG_TYPES[teamAbbreviations[0]]?.help);
-  addSection('Good Flags', superAbbreviations, null);
-  addSection('Bad Flags', badAbbreviations, null);
-  updateRicochetHelp();
 }
 
 // What the world's own ricochet rule is, said where the flag that grants it is
@@ -14655,9 +14649,8 @@ function updateRicochetHelp() {
   const note = document.getElementById('helpRicochet');
   if (!note) return;
   note.textContent = gameConfig?.ALL_SHOTS_RICOCHET
-    ? 'This server bounces every shot off walls, whatever flag fired it,'
-      + ' so the Ricochet flag is not in play here.'
-    : 'On this server only the Ricochet flag bounces shots off walls.';
+    ? t('This server bounces every shot off walls, whatever flag fired it, so the Ricochet flag is not in play here.')
+    : t('On this server only the Ricochet flag bounces shots off walls.');
 }
 
 // FlagType::getColor. Team flags take their team's colour and every superflag is
@@ -14724,7 +14717,7 @@ function requestFlagDrop() {
   // countdown or a kill gets rid of it. Saying so beats sending a request the
   // server will refuse, and beats a control that silently does nothing.
   if (getFlagEndurance(flag.type) === FLAG_ENDURANCE.STICKY) {
-    showMessage(`${describeFlag(flag)} ${describeBadFlagRelease()}`);
+    showMessage(t('{flag} {release}', { flag: describeFlag(flag), release: describeBadFlagRelease() }));
     return false;
   }
   // cmdDrop's last condition (clientCommands.cxx:355). A flag dropped inside a
@@ -14735,11 +14728,11 @@ function requestFlagDrop() {
   // zoned tank cannot put the flag down at all, wherever it is standing --
   // dropping it would strand the tank phased with no way back.
   if (amZoned()) {
-    showMessage('Can\'t drop the flag while zoned');
+    showMessage(t('Can\'t drop the flag while zoned'));
     return false;
   }
   if (amInsideBuilding()) {
-    showMessage('Can\'t drop a flag while inside a building');
+    showMessage(t('Can\'t drop a flag while inside a building'));
     return false;
   }
   sendToServer({ type: 'dropFlag' });
@@ -14789,10 +14782,12 @@ function describeBadFlagRelease() {
   const ways = [];
   const timeout = normalizeShakeTimeout(gameConfig?.FLAG_SHAKE_TIMEOUT);
   const wins = normalizeShakeWins(gameConfig?.FLAG_SHAKE_WINS);
-  if (timeout > 0) ways.push(`in ${timeout}s`);
-  if (wins > 0) ways.push(`after ${wins} ${wins === 1 ? 'kill' : 'kills'}`);
-  if (gameConfig?.ANTIDOTE_FLAGS === true) ways.push('on the antidote');
-  return ways.length > 0 ? `shakes off ${ways.join(' or ')}` : 'stays until it kills you';
+  if (timeout > 0) ways.push(t('in {seconds}s', { seconds: timeout }));
+  if (wins > 0) ways.push(wins === 1 ? t('after {count} kill', { count: wins }) : t('after {count} kills', { count: wins }));
+  if (gameConfig?.ANTIDOTE_FLAGS === true) ways.push(t('on the antidote'));
+  if (ways.length === 0) return t('stays until it kills you');
+  const either = ways.reduce((first, second) => t('{first} or {second}', { first, second }));
+  return t('shakes off {ways}', { ways: either });
 }
 
 // The antidote flag's position, sent to its owner alone the way `nearFlag` is,
@@ -14848,7 +14843,7 @@ function handleFlagGrabbedAlerts(grabberId, flag) {
   const grabberTeamIndex = getTeamColorIndex(grabber?.userData?.playerState?.team);
 
   if (grabberTeamIndex !== myTeamIndex && flagTeamIndex === myTeamIndex) {
-    showMessage('Flag Alert!!!', 'death');
+    showMessage(t('Flag Alert!!!'), 'death');
     renderManager.playLocalSound('flagAlert');
     return;
   }
@@ -14856,7 +14851,7 @@ function handleFlagGrabbedAlerts(grabberId, flag) {
   // A team mate carrying off somebody else's flag. The one flag sound BZFlag
   // plays out in the world rather than in the ear.
   if (grabberTeamIndex === myTeamIndex && flagTeamIndex !== grabberTeamIndex) {
-    showMessage('Team Grab!!!');
+    showMessage(t('Team Grab!!!'));
     if (grabber) renderManager.playSound('teamGrab', grabber.position);
   }
 }
@@ -14872,14 +14867,11 @@ function handleFlagTransferred(message) {
   const flag = setFlagState(message.flag);
   noticeAbout(
     null,
-    [
-      describePlayer(message.toId, { flag: null }),
-      ' stole ',
-      describePlayer(message.fromId, { flag: null }),
-      "'s ",
-      describeFlagForNotice(flag),
-      ' flag',
-    ],
+    sentenceParts(t('{thief} stole {victim}\'s {flag} flag'), {
+      thief: describePlayer(message.toId, { flag: null }),
+      victim: describePlayer(message.fromId, { flag: null }),
+      flag: describeFlagForNotice(flag),
+    }),
     0,
     false,
   );
@@ -14906,7 +14898,7 @@ function handleNearFlag(message) {
 }
 
 function announceNearFlag(type) {
-  const notice = `Closest Flag: ${type.name}`;
+  const notice = t('Closest Flag: {flag}', { flag: t(type.name) });
   setHudAlert(1, notice, NEAR_FLAG_ALERT_SECONDS, false);
   showMessage(notice);
 }
@@ -14968,20 +14960,24 @@ function handleFlagCaptured(message) {
   if (ownGoal) {
     noticeAbout(
       null,
-      [describePlayer(message.playerId, { flag: null }), ' took their own flag into ',
-        describeTeamForNotice(message.team), ' territory'],
+      sentenceParts(t('{player} took their own flag into {team} territory'), {
+        player: describePlayer(message.playerId, { flag: null }),
+        team: describeTeamForNotice(message.team),
+      }),
       0,
       false,
     );
     if (message.playerId === myPlayerId) {
-      showMessage("Don't capture your own flag!!!", 'death');
+      showMessage(t('Don\'t capture your own flag!!!'), 'death');
       renderManager.playLocalSound('killTeam');
     }
   } else {
     noticeAbout(
       null,
-      [describePlayer(message.playerId, { flag: null }), ' captured the ',
-        describeTeamForNotice(capturedTeamIndex), ' flag'],
+      sentenceParts(t('{player} captured the {team} flag'), {
+        player: describePlayer(message.playerId, { flag: null }),
+        team: describeTeamForNotice(capturedTeamIndex),
+      }),
       0,
       false,
     );
@@ -16555,11 +16551,11 @@ function setXRButtonState(enabled) {
   const xrBtn = document.getElementById('xrBtn');
   const xrQuickBtn = document.getElementById('xrQuickBtn');
   if (enabled) {
-    if (xrBtn) { xrBtn.classList.add('active'); xrBtn.title = 'Exit WebXR VR Mode'; }
-    if (xrQuickBtn) { xrQuickBtn.classList.add('active'); xrQuickBtn.title = 'Exit WebXR VR Mode'; }
+    if (xrBtn) { xrBtn.classList.add('active'); xrBtn.title = t('Exit WebXR VR Mode'); }
+    if (xrQuickBtn) { xrQuickBtn.classList.add('active'); xrQuickBtn.title = t('Exit WebXR VR Mode'); }
   } else {
-    if (xrBtn) { xrBtn.classList.remove('active'); xrBtn.title = 'Enter WebXR VR Mode'; }
-    if (xrQuickBtn) { xrQuickBtn.classList.remove('active'); xrQuickBtn.title = 'Enter WebXR VR Mode'; }
+    if (xrBtn) { xrBtn.classList.remove('active'); xrBtn.title = t('Enter WebXR VR Mode'); }
+    if (xrQuickBtn) { xrQuickBtn.classList.remove('active'); xrQuickBtn.title = t('Enter WebXR VR Mode'); }
   }
 }
 
@@ -16635,7 +16631,7 @@ function getXRPlayerOptionsMenuItems() {
       value: keyboard ? myPlayerName : 'Desktop only',
       disabled: !keyboard,
     },
-    { id: 'teamXR', label: 'Team', value: PLAYER_TEAM_LABELS[selectedPlayerTeam], adjustable: true },
+    { id: 'teamXR', label: 'Team', value: t(PLAYER_TEAM_LABELS[selectedPlayerTeam]), adjustable: true },
     {
       id: 'tankXR',
       label: 'Tank',
@@ -16681,7 +16677,7 @@ function getXRAudioMenuItems() {
     {
       id: 'voiceChannelXR',
       label: 'Voice Channel',
-      value: getVoiceChannel(selectedVoiceChannel).label,
+      value: t(getVoiceChannel(selectedVoiceChannel).label),
       adjustable: true,
     },
     ...VOLUME_CHANNELS.map((channel) => ({
@@ -17059,7 +17055,7 @@ async function exitXRFromMenu() {
     closeXRSettingsMenu();
     await toggleXRSession(renderer, animate);
     setXRButtonState(false);
-    showMessage('WebXR VR Mode: OFF');
+    showMessage(t('WebXR VR Mode: OFF'));
   } finally {
     xrSettingsShortcutInFlight = false;
   }
@@ -17179,7 +17175,7 @@ function updateChatWindow() {
         btn.classList.add('unread');
       }
       btn.setAttribute('data-chat-tab', tab.id);
-      btn.textContent = tab.label;
+      btn.textContent = t(tab.label);
       chatTabsDiv.appendChild(btn);
     });
   }

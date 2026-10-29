@@ -14,6 +14,7 @@ const { SERVER_PLAYER } = require('./player-ids.cjs');
 const fs = require('fs');
 const path = require('path');
 const { readReplay } = require('./bzfs-replay.cjs');
+const { localized } = require('../public/js/i18n.mjs');
 
 // What the handlers need of server.js, from `useServer`. `MAP_SOURCE`,
 // `serverConfig`, `LIST_SERVER_KEY` change while the server runs, so they are
@@ -162,6 +163,12 @@ function handleMatchControl(player, ws, message) {
   return;
 }
 
+// A server line on the operator's own socket; `message` is what `localized`
+// returns.
+function sayToOperator(ws, player, message) {
+  ws.send(JSON.stringify({ type: 'message', src: SERVER_PLAYER, dst: player.id, msgType: 'server', ...message }));
+}
+
 function handleUploadMap(player, ws, message) {
   if (refuseNonOperator(ws, player, 'uploadMap')) return;
   // Admin: upload map
@@ -183,12 +190,8 @@ function handleUploadMap(player, ws, message) {
     uploads.add('maps', safeMapName);
     ws.send(JSON.stringify({ success: true }));
     // Send direct chat message to uploader
-    ws.send(JSON.stringify({
-      type: 'message',
-      src: SERVER_PLAYER,
-      dst: player.id,
-      msgType: 'server',
-      text: `Upload ${safeMapName} with ${Buffer.byteLength(mapContent, 'utf8')} bytes`
+    sayToOperator(ws, player, localized('Upload {map} with {bytes} bytes', {
+      map: safeMapName, bytes: Buffer.byteLength(mapContent, 'utf8'),
     }));
     // Send updated map list (mapList reply)
     sendMapList(ws);
@@ -204,28 +207,26 @@ function handleUploadMap(player, ws, message) {
 // rather than listed as unreadable.
 function handleUploadReplay(player, ws, message) {
   if (refuseNonOperator(ws, player, 'uploadReplay')) return;
-  const said = (text) => ws.send(JSON.stringify({
-    type: 'message', src: SERVER_PLAYER, dst: player.id, msgType: 'server', text,
-  }));
+  const said = (message) => sayToOperator(ws, player, message);
   const name = typeof message.replayName === 'string'
     ? path.basename(message.replayName.trim()).replace(/\.rec$/i, '') : '';
   if (!/^[A-Za-z0-9_-][A-Za-z0-9._-]{0,99}$/.test(name) || typeof message.content !== 'string') {
-    said('Upload refused: a replay name is letters, digits, ".", "_" and "-".');
+    said(localized('Upload refused: a replay name is letters, digits, ".", "_" and "-".'));
     return;
   }
   const bytes = Buffer.from(message.content, 'base64');
   if (bytes.length > REPLAY_UPLOAD_MAX_BYTES) {
-    said(`Upload refused: ${name} is over ${REPLAY_UPLOAD_MAX_BYTES / (1024 * 1024)} MB.`);
+    said(localized('Upload refused: {name} is over {megabytes} MB.', { name, megabytes: REPLAY_UPLOAD_MAX_BYTES / (1024 * 1024) }));
     return;
   }
   try {
     readReplay(bytes);
   } catch (error) {
-    said(`Upload refused: ${name} is not a bzfs recording (${error.message}).`);
+    said(localized('Upload refused: {name} is not a bzfs recording ({error}).', { name, error: error.message }));
     return;
   }
   if (replayRooms.has(name)) {
-    said(`Upload refused: ${name} is being watched.`);
+    said(localized('Upload refused: {name} is being watched.', { name }));
     return;
   }
   fs.promises.mkdir(RUNTIME_REPLAYS_DIR, { recursive: true })
@@ -233,13 +234,13 @@ function handleUploadReplay(player, ws, message) {
     .then(() => {
       uploads.add('replays', name);
       log(`Admin "${player.name}" uploaded replay ${name}.rec, ${bytes.length} bytes`);
-      said(`Uploaded replay ${name} with ${bytes.length} bytes`);
+      said(localized('Uploaded replay {name} with {bytes} bytes', { name, bytes: bytes.length }));
       invalidateListTables();
       sendMapList(ws);
     })
     .catch((error) => {
       logError('Replay upload failed:', error);
-      said(`Upload failed: ${error.message}`);
+      said(localized('Upload failed: {error}', { error: error.message }));
     });
   return;
 }
@@ -247,26 +248,24 @@ function handleUploadReplay(player, ws, message) {
 // The panel's Save Recording: `/record save`, answered the same way.
 function handleSaveRecording(player, ws, message) {
   if (refuseNonOperator(ws, player, 'saveRecording')) return;
-  const said = (text) => ws.send(JSON.stringify({
-    type: 'message', src: SERVER_PLAYER, dst: player.id, msgType: 'server', text,
-  }));
+  const said = (message) => sayToOperator(ws, player, message);
   const name = recordingName(message.name);
   const seconds = Number.isInteger(message.seconds) && message.seconds > 0 ? message.seconds : null;
   if (!name) {
-    said('Save refused: a recording name is letters, digits, ".", "_" and "-".');
+    said(localized('Save refused: a recording name is letters, digits, ".", "_" and "-".'));
     return;
   }
   if (!recorder.recording || recorder.entries.length === 0) {
-    said('No buffer to save');
+    said(localized('No buffer to save'));
     return;
   }
   saveRecording(name, { seconds, callsign: player.name })
     .then(() => {
-      said(`Record buffer saved to: ${name}`);
+      said(localized('Record buffer saved to: {name}', { name }));
       log(`[OPERATOR] "${player.name}" saved recording ${name}`);
       sendMapList(ws);
     })
-    .catch((error) => said(`Could not open for writing: ${name} (${error.message})`));
+    .catch((error) => said(localized('Could not open for writing: {name} ({error})', { name, error: error.message })));
   return;
 }
 
@@ -275,21 +274,21 @@ function handleSaveRecording(player, ws, message) {
 // watched.
 function handleDeleteUpload(player, ws, message) {
   if (refuseNonOperator(ws, player, 'deleteUpload')) return;
-  const said = (text) => ws.send(JSON.stringify({
-    type: 'message', src: SERVER_PLAYER, dst: player.id, msgType: 'server', text,
-  }));
+  const said = (message) => sayToOperator(ws, player, message);
   const kind = message.kind === 'replays' ? 'replays' : (message.kind === 'maps' ? 'maps' : null);
   const name = typeof message.name === 'string' ? message.name : '';
   if (!kind || !uploads.has(kind, name)) {
-    said(`Delete refused: ${name || 'that'} was not uploaded here.`);
+    said(name
+      ? localized('Delete refused: {name} was not uploaded here.', { name })
+      : localized('Delete refused: that was not uploaded here.'));
     return;
   }
   if (kind === 'maps' && name === server.MAP_SOURCE) {
-    said(`Delete refused: ${name} is the map being played.`);
+    said(localized('Delete refused: {name} is the map being played.', { name }));
     return;
   }
   if (kind === 'replays' && replayRooms.has(name)) {
-    said(`Delete refused: ${name} is being watched.`);
+    said(localized('Delete refused: {name} is being watched.', { name }));
     return;
   }
   const filePath = kind === 'maps'
@@ -306,12 +305,12 @@ function handleDeleteUpload(player, ws, message) {
       }
       invalidateListTables();
       log(`Admin "${player.name}" deleted ${kind === 'maps' ? 'map' : 'replay'} ${name}`);
-      said(`Deleted ${kind === 'maps' ? 'map' : 'replay'} ${name}`);
+      said(kind === 'maps' ? localized('Deleted map {name}', { name }) : localized('Deleted replay {name}', { name }));
       sendMapList(ws);
     })
     .catch((error) => {
       logError(`Deleting ${name} failed:`, error);
-      said(`Delete failed: ${error.message}`);
+      said(localized('Delete failed: {error}', { error: error.message }));
     });
   return;
 }
@@ -366,10 +365,14 @@ function handleImportMap(player, ws, message) {
       ? `"${player.name}" reused the cached copy of ${host}:${port}, ${safeMapName} (${byteLength} bytes)`
       : `"${player.name}" imported remote map ${host}:${port} as ${safeMapName} (${byteLength} bytes)`);
     ws.send(JSON.stringify({ type: 'importMapResult', success: true, file: safeMapName }));
-    replyToPlayer(player, reused
-      ? `${host}:${port} is no longer in the public list, so ${safeMapName} is the copy already `
-        + `here (${byteLength} bytes). It is ready to View now.`
-      : `Imported ${safeMapName} from ${host}:${port} (${byteLength} bytes). It is ready to View now.`);
+    const params = { server: `${host}:${port}`, map: safeMapName, bytes: byteLength };
+    if (reused) {
+      replyToPlayer(player,
+        '{server} is no longer in the public list, so {map} is the copy already here ({bytes} bytes). It is ready to View now.',
+        params);
+    } else {
+      replyToPlayer(player, 'Imported {map} from {server} ({bytes} bytes). It is ready to View now.', params);
+    }
     sendMapList(ws);
   }).catch((error) => {
     logError(`Remote map import from ${host}:${port} failed:`, error);

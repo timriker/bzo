@@ -1,0 +1,994 @@
+msgid ""
+msgstr ""
+"Project-Id-Version: bzo\n"
+"Report-Msgid-Bugs-To: https://github.com/timriker/bzo/issues\n"
+"Language: cs_CZ\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Review: machine-translated, not yet read by a native speaker\n"
+
+#: docs/help/controls.md
+msgid "Controls"
+msgstr "Ovládání"
+
+#: docs/help/controls.md
+msgid ""
+"One client runs on a desktop, a phone and a headset, so every action has a "
+"way in from each of them. The keyboard has the most; touch, a gamepad and "
+"the XR controllers carry the actions a match needs, and the Settings menu "
+"reaches the rest -- including from a headset, where there is no keyboard at "
+"all. This page is also the in-game help's (`/` or `?`)."
+msgstr ""
+"Jeden klient běží na počítači, telefonu i headsetu, takže každá akce je "
+"dostupná z každého z nich. Klávesnice toho umí nejvíc; dotyk, gamepad a XR "
+"ovladače zvládají akce, které zápas potřebuje, a zbytek obstará menu "
+"Nastavení -- i z headsetu, kde žádná klávesnice není. Tato stránka je "
+"zároveň nápovědou ve hře (`/` nebo `?`)."
+
+#: docs/help/controls.md
+msgid "Keyboard"
+msgstr "Klávesnice"
+
+#: docs/help/controls.md
+msgid "Driving"
+msgstr "Jízda"
+
+#: docs/help/controls.md
+msgid "`W` / `S` or `Up` / `Down` — move forward/backward"
+msgstr "`W` / `S` nebo `Up` / `Down` — jízda vpřed/vzad"
+
+#: docs/help/controls.md
+msgid "`A` / `D` or `Left` / `Right` — turn left/right"
+msgstr "`A` / `D` nebo `Left` / `Right` — otáčení doleva/doprava"
+
+#: docs/help/controls.md
+msgid "`Enter` — shoot"
+msgstr "`Enter` — střelba"
+
+#: docs/help/controls.md
+msgid "`Tab` — jump"
+msgstr "`Tab` — skok"
+
+#: docs/help/controls.md
+msgid "`Space` — drop flag"
+msgstr "`Space` — odhodit vlajku"
+
+#: docs/help/controls.md
+msgid ""
+"`I` or right-click — identify the tank in your sights, and lock a Guided "
+"Missile onto it"
+msgstr ""
+"`I` nebo pravé tlačítko myši — identifikuje tank v zaměřovači a zamkne na "
+"něj naváděnou střelu (Guided Missile)"
+
+#: docs/help/controls.md
+msgid ""
+"`Delete` — self-destruct, after a five second countdown; `Delete` again "
+"calls it off"
+msgstr ""
+"`Delete` — sebedestrukce po pětisekundovém odpočtu; další `Delete` ji zruší"
+
+#: docs/help/controls.md
+msgid ""
+"`9` or `/autopilot [roger|ace]` — autopilot: the pilot drives, aims and "
+"shoots until pressed again. `Settings -> Autopilot` chooses the pilot "
+"without a keyboard. You can still drive while it does, to help it out of a "
+"corner -- see [Combining inputs](#combining-inputs)"
+msgstr ""
+"`9` nebo `/autopilot [roger|ace]` — autopilot: pilot řídí, míří a střílí, "
+"dokud klávesu nestiskneš znovu. `Settings -> Autopilot` vybere pilota bez "
+"klávesnice. I mezitím můžeš řídit a pomoct mu z rohu -- viz [Kombinování "
+"vstupů](#combining-inputs)"
+
+#: docs/help/controls.md
+msgid "`P` — pause/resume"
+msgstr "`P` — pauza/pokračování"
+
+#: docs/help/controls.md
+msgid "Chat"
+msgstr "Chat"
+
+#: docs/help/controls.md
+msgid "`N` — open chat (or click the `Send` button)"
+msgstr "`N` — otevřít chat (nebo klikni na tlačítko `Send`)"
+
+#: docs/help/controls.md
+msgid ""
+"`Enter` — send chat (while chat input is focused, or click `Send` again)"
+msgstr ""
+"`Enter` — odeslat zprávu (když je aktivní pole chatu, nebo znovu klikni na "
+"`Send`)"
+
+#: docs/help/controls.md
+msgid ""
+"`1` / `2` / `3` / `4` / `5` — switch chat tab (`All` / `Chat` / `Server` / "
+"`Misc` / `Debug`)"
+msgstr ""
+"`1` / `2` / `3` / `4` / `5` — přepnout záložku chatu (`All` / `Chat` / "
+"`Server` / `Misc` / `Debug`)"
+
+#: docs/help/controls.md
+msgid "`[` / `]` — previous/next chat tab"
+msgstr "`[` / `]` — předchozí/další záložka chatu"
+
+#: docs/help/controls.md
+msgid ""
+"`Tab` — while typing, complete a player, command or flag name; `@` starts a "
+"mention and `#` a player's slot number"
+msgstr ""
+"`Tab` — při psaní doplní jméno hráče, příkaz nebo název vlajky; `@` začíná "
+"zmínku a `#` číslo slotu hráče"
+
+#: docs/help/controls.md
+msgid ""
+"`Up` / `Down` — while typing, recall earlier lines; type the start of a line "
+"first to recall only the ones beginning that way"
+msgstr ""
+"`Up` / `Down` — při psaní vyvolá dřívější řádky; napiš nejdřív začátek řádku "
+"a vyvolají se jen ty, které tak začínají"
+
+#: docs/help/controls.md
+msgid "`.` — reply to last direct-message sender"
+msgstr "`.` — odpovědět poslednímu odesílateli soukromé zprávy"
+
+# review: úhlavní nepřítel (nemesis)
+#: docs/help/controls.md
+msgid "`,` — message nemesis target"
+msgstr "`,` — napsat svému úhlavnímu nepříteli (nemesis)"
+
+#: docs/help/controls.md
+msgid "`Page Up` / `Page Down` — scroll chat history"
+msgstr "`Page Up` / `Page Down` — posouvat historii chatu"
+
+#: docs/help/controls.md
+msgid "`End` — jump chat to newest message"
+msgstr "`End` — skočit v chatu na nejnovější zprávu"
+
+#: docs/help/controls.md
+msgid ""
+"Drag across the history while chat is open to select it, then copy; typing "
+"carries on in the input"
+msgstr ""
+"Když je chat otevřený, tažením přes historii ji označíš a pak zkopíruješ; "
+"psaní pokračuje ve vstupním poli"
+
+#: docs/help/controls.md
+msgid "View and panels"
+msgstr "Pohled a panely"
+
+#: docs/help/controls.md
+msgid ""
+"`Esc` — back out one step: exit chat input, leave fullscreen, leave mouse "
+"steering, then open Settings. Pressing it again closes Settings, so it is "
+"always safe to press one more time"
+msgstr ""
+"`Esc` — o krok zpět: ukončí psaní v chatu, celou obrazovku, řízení myší a "
+"pak otevře Nastavení. Další stisk Nastavení zavře, takže je vždy bezpečné "
+"stisknout ho ještě jednou"
+
+#: docs/help/controls.md
+msgid "`M` — toggle mouse steering"
+msgstr "`M` — zapnout/vypnout řízení myší"
+
+#: docs/help/controls.md
+msgid "`C` — cycle camera mode"
+msgstr "`C` — přepínat režim kamery"
+
+#: docs/help/controls.md
+msgid "`O` — toggle operator panel"
+msgstr "`O` — zobrazit/skrýt panel operátora"
+
+#: docs/help/controls.md
+msgid "`F` — toggle fullscreen"
+msgstr "`F` — zapnout/vypnout celou obrazovku"
+
+#: docs/help/controls.md
+msgid "`` ` `` — toggle debug HUD"
+msgstr "`` ` `` — zobrazit/skrýt ladicí HUD"
+
+#: docs/help/controls.md
+msgid "`=` or `+` or `Numpad +` — zoom radar out (increase range)"
+msgstr "`=` nebo `+` nebo `Numpad +` — oddálit radar (zvětšit dosah)"
+
+#: docs/help/controls.md
+msgid "`-` or `Numpad -` — zoom radar in (decrease range)"
+msgstr "`-` nebo `Numpad -` — přiblížit radar (zmenšit dosah)"
+
+#: docs/help/controls.md
+msgid ""
+"`\\` — reset radar zoom to the default medium range (half the world's radar "
+"limit, which is the world size unless the map says otherwise)"
+msgstr ""
+"`\\` — vrátit přiblížení radaru na výchozí střední dosah (polovina "
+"radarového limitu světa, což je velikost světa, pokud mapa neurčí jinak)"
+
+#: docs/help/controls.md
+msgid "`Settings -> Radar: ...` — cycle Short/Medium/Long radar presets"
+msgstr ""
+"`Settings -> Radar: ...` — přepínat předvolby radaru Krátký/Střední/Dlouhý"
+
+#: docs/help/controls.md
+msgid "`B` — toggle the voice microphone"
+msgstr "`B` — zapnout/vypnout hlasový mikrofon"
+
+#: docs/help/controls.md
+msgid ""
+"`Settings -> Audio Settings` — set the game, voice, and microphone levels, "
+"and choose the voice channel: All, Nearby, or Team"
+msgstr ""
+"`Settings -> Audio Settings` (Nastavení zvuku) — nastaví hlasitost hry, "
+"hlasu a mikrofonu a vybere hlasový kanál: Všichni, Okolí nebo Tým"
+
+#: docs/help/controls.md
+msgid "`/` or `?` — show/hide help panel"
+msgstr "`/` nebo `?` — zobrazit/skrýt panel nápovědy"
+
+#: docs/help/controls.md
+msgid ""
+"`🎤` beside the gear — the microphone, as `B` is: a green border means you "
+"are transmitting and a red one means you are not, and the hover text names "
+"the channel it would speak on"
+msgstr ""
+"`🎤` vedle ozubeného kola — mikrofon, stejně jako `B`: zelený okraj znamená, "
+"že vysíláš, červený, že ne, a text při najetí myší uvádí kanál, na kterém "
+"bys mluvil"
+
+#: docs/help/controls.md
+msgid ""
+"`▲` beside the gear — hide the scoreboard and chat, leaving the name row and "
+"the chat tabs; `▼` brings them back. Typing a message borrows the chat "
+"window until you are done with it, and `U` or `7` borrows the scoreboard "
+"until the hunt cursor closes; tapping a chat tab opens chat for good. Small "
+"screens start collapsed"
+msgstr ""
+"`▲` vedle ozubeného kola — skryje tabulku skóre a chat, zůstane řádek se "
+"jménem a záložky chatu; `▼` je vrátí. Psaní zprávy si okno chatu půjčí, "
+"dokud nedopíšeš, a `U` nebo `7` si půjčí tabulku skóre, dokud se kurzor lovu "
+"nezavře; klepnutí na záložku chatu otevře chat natrvalo. Malé obrazovky "
+"začínají sbalené"
+
+#: docs/help/controls.md
+msgid ""
+"`Settings -> Anaglyph 3D` — red/cyan glasses; `Settings -> VR Mode` enters a "
+"WebXR headset"
+msgstr ""
+"`Settings -> Anaglyph 3D` — červeno-azurové brýle; `Settings -> VR Mode` "
+"vstoupí do WebXR headsetu"
+
+#: docs/help/controls.md
+msgid "Menus"
+msgstr "Menu"
+
+#: docs/help/controls.md
+msgid ""
+"`Up` / `Down` — previous/next control, including from inside a text field"
+msgstr "`Up` / `Down` — předchozí/další ovládací prvek, i z textového pole"
+
+#: docs/help/controls.md
+msgid ""
+"`Left` / `Right` — change the focused control: move a slider, pick the next "
+"choice. In a text field they move the cursor instead"
+msgstr ""
+"`Left` / `Right` — změní aktivní prvek: posune posuvník, vybere další volbu. "
+"V textovém poli místo toho posouvají kurzor"
+
+#: docs/help/controls.md
+msgid "`Tab` / `Shift+Tab` — previous/next control"
+msgstr "`Tab` / `Shift+Tab` — předchozí/další ovládací prvek"
+
+#: docs/help/controls.md
+msgid "`Home` / `End` — first/last control"
+msgstr "`Home` / `End` — první/poslední ovládací prvek"
+
+#: docs/help/controls.md
+msgid "`Enter` or `Space` — press the focused control"
+msgstr "`Enter` nebo `Space` — stisknout aktivní prvek"
+
+#: docs/help/controls.md
+msgid ""
+"Click or tap a row that walks a list: the title steps back and the current "
+"option steps forward. The `‹` and `›` on the row mark the two halves"
+msgstr ""
+"Klikni nebo klepni na řádek, který prochází seznamem: název krokuje zpět a "
+"aktuální volba dopředu. Znaky `‹` a `›` na řádku označují obě poloviny"
+
+#: docs/help/controls.md
+msgid ""
+"The help panel is read rather than operated, so there the arrows scroll it "
+"and only `Left` / `Right` move focus"
+msgstr ""
+"Panel nápovědy se čte, neovládá, takže v něm šipky posouvají text a fokus "
+"přesouvají jen `Left` / `Right`"
+
+#: docs/help/controls.md
+msgid "Hunting"
+msgstr "Lov"
+
+#: docs/help/controls.md
+msgid ""
+"Marking a player puts a cyan `◎` on their scoreboard row, a cyan ring on "
+"their radar blip, and a beacon in the sky over them in their own tank colour "
+"-- so several marked at once are still told apart at a glance. While one of "
+"them is in your sights the HUD says **SPOTTED:** and a ping sounds once a "
+"second from where they are. In Rabbit Chase the rabbit is marked for you, "
+"and its beacon is cyan like its ring: everyone is hunting it, so everyone's "
+"mark over it says so."
+msgstr ""
+"Označení hráče přidá azurový `◎` k jeho řádku v tabulce skóre, azurový "
+"kroužek k jeho bodu na radaru a maják na obloze nad ním v barvě jeho tanku "
+"-- takže i více označených najednou rozlišíš na první pohled. Když je "
+"některý z nich v zaměřovači, HUD ukáže **SPATŘEN:** a každou sekundu zazní "
+"pípnutí z místa, kde je. V Rabbit Chase je králík označen za tebe a jeho "
+"maják je azurový jako jeho kroužek: loví ho všichni, takže to říká i značka "
+"nad ním od každého."
+
+#: docs/help/controls.md
+msgid ""
+"`U` — hunt: open the scoreboard cursor, and press it again on a running hunt "
+"to clear every mark"
+msgstr ""
+"`U` — lov: otevře kurzor v tabulce skóre; opětovné stisknutí během "
+"probíhajícího lovu zruší všechna označení"
+
+#: docs/help/controls.md
+msgid ""
+"`7` — add hunt: the same cursor, but committing adds to what is marked "
+"rather than replacing it, and committing on a row already marked takes it off"
+msgstr ""
+"`7` — přidat k lovu: stejný kurzor, ale potvrzení přidá k označeným místo "
+"nahrazení a potvrzení na už označeném řádku označení odebere"
+
+#: docs/help/controls.md
+msgid ""
+"`Settings -> Hunt` — the same thing without a keyboard, for a phone or a "
+"headset. Left and right step through `Clear` and then the players in "
+"alphabetical order; select marks or unmarks whoever is shown, or clears "
+"every mark on `Clear`. On a touch screen or with a mouse, tap a chevron to "
+"step and anywhere else on the row to select"
+msgstr ""
+"`Settings -> Hunt` (Lov) — totéž bez klávesnice, pro telefon nebo headset. "
+"Doleva a doprava procházíš `Clear` a pak hráče podle abecedy; výběr označí "
+"nebo odznačí zobrazeného hráče, nebo na `Clear` zruší všechna označení. Na "
+"dotykové obrazovce nebo myší klepni na šipku pro krok a kamkoli jinam na "
+"řádku pro výběr"
+
+#: docs/help/controls.md
+msgid ""
+"With the cursor open, the board's heading reads `*SEL*` and a pulsing `○` "
+"sits on the row it is on, filling in to `◎` when you commit. `Up` / `Down` "
+"move it, `Enter` commits, and `U` or `7` backs out keeping whatever was "
+"already marked. `I` and `Space` move the cursor too, so a surface without "
+"arrow keys can reach it"
+msgstr ""
+"Když je kurzor otevřený, záhlaví tabulky ukazuje `*SEL*` a na jeho řádku "
+"pulzuje `○`, který se po potvrzení vyplní na `◎`. `Up` / `Down` ho "
+"posouvají, `Enter` potvrdí a `U` nebo `7` ho zavře a ponechá to, co už bylo "
+"označeno. Kurzor posouvají i `I` a `Space`, takže se k němu dostaneš i bez "
+"šipek"
+
+#: docs/help/controls.md
+msgid "As an observer"
+msgstr "Jako pozorovatel"
+
+#: docs/help/controls.md
+msgid ""
+"As an Observer you have no tank. Drive and turn fly the camera instead, "
+"`Tab` climbs and `Space` descends, and holding `Shift` makes drive tilt the "
+"view up and down and turn slide it sideways. The camera rests at the eye "
+"height of a tank on the ground, and travel stays level however the view is "
+"tilted. Pausing and self-destruct do nothing."
+msgstr ""
+"Jako pozorovatel nemáš tank. Jízda a otáčení místo toho pohybují kamerou, "
+"`Tab` stoupá a `Space` klesá, a s podrženým `Shift` jízda naklání pohled "
+"nahoru a dolů a otáčení ho posouvá do stran. Kamera spočívá ve výšce očí "
+"tanku na zemi a pohyb zůstává vodorovný, ať je pohled nakloněný jakkoli. "
+"Pauza a sebedestrukce nic nedělají."
+
+#: docs/help/controls.md
+msgid ""
+"`Enter` or `C` — step through everything: in each view, the leader first, "
+"then every player, then on to the next view. The views are Free, Track, "
+"Follow, Driving with, and Flag where a map has team flags"
+msgstr ""
+"`Enter` nebo `C` — projde vším: v každém pohledu nejdřív vedoucího hráče, "
+"pak každého hráče, pak další pohled. Pohledy jsou Volný pohyb, Sledování, "
+"Pohled zezadu, Spolujízda a Sledování vlajky, pokud má mapa týmové vlajky"
+
+#: docs/help/controls.md
+msgid ""
+"`I` or right-click — in the Free view, watch the tank in your sights, or "
+"show the obstacle there: what it is, an outline round it, and its block from "
+"the map file with the `group` blocks that placed it"
+msgstr ""
+"`I` nebo pravé tlačítko myši — ve volném pohledu sleduj tank v zaměřovači, "
+"nebo zobraz překážku na tom místě: co to je, obrys kolem ní a její blok ze "
+"souboru mapy spolu s bloky `group`, které ji umístily"
+
+#: docs/help/controls.md
+msgid ""
+"Right-click or tap an obstacle anywhere on screen, in any view and the "
+"Overview most of all, to show it the same way"
+msgstr ""
+"Klikni pravým tlačítkem nebo klepni na překážku kdekoli na obrazovce, v "
+"jakémkoli pohledu a hlavně v Přehledu, a zobrazí se stejně"
+
+#: docs/help/controls.md
+msgid ""
+"Pick nothing -- the sky, or empty ground in the Overview -- or press the "
+"panel's **World** button for the whole world: what is in it, faces, "
+"textures, the map file's warnings and its largest meshes, each of which "
+"shows that mesh"
+msgstr ""
+"Nevyber nic -- oblohu nebo prázdnou zem v Přehledu -- nebo stiskni tlačítko "
+"**Svět** na panelu pro celý svět: co v něm je, plochy, textury, varování "
+"souboru mapy a jeho největší meshe, z nichž každý po kliknutí ten mesh "
+"zobrazí"
+
+#: docs/help/controls.md
+msgid ""
+"Click a scoreboard row to watch that player; click the marked row again to "
+"go back to following the leader"
+msgstr ""
+"Klikni na řádek tabulky skóre a sleduj toho hráče; dalším kliknutím na "
+"označený řádek se vrátíš ke sledování vedoucího"
+
+#: docs/help/controls.md
+msgid "Mouse"
+msgstr "Myš"
+
+#: docs/help/controls.md
+msgid ""
+"`M` turns mouse steering on and off, and nothing else does: the keys never "
+"take it away behind your back."
+msgstr ""
+"`M` zapíná a vypíná řízení myší a nic jiného: klávesy ti ho nikdy za zády "
+"nevypnou."
+
+#: docs/help/controls.md
+msgid "The targeting box"
+msgstr "Zaměřovací rámeček"
+
+#: docs/help/controls.md
+msgid ""
+"The two boxes in the middle of the screen are the steering, as in BZFlag. "
+"Where the cursor sits relative to their centre is what the tank does:"
+msgstr ""
+"Dva rámečky uprostřed obrazovky slouží k řízení, jako v BZFlagu. Co tank "
+"dělá, určuje poloha kurzoru vůči jejich středu:"
+
+#: docs/help/controls.md
+msgid ""
+"**Inside the inner box, nothing.** It is the dead zone: park the cursor "
+"there to stop."
+msgstr ""
+"**Uvnitř vnitřního rámečku nic.** Je to mrtvá zóna: zaparkuj tam kurzor a "
+"zastavíš."
+
+#: docs/help/controls.md
+msgid ""
+"**Between the boxes, more the further out.** Up is forward and down is "
+"reverse; left and right turn. Each grows evenly from nothing at the inner "
+"box's edge to full at the outer box's."
+msgstr ""
+"**Mezi rámečky tím víc, čím dál od středu.** Nahoru je vpřed a dolů couvání; "
+"doleva a doprava otáčí. Obojí roste rovnoměrně od nuly na okraji vnitřního "
+"rámečku po maximum na okraji vnějšího."
+
+#: docs/help/controls.md
+msgid ""
+"**At or past the outer box, full.** Each axis stops growing on its own, so "
+"running the cursor out past the top keeps the tank at full speed and leaves "
+"left and right free to steer."
+msgstr ""
+"**Na vnějším rámečku nebo za ním naplno.** Každá osa přestane růst sama za "
+"sebe, takže když vyjedeš kurzorem nad horní okraj, tank jede plnou rychlostí "
+"a doleva a doprava můžeš dál volně zatáčet."
+
+#: docs/help/controls.md
+msgid ""
+"**Reverse is half speed**, as it is from the keys, however far down the "
+"cursor goes."
+msgstr ""
+"**Couvání je poloviční rychlostí**, stejně jako z kláves, ať je kurzor "
+"jakkoli nízko."
+
+#: docs/help/controls.md
+msgid ""
+"**The box sets the speed asked for, not the speed you get at once.** A world "
+"with an acceleration limit (BZFlag's `-a`, off by default) brings the tank "
+"up to it over time, the same as it does from the keys."
+msgstr ""
+"**Rámeček určuje požadovanou rychlost, ne tu, kterou dostaneš hned.** Svět s "
+"omezením zrychlení (v BZFlagu `-a`, ve výchozím stavu vypnuto) tank na ni "
+"rozjíždí postupně, stejně jako z kláves."
+
+#: docs/help/controls.md
+msgid ""
+"The boxes are BZFlag's own sizes, scaled to the window. BZFlag also holds "
+"the cursor inside the box; a browser cannot without taking the pointer over, "
+"so in bzo the cursor can leave it -- the steering simply stays at full, and "
+"the cost is a longer move back to the centre."
+msgstr ""
+"Rámečky mají stejné velikosti jako v BZFlagu, přepočtené na okno. BZFlag "
+"navíc drží kurzor uvnitř rámečku; prohlížeč to bez převzetí ukazatele "
+"nedokáže, takže v bzo může kurzor rámeček opustit -- řízení prostě zůstane "
+"naplno a cenou je delší cesta zpátky do středu."
+
+#: docs/help/controls.md
+msgid ""
+"With the keys, the mouse keeps whichever axis no key is holding -- see "
+"[Combining inputs](#combining-inputs)."
+msgstr ""
+"S klávesami myš ovládá tu osu, kterou nedrží žádná klávesa -- viz "
+"[Kombinování vstupů](#combining-inputs)."
+
+#: docs/help/controls.md
+msgid "Clicks"
+msgstr "Kliknutí"
+
+#: docs/help/controls.md
+msgid ""
+"Left click shoots wherever the cursor is, whether mouse steering is on or "
+"not, unless the click lands on the chat panel or a button. Right click "
+"identifies. Mouse steering is unavailable with no mouse attached, in VR, and "
+"while the on-screen controls are up, since those steer instead; a click that "
+"misses one of their buttons does nothing rather than firing."
+msgstr ""
+"Levé kliknutí střílí, ať je kurzor kdekoli, se zapnutým i vypnutým řízením "
+"myší, pokud kliknutí nepadne na panel chatu nebo tlačítko. Pravé kliknutí "
+"identifikuje. Řízení myší není dostupné bez připojené myši, ve VR a když "
+"jsou zobrazené ovládací prvky na obrazovce, protože řídí ony; kliknutí mimo "
+"jejich tlačítka nedělá nic, místo aby vystřelilo."
+
+#: docs/help/controls.md
+msgid "Combining inputs"
+msgstr "Kombinování vstupů"
+
+#: docs/help/controls.md
+msgid ""
+"Every input drives at once, and nothing switches between them on its own: "
+"`M` and the Settings rows are the only things that change which ones are on."
+msgstr ""
+"Všechny vstupy řídí zároveň a nic mezi nimi samo nepřepíná: `M` a řádky "
+"Nastavení jsou jediné, co mění, které jsou zapnuté."
+
+#: docs/help/controls.md
+msgid ""
+"**Driving is shared out an axis at a time** -- forward/back, and turn, each "
+"on its own. On each, the first of these with something to say wins:"
+msgstr ""
+"**Řízení se dělí po osách** -- vpřed/vzad a otáčení, každá zvlášť. Na každé "
+"vyhrává první z následujících, který má co říct:"
+
+#: docs/help/controls.md
+msgid ""
+"**Keys.** A held drive key owns its axis, and holding both of a pair (`W` "
+"and `S`, or `A` and `D`) is a deliberate stop on that axis."
+msgstr ""
+"**Klávesy.** Držená klávesa jízdy vlastní svou osu a držení obou z dvojice "
+"(`W` a `S`, nebo `A` a `D`) je na té ose úmyslné zastavení."
+
+#: docs/help/controls.md
+msgid ""
+"**The stick:** the XR controllers in VR, otherwise a connected gamepad, "
+"otherwise the on-screen stick. Only one of the three is read at a time -- "
+"they are not added together."
+msgstr ""
+"**Páčka:** ve VR XR ovladače, jinak připojený gamepad, jinak páčka na "
+"obrazovce. Čte se vždy jen jedna ze tří -- nesčítají se."
+
+#: docs/help/controls.md
+msgid "**The mouse**, in the targeting box, with mouse steering on."
+msgstr "**Myš** v zaměřovacím rámečku se zapnutým řízením myší."
+
+#: docs/help/controls.md
+msgid ""
+"So you can drive with `W` while the mouse steers, turn with `A`/`D` while "
+"the mouse sets the speed, or steer a gamepad's turn while a key holds the "
+"speed. A stick let go reads zero and gives the axis to the mouse; the mouse "
+"box holds whatever the cursor's place says, which is why it comes last."
+msgstr ""
+"Můžeš tedy jet pomocí `W`, zatímco myš zatáčí, zatáčet pomocí `A`/`D`, "
+"zatímco myš určuje rychlost, nebo zatáčet gamepadem, zatímco klávesa drží "
+"rychlost. Puštěná páčka hlásí nulu a předá osu myši; rámeček myši drží to, "
+"co určuje poloha kurzoru, a proto je poslední."
+
+#: docs/help/controls.md
+msgid ""
+"**Buttons add up.** Shoot fires from `Enter`, a left click, or the stick "
+"source's own fire button; jump from `Tab` or the stick source's; identify "
+"from `I`, a right click, or the stick source's. Any of them will do."
+msgstr ""
+"**Tlačítka se sčítají.** Střelba jde z `Enter`, levého kliknutí nebo "
+"tlačítka střelby zdroje páčky; skok z `Tab` nebo jeho tlačítka; identifikace "
+"z `I`, pravého kliknutí nebo jeho tlačítka. Poslouží kterékoli z nich."
+
+#: docs/help/controls.md
+msgid ""
+"**With the autopilot on**, the pilot takes the mouse's place, last in line: "
+"a drive key or the stick you hold still owns its axis, and the pilot has the "
+"rest. So when it is wedged against something you can hold `A` to turn it "
+"out, or `S` to back it off, while it keeps the other axis, and let go to "
+"hand it back -- it carries on from wherever you left it, re-planning its "
+"route if you took it somewhere else. Your shots, jumps and drops add to its "
+"own. The mouse box does not steer while the autopilot drives: it holds an "
+"offset wherever the cursor is parked, so it would never hand anything back."
+msgstr ""
+"**Se zapnutým autopilotem** zaujme pilot místo myši, poslední v řadě: "
+"klávesa jízdy nebo páčka, kterou držíš, stále vlastní svou osu a pilot má "
+"zbytek. Když se tedy někde zasekne, můžeš držet `A` a vytočit ho ven nebo "
+"`S` a vycouvat, zatímco on drží druhou osu, a pustit, abys mu řízení vrátil "
+"-- pokračuje odtamtud, kde jsi ho nechal, a přeplánuje trasu, pokud jsi ho "
+"odvezl jinam. Tvoje výstřely, skoky a odhození se přidávají k jeho. Rámeček "
+"myši při jízdě autopilota neřídí: drží výchylku podle toho, kde kurzor "
+"parkuje, takže by nikdy nic nevrátil."
+
+#: docs/help/controls.md
+msgid ""
+"**Menus don't stop the autopilot.** Opening Settings, or any other menu, "
+"normally pauses your tank. With the autopilot driving, the menu takes the "
+"keys and the pilot goes on driving. With a pilot chosen on the `Settings -> "
+"Autopilot` row but not driving, opening a menu turns the autopilot on, and "
+"closing the menu turns it off again -- so a menu means \"drive for me a "
+"moment\" rather than \"stop\". With the row on `None`, the default, or on a "
+"server that refuses bots (`-disableBots`), menus pause as they always have. "
+"A hidden window still pauses either way: the browser stops drawing it, and "
+"the pilot with it."
+msgstr ""
+"**Menu autopilota nezastaví.** Otevření Nastavení nebo jiného menu normálně "
+"tank pozastaví. Když řídí autopilot, menu převezme klávesy a pilot jede dál. "
+"Když je pilot vybrán na řádku `Settings -> Autopilot`, ale neřídí, otevření "
+"menu autopilota zapne a zavření ho zase vypne -- menu tedy znamená \"chvíli "
+"řiď za mě\", ne \"stůj\". S řádkem na `None`, výchozím, nebo na serveru, "
+"který boty odmítá (`-disableBots`), menu pozastavují jako vždy. Skryté okno "
+"pozastaví hru v každém případě: prohlížeč ho přestane vykreslovat a pilota s "
+"ním."
+
+#: docs/help/controls.md
+msgid ""
+"**Three keys at once.** Many keyboards cannot report some three-key "
+"combinations at all -- the third key's press never reaches the browser -- so "
+"a held turn and reverse can swallow a jump (#146). The debug HUD (`` ` ``) "
+"shows how many keys the browser saw held at once, which tells the keyboard's "
+"limit from bzo's."
+msgstr ""
+"**Tři klávesy najednou.** Mnoho klávesnic některé kombinace tří kláves vůbec "
+"neohlásí -- stisk třetí klávesy se do prohlížeče nedostane -- takže držené "
+"otáčení a couvání může spolknout skok (#146). Ladicí HUD (`` ` ``) ukazuje, "
+"kolik kláves najednou prohlížeč viděl držených, a tím odliší limit "
+"klávesnice od limitu bzo."
+
+#: docs/help/controls.md
+msgid "Touch: the on-screen controls"
+msgstr "Dotyk: ovládání na obrazovce"
+
+#: docs/help/controls.md
+msgid ""
+"A phone starts with them on; anywhere else `Settings -> Virtual Controls` "
+"turns them on and off."
+msgstr ""
+"Telefon s ním začíná zapnutým; jinde ho zapíná a vypíná `Settings -> Virtual "
+"Controls`."
+
+#: docs/help/controls.md
+msgid ""
+"**The stick**, bottom left: push it to drive and turn, as far as you push "
+"it. A mouse can drag it too."
+msgstr ""
+"**Páčka** vlevo dole: zatlač ji a jedeš a zatáčíš, tím víc, čím víc ji "
+"zatlačíš. Táhnout ji jde i myší."
+
+#: docs/help/controls.md
+msgid ""
+"**`●`** — shoot. Tapping fires as fast as clicking a mouse; holding fires at "
+"the world's sustained rate"
+msgstr ""
+"**`●`** — střelba. Klepání střílí tak rychle jako klikání myší; držení "
+"střílí trvalou rychlostí světa"
+
+#: docs/help/controls.md
+msgid "**`⤒`** — jump"
+msgstr "**`⤒`** — skok"
+
+#: docs/help/controls.md
+msgid "**`⚑`** — drop flag"
+msgstr "**`⚑`** — odhodit vlajku"
+
+#: docs/help/controls.md
+msgid "**`◎`** — identify, and lock a Guided Missile"
+msgstr "**`◎`** — identifikovat a zamknout naváděnou střelu"
+
+#: docs/help/controls.md
+msgid ""
+"Everything else -- camera, radar range, chat, hunting, autopilot, pausing -- "
+"is a row in Settings, which a tap reaches."
+msgstr ""
+"Všechno ostatní -- kamera, dosah radaru, chat, lov, autopilot, pauza -- je "
+"řádek v Nastavení, kam se dostaneš klepnutím."
+
+#: docs/help/controls.md
+msgid "Gamepad"
+msgstr "Gamepad"
+
+#: docs/help/controls.md
+msgid ""
+"Any controller the browser reports in the standard layout (most USB and "
+"Bluetooth pads, and iOS MFi controllers). Plugging one in turns it on; "
+"nothing needs setting up."
+msgstr ""
+"Jakýkoli ovladač, který prohlížeč hlásí ve standardním rozložení (většina "
+"USB a Bluetooth ovladačů a ovladače iOS MFi). Připojením se zapne; nic není "
+"třeba nastavovat."
+
+#: docs/help/controls.md
+msgid "Control"
+msgstr "Ovládací prvek"
+
+#: docs/help/controls.md
+msgid "In a menu"
+msgstr "V menu"
+
+#: docs/help/controls.md
+msgid "Left stick"
+msgstr "Levá páčka"
+
+#: docs/help/controls.md
+msgid "forward/backward and turn"
+msgstr "vpřed/vzad a otáčení"
+
+#: docs/help/controls.md
+msgid "move between rows, change a row"
+msgstr "přesun mezi řádky, změna řádku"
+
+#: docs/help/controls.md
+msgid "`A` / Cross, or right trigger"
+msgstr "`A` / Křížek nebo pravá spoušť"
+
+#: docs/help/controls.md
+msgid "shoot"
+msgstr "střelba"
+
+#: docs/help/controls.md
+msgid "select"
+msgstr "výběr"
+
+#: docs/help/controls.md
+msgid "`B` / Circle, or left trigger"
+msgstr "`B` / Kolečko nebo levá spoušť"
+
+#: docs/help/controls.md
+msgid "jump"
+msgstr "skok"
+
+#: docs/help/controls.md
+msgid "back"
+msgstr "zpět"
+
+#: docs/help/controls.md
+msgid "`X` / Square"
+msgstr "`X` / Čtverec"
+
+#: docs/help/controls.md
+msgid "drop flag"
+msgstr "odhodit vlajku"
+
+# review: boční tlačítko
+#: docs/help/controls.md
+msgid "Either shoulder"
+msgstr "Kterékoli boční tlačítko"
+
+#: docs/help/controls.md
+msgid "identify"
+msgstr "identifikace"
+
+#: docs/help/controls.md
+msgid ""
+"The sticks have a dead zone of a fifth of their travel, so a pad left on the "
+"desk does not creep. The right stick is free."
+msgstr ""
+"Páčky mají mrtvou zónu pětiny svého rozsahu, takže ovladač položený na stole "
+"neujíždí. Pravá páčka je volná."
+
+#: docs/help/controls.md
+msgid ""
+"The pad rumbles when you fire and when your tank dies, as BZFlag's does: a "
+"short buzz for a shot, longer for a shock wave, both motors for a laser, and "
+"one long, strong shake for a death. It rumbles only while it is what you are "
+"playing with -- a key or a click hands control back and keeps it quiet -- "
+"and never for an observer. **Rumble** in Settings turns it off. The browser "
+"has to support it; Chrome and Edge do."
+msgstr ""
+"Ovladač vibruje, když vystřelíš a když tvůj tank zemře, stejně jako v "
+"BZFlagu: krátké zabzučení pro výstřel, delší pro rázovou vlnu, oba motory "
+"pro laser a jedno dlouhé silné zatřesení pro smrt. Vibruje jen tehdy, když s "
+"ním právě hraješ -- klávesa nebo kliknutí převezme ovládání a utiší ho -- a "
+"nikdy pro pozorovatele. **Vibrace** v Nastavení je vypne. Prohlížeč to musí "
+"podporovat; Chrome a Edge ano."
+
+#: docs/help/controls.md
+msgid "XR controllers"
+msgstr "XR ovladače"
+
+#: docs/help/controls.md
+msgid ""
+"In VR the controllers are the only input. Turning the tank is independent of "
+"where you look."
+msgstr ""
+"Ve VR jsou ovladače jediným vstupem. Otáčení tanku nezávisí na tom, kam se "
+"díváš."
+
+#: docs/help/controls.md
+msgid "In the XR menu"
+msgstr "V XR menu"
+
+#: docs/help/controls.md
+msgid "Either thumbstick"
+msgstr "Kterákoli páčka"
+
+#: docs/help/controls.md
+msgid "forward/backward and turn -- the right stick if both are pushed"
+msgstr "vpřed/vzad a otáčení -- pravá páčka, pokud jsou zatlačené obě"
+
+#: docs/help/controls.md
+msgid "Either trigger"
+msgstr "Kterákoli spoušť"
+
+#: docs/help/controls.md
+msgid "`A` / `X` (primary face button)"
+msgstr "`A` / `X` (hlavní tlačítko)"
+
+#: docs/help/controls.md
+msgid "`B` / `Y` (secondary face button)"
+msgstr "`B` / `Y` (vedlejší tlačítko)"
+
+#: docs/help/controls.md
+msgid "open the XR menu"
+msgstr "otevřít XR menu"
+
+#: docs/help/controls.md
+msgid "back, and close it from the top"
+msgstr "zpět, a z nejvyšší úrovně ho zavřít"
+
+#: docs/help/controls.md
+msgid "Either grip"
+msgstr "Kterékoli tlačítko úchopu"
+
+#: docs/help/controls.md
+msgid "Press either thumbstick"
+msgstr "Stisk kterékoli páčky"
+
+#: docs/help/controls.md
+msgid "Both controllers pulse for the same events as a gamepad's rumble."
+msgstr "Oba ovladače pulzují při stejných událostech jako vibrace gamepadu."
+
+#: docs/help/controls.md
+msgid ""
+"Identify is on the thumbstick press because a thumb that is steering presses "
+"it by accident, and identifying costs nothing; the menu is on `B` for the "
+"same reason. Typing -- a name, a MOTD -- uses the headset's own system "
+"keyboard, raised when the row takes focus; see the README's WebXR section "
+"for headsets that have none."
+msgstr ""
+"Identifikace je na stisku páčky, protože palec, který řídí, ji stiskne "
+"omylem a identifikace nic nestojí; menu je na `B` ze stejného důvodu. Psaní "
+"-- jména, MOTD -- používá systémovou klávesnici headsetu, která se vysune, "
+"když řádek získá fokus; pro headsety bez ní viz sekci WebXR v README."
+
+#: docs/help/flags.md
+msgid "Flags"
+msgstr "Vlajky"
+
+#: docs/help/flags.md
+msgid ""
+"Drive over a flag to pick it up, and `Space` to drop it. Good flags help; "
+"bad flags hinder, and stay until they shake off, you kill, or you die. A "
+"superflag on the ground is white and tells you nothing about itself until "
+"somebody picks it up. Team flags are captured by carrying an enemy's to your "
+"own base."
+msgstr ""
+"Přejeď přes vlajku a sebereš ji, `Space` ji odhodí. Dobré vlajky pomáhají; "
+"špatné škodí a zůstanou, dokud se jich nezbavíš, někoho nezabiješ nebo "
+"nezemřeš. Supervlajka na zemi je bílá a nic o sobě neprozradí, dokud ji "
+"někdo nesebere. Týmové vlajky se dobývají tak, že nepřátelskou doneseš na "
+"vlastní základnu."
+
+#: docs/help/scoreboard.md
+msgid "Scoreboard"
+msgstr "Tabulka skóre"
+
+#: docs/help/scoreboard.md
+msgid ""
+"Each row's numbers read **Kills / Deaths**, then **[Team Kills]** once you "
+"have any, then your own record against that one opponent: **wins~losses**, "
+"blank until you've actually fought them. Your own row shows a self-destruct "
+"count there instead, since you have no record against yourself. Rabbit Chase "
+"adds a rank percentage in front of the kill count."
+msgstr ""
+"Čísla na každém řádku znamenají **zabití / smrti**, pak **[týmová zabití]**, "
+"jakmile nějaká máš, pak tvoje vlastní bilance proti tomu jednomu soupeři: "
+"**výhry~prohry**, prázdné, dokud jste spolu skutečně nebojovali. Tvůj "
+"vlastní řádek místo toho ukazuje počet sebedestrukcí, protože proti sobě "
+"bilanci nemáš. Rabbit Chase přidává před počet zabití procentuální hodnocení."
+
+#: docs/help/scoreboard.md
+msgid ""
+"Before a name, in cyan: `@` means that player is an admin, `+` means they're "
+"signed in with a verified callsign this session. Neither shows for anyone "
+"else."
+msgstr ""
+"Před jménem azurově: `@` znamená, že hráč je admin, `+` že je v této relaci "
+"přihlášený s ověřeným jménem (callsign). Ani jedno se u nikoho jiného "
+"nezobrazuje."
+
+#: docs/help/scoreboard.md
+msgid ""
+"Right after the name itself: a `/XX` is the flag they're carrying, in that "
+"flag's own colour -- see [Flags](flags.md) for what each abbreviation means."
+msgstr ""
+"Hned za samotným jménem: `/XX` je vlajka, kterou nese, v barvě té vlajky -- "
+"co která zkratka znamená, viz [Vlajky](flags.md)."
+
+#: docs/help/scoreboard.md
+msgid ""
+"Further along the name: 🎤 means that player's microphone is on, and 🔊 "
+"replaces it the moment they're actually speaking. ⏳ means paused. A hunted "
+"player wears a cyan `◎` -- see [Hunting](controls.md#hunting)."
+msgstr ""
+"Dál u jména: 🎤 znamená, že hráč má zapnutý mikrofon, a 🔊 ho nahradí ve "
+"chvíli, kdy skutečně mluví. ⏳ znamená pauzu. Lovený hráč nese azurový `◎` "
+"-- viz [Lov](controls.md#hunting)."
+
+#: docs/help/voice.md
+msgid "Audio and voice"
+msgstr "Zvuk a hlas"
+
+#: docs/help/voice.md
+msgid ""
+"`Settings -> Audio Settings` — game, voice, and microphone levels, each from "
+"Off to 100%"
+msgstr ""
+"`Settings -> Audio Settings` (Nastavení zvuku) — hlasitost hry, hlasu a "
+"mikrofonu, každá od Vypnuto do 100 %"
+
+#: docs/help/voice.md
+msgid ""
+"**Voice channel** — **All** is everyone on the server, **Nearby** is only "
+"players within earshot, **Team** is your own team anywhere on the map"
+msgstr ""
+"**Hlasový kanál** — **Všichni** jsou všichni na serveru, **Okolí** jen hráči "
+"na doslech, **Tým** je tvůj tým kdekoli na mapě"
+
+#: docs/help/voice.md
+msgid "`B` — toggle the microphone"
+msgstr "`B` — zapnout/vypnout mikrofon"
+
+#: docs/help/voice.md
+msgid ""
+"Voice is available after microphone permission is granted. Observers talk "
+"and listen on the same terms as everyone else."
+msgstr ""
+"Hlas je dostupný po udělení oprávnění k mikrofonu. Pozorovatelé mluví a "
+"poslouchají za stejných podmínek jako všichni ostatní."
+
+#: docs/help/about.md
+msgid "About"
+msgstr "O hře"
+
+#: docs/help/about.md
+msgid ""
+"Battlezone Online is a free 3D tank game in the browser that plays with "
+"[BZFlag](https://www.bzflag.org/)."
+msgstr ""
+"Battlezone Online je bezplatná 3D tanková hra v prohlížeči, hratelná "
+"společně s [BZFlag](https://www.bzflag.org/)."
+
+#: docs/help/about.md
+msgid ""
+"It is free software licensed under the [GNU Affero General Public License "
+"v3.0](https://www.gnu.org/licenses/agpl-3.0.html). Source code is available "
+"at [github.com/timriker/bzo](/source)."
+msgstr ""
+"Je to svobodný software pod licencí [GNU Affero General Public License v3.0]"
+"(https://www.gnu.org/licenses/agpl-3.0.html). Zdrojový kód je k dispozici na "
+"[github.com/timriker/bzo](/source)."

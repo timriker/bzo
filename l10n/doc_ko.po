@@ -1,0 +1,967 @@
+msgid ""
+msgstr ""
+"Project-Id-Version: bzo\n"
+"Report-Msgid-Bugs-To: https://github.com/timriker/bzo/issues\n"
+"Language: ko\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Review: machine-translated, not yet read by a native speaker\n"
+
+#: docs/help/controls.md
+msgid "Controls"
+msgstr "조작법"
+
+#: docs/help/controls.md
+msgid ""
+"One client runs on a desktop, a phone and a headset, so every action has a "
+"way in from each of them. The keyboard has the most; touch, a gamepad and "
+"the XR controllers carry the actions a match needs, and the Settings menu "
+"reaches the rest -- including from a headset, where there is no keyboard at "
+"all. This page is also the in-game help's (`/` or `?`)."
+msgstr ""
+"하나의 클라이언트가 데스크톱, 휴대폰, 헤드셋에서 실행되므로 모든 동작은 각 기"
+"기마다 입력 방법이 있어요. 키보드가 가장 많은 동작을 지원하고, 터치·게임패드"
+"·XR 컨트롤러는 경기에 필요한 동작을 맡으며, 나머지는 설정 메뉴에서 쓸 수 있어"
+"요. 키보드가 전혀 없는 헤드셋에서도 마찬가지예요. 이 페이지는 게임 내 도움말"
+"(`/` 또는 `?`)이기도 해요."
+
+#: docs/help/controls.md
+msgid "Keyboard"
+msgstr "키보드"
+
+#: docs/help/controls.md
+msgid "Driving"
+msgstr "주행"
+
+#: docs/help/controls.md
+msgid "`W` / `S` or `Up` / `Down` — move forward/backward"
+msgstr "`W` / `S` 또는 `Up` / `Down` — 전진/후진"
+
+#: docs/help/controls.md
+msgid "`A` / `D` or `Left` / `Right` — turn left/right"
+msgstr "`A` / `D` 또는 `Left` / `Right` — 좌/우 회전"
+
+#: docs/help/controls.md
+msgid "`Enter` — shoot"
+msgstr "`Enter` — 발사"
+
+#: docs/help/controls.md
+msgid "`Tab` — jump"
+msgstr "`Tab` — 점프"
+
+#: docs/help/controls.md
+msgid "`Space` — drop flag"
+msgstr "`Space` — 플래그 버리기"
+
+#: docs/help/controls.md
+msgid ""
+"`I` or right-click — identify the tank in your sights, and lock a Guided "
+"Missile onto it"
+msgstr "`I` 또는 우클릭 — 조준선 안의 탱크를 식별하고 유도 미사일을 고정"
+
+#: docs/help/controls.md
+msgid ""
+"`Delete` — self-destruct, after a five second countdown; `Delete` again "
+"calls it off"
+msgstr "`Delete` — 5초 카운트다운 후 자폭. `Delete`를 다시 누르면 취소"
+
+#: docs/help/controls.md
+msgid ""
+"`9` or `/autopilot [roger|ace]` — autopilot: the pilot drives, aims and "
+"shoots until pressed again. `Settings -> Autopilot` chooses the pilot "
+"without a keyboard. You can still drive while it does, to help it out of a "
+"corner -- see [Combining inputs](#combining-inputs)"
+msgstr ""
+"`9` 또는 `/autopilot [roger|ace]` — 오토파일럿: 다시 누를 때까지 파일럿이 주"
+"행·조준·사격해요. `Settings -> Autopilot`에서 키보드 없이 파일럿을 고를 수 있"
+"어요. 작동 중에도 직접 조종해서 구석에서 빼낼 수 있어요. [입력 조합]"
+"(#combining-inputs) 참고"
+
+#: docs/help/controls.md
+msgid "`P` — pause/resume"
+msgstr "`P` — 일시정지/재개"
+
+#: docs/help/controls.md
+msgid "Chat"
+msgstr "채팅"
+
+#: docs/help/controls.md
+msgid "`N` — open chat (or click the `Send` button)"
+msgstr "`N` — 채팅 열기(또는 `Send` 버튼 클릭)"
+
+#: docs/help/controls.md
+msgid ""
+"`Enter` — send chat (while chat input is focused, or click `Send` again)"
+msgstr ""
+"`Enter` — 채팅 보내기(입력란에 포커스가 있을 때, 또는 `Send`를 다시 클릭)"
+
+#: docs/help/controls.md
+msgid ""
+"`1` / `2` / `3` / `4` / `5` — switch chat tab (`All` / `Chat` / `Server` / "
+"`Misc` / `Debug`)"
+msgstr ""
+"`1` / `2` / `3` / `4` / `5` — 채팅 탭 전환(`All` / `Chat` / `Server` / "
+"`Misc` / `Debug`)"
+
+#: docs/help/controls.md
+msgid "`[` / `]` — previous/next chat tab"
+msgstr "`[` / `]` — 이전/다음 채팅 탭"
+
+#: docs/help/controls.md
+msgid ""
+"`Tab` — while typing, complete a player, command or flag name; `@` starts a "
+"mention and `#` a player's slot number"
+msgstr ""
+"`Tab` — 입력 중에 플레이어, 명령어, 플래그 이름 자동 완성. `@`는 멘션, `#`은 "
+"플레이어 슬롯 번호"
+
+#: docs/help/controls.md
+msgid ""
+"`Up` / `Down` — while typing, recall earlier lines; type the start of a line "
+"first to recall only the ones beginning that way"
+msgstr ""
+"`Up` / `Down` — 입력 중에 이전 줄 불러오기. 줄의 앞부분을 먼저 입력하면 그렇"
+"게 시작하는 줄만 불러와요"
+
+#: docs/help/controls.md
+msgid "`.` — reply to last direct-message sender"
+msgstr "`.` — 마지막으로 귓속말을 보낸 사람에게 답장"
+
+#: docs/help/controls.md
+msgid "`,` — message nemesis target"
+msgstr "`,` — 네메시스 대상에게 메시지"
+
+#: docs/help/controls.md
+msgid "`Page Up` / `Page Down` — scroll chat history"
+msgstr "`Page Up` / `Page Down` — 채팅 기록 스크롤"
+
+#: docs/help/controls.md
+msgid "`End` — jump chat to newest message"
+msgstr "`End` — 채팅을 최신 메시지로 이동"
+
+#: docs/help/controls.md
+msgid ""
+"Drag across the history while chat is open to select it, then copy; typing "
+"carries on in the input"
+msgstr ""
+"채팅이 열린 상태에서 기록을 드래그하면 선택해서 복사할 수 있어요. 입력은 입력"
+"란에서 그대로 계속돼요"
+
+#: docs/help/controls.md
+msgid "View and panels"
+msgstr "화면과 패널"
+
+#: docs/help/controls.md
+msgid ""
+"`Esc` — back out one step: exit chat input, leave fullscreen, leave mouse "
+"steering, then open Settings. Pressing it again closes Settings, so it is "
+"always safe to press one more time"
+msgstr ""
+"`Esc` — 한 단계 뒤로: 채팅 입력 종료, 전체 화면 해제, 마우스 조종 해제, 그다"
+"음 설정 열기. 다시 누르면 설정이 닫히므로 언제든 한 번 더 눌러도 안전해요"
+
+#: docs/help/controls.md
+msgid "`M` — toggle mouse steering"
+msgstr "`M` — 마우스 조종 켜기/끄기"
+
+#: docs/help/controls.md
+msgid "`C` — cycle camera mode"
+msgstr "`C` — 카메라 모드 전환"
+
+#: docs/help/controls.md
+msgid "`O` — toggle operator panel"
+msgstr "`O` — 오퍼레이터 패널 켜기/끄기"
+
+#: docs/help/controls.md
+msgid "`F` — toggle fullscreen"
+msgstr "`F` — 전체 화면 켜기/끄기"
+
+#: docs/help/controls.md
+msgid "`` ` `` — toggle debug HUD"
+msgstr "`` ` `` — 디버그 HUD 켜기/끄기"
+
+#: docs/help/controls.md
+msgid "`=` or `+` or `Numpad +` — zoom radar out (increase range)"
+msgstr "`=` 또는 `+` 또는 `Numpad +` — 레이더 축소(범위 넓히기)"
+
+#: docs/help/controls.md
+msgid "`-` or `Numpad -` — zoom radar in (decrease range)"
+msgstr "`-` 또는 `Numpad -` — 레이더 확대(범위 좁히기)"
+
+#: docs/help/controls.md
+msgid ""
+"`\\` — reset radar zoom to the default medium range (half the world's radar "
+"limit, which is the world size unless the map says otherwise)"
+msgstr ""
+"`\\` — 레이더 줌을 기본 중거리로 초기화(월드 레이더 한계의 절반이며, 맵에서 "
+"따로 정하지 않으면 월드 크기예요)"
+
+#: docs/help/controls.md
+msgid "`Settings -> Radar: ...` — cycle Short/Medium/Long radar presets"
+msgstr "`Settings -> Radar: ...` — 근거리/중거리/원거리 레이더 프리셋 전환"
+
+#: docs/help/controls.md
+msgid "`B` — toggle the voice microphone"
+msgstr "`B` — 음성 마이크 켜기/끄기"
+
+#: docs/help/controls.md
+msgid ""
+"`Settings -> Audio Settings` — set the game, voice, and microphone levels, "
+"and choose the voice channel: All, Nearby, or Team"
+msgstr ""
+"`Settings -> Audio Settings` — 게임, 음성, 마이크 음량을 설정하고 음성 채널 "
+"선택: 전체, 근처, 팀"
+
+#: docs/help/controls.md
+msgid "`/` or `?` — show/hide help panel"
+msgstr "`/` 또는 `?` — 도움말 패널 표시/숨기기"
+
+#: docs/help/controls.md
+msgid ""
+"`🎤` beside the gear — the microphone, as `B` is: a green border means you "
+"are transmitting and a red one means you are not, and the hover text names "
+"the channel it would speak on"
+msgstr ""
+"톱니바퀴 옆 `🎤` — `B`와 같은 마이크 버튼이에요. 초록 테두리는 송신 중, 빨간 "
+"테두리는 송신하지 않음을 뜻하고, 마우스를 올리면 말할 채널이 표시돼요"
+
+#: docs/help/controls.md
+msgid ""
+"`▲` beside the gear — hide the scoreboard and chat, leaving the name row and "
+"the chat tabs; `▼` brings them back. Typing a message borrows the chat "
+"window until you are done with it, and `U` or `7` borrows the scoreboard "
+"until the hunt cursor closes; tapping a chat tab opens chat for good. Small "
+"screens start collapsed"
+msgstr ""
+"톱니바퀴 옆 `▲` — 스코어보드와 채팅을 숨기고 이름 줄과 채팅 탭만 남겨요. `▼`"
+"로 다시 표시해요. 메시지를 입력하는 동안에는 채팅 창이 잠시 나타나고, `U` 또"
+"는 `7`은 헌트 커서를 닫을 때까지 스코어보드를 보여 줘요. 채팅 탭을 탭하면 채"
+"팅이 계속 열려 있어요. 작은 화면에서는 접힌 상태로 시작해요"
+
+#: docs/help/controls.md
+msgid ""
+"`Settings -> Anaglyph 3D` — red/cyan glasses; `Settings -> VR Mode` enters a "
+"WebXR headset"
+msgstr ""
+"`Settings -> Anaglyph 3D` — 빨강/청록 안경용. `Settings -> VR Mode`는 WebXR "
+"헤드셋으로 들어가요"
+
+#: docs/help/controls.md
+msgid "Menus"
+msgstr "메뉴"
+
+#: docs/help/controls.md
+msgid ""
+"`Up` / `Down` — previous/next control, including from inside a text field"
+msgstr "`Up` / `Down` — 이전/다음 항목(텍스트 입력란 안에서도)"
+
+#: docs/help/controls.md
+msgid ""
+"`Left` / `Right` — change the focused control: move a slider, pick the next "
+"choice. In a text field they move the cursor instead"
+msgstr ""
+"`Left` / `Right` — 포커스된 항목 변경: 슬라이더 이동, 다음 선택지 선택. 텍스"
+"트 입력란에서는 커서를 움직여요"
+
+#: docs/help/controls.md
+msgid "`Tab` / `Shift+Tab` — previous/next control"
+msgstr "`Tab` / `Shift+Tab` — 이전/다음 항목"
+
+#: docs/help/controls.md
+msgid "`Home` / `End` — first/last control"
+msgstr "`Home` / `End` — 처음/마지막 항목"
+
+#: docs/help/controls.md
+msgid "`Enter` or `Space` — press the focused control"
+msgstr "`Enter` 또는 `Space` — 포커스된 항목 누르기"
+
+#: docs/help/controls.md
+msgid ""
+"Click or tap a row that walks a list: the title steps back and the current "
+"option steps forward. The `‹` and `›` on the row mark the two halves"
+msgstr ""
+"목록을 넘기는 줄을 클릭하거나 탭하면 제목 쪽은 한 칸 뒤로, 현재 옵션 쪽은 한 "
+"칸 앞으로 넘어가요. 줄의 `‹`와 `›`가 두 영역을 표시해요"
+
+#: docs/help/controls.md
+msgid ""
+"The help panel is read rather than operated, so there the arrows scroll it "
+"and only `Left` / `Right` move focus"
+msgstr ""
+"도움말 패널은 조작하기보다 읽는 곳이라, 화살표 키로 스크롤하고 포커스는 "
+"`Left` / `Right`로만 옮겨요"
+
+#: docs/help/controls.md
+msgid "Hunting"
+msgstr "헌트"
+
+#: docs/help/controls.md
+msgid ""
+"Marking a player puts a cyan `◎` on their scoreboard row, a cyan ring on "
+"their radar blip, and a beacon in the sky over them in their own tank colour "
+"-- so several marked at once are still told apart at a glance. While one of "
+"them is in your sights the HUD says **SPOTTED:** and a ping sounds once a "
+"second from where they are. In Rabbit Chase the rabbit is marked for you, "
+"and its beacon is cyan like its ring: everyone is hunting it, so everyone's "
+"mark over it says so."
+msgstr ""
+"플레이어를 표시하면 스코어보드 줄에 청록색 `◎`, 레이더 점에 청록색 고리, 그리"
+"고 그 위 하늘에 그 탱크 색의 비컨이 생겨요. 여러 명을 표시해도 한눈에 구별할 "
+"수 있어요. 그중 한 명이 조준선에 들어오면 HUD에 **발견:**가 표시되고, 그 위"
+"치에서 1초마다 핑 소리가 나요. Rabbit Chase에서는 래빗이 자동으로 표시되고, "
+"비컨도 고리처럼 청록색이에요. 모두가 래빗을 쫓고 있으니 모두의 표시가 그렇게 "
+"보여 주는 거예요."
+
+#: docs/help/controls.md
+msgid ""
+"`U` — hunt: open the scoreboard cursor, and press it again on a running hunt "
+"to clear every mark"
+msgstr ""
+"`U` — 헌트: 스코어보드 커서를 열고, 헌트 중에 다시 누르면 모든 표시 해제"
+
+#: docs/help/controls.md
+msgid ""
+"`7` — add hunt: the same cursor, but committing adds to what is marked "
+"rather than replacing it, and committing on a row already marked takes it off"
+msgstr ""
+"`7` — 헌트 추가: 같은 커서지만 확정하면 교체하지 않고 추가하며, 이미 표시된 "
+"줄에서 확정하면 표시를 해제해요"
+
+#: docs/help/controls.md
+msgid ""
+"`Settings -> Hunt` — the same thing without a keyboard, for a phone or a "
+"headset. Left and right step through `Clear` and then the players in "
+"alphabetical order; select marks or unmarks whoever is shown, or clears "
+"every mark on `Clear`. On a touch screen or with a mouse, tap a chevron to "
+"step and anywhere else on the row to select"
+msgstr ""
+"`Settings -> Hunt` — 키보드 없이 같은 기능을 써요(휴대폰이나 헤드셋용). 좌우"
+"로 `Clear`, 그다음 플레이어를 알파벳순으로 넘겨요. 선택하면 보이는 플레이어"
+"를 표시/해제하고, `Clear`에서는 모든 표시를 해제해요. 터치 화면이나 마우스에"
+"서는 화살표를 탭해서 넘기고, 줄의 나머지 부분을 탭해서 선택해요"
+
+#: docs/help/controls.md
+msgid ""
+"With the cursor open, the board's heading reads `*SEL*` and a pulsing `○` "
+"sits on the row it is on, filling in to `◎` when you commit. `Up` / `Down` "
+"move it, `Enter` commits, and `U` or `7` backs out keeping whatever was "
+"already marked. `I` and `Space` move the cursor too, so a surface without "
+"arrow keys can reach it"
+msgstr ""
+"커서가 열리면 보드 제목이 `*SEL*`로 바뀌고 커서가 있는 줄에 깜박이는 `○`가 표"
+"시되며, 확정하면 `◎`로 채워져요. `Up` / `Down`으로 이동, `Enter`로 확정, `U` "
+"또는 `7`로 기존 표시를 유지한 채 나가요. `I`와 `Space`로도 커서를 움직일 수 "
+"있어서 화살표 키가 없는 기기에서도 쓸 수 있어요"
+
+#: docs/help/controls.md
+msgid "As an observer"
+msgstr "관전자로 플레이할 때"
+
+#: docs/help/controls.md
+msgid ""
+"As an Observer you have no tank. Drive and turn fly the camera instead, "
+"`Tab` climbs and `Space` descends, and holding `Shift` makes drive tilt the "
+"view up and down and turn slide it sideways. The camera rests at the eye "
+"height of a tank on the ground, and travel stays level however the view is "
+"tilted. Pausing and self-destruct do nothing."
+msgstr ""
+"관전자는 탱크가 없어요. 주행과 회전으로 카메라를 날리고, `Tab`으로 상승, "
+"`Space`로 하강해요. `Shift`를 누르고 있으면 주행은 시점을 위아래로 기울이고 "
+"회전은 옆으로 이동해요. 카메라는 지상 탱크의 눈높이에 있고, 시점을 어떻게 기"
+"울여도 수평으로 이동해요. 일시정지와 자폭은 동작하지 않아요."
+
+#: docs/help/controls.md
+msgid ""
+"`Enter` or `C` — step through everything: in each view, the leader first, "
+"then every player, then on to the next view. The views are Free, Track, "
+"Follow, Driving with, and Flag where a map has team flags"
+msgstr ""
+"`Enter` 또는 `C` — 모든 대상을 차례로: 각 뷰에서 먼저 선두, 다음 모든 플레이"
+"어, 그리고 다음 뷰로. 뷰는 자유 시점, 추적 중, 따라가는 중, 동승 중, 그리고 "
+"팀 플래그가 있는 맵에서는 플래그 추적 중이에요"
+
+#: docs/help/controls.md
+msgid ""
+"`I` or right-click — in the Free view, watch the tank in your sights, or "
+"show the obstacle there: what it is, an outline round it, and its block from "
+"the map file with the `group` blocks that placed it"
+msgstr ""
+"`I` 또는 우클릭 — Free 뷰에서 조준선 안의 탱크를 관전하거나 그곳의 장애물을 "
+"표시: 무엇인지, 외곽선, 그리고 그것을 배치한 `group` 블록과 함께 맵 파일의 해"
+"당 블록"
+
+#: docs/help/controls.md
+msgid ""
+"Right-click or tap an obstacle anywhere on screen, in any view and the "
+"Overview most of all, to show it the same way"
+msgstr ""
+"화면 어디서든 장애물을 우클릭하거나 탭하면 어떤 뷰에서든(특히 전체 보기에서) "
+"같은 방식으로 표시해요"
+
+#: docs/help/controls.md
+msgid ""
+"Pick nothing -- the sky, or empty ground in the Overview -- or press the "
+"panel's **World** button for the whole world: what is in it, faces, "
+"textures, the map file's warnings and its largest meshes, each of which "
+"shows that mesh"
+msgstr ""
+"아무것도 고르지 않거나(하늘, 또는 전체 보기의 빈 땅) 패널의 **월드** 버튼을 "
+"누르면 월드 전체를 표시: 들어 있는 것, 면, 텍스처, 맵 파일 경고, 가장 큰 메시"
+"들(각각 그 메시를 표시해요)"
+
+#: docs/help/controls.md
+msgid ""
+"Click a scoreboard row to watch that player; click the marked row again to "
+"go back to following the leader"
+msgstr ""
+"스코어보드 줄을 클릭하면 그 플레이어를 관전해요. 표시된 줄을 다시 클릭하면 선"
+"두 따라가기로 돌아가요"
+
+#: docs/help/controls.md
+msgid "Mouse"
+msgstr "마우스"
+
+#: docs/help/controls.md
+msgid ""
+"`M` turns mouse steering on and off, and nothing else does: the keys never "
+"take it away behind your back."
+msgstr ""
+"마우스 조종은 `M`으로만 켜고 꺼요. 키 입력이 몰래 꺼 버리는 일은 없어요."
+
+#: docs/help/controls.md
+msgid "The targeting box"
+msgstr "조준 박스"
+
+#: docs/help/controls.md
+msgid ""
+"The two boxes in the middle of the screen are the steering, as in BZFlag. "
+"Where the cursor sits relative to their centre is what the tank does:"
+msgstr ""
+"화면 가운데의 두 박스는 BZFlag처럼 조종용이에요. 중심에 대한 커서 위치가 탱크"
+"의 움직임을 정해요:"
+
+#: docs/help/controls.md
+msgid ""
+"**Inside the inner box, nothing.** It is the dead zone: park the cursor "
+"there to stop."
+msgstr ""
+"**안쪽 박스 안에서는 아무것도 안 해요.** 데드존이에요. 멈추려면 커서를 여기"
+"에 두세요."
+
+#: docs/help/controls.md
+msgid ""
+"**Between the boxes, more the further out.** Up is forward and down is "
+"reverse; left and right turn. Each grows evenly from nothing at the inner "
+"box's edge to full at the outer box's."
+msgstr ""
+"**박스 사이에서는 바깥으로 갈수록 강하게.** 위는 전진, 아래는 후진, 좌우는 회"
+"전이에요. 각각 안쪽 박스 가장자리의 0부터 바깥 박스 가장자리의 최대까지 고르"
+"게 커져요."
+
+#: docs/help/controls.md
+msgid ""
+"**At or past the outer box, full.** Each axis stops growing on its own, so "
+"running the cursor out past the top keeps the tank at full speed and leaves "
+"left and right free to steer."
+msgstr ""
+"**바깥 박스 이상에서는 최대.** 각 축이 따로 최대에서 멈추므로, 커서를 위로 넘"
+"겨도 최고 속도를 유지하면서 좌우로 자유롭게 조종할 수 있어요."
+
+#: docs/help/controls.md
+msgid ""
+"**Reverse is half speed**, as it is from the keys, however far down the "
+"cursor goes."
+msgstr "**후진은 절반 속도예요.** 키와 마찬가지로 커서를 아무리 내려도 같아요."
+
+#: docs/help/controls.md
+msgid ""
+"**The box sets the speed asked for, not the speed you get at once.** A world "
+"with an acceleration limit (BZFlag's `-a`, off by default) brings the tank "
+"up to it over time, the same as it does from the keys."
+msgstr ""
+"**박스는 요청 속도를 정할 뿐, 바로 그 속도가 되지는 않아요.** 가속 제한이 있"
+"는 월드(BZFlag의 `-a`, 기본값은 꺼짐)에서는 키와 마찬가지로 시간이 지나며 속"
+"도가 올라가요."
+
+#: docs/help/controls.md
+msgid ""
+"The boxes are BZFlag's own sizes, scaled to the window. BZFlag also holds "
+"the cursor inside the box; a browser cannot without taking the pointer over, "
+"so in bzo the cursor can leave it -- the steering simply stays at full, and "
+"the cost is a longer move back to the centre."
+msgstr ""
+"박스 크기는 BZFlag와 같고 창 크기에 맞춰 조정돼요. BZFlag는 커서를 박스 안에 "
+"묶어 두지만, 브라우저는 포인터를 점유하지 않고는 그럴 수 없어서 bzo에서는 커"
+"서가 박스 밖으로 나갈 수 있어요. 그래도 조종은 최대로 유지되고, 중심으로 돌아"
+"오려면 조금 더 움직여야 할 뿐이에요."
+
+#: docs/help/controls.md
+msgid ""
+"With the keys, the mouse keeps whichever axis no key is holding -- see "
+"[Combining inputs](#combining-inputs)."
+msgstr ""
+"키와 함께 쓰면 어떤 키도 누르지 않은 축은 마우스가 맡아요. [입력 조합]"
+"(#combining-inputs) 참고."
+
+#: docs/help/controls.md
+msgid "Clicks"
+msgstr "클릭"
+
+#: docs/help/controls.md
+msgid ""
+"Left click shoots wherever the cursor is, whether mouse steering is on or "
+"not, unless the click lands on the chat panel or a button. Right click "
+"identifies. Mouse steering is unavailable with no mouse attached, in VR, and "
+"while the on-screen controls are up, since those steer instead; a click that "
+"misses one of their buttons does nothing rather than firing."
+msgstr ""
+"왼쪽 클릭은 마우스 조종이 켜져 있든 아니든 커서 위치로 발사해요. 단, 채팅 패"
+"널이나 버튼 위를 클릭하면 발사하지 않아요. 오른쪽 클릭은 식별이에요. 마우스"
+"가 연결되지 않았을 때, VR 중, 화면 컨트롤이 표시된 동안(그걸로 조종하므로)에"
+"는 마우스 조종을 쓸 수 없어요. 그 버튼을 빗나간 클릭은 발사하지 않고 아무 일"
+"도 하지 않아요."
+
+#: docs/help/controls.md
+msgid "Combining inputs"
+msgstr "입력 조합"
+
+#: docs/help/controls.md
+msgid ""
+"Every input drives at once, and nothing switches between them on its own: "
+"`M` and the Settings rows are the only things that change which ones are on."
+msgstr ""
+"모든 입력이 동시에 작동하고, 저절로 전환되는 일은 없어요. 어떤 입력을 켤지 바"
+"꾸는 건 `M`과 설정 항목뿐이에요."
+
+#: docs/help/controls.md
+msgid ""
+"**Driving is shared out an axis at a time** -- forward/back, and turn, each "
+"on its own. On each, the first of these with something to say wins:"
+msgstr ""
+"**주행은 축별로 나눠서 처리해요** — 전후와 회전을 각각 따로요. 각 축에서는 다"
+"음 중 입력이 있는 첫 번째가 이겨요:"
+
+#: docs/help/controls.md
+msgid ""
+"**Keys.** A held drive key owns its axis, and holding both of a pair (`W` "
+"and `S`, or `A` and `D`) is a deliberate stop on that axis."
+msgstr ""
+"**키.** 누르고 있는 주행 키가 그 축을 차지하고, 한 쌍을 모두 누르면(`W`와 "
+"`S`, 또는 `A`와 `D`) 그 축에서 의도적으로 멈춰요."
+
+#: docs/help/controls.md
+msgid ""
+"**The stick:** the XR controllers in VR, otherwise a connected gamepad, "
+"otherwise the on-screen stick. Only one of the three is read at a time -- "
+"they are not added together."
+msgstr ""
+"**스틱:** VR에서는 XR 컨트롤러, 아니면 연결된 게임패드, 그것도 없으면 화면 스"
+"틱. 셋 중 하나만 읽고, 합산하지 않아요."
+
+#: docs/help/controls.md
+msgid "**The mouse**, in the targeting box, with mouse steering on."
+msgstr "**마우스**: 마우스 조종이 켜져 있을 때 조준 박스에서."
+
+#: docs/help/controls.md
+msgid ""
+"So you can drive with `W` while the mouse steers, turn with `A`/`D` while "
+"the mouse sets the speed, or steer a gamepad's turn while a key holds the "
+"speed. A stick let go reads zero and gives the axis to the mouse; the mouse "
+"box holds whatever the cursor's place says, which is why it comes last."
+msgstr ""
+"그래서 `W`로 주행하면서 마우스로 조종하거나, 마우스로 속도를 정하면서 `A`/`D`"
+"로 회전하거나, 키로 속도를 유지하면서 게임패드로 회전할 수 있어요. 놓은 스틱"
+"은 0이 되어 그 축을 마우스에 넘겨요. 마우스 박스는 항상 커서 위치대로 값을 내"
+"므로 맨 마지막 순서예요."
+
+#: docs/help/controls.md
+msgid ""
+"**Buttons add up.** Shoot fires from `Enter`, a left click, or the stick "
+"source's own fire button; jump from `Tab` or the stick source's; identify "
+"from `I`, a right click, or the stick source's. Any of them will do."
+msgstr ""
+"**버튼은 합산돼요.** 발사는 `Enter`, 왼쪽 클릭, 또는 스틱 기기의 발사 버튼. "
+"점프는 `Tab` 또는 스틱 기기의 버튼. 식별은 `I`, 오른쪽 클릭, 또는 스틱 기기"
+"의 버튼. 어느 것이든 돼요."
+
+#: docs/help/controls.md
+msgid ""
+"**With the autopilot on**, the pilot takes the mouse's place, last in line: "
+"a drive key or the stick you hold still owns its axis, and the pilot has the "
+"rest. So when it is wedged against something you can hold `A` to turn it "
+"out, or `S` to back it off, while it keeps the other axis, and let go to "
+"hand it back -- it carries on from wherever you left it, re-planning its "
+"route if you took it somewhere else. Your shots, jumps and drops add to its "
+"own. The mouse box does not steer while the autopilot drives: it holds an "
+"offset wherever the cursor is parked, so it would never hand anything back."
+msgstr ""
+"**오토파일럿이 켜져 있으면** 파일럿이 마우스 자리, 즉 맨 마지막 순서에 들어가"
+"요. 누르고 있는 주행 키나 스틱은 계속 그 축을 차지하고, 나머지는 파일럿이 맡"
+"아요. 그래서 무언가에 끼었을 때 `A`를 눌러 방향을 틀거나 `S`로 후진시킬 수 있"
+"고, 그동안 파일럿은 다른 축을 계속 조종해요. 손을 떼면 다시 넘어가고, 놓은 곳"
+"에서 이어서 진행하며, 다른 곳으로 옮겼다면 경로를 다시 계획해요. 내 사격, 점"
+"프, 플래그 버리기는 파일럿의 동작에 더해져요. 오토파일럿이 주행하는 동안 마우"
+"스 박스는 조종하지 않아요. 커서가 놓인 곳의 오프셋을 계속 내서 아무것도 넘겨"
+"주지 않기 때문이에요."
+
+#: docs/help/controls.md
+msgid ""
+"**Menus don't stop the autopilot.** Opening Settings, or any other menu, "
+"normally pauses your tank. With the autopilot driving, the menu takes the "
+"keys and the pilot goes on driving. With a pilot chosen on the `Settings -> "
+"Autopilot` row but not driving, opening a menu turns the autopilot on, and "
+"closing the menu turns it off again -- so a menu means \"drive for me a "
+"moment\" rather than \"stop\". With the row on `None`, the default, or on a "
+"server that refuses bots (`-disableBots`), menus pause as they always have. "
+"A hidden window still pauses either way: the browser stops drawing it, and "
+"the pilot with it."
+msgstr ""
+"**메뉴를 열어도 오토파일럿은 멈추지 않아요.** 보통 설정 같은 메뉴를 열면 탱크"
+"가 일시정지해요. 오토파일럿이 주행 중이면 메뉴가 키를 받고 파일럿은 계속 주행"
+"해요. `Settings -> Autopilot` 항목에서 파일럿을 골랐지만 주행 중이 아니면, 메"
+"뉴를 열 때 오토파일럿이 켜지고 닫으면 다시 꺼져요. 그래서 메뉴는 “멈춰”가 아"
+"니라 “잠깐 운전해 줘”라는 뜻이 돼요. 항목이 기본값인 `None`이거나 봇을 거부하"
+"는 서버(`-disableBots`)에서는 메뉴가 예전처럼 일시정지해요. 창이 숨겨지면 어"
+"느 경우든 일시정지해요. 브라우저가 그리기를 멈추고 파일럿도 함께 멈추기 때문"
+"이에요."
+
+#: docs/help/controls.md
+msgid ""
+"**Three keys at once.** Many keyboards cannot report some three-key "
+"combinations at all -- the third key's press never reaches the browser -- so "
+"a held turn and reverse can swallow a jump (#146). The debug HUD (`` ` ``) "
+"shows how many keys the browser saw held at once, which tells the keyboard's "
+"limit from bzo's."
+msgstr ""
+"**키 세 개 동시 입력.** 많은 키보드는 일부 세 키 조합을 아예 감지하지 못해서 "
+"세 번째 키 입력이 브라우저에 전달되지 않아요. 그래서 회전과 후진을 누른 채로"
+"는 점프가 무시될 수 있어요(#146). 디버그 HUD(`` ` ``)는 브라우저가 동시에 감"
+"지한 키 수를 보여 주므로 키보드의 한계인지 bzo 문제인지 구별할 수 있어요."
+
+#: docs/help/controls.md
+msgid "Touch: the on-screen controls"
+msgstr "터치: 화면 컨트롤"
+
+#: docs/help/controls.md
+msgid ""
+"A phone starts with them on; anywhere else `Settings -> Virtual Controls` "
+"turns them on and off."
+msgstr ""
+"휴대폰에서는 처음부터 켜져 있고, 다른 기기에서는 `Settings -> Virtual "
+"Controls`로 켜고 꺼요."
+
+#: docs/help/controls.md
+msgid ""
+"**The stick**, bottom left: push it to drive and turn, as far as you push "
+"it. A mouse can drag it too."
+msgstr ""
+"**스틱**(왼쪽 아래): 미는 만큼 주행하고 회전해요. 마우스로 드래그해도 돼요."
+
+#: docs/help/controls.md
+msgid ""
+"**`●`** — shoot. Tapping fires as fast as clicking a mouse; holding fires at "
+"the world's sustained rate"
+msgstr ""
+"**`●`** — 발사. 탭하면 마우스 클릭만큼 빠르게, 길게 누르면 월드의 지속 발사 "
+"속도로 발사해요"
+
+#: docs/help/controls.md
+msgid "**`⤒`** — jump"
+msgstr "**`⤒`** — 점프"
+
+#: docs/help/controls.md
+msgid "**`⚑`** — drop flag"
+msgstr "**`⚑`** — 플래그 버리기"
+
+#: docs/help/controls.md
+msgid "**`◎`** — identify, and lock a Guided Missile"
+msgstr "**`◎`** — 식별 및 유도 미사일 고정"
+
+#: docs/help/controls.md
+msgid ""
+"Everything else -- camera, radar range, chat, hunting, autopilot, pausing -- "
+"is a row in Settings, which a tap reaches."
+msgstr ""
+"나머지(카메라, 레이더 범위, 채팅, 헌트, 오토파일럿, 일시정지)는 모두 설정의 "
+"항목이라 탭으로 쓸 수 있어요."
+
+#: docs/help/controls.md
+msgid "Gamepad"
+msgstr "게임패드"
+
+#: docs/help/controls.md
+msgid ""
+"Any controller the browser reports in the standard layout (most USB and "
+"Bluetooth pads, and iOS MFi controllers). Plugging one in turns it on; "
+"nothing needs setting up."
+msgstr ""
+"브라우저가 표준 레이아웃으로 인식하는 컨트롤러라면 무엇이든 돼요(대부분의 "
+"USB·블루투스 패드, iOS MFi 컨트롤러). 연결하면 바로 켜지고, 따로 설정할 필요"
+"가 없어요."
+
+#: docs/help/controls.md
+msgid "Control"
+msgstr "조작"
+
+#: docs/help/controls.md
+msgid "In a menu"
+msgstr "메뉴에서"
+
+#: docs/help/controls.md
+msgid "Left stick"
+msgstr "왼쪽 스틱"
+
+#: docs/help/controls.md
+msgid "forward/backward and turn"
+msgstr "전진/후진과 회전"
+
+#: docs/help/controls.md
+msgid "move between rows, change a row"
+msgstr "항목 간 이동, 항목 변경"
+
+# review: PlayStation buttons written as symbols
+#: docs/help/controls.md
+msgid "`A` / Cross, or right trigger"
+msgstr "`A` / ✕ 버튼, 또는 오른쪽 트리거"
+
+#: docs/help/controls.md
+msgid "shoot"
+msgstr "발사"
+
+#: docs/help/controls.md
+msgid "select"
+msgstr "선택"
+
+#: docs/help/controls.md
+msgid "`B` / Circle, or left trigger"
+msgstr "`B` / ○ 버튼, 또는 왼쪽 트리거"
+
+#: docs/help/controls.md
+msgid "jump"
+msgstr "점프"
+
+#: docs/help/controls.md
+msgid "back"
+msgstr "뒤로"
+
+#: docs/help/controls.md
+msgid "`X` / Square"
+msgstr "`X` / □ 버튼"
+
+#: docs/help/controls.md
+msgid "drop flag"
+msgstr "플래그 버리기"
+
+#: docs/help/controls.md
+msgid "Either shoulder"
+msgstr "좌우 숄더 버튼 중 하나"
+
+#: docs/help/controls.md
+msgid "identify"
+msgstr "식별"
+
+#: docs/help/controls.md
+msgid ""
+"The sticks have a dead zone of a fifth of their travel, so a pad left on the "
+"desk does not creep. The right stick is free."
+msgstr ""
+"스틱에는 이동 범위의 5분의 1만큼 데드존이 있어서 책상에 둔 패드가 저절로 움직"
+"이지 않아요. 오른쪽 스틱은 쓰지 않아요."
+
+#: docs/help/controls.md
+msgid ""
+"The pad rumbles when you fire and when your tank dies, as BZFlag's does: a "
+"short buzz for a shot, longer for a shock wave, both motors for a laser, and "
+"one long, strong shake for a death. It rumbles only while it is what you are "
+"playing with -- a key or a click hands control back and keeps it quiet -- "
+"and never for an observer. **Rumble** in Settings turns it off. The browser "
+"has to support it; Chrome and Edge do."
+msgstr ""
+"BZFlag처럼 발사할 때와 탱크가 파괴될 때 패드가 진동해요: 일반 사격은 짧게, 충"
+"격파는 더 길게, 레이저는 두 모터 모두, 파괴 시에는 길고 강하게 한 번. 그 패드"
+"로 플레이하는 동안에만 진동하며(키나 클릭으로 조작을 넘기면 조용해져요), 관전"
+"자에게는 진동하지 않아요. 설정의 **진동**으로 끌 수 있어요. 브라우저가 지원해"
+"야 하며, Chrome과 Edge는 지원해요."
+
+#: docs/help/controls.md
+msgid "XR controllers"
+msgstr "XR 컨트롤러"
+
+#: docs/help/controls.md
+msgid ""
+"In VR the controllers are the only input. Turning the tank is independent of "
+"where you look."
+msgstr ""
+"VR에서는 컨트롤러가 유일한 입력이에요. 탱크 회전은 바라보는 방향과 무관해요."
+
+#: docs/help/controls.md
+msgid "In the XR menu"
+msgstr "XR 메뉴에서"
+
+#: docs/help/controls.md
+msgid "Either thumbstick"
+msgstr "아무 썸스틱"
+
+#: docs/help/controls.md
+msgid "forward/backward and turn -- the right stick if both are pushed"
+msgstr "전진/후진과 회전 — 둘 다 밀면 오른쪽 스틱"
+
+#: docs/help/controls.md
+msgid "Either trigger"
+msgstr "아무 트리거"
+
+#: docs/help/controls.md
+msgid "`A` / `X` (primary face button)"
+msgstr "`A` / `X`(주 버튼)"
+
+#: docs/help/controls.md
+msgid "`B` / `Y` (secondary face button)"
+msgstr "`B` / `Y`(보조 버튼)"
+
+#: docs/help/controls.md
+msgid "open the XR menu"
+msgstr "XR 메뉴 열기"
+
+#: docs/help/controls.md
+msgid "back, and close it from the top"
+msgstr "뒤로, 최상위에서는 닫기"
+
+#: docs/help/controls.md
+msgid "Either grip"
+msgstr "아무 그립"
+
+#: docs/help/controls.md
+msgid "Press either thumbstick"
+msgstr "아무 썸스틱 누르기"
+
+#: docs/help/controls.md
+msgid "Both controllers pulse for the same events as a gamepad's rumble."
+msgstr "두 컨트롤러 모두 게임패드 진동과 같은 이벤트에 진동해요."
+
+#: docs/help/controls.md
+msgid ""
+"Identify is on the thumbstick press because a thumb that is steering presses "
+"it by accident, and identifying costs nothing; the menu is on `B` for the "
+"same reason. Typing -- a name, a MOTD -- uses the headset's own system "
+"keyboard, raised when the row takes focus; see the README's WebXR section "
+"for headsets that have none."
+msgstr ""
+"식별이 썸스틱 누르기에 있는 이유는 조종하던 엄지가 실수로 누르기 쉽지만 식별"
+"은 손해가 없기 때문이에요. 메뉴가 `B`에 있는 것도 같은 이유예요. 이름이나 "
+"MOTD 같은 입력은 항목에 포커스가 가면 나타나는 헤드셋 자체의 시스템 키보드를 "
+"써요. 키보드가 없는 헤드셋은 README의 WebXR 섹션을 참고하세요."
+
+#: docs/help/flags.md
+msgid "Flags"
+msgstr "플래그"
+
+#: docs/help/flags.md
+msgid ""
+"Drive over a flag to pick it up, and `Space` to drop it. Good flags help; "
+"bad flags hinder, and stay until they shake off, you kill, or you die. A "
+"superflag on the ground is white and tells you nothing about itself until "
+"somebody picks it up. Team flags are captured by carrying an enemy's to your "
+"own base."
+msgstr ""
+"플래그 위로 지나가면 줍고, `Space`로 버려요. 굿 플래그는 도움이 되고 배드 플"
+"래그는 방해가 되며, 떨쳐 내거나 적을 처치하거나 내가 죽을 때까지 남아 있어"
+"요. 땅에 있는 슈퍼플래그는 흰색이고, 누군가 줍기 전까지는 정체를 알 수 없어"
+"요. 팀 플래그는 적의 플래그를 내 기지로 가져오면 점령돼요."
+
+#: docs/help/scoreboard.md
+msgid "Scoreboard"
+msgstr "스코어보드"
+
+#: docs/help/scoreboard.md
+msgid ""
+"Each row's numbers read **Kills / Deaths**, then **[Team Kills]** once you "
+"have any, then your own record against that one opponent: **wins~losses**, "
+"blank until you've actually fought them. Your own row shows a self-destruct "
+"count there instead, since you have no record against yourself. Rabbit Chase "
+"adds a rank percentage in front of the kill count."
+msgstr ""
+"각 줄의 숫자는 **킬 / 데스**, 팀킬이 있으면 **[팀킬]**, 그다음 그 상대에 대"
+"한 내 전적 **승~패**예요(실제로 싸우기 전에는 비어 있어요). 내 줄에는 나 자신"
+"과의 전적이 없으니 대신 자폭 횟수가 표시돼요. Rabbit Chase에서는 킬 수 앞에 "
+"순위 백분율이 붙어요."
+
+#: docs/help/scoreboard.md
+msgid ""
+"Before a name, in cyan: `@` means that player is an admin, `+` means they're "
+"signed in with a verified callsign this session. Neither shows for anyone "
+"else."
+msgstr ""
+"이름 앞의 청록색 기호: `@`는 관리자, `+`는 이번 세션에서 인증된 콜사인으로 로"
+"그인했다는 뜻이에요. 다른 플레이어에게는 둘 다 표시되지 않아요."
+
+#: docs/help/scoreboard.md
+msgid ""
+"Right after the name itself: a `/XX` is the flag they're carrying, in that "
+"flag's own colour -- see [Flags](flags.md) for what each abbreviation means."
+msgstr ""
+"이름 바로 뒤: `/XX`는 들고 있는 플래그이며, 그 플래그의 색으로 표시돼요. 각 "
+"약어의 뜻은 [플래그](flags.md)를 참고하세요."
+
+#: docs/help/scoreboard.md
+msgid ""
+"Further along the name: 🎤 means that player's microphone is on, and 🔊 "
+"replaces it the moment they're actually speaking. ⏳ means paused. A hunted "
+"player wears a cyan `◎` -- see [Hunting](controls.md#hunting)."
+msgstr ""
+"이름 더 뒤쪽: 🎤는 그 플레이어의 마이크가 켜져 있다는 뜻이고, 실제로 말하는 "
+"순간 🔊로 바뀌어요. ⏳는 일시정지예요. 헌트 대상 플레이어에게는 청록색 `◎`가 "
+"붙어요. [헌트](controls.md#hunting) 참고."
+
+#: docs/help/voice.md
+msgid "Audio and voice"
+msgstr "오디오와 음성"
+
+#: docs/help/voice.md
+msgid ""
+"`Settings -> Audio Settings` — game, voice, and microphone levels, each from "
+"Off to 100%"
+msgstr ""
+"`Settings -> Audio Settings` — 게임, 음성, 마이크 음량. 각각 끔부터 100%까지"
+
+#: docs/help/voice.md
+msgid ""
+"**Voice channel** — **All** is everyone on the server, **Nearby** is only "
+"players within earshot, **Team** is your own team anywhere on the map"
+msgstr ""
+"**음성 채널** — **전체**는 서버의 모든 사람, **근처**는 들리는 거리 안의 플레"
+"이어만, **팀**은 맵 어디에 있든 내 팀"
+
+#: docs/help/voice.md
+msgid "`B` — toggle the microphone"
+msgstr "`B` — 마이크 켜기/끄기"
+
+#: docs/help/voice.md
+msgid ""
+"Voice is available after microphone permission is granted. Observers talk "
+"and listen on the same terms as everyone else."
+msgstr ""
+"마이크 권한을 허용하면 음성을 쓸 수 있어요. 관전자도 다른 사람과 같은 조건으"
+"로 말하고 들을 수 있어요."
+
+#: docs/help/about.md
+msgid "About"
+msgstr "정보"
+
+#: docs/help/about.md
+msgid ""
+"Battlezone Online is a free 3D tank game in the browser that plays with "
+"[BZFlag](https://www.bzflag.org/)."
+msgstr ""
+"Battlezone Online은 브라우저에서 즐기는 무료 3D 탱크 게임으로, [BZFlag]"
+"(https://www.bzflag.org/)와 함께 플레이할 수 있어요."
+
+#: docs/help/about.md
+msgid ""
+"It is free software licensed under the [GNU Affero General Public License "
+"v3.0](https://www.gnu.org/licenses/agpl-3.0.html). Source code is available "
+"at [github.com/timriker/bzo](/source)."
+msgstr ""
+"[GNU Affero General Public License v3.0](https://www.gnu.org/licenses/"
+"agpl-3.0.html) 라이선스의 자유 소프트웨어예요. 소스 코드는 [github.com/"
+"timriker/bzo](/source)에서 받을 수 있어요."

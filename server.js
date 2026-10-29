@@ -78,9 +78,7 @@ const {
   FLAG_GRAB_INTERVAL_MS,
   SHOCK_OUT_RADIUS,
   FLAG_RADIUS,
-  FLAG_QUALITY,
   FLAG_STATUS,
-  FLAG_TYPES,
   findNearestGroundFlag,
   GM_TURN_ANGLE,
   TARGETING_ANGLE,
@@ -162,6 +160,9 @@ const {
   shortHostName,
 } = require('./server/server-name.cjs');
 const discovery = require('./server/discovery.cjs');
+const l10n = require('./server/l10n.cjs');
+const { localized, N_ } = require('./public/js/i18n.mjs');
+const helpDocs = require('./server/help-docs.cjs');
 const {
   SHOT_COLLISION_RADIUS,
   SHOT_BOUNCE_CLEARANCE,
@@ -712,6 +713,11 @@ const INDEX_BUILD = '<meta name="bzo-build" content="dev">';
 // absolute, so they are written for the host and scheme the page was asked
 // for. The template's own description line is where they go.
 const INDEX_DISCOVERY = '<meta name="description" content="Web based BZFlag like 3D multiplayer tank game, Battlezone Online">';
+// The negotiated language: `lang` so screen readers and spellcheck are right
+// from the first byte, and the catalog inlined so no frame is painted in the
+// wrong one (docs/i18n-plan.md).
+const INDEX_LANG = '<html lang="en">';
+const INDEX_L10N = '<script type="application/json" id="bzo-l10n">{}</script>';
 let indexTemplate = null;
 let indexTemplateMtime = 0;
 
@@ -719,7 +725,7 @@ function readIndexTemplate() {
   const { mtimeMs } = fs.statSync(INDEX_PATH);
   if (indexTemplate === null || mtimeMs !== indexTemplateMtime) {
     const html = fs.readFileSync(INDEX_PATH, 'utf8');
-    for (const marker of [INDEX_TITLE, INDEX_APPLE_TITLE, INDEX_BUILD, INDEX_DISCOVERY]) {
+    for (const marker of [INDEX_TITLE, INDEX_APPLE_TITLE, INDEX_BUILD, INDEX_DISCOVERY, INDEX_LANG, INDEX_L10N]) {
       if (!html.includes(marker)) {
         throw new Error(`public/index.html is missing the marker: ${marker}`);
       }
@@ -730,7 +736,7 @@ function readIndexTemplate() {
   return indexTemplate;
 }
 
-function renderIndex(host, scheme = 'https') {
+function renderIndex(host, scheme, locale) {
   const base = `${scheme}://${host}`;
   const title = documentTitle(host);
   const description = discovery.serverDescription(serverConfig.title);
@@ -745,7 +751,9 @@ function renderIndex(host, scheme = 'https') {
       INDEX_APPLE_TITLE,
       `<meta name="apple-mobile-web-app-title" content="${escapeHtml(shortHostName(host))}">`
     )
-    .replace(INDEX_BUILD, `<meta name="bzo-build" content="${CLIENT_BUILD}">`);
+    .replace(INDEX_BUILD, `<meta name="bzo-build" content="${CLIENT_BUILD}">`)
+    .replace(INDEX_LANG, `<html lang="${escapeHtml(l10n.languageTag(locale))}" dir="${l10n.textDirection(locale)}">`)
+    .replace(INDEX_L10N, () => `<script type="application/json" id="bzo-l10n">${l10n.inlineJson(l10n.catalogFor(locale))}</script>`);
 }
 
 // The scheme and host a page was asked for, for the absolute URLs a preview,
@@ -774,7 +782,20 @@ app.get(['/', '/index.html'], (req, res) => {
   // res.send generates an ETag for this body, so an unchanged page still costs
   // one conditional request and a bodiless 304.
   res.set('Cache-Control', REVALIDATE);
-  res.type('html').send(renderIndex(host, requestBase(req).split('://')[0]));
+  // Or a proxy hands one player's Spanish page to the next player.
+  res.vary('Accept-Language');
+  res.type('html').send(renderIndex(host, requestBase(req).split('://')[0], l10n.negotiateLocale(req)));
+});
+
+// The same catalog the page inlines, for changing language without a reload.
+app.get('/l10n/:locale.json', (req, res) => {
+  const { locale } = req.params;
+  if (!l10n.hasLocale(locale)) {
+    res.status(404).type('text/plain').send('No such locale');
+    return;
+  }
+  res.set('Cache-Control', REVALIDATE);
+  res.json(l10n.catalogFor(locale));
 });
 
 
@@ -2887,7 +2908,7 @@ function renderListPage({
     : `${escapeHtml(LIST_SERVER_URL)}/list#keys`;
   const navBlock = `<p class="nav">`
     + `<a href="#bzo">bzo</a> | <a href="#bzflag">bzflag</a> | <a href="#maps">maps</a> | <a href="#replays">replays</a>`
-    + ` | <a href="${keysHref}">keys</a>`
+    + ` | <a href="${keysHref}">keys</a> | <a href="/help">help</a>`
     + ` | ${identityBlock}</p>`;
 
   const flash = imported
@@ -3254,22 +3275,8 @@ app.post('/list/import', (req, res) => {
 });
 
 // The pages a search engine or an AI reads (`server/discovery.cjs`, and
-// docs/api.md, "Discovery"): /help from the controls doc and the flag table,
-// robots.txt and a sitemap of the pages worth reading, and llms.txt. The
-// controls doc is read when it changes, not on every request.
-const CONTROLS_DOC_PATH = path.join(__dirname, 'docs', 'controls.md');
-let controlsDoc = { mtimeMs: -1, text: '' };
-function controlsMarkdown() {
-  try {
-    const { mtimeMs } = fs.statSync(CONTROLS_DOC_PATH);
-    if (mtimeMs !== controlsDoc.mtimeMs) {
-      controlsDoc = { mtimeMs, text: fs.readFileSync(CONTROLS_DOC_PATH, 'utf8') };
-    }
-  } catch {
-    controlsDoc = { mtimeMs: -1, text: '' };
-  }
-  return controlsDoc.text;
-}
+// docs/api.md, "Discovery"): /help from the help pages (docs/help/), robots.txt
+// and a sitemap of the pages worth reading, and llms.txt.
 
 function discoveryContext(req) {
   const base = requestBase(req);
@@ -3282,9 +3289,7 @@ function discoveryContext(req) {
     description: discovery.serverDescription(serverConfig.title),
     version: SERVER_VERSION,
     listServerUrl: IS_DESIGNATED_LIST_SERVER || !LIST_SERVER_URL ? base : LIST_SERVER_URL,
-    controlsMarkdown: controlsMarkdown(),
-    flagTypes: FLAG_TYPES,
-    badQuality: FLAG_QUALITY.BAD,
+    helpMarkdown: helpDocs.helpMarkdown(),
     discordLink: Boolean(discordLink),
   };
 }
@@ -3299,7 +3304,33 @@ function sendDiscovery(req, res, type, build) {
   res.type(type).send(build(context));
 }
 
-app.get('/help', (req, res) => sendDiscovery(req, res, 'html', discovery.helpPage));
+// The help pages in the reader's language, all on one page or one at a time.
+function sendHelp(req, res, slug) {
+  const locale = l10n.negotiateLocale(req);
+  const all = helpDocs.renderPages(locale);
+  const pages = slug ? all.filter((page) => page.slug === slug) : all;
+  if (!pages.length) {
+    res.status(404).type('text/plain').send('No such help page');
+    return;
+  }
+  res.vary('Accept-Language');
+  sendDiscovery(req, res, 'html', (context) => discovery.helpPage({
+    ...context, pages, path: slug ? `/help/${slug}` : '/help', lang: l10n.languageTag(helpDocs.docLocale(locale)),
+  }));
+}
+app.get('/help', (req, res) => sendHelp(req, res, null));
+// The in-game help panel's copy, `live` for the line about this world's
+// ricochet rule that only the client can write.
+app.get('/help.json', (req, res) => {
+  const locale = l10n.negotiateLocale(req);
+  res.set('Cache-Control', REVALIDATE);
+  res.vary('Accept-Language');
+  res.json({
+    locale: helpDocs.docLocale(locale),
+    pages: helpDocs.renderPages(locale, { live: true }),
+  });
+});
+app.get('/help/:page', (req, res) => sendHelp(req, res, req.params.page));
 app.get('/robots.txt', (req, res) => sendDiscovery(req, res, 'text/plain', ({ base }) => discovery.robotsTxt(base)));
 app.get('/sitemap.xml', (req, res) => sendDiscovery(req, res, 'application/xml',
   ({ base }) => discovery.sitemapXml(base, new Date(SERVER_START_TIME).toISOString().slice(0, 10))));
@@ -7146,7 +7177,7 @@ function startMatch() {
     broadcastAll({ type: 'timeUpdate', timeLeft: GAME_CONFIG.TIME_LIMIT });
     broadcastAll({
       type: 'message', src: SERVER_PLAYER, dst: ALL_PLAYERS, msgType: 'server',
-      text: `Match duration is ${formatDuration(GAME_CONFIG.TIME_LIMIT)}`, ts: Date.now(),
+      ...localized('Match duration is {duration}', { duration: formatDuration(GAME_CONFIG.TIME_LIMIT) }), ts: Date.now(),
     });
     log(`Match started: ${GAME_CONFIG.TIME_LIMIT}s`);
   } else {
@@ -7156,7 +7187,7 @@ function startMatch() {
     // `timeUpdate` to double as that signal.
     broadcastAll({ type: 'timeUpdate', timeLeft: null });
     broadcastAll({
-      type: 'message', src: SERVER_PLAYER, dst: ALL_PLAYERS, msgType: 'server', text: 'Match started', ts: Date.now(),
+      type: 'message', src: SERVER_PLAYER, dst: ALL_PLAYERS, msgType: 'server', ...localized('Match started'), ts: Date.now(),
     });
     log('Match started (no time limit)');
   }
@@ -7504,12 +7535,12 @@ function restoreScore(player, now = Date.now()) {
     return null;
   }
   if (!saved.address || saved.address !== player.clientIP) return null;
-  if (isObserverTeam(player.team)) return 'Your score record will be saved while you are in observer mode.';
+  if (isObserverTeam(player.team)) return N_('Your score record will be saved while you are in observer mode.');
   player.wins = saved.wins;
   player.losses = saved.losses;
   player.tks = saved.tks;
   savedScores.delete(key);
-  return 'Your score has been restored.';
+  return N_('Your score has been restored.');
 }
 
 // bzfs.cxx:2939: on leaving, if they ever spawned and are not already waiting.
@@ -8244,13 +8275,16 @@ function refuseNonOperator(ws, player, what) {
 // One line of server chat to one player, which is how every command answers.
 // `sendMessage(ServerPlayer, playerId, text)` upstream, and the same shape a
 // map's `-srvmsg` already uses here.
-function replyToPlayer(player, text) {
+// The reply in English, and with `params` its msgid beside it so a bzo client
+// shows it in the player's language (`localized`); a reply with no params is
+// a fixed sentence, which the client looks up whole.
+function replyToPlayer(player, text, params) {
   sendToPlayer(player, {
     type: 'message',
     src: SERVER_PLAYER,
     dst: player.id,
     msgType: 'server',
-    text,
+    ...localized(text, params),
     ts: Date.now(),
   });
 }
@@ -8271,7 +8305,8 @@ function deliverActionMessage(player, targetId, action) {
   if (text.length === 0) {
     // Upstream's sentence, which names the player because it is the only reply
     // in the set that does (bzfs.cxx:1498).
-    replyToPlayer(player, `${player.name}, the /me command requires an argument`);
+    // TRANSLATORS: /me is a command name; keep it as it is
+    replyToPlayer(player, '{player}, the /me command requires an argument', { player: player.name });
     return;
   }
   deliverChatMessage(player, targetId, 'action', text);
@@ -8353,12 +8388,11 @@ function recordingName(text) {
 defineCommand('/record', COMMAND_TIER.OPERATOR,
   '[start|stop|size|list|rate..] - manage the bzflag record system',
   async (player, args) => {
-    const reply = (line) => replyToPlayer(player, line);
     const [sub = '', ...rest] = args.trim().split(/\s+/);
     const word = sub.toLowerCase();
     if (word === 'start') {
       recorder.start();
-      reply('Recording started');
+      replyToPlayer(player, 'Recording started');
     } else if (word === 'stop') {
       if (recordFile) {
         const { name, from } = recordFile;
@@ -8366,73 +8400,80 @@ defineCommand('/record', COMMAND_TIER.OPERATOR,
         try {
           await saveRecording(name, { from, callsign: player.name });
         } catch (error) {
-          reply(`Could not open for writing: ${name} (${error.message})`);
+          replyToPlayer(player, 'Could not open for writing: {name} ({error})', { name, error: error.message });
         }
       }
       recorder.stop();
-      reply('Recording stopped');
+      replyToPlayer(player, 'Recording stopped');
     } else if (word === 'size') {
       const mbytes = Number.parseInt(rest[0], 10);
       if (!Number.isFinite(mbytes) || mbytes < 1) {
-        for (const line of RECORD_USAGE) reply(line);
+        for (const line of RECORD_USAGE) replyToPlayer(player, line);
         return;
       }
       recorder.setMaxBytes(mbytes * 1024 * 1024);
-      reply(`Record size set to ${mbytes}`);
+      replyToPlayer(player, 'Record size set to {mbytes}', { mbytes });
     } else if (word === 'rate') {
       const seconds = Number.parseInt(rest[0], 10);
       if (!Number.isFinite(seconds) || seconds < 1) {
-        for (const line of RECORD_USAGE) reply(line);
+        for (const line of RECORD_USAGE) replyToPlayer(player, line);
         return;
       }
       recorder.setRateMs(seconds * 1000);
-      reply(`Record rate set to ${seconds}`);
+      replyToPlayer(player, 'Record rate set to {seconds}', { seconds });
     } else if (word === 'stats') {
       const stats = recorder.stats();
       if (!stats.recording) {
-        reply('Not Recording');
+        replyToPlayer(player, 'Not Recording');
         return;
       }
       if (recordFile) {
-        reply(`Filename:  ${recordFile.name}`);
-        reply(`   saved:  ${stats.bytes} bytes / ${stats.entries} packets`
-          + ` / ${((Date.now() - recordFile.from) / 1000).toFixed(1)} seconds`);
+        replyToPlayer(player, 'Filename:  {name}', { name: recordFile.name });
+        replyToPlayer(player, '   saved:  {bytes} bytes / {packets} packets / {seconds} seconds', {
+          bytes: stats.bytes,
+          packets: stats.entries,
+          seconds: ((Date.now() - recordFile.from) / 1000).toFixed(1),
+        });
       } else {
-        reply(`Buffered:  ${stats.bytes} bytes / ${stats.entries} packets / ${stats.seconds.toFixed(1)} seconds`);
+        replyToPlayer(player, 'Buffered:  {bytes} bytes / {packets} packets / {seconds} seconds', {
+          bytes: stats.bytes,
+          packets: stats.entries,
+          seconds: stats.seconds.toFixed(1),
+        });
       }
     } else if (word === 'save') {
       const name = recordingName(rest[0]);
       if (!name) {
-        for (const line of RECORD_USAGE) reply(line);
+        for (const line of RECORD_USAGE) replyToPlayer(player, line);
         return;
       }
       const seconds = rest[1] === undefined ? null : Number.parseInt(rest[1], 10);
       if (!recorder.recording || recorder.entries.length === 0) {
-        reply('No buffer to save');
+        replyToPlayer(player, 'No buffer to save');
         return;
       }
       try {
         await saveRecording(name, { seconds, callsign: player.name });
-        reply(`Record buffer saved to: ${name}`);
+        replyToPlayer(player, 'Record buffer saved to: {name}', { name });
         log(`[CMD] "${player.name}" saved recording ${name}`);
       } catch (error) {
-        reply(`Could not open for writing: ${name} (${error.message})`);
+        replyToPlayer(player, 'Could not open for writing: {name} ({error})', { name, error: error.message });
       }
     } else if (word === 'file') {
       const name = recordingName(rest[0]);
       if (!name) {
-        for (const line of RECORD_USAGE) reply(line);
+        for (const line of RECORD_USAGE) replyToPlayer(player, line);
         return;
       }
       recorder.start();
       recorder.takeSnapshot();
       recordFile = { name, from: Date.now() };
-      reply(`Recording to file: ${name}`);
+      replyToPlayer(player, 'Recording to file: {name}', { name });
     } else if (word === 'list') {
       const lines = fileListLines(await replayFileList(), args.trim().slice(4), 'replays/');
-      for (const line of lines || RECORD_USAGE) reply(line);
+      for (const line of lines || RECORD_USAGE) replyToPlayer(player, line);
     } else {
-      for (const line of RECORD_USAGE) reply(line);
+      for (const line of RECORD_USAGE) replyToPlayer(player, line);
     }
   });
 
@@ -8450,7 +8491,7 @@ defineCommand('/uptime', COMMAND_TIER.OPEN,
 defineCommand('/serverquery', COMMAND_TIER.OPEN,
   '- show the server version',
   (player) => {
-    replyToPlayer(player, `BZFS Version: ${BZO_APP_VERSION}`);
+    replyToPlayer(player, 'BZFS Version: {version}', { version: BZO_APP_VERSION });
   });
 
 // DateCommand and TimeCommand (commands.cxx:418) are one implementation under
@@ -8495,7 +8536,7 @@ defineCommand('/lagstats', COMMAND_TIER.OPEN,
       replyToPlayer(player, formatLagStats({ ...row, showIndex }));
     }
     // The server's own share of everyone's lag, over the last PERF_LOG window.
-    if (showIndex && lastServerStats) replyToPlayer(player, `server: ${formatServerStats(lastServerStats)}`);
+    if (showIndex && lastServerStats) replyToPlayer(player, 'server: {stats}', { stats: formatServerStats(lastServerStats) });
   });
 
 // Between playing teams, in place: the tank keeps whatever life it has, drops
@@ -8534,31 +8575,34 @@ function isSwitchableTeam(team) {
 defineCommand('/setteam', COMMAND_TIER.OPERATOR,
   '<#slot|PlayerName|"Player Name"> <team> - move a player to another team',
   (player, args) => {
-    const usage = 'Usage: /setteam <#slot|PlayerName> <team>';
     const target = resolveCommandTarget(args.trim());
     if (!target.id) {
-      replyToPlayer(player, target.error || usage);
+      if (target.error) replyToPlayer(player, target.error);
+      else replyToPlayer(player, 'Usage: /setteam <#slot|PlayerName> <team>');
       return;
     }
     const subject = players.get(target.id);
     const team = String(target.rest || '').trim().toLowerCase();
     if (!isSwitchableTeam(team)) {
-      replyToPlayer(player, `${usage} -- one of ${TEAM_MODE.teams.filter(isSwitchableTeam).join(', ')}`);
+      // TRANSLATORS: /setteam is a command name and {teams} lists team names as typed
+      replyToPlayer(player, 'Usage: /setteam <#slot|PlayerName> <team> -- one of {teams}', {
+        teams: TEAM_MODE.teams.filter(isSwitchableTeam).join(', '),
+      });
       return;
     }
     if (!subject?.joined || !isSwitchableTeam(subject.team)) {
-      replyToPlayer(player, `"${subject?.name}" is not on a team to move from`);
+      replyToPlayer(player, '"{player}" is not on a team to move from', { player: subject?.name });
       return;
     }
     if (subject.team === team) {
-      replyToPlayer(player, `"${subject.name}" is already ${team}`);
+      replyToPlayer(player, '"{player}" is already {team}', { player: subject.name, team: { msgid: team } });
       return;
     }
     const from = subject.team;
     changePlayerTeam(subject, team);
     log(`[CMD] "${player.name}" moved "${subject.name}" from ${from} to ${team}`);
-    replyToPlayer(player, `"${subject.name}" moved to ${team}`);
-    if (subject !== player) replyToPlayer(subject, `@${player.name} moved you to ${team}`);
+    replyToPlayer(player, '"{player}" moved to {team}', { player: subject.name, team: { msgid: team } });
+    if (subject !== player) replyToPlayer(subject, '@{player} moved you to {team}', { player: player.name, team: { msgid: team } });
   });
 
 // `/mv` on an observer moves its roaming camera there, in free roam, with the
@@ -8577,11 +8621,21 @@ function moveObserverCamera(player, subject, parsed) {
     ...(parsed.pitch === undefined ? {} : { pitch: parsed.pitch }),
   });
   const tilt = parsed.pitch === undefined ? '' : ` pitch ${((parsed.pitch * 180) / Math.PI).toFixed(1)}`;
-  const where = `${subject.x.toFixed(1)},${subject.y.toFixed(1)},${subject.z.toFixed(1)}`
-    + ` facing ${azimuthToBearingName(subject.azimuth)}${tilt}`;
-  log(`[CMD] "${player.name}" moved "${subject.name}" to ${where}`);
-  replyToPlayer(player, subject === player ? `Moved to ${where}` : `"${subject.name}" moved to ${where}`);
-  if (subject !== player) replyToPlayer(subject, `@${player.name} moved you to ${where}`);
+  const position = `${subject.x.toFixed(1)},${subject.y.toFixed(1)},${subject.z.toFixed(1)}`;
+  const bearing = `${azimuthToBearingName(subject.azimuth)}${tilt}`;
+  log(`[CMD] "${player.name}" moved "${subject.name}" to ${position} facing ${bearing}`);
+  reportMove(player, subject, position, bearing);
+}
+
+// What `/mv` answers, the mover and the moved: `bearing` is a compass point,
+// with an observer's pitch after it.
+function reportMove(player, subject, position, bearing) {
+  if (subject === player) {
+    replyToPlayer(player, 'Moved to {position} facing {bearing}', { position, bearing });
+    return;
+  }
+  replyToPlayer(player, '"{player}" moved to {position} facing {bearing}', { player: subject.name, position, bearing });
+  replyToPlayer(subject, '@{player} moved you to {position} facing {bearing}', { player: player.name, position, bearing });
 }
 
 // MsgCommand (commands.cxx:916). The same private message the client can already
@@ -8640,7 +8694,8 @@ defineCommand('/kill', COMMAND_TIER.OPERATOR,
   (player, args) => {
     const target = resolveCommandTarget(args);
     if (!target.id) {
-      replyToPlayer(player, target.error || 'Usage: /kill <#slot|PlayerName> [reason]');
+      if (target.error) replyToPlayer(player, target.error);
+      else replyToPlayer(player, 'Usage: /kill <#slot|PlayerName> [reason]');
       return;
     }
     const victim = players.get(target.id);
@@ -8649,17 +8704,16 @@ defineCommand('/kill', COMMAND_TIER.OPERATOR,
       return;
     }
     if (!victim.alive) {
-      replyToPlayer(player, `"${victim.name}" is already dead`);
+      replyToPlayer(player, '"{player}" is already dead', { player: victim.name });
       return;
     }
     // Through the one death path, so the flag, the lock, the rabbit and the
     // respawn all happen -- see applyDeath.
     killPlayer(victim, victim, DEATH_REASON.SELF_DESTRUCT);
     log(`[CMD] "${player.name}" killed "${victim.name}"${target.rest ? `: ${target.rest}` : ''}`);
-    replyToPlayer(player, `"${victim.name}" killed`);
-    replyToPlayer(victim, target.rest
-      ? `You were killed by an operator: ${target.rest}`
-      : 'You were killed by an operator');
+    replyToPlayer(player, '"{player}" killed', { player: victim.name });
+    if (target.rest) replyToPlayer(victim, 'You were killed by an operator: {reason}', { reason: target.rest });
+    else replyToPlayer(victim, 'You were killed by an operator');
   });
 
 // Bans (BanCommands.cxx): BZID bans, kept in bans.json beside sessions.json
@@ -8708,8 +8762,10 @@ function removeFromServer(victim) {
 // doBanKick (BanCommands.cxx): tell the player, tell the admins, remove it.
 function banKick(victim, banner, reason) {
   replyToPlayer(victim, 'You were banned from this server');
-  if (reason) replyToPlayer(victim, `Reason given: ${reason}`);
-  announceToAdmins(null, `${victim.name} banned by ${banner.name}, reason: ${reason}`);
+  if (reason) replyToPlayer(victim, 'Reason given: {reason}', { reason });
+  announceToAdmins(null, localized('{player} banned by {admin}, reason: {reason}', {
+    player: victim.name, admin: banner.name, reason,
+  }));
   removeFromServer(victim);
 }
 
@@ -8722,14 +8778,17 @@ defineCommand('/kick', COMMAND_TIER.OPERATOR,
         replyToPlayer(player, 'Syntax: /kick <#slot | PlayerName | "Player Name"> <reason>');
         replyToPlayer(player, '\tPlease keep in mind that reason is displayed to the user.');
       } else {
-        replyToPlayer(player, target.error || `player "${args.trim()}" not found`);
+        if (target.error) replyToPlayer(player, target.error);
+        else replyToPlayer(player, 'player "{player}" not found', { player: args.trim() });
       }
       return;
     }
     const victim = players.get(target.id);
     replyToPlayer(victim, 'You were kicked off the server');
-    replyToPlayer(victim, `Reason given: ${target.rest}`);
-    announceToAdmins(null, `${victim.name} kicked by ${player.name}, reason: ${target.rest}`);
+    replyToPlayer(victim, 'Reason given: {reason}', { reason: target.rest });
+    announceToAdmins(null, localized('{player} kicked by {admin}, reason: {reason}', {
+      player: victim.name, admin: player.name, reason: target.rest,
+    }));
     log(`[CMD] "${player.name}" kicked "${victim.name}": ${target.rest}`);
     removeFromServer(victim);
   });
@@ -8778,7 +8837,7 @@ defineCommand('/ban', COMMAND_TIER.OPERATOR,
     if (victim && !mask) {
       // Behind a proxy the probe has not vouched for, a browser's address is
       // its own claim (docs/ban-plan.md): its BZID can still go.
-      replyToPlayer(player, `${victim.name} has no trusted address to ban`);
+      replyToPlayer(player, '{player} has no trusted address to ban', { player: victim.name });
     }
     if (victim) {
       banKick(victim, player, reason);
@@ -8790,7 +8849,7 @@ defineCommand('/ban', COMMAND_TIER.OPERATOR,
     }
     const stored = bans.ipBan(mask, { bannedBy: player.name, minutes: length, reason });
     if (!stored) {
-      replyToPlayer(player, `Malformed address or invalid Player/Slot: ${trimmed.split(/\s/)[0]}`);
+      replyToPlayer(player, 'Malformed address or invalid Player/Slot: {target}', { target: trimmed.split(/\s/)[0] });
       return;
     }
     log(`[CMD] "${player.name}" banned ${stored} for ${length || 'ever'} minutes: ${reason}`);
@@ -8827,10 +8886,10 @@ defineCommand('/checkip', COMMAND_TIER.OPERATOR,
     }
     const ban = bans.ipBanned(address);
     if (!ban) {
-      replyToPlayer(player, `${address} is not banned.`);
+      replyToPlayer(player, '{address} is not banned.', { address });
       return;
     }
-    replyToPlayer(player, `${address} is banned:`);
+    replyToPlayer(player, '{address} is banned:', { address });
     for (const line of bans.ipBanLines(ban)) replyToPlayer(player, line);
   });
 
@@ -8858,12 +8917,12 @@ defineCommand('/idban', COMMAND_TIER.OPERATOR,
       const target = resolveCommandTarget(trimmed);
       if (!target.id) {
         if (!trimmed) syntax();
-        else replyToPlayer(player, `could not find player (${trimmed.split(/\s/)[0]})`);
+        else replyToPlayer(player, 'could not find player ({player})', { player: trimmed.split(/\s/)[0] });
         return;
       }
       victim = players.get(target.id);
       if (!victim.bzid) {
-        replyToPlayer(player, `no BZID for player (${victim.name})`);
+        replyToPlayer(player, 'no BZID for player ({player})', { player: victim.name });
         return;
       }
       bzid = victim.bzid;
@@ -8926,8 +8985,9 @@ function pollRights(player) {
   };
 }
 
-function announceToAll(text) {
-  broadcastAll({ type: 'message', src: SERVER_PLAYER, dst: ALL_PLAYERS, msgType: 'server', text, ts: Date.now() });
+// `message` is what `localized` returns.
+function announceToAll(message) {
+  broadcastAll({ type: 'message', src: SERVER_PLAYER, dst: ALL_PLAYERS, msgType: 'server', ...message, ts: Date.now() });
 }
 
 function pollUsage(player) {
@@ -8944,7 +9004,8 @@ defineCommand('/vote', COMMAND_TIER.OPEN,
   '<yes|no> - place a vote in favor or in opposition to the poll',
   (player, args) => {
     if (!pollRights(player).vote) {
-      replyToPlayer(player, `${player.name}, you are presently not authorized to run /vote`);
+      // TRANSLATORS: /vote is a command name; keep it as it is
+      replyToPlayer(player, '{player}, you are presently not authorized to run /vote', { player: player.name });
       return;
     }
     if (!pollArbiter) {
@@ -8957,21 +9018,25 @@ defineCommand('/vote', COMMAND_TIER.OPEN,
     }
     const { answer, vote } = parseVoteAnswer(args);
     if (!vote) {
-      replyToPlayer(player, answer
-        ? `${player.name}, you did not vote in favor or in opposition`
-        : `${player.name}, you did not provide a vote answer`);
+      if (answer) replyToPlayer(player, '{player}, you did not vote in favor or in opposition', { player: player.name });
+      else replyToPlayer(player, '{player}, you did not provide a vote answer', { player: player.name });
       replyToPlayer(player, 'Usage: /vote yes|no|y|n|1|0|yea|nay|si|ja|nein|oui|non|sim|nao');
       return;
     }
     const cast = vote === 'yes' ? pollArbiter.voteYes(player.name) : pollArbiter.voteNo(player.name);
     if (cast) {
-      replyToPlayer(player, `${player.name}, your vote ${vote === 'yes' ? 'in favor of' : 'in opposition of'}`
-        + ` the ${pollArbiter.action} has been recorded`);
+      const params = { player: player.name, action: pollArbiter.action };
+      // TRANSLATORS: {action} is a /poll keyword (ban, kick, kill, set, reset), sent as typed
+      if (vote === 'yes') replyToPlayer(player, '{player}, your vote in favor of the {action} has been recorded', params);
+      else replyToPlayer(player, '{player}, your vote in opposition of the {action} has been recorded', params);
     } else if (pollArbiter.hasVoted(player.name)) {
-      replyToPlayer(player, `${player.name}, you have already voted on the poll to ${pollArbiter.action} ${pollArbiter.target}`);
+      replyToPlayer(player, '{player}, you have already voted on the poll to {action} {target}', {
+        player: player.name, action: pollArbiter.action, target: pollArbiter.target,
+      });
     } else {
-      replyToPlayer(player, `${player.name}, there was an error while voting on the poll to`
-        + ` ${pollArbiter.action} ${pollArbiter.target}`);
+      replyToPlayer(player, '{player}, there was an error while voting on the poll to {action} {target}', {
+        player: player.name, action: pollArbiter.action, target: pollArbiter.target,
+      });
     }
   });
 
@@ -8979,7 +9044,8 @@ defineCommand('/veto', COMMAND_TIER.OPEN,
   '- will cancel the poll if there is one active',
   (player) => {
     if (!pollRights(player).veto) {
-      replyToPlayer(player, `${player.name}, you are presently not authorized to run /veto`);
+      // TRANSLATORS: /veto is a command name; keep it as it is
+      replyToPlayer(player, '{player}, you are presently not authorized to run /veto', { player: player.name });
       return;
     }
     if (!pollArbiter) {
@@ -8987,14 +9053,16 @@ defineCommand('/veto', COMMAND_TIER.OPEN,
       return;
     }
     if (!pollArbiter.knowsPoll()) {
-      replyToPlayer(player, `${player.name}, there is presently no active poll to veto`);
+      replyToPlayer(player, '{player}, there is presently no active poll to veto', { player: player.name });
       return;
     }
-    replyToPlayer(player, `${player.name}, you have cancelled the poll to ${pollArbiter.action} ${pollArbiter.target}`);
+    replyToPlayer(player, '{player}, you have cancelled the poll to {action} {target}', {
+      player: player.name, action: pollArbiter.action, target: pollArbiter.target,
+    });
     log(`[POLL] "${player.name}" vetoed the poll to ${pollArbiter.action} ${pollArbiter.target}`);
     pollArbiter.forgetPoll();
     resetPollAnnouncements();
-    announceToAll(`The poll was cancelled by ${player.name}`);
+    announceToAll(localized('The poll was cancelled by {player}', { player: player.name }));
   });
 
 defineCommand('/poll', COMMAND_TIER.OPEN,
@@ -9002,7 +9070,8 @@ defineCommand('/poll', COMMAND_TIER.OPEN,
   (player, args) => {
     const rights = pollRights(player);
     if (!rights.poll) {
-      replyToPlayer(player, `${player.name}, you are presently not authorized to run /poll`);
+      // TRANSLATORS: /poll is a command name; keep it as it is
+      replyToPlayer(player, '{player}, you are presently not authorized to run /poll', { player: player.name });
       return;
     }
     if (!pollArbiter) {
@@ -9022,7 +9091,9 @@ defineCommand('/poll', COMMAND_TIER.OPEN,
       return;
     }
     if (pollArbiter.knowsPoll()) {
-      replyToPlayer(player, `A poll to ${pollArbiter.action} ${pollArbiter.target} is presently in progress`);
+      replyToPlayer(player, 'A poll to {action} {target} is presently in progress', {
+        action: pollArbiter.action, target: pollArbiter.target,
+      });
       replyToPlayer(player, 'Unable to start a new poll until the current one is over');
       return;
     }
@@ -9030,8 +9101,15 @@ defineCommand('/poll', COMMAND_TIER.OPEN,
     if (voters.length - 1 < pollArbiter.votesRequired) {
       replyToPlayer(player, 'Unable to initiate a new poll.  There are not enough registered players playing.');
       const others = Math.max(0, voters.length - 1);
-      replyToPlayer(player, `There needs to be at least ${pollArbiter.votesRequired} other`
-        + ` ${pollArbiter.votesRequired === 1 ? 'player' : 'players'} and only ${others} ${others === 1 ? 'is' : 'are'} available.`);
+      const params = { required: pollArbiter.votesRequired, others };
+      if (pollArbiter.votesRequired === 1) {
+        if (others === 1) replyToPlayer(player, 'There needs to be at least {required} other player and only {others} is available.', params);
+        else replyToPlayer(player, 'There needs to be at least {required} other player and only {others} are available.', params);
+      } else if (others === 1) {
+        replyToPlayer(player, 'There needs to be at least {required} other players and only {others} is available.', params);
+      } else {
+        replyToPlayer(player, 'There needs to be at least {required} other players and only {others} are available.', params);
+      }
       return;
     }
     if (!['ban', 'kick', 'kill', 'set', 'flagreset'].includes(cmd)) {
@@ -9045,19 +9123,21 @@ defineCommand('/poll', COMMAND_TIER.OPEN,
     // The rest of the line, a quote at either end dropped.
     const target = rest.trim().replace(/^"/, '').replace(/"$/, '');
     if (!target && cmd !== 'flagreset') {
-      replyToPlayer(player, `${player.name}, no target was specified for the [${cmd}] vote`);
-      replyToPlayer(player, `Usage: /poll ${cmd} target`);
+      replyToPlayer(player, '{player}, no target was specified for the [{action}] vote', { player: player.name, action: cmd });
+      // TRANSLATORS: /poll and {action} are a command as typed; keep them as they are
+      replyToPlayer(player, 'Usage: /poll {action} target', { action: cmd });
       return;
     }
     if (!rights[cmd]) {
-      replyToPlayer(player, `${player.name}, you may not /poll ${cmd} on this server`);
+      // TRANSLATORS: /poll {action} is a command as typed; keep it as it is
+      replyToPlayer(player, '{player}, you may not /poll {action} on this server', { player: player.name, action: cmd });
       return;
     }
     let started;
     if (cmd === 'ban' || cmd === 'kick' || cmd === 'kill') {
       const victim = players.get(resolveCallsign(target));
       if (!victim) {
-        replyToPlayer(player, `The player specified for a ${cmd} vote is not here`);
+        replyToPlayer(player, 'The player specified for a {action} vote is not here', { action: cmd });
         return;
       }
       if (cmd === 'kill' && isObserverTeam(victim.team)) {
@@ -9067,11 +9147,11 @@ defineCommand('/poll', COMMAND_TIER.OPEN,
       // An admin holds upstream's `antipoll`, which only another admin
       // overrides.
       if (!isAdmin(player) && isAdmin(victim)) {
-        replyToPlayer(player, `${victim.name} is protected from being polled against.`);
+        replyToPlayer(player, '{player} is protected from being polled against.', { player: victim.name });
         return;
       }
       if (cmd === 'ban' && !victim.clientIP) {
-        replyToPlayer(player, `${victim.name} has no trusted address to ban`);
+        replyToPlayer(player, '{player} has no trusted address to ban', { player: victim.name });
         return;
       }
       if (cmd === 'ban') started = pollArbiter.pollToBan(target, player.name, player.id, victim.clientIP);
@@ -9083,15 +9163,25 @@ defineCommand('/poll', COMMAND_TIER.OPEN,
       started = pollArbiter.pollToResetFlags(player.name, player.id);
     }
     if (!started) {
-      replyToPlayer(player, `You are not able to request a ${cmd} poll right now, ${player.name}`);
+      replyToPlayer(player, 'You are not able to request a {action} poll right now, {player}', { action: cmd, player: player.name });
       return;
     }
     log(`[POLL] "${player.name}" asked to ${pollArbiter.action} ${pollArbiter.target}`);
-    announceToAll(`A poll to ${cmd} ${target} has been requested by ${player.name}`);
+    announceToAll(localized('A poll to {action} {target} has been requested by {player}', {
+      action: cmd, target, player: player.name,
+    }));
     const available = voters.length;
     const needed = Math.floor((pollArbiter.votePercentage / 100) * available);
-    announceToAll(`${available} player${available === 1 ? ' is' : 's are'} available, ${needed} additional affirming`
-      + ` vote${needed === 1 ? '' : 's'} required to pass the poll (${pollArbiter.votePercentage.toFixed(6)} %)`);
+    const tally = { available, needed, percentage: pollArbiter.votePercentage.toFixed(6) };
+    if (available === 1) {
+      announceToAll(needed === 1
+        ? localized('{available} player is available, {needed} additional affirming vote required to pass the poll ({percentage} %)', tally)
+        : localized('{available} player is available, {needed} additional affirming votes required to pass the poll ({percentage} %)', tally));
+    } else {
+      announceToAll(needed === 1
+        ? localized('{available} players are available, {needed} additional affirming vote required to pass the poll ({percentage} %)', tally)
+        : localized('{available} players are available, {needed} additional affirming votes required to pass the poll ({percentage} %)', tally));
+    }
     pollArbiter.setAvailableVoters(available);
     for (const voter of voters) pollArbiter.grantSuffrage(voter.name);
     if (!pollArbiter.voteYes(player.name)) {
@@ -9157,33 +9247,38 @@ function tickPoll() {
   if (!pollArbiter?.knowsPoll()) return;
   const { action, target } = pollArbiter;
   if (!pollAnnounced.opening) {
-    announceToAll(`A poll to ${action} ${target} has begun.  Players have up to ${pollArbiter.voteTime} seconds to vote.`);
+    announceToAll(localized('A poll to {action} {target} has begun.  Players have up to {seconds} seconds to vote.', {
+      action, target, seconds: pollArbiter.voteTime,
+    }));
     pollAnnounced.opening = true;
   }
   const elapsed = Math.floor(pollArbiter.elapsed());
   if ((pollArbiter.voteTime - elapsed - 1) % 15 === 0 && pollAnnounced.heartbeatAt !== elapsed
     && pollArbiter.timeRemaining() > 0) {
-    announceToAll(`${pollArbiter.timeRemaining()} seconds remain in the poll to ${action} ${target}.`);
+    announceToAll(localized('{seconds} seconds remain in the poll to {action} {target}.', {
+      seconds: pollArbiter.timeRemaining(), action, target,
+    }));
     pollAnnounced.heartbeatAt = elapsed;
   }
   if (!pollArbiter.isPollClosed()) {
     if (pollArbiter.isPollSuccessful()) {
       announceToAll(action !== 'flagreset'
-        ? `Enough votes were collected to ${action} ${target} early.`
-        : 'Enough votes were collected to reset all unused flags early.');
+        ? localized('Enough votes were collected to {action} {target} early.', { action, target })
+        : localized('Enough votes were collected to reset all unused flags early.'));
       pollArbiter.closePoll();
     }
     return;
   }
   if (!pollAnnounced.results) {
-    announceToAll(`Poll Results: ${pollArbiter.getYesCount()} in favor, ${pollArbiter.getNoCount()} oppose,`
-      + ` ${pollArbiter.getAbstentionCount()} abstain`);
+    announceToAll(localized('Poll Results: {yes} in favor, {no} oppose, {abstain} abstain', {
+      yes: pollArbiter.getYesCount(), no: pollArbiter.getNoCount(), abstain: pollArbiter.getAbstentionCount(),
+    }));
     pollAnnounced.results = true;
   }
   const successful = pollArbiter.isPollSuccessful();
   if (!successful) {
     if (!pollAnnounced.closure) {
-      announceToAll(`The poll to ${action} ${target} was not successful`);
+      announceToAll(localized('The poll to {action} {target} was not successful', { action, target }));
       log(`[POLL] failed: ${action} ${target}`);
       pollArbiter.forgetPoll();
       resetPollAnnouncements();
@@ -9191,12 +9286,24 @@ function tickPoll() {
     return;
   }
   if (!pollAnnounced.closure) {
-    announceToAll(`The poll is now closed and was successful.  ${target} is scheduled to be`
-      + ` ${{ ban: 'temporarily banned', kick: 'kicked', kill: 'killed' }[action] ?? action}.`);
+    const closing = {
+      ban: () => localized('The poll is now closed and was successful.  {target} is scheduled to be temporarily banned.', { target }),
+      kick: () => localized('The poll is now closed and was successful.  {target} is scheduled to be kicked.', { target }),
+      kill: () => localized('The poll is now closed and was successful.  {target} is scheduled to be killed.', { target }),
+    }[action];
+    announceToAll(closing ? closing()
+      : localized('The poll is now closed and was successful.  {target} is scheduled to be {action}.', { target, action }));
     pollAnnounced.closure = true;
   }
   if (!pollArbiter.isPollExpired()) return;
-  announceToAll(`${target} has been ${{ ban: pollBanLength(), kick: 'kicked.', kill: 'killed.' }[action] ?? action}`);
+  // The ban's length is upstream's own phrasing, pluralised in English, so
+  // that line goes out as it is.
+  const outcome = {
+    ban: () => ({ text: `${target} has been ${pollBanLength()}` }),
+    kick: () => localized('{target} has been kicked.', { target }),
+    kill: () => localized('{target} has been killed.', { target }),
+  }[action];
+  announceToAll(outcome ? outcome() : localized('{target} has been {action}', { target, action }));
   carryOutPoll(action, target, pollArbiter.targetAddress);
   pollArbiter.forgetPoll();
   resetPollAnnouncements();
@@ -9211,8 +9318,9 @@ defineCommand('/clientquery', COMMAND_TIER.OPERATOR,
   '[#slot|PlayerName|"Player Name"] - show client versions',
   (player, args) => {
     const report = (other) => {
-      replyToPlayer(player, `${other.name}'s client version:`);
-      replyToPlayer(player, `  ${other.clientVersion || 'unknown'}`);
+      replyToPlayer(player, "{player}'s client version:", { player: other.name });
+      if (other.clientVersion) replyToPlayer(player, '  {version}', { version: other.clientVersion });
+      else replyToPlayer(player, '  unknown');
     };
     if (args.trim()) {
       const target = resolveCommandTarget(args);
@@ -9224,7 +9332,7 @@ defineCommand('/clientquery', COMMAND_TIER.OPERATOR,
       report(other);
       return;
     }
-    replyToPlayer(player, `BZFS Version: ${BZO_APP_VERSION}`);
+    replyToPlayer(player, 'BZFS Version: {version}', { version: BZO_APP_VERSION });
     for (const other of players.values()) {
       if (other.joined && !isObserverTeam(other.team)) report(other);
     }
@@ -9249,7 +9357,7 @@ function cancelMatchCountdown(by) {
   if (!countdown) return false;
   clearInterval(countdown.timer);
   countdown = null;
-  announceToAll(by ? `Countdown cancelled by ${by}.` : 'Countdown cancelled');
+  announceToAll(by ? localized('Countdown cancelled by {player}.', { player: by }) : localized('Countdown cancelled'));
   return true;
 }
 
@@ -9307,10 +9415,10 @@ defineCommand('/countdown', COMMAND_TIER.OPERATOR,
       return;
     }
     if (seconds > COUNTDOWN_MAX_SECONDS) {
-      replyToPlayer(player, `Countdown set to ${COUNTDOWN_MAX_SECONDS} instead of ${seconds}`);
+      replyToPlayer(player, 'Countdown set to {seconds} instead of {asked}', { seconds: COUNTDOWN_MAX_SECONDS, asked: seconds });
       seconds = COUNTDOWN_MAX_SECONDS;
     } else if (seconds < 0) {
-      replyToPlayer(player, `Countdown set to 0 instead of ${seconds}`);
+      replyToPlayer(player, 'Countdown set to {seconds} instead of {asked}', { seconds: 0, asked: seconds });
       seconds = 0;
     }
     if (seconds === 0) {
@@ -9319,8 +9427,8 @@ defineCommand('/countdown', COMMAND_TIER.OPERATOR,
     }
     // Upstream's words less "Team scores reset", which here happens at zero:
     // a count cancelled first resets nothing.
-    announceToAll(`Countdown started by ${player.name}.`);
-    announceToAll(`Match begins in about ${formatDuration(seconds)}`);
+    announceToAll(localized('Countdown started by {player}.', { player: player.name }));
+    announceToAll(localized('Match begins in about {duration}', { duration: formatDuration(seconds) }));
     log(`[CMD] "${player.name}" started a ${seconds}s countdown`);
     const starter = player.name;
     countdown = { left: seconds, first: true, timer: null };
@@ -9328,13 +9436,13 @@ defineCommand('/countdown', COMMAND_TIER.OPERATOR,
       if (!countdown) return;
       if (countdown.left <= 0) {
         clearInterval(countdown.timer);
-        announceToAll('The match has started!...Good Luck Teams!');
+        announceToAll(localized('The match has started!...Good Luck Teams!'));
         beginCountedMatch(starter);
         return;
       }
-      if (countdown.first) announceToAll('Start your engines!......');
+      if (countdown.first) announceToAll(localized('Start your engines!......'));
       countdown.first = false;
-      announceToAll(`${countdown.left}...`);
+      announceToAll(localized('{seconds}...', { seconds: countdown.left }));
       countdown.left--;
     }, 1000);
   });
@@ -9373,13 +9481,14 @@ defineCommand('/mute', COMMAND_TIER.OPERATOR,
   (player, args) => {
     const target = resolveCommandTarget(args);
     if (!target.id) {
-      replyToPlayer(player, target.error || 'Usage: /mute <#slot|PlayerName>');
+      if (target.error) replyToPlayer(player, target.error);
+      else replyToPlayer(player, 'Usage: /mute <#slot|PlayerName>');
       return;
     }
     const victim = players.get(target.id);
     victim.muted = true;
     log(`[CMD] "${player.name}" muted "${victim.name}"`);
-    replyToPlayer(player, `"${victim.name}" is now muted`);
+    replyToPlayer(player, '"{player}" is now muted', { player: victim.name });
     replyToPlayer(victim, 'You have been muted by an operator');
   });
 
@@ -9388,13 +9497,14 @@ defineCommand('/unmute', COMMAND_TIER.OPERATOR,
   (player, args) => {
     const target = resolveCommandTarget(args);
     if (!target.id) {
-      replyToPlayer(player, target.error || 'Usage: /unmute <#slot|PlayerName>');
+      if (target.error) replyToPlayer(player, target.error);
+      else replyToPlayer(player, 'Usage: /unmute <#slot|PlayerName>');
       return;
     }
     const victim = players.get(target.id);
     victim.muted = false;
     log(`[CMD] "${player.name}" unmuted "${victim.name}"`);
-    replyToPlayer(player, `"${victim.name}" is no longer muted`);
+    replyToPlayer(player, '"{player}" is no longer muted', { player: victim.name });
     replyToPlayer(victim, 'You are no longer muted');
   });
 
@@ -9472,13 +9582,13 @@ function flagCommandHelp(player) {
 // one out is the kind of thing the other operators should see happen. The actor
 // is skipped because they already have the same sentence as their reply --
 // upstream sends it to them twice.
-function announceToAdmins(actor, text) {
+function announceToAdmins(actor, message) {
   const payload = JSON.stringify({
     type: 'message',
     src: SERVER_PLAYER,
     dst: ADMIN_PLAYERS,
     msgType: 'server',
-    text,
+    ...message,
     ts: Date.now(),
   });
   for (const admin of getAdmins()) {
@@ -9515,16 +9625,16 @@ defineCommand('/flag', COMMAND_TIER.OPERATOR,
       if (rest.length > 0) {
         const target = resolveCommandTarget(rest);
         if (!target.id) {
-          replyToPlayer(player, target.error || 'Usage: /flag drop [#slot|PlayerName]');
+          if (target.error) replyToPlayer(player, target.error);
+          else replyToPlayer(player, 'Usage: /flag drop [#slot|PlayerName]');
           return;
         }
         subject = players.get(target.id);
       }
       const flag = getPlayerFlag(subject.id);
       if (!flag) {
-        replyToPlayer(player, subject === player
-          ? 'You are not carrying a flag'
-          : `"${subject.name}" is not carrying a flag`);
+        if (subject === player) replyToPlayer(player, 'You are not carrying a flag');
+        else replyToPlayer(player, '"{player}" is not carrying a flag', { player: subject.name });
         return;
       }
       // Whatever the flag's own rules say happens when it leaves a tank: a
@@ -9533,8 +9643,8 @@ defineCommand('/flag', COMMAND_TIER.OPERATOR,
       const abbreviation = flag.type || 'none';
       dropPlayerFlag(subject.id);
       log(`[CMD] "${player.name}" dropped ${abbreviation} from "${subject.name}"`);
-      replyToPlayer(player, `Dropped ${abbreviation} from "${subject.name}"`);
-      if (subject !== player) replyToPlayer(subject, `Your ${abbreviation} flag was dropped`);
+      replyToPlayer(player, 'Dropped {flag} from "{player}"', { flag: abbreviation, player: subject.name });
+      if (subject !== player) replyToPlayer(subject, 'Your {flag} flag was dropped', { flag: abbreviation });
       return;
     }
     if (what === 'up') {
@@ -9548,7 +9658,7 @@ defineCommand('/flag', COMMAND_TIER.OPERATOR,
         count += 1;
       });
       log(`[CMD] "${player.name}" sent ${count} flags up`);
-      replyToPlayer(player, `${count} flags sent up`);
+      replyToPlayer(player, '{count} flags sent up', { count });
       return;
     }
     if (what === 'reset') {
@@ -9558,7 +9668,7 @@ defineCommand('/flag', COMMAND_TIER.OPERATOR,
         count += 1;
       });
       log(`[CMD] "${player.name}" reset ${count} flags`);
-      replyToPlayer(player, `${count} flags reset`);
+      replyToPlayer(player, '{count} flags reset', { count });
       return;
     }
     if (what === 'show') {
@@ -9580,13 +9690,15 @@ defineCommand('/flag', COMMAND_TIER.OPERATOR,
     if (what === 'take') {
       const target = resolveCommandTarget(rest);
       if (!target.id) {
-        replyToPlayer(player, target.error || 'Usage: /flag take <#slot|PlayerName>');
+        if (target.error) replyToPlayer(player, target.error);
+        else replyToPlayer(player, 'Usage: /flag take <#slot|PlayerName>');
         return;
       }
       const subject = players.get(target.id);
       const flag = getPlayerFlag(subject.id);
       if (!flag) {
-        replyToPlayer(player, `/flag take: player (${subject.name}) does not have a flag`);
+        // TRANSLATORS: /flag take is a command name; keep it as it is
+        replyToPlayer(player, '/flag take: player ({player}) does not have a flag', { player: subject.name });
         return;
       }
       const abbreviation = flag.type;
@@ -9595,17 +9707,19 @@ defineCommand('/flag', COMMAND_TIER.OPERATOR,
       // from `/flag drop`: the flag goes back to a spawn point rather than onto
       // the ground the tank is standing on.
       resetFlag(flag);
-      const notice = `${player.name} took flag ${abbreviation}/${index} from ${subject.name}`;
+      const notice = localized('{admin} took flag {flag}/{slot} from {player}', {
+        admin: player.name, flag: abbreviation, slot: index, player: subject.name,
+      });
       log(`[CMD] "${player.name}" took ${abbreviation}/${index} from "${subject.name}"`);
-      replyToPlayer(player, notice);
+      replyToPlayer(player, notice.msgid, notice.params);
       announceToAdmins(player, notice);
       return;
     }
     if (what === 'give') {
       const target = resolveCommandTarget(rest);
       if (!target.id) {
-        replyToPlayer(player, target.error
-          || 'Usage: /flag give <#slot|PlayerName> <#flagId|FlagAbbr> [force]');
+        if (target.error) replyToPlayer(player, target.error);
+        else replyToPlayer(player, 'Usage: /flag give <#slot|PlayerName> <#flagId|FlagAbbr> [force]');
         return;
       }
       const subject = players.get(target.id);
@@ -9621,7 +9735,7 @@ defineCommand('/flag', COMMAND_TIER.OPERATOR,
         const index = Number.parseInt(argv[0].slice(1), 10);
         flag = Number.isInteger(index) ? flags[index] || null : null;
         if (!flag) {
-          replyToPlayer(player, `flag ${argv[0]} is not in this world`);
+          replyToPlayer(player, 'flag {flag} is not in this world', { flag: argv[0] });
           return;
         }
         // Upstream drops a held flag on the floor here and answers nothing at
@@ -9635,7 +9749,7 @@ defineCommand('/flag', COMMAND_TIER.OPERATOR,
         // anyway and the tank carries `Flags::Null`; bzo says so instead,
         // because a flag with no type is not a flag anyone asked for.
         if (!flag.type) {
-          replyToPlayer(player, `flag ${argv[0]} is an empty slot`);
+          replyToPlayer(player, 'flag {flag} is an empty slot', { flag: argv[0] });
           return;
         }
       } else {
@@ -9678,7 +9792,8 @@ defineCommand('/flag', COMMAND_TIER.OPERATOR,
       // "do not give flags to dead players": the grab has to reach a tank that
       // is on the field, or the flag would be carried by nothing.
       if (!subject.alive) {
-        replyToPlayer(player, `/flag give: player (${subject.name}) is not alive`);
+        // TRANSLATORS: /flag give is a command name; keep it as it is
+        replyToPlayer(player, '/flag give: player ({player}) is not alive', { player: subject.name });
         return;
       }
 
@@ -9699,9 +9814,11 @@ defineCommand('/flag', COMMAND_TIER.OPERATOR,
       // `grabFlag(index, flag, false)`: the position check is what the `false`
       // turns off, because an operator handing a flag out is not standing on it.
       grabFlag(subject, flag, Date.now(), { checkPos: false });
-      const notice = `${player.name} gave flag ${abbreviation}/${flag.index} to ${subject.name}`;
+      const notice = localized('{admin} gave flag {flag}/{slot} to {player}', {
+        admin: player.name, flag: abbreviation, slot: flag.index, player: subject.name,
+      });
       log(`[CMD] "${player.name}" gave ${abbreviation}/${flag.index} to "${subject.name}"`);
-      replyToPlayer(player, notice);
+      replyToPlayer(player, notice.msgid, notice.params);
       announceToAdmins(player, notice);
       return;
     }
@@ -9723,7 +9840,8 @@ defineCommand('/mv', COMMAND_TIER.OPERATOR,
     if (!/^-?[\d.]/.test(firstToken)) {
       const target = resolveCommandTarget(rest);
       if (!target.id) {
-        replyToPlayer(player, target.error || 'Usage: /mv [player] <x,y> [facing]');
+        if (target.error) replyToPlayer(player, target.error);
+        else replyToPlayer(player, 'Usage: /mv [player] <x,y> [facing]');
         return;
       }
       subject = players.get(target.id);
@@ -9781,7 +9899,7 @@ defineCommand('/mv', COMMAND_TIER.OPERATOR,
       z = dropSpawnPosition(at.x, at.y, at.z === null ? 0 : at.z, azimuth);
     }
     if (z === null) {
-      replyToPlayer(player, `Nowhere to stand at ${parsed.x},${parsed.y}`);
+      replyToPlayer(player, 'Nowhere to stand at {x},{y}', { x: parsed.x, y: parsed.y });
       return;
     }
 
@@ -9825,15 +9943,12 @@ defineCommand('/mv', COMMAND_TIER.OPERATOR,
       fs: 0, rs: 0, vv: 0, vx: 0, vy: 0,
     }, subject.ws);
 
-    const where = `${subject.x.toFixed(1)},${subject.y.toFixed(1)},${subject.z.toFixed(1)}`
-      + ` facing ${azimuthToBearingName(subject.azimuth)}`;
-    log(`[CMD] "${player.name}" moved "${subject.name}" to ${where}`);
+    const position = `${subject.x.toFixed(1)},${subject.y.toFixed(1)},${subject.z.toFixed(1)}`;
+    const bearing = azimuthToBearingName(subject.azimuth);
+    log(`[CMD] "${player.name}" moved "${subject.name}" to ${position} facing ${bearing}`);
     // Echoed because the height was resolved rather than given: seeing where the
     // tank actually landed is how a mistyped coordinate shows itself.
-    replyToPlayer(player, subject === player
-      ? `Moved to ${where}`
-      : `"${subject.name}" moved to ${where}`);
-    if (subject !== player) replyToPlayer(subject, `@${player.name} moved you to ${where}`);
+    reportMove(player, subject, position, bearing);
   });
 
 // `/pos` is bzo's own, the read half of `/mv` -- for the same reason `/mv`
@@ -9856,7 +9971,8 @@ defineCommand('/pos', COMMAND_TIER.OPEN,
       }
       const target = resolveCommandTarget(args);
       if (!target.id) {
-        replyToPlayer(player, target.error || 'Usage: /pos [player]');
+        if (target.error) replyToPlayer(player, target.error);
+        else replyToPlayer(player, 'Usage: /pos [player]');
         return;
       }
       subject = players.get(target.id);
@@ -9869,9 +9985,9 @@ defineCommand('/pos', COMMAND_TIER.OPEN,
     log(`[POS] "${player.name}" checked "${subject.name}": pos=(${where}), azimuth=${subject.azimuth.toFixed(2)},`
       + ` fs=${(subject.forwardSpeed || 0).toFixed(2)}, rs=${(subject.rotationSpeed || 0).toFixed(2)},`
       + ` vv=${(subject.verticalVelocity || 0).toFixed(2)}`);
-    replyToPlayer(player, subject === player
-      ? `You are at ${where} facing ${azimuthToBearingName(subject.azimuth)}`
-      : `"${subject.name}" is at ${where} facing ${azimuthToBearingName(subject.azimuth)}`);
+    const bearing = azimuthToBearingName(subject.azimuth);
+    if (subject === player) replyToPlayer(player, 'You are at {position} facing {bearing}', { position: where, bearing });
+    else replyToPlayer(player, '"{player}" is at {position} facing {bearing}', { player: subject.name, position: where, bearing });
   });
 
 // Which settings can be changed without starting a new game. Everything else is
@@ -10164,7 +10280,7 @@ function applyServerConfigChanges(requested, byWhom) {
       src: SERVER_PLAYER,
       dst: ALL_PLAYERS,
       msgType: 'server',
-      text: next.ricochet ? 'All shots now ricochet' : 'Shots no longer ricochet',
+      ...(next.ricochet ? localized('All shots now ricochet') : localized('Shots no longer ricochet')),
     });
     changed.push('ricochet');
   }
@@ -10294,7 +10410,7 @@ defineCommand('/set', COMMAND_TIER.OPERATOR,
     const [name, ...valueParts] = args.trim().split(/\s+/).filter(Boolean);
     if (!name) {
       replyToPlayer(player, 'usage: set <name> [<value>]');
-      replyToPlayer(player, `bzo's own: ${Object.keys(SETTABLE_VARIABLES).join(', ')}`);
+      replyToPlayer(player, "bzo's own: {variables}", { variables: Object.keys(SETTABLE_VARIABLES).join(', ') });
       return;
     }
     const spec = SETTABLE_VARIABLES[name];
@@ -10313,25 +10429,27 @@ defineCommand('/set', COMMAND_TIER.OPERATOR,
       return;
     }
     if (!worldVariableExists(name)) {
-      replyToPlayer(player, `${valueParts.length ? '/set failed, reason: ' : ''}variable ${name} does not exist`);
+      // TRANSLATORS: /set is a command name; keep it as it is
+      if (valueParts.length) replyToPlayer(player, '/set failed, reason: variable {name} does not exist', { name });
+      else replyToPlayer(player, 'variable {name} does not exist', { name });
       return;
     }
     if (valueParts.length === 0) {
-      replyToPlayer(player, `${name} is ${liveBzdb.get(name) ?? worldVariableDefault(name)}`);
+      replyToPlayer(player, '{name} is {value}', { name, value: liveBzdb.get(name) ?? worldVariableDefault(name) });
       return;
     }
     if (READ_ONLY_VARIABLES.has(name)) {
-      replyToPlayer(player, `/set failed, reason: variable ${name} is not writeable`);
+      // TRANSLATORS: /set is a command name; keep it as it is
+      replyToPlayer(player, '/set failed, reason: variable {name} is not writeable', { name });
       return;
     }
     const value = valueParts.join(' ');
     const moved = setWorldVariable(name, value);
     log(`[CMD] "${player.name}" set ${name} ${value}${moved.length ? ` (${moved.join(', ')})` : ''}`);
-    replyToPlayer(player, `${name} set`);
-    broadcastAll({
-      type: 'message', src: SERVER_PLAYER, dst: ALL_PLAYERS, msgType: 'server',
-      text: `Variable Modification Notice by ${player.name} of set ${name} ${value}`, ts: Date.now(),
-    });
+    replyToPlayer(player, '{name} set', { name });
+    announceToAll(localized('Variable Modification Notice by {player} of set {name} {value}', {
+      player: player.name, name, value,
+    }));
   });
 
 defineCommand('/reset', COMMAND_TIER.OPERATOR,
@@ -10342,27 +10460,27 @@ defineCommand('/reset', COMMAND_TIER.OPERATOR,
       replyToPlayer(player, 'usage: reset <name>');
       return;
     }
-    let reply;
     if (name === '*') {
       for (const variable of [...liveBzdb.keys()]) {
         if (!READ_ONLY_VARIABLES.has(variable)) setWorldVariable(variable, null);
       }
-      reply = 'all variables reset';
     } else if (!worldVariableExists(name)) {
-      replyToPlayer(player, `variable ${name} does not exist`);
+      replyToPlayer(player, 'variable {name} does not exist', { name });
       return;
     } else if (READ_ONLY_VARIABLES.has(name)) {
-      replyToPlayer(player, `variable ${name} is not writeable`);
+      replyToPlayer(player, 'variable {name} is not writeable', { name });
       return;
     } else {
       setWorldVariable(name, null);
-      reply = `${name} reset`;
     }
     log(`[CMD] "${player.name}" reset ${name}`);
-    replyToPlayer(player, reply);
+    if (name === '*') replyToPlayer(player, 'all variables reset');
+    else replyToPlayer(player, '{name} reset', { name });
     // To admins only, as upstream says it (`AdminPlayers`).
     players.forEach((other) => {
-      if (isAdmin(other)) replyToPlayer(other, `Variable Reset Notice by ${player.name} of reset ${name}`);
+      if (isAdmin(other)) {
+        replyToPlayer(other, 'Variable Reset Notice by {player} of reset {name}', { player: player.name, name });
+      }
     });
   });
 
@@ -10388,7 +10506,7 @@ function handleServerCommand(player, text) {
       .filter((command) => command.name.startsWith(helpPrefix) && canRunCommand(player, command))
       .sort((a, b) => a.name.localeCompare(b.name));
     if (matches.length === 0) {
-      replyToPlayer(player, `No command starting with ${helpPrefix}`);
+      replyToPlayer(player, 'No command starting with {prefix}', { prefix: helpPrefix });
     } else {
       for (const command of matches) replyToPlayer(player, `${command.name} ${command.help}`);
     }
@@ -10410,7 +10528,7 @@ function handleServerCommand(player, text) {
     // Upstream's own sentence, per command
     // ("You do not have permission to run the /date command").
     log(`[CMD] "${player.name}": ${text} -- refused, not an admin`);
-    replyToPlayer(player, `You do not have permission to run the ${command.name} command`);
+    replyToPlayer(player, 'You do not have permission to run the {command} command', { command: command.name });
     return true;
   }
   log(`[CMD] "${player.name}": ${text}`);
@@ -10665,7 +10783,7 @@ function resolveJoinName(player, requestedName) {
         src: SERVER_PLAYER,
         dst: other.id,
         msgType: 'server',
-        text: `You signed in as ${callsign} on another device.`,
+        ...localized('You signed in as {player} on another device.', { player: callsign }),
       });
       sendToPlayer(other, { type: 'superKill' });
       try {
@@ -10687,7 +10805,7 @@ function resolveJoinName(player, requestedName) {
       src: SERVER_PLAYER,
       dst: other.id,
       msgType: 'server',
-      text: `${callsign} signed in with that name, so yours is now ${assigned}.`,
+      ...localized('{player} signed in with that name, so yours is now {name}.', { player: callsign, name: assigned }),
     });
     broadcastPlayerRecord('playerUpdated', other);
   }
@@ -13491,7 +13609,8 @@ function countFlagShot(player) {
   const left = limit - flag.shots;
   if (left > 0) {
     if (player.native && (left % 5 === 0 || left <= 3 || left === limit - 1)) {
-      replyToPlayer(player, left > 1 ? `${left} shots left` : '1 shot left');
+      if (left > 1) replyToPlayer(player, '{count} shots left', { count: left });
+      else replyToPlayer(player, '1 shot left');
     }
     sendShotsLeft(player, flag);
     return;
@@ -13763,9 +13882,11 @@ function isTeamFlagGrabDelayed(player, flag, now) {
   if (now > (delayedGrabWarnedAt.get(player.id) ?? -Infinity) + DELAYED_GRAB_WARN_INTERVAL_MS) {
     delayedGrabWarnedAt.set(player.id, now);
     const team = getTeamFromColorIndex(flag.team);
-    replyToPlayer(player, `Team flags cannot be grabbed for ${delay} seconds after they were last capped.`);
-    replyToPlayer(player, `You cannot grab the ${team.charAt(0).toUpperCase()}${team.slice(1)} team flag`
-      + ` for another ~${Math.round((cappedAt + (delay * 1000) - now) / 1000)} seconds`);
+    replyToPlayer(player, 'Team flags cannot be grabbed for {seconds} seconds after they were last capped.', { seconds: delay });
+    replyToPlayer(player, 'You cannot grab the {team} team flag for another ~{seconds} seconds', {
+      team: { msgid: `${team.charAt(0).toUpperCase()}${team.slice(1)}` },
+      seconds: Math.round((cappedAt + (delay * 1000) - now) / 1000),
+    });
   }
   return true;
 }
@@ -16002,10 +16123,11 @@ function forceClientReload() {
 // BZFlag client shows MsgSuperKill (playing.cxx:2115). BZFlag clients get the
 // same message and then MsgSuperKill itself.
 let serverGoingSaid = false;
-function sayServerIsGoing(reason) {
+// `message` is what `localized` returns.
+function sayServerIsGoing(message) {
   if (serverGoingSaid) return;
   serverGoingSaid = true;
-  broadcastAll({ type: 'message', src: SERVER_PLAYER, dst: ALL_PLAYERS, msgType: 'server', text: `Server ${reason}`, ts: Date.now() });
+  broadcastAll({ type: 'message', src: SERVER_PLAYER, dst: ALL_PLAYERS, msgType: 'server', ...message, ts: Date.now() });
   broadcastAll({ type: 'superKill' });
   webTransport?.close();
   bzflagServer?.close();
@@ -16013,7 +16135,7 @@ function sayServerIsGoing(reason) {
 
 function requestServerRestart(reason) {
   log(`Restart requested: ${reason}`);
-  sayServerIsGoing(`restarting: ${reason}`);
+  sayServerIsGoing(localized('Server restarting: {reason}', { reason }));
   forceClientReload();
 
   if (reason === 'server.js change') {
@@ -17298,11 +17420,12 @@ defineCommand('/bot', COMMAND_TIER.OPERATOR,
     if (verb === 'fill') {
       const count = Number(rest[0]);
       if (!Number.isInteger(count) || count < 0 || count > MAX_REAL_PLAYERS) {
-        replyToPlayer(player, `Usage: /bot fill <0-${MAX_REAL_PLAYERS}> [${pilots}]`);
+        // TRANSLATORS: a command's syntax; keep it as it is
+        replyToPlayer(player, 'Usage: /bot fill <0-{max}> [{pilots}]', { max: MAX_REAL_PLAYERS, pilots });
         return;
       }
       if (rest[1] && !findAutopilot(rest[1].toLowerCase())) {
-        replyToPlayer(player, `No pilot "${rest[1]}"; one of ${pilots}`);
+        replyToPlayer(player, 'No pilot "{pilot}"; one of {pilots}', { pilot: rest[1], pilots });
         return;
       }
       // The Operator panel's own change, so the two cannot disagree and the
@@ -17323,7 +17446,8 @@ defineCommand('/bot', COMMAND_TIER.OPERATOR,
         else if (PLAYER_TEAMS.includes(lower) && !isObserverTeam(lower)) team = lower;
         else if (/^\d+$/.test(word)) count = Math.min(Number(word), MAX_REAL_PLAYERS);
         else {
-          replyToPlayer(player, `Usage: /bot add [${pilots}] [team] [count]`);
+          // TRANSLATORS: a command's syntax; keep /bot add as it is
+          replyToPlayer(player, 'Usage: /bot add [{pilots}] [team] [count]', { pilots });
           return;
         }
       }
@@ -17355,7 +17479,8 @@ defineCommand('/bot', COMMAND_TIER.OPERATOR,
       replyToPlayer(player, describeBots());
       return;
     }
-    replyToPlayer(player, `Usage: /bot [fill <n> [${pilots}] | add [${pilots}] [team] [count] | remove <name|all>]`);
+    // TRANSLATORS: a command's syntax; keep /bot, fill, add, remove and all as they are
+    replyToPlayer(player, 'Usage: /bot [fill <n> [{pilots}] | add [{pilots}] [team] [count] | remove <name|all>]', { pilots });
   });
 
 // Expose the forceClientReload function for manual triggering
@@ -17382,7 +17507,7 @@ function reportListServerShutdown(signal) {
   // Not on a nodemon restart (SIGUSR2): the next process maps the same port
   // again, and a removal still in flight could undo its mapping.
   void bzflagUpnp?.stop();
-  sayServerIsGoing('shutting down');
+  sayServerIsGoing(localized('Server shutting down'));
   setTimeout(() => process.exit(0), 500);
 }
 process.on('SIGTERM', () => reportListServerShutdown('SIGTERM'));
@@ -17392,7 +17517,7 @@ process.on('SIGINT', () => reportListServerShutdown('SIGINT'));
 process.once('SIGUSR2', () => {
   // The signal ends the process without an `exit` event, so the scores go now.
   saveScoresForRestart();
-  sayServerIsGoing('restarting');
+  sayServerIsGoing(localized('Server restarting'));
   setTimeout(() => process.kill(process.pid, 'SIGUSR2'), 100);
 });
 

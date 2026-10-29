@@ -1151,7 +1151,7 @@ function handleJoinGame(player, ws, message) {
   if (scoreRestored) replyToPlayer(player, scoreRestored);
   clearTimeout(player.rejoinTimer);
   if (rejoinWait > 0) {
-    replyToPlayer(player, `You are unable to begin playing for ${(rejoinWait / 1000).toFixed(1)} seconds.`);
+    replyToPlayer(player, 'You are unable to begin playing for {seconds} seconds.', { seconds: (rejoinWait / 1000).toFixed(1) });
     log(`[REJOIN] "${joinName}" waits ${(rejoinWait / 1000).toFixed(1)}s to spawn`);
     player.rejoinTimer = setTimeout(() => {
       if (players.get(player.id) !== player || !player.joined || player.alive || matchClock.gameOver) return;
@@ -1189,11 +1189,11 @@ function handleSetTeam(player, ws, message) {
   const team = normalizePlayerTeamSelection(message.team);
   if (!player.joined || !isSwitchableTeam(player.team)) return;
   if (!isSwitchableTeam(team) || TEAM_MODE.autoTeam) {
-    replyToPlayer(player, `Team is not available: ${team}`);
+    replyToPlayer(player, 'Team is not available: {team}', { team: { msgid: team } });
     return;
   }
   if (team === player.team) {
-    if (player.nextTeam) replyToPlayer(player, `You stay ${team}`);
+    if (player.nextTeam) replyToPlayer(player, 'You stay {team}', { team: { msgid: team } });
     player.nextTeam = null;
     return;
   }
@@ -1202,12 +1202,12 @@ function handleSetTeam(player, ws, message) {
     if (other !== player && other.joined && (other.nextTeam || other.team) === team) onTeam += 1;
   });
   if (onTeam >= TEAM_MODE.limits[team]) {
-    replyToPlayer(player, `Team is full: ${team}`);
+    replyToPlayer(player, 'Team is full: {team}', { team: { msgid: team } });
     return;
   }
   player.nextTeam = team;
   log(`Player ${player.id} "${player.name}" asks for ${team}`);
-  replyToPlayer(player, `You will join ${team} when you next spawn`);
+  replyToPlayer(player, 'You will join {team} when you next spawn', { team: { msgid: team } });
   return;
 }
 

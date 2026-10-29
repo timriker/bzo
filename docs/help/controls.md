@@ -3,9 +3,8 @@
 One client runs on a desktop, a phone and a headset, so every action has a way
 in from each of them. The keyboard has the most; touch, a gamepad and the XR
 controllers carry the actions a match needs, and the Settings menu reaches the
-rest -- including from a headset, where there is no keyboard at all. The in-game
-help (`/` or `?`) lists the keyboard's; `npm run check:controls-docs` keeps the
-two in step.
+rest -- including from a headset, where there is no keyboard at all. This page
+is also the in-game help's (`/` or `?`).
 
 ## Keyboard
 
@@ -63,13 +62,36 @@ two in step.
 - `Settings -> Audio Settings` — set the game, voice, and microphone levels,
   and choose the voice channel: All, Nearby, or Team
 - `/` or `?` — show/hide help panel
+- `🎤` beside the gear — the microphone, as `B` is: a green border means you
+  are transmitting and a red one means you are not, and the hover text names
+  the channel it would speak on
+- `▲` beside the gear — hide the scoreboard and chat, leaving the name row and
+  the chat tabs; `▼` brings them back. Typing a message borrows the chat
+  window until you are done with it, and `U` or `7` borrows the scoreboard
+  until the hunt cursor closes; tapping a chat tab opens chat for good. Small
+  screens start collapsed
+- `Settings -> Anaglyph 3D` — red/cyan glasses; `Settings -> VR Mode` enters a
+  WebXR headset
+
+### Menus
+
+- `Up` / `Down` — previous/next control, including from inside a text field
+- `Left` / `Right` — change the focused control: move a slider, pick the next
+  choice. In a text field they move the cursor instead
+- `Tab` / `Shift+Tab` — previous/next control
+- `Home` / `End` — first/last control
+- `Enter` or `Space` — press the focused control
+- Click or tap a row that walks a list: the title steps back and the current
+  option steps forward. The `‹` and `›` on the row mark the two halves
+- The help panel is read rather than operated, so there the arrows scroll it
+  and only `Left` / `Right` move focus
 
 ### Hunting
 
 Marking a player puts a cyan `◎` on their scoreboard row, a cyan ring on their
 radar blip, and a beacon in the sky over them in their own tank colour -- so
 several marked at once are still told apart at a glance. While one of them is in
-your sights the HUD says `SPOTTED:` and a ping sounds once a second from where
+your sights the HUD says **SPOTTED:** and a ping sounds once a second from where
 they are. In Rabbit Chase the rabbit is marked for you, and its beacon is cyan
 like its ring: everyone is hunting it, so everyone's mark over it says so.
 

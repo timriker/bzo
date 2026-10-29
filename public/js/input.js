@@ -10,7 +10,9 @@
 
 import { getXRControllerInput, pulseXRControllers, xrState } from './webxr.js';
 import { focusDialogCloseControl, focusFirstDialogControl, getMenuClickDirection, getMenuClickZone, getVisibleDialogRoot, handleDialogControllerInput, handleDialogKeydown, hideDialog, showDialog } from './menus.js';
-import { initSettingsMenu } from './settings.js';
+import { initSettingsMenu, settingsRowText } from './settings.js';
+import { ensureHelpLoaded } from './help.js';
+import { AUTOMATIC_LOCALE, N_, getLocalePreference, getLocales, setLocalePreference, t } from './i18n.mjs';
 import { INPUT_CONTEXT, InputContextManager } from './input-context.mjs';
 import { initHudCollapse, toggleHudCollapsed } from './hud.js';
 
@@ -935,9 +937,9 @@ export function isMouseSteeringAvailable() {
 
 // Why the row is dead, for the title and for the player who presses M anyway.
 export function mouseSteeringUnavailableReason() {
-  if (xrState.enabled) return 'Mouse steering is unavailable in VR: there is no cursor to read';
-  if (hudContext.getVirtualControlsEnabled()) return 'Virtual controls steer instead of the mouse';
-  return 'Mouse steering needs a mouse attached';
+  if (xrState.enabled) return t('Mouse steering is unavailable in VR: there is no cursor to read');
+  if (hudContext.getVirtualControlsEnabled()) return t('Virtual controls steer instead of the mouse');
+  return t('Mouse steering needs a mouse attached');
 }
 
 function setupMobileOrientationDebug() {
@@ -1052,6 +1054,10 @@ export function adjustSettingsMenuRow(id, direction) {
       hudContext.cycleRadarZoom(direction);
       return true;
     }
+    if (item.id === 'languageBtn') {
+      cycleLanguage(direction);
+      return true;
+    }
     return false;
   }
 
@@ -1071,7 +1077,7 @@ export function adjustSettingsMenuRow(id, direction) {
 function getSettingsMenuValue(id, item) {
   // The player the row is pointed at and whether they are marked, or why there
   // is nobody to point at. Composed in client.js, which owns the roster.
-  if (id === 'huntBtn') return hudContext.getHuntRowValue() ?? 'No players';
+  if (id === 'huntBtn') return hudContext.getHuntRowValue() ?? t('No players');
   if (id === 'autopilotBtn') return hudContext.getAutopilotRowValue();
   if (id === 'cameraBtn') {
     return hudContext.isObserver()
@@ -1079,45 +1085,44 @@ function getSettingsMenuValue(id, item) {
       : cameraModeLabel(hudContext.getCameraMode());
   }
   if (id === 'radarZoomBtn') {
-    const match = item.button.title.match(/Radar range preset:\s*(.+)/i);
-    return match?.[1] || 'Medium';
+    return t(item.button.dataset.radarRange || 'Medium');
   }
+  if (id === 'languageBtn') return languageLabel(getLocalePreference());
   if (id === 'fullscreenBtn') {
-    if (item.button.disabled) return 'Unavailable';
-    return document.fullscreenElement ? 'On' : 'Off';
+    if (item.button.disabled) return N_('Unavailable');
+    return document.fullscreenElement ? N_('On') : N_('Off');
   }
-  if (id === 'wireframeBtn') return wireframeEnabled ? 'On' : 'Off';
+  if (id === 'wireframeBtn') return wireframeEnabled ? N_('On') : N_('Off');
   if (id === 'installBtn') {
     const state = item.button.dataset.installState;
-    if (state === 'installed') return 'Installed';
-    return state === 'available' ? 'Install' : 'Browser menu';
+    if (state === 'installed') return N_('Installed');
+    return state === 'available' ? N_('Install') : N_('Browser menu');
   }
   if (id === 'xrBtn') {
-    if (item.button.disabled) return 'Unavailable';
-    return /exit/i.test(item.button.title) ? 'Exit VR' : 'Enter VR';
+    if (item.button.disabled) return N_('Unavailable');
+    return item.button.classList.contains('active') ? N_('Exit VR') : N_('Enter VR');
   }
   if (item.kind === 'toggle') {
-    if (item.button.disabled) return 'Unavailable';
-    return item.button.classList.contains('active') ? 'On' : 'Off';
+    if (item.button.disabled) return N_('Unavailable');
+    return item.button.classList.contains('active') ? N_('On') : N_('Off');
   }
-  if (item.kind === 'submenu') return 'Open >';
+  if (item.kind === 'submenu') return N_('Open >');
   if (id === 'closeSettingsHud') return '';
-  return 'Activate';
+  return N_('Activate');
 }
 
 export function getXRSettingsMenuItems() {
   const items = settingsMenu?.items || [];
   return [
-    { id: 'exitXR', label: 'Exit VR', value: '' },
+    { id: 'exitXR', label: t('Exit VR'), value: '' },
     ...items
       .filter((item) => !XR_SETTINGS_EXCLUDED_IDS.has(item.id))
       .map((item) => ({
         id: item.id,
-        label: item.label,
-        value: getSettingsMenuValue(item.id, item),
+        ...settingsRowText(item, getSettingsMenuValue(item.id, item)),
         disabled: item.button.disabled,
       })),
-    { id: 'closeXRMenu', label: 'Close', value: '' },
+    { id: 'closeXRMenu', label: t('Close'), value: '' },
   ];
 }
 
@@ -1161,7 +1166,7 @@ function updateSettingsBtn() {
   if (!domRefs.settingsBtn || !domRefs.settingsHud) return;
   const visible = domRefs.settingsHud.style.display === 'block';
   domRefs.settingsBtn.classList.toggle('active', visible);
-  domRefs.settingsBtn.title = visible ? 'Hide Settings' : 'Show Settings';
+  domRefs.settingsBtn.title = visible ? t('Hide Settings') : t('Show Settings');
 }
 
 function toggleSettingsHud() {
@@ -1175,7 +1180,7 @@ function toggleSettingsHud() {
     showDialog(domRefs.settingsHud);
   }
   if (visible) syncInputContextFromUi();
-  hudContext.showMessage(visible ? 'Settings: Hidden' : 'Settings: Shown');
+  hudContext.showMessage(visible ? t('Settings: Hidden') : t('Settings: Shown'));
   updateSettingsBtn();
 }
 
@@ -1201,7 +1206,7 @@ function updateAudioBtn() {
   if (!domRefs.audioBtn || !domRefs.audioOverlay) return;
   const visible = domRefs.audioOverlay.style.display === 'block';
   domRefs.audioBtn.classList.toggle('active', visible);
-  domRefs.audioBtn.title = visible ? 'Hide Audio Settings' : 'Open Audio Settings';
+  domRefs.audioBtn.title = visible ? t('Hide Audio Settings') : t('Open Audio Settings');
 }
 
 function toggleAudioOverlay() {
@@ -1210,12 +1215,12 @@ function toggleAudioOverlay() {
   if (visible) {
     hideDialog(domRefs.audioOverlay);
     syncInputContextFromUi();
-    hudContext.showMessage('Audio Settings: Hidden');
+    hudContext.showMessage(t('Audio Settings: Hidden'));
   } else {
     hideSettingsHudSilently();
     setInputContext(INPUT_CONTEXT.DIALOG);
     showDialog(domRefs.audioOverlay);
-    hudContext.showMessage('Audio Settings: Shown');
+    hudContext.showMessage(t('Audio Settings: Shown'));
   }
   updateAudioBtn();
 }
@@ -1224,7 +1229,7 @@ function updateHelpBtn() {
   if (!domRefs.helpBtn || !domRefs.helpPanel) return;
   const visible = domRefs.helpPanel.style.display === 'block';
   domRefs.helpBtn.classList.toggle('active', visible);
-  domRefs.helpBtn.title = visible ? 'Hide Help (?)' : 'Show Help (?)';
+  domRefs.helpBtn.title = visible ? t('Hide Help (?)') : t('Show Help (?)');
 }
 
 function toggleHelpPanel() {
@@ -1233,12 +1238,13 @@ function toggleHelpPanel() {
   if (visible) {
     hideDialog(domRefs.helpPanel);
     syncInputContextFromUi();
-    hudContext.showMessage('Help Panel: Hidden');
+    hudContext.showMessage(t('Help Panel: Hidden'));
   } else {
     hideSettingsHudSilently();
     setInputContext(INPUT_CONTEXT.DIALOG);
     showDialog(domRefs.helpPanel);
-    hudContext.showMessage('Help Panel: Shown');
+    ensureHelpLoaded();
+    hudContext.showMessage(t('Help Panel: Shown'));
   }
   updateHelpBtn();
 }
@@ -1275,7 +1281,7 @@ export function isFullscreenAvailable() {
 function enterFullscreen({ explain = true } = {}) {
   if (isIOSBrowserTab()) {
     if (explain) {
-      hudContext.pushChatMessage('iOS: use Share, Add to Home Screen for fullscreen');
+      hudContext.pushChatMessage(t('iOS: use Share, Add to Home Screen for fullscreen'));
       hudContext.updateChatWindow();
     }
     return;
@@ -1378,9 +1384,25 @@ function restoreFullscreenOnFirstGesture() {
 }
 
 function cameraModeLabel(mode) {
-  if (mode === 'first-person') return 'First Person';
-  if (mode === 'third-person') return 'Third Person';
-  return 'Overview';
+  if (mode === 'first-person') return t('First Person');
+  if (mode === 'third-person') return t('Third Person');
+  return t('Overview');
+}
+
+// Each locale is named in its own language, as upstream's catalogs name
+// themselves, so a player who cannot read the current one can still find theirs.
+function languageLabel(choice) {
+  if (choice === AUTOMATIC_LOCALE) return t('Automatic');
+  return getLocales().find((entry) => entry.id === choice)?.name ?? choice;
+}
+
+function cycleLanguage(direction = 1) {
+  const choices = [AUTOMATIC_LOCALE, ...getLocales().map((entry) => entry.id)];
+  const index = choices.indexOf(getLocalePreference());
+  const next = choices[(index + direction + choices.length) % choices.length];
+  setLocalePreference(next)
+    .catch((error) => console.warn(error.message))
+    .finally(() => settingsMenu?.refresh());
 }
 
 const CAMERA_MODE_ORDER = Object.freeze(['first-person', 'third-person', 'overview']);
@@ -1405,7 +1427,7 @@ function cycleCameraMode(direction = 1) {
   } catch {
     /* ignore storage errors */
   }
-  hudContext.showMessage(`Camera: ${cameraModeLabel(next)}`);
+  hudContext.showMessage(t('Camera: {mode}', { mode: cameraModeLabel(next) }));
   refreshHudButtons();
 }
 
@@ -1432,7 +1454,7 @@ export function toggleMouseMode(forceState) {
     /* ignore storage errors */
   }
   hudContext.resetMouseSteering();
-  hudContext.showMessage(`Controls: ${next ? 'Mouse and keyboard' : 'Keyboard'}`);
+  hudContext.showMessage(next ? t('Controls: Mouse and keyboard') : t('Controls: Keyboard'));
   refreshHudButtons();
 }
 
@@ -1440,7 +1462,7 @@ function updateVirtualControlsBtn() {
   if (!domRefs.virtualControlsBtn) return;
   const enabled = hudContext.getVirtualControlsEnabled();
   domRefs.virtualControlsBtn.classList.toggle('active', enabled);
-  domRefs.virtualControlsBtn.title = enabled ? 'Hide Virtual Controls' : 'Show Virtual Controls';
+  domRefs.virtualControlsBtn.title = enabled ? t('Hide Virtual Controls') : t('Show Virtual Controls');
 }
 
 // What the overlay actually shows right now, as against what the player asked
@@ -1477,21 +1499,21 @@ export function toggleVirtualControls(forceState) {
   // never sees it and never re-reads the row. Toggling looked like it did
   // nothing there. toggleMouseMode has always ended this way.
   refreshHudButtons();
-  hudContext.showMessage(`Virtual Controls: ${next ? 'Enabled' : 'Disabled'}`);
+  hudContext.showMessage(next ? t('Virtual Controls: Enabled') : t('Virtual Controls: Disabled'));
 }
 
 function updateOperatorBtn() {
   if (!domRefs.operatorBtn || !domRefs.operatorOverlay) return;
   const isVisible = window.getComputedStyle(domRefs.operatorOverlay).display !== 'none';
   domRefs.operatorBtn.classList.toggle('active', isVisible);
-  domRefs.operatorBtn.title = isVisible ? 'Hide Operator Panel (O)' : 'Show Operator Panel (O)';
+  domRefs.operatorBtn.title = isVisible ? t('Hide Operator Panel (O)') : t('Show Operator Panel (O)');
 }
 
 function updateViewBtn() {
   if (!domRefs.viewBtn || !domRefs.viewOverlay) return;
   const isVisible = window.getComputedStyle(domRefs.viewOverlay).display !== 'none';
   domRefs.viewBtn.classList.toggle('active', isVisible);
-  domRefs.viewBtn.title = isVisible ? 'Hide View' : 'Show View';
+  domRefs.viewBtn.title = isVisible ? t('Hide View') : t('Show View');
 }
 
 export function toggleOperatorPanel() {
@@ -1502,7 +1524,7 @@ export function toggleOperatorPanel() {
   // sends is refused. The button carries the answer, so it is the one place the
   // state is read from.
   if (domRefs.operatorBtn?.disabled) {
-    hudContext.showMessage('Operator: enter a name to become an operator on this server');
+    hudContext.showMessage(t('Operator: enter a name to become an operator on this server'));
     return;
   }
   const currentVisible = isOperatorPanelVisible();
@@ -1513,7 +1535,7 @@ export function toggleOperatorPanel() {
     // re-opening has to start from what the server currently has, or an operator
     // returns to a row they thought they had abandoned.
     callOptionalHudCallback(['onOperatorPanelHidden']);
-    hudContext.showMessage('Operator Panel: Hidden');
+    hudContext.showMessage(t('Operator Panel: Hidden'));
   } else {
     hideSettingsHudSilently();
     setInputContext(INPUT_CONTEXT.DIALOG);
@@ -1536,7 +1558,7 @@ export function toggleOperatorPanel() {
     });
     // Staged from the server's current values, before the rows are read.
     callOptionalHudCallback(['onOperatorPanelShown']);
-    hudContext.showMessage('Operator Panel: Shown');
+    hudContext.showMessage(t('Operator Panel: Shown'));
     const requestId = Math.floor(Math.random() * 1e9);
     hudContext.sendToServer({ type: 'getMaps', requestId });
     window._operatorMapReqId = requestId;
@@ -1553,13 +1575,13 @@ export function toggleViewPanel() {
   if (isViewPanelVisible()) {
     hideDialog(domRefs.viewOverlay);
     syncInputContextFromUi();
-    hudContext.showMessage('View: Hidden');
+    hudContext.showMessage(t('View: Hidden'));
   } else {
     hideSettingsHudSilently();
     setInputContext(INPUT_CONTEXT.DIALOG);
     showDialog(domRefs.viewOverlay);
     callOptionalHudCallback(['onViewPanelShown']);
-    hudContext.showMessage('View: Shown');
+    hudContext.showMessage(t('View: Shown'));
   }
   updateViewBtn();
 }
@@ -2008,6 +2030,7 @@ function bindHudElements() {
   updateViewBtn();
   updateVirtualControlsBtn();
   refreshHudButtons();
+  document.getElementById('languageBtn')?.addEventListener('click', (event) => cycleLanguage(getMenuClickDirection(event)));
   settingsMenu = initSettingsMenu({
     root: domRefs.settingsHud,
     getValue: getSettingsMenuValue,

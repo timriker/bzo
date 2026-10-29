@@ -12,6 +12,7 @@
 
 import { obstacleTextures } from './world-summary.mjs';
 import { failedTextureUrls } from './texture.js';
+import { t } from './i18n.mjs';
 
 const SUMMARY_TEXTURES = 20;
 
@@ -63,34 +64,35 @@ function ensurePanel() {
 
 // What the world says about an obstacle, as rows of label and value.
 function describe(obs) {
-  const rows = [['Type', obs.kind || obs.type]];
+  const rows = [[t('Type'), obs.kind || obs.type]];
   if (obs.type === 'mesh') {
     const b = obs.bounds;
-    if (b) rows.push(['Bounds', `${triple([b.minX, b.minY, b.minZ])} to ${triple([b.maxX, b.maxY, b.maxZ])}`]);
-    rows.push(['Faces', String(obs.arrays?.faceCount ?? obs.faces?.length ?? '?')]);
+    if (b) rows.push([t('Bounds'), t('{min} to {max}', { min: triple([b.minX, b.minY, b.minZ]), max: triple([b.maxX, b.maxY, b.maxZ]) })]);
+    rows.push([t('Faces'), String(obs.arrays?.faceCount ?? obs.faces?.length ?? '?')]);
   } else {
-    if (obs.pos) rows.push(['Position', triple(obs.pos)]);
-    if (obs.size) rows.push(['Size', triple(obs.size)]);
-    rows.push(['Rotation', degrees(obs.angle)]);
+    if (obs.pos) rows.push([t('Position'), triple(obs.pos)]);
+    if (obs.size) rows.push([t('Size'), triple(obs.size)]);
+    rows.push([t('Rotation'), degrees(obs.angle)]);
   }
-  if (obs.team !== undefined && obs.team !== null) rows.push(['Team', String(obs.team)]);
+  if (obs.team !== undefined && obs.team !== null) rows.push([t('Team'), String(obs.team)]);
   const passes = ['driveThrough', 'shootThrough', 'ricochet'].filter((field) => obs[field]);
   if (obs.inverted) passes.push('inverted');
-  if (passes.length) rows.push(['Flags', passes.join(' ').toLowerCase()]);
+  if (passes.length) rows.push([t('Flags'), passes.join(' ').toLowerCase()]);
   const textures = obstacleTextures(obs);
-  if (textures.length) rows.push(['Textures', textures.map(textureLabel).join('\n')]);
-  if (obs.phydrv !== undefined && obs.phydrv !== null) rows.push(['Physics', String(obs.phydrv)]);
+  if (textures.length) rows.push([t('Textures'), textures.map(textureLabel).join('\n')]);
+  if (obs.phydrv !== undefined && obs.phydrv !== null) rows.push([t('Physics'), String(obs.phydrv)]);
   return rows;
 }
 
 function sourceBlock(label, block) {
   const wrap = element('div', 'inspectSource');
-  const lines = block.startLine === block.endLine
-    ? `line ${block.startLine}` : `lines ${block.startLine}-${block.endLine}`;
-  wrap.appendChild(element('div', 'inspectSourceLabel', `${label} ${lines}`));
+  const heading = block.startLine === block.endLine
+    ? t('{label} line {line}', { label, line: block.startLine })
+    : t('{label} lines {start}-{end}', { label, start: block.startLine, end: block.endLine });
+  wrap.appendChild(element('div', 'inspectSourceLabel', heading));
   const pre = element('pre', '', block.text);
   wrap.appendChild(pre);
-  if (block.moreLines) wrap.appendChild(element('div', 'inspectSourceLabel', `${block.moreLines} more lines`));
+  if (block.moreLines) wrap.appendChild(element('div', 'inspectSourceLabel', t('{n} more lines', { n: block.moreLines })));
   return wrap;
 }
 
@@ -118,7 +120,7 @@ function openPanel(titleText, key, { world = false } = {}) {
   const title = element('div', 'inspectTitle');
   title.appendChild(element('span', '', titleText));
   const buttons = element('span', 'inspectButtons');
-  if (!world && handlers.onWorld) buttons.appendChild(button('World', 'inspectWorldBtn', () => handlers.onWorld()));
+  if (!world && handlers.onWorld) buttons.appendChild(button(t('World'), 'inspectWorldBtn', () => handlers.onWorld()));
   buttons.appendChild(button('\u00d7', 'closeBtn', hideInspectPanel));
   title.appendChild(buttons);
   root.appendChild(title);
@@ -138,10 +140,10 @@ function rowsTable(rows) {
 // is no source to ask for).
 export function showInspectPanel(obs, index, hash) {
   const key = `${hash}/${index}`;
-  const root = openPanel(obs.name || `unnamed ${obs.kind || obs.type}`, key);
+  const root = openPanel(obs.name || t('unnamed {type}', { type: obs.kind || obs.type }), key);
   const table = rowsTable(describe(obs));
   root.appendChild(table);
-  const source = element('div', 'inspectSourceLabel', hash ? 'Reading the map file...' : 'No map file for this world');
+  const source = element('div', 'inspectSourceLabel', hash ? t('Reading the map file...') : t('No map file for this world'));
   root.appendChild(source);
   root.hidden = false;
   fitPanel();
@@ -152,17 +154,17 @@ export function showInspectPanel(obs, index, hash) {
     .then((found) => {
       if (shownKey !== key) return;
       if (!found) {
-        source.textContent = 'No source for this obstacle';
+        source.textContent = t('No source for this obstacle');
         return;
       }
       // What the file wrote, where the world has only the result: the shape a
       // mesh was made from, and the materials named.
       const shape = /^\s*(\S+)/.exec(found.text)?.[1]?.toLowerCase();
       const extra = [];
-      if (shape && obs.type === 'mesh' && shape !== 'mesh') extra.push(['Shape', shape]);
+      if (shape && obs.type === 'mesh' && shape !== 'mesh') extra.push([t('Shape'), shape]);
       const materials = found.materials || [];
       if (materials.length) {
-        extra.push(['Materials', materials.map((m) => (m.missing ? `${m.ref} (not defined)`
+        extra.push([t('Materials'), materials.map((m) => (m.missing ? t('{name} (not defined)', { name: m.ref })
           : m.name && m.name.toLowerCase() !== m.ref.toLowerCase() ? `${m.ref} (${m.name})` : m.ref)).join('\n')]);
       }
       for (const [label, value] of extra) {
@@ -171,9 +173,9 @@ export function showInspectPanel(obs, index, hash) {
       }
       const blocks = [sourceBlock(found.file, found)];
       // Outermost last, so the block nearest the obstacle reads first.
-      found.placedBy.slice().reverse().forEach((group) => blocks.push(sourceBlock('placed by', group)));
+      found.placedBy.slice().reverse().forEach((group) => blocks.push(sourceBlock(t('placed by'), group)));
       for (const material of materials) {
-        if (!material.missing) blocks.push(sourceBlock(`material ${material.name || material.ref}`, material));
+        if (!material.missing) blocks.push(sourceBlock(t('material {name}', { name: material.name || material.ref }), material));
       }
       source.replaceWith(...blocks);
     });
@@ -183,37 +185,37 @@ export function showInspectPanel(obs, index, hash) {
 // file. Each of the largest meshes picks that mesh.
 export function showWorldSummary(summary, hash) {
   const key = `${hash}/world`;
-  const root = openPanel('World', key, { world: true });
-  const rows = [['Obstacles', String(summary.obstacles)]];
+  const root = openPanel(t('World'), key, { world: true });
+  const rows = [[t('Obstacles'), String(summary.obstacles)]];
   for (const [type, count] of summary.types) rows.push([type, String(count)]);
-  if (summary.meshFaces) rows.push(['Mesh faces', String(summary.meshFaces)]);
-  if (summary.instances) rows.push(['Batched', `${summary.instances} placements of ${summary.templates} definitions`]);
-  if (summary.teleporterLinks) rows.push(['Links', String(summary.teleporterLinks)]);
+  if (summary.meshFaces) rows.push([t('Mesh faces'), String(summary.meshFaces)]);
+  if (summary.instances) rows.push([t('Batched'), t('{instances} placements of {templates} definitions', { instances: summary.instances, templates: summary.templates })]);
+  if (summary.teleporterLinks) rows.push([t('Links'), String(summary.teleporterLinks)]);
   const zones = Object.entries(summary.zones).filter(([, count]) => count).map(([kind, count]) => `${count} ${kind}`);
-  if (zones.length) rows.push(['Zones', zones.join(', ')]);
-  if (summary.mapSize) rows.push(['Map size', String(summary.mapSize)]);
-  const fileRow = element('div', 'inspectSourceLabel', hash ? 'Reading the map file...' : 'No map file for this world');
+  if (zones.length) rows.push([t('Zones'), zones.join(', ')]);
+  if (summary.mapSize) rows.push([t('Map size'), String(summary.mapSize)]);
+  const fileRow = element('div', 'inspectSourceLabel', hash ? t('Reading the map file...') : t('No map file for this world'));
   root.appendChild(rowsTable(rows));
   root.appendChild(fileRow);
 
   if (summary.textures.length) {
-    root.appendChild(element('div', 'inspectSourceLabel', `Textures (${summary.textures.length}), by obstacles using each`));
+    root.appendChild(element('div', 'inspectSourceLabel', t('Textures ({n}), by obstacles using each', { n: summary.textures.length })));
     const list = element('dl', 'inspectRows');
     for (const [texture, uses] of summary.textures.slice(0, SUMMARY_TEXTURES)) {
       list.appendChild(element('dt', '', String(uses)));
       list.appendChild(element('dd', failedTextureUrls.has(texture) ? 'inspectMissing' : '',
-        failedTextureUrls.has(texture) ? `${textureLabel(texture)} (failed to load)` : textureLabel(texture)));
+        failedTextureUrls.has(texture) ? t('{texture} (failed to load)', { texture: textureLabel(texture) }) : textureLabel(texture)));
     }
     root.appendChild(list);
     if (summary.textures.length > SUMMARY_TEXTURES) {
-      root.appendChild(element('div', 'inspectSourceLabel', `${summary.textures.length - SUMMARY_TEXTURES} more`));
+      root.appendChild(element('div', 'inspectSourceLabel', t('{n} more', { n: summary.textures.length - SUMMARY_TEXTURES })));
     }
   }
   if (summary.largestMeshes.length) {
-    root.appendChild(element('div', 'inspectSourceLabel', 'Largest meshes, by faces'));
+    root.appendChild(element('div', 'inspectSourceLabel', t('Largest meshes, by faces')));
     const list = element('div', 'inspectPicks');
     for (const mesh of summary.largestMeshes) {
-      list.appendChild(button(`${mesh.faces}  ${mesh.name || `unnamed mesh #${mesh.index}`}`, 'inspectPick',
+      list.appendChild(button(`${mesh.faces}  ${mesh.name || t('unnamed mesh #{index}', { index: mesh.index })}`, 'inspectPick',
         () => handlers.onPick && handlers.onPick(mesh.index)));
     }
     root.appendChild(list);
@@ -227,14 +229,14 @@ export function showWorldSummary(summary, hash) {
     .then((found) => {
       if (shownKey !== key) return;
       if (!found) {
-        fileRow.textContent = 'No map file for this world';
+        fileRow.textContent = t('No map file for this world');
         return;
       }
-      const fileRows = [['File', `${found.file}, ${found.lines} lines`]];
-      if (found.missingTextures.length) fileRows.push(['Missing', found.missingTextures.join('\n')]);
+      const fileRows = [[t('File'), t('{file}, {lines} lines', { file: found.file, lines: found.lines })]];
+      if (found.missingTextures.length) fileRows.push([t('Missing'), found.missingTextures.join('\n')]);
       const parts = [rowsTable(fileRows)];
       if (found.warnings.length) {
-        parts.push(element('div', 'inspectSourceLabel', `Warnings (${found.warnings.length})`));
+        parts.push(element('div', 'inspectSourceLabel', t('Warnings ({n})', { n: found.warnings.length })));
         parts.push(element('pre', 'inspectWarnings', found.warnings.join('\n')));
       }
       fileRow.replaceWith(...parts);

@@ -1,0 +1,941 @@
+msgid ""
+msgstr ""
+"Project-Id-Version: bzo\n"
+"Report-Msgid-Bugs-To: https://github.com/timriker/bzo/issues\n"
+"Language: th\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Review: machine-translated, not yet read by a native speaker\n"
+
+#: docs/help/controls.md
+msgid "Controls"
+msgstr "การควบคุม"
+
+#: docs/help/controls.md
+msgid ""
+"One client runs on a desktop, a phone and a headset, so every action has a "
+"way in from each of them. The keyboard has the most; touch, a gamepad and "
+"the XR controllers carry the actions a match needs, and the Settings menu "
+"reaches the rest -- including from a headset, where there is no keyboard at "
+"all. This page is also the in-game help's (`/` or `?`)."
+msgstr ""
+"ไคลเอนต์ตัวเดียวทำงานได้ทั้งบนเดสก์ท็อป โทรศัพท์ และเฮดเซ็ต ทุกการกระทำจึงมีวิธีสั่งจากทุกอุปกรณ์ "
+"คีย์บอร์ดทำได้มากที่สุด ส่วนจอสัมผัส เกมแพด และคอนโทรลเลอร์ XR "
+"รองรับการกระทำที่จำเป็นในแมตช์ และเมนูการตั้งค่าเข้าถึงส่วนที่เหลือได้ทั้งหมด "
+"รวมถึงจากเฮดเซ็ตที่ไม่มีคีย์บอร์ดเลย หน้านี้ยังเป็นวิธีใช้ในเกมด้วย (`/` หรือ `?`)"
+
+#: docs/help/controls.md
+msgid "Keyboard"
+msgstr "คีย์บอร์ด"
+
+#: docs/help/controls.md
+msgid "Driving"
+msgstr "การขับ"
+
+#: docs/help/controls.md
+msgid "`W` / `S` or `Up` / `Down` — move forward/backward"
+msgstr "`W` / `S` หรือ `Up` / `Down` — เดินหน้า/ถอยหลัง"
+
+#: docs/help/controls.md
+msgid "`A` / `D` or `Left` / `Right` — turn left/right"
+msgstr "`A` / `D` หรือ `Left` / `Right` — เลี้ยวซ้าย/ขวา"
+
+#: docs/help/controls.md
+msgid "`Enter` — shoot"
+msgstr "`Enter` — ยิง"
+
+#: docs/help/controls.md
+msgid "`Tab` — jump"
+msgstr "`Tab` — กระโดด"
+
+#: docs/help/controls.md
+msgid "`Space` — drop flag"
+msgstr "`Space` — ทิ้งธง"
+
+# review: Thai name with the English in brackets
+#: docs/help/controls.md
+msgid ""
+"`I` or right-click — identify the tank in your sights, and lock a Guided "
+"Missile onto it"
+msgstr ""
+"`I` หรือคลิกขวา — ระบุรถถังที่อยู่ในศูนย์เล็ง และล็อกขีปนาวุธนำวิถี (Guided Missile) ไปที่มัน"
+
+#: docs/help/controls.md
+msgid ""
+"`Delete` — self-destruct, after a five second countdown; `Delete` again "
+"calls it off"
+msgstr "`Delete` — ทำลายตัวเองหลังนับถอยหลังห้าวินาที กด `Delete` อีกครั้งเพื่อยกเลิก"
+
+#: docs/help/controls.md
+msgid ""
+"`9` or `/autopilot [roger|ace]` — autopilot: the pilot drives, aims and "
+"shoots until pressed again. `Settings -> Autopilot` chooses the pilot "
+"without a keyboard. You can still drive while it does, to help it out of a "
+"corner -- see [Combining inputs](#combining-inputs)"
+msgstr ""
+"`9` หรือ `/autopilot [roger|ace]` — ออโต้ไพลอต: นักบินจะขับ เล็ง "
+"และยิงให้จนกว่าจะกดอีกครั้ง `Settings -> Autopilot` ใช้เลือกนักบินโดยไม่ต้องใช้คีย์บอร์ด "
+"คุณยังขับเองได้ระหว่างนั้นเพื่อช่วยพามันออกจากมุม ดู [การใช้อินพุตร่วมกัน](#combining-inputs)"
+
+#: docs/help/controls.md
+msgid "`P` — pause/resume"
+msgstr "`P` — หยุดชั่วคราว/เล่นต่อ"
+
+#: docs/help/controls.md
+msgid "Chat"
+msgstr "แชท"
+
+#: docs/help/controls.md
+msgid "`N` — open chat (or click the `Send` button)"
+msgstr "`N` — เปิดแชท (หรือคลิกปุ่ม `Send`)"
+
+#: docs/help/controls.md
+msgid ""
+"`Enter` — send chat (while chat input is focused, or click `Send` again)"
+msgstr "`Enter` — ส่งแชท (ขณะช่องพิมพ์แชทได้รับโฟกัส หรือคลิก `Send` อีกครั้ง)"
+
+#: docs/help/controls.md
+msgid ""
+"`1` / `2` / `3` / `4` / `5` — switch chat tab (`All` / `Chat` / `Server` / "
+"`Misc` / `Debug`)"
+msgstr ""
+"`1` / `2` / `3` / `4` / `5` — สลับแท็บแชท (`All` / `Chat` / `Server` / "
+"`Misc` / `Debug`)"
+
+#: docs/help/controls.md
+msgid "`[` / `]` — previous/next chat tab"
+msgstr "`[` / `]` — แท็บแชทก่อนหน้า/ถัดไป"
+
+#: docs/help/controls.md
+msgid ""
+"`Tab` — while typing, complete a player, command or flag name; `@` starts a "
+"mention and `#` a player's slot number"
+msgstr ""
+"`Tab` — ขณะพิมพ์ เติมชื่อผู้เล่น คำสั่ง หรือชื่อธงให้ครบ `@` เริ่มการกล่าวถึง และ `#` "
+"เริ่มหมายเลขสล็อตของผู้เล่น"
+
+#: docs/help/controls.md
+msgid ""
+"`Up` / `Down` — while typing, recall earlier lines; type the start of a line "
+"first to recall only the ones beginning that way"
+msgstr ""
+"`Up` / `Down` — ขณะพิมพ์ เรียกบรรทัดก่อนหน้ากลับมา "
+"พิมพ์ต้นบรรทัดก่อนเพื่อเรียกเฉพาะบรรทัดที่ขึ้นต้นแบบนั้น"
+
+#: docs/help/controls.md
+msgid "`.` — reply to last direct-message sender"
+msgstr "`.` — ตอบกลับผู้ส่งข้อความส่วนตัวล่าสุด"
+
+# review: คู่ปรับ (nemesis)
+#: docs/help/controls.md
+msgid "`,` — message nemesis target"
+msgstr "`,` — ส่งข้อความถึงคู่ปรับ (nemesis)"
+
+#: docs/help/controls.md
+msgid "`Page Up` / `Page Down` — scroll chat history"
+msgstr "`Page Up` / `Page Down` — เลื่อนประวัติแชท"
+
+#: docs/help/controls.md
+msgid "`End` — jump chat to newest message"
+msgstr "`End` — ข้ามไปยังข้อความล่าสุดในแชท"
+
+#: docs/help/controls.md
+msgid ""
+"Drag across the history while chat is open to select it, then copy; typing "
+"carries on in the input"
+msgstr "ลากผ่านประวัติขณะแชทเปิดอยู่เพื่อเลือก แล้วคัดลอก การพิมพ์ยังคงอยู่ในช่องพิมพ์"
+
+#: docs/help/controls.md
+msgid "View and panels"
+msgstr "มุมมองและแผง"
+
+#: docs/help/controls.md
+msgid ""
+"`Esc` — back out one step: exit chat input, leave fullscreen, leave mouse "
+"steering, then open Settings. Pressing it again closes Settings, so it is "
+"always safe to press one more time"
+msgstr ""
+"`Esc` — ถอยออกทีละขั้น: ออกจากช่องพิมพ์แชท ออกจากโหมดเต็มจอ ออกจากการบังคับด้วยเมาส์ "
+"แล้วเปิดการตั้งค่า กดอีกครั้งจะปิดการตั้งค่า จึงกดเพิ่มอีกครั้งได้อย่างปลอดภัยเสมอ"
+
+#: docs/help/controls.md
+msgid "`M` — toggle mouse steering"
+msgstr "`M` — เปิด/ปิดการบังคับด้วยเมาส์"
+
+#: docs/help/controls.md
+msgid "`C` — cycle camera mode"
+msgstr "`C` — สลับโหมดกล้อง"
+
+#: docs/help/controls.md
+msgid "`O` — toggle operator panel"
+msgstr "`O` — เปิด/ปิดแผงโอเปอเรเตอร์"
+
+#: docs/help/controls.md
+msgid "`F` — toggle fullscreen"
+msgstr "`F` — เปิด/ปิดโหมดเต็มจอ"
+
+#: docs/help/controls.md
+msgid "`` ` `` — toggle debug HUD"
+msgstr "`` ` `` — เปิด/ปิด HUD ดีบัก"
+
+#: docs/help/controls.md
+msgid "`=` or `+` or `Numpad +` — zoom radar out (increase range)"
+msgstr "`=` หรือ `+` หรือ `Numpad +` — ซูมเรดาร์ออก (เพิ่มระยะ)"
+
+#: docs/help/controls.md
+msgid "`-` or `Numpad -` — zoom radar in (decrease range)"
+msgstr "`-` หรือ `Numpad -` — ซูมเรดาร์เข้า (ลดระยะ)"
+
+#: docs/help/controls.md
+msgid ""
+"`\\` — reset radar zoom to the default medium range (half the world's radar "
+"limit, which is the world size unless the map says otherwise)"
+msgstr ""
+"`\\` — รีเซ็ตการซูมเรดาร์เป็นระยะกลางเริ่มต้น (ครึ่งหนึ่งของขีดจำกัดเรดาร์ของโลก "
+"ซึ่งเท่ากับขนาดโลก เว้นแต่แผนที่จะกำหนดไว้เป็นอย่างอื่น)"
+
+#: docs/help/controls.md
+msgid "`Settings -> Radar: ...` — cycle Short/Medium/Long radar presets"
+msgstr "`Settings -> Radar: ...` — สลับระยะเรดาร์สำเร็จรูป ใกล้/กลาง/ไกล"
+
+#: docs/help/controls.md
+msgid "`B` — toggle the voice microphone"
+msgstr "`B` — เปิด/ปิดไมโครโฟนสำหรับเสียงพูด"
+
+#: docs/help/controls.md
+msgid ""
+"`Settings -> Audio Settings` — set the game, voice, and microphone levels, "
+"and choose the voice channel: All, Nearby, or Team"
+msgstr ""
+"`Settings -> Audio Settings` (ตั้งค่าเสียง) — ตั้งระดับเสียงเกม เสียงพูด และไมโครโฟน "
+"และเลือกช่องเสียง: ทั้งหมด ใกล้เคียง หรือทีม"
+
+#: docs/help/controls.md
+msgid "`/` or `?` — show/hide help panel"
+msgstr "`/` หรือ `?` — แสดง/ซ่อนแผงวิธีใช้"
+
+#: docs/help/controls.md
+msgid ""
+"`🎤` beside the gear — the microphone, as `B` is: a green border means you "
+"are transmitting and a red one means you are not, and the hover text names "
+"the channel it would speak on"
+msgstr ""
+"`🎤` ข้างไอคอนเฟือง — ไมโครโฟน เหมือนกับ `B`: ขอบสีเขียวหมายถึงคุณกำลังส่งเสียง "
+"ขอบสีแดงหมายถึงไม่ได้ส่ง และข้อความเมื่อชี้เมาส์จะบอกชื่อช่องที่จะพูดออกไป"
+
+#: docs/help/controls.md
+msgid ""
+"`▲` beside the gear — hide the scoreboard and chat, leaving the name row and "
+"the chat tabs; `▼` brings them back. Typing a message borrows the chat "
+"window until you are done with it, and `U` or `7` borrows the scoreboard "
+"until the hunt cursor closes; tapping a chat tab opens chat for good. Small "
+"screens start collapsed"
+msgstr ""
+"`▲` ข้างไอคอนเฟือง — ซ่อนกระดานคะแนนและแชท เหลือไว้แค่แถวชื่อและแท็บแชท `▼` นำกลับมา "
+"การพิมพ์ข้อความจะยืมหน้าต่างแชทจนกว่าจะพิมพ์เสร็จ และ `U` หรือ `7` "
+"จะยืมกระดานคะแนนจนกว่าเคอร์เซอร์ล่าเป้าจะปิด การแตะแท็บแชทจะเปิดแชทค้างไว้ "
+"หน้าจอขนาดเล็กจะเริ่มแบบย่อไว้"
+
+#: docs/help/controls.md
+msgid ""
+"`Settings -> Anaglyph 3D` — red/cyan glasses; `Settings -> VR Mode` enters a "
+"WebXR headset"
+msgstr ""
+"`Settings -> Anaglyph 3D` — แว่นแดง/ฟ้า; `Settings -> VR Mode` เข้าสู่เฮดเซ็ต WebXR"
+
+#: docs/help/controls.md
+msgid "Menus"
+msgstr "เมนู"
+
+#: docs/help/controls.md
+msgid ""
+"`Up` / `Down` — previous/next control, including from inside a text field"
+msgstr "`Up` / `Down` — ตัวควบคุมก่อนหน้า/ถัดไป รวมถึงจากในช่องข้อความ"
+
+#: docs/help/controls.md
+msgid ""
+"`Left` / `Right` — change the focused control: move a slider, pick the next "
+"choice. In a text field they move the cursor instead"
+msgstr ""
+"`Left` / `Right` — เปลี่ยนค่าตัวควบคุมที่โฟกัสอยู่: เลื่อนแถบเลื่อน เลือกตัวเลือกถัดไป "
+"ในช่องข้อความจะเลื่อนเคอร์เซอร์แทน"
+
+#: docs/help/controls.md
+msgid "`Tab` / `Shift+Tab` — previous/next control"
+msgstr "`Tab` / `Shift+Tab` — ตัวควบคุมก่อนหน้า/ถัดไป"
+
+#: docs/help/controls.md
+msgid "`Home` / `End` — first/last control"
+msgstr "`Home` / `End` — ตัวควบคุมแรก/สุดท้าย"
+
+#: docs/help/controls.md
+msgid "`Enter` or `Space` — press the focused control"
+msgstr "`Enter` หรือ `Space` — กดตัวควบคุมที่โฟกัสอยู่"
+
+#: docs/help/controls.md
+msgid ""
+"Click or tap a row that walks a list: the title steps back and the current "
+"option steps forward. The `‹` and `›` on the row mark the two halves"
+msgstr ""
+"คลิกหรือแตะแถวที่วนตามรายการ: ฝั่งชื่อแถวจะถอยกลับ และฝั่งตัวเลือกปัจจุบันจะไปข้างหน้า `‹` และ "
+"`›` บนแถวบอกสองฝั่งนี้"
+
+#: docs/help/controls.md
+msgid ""
+"The help panel is read rather than operated, so there the arrows scroll it "
+"and only `Left` / `Right` move focus"
+msgstr ""
+"แผงวิธีใช้มีไว้อ่าน ไม่ได้มีไว้กดใช้งาน ในแผงนี้ปุ่มลูกศรจึงเลื่อนหน้า และมีเพียง `Left` / `Right` "
+"ที่ย้ายโฟกัส"
+
+#: docs/help/controls.md
+msgid "Hunting"
+msgstr "การล่าเป้า"
+
+#: docs/help/controls.md
+msgid ""
+"Marking a player puts a cyan `◎` on their scoreboard row, a cyan ring on "
+"their radar blip, and a beacon in the sky over them in their own tank colour "
+"-- so several marked at once are still told apart at a glance. While one of "
+"them is in your sights the HUD says **SPOTTED:** and a ping sounds once a "
+"second from where they are. In Rabbit Chase the rabbit is marked for you, "
+"and its beacon is cyan like its ring: everyone is hunting it, so everyone's "
+"mark over it says so."
+msgstr ""
+"การมาร์กผู้เล่นจะใส่ `◎` สีฟ้าอมเขียวที่แถวของเขาในกระดานคะแนน "
+"วงแหวนสีฟ้าอมเขียวรอบจุดของเขาบนเรดาร์ และลำแสงบนท้องฟ้าเหนือตัวเขาเป็นสีรถถังของเขาเอง "
+"จึงแยกออกได้ในพริบตาแม้มาร์กไว้หลายคนพร้อมกัน ขณะที่หนึ่งในนั้นอยู่ในศูนย์เล็ง HUD จะแสดง "
+"**พบเป้า:** และมีเสียงปิงดังทุกวินาทีจากตำแหน่งของเขา ใน Rabbit Chase "
+"กระต่ายจะถูกมาร์กให้อัตโนมัติ และลำแสงของมันเป็นสีฟ้าอมเขียวเหมือนวงแหวน: ทุกคนกำลังล่ามัน "
+"มาร์กของทุกคนเหนือมันจึงบอกเช่นนั้น"
+
+#: docs/help/controls.md
+msgid ""
+"`U` — hunt: open the scoreboard cursor, and press it again on a running hunt "
+"to clear every mark"
+msgstr ""
+"`U` — ล่าเป้า: เปิดเคอร์เซอร์บนกระดานคะแนน และกดอีกครั้งระหว่างการล่าเพื่อล้างมาร์กทั้งหมด"
+
+#: docs/help/controls.md
+msgid ""
+"`7` — add hunt: the same cursor, but committing adds to what is marked "
+"rather than replacing it, and committing on a row already marked takes it off"
+msgstr ""
+"`7` — เพิ่มเป้า: เคอร์เซอร์เดียวกัน แต่การยืนยันจะเพิ่มเข้าไปในรายการที่มาร์กไว้แทนการแทนที่ "
+"และการยืนยันบนแถวที่มาร์กไว้แล้วจะเอามาร์กออก"
+
+#: docs/help/controls.md
+msgid ""
+"`Settings -> Hunt` — the same thing without a keyboard, for a phone or a "
+"headset. Left and right step through `Clear` and then the players in "
+"alphabetical order; select marks or unmarks whoever is shown, or clears "
+"every mark on `Clear`. On a touch screen or with a mouse, tap a chevron to "
+"step and anywhere else on the row to select"
+msgstr ""
+"`Settings -> Hunt` (ล่าเป้า) — แบบเดียวกันโดยไม่ต้องใช้คีย์บอร์ด สำหรับโทรศัพท์หรือเฮดเซ็ต "
+"ซ้ายและขวาจะไล่ไปที่ `Clear` แล้วตามด้วยผู้เล่นเรียงตามตัวอักษร "
+"การเลือกจะมาร์กหรือยกเลิกมาร์กผู้ที่แสดงอยู่ หรือล้างมาร์กทั้งหมดเมื่ออยู่ที่ `Clear` "
+"บนจอสัมผัสหรือเมื่อใช้เมาส์ ให้แตะลูกศรเพื่อไล่ และแตะที่อื่นบนแถวเพื่อเลือก"
+
+#: docs/help/controls.md
+msgid ""
+"With the cursor open, the board's heading reads `*SEL*` and a pulsing `○` "
+"sits on the row it is on, filling in to `◎` when you commit. `Up` / `Down` "
+"move it, `Enter` commits, and `U` or `7` backs out keeping whatever was "
+"already marked. `I` and `Space` move the cursor too, so a surface without "
+"arrow keys can reach it"
+msgstr ""
+"เมื่อเคอร์เซอร์เปิดอยู่ หัวกระดานจะแสดง `*SEL*` และมี `○` กะพริบอยู่บนแถวที่เคอร์เซอร์อยู่ "
+"ซึ่งจะเติมเต็มเป็น `◎` เมื่อคุณยืนยัน `Up` / `Down` เลื่อนเคอร์เซอร์ `Enter` ยืนยัน และ `U` "
+"หรือ `7` ถอยออกโดยคงมาร์กที่มีอยู่แล้วไว้ `I` และ `Space` ก็เลื่อนเคอร์เซอร์ได้ด้วย "
+"เพื่อให้อุปกรณ์ที่ไม่มีปุ่มลูกศรใช้ได้"
+
+#: docs/help/controls.md
+msgid "As an observer"
+msgstr "ในฐานะผู้ชม"
+
+#: docs/help/controls.md
+msgid ""
+"As an Observer you have no tank. Drive and turn fly the camera instead, "
+"`Tab` climbs and `Space` descends, and holding `Shift` makes drive tilt the "
+"view up and down and turn slide it sideways. The camera rests at the eye "
+"height of a tank on the ground, and travel stays level however the view is "
+"tilted. Pausing and self-destruct do nothing."
+msgstr ""
+"ในฐานะผู้ชม คุณไม่มีรถถัง ปุ่มขับและเลี้ยวจะพากล้องบินแทน `Tab` ไต่ขึ้น และ `Space` ลดระดับ "
+"ส่วนการกด `Shift` ค้างไว้จะทำให้ปุ่มขับเอียงมุมมองขึ้นลง และปุ่มเลี้ยวเลื่อนมุมมองไปด้านข้าง "
+"กล้องอยู่ที่ระดับสายตาของรถถังบนพื้น "
+"และการเคลื่อนที่จะอยู่ในแนวระนาบเสมอไม่ว่ามุมมองจะเอียงแค่ไหน "
+"การหยุดชั่วคราวและการทำลายตัวเองไม่มีผล"
+
+#: docs/help/controls.md
+msgid ""
+"`Enter` or `C` — step through everything: in each view, the leader first, "
+"then every player, then on to the next view. The views are Free, Track, "
+"Follow, Driving with, and Flag where a map has team flags"
+msgstr ""
+"`Enter` หรือ `C` — ไล่ดูทุกอย่าง: ในแต่ละมุมมองเริ่มจากผู้นำ แล้วผู้เล่นทุกคน "
+"แล้วไปยังมุมมองถัดไป มุมมองได้แก่ บินอิสระ, ติดตาม, ตามหลัง, นั่งไปกับ และติดตามธง "
+"ในแผนที่ที่มีธงทีม"
+
+#: docs/help/controls.md
+msgid ""
+"`I` or right-click — in the Free view, watch the tank in your sights, or "
+"show the obstacle there: what it is, an outline round it, and its block from "
+"the map file with the `group` blocks that placed it"
+msgstr ""
+"`I` หรือคลิกขวา — ในมุมมอง Free ให้ดูรถถังที่อยู่ในศูนย์เล็ง หรือแสดงสิ่งกีดขวางตรงนั้น: "
+"ว่าเป็นอะไร เส้นขอบรอบตัวมัน และบล็อกของมันจากไฟล์แผนที่ พร้อมบล็อก `group` ที่วางมันไว้"
+
+#: docs/help/controls.md
+msgid ""
+"Right-click or tap an obstacle anywhere on screen, in any view and the "
+"Overview most of all, to show it the same way"
+msgstr ""
+"คลิกขวาหรือแตะสิ่งกีดขวางที่ใดก็ได้บนหน้าจอ ในมุมมองใดก็ได้ โดยเฉพาะในภาพรวม "
+"เพื่อแสดงแบบเดียวกัน"
+
+# review: หน้า (face)
+#: docs/help/controls.md
+msgid ""
+"Pick nothing -- the sky, or empty ground in the Overview -- or press the "
+"panel's **World** button for the whole world: what is in it, faces, "
+"textures, the map file's warnings and its largest meshes, each of which "
+"shows that mesh"
+msgstr ""
+"ไม่เลือกอะไรเลย เช่น ท้องฟ้า หรือพื้นว่างในภาพรวม หรือกดปุ่ม **โลก** ของแผงเพื่อดูทั้งโลก: "
+"สิ่งที่อยู่ในนั้น จำนวนหน้า (face) เท็กซ์เจอร์ คำเตือนของไฟล์แผนที่ และเมชที่ใหญ่ที่สุด "
+"ซึ่งแต่ละอันกดเพื่อแสดงเมชนั้นได้"
+
+#: docs/help/controls.md
+msgid ""
+"Click a scoreboard row to watch that player; click the marked row again to "
+"go back to following the leader"
+msgstr "คลิกแถวในกระดานคะแนนเพื่อดูผู้เล่นคนนั้น คลิกแถวที่มาร์กไว้อีกครั้งเพื่อกลับไปติดตามผู้นำ"
+
+#: docs/help/controls.md
+msgid "Mouse"
+msgstr "เมาส์"
+
+#: docs/help/controls.md
+msgid ""
+"`M` turns mouse steering on and off, and nothing else does: the keys never "
+"take it away behind your back."
+msgstr ""
+"`M` เปิดและปิดการบังคับด้วยเมาส์ และไม่มีอย่างอื่นทำแบบนี้: ปุ่มต่าง ๆ จะไม่ปิดมันโดยที่คุณไม่รู้ตัว"
+
+#: docs/help/controls.md
+msgid "The targeting box"
+msgstr "กรอบเล็ง"
+
+#: docs/help/controls.md
+msgid ""
+"The two boxes in the middle of the screen are the steering, as in BZFlag. "
+"Where the cursor sits relative to their centre is what the tank does:"
+msgstr ""
+"กรอบสองกรอบกลางจอคือตัวบังคับ เหมือนใน BZFlag "
+"ตำแหน่งของเคอร์เซอร์เทียบกับจุดกึ่งกลางของกรอบเป็นตัวกำหนดว่ารถถังจะทำอะไร:"
+
+#: docs/help/controls.md
+msgid ""
+"**Inside the inner box, nothing.** It is the dead zone: park the cursor "
+"there to stop."
+msgstr "**ภายในกรอบใน ไม่มีอะไรเกิดขึ้น** นี่คือเดดโซน: วางเคอร์เซอร์ไว้ตรงนั้นเพื่อหยุด"
+
+#: docs/help/controls.md
+msgid ""
+"**Between the boxes, more the further out.** Up is forward and down is "
+"reverse; left and right turn. Each grows evenly from nothing at the inner "
+"box's edge to full at the outer box's."
+msgstr ""
+"**ระหว่างกรอบทั้งสอง ยิ่งห่างออกไปยิ่งแรง** ขึ้นคือเดินหน้า ลงคือถอยหลัง ซ้ายและขวาคือเลี้ยว "
+"แต่ละแกนเพิ่มขึ้นอย่างสม่ำเสมอจากศูนย์ที่ขอบกรอบในจนเต็มที่ขอบกรอบนอก"
+
+#: docs/help/controls.md
+msgid ""
+"**At or past the outer box, full.** Each axis stops growing on its own, so "
+"running the cursor out past the top keeps the tank at full speed and leaves "
+"left and right free to steer."
+msgstr ""
+"**ที่ขอบกรอบนอกหรือเลยออกไป เต็มที่** แต่ละแกนหยุดเพิ่มแยกกัน "
+"ดังนั้นการลากเคอร์เซอร์เลยขอบบนจะทำให้รถถังวิ่งเต็มความเร็ว และยังเลี้ยวซ้ายขวาได้อิสระ"
+
+#: docs/help/controls.md
+msgid ""
+"**Reverse is half speed**, as it is from the keys, however far down the "
+"cursor goes."
+msgstr "**ถอยหลังได้ครึ่งความเร็ว** เหมือนเมื่อใช้ปุ่ม ไม่ว่าเคอร์เซอร์จะลงไปไกลแค่ไหน"
+
+#: docs/help/controls.md
+msgid ""
+"**The box sets the speed asked for, not the speed you get at once.** A world "
+"with an acceleration limit (BZFlag's `-a`, off by default) brings the tank "
+"up to it over time, the same as it does from the keys."
+msgstr ""
+"**กรอบกำหนดความเร็วที่ขอ ไม่ใช่ความเร็วที่ได้ทันที** โลกที่มีขีดจำกัดความเร่ง (`-a` ของ "
+"BZFlag ซึ่งปิดไว้เป็นค่าเริ่มต้น) จะค่อย ๆ เร่งรถถังขึ้นไป เหมือนเมื่อใช้ปุ่ม"
+
+#: docs/help/controls.md
+msgid ""
+"The boxes are BZFlag's own sizes, scaled to the window. BZFlag also holds "
+"the cursor inside the box; a browser cannot without taking the pointer over, "
+"so in bzo the cursor can leave it -- the steering simply stays at full, and "
+"the cost is a longer move back to the centre."
+msgstr ""
+"กรอบมีขนาดเดียวกับของ BZFlag ปรับตามขนาดหน้าต่าง BZFlag ยังกักเคอร์เซอร์ไว้ในกรอบด้วย "
+"แต่เบราว์เซอร์ทำไม่ได้หากไม่ยึดตัวชี้ไว้ ใน bzo เคอร์เซอร์จึงออกนอกกรอบได้ "
+"การบังคับจะยังคงเต็มที่ และสิ่งที่เสียไปคือต้องลากกลับมากึ่งกลางไกลขึ้น"
+
+#: docs/help/controls.md
+msgid ""
+"With the keys, the mouse keeps whichever axis no key is holding -- see "
+"[Combining inputs](#combining-inputs)."
+msgstr ""
+"เมื่อใช้ร่วมกับปุ่ม เมาส์จะคุมแกนที่ไม่มีปุ่มใดกดอยู่ ดู [การใช้อินพุตร่วมกัน](#combining-inputs)"
+
+#: docs/help/controls.md
+msgid "Clicks"
+msgstr "การคลิก"
+
+#: docs/help/controls.md
+msgid ""
+"Left click shoots wherever the cursor is, whether mouse steering is on or "
+"not, unless the click lands on the chat panel or a button. Right click "
+"identifies. Mouse steering is unavailable with no mouse attached, in VR, and "
+"while the on-screen controls are up, since those steer instead; a click that "
+"misses one of their buttons does nothing rather than firing."
+msgstr ""
+"คลิกซ้ายยิงไปที่ตำแหน่งเคอร์เซอร์ ไม่ว่าการบังคับด้วยเมาส์จะเปิดอยู่หรือไม่ "
+"เว้นแต่คลิกโดนแผงแชทหรือปุ่ม คลิกขวาใช้ระบุเป้า การบังคับด้วยเมาส์ใช้ไม่ได้เมื่อไม่มีเมาส์ต่ออยู่ ใน "
+"VR และขณะที่ปุ่มควบคุมบนจอแสดงอยู่ เพราะปุ่มเหล่านั้นใช้บังคับแทน "
+"คลิกที่ไม่โดนปุ่มใดของมันจะไม่ทำอะไร แทนที่จะยิง"
+
+#: docs/help/controls.md
+msgid "Combining inputs"
+msgstr "การใช้อินพุตร่วมกัน"
+
+#: docs/help/controls.md
+msgid ""
+"Every input drives at once, and nothing switches between them on its own: "
+"`M` and the Settings rows are the only things that change which ones are on."
+msgstr ""
+"อินพุตทุกแบบขับได้พร้อมกัน และไม่มีอะไรสลับระหว่างกันเอง: `M` "
+"และแถวในการตั้งค่าเป็นสิ่งเดียวที่เปลี่ยนว่าอินพุตใดเปิดอยู่"
+
+#: docs/help/controls.md
+msgid ""
+"**Driving is shared out an axis at a time** -- forward/back, and turn, each "
+"on its own. On each, the first of these with something to say wins:"
+msgstr ""
+"**การขับแบ่งกันทีละแกน** คือเดินหน้า/ถอยหลัง และเลี้ยว แยกกันแต่ละแกน ในแต่ละแกน "
+"อินพุตแรกตามลำดับนี้ที่มีค่าส่งมาจะชนะ:"
+
+#: docs/help/controls.md
+msgid ""
+"**Keys.** A held drive key owns its axis, and holding both of a pair (`W` "
+"and `S`, or `A` and `D`) is a deliberate stop on that axis."
+msgstr ""
+"**ปุ่ม** ปุ่มขับที่กดค้างจะครองแกนของมัน และการกดทั้งคู่พร้อมกัน (`W` และ `S` หรือ `A` และ "
+"`D`) คือการตั้งใจหยุดบนแกนนั้น"
+
+#: docs/help/controls.md
+msgid ""
+"**The stick:** the XR controllers in VR, otherwise a connected gamepad, "
+"otherwise the on-screen stick. Only one of the three is read at a time -- "
+"they are not added together."
+msgstr ""
+"**สติ๊ก:** คอนโทรลเลอร์ XR ใน VR ถ้าไม่ใช่ก็เกมแพดที่เชื่อมต่ออยู่ ถ้าไม่มีก็สติ๊กบนจอ "
+"อ่านค่าจากเพียงหนึ่งในสามอย่างนี้ในแต่ละครั้ง ไม่ได้นำมารวมกัน"
+
+#: docs/help/controls.md
+msgid "**The mouse**, in the targeting box, with mouse steering on."
+msgstr "**เมาส์** ในกรอบเล็ง เมื่อเปิดการบังคับด้วยเมาส์"
+
+#: docs/help/controls.md
+msgid ""
+"So you can drive with `W` while the mouse steers, turn with `A`/`D` while "
+"the mouse sets the speed, or steer a gamepad's turn while a key holds the "
+"speed. A stick let go reads zero and gives the axis to the mouse; the mouse "
+"box holds whatever the cursor's place says, which is why it comes last."
+msgstr ""
+"ดังนั้นคุณจึงขับด้วย `W` ขณะที่เมาส์บังคับเลี้ยวได้ เลี้ยวด้วย `A`/`D` ขณะที่เมาส์กำหนดความเร็ว "
+"หรือเลี้ยวด้วยเกมแพดขณะที่ปุ่มคุมความเร็ว สติ๊กที่ปล่อยมือจะอ่านค่าเป็นศูนย์และยกแกนให้เมาส์ "
+"ส่วนกรอบเมาส์จะคงค่าตามตำแหน่งเคอร์เซอร์เสมอ จึงอยู่ลำดับสุดท้าย"
+
+#: docs/help/controls.md
+msgid ""
+"**Buttons add up.** Shoot fires from `Enter`, a left click, or the stick "
+"source's own fire button; jump from `Tab` or the stick source's; identify "
+"from `I`, a right click, or the stick source's. Any of them will do."
+msgstr ""
+"**ปุ่มรวมกัน** การยิงทำได้จาก `Enter` คลิกซ้าย หรือปุ่มยิงของแหล่งสติ๊ก การกระโดดจาก `Tab` "
+"หรือปุ่มของแหล่งสติ๊ก การระบุเป้าจาก `I` คลิกขวา หรือปุ่มของแหล่งสติ๊ก ใช้อันไหนก็ได้"
+
+#: docs/help/controls.md
+msgid ""
+"**With the autopilot on**, the pilot takes the mouse's place, last in line: "
+"a drive key or the stick you hold still owns its axis, and the pilot has the "
+"rest. So when it is wedged against something you can hold `A` to turn it "
+"out, or `S` to back it off, while it keeps the other axis, and let go to "
+"hand it back -- it carries on from wherever you left it, re-planning its "
+"route if you took it somewhere else. Your shots, jumps and drops add to its "
+"own. The mouse box does not steer while the autopilot drives: it holds an "
+"offset wherever the cursor is parked, so it would never hand anything back."
+msgstr ""
+"**เมื่อเปิดออโต้ไพลอต** นักบินจะเข้ามาแทนที่เมาส์ อยู่ลำดับสุดท้าย: "
+"ปุ่มขับหรือสติ๊กที่คุณกดอยู่ยังครองแกนของมัน และนักบินคุมส่วนที่เหลือ ดังนั้นเมื่อมันติดอยู่กับอะไรสักอย่าง "
+"คุณกด `A` ค้างเพื่อเลี้ยวออก หรือ `S` เพื่อถอยออกได้ ขณะที่มันยังคุมอีกแกน "
+"แล้วปล่อยเพื่อคืนการควบคุม มันจะทำต่อจากจุดที่คุณทิ้งไว้ และวางเส้นทางใหม่ถ้าคุณพามันไปที่อื่น การยิง "
+"การกระโดด และการทิ้งธงของคุณจะเพิ่มเข้ากับของมัน กรอบเมาส์จะไม่บังคับขณะออโต้ไพลอตขับ: "
+"มันคงค่าออฟเซ็ตตามตำแหน่งที่เคอร์เซอร์จอดอยู่ จึงจะไม่คืนอะไรให้เลย"
+
+#: docs/help/controls.md
+msgid ""
+"**Menus don't stop the autopilot.** Opening Settings, or any other menu, "
+"normally pauses your tank. With the autopilot driving, the menu takes the "
+"keys and the pilot goes on driving. With a pilot chosen on the `Settings -> "
+"Autopilot` row but not driving, opening a menu turns the autopilot on, and "
+"closing the menu turns it off again -- so a menu means \"drive for me a "
+"moment\" rather than \"stop\". With the row on `None`, the default, or on a "
+"server that refuses bots (`-disableBots`), menus pause as they always have. "
+"A hidden window still pauses either way: the browser stops drawing it, and "
+"the pilot with it."
+msgstr ""
+"**เมนูไม่หยุดออโต้ไพลอต** การเปิดการตั้งค่าหรือเมนูอื่นใดปกติจะหยุดรถถังของคุณชั่วคราว "
+"เมื่อออโต้ไพลอตกำลังขับ เมนูจะรับปุ่มไป และนักบินขับต่อไป เมื่อเลือกนักบินไว้ที่แถว `Settings -> "
+"Autopilot` แต่ไม่ได้ขับอยู่ การเปิดเมนูจะเปิดออโต้ไพลอต และการปิดเมนูจะปิดมันอีกครั้ง "
+"เมนูจึงหมายถึง \"ขับแทนฉันสักครู่\" ไม่ใช่ \"หยุด\" เมื่อแถวตั้งไว้ที่ `None` ซึ่งเป็นค่าเริ่มต้น "
+"หรือบนเซิร์ฟเวอร์ที่ไม่อนุญาตบอต (`-disableBots`) เมนูจะหยุดชั่วคราวเหมือนเดิม "
+"หน้าต่างที่ถูกซ่อนยังคงหยุดชั่วคราวไม่ว่ากรณีใด: เบราว์เซอร์หยุดวาดมัน และนักบินก็หยุดไปด้วย"
+
+#: docs/help/controls.md
+msgid ""
+"**Three keys at once.** Many keyboards cannot report some three-key "
+"combinations at all -- the third key's press never reaches the browser -- so "
+"a held turn and reverse can swallow a jump (#146). The debug HUD (`` ` ``) "
+"shows how many keys the browser saw held at once, which tells the keyboard's "
+"limit from bzo's."
+msgstr ""
+"**สามปุ่มพร้อมกัน** คีย์บอร์ดหลายรุ่นไม่สามารถรายงานการกดสามปุ่มบางชุดได้เลย "
+"การกดปุ่มที่สามจะไปไม่ถึงเบราว์เซอร์ ดังนั้นการกดเลี้ยวและถอยหลังค้างไว้อาจกลืนการกระโดดไป "
+"(#146) HUD ดีบัก (`` ` ``) แสดงจำนวนปุ่มที่เบราว์เซอร์เห็นว่ากดค้างพร้อมกัน "
+"ซึ่งช่วยแยกขีดจำกัดของคีย์บอร์ดออกจากของ bzo"
+
+#: docs/help/controls.md
+msgid "Touch: the on-screen controls"
+msgstr "จอสัมผัส: ปุ่มควบคุมบนจอ"
+
+#: docs/help/controls.md
+msgid ""
+"A phone starts with them on; anywhere else `Settings -> Virtual Controls` "
+"turns them on and off."
+msgstr ""
+"โทรศัพท์จะเปิดไว้ตั้งแต่เริ่ม บนอุปกรณ์อื่น `Settings -> Virtual Controls` ใช้เปิดและปิด"
+
+#: docs/help/controls.md
+msgid ""
+"**The stick**, bottom left: push it to drive and turn, as far as you push "
+"it. A mouse can drag it too."
+msgstr "**สติ๊ก** มุมล่างซ้าย: ดันเพื่อขับและเลี้ยว แรงตามระยะที่ดัน เมาส์ลากได้เช่นกัน"
+
+#: docs/help/controls.md
+msgid ""
+"**`●`** — shoot. Tapping fires as fast as clicking a mouse; holding fires at "
+"the world's sustained rate"
+msgstr "**`●`** — ยิง การแตะยิงได้เร็วเท่าการคลิกเมาส์ การกดค้างยิงต่อเนื่องตามอัตราของโลก"
+
+#: docs/help/controls.md
+msgid "**`⤒`** — jump"
+msgstr "**`⤒`** — กระโดด"
+
+#: docs/help/controls.md
+msgid "**`⚑`** — drop flag"
+msgstr "**`⚑`** — ทิ้งธง"
+
+# review: Thai name with the English in brackets
+#: docs/help/controls.md
+msgid "**`◎`** — identify, and lock a Guided Missile"
+msgstr "**`◎`** — ระบุเป้า และล็อกขีปนาวุธนำวิถี"
+
+#: docs/help/controls.md
+msgid ""
+"Everything else -- camera, radar range, chat, hunting, autopilot, pausing -- "
+"is a row in Settings, which a tap reaches."
+msgstr ""
+"ส่วนอื่นทั้งหมด ได้แก่ กล้อง ระยะเรดาร์ แชท การล่าเป้า ออโต้ไพลอต การหยุดชั่วคราว "
+"เป็นแถวในการตั้งค่า ซึ่งแตะเข้าถึงได้"
+
+#: docs/help/controls.md
+msgid "Gamepad"
+msgstr "เกมแพด"
+
+#: docs/help/controls.md
+msgid ""
+"Any controller the browser reports in the standard layout (most USB and "
+"Bluetooth pads, and iOS MFi controllers). Plugging one in turns it on; "
+"nothing needs setting up."
+msgstr ""
+"คอนโทรลเลอร์ใดก็ได้ที่เบราว์เซอร์รายงานเป็นเลย์เอาต์มาตรฐาน (แพด USB และ Bluetooth "
+"ส่วนใหญ่ และคอนโทรลเลอร์ MFi ของ iOS) เสียบแล้วใช้ได้ทันที ไม่ต้องตั้งค่าอะไร"
+
+#: docs/help/controls.md
+msgid "Control"
+msgstr "ปุ่ม"
+
+#: docs/help/controls.md
+msgid "In a menu"
+msgstr "ในเมนู"
+
+#: docs/help/controls.md
+msgid "Left stick"
+msgstr "สติ๊กซ้าย"
+
+#: docs/help/controls.md
+msgid "forward/backward and turn"
+msgstr "เดินหน้า/ถอยหลัง และเลี้ยว"
+
+#: docs/help/controls.md
+msgid "move between rows, change a row"
+msgstr "เลื่อนระหว่างแถว เปลี่ยนค่าแถว"
+
+#: docs/help/controls.md
+msgid "`A` / Cross, or right trigger"
+msgstr "`A` / กากบาท หรือทริกเกอร์ขวา"
+
+#: docs/help/controls.md
+msgid "shoot"
+msgstr "ยิง"
+
+#: docs/help/controls.md
+msgid "select"
+msgstr "เลือก"
+
+#: docs/help/controls.md
+msgid "`B` / Circle, or left trigger"
+msgstr "`B` / วงกลม หรือทริกเกอร์ซ้าย"
+
+#: docs/help/controls.md
+msgid "jump"
+msgstr "กระโดด"
+
+#: docs/help/controls.md
+msgid "back"
+msgstr "ย้อนกลับ"
+
+#: docs/help/controls.md
+msgid "`X` / Square"
+msgstr "`X` / สี่เหลี่ยม"
+
+#: docs/help/controls.md
+msgid "drop flag"
+msgstr "ทิ้งธง"
+
+#: docs/help/controls.md
+msgid "Either shoulder"
+msgstr "ปุ่มไหล่ข้างใดก็ได้"
+
+#: docs/help/controls.md
+msgid "identify"
+msgstr "ระบุเป้า"
+
+#: docs/help/controls.md
+msgid ""
+"The sticks have a dead zone of a fifth of their travel, so a pad left on the "
+"desk does not creep. The right stick is free."
+msgstr "สติ๊กมีเดดโซนหนึ่งในห้าของระยะ แพดที่วางทิ้งไว้บนโต๊ะจึงไม่ไหลเอง สติ๊กขวาว่างอยู่"
+
+#: docs/help/controls.md
+msgid ""
+"The pad rumbles when you fire and when your tank dies, as BZFlag's does: a "
+"short buzz for a shot, longer for a shock wave, both motors for a laser, and "
+"one long, strong shake for a death. It rumbles only while it is what you are "
+"playing with -- a key or a click hands control back and keeps it quiet -- "
+"and never for an observer. **Rumble** in Settings turns it off. The browser "
+"has to support it; Chrome and Edge do."
+msgstr ""
+"แพดจะสั่นเมื่อคุณยิงและเมื่อรถถังของคุณตาย เหมือนของ BZFlag: สั่นสั้น ๆ สำหรับการยิง "
+"นานขึ้นสำหรับคลื่นกระแทก (Shock Wave) ทั้งสองมอเตอร์สำหรับเลเซอร์ "
+"และสั่นแรงยาวหนึ่งครั้งเมื่อตาย มันจะสั่นเฉพาะตอนที่คุณกำลังเล่นด้วยมันอยู่ "
+"การกดปุ่มคีย์บอร์ดหรือคลิกจะยึดการควบคุมคืนและทำให้มันเงียบ และจะไม่สั่นเลยสำหรับผู้ชม "
+"**การสั่น** ในการตั้งค่าใช้ปิดได้ เบราว์เซอร์ต้องรองรับด้วย ซึ่ง Chrome และ Edge รองรับ"
+
+#: docs/help/controls.md
+msgid "XR controllers"
+msgstr "คอนโทรลเลอร์ XR"
+
+#: docs/help/controls.md
+msgid ""
+"In VR the controllers are the only input. Turning the tank is independent of "
+"where you look."
+msgstr "ใน VR คอนโทรลเลอร์เป็นอินพุตเดียว การเลี้ยวรถถังไม่ขึ้นกับทิศที่คุณมอง"
+
+#: docs/help/controls.md
+msgid "In the XR menu"
+msgstr "ในเมนู XR"
+
+#: docs/help/controls.md
+msgid "Either thumbstick"
+msgstr "ธัมบ์สติ๊กข้างใดก็ได้"
+
+#: docs/help/controls.md
+msgid "forward/backward and turn -- the right stick if both are pushed"
+msgstr "เดินหน้า/ถอยหลัง และเลี้ยว ใช้สติ๊กขวาถ้าดันทั้งสองข้าง"
+
+#: docs/help/controls.md
+msgid "Either trigger"
+msgstr "ทริกเกอร์ข้างใดก็ได้"
+
+#: docs/help/controls.md
+msgid "`A` / `X` (primary face button)"
+msgstr "`A` / `X` (ปุ่มหน้าหลัก)"
+
+#: docs/help/controls.md
+msgid "`B` / `Y` (secondary face button)"
+msgstr "`B` / `Y` (ปุ่มหน้ารอง)"
+
+#: docs/help/controls.md
+msgid "open the XR menu"
+msgstr "เปิดเมนู XR"
+
+#: docs/help/controls.md
+msgid "back, and close it from the top"
+msgstr "ย้อนกลับ และปิดเมนูเมื่ออยู่ระดับบนสุด"
+
+#: docs/help/controls.md
+msgid "Either grip"
+msgstr "ปุ่มกริปข้างใดก็ได้"
+
+#: docs/help/controls.md
+msgid "Press either thumbstick"
+msgstr "กดธัมบ์สติ๊กข้างใดก็ได้"
+
+#: docs/help/controls.md
+msgid "Both controllers pulse for the same events as a gamepad's rumble."
+msgstr "คอนโทรลเลอร์ทั้งสองจะสั่นในเหตุการณ์เดียวกับการสั่นของเกมแพด"
+
+#: docs/help/controls.md
+msgid ""
+"Identify is on the thumbstick press because a thumb that is steering presses "
+"it by accident, and identifying costs nothing; the menu is on `B` for the "
+"same reason. Typing -- a name, a MOTD -- uses the headset's own system "
+"keyboard, raised when the row takes focus; see the README's WebXR section "
+"for headsets that have none."
+msgstr ""
+"การระบุเป้าอยู่ที่การกดธัมบ์สติ๊ก เพราะนิ้วโป้งที่กำลังบังคับอาจกดโดยไม่ตั้งใจ "
+"และการระบุเป้าไม่มีผลเสียอะไร เมนูอยู่ที่ `B` ด้วยเหตุผลเดียวกัน การพิมพ์ เช่น ชื่อหรือ MOTD "
+"ใช้คีย์บอร์ดระบบของเฮดเซ็ตเอง ซึ่งจะขึ้นมาเมื่อแถวได้รับโฟกัส สำหรับเฮดเซ็ตที่ไม่มีคีย์บอร์ด ดูหัวข้อ "
+"WebXR ใน README"
+
+#: docs/help/flags.md
+msgid "Flags"
+msgstr "ธง"
+
+# review: ซูเปอร์แฟล็ก, or ธงพิเศษ
+#: docs/help/flags.md
+msgid ""
+"Drive over a flag to pick it up, and `Space` to drop it. Good flags help; "
+"bad flags hinder, and stay until they shake off, you kill, or you die. A "
+"superflag on the ground is white and tells you nothing about itself until "
+"somebody picks it up. Team flags are captured by carrying an enemy's to your "
+"own base."
+msgstr ""
+"ขับทับธงเพื่อเก็บ และกด `Space` เพื่อทิ้ง ธงดีช่วยคุณ ธงร้ายเป็นอุปสรรค "
+"และจะติดอยู่จนกว่าจะสลัดหลุดเอง คุณฆ่าใครได้ หรือคุณตาย "
+"ซูเปอร์แฟล็กบนพื้นเป็นสีขาวและไม่บอกอะไรเกี่ยวกับตัวเองจนกว่าจะมีคนเก็บ "
+"ธงทีมยึดได้โดยถือธงของศัตรูกลับไปที่ฐานของคุณ"
+
+#: docs/help/scoreboard.md
+msgid "Scoreboard"
+msgstr "กระดานคะแนน"
+
+#: docs/help/scoreboard.md
+msgid ""
+"Each row's numbers read **Kills / Deaths**, then **[Team Kills]** once you "
+"have any, then your own record against that one opponent: **wins~losses**, "
+"blank until you've actually fought them. Your own row shows a self-destruct "
+"count there instead, since you have no record against yourself. Rabbit Chase "
+"adds a rank percentage in front of the kill count."
+msgstr ""
+"ตัวเลขในแต่ละแถวอ่านว่า **ฆ่า / ตาย** ตามด้วย **[ฆ่าเพื่อนร่วมทีม]** เมื่อคุณมี "
+"แล้วตามด้วยสถิติของคุณเองกับคู่ต่อสู้คนนั้น: **ชนะ~แพ้** ซึ่งว่างไว้จนกว่าคุณจะได้สู้กับเขาจริง ๆ "
+"แถวของคุณเองจะแสดงจำนวนการทำลายตัวเองตรงนั้นแทน เพราะคุณไม่มีสถิติกับตัวเอง Rabbit "
+"Chase จะเพิ่มเปอร์เซ็นต์อันดับไว้หน้าจำนวนการฆ่า"
+
+#: docs/help/scoreboard.md
+msgid ""
+"Before a name, in cyan: `@` means that player is an admin, `+` means they're "
+"signed in with a verified callsign this session. Neither shows for anyone "
+"else."
+msgstr ""
+"ก่อนชื่อ เป็นสีฟ้าอมเขียว: `@` หมายถึงผู้เล่นนั้นเป็นแอดมิน `+` หมายถึงเขาล็อกอินด้วยชื่อเรียกขาน "
+"(callsign) ที่ยืนยันแล้วในเซสชันนี้ ผู้เล่นคนอื่นจะไม่มีเครื่องหมายเหล่านี้"
+
+#: docs/help/scoreboard.md
+msgid ""
+"Right after the name itself: a `/XX` is the flag they're carrying, in that "
+"flag's own colour -- see [Flags](flags.md) for what each abbreviation means."
+msgstr ""
+"ต่อท้ายชื่อทันที: `/XX` คือธงที่เขาถืออยู่ เป็นสีของธงนั้น ดู [ธง](flags.md) "
+"ว่าตัวย่อแต่ละตัวหมายถึงอะไร"
+
+#: docs/help/scoreboard.md
+msgid ""
+"Further along the name: 🎤 means that player's microphone is on, and 🔊 "
+"replaces it the moment they're actually speaking. ⏳ means paused. A hunted "
+"player wears a cyan `◎` -- see [Hunting](controls.md#hunting)."
+msgstr ""
+"ถัดไปตามชื่อ: 🎤 หมายถึงไมโครโฟนของผู้เล่นนั้นเปิดอยู่ และ 🔊 จะแทนที่ทันทีที่เขากำลังพูดจริง ๆ "
+"⏳ หมายถึงหยุดชั่วคราว ผู้เล่นที่ถูกล่ามี `◎` สีฟ้าอมเขียว ดู [การล่าเป้า](controls.md#hunting)"
+
+#: docs/help/voice.md
+msgid "Audio and voice"
+msgstr "เสียงและเสียงพูด"
+
+#: docs/help/voice.md
+msgid ""
+"`Settings -> Audio Settings` — game, voice, and microphone levels, each from "
+"Off to 100%"
+msgstr ""
+"`Settings -> Audio Settings` — ระดับเสียงเกม เสียงพูด และไมโครโฟน "
+"แต่ละอย่างตั้งได้ตั้งแต่ปิดถึง 100%"
+
+#: docs/help/voice.md
+msgid ""
+"**Voice channel** — **All** is everyone on the server, **Nearby** is only "
+"players within earshot, **Team** is your own team anywhere on the map"
+msgstr ""
+"**ช่องเสียง** — **ทั้งหมด** คือทุกคนในเซิร์ฟเวอร์ **ใกล้เคียง** คือเฉพาะผู้เล่นในระยะที่ได้ยิน "
+"**ทีม** คือทีมของคุณเองที่ใดก็ได้บนแผนที่"
+
+#: docs/help/voice.md
+msgid "`B` — toggle the microphone"
+msgstr "`B` — เปิด/ปิดไมโครโฟน"
+
+#: docs/help/voice.md
+msgid ""
+"Voice is available after microphone permission is granted. Observers talk "
+"and listen on the same terms as everyone else."
+msgstr "เสียงพูดใช้ได้หลังจากอนุญาตการใช้ไมโครโฟน ผู้ชมพูดและฟังได้ในเงื่อนไขเดียวกับทุกคน"
+
+#: docs/help/about.md
+msgid "About"
+msgstr "เกี่ยวกับ"
+
+#: docs/help/about.md
+msgid ""
+"Battlezone Online is a free 3D tank game in the browser that plays with "
+"[BZFlag](https://www.bzflag.org/)."
+msgstr ""
+"Battlezone Online เป็นเกมรถถัง 3 มิติฟรีบนเบราว์เซอร์ ที่เล่นร่วมกับ [BZFlag](https://"
+"www.bzflag.org/) ได้"
+
+#: docs/help/about.md
+msgid ""
+"It is free software licensed under the [GNU Affero General Public License "
+"v3.0](https://www.gnu.org/licenses/agpl-3.0.html). Source code is available "
+"at [github.com/timriker/bzo](/source)."
+msgstr ""
+"เป็นซอฟต์แวร์เสรีภายใต้สัญญาอนุญาต [GNU Affero General Public License v3.0](https://"
+"www.gnu.org/licenses/agpl-3.0.html) ซอร์สโค้ดดูได้ที่ [github.com/timriker/bzo](/"
+"source)"
