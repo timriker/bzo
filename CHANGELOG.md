@@ -6,6 +6,10 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
 
 ## [Unreleased]
 
+### Security
+- `qs` 6.17.1, past the `stringify` denial of service in 6.16.0
+  (GHSA-6pq8-jhm2-2vcw). bzo never called it that way.
+
 ## [1.3.72] - 2026-10-29
 
 ### Added

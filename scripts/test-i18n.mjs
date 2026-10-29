@@ -112,7 +112,7 @@ for (const locale of ['ru', 'ja', 'ko', 'zh_CN', 'zh_TW', 'th']) {
     for (const [msgid, msgstr] of Object.entries(l10n.catalogMessages(locale, domain))) {
       const words = msgstr.replace(/``[^`]+``|`[^`]+`|\{\w+\}|\]\([^)]*\)|https?:\S+|\b[A-Z0-9]{1,4}\*?\b/g, ' ');
       if (msgstr === msgid || !/[a-z]{3}/i.test(words)) continue;
-      assert.ok(/[^ -~\s]/.test(words), `${domain}_${locale}: ${JSON.stringify(msgstr)} is Latin-only`);
+      assert.ok(/[^ -~]/.test(words.replace(/\s/g, '')), `${domain}_${locale}: ${JSON.stringify(msgstr)} is Latin-only`);
     }
   }
 }
