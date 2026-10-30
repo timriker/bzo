@@ -6,6 +6,15 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
 
 ## [Unreleased]
 
+## [1.3.75] - 2026-10-30
+
+### Changed
+- Mouse steering keeps the cursor inside the targeting box, as BZFlag does:
+  the first click on the battlefield takes the pointer over and bzo draws the
+  cursor. Escape, a menu, dying, pausing or observing let it go, and the next
+  click takes it back. A browser that refuses steers from the real cursor as
+  before.
+
 ## [1.3.74] - 2026-10-30
 
 ### Added
