@@ -6,6 +6,8 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
 
 ## [Unreleased]
 
+## [1.3.74] - 2026-10-30
+
 ### Added
 - Brazilian Portuguese. A bare `pt` is Brazilian, as browsers have it, so
   `pt` is now Brazilian and Portugal's is `pt_PT`, "Português (Portugal)",
