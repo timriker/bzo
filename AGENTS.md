@@ -591,6 +591,9 @@ can carry both.
 language (issue #44), and `docs/chat-translation-plan.md` for translating
 player chat.
 
+`docs/plugins-plan.md` is the plan for server plugins in JavaScript
+(issue #195).
+
 `docs/bots-plan.md` is the plan for the autopilot and for bots (issue #151).
 `public/js/autopilot.mjs` reads the world only through a view, so the client's
 autopilot and the server's own bots (`server/bots.cjs`) drive the same
