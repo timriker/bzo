@@ -157,10 +157,12 @@ the cursor sits relative to their centre is what the tank does:
   with an acceleration limit (BZFlag's `-a`, off by default) brings the tank up
   to it over time, the same as it does from the keys.
 
-The boxes are BZFlag's own sizes, scaled to the window. BZFlag also holds the
-cursor inside the box; a browser cannot without taking the pointer over, so in
-bzo the cursor can leave it -- the steering simply stays at full, and the cost is
-a longer move back to the centre.
+The boxes are BZFlag's own sizes, scaled to the window. As in BZFlag, the
+cursor is held inside the box: the first click on the battlefield takes the
+pointer over and bzo draws the cursor itself. Escape lets it go, and so do a
+menu, dying, pausing and observing; the next click takes it back. A browser
+that refuses leaves the cursor free -- the steering stays at full past the box,
+and the cost is a longer move back to the centre.
 
 With the keys, the mouse keeps whichever axis no key is holding -- see
 [Combining inputs](#combining-inputs).

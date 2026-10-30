@@ -2101,6 +2101,27 @@ body.autopiloting #roamStatus {
   border-color: inherit;
 }
 
+/* The cursor bzo draws while Pointer Lock hides the real one: an arrow whose
+   tip is the point, offset from centre by placeConfinedMouse. */
+#mouseCursor {
+  display: none;
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  width: 12px;
+  height: 19px;
+  margin: -1px 0 0 -1px;
+  fill: #fff;
+  stroke: #000;
+  stroke-width: 1;
+  pointer-events: none;
+  z-index: 51;
+}
+
+body.mouse-confined #mouseCursor {
+  display: block;
+}
+
 #controlBox.keyboard-mode {
   border-color: rgba(255, 152, 0, 0.6);
 }

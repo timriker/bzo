@@ -48,7 +48,8 @@
 // `--hold ShiftLeft,KeyW --hold-ms 1500` holds those keys together, with a
 // screenshot before (`<shot>.before.png`) when `--shot` is given, and the
 // position from /api/players either side; `--free 1` first steps an observer
-// round to free roam.
+// round to free roam. `--click x,y;x,y` clicks the first point for real
+// and moves the mouse to the rest.
 
 import { spawn } from 'node:child_process';
 import { setTimeout as sleep } from 'node:timers/promises';
@@ -301,6 +302,14 @@ if (cameraWanted && joined.startsWith('joined')) {
   }
 }
 
+// A real move first, so the page has seen a mouse before `--press` reaches
+// anything that asks for one (KeyM).
+const clickPoints = (args.get('click') || '').split(';').map((p) => p.split(',').map(Number))
+  .filter(([x, y]) => Number.isFinite(x) && Number.isFinite(y));
+if (clickPoints.length && joined.startsWith('joined')) {
+  await send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: clickPoints[0][0], y: clickPoints[0][1] });
+}
+
 const pressKeys = (args.get('press') || '').split(',').map((code) => code.trim()).filter(Boolean);
 if (pressKeys.length && joined.startsWith('joined')) {
   if (!mvArgs && !chatLine) await sleep(2000);
@@ -310,6 +319,22 @@ if (pressKeys.length && joined.startsWith('joined')) {
     await keyUp(code);
     await sleep(200);
   }
+}
+
+// `--click 200,100;210,95`: a real left click at the first point, then real
+// moves to the rest, for whatever only a trusted gesture can start.
+if (clickPoints.length && joined.startsWith('joined')) {
+  if (!mvArgs && !chatLine && !pressKeys.length) await sleep(2000);
+  const [[x0, y0], ...moves] = clickPoints;
+  const click = { x: x0, y: y0, button: 'left', clickCount: 1 };
+  await send('Input.dispatchMouseEvent', { type: 'mousePressed', ...click });
+  await sleep(80);
+  await send('Input.dispatchMouseEvent', { type: 'mouseReleased', ...click });
+  for (const [x, y] of moves) {
+    await sleep(200);
+    await send('Input.dispatchMouseEvent', { type: 'mouseMoved', x, y });
+  }
+  await sleep(300);
 }
 
 // `--select-chat 1`: what a player copying out of the transcript gets. The

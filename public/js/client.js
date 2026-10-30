@@ -4897,6 +4897,76 @@ function mouseSteeringActive() {
   return mouseControlEnabled && isMouseSteeringAvailable();
 }
 
+// Upstream keeps the cursor inside the targeting box (confineToMotionbox,
+// BzfWindow.cxx:105) by warping it back whenever it strays. A page cannot warp
+// a cursor, so Pointer Lock stands in: the real cursor is hidden, its raw
+// movement drives a cursor bzo draws, and that one is clamped to the box plus
+// upstream's 2px fudge (playing.cxx:1161). Where the lock is unsupported or
+// refused, steering reads the real cursor as it always has.
+const MOUSE_CLAMP_FUDGE_PX = 2;
+const pointerLockSupported = typeof Element !== 'undefined' && 'requestPointerLock' in Element.prototype;
+let confinedMouseX = 0; // px from centre
+let confinedMouseY = 0;
+let pointerLockReleasedAt = -Infinity;
+let pointerLockErrorLogged = false;
+
+function isMouseConfined() {
+  return pointerLockSupported && document.pointerLockElement === document.documentElement;
+}
+
+// mouseClamp's own conditions (playing.cxx:1141): no dialog, a live, unpaused,
+// playing tank. An observer's cursor stays free -- it picks obstacles with it.
+function shouldConfineMouse() {
+  return isGameplayInputActive() && mouseSteeringActive() && !isObserver() &&
+    isMyTankAlive() && !pauseState.paused;
+}
+
+function placeConfinedMouse(dx, dy) {
+  const limit = motionBoxHalfExtent + MOUSE_CLAMP_FUDGE_PX;
+  confinedMouseX = Math.max(-limit, Math.min(limit, confinedMouseX + dx));
+  confinedMouseY = Math.max(-limit, Math.min(limit, confinedMouseY + dy));
+  mouseX = motionBoxAxisInput(confinedMouseX);
+  mouseY = motionBoxAxisInput(confinedMouseY);
+  const cursor = document.getElementById('mouseCursor');
+  if (cursor) cursor.style.transform = `translate(${confinedMouseX}px, ${confinedMouseY}px)`;
+}
+
+function notePointerLockError(err) {
+  if (pointerLockErrorLogged) return;
+  pointerLockErrorLogged = true;
+  debugLog(`pointerlock.error ${err?.name || 'refused'}`);
+}
+
+// Asked for on a battlefield click, the only gesture every browser accepts for
+// it. The drawn cursor starts where the real one was, so steering does not jump.
+function requestMouseConfine(clientX, clientY) {
+  if (!pointerLockSupported || isMouseConfined() || !shouldConfineMouse()) return;
+  confinedMouseX = 0;
+  confinedMouseY = 0;
+  placeConfinedMouse(clientX - window.innerWidth / 2, clientY - window.innerHeight / 2);
+  let request;
+  try {
+    request = document.documentElement.requestPointerLock();
+  } catch (err) {
+    notePointerLockError(err);
+    return;
+  }
+  if (request && typeof request.catch === 'function') request.catch(notePointerLockError);
+}
+
+function releaseMouseConfineWhenIdle() {
+  if (isMouseConfined() && !shouldConfineMouse()) document.exitPointerLock();
+}
+
+if (pointerLockSupported) {
+  document.addEventListener('pointerlockchange', () => {
+    const confined = isMouseConfined();
+    document.body.classList.toggle('mouse-confined', confined);
+    if (!confined) pointerLockReleasedAt = performance.now();
+  });
+  document.addEventListener('pointerlockerror', () => notePointerLockError());
+}
+
 // Whether a click on the battlefield is a shot. The on-screen controls own the
 // whole screen while they are up -- a tap that misses the fire button is a miss,
 // not a shot -- and in VR there is no cursor to aim, so a paired mouse's buttons
@@ -6457,15 +6527,22 @@ function handleGameplayKeydown(event) {
     // the closest thing bzo has -- but the web spends Escape on its own state
     // first, so it is a ladder and each press undoes exactly one rung:
     //
+    //   mouse confined  the browser releases the pointer lock. The game does
+    //                   nothing; the next battlefield click confines it again.
     //   in fullscreen  the browser leaves fullscreen. The game does nothing.
-    //   mouse steering  turns off. The web cannot confine the cursor to the
-    //                   box, so leaving needs a key that is not a drive key.
+    //   mouse steering  turns off. Leaving needs a key that is not a drive
+    //                   key, and the cursor may not be confined to reach one.
     //   otherwise       Settings opens, and Escape again closes it.
     //
     // Settings is therefore one press away from a plain client and three from a
     // fullscreen mouse-steering one, in the order somebody would want them
     // undone. The fourth press always undoes the third, so pressing once too
     // often costs nothing -- which is what makes a ladder acceptable at all.
+    // Browsers differ on whether the press that releases the lock reaches the
+    // page at all, so one arriving just after the release is that press.
+    if (isMouseConfined() || performance.now() - pointerLockReleasedAt < 250) {
+      return true;
+    }
     if (isFullscreenActive()) {
       // Whether the browser also delivers this keydown is up to the browser;
       // claiming it here means the rung is spent either way rather than
@@ -7431,10 +7508,14 @@ function init() {
     updateMotionBoxMetrics();
   });
 
-  // Mouse movement for analog control
-  // Mouse analog control using position relative to center (cursor always visible)
+  // Mouse analog control: the confined cursor's offset under Pointer Lock, the
+  // real cursor's from centre otherwise.
   document.addEventListener('mousemove', (e) => {
     if (!isGameplayInputActive() || !mouseSteeringActive()) return;
+    if (isMouseConfined()) {
+      placeConfinedMouse(e.movementX, e.movementY);
+      return;
+    }
     mouseX = motionBoxAxisInput(e.clientX - window.innerWidth / 2);
     mouseY = motionBoxAxisInput(e.clientY - window.innerHeight / 2);
   });
@@ -7482,6 +7563,8 @@ function init() {
     }
 
     if (!mouseGameplayClickActive()) return;
+
+    requestMouseConfine(e.clientX, e.clientY);
 
     if (e.button === 0) { // Left click
       setGameplayKeyState(FIRE_KEY, true);
@@ -17485,6 +17568,7 @@ function animate(frameTime) {
   checkNearFlag();
   updateFlagShake(deltaTime);
   updatePauseCountdown();
+  releaseMouseConfineWhenIdle();
   updateDestructCountdown();
   updateFlags(deltaTime);
   updateTankDimensions(deltaTime);

@@ -2325,8 +2325,10 @@ focus and visibility would mostly test itself.
 The fullscreen rung claims the press rather than letting it fall through.
 Whether a browser also delivers the keydown that exits fullscreen is up to the
 browser, and claiming it means the rung is spent either way instead of doubling
-up with mouse steering on the browsers that do deliver it. bzo does not use
-pointer lock, which is why mouse steering needs a rung at all.
+up with mouse steering on the browsers that do deliver it. A confined mouse
+(pointer lock) is the rung above fullscreen, claimed the same way: browsers
+differ on whether the press that releases the lock reaches the page, so a press
+within 250 ms of a release counts as that press.
 
 bzo matches upstream on every binding it has taken so far
 (`ActionBinding.cxx:91-98`):
@@ -2394,9 +2396,15 @@ altimeter, and voice readout hang off the same variable, as upstream hangs them
 off `maxMotionSize`.
 
 **Upstream also confines the cursor to the box** (`mouseClamp`, using
-`confineToMotionbox`); a browser cannot without pointer lock, so bzo lets the
-cursor leave. The mapping saturates either way -- the only cost is a longer drag
-back to centre.
+`confineToMotionbox`). A page cannot warp the cursor, so bzo takes pointer lock
+on a battlefield click and steers from a cursor it draws (`#mouseCursor`),
+moved by `movementX/Y` and clamped to the outer box plus upstream's 2px fudge.
+It is released under mouseClamp's own conditions -- a dialog, a dead, paused or
+observing tank -- checked once a frame. Ctrl does not release it as upstream's
+does; Escape is the way out. Where the lock is unsupported or refused the real
+cursor steers as before and the mapping saturates past the box. A refusal is
+logged once as `pointerlock.error`. `headless-client.mjs --click` makes the
+trusted click the lock needs.
 
 ### Keyboard and mouse drive together
 
