@@ -71,6 +71,9 @@ module.exports = {
 `);
 write(bundled, 'nometa', 'module.exports = { Init() {} };');
 write(bundled, 'syntax', 'module.exports = {');
+const SAMPLE_META = "meta: { name: 'S', version: '1.0', author: 'a', description: 'd', enabled: false }";
+write(bundled, 'sample', `module.exports = { ${SAMPLE_META}, Init(bz) { bz.Register(bz.bz_eTickEvent); } };`);
+write(bundled, 'sampleon', `module.exports = { ${SAMPLE_META}, Init(bz) { bz.Register(bz.bz_eGameEndEvent); } };`);
 write(bundled, 'off', `module.exports = { ${META}, Init(bz) { bz.Register(bz.bz_eKillEvent); } };`);
 write(bundled, 'replaced', `module.exports = { ${META}, Init(bz) { bz.Register(bz.bz_eKillEvent); } };`);
 write(installed, 'replaced', `module.exports = { ${META}, Init(bz) { bz.Register(bz.bz_eCaptureEvent); } };`);
@@ -79,16 +82,20 @@ fs.writeFileSync(path.join(bundled, 'notes.txt'), 'not a plugin');
 const lines = [];
 const host = createPluginHost({
   dirs: [bundled, installed],
-  settings: { off: false, counter: { limit: 3 } },
+  settings: { off: false, counter: { limit: 3 }, sampleon: true },
   log: (text) => lines.push(text),
 });
 host.loadAll();
 
 const byId = Object.fromEntries(host.list().map((entry) => [entry.id, entry]));
 assert.deepEqual(Object.keys(byId).sort(),
-  ['badinit', 'counter', 'nometa', 'off', 'replaced', 'second', 'syntax', 'thrower']);
+  ['badinit', 'counter', 'nometa', 'off', 'replaced', 'sample', 'sampleon', 'second', 'syntax', 'thrower']);
 assert.equal(byId.counter.state, 'loaded');
 assert.equal(byId.off.state, 'off', 'server.json false turns a plugin off');
+assert.equal(byId.sample.state, 'off', 'meta.enabled false is off by default');
+assert.equal(byId.sample.meta.name, 'S', 'and still listed with its meta');
+assert.equal(host.listening('bz_eTickEvent'), false, 'without being started');
+assert.equal(byId.sampleon.state, 'loaded', 'until server.json turns it on');
 assert.equal(byId.nometa.state, 'failed');
 assert.equal(byId.nometa.error, 'has no meta');
 assert.equal(byId.syntax.state, 'failed', 'a file that does not parse is left off');

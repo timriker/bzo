@@ -76,9 +76,11 @@ function checkPlugin(plugin) {
 }
 
 // `server.json`'s `plugins`: a plugin's id to `false` (off), `true` (on), or
-// an object of its options (on). A plugin it does not name is on.
-function pluginSetting(settings, id) {
-  const value = settings && Object.hasOwn(settings, id) ? settings[id] : true;
+// an object of its options (on). A plugin it does not name is on, unless its
+// own `meta.enabled` is false -- a sample, which upstream ships but no server
+// loads until asked -- and then `fallback` is false.
+function pluginSetting(settings, id, fallback = true) {
+  const value = settings && Object.hasOwn(settings, id) ? settings[id] : fallback;
   if (value === false) return { enabled: false, config: {} };
   if (value && typeof value === 'object') {
     const { enabled = true, ...config } = value;
@@ -212,10 +214,11 @@ function createPluginHost({
     entry.timers.clear();
   }
 
-  function load(id) {
+  // `ifEnabled` leaves a plugin `server.json` or its own meta turns off read
+  // but not started, so its meta is still there to list.
+  function load(id, { ifEnabled = false } = {}) {
     const entry = entries.get(id);
     if (!entry || entry.state === 'loaded') return entry || null;
-    const setting = pluginSetting(settings, id);
     entry.error = null;
     let plugin;
     try {
@@ -235,6 +238,11 @@ function createPluginHost({
       return entry;
     }
     entry.meta = { license: '', ...plugin.meta };
+    const setting = pluginSetting(settings, id, plugin.meta.enabled !== false);
+    if (ifEnabled && !setting.enabled) {
+      entry.state = 'off';
+      return entry;
+    }
     entry.plugin = plugin;
     try {
       plugin.Init(makeApi(entry), setting.config);
@@ -266,7 +274,8 @@ function createPluginHost({
     return true;
   }
 
-  // Every plugin file in `dirs`, each loaded unless `server.json` turns it off.
+  // Every plugin file in `dirs`, each loaded unless `server.json` or its meta
+  // turns it off.
   function loadAll() {
     for (const found of findPlugins(dirs).values()) {
       if (entries.get(found.id)?.state === 'loaded') continue;
@@ -276,7 +285,7 @@ function createPluginHost({
       };
       entries.set(found.id, entry);
       if (found.replaces) log(`${found.id}: ${found.file} replaces ${found.replaces}`);
-      if (pluginSetting(settings, found.id).enabled) load(found.id);
+      if (pluginSetting(settings, found.id).enabled) load(found.id, { ifEnabled: true });
     }
   }
 

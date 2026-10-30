@@ -51,6 +51,7 @@ COPY --from=deps /app/node_modules ./node_modules
 COPY public ./public
 COPY maps ./maps
 COPY replays ./replays
+COPY plugins ./plugins
 COPY server ./server
 COPY l10n ./l10n
 # /help and llms-full.txt render the controls from it.
