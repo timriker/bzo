@@ -80,13 +80,14 @@ local file, so the rights are wider than an upstream operator expects:
 
 ## Built-ins that move to plugins
 
-Features bzo built in that were plugins elsewhere. Each moves out, keeps its
-BZDB variables, and is on by default:
+Features bzo built in that are plugins elsewhere, or are optional extras that
+fit one. Each moves out, keeps its BZDB variables, and is on by default:
 
 - `_scoreSaveTime`: allejo's ScoreRestorer.
 - `_disallowSelfCap`: allejo's ctfOverseer.
 - The Discord bridge (`docs/discord.md`): the job upstream's ircRelay plugin
   does, and the shape Matrix and IRC in `docs/chat-bridge-plan.md` would take.
+- The compass letters for native clients; see "The world and the network".
 
 Rabbit, polls and handicap are core upstream and stay core in bzo.
 
@@ -114,6 +115,37 @@ XR included, so custom weapons need no new client effect. What is new:
 - kill credit for server shots. Check what upstream credits and how plugins
   use shot metadata before choosing.
 
+## The world and the network
+
+**The world.** `bz_eGetWorldEvent` (`src/bzfs/bzfs.cxx:1119`) runs before the
+world loads. A plugin may name a different map file, set the game type, or
+say it built the world itself with `bz_addWorldBox`, `Pyramid`, `Base`,
+`Teleporter`, `Weapon`, `WaterLevel` and `bz_setWorldSize`. Those only work
+before the world is finished, take only drive-through and shoot-through as
+options, and make no meshes. The event's `worldBlob` is declared but bzfs
+never reads it. pushstats uses the event to learn the map; map rotation
+plugins such as mapchange need it to pick the next one.
+
+bzo offers the same event at every map load, with the parsed world rather
+than a file name, so a plugin can add or change objects of any kind before a
+client sees them. Because bzo sends a native BZFlag client its own world
+(`server/bzflag-extras.cjs`), the event says which world it is building, and a
+plugin can add to one only. The compass letters bzo adds for native clients
+become a bundled plugin this way, on by default.
+
+**HTTP.** Upstream's `bz_registerNonPlayerConnectionHandler` and
+`bz_sendNonPlayerData` hand a plugin raw TCP connections on the game port;
+upstream's whole plugin web layer (`src/bzfs/bzfsHTTPAPI.cxx`) is built on
+them. bzo is already a web server, so a plugin registers HTTP routes under its
+own path instead, for a stats page or a league's endpoint. Raw connections are
+not offered.
+
+**Packets.** `bz_eNetDataSendEvent` and `bz_eNetDataReceiveEvent` fire for every
+packet in or out with a copy of its bytes, read-only; no plugin in the tree
+uses them. bzo offers them read-only, costing nothing unless a plugin
+registers, carrying BZFlag-shaped messages whichever client sent them, since
+bzo's own clients and native ones do not share a wire format.
+
 ## Stages
 
 1. **Core.** The loader and its `server.json` list, about 20 events and about
@@ -126,12 +158,13 @@ XR included, so custom weapons need no new client effect. What is new:
 2. **Rules and custom flags.** The remaining allow and modify events, zone
    entry and exit, custom map objects (the BZW parser passes unknown objects
    to the plugin that registered them), polls and permissions, `/plugins`,
-   `/listplugins` and `/loadplugin`, and custom flags with server shots. Port
-   koth, keepaway, HoldTheFlag, timedctf, fairCTF, chathistory, TimeLimit,
-   shockwaveDeath and wwzones.
+   `/listplugins` and `/loadplugin`, custom flags with server shots, the world
+   event and the `bz_addWorld*` calls, and plugin HTTP routes. Port koth,
+   keepaway, HoldTheFlag, timedctf, fairCTF, chathistory, TimeLimit,
+   shockwaveDeath, wwzones and mapchange, and move the compass letters out.
 3. **Plugin options and upload** in the panel.
 4. **The Discord bridge** moves to a plugin once stage 1's chat events carry
    what it needs.
+5. **The packet events.**
 
-Not planned: the network data events, raw world access, and the handicap
-events until handicap exists (`docs/game-modes-plan.md`).
+The handicap events wait for handicap (`docs/game-modes-plan.md`).
