@@ -259,13 +259,13 @@ export const SUPER_FLAG_HALF_LIFE_SECONDS = 10.0;
 export const IDENTIFY_RANGE = 50.0;
 
 // -st upstream, the shake timeout: how long a bad flag sticks before it falls
-// off on its own. CmdLineOptions.cxx:1268 reads seconds and clamps them to this
-// range, then stores tenths of a second, which is the resolution the client is
-// told about -- so both sides quantize to a tenth and neither can be a fraction
-// of a frame ahead of the other. Zero is the switch being off, which is
+// off on its own. CmdLineOptions.cxx:1268 reads seconds and keeps tenths of a
+// second, clamped to this range, which is what `MsgGameSettings` carries and
+// what bzo's server and config hold too; a client turns it into seconds where
+// it counts (`World::getShakeTimeout`). Zero is the switch being off, which is
 // upstream's default: a bad flag is then carried until it kills you.
-export const SHAKE_TIMEOUT_MIN_SECONDS = 0.1;
-export const SHAKE_TIMEOUT_MAX_SECONDS = 300.0;
+export const SHAKE_TIMEOUT_MIN_TENTHS = 1;
+export const SHAKE_TIMEOUT_MAX_TENTHS = 3000;
 // The client runs the countdown and asks the server to take the flag, exactly as
 // upstream does (LocalPlayer.cxx:159). The server has to run the same clock or a
 // modified client sheds a bad flag the moment it takes one, so it re-asks -- and
@@ -785,14 +785,22 @@ export function canJump(abbreviation, allowJumping, airborne, flapsLeft, insideB
   return allowJumping || abbreviation === 'JP';
 }
 
-// CmdLineOptions.cxx:1268. Seconds in, seconds out, clamped and rounded to the
-// tenth upstream sends on the wire. Anything that is not a positive number is
-// the switch being off.
-export function normalizeShakeTimeout(seconds) {
+// CmdLineOptions.cxx:1268-1284: `-st` seconds in, tenths out,
+// `uint16_t(timeout * 10.0f + 0.5f)` between the clamps. Anything that is not a
+// positive number is the switch being off.
+export function shakeTimeoutTenths(seconds) {
   const value = Number(seconds);
   if (!Number.isFinite(value) || value <= 0) return 0;
-  const clamped = Math.min(SHAKE_TIMEOUT_MAX_SECONDS, Math.max(SHAKE_TIMEOUT_MIN_SECONDS, value));
-  return Math.round(clamped * 10) / 10;
+  if (value < 0.1) return SHAKE_TIMEOUT_MIN_TENTHS;
+  if (value > 300) return SHAKE_TIMEOUT_MAX_TENTHS;
+  return Math.floor(value * 10 + 0.5);
+}
+
+// Tenths as they are held and sent, as the seconds a clock runs against.
+export function shakeTimeoutSeconds(tenths) {
+  const value = Math.floor(Number(tenths));
+  if (!Number.isFinite(value) || value <= 0) return 0;
+  return Math.min(SHAKE_TIMEOUT_MAX_TENTHS, value) / 10;
 }
 
 // CmdLineOptions.cxx:1288. A whole number of kills, clamped, and zero for off.
@@ -1007,9 +1015,9 @@ export function getAntidoteCoordinate(worldSize, baseSize, ctf, random) {
 // Whether a sticky flag has been held long enough to fall off. The client counts
 // down from the timeout and sends the drop; this is what the server asks of the
 // request before it agrees, and what the client asks before it bothers to send.
-export function canShakeFlag(abbreviation, shakeTimeout, heldSeconds) {
+export function canShakeFlag(abbreviation, shakeTimeoutTenths, heldSeconds) {
   if (getFlagEndurance(abbreviation) !== FLAG_ENDURANCE.STICKY) return false;
-  const timeout = normalizeShakeTimeout(shakeTimeout);
+  const timeout = shakeTimeoutSeconds(shakeTimeoutTenths);
   if (timeout === 0) return false;
   return heldSeconds >= timeout - SHAKE_DROP_GRACE_SECONDS;
 }

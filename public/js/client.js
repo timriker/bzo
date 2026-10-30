@@ -295,7 +295,7 @@ import {
   seesThroughDisguises,
   hasAirControl,
   isTeamFlag,
-  normalizeShakeTimeout,
+  shakeTimeoutSeconds,
   normalizeShakeWins,
   keepFlagIdentity,
   parseFlagInfo,
@@ -13228,7 +13228,7 @@ function buildAutopilotView() {
       tankLength: TANK.halfLength * 2,
       tankAngVel: gameConfig.TANK_ROTATION_SPEED,
       tankSpeed: gameConfig.TANK_SPEED,
-      shakeTimeout: normalizeShakeTimeout(gameConfig.FLAG_SHAKE_TIMEOUT),
+      shakeTimeout: shakeTimeoutSeconds(gameConfig.FLAG_SHAKE_TIMEOUT),
       jumpVelocity: gameConfig.JUMP_VELOCITY,
       gravity: gameConfig.GRAVITY,
       lockOnAngle: getFlagTuning().lockOnAngle,
@@ -14749,7 +14749,7 @@ function requestFlagDrop() {
 // is why this does not latch at zero the way upstream's does. Upstream has no
 // refusal to recover from.
 function updateFlagShake(deltaTime) {
-  const timeout = normalizeShakeTimeout(gameConfig?.FLAG_SHAKE_TIMEOUT);
+  const timeout = shakeTimeoutSeconds(gameConfig?.FLAG_SHAKE_TIMEOUT);
   const flag = getMyFlag();
   if (!flag || timeout === 0 || getFlagEndurance(flag.type) !== FLAG_ENDURANCE.STICKY) {
     shakeFlagIndex = null;
@@ -14783,7 +14783,7 @@ function updateFlagShake(deltaTime) {
 // upstream's defaults leave you with.
 function describeBadFlagRelease() {
   const ways = [];
-  const timeout = normalizeShakeTimeout(gameConfig?.FLAG_SHAKE_TIMEOUT);
+  const timeout = shakeTimeoutSeconds(gameConfig?.FLAG_SHAKE_TIMEOUT);
   const wins = normalizeShakeWins(gameConfig?.FLAG_SHAKE_WINS);
   if (timeout > 0) ways.push(t('in {seconds}s', { seconds: timeout }));
   if (wins > 0) ways.push(wins === 1 ? t('after {count} kill', { count: wins }) : t('after {count} kills', { count: wins }));

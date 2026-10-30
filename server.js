@@ -91,7 +91,8 @@ const {
   computeFlagFlight,
   getAntidoteCoordinate,
   hasAirControl,
-  normalizeShakeTimeout,
+  shakeTimeoutTenths,
+  shakeTimeoutSeconds,
   normalizeShakeWins,
   shotRicochets,
   shieldsAgainstShot,
@@ -12016,9 +12017,11 @@ log(
 // map's `options` block both reach it, and as with every bzfs switch the map may
 // turn it on where nothing turns it back off -- so the larger of the two wins.
 // The client runs the countdown and the server re-asks; see canShakeFlag.
+// Tenths of a second, as bzfs holds and sends it; `flagShakeTimeout` is
+// seconds, as `-st` is.
 const FLAG_SHAKE_TIMEOUT = Math.max(
-  normalizeShakeTimeout(serverConfig.flagShakeTimeout),
-  normalizeShakeTimeout(mapServerOptions.flagShakeTimeout)
+  shakeTimeoutTenths(serverConfig.flagShakeTimeout),
+  mapServerOptions.flagShakeTimeout || 0,
 );
 GAME_CONFIG.FLAG_SHAKE_TIMEOUT = FLAG_SHAKE_TIMEOUT;
 // -sw upstream, the shake win count: kills that shed a bad flag. Off by default
@@ -12081,7 +12084,7 @@ GAME_CONFIG.MAX_TEAM_SCORE = Math.max(
 // is the only way out -- which is upstream's default.
 function describeBadFlagRelease() {
   const ways = [];
-  if (FLAG_SHAKE_TIMEOUT > 0) ways.push(`after ${FLAG_SHAKE_TIMEOUT}s`);
+  if (FLAG_SHAKE_TIMEOUT > 0) ways.push(`after ${shakeTimeoutSeconds(FLAG_SHAKE_TIMEOUT)}s`);
   if (FLAG_SHAKE_WINS > 0) ways.push(`after ${FLAG_SHAKE_WINS} ${FLAG_SHAKE_WINS === 1 ? 'win' : 'wins'}`);
   if (ANTIDOTE_FLAGS) ways.push('on the antidote');
   return ways.length > 0 ? ways.join(' or ') : 'only on death';
@@ -12418,10 +12421,8 @@ function computeListServerStatus() {
     // instance knows most about -- was the thinner of the two.
     teamCounts: BZFLAG_MP_TEAM_ORDER.map((team) => joinedByTeam.get(team) || 0),
     teamMaximums: BZFLAG_MP_TEAM_ORDER.map((team) => TEAM_MODE.limits[team] || 0),
-    // Tenths of a second, which is the unit the ping packet's own
-    // `shakeTimeout` is in -- one wire meaning, so the pane formats one way
-    // and does not have to know which table a row came from.
-    shakeTimeout: Math.round(FLAG_SHAKE_TIMEOUT * 10),
+    // Tenths of a second, the ping packet's own unit and bzo's.
+    shakeTimeout: FLAG_SHAKE_TIMEOUT,
     shakeWins: FLAG_SHAKE_WINS,
     maxTime: GAME_CONFIG.TIME_LIMIT,
     maxTeamScore: GAME_CONFIG.MAX_TEAM_SCORE,
@@ -12710,7 +12711,7 @@ function bzflagGameSettings() {
     numFlags: flags.length,
     linearAcceleration: GAME_CONFIG.LINEAR_ACCELERATION,
     angularAcceleration: GAME_CONFIG.ANGULAR_ACCELERATION,
-    shakeTimeout: Math.round(FLAG_SHAKE_TIMEOUT * 10),
+    shakeTimeout: FLAG_SHAKE_TIMEOUT,
     shakeWins: FLAG_SHAKE_WINS,
   };
 }
@@ -17230,7 +17231,7 @@ function botSharedView(now) {
       tankLength: TANK.halfLength * 2,
       tankAngVel: GAME_CONFIG.TANK_ROTATION_SPEED,
       tankSpeed: GAME_CONFIG.TANK_SPEED,
-      shakeTimeout: FLAG_SHAKE_TIMEOUT,
+      shakeTimeout: shakeTimeoutSeconds(FLAG_SHAKE_TIMEOUT),
       jumpVelocity: GAME_CONFIG.JUMP_VELOCITY,
       gravity: GAME_CONFIG.GRAVITY,
       lockOnAngle: getFlagTuning().lockOnAngle,

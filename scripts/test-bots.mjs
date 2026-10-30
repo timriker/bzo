@@ -70,7 +70,7 @@ function makeDriver(think, flag = null, baseAt = undefined) {
     const driver = new BotDriver({
       pilot: { think: () => ({ speed: 0, rotation: 0 }) },
       env: {
-        config: () => ({ ...CONFIG, FLAG_SHAKE_TIMEOUT: 5 }),
+        config: () => ({ ...CONFIG, FLAG_SHAKE_TIMEOUT: 50 }),
         flag: () => flag,
         colliders: () => [],
         topOf: () => 0,

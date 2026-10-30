@@ -768,11 +768,30 @@ const PROXY_FLAG_ABBREVIATIONS = new Map(
   Object.values(FLAG_TYPES).map((type) => [type.name, type.abbreviation]),
 );
 
-// `MsgGameSettings`' own `maxShots`, or null before it has arrived.
-function proxyMaxShots(session) {
+// The target's `MsgGameSettings`, or null before it has arrived.
+function proxyGameSettings(session) {
   const settings = session.state.gameSettings;
   if (!settings || settings.length < 30) return null;
-  return decodeGameSettings(settings).maxShots;
+  return decodeGameSettings(settings);
+}
+
+function proxyMaxShots(session) {
+  return proxyGameSettings(session)?.maxShots ?? null;
+}
+
+// The target's own rules that `MsgGameSettings` carries and BZDB does not:
+// how many shots a tank has in the air, and when a bad flag shakes off --
+// tenths of a second, as bzo holds it too, and both zero without the shaking
+// bit. This server's own map says nothing about a proxied game.
+function proxyGameSettingsConfig(session) {
+  const settings = proxyGameSettings(session);
+  if (!settings) return {};
+  const shaking = (settings.gameOptionsBits & GAME_OPTION_BITS.shaking) !== 0;
+  return {
+    SHOT_MAX_ACTIVE: settings.maxShots,
+    FLAG_SHAKE_TIMEOUT: shaking ? settings.shakeTimeout : 0,
+    FLAG_SHAKE_WINS: shaking ? settings.shakeWins : 0,
+  };
 }
 
 function buildProxyInit(session, mapEntry, viewer, status, enterTeam, zonedOf, own = null) {
@@ -825,6 +844,7 @@ function buildProxyInit(session, mapEntry, viewer, status, enterTeam, zonedOf, o
       ...Object.fromEntries(
         Object.entries(worldBase()).filter(([key]) => key !== 'MAP_SIZE'),
       ),
+      ...proxyGameSettingsConfig(session),
       ALL_SHOTS_RICOCHET: proxyGameOptions(session) !== null
         && (proxyGameOptions(session) & GAME_OPTION_BITS.ricochet) !== 0,
       // The two rules the client needs to decide a hit on *itself*, which is

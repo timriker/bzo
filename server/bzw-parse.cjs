@@ -21,7 +21,7 @@ const { parseBZWTeamMode, getTeamFromColorIndex } = require('./teams.cjs');
 const {
   normalizeShotLimit, normalizeShotSlotCount, WORLD_WEAPON_DEFAULT_DELAY, normalizeWorldWeaponDelays,
 } = require('./shots.cjs');
-const { FLAG_ABBREVIATIONS, normalizeShakeTimeout, normalizeShakeWins, getFlagType, isBadFlag, isTeamFlag } = require('../public/js/flags.mjs');
+const { FLAG_ABBREVIATIONS, shakeTimeoutTenths, normalizeShakeWins, getFlagType, isBadFlag, isTeamFlag } = require('../public/js/flags.mjs');
 const fs = require('fs');
 const mapOverview = require('./map-overview.cjs');
 const path = require('path');
@@ -1277,9 +1277,9 @@ function parseBZWServerOptions(lines) {
     if (readOption('-j')) options.jumping = true;
     // +r: every shot ricochets, whatever flag fired it.
     if (readOption('+r')) options.ricochet = true;
-    // -st <seconds>: how long a bad flag sticks before it shakes off, and -sw
-    // <kills>: how many wins shake one off. Both take a value.
-    if (readOption('-st')) options.flagShakeTimeout = normalizeShakeTimeout(value);
+    // -st <seconds>: how long a bad flag sticks before it shakes off, kept in
+    // tenths as bzfs keeps it, and -sw <kills>: how many wins shake one off.
+    if (readOption('-st')) options.flagShakeTimeout = shakeTimeoutTenths(value);
     if (readOption('-sw')) options.flagShakeWins = normalizeShakeWins(value);
     // -sa: put an antidote flag in the world for whoever is carrying a bad one.
     if (readOption('-sa')) options.antidoteFlags = true;

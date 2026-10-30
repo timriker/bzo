@@ -23,7 +23,7 @@
 import * as botHost from './bot-host.mjs';
 import { DEFAULT_PILOT } from './autopilot.mjs';
 import { TANK, buildCollisionColliders, traceShotStep } from './collision.mjs';
-import { getFlagTuning, getShotEffects } from './flags.mjs';
+import { getFlagTuning, getShotEffects, shakeTimeoutSeconds } from './flags.mjs';
 import { ALL_PLAYERS, SERVER_PLAYER } from './player-ids.mjs';
 import { getShotTankHit, getWorldReloadSeconds, normalizeShotSlotCount } from './shots.mjs';
 import { pickSpawnPosition, teamSpawnZones } from './spawn.mjs';
@@ -485,7 +485,7 @@ function sharedView(now) {
       tankLength: TANK.halfLength * 2,
       tankAngVel: config.TANK_ROTATION_SPEED,
       tankSpeed: config.TANK_SPEED,
-      shakeTimeout: config.FLAG_SHAKE_TIMEOUT,
+      shakeTimeout: shakeTimeoutSeconds(config.FLAG_SHAKE_TIMEOUT),
       jumpVelocity: config.JUMP_VELOCITY,
       gravity: config.GRAVITY,
       lockOnAngle: getFlagTuning().lockOnAngle,

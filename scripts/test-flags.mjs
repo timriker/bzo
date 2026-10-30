@@ -75,8 +75,8 @@ import {
   ANTIDOTE_CTF_WORLD_FRACTION,
   BASE_SIZE,
   SHAKE_DROP_GRACE_SECONDS,
-  SHAKE_TIMEOUT_MAX_SECONDS,
-  SHAKE_TIMEOUT_MIN_SECONDS,
+  SHAKE_TIMEOUT_MAX_TENTHS,
+  SHAKE_TIMEOUT_MIN_TENTHS,
   SHAKE_WINS_MAX,
   SHAKE_WINS_MIN,
   SUPER_FLAG_COLOR,
@@ -117,7 +117,8 @@ import {
   getFlagGrabCount,
   stealsFlags,
   getThiefDropReloadSeconds,
-  normalizeShakeTimeout,
+  shakeTimeoutSeconds,
+  shakeTimeoutTenths,
   normalizeShakeWins,
   getFlagFlightHeight,
   getFlagHoverHeight,
@@ -274,31 +275,37 @@ assert.equal(getFlagEndurance('US'), FLAG_ENDURANCE.UNSTABLE, 'a good superflag 
 assert.equal(getFlagEndurance('B*'), FLAG_ENDURANCE.NORMAL, 'a team flag is normal');
 assert.equal(getFlagEndurance(null), FLAG_ENDURANCE.UNSTABLE, 'an empty slot holds nothing sticky');
 
-// CmdLineOptions.cxx:1268 -- -st, in seconds, clamped and stored to the tenth.
+// CmdLineOptions.cxx:1268-1284 -- -st, in seconds, kept in tenths as bzfs
+// keeps it and sends it, and seconds again where a clock runs.
 {
-  assert.equal(SHAKE_TIMEOUT_MIN_SECONDS, 0.1);
-  assert.equal(SHAKE_TIMEOUT_MAX_SECONDS, 300.0);
-  assert.equal(normalizeShakeTimeout(20), 20, 'a plain value survives');
-  assert.equal(normalizeShakeTimeout(0.02), 0.1, 'under the minimum takes the minimum');
-  assert.equal(normalizeShakeTimeout(1000), 300, 'over the maximum takes the maximum');
-  assert.equal(normalizeShakeTimeout(3.14159), 3.1, 'rounded to the tenth both sides send');
-  assert.equal(normalizeShakeTimeout(0), 0, 'zero is the switch being off');
-  assert.equal(normalizeShakeTimeout(-5), 0, 'and so is anything below it');
-  assert.equal(normalizeShakeTimeout(undefined), 0, 'and so is saying nothing');
-  assert.equal(normalizeShakeTimeout('20'), 20, 'a map option arrives as text');
+  assert.equal(SHAKE_TIMEOUT_MIN_TENTHS, 1);
+  assert.equal(SHAKE_TIMEOUT_MAX_TENTHS, 3000);
+  assert.equal(shakeTimeoutTenths(20), 200, 'seconds become tenths');
+  assert.equal(shakeTimeoutTenths(0.02), 1, 'under the minimum takes the minimum');
+  assert.equal(shakeTimeoutTenths(1000), 3000, 'over the maximum takes the maximum');
+  assert.equal(shakeTimeoutTenths(3.14159), 31, 'rounded to the nearest tenth');
+  assert.equal(shakeTimeoutTenths(0.25), 3, 'a half rounds up, as timeout * 10 + 0.5 does');
+  assert.equal(shakeTimeoutTenths(0), 0, 'zero is the switch being off');
+  assert.equal(shakeTimeoutTenths(-5), 0, 'and so is anything below it');
+  assert.equal(shakeTimeoutTenths(undefined), 0, 'and so is saying nothing');
+  assert.equal(shakeTimeoutTenths('20'), 200, 'a map option arrives as text');
+  assert.equal(shakeTimeoutSeconds(200), 20, 'tenths back to seconds');
+  assert.equal(shakeTimeoutSeconds(31), 3.1);
+  assert.equal(shakeTimeoutSeconds(0), 0, 'off stays off');
+  assert.equal(shakeTimeoutSeconds(undefined), 0);
 }
 
 // The shake clock the client counts down and the server re-asks. Only a sticky
 // flag shakes, only when the world has a timeout, and only once it has run.
 {
-  assert.equal(canShakeFlag('NJ', 20, 25), true, 'a bad flag held past its timeout');
-  assert.equal(canShakeFlag('NJ', 20, 5), false, 'and not before');
-  assert.equal(canShakeFlag('NJ', 20, 20 - SHAKE_DROP_GRACE_SECONDS), true, 'the grace absorbs clock drift');
-  assert.equal(canShakeFlag('NJ', 20, 20 - SHAKE_DROP_GRACE_SECONDS - 0.01), false, 'and no more than that');
+  assert.equal(canShakeFlag('NJ', 200, 25), true, 'a bad flag held past its timeout');
+  assert.equal(canShakeFlag('NJ', 200, 5), false, 'and not before');
+  assert.equal(canShakeFlag('NJ', 200, 20 - SHAKE_DROP_GRACE_SECONDS), true, 'the grace absorbs clock drift');
+  assert.equal(canShakeFlag('NJ', 200, 20 - SHAKE_DROP_GRACE_SECONDS - 0.01), false, 'and no more than that');
   assert.equal(canShakeFlag('NJ', 0, 1e6), false, 'no timeout, no shaking it off');
-  assert.equal(canShakeFlag('US', 20, 25), false, 'a good flag is dropped, not shaken');
-  assert.equal(canShakeFlag('B*', 20, 25), false, 'and a team flag is never sticky');
-  assert.equal(canShakeFlag(null, 20, 25), false, 'nor is nothing at all');
+  assert.equal(canShakeFlag('US', 200, 25), false, 'a good flag is dropped, not shaken');
+  assert.equal(canShakeFlag('B*', 200, 25), false, 'and a team flag is never sticky');
+  assert.equal(canShakeFlag(null, 200, 25), false, 'nor is nothing at all');
 }
 
 // CmdLineOptions.cxx:1288 -- -sw, a whole number of kills, clamped 1..20.

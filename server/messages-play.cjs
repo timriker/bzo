@@ -856,7 +856,7 @@ function handleDropFlag(player) {
       log(`"${player.name}" dropped ${name} at its own antidote after ${held.toFixed(2)}s`);
     } else {
       const refused = reportCheat(player, 'flagRejected',
-        `SHAKE REJECTED ${name} held ${held.toFixed(2)}s of ${FLAG_SHAKE_TIMEOUT}s`);
+        `SHAKE REJECTED ${name} held ${held.toFixed(2)}s of ${FLAG_SHAKE_TIMEOUT / 10}s`);
       if (refused) return;
       log(`"${player.name}" shook off ${name} after ${held.toFixed(2)}s`);
     }

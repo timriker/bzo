@@ -19,7 +19,7 @@ import {
 } from './drive.mjs';
 import { TANK } from './collision.mjs';
 import {
-  FLAG_ENDURANCE, getFiredShotFlag, getFlagEndurance, getShotEffects, getTankDimensionScale, normalizeShakeTimeout,
+  FLAG_ENDURANCE, getFiredShotFlag, getFlagEndurance, getShotEffects, getTankDimensionScale, shakeTimeoutSeconds,
 } from './flags.mjs';
 
 // How often a bot reports a move with nothing new in it, as a client's own
@@ -116,7 +116,7 @@ export class BotDriver {
   // Without it a bot only ever shook one off by its wins.
   shakeBadFlag(dt, config) {
     const flag = this.env.flag ? this.env.flag() : null;
-    const timeout = normalizeShakeTimeout(config.FLAG_SHAKE_TIMEOUT);
+    const timeout = shakeTimeoutSeconds(config.FLAG_SHAKE_TIMEOUT);
     if (!flag || timeout === 0 || getFlagEndurance(flag.type) !== FLAG_ENDURANCE.STICKY) {
       this.shakeIndex = null;
       return;
