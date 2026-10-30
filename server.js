@@ -3804,6 +3804,9 @@ const RUNTIME_REPLAYS_DIR = process.env.REPLAYS_PATH
 // which it keeps. An operator's plugin wins over a bundled one of the same
 // name. The two are one directory only in the old layout (`CONFIG_IS_LEGACY`).
 const BUNDLED_PLUGINS_DIR = path.join(__dirname, 'plugins');
+// The plugin host, made last of all (below) so a plugin's Init finds the whole
+// server defined; null until then, so a hook run during boot is a no-op.
+let plugins = null;
 const RUNTIME_PLUGINS_DIR = process.env.PLUGINS_PATH
   ? path.resolve(process.env.PLUGINS_PATH)
   : path.join(path.dirname(configPath), 'plugins');
@@ -7198,6 +7201,7 @@ function setWorldVariable(name, raw) {
   else liveBzdb.set(name, raw);
   const moved = applyWorldBzdb();
   broadcastAll({ type: 'setVar', name, value: raw });
+  pluginEvent('bz_eBZDBChange', () => ({ key: name, value: raw ?? worldVariableDefault(name) ?? '' }));
   return moved;
 }
 
@@ -8166,6 +8170,9 @@ class Player {
     this.teleportReentryBlockUntil = 0;
     this.teleportCooldownUntil = 0;
     handleRabbitSpawn(this);
+    pluginEvent('bz_ePlayerSpawnEvent', () => ({
+      playerID: Number(this.id), team: bzTeam(this.team), state: pluginState(this),
+    }));
   }
 
   // `forAdmin` adds the fields only an admin may see. It is the recipient's
@@ -8521,7 +8528,7 @@ function defineCommand(name, tier, help, run) {
 // commands; bzo's do, since Tab completes from this list too.
 function allServerCommands() {
   const all = new Map(SERVER_COMMANDS);
-  for (const command of plugins.commands()) {
+  for (const command of plugins?.commands() ?? []) {
     all.set(command.name, {
       name: command.name,
       tier: command.operator ? COMMAND_TIER.OPERATOR : COMMAND_TIER.OPEN,
@@ -10593,14 +10600,15 @@ const SETTABLE_VARIABLES = Object.freeze({
 const READ_ONLY_VARIABLES = new Set(['poll']);
 // Variables a plugin registers on a bzfs that loads it, with the plugin's
 // meaning and bzo's default, so `/set` finds them here as it would there.
+// ScoreRestorer's is bzo's own; a loaded plugin adds its own to
+// `pluginBzdbDefaults` (`bz_registerCustomBZDB*`).
 const PLUGIN_BZDB_DEFAULTS = Object.freeze({
   _scoreSaveTime: '120',
-  _disallowSelfCap: '0',
-  _delayTeamFlagGrab: '0',
 });
+const pluginBzdbDefaults = new Map();
 
 function worldVariableDefault(name) {
-  return BZDB_DEFAULTS[name] ?? PLUGIN_BZDB_DEFAULTS[name];
+  return BZDB_DEFAULTS[name] ?? PLUGIN_BZDB_DEFAULTS[name] ?? pluginBzdbDefaults.get(name);
 }
 
 function worldVariableExists(name) {
@@ -10727,7 +10735,7 @@ function handleServerCommand(player, text, channel = ALL_PLAYERS) {
       replyToPlayer(player, 'You do not have permission to run the {command} command', { command: pluginCommand.name });
       return true;
     }
-    if (plugins.slashCommand(Number(player.id), Number(channel), text)) {
+    if (plugins?.slashCommand(Number(player.id), Number(channel), text)) {
       log(`[CMD] "${player.name}": ${text}`);
       return true;
     }
@@ -11734,7 +11742,7 @@ let recordFile = null;
 // The game as a joining observer would be told it, everyone's view of it.
 function recorderSnapshot() {
   return {
-    bzdb: Object.fromEntries(liveBzdb),
+    bzdb: clientBzdb(),
     flags: getFlagStates(),
     players: [...players.values()].filter((player) => player.joined).map((player) => player.getState(false)),
     teamScores: getTeamScoreState(),
@@ -13785,7 +13793,14 @@ function grabFlag(player, flag, now = Date.now(), { checkPos = true } = {}) {
   // that turns it off, because the operator handing the flag out is not the
   // tank receiving it, and the flag need not be lying on the ground.
   if (checkPos && flag.status !== FLAG_STATUS.ON_GROUND) return;
-  if (checkPos && isTeamFlagGrabDelayed(player, flag, now)) return;
+  // bz_eAllowFlagGrab (bzfs.cxx:3715), asked of a grab a tank made: a
+  // plugin may refuse it.
+  if (checkPos) {
+    const allowed = pluginEvent('bz_eAllowFlagGrab', () => ({
+      playerID: Number(player.id), flagID: flag.index, flagType: flag.type, allow: true,
+    }));
+    if (allowed && !allowed.allow) return;
+  }
 
   const reach = GAME_CONFIG.TANK_SPEED + TANK.radius + FLAG_RADIUS;
   const extrapolated = player.getExtrapolatedPosition(now);
@@ -13809,6 +13824,9 @@ function grabFlag(player, flag, now = Date.now(), { checkPos = true } = {}) {
   log(`"${player.name}" grabbed ${getFlagType(flag.type).name} flag ${flag.index}`);
   broadcastAll({ type: 'grabFlag', playerId: player.id, flag: getFlagState(flag) });
   sendShotsLeft(player, flag);
+  pluginEvent('bz_eFlagGrabbedEvent', () => ({
+    playerID: Number(player.id), flagID: flag.index, flagType: flag.type, pos: pluginPos(flag.position),
+  }));
 }
 
 // The shots a held flag of a limited type has left, to its holder's HUD. A
@@ -14084,34 +14102,9 @@ function dropFlag(flag, now = Date.now()) {
 
   sendFlagDrop(flag);
   broadcastFlagUpdate(flag);
-}
-
-// allejo's ctfOverseer (github.com/allejo/ctfOverseer), which many CTF
-// servers load. `_disallowSelfCap` refuses a capture of the capper's own
-// flag. `_delayTeamFlagGrab` keeps a team flag from enemy hands for that many
-// seconds after it was captured; its own team may still take it. Both are off
-// unless a world sets them. The refusal is said at most every five seconds,
-// in the plugin's words.
-const teamFlagCappedAt = new Map();
-const delayedGrabWarnedAt = new Map();
-const DELAYED_GRAB_WARN_INTERVAL_MS = 5000;
-
-function isTeamFlagGrabDelayed(player, flag, now) {
-  const delay = Number(GAME_CONFIG.DELAY_TEAM_FLAG_GRAB);
-  if (flag.team === null || !Number.isFinite(delay) || delay <= 0) return false;
-  if (getTeamColorIndex(player.team) === flag.team) return false;
-  const cappedAt = teamFlagCappedAt.get(flag.team);
-  if (cappedAt === undefined || now >= cappedAt + (delay * 1000)) return false;
-  if (now > (delayedGrabWarnedAt.get(player.id) ?? -Infinity) + DELAYED_GRAB_WARN_INTERVAL_MS) {
-    delayedGrabWarnedAt.set(player.id, now);
-    const team = getTeamFromColorIndex(flag.team);
-    replyToPlayer(player, 'Team flags cannot be grabbed for {seconds} seconds after they were last capped.', { seconds: delay });
-    replyToPlayer(player, 'You cannot grab the {team} team flag for another ~{seconds} seconds', {
-      team: { msgid: `${team.charAt(0).toUpperCase()}${team.slice(1)}` },
-      seconds: Math.round((cappedAt + (delay * 1000) - now) / 1000),
-    });
-  }
-  return true;
+  pluginEvent('bz_eFlagDroppedEvent', () => ({
+    playerID: Number(owner.id), flagID: flag.index, flagType: flag.type, pos: pluginPos(landing),
+  }));
 }
 
 // captureFlag(). Either an enemy flag brought onto the player's own base, or the
@@ -14139,8 +14132,15 @@ function captureFlag(player, baseColorIndex) {
   const cappedIndex = flag.team;
   const cappedTeam = getTeamFromColorIndex(cappedIndex);
   const ownGoal = cappedIndex === cappingIndex;
-  if (ownGoal && GAME_CONFIG.DISALLOW_SELF_CAP === true) return;
-  teamFlagCappedAt.set(cappedIndex, Date.now());
+  // bz_eAllowCTFCaptureEvent (bzfs.cxx captureFlag): a plugin may refuse the
+  // capture, or let it stand without killing the team that lost the flag.
+  const capture = {
+    teamCapped: cappedIndex, teamCapping: cappingIndex, playerCapping: Number(player.id),
+    pos: pluginPos(player), rot: player.azimuth,
+  };
+  const allowed = pluginEvent('bz_eAllowCTFCaptureEvent', () => ({ ...capture, allow: true, killTeam: true }));
+  if (allowed && !allowed.allow) return;
+  const killTeam = !allowed || allowed.killTeam;
   log(
     `"${player.name}" captured the ${cappedTeam} flag ` +
     `on the ${getTeamFromColorIndex(baseColorIndex)} base${ownGoal ? ' (their own)' : ''}`
@@ -14167,7 +14167,7 @@ function captureFlag(player, baseColorIndex) {
   // Everyone on the losing team dies and comes back on their own base. Upstream
   // scores no deaths for them -- the team loss is the whole penalty.
   players.forEach((victim) => {
-    if (victim.team !== cappedTeam) return;
+    if (!killTeam || victim.team !== cappedTeam) return;
     // Even for a tank that is already dead: the capture is what decides where it
     // comes back, whether or not it was standing when the flag went.
     victim.restartOnBase = true;
@@ -14177,6 +14177,7 @@ function captureFlag(player, baseColorIndex) {
     // common with one is in applyDeath.
     applyDeath(victim, player.id, { captured: true });
   });
+  pluginEvent('bz_eCaptureEvent', () => ({ ...capture }));
 }
 
 // zapFlagByPlayer(). Death, disconnect, a pause, or a self-destruct all give up
@@ -15441,6 +15442,7 @@ function noteBotKill(victimId, killerId, hit) {
 function applyDeath(victim, killerId, hit) {
   victim.alive = false;
   noteBotKill(victim.id, killerId, hit);
+  const heldFlag = getPlayerFlag(victim.id);
   // playing.cxx:3827. A dead tank has nothing locked, so the marker goes with
   // it and a respawn starts clean. Missiles already in the air fly straight from
   // here, which is what upstream's `setTarget(NULL)` does to them too.
@@ -15462,6 +15464,21 @@ function applyDeath(victim, killerId, hit) {
   // After MsgKilled, as upstream sends them, so every client scores the kill
   // with the victim still the rabbit (`getKillScoreDeltas`).
   if (RABBIT_SELECTION && victim.id === rabbitPlayerId) anointNewRabbit(killerId);
+
+  pluginEvent('bz_ePlayerDieEvent', () => {
+    const killer = players.get(String(killerId));
+    return {
+      playerID: Number(victim.id),
+      team: bzTeam(victim.team),
+      killerID: Number(killerId),
+      killerTeam: killer ? bzTeam(killer.team) : -1,
+      flagKilledWith: hit?.shooterFlag ?? '',
+      shotID: Number.isInteger(hit?.projectileId) ? hit.projectileId : -1,
+      driverID: hit?.phydrv ?? -1,
+      state: pluginState(victim),
+      flagHeldWhenKilled: heldFlag ? heldFlag.index : -1,
+    };
+  });
 
   setTimeout(() => {
     if (!players.has(victim.id)) return;
@@ -16727,7 +16744,7 @@ function acceptConnection(ws, req) {
       operator: command.tier === COMMAND_TIER.OPERATOR,
     })),
     config: clientGameConfig,
-    bzdb: Object.fromEntries(liveBzdb),
+    bzdb: clientBzdb(),
     // The server's own `-set`s alone, which a Map Viewer preview lays its
     // map's over as the live world's are laid (`configForWorld`).
     serverBzdb: Object.fromEntries(SERVER_BZDB),
@@ -16839,6 +16856,11 @@ function acceptConnection(ws, req) {
     }
     clearTimeout(player.rejoinTimer);
     dropPlayerFlag(player.id);
+    if (wasJoined) {
+      pluginEvent('bz_ePlayerPartEvent', () => ({
+        playerID: Number(player.id), record: pluginRecord(player), reason: '',
+      }));
+    }
     players.delete(player.id);
     if (wasJoined) reportToListServer('part');
     scheduleBotReconcile();
@@ -17001,6 +17023,8 @@ messagesPlay.useServer({
   normalizeTankModelId,
   noteHeardFrom,
   noteRejoinWait,
+  pluginEvent,
+  pluginRecord,
   occupyShotSlot,
   openUdpChannel,
   players,
@@ -17745,8 +17769,137 @@ process.once('SIGUSR2', () => {
   setTimeout(() => process.kill(process.pid, 'SIGUSR2'), 100);
 });
 
+// bz_eTeamType (bzfsAPI.h:419), which numbers rabbit, hunter and observer
+// differently from the TeamColor the wire uses.
+const BZ_TEAM_ORDER = Object.freeze([
+  PLAYER_TEAM.ROGUE, PLAYER_TEAM.RED, PLAYER_TEAM.GREEN, PLAYER_TEAM.BLUE,
+  PLAYER_TEAM.PURPLE, PLAYER_TEAM.RABBIT, PLAYER_TEAM.HUNTER, PLAYER_TEAM.OBSERVER,
+]);
+// BZ_SERVER, BZ_ALLUSERS and BZ_NULLUSER (bzfsAPI.h:433).
+const BZ_SERVER = -2;
+const BZ_ALLUSERS = -1;
+const BZ_NULLUSER = -3;
+
+function bzTeam(team) {
+  return BZ_TEAM_ORDER.indexOf(team);
+}
+
+// An event, built and sent only when a plugin registered for it: the call
+// sites are hot paths, and with no plugin listening this is one Map lookup.
+// Returns the data the plugins saw, which an allow event is read back from.
+function pluginEvent(type, build) {
+  if (!plugins?.listening(type)) return null;
+  return plugins.callEvents(type, build());
+}
+
+function pluginPos(point) {
+  return [point.x, point.y, point.z];
+}
+
+// bz_PlayerUpdateState, as much of it as bzo keeps on the server.
+function pluginState(player) {
+  return { pos: pluginPos(player), rotation: player.azimuth };
+}
+
+// bz_BasePlayerRecord (bzfsAPI.h), filled as bz_updatePlayerData fills it.
+// `currentFlag` is upstream's label, "Shock Wave (+SW)"; `-1` and '' are
+// upstream's "none".
+function pluginRecord(player) {
+  const flag = getPlayerFlag(player.id);
+  const type = flag ? getFlagType(flag.type) : null;
+  return {
+    playerID: Number(player.id),
+    callsign: player.name,
+    team: bzTeam(player.team),
+    ipAddress: player.clientIP ?? '',
+    currentFlagID: flag ? flag.index : -1,
+    currentFlag: type ? `${type.name} (${type.quality === 0 ? '+' : '-'}${type.abbreviation})` : '',
+    spawned: player.alive === true,
+    verified: player.verified === true,
+    globalUser: player.verified === true,
+    bzID: player.bzid ? String(player.bzid) : '',
+    admin: isAdmin(player),
+    wins: player.wins,
+    losses: player.losses,
+    teamKills: player.tks,
+    clientVersion: player.clientVersion ?? '',
+  };
+}
+
+// The world's variables as a client is told them: what is set, over the
+// defaults loaded plugins registered, which a bzo client may act on before it
+// asks -- `_disallowSelfCap` keeps it from asking for a capture the
+// ctfOverseer plugin would refuse.
+function clientBzdb() {
+  return { ...Object.fromEntries(pluginBzdbDefaults), ...Object.fromEntries(liveBzdb) };
+}
+
+function bzdbValue(name) {
+  return liveBzdb.get(name) ?? worldVariableDefault(name);
+}
+
+// What a plugin's `bz` reaches of the server, by upstream's names
+// (include/bzfsAPI.h). Each plugin's own `bz` puts its registrations on top.
+const PLUGIN_API = Object.freeze({
+  BZ_SERVER, BZ_ALLUSERS, BZ_NULLUSER,
+  eNoTeam: -1, eRogueTeam: 0, eRedTeam: 1, eGreenTeam: 2, eBlueTeam: 3, ePurpleTeam: 4,
+  eRabbitTeam: 5, eHunterTeam: 6, eObservers: 7, eAdministrators: 8,
+
+  bz_getCurrentTime: () => Date.now() / 1000,
+  bz_getPlayerIndexList: () => [...players.values()].filter((player) => player.joined)
+    .map((player) => Number(player.id)),
+  bz_getPlayerCount: () => [...players.values()].filter((player) => player.joined).length,
+  bz_getPlayerByIndex: (id) => {
+    const player = players.get(String(id));
+    return player?.joined ? pluginRecord(player) : null;
+  },
+  bz_getPlayerCallsign: (id) => players.get(String(id))?.name ?? null,
+  bz_getPlayerTeam: (id) => {
+    const player = players.get(String(id));
+    return player ? bzTeam(player.team) : -1;
+  },
+
+  // bz_sendTextMessage(from, to, message). `to` is a player or BZ_ALLUSERS;
+  // `from` is BZ_SERVER or a player. `params` is bzo's: with it, `message` is
+  // a msgid with `{name}` slots, which a bzo client shows in its own language
+  // (`localized`).
+  bz_sendTextMessage: (from, to, message, params) => {
+    const src = from === BZ_SERVER ? SERVER_PLAYER : String(from);
+    const text = params ? localized(String(message), params) : { text: String(message) };
+    const line = { type: 'message', src, msgType: from === BZ_SERVER ? 'server' : 'chat', ...text, ts: Date.now() };
+    if (to === BZ_ALLUSERS) {
+      broadcastAll({ ...line, dst: ALL_PLAYERS });
+      return true;
+    }
+    const player = players.get(String(to));
+    if (!player) return false;
+    sendToPlayer(player, { ...line, dst: player.id });
+    return true;
+  },
+
+  bz_BZDBItemExists: (name) => bzdbValue(name) !== undefined,
+  bz_getBZDBString: (name) => String(bzdbValue(name) ?? ''),
+  bz_getBZDBDouble: (name) => Number(bzdbValue(name) ?? 0),
+  bz_getBZDBInt: (name) => Math.trunc(Number(bzdbValue(name) ?? 0)),
+  bz_getBZDBBool: (name) => bzdbIsTrue(bzdbValue(name) ?? '0'),
+  // bz_registerCustomBZDB* (bzfsAPI.h:1771): the variable exists from now on,
+  // with this default, until the server restarts.
+  bz_registerCustomBZDBDouble: (name, value) => registerPluginBzdb(name, value),
+  bz_registerCustomBZDBInt: (name, value) => registerPluginBzdb(name, Math.trunc(value)),
+  bz_registerCustomBZDBBool: (name, value) => registerPluginBzdb(name, value ? 1 : 0),
+  bz_registerCustomBZDBString: (name, value) => registerPluginBzdb(name, value),
+});
+
+function registerPluginBzdb(name, value) {
+  if (typeof name !== 'string' || !name || BZDB_DEFAULTS[name] !== undefined) return false;
+  pluginBzdbDefaults.set(name, String(value));
+  if (!liveBzdb.has(name)) broadcastAll({ type: 'setVar', name, value: String(value) });
+  return true;
+}
+
 // Last, so a plugin's Init finds the whole server defined.
-const plugins = createPluginHost({
+plugins = createPluginHost({
+  api: PLUGIN_API,
   dirs: [...new Set([BUNDLED_PLUGINS_DIR, RUNTIME_PLUGINS_DIR])],
   settings: serverConfig.plugins,
   log: (text) => log(`[PLUGIN] ${text}`),

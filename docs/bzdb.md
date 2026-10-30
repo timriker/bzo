@@ -113,8 +113,8 @@ flag scales both halves and not equally -- see AGENTS.md's **Shot timing**.
 | `_spawnSafeSWMod` | 1.5 | the share of a Shock Wave's reach a spawn keeps from it |
 | `_spawnMaxCompTime` | 0.01 | how long the spawn search looks before taking the farthest-from-enemies spot found |
 | `_disableBots` | 0 | no robots or autopilot on this server, as `-disableBots`; `/set` changes it live |
-| `_disallowSelfCap` | 0 (bzo's) | no capturing your own team's flag. From allejo's [ctfOverseer](https://github.com/allejo/ctfOverseer) plugin, whose default is on |
-| `_delayTeamFlagGrab` | 0 (bzo's) | seconds after a capture that the team flag cannot be grabbed by an enemy; its own team still may. ctfOverseer's, default 20 there |
+| `_disallowSelfCap` | 1 | no capturing your own team's flag. Only while bzo's bundled `ctfOverseer` plugin is on (`"plugins": { "ctfOverseer": true }` in `server.json`), after allejo's [ctfOverseer](https://github.com/allejo/ctfOverseer), whose default this is |
+| `_delayTeamFlagGrab` | 20 | seconds after a capture that the team flag cannot be grabbed by an enemy; its own team still may. The same plugin |
 | `noWalls`, `freeCtfSpawns` | 0 | the `world` block's two switches, which upstream keeps as BZDB: no border wall, and a CTF tank spawning anywhere rather than on its base |
 
 `_wallHeight` may be 0: the visible wall is gone, every shot leaves the world

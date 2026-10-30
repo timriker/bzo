@@ -110,6 +110,8 @@ let noteRejoinWait;
 let occupyShotSlot;
 let openUdpChannel;
 let players;
+let pluginEvent;
+let pluginRecord;
 let projectiles;
 let queueChannelMove;
 let refreshVoiceRosters;
@@ -206,6 +208,8 @@ function useServer(deps, live) {
     normalizeTankModelId,
     noteHeardFrom,
     noteRejoinWait,
+    pluginEvent,
+    pluginRecord,
     occupyShotSlot,
     openUdpChannel,
     players,
@@ -1148,6 +1152,9 @@ function handleJoinGame(player, ws, message) {
   }
 
   broadcastPlayerRecord('playerJoined', player);
+  pluginEvent('bz_ePlayerJoinEvent', () => ({
+    playerID: Number(player.id), record: pluginRecord(player), reason: '',
+  }));
   if (scoreRestored) replyToPlayer(player, scoreRestored);
   clearTimeout(player.rejoinTimer);
   if (rejoinWait > 0) {

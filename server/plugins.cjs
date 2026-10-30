@@ -64,6 +64,12 @@ const EVENT_SET = new Set(EVENT_TYPES);
 
 const META_FIELDS = Object.freeze(['name', 'version', 'author', 'description']);
 
+// How often bz_eTickEvent fires while a plugin listens for it. Upstream's comes
+// once per pass of bzfs's main loop, whose wait a plugin may shorten
+// (`MaxWaitTime`); bzo has no such loop, and a tenth of a second is what bzfs's
+// own timers are written against. Nothing runs while nobody listens.
+const TICK_MS = 100;
+
 // What a file needs before it is loaded at all.
 function checkPlugin(plugin) {
   if (!plugin || typeof plugin !== 'object') return 'exports nothing';
@@ -119,6 +125,18 @@ function createPluginHost({
   const entries = new Map(); // id -> { id, file, bundled, meta, state, error, plugin, events, ... }
   const listeners = new Map(); // event type -> Set of entries
   const slashCommands = new Map(); // command, lowercase, no slash -> { entry, handler }
+  let tickTimer = null;
+
+  function syncTick() {
+    const wanted = listeners.has('bz_eTickEvent');
+    if (wanted && !tickTimer) {
+      tickTimer = timers.setInterval(() => callEvents('bz_eTickEvent', { eventTime: Date.now() / 1000 }), TICK_MS);
+      tickTimer?.unref?.();
+    } else if (!wanted && tickTimer) {
+      timers.clearInterval(tickTimer);
+      tickTimer = null;
+    }
+  }
 
   function report(entry, what, error) {
     log(`${entry.id}: ${what}: ${error?.stack || error}`);
@@ -132,12 +150,14 @@ function createPluginHost({
       entry.events.add(type);
       if (!listeners.has(type)) listeners.set(type, new Set());
       listeners.get(type).add(entry);
+      syncTick();
       return true;
     };
     bz.Remove = (type) => {
       entry.events.delete(type);
       listeners.get(type)?.delete(entry);
       if (listeners.get(type)?.size === 0) listeners.delete(type);
+      syncTick();
       return true;
     };
     // bz_registerCustomSlashCommand (bzfsAPI.cxx:2648). A handler is upstream's
@@ -203,6 +223,7 @@ function createPluginHost({
       if (listeners.get(type)?.size === 0) listeners.delete(type);
     }
     entry.events.clear();
+    syncTick();
     for (const name of entry.commands) {
       if (slashCommands.get(name)?.entry === entry) slashCommands.delete(name);
     }

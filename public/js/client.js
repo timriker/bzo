@@ -15232,7 +15232,8 @@ function checkFlagCapture() {
   const ownFlagOnEnemyBase = flagTeamIndex === myTeamIndex && baseTeamIndex !== myTeamIndex;
   const enemyFlagOnMyBase = flagTeamIndex !== myTeamIndex && baseTeamIndex === myTeamIndex;
   if (!ownFlagOnEnemyBase && !enemyFlagOnMyBase) return;
-  // `_disallowSelfCap`: the server would refuse it.
+  // `_disallowSelfCap`, the ctfOverseer plugin's: the server would refuse it,
+  // so it is not asked. Upstream's client asks every frame.
   if (ownFlagOnEnemyBase && gameConfig?.DISALLOW_SELF_CAP === true) return;
 
   const now = performance.now();

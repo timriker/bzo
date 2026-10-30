@@ -143,5 +143,76 @@ assert.deepEqual(pluginSetting({ x: { enabled: false, a: 1 } }, 'x'), { enabled:
 assert.ok(EVENT_TYPES.includes('bz_eAuthenticatonComplete'), "upstream's spelling");
 assert.equal(new Set(EVENT_TYPES).size, EVENT_TYPES.length);
 
+// The tick runs only while a plugin listens for it.
+{
+  const intervals = new Set();
+  const fakeTimers = {
+    setInterval: (fn) => { const handle = { fn }; intervals.add(handle); return handle; },
+    clearInterval: (handle) => intervals.delete(handle),
+    setTimeout: () => ({}),
+    clearTimeout: () => {},
+  };
+  const tickDir = path.join(root, 'tick');
+  fs.mkdirSync(tickDir);
+  write(tickDir, 'ticker', `
+module.exports = {
+  ${META},
+  Init(bz) { this.ticks = 0; bz.Register(bz.bz_eTickEvent); },
+  Event(data) { if (data.eventType === 'bz_eTickEvent' && data.eventTime > 0) this.ticks += 1; },
+};
+`);
+  const tickHost = createPluginHost({ dirs: [tickDir], timers: fakeTimers });
+  tickHost.loadAll();
+  assert.equal(intervals.size, 1, 'a listener starts the tick');
+  [...intervals][0].fn();
+  assert.equal(require(path.join(tickDir, 'ticker.cjs')).ticks, 1);
+  tickHost.unload('ticker');
+  assert.equal(intervals.size, 0, 'and the last one leaving stops it');
+}
+
+// The bundled ctfOverseer against a stub of the server's API.
+{
+  const vars = new Map();
+  const sent = [];
+  const teams = { 1: 1, 2: 2 };
+  const api = {
+    BZ_SERVER: -2,
+    bz_registerCustomBZDBBool: (name, value) => { vars.set(name, value ? '1' : '0'); return true; },
+    bz_registerCustomBZDBInt: (name, value) => { vars.set(name, String(value)); return true; },
+    bz_getBZDBBool: (name) => vars.get(name) === '1',
+    bz_getBZDBDouble: (name) => Number(vars.get(name)),
+    bz_getPlayerTeam: (id) => teams[id],
+    bz_sendTextMessage: (from, to, text, params) => { sent.push({ to, text, params }); return true; },
+  };
+  const bundledDir = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..', 'plugins');
+  const off = createPluginHost({ dirs: [bundledDir], api });
+  off.loadAll();
+  assert.equal(off.list().find((entry) => entry.id === 'ctfOverseer').state, 'off', 'off by default');
+  assert.equal(vars.size, 0, 'and registers nothing');
+
+  const ctf = createPluginHost({ dirs: [bundledDir], api, settings: { ctfOverseer: true } });
+  ctf.loadAll();
+  assert.equal(vars.get('_disallowSelfCap'), '1', "on, with allejo's defaults");
+  assert.equal(vars.get('_delayTeamFlagGrab'), '20');
+  const capture = (capped, capping) => ctf.callEvents('bz_eAllowCTFCaptureEvent',
+    { teamCapped: capped, teamCapping: capping, playerCapping: 1, allow: true, killTeam: true });
+  assert.equal(capture(1, 1).allow, false, 'a self capture is refused');
+  assert.equal(capture(2, 1).allow, true, 'an enemy flag still captures');
+  vars.set('_disallowSelfCap', '0');
+  assert.equal(capture(1, 1).allow, true, 'and a world may allow self captures again');
+
+  const grab = (player, type) => ctf.callEvents('bz_eAllowFlagGrab',
+    { playerID: player, flagID: 0, flagType: type, allow: true }).allow;
+  assert.equal(grab(1, 'G*'), true, 'no capture yet, no wait');
+  ctf.callEvents('bz_eCaptureEvent', { teamCapped: 2, teamCapping: 1 });
+  assert.equal(grab(1, 'G*'), false, 'an enemy waits after a capture');
+  assert.equal(grab(2, 'G*'), true, 'the flag\'s own team does not');
+  assert.equal(grab(1, 'SW'), true, 'nor does any other flag');
+  assert.equal(sent.length, 2, 'the refusal is said once');
+  assert.equal(sent[1].params.team.msgid, 'Green');
+  assert.equal(grab(1, 'G*'), false);
+  assert.equal(sent.length, 2, 'and not again within five seconds');
+}
+
 fs.rmSync(root, { recursive: true, force: true });
 console.log('plugin host tests passed');

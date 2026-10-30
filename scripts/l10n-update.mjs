@@ -132,15 +132,17 @@ function writeMarkupPot(file) {
 }
 
 // The client, the server's replies -- `replyToPlayer`'s text and
-// `localized`'s msgid, which a bzo client looks up -- and the pages the server
-// renders in the reader's language with `t` from `l10n.translator`.
+// `localized`'s msgid, which a bzo client looks up -- the bundled plugins'
+// `bz_sendTextMessage`, and the pages the server renders in the reader's
+// language with `t` from `l10n.translator`.
 function sources() {
   const list = (dir, pattern) => fs.readdirSync(path.join(rootDir, dir))
     .filter((name) => pattern.test(name))
     .sort()
     .map((name) => path.join(dir, name));
-  const replies = (file) => /\b(replyToPlayer|localized)\(|\bt\('/.test(fs.readFileSync(path.join(rootDir, file), 'utf8'));
-  return [...list('public/js', /\.(m?js)$/), ...['server.js', ...list('server', /\.cjs$/)].filter(replies)];
+  const replies = (file) => /\b(replyToPlayer|localized|bz_sendTextMessage)\(|\bt\('/.test(fs.readFileSync(path.join(rootDir, file), 'utf8'));
+  return [...list('public/js', /\.(m?js)$/),
+    ...['server.js', ...list('server', /\.cjs$/), ...list('plugins', /\.cjs$/)].filter(replies)];
 }
 
 const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'bzo-l10n-'));
@@ -149,7 +151,7 @@ try {
   writeMarkupPot(markupPot);
   execFileSync('xgettext', [
     '--language=JavaScript', '--from-code=UTF-8',
-    '--keyword', '--keyword=t', '--keyword=N_', '--keyword=localized', '--keyword=replyToPlayer:2',
+    '--keyword', '--keyword=t', '--keyword=N_', '--keyword=localized', '--keyword=replyToPlayer:2', '--keyword=bz_sendTextMessage:3',
     '--add-comments=TRANSLATORS:',
     '--package-name=bzo', '--msgid-bugs-address=https://github.com/timriker/bzo/issues',
     '--output', path.join(tmpDir, 'js.pot'),

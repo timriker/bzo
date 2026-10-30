@@ -92,10 +92,16 @@ local file, so the rights are wider than an upstream operator expects:
 ## Built-ins that move to plugins
 
 Features bzo built in that are plugins elsewhere, or are optional extras that
-fit one. Each moves out, keeps its BZDB variables, and is on by default:
+fit one. Each moves out and keeps its BZDB variables. Turning the plugin on or
+off is the switch, so a plugin is never loaded and idle: one whose behaviour
+was on in bzo ships on, one that was off ships off, and when on it does what
+its upstream does by default.
 
-- `_scoreSaveTime`: allejo's ScoreRestorer.
-- `_disallowSelfCap`: allejo's ctfOverseer.
+- `_scoreSaveTime`: allejo's ScoreRestorer, on. Still in the core: it keeps
+  scores across a restart and gives a returning bot its old slot, which the
+  plugin API cannot do yet.
+- `_disallowSelfCap` and `_delayTeamFlagGrab`: allejo's ctfOverseer,
+  `plugins/ctfOverseer.cjs`. Off, as both were; on, 1 and 20 as allejo's.
 - The Discord bridge (`docs/discord.md`): the job upstream's ircRelay plugin
   does, and the shape Matrix and IRC in `docs/chat-bridge-plan.md` would take.
 - The compass letters for native clients; see "The world and the network".
