@@ -66,7 +66,7 @@ function handleMessage(player, ws, message) {
   // beginning with `/` is a command whatever channel it was aimed at, and
   // it is never said out loud -- a mistyped `/kick bob` must never
   // announce itself to the room as chat.
-  if (handleServerCommand(player, text)) return;
+  if (handleServerCommand(player, text, targetId)) return;
 
   deliverChatMessage(player, targetId, msgType, text);
   return;

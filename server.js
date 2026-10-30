@@ -212,6 +212,7 @@ const {
   worldConfig,
 } = require('./public/js/bzdb.mjs');
 const { POLL_DEFAULTS, VotingArbiter, parseVoteAnswer } = require('./server/polls.cjs');
+const { createPluginHost } = require('./server/plugins.cjs');
 const { getKillScoreDeltas } = require('./public/js/scoring.mjs');
 const { createBanStore, parseDuration } = require('./server/bans.cjs');
 const {
@@ -3798,6 +3799,14 @@ const BUNDLED_REPLAYS_DIR = path.join(__dirname, 'replays');
 const RUNTIME_REPLAYS_DIR = process.env.REPLAYS_PATH
   ? path.resolve(process.env.REPLAYS_PATH)
   : path.join(path.dirname(configPath), 'replays');
+// Server plugins (docs/plugins-plan.md), laid out as maps are: the bundled
+// ones, which an upgrade replaces, then the operator's beside `server.json`,
+// which it keeps. An operator's plugin wins over a bundled one of the same
+// name. The two are one directory only in the old layout (`CONFIG_IS_LEGACY`).
+const BUNDLED_PLUGINS_DIR = path.join(__dirname, 'plugins');
+const RUNTIME_PLUGINS_DIR = process.env.PLUGINS_PATH
+  ? path.resolve(process.env.PLUGINS_PATH)
+  : path.join(path.dirname(configPath), 'plugins');
 
 // The Operator panel's "Import Remote Map" dropdown, and the public `/list`
 // page below, both read this -- one POST to the public list server decodes
@@ -8506,11 +8515,28 @@ function defineCommand(name, tier, help, run) {
   SERVER_COMMANDS.set(name, { name, tier, help, run });
 }
 
+// The built-in commands and the loaded plugins' together, by name. A plugin's
+// takes the place of a built-in one it shares a name with, as it does when run
+// (`handleServerCommand`). Upstream's `/?` and `/help` never list a plugin's
+// commands; bzo's do, since Tab completes from this list too.
+function allServerCommands() {
+  const all = new Map(SERVER_COMMANDS);
+  for (const command of plugins.commands()) {
+    all.set(command.name, {
+      name: command.name,
+      tier: command.operator ? COMMAND_TIER.OPERATOR : COMMAND_TIER.OPEN,
+      help: command.help || `- from the ${command.plugin} plugin`,
+      plugin: command.plugin,
+    });
+  }
+  return all;
+}
+
 // CmdList (commands.cxx:467). The names only; `/<prefix>?` is what shows help.
 defineCommand('/?', COMMAND_TIER.OPEN,
   '- display the list of server-side commands',
   (player) => {
-    const names = [...SERVER_COMMANDS.values()]
+    const names = [...allServerCommands().values()]
       .filter((command) => canRunCommand(player, command))
       .map((command) => command.name);
     for (const line of formatCommandList(names)) replyToPlayer(player, line);
@@ -8525,7 +8551,7 @@ defineCommand('/help', COMMAND_TIER.OPEN,
   '- display the commands you may run, with what each one does',
   (player) => {
     replyToPlayer(player, 'Commands (use /<command>? for one of them):');
-    for (const command of [...SERVER_COMMANDS.values()].sort((a, b) => a.name.localeCompare(b.name))) {
+    for (const command of [...allServerCommands().values()].sort((a, b) => a.name.localeCompare(b.name))) {
       if (!canRunCommand(player, command)) continue;
       replyToPlayer(player, `${command.name} ${command.help}`);
     }
@@ -10672,14 +10698,15 @@ function canRunCommand(player, command) {
 // answering "Unknown command".
 //
 // Returns true when the line was a command line, handled or not.
-function handleServerCommand(player, text) {
+function handleServerCommand(player, text, channel = ALL_PLAYERS) {
   if (!isCommandLine(text)) return false;
 
   // CmdHelp (commands.cxx:476): `/co?` is the help for every command starting
   // with `co`. Asked before the table, since `/?` is itself a name.
-  const helpPrefix = SERVER_COMMANDS.has(text.trim().toLowerCase()) ? null : parseHelpPrefix(text);
+  const commands = allServerCommands();
+  const helpPrefix = commands.has(text.trim().toLowerCase()) ? null : parseHelpPrefix(text);
   if (helpPrefix !== null) {
-    const matches = [...SERVER_COMMANDS.values()]
+    const matches = [...commands.values()]
       .filter((command) => command.name.startsWith(helpPrefix) && canRunCommand(player, command))
       .sort((a, b) => a.name.localeCompare(b.name));
     if (matches.length === 0) {
@@ -10689,6 +10716,21 @@ function handleServerCommand(player, text) {
     }
     log(`[CMD] "${player.name}": ${text}`);
     return true;
+  }
+
+  // A plugin's command goes before the built-in one of the same name, as
+  // upstream's custom commands do (commands.cxx:3903).
+  const pluginCommand = commands.get(parseCommandLine(text)?.name);
+  if (pluginCommand?.plugin) {
+    if (!canRunCommand(player, pluginCommand)) {
+      log(`[CMD] "${player.name}": ${text} -- refused, not an admin`);
+      replyToPlayer(player, 'You do not have permission to run the {command} command', { command: pluginCommand.name });
+      return true;
+    }
+    if (plugins.slashCommand(Number(player.id), Number(channel), text)) {
+      log(`[CMD] "${player.name}": ${text}`);
+      return true;
+    }
   }
 
   const parsed = parseCommandLine(text);
@@ -16676,7 +16718,7 @@ function acceptConnection(ws, req) {
     // it drifts from bzfs. `operator` is the tier, so the client can drop the
     // ones this player may not run without being sent a second list when they
     // log in and may.
-    commands: [...SERVER_COMMANDS.values()].map((command) => ({
+    commands: [...allServerCommands().values()].map((command) => ({
       name: command.name,
       operator: command.tier === COMMAND_TIER.OPERATOR,
     })),
@@ -17698,6 +17740,14 @@ process.once('SIGUSR2', () => {
   sayServerIsGoing(localized('Server restarting'));
   setTimeout(() => process.kill(process.pid, 'SIGUSR2'), 100);
 });
+
+// Last, so a plugin's Init finds the whole server defined.
+const plugins = createPluginHost({
+  dirs: [...new Set([BUNDLED_PLUGINS_DIR, RUNTIME_PLUGINS_DIR])],
+  settings: serverConfig.plugins,
+  log: (text) => log(`[PLUGIN] ${text}`),
+});
+plugins.loadAll();
 
 // Watch for file changes and auto-reload clients
 const publicDir = path.join(__dirname, 'public');

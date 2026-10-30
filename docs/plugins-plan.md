@@ -35,9 +35,19 @@ The groups at 12 may all be one operator's servers.
   chat filters all need a reply before the server goes on.
 - **Cheap per tick.** The tick event and per-update events must cost nothing
   when no plugin registered for them.
-- **Configured in `server.json`.** A list of plugins, each with its options.
-  bzo's own plugins are in the default list, so they are on unless an
-  operator removes them.
+- **Two directories.** bzo's own plugins are in `plugins/`, which an upgrade
+  replaces. Plugins an operator installs are in `plugins/` beside
+  `server.json` (`PLUGINS_PATH`): `data/plugins` in a checkout,
+  `/data/plugins` in Docker, which an upgrade keeps. An installed plugin wins
+  over a bundled one of the same name, and the log says so, since that
+  bundled plugin's upgrades then never load.
+- **One file each.** A plugin is a `.cjs` file. It exports `meta` and
+  upstream's `Init`, `Event` and `Cleanup`; `Init` gets the API as `bz` and
+  calls `bz.Register`, as a C++ plugin calls `Register`. The header of
+  `server/plugins.cjs` has an example.
+- **Configured in `server.json`.** `"plugins"` maps a plugin's file name to
+  `false` (off) or an object of its options. Every plugin found is on unless
+  turned off, so bzo's own are on by default.
 - **Proxied games are out of scope.** A game bzo proxies runs on the target
   server, which runs its own plugins.
 - **Both client kinds.** Whatever a plugin does must reach native BZFlag
@@ -60,10 +70,11 @@ every installed plugin, bundled or uploaded:
   their settings in BZDB variables show those instead.
 - **Its state.** Loaded, off, or failed with the error. A plugin that throws
   while loading is left off and the server keeps running.
-- **Upload.** An admin uploads a plugin file the same way as a map. It is
-  recorded in the upload record (`server/uploads.cjs`) so the panel may delete
-  it again; a bundled plugin can only be turned off. An upload that replaces a
-  plugin of the same name shows both versions before Apply.
+- **Upload.** An admin uploads a plugin file the same way as a map, into
+  `data/plugins`, so the panel may delete it again; a bundled plugin can
+  only be turned off. An upload that replaces a plugin of the same name shows
+  both versions before Apply, and an installed copy hiding a newer bundled one
+  says so.
 
 bzo ships its own plugins, and admins may install more.
 
@@ -112,8 +123,10 @@ XR included, so custom weapons need no new client effect. What is new:
 - the bzo client accepts a custom flag type and shows its abbreviation and
   help;
 - native clients get `MsgFlagType` when they join;
-- kill credit for server shots. Check what upstream credits and how plugins
-  use shot metadata before choosing.
+- nothing for kill credit. Upstream's server shots kill as `ServerPlayer`
+  (`playerKilled`, `src/bzfs/bzfs.cxx:3345`): no player scores, and the victim
+  reads "Killed by the server", as from bzo's world weapons now. A plugin that
+  wants its player credited scores them itself.
 
 ## The world and the network
 
