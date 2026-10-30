@@ -66,6 +66,9 @@ export function detectRenderCapabilities(renderer, hints = collectDeviceHints())
     // A context can be created with a stencil buffer and still be handed one
     // with no bits, which is the case the stencil shadow pass cannot survive.
     stencil: Boolean(attributes.stencil) && (parameter('STENCIL_BITS') || 0) > 0,
+    // How finely depth is told apart. Surfaces a few centimetres apart at a
+    // hundred metres need 24 bits; a 16-bit buffer draws them interleaved.
+    depthBits: parameter('DEPTH_BITS'),
     timerQuery: Boolean(timerQuery),
     maxTextureSize: parameter('MAX_TEXTURE_SIZE'),
     maxSamples: parameter('MAX_SAMPLES') || 0,

@@ -22,6 +22,12 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
   their own language in Settings.
 
 ### Fixed
+- First person in the four-barrel tank and the ship looks out over the hull
+  instead of from inside it: their barrels ride lower than their bodies, and
+  the eye sat at the barrels.
+- A proxied game's shots in the air and bad-flag shaking are the target
+  server's, from its `MsgGameSettings`, not this server's own map: a proxied
+  player saw the local `-ms` in the HUD and fired by it.
 - `noshadow` stated on a mesh itself, not through a material, now reaches
   its faces.
 

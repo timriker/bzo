@@ -40,6 +40,7 @@
 // firing once as it starts. `--mobile 1` joins as a
 // phone, the window its screen: `--window 540,960 --mobile 1` is one upright.
 // `--camera third-person` sets the camera mode once joined.
+// `--model bzfourtank` drives that tank model, set before the page loads.
 // `--css '#scoreboard { display: none }'` adds a style sheet once joined,
 // to leave what is not wanted out of a screenshot. `--select-chat 1`
 // opens chat entry, drags across the last transcript line with real mouse
@@ -181,6 +182,12 @@ if (args.get('mobile')) {
 // in for one, which is how the bot fill is tested.
 const pageUrl = new URL(url);
 if (!args.get('human')) pageUrl.searchParams.set('bot', '');
+const tankModel = args.get('model') || '';
+if (tankModel) {
+  await send('Page.addScriptToEvaluateOnNewDocument', {
+    source: `localStorage.setItem('tankModelId', ${JSON.stringify(tankModel)});`,
+  });
+}
 await send('Page.navigate', { url: pageUrl.href });
 
 // The entry dialog is what a browser that has never been here gets, and it can

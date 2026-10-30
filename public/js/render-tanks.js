@@ -23,6 +23,10 @@ function maxMuzzleForward() {
   return (TANK.length / 2) + 0.1;
 }
 const MUZZLE_TIP_EPSILON = 0.03;
+// How far over its own body a first-person eye sits at the least: the stock
+// tank's muzzle clears its body by 0.29 and wheeled6's by 0.20, which this
+// leaves where they are.
+const CAMERA_HULL_CLEARANCE = 0.2;
 
 // Tank units of belt per tile of the tread image. Measured off bzflag-notracks.obj,
 // whose authored tread runs u 0..1.6 around a loop of roughly 10.3 units, so a
@@ -260,11 +264,24 @@ export class TankRendering {
     return { forward, height };
   }
 
-  _setTankMuzzleData(tankGroup, barrel) {
+  // The first-person eye sits at the muzzle, as upstream's does
+  // (playing.cxx:5996) -- over its tank's hull, inside the turret first
+  // person hides. A model whose barrels ride lower than its hull (bzfourtank's
+  // sit at 0.4 under a body 2.0 high, bzship's under its superstructure) would
+  // put the eye inside a body that stays drawn, so the eye clears the body's
+  // top instead. Shots still leave from the muzzle.
+  _setTankMuzzleData(tankGroup, barrel, body) {
     const muzzle = this._computeMuzzleFromBarrel(barrel);
     tankGroup.userData.muzzleForward = muzzle.forward;
     tankGroup.userData.muzzleHeight = muzzle.height;
-    tankGroup.userData.cameraHeight = muzzle.height;
+    tankGroup.userData.cameraHeight = Math.max(muzzle.height, this._bodyTop(body) + CAMERA_HULL_CLEARANCE);
+  }
+
+  _bodyTop(body) {
+    if (!body?.geometry) return Number.NEGATIVE_INFINITY;
+    body.updateMatrix();
+    if (!body.geometry.boundingBox) body.geometry.computeBoundingBox();
+    return body.geometry.boundingBox.clone().applyMatrix4(body.matrix).max.z;
   }
 
   // The crossing-wall pair for one tank: `plane` is the wall it is straddling
@@ -1251,7 +1268,7 @@ export class TankRendering {
     const barrel = this._cloneTemplateMesh(templateParts.barrel, barrelMaterial);
     tankGroup.add(barrel);
     tankGroup.userData.barrel = barrel;
-    this._setTankMuzzleData(tankGroup, barrel);
+    this._setTankMuzzleData(tankGroup, barrel, body);
 
     tankGroup.userData.explodableParts = [
       body,
