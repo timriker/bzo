@@ -38,7 +38,7 @@ msgstr "Mapa:"
 
 #: public/index.html:69
 msgid "Teams"
-msgstr "Equipas"
+msgstr "Times"
 
 #: public/index.html:73
 msgid "Rabbit Chase:"
@@ -62,7 +62,7 @@ msgstr "Aleatório"
 
 #: public/index.html:84
 msgid "Jumping"
-msgstr "Salto"
+msgstr "Pulo"
 
 #: public/index.html:91
 msgid "Playing Limit:"
@@ -70,19 +70,19 @@ msgstr "Limite de jogadores:"
 
 #: public/index.html:101
 msgid "Upload Map:"
-msgstr "Carregar mapa:"
+msgstr "Enviar mapa:"
 
 #: public/index.html:103 public/index.html:108
 msgid "Upload"
-msgstr "Carregar"
+msgstr "Enviar"
 
 #: public/index.html:106
 msgid "Upload Replay:"
-msgstr "Carregar repetição:"
+msgstr "Enviar repetição:"
 
 #: public/index.html:113
 msgid "Save Recording:"
-msgstr "Guardar gravação:"
+msgstr "Salvar gravação:"
 
 #: public/index.html:114
 msgid "name"
@@ -94,15 +94,15 @@ msgstr "tudo"
 
 #: public/index.html:116
 msgid "Save"
-msgstr "Guardar"
+msgstr "Salvar"
 
 #: public/index.html:122
 msgid "Delete Upload:"
-msgstr "Apagar carregamento:"
+msgstr "Excluir envio:"
 
 #: public/index.html:124
 msgid "Delete"
-msgstr "Apagar"
+msgstr "Excluir"
 
 #: public/index.html:128
 msgid "Time Limit:"
@@ -110,7 +110,7 @@ msgstr "Limite de tempo:"
 
 #: public/index.html:137
 msgid "Manual Start (wait for /countdown)"
-msgstr "Início manual (esperar por /countdown)"
+msgstr "Início manual (aguardar /countdown)"
 
 #: public/index.html:141
 msgid "Player Score Limit:"
@@ -118,7 +118,7 @@ msgstr "Limite de pontos por jogador:"
 
 #: public/index.html:148
 msgid "Team Score Limit:"
-msgstr "Limite de pontos por equipa:"
+msgstr "Limite de pontos por time:"
 
 #: public/index.html:157
 msgid "Bot Fill:"
@@ -154,7 +154,7 @@ msgstr "Chave do servidor de listas:"
 
 #: public/index.html:184
 msgid "paste key from /list-server"
-msgstr "cola a chave de /list-server"
+msgstr "cole a chave de /list-server"
 
 #: public/index.html:185
 msgid "Set"
@@ -175,7 +175,7 @@ msgstr "Vista"
 
 #: public/index.html:210
 msgid "Running BZFlag servers"
-msgstr "Servidores BZFlag a correr"
+msgstr "Servidores BZFlag em execução"
 
 #: public/index.html:212 public/index.html:226 public/index.html:239
 msgid "Filter…"
@@ -203,7 +203,7 @@ msgstr "Título"
 
 #: public/index.html:219
 msgid "Host"
-msgstr "Anfitrião"
+msgstr "Host"
 
 #: public/index.html:219
 msgid "Port"
@@ -215,7 +215,7 @@ msgstr "Mapas locais"
 
 #: public/index.html:231 public/index.html:244
 msgid "File"
-msgstr "Ficheiro"
+msgstr "Arquivo"
 
 #: public/index.html:231
 msgid "Size"
@@ -247,7 +247,7 @@ msgstr "Mapa"
 
 #: public/index.html:258 public/index.html:283
 msgid "Settings"
-msgstr "Definições"
+msgstr "Configurações"
 
 #: public/index.html:262 public/index.html:386
 msgid "Microphone off"
@@ -259,15 +259,15 @@ msgstr "Entrar no modo RV WebXR"
 
 #: public/index.html:267
 msgid "Open Settings"
-msgstr "Abrir definições"
+msgstr "Abrir configurações"
 
 #: public/index.html:271
 msgid "Hide the scoreboard and chat"
-msgstr "Ocultar o marcador e o chat"
+msgstr "Ocultar o placar e o chat"
 
 #: public/index.html:289
 msgid "Gamepad and VR controller rumble"
-msgstr "Vibração do comando e dos controladores RV"
+msgstr "Vibração do controle e dos controles de RV"
 
 #: public/index.html:291
 msgid "Install as an app"
@@ -282,7 +282,7 @@ msgid ""
 "Hunt: step through players and Clear with the arrows, select to mark, unmark "
 "or clear"
 msgstr ""
-"Caça: percorre os jogadores e Limpar com as setas; seleciona para marcar, "
+"Caça: percorra os jogadores e Limpar com as setas; selecione para marcar, "
 "desmarcar ou limpar"
 
 #: public/index.html:299
@@ -290,12 +290,12 @@ msgid ""
 "Autopilot: choose None or a pilot with the arrows, select to turn it on or "
 "off"
 msgstr ""
-"Piloto automático: escolhe Nenhum ou um piloto com as setas; seleciona para "
-"o ligar ou desligar"
+"Piloto automático: escolha Nenhum ou um piloto com as setas; selecione para "
+"ligá-lo ou desligá-lo"
 
 #: public/index.html:303
 msgid "Copy a link back to this map, camera and position"
-msgstr "Copiar uma ligação para este mapa, câmara e posição"
+msgstr "Copiar um link para este mapa, câmera e posição"
 
 #: public/index.html:304
 msgid "Wireframe Mode"
@@ -311,19 +311,19 @@ msgstr "Iluminação dinâmica"
 
 #: public/index.html:308
 msgid "Open Audio Settings"
-msgstr "Abrir definições de áudio"
+msgstr "Abrir configurações de áudio"
 
 #: public/index.html:315
 msgid "Audio Settings"
-msgstr "Definições de áudio"
+msgstr "Configurações de áudio"
 
 #: public/index.html:317
 msgid ""
 "Each level runs from Off to 100%. Nearby voice uses your microphone only "
 "after you grant permission. Use B to toggle your microphone."
 msgstr ""
-"Cada nível vai de Desligado a 100%. A voz de proximidade só usa o teu "
-"microfone depois de dares permissão. Usa B para ligar ou desligar o "
+"Cada nível vai de Desligado a 100%. A voz de proximidade só usa o seu "
+"microfone depois que você der permissão. Use B para ligar ou desligar o "
 "microfone."
 
 #: public/index.html:321
@@ -340,7 +340,7 @@ msgstr "Volume da voz"
 
 #: public/index.html:338
 msgid "How loud nearby players sound to you."
-msgstr "O volume a que ouves os jogadores próximos."
+msgstr "O volume com que você ouve os jogadores próximos."
 
 #: public/index.html:341
 msgid "Microphone volume"
@@ -348,7 +348,7 @@ msgstr "Volume do microfone"
 
 #: public/index.html:348
 msgid "How loud you are to nearby players."
-msgstr "O volume a que os jogadores próximos te ouvem."
+msgstr "O volume com que os jogadores próximos ouvem você."
 
 #: public/index.html:351
 msgid "Voice channel"
@@ -364,11 +364,11 @@ msgstr "Próximos"
 
 #: public/index.html:355
 msgid "Team"
-msgstr "Equipa"
+msgstr "Time"
 
 #: public/index.html:357
 msgid "Players within earshot, whatever team they are on."
-msgstr "Jogadores ao alcance do ouvido, seja qual for a equipa."
+msgstr "Jogadores ao alcance do ouvido, seja qual for o time."
 
 #: public/index.html:360
 msgid "Microphone input"
@@ -376,7 +376,7 @@ msgstr "Entrada do microfone"
 
 #: public/index.html:364
 msgid "Choose the microphone used for voice chat."
-msgstr "Escolhe o microfone usado no chat de voz."
+msgstr "Escolha o microfone usado no chat de voz."
 
 #: public/index.html:367
 msgid "Native audio processing"
@@ -392,7 +392,7 @@ msgstr "Supressão de ruído"
 
 #: public/index.html:378
 msgid "Automatic gain control"
-msgstr "Controlo automático de ganho"
+msgstr "Controle automático de ganho"
 
 #: public/index.html:380
 msgid "Native browser processing is enabled when supported."
@@ -412,7 +412,7 @@ msgstr "Enviar"
 
 #: public/index.html:404
 msgid "Type a chat message, then send it"
-msgstr "Escreve uma mensagem de chat e envia-a"
+msgstr "Digite uma mensagem de chat e envie"
 
 #: public/index.html:408
 msgid "ALL"
@@ -420,7 +420,7 @@ msgstr "TODOS"
 
 #: public/index.html:409
 msgid "TEAM"
-msgstr "EQUIPA"
+msgstr "TIME"
 
 #: public/index.html:410
 msgid "ADMIN"
@@ -432,11 +432,11 @@ msgstr "SERVIDOR"
 
 #: public/index.html:425
 msgid "Loading World"
-msgstr "A carregar o mundo"
+msgstr "Carregando o mundo"
 
 #: public/index.html:426
 msgid "Connecting render systems..."
-msgstr "A ligar os sistemas de renderização..."
+msgstr "Conectando os sistemas de renderização..."
 
 #: public/index.html:435 public/index.html:502
 msgid "Close"
@@ -460,7 +460,7 @@ msgstr "Código-fonte"
 
 #: public/index.html:442
 msgid "Enter your name"
-msgstr "Escreve o teu nome"
+msgstr "Digite seu nome"
 
 #: public/index.html:447
 msgid "Motto (optional)"
@@ -472,11 +472,11 @@ msgstr "Servidor:"
 
 #: public/index.html:459
 msgid "Team:"
-msgstr "Equipa:"
+msgstr "Time:"
 
 #: public/index.html:467
 msgid "Global login:"
-msgstr "Sessão global:"
+msgstr "Login global:"
 
 #: public/index.html:473
 msgid "Skin:"
@@ -492,7 +492,7 @@ msgstr "Tanque anterior"
 
 #: public/index.html:484
 msgid "Next tank"
-msgstr "Tanque seguinte"
+msgstr "Próximo tanque"
 
 #: public/index.html:488
 msgid "OK"
@@ -500,7 +500,7 @@ msgstr "OK"
 
 #: public/index.html:490
 msgid "Default"
-msgstr "Predefinição"
+msgstr "Padrão"
 
 #: public/index.html:504
 msgid "Search help"
@@ -508,31 +508,31 @@ msgstr "Pesquisar na ajuda"
 
 #: public/index.html:541
 msgid "Identify: lock a Guided Missile onto the tank in your sights"
-msgstr "Identificar: fixa um Míssil guiado no tanque que tens na mira"
+msgstr "Identificar: trava um Míssil guiado no tanque que está na sua mira"
 
 #: public/index.html:542
 msgid "Drop flag"
-msgstr "Largar bandeira"
+msgstr "Soltar bandeira"
 
 #. TRANSLATORS: name of the R* flag; the abbreviation stays as it is
 #: public/js/flags.mjs public/js/teams.mjs
 msgid "Red Team"
-msgstr "Equipa vermelha"
+msgstr "Time vermelho"
 
 #. TRANSLATORS: name of the G* flag; the abbreviation stays as it is
 #: public/js/flags.mjs public/js/teams.mjs
 msgid "Green Team"
-msgstr "Equipa verde"
+msgstr "Time verde"
 
 #. TRANSLATORS: name of the B* flag; the abbreviation stays as it is
 #: public/js/flags.mjs public/js/teams.mjs
 msgid "Blue Team"
-msgstr "Equipa azul"
+msgstr "Time azul"
 
 #. TRANSLATORS: name of the P* flag; the abbreviation stays as it is
 #: public/js/flags.mjs public/js/teams.mjs
 msgid "Purple Team"
-msgstr "Equipa púrpura"
+msgstr "Time roxo"
 
 #. TRANSLATORS: name of the F flag; the abbreviation stays as it is
 #: public/js/flags.mjs public/js/teams.mjs
@@ -587,7 +587,7 @@ msgstr "Alta velocidade"
 #. TRANSLATORS: name of the QT flag; the abbreviation stays as it is
 #: public/js/flags.mjs public/js/teams.mjs
 msgid "Quick Turn"
-msgstr "Viragem rápida"
+msgstr "Curva rápida"
 
 #. TRANSLATORS: name of the OO flag; the abbreviation stays as it is
 #: public/js/flags.mjs public/js/teams.mjs
@@ -612,7 +612,7 @@ msgstr "Agilidade"
 #. TRANSLATORS: name of the SR flag; the abbreviation stays as it is
 #: public/js/flags.mjs public/js/teams.mjs
 msgid "Steamroller"
-msgstr "Cilindro"
+msgstr "Rolo compressor"
 
 #. TRANSLATORS: name of the G flag; the abbreviation stays as it is
 #: public/js/flags.mjs public/js/teams.mjs
@@ -647,17 +647,17 @@ msgstr "Estreito"
 #. TRANSLATORS: name of the RC flag; the abbreviation stays as it is
 #: public/js/flags.mjs public/js/teams.mjs
 msgid "ReverseControls"
-msgstr "Controlos invertidos"
+msgstr "Controles invertidos"
 
 #. TRANSLATORS: name of the FO flag; the abbreviation stays as it is
 #: public/js/flags.mjs public/js/teams.mjs
 msgid "Forward Only"
-msgstr "Só em frente"
+msgstr "Só para frente"
 
 #. TRANSLATORS: name of the RO flag; the abbreviation stays as it is
 #: public/js/flags.mjs public/js/teams.mjs
 msgid "ReverseOnly"
-msgstr "Só marcha-atrás"
+msgstr "Só marcha a ré"
 
 #. TRANSLATORS: name of the LT flag; the abbreviation stays as it is
 #: public/js/flags.mjs public/js/teams.mjs
@@ -672,7 +672,7 @@ msgstr "Apenas curva à direita"
 #. TRANSLATORS: name of the BY flag; the abbreviation stays as it is
 #: public/js/flags.mjs public/js/teams.mjs
 msgid "Bouncy"
-msgstr "Saltitão"
+msgstr "Saltitante"
 
 #. TRANSLATORS: name of the TR flag; the abbreviation stays as it is
 #: public/js/flags.mjs public/js/teams.mjs
@@ -687,7 +687,7 @@ msgstr "Inércia"
 #. TRANSLATORS: name of the NJ flag; the abbreviation stays as it is
 #: public/js/flags.mjs public/js/teams.mjs
 msgid "No Jumping"
-msgstr "Sem saltos"
+msgstr "Sem pulos"
 
 #. TRANSLATORS: name of the O flag; the abbreviation stays as it is
 #: public/js/flags.mjs public/js/teams.mjs
@@ -745,8 +745,8 @@ msgid ""
 "If it's yours, prevent other teams from taking it. If it's not take it to "
 "your base to capture it!"
 msgstr ""
-"Se for tua, impede que outras equipas a levem. Se não for, leva-a para a tua "
-"base para a capturar!"
+"Se for sua, impeça que outros times a levem. Se não for, leve-a para a sua "
+"base para capturá-la!"
 
 #. TRANSLATORS: what the F flag (Rapid Fire) does
 #: public/js/flags.mjs public/js/teams.mjs
@@ -765,8 +765,8 @@ msgid ""
 "Shots track a target.  Lock on with right button.  Can lock on or retarget "
 "after firing."
 msgstr ""
-"Os tiros seguem um alvo. Fixa-o com o botão direito. Podes fixar ou mudar de "
-"alvo depois de disparar."
+"Os tiros seguem um alvo. Trave a mira com o botão direito. Você pode travar "
+"ou trocar de alvo depois de disparar."
 
 #. TRANSLATORS: what the L flag (Laser) does
 #: public/js/flags.mjs public/js/teams.mjs
@@ -777,7 +777,7 @@ msgstr ""
 #. TRANSLATORS: what the R flag (Ricochet) does
 #: public/js/flags.mjs public/js/teams.mjs
 msgid "Shots bounce off walls.  Don't shoot yourself!"
-msgstr "Os tiros fazem ricochete nas paredes. Não te acertes a ti próprio!"
+msgstr "Os tiros ricocheteiam nas paredes. Não acerte em si mesmo!"
 
 #. TRANSLATORS: what the SB flag (Super Bullet) does
 #: public/js/flags.mjs public/js/teams.mjs
@@ -789,7 +789,7 @@ msgstr "Dispara através dos edifícios. Pode matar na Zona fantasma."
 msgid ""
 "Your shots don't appear on other radars.  Can still see them out window."
 msgstr ""
-"Os teus tiros não aparecem nos radares dos outros. Continuam visíveis pela "
+"Seus tiros não aparecem nos radares dos outros. Continuam visíveis pela "
 "janela."
 
 #. TRANSLATORS: what the SW flag (Shock Wave) does
@@ -798,32 +798,31 @@ msgid ""
 "Firing destroys all tanks nearby.  Don't kill teammates!  Can kill tanks on/"
 "in buildings."
 msgstr ""
-"Disparar destrói todos os tanques próximos. Não mates colegas de equipa! "
-"Pode matar tanques em cima ou dentro de edifícios."
+"Disparar destrói todos os tanques próximos. Não mate colegas de time! Pode "
+"matar tanques em cima ou dentro de edifícios."
 
 #. TRANSLATORS: what the SH flag (Shield) does
 #: public/js/flags.mjs public/js/teams.mjs
 msgid "Getting hit only drops flag.  Flag flies an extra-long time."
 msgstr ""
-"Ser atingido só te faz largar a bandeira. A bandeira voa durante muito mais "
+"Ser atingido só faz você soltar a bandeira. A bandeira voa por muito mais "
 "tempo."
 
 #. TRANSLATORS: what the V flag (High Speed) does
 #: public/js/flags.mjs public/js/teams.mjs
 msgid "Tank moves faster.  Outrun bad guys."
-msgstr "O tanque anda mais depressa. Foge dos maus."
+msgstr "O tanque anda mais rápido. Fuja dos vilões."
 
 #. TRANSLATORS: what the QT flag (Quick Turn) does
 #: public/js/flags.mjs public/js/teams.mjs
 msgid "Tank turns faster.  Good for dodging."
-msgstr "O tanque vira mais depressa. Bom para esquivar."
+msgstr "O tanque vira mais rápido. Bom para desviar."
 
 #. TRANSLATORS: what the OO flag (Oscillation Overthruster) does
 #: public/js/flags.mjs public/js/teams.mjs
 msgid "Can drive through buildings.  Can't back up or shoot while inside."
 msgstr ""
-"Pode atravessar edifícios. Não pode fazer marcha-atrás nem disparar lá "
-"dentro."
+"Pode atravessar edifícios. Não pode dar ré nem disparar lá dentro."
 
 #. TRANSLATORS: what the BU flag (Burrow) does
 #: public/js/flags.mjs public/js/teams.mjs
@@ -831,8 +830,8 @@ msgid ""
 "Tank burrows underground, impervious to normal shots, but can be steamrolled "
 "by anyone!"
 msgstr ""
-"O tanque enterra-se no chão, imune aos tiros normais, mas qualquer um o pode "
-"esmagar!"
+"O tanque se enterra no chão, imune aos tiros normais, mas qualquer um pode "
+"esmagá-lo!"
 
 #. TRANSLATORS: what the PZ flag (Phantom Zone) does
 #: public/js/flags.mjs public/js/teams.mjs
@@ -848,22 +847,22 @@ msgstr ""
 #. TRANSLATORS: what the A flag (Agility) does
 #: public/js/flags.mjs public/js/teams.mjs
 msgid "Tank is quick and nimble making it easier to dodge."
-msgstr "O tanque é rápido e ágil, o que facilita esquivar."
+msgstr "O tanque é rápido e ágil, o que facilita desviar."
 
 #. TRANSLATORS: what the SR flag (Steamroller) does
 #: public/js/flags.mjs public/js/teams.mjs
 msgid "Destroys tanks you touch but you have to get really close."
-msgstr "Destrói os tanques em que tocas, mas tens de chegar mesmo perto."
+msgstr "Destrói os tanques em que você encosta, mas precisa chegar bem perto."
 
 #. TRANSLATORS: what the G flag (Genocide) does
 #: public/js/flags.mjs public/js/teams.mjs
 msgid "Killing one tank kills that tank's whole team."
-msgstr "Matar um tanque mata a equipa inteira desse tanque."
+msgstr "Matar um tanque mata o time inteiro desse tanque."
 
 #. TRANSLATORS: what the JP flag (Jumping) does
 #: public/js/flags.mjs public/js/teams.mjs
 msgid "Tank can jump.  Use Tab key.  Can't steer in the air."
-msgstr "O tanque pode saltar. Usa a tecla Tab. Não podes virar no ar."
+msgstr "O tanque pode pular. Use a tecla Tab. Não dá para virar no ar."
 
 #. TRANSLATORS: what the ID flag (Identify) does
 #: public/js/flags.mjs public/js/teams.mjs
@@ -873,7 +872,7 @@ msgstr "Identifica o tipo da bandeira mais próxima."
 #. TRANSLATORS: what the US flag (Useless) does
 #: public/js/flags.mjs public/js/teams.mjs
 msgid "You have found the useless flag. Use it wisely."
-msgstr "Encontraste a bandeira inútil. Usa-a com sabedoria."
+msgstr "Você encontrou a bandeira inútil. Use-a com sabedoria."
 
 #. TRANSLATORS: what the WG flag (Wings) does
 #: public/js/flags.mjs public/js/teams.mjs
@@ -898,32 +897,32 @@ msgstr ""
 #. TRANSLATORS: what the RC flag (ReverseControls) does
 #: public/js/flags.mjs public/js/teams.mjs
 msgid "Tank driving controls are reversed."
-msgstr "Os controlos de condução do tanque ficam invertidos."
+msgstr "Os controles de direção do tanque ficam invertidos."
 
 #. TRANSLATORS: what the FO flag (Forward Only) does
 #: public/js/flags.mjs public/js/teams.mjs
 msgid "Can't drive in reverse."
-msgstr "Não podes andar em marcha-atrás."
+msgstr "Você não pode dar ré."
 
 #. TRANSLATORS: what the RO flag (ReverseOnly) does
 #: public/js/flags.mjs public/js/teams.mjs
 msgid "Can't drive forward."
-msgstr "Não podes andar para a frente."
+msgstr "Você não pode andar para frente."
 
 #. TRANSLATORS: what the LT flag (Left Turn Only) does
 #: public/js/flags.mjs public/js/teams.mjs
 msgid "Can't turn right."
-msgstr "Não podes virar à direita."
+msgstr "Você não pode virar à direita."
 
 #. TRANSLATORS: what the RT flag (Right Turn Only) does
 #: public/js/flags.mjs public/js/teams.mjs
 msgid "Can't turn left."
-msgstr "Não podes virar à esquerda."
+msgstr "Você não pode virar à esquerda."
 
 #. TRANSLATORS: what the BY flag (Bouncy) does
 #: public/js/flags.mjs public/js/teams.mjs
 msgid "Tank can't stop bouncing."
-msgstr "O tanque não para de saltar."
+msgstr "O tanque não para de pular."
 
 #. TRANSLATORS: what the TR flag (Trigger Happy) does
 #: public/js/flags.mjs public/js/teams.mjs
@@ -938,7 +937,7 @@ msgstr "O tanque tem inércia. A aceleração é limitada."
 #. TRANSLATORS: what the NJ flag (No Jumping) does
 #: public/js/flags.mjs public/js/teams.mjs
 msgid "Tank can't jump."
-msgstr "O tanque não pode saltar."
+msgstr "O tanque não pode pular."
 
 #. TRANSLATORS: what the O flag (Obesity) does
 #: public/js/flags.mjs public/js/teams.mjs
@@ -948,12 +947,12 @@ msgstr "O tanque fica muito grande. Não cabe nos teletransportadores."
 #. TRANSLATORS: what the CB flag (Colorblindness) does
 #: public/js/flags.mjs public/js/teams.mjs
 msgid "Can't tell team colors.  Don't shoot teammates!"
-msgstr "Não distingues as cores das equipas. Não dispares contra colegas!"
+msgstr "Você não distingue as cores dos times. Não atire nos colegas!"
 
 #. TRANSLATORS: what the B flag (Blindness) does
 #: public/js/flags.mjs public/js/teams.mjs
 msgid "Can't see out window.  Radar still works."
-msgstr "Não vês pela janela. O radar continua a funcionar."
+msgstr "Você não enxerga pela janela. O radar continua funcionando."
 
 #. TRANSLATORS: what the ST flag (Stealth) does
 #: public/js/flags.mjs public/js/teams.mjs
@@ -976,12 +975,12 @@ msgstr ""
 #. TRANSLATORS: what the MQ flag (Masquerade) does
 #: public/js/flags.mjs public/js/teams.mjs
 msgid "In opponent's hud, you appear as a teammate."
-msgstr "No HUD do adversário, apareces como colega de equipa."
+msgstr "No HUD do adversário, você aparece como colega de time."
 
 #. TRANSLATORS: what the SE flag (Seer) does
 #: public/js/flags.mjs public/js/teams.mjs
 msgid "See stealthed, cloaked and masquerading tanks as normal."
-msgstr "Vês normalmente os tanques furtivos, camuflados e disfarçados."
+msgstr "Você vê normalmente os tanques furtivos, camuflados e disfarçados."
 
 #. TRANSLATORS: what the TH flag (Thief) does
 #: public/js/flags.mjs public/js/teams.mjs
@@ -991,7 +990,7 @@ msgstr "Rouba bandeiras. Pequeno e rápido, mas não pode matar."
 #. TRANSLATORS: what the JM flag (Jamming) does
 #: public/js/flags.mjs public/js/teams.mjs
 msgid "Radar doesn't work.  Can still see."
-msgstr "O radar não funciona. Continuas a ver."
+msgstr "O radar não funciona. Você continua enxergando."
 
 #. TRANSLATORS: what the WA flag (Wide Angle) does
 #: public/js/flags.mjs public/js/teams.mjs
@@ -999,8 +998,8 @@ msgid ""
 "Fish-eye lens distorts view.  bzo leaves the view alone, so this one only "
 "costs you the time to shake it off."
 msgstr ""
-"Uma lente olho de peixe distorce a vista. O bzo não mexe na vista, por isso "
-"esta só te custa o tempo de te livrares dela."
+"Uma lente olho de peixe distorce a vista. O bzo não mexe na vista, então ela"
+" só custa o tempo de você se livrar dela."
 
 #. TRANSLATORS: a team, or the team choice
 #: public/js/flags.mjs public/js/teams.mjs
@@ -1070,7 +1069,7 @@ msgstr "verde"
 #. TRANSLATORS: a team named inside a sentence, lower case where the language allows
 #: public/js/flags.mjs public/js/teams.mjs
 msgid "purple"
-msgstr "púrpura"
+msgstr "roxo"
 
 #. TRANSLATORS: a team named inside a sentence, lower case where the language allows
 #: public/js/flags.mjs public/js/teams.mjs
@@ -1132,7 +1131,11 @@ msgstr ""
 
 #. TRANSLATORS: the name of this language, written in it
 msgid "pt"
-msgstr "Português (Portugal)"
+msgstr "Português"
+
+#. TRANSLATORS: the name of this language, written in it
+msgid "pt_PT"
+msgstr ""
 
 #. TRANSLATORS: the name of this language, written in it
 msgid "ru"
@@ -1178,1005 +1181,1006 @@ msgstr "Diversos"
 msgid "Debug"
 msgstr "Depuração"
 
-#: public/js/client.js:868
+#: public/js/client.js:870
 msgid "unlimited"
 msgstr "ilimitado"
 
-#: public/js/client.js:870
+#: public/js/client.js:872
 msgid "{count} left"
 msgstr "faltam {count}"
 
-#: public/js/client.js:982
+#: public/js/client.js:984
 msgid "this is the designated list server"
 msgstr "este é o servidor de listas designado"
 
 #. TRANSLATORS: listServerUrl is a server.json setting; keep it as written
-#: public/js/client.js:985
+#: public/js/client.js:987
 msgid "disabled (no listServerUrl)"
 msgstr "desativado (sem listServerUrl)"
 
-#: public/js/client.js:987
+#: public/js/client.js:989
 msgid "reporting to {url}: key configured"
-msgstr "a reportar para {url}: chave configurada"
+msgstr "reportando para {url}: chave configurada"
 
-#: public/js/client.js:988
+#: public/js/client.js:990
 msgid "reporting to {url}: no key yet"
-msgstr "a reportar para {url}: ainda sem chave"
+msgstr "reportando para {url}: ainda sem chave"
 
-#: public/js/client.js:1010
+#: public/js/client.js:1012
 msgid "{team} won the game"
 msgstr "{team} ganhou o jogo"
 
-#: public/js/client.js:1015
+#: public/js/client.js:1017
 msgid "{player} won the game"
 msgstr "{player} ganhou o jogo"
 
-#: public/js/client.js:1236
+#: public/js/client.js:1238
 msgid "Team: {team}"
-msgstr "Equipa: {team}"
+msgstr "Time: {team}"
 
-#: public/js/client.js:1363
+#: public/js/client.js:1365
 msgid "watching {server}"
-msgstr "a ver {server}"
+msgstr "assistindo {server}"
 
-#: public/js/client.js:1365 public/js/client.js:9922
+#: public/js/client.js:1367 public/js/client.js:9925
 msgid "replay {name}"
 msgstr "repetição {name}"
 
-#: public/js/client.js:1375
+#: public/js/client.js:1377
 msgid "local {map}"
 msgstr "local {map}"
 
-#: public/js/client.js:1375
+#: public/js/client.js:1377
 msgid "This server"
 msgstr "Este servidor"
 
-#: public/js/client.js:1443
+#: public/js/client.js:1445
 msgid "Server: {server}"
 msgstr "Servidor: {server}"
 
-#: public/js/client.js:1498
-msgid "Sign in & Play"
-msgstr "Iniciar sessão e jogar"
-
 #: public/js/client.js:1500
+msgid "Sign in & Play"
+msgstr "Fazer login e jogar"
+
+#: public/js/client.js:1502
 msgid ""
 "Playing here needs a bzflag.org global login. This signs you in, then joins "
 "on the team you picked."
 msgstr ""
-"Para jogar aqui é preciso uma sessão global do bzflag.org. Isto inicia a tua "
-"sessão e depois entra na equipa que escolheste."
+"Para jogar aqui é preciso um login global do bzflag.org. Isto faz o seu "
+"login e depois entra no time que você escolheu."
 
-#: public/js/client.js:1613 public/js/client.js:1631
+#: public/js/client.js:1615 public/js/client.js:1633
 msgid "a tank"
 msgstr "um tanque"
 
-#: public/js/client.js:1762
+#: public/js/client.js:1764
 msgid "You are now the rabbit."
-msgstr "Agora és o coelho."
+msgstr "Agora você é o coelho."
 
-#: public/js/client.js:1768
+#: public/js/client.js:1770
 msgid "{player} is now the rabbit"
-msgstr "{player} é agora o coelho"
+msgstr "{player} agora é o coelho"
 
-#: public/js/client.js:1779
+#: public/js/client.js:1781
 msgid "operation failed"
 msgstr "a operação falhou"
 
-#: public/js/client.js:1779
+#: public/js/client.js:1781
 msgid "Voice error: {error}"
 msgstr "Erro de voz: {error}"
 
-#: public/js/client.js:2284
+#: public/js/client.js:2286
 msgid "Default microphone"
 msgstr "Microfone predefinido"
 
-#: public/js/client.js:2292 public/js/voice.js:1218
+#: public/js/client.js:2294 public/js/voice.js:1218
 msgid "Microphone"
 msgstr "Microfone"
 
-#: public/js/client.js:2325 public/js/client.js:2340
+#: public/js/client.js:2327 public/js/client.js:2342
 msgid "Receive only"
 msgstr "Só receber"
 
-#: public/js/client.js:2327 public/js/client.js:2366
+#: public/js/client.js:2329 public/js/client.js:2368
 msgid "Microphone on"
 msgstr "Microfone ligado"
 
-#: public/js/client.js:2329
+#: public/js/client.js:2331
 msgid "Permission denied"
 msgstr "Permissão negada"
 
-#: public/js/client.js:2331 public/js/client.js:2333
+#: public/js/client.js:2333 public/js/client.js:2335
 msgid "Microphone unavailable"
 msgstr "Microfone indisponível"
 
-#: public/js/client.js:2341
+#: public/js/client.js:2343
 msgid "Mic blocked"
-msgstr "Micro bloqueado"
+msgstr "Mic bloqueado"
 
-#: public/js/client.js:2342
+#: public/js/client.js:2344
 msgid "Mic unavailable"
-msgstr "Micro indisponível"
+msgstr "Mic indisponível"
 
-#: public/js/client.js:2343
+#: public/js/client.js:2345
 msgid "Disable Mic"
-msgstr "Desligar micro"
+msgstr "Desligar mic"
 
-#: public/js/client.js:2343
+#: public/js/client.js:2345
 msgid "Enable Mic"
-msgstr "Ligar micro"
+msgstr "Ligar mic"
 
-#: public/js/client.js:2352
+#: public/js/client.js:2354
 msgid "{action} - {channel}"
 msgstr "{action} - {channel}"
 
-#: public/js/client.js:2353
+#: public/js/client.js:2355
 msgid "{channel} voice channel, {status}"
 msgstr "Canal de voz {channel}, {status}"
 
-#: public/js/client.js:2361
+#: public/js/client.js:2363
 msgid "Microphone permission granted"
 msgstr "Permissão do microfone concedida"
 
-#: public/js/client.js:2374
+#: public/js/client.js:2376
 msgid "Microphone is transmitting on the {channel} channel."
-msgstr "O microfone está a transmitir no canal {channel}."
+msgstr "O microfone está transmitindo no canal {channel}."
 
-#: public/js/client.js:2375
+#: public/js/client.js:2377
 msgid "Microphone permission granted; transmission is off."
 msgstr "Permissão do microfone concedida; a transmissão está desligada."
 
-#: public/js/client.js:2377
+#: public/js/client.js:2379
 msgid "Microphone permission was denied by the browser."
 msgstr "O navegador negou a permissão do microfone."
 
-#: public/js/client.js:2379
+#: public/js/client.js:2381
 msgid "Microphone capture is unavailable in this browser or context."
 msgstr ""
 "A captura do microfone não está disponível neste navegador ou contexto."
 
-#: public/js/client.js:2392
+#: public/js/client.js:2394
 msgid "Voice operation failed."
 msgstr "A operação de voz falhou."
 
-#: public/js/client.js:2639
+#: public/js/client.js:2641
 msgid ""
 "A proxied connection tells the target which bzo it came through, and nothing "
 "else. Your own motto is used on this server."
 msgstr ""
-"Uma ligação por proxy diz ao destino por que bzo passou, e mais nada. Neste "
-"servidor é usado o teu próprio lema."
+"Uma conexão por proxy informa ao destino por qual bzo passou, e nada mais. "
+"Neste servidor é usado o seu próprio lema."
 
-#: public/js/client.js:3065
+#: public/js/client.js:3067
 msgid "Preparing battlefield..."
-msgstr "A preparar o campo de batalha..."
+msgstr "Preparando o campo de batalha..."
 
-#: public/js/client.js:3066
+#: public/js/client.js:3068
 msgid "Building world geometry"
-msgstr "A construir a geometria do mundo"
+msgstr "Construindo a geometria do mundo"
 
-#: public/js/client.js:3075
+#: public/js/client.js:3077
 msgid "Placing obstacles..."
-msgstr "A colocar obstáculos..."
+msgstr "Posicionando obstáculos..."
 
-#: public/js/client.js:3076
+#: public/js/client.js:3078
 msgid "Synchronizing world objects"
-msgstr "A sincronizar os objetos do mundo"
+msgstr "Sincronizando os objetos do mundo"
 
-#: public/js/client.js:3104
+#: public/js/client.js:3106
 msgid "Loading vehicle systems..."
-msgstr "A carregar os sistemas do veículo..."
+msgstr "Carregando os sistemas do veículo..."
 
-#: public/js/client.js:3105
+#: public/js/client.js:3107
 msgid "Preparing tank models, textures, and audio"
-msgstr "A preparar modelos de tanques, texturas e áudio"
+msgstr "Preparando modelos de tanques, texturas e áudio"
 
-#: public/js/client.js:3122
+#: public/js/client.js:3124
 msgid "Assembling tanks..."
-msgstr "A montar os tanques..."
+msgstr "Montando os tanques..."
 
-#: public/js/client.js:3123
+#: public/js/client.js:3125
 msgid "Creating player vehicles"
-msgstr "A criar os veículos dos jogadores"
+msgstr "Criando os veículos dos jogadores"
 
-#: public/js/client.js:3136
+#: public/js/client.js:3138
 msgid "Entering battle..."
-msgstr "A entrar em combate..."
+msgstr "Entrando em combate..."
 
-#: public/js/client.js:3136
+#: public/js/client.js:3138
 msgid "Render ready"
 msgstr "Renderização pronta"
 
-#: public/js/client.js:3137
+#: public/js/client.js:3139
 msgid "Joining game"
-msgstr "A entrar no jogo"
+msgstr "Entrando no jogo"
 
-#: public/js/client.js:3137
+#: public/js/client.js:3139
 msgid "Waiting for player name"
-msgstr "À espera do nome do jogador"
+msgstr "Aguardando o nome do jogador"
 
 #. TRANSLATORS: prefix on a chat line this client wrote itself, not the server
-#: public/js/client.js:3408
+#: public/js/client.js:3410
 msgid "local: {message}"
 msgstr "local: {message}"
 
-#: public/js/client.js:3415
+#: public/js/client.js:3417
 msgid "client version: {version}"
 msgstr "versão do cliente: {version}"
 
-#: public/js/client.js:3416
+#: public/js/client.js:3418
 msgid "copyright: {copyright}"
 msgstr "copyright: {copyright}"
 
-#: public/js/client.js:3417
+#: public/js/client.js:3419
 msgid "license: {license} ({url})"
 msgstr "licença: {license} ({url})"
 
-#: public/js/client.js:3564
+#: public/js/client.js:3566
 msgid "Usage: {command}"
-msgstr "Utilização: {command}"
+msgstr "Uso: {command}"
 
 #. TRANSLATORS: /silence and - stay as written
-#: public/js/client.js:3576
+#: public/js/client.js:3578
 msgid "Usage: /silence <callsign>|-"
-msgstr "Utilização: /silence <indicativo>|-"
+msgstr "Uso: /silence <indicativo>|-"
 
-#: public/js/client.js:3583
+#: public/js/client.js:3585
 msgid "Silencing every unauthenticated player"
-msgstr "A silenciar todos os jogadores não autenticados"
+msgstr "Silenciando todos os jogadores não autenticados"
 
-#: public/js/client.js:3589
+#: public/js/client.js:3591
 msgid "Silenced \"{callsign}\""
 msgstr "\"{callsign}\" silenciado"
 
 #. TRANSLATORS: /unsilence and - stay as written
-#: public/js/client.js:3596
+#: public/js/client.js:3598
 msgid "Usage: /unsilence <callsign>|-"
-msgstr "Utilização: /unsilence <indicativo>|-"
+msgstr "Uso: /unsilence <indicativo>|-"
 
-#: public/js/client.js:3603
+#: public/js/client.js:3605
 msgid "No longer silencing unauthenticated players"
-msgstr "Os jogadores não autenticados já não são silenciados"
+msgstr "Os jogadores não autenticados não são mais silenciados"
 
-#: public/js/client.js:3609
+#: public/js/client.js:3611
 msgid "Unsilenced \"{callsign}\""
 msgstr "\"{callsign}\" deixou de estar silenciado"
 
-#: public/js/client.js:3666
+#: public/js/client.js:3668
 msgid "Highlight cleared"
 msgstr "Destaque removido"
 
-#: public/js/client.js:3668
+#: public/js/client.js:3670
 msgid "Invalid highlight pattern: {pattern}"
 msgstr "Padrão de destaque inválido: {pattern}"
 
-#: public/js/client.js:3670
+#: public/js/client.js:3672
 msgid "Highlighting \"{pattern}\""
-msgstr "A destacar \"{pattern}\""
+msgstr "Destacando \"{pattern}\""
 
-#: public/js/client.js:3694
+#: public/js/client.js:3696
 msgid "Saved messages to: {filename}"
-msgstr "Mensagens guardadas em: {filename}"
+msgstr "Mensagens salvas em: {filename}"
 
-#: public/js/client.js:3702
+#: public/js/client.js:3704
 msgid "Client-side commands: {commands}"
 msgstr "Comandos do cliente: {commands}"
 
-#: public/js/client.js:3850
+#: public/js/client.js:3852
 msgid "No recent direct sender to reply to"
 msgstr "Não há nenhum remetente direto recente a quem responder"
 
-#: public/js/client.js:3858
+#: public/js/client.js:3860
 msgid "No nemesis target available"
 msgstr "Não há nenhum némesis disponível"
 
-#: public/js/client.js:4052 public/js/input.js:1509
+#: public/js/client.js:4054 public/js/input.js:1509
 msgid "Show Operator Panel (O)"
 msgstr "Mostrar painel de operador (O)"
 
-#: public/js/client.js:4053
+#: public/js/client.js:4055
 msgid ""
 "Operator: sign in with a bzflag.org global callsign that the server grants "
 "admin to"
 msgstr ""
-"Operador: inicia sessão com um indicativo global de bzflag.org a que o "
-"servidor dê permissões de admin"
+"Operador: faça login com um indicativo global do bzflag.org que tenha "
+"permissões de admin no servidor"
 
-#: public/js/client.js:4094 public/js/client.js:4113
+#: public/js/client.js:4096 public/js/client.js:4115
 msgid "Sign in"
-msgstr "Iniciar sessão"
+msgstr "Fazer login"
 
-#: public/js/client.js:4097
+#: public/js/client.js:4099
 msgid "Global login for {server}"
-msgstr "Sessão global para {server}"
+msgstr "Login global para {server}"
 
-#: public/js/client.js:4098
+#: public/js/client.js:4100
 msgid ""
 "Sign in at bzflag.org to play on {server}. A login is needed for each "
 "target, and bzo never sees your password."
 msgstr ""
-"Inicia sessão em bzflag.org para jogar em {server}. É preciso iniciar sessão "
-"para cada destino, e o bzo nunca vê a tua palavra-passe."
-
-#: public/js/client.js:4106
-msgid "Signed in as {callsign}. Activate to sign out."
-msgstr "Sessão iniciada como {callsign}. Ativa para terminar a sessão."
+"Faça login no bzflag.org para jogar em {server}. É preciso fazer login para "
+"cada destino, e o bzo nunca vê a sua senha."
 
 #: public/js/client.js:4108
+msgid "Signed in as {callsign}. Activate to sign out."
+msgstr "Login feito como {callsign}. Ative para sair."
+
+#: public/js/client.js:4110
 msgid "Signed in, and an admin on this server. Click to sign out."
 msgstr ""
-"Sessão iniciada, e és admin neste servidor. Clica para terminar a sessão."
+"Login feito, e você é admin neste servidor. Clique para sair."
 
-#: public/js/client.js:4109
+#: public/js/client.js:4111
 msgid "Signed in with a bzflag.org global callsign. Click to sign out."
 msgstr ""
-"Sessão iniciada com um indicativo global de bzflag.org. Clica para terminar "
-"a sessão."
+"Login feito com um indicativo global do bzflag.org. Clique para sair."
 
-#: public/js/client.js:4116
+#: public/js/client.js:4118
 msgid "Global login: sign in"
-msgstr "Sessão global: iniciar sessão"
+msgstr "Login global: fazer login"
 
-#: public/js/client.js:4117
+#: public/js/client.js:4119
 msgid ""
 "Sign in at bzflag.org with a global callsign. bzo never sees your password."
 msgstr ""
-"Inicia sessão em bzflag.org com um indicativo global. O bzo nunca vê a tua "
-"palavra-passe."
+"Faça login no bzflag.org com um indicativo global. O bzo nunca vê a sua "
+"senha."
 
-#: public/js/client.js:4137
+#: public/js/client.js:4139
 msgid "Signing out leaves VR. Exit the headset session first."
-msgstr "Terminar a sessão faz-te sair da RV. Sai primeiro da sessão do visor."
+msgstr "Sair da conta faz você sair da RV. Saia primeiro da sessão do headset."
 
-#: public/js/client.js:4138
+#: public/js/client.js:4140
 msgid "Global login leaves VR. Exit the headset session first."
-msgstr "A sessão global faz-te sair da RV. Sai primeiro da sessão do visor."
+msgstr "O login global faz você sair da RV. Saia primeiro da sessão do headset."
 
-#: public/js/client.js:4577 public/js/client.js:10145
+#: public/js/client.js:4579 public/js/client.js:10148
 msgid "Fetching remote server's map..."
-msgstr "A obter o mapa do servidor remoto..."
+msgstr "Obtendo o mapa do servidor remoto..."
 
-#: public/js/client.js:4737
+#: public/js/client.js:4739
 msgid "Pausing in {seconds}"
-msgstr "Pausa dentro de {seconds}"
+msgstr "Pausa em {seconds}"
 
-#: public/js/client.js:4761 public/js/client.js:6433
+#: public/js/client.js:4763 public/js/client.js:6436
 msgid "Self Destructing in {seconds}"
-msgstr "Autodestruição dentro de {seconds}"
+msgstr "Autodestruição em {seconds}"
 
-#: public/js/client.js:4843
+#: public/js/client.js:4845
 msgid "AutoPilot {pilot}: {intent}"
 msgstr "Piloto automático {pilot}: {intent}"
 
-#: public/js/client.js:4844
+#: public/js/client.js:4846
 msgid "AutoPilot {pilot}"
 msgstr "Piloto automático {pilot}"
 
-#: public/js/client.js:6435
+#: public/js/client.js:6438
 msgid "Self Destruct cancelled"
 msgstr "Autodestruição cancelada"
 
-#: public/js/client.js:6594
-msgid "Hide Debug Labels"
-msgstr "Ocultar etiquetas de depuração"
-
 #: public/js/client.js:6597
-msgid "Show Debug Labels"
-msgstr "Mostrar etiquetas de depuração"
+msgid "Hide Debug Labels"
+msgstr "Ocultar rótulos de depuração"
 
-#: public/js/client.js:6614
+#: public/js/client.js:6600
+msgid "Show Debug Labels"
+msgstr "Mostrar rótulos de depuração"
+
+#: public/js/client.js:6617
 msgid "Disable Dynamic Lighting"
 msgstr "Desligar iluminação dinâmica"
 
-#: public/js/client.js:6615
+#: public/js/client.js:6618
 msgid "Enable Dynamic Lighting"
 msgstr "Ligar iluminação dinâmica"
 
-#: public/js/client.js:6617
+#: public/js/client.js:6620
 msgid "Dynamic Lighting needs more shader uniforms than this browser reports"
 msgstr ""
 "A iluminação dinâmica precisa de mais uniforms de shader do que este "
 "navegador indica"
 
-#: public/js/client.js:6626
+#: public/js/client.js:6629
 msgid "Disable Rumble"
 msgstr "Desligar vibração"
 
-#: public/js/client.js:6627
+#: public/js/client.js:6630
 msgid "Enable Rumble"
 msgstr "Ligar vibração"
 
-#: public/js/client.js:6633
+#: public/js/client.js:6636
 msgid "Disable Anaglyph 3D"
 msgstr "Desligar 3D anáglifo"
 
-#: public/js/client.js:6634
+#: public/js/client.js:6637
 msgid "Enable Anaglyph 3D"
 msgstr "Ligar 3D anáglifo"
 
-#: public/js/client.js:6637
+#: public/js/client.js:6640
 msgid "Anaglyph 3D is unavailable in VR mode"
 msgstr "O 3D anáglifo não está disponível no modo RV"
 
-#: public/js/client.js:6646
+#: public/js/client.js:6649
 msgid "Hide Debug Geometry"
 msgstr "Ocultar geometria de depuração"
 
-#: public/js/client.js:6723
+#: public/js/client.js:6726
 msgid "Confirm"
 msgstr "Confirmar"
 
-#: public/js/client.js:6779
+#: public/js/client.js:6782
 msgid "Share View Link: only available while viewing a map"
-msgstr "Partilhar ligação da vista: só disponível enquanto vês um mapa"
+msgstr "Compartilhar link da vista: só disponível enquanto você vê um mapa"
 
-#: public/js/client.js:6784
+#: public/js/client.js:6787
 msgid "View link copied to clipboard"
-msgstr "Ligação da vista copiada para a área de transferência"
+msgstr "Link da vista copiado para a área de transferência"
 
-#: public/js/client.js:6813
+#: public/js/client.js:6816
 msgid "WebXR: {mode}"
 msgstr "WebXR: {mode}"
 
-#: public/js/client.js:6819
+#: public/js/client.js:6822
 msgid "WebXR not supported on this device"
 msgstr "WebXR não é suportado neste dispositivo"
 
-#: public/js/client.js:6824
-msgid "Requesting VR..."
-msgstr "A pedir RV..."
-
 #: public/js/client.js:6827
+msgid "Requesting VR..."
+msgstr "Solicitando RV..."
+
+#: public/js/client.js:6830
 msgid "Error: Renderer not available"
 msgstr "Erro: renderizador indisponível"
 
-#: public/js/client.js:6840
+#: public/js/client.js:6843
 msgid "✓ WebXR VR Mode: ON"
 msgstr "✓ Modo RV WebXR: LIGADO"
 
-#: public/js/client.js:6846
+#: public/js/client.js:6849
 msgid "✗ VR request failed - check server.log"
-msgstr "✗ O pedido de RV falhou - consulta o server.log"
+msgstr "✗ O pedido de RV falhou - consulte o server.log"
 
-#: public/js/client.js:6848 public/js/client.js:17058
+#: public/js/client.js:6851 public/js/client.js:17060
 msgid "WebXR VR Mode: OFF"
 msgstr "Modo RV WebXR: DESLIGADO"
 
-#: public/js/client.js:7394
+#: public/js/client.js:7397
 msgid "3D renderer unavailable: {reason}"
 msgstr "Renderizador 3D indisponível: {reason}"
 
-#: public/js/client.js:7401
+#: public/js/client.js:7404
 msgid "3D renderer failed to initialize."
 msgstr "Não foi possível inicializar o renderizador 3D."
 
-#: public/js/client.js:7403
+#: public/js/client.js:7406
 msgid "Open the game in an external browser window for full WebGL support."
 msgstr ""
-"Abre o jogo numa janela de navegador externa para teres suporte completo de "
+"Abra o jogo em uma janela de navegador externa para ter suporte completo a "
 "WebGL."
 
-#: public/js/client.js:7818
+#: public/js/client.js:7821
 msgid "Connected to server!"
-msgstr "Ligado ao servidor!"
+msgstr "Conectado ao servidor!"
 
-#: public/js/client.js:7824
+#: public/js/client.js:7827
 msgid "Connected to server"
-msgstr "Ligado ao servidor"
+msgstr "Conectado ao servidor"
 
-#: public/js/client.js:7825
+#: public/js/client.js:7828
 msgid "Waiting for world state"
-msgstr "À espera do estado do mundo"
+msgstr "Aguardando o estado do mundo"
 
-#: public/js/client.js:7876
+#: public/js/client.js:7879
 msgid "Offline"
 msgstr "Offline"
 
-#: public/js/client.js:7876
+#: public/js/client.js:7879
 msgid "Cannot reach {host}"
-msgstr "Não é possível contactar {host}"
+msgstr "Não foi possível contatar {host}"
 
-#: public/js/client.js:7877
+#: public/js/client.js:7880
 msgid "Trying again..."
-msgstr "A tentar novamente..."
+msgstr "Tentando novamente..."
 
-#: public/js/client.js:7888
+#: public/js/client.js:7891
 msgid "Disconnected from server | Kills: {kills} | Deaths: {deaths}"
-msgstr "Desligado do servidor | Abates: {kills} | Mortes: {deaths}"
+msgstr "Desconectado do servidor | Abates: {kills} | Mortes: {deaths}"
 
-#: public/js/client.js:7893
+#: public/js/client.js:7896
 msgid "Press a key, tap or pull a trigger to rejoin"
-msgstr "Prime uma tecla, toca ou puxa um gatilho para voltar a entrar"
+msgstr "Pressione uma tecla, toque ou puxe um gatilho para voltar a entrar"
 
-#: public/js/client.js:8053
+#: public/js/client.js:8056
 msgid "Server error: {error}"
 msgstr "Erro do servidor: {error}"
 
-#: public/js/client.js:8058
+#: public/js/client.js:8061
 msgid "Server: action completed successfully"
-msgstr "Servidor: ação concluída com êxito"
+msgstr "Servidor: ação concluída com sucesso"
 
-#: public/js/client.js:8137
+#: public/js/client.js:8140
 msgid "Operator Panel (v{version})"
 msgstr "Painel de operador (v{version})"
 
-#: public/js/client.js:8554
+#: public/js/client.js:8557
 msgid "{player} joined"
 msgstr "{player} entrou"
 
-#: public/js/client.js:8599
+#: public/js/client.js:8602
 msgid "{player} left"
 msgstr "{player} saiu"
 
-#: public/js/client.js:8615
+#: public/js/client.js:8618
 msgid "{callsign} not responding"
 msgstr "{callsign} não responde"
 
-#: public/js/client.js:8616
+#: public/js/client.js:8619
 msgid "{callsign} okay"
 msgstr "{callsign} voltou a responder"
 
-#: public/js/client.js:8730
+#: public/js/client.js:8733
 msgid "{player} grabbed {flag}"
-msgstr "{player} apanhou {flag}"
+msgstr "{player} pegou {flag}"
 
-#: public/js/client.js:8781
+#: public/js/client.js:8784
 msgid "{player} dropped {flag}"
-msgstr "{player} largou {flag}"
+msgstr "{player} soltou {flag}"
 
-#: public/js/client.js:8872
+#: public/js/client.js:8875
 msgid "{player}: {pilot} taking controls"
-msgstr "{player}: {pilot} assume o controlo"
+msgstr "{player}: {pilot} assume o controle"
 
-#: public/js/client.js:8873
+#: public/js/client.js:8876
 msgid "{player}: {pilot} releasing controls"
-msgstr "{player}: {pilot} larga o controlo"
+msgstr "{player}: {pilot} solta o controle"
 
-#: public/js/client.js:8905
+#: public/js/client.js:8908
 msgid "{player} paused"
 msgstr "{player} está em pausa"
 
-#: public/js/client.js:8916
+#: public/js/client.js:8919
 msgid "{player} unpaused"
 msgstr "{player} retomou"
 
-#: public/js/client.js:9026
+#: public/js/client.js:9029
 msgid "Server forced a disconnect"
 msgstr "O servidor forçou a desconexão"
 
-#: public/js/client.js:9032
+#: public/js/client.js:9035
 msgid "Server updated - reloading..."
-msgstr "Servidor atualizado - a recarregar..."
+msgstr "Servidor atualizado - recarregando..."
 
-#: public/js/client.js:9552
+#: public/js/client.js:9555
 msgid "Got flattened by {player}"
 msgstr "Esmagado por {player}"
 
-#: public/js/client.js:9553
+#: public/js/client.js:9556
 msgid "Teammate hit with Genocide by {player}"
 msgstr "Colega atingido com Genocídio por {player}"
 
-#: public/js/client.js:9554
+#: public/js/client.js:9557
 msgid "Got shot by {player}"
 msgstr "Atingido por {player}"
 
-#: public/js/client.js:9556
+#: public/js/client.js:9559
 msgid "Got flattened by teammate {player}"
 msgstr "Esmagado pelo colega {player}"
 
-#: public/js/client.js:9557
+#: public/js/client.js:9560
 msgid "Teammate hit with Genocide by teammate {player}"
 msgstr "Colega atingido com Genocídio pelo colega {player}"
 
-#: public/js/client.js:9558
+#: public/js/client.js:9561
 msgid "Got shot by teammate {player}"
 msgstr "Atingido pelo colega {player}"
 
-#: public/js/client.js:9594
+#: public/js/client.js:9597
 msgid "Your team flag was captured!"
-msgstr "A bandeira da tua equipa foi capturada!"
+msgstr "A bandeira do seu time foi capturada!"
 
-#: public/js/client.js:9596
+#: public/js/client.js:9599
 msgid "Time Expired - GAME OVER"
 msgstr "Tempo esgotado - FIM DO JOGO"
 
-#: public/js/client.js:9598
+#: public/js/client.js:9601
 msgid "Tank Self Destructed"
 msgstr "Tanque autodestruído"
 
-#: public/js/client.js:9600
+#: public/js/client.js:9603
 msgid "Tank Rusted"
 msgstr "Tanque enferrujado"
 
-#: public/js/client.js:9603 public/js/client.js:9607
+#: public/js/client.js:9606 public/js/client.js:9610
 msgid "Killed by the server"
 msgstr "Morto pelo servidor"
 
-#: public/js/client.js:9634
+#: public/js/client.js:9637
 msgid "You killed {player}"
-msgstr "Abateste {player}"
+msgstr "Você abateu {player}"
 
-#: public/js/client.js:9646
+#: public/js/client.js:9649
 msgid "{player} self-destructed"
-msgstr "{player} autodestruiu-se"
+msgstr "{player} se autodestruiu"
 
-#: public/js/client.js:9650
+#: public/js/client.js:9653
 msgid "{player} fell in the water"
-msgstr "{player} caiu à água"
+msgstr "{player} caiu na água"
 
-#: public/js/client.js:9655
+#: public/js/client.js:9658
 msgid "{player}: {message}"
 msgstr "{player}: {message}"
 
-#: public/js/client.js:9658
+#: public/js/client.js:9661
 msgid "killed by the server"
 msgstr "morto pelo servidor"
 
-#: public/js/client.js:9664
+#: public/js/client.js:9667
 msgid "{player} was killed by the server"
 msgstr "{player} foi morto pelo servidor"
 
-#: public/js/client.js:9669
+#: public/js/client.js:9672
 msgid "{killer} killed {victim}"
 msgstr "{killer} abateu {victim}"
 
-#: public/js/client.js:9834
+#: public/js/client.js:9837
 msgid "You respawned!"
-msgstr "Voltaste a aparecer!"
+msgstr "Você reapareceu!"
 
-#: public/js/client.js:9921
+#: public/js/client.js:9924
 msgid "map {name}"
 msgstr "mapa {name}"
 
-#: public/js/client.js:9926
+#: public/js/client.js:9929
 msgid "nothing uploaded"
-msgstr "nada carregado"
+msgstr "nada enviado"
 
-#: public/js/client.js:9953 public/js/client.js:10428
+#: public/js/client.js:9956 public/js/client.js:10431
 msgid "MOTD: {motd}"
 msgstr "MOTD: {motd}"
 
-#: public/js/client.js:10028
+#: public/js/client.js:10031
 msgid "{count} box"
 msgstr "{count} caixa"
 
-#: public/js/client.js:10028
+#: public/js/client.js:10031
 msgid "{count} boxes"
 msgstr "{count} caixas"
 
-#: public/js/client.js:10029
+#: public/js/client.js:10032
 msgid "{count} pyramid"
 msgstr "{count} pirâmide"
 
-#: public/js/client.js:10029
+#: public/js/client.js:10032
 msgid "{count} pyramids"
 msgstr "{count} pirâmides"
 
-#: public/js/client.js:10030
+#: public/js/client.js:10033
 msgid "{count} mesh"
 msgstr "{count} malha"
 
-#: public/js/client.js:10030
+#: public/js/client.js:10033
 msgid "{count} meshes"
 msgstr "{count} malhas"
 
-#: public/js/client.js:10035
+#: public/js/client.js:10038
 msgid "{count} base"
 msgstr "{count} base"
 
-#: public/js/client.js:10035
+#: public/js/client.js:10038
 msgid "{count} bases"
 msgstr "{count} bases"
 
-#: public/js/client.js:10037
+#: public/js/client.js:10040
 msgid "{count} teleporter"
 msgstr "{count} teletransportador"
 
-#: public/js/client.js:10037
+#: public/js/client.js:10040
 msgid "{count} teleporters"
 msgstr "{count} teletransportadores"
 
-#: public/js/client.js:10040 server.js:2396
+#: public/js/client.js:10043 server.js:2415
 msgid "water"
 msgstr "água"
 
-#: public/js/client.js:10041 server.js:2396
+#: public/js/client.js:10044 server.js:2415
 msgid "weather"
-msgstr "meteorologia"
+msgstr "clima"
 
-#: public/js/client.js:10042 server.js:2396
+#: public/js/client.js:10045 server.js:2415
 msgid "custom ground"
 msgstr "chão personalizado"
 
-#: public/js/client.js:10080 public/js/client.js:10159
+#: public/js/client.js:10083 public/js/client.js:10162
 msgid "View {map}"
 msgstr "Ver {map}"
 
-#: public/js/client.js:10157
+#: public/js/client.js:10160
 msgid "{server} did not answer"
 msgstr "{server} não respondeu"
 
-#: public/js/client.js:10169 server.js:2326 server.js:2785
+#: public/js/client.js:10172 server.js:2345 server.js:2804
 msgid "Watch"
 msgstr "Assistir"
 
-#: public/js/client.js:10170
+#: public/js/client.js:10173
 msgid "Watch the live game on {server}"
-msgstr "Assistir ao jogo em direto em {server}"
+msgstr "Assistir ao jogo ao vivo em {server}"
 
-#: public/js/client.js:10188 public/js/client.js:10196 server.js:2794
+#: public/js/client.js:10191 public/js/client.js:10199 server.js:2813
 msgid "Re-import"
 msgstr "Reimportar"
 
-#: public/js/client.js:10192
+#: public/js/client.js:10195
 msgid "Importing…"
-msgstr "A importar…"
+msgstr "Importando…"
 
-#: public/js/client.js:10235
+#: public/js/client.js:10238
 msgid "Loading map..."
-msgstr "A carregar o mapa..."
+msgstr "Carregando o mapa..."
 
-#: public/js/client.js:10243
+#: public/js/client.js:10246
 msgid "Building world geometry..."
-msgstr "A construir a geometria do mundo..."
-
-#: public/js/client.js:10307
-msgid "{count} watching now"
-msgstr "{count} a assistir agora"
+msgstr "Construindo a geometria do mundo..."
 
 #: public/js/client.js:10310
+msgid "{count} watching now"
+msgstr "{count} assistindo agora"
+
+#: public/js/client.js:10313
 msgid "Watch {name}"
 msgstr "Assistir a {name}"
 
-#: public/js/client.js:10346
+#: public/js/client.js:10349
 msgid "That server's map could not be fetched"
 msgstr "Não foi possível obter o mapa desse servidor"
 
-#: public/js/client.js:10364
+#: public/js/client.js:10367
 msgid "import failed"
 msgstr "a importação falhou"
 
-#: public/js/client.js:10364
+#: public/js/client.js:10367
 msgid "Could not load that server's map: {reason}"
 msgstr "Não foi possível carregar o mapa desse servidor: {reason}"
 
-#: public/js/client.js:10562
+#: public/js/client.js:10565
 msgid "{team} Limit:"
 msgstr "Limite de {team}:"
 
-#: public/js/client.js:10643
+#: public/js/client.js:10646
 msgid "No limit"
 msgstr "Sem limite"
 
-#: public/js/client.js:10734
+#: public/js/client.js:10737
 msgid "Restart"
 msgstr "Reiniciar"
 
-#: public/js/client.js:10738
+#: public/js/client.js:10741
 msgid "Starts a new game: every player reloads into the new settings"
 msgstr ""
-"Começa um jogo novo: todos os jogadores recarregam com as novas definições"
+"Começa um jogo novo: todos os jogadores recarregam com as novas "
+"configurações"
 
-#: public/js/client.js:10739
+#: public/js/client.js:10742
 msgid "Applies the staged changes"
 msgstr "Aplica as alterações preparadas"
 
-#: public/js/client.js:11080
+#: public/js/client.js:11083
 msgid "Paused"
 msgstr "Em pausa"
 
-#: public/js/client.js:11081
+#: public/js/client.js:11084
 msgid "Sealed"
 msgstr "Selado"
 
-#: public/js/client.js:12006
+#: public/js/client.js:12009
 msgid "Already following someone"
-msgstr "Já estás a seguir alguém"
+msgstr "Você já está seguindo alguém"
 
-#: public/js/client.js:12042 public/js/client.js:12162
+#: public/js/client.js:12045 public/js/client.js:12165
 msgid "Looking at {player}"
-msgstr "A olhar para {player}"
+msgstr "Olhando para {player}"
 
-#: public/js/client.js:12146
+#: public/js/client.js:12149
 msgid "{player} locked on me"
-msgstr "{player} fixou-me como alvo"
+msgstr "{player} me travou como alvo"
 
-#: public/js/client.js:12156
+#: public/js/client.js:12159
 msgid "Looking at nothing"
-msgstr "A olhar para nada"
+msgstr "Olhando para nada"
 
-#: public/js/client.js:12162
+#: public/js/client.js:12165
 msgid "Locked on {player}"
-msgstr "Fixado em {player}"
+msgstr "Travado em {player}"
 
-#: public/js/client.js:12398
+#: public/js/client.js:12401
 msgid "Clear ({count})"
 msgstr "Limpar ({count})"
 
-#: public/js/client.js:12398 public/js/list-page.js:534
+#: public/js/client.js:12401 public/js/list-page.js:534
 msgid "Clear"
 msgstr "Limpar"
 
-#: public/js/client.js:12498
+#: public/js/client.js:12501
 msgid "SPOTTED: {player}"
 msgstr "AVISTADO: {player}"
 
-#: public/js/client.js:12613 public/js/client.js:12619
+#: public/js/client.js:12616 public/js/client.js:12622
 msgid "nobody"
 msgstr "ninguém"
 
-#: public/js/client.js:12623
+#: public/js/client.js:12626
 msgid "Leader {who}"
 msgstr "Líder: {who}"
 
-#: public/js/client.js:12625 public/js/client.js:12630
+#: public/js/client.js:12628 public/js/client.js:12633
 msgid "Tracking {who}"
-msgstr "A vigiar: {who}"
+msgstr "Vigiando: {who}"
 
-#: public/js/client.js:12626
+#: public/js/client.js:12629
 msgid "Following {who}"
-msgstr "A seguir: {who}"
+msgstr "Seguindo: {who}"
 
-#: public/js/client.js:12627
+#: public/js/client.js:12630
 msgid "Driving with {who}"
-msgstr "A conduzir com {who}"
+msgstr "Dirigindo com {who}"
 
-#: public/js/client.js:12632 public/js/hud.js:566 public/js/input.js:1387
+#: public/js/client.js:12635 public/js/hud.js:566 public/js/input.js:1387
 msgid "First Person"
 msgstr "Primeira pessoa"
 
-#: public/js/client.js:12633 public/js/hud.js:567 public/js/input.js:1388
+#: public/js/client.js:12636 public/js/hud.js:567 public/js/input.js:1388
 msgid "Third Person"
 msgstr "Terceira pessoa"
 
-#: public/js/client.js:12634 public/js/hud.js:568 public/js/input.js:1389
+#: public/js/client.js:12637 public/js/hud.js:568 public/js/input.js:1389
 msgid "Overview"
 msgstr "Vista geral"
 
-#: public/js/client.js:12635
+#: public/js/client.js:12638
 msgid "Roaming"
 msgstr "Livre"
 
-#: public/js/client.js:12924 public/js/client.js:12998
+#: public/js/client.js:12927 public/js/client.js:13001
 msgid "autopilot disabled"
 msgstr "piloto automático desativado"
 
-#: public/js/client.js:12933
+#: public/js/client.js:12936
 msgid "autopilot not allowed on this server"
 msgstr "o piloto automático não é permitido neste servidor"
 
-#: public/js/client.js:12945
+#: public/js/client.js:12948
 msgid "{pilot} has the controls"
-msgstr "{pilot} tem o controlo"
+msgstr "{pilot} está no controle"
 
-#: public/js/client.js:12950
+#: public/js/client.js:12953
 msgid "You may not enable the Autopilot more than once every five seconds."
 msgstr ""
-"Não podes ativar o piloto automático mais de uma vez a cada cinco segundos."
+"Você não pode ativar o piloto automático mais de uma vez a cada cinco "
+"segundos."
 
-#: public/js/client.js:12955
+#: public/js/client.js:12958
 msgid "autopilot enabled"
 msgstr "piloto automático ativado"
 
-#: public/js/client.js:12978
+#: public/js/client.js:12981
 msgid "Not allowed"
 msgstr "Não permitido"
 
-#: public/js/client.js:12978 public/js/input.js:1092 public/js/input.js:1102
+#: public/js/client.js:12981 public/js/input.js:1092 public/js/input.js:1102
 #: public/js/input.js:1106
 msgid "Unavailable"
 msgstr "Indisponível"
 
-#: public/js/client.js:12981
+#: public/js/client.js:12984
 msgid "None"
 msgstr "Nenhum"
 
-#: public/js/client.js:13803
+#: public/js/client.js:13806
 msgid "Zoned"
 msgstr "Em zona"
 
-#: public/js/client.js:13803
+#: public/js/client.js:13806
 msgid "Unzoned"
 msgstr "Fora da zona"
 
-#: public/js/client.js:14604 public/js/client.js:14621
+#: public/js/client.js:14607 public/js/client.js:14624
 msgid "unidentified"
 msgstr "não identificada"
 
-#: public/js/client.js:14641
+#: public/js/client.js:14644
 msgid "unknown"
 msgstr "desconhecido"
 
-#: public/js/client.js:14652
+#: public/js/client.js:14655
 msgid ""
 "This server bounces every shot off walls, whatever flag fired it, so the "
 "Ricochet flag is not in play here."
 msgstr ""
-"Este servidor faz ricochetear todos os tiros nas paredes, seja qual for a "
-"bandeira que os disparou, por isso a bandeira Ricochete não está em jogo "
-"aqui."
+"Este servidor faz todos os tiros ricochetearem nas paredes, seja qual for a "
+"bandeira que os disparou, então a bandeira Ricochete não está em jogo aqui."
 
-#: public/js/client.js:14653
+#: public/js/client.js:14656
 msgid "On this server only the Ricochet flag bounces shots off walls."
 msgstr ""
-"Neste servidor só a bandeira Ricochete faz os tiros ricochetear nas paredes."
+"Neste servidor só a bandeira Ricochete faz os tiros ricochetearem nas "
+"paredes."
 
-#: public/js/client.js:14720
+#: public/js/client.js:14723
 msgid "{flag} {release}"
 msgstr "{flag} {release}"
 
-#: public/js/client.js:14731
+#: public/js/client.js:14734
 msgid "Can't drop the flag while zoned"
-msgstr "Não podes largar a bandeira enquanto estás em zona"
+msgstr "Você não pode soltar a bandeira enquanto está em zona"
 
-#: public/js/client.js:14735
+#: public/js/client.js:14738
 msgid "Can't drop a flag while inside a building"
-msgstr "Não podes largar uma bandeira dentro de um edifício"
+msgstr "Você não pode soltar uma bandeira dentro de um edifício"
 
-#: public/js/client.js:14785
+#: public/js/client.js:14788
 msgid "in {seconds}s"
 msgstr "em {seconds} s"
 
-#: public/js/client.js:14786
+#: public/js/client.js:14789
 msgid "after {count} kill"
 msgstr "após {count} abate"
 
-#: public/js/client.js:14786
+#: public/js/client.js:14789
 msgid "after {count} kills"
 msgstr "após {count} abates"
 
-#: public/js/client.js:14787
+#: public/js/client.js:14790
 msgid "on the antidote"
 msgstr "com o antídoto"
 
-#: public/js/client.js:14788
+#: public/js/client.js:14791
 msgid "stays until it kills you"
-msgstr "fica até te matar"
+msgstr "fica até matar você"
 
-#: public/js/client.js:14789
+#: public/js/client.js:14792
 msgid "{first} or {second}"
 msgstr "{first} ou {second}"
 
-#: public/js/client.js:14790
+#: public/js/client.js:14793
 msgid "shakes off {ways}"
 msgstr "sai {ways}"
 
-#: public/js/client.js:14846
+#: public/js/client.js:14849
 msgid "Flag Alert!!!"
 msgstr "Alerta de bandeira!!!"
 
-#: public/js/client.js:14854
+#: public/js/client.js:14857
 msgid "Team Grab!!!"
-msgstr "A equipa apanhou uma bandeira!!!"
+msgstr "O time pegou uma bandeira!!!"
 
-#: public/js/client.js:14870
+#: public/js/client.js:14873
 msgid "{thief} stole {victim}'s {flag} flag"
 msgstr "{thief} roubou a bandeira {flag} de {victim}"
 
-#: public/js/client.js:14901
+#: public/js/client.js:14904
 msgid "Closest Flag: {flag}"
 msgstr "Bandeira mais próxima: {flag}"
 
-#: public/js/client.js:14963
+#: public/js/client.js:14966
 msgid "{player} took their own flag into {team} territory"
 msgstr "{player} levou a própria bandeira para o território de {team}"
 
-#: public/js/client.js:14971
+#: public/js/client.js:14974
 msgid "Don't capture your own flag!!!"
-msgstr "Não captures a tua própria bandeira!!!"
+msgstr "Não capture a sua própria bandeira!!!"
 
-#: public/js/client.js:14977
+#: public/js/client.js:14980
 msgid "{player} captured the {team} flag"
 msgstr "{player} capturou a bandeira de {team}"
 
-#: public/js/client.js:16554 public/js/client.js:16555
+#: public/js/client.js:16556 public/js/client.js:16557
 msgid "Exit WebXR VR Mode"
 msgstr "Sair do modo RV WebXR"
 
 #: public/js/flags.mjs:2091
 msgid "Team Flags"
-msgstr "Bandeiras de equipa"
+msgstr "Bandeiras de time"
 
 #: public/js/flags.mjs:2092
 msgid "Good Flags"
@@ -2184,7 +2188,7 @@ msgstr "Bandeiras boas"
 
 #: public/js/flags.mjs:2093
 msgid "Bad Flags"
-msgstr "Bandeiras más"
+msgstr "Bandeiras ruins"
 
 #: public/js/help.js:97
 msgid "Nothing found"
@@ -2196,23 +2200,23 @@ msgstr "A ajuda não está disponível: {error}"
 
 #: public/js/hud.js:177
 msgid "Debug Labels: ON"
-msgstr "Etiquetas de depuração: LIGADAS"
+msgstr "Rótulos de depuração: LIGADOS"
 
 #: public/js/hud.js:177
 msgid "Debug Labels: OFF"
-msgstr "Etiquetas de depuração: DESLIGADAS"
+msgstr "Rótulos de depuração: DESLIGADOS"
 
 #: public/js/hud.js:281
 msgid "Show the scoreboard and chat"
-msgstr "Mostrar o marcador e o chat"
+msgstr "Mostrar o placar e o chat"
 
 #: public/js/hud.js:554
 msgid "Disable Mouse Steering (M)"
-msgstr "Desligar direção com rato (M)"
+msgstr "Desligar direção com mouse (M)"
 
 #: public/js/hud.js:554
 msgid "Enable Mouse Steering (M)"
-msgstr "Ligar direção com rato (M)"
+msgstr "Ligar direção com mouse (M)"
 
 #: public/js/hud.js:559
 msgid "Hide Debug HUD (`)"
@@ -2224,19 +2228,19 @@ msgstr "Mostrar HUD de depuração (`)"
 
 #: public/js/hud.js:561
 msgid "Exit Fullscreen (F)"
-msgstr "Sair do ecrã inteiro (F)"
+msgstr "Sair da tela cheia (F)"
 
 #: public/js/hud.js:561
 msgid "Toggle Fullscreen (F)"
-msgstr "Alternar ecrã inteiro (F)"
+msgstr "Alternar tela cheia (F)"
 
 #: public/js/hud.js:570
 msgid "Toggle Camera View (C)"
-msgstr "Alternar vista da câmara (C)"
+msgstr "Alternar vista da câmera (C)"
 
 #: public/js/hud.js:573
 msgid "Camera: {mode} (C)"
-msgstr "Câmara: {mode} (C)"
+msgstr "Câmera: {mode} (C)"
 
 #: public/js/hud.js:595
 msgid "Debug Mode: ON"
@@ -2246,21 +2250,21 @@ msgstr "Modo de depuração: LIGADO"
 msgid "Debug Mode: OFF"
 msgstr "Modo de depuração: DESLIGADO"
 
-#: public/js/hud.js:758 server.js:1926
+#: public/js/hud.js:758 server.js:1945
 msgid "Red"
 msgstr "Vermelho"
 
-#: public/js/hud.js:759 server.js:1926
+#: public/js/hud.js:759 server.js:1945
 msgid "Green"
 msgstr "Verde"
 
-#: public/js/hud.js:760 server.js:1926
+#: public/js/hud.js:760 server.js:1945
 msgid "Blue"
 msgstr "Azul"
 
-#: public/js/hud.js:761 server.js:1926
+#: public/js/hud.js:761 server.js:1945
 msgid "Purple"
-msgstr "Púrpura"
+msgstr "Roxo"
 
 #: public/js/hud.js:814
 msgid "GAME OVER"
@@ -2296,11 +2300,11 @@ msgstr "computador"
 
 #: public/js/hud.js:986
 msgid "mobile"
-msgstr "telemóvel"
+msgstr "celular"
 
 #: public/js/hud.js:987
 msgid "VR headset"
-msgstr "visor RV"
+msgstr "headset de RV"
 
 #: public/js/hud.js:988
 msgid "BZFlag client"
@@ -2344,7 +2348,7 @@ msgstr "{n} suicídios"
 
 #: public/js/hud.js:1110
 msgid "Watching"
-msgstr "A assistir"
+msgstr "Assistindo"
 
 #: public/js/hud.js:1114
 msgid "(rabbit)"
@@ -2352,15 +2356,15 @@ msgstr "(coelho)"
 
 #: public/js/input.js:940
 msgid "Mouse steering is unavailable in VR: there is no cursor to read"
-msgstr "A direção com rato não está disponível em RV: não há cursor para ler"
+msgstr "A direção com mouse não está disponível em RV: não há cursor para ler"
 
 #: public/js/input.js:941
 msgid "Virtual controls steer instead of the mouse"
-msgstr "Os controlos virtuais conduzem em vez do rato"
+msgstr "Os controles virtuais dirigem em vez do mouse"
 
 #: public/js/input.js:942
 msgid "Mouse steering needs a mouse attached"
-msgstr "A direção com rato precisa de um rato ligado"
+msgstr "A direção com mouse precisa de um mouse conectado"
 
 #: public/js/input.js:1080
 msgid "No players"
@@ -2404,31 +2408,31 @@ msgstr "Ativar"
 
 #: public/js/input.js:1169
 msgid "Hide Settings"
-msgstr "Ocultar definições"
+msgstr "Ocultar configurações"
 
 #: public/js/input.js:1169
 msgid "Show Settings"
-msgstr "Mostrar definições"
+msgstr "Mostrar configurações"
 
 #: public/js/input.js:1183
 msgid "Settings: Hidden"
-msgstr "Definições: ocultas"
+msgstr "Configurações: ocultas"
 
 #: public/js/input.js:1183
 msgid "Settings: Shown"
-msgstr "Definições: visíveis"
+msgstr "Configurações: visíveis"
 
 #: public/js/input.js:1209
 msgid "Hide Audio Settings"
-msgstr "Ocultar definições de áudio"
+msgstr "Ocultar configurações de áudio"
 
 #: public/js/input.js:1218
 msgid "Audio Settings: Hidden"
-msgstr "Definições de áudio: ocultas"
+msgstr "Configurações de áudio: ocultas"
 
 #: public/js/input.js:1223
 msgid "Audio Settings: Shown"
-msgstr "Definições de áudio: visíveis"
+msgstr "Configurações de áudio: visíveis"
 
 #: public/js/input.js:1232
 msgid "Hide Help (?)"
@@ -2448,35 +2452,35 @@ msgstr "Painel de ajuda: visível"
 
 #: public/js/input.js:1284
 msgid "iOS: use Share, Add to Home Screen for fullscreen"
-msgstr "iOS: usa Partilhar, Adicionar ao ecrã principal para ecrã inteiro"
+msgstr "iOS: use Compartilhar, Adicionar à Tela de Início para tela cheia"
 
 #: public/js/input.js:1430
 msgid "Camera: {mode}"
-msgstr "Câmara: {mode}"
+msgstr "Câmera: {mode}"
 
 #: public/js/input.js:1457
 msgid "Controls: Mouse and keyboard"
-msgstr "Controlos: rato e teclado"
+msgstr "Controles: mouse e teclado"
 
 #: public/js/input.js:1457
 msgid "Controls: Keyboard"
-msgstr "Controlos: teclado"
+msgstr "Controles: teclado"
 
 #: public/js/input.js:1465
 msgid "Hide Virtual Controls"
-msgstr "Ocultar controlos virtuais"
+msgstr "Ocultar controles virtuais"
 
 #: public/js/input.js:1465
 msgid "Show Virtual Controls"
-msgstr "Mostrar controlos virtuais"
+msgstr "Mostrar controles virtuais"
 
 #: public/js/input.js:1502
 msgid "Virtual Controls: Enabled"
-msgstr "Controlos virtuais: ativados"
+msgstr "Controles virtuais: ativados"
 
 #: public/js/input.js:1502
 msgid "Virtual Controls: Disabled"
-msgstr "Controlos virtuais: desativados"
+msgstr "Controles virtuais: desativados"
 
 #: public/js/input.js:1509
 msgid "Hide Operator Panel (O)"
@@ -2492,7 +2496,7 @@ msgstr "Mostrar vista"
 
 #: public/js/input.js:1527
 msgid "Operator: enter a name to become an operator on this server"
-msgstr "Operador: escreve um nome para seres operador neste servidor"
+msgstr "Operador: digite um nome para se tornar operador neste servidor"
 
 #: public/js/input.js:1538
 msgid "Operator Panel: Hidden"
@@ -2555,7 +2559,7 @@ msgid "{n} more lines"
 msgstr "mais {n} linhas"
 
 #: public/js/inspect-panel.mjs:123 public/js/inspect-panel.mjs:188
-#: server.js:1759
+#: server.js:1778
 msgid "World"
 msgstr "Mundo"
 
@@ -2565,12 +2569,12 @@ msgstr "{type} sem nome"
 
 #: public/js/inspect-panel.mjs:146 public/js/inspect-panel.mjs:197
 msgid "Reading the map file..."
-msgstr "A ler o ficheiro do mapa..."
+msgstr "Lendo o arquivo do mapa..."
 
 #: public/js/inspect-panel.mjs:146 public/js/inspect-panel.mjs:197
 #: public/js/inspect-panel.mjs:232
 msgid "No map file for this world"
-msgstr "Não há ficheiro de mapa para este mundo"
+msgstr "Não há arquivo de mapa para este mundo"
 
 #: public/js/inspect-panel.mjs:157
 msgid "No source for this obstacle"
@@ -2614,7 +2618,7 @@ msgstr "{instances} colocações de {templates} definições"
 
 #: public/js/inspect-panel.mjs:193
 msgid "Links"
-msgstr "Ligações"
+msgstr "Links"
 
 #: public/js/inspect-panel.mjs:195
 msgid "Zones"
@@ -2630,7 +2634,7 @@ msgstr "Texturas ({n}), pelos obstáculos que usam cada uma"
 
 #: public/js/inspect-panel.mjs:207
 msgid "{texture} (failed to load)"
-msgstr "{texture} (falhou ao carregar)"
+msgstr "{texture} (falha ao carregar)"
 
 #: public/js/inspect-panel.mjs:211
 msgid "{n} more"
@@ -2650,7 +2654,7 @@ msgstr "{file}, {lines} linhas"
 
 #: public/js/inspect-panel.mjs:236
 msgid "Missing"
-msgstr "Em falta"
+msgstr "Ausente"
 
 #: public/js/inspect-panel.mjs:239
 msgid "Warnings ({n})"
@@ -2662,11 +2666,11 @@ msgstr "Já instalada"
 
 #: public/js/install.js:58
 msgid "Install from the browser menu"
-msgstr "Instala a partir do menu do navegador"
+msgstr "Instale pelo menu do navegador"
 
 #: public/js/list-page.js:183
 msgid "unknown boolean label, '{label}'"
-msgstr "etiqueta booleana desconhecida, '{label}'"
+msgstr "rótulo booleano desconhecido, '{label}'"
 
 #: public/js/list-page.js:194
 msgid "invalid filter, '{filter}'"
@@ -2674,7 +2678,7 @@ msgstr "filtro inválido, '{filter}'"
 
 #: public/js/list-page.js:202
 msgid "unknown pattern label, '{label}'"
-msgstr "etiqueta de padrão desconhecida, '{label}'"
+msgstr "rótulo de padrão desconhecido, '{label}'"
 
 #: public/js/list-page.js:213
 msgid "bad regex, {error}"
@@ -2682,7 +2686,7 @@ msgstr "expressão regular inválida, {error}"
 
 #: public/js/list-page.js:220
 msgid "unknown range label, '{label}'"
-msgstr "etiqueta de intervalo desconhecida, '{label}'"
+msgstr "rótulo de intervalo desconhecido, '{label}'"
 
 #: public/js/list-page.js:224
 msgid "bad range value, '{value}'"
@@ -2710,7 +2714,7 @@ msgstr "Radar: {range}"
 
 #: public/js/radar.js:79
 msgid "Radar range preset: {range}"
-msgstr "Predefinição de alcance do radar: {range}"
+msgstr "Alcance predefinido do radar: {range}"
 
 #: public/js/radar.js:89
 msgid "Radar range: {range}"
@@ -2742,7 +2746,7 @@ msgstr "Opções do jogador"
 
 #: public/js/settings.js:12
 msgid "Camera"
-msgstr "Câmara"
+msgstr "Câmera"
 
 # review: Caça, noun, replacing upstream verb Caçar
 #: public/js/settings.js:19
@@ -2763,11 +2767,11 @@ msgstr "Idioma"
 
 #: public/js/settings.js:26
 msgid "Mouse Steering"
-msgstr "Direção com rato"
+msgstr "Direção com mouse"
 
 #: public/js/settings.js:27
 msgid "Virtual Controls"
-msgstr "Controlos virtuais"
+msgstr "Controles virtuais"
 
 #: public/js/settings.js:28
 msgid "Rumble"
@@ -2775,7 +2779,7 @@ msgstr "Vibração"
 
 #: public/js/settings.js:29
 msgid "Fullscreen"
-msgstr "Ecrã inteiro"
+msgstr "Tela cheia"
 
 #: public/js/settings.js:30
 msgid "Install App"
@@ -2791,7 +2795,7 @@ msgstr "Geometria de depuração"
 
 #: public/js/settings.js:33
 msgid "Debug Labels"
-msgstr "Etiquetas de depuração"
+msgstr "Rótulos de depuração"
 
 # review: Modo de arame
 #: public/js/settings.js:34
@@ -2804,7 +2808,7 @@ msgstr "Operador"
 
 #: public/js/settings.js:41
 msgid "Share View Link"
-msgstr "Partilhar ligação da vista"
+msgstr "Compartilhar link da vista"
 
 #: public/js/settings.js:42
 msgid "VR Mode"
@@ -2816,7 +2820,7 @@ msgstr "Todos os jogadores do servidor, por mais longe que estejam."
 
 #: public/js/voice-channels.mjs:47
 msgid "Your own team, however far away."
-msgstr "A tua própria equipa, por mais longe que esteja."
+msgstr "O seu próprio time, por mais longe que esteja."
 
 #: public/js/voice.js:651
 msgid "Could not set voice direction for {peer}"
@@ -2886,348 +2890,349 @@ msgstr "Não foi possível iniciar a captura do microfone."
 msgid "Could not enumerate microphone devices."
 msgstr "Não foi possível enumerar os microfones."
 
-#: server.js:1692
+#: server.js:1711
 msgid "Map hash"
 msgstr "Hash do mapa"
 
-#: server.js:1731
+#: server.js:1750
 msgid "ignored by bzo"
 msgstr "ignorada pelo bzo"
 
-#: server.js:1731
+#: server.js:1750
 msgid "read by bzo"
 msgstr "lida pelo bzo"
 
-#: server.js:1733
+#: server.js:1752
 msgid "{read}/{total} set"
 msgstr "{read}/{total} definidas"
 
-#: server.js:1755 server.js:2886
+#: server.js:1774 server.js:2905
 msgid "Version"
 msgstr "Versão"
 
-#: server.js:1756
+#: server.js:1775
 msgid "BZFlag hash"
 msgstr "Hash do BZFlag"
 
-#: server.js:1759
+#: server.js:1778
 msgid "temporary"
 msgstr "temporário"
 
-#: server.js:1762
+#: server.js:1781
 msgid "Variables"
 msgstr "Variáveis"
 
-#: server.js:1763
+#: server.js:1782
 msgid "sent/inflated"
 msgstr "enviado/descomprimido"
 
-#: server.js:1807 server.js:1836
+#: server.js:1826 server.js:1855
 msgid "Classic Capture-the-Flag"
 msgstr "Captura da bandeira clássica"
 
-#: server.js:1808 server.js:1839
+#: server.js:1827 server.js:1858
 msgid "Rabbit Chase"
 msgstr "Rabbit Chase"
 
-#: server.js:1809
+#: server.js:1828
 msgid "Open (Teamless) Free-For-All"
-msgstr "Todos contra todos aberto (sem equipas)"
+msgstr "Todos contra todos aberto (sem times)"
 
-#: server.js:1810
+#: server.js:1829
 msgid "Free-style"
 msgstr "Estilo livre"
 
-#: server.js:1833
+#: server.js:1852
 msgid "Replay server"
 msgstr "Servidor de repetições"
 
-#: server.js:1841
+#: server.js:1860
 msgid "Free-for-all"
 msgstr "Todos contra todos"
 
-#: server.js:1876
+#: server.js:1895
 msgid "World hash: sorts rows sharing a world together, unhashed last"
 msgstr ""
-"Hash do mundo: agrupa as linhas que partilham um mundo, as sem hash no fim"
+"Hash do mundo: agrupa as linhas que compartilham um mundo, as sem hash no "
+"final"
 
-#: server.js:1898
+#: server.js:1917
 msgid "just started"
 msgstr "acabou de começar"
 
-#: server.js:1899
+#: server.js:1918
 msgid "{minutes}m"
 msgstr "{minutes}m"
 
-#: server.js:1901
+#: server.js:1920
 msgid "{hours}h {minutes}m"
 msgstr "{hours}h {minutes}m"
 
-#: server.js:1902
+#: server.js:1921
 msgid "{days}d {hours}h"
 msgstr "{days}d {hours}h"
 
-#: server.js:1926 server.js:2377 server.js:2618
+#: server.js:1945 server.js:2396 server.js:2637
 msgid "Observers"
 msgstr "Observadores"
 
-#: server.js:1945 server.js:2382
+#: server.js:1964 server.js:2401
 msgid "none"
 msgstr "nenhum"
 
-#: server.js:1950
+#: server.js:1969
 msgid "{servers} with {players} player"
 msgstr "{servers} com {players} jogador"
 
-#: server.js:1951
+#: server.js:1970
 msgid "{servers} with {players} players"
 msgstr "{servers} com {players} jogadores"
 
-#: server.js:1952
+#: server.js:1971
 msgid ", {bots} bot"
 msgstr ", {bots} bot"
 
-#: server.js:1952
+#: server.js:1971
 msgid ", {bots} bots"
 msgstr ", {bots} bots"
 
-#: server.js:1963
+#: server.js:1982
 msgid ", {waiting} without overview"
 msgstr ", {waiting} sem vista geral"
 
-#: server.js:1989
+#: server.js:2008
 msgid "Super Flags"
 msgstr "Superbandeiras"
 
-#: server.js:1990
+#: server.js:2009
 msgid "Antidote Flags"
 msgstr "Bandeiras antídoto"
 
-#: server.js:1994
+#: server.js:2013
 msgid "{secs} sec To Drop Bad Flag"
-msgstr "{secs} segundo para largar bandeira má"
+msgstr "{secs} segundo para soltar bandeira ruim"
 
-#: server.js:1995
+#: server.js:2014
 msgid "{secs} secs To Drop Bad Flag"
-msgstr "{secs} segundos para largar bandeira má"
+msgstr "{secs} segundos para soltar bandeira ruim"
 
-#: server.js:1999
+#: server.js:2018
 msgid "{wins} Win Drops Bad Flag"
-msgstr "{wins} vitória larga a bandeira má"
+msgstr "{wins} vitória solta a bandeira ruim"
 
-#: server.js:1999
+#: server.js:2018
 msgid "{wins} Wins Drops Bad Flag"
-msgstr "{wins} vitórias largam a bandeira má"
+msgstr "{wins} vitórias soltam a bandeira ruim"
 
-#: server.js:2001
+#: server.js:2020
 msgid "No Teamkills"
 msgstr "Sem fogo amigo"
 
-#: server.js:2004
+#: server.js:2023
 msgid "Handicap"
 msgstr "Handicap"
 
-#: server.js:2005
+#: server.js:2024
 msgid "Inertia"
 msgstr "Inércia"
 
-#: server.js:2008
+#: server.js:2027
 msgid "No Bots"
 msgstr "Sem bots"
 
-#: server.js:2012
+#: server.js:2031
 msgid "Guests Watch"
 msgstr "Convidados observam"
 
-#: server.js:2013
+#: server.js:2032
 msgid "No Guests"
 msgstr "Sem convidados"
 
-#: server.js:2014
+#: server.js:2033
 msgid "Guests Play"
 msgstr "Convidados jogam"
 
-#: server.js:2015
+#: server.js:2034
 msgid "Registered Only"
-msgstr "Só registados"
+msgstr "Só registrados"
 
-#: server.js:2016
+#: server.js:2035
 msgid "Guests Chat"
 msgstr "Convidados conversam"
 
-#: server.js:2017
+#: server.js:2036
 msgid "Guests Muted"
 msgstr "Convidados silenciados"
 
-#: server.js:2020
+#: server.js:2039
 msgid "Time limit"
 msgstr "Limite de tempo"
 
-#: server.js:2021
+#: server.js:2040
 msgid "Max team score"
-msgstr "Pontuação máx. de equipa"
+msgstr "Pontuação máx. de time"
 
-#: server.js:2022
+#: server.js:2041
 msgid "Max player score"
 msgstr "Pontuação máx. de jogador"
 
-#: server.js:2029
+#: server.js:2048
 msgid "{shots} Shot"
 msgstr "{shots} tiro"
 
-#: server.js:2030
+#: server.js:2049
 msgid "{shots} Shots"
 msgstr "{shots} tiros"
 
-#: server.js:2054
+#: server.js:2073
 msgid "Bots"
 msgstr "Bots"
 
-#: server.js:2093 server.js:2284 server.js:2523
+#: server.js:2112 server.js:2303 server.js:2542
 msgid "None."
 msgstr "Nenhum."
 
-#: server.js:2129
-msgid "hashing…"
-msgstr "a calcular o hash…"
-
 #: server.js:2148
+msgid "hashing…"
+msgstr "calculando o hash…"
+
+#: server.js:2167
 msgid "Obj"
 msgstr "Obj"
 
-#: server.js:2152
+#: server.js:2171
 msgid "Obstacles in the world"
 msgstr "Obstáculos no mundo"
 
-#: server.js:2153
+#: server.js:2172
 msgid "Mesh faces in the world"
 msgstr "Faces de malha no mundo"
 
-#: server.js:2154 server.js:2416
+#: server.js:2173 server.js:2435
 msgid "World size"
 msgstr "Tamanho do mundo"
 
-#: server.js:2156
+#: server.js:2175
 msgid "Map file name"
-msgstr "Nome do ficheiro do mapa"
+msgstr "Nome do arquivo do mapa"
 
-#: server.js:2156 server.js:2314
+#: server.js:2175 server.js:2333
 msgid "Name"
 msgstr "Nome"
 
-#: server.js:2157
+#: server.js:2176
 msgid "Game style the map sets"
 msgstr "Estilo de jogo definido pelo mapa"
 
-#: server.js:2173 server.js:2329 server.js:2733
+#: server.js:2192 server.js:2348 server.js:2752
 msgid "View map"
 msgstr "Ver mapa"
 
-#: server.js:2174
+#: server.js:2193
 msgid "Still hashing"
-msgstr "Ainda a calcular o hash"
+msgstr "Ainda calculando o hash"
 
-#: server.js:2264
+#: server.js:2283
 msgid "Overview of {name}"
 msgstr "Vista geral de {name}"
 
-#: server.js:2296
+#: server.js:2315
 msgid "unreadable: {error}"
 msgstr "ilegível: {error}"
 
-#: server.js:2297
+#: server.js:2316
 msgid " -- {viewers} watching"
-msgstr " -- {viewers} a assistir"
+msgstr " -- {viewers} assistindo"
 
-#: server.js:2310
+#: server.js:2329
 msgid "When it was recorded (UTC)"
 msgstr "Quando foi gravada (UTC)"
 
-#: server.js:2311
+#: server.js:2330
 msgid "How long it runs"
 msgstr "Quanto dura"
 
-#: server.js:2312
+#: server.js:2331
 msgid "Players in it, observers not counted"
 msgstr "Jogadores nela, sem contar observadores"
 
-#: server.js:2314
+#: server.js:2333
 msgid "Replay file name"
-msgstr "Nome do ficheiro da repetição"
+msgstr "Nome do arquivo da repetição"
 
-#: server.js:2315
+#: server.js:2334
 msgid "The map it was played on"
 msgstr "O mapa em que foi jogada"
 
-#: server.js:2327
+#: server.js:2346
 msgid "Unreadable"
 msgstr "Ilegível"
 
-#: server.js:2360
+#: server.js:2379
 msgid "{viewers} watching, at {time}"
-msgstr "{viewers} a assistir, em {time}"
+msgstr "{viewers} assistindo, em {time}"
 
-#: server.js:2375
+#: server.js:2394
 msgid "Recorded by"
 msgstr "Gravada por"
 
-#: server.js:2378
+#: server.js:2397
 msgid "Now"
 msgstr "Agora"
 
-#: server.js:2380
+#: server.js:2399
 msgid "Error"
 msgstr "Erro"
 
-#: server.js:2408
+#: server.js:2427
 msgid "Boxes"
 msgstr "Caixas"
 
-#: server.js:2409
+#: server.js:2428
 msgid "Pyramids"
 msgstr "Pirâmides"
 
-#: server.js:2410
+#: server.js:2429
 msgid "Meshes"
 msgstr "Malhas"
 
-#: server.js:2411
+#: server.js:2430
 msgid "Bases"
 msgstr "Bases"
 
-#: server.js:2412
+#: server.js:2431
 msgid "Teleporters"
 msgstr "Teletransportadores"
 
-#: server.js:2417
+#: server.js:2436
 msgid "Has"
 msgstr "Tem"
 
-#: server.js:2418
+#: server.js:2437
 msgid "Hashed"
 msgstr "Hash calculado"
 
-#: server.js:2418
+#: server.js:2437
 msgid "generated at boot"
-msgstr "gerado no arranque"
+msgstr "gerado na inicialização"
 
-#: server.js:2418
+#: server.js:2437
 msgid "yes"
 msgstr "sim"
 
-#: server.js:2418
+#: server.js:2437
 msgid "not yet"
 msgstr "ainda não"
 
-#: server.js:2419
+#: server.js:2438
 msgid "Hash"
 msgstr "Hash"
 
-#: server.js:2420
+#: server.js:2439
 msgid "Modified"
 msgstr "Modificado"
 
-#: server.js:2439
+#: server.js:2458
 msgid ""
 "Plain text is a glob over the address, description, version, hash and owner "
 "-- {examples} -- and a word with no {star} or {query} in it is wrapped in "
@@ -3235,21 +3240,21 @@ msgid ""
 msgstr ""
 "O texto simples é um glob sobre o endereço, a descrição, a versão, o hash e "
 "o proprietário -- {examples} -- e uma palavra sem {star} nem {query} é "
-"envolvida dos dois lados, por isso corresponde em qualquer parte."
+"envolvida dos dois lados, então corresponde em qualquer parte."
 
-#: server.js:2442
+#: server.js:2461
 msgid ""
 "A leading {slash} starts filters instead: comma-separated, combined with "
 "{and}."
 msgstr ""
-"Uma {slash} inicial começa antes filtros: separados por vírgulas, combinados "
-"com {and}."
+"Uma {slash} inicial começa filtros em vez disso: separados por vírgulas, "
+"combinados com {and}."
 
-#: server.js:2443
+#: server.js:2462
 msgid "and"
 msgstr "e"
 
-#: server.js:2445
+#: server.js:2464
 msgid ""
 "A second {slash} starts another set, and a server matching either set is "
 "shown."
@@ -3257,79 +3262,79 @@ msgstr ""
 "Uma segunda {slash} começa outro conjunto, e é mostrado um servidor que "
 "corresponda a qualquer um deles."
 
-#: server.js:2446
+#: server.js:2465
 msgid "{hash} begins a comment."
 msgstr "{hash} inicia um comentário."
 
-#: server.js:2447
+#: server.js:2466
 msgid "Booleans -- {on} for on, {off} for off"
 msgstr "Booleanos -- {on} para sim, {off} para não"
 
-#: server.js:2448
+#: server.js:2467
 msgid "Free-for-all with teams"
-msgstr "Todos contra todos com equipas"
+msgstr "Todos contra todos com times"
 
-#: server.js:2449
+#: server.js:2468
 msgid "Open free-for-all, no teams"
-msgstr "Todos contra todos aberto, sem equipas"
+msgstr "Todos contra todos aberto, sem times"
 
-#: server.js:2450
+#: server.js:2469
 msgid "Capture-the-flag"
 msgstr "Captura da bandeira"
 
-#: server.js:2451
+#: server.js:2470
 msgid "Rabbit chase"
 msgstr "Rabbit Chase"
 
-#: server.js:2452
+#: server.js:2471
 msgid "Tanks can jump unaided"
-msgstr "Os tanques podem saltar sem ajuda"
+msgstr "Os tanques podem pular sem ajuda"
 
-#: server.js:2453
+#: server.js:2472
 msgid "Shots ricochet"
 msgstr "Os tiros fazem ricochete"
 
-#: server.js:2454
+#: server.js:2473
 msgid "Score affects tank performance"
 msgstr "A pontuação afeta o desempenho do tanque"
 
-#: server.js:2455
+#: server.js:2474
 msgid "Tanks have inertia"
 msgstr "Os tanques têm inércia"
 
-#: server.js:2456
+#: server.js:2475
 msgid "Antidote flags are spawned"
 msgstr "Aparecem bandeiras antídoto"
 
-#: server.js:2457
+#: server.js:2476
 msgid "A replay server"
 msgstr "Um servidor de repetições"
 
-#: server.js:2458
+#: server.js:2477
 msgid "The pane has a map overview"
 msgstr "O painel tem uma vista geral do mapa"
 
-#: server.js:2459
+#: server.js:2478
 msgid "A generated world, which usually changes on restart"
 msgstr "Um mundo gerado, que costuma mudar ao reiniciar"
 
-#: server.js:2460
+#: server.js:2479
 msgid "Autopilot and robots allowed"
 msgstr "Piloto automático e robôs permitidos"
 
-#: server.js:2461
+#: server.js:2480
 msgid "Players with no bzflag.org login may join to observe"
 msgstr "Jogadores sem conta bzflag.org podem entrar para observar"
 
-#: server.js:2462
+#: server.js:2481
 msgid "Players with no bzflag.org login may spawn"
 msgstr "Jogadores sem conta bzflag.org podem entrar em jogo"
 
-#: server.js:2463
+#: server.js:2482
 msgid "Players with no bzflag.org login may chat"
 msgstr "Jogadores sem conta bzflag.org podem conversar"
 
-#: server.js:2465
+#: server.js:2484
 msgid ""
 "For {bots}, {guestWatch}, {guests} and {guestChat}, a server bzo has not "
 "found out about matches neither {plus} nor {minus}."
@@ -3337,67 +3342,67 @@ msgstr ""
 "Para {bots}, {guestWatch}, {guests} e {guestChat}, um servidor sobre o qual "
 "o bzo ainda não sabe nada não corresponde nem a {plus} nem a {minus}."
 
-#: server.js:2469
+#: server.js:2488
 msgid "Numbers -- a name, then {operators}, then a number"
 msgstr "Números -- um nome, depois {operators}, depois um número"
 
-#: server.js:2472
+#: server.js:2491
 msgid "Active shots a tank may have"
 msgstr "Tiros ativos que um tanque pode ter"
 
-#: server.js:2473
+#: server.js:2492
 msgid "Players now, observers excluded"
 msgstr "Jogadores agora, sem contar observadores"
 
-#: server.js:2474
+#: server.js:2493
 msgid "Bots now"
 msgstr "Bots agora"
 
-#: server.js:2475
+#: server.js:2494
 msgid "Playing slots still free"
-msgstr "Lugares de jogo ainda livres"
+msgstr "Vagas de jogo ainda livres"
 
-#: server.js:2476
+#: server.js:2495
 msgid "Colour teams the server offers"
-msgstr "Equipas de cor que o servidor oferece"
+msgstr "Times de cor que o servidor oferece"
 
-#: server.js:2477
+#: server.js:2496
 msgid "Time limit, in seconds"
 msgstr "Limite de tempo, em segundos"
 
-#: server.js:2478
+#: server.js:2497
 msgid "The server's own player ceiling"
 msgstr "O máximo de jogadores do próprio servidor"
 
-#: server.js:2479
+#: server.js:2498
 msgid "Team score that ends the game"
-msgstr "Pontuação de equipa que termina o jogo"
+msgstr "Pontuação de time que termina o jogo"
 
-#: server.js:2480
+#: server.js:2499
 msgid "Player score that ends the game"
 msgstr "Pontuação de jogador que termina o jogo"
 
-#: server.js:2481
+#: server.js:2500
 msgid "Kills that shed a bad flag"
-msgstr "Abates para se livrar de uma bandeira má"
+msgstr "Abates para se livrar de uma bandeira ruim"
 
-#: server.js:2482
+#: server.js:2501
 msgid "Tenths of a second to shed a bad flag"
-msgstr "Décimas de segundo para se livrar de uma bandeira má"
+msgstr "Décimos de segundo para se livrar de uma bandeira ruim"
 
-#: server.js:2483
+#: server.js:2502
 msgid "Players on rogue, red, green, blue, purple, observer"
-msgstr "Jogadores em errante, vermelho, verde, azul, púrpura, observador"
+msgstr "Jogadores em errante, vermelho, verde, azul, roxo, observador"
 
-#: server.js:2484
+#: server.js:2503
 msgid "That team's maximum"
-msgstr "O máximo dessa equipa"
+msgstr "O máximo desse time"
 
-#: server.js:2485
+#: server.js:2504
 msgid "That team's free slots"
-msgstr "Os lugares livres dessa equipa"
+msgstr "As vagas livres desse time"
 
-#: server.js:2487
+#: server.js:2506
 msgid ""
 "Patterns -- a name, then {glob} for a glob or {regex} for a regular "
 "expression"
@@ -3405,96 +3410,96 @@ msgstr ""
 "Padrões -- um nome, depois {glob} para um glob ou {regex} para uma expressão "
 "regular"
 
-#: server.js:2490
+#: server.js:2509
 msgid "The address, host and port"
-msgstr "O endereço, anfitrião e porta"
+msgstr "O endereço, host e porta"
 
-#: server.js:2491
+#: server.js:2510
 msgid "The description"
 msgstr "A descrição"
 
-#: server.js:2492
+#: server.js:2511
 msgid "Either one"
 msgstr "Qualquer um dos dois"
 
-#: server.js:2493
+#: server.js:2512
 msgid "The world hash the pane shows"
 msgstr "O hash do mundo que o painel mostra"
 
-#: server.js:2494
+#: server.js:2513
 msgid "The server's version: {bzo} or bzfs's own build"
 msgstr "A versão do servidor: {bzo} ou a compilação própria do bzfs"
 
-#: server.js:2495
+#: server.js:2514
 msgid "The bzflag.org account that registered it"
-msgstr "A conta bzflag.org que o registou"
+msgstr "A conta bzflag.org que o registrou"
 
-#: server.js:2496
+#: server.js:2515
 msgid "The IP address the list server has for it"
 msgstr "O endereço IP que o servidor de listas tem para ele"
 
-#: server.js:2497
+#: server.js:2516
 msgid "Any one world variable it sets, as {pair}"
 msgstr "Qualquer variável do mundo que defina, como {pair}"
 
-#: server.js:2499
+#: server.js:2518
 msgid ""
 "A capitalised pattern name matches case-sensitively: {lower} ignores case, "
 "{upper} does not."
 msgstr ""
-"Um nome de padrão com maiúscula distingue maiúsculas de minúsculas: {lower} "
-"ignora-as, {upper} não."
+"Um nome de padrão com maiúscula diferencia maiúsculas de minúsculas: {lower}"
+" as ignora, {upper} não."
 
-#: server.js:2502
+#: server.js:2521
 msgid "Examples"
 msgstr "Exemplos"
 
-#: server.js:2503
+#: server.js:2522
 msgid "Two or three shots, and somebody playing"
-msgstr "Dois ou três tiros, e alguém a jogar"
+msgstr "Dois ou três tiros, e alguém jogando"
 
-#: server.js:2504
+#: server.js:2523
 msgid "Capture-the-flag between exactly two teams"
-msgstr "Captura da bandeira entre exatamente duas equipas"
+msgstr "Captura da bandeira entre exatamente dois times"
 
-#: server.js:2505
+#: server.js:2524
 msgid "Leagues, by description"
 msgstr "Ligas, pela descrição"
 
-#: server.js:2506
+#: server.js:2525
 msgid "bzo servers only"
 msgstr "Só servidores bzo"
 
-#: server.js:2507
+#: server.js:2526
 msgid "No version known yet"
 msgstr "Ainda sem versão conhecida"
 
-#: server.js:2508
+#: server.js:2527
 msgid "Somebody is watching"
-msgstr "Alguém está a assistir"
+msgstr "Alguém está assistindo"
 
-#: server.js:2509
+#: server.js:2528
 msgid "Rabbit chase, ricochet, three shots"
 msgstr "Rabbit Chase, ricochete, três tiros"
 
-#: server.js:2510
+#: server.js:2529
 msgid "Either capture-the-flag or rabbit chase"
 msgstr "Captura da bandeira ou Rabbit Chase"
 
-#: server.js:2511
+#: server.js:2530
 msgid "No map overview yet"
 msgstr "Ainda sem vista geral do mapa"
 
-#: server.js:2512
+#: server.js:2531
 msgid "Lists {variable} at all, on or off; {off} is the one that means off"
 msgstr ""
 "Indica {variable}, ligada ou desligada; {off} é a que significa desligada"
 
-#: server.js:2619
+#: server.js:2638
 msgid "Bots, blank where unknown"
 msgstr "Bots, em branco se desconhecido"
 
-#: server.js:2621
+#: server.js:2640
 msgid ""
 "Game type: yellow free-for-all, red capture-the-flag, white rabbit chase, "
 "cyan replay"
@@ -3502,147 +3507,147 @@ msgstr ""
 "Tipo de jogo: amarelo todos contra todos, vermelho captura da bandeira, "
 "branco Rabbit Chase, ciano repetição"
 
-#: server.js:2623
+#: server.js:2642
 msgid "Superflags"
 msgstr "Superbandeiras"
 
-#: server.js:2626
+#: server.js:2645
 msgid "This server already holds an import of that map"
 msgstr "Este servidor já tem uma importação desse mapa"
 
-#: server.js:2630
+#: server.js:2649
 msgid "The name, or the address when a server has none"
 msgstr "O nome, ou o endereço quando um servidor não tem"
 
-#: server.js:2630
+#: server.js:2649
 msgid "Name & Description"
 msgstr "Nome e descrição"
 
-#: server.js:2642
+#: server.js:2661
 msgid "Filter syntax"
 msgstr "Sintaxe do filtro"
 
-#: server.js:2766
+#: server.js:2785
 msgid "Address"
 msgstr "Endereço"
 
-#: server.js:2768 server.js:2874 server.js:2890 server.js:5970
+#: server.js:2787 server.js:2893 server.js:2909 server.js:6044
 msgid "Owner"
 msgstr "Proprietário"
 
-#: server.js:2769
+#: server.js:2788
 msgid "Imported"
 msgstr "Importado"
 
-#: server.js:2783 server.js:2842
+#: server.js:2802 server.js:2861
 msgid "Launch"
 msgstr "Iniciar"
 
-#: server.js:2789 server/discovery.cjs:265
+#: server.js:2808 server/discovery.cjs:265
 msgid "Play"
 msgstr "Jogar"
 
-#: server.js:2794
+#: server.js:2813
 msgid "Import"
 msgstr "Importar"
 
-#: server.js:2834
+#: server.js:2853
 msgid "Enter game"
 msgstr "Entrar no jogo"
 
-#: server.js:2841
+#: server.js:2860
 msgid "Login and Play"
-msgstr "Iniciar sessão e jogar"
+msgstr "Fazer login e jogar"
 
-#: server.js:2873
+#: server.js:2892
 msgid "BZFlag server"
 msgstr "Servidor BZFlag"
 
-#: server.js:2875
+#: server.js:2894
 msgid "Carried by"
 msgstr "Retransmitido por"
 
-#: server.js:2889
+#: server.js:2908
 msgid "Up"
 msgstr "Ativo"
 
-#: server.js:2891
+#: server.js:2910
 msgid "Voice chat"
 msgstr "Chat de voz"
 
-#: server.js:2891
+#: server.js:2910
 msgid "configured"
 msgstr "configurado"
 
-#: server.js:2893
+#: server.js:2912
 msgid "Also at"
 msgstr "Também em"
 
-#: server.js:2944
+#: server.js:2963
 msgid "(admin)"
 msgstr "(admin)"
 
-#: server.js:2945
+#: server.js:2964
 msgid "Log out"
-msgstr "Terminar sessão"
+msgstr "Sair"
 
-#: server.js:2947
+#: server.js:2966
 msgid "Log in with your bzflag.org account to register a server"
-msgstr "Inicia sessão com a tua conta bzflag.org para registar um servidor"
+msgstr "Faça login com a sua conta bzflag.org para registrar um servidor"
 
-#: server.js:2948
+#: server.js:2967
 msgid "Log in with your bzflag.org account"
-msgstr "Inicia sessão com a tua conta bzflag.org"
+msgstr "Faça login com a sua conta bzflag.org"
 
-#: server.js:2959
+#: server.js:2978
 msgid "maps"
 msgstr "mapas"
 
-#: server.js:2959
+#: server.js:2978
 msgid "replays"
 msgstr "repetições"
 
-#: server.js:2960
+#: server.js:2979
 msgid "keys"
 msgstr "chaves"
 
-#: server.js:2960
+#: server.js:2979
 msgid "help"
 msgstr "ajuda"
 
-#: server.js:2964
+#: server.js:2983
 msgid "Imported {file} -- it is in the local maps table below."
 msgstr "{file} importado -- está na tabela de mapas locais abaixo."
 
-#: server.js:2966
+#: server.js:2985
 msgid "Import failed: {error}"
 msgstr "A importação falhou: {error}"
 
-#: server.js:2974
+#: server.js:2993
 msgid "bzo servers"
 msgstr "Servidores bzo"
 
-#: server.js:3207
+#: server.js:3226
 msgid "Public bzo servers - {count}"
 msgstr "Servidores bzo públicos - {count}"
 
-#: server.js:3208
+#: server.js:3227
 msgid ""
 "From the designated bzo list server, {server} -- pick a row to read it; "
 "Enter, or the pane's own link, goes in."
 msgstr ""
-"Do servidor de listas bzo designado, {server} -- escolhe uma linha para a "
-"ler; Enter, ou a ligação do próprio painel, entra."
+"Do servidor de listas bzo designado, {server} -- escolha uma linha para "
+"lê-la; Enter, ou o link do próprio painel, entra."
 
-#: server.js:3209
+#: server.js:3228
 msgid "disabled on this instance"
 msgstr "desativado nesta instância"
 
-#: server.js:3213
+#: server.js:3232
 msgid "Public BZFlag servers - {count}"
 msgstr "Servidores BZFlag públicos - {count}"
 
-#: server.js:3214
+#: server.js:3233
 msgid ""
 "From the public list server (my.bzflag.org), cached {seconds}s ago -- "
 "{refresh}."
@@ -3650,50 +3655,50 @@ msgstr ""
 "Do servidor de listas público (my.bzflag.org), em cache há {seconds} s -- "
 "{refresh}."
 
-#: server.js:3215
+#: server.js:3234
 msgid "refresh"
 msgstr "atualizar"
 
-#: server.js:3217
+#: server.js:3236
 msgid ""
 "Pick a row to read it; its link views that map, and does not enter that game."
 msgstr ""
-"Escolhe uma linha para a ler; a sua ligação mostra esse mapa, e não entra "
+"Escolha uma linha para lê-la; o link dela mostra esse mapa, e não entra "
 "nesse jogo."
 
-#: server.js:3221
+#: server.js:3240
 msgid "Local maps - {count}"
 msgstr "Mapas locais - {count}"
 
-#: server.js:3222
+#: server.js:3241
 msgid ""
 "Already in this server's {directory} -- pick a row to read it; its link "
 "views that map."
 msgstr ""
-"Já na {directory} deste servidor -- escolhe uma linha para a ler; a sua "
-"ligação mostra esse mapa."
+"Já na {directory} deste servidor -- escolha uma linha para lê-la; o link "
+"dela mostra esse mapa."
 
-#: server.js:3227
+#: server.js:3246
 msgid "Local replays - {count}"
 msgstr "Repetições locais - {count}"
 
-#: server.js:3228
+#: server.js:3247
 msgid ""
 "bzfs recordings in this server's {directory} -- pick a row to read it; Watch "
 "plays it to everyone watching that replay."
 msgstr ""
-"Gravações do bzfs na {directory} deste servidor -- escolhe uma linha para a "
-"ler; Assistir reprodu-la para todos os que assistem a essa repetição."
+"Gravações do bzfs na {directory} deste servidor -- escolha uma linha para "
+"lê-la; Assistir a reproduz para todos que assistem a essa repetição."
 
-#: server.js:3243
+#: server.js:3262
 msgid ""
 "bzo {version} (build {build}): BZFlag in the browser, on desktop, phone and "
 "headset, and this list of the servers to play it on."
 msgstr ""
-"bzo {version} (build {build}): BZFlag no navegador, no computador, telemóvel "
-"e visor, e esta lista dos servidores onde o jogar."
+"bzo {version} (build {build}): BZFlag no navegador, no computador, celular e"
+" headset, e esta lista dos servidores onde jogá-lo."
 
-#: server.js:3246
+#: server.js:3265
 msgid ""
 "Copyright (C) 2025-2026 Tim Riker. Free software under the {license}; source "
 "at {source}."
@@ -3701,17 +3706,17 @@ msgstr ""
 "Copyright (C) 2025-2026 Tim Riker. Software livre sob a {license}; código-"
 "fonte em {source}."
 
-#: server.js:3306
+#: server.js:3325
 msgid "Could not reach the BZFlag list server. Try again shortly."
 msgstr ""
-"Não foi possível contactar o servidor de listas do BZFlag. Tenta novamente "
+"Não foi possível contatar o servidor de listas do BZFlag. Tente novamente "
 "daqui a pouco."
 
-#: server.js:5927
+#: server.js:6001
 msgid "List server key"
 msgstr "Chave do servidor de listas"
 
-#: server.js:5929
+#: server.js:6003
 msgid ""
 "This instance is not the designated bzo list server. Manage this server's "
 "key at {link}."
@@ -3719,80 +3724,80 @@ msgstr ""
 "Esta instância não é o servidor de listas bzo designado. Gere a chave deste "
 "servidor em {link}."
 
-#: server.js:5932
+#: server.js:6006
 msgid "The list server is disabled on this instance ({setting} is empty)."
 msgstr ""
 "O servidor de listas está desativado nesta instância ({setting} está vazio)."
 
-#: server.js:5939
+#: server.js:6013
 msgid "Generate key"
 msgstr "Gerar chave"
 
-#: server.js:5941
+#: server.js:6015
 msgid ""
 "Enter the server's own {setting} -- the same address it already answers "
 "admin-whitelist probes on."
 msgstr ""
-"Introduz o {setting} do próprio servidor -- o mesmo endereço em que já "
-"responde às verificações da lista branca de administração."
+"Digite o {setting} do próprio servidor -- o mesmo endereço em que ele já "
+"responde às verificações da lista de permissões de administração."
 
-#: server.js:5944
+#: server.js:6018
 msgid ""
 "The list server calls this address back to validate a report; it never "
 "trusts one a report claims for itself."
 msgstr ""
-"O servidor de listas volta a contactar este endereço para validar um "
-"relatório; nunca confia no que um relatório declara para si."
+"O servidor de listas contata de volta este endereço para validar um "
+"relatório; nunca confia no que um relatório declara sobre si."
 
-#: server.js:5946
+#: server.js:6020
 msgid "Log in above to register a server and generate a key."
-msgstr "Inicia sessão acima para registar um servidor e gerar uma chave."
+msgstr "Faça login acima para registrar um servidor e gerar uma chave."
 
-#: server.js:5949
+#: server.js:6023
 msgid "never"
 msgstr "nunca"
 
-#: server.js:5950
+#: server.js:6024
 msgid "stale"
 msgstr "desatualizado"
 
-#: server.js:5951
+#: server.js:6025
 msgid "{players}/{max} players"
 msgstr "{players}/{max} jogadores"
 
-#: server.js:5952
+#: server.js:6026
 msgid "never reported"
 msgstr "nunca reportou"
 
-#: server.js:5953
+#: server.js:6027
 msgid "Revoke"
 msgstr "Revogar"
 
-#: server.js:5954
+#: server.js:6028
 msgid "Failed"
 msgstr "Falhou"
 
-#: server.js:5955
+#: server.js:6029
 msgid "Key for {url}: {key}"
 msgstr "Chave para {url}: {key}"
 
-#: server.js:5956
+#: server.js:6030
 msgid ""
 "Paste this into that server's Operator panel -- also readable from the table "
 "above any time."
 msgstr ""
-"Cola-a no painel Operador desse servidor -- também pode ser lida na tabela "
-"acima a qualquer momento."
+"Cole-a no painel Operador desse servidor -- ela também pode ser lida na "
+"tabela acima a qualquer momento."
 
-#: server.js:5958
+#: server.js:6032
 msgid "All registered keys"
-msgstr "Todas as chaves registadas"
+msgstr "Todas as chaves registradas"
 
-#: server.js:5958
+#: server.js:6032
 msgid "Your keys"
-msgstr "As tuas chaves"
+msgstr "Suas chaves"
 
-#: server.js:5959
+#: server.js:6033
 msgid ""
 "This instance ({url}) is the designated bzo list server -- every other bzo "
 "instance reports here, so its own {list} can show the {table} above."
@@ -3801,428 +3806,428 @@ msgstr ""
 "outras instâncias bzo reportam aqui, para que o seu próprio {list} possa "
 "mostrar a {table} acima."
 
-#: server.js:5962
+#: server.js:6036
 msgid "bzo servers table"
 msgstr "tabela de servidores bzo"
 
-#: server.js:5964
+#: server.js:6038
 msgid "A {bzfs} server's key is a different one, from {link}."
 msgstr "A chave de um servidor {bzfs} é outra, obtida em {link}."
 
-#: server.js:5970
+#: server.js:6044
 msgid "Key"
 msgstr "Chave"
 
-#: server.js:5971
+#: server.js:6045
 msgid "Requested"
 msgstr "Pedida"
 
-#: server.js:5971
+#: server.js:6045
 msgid "Last checked"
 msgstr "Última verificação"
 
-#: server.js:5972
+#: server.js:6046
 msgid "Status"
-msgstr "Estado"
+msgstr "Status"
 
-#: server.js:7272
+#: server.js:7346
 msgid "Match duration is {duration}"
 msgstr "A partida dura {duration}"
 
-#: server.js:7282
+#: server.js:7356
 msgid "Match started"
 msgstr "Partida iniciada"
 
-#: server.js:7630
+#: server.js:7704
 msgid "Your score record will be saved while you are in observer mode."
-msgstr "A tua pontuação será guardada enquanto estiveres em modo observador."
+msgstr "Sua pontuação será salva enquanto você estiver no modo observador."
 
-#: server.js:7635
+#: server.js:7709
 msgid "Your score has been restored."
-msgstr "A tua pontuação foi reposta."
+msgstr "Sua pontuação foi restaurada."
 
 #. TRANSLATORS: /me is a command name; keep it as it is
-#: server.js:8401
+#: server.js:8475
 msgid "{player}, the /me command requires an argument"
 msgstr "{player}, o comando /me precisa de um argumento"
 
-#: server.js:8442
+#: server.js:8516
 msgid "Commands (use /<command>? for one of them):"
-msgstr "Comandos (usa /<command>? para ver um):"
+msgstr "Comandos (use /<command>? para ver um):"
 
-#: server.js:8487
+#: server.js:8561
 msgid "Recording started"
 msgstr "Gravação iniciada"
 
-#: server.js:8495 server.js:8552 server/messages-operator.cjs:268
+#: server.js:8569 server.js:8626 server/messages-operator.cjs:270
 msgid "Could not open for writing: {name} ({error})"
 msgstr "Não foi possível abrir para escrita: {name} ({error})"
 
-#: server.js:8499
+#: server.js:8573
 msgid "Recording stopped"
 msgstr "Gravação parada"
 
-#: server.js:8507
+#: server.js:8581
 msgid "Record size set to {mbytes}"
 msgstr "Tamanho da gravação: {mbytes}"
 
-#: server.js:8515
+#: server.js:8589
 msgid "Record rate set to {seconds}"
 msgstr "Frequência da gravação: {seconds}"
 
-#: server.js:8519
+#: server.js:8593
 msgid "Not Recording"
 msgstr "Sem gravação"
 
-#: server.js:8523
+#: server.js:8597
 msgid "Filename:  {name}"
-msgstr "Nome do ficheiro:  {name}"
+msgstr "Nome do arquivo:  {name}"
 
-#: server.js:8524
+#: server.js:8598
 msgid "   saved:  {bytes} bytes / {packets} packets / {seconds} seconds"
 msgstr ""
-"        guardado:  {bytes} bytes / {packets} pacotes / {seconds} segundos"
+"           salvo:  {bytes} bytes / {packets} pacotes / {seconds} segundos"
 
-#: server.js:8530
+#: server.js:8604
 msgid "Buffered:  {bytes} bytes / {packets} packets / {seconds} seconds"
 msgstr ""
 "       Em buffer:  {bytes} bytes / {packets} pacotes / {seconds} segundos"
 
-#: server.js:8544 server/messages-operator.cjs:259
+#: server.js:8618 server/messages-operator.cjs:261
 msgid "No buffer to save"
-msgstr "Não há buffer para guardar"
+msgstr "Não há buffer para salvar"
 
-#: server.js:8549 server/messages-operator.cjs:264
+#: server.js:8623 server/messages-operator.cjs:266
 msgid "Record buffer saved to: {name}"
-msgstr "Buffer de gravação guardado em: {name}"
+msgstr "Buffer de gravação salvo em: {name}"
 
-#: server.js:8563
+#: server.js:8637
 msgid "Recording to file: {name}"
-msgstr "A gravar para o ficheiro: {name}"
+msgstr "Gravando no arquivo: {name}"
 
-#: server.js:8586 server.js:9427
+#: server.js:8660 server.js:9501
 msgid "BZFS Version: {version}"
 msgstr "Versão do BZFS: {version}"
 
-#: server.js:8624 server.js:9626
+#: server.js:8698 server.js:9700
 msgid "Nobody is here"
-msgstr "Não está cá ninguém"
+msgstr "Não tem ninguém aqui"
 
-#: server.js:8631
+#: server.js:8705
 msgid "server: {stats}"
 msgstr "servidor: {stats}"
 
-#: server.js:8673
+#: server.js:8747
 msgid "Usage: /setteam <#slot|PlayerName> <team>"
-msgstr "Utilização: /setteam <#slot|PlayerName> <team>"
+msgstr "Uso: /setteam <#slot|PlayerName> <team>"
 
 #. TRANSLATORS: /setteam is a command name and {teams} lists team names as typed
-#: server.js:8680
+#: server.js:8754
 msgid "Usage: /setteam <#slot|PlayerName> <team> -- one of {teams}"
-msgstr "Utilização: /setteam <#slot|PlayerName> <team> -- um de {teams}"
+msgstr "Uso: /setteam <#slot|PlayerName> <team> -- um de {teams}"
 
-#: server.js:8686
+#: server.js:8760
 msgid "\"{player}\" is not on a team to move from"
-msgstr "\"{player}\" não está em nenhuma equipa de onde possa ser movido"
+msgstr "\"{player}\" não está em nenhum time de onde possa ser movido"
 
-#: server.js:8690
+#: server.js:8764
 msgid "\"{player}\" is already {team}"
 msgstr "\"{player}\" já está em {team}"
 
-#: server.js:8696
+#: server.js:8770
 msgid "\"{player}\" moved to {team}"
 msgstr "\"{player}\" movido para {team}"
 
-#: server.js:8697
+#: server.js:8771
 msgid "@{player} moved you to {team}"
-msgstr "@{player} moveu-te para {team}"
+msgstr "@{player} moveu você para {team}"
 
-#: server.js:8726
+#: server.js:8800
 msgid "Moved to {position} facing {bearing}"
-msgstr "Movido para {position} virado para {bearing}"
+msgstr "Movido para {position} voltado para {bearing}"
 
-#: server.js:8729
+#: server.js:8803
 msgid "\"{player}\" moved to {position} facing {bearing}"
-msgstr "\"{player}\" movido para {position} virado para {bearing}"
+msgstr "\"{player}\" movido para {position} voltado para {bearing}"
 
-#: server.js:8730
+#: server.js:8804
 msgid "@{player} moved you to {position} facing {bearing}"
-msgstr "@{player} moveu-te para {position} virado para {bearing}"
+msgstr "@{player} moveu você para {position} voltado para {bearing}"
 
-#: server.js:8743
+#: server.js:8817
 msgid "Usage: /msg \"some callsign\" some message"
-msgstr "Utilização: /msg \"algum indicativo\" alguma mensagem"
+msgstr "Uso: /msg \"algum indicativo\" alguma mensagem"
 
-#: server.js:8790
+#: server.js:8864
 msgid "Usage: /kill <#slot|PlayerName> [reason]"
-msgstr "Utilização: /kill <#slot|PlayerName> [reason]"
+msgstr "Uso: /kill <#slot|PlayerName> [reason]"
 
-#: server.js:8795
+#: server.js:8869
 msgid "An observer has no tank to kill"
 msgstr "Um observador não tem tanque para matar"
 
-#: server.js:8799
+#: server.js:8873
 msgid "\"{player}\" is already dead"
 msgstr "\"{player}\" já está morto"
 
-#: server.js:8806
+#: server.js:8880
 msgid "\"{player}\" killed"
 msgstr "\"{player}\" eliminado"
 
-#: server.js:8807
+#: server.js:8881
 msgid "You were killed by an operator: {reason}"
-msgstr "Foste morto por um operador: {reason}"
+msgstr "Você foi morto por um operador: {reason}"
 
-#: server.js:8808
+#: server.js:8882
 msgid "You were killed by an operator"
-msgstr "Foste morto por um operador"
+msgstr "Você foi morto por um operador"
 
-#: server.js:8856
+#: server.js:8930
 msgid "You were banned from this server"
-msgstr "Foste banido deste servidor"
+msgstr "Você foi banido deste servidor"
 
-#: server.js:8857 server.js:8880
+#: server.js:8931 server.js:8954
 msgid "Reason given: {reason}"
 msgstr "Motivo: {reason}"
 
-#: server.js:8858
+#: server.js:8932
 msgid "{player} banned by {admin}, reason: {reason}"
 msgstr "{player} banido por {admin}, motivo: {reason}"
 
-#: server.js:8870
+#: server.js:8944
 msgid "Syntax: /kick <#slot | PlayerName | \"Player Name\"> <reason>"
 msgstr "Sintaxe: /kick <#slot | PlayerName | \"Player Name\"> <reason>"
 
-#: server.js:8871 server.js:8900
+#: server.js:8945 server.js:8974
 msgid "\tPlease keep in mind that reason is displayed to the user."
-msgstr "\tLembra-te de que o motivo é mostrado ao jogador."
+msgstr "\tLembre-se de que o motivo é mostrado ao jogador."
 
-#: server.js:8874
+#: server.js:8948
 msgid "player \"{player}\" not found"
 msgstr "jogador \"{player}\" não encontrado"
 
-#: server.js:8879
+#: server.js:8953
 msgid "You were kicked off the server"
-msgstr "Foste expulso do servidor"
+msgstr "Você foi expulso do servidor"
 
-#: server.js:8881
+#: server.js:8955
 msgid "{player} kicked by {admin}, reason: {reason}"
 msgstr "{player} expulso por {admin}, motivo: {reason}"
 
-#: server.js:8895
+#: server.js:8969
 msgid ""
 "Syntax: /ban <#slot | PlayerName | \"Player Name\" | ip> <duration> <reason>"
 msgstr ""
 "Sintaxe: /ban <#slot | PlayerName | \"Player Name\" | ip> <duration> <reason>"
 
-#: server.js:8896
+#: server.js:8970
 msgid "\t<duration> can be 'short' or 'default' for the default ban time "
 msgstr ""
 "\t<duration> pode ser 'short' ou 'default' para a duração de banimento "
-"predefinida "
+"padrão "
 
-#: server.js:8897
+#: server.js:8971
 msgid "\tor 'forever' or 'max' for infinite bans "
 msgstr "\tou 'forever' ou 'max' para banimentos sem fim "
 
-#: server.js:8898
+#: server.js:8972
 msgid "\tor a time in the format <weeks>W<days>D<hours>H<minutes>M "
 msgstr "\tou um tempo no formato <weeks>W<days>D<hours>H<minutes>M "
 
-#: server.js:8899
+#: server.js:8973
 msgid "\tor just a number of minutes "
 msgstr "\tou apenas um número de minutos "
 
-#: server.js:8922 server.js:9030
+#: server.js:8996 server.js:9104
 msgid "Error: invalid ban duration"
 msgstr "Erro: duração de banimento inválida"
 
-#: server.js:8923 server.js:9031
+#: server.js:8997 server.js:9105
 msgid "Duration examples:  30m 1h  1d  1w  and mixing: 1w2d4h 1w2d1m"
 msgstr "Exemplos de duração:  30m 1h  1d  1w  e combinados: 1w2d4h 1w2d1m"
 
-#: server.js:8932 server.js:9246
+#: server.js:9006 server.js:9320
 msgid "{player} has no trusted address to ban"
-msgstr "{player} não tem um endereço fiável para banir"
+msgstr "{player} não tem um endereço confiável para banir"
 
-#: server.js:8938 server.js:9040
+#: server.js:9012 server.js:9114
 msgid "Pattern added to the BZID banlist"
 msgstr "Padrão adicionado à lista de banimentos por BZID"
 
-#: server.js:8944
+#: server.js:9018
 msgid "Malformed address or invalid Player/Slot: {target}"
 msgstr "Endereço mal formado ou jogador/slot inválido: {target}"
 
-#: server.js:8948
+#: server.js:9022
 msgid "Pattern added to the IP banlist"
 msgstr "Padrão adicionado à lista de banimentos por IP"
 
-#: server.js:8959
+#: server.js:9033
 msgid "Removed IP pattern from the ban list"
 msgstr "Padrão de IP removido da lista de banimentos"
 
-#: server.js:8961 server.js:9050
+#: server.js:9035 server.js:9124
 msgid "No pattern removed"
 msgstr "Nenhum padrão removido"
 
-#: server.js:8976
+#: server.js:9050
 msgid "Syntax: /checkip <ip>"
 msgstr "Sintaxe: /checkip <ip>"
 
-#: server.js:8981
+#: server.js:9055
 msgid "{address} is not banned."
 msgstr "{address} não está banido."
 
-#: server.js:8984
+#: server.js:9058
 msgid "{address} is banned:"
 msgstr "{address} está banido:"
 
-#: server.js:8992
+#: server.js:9066
 msgid ""
 "Syntax: /idban <#slot|+id|PlayerName|\"Player Name\"> <duration> <reason>"
 msgstr ""
 "Sintaxe: /idban <#slot|+id|PlayerName|\"Player Name\"> <duration> <reason>"
 
-#: server.js:8993
+#: server.js:9067
 msgid "  Please keep in mind that reason is displayed to the user."
-msgstr "  Lembra-te de que o motivo é mostrado ao jogador."
+msgstr "  Lembre-se de que o motivo é mostrado ao jogador."
 
-#: server.js:9004
+#: server.js:9078
 msgid "Error: invalid id pattern"
 msgstr "Erro: padrão de id inválido"
 
-#: server.js:9012
+#: server.js:9086
 msgid "could not find player ({player})"
 msgstr "não foi possível encontrar o jogador ({player})"
 
-#: server.js:9017
+#: server.js:9091
 msgid "no BZID for player ({player})"
 msgstr "o jogador ({player}) não tem BZID"
 
-#: server.js:9048
+#: server.js:9122
 msgid "Removed id from the ban list"
 msgstr "ID removido da lista de banimentos"
 
-#: server.js:9087
+#: server.js:9161
 msgid "Usage: /poll vote yes|no"
-msgstr "Utilização: /poll vote yes|no"
+msgstr "Uso: /poll vote yes|no"
 
-#: server.js:9088
+#: server.js:9162
 msgid "    or /poll ban playername"
 msgstr "    ou /poll ban playername"
 
-#: server.js:9089
+#: server.js:9163
 msgid "    or /poll kick playername"
 msgstr "    ou /poll kick playername"
 
-#: server.js:9090
+#: server.js:9164
 msgid "    or /poll kill playername"
 msgstr "    ou /poll kill playername"
 
-#: server.js:9091
+#: server.js:9165
 msgid "    or /poll set variable value"
 msgstr "    ou /poll set variable value"
 
-#: server.js:9092
+#: server.js:9166
 msgid "    or /poll flagreset"
 msgstr "    ou /poll flagreset"
 
 #. TRANSLATORS: /vote is a command name; keep it as it is
-#: server.js:9100
+#: server.js:9174
 msgid "{player}, you are presently not authorized to run /vote"
-msgstr "{player}, de momento não tens autorização para usar /vote"
+msgstr "{player}, no momento você não tem autorização para usar /vote"
 
-#: server.js:9104 server.js:9144 server.js:9170
+#: server.js:9178 server.js:9218 server.js:9244
 msgid "ERROR: the poll arbiter has disappeared (this should never happen)"
-msgstr "ERRO: o árbitro das votações desapareceu (isto nunca devia acontecer)"
+msgstr "ERRO: o árbitro das votações desapareceu (isso nunca deveria acontecer)"
 
-#: server.js:9108
+#: server.js:9182
 msgid "A poll is not presently in progress.  There is nothing to vote on"
-msgstr "Não há nenhuma votação a decorrer. Não há nada para votar"
+msgstr "Não há nenhuma votação em andamento. Não há nada para votar"
 
-#: server.js:9113
+#: server.js:9187
 msgid "{player}, you did not vote in favor or in opposition"
-msgstr "{player}, não votaste nem a favor nem contra"
+msgstr "{player}, você não votou nem a favor nem contra"
 
-#: server.js:9114
+#: server.js:9188
 msgid "{player}, you did not provide a vote answer"
-msgstr "{player}, não deste uma resposta ao voto"
+msgstr "{player}, você não deu uma resposta ao voto"
 
-#: server.js:9115
+#: server.js:9189
 msgid "Usage: /vote yes|no|y|n|1|0|yea|nay|si|ja|nein|oui|non|sim|nao"
-msgstr "Utilização: /vote yes|no|y|n|1|0|yea|nay|si|ja|nein|oui|non|sim|nao"
+msgstr "Uso: /vote yes|no|y|n|1|0|yea|nay|si|ja|nein|oui|non|sim|nao"
 
 #. TRANSLATORS: {action} is a /poll keyword (ban, kick, kill, set, reset), sent as typed
-#: server.js:9122
+#: server.js:9196
 msgid "{player}, your vote in favor of the {action} has been recorded"
-msgstr "{player}, o teu voto a favor de {action} foi registado"
+msgstr "{player}, o seu voto a favor de {action} foi registrado"
 
-#: server.js:9123
+#: server.js:9197
 msgid "{player}, your vote in opposition of the {action} has been recorded"
-msgstr "{player}, o teu voto contra {action} foi registado"
+msgstr "{player}, o seu voto contra {action} foi registrado"
 
-#: server.js:9125
+#: server.js:9199
 msgid "{player}, you have already voted on the poll to {action} {target}"
-msgstr "{player}, já votaste na votação para {action} {target}"
+msgstr "{player}, você já votou na votação para {action} {target}"
 
-#: server.js:9129
+#: server.js:9203
 msgid ""
 "{player}, there was an error while voting on the poll to {action} {target}"
 msgstr "{player}, houve um erro ao votar na votação para {action} {target}"
 
 #. TRANSLATORS: /veto is a command name; keep it as it is
-#: server.js:9140
+#: server.js:9214
 msgid "{player}, you are presently not authorized to run /veto"
-msgstr "{player}, de momento não tens autorização para usar /veto"
+msgstr "{player}, no momento você não tem autorização para usar /veto"
 
-#: server.js:9148
+#: server.js:9222
 msgid "{player}, there is presently no active poll to veto"
-msgstr "{player}, de momento não há nenhuma votação ativa para vetar"
+msgstr "{player}, no momento não há nenhuma votação ativa para vetar"
 
-#: server.js:9151
+#: server.js:9225
 msgid "{player}, you have cancelled the poll to {action} {target}"
-msgstr "{player}, cancelaste a votação para {action} {target}"
+msgstr "{player}, você cancelou a votação para {action} {target}"
 
-#: server.js:9157
+#: server.js:9231
 msgid "The poll was cancelled by {player}"
 msgstr "A votação foi cancelada por {player}"
 
 #. TRANSLATORS: /poll is a command name; keep it as it is
-#: server.js:9166
+#: server.js:9240
 msgid "{player}, you are presently not authorized to run /poll"
-msgstr "{player}, de momento não tens autorização para usar /poll"
+msgstr "{player}, no momento você não tem autorização para usar /poll"
 
-#: server.js:9186
+#: server.js:9260
 msgid "A poll to {action} {target} is presently in progress"
-msgstr "Está a decorrer uma votação para {action} {target}"
+msgstr "Há uma votação em andamento para {action} {target}"
 
-#: server.js:9189
+#: server.js:9263
 msgid "Unable to start a new poll until the current one is over"
 msgstr "Não é possível iniciar outra votação até a atual terminar"
 
-#: server.js:9194
+#: server.js:9268
 msgid ""
 "Unable to initiate a new poll.  There are not enough registered players "
 "playing."
 msgstr ""
-"Não é possível iniciar uma votação. Não há jogadores registados suficientes "
-"a jogar."
+"Não é possível iniciar uma votação. Não há jogadores registrados suficientes"
+" jogando."
 
-#: server.js:9198
+#: server.js:9272
 msgid ""
 "There needs to be at least {required} other player and only {others} is "
 "available."
 msgstr ""
 "É preciso pelo menos {required} outro jogador e só há {others} disponível."
 
-#: server.js:9199
+#: server.js:9273
 msgid ""
 "There needs to be at least {required} other player and only {others} are "
 "available."
 msgstr ""
 "É preciso pelo menos {required} outro jogador e só há {others} disponíveis."
 
-#: server.js:9201
+#: server.js:9275
 msgid ""
 "There needs to be at least {required} other players and only {others} is "
 "available."
@@ -4230,7 +4235,7 @@ msgstr ""
 "São precisos pelo menos {required} outros jogadores e só há {others} "
 "disponível."
 
-#: server.js:9203
+#: server.js:9277
 msgid ""
 "There needs to be at least {required} other players and only {others} are "
 "available."
@@ -4238,45 +4243,45 @@ msgstr ""
 "São precisos pelo menos {required} outros jogadores e só há {others} "
 "disponíveis."
 
-#: server.js:9212
+#: server.js:9286
 msgid "/poll: incorrect syntax, argument required."
 msgstr "/poll: sintaxe incorreta, é necessário um argumento."
 
-#: server.js:9218
+#: server.js:9292
 msgid "{player}, no target was specified for the [{action}] vote"
 msgstr "{player}, não foi indicado um alvo para a votação [{action}]"
 
 #. TRANSLATORS: /poll and {action} are a command as typed; keep them as they are
-#: server.js:9220
+#: server.js:9294
 msgid "Usage: /poll {action} target"
-msgstr "Utilização: /poll {action} target"
+msgstr "Uso: /poll {action} target"
 
 #. TRANSLATORS: /poll {action} is a command as typed; keep it as it is
-#: server.js:9225
+#: server.js:9299
 msgid "{player}, you may not /poll {action} on this server"
-msgstr "{player}, não podes usar /poll {action} neste servidor"
+msgstr "{player}, você não pode usar /poll {action} neste servidor"
 
-#: server.js:9232
+#: server.js:9306
 msgid "The player specified for a {action} vote is not here"
-msgstr "O jogador indicado para a votação {action} não está cá"
+msgstr "O jogador indicado para a votação {action} não está aqui"
 
-#: server.js:9236
+#: server.js:9310
 msgid "You can't kill an observer!"
-msgstr "Não podes matar um observador!"
+msgstr "Você não pode matar um observador!"
 
-#: server.js:9242
+#: server.js:9316
 msgid "{player} is protected from being polled against."
 msgstr "{player} está protegido contra votações."
 
-#: server.js:9258
+#: server.js:9332
 msgid "You are not able to request a {action} poll right now, {player}"
-msgstr "De momento não podes pedir uma votação {action}, {player}"
+msgstr "No momento você não pode pedir uma votação {action}, {player}"
 
-#: server.js:9262
+#: server.js:9336
 msgid "A poll to {action} {target} has been requested by {player}"
 msgstr "{player} pediu uma votação para {action} {target}"
 
-#: server.js:9270
+#: server.js:9344
 msgid ""
 "{available} player is available, {needed} additional affirming vote required "
 "to pass the poll ({percentage} %)"
@@ -4284,7 +4289,7 @@ msgstr ""
 "{available} jogador disponível, falta {needed} voto a favor para aprovar a "
 "votação ({percentage} %)"
 
-#: server.js:9271
+#: server.js:9345
 msgid ""
 "{available} player is available, {needed} additional affirming votes "
 "required to pass the poll ({percentage} %)"
@@ -4292,7 +4297,7 @@ msgstr ""
 "{available} jogador disponível, faltam {needed} votos a favor para aprovar a "
 "votação ({percentage} %)"
 
-#: server.js:9274
+#: server.js:9348
 msgid ""
 "{available} players are available, {needed} additional affirming vote "
 "required to pass the poll ({percentage} %)"
@@ -4300,7 +4305,7 @@ msgstr ""
 "{available} jogadores disponíveis, falta {needed} voto a favor para aprovar "
 "a votação ({percentage} %)"
 
-#: server.js:9275
+#: server.js:9349
 msgid ""
 "{available} players are available, {needed} additional affirming votes "
 "required to pass the poll ({percentage} %)"
@@ -4308,27 +4313,28 @@ msgstr ""
 "{available} jogadores disponíveis, faltam {needed} votos a favor para "
 "aprovar a votação ({percentage} %)"
 
-#: server.js:9280
+#: server.js:9354
 msgid "Unable to automatically place your vote for some unknown reason"
 msgstr ""
-"Não foi possível registar o teu voto automaticamente por um motivo "
+"Não foi possível registrar o seu voto automaticamente por um motivo "
 "desconhecido"
 
-#: server.js:9307
+#: server.js:9381
 msgid ""
 "You have been temporarily banned due to sufficient votes to have you removed"
 msgstr ""
-"Foste banido temporariamente porque houve votos suficientes para te remover"
+"Você foi banido temporariamente porque houve votos suficientes para "
+"removê-lo"
 
-#: server.js:9313
+#: server.js:9387
 msgid "You have been kicked due to sufficient votes to have you removed"
-msgstr "Foste expulso porque houve votos suficientes para te remover"
+msgstr "Você foi expulso porque houve votos suficientes para removê-lo"
 
-#: server.js:9319
+#: server.js:9393
 msgid "You have been killed due to sufficient votes"
-msgstr "Foste morto porque houve votos suficientes"
+msgstr "Você foi morto porque houve votos suficientes"
 
-#: server.js:9342
+#: server.js:9416
 msgid ""
 "A poll to {action} {target} has begun.  Players have up to {seconds} seconds "
 "to vote."
@@ -4336,457 +4342,456 @@ msgstr ""
 "Começou uma votação para {action} {target}. Os jogadores têm até {seconds} "
 "segundos para votar."
 
-#: server.js:9350
+#: server.js:9424
 msgid "{seconds} seconds remain in the poll to {action} {target}."
 msgstr "Faltam {seconds} segundos na votação para {action} {target}."
 
-#: server.js:9358
+#: server.js:9432
 msgid "Enough votes were collected to {action} {target} early."
 msgstr "Já há votos suficientes para {action} {target} antes do tempo."
 
-#: server.js:9359
+#: server.js:9433
 msgid "Enough votes were collected to reset all unused flags early."
 msgstr ""
-"Já há votos suficientes para repor antes do tempo todas as bandeiras não "
-"usadas."
+"Já há votos suficientes para redefinir antes do tempo todas as bandeiras não"
+" usadas."
 
-#: server.js:9365
+#: server.js:9439
 msgid "Poll Results: {yes} in favor, {no} oppose, {abstain} abstain"
 msgstr "Resultados: {yes} a favor, {no} contra, {abstain} abstenções"
 
-#: server.js:9373
+#: server.js:9447
 msgid "The poll to {action} {target} was not successful"
 msgstr "A votação para {action} {target} não foi aprovada"
 
-#: server.js:9382
+#: server.js:9456
 msgid ""
 "The poll is now closed and was successful.  {target} is scheduled to be "
 "temporarily banned."
 msgstr ""
 "A votação terminou e foi aprovada. {target} vai ser banido temporariamente."
 
-#: server.js:9383
+#: server.js:9457
 msgid ""
 "The poll is now closed and was successful.  {target} is scheduled to be "
 "kicked."
 msgstr "A votação terminou e foi aprovada. {target} vai ser expulso."
 
-#: server.js:9384
+#: server.js:9458
 msgid ""
 "The poll is now closed and was successful.  {target} is scheduled to be "
 "killed."
 msgstr "A votação terminou e foi aprovada. {target} vai ser eliminado."
 
-#: server.js:9387
+#: server.js:9461
 msgid ""
 "The poll is now closed and was successful.  {target} is scheduled to be "
 "{action}."
 msgstr "A votação terminou e foi aprovada. {target} vai sofrer: {action}."
 
-#: server.js:9395
+#: server.js:9469
 msgid "{target} has been kicked."
 msgstr "{target} foi expulso."
 
-#: server.js:9396
+#: server.js:9470
 msgid "{target} has been killed."
 msgstr "{target} foi eliminado."
 
-#: server.js:9398
+#: server.js:9472
 msgid "{target} has been {action}"
 msgstr "{target}: {action} aplicado"
 
-#: server.js:9413
+#: server.js:9487
 msgid "{player}'s client version:"
 msgstr "Versão do cliente de {player}:"
 
-#: server.js:9414
+#: server.js:9488
 msgid "  {version}"
 msgstr "  {version}"
 
-#: server.js:9415
+#: server.js:9489
 msgid "  unknown"
 msgstr "  desconhecida"
 
-#: server.js:9421
+#: server.js:9495
 msgid "Player not found."
 msgstr "Jogador não encontrado."
 
-#: server.js:9452
+#: server.js:9526
 msgid "Countdown cancelled by {player}."
-msgstr "Contagem decrescente cancelada por {player}."
+msgstr "Contagem regressiva cancelada por {player}."
 
-#: server.js:9452
+#: server.js:9526
 msgid "Countdown cancelled"
-msgstr "Contagem decrescente cancelada"
+msgstr "Contagem regressiva cancelada"
 
-#: server.js:9474
+#: server.js:9548
 msgid "No match is running to pause"
-msgstr "Não há nenhuma partida a decorrer para pausar"
+msgstr "Não há nenhuma partida em andamento para pausar"
 
-#: server.js:9482
+#: server.js:9556
 msgid "No paused match to resume"
 msgstr "Não há nenhuma partida em pausa para retomar"
 
-#: server.js:9489
+#: server.js:9563
 msgid "There is no running countdown to cancel"
-msgstr "Não há nenhuma contagem decrescente para cancelar"
+msgstr "Não há nenhuma contagem regressiva para cancelar"
 
-#: server.js:9497
+#: server.js:9571
 msgid "Usage: /countdown [<seconds>|pause|resume|cancel]"
-msgstr "Utilização: /countdown [<seconds>|pause|resume|cancel]"
+msgstr "Uso: /countdown [<seconds>|pause|resume|cancel]"
 
-#: server.js:9502
+#: server.js:9576
 msgid "There is a countdown already in progress"
-msgstr "Já está a decorrer uma contagem decrescente"
+msgstr "Já há uma contagem regressiva em andamento"
 
-#: server.js:9506
+#: server.js:9580
 msgid "A game is already in progress"
-msgstr "Já está a decorrer um jogo"
+msgstr "Já há um jogo em andamento"
 
-#: server.js:9510 server.js:9513
+#: server.js:9584 server.js:9587
 msgid "Countdown set to {seconds} instead of {asked}"
-msgstr "Contagem decrescente de {seconds} em vez de {asked}"
+msgstr "Contagem regressiva de {seconds} em vez de {asked}"
 
-#: server.js:9522
+#: server.js:9596
 msgid "Countdown started by {player}."
-msgstr "Contagem decrescente iniciada por {player}."
+msgstr "Contagem regressiva iniciada por {player}."
 
-#: server.js:9523
+#: server.js:9597
 msgid "Match begins in about {duration}"
-msgstr "A partida começa dentro de cerca de {duration}"
+msgstr "A partida começa em cerca de {duration}"
 
-#: server.js:9531
+#: server.js:9605
 msgid "The match has started!...Good Luck Teams!"
-msgstr "A partida começou!... Boa sorte, equipas!"
+msgstr "A partida começou!... Boa sorte, times!"
 
-#: server.js:9535
+#: server.js:9609
 msgid "Start your engines!......"
 msgstr "Liguem os motores!......"
 
-#: server.js:9537
+#: server.js:9611
 msgid "{seconds}..."
 msgstr "{seconds}..."
 
-#: server.js:9549
+#: server.js:9623
 msgid "No match is running"
-msgstr "Não há nenhuma partida a decorrer"
+msgstr "Não há nenhuma partida em andamento"
 
-#: server.js:9561
+#: server.js:9635
 msgid "Usage: /say <message>"
-msgstr "Utilização: /say <message>"
+msgstr "Uso: /say <message>"
 
-#: server.js:9577
+#: server.js:9651
 msgid "Usage: /mute <#slot|PlayerName>"
-msgstr "Utilização: /mute <#slot|PlayerName>"
+msgstr "Uso: /mute <#slot|PlayerName>"
 
-#: server.js:9583
+#: server.js:9657
 msgid "\"{player}\" is now muted"
 msgstr "\"{player}\" está agora silenciado"
 
-#: server.js:9584
+#: server.js:9658
 msgid "You have been muted by an operator"
-msgstr "Foste silenciado por um operador"
+msgstr "Você foi silenciado por um operador"
 
-#: server.js:9593
+#: server.js:9667
 msgid "Usage: /unmute <#slot|PlayerName>"
-msgstr "Utilização: /unmute <#slot|PlayerName>"
+msgstr "Uso: /unmute <#slot|PlayerName>"
 
-#: server.js:9599
+#: server.js:9673
 msgid "\"{player}\" is no longer muted"
 msgstr "\"{player}\" deixou de estar silenciado"
 
-#: server.js:9600
+#: server.js:9674
 msgid "You are no longer muted"
-msgstr "Deixaste de estar silenciado"
+msgstr "Você não está mais silenciado"
 
-#: server.js:9608
+#: server.js:9682
 msgid "Nobody is muted"
 msgstr "Ninguém está silenciado"
 
-#: server.js:9721
+#: server.js:9795
 msgid "Usage: /flag drop [#slot|PlayerName]"
-msgstr "Utilização: /flag drop [#slot|PlayerName]"
+msgstr "Uso: /flag drop [#slot|PlayerName]"
 
-#: server.js:9728
+#: server.js:9802
 msgid "You are not carrying a flag"
-msgstr "Não levas nenhuma bandeira"
+msgstr "Você não está carregando nenhuma bandeira"
 
-#: server.js:9729
+#: server.js:9803
 msgid "\"{player}\" is not carrying a flag"
-msgstr "\"{player}\" não leva nenhuma bandeira"
+msgstr "\"{player}\" não está carregando nenhuma bandeira"
 
-#: server.js:9738
+#: server.js:9812
 msgid "Dropped {flag} from \"{player}\""
-msgstr "{flag} largada por \"{player}\""
+msgstr "{flag} solta por \"{player}\""
 
-#: server.js:9739
+#: server.js:9813
 msgid "Your {flag} flag was dropped"
-msgstr "A tua bandeira {flag} foi largada"
+msgstr "A sua bandeira {flag} foi solta"
 
-#: server.js:9753
+#: server.js:9827
 msgid "{count} flags sent up"
 msgstr "{count} bandeiras lançadas ao ar"
 
-#: server.js:9763
+#: server.js:9837
 msgid "{count} flags reset"
-msgstr "{count} bandeiras repostas"
+msgstr "{count} bandeiras redefinidas"
 
-#: server.js:9768
+#: server.js:9842
 msgid "No flags are in the world"
 msgstr "Não há bandeiras no mundo"
 
-#: server.js:9786
+#: server.js:9860
 msgid "Usage: /flag take <#slot|PlayerName>"
-msgstr "Utilização: /flag take <#slot|PlayerName>"
+msgstr "Uso: /flag take <#slot|PlayerName>"
 
 #. TRANSLATORS: /flag take is a command name; keep it as it is
-#: server.js:9793
+#: server.js:9867
 msgid "/flag take: player ({player}) does not have a flag"
 msgstr "/flag take: o jogador ({player}) não tem bandeira"
 
-#: server.js:9802
+#: server.js:9876
 msgid "{admin} took flag {flag}/{slot} from {player}"
-msgstr "{admin} tirou a bandeira {flag}/{slot} a {player}"
+msgstr "{admin} tirou a bandeira {flag}/{slot} de {player}"
 
-#: server.js:9814
+#: server.js:9888
 msgid "Usage: /flag give <#slot|PlayerName> <#flagId|FlagAbbr> [force]"
-msgstr "Utilização: /flag give <#slot|PlayerName> <#flagId|FlagAbbr> [force]"
+msgstr "Uso: /flag give <#slot|PlayerName> <#flagId|FlagAbbr> [force]"
 
-#: server.js:9830
+#: server.js:9904
 msgid "flag {flag} is not in this world"
 msgstr "a bandeira {flag} não está neste mundo"
 
-#: server.js:9837 server.js:9875
+#: server.js:9911 server.js:9949
 msgid "you may need to use the force"
-msgstr "talvez precises de usar a força (force)"
+msgstr "talvez você precise usar a força (force)"
 
-#: server.js:9844
+#: server.js:9918
 msgid "flag {flag} is an empty slot"
 msgstr "a bandeira {flag} é uma posição vazia"
 
-#: server.js:9850
+#: server.js:9924
 msgid "bad flag type"
 msgstr "tipo de bandeira inválido"
 
-#: server.js:9872
+#: server.js:9946
 msgid "flag type not found"
 msgstr "tipo de bandeira não encontrado"
 
-#: server.js:9881
+#: server.js:9955
 msgid "An observer has no tank to carry a flag"
-msgstr "Um observador não tem tanque para levar uma bandeira"
+msgstr "Um observador não tem tanque para carregar uma bandeira"
 
 #. TRANSLATORS: /flag give is a command name; keep it as it is
-#: server.js:9888
+#: server.js:9962
 msgid "/flag give: player ({player}) is not alive"
 msgstr "/flag give: o jogador ({player}) não está vivo"
 
-#: server.js:9909
+#: server.js:9983
 msgid "{admin} gave flag {flag}/{slot} to {player}"
 msgstr "{admin} deu a bandeira {flag}/{slot} a {player}"
 
-#: server.js:9936
+#: server.js:10010
 msgid "Usage: /mv [player] <x,y> [facing]"
-msgstr "Utilização: /mv [player] <x,y> [facing]"
+msgstr "Uso: /mv [player] <x,y> [facing]"
 
-#: server.js:9951
+#: server.js:10025
 msgid "An observer has no tank to move"
 msgstr "Um observador não tem tanque para mover"
 
-#: server.js:9994
+#: server.js:10068
 msgid "Nowhere to stand at {x},{y}"
 msgstr "Não há onde ficar em {x},{y}"
 
-#: server.js:10061
+#: server.js:10135
 msgid "Checking another player's position requires operator status"
-msgstr "Ver a posição de outro jogador requer estatuto de operador"
+msgstr "Ver a posição de outro jogador requer status de operador"
 
-#: server.js:10067
+#: server.js:10141
 msgid "Usage: /pos [player]"
-msgstr "Utilização: /pos [player]"
+msgstr "Uso: /pos [player]"
 
-#: server.js:10073
+#: server.js:10147
 msgid "An observer has no tank position"
 msgstr "Um observador não tem posição de tanque"
 
-#: server.js:10081
+#: server.js:10155
 msgid "You are at {position} facing {bearing}"
-msgstr "Estás em {position} virado para {bearing}"
+msgstr "Você está em {position} voltado para {bearing}"
 
-#: server.js:10082
+#: server.js:10156
 msgid "\"{player}\" is at {position} facing {bearing}"
-msgstr "\"{player}\" está em {position} virado para {bearing}"
+msgstr "\"{player}\" está em {position} voltado para {bearing}"
 
-#: server.js:10375
+#: server.js:10449
 msgid "All shots now ricochet"
 msgstr "Agora todos os tiros fazem ricochete"
 
-#: server.js:10375
+#: server.js:10449
 msgid "Shots no longer ricochet"
-msgstr "Os tiros já não fazem ricochete"
+msgstr "Os tiros não fazem mais ricochete"
 
-#: server.js:10504
+#: server.js:10578
 msgid "usage: set <name> [<value>]"
-msgstr "utilização: set <name> [<value>]"
+msgstr "uso: set <name> [<value>]"
 
-#: server.js:10505
+#: server.js:10579
 msgid "bzo's own: {variables}"
 msgstr "próprias do bzo: {variables}"
 
 #. TRANSLATORS: /set is a command name; keep it as it is
-#: server.js:10525
+#: server.js:10599
 msgid "/set failed, reason: variable {name} does not exist"
 msgstr "/set falhou, motivo: a variável {name} não existe"
 
-#: server.js:10526 server.js:10560
+#: server.js:10600 server.js:10634
 msgid "variable {name} does not exist"
 msgstr "a variável {name} não existe"
 
-#: server.js:10530
+#: server.js:10604
 msgid "{name} is {value}"
 msgstr "{name} é {value}"
 
 #. TRANSLATORS: /set is a command name; keep it as it is
-#: server.js:10535
+#: server.js:10609
 msgid "/set failed, reason: variable {name} is not writeable"
 msgstr "/set falhou, motivo: a variável {name} não pode ser alterada"
 
-#: server.js:10541
+#: server.js:10615
 msgid "{name} set"
 msgstr "{name} definida"
 
-#: server.js:10542
+#: server.js:10616
 msgid "Variable Modification Notice by {player} of set {name} {value}"
 msgstr "Aviso de alteração de variável por {player}: set {name} {value}"
 
-#: server.js:10552
+#: server.js:10626
 msgid "usage: reset <name>"
-msgstr "utilização: reset <name>"
+msgstr "uso: reset <name>"
 
-#: server.js:10563
+#: server.js:10637
 msgid "variable {name} is not writeable"
 msgstr "a variável {name} não pode ser alterada"
 
-#: server.js:10569
+#: server.js:10643
 msgid "all variables reset"
-msgstr "todas as variáveis repostas"
+msgstr "todas as variáveis redefinidas"
 
-#: server.js:10570
+#: server.js:10644
 msgid "{name} reset"
-msgstr "{name} reposta"
-
-#: server.js:10574
-msgid "Variable Reset Notice by {player} of reset {name}"
-msgstr "Aviso de reposição de variável por {player}: reset {name}"
-
-#: server.js:10601
-msgid "No command starting with {prefix}"
-msgstr "Nenhum comando começa por {prefix}"
-
-#: server.js:10623
-msgid "You do not have permission to run the {command} command"
-msgstr "Não tens permissão para usar o comando {command}"
+msgstr "{name} redefinida"
 
 #: server.js:10648
+msgid "Variable Reset Notice by {player} of reset {name}"
+msgstr "Aviso de redefinição de variável por {player}: reset {name}"
+
+#: server.js:10675
+msgid "No command starting with {prefix}"
+msgstr "Nenhum comando começa com {prefix}"
+
+#: server.js:10697
+msgid "You do not have permission to run the {command} command"
+msgstr "Você não tem permissão para usar o comando {command}"
+
+#: server.js:10722
 msgid "We're sorry, you are not allowed to talk!"
-msgstr "Lamentamos, não tens permissão para falar!"
+msgstr "Sentimos muito, você não tem permissão para falar!"
 
-#: server.js:10716
+#: server.js:10790
 msgid "You do not have permission to speak on the admin channel."
-msgstr "Não tens permissão para falar no canal de administração."
+msgstr "Você não tem permissão para falar no canal de administração."
 
-#: server.js:10878
+#: server.js:10952
 msgid "You signed in as {player} on another device."
-msgstr "Iniciaste sessão como {player} noutro dispositivo."
+msgstr "Você fez login como {player} em outro dispositivo."
 
-#: server.js:10900
+#: server.js:10974
 msgid "{player} signed in with that name, so yours is now {name}."
-msgstr "{player} iniciou sessão com esse nome, por isso o teu é agora {name}."
+msgstr "{player} fez login com esse nome, então o seu agora é {name}."
 
-#: server.js:13027
+#: server.js:13101
 msgid "Global login approved!"
-msgstr "Sessão global aprovada!"
+msgstr "Login global aprovado!"
 
-#: server.js:13029
+#: server.js:13103
 msgid "Global login rejected, bad token."
-msgstr "Sessão global rejeitada: token inválido."
+msgstr "Login global rejeitado: token inválido."
 
-#: server.js:13031
+#: server.js:13105
 msgid "This callsign is not registered."
-msgstr "Este indicativo não está registado."
+msgstr "Este indicativo não está registrado."
 
-#: server.js:13032
+#: server.js:13106
 msgid "You can register it at https://forums.bzflag.org/"
-msgstr "Podes registá-lo em https://forums.bzflag.org/"
+msgstr "Você pode registrá-lo em https://forums.bzflag.org/"
 
-#: server.js:13704
+#: server.js:13778
 msgid "{count} shots left"
 msgstr "Restam {count} tiros"
 
-#: server.js:13705
+#: server.js:13779
 msgid "1 shot left"
 msgstr "Resta 1 tiro"
 
-#: server.js:13977
+#: server.js:14051
 msgid ""
 "Team flags cannot be grabbed for {seconds} seconds after they were last "
 "capped."
 msgstr ""
-"As bandeiras de equipa não podem ser apanhadas durante {seconds} segundos "
-"após a última captura."
+"As bandeiras de time não podem ser pegas durante {seconds} segundos após a "
+"última captura."
 
-#: server.js:13978
+#: server.js:14052
 msgid "You cannot grab the {team} team flag for another ~{seconds} seconds"
 msgstr ""
-"Não podes apanhar a bandeira da equipa {team} durante mais ~{seconds} "
-"segundos"
+"Você não pode pegar a bandeira do time {team} por mais ~{seconds} segundos"
 
-#: server.js:14192
+#: server.js:14266
 msgid "I'm sorry, we do not allow autopilot on this server."
-msgstr "Lamentamos, este servidor não permite o piloto automático."
+msgstr "Sentimos muito, este servidor não permite o piloto automático."
 
-#: server.js:16230
+#: server.js:16304
 msgid "Server restarting: {reason}"
-msgstr "Servidor a reiniciar: {reason}"
+msgstr "Servidor reiniciando: {reason}"
 
-#: server.js:17504
+#: server.js:17579
 msgid "The pilots have not loaded"
 msgstr "Os pilotos não foram carregados"
 
 #. TRANSLATORS: a command's syntax; keep it as it is
-#: server.js:17516
+#: server.js:17591
 msgid "Usage: /bot fill <0-{max}> [{pilots}]"
-msgstr "Utilização: /bot fill <0-{max}> [{pilots}]"
+msgstr "Uso: /bot fill <0-{max}> [{pilots}]"
 
-#: server.js:17520
+#: server.js:17595
 msgid "No pilot \"{pilot}\"; one of {pilots}"
-msgstr "Não existe o piloto \"{pilot}\"; escolhe um de {pilots}"
+msgstr "Não existe o piloto \"{pilot}\"; escolha um de {pilots}"
 
 #. TRANSLATORS: a command's syntax; keep /bot add as it is
-#: server.js:17542
+#: server.js:17617
 msgid "Usage: /bot add [{pilots}] [team] [count]"
-msgstr "Utilização: /bot add [{pilots}] [team] [count]"
+msgstr "Uso: /bot add [{pilots}] [team] [count]"
 
-#: server.js:17563
+#: server.js:17638
 msgid "Usage: /bot remove <name|all>"
-msgstr "Utilização: /bot remove <name|all>"
+msgstr "Uso: /bot remove <name|all>"
 
 #. TRANSLATORS: a command's syntax; keep /bot, fill, add, remove and all as they are
-#: server.js:17575
+#: server.js:17650
 msgid ""
 "Usage: /bot [fill <n> [{pilots}] | add [{pilots}] [team] [count] | remove "
 "<name|all>]"
 msgstr ""
-"Utilização: /bot [fill <n> [{pilots}] | add [{pilots}] [team] [count] | "
-"remove <name|all>]"
+"Uso: /bot [fill <n> [{pilots}] | add [{pilots}] [team] [count] | remove "
+"<name|all>]"
 
-#: server.js:17602
+#: server.js:17677
 msgid "Server shutting down"
-msgstr "Servidor a encerrar"
+msgstr "Servidor encerrando"
 
-#: server.js:17612
+#: server.js:17687
 msgid "Server restarting"
-msgstr "Servidor a reiniciar"
+msgstr "Servidor reiniciando"
 
 #: server/discovery.cjs:29
 msgid ""
@@ -4795,8 +4800,8 @@ msgid ""
 "with BZFlag clients and servers."
 msgstr ""
 "Battlezone Online (bzo) é um jogo de tanques multijogador em 3D, gratuito e "
-"de código aberto, que corre no navegador -- num computador, num telemóvel ou "
-"num visor de RV -- e joga com clientes e servidores BZFlag."
+"de código aberto, que roda no navegador -- em um computador, em um celular "
+"ou em um headset de RV -- e joga com clientes e servidores BZFlag."
 
 #: server/discovery.cjs:54
 msgid "{game} This server: {title}."
@@ -4812,122 +4817,122 @@ msgstr "Ajuda -- {name}"
 
 #: server/discovery.cjs:268
 msgid "Talk with other players on the {discord}."
-msgstr "Fala com outros jogadores no {discord}."
+msgstr "Converse com outros jogadores no {discord}."
 
 #: server/discovery.cjs:269
 msgid ""
 "Once you are there, {link} for the BZFlag player role, and your callsign as "
 "your name there."
 msgstr ""
-"Quando lá estiveres, {link} para obter o papel de jogador BZFlag, e usa o "
-"teu indicativo como nome lá."
+"Quando estiver lá, {link} para obter o cargo de jogador BZFlag, e use o seu "
+"indicativo como nome lá."
 
 #: server/discovery.cjs:270
 msgid "link your bzflag.org account"
-msgstr "associa a tua conta bzflag.org"
+msgstr "vincule a sua conta bzflag.org"
 
-#: server/messages-operator.cjs:159
+#: server/messages-operator.cjs:161
 msgid "No change: check the time limit and the match state"
-msgstr "Sem alterações: verifica o limite de tempo e o estado da partida"
+msgstr "Sem alterações: verifique o limite de tempo e o estado da partida"
 
-#: server/messages-operator.cjs:193
+#: server/messages-operator.cjs:195
 msgid "Upload {map} with {bytes} bytes"
-msgstr "{map} carregado com {bytes} bytes"
+msgstr "{map} enviado com {bytes} bytes"
 
-#: server/messages-operator.cjs:214
+#: server/messages-operator.cjs:216
 msgid ""
 "Upload refused: a replay name is letters, digits, \".\", \"_\" and \"-\"."
 msgstr ""
-"Carregamento recusado: o nome de uma repetição só pode ter letras, "
-"algarismos, \".\", \"_\" e \"-\"."
+"Envio recusado: o nome de uma repetição só pode ter letras, dígitos, \".\", "
+"\"_\" e \"-\"."
 
-#: server/messages-operator.cjs:219
+#: server/messages-operator.cjs:221
 msgid "Upload refused: {name} is over {megabytes} MB."
-msgstr "Carregamento recusado: {name} excede {megabytes} MB."
+msgstr "Envio recusado: {name} excede {megabytes} MB."
 
-#: server/messages-operator.cjs:225
+#: server/messages-operator.cjs:227
 msgid "Upload refused: {name} is not a bzfs recording ({error})."
-msgstr "Carregamento recusado: {name} não é uma gravação do bzfs ({error})."
+msgstr "Envio recusado: {name} não é uma gravação do bzfs ({error})."
 
-#: server/messages-operator.cjs:229
+#: server/messages-operator.cjs:231
 msgid "Upload refused: {name} is being watched."
-msgstr "Carregamento recusado: {name} está a ser visto."
+msgstr "Envio recusado: {name} está sendo assistido."
 
-#: server/messages-operator.cjs:237
+#: server/messages-operator.cjs:239
 msgid "Uploaded replay {name} with {bytes} bytes"
-msgstr "Repetição {name} carregada com {bytes} bytes"
+msgstr "Repetição {name} enviada com {bytes} bytes"
 
-#: server/messages-operator.cjs:243
+#: server/messages-operator.cjs:245
 msgid "Upload failed: {error}"
-msgstr "O carregamento falhou: {error}"
+msgstr "O envio falhou: {error}"
 
-#: server/messages-operator.cjs:255
+#: server/messages-operator.cjs:257
 msgid ""
 "Save refused: a recording name is letters, digits, \".\", \"_\" and \"-\"."
 msgstr ""
-"Gravação recusada: o nome de uma gravação só pode ter letras, algarismos, \"."
-"\", \"_\" e \"-\"."
+"Gravação recusada: o nome de uma gravação só pode ter letras, dígitos, "
+"\".\", \"_\" e \"-\"."
 
-#: server/messages-operator.cjs:282
+#: server/messages-operator.cjs:284
 msgid "Delete refused: {name} was not uploaded here."
-msgstr "Eliminação recusada: {name} não foi carregado aqui."
+msgstr "Exclusão recusada: {name} não foi enviado aqui."
 
-#: server/messages-operator.cjs:283
+#: server/messages-operator.cjs:285
 msgid "Delete refused: that was not uploaded here."
-msgstr "Eliminação recusada: isso não foi carregado aqui."
+msgstr "Exclusão recusada: isso não foi enviado aqui."
 
-#: server/messages-operator.cjs:287
+#: server/messages-operator.cjs:289
 msgid "Delete refused: {name} is the map being played."
-msgstr "Eliminação recusada: {name} é o mapa em jogo."
+msgstr "Exclusão recusada: {name} é o mapa em jogo."
 
-#: server/messages-operator.cjs:291
+#: server/messages-operator.cjs:293
 msgid "Delete refused: {name} is being watched."
-msgstr "Eliminação recusada: {name} está a ser visto."
+msgstr "Exclusão recusada: {name} está sendo assistido."
 
-#: server/messages-operator.cjs:308
+#: server/messages-operator.cjs:310
 msgid "Deleted map {name}"
-msgstr "Mapa {name} eliminado"
+msgstr "Mapa {name} excluído"
 
-#: server/messages-operator.cjs:308
+#: server/messages-operator.cjs:310
 msgid "Deleted replay {name}"
-msgstr "Repetição {name} eliminada"
+msgstr "Repetição {name} excluída"
 
-#: server/messages-operator.cjs:313
+#: server/messages-operator.cjs:315
 msgid "Delete failed: {error}"
-msgstr "A eliminação falhou: {error}"
+msgstr "A exclusão falhou: {error}"
 
-#: server/messages-operator.cjs:371
+#: server/messages-operator.cjs:373
 msgid ""
 "{server} is no longer in the public list, so {map} is the copy already here "
 "({bytes} bytes). It is ready to View now."
 msgstr ""
-"{server} já não está na lista pública, por isso {map} é a cópia que já cá "
-"está ({bytes} bytes). Já podes abri-lo na Vista."
+"{server} não está mais na lista pública, então {map} é a cópia que já está "
+"aqui ({bytes} bytes). Você já pode abri-lo na Vista."
 
-#: server/messages-operator.cjs:374
+#: server/messages-operator.cjs:376
 msgid "Imported {map} from {server} ({bytes} bytes). It is ready to View now."
 msgstr ""
-"{map} importado de {server} ({bytes} bytes). Já podes abri-lo na Vista."
+"{map} importado de {server} ({bytes} bytes). Você já pode abri-lo na Vista."
 
 #: server/messages-play.cjs:1154
 msgid "You are unable to begin playing for {seconds} seconds."
-msgstr "Não podes começar a jogar durante {seconds} segundos."
+msgstr "Você não pode começar a jogar por {seconds} segundos."
 
 #: server/messages-play.cjs:1192
 msgid "Team is not available: {team}"
-msgstr "Equipa indisponível: {team}"
+msgstr "Time indisponível: {team}"
 
 #: server/messages-play.cjs:1196
 msgid "You stay {team}"
-msgstr "Ficas em {team}"
+msgstr "Você fica em {team}"
 
 #: server/messages-play.cjs:1205
 msgid "Team is full: {team}"
-msgstr "Equipa cheia: {team}"
+msgstr "Time cheio: {team}"
 
 #: server/messages-play.cjs:1210
 msgid "You will join {team} when you next spawn"
-msgstr "Vais juntar-te a {team} quando voltares a aparecer"
+msgstr "Você vai entrar em {team} quando reaparecer"
 
 #~ msgid "This server: {title}."
 #~ msgstr "Este servidor: {title}."

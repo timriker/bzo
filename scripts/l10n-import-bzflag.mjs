@@ -14,7 +14,8 @@
 //   node scripts/l10n-import-bzflag.mjs [locale ...]
 //
 // `source:locale` imports upstream's catalog under another id: upstream calls
-// Klingon `kg`, which is Kongo's code, so it comes in as `kg:tlh`.
+// Klingon `kg`, which is Kongo's code, so it comes in as `kg:tlh`; its `pt`
+// is European Portuguese, where a bare `pt` means Brazilian, so `pt:pt_PT`.
 //
 // BZFLAG names the upstream tree, $HOME/bzflag by default. A catalog that does
 // not exist yet is created; one that does keeps its own translations, and

@@ -1108,6 +1108,10 @@ msgid "pt"
 msgstr ""
 
 #. TRANSLATORS: the name of this language, written in it
+msgid "pt_PT"
+msgstr ""
+
+#. TRANSLATORS: the name of this language, written in it
 msgid "ru"
 msgstr ""
 
@@ -1151,167 +1155,167 @@ msgstr "อื่นๆ"
 msgid "Debug"
 msgstr "ดีบัก"
 
-#: public/js/client.js:868
+#: public/js/client.js:870
 msgid "unlimited"
 msgstr "ไม่จำกัด"
 
-#: public/js/client.js:870
+#: public/js/client.js:872
 msgid "{count} left"
 msgstr "เหลือ {count}"
 
-#: public/js/client.js:982
+#: public/js/client.js:984
 msgid "this is the designated list server"
 msgstr "นี่คือ list server ที่กำหนดไว้"
 
 #. TRANSLATORS: listServerUrl is a server.json setting; keep it as written
-#: public/js/client.js:985
+#: public/js/client.js:987
 msgid "disabled (no listServerUrl)"
 msgstr "ปิดอยู่ (ไม่มี listServerUrl)"
 
-#: public/js/client.js:987
+#: public/js/client.js:989
 msgid "reporting to {url}: key configured"
 msgstr "รายงานไปยัง {url}: ตั้งคีย์แล้ว"
 
-#: public/js/client.js:988
+#: public/js/client.js:990
 msgid "reporting to {url}: no key yet"
 msgstr "รายงานไปยัง {url}: ยังไม่มีคีย์"
 
-#: public/js/client.js:1010
+#: public/js/client.js:1012
 msgid "{team} won the game"
 msgstr "{team} ชนะเกม"
 
-#: public/js/client.js:1015
+#: public/js/client.js:1017
 msgid "{player} won the game"
 msgstr "{player} ชนะเกม"
 
-#: public/js/client.js:1236
+#: public/js/client.js:1238
 msgid "Team: {team}"
 msgstr "ทีม: {team}"
 
-#: public/js/client.js:1363
+#: public/js/client.js:1365
 msgid "watching {server}"
 msgstr "กำลังดู {server}"
 
-#: public/js/client.js:1365 public/js/client.js:9922
+#: public/js/client.js:1367 public/js/client.js:9925
 msgid "replay {name}"
 msgstr "รีเพลย์ {name}"
 
-#: public/js/client.js:1375
+#: public/js/client.js:1377
 msgid "local {map}"
 msgstr "ในเครื่อง {map}"
 
-#: public/js/client.js:1375
+#: public/js/client.js:1377
 msgid "This server"
 msgstr "เซิร์ฟเวอร์นี้"
 
-#: public/js/client.js:1443
+#: public/js/client.js:1445
 msgid "Server: {server}"
 msgstr "เซิร์ฟเวอร์: {server}"
 
-#: public/js/client.js:1498
+#: public/js/client.js:1500
 msgid "Sign in & Play"
 msgstr "ล็อกอินและเล่น"
 
-#: public/js/client.js:1500
+#: public/js/client.js:1502
 msgid ""
 "Playing here needs a bzflag.org global login. This signs you in, then joins "
 "on the team you picked."
 msgstr ""
 "การเล่นที่นี่ต้องใช้ล็อกอินส่วนกลางของ bzflag.org ปุ่มนี้จะล็อกอินให้ แล้วเข้าร่วมในทีมที่คุณเลือก"
 
-#: public/js/client.js:1613 public/js/client.js:1631
+#: public/js/client.js:1615 public/js/client.js:1633
 msgid "a tank"
 msgstr "รถถังคันหนึ่ง"
 
-#: public/js/client.js:1762
+#: public/js/client.js:1764
 msgid "You are now the rabbit."
 msgstr "ตอนนี้คุณเป็นกระต่าย"
 
-#: public/js/client.js:1768
+#: public/js/client.js:1770
 msgid "{player} is now the rabbit"
 msgstr "ตอนนี้ {player} เป็นกระต่าย"
 
-#: public/js/client.js:1779
+#: public/js/client.js:1781
 msgid "operation failed"
 msgstr "การทำงานล้มเหลว"
 
-#: public/js/client.js:1779
+#: public/js/client.js:1781
 msgid "Voice error: {error}"
 msgstr "ข้อผิดพลาดเสียง: {error}"
 
-#: public/js/client.js:2284
+#: public/js/client.js:2286
 msgid "Default microphone"
 msgstr "ไมโครโฟนเริ่มต้น"
 
-#: public/js/client.js:2292 public/js/voice.js:1218
+#: public/js/client.js:2294 public/js/voice.js:1218
 msgid "Microphone"
 msgstr "ไมโครโฟน"
 
-#: public/js/client.js:2325 public/js/client.js:2340
+#: public/js/client.js:2327 public/js/client.js:2342
 msgid "Receive only"
 msgstr "รับฟังอย่างเดียว"
 
-#: public/js/client.js:2327 public/js/client.js:2366
+#: public/js/client.js:2329 public/js/client.js:2368
 msgid "Microphone on"
 msgstr "ไมโครโฟนเปิด"
 
-#: public/js/client.js:2329
+#: public/js/client.js:2331
 msgid "Permission denied"
 msgstr "ถูกปฏิเสธสิทธิ์"
 
-#: public/js/client.js:2331 public/js/client.js:2333
+#: public/js/client.js:2333 public/js/client.js:2335
 msgid "Microphone unavailable"
 msgstr "ไมโครโฟนไม่พร้อมใช้งาน"
 
-#: public/js/client.js:2341
+#: public/js/client.js:2343
 msgid "Mic blocked"
 msgstr "ไมค์ถูกบล็อก"
 
-#: public/js/client.js:2342
+#: public/js/client.js:2344
 msgid "Mic unavailable"
 msgstr "ไมค์ใช้ไม่ได้"
 
-#: public/js/client.js:2343
+#: public/js/client.js:2345
 msgid "Disable Mic"
 msgstr "ปิดไมค์"
 
-#: public/js/client.js:2343
+#: public/js/client.js:2345
 msgid "Enable Mic"
 msgstr "เปิดไมค์"
 
-#: public/js/client.js:2352
+#: public/js/client.js:2354
 msgid "{action} - {channel}"
 msgstr "{action} - {channel}"
 
-#: public/js/client.js:2353
+#: public/js/client.js:2355
 msgid "{channel} voice channel, {status}"
 msgstr "ช่องเสียง {channel}, {status}"
 
-#: public/js/client.js:2361
+#: public/js/client.js:2363
 msgid "Microphone permission granted"
 msgstr "ได้รับสิทธิ์ใช้ไมโครโฟนแล้ว"
 
-#: public/js/client.js:2374
+#: public/js/client.js:2376
 msgid "Microphone is transmitting on the {channel} channel."
 msgstr "ไมโครโฟนกำลังส่งเสียงในช่อง {channel}"
 
-#: public/js/client.js:2375
+#: public/js/client.js:2377
 msgid "Microphone permission granted; transmission is off."
 msgstr "ได้รับสิทธิ์ใช้ไมโครโฟนแล้ว แต่ปิดการส่งเสียงอยู่"
 
-#: public/js/client.js:2377
+#: public/js/client.js:2379
 msgid "Microphone permission was denied by the browser."
 msgstr "เบราว์เซอร์ปฏิเสธสิทธิ์ใช้ไมโครโฟน"
 
-#: public/js/client.js:2379
+#: public/js/client.js:2381
 msgid "Microphone capture is unavailable in this browser or context."
 msgstr "ใช้ไมโครโฟนในเบราว์เซอร์หรือบริบทนี้ไม่ได้"
 
-#: public/js/client.js:2392
+#: public/js/client.js:2394
 msgid "Voice operation failed."
 msgstr "การทำงานของเสียงล้มเหลว"
 
-#: public/js/client.js:2639
+#: public/js/client.js:2641
 msgid ""
 "A proxied connection tells the target which bzo it came through, and nothing "
 "else. Your own motto is used on this server."
@@ -1319,148 +1323,148 @@ msgstr ""
 "การเชื่อมต่อผ่านพร็อกซีจะบอกเป้าหมายเพียงว่ามาจาก bzo ตัวไหน ไม่มีอย่างอื่น "
 "เซิร์ฟเวอร์นี้ใช้คำขวัญของคุณเอง"
 
-#: public/js/client.js:3065
+#: public/js/client.js:3067
 msgid "Preparing battlefield..."
 msgstr "กำลังเตรียมสนามรบ..."
 
-#: public/js/client.js:3066
+#: public/js/client.js:3068
 msgid "Building world geometry"
 msgstr "กำลังสร้างรูปทรงของโลก"
 
-#: public/js/client.js:3075
+#: public/js/client.js:3077
 msgid "Placing obstacles..."
 msgstr "กำลังวางสิ่งกีดขวาง..."
 
-#: public/js/client.js:3076
+#: public/js/client.js:3078
 msgid "Synchronizing world objects"
 msgstr "กำลังซิงก์วัตถุในโลก"
 
-#: public/js/client.js:3104
+#: public/js/client.js:3106
 msgid "Loading vehicle systems..."
 msgstr "กำลังโหลดระบบยานพาหนะ..."
 
-#: public/js/client.js:3105
+#: public/js/client.js:3107
 msgid "Preparing tank models, textures, and audio"
 msgstr "กำลังเตรียมโมเดลรถถัง เท็กซ์เจอร์ และเสียง"
 
-#: public/js/client.js:3122
+#: public/js/client.js:3124
 msgid "Assembling tanks..."
 msgstr "กำลังประกอบรถถัง..."
 
-#: public/js/client.js:3123
+#: public/js/client.js:3125
 msgid "Creating player vehicles"
 msgstr "กำลังสร้างยานของผู้เล่น"
 
-#: public/js/client.js:3136
+#: public/js/client.js:3138
 msgid "Entering battle..."
 msgstr "กำลังเข้าสู่สนามรบ..."
 
-#: public/js/client.js:3136
+#: public/js/client.js:3138
 msgid "Render ready"
 msgstr "เรนเดอร์พร้อมแล้ว"
 
-#: public/js/client.js:3137
+#: public/js/client.js:3139
 msgid "Joining game"
 msgstr "กำลังเข้าร่วมเกม"
 
-#: public/js/client.js:3137
+#: public/js/client.js:3139
 msgid "Waiting for player name"
 msgstr "กำลังรอชื่อผู้เล่น"
 
 #. TRANSLATORS: prefix on a chat line this client wrote itself, not the server
-#: public/js/client.js:3408
+#: public/js/client.js:3410
 msgid "local: {message}"
 msgstr "ในเครื่อง: {message}"
 
-#: public/js/client.js:3415
+#: public/js/client.js:3417
 msgid "client version: {version}"
 msgstr "เวอร์ชันไคลเอนต์: {version}"
 
-#: public/js/client.js:3416
+#: public/js/client.js:3418
 msgid "copyright: {copyright}"
 msgstr "ลิขสิทธิ์: {copyright}"
 
-#: public/js/client.js:3417
+#: public/js/client.js:3419
 msgid "license: {license} ({url})"
 msgstr "สัญญาอนุญาต: {license} ({url})"
 
-#: public/js/client.js:3564
+#: public/js/client.js:3566
 msgid "Usage: {command}"
 msgstr "วิธีใช้: {command}"
 
 #. TRANSLATORS: /silence and - stay as written
-#: public/js/client.js:3576
+#: public/js/client.js:3578
 msgid "Usage: /silence <callsign>|-"
 msgstr "วิธีใช้: /silence <callsign>|-"
 
-#: public/js/client.js:3583
+#: public/js/client.js:3585
 msgid "Silencing every unauthenticated player"
 msgstr "ปิดเสียงผู้เล่นทุกคนที่ไม่ได้ยืนยันตัวตน"
 
-#: public/js/client.js:3589
+#: public/js/client.js:3591
 msgid "Silenced \"{callsign}\""
 msgstr "ปิดเสียง \"{callsign}\" แล้ว"
 
 #. TRANSLATORS: /unsilence and - stay as written
-#: public/js/client.js:3596
+#: public/js/client.js:3598
 msgid "Usage: /unsilence <callsign>|-"
 msgstr "วิธีใช้: /unsilence <callsign>|-"
 
-#: public/js/client.js:3603
+#: public/js/client.js:3605
 msgid "No longer silencing unauthenticated players"
 msgstr "เลิกปิดเสียงผู้เล่นที่ไม่ได้ยืนยันตัวตนแล้ว"
 
-#: public/js/client.js:3609
+#: public/js/client.js:3611
 msgid "Unsilenced \"{callsign}\""
 msgstr "เลิกปิดเสียง \"{callsign}\" แล้ว"
 
-#: public/js/client.js:3666
+#: public/js/client.js:3668
 msgid "Highlight cleared"
 msgstr "ล้างไฮไลต์แล้ว"
 
-#: public/js/client.js:3668
+#: public/js/client.js:3670
 msgid "Invalid highlight pattern: {pattern}"
 msgstr "รูปแบบไฮไลต์ไม่ถูกต้อง: {pattern}"
 
-#: public/js/client.js:3670
+#: public/js/client.js:3672
 msgid "Highlighting \"{pattern}\""
 msgstr "กำลังไฮไลต์ \"{pattern}\""
 
-#: public/js/client.js:3694
+#: public/js/client.js:3696
 msgid "Saved messages to: {filename}"
 msgstr "บันทึกข้อความไปที่: {filename}"
 
-#: public/js/client.js:3702
+#: public/js/client.js:3704
 msgid "Client-side commands: {commands}"
 msgstr "คำสั่งฝั่งไคลเอนต์: {commands}"
 
-#: public/js/client.js:3850
+#: public/js/client.js:3852
 msgid "No recent direct sender to reply to"
 msgstr "ไม่มีผู้ส่งข้อความส่วนตัวล่าสุดให้ตอบกลับ"
 
-#: public/js/client.js:3858
+#: public/js/client.js:3860
 msgid "No nemesis target available"
 msgstr "ไม่มีคู่ปรับให้เล็ง"
 
-#: public/js/client.js:4052 public/js/input.js:1509
+#: public/js/client.js:4054 public/js/input.js:1509
 msgid "Show Operator Panel (O)"
 msgstr "แสดงแผงโอเปอเรเตอร์ (O)"
 
-#: public/js/client.js:4053
+#: public/js/client.js:4055
 msgid ""
 "Operator: sign in with a bzflag.org global callsign that the server grants "
 "admin to"
 msgstr "โอเปอเรเตอร์: ล็อกอินด้วยชื่อส่วนกลางของ bzflag.org ที่เซิร์ฟเวอร์ให้สิทธิ์แอดมิน"
 
-#: public/js/client.js:4094 public/js/client.js:4113
+#: public/js/client.js:4096 public/js/client.js:4115
 msgid "Sign in"
 msgstr "ล็อกอิน"
 
-#: public/js/client.js:4097
+#: public/js/client.js:4099
 msgid "Global login for {server}"
 msgstr "ล็อกอินส่วนกลางสำหรับ {server}"
 
-#: public/js/client.js:4098
+#: public/js/client.js:4100
 msgid ""
 "Sign in at bzflag.org to play on {server}. A login is needed for each "
 "target, and bzo never sees your password."
@@ -1468,663 +1472,663 @@ msgstr ""
 "ล็อกอินที่ bzflag.org เพื่อเล่นบน {server} ต้องล็อกอินแยกสำหรับแต่ละเป้าหมาย และ bzo "
 "ไม่เคยเห็นรหัสผ่านของคุณ"
 
-#: public/js/client.js:4106
+#: public/js/client.js:4108
 msgid "Signed in as {callsign}. Activate to sign out."
 msgstr "ล็อกอินเป็น {callsign} แล้ว กด ใช้งาน เพื่อออกจากระบบ"
 
-#: public/js/client.js:4108
+#: public/js/client.js:4110
 msgid "Signed in, and an admin on this server. Click to sign out."
 msgstr "ล็อกอินแล้ว และเป็นแอดมินบนเซิร์ฟเวอร์นี้ คลิกเพื่อออกจากระบบ"
 
-#: public/js/client.js:4109
+#: public/js/client.js:4111
 msgid "Signed in with a bzflag.org global callsign. Click to sign out."
 msgstr "ล็อกอินด้วยชื่อส่วนกลางของ bzflag.org แล้ว คลิกเพื่อออกจากระบบ"
 
-#: public/js/client.js:4116
+#: public/js/client.js:4118
 msgid "Global login: sign in"
 msgstr "ล็อกอินส่วนกลาง: ล็อกอิน"
 
-#: public/js/client.js:4117
+#: public/js/client.js:4119
 msgid ""
 "Sign in at bzflag.org with a global callsign. bzo never sees your password."
 msgstr "ล็อกอินที่ bzflag.org ด้วยชื่อส่วนกลาง bzo ไม่เคยเห็นรหัสผ่านของคุณ"
 
-#: public/js/client.js:4137
+#: public/js/client.js:4139
 msgid "Signing out leaves VR. Exit the headset session first."
 msgstr "การออกจากระบบจะออกจาก VR ด้วย ให้ออกจากเซสชันแว่น VR ก่อน"
 
-#: public/js/client.js:4138
+#: public/js/client.js:4140
 msgid "Global login leaves VR. Exit the headset session first."
 msgstr "ล็อกอินส่วนกลางจะออกจาก VR ด้วย ให้ออกจากเซสชันแว่น VR ก่อน"
 
-#: public/js/client.js:4577 public/js/client.js:10145
+#: public/js/client.js:4579 public/js/client.js:10148
 msgid "Fetching remote server's map..."
 msgstr "กำลังดึงแผนที่จากเซิร์ฟเวอร์ระยะไกล..."
 
-#: public/js/client.js:4737
+#: public/js/client.js:4739
 msgid "Pausing in {seconds}"
 msgstr "หยุดชั่วคราวใน {seconds}"
 
-#: public/js/client.js:4761 public/js/client.js:6433
+#: public/js/client.js:4763 public/js/client.js:6436
 msgid "Self Destructing in {seconds}"
 msgstr "ทำลายตัวเองใน {seconds}"
 
-#: public/js/client.js:4843
+#: public/js/client.js:4845
 msgid "AutoPilot {pilot}: {intent}"
 msgstr "ออโต้ไพลอต {pilot}: {intent}"
 
-#: public/js/client.js:4844
+#: public/js/client.js:4846
 msgid "AutoPilot {pilot}"
 msgstr "ออโต้ไพลอต {pilot}"
 
-#: public/js/client.js:6435
+#: public/js/client.js:6438
 msgid "Self Destruct cancelled"
 msgstr "ยกเลิกการทำลายตัวเองแล้ว"
 
-#: public/js/client.js:6594
+#: public/js/client.js:6597
 msgid "Hide Debug Labels"
 msgstr "ซ่อนดีบักป้ายชื่อ"
 
-#: public/js/client.js:6597
+#: public/js/client.js:6600
 msgid "Show Debug Labels"
 msgstr "แสดงดีบักป้ายชื่อ"
 
-#: public/js/client.js:6614
+#: public/js/client.js:6617
 msgid "Disable Dynamic Lighting"
 msgstr "ปิดแสงแบบไดนามิก"
 
-#: public/js/client.js:6615
+#: public/js/client.js:6618
 msgid "Enable Dynamic Lighting"
 msgstr "เปิดแสงแบบไดนามิก"
 
-#: public/js/client.js:6617
+#: public/js/client.js:6620
 msgid "Dynamic Lighting needs more shader uniforms than this browser reports"
 msgstr "แสงแบบไดนามิกต้องใช้ shader uniform มากกว่าที่เบราว์เซอร์นี้รองรับ"
 
-#: public/js/client.js:6626
+#: public/js/client.js:6629
 msgid "Disable Rumble"
 msgstr "ปิดการสั่น"
 
-#: public/js/client.js:6627
+#: public/js/client.js:6630
 msgid "Enable Rumble"
 msgstr "เปิดการสั่น"
 
-#: public/js/client.js:6633
+#: public/js/client.js:6636
 msgid "Disable Anaglyph 3D"
 msgstr "ปิด 3D แอนากลิฟ"
 
-#: public/js/client.js:6634
+#: public/js/client.js:6637
 msgid "Enable Anaglyph 3D"
 msgstr "เปิด 3D แอนากลิฟ"
 
-#: public/js/client.js:6637
+#: public/js/client.js:6640
 msgid "Anaglyph 3D is unavailable in VR mode"
 msgstr "3D แอนากลิฟใช้ไม่ได้ในโหมด VR"
 
-#: public/js/client.js:6646
+#: public/js/client.js:6649
 msgid "Hide Debug Geometry"
 msgstr "ซ่อนดีบักรูปทรง"
 
-#: public/js/client.js:6723
+#: public/js/client.js:6726
 msgid "Confirm"
 msgstr "ยืนยัน"
 
-#: public/js/client.js:6779
+#: public/js/client.js:6782
 msgid "Share View Link: only available while viewing a map"
 msgstr "แชร์ลิงก์มุมมอง: ใช้ได้เฉพาะตอนดูแผนที่"
 
-#: public/js/client.js:6784
+#: public/js/client.js:6787
 msgid "View link copied to clipboard"
 msgstr "คัดลอกลิงก์มุมมองไปยังคลิปบอร์ดแล้ว"
 
-#: public/js/client.js:6813
+#: public/js/client.js:6816
 msgid "WebXR: {mode}"
 msgstr "WebXR: {mode}"
 
-#: public/js/client.js:6819
+#: public/js/client.js:6822
 msgid "WebXR not supported on this device"
 msgstr "อุปกรณ์นี้ไม่รองรับ WebXR"
 
-#: public/js/client.js:6824
+#: public/js/client.js:6827
 msgid "Requesting VR..."
 msgstr "กำลังขอ VR..."
 
-#: public/js/client.js:6827
+#: public/js/client.js:6830
 msgid "Error: Renderer not available"
 msgstr "ข้อผิดพลาด: ไม่มีตัวเรนเดอร์"
 
-#: public/js/client.js:6840
+#: public/js/client.js:6843
 msgid "✓ WebXR VR Mode: ON"
 msgstr "✓ โหมด WebXR VR: เปิด"
 
-#: public/js/client.js:6846
+#: public/js/client.js:6849
 msgid "✗ VR request failed - check server.log"
 msgstr "✗ ขอ VR ไม่สำเร็จ - ตรวจสอบ server.log"
 
-#: public/js/client.js:6848 public/js/client.js:17058
+#: public/js/client.js:6851 public/js/client.js:17060
 msgid "WebXR VR Mode: OFF"
 msgstr "โหมด WebXR VR: ปิด"
 
-#: public/js/client.js:7394
+#: public/js/client.js:7397
 msgid "3D renderer unavailable: {reason}"
 msgstr "ตัวเรนเดอร์ 3D ใช้ไม่ได้: {reason}"
 
-#: public/js/client.js:7401
+#: public/js/client.js:7404
 msgid "3D renderer failed to initialize."
 msgstr "ตัวเรนเดอร์ 3D เริ่มทำงานไม่สำเร็จ"
 
-#: public/js/client.js:7403
+#: public/js/client.js:7406
 msgid "Open the game in an external browser window for full WebGL support."
 msgstr "เปิดเกมในหน้าต่างเบราว์เซอร์ภายนอกเพื่อรองรับ WebGL เต็มรูปแบบ"
 
-#: public/js/client.js:7818
+#: public/js/client.js:7821
 msgid "Connected to server!"
 msgstr "เชื่อมต่อเซิร์ฟเวอร์แล้ว!"
 
-#: public/js/client.js:7824
+#: public/js/client.js:7827
 msgid "Connected to server"
 msgstr "เชื่อมต่อเซิร์ฟเวอร์แล้ว"
 
-#: public/js/client.js:7825
+#: public/js/client.js:7828
 msgid "Waiting for world state"
 msgstr "กำลังรอสถานะโลก"
 
-#: public/js/client.js:7876
+#: public/js/client.js:7879
 msgid "Offline"
 msgstr "ออฟไลน์"
 
-#: public/js/client.js:7876
+#: public/js/client.js:7879
 msgid "Cannot reach {host}"
 msgstr "ติดต่อ {host} ไม่ได้"
 
-#: public/js/client.js:7877
+#: public/js/client.js:7880
 msgid "Trying again..."
 msgstr "กำลังลองอีกครั้ง..."
 
-#: public/js/client.js:7888
+#: public/js/client.js:7891
 msgid "Disconnected from server | Kills: {kills} | Deaths: {deaths}"
 msgstr "ตัดการเชื่อมต่อจากเซิร์ฟเวอร์ | ฆ่า: {kills} | ตาย: {deaths}"
 
-#: public/js/client.js:7893
+#: public/js/client.js:7896
 msgid "Press a key, tap or pull a trigger to rejoin"
 msgstr "กดปุ่ม แตะ หรือเหนี่ยวไกเพื่อกลับเข้าเล่น"
 
-#: public/js/client.js:8053
+#: public/js/client.js:8056
 msgid "Server error: {error}"
 msgstr "ข้อผิดพลาดเซิร์ฟเวอร์: {error}"
 
-#: public/js/client.js:8058
+#: public/js/client.js:8061
 msgid "Server: action completed successfully"
 msgstr "เซิร์ฟเวอร์: ดำเนินการสำเร็จ"
 
-#: public/js/client.js:8137
+#: public/js/client.js:8140
 msgid "Operator Panel (v{version})"
 msgstr "แผงโอเปอเรเตอร์ (v{version})"
 
-#: public/js/client.js:8554
+#: public/js/client.js:8557
 msgid "{player} joined"
 msgstr "{player} เข้าร่วม"
 
-#: public/js/client.js:8599
+#: public/js/client.js:8602
 msgid "{player} left"
 msgstr "{player} ออกไปแล้ว"
 
-#: public/js/client.js:8615
+#: public/js/client.js:8618
 msgid "{callsign} not responding"
 msgstr "{callsign} ไม่ตอบสนอง"
 
-#: public/js/client.js:8616
+#: public/js/client.js:8619
 msgid "{callsign} okay"
 msgstr "{callsign} กลับมาปกติ"
 
-#: public/js/client.js:8730
+#: public/js/client.js:8733
 msgid "{player} grabbed {flag}"
 msgstr "{player} คว้า {flag}"
 
-#: public/js/client.js:8781
+#: public/js/client.js:8784
 msgid "{player} dropped {flag}"
 msgstr "{player} ทิ้ง {flag}"
 
-#: public/js/client.js:8872
+#: public/js/client.js:8875
 msgid "{player}: {pilot} taking controls"
 msgstr "{player}: {pilot} เข้าควบคุม"
 
-#: public/js/client.js:8873
+#: public/js/client.js:8876
 msgid "{player}: {pilot} releasing controls"
 msgstr "{player}: {pilot} ปล่อยการควบคุม"
 
-#: public/js/client.js:8905
+#: public/js/client.js:8908
 msgid "{player} paused"
 msgstr "{player} หยุดชั่วคราว"
 
-#: public/js/client.js:8916
+#: public/js/client.js:8919
 msgid "{player} unpaused"
 msgstr "{player} เล่นต่อ"
 
-#: public/js/client.js:9026
+#: public/js/client.js:9029
 msgid "Server forced a disconnect"
 msgstr "เซิร์ฟเวอร์บังคับตัดการเชื่อมต่อ"
 
-#: public/js/client.js:9032
+#: public/js/client.js:9035
 msgid "Server updated - reloading..."
 msgstr "เซิร์ฟเวอร์อัปเดตแล้ว - กำลังโหลดใหม่..."
 
-#: public/js/client.js:9552
+#: public/js/client.js:9555
 msgid "Got flattened by {player}"
 msgstr "ถูก {player} ทับแบน"
 
-#: public/js/client.js:9553
+#: public/js/client.js:9556
 msgid "Teammate hit with Genocide by {player}"
 msgstr "เพื่อนร่วมทีมโดนล้างบางจาก {player}"
 
-#: public/js/client.js:9554
+#: public/js/client.js:9557
 msgid "Got shot by {player}"
 msgstr "ถูก {player} ยิง"
 
-#: public/js/client.js:9556
+#: public/js/client.js:9559
 msgid "Got flattened by teammate {player}"
 msgstr "ถูกเพื่อนร่วมทีม {player} ทับแบน"
 
-#: public/js/client.js:9557
+#: public/js/client.js:9560
 msgid "Teammate hit with Genocide by teammate {player}"
 msgstr "เพื่อนร่วมทีมโดนล้างบางจากเพื่อนร่วมทีม {player}"
 
-#: public/js/client.js:9558
+#: public/js/client.js:9561
 msgid "Got shot by teammate {player}"
 msgstr "ถูกเพื่อนร่วมทีม {player} ยิง"
 
-#: public/js/client.js:9594
+#: public/js/client.js:9597
 msgid "Your team flag was captured!"
 msgstr "ธงทีมของคุณถูกยึด!"
 
-#: public/js/client.js:9596
+#: public/js/client.js:9599
 msgid "Time Expired - GAME OVER"
 msgstr "หมดเวลา - จบเกม"
 
-#: public/js/client.js:9598
+#: public/js/client.js:9601
 msgid "Tank Self Destructed"
 msgstr "รถถังทำลายตัวเอง"
 
-#: public/js/client.js:9600
+#: public/js/client.js:9603
 msgid "Tank Rusted"
 msgstr "รถถังขึ้นสนิม"
 
-#: public/js/client.js:9603 public/js/client.js:9607
+#: public/js/client.js:9606 public/js/client.js:9610
 msgid "Killed by the server"
 msgstr "ถูกเซิร์ฟเวอร์ฆ่า"
 
-#: public/js/client.js:9634
+#: public/js/client.js:9637
 msgid "You killed {player}"
 msgstr "คุณฆ่า {player}"
 
-#: public/js/client.js:9646
+#: public/js/client.js:9649
 msgid "{player} self-destructed"
 msgstr "{player} ทำลายตัวเอง"
 
-#: public/js/client.js:9650
+#: public/js/client.js:9653
 msgid "{player} fell in the water"
 msgstr "{player} ตกน้ำ"
 
-#: public/js/client.js:9655
+#: public/js/client.js:9658
 msgid "{player}: {message}"
 msgstr "{player}: {message}"
 
-#: public/js/client.js:9658
+#: public/js/client.js:9661
 msgid "killed by the server"
 msgstr "ถูกเซิร์ฟเวอร์ฆ่า"
 
-#: public/js/client.js:9664
+#: public/js/client.js:9667
 msgid "{player} was killed by the server"
 msgstr "{player} ถูกเซิร์ฟเวอร์ฆ่า"
 
-#: public/js/client.js:9669
+#: public/js/client.js:9672
 msgid "{killer} killed {victim}"
 msgstr "{killer} ฆ่า {victim}"
 
-#: public/js/client.js:9834
+#: public/js/client.js:9837
 msgid "You respawned!"
 msgstr "คุณเกิดใหม่แล้ว!"
 
-#: public/js/client.js:9921
+#: public/js/client.js:9924
 msgid "map {name}"
 msgstr "แผนที่ {name}"
 
-#: public/js/client.js:9926
+#: public/js/client.js:9929
 msgid "nothing uploaded"
 msgstr "ยังไม่มีการอัปโหลด"
 
-#: public/js/client.js:9953 public/js/client.js:10428
+#: public/js/client.js:9956 public/js/client.js:10431
 msgid "MOTD: {motd}"
 msgstr "MOTD: {motd}"
 
-#: public/js/client.js:10028
+#: public/js/client.js:10031
 msgid "{count} box"
 msgstr "กล่อง {count} ชิ้น"
 
-#: public/js/client.js:10028
+#: public/js/client.js:10031
 msgid "{count} boxes"
 msgstr "กล่อง {count} ชิ้น"
 
-#: public/js/client.js:10029
+#: public/js/client.js:10032
 msgid "{count} pyramid"
 msgstr "พีระมิด {count} ชิ้น"
 
-#: public/js/client.js:10029
+#: public/js/client.js:10032
 msgid "{count} pyramids"
 msgstr "พีระมิด {count} ชิ้น"
 
-#: public/js/client.js:10030
+#: public/js/client.js:10033
 msgid "{count} mesh"
 msgstr "เมช {count} ชิ้น"
 
-#: public/js/client.js:10030
+#: public/js/client.js:10033
 msgid "{count} meshes"
 msgstr "เมช {count} ชิ้น"
 
-#: public/js/client.js:10035
+#: public/js/client.js:10038
 msgid "{count} base"
 msgstr "ฐาน {count} แห่ง"
 
-#: public/js/client.js:10035
+#: public/js/client.js:10038
 msgid "{count} bases"
 msgstr "ฐาน {count} แห่ง"
 
-#: public/js/client.js:10037
+#: public/js/client.js:10040
 msgid "{count} teleporter"
 msgstr "เทเลพอร์ต {count} จุด"
 
-#: public/js/client.js:10037
+#: public/js/client.js:10040
 msgid "{count} teleporters"
 msgstr "เทเลพอร์ต {count} จุด"
 
-#: public/js/client.js:10040 server.js:2396
+#: public/js/client.js:10043 server.js:2415
 msgid "water"
 msgstr "น้ำ"
 
-#: public/js/client.js:10041 server.js:2396
+#: public/js/client.js:10044 server.js:2415
 msgid "weather"
 msgstr "สภาพอากาศ"
 
-#: public/js/client.js:10042 server.js:2396
+#: public/js/client.js:10045 server.js:2415
 msgid "custom ground"
 msgstr "พื้นกำหนดเอง"
 
-#: public/js/client.js:10080 public/js/client.js:10159
+#: public/js/client.js:10083 public/js/client.js:10162
 msgid "View {map}"
 msgstr "ดู {map}"
 
-#: public/js/client.js:10157
+#: public/js/client.js:10160
 msgid "{server} did not answer"
 msgstr "{server} ไม่ตอบกลับ"
 
-#: public/js/client.js:10169 server.js:2326 server.js:2785
+#: public/js/client.js:10172 server.js:2345 server.js:2804
 msgid "Watch"
 msgstr "ชม"
 
-#: public/js/client.js:10170
+#: public/js/client.js:10173
 msgid "Watch the live game on {server}"
 msgstr "ชมเกมสดบน {server}"
 
-#: public/js/client.js:10188 public/js/client.js:10196 server.js:2794
+#: public/js/client.js:10191 public/js/client.js:10199 server.js:2813
 msgid "Re-import"
 msgstr "นำเข้าใหม่"
 
-#: public/js/client.js:10192
+#: public/js/client.js:10195
 msgid "Importing…"
 msgstr "กำลังนำเข้า…"
 
-#: public/js/client.js:10235
+#: public/js/client.js:10238
 msgid "Loading map..."
 msgstr "กำลังโหลดแผนที่..."
 
-#: public/js/client.js:10243
+#: public/js/client.js:10246
 msgid "Building world geometry..."
 msgstr "กำลังสร้างรูปทรงของโลก..."
 
-#: public/js/client.js:10307
+#: public/js/client.js:10310
 msgid "{count} watching now"
 msgstr "มีผู้ชม {count} คนตอนนี้"
 
-#: public/js/client.js:10310
+#: public/js/client.js:10313
 msgid "Watch {name}"
 msgstr "ชม {name}"
 
-#: public/js/client.js:10346
+#: public/js/client.js:10349
 msgid "That server's map could not be fetched"
 msgstr "ดึงแผนที่ของเซิร์ฟเวอร์นั้นไม่ได้"
 
-#: public/js/client.js:10364
+#: public/js/client.js:10367
 msgid "import failed"
 msgstr "นำเข้าไม่สำเร็จ"
 
-#: public/js/client.js:10364
+#: public/js/client.js:10367
 msgid "Could not load that server's map: {reason}"
 msgstr "โหลดแผนที่ของเซิร์ฟเวอร์นั้นไม่ได้: {reason}"
 
-#: public/js/client.js:10562
+#: public/js/client.js:10565
 msgid "{team} Limit:"
 msgstr "จำกัด {team}:"
 
-#: public/js/client.js:10643
+#: public/js/client.js:10646
 msgid "No limit"
 msgstr "ไม่จำกัด"
 
-#: public/js/client.js:10734
+#: public/js/client.js:10737
 msgid "Restart"
 msgstr "เริ่มใหม่"
 
-#: public/js/client.js:10738
+#: public/js/client.js:10741
 msgid "Starts a new game: every player reloads into the new settings"
 msgstr "เริ่มเกมใหม่: ผู้เล่นทุกคนจะโหลดใหม่ด้วยการตั้งค่าใหม่"
 
-#: public/js/client.js:10739
+#: public/js/client.js:10742
 msgid "Applies the staged changes"
 msgstr "นำการเปลี่ยนแปลงที่เตรียมไว้ไปใช้"
 
-#: public/js/client.js:11080
+#: public/js/client.js:11083
 msgid "Paused"
 msgstr "หยุดชั่วคราว"
 
-#: public/js/client.js:11081
+#: public/js/client.js:11084
 msgid "Sealed"
 msgstr "ติดในอาคาร"
 
-#: public/js/client.js:12006
+#: public/js/client.js:12009
 msgid "Already following someone"
 msgstr "กำลังตามคนอื่นอยู่แล้ว"
 
-#: public/js/client.js:12042 public/js/client.js:12162
+#: public/js/client.js:12045 public/js/client.js:12165
 msgid "Looking at {player}"
 msgstr "กำลังมอง {player}"
 
-#: public/js/client.js:12146
+#: public/js/client.js:12149
 msgid "{player} locked on me"
 msgstr "{player} ล็อกเป้าที่ฉัน"
 
-#: public/js/client.js:12156
+#: public/js/client.js:12159
 msgid "Looking at nothing"
 msgstr "ไม่ได้มองใคร"
 
-#: public/js/client.js:12162
+#: public/js/client.js:12165
 msgid "Locked on {player}"
 msgstr "ล็อกเป้า {player}"
 
-#: public/js/client.js:12398
+#: public/js/client.js:12401
 msgid "Clear ({count})"
 msgstr "ล้าง ({count})"
 
-#: public/js/client.js:12398 public/js/list-page.js:534
+#: public/js/client.js:12401 public/js/list-page.js:534
 msgid "Clear"
 msgstr "ล้าง"
 
-#: public/js/client.js:12498
+#: public/js/client.js:12501
 msgid "SPOTTED: {player}"
 msgstr "พบเป้า: {player}"
 
-#: public/js/client.js:12613 public/js/client.js:12619
+#: public/js/client.js:12616 public/js/client.js:12622
 msgid "nobody"
 msgstr "ไม่มีใคร"
 
-#: public/js/client.js:12623
+#: public/js/client.js:12626
 msgid "Leader {who}"
 msgstr "ผู้นำ: {who}"
 
-#: public/js/client.js:12625 public/js/client.js:12630
+#: public/js/client.js:12628 public/js/client.js:12633
 msgid "Tracking {who}"
 msgstr "ติดตาม {who}"
 
-#: public/js/client.js:12626
+#: public/js/client.js:12629
 msgid "Following {who}"
 msgstr "ตามหลัง {who}"
 
-#: public/js/client.js:12627
+#: public/js/client.js:12630
 msgid "Driving with {who}"
 msgstr "นั่งไปกับ {who}"
 
-#: public/js/client.js:12632 public/js/hud.js:566 public/js/input.js:1387
+#: public/js/client.js:12635 public/js/hud.js:566 public/js/input.js:1387
 msgid "First Person"
 msgstr "บุคคลที่หนึ่ง"
 
-#: public/js/client.js:12633 public/js/hud.js:567 public/js/input.js:1388
+#: public/js/client.js:12636 public/js/hud.js:567 public/js/input.js:1388
 msgid "Third Person"
 msgstr "บุคคลที่สาม"
 
-#: public/js/client.js:12634 public/js/hud.js:568 public/js/input.js:1389
+#: public/js/client.js:12637 public/js/hud.js:568 public/js/input.js:1389
 msgid "Overview"
 msgstr "ภาพรวม"
 
-#: public/js/client.js:12635
+#: public/js/client.js:12638
 msgid "Roaming"
 msgstr "บินอิสระ"
 
-#: public/js/client.js:12924 public/js/client.js:12998
+#: public/js/client.js:12927 public/js/client.js:13001
 msgid "autopilot disabled"
 msgstr "ปิดออโต้ไพลอตแล้ว"
 
-#: public/js/client.js:12933
+#: public/js/client.js:12936
 msgid "autopilot not allowed on this server"
 msgstr "เซิร์ฟเวอร์นี้ไม่อนุญาตออโต้ไพลอต"
 
-#: public/js/client.js:12945
+#: public/js/client.js:12948
 msgid "{pilot} has the controls"
 msgstr "{pilot} กำลังควบคุม"
 
-#: public/js/client.js:12950
+#: public/js/client.js:12953
 msgid "You may not enable the Autopilot more than once every five seconds."
 msgstr "เปิดออโต้ไพลอตได้ไม่เกินหนึ่งครั้งทุกห้าวินาที"
 
-#: public/js/client.js:12955
+#: public/js/client.js:12958
 msgid "autopilot enabled"
 msgstr "เปิดออโต้ไพลอตแล้ว"
 
-#: public/js/client.js:12978
+#: public/js/client.js:12981
 msgid "Not allowed"
 msgstr "ไม่อนุญาต"
 
-#: public/js/client.js:12978 public/js/input.js:1092 public/js/input.js:1102
+#: public/js/client.js:12981 public/js/input.js:1092 public/js/input.js:1102
 #: public/js/input.js:1106
 msgid "Unavailable"
 msgstr "ไม่พร้อมใช้งาน"
 
-#: public/js/client.js:12981
+#: public/js/client.js:12984
 msgid "None"
 msgstr "ไม่มี"
 
-#: public/js/client.js:13803
+#: public/js/client.js:13806
 msgid "Zoned"
 msgstr "เข้าโซนแล้ว"
 
-#: public/js/client.js:13803
+#: public/js/client.js:13806
 msgid "Unzoned"
 msgstr "ออกจากโซนแล้ว"
 
-#: public/js/client.js:14604 public/js/client.js:14621
+#: public/js/client.js:14607 public/js/client.js:14624
 msgid "unidentified"
 msgstr "ไม่ทราบชนิด"
 
-#: public/js/client.js:14641
+#: public/js/client.js:14644
 msgid "unknown"
 msgstr "ไม่ทราบ"
 
-#: public/js/client.js:14652
+#: public/js/client.js:14655
 msgid ""
 "This server bounces every shot off walls, whatever flag fired it, so the "
 "Ricochet flag is not in play here."
 msgstr "เซิร์ฟเวอร์นี้ให้กระสุนทุกนัดสะท้อนผนัง ไม่ว่าธงไหนยิง ธงกระสุนสะท้อนจึงไม่มีในเกมนี้"
 
-#: public/js/client.js:14653
+#: public/js/client.js:14656
 msgid "On this server only the Ricochet flag bounces shots off walls."
 msgstr "บนเซิร์ฟเวอร์นี้ มีเพียงธงกระสุนสะท้อนที่ทำให้กระสุนสะท้อนผนัง"
 
-#: public/js/client.js:14720
+#: public/js/client.js:14723
 msgid "{flag} {release}"
 msgstr "{flag} {release}"
 
-#: public/js/client.js:14731
+#: public/js/client.js:14734
 msgid "Can't drop the flag while zoned"
 msgstr "ทิ้งธงไม่ได้ขณะอยู่ในโซน"
 
-#: public/js/client.js:14735
+#: public/js/client.js:14738
 msgid "Can't drop a flag while inside a building"
 msgstr "ทิ้งธงไม่ได้ขณะอยู่ในอาคาร"
 
-#: public/js/client.js:14785
+#: public/js/client.js:14788
 msgid "in {seconds}s"
 msgstr "ใน {seconds} วิ"
 
-#: public/js/client.js:14786
+#: public/js/client.js:14789
 msgid "after {count} kill"
 msgstr "หลังฆ่า {count} ครั้ง"
 
-#: public/js/client.js:14786
+#: public/js/client.js:14789
 msgid "after {count} kills"
 msgstr "หลังฆ่า {count} ครั้ง"
 
-#: public/js/client.js:14787
+#: public/js/client.js:14790
 msgid "on the antidote"
 msgstr "เมื่อแตะยาแก้"
 
-#: public/js/client.js:14788
+#: public/js/client.js:14791
 msgid "stays until it kills you"
 msgstr "ติดอยู่จนกว่าจะฆ่าคุณ"
 
-#: public/js/client.js:14789
+#: public/js/client.js:14792
 msgid "{first} or {second}"
 msgstr "{first} หรือ {second}"
 
-#: public/js/client.js:14790
+#: public/js/client.js:14793
 msgid "shakes off {ways}"
 msgstr "หลุดได้ {ways}"
 
-#: public/js/client.js:14846
+#: public/js/client.js:14849
 msgid "Flag Alert!!!"
 msgstr "เตือนธง!!!"
 
-#: public/js/client.js:14854
+#: public/js/client.js:14857
 msgid "Team Grab!!!"
 msgstr "ทีมคว้าธง!!!"
 
-#: public/js/client.js:14870
+#: public/js/client.js:14873
 msgid "{thief} stole {victim}'s {flag} flag"
 msgstr "{thief} ขโมยธง {flag} ของ {victim}"
 
-#: public/js/client.js:14901
+#: public/js/client.js:14904
 msgid "Closest Flag: {flag}"
 msgstr "ธงที่ใกล้ที่สุด: {flag}"
 
-#: public/js/client.js:14963
+#: public/js/client.js:14966
 msgid "{player} took their own flag into {team} territory"
 msgstr "{player} นำธงของตัวเองเข้าไปในเขต {team}"
 
-#: public/js/client.js:14971
+#: public/js/client.js:14974
 msgid "Don't capture your own flag!!!"
 msgstr "อย่ายึดธงของตัวเอง!!!"
 
-#: public/js/client.js:14977
+#: public/js/client.js:14980
 msgid "{player} captured the {team} flag"
 msgstr "{player} ยึดธง {team}"
 
-#: public/js/client.js:16554 public/js/client.js:16555
+#: public/js/client.js:16556 public/js/client.js:16557
 msgid "Exit WebXR VR Mode"
 msgstr "ออกจากโหมด WebXR VR"
 
@@ -2200,19 +2204,19 @@ msgstr "โหมดดีบัก: เปิด"
 msgid "Debug Mode: OFF"
 msgstr "โหมดดีบัก: ปิด"
 
-#: public/js/hud.js:758 server.js:1926
+#: public/js/hud.js:758 server.js:1945
 msgid "Red"
 msgstr "แดง"
 
-#: public/js/hud.js:759 server.js:1926
+#: public/js/hud.js:759 server.js:1945
 msgid "Green"
 msgstr "เขียว"
 
-#: public/js/hud.js:760 server.js:1926
+#: public/js/hud.js:760 server.js:1945
 msgid "Blue"
 msgstr "น้ำเงิน"
 
-#: public/js/hud.js:761 server.js:1926
+#: public/js/hud.js:761 server.js:1945
 msgid "Purple"
 msgstr "ม่วง"
 
@@ -2512,7 +2516,7 @@ msgstr "อีก {n} บรรทัด"
 
 # review: โลก
 #: public/js/inspect-panel.mjs:123 public/js/inspect-panel.mjs:188
-#: server.js:1759
+#: server.js:1778
 msgid "World"
 msgstr "โลก"
 
@@ -2849,347 +2853,347 @@ msgstr "เริ่มรับเสียงจากไมโครโฟน
 msgid "Could not enumerate microphone devices."
 msgstr "แสดงรายการไมโครโฟนไม่ได้"
 
-#: server.js:1692
+#: server.js:1711
 msgid "Map hash"
 msgstr "แฮชแผนที่"
 
-#: server.js:1731
+#: server.js:1750
 msgid "ignored by bzo"
 msgstr "bzo ไม่สนใจ"
 
-#: server.js:1731
+#: server.js:1750
 msgid "read by bzo"
 msgstr "bzo อ่านค่านี้"
 
-#: server.js:1733
+#: server.js:1752
 msgid "{read}/{total} set"
 msgstr "ตั้งค่าแล้ว {read}/{total}"
 
-#: server.js:1755 server.js:2886
+#: server.js:1774 server.js:2905
 msgid "Version"
 msgstr "เวอร์ชัน"
 
-#: server.js:1756
+#: server.js:1775
 msgid "BZFlag hash"
 msgstr "แฮช BZFlag"
 
-#: server.js:1759
+#: server.js:1778
 msgid "temporary"
 msgstr "ชั่วคราว"
 
-#: server.js:1762
+#: server.js:1781
 msgid "Variables"
 msgstr "ตัวแปร"
 
-#: server.js:1763
+#: server.js:1782
 msgid "sent/inflated"
 msgstr "ส่ง/ขยาย"
 
-#: server.js:1807 server.js:1836
+#: server.js:1826 server.js:1855
 msgid "Classic Capture-the-Flag"
 msgstr "ยึดธงแบบคลาสสิก"
 
-#: server.js:1808 server.js:1839
+#: server.js:1827 server.js:1858
 msgid "Rabbit Chase"
 msgstr "ไล่ล่ากระต่าย"
 
-#: server.js:1809
+#: server.js:1828
 msgid "Open (Teamless) Free-For-All"
 msgstr "ทุกคนสู้กันเองแบบเปิด (ไม่มีทีม)"
 
-#: server.js:1810
+#: server.js:1829
 msgid "Free-style"
 msgstr "ฟรีสไตล์"
 
-#: server.js:1833
+#: server.js:1852
 msgid "Replay server"
 msgstr "เซิร์ฟเวอร์รีเพลย์"
 
-#: server.js:1841
+#: server.js:1860
 msgid "Free-for-all"
 msgstr "ทุกคนสู้กันเอง"
 
-#: server.js:1876
+#: server.js:1895
 msgid "World hash: sorts rows sharing a world together, unhashed last"
 msgstr "แฮชโลก: จัดแถวที่ใช้โลกเดียวกันไว้ด้วยกัน แถวที่ไม่มีแฮชอยู่ท้ายสุด"
 
-#: server.js:1898
+#: server.js:1917
 msgid "just started"
 msgstr "เพิ่งเริ่ม"
 
-#: server.js:1899
+#: server.js:1918
 msgid "{minutes}m"
 msgstr "{minutes} น."
 
-#: server.js:1901
+#: server.js:1920
 msgid "{hours}h {minutes}m"
 msgstr "{hours} ชม. {minutes} น."
 
-#: server.js:1902
+#: server.js:1921
 msgid "{days}d {hours}h"
 msgstr "{days} วัน {hours} ชม."
 
-#: server.js:1926 server.js:2377 server.js:2618
+#: server.js:1945 server.js:2396 server.js:2637
 msgid "Observers"
 msgstr "ผู้ชม"
 
-#: server.js:1945 server.js:2382
+#: server.js:1964 server.js:2401
 msgid "none"
 msgstr "ไม่มี"
 
-#: server.js:1950
+#: server.js:1969
 msgid "{servers} with {players} player"
 msgstr "{servers} มีผู้เล่น {players} คน"
 
-#: server.js:1951
+#: server.js:1970
 msgid "{servers} with {players} players"
 msgstr "{servers} มีผู้เล่น {players} คน"
 
-#: server.js:1952
+#: server.js:1971
 msgid ", {bots} bot"
 msgstr ", บอท {bots} ตัว"
 
-#: server.js:1952
+#: server.js:1971
 msgid ", {bots} bots"
 msgstr ", บอท {bots} ตัว"
 
-#: server.js:1963
+#: server.js:1982
 msgid ", {waiting} without overview"
 msgstr ", {waiting} ยังไม่มีภาพรวม"
 
-#: server.js:1989
+#: server.js:2008
 msgid "Super Flags"
 msgstr "ซูเปอร์แฟล็ก"
 
-#: server.js:1990
+#: server.js:2009
 msgid "Antidote Flags"
 msgstr "ธงยาแก้"
 
-#: server.js:1994
+#: server.js:2013
 msgid "{secs} sec To Drop Bad Flag"
 msgstr "{secs} วินาทีเพื่อทิ้งธงร้าย"
 
-#: server.js:1995
+#: server.js:2014
 msgid "{secs} secs To Drop Bad Flag"
 msgstr "{secs} วินาทีเพื่อทิ้งธงร้าย"
 
-#: server.js:1999
+#: server.js:2018
 msgid "{wins} Win Drops Bad Flag"
 msgstr "ชนะ {wins} ครั้งทิ้งธงร้าย"
 
-#: server.js:1999
+#: server.js:2018
 msgid "{wins} Wins Drops Bad Flag"
 msgstr "ชนะ {wins} ครั้งทิ้งธงร้าย"
 
-#: server.js:2001
+#: server.js:2020
 msgid "No Teamkills"
 msgstr "ห้ามฆ่าทีมเดียวกัน"
 
-#: server.js:2004
+#: server.js:2023
 msgid "Handicap"
 msgstr "แฮนดิแคป"
 
-#: server.js:2005
+#: server.js:2024
 msgid "Inertia"
 msgstr "ความเฉื่อย"
 
-#: server.js:2008
+#: server.js:2027
 msgid "No Bots"
 msgstr "ไม่มีบอท"
 
-#: server.js:2012
+#: server.js:2031
 msgid "Guests Watch"
 msgstr "แขกชมได้"
 
-#: server.js:2013
+#: server.js:2032
 msgid "No Guests"
 msgstr "ไม่รับแขก"
 
-#: server.js:2014
+#: server.js:2033
 msgid "Guests Play"
 msgstr "แขกเล่นได้"
 
-#: server.js:2015
+#: server.js:2034
 msgid "Registered Only"
 msgstr "เฉพาะผู้ลงทะเบียน"
 
-#: server.js:2016
+#: server.js:2035
 msgid "Guests Chat"
 msgstr "แขกแชทได้"
 
-#: server.js:2017
+#: server.js:2036
 msgid "Guests Muted"
 msgstr "แขกถูกปิดเสียง"
 
-#: server.js:2020
+#: server.js:2039
 msgid "Time limit"
 msgstr "จำกัดเวลา"
 
-#: server.js:2021
+#: server.js:2040
 msgid "Max team score"
 msgstr "คะแนนทีมสูงสุด"
 
-#: server.js:2022
+#: server.js:2041
 msgid "Max player score"
 msgstr "คะแนนผู้เล่นสูงสุด"
 
-#: server.js:2029
+#: server.js:2048
 msgid "{shots} Shot"
 msgstr "กระสุน {shots} นัด"
 
-#: server.js:2030
+#: server.js:2049
 msgid "{shots} Shots"
 msgstr "กระสุน {shots} นัด"
 
-#: server.js:2054
+#: server.js:2073
 msgid "Bots"
 msgstr "บอท"
 
-#: server.js:2093 server.js:2284 server.js:2523
+#: server.js:2112 server.js:2303 server.js:2542
 msgid "None."
 msgstr "ไม่มี"
 
-#: server.js:2129
+#: server.js:2148
 msgid "hashing…"
 msgstr "กำลังแฮช…"
 
-#: server.js:2148
+#: server.js:2167
 msgid "Obj"
 msgstr "Obj"
 
-#: server.js:2152
+#: server.js:2171
 msgid "Obstacles in the world"
 msgstr "สิ่งกีดขวางในโลก"
 
-#: server.js:2153
+#: server.js:2172
 msgid "Mesh faces in the world"
 msgstr "หน้าเมชในโลก"
 
-#: server.js:2154 server.js:2416
+#: server.js:2173 server.js:2435
 msgid "World size"
 msgstr "ขนาดโลก"
 
-#: server.js:2156
+#: server.js:2175
 msgid "Map file name"
 msgstr "ชื่อไฟล์แผนที่"
 
-#: server.js:2156 server.js:2314
+#: server.js:2175 server.js:2333
 msgid "Name"
 msgstr "ชื่อ"
 
-#: server.js:2157
+#: server.js:2176
 msgid "Game style the map sets"
 msgstr "รูปแบบเกมที่แผนที่กำหนด"
 
-#: server.js:2173 server.js:2329 server.js:2733
+#: server.js:2192 server.js:2348 server.js:2752
 msgid "View map"
 msgstr "ดูแผนที่"
 
-#: server.js:2174
+#: server.js:2193
 msgid "Still hashing"
 msgstr "ยังแฮชอยู่"
 
-#: server.js:2264
+#: server.js:2283
 msgid "Overview of {name}"
 msgstr "ภาพรวมของ {name}"
 
-#: server.js:2296
+#: server.js:2315
 msgid "unreadable: {error}"
 msgstr "อ่านไม่ได้: {error}"
 
-#: server.js:2297
+#: server.js:2316
 msgid " -- {viewers} watching"
 msgstr " -- มีผู้ชม {viewers} คน"
 
-#: server.js:2310
+#: server.js:2329
 msgid "When it was recorded (UTC)"
 msgstr "เวลาที่บันทึก (UTC)"
 
-#: server.js:2311
+#: server.js:2330
 msgid "How long it runs"
 msgstr "ความยาว"
 
-#: server.js:2312
+#: server.js:2331
 msgid "Players in it, observers not counted"
 msgstr "ผู้เล่นในรีเพลย์ ไม่นับผู้ชม"
 
-#: server.js:2314
+#: server.js:2333
 msgid "Replay file name"
 msgstr "ชื่อไฟล์รีเพลย์"
 
-#: server.js:2315
+#: server.js:2334
 msgid "The map it was played on"
 msgstr "แผนที่ที่ใช้เล่น"
 
-#: server.js:2327
+#: server.js:2346
 msgid "Unreadable"
 msgstr "อ่านไม่ได้"
 
-#: server.js:2360
+#: server.js:2379
 msgid "{viewers} watching, at {time}"
 msgstr "มีผู้ชม {viewers} คน ที่ {time}"
 
-#: server.js:2375
+#: server.js:2394
 msgid "Recorded by"
 msgstr "บันทึกโดย"
 
-#: server.js:2378
+#: server.js:2397
 msgid "Now"
 msgstr "ตอนนี้"
 
-#: server.js:2380
+#: server.js:2399
 msgid "Error"
 msgstr "ข้อผิดพลาด"
 
-#: server.js:2408
+#: server.js:2427
 msgid "Boxes"
 msgstr "กล่อง"
 
-#: server.js:2409
+#: server.js:2428
 msgid "Pyramids"
 msgstr "พีระมิด"
 
-#: server.js:2410
+#: server.js:2429
 msgid "Meshes"
 msgstr "เมช"
 
-#: server.js:2411
+#: server.js:2430
 msgid "Bases"
 msgstr "ฐาน"
 
-#: server.js:2412
+#: server.js:2431
 msgid "Teleporters"
 msgstr "เทเลพอร์ต"
 
-#: server.js:2417
+#: server.js:2436
 msgid "Has"
 msgstr "มี"
 
-#: server.js:2418
+#: server.js:2437
 msgid "Hashed"
 msgstr "แฮชแล้ว"
 
-#: server.js:2418
+#: server.js:2437
 msgid "generated at boot"
 msgstr "สร้างตอนบูต"
 
-#: server.js:2418
+#: server.js:2437
 msgid "yes"
 msgstr "ใช่"
 
-#: server.js:2418
+#: server.js:2437
 msgid "not yet"
 msgstr "ยังไม่"
 
-#: server.js:2419
+#: server.js:2438
 msgid "Hash"
 msgstr "แฮช"
 
-#: server.js:2420
+#: server.js:2439
 msgid "Modified"
 msgstr "แก้ไขเมื่อ"
 
-#: server.js:2439
+#: server.js:2458
 msgid ""
 "Plain text is a glob over the address, description, version, hash and owner "
 "-- {examples} -- and a word with no {star} or {query} in it is wrapped in "
@@ -3198,95 +3202,95 @@ msgstr ""
 "ข้อความธรรมดาคือ glob ที่ค้นในที่อยู่ คำอธิบาย เวอร์ชัน แฮช และเจ้าของ -- {examples} -- "
 "และคำที่ไม่มี {star} หรือ {query} จะถูกครอบด้วยทั้งสองข้าง จึงตรงกับตำแหน่งใดก็ได้"
 
-#: server.js:2442
+#: server.js:2461
 msgid ""
 "A leading {slash} starts filters instead: comma-separated, combined with "
 "{and}."
 msgstr "ถ้าขึ้นต้นด้วย {slash} จะเป็นตัวกรองแทน: คั่นด้วยจุลภาค และรวมกันแบบ {and}"
 
-#: server.js:2443
+#: server.js:2462
 msgid "and"
 msgstr "และ"
 
-#: server.js:2445
+#: server.js:2464
 msgid ""
 "A second {slash} starts another set, and a server matching either set is "
 "shown."
 msgstr "{slash} ตัวที่สองเริ่มชุดใหม่ และเซิร์ฟเวอร์ที่ตรงกับชุดใดชุดหนึ่งจะแสดง"
 
-#: server.js:2446
+#: server.js:2465
 msgid "{hash} begins a comment."
 msgstr "{hash} เริ่มความคิดเห็น"
 
-#: server.js:2447
+#: server.js:2466
 msgid "Booleans -- {on} for on, {off} for off"
 msgstr "ค่าจริง/เท็จ -- {on} คือเปิด {off} คือปิด"
 
-#: server.js:2448
+#: server.js:2467
 msgid "Free-for-all with teams"
 msgstr "ทุกคนสู้กันเองแบบมีทีม"
 
-#: server.js:2449
+#: server.js:2468
 msgid "Open free-for-all, no teams"
 msgstr "ทุกคนสู้กันเองแบบเปิด ไม่มีทีม"
 
-#: server.js:2450
+#: server.js:2469
 msgid "Capture-the-flag"
 msgstr "ยึดธง"
 
-#: server.js:2451
+#: server.js:2470
 msgid "Rabbit chase"
 msgstr "ไล่ล่ากระต่าย"
 
-#: server.js:2452
+#: server.js:2471
 msgid "Tanks can jump unaided"
 msgstr "รถถังกระโดดได้เอง"
 
-#: server.js:2453
+#: server.js:2472
 msgid "Shots ricochet"
 msgstr "กระสุนสะท้อน"
 
-#: server.js:2454
+#: server.js:2473
 msgid "Score affects tank performance"
 msgstr "คะแนนมีผลต่อสมรรถนะรถถัง"
 
-#: server.js:2455
+#: server.js:2474
 msgid "Tanks have inertia"
 msgstr "รถถังมีความเฉื่อย"
 
-#: server.js:2456
+#: server.js:2475
 msgid "Antidote flags are spawned"
 msgstr "มีธงยาแก้เกิดขึ้น"
 
-#: server.js:2457
+#: server.js:2476
 msgid "A replay server"
 msgstr "เซิร์ฟเวอร์รีเพลย์"
 
-#: server.js:2458
+#: server.js:2477
 msgid "The pane has a map overview"
 msgstr "แผงมีภาพรวมแผนที่"
 
-#: server.js:2459
+#: server.js:2478
 msgid "A generated world, which usually changes on restart"
 msgstr "โลกที่สร้างขึ้นเอง ซึ่งมักเปลี่ยนเมื่อรีสตาร์ต"
 
-#: server.js:2460
+#: server.js:2479
 msgid "Autopilot and robots allowed"
 msgstr "อนุญาตออโต้ไพลอตและหุ่นยนต์"
 
-#: server.js:2461
+#: server.js:2480
 msgid "Players with no bzflag.org login may join to observe"
 msgstr "ผู้เล่นที่ไม่มีล็อกอิน bzflag.org เข้ามาชมได้"
 
-#: server.js:2462
+#: server.js:2481
 msgid "Players with no bzflag.org login may spawn"
 msgstr "ผู้เล่นที่ไม่มีล็อกอิน bzflag.org เกิดในเกมได้"
 
-#: server.js:2463
+#: server.js:2482
 msgid "Players with no bzflag.org login may chat"
 msgstr "ผู้เล่นที่ไม่มีล็อกอิน bzflag.org แชทได้"
 
-#: server.js:2465
+#: server.js:2484
 msgid ""
 "For {bots}, {guestWatch}, {guests} and {guestChat}, a server bzo has not "
 "found out about matches neither {plus} nor {minus}."
@@ -3294,291 +3298,291 @@ msgstr ""
 "สำหรับ {bots}, {guestWatch}, {guests} และ {guestChat} เซิร์ฟเวอร์ที่ bzo "
 "ยังไม่รู้ข้อมูลจะไม่ตรงกับทั้ง {plus} และ {minus}"
 
-#: server.js:2469
+#: server.js:2488
 msgid "Numbers -- a name, then {operators}, then a number"
 msgstr "ตัวเลข -- ชื่อ ตามด้วย {operators} แล้วตามด้วยตัวเลข"
 
-#: server.js:2472
+#: server.js:2491
 msgid "Active shots a tank may have"
 msgstr "กระสุนที่รถถังมีได้พร้อมกัน"
 
-#: server.js:2473
+#: server.js:2492
 msgid "Players now, observers excluded"
 msgstr "ผู้เล่นตอนนี้ ไม่รวมผู้ชม"
 
-#: server.js:2474
+#: server.js:2493
 msgid "Bots now"
 msgstr "บอทตอนนี้"
 
-#: server.js:2475
+#: server.js:2494
 msgid "Playing slots still free"
 msgstr "ช่องเล่นที่ยังว่าง"
 
-#: server.js:2476
+#: server.js:2495
 msgid "Colour teams the server offers"
 msgstr "ทีมสีที่เซิร์ฟเวอร์มีให้"
 
-#: server.js:2477
+#: server.js:2496
 msgid "Time limit, in seconds"
 msgstr "จำกัดเวลา หน่วยวินาที"
 
-#: server.js:2478
+#: server.js:2497
 msgid "The server's own player ceiling"
 msgstr "เพดานผู้เล่นของเซิร์ฟเวอร์เอง"
 
-#: server.js:2479
+#: server.js:2498
 msgid "Team score that ends the game"
 msgstr "คะแนนทีมที่จบเกม"
 
-#: server.js:2480
+#: server.js:2499
 msgid "Player score that ends the game"
 msgstr "คะแนนผู้เล่นที่จบเกม"
 
-#: server.js:2481
+#: server.js:2500
 msgid "Kills that shed a bad flag"
 msgstr "จำนวนการฆ่าเพื่อสลัดธงร้าย"
 
-#: server.js:2482
+#: server.js:2501
 msgid "Tenths of a second to shed a bad flag"
 msgstr "เวลาเป็นสิบส่วนวินาทีเพื่อสลัดธงร้าย"
 
-#: server.js:2483
+#: server.js:2502
 msgid "Players on rogue, red, green, blue, purple, observer"
 msgstr "ผู้เล่นในทีมไร้สังกัด แดง เขียว น้ำเงิน ม่วง ผู้ชม"
 
-#: server.js:2484
+#: server.js:2503
 msgid "That team's maximum"
 msgstr "จำนวนสูงสุดของทีมนั้น"
 
-#: server.js:2485
+#: server.js:2504
 msgid "That team's free slots"
 msgstr "ช่องว่างของทีมนั้น"
 
-#: server.js:2487
+#: server.js:2506
 msgid ""
 "Patterns -- a name, then {glob} for a glob or {regex} for a regular "
 "expression"
 msgstr ""
 "รูปแบบ -- ชื่อ ตามด้วย {glob} สำหรับ glob หรือ {regex} สำหรับ regular expression"
 
-#: server.js:2490
+#: server.js:2509
 msgid "The address, host and port"
 msgstr "ที่อยู่ โฮสต์และพอร์ต"
 
-#: server.js:2491
+#: server.js:2510
 msgid "The description"
 msgstr "คำอธิบาย"
 
-#: server.js:2492
+#: server.js:2511
 msgid "Either one"
 msgstr "อย่างใดอย่างหนึ่ง"
 
-#: server.js:2493
+#: server.js:2512
 msgid "The world hash the pane shows"
 msgstr "แฮชโลกที่แผงแสดง"
 
-#: server.js:2494
+#: server.js:2513
 msgid "The server's version: {bzo} or bzfs's own build"
 msgstr "เวอร์ชันของเซิร์ฟเวอร์: {bzo} หรือบิลด์ของ bzfs เอง"
 
-#: server.js:2495
+#: server.js:2514
 msgid "The bzflag.org account that registered it"
 msgstr "บัญชี bzflag.org ที่ลงทะเบียนเซิร์ฟเวอร์นี้"
 
-#: server.js:2496
+#: server.js:2515
 msgid "The IP address the list server has for it"
 msgstr "ที่อยู่ IP ที่ลิสต์เซิร์ฟเวอร์มีสำหรับเซิร์ฟเวอร์นี้"
 
-#: server.js:2497
+#: server.js:2516
 msgid "Any one world variable it sets, as {pair}"
 msgstr "ตัวแปรโลกใดตัวหนึ่งที่ตั้งไว้ ในรูป {pair}"
 
-#: server.js:2499
+#: server.js:2518
 msgid ""
 "A capitalised pattern name matches case-sensitively: {lower} ignores case, "
 "{upper} does not."
 msgstr ""
 "ชื่อรูปแบบที่ขึ้นต้นด้วยตัวพิมพ์ใหญ่จะแยกตัวพิมพ์เล็กใหญ่: {lower} ไม่สนตัวพิมพ์ {upper} สนใจ"
 
-#: server.js:2502
+#: server.js:2521
 msgid "Examples"
 msgstr "ตัวอย่าง"
 
-#: server.js:2503
+#: server.js:2522
 msgid "Two or three shots, and somebody playing"
 msgstr "กระสุนสองหรือสามนัด และมีคนกำลังเล่น"
 
-#: server.js:2504
+#: server.js:2523
 msgid "Capture-the-flag between exactly two teams"
 msgstr "ยึดธงระหว่างสองทีมพอดี"
 
-#: server.js:2505
+#: server.js:2524
 msgid "Leagues, by description"
 msgstr "ลีก ตามคำอธิบาย"
 
-#: server.js:2506
+#: server.js:2525
 msgid "bzo servers only"
 msgstr "เฉพาะเซิร์ฟเวอร์ bzo"
 
-#: server.js:2507
+#: server.js:2526
 msgid "No version known yet"
 msgstr "ยังไม่รู้เวอร์ชัน"
 
-#: server.js:2508
+#: server.js:2527
 msgid "Somebody is watching"
 msgstr "มีคนกำลังชม"
 
-#: server.js:2509
+#: server.js:2528
 msgid "Rabbit chase, ricochet, three shots"
 msgstr "ไล่ล่ากระต่าย กระสุนสะท้อน กระสุนสามนัด"
 
-#: server.js:2510
+#: server.js:2529
 msgid "Either capture-the-flag or rabbit chase"
 msgstr "ยึดธงหรือไล่ล่ากระต่าย"
 
-#: server.js:2511
+#: server.js:2530
 msgid "No map overview yet"
 msgstr "ยังไม่มีภาพรวมแผนที่"
 
-#: server.js:2512
+#: server.js:2531
 msgid "Lists {variable} at all, on or off; {off} is the one that means off"
 msgstr "แสดงรายการที่มี {variable} ไม่ว่าเปิดหรือปิด; {off} คือค่าที่หมายถึงปิด"
 
-#: server.js:2619
+#: server.js:2638
 msgid "Bots, blank where unknown"
 msgstr "บอท ว่างไว้ถ้าไม่รู้"
 
-#: server.js:2621
+#: server.js:2640
 msgid ""
 "Game type: yellow free-for-all, red capture-the-flag, white rabbit chase, "
 "cyan replay"
 msgstr "ประเภทเกม: เหลือง ทุกคนสู้กันเอง, แดง ยึดธง, ขาว ไล่ล่ากระต่าย, ฟ้า รีเพลย์"
 
-#: server.js:2623
+#: server.js:2642
 msgid "Superflags"
 msgstr "ซูเปอร์แฟล็ก"
 
-#: server.js:2626
+#: server.js:2645
 msgid "This server already holds an import of that map"
 msgstr "เซิร์ฟเวอร์นี้มีแผนที่นั้นที่นำเข้าไว้แล้ว"
 
-#: server.js:2630
+#: server.js:2649
 msgid "The name, or the address when a server has none"
 msgstr "ชื่อ หรือที่อยู่ถ้าเซิร์ฟเวอร์ไม่มีชื่อ"
 
-#: server.js:2630
+#: server.js:2649
 msgid "Name & Description"
 msgstr "ชื่อและคำอธิบาย"
 
-#: server.js:2642
+#: server.js:2661
 msgid "Filter syntax"
 msgstr "ไวยากรณ์ตัวกรอง"
 
-#: server.js:2766
+#: server.js:2785
 msgid "Address"
 msgstr "ที่อยู่"
 
-#: server.js:2768 server.js:2874 server.js:2890 server.js:5970
+#: server.js:2787 server.js:2893 server.js:2909 server.js:6044
 msgid "Owner"
 msgstr "เจ้าของ"
 
-#: server.js:2769
+#: server.js:2788
 msgid "Imported"
 msgstr "นำเข้าแล้ว"
 
-#: server.js:2783 server.js:2842
+#: server.js:2802 server.js:2861
 msgid "Launch"
 msgstr "เปิด"
 
-#: server.js:2789 server/discovery.cjs:265
+#: server.js:2808 server/discovery.cjs:265
 msgid "Play"
 msgstr "เล่น"
 
-#: server.js:2794
+#: server.js:2813
 msgid "Import"
 msgstr "นำเข้า"
 
-#: server.js:2834
+#: server.js:2853
 msgid "Enter game"
 msgstr "เข้าเกม"
 
-#: server.js:2841
+#: server.js:2860
 msgid "Login and Play"
 msgstr "ล็อกอินแล้วเล่น"
 
-#: server.js:2873
+#: server.js:2892
 msgid "BZFlag server"
 msgstr "เซิร์ฟเวอร์ BZFlag"
 
-#: server.js:2875
+#: server.js:2894
 msgid "Carried by"
 msgstr "ถือโดย"
 
-#: server.js:2889
+#: server.js:2908
 msgid "Up"
 msgstr "ออนไลน์"
 
-#: server.js:2891
+#: server.js:2910
 msgid "Voice chat"
 msgstr "แชทเสียง"
 
-#: server.js:2891
+#: server.js:2910
 msgid "configured"
 msgstr "ตั้งค่าแล้ว"
 
-#: server.js:2893
+#: server.js:2912
 msgid "Also at"
 msgstr "ที่อยู่อื่น"
 
-#: server.js:2944
+#: server.js:2963
 msgid "(admin)"
 msgstr "(แอดมิน)"
 
-#: server.js:2945
+#: server.js:2964
 msgid "Log out"
 msgstr "ออกจากระบบ"
 
-#: server.js:2947
+#: server.js:2966
 msgid "Log in with your bzflag.org account to register a server"
 msgstr "ล็อกอินด้วยบัญชี bzflag.org เพื่อลงทะเบียนเซิร์ฟเวอร์"
 
-#: server.js:2948
+#: server.js:2967
 msgid "Log in with your bzflag.org account"
 msgstr "ล็อกอินด้วยบัญชี bzflag.org"
 
-#: server.js:2959
+#: server.js:2978
 msgid "maps"
 msgstr "แผนที่"
 
-#: server.js:2959
+#: server.js:2978
 msgid "replays"
 msgstr "รีเพลย์"
 
-#: server.js:2960
+#: server.js:2979
 msgid "keys"
 msgstr "คีย์"
 
-#: server.js:2960
+#: server.js:2979
 msgid "help"
 msgstr "วิธีใช้"
 
-#: server.js:2964
+#: server.js:2983
 msgid "Imported {file} -- it is in the local maps table below."
 msgstr "นำเข้า {file} แล้ว -- อยู่ในตารางแผนที่ในเครื่องด้านล่าง"
 
-#: server.js:2966
+#: server.js:2985
 msgid "Import failed: {error}"
 msgstr "นำเข้าไม่สำเร็จ: {error}"
 
-#: server.js:2974
+#: server.js:2993
 msgid "bzo servers"
 msgstr "เซิร์ฟเวอร์ bzo"
 
-#: server.js:3207
+#: server.js:3226
 msgid "Public bzo servers - {count}"
 msgstr "เซิร์ฟเวอร์ bzo สาธารณะ - {count}"
 
-#: server.js:3208
+#: server.js:3227
 msgid ""
 "From the designated bzo list server, {server} -- pick a row to read it; "
 "Enter, or the pane's own link, goes in."
@@ -3586,35 +3590,35 @@ msgstr ""
 "จากลิสต์เซิร์ฟเวอร์ bzo ที่กำหนดไว้ {server} -- เลือกแถวเพื่ออ่านรายละเอียด; กด Enter "
 "หรือลิงก์ในแผงเพื่อเข้าเกม"
 
-#: server.js:3209
+#: server.js:3228
 msgid "disabled on this instance"
 msgstr "ปิดอยู่บนอินสแตนซ์นี้"
 
-#: server.js:3213
+#: server.js:3232
 msgid "Public BZFlag servers - {count}"
 msgstr "เซิร์ฟเวอร์ BZFlag สาธารณะ - {count}"
 
-#: server.js:3214
+#: server.js:3233
 msgid ""
 "From the public list server (my.bzflag.org), cached {seconds}s ago -- "
 "{refresh}."
 msgstr ""
 "จากลิสต์เซิร์ฟเวอร์สาธารณะ (my.bzflag.org) แคชไว้เมื่อ {seconds} วินาทีก่อน -- {refresh}"
 
-#: server.js:3215
+#: server.js:3234
 msgid "refresh"
 msgstr "รีเฟรช"
 
-#: server.js:3217
+#: server.js:3236
 msgid ""
 "Pick a row to read it; its link views that map, and does not enter that game."
 msgstr "เลือกแถวเพื่ออ่านรายละเอียด; ลิงก์ของแถวจะเปิดดูแผนที่นั้น โดยไม่เข้าเกมนั้น"
 
-#: server.js:3221
+#: server.js:3240
 msgid "Local maps - {count}"
 msgstr "แผนที่ในเครื่อง - {count}"
 
-#: server.js:3222
+#: server.js:3241
 msgid ""
 "Already in this server's {directory} -- pick a row to read it; its link "
 "views that map."
@@ -3622,11 +3626,11 @@ msgstr ""
 "อยู่ใน {directory} ของเซิร์ฟเวอร์นี้แล้ว -- เลือกแถวเพื่ออ่านรายละเอียด; "
 "ลิงก์ของแถวจะเปิดดูแผนที่นั้น"
 
-#: server.js:3227
+#: server.js:3246
 msgid "Local replays - {count}"
 msgstr "รีเพลย์ในเครื่อง - {count}"
 
-#: server.js:3228
+#: server.js:3247
 msgid ""
 "bzfs recordings in this server's {directory} -- pick a row to read it; Watch "
 "plays it to everyone watching that replay."
@@ -3634,7 +3638,7 @@ msgstr ""
 "ไฟล์บันทึกของ bzfs ใน {directory} ของเซิร์ฟเวอร์นี้ -- เลือกแถวเพื่ออ่านรายละเอียด; ชม "
 "จะเล่นรีเพลย์ให้ทุกคนที่กำลังชมรีเพลย์นั้น"
 
-#: server.js:3243
+#: server.js:3262
 msgid ""
 "bzo {version} (build {build}): BZFlag in the browser, on desktop, phone and "
 "headset, and this list of the servers to play it on."
@@ -3642,95 +3646,95 @@ msgstr ""
 "bzo {version} (บิลด์ {build}): BZFlag ในเบราว์เซอร์ บนเดสก์ท็อป โทรศัพท์ และแว่น VR "
 "พร้อมรายชื่อเซิร์ฟเวอร์ให้เล่น"
 
-#: server.js:3246
+#: server.js:3265
 msgid ""
 "Copyright (C) 2025-2026 Tim Riker. Free software under the {license}; source "
 "at {source}."
 msgstr ""
 "ลิขสิทธิ์ (C) 2025-2026 Tim Riker ซอฟต์แวร์เสรีภายใต้ {license}; ซอร์สโค้ดที่ {source}"
 
-#: server.js:3306
+#: server.js:3325
 msgid "Could not reach the BZFlag list server. Try again shortly."
 msgstr "ติดต่อลิสต์เซิร์ฟเวอร์ BZFlag ไม่ได้ ลองใหม่อีกครั้งในอีกสักครู่"
 
-#: server.js:5927
+#: server.js:6001
 msgid "List server key"
 msgstr "คีย์ลิสต์เซิร์ฟเวอร์"
 
-#: server.js:5929
+#: server.js:6003
 msgid ""
 "This instance is not the designated bzo list server. Manage this server's "
 "key at {link}."
 msgstr "อินสแตนซ์นี้ไม่ใช่ลิสต์เซิร์ฟเวอร์ bzo ที่กำหนดไว้ จัดการคีย์ของเซิร์ฟเวอร์นี้ได้ที่ {link}"
 
-#: server.js:5932
+#: server.js:6006
 msgid "The list server is disabled on this instance ({setting} is empty)."
 msgstr "ลิสต์เซิร์ฟเวอร์ปิดอยู่บนอินสแตนซ์นี้ ({setting} ว่างอยู่)"
 
-#: server.js:5939
+#: server.js:6013
 msgid "Generate key"
 msgstr "สร้างคีย์"
 
-#: server.js:5941
+#: server.js:6015
 msgid ""
 "Enter the server's own {setting} -- the same address it already answers "
 "admin-whitelist probes on."
 msgstr ""
 "ใส่ {setting} ของเซิร์ฟเวอร์เอง -- ที่อยู่เดียวกับที่ตอบการตรวจ admin-whitelist อยู่แล้ว"
 
-#: server.js:5944
+#: server.js:6018
 msgid ""
 "The list server calls this address back to validate a report; it never "
 "trusts one a report claims for itself."
 msgstr "ลิสต์เซิร์ฟเวอร์จะเรียกกลับไปที่ที่อยู่นี้เพื่อตรวจสอบรายงาน; จะไม่เชื่อที่อยู่ที่รายงานอ้างเอง"
 
-#: server.js:5946
+#: server.js:6020
 msgid "Log in above to register a server and generate a key."
 msgstr "ล็อกอินด้านบนเพื่อลงทะเบียนเซิร์ฟเวอร์และสร้างคีย์"
 
-#: server.js:5949
+#: server.js:6023
 msgid "never"
 msgstr "ไม่เคย"
 
-#: server.js:5950
+#: server.js:6024
 msgid "stale"
 msgstr "ค้าง"
 
-#: server.js:5951
+#: server.js:6025
 msgid "{players}/{max} players"
 msgstr "ผู้เล่น {players}/{max}"
 
-#: server.js:5952
+#: server.js:6026
 msgid "never reported"
 msgstr "ไม่เคยรายงาน"
 
-#: server.js:5953
+#: server.js:6027
 msgid "Revoke"
 msgstr "เพิกถอน"
 
-#: server.js:5954
+#: server.js:6028
 msgid "Failed"
 msgstr "ล้มเหลว"
 
-#: server.js:5955
+#: server.js:6029
 msgid "Key for {url}: {key}"
 msgstr "คีย์สำหรับ {url}: {key}"
 
-#: server.js:5956
+#: server.js:6030
 msgid ""
 "Paste this into that server's Operator panel -- also readable from the table "
 "above any time."
 msgstr "วางคีย์นี้ในแผงโอเปอเรเตอร์ของเซิร์ฟเวอร์นั้น -- อ่านได้จากตารางด้านบนได้ทุกเมื่อด้วย"
 
-#: server.js:5958
+#: server.js:6032
 msgid "All registered keys"
 msgstr "คีย์ที่ลงทะเบียนทั้งหมด"
 
-#: server.js:5958
+#: server.js:6032
 msgid "Your keys"
 msgstr "คีย์ของคุณ"
 
-#: server.js:5959
+#: server.js:6033
 msgid ""
 "This instance ({url}) is the designated bzo list server -- every other bzo "
 "instance reports here, so its own {list} can show the {table} above."
@@ -3738,470 +3742,470 @@ msgstr ""
 "อินสแตนซ์นี้ ({url}) คือลิสต์เซิร์ฟเวอร์ bzo ที่กำหนดไว้ -- อินสแตนซ์ bzo อื่นทุกตัวรายงานมาที่นี่ "
 "เพื่อให้ {list} ของแต่ละตัวแสดง {table} ด้านบนได้"
 
-#: server.js:5962
+#: server.js:6036
 msgid "bzo servers table"
 msgstr "ตารางเซิร์ฟเวอร์ bzo"
 
-#: server.js:5964
+#: server.js:6038
 msgid "A {bzfs} server's key is a different one, from {link}."
 msgstr "คีย์ของเซิร์ฟเวอร์ {bzfs} เป็นคนละตัว ได้จาก {link}"
 
-#: server.js:5970
+#: server.js:6044
 msgid "Key"
 msgstr "คีย์"
 
-#: server.js:5971
+#: server.js:6045
 msgid "Requested"
 msgstr "ขอเมื่อ"
 
-#: server.js:5971
+#: server.js:6045
 msgid "Last checked"
 msgstr "ตรวจล่าสุด"
 
-#: server.js:5972
+#: server.js:6046
 msgid "Status"
 msgstr "สถานะ"
 
-#: server.js:7272
+#: server.js:7346
 msgid "Match duration is {duration}"
 msgstr "ระยะเวลาแมตช์ {duration}"
 
-#: server.js:7282
+#: server.js:7356
 msgid "Match started"
 msgstr "แมตช์เริ่มแล้ว"
 
-#: server.js:7630
+#: server.js:7704
 msgid "Your score record will be saved while you are in observer mode."
 msgstr "คะแนนของคุณจะถูกเก็บไว้ระหว่างอยู่ในโหมดผู้ชม"
 
-#: server.js:7635
+#: server.js:7709
 msgid "Your score has been restored."
 msgstr "คืนคะแนนของคุณแล้ว"
 
 #. TRANSLATORS: /me is a command name; keep it as it is
-#: server.js:8401
+#: server.js:8475
 msgid "{player}, the /me command requires an argument"
 msgstr "{player} คำสั่ง /me ต้องมีข้อความต่อท้าย"
 
-#: server.js:8442
+#: server.js:8516
 msgid "Commands (use /<command>? for one of them):"
 msgstr "คำสั่ง (ใช้ /<command>? เพื่อดูคำสั่งเดียว):"
 
-#: server.js:8487
+#: server.js:8561
 msgid "Recording started"
 msgstr "เริ่มอัดแล้ว"
 
-#: server.js:8495 server.js:8552 server/messages-operator.cjs:268
+#: server.js:8569 server.js:8626 server/messages-operator.cjs:270
 msgid "Could not open for writing: {name} ({error})"
 msgstr "เปิดเพื่อเขียนไม่ได้: {name} ({error})"
 
-#: server.js:8499
+#: server.js:8573
 msgid "Recording stopped"
 msgstr "หยุดอัดแล้ว"
 
-#: server.js:8507
+#: server.js:8581
 msgid "Record size set to {mbytes}"
 msgstr "ตั้งขนาดการอัดเป็น {mbytes}"
 
-#: server.js:8515
+#: server.js:8589
 msgid "Record rate set to {seconds}"
 msgstr "ตั้งอัตราการอัดเป็น {seconds}"
 
-#: server.js:8519
+#: server.js:8593
 msgid "Not Recording"
 msgstr "ไม่ได้อัดอยู่"
 
-#: server.js:8523
+#: server.js:8597
 msgid "Filename:  {name}"
 msgstr "ชื่อไฟล์:  {name}"
 
-#: server.js:8524
+#: server.js:8598
 msgid "   saved:  {bytes} bytes / {packets} packets / {seconds} seconds"
 msgstr "   บันทึก:  {bytes} ไบต์ / {packets} แพ็กเก็ต / {seconds} วินาที"
 
-#: server.js:8530
+#: server.js:8604
 msgid "Buffered:  {bytes} bytes / {packets} packets / {seconds} seconds"
 msgstr "บัฟเฟอร์:  {bytes} ไบต์ / {packets} แพ็กเก็ต / {seconds} วินาที"
 
-#: server.js:8544 server/messages-operator.cjs:259
+#: server.js:8618 server/messages-operator.cjs:261
 msgid "No buffer to save"
 msgstr "ไม่มีบัฟเฟอร์ให้บันทึก"
 
-#: server.js:8549 server/messages-operator.cjs:264
+#: server.js:8623 server/messages-operator.cjs:266
 msgid "Record buffer saved to: {name}"
 msgstr "บันทึกบัฟเฟอร์การอัดไปที่: {name}"
 
-#: server.js:8563
+#: server.js:8637
 msgid "Recording to file: {name}"
 msgstr "กำลังอัดลงไฟล์: {name}"
 
-#: server.js:8586 server.js:9427
+#: server.js:8660 server.js:9501
 msgid "BZFS Version: {version}"
 msgstr "เวอร์ชัน BZFS: {version}"
 
-#: server.js:8624 server.js:9626
+#: server.js:8698 server.js:9700
 msgid "Nobody is here"
 msgstr "ไม่มีใครอยู่ที่นี่"
 
-#: server.js:8631
+#: server.js:8705
 msgid "server: {stats}"
 msgstr "เซิร์ฟเวอร์: {stats}"
 
-#: server.js:8673
+#: server.js:8747
 msgid "Usage: /setteam <#slot|PlayerName> <team>"
 msgstr "วิธีใช้: /setteam <#slot|PlayerName> <team>"
 
 #. TRANSLATORS: /setteam is a command name and {teams} lists team names as typed
-#: server.js:8680
+#: server.js:8754
 msgid "Usage: /setteam <#slot|PlayerName> <team> -- one of {teams}"
 msgstr "วิธีใช้: /setteam <#slot|PlayerName> <team> -- หนึ่งใน {teams}"
 
-#: server.js:8686
+#: server.js:8760
 msgid "\"{player}\" is not on a team to move from"
 msgstr "\"{player}\" ไม่ได้อยู่ในทีมที่จะย้ายออก"
 
-#: server.js:8690
+#: server.js:8764
 msgid "\"{player}\" is already {team}"
 msgstr "\"{player}\" อยู่ {team} อยู่แล้ว"
 
-#: server.js:8696
+#: server.js:8770
 msgid "\"{player}\" moved to {team}"
 msgstr "ย้าย \"{player}\" ไป {team} แล้ว"
 
-#: server.js:8697
+#: server.js:8771
 msgid "@{player} moved you to {team}"
 msgstr "@{player} ย้ายคุณไป {team}"
 
-#: server.js:8726
+#: server.js:8800
 msgid "Moved to {position} facing {bearing}"
 msgstr "ย้ายไปที่ {position} หันไปทาง {bearing}"
 
-#: server.js:8729
+#: server.js:8803
 msgid "\"{player}\" moved to {position} facing {bearing}"
 msgstr "ย้าย \"{player}\" ไปที่ {position} หันไปทาง {bearing}"
 
-#: server.js:8730
+#: server.js:8804
 msgid "@{player} moved you to {position} facing {bearing}"
 msgstr "@{player} ย้ายคุณไปที่ {position} หันไปทาง {bearing}"
 
-#: server.js:8743
+#: server.js:8817
 msgid "Usage: /msg \"some callsign\" some message"
 msgstr "วิธีใช้: /msg \"some callsign\" some message"
 
-#: server.js:8790
+#: server.js:8864
 msgid "Usage: /kill <#slot|PlayerName> [reason]"
 msgstr "วิธีใช้: /kill <#slot|PlayerName> [reason]"
 
-#: server.js:8795
+#: server.js:8869
 msgid "An observer has no tank to kill"
 msgstr "ผู้ชมไม่มีรถถังให้ฆ่า"
 
-#: server.js:8799
+#: server.js:8873
 msgid "\"{player}\" is already dead"
 msgstr "\"{player}\" ตายอยู่แล้ว"
 
-#: server.js:8806
+#: server.js:8880
 msgid "\"{player}\" killed"
 msgstr "ฆ่า \"{player}\" แล้ว"
 
-#: server.js:8807
+#: server.js:8881
 msgid "You were killed by an operator: {reason}"
 msgstr "คุณถูกโอเปอเรเตอร์ฆ่า: {reason}"
 
-#: server.js:8808
+#: server.js:8882
 msgid "You were killed by an operator"
 msgstr "คุณถูกโอเปอเรเตอร์ฆ่า"
 
-#: server.js:8856
+#: server.js:8930
 msgid "You were banned from this server"
 msgstr "คุณถูกแบนจากเซิร์ฟเวอร์นี้"
 
-#: server.js:8857 server.js:8880
+#: server.js:8931 server.js:8954
 msgid "Reason given: {reason}"
 msgstr "เหตุผล: {reason}"
 
-#: server.js:8858
+#: server.js:8932
 msgid "{player} banned by {admin}, reason: {reason}"
 msgstr "{player} ถูก {admin} แบน เหตุผล: {reason}"
 
-#: server.js:8870
+#: server.js:8944
 msgid "Syntax: /kick <#slot | PlayerName | \"Player Name\"> <reason>"
 msgstr "รูปแบบ: /kick <#slot | PlayerName | \"Player Name\"> <reason>"
 
-#: server.js:8871 server.js:8900
+#: server.js:8945 server.js:8974
 msgid "\tPlease keep in mind that reason is displayed to the user."
 msgstr "\tโปรดจำไว้ว่าผู้เล่นจะเห็นเหตุผลนี้"
 
-#: server.js:8874
+#: server.js:8948
 msgid "player \"{player}\" not found"
 msgstr "ไม่พบผู้เล่น \"{player}\""
 
-#: server.js:8879
+#: server.js:8953
 msgid "You were kicked off the server"
 msgstr "คุณถูกเตะออกจากเซิร์ฟเวอร์"
 
-#: server.js:8881
+#: server.js:8955
 msgid "{player} kicked by {admin}, reason: {reason}"
 msgstr "{player} ถูก {admin} เตะ เหตุผล: {reason}"
 
-#: server.js:8895
+#: server.js:8969
 msgid ""
 "Syntax: /ban <#slot | PlayerName | \"Player Name\" | ip> <duration> <reason>"
 msgstr ""
 "รูปแบบ: /ban <#slot | PlayerName | \"Player Name\" | ip> <duration> <reason>"
 
-#: server.js:8896
+#: server.js:8970
 msgid "\t<duration> can be 'short' or 'default' for the default ban time "
 msgstr "\t<duration> ใช้ 'short' หรือ 'default' สำหรับเวลาแบนปกติ "
 
-#: server.js:8897
+#: server.js:8971
 msgid "\tor 'forever' or 'max' for infinite bans "
 msgstr "\tหรือ 'forever' หรือ 'max' สำหรับแบนถาวร "
 
-#: server.js:8898
+#: server.js:8972
 msgid "\tor a time in the format <weeks>W<days>D<hours>H<minutes>M "
 msgstr "\tหรือเวลาในรูปแบบ <weeks>W<days>D<hours>H<minutes>M "
 
-#: server.js:8899
+#: server.js:8973
 msgid "\tor just a number of minutes "
 msgstr "\tหรือแค่จำนวนนาที "
 
-#: server.js:8922 server.js:9030
+#: server.js:8996 server.js:9104
 msgid "Error: invalid ban duration"
 msgstr "ข้อผิดพลาด: ระยะเวลาแบนไม่ถูกต้อง"
 
-#: server.js:8923 server.js:9031
+#: server.js:8997 server.js:9105
 msgid "Duration examples:  30m 1h  1d  1w  and mixing: 1w2d4h 1w2d1m"
 msgstr "ตัวอย่างระยะเวลา:  30m 1h  1d  1w  และผสมกัน: 1w2d4h 1w2d1m"
 
-#: server.js:8932 server.js:9246
+#: server.js:9006 server.js:9320
 msgid "{player} has no trusted address to ban"
 msgstr "{player} ไม่มีที่อยู่ที่เชื่อถือได้ให้แบน"
 
-#: server.js:8938 server.js:9040
+#: server.js:9012 server.js:9114
 msgid "Pattern added to the BZID banlist"
 msgstr "เพิ่มรูปแบบในรายการแบน BZID แล้ว"
 
-#: server.js:8944
+#: server.js:9018
 msgid "Malformed address or invalid Player/Slot: {target}"
 msgstr "ที่อยู่ผิดรูปแบบ หรือผู้เล่น/สล็อตไม่ถูกต้อง: {target}"
 
-#: server.js:8948
+#: server.js:9022
 msgid "Pattern added to the IP banlist"
 msgstr "เพิ่มรูปแบบในรายการแบน IP แล้ว"
 
-#: server.js:8959
+#: server.js:9033
 msgid "Removed IP pattern from the ban list"
 msgstr "ลบรูปแบบ IP ออกจากรายการแบนแล้ว"
 
-#: server.js:8961 server.js:9050
+#: server.js:9035 server.js:9124
 msgid "No pattern removed"
 msgstr "ไม่ได้ลบรูปแบบใด"
 
-#: server.js:8976
+#: server.js:9050
 msgid "Syntax: /checkip <ip>"
 msgstr "รูปแบบ: /checkip <ip>"
 
-#: server.js:8981
+#: server.js:9055
 msgid "{address} is not banned."
 msgstr "{address} ไม่ได้ถูกแบน"
 
-#: server.js:8984
+#: server.js:9058
 msgid "{address} is banned:"
 msgstr "{address} ถูกแบน:"
 
-#: server.js:8992
+#: server.js:9066
 msgid ""
 "Syntax: /idban <#slot|+id|PlayerName|\"Player Name\"> <duration> <reason>"
 msgstr ""
 "รูปแบบ: /idban <#slot|+id|PlayerName|\"Player Name\"> <duration> <reason>"
 
-#: server.js:8993
+#: server.js:9067
 msgid "  Please keep in mind that reason is displayed to the user."
 msgstr "  โปรดจำไว้ว่าผู้เล่นจะเห็นเหตุผลนี้"
 
-#: server.js:9004
+#: server.js:9078
 msgid "Error: invalid id pattern"
 msgstr "ข้อผิดพลาด: รูปแบบ id ไม่ถูกต้อง"
 
-#: server.js:9012
+#: server.js:9086
 msgid "could not find player ({player})"
 msgstr "ไม่พบผู้เล่น ({player})"
 
-#: server.js:9017
+#: server.js:9091
 msgid "no BZID for player ({player})"
 msgstr "ผู้เล่นไม่มี BZID ({player})"
 
-#: server.js:9048
+#: server.js:9122
 msgid "Removed id from the ban list"
 msgstr "ลบ id ออกจากรายการแบนแล้ว"
 
-#: server.js:9087
+#: server.js:9161
 msgid "Usage: /poll vote yes|no"
 msgstr "วิธีใช้: /poll vote yes|no"
 
-#: server.js:9088
+#: server.js:9162
 msgid "    or /poll ban playername"
 msgstr "    หรือ /poll ban playername"
 
-#: server.js:9089
+#: server.js:9163
 msgid "    or /poll kick playername"
 msgstr "    หรือ /poll kick playername"
 
-#: server.js:9090
+#: server.js:9164
 msgid "    or /poll kill playername"
 msgstr "    หรือ /poll kill playername"
 
-#: server.js:9091
+#: server.js:9165
 msgid "    or /poll set variable value"
 msgstr "    หรือ /poll set variable value"
 
-#: server.js:9092
+#: server.js:9166
 msgid "    or /poll flagreset"
 msgstr "    หรือ /poll flagreset"
 
 #. TRANSLATORS: /vote is a command name; keep it as it is
-#: server.js:9100
+#: server.js:9174
 msgid "{player}, you are presently not authorized to run /vote"
 msgstr "{player} ตอนนี้คุณไม่มีสิทธิ์ใช้ /vote"
 
-#: server.js:9104 server.js:9144 server.js:9170
+#: server.js:9178 server.js:9218 server.js:9244
 msgid "ERROR: the poll arbiter has disappeared (this should never happen)"
 msgstr "ข้อผิดพลาด: ผู้ตัดสินโพลหายไป (ไม่ควรเกิดขึ้นเลย)"
 
-#: server.js:9108
+#: server.js:9182
 msgid "A poll is not presently in progress.  There is nothing to vote on"
 msgstr "ตอนนี้ไม่มีโพลที่กำลังดำเนินอยู่  ไม่มีอะไรให้โหวต"
 
-#: server.js:9113
+#: server.js:9187
 msgid "{player}, you did not vote in favor or in opposition"
 msgstr "{player} คุณไม่ได้โหวตเห็นด้วยหรือไม่เห็นด้วย"
 
-#: server.js:9114
+#: server.js:9188
 msgid "{player}, you did not provide a vote answer"
 msgstr "{player} คุณไม่ได้ให้คำตอบโหวต"
 
-#: server.js:9115
+#: server.js:9189
 msgid "Usage: /vote yes|no|y|n|1|0|yea|nay|si|ja|nein|oui|non|sim|nao"
 msgstr "วิธีใช้: /vote yes|no|y|n|1|0|yea|nay|si|ja|nein|oui|non|sim|nao"
 
 #. TRANSLATORS: {action} is a /poll keyword (ban, kick, kill, set, reset), sent as typed
-#: server.js:9122
+#: server.js:9196
 msgid "{player}, your vote in favor of the {action} has been recorded"
 msgstr "{player} บันทึกโหวตเห็นด้วยกับ {action} ของคุณแล้ว"
 
-#: server.js:9123
+#: server.js:9197
 msgid "{player}, your vote in opposition of the {action} has been recorded"
 msgstr "{player} บันทึกโหวตไม่เห็นด้วยกับ {action} ของคุณแล้ว"
 
-#: server.js:9125
+#: server.js:9199
 msgid "{player}, you have already voted on the poll to {action} {target}"
 msgstr "{player} คุณโหวตในโพล {action} {target} ไปแล้ว"
 
-#: server.js:9129
+#: server.js:9203
 msgid ""
 "{player}, there was an error while voting on the poll to {action} {target}"
 msgstr "{player} เกิดข้อผิดพลาดขณะโหวตในโพล {action} {target}"
 
 #. TRANSLATORS: /veto is a command name; keep it as it is
-#: server.js:9140
+#: server.js:9214
 msgid "{player}, you are presently not authorized to run /veto"
 msgstr "{player} ตอนนี้คุณไม่มีสิทธิ์ใช้ /veto"
 
-#: server.js:9148
+#: server.js:9222
 msgid "{player}, there is presently no active poll to veto"
 msgstr "{player} ตอนนี้ไม่มีโพลให้วีโต้"
 
-#: server.js:9151
+#: server.js:9225
 msgid "{player}, you have cancelled the poll to {action} {target}"
 msgstr "{player} คุณยกเลิกโพล {action} {target} แล้ว"
 
-#: server.js:9157
+#: server.js:9231
 msgid "The poll was cancelled by {player}"
 msgstr "{player} ยกเลิกโพลแล้ว"
 
 #. TRANSLATORS: /poll is a command name; keep it as it is
-#: server.js:9166
+#: server.js:9240
 msgid "{player}, you are presently not authorized to run /poll"
 msgstr "{player} ตอนนี้คุณไม่มีสิทธิ์ใช้ /poll"
 
-#: server.js:9186
+#: server.js:9260
 msgid "A poll to {action} {target} is presently in progress"
 msgstr "โพล {action} {target} กำลังดำเนินอยู่"
 
-#: server.js:9189
+#: server.js:9263
 msgid "Unable to start a new poll until the current one is over"
 msgstr "เริ่มโพลใหม่ไม่ได้จนกว่าโพลปัจจุบันจะจบ"
 
-#: server.js:9194
+#: server.js:9268
 msgid ""
 "Unable to initiate a new poll.  There are not enough registered players "
 "playing."
 msgstr "เริ่มโพลใหม่ไม่ได้  ผู้เล่นที่ลงทะเบียนกำลังเล่นอยู่ไม่พอ"
 
-#: server.js:9198
+#: server.js:9272
 msgid ""
 "There needs to be at least {required} other player and only {others} is "
 "available."
 msgstr "ต้องมีผู้เล่นอื่นอย่างน้อย {required} คน แต่มีเพียง {others} คน"
 
-#: server.js:9199
+#: server.js:9273
 msgid ""
 "There needs to be at least {required} other player and only {others} are "
 "available."
 msgstr "ต้องมีผู้เล่นอื่นอย่างน้อย {required} คน แต่มีเพียง {others} คน"
 
-#: server.js:9201
+#: server.js:9275
 msgid ""
 "There needs to be at least {required} other players and only {others} is "
 "available."
 msgstr "ต้องมีผู้เล่นอื่นอย่างน้อย {required} คน แต่มีเพียง {others} คน"
 
-#: server.js:9203
+#: server.js:9277
 msgid ""
 "There needs to be at least {required} other players and only {others} are "
 "available."
 msgstr "ต้องมีผู้เล่นอื่นอย่างน้อย {required} คน แต่มีเพียง {others} คน"
 
-#: server.js:9212
+#: server.js:9286
 msgid "/poll: incorrect syntax, argument required."
 msgstr "/poll: รูปแบบไม่ถูกต้อง ต้องมีอาร์กิวเมนต์"
 
-#: server.js:9218
+#: server.js:9292
 msgid "{player}, no target was specified for the [{action}] vote"
 msgstr "{player} ไม่ได้ระบุเป้าหมายสำหรับโหวต [{action}]"
 
 #. TRANSLATORS: /poll and {action} are a command as typed; keep them as they are
-#: server.js:9220
+#: server.js:9294
 msgid "Usage: /poll {action} target"
 msgstr "วิธีใช้: /poll {action} target"
 
 #. TRANSLATORS: /poll {action} is a command as typed; keep it as it is
-#: server.js:9225
+#: server.js:9299
 msgid "{player}, you may not /poll {action} on this server"
 msgstr "{player} คุณใช้ /poll {action} บนเซิร์ฟเวอร์นี้ไม่ได้"
 
-#: server.js:9232
+#: server.js:9306
 msgid "The player specified for a {action} vote is not here"
 msgstr "ผู้เล่นที่ระบุสำหรับโหวต {action} ไม่อยู่ที่นี่"
 
-#: server.js:9236
+#: server.js:9310
 msgid "You can't kill an observer!"
 msgstr "ฆ่าผู้ชมไม่ได้!"
 
-#: server.js:9242
+#: server.js:9316
 msgid "{player} is protected from being polled against."
 msgstr "{player} ได้รับการคุ้มครองจากโพล"
 
-#: server.js:9258
+#: server.js:9332
 msgid "You are not able to request a {action} poll right now, {player}"
 msgstr "{player} ตอนนี้คุณขอโพล {action} ไม่ได้"
 
-#: server.js:9262
+#: server.js:9336
 msgid "A poll to {action} {target} has been requested by {player}"
 msgstr "{player} ขอโพล {action} {target}"
 
-#: server.js:9270
+#: server.js:9344
 msgid ""
 "{available} player is available, {needed} additional affirming vote required "
 "to pass the poll ({percentage} %)"
@@ -4209,7 +4213,7 @@ msgstr ""
 "มีผู้เล่น {available} คน ต้องการโหวตเห็นด้วยอีก {needed} เสียงเพื่อให้โพลผ่าน "
 "({percentage} %)"
 
-#: server.js:9271
+#: server.js:9345
 msgid ""
 "{available} player is available, {needed} additional affirming votes "
 "required to pass the poll ({percentage} %)"
@@ -4217,7 +4221,7 @@ msgstr ""
 "มีผู้เล่น {available} คน ต้องการโหวตเห็นด้วยอีก {needed} เสียงเพื่อให้โพลผ่าน "
 "({percentage} %)"
 
-#: server.js:9274
+#: server.js:9348
 msgid ""
 "{available} players are available, {needed} additional affirming vote "
 "required to pass the poll ({percentage} %)"
@@ -4225,7 +4229,7 @@ msgstr ""
 "มีผู้เล่น {available} คน ต้องการโหวตเห็นด้วยอีก {needed} เสียงเพื่อให้โพลผ่าน "
 "({percentage} %)"
 
-#: server.js:9275
+#: server.js:9349
 msgid ""
 "{available} players are available, {needed} additional affirming votes "
 "required to pass the poll ({percentage} %)"
@@ -4233,459 +4237,459 @@ msgstr ""
 "มีผู้เล่น {available} คน ต้องการโหวตเห็นด้วยอีก {needed} เสียงเพื่อให้โพลผ่าน "
 "({percentage} %)"
 
-#: server.js:9280
+#: server.js:9354
 msgid "Unable to automatically place your vote for some unknown reason"
 msgstr "ลงโหวตให้คุณอัตโนมัติไม่ได้ด้วยเหตุผลที่ไม่ทราบ"
 
-#: server.js:9307
+#: server.js:9381
 msgid ""
 "You have been temporarily banned due to sufficient votes to have you removed"
 msgstr "คุณถูกแบนชั่วคราว เพราะมีโหวตให้นำคุณออกมากพอ"
 
-#: server.js:9313
+#: server.js:9387
 msgid "You have been kicked due to sufficient votes to have you removed"
 msgstr "คุณถูกเตะ เพราะมีโหวตให้นำคุณออกมากพอ"
 
-#: server.js:9319
+#: server.js:9393
 msgid "You have been killed due to sufficient votes"
 msgstr "คุณถูกฆ่า เพราะมีโหวตมากพอ"
 
-#: server.js:9342
+#: server.js:9416
 msgid ""
 "A poll to {action} {target} has begun.  Players have up to {seconds} seconds "
 "to vote."
 msgstr "โพล {action} {target} เริ่มแล้ว  ผู้เล่นมีเวลาโหวต {seconds} วินาที"
 
-#: server.js:9350
+#: server.js:9424
 msgid "{seconds} seconds remain in the poll to {action} {target}."
 msgstr "เหลือ {seconds} วินาทีในโพล {action} {target}"
 
-#: server.js:9358
+#: server.js:9432
 msgid "Enough votes were collected to {action} {target} early."
 msgstr "ได้โหวตพอที่จะ {action} {target} ก่อนเวลาแล้ว"
 
-#: server.js:9359
+#: server.js:9433
 msgid "Enough votes were collected to reset all unused flags early."
 msgstr "ได้โหวตพอที่จะรีเซ็ตธงที่ไม่ได้ใช้ทั้งหมดก่อนเวลาแล้ว"
 
-#: server.js:9365
+#: server.js:9439
 msgid "Poll Results: {yes} in favor, {no} oppose, {abstain} abstain"
 msgstr "ผลโพล: เห็นด้วย {yes} ไม่เห็นด้วย {no} งดออกเสียง {abstain}"
 
-#: server.js:9373
+#: server.js:9447
 msgid "The poll to {action} {target} was not successful"
 msgstr "โพล {action} {target} ไม่ผ่าน"
 
-#: server.js:9382
+#: server.js:9456
 msgid ""
 "The poll is now closed and was successful.  {target} is scheduled to be "
 "temporarily banned."
 msgstr "โพลปิดแล้วและผ่าน  {target} จะถูกแบนชั่วคราว"
 
-#: server.js:9383
+#: server.js:9457
 msgid ""
 "The poll is now closed and was successful.  {target} is scheduled to be "
 "kicked."
 msgstr "โพลปิดแล้วและผ่าน  {target} จะถูกเตะ"
 
-#: server.js:9384
+#: server.js:9458
 msgid ""
 "The poll is now closed and was successful.  {target} is scheduled to be "
 "killed."
 msgstr "โพลปิดแล้วและผ่าน  {target} จะถูกฆ่า"
 
-#: server.js:9387
+#: server.js:9461
 msgid ""
 "The poll is now closed and was successful.  {target} is scheduled to be "
 "{action}."
 msgstr "โพลปิดแล้วและผ่าน  {target} จะถูก {action}"
 
-#: server.js:9395
+#: server.js:9469
 msgid "{target} has been kicked."
 msgstr "{target} ถูกเตะแล้ว"
 
-#: server.js:9396
+#: server.js:9470
 msgid "{target} has been killed."
 msgstr "{target} ถูกฆ่าแล้ว"
 
-#: server.js:9398
+#: server.js:9472
 msgid "{target} has been {action}"
 msgstr "{target} ถูก {action} แล้ว"
 
-#: server.js:9413
+#: server.js:9487
 msgid "{player}'s client version:"
 msgstr "เวอร์ชันไคลเอนต์ของ {player}:"
 
-#: server.js:9414
+#: server.js:9488
 msgid "  {version}"
 msgstr "  {version}"
 
-#: server.js:9415
+#: server.js:9489
 msgid "  unknown"
 msgstr "  ไม่ทราบ"
 
-#: server.js:9421
+#: server.js:9495
 msgid "Player not found."
 msgstr "ไม่พบผู้เล่น"
 
-#: server.js:9452
+#: server.js:9526
 msgid "Countdown cancelled by {player}."
 msgstr "{player} ยกเลิกการนับถอยหลัง"
 
-#: server.js:9452
+#: server.js:9526
 msgid "Countdown cancelled"
 msgstr "ยกเลิกการนับถอยหลังแล้ว"
 
-#: server.js:9474
+#: server.js:9548
 msgid "No match is running to pause"
 msgstr "ไม่มีแมตช์ที่กำลังเล่นให้หยุดชั่วคราว"
 
-#: server.js:9482
+#: server.js:9556
 msgid "No paused match to resume"
 msgstr "ไม่มีแมตช์ที่หยุดชั่วคราวให้เล่นต่อ"
 
-#: server.js:9489
+#: server.js:9563
 msgid "There is no running countdown to cancel"
 msgstr "ไม่มีการนับถอยหลังให้ยกเลิก"
 
-#: server.js:9497
+#: server.js:9571
 msgid "Usage: /countdown [<seconds>|pause|resume|cancel]"
 msgstr "วิธีใช้: /countdown [<seconds>|pause|resume|cancel]"
 
-#: server.js:9502
+#: server.js:9576
 msgid "There is a countdown already in progress"
 msgstr "มีการนับถอยหลังอยู่แล้ว"
 
-#: server.js:9506
+#: server.js:9580
 msgid "A game is already in progress"
 msgstr "มีเกมกำลังเล่นอยู่แล้ว"
 
-#: server.js:9510 server.js:9513
+#: server.js:9584 server.js:9587
 msgid "Countdown set to {seconds} instead of {asked}"
 msgstr "ตั้งนับถอยหลังเป็น {seconds} แทน {asked}"
 
-#: server.js:9522
+#: server.js:9596
 msgid "Countdown started by {player}."
 msgstr "{player} เริ่มการนับถอยหลัง"
 
-#: server.js:9523
+#: server.js:9597
 msgid "Match begins in about {duration}"
 msgstr "แมตช์จะเริ่มในอีกประมาณ {duration}"
 
-#: server.js:9531
+#: server.js:9605
 msgid "The match has started!...Good Luck Teams!"
 msgstr "แมตช์เริ่มแล้ว!...โชคดีทุกทีม!"
 
-#: server.js:9535
+#: server.js:9609
 msgid "Start your engines!......"
 msgstr "ติดเครื่องได้!......"
 
-#: server.js:9537
+#: server.js:9611
 msgid "{seconds}..."
 msgstr "{seconds}..."
 
-#: server.js:9549
+#: server.js:9623
 msgid "No match is running"
 msgstr "ไม่มีแมตช์ที่กำลังเล่น"
 
-#: server.js:9561
+#: server.js:9635
 msgid "Usage: /say <message>"
 msgstr "วิธีใช้: /say <message>"
 
-#: server.js:9577
+#: server.js:9651
 msgid "Usage: /mute <#slot|PlayerName>"
 msgstr "วิธีใช้: /mute <#slot|PlayerName>"
 
-#: server.js:9583
+#: server.js:9657
 msgid "\"{player}\" is now muted"
 msgstr "ปิดเสียง \"{player}\" แล้ว"
 
-#: server.js:9584
+#: server.js:9658
 msgid "You have been muted by an operator"
 msgstr "คุณถูกโอเปอเรเตอร์ปิดเสียง"
 
-#: server.js:9593
+#: server.js:9667
 msgid "Usage: /unmute <#slot|PlayerName>"
 msgstr "วิธีใช้: /unmute <#slot|PlayerName>"
 
-#: server.js:9599
+#: server.js:9673
 msgid "\"{player}\" is no longer muted"
 msgstr "\"{player}\" ไม่ถูกปิดเสียงแล้ว"
 
-#: server.js:9600
+#: server.js:9674
 msgid "You are no longer muted"
 msgstr "คุณไม่ถูกปิดเสียงแล้ว"
 
-#: server.js:9608
+#: server.js:9682
 msgid "Nobody is muted"
 msgstr "ไม่มีใครถูกปิดเสียง"
 
-#: server.js:9721
+#: server.js:9795
 msgid "Usage: /flag drop [#slot|PlayerName]"
 msgstr "วิธีใช้: /flag drop [#slot|PlayerName]"
 
-#: server.js:9728
+#: server.js:9802
 msgid "You are not carrying a flag"
 msgstr "คุณไม่ได้ถือธง"
 
-#: server.js:9729
+#: server.js:9803
 msgid "\"{player}\" is not carrying a flag"
 msgstr "\"{player}\" ไม่ได้ถือธง"
 
-#: server.js:9738
+#: server.js:9812
 msgid "Dropped {flag} from \"{player}\""
 msgstr "ทิ้ง {flag} จาก \"{player}\" แล้ว"
 
-#: server.js:9739
+#: server.js:9813
 msgid "Your {flag} flag was dropped"
 msgstr "ธง {flag} ของคุณถูกทิ้ง"
 
-#: server.js:9753
+#: server.js:9827
 msgid "{count} flags sent up"
 msgstr "ส่งธงขึ้นไป {count} ผืน"
 
-#: server.js:9763
+#: server.js:9837
 msgid "{count} flags reset"
 msgstr "รีเซ็ตธง {count} ผืน"
 
-#: server.js:9768
+#: server.js:9842
 msgid "No flags are in the world"
 msgstr "ไม่มีธงในโลกนี้"
 
-#: server.js:9786
+#: server.js:9860
 msgid "Usage: /flag take <#slot|PlayerName>"
 msgstr "วิธีใช้: /flag take <#slot|PlayerName>"
 
 #. TRANSLATORS: /flag take is a command name; keep it as it is
-#: server.js:9793
+#: server.js:9867
 msgid "/flag take: player ({player}) does not have a flag"
 msgstr "/flag take: ผู้เล่น ({player}) ไม่มีธง"
 
-#: server.js:9802
+#: server.js:9876
 msgid "{admin} took flag {flag}/{slot} from {player}"
 msgstr "{admin} เอาธง {flag}/{slot} จาก {player}"
 
-#: server.js:9814
+#: server.js:9888
 msgid "Usage: /flag give <#slot|PlayerName> <#flagId|FlagAbbr> [force]"
 msgstr "วิธีใช้: /flag give <#slot|PlayerName> <#flagId|FlagAbbr> [force]"
 
-#: server.js:9830
+#: server.js:9904
 msgid "flag {flag} is not in this world"
 msgstr "ธง {flag} ไม่อยู่ในโลกนี้"
 
-#: server.js:9837 server.js:9875
+#: server.js:9911 server.js:9949
 msgid "you may need to use the force"
 msgstr "คุณอาจต้องใช้ force"
 
-#: server.js:9844
+#: server.js:9918
 msgid "flag {flag} is an empty slot"
 msgstr "ธง {flag} เป็นสล็อตว่าง"
 
-#: server.js:9850
+#: server.js:9924
 msgid "bad flag type"
 msgstr "ชนิดธงไม่ถูกต้อง"
 
-#: server.js:9872
+#: server.js:9946
 msgid "flag type not found"
 msgstr "ไม่พบชนิดธง"
 
-#: server.js:9881
+#: server.js:9955
 msgid "An observer has no tank to carry a flag"
 msgstr "ผู้ชมไม่มีรถถังให้ถือธง"
 
 #. TRANSLATORS: /flag give is a command name; keep it as it is
-#: server.js:9888
+#: server.js:9962
 msgid "/flag give: player ({player}) is not alive"
 msgstr "/flag give: ผู้เล่น ({player}) ไม่ได้มีชีวิตอยู่"
 
-#: server.js:9909
+#: server.js:9983
 msgid "{admin} gave flag {flag}/{slot} to {player}"
 msgstr "{admin} ให้ธง {flag}/{slot} แก่ {player}"
 
-#: server.js:9936
+#: server.js:10010
 msgid "Usage: /mv [player] <x,y> [facing]"
 msgstr "วิธีใช้: /mv [player] <x,y> [facing]"
 
-#: server.js:9951
+#: server.js:10025
 msgid "An observer has no tank to move"
 msgstr "ผู้ชมไม่มีรถถังให้ย้าย"
 
-#: server.js:9994
+#: server.js:10068
 msgid "Nowhere to stand at {x},{y}"
 msgstr "ไม่มีที่ยืนที่ {x},{y}"
 
-#: server.js:10061
+#: server.js:10135
 msgid "Checking another player's position requires operator status"
 msgstr "การดูตำแหน่งของผู้เล่นอื่นต้องเป็นโอเปอเรเตอร์"
 
-#: server.js:10067
+#: server.js:10141
 msgid "Usage: /pos [player]"
 msgstr "วิธีใช้: /pos [player]"
 
-#: server.js:10073
+#: server.js:10147
 msgid "An observer has no tank position"
 msgstr "ผู้ชมไม่มีตำแหน่งรถถัง"
 
-#: server.js:10081
+#: server.js:10155
 msgid "You are at {position} facing {bearing}"
 msgstr "คุณอยู่ที่ {position} หันไปทาง {bearing}"
 
-#: server.js:10082
+#: server.js:10156
 msgid "\"{player}\" is at {position} facing {bearing}"
 msgstr "\"{player}\" อยู่ที่ {position} หันไปทาง {bearing}"
 
-#: server.js:10375
+#: server.js:10449
 msgid "All shots now ricochet"
 msgstr "กระสุนทุกนัดสะท้อนแล้ว"
 
-#: server.js:10375
+#: server.js:10449
 msgid "Shots no longer ricochet"
 msgstr "กระสุนไม่สะท้อนแล้ว"
 
-#: server.js:10504
+#: server.js:10578
 msgid "usage: set <name> [<value>]"
 msgstr "วิธีใช้: set <name> [<value>]"
 
-#: server.js:10505
+#: server.js:10579
 msgid "bzo's own: {variables}"
 msgstr "ของ bzo เอง: {variables}"
 
 #. TRANSLATORS: /set is a command name; keep it as it is
-#: server.js:10525
+#: server.js:10599
 msgid "/set failed, reason: variable {name} does not exist"
 msgstr "/set ล้มเหลว เหตุผล: ไม่มีตัวแปร {name}"
 
-#: server.js:10526 server.js:10560
+#: server.js:10600 server.js:10634
 msgid "variable {name} does not exist"
 msgstr "ไม่มีตัวแปร {name}"
 
-#: server.js:10530
+#: server.js:10604
 msgid "{name} is {value}"
 msgstr "{name} คือ {value}"
 
 #. TRANSLATORS: /set is a command name; keep it as it is
-#: server.js:10535
+#: server.js:10609
 msgid "/set failed, reason: variable {name} is not writeable"
 msgstr "/set ล้มเหลว เหตุผล: ตัวแปร {name} เขียนไม่ได้"
 
-#: server.js:10541
+#: server.js:10615
 msgid "{name} set"
 msgstr "ตั้ง {name} แล้ว"
 
-#: server.js:10542
+#: server.js:10616
 msgid "Variable Modification Notice by {player} of set {name} {value}"
 msgstr "แจ้งการแก้ตัวแปรโดย {player}: set {name} {value}"
 
-#: server.js:10552
+#: server.js:10626
 msgid "usage: reset <name>"
 msgstr "วิธีใช้: reset <name>"
 
-#: server.js:10563
+#: server.js:10637
 msgid "variable {name} is not writeable"
 msgstr "ตัวแปร {name} เขียนไม่ได้"
 
-#: server.js:10569
+#: server.js:10643
 msgid "all variables reset"
 msgstr "รีเซ็ตตัวแปรทั้งหมดแล้ว"
 
-#: server.js:10570
+#: server.js:10644
 msgid "{name} reset"
 msgstr "รีเซ็ต {name} แล้ว"
 
-#: server.js:10574
+#: server.js:10648
 msgid "Variable Reset Notice by {player} of reset {name}"
 msgstr "แจ้งการรีเซ็ตตัวแปรโดย {player}: reset {name}"
 
-#: server.js:10601
+#: server.js:10675
 msgid "No command starting with {prefix}"
 msgstr "ไม่มีคำสั่งที่ขึ้นต้นด้วย {prefix}"
 
-#: server.js:10623
+#: server.js:10697
 msgid "You do not have permission to run the {command} command"
 msgstr "คุณไม่มีสิทธิ์ใช้คำสั่ง {command}"
 
-#: server.js:10648
+#: server.js:10722
 msgid "We're sorry, you are not allowed to talk!"
 msgstr "ขออภัย คุณไม่ได้รับอนุญาตให้พูด!"
 
-#: server.js:10716
+#: server.js:10790
 msgid "You do not have permission to speak on the admin channel."
 msgstr "คุณไม่มีสิทธิ์พูดในช่องแอดมิน"
 
-#: server.js:10878
+#: server.js:10952
 msgid "You signed in as {player} on another device."
 msgstr "คุณล็อกอินเป็น {player} บนอุปกรณ์อื่น"
 
-#: server.js:10900
+#: server.js:10974
 msgid "{player} signed in with that name, so yours is now {name}."
 msgstr "{player} ล็อกอินด้วยชื่อนั้น ชื่อของคุณจึงเป็น {name}"
 
-#: server.js:13027
+#: server.js:13101
 msgid "Global login approved!"
 msgstr "ล็อกอินส่วนกลางสำเร็จ!"
 
-#: server.js:13029
+#: server.js:13103
 msgid "Global login rejected, bad token."
 msgstr "ล็อกอินส่วนกลางถูกปฏิเสธ โทเคนไม่ถูกต้อง"
 
-#: server.js:13031
+#: server.js:13105
 msgid "This callsign is not registered."
 msgstr "ชื่อนี้ยังไม่ได้ลงทะเบียน"
 
-#: server.js:13032
+#: server.js:13106
 msgid "You can register it at https://forums.bzflag.org/"
 msgstr "คุณลงทะเบียนได้ที่ https://forums.bzflag.org/"
 
-#: server.js:13704
+#: server.js:13778
 msgid "{count} shots left"
 msgstr "เหลือกระสุน {count} นัด"
 
-#: server.js:13705
+#: server.js:13779
 msgid "1 shot left"
 msgstr "เหลือกระสุน 1 นัด"
 
-#: server.js:13977
+#: server.js:14051
 msgid ""
 "Team flags cannot be grabbed for {seconds} seconds after they were last "
 "capped."
 msgstr "คว้าธงทีมไม่ได้เป็นเวลา {seconds} วินาทีหลังถูกยึดครั้งล่าสุด"
 
-#: server.js:13978
+#: server.js:14052
 msgid "You cannot grab the {team} team flag for another ~{seconds} seconds"
 msgstr "คุณคว้าธงทีม {team} ไม่ได้อีกประมาณ ~{seconds} วินาที"
 
-#: server.js:14192
+#: server.js:14266
 msgid "I'm sorry, we do not allow autopilot on this server."
 msgstr "ขออภัย เซิร์ฟเวอร์นี้ไม่อนุญาตให้ใช้ออโตไพลอต"
 
-#: server.js:16230
+#: server.js:16304
 msgid "Server restarting: {reason}"
 msgstr "เซิร์ฟเวอร์กำลังรีสตาร์ต: {reason}"
 
-#: server.js:17504
+#: server.js:17579
 msgid "The pilots have not loaded"
 msgstr "นักบินยังไม่ได้โหลด"
 
 #. TRANSLATORS: a command's syntax; keep it as it is
-#: server.js:17516
+#: server.js:17591
 msgid "Usage: /bot fill <0-{max}> [{pilots}]"
 msgstr "วิธีใช้: /bot fill <0-{max}> [{pilots}]"
 
-#: server.js:17520
+#: server.js:17595
 msgid "No pilot \"{pilot}\"; one of {pilots}"
 msgstr "ไม่มีนักบิน \"{pilot}\" เลือกหนึ่งใน {pilots}"
 
 #. TRANSLATORS: a command's syntax; keep /bot add as it is
-#: server.js:17542
+#: server.js:17617
 msgid "Usage: /bot add [{pilots}] [team] [count]"
 msgstr "วิธีใช้: /bot add [{pilots}] [team] [count]"
 
-#: server.js:17563
+#: server.js:17638
 msgid "Usage: /bot remove <name|all>"
 msgstr "วิธีใช้: /bot remove <name|all>"
 
 #. TRANSLATORS: a command's syntax; keep /bot, fill, add, remove and all as they are
-#: server.js:17575
+#: server.js:17650
 msgid ""
 "Usage: /bot [fill <n> [{pilots}] | add [{pilots}] [team] [count] | remove "
 "<name|all>]"
@@ -4693,11 +4697,11 @@ msgstr ""
 "วิธีใช้: /bot [fill <n> [{pilots}] | add [{pilots}] [team] [count] | remove "
 "<name|all>]"
 
-#: server.js:17602
+#: server.js:17677
 msgid "Server shutting down"
 msgstr "เซิร์ฟเวอร์กำลังปิด"
 
-#: server.js:17612
+#: server.js:17687
 msgid "Server restarting"
 msgstr "เซิร์ฟเวอร์กำลังรีสตาร์ต"
 
@@ -4737,80 +4741,80 @@ msgstr "เมื่อเข้าไปแล้ว ให้{link}เพื�
 msgid "link your bzflag.org account"
 msgstr "เชื่อมบัญชี bzflag.org ของคุณ"
 
-#: server/messages-operator.cjs:159
+#: server/messages-operator.cjs:161
 msgid "No change: check the time limit and the match state"
 msgstr "ไม่มีการเปลี่ยนแปลง: ตรวจสอบจำกัดเวลาและสถานะแมตช์"
 
-#: server/messages-operator.cjs:193
+#: server/messages-operator.cjs:195
 msgid "Upload {map} with {bytes} bytes"
 msgstr "อัปโหลด {map} ขนาด {bytes} ไบต์"
 
-#: server/messages-operator.cjs:214
+#: server/messages-operator.cjs:216
 msgid ""
 "Upload refused: a replay name is letters, digits, \".\", \"_\" and \"-\"."
 msgstr "ปฏิเสธการอัปโหลด: ชื่อรีเพลย์ใช้ได้เฉพาะตัวอักษร ตัวเลข \".\" \"_\" และ \"-\""
 
-#: server/messages-operator.cjs:219
+#: server/messages-operator.cjs:221
 msgid "Upload refused: {name} is over {megabytes} MB."
 msgstr "ปฏิเสธการอัปโหลด: {name} เกิน {megabytes} MB"
 
-#: server/messages-operator.cjs:225
+#: server/messages-operator.cjs:227
 msgid "Upload refused: {name} is not a bzfs recording ({error})."
 msgstr "ปฏิเสธการอัปโหลด: {name} ไม่ใช่ไฟล์อัดของ bzfs ({error})"
 
-#: server/messages-operator.cjs:229
+#: server/messages-operator.cjs:231
 msgid "Upload refused: {name} is being watched."
 msgstr "ปฏิเสธการอัปโหลด: มีคนกำลังดู {name} อยู่"
 
-#: server/messages-operator.cjs:237
+#: server/messages-operator.cjs:239
 msgid "Uploaded replay {name} with {bytes} bytes"
 msgstr "อัปโหลดรีเพลย์ {name} ขนาด {bytes} ไบต์แล้ว"
 
-#: server/messages-operator.cjs:243
+#: server/messages-operator.cjs:245
 msgid "Upload failed: {error}"
 msgstr "อัปโหลดล้มเหลว: {error}"
 
-#: server/messages-operator.cjs:255
+#: server/messages-operator.cjs:257
 msgid ""
 "Save refused: a recording name is letters, digits, \".\", \"_\" and \"-\"."
 msgstr "ปฏิเสธการบันทึก: ชื่อการอัดใช้ได้เฉพาะตัวอักษร ตัวเลข \".\" \"_\" และ \"-\""
 
-#: server/messages-operator.cjs:282
+#: server/messages-operator.cjs:284
 msgid "Delete refused: {name} was not uploaded here."
 msgstr "ปฏิเสธการลบ: {name} ไม่ได้อัปโหลดที่นี่"
 
-#: server/messages-operator.cjs:283
+#: server/messages-operator.cjs:285
 msgid "Delete refused: that was not uploaded here."
 msgstr "ปฏิเสธการลบ: ไฟล์นั้นไม่ได้อัปโหลดที่นี่"
 
-#: server/messages-operator.cjs:287
+#: server/messages-operator.cjs:289
 msgid "Delete refused: {name} is the map being played."
 msgstr "ปฏิเสธการลบ: {name} คือแผนที่ที่กำลังเล่นอยู่"
 
-#: server/messages-operator.cjs:291
+#: server/messages-operator.cjs:293
 msgid "Delete refused: {name} is being watched."
 msgstr "ปฏิเสธการลบ: มีคนกำลังดู {name} อยู่"
 
-#: server/messages-operator.cjs:308
+#: server/messages-operator.cjs:310
 msgid "Deleted map {name}"
 msgstr "ลบแผนที่ {name} แล้ว"
 
-#: server/messages-operator.cjs:308
+#: server/messages-operator.cjs:310
 msgid "Deleted replay {name}"
 msgstr "ลบรีเพลย์ {name} แล้ว"
 
-#: server/messages-operator.cjs:313
+#: server/messages-operator.cjs:315
 msgid "Delete failed: {error}"
 msgstr "ลบล้มเหลว: {error}"
 
-#: server/messages-operator.cjs:371
+#: server/messages-operator.cjs:373
 msgid ""
 "{server} is no longer in the public list, so {map} is the copy already here "
 "({bytes} bytes). It is ready to View now."
 msgstr ""
 "{server} ไม่อยู่ในรายการสาธารณะแล้ว จึงใช้ {map} ที่มีอยู่ที่นี่ ({bytes} ไบต์) พร้อมให้ดูแล้ว"
 
-#: server/messages-operator.cjs:374
+#: server/messages-operator.cjs:376
 msgid "Imported {map} from {server} ({bytes} bytes). It is ready to View now."
 msgstr "นำเข้า {map} จาก {server} แล้ว ({bytes} ไบต์) พร้อมให้ดูแล้ว"
 

@@ -87,6 +87,9 @@ for (const [tag, id] of [['zh', 'zh_CN'], ['zh-TW', 'zh_TW'], ['zh-HK', 'zh_TW']
   assert.equal(l10n.negotiateLocale(request(tag)), id, `${tag} reads ${id}`);
 }
 assert.equal(l10n.negotiateLocale(request('cs')), 'cs_CZ', 'a bare language reaches its regional catalog');
+for (const [tag, id] of [['pt', 'pt'], ['pt-BR', 'pt'], ['pt-PT', 'pt_PT'], ['pt-AO', 'pt_PT'], ['pt-MZ', 'pt_PT']]) {
+  assert.equal(l10n.negotiateLocale(request(tag)), id, `${tag} reads ${id}`);
+}
 assert.equal(l10n.negotiateLocale(request('en-US')), 'en', 'a joke locale is never negotiated');
 assert.equal(l10n.negotiateLocale(request('es', 'en_US_l33t')), 'en_US_l33t');
 assert.equal(l10n.negotiateLocale(request('es', 'xx')), 'es');

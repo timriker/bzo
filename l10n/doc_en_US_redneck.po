@@ -9,7 +9,7 @@ msgstr ""
 
 #: docs/help/controls.md
 msgid "Controls"
-msgstr ""
+msgstr "Knobs an' Levers"
 
 #: docs/help/controls.md
 msgid ""
@@ -19,46 +19,55 @@ msgid ""
 "reaches the rest -- including from a headset, where there is no keyboard at "
 "all. This page is also the in-game help's (`/` or `?`)."
 msgstr ""
+"One client runs on a desktop, a phone an' a headset, so ever' action's got a "
+"way in from each of 'em. The keyboard's got the most; touch, a gamepad an' "
+"the XR controllers carry what a match needs, an' the Settings menu reaches "
+"the rest -- even from a headset, where there ain't no keyboard at all. This "
+"here page is also the in-game help's (`/` or `?`)."
 
 #: docs/help/controls.md
 msgid "Keyboard"
-msgstr ""
+msgstr "Keyboard"
 
 #: docs/help/controls.md
 msgid "Driving"
-msgstr ""
+msgstr "Drivin'"
 
 #: docs/help/controls.md
 msgid "`W` / `S` or `Up` / `Down` — move forward/backward"
-msgstr ""
+msgstr "`W` / `S` or `Up` / `Down` — go forward/back up"
 
 #: docs/help/controls.md
 msgid "`A` / `D` or `Left` / `Right` — turn left/right"
-msgstr ""
+msgstr "`A` / `D` or `Left` / `Right` — turn left/right"
 
 #: docs/help/controls.md
 msgid "`Enter` — shoot"
-msgstr ""
+msgstr "`Enter` — shoot"
 
 #: docs/help/controls.md
 msgid "`Tab` — jump"
-msgstr ""
+msgstr "`Tab` — jump"
 
 #: docs/help/controls.md
 msgid "`Space` — drop flag"
-msgstr ""
+msgstr "`Space` — drop the flag"
 
 #: docs/help/controls.md
 msgid ""
 "`I` or right-click — identify the tank in your sights, and lock a Guided "
 "Missile onto it"
 msgstr ""
+"`I` or right-click — figger out who's in yer sights, an' lock a Guided "
+"Missile on 'em"
 
 #: docs/help/controls.md
 msgid ""
 "`Delete` — self-destruct, after a five second countdown; `Delete` again "
 "calls it off"
 msgstr ""
+"`Delete` — blow yerself up after a five second countdown; `Delete` again "
+"calls it off"
 
 #: docs/help/controls.md
 msgid ""
@@ -67,71 +76,83 @@ msgid ""
 "without a keyboard. You can still drive while it does, to help it out of a "
 "corner -- see [Combining inputs](#combining-inputs)"
 msgstr ""
+"`9` or `/autopilot [roger|ace]` — autopilot: the pilot drives, aims an' "
+"shoots till ya press it again. `Settings -> Autopilot` picks the pilot "
+"without no keyboard. Ya can still drive while it does, to help it outta a "
+"corner -- see [Mixin' inputs](#combining-inputs)"
 
 #: docs/help/controls.md
 msgid "`P` — pause/resume"
-msgstr ""
+msgstr "`P` — take a breather/git back to it"
 
 #: docs/help/controls.md
 msgid "Chat"
-msgstr ""
+msgstr "Jawin'"
 
 #: docs/help/controls.md
 msgid "`N` — open chat (or click the `Send` button)"
-msgstr ""
+msgstr "`N` — open chat (or click the `Send` button)"
 
 #: docs/help/controls.md
 msgid ""
 "`Enter` — send chat (while chat input is focused, or click `Send` again)"
-msgstr ""
+msgstr "`Enter` — send chat (while yer typin' in chat, or click `Send` again)"
 
 #: docs/help/controls.md
 msgid ""
 "`1` / `2` / `3` / `4` / `5` — switch chat tab (`All` / `Chat` / `Server` / "
 "`Misc` / `Debug`)"
 msgstr ""
+"`1` / `2` / `3` / `4` / `5` — switch chat tab (`All` / `Chat` / `Server` / "
+"`Misc` / `Debug`)"
 
 #: docs/help/controls.md
 msgid "`[` / `]` — previous/next chat tab"
-msgstr ""
+msgstr "`[` / `]` — last/next chat tab"
 
 #: docs/help/controls.md
 msgid ""
 "`Tab` — while typing, complete a player, command or flag name; `@` starts a "
 "mention and `#` a player's slot number"
 msgstr ""
+"`Tab` — while typin', finish off a player, command or flag name; `@` starts "
+"a mention an' `#` a player's slot number"
 
 #: docs/help/controls.md
 msgid ""
 "`Up` / `Down` — while typing, recall earlier lines; type the start of a line "
 "first to recall only the ones beginning that way"
 msgstr ""
+"`Up` / `Down` — while typin', fetch back earlier lines; type how a line "
+"starts first to fetch only the ones that start thataway"
 
 #: docs/help/controls.md
 msgid "`.` — reply to last direct-message sender"
-msgstr ""
+msgstr "`.` — holler back at whoever last sent ya a direct message"
 
 #: docs/help/controls.md
 msgid "`,` — message nemesis target"
-msgstr ""
+msgstr "`,` — message yer nemesis"
 
 #: docs/help/controls.md
 msgid "`Page Up` / `Page Down` — scroll chat history"
-msgstr ""
+msgstr "`Page Up` / `Page Down` — scroll back through the jawin'"
 
 #: docs/help/controls.md
 msgid "`End` — jump chat to newest message"
-msgstr ""
+msgstr "`End` — jump chat to the newest message"
 
 #: docs/help/controls.md
 msgid ""
 "Drag across the history while chat is open to select it, then copy; typing "
 "carries on in the input"
 msgstr ""
+"Drag across the history while chat's open to pick it out, then copy; typin' "
+"keeps on goin' in the input"
 
 #: docs/help/controls.md
 msgid "View and panels"
-msgstr ""
+msgstr "Lookin' an' panels"
 
 #: docs/help/controls.md
 msgid ""
@@ -139,58 +160,65 @@ msgid ""
 "steering, then open Settings. Pressing it again closes Settings, so it is "
 "always safe to press one more time"
 msgstr ""
+"`Esc` — back out one step: quit chat input, leave fullscreen, leave mouse "
+"steerin', then open Settings. Pressin' it again shuts Settings, so it's "
+"always safe to mash it one more time"
 
 #: docs/help/controls.md
 msgid "`M` — toggle mouse steering"
-msgstr ""
+msgstr "`M` — flip mouse steerin' on or off"
 
 #: docs/help/controls.md
 msgid "`C` — cycle camera mode"
-msgstr ""
+msgstr "`C` — cycle camera mode"
 
 #: docs/help/controls.md
 msgid "`O` — toggle operator panel"
-msgstr ""
+msgstr "`O` — flip the operator panel"
 
 #: docs/help/controls.md
 msgid "`F` — toggle fullscreen"
-msgstr ""
+msgstr "`F` — flip fullscreen"
 
 #: docs/help/controls.md
 msgid "`` ` `` — toggle debug HUD"
-msgstr ""
+msgstr "`` ` `` — flip the debug HUD"
 
 #: docs/help/controls.md
 msgid "`=` or `+` or `Numpad +` — zoom radar out (increase range)"
-msgstr ""
+msgstr "`=` or `+` or `Numpad +` — zoom radar out (see further)"
 
 #: docs/help/controls.md
 msgid "`-` or `Numpad -` — zoom radar in (decrease range)"
-msgstr ""
+msgstr "`-` or `Numpad -` — zoom radar in (see closer)"
 
 #: docs/help/controls.md
 msgid ""
 "`\\` — reset radar zoom to the default medium range (half the world's radar "
 "limit, which is the world size unless the map says otherwise)"
 msgstr ""
+"`\\` — set radar zoom back to the regular medium range (half the world's "
+"radar limit, which is the world size 'less the map says different)"
 
 #: docs/help/controls.md
 msgid "`Settings -> Radar: ...` — cycle Short/Medium/Long radar presets"
-msgstr ""
+msgstr "`Settings -> Radar: ...` — cycle Short/Medium/Long radar settin's"
 
 #: docs/help/controls.md
 msgid "`B` — toggle the voice microphone"
-msgstr ""
+msgstr "`B` — flip the voice microphone"
 
 #: docs/help/controls.md
 msgid ""
 "`Settings -> Audio Settings` — set the game, voice, and microphone levels, "
 "and choose the voice channel: All, Nearby, or Team"
 msgstr ""
+"`Settings -> Audio Settings` — set the game, voice, an' microphone levels, "
+"an' pick the voice channel: All, Nearby, or Team"
 
 #: docs/help/controls.md
 msgid "`/` or `?` — show/hide help panel"
-msgstr ""
+msgstr "`/` or `?` — show/hide the help panel"
 
 #: docs/help/controls.md
 msgid ""
@@ -198,6 +226,9 @@ msgid ""
 "are transmitting and a red one means you are not, and the hover text names "
 "the channel it would speak on"
 msgstr ""
+"`🎤` next to the gear — the microphone, same as `B`: a green border means yer "
+"on the air an' a red one means ya ain't, an' the hover text names the "
+"channel it'd talk on"
 
 #: docs/help/controls.md
 msgid ""
@@ -207,55 +238,68 @@ msgid ""
 "until the hunt cursor closes; tapping a chat tab opens chat for good. Small "
 "screens start collapsed"
 msgstr ""
+"`▲` next to the gear — hide the scoreboard an' chat, leavin' the name row "
+"an' the chat tabs; `▼` brings 'em back. Typin' a message borrows the chat "
+"window till yer done with it, an' `U` or `7` borrows the scoreboard till the "
+"hunt cursor shuts; tappin' a chat tab opens chat fer good. Little screens "
+"start out folded up"
 
 #: docs/help/controls.md
 msgid ""
 "`Settings -> Anaglyph 3D` — red/cyan glasses; `Settings -> VR Mode` enters a "
 "WebXR headset"
 msgstr ""
+"`Settings -> Anaglyph 3D` — red/cyan glasses; `Settings -> VR Mode` gits ya "
+"into a WebXR headset"
 
 #: docs/help/controls.md
 msgid "Menus"
-msgstr ""
+msgstr "Menus"
 
 #: docs/help/controls.md
 msgid ""
 "`Up` / `Down` — previous/next control, including from inside a text field"
-msgstr ""
+msgstr "`Up` / `Down` — last/next control, even from inside a text field"
 
 #: docs/help/controls.md
 msgid ""
 "`Left` / `Right` — change the focused control: move a slider, pick the next "
 "choice. In a text field they move the cursor instead"
 msgstr ""
+"`Left` / `Right` — change the control yer on: slide a slider, pick the next "
+"choice. In a text field they move the cursor instead"
 
 #: docs/help/controls.md
 msgid "`Tab` / `Shift+Tab` — previous/next control"
-msgstr ""
+msgstr "`Tab` / `Shift+Tab` — last/next control"
 
 #: docs/help/controls.md
 msgid "`Home` / `End` — first/last control"
-msgstr ""
+msgstr "`Home` / `End` — first/last control"
 
 #: docs/help/controls.md
 msgid "`Enter` or `Space` — press the focused control"
-msgstr ""
+msgstr "`Enter` or `Space` — press the control yer on"
 
 #: docs/help/controls.md
 msgid ""
 "Click or tap a row that walks a list: the title steps back and the current "
 "option steps forward. The `‹` and `›` on the row mark the two halves"
 msgstr ""
+"Click or tap a row that walks a list: the title steps back an' the current "
+"pick steps forward. The `‹` an' `›` on the row mark the two halves"
 
 #: docs/help/controls.md
 msgid ""
 "The help panel is read rather than operated, so there the arrows scroll it "
 "and only `Left` / `Right` move focus"
 msgstr ""
+"The help panel's fer readin', not operatin', so there the arrows scroll it "
+"an' only `Left` / `Right` move focus"
 
 #: docs/help/controls.md
 msgid "Hunting"
-msgstr ""
+msgstr "Huntin'"
 
 #: docs/help/controls.md
 msgid ""
@@ -267,18 +311,29 @@ msgid ""
 "and its beacon is cyan like its ring: everyone is hunting it, so everyone's "
 "mark over it says so."
 msgstr ""
+"Markin' a player puts a cyan `◎` on their scoreboard row, a cyan ring on "
+"their radar blip, an' a beacon in the sky over 'em in their own tank colour "
+"-- so a bunch marked at once can still be told apart quick as a wink. While "
+"one of 'em's in yer sights the HUD says **SPOTTED:** an' a ping sounds once "
+"a second from where they're at. In Rabbit Chase the rabbit's marked fer ya, "
+"an' its beacon's cyan like its ring: ever'body's huntin' it, so ever'body's "
+"mark over it says so."
 
 #: docs/help/controls.md
 msgid ""
 "`U` — hunt: open the scoreboard cursor, and press it again on a running hunt "
 "to clear every mark"
 msgstr ""
+"`U` — hunt: open the scoreboard cursor, an' press it again on a hunt that's "
+"goin' to clear ever' mark"
 
 #: docs/help/controls.md
 msgid ""
 "`7` — add hunt: the same cursor, but committing adds to what is marked "
 "rather than replacing it, and committing on a row already marked takes it off"
 msgstr ""
+"`7` — add hunt: the same cursor, but committin' adds to what's marked 'stead "
+"of replacin' it, an' committin' on a row that's already marked takes it off"
 
 #: docs/help/controls.md
 msgid ""
@@ -288,6 +343,11 @@ msgid ""
 "every mark on `Clear`. On a touch screen or with a mouse, tap a chevron to "
 "step and anywhere else on the row to select"
 msgstr ""
+"`Settings -> Hunt` — the same thing without no keyboard, fer a phone or a "
+"headset. Left an' right step through `Clear` an' then the players in "
+"alphabet order; select marks or unmarks whoever's showin', or clears ever' "
+"mark on `Clear`. On a touch screen or with a mouse, tap a chevron to step "
+"an' anywhere else on the row to select"
 
 #: docs/help/controls.md
 msgid ""
@@ -297,10 +357,15 @@ msgid ""
 "already marked. `I` and `Space` move the cursor too, so a surface without "
 "arrow keys can reach it"
 msgstr ""
+"With the cursor open, the board's headin' reads `*SEL*` an' a pulsin' `○` "
+"sets on the row it's on, fillin' in to `◎` when ya commit. `Up` / `Down` "
+"move it, `Enter` commits, an' `U` or `7` backs out keepin' whatever was "
+"already marked. `I` an' `Space` move the cursor too, so somethin' without no "
+"arrow keys can git to it"
 
 #: docs/help/controls.md
 msgid "As an observer"
-msgstr ""
+msgstr "Just a-watchin'"
 
 #: docs/help/controls.md
 msgid ""
@@ -310,6 +375,11 @@ msgid ""
 "height of a tank on the ground, and travel stays level however the view is "
 "tilted. Pausing and self-destruct do nothing."
 msgstr ""
+"As an Observer ya got no tank. Drive an' turn fly the camera instead, `Tab` "
+"climbs an' `Space` goes down, an' holdin' `Shift` makes drive tilt the view "
+"up an' down an' turn slide it sideways. The camera sets at the eye height of "
+"a tank on the ground, an' travel stays level however the view's tilted. "
+"Pausin' an' blowin' yerself up don't do nothin'."
 
 #: docs/help/controls.md
 msgid ""
@@ -317,6 +387,9 @@ msgid ""
 "then every player, then on to the next view. The views are Free, Track, "
 "Follow, Driving with, and Flag where a map has team flags"
 msgstr ""
+"`Enter` or `C` — step through ever'thing: in each view, the leader first, "
+"then ever' player, then on to the next view. The views are Free, Track, "
+"Follow, Driving with, an' Flag where a map's got team flags"
 
 #: docs/help/controls.md
 msgid ""
@@ -324,12 +397,17 @@ msgid ""
 "show the obstacle there: what it is, an outline round it, and its block from "
 "the map file with the `group` blocks that placed it"
 msgstr ""
+"`I` or right-click — in the Free view, watch the tank in yer sights, or show "
+"the obstacle there: what it is, an outline 'round it, an' its block from the "
+"map file with the `group` blocks that put it there"
 
 #: docs/help/controls.md
 msgid ""
 "Right-click or tap an obstacle anywhere on screen, in any view and the "
 "Overview most of all, to show it the same way"
 msgstr ""
+"Right-click or tap an obstacle anywhere on screen, in any view an' the "
+"Overview most of all, to show it the same way"
 
 #: docs/help/controls.md
 msgid ""
@@ -338,38 +416,50 @@ msgid ""
 "textures, the map file's warnings and its largest meshes, each of which "
 "shows that mesh"
 msgstr ""
+"Pick nothin' -- the sky, or bare ground in the Overview -- or press the "
+"panel's **World** button fer the whole shebang: what's in it, faces, "
+"textures, the map file's warnin's an' its biggest meshes, each of which "
+"shows that mesh"
 
 #: docs/help/controls.md
 msgid ""
 "Click a scoreboard row to watch that player; click the marked row again to "
 "go back to following the leader"
 msgstr ""
+"Click a scoreboard row to watch that player; click the marked row again to "
+"go back to tailin' the leader"
 
 #: docs/help/controls.md
 msgid "Mouse"
-msgstr ""
+msgstr "Mouse"
 
 #: docs/help/controls.md
 msgid ""
 "`M` turns mouse steering on and off, and nothing else does: the keys never "
 "take it away behind your back."
 msgstr ""
+"`M` turns mouse steerin' on an' off, an' nothin' else does: the keys won't "
+"never take it away behind yer back."
 
 #: docs/help/controls.md
 msgid "The targeting box"
-msgstr ""
+msgstr "The aimin' box"
 
 #: docs/help/controls.md
 msgid ""
 "The two boxes in the middle of the screen are the steering, as in BZFlag. "
 "Where the cursor sits relative to their centre is what the tank does:"
 msgstr ""
+"The two boxes in the middle of the screen are the steerin', same as BZFlag. "
+"Where the cursor sets compared to their middle is what the tank does:"
 
 #: docs/help/controls.md
 msgid ""
 "**Inside the inner box, nothing.** It is the dead zone: park the cursor "
 "there to stop."
 msgstr ""
+"**Inside the inner box, nothin'.** It's the dead zone: park the cursor there "
+"to stop."
 
 #: docs/help/controls.md
 msgid ""
@@ -377,6 +467,9 @@ msgid ""
 "reverse; left and right turn. Each grows evenly from nothing at the inner "
 "box's edge to full at the outer box's."
 msgstr ""
+"**Between the boxes, more the further out.** Up's forward an' down's "
+"reverse; left an' right turn. Each one grows even from nothin' at the inner "
+"box's edge to full at the outer box's."
 
 #: docs/help/controls.md
 msgid ""
@@ -384,12 +477,17 @@ msgid ""
 "running the cursor out past the top keeps the tank at full speed and leaves "
 "left and right free to steer."
 msgstr ""
+"**At or past the outer box, full.** Each way quits growin' on its own, so "
+"runnin' the cursor out past the top keeps the tank wide open an' leaves left "
+"an' right free to steer."
 
 #: docs/help/controls.md
 msgid ""
 "**Reverse is half speed**, as it is from the keys, however far down the "
 "cursor goes."
 msgstr ""
+"**Reverse is half speed**, same as from the keys, no matter how far down the "
+"cursor goes."
 
 #: docs/help/controls.md
 msgid ""
@@ -397,6 +495,9 @@ msgid ""
 "with an acceleration limit (BZFlag's `-a`, off by default) brings the tank "
 "up to it over time, the same as it does from the keys."
 msgstr ""
+"**The box sets the speed ya ask fer, not the speed ya git right off.** A "
+"world with an acceleration limit (BZFlag's `-a`, off unless somebody sets "
+"it) brings the tank up to it over time, same as it does from the keys."
 
 #: docs/help/controls.md
 msgid ""
@@ -405,16 +506,22 @@ msgid ""
 "so in bzo the cursor can leave it -- the steering simply stays at full, and "
 "the cost is a longer move back to the centre."
 msgstr ""
+"The boxes are BZFlag's own sizes, stretched to the window. BZFlag also keeps "
+"the cursor penned inside the box; a browser can't without takin' the pointer "
+"over, so in bzo the cursor can wander off -- the steerin' just stays at "
+"full, an' it costs ya a longer haul back to the middle."
 
 #: docs/help/controls.md
 msgid ""
 "With the keys, the mouse keeps whichever axis no key is holding -- see "
 "[Combining inputs](#combining-inputs)."
 msgstr ""
+"With the keys, the mouse keeps whichever way no key's holdin' -- see [Mixin' "
+"inputs](#combining-inputs)."
 
 #: docs/help/controls.md
 msgid "Clicks"
-msgstr ""
+msgstr "Clickin'"
 
 #: docs/help/controls.md
 msgid ""
@@ -424,28 +531,39 @@ msgid ""
 "while the on-screen controls are up, since those steer instead; a click that "
 "misses one of their buttons does nothing rather than firing."
 msgstr ""
+"Left click shoots wherever the cursor's at, whether mouse steerin's on or "
+"not, 'less the click lands on the chat panel or a button. Right click "
+"figgers out who it is. Mouse steerin' ain't there with no mouse plugged in, "
+"in VR, an' while the on-screen controls are up, since them steer instead; a "
+"click that misses one of their buttons don't do nothin' 'stead of firin'."
 
 #: docs/help/controls.md
 msgid "Combining inputs"
-msgstr ""
+msgstr "Mixin' inputs"
 
 #: docs/help/controls.md
 msgid ""
 "Every input drives at once, and nothing switches between them on its own: "
 "`M` and the Settings rows are the only things that change which ones are on."
 msgstr ""
+"Ever' input drives all at once, an' nothin' switches between 'em on its own: "
+"`M` an' the Settings rows are the only things that change which ones are on."
 
 #: docs/help/controls.md
 msgid ""
 "**Driving is shared out an axis at a time** -- forward/back, and turn, each "
 "on its own. On each, the first of these with something to say wins:"
 msgstr ""
+"**Drivin' gets shared out one way at a time** -- forward/back, an' turn, "
+"each on its own. On each one, the first of these with somethin' to say wins:"
 
 #: docs/help/controls.md
 msgid ""
 "**Keys.** A held drive key owns its axis, and holding both of a pair (`W` "
 "and `S`, or `A` and `D`) is a deliberate stop on that axis."
 msgstr ""
+"**Keys.** A held drive key owns its way, an' holdin' both of a pair (`W` an' "
+"`S`, or `A` an' `D`) is a stop on purpose that way."
 
 #: docs/help/controls.md
 msgid ""
@@ -453,10 +571,13 @@ msgid ""
 "otherwise the on-screen stick. Only one of the three is read at a time -- "
 "they are not added together."
 msgstr ""
+"**The stick:** the XR controllers in VR, otherwise a gamepad that's hooked "
+"up, otherwise the on-screen stick. Only one of the three gets read at a time "
+"-- they ain't added together."
 
 #: docs/help/controls.md
 msgid "**The mouse**, in the targeting box, with mouse steering on."
-msgstr ""
+msgstr "**The mouse**, in the aimin' box, with mouse steerin' on."
 
 #: docs/help/controls.md
 msgid ""
@@ -465,6 +586,10 @@ msgid ""
 "speed. A stick let go reads zero and gives the axis to the mouse; the mouse "
 "box holds whatever the cursor's place says, which is why it comes last."
 msgstr ""
+"So ya can drive with `W` while the mouse steers, turn with `A`/`D` while the "
+"mouse sets the speed, or steer a gamepad's turn while a key holds the speed. "
+"A stick ya let go of reads zero an' hands that way to the mouse; the mouse "
+"box holds whatever the cursor's spot says, which is why it comes last."
 
 #: docs/help/controls.md
 msgid ""
@@ -472,6 +597,9 @@ msgid ""
 "source's own fire button; jump from `Tab` or the stick source's; identify "
 "from `I`, a right click, or the stick source's. Any of them will do."
 msgstr ""
+"**Buttons add up.** Shoot fires from `Enter`, a left click, or the stick's "
+"own fire button; jump from `Tab` or the stick's; figger-out-who from `I`, a "
+"right click, or the stick's. Any of 'em'll do."
 
 #: docs/help/controls.md
 msgid ""
@@ -484,6 +612,14 @@ msgid ""
 "own. The mouse box does not steer while the autopilot drives: it holds an "
 "offset wherever the cursor is parked, so it would never hand anything back."
 msgstr ""
+"**With the autopilot on**, the pilot takes the mouse's place, last in line: "
+"a drive key or the stick ya hold still owns its way, an' the pilot gits the "
+"rest. So when it's wedged up against somethin' ya can hold `A` to turn it "
+"out, or `S` to back it off, while it keeps the other way, an' let go to hand "
+"it back -- it carries on from wherever ya left it, figgerin' a new route if "
+"ya took it somewheres else. Yer shots, jumps an' drops add to its own. The "
+"mouse box don't steer while the autopilot drives: it holds an offset "
+"wherever the cursor's parked, so it wouldn't never hand nothin' back."
 
 #: docs/help/controls.md
 msgid ""
@@ -497,6 +633,15 @@ msgid ""
 "A hidden window still pauses either way: the browser stops drawing it, and "
 "the pilot with it."
 msgstr ""
+"**Menus don't stop the autopilot.** Openin' Settings, or any other menu, "
+"normally pauses yer tank. With the autopilot drivin', the menu takes the "
+"keys an' the pilot keeps on drivin'. With a pilot picked on the `Settings -> "
+"Autopilot` row but not drivin', openin' a menu turns the autopilot on, an' "
+"shuttin' the menu turns it off again -- so a menu means \"drive fer me a "
+"spell\" 'stead of \"stop\". With the row on `None`, the regular, or on a "
+"server that won't have no bots (`-disableBots`), menus pause like they "
+"always done. A hid window still pauses either way: the browser quits drawin' "
+"it, an' the pilot with it."
 
 #: docs/help/controls.md
 msgid ""
@@ -506,50 +651,63 @@ msgid ""
 "shows how many keys the browser saw held at once, which tells the keyboard's "
 "limit from bzo's."
 msgstr ""
+"**Three keys at once.** Lotsa keyboards can't report some three-key combos "
+"at all -- the third key's press never gits to the browser -- so a held turn "
+"an' reverse can swaller a jump (#146). The debug HUD (`` ` ``) shows how "
+"many keys the browser seen held at once, which tells the keyboard's limit "
+"from bzo's."
 
 #: docs/help/controls.md
 msgid "Touch: the on-screen controls"
-msgstr ""
+msgstr "Touch: the on-screen controls"
 
 #: docs/help/controls.md
 msgid ""
 "A phone starts with them on; anywhere else `Settings -> Virtual Controls` "
 "turns them on and off."
 msgstr ""
+"A phone starts with 'em on; anywheres else `Settings -> Virtual Controls` "
+"turns 'em on an' off."
 
 #: docs/help/controls.md
 msgid ""
 "**The stick**, bottom left: push it to drive and turn, as far as you push "
 "it. A mouse can drag it too."
 msgstr ""
+"**The stick**, bottom left: push it to drive an' turn, as far as ya push it. "
+"A mouse can drag it too."
 
 #: docs/help/controls.md
 msgid ""
 "**`●`** — shoot. Tapping fires as fast as clicking a mouse; holding fires at "
 "the world's sustained rate"
 msgstr ""
+"**`●`** — shoot. Tappin' fires fast as clickin' a mouse; holdin' fires at "
+"the world's steady rate"
 
 #: docs/help/controls.md
 msgid "**`⤒`** — jump"
-msgstr ""
+msgstr "**`⤒`** — jump"
 
 #: docs/help/controls.md
 msgid "**`⚑`** — drop flag"
-msgstr ""
+msgstr "**`⚑`** — drop the flag"
 
 #: docs/help/controls.md
 msgid "**`◎`** — identify, and lock a Guided Missile"
-msgstr ""
+msgstr "**`◎`** — figger out who it is, an' lock a Guided Missile"
 
 #: docs/help/controls.md
 msgid ""
 "Everything else -- camera, radar range, chat, hunting, autopilot, pausing -- "
 "is a row in Settings, which a tap reaches."
 msgstr ""
+"Ever'thing else -- camera, radar range, chat, huntin', autopilot, pausin' -- "
+"is a row in Settings, which a tap gits to."
 
 #: docs/help/controls.md
 msgid "Gamepad"
-msgstr ""
+msgstr "Gamepad"
 
 #: docs/help/controls.md
 msgid ""
@@ -557,72 +715,77 @@ msgid ""
 "Bluetooth pads, and iOS MFi controllers). Plugging one in turns it on; "
 "nothing needs setting up."
 msgstr ""
+"Any controller the browser reports in the standard layout (most USB an' "
+"Bluetooth pads, an' iOS MFi controllers). Pluggin' one in turns it on; there "
+"ain't nothin' to set up."
 
 #: docs/help/controls.md
 msgid "Control"
-msgstr ""
+msgstr "Control"
 
 #: docs/help/controls.md
 msgid "In a menu"
-msgstr ""
+msgstr "In a menu"
 
 #: docs/help/controls.md
 msgid "Left stick"
-msgstr ""
+msgstr "Left stick"
 
 #: docs/help/controls.md
 msgid "forward/backward and turn"
-msgstr ""
+msgstr "forward/back an' turn"
 
 #: docs/help/controls.md
 msgid "move between rows, change a row"
-msgstr ""
+msgstr "move between rows, change a row"
 
 #: docs/help/controls.md
 msgid "`A` / Cross, or right trigger"
-msgstr ""
+msgstr "`A` / Cross, or right trigger"
 
 #: docs/help/controls.md
 msgid "shoot"
-msgstr ""
+msgstr "shoot"
 
 #: docs/help/controls.md
 msgid "select"
-msgstr ""
+msgstr "pick"
 
 #: docs/help/controls.md
 msgid "`B` / Circle, or left trigger"
-msgstr ""
+msgstr "`B` / Circle, or left trigger"
 
 #: docs/help/controls.md
 msgid "jump"
-msgstr ""
+msgstr "jump"
 
 #: docs/help/controls.md
 msgid "back"
-msgstr ""
+msgstr "back"
 
 #: docs/help/controls.md
 msgid "`X` / Square"
-msgstr ""
+msgstr "`X` / Square"
 
 #: docs/help/controls.md
 msgid "drop flag"
-msgstr ""
+msgstr "drop the flag"
 
 #: docs/help/controls.md
 msgid "Either shoulder"
-msgstr ""
+msgstr "Either shoulder"
 
 #: docs/help/controls.md
 msgid "identify"
-msgstr ""
+msgstr "figger out who"
 
 #: docs/help/controls.md
 msgid ""
 "The sticks have a dead zone of a fifth of their travel, so a pad left on the "
 "desk does not creep. The right stick is free."
 msgstr ""
+"The sticks got a dead zone of a fifth of their travel, so a pad left settin' "
+"on the desk don't creep. The right stick's free."
 
 #: docs/help/controls.md
 msgid ""
@@ -633,60 +796,68 @@ msgid ""
 "and never for an observer. **Rumble** in Settings turns it off. The browser "
 "has to support it; Chrome and Edge do."
 msgstr ""
+"The pad rumbles when ya fire an' when yer tank dies, same as BZFlag's: a "
+"short buzz fer a shot, longer fer a shock wave, both motors fer a laser, an' "
+"one long, hard shake fer a death. It only rumbles while it's what yer "
+"playin' with -- a key or a click hands control back an' keeps it hushed -- "
+"an' never fer an observer. **Rumble** in Settings turns it off. The "
+"browser's gotta support it; Chrome an' Edge do."
 
 #: docs/help/controls.md
 msgid "XR controllers"
-msgstr ""
+msgstr "XR controllers"
 
 #: docs/help/controls.md
 msgid ""
 "In VR the controllers are the only input. Turning the tank is independent of "
 "where you look."
 msgstr ""
+"In VR the controllers are the only input. Turnin' the tank don't care where "
+"yer lookin'."
 
 #: docs/help/controls.md
 msgid "In the XR menu"
-msgstr ""
+msgstr "In the XR menu"
 
 #: docs/help/controls.md
 msgid "Either thumbstick"
-msgstr ""
+msgstr "Either thumbstick"
 
 #: docs/help/controls.md
 msgid "forward/backward and turn -- the right stick if both are pushed"
-msgstr ""
+msgstr "forward/back an' turn -- the right stick if both are pushed"
 
 #: docs/help/controls.md
 msgid "Either trigger"
-msgstr ""
+msgstr "Either trigger"
 
 #: docs/help/controls.md
 msgid "`A` / `X` (primary face button)"
-msgstr ""
+msgstr "`A` / `X` (main face button)"
 
 #: docs/help/controls.md
 msgid "`B` / `Y` (secondary face button)"
-msgstr ""
+msgstr "`B` / `Y` (other face button)"
 
 #: docs/help/controls.md
 msgid "open the XR menu"
-msgstr ""
+msgstr "open the XR menu"
 
 #: docs/help/controls.md
 msgid "back, and close it from the top"
-msgstr ""
+msgstr "back, an' shut it from the top"
 
 #: docs/help/controls.md
 msgid "Either grip"
-msgstr ""
+msgstr "Either grip"
 
 #: docs/help/controls.md
 msgid "Press either thumbstick"
-msgstr ""
+msgstr "Press either thumbstick"
 
 #: docs/help/controls.md
 msgid "Both controllers pulse for the same events as a gamepad's rumble."
-msgstr ""
+msgstr "Both controllers thump fer the same doin's as a gamepad's rumble."
 
 #: docs/help/controls.md
 msgid ""
@@ -696,10 +867,15 @@ msgid ""
 "keyboard, raised when the row takes focus; see the README's WebXR section "
 "for headsets that have none."
 msgstr ""
+"Figger-out-who is on the thumbstick press 'cause a thumb that's steerin' "
+"presses it by accident, an' figgerin' out who costs nothin'; the menu's on "
+"`B` fer the same reason. Typin' -- a name, a MOTD -- uses the headset's own "
+"system keyboard, brung up when the row takes focus; see the README's WebXR "
+"section fer headsets that ain't got one."
 
 #: docs/help/flags.md
 msgid "Flags"
-msgstr ""
+msgstr "Flags"
 
 #: docs/help/flags.md
 msgid ""
@@ -709,10 +885,15 @@ msgid ""
 "somebody picks it up. Team flags are captured by carrying an enemy's to your "
 "own base."
 msgstr ""
+"Drive over a flag to pick it up, an' `Space` to drop it. Good flags help; "
+"bad flags hold ya back, an' they stick around till they shake off, ya kill "
+"somebody, or ya die. A superflag on the ground is white an' don't tell ya "
+"nothin' about itself till somebody picks it up. Team flags git captured by "
+"haulin' an enemy's back to yer own base."
 
 #: docs/help/scoreboard.md
 msgid "Scoreboard"
-msgstr ""
+msgstr "Scoreboard"
 
 #: docs/help/scoreboard.md
 msgid ""
@@ -722,6 +903,11 @@ msgid ""
 "count there instead, since you have no record against yourself. Rabbit Chase "
 "adds a rank percentage in front of the kill count."
 msgstr ""
+"Each row's numbers read **Kills / Deaths**, then **[Team Kills]** once ya "
+"got any, then yer own record against that one feller: **wins~losses**, blank "
+"till y'all actually tangled. Yer own row shows a blowed-yerself-up count "
+"there instead, since ya ain't got no record against yerself. Rabbit Chase "
+"sticks a rank percentage out front of the kill count."
 
 #: docs/help/scoreboard.md
 msgid ""
@@ -729,12 +915,17 @@ msgid ""
 "signed in with a verified callsign this session. Neither shows for anyone "
 "else."
 msgstr ""
+"Before a name, in cyan: `@` means that player's an admin, `+` means they're "
+"signed in with a verified callsign this session. Neither one shows fer "
+"nobody else."
 
 #: docs/help/scoreboard.md
 msgid ""
 "Right after the name itself: a `/XX` is the flag they're carrying, in that "
 "flag's own colour -- see [Flags](flags.md) for what each abbreviation means."
 msgstr ""
+"Right after the name itself: a `/XX` is the flag they're totin', in that "
+"flag's own colour -- see [Flags](flags.md) fer what each abbreviation means."
 
 #: docs/help/scoreboard.md
 msgid ""
@@ -742,42 +933,54 @@ msgid ""
 "replaces it the moment they're actually speaking. ⏳ means paused. A hunted "
 "player wears a cyan `◎` -- see [Hunting](controls.md#hunting)."
 msgstr ""
+"Further along the name: 🎤 means that player's microphone is on, an' 🔊 takes "
+"its place the second they're actually jawin'. ⏳ means paused. A hunted "
+"player wears a cyan `◎` -- see [Huntin'](controls.md#hunting)."
 
 #: docs/help/voice.md
 msgid "Audio and voice"
-msgstr ""
+msgstr "Sound an' jawin'"
 
 #: docs/help/voice.md
 msgid ""
 "`Settings -> Audio Settings` — game, voice, and microphone levels, each from "
 "Off to 100%"
 msgstr ""
+"`Settings -> Audio Settings` — game, voice, an' microphone levels, each from "
+"Off to 100%"
 
 #: docs/help/voice.md
 msgid ""
 "**Voice channel** — **All** is everyone on the server, **Nearby** is only "
 "players within earshot, **Team** is your own team anywhere on the map"
 msgstr ""
+"**Voice channel** — **All** is ever'body on the server, **Nearby** is only "
+"players within hollerin' distance, **Team** is yer own team anywheres on the "
+"map"
 
 #: docs/help/voice.md
 msgid "`B` — toggle the microphone"
-msgstr ""
+msgstr "`B` — flip the microphone"
 
 #: docs/help/voice.md
 msgid ""
 "Voice is available after microphone permission is granted. Observers talk "
 "and listen on the same terms as everyone else."
 msgstr ""
+"Voice works once ya let it have the microphone. Observers talk an' listen "
+"same as ever'body else."
 
 #: docs/help/about.md
 msgid "About"
-msgstr ""
+msgstr "'Bout This Here"
 
 #: docs/help/about.md
 msgid ""
 "Battlezone Online is a free 3D tank game in the browser that plays with "
 "[BZFlag](https://www.bzflag.org/)."
 msgstr ""
+"Battlezone Online is a free 3D tank game in yer browser that plays right "
+"along with [BZFlag](https://www.bzflag.org/)."
 
 #: docs/help/about.md
 msgid ""
@@ -785,3 +988,6 @@ msgid ""
 "v3.0](https://www.gnu.org/licenses/agpl-3.0.html). Source code is available "
 "at [github.com/timriker/bzo](/source)."
 msgstr ""
+"It's free software licensed under the [GNU Affero General Public License "
+"v3.0](https://www.gnu.org/licenses/agpl-3.0.html). The source code's at "
+"[github.com/timriker/bzo](/source)."

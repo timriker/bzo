@@ -9,7 +9,7 @@ msgstr ""
 
 #: docs/help/controls.md
 msgid "Controls"
-msgstr ""
+msgstr "C0n7r0l5"
 
 #: docs/help/controls.md
 msgid ""
@@ -19,46 +19,55 @@ msgid ""
 "reaches the rest -- including from a headset, where there is no keyboard at "
 "all. This page is also the in-game help's (`/` or `?`)."
 msgstr ""
+"0n3 cl13n7 run5 0n 4 d35k70p, 4 ph0n3 4nd 4 h34d537, 50 3v3ry 4c710n h45 4 "
+"w4y 1n fr0m 34ch 0f 7h3m. 73h k3yb04rd h45 73h m057; 70uch, 4 g4m3p4d 4nd "
+"73h XR c0n7r0ll3r5 c4rry 73h 4c710n5 4 m47ch n33d5, 4nd 73h 53771ng5 m3nu "
+"r34ch35 73h r357 -- 1nclud1ng fr0m 4 h34d537, wh3r3 7h3r3 15 n0 k3yb04rd 47 "
+"4ll. 7h15 p4g3 15 4l50 73h 1n-g4m3 h3lp'5 (`/` 0r `?`)."
 
 #: docs/help/controls.md
 msgid "Keyboard"
-msgstr ""
+msgstr "K3yb04rd"
 
 #: docs/help/controls.md
 msgid "Driving"
-msgstr ""
+msgstr "Dr1v1ng"
 
 #: docs/help/controls.md
 msgid "`W` / `S` or `Up` / `Down` — move forward/backward"
-msgstr ""
+msgstr "`W` / `S` 0r `Up` / `Down` — m0v3 f0rw4rd/b4ckw4rd"
 
 #: docs/help/controls.md
 msgid "`A` / `D` or `Left` / `Right` — turn left/right"
-msgstr ""
+msgstr "`A` / `D` 0r `Left` / `Right` — 7urn l3f7/r1gh7"
 
 #: docs/help/controls.md
 msgid "`Enter` — shoot"
-msgstr ""
+msgstr "`Enter` — 5h007"
 
 #: docs/help/controls.md
 msgid "`Tab` — jump"
-msgstr ""
+msgstr "`Tab` — jump"
 
 #: docs/help/controls.md
 msgid "`Space` — drop flag"
-msgstr ""
+msgstr "`Space` — dr0p fl4g"
 
 #: docs/help/controls.md
 msgid ""
 "`I` or right-click — identify the tank in your sights, and lock a Guided "
 "Missile onto it"
 msgstr ""
+"`I` 0r r1gh7-cl1ck — 1d3n71fy 73h 74nk 1n j00r 51gh75, 4nd l0ck 4 Gu1d3d "
+"M1551l3 0n70 17"
 
 #: docs/help/controls.md
 msgid ""
 "`Delete` — self-destruct, after a five second countdown; `Delete` again "
 "calls it off"
 msgstr ""
+"`Delete` — 53lf-d357ruc7, 4f73r 4 f1v3 53c0nd c0un7d0wn; `Delete` 4g41n "
+"c4ll5 17 0ff"
 
 #: docs/help/controls.md
 msgid ""
@@ -67,71 +76,84 @@ msgid ""
 "without a keyboard. You can still drive while it does, to help it out of a "
 "corner -- see [Combining inputs](#combining-inputs)"
 msgstr ""
+"`9` 0r `/autopilot [roger|ace]` — 4u70p1l07: 73h p1l07 dr1v35, 41m5 4nd "
+"5h0075 un71l pr3553d 4g41n. `Settings -> Autopilot` ch00535 73h p1l07 "
+"w17h0u7 4 k3yb04rd. J00 c4n 571ll dr1v3 wh1l3 17 d035, 70 h3lp 17 0u7 0f 4 "
+"c0rn3r -- 533 [C0mb1n1ng 1npu75](#combining-inputs)"
 
 #: docs/help/controls.md
 msgid "`P` — pause/resume"
-msgstr ""
+msgstr "`P` — p4u53/r35um3"
 
 #: docs/help/controls.md
 msgid "Chat"
-msgstr ""
+msgstr "Ch47"
 
 #: docs/help/controls.md
 msgid "`N` — open chat (or click the `Send` button)"
-msgstr ""
+msgstr "`N` — 0p3n ch47 (0r cl1ck 73h `Send` bu770n)"
 
 #: docs/help/controls.md
 msgid ""
 "`Enter` — send chat (while chat input is focused, or click `Send` again)"
 msgstr ""
+"`Enter` — 53nd ch47 (wh1l3 ch47 1npu7 15 f0cu53d, 0r cl1ck `Send` 4g41n)"
 
 #: docs/help/controls.md
 msgid ""
 "`1` / `2` / `3` / `4` / `5` — switch chat tab (`All` / `Chat` / `Server` / "
 "`Misc` / `Debug`)"
 msgstr ""
+"`1` / `2` / `3` / `4` / `5` — 5w17ch ch47 74b (`All` / `Chat` / `Server` / "
+"`Misc` / `Debug`)"
 
 #: docs/help/controls.md
 msgid "`[` / `]` — previous/next chat tab"
-msgstr ""
+msgstr "`[` / `]` — pr3v10u5/n3x7 ch47 74b"
 
 #: docs/help/controls.md
 msgid ""
 "`Tab` — while typing, complete a player, command or flag name; `@` starts a "
 "mention and `#` a player's slot number"
 msgstr ""
+"`Tab` — wh1l3 7yp1ng, c0mpl373 4 pl4y3r, c0mm4nd 0r fl4g n4m3; `@` 574r75 4 "
+"m3n710n 4nd `#` 4 pl4y3r'5 5l07 numb3r"
 
 #: docs/help/controls.md
 msgid ""
 "`Up` / `Down` — while typing, recall earlier lines; type the start of a line "
 "first to recall only the ones beginning that way"
 msgstr ""
+"`Up` / `Down` — wh1l3 7yp1ng, r3c4ll 34rl13r l1n35; 7yp3 73h 574r7 0f 4 l1n3 "
+"f1r57 70 r3c4ll 0nly 73h 0n35 b3g1nn1ng 7h47 w4y"
 
 #: docs/help/controls.md
 msgid "`.` — reply to last direct-message sender"
-msgstr ""
+msgstr "`.` — r3ply 70 l457 d1r3c7-m3554g3 53nd3r"
 
 #: docs/help/controls.md
 msgid "`,` — message nemesis target"
-msgstr ""
+msgstr "`,` — m3554g3 n3m3515 74rg37"
 
 #: docs/help/controls.md
 msgid "`Page Up` / `Page Down` — scroll chat history"
-msgstr ""
+msgstr "`Page Up` / `Page Down` — 5cr0ll ch47 h1570ry"
 
 #: docs/help/controls.md
 msgid "`End` — jump chat to newest message"
-msgstr ""
+msgstr "`End` — jump ch47 70 n3w357 m3554g3"
 
 #: docs/help/controls.md
 msgid ""
 "Drag across the history while chat is open to select it, then copy; typing "
 "carries on in the input"
 msgstr ""
+"Dr4g 4cr055 73h h1570ry wh1l3 ch47 15 0p3n 70 53l3c7 17, 7h3n c0py; 7yp1ng "
+"c4rr135 0n 1n 73h 1npu7"
 
 #: docs/help/controls.md
 msgid "View and panels"
-msgstr ""
+msgstr "V13w 4nd p4n3l5"
 
 #: docs/help/controls.md
 msgid ""
@@ -139,58 +161,65 @@ msgid ""
 "steering, then open Settings. Pressing it again closes Settings, so it is "
 "always safe to press one more time"
 msgstr ""
+"`Esc` — b4ck 0u7 0n3 573p: 3x17 ch47 1npu7, l34v3 full5cr33n, l34v3 m0u53 "
+"5733r1ng, 7h3n 0p3n 53771ng5. Pr3551ng 17 4g41n cl0535 53771ng5, 50 17 15 "
+"4lw4y5 54f3 70 pr355 0n3 m0r3 71m3"
 
 #: docs/help/controls.md
 msgid "`M` — toggle mouse steering"
-msgstr ""
+msgstr "`M` — 70ggl3 m0u53 5733r1ng"
 
 #: docs/help/controls.md
 msgid "`C` — cycle camera mode"
-msgstr ""
+msgstr "`C` — cycl3 c4m3r4 m0d3"
 
 #: docs/help/controls.md
 msgid "`O` — toggle operator panel"
-msgstr ""
+msgstr "`O` — 70ggl3 0p3r470r p4n3l"
 
 #: docs/help/controls.md
 msgid "`F` — toggle fullscreen"
-msgstr ""
+msgstr "`F` — 70ggl3 full5cr33n"
 
 #: docs/help/controls.md
 msgid "`` ` `` — toggle debug HUD"
-msgstr ""
+msgstr "`` ` `` — 70ggl3 d3bug HUD"
 
 #: docs/help/controls.md
 msgid "`=` or `+` or `Numpad +` — zoom radar out (increase range)"
-msgstr ""
+msgstr "`=` 0r `+` 0r `Numpad +` — z00m r4d4r 0u7 (1ncr3453 r4ng3)"
 
 #: docs/help/controls.md
 msgid "`-` or `Numpad -` — zoom radar in (decrease range)"
-msgstr ""
+msgstr "`-` 0r `Numpad -` — z00m r4d4r 1n (d3cr3453 r4ng3)"
 
 #: docs/help/controls.md
 msgid ""
 "`\\` — reset radar zoom to the default medium range (half the world's radar "
 "limit, which is the world size unless the map says otherwise)"
 msgstr ""
+"`\\` — r3537 r4d4r z00m 70 73h d3f4ul7 m3d1um r4ng3 (h4lf 73h w0rld'5 r4d4r "
+"l1m17, wh1ch 15 73h w0rld 51z3 unl355 73h m4p 54y5 07h3rw153)"
 
 #: docs/help/controls.md
 msgid "`Settings -> Radar: ...` — cycle Short/Medium/Long radar presets"
-msgstr ""
+msgstr "`Settings -> Radar: ...` — cycl3 5h0r7/M3d1um/L0ng r4d4r pr35375"
 
 #: docs/help/controls.md
 msgid "`B` — toggle the voice microphone"
-msgstr ""
+msgstr "`B` — 70ggl3 73h v01c3 m1cr0ph0n3"
 
 #: docs/help/controls.md
 msgid ""
 "`Settings -> Audio Settings` — set the game, voice, and microphone levels, "
 "and choose the voice channel: All, Nearby, or Team"
 msgstr ""
+"`Settings -> Audio Settings` — 537 73h g4m3, v01c3, 4nd m1cr0ph0n3 l3v3l5, "
+"4nd ch0053 73h v01c3 ch4nn3l: 4ll, N34rby, 0r 734m"
 
 #: docs/help/controls.md
 msgid "`/` or `?` — show/hide help panel"
-msgstr ""
+msgstr "`/` 0r `?` — 5h0w/h1d3 h3lp p4n3l"
 
 #: docs/help/controls.md
 msgid ""
@@ -198,6 +227,9 @@ msgid ""
 "are transmitting and a red one means you are not, and the hover text names "
 "the channel it would speak on"
 msgstr ""
+"`🎤` b351d3 73h g34r — 73h m1cr0ph0n3, 45 `B` 15: 4 gr33n b0rd3r m34n5 j00 "
+"4r3 7r4n5m1771ng 4nd 4 r3d 0n3 m34n5 j00 4r3 n07, 4nd 73h h0v3r 73x7 n4m35 "
+"73h ch4nn3l 17 w0uld 5p34k 0n"
 
 #: docs/help/controls.md
 msgid ""
@@ -207,55 +239,69 @@ msgid ""
 "until the hunt cursor closes; tapping a chat tab opens chat for good. Small "
 "screens start collapsed"
 msgstr ""
+"`▲` b351d3 73h g34r — h1d3 73h 5c0r3b04rd 4nd ch47, l34v1ng 73h n4m3 r0w 4nd "
+"73h ch47 74b5; `▼` br1ng5 7h3m b4ck. 7yp1ng 4 m3554g3 b0rr0w5 73h ch47 "
+"w1nd0w un71l j00 4r3 d0n3 w17h 17, 4nd `U` 0r `7` b0rr0w5 73h 5c0r3b04rd "
+"un71l 73h hun7 cur50r cl0535; 74pp1ng 4 ch47 74b 0p3n5 ch47 f0r g00d. 5m4ll "
+"5cr33n5 574r7 c0ll4p53d"
 
 #: docs/help/controls.md
 msgid ""
 "`Settings -> Anaglyph 3D` — red/cyan glasses; `Settings -> VR Mode` enters a "
 "WebXR headset"
 msgstr ""
+"`Settings -> Anaglyph 3D` — r3d/cy4n gl45535; `Settings -> VR Mode` 3n73r5 4 "
+"WebXR h34d537"
 
 #: docs/help/controls.md
 msgid "Menus"
-msgstr ""
+msgstr "M3nu5"
 
 #: docs/help/controls.md
 msgid ""
 "`Up` / `Down` — previous/next control, including from inside a text field"
 msgstr ""
+"`Up` / `Down` — pr3v10u5/n3x7 c0n7r0l, 1nclud1ng fr0m 1n51d3 4 73x7 f13ld"
 
 #: docs/help/controls.md
 msgid ""
 "`Left` / `Right` — change the focused control: move a slider, pick the next "
 "choice. In a text field they move the cursor instead"
 msgstr ""
+"`Left` / `Right` — ch4ng3 73h f0cu53d c0n7r0l: m0v3 4 5l1d3r, p1ck 73h n3x7 "
+"ch01c3. 1n 4 73x7 f13ld 7h3y m0v3 73h cur50r 1n5734d"
 
 #: docs/help/controls.md
 msgid "`Tab` / `Shift+Tab` — previous/next control"
-msgstr ""
+msgstr "`Tab` / `Shift+Tab` — pr3v10u5/n3x7 c0n7r0l"
 
 #: docs/help/controls.md
 msgid "`Home` / `End` — first/last control"
-msgstr ""
+msgstr "`Home` / `End` — f1r57/l457 c0n7r0l"
 
 #: docs/help/controls.md
 msgid "`Enter` or `Space` — press the focused control"
-msgstr ""
+msgstr "`Enter` 0r `Space` — pr355 73h f0cu53d c0n7r0l"
 
 #: docs/help/controls.md
 msgid ""
 "Click or tap a row that walks a list: the title steps back and the current "
 "option steps forward. The `‹` and `›` on the row mark the two halves"
 msgstr ""
+"Cl1ck 0r 74p 4 r0w 7h47 w4lk5 4 l157: 73h 717l3 573p5 b4ck 4nd 73h curr3n7 "
+"0p710n 573p5 f0rw4rd. 73h `‹` 4nd `›` 0n 73h r0w m4rk 73h 7w0 h4lv35"
 
 #: docs/help/controls.md
 msgid ""
 "The help panel is read rather than operated, so there the arrows scroll it "
 "and only `Left` / `Right` move focus"
 msgstr ""
+"73h h3lp p4n3l 15 r34d r47h3r 7h4n 0p3r473d, 50 7h3r3 73h 4rr0w5 5cr0ll 17 "
+"4nd 0nly `Left` / `Right` m0v3 f0cu5"
 
 #: docs/help/controls.md
 msgid "Hunting"
-msgstr ""
+msgstr "Hun71ng"
 
 #: docs/help/controls.md
 msgid ""
@@ -267,18 +313,29 @@ msgid ""
 "and its beacon is cyan like its ring: everyone is hunting it, so everyone's "
 "mark over it says so."
 msgstr ""
+"M4rk1ng 4 pl4y3r pu75 4 cy4n `◎` 0n 7h31r 5c0r3b04rd r0w, 4 cy4n r1ng 0n "
+"7h31r r4d4r bl1p, 4nd 4 b34c0n 1n 73h 5ky 0v3r 7h3m 1n 7h31r 0wn 74nk c0l0ur "
+"-- 50 53v3r4l m4rk3d 47 0nc3 4r3 571ll 70ld 4p4r7 47 4 gl4nc3. Wh1l3 0n3 0f "
+"7h3m 15 1n j00r 51gh75 73h HUD 54y5 **SPOTTED:** 4nd 4 p1ng 50und5 0nc3 4 "
+"53c0nd fr0m wh3r3 7h3y 4r3. 1n R4bb17 Ch453 73h r4bb17 15 m4rk3d f0r j00, "
+"4nd 175 b34c0n 15 cy4n l1k3 175 r1ng: 3v3ry0n3 15 hun71ng 17, 50 3v3ry0n3'5 "
+"m4rk 0v3r 17 54y5 50."
 
 #: docs/help/controls.md
 msgid ""
 "`U` — hunt: open the scoreboard cursor, and press it again on a running hunt "
 "to clear every mark"
 msgstr ""
+"`U` — hun7: 0p3n 73h 5c0r3b04rd cur50r, 4nd pr355 17 4g41n 0n 4 runn1ng hun7 "
+"70 cl34r 3v3ry m4rk"
 
 #: docs/help/controls.md
 msgid ""
 "`7` — add hunt: the same cursor, but committing adds to what is marked "
 "rather than replacing it, and committing on a row already marked takes it off"
 msgstr ""
+"`7` — 4dd hun7: 73h 54m3 cur50r, bu7 c0mm1771ng 4dd5 70 wh47 15 m4rk3d "
+"r47h3r 7h4n r3pl4c1ng 17, 4nd c0mm1771ng 0n 4 r0w 4lr34dy m4rk3d 74k35 17 0ff"
 
 #: docs/help/controls.md
 msgid ""
@@ -288,6 +345,11 @@ msgid ""
 "every mark on `Clear`. On a touch screen or with a mouse, tap a chevron to "
 "step and anywhere else on the row to select"
 msgstr ""
+"`Settings -> Hunt` — 73h 54m3 7h1ng w17h0u7 4 k3yb04rd, f0r 4 ph0n3 0r 4 "
+"h34d537. L3f7 4nd r1gh7 573p 7hr0ugh `Clear` 4nd 7h3n 73h pl4y3r5 1n "
+"4lph4b371c4l 0rd3r; 53l3c7 m4rk5 0r unm4rk5 wh03v3r 15 5h0wn, 0r cl34r5 "
+"3v3ry m4rk 0n `Clear`. 0n 4 70uch 5cr33n 0r w17h 4 m0u53, 74p 4 ch3vr0n 70 "
+"573p 4nd 4nywh3r3 3l53 0n 73h r0w 70 53l3c7"
 
 #: docs/help/controls.md
 msgid ""
@@ -297,10 +359,15 @@ msgid ""
 "already marked. `I` and `Space` move the cursor too, so a surface without "
 "arrow keys can reach it"
 msgstr ""
+"W17h 73h cur50r 0p3n, 73h b04rd'5 h34d1ng r34d5 `*SEL*` 4nd 4 pul51ng `○` "
+"5175 0n 73h r0w 17 15 0n, f1ll1ng 1n 70 `◎` wh3n j00 c0mm17. `Up` / `Down` "
+"m0v3 17, `Enter` c0mm175, 4nd `U` 0r `7` b4ck5 0u7 k33p1ng wh473v3r w45 "
+"4lr34dy m4rk3d. `I` 4nd `Space` m0v3 73h cur50r 700, 50 4 5urf4c3 w17h0u7 "
+"4rr0w k3y5 c4n r34ch 17"
 
 #: docs/help/controls.md
 msgid "As an observer"
-msgstr ""
+msgstr "45 4n 0b53rv3r"
 
 #: docs/help/controls.md
 msgid ""
@@ -310,6 +377,11 @@ msgid ""
 "height of a tank on the ground, and travel stays level however the view is "
 "tilted. Pausing and self-destruct do nothing."
 msgstr ""
+"45 4n 0b53rv3r j00 h4v3 n0 74nk. Dr1v3 4nd 7urn fly 73h c4m3r4 1n5734d, "
+"`Tab` cl1mb5 4nd `Space` d35c3nd5, 4nd h0ld1ng `Shift` m4k35 dr1v3 71l7 73h "
+"v13w up 4nd d0wn 4nd 7urn 5l1d3 17 51d3w4y5. 73h c4m3r4 r3575 47 73h 3y3 "
+"h31gh7 0f 4 74nk 0n 73h gr0und, 4nd 7r4v3l 574y5 l3v3l h0w3v3r 73h v13w 15 "
+"71l73d. P4u51ng 4nd 53lf-d357ruc7 d0 n07h1ng."
 
 #: docs/help/controls.md
 msgid ""
@@ -317,6 +389,9 @@ msgid ""
 "then every player, then on to the next view. The views are Free, Track, "
 "Follow, Driving with, and Flag where a map has team flags"
 msgstr ""
+"`Enter` 0r `C` — 573p 7hr0ugh 3v3ry7h1ng: 1n 34ch v13w, 73h l34d3r f1r57, "
+"7h3n 3v3ry pl4y3r, 7h3n 0n 70 73h n3x7 v13w. 73h v13w5 4r3 Fr33, 7r4ck, "
+"F0ll0w, Dr1v1ng w17h, 4nd Fl4g wh3r3 4 m4p h45 734m fl4g5"
 
 #: docs/help/controls.md
 msgid ""
@@ -324,12 +399,17 @@ msgid ""
 "show the obstacle there: what it is, an outline round it, and its block from "
 "the map file with the `group` blocks that placed it"
 msgstr ""
+"`I` 0r r1gh7-cl1ck — 1n 73h Fr33 v13w, w47ch 73h 74nk 1n j00r 51gh75, 0r "
+"5h0w 73h 0b574cl3 7h3r3: wh47 17 15, 4n 0u7l1n3 r0und 17, 4nd 175 bl0ck fr0m "
+"73h m4p f1l3 w17h 73h `group` bl0ck5 7h47 pl4c3d 17"
 
 #: docs/help/controls.md
 msgid ""
 "Right-click or tap an obstacle anywhere on screen, in any view and the "
 "Overview most of all, to show it the same way"
 msgstr ""
+"R1gh7-cl1ck 0r 74p 4n 0b574cl3 4nywh3r3 0n 5cr33n, 1n 4ny v13w 4nd 73h "
+"0v3rv13w m057 0f 4ll, 70 5h0w 17 73h 54m3 w4y"
 
 #: docs/help/controls.md
 msgid ""
@@ -338,38 +418,50 @@ msgid ""
 "textures, the map file's warnings and its largest meshes, each of which "
 "shows that mesh"
 msgstr ""
+"P1ck n07h1ng -- 73h 5ky, 0r 3mp7y gr0und 1n 73h 0v3rv13w -- 0r pr355 73h "
+"p4n3l'5 **W0rld** bu770n f0r 73h wh0l3 w0rld: wh47 15 1n 17, f4c35, "
+"73x7ur35, 73h m4p f1l3'5 w4rn1ng5 4nd 175 l4rg357 m35h35, 34ch 0f wh1ch "
+"5h0w5 7h47 m35h"
 
 #: docs/help/controls.md
 msgid ""
 "Click a scoreboard row to watch that player; click the marked row again to "
 "go back to following the leader"
 msgstr ""
+"Cl1ck 4 5c0r3b04rd r0w 70 w47ch 7h47 pl4y3r; cl1ck 73h m4rk3d r0w 4g41n 70 "
+"g0 b4ck 70 f0ll0w1ng 73h l34d3r"
 
 #: docs/help/controls.md
 msgid "Mouse"
-msgstr ""
+msgstr "M0u53"
 
 #: docs/help/controls.md
 msgid ""
 "`M` turns mouse steering on and off, and nothing else does: the keys never "
 "take it away behind your back."
 msgstr ""
+"`M` 7urn5 m0u53 5733r1ng 0n 4nd 0ff, 4nd n07h1ng 3l53 d035: 73h k3y5 n3v3r "
+"74k3 17 4w4y b3h1nd j00r b4ck."
 
 #: docs/help/controls.md
 msgid "The targeting box"
-msgstr ""
+msgstr "73h 74rg371ng b0x"
 
 #: docs/help/controls.md
 msgid ""
 "The two boxes in the middle of the screen are the steering, as in BZFlag. "
 "Where the cursor sits relative to their centre is what the tank does:"
 msgstr ""
+"73h 7w0 b0x35 1n 73h m1ddl3 0f 73h 5cr33n 4r3 73h 5733r1ng, 45 1n BZFlag. "
+"Wh3r3 73h cur50r 5175 r3l471v3 70 7h31r c3n7r3 15 wh47 73h 74nk d035:"
 
 #: docs/help/controls.md
 msgid ""
 "**Inside the inner box, nothing.** It is the dead zone: park the cursor "
 "there to stop."
 msgstr ""
+"**1n51d3 73h 1nn3r b0x, n07h1ng.** 17 15 73h d34d z0n3: p4rk 73h cur50r "
+"7h3r3 70 570p."
 
 #: docs/help/controls.md
 msgid ""
@@ -377,6 +469,9 @@ msgid ""
 "reverse; left and right turn. Each grows evenly from nothing at the inner "
 "box's edge to full at the outer box's."
 msgstr ""
+"**B37w33n 73h b0x35, m0r3 73h fur7h3r 0u7.** Up 15 f0rw4rd 4nd d0wn 15 "
+"r3v3r53; l3f7 4nd r1gh7 7urn. 34ch gr0w5 3v3nly fr0m n07h1ng 47 73h 1nn3r "
+"b0x'5 3dg3 70 full 47 73h 0u73r b0x'5."
 
 #: docs/help/controls.md
 msgid ""
@@ -384,12 +479,17 @@ msgid ""
 "running the cursor out past the top keeps the tank at full speed and leaves "
 "left and right free to steer."
 msgstr ""
+"**47 0r p457 73h 0u73r b0x, full.** 34ch 4x15 570p5 gr0w1ng 0n 175 0wn, 50 "
+"runn1ng 73h cur50r 0u7 p457 73h 70p k33p5 73h 74nk 47 full 5p33d 4nd l34v35 "
+"l3f7 4nd r1gh7 fr33 70 5733r."
 
 #: docs/help/controls.md
 msgid ""
 "**Reverse is half speed**, as it is from the keys, however far down the "
 "cursor goes."
 msgstr ""
+"**R3v3r53 15 h4lf 5p33d**, 45 17 15 fr0m 73h k3y5, h0w3v3r f4r d0wn 73h "
+"cur50r g035."
 
 #: docs/help/controls.md
 msgid ""
@@ -397,6 +497,9 @@ msgid ""
 "with an acceleration limit (BZFlag's `-a`, off by default) brings the tank "
 "up to it over time, the same as it does from the keys."
 msgstr ""
+"**73h b0x 5375 73h 5p33d 45k3d f0r, n07 73h 5p33d j00 g37 47 0nc3.** 4 w0rld "
+"w17h 4n 4cc3l3r4710n l1m17 (BZFlag'5 `-a`, 0ff by d3f4ul7) br1ng5 73h 74nk "
+"up 70 17 0v3r 71m3, 73h 54m3 45 17 d035 fr0m 73h k3y5."
 
 #: docs/help/controls.md
 msgid ""
@@ -405,16 +508,22 @@ msgid ""
 "so in bzo the cursor can leave it -- the steering simply stays at full, and "
 "the cost is a longer move back to the centre."
 msgstr ""
+"73h b0x35 4r3 BZFlag'5 0wn 51z35, 5c4l3d 70 73h w1nd0w. BZFlag 4l50 h0ld5 "
+"73h cur50r 1n51d3 73h b0x; 4 br0w53r c4nn07 w17h0u7 74k1ng 73h p01n73r 0v3r, "
+"50 1n bzo 73h cur50r c4n l34v3 17 -- 73h 5733r1ng 51mply 574y5 47 full, 4nd "
+"73h c057 15 4 l0ng3r m0v3 b4ck 70 73h c3n7r3."
 
 #: docs/help/controls.md
 msgid ""
 "With the keys, the mouse keeps whichever axis no key is holding -- see "
 "[Combining inputs](#combining-inputs)."
 msgstr ""
+"W17h 73h k3y5, 73h m0u53 k33p5 wh1ch3v3r 4x15 n0 k3y 15 h0ld1ng -- 533 "
+"[C0mb1n1ng 1npu75](#combining-inputs)."
 
 #: docs/help/controls.md
 msgid "Clicks"
-msgstr ""
+msgstr "Cl1ck5"
 
 #: docs/help/controls.md
 msgid ""
@@ -424,28 +533,39 @@ msgid ""
 "while the on-screen controls are up, since those steer instead; a click that "
 "misses one of their buttons does nothing rather than firing."
 msgstr ""
+"L3f7 cl1ck 5h0075 wh3r3v3r 73h cur50r 15, wh37h3r m0u53 5733r1ng 15 0n 0r "
+"n07, unl355 73h cl1ck l4nd5 0n 73h ch47 p4n3l 0r 4 bu770n. R1gh7 cl1ck "
+"1d3n71f135. M0u53 5733r1ng 15 un4v41l4bl3 w17h n0 m0u53 4774ch3d, 1n VR, 4nd "
+"wh1l3 73h 0n-5cr33n c0n7r0l5 4r3 up, 51nc3 7h053 5733r 1n5734d; 4 cl1ck 7h47 "
+"m15535 0n3 0f 7h31r bu770n5 d035 n07h1ng r47h3r 7h4n f1r1ng."
 
 #: docs/help/controls.md
 msgid "Combining inputs"
-msgstr ""
+msgstr "C0mb1n1ng 1npu75"
 
 #: docs/help/controls.md
 msgid ""
 "Every input drives at once, and nothing switches between them on its own: "
 "`M` and the Settings rows are the only things that change which ones are on."
 msgstr ""
+"3v3ry 1npu7 dr1v35 47 0nc3, 4nd n07h1ng 5w17ch35 b37w33n 7h3m 0n 175 0wn: "
+"`M` 4nd 73h 53771ng5 r0w5 4r3 73h 0nly 7h1ng5 7h47 ch4ng3 wh1ch 0n35 4r3 0n."
 
 #: docs/help/controls.md
 msgid ""
 "**Driving is shared out an axis at a time** -- forward/back, and turn, each "
 "on its own. On each, the first of these with something to say wins:"
 msgstr ""
+"**Dr1v1ng 15 5h4r3d 0u7 4n 4x15 47 4 71m3** -- f0rw4rd/b4ck, 4nd 7urn, 34ch "
+"0n 175 0wn. 0n 34ch, 73h f1r57 0f 7h353 w17h 50m37h1ng 70 54y w1n5:"
 
 #: docs/help/controls.md
 msgid ""
 "**Keys.** A held drive key owns its axis, and holding both of a pair (`W` "
 "and `S`, or `A` and `D`) is a deliberate stop on that axis."
 msgstr ""
+"**K3y5.** 4 h3ld dr1v3 k3y 0wn5 175 4x15, 4nd h0ld1ng b07h 0f 4 p41r (`W` "
+"4nd `S`, 0r `A` 4nd `D`) 15 4 d3l1b3r473 570p 0n 7h47 4x15."
 
 #: docs/help/controls.md
 msgid ""
@@ -453,10 +573,13 @@ msgid ""
 "otherwise the on-screen stick. Only one of the three is read at a time -- "
 "they are not added together."
 msgstr ""
+"**73h 571ck:** 73h XR c0n7r0ll3r5 1n VR, 07h3rw153 4 c0nn3c73d g4m3p4d, "
+"07h3rw153 73h 0n-5cr33n 571ck. 0nly 0n3 0f 73h 7hr33 15 r34d 47 4 71m3 -- "
+"7h3y 4r3 n07 4dd3d 70g37h3r."
 
 #: docs/help/controls.md
 msgid "**The mouse**, in the targeting box, with mouse steering on."
-msgstr ""
+msgstr "**73h m0u53**, 1n 73h 74rg371ng b0x, w17h m0u53 5733r1ng 0n."
 
 #: docs/help/controls.md
 msgid ""
@@ -465,6 +588,10 @@ msgid ""
 "speed. A stick let go reads zero and gives the axis to the mouse; the mouse "
 "box holds whatever the cursor's place says, which is why it comes last."
 msgstr ""
+"50 j00 c4n dr1v3 w17h `W` wh1l3 73h m0u53 5733r5, 7urn w17h `A`/`D` wh1l3 "
+"73h m0u53 5375 73h 5p33d, 0r 5733r 4 g4m3p4d'5 7urn wh1l3 4 k3y h0ld5 73h "
+"5p33d. 4 571ck l37 g0 r34d5 z3r0 4nd g1v35 73h 4x15 70 73h m0u53; 73h m0u53 "
+"b0x h0ld5 wh473v3r 73h cur50r'5 pl4c3 54y5, wh1ch 15 why 17 c0m35 l457."
 
 #: docs/help/controls.md
 msgid ""
@@ -472,6 +599,9 @@ msgid ""
 "source's own fire button; jump from `Tab` or the stick source's; identify "
 "from `I`, a right click, or the stick source's. Any of them will do."
 msgstr ""
+"**Bu770n5 4dd up.** 5h007 f1r35 fr0m `Enter`, 4 l3f7 cl1ck, 0r 73h 571ck "
+"50urc3'5 0wn f1r3 bu770n; jump fr0m `Tab` 0r 73h 571ck 50urc3'5; 1d3n71fy "
+"fr0m `I`, 4 r1gh7 cl1ck, 0r 73h 571ck 50urc3'5. 4ny 0f 7h3m w1ll d0."
 
 #: docs/help/controls.md
 msgid ""
@@ -484,6 +614,14 @@ msgid ""
 "own. The mouse box does not steer while the autopilot drives: it holds an "
 "offset wherever the cursor is parked, so it would never hand anything back."
 msgstr ""
+"**W17h 73h 4u70p1l07 0n**, 73h p1l07 74k35 73h m0u53'5 pl4c3, l457 1n l1n3: "
+"4 dr1v3 k3y 0r 73h 571ck j00 h0ld 571ll 0wn5 175 4x15, 4nd 73h p1l07 h45 73h "
+"r357. 50 wh3n 17 15 w3dg3d 4g41n57 50m37h1ng j00 c4n h0ld `A` 70 7urn 17 "
+"0u7, 0r `S` 70 b4ck 17 0ff, wh1l3 17 k33p5 73h 07h3r 4x15, 4nd l37 g0 70 "
+"h4nd 17 b4ck -- 17 c4rr135 0n fr0m wh3r3v3r j00 l3f7 17, r3-pl4nn1ng 175 "
+"r0u73 1f j00 700k 17 50m3wh3r3 3l53. J00r 5h075, jump5 4nd dr0p5 4dd 70 175 "
+"0wn. 73h m0u53 b0x d035 n07 5733r wh1l3 73h 4u70p1l07 dr1v35: 17 h0ld5 4n "
+"0ff537 wh3r3v3r 73h cur50r 15 p4rk3d, 50 17 w0uld n3v3r h4nd 4ny7h1ng b4ck."
 
 #: docs/help/controls.md
 msgid ""
@@ -497,6 +635,15 @@ msgid ""
 "A hidden window still pauses either way: the browser stops drawing it, and "
 "the pilot with it."
 msgstr ""
+"**M3nu5 d0n'7 570p 73h 4u70p1l07.** 0p3n1ng 53771ng5, 0r 4ny 07h3r m3nu, "
+"n0rm4lly p4u535 j00r 74nk. W17h 73h 4u70p1l07 dr1v1ng, 73h m3nu 74k35 73h "
+"k3y5 4nd 73h p1l07 g035 0n dr1v1ng. W17h 4 p1l07 ch053n 0n 73h `Settings -> "
+"Autopilot` r0w bu7 n07 dr1v1ng, 0p3n1ng 4 m3nu 7urn5 73h 4u70p1l07 0n, 4nd "
+"cl051ng 73h m3nu 7urn5 17 0ff 4g41n -- 50 4 m3nu m34n5 \"dr1v3 f0r m3 4 "
+"m0m3n7\" r47h3r 7h4n \"570p\". W17h 73h r0w 0n `None`, 73h d3f4ul7, 0r 0n 4 "
+"53rv3r 7h47 r3fu535 b075 (`-disableBots`), m3nu5 p4u53 45 7h3y 4lw4y5 h4v3. "
+"4 h1dd3n w1nd0w 571ll p4u535 317h3r w4y: 73h br0w53r 570p5 dr4w1ng 17, 4nd "
+"73h p1l07 w17h 17."
 
 #: docs/help/controls.md
 msgid ""
@@ -506,50 +653,63 @@ msgid ""
 "shows how many keys the browser saw held at once, which tells the keyboard's "
 "limit from bzo's."
 msgstr ""
+"**7hr33 k3y5 47 0nc3.** M4ny k3yb04rd5 c4nn07 r3p0r7 50m3 7hr33-k3y "
+"c0mb1n4710n5 47 4ll -- 73h 7h1rd k3y'5 pr355 n3v3r r34ch35 73h br0w53r -- 50 "
+"4 h3ld 7urn 4nd r3v3r53 c4n 5w4ll0w 4 jump (#146). 73h d3bug HUD (`` ` ``) "
+"5h0w5 h0w m4ny k3y5 73h br0w53r 54w h3ld 47 0nc3, wh1ch 73ll5 73h k3yb04rd'5 "
+"l1m17 fr0m bzo'5."
 
 #: docs/help/controls.md
 msgid "Touch: the on-screen controls"
-msgstr ""
+msgstr "70uch: 73h 0n-5cr33n c0n7r0l5"
 
 #: docs/help/controls.md
 msgid ""
 "A phone starts with them on; anywhere else `Settings -> Virtual Controls` "
 "turns them on and off."
 msgstr ""
+"4 ph0n3 574r75 w17h 7h3m 0n; 4nywh3r3 3l53 `Settings -> Virtual Controls` "
+"7urn5 7h3m 0n 4nd 0ff."
 
 #: docs/help/controls.md
 msgid ""
 "**The stick**, bottom left: push it to drive and turn, as far as you push "
 "it. A mouse can drag it too."
 msgstr ""
+"**73h 571ck**, b0770m l3f7: pu5h 17 70 dr1v3 4nd 7urn, 45 f4r 45 j00 pu5h "
+"17. 4 m0u53 c4n dr4g 17 700."
 
 #: docs/help/controls.md
 msgid ""
 "**`●`** — shoot. Tapping fires as fast as clicking a mouse; holding fires at "
 "the world's sustained rate"
 msgstr ""
+"**`●`** — 5h007. 74pp1ng f1r35 45 f457 45 cl1ck1ng 4 m0u53; h0ld1ng f1r35 47 "
+"73h w0rld'5 5u5741n3d r473"
 
 #: docs/help/controls.md
 msgid "**`⤒`** — jump"
-msgstr ""
+msgstr "**`⤒`** — jump"
 
 #: docs/help/controls.md
 msgid "**`⚑`** — drop flag"
-msgstr ""
+msgstr "**`⚑`** — dr0p fl4g"
 
 #: docs/help/controls.md
 msgid "**`◎`** — identify, and lock a Guided Missile"
-msgstr ""
+msgstr "**`◎`** — 1d3n71fy, 4nd l0ck 4 Gu1d3d M1551l3"
 
 #: docs/help/controls.md
 msgid ""
 "Everything else -- camera, radar range, chat, hunting, autopilot, pausing -- "
 "is a row in Settings, which a tap reaches."
 msgstr ""
+"3v3ry7h1ng 3l53 -- c4m3r4, r4d4r r4ng3, ch47, hun71ng, 4u70p1l07, p4u51ng -- "
+"15 4 r0w 1n 53771ng5, wh1ch 4 74p r34ch35."
 
 #: docs/help/controls.md
 msgid "Gamepad"
-msgstr ""
+msgstr "G4m3p4d"
 
 #: docs/help/controls.md
 msgid ""
@@ -557,72 +717,77 @@ msgid ""
 "Bluetooth pads, and iOS MFi controllers). Plugging one in turns it on; "
 "nothing needs setting up."
 msgstr ""
+"4ny c0n7r0ll3r 73h br0w53r r3p0r75 1n 73h 574nd4rd l4y0u7 (m057 USB 4nd "
+"Bluetooth p4d5, 4nd iOS MFi c0n7r0ll3r5). Plugg1ng 0n3 1n 7urn5 17 0n; "
+"n07h1ng n33d5 53771ng up."
 
 #: docs/help/controls.md
 msgid "Control"
-msgstr ""
+msgstr "C0n7r0l"
 
 #: docs/help/controls.md
 msgid "In a menu"
-msgstr ""
+msgstr "1n 4 m3nu"
 
 #: docs/help/controls.md
 msgid "Left stick"
-msgstr ""
+msgstr "L3f7 571ck"
 
 #: docs/help/controls.md
 msgid "forward/backward and turn"
-msgstr ""
+msgstr "f0rw4rd/b4ckw4rd 4nd 7urn"
 
 #: docs/help/controls.md
 msgid "move between rows, change a row"
-msgstr ""
+msgstr "m0v3 b37w33n r0w5, ch4ng3 4 r0w"
 
 #: docs/help/controls.md
 msgid "`A` / Cross, or right trigger"
-msgstr ""
+msgstr "`A` / Cr055, 0r r1gh7 7r1gg3r"
 
 #: docs/help/controls.md
 msgid "shoot"
-msgstr ""
+msgstr "5h007"
 
 #: docs/help/controls.md
 msgid "select"
-msgstr ""
+msgstr "53l3c7"
 
 #: docs/help/controls.md
 msgid "`B` / Circle, or left trigger"
-msgstr ""
+msgstr "`B` / C1rcl3, 0r l3f7 7r1gg3r"
 
 #: docs/help/controls.md
 msgid "jump"
-msgstr ""
+msgstr "jump"
 
 #: docs/help/controls.md
 msgid "back"
-msgstr ""
+msgstr "b4ck"
 
 #: docs/help/controls.md
 msgid "`X` / Square"
-msgstr ""
+msgstr "`X` / 5qu4r3"
 
 #: docs/help/controls.md
 msgid "drop flag"
-msgstr ""
+msgstr "dr0p fl4g"
 
 #: docs/help/controls.md
 msgid "Either shoulder"
-msgstr ""
+msgstr "317h3r 5h0uld3r"
 
 #: docs/help/controls.md
 msgid "identify"
-msgstr ""
+msgstr "1d3n71fy"
 
 #: docs/help/controls.md
 msgid ""
 "The sticks have a dead zone of a fifth of their travel, so a pad left on the "
 "desk does not creep. The right stick is free."
 msgstr ""
+"73h 571ck5 h4v3 4 d34d z0n3 0f 4 f1f7h 0f 7h31r 7r4v3l, 50 4 p4d l3f7 0n 73h "
+"d35k d035 n07 cr33p. 73h r1gh7 571ck 15 fr33."
 
 #: docs/help/controls.md
 msgid ""
@@ -633,60 +798,68 @@ msgid ""
 "and never for an observer. **Rumble** in Settings turns it off. The browser "
 "has to support it; Chrome and Edge do."
 msgstr ""
+"73h p4d rumbl35 wh3n j00 f1r3 4nd wh3n j00r 74nk d135, 45 BZFlag'5 d035: 4 "
+"5h0r7 buzz f0r 4 5h07, l0ng3r f0r 4 5h0ck w4v3, b07h m070r5 f0r 4 l453r, 4nd "
+"0n3 l0ng, 57r0ng 5h4k3 f0r 4 d347h. 17 rumbl35 0nly wh1l3 17 15 wh47 j00 4r3 "
+"pl4y1ng w17h -- 4 k3y 0r 4 cl1ck h4nd5 c0n7r0l b4ck 4nd k33p5 17 qu137 -- "
+"4nd n3v3r f0r 4n 0b53rv3r. **Rumbl3** 1n 53771ng5 7urn5 17 0ff. 73h br0w53r "
+"h45 70 5upp0r7 17; Chrome 4nd Edge d0."
 
 #: docs/help/controls.md
 msgid "XR controllers"
-msgstr ""
+msgstr "XR c0n7r0ll3r5"
 
 #: docs/help/controls.md
 msgid ""
 "In VR the controllers are the only input. Turning the tank is independent of "
 "where you look."
 msgstr ""
+"1n VR 73h c0n7r0ll3r5 4r3 73h 0nly 1npu7. 7urn1ng 73h 74nk 15 1nd3p3nd3n7 0f "
+"wh3r3 j00 l00k."
 
 #: docs/help/controls.md
 msgid "In the XR menu"
-msgstr ""
+msgstr "1n 73h XR m3nu"
 
 #: docs/help/controls.md
 msgid "Either thumbstick"
-msgstr ""
+msgstr "317h3r 7humb571ck"
 
 #: docs/help/controls.md
 msgid "forward/backward and turn -- the right stick if both are pushed"
-msgstr ""
+msgstr "f0rw4rd/b4ckw4rd 4nd 7urn -- 73h r1gh7 571ck 1f b07h 4r3 pu5h3d"
 
 #: docs/help/controls.md
 msgid "Either trigger"
-msgstr ""
+msgstr "317h3r 7r1gg3r"
 
 #: docs/help/controls.md
 msgid "`A` / `X` (primary face button)"
-msgstr ""
+msgstr "`A` / `X` (pr1m4ry f4c3 bu770n)"
 
 #: docs/help/controls.md
 msgid "`B` / `Y` (secondary face button)"
-msgstr ""
+msgstr "`B` / `Y` (53c0nd4ry f4c3 bu770n)"
 
 #: docs/help/controls.md
 msgid "open the XR menu"
-msgstr ""
+msgstr "0p3n 73h XR m3nu"
 
 #: docs/help/controls.md
 msgid "back, and close it from the top"
-msgstr ""
+msgstr "b4ck, 4nd cl053 17 fr0m 73h 70p"
 
 #: docs/help/controls.md
 msgid "Either grip"
-msgstr ""
+msgstr "317h3r gr1p"
 
 #: docs/help/controls.md
 msgid "Press either thumbstick"
-msgstr ""
+msgstr "Pr355 317h3r 7humb571ck"
 
 #: docs/help/controls.md
 msgid "Both controllers pulse for the same events as a gamepad's rumble."
-msgstr ""
+msgstr "B07h c0n7r0ll3r5 pul53 f0r 73h 54m3 3v3n75 45 4 g4m3p4d'5 rumbl3."
 
 #: docs/help/controls.md
 msgid ""
@@ -696,10 +869,15 @@ msgid ""
 "keyboard, raised when the row takes focus; see the README's WebXR section "
 "for headsets that have none."
 msgstr ""
+"1d3n71fy 15 0n 73h 7humb571ck pr355 b3c4u53 4 7humb 7h47 15 5733r1ng pr35535 "
+"17 by 4cc1d3n7, 4nd 1d3n71fy1ng c0575 n07h1ng; 73h m3nu 15 0n `B` f0r 73h "
+"54m3 r3450n. 7yp1ng -- 4 n4m3, 4 MOTD -- u535 73h h34d537'5 0wn 5y573m "
+"k3yb04rd, r4153d wh3n 73h r0w 74k35 f0cu5; 533 73h README'5 WebXR 53c710n "
+"f0r h34d5375 7h47 h4v3 n0n3."
 
 #: docs/help/flags.md
 msgid "Flags"
-msgstr ""
+msgstr "Fl4g5"
 
 #: docs/help/flags.md
 msgid ""
@@ -709,10 +887,15 @@ msgid ""
 "somebody picks it up. Team flags are captured by carrying an enemy's to your "
 "own base."
 msgstr ""
+"Dr1v3 0v3r 4 fl4g 70 p1ck 17 up, 4nd `Space` 70 dr0p 17. G00d fl4g5 h3lp; "
+"b4d fl4g5 h1nd3r, 4nd 574y un71l 7h3y 5h4k3 0ff, j00 k1ll, 0r j00 d13. 4 "
+"5up3rfl4g 0n 73h gr0und 15 wh173 4nd 73ll5 j00 n07h1ng 4b0u7 1753lf un71l "
+"50m3b0dy p1ck5 17 up. 734m fl4g5 4r3 c4p7ur3d by c4rry1ng 4n 3n3my'5 70 j00r "
+"0wn b453."
 
 #: docs/help/scoreboard.md
 msgid "Scoreboard"
-msgstr ""
+msgstr "5c0r3b04rd"
 
 #: docs/help/scoreboard.md
 msgid ""
@@ -722,6 +905,11 @@ msgid ""
 "count there instead, since you have no record against yourself. Rabbit Chase "
 "adds a rank percentage in front of the kill count."
 msgstr ""
+"34ch r0w'5 numb3r5 r34d **K1ll5 / D347h5**, 7h3n **[734m K1ll5]** 0nc3 j00 "
+"h4v3 4ny, 7h3n j00r 0wn r3c0rd 4g41n57 7h47 0n3 0pp0n3n7: **w1n5~l05535**, "
+"bl4nk un71l j00'v3 4c7u4lly f0ugh7 7h3m. J00r 0wn r0w 5h0w5 4 53lf-d357ruc7 "
+"c0un7 7h3r3 1n5734d, 51nc3 j00 h4v3 n0 r3c0rd 4g41n57 y0ur53lf. R4bb17 Ch453 "
+"4dd5 4 r4nk p3rc3n74g3 1n fr0n7 0f 73h k1ll c0un7."
 
 #: docs/help/scoreboard.md
 msgid ""
@@ -729,12 +917,17 @@ msgid ""
 "signed in with a verified callsign this session. Neither shows for anyone "
 "else."
 msgstr ""
+"B3f0r3 4 n4m3, 1n cy4n: `@` m34n5 7h47 pl4y3r 15 4n 4dm1n, `+` m34n5 7h3y'r3 "
+"51gn3d 1n w17h 4 v3r1f13d c4ll51gn 7h15 535510n. N317h3r 5h0w5 f0r 4ny0n3 "
+"3l53."
 
 #: docs/help/scoreboard.md
 msgid ""
 "Right after the name itself: a `/XX` is the flag they're carrying, in that "
 "flag's own colour -- see [Flags](flags.md) for what each abbreviation means."
 msgstr ""
+"R1gh7 4f73r 73h n4m3 1753lf: 4 `/XX` 15 73h fl4g 7h3y'r3 c4rry1ng, 1n 7h47 "
+"fl4g'5 0wn c0l0ur -- 533 [Fl4g5](flags.md) f0r wh47 34ch 4bbr3v14710n m34n5."
 
 #: docs/help/scoreboard.md
 msgid ""
@@ -742,42 +935,53 @@ msgid ""
 "replaces it the moment they're actually speaking. ⏳ means paused. A hunted "
 "player wears a cyan `◎` -- see [Hunting](controls.md#hunting)."
 msgstr ""
+"Fur7h3r 4l0ng 73h n4m3: 🎤 m34n5 7h47 pl4y3r'5 m1cr0ph0n3 15 0n, 4nd 🔊 "
+"r3pl4c35 17 73h m0m3n7 7h3y'r3 4c7u4lly 5p34k1ng. ⏳ m34n5 p4u53d. 4 hun73d "
+"pl4y3r w34r5 4 cy4n `◎` -- 533 [Hun71ng](controls.md#hunting)."
 
 #: docs/help/voice.md
 msgid "Audio and voice"
-msgstr ""
+msgstr "4ud10 4nd v01c3"
 
 #: docs/help/voice.md
 msgid ""
 "`Settings -> Audio Settings` — game, voice, and microphone levels, each from "
 "Off to 100%"
 msgstr ""
+"`Settings -> Audio Settings` — g4m3, v01c3, 4nd m1cr0ph0n3 l3v3l5, 34ch fr0m "
+"0ff 70 100%"
 
 #: docs/help/voice.md
 msgid ""
 "**Voice channel** — **All** is everyone on the server, **Nearby** is only "
 "players within earshot, **Team** is your own team anywhere on the map"
 msgstr ""
+"**V01c3 ch4nn3l** — **4ll** 15 3v3ry0n3 0n 73h 53rv3r, **N34rby** 15 0nly "
+"pl4y3r5 w17h1n 34r5h07, **734m** 15 j00r 0wn 734m 4nywh3r3 0n 73h m4p"
 
 #: docs/help/voice.md
 msgid "`B` — toggle the microphone"
-msgstr ""
+msgstr "`B` — 70ggl3 73h m1cr0ph0n3"
 
 #: docs/help/voice.md
 msgid ""
 "Voice is available after microphone permission is granted. Observers talk "
 "and listen on the same terms as everyone else."
 msgstr ""
+"V01c3 15 4v41l4bl3 4f73r m1cr0ph0n3 p3rm15510n 15 gr4n73d. 0b53rv3r5 74lk "
+"4nd l1573n 0n 73h 54m3 73rm5 45 3v3ry0n3 3l53."
 
 #: docs/help/about.md
 msgid "About"
-msgstr ""
+msgstr "4b0u7"
 
 #: docs/help/about.md
 msgid ""
 "Battlezone Online is a free 3D tank game in the browser that plays with "
 "[BZFlag](https://www.bzflag.org/)."
 msgstr ""
+"Battlezone Online 15 4 fr33 3D 74nk g4m3 1n 73h br0w53r 7h47 pl4y5 w17h "
+"[BZFlag](https://www.bzflag.org/)."
 
 #: docs/help/about.md
 msgid ""
@@ -785,3 +989,6 @@ msgid ""
 "v3.0](https://www.gnu.org/licenses/agpl-3.0.html). Source code is available "
 "at [github.com/timriker/bzo](/source)."
 msgstr ""
+"17 15 fr33 50f7w4r3 l1c3n53d und3r 73h [GNU Affero General Public License "
+"v3.0](https://www.gnu.org/licenses/agpl-3.0.html). 50urc3 c0d3 15 4v41l4bl3 "
+"47 [github.com/timriker/bzo](/source)."

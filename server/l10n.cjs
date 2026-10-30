@@ -70,7 +70,7 @@ function hasLocale(id) {
   return localeIds().includes(id);
 }
 
-// Upstream's parent fallback: `pt_BR` over `pt`, both over the msgid.
+// Upstream's parent fallback: `pt_PT` over `pt`, both over the msgid.
 function catalogMessages(locale, domain = 'bzo') {
   const messages = {};
   const parts = locale.split('_');
@@ -97,8 +97,11 @@ function catalogFor(locale, browser = locale) {
 
 // Browser tags that mean a catalog without naming it: Hong Kong and Macau
 // read Traditional Chinese, Singapore Simplified, and a script subtag says
-// which outright.
+// which outright. Bare `pt` is Brazilian, as CLDR has it; the other
+// Portuguese-speaking countries write the European standard.
 const TAG_ALIASES = Object.freeze({
+  'pt-AO': 'pt_PT', 'pt-MZ': 'pt_PT', 'pt-CV': 'pt_PT', 'pt-GW': 'pt_PT', 'pt-ST': 'pt_PT',
+  'pt-TL': 'pt_PT', 'pt-MO': 'pt_PT', 'pt-GQ': 'pt_PT', 'pt-LU': 'pt_PT', 'pt-CH': 'pt_PT',
   'zh-Hant': 'zh_TW', 'zh-Hant-TW': 'zh_TW', 'zh-Hant-HK': 'zh_TW', 'zh-Hant-MO': 'zh_TW',
   'zh-HK': 'zh_TW', 'zh-MO': 'zh_TW',
   'zh-Hans': 'zh_CN', 'zh-Hans-CN': 'zh_CN', 'zh-Hans-SG': 'zh_CN', 'zh-SG': 'zh_CN',

@@ -82,7 +82,7 @@ Two cache rules follow and are easy to miss:
   `npm run dev` takes effect on reload. Empty `msgstr` entries are dropped, so a
   missing translation falls back to the msgid.
 - Locale list is whatever `l10n/` contains. Adding a language is adding a file.
-- Parent fallback as upstream has it: `pt_BR` falls back to `pt`, then to the
+- Parent fallback as upstream has it: `pt_PT` falls back to `pt`, then to the
   msgid.
 
 ## Keys
@@ -546,6 +546,11 @@ truncation. Nothing else here waits on #113, and #113 does not wait on this.
   `TAG_ALIASES` in `server/l10n.cjs` sends `zh-HK`, `zh-MO` and any `zh-Hant`
   tag to Traditional, `zh-SG` and `zh-Hans` to Simplified, and a bare `zh` to
   Simplified.
+- **Portuguese is two catalogs.** A bare `pt` is Brazilian, as Unicode CLDR
+  has it, so `pt` is Brazilian Portuguese and `pt_PT` is Portugal's. Upstream's
+  own `pt` is European and comes in as `pt:pt_PT`. `pt-BR` and a bare `pt`
+  read Brazilian; `pt-PT` and the other Portuguese-speaking countries, which
+  write the European standard, read `pt_PT` (`TAG_ALIASES`).
 - **Every upstream catalog ships.** `npm run l10n:import-bzflag` seeded all
   of them; `xx` is upstream's untranslated template and is not a language.
   Klingon comes in as `tlh`, its ISO code, because upstream's `kg` is Kongo's
