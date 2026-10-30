@@ -216,8 +216,9 @@ mesh geometry does too.
       box or pyramid they clear `isOldBox`/`isOldPyramid`, so a flush obstacle
       stating one is a mesh with degenerate faces to bzfs, and bzo's own
       zero-area check cannot report what it never reads.
-- [ ] `spheremap` -- a material's environment-mapped texture coordinates,
-      dropped on 4 of the 54 live maps surveyed.
+- [ ] `spheremap` stated inline on a plain `box` or `pyramid`. A material's
+      `spheremap` reaches every mesh face that wears it; a box's wall and cap
+      slots have nowhere to put it.
 
 ## Physics drivers
 

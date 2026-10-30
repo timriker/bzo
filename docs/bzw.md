@@ -263,6 +263,8 @@ A material's own fields:
 | `color <r g b [a]>`, `diffuse <r g b [a]>` | the tint, read exactly as a plain obstacle's own (see **Colour**, above) |
 | `noradar` | the obstacle is left off the radar entirely |
 | `nolighting` | the face is drawn unlit -- its texture and tint at full brightness, untouched by the renderer's own lighting |
+| `noshadow` | the face casts no projected shadow |
+| `spheremap` | the texture's coordinates come from the view rather than the face, a reflection, as GL's sphere-map texture generation makes them; a mesh face only |
 | `matref <name>` | copies another already-defined material wholesale, which a line stated after it then overrides |
 | `dyncol <name>` | replaces the material's own tint outright with a named `dynamicColor`'s live RGBA -- see **Animated materials**, below |
 | `texmat <name>` | a named `textureMatrix`'s live UV transform, layered on top of whatever UVs the texture already carries -- see **Animated materials**, below |
@@ -585,20 +587,20 @@ Not yet read:
   a `phydrv` (see **Zero-area mesh faces**) and cannot for these two, since it
   does not read them to know they were stated -- they are counted as unread
   keywords instead.
-- **`occluder`, `spheremap`, `resetmat`.** Read and dropped -- not yet
-  implemented rather than deliberately declined. Each is counted as it is
-  dropped and named in the server log and in the map's own `-srvmsg` lines,
-  so a map says which of them it asked for. Of the three only `spheremap`
-  changes what upstream draws; `occluder` feeds its visibility culler, which
-  bzo has no equivalent of.
+- **`occluder`, `resetmat`.** Read and dropped -- not yet implemented rather
+  than deliberately declined. Each is counted as it is dropped and named in
+  the server log and in the map's own `-srvmsg` lines, so a map says which of
+  them it asked for. `occluder` feeds upstream's visibility culler, which bzo
+  has no equivalent of. `spheremap` stated inline on a plain `box` or
+  `pyramid` is counted the same way.
 - **`shader`/`addshader`/`noshaders`.** Read and dropped, deliberately.
   `BzMaterial` parses and stores a material's shader list and nothing
   anywhere upstream ever reads it back -- `getShader`/`getShaderCount` have
   no caller outside `BzMaterial` itself -- so these are as dead in a real
   bzflag client as they are here.
-- **`noshadow`.** Read and kept on the material (see **Materials**), but
-  nothing yet skips building a caster's projected shadow for one that asks
-  for none -- every solid obstacle casts one regardless.
+- **`noshadow`.** A mesh face whose material says it casts no projected
+  shadow (`MeshSceneNode.cxx:530`); the rest of that mesh still casts. A
+  plain `box` or `pyramid` stating it inline still casts (see below).
 
 ### Transparency flags: `nosorting`, `notexalpha`, `notexcolor`
 
@@ -1388,6 +1390,16 @@ rules from each other on a mesh's own faces: a `matref`/`addtexture` line
 only ever touches a face that *already* names some driver -- a face with none
 stays driver-less under a moving group. See **Physics drivers** and
 **Materials** above for what a mapper can rely on from each.
+
+`matswap <from> <to>` trades one material for another on this placement's
+mesh faces (`CustomGroup.cxx:98-118`): every face wearing `from` wears `to`
+instead, by the material itself, so a face that changed its material with an
+inline line after its `matref` is a different material and is left alone. A
+pair of lines naming each other trades both, which is how one `define` is
+placed once in a team's colours and once, spun round, in the other's. A
+placement's own `matref`/`addtexture` wins over its swaps, and an outer
+placement's swap applies to what an inner one has already swapped
+(`ObstacleModifier.cxx:104-142`).
 
 `tint <r g b [a]>` multiplies each mesh face's diffuse component-wise rather
 than replacing it (`getTintedMaterial`, `ObstacleModifier.cxx:158-176` --

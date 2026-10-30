@@ -338,6 +338,8 @@ const bzwFaceMaterial = (m) => ({
   noRadar: m.noRadar,
   noLighting: m.noLighting,
   noShadow: !!m.noShadow,
+  useSphereMap: !!m.useSphereMap,
+  materialId: m.materialId ?? null,
   dynamicColor: m.dynamicColor ?? null,
   textureMatrix: m.textureMatrix ?? null,
   specular: m.specular ?? null,
@@ -2188,7 +2190,18 @@ function parseBZWMap(filename, { quiet = false, extraMessages = [], text: givenT
   // sequence every caller already gives its own block. Returns whether
   // `token` was one of these, so a caller falls through to whatever else
   // its own block reads for anything this returns false for.
+  // Which named material a face wears, as its index in `materialRegistry`,
+  // for a group's `matswap` to find it by (`ObstacleModifier.cxx:199-203`
+  // swaps by the material itself). A `matref` sets it; any other line that
+  // changes the material after it makes a different material, as upstream's
+  // own inline face properties do, and clears it.
   function applyBzwMaterialToken(target, token, words) {
+    const handled = readBzwMaterialToken(target, token, words);
+    if (handled && token !== 'matref') target.materialId = null;
+    return handled;
+  }
+
+  function readBzwMaterialToken(target, token, words) {
     if (token === 'matref') {
       const rawRef = words[1] || '';
       // `findMaterial`'s own check (`BzMaterial.cxx:79`) looks at the
@@ -2207,6 +2220,7 @@ function parseBZWMap(filename, { quiet = false, extraMessages = [], text: givenT
       // that string (`CustomGroup.cxx:87`, `ObstacleModifier`, and the
       // `phydrv`/`texmat` readers beside them), so it is left unreported
       // here too rather than named on load as a map's mistake.
+      target.materialId = referenced ? referenced.index : null;
       if (referenced) {
         target.texture = referenced.texture;
         target.textureUrl = referenced.textureUrl;
@@ -2214,6 +2228,7 @@ function parseBZWMap(filename, { quiet = false, extraMessages = [], text: givenT
         target.noRadar = referenced.noRadar;
         target.noLighting = referenced.noLighting;
         target.noShadow = referenced.noShadow;
+        target.useSphereMap = referenced.useSphereMap;
         target.dynamicColor = referenced.dynamicColor;
         target.textureMatrix = referenced.textureMatrix;
         target.specular = referenced.specular;
@@ -2292,8 +2307,13 @@ function parseBZWMap(filename, { quiet = false, extraMessages = [], text: givenT
       // upstream, and only a `texture` line (or the first `addtexture`,
       // `notextures` having cleared the slot) actually changes what shows.
       if (token === 'addtexture' && (target.texture || target.textureUrl)) {
+        // Lines that follow it -- `spheremap` -- belong to that inert slot.
+        target.laterTextureSlot = true;
         return true;
       }
+      // A new first slot starts with sphere mapping off; `texture` renames
+      // the last one and keeps it (`BzMaterial::setTexture`).
+      if (token === 'addtexture') target.useSphereMap = false;
       const rawName = words.slice(1).join(' ');
       const resolved = resolveBzwTextureName(rawName);
       if (resolved?.stock) {
@@ -2311,6 +2331,16 @@ function parseBZWMap(filename, { quiet = false, extraMessages = [], text: givenT
     if (token === 'notextures') {
       target.texture = null;
       target.textureUrl = null;
+      target.useSphereMap = false;
+      target.laterTextureSlot = false;
+      return true;
+    }
+    // `spheremap` (`BzMaterial::setUseSphereMap`): the last texture's
+    // coordinates come from the view instead of the face, `GL_SPHERE_MAP`
+    // texture generation (`OpenGLGState.cxx:745-748`). Only slot 0 is ever
+    // drawn, so a later slot's says nothing.
+    if (token === 'spheremap') {
+      if (!target.laterTextureSlot) target.useSphereMap = true;
       return true;
     }
     if (token === 'noradar') {
@@ -2775,6 +2805,7 @@ function parseBZWMap(filename, { quiet = false, extraMessages = [], text: givenT
         // upstream's real numbering exactly for real maps, at the cost of
         // drifting by one from wherever a map writes two blocks that
         // genuinely are identical on every field upstream tracks.
+        currentMaterial.index = materialRegistry.length;
         materialRegistry.push(currentMaterial);
         if (currentMaterial.name) {
           materialsByName.set(currentMaterial.name.toLowerCase(), currentMaterial);
@@ -2800,7 +2831,7 @@ function parseBZWMap(filename, { quiet = false, extraMessages = [], text: givenT
       }
       // Everything else a material block can say -- ambient and groupAlpha
       // (both read and dropped; see `applyBzwMaterialToken` above),
-      // shader/addshader/noshaders, occluder, spheremap, resetmat -- is
+      // shader/addshader/noshaders, occluder, resetmat -- is
       // dropped, and counted on the way out. A material keyword bzo does not read changes
       // what a map looks like, so the map should say which ones it wanted
       // rather than leaving it to be discovered by surveying the tree.
@@ -3743,6 +3774,8 @@ function parseBZWMap(filename, { quiet = false, extraMessages = [], text: givenT
           ricochet: false,
           texture: current.texture, textureUrl: current.textureUrl,
           color: current.color, noRadar: current.noRadar, noLighting: current.noLighting,
+          noShadow: !!current.noShadow, useSphereMap: !!current.useSphereMap,
+          materialId: current.materialId ?? null,
           specular: current.specular, emission: current.emission, shininess: current.shininess,
           alphaThreshold: current.alphaThreshold,
           ...bzwMaterialFlags(current),
@@ -3882,6 +3915,21 @@ function parseBZWMap(filename, { quiet = false, extraMessages = [], text: givenT
       const [, color] = line.split(/\s+/);
       const team = parseInt(color, 10);
       current.team = Number.isInteger(team) ? Math.max(1, Math.min(4, team)) : 1;
+    } else if (current && current.type === 'group' && token === 'matswap') {
+      // `CustomGroup.cxx:98-118`: every face of this placement wearing the
+      // first material wears the second instead. Each line names its own
+      // pair, so `a b` and `b a` together trade the two outright.
+      const [, srcName = '', dstName = ''] = line.split(/\s+/);
+      const find = (ref) => (/^[0-9]/.test(ref) ? materialRegistry[parseInt(ref, 10)]
+        : materialsByName.get(ref.toLowerCase())) || null;
+      const src = find(srcName);
+      const dst = find(dstName);
+      if (!src || !dst) {
+        warn(`${mapLabel}: matswap ${srcName} ${dstName} names a material the map never defines`);
+      } else {
+        current.matSwap ??= new Map();
+        current.matSwap.set(src.index, dst.index);
+      }
     } else if (current && current.type === 'group' && token === 'tint') {
       // `CustomGroup::read`'s own `tint` (`CustomGroup.cxx:58-67`) -- not a
       // material property at all, and read nowhere else in a map. It
@@ -4036,6 +4084,7 @@ function parseBZWMap(filename, { quiet = false, extraMessages = [], text: givenT
           ricochet: !!current.ricochet,
           phydrv: current.phydrv || null,
           materialOverride: current.materialOverride || null,
+          matSwap: current.matSwap ? [...current.matSwap] : null,
           tint: current.tint || null,
           // Upstream's whole transform (`CustomGroup.cxx:129-139`: `size`,
           // `rotation`, `position`, then the ordered list), carried only
@@ -4354,8 +4403,11 @@ function parseBZWMap(filename, { quiet = false, extraMessages = [], text: givenT
     if (member.type !== 'mesh') return member;
     const hasPhydrvOverride = !!request.phydrv;
     const hasMaterialOverride = !!request.materialOverride;
+    // A placement's own material wins over its swaps, as upstream's does
+    // (`ObstacleModifier.cxx:136-142`).
+    const matSwap = !hasMaterialOverride && request.matSwap?.length ? new Map(request.matSwap) : null;
     const tint = request.tint || null;
-    if (!hasPhydrvOverride && !hasMaterialOverride && !tint) return member;
+    if (!hasPhydrvOverride && !hasMaterialOverride && !matSwap && !tint) return member;
     return carrySource({
       ...member,
       faces: member.faces.map((face) => {
@@ -4368,11 +4420,15 @@ function parseBZWMap(filename, { quiet = false, extraMessages = [], text: givenT
           next.noRadar = request.materialOverride.noRadar;
           next.noLighting = request.materialOverride.noLighting;
           next.noShadow = request.materialOverride.noShadow;
+          next.useSphereMap = request.materialOverride.useSphereMap;
           next.specular = request.materialOverride.specular;
           next.emission = request.materialOverride.emission;
           next.shininess = request.materialOverride.shininess;
           next.alphaThreshold = request.materialOverride.alphaThreshold;
           Object.assign(next, bzwMaterialFlags(request.materialOverride));
+          next.materialId = request.materialOverride.materialId ?? null;
+        } else if (matSwap && matSwap.has(face.materialId)) {
+          applyBzwMaterialToken(next, 'matref', ['matref', String(matSwap.get(face.materialId))]);
         }
         // `tint` last, over whatever the material override just wrote --
         // `ObstacleModifier::execute` tints the face's *replacement*
@@ -5094,7 +5150,7 @@ function parseBZWMap(filename, { quiet = false, extraMessages = [], text: givenT
     // difference between 3 of its passable instances being shared and 15:
     // its flag panels are one definition worn in several colours.
     const overrideKey = JSON.stringify([
-      request.materialOverride || null, request.tint || null, request.phydrv || null,
+      request.materialOverride || null, request.matSwap || null, request.tint || null, request.phydrv || null,
       !!request.driveThrough, !!request.shootThrough, !!request.ricochet,
     ]);
     // A definition holding a spinning mesh turns about a pivot placed per
@@ -5574,8 +5630,9 @@ function parseBZWMap(filename, { quiet = false, extraMessages = [], text: givenT
 // Which layout a world file is in. Raised whenever a parse of the same map
 // would come out different, so a server does not restore a world it wrote
 // in an older one: 2 is upstream's frame (#182), 4 keeps a mesh face's
-// `nolighting`, 5 its `noshadow`.
-const WORLD_FORMAT = 5;
+// `nolighting`, 5 its `noshadow`, 6 its `spheremap`, 7 a group's
+// `matswap`.
+const WORLD_FORMAT = 7;
 
 // `instanced 18/22 groups, 15 templates, 52 faces` -- group instances drawn
 // from a shared template rather than a copy apiece (#153).

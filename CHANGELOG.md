@@ -6,6 +6,25 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
 
 ## [Unreleased]
 
+### Added
+- Brazilian Portuguese. A bare `pt` is Brazilian, as browsers have it, so
+  `pt` is now Brazilian and Portugal's is `pt_PT`, "Português (Portugal)",
+  which `pt-PT` and Portuguese-speaking Africa read. A Settings choice of
+  Portuguese made before now reads Brazilian.
+- `spheremap` on a map's materials: the texture is mapped from the view, a
+  reflection, as BZFlag draws it.
+- A `group`'s `matswap`, as BZFlag reads it: a mirrored base placed twice
+  wears the other team's colours on its second copy, where before both
+  copies wore the first's.
+- `bzo.bzw` samples of `nolighting`, `noshadow` and `spheremap`, in the
+  south-east corner beside the passability row.
+- Help in l337, Redneck and Klingon; a player wanting the plain help picks
+  their own language in Settings.
+
+### Fixed
+- `noshadow` stated on a mesh itself, not through a material, now reaches
+  its faces.
+
 ## [1.3.73] - 2026-10-29
 
 ### Security

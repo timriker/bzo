@@ -1091,6 +1091,54 @@ pyramid
   size 6.0 6.0 5.0
 end
 
+# Material flags that only reach a mesh's faces, so each sample is a
+# `meshbox` or a `sphere` rather than a plain box. `nolighting` draws at its
+# full colour whatever the sun is doing -- compare its shaded side with
+# `matref`'s above. `noshadow` is a tall pillar that throws no shadow, beside
+# `solid`, which does. `spheremap` maps the texture from the view rather
+# than the surface, so it slides across the sphere like a reflection as you
+# drive around it. See docs/bzw.md, "Materials and appearance".
+material
+  name glow-amber
+  addtexture caution
+  diffuse 1.0 0.62745 0.12549
+  nolighting
+end
+
+meshbox
+  name nolighting
+  position 93 -108 0
+  size 3.0 3.0 5.0
+  matref glow-amber
+end
+
+material
+  name no-shadow
+  diffuse 0.6 0.6 0.65
+  noshadow
+end
+
+meshbox
+  name noshadow
+  position 107 -108 0
+  size 1.0 1.0 12.0
+  matref no-shadow
+end
+
+material
+  name mirror
+  addtexture boxwall
+  spheremap
+end
+
+sphere
+  name spheremap
+  position 121 -108 4
+  size 4.0 4.0 4.0
+  divisions 24
+  matref mirror
+end
+
 # South-west: the same teleporter pair `flagbuffet.bzw` carries, and two
 # overhangs to jump into. `doUpdateMotion` zeroes a tank's rise the instant
 # it meets a surface above it (see AGENTS.md), so driving under either of

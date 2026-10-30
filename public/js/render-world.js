@@ -358,6 +358,33 @@ function emitThroughTexture(material) {
   if (map && emissive && (emissive.r > 0 || emissive.g > 0 || emissive.b > 0)) material.emissiveMap = map;
 }
 
+// `spheremap`: GL's `GL_SPHERE_MAP` texture generation in place of the face's
+// own coordinates -- per vertex, from the eye-space reflection of the view
+// ray, then through the texture matrix as GL's are (`OpenGLGState.cxx:745`).
+const SPHERE_MAP_VERTEX = `#include <project_vertex>
+	vec3 sphereNormal = normal;
+	#ifdef USE_INSTANCING
+		sphereNormal = mat3( instanceMatrix ) * sphereNormal;
+	#endif
+	sphereNormal = normalize( normalMatrix * sphereNormal );
+	vec3 sphereRay = reflect( normalize( mvPosition.xyz ), sphereNormal );
+	float sphereM = 2.0 * sqrt( sphereRay.x * sphereRay.x + sphereRay.y * sphereRay.y
+		+ ( sphereRay.z + 1.0 ) * ( sphereRay.z + 1.0 ) );
+	vec2 sphereUv = sphereRay.xy / sphereM + 0.5;
+	#ifdef USE_MAP
+		vMapUv = ( mapTransform * vec3( sphereUv, 1.0 ) ).xy;
+	#endif
+	#ifdef USE_EMISSIVEMAP
+		vEmissiveMapUv = ( emissiveMapTransform * vec3( sphereUv, 1.0 ) ).xy;
+	#endif`;
+
+function useSphereMap(material) {
+  material.onBeforeCompile = (shader) => {
+    shader.vertexShader = shader.vertexShader.replace('#include <project_vertex>', SPHERE_MAP_VERTEX);
+  };
+  material.customProgramCacheKey = () => 'spheremap';
+}
+
 // A shared obstacle material is cached by `key` alone (`_getSharedObstacleMaterials`),
 // so two obstacles whose specular/shininess/emission differ need different keys
 // or they would silently share whichever one built the material first.
@@ -2256,7 +2283,7 @@ export class WorldRendering {
         + `|${materialLightingKey(face.specular, face.shininess, face.emission)}`
         + `|${face.noSorting ? 's' : ''}${face.useTextureAlpha === false ? 'a' : ''}`
         + `${face.useColorOnTexture === false ? 'd' : ''}${face.noCulling ? 'c' : ''}${face.noLighting ? 'n' : ''}`
-        + `${face.noShadow ? 'h' : ''}`;
+        + `${face.noShadow ? 'h' : ''}${face.useSphereMap ? 'm' : ''}`;
       let materialIndex = materialIndexByKey.get(key);
       if (materialIndex === undefined) {
         // A generic `mesh` face with no `texture`/`addtexture` at all (unlike
@@ -2300,6 +2327,7 @@ export class WorldRendering {
             ...lightingOptions,
           });
           emitThroughTexture(material);
+          if (face.useSphereMap) useSphereMap(material);
         } else {
           material = new LitClass(lightingOptions);
         }

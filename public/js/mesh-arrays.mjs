@@ -33,7 +33,7 @@
 // themselves stop being objects.
 const MATERIAL_FIELDS = [
   'texture', 'textureUrl', 'color', 'dynamicColor', 'textureMatrix',
-  'specular', 'shininess', 'emission', 'alphaThreshold', 'noLighting', 'noShadow',
+  'specular', 'shininess', 'emission', 'alphaThreshold', 'noLighting', 'noShadow', 'useSphereMap',
   'noSorting', 'useTextureAlpha', 'useColorOnTexture', 'noCulling',
 ];
 
