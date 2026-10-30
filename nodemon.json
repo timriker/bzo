@@ -3,7 +3,7 @@
     "server.js",
     "server/",
     "public/",
-    "server.json"
+    "plugins/"
   ],
   "ignore": [
     "server.log",

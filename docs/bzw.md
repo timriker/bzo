@@ -488,7 +488,8 @@ name way `matref` does (`DynamicColor.cxx:80-101`,
 `TextureMatrix.cxx:73-94`), collected into their own registry the same way a
 `material` or a `physics` block is. Real usage is well evidenced --
 `ahs3_Ironside_Battlefield.bzw`, `dw_missilewar3.bzw`, and
-`import-Planet-MoFo.com_4202.bzw` (all under `maps/`) use both, for a
+`import-Planet-MoFo.com_4202.bzw` (community maps, kept locally, not
+shipped) use both, for a
 teleporter's glow, scrolling stripe and pillar textures, and a cycling
 multi-frame billboard sign.
 

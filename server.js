@@ -468,9 +468,19 @@ const loginRateLimit = rateLimit({
       .send('Too many login requests. Try again in a minute.\n');
   },
 });
+// A checkout keeps what is the operator's own in `data/`, as the image keeps it
+// on its `/data` volume: `server.json` and the state beside it, the cache, and
+// the maps, replays and plugins it adds to the bundled ones. `./server.json`
+// with no `data/server.json` is the layout from before that, read where it is
+// until `npm run move-data` moves it.
+const DATA_CONFIG_PATH = path.join(__dirname, 'data', 'server.json');
+const LEGACY_CONFIG_PATH = path.join(__dirname, 'server.json');
+const CONFIG_IS_LEGACY = !process.env.SERVER_CONFIG_PATH
+  && !fs.existsSync(DATA_CONFIG_PATH) && fs.existsSync(LEGACY_CONFIG_PATH);
 const CONFIG_PATH = process.env.SERVER_CONFIG_PATH
   ? path.resolve(process.env.SERVER_CONFIG_PATH)
-  : path.join(__dirname, 'server.json');
+  : (CONFIG_IS_LEGACY ? LEGACY_CONFIG_PATH : DATA_CONFIG_PATH);
+if (CONFIG_IS_LEGACY) log(`Config: ${LEGACY_CONFIG_PATH} is the old layout; npm run move-data puts it in data/`);
 const EXAMPLE_CONFIG_PATH = path.join(__dirname, 'example-server.json');
 
 // The expensive things this server computes: parsed worlds and their overview
@@ -481,8 +491,8 @@ const EXAMPLE_CONFIG_PATH = path.join(__dirname, 'example-server.json');
 // way `RUNTIME_MAPS_DIR` sits beside it -- which puts it on the mounted volume
 // in Docker (`/data/cache` for `/data/server.json`) rather than inside the
 // image, where an upgrade would throw all of it away and make the next boot
-// re-download every listed server's world. Unchanged for a source checkout,
-// whose config is `server.json` in this directory.
+// re-download every listed server's world. A checkout's is `data/cache`, as
+// its config is `data/server.json`.
 //
 // `CACHE_PATH` overrides it, for an operator who wants this on a different
 // disk from the config -- it is the larger of the two by far.

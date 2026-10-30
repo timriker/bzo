@@ -81,12 +81,14 @@ Use `--platform linux/arm64` on ARM hosts if you want to pin that explicitly.
 - Persist server settings and runtime config by mounting `/data` (already done in
   `compose.yml`).
 - `SERVER_CONFIG_PATH` defaults to `/data/server.json`.
-- `/data` holds three things, all of which want to survive an image upgrade:
-  `server.json`, the maps in `/data/maps`, and `/data/cache`. The cache is
+- `/data` holds what wants to survive an image upgrade: `server.json` and
+  the state files beside it, the maps, replays and plugins added to the
+  bundled ones (`/data/maps`, `/data/replays`, `/data/plugins`), and
+  `/data/cache`. The cache is
   where parsed worlds, their overview pictures and the world hashes bzo has
   collected from other servers live -- rebuilding it means downloading every
   listed server's world again, which is why it is not inside the image.
-  `CACHE_PATH` moves it elsewhere; it is much the largest of the three.
+  `CACHE_PATH` moves it elsewhere; it is much the largest.
 - The container runs as UID/GID `1000:1000`; for bind mounts, ensure the host
   `./data` directory is writable by that user (for example `chown -R 1000:1000 ./data`).
 
@@ -120,7 +122,9 @@ should go to the runtime directory.
 Replays work the same way: the bundled sample ships at `/app/replays`, uploads
 go to `$(dirname $SERVER_CONFIG_PATH)/replays`, and `REPLAYS_PATH` overrides
 that. The Operator panel deletes only what it uploaded, which it records in
-`uploads.json` beside `server.json`.
+`uploads.json` beside `server.json`. Plugins too: bzo's own at `/app/plugins`,
+an operator's in `$(dirname $SERVER_CONFIG_PATH)/plugins` (`PLUGINS_PATH`),
+where one of the same name wins.
 
 ## Install from source
 
@@ -135,8 +139,17 @@ that. The Operator panel deletes only what it uploaded, which it records in
 npm install
 ```
 
-If `server.json` does not exist, the server will create it from
-[example-server.json](../example-server.json) on first start.
+A checkout keeps the operator's own files in `data/`, laid out as the image's
+`/data` is: `data/server.json` and its state, `data/maps`, `data/replays`,
+`data/plugins` and `data/cache`. `maps/`, `replays/` and `plugins/` hold only
+what ships with bzo. If `data/server.json` does not exist, the server creates
+it from [example-server.json](../example-server.json) on first start.
+
+A checkout from before this keeps `server.json` at the top, which the server
+still reads there. `npm run move-data` moves it, its state, the cache and every
+file git does not track in `maps/`, `replays/` and `plugins/` into `data/`
+(`--dry-run` lists them first). Under `npm run dev`, restart it afterwards so
+nodemon watches the new config.
 
 ### Run
 
@@ -158,7 +171,7 @@ Then open:
 
 ## Configuration
 
-Runtime configuration lives in `server.json` by default.
+Runtime configuration lives in `data/server.json` by default.
 
 You can override the path with:
 
