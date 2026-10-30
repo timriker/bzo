@@ -1,4 +1,4 @@
-// SAMPLE_PLUGIN.cjs - upstream's plugins/SAMPLE_PLUGIN, the starting point for
+// sample.cjs - upstream's plugins/SAMPLE_PLUGIN, the starting point for
 // a new plugin. Copy it to data/plugins under a new name and fill it in;
 // docs/plugins-plan.md says what a plugin is. Off unless server.json's
 // "plugins" turns it on, as upstream ships it but loads it nowhere.
@@ -33,7 +33,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 module.exports = {
   meta: {
-    name: 'SAMPLE PLUGIN',
+    name: 'Sample',
     version: '1.0',
     author: 'Tim Riker',
     description: 'does nothing; a starting point for a new plugin',
@@ -42,7 +42,7 @@ module.exports = {
   },
 
   Init(bz /* , config */) {
-    bz.log('SAMPLE_PLUGIN plugin loaded');
+    bz.log('sample plugin loaded');
 
     // init events here with bz.Register();
   },
