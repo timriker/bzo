@@ -18,12 +18,13 @@ const CHAT_MIN_WIDTH_WITH_DEBUG = 560;
 const CHAT_DEBUG_PANEL_RESERVE = 352;
 // A chat destination that is not a player is one of upstream's reserved
 // PlayerIds -- see `player-ids.mjs` for the space and why bzo shares it.
-// `send team` (ActionBinding.cxx:101) is `FIRST_TEAM` and means this client's
-// own team, which is the only one it can address.
+// `send team` (ActionBinding.cxx:101) is the dropdown's `team`, which means
+// this client's own team whichever that is now, and is sent as that team's
+// own destination (`teamChannel`), as upstream's client sends it.
 const CHAT_TARGET_ALL = ALL_PLAYERS;
 const CHAT_TARGET_SERVER = SERVER_PLAYER;
 const CHAT_TARGET_ADMIN = ADMIN_PLAYERS;
-const CHAT_TARGET_TEAM = FIRST_TEAM;
+const CHAT_TARGET_TEAM = 'team';
 const CHAT_KIND_CHAT = 'chat';
 const CHAT_KIND_ACTION = 'action';
 const CHAT_KIND_SERVER = 'server';
@@ -123,7 +124,8 @@ import {
   ALL_PLAYERS,
   SERVER_PLAYER,
   ADMIN_PLAYERS,
-  FIRST_TEAM,
+  channelTeam,
+  teamChannel,
 } from './player-ids.mjs';
 import { getMenuClickDirection, playMenuBackSound, playMenuSelectSound, setMenuSoundPlayer } from './menus.js';
 import { N_, onLocaleChange, t, translateServerText } from './i18n.mjs';
@@ -3832,7 +3834,8 @@ function sendChatInputText() {
     chatInput.value = '';
     return;
   }
-  const dst = normalizeMessageEndpoint(chatTarget.value, CHAT_TARGET_ALL);
+  const endpoint = normalizeMessageEndpoint(chatTarget.value, CHAT_TARGET_ALL);
+  const dst = endpoint === CHAT_TARGET_TEAM ? teamChannel(getMyTeamColorIndex() ?? 0) : endpoint;
   sendToServer({ type: 'message', dst, msgType: CHAT_KIND_CHAT, text });
   chatInput.value = '';
 }
@@ -3866,7 +3869,8 @@ function handleMessageNemesisTarget() {
 function normalizeMessageEndpoint(value, fallback = CHAT_TARGET_ALL) {
   if (value === CHAT_TARGET_ALL || value === String(CHAT_TARGET_ALL)) return CHAT_TARGET_ALL;
   if (value === CHAT_TARGET_SERVER || value === String(CHAT_TARGET_SERVER)) return CHAT_TARGET_SERVER;
-  if (value === CHAT_TARGET_TEAM || value === String(CHAT_TARGET_TEAM)) return CHAT_TARGET_TEAM;
+  if (value === CHAT_TARGET_TEAM) return CHAT_TARGET_TEAM;
+  if (channelTeam(value) !== null) return Number(value);
   if (value === CHAT_TARGET_ADMIN || value === String(CHAT_TARGET_ADMIN)) return CHAT_TARGET_ADMIN;
   if (value === null || value === undefined || value === '') return fallback;
   return String(value);
@@ -3876,7 +3880,7 @@ function getPlayerName(id) {
   const normalizedId = normalizeMessageEndpoint(id, CHAT_TARGET_SERVER);
   if (normalizedId === CHAT_TARGET_ALL) return 'ALL';
   if (normalizedId === CHAT_TARGET_SERVER) return 'SERVER';
-  if (normalizedId === CHAT_TARGET_TEAM) return 'TEAM';
+  if (normalizedId === CHAT_TARGET_TEAM || channelTeam(normalizedId) !== null) return 'TEAM';
   if (normalizedId === CHAT_TARGET_ADMIN) return 'ADMIN';
   if (normalizedId === myPlayerId && typeof myPlayerName === 'string' && myPlayerName.trim().length > 0) {
     return myPlayerName.trim();
@@ -3959,13 +3963,13 @@ function formatNetworkMessage(message) {
       ],
     };
   }
-  if (dst === CHAT_TARGET_TEAM) {
+  if (channelTeam(dst) !== null) {
     const senderState = tanks.get(src)?.userData?.playerState;
     // Named by its colour alone -- `[Green]`, not `[Green Team]` -- for the same
     // reason `getPlayerFlagLabel` strips it off a team flag: the bracket says
     // which of the two kinds of name this is and the colour says the rest, so the
     // word is as redundant here as "Player" before a quoted name.
-    const teamName = PLAYER_TEAM_LABELS[normalizePlayerTeam(senderState?.team)] ?? 'Team';
+    const teamName = PLAYER_TEAM_LABELS[getTeamFromColorIndex(channelTeam(dst))] ?? 'Team';
     const label = `[${teamName.replace(/ Team$/, '')}]`;
     const separator = msgType === CHAT_KIND_ACTION ? ' ' : ': ';
     return {
@@ -9034,7 +9038,7 @@ function receiveMessage(message) {
   if (srcId !== myPlayerId) {
     const now = performance.now();
     const throttled = (last) => now - last >= MESSAGE_SOUND_INTERVAL_MS;
-    if (dstId === CHAT_TARGET_TEAM && throttled(lastTeamMessageSoundAt)) {
+    if (channelTeam(dstId) !== null && throttled(lastTeamMessageSoundAt)) {
       lastTeamMessageSoundAt = now;
       renderManager.playLocalSound('messageTeam');
     } else if (dstId === CHAT_TARGET_ADMIN && throttled(lastAdminMessageSoundAt)) {

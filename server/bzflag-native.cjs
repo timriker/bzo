@@ -19,7 +19,6 @@ const VERSION_LEN = 60;
 const NO_PLAYER = 255;
 const ALL_PLAYERS = 254;
 const SERVER_PLAYER = 253;
-const ADMIN_PLAYERS = 252;
 // The last id a player may have (`LastRealPlayer`, global.h): ids above it
 // are team and broadcast addresses.
 const LAST_REAL_PLAYER = 243;
@@ -219,11 +218,12 @@ class NativeTranslator {
     return Number.isInteger(id) && id >= 0 && id <= LAST_REAL_PLAYER ? id : NO_PLAYER;
   }
 
-  // An id bzo sent that names no player: the server, or nobody.
+  // A message's source or destination: a player, or one of the addresses
+  // above them -- a team, the admins, the server, everyone -- which bzo
+  // numbers as upstream does.
   sourceSlot(bzoId) {
-    if (bzoId === SERVER_PLAYER || bzoId === String(SERVER_PLAYER)) return SERVER_PLAYER;
-    if (bzoId === ALL_PLAYERS || bzoId === String(ALL_PLAYERS)) return ALL_PLAYERS;
-    if (bzoId === ADMIN_PLAYERS || bzoId === String(ADMIN_PLAYERS)) return ADMIN_PLAYERS;
+    const id = Number(bzoId);
+    if (Number.isInteger(id) && id > LAST_REAL_PLAYER && id <= ALL_PLAYERS) return id;
     return this.slotFor(bzoId);
   }
 

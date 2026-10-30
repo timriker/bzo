@@ -727,10 +727,10 @@ own client declare its death, its shot ends, its flag grabs and its teleports.
 The same nouns appear on both wires with the arrow reversed.
 
 **A player id is a slot number, and it is upstream's.** 0 through 243, with
-the non-player destinations at the top of the byte -- 251 a team, 252 admin,
-253 the server, 254 everybody (`Address.h:73-78`). The `player-ids` pair is
-where both ends read them from, and `docs/network.md` has the one place bzo
-differs. A slot number is what the scoreboard shows and what an id-taking
+the non-player destinations at the top of the byte -- 251 down to 244 the
+teams, 252 admin, 253 the server, 254 everybody (`Address.h:73-78`). The
+`player-ids` pair is where both ends read them from, `teamChannel` and
+`channelTeam` included. A slot number is what the scoreboard shows and what an id-taking
 command names, so it means the same thing in bzo as in BZFlag -- and a proxied
 player's id *is* the target's own, which only works if the two agree.
 
@@ -2841,15 +2841,14 @@ confirm is what keeps the XR operator menu one line per setting instead of a
 setting plus an apply row, which a thumbstick-scrolled list cannot afford. The
 Match Timer buttons and Upload Map are actions, not staged.
 
-**Chat destinations are small negatives**, because upstream spends reserved
-PlayerIds on the ones that are not players and bzo spends ids on players alone:
+**Chat destinations are upstream's reserved PlayerIds:**
 
-| bzo | upstream | who sees it |
+| destination | upstream | who sees it |
 |---|---|---|
-| `0` ALL | `AllPlayers` 254 | everyone |
-| `-1` SERVER | `ServerPlayer` 253 | the server log only |
-| `-2` TEAM | 251 and down | the sender's team, sender included |
-| `-3` ADMIN | `AdminPlayers` 252 | every admin, sender included |
+| ALL | `AllPlayers` 254 | everyone |
+| SERVER | `ServerPlayer` 253 | the server log only |
+| a team | `FirstTeam - team`, 251 Rogue to 244 Hunter | that team, sender included |
+| ADMIN | `AdminPlayers` 252 | every admin, sender included |
 | a player id | the player id | that player and the sender |
 
 An admin message is marked `[ADMIN]` and goes to the Chat tab, as a team message

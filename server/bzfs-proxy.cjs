@@ -15,9 +15,8 @@ const { URLSearchParams } = require('url');
 const {
   ADMIN_PLAYERS,
   ALL_PLAYERS,
-  FIRST_TEAM,
+  channelTeam,
   isRealPlayerId,
-  LAST_REAL_PLAYER,
   NO_PLAYER,
   SERVER_PLAYER,
 } = require('./player-ids.cjs');
@@ -213,32 +212,24 @@ function proxyMotto(req) {
   const secure = req.headers['x-forwarded-proto'] === 'https' || Boolean(req.socket.encrypted);
   return `via ${secure ? 'https' : 'http'}://${host}`;
 }
-// Chat, both ways. The two wires name the same destinations with different
-// numbers: bzo spends small negatives on everything that is not a player
-// (`docs/network.md`), where bzfs counts down from 251 for teams and reserves
-// the top of the byte for "all" and "admin".
-// Chat, both ways. The two wires now number the same things the same way
-// (`server/player-ids.cjs`), so this is a translation in one place only:
-// which team. Upstream names the team a line went to and bzo says only "mine".
+// Chat, both ways. The two wires number the same destinations the same way
+// (`server/player-ids.cjs`), teams included, so a player's id is all that
+// changes spelling.
 function proxyChatSource(from) {
   return isRealPlayerId(from) ? String(from) : from;
 }
 
 function proxyChatDestination(to) {
-  // Anything above the last real player and below `AdminPlayers` is one of
-  // the eight teams, and a proxied client can only be on one of them.
-  if (isRealPlayerId(to)) return String(to);
-  return to <= FIRST_TEAM && to > LAST_REAL_PLAYER ? FIRST_TEAM : to;
+  return isRealPlayerId(to) ? String(to) : to;
 }
 
-// The other direction, for a line the browser typed. `team` is this viewer's
-// own team index on the target, since that is the only team it can address.
-function bzfsChatDestination(target, team) {
-  if (target === FIRST_TEAM) return FIRST_TEAM - team;
+// The other direction, for a line the browser typed.
+function bzfsChatDestination(target) {
   // bzo's SERVER destination is a line the server itself answers, and a proxy
   // has no answers of its own -- so it goes to the target like anything else.
   if (target === SERVER_PLAYER) return ALL_PLAYERS;
   if (isRealPlayerId(target)) return Number(target);
+  if (channelTeam(target) !== null) return Number(target);
   return target === ADMIN_PLAYERS ? ADMIN_PLAYERS : ALL_PLAYERS;
 }
 
@@ -1716,10 +1707,9 @@ async function handleProxyConnection(ws, req, request) {
         });
       }
       if (text.length === 0) return;
-      const self = session.state.players.get(session.playerId);
       const target = message.dst ?? message.to ?? 0;
       const destination = bzfsChatDestination(typeof target === 'string' && /^-?\d+$/.test(target)
-        ? Number(target) : target, self ? self.team : 5);
+        ? Number(target) : target);
       // `/me` is upstream's own reformatting of an action message, and it does
       // it at the server (bzfs.cxx:1490), so the line travels as typed.
       const action = message.msgType === 'action' || text.startsWith('/me ');

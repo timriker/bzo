@@ -19,10 +19,8 @@
 // The highest id a player can hold. Upstream derives it as `FirstTeam` minus
 // `NumTeams`, which is 8.
 const LAST_REAL_PLAYER = 243;
-// A message to a team. Upstream spends 244 through here on the eight teams,
-// naming which one by counting down from this; bzo spends only this one and
-// means "mine", because a client can address no other team and the server
-// already knows which is yours. A proxy translates between the two.
+// A message to a team: 251 to Rogue, counting down by upstream's team index
+// to 244 for Hunter (`FirstTeam - team`, Roster.cxx:120).
 const FIRST_TEAM = 251;
 const ADMIN_PLAYERS = 252;
 const SERVER_PLAYER = 253;
@@ -38,6 +36,19 @@ function isRealPlayerId(id) {
   return Number.isInteger(number) && number >= 0 && number <= LAST_REAL_PLAYER;
 }
 
+// The destination for a message to the team with upstream's index `team`.
+function teamChannel(team) {
+  return FIRST_TEAM - team;
+}
+
+// The team index a destination names, or null when it names no team. Takes
+// either spelling, as `isRealPlayerId` does.
+function channelTeam(id) {
+  const number = Number(id);
+  return Number.isInteger(number) && number > LAST_REAL_PLAYER && number <= FIRST_TEAM
+    ? FIRST_TEAM - number : null;
+}
+
 module.exports = {
   LAST_REAL_PLAYER,
   FIRST_TEAM,
@@ -46,4 +57,6 @@ module.exports = {
   ALL_PLAYERS,
   NO_PLAYER,
   isRealPlayerId,
+  teamChannel,
+  channelTeam,
 };

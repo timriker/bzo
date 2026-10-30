@@ -13,8 +13,8 @@
 const {
   ADMIN_PLAYERS,
   ALL_PLAYERS,
-  FIRST_TEAM,
   SERVER_PLAYER,
+  channelTeam,
 } = require('./player-ids.cjs');
 
 // What the handlers need of server.js, from `useServer`.
@@ -41,7 +41,7 @@ function handleMessage(player, ws, message) {
   const isAllTarget = matches(ALL_PLAYERS)
     || rawTarget === null || rawTarget === undefined || rawTarget === '';
   const isServerTarget = matches(SERVER_PLAYER);
-  const isTeamTarget = matches(FIRST_TEAM);
+  const isTeamTarget = channelTeam(rawTarget) !== null;
   const isAdminTarget = matches(ADMIN_PLAYERS);
   const targetId = isAllTarget || isServerTarget || isTeamTarget || isAdminTarget
     // A destination rather than a player: a number, and `ALL` even

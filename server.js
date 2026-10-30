@@ -253,7 +253,7 @@ const {
   ALL_PLAYERS,
   SERVER_PLAYER,
   ADMIN_PLAYERS,
-  FIRST_TEAM,
+  channelTeam,
 } = require('./server/player-ids.cjs');
 const { createDiscordLink, discordLinkConfigured } = require('./server/discord.cjs');
 const { createChatMirror, createDiscordToGame } = require('./server/discord-bridge.cjs');
@@ -10760,8 +10760,9 @@ function handleServerCommand(player, text, channel = ALL_PLAYERS) {
 // chat entry are one action, and the moment they are two functions the admin
 // channel's permission check exists in only one of them.
 //
-// `targetId` is a player id, or one of bzo's small negatives -- 0 all, -1 the
-// server's log, -2 team, -3 the admin channel.
+// `targetId` is a player id, or one of upstream's addresses above them -- 254
+// all, 253 the server's log, 252 the admin channel, 251 down to 244 a team
+// (server/player-ids.cjs).
 function deliverChatMessage(player, targetId, msgType, text) {
   const fromId = player.id;
   const fromName = player.name;
@@ -10784,7 +10785,7 @@ function deliverChatMessage(player, targetId, msgType, text) {
   const describeChatTarget = (id) => {
     if (id === ALL_PLAYERS) return 'ALL';
     if (id === SERVER_PLAYER) return 'SERVER';
-    if (id === FIRST_TEAM) return `[${player.team.toUpperCase()}]`;
+    if (channelTeam(id) !== null) return `[${String(getTeamFromColorIndex(channelTeam(id))).toUpperCase()}]`;
     if (id === ADMIN_PLAYERS) return '[ADMIN]';
     return players.has(id) ? `"${players.get(id).name}"` : `"Player ${id}"`;
   };
@@ -10810,24 +10811,27 @@ function deliverChatMessage(player, targetId, msgType, text) {
     return;
   }
 
-  // Team chat. bzfs's own team dispatch sends to every player whose
-  // `isTeam(_team)` matches the destination, with no exception for Rogue or
-  // Observer -- which is the rule the `voice-channels` module already spells out
-  // for the Team voice channel, so both use it. The sender is included: a
-  // message you cannot see you have sent is worse than one echoed back.
-  if (targetId === FIRST_TEAM) {
+  // Team chat, to the team the destination names (`FirstTeam - team`,
+  // bzfs.cxx:1719). bzfs's own team dispatch sends to every player whose
+  // `isTeam(_team)` matches it, with no exception for Rogue or Observer --
+  // which is the rule the `voice-channels` module already spells out for the
+  // Team voice channel, so both use it. The sender is included whatever their
+  // team, as upstream includes them in a private message: a message you
+  // cannot see you have sent is worse than one echoed back.
+  const chatTeam = getTeamFromColorIndex(channelTeam(targetId));
+  if (chatTeam) {
     log(`[CHAT] "${fromName}"->${toName}: ${text}`);
     const payload = {
       type: 'message',
       src: fromId,
-      dst: FIRST_TEAM,
+      dst: targetId,
       msgType,
       text,
       ts: Date.now(),
     };
     const encoded = JSON.stringify(payload);
     players.forEach((other) => {
-      if (other.team !== player.team) return;
+      if (other.team !== chatTeam && other !== player) return;
       if (other.ws && other.ws.readyState === 1) other.ws.send(encoded);
     });
     return;

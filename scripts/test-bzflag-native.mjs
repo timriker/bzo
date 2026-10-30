@@ -13,6 +13,7 @@ import { createRequire } from 'node:module';
 const require = createRequire(import.meta.url);
 const { NativeTranslator } = require('../server/bzflag-native.cjs');
 const { decodePlayerUpdate } = require('../server/bzfs-session.cjs');
+const { channelTeam, teamChannel } = require('../server/player-ids.cjs');
 
 const TANK_SPEED = 25;
 const frames = [];
@@ -43,5 +44,18 @@ near(velocityOf({ a: 0, fs: 1, sd: Math.PI / 2 }), [0, TANK_SPEED, 0], 'sliding 
 // In the air the move carries the velocity itself.
 near(velocityOf({ a: 0, fs: 1, vx: 3, vy: 4, vv: 5 }), [3, 4, 5], 'airborne');
 near(velocityOf({ a: 0, fs: 1, vv: -2 }), [0, 0, -2], 'falling straight down');
+
+// Team chat goes by upstream's numbers both ways: 251 Rogue down to 244
+// Hunter (`FirstTeam - team`), and a native client is sent the same byte.
+assert.equal(teamChannel(1), 250, 'red');
+assert.equal(channelTeam(250), 1);
+assert.equal(channelTeam('251'), 0, 'rogue, either spelling');
+assert.equal(channelTeam(244), 7, 'hunter');
+assert.equal(channelTeam(243), null, 'a player');
+assert.equal(channelTeam(252), null, 'the admins');
+assert.equal(channelTeam(undefined), null);
+assert.equal(translator.sourceSlot(250), 250, 'a team passes through to a native client');
+assert.equal(translator.sourceSlot(252), 252);
+assert.equal(translator.sourceSlot('7'), 7);
 
 console.log('test-bzflag-native: ok');

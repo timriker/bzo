@@ -109,7 +109,8 @@ and the server reads the session cookie when the socket opens; see
 ## Player ids
 
 A player id is a slot number, and it is upstream's: `0` through 243, with the
-destinations that are not a player at the top of the byte -- 251 a team, 252
+destinations that are not a player at the top of the byte -- 251 down to 244
+the eight teams, 252
 the admin channel, 253 the server, 254 everybody (`Address.h:73-78`, and
 `player-ids.mjs`/`player-ids.cjs`, which is the pair both ends read them
 from). bzo writes them as strings, because they are object keys here rather
@@ -119,9 +120,9 @@ The numbering is shared with BZFlag deliberately. A slot number is what the
 scoreboard shows and what an id-taking command names, so it should mean the
 same thing in both; and a proxied player's id *is* the target's own
 (`docs/proxy.md`), which only works if both ends agree which numbers a
-player may hold. The one place the two differ: upstream spends 244 through 251
-on the eight teams and names which one, where bzo spends only 251 and means
-"the sender's team", since a client can address no other.
+player may hold. Teams too: 251 is Rogue and each team is `251 - team` by
+upstream's team index, so a line to Red is 250 on both wires, in a recording
+and to a plugin. The browser's TEAM choice is its own team's number.
 
 ## Client to server
 
