@@ -19,7 +19,8 @@ bot fill and pilot, the game's shape -- teams, rabbit chase, jumping, a
 playing limit and a limit per team -- and the match limits (`timeLimit`,
 `timeManualStart`, `maxPlayerScore`, `maxTeamScore`) beside the Match Timer
 buttons. Every row is staged behind one Apply/Restart button; see "Admins and
-the admin channel" in `AGENTS.md`. What is left is the rules pass.
+the admin channel" in `AGENTS.md`. What is left is the rules pass, and the
+Plugins section in `docs/plugins-plan.md`.
 
 ## A live change still writes `server.json`
 

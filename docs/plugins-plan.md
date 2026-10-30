@@ -43,6 +43,41 @@ The groups at 12 may all be one operator's servers.
 - **Both client kinds.** Whatever a plugin does must reach native BZFlag
   clients as well as bzo's.
 
+## The Plugins panel
+
+A section of the Operator panel (`docs/operator-panel-plan.md`) that lists
+every installed plugin, bundled or uploaded:
+
+- **What it is.** Name, version, author, description and license, from a
+  `meta` object every plugin exports. A plugin without one does not load.
+- **On or off.** Each plugin has an enable switch, staged behind the panel's
+  Apply button like every other row and saved to `server.json`. Turning one off
+  calls its unload hook, as `/unloadplugin` does upstream; a plugin that
+  registered a custom flag or custom map object can only change on a restart,
+  which the panel says.
+- **Its options.** A plugin declares its options in `meta` (name, type,
+  default, a line of help), and the panel shows them as rows. Plugins that keep
+  their settings in BZDB variables show those instead.
+- **Its state.** Loaded, off, or failed with the error. A plugin that throws
+  while loading is left off and the server keeps running.
+- **Upload.** An admin uploads a plugin file the same way as a map. It is
+  recorded in the upload record (`server/uploads.cjs`) so the panel may delete
+  it again; a bundled plugin can only be turned off. An upload that replaces a
+  plugin of the same name shows both versions before Apply.
+
+bzo ships its own plugins, and admins may install more.
+
+**An uploaded plugin is code running as the server.** Anyone who passes
+`isAdmin` can then do anything the server's user can. That is the same trust
+bzfs gives `/loadplugin`, but bzo's admins are bzflag.org groups, not a
+local file, so the rights are wider than an upstream operator expects:
+
+- `"pluginUpload"` in `server.json` turns upload on or off; installing a
+  plugin by copying it into `plugins/` always works.
+- Each upload is logged with the admin's callsign and the file's hash.
+- The panel says plainly, beside the upload button, that a plugin runs with
+  the server's full rights.
+
 ## Built-ins that move to plugins
 
 Features bzo built in that were plugins elsewhere. Each moves out, keeps its
@@ -86,14 +121,16 @@ XR included, so custom weapons need no new client effect. What is new:
    transfer, chat, slash commands, tick, timers and BZDB. Hook points include
    `grabFlag`, `dropFlag`, `captureFlag` and `killPlayer` in `server.js`.
    Prove it by moving ScoreRestorer and ctfOverseer out, and porting
-   rabbitTimer, flagStay, teamflagreset, autoFlagReset and killall.
+   rabbitTimer, flagStay, teamflagreset, autoFlagReset and killall. The
+   Plugins panel lists them with their `meta` and switches them on and off.
 2. **Rules and custom flags.** The remaining allow and modify events, zone
    entry and exit, custom map objects (the BZW parser passes unknown objects
    to the plugin that registered them), polls and permissions, `/plugins`,
    `/listplugins` and `/loadplugin`, and custom flags with server shots. Port
    koth, keepaway, HoldTheFlag, timedctf, fairCTF, chathistory, TimeLimit,
    shockwaveDeath and wwzones.
-3. **The Discord bridge** moves to a plugin once stage 1's chat events carry
+3. **Plugin options and upload** in the panel.
+4. **The Discord bridge** moves to a plugin once stage 1's chat events carry
    what it needs.
 
 Not planned: the network data events, raw world access, and the handicap
