@@ -2845,6 +2845,9 @@ function renderListTables({ servers, bzoServers, canWatch, locale }) {
     // The bzfs row for the same address, which on an instance reading the
     // merged list carries the figures and picture the list server measured.
     const relayed = proxy ? servers.find((b) => `${b.host}:${b.port}` === proxy.target) : null;
+    const proxyWorld = proxy ? (relayed?.world || publishWorldFacts(...splitHostPort(proxy.target)) || {}) : null;
+    // The target's own BZDB, which is where a carried row learns `_disableBots`.
+    const proxyVars = proxy ? variablePairs(proxyWorld.variables) : [];
     const urlLink = `<a href="${escapeHtml(s.url)}">${escapeHtml(s.url)}</a>`;
     // Every name the carrier answers on, each linking into this target the way
     // the row does.
@@ -2856,12 +2859,8 @@ function renderListTables({ servers, bzoServers, canWatch, locale }) {
       addr: proxy ? proxy.target : s.url,
       desc: proxy ? (proxy.title || proxy.target) : s.title,
       // A carried target is a bzfs, so its version is that server's.
-      version: proxy
-        ? ((relayed?.world || publishWorldFacts(...splitHostPort(proxy.target)) || {}).version || '')
-        : (s.version || ''),
-      hash: (proxy
-        ? (relayed?.world || publishWorldFacts(...splitHostPort(proxy.target)) || {})
-        : (s.world || {})).hash || '',
+      version: (proxy ? proxyWorld.version : s.version) || '',
+      hash: (proxy ? proxyWorld : (s.world || {})).hash || '',
       href,
       owner: (proxy ? relayed?.owner : s.owner) || '',
       action: t('Enter game'),
@@ -2877,10 +2876,16 @@ function renderListTables({ servers, bzoServers, canWatch, locale }) {
       style: game.style,
       maxShots: game.maxShots,
       gameOptionsBits: game.gameOptionsBits,
-      players: game.players,
-      bots: game.bots,
-      disableBots: game.disableBots === true,
-      botsKnown: true,
+      // A carrier counts its target with `MsgQueryGame`, whose team sizes are
+      // every tank, robots too (bzfs.cxx:3123). The bzfs row for the same
+      // address has the people from the BZFlag list and the robots apart, so
+      // a carried row reads the two from there when it has one.
+      players: relayed?.info ? relayed.info.players : game.players,
+      bots: proxy ? relayed?.bots : game.bots,
+      disableBots: proxy
+        ? proxyVars.some(([name, value]) => name === '_disableBots' && bzdbIsTrue(value))
+        : game.disableBots === true,
+      botsKnown: !proxy || proxyVars.length > 0,
       maxPlayers: game.maxPlayers,
       observers: Array.isArray(game.teamCounts) ? game.teamCounts[5] : undefined,
       observerMax: maxima[5],
@@ -16114,12 +16119,12 @@ function simulateProjectilesStep(stepSeconds, now) {
       proj.teleportReentryBlockDistance,
       ({ sourceFaceId, destFaceId, source, dest }) => log(`[SHOT_TP] id=${id} srcFace=${sourceFaceId}`
         + ` dstFace=${destFaceId} src=${source.linkName || source.name} dst=${dest.linkName || dest.name}`),
+      proj.throughBuildings,
     );
     proj.dirX = traced.direction.x;
     proj.dirY = traced.direction.y;
     proj.dirZ = traced.direction.z;
     proj.teleportReentryBlockTeleporterIndex = traced.reentryBlockTeleporterIndex;
-      proj.throughBuildings,
     proj.teleportReentryBlockDistance = traced.reentryBlockDistance;
 
     // ShotStrategy::getFirstBuilding treats a teleporter frame as an ordinary
