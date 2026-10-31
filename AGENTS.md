@@ -3588,6 +3588,14 @@ standing paths are written. A `mapFile` change in `server.json` restarts the
 server (that file is in the list) but does not move the map watch until the
 dev loop itself is restarted.
 
+**nodemon loses a watched file that is deleted and recreated.** It watches
+`server.js` as a lone file (chokidar 3), and a git reset, stash or checkout
+rewrites it by unlink and create: nodemon restarts once for that, then never
+again for `server.js` alone, while `server/`, `public/` and `plugins/` still
+work. So the server never closes its own listener on a restart request; it
+waits `RESTART_FALLBACK_MS` for nodemon's SIGUSR2, then exits non-zero and the
+`npm run dev` loop starts it, with a fresh nodemon.
+
 **`nodemon.json` names `css` and `html` in its `ext` list.** `public/` being a
 watched *path* does not cover every extension inside it -- nodemon's own
 default (`js,mjs,cjs,json`) would otherwise leave a `.css` or `.html` edit

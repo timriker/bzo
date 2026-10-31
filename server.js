@@ -16657,41 +16657,52 @@ function sayServerIsGoing(message) {
   bzflagServer?.close();
 }
 
+// How long nodemon gets to restart the server after a change it should have
+// seen. It loses its watch on a file that is deleted and recreated -- a git
+// reset, stash or checkout does that to server.js -- and then never restarts
+// for it again, so past this the server ends itself and `npm run dev`'s loop
+// starts the next one.
+const RESTART_FALLBACK_MS = 3000;
+let restartPending = false;
+
+// Players are told the server is going only as it goes: the listener stays
+// open until nodemon's SIGUSR2 or this process's own exit, so a restart that
+// never comes cannot leave a server running that nobody can reach.
 function requestServerRestart(reason) {
   log(`Restart requested: ${reason}`);
-  sayServerIsGoing(localized('Server restarting: {reason}', { reason }));
-  forceClientReload();
-
-  if (reason === 'server.js change') {
-    return;
-  }
+  if (restartPending) return;
+  restartPending = true;
+  const goAndExit = (code) => {
+    sayServerIsGoing(localized('Server restarting: {reason}', { reason }));
+    forceClientReload();
+    setTimeout(() => process.exit(code), 500);
+  };
 
   const runningUnderNodemon = process.env.NODEMON === 'true' || process.env.npm_lifecycle_event === 'dev';
 
-  // In production (for example Docker running "node server.js"), there is no
-  // nodemon watcher to react to timestamp touches. Exit so restart policies
-  // relaunch the process and pick up the updated config.
+  // In production (for example Docker running "node server.js") there is no
+  // watcher: exit, and the restart policy relaunches the process.
   if (!runningUnderNodemon) {
-    setTimeout(() => {
-      log('Restarting process to apply config change...');
-      process.exit(0);
-    }, 1000);
+    log('Restarting process to apply config change...');
+    goAndExit(0);
     return;
   }
 
-  // Touch server.js to update its timestamp and trigger nodemon file watcher
-  // This causes nodemon to detect the "change" and restart immediately
-  // without the "waiting for changes" message
-  setTimeout(() => {
+  // A change nodemon does not watch itself reaches it as a touch of server.js.
+  if (reason !== 'server.js change') {
     try {
       const now = new Date();
       fs.utimesSync(__filename, now, now);
-      log('Triggered nodemon restart via timestamp touch...');
     } catch (err) {
-      logError('Failed to trigger restart:', err);
-      process.exit(0);
+      logError('Failed to touch server.js for a restart:', err);
     }
-  }, 1000);
+  }
+  // Non-zero, because nodemon waits for a change after a clean exit; with
+  // `--exitcrash` it exits on this one and the dev loop restarts it.
+  setTimeout(() => {
+    log(`nodemon did not restart within ${RESTART_FALLBACK_MS / 1000}s; exiting for npm run dev to restart`);
+    goAndExit(1);
+  }, RESTART_FALLBACK_MS);
 }
 
 // Bounds any client-claimed interval to the server's own measured arrival gap,
