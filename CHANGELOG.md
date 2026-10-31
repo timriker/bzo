@@ -6,6 +6,45 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
 
 ## [Unreleased]
 
+## [1.3.76] - 2026-10-31
+
+### Added
+- Server plugins in JavaScript, shaped as bzfs's: a plugin exports `meta`,
+  `Init`, `Event` and `Cleanup`, hears upstream's events by upstream's names
+  and calls its API (`bz_*`), and loads from `plugins/` or `data/plugins` as
+  `"plugins"` in `server.json` names it. Plugins add slash commands, map
+  objects and zones, flags, server shots, `/poll` types and permissions, and
+  may rewrite chat, move a spawn, or refuse a player, spawn, steal, poll or
+  vote. See [docs/plugins-plan.md](docs/plugins-plan.md).
+- Bundled plugins, each off until `server.json` names it: upstream's
+  `killall`, `rabbitTimer`, `teamflagreset`, `autoFlagReset`, `flagStay`,
+  `shockwaveDeath`, `wwzones`, `customflagsample` and `customPollTypeSample`,
+  plus `SAMPLE_PLUGIN` and `sample` to start one from. allejo's `ctfOverseer`
+  moves out of the core into one.
+- `/listplugins`, `/loadplugin` and `/unloadplugin` for admins, and a Plugins
+  list in the Operator panel with a switch to turn each on or off.
+
+### Changed
+- A checkout keeps the operator's own files in `data/`, laid out as the
+  image's `/data` volume; `npm run move-data` moves an old checkout across.
+  See [docs/installation.md](docs/installation.md).
+- Team chat uses upstream's team numbers on every wire, so a native client's
+  team chat no longer arrives as a private message to "player 250".
+- `_jumpVelocity` and `_wingsJumpVelocity` take 0, a jump with no lift, as
+  BZFlag does; bzo used to ignore 0. Wings follows `_jumpVelocity` there and
+  back.
+- A Super Bullet flies on out of the world, as BZFlag's does, rather than
+  bursting at the edge.
+
+### Fixed
+- A Super Bullet on a proxied server burst on the first wall in the browser,
+  and a teleporter's frame stopped one everywhere.
+- `/list` counted a proxied server's bots as players and said it allowed
+  bots when it set `_disableBots`.
+- A tank that joins alive in rabbit chase takes the rabbit if nobody has it.
+- A map's world weapons reached native clients with no shooter, and a guided
+  one did not steer at its target there.
+
 ## [1.3.75] - 2026-10-30
 
 ### Changed
