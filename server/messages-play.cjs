@@ -114,6 +114,8 @@ let pluginEvent;
 let pluginRecord;
 let pluginState;
 let playerSpawned;
+let spawnAllowed;
+let bringBack;
 let sendPluginsTo;
 let projectiles;
 let queueChannelMove;
@@ -215,6 +217,8 @@ function useServer(deps, live) {
     pluginRecord,
     pluginState,
     playerSpawned,
+    spawnAllowed,
+    bringBack,
     sendPluginsTo,
     occupyShotSlot,
     openUdpChannel,
@@ -974,6 +978,20 @@ function handleJoinGame(player, ws, message) {
     removeFromServer(player);
     return;
   }
+  // bz_eAllowPlayer (bzfs.cxx:2291): a plugin may turn an arrival away,
+  // after the bans and before a team is picked.
+  if (!player.joined) {
+    const asked = pluginEvent('bz_eAllowPlayer', () => ({
+      playerID: Number(player.id), callsign: String(message.name ?? ''),
+      ipAddress: player.clientIP ?? '', reason: '', allow: true,
+    }));
+    if (asked && !asked.allow) {
+      log(`Player ${player.id} refused by a plugin: ${asked.reason}`);
+      replyToPlayer(player, asked.reason || 'bad request');
+      removeFromServer(player);
+      return;
+    }
+  }
   supersedeEarlierConnection(player, message.page);
   let joinName = resolveJoinName(player, message.name);
   const requestedTankModel = typeof message.tankModel === 'string'
@@ -1101,6 +1119,12 @@ function handleJoinGame(player, ws, message) {
   // MsgAlive from a callsign on the rejoin list (bzfs.cxx:4851).
   const rejoinWait = player.alive && !bots.has(player.id) ? rejoinWaitMs(joinName) : 0;
   if (rejoinWait > 0) player.alive = false;
+  // bz_eAllowSpawn: a plugin may hold the join's tank dead, or kick it.
+  if (player.alive) {
+    const spawn = spawnAllowed(player);
+    if (spawn === 'kicked') return;
+    if (!spawn) player.alive = false;
+  }
   if (player.alive) player.hasSpawned = true;
   // PlayerInfo::resetPlayer(ctf) puts every CTF spawn on the team base.
   player.restartOnBase = !joinAsObserver && CTF_ENABLED;
@@ -1182,8 +1206,7 @@ function handleJoinGame(player, ws, message) {
     log(`[REJOIN] "${joinName}" waits ${(rejoinWait / 1000).toFixed(1)}s to spawn`);
     player.rejoinTimer = setTimeout(() => {
       if (players.get(player.id) !== player || !player.joined || player.alive || matchClock.gameOver) return;
-      player.respawn();
-      broadcastPlayerRecord('alive', player);
+      bringBack(player);
     }, rejoinWait);
   }
   // `init` went out before this player had joined, and `isAdmin`

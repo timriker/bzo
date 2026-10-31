@@ -7354,10 +7354,7 @@ function startMatch() {
     // Whoever the previous match's game-over held dead gets back in: nothing
     // else was going to lift that hold, since the respawn timeout that would
     // have revived them already saw `matchClock.gameOver` and gave up.
-    if (!isObserverTeam(candidate.team) && !candidate.alive) {
-      candidate.respawn();
-      broadcastPlayerRecord('alive', candidate);
-    }
+    if (!isObserverTeam(candidate.team) && !candidate.alive) bringBack(candidate);
   });
   matchClock.paused = false;
   matchClock.gameOver = false;
@@ -7549,6 +7546,46 @@ function playerSpawned(player) {
   pluginEvent('bz_ePlayerSpawnEvent', () => ({
     playerID: Number(player.id), team: bzTeam(player.team), state: pluginState(player),
   }));
+}
+
+// bz_eAllowSpawn (bzfs.cxx:3227), with upstream's defaults: a plugin may hold
+// a tank dead. It is told once, and kicked if the plugin says so. A BZFlag
+// client asks again to spawn; a bzo tank is respawned by the server, so the
+// server asks again a respawn delay later. Returns true, false, or 'kicked'.
+function spawnAllowed(player) {
+  const asked = pluginEvent('bz_eAllowSpawn', () => ({
+    playerID: Number(player.id), team: bzTeam(player.team), handled: false, allow: true,
+    kickPlayer: true, kickReason: 'Not allowed to spawn',
+    message: 'You are not allowed to spawn. Please contact an administrator.',
+  }));
+  clearTimeout(player.spawnRetryTimer);
+  if (!asked || asked.allow) {
+    player.notifiedOfSpawnable = false;
+    return true;
+  }
+  if (!player.notifiedOfSpawnable) {
+    replyToPlayer(player, asked.message);
+    player.notifiedOfSpawnable = true;
+  }
+  if (asked.kickPlayer) {
+    log(`Player ${player.id} "${player.name}" kicked: ${asked.kickReason}`);
+    replyToPlayer(player, asked.kickReason);
+    removeFromServer(player);
+    return 'kicked';
+  }
+  player.spawnRetryTimer = setTimeout(() => {
+    if (players.get(player.id) !== player || !player.joined || player.alive) return;
+    if (matchClock.gameOver || isObserverTeam(player.team)) return;
+    bringBack(player);
+  }, GAME_CONFIG.RESPAWN_DELAY);
+  return false;
+}
+
+// A dead tank comes back, if the plugins allow it.
+function bringBack(player) {
+  if (spawnAllowed(player) !== true) return;
+  player.respawn();
+  broadcastPlayerRecord('alive', player);
 }
 
 // bzfs.cxx:3287. Spawning closes the window in which a deposed rabbit's shots
@@ -15614,8 +15651,7 @@ function applyDeath(victim, killerId, hit) {
     if (matchClock.gameOver) return;
     // Gone to observer, or back in through a join, since it died.
     if (isObserverTeam(victim.team) || victim.alive) return;
-    victim.respawn();
-    broadcastPlayerRecord('alive', victim);
+    bringBack(victim);
   }, GAME_CONFIG.RESPAWN_DELAY);
 }
 
@@ -15714,7 +15750,7 @@ function applyShotVictim(proj, id, player) {
   // A thief's shot is answered before anything that could kill: upstream tests
   // `killerFlag == Flags::Thief` ahead of `gotBlowedUp` (playing.cxx:4174), so a
   // shielded tank loses its Shield to the thief rather than being saved by it.
-  if (proj.steals) return stealFlag(proj, player) ? 'stolen' : 'missed';
+  if (proj.steals) return stealFlag(proj, player) || 'missed';
 
   // gotBlowedUp() with the shield flag: the tank keeps its life and the flag is
   // thrown as if the player had dropped it -- which is where _shieldFlight sends
@@ -15770,6 +15806,8 @@ function applyGenocide(proj, victim) {
 // bz_FlagTransferredEventData_V1::Action.
 const FLAG_TRANSFER = Object.freeze({ CONTINUE_STEAL: 0, CANCEL_STEAL: 1, DROP_THIEF: 2 });
 
+// Returns what became of it -- 'stolen', or a plugin's 'cancelled' or
+// 'dropped' -- or false when the victim had nothing to steal.
 function stealFlag(proj, victim) {
   const thief = players.get(proj.playerId);
   const stolen = getPlayerFlag(victim.id);
@@ -15784,7 +15822,8 @@ function stealFlag(proj, victim) {
   const action = transfer?.action ?? FLAG_TRANSFER.CONTINUE_STEAL;
   const held = getPlayerFlag(thief.id);
   if (held && action !== FLAG_TRANSFER.CANCEL_STEAL) zapFlag(held);
-  if (action !== FLAG_TRANSFER.CONTINUE_STEAL) return true;
+  if (action === FLAG_TRANSFER.CANCEL_STEAL) return 'cancelled';
+  if (action === FLAG_TRANSFER.DROP_THIEF) return 'dropped';
   // The victim gives up everything the flag armed as well as the flag, which is
   // what `sendFlagDrop` does for every other way of losing one.
   clearFlagShedState(victim);
@@ -15803,7 +15842,7 @@ function stealFlag(proj, victim) {
     flag: getFlagState(stolen),
   });
   sendShotsLeft(thief, stolen);
-  return true;
+  return 'stolen';
 }
 
 // The tank a travelling shot reached. One hit and the shot is gone, whichever
@@ -15815,7 +15854,7 @@ function applyShotPlayerHit(proj, id, player, point) {
   // `Player::endShot(id, false, false)` -- upstream ends a thief's shot on the
   // tank it robbed with neither a hit nor an explosion, because nothing blew up.
   // Reason 1 is bzo's "faded", and it is what a theft looks like.
-  const quiet = outcome === 'stolen' || outcome === 'missed';
+  const quiet = ['stolen', 'cancelled', 'dropped', 'missed'].includes(outcome);
   broadcastAll({ type: 'shotEnd', id, reason: quiet ? 1 : 0, x: point.x, y: point.y, z: point.z });
 }
 
@@ -15824,6 +15863,8 @@ const SHOT_END_LABEL = Object.freeze({
   killed: 'player_hit',
   shield: 'shield_hit',
   stolen: 'flag_stolen',
+  cancelled: 'steal_cancelled',
+  dropped: 'thief_dropped',
   missed: 'nothing_to_steal',
 });
 
@@ -17164,6 +17205,8 @@ messagesPlay.useServer({
   pluginRecord,
   pluginState,
   playerSpawned,
+  spawnAllowed,
+  bringBack,
   sendPluginsTo,
   occupyShotSlot,
   openUdpChannel,

@@ -225,8 +225,11 @@ bzo's own clients and native ones do not share a wire format.
    `bz_eRawChatMessageEvent` may rewrite or drop a line before anything else
    is asked of it, `bz_eGetPlayerSpawnPosEvent` may move a spawn, and
    `bz_eFlagTransferredEvent` may let a Thief's steal go on, cancel it, or
-   spend the thief's flag alone. Left: the remaining allow events (a spawn,
-   a player's join), polls and permissions, the world event and the
+   spend the thief's flag alone. `bz_eAllowPlayer` may turn an arrival away
+   after the bans, and `bz_eAllowSpawn` may hold a tank dead, telling it
+   once, or kick it; bzo's server respawns tanks itself, so a held tank is
+   asked again a respawn delay later where a BZFlag client would ask again.
+   Left: polls and permissions, the world event and the
    `bz_addWorld*` calls, and plugin HTTP routes. Port koth, keepaway,
    HoldTheFlag, timedctf, fairCTF, chathistory, TimeLimit and mapchange, and
    move the compass letters out.
