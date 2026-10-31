@@ -187,7 +187,8 @@ export const BZDB_CONFIG_VARS = new Map([
   // Upstream states gravity as a negative acceleration and bzo keeps the
   // magnitude, so a map's `-9.81` and its `9.81` mean the same thing here.
   ['_gravity', { key: 'GRAVITY', transform: Math.abs }],
-  ['_jumpVelocity', { key: 'JUMP_VELOCITY' }],
+  // 0 is a jump that leaves the ground with no lift, as upstream's is.
+  ['_jumpVelocity', { key: 'JUMP_VELOCITY', allowZero: true }],
   ['_shotSpeed', { key: 'SHOT_SPEED' }],
   ['_shotRange', { key: 'SHOT_RANGE' }],
   ['_shotRadius', { key: 'SHOT_RADIUS' }],
@@ -321,7 +322,7 @@ export const BZDB_CONFIG_VARS = new Map([
   ['_pyrHeight', { key: 'PYR_HEIGHT', derived: true }],
   // Wings' own. Upstream defaults the first two to the strings "_jumpVelocity"
   // and "_gravity"; a map that states a number pins it, as server.json does.
-  ['_wingsJumpVelocity', { key: 'WINGS_JUMP_VELOCITY' }],
+  ['_wingsJumpVelocity', { key: 'WINGS_JUMP_VELOCITY', allowZero: true }],
   ['_wingsGravity', { key: 'WINGS_GRAVITY', transform: Math.abs }],
   // Gliding with no slide at all is upstream's default.
   ['_wingsSlideTime', { key: 'WINGS_SLIDE_TIME', allowZero: true }],

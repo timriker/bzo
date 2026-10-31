@@ -13,6 +13,7 @@ import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
 import { buildCollisionColliders, getObstacleBase } from '../public/js/collision.mjs';
 import { createDriveState, readDriveInput, stepDrive } from '../public/js/drive.mjs';
+import { worldConfig } from '../public/js/bzdb.mjs';
 
 const CONFIG = {
   TANK_SPEED: 25,
@@ -108,6 +109,19 @@ for (const flag of ['BU', 'WG']) {
   };
   assert.equal(jumps(-0.5), false, `${flag} below ground does not jump`);
   assert.equal(jumps(0), true, `${flag} on the ground does`);
+}
+
+// `_jumpVelocity 0` is a jump with no lift, and Wings, whose default is the
+// expression "_jumpVelocity", follows it there and back.
+{
+  const base = { ...CONFIG, WINGS_JUMP_VELOCITY: null, WINGS_GRAVITY: null,
+    SHOT_RANGE: 350, SHOT_SPEED: 100, SHOT_MAX_ACTIVE: 1 };
+  const wings = (vars) => worldConfig(base, new Map(vars));
+  assert.equal(wings([['_jumpVelocity', '0']]).JUMP_VELOCITY, 0, '_jumpVelocity 0');
+  assert.equal(wings([['_jumpVelocity', '0']]).WINGS_JUMP_VELOCITY, 0, 'Wings follows 0');
+  assert.equal(wings([['_jumpVelocity', '25']]).WINGS_JUMP_VELOCITY, 25, 'Wings follows it back');
+  assert.equal(wings([['_wingsJumpVelocity', '0']]).WINGS_JUMP_VELOCITY, 0, '_wingsJumpVelocity 0');
+  assert.equal(wings([['_wingsJumpVelocity', '0']]).JUMP_VELOCITY, 19, 'and the jump stays');
 }
 
 console.log('drive tests passed');
