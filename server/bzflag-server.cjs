@@ -255,10 +255,30 @@ function packReject(reason, code = REJECT_BAD_REQUEST) {
 // payload)` seats a client that sent MsgEnter, and `link.onFrame` then takes
 // every frame it sends. `trustsProxyHeader(address)` says whether a peer may
 // open with a PROXY header naming its client (`proxyProtocolFrom`).
+// FlagType::packCustom (Flag.cxx:281): a plugin's flag type, as a client's
+// MsgFlagType carries it -- abbreviation, quality, shot type (always normal,
+// as 2.4's), name, help.
+function packCustomFlagType(type) {
+  const string = (text) => {
+    const bytes = Buffer.from(String(text ?? ''), 'utf8');
+    const length = Buffer.alloc(4);
+    length.writeUInt32BE(bytes.length, 0);
+    return Buffer.concat([length, bytes]);
+  };
+  return Buffer.concat([
+    Buffer.from(String(type.abbreviation).padEnd(2, '\0').slice(0, 2), 'latin1'),
+    Buffer.from([type.quality === 1 ? 1 : 0, 0]),
+    string(type.name),
+    string(type.help),
+  ]);
+}
+
 function createBzflagServer({
   getStatus, getPingStatus = getStatus, getPlayers, getTeams, getGameSettings, getWorld, getCacheUrl = () => null, onEnter,
   reserveId, releaseId, rejectReason, log = () => {}, countIn = () => {}, countOut = () => {},
   onHttp = null, onTls = null, trustsProxyHeader = () => false,
+  // The flag types plugins registered: `{ abbreviation, name, help, quality }`.
+  getCustomFlagTypes = () => [],
   // False keeps the port to the web app, WebTransport and WebRTC: BZFlag
   // clients, and the ping that finds them, get no answer.
   acceptBzflag = true,
@@ -309,7 +329,16 @@ function createBzflagServer({
       sendFrame(socket, 'tu', packTeamUpdate(getTeams()));
       for (const player of players) sendFrame(socket, 'ap', packAddPlayer(player));
     } else if (code === 'nf') {
-      // MsgNegotiateFlags: the flags it lacks. bzo's are all upstream's.
+      // MsgNegotiateFlags (bzfs.cxx:4760): a MsgFlagType for each plugin's
+      // flag the client did not list, then the flags it lacks, which is none,
+      // since bzo's own are all upstream's.
+      const known = new Set();
+      for (let at = 0; at + 2 <= payload.length; at += 2) {
+        known.add(payload.subarray(at, at + 2).toString('latin1').replace(/\0+$/, ''));
+      }
+      for (const type of getCustomFlagTypes()) {
+        if (!known.has(type.abbreviation)) sendFrame(socket, 'ft', packCustomFlagType(type));
+      }
       sendFrame(socket, 'nf');
     } else if (code === 'ws') {
       sendFrame(socket, 'gs', packGameSettings(getGameSettings()));
@@ -733,6 +762,7 @@ module.exports = {
   REJECT_ID_BANNED,
   createBzflagServer,
   classifyDatagram,
+  packCustomFlagType,
   classifyOpening,
   publishToBzflagList,
   packPingHex,

@@ -2613,8 +2613,11 @@ function parseBZWMap(filename, { quiet = false, extraMessages = [], text: givenT
         // A type with no `FLAG_TYPES` row matched nothing above, so it is
         // recorded here for the load to name. That is `WA`, which bzo does not
         // carry and will not (see docs/flags.md), or a typo in the map.
+        // Its count is kept as well, for a plugin that registers the type
+        // after the map is read (`bz_RegisterCustomFlag`).
         if (wantedQuality === null && !getFlagType(wanted)) {
           currentZone.unknownFlags.add(wanted);
+          currentZone.unknownFlagCounts.set(wanted, (currentZone.unknownFlagCounts.get(wanted) || 0) + count);
         }
         continue;
       }
@@ -3164,6 +3167,7 @@ function parseBZWMap(filename, { quiet = false, extraMessages = [], text: givenT
         flagCounts: new Map(),
         flagTypes: new Set(),
         unknownFlags: new Set(),
+        unknownFlagCounts: new Map(),
         teams: new Set(),
         safety: new Set(),
       };

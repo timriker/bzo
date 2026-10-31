@@ -213,8 +213,15 @@ bzo's own clients and native ones do not share a wire format.
    path a map's world weapons use, after upstream's
    `bz_eAllowServerShotFiredEvent`; shockwaveDeath and wwzones are ported on
    it, wwzones on the map objects and zones above as well. A guided
-   server shot's target is not yet followed. Left: the remaining allow and
-   modify events, polls and permissions, custom flags, the world event and the
+   server shot's target is not yet followed. Custom flags are done:
+   `bz_RegisterCustomFlag` adds a type with a name and help that bzo clients
+   are sent and a native client learns in reply to its flag negotiation, as
+   bzfs answers it; its shots are ordinary, as 2.4's are, and a map's
+   `zoneflag` of it, skipped when flags are laid out at boot, joins the world
+   once the plugin registers it. `bz_eShotFiredEvent` and the score calls are
+   what a plugin builds one with; customflagsample is ported. Left: the
+   remaining allow and modify events, polls and permissions, the world event
+   and the
    `bz_addWorld*` calls, and plugin HTTP routes. Port koth, keepaway,
    HoldTheFlag, timedctf, fairCTF, chathistory, TimeLimit and mapchange, and
    move the compass letters out.

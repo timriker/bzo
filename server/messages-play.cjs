@@ -787,6 +787,13 @@ function handleShoot(player, ws, message) {
     createdAt: proj.createdAt
   });
   if (beamHit) applyShotPlayerHit(proj, id, beamHit.player, beamHit.point);
+  // bz_ShotFiredEventData_V1, while the shooter still holds the flag it
+  // fired with -- which is how a plugin's custom flag does anything.
+  pluginEvent('bz_eShotFiredEvent', () => ({
+    playerID: Number(player.id), shotID: proj.shotSlot, type: proj.flag || '',
+    pos: [proj.x, proj.y, proj.z], vel: [proj.dirX * proj.speed, proj.dirY * proj.speed, proj.dirZ * proj.speed],
+    changed: false,
+  }));
   countFlagShot(player);
   return;
 }

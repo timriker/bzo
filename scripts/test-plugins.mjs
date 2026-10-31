@@ -491,5 +491,39 @@ end
   assert.equal(fired.length, 2, 'and again after it');
 }
 
+// A plugin's own flag: registered, its shots announced and scored.
+{
+  const { packCustomFlagType } = require('../server/bzflag-server.cjs');
+  const packed = packCustomFlagType({ abbreviation: 'CF', name: 'Custom Flag', help: 'h', quality: 0 });
+  assert.equal(packed.subarray(0, 2).toString('latin1'), 'CF');
+  assert.deepEqual([...packed.subarray(2, 4)], [0, 0], 'good, and a normal shot');
+  assert.equal(packed.readUInt32BE(4), 11);
+  assert.equal(packed.subarray(8, 19).toString(), 'Custom Flag');
+
+  const bundledDir = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..', 'plugins');
+  const registered = [];
+  const said = [];
+  const wins = [];
+  const host = createPluginHost({
+    dirs: [bundledDir],
+    settings: { customflagsample: true },
+    api: {
+      BZ_SERVER: -2, BZ_ALLUSERS: -1, eGoodFlag: 0,
+      bz_RegisterCustomFlag: (...args) => { registered.push(args); return true; },
+      bz_getPlayerByIndex: () => ({ callsign: 'tank', currentFlag: 'Custom Flag (+CF)' }),
+      bz_getPlayerCallsign: () => 'victim',
+      bz_incrementPlayerWins: (id, by) => { wins.push([id, by]); return true; },
+      bz_sendTextMessage: (from, to, text, params) => { said.push({ text, params }); return true; },
+    },
+  });
+  host.loadAll();
+  assert.equal(registered[0][0], 'CF');
+  host.callEvents('bz_eShotFiredEvent', { playerID: 4 });
+  assert.deepEqual(wins, [[4, 10]]);
+  assert.deepEqual(said.at(-1), { text: 'Shot fired by {player} with Custom Flag!', params: { player: 'tank' } });
+  host.callEvents('bz_ePlayerDieEvent', { playerID: 5, flagKilledWith: 'CF' });
+  assert.deepEqual(said.at(-1).params, { player: 'victim' });
+}
+
 fs.rmSync(root, { recursive: true, force: true });
 console.log('plugin host tests passed');

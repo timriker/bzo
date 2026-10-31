@@ -104,6 +104,7 @@ const {
   getFlagGrabCount,
   getFlagThrownAltitude,
   getFlagType,
+  setCustomFlagTypes,
   getShotEffects,
   getShockWaveRadius,
   drivesThroughBuildings,
@@ -12695,6 +12696,7 @@ let bzflagServer = null;
   }
   bzflagServer = createBzflagServer({
     acceptBzflag: LISTEN_IS_BZFLAG,
+    getCustomFlagTypes: () => pluginFlagTypes,
     trustsProxyHeader: (address) => addressMatchesWhitelist(address, proxyProtocolFrom),
     // The rest of what the port is asked: the web app, plain or over TLS.
     onHttp: (socket) => server.emit('connection', socket),
@@ -16824,6 +16826,8 @@ function acceptConnection(ws, req) {
     commands: clientCommandList(),
     config: clientGameConfig,
     bzdb: clientBzdb(),
+    // The flag types plugins registered (`bz_RegisterCustomFlag`).
+    customFlagTypes: pluginFlagTypes,
     // The server's own `-set`s alone, which a Map Viewer preview lays its
     // map's over as the live world's are laid (`configForWorld`).
     serverBzdb: Object.fromEntries(SERVER_BZDB),
@@ -18025,6 +18029,24 @@ const PLUGIN_API = Object.freeze({
   // MapObject while it reads the map. bzo has read it already, so it is read
   // again here for the one name.
   bz_customMapObjects: (name) => customMapObjects(name),
+
+  // bz_setPlayerWins / Losses / TKs and the increments: a plugin's own
+  // scoring, sent to every client as the player's record.
+  bz_setPlayerWins: (id, value) => setPluginScore(id, 'wins', () => value),
+  bz_setPlayerLosses: (id, value) => setPluginScore(id, 'losses', () => value),
+  bz_setPlayerTKs: (id, value) => setPluginScore(id, 'tks', () => value),
+  bz_incrementPlayerWins: (id, by) => setPluginScore(id, 'wins', (now) => now + by),
+  bz_incrementPlayerLosses: (id, by) => setPluginScore(id, 'losses', (now) => now + by),
+  bz_incrementPlayerTKs: (id, by) => setPluginScore(id, 'tks', (now) => now + by),
+
+  // bz_RegisterCustomFlag(abbr, name, help, shotType, quality): a flag type
+  // of the plugin's own. Its shots are ordinary, as 2.4's are -- the shot
+  // type is accepted and not used -- and what it does is the plugin's, on
+  // events like bz_eShotFiredEvent. There is no unregistering, as upstream
+  // has none: "that would jack up connected clients".
+  bz_RegisterCustomFlag: (abbr, name, help, _shotType, quality = 0) => registerPluginFlag(abbr, name, help, quality),
+  eGoodFlag: 0,
+  eBadFlag: 1,
   // bz_vectorFromRotations(tilt, rotation), in radians: the direction a world
   // weapon points, returned where upstream fills an array.
   bz_vectorFromRotations: (tilt, rotation) => [
@@ -18074,6 +18096,51 @@ const PLUGIN_API = Object.freeze({
     return true;
   },
 });
+
+function setPluginScore(id, field, next) {
+  const player = players.get(String(id));
+  const value = player?.joined ? Math.trunc(Number(next(player[field] || 0))) : NaN;
+  if (!Number.isFinite(value)) return false;
+  player[field] = value;
+  broadcastPlayerRecord('playerUpdated', player);
+  return true;
+}
+
+// The flag types plugins registered, in the shape MsgFlagType and a bzo
+// client's `customFlagTypes` carry.
+const pluginFlagTypes = [];
+
+function registerPluginFlag(abbr, name, help, quality) {
+  const abbreviation = String(abbr ?? '').trim();
+  if (!/^[A-Za-z0-9*]{1,2}$/.test(abbreviation) || getFlagType(abbreviation)) return false;
+  const type = {
+    abbreviation,
+    name: String(name || abbreviation),
+    help: String(help || ''),
+    quality: quality === 1 ? 1 : 0,
+  };
+  setCustomFlagTypes([type]);
+  pluginFlagTypes.push(type);
+  broadcastAll({ type: 'customFlagTypes', types: [type] });
+  addPluginZoneFlags(abbreviation);
+  log(`[PLUGIN] flag ${abbreviation} "${type.name}" registered`);
+  return true;
+}
+
+// A map's `zoneflag` of a type nobody knew when the flags were laid out at
+// boot, which a plugin has now registered: its slots join the world, as
+// upstream's would have had the plugin loaded first.
+function addPluginZoneFlags(abbreviation) {
+  if (getForbiddenFlags().includes(abbreviation)) return;
+  MAP_ZONES.forEach((zone) => {
+    const count = zone.unknownFlagCounts?.get(abbreviation) || 0;
+    for (let slot = 0; slot < count; slot++) {
+      const flag = createFlagSlot(flags.length, null, { requiredType: abbreviation, zoneIndex: zone.index });
+      flags.push(flag);
+      resetFlag(flag);
+    }
+  });
+}
 
 function registerPluginBzdb(name, value) {
   if (typeof name !== 'string' || !name || BZDB_DEFAULTS[name] !== undefined) return false;

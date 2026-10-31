@@ -8219,7 +8219,7 @@ function receiveInit(message) {
   // may be another.
   lastMoveBatchById.clear();
   earlyShotEnds.clear();
-  // A proxied bzfs's plugin flags; any other server has none.
+  // A plugin's flag types: a proxied bzfs's, or this server's own.
   setCustomFlagTypes(message.customFlagTypes, { replace: true });
   if (!message.udpChannel && !message.webTransport) udpChannel.close();
   else if (!udpChannel.isOpen()) void udpChannel.start(message);
