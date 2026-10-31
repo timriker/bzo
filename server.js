@@ -3817,6 +3817,16 @@ let plugins = null;
 const RUNTIME_PLUGINS_DIR = process.env.PLUGINS_PATH
   ? path.resolve(process.env.PLUGINS_PATH)
   : path.join(path.dirname(configPath), 'plugins');
+// Made at boot, so an owner finds where plugins go, an upload has somewhere to
+// write, and `npm run dev`'s nodemon watches a directory that exists: one made
+// after nodemon starts is never noticed.
+if (RUNTIME_PLUGINS_DIR !== BUNDLED_PLUGINS_DIR) {
+  try {
+    fs.mkdirSync(RUNTIME_PLUGINS_DIR, { recursive: true });
+  } catch (error) {
+    logError(`Could not create the plugins directory at ${RUNTIME_PLUGINS_DIR}:`, error);
+  }
+}
 
 // The Operator panel's "Import Remote Map" dropdown, and the public `/list`
 // page below, both read this -- one POST to the public list server decodes
