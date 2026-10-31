@@ -262,7 +262,6 @@ Two things it has to decide:
   serving" is not an in-game action. Read it and say it is ignored.
 - **`/superkill`.** Kicks everyone. It exists upstream so an operator can clear a
   wedged server; bzo restarts in a second and reconnects every client.
-- **`/plugins`, `/listplugins`.** No plugins yet; see #195.
 - **`/serverdebug`.** bzo's logging is a file and a level, not a runtime dial.
 
 ## Address bans

@@ -114,5 +114,5 @@ give a number, `-st`, `-sw`, `-time`, `-mps` and `-mts` take the larger and
 | bzfs | bzo | Status |
 |---|---|---|
 | `-conf <file>` | `server.json`, or `SERVER_CONFIG_PATH` | yes |
-| `-loadplugin` | -- | intentional: bzo has no plugin interface; the plugins it follows are built in |
+| `-loadplugin` | `server.json` `"plugins"`; `/loadplugin` | yes: JavaScript plugins with upstream's API, see `docs/plugins-plan.md` |
 | `-pidfile`, `-d`, `-ts`, `-utc`, `-version`, `-v`, `-h`, `-help` | -- | intentional: process concerns a Node server answers its own way |

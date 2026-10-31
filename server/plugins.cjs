@@ -144,7 +144,9 @@ function createPluginHost({
   }
 
   function makeApi(entry) {
-    const bz = Object.create(api);
+    // A copy, since the server's API is frozen and each plugin's own `bz`
+    // replaces some of its names.
+    const bz = { ...api };
     for (const type of EVENT_TYPES) bz[type] = type;
     bz.Register = (type) => {
       if (!EVENT_SET.has(type)) throw new Error(`unknown event ${type}`);
@@ -197,6 +199,17 @@ function createPluginHost({
       timers.clearTimeout(handle);
       timers.clearInterval(handle);
     };
+    // A plugin's BZDB variables go when it does, as upstream plugins remove
+    // theirs in Cleanup (bz_removeCustomBZDBVariable).
+    for (const kind of ['Double', 'Int', 'Bool', 'String']) {
+      const register = api[`bz_registerCustomBZDB${kind}`];
+      if (typeof register !== 'function') continue;
+      bz[`bz_registerCustomBZDB${kind}`] = (name, ...rest) => {
+        const done = register(name, ...rest);
+        if (done) entry.bzdb.add(name);
+        return done;
+      };
+    }
     bz.log = (text) => log(`${entry.id}: ${text}`);
     return bz;
   }
@@ -234,11 +247,14 @@ function createPluginHost({
       timers.clearInterval(handle);
     }
     entry.timers.clear();
+    for (const name of entry.bzdb) api.bz_removeCustomBZDBVariable?.(name);
+    entry.bzdb.clear();
   }
 
   // `ifEnabled` leaves a plugin `server.json` or its own meta turns off read
-  // but not started, so its meta is still there to list.
-  function load(id, { ifEnabled = false } = {}) {
+  // but not started, so its meta is still there to list. `config` is the
+  // options to start it with, in place of `server.json`'s.
+  function load(id, { ifEnabled = false, config } = {}) {
     const entry = entries.get(id);
     if (!entry || entry.state === 'loaded') return entry || null;
     entry.error = null;
@@ -267,7 +283,7 @@ function createPluginHost({
     }
     entry.plugin = plugin;
     try {
-      plugin.Init(makeApi(entry), setting.config);
+      plugin.Init(makeApi(entry), config ?? setting.config);
     } catch (error) {
       forget(entry);
       entry.plugin = null;
@@ -296,18 +312,28 @@ function createPluginHost({
     return true;
   }
 
+  // The plugin files in `dirs` now, so one added since boot can be loaded.
+  // Returns the ones not seen before.
+  function discover() {
+    const added = [];
+    for (const found of findPlugins(dirs).values()) {
+      if (entries.get(found.id)?.state === 'loaded') continue;
+      if (entries.get(found.id)?.file === found.file) continue;
+      entries.set(found.id, {
+        ...found, meta: null, state: 'off', error: null, plugin: null,
+        events: new Set(), commands: new Set(), timers: new Set(), bzdb: new Set(),
+      });
+      if (found.replaces) log(`${found.id}: ${found.file} replaces ${found.replaces}`);
+      added.push(found.id);
+    }
+    return added;
+  }
+
   // Every plugin file in `dirs`, each loaded unless `server.json` or its meta
   // turns it off.
   function loadAll() {
-    for (const found of findPlugins(dirs).values()) {
-      if (entries.get(found.id)?.state === 'loaded') continue;
-      const entry = {
-        ...found, meta: null, state: 'off', error: null, plugin: null,
-        events: new Set(), commands: new Set(), timers: new Set(),
-      };
-      entries.set(found.id, entry);
-      if (found.replaces) log(`${found.id}: ${found.file} replaces ${found.replaces}`);
-      if (pluginSetting(settings, found.id).enabled) load(found.id, { ifEnabled: true });
+    for (const id of discover()) {
+      if (pluginSetting(settings, id).enabled) load(id, { ifEnabled: true });
     }
   }
 
@@ -384,7 +410,7 @@ function createPluginHost({
     }));
   }
 
-  return { loadAll, load, unload, listening, callEvents, slashCommand, commands, messages, list };
+  return { discover, loadAll, load, unload, listening, callEvents, slashCommand, commands, messages, list };
 }
 
 module.exports = { EVENT_TYPES, checkPlugin, createPluginHost, findPlugins, pluginSetting };

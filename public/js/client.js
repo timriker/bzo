@@ -128,7 +128,7 @@ import {
   teamChannel,
 } from './player-ids.mjs';
 import { getMenuClickDirection, playMenuBackSound, playMenuSelectSound, setMenuSoundPlayer } from './menus.js';
-import { N_, onLocaleChange, t, translateServerText } from './i18n.mjs';
+import { N_, onLocaleChange, reloadLocale, t, translateServerText } from './i18n.mjs';
 import { initHelpPanel } from './help.js';
 
 setMenuSoundPlayer((name) => renderManager.playLocalSound(name));
@@ -8207,6 +8207,7 @@ const SERVER_MESSAGE_HANDLERS = Object.freeze({
   importMapForViewResult: receiveImportMapForViewResult,
   serverConfigUpdate: receiveServerConfigUpdate,
   setVar: receiveSetVar,
+  plugins: receivePlugins,
   superKill: receiveSuperKill,
   reload: receiveReload,
 });
@@ -9104,6 +9105,13 @@ function receiveSetVar(message) {
   } else {
     applyWorldGameplay(currentWorldData);
   }
+}
+
+// A plugin loaded or unloaded (`/loadplugin`, `/unloadplugin`): its commands
+// come and go from Tab, and its translations from the catalog.
+function receivePlugins(message) {
+  if (Array.isArray(message.commands)) serverCommands = message.commands;
+  reloadLocale().catch((error) => console.warn(error));
 }
 
 function receiveSuperKill(message) {

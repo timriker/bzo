@@ -191,11 +191,15 @@ bzo's own clients and native ones do not share a wire format.
    ScoreRestorer; each bundled plugin is off until `server.json` names it,
    with its options there in place of upstream's `-loadplugin` string. The
    Plugins panel lists them with their `meta` and switches them on and off.
-   flagStay needs custom map objects and waits for stage 2.
+   flagStay needs custom map objects and waits for stage 2. `/listplugins`,
+   `/loadplugin <name>[,<options as JSON>]` and `/unloadplugin <name|number>`
+   are upstream's, admins only, and last until a restart; a client is told
+   again what a plugin changes for it -- its commands, its translations, its
+   BZDB defaults.
 2. **Rules and custom flags.** The remaining allow and modify events, zone
    entry and exit, custom map objects (the BZW parser passes unknown objects
-   to the plugin that registered them), polls and permissions, `/plugins`,
-   `/listplugins` and `/loadplugin`, custom flags with server shots, the world
+   to the plugin that registered them), polls and permissions, custom flags
+   with server shots, the world
    event and the `bz_addWorld*` calls, and plugin HTTP routes. Port koth,
    keepaway, HoldTheFlag, timedctf, fairCTF, chathistory, TimeLimit,
    shockwaveDeath, wwzones and mapchange, and move the compass letters out.

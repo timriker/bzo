@@ -16745,10 +16745,7 @@ function acceptConnection(ws, req) {
     // it drifts from bzfs. `operator` is the tier, so the client can drop the
     // ones this player may not run without being sent a second list when they
     // log in and may.
-    commands: [...allServerCommands().values()].map((command) => ({
-      name: command.name,
-      operator: command.tier === COMMAND_TIER.OPERATOR,
-    })),
+    commands: clientCommandList(),
     config: clientGameConfig,
     bzdb: clientBzdb(),
     // The server's own `-set`s alone, which a Map Viewer preview lays its
@@ -17933,6 +17930,11 @@ const PLUGIN_API = Object.freeze({
   bz_registerCustomBZDBInt: (name, value) => registerPluginBzdb(name, Math.trunc(value)),
   bz_registerCustomBZDBBool: (name, value) => registerPluginBzdb(name, value ? 1 : 0),
   bz_registerCustomBZDBString: (name, value) => registerPluginBzdb(name, value),
+  bz_removeCustomBZDBVariable: (name) => {
+    if (!pluginBzdbDefaults.delete(name)) return false;
+    if (!liveBzdb.has(name)) broadcastAll({ type: 'setVar', name, value: null });
+    return true;
+  },
 });
 
 function registerPluginBzdb(name, value) {
@@ -17941,6 +17943,89 @@ function registerPluginBzdb(name, value) {
   if (!liveBzdb.has(name)) broadcastAll({ type: 'setVar', name, value: String(value) });
   return true;
 }
+
+// The command list a client completes from, with each command's tier.
+function clientCommandList() {
+  return [...allServerCommands().values()].map((command) => ({
+    name: command.name,
+    operator: command.tier === COMMAND_TIER.OPERATOR,
+  }));
+}
+
+// After `/loadplugin` or `/unloadplugin`: what a client holds that a plugin
+// changes -- the commands it completes and the translations it shows -- is
+// sent again, where upstream's client has neither to refresh.
+function announcePluginChange() {
+  broadcastAll({ type: 'plugins', commands: clientCommandList() });
+}
+
+// The loaded plugins, as `/listplugins` and `/unloadplugin <number>` count
+// them.
+function loadedPlugins() {
+  return plugins.list().filter((entry) => entry.state === 'loaded');
+}
+
+// bzfsPlugins.cxx's DynamicPluginCommands, in its words. Loading and
+// unloading last until the server restarts, as upstream's do; `server.json`'s
+// "plugins" is what a restart reads. bzo's admins hold both of upstream's
+// permissions, LISTPLUGINS and PLUGINS.
+defineCommand('/listplugins', COMMAND_TIER.OPERATOR,
+  '- list the loaded plug-ins',
+  (player) => {
+    const loaded = loadedPlugins();
+    if (loaded.length === 0) {
+      replyToPlayer(player, 'No Plug-ins loaded.');
+      return;
+    }
+    replyToPlayer(player, 'Plug-ins loaded:');
+    loaded.forEach((entry, index) => replyToPlayer(player, `${index + 1} ${entry.id} ${entry.meta.version}`));
+  });
+
+defineCommand('/loadplugin', COMMAND_TIER.OPERATOR,
+  '<plug-in>[,<options as JSON>] - load a plug-in until the server restarts',
+  (player, args) => {
+    const [name, ...rest] = args.trim().split(',');
+    if (!name) {
+      replyToPlayer(player, 'Usage: /loadplugin plug-in');
+      return;
+    }
+    let config;
+    if (rest.length > 0) {
+      try {
+        config = JSON.parse(rest.join(','));
+      } catch {
+        replyToPlayer(player, 'Plug-in load failed.');
+        return;
+      }
+    }
+    plugins.discover();
+    const entry = plugins.load(name.trim(), { config });
+    if (entry?.state === 'loaded') {
+      log(`[CMD] "${player.name}" loaded plugin ${entry.id}`);
+      replyToPlayer(player, 'Plug-in loaded.');
+      announcePluginChange();
+    } else {
+      replyToPlayer(player, 'Plug-in load failed.');
+    }
+  });
+
+defineCommand('/unloadplugin', COMMAND_TIER.OPERATOR,
+  '<plug-in|number> - unload a plug-in until the server restarts',
+  (player, args) => {
+    let name = args.trim();
+    if (!name) {
+      replyToPlayer(player, 'Usage: /unloadplugin plug-in');
+      return;
+    }
+    if (/^\d+$/.test(name)) name = loadedPlugins()[Number(name) - 1]?.id ?? name;
+    if (plugins.unload(name)) {
+      log(`[CMD] "${player.name}" unloaded plugin ${name}`);
+      replyToPlayer(player, 'Plug-In {name} unloaded.', { name });
+      announcePluginChange();
+    } else {
+      replyToPlayer(player, 'Plug-in {name} is not loaded.', { name });
+    }
+  });
 
 // Last, so a plugin's Init finds the whole server defined.
 plugins = createPluginHost({

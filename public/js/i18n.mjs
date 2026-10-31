@@ -211,6 +211,14 @@ export async function setLocale(locale) {
   applyCatalog(await response.json());
 }
 
+// The catalog for the language already showing, fetched again: the server's
+// changes when a plugin that carries translations loads or unloads.
+export async function reloadLocale() {
+  const response = await fetch(`/l10n/${encodeURIComponent(currentLocale)}.json`);
+  if (!response.ok) throw new Error(`l10n ${currentLocale}: HTTP ${response.status}`);
+  applyCatalog(await response.json());
+}
+
 // One pass over markup tagged in index.html. The English is the msgid, taken
 // from the element the first time and kept in the attribute, so a second pass
 // in another language still has it.

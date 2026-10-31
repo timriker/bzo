@@ -321,5 +321,33 @@ module.exports = {
   assert.equal(l10n.catalogMessages('de')[msgid], undefined, 'gone with the plugin');
 }
 
+// /loadplugin's path: a file added after boot is found, loads with the
+// options given, and its BZDB variables go when it is unloaded.
+{
+  const lateDir = path.join(root, 'late');
+  fs.mkdirSync(lateDir);
+  const removed = [];
+  // Frozen, as the server's is.
+  const api = Object.freeze({
+    bz_registerCustomBZDBInt: () => true,
+    bz_removeCustomBZDBVariable: (name) => { removed.push(name); return true; },
+  });
+  const host = createPluginHost({ dirs: [lateDir], api });
+  host.loadAll();
+  assert.deepEqual(host.list(), []);
+  write(lateDir, 'late', `
+module.exports = {
+  ${META},
+  Init(bz, config) { this.config = config; bz.bz_registerCustomBZDBInt('_late', 1); },
+};
+`);
+  assert.deepEqual(host.discover(), ['late']);
+  assert.deepEqual(host.discover(), [], 'found once');
+  assert.equal(host.load('late', { config: { n: 2 } }).state, 'loaded');
+  assert.deepEqual(require(path.join(lateDir, 'late.cjs')).config, { n: 2 });
+  assert.equal(host.unload('late'), true);
+  assert.deepEqual(removed, ['_late']);
+}
+
 fs.rmSync(root, { recursive: true, force: true });
 console.log('plugin host tests passed');
