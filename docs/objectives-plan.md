@@ -1,6 +1,6 @@
 # Objectives
 
-A server gives one player a place to go: a flag only that player sees, on
+A plugin gives one player a place to go: a flag only that player sees, on
 radar and in 3D, and a task line pinned in the HUD ("Go to the red flag").
 When the player reaches it, the flag flies off and the task clears or moves
 on to the next one. The first map that needs this is Moroni Invitational. None
@@ -66,21 +66,36 @@ the next objective, or `FlagNoExist`.
 - **BZFlag clients:** a chat line from the server when the objective is set,
   and another on arrival. Nothing stays on screen for them.
 
-## Who sets objectives
+## Plugins set objectives
 
-There are two ways:
+A plugin decides who gets which objective and when, from whatever it likes:
+team, score, time, zones, other players' objectives. The server only shows
+the objective and reports arrival. Upstream has no such API, so these calls
+are bzo-only. They sit beside the ported API under names that don't pass for
+upstream's:
 
-- **Plugins:** bzo-only calls, since upstream has none, e.g.
-  `bz_setObjective(playerID, flagType, pos, text)`,
-  `bz_clearObjective(playerID)` and an arrival event. They sit beside the
-  ported API, under a name that doesn't pass for upstream's.
-- **The map:** a bzo-only `objective` block in the `.bzw` that lists flag
-  type, position and text, in order or chosen at random per player. A BZFlag
-  client never parses it. bzfs rejects an unknown block unless a plugin has
-  claimed it with `bz_registerCustomMapObject`. So the block belongs to an
-  objectives plugin, and the map loads only where that plugin does.
+- `bz_setObjective(playerID, flagType, pos, text)` replaces the player's
+  objective, if they have one.
+- `bz_clearObjective(playerID)`.
+- `bz_getObjective(playerID)`.
+- An arrival event that carries the player and the objective. The plugin
+  answers it with the next objective or with nothing.
 
-Moroni Invitational wants the second way, or a small plugin shipped with it.
+A player has at most one objective at a time. It ends when the player leaves.
+Dying doesn't end it. Moroni Invitational ships with its own plugin.
+
+## Bots follow objectives
+
+Server-side bots (`server/bots.cjs`, `bot-worker.cjs`) are players to a
+plugin, so a plugin gives a bot an objective the same way it gives one to a
+person. The bot reads its objective as a goal and scores it alongside threats
+and flags, which is "Choosing" under step 4 of
+[bots-plan.md](bots-plan.md). A bot gets no flag packet and no HUD line, only
+the goal. A bot carrying a flag still arrives, because the server, not a grab, decides arrival.
+
+A plugin can also read the other players' objectives (`bz_getObjective`). It
+can then send bots to defend a place players are heading to, or to race them
+there.
 
 ## Catches
 
