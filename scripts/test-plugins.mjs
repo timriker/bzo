@@ -437,5 +437,59 @@ end
   assert.deepEqual(fired, [['SW', [1, 2, 3], [0, 0, 0]]]);
 }
 
+// wwzones: a tank in a zone sets off its weapon, once, and with `repeat`
+// again after the interval.
+{
+  const map = `
+wwzone
+  position 0 0 0
+  size 10 10 5
+  zoneweapon SW 1 3 4 0 0 90 0 0
+  repeat 2
+  playermessage "Boom"
+  infomessage
+end
+`;
+  const bundledDir = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..', 'plugins');
+  let now = 100;
+  let pos = [50, 50, 0];
+  const fired = [];
+  const said = [];
+  const host = createPluginHost({
+    dirs: [bundledDir],
+    settings: { wwzones: true },
+    api: {
+      BZ_SERVER: -2, BZ_ALLUSERS: -1,
+      bz_CustomZoneObject: CustomZoneObject,
+      bz_customMapObjects: (name) => scanCustomMapObjects(map, name),
+      bz_getCurrentTime: () => now,
+      bz_getPlayerIndexList: () => [7],
+      bz_getPlayerByIndex: () => ({ playerID: 7, callsign: 'tank', spawned: true, lastKnownState: { pos } }),
+      bz_vectorFromRotations: (tilt, rotation) => [Math.cos(rotation), Math.sin(rotation), Math.sin(tilt)],
+      bz_fireServerShot: (type, origin, vector) => { fired.push({ type, origin, y: Math.round(vector[1]) }); return 1; },
+      bz_sendTextMessage: (from, to, text, params) => { said.push({ to, text, params }); return true; },
+    },
+  });
+  host.loadAll();
+  const tick = () => host.callEvents('bz_eTickEvent', { eventTime: now });
+  tick();
+  assert.deepEqual(fired, [], 'nobody in the zone');
+  pos = [2, 2, 1];
+  tick();
+  assert.deepEqual(fired, [], 'arriving arms it, as upstream wasHere does');
+  now += 0.1;
+  tick();
+  assert.deepEqual(fired, [{ type: 'SW', origin: [3, 4, 0], y: 1 }], 'then it fires, pointing at 90 degrees');
+  assert.deepEqual(said.map((line) => line.text), ['Boom', '{weapon} triggered by {player}.']);
+  now += 1;
+  tick();
+  assert.equal(fired.length, 1, 'not again inside the repeat interval');
+  now += 2;
+  tick();
+  now += 0.1;
+  tick();
+  assert.equal(fired.length, 2, 'and again after it');
+}
+
 fs.rmSync(root, { recursive: true, force: true });
 console.log('plugin host tests passed');

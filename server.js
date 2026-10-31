@@ -17897,6 +17897,7 @@ function pluginRecord(player) {
     currentFlagID: flag ? flag.index : -1,
     currentFlag: type ? `${type.name} (${type.quality === 0 ? '+' : '-'}${type.abbreviation})` : '',
     spawned: player.alive === true,
+    lastKnownState: pluginState(player),
     verified: player.verified === true,
     globalUser: player.verified === true,
     bzID: player.bzid ? String(player.bzid) : '',
@@ -18024,6 +18025,11 @@ const PLUGIN_API = Object.freeze({
   // MapObject while it reads the map. bzo has read it already, so it is read
   // again here for the one name.
   bz_customMapObjects: (name) => customMapObjects(name),
+  // bz_vectorFromRotations(tilt, rotation), in radians: the direction a world
+  // weapon points, returned where upstream fills an array.
+  bz_vectorFromRotations: (tilt, rotation) => [
+    Math.cos(tilt) * Math.cos(rotation), Math.cos(tilt) * Math.sin(rotation), Math.sin(tilt),
+  ],
 
   // bz_fireServerShot(shotType, origin, vector, color = eRogueTeam, target):
   // WorldWeapons::fireShot, with upstream's allow event first. `vector` is a

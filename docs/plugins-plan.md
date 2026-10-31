@@ -211,12 +211,13 @@ bzo's own clients and native ones do not share a wire format.
    listens. flagStay is ported. The map loader still reports a plugin's block
    as ignored. Server shots are done: `bz_fireServerShot` fires through the
    path a map's world weapons use, after upstream's
-   `bz_eAllowServerShotFiredEvent`, and shockwaveDeath is ported; a guided
+   `bz_eAllowServerShotFiredEvent`; shockwaveDeath and wwzones are ported on
+   it, wwzones on the map objects and zones above as well. A guided
    server shot's target is not yet followed. Left: the remaining allow and
    modify events, polls and permissions, custom flags, the world event and the
    `bz_addWorld*` calls, and plugin HTTP routes. Port koth, keepaway,
-   HoldTheFlag, timedctf, fairCTF, chathistory, TimeLimit, shockwaveDeath,
-   wwzones and mapchange, and move the compass letters out.
+   HoldTheFlag, timedctf, fairCTF, chathistory, TimeLimit and mapchange, and
+   move the compass letters out.
 3. **Plugin options and upload** in the panel.
 4. **The Discord bridge** moves to a plugin once stage 1's chat events carry
    what it needs.
