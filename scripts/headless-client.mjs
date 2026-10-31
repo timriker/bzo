@@ -97,6 +97,28 @@ const chrome = spawn('google-chrome', [
   'about:blank',
 ], { stdio: 'ignore' });
 
+// The profile is ~150 MB in a temp directory that is often RAM, so it goes
+// however the run ends: finished, failed, or stopped by `timeout` or Ctrl-C.
+// Removed once Chrome has exited, since Chrome writes into it until then.
+let profileRemoved = false;
+function removeProfile() {
+  if (profileRemoved) return;
+  profileRemoved = true;
+  try {
+    fs.rmSync(profile, { recursive: true, force: true });
+  } catch {
+    // Left behind rather than failing a run that has already reported.
+  }
+}
+chrome.on('exit', removeProfile);
+process.on('exit', () => {
+  chrome.kill('SIGKILL');
+  removeProfile();
+});
+for (const signal of ['SIGINT', 'SIGTERM', 'SIGHUP']) {
+  process.on(signal, () => process.exit(130));
+}
+
 const devtools = async (endpoint) => {
   for (let attempt = 0; attempt < 60; attempt += 1) {
     try {
@@ -565,10 +587,5 @@ if (shotPath) {
 console.log(problems.length ? problems.slice(0, 20).join('\n') : 'no console errors or exceptions');
 
 socket.close();
+// The profile goes when Chrome has exited (`removeProfile`).
 chrome.kill();
-// Chrome is still unlinking its own profile as it goes.
-try {
-  fs.rmSync(profile, { recursive: true, force: true });
-} catch {
-  // Left in the temp directory rather than failing a run that already reported.
-}

@@ -21,7 +21,7 @@
 // real one truncates on start.
 
 import { spawn } from 'node:child_process';
-import { mkdtempSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 
@@ -52,6 +52,8 @@ const finish = (code, message) => {
   child.kill('SIGKILL');
   if (message) console.error(message);
   if (code === 0) console.log('server boots');
+  // Its config, log and cache, which nothing reads after the check.
+  rmSync(dir, { recursive: true, force: true });
   process.exit(code);
 };
 
