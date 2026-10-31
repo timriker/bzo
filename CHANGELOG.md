@@ -6,6 +6,17 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
 
 ## [Unreleased]
 
+## [1.3.78] - 2026-10-31
+
+### Added
+- `"voice": false` in `server.json` turns voice chat off: no mic button, no
+  voice settings, no voice connections. See
+  [docs/installation.md](docs/installation.md).
+
+### Changed
+- The operator's plugins directory (`data/plugins`) is created at boot.
+- `?novoice` is now `?voice=false`.
+
 ## [1.3.77] - 2026-10-31
 
 ### Changed
