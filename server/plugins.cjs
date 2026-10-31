@@ -338,6 +338,26 @@ function createPluginHost({
         return done;
       };
     }
+    // bz_registerCustomPollType (bzfsAPI.cxx:2630): `/poll <option>
+    // <parameters>`. A handler is upstream's object, PollOpen(player, action,
+    // parameters) returning false to stop the poll and PollClose(action,
+    // parameters, success). Its types go when the plugin does.
+    if (typeof api.bz_registerCustomPollType === 'function') {
+      bz.bz_registerCustomPollType = (option, parameters, handler) => {
+        if (!option || !handler) return false;
+        const open = handler.PollOpen ? guarded(entry, 'PollOpen', handler.PollOpen.bind(handler)) : () => true;
+        const close = handler.PollClose ? guarded(entry, 'PollClose', handler.PollClose.bind(handler)) : () => {};
+        const name = String(option).toLowerCase();
+        const done = api.bz_registerCustomPollType(name, parameters, { PollOpen: open, PollClose: close });
+        if (done) entry.pollTypes.add(name);
+        return done;
+      };
+      bz.bz_removeCustomPollType = (option) => {
+        const name = String(option || '').toLowerCase();
+        if (!entry.pollTypes.delete(name)) return false;
+        return api.bz_removeCustomPollType(name);
+      };
+    }
     // bz_registerCustomMapObject (bzfsAPI.h:2030). Upstream's reader hands a
     // plugin each block of its object as it reads the map, so a plugin
     // registers in Init; bzo has the map already, and hands them over here.
@@ -390,6 +410,8 @@ function createPluginHost({
     entry.timers.clear();
     for (const name of entry.bzdb) api.bz_removeCustomBZDBVariable?.(name);
     entry.bzdb.clear();
+    for (const name of entry.pollTypes) api.bz_removeCustomPollType?.(name);
+    entry.pollTypes.clear();
   }
 
   // `ifEnabled` leaves a plugin `server.json` or its own meta turns off read
@@ -462,7 +484,7 @@ function createPluginHost({
       if (entries.get(found.id)?.file === found.file) continue;
       entries.set(found.id, {
         ...found, meta: null, state: 'off', error: null, plugin: null,
-        events: new Set(), commands: new Set(), timers: new Set(), bzdb: new Set(),
+        events: new Set(), commands: new Set(), timers: new Set(), bzdb: new Set(), pollTypes: new Set(),
       });
       if (found.replaces) log(`${found.id}: ${found.file} replaces ${found.replaces}`);
       added.push(found.id);

@@ -7553,13 +7553,14 @@ function playerSpawned(player) {
 // client asks again to spawn; a bzo tank is respawned by the server, so the
 // server asks again a respawn delay later. Returns true, false, or 'kicked'.
 function spawnAllowed(player) {
-  const asked = pluginEvent('bz_eAllowSpawn', () => ({
-    playerID: Number(player.id), team: bzTeam(player.team), handled: false, allow: true,
+  const build = () => ({
+    playerID: Number(player.id), team: bzTeam(player.team), handled: false, allow: hasPerm(player, 'SPAWN'),
     kickPlayer: true, kickReason: 'Not allowed to spawn',
     message: 'You are not allowed to spawn. Please contact an administrator.',
-  }));
+  });
+  const asked = pluginEvent('bz_eAllowSpawn', build) ?? build();
   clearTimeout(player.spawnRetryTimer);
-  if (!asked || asked.allow) {
+  if (asked.allow) {
     player.notifiedOfSpawnable = false;
     return true;
   }
@@ -9227,18 +9228,73 @@ defineCommand('/idbanlist', COMMAND_TIER.OPERATOR,
 // turns polls off. `ban` waits on address bans.
 const POLL_SETTINGS = { ...POLL_DEFAULTS, ...(serverConfig.poll || {}) };
 const pollArbiter = POLL_SETTINGS.voteTime > 0 ? new VotingArbiter(POLL_SETTINGS) : null;
-const pollAnnounced = { opening: false, closure: false, results: false, heartbeatAt: -1 };
+const pollAnnounced = { opening: false, closure: false, results: false, heartbeatAt: -1, ended: false };
 
-// What upstream's default groups allow (bzfs.cxx:5960): a signed-in player
-// (VERIFIED) may poll, vote, and poll a kick, a ban or a flag reset; an
-// admin may do all of it, kill and set polls and the veto included.
+// Upstream's permissions (Permissions.cxx). bzo has no groups file: its
+// groups are upstream's defaults (initGroups, bzfs.cxx:5940) -- EVERYONE,
+// VERIFIED for a signed-in player, and every permission but HIDEADMIN for an
+// admin -- and a plugin may grant or revoke one for a player while they are
+// here. A name upstream does not know is a plugin's custom permission, which
+// nobody has until it is granted. TALK is bzo's `/mute`.
+const BUILTIN_PERMS = new Set([
+  'ACTIONMESSAGE', 'ADMINMESSAGERECEIVE', 'ADMINMESSAGESEND', 'ANTIBAN', 'ANTIKICK', 'ANTIKILL', 'ANTIPOLL',
+  'ANTIPOLLBAN', 'ANTIPOLLKICK', 'ANTIPOLLKILL', 'BAN', 'BANLIST', 'CLIENTQUERY', 'COUNTDOWN', 'DATE', 'ENDGAME',
+  'FLAGHISTORY', 'FLAGMASTER', 'FLAGMOD', 'HIDEADMIN', 'IDLESTATS', 'INFO', 'KICK', 'KILL', 'LAGSTATS', 'LAGWARN',
+  'JITTERWARN', 'LISTPERMS', 'LISTPLUGINS', 'MASTERBAN', 'MODCOUNT', 'MUTE', 'PACKETLOSSWARN', 'PLAYERLIST',
+  'PLUGINS', 'POLL', 'POLLBAN', 'POLLKICK', 'POLLKILL', 'POLLSET', 'POLLFLAGRESET', 'PRIVATEMESSAGE', 'RECORD',
+  'REJOIN', 'REMOVEPERMS', 'REPLAY', 'REPORT', 'SAY', 'SENDHELP', 'SETALL', 'SETPERMS', 'SETVAR', 'SHORTBAN',
+  'SHOWADMIN', 'SHOWMOTTO', 'SHOWOTHERS', 'SHUTDOWNSERVER', 'SPAWN', 'SUPERKILL', 'TALK', 'UNBAN', 'UNMUTE',
+  'VETO', 'VIEWREPORTS', 'VOTE',
+]);
+const EVERYONE_PERMS = new Set([
+  'ACTIONMESSAGE', 'ADMINMESSAGESEND', 'CLIENTQUERY', 'DATE', 'FLAGHISTORY', 'IDLESTATS', 'LAGSTATS',
+  'PRIVATEMESSAGE', 'SHOWMOTTO', 'SPAWN', 'TALK',
+]);
+const VERIFIED_PERMS = new Set(['LISTPLUGINS', 'POLL', 'REPORT', 'VOTE', 'POLLBAN', 'POLLKICK', 'POLLFLAGRESET']);
+
+function hasPerm(player, perm) {
+  const name = String(perm || '').toUpperCase();
+  if (!player || !name) return false;
+  if (name === 'TALK' && player.muted) return false;
+  if (player.revokedPerms?.has(name)) return false;
+  if (player.grantedPerms?.has(name)) return true;
+  if (!BUILTIN_PERMS.has(name)) return false;
+  if (EVERYONE_PERMS.has(name)) return true;
+  if (player.verified === true && VERIFIED_PERMS.has(name)) return true;
+  return isAdmin(player) && name !== 'HIDEADMIN';
+}
+
+// bz_modifyPerm (bzfsAPI.cxx:1027), and bz_ePermissionModificationEvent.
+function modifyPerm(player, perm, grant) {
+  const name = String(perm || '').toUpperCase();
+  if (!player || !name) return false;
+  player.grantedPerms ??= new Set();
+  player.revokedPerms ??= new Set();
+  if (grant) {
+    player.revokedPerms.delete(name);
+    player.grantedPerms.add(name);
+  } else {
+    player.grantedPerms.delete(name);
+    player.revokedPerms.add(name);
+  }
+  if (name === 'TALK') player.muted = !grant;
+  pluginEvent('bz_ePermissionModificationEvent', () => ({
+    playerID: Number(player.id), perm: name, granted: grant, customPerm: !BUILTIN_PERMS.has(name),
+  }));
+  return true;
+}
+
 function pollRights(player) {
-  const admin = isAdmin(player);
-  const known = admin || player.verified === true;
+  const can = (perm) => hasPerm(player, perm);
   return {
-    known, poll: known, vote: known, kick: known, ban: known, flagreset: known, kill: admin, set: admin, veto: admin,
+    poll: can('POLL'), vote: can('VOTE'), kick: can('POLLKICK'), ban: can('POLLBAN'),
+    flagreset: can('POLLFLAGRESET'), kill: can('POLLKILL'), set: can('POLLSET'), veto: can('VETO'),
   };
 }
+
+// A plugin's poll types (bz_registerCustomPollType): `/poll <option>
+// <parameters>`, opened and closed by the plugin's handler.
+const customPollTypes = new Map(); // option, lowercase -> { parameters, handler }
 
 // `message` is what `localized` returns.
 function announceToAll(message) {
@@ -9253,6 +9309,9 @@ function pollUsage(player) {
   if (rights.kill) replyToPlayer(player, '    or /poll kill playername');
   if (rights.set) replyToPlayer(player, '    or /poll set variable value');
   if (rights.flagreset) replyToPlayer(player, '    or /poll flagreset');
+  for (const [option, type] of customPollTypes) {
+    replyToPlayer(player, '    or /poll {action} {parameters}', { action: option, parameters: type.parameters });
+  }
 }
 
 defineCommand('/vote', COMMAND_TIER.OPEN,
@@ -9276,6 +9335,13 @@ defineCommand('/vote', COMMAND_TIER.OPEN,
       if (answer) replyToPlayer(player, '{player}, you did not vote in favor or in opposition', { player: player.name });
       else replyToPlayer(player, '{player}, you did not provide a vote answer', { player: player.name });
       replyToPlayer(player, 'Usage: /vote yes|no|y|n|1|0|yea|nay|si|ja|nein|oui|non|sim|nao');
+      return;
+    }
+    const asked = pluginEvent('bz_ePollVoteEvent', () => ({
+      playerID: Number(player.id), inFavor: vote === 'yes', allow: true, reason: '',
+    }));
+    if (asked && !asked.allow) {
+      replyToPlayer(player, asked.reason);
       return;
     }
     const cast = vote === 'yes' ? pollArbiter.voteYes(player.name) : pollArbiter.voteNo(player.name);
@@ -9318,6 +9384,7 @@ defineCommand('/veto', COMMAND_TIER.OPEN,
     pollArbiter.forgetPoll();
     resetPollAnnouncements();
     announceToAll(localized('The poll was cancelled by {player}', { player: player.name }));
+    pluginEvent('bz_ePollVetoEvent', () => ({ playerID: Number(player.id) }));
   });
 
 defineCommand('/poll', COMMAND_TIER.OPEN,
@@ -9367,7 +9434,8 @@ defineCommand('/poll', COMMAND_TIER.OPEN,
       }
       return;
     }
-    if (!['ban', 'kick', 'kill', 'set', 'flagreset'].includes(cmd)) {
+    const custom = customPollTypes.get(cmd);
+    if (!custom && !['ban', 'kick', 'kill', 'set', 'flagreset'].includes(cmd)) {
       pollUsage(player);
       return;
     }
@@ -9383,12 +9451,13 @@ defineCommand('/poll', COMMAND_TIER.OPEN,
       replyToPlayer(player, 'Usage: /poll {action} target', { action: cmd });
       return;
     }
-    if (!rights[cmd]) {
+    if (!custom && !rights[cmd]) {
       // TRANSLATORS: /poll {action} is a command as typed; keep it as it is
       replyToPlayer(player, '{player}, you may not /poll {action} on this server', { player: player.name, action: cmd });
       return;
     }
-    let started;
+    if (custom && !custom.handler.PollOpen(pluginRecord(player), cmd, target)) return;
+    let victimAddress = null;
     if (cmd === 'ban' || cmd === 'kick' || cmd === 'kill') {
       const victim = players.get(resolveCallsign(target));
       if (!victim) {
@@ -9409,9 +9478,25 @@ defineCommand('/poll', COMMAND_TIER.OPEN,
         replyToPlayer(player, '{player} has no trusted address to ban', { player: victim.name });
         return;
       }
-      if (cmd === 'ban') started = pollArbiter.pollToBan(target, player.name, player.id, victim.clientIP);
-      else if (cmd === 'kick') started = pollArbiter.pollToKick(target, player.name, player.id);
-      else started = pollArbiter.pollToKill(target, player.name, player.id);
+      victimAddress = victim.clientIP;
+    }
+    // bz_eAllowPollEvent (commands.cxx:3355): a plugin may refuse the poll.
+    const allowed = pluginEvent('bz_eAllowPollEvent', () => ({
+      playerID: Number(player.id), pollAction: cmd, pollTarget: target, allow: true, reason: '',
+    }));
+    if (allowed && !allowed.allow) {
+      replyToPlayer(player, allowed.reason);
+      return;
+    }
+    let started;
+    if (custom) {
+      started = pollArbiter.poll(target, player.name, cmd, player.id);
+    } else if (cmd === 'ban') {
+      started = pollArbiter.pollToBan(target, player.name, player.id, victimAddress);
+    } else if (cmd === 'kick') {
+      started = pollArbiter.pollToKick(target, player.name, player.id);
+    } else if (cmd === 'kill') {
+      started = pollArbiter.pollToKill(target, player.name, player.id);
     } else if (cmd === 'set') {
       started = pollArbiter.pollToSet(target, player.name, player.id);
     } else {
@@ -9422,6 +9507,7 @@ defineCommand('/poll', COMMAND_TIER.OPEN,
       return;
     }
     log(`[POLL] "${player.name}" asked to ${pollArbiter.action} ${pollArbiter.target}`);
+    pluginEvent('bz_ePollStartEvent', () => ({ playerID: Number(player.id), pollAction: cmd, pollTarget: target }));
     announceToAll(localized('A poll to {action} {target} has been requested by {player}', {
       action: cmd, target, player: player.name,
     }));
@@ -9449,6 +9535,7 @@ function resetPollAnnouncements() {
   pollAnnounced.closure = false;
   pollAnnounced.results = false;
   pollAnnounced.heartbeatAt = -1;
+  pollAnnounced.ended = false;
 }
 
 // What a successful poll does, once its veto time is over.
@@ -9523,6 +9610,16 @@ function tickPoll() {
       pollArbiter.closePoll();
     }
     return;
+  }
+  // bzfs.cxx:7310: the plugins hear the result once, and a plugin's own poll
+  // type is closed, before it is announced.
+  if (!pollAnnounced.ended) {
+    pollAnnounced.ended = true;
+    pluginEvent('bz_ePollEndEvent', () => ({
+      successful: pollArbiter.isPollSuccessful(), yesCount: pollArbiter.getYesCount(),
+      noCount: pollArbiter.getNoCount(), abstentionCount: pollArbiter.getAbstentionCount(),
+    }));
+    customPollTypes.get(action)?.handler.PollClose(action, target, pollArbiter.isPollSuccessful());
   }
   if (!pollAnnounced.results) {
     announceToAll(localized('Poll Results: {yes} in favor, {no} oppose, {abstain} abstain', {
@@ -18049,6 +18146,11 @@ const PLUGIN_API = Object.freeze({
     const player = players.get(String(id));
     return player?.joined ? pluginRecord(player) : null;
   },
+  // bz_getPlayerBySlotOrCallsign (bzfsAPI.cxx): `#slot` or a callsign.
+  bz_getPlayerBySlotOrCallsign: (name) => {
+    const target = resolveCommandTarget(String(name ?? ''));
+    return target.id ? pluginRecord(players.get(target.id)) : null;
+  },
   bz_getPlayerCallsign: (id) => players.get(String(id))?.name ?? null,
   bz_getPlayerTeam: (id) => {
     const player = players.get(String(id));
@@ -18110,6 +18212,31 @@ const PLUGIN_API = Object.freeze({
   bz_debugMessage: (level, message) => {
     if (level <= 1) log(`[PLUGIN] ${message}`);
   },
+
+  // Permissions, by upstream's names (`hasPerm` above).
+  bz_hasPerm: (id, perm) => hasPerm(players.get(String(id)), perm),
+  bz_grantPerm: (id, perm) => modifyPerm(players.get(String(id)), perm, true),
+  bz_revokePerm: (id, perm) => modifyPerm(players.get(String(id)), perm, false),
+
+  // Polls.
+  bz_pollActive: () => Boolean(pollArbiter?.knowsPoll()),
+  // bz_pollVeto (bzfsAPI.cxx:2598): the poll is dropped without a word, and
+  // the plugins hear of it from the server.
+  bz_pollVeto: () => {
+    if (!pollArbiter?.knowsPoll()) return false;
+    log(`[POLL] a plugin vetoed the poll to ${pollArbiter.action} ${pollArbiter.target}`);
+    pollArbiter.forgetPoll();
+    resetPollAnnouncements();
+    pluginEvent('bz_ePollVetoEvent', () => ({ playerID: BZ_SERVER }));
+    return true;
+  },
+  bz_registerCustomPollType: (option, parameters, handler) => {
+    const name = String(option || '').toLowerCase();
+    if (!name || !handler || ['ban', 'kick', 'kill', 'set', 'flagreset', 'vote', 'veto'].includes(name)) return false;
+    customPollTypes.set(name, { parameters: String(parameters ?? ''), handler });
+    return true;
+  },
+  bz_removeCustomPollType: (option) => customPollTypes.delete(String(option || '').toLowerCase()),
 
   // bz_removePlayerFlag: the flag leaves the tank and goes back to its spawn,
   // as zapFlagByPlayer sends it.

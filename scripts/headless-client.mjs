@@ -305,9 +305,12 @@ if ((mvArgs || chatLine) && joined.startsWith('joined')) {
   await sleep(2000);
   if (mvArgs) await sendChat(`/mv ${mvArgs}`);
   // Newline-separated, so a probe that needs a sequence -- give a flag, look at
-  // it, put it down -- is one option rather than one run each.
+  // it, put it down -- is one option rather than one run each. A `sleep 5`
+  // line waits that many seconds, for a sequence that waits on other players.
   for (const line of chatLine.split('\n').map((text) => text.trim()).filter(Boolean)) {
-    await sendChat(line);
+    const pause = /^sleep\s+(\d+(?:\.\d+)?)$/.exec(line);
+    if (pause) await sleep(Number(pause[1]) * 1000);
+    else await sendChat(line);
   }
 }
 

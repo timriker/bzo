@@ -229,7 +229,16 @@ bzo's own clients and native ones do not share a wire format.
    after the bans, and `bz_eAllowSpawn` may hold a tank dead, telling it
    once, or kick it; bzo's server respawns tanks itself, so a held tank is
    asked again a respawn delay later where a BZFlag client would ask again.
-   Left: polls and permissions, the world event and the
+   The poll events are upstream's: a plugin may refuse a poll or a vote, and
+   hears a poll start, end and be vetoed; `bz_registerCustomPollType` adds a
+   `/poll` type of the plugin's own (customPollTypeSample is ported), and
+   `bz_pollActive` and `bz_pollVeto` are there. Permissions are upstream's
+   names over bzo's groups, which are upstream's defaults -- EVERYONE,
+   VERIFIED for a signed-in player, every permission for an admin -- with
+   `bz_hasPerm`, `bz_grantPerm` and `bz_revokePerm` per player and
+   `bz_ePermissionModificationEvent`. What the server asks of them is the
+   poll rights, SPAWN and TALK (`/mute`); the operator commands are still
+   an admin's alone. Left: the world event and the
    `bz_addWorld*` calls, and plugin HTTP routes. Port koth, keepaway,
    HoldTheFlag, timedctf, fairCTF, chathistory, TimeLimit and mapchange, and
    move the compass letters out.

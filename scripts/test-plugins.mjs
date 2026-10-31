@@ -351,6 +351,35 @@ module.exports = {
   assert.deepEqual(removed, ['_late']);
 }
 
+// A custom poll type is handed to the server with a handler that survives
+// the plugin throwing, and goes when the plugin does.
+{
+  const pollDir = path.join(root, 'polls');
+  fs.mkdirSync(pollDir);
+  const types = new Map();
+  const api = Object.freeze({
+    bz_registerCustomPollType: (option, parameters, handler) => { types.set(option, handler); return true; },
+    bz_removeCustomPollType: (option) => types.delete(option),
+  });
+  write(pollDir, 'poller', `
+module.exports = {
+  ${META},
+  Init(bz) { bz.bz_registerCustomPollType('Mute', 'callsign', this); },
+  PollOpen(player) { if (player.bad) throw new Error('bad'); return true; },
+};
+`);
+  const logged = [];
+  const host = createPluginHost({ dirs: [pollDir], api, log: (line) => logged.push(line) });
+  host.loadAll();
+  host.load('poller');
+  assert.equal(types.get('mute').PollOpen({}), true);
+  assert.equal(types.get('mute').PollOpen({ bad: true }), undefined, 'a throw stops the poll');
+  assert.ok(logged.some((line) => line.includes('PollOpen')));
+  types.get('mute').PollClose('mute', '', true);
+  host.unload('poller');
+  assert.equal(types.size, 0, 'removed with the plugin');
+}
+
 // Custom map objects and zones, as upstream's reader and bz_CustomZoneObject
 // have them, and flagStay built on both.
 {
