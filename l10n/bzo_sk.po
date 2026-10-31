@@ -4694,16 +4694,6 @@ msgstr "Zostávajúce strely: {count}"
 msgid "1 shot left"
 msgstr "Zostáva 1 strela"
 
-#: server.js:14051
-msgid ""
-"Team flags cannot be grabbed for {seconds} seconds after they were last "
-"capped."
-msgstr "Tímové vlajky sa nedajú zobrať {seconds} s od posledného dobytia."
-
-#: server.js:14052
-msgid "You cannot grab the {team} team flag for another ~{seconds} seconds"
-msgstr "Vlajku tímu {team} nemôžeš zobrať ešte ~{seconds} s"
-
 #: server.js:14266
 msgid "I'm sorry, we do not allow autopilot on this server."
 msgstr "Prepáč, na tomto serveri autopilota nepovoľujeme."

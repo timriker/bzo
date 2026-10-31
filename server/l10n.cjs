@@ -70,14 +70,27 @@ function hasLocale(id) {
   return localeIds().includes(id);
 }
 
-// Upstream's parent fallback: `pt_PT` over `pt`, both over the msgid.
+// The loaded plugins' own strings for one locale, `{ msgid: msgstr }`, which
+// server.js supplies (docs/plugins-plan.md, "Translations").
+let pluginMessages = () => ({});
+
+function usePluginMessages(lookup) {
+  pluginMessages = lookup;
+}
+
+// Upstream's parent fallback: `pt_PT` over `pt`, both over the msgid. The
+// interface catalog takes the loaded plugins' strings under its own, so a
+// plugin adds translations but never changes one bzo already has.
 function catalogMessages(locale, domain = 'bzo') {
+  const plugin = {};
   const messages = {};
   const parts = locale.split('_');
   for (let i = 1; i <= parts.length; i++) {
-    Object.assign(messages, readCatalog(parts.slice(0, i).join('_'), domain) || {});
+    const level = parts.slice(0, i).join('_');
+    if (domain === 'bzo') Object.assign(plugin, pluginMessages(level) || {});
+    Object.assign(messages, readCatalog(level, domain) || {});
   }
-  return messages;
+  return { ...plugin, ...messages };
 }
 
 // `t` for a page the server renders in `locale`, as the client's `t` is:
@@ -155,5 +168,5 @@ function inlineJson(value) {
 
 module.exports = {
   catalogFor, catalogMessages, translator, hasLocale, negotiateLocale, html, scriptMsgids, inlineJson,
-  languageTag, textDirection, DEFAULT_LOCALE, LOCALE_COOKIE,
+  languageTag, textDirection, usePluginMessages, DEFAULT_LOCALE, LOCALE_COOKIE,
 };

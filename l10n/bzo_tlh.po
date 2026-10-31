@@ -4652,16 +4652,6 @@ msgstr "bachmey {count} ratlh"
 msgid "1 shot left"
 msgstr "wa' bach ratlh"
 
-#: server.js:14051
-msgid ""
-"Team flags cannot be grabbed for {seconds} seconds after they were last "
-"capped."
-msgstr "boq joqwI' tlhaplu'DI', {seconds} lup tlhaplaHbe'lu'."
-
-#: server.js:14052
-msgid "You cannot grab the {team} team flag for another ~{seconds} seconds"
-msgstr "{team} boq joqwI' DatlhaplaHbe'; ~{seconds} lup ret"
-
 #: server.js:14266
 msgid "I'm sorry, we do not allow autopilot on this server."
 msgstr "jIQoS, naDev ghop Duj chaw'be'lu'."

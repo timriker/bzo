@@ -4709,16 +4709,6 @@ msgstr "{count} skud tilbage"
 msgid "1 shot left"
 msgstr "1 skud tilbage"
 
-#: server.js:14051
-msgid ""
-"Team flags cannot be grabbed for {seconds} seconds after they were last "
-"capped."
-msgstr "Holdflag kan ikke tages i {seconds} sekunder efter sidste erobring."
-
-#: server.js:14052
-msgid "You cannot grab the {team} team flag for another ~{seconds} seconds"
-msgstr "Du kan ikke tage {team} holds flag før om ~{seconds} sekunder"
-
 #: server.js:14266
 msgid "I'm sorry, we do not allow autopilot on this server."
 msgstr "Beklager, autopilot er ikke tilladt på denne server."

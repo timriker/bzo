@@ -4593,16 +4593,6 @@ msgstr ""
 msgid "1 shot left"
 msgstr ""
 
-#: server.js:14051
-msgid ""
-"Team flags cannot be grabbed for {seconds} seconds after they were last "
-"capped."
-msgstr ""
-
-#: server.js:14052
-msgid "You cannot grab the {team} team flag for another ~{seconds} seconds"
-msgstr ""
-
 #: server.js:14266
 msgid "I'm sorry, we do not allow autopilot on this server."
 msgstr ""

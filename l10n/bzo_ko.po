@@ -4686,16 +4686,6 @@ msgstr "{count}발 남음"
 msgid "1 shot left"
 msgstr "1발 남음"
 
-#: server.js:14051
-msgid ""
-"Team flags cannot be grabbed for {seconds} seconds after they were last "
-"capped."
-msgstr "팀 플래그는 마지막 점령 후 {seconds}초 동안 잡을 수 없어요."
-
-#: server.js:14052
-msgid "You cannot grab the {team} team flag for another ~{seconds} seconds"
-msgstr "앞으로 약 {seconds}초 동안 {team} 팀 플래그를 잡을 수 없어요"
-
 #: server.js:14266
 msgid "I'm sorry, we do not allow autopilot on this server."
 msgstr "죄송하지만 이 서버에서는 오토파일럿을 쓸 수 없어요."

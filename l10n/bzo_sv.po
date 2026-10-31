@@ -4709,17 +4709,6 @@ msgstr "{count} skott kvar"
 msgid "1 shot left"
 msgstr "1 skott kvar"
 
-#: server.js:14051
-msgid ""
-"Team flags cannot be grabbed for {seconds} seconds after they were last "
-"capped."
-msgstr ""
-"Lagflaggor kan inte tas förrän {seconds} sekunder efter senaste erövring."
-
-#: server.js:14052
-msgid "You cannot grab the {team} team flag for another ~{seconds} seconds"
-msgstr "Du kan inte ta lag {team}s flagga förrän om ~{seconds} sekunder"
-
 #: server.js:14266
 msgid "I'm sorry, we do not allow autopilot on this server."
 msgstr "Tyvärr, autopilot är inte tillåten på den här servern."

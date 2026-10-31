@@ -4699,18 +4699,6 @@ msgstr "{count} 5h075 l3f7"
 msgid "1 shot left"
 msgstr "1 5h07 l3f7"
 
-#: server.js:14051
-msgid ""
-"Team flags cannot be grabbed for {seconds} seconds after they were last "
-"capped."
-msgstr ""
-"734m fl4g5 c4nn07 b3 gr4bb3d f0r {seconds} 53c0nd5 4f73r 7h3y w3r3 l457 "
-"c4pp3d."
-
-#: server.js:14052
-msgid "You cannot grab the {team} team flag for another ~{seconds} seconds"
-msgstr "j00 c4nn07 gr4b 73h {team} 734m fl4g f0r 4n07h3r ~{seconds} 53c0nd5"
-
 #: server.js:14266
 msgid "I'm sorry, we do not allow autopilot on this server."
 msgstr "1'm 50rry, w3 d0 n07 4ll0w 4u70p1l07 0n 7h15 53rv3r."

@@ -48,4 +48,9 @@ module.exports = {
   },
 
   Event(/* eventData */) {},
+
+  // Translations of what the plugin says with bz.bz_sendTextMessage(from, to,
+  // msgid, params), merged into what a bzo client is sent while the plugin
+  // runs, e.g. { de: { 'Hello, {player}': 'Hallo, {player}' } }.
+  l10n: {},
 };

@@ -214,5 +214,112 @@ module.exports = {
   assert.equal(sent.length, 2, 'and not again within five seconds');
 }
 
+// The upstream ports, against a stub of the server: every bundled plugin is
+// off until server.json names it.
+{
+  const bundledDir = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..', 'plugins');
+  const idle = createPluginHost({ dirs: [bundledDir] });
+  idle.loadAll();
+  assert.deepEqual(idle.list().filter((entry) => entry.state !== 'off').map((entry) => entry.id), [],
+    'no bundled plugin runs unless asked');
+
+  let now = 1000;
+  const sent = [];
+  const killed = [];
+  const team = new Map([[1, 5], [2, 6], [3, 6], [4, 6]]); // a rabbit and three hunters
+  const flagTypes = ['R*', 'SW', 'G*', null];
+  const flagOwners = [-1, 4, -1, -1];
+  const resets = [];
+  const api = {
+    BZ_SERVER: -2, BZ_ALLUSERS: -1, eRabbitTeam: 5, eHunterTeam: 6,
+    bz_getCurrentTime: () => now,
+    bz_getPlayerIndexList: () => [...team.keys()],
+    bz_getPlayerTeam: (id) => team.get(id) ?? -1,
+    bz_getPlayerCallsign: (id) => `p${id}`,
+    bz_getTeamCount: (t) => [...team.values()].filter((value) => value === t).length,
+    bz_killPlayer: (id, base, killer) => { killed.push({ id, killer }); return true; },
+    bz_sendTextMessage: (from, to, text, params) => { sent.push({ to, text, params }); return true; },
+    bz_getPlayerFlag: (id) => flagTypes[flagOwners.indexOf(id)] ?? null,
+    bz_getNumFlags: () => flagTypes.length,
+    bz_getFlagName: (index) => flagTypes[index] ?? '',
+    bz_flagPlayer: (index) => flagOwners[index],
+    bz_resetFlag: (index) => { resets.push(index); return true; },
+  };
+  const host = createPluginHost({
+    dirs: [bundledDir], api,
+    settings: { killall: true, rabbitTimer: { time: 10 }, teamflagreset: true, autoFlagReset: { minutes: 1 } },
+  });
+  host.loadAll();
+  for (const id of ['killall', 'rabbitTimer', 'teamflagreset', 'autoFlagReset']) {
+    assert.equal(host.list().find((entry) => entry.id === id).state, 'loaded', `${id} loads when asked`);
+  }
+  const tick = () => host.callEvents('bz_eTickEvent', { eventTime: now });
+
+  // killall: everyone, said by name; admins only, which the server enforces.
+  assert.ok(host.commands().some((command) => command.name === '/killall' && command.operator));
+  assert.equal(host.slashCommand(2, 254, '/killall'), true);
+  assert.deepEqual(killed.map(({ id }) => id), [1, 2, 3, 4]);
+  assert.deepEqual(sent.at(-1).params, { player: 'p2' });
+  killed.length = 0;
+
+  // rabbitTimer: told its time once there are three hunters, killed by the
+  // server when it runs out.
+  tick();
+  assert.equal(sent.at(-1).to, 1);
+  assert.deepEqual(sent.at(-1).params, { seconds: 10 });
+  host.callEvents('bz_ePlayerDieEvent', { team: 6, killerTeam: 5, eventTime: now });
+  now += 10;
+  tick();
+  assert.deepEqual(killed, [{ id: 1, killer: -2 }], 'the rabbit, by the server');
+  assert.equal(sent.at(-1).text, "Time's up! Selecting new rabbit.");
+
+  // autoFlagReset: every flag nobody holds but the team flags and empty slots.
+  now += 60;
+  tick();
+  assert.deepEqual(resets, [], 'not before its first period has passed');
+  now += 60;
+  tick();
+  assert.deepEqual(resets, [], 'the only superflag is held');
+  flagOwners[1] = -1;
+  now += 60;
+  tick();
+  assert.deepEqual(resets, [1]);
+  resets.length = 0;
+
+  // teamflagreset: a team flag held, then left past the idle time, goes home.
+  assert.equal(host.slashCommand(2, 254, '/tfrtime 200'), true);
+  assert.match(sent.at(-1).text, /invalid/);
+  team.set(2, 1);
+  team.set(3, 2);
+  flagOwners[0] = 2;
+  tick();
+  flagOwners[0] = -1;
+  now += 5 * 60 + 1;
+  tick();
+  assert.ok(resets.includes(0), 'the red flag goes home');
+  assert.deepEqual(sent.at(-1).params, { team: { msgid: 'Red' } });
+}
+
+// A plugin's translations are there while it runs, under bzo's own.
+{
+  const bundledDir = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..', 'plugins');
+  const stub = { bz_registerCustomBZDBBool: () => true, bz_registerCustomBZDBInt: () => true };
+  const off = createPluginHost({ dirs: [bundledDir], api: stub });
+  off.loadAll();
+  assert.deepEqual(off.messages('de'), {}, 'nothing while no plugin with strings runs');
+  const on = createPluginHost({ dirs: [bundledDir], api: stub, settings: { ctfOverseer: true } });
+  on.loadAll();
+  const msgid = 'You cannot grab the {team} team flag for another ~{seconds} seconds';
+  assert.match(on.messages('de')[msgid], /Team \{team\}/, "ctfOverseer's German");
+
+  const l10n = require('../server/l10n.cjs');
+  l10n.usePluginMessages((locale) => ({ ...on.messages(locale), Red: 'not bzo\'s' }));
+  const catalog = l10n.catalogMessages('de');
+  assert.equal(catalog[msgid], on.messages('de')[msgid], 'merged into the catalog a client is sent');
+  assert.notEqual(catalog.Red, "not bzo's", "and never over bzo's own");
+  l10n.usePluginMessages(() => ({}));
+  assert.equal(l10n.catalogMessages('de')[msgid], undefined, 'gone with the plugin');
+}
+
 fs.rmSync(root, { recursive: true, force: true });
 console.log('plugin host tests passed');

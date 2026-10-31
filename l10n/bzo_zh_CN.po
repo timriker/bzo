@@ -4638,16 +4638,6 @@ msgstr "剩余 {count} 发"
 msgid "1 shot left"
 msgstr "剩余 1 发"
 
-#: server.js:14051
-msgid ""
-"Team flags cannot be grabbed for {seconds} seconds after they were last "
-"capped."
-msgstr "队旗被夺取后 {seconds} 秒内不能拿取。"
-
-#: server.js:14052
-msgid "You cannot grab the {team} team flag for another ~{seconds} seconds"
-msgstr "还要约 {seconds} 秒才能拿取{team}队旗"
-
 #: server.js:14266
 msgid "I'm sorry, we do not allow autopilot on this server."
 msgstr "抱歉，此服务器不允许自动驾驶。"

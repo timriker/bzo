@@ -4742,20 +4742,6 @@ msgstr "{count} tirs restants"
 msgid "1 shot left"
 msgstr "1 tir restant"
 
-#: server.js:14051
-msgid ""
-"Team flags cannot be grabbed for {seconds} seconds after they were last "
-"capped."
-msgstr ""
-"Les drapeaux d'équipe ne peuvent pas être pris pendant {seconds} secondes "
-"après leur dernière capture."
-
-#: server.js:14052
-msgid "You cannot grab the {team} team flag for another ~{seconds} seconds"
-msgstr ""
-"Tu ne peux pas prendre le drapeau de l'équipe {team} avant encore ~{seconds} "
-"secondes"
-
 #: server.js:14266
 msgid "I'm sorry, we do not allow autopilot on this server."
 msgstr "Désolé, le pilote automatique n'est pas autorisé sur ce serveur."

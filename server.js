@@ -17884,6 +17884,44 @@ const PLUGIN_API = Object.freeze({
     return true;
   },
 
+  // bz_getTeamCount (bzfsAPI.cxx): players on a team, by bz_eTeamType.
+  bz_getTeamCount: (team) => {
+    const name = BZ_TEAM_ORDER[team];
+    return name ? [...players.values()].filter((player) => player.joined && player.team === name).length : 0;
+  },
+  // bz_killPlayer(playerID, spawnOnBase, killerID = -1): killed by that
+  // player, or by the server when there is none, as a world weapon kills.
+  bz_killPlayer: (id, spawnOnBase = false, killerID = -1) => {
+    const victim = players.get(String(id));
+    if (!victim?.joined || !victim.alive) return false;
+    const killer = killerID >= 0 ? players.get(String(killerID)) ?? null : null;
+    if (spawnOnBase) victim.restartOnBase = true;
+    killPlayer(victim, killer, DEATH_REASON.SHOT, null, killer ? killer.id : WORLD_WEAPON_PLAYER_ID);
+    return true;
+  },
+  // The flag a player holds, by abbreviation, or null.
+  bz_getPlayerFlag: (id) => getPlayerFlag(String(id))?.type ?? null,
+  bz_getPlayerFlagID: (id) => getPlayerFlag(String(id))?.index ?? -1,
+  // Flags by index, as upstream's FlagInfo table numbers them.
+  bz_getNumFlags: () => flags.length,
+  bz_getFlagName: (index) => flags[index]?.type ?? '',
+  bz_flagPlayer: (index) => {
+    const owner = flags[index]?.owner;
+    return owner === null || owner === undefined ? -1 : Number(owner);
+  },
+  bz_getFlagPosition: (index) => (flags[index] ? pluginPos(flags[index].position) : null),
+  bz_resetFlag: (index) => {
+    const flag = flags[index];
+    if (!flag) return false;
+    resetFlag(flag);
+    return true;
+  },
+  // bz_debugMessage(level, message): logged at level 1 and below, which is
+  // what a bzfs run without -d shows of a plugin's own chatter.
+  bz_debugMessage: (level, message) => {
+    if (level <= 1) log(`[PLUGIN] ${message}`);
+  },
+
   bz_BZDBItemExists: (name) => bzdbValue(name) !== undefined,
   bz_getBZDBString: (name) => String(bzdbValue(name) ?? ''),
   bz_getBZDBDouble: (name) => Number(bzdbValue(name) ?? 0),
@@ -17912,6 +17950,7 @@ plugins = createPluginHost({
   log: (text) => log(`[PLUGIN] ${text}`),
 });
 plugins.loadAll();
+l10n.usePluginMessages((locale) => plugins.messages(locale));
 
 // Watch for file changes and auto-reload clients
 const publicDir = path.join(__dirname, 'public');

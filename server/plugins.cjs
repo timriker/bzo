@@ -8,14 +8,15 @@
 // plugins.cjs - server plugins in JavaScript, shaped as bzfs's are
 // (include/bzfsAPI.h) so a C++ plugin ports line for line; docs/plugins-plan.md.
 //
-// A plugin is one `.cjs` file exporting upstream's bz_Plugin methods and a
-// `meta` that says what it is:
+// A plugin is one `.cjs` file exporting upstream's bz_Plugin methods, a
+// `meta` that says what it is, and the translations of what it says:
 //
 //   module.exports = {
 //     meta: { name, version, author, description, license },
 //     Init(bz, config) { bz.Register(bz.bz_ePlayerJoinEvent); },
 //     Event(data) { if (data.eventType === 'bz_ePlayerJoinEvent') ... },
 //     Cleanup() {},
+//     l10n: { de: { 'Hello, {player}': 'Hallo, {player}' } },
 //   };
 //
 // `bz` is the API, one per plugin, so what a plugin registers is taken away
@@ -322,6 +323,8 @@ function createPluginHost({
   function callEvents(type, data = {}) {
     const registered = listeners.get(type);
     data.eventType = type;
+    // bz_EventData's own field: when the event happened, in seconds.
+    data.eventTime ??= Date.now() / 1000;
     if (!registered) return data;
     for (const entry of [...registered]) {
       try {
@@ -358,6 +361,22 @@ function createPluginHost({
     }));
   }
 
+  // The loaded plugins' translations for one locale, from each one's `l10n`
+  // object (`{ locale: { msgid: msgstr } }`), in load order: a plugin carries
+  // its own, so they are there while it runs and nowhere else.
+  function messages(locale) {
+    const merged = {};
+    for (const entry of entries.values()) {
+      if (entry.state !== 'loaded') continue;
+      const strings = entry.plugin.l10n?.[locale];
+      if (!strings || typeof strings !== 'object') continue;
+      for (const [msgid, msgstr] of Object.entries(strings)) {
+        if (typeof msgstr === 'string' && msgstr && !(msgid in merged)) merged[msgid] = msgstr;
+      }
+    }
+    return merged;
+  }
+
   // The loaded plugins' commands, for `/?`, `/help` and the chat entry's Tab.
   function commands() {
     return [...slashCommands].map(([name, { entry, help, operator }]) => ({
@@ -365,7 +384,7 @@ function createPluginHost({
     }));
   }
 
-  return { loadAll, load, unload, listening, callEvents, slashCommand, commands, list };
+  return { loadAll, load, unload, listening, callEvents, slashCommand, commands, messages, list };
 }
 
 module.exports = { EVENT_TYPES, checkPlugin, createPluginHost, findPlugins, pluginSetting };

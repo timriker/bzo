@@ -89,6 +89,21 @@ local file, so the rights are wider than an upstream operator expects:
 - The panel says plainly, beside the upload button, that a plugin runs with
   the server's full rights.
 
+## Translations
+
+A plugin carries its own: an `l10n` object, `{ locale: { msgid: msgstr } }`,
+for the messages it sends with `bz_sendTextMessage(from, to, msgid, params)`.
+While it is loaded the server merges them into the catalog a bzo client is
+sent (`/l10n/<locale>.json` and the page's inlined copy), under bzo's own, so
+a plugin adds translations but never changes one bzo already has. Unloaded,
+it adds nothing, and bzo's `l10n/bzo_<locale>.po` holds only the core's
+strings. A native BZFlag client reads English either way.
+
+Every bundled plugin works this way, so each is an example of it. Strings in
+a JavaScript object miss gettext's merging and fuzzy matching; a script that
+round-trips one plugin's strings through a `.po` waits until someone
+translates one.
+
 ## Built-ins that move to plugins
 
 Features bzo built in that are plugins elsewhere, or are optional extras that
@@ -172,8 +187,11 @@ bzo's own clients and native ones do not share a wire format.
    transfer, chat, slash commands, tick, timers and BZDB. Hook points include
    `grabFlag`, `dropFlag`, `captureFlag` and `killPlayer` in `server.js`.
    Prove it by moving ScoreRestorer and ctfOverseer out, and porting
-   rabbitTimer, flagStay, teamflagreset, autoFlagReset and killall. The
+   rabbitTimer, teamflagreset, autoFlagReset and killall. Done but for
+   ScoreRestorer; each bundled plugin is off until `server.json` names it,
+   with its options there in place of upstream's `-loadplugin` string. The
    Plugins panel lists them with their `meta` and switches them on and off.
+   flagStay needs custom map objects and waits for stage 2.
 2. **Rules and custom flags.** The remaining allow and modify events, zone
    entry and exit, custom map objects (the BZW parser passes unknown objects
    to the plugin that registered them), polls and permissions, `/plugins`,
