@@ -221,9 +221,12 @@ bzo's own clients and native ones do not share a wire format.
    bzfs answers it; its shots are ordinary, as 2.4's are, and a map's
    `zoneflag` of it, skipped when flags are laid out at boot, joins the world
    once the plugin registers it. `bz_eShotFiredEvent` and the score calls are
-   what a plugin builds one with; customflagsample is ported. Left: the
-   remaining allow and modify events, polls and permissions, the world event
-   and the
+   what a plugin builds one with; customflagsample is ported.
+   `bz_eRawChatMessageEvent` may rewrite or drop a line before anything else
+   is asked of it, `bz_eGetPlayerSpawnPosEvent` may move a spawn, and
+   `bz_eFlagTransferredEvent` may let a Thief's steal go on, cancel it, or
+   spend the thief's flag alone. Left: the remaining allow events (a spawn,
+   a player's join), polls and permissions, the world event and the
    `bz_addWorld*` calls, and plugin HTTP routes. Port koth, keepaway,
    HoldTheFlag, timedctf, fairCTF, chathistory, TimeLimit and mapchange, and
    move the compass letters out.

@@ -255,6 +255,7 @@ const {
   SERVER_PLAYER,
   ADMIN_PLAYERS,
   channelTeam,
+  isRealPlayerId,
 } = require('./server/player-ids.cjs');
 const { createDiscordLink, discordLinkConfigured } = require('./server/discord.cjs');
 const { createChatMirror, createDiscordToGame } = require('./server/discord-bridge.cjs');
@@ -10845,9 +10846,25 @@ function handleServerCommand(player, text, channel = ALL_PLAYERS) {
 // `targetId` is a player id, or one of upstream's addresses above them -- 254
 // all, 253 the server's log, 252 the admin channel, 251 down to 244 a team
 // (server/player-ids.cjs).
-function deliverChatMessage(player, targetId, msgType, text) {
+function deliverChatMessage(player, targetId, msgType, rawText) {
   const fromId = player.id;
   const fromName = player.name;
+
+  // bz_eRawChatMessageEvent (bzfs.cxx sendChatMessage), before anything else
+  // is asked of the line: a plugin may rewrite it, and one it empties is not
+  // sent at all.
+  const raw = pluginEvent('bz_eRawChatMessageEvent', () => {
+    const team = channelTeam(targetId);
+    return {
+      from: Number(fromId),
+      to: targetId === ALL_PLAYERS ? BZ_ALLUSERS : (isRealPlayerId(targetId) ? Number(targetId) : BZ_NULLUSER),
+      team: targetId === ADMIN_PLAYERS ? 8 : (team === null ? -1 : bzTeam(getTeamFromColorIndex(team))),
+      message: rawText,
+      messageType: msgType === 'action' ? 1 : 0,
+    };
+  });
+  const text = raw ? String(raw.message ?? '') : rawText;
+  if (!text) return;
 
   // A muted player has no `talk` permission upstream, and this is upstream's own
   // sentence for it (bzfs.cxx:1667). The exception is upstream's too: somebody
@@ -11230,7 +11247,22 @@ function getSupportPhysicsDriver(x, y, z) {
 // colour is always clamped to 1-4 -- so this is also the path a map's `team`
 // zone answers: a colour team's own base always wins when it has one, and a
 // zone only ever speaks for whoever a base left unanswered.
+// Where a tank comes alive, which a plugin may move (bz_eGetPlayerSpawnPosEvent,
+// bzfs.cxx:3263): the place chosen below is offered, and whatever it holds
+// after the plugins have seen it is used.
 function getSpawnPosition(player) {
+  const chosen = chooseSpawnPosition(player);
+  const asked = pluginEvent('bz_eGetPlayerSpawnPosEvent', () => ({
+    playerID: Number(player.id), team: bzTeam(player.team), handled: false,
+    pos: pluginPos(chosen), rot: chosen.azimuth,
+  }));
+  if (!asked) return chosen;
+  const [x, y, z] = asked.pos.map(Number);
+  if (![x, y, z, Number(asked.rot)].every(Number.isFinite)) return chosen;
+  return { ...chosen, x, y, z, azimuth: Number(asked.rot) };
+}
+
+function chooseSpawnPosition(player) {
   const testSpawn = getTestSpawn(player.name);
   if (testSpawn) return testSpawn;
 
@@ -15735,13 +15767,24 @@ function applyGenocide(proj, victim) {
 // Any flag can be stolen, a team flag included, and a theft spends the Thief
 // flag itself: upstream zaps whatever the thief is holding before it hands the
 // stolen flag over, and what the thief is holding is Thief.
+// bz_FlagTransferredEventData_V1::Action.
+const FLAG_TRANSFER = Object.freeze({ CONTINUE_STEAL: 0, CANCEL_STEAL: 1, DROP_THIEF: 2 });
+
 function stealFlag(proj, victim) {
   const thief = players.get(proj.playerId);
   const stolen = getPlayerFlag(victim.id);
   if (!thief || !stolen) return false;
 
+  // bz_eFlagTransferredEvent (bzfs.cxx:5162): a plugin may let the steal go
+  // on, cancel it, or spend the thief's flag without handing anything over.
+  const transfer = pluginEvent('bz_eFlagTransferredEvent', () => ({
+    fromPlayerID: Number(victim.id), toPlayerID: Number(thief.id), flagType: stolen.type,
+    action: FLAG_TRANSFER.CONTINUE_STEAL,
+  }));
+  const action = transfer?.action ?? FLAG_TRANSFER.CONTINUE_STEAL;
   const held = getPlayerFlag(thief.id);
-  if (held) zapFlag(held);
+  if (held && action !== FLAG_TRANSFER.CANCEL_STEAL) zapFlag(held);
+  if (action !== FLAG_TRANSFER.CONTINUE_STEAL) return true;
   // The victim gives up everything the flag armed as well as the flag, which is
   // what `sendFlagDrop` does for every other way of losing one.
   clearFlagShedState(victim);
