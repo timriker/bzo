@@ -56,7 +56,13 @@ The groups at 12 may all be one operator's servers.
 ## The Plugins panel
 
 A section of the Operator panel (`docs/operator-panel-plan.md`) that lists
-every installed plugin, bundled or uploaded:
+every installed plugin, bundled or uploaded. Built so far: a row per plugin
+with its name, version, what it does, its author and license, or why it
+failed, and a switch staged behind Apply. A switch is live, as `/loadplugin`
+is, and is written to `server.json` as `"plugins": { "<id>": true|false }`,
+keeping any options there. The list goes to admins after they join, as the
+admin roster does, since `init` goes out before `isAdmin` can say yes. Still
+to come:
 
 - **What it is.** Name, version, author, description and license, from a
   `meta` object every plugin exports. A plugin without one does not load.

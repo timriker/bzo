@@ -457,6 +457,10 @@ function handleSetOperatorConfig(player, ws, message) {
   for (const key of OPERATOR_CONFIG_KEYS) {
     if (Object.prototype.hasOwnProperty.call(message, key)) requested[key] = message[key];
   }
+  // The Plugins rows, one `plugin:<id>` each; the server checks the id.
+  for (const key of Object.keys(message)) {
+    if (key.startsWith('plugin:')) requested[key] = message[key];
+  }
   if (Object.keys(requested).length === 0) {
     ws.send(JSON.stringify({ error: 'No supported operator setting provided' }));
     return;

@@ -9111,6 +9111,15 @@ function receiveSetVar(message) {
 // come and go from Tab, and its translations from the catalog.
 function receivePlugins(message) {
   if (Array.isArray(message.commands)) serverCommands = message.commands;
+  if (message.state && typeof message.state === 'object') {
+    const kept = Object.entries(serverOperatorConfig).filter(([key]) => !key.startsWith(PLUGIN_KEY_PREFIX));
+    serverOperatorConfig = { ...Object.fromEntries(kept), ...message.state };
+  }
+  if (Array.isArray(message.list)) {
+    operatorPluginList = message.list;
+    buildOperatorPluginRows();
+  }
+  if (!operatorStaged) syncOperatorPanelFromServer();
   reloadLocale().catch((error) => console.warn(error));
 }
 
@@ -10587,6 +10596,10 @@ let liveConfigKeys = ['title', 'motd', 'shotMaxActive', 'ricochet'];
 // The three live ones are read from the live config below instead, since a
 // `serverConfigUpdate` moves those without an `init` to carry them.
 let serverOperatorConfig = {};
+// The plugins the server has, for the Plugins rows: sent to admins only, in
+// `init` and again after one loads or unloads.
+let operatorPluginList = [];
+const PLUGIN_KEY_PREFIX = 'plugin:';
 
 // Zero is a real setting, not a floor to clamp away: it is upstream's own
 // "tanks cannot shoot" (`-ms 0`), and an operator who can read it off a map
@@ -10718,6 +10731,46 @@ function buildOperatorTeamLimitRows() {
   }
 }
 
+// One toggle row per plugin: its name and version, what it does, and why it
+// failed if it did. Rebuilt whenever the server sends the list, since a
+// plugin can be installed or fail while the panel is open.
+function buildOperatorPluginRows() {
+  const container = document.getElementById('operatorPlugins');
+  if (!container) return;
+  container.replaceChildren();
+  for (const plugin of operatorPluginList) {
+    const key = `${PLUGIN_KEY_PREFIX}${plugin.id}`;
+    const row = document.createElement('div');
+    row.className = 'operatorRow';
+    row.dataset.menuRow = key;
+    row.dataset.menuKind = 'choice';
+
+    const label = document.createElement('label');
+    label.className = 'operatorToggle';
+    const input = document.createElement('input');
+    input.type = 'checkbox';
+    input.id = `pluginToggle-${plugin.id}`;
+    input.dataset.pluginKey = key;
+    input.addEventListener('change', () => stageOperatorChange(key, input.checked));
+    label.htmlFor = input.id;
+    const name = document.createElement('span');
+    name.textContent = [plugin.name, plugin.version].filter(Boolean).join(' ');
+    label.append(input, name);
+
+    const note = document.createElement('div');
+    note.className = 'operatorPluginNote';
+    if (plugin.state === 'failed') {
+      note.classList.add('failed');
+      note.textContent = t('Failed: {error}', { error: plugin.error || '' });
+    } else {
+      const credit = [plugin.author, plugin.license].filter(Boolean).join(', ');
+      note.textContent = credit ? `${plugin.description} (${credit})` : plugin.description;
+    }
+    row.append(label, note);
+    container.append(row);
+  }
+}
+
 function setOperatorRangeRow(key, value, { disabled = false, max = null } = {}) {
   const slider = document.getElementById(`${key}Slider`);
   const output = document.getElementById(`${key}Value`);
@@ -10751,7 +10804,8 @@ function getOperatorChanges() {
 }
 
 function operatorChangesNeedRestart(changes) {
-  return changes.some((key) => !liveConfigKeys.includes(key));
+  // A plugin loads or unloads where it stands, so its row never restarts.
+  return changes.some((key) => !liveConfigKeys.includes(key) && !key.startsWith(PLUGIN_KEY_PREFIX));
 }
 
 // Writes the staged values into the panel and labels the confirm by what it is
@@ -10765,6 +10819,9 @@ function operatorChangesNeedRestart(changes) {
 // those rows grey out rather than offering a number the server would override.
 // Same rule as capabilities.mjs, applied to gameplay.
 function paintOperatorRows(state) {
+  for (const input of document.querySelectorAll('#operatorPlugins input[data-plugin-key]')) {
+    input.checked = state[input.dataset.pluginKey] === true;
+  }
   const rabbit = Boolean(state.rabbit) && state.rabbit !== 'off';
   setOperatorRangeRow('shotMaxActive', state.shotMaxActive);
   const ricochetInput = document.getElementById('ricochetInput');

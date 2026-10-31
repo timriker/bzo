@@ -123,6 +123,9 @@ function findPlugins(dirs) {
 function createPluginHost({
   dirs, settings = {}, api = {}, log = () => {}, timers = globalThis,
 } = {}) {
+  // `settings` may be a function, so `server.json`'s "plugins" is read as it
+  // is now rather than as it was at boot.
+  const currentSettings = typeof settings === 'function' ? settings : () => settings;
   const entries = new Map(); // id -> { id, file, bundled, meta, state, error, plugin, events, ... }
   const listeners = new Map(); // event type -> Set of entries
   const slashCommands = new Map(); // command, lowercase, no slash -> { entry, handler }
@@ -276,7 +279,7 @@ function createPluginHost({
       return entry;
     }
     entry.meta = { license: '', ...plugin.meta };
-    const setting = pluginSetting(settings, id, plugin.meta.enabled !== false);
+    const setting = pluginSetting(currentSettings(), id, plugin.meta.enabled !== false);
     if (ifEnabled && !setting.enabled) {
       entry.state = 'off';
       return entry;
@@ -333,7 +336,7 @@ function createPluginHost({
   // turns it off.
   function loadAll() {
     for (const id of discover()) {
-      if (pluginSetting(settings, id).enabled) load(id, { ifEnabled: true });
+      if (pluginSetting(currentSettings(), id).enabled) load(id, { ifEnabled: true });
     }
   }
 

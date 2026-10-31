@@ -113,6 +113,7 @@ let players;
 let pluginEvent;
 let pluginRecord;
 let playerSpawned;
+let sendPluginsTo;
 let projectiles;
 let queueChannelMove;
 let refreshVoiceRosters;
@@ -212,6 +213,7 @@ function useServer(deps, live) {
     pluginEvent,
     pluginRecord,
     playerSpawned,
+    sendPluginsTo,
     occupyShotSlot,
     openUdpChannel,
     players,
@@ -1179,6 +1181,8 @@ function handleJoinGame(player, ws, message) {
   // `broadcastPlayerRecord`.
   if (isAdmin(player)) {
     ws.send(JSON.stringify({ type: 'playerList', players: getRosterFor(player) }));
+    // The Plugins rows, which `init` cannot carry for the same reason.
+    sendPluginsTo(player);
   }
   // After the join is on the wire, so `newRabbit` never names a player the
   // other clients have not heard of yet.

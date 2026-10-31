@@ -10286,7 +10286,41 @@ function getOperatorConfigState() {
     botPilot: botFillPilot,
     ...Object.fromEntries(Object.entries(OPERATOR_TEAM_LIMIT_KEYS)
       .map(([key, team]) => [key, limits[team]])),
+    ...pluginOperatorState(),
   };
+}
+
+// The Plugins rows' state: `plugin:<id>`, whether each plugin is running.
+// Live, as `LIVE_CONFIG_KEYS` are: Apply loads or unloads it at once.
+const PLUGIN_KEY_PREFIX = 'plugin:';
+
+function isPluginKey(key) {
+  return typeof key === 'string' && key.startsWith(PLUGIN_KEY_PREFIX);
+}
+
+function isLiveConfigKey(key) {
+  return LIVE_CONFIG_KEYS.includes(key) || isPluginKey(key);
+}
+
+function pluginOperatorState() {
+  return Object.fromEntries((plugins?.list() ?? [])
+    .map((entry) => [`${PLUGIN_KEY_PREFIX}${entry.id}`, entry.state === 'loaded']));
+}
+
+// What the Plugins rows show of each plugin, for admins only: its error can
+// name a path on the server.
+function pluginPanelList() {
+  return (plugins?.list() ?? []).map(({ id, bundled, meta, state, error }) => ({
+    id,
+    bundled,
+    name: meta?.name ?? id,
+    version: meta?.version ?? '',
+    author: meta?.author ?? '',
+    description: meta?.description ?? '',
+    license: meta?.license ?? '',
+    state,
+    error: error ?? null,
+  }));
 }
 
 // `server.json`'s nested shape from the panel's flat one. `teamMode` may be a
@@ -10306,6 +10340,15 @@ function writeOperatorConfigFields(config, next) {
       config.teamMode.limits = { ...config.teamMode.limits, [team]: value };
     } else if (key === 'teams') {
       config.teamMode.enabled = value;
+    } else if (isPluginKey(key)) {
+      // Its options stay where an operator wrote them; only whether it runs
+      // changes.
+      const id = key.slice(PLUGIN_KEY_PREFIX.length);
+      const setting = config.plugins?.[id];
+      config.plugins = {
+        ...config.plugins,
+        [id]: setting && typeof setting === 'object' ? { ...setting, enabled: value } : value,
+      };
     } else if (key === 'botFill' || key === 'botPilot') {
       config.bots = { ...config.bots, [key === 'botFill' ? 'fill' : 'pilot']: value };
     } else if (key === 'rabbit') {
@@ -10462,10 +10505,19 @@ function applyServerConfigChanges(requested, byWhom) {
     next.botPilot = requested.botPilot;
   }
 
+  // A plugin on or off, by the id the Plugins rows name it by.
+  const knownPlugins = new Set((plugins?.list() ?? []).map((entry) => entry.id));
+  for (const key of Object.keys(requested).filter(isPluginKey)) {
+    if (!knownPlugins.has(key.slice(PLUGIN_KEY_PREFIX.length))) return { error: 'No such plugin' };
+    if (typeof requested[key] !== 'boolean') return { error: 'Invalid plugin value' };
+    next[key] = requested[key];
+  }
+
   try {
     const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
     writeOperatorConfigFields(config, next);
     writeServerConfig(config);
+    serverConfig.plugins = config.plugins;
   } catch (error) {
     logError(`Failed to update config at ${configPath}:`, error);
     return { error: 'Failed to update config' };
@@ -10536,13 +10588,28 @@ function applyServerConfigChanges(requested, byWhom) {
   }
   if (changed.includes('botFill') || changed.includes('botPilot')) scheduleBotReconcile();
 
+  let pluginsChanged = false;
+  for (const key of Object.keys(next).filter(isPluginKey)) {
+    if (next[key] === current[key]) continue;
+    const id = key.slice(PLUGIN_KEY_PREFIX.length);
+    if (next[key]) {
+      plugins.discover();
+      if (plugins.load(id)?.state !== 'loaded') return { error: 'Plugin load failed' };
+    } else {
+      plugins.unload(id);
+    }
+    changed.push(key);
+    pluginsChanged = true;
+  }
+  if (pluginsChanged) announcePluginChange();
+
   // A new game rather than a live change: the world, the team layout and the flag
   // pool are resolved once at boot, so the only honest way to apply one of these
   // is to start over. Written to `server.json` above; this is what makes the
   // clients follow. A staged value that already matches is not one of them, so
   // pressing the button on a change and its own undo restarts nothing.
   const newGame = Object.keys(next)
-    .filter((key) => !LIVE_CONFIG_KEYS.includes(key) && next[key] !== current[key]);
+    .filter((key) => !isLiveConfigKey(key) && next[key] !== current[key]);
   if (newGame.length > 0) {
     changed.push(...newGame);
     log(`Config changed by ${byWhom}: ${changed.join(', ')}; starting a new game`);
@@ -17029,6 +17096,7 @@ messagesPlay.useServer({
   pluginEvent,
   pluginRecord,
   playerSpawned,
+  sendPluginsTo,
   occupyShotSlot,
   openUdpChannel,
   players,
@@ -17956,7 +18024,20 @@ function clientCommandList() {
 // changes -- the commands it completes and the translations it shows -- is
 // sent again, where upstream's client has neither to refresh.
 function announcePluginChange() {
-  broadcastAll({ type: 'plugins', commands: clientCommandList() });
+  players.forEach((player) => {
+    if (player.joined) sendPluginsTo(player);
+  });
+}
+
+// The plugins as one client should see them: the commands it may complete,
+// whether each runs, and, for an admin, the Plugins rows.
+function sendPluginsTo(player) {
+  sendToPlayer(player, {
+    type: 'plugins',
+    commands: clientCommandList(),
+    state: pluginOperatorState(),
+    list: isAdmin(player) ? pluginPanelList() : undefined,
+  });
 }
 
 // The loaded plugins, as `/listplugins` and `/unloadplugin <number>` count
@@ -18031,7 +18112,7 @@ defineCommand('/unloadplugin', COMMAND_TIER.OPERATOR,
 plugins = createPluginHost({
   api: PLUGIN_API,
   dirs: [...new Set([BUNDLED_PLUGINS_DIR, RUNTIME_PLUGINS_DIR])],
-  settings: serverConfig.plugins,
+  settings: () => serverConfig.plugins,
   log: (text) => log(`[PLUGIN] ${text}`),
 });
 plugins.loadAll();

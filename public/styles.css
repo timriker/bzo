@@ -1357,6 +1357,17 @@ body.scoreboard-collapsed #mainhud {
   cursor: pointer;
 }
 
+/* A plugin's row: what it does under its name, and why it failed if it did. */
+.operatorPluginNote {
+  color: #999;
+  font-size: 0.85em;
+  margin: 2px 0 0 26px;
+}
+
+.operatorPluginNote.failed {
+  color: #e57373;
+}
+
 #listServerKeyStatus {
   color: #999;
   font-size: 0.9em;
