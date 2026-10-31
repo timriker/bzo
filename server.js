@@ -16868,6 +16868,7 @@ bzfsProxy.useServer({
   TEAM_MODE,
   vec3Point,
   VOICE_ON,
+  matchServerLine: l10n.matchServerLine,
   voiceRtcConfigFor,
   worldBase,
   get MAP_SOURCE() { return MAP_SOURCE; },
@@ -18552,6 +18553,7 @@ plugins = createPluginHost({
 });
 plugins.loadAll();
 l10n.usePluginMessages((locale) => plugins.messages(locale));
+l10n.usePluginMsgids(() => plugins.msgids());
 
 // Watch for file changes and auto-reload clients
 const publicDir = path.join(__dirname, 'public');

@@ -144,6 +144,81 @@ function negotiateLocale(req, { cookie = true } = {}) {
   return (best && byTag.get(best)) || DEFAULT_LOCALE;
 }
 
+// A line a proxied bzfs sends is finished English with no msgid. Matched
+// against the msgids with `{name}` slots -- the loaded plugins', and those of
+// bzo's own that its server sends -- it gets one back, and a bzo client shows
+// it in its own language: `Welcome, {player}!` finds `{ player: 'Tim' }` in
+// `Welcome, Tim!`. A msgid with no slot needs no match, since the client
+// already looks a whole line up; one with fewer than three letters of its own
+// would match anything.
+const SLOT = /\{([A-Za-z_][A-Za-z0-9_]*)\}/;
+const MIN_TEMPLATE_LETTERS = 3;
+let pluginMsgids = () => [];
+let lineTemplates = { key: null, list: [] };
+
+function usePluginMsgids(lookup) {
+  pluginMsgids = lookup;
+}
+
+function compileLineTemplate(msgid) {
+  const parts = msgid.split(new RegExp(SLOT.source, 'g'));
+  if (parts.length < 3) return null;
+  const literal = parts.filter((_, i) => i % 2 === 0).join('');
+  if ((literal.match(/\p{L}/gu) || []).length < MIN_TEMPLATE_LETTERS) return null;
+  const names = parts.filter((_, i) => i % 2 === 1);
+  const source = parts.map((part, i) => (i % 2 ? '(.+?)' : part.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))).join('');
+  return { msgid, names, literal: literal.length, pattern: new RegExp(`^${source}$`, 's') };
+}
+
+// bzo's msgids its server sends: those quoted in server.js and server/. The
+// rest are the interface's -- `{count} left` would read `Tim (abc) left` as a
+// count. Read once; the sources only change with a restart.
+let serverSourceStrings = null;
+function sentByServer(msgid) {
+  if (!serverSourceStrings) {
+    const root = path.join(__dirname, '..');
+    const files = [path.join(root, 'server.js'),
+      ...fs.readdirSync(__dirname).filter((name) => name.endsWith('.cjs')).map((name) => path.join(__dirname, name))];
+    serverSourceStrings = new Set();
+    for (const file of files) {
+      for (const match of fs.readFileSync(file, 'utf8').matchAll(/(['"])((?:\\.|(?!\1)[^\\\n])*\{(?:\\.|(?!\1)[^\\\n])*)\1/g)) {
+        serverSourceStrings.add(match[2].replace(/\\(.)/g, '$1'));
+      }
+    }
+  }
+  return serverSourceStrings.has(msgid);
+}
+
+// The plugins' first, so a tie in specificity goes to them; the most literal
+// text first, so the most specific template wins.
+function serverLineTemplates() {
+  const plugin = pluginMsgids();
+  const ids = localeIds();
+  const catalogs = ids.map((id) => readCatalog(id));
+  const key = [plugin, ...ids.map((id) => parsed.get(path.join(L10N_DIR, `bzo_${id}.po`))?.mtimeMs)];
+  if (lineTemplates.key && key.length === lineTemplates.key.length
+    && key.every((part, i) => part === lineTemplates.key[i])) return lineTemplates.list;
+  const msgids = new Set(plugin);
+  for (const messages of catalogs) {
+    Object.keys(messages || {}).filter(sentByServer).forEach((msgid) => msgids.add(msgid));
+  }
+  const list = [...msgids].map(compileLineTemplate).filter(Boolean).sort((a, b) => b.literal - a.literal);
+  lineTemplates = { key, list };
+  return list;
+}
+
+function matchServerLine(text) {
+  if (typeof text !== 'string') return null;
+  for (const { msgid, names, pattern } of serverLineTemplates()) {
+    const found = pattern.exec(text);
+    if (!found) continue;
+    const params = {};
+    names.forEach((name, i) => { params[name] ??= found[i + 1]; });
+    return { msgid, params };
+  }
+  return null;
+}
+
 // A translated sentence in an HTML page: the sentence escaped, and each
 // `{name}` filled with HTML the caller already built and escaped -- a link, a
 // `<code>`. `l10n.html(t('Talk on the {link}.'), { link })`: `t` with no
@@ -168,5 +243,6 @@ function inlineJson(value) {
 
 module.exports = {
   catalogFor, catalogMessages, translator, hasLocale, negotiateLocale, html, scriptMsgids, inlineJson,
+  matchServerLine, usePluginMsgids,
   languageTag, textDirection, usePluginMessages, DEFAULT_LOCALE, LOCALE_COOKIE,
 };

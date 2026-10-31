@@ -323,6 +323,41 @@ module.exports = {
   assert.equal(l10n.catalogMessages('de')[msgid], undefined, 'gone with the plugin');
 }
 
+// A translation-only plugin: its msgids, with bzo's own catalogs', match a
+// proxied target's finished lines, and a msgid two plugins translate
+// differently is logged once.
+{
+  const l10n = require('../server/l10n.cjs');
+  const dir = path.join(root, 'l10n-only');
+  fs.mkdirSync(dir);
+  write(dir, 'a-welcome', `module.exports = { ${META}, Init() {},
+    l10n: { de: { 'Welcome, {player}, to {server} server!': 'Willkommen, {player}, auf {server}!',
+                  'Welcome, {player}!': 'Hallo {player}!', 'Game over': 'Spiel aus', '{a}: {b}': 'x' } } };`);
+  write(dir, 'b-other', `module.exports = { ${META}, Init() {},
+    l10n: { de: { 'Game over': 'Ende' } } };`);
+  const lines = [];
+  const host = createPluginHost({ dirs: [dir], log: (line) => lines.push(line) });
+  host.loadAll();
+  l10n.usePluginMsgids(() => host.msgids());
+  const match = l10n.matchServerLine;
+  assert.deepEqual(match('Welcome, Tim, to foo.example.com:5154 server!'), {
+    msgid: 'Welcome, {player}, to {server} server!',
+    params: { player: 'Tim', server: 'foo.example.com:5154' },
+  });
+  assert.deepEqual(match('Welcome, Tim!'), { msgid: 'Welcome, {player}!', params: { player: 'Tim' } });
+  assert.equal(match('Game over'), null, 'a whole fixed line is looked up as it is');
+  assert.equal(match('Tim: hello there'), null, 'a template of slots and punctuation matches nothing');
+  assert.equal(match('Welcome, (a.b)*!').params.player, '(a.b)*', 'a value is never a pattern');
+  assert.deepEqual(match('BZFS Version: 2.4.30'), { msgid: 'BZFS Version: {version}', params: { version: '2.4.30' } },
+    "bzo's own catalog");
+  assert.equal(match('Tim (abc) left'), null, "only bzo's msgids its server sends, not its interface's");
+  assert.equal(host.messages('de')['Game over'], 'Spiel aus', 'the first plugin keeps a shared msgid');
+  assert.equal(lines.filter((line) => line.includes('"Game over" is also translated by a-welcome')).length, 1);
+  host.unload('a-welcome');
+  assert.equal(match('Welcome, Tim!'), null, 'gone with the plugin');
+  l10n.usePluginMsgids(() => []);
+}
+
 // /loadplugin's path: a file added after boot is found, loads with the
 // options given, and its BZDB variables go when it is unloaded.
 {

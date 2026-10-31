@@ -107,6 +107,7 @@ let takeProxyToken;
 let TEAM_MODE;
 let vec3Point;
 let VOICE_ON;
+let matchServerLine;
 let voiceRtcConfigFor;
 let worldBase;
 
@@ -142,6 +143,7 @@ function useServer(deps) {
     TEAM_MODE,
     vec3Point,
     VOICE_ON,
+    matchServerLine,
     voiceRtcConfigFor,
     worldBase,
   } = deps);
@@ -1609,6 +1611,11 @@ async function handleProxyConnection(ws, req, request) {
           ? 'server'
           : (message.kind === BZFS_ACTION_MESSAGE ? 'action' : 'chat'),
         text: message.text,
+        // A target's line carries no msgid; one that matches a template --
+        // bzo's own or a loaded plugin's -- gets it back, so a bzo client
+        // shows it in its own language. Only the target's own lines: a
+        // player's are theirs.
+        ...(message.from === SERVER_PLAYER ? matchServerLine(message.text) : null),
         ts: Date.now(),
       });
     });

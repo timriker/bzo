@@ -105,6 +105,16 @@ a plugin adds translations but never changes one bzo already has. Unloaded,
 it adds nothing, and bzo's `l10n/bzo_<locale>.po` holds only the core's
 strings. A native BZFlag client reads English either way.
 
+Two plugins that translate one msgid differently are logged as the second
+loads; the first keeps it.
+
+A proxied bzfs sends finished English with no msgid. The proxy matches each
+of the target's own lines against every msgid with a `{name}` slot that a
+loaded plugin translates, or that bzo's server sends itself, and a match goes
+out with its msgid and params. So a plugin with only `meta`, an empty `Init`
+and `l10n` translates a bzfs plugin's lines for bzo players on that target;
+no plugin code runs for a proxied game.
+
 Every bundled plugin works this way, so each is an example of it. Strings in
 a JavaScript object miss gettext's merging and fuzzy matching; a script that
 round-trips one plugin's strings through a `.po` waits until someone

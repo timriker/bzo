@@ -457,6 +457,8 @@ function createPluginHost({
     }
     entry.state = 'loaded';
     log(`${id} ${entry.meta.version} loaded`);
+    warnL10nClashes(entry);
+    msgidList = null;
     return entry;
   }
 
@@ -471,6 +473,7 @@ function createPluginHost({
     forget(entry);
     entry.plugin = null;
     entry.state = 'off';
+    msgidList = null;
     log(`${id} unloaded`);
     return true;
   }
@@ -566,6 +569,45 @@ function createPluginHost({
     return merged;
   }
 
+  // Every loaded plugin's translations go into one pool, and the first plugin
+  // in `messages`' order wins a msgid two of them translate. Said once, as the
+  // second loads, where the two disagree.
+  function warnL10nClashes(entry) {
+    const own = entry.plugin.l10n;
+    if (!own || typeof own !== 'object') return;
+    for (const other of entries.values()) {
+      if (other === entry || other.state !== 'loaded') continue;
+      const theirs = other.plugin.l10n;
+      if (!theirs || typeof theirs !== 'object') continue;
+      for (const [locale, strings] of Object.entries(own)) {
+        if (!strings || typeof strings !== 'object') continue;
+        for (const [msgid, msgstr] of Object.entries(strings)) {
+          const kept = theirs[locale]?.[msgid];
+          if (typeof kept !== 'string' || kept === msgstr) continue;
+          const winner = [...entries.values()].find((e) => e === entry || e === other);
+          log(`${entry.id}: ${locale} "${msgid}" is also translated by ${other.id}; ${winner.id}'s is used`);
+        }
+      }
+    }
+  }
+
+  // Every msgid the loaded plugins translate, in any language: what
+  // `l10n.matchServerLine` matches a proxied target's lines against. The same
+  // array until a plugin loads or unloads.
+  let msgidList = null;
+  function msgids() {
+    if (msgidList) return msgidList;
+    const found = new Set();
+    for (const entry of entries.values()) {
+      if (entry.state !== 'loaded') continue;
+      for (const strings of Object.values(entry.plugin.l10n || {})) {
+        if (strings && typeof strings === 'object') Object.keys(strings).forEach((msgid) => found.add(msgid));
+      }
+    }
+    msgidList = [...found];
+    return msgidList;
+  }
+
   // The loaded plugins' commands, for `/?`, `/help` and the chat entry's Tab.
   function commands() {
     return [...slashCommands].map(([name, { entry, help, operator }]) => ({
@@ -573,7 +615,9 @@ function createPluginHost({
     }));
   }
 
-  return { discover, loadAll, load, unload, listening, callEvents, slashCommand, commands, messages, list };
+  return {
+    discover, loadAll, load, unload, listening, callEvents, slashCommand, commands, messages, msgids, list,
+  };
 }
 
 module.exports = {
