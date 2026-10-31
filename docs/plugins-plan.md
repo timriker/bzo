@@ -197,18 +197,23 @@ bzo's own clients and native ones do not share a wire format.
    ScoreRestorer; each bundled plugin is off until `server.json` names it,
    with its options there in place of upstream's `-loadplugin` string. The
    Plugins panel lists them with their `meta` and switches them on and off.
-   flagStay needs custom map objects and waits for stage 2. `/listplugins`,
+   `/listplugins`,
    `/loadplugin <name>[,<options as JSON>]` and `/unloadplugin <name|number>`
    are upstream's, admins only, and last until a restart; a client is told
    again what a plugin changes for it -- its commands, its translations, its
    BZDB defaults.
-2. **Rules and custom flags.** The remaining allow and modify events, zone
-   entry and exit, custom map objects (the BZW parser passes unknown objects
-   to the plugin that registered them), polls and permissions, custom flags
-   with server shots, the world
-   event and the `bz_addWorld*` calls, and plugin HTTP routes. Port koth,
-   keepaway, HoldTheFlag, timedctf, fairCTF, chathistory, TimeLimit,
-   shockwaveDeath, wwzones and mapchange, and move the compass letters out.
+2. **Rules and custom flags.** Custom map objects and zones are done:
+   `bz_registerCustomMapObject` hands a plugin each block of its object from
+   the live map's text, since bzo reads the map before plugins load, and
+   `bz.bz_CustomZoneObject` is upstream's box-or-cylinder zone. Upstream fires
+   no zone entry or exit events itself; a zone plugin tests positions on
+   `bz_ePlayerUpdateEvent`, which is sent for every accepted move while one
+   listens. flagStay is ported. The map loader still reports a plugin's block
+   as ignored. Left: the remaining allow and modify events, polls and
+   permissions, custom flags with server shots, the world event and the
+   `bz_addWorld*` calls, and plugin HTTP routes. Port koth, keepaway,
+   HoldTheFlag, timedctf, fairCTF, chathistory, TimeLimit, shockwaveDeath,
+   wwzones and mapchange, and move the compass letters out.
 3. **Plugin options and upload** in the panel.
 4. **The Discord bridge** moves to a plugin once stage 1's chat events carry
    what it needs.

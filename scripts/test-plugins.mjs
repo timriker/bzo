@@ -16,7 +16,9 @@ import path from 'node:path';
 import { createRequire } from 'node:module';
 
 const require = createRequire(import.meta.url);
-const { createPluginHost, pluginSetting, EVENT_TYPES } = require('../server/plugins.cjs');
+const {
+  createPluginHost, pluginSetting, EVENT_TYPES, CustomZoneObject, scanCustomMapObjects,
+} = require('../server/plugins.cjs');
 
 const root = fs.mkdtempSync(path.join(os.tmpdir(), 'bzo-plugins-'));
 const bundled = path.join(root, 'bundled');
@@ -347,6 +349,78 @@ module.exports = {
   assert.deepEqual(require(path.join(lateDir, 'late.cjs')).config, { n: 2 });
   assert.equal(host.unload('late'), true);
   assert.deepEqual(removed, ['_late']);
+}
+
+// Custom map objects and zones, as upstream's reader and bz_CustomZoneObject
+// have them, and flagStay built on both.
+{
+  const map = `
+box
+  position 0 0 0
+end
+# a zone
+FlagStayZone
+  position 100 0 0
+  size 10 20 5   # comment
+  flag gm
+  message "Keep it in the armoury"
+end
+flagstayzone
+  position -50 -50 0
+  radius 8
+  height 4
+end
+`;
+  const blocks = scanCustomMapObjects(map, 'FLAGSTAYZONE');
+  assert.equal(blocks.length, 2, 'every block of the name, in any case');
+  assert.equal(blocks[0].name, 'FLAGSTAYZONE');
+  assert.deepEqual(blocks[0].data.slice(0, 2), ['position 100 0 0', 'size 10 20 5']);
+  assert.deepEqual(scanCustomMapObjects(map, 'nosuch'), []);
+
+  const box = new CustomZoneObject();
+  box.handleDefaultOptions(blocks[0]);
+  assert.equal(box.box, true);
+  assert.ok(box.pointInZone([109, 19, 4]), 'inside the box');
+  assert.ok(!box.pointInZone([111, 0, 1]), 'past its half width');
+  assert.ok(!box.pointInZone([100, 0, 6]), 'above it');
+  const cylinder = new CustomZoneObject();
+  cylinder.handleDefaultOptions(blocks[1]);
+  assert.equal(cylinder.box, false);
+  assert.ok(cylinder.pointInZone([-50, -43, 0]));
+  assert.ok(!cylinder.pointInZone([-50, -41, 0]));
+  const turned = new CustomZoneObject();
+  turned.handleDefaultOptions({ data: ['position 0 0 0', 'size 10 2 5', 'rotation 90'] });
+  assert.ok(turned.pointInZone([0, 9, 1]) && !turned.pointInZone([9, 0, 1]), 'a quarter turn swaps its sides');
+
+  const bundledDir = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..', 'plugins');
+  const zapped = [];
+  const said = [];
+  let held = 'GM';
+  const host = createPluginHost({
+    dirs: [bundledDir],
+    settings: { flagStay: true },
+    api: {
+      BZ_SERVER: -2,
+      bz_CustomZoneObject: CustomZoneObject,
+      bz_customMapObjects: (name) => scanCustomMapObjects(map, name),
+      bz_getPlayerFlag: () => held,
+      bz_removePlayerFlag: (id) => { zapped.push(id); return true; },
+      bz_sendTextMessage: (from, to, text) => { said.push({ to, text }); return true; },
+    },
+  });
+  host.loadAll();
+  assert.equal(host.list().find((entry) => entry.id === 'flagStay').state, 'loaded');
+  const move = (pos) => host.callEvents('bz_ePlayerUpdateEvent', { playerID: 3, state: { pos } });
+  host.callEvents('bz_eFlagGrabbedEvent', { playerID: 3, flagType: 'SW', pos: [100, 0, 0] });
+  move([200, 0, 0]);
+  assert.deepEqual(zapped, [], 'a flag the zone does not name leaves freely');
+  host.callEvents('bz_eFlagGrabbedEvent', { playerID: 3, flagType: 'GM', pos: [100, 0, 0] });
+  move([105, 5, 0]);
+  assert.deepEqual(zapped, [], 'and one it names may move within it');
+  move([120, 0, 0]);
+  assert.deepEqual(zapped, [3], 'but not out of it');
+  assert.deepEqual(said, [{ to: 3, text: 'Keep it in the armoury' }]);
+  held = null;
 }
 
 fs.rmSync(root, { recursive: true, force: true });

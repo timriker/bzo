@@ -112,6 +112,7 @@ let openUdpChannel;
 let players;
 let pluginEvent;
 let pluginRecord;
+let pluginState;
 let playerSpawned;
 let sendPluginsTo;
 let projectiles;
@@ -212,6 +213,7 @@ function useServer(deps, live) {
     noteRejoinWait,
     pluginEvent,
     pluginRecord,
+    pluginState,
     playerSpawned,
     sendPluginsTo,
     occupyShotSlot,
@@ -665,6 +667,10 @@ function handleM(player, ws, message) {
     queueChannelMove(pmPacket);
 
     checkAntidote(player, now);
+    // Every accepted move, which is why it is built only for a listener.
+    pluginEvent('bz_ePlayerUpdateEvent', () => ({
+      playerID: Number(player.id), state: pluginState(player), stateTime: now / 1000,
+    }));
   } else {
     // Validation failed - jumpDirection unchanged (no update needed)
     // Send correction back to client

@@ -212,7 +212,7 @@ const {
   worldConfig,
 } = require('./public/js/bzdb.mjs');
 const { POLL_DEFAULTS, VotingArbiter, parseVoteAnswer } = require('./server/polls.cjs');
-const { createPluginHost } = require('./server/plugins.cjs');
+const { CustomZoneObject, createPluginHost, scanCustomMapObjects } = require('./server/plugins.cjs');
 const { getKillScoreDeltas } = require('./public/js/scoring.mjs');
 const { createBanStore, parseDuration } = require('./server/bans.cjs');
 const {
@@ -17095,6 +17095,7 @@ messagesPlay.useServer({
   noteRejoinWait,
   pluginEvent,
   pluginRecord,
+  pluginState,
   playerSpawned,
   sendPluginsTo,
   occupyShotSlot,
@@ -17910,6 +17911,18 @@ function bzdbValue(name) {
   return liveBzdb.get(name) ?? worldVariableDefault(name);
 }
 
+// The blocks of one custom object in the live map's own text
+// (`scanCustomMapObjects`). A generated world has none.
+function customMapObjects(name) {
+  const file = MAP_SOURCE === 'random' ? null : resolveMapFilePath(MAP_SOURCE);
+  if (!file) return [];
+  try {
+    return scanCustomMapObjects(fs.readFileSync(file, 'utf8'), name);
+  } catch {
+    return [];
+  }
+}
+
 // What a plugin's `bz` reaches of the server, by upstream's names
 // (include/bzfsAPI.h). Each plugin's own `bz` puts its registrations on top.
 const PLUGIN_API = Object.freeze({
@@ -17986,6 +17999,23 @@ const PLUGIN_API = Object.freeze({
   bz_debugMessage: (level, message) => {
     if (level <= 1) log(`[PLUGIN] ${message}`);
   },
+
+  // bz_removePlayerFlag: the flag leaves the tank and goes back to its spawn,
+  // as zapFlagByPlayer sends it.
+  bz_removePlayerFlag: (id) => {
+    const player = players.get(String(id));
+    const flag = player?.alive ? getPlayerFlag(player.id) : null;
+    if (!flag) return false;
+    zapFlag(flag);
+    return true;
+  },
+
+  // The map's blocks of a custom object, `[{ name, data: [line, ...] }]`, for
+  // bz_registerCustomMapObject: what upstream's BZWReader hands a plugin's
+  // MapObject while it reads the map. bzo has read it already, so it is read
+  // again here for the one name.
+  bz_customMapObjects: (name) => customMapObjects(name),
+  bz_CustomZoneObject: CustomZoneObject,
 
   bz_BZDBItemExists: (name) => bzdbValue(name) !== undefined,
   bz_getBZDBString: (name) => String(bzdbValue(name) ?? ''),

@@ -120,6 +120,131 @@ function findPlugins(dirs) {
   return found;
 }
 
+// The blocks of one custom object in a map's text, as upstream's BZWReader
+// collects them for a plugin's MapObject: from a line whose first word is
+// `name`, in any case, to its `end`, each line trimmed and stripped of a
+// comment. `name` comes back upper case, as upstream's does.
+function scanCustomMapObjects(text, name) {
+  const wanted = String(name).toLowerCase();
+  if (!wanted) return [];
+  const blocks = [];
+  let current = null;
+  for (const raw of String(text).split(/\r?\n/)) {
+    const line = raw.replace(/#.*$/, '').trim();
+    if (!line) continue;
+    const first = line.split(/\s+/)[0].toLowerCase();
+    if (current) {
+      if (first === 'end') {
+        blocks.push(current);
+        current = null;
+      } else {
+        current.data.push(line);
+      }
+    } else if (first === wanted) {
+      current = { name: String(name).toUpperCase(), data: [] };
+    }
+  }
+  return blocks;
+}
+
+// bz_CustomZoneObject (bzfsAPI.cxx:3107): a box or a cylinder read from a
+// custom object's lines -- `position`, `size`, `rotation`, `radius`,
+// `height`, or the older `bbox` and `cylinder` -- and whether a point is in
+// it.
+class CustomZoneObject {
+  constructor() {
+    this.box = false;
+    this.xMax = 0; this.xMin = 0; this.yMax = 0; this.yMin = 0; this.zMax = 0; this.zMin = 0;
+    this.radius = 0; this.rotation = 0;
+    this.cX = 0; this.cY = 0; this.hh = 0; this.hw = 0;
+    this.sinVal = 0; this.cosVal = 1;
+  }
+
+  handleDefaultOptions(info) {
+    let deprecated = false;
+    const pos = [0, 0, 0];
+    const size = [5, 5, 5];
+    let radius = 5;
+    let height = 5;
+    let rotation = 0;
+    for (const line of info?.data ?? []) {
+      const nubs = String(line).trim().split(/\s+/);
+      if (nubs.length < 2) continue;
+      const key = nubs[0].toUpperCase();
+      const n = (i) => Number.parseFloat(nubs[i]) || 0;
+      if (key === 'BBOX' && nubs.length > 6) {
+        this.box = true;
+        deprecated = true;
+        [this.xMin, this.xMax, this.yMin, this.yMax, this.zMin, this.zMax] = [n(1), n(2), n(3), n(4), n(5), n(6)];
+        this.cX = (this.xMax + this.xMin) / 2;
+        this.cY = (this.yMax + this.yMin) / 2;
+        this.hh = Math.abs(this.yMax - this.yMin) / 2;
+        this.hw = Math.abs(this.xMax - this.xMin) / 2;
+      } else if (key === 'CYLINDER' && nubs.length > 5) {
+        this.box = false;
+        deprecated = true;
+        [this.xMax, this.yMax, this.zMin, this.zMax, this.radius] = [n(1), n(2), n(3), n(4), n(5)];
+        this.cX = this.xMax;
+        this.cY = this.yMax;
+      } else if ((key === 'POSITION' || key === 'POS') && nubs.length > 3) {
+        [pos[0], pos[1], pos[2]] = [n(1), n(2), n(3)];
+        this.cX = pos[0];
+        this.cY = pos[1];
+      } else if (key === 'SIZE' && nubs.length > 3) {
+        this.box = true;
+        [size[0], size[1], size[2]] = [n(1), n(2), n(3)];
+        this.hw = size[0];
+        this.hh = size[1];
+      } else if (key === 'ROTATION' || key === 'ROT') {
+        rotation = n(1);
+        this.cosVal = Math.cos(rotation * Math.PI / 180);
+        this.sinVal = Math.sin(rotation * Math.PI / 180);
+      } else if (key === 'RADIUS' || key === 'RAD') {
+        this.box = false;
+        radius = n(1);
+      } else if (key === 'HEIGHT') {
+        height = n(1);
+      }
+    }
+    if (deprecated) return;
+    if (this.box) {
+      this.xMin = pos[0] - size[0];
+      this.xMax = pos[0] + size[0];
+      this.yMin = pos[1] - size[1];
+      this.yMax = pos[1] + size[1];
+      this.zMin = pos[2];
+      this.zMax = pos[2] + size[2];
+      this.rotation = rotation > 0 && rotation < 360 ? rotation : 0;
+    } else {
+      this.radius = radius;
+      this.xMax = pos[0];
+      this.yMax = pos[1];
+      this.zMin = pos[2];
+      this.zMax = pos[2] + height;
+    }
+  }
+
+  pointInZone(pos) {
+    let px = pos[0] - this.cX;
+    let py = pos[1] - this.cY;
+    if (this.box) {
+      if (this.rotation === 90 || this.rotation === 270) {
+        [px, py] = [py, px];
+      } else if (this.rotation !== 0 && this.rotation !== 180) {
+        const rx = px * this.cosVal + py * this.sinVal;
+        const ry = -px * this.sinVal + py * this.cosVal;
+        px = rx;
+        py = ry;
+      }
+      if (Math.abs(px) > this.hw || Math.abs(py) > this.hh) return false;
+    } else if (px * px + py * py > this.radius * this.radius) {
+      return false;
+    }
+    return !(pos[2] > this.zMax || pos[2] < this.zMin);
+  }
+}
+
+
 function createPluginHost({
   dirs, settings = {}, api = {}, log = () => {}, timers = globalThis,
 } = {}) {
@@ -213,6 +338,19 @@ function createPluginHost({
         return done;
       };
     }
+    // bz_registerCustomMapObject (bzfsAPI.h:2030). Upstream's reader hands a
+    // plugin each block of its object as it reads the map, so a plugin
+    // registers in Init; bzo has the map already, and hands them over here.
+    // A handler is upstream's object with MapObject(name, data), or that
+    // function alone; `data.data` is the block's lines.
+    bz.bz_registerCustomMapObject = (name, handler) => {
+      const run = typeof handler === 'function' ? handler : handler?.MapObject?.bind(handler);
+      if (!name || typeof run !== 'function') return false;
+      for (const block of api.bz_customMapObjects?.(name) ?? []) run(block.name, block);
+      return true;
+    };
+    // Nothing to take back: the map is read once.
+    bz.bz_removeCustomMapObject = () => true;
     bz.log = (text) => log(`${entry.id}: ${text}`);
     return bz;
   }
@@ -416,4 +554,6 @@ function createPluginHost({
   return { discover, loadAll, load, unload, listening, callEvents, slashCommand, commands, messages, list };
 }
 
-module.exports = { EVENT_TYPES, checkPlugin, createPluginHost, findPlugins, pluginSetting };
+module.exports = {
+  CustomZoneObject, EVENT_TYPES, checkPlugin, createPluginHost, findPlugins, pluginSetting, scanCustomMapObjects,
+};
