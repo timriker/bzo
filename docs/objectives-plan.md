@@ -91,7 +91,8 @@ plugin, so a plugin gives a bot an objective the same way it gives one to a
 person. The bot reads its objective as a goal and scores it alongside threats
 and flags, which is "Choosing" under step 4 of
 [bots-plan.md](bots-plan.md). A bot gets no flag packet and no HUD line, only
-the goal. A bot carrying a flag still arrives, because the server, not a grab, decides arrival.
+the goal. A bot carrying a flag still arrives, because the server, not a
+grab, decides arrival.
 
 A plugin can also read the other players' objectives (`bz_getObjective`). It
 can then send bots to defend a place players are heading to, or to race them
