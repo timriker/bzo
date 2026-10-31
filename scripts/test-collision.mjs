@@ -1053,6 +1053,20 @@ assert.ok(Math.abs(trapped.x) < 1, 'and leaves the shot inside the corridor');
   assert.equal(server.resolvePhysicsDriverAt(mesh, 0, 0, 5), driver, 'server agrees');
   assert.equal(client.resolvePhysicsDriverAt(mesh, 100, -100, 5), null, 'off the mesh entirely');
 
+  // A face at a height float32 cannot hold exactly sits just under a tank
+  // standing on it: whammo.bmbz.org:5162's belts at 0.19 carried nobody.
+  const low = Math.fround(0.19);
+  const lowMesh = {
+    ...mesh,
+    vertices: meshVertices.map((v) => ({ ...v, z: low })),
+    faces: [{ ...driverFace, plane: [0, 0, 1, -low] }],
+    bounds: { ...mesh.bounds, minZ: low, maxZ: low },
+  };
+  assert.equal(client.resolvePhysicsDriverAt(lowMesh, 0, 0, 0.19), driver, 'a float32 face just under the tank');
+  assert.equal(server.resolvePhysicsDriverAt(lowMesh, 0, 0, 0.19), driver, 'server agrees');
+  assert.equal(client.findPhysicsSurfaceObstacle([lowMesh], 0, 0, 0.19), lowMesh, 'found as the surface');
+  assert.equal(client.findPhysicsSurfaceObstacle([lowMesh], 0, 0, 1), null, 'not from a metre up');
+
   // A face's own `phydrv` falls back to the mesh's top-level default when
   // it has none of its own -- the same default every mesh face already
   // inherits at parse time (server.js's `currentMeshFace` construction).

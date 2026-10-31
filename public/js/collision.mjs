@@ -678,10 +678,16 @@ export function findMeshHitFace(obs, x, y, z, radius, height, passField = 'drive
 // exists at all: that filter answers "did the tank just hit this face
 // moving the way it was," which only matters for a collision response, not
 // for "which face is under me right now."
+//
+// The box reaches `FACE_UNDER_TOLERANCE` below the tank. A face's corners are
+// float32 and the tank's height is not: a tank standing on a face at 0.19 is
+// at 0.19, and the face at 0.18999999762, just under a box that starts at the
+// tank, so the conveyor it stands on was not found.
+const FACE_UNDER_TOLERANCE = 0.001;
 export function findMeshFaceAt(obs, x, y, z, radius, height) {
   const { bounds } = obs;
   if (bounds && outsideBounds(bounds, x, y, radius)) return NO_FACE;
-  const boxMins = [-radius, -radius, 0];
+  const boxMins = [-radius, -radius, -FACE_UNDER_TOLERANCE];
   const boxMaxs = [radius, radius, height];
   const arrays = meshArrays(obs);
   for (let f = 0; f < arrays.faceCount; f += 1) {
@@ -1090,7 +1096,7 @@ export function findPhysicsSurfaceObstacle(obstacles, x, y, z, radius = 2, heigh
     if (obs.bounds && outsideBounds(obs.bounds, x, y, radius)) continue;
 
     if (obs.type === 'mesh') {
-      if (findMeshFaceAt(obs, x, y, z, radius, height)) return obs;
+      if (findMeshFaceAt(obs, x, y, z, radius, height) !== NO_FACE) return obs;
       continue;
     }
 
