@@ -262,7 +262,7 @@
         <!-- Microphone: the border is the state, green transmitting and red
              not, which is what the voice panel out in the middle of the screen
              used to say at much greater cost. -->
-        <button id="micBtn" type="button" class="micBtn micBtn--off" aria-pressed="false" title="Microphone off" data-i18n-title><span class="settingsIcon">&#127908;</span></button>
+        <button id="micBtn" data-voice type="button" class="micBtn micBtn--off" aria-pressed="false" title="Microphone off" data-i18n-title><span class="settingsIcon">&#127908;</span></button>
         <button id="xrQuickBtn" title="Enter WebXR VR Mode" data-i18n-title><span class="settingsIcon">&#129405;</span></button>
       </div>
       <!-- `@` for an admin and `+` for a signed-in player, before the name and
@@ -330,7 +330,7 @@
         </div>
         <span id="gameVolumeDescription" class="audioSettingHint" data-i18n>Gameplay sound effects.</span>
       </div>
-      <div class="audioSettingRow">
+      <div class="audioSettingRow" data-voice>
         <label for="voiceVolumeSlider" data-i18n>Voice volume</label>
         <div class="volumeControl">
           <input id="voiceVolumeSlider" class="volumeSlider" type="range" min="0" max="10" step="1" value="10"
@@ -340,7 +340,7 @@
         </div>
         <span id="voiceVolumeDescription" class="audioSettingHint" data-i18n>How loud nearby players sound to you.</span>
       </div>
-      <div class="audioSettingRow">
+      <div class="audioSettingRow" data-voice>
         <label for="microphoneVolumeSlider" data-i18n>Microphone volume</label>
         <div class="volumeControl">
           <input id="microphoneVolumeSlider" class="volumeSlider" type="range" min="0" max="10" step="1" value="10"
@@ -350,7 +350,7 @@
         </div>
         <span id="microphoneVolumeDescription" class="audioSettingHint" data-i18n>How loud you are to nearby players.</span>
       </div>
-      <div class="audioSettingRow">
+      <div class="audioSettingRow" data-voice>
         <label for="voiceChannelSelect" data-i18n>Voice channel</label>
         <select id="voiceChannelSelect" aria-describedby="voiceChannelDescription">
           <option value="all" data-i18n>All</option>
@@ -359,14 +359,14 @@
         </select>
         <span id="voiceChannelDescription" class="audioSettingHint" data-i18n>Players within earshot, whatever team they are on.</span>
       </div>
-      <div class="audioSettingRow">
+      <div class="audioSettingRow" data-voice>
         <label for="voiceInputDevice" data-i18n>Microphone input</label>
         <select id="voiceInputDevice" aria-describedby="voiceInputDeviceDescription">
           <option value="">Default microphone</option>
         </select>
         <span id="voiceInputDeviceDescription" class="audioSettingHint" data-i18n>Choose the microphone used for voice chat.</span>
       </div>
-      <div class="audioSettingRow audioProcessingOptions" role="group" aria-labelledby="audioProcessingTitle">
+      <div class="audioSettingRow audioProcessingOptions" data-voice role="group" aria-labelledby="audioProcessingTitle">
         <span id="audioProcessingTitle" class="audioSettingLabel" data-i18n>Native audio processing</span>
         <label class="audioCheckboxLabel" for="voiceEchoCancellation">
           <input id="voiceEchoCancellation" type="checkbox" checked>
@@ -384,13 +384,13 @@
           Native browser processing is enabled when supported.
         </span>
       </div>
-      <div class="audioSettingActions">
+      <div class="audioSettingActions" data-voice>
         <button id="voiceRequestPermissionBtn" class="settingsHudBtn" type="button" data-i18n>Enable microphone</button>
         <button id="voiceMicToggle" class="settingsHudBtn voiceMicToggle" type="button" aria-pressed="false" disabled data-i18n>
           Microphone off
         </button>
       </div>
-      <p id="voicePermissionStatus" class="voicePermissionStatus" role="status" aria-live="polite" data-i18n>
+      <p id="voicePermissionStatus" data-voice class="voicePermissionStatus" role="status" aria-live="polite" data-i18n>
         Microphone permission has not been requested.
       </p>
     </div>

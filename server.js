@@ -6409,6 +6409,10 @@ function parseVoiceIceServers(value) {
     .slice(0, 8);
 }
 
+// `"voice": false` in server.json turns voice chat off: no client offers it
+// and the server passes on none of its signalling. An empty `voiceIceServers`
+// does not -- players on one network, or with public IPv6, still connect.
+const VOICE_ON = serverConfig.voice !== false;
 const configuredVoiceIceServers = process.env.VOICE_ICE_SERVERS ?? serverConfig.voiceIceServers;
 const VOICE_ICE_SERVERS = parseVoiceIceServers(configuredVoiceIceServers);
 
@@ -12765,11 +12769,10 @@ function computeListServerStatus() {
     // same vocabulary GAME_STYLES uses to decode a remote server's style.
     maxShots: GAME_CONFIG.SHOT_MAX_ACTIVE,
     style: GAME_TYPE,
-    // Voice chat itself is not a switch bzo has -- every client offers the
-    // mic -- but without at least one ICE server a peer connection across
-    // anything but a LAN typically never completes, so this is "will voice
-    // actually work here" rather than "does this build have the feature."
-    voiceEnabled: VOICE_ICE_SERVERS.length > 0,
+    // Off with `"voice": false`; and without at least one ICE server a peer
+    // connection across anything but a LAN typically never completes, so this
+    // is "will voice actually work here" rather than "is it switched on."
+    voiceEnabled: VOICE_ON && VOICE_ICE_SERVERS.length > 0,
     // Every name this instance answers on (`publicUrl`). The list server
     // shows the ones it can verify beside the key's own.
     urls: PUBLIC_URLS,
@@ -14975,7 +14978,7 @@ function getVoicePeerState(peer) {
 }
 
 function sendVoiceRoster(player, force = false) {
-  if (!player.joined) return;
+  if (!VOICE_ON || !player.joined) return;
 
   const peers = getVoicePeers(player);
   // The player's own channel is in the signature because switching channels can
@@ -15000,7 +15003,7 @@ function refreshVoiceRosters(force = false) {
 }
 
 function sendVoiceStateUpdate(player) {
-  if (!player.joined) return;
+  if (!VOICE_ON || !player.joined) return;
 
   const stateMessage = {
     type: 'voiceState',
@@ -16864,6 +16867,7 @@ bzfsProxy.useServer({
   takeProxyToken,
   TEAM_MODE,
   vec3Point,
+  VOICE_ON,
   voiceRtcConfigFor,
   worldBase,
   get MAP_SOURCE() { return MAP_SOURCE; },
@@ -17121,7 +17125,8 @@ function acceptConnection(ws, req) {
     // docs/game-modes-plan.md.
     timeLeft: getMatchTimeLeft(),
     gameOver: matchClock.gameOver,
-    voiceRtcConfig: voiceRtcConfigFor(player.id),
+    voice: VOICE_ON,
+    voiceRtcConfig: VOICE_ON ? voiceRtcConfigFor(player.id) : null,
     // A reference, not the world itself -- see `MAP_REGISTRY` above. The
     // client fetches `url` once; the hash-named, `immutable` response spares
     // a reconnect the re-fetch entirely.
@@ -17289,6 +17294,7 @@ const MESSAGE_SERVER = {
   get serverConfig() { return serverConfig; },
 };
 messagesVoice.useServer({
+  voiceOn: VOICE_ON,
   broadcastAll,
   forwardVoiceSignal,
   refreshVoiceRosters,

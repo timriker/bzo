@@ -736,10 +736,10 @@ const XR_FLAG_HELP_TOP = -0.05;
 // from the people playing. Autopilot is not this -- a human on autopilot is
 // still a human, as upstream's `isBot()` has it.
 const IS_BOT_CLIENT = new URLSearchParams(window.location.search).has('bot');
-// `?novoice` never creates a voice peer connection, so this client sends and
-// receives no WebRTC traffic at all: for telling a network that drops on
+// `?voice=false` never creates a voice peer connection, so this client sends
+// and receives no WebRTC traffic at all: for telling a network that drops on
 // voice apart from one that drops on the game.
-const NO_VOICE = new URLSearchParams(window.location.search).has('novoice');
+const VOICE = new URLSearchParams(window.location.search).get('voice') !== 'false';
 // `?voicemode=silent` connects voice but never plays it: separates a device
 // upset by voice playout from one upset by the WebRTC traffic.
 // `?voicemode=relay` sends all of this client's voice through the TURN relay,
@@ -1208,6 +1208,9 @@ const volumeLevels = Object.fromEntries(VOLUME_CHANNELS.map(
   (channel) => [channel.id, readVolumeLevel(localStorage, channel.storageKey)],
 ));
 let voiceRtcConfig = { iceServers: [] };
+// Whether this server offers voice at all (`"voice"` in its server.json), from
+// `init`. Off hides every `data-voice` control and shuts the voice manager.
+let voiceOffered = true;
 let selectedVoiceChannel = normalizeVoiceChannel(
   localStorage.getItem('voiceChannel') ?? DEFAULT_VOICE_CHANNEL,
 );
@@ -2396,6 +2399,21 @@ function describeVoiceError(error) {
   return error.message || t('Voice operation failed.');
 }
 
+// A server with `"voice": false` gets no mic button, no voice settings and no
+// peer connections; one that turns it back on gets them again on the next init.
+function applyVoiceOffered(offered) {
+  voiceOffered = offered;
+  for (const element of document.querySelectorAll('[data-voice]')) {
+    element.style.display = offered ? '' : 'none';
+  }
+  if (offered) {
+    initializeVoiceManager();
+  } else if (voiceManager) {
+    callVoiceManager('shutdown');
+    voiceManager = null;
+  }
+}
+
 function handleVoiceError(error) {
   if (!error) return;
   const message = error.message || 'Voice operation failed.';
@@ -2410,7 +2428,7 @@ function handleVoiceError(error) {
 
 function initializeVoiceManager() {
   if (voiceManager) return voiceManager;
-  if (NO_VOICE) return null;
+  if (!VOICE || !voiceOffered) return null;
 
   voiceManager = createVoiceManager({
     sendToServer,
@@ -8337,6 +8355,7 @@ function receiveInit(message) {
           : baseConfig;
     callVoiceManager('setRtcConfig', voiceRtcConfig);
   }
+  applyVoiceOffered(message.voice !== false);
   // Keep the requested team until the server confirms the joined player.
   // The initial handshake describes the temporary connection player.
   updateVoiceIdentity();

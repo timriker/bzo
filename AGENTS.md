@@ -2715,7 +2715,7 @@ player can be asked to load a link:
   draws into belongs to the headset: a sample taken in a session reports the
   headset's own resolution whatever the page asked for. Set before a session
   starts, since it is read when the session builds its framebuffer.
-- `?novoice` -- never create a voice peer connection, so the client has no
+- `?voice=false` -- never create a voice peer connection, so the client has no
   WebRTC traffic at all. For a network that drops when voice connects: it
   tells that apart from one that drops on the game.
 - `?voicemode=silent` -- connect voice as usual but never play what arrives,

@@ -227,9 +227,10 @@ brings, with a prebuilt native module that needs glibc 2.38 or later (Ubuntu
 
 ### Voice
 
-Voice is peer to peer, and is offered only with at least one
-`voiceIceServers` entry. STUN alone connects most players; a TURN relay
-reaches the rest (mobile carriers, strict NATs). For a coturn server
+Voice is peer to peer and on by default; `"voice": false` turns it off.
+With no `voiceIceServers` it connects only players on one network or with
+public IPv6. STUN alone connects most players; a TURN relay reaches the rest
+(mobile carriers, strict NATs). For a coturn server
 with `use-auth-secret`, list its URLs without a username and set
 `voiceTurnSecret` to its `static-auth-secret`:
 

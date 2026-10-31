@@ -90,6 +90,7 @@
   "timeManualStart": false,
   "timeOfDay": null,
   "title": "BZFlag Test Server",
+  "voice": true,
   "voiceIceServers": [],
   "voiceIceServersIpv4": [],
   "voiceNearbyRadius": 60,

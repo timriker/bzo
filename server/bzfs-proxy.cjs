@@ -106,6 +106,7 @@ let sessions;
 let takeProxyToken;
 let TEAM_MODE;
 let vec3Point;
+let VOICE_ON;
 let voiceRtcConfigFor;
 let worldBase;
 
@@ -140,6 +141,7 @@ function useServer(deps) {
     takeProxyToken,
     TEAM_MODE,
     vec3Point,
+    VOICE_ON,
     voiceRtcConfigFor,
     worldBase,
   } = deps);
@@ -886,7 +888,8 @@ function buildProxyInit(session, mapEntry, viewer, status, enterTeam, zonedOf, o
     // inventing a match length.
     timeLeft: session.state.timeLeft,
     gameOver: false,
-    voiceRtcConfig: voiceRtcConfigFor(session.playerId),
+    voice: VOICE_ON,
+    voiceRtcConfig: VOICE_ON ? voiceRtcConfigFor(session.playerId) : null,
     // The target's own world, imported and hashed exactly as Map Viewer's is.
     world: { hash: mapEntry.hash, url: mapEntry.url },
     currentMap: mapEntry.fileName,

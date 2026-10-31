@@ -13,6 +13,7 @@
 const { normalizeVoiceChannel } = require('../public/js/voice-channels.mjs');
 
 // What the handlers need of server.js, from `useServer`.
+let voiceOn = true;
 let broadcastAll;
 let forwardVoiceSignal;
 let refreshVoiceRosters;
@@ -20,6 +21,7 @@ let sendVoiceStateUpdate;
 
 function useServer(deps) {
   ({
+    voiceOn,
     broadcastAll,
     forwardVoiceSignal,
     refreshVoiceRosters,
@@ -28,7 +30,7 @@ function useServer(deps) {
 }
 
 function handleVoiceState(player, ws, message) {
-  if (!player.joined) return;
+  if (!voiceOn || !player.joined) return;
 
   // An unrecognized channel normalizes to the default rather than being
   // rejected, so an older or newer client lands somewhere valid instead
@@ -53,6 +55,7 @@ function handleVoiceState(player, ws, message) {
 }
 
 function handleVoiceIceCandidate(player, ws, message) {
+  if (!voiceOn) return;
   forwardVoiceSignal(player, message);
   return;
 }
