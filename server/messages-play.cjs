@@ -112,6 +112,7 @@ let openUdpChannel;
 let players;
 let pluginEvent;
 let pluginRecord;
+let playerSpawned;
 let projectiles;
 let queueChannelMove;
 let refreshVoiceRosters;
@@ -210,6 +211,7 @@ function useServer(deps, live) {
     noteRejoinWait,
     pluginEvent,
     pluginRecord,
+    playerSpawned,
     occupyShotSlot,
     openUdpChannel,
     players,
@@ -1155,6 +1157,9 @@ function handleJoinGame(player, ws, message) {
   pluginEvent('bz_ePlayerJoinEvent', () => ({
     playerID: Number(player.id), record: pluginRecord(player), reason: '',
   }));
+  // A tank that came in alive spawned with the join, so it does what every
+  // spawn does; one held back by the rejoin wait does it in `respawn`.
+  if (player.alive) playerSpawned(player);
   if (scoreRestored) replyToPlayer(player, scoreRestored);
   clearTimeout(player.rejoinTimer);
   if (rejoinWait > 0) {

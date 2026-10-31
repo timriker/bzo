@@ -7540,6 +7540,15 @@ function anointNewRabbit(killerId = null) {
   broadcastAll({ type: 'newRabbit', playerId: rabbitPlayerId });
 }
 
+// What every spawn does, the first one at join and each respawn after
+// (`playerAlive`, bzfs.cxx:3287): the rabbit, then the plugins' spawn event.
+function playerSpawned(player) {
+  handleRabbitSpawn(player);
+  pluginEvent('bz_ePlayerSpawnEvent', () => ({
+    playerID: Number(player.id), team: bzTeam(player.team), state: pluginState(player),
+  }));
+}
+
 // bzfs.cxx:3287. Spawning closes the window in which a deposed rabbit's shots
 // are nobody's team kill, and takes the rabbit if the world has none.
 function handleRabbitSpawn(player) {
@@ -8169,10 +8178,7 @@ class Player {
     this.teleportReentryBlockDistance = 0;
     this.teleportReentryBlockUntil = 0;
     this.teleportCooldownUntil = 0;
-    handleRabbitSpawn(this);
-    pluginEvent('bz_ePlayerSpawnEvent', () => ({
-      playerID: Number(this.id), team: bzTeam(this.team), state: pluginState(this),
-    }));
+    playerSpawned(this);
   }
 
   // `forAdmin` adds the fields only an admin may see. It is the recipient's
@@ -17025,6 +17031,7 @@ messagesPlay.useServer({
   noteRejoinWait,
   pluginEvent,
   pluginRecord,
+  playerSpawned,
   occupyShotSlot,
   openUdpChannel,
   players,
