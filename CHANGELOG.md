@@ -6,6 +6,19 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
 
 ## [Unreleased]
 
+## [1.3.77] - 2026-10-31
+
+### Changed
+- A proxied server's world is kept and checked against its world hash at boot
+  and every 15 minutes, and downloaded only when it changes, so joining one no
+  longer waits for its world each hour or after a restart.
+
+### Fixed
+- A conveyor at a height like 0.19 carries a tank again; whammo's belts moved
+  nobody.
+- A dev server whose restart nodemon missed stayed up but stopped listening.
+  It now keeps serving and restarts itself 3s later.
+
 ## [1.3.76] - 2026-10-31
 
 ### Added
