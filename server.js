@@ -15140,7 +15140,10 @@ function fireWorldWeaponShot(weapon, now) {
 // A shot by the server itself, `ServerPlayer` (253): a map's world weapon, or
 // a plugin's bz_fireServerShot. `direction` need not be a unit vector, and may
 // be none at all for a shot that does not travel -- a shockwave.
-function fireServerShot(type, origin, direction, team, now = Date.now()) {
+// `target` is a player a guided one steers at, as upstream's names one in
+// the MsgGMUpdate it sends after the shot (WorldWeapons.cxx:96): the shot's
+// own, since the server has no lock of its own to steer by.
+function fireServerShot(type, origin, direction, team, now = Date.now(), target = null) {
   const id = (++projectileIdCounter).toString();
   const proj = new Projectile(
     id,
@@ -15156,6 +15159,7 @@ function fireServerShot(type, origin, direction, team, now = Date.now()) {
     now
   );
   proj.team = team;
+  proj.targetId = proj.guided && target !== null ? String(target) : null;
   proj.lifetimeSeconds = getWorldMissileLifetimeSeconds(
     proj.playerId, proj.guided, GAME_CONFIG.MAP_SIZE, proj.speed,
   ) ?? proj.lifetimeSeconds;
@@ -15174,9 +15178,8 @@ function fireServerShot(type, origin, direction, team, now = Date.now()) {
     // FiringInfo's `shot.team`, which a world weapon's shot is drawn in.
 
     team: proj.team,
-    // A world weapon locks onto nobody: upstream targets a `GM` world weapon
-    // through the API rather than from a map, which bzo has no equivalent of.
-    target: null,
+    // A map's world weapon locks onto nobody; a plugin's may name a target.
+    target: proj.targetId,
     createdAt: proj.createdAt,
   });
   if (beamHit) applyShotPlayerHit(proj, id, beamHit.player, beamHit.point);
@@ -15317,6 +15320,12 @@ function canLockOnto(player) {
 // Whichever tank this player's missiles are steering at, or null. A lock is only
 // live while there is a missile for it to steer, which is the same test that
 // allows one to be taken.
+// A server shot's own target, under the rule a player's lock is held to.
+function getServerShotTarget(proj) {
+  const target = proj.targetId === null ? null : players.get(proj.targetId);
+  return canLockOnto(target) ? target : null;
+}
+
 function getLockTarget(shooterId) {
   const shooter = players.get(shooterId);
   if (!shooter?.lockTargetId || !canLockOn(shooter)) return null;
@@ -15894,7 +15903,9 @@ function simulateProjectilesStep(stepSeconds, now) {
     // nothing locked -- or with a target that has died, paused or taken `ST` --
     // leaves the missile flying straight.
     if (proj.guided) {
-      const target = getLockTarget(proj.playerId);
+      const target = proj.playerId === WORLD_WEAPON_PLAYER_ID
+        ? getServerShotTarget(proj)
+        : getLockTarget(proj.playerId);
       const steered = steerGuidedShot(
         { x: proj.dirX, y: proj.dirY || 0, z: proj.dirZ },
         { x: proj.x, y: proj.y, z: proj.z },
@@ -18056,10 +18067,10 @@ const PLUGIN_API = Object.freeze({
   // bz_fireServerShot(shotType, origin, vector, color = eRogueTeam, target):
   // WorldWeapons::fireShot, with upstream's allow event first. `vector` is a
   // direction, scaled by the shot's speed as upstream scales it, and may be
-  // all zeros for a shot that does not travel. `target` is accepted and not
-  // yet followed: a bzo guided missile steers by its shooter's lock, and the
-  // server has none. Returns the shot's id, or 0, upstream's INVALID_SHOT_GUID.
-  bz_fireServerShot: (shotType, origin, vector = [0, 0, 0], color = 0) => {
+  // all zeros for a shot that does not travel. A `GM` steers at `target`, a
+  // player, if one is named. Returns the shot's id, or 0, upstream's
+  // INVALID_SHOT_GUID.
+  bz_fireServerShot: (shotType, origin, vector = [0, 0, 0], color = 0, targetPlayerId = -1) => {
     let type = shotType ? String(shotType) : null;
     if (type && !getFlagType(type)) return 0;
     if (!Array.isArray(origin) || origin.length < 3) return 0;
@@ -18073,8 +18084,9 @@ const PLUGIN_API = Object.freeze({
       type = allowed.flagType || null;
       if (type && !getFlagType(type)) return 0;
     }
+    const target = targetPlayerId >= 0 && players.has(String(targetPlayerId)) ? targetPlayerId : null;
     const id = fireServerShot(type, { x: origin[0], y: origin[1], z: origin[2] },
-      { x: vector[0] || 0, y: vector[1] || 0, z: vector[2] || 0 }, team);
+      { x: vector[0] || 0, y: vector[1] || 0, z: vector[2] || 0 }, team, Date.now(), target);
     return Number(id);
   },
   bz_CustomZoneObject: CustomZoneObject,

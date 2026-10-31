@@ -212,8 +212,10 @@ bzo's own clients and native ones do not share a wire format.
    as ignored. Server shots are done: `bz_fireServerShot` fires through the
    path a map's world weapons use, after upstream's
    `bz_eAllowServerShotFiredEvent`; shockwaveDeath and wwzones are ported on
-   it, wwzones on the map objects and zones above as well. A guided
-   server shot's target is not yet followed. Custom flags are done:
+   it, wwzones on the map objects and zones above as well. A guided server
+   shot steers at the target it was fired with, its own rather than a
+   shooter's lock, and a native client is told the target in the MsgGMUpdate
+   that follows, as bzfs tells it. Custom flags are done:
    `bz_RegisterCustomFlag` adds a type with a name and help that bzo clients
    are sent and a native client learns in reply to its flag negotiation, as
    bzfs answers it; its shots are ordinary, as 2.4's are, and a map's

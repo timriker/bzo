@@ -603,10 +603,13 @@ class NativeTranslator {
         // `_reloadTime`, upstream's default being `_shotRange / _shotSpeed`.
         const lifetime = (Number(config.SHOT_LIFETIME) / 1000)
           || ((Number(config.SHOT_RANGE) || 350) / (Number(config.SHOT_SPEED) || 100));
+        // A server shot's shooter is `ServerPlayer`, which the client files
+        // under its world weapons (playing.cxx:2946), not nobody.
+        const shooter = this.sourceSlot(message.playerId);
         this.write('sb', new Writer(48)
           .f32(this.timestamp())
-          .u8(this.slotFor(message.playerId))
-          .u16(this.shotId(message.id, message.shotSlot, this.slotFor(message.playerId)))
+          .u8(shooter)
+          .u16(this.shotId(message.id, message.shotSlot, shooter))
           .vec3([message.x, message.y, message.z])
           // The fired velocity, which `shotBegin` carries as MsgShotBegin does;
           // the client's strategy applies the flag.

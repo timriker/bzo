@@ -58,4 +58,21 @@ assert.equal(translator.sourceSlot(250), 250, 'a team passes through to a native
 assert.equal(translator.sourceSlot(252), 252);
 assert.equal(translator.sourceSlot('7'), 7);
 
+// A server shot reaches a native client from `ServerPlayer`, which the client
+// files under its world weapons, and a guided one with its target named in
+// the MsgGMUpdate that follows.
+translator.accepted = true;
+frames.length = 0;
+translator.handle({
+  type: 'shotBegin', id: 'p1', playerId: 253, shotSlot: -1, x: 1, y: 2, z: 3,
+  vx: -100, vy: 0, vz: 0, team: 'rogue', flag: 'GM', target: '7', speed: 100,
+  dirX: -1, dirY: 0, dirZ: 0,
+});
+const begin = frames.find((frame) => frame.code === 'sb');
+assert.equal(begin.payload.readUInt8(4), 253, 'shot from ServerPlayer');
+const update = frames.find((frame) => frame.code === 'gm');
+assert.ok(update, 'and a MsgGMUpdate');
+assert.equal(update.payload.readUInt8(0), 253);
+assert.equal(update.payload.readUInt8(update.payload.length - 1), 7, 'naming the target');
+
 console.log('test-bzflag-native: ok');

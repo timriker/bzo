@@ -8888,7 +8888,10 @@ function receiveShotBegin(message) {
   // answer back from it would clear the lock on every trigger pull.
   // Ended already, its end having overtaken it on the UDP channel.
   if (earlyShotEnds.delete(message.id)) return;
-  if (message.flag === 'GM'
+  // A server shot (`ServerPlayer`) carries its own target, as upstream's
+  // MsgGMUpdate after a plugin's bz_fireServerShot names it: every server
+  // missile is the same shooter, so one lock for the shooter would not do.
+  if (message.flag === 'GM' && message.playerId !== SERVER_PLAYER
     && !(clientTracesShots && message.playerId === myPlayerId)) {
     setPlayerLockTarget(message.playerId, message.target ?? null);
   }
@@ -9486,8 +9489,10 @@ function createProjectile(data) {
   projectile.userData.lifeFactor = effects.lifeFactor;
   projectile.userData.hiddenOnRadar = effects.hiddenOnRadar;
   // A missile's heading is not fixed at the muzzle: `updateProjectiles` turns it
-  // every step at whichever tank its shooter has locked.
+  // every step at whichever tank its shooter has locked, or a server shot at
+  // its own target.
   projectile.userData.guided = effects.guided;
+  projectile.userData.targetId = data.target ?? null;
   projectile.userData.lifetimeSeconds = getWorldMissileLifetimeSeconds(
     data.playerId, effects.guided, currentWorldMapSize, projectile.userData.speed,
   ) ?? getShotLifetimeSeconds(data.flag ?? null);
@@ -12269,6 +12274,12 @@ function getLockTargetTank(shooterId) {
   const targetId = playerLockTargets.get(shooterId);
   if (targetId === undefined) return null;
   if (getPlayerFlagType(shooterId) !== 'GM' && !hasGuidedShotInFlight(shooterId)) return null;
+  return getLockableTank(targetId);
+}
+
+// The tank `targetId` names, if a missile may steer at it now.
+function getLockableTank(targetId) {
+  if (targetId === null || targetId === undefined) return null;
   const tank = tanks.get(targetId);
   const state = tank?.userData?.playerState;
   if (!state || !state.alive || state.paused) return null;
@@ -15759,7 +15770,9 @@ function updateProjectiles(deltaTime) {
       // client's idea of that tank lags the server's, the missile is drawn a
       // little wide of where it really is, and the server still decides the hit.
       if (projectile.userData.guided) {
-        const target = getLockTargetTank(projectile.userData.playerId);
+        const target = projectile.userData.playerId === SERVER_PLAYER
+          ? getLockableTank(projectile.userData.targetId)
+          : getLockTargetTank(projectile.userData.playerId);
         announceOwnGuidedTarget(id, projectile, target);
         const steered = steerGuidedShot(
           {
