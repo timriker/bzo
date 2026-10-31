@@ -89,12 +89,14 @@ export function findMapEdgeImpactPoint(prevX, prevY, prevZ, nextX, nextY, nextZ,
 // One step of a shell's flight through the world's teleporters: `distance`
 // along `dir` from `start`, through every doorway it meets, stopping where it
 // meets a frame. `onTeleport` hears each crossing, for a host that logs them.
+// `ignoreFrames` is a Super Bullet's: it meets no frame, only the doorways.
 //
 // Returns where the shell ends up and heading which way, how many teleporters
 // it went through, the re-entry block it carries on with, and -- for a frame
 // hit -- the frame and how much of the step was left.
 export function traceShotThroughTeleporters(
   teleports, start, dir, distance, reentryBlockTeleporterIndex = null, reentryBlockDistance = 0, onTeleport = null,
+  ignoreFrames = false,
 ) {
   let point = { ...start };
   let direction = { ...dir };
@@ -109,7 +111,7 @@ export function traceShotThroughTeleporters(
       y: point.y + (direction.y * remaining),
       z: point.z + (direction.z * remaining),
     };
-    const met = findTeleporterEvent(teleports, point, end, blockedIndex, blockedDistance);
+    const met = findTeleporterEvent(teleports, point, end, blockedIndex, blockedDistance, ignoreFrames);
     if (!met) {
       blockedDistance = Math.max(0, blockedDistance - remaining);
       if (blockedDistance <= 1e-6) blockedIndex = null;

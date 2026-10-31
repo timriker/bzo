@@ -15790,6 +15790,10 @@ function updateProjectiles(deltaTime) {
         projectile.userData.dirZ = steered.z;
         renderManager.aimProjectile(projectile, steered);
       }
+      // Upstream's `Through` (SegmentedShotStrategy.cxx:461): a Super Bullet
+      // asks for no building at all -- a teleporter's frame and the world's
+      // outer wall included -- and only the ground stops it.
+      const throughBuildings = getShotEffects(projectile.userData.flag ?? null).throughBuildings === true;
       const traced = traceShotThroughTeleporters(
         TELEPORTER_INDEX,
         projectile.userData.at,
@@ -15801,6 +15805,8 @@ function updateProjectiles(deltaTime) {
         projectileSpeed * SHOT_SIM_STEP_SECONDS,
         projectile.userData.teleportReentryBlockTeleporterIndex,
         projectile.userData.teleportReentryBlockDistance,
+        null,
+        throughBuildings,
       );
 
       // A shot that ricochets of its own accord is traced against solid
@@ -15825,7 +15831,7 @@ function updateProjectiles(deltaTime) {
       // remove -- the same "leave it to the server" rule the ordinary-geometry
       // stop below already follows.
       let frameBounceStart = null;
-      if (traced.frameHit) {
+      if (traced.frameHit && !throughBuildings) {
         const impact = traced.point;
         if (ownRicochet) {
           const normal = getShotObstacleNormal(traced.frameHitObstacle, impact.x, impact.y, impact.z, SHOT_COLLISION_RADIUS);
@@ -15884,7 +15890,7 @@ function updateProjectiles(deltaTime) {
       const startY = frameBounceStart ? frameBounceStart.y : traced.point.y - (traced.direction.y * stepDistance);
       const startZ = frameBounceStart ? frameBounceStart.z : traced.point.z - (traced.direction.z * stepDistance);
       const step = traceShotStep({
-        obstacles: getCollisionColliders(),
+        obstacles: throughBuildings ? [] : getCollisionColliders(),
         x: startX,
         y: startY,
         z: startZ,
@@ -15918,7 +15924,7 @@ function updateProjectiles(deltaTime) {
       // SegmentedShotStrategy.cxx:469), so a shell or a missile flying higher
       // than `_wallHeight` still stops and bursts there, as bzo's server ends
       // its own shots at the edge.
-      if (clientTracesShots && !ownRicochet && !currentWorldNoWalls) {
+      if (clientTracesShots && !ownRicochet && !throughBuildings && !currentWorldNoWalls) {
         const halfMap = (Number.isFinite(currentWorldMapSize) ? currentWorldMapSize : DEFAULT_MAP_SIZE) / 2;
         if (Math.abs(step.x) > halfMap || Math.abs(step.y) > halfMap) {
           const edge = findMapEdgeImpactPoint(startX, startY, startZ, step.x, step.y, step.z, halfMap);

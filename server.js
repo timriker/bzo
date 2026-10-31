@@ -16119,6 +16119,7 @@ function simulateProjectilesStep(stepSeconds, now) {
     proj.dirY = traced.direction.y;
     proj.dirZ = traced.direction.z;
     proj.teleportReentryBlockTeleporterIndex = traced.reentryBlockTeleporterIndex;
+      proj.throughBuildings,
     proj.teleportReentryBlockDistance = traced.reentryBlockDistance;
 
     // ShotStrategy::getFirstBuilding treats a teleporter frame as an ordinary
@@ -16241,9 +16242,11 @@ function simulateProjectilesStep(stepSeconds, now) {
     // The world border is an obstacle, so a ricocheting shot bounces off it and
     // never reaches this. A shot that does not bounce meets it first as a
     // boundary collider a shot radius short of the edge, and only leaves the
-    // world outright on a step that skipped past that.
+    // world outright on a step that skipped past that. A Super Bullet meets no
+    // border at all (`Through`, SegmentedShotStrategy.cxx:461) and flies on out
+    // of the world until its life is up.
     const halfMap = GAME_CONFIG.MAP_SIZE / 2;
-    if (Math.abs(proj.x) > halfMap || Math.abs(proj.y) > halfMap) {
+    if (!proj.throughBuildings && (Math.abs(proj.x) > halfMap || Math.abs(proj.y) > halfMap)) {
       projectiles.delete(id);
       const removalPoint = findMapEdgeImpactPoint(
         stepStart.x, stepStart.y, stepStart.z, proj.x, proj.y, proj.z, halfMap

@@ -70,6 +70,14 @@ const teleports = buildTeleporterIndex([a, b], [{ sourceFaceId: 1, destFaceId: 2
   assert.equal(traced.teleports, 0);
 }
 
+// A Super Bullet meets no frame and flies the whole step on through the header.
+{
+  const traced = traceShotThroughTeleporters(teleports, { x: -5, y: 0, z: 19.5 }, { x: 1, y: 0, z: 0 }, 10,
+    null, 0, null, true);
+  assert.equal(traced.frameHit, false, 'no building to a Super Bullet');
+  assert.ok(Math.abs(traced.point.x - 5) < 1e-9, `the whole step, to ${JSON.stringify(traced.point)}`);
+}
+
 // A beam through A carries on from B, and ends at the world's edge (to within
 // findMapEdgeImpactPoint's bisection).
 {
