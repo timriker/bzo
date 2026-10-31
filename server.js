@@ -15129,23 +15129,31 @@ function fireWorldWeapons(now) {
 // should be.
 function fireWorldWeaponShot(weapon, now) {
   const direction = getWorldWeaponDirection(weapon.rotation, weapon.tilt);
+  // The shot's team, since there is no player to read one off: the map's own
+  // `color`, or rogue.
+  fireServerShot(weapon.type, { x: weapon.x, y: weapon.y, z: weapon.z }, direction,
+    weapon.team || WORLD_WEAPON_TEAM, now);
+}
+
+// A shot by the server itself, `ServerPlayer` (253): a map's world weapon, or
+// a plugin's bz_fireServerShot. `direction` need not be a unit vector, and may
+// be none at all for a shot that does not travel -- a shockwave.
+function fireServerShot(type, origin, direction, team, now = Date.now()) {
   const id = (++projectileIdCounter).toString();
   const proj = new Projectile(
     id,
     WORLD_WEAPON_PLAYER_ID,
     -1,
-    weapon.x,
-    weapon.y,
-    weapon.z,
+    origin.x,
+    origin.y,
+    origin.z,
     direction.x,
     direction.y,
     direction.z,
-    weapon.type,
+    type,
     now
   );
-  // The shot's team, since there is no player to read one off: the map's own
-  // `color`, or rogue.
-  proj.team = weapon.team || WORLD_WEAPON_TEAM;
+  proj.team = team;
   proj.lifetimeSeconds = getWorldMissileLifetimeSeconds(
     proj.playerId, proj.guided, GAME_CONFIG.MAP_SIZE, proj.speed,
   ) ?? proj.lifetimeSeconds;
@@ -15170,6 +15178,7 @@ function fireWorldWeaponShot(weapon, now) {
     createdAt: proj.createdAt,
   });
   if (beamHit) applyShotPlayerHit(proj, id, beamHit.player, beamHit.point);
+  return id;
 }
 
 // checkEnvironment's squish loop (playing.cxx:4198), which is the only rule in
@@ -18015,6 +18024,31 @@ const PLUGIN_API = Object.freeze({
   // MapObject while it reads the map. bzo has read it already, so it is read
   // again here for the one name.
   bz_customMapObjects: (name) => customMapObjects(name),
+
+  // bz_fireServerShot(shotType, origin, vector, color = eRogueTeam, target):
+  // WorldWeapons::fireShot, with upstream's allow event first. `vector` is a
+  // direction, scaled by the shot's speed as upstream scales it, and may be
+  // all zeros for a shot that does not travel. `target` is accepted and not
+  // yet followed: a bzo guided missile steers by its shooter's lock, and the
+  // server has none. Returns the shot's id, or 0, upstream's INVALID_SHOT_GUID.
+  bz_fireServerShot: (shotType, origin, vector = [0, 0, 0], color = 0) => {
+    let type = shotType ? String(shotType) : null;
+    if (type && !getFlagType(type)) return 0;
+    if (!Array.isArray(origin) || origin.length < 3) return 0;
+    const team = BZ_TEAM_ORDER[color] ?? WORLD_WEAPON_TEAM;
+    const allowed = pluginEvent('bz_eAllowServerShotFiredEvent', () => ({
+      flagType: type ?? '', speed: GAME_CONFIG.SHOT_SPEED, pos: [...origin], velocity: [...vector],
+      team: color, allow: true, changed: false,
+    }));
+    if (allowed && !allowed.allow) return 0;
+    if (allowed?.changed) {
+      type = allowed.flagType || null;
+      if (type && !getFlagType(type)) return 0;
+    }
+    const id = fireServerShot(type, { x: origin[0], y: origin[1], z: origin[2] },
+      { x: vector[0] || 0, y: vector[1] || 0, z: vector[2] || 0 }, team);
+    return Number(id);
+  },
   bz_CustomZoneObject: CustomZoneObject,
 
   bz_BZDBItemExists: (name) => bzdbValue(name) !== undefined,

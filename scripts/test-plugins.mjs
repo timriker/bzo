@@ -423,5 +423,19 @@ end
   held = null;
 }
 
+// shockwaveDeath: a server shockwave where each tank dies.
+{
+  const bundledDir = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..', 'plugins');
+  const fired = [];
+  const host = createPluginHost({
+    dirs: [bundledDir],
+    settings: { shockwaveDeath: true },
+    api: { bz_fireServerShot: (...args) => { fired.push(args); return 1; } },
+  });
+  host.loadAll();
+  host.callEvents('bz_ePlayerDieEvent', { playerID: 2, state: { pos: [1, 2, 3] } });
+  assert.deepEqual(fired, [['SW', [1, 2, 3], [0, 0, 0]]]);
+}
+
 fs.rmSync(root, { recursive: true, force: true });
 console.log('plugin host tests passed');

@@ -209,8 +209,11 @@ bzo's own clients and native ones do not share a wire format.
    no zone entry or exit events itself; a zone plugin tests positions on
    `bz_ePlayerUpdateEvent`, which is sent for every accepted move while one
    listens. flagStay is ported. The map loader still reports a plugin's block
-   as ignored. Left: the remaining allow and modify events, polls and
-   permissions, custom flags with server shots, the world event and the
+   as ignored. Server shots are done: `bz_fireServerShot` fires through the
+   path a map's world weapons use, after upstream's
+   `bz_eAllowServerShotFiredEvent`, and shockwaveDeath is ported; a guided
+   server shot's target is not yet followed. Left: the remaining allow and
+   modify events, polls and permissions, custom flags, the world event and the
    `bz_addWorld*` calls, and plugin HTTP routes. Port koth, keepaway,
    HoldTheFlag, timedctf, fairCTF, chathistory, TimeLimit, shockwaveDeath,
    wwzones and mapchange, and move the compass letters out.
