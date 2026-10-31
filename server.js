@@ -4137,17 +4137,20 @@ function importedWorldHash(fileName) {
 // An import past `IMPORT_REUSE_MS` whose server still runs the world it was
 // saved from is not stale, it is only old: the hash says so for one short
 // dial (`MsgWantWHash`), or for nothing when the world tracker asked inside
-// the same window. Then the copy on disk is kept, its age reset, and the
-// world is not downloaded again. A hash that differs or cannot be had --
-// no header, a server that will not answer -- falls through to the download.
-async function confirmImportUnchanged(fileName, host, port) {
+// the same window or the caller already holds the answer (`current`). Then the
+// copy on disk is kept, its age reset, and the world is not downloaded again.
+// A hash that differs or cannot be had -- no header, a server that will not
+// answer -- falls through to the download. A proxy target is dialled at its
+// own address (`dialHost`), not the name its import is filed under.
+async function confirmImportUnchanged(fileName, host, port,
+  { current = '', dialHost = host, dialPort = port } = {}) {
   const saved = importedWorldHash(fileName);
   if (!isBzfsWorldHash(saved)) return false;
   const record = bzfsWorlds.recordFor(host, port);
-  let current = record && Date.now() - (record.checkedAt || 0) < IMPORT_REUSE_MS ? record.worldHash : '';
+  if (!current && record && Date.now() - (record.checkedAt || 0) < IMPORT_REUSE_MS) current = record.worldHash;
   if (!current) {
     try {
-      current = (await queryServerStatus(host, port)).worldHash;
+      current = (await queryServerStatus(dialHost, dialPort)).worldHash;
     } catch {
       return false;
     }
@@ -4329,17 +4332,24 @@ function reuseCachedImport(host, port) {
 // and its public-list check is what stands between that name and an arbitrary
 // outbound connection. This is a second caller of the same fetch, authorized
 // differently, not a loosening of the first.
-async function importProxyWorld(target) {
+//
+// A target's world is kept, never aged out (`sweepStaleImports`), and
+// `keepProxyWorldCurrent` confirms it on every status pass, so a join finds
+// it registered and fresh. One that is neither -- the first join after a
+// restart, before that pass -- asks the target's hash and reads the copy on
+// disk when it still matches. Only a changed world is downloaded.
+async function importProxyWorld(target, { refresh = false } = {}) {
   const safeMapName = remoteMapFileName(target.displayHost, target.displayPort);
-  // A copy this process already holds and has not let go stale. Same window as
-  // a `?viewmap=` import: following two links to the same target in a sitting
-  // should not fetch its world twice.
   const registered = MAP_REGISTRY.get(safeMapName);
-  if (registered && Date.now() - registered.registeredAt < IMPORT_REUSE_MS) {
+  if (!refresh && registered && Date.now() - registered.registeredAt < IMPORT_REUSE_MS) {
     return { safeMapName, reused: true };
   }
   const existing = inFlightRemoteImports.get(safeMapName);
   if (existing) return existing;
+  if (!refresh && await confirmImportUnchanged(safeMapName, target.displayHost, target.displayPort,
+    { dialHost: target.host, dialPort: target.port })) {
+    return { safeMapName, reused: true };
+  }
   const promise = performRemoteMapImportNow({
     host: target.displayHost,
     port: target.displayPort,
@@ -4353,6 +4363,29 @@ async function importProxyWorld(target) {
   }, safeMapName).finally(() => inFlightRemoteImports.delete(safeMapName));
   inFlightRemoteImports.set(safeMapName, promise);
   return promise;
+}
+
+// The world a target runs now, held ready for its next join. `worldHash` is
+// what the status pass just heard: the same world renews the copy held, a
+// different one is downloaded here rather than in front of a player.
+async function keepProxyWorldCurrent(target, worldHash) {
+  if (!isBzfsWorldHash(worldHash)) return;
+  const safeMapName = remoteMapFileName(target.displayHost, target.displayPort);
+  if (inFlightRemoteImports.has(safeMapName)) return;
+  try {
+    if (await confirmImportUnchanged(safeMapName, target.displayHost, target.displayPort,
+      { current: worldHash, dialHost: target.host, dialPort: target.port })) return;
+    log(`Proxy: "${target.key}" runs a world not held, fetching ${worldHash}`);
+    await importProxyWorld(target, { refresh: true });
+  } catch (error) {
+    log(`Proxy: "${target.key}" world not fetched: ${error.message || error}`);
+  }
+}
+
+// The import files the proxy targets' worlds are held in.
+function proxyWorldFiles() {
+  return new Set(Object.values(PROXY_TARGETS)
+    .map((target) => remoteMapFileName(target.displayHost, target.displayPort)));
 }
 
 // A replay's name is its file's, less `.rec`: what `?replay=` carries and a
@@ -6956,6 +6989,7 @@ function sweepMapCache() {
 function sweepStaleImports() {
   let removed = 0;
   const playing = replayWorldsPlaying();
+  const proxyWorlds = proxyWorldFiles();
   for (const fileName of listAvailableMapFiles()) {
     // A recording's world is rebuilt from the recording whenever it is
     // needed, so it goes an hour after its last room closes, however new the
@@ -6971,6 +7005,8 @@ function sweepStaleImports() {
     // `resolveMapFilePath` finds nothing and the server comes back on a
     // random map instead.
     if (fileName === MAP_SOURCE) continue;
+    // Nor a proxy target's world, which `keepProxyWorldCurrent` keeps current.
+    if (proxyWorlds.has(fileName)) continue;
     const filePath = path.join(RUNTIME_MAPS_DIR, fileName);
     let stats;
     try {
@@ -12601,6 +12637,8 @@ async function refreshProxyStatuses() {
     try {
       const status = await queryServerStatus(target.host, target.port);
       proxyStatuses.set(target.key, { ...status, reachable: true, error: null, at: Date.now() });
+      // Not awaited: a download is no reason to hold the list report.
+      keepProxyWorldCurrent(target, status.worldHash);
     } catch (error) {
       // A proxy can be up with one of its targets down, so the row goes stale
       // on its own rather than taking the instance's with it.

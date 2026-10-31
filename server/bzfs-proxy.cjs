@@ -1015,8 +1015,8 @@ async function handleProxyConnection(ws, req, request) {
 
   try {
     // The world first, because it is the slow half and because an `init` needs
-    // it. This is the same import Map Viewer serves and the same cache: a
-    // target imported within the hour costs nothing to proxy.
+    // it. This is the same import Map Viewer serves and the same cache, kept
+    // current for every target (`importProxyWorld`), so a join rarely waits.
     // Asked for alongside the world, not after it: both are the target's own
     // answer about the game, and the browser is told nothing until it has both.
     // A replay's world is the recording's own, and there is no server to ask

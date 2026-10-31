@@ -299,7 +299,9 @@ same player on both.
 
 **The world is the target's, through the existing importer.** It is the same
 `import-<host>_<port>.bzw` cache and the same hashed delivery Map Viewer
-serves, so a target imported within the hour costs a second viewer nothing.
+serves. A target's world never ages out: each status pass (every 15 minutes
+and at boot) checks its hash and downloads it only when it has changed, so a
+join rarely waits for one.
 
 **The callsign is never the client's to choose.** In order: the one the
 weblogin callback named, for a browser that has just signed in; then the
