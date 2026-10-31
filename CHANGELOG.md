@@ -6,6 +6,14 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
 
 ## [Unreleased]
 
+## [1.3.79] - 2026-10-31
+
+### Added
+- A proxied server's own messages reach bzo players in their language where
+  bzo or a loaded plugin has the line: a plugin with only translations covers
+  a bzfs plugin's messages. See [docs/plugins-plan.md](docs/plugins-plan.md).
+- Two plugins translating the same line differently are logged.
+
 ## [1.3.78] - 2026-10-31
 
 ### Added
