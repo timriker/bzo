@@ -6,6 +6,22 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
 
 ## [Unreleased]
 
+## [1.3.80] - 2026-11-01
+
+### Added
+- Long chat lines wrap in XR, up to three rows each.
+
+### Changed
+- A chat line is at most 127 characters, in any script.
+- Proxy targets that run the same world, under two names or on two ports,
+  share one copy of it: one download, one parse, one cached world.
+
+### Fixed
+- A restart no longer rebuilds proxied worlds that have not changed; with
+  several targets this was a memory spike of about 2 GB at boot.
+- Chat from bzo reaches native BZFlag clients readable: accents folded to
+  ASCII, long lines split rather than cut.
+
 ## [1.3.79] - 2026-10-31
 
 ### Added
