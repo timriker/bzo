@@ -12,6 +12,8 @@
 
 'use strict';
 
+const { toBzfsChatText, splitBzfsChat } = require('./bzfs-session.cjs');
+
 const CALLSIGN_LEN = 32;
 const MOTTO_LEN = 128;
 const TOKEN_LEN = 22;
@@ -652,13 +654,17 @@ class NativeTranslator {
       }
       case 'message': {
         if (!this.accepted) break;
-        const text = String(message.text ?? '');
-        const w = new Writer(text.length + 4)
-          .u8(this.sourceSlot(message.src))
-          .u8(this.sourceSlot(message.dst))
-          .u8(message.msgType === 'action' ? 1 : 0);
-        w.bytes(Buffer.from(`${text.slice(0, 120)}\0`, 'latin1'));
-        this.write('mg', w.done());
+        // As the proxy speaks to a bzfs: folded to the ASCII a BZFlag client
+        // draws, and a line longer than `MessageLen` as several. A line with
+        // nothing left after the fold is not sent.
+        for (const piece of splitBzfsChat(toBzfsChatText(message.text ?? ''))) {
+          const w = new Writer(piece.length + 4)
+            .u8(this.sourceSlot(message.src))
+            .u8(this.sourceSlot(message.dst))
+            .u8(message.msgType === 'action' ? 1 : 0);
+          w.bytes(Buffer.from(`${piece}\0`, 'latin1'));
+          this.write('mg', w.done());
+        }
         break;
       }
       case 'flagUpdate':

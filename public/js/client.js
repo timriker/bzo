@@ -182,6 +182,7 @@ import {
   bindToggleButton,
   fitText,
   wrapText,
+  wrapRuns,
   setChatCollapsed,
   borrowChat,
   returnChat,
@@ -359,6 +360,7 @@ import {
   transcriptFilename,
   unpackChatCache,
 } from './chat-cache.mjs';
+import { clipChatText } from './chat-text.mjs';
 import { setupInstallPrompt } from './install.js';
 import {
   SHOT_COLLISION_RADIUS,
@@ -708,6 +710,8 @@ const XR_CHAT_CAPTION_PX = 22;
 const XR_CHAT_LINE_PX = 22;
 const XR_CHAT_LINE_HEIGHT_PX = 26;
 const XR_CHAT_CANVAS_HEIGHT = 204;
+// The most rows one chat line may take of the panel's six.
+const XR_CHAT_ROWS_PER_LINE = 3;
 // The flag help panel. A headset has no targeting box to hang this under, so
 // it takes the band between the notice column above and the chat below, its top
 // edge just under the gaze axis -- which is where the text lands on a monitor
@@ -3840,7 +3844,7 @@ function recallComposeLine(older) {
 
 function sendChatInputText() {
   const chatTarget = document.getElementById('chatTarget');
-  const text = chatInput.value.trim();
+  const text = clipChatText(chatInput.value.trim()).trim();
   if (text.length === 0) return;
   // Whatever was composed, including a line the local table answers: upstream
   // records the history after `LocalCommand::execute` has had it
@@ -7421,6 +7425,13 @@ function init() {
   // real keystroke lands here.
   chatInput.addEventListener('input', () => {
     composeHistory.reset();
+    // Typing stops at the line's limit (`chat-text.mjs`), pastes included.
+    const clipped = clipChatText(chatInput.value);
+    if (clipped !== chatInput.value) {
+      const caret = Math.min(chatInput.selectionStart ?? clipped.length, clipped.length);
+      chatInput.value = clipped;
+      chatInput.setSelectionRange(caret, caret);
+    }
   });
 
   // Focus is what makes chat entry active, and the game gives up the keyboard
@@ -16324,6 +16335,28 @@ function ensureXRChatOverlay() {
     canvasWidth: XR_CHAT_CANVAS_WIDTH,
     canvasHeight: XR_CHAT_CANVAS_HEIGHT,
   })) return;
+  placeXRHudPanel(xrChatPanel, {
+    width: XR_CHAT_PLANE_WIDTH,
+    // The plane takes the canvas's own aspect, so a line of text is the shape it
+    // was painted rather than stretched to whatever height the plane was given.
+    height: XR_CHAT_PLANE_WIDTH * (XR_CHAT_CANVAS_HEIGHT / XR_CHAT_CANVAS_WIDTH),
+    x: 0,
+    // Against the bottom of the HUD box. It sat at 34 degrees below the gaze
+    // axis, which on a headset is under the lens rather than in front of it.
+    y: -xrHudEdge(XR_HUD_ANGLE_DOWN),
+  });
+
+  // Painted and uploaded only when what it shows has changed: the tab, the
+  // unread count, or a line arriving or leaving. Every entry carries its own
+  // `seq`, so the newest one's says whether anything arrived.
+  const tabs = getVisibleChatTabs();
+  const activeTab = tabs.find((tab) => tab.id === chatState.activeTab);
+  const unreadCount = tabs.filter((tab) => tab.id !== chatState.activeTab && chatState.unread[tab.id]).length;
+  const activeMessages = chatState.messages[chatState.activeTab] || [];
+  const signature = `${chatState.activeTab}|${unreadCount}|${activeMessages.length}|`
+    + `${activeMessages[activeMessages.length - 1]?.seq ?? ''}|${activeTab?.label ?? ''}`;
+  if (xrChatPanel.signature === signature) return;
+  xrChatPanel.signature = signature;
 
   const canvas = xrChatPanel.canvas;
   const ctx = canvas.getContext('2d');
@@ -16350,9 +16383,6 @@ function ensureXRChatOverlay() {
   // (the digits and the brackets), so a strip of five labels would be five
   // labels you cannot press. One caption says the same thing in a fifth of the
   // room, and the room goes to the messages, which are the part worth reading.
-  const activeTab = getVisibleChatTabs().find((tab) => tab.id === chatState.activeTab);
-  const unreadCount = getVisibleChatTabs()
-    .filter((tab) => tab.id !== chatState.activeTab && chatState.unread[tab.id]).length;
   ctx.textBaseline = 'alphabetic';
   ctx.textAlign = 'left';
   ctx.font = `bold ${XR_CHAT_CAPTION_PX}px monospace`;
@@ -16366,50 +16396,57 @@ function ensureXRChatOverlay() {
     ctx.textAlign = 'left';
   }
 
-  // The same six lines the DOM window holds, in the same colour per kind. A
-  // message that is yellow on a monitor is yellow in the headset.
-  const activeMessages = chatState.messages[chatState.activeTab] || [];
-  const visibleMessages = activeMessages.slice(-CHAT_VISIBLE_MESSAGES);
+  // Six rows, filled from the newest line back. A line too long for one row
+  // wraps, up to three rows and an ellipsis after, so one long line cannot
+  // take the panel; the oldest line shown may show only its last rows. Each
+  // keeps its colour per kind, and a run its own: a message that is yellow on
+  // a monitor is yellow in the headset.
   ctx.font = `${XR_CHAT_LINE_PX}px monospace`;
-  const firstLineBaseline = captionBaseline + XR_CHAT_CAPTION_PX;
-  visibleMessages.forEach((msg, index) => {
+  const maxWidth = panelW - 20;
+  const rows = [];
+  for (let index = activeMessages.length - 1; index >= 0 && rows.length < CHAT_VISIBLE_MESSAGES; index -= 1) {
+    const msg = activeMessages[index];
     const kindColor = getChatKindColor(msg.kind);
-    const baseline = firstLineBaseline + (index * XR_CHAT_LINE_HEIGHT_PX);
-    const maxWidth = panelW - 20;
-    if (!msg.segments) {
-      ctx.fillStyle = kindColor;
-      ctx.fillText(fitText(ctx, msg.text || '', maxWidth), panelX + 10, baseline);
-      return;
+    const runs = msg.segments
+      ? msg.segments.map((segment) => ({
+        text: segment.text || '',
+        color: segment.color ? colorToCSS(segment.color) : kindColor,
+      }))
+      : [{ text: msg.text || '', color: kindColor }];
+    let lines = wrapRuns(ctx, runs, maxWidth);
+    if (lines.length > XR_CHAT_ROWS_PER_LINE) {
+      lines = lines.slice(0, XR_CHAT_ROWS_PER_LINE);
+      lines[lines.length - 1] = ellipsizeRuns(ctx, lines[lines.length - 1], maxWidth);
     }
-    // A line with coloured runs is drawn run by run, each starting where the
-    // last one ended. `fitText` truncates one string against one width, so the
-    // width left over is carried along and the line stops mid-run rather than
-    // spilling off the panel.
+    rows.unshift(...lines.slice(-(CHAT_VISIBLE_MESSAGES - rows.length)));
+  }
+  const firstLineBaseline = captionBaseline + XR_CHAT_CAPTION_PX;
+  rows.forEach((row, index) => {
+    const baseline = firstLineBaseline + (index * XR_CHAT_LINE_HEIGHT_PX);
     let x = panelX + 10;
-    let remaining = maxWidth;
-    for (const segment of msg.segments) {
-      if (remaining <= 0) break;
-      const drawn = fitText(ctx, segment.text || '', remaining);
-      if (!drawn) break;
-      ctx.fillStyle = segment.color ? colorToCSS(segment.color) : kindColor;
-      ctx.fillText(drawn, x, baseline);
-      const width = ctx.measureText(drawn).width;
-      x += width;
-      remaining -= width;
+    for (const run of row) {
+      ctx.fillStyle = run.color;
+      ctx.fillText(run.text, x, baseline);
+      x += ctx.measureText(run.text).width;
     }
   });
 
   xrChatPanel.texture.needsUpdate = true;
-  placeXRHudPanel(xrChatPanel, {
-    width: XR_CHAT_PLANE_WIDTH,
-    // The plane takes the canvas's own aspect, so a line of text is the shape it
-    // was painted rather than stretched to whatever height the plane was given.
-    height: XR_CHAT_PLANE_WIDTH * (XR_CHAT_CANVAS_HEIGHT / XR_CHAT_CANVAS_WIDTH),
-    x: 0,
-    // Against the bottom of the HUD box. It sat at 34 degrees below the gaze
-    // axis, which on a headset is under the lens rather than in front of it.
-    y: -xrHudEdge(XR_HUD_ANGLE_DOWN),
-  });
+}
+
+// The last row a long chat line is given, ended with an ellipsis that fits.
+function ellipsizeRuns(ctx, row, maxWidth) {
+  const runs = row.map((run) => ({ ...run }));
+  const width = () => runs.reduce((sum, run) => sum + ctx.measureText(run.text).width, 0);
+  const ellipsis = ctx.measureText('...').width;
+  while (runs.length > 0 && width() + ellipsis > maxWidth) {
+    const last = runs[runs.length - 1];
+    last.text = Array.from(last.text).slice(0, -1).join('');
+    if (!last.text) runs.pop();
+  }
+  const last = runs[runs.length - 1];
+  if (last) last.text = `${last.text.trimEnd()}...`;
+  return runs;
 }
 
 function ensureXRShotStatusOverlay() {

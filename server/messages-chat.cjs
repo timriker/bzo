@@ -16,6 +16,7 @@ const {
   SERVER_PLAYER,
   channelTeam,
 } = require('./player-ids.cjs');
+const { clipChatText } = require('../public/js/chat-text.mjs');
 
 // What the handlers need of server.js, from `useServer`.
 let deliverActionMessage;
@@ -49,7 +50,7 @@ function handleMessage(player, ws, message) {
     ? (isAllTarget ? ALL_PLAYERS : Number(rawTarget))
     : String(rawTarget);
   const msgType = message.msgType === 'action' ? 'action' : 'chat';
-  const text = typeof message.text === 'string' ? message.text.trim() : '';
+  const text = typeof message.text === 'string' ? clipChatText(message.text.trim()).trim() : '';
   if (text.length === 0) return;
 
   // `/me` before the command dispatcher, because it is the one `/` line

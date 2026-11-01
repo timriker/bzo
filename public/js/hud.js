@@ -155,6 +155,69 @@ export function wrapText(context, text, maxWidth) {
   return lines;
 }
 
+const GRAPHEME_SEGMENTER = typeof Intl.Segmenter === 'function'
+  ? new Intl.Segmenter(undefined, { granularity: 'grapheme' })
+  : null;
+
+function graphemes(text) {
+  return GRAPHEME_SEGMENTER
+    ? Array.from(GRAPHEME_SEGMENTER.segment(text), (piece) => piece.segment)
+    : Array.from(text);
+}
+
+// `wrapText` for a line of coloured runs, `[{ text, color }]`: lines of runs,
+// no wider than `maxWidth`, broken between words where it can. Unlike the
+// flag help, a chat line can hold one word wider than the panel, so that word
+// is broken between characters rather than left to overhang. Whitespace is
+// kept as it was typed, but a line never starts with it.
+export function wrapRuns(context, runs, maxWidth) {
+  const lines = [];
+  let line = [];
+  let width = 0;
+  const push = (text, color) => {
+    const last = line[line.length - 1];
+    if (last && last.color === color) last.text += text;
+    else line.push({ text, color });
+  };
+  const breakLine = () => {
+    if (line.length > 0) {
+      const last = line[line.length - 1];
+      last.text = last.text.trimEnd();
+      lines.push(line);
+    }
+    line = [];
+    width = 0;
+  };
+  for (const run of runs) {
+    for (const piece of wordPieces(String(run.text || ''))) {
+      let text = width === 0 ? piece.trimStart() : piece;
+      if (!text) continue;
+      const wordWidth = context.measureText(text.trim()).width;
+      if (wordWidth <= maxWidth) {
+        if (width > 0 && width + context.measureText(text.trimEnd()).width > maxWidth) {
+          breakLine();
+          text = text.trimStart();
+          if (!text) continue;
+        }
+        push(text, run.color);
+        width += context.measureText(text).width;
+        continue;
+      }
+      // Wider than any row: it carries on from where the row is, and breaks
+      // wherever a row fills.
+      for (const char of graphemes(text)) {
+        const charWidth = context.measureText(char).width;
+        if (width > 0 && width + charWidth > maxWidth) breakLine();
+        if (width === 0 && !char.trim()) continue;
+        push(char, run.color);
+        width += charWidth;
+      }
+    }
+  }
+  breakLine();
+  return lines;
+}
+
 export function colorToCSS(color) {
   if (typeof color === 'string') return color;
   if (typeof color === 'number') return `#${color.toString(16).padStart(6, '0')}`;
