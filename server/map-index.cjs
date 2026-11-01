@@ -81,6 +81,17 @@ function createMapIndex({ statePath, overviewDir, log, logError }) {
       save();
     },
 
+    // The file was touched to mark it used (`confirmImportUnchanged`), its
+    // contents unchanged: the entry follows the new mtime, so the next boot
+    // still lists it without a parse.
+    touched(fileName, filePath) {
+      const entry = entries.get(fileName);
+      const stat = statOf(filePath);
+      if (!entry || !stat || stat.size !== entry.size || stat.mtimeMs === entry.mtimeMs) return;
+      entry.mtimeMs = stat.mtimeMs;
+      save();
+    },
+
     // Whether this server already holds a parsed, drawn copy of `fileName` --
     // answerable without parsing it. The picture has to be there: an index
     // entry whose picture was swept is a promise this cannot keep.

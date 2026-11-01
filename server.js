@@ -4169,25 +4169,73 @@ async function confirmImportUnchanged(fileName, host, port,
   // What the tracker would have learned from the same dial.
   bzfsWorlds.noteImport(host, port, current);
   const filePath = path.join(RUNTIME_MAPS_DIR, fileName);
+  const indexed = mapIndex.has(fileName, filePath);
   try {
     const now = new Date();
     fs.utimesSync(filePath, now, now);
   } catch {
     return false;
   }
-  // An entry only listed, never kept (`keptAt`), has no world JSON to serve.
-  const registered = MAP_REGISTRY.get(fileName);
-  if (registered?.keptAt && fs.existsSync(path.join(MAP_CACHE_DIR, `${registered.hash}.json`))) {
+  if (indexed) mapIndex.touched(fileName, filePath);
+  // Listed from the index at boot, or not reached by the boot pass yet: its
+  // world JSON from before the restart is still the world, if it is there.
+  const registered = MAP_REGISTRY.get(fileName) ?? listFromMapIndex(fileName, filePath);
+  if (registered && fs.existsSync(path.join(MAP_CACHE_DIR, `${registered.hash}.json`))) {
     registered.registeredAt = Date.now();
     registered.keptAt = Date.now();
     return true;
   }
+  if (shareTwinWorld(fileName, filePath)) return true;
   return Boolean(await parseAndRegisterMap(fileName, filePath));
 }
 
 // Converts a map file nobody is playing and registers it: quiet, because its
 // own quirks are for whoever views or joins it to see, not a log line about a
 // map nobody chose today. `keepWorld` as `registerWorldFile` takes it.
+// Another import of the same bzfs world -- one map run on two ports --
+// already parsed and kept: `fileName` is registered as that world, sharing
+// its JSON, compressed copy and picture, rather than parsed into a second
+// copy that differs only in the file name its notes carry.
+function shareTwinWorld(fileName, filePath) {
+  if (!parseImportMapFileName(fileName)) return null;
+  const worldHash = importedWorldHash(fileName);
+  if (!isBzfsWorldHash(worldHash)) return null;
+  for (const entry of MAP_REGISTRY.values()) {
+    if (entry.fileName === fileName || !parseImportMapFileName(entry.fileName)) continue;
+    if (importedWorldHash(entry.fileName) !== worldHash) continue;
+    if (!fs.existsSync(path.join(MAP_CACHE_DIR, `${entry.hash}.json`))) continue;
+    const now = Date.now();
+    entry.keptAt = now;
+    const twin = { ...entry, fileName, registeredAt: now, keptAt: now };
+    MAP_REGISTRY.set(fileName, twin);
+    mapIndex.note(fileName, twin.hash, path.basename(twin.overviewUrl || '', '.svg'), filePath, {
+      stats: twin.stats, version: MAP_INDEX_VERSION, bzfsHash: twin.bzfsHash ?? null,
+    });
+    log(`${fileName}: the same world as ${entry.fileName}, shared`);
+    return twin;
+  }
+  return null;
+}
+
+// Lists a map from the index, where it still holds for the file, without a
+// parse: its hash, picture and stats, and no world kept. Null otherwise.
+function listFromMapIndex(fileName, filePath) {
+  const known = filePath ? mapIndex.restore(fileName, filePath, MAP_INDEX_VERSION) : null;
+  if (!known) return null;
+  const entry = {
+    fileName,
+    hash: known.hash,
+    url: `/maps/${known.hash}.json`,
+    registeredAt: Date.now(),
+    keptAt: 0,
+    stats: known.stats,
+    bzfsHash: known.bzfsHash,
+    overviewUrl: `/overviews/${known.overview}.svg`,
+  };
+  MAP_REGISTRY.set(fileName, entry);
+  return entry;
+}
+
 async function parseAndRegisterMap(fileName, filePath, { keepWorld = true } = {}) {
   const world = await convertMapFile(fileName, filePath, { keepWorld });
   const registered = registerWorldFile(fileName, world, { keepWorld });
@@ -4378,6 +4426,27 @@ async function importProxyWorld(target, { refresh = false } = {}) {
 // The world a target runs now, held ready for its next join. `worldHash` is
 // what the status pass just heard: the same world renews the copy held, a
 // different one is downloaded here rather than in front of a player.
+// Another import of the same world -- the same server under another name, or
+// one map run on two ports -- copied to `safeMapName` rather than downloaded
+// again, its header naming the target it now stands for.
+function copyTwinImport(safeMapName, worldHash, target) {
+  for (const fileName of listAvailableMapFiles()) {
+    if (fileName === safeMapName || !parseImportMapFileName(fileName)) continue;
+    if (importedWorldHash(fileName) !== worldHash) continue;
+    try {
+      const text = fs.readFileSync(path.join(RUNTIME_MAPS_DIR, fileName), 'utf8')
+        .replace(/^(# downloaded by bzo \S+ from )\S+/, `$1${target.displayHost}:${target.displayPort}`);
+      fs.writeFileSync(path.join(RUNTIME_MAPS_DIR, safeMapName), text);
+    } catch {
+      return false;
+    }
+    log(`Proxy: "${target.key}" runs ${worldHash}, copied from ${fileName}`);
+    return true;
+  }
+  return false;
+}
+
+let proxyWorldQueue = Promise.resolve();
 async function keepProxyWorldCurrent(target, worldHash) {
   if (!isBzfsWorldHash(worldHash)) return;
   const safeMapName = remoteMapFileName(target.displayHost, target.displayPort);
@@ -4385,6 +4454,9 @@ async function keepProxyWorldCurrent(target, worldHash) {
   try {
     if (await confirmImportUnchanged(safeMapName, target.displayHost, target.displayPort,
       { current: worldHash, dialHost: target.host, dialPort: target.port })) return;
+    if (copyTwinImport(safeMapName, worldHash, target)
+      && await confirmImportUnchanged(safeMapName, target.displayHost, target.displayPort,
+        { current: worldHash, dialHost: target.host, dialPort: target.port })) return;
     log(`Proxy: "${target.key}" runs a world not held, fetching ${worldHash}`);
     await importProxyWorld(target, { refresh: true });
   } catch (error) {
@@ -4707,6 +4779,7 @@ async function writeImportedWorld(serverMeta, tree, safeMapName) {
   const text = buildBZWText(serverMeta, tree, new Date().toISOString());
   const filePath = path.join(RUNTIME_MAPS_DIR, safeMapName);
   await fs.promises.writeFile(filePath, text);
+  if (shareTwinWorld(safeMapName, filePath)) return;
   // Converted now rather than left to the background trickle
   // (`hashRemainingMapsInBackground`): this is the one file that just
   // changed, and somebody is waiting to look at it.
@@ -7089,7 +7162,12 @@ function resolveViewMapChoice(requested) {
 // sees more once this trickle catches up. `uploadMap` re-triggers this so a
 // map added mid-session becomes viewable without a restart.
 function hashRemainingMapsInBackground() {
-  const pending = listLocalMapFiles()
+  // The proxy targets' imports too, so the sweep at the end of the pass keeps
+  // their index entries and worlds: a target still running the same world
+  // after a restart is served the copy already held (`confirmImportUnchanged`).
+  const available = new Set(listAvailableMapFiles());
+  const proxied = [...proxyWorldFiles()].filter((fileName) => available.has(fileName));
+  const pending = [...new Set([...listLocalMapFiles(), ...proxied])]
     .filter((fileName) => fileName !== 'random' && !MAP_REGISTRY.has(fileName));
   const total = pending.length;
   let converted = 0;
@@ -7130,18 +7208,9 @@ function hashRemainingMapsInBackground() {
       // has not changed since a previous boot parsed it. Parsed otherwise, for
       // its hash, picture and stats only: nobody is playing it, and its world
       // is written when somebody views it (`prepareMapForView`).
-      const known = filePath ? mapIndex.restore(fileName, filePath, MAP_INDEX_VERSION) : null;
-      if (known) {
-        MAP_REGISTRY.set(fileName, {
-          fileName,
-          hash: known.hash,
-          url: `/maps/${known.hash}.json`,
-          registeredAt: Date.now(),
-          keptAt: 0,
-          stats: known.stats,
-          bzfsHash: known.bzfsHash,
-          overviewUrl: `/overviews/${known.overview}.svg`,
-        });
+      if (MAP_REGISTRY.has(fileName)) {
+        // Registered since the pass began, by a view or a proxy join.
+      } else if (listFromMapIndex(fileName, filePath)) {
         restored += 1;
       } else if (filePath) {
         const parsed = await parseAndRegisterMap(fileName, filePath, { keepWorld: false });
@@ -12651,8 +12720,10 @@ async function refreshProxyStatuses() {
     try {
       const status = await queryServerStatus(target.host, target.port);
       proxyStatuses.set(target.key, { ...status, reachable: true, error: null, at: Date.now() });
-      // Not awaited: a download is no reason to hold the list report.
-      keepProxyWorldCurrent(target, status.worldHash);
+      // Not awaited: a download is no reason to hold the list report. One
+      // target at a time, so a boot never parses every world at once, and a
+      // second target running the same world finds the first's to share.
+      proxyWorldQueue = proxyWorldQueue.then(() => keepProxyWorldCurrent(target, status.worldHash));
     } catch (error) {
       // A proxy can be up with one of its targets down, so the row goes stale
       // on its own rather than taking the instance's with it.
