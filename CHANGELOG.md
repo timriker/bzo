@@ -6,6 +6,8 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
 
 ## [Unreleased]
 
+## [1.3.81] - 2026-11-03
+
 ### Added
 - Plugins hear `bz_eGetWorldEvent`, and may add to the world BZFlag clients
   are sent.
@@ -20,8 +22,10 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
 - Upstream's koth, keepaway, HoldTheFlag, timedctf, fairCTF, chathistory
   and TimeLimit plugins, and allejo's mapchange, off until `server.json`
   turns them on.
+- `/loadplugin` and `/unloadplugin` complete plugin names on Tab.
 
 ### Changed
+- Admins hold every permission but HIDEADMIN, a plugin's own included.
 - The compass letters BZFlag clients see are the `compassletters` plugin,
   which `example-server.json` turns on.
 - Bundled plugins are named in lower case (`ctfoverseer`, `flagstay`,
