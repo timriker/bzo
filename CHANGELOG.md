@@ -6,6 +6,15 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
 
 ## [Unreleased]
 
+## [1.3.83] - 2026-11-03
+
+### Fixed
+- Maps are parsed one at a time, so a server proxying several large
+  worlds no longer runs out of memory converting them at once.
+
+### Security
+- nodemon's minimatch is 11, clearing GHSA-g3hv-75wg-m249.
+
 ## [1.3.82] - 2026-11-03
 
 ### Added
