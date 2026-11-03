@@ -1744,6 +1744,43 @@ function carrySource(target, from, request) {
   return target;
 }
 
+// A world's lines as `text.split(/\r?\n/)` would give them, read out of the
+// text one at a time rather than held as a string apiece: a 13.6 MB map is
+// 645,373 lines, 25 MB as an array of strings and 2.6 MB as their offsets.
+function textLines(text) {
+  let count = 1;
+  for (let i = text.indexOf('\n'); i !== -1; i = text.indexOf('\n', i + 1)) count += 1;
+  const starts = new Uint32Array(count + 1);
+  for (let n = 1, i = text.indexOf('\n'); i !== -1; i = text.indexOf('\n', i + 1)) starts[n++] = i + 1;
+  starts[count] = text.length + 1;
+  const at = (n) => {
+    let end = starts[n + 1] - 1;
+    if (n < count - 1 && end > starts[n] && text.charCodeAt(end - 1) === 13) end -= 1;
+    return text.slice(starts[n], end);
+  };
+  return {
+    length: count,
+    at,
+    * [Symbol.iterator]() { for (let n = 0; n < count; n += 1) yield at(n); },
+  };
+}
+
+// A finalized mesh's vertex pools at full precision, once its face objects
+// have gone (`dropMeshFaceObjects`): three numbers a vertex rather than an
+// object apiece.
+const packedVertexPools = new WeakMap();
+function packVertexPool(list) {
+  if (!Array.isArray(list) || list.length === 0) return null;
+  const out = new Float64Array(list.length * 3);
+  list.forEach((v, i) => { out[i * 3] = v.x; out[(i * 3) + 1] = v.y; out[(i * 3) + 2] = v.z; });
+  return out;
+}
+function unpackVertexPool(packed, move) {
+  const out = [];
+  for (let i = 0; packed && i < packed.length; i += 3) out.push(move(packed[i], packed[i + 1], packed[i + 2]));
+  return out;
+}
+
 // `text` is a world given rather than read from `filename`, which then only
 // names it: a generated one (server/world-generator.cjs).
 function parseBZWMap(filename, { quiet = false, extraMessages = [], text: givenText = null } = {}) {
@@ -1781,7 +1818,7 @@ function parseBZWMap(filename, { quiet = false, extraMessages = [], text: givenT
   // noise a reader already knows on every line.
   const mapLabel = path.basename(filename);
   const text = givenText ?? fs.readFileSync(filename, 'utf8');
-  const lines = text.split(/\r?\n/);
+  const lines = textLines(text);
   const teamMode = parseBZWTeamMode(lines);
   const serverOptions = parseBZWServerOptions(lines);
   // The options block is read first, as upstream reads it before the world, so
@@ -2503,7 +2540,7 @@ function parseBZWMap(filename, { quiet = false, extraMessages = [], text: givenT
   };
   for (let i = 0; i < lines.length; i++) {
     if (i > 0) noteSpans(i - 1);
-    const line = lines[i].trim();
+    const line = lines.at(i).trim();
     if (!line || line.startsWith('#')) {
       continue;
     }
@@ -3181,7 +3218,7 @@ function parseBZWMap(filename, { quiet = false, extraMessages = [], text: givenT
       // `noWalls`, and upstream's own `WorldFileLocation::read` has no
       // ordering requirement either.
       for (let j = i + 1; j < lines.length; j++) {
-        const wline = lines[j].trim();
+        const wline = lines.at(j).trim();
         const wtoken = wline.split(/\s+/)[0].toLowerCase();
         if (wtoken === 'end') break;
         if (wtoken === 'size') {
@@ -3278,7 +3315,7 @@ function parseBZWMap(filename, { quiet = false, extraMessages = [], text: givenT
           if (currentDefine) {
             currentDefine.meshes.push(tetraMesh);
           } else {
-            meshes.push(finalizeMeshGeometry(tetraMesh));
+            meshes.push(dropMeshFaceObjects(finalizeMeshGeometry(tetraMesh)));
           }
         }
         current = null;
@@ -3355,7 +3392,7 @@ function parseBZWMap(filename, { quiet = false, extraMessages = [], text: givenT
           if (currentDefine) {
             currentDefine.meshes.push(coneMesh);
           } else {
-            meshes.push(finalizeMeshGeometry(coneMesh));
+            meshes.push(dropMeshFaceObjects(finalizeMeshGeometry(coneMesh)));
           }
         }
         current = null;
@@ -3456,7 +3493,7 @@ function parseBZWMap(filename, { quiet = false, extraMessages = [], text: givenT
           if (currentDefine) {
             currentDefine.meshes.push(arcMesh);
           } else {
-            meshes.push(finalizeMeshGeometry(arcMesh));
+            meshes.push(dropMeshFaceObjects(finalizeMeshGeometry(arcMesh)));
           }
         }
         current = null;
@@ -3546,7 +3583,7 @@ function parseBZWMap(filename, { quiet = false, extraMessages = [], text: givenT
           if (currentDefine) {
             currentDefine.meshes.push(sphereMesh);
           } else {
-            meshes.push(finalizeMeshGeometry(sphereMesh));
+            meshes.push(dropMeshFaceObjects(finalizeMeshGeometry(sphereMesh)));
           }
         }
         current = null;
@@ -3726,7 +3763,7 @@ function parseBZWMap(filename, { quiet = false, extraMessages = [], text: givenT
           // nothing ever does), never here.
           currentDefine.meshes.push(current);
         } else {
-          meshes.push(finalizeMeshGeometry(current));
+          meshes.push(dropMeshFaceObjects(finalizeMeshGeometry(current)));
         }
         current = null;
       } else if (token === 'vertex') {
@@ -4834,7 +4871,7 @@ function parseBZWMap(filename, { quiet = false, extraMessages = [], text: givenT
     const groups = new Map();
     for (const mesh of candidates) {
       if (mesh.drawnByInstance || mesh.angvel) continue;
-      const arrays = meshDrawArrays(mesh);
+      const arrays = mesh.drawArrayData || mesh.arrayData || meshDrawArrays(mesh);
       if (!arrays || arrays.vertices.length < 3 || arrays.faceCount === 0) continue;
       if (arrays.materials.some((m) => m.dynamicColor || (Array.isArray(m.color) && (m.color[3] ?? 1) < 1))) continue;
       const v = arrays.vertices;
@@ -4930,15 +4967,7 @@ function parseBZWMap(filename, { quiet = false, extraMessages = [], text: givenT
       for (const { reference, members } of sets) {
         if (members.length < 2) continue;
         const { mesh: first, centre } = reference;
-        const toLocal = (p) => ({ ...p, x: p.x - centre.x, y: p.y - centre.y, z: p.z - centre.z });
-        const template = finalizeMeshGeometry({
-          ...first,
-          vertices: first.vertices.map(toLocal),
-          checkPoints: (first.checkPoints || []).map(toLocal),
-          drawVertices: first.drawVertices ? first.drawVertices.map(toLocal) : first.drawVertices,
-          faces: first.faces.map((face) => ({ ...face })),
-          drawFaces: first.drawFaces ? first.drawFaces.map((face) => ({ ...face })) : first.drawFaces,
-        });
+        const template = templateMeshFromArrays(first, centre);
         const name = `repeat#${shapeCount}:${first.name || 'mesh'}`;
         meshTemplates.set(name, [template]);
         for (const { entry, angle } of members) {
@@ -4952,6 +4981,55 @@ function parseBZWMap(filename, { quiet = false, extraMessages = [], text: givenT
       }
     }
     return { meshes: meshCount, shapes: shapeCount };
+  }
+
+  // A finalized mesh moved so `centre` is its origin, built from its arrays
+  // rather than its faces: the same faces, materials and corners, with the
+  // vertices moved and each face's plane and edge planes worked out again
+  // from them, as `finalizeMeshGeometry` works them out.
+  function templateMeshFromArrays(mesh, centre) {
+    const toLocal = (p) => ({ ...p, x: p.x - centre.x, y: p.y - centre.y, z: p.z - centre.z });
+    const pools = packedVertexPools.get(mesh);
+    const moveLocal = (x, y, z) => ({ x: x - centre.x, y: y - centre.y, z: z - centre.z });
+    const vertices = unpackVertexPool(pools.vertices, moveLocal);
+    const drawVertices = unpackVertexPool(pools.drawVertices, moveLocal);
+    const packVertices = (list) => {
+      const out = new Float32Array(list.length * 3);
+      list.forEach((v, i) => { out[i * 3] = v.x; out[(i * 3) + 1] = v.y; out[(i * 3) + 2] = v.z; });
+      return out;
+    };
+    const copyArrays = (arrays, pool) => ({
+      ...arrays,
+      vertices: packVertices(pool),
+      phydrvs: [...arrays.phydrvs],
+      materials: arrays.materials.map((material) => ({ ...material })),
+    });
+    const collision = mesh.arrayData;
+    const arrayData = copyArrays(collision, vertices);
+    arrayData.facePlanes = new Float32Array(collision.facePlanes.length);
+    arrayData.edgePlanes = new Float32Array(collision.edgePlanes.length);
+    for (let f = 0; f < collision.faceCount; f += 1) {
+      const start = collision.faceStart[f];
+      const indices = Array.from(collision.corners.subarray(start, collision.faceStart[f + 1]));
+      const plane = computeMeshFacePlane(vertices, indices);
+      if (plane) arrayData.facePlanes.set(plane, f * 4);
+      computeMeshFaceEdgePlanes(vertices, indices, plane)
+        .forEach((edge, c) => arrayData.edgePlanes.set(edge, (start + c) * 4));
+    }
+    const template = {
+      ...mesh,
+      vertices,
+      drawVertices,
+      checkPoints: (mesh.checkPoints || []).map(toLocal),
+      bounds: computeMeshBounds(vertices),
+      arrayData,
+    };
+    delete template.drawArrayData;
+    const draw = mesh.drawArrayData;
+    if (draw) {
+      template.drawArrayData = copyArrays(draw, drawVertices && drawVertices.length > 0 ? drawVertices : vertices);
+    }
+    return template;
   }
 
   function finalizeMeshGeometry(mesh) {
@@ -5006,6 +5084,25 @@ function parseBZWMap(filename, { quiet = false, extraMessages = [], text: givenT
     mesh.arrayData = meshArrays(mesh);
     const draw = meshDrawArrays(mesh);
     if (draw !== mesh.arrayData) mesh.drawArrayData = draw;
+    return mesh;
+  }
+
+  // A finalized mesh nothing will place again keeps the arrays
+  // `finalizeMeshGeometry` built and drops the objects they came from, so a
+  // map's faces are not all alive at once on the way in (#161). Its vertex
+  // pools are kept packed at full precision, because a repeat template is
+  // placed from them (`templateMeshFromArrays`), and a template placed from
+  // the arrays' single-precision copy would land on different numbers
+  // (`packVertexPool`).
+  function dropMeshFaceObjects(mesh) {
+    packedVertexPools.set(mesh, {
+      vertices: packVertexPool(mesh.vertices),
+      drawVertices: packVertexPool(mesh.drawVertices),
+    });
+    for (const field of [
+      'faces', 'vertices', 'normals', 'texcoords',
+      'drawFaces', 'drawVertices', 'drawNormals', 'drawTexcoords',
+    ]) delete mesh[field];
     return mesh;
   }
 
@@ -5189,7 +5286,7 @@ function parseBZWMap(filename, { quiet = false, extraMessages = [], text: givenT
           .map((mesh) => applyGroupMeshModifiers(
             carrySource({ ...mesh, faces: mesh.faces.map((f) => ({ ...f })) }, mesh), request,
           ))
-          .map((mesh) => finalizeMeshGeometry(mesh));
+          .map((mesh) => dropMeshFaceObjects(finalizeMeshGeometry(mesh)));
         // A definition made of boxes and pyramids has no meshes to batch --
         // those draw through the obstacle path, which shares its geometry
         // already. Naming an empty template would put an instance on the
@@ -5254,7 +5351,7 @@ function parseBZWMap(filename, { quiet = false, extraMessages = [], text: givenT
       // Drawn by the batch above, not one by one: the copy still exists
       // because collision reads it, on this side and the client's.
       if (instancedMeshMembers) placed.drawnByInstance = true;
-      return placed;
+      return dropMeshFaceObjects(placed);
     }));
   }
   // How many group instances are drawn from a shared template rather than a
@@ -5263,7 +5360,7 @@ function parseBZWMap(filename, { quiet = false, extraMessages = [], text: givenT
   const logInstancing = (repeats) => {
     if (passableInstances === 0 && repeats.meshes === 0) return;
     const templateFaces = [...meshTemplates.values()]
-      .reduce((sum, list) => sum + list.reduce((n, m) => n + meshArrays(m).faceCount, 0), 0);
+      .reduce((sum, list) => sum + list.reduce((n, m) => n + (m.arrayData || meshArrays(m)).faceCount, 0), 0);
     instancing = {
       instanced: passableInstances,
       groups: groupInstanceRequests.length,
@@ -5661,7 +5758,7 @@ function attachMeshArrayPayloads(entry) {
     // separate draw geometry gets no `drawArrays`: `meshDrawArrays` hands
     // back the collision arrays, and the two are then the same object.
     const collision = mesh.arrayData || meshArrays(mesh);
-    const draw = mesh.drawArrayData || meshDrawArrays(mesh);
+    const draw = mesh.drawArrayData || (mesh.arrayData ? collision : meshDrawArrays(mesh));
     mesh.arrays = encodeMeshArrays(collision);
     if (draw !== collision) mesh.drawArrays = encodeMeshArrays(draw);
     // And now the objects they were built from go (issue #153). Nothing

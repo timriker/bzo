@@ -1710,10 +1710,15 @@ them that way, and nothing reads a face object. A parsed face cost about
 parsed for the life of the process, which is what made the difference
 worth having.
 
-What this does *not* fix is the parse peak: every face object for a whole
-map is still alive at once on the way in, because nested `group` placement
-reads a finalized mesh's faces to place it again. Issue #161 has the shape
-of that.
+A mesh nothing will place again drops its face objects as soon as it is
+finalized (`dropMeshFaceObjects`): a top-level mesh when it closes, and a
+top-level `group` instance's copy or template when it is placed. Its vertex
+pools stay packed at full precision (`packVertexPool`), because a repeated
+mesh's template is built from them and its arrays
+(`templateMeshFromArrays`). Only a `define`'s own meshes, and the copies
+nested `group` placement makes of them on the way, keep face objects. The
+source is read a line at a time out of the text (`textLines`), never split
+into a string per line.
 
 Two consequences worth knowing. An instance's `matref`/`tint`/`phydrv`
 override must run **before** `finalizeMeshGeometry`, since it replaces face
