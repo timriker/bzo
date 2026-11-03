@@ -29,8 +29,8 @@
 //     "bz.rikers.org:5154": { "address": "127.0.0.1:5154", "requireLogin": false }
 //
 // `requireLogin` (default true) is the proxy's rule that only a verified
-// player plays. False lets a connection with no global login play there too,
-// which a test server wants and bzfs itself allows.
+// player plays. False lets anyone play there under the name and tank they
+// choose, from a Play on its /list row; the motto still names this bzo.
 //
 // `originKey` is the secret shared with that server's proxyOrigin plugin,
 // which lets bzo tell it each player's own address and BZID

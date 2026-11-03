@@ -49,6 +49,7 @@ const {
   BzfsSession,
   CHAT_TEXT_MAX,
   splitBzfsChat,
+  toBzfsCallsign,
   toBzfsChatText,
 } = require('./bzfs-session.cjs');
 const { bzdbIsTrue, evalBzdb, worldConfig } = require('../public/js/bzdb.mjs');
@@ -237,9 +238,8 @@ function bzfsChatDestination(target) {
   return target === ADMIN_PLAYERS ? ADMIN_PLAYERS : ALL_PLAYERS;
 }
 
-// A callsign for a viewer who has not signed in. The name a target sees is
-// never the client's to choose (docs/proxy.md, "What a proxy connection
-// is"), so an anonymous browser is given one. A target refuses a callsign
+// A callsign for a viewer who has not signed in and chose none a target will
+// take (docs/proxy.md, "What a proxy connection is"). A target refuses a callsign
 // already on it, so the name has to differ from every other viewer's -- this
 // server's, a restarted one's still timing out there, and every other bzo's
 // -- which a counter alone cannot promise and a random tag can.
@@ -339,6 +339,10 @@ function resolveProxyRequest(url) {
       : PLAYER_TEAM.OBSERVER,
     // `?bot`, the browser's own join as a robot tank, carried to the target.
     bot: params.has('bot'),
+    // The name the browser plays under, for a target that lets anyone play
+    // (`requireLogin: false`). bzfs fixes it at `MsgEnter`, as it does the
+    // team, so it rides here too; a target that requires a login ignores it.
+    callsign: params.get('callsign') || '',
   };
 }
 
@@ -466,7 +470,9 @@ function proxyPlayerRecord(player, motion = null, own = null) {
     // (`Team::getTankColor`); bzo's own shading apart of team mates is this
     // server's idea about its own players, and a proxied roster is not that.
     color: getPlayerTeamColor(team),
-    tankModel: 'bzflag',
+    // The target has no field for a model, so only this browser's own tank
+    // is drawn as chosen; everybody else's is upstream's one tank.
+    tankModel: (own && String(player.id) === String(own.id) && own.tankModel) || 'bzflag',
     team,
     voiceMicEnabled: false,
     voiceChannel: DEFAULT_VOICE_CHANNEL,
@@ -942,27 +948,37 @@ async function handleProxyConnection(ws, req, request) {
   // Taken rather than read: the token is answered once whatever happens next.
   const pendingLogin = takeProxyToken(cookies[PROXY_LOGIN_COOKIE], key);
   const loginSession = sessions.get(cookies[SESSION_COOKIE_NAME]);
+  // On a target that lets anyone play, the browser's own name, unless a token
+  // is going with this join: that is bound to the callsign the weblogin named.
+  // Only the name: the motto still says which bzo they came through.
+  const chosenCallsign = kind === 'proxy' && target && !target.requireLogin && !pendingLogin
+    ? toBzfsCallsign(request.callsign || '')
+    : null;
   const viewer = {
     key,
     kind,
-    // In order: the callsign the weblogin just named, which is the only one
-    // that goes with the token; then the session's, which is that same name
-    // on every connection after the first, since a token cannot be answered
-    // twice but a name costs nothing to keep; then a numbered one for a
-    // browser that has never signed in. Never the client's own choosing, at
-    // any step (docs/proxy.md).
+    // In order: the player's own, where the target lets anyone play; the
+    // callsign the weblogin just named, which is the only one that goes with
+    // the token; then the session's, which is that same name on every
+    // connection after the first, since a token cannot be answered twice but
+    // a name costs nothing to keep; then a random one for a browser that has
+    // never signed in (docs/proxy.md).
     // A watcher's name is decided before it gets here: it is the forum
     // callsign bzo verified, and the whole point of the mode is that the
     // remote sees it (`handleWatchConnection`).
     callsign: options.callsign
+      || chosenCallsign
       || (pendingLogin
         ? pendingLogin.callsign
         : (loginSession ? loginSession.callsign : proxyViewerCallsign())),
     // A guest is unregistered by construction, whatever the browser signed
     // in as here.
+    // A chosen name is unregistered unless it is the forum callsign itself.
     globalCallsign: options.guest ? null : (pendingLogin
       ? pendingLogin.callsign
-      : (loginSession ? loginSession.callsign : null)),
+      : (loginSession && (!chosenCallsign || chosenCallsign === loginSession.callsign)
+        ? loginSession.callsign
+        : null)),
     token: options.guest || !pendingLogin ? '' : pendingLogin.token,
   };
   // What this connection learns about the target's guests, where it is one:
@@ -978,8 +994,15 @@ async function handleProxyConnection(ws, req, request) {
   let session = null;
   // What this browser is playing on, for its own `T` letter: the target only
   // knows it as a BZFlag client.
-  const ownClient = { headset: isHeadsetBrowserUA(req.headers['user-agent']), mobile: false, xr: false };
-  const ownSeat = () => ({ id: session?.playerId, type: clientTypeOf(ownClient) });
+  const ownClient = { headset: isHeadsetBrowserUA(req.headers['user-agent']), mobile: false, xr: false, tankModel: null };
+  const ownSeat = () => ({ id: session?.playerId, type: clientTypeOf(ownClient), tankModel: ownClient.tankModel });
+  // The tank this browser draws itself as, where the player chose their name
+  // too (`requireLogin: false`). A model id, never a path.
+  const noteTankModel = (model) => {
+    if (target?.requireLogin === false && typeof model === 'string' && /^[\w-]{1,64}$/.test(model)) {
+      ownClient.tankModel = model;
+    }
+  };
   // Reached from the browser's own message handler, which is outside the try
   // below: what a proxied player may say depends on the team its connection
   // entered on, and how its motion converts depends on the target's world.
@@ -1134,6 +1157,20 @@ async function handleProxyConnection(ws, req, request) {
     // whether the callsign we gave it is registered there.
     for (const text of state.messages) {
       send({ type: 'message', src: SERVER_PLAYER, dst: ALL_PLAYERS, msgType: 'server', text, ts: Date.now() });
+    }
+    // Why a Play landed on watching, which is otherwise only in this log.
+    if (cannotSpawn && team !== PLAYER_TEAM.OBSERVER && !options.watch) {
+      send({
+        type: 'message',
+        src: SERVER_PLAYER,
+        dst: ALL_PLAYERS,
+        msgType: 'server',
+        text: target.requireLogin
+          ? `Playing on ${key} needs a global login, so you are watching. Sign in to play.`
+          : `"${viewer.callsign}" is a registered callsign, so playing it needs a global login.`
+            + ' Sign in, or choose another name, to play.',
+        ts: Date.now(),
+      });
     }
     // The player's own address and, where bzo verified the forum login under
     // this very callsign, its BZID -- told to a target whose proxyOrigin
@@ -1675,10 +1712,15 @@ async function handleProxyConnection(ws, req, request) {
       return;
     }
     // A join here is the browser saying it is ready to look, not asking for a
-    // seat: the seat was taken when the socket opened, under a callsign the
-    // client does not get to choose. Confirming it with the record the target
+    // seat: the seat was taken when the socket opened, under the callsign it
+    // was given then. Confirming it with the record the target
     // gave us is what lets the client out of its entry dialog.
+    if (message.type === 'setTankModel') {
+      noteTankModel(message.tankModel);
+      return;
+    }
     if (message.type === 'joinGame') {
+      noteTankModel(message.tankModel);
       ownClient.mobile = message.isMobile === true;
       ownClient.xr = message.xr === true;
       const self = session.state.players.get(session.playerId);

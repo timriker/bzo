@@ -2887,14 +2887,21 @@ function renderListTables({ servers, bzoServers, canWatch, locale }) {
       hash: (proxy ? proxyWorld : (s.world || {})).hash || '',
       href,
       owner: (proxy ? relayed?.owner : s.owner) || '',
-      action: t('Enter game'),
+      // A `?proxy=` link with no team is an observer (`resolveProxyRequest`),
+      // so a carried row's own link watches, as a bzfs row's Watch does.
+      action: proxy ? t('Watch') : t('Enter game'),
       // A carried target is a real BZFlag server, so a BZFlag client can go
       // straight there. Playing it from a browser under a registered callsign
       // needs a global login bzfs can check itself (`playerAlive`,
       // bzfs.cxx:3199), so the carrier's own `/login/<target>/-/automatic`
       // takes the forum login first and comes back joining with its token.
+      // A target that lets anyone play (`requireLogin: false`) also has Play,
+      // which joins on Automatic under the player's own name.
       actions: proxy
-        ? action(`${s.url}/login/${encodeURIComponent(proxyUrlKey(proxy.target))}/-/automatic`, t('Login and Play'))
+        ? (proxy.requireLogin === false
+          ? action(`${href}&team=automatic`, t('Play'))
+          : '')
+          + action(`${s.url}/login/${encodeURIComponent(proxyUrlKey(proxy.target))}/-/automatic`, t('Login and Play'))
           + action(`bzflag://${proxy.target}`, t('Launch'))
         : '',
       style: game.style,
@@ -6023,6 +6030,7 @@ function listPublicListServerRows() {
             .map((proxy) => ({
               target: String(proxy.target || '').slice(0, 128),
               title: String(proxy.title || '').slice(0, 128),
+              requireLogin: proxy.requireLogin !== false,
               players: Number(proxy.players) || 0,
               maxPlayers: Number(proxy.maxPlayers) || 0,
               maxShots: Number(proxy.maxShots) || 0,
@@ -12947,6 +12955,8 @@ function getProxyDestinations() {
         key: target.urlKey,
         name: target.key,
         title: listed?.title || '',
+        // Where anyone may play, the player's own name and tank go too.
+        requireLogin: target.requireLogin,
         style: status.style || '',
         teams: teamModeFromMaximums(
           status.teamMaximums, status.maxPlayers ?? MAX_REAL_PLAYERS).teams,
@@ -12965,6 +12975,9 @@ function computeProxyRows() {
     return {
       target: target.key,
       title: listed?.title || '',
+      // Whether anyone may play there without a global login, which is what
+      // puts a Play on its /list row.
+      requireLogin: target.requireLogin,
       players: status.players ?? 0,
       maxPlayers: status.maxPlayers ?? 0,
       maxShots: status.maxShots ?? 0,

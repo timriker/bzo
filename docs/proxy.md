@@ -62,7 +62,10 @@ shown, and its title and settings still come from the target itself.
 
 A value may be an object instead, for a target that needs more than an
 address. `requireLogin: false` lifts the verified-player rule below for that
-one target, which is what a test server wants:
+one target, which is what a test server wants. Anyone may then play there
+under the callsign and tank they choose, and its /list row has a **Play**
+(`?proxy=<host_port>&team=automatic`); the motto stays `via <this bzo>`, so
+the target still sees who came through bzo:
 
 ```json
 "proxies": {
@@ -303,8 +306,15 @@ serves. A target's world never ages out: each status pass (every 15 minutes
 and at boot) checks its hash and downloads it only when it has changed, so a
 join rarely waits for one.
 
-**The callsign is never the client's to choose.** In order: the one the
-weblogin callback named, for a browser that has just signed in; then the
+**The callsign is the client's only where anyone may play.** On a
+`requireLogin: false` target with no token on the way, it is the browser's
+own name, sent as `&callsign=` on the socket because bzfs fixes it at
+`MsgEnter`, and folded to what bzfs accepts (`toBzfsCallsign`); a name that
+cannot be made acceptable falls through to the rest. Changing it, like the
+team, reconnects. The chosen tank model is drawn for the player's own tank
+only: bzfs has no field for one, so everyone else sees upstream's.
+Otherwise, in order: the one the weblogin callback named, for a browser that
+has just signed in; then the
 session's, which is that same name on every connection after the first; then a
 random `bzo-view-<6 hex>` for a browser that has never signed in. The motto the
 target's player list shows is `via https://<this bzo>`, which is the one thing

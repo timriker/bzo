@@ -1369,6 +1369,13 @@ function findProxyDestination(destination) {
   return availableProxies.find((proxy) => proxy.key === key) || null;
 }
 
+// A proxied target its operator lets anyone play on (`requireLogin: false`):
+// no login is needed, and the name and tank are the player's own. The motto
+// still is not, so the target can see they came through bzo.
+function destinationIsOpen(destination) {
+  return findProxyDestination(destination)?.requireLogin === false;
+}
+
 function destinationLabel(destination) {
   if (destination.startsWith('watch:')) {
     return t('watching {server}', { server: destination.slice('watch:'.length).replace(/_(\d+)$/, ':$1') });
@@ -1429,7 +1436,16 @@ function destinationNeedsLogin(destination, team) {
   // server.js), which no login could help with.
   if (destination.startsWith('watch:')) return false;
   if (destination.startsWith('replay:')) return false;
+  // Anyone may play there, except under the forum callsign this browser is
+  // signed in as: that name is registered, and spawns only with its token.
+  if (destinationIsOpen(destination)) return Boolean(myGlobalCallsign) && stagedEntryName() === myGlobalCallsign;
   return !(destination === currentDestination() && team === proxyEnteredTeam);
+}
+
+// The name in the entry dialog, before OK saves it.
+function stagedEntryName() {
+  const input = document.getElementById('entryInput');
+  return (input && input.value.trim()) || myPlayerName;
 }
 
 function setAvailableProxies(proxies, localTeams, localMap) {
@@ -1485,7 +1501,9 @@ function destinationHref(destination, team) {
   const proxy = findProxyDestination(destination);
   if (!proxy) return `${window.location.pathname}`;
   const params = new URLSearchParams({ proxy: proxy.key });
-  if (team && team !== PLAYER_TEAM.AUTOMATIC) params.set('team', team);
+  // No team is an observer there (`resolveProxyRequest`), so Automatic is
+  // said rather than left out.
+  if (team && team !== PLAYER_TEAM.OBSERVER) params.set('team', team);
   return `${window.location.pathname}?${params.toString()}`;
 }
 
@@ -2668,7 +2686,9 @@ function syncMottoForDestination() {
 
 function syncTankSelectorForDestination() {
   const selector = document.getElementById('tankSelector');
-  const proxied = stagedDestinationIsRemote();
+  // Where the player picks their own name they pick their own tank too, though
+  // only they will see it.
+  const proxied = stagedDestinationIsRemote() && !destinationIsOpen(selectedDestination);
   if (selector) selector.style.display = proxied ? 'none' : '';
   const skinSelector = document.getElementById('entrySkinSelector');
   if (skinSelector) skinSelector.style.display = proxied ? 'none' : '';
@@ -2687,6 +2707,12 @@ function syncTankSelectorForDestination() {
 // reported it. Null off a proxy, where a team is this server's to change on the
 // open socket like any other setting.
 let proxyEnteredTeam = null;
+// The name this page's socket asked its target for ('' for none), and the one
+// the target gave it, where the target lets the player choose
+// (`destinationIsOpen`). A join under either is no rename: bzfs may have
+// trimmed the first, and the second is what a spectator link joins as.
+let proxyRequestedName = null;
+let proxyEnteredName = null;
 
 // Changing team on a proxied connection is opening a different connection.
 // bzfs fixes the team when it answers `MsgEnter` and the protocol carries no
@@ -2694,8 +2720,12 @@ let proxyEnteredTeam = null;
 // the page's own URL and the reload is what applies it, the same way `?proxy=`
 // and `/login` already work (`docs/proxy.md`). Returns true when it has taken
 // over, and the caller sends nothing.
+// A new name on a target that lets the player choose it is the same: bzfs
+// fixes the callsign at `MsgEnter` too.
 function proxyTeamChangeNavigated(team) {
-  if (proxyEnteredTeam === null || team === proxyEnteredTeam) return false;
+  const renamed = proxyRequestedName !== null && destinationIsOpen(currentDestination())
+    && myPlayerName !== proxyRequestedName && myPlayerName !== proxyEnteredName;
+  if (proxyEnteredTeam === null || (team === proxyEnteredTeam && !renamed)) return false;
   const params = new URLSearchParams(window.location.search);
   if (!params.get('proxy') && !params.get('watch')) return false;
   params.set('team', team);
@@ -4464,6 +4494,7 @@ function openEntryDialog(name = '') {
   entryInput.disabled = forcedName !== null;
   // Staged like every other row: what is in the box is a draft until OK.
   syncMottoForDestination();
+  syncEntryActions();
   entryInput.focus();
   entryDialogReturnCameraMode = cameraMode;
   cameraMode = 'overview';
@@ -7681,6 +7712,8 @@ function init() {
     entryInput.addEventListener('keypress', (e) => {
       if (e.key === 'Enter') entryOkButton.click();
     });
+    // A name can decide whether OK signs in first (`destinationNeedsLogin`).
+    entryInput.addEventListener('input', syncEntryActions);
   }
 
   setupInstallPrompt(document.getElementById('installBtn'), refreshSettingsMenu);
@@ -7905,6 +7938,11 @@ function connectToServer() {
   // no message for changing it afterwards, so the team is part of which
   // connection this is rather than something to ask for once it is open.
   const proxyTeam = proxyTarget ? params.get('team') : null;
+  // And the name, which bzfs fixes at `MsgEnter` as well. A target that
+  // requires a login names the player itself and ignores it.
+  proxyRequestedName = proxyTarget
+    ? (myPlayerName && !isDefaultPlayerName(myPlayerName) ? myPlayerName : '')
+    : null;
   // `?watch=` rides on the socket for the same reason `?proxy=` does: the
   // server has to know which game this connection is before it can build
   // `init`, and it builds it the moment the socket opens. Without this the
@@ -7928,6 +7966,7 @@ function connectToServer() {
     ? `/?watch=${encodeURIComponent(watchTarget)}${watchTeam ? `&team=${encodeURIComponent(watchTeam)}` : ''}`
     : (proxyTarget
       ? `/?proxy=${encodeURIComponent(proxyTarget)}${proxyTeam ? `&team=${encodeURIComponent(proxyTeam)}` : ''}`
+        + (proxyRequestedName ? `&callsign=${encodeURIComponent(proxyRequestedName)}` : '')
         + (IS_BOT_CLIENT ? '&bot' : '')
       : '');
   const socketUrl = `${protocol}//${window.location.host}${query}`;
@@ -8413,6 +8452,7 @@ function receiveInit(message) {
   // reason (`proxyTeamChangeNavigated`).
   if (isProxiedPage()) {
     proxyEnteredTeam = message.player.team;
+    proxyEnteredName = message.player.name;
     selectedPlayerTeam = proxyEnteredTeam;
     syncPlayerTeamSelector();
   }

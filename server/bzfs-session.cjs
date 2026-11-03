@@ -449,6 +449,25 @@ function toBzfsChatText(text) {
     .replace(/[^\x20-\x7e]/g, '');
 }
 
+// A name the player chose, as bzfs will take it, or null where it would still
+// be refused. `PlayerInfo::isCallSignReadable` (PlayerInfo.cxx:252) rejects
+// at `MsgEnter`, which costs the browser its connection, so the folding that
+// can be done is done here: ASCII as chat is, no quotes, single spaces, no
+// leading `+`, `@` or `#`, and one byte short of `CallSignLen`. What is left
+// must still be two characters and more than half letters and digits.
+function toBzfsCallsign(name) {
+  const callsign = toBzfsChatText(name)
+    .replace(/['"]/g, '')
+    .replace(/ {2,}/g, ' ')
+    .trim()
+    .replace(/^[+@#\s]+/, '')
+    .slice(0, CALLSIGN_LEN - 1)
+    .trim();
+  if (callsign.length < 2) return null;
+  const alnum = callsign.replace(/[^A-Za-z0-9]/g, '').length;
+  return alnum / callsign.length > 0.5 ? callsign : null;
+}
+
 // The most a chat line can carry: `MessageLen` less its terminating NUL
 // (`global.h:35`), which is the field upstream's own input stops at
 // (`HUDRenderer.cxx:113`). The text is already ASCII by the time this applies,
@@ -1177,6 +1196,7 @@ module.exports = {
   BzfsSession,
   OBSERVER_TEAM,
   toBzfsChatText,
+  toBzfsCallsign,
   splitBzfsChat,
   CHAT_TEXT_MAX,
   CTF_TEAMS,
