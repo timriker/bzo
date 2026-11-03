@@ -6,6 +6,18 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
 
 ## [Unreleased]
 
+## [1.3.82] - 2026-11-03
+
+### Added
+- A proxied server with `requireLogin: false` has a Play on its /list row,
+  joining on Automatic under the player's own callsign and tank; the motto
+  still names the bzo.
+
+### Changed
+- A proxied row's own link says Watch.
+- Playing a proxied server under your signed-in forum callsign signs in
+  first, and a Play that lands on watching says why.
+
 ## [1.3.81] - 2026-11-03
 
 ### Added
