@@ -1112,7 +1112,11 @@ async function handleProxyConnection(ws, req, request) {
     // ever send to again.
     session.on('close', (err) => {
       log(`[PROXY] ${key}: target hung up${err ? `: ${err.message}` : ''}`);
-      send({ error: `${key} closed the connection` });
+      // A kick, a ban or the target shutting down, which the wire does not
+      // tell apart (MsgSuperKill). Upstream's client stays off after any of
+      // them rather than going straight back into what removed it, and so
+      // does this one; the reason came before it as a message.
+      send(err?.superKill ? { type: 'superKill', rejoin: false } : { error: `${key} closed the connection` });
       ws.close();
     });
 
@@ -1549,6 +1553,19 @@ async function handleProxyConnection(ws, req, request) {
       send({ type: 'timeUpdate', timeLeft });
     });
 
+    // The match's end, by bzo's name for it: a player who reached the limit,
+    // or a team, or neither for an operator's /gameover.
+    session.on('scoreOver', ({ player, team }) => {
+      send({
+        type: 'scoreOver',
+        playerId: player === BZFS_NO_PLAYER ? null : String(player),
+        // `NoTeam`, 0xffff, names no colour, and neither does anything else
+        // `getTeamFromColorIndex` has no name for.
+        team: getTeamFromColorIndex(team),
+      });
+    });
+
+
     session.on('rabbit', (id) => {
       send({ type: 'newRabbit', playerId: String(id) });
     });
@@ -1620,6 +1637,18 @@ async function handleProxyConnection(ws, req, request) {
       });
     });
   } catch (err) {
+    // Dropped while joining: what the target said on the way, then a kick,
+    // so the browser shows the reason and stays off rather than rejoining
+    // into the same refusal.
+    if (err?.superKill && session) {
+      log(`[PROXY] ${key}: target dropped "${viewer.callsign}" as it joined`);
+      for (const text of session.state.messages) {
+        send({ type: 'message', src: SERVER_PLAYER, dst: ALL_PLAYERS, msgType: 'server', text, ts: Date.now() });
+      }
+      send({ type: 'superKill', rejoin: false });
+      ws.close();
+      return;
+    }
     logError(`[PROXY] ${key}: could not proxy: ${err && err.message}`, err);
     send({ error: `Could not reach ${key}: ${err.message}` });
     ws.close();

@@ -5,7 +5,7 @@
  * See LICENSE or https://www.gnu.org/licenses/agpl-3.0.html
  */
 
-// flagStay.cjs - upstream's plugins/flagStay: a map's `flagStayZone` blocks
+// flagstay.cjs - upstream's plugins/flagStay: a map's `flagStayZone` blocks
 // keep the flags they name inside them. A tank that grabs one of those flags
 // in the zone loses it the moment it drives out, and is told the zone's
 // message if it has one:
@@ -29,7 +29,6 @@ module.exports = {
     author: 'Tim Riker, after upstream',
     description: 'a map\'s flagStayZone blocks keep the flags they name inside them',
     license: 'AGPL-3.0',
-    enabled: false,
   },
 
   Init(bz) {

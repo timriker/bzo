@@ -46,8 +46,10 @@ The groups at 12 may all be one operator's servers.
   calls `bz.Register`, as a C++ plugin calls `Register`. The header of
   `server/plugins.cjs` has an example.
 - **Configured in `server.json`.** `"plugins"` maps a plugin's file name to
-  `false` (off) or an object of its options. Every plugin found is on unless
-  turned off, so bzo's own are on by default.
+  `true`, `false` or an object of its options. A plugin it does not name is
+  off, bundled or installed: a file on disk is not a request to run it, and
+  an installed one that is off is not even read, since reading a module runs
+  it. `example-server.json` turns `compassletters` on, for BZFlag players.
 - **Proxied games are out of scope.** A game bzo proxies runs on the target
   server, which runs its own plugins.
 - **Both client kinds.** Whatever a plugin does must reach native BZFlag
@@ -61,8 +63,34 @@ with its name, version, what it does, its author and license, or why it
 failed, and a switch staged behind Apply. A switch is live, as `/loadplugin`
 is, and is written to `server.json` as `"plugins": { "<id>": true|false }`,
 keeping any options there. The list goes to admins after they join, as the
-admin roster does, since `init` goes out before `isAdmin` can say yes. Still
-to come:
+admin roster does, since `init` goes out before `isAdmin` can say yes.
+
+A plugin's options are rows beneath its switch, from `meta.options`:
+`[{ name, type, default, help }]`, a type being `boolean`, `number` (with
+`min`, `max` and `step`), `choice` (with `values`) or `string` (with
+`maxLength`) -- a checkbox, slider or list a headset steps through, or a text
+field it reaches by its virtual keyboard. Each is labelled by its help and
+staged behind Apply like the rest; Apply writes it into the plugin's object
+in `server.json` and starts a running plugin again with it, as upstream takes
+options only at `-loadplugin`. Only admins are sent
+option values.
+
+Where `"pluginUpload": true` is in `server.json`, an admin uploads a `.cjs`
+into `data/plugins` from the panel, beside the warning that a plugin runs
+with the server's full rights (`docs/installation.md`). The upload is logged
+with the admin's callsign and its SHA-256, written off in `server.json` before
+the file lands -- a plugin `server.json` does not name runs by default -- and
+listed for an admin to switch on. An upload of a plugin already there replaces
+its file and keeps its switch, and the panel names both versions; Delete takes
+an upload back, and a bundled plugin it hid comes back. Either may be a
+running plugin's file: the copy already loaded runs until the next restart.
+
+A running plugin's BZDB variables, such as ctfOverseer's, are rows too, by
+their own names: a bool a checkbox and anything else a text field, since a
+value may be an expression. Apply sets one as `/set` does and keeps it in
+`server.json`'s `bzdb` block.
+
+Still to come:
 
 - **What it is.** Name, version, author, description and license, from a
   `meta` object every plugin exports. A plugin without one does not load.
@@ -71,15 +99,9 @@ to come:
   calls its unload hook, as `/unloadplugin` does upstream; a plugin that
   registered a custom flag or custom map object can only change on a restart,
   which the panel says.
-- **Its options.** A plugin declares its options in `meta` (name, type,
-  default, a line of help), and the panel shows them as rows. Plugins that keep
-  their settings in BZDB variables show those instead.
 - **Its state.** Loaded, off, or failed with the error. A plugin that throws
   while loading is left off and the server keeps running.
-- **Upload.** An admin uploads a plugin file the same way as a map, into
-  `data/plugins`, so the panel may delete it again; a bundled plugin can
-  only be turned off. An upload that replaces a plugin of the same name shows
-  both versions before Apply, and an installed copy hiding a newer bundled one
+- **A hidden bundled plugin.** An installed copy hiding a newer bundled one
   says so.
 
 bzo ships its own plugins, and admins may install more.
@@ -89,8 +111,8 @@ bzo ships its own plugins, and admins may install more.
 bzfs gives `/loadplugin`, but bzo's admins are bzflag.org groups, not a
 local file, so the rights are wider than an upstream operator expects:
 
-- `"pluginUpload"` in `server.json` turns upload on or off; installing a
-  plugin by copying it into `plugins/` always works.
+- `"pluginUpload"` in `server.json` turns upload on, and it is off unless
+  set; installing a plugin by copying it into `data/plugins` always works.
 - Each upload is logged with the admin's callsign and the file's hash.
 - The panel says plainly, beside the upload button, that a plugin runs with
   the server's full rights.
@@ -124,18 +146,19 @@ translates one.
 
 Features bzo built in that are plugins elsewhere, or are optional extras that
 fit one. Each moves out and keeps its BZDB variables. Turning the plugin on or
-off is the switch, so a plugin is never loaded and idle: one whose behaviour
-was on in bzo ships on, one that was off ships off, and when on it does what
-its upstream does by default.
+off is the switch, so a plugin is never loaded and idle, and when on it does
+what its upstream does by default. Like every plugin, each is off until
+`server.json` names it.
 
 - `_scoreSaveTime`: allejo's ScoreRestorer, on. Still in the core: it keeps
   scores across a restart and gives a returning bot its old slot, which the
   plugin API cannot do yet.
 - `_disallowSelfCap` and `_delayTeamFlagGrab`: allejo's ctfOverseer,
-  `plugins/ctfOverseer.cjs`. Off, as both were; on, 1 and 20 as allejo's.
+  `plugins/ctfoverseer.cjs`. Off, as both were; on, 1 and 20 as allejo's.
 - The Discord bridge (`docs/discord.md`): the job upstream's ircRelay plugin
   does, and the shape Matrix and IRC in `docs/chat-bridge-plan.md` would take.
-- The compass letters for native clients; see "The world and the network".
+- The compass letters for native clients: `plugins/compassletters.cjs`, which
+  `example-server.json` turns on. See "The world and the network".
 
 Rabbit, polls and handicap are core upstream and stay core in bzo.
 
@@ -151,7 +174,7 @@ the server:
 - **The effect.** The plugin listens for shot fired, shot ended or player
   died, and calls `bz_fireServerShot` with a stock shot type (`SW`, `GM`, `L`
   ...) from the server player. Clients draw it as that stock shot.
-  `plugins/shockwaveDeath` and `plugins/wwzones` work this way.
+  `plugins/shockwavedeath` and `plugins/wwzones` work this way.
 
 bzo already fires server shots for a map's `weapon` blocks, so
 `bz_fireServerShot` reuses that path. bzo's client draws every stock shot,
@@ -173,28 +196,86 @@ say it built the world itself with `bz_addWorldBox`, `Pyramid`, `Base`,
 `Teleporter`, `Weapon`, `WaterLevel` and `bz_setWorldSize`. Those only work
 before the world is finished, take only drive-through and shoot-through as
 options, and make no meshes. The event's `worldBlob` is declared but bzfs
-never reads it. pushstats uses the event to learn the map; map rotation
-plugins such as mapchange need it to pick the next one.
+never reads it. pushstats uses the event to learn the map. allejo's mapchange
+does not use it: it writes the next configuration to a file and shuts bzfs
+down for a wrapper script to start again.
 
-bzo offers the same event at every map load, with the parsed world rather
-than a file name, so a plugin can add or change objects of any kind before a
-client sees them. Because bzo sends a native BZFlag client its own world
-(`server/bzflag-extras.cjs`), the event says which world it is building, and a
-plugin can add to one only. The compass letters bzo adds for native clients
-become a bundled plugin this way, on by default.
+bzo fires the event once for each world it builds, and `world` says which.
+`bzo`, for its own clients, comes once at boot with upstream's fields
+(`generated`, `ctf`, `rabbit`, `openFFA`, `worldFile`), after the plugins in
+`server.json` load. bzo has parsed its map by then, so this one only says
+what the world is. `bzflag` comes each time the world sent a native client is
+built: when the first native client arrives, and again after a plugin loads
+or unloads. It also carries the compiled world as `tree`
+(`parseWorldDatabase`'s shape), with `worldSize`, `wallHeight` and
+`maxHeight`. A plugin may add objects of any kind to that tree. bzo's server
+never sees them, so they must be passable or out of reach. The compass
+letters bzo adds for native clients are a bundled plugin built this way.
+
+Changing bzo's own world needs the plugins loaded before the map is parsed,
+as upstream loads them; then a plugin could name another file, add objects
+or build the world itself with the `bz_addWorld*` calls.
 
 **HTTP.** Upstream's `bz_registerNonPlayerConnectionHandler` and
 `bz_sendNonPlayerData` hand a plugin raw TCP connections on the game port;
 upstream's whole plugin web layer (`src/bzfs/bzfsHTTPAPI.cxx`) is built on
-them. bzo is already a web server, so a plugin registers HTTP routes under its
-own path instead, for a stats page or a league's endpoint. Raw connections are
-not offered.
+them. bzo is already a web server, so it offers that layer's
+`bzhttp_RegisterVDir` on its own (`server/plugin-http.cjs`), for a stats page
+or a league's endpoint. Upstream serves a VDir at `/<name>/`; bzo at
+`/plugins/<name>/`, with upstream's index of them at `/plugins/`. The
+Request, Response and enums are upstream's, `eWaitForIt` is asked again as
+upstream asks it, and `GeneratePage` may return a promise instead. BZID web
+login, sessions, templates and resource directories are not offered, and nor
+are raw connections; only fastmap uses either upstream, and bzo serves the
+world itself.
 
 **Packets.** `bz_eNetDataSendEvent` and `bz_eNetDataReceiveEvent` fire for every
 packet in or out with a copy of its bytes, read-only; no plugin in the tree
 uses them. bzo offers them read-only, costing nothing unless a plugin
 registers, carrying BZFlag-shaped messages whichever client sent them, since
 bzo's own clients and native ones do not share a wire format.
+
+## Behind the proxy
+
+A bzo player can join a bzfs that runs these plugins in C++, through bzo's
+proxy (`docs/proxy.md`), so each one has to work for that player too. A
+plugin acts on the wire only through what bzfs already sends, so what matters
+is which packets it causes. Checked against the installed bzfs 2.4.30 with
+upstream's own `.so` plugins, through `BzfsSession`:
+
+- **Kills by the server** (koth, keepaway, timedctf, killall, rabbitTimer):
+  `MsgKilled` with `ServerPlayer` as killer, which bzo's client already shows
+  as a world weapon's.
+- **Kicks** (HoldTheFlag, mapchange, regFlag, nagware, superUser, `/kick`):
+  the reason, then `MsgSuperKill`. Forwarded as a kick, so the browser stays
+  off rather than rejoining into it.
+- **The match's end** (`/gameover`, score limits, so HoldTheFlag's winner):
+  `MsgScoreOver`, forwarded as `scoreOver`.
+- **Custom flags** (customflagsample): a type registered while players are
+  in reaches them as `MsgFlagType`. A player who joins later is never told:
+  this bzfs answers flag negotiation with nothing, even to an empty list, so
+  a proxied player cannot name the flag, nor can a native one.
+- **Server shots** (shockwaveDeath, wwzones): `MsgShotBegin` from
+  `ServerPlayer`, forwarded whoever fired it. The browser's own hit check
+  counts it as upstream's client does, since a shooter on no team meets only
+  the team-kill rule.
+- **A refused grab** (fairCTF): no `MsgGrabFlag`, and the plugin's reason as
+  a message. The browser only asks and waits for the target's answer, so the
+  flag stays on the ground for it too.
+
+Read but not yet run:
+
+- **Team and admin chat** (koth, keepaway, timedctf, fairCTF) keeps its
+  destination both ways.
+- **A refused capture or theft** (ctfOverseer, thiefControl) is refused the
+  same way a grab is.
+
+- **A held spawn** (`bz_eAllowSpawn`): the browser asks once after each death
+  and the target holds it, as bzfs does for any client.
+
+A tank standing on a flag it was refused asks for it again every 0.2 seconds,
+as upstream's client does (`playing.cxx:4123`), so fairCTF's reason repeats
+for a native player and a proxied one alike.
 
 ## Stages
 
@@ -204,8 +285,8 @@ bzo's own clients and native ones do not share a wire format.
    `grabFlag`, `dropFlag`, `captureFlag` and `killPlayer` in `server.js`.
    Prove it by moving ScoreRestorer and ctfOverseer out, and porting
    rabbitTimer, teamflagreset, autoFlagReset and killall. Done but for
-   ScoreRestorer; each bundled plugin is off until `server.json` names it,
-   with its options there in place of upstream's `-loadplugin` string. The
+   ScoreRestorer; each plugin is off until `server.json` names it, with its
+   options there in place of upstream's `-loadplugin` string. The
    Plugins panel lists them with their `meta` and switches them on and off.
    `/listplugins`,
    `/loadplugin <name>[,<options as JSON>]` and `/unloadplugin <name|number>`
@@ -248,11 +329,27 @@ bzo's own clients and native ones do not share a wire format.
    `bz_hasPerm`, `bz_grantPerm` and `bz_revokePerm` per player and
    `bz_ePermissionModificationEvent`. What the server asks of them is the
    poll rights, SPAWN and TALK (`/mute`); the operator commands are still
-   an admin's alone. Left: the world event and the
-   `bz_addWorld*` calls, and plugin HTTP routes. Port koth, keepaway,
-   HoldTheFlag, timedctf, fairCTF, chathistory, TimeLimit and mapchange, and
-   move the compass letters out.
-3. **Plugin options and upload** in the panel.
+   an admin's alone. `bz_eGetWorldEvent` fires for both worlds, and a
+   plugin may add to the one sent native clients; the compass letters are
+   out, as `compassletters`. `bzhttp_RegisterVDir` gives a plugin web pages.
+   koth, keepaway, HoldTheFlag, timedctf, fairCTF, chathistory and
+   TimeLimit are ported, on `bz_ePlayerPausedEvent`, the game start and end
+   events, `bz_resetFlags`, `bz_kickUser`, the match clock calls
+   (`bz_getTimeLimit`, `bz_setTimeLimit`, `bz_isTimeManualStart`,
+   `bz_isCountDownActive`, `bz_isCountDownInProgress`) and
+   `bz_sendTextMessageToTeam` (upstream's team overload of
+   `bz_sendTextMessage`, which JavaScript cannot tell from the player one).
+   A player record's `currentFlag` names every flag alike, "Red Team
+   (+R*)" as "Shock Wave (+SW)", where upstream's says "Red team flag";
+   fairCTF looks for bzo's.
+   An admin holds every permission but HIDEADMIN, a plugin's custom ones
+   such as HoldTheFlag's HTFONOFF included; upstream's groups file, which
+   would hand them out finer, waits. allejo's mapchange is ported on
+   `bz_changeMap`, bzo's own, which starts a new game on another map as
+   the panel does. Left: changing bzo's own world from that event, which
+   needs plugins loaded before the map, and the `bz_addWorld*` calls.
+3. **Plugin options and upload** in the panel. Done: options, a plugin's
+   BZDB variables and upload.
 4. **The Discord bridge** moves to a plugin once stage 1's chat events carry
    what it needs.
 5. **The packet events.**

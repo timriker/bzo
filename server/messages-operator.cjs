@@ -12,6 +12,7 @@
 
 const { SERVER_PLAYER } = require('./player-ids.cjs');
 const fs = require('fs');
+const crypto = require('crypto');
 const path = require('path');
 const { readReplay } = require('./bzfs-replay.cjs');
 const { localized } = require('../public/js/i18n.mjs');
@@ -58,11 +59,21 @@ let startMatch;
 let sweepMapCache;
 let uploads;
 let writeServerConfig;
+let PLUGIN_UPLOAD_MAX_BYTES;
+let RUNTIME_PLUGINS_DIR;
+let announcePluginChange;
+let pluginHost;
+let pluginUploadAllowed;
 
 function useServer(deps, live) {
   server = live;
   ({
     IMPORT_REUSE_MS,
+    PLUGIN_UPLOAD_MAX_BYTES,
+    RUNTIME_PLUGINS_DIR,
+    announcePluginChange,
+    pluginHost,
+    pluginUploadAllowed,
     MAP_REGISTRY,
     OPERATOR_CONFIG_KEYS,
     REPLAY_UPLOAD_MAX_BYTES,
@@ -204,6 +215,61 @@ function handleUploadMap(player, ws, message) {
   return;
 }
 
+// A plugin, into `data/plugins`. Code that runs as the server, so only where
+// `pluginUpload` in server.json allows it, and logged with who and the file's
+// hash. It runs only when server.json names it on, as an admin does from its
+// row; one that replaces a plugin keeps that plugin's switch.
+// A running plugin's file is replaced like any other, and the copy already
+// loaded runs until the next restart.
+function handleUploadPlugin(player, ws, message) {
+  if (refuseNonOperator(ws, player, 'uploadPlugin')) return;
+  const said = (text) => sayToOperator(ws, player, text);
+  if (!pluginUploadAllowed()) {
+    said(localized('Plugin upload is off on this server.'));
+    return;
+  }
+  const name = typeof message.pluginName === 'string' ? path.basename(message.pluginName.trim()) : '';
+  const id = name.endsWith('.cjs') ? name.slice(0, -'.cjs'.length) : '';
+  if (!/^[A-Za-z0-9_-]+$/.test(id) || typeof message.content !== 'string') {
+    said(localized('A plugin is one .cjs file named with letters, digits, - and _.'));
+    return;
+  }
+  const content = Buffer.from(message.content, 'utf8');
+  if (content.length > PLUGIN_UPLOAD_MAX_BYTES) {
+    said(localized('{name} is too large.', { name }));
+    return;
+  }
+  const existing = pluginHost().list().find((entry) => entry.id === id) ?? null;
+  const hash = crypto.createHash('sha256').update(content).digest('hex');
+  // Read from the text rather than by loading it, which would run it.
+  const version = /\bversion\s*:\s*['"]([^'"]{1,40})['"]/.exec(message.content)?.[1] ?? '?';
+  const oldVersion = existing?.meta?.version ?? '?';
+  fs.promises.mkdir(RUNTIME_PLUGINS_DIR, { recursive: true })
+    .then(() => fs.promises.writeFile(path.join(RUNTIME_PLUGINS_DIR, name), content))
+    .then(() => {
+      uploads.add('plugins', name);
+      log(`[PLUGIN] "${player.name}" uploaded ${name} ${version}${existing ? ` over ${oldVersion}` : ''},`
+        + ` sha256 ${hash}`);
+      if (existing?.state === 'loaded') {
+        said(localized('Replaced {name} {old} with {version}; the running copy stays until the server restarts.',
+          { name: id, old: oldVersion, version }));
+      } else {
+        // Found again from its file, and not read: reading a module runs it.
+        pluginHost().drop(id);
+        pluginHost().discover();
+        said(existing
+          ? localized('Replaced {name} {old} with {version}.', { name: id, old: oldVersion, version })
+          : localized('Uploaded plugin {name} {version}; switch it on to run it.', { name: id, version }));
+      }
+      announcePluginChange();
+      sendMapList(ws);
+    })
+    .catch((error) => {
+      logError(`Plugin upload ${name} failed:`, error);
+      said(localized('Upload failed: {error}', { error: error.message }));
+    });
+}
+
 // A bzfs recording, base64 over the socket since it is binary. Read
 // before it is kept, so a file that is not a recording is refused here
 // rather than listed as unreadable.
@@ -277,7 +343,7 @@ function handleSaveRecording(player, ws, message) {
 function handleDeleteUpload(player, ws, message) {
   if (refuseNonOperator(ws, player, 'deleteUpload')) return;
   const said = (message) => sayToOperator(ws, player, message);
-  const kind = message.kind === 'replays' ? 'replays' : (message.kind === 'maps' ? 'maps' : null);
+  const kind = ['maps', 'replays', 'plugins'].includes(message.kind) ? message.kind : null;
   const name = typeof message.name === 'string' ? message.name : '';
   if (!kind || !uploads.has(kind, name)) {
     said(name
@@ -289,25 +355,40 @@ function handleDeleteUpload(player, ws, message) {
     said(localized('Delete refused: {name} is the map being played.', { name }));
     return;
   }
+  // A running plugin's file goes like any other; it runs until the restart.
+  const pluginId = kind === 'plugins' ? name.replace(/\.cjs$/, '') : null;
+  const pluginRunning = pluginId !== null
+    && pluginHost().list().find((entry) => entry.id === pluginId)?.state === 'loaded';
   if (kind === 'replays' && replayRooms.has(name)) {
     said(localized('Delete refused: {name} is being watched.', { name }));
     return;
   }
-  const filePath = kind === 'maps'
-    ? path.join(RUNTIME_MAPS_DIR, name)
-    : path.join(RUNTIME_REPLAYS_DIR, `${name}.rec`);
+  const filePath = {
+    maps: () => path.join(RUNTIME_MAPS_DIR, name),
+    replays: () => path.join(RUNTIME_REPLAYS_DIR, `${name}.rec`),
+    plugins: () => path.join(RUNTIME_PLUGINS_DIR, name),
+  }[kind]();
   fs.promises.rm(filePath, { force: true })
     .then(() => {
       uploads.remove(kind, name);
       if (kind === 'maps') {
         MAP_REGISTRY.delete(name);
         sweepMapCache();
-      } else {
+      } else if (kind === 'replays') {
         replaySummaries.delete(name);
+      } else {
+        pluginHost().drop(pluginId);
+        announcePluginChange();
       }
       invalidateListTables();
-      log(`Admin "${player.name}" deleted ${kind === 'maps' ? 'map' : 'replay'} ${name}`);
-      said(kind === 'maps' ? localized('Deleted map {name}', { name }) : localized('Deleted replay {name}', { name }));
+      log(`Admin "${player.name}" deleted ${kind.slice(0, -1)} ${name}`);
+      said({
+        maps: () => localized('Deleted map {name}', { name }),
+        replays: () => localized('Deleted replay {name}', { name }),
+        plugins: () => (pluginRunning
+          ? localized('Deleted plugin {name}; it runs until the server restarts.', { name: pluginId })
+          : localized('Deleted plugin {name}', { name: pluginId })),
+      }[kind]());
       sendMapList(ws);
     })
     .catch((error) => {
@@ -457,9 +538,13 @@ function handleSetOperatorConfig(player, ws, message) {
   for (const key of OPERATOR_CONFIG_KEYS) {
     if (Object.prototype.hasOwnProperty.call(message, key)) requested[key] = message[key];
   }
-  // The Plugins rows, one `plugin:<id>` each; the server checks the id.
+  // The Plugins rows, one `plugin:<id>` each, one `pluginOption:<id>:<name>`
+  // per option and one `bzdb:<name>` per variable a plugin registered; the
+  // server checks each against what is installed.
   for (const key of Object.keys(message)) {
-    if (key.startsWith('plugin:')) requested[key] = message[key];
+    if (key.startsWith('plugin:') || key.startsWith('pluginOption:') || key.startsWith('bzdb:')) {
+      requested[key] = message[key];
+    }
   }
   if (Object.keys(requested).length === 0) {
     ws.send(JSON.stringify({ error: 'No supported operator setting provided' }));
@@ -509,6 +594,7 @@ const MESSAGE_HANDLERS = Object.freeze({
   setMap: handleSetMap,
   matchControl: handleMatchControl,
   uploadMap: handleUploadMap,
+  uploadPlugin: handleUploadPlugin,
   uploadReplay: handleUploadReplay,
   saveRecording: handleSaveRecording,
   deleteUpload: handleDeleteUpload,

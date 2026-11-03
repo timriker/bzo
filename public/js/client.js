@@ -3807,6 +3807,11 @@ function composeVocabulary() {
       word: type.abbreviation,
       label: `${type.abbreviation} (${type.name})`,
     })),
+    // The Plugins rows' list, which only an admin is sent.
+    [WORD_KIND.LOADED_PLUGIN]: operatorPluginList.filter((plugin) => plugin.state === 'loaded')
+      .map((plugin) => plugin.id),
+    [WORD_KIND.OFF_PLUGIN]: operatorPluginList.filter((plugin) => plugin.state !== 'loaded')
+      .map((plugin) => plugin.id),
   };
 }
 
@@ -6776,6 +6781,17 @@ window.addEventListener('DOMContentLoaded', () => {
     });
   }
 
+  // A plugin is text: one `.cjs` file.
+  const uploadPluginBtn = document.getElementById('uploadPluginBtn');
+  const uploadPlugin = document.getElementById('uploadPlugin');
+  if (uploadPluginBtn && uploadPlugin) {
+    uploadPluginBtn.addEventListener('click', () => {
+      const file = uploadPlugin.files && uploadPlugin.files[0];
+      if (!file) return;
+      file.text().then((content) => sendToServer({ type: 'uploadPlugin', pluginName: file.name, content }));
+    });
+  }
+
   // A recording is binary, so it goes as base64.
   const uploadReplayBtn = document.getElementById('uploadReplayBtn');
   const uploadReplay = document.getElementById('uploadReplay');
@@ -9145,13 +9161,17 @@ function receiveSetVar(message) {
 function receivePlugins(message) {
   if (Array.isArray(message.commands)) serverCommands = message.commands;
   if (message.state && typeof message.state === 'object') {
-    const kept = Object.entries(serverOperatorConfig).filter(([key]) => !key.startsWith(PLUGIN_KEY_PREFIX));
+    const kept = Object.entries(serverOperatorConfig)
+      .filter(([key]) => !key.startsWith(PLUGIN_KEY_PREFIX) && !key.startsWith(PLUGIN_OPTION_PREFIX)
+        && !key.startsWith(PLUGIN_BZDB_PREFIX));
     serverOperatorConfig = { ...Object.fromEntries(kept), ...message.state };
   }
   if (Array.isArray(message.list)) {
     operatorPluginList = message.list;
     buildOperatorPluginRows();
   }
+  const uploadRow = document.getElementById('uploadPluginRow');
+  if (uploadRow) uploadRow.hidden = message.upload !== true;
   if (!operatorStaged) syncOperatorPanelFromServer();
   reloadLocale().catch((error) => console.warn(error));
 }
@@ -10048,8 +10068,8 @@ function refreshScoreboards() {
   refreshSettingsMenu();
 }
 
-// The Operator panel's Delete Upload choices: the maps and replays it
-// uploaded that are still here, as the server lists them.
+// The Operator panel's Delete Upload choices: the maps, replays and plugins
+// it uploaded that are still here, as the server lists them.
 function populateDeleteUploadSelect(uploaded) {
   const select = document.getElementById('deleteUploadSelect');
   if (!select) return;
@@ -10062,6 +10082,7 @@ function populateDeleteUploadSelect(uploaded) {
   };
   for (const name of uploaded?.maps || []) add('maps', name, t('map {name}', { name }));
   for (const name of uploaded?.replays || []) add('replays', name, t('replay {name}', { name }));
+  for (const name of uploaded?.plugins || []) add('plugins', name, t('plugin {name}', { name }));
   if (select.options.length === 0) {
     const none = document.createElement('option');
     none.value = '';
@@ -10635,6 +10656,18 @@ let serverOperatorConfig = {};
 // `init` and again after one loads or unloads.
 let operatorPluginList = [];
 const PLUGIN_KEY_PREFIX = 'plugin:';
+// A plugin's own option, `pluginOption:<id>:<name>` (`pluginOptionSpecs` on
+// the server), and a BZDB variable a plugin registered, `bzdb:<name>`.
+const PLUGIN_OPTION_PREFIX = 'pluginOption:';
+const PLUGIN_BZDB_PREFIX = 'bzdb:';
+
+function pluginOptionSpec(key) {
+  if (!key.startsWith(PLUGIN_OPTION_PREFIX)) return null;
+  const rest = key.slice(PLUGIN_OPTION_PREFIX.length);
+  const at = rest.indexOf(':');
+  const plugin = operatorPluginList.find((entry) => entry.id === rest.slice(0, at));
+  return plugin?.options?.find((option) => option.name === rest.slice(at + 1)) ?? null;
+}
 
 // Zero is a real setting, not a floor to clamp away: it is upstream's own
 // "tanks cannot shoot" (`-ms 0`), and an operator who can read it off a map
@@ -10711,6 +10744,8 @@ function getOperatorLimitLabel(team, rabbit) {
 // What a row's stepper may reach. In one place so the slider, the arrow keys and
 // the XR arrows cannot disagree about it.
 function getOperatorNumberBounds(key, state) {
+  const option = pluginOptionSpec(key);
+  if (option) return { min: option.min, max: option.max, step: option.step };
   if (key === 'shotMaxActive') return { min: SHOT_MAX_ACTIVE_MIN, max: SHOT_MAX_ACTIVE_MAX };
   if (key === 'timeLimit') return { min: 0, max: OPERATOR_TIME_LIMIT_MAX };
   if (key === 'maxPlayerScore' || key === 'maxTeamScore') return { min: 0, max: OPERATOR_SCORE_LIMIT_MAX };
@@ -10803,7 +10838,82 @@ function buildOperatorPluginRows() {
     }
     row.append(label, note);
     container.append(row);
+    for (const option of plugin.options ?? []) {
+      container.append(buildPluginOptionRow(`${PLUGIN_OPTION_PREFIX}${plugin.id}:${option.name}`, option));
+    }
+    // Its BZDB variables, by their own names, as `/set` names them.
+    for (const variable of plugin.variables ?? []) {
+      container.append(buildPluginOptionRow(`${PLUGIN_BZDB_PREFIX}${variable.name}`, { ...variable, maxLength: 200 }));
+    }
   }
+}
+
+// One row for a plugin's option, beneath its switch: a checkbox, a slider or a
+// list, which a headset steps with `menuadjust`, or a text field, which it
+// reaches through its virtual keyboard as the title's. Labelled by its help, which
+// says what it does where a tooltip cannot be read, with the name the option
+// has in server.json as the tooltip.
+function buildPluginOptionRow(key, option) {
+  const id = `pluginOption-${key.replace(/[^A-Za-z0-9_-]/g, '-')}`;
+  const row = document.createElement('div');
+  row.className = 'operatorRow operatorConfigRow operatorPluginOption';
+  if (option.type !== 'string') {
+    row.dataset.menuRow = key;
+    row.dataset.menuKind = option.type === 'number' ? 'range' : 'choice';
+  }
+  const label = document.createElement('label');
+  label.htmlFor = id;
+  label.textContent = option.help || option.name;
+  label.title = option.name;
+  if (option.type === 'boolean') {
+    label.className = 'operatorToggle';
+    const input = document.createElement('input');
+    input.type = 'checkbox';
+    input.id = id;
+    input.dataset.pluginOptionKey = key;
+    input.addEventListener('change', () => stageOperatorChange(key, input.checked));
+    label.prepend(input);
+    row.append(label);
+  } else if (option.type === 'number') {
+    const control = document.createElement('div');
+    control.className = 'volumeControl';
+    const slider = document.createElement('input');
+    slider.id = id;
+    slider.className = 'volumeSlider';
+    slider.type = 'range';
+    slider.min = String(option.min);
+    slider.max = String(option.max);
+    slider.step = String(option.step);
+    slider.dataset.pluginOptionKey = key;
+    const value = document.createElement('output');
+    value.className = 'volumeValue';
+    value.setAttribute('for', id);
+    slider.addEventListener('input', () => stageOperatorNumberValue(key, Number(slider.value)));
+    control.append(slider, value);
+    row.append(label, control);
+  } else if (option.type === 'string') {
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.id = id;
+    input.dir = 'auto';
+    input.maxLength = option.maxLength;
+    input.dataset.pluginOptionKey = key;
+    input.addEventListener('input', () => stageOperatorChange(key, input.value));
+    row.append(label, input);
+  } else {
+    const select = document.createElement('select');
+    select.id = id;
+    select.dataset.pluginOptionKey = key;
+    for (const choice of option.values) {
+      const item = document.createElement('option');
+      item.value = choice;
+      item.textContent = choice;
+      select.append(item);
+    }
+    select.addEventListener('change', () => stageOperatorChange(key, select.value));
+    row.append(label, select);
+  }
+  return row;
 }
 
 function setOperatorRangeRow(key, value, { disabled = false, max = null } = {}) {
@@ -10840,7 +10950,8 @@ function getOperatorChanges() {
 
 function operatorChangesNeedRestart(changes) {
   // A plugin loads or unloads where it stands, so its row never restarts.
-  return changes.some((key) => !liveConfigKeys.includes(key) && !key.startsWith(PLUGIN_KEY_PREFIX));
+  return changes.some((key) => !liveConfigKeys.includes(key) && !key.startsWith(PLUGIN_KEY_PREFIX)
+    && !key.startsWith(PLUGIN_OPTION_PREFIX) && !key.startsWith(PLUGIN_BZDB_PREFIX));
 }
 
 // Writes the staged values into the panel and labels the confirm by what it is
@@ -10856,6 +10967,19 @@ function operatorChangesNeedRestart(changes) {
 function paintOperatorRows(state) {
   for (const input of document.querySelectorAll('#operatorPlugins input[data-plugin-key]')) {
     input.checked = state[input.dataset.pluginKey] === true;
+  }
+  for (const control of document.querySelectorAll('#operatorPlugins [data-plugin-option-key]')) {
+    const value = state[control.dataset.pluginOptionKey];
+    if (control.type === 'checkbox') {
+      control.checked = value === true;
+    } else if (control.type === 'range') {
+      control.value = String(value);
+      const output = control.parentElement.querySelector('output');
+      if (output) output.textContent = String(value);
+    } else if (control !== document.activeElement) {
+      // Not the field being typed in, whose caret a repaint would move.
+      control.value = String(value);
+    }
   }
   const rabbit = Boolean(state.rabbit) && state.rabbit !== 'off';
   setOperatorRangeRow('shotMaxActive', state.shotMaxActive);
@@ -10982,7 +11106,11 @@ function stageOperatorChange(key, value) {
 function stageOperatorNumberValue(key, value) {
   if (!operatorStaged) operatorStaged = getOperatorServerState();
   const bounds = getOperatorNumberBounds(key, operatorStaged);
-  const next = Math.max(bounds.min, Math.min(bounds.max, Math.round(Number(value) || 0)));
+  // A plugin's option moves by its own step, which may be a fraction; every
+  // other row is a whole number.
+  const step = bounds.step ?? 1;
+  const stepped = Number((Math.round((Number(value) || 0) / step) * step).toFixed(6));
+  const next = Math.max(bounds.min, Math.min(bounds.max, stepped));
   stageOperatorChange(key, next);
   // CmdLineOptions.cxx:453: a playing team may not be allowed more players than
   // the whole game is. The server clamps on the way in; doing it here as well is
@@ -11000,6 +11128,8 @@ function stageOperatorNumberValue(key, value) {
 // keys. A plain count wants 1; a number of seconds wants the slider's own
 // step, or fifteen presses reaches fifteen seconds.
 function getOperatorNumberStep(key) {
+  const option = pluginOptionSpec(key);
+  if (option) return option.step;
   return key === 'timeLimit' ? OPERATOR_TIME_LIMIT_STEP : 1;
 }
 
@@ -15338,7 +15468,7 @@ function checkFlagCapture() {
   const ownFlagOnEnemyBase = flagTeamIndex === myTeamIndex && baseTeamIndex !== myTeamIndex;
   const enemyFlagOnMyBase = flagTeamIndex !== myTeamIndex && baseTeamIndex === myTeamIndex;
   if (!ownFlagOnEnemyBase && !enemyFlagOnMyBase) return;
-  // `_disallowSelfCap`, the ctfOverseer plugin's: the server would refuse it,
+  // `_disallowSelfCap`, the ctfoverseer plugin's: the server would refuse it,
   // so it is not asked. Upstream's client asks every frame.
   if (ownFlagOnEnemyBase && gameConfig?.DISALLOW_SELF_CAP === true) return;
 

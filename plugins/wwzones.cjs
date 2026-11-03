@@ -41,7 +41,6 @@ module.exports = {
     author: 'Tim Riker, after upstream',
     description: 'a map\'s wwzone blocks fire a world weapon at a tank that drives in',
     license: 'AGPL-3.0',
-    enabled: false,
   },
 
   Init(bz) {

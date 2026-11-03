@@ -19,6 +19,8 @@ const require = createRequire(import.meta.url);
 const {
   createPluginHost, pluginSetting, EVENT_TYPES, CustomZoneObject, scanCustomMapObjects,
 } = require('../server/plugins.cjs');
+const { indexPage, servePage } = require('../server/plugin-http.cjs');
+const express = require('express');
 
 const root = fs.mkdtempSync(path.join(os.tmpdir(), 'bzo-plugins-'));
 const bundled = path.join(root, 'bundled');
@@ -73,29 +75,37 @@ module.exports = {
 `);
 write(bundled, 'nometa', 'module.exports = { Init() {} };');
 write(bundled, 'syntax', 'module.exports = {');
-const SAMPLE_META = "meta: { name: 'S', version: '1.0', author: 'a', description: 'd', enabled: false }";
+const SAMPLE_META = "meta: { name: 'S', version: '1.0', author: 'a', description: 'd' }";
 write(bundled, 'sample', `module.exports = { ${SAMPLE_META}, Init(bz) { bz.Register(bz.bz_eTickEvent); } };`);
 write(bundled, 'sampleon', `module.exports = { ${SAMPLE_META}, Init(bz) { bz.Register(bz.bz_eGameEndEvent); } };`);
 write(bundled, 'off', `module.exports = { ${META}, Init(bz) { bz.Register(bz.bz_eKillEvent); } };`);
 write(bundled, 'replaced', `module.exports = { ${META}, Init(bz) { bz.Register(bz.bz_eKillEvent); } };`);
 write(installed, 'replaced', `module.exports = { ${META}, Init(bz) { bz.Register(bz.bz_eCaptureEvent); } };`);
+// An installed file nobody named: not started, and not even read.
+write(installed, 'unnamed', `module.exports = { ${META}, Init() { throw new Error('ran'); } };
+globalThis.unnamedWasRead = true;`);
 fs.writeFileSync(path.join(bundled, 'notes.txt'), 'not a plugin');
 
 const lines = [];
 const host = createPluginHost({
   dirs: [bundled, installed],
-  settings: { off: false, counter: { limit: 3 }, sampleon: true },
+  settings: {
+    off: false, counter: { limit: 3 }, sampleon: true, second: true, thrower: true, badinit: true, replaced: true,
+  },
   log: (text) => lines.push(text),
 });
 host.loadAll();
 
 const byId = Object.fromEntries(host.list().map((entry) => [entry.id, entry]));
 assert.deepEqual(Object.keys(byId).sort(),
-  ['badinit', 'counter', 'nometa', 'off', 'replaced', 'sample', 'sampleon', 'second', 'syntax', 'thrower']);
+  ['badinit', 'counter', 'nometa', 'off', 'replaced', 'sample', 'sampleon', 'second', 'syntax', 'thrower', 'unnamed']);
 assert.equal(byId.counter.state, 'loaded');
 assert.equal(byId.off.state, 'off', 'server.json false turns a plugin off');
-assert.equal(byId.sample.state, 'off', 'meta.enabled false is off by default');
-assert.equal(byId.sample.meta.name, 'S', 'and still listed with its meta');
+assert.equal(byId.sample.state, 'off', 'a plugin server.json does not name is off');
+assert.equal(byId.sample.meta.name, 'S', 'and a bundled one is still listed with its meta');
+assert.equal(byId.unnamed.state, 'off', 'an installed one too');
+assert.equal(byId.unnamed.meta, null, 'and is not read, which would run it');
+assert.equal(globalThis.unnamedWasRead, undefined);
 assert.equal(host.listening('bz_eTickEvent'), false, 'without being started');
 assert.equal(byId.sampleon.state, 'loaded', 'until server.json turns it on');
 assert.equal(byId.nometa.state, 'failed');
@@ -140,7 +150,12 @@ assert.equal(host.callEvents('bz_ePlayerJoinEvent', { count: 0 }).count, 10);
 assert.equal(host.list().find((entry) => entry.id === 'counter').state, 'off');
 assert.equal(host.load('counter').state, 'loaded', 'and it loads again');
 
-assert.deepEqual(pluginSetting(undefined, 'x'), { enabled: true, config: {} });
+assert.deepEqual(pluginSetting(undefined, 'x'), { enabled: false, config: {} });
+assert.deepEqual(pluginSetting({ x: true }, 'x'), { enabled: true, config: {} });
+assert.deepEqual(pluginSetting({ ctfOverseer: true }, 'ctfoverseer'), { enabled: true, config: {} },
+  'a name in another case still reads');
+assert.deepEqual(pluginSetting({ ctfOverseer: true, ctfoverseer: false }, 'ctfoverseer'), { enabled: false, config: {} },
+  'its own spelling first');
 assert.deepEqual(pluginSetting({ x: { enabled: false, a: 1 } }, 'x'), { enabled: false, config: { a: 1 } });
 assert.ok(EVENT_TYPES.includes('bz_eAuthenticatonComplete'), "upstream's spelling");
 assert.equal(new Set(EVENT_TYPES).size, EVENT_TYPES.length);
@@ -163,7 +178,7 @@ module.exports = {
   Event(data) { if (data.eventType === 'bz_eTickEvent' && data.eventTime > 0) this.ticks += 1; },
 };
 `);
-  const tickHost = createPluginHost({ dirs: [tickDir], timers: fakeTimers });
+  const tickHost = createPluginHost({ dirs: [tickDir], timers: fakeTimers, settings: { ticker: true } });
   tickHost.loadAll();
   assert.equal(intervals.size, 1, 'a listener starts the tick');
   [...intervals][0].fn();
@@ -172,7 +187,7 @@ module.exports = {
   assert.equal(intervals.size, 0, 'and the last one leaving stops it');
 }
 
-// The bundled ctfOverseer against a stub of the server's API.
+// The bundled ctfoverseer against a stub of the server's API.
 {
   const vars = new Map();
   const sent = [];
@@ -189,10 +204,10 @@ module.exports = {
   const bundledDir = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..', 'plugins');
   const off = createPluginHost({ dirs: [bundledDir], api });
   off.loadAll();
-  assert.equal(off.list().find((entry) => entry.id === 'ctfOverseer').state, 'off', 'off by default');
+  assert.equal(off.list().find((entry) => entry.id === 'ctfoverseer').state, 'off', 'off by default');
   assert.equal(vars.size, 0, 'and registers nothing');
 
-  const ctf = createPluginHost({ dirs: [bundledDir], api, settings: { ctfOverseer: true } });
+  const ctf = createPluginHost({ dirs: [bundledDir], api, settings: { ctfoverseer: true } });
   ctf.loadAll();
   assert.equal(vars.get('_disallowSelfCap'), '1', "on, with allejo's defaults");
   assert.equal(vars.get('_delayTeamFlagGrab'), '20');
@@ -249,10 +264,10 @@ module.exports = {
   };
   const host = createPluginHost({
     dirs: [bundledDir], api,
-    settings: { killall: true, rabbitTimer: { time: 10 }, teamflagreset: true, autoFlagReset: { minutes: 1 } },
+    settings: { killall: true, rabbittimer: { time: 10 }, teamflagreset: true, autoflagreset: { minutes: 1 } },
   });
   host.loadAll();
-  for (const id of ['killall', 'rabbitTimer', 'teamflagreset', 'autoFlagReset']) {
+  for (const id of ['killall', 'rabbittimer', 'teamflagreset', 'autoflagreset']) {
     assert.equal(host.list().find((entry) => entry.id === id).state, 'loaded', `${id} loads when asked`);
   }
   const tick = () => host.callEvents('bz_eTickEvent', { eventTime: now });
@@ -264,7 +279,7 @@ module.exports = {
   assert.deepEqual(sent.at(-1).params, { player: 'p2' });
   killed.length = 0;
 
-  // rabbitTimer: told its time once there are three hunters, killed by the
+  // rabbittimer: told its time once there are three hunters, killed by the
   // server when it runs out.
   tick();
   assert.equal(sent.at(-1).to, 1);
@@ -275,7 +290,7 @@ module.exports = {
   assert.deepEqual(killed, [{ id: 1, killer: -2 }], 'the rabbit, by the server');
   assert.equal(sent.at(-1).text, "Time's up! Selecting new rabbit.");
 
-  // autoFlagReset: every flag nobody holds but the team flags and empty slots.
+  // autoflagreset: every flag nobody holds but the team flags and empty slots.
   now += 60;
   tick();
   assert.deepEqual(resets, [], 'not before its first period has passed');
@@ -309,10 +324,10 @@ module.exports = {
   const off = createPluginHost({ dirs: [bundledDir], api: stub });
   off.loadAll();
   assert.deepEqual(off.messages('de'), {}, 'nothing while no plugin with strings runs');
-  const on = createPluginHost({ dirs: [bundledDir], api: stub, settings: { ctfOverseer: true } });
+  const on = createPluginHost({ dirs: [bundledDir], api: stub, settings: { ctfoverseer: true } });
   on.loadAll();
   const msgid = 'You cannot grab the {team} team flag for another ~{seconds} seconds';
-  assert.match(on.messages('de')[msgid], /Team \{team\}/, "ctfOverseer's German");
+  assert.match(on.messages('de')[msgid], /Team \{team\}/, "ctfoverseer's German");
 
   const l10n = require('../server/l10n.cjs');
   l10n.usePluginMessages((locale) => ({ ...on.messages(locale), Red: 'not bzo\'s' }));
@@ -336,7 +351,9 @@ module.exports = {
   write(dir, 'b-other', `module.exports = { ${META}, Init() {},
     l10n: { de: { 'Game over': 'Ende' } } };`);
   const lines = [];
-  const host = createPluginHost({ dirs: [dir], log: (line) => lines.push(line) });
+  const host = createPluginHost({
+    dirs: [dir], log: (line) => lines.push(line), settings: { 'a-welcome': true, 'b-other': true },
+  });
   host.loadAll();
   l10n.usePluginMsgids(() => host.msgids());
   const match = l10n.matchServerLine;
@@ -416,7 +433,7 @@ module.exports = {
 }
 
 // Custom map objects and zones, as upstream's reader and bz_CustomZoneObject
-// have them, and flagStay built on both.
+// have them, and flagstay built on both.
 {
   const map = `
 box
@@ -462,7 +479,7 @@ end
   let held = 'GM';
   const host = createPluginHost({
     dirs: [bundledDir],
-    settings: { flagStay: true },
+    settings: { flagstay: true },
     api: {
       BZ_SERVER: -2,
       bz_CustomZoneObject: CustomZoneObject,
@@ -473,7 +490,7 @@ end
     },
   });
   host.loadAll();
-  assert.equal(host.list().find((entry) => entry.id === 'flagStay').state, 'loaded');
+  assert.equal(host.list().find((entry) => entry.id === 'flagstay').state, 'loaded');
   const move = (pos) => host.callEvents('bz_ePlayerUpdateEvent', { playerID: 3, state: { pos } });
   host.callEvents('bz_eFlagGrabbedEvent', { playerID: 3, flagType: 'SW', pos: [100, 0, 0] });
   move([200, 0, 0]);
@@ -487,13 +504,13 @@ end
   held = null;
 }
 
-// shockwaveDeath: a server shockwave where each tank dies.
+// shockwavedeath: a server shockwave where each tank dies.
 {
   const bundledDir = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..', 'plugins');
   const fired = [];
   const host = createPluginHost({
     dirs: [bundledDir],
-    settings: { shockwaveDeath: true },
+    settings: { shockwavedeath: true },
     api: { bz_fireServerShot: (...args) => { fired.push(args); return 1; } },
   });
   host.loadAll();
@@ -587,6 +604,440 @@ end
   assert.deepEqual(said.at(-1), { text: 'Shot fired by {player} with Custom Flag!', params: { player: 'tank' } });
   host.callEvents('bz_ePlayerDieEvent', { playerID: 5, flagKilledWith: 'CF' });
   assert.deepEqual(said.at(-1).params, { player: 'victim' });
+}
+
+// compassletters: four letters join the world a BZFlag client is sent, and
+// none join bzo's own.
+{
+  const bundledDir = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..', 'plugins');
+  const host = createPluginHost({ dirs: [bundledDir], settings: { compassletters: true } });
+  host.loadAll();
+  assert.equal(host.list().find((entry) => entry.id === 'compassletters').state, 'loaded');
+  const tree = () => ({ managers: { materials: [], physicsDrivers: [] }, world: { obstacles: { mesh: [] } } });
+  const world = { worldSize: 800, wallHeight: 6.15, maxHeight: 40 };
+  const bzflag = host.callEvents('bz_eGetWorldEvent', { world: 'bzflag', tree: tree(), ...world });
+  assert.equal(bzflag.tree.world.obstacles.mesh.length, 4);
+  assert.equal(bzflag.tree.managers.materials.length, 5);
+  const top = Math.max(...bzflag.tree.world.obstacles.mesh.flatMap((mesh) => mesh.vertices.map((v) => v[2])));
+  assert.ok(top > 45 && top < 45 + 30, 'centred at the tallest obstacle plus 5');
+  const bzo = host.callEvents('bz_eGetWorldEvent', { world: 'bzo', tree: tree(), ...world });
+  assert.equal(bzo.tree.world.obstacles.mesh.length, 0);
+}
+
+// koth: holding the hill for its hold time kills everyone else, and a team
+// holds it together under teamplay.
+{
+  const map = (extra) => `koth
+  position 0 0 0
+  size 10 10 5
+  holdtime 40
+${extra}end
+`;
+  const bundledDir = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..', 'plugins');
+  const run = (extra) => {
+    const state = { now: 0, killed: [], said: [], team: [] };
+    const tanks = new Map([
+      [1, { playerID: 1, callsign: 'king', team: 1, spawned: true, admin: true, lastKnownState: { pos: [0, 0, 0] } }],
+      [2, { playerID: 2, callsign: 'mate', team: 1, spawned: true, admin: false, lastKnownState: { pos: [90, 0, 0] } }],
+      [3, { playerID: 3, callsign: 'other', team: 2, spawned: true, admin: false, lastKnownState: { pos: [90, 0, 0] } }],
+    ]);
+    const host = createPluginHost({
+      dirs: [bundledDir],
+      settings: { koth: true },
+      api: {
+        BZ_SERVER: -2, BZ_ALLUSERS: -1, eNoTeam: -1, eRogueTeam: 0, eRedTeam: 1, eGreenTeam: 2, eBlueTeam: 3, ePurpleTeam: 4,
+        bz_CustomZoneObject: CustomZoneObject,
+        bz_customMapObjects: (name) => scanCustomMapObjects(map(extra), name),
+        bz_getCurrentTime: () => state.now,
+        bz_getTeamCount: (team) => [...tanks.values()].filter((tank) => tank.team === team).length,
+        bz_getPlayerIndexList: () => [...tanks.keys()],
+        bz_getPlayerByIndex: (id) => tanks.get(id) ?? null,
+        bz_killPlayer: (id, _base, killer) => { state.killed.push([id, killer]); return true; },
+        bz_sendPlayCustomLocalSound: () => false,
+        bz_sendTextMessage: (from, to, text, params) => { state.said.push({ from, to, text, params }); return true; },
+        bz_sendTextMessageToTeam: (from, team, text) => { state.team.push({ team, text }); return true; },
+      },
+    });
+    host.loadAll();
+    // The hold time is applied as players join, as upstream applies it.
+    for (const id of tanks.keys()) host.callEvents('bz_ePlayerJoinEvent', { playerID: id });
+    const move = (id, pos) => {
+      tanks.get(id).lastKnownState.pos = pos;
+      host.callEvents('bz_ePlayerUpdateEvent', { playerID: id, state: { pos } });
+    };
+    return { host, state, move, tanks };
+  };
+
+  const solo = run('');
+  solo.move(1, [1, 1, 1]);
+  assert.ok(solo.state.said.some((line) => line.text === '{player} has Hill; will be King in {seconds} secs!'
+    && line.params.seconds === 40), 'a hold time not a multiple of 30 is announced');
+  solo.state.now = 39;
+  solo.move(1, [1, 1, 1]);
+  assert.deepEqual(solo.state.killed, []);
+  solo.state.now = 40;
+  solo.move(1, [1, 1, 1]);
+  assert.deepEqual(solo.state.killed, [[2, 1], [3, 1]], 'everyone else dies, killed by the king');
+  assert.equal(solo.state.said.at(-1).text, 'You are King of the Hill!  You must leave hill to retake it.');
+  solo.state.killed.length = 0;
+  solo.state.now = 100;
+  solo.move(1, [1, 1, 1]);
+  assert.deepEqual(solo.state.killed, [], 'the king must leave before taking it again');
+
+  solo.host.callEvents('bz_ePlayerPausedEvent', { playerID: 1, pause: true });
+  assert.deepEqual(solo.state.killed, [[1, -2]], 'no pausing on the hill');
+
+  assert.equal(solo.host.slashCommand(3, 0, '/kothtime 90'), true);
+  assert.equal(solo.state.said.at(-1).text, 'You must be admin to use the koth commands.');
+  solo.host.slashCommand(1, 0, '/kothtime 90');
+  assert.deepEqual(solo.state.said.at(-1).params, { seconds: 90 });
+
+  const team = run('  teamplay\n');
+  team.move(1, [1, 1, 1]);
+  team.move(2, [2, 2, 1]);
+  team.state.now = 40;
+  team.move(2, [2, 2, 1]);
+  assert.deepEqual(team.state.killed, [[3, -2]], 'the other team dies, killed by the server');
+  assert.deepEqual(team.state.team, [{ team: 1, text: 'Your team is King of the Hill!  Entire team must leave hill to retake it.' }]);
+}
+
+// holdtheflag: only its team plays, a capture scores the capper and resets
+// the flags, and the match end names the winner.
+{
+  const bundledDir = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..', 'plugins');
+  const said = [];
+  const kicked = [];
+  const resets = [];
+  const host = createPluginHost({
+    dirs: [bundledDir],
+    settings: { holdtheflag: { team: 'red' } },
+    api: {
+      BZ_SERVER: -2, BZ_ALLUSERS: -1, eNoTeam: -1, eRogueTeam: 0, eRedTeam: 1, eGreenTeam: 2, eBlueTeam: 3,
+      ePurpleTeam: 4, eRabbitTeam: 5, eHunterTeam: 6, eObservers: 7, eAdministrators: 8,
+      bz_getPlayerIndexList: () => [],
+      bz_getPlayerByIndex: () => null,
+      bz_debugMessage: () => {},
+      bz_hasPerm: (id, perm) => id === 1 && perm === 'COUNTDOWN',
+      bz_resetFlags: (onlyUnused) => { resets.push(onlyUnused); },
+      bz_kickUser: (id, reason, notify) => { kicked.push({ id, reason, notify }); return true; },
+      bz_sendTextMessage: (from, to, text, params) => { said.push({ to, text, params }); return true; },
+    },
+  });
+  host.loadAll();
+  const join = (id, team, callsign) => host.callEvents('bz_ePlayerJoinEvent', { playerID: id, record: { team, callsign } });
+  join(1, 1, 'alpha');
+  join(2, 1, 'beta');
+  join(3, 2, 'green');
+  join(4, 7, 'watcher');
+  assert.deepEqual(kicked, [{ id: 3, reason: 'HTF mode enabled, you must join the Red team to play', notify: true }]);
+  host.callEvents('bz_eGameStartEvent', {});
+  host.callEvents('bz_eCaptureEvent', { playerCapping: 2 });
+  host.callEvents('bz_eCaptureEvent', { playerCapping: 1 });
+  host.callEvents('bz_eCaptureEvent', { playerCapping: 2 });
+  assert.deepEqual(resets, [false, false, false], 'every flag back on each capture');
+  said.length = 0;
+  host.callEvents('bz_eGameEndEvent', {});
+  assert.deepEqual(said.map((line) => line.params?.player?.trim() ?? line.text), [
+    '**** HTF  Scoreboard ****', 'beta', 'alpha', 'HTF MATCH has ended.', 'beta',
+  ]);
+  assert.equal(said[1].params.mark, '*', 'the last capper is marked');
+  assert.equal(said.at(-1).text, '{player} is the WINNER !');
+  host.slashCommand(2, 0, '/htf reset');
+  assert.equal(said.at(-1).text, 'you need "{permission}" permission to do /htf {command}');
+  host.slashCommand(1, 0, '/htf reset');
+  assert.deepEqual(said.at(-1).params, { player: 'alpha' });
+}
+
+// keepaway: the listed flags in turn; keeping one for the hold time kills
+// everyone else and names the next.
+{
+  const map = `keepaway
+  keepawayflags GM XX L
+  holdtime 40
+end
+`;
+  const bundledDir = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..', 'plugins');
+  let now = 0;
+  const killed = [];
+  const said = [];
+  const removed = [];
+  const held = new Map();
+  const tanks = new Map([
+    [1, { playerID: 1, callsign: 'keeper', team: 1, spawned: true, admin: true }],
+    [2, { playerID: 2, callsign: 'chaser', team: 2, spawned: true, admin: false }],
+  ]);
+  const host = createPluginHost({
+    dirs: [bundledDir],
+    settings: { keepaway: true },
+    api: {
+      BZ_SERVER: -2, BZ_ALLUSERS: -1, eNoTeam: -1, eRogueTeam: 0, eRedTeam: 1, eGreenTeam: 2, eBlueTeam: 3, ePurpleTeam: 4,
+      bz_customMapObjects: (name) => scanCustomMapObjects(map, name),
+      bz_getCurrentTime: () => now,
+      bz_getTeamCount: (team) => [...tanks.values()].filter((tank) => tank.team === team).length,
+      bz_getPlayerIndexList: () => [...tanks.keys()],
+      bz_getPlayerByIndex: (id) => tanks.get(id) ?? null,
+      bz_getPlayerFlag: (id) => held.get(id) ?? null,
+      bz_removePlayerFlag: (id) => { removed.push(id); held.delete(id); return true; },
+      bz_killPlayer: (id, _base, killer) => { killed.push([id, killer]); return true; },
+      bz_resetFlags: () => {},
+      bz_sendPlayCustomLocalSound: () => false,
+      bz_sendTextMessage: (from, to, text, params) => { said.push({ to, text, params }); return true; },
+      bz_sendTextMessageToTeam: () => true,
+    },
+  });
+  host.loadAll();
+  for (const id of tanks.keys()) host.callEvents('bz_ePlayerJoinEvent', { playerID: id, record: tanks.get(id) });
+  assert.deepEqual(said.at(-1).params, { flag: 'Guided Missile (GM)', seconds: 40 }, 'the first flag, told on joining');
+  const update = () => host.callEvents('bz_ePlayerUpdateEvent', { playerID: 1, state: { pos: [0, 0, 0] } });
+  update();
+  assert.equal(said.at(-1).text, 'Keep Away flag: {flag} is free; find it and keep it!');
+  held.set(1, 'GM');
+  update();
+  assert.equal(said.at(-1).text, '{player} has {flag} flag; {seconds} secs left!');
+  now = 40;
+  update();
+  assert.deepEqual(killed, [[2, 1]], 'the other tank dies, killed by the keeper');
+  assert.deepEqual(removed, [1], 'the kept flag is given up');
+  host.slashCommand(2, 0, '/kaf');
+  assert.deepEqual(said.at(-1).params, { flag: 'Laser (L)' }, 'XX is no flag, so L is next');
+  host.slashCommand(1, 0, '/kaf+');
+  assert.deepEqual(said.at(-1).params, { flag: 'Guided Missile (GM)' }, 'and the list goes round');
+}
+
+// chathistory, timelimit, timedctf and fairctf against a stub server.
+{
+  const bundledDir = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..', 'plugins');
+  const TEAMS = {
+    BZ_SERVER: -2, BZ_ALLUSERS: -1, eNoTeam: -1, eRogueTeam: 0, eRedTeam: 1, eGreenTeam: 2, eBlueTeam: 3,
+    ePurpleTeam: 4, eObservers: 7, eAdministrators: 8,
+  };
+  const stub = (id, api) => {
+    const state = { said: [], team: [] };
+    const host = createPluginHost({
+      dirs: [bundledDir],
+      settings: { [id]: api.config ?? true },
+      api: {
+        ...TEAMS,
+        bz_sendTextMessage: (from, to, text, params) => { state.said.push({ from, to, text, params }); return true; },
+        bz_sendTextMessageToTeam: (from, team, text, params) => { state.team.push({ team, text, params }); return true; },
+        bz_sendPlayCustomLocalSound: () => false,
+        ...api,
+      },
+    });
+    host.loadAll();
+    return { host, state };
+  };
+
+  // chathistory: admins read back what a callsign said, oldest first.
+  {
+    const { host, state } = stub('chathistory', {
+      config: { lines: 2 },
+      bz_getAdmin: (id) => id === 1,
+      bz_getPlayerByIndex: (id) => ({ playerID: id, callsign: id === 1 ? 'Admin' : 'Talker' }),
+    });
+    for (const message of ['one', 'two', 'three']) host.callEvents('bz_eRawChatMessageEvent', { from: 2, message });
+    host.slashCommand(2, 0, '/last 5 talker');
+    assert.equal(state.said.at(-1).text, 'You must be admin to use the ChatHistory plugin');
+    host.slashCommand(1, 0, '/last 5 TALKER');
+    assert.deepEqual(state.said.slice(-3).map((line) => line.params.message ?? line.params.count), [2, 'two', 'three']);
+  }
+
+  // timelimit: the next match's length, back to the server's own after it.
+  {
+    let limit = 600;
+    const { host, state } = stub('timelimit', {
+      config: { times: '10,15' },
+      bz_getTimeLimit: () => limit,
+      bz_setTimeLimit: (seconds) => { limit = seconds; return true; },
+      bz_isTimeManualStart: () => true,
+      bz_isCountDownActive: () => false,
+      bz_isCountDownInProgress: () => false,
+      bz_getPlayerCount: () => 2,
+      bz_hasPerm: () => true,
+      bz_getPlayerByIndex: () => ({ callsign: 'op' }),
+    });
+    host.slashCommand(1, 0, '/timelimit 12');
+    assert.equal(limit, 600, 'not in the list');
+    assert.deepEqual(state.said.slice(-2).map((line) => line.params?.minutes), [10, 15]);
+    host.slashCommand(1, 0, '/timelimit 15');
+    assert.equal(limit, 900);
+    host.callEvents('bz_eGameEndEvent', {});
+    assert.equal(limit, 600, 'back after the match');
+  }
+
+  // timedctf: a team that does not capture in time dies.
+  {
+    let now = 0;
+    const killed = [];
+    const tanks = [{ playerID: 1, team: 1 }, { playerID: 2, team: 2 }];
+    const { host, state } = stub('timedctf', {
+      config: { minutes: 1 },
+      bz_getCurrentTime: () => now,
+      bz_getTeamCount: (team) => tanks.filter((tank) => tank.team === team).length,
+      bz_getPlayerIndexList: () => tanks.map((tank) => tank.playerID),
+      bz_getPlayerByIndex: (id) => tanks.find((tank) => tank.playerID === id) ?? null,
+      bz_killPlayer: (id) => { killed.push(id); return true; },
+    });
+    host.callEvents('bz_eTickEvent', {});
+    assert.equal(state.said.at(-1).text, 'Timed CTF now in progress - capture a flag in less than {minutes} minute(s)!');
+    now = 30;
+    host.callEvents('bz_eCaptureEvent', { teamCapping: 1 });
+    assert.equal(state.team.at(-1).params.team, 'red');
+    now = 61;
+    host.callEvents('bz_eTickEvent', {});
+    assert.deepEqual(killed, [], 'a warning due first takes the tick, as upstream');
+    now = 62;
+    host.callEvents('bz_eTickEvent', {});
+    assert.deepEqual(killed, [2], 'green never captured');
+    assert.deepEqual(state.said.at(-1).params, { team: 'GREEN' });
+  }
+
+  // fairctf: uneven teams refuse team flags, and a held one goes after the delay.
+  {
+    let now = 0;
+    const counts = { 1: 1, 2: 0 };
+    const removed = [];
+    const { host, state } = stub('fairctf', {
+      config: { dropDelay: 3 },
+      bz_getCurrentTime: () => now,
+      bz_getTeamCount: (team) => counts[team] ?? 0,
+      bz_getPlayerIndexList: () => [1],
+      bz_getPlayerFlag: () => 'G*',
+      bz_getFlagName: () => 'R*',
+      bz_getPlayerByIndex: () => ({ callsign: 'red', currentFlag: 'Green Team (+G*)' }),
+      bz_removePlayerFlag: (id) => { removed.push(id); return true; },
+      bz_hasPerm: () => true,
+    });
+    counts[2] = 4;
+    host.callEvents('bz_ePlayerJoinEvent', { playerID: 2 });
+    assert.equal(state.said.at(-1).text, 'Currently-held team flags will be dropped in {seconds} seconds.');
+    const grab = host.callEvents('bz_eAllowFlagGrab', { playerID: 1, flagID: 0, allow: true });
+    assert.equal(grab.allow, false);
+    now = 3;
+    host.callEvents('bz_eTickEvent', {});
+    assert.deepEqual(removed, [1]);
+    host.slashCommand(1, 0, '/ctf on');
+    assert.equal(state.team.at(-1).team, 8, 'the admins hear who changed it');
+    assert.equal(host.callEvents('bz_eAllowFlagGrab', { playerID: 1, flagID: 0, allow: true }).allow, true);
+  }
+}
+
+// mapchange: a new game on a listed map, never during a match.
+{
+  const bundledDir = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..', 'plugins');
+  const said = [];
+  const changes = [];
+  const kicked = [];
+  const host = createPluginHost({
+    dirs: [bundledDir],
+    settings: { mapchange: { maps: 'HiX hix.bzw, bzo bzo.bzw, Gone gone.bzw' } },
+    api: {
+      BZ_SERVER: -2, BZ_ALLUSERS: -1,
+      bz_getPlayerByIndex: (id) => ({ playerID: id, callsign: id === 1 ? 'op' : 'pleb' }),
+      bz_hasPerm: (id, perm) => id === 1 && perm === 'MAPCHANGE',
+      bz_changeMap: (file, by) => { changes.push([file, by]); return file === 'gone.bzw' ? 'Map file not found' : true; },
+      bz_kickUser: (id) => { kicked.push(id); return true; },
+      bz_sendTextMessage: (from, to, text, params) => { said.push({ to, text, params }); return true; },
+    },
+  });
+  host.loadAll();
+  host.slashCommand(2, 0, '/maplist');
+  assert.deepEqual(said.slice(-3).map((line) => line.params.name), ['HiX', 'bzo', 'Gone']);
+  host.slashCommand(2, 0, '/mapchange hix');
+  assert.equal(said.at(-1).text, 'Sorry, you are not allowed to change configurations on this server');
+  host.slashCommand(1, 0, '/mapchange hix');
+  assert.deepEqual(changes, [['hix.bzw', '"op" via /mapchange']]);
+  assert.deepEqual(said.at(-1).params, { name: 'HiX', player: 'op' });
+  host.slashCommand(1, 0, '/mapchange gone');
+  assert.deepEqual(said.at(-1).params, { name: 'Gone', error: 'Map file not found' }, 'nothing announced when it fails');
+  host.callEvents('bz_eGameStartEvent', {});
+  host.slashCommand(1, 0, '/mapchange hix');
+  assert.deepEqual(kicked, [1], 'not during a match');
+}
+
+// Web pages: upstream's VDir at /plugins/<name>/, its Request and Response,
+// eWaitForIt asked again, and the page gone with its plugin.
+{
+  const dir = path.join(root, 'web');
+  fs.mkdirSync(dir);
+  write(dir, 'stats', `module.exports = {
+    meta: { name: 'Stats', version: '1.0', author: 'a', description: 'd' },
+    Init(bz) {
+      let polls = 0;
+      bz.bzhttp_RegisterVDir(this, {
+        VDirName: () => 'stats',
+        VDirDescription: () => 'Scores & <more>',
+        GeneratePage(request, response) {
+          if (request.Resource.endsWith('/missing')) return bz.eNoPage;
+          if (request.Resource.endsWith('/throw')) throw new Error('boom');
+          if (request.Resource.endsWith('/slow') && ++polls < 3) return bz.eWaitForIt;
+          if (request.Resource.endsWith('/go')) {
+            response.ReturnCode = bz.e302Found;
+            response.RedirectLocation = '/elsewhere';
+            return bz.ePageDone;
+          }
+          response.ReturnCode = bz.e200OK;
+          response.DocumentType = bz.eJSON;
+          response.ForceNoCache = true;
+          response.AddHeader('X-Plugin', 'stats');
+          response.AddBodyData(JSON.stringify({
+            type: request.RequestType, resource: request.Resource, who: request.GetParamater('who'),
+            form: request.GetParamater('team'), header: request.GetHeader('X-TEST'), polls,
+          }));
+          return bz.ePageDone;
+        },
+      });
+      module.exports.twice = bz.bzhttp_RegisterVDir({ VDirName: () => 'STATS', GeneratePage: () => 2 });
+    },
+  };`);
+  const host = createPluginHost({ dirs: [dir], log: () => {}, settings: { stats: true } });
+  host.loadAll();
+  assert.equal(host.list()[0].state, 'loaded', host.list()[0].error);
+  assert.equal(require(path.join(dir, 'stats.cjs')).twice, false, 'one page set per name, in any case');
+  const errors = [];
+  const app = express();
+  app.use('/plugins', express.raw({ type: () => true }), (req, res) => {
+    const [, name = '', ...rest] = req.path.split('/');
+    if (!name) { res.type('html').send(indexPage(host.webPages(), 'here')); return; }
+    const page = host.webPage(name);
+    if (!page || rest.length === 0) { res.status(404).end(); return; }
+    servePage(page.vdir, page.name, req, res, { body: req.body, address: '1.2.3.4', report: (e) => errors.push(e) });
+  });
+  const server = await new Promise((resolve) => { const s = app.listen(0, '127.0.0.1', () => resolve(s)); });
+  const base = `http://127.0.0.1:${server.address().port}/plugins`;
+  try {
+    const index = await (await fetch(`${base}/`)).text();
+    assert.ok(index.includes('<a href="/plugins/stats/">stats</a>&nbsp;Scores &#38; &#60;more&#62;'), index);
+
+    const got = await fetch(`${base}/STATS/x?who=me`, { headers: { 'X-Test': 'yes' } });
+    assert.equal(got.status, 200);
+    assert.match(got.headers.get('content-type'), /^application\/json/);
+    assert.equal(got.headers.get('cache-control'), 'no-cache');
+    assert.equal(got.headers.get('x-plugin'), 'stats');
+    assert.deepEqual(await got.json(), {
+      type: 1, resource: '/plugins/STATS/x', who: 'me', form: null, header: 'yes', polls: 0,
+    });
+
+    const posted = await (await fetch(`${base}/stats/x`, {
+      method: 'POST', headers: { 'content-type': 'application/x-www-form-urlencoded' }, body: 'team=red',
+    })).json();
+    assert.equal(posted.type, 3);
+    assert.equal(posted.form, 'red', 'a form POST joins the parameters');
+
+    assert.equal((await fetch(`${base}/stats/missing`)).status, 404);
+    assert.equal((await fetch(`${base}/stats/throw`)).status, 500);
+    assert.equal(errors.length, 1);
+    const go = await fetch(`${base}/stats/go`, { redirect: 'manual' });
+    assert.equal(go.status, 302);
+    assert.equal(go.headers.get('location'), '/elsewhere');
+    assert.equal((await (await fetch(`${base}/stats/slow`)).json()).polls, 3, 'eWaitForIt asks again');
+
+    host.unload('stats');
+    assert.equal(host.webPage('stats'), null, 'its pages go with it');
+    assert.ok((await (await fetch(`${base}/`)).text()).includes('No HTTP Services'));
+  } finally {
+    server.close();
+  }
 }
 
 fs.rmSync(root, { recursive: true, force: true });

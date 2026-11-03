@@ -4,12 +4,13 @@
  * Source: https://github.com/timriker/bzo
  * See LICENSE or https://www.gnu.org/licenses/agpl-3.0.html
  */
-// bzflag-extras.cjs - What bzo adds to the world it sends a native BZFlag
-// client (issue #174), and to nobody else's: bzo's browsers draw these their
-// own way already. Everything here is passable and out of reach, so a native
-// client's physics still agree with bzo's server, which never knows it is
-// there. Built from geometry and material colour alone: a stock client only
-// loads images from images.bzflag.org.
+// compassletters.cjs - bzo's compass letters in the world it sends a native
+// BZFlag client (issue #174), and in nobody else's: bzo's browsers draw them
+// their own way already. Added on bz_eGetWorldEvent for the `bzflag` world.
+// Everything here is passable and out of reach, so a native client's physics
+// still agree with bzo's server, which never knows it is there. Built from
+// geometry and material colour alone: a stock client only loads images from
+// images.bzflag.org.
 
 'use strict';
 
@@ -183,4 +184,27 @@ function addCardinalLetters(tree, { mapSize, height }) {
   return tree;
 }
 
-module.exports = { addCardinalLetters };
+module.exports = {
+  meta: {
+    name: 'Compass Letters',
+    version: '1.0',
+    author: 'Tim Riker',
+    description: "bzo's N/S/E/W letters above the walls, for BZFlag clients",
+    license: 'AGPL-3.0',
+  },
+
+  Init(bz) {
+    bz.Register(bz.bz_eGetWorldEvent);
+  },
+
+  // At bzo's height (`_addCompassMarker`, public/js/render-world.js).
+  Event(data) {
+    if (data.eventType !== 'bz_eGetWorldEvent' || data.world !== 'bzflag') return;
+    addCardinalLetters(data.tree, {
+      mapSize: data.worldSize,
+      height: Math.max(data.wallHeight + 8, data.maxHeight + 5),
+    });
+  },
+
+  l10n: {},
+};

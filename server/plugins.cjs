@@ -32,6 +32,7 @@
 
 const fs = require('node:fs');
 const path = require('node:path');
+const { HTTP_CONSTANTS } = require('./plugin-http.cjs');
 
 // bz_eEventType (bzfsAPI.h:273), by upstream's names and in its order;
 // `bz_eAuthenticatonComplete` is upstream's spelling.
@@ -83,11 +84,14 @@ function checkPlugin(plugin) {
 }
 
 // `server.json`'s `plugins`: a plugin's id to `false` (off), `true` (on), or
-// an object of its options (on). A plugin it does not name is on, unless its
-// own `meta.enabled` is false -- a sample, which upstream ships but no server
-// loads until asked -- and then `fallback` is false.
-function pluginSetting(settings, id, fallback = true) {
-  const value = settings && Object.hasOwn(settings, id) ? settings[id] : fallback;
+// an object of its options (on unless its `enabled` is false). A plugin it
+// does not name is off, wherever its file came from: a file on disk is not a
+// request to run it. A name is matched in any case, its own spelling first, so
+// a config written when bundled plugins had mixed-case names still reads.
+function pluginSetting(settings, id) {
+  const key = settings && (Object.hasOwn(settings, id)
+    ? id : Object.keys(settings).find((name) => name.toLowerCase() === id.toLowerCase()));
+  const value = key ? settings[key] : false;
   if (value === false) return { enabled: false, config: {} };
   if (value && typeof value === 'object') {
     const { enabled = true, ...config } = value;
@@ -254,7 +258,11 @@ function createPluginHost({
   const entries = new Map(); // id -> { id, file, bundled, meta, state, error, plugin, events, ... }
   const listeners = new Map(); // event type -> Set of entries
   const slashCommands = new Map(); // command, lowercase, no slash -> { entry, handler }
+  const vdirs = new Map(); // web page name, upper case -> { entry, vdir }
   let tickTimer = null;
+  // Counts loads and unloads, so what was built from the loaded plugins, the
+  // world sent a BZFlag client, knows when to build again.
+  let loads = 0;
 
   function syncTick() {
     const wanted = listeners.has('bz_eTickEvent');
@@ -334,7 +342,7 @@ function createPluginHost({
       if (typeof register !== 'function') continue;
       bz[`bz_registerCustomBZDB${kind}`] = (name, ...rest) => {
         const done = register(name, ...rest);
-        if (done) entry.bzdb.add(name);
+        if (done) entry.bzdb.set(name, kind);
         return done;
       };
     }
@@ -371,6 +379,29 @@ function createPluginHost({
     };
     // Nothing to take back: the map is read once.
     bz.bz_removeCustomMapObject = () => true;
+    // bzhttp_RegisterVDir (bzfsHTTPAPI.cxx:349): a page set at
+    // `/plugins/<VDirName()>/` (plugin-http.cjs). Upstream passes the plugin
+    // first; here it may be left out. The name is unique in any case.
+    Object.assign(bz, HTTP_CONSTANTS);
+    const vdirOf = (args) => args[args.length - 1];
+    bz.bzhttp_RegisterVDir = (...args) => {
+      const vdir = vdirOf(args);
+      const name = typeof vdir?.VDirName === 'function' ? String(vdir.VDirName() || '') : '';
+      if (!/^[A-Za-z0-9_.-]+$/.test(name) || typeof vdir.GeneratePage !== 'function') return false;
+      if (vdirs.has(name.toUpperCase())) return false;
+      vdir.BaseURL = `/plugins/${name}/`;
+      vdirs.set(name.toUpperCase(), { entry, vdir, name });
+      return true;
+    };
+    bz.bzhttp_RemoveVDir = (...args) => {
+      const key = String(vdirOf(args)?.VDirName?.() || '').toUpperCase();
+      if (vdirs.get(key)?.entry !== entry) return false;
+      return vdirs.delete(key);
+    };
+    bz.bzhttp_RemoveAllVdirs = () => {
+      for (const [key, found] of vdirs) if (found.entry === entry) vdirs.delete(key);
+      return true;
+    };
     bz.log = (text) => log(`${entry.id}: ${text}`);
     return bz;
   }
@@ -408,10 +439,11 @@ function createPluginHost({
       timers.clearInterval(handle);
     }
     entry.timers.clear();
-    for (const name of entry.bzdb) api.bz_removeCustomBZDBVariable?.(name);
+    for (const name of entry.bzdb.keys()) api.bz_removeCustomBZDBVariable?.(name);
     entry.bzdb.clear();
     for (const name of entry.pollTypes) api.bz_removeCustomPollType?.(name);
     entry.pollTypes.clear();
+    for (const [key, found] of vdirs) if (found.entry === entry) vdirs.delete(key);
   }
 
   // `ifEnabled` leaves a plugin `server.json` or its own meta turns off read
@@ -439,7 +471,7 @@ function createPluginHost({
       return entry;
     }
     entry.meta = { license: '', ...plugin.meta };
-    const setting = pluginSetting(currentSettings(), id, plugin.meta.enabled !== false);
+    const setting = pluginSetting(currentSettings(), id);
     if (ifEnabled && !setting.enabled) {
       entry.state = 'off';
       return entry;
@@ -456,6 +488,7 @@ function createPluginHost({
       return entry;
     }
     entry.state = 'loaded';
+    loads += 1;
     log(`${id} ${entry.meta.version} loaded`);
     warnL10nClashes(entry);
     msgidList = null;
@@ -473,6 +506,7 @@ function createPluginHost({
     forget(entry);
     entry.plugin = null;
     entry.state = 'off';
+    loads += 1;
     msgidList = null;
     log(`${id} unloaded`);
     return true;
@@ -487,7 +521,7 @@ function createPluginHost({
       if (entries.get(found.id)?.file === found.file) continue;
       entries.set(found.id, {
         ...found, meta: null, state: 'off', error: null, plugin: null,
-        events: new Set(), commands: new Set(), timers: new Set(), bzdb: new Set(), pollTypes: new Set(),
+        events: new Set(), commands: new Set(), timers: new Set(), bzdb: new Map(), pollTypes: new Set(),
       });
       if (found.replaces) log(`${found.id}: ${found.file} replaces ${found.replaces}`);
       added.push(found.id);
@@ -495,11 +529,23 @@ function createPluginHost({
     return added;
   }
 
-  // Every plugin file in `dirs`, each loaded unless `server.json` or its meta
-  // turns it off.
+  // Forgets a plugin whose file is gone, unless it is running, and finds what
+  // is left: a bundled plugin an uploaded one hid comes back.
+  function drop(id) {
+    if (!entries.has(id) || entries.get(id).state === 'loaded') return false;
+    entries.delete(id);
+    discover();
+    msgidList = null;
+    return true;
+  }
+
+  // Every plugin file in `dirs`: the ones `server.json` turns on are started,
+  // and a bundled one that is off is read for its `meta`, so the Plugins rows
+  // can say what it is. An installed one that is off is not read at all, since
+  // reading a module runs it.
   function loadAll() {
     for (const id of discover()) {
-      if (pluginSetting(currentSettings(), id).enabled) load(id, { ifEnabled: true });
+      if (pluginSetting(currentSettings(), id).enabled || entries.get(id).bundled) load(id, { ifEnabled: true });
     }
   }
 
@@ -547,9 +593,12 @@ function createPluginHost({
     }
   }
 
+  // Each plugin as the Plugins rows show it. `variables` is the BZDB a running
+  // one registered, by name and kind (`Bool`, `Int`, `Double`, `String`).
   function list() {
-    return [...entries.values()].map(({ id, file, bundled, replaces, meta, state, error }) => ({
+    return [...entries.values()].map(({ id, file, bundled, replaces, meta, state, error, bzdb }) => ({
       id, file, bundled, replaces, meta, state, error,
+      variables: [...bzdb].map(([name, kind]) => ({ name, kind })),
     }));
   }
 
@@ -608,6 +657,27 @@ function createPluginHost({
     return msgidList;
   }
 
+  // A loaded plugin's web pages by name, in any case, with the plugin's id
+  // to blame for what they throw.
+  function webPage(name) {
+    const found = vdirs.get(String(name).toUpperCase());
+    return found ? { vdir: found.vdir, name: found.name, plugin: found.entry.id } : null;
+  }
+
+  // Every one, for the index, in name order as upstream's map keeps them.
+  function webPages() {
+    return [...vdirs.keys()].sort().map((key) => {
+      const { vdir, entry, name } = vdirs.get(key);
+      let description = '';
+      try {
+        description = String(vdir.VDirDescription?.() ?? '');
+      } catch (error) {
+        report(entry, 'VDirDescription', error);
+      }
+      return { name, description, plugin: entry.id };
+    });
+  }
+
   // The loaded plugins' commands, for `/?`, `/help` and the chat entry's Tab.
   function commands() {
     return [...slashCommands].map(([name, { entry, help, operator }]) => ({
@@ -616,7 +686,8 @@ function createPluginHost({
   }
 
   return {
-    discover, loadAll, load, unload, listening, callEvents, slashCommand, commands, messages, msgids, list,
+    discover, drop, loadAll, load, unload, listening, callEvents, slashCommand, commands, messages, msgids, list,
+    generation: () => loads, webPage, webPages,
   };
 }
 

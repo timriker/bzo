@@ -51,6 +51,9 @@
   "maxTeamScore": 0,
   "motd": "Welcome to the test server!",
   "noTeamKills": false,
+  "plugins": {
+    "compassletters": true
+  },
   "proxies": {},
   "publicUrl": "",
   "puffClouds": false,

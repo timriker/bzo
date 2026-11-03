@@ -5,7 +5,7 @@
  * See LICENSE or https://www.gnu.org/licenses/agpl-3.0.html
  */
 
-// autoFlagReset.cjs - upstream's plugins/autoFlagReset: every `minutes`, each
+// autoflagreset.cjs - upstream's plugins/autoFlagReset: every `minutes`, each
 // superflag nobody holds goes back to a fresh spawn, so flags a map's corners
 // collect come back into play. `incremental` spreads that out, one flag at a
 // time across the period. Team flags are never touched. Options in
@@ -23,7 +23,10 @@ module.exports = {
     author: 'Tim Riker, after upstream',
     description: 'superflags nobody holds go back to a fresh spawn every so often',
     license: 'AGPL-3.0',
-    enabled: false,
+    options: [
+      { name: 'minutes', type: 'number', min: 1, max: 120, step: 1, default: 15, help: 'How often every flag resets' },
+      { name: 'incremental', type: 'boolean', default: false, help: 'One flag at a time, spread over the period' },
+    ],
   },
 
   Init(bz, config) {

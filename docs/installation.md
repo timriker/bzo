@@ -124,7 +124,10 @@ go to `$(dirname $SERVER_CONFIG_PATH)/replays`, and `REPLAYS_PATH` overrides
 that. The Operator panel deletes only what it uploaded, which it records in
 `uploads.json` beside `server.json`. Plugins too: bzo's own at `/app/plugins`,
 an operator's in `$(dirname $SERVER_CONFIG_PATH)/plugins` (`PLUGINS_PATH`),
-where one of the same name wins.
+where one of the same name wins. The Operator panel uploads plugins there
+only where `"pluginUpload": true` is in `server.json`: a plugin runs as the
+server, with every right the server's user has, so it is off unless turned
+on. An upload is written off, and runs once an admin switches it on.
 
 ## Install from source
 

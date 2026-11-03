@@ -14,14 +14,14 @@
 
 const fs = require('node:fs');
 
-const KINDS = Object.freeze(['maps', 'replays']);
+const KINDS = Object.freeze(['maps', 'replays', 'plugins']);
 
 function createUploadRecord(filePath, { log = () => {} } = {}) {
   let held = null;
 
   function load() {
     if (held) return held;
-    held = { maps: new Set(), replays: new Set() };
+    held = Object.fromEntries(KINDS.map((kind) => [kind, new Set()]));
     try {
       const parsed = JSON.parse(fs.readFileSync(filePath, 'utf8'));
       for (const kind of KINDS) {

@@ -18,7 +18,6 @@ module.exports = {
     author: 'Tim Riker, after upstream',
     description: '/killall kills every player',
     license: 'AGPL-3.0',
-    enabled: false,
   },
 
   Init(bz) {

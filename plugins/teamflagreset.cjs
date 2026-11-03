@@ -35,7 +35,10 @@ module.exports = {
     author: 'Tim Riker, after upstream',
     description: 'a team flag left lying too long goes home',
     license: 'AGPL-3.0',
-    enabled: false,
+    options: [
+      { name: 'minutes', type: 'number', min: 1, max: 120, step: 1, default: 5,
+        help: 'How long a team flag may lie before it goes home' },
+    ],
   },
 
   Init(bz, config) {

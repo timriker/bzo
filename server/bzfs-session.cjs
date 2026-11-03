@@ -638,7 +638,13 @@ class BzfsSession {
             if (code === 'sk') {
               const reason = payload.length > 0
                 ? payload.toString('latin1').replace(/\0.*$/s, '') : '';
-              throw new Error(`disconnected by the server${reason ? `: ${reason}` : ''}`);
+              const error = new Error(`disconnected by the server${reason ? `: ${reason}` : ''}`);
+              // MsgSuperKill: bzfs is dropping this player -- a kick, a ban,
+              // or the server shutting down (`removePlayer`, bzfs.cxx:2907),
+              // the reason sent first as a message. A plugin may do it as the
+              // player joins (HoldTheFlag, for the wrong team).
+              error.superKill = true;
+              throw error;
             }
             this.handleFrame(code, payload);
             // Our own record concludes the answer to `MsgEnter`. What follows
@@ -856,6 +862,12 @@ class BzfsSession {
         this.state.timeLeft = payload.readInt32BE(0);
         this.emit('time', this.state.timeLeft);
         break;
+      // MsgScoreOver (bzfs.cxx:3319, :3520, commands.cxx:1229): who won, or
+      // `NoPlayer`, and their team, or `NoTeam` for a player's own score.
+      case 'so':
+        this.emit('scoreOver', { player: payload.readUInt8(0), team: payload.readUInt16BE(1) });
+        break;
+
       case 'mg': {
         const message = decodeMessage(payload);
         if (message.from === SERVER_PLAYER_ID) this.state.messages.push(message.text);

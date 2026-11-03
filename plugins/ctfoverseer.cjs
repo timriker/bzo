@@ -5,7 +5,7 @@
  * See LICENSE or https://www.gnu.org/licenses/agpl-3.0.html
  */
 
-// ctfOverseer.cjs - allejo's ctfOverseer (github.com/allejo/ctfOverseer), which
+// ctfoverseer.cjs - allejo's ctfOverseer (github.com/allejo/ctfOverseer), which
 // many CTF servers load, written again for bzo. Off until server.json's
 // "plugins" turns it on; on, it does what allejo's does by default, and its
 // two BZDB variables tune it from a world or `/set`:
@@ -29,7 +29,6 @@ module.exports = {
     author: 'Tim Riker, after allejo',
     description: 'no capturing your own flag, and a wait before an enemy may grab a team flag just captured',
     license: 'AGPL-3.0',
-    enabled: false,
   },
 
   Init(bz) {

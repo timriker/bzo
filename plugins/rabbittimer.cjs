@@ -5,7 +5,7 @@
  * See LICENSE or https://www.gnu.org/licenses/agpl-3.0.html
  */
 
-// rabbitTimer.cjs - upstream's plugins/rabbitTimer: in rabbit chase, the rabbit
+// rabbittimer.cjs - upstream's plugins/rabbitTimer: in rabbit chase, the rabbit
 // has `time` seconds to make a kill or the server kills it, once at least
 // three hunters are playing. Each kill starts the clock again, or with
 // `rollOver` adds `time` to what is left. Options in server.json:
@@ -25,7 +25,10 @@ module.exports = {
     author: 'Tim Riker, after upstream',
     description: 'the rabbit must make a kill in time or die',
     license: 'AGPL-3.0',
-    enabled: false,
+    options: [
+      { name: 'time', type: 'number', min: 1, max: 300, step: 1, default: 30, help: 'Seconds the rabbit has to kill' },
+      { name: 'rollOver', type: 'boolean', default: false, help: 'Each kill adds the time to what is left' },
+    ],
   },
 
   Init(bz, config) {

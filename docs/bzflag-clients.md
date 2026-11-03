@@ -40,8 +40,10 @@ Issue #174: native BZFlag clients on a bzo server. Configured by server.json's
   in [bzw.md](bzw.md)) and compiled from that text, with a `t` hash, as bzfs
   gives a world it made up, so a client keeps it only for the session.
 - **Compass letters.** bzo's own N/S/E/W markers, which its browsers draw for
-  themselves, are added to the world a BZFlag client gets
-  (`server/bzflag-extras.cjs`) and to nobody else's: the four letters in bzo's
+  themselves, are added to the world a BZFlag client gets by the bundled
+  `compassletters` plugin (`plugins/compassletters.cjs`), where
+  `server.json` turns it on as `example-server.json` does, and to nobody
+  else's: the four letters in bzo's
   colours, white edged, just beyond the middle of each wall at bzo's height,
   tilted back 45° so they read from inside the arena and show their shape on
   the radar. Built from flat strokes and material colour, since a stock

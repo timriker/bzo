@@ -1368,6 +1368,19 @@ body.scoreboard-collapsed #mainhud {
   color: #e57373;
 }
 
+/* Sets the plugins, their options and their upload apart from the rows
+   around them. */
+.operatorDivider {
+  border: none;
+  border-top: 1px solid rgba(255, 255, 255, 0.2);
+  margin: 10px 0;
+}
+
+/* A plugin's options sit under its switch, in line with its note. */
+.operatorPluginOption {
+  margin-left: 26px;
+}
+
 #listServerKeyStatus {
   color: #999;
   font-size: 0.9em;

@@ -20,7 +20,6 @@ module.exports = {
     author: 'Tim Riker, after upstream',
     description: 'a sample custom flag, CF, worth ten points a shot',
     license: 'AGPL-3.0',
-    enabled: false,
   },
 
   Init(bz) {

@@ -214,6 +214,7 @@ const {
 } = require('./public/js/bzdb.mjs');
 const { POLL_DEFAULTS, VotingArbiter, parseVoteAnswer } = require('./server/polls.cjs');
 const { CustomZoneObject, createPluginHost, scanCustomMapObjects } = require('./server/plugins.cjs');
+const { indexPage, servePage } = require('./server/plugin-http.cjs');
 const { getKillScoreDeltas } = require('./public/js/scoring.mjs');
 const { createBanStore, parseDuration } = require('./server/bans.cjs');
 const {
@@ -256,6 +257,7 @@ const {
   ADMIN_PLAYERS,
   channelTeam,
   isRealPlayerId,
+  teamChannel,
 } = require('./server/player-ids.cjs');
 const { createDiscordLink, discordLinkConfigured } = require('./server/discord.cjs');
 const { createChatMirror, createDiscordToGame } = require('./server/discord-bridge.cjs');
@@ -366,7 +368,6 @@ const {
   createBzflagServer, publishToBzflagList, REJECT_IP_BANNED, REJECT_ID_BANNED, packGameSettings,
 } = require('./server/bzflag-server.cjs');
 const { generateWorldBzw } = require('./server/world-generator.cjs');
-const { addCardinalLetters } = require('./server/bzflag-extras.cjs');
 const {
   NativeTranslator, decodeEnter, decodeClientMessage, moveFromBzfs, shootFromBzfs,
 } = require('./server/bzflag-native.cjs');
@@ -429,6 +430,29 @@ function logError(...args) {
 }
 
 const app = express();
+// Plugins' web pages (server/plugin-http.cjs), ahead of the body parsers so a
+// page gets its body as sent.
+app.use('/plugins', express.raw({ type: () => true, limit: '1mb' }), (req, res) => {
+  const [, name = '', ...rest] = req.path.split('/');
+  if (!name) {
+    res.type('html').send(indexPage(plugins?.webPages() ?? [], req.get('host') || ''));
+    return;
+  }
+  const page = plugins?.webPage(decodeURIComponent(name));
+  if (!page) {
+    res.status(404).type('text/plain').send('Not Found\n');
+    return;
+  }
+  if (rest.length === 0) {
+    res.redirect(301, `${req.baseUrl}/${encodeURIComponent(page.name)}/`);
+    return;
+  }
+  servePage(page.vdir, page.name, req, res, {
+    body: Buffer.isBuffer(req.body) ? req.body : null,
+    address: requestAddress(req),
+    report: (error) => log(`[PLUGIN] ${page.plugin}: GeneratePage: ${error?.stack || error}`),
+  });
+});
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
@@ -5339,6 +5363,10 @@ async function probeAdminWhitelist() {
 // like `server.json`, it follows `SERVER_CONFIG_PATH` into a deployment's own
 // data directory, and the maps directory is a tracked part of the repo.
 const SESSIONS_PATH = path.join(path.dirname(configPath), 'sessions.json');
+// A plugin upload's ceiling: a plugin is a script, and a megabyte is far more
+// than any bundled one.
+const PLUGIN_UPLOAD_MAX_BYTES = 1024 * 1024;
+
 // What the Operator panel uploaded, and so may delete (`server/uploads.cjs`).
 const uploads = createUploadRecord(path.join(path.dirname(configPath), 'uploads.json'), { log });
 let sessionWriteTimer = null;
@@ -7542,7 +7570,11 @@ function resumeMatch() {
 // `winner` is `{ playerId } | { team }` for a score limit, upstream's own
 // `MsgScoreOver` payload; omitted for a time-up or an operator's /gameover,
 // which upstream's own client shows as "GAME OVER" with no winner named.
-function endMatch(winner = null) {
+//
+// `endedBy` is the player whose /gameover ended it, for bz_eGameEndEvent,
+// which upstream fires for a time-up and an operator's ending but not for a
+// score limit.
+function endMatch(winner = null, endedBy = null) {
   if (matchClock.gameOver) return false;
   matchClock.active = false;
   matchClock.paused = false;
@@ -7565,6 +7597,11 @@ function endMatch(winner = null) {
     log(`Match ended: ${winner.team ? `the ${winner.team} team` : `player ${winner.playerId}`} reached the score limit`);
   } else {
     log('Match ended');
+    pluginEvent('bz_eGameEndEvent', () => ({
+      duration: GAME_CONFIG.TIME_LIMIT || 0,
+      playerID: endedBy ? Number(endedBy.id) : Number(SERVER_PLAYER),
+      gameOver: Boolean(endedBy),
+    }));
   }
   return true;
 }
@@ -9357,9 +9394,11 @@ const pollAnnounced = { opening: false, closure: false, results: false, heartbea
 // Upstream's permissions (Permissions.cxx). bzo has no groups file: its
 // groups are upstream's defaults (initGroups, bzfs.cxx:5940) -- EVERYONE,
 // VERIFIED for a signed-in player, and every permission but HIDEADMIN for an
-// admin -- and a plugin may grant or revoke one for a player while they are
-// here. A name upstream does not know is a plugin's custom permission, which
-// nobody has until it is granted. TALK is bzo's `/mute`.
+// admin, a plugin's own custom ones included -- and a plugin may grant or
+// revoke one for a player while they are here. A custom permission is an
+// admin's, and nobody else's until it is granted. HIDEADMIN hides an admin
+// rather than letting them do anything, so it too waits to be granted.
+// TALK is bzo's `/mute`.
 const BUILTIN_PERMS = new Set([
   'ACTIONMESSAGE', 'ADMINMESSAGERECEIVE', 'ADMINMESSAGESEND', 'ANTIBAN', 'ANTIKICK', 'ANTIKILL', 'ANTIPOLL',
   'ANTIPOLLBAN', 'ANTIPOLLKICK', 'ANTIPOLLKILL', 'BAN', 'BANLIST', 'CLIENTQUERY', 'COUNTDOWN', 'DATE', 'ENDGAME',
@@ -9382,7 +9421,7 @@ function hasPerm(player, perm) {
   if (name === 'TALK' && player.muted) return false;
   if (player.revokedPerms?.has(name)) return false;
   if (player.grantedPerms?.has(name)) return true;
-  if (!BUILTIN_PERMS.has(name)) return false;
+  if (!BUILTIN_PERMS.has(name)) return isAdmin(player);
   if (EVERYONE_PERMS.has(name)) return true;
   if (player.verified === true && VERIFIED_PERMS.has(name)) return true;
   return isAdmin(player) && name !== 'HIDEADMIN';
@@ -9846,7 +9885,11 @@ function beginCountedMatch(starter) {
   const held = savedScores.size;
   savedScores.clear();
   startMatch();
-  log(`[CMD] "${starter}" started the match${held ? `, clearing ${held} held score(s)` : ''}`);
+  log(`[CMD] "${starter.name}" started the match${held ? `, clearing ${held} held score(s)` : ''}`);
+  // bzfs.cxx:7135, as the count reaches zero, naming who started it.
+  pluginEvent('bz_eGameStartEvent', () => ({
+    duration: GAME_CONFIG.TIME_LIMIT || 0, playerID: Number(starter.id), gameOver: false,
+  }));
 }
 
 defineCommand('/countdown', COMMAND_TIER.OPERATOR,
@@ -9898,7 +9941,7 @@ defineCommand('/countdown', COMMAND_TIER.OPERATOR,
       seconds = 0;
     }
     if (seconds === 0) {
-      beginCountedMatch(player.name);
+      beginCountedMatch(player);
       return;
     }
     // Upstream's words less "Team scores reset", which here happens at zero:
@@ -9906,7 +9949,7 @@ defineCommand('/countdown', COMMAND_TIER.OPERATOR,
     announceToAll(localized('Countdown started by {player}.', { player: player.name }));
     announceToAll(localized('Match begins in about {duration}', { duration: formatDuration(seconds) }));
     log(`[CMD] "${player.name}" started a ${seconds}s countdown`);
-    const starter = player.name;
+    const starter = player;
     countdown = { left: seconds, first: true, timer: null };
     countdown.timer = setInterval(() => {
       if (!countdown) return;
@@ -9929,7 +9972,7 @@ defineCommand('/countdown', COMMAND_TIER.OPERATOR,
 defineCommand('/gameover', COMMAND_TIER.OPERATOR,
   '- end the match now',
   (player) => {
-    if (!endMatch()) {
+    if (!endMatch(null, player)) {
       replyToPlayer(player, 'No match is running');
       return;
     }
@@ -10558,13 +10601,97 @@ function isPluginKey(key) {
   return typeof key === 'string' && key.startsWith(PLUGIN_KEY_PREFIX);
 }
 
+// A plugin's own option, `pluginOption:<id>:<name>`, from the options its
+// `meta` declares. Live too: Apply starts a running plugin again with them.
+const PLUGIN_OPTION_PREFIX = 'pluginOption:';
+
+function isPluginOptionKey(key) {
+  return typeof key === 'string' && key.startsWith(PLUGIN_OPTION_PREFIX);
+}
+
+function pluginOptionKey(id, name) {
+  return `${PLUGIN_OPTION_PREFIX}${id}:${name}`;
+}
+
+function parsePluginOptionKey(key) {
+  const rest = key.slice(PLUGIN_OPTION_PREFIX.length);
+  const at = rest.indexOf(':');
+  return at < 0 ? null : { id: rest.slice(0, at), name: rest.slice(at + 1) };
+}
+
+// A BZDB variable a running plugin registered, `bzdb:<name>`: set live, as
+// `/set` sets it, and kept in server.json's `bzdb` block.
+const PLUGIN_BZDB_PREFIX = 'bzdb:';
+
+function isPluginBzdbKey(key) {
+  return typeof key === 'string' && key.startsWith(PLUGIN_BZDB_PREFIX);
+}
+
+// What a plugin registered, by name: a bool is a checkbox and anything else a
+// text field, since a BZDB value may be an expression.
+function pluginBzdbSpecs() {
+  return new Map((plugins?.list() ?? []).flatMap((entry) => entry.variables
+    .map(({ name, kind }) => [name, { name, type: kind === 'Bool' ? 'boolean' : 'string', plugin: entry.id }])));
+}
+
+function pluginBzdbValue(spec) {
+  const value = bzdbValue(spec.name) ?? '';
+  return spec.type === 'boolean' ? bzdbIsTrue(value) : String(value);
+}
+
 function isLiveConfigKey(key) {
-  return LIVE_CONFIG_KEYS.includes(key) || isPluginKey(key);
+  return LIVE_CONFIG_KEYS.includes(key) || isPluginKey(key) || isPluginOptionKey(key) || isPluginBzdbKey(key);
+}
+
+// `meta.options`: `[{ name, type, default, help }]`, a type being `boolean`,
+// `number` (with `min`, `max` and `step`), `choice` (with `values`) or
+// `string` (with `maxLength`, 200 if none). An option of any other shape is not
+// offered, and stays `server.json`'s to set.
+function pluginOptionSpecs(meta) {
+  if (!Array.isArray(meta?.options)) return [];
+  return meta.options.flatMap((option) => {
+    const name = typeof option?.name === 'string' ? option.name : '';
+    if (!/^[A-Za-z0-9_]+$/.test(name)) return [];
+    const help = typeof option.help === 'string' ? option.help : '';
+    if (option.type === 'boolean') return [{ name, type: 'boolean', default: option.default === true, help }];
+    if (option.type === 'number') {
+      const min = Number.isFinite(option.min) ? option.min : 0;
+      const max = Number.isFinite(option.max) ? option.max : 100;
+      const step = Number.isFinite(option.step) && option.step > 0 ? option.step : 1;
+      const fallback = Number.isFinite(option.default) ? option.default : min;
+      return [{ name, type: 'number', default: fallback, min, max, step, help }];
+    }
+    if (option.type === 'choice' && Array.isArray(option.values) && option.values.length > 0) {
+      const values = option.values.map(String);
+      const fallback = values.includes(String(option.default)) ? String(option.default) : values[0];
+      return [{ name, type: 'choice', default: fallback, values, help }];
+    }
+    if (option.type === 'string') {
+      const maxLength = Number.isInteger(option.maxLength) && option.maxLength > 0 ? option.maxLength : 200;
+      const fallback = typeof option.default === 'string' ? option.default.slice(0, maxLength) : '';
+      return [{ name, type: 'string', default: fallback, maxLength, help }];
+    }
+    return [];
+  });
+}
+
+function pluginOptionValue(id, spec) {
+  const setting = serverConfig.plugins?.[id];
+  const value = setting && typeof setting === 'object' ? setting[spec.name] : undefined;
+  if (spec.type === 'boolean') return typeof value === 'boolean' ? value : spec.default;
+  if (spec.type === 'number') return Number.isFinite(value) ? value : spec.default;
+  if (spec.type === 'string') return typeof value === 'string' ? value : spec.default;
+  return spec.values.includes(String(value)) ? String(value) : spec.default;
 }
 
 function pluginOperatorState() {
-  return Object.fromEntries((plugins?.list() ?? [])
-    .map((entry) => [`${PLUGIN_KEY_PREFIX}${entry.id}`, entry.state === 'loaded']));
+  return Object.fromEntries([
+    ...(plugins?.list() ?? []).flatMap((entry) => [
+      [`${PLUGIN_KEY_PREFIX}${entry.id}`, entry.state === 'loaded'],
+      ...pluginOptionSpecs(entry.meta).map((spec) => [pluginOptionKey(entry.id, spec.name), pluginOptionValue(entry.id, spec)]),
+    ]),
+    ...[...pluginBzdbSpecs().values()].map((spec) => [`${PLUGIN_BZDB_PREFIX}${spec.name}`, pluginBzdbValue(spec)]),
+  ]);
 }
 
 // What the Plugins rows show of each plugin, for admins only: its error can
@@ -10578,6 +10705,9 @@ function pluginPanelList() {
     author: meta?.author ?? '',
     description: meta?.description ?? '',
     license: meta?.license ?? '',
+    options: pluginOptionSpecs(meta),
+    variables: [...pluginBzdbSpecs().values()].filter((spec) => spec.plugin === id)
+      .map(({ name, type }) => ({ name, type })),
     state,
     error: error ?? null,
   }));
@@ -10609,6 +10739,20 @@ function writeOperatorConfigFields(config, next) {
         ...config.plugins,
         [id]: setting && typeof setting === 'object' ? { ...setting, enabled: value } : value,
       };
+    } else if (isPluginBzdbKey(key)) {
+      // As `-set` would write it: a bool as 1 or 0.
+      const name = key.slice(PLUGIN_BZDB_PREFIX.length);
+      config.bzdb = { ...config.bzdb, [name]: typeof value === 'boolean' ? (value ? '1' : '0') : value };
+    } else if (isPluginOptionKey(key)) {
+      // Into the plugin's own object, which keeps whether it runs: a bare
+      // `true` or `false` becomes `enabled`, and a plugin `server.json` does
+      // not name yet keeps the state it has now.
+      const { id, name } = parsePluginOptionKey(key);
+      const setting = config.plugins?.[id];
+      const base = setting && typeof setting === 'object'
+        ? setting
+        : { enabled: typeof setting === 'boolean' ? setting : plugins.list().find((entry) => entry.id === id)?.state === 'loaded' };
+      config.plugins = { ...config.plugins, [id]: { ...base, [name]: value } };
     } else if (key === 'botFill' || key === 'botPilot') {
       config.bots = { ...config.bots, [key === 'botFill' ? 'fill' : 'pilot']: value };
     } else if (key === 'rabbit') {
@@ -10772,6 +10916,31 @@ function applyServerConfigChanges(requested, byWhom) {
     if (typeof requested[key] !== 'boolean') return { error: 'Invalid plugin value' };
     next[key] = requested[key];
   }
+  // A plugin's BZDB variable, checked against what it registered.
+  const bzdbSpecs = pluginBzdbSpecs();
+  for (const key of Object.keys(requested).filter(isPluginBzdbKey)) {
+    const spec = bzdbSpecs.get(key.slice(PLUGIN_BZDB_PREFIX.length));
+    if (!spec) return { error: 'No such plugin variable' };
+    const value = requested[key];
+    const valid = spec.type === 'boolean' ? typeof value === 'boolean'
+      : typeof value === 'string' && value.trim() !== '' && value.length <= 200;
+    if (!valid) return { error: 'Invalid plugin variable' };
+    next[key] = spec.type === 'boolean' ? value : value.trim();
+  }
+  // A plugin's option, checked against what its `meta` declares.
+  for (const key of Object.keys(requested).filter(isPluginOptionKey)) {
+    const parsed = parsePluginOptionKey(key);
+    const entry = parsed && (plugins?.list() ?? []).find((candidate) => candidate.id === parsed.id);
+    const spec = entry && pluginOptionSpecs(entry.meta).find((candidate) => candidate.name === parsed.name);
+    if (!spec) return { error: 'No such plugin option' };
+    const value = requested[key];
+    const valid = spec.type === 'boolean' ? typeof value === 'boolean'
+      : spec.type === 'number' ? Number.isFinite(value) && value >= spec.min && value <= spec.max
+        : spec.type === 'string' ? typeof value === 'string' && value.length <= spec.maxLength
+          : spec.values.includes(value);
+    if (!valid) return { error: 'Invalid plugin option' };
+    next[key] = value;
+  }
 
   try {
     const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
@@ -10860,6 +11029,27 @@ function applyServerConfigChanges(requested, byWhom) {
     }
     changed.push(key);
     pluginsChanged = true;
+  }
+  // A plugin's BZDB variable, set as `/set` sets it: every client is told.
+  for (const key of Object.keys(next).filter(isPluginBzdbKey)) {
+    if (next[key] === current[key]) continue;
+    const value = next[key];
+    setWorldVariable(key.slice(PLUGIN_BZDB_PREFIX.length), typeof value === 'boolean' ? (value ? '1' : '0') : value);
+    changed.push(key);
+    pluginsChanged = true;
+  }
+  // A running plugin whose options changed starts again with them, as
+  // upstream's are given at `-loadplugin`; one just switched on already has.
+  const restarted = new Set();
+  for (const key of Object.keys(next).filter(isPluginOptionKey)) {
+    if (next[key] === current[key]) continue;
+    const { id } = parsePluginOptionKey(key);
+    changed.push(key);
+    pluginsChanged = true;
+    const switchedOn = next[`${PLUGIN_KEY_PREFIX}${id}`] === true && current[`${PLUGIN_KEY_PREFIX}${id}`] !== true;
+    if (restarted.has(id) || switchedOn || !plugins.unload(id)) continue;
+    restarted.add(id);
+    if (plugins.load(id)?.state !== 'loaded') return { error: 'Plugin load failed' };
   }
   if (pluginsChanged) announcePluginChange();
 
@@ -13187,8 +13377,23 @@ function bzfsCacheout(mapPath, reason) {
   });
 }
 
+// The world events' upstream fields (bz_GetWorldEventData_V1). `world` is
+// bzo's: which world is being built, `bzo` for its own clients and `bzflag`
+// for the one native clients are sent.
+function worldEventData(world) {
+  return {
+    world,
+    generated: MAP_SOURCE === 'random',
+    ctf: GAME_TYPE === 'ClassicCTF',
+    rabbit: GAME_TYPE === 'RabbitChase',
+    openFFA: GAME_TYPE === 'OpenFFA',
+    worldFile: MAP_SOURCE === 'random' ? '' : (resolveMapFilePath(MAP_SOURCE) || ''),
+  };
+}
+
 function getBzflagWorld() {
-  if (bzflagWorld && bzflagWorld.mapHash === LIVE_MAP_ENTRY?.hash) return bzflagWorld.promise;
+  if (bzflagWorld && bzflagWorld.mapHash === LIVE_MAP_ENTRY?.hash
+    && bzflagWorld.plugins === plugins?.generation()) return bzflagWorld.promise;
   const generated = MAP_SOURCE === 'random';
   const mapPath = generated ? null : resolveMapFilePath(MAP_SOURCE);
   if (!generated && !mapPath) return Promise.resolve(null);
@@ -13201,13 +13406,18 @@ function getBzflagWorld() {
         ? Promise.resolve(null)
         : bzfsCacheout(mapPath, `the compiler cannot reproduce ${[...new Set(tree.unsupported)].join(', ')}`);
     } else {
-      // bzo's compass letters, which its browsers draw for themselves, at the
-      // height they draw them (`_addCompassMarker`, public/js/render-world.js).
-      const tallest = OBSTACLES.reduce((top, obstacle) => Math.max(top, obstacle.bounds?.maxZ ?? 0), 0);
-      addCardinalLetters(tree, {
-        mapSize: GAME_CONFIG.MAP_SIZE,
-        height: Math.max((GAME_CONFIG.WALL_HEIGHT || 0) + 8, tallest + 5),
-      });
+      // A plugin may add to the world as compiled (`parseWorldDatabase`'s
+      // shape), compassletters among them. bzo's server never sees what it
+      // adds, so what it adds must be passable or out of reach.
+      if (plugins?.listening('bz_eGetWorldEvent')) {
+        plugins.callEvents('bz_eGetWorldEvent', {
+          ...worldEventData('bzflag'),
+          tree,
+          worldSize: GAME_CONFIG.MAP_SIZE,
+          wallHeight: GAME_CONFIG.WALL_HEIGHT || 0,
+          maxHeight: OBSTACLES.reduce((top, obstacle) => Math.max(top, obstacle.bounds?.maxZ ?? 0), 0),
+        });
+      }
       promise = Promise.resolve(bzflagWorldFromBlob(packWorldDatabase(tree), generated ? 'generated' : 'compiled', generated));
     }
   } catch (error) {
@@ -13215,7 +13425,7 @@ function getBzflagWorld() {
       ? (logError(`[BZFLAG] the generated world did not compile: ${error.message}`), Promise.resolve(null))
       : bzfsCacheout(mapPath, `the compiler failed (${error.message})`);
   }
-  bzflagWorld = { mapHash: LIVE_MAP_ENTRY?.hash, promise };
+  bzflagWorld = { mapHash: LIVE_MAP_ENTRY?.hash, plugins: plugins?.generation(), promise };
   return promise;
 }
 
@@ -14655,6 +14865,7 @@ function setPaused(player, paused) {
 
   if (!paused) {
     broadcastAll({ type: 'playerUnpaused', playerId: player.id });
+    pluginEvent('bz_ePlayerPausedEvent', () => ({ playerID: Number(player.id), pause: false }));
     return;
   }
 
@@ -14678,6 +14889,8 @@ function setPaused(player, paused) {
     y: player.y,
     z: player.z,
   });
+  // After the pause is sent, as bzfs.cxx:2817 calls it.
+  pluginEvent('bz_ePlayerPausedEvent', () => ({ playerID: Number(player.id), pause: true }));
 }
 
 // autopilotPlayer (bzfs.cxx:2820). Turning it off is always allowed. Upstream
@@ -16888,6 +17101,7 @@ function sendMapList(ws) {
     uploads: {
       maps: uploads.list('maps').filter((name) => fs.existsSync(path.join(RUNTIME_MAPS_DIR, name))),
       replays: uploads.list('replays').filter((name) => fs.existsSync(path.join(RUNTIME_REPLAYS_DIR, `${name}.rec`))),
+      plugins: uploads.list('plugins').filter((name) => fs.existsSync(path.join(RUNTIME_PLUGINS_DIR, name))),
     },
     viewableMaps: getViewableMapsList(),
     currentMap: MAP_SOURCE,
@@ -17484,6 +17698,11 @@ messagesPlay.useServer({
 }, MESSAGE_SERVER);
 messagesOperator.useServer({
   IMPORT_REUSE_MS,
+  PLUGIN_UPLOAD_MAX_BYTES,
+  RUNTIME_PLUGINS_DIR,
+  announcePluginChange,
+  pluginHost: () => plugins,
+  pluginUploadAllowed: () => serverConfig.pluginUpload === true,
   MAP_REGISTRY,
   OPERATOR_CONFIG_KEYS,
   REPLAY_UPLOAD_MAX_BYTES,
@@ -18227,8 +18446,8 @@ function pluginState(player) {
 }
 
 // bz_BasePlayerRecord (bzfsAPI.h), filled as bz_updatePlayerData fills it.
-// `currentFlag` is upstream's label, "Shock Wave (+SW)"; `-1` and '' are
-// upstream's "none".
+// `currentFlag` is the flag's name and abbreviation, "Shock Wave (+SW)" or
+// "Red Team (+R*)"; `-1` and '' are upstream's "none".
 function pluginRecord(player) {
   const flag = getPlayerFlag(player.id);
   const type = flag ? getFlagType(flag.type) : null;
@@ -18255,7 +18474,7 @@ function pluginRecord(player) {
 // The world's variables as a client is told them: what is set, over the
 // defaults loaded plugins registered, which a bzo client may act on before it
 // asks -- `_disallowSelfCap` keeps it from asking for a capture the
-// ctfOverseer plugin would refuse.
+// ctfoverseer plugin would refuse.
 function clientBzdb() {
   return { ...Object.fromEntries(pluginBzdbDefaults), ...Object.fromEntries(liveBzdb) };
 }
@@ -18287,6 +18506,30 @@ const PLUGIN_API = Object.freeze({
   bz_getPlayerIndexList: () => [...players.values()].filter((player) => player.joined)
     .map((player) => Number(player.id)),
   bz_getPlayerCount: () => [...players.values()].filter((player) => player.joined).length,
+  bz_getAdmin: (id) => isAdmin(players.get(String(id))),
+  // bzo's own: a new game on another map, as the panel starts one -- written
+  // to server.json and the server restarted. Upstream's map changers write a
+  // file and call bz_shutdown for a wrapper script to start bzfs again.
+  // Returns true once the restart is under way, or why not.
+  bz_changeMap: (mapFile, byWhom) => {
+    const outcome = applyServerConfigChanges({ mapFile: String(mapFile ?? '') }, String(byWhom ?? 'a plugin'));
+    if (outcome.error) return outcome.error;
+    return outcome.restarted ? true : 'That map is already being played';
+  },
+  // The match clock (bzfsAPI.cxx:2552): the limit in seconds, which a plugin
+  // may change until the next restart as upstream's changes clOptions;
+  // whether the clock waits for /countdown; whether a match is running,
+  // paused or not; and whether a /countdown is counting.
+  bz_getTimeLimit: () => GAME_CONFIG.TIME_LIMIT || 0,
+  bz_setTimeLimit: (seconds) => {
+    if (!(seconds > 0)) return false;
+    GAME_CONFIG.TIME_LIMIT = seconds;
+    return true;
+  },
+  bz_isTimeManualStart: () => Boolean(GAME_CONFIG.TIME_MANUAL_START),
+  bz_isCountDownActive: () => matchClock.active,
+  bz_isCountDownInProgress: () => countdown !== null,
+  bz_isCountDownPaused: () => matchClock.active && matchClock.paused,
   bz_getPlayerByIndex: (id) => {
     const player = players.get(String(id));
     return player?.joined ? pluginRecord(player) : null;
@@ -18319,6 +18562,29 @@ const PLUGIN_API = Object.freeze({
     sendToPlayer(player, { ...line, dst: player.id });
     return true;
   },
+  // bz_sendTextMessage(from, bz_eTeamType to, message) (bzfsAPI.cxx:1649),
+  // the overload JavaScript cannot tell from the player one by its type: to
+  // the team's channel, or the admin channel for eAdministrators.
+  bz_sendTextMessageToTeam: (from, team, message, params) => {
+    const src = from === BZ_SERVER ? SERVER_PLAYER : String(from);
+    const text = params ? localized(String(message), params) : { text: String(message) };
+    const line = { type: 'message', src, msgType: from === BZ_SERVER ? 'server' : 'chat', ...text, ts: Date.now() };
+    if (team === 8) {
+      for (const admin of getAdmins()) sendToPlayer(admin, { ...line, dst: ADMIN_PLAYERS });
+      return true;
+    }
+    const name = BZ_TEAM_ORDER[team];
+    const colorIndex = name ? getTeamColorIndex(name) : null;
+    if (colorIndex === null) return false;
+    const dst = teamChannel(colorIndex);
+    for (const player of players.values()) {
+      if (player.joined && player.team === name) sendToPlayer(player, { ...line, dst });
+    }
+    return true;
+  },
+  // A sound by name, which upstream's API takes and never sends
+  // (bzfsAPI.cxx:3468): a plugin that calls it is told it was not.
+  bz_sendPlayCustomLocalSound: () => false,
 
   // bz_getTeamCount (bzfsAPI.cxx): players on a team, by bz_eTeamType.
   bz_getTeamCount: (team) => {
@@ -18350,6 +18616,28 @@ const PLUGIN_API = Object.freeze({
     const flag = flags[index];
     if (!flag) return false;
     resetFlag(flag);
+    return true;
+  },
+  // bz_resetFlags(onlyUnused, keepTeamFlags = false) (bzfsAPI.cxx:2838):
+  // every flag back to its spawn, or only those nobody holds, and the team
+  // flags left alone if asked.
+  bz_resetFlags: (onlyUnused, keepTeamFlags = false) => {
+    for (const flag of [...flags]) {
+      const held = flag.owner !== null && flag.owner !== undefined;
+      if ((!onlyUnused || !held) && (!keepTeamFlags || flag.team === null)) resetFlag(flag);
+    }
+  },
+  // bz_kickUser(playerID, reason, notify) (bzfsAPI.cxx:2277): off the server,
+  // telling them and the admins why when `notify`.
+  bz_kickUser: (id, reason, notify) => {
+    const victim = players.get(String(id));
+    if (!victim || reason === null || reason === undefined) return false;
+    if (notify) {
+      replyToPlayer(victim, 'You have been kicked from the server for: {reason}', { reason: String(reason) });
+      announceToAdmins(null, localized('{player} was kicked for:{reason}', { player: victim.name, reason: String(reason) }));
+    }
+    log(`[PLUGIN] kicked "${victim.name}": ${reason}`);
+    removeFromServer(victim);
     return true;
   },
   // bz_debugMessage(level, message): logged at level 1 and below, which is
@@ -18539,11 +18827,17 @@ function announcePluginChange() {
 // The plugins as one client should see them: the commands it may complete,
 // whether each runs, and, for an admin, the Plugins rows.
 function sendPluginsTo(player) {
+  const admin = isAdmin(player);
+  const state = pluginOperatorState();
   sendToPlayer(player, {
     type: 'plugins',
     commands: clientCommandList(),
-    state: pluginOperatorState(),
-    list: isAdmin(player) ? pluginPanelList() : undefined,
+    // A plugin's options are the panel's, so an admin's alone.
+    state: admin ? state
+      : Object.fromEntries(Object.entries(state).filter(([key]) => !isPluginOptionKey(key) && !isPluginBzdbKey(key))),
+    list: admin ? pluginPanelList() : undefined,
+    // Whether the panel offers an upload: `pluginUpload` in server.json.
+    upload: admin ? serverConfig.pluginUpload === true : undefined,
   });
 }
 
@@ -18623,6 +18917,10 @@ plugins = createPluginHost({
   log: (text) => log(`[PLUGIN] ${text}`),
 });
 plugins.loadAll();
+// Upstream asks before it reads the world, and a plugin may name another file
+// or build the world itself. bzo has parsed its world by now, so this one
+// says what it is and nothing a plugin changes in it is read back.
+if (plugins.listening('bz_eGetWorldEvent')) plugins.callEvents('bz_eGetWorldEvent', worldEventData('bzo'));
 l10n.usePluginMessages((locale) => plugins.messages(locale));
 l10n.usePluginMsgids(() => plugins.msgids());
 

@@ -6,6 +6,39 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
 
 ## [Unreleased]
 
+### Added
+- Plugins hear `bz_eGetWorldEvent`, and may add to the world BZFlag clients
+  are sent.
+- Plugins can serve web pages at `/plugins/<name>/`, upstream's
+  `bzhttp_RegisterVDir`, listed at `/plugins/`.
+- A plugin's options are rows in the Plugins panel, and a running plugin
+  starts again with what is applied.
+- Admins can upload plugins from the Plugins panel where `pluginUpload` is
+  on in `server.json`; a new one stays off until switched on, and one that
+  replaces a running plugin takes over at the next restart.
+- A running plugin's BZDB variables are rows in the Plugins panel.
+- Upstream's koth, keepaway, HoldTheFlag, timedctf, fairCTF, chathistory
+  and TimeLimit plugins, and allejo's mapchange, off until `server.json`
+  turns them on.
+
+### Changed
+- The compass letters BZFlag clients see are the `compassletters` plugin,
+  which `example-server.json` turns on.
+- Bundled plugins are named in lower case (`ctfoverseer`, `flagstay`,
+  `rabbittimer`, `autoflagreset`, ...); `server.json` names in the old case
+  still match.
+- No plugin runs unless `server.json` turns it on; a plugin file found on disk
+  is listed, not started. A new server's config, copied from
+  `example-server.json` on first start, turns `compassletters` on; an
+  existing one keeps its own config, so add `"compassletters": true` to its
+  `"plugins"`, or switch it on in the Plugins panel, to keep the compass
+  letters for BZFlag players.
+
+### Fixed
+- A player kicked from a proxied server, as they join or later, sees why and
+  stays off rather than rejoining into the kick.
+- A proxied server's game over reaches bzo players.
+
 ## [1.3.80] - 2026-11-01
 
 ### Added

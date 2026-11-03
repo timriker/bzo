@@ -326,6 +326,9 @@ server's own greeting -- rather than from anything bzo holds.
 | `MsgScore` | `playerUpdated` -- bzo carries scores on the record |
 | `MsgPlayerInfo` | the `-`, `+` and `@` beside a callsign |
 | `MsgTeamUpdate` / `MsgTimeUpdate` / `MsgNewRabbit` | `teamUpdate` / `timeUpdate` / `newRabbit` |
+| `MsgScoreOver` | `scoreOver` |
+| `MsgSuperKill` | `superKill`, with no rejoin -- see below |
+| `MsgFlagType` | `customFlagTypes` |
 | `MsgMessage` | `message` |
 | `MsgLagPing` | answered, not forwarded |
 
@@ -424,6 +427,13 @@ longer line is split, each piece broken at the last space that fits
 (`splitBzfsChat`). An action's pieces each start with `/me`. A slash command
 is sent whole, since a second piece would arrive as chat; bzfs keeps the first
 127 bytes, and the player is told once.
+
+**A kick keeps the browser off.** bzfs drops a player with `MsgSuperKill`
+after saying why in a message, for a kick, a ban or its own shutdown alike --
+including one a plugin makes as the player joins (HoldTheFlag, for the wrong
+team). The proxy forwards the reason and a `superKill` that says not to come
+straight back, as upstream's client stays off; anything else that ends the
+connection is a lost link, and the browser rejoins.
 
 ## The one conversion
 

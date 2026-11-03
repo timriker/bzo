@@ -5,7 +5,7 @@
  * See LICENSE or https://www.gnu.org/licenses/agpl-3.0.html
  */
 
-// customPollTypeSample.cjs - upstream's plugins/customPollTypeSample: a poll
+// custompolltypesample.cjs - upstream's plugins/customPollTypeSample: a poll
 // type of the plugin's own, `/poll mute <callsign>`, which takes the player's
 // TALK permission when it passes. Starting one takes the custom POLLMUTE
 // permission, which nobody has until a plugin grants it.
@@ -19,7 +19,6 @@ module.exports = {
     author: 'Tim Riker, after upstream',
     description: 'a sample poll type, /poll mute <callsign>',
     license: 'AGPL-3.0',
-    enabled: false,
   },
 
   Init(bz) {

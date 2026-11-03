@@ -25,6 +25,10 @@ export const WORD_KIND = Object.freeze({
   CALLSIGN: 'callsign',
   FLAG: 'flag',
   SLOT: 'slot',
+  // A plugin by its id: one that runs, for `/unloadplugin`, and one that does
+  // not, for `/loadplugin`.
+  LOADED_PLUGIN: 'loadedPlugin',
+  OFF_PLUGIN: 'offPlugin',
 });
 
 // A word that has been typed before it: `@` marks a mention, `"` opens a
@@ -60,7 +64,8 @@ function splitLastWord(head) {
 // - a first word beginning with `/` is a command.
 // - any later word on a `/` line is an argument, and every bzo command that
 //   takes one takes a player or a flag (`/msg <nick>`, `/kill <#slot|
-//   PlayerName>`, `/flag give ... <FlagAbbr>`).
+//   PlayerName>`, `/flag give ... <FlagAbbr>`) -- but for the two that take a
+//   plugin, whose first argument is one.
 // - anything else is ordinary chat, where only a callsign is worth completing.
 export function wordKindsFor(head) {
   const { before, word } = splitLastWord(head);
@@ -69,6 +74,9 @@ export function wordKindsFor(head) {
   if (before.length === 0) {
     return word.startsWith('/') ? [WORD_KIND.COMMAND] : [WORD_KIND.CALLSIGN];
   }
+  const command = before.trim().toLowerCase();
+  if (command === '/unloadplugin') return [WORD_KIND.LOADED_PLUGIN];
+  if (command === '/loadplugin') return [WORD_KIND.OFF_PLUGIN];
   if (head.startsWith('/')) return [WORD_KIND.CALLSIGN, WORD_KIND.FLAG];
   return [WORD_KIND.CALLSIGN];
 }

@@ -38,7 +38,9 @@ module.exports = {
     author: 'Tim Riker',
     description: 'does nothing; a starting point for a new plugin',
     license: 'BSD-2-Clause',
-    enabled: false,
+    // Options the Plugins panel shows as rows, handed to Init as `config`:
+    // `boolean`, `number` with min, max and step, or `choice` with values.
+    // options: [{ name: 'seconds', type: 'number', min: 1, max: 60, step: 1, default: 10, help: 'How long' }],
   },
 
   Init(bz /* , config */) {

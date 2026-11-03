@@ -38,6 +38,13 @@ const complete = (head) => completeCompose(head, VOCABULARY);
 {
   assert.deepEqual(wordKindsFor('/ms'), [WORD_KIND.COMMAND]);
   assert.deepEqual(wordKindsFor('/msg ti'), [WORD_KIND.CALLSIGN, WORD_KIND.FLAG]);
+  // The plugin commands' argument is a plugin: a running one to unload, one
+  // that is off to load.
+  assert.deepEqual(wordKindsFor('/unloadplugin ctf'), [WORD_KIND.LOADED_PLUGIN]);
+  assert.deepEqual(wordKindsFor('/loadplugin ko'), [WORD_KIND.OFF_PLUGIN]);
+  assert.equal(completeCompose('/unloadplugin ctf', {
+    [WORD_KIND.LOADED_PLUGIN]: ['ctfoverseer', 'sample'],
+  }).head, '/unloadplugin ctfoverseer');
   assert.deepEqual(wordKindsFor('hi @ti'), [WORD_KIND.CALLSIGN]);
   assert.deepEqual(wordKindsFor('/kill #'), [WORD_KIND.SLOT]);
   assert.deepEqual(wordKindsFor('hello ti'), [WORD_KIND.CALLSIGN], 'chat completes people');

@@ -5,7 +5,7 @@
  * See LICENSE or https://www.gnu.org/licenses/agpl-3.0.html
  */
 
-// shockwaveDeath.cjs - upstream's plugins/shockwaveDeath: every tank that dies
+// shockwavedeath.cjs - upstream's plugins/shockwaveDeath: every tank that dies
 // goes off as a shockwave where it stood, fired by the server, so the blast
 // is nobody's kill.
 
@@ -18,7 +18,6 @@ module.exports = {
     author: 'Tim Riker, after upstream',
     description: 'a tank that dies goes off as a shockwave',
     license: 'AGPL-3.0',
-    enabled: false,
   },
 
   Init(bz) {
