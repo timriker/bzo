@@ -6,6 +6,12 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
 
 ## [Unreleased]
 
+## [1.3.84] - 2026-11-03
+
+### Fixed
+- A large map parses in about a quarter of the memory it took:
+  BadgerKing 2.0 in 46 MB rather than 181 MB.
+
 ## [1.3.83] - 2026-11-03
 
 ### Fixed
