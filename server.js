@@ -4320,7 +4320,7 @@ function obstacleSourcesFor(hash) {
   }
   const filePath = entry && resolveMapFilePath(entry.fileName);
   if (!filePath) return Promise.resolve(null);
-  const pending = new Promise((resolve) => {
+  const pending = inMapWorkerTurn(() => new Promise((resolve) => {
     const worker = new Worker(path.join(__dirname, 'server', 'map-spans-worker.cjs'), {
       workerData: { filePath, gameConfigDefaults: GAME_CONFIG_DEFAULTS },
     });
@@ -4338,7 +4338,7 @@ function obstacleSourcesFor(hash) {
         materials: result.materials,
       } : null);
     });
-  });
+  }));
   obstacleSources.set(hash, pending);
   pending.then((sources) => {
     if (!sources) obstacleSources.delete(hash);
@@ -6922,13 +6922,26 @@ function registerMapFile(fileName, map, options) {
   return registerWorldFile(fileName, world, options);
 }
 
+// One map worker at a time, server-wide. A large world takes several hundred
+// MB to parse, and the callers that start one -- the boot pass, a proxy
+// target's world kept current, a join, an import, a viewer's source lookup
+// -- are otherwise independent, so on a server with many proxied targets
+// their peaks would stack. Each waits its turn, which ends when its worker
+// has exited and given its memory back.
+let mapWorkerTurn = Promise.resolve();
+function inMapWorkerTurn(start) {
+  const turn = mapWorkerTurn.then(start);
+  mapWorkerTurn = turn.catch(() => {});
+  return turn;
+}
+
 // Parses and builds a map file on a worker thread (`server/map-convert-
 // worker.cjs`), resolving to what `buildWorldFile` returns plus the parse's
 // `instancing` and `warnedMessages`. The game goes on meanwhile; the worker
 // ends with the map, and the memory it used with it.
 // With `keepWorld` its JSON is written there too, and only the hash comes back.
 function convertMapFile(fileName, filePath, { quiet = true, keepWorld = true } = {}) {
-  return new Promise((resolve, reject) => {
+  return inMapWorkerTurn(() => new Promise((resolve, reject) => {
     const worker = new Worker(path.join(__dirname, 'server', 'map-convert-worker.cjs'), {
       workerData: {
         filePath,
@@ -6939,16 +6952,17 @@ function convertMapFile(fileName, filePath, { quiet = true, keepWorld = true } =
       },
     });
     let result = null;
+    let failure = null;
     worker.on('message', (message) => {
       if (message.log) log(message.log);
       if (message.result) result = message.result;
     });
-    worker.on('error', reject);
+    worker.on('error', (error) => { failure = error; });
     worker.on('exit', (code) => {
       if (result) resolve(result);
-      else reject(new Error(`converting ${fileName} stopped with code ${code}`));
+      else reject(failure || new Error(`converting ${fileName} stopped with code ${code}`));
     });
-  });
+  }));
 }
 
 // A built world registered: its JSON written when `keepWorld` says somebody
