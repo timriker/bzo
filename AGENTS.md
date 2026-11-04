@@ -168,6 +168,15 @@ These are deliberate. Do not "fix" them without being asked.
   `createTank` with one is a console error. Do not add a procedural tank or
   substitute another model for one that failed -- the rule the audio has.
 
+  **A model is how a tank looks, never how it plays.** Every model is
+  upstream's stock tank in the game and on the wire: the same hit box, the
+  same floor, and the same muzzle -- `getStockMuzzle` in
+  `public/js/collision.mjs`, which is `Player::getMuzzle` (Player.cxx:224) --
+  so a shot leaves from the same point whichever model fired it. Nothing a
+  model's geometry measures may reach a shot, a move or a hit test;
+  `test:shots` fails if it does. Where a model's barrel is not where the stock
+  muzzle is, the model is wrong: refit the model, do not move the muzzle.
+
 - **The sky is upstream's** (#166). `public/js/daylight.mjs` is `daylight.cxx`
   ported line for line: the sun and moon from a Julian day, Greenwich sidereal
   time and the world's `_latitude`/`_longitude` (west positive), the light and

@@ -253,6 +253,8 @@ function fire(ownerId, team, message) {
     speed,
     ricochet,
     bounces: 0,
+    // `_muzzleFront`, for the first step's wall test (`traceShotStep`).
+    backtrack: TANK.muzzleFront,
     endsAt: Date.now() + (shotLifetime() * 1000),
   });
   let shotSlot;
@@ -307,7 +309,9 @@ function stepShots(dt, now) {
       distance: shot.speed * dt,
       radius: rules.shotRadius,
       ricochet: shot.ricochet,
+      backtrack: shot.backtrack,
     });
+    shot.backtrack = 0;
     const to = { x: step.x, y: step.y, z: step.z };
     for (const [id, bot] of bots) {
       if (!bot.record.alive) continue;

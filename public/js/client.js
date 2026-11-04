@@ -39,6 +39,10 @@ const CLIENT_LICENSE = 'AGPL-3.0-only';
 const CLIENT_LICENSE_URL = 'https://www.gnu.org/licenses/agpl-3.0.html';
 // Discord's own blurple, on the label of a line said in its channel.
 const DISCORD_LABEL_COLOR = '#5865f2';
+// A server line's colours (FontManager.cxx:40): its label in the console's
+// yellow, what it says in cyan (playing.cxx:3197, :3244, :3309).
+const SERVER_LABEL_COLOR = '#ffff00';
+const SERVER_TEXT_COLOR = '#00ffff';
 const CHAT_TABS = [
   { id: 'all', label: N_('All') },
   { id: 'chat', label: N_('Chat') },
@@ -385,8 +389,7 @@ import {
   traceShotStep,
   buildCollisionColliders,
   configureTankDimensions,
-  DEFAULT_MUZZLE_FORWARD,
-  DEFAULT_MUZZLE_HEIGHT,
+  getStockMuzzle,
   WORLD_WALL_HEIGHT,
   TANK,
   findShotSegmentImpact,
@@ -3003,22 +3006,24 @@ function applyWorldGameplay(world) {
   renderManager._applyFogConfig(gameConfig);
 }
 
-// Where this tank's shots leave from: its model's own muzzle, moved as the
-// world's `_muzzleFront` and `_muzzleHeight` move it, or the world's default
-// where there is no model.
+// Where this tank's shots leave from: the stock tank's muzzle
+// (`getStockMuzzle`), at the size this tank is now -- its length eased toward
+// what its flag makes it, its height through the spawn grow and a landing's
+// squish. Never the model's barrel.
 function myMuzzle() {
   const data = myTank?.userData;
-  // `Player::getMuzzle` (Player.cxx:224): the barrel's reach scales with the
-  // tank's length, so Obesity, Tiny and Thief move it and Narrow does not.
-  const reach = getMyTankScale().length;
-  return {
-    forward: (Number.isFinite(data?.muzzleForward)
-      ? data.muzzleForward * (TANK.muzzleForward / DEFAULT_MUZZLE_FORWARD)
-      : TANK.muzzleForward) * reach,
-    height: Number.isFinite(data?.muzzleHeight)
-      ? data.muzzleHeight * (TANK.muzzleHeight / DEFAULT_MUZZLE_HEIGHT)
-      : TANK.muzzleHeight,
-  };
+  return getStockMuzzle({
+    lengthScale: data?.dimensionScaleLength ?? getMyTankScale().length,
+    lengthRate: data?.dimensionRateLength ?? 0,
+    heightScale: myTankHeightScale(),
+  });
+}
+
+// Upstream's `dimensionsScale[2]` for this tank: the spawn grow and a hard
+// landing's squish, the two things that shorten a tank.
+function myTankHeightScale() {
+  const data = myTank?.userData;
+  return (data?.landingSquishScaleZ ?? 1) * (data?.spawnScale ?? 1);
 }
 
 // `_wallHeight`: the world's own, where it states one, before any game config
@@ -3990,8 +3995,21 @@ function formatNetworkMessage(message) {
       segments: [{ text: '[Discord]', color: DISCORD_LABEL_COLOR }, { text: ` ${name}: ${said}` }],
     };
   }
+  // playing.cxx:3209. The server's line says who it went to, as a player's
+  // does: `[SERVER->]` to this player alone, `[Team]` or `[Admin]` before
+  // `SERVER:` to a team or the admins, and `SERVER:` to everyone.
   if (msgType === CHAT_KIND_SERVER || src === CHAT_TARGET_SERVER) {
-    return { text: `[SERVER] ${translateServerText(message)}`, tabs: ['server', 'all'], kind: CHAT_KIND_SERVER };
+    const said = translateServerText(message);
+    let label = 'SERVER: ';
+    if (dst === CHAT_TARGET_TEAM || channelTeam(dst) !== null) label = '[Team] SERVER: ';
+    else if (dst === CHAT_TARGET_ADMIN) label = '[Admin] SERVER: ';
+    else if (typeof dst === 'string') label = '[SERVER->] ';
+    return {
+      text: `${label}${said}`,
+      tabs: ['server', 'all'],
+      kind: CHAT_KIND_SERVER,
+      segments: [{ text: label, color: SERVER_LABEL_COLOR }, { text: said, color: SERVER_TEXT_COLOR }],
+    };
   }
   // playing.cxx:3286. A team message is marked `[Team]` and goes to the Chat tab
   // like any other -- upstream has no team tab, and neither does bzo.
@@ -9487,7 +9505,7 @@ function createProjectile(data) {
       { x: data.x, y: data.y, z: data.z },
       { x: data.dirX, y: data.dirY, z: Number.isFinite(data.dirZ) ? data.dirZ : 0 },
       data.speed * getShotLifetimeSeconds(data.flag ?? null),
-      { ricochet: data.ricochet === true, throughBuildings: effects.throughBuildings === true },
+      { ricochet: data.ricochet === true, throughBuildings: effects.throughBuildings === true, backtrack: TANK.muzzleFront },
     ).segments;
     const beam = renderManager.createShotBeam({
       ...data,
@@ -9536,6 +9554,9 @@ function createProjectile(data) {
       localProjectile.userData.lifetimeSeconds = getShotLifetimeSeconds(data.flag ?? null);
       localProjectile.userData.teleportReentryBlockTeleporterIndex = null;
       localProjectile.userData.teleportReentryBlockDistance = 0;
+      // The first step looks for a wall from `_muzzleFront` behind the muzzle,
+      // as `makeSegments` does; a guided missile steers instead.
+      localProjectile.userData.backtrack = localProjectile.userData.guided ? 0 : TANK.muzzleFront;
       projectiles.set(data.id, localProjectile);
       return;
     }
@@ -9588,6 +9609,7 @@ function createProjectile(data) {
   ) ?? getShotLifetimeSeconds(data.flag ?? null);
   projectile.userData.teleportReentryBlockTeleporterIndex = null;
   projectile.userData.teleportReentryBlockDistance = 0;
+  projectile.userData.backtrack = projectile.userData.guided ? 0 : TANK.muzzleFront;
   projectiles.set(data.id, projectile);
 }
 
@@ -9659,6 +9681,7 @@ function createLocalProjectile({ x, y, z, dirX, dirY, dirZ = 0, speed }) {
   projectile.userData.lifetimeSeconds = getShotLifetimeSeconds(myFlag);
   projectile.userData.teleportReentryBlockTeleporterIndex = null;
   projectile.userData.teleportReentryBlockDistance = 0;
+  projectile.userData.backtrack = projectile.userData.guided ? 0 : TANK.muzzleFront;
   projectiles.set(localId, projectile);
   pendingLocalProjectiles.push({ id: localId, sentAt: frameEpochMs });
 }
@@ -11753,6 +11776,13 @@ function updateTankDimensions(deltaTime) {
       tank.userData.dimensionRateWidth,
       deltaTime
     );
+    // A rate stops at its target, as upstream's does: the muzzle reads it.
+    if (tank.userData.dimensionScaleLength === tank.userData.dimensionTargetLength) {
+      tank.userData.dimensionRateLength = 0;
+    }
+    if (tank.userData.dimensionScaleWidth === tank.userData.dimensionTargetWidth) {
+      tank.userData.dimensionRateWidth = 0;
+    }
 
     // Player::updateTranslucency, the same ease on the same clock. Cloaking
     // fades a tank out over _flagEffectTime and dropping it fades back in, so
@@ -12488,12 +12518,11 @@ function getLockableTank(targetId) {
   return tank;
 }
 
-// "Right between the eyes" (GuidedMissleStrategy.cxx:180), as the mid-height of
-// the hit cylinder -- see `getLockAimPoint` in `server.js` for why bzo aims at
-// that rather than at a muzzle.
+// "Right between the eyes" (GuidedMissleStrategy.cxx:187): the target's
+// stock muzzle height, as `getLockAimPoint` in `server.js` has it.
 function getLockAimPoint(tank) {
   const at = tankPoint(tank);
-  return { x: at.x, y: at.y, z: at.z + (TANK.height / 2) };
+  return { x: at.x, y: at.y, z: at.z + TANK.muzzleHeight };
 }
 
 // playing.cxx:3537. The tank a missile is coming for is told so -- once, and not
@@ -15689,6 +15718,8 @@ function checkOwnShotHit(shotId, projectile, from, to, bounces = null) {
       position: { ...tankPoint(myTank), azimuth: tankAzimuth(myTank) },
       flagType: myFlag?.type ?? null,
       zoned: amZoned(),
+      // Shortened by a landing's squish or the spawn grow, as the muzzle is.
+      heightScale: myTankHeightScale(),
     },
     {
       noTeamKills: gameConfig?.NO_TEAM_KILLS === true,
@@ -16101,7 +16132,9 @@ function updateProjectiles(deltaTime) {
         radius: SHOT_COLLISION_RADIUS,
         ricochet: ownRicochet,
         justTeleported: frameBounceStart ? false : traced.teleports > 0,
+        backtrack: frameBounceStart || traced.teleports > 0 ? 0 : (projectile.userData.backtrack ?? 0),
       });
+      projectile.userData.backtrack = 0;
       // Did it hit me? Asked over the segment this step actually covered, and
       // before the shot is retired against geometry below -- `step` already
       // ends at whatever building stopped it, so a tank standing behind that

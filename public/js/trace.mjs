@@ -172,11 +172,15 @@ export function traceShotThroughTeleporters(
 // play a ricochet where the next one starts. `world` is { colliders, teleports,
 // mapSize }; `options` { ricochet, throughBuildings, findHit(from, to),
 // onTeleport }. `findHit` is the tank test, for a host that decides hits: the
-// first tank the segment reaches, as { point, ... }, or null.
+// first tank the segment reaches, as { point, ... }, or null. `backtrack` is
+// `_muzzleFront`: the first segment looks for a wall from that far behind the
+// muzzle, as `makeSegments` does (SegmentedShotStrategy.cxx:417), so a beam
+// fired nosed up against a wall meets the wall.
 //
 // Returns { segments, endReason, bounces, hit }.
 export function traceBeam(world, start, dir, range, options = {}) {
   const { ricochet = false, throughBuildings = false, findHit = null, onTeleport = null } = options;
+  let backtrack = options.backtrack ?? 0;
   const obstacles = throughBuildings ? [] : world.colliders;
   const halfMap = world.mapSize / 2;
   const segments = [];
@@ -195,22 +199,31 @@ export function traceBeam(world, start, dir, range, options = {}) {
   let bounces = 0;
 
   for (let segment = 0; segment < MAX_BEAM_SEGMENTS && remaining > 1e-6; segment++) {
+    // Only the ground and the buildings are asked from behind the muzzle; the
+    // teleporters, the world's edge and the tanks from the muzzle itself.
+    const from = {
+      x: point.x - (direction.x * backtrack),
+      y: point.y - (direction.y * backtrack),
+      z: point.z - (direction.z * backtrack),
+    };
+    const reach = remaining + backtrack;
+    backtrack = 0;
     const far = {
-      x: point.x + (direction.x * remaining),
-      y: point.y + (direction.y * remaining),
-      z: point.z + (direction.z * remaining),
+      x: from.x + (direction.x * reach),
+      y: from.y + (direction.y * reach),
+      z: from.z + (direction.z * reach),
     };
     // The ground and the buildings are asked over the whole reach and the
     // nearer of the two truncates the segment; the teleporters are asked over
     // what is left -- a portal behind a wall is not one the beam reaches.
-    const groundFraction = (direction.z < 0 && far.z < 0) ? (0 - point.z) / (direction.z * remaining) : Infinity;
+    const groundFraction = (direction.z < 0 && far.z < 0) ? (0 - from.z) / (direction.z * reach) : Infinity;
     // A beam that begins inside something because it just came out of a
     // teleporter is carried through; anything else that started embedded --
     // the muzzle overlapping a thin wall -- is a hit right there.
-    const embedded = findShotEmbeddedObstacle(obstacles, point.x, point.y, point.z, SHOT_COLLISION_RADIUS);
+    const embedded = findShotEmbeddedObstacle(obstacles, from.x, from.y, from.z, SHOT_COLLISION_RADIUS);
     const impact = embedded
       ? (justTeleported ? null : { fraction: 0, obstacle: embedded, face: null })
-      : findShotSegmentImpact(obstacles, point, far, SHOT_COLLISION_RADIUS);
+      : findShotSegmentImpact(obstacles, from, far, SHOT_COLLISION_RADIUS);
     const obstacleFraction = impact ? impact.fraction : Infinity;
     justTeleported = false;
 
@@ -228,9 +241,9 @@ export function traceBeam(world, start, dir, range, options = {}) {
       fraction = groundFraction;
     }
     let end = {
-      x: point.x + ((far.x - point.x) * fraction),
-      y: point.y + ((far.y - point.y) * fraction),
-      z: reason === 'ground' ? 0 : point.z + ((far.z - point.z) * fraction),
+      x: from.x + ((far.x - from.x) * fraction),
+      y: from.y + ((far.y - from.y) * fraction),
+      z: reason === 'ground' ? 0 : from.z + ((far.z - from.z) * fraction),
     };
 
     const met = findTeleporterEvent(world.teleports, point, end, blockedIndex, blockedDistance, throughBuildings);

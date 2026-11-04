@@ -318,17 +318,22 @@ export function getShotTankHit(shot, from, to, tank, rules = {}) {
   if (Math.max(from.z, to.z) < tank.position.z
     || Math.min(from.z, to.z) > tank.position.z + TANK.hitHeight) return null;
 
+  // A landing's squish and the spawn grow shorten the tank (`heightScale`);
+  // the bounding box above does not follow them, and upstream's does not
+  // either (BaseLocalPlayer.cxx:109).
+  const heightScale = tank.heightScale ?? 1;
   const narrow = usesNarrowHitBox(tank.flagType ?? null);
   const fraction = getSegmentTankHitFraction(from, to, tank.position, {
     narrow,
     radiusScale: getTankHitRadiusScale(tank.flagType ?? null),
     shotRadius,
+    heightScale,
   });
   if (fraction === null) return null;
 
-  // Narrow's box stands the tank's height; the sphere has its own.
+  // Narrow's box stands the tank's present height; the sphere has its own.
   const z = from.z + ((to.z - from.z) * fraction);
-  if (narrow && (z < tank.position.z || z > tank.position.z + TANK.hitHeight)) return null;
+  if (narrow && (z < tank.position.z || z > tank.position.z + (TANK.hitHeight * heightScale))) return null;
 
   return {
     fraction,

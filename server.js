@@ -183,6 +183,7 @@ const {
   traceShotStep,
   buildCollisionColliders,
   configureTankDimensions,
+  getStockMuzzle,
   WORLD_WALL_HEIGHT,
   TANK,
 } = require('./public/js/collision.mjs');
@@ -8638,6 +8639,10 @@ class Projectile {
     this.lifetimeSeconds = getWorldReloadSeconds(GAME_CONFIG) * effects.lifeFactor;
     this.teleportReentryBlockTeleporterIndex = null;
     this.teleportReentryBlockDistance = 0;
+    // `_muzzleFront`, for the first step's wall test to start behind the
+    // muzzle (`traceShotStep`). A guided missile steers rather than running
+    // `makeSegments`, so its first step starts at the muzzle.
+    this.backtrack = this.guided ? 0 : TANK.muzzleFront;
   }
 }
 
@@ -12114,18 +12119,11 @@ function isCreepingUp(player, toZ, groundLimit, now) {
 // below for the projectile this shot creates so the position check and the
 // shot's own createdAt agree about when it was fired.
 function getShotRejection(player, shotX, shotY, shotZ, now = Date.now()) {
-  // Upstream's own cap on the muzzle is BZDB_MUZZLEFRONT = "_tankRadius + 0.1"
-  // (global.cxx), because upstream's own tank-vs-wall collision keeps the
-  // tank's *center* a full tankRadius off a wall it approaches head-on. bzo's
-  // collision is box-precise rather than a bounding circle, so a tank driven
-  // straight into a flat wall stops with its nose (TANK_HALF_LENGTH, half the
-  // tank's own length) right at the surface -- a closer approach than
-  // upstream's circle ever allows. The client now clamps its model-derived
-  // muzzle offset the same way (render.js, MAX_MUZZLE_FORWARD, issue #83):
-  // tied to *this* tank's actual closest approach, not upstream's looser one.
-  // And it scales with the tank as `Player::getMuzzle` (Player.cxx:224) moves
-  // the muzzle: Obesity, Tiny and Thief by their factor, Narrow not at all.
-  const barrelLength = (TANK.halfLength * getPlayerTankScale(player).length) + 0.1;
+  // The stock tank's muzzle (`getStockMuzzle`, `Player::getMuzzle`), whatever
+  // model the shooter draws: Obesity, Tiny and Thief move it by their factor,
+  // Narrow not at all. A muzzle through a wall the tank is nosed up against
+  // is the shot's first step to settle (`backtrack`), not this check's.
+  const barrelLength = getStockMuzzle({ lengthScale: getPlayerTankScale(player).length }).forward;
 
   if (!Number.isFinite(shotX) || !Number.isFinite(shotY) || !Number.isFinite(shotZ)) {
     return { reason: `shot origin is not finite (${shotX}, ${shotY}, ${shotZ})`, fatal: true };
@@ -15819,15 +15817,13 @@ function logShotEnd(projectile, cause, point, details = '') {
   );
 }
 
-// The aim point a guided missile steers at. Upstream aims at the target's own
-// `getMuzzleHeight()` -- "right between the eyes" (GuidedMissleStrategy.cxx:180)
-// -- but a bzo tank has as many muzzle heights as it has models, and no client
-// could agree with the server about which one. The mid-height of the cylinder
-// the server hits with is a number every end already shares, and it is the point
-// most of the tank is nearest to.
+// The aim point a guided missile steers at: the target's muzzle height,
+// "right between the eyes" (GuidedMissleStrategy.cxx:187), which is the stock
+// tank's whatever model it draws. Upstream scales it by a landing's squish,
+// which the server does not follow; every end leaves it at full height, so
+// they agree.
 function getLockAimPoint(position) {
-  return { x: position.x, y: position.y, z: position.z + (TANK.hitHeight / 2) };
-
+  return { x: position.x, y: position.y, z: position.z + TANK.muzzleHeight };
 }
 
 // setTarget()'s eligibility (playing.cxx:4415). A missile may be locked onto a
@@ -16394,6 +16390,7 @@ function traceShotBeam(proj, now) {
     {
       ricochet: proj.ricochet,
       throughBuildings: proj.throughBuildings,
+      backtrack: proj.backtrack,
       findHit: (from, to) => findShotPlayerHit(proj, from, to, now),
       onTeleport: ({ sourceFaceId, destFaceId }) => log(
         `[SHOT_TP] id=${proj.id} beam srcFace=${sourceFaceId} dstFace=${destFaceId}`),
@@ -16547,7 +16544,9 @@ function simulateProjectilesStep(stepSeconds, now) {
       radius: SHOT_COLLISION_RADIUS,
       ricochet: proj.ricochet,
       justTeleported: frameBounceStart ? false : traced.teleports > 0,
+      backtrack: frameBounceStart || traced.teleports > 0 ? 0 : proj.backtrack,
     });
+    proj.backtrack = 0;
     proj.x = step.x;
     proj.y = step.y;
     proj.z = step.z;

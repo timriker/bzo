@@ -1975,13 +1975,15 @@ for (const theirs of ['ST', 'CL', 'MQ', 'SE', null]) {
 
 // The world's tank (`_tankLength` and the rest). Upstream's formulas follow
 // it -- `_tankRadius` is `0.72 * _tankLength`, `_muzzleFront` `_tankRadius +
-// 0.1` -- and bzo's own figures keep their ratio to upstream's.
+// 0.1`, and the muzzle `_tankRadius + 0.1` ahead -- and bzo's own figures keep
+// their ratio to upstream's.
 {
   configureTankDimensions({ TANK_LENGTH: 5 });
   assert.equal(TANK.halfLength, 2.5);
   close(TANK.radius, 3.6, '_tankRadius follows _tankLength');
   close(getFlagGrabRadius(), 3.6 + (6.82 - 4.32), 'and so does the grab reach');
-  close(TANK.muzzleForward, 3.0 * (3.7 / 4.42), '_muzzleFront follows _tankRadius');
+  close(TANK.muzzleFront, 3.7, '_muzzleFront follows _tankRadius');
+  close(TANK.muzzleForward, 3.7, 'and so does the muzzle');
   close(TANK.modelScale.length, 5 / 6);
   assert.equal(TANK.modelScale.width, 1);
   configureTankDimensions({ TANK_LENGTH: 5, TANK_RADIUS: 5 });

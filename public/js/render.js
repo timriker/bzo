@@ -1403,24 +1403,30 @@ class RenderManager {
     const tankAt = myTank.position;
     const forwardX = Math.cos(heading);
     const forwardY = Math.sin(heading);
+    // Upstream's eye is the tank's muzzle height (playing.cxx:5982), so it
+    // sinks with the spawn grow and a hard landing's squish and rises as the
+    // tank recovers. Every view here sinks by as much as that eye would: the
+    // headset's by raising the world rather than lowering the camera.
+    const heightScale = (myTank.userData.landingSquishScaleZ ?? 1) * (myTank.userData.spawnScale ?? 1);
+    const cameraHeight = Number.isFinite(myTank.userData.cameraHeight)
+      ? myTank.userData.cameraHeight
+      : TANK.muzzleHeight;
+    const sink = cameraHeight * (1 - heightScale);
     if (cameraMode === 'first-person') {
       if (xrState.enabled) {
         // In XR mode, keep tank visible and position camera above it
         if (myTank.userData.body) myTank.userData.body.visible = true;
         // The ground slightly below eye height.
-        this._placeWorldAroundEye(tankAt, tankAzimuth(myTank), 0.6);
+        this._placeWorldAroundEye(tankAt, tankAzimuth(myTank), 0.6 - sink);
       } else {
         // The hull stays, as in BZFlag. The turret and barrel are client.js's
         // cockpit rule, which covers an observer's ride too.
         if (myTank.userData.body) myTank.userData.body.visible = true;
-        const cameraHeight = Number.isFinite(myTank.userData.cameraHeight)
-          ? myTank.userData.cameraHeight
-          : TANK.muzzleHeight;
-        const eye = CAMERA_EYE_SCRATCH.set(tankAt.x, tankAt.y, tankAt.z + cameraHeight);
+        const eye = CAMERA_EYE_SCRATCH.set(tankAt.x, tankAt.y, tankAt.z + cameraHeight - sink);
         this._aimCamera(eye, CAMERA_TARGET_SCRATCH.set(
           tankAt.x + (forwardX * 10),
           tankAt.y + (forwardY * 10),
-          tankAt.z + cameraHeight,
+          tankAt.z + cameraHeight - sink,
         ));
       }
     } else {
@@ -1430,7 +1436,7 @@ class RenderManager {
       const eye = CAMERA_EYE_SCRATCH.set(
         tankAt.x - (forwardX * THIRD_PERSON_DISTANCE * chase),
         tankAt.y - (forwardY * THIRD_PERSON_DISTANCE * chase),
-        tankAt.z + (THIRD_PERSON_HEIGHT * chase),
+        tankAt.z + (THIRD_PERSON_HEIGHT * chase) - sink,
       );
       if (xrState.enabled) {
         // The headset owns the camera, so the world moves instead -- the same
@@ -1462,7 +1468,7 @@ class RenderManager {
       this._aimCamera(eye, CAMERA_TARGET_SCRATCH.set(
         tankAt.x + (forwardX * 10),
         tankAt.y + (forwardY * 10),
-        aimZ,
+        aimZ - sink,
       ));
     }
   }

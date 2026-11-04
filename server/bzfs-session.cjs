@@ -530,6 +530,7 @@ class BzfsSession {
       gameSettings: null,
       rabbitId: null,
       timeLeft: null,
+      // The target's own lines, `{ text, to }`: to this player or to everyone.
       messages: [],
       // Plugin flag types bzfs announced (MsgFlagType), by abbreviation.
       customFlagTypes: new Map(),
@@ -889,7 +890,7 @@ class BzfsSession {
 
       case 'mg': {
         const message = decodeMessage(payload);
-        if (message.from === SERVER_PLAYER_ID) this.state.messages.push(message.text);
+        if (message.from === SERVER_PLAYER_ID) this.state.messages.push({ text: message.text, to: message.to });
         this.emit('message', message);
         break;
       }

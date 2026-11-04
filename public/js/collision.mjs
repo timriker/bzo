@@ -2380,6 +2380,11 @@ export function reflectShotDirection(dirX, dirY, dirZ, normal) {
 // this same "already inside" case and was waved through the wall with no
 // impact at all, ending up whole on the far side instead of hitting the
 // wall it started against.
+//
+// `backtrack` is a shot's first step only: upstream's first segment looks
+// for a wall from `_muzzleFront` behind the muzzle (`makeSegments`,
+// SegmentedShotStrategy.cxx:417), so a muzzle poking through a wall the tank
+// is nosed up against meets that wall rather than the far side of it.
 export function traceShotStep({
   obstacles,
   x,
@@ -2393,14 +2398,15 @@ export function traceShotStep({
   ricochet,
   groundLimit = 0,
   justTeleported = false,
+  backtrack = 0,
 }) {
-  let posX = x;
-  let posY = y;
-  let posZ = z;
   let dX = dirX;
   let dY = dirY;
   let dZ = dirZ;
-  let remaining = distance;
+  let posX = x - (dX * backtrack);
+  let posY = y - (dY * backtrack);
+  let posZ = z - (dZ * backtrack);
+  let remaining = distance + backtrack;
   let bounces = 0;
   let obstacle = null;
   let ground = false;
@@ -2510,14 +2516,11 @@ export function traceShotStep({
 // `Player::getRadius` is `dimensionsScale[0] * _tankRadius`, the length scale.
 export const TANK_HIT_HEIGHT = TANK_HEIGHT;
 
-// Upstream's `_tankRadius` (`0.72 * _tankLength`) and `_muzzleHeight`, and the
-// muzzle a tank model reports when there is no model to ask.
+// Upstream's `_tankRadius` (`0.72 * _tankLength`) and `_muzzleHeight`.
 export const BZFLAG_TANK_RADIUS = 4.32;
-export const DEFAULT_MUZZLE_FORWARD = 3.0;
 export const DEFAULT_MUZZLE_HEIGHT = 1.57;
 const BZFLAG_TANK_LENGTH = 6.0;
 const BZFLAG_TANK_WIDTH = 2.8;
-const BZFLAG_MUZZLE_FRONT = BZFLAG_TANK_RADIUS + 0.1;
 const TANK_COLLISION_HEIGHT_DEFAULT = 2;
 
 // The world's tank: `_tankLength`, `_tankWidth`, `_tankHeight`, `_tankRadius`,
@@ -2526,9 +2529,8 @@ const TANK_COLLISION_HEIGHT_DEFAULT = 2;
 // object every module holds, so a world that resizes it resizes it everywhere:
 // each host calls `configureTankDimensions` with its world's config.
 //
-// bzo's own figures that differ from upstream's on purpose -- a collision
-// height of 2, the 3.0 muzzle -- scale with the world's tank, so the ratio
-// between the two is kept.
+// bzo's own collision height of 2, which differs from upstream's on purpose,
+// scales with the world's tank, so the ratio between the two is kept.
 export const TANK = {};
 
 export function configureTankDimensions(config = {}) {
@@ -2548,13 +2550,34 @@ export function configureTankDimensions(config = {}) {
     radius,
     collisionHeight: TANK_COLLISION_HEIGHT_DEFAULT * (height / TANK_HEIGHT),
     muzzleHeight: positive(config.MUZZLE_HEIGHT, DEFAULT_MUZZLE_HEIGHT),
-    muzzleForward: DEFAULT_MUZZLE_FORWARD * (muzzleFront / BZFLAG_MUZZLE_FRONT),
+    // `_muzzleFront`: how far behind its muzzle a shot's first segment starts
+    // looking for a wall (`makeSegments`), not where the muzzle is.
+    muzzleFront,
+    // The stock tank's muzzle, unscaled: `getStockMuzzle` below.
+    muzzleForward: radius + 0.1,
     // How a tank model is drawn against upstream's: TankGeometryMgr scales the
     // geometry by each dimension over its default (TankGeometryMgr.cxx:343).
     modelScale: { length: length / BZFLAG_TANK_LENGTH, width: width / BZFLAG_TANK_WIDTH, height: height / TANK_HEIGHT },
   });
 }
 configureTankDimensions();
+
+// Where a tank's shot leaves, as `Player::getMuzzle` (Player.cxx:224) puts it
+// -- for every tank, whatever model draws it. A model is how a tank looks and
+// never how it plays (AGENTS.md): its barrel is not asked.
+//
+// Forward is the tank's radius at its length scale, plus 0.1, plus a tenth of
+// the rate while a flag is still growing it -- not `_muzzleFront`, which
+// upstream's own note says it does not use here. Up is `_muzzleHeight` at the
+// tank's height scale, which no flag changes: only the spawn grow and a hard
+// landing's squish do, for the moment they last. Burrow lowers the tank, and
+// the muzzle with it, rather than the muzzle on the tank.
+export function getStockMuzzle({ lengthScale = 1, lengthRate = 0, heightScale = 1 } = {}) {
+  let forward = TANK.radius * lengthScale;
+  if (lengthRate > 0) forward += lengthRate * 0.1;
+  forward += 0.1;
+  return { forward, height: TANK.muzzleHeight * heightScale };
+}
 
 // How far along a segment a shot first comes within a tank radius of one tank's
 // centre, or null if it never does. This is SegmentedShotStrategy::checkHit's
@@ -2568,8 +2591,10 @@ configureTankDimensions();
 // The flag is interpreted by the caller, not here: this module is geometry and
 // holds no flag table, so what a flag *means* -- a narrow box, a scaled radius
 // -- arrives as numbers from whichever side already knows (`flags.mjs`).
+// `heightScale` is the tank's height through a landing's squish or the spawn
+// grow, which upstream's sphere sits half of (`getDimensions()[2]`).
 export function getSegmentTankHitFraction(from, to, tank, shape = {}) {
-  const { narrow = false, radiusScale = 1, shotRadius = 0.5 } = shape;
+  const { narrow = false, radiusScale = 1, shotRadius = 0.5, heightScale = 1 } = shape;
   // SegmentedShotStrategy::checkHit's two shapes. Narrow is the exception and
   // upstream says why in place: the box is "shell radius" wide rather than tank
   // width, "so you can actually hit narrow tank head on". Its length is the
@@ -2584,7 +2609,8 @@ export function getSegmentTankHitFraction(from, to, tank, shape = {}) {
     );
   }
   // Every other flag, and no flag, meets upstream's sphere: `0.99 * radius`
-  // around the tank's middle, half its height up (`rayAtDistanceFromOrigin`),
+  // around the tank's middle, half its present height up
+  // (`rayAtDistanceFromOrigin`),
   // the radius scaled by the length factor, which is the axis
   // Player::getRadius reads.
   const radius = 0.99 * TANK.radius * radiusScale;
@@ -2593,7 +2619,7 @@ export function getSegmentTankHitFraction(from, to, tank, shape = {}) {
   const dz = to.z - from.z;
   const fx = from.x - tank.x;
   const fy = from.y - tank.y;
-  const fz = from.z - ((tank.z || 0) + (TANK.hitHeight / 2));
+  const fz = from.z - ((tank.z || 0) + (TANK.hitHeight * heightScale / 2));
   const a = (dx * dx) + (dy * dy) + (dz * dz);
   const b = (fx * dx) + (fy * dy) + (fz * dz);
   const c = (fx * fx) + (fy * fy) + (fz * fz) - (radius * radius);

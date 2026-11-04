@@ -17,7 +17,7 @@ import {
   shotFromTank,
   stepDrive,
 } from './drive.mjs';
-import { TANK } from './collision.mjs';
+import { TANK, getStockMuzzle } from './collision.mjs';
 import {
   FLAG_ENDURANCE, getFiredShotFlag, getFlagEndurance, getShotEffects, getTankDimensionScale, shakeTimeoutSeconds,
 } from './flags.mjs';
@@ -242,8 +242,8 @@ export class BotDriver {
       tankVelocity: packetVelocity(fields, config),
       config,
       shockwave: getShotEffects(fired).shockwave,
-      // `Player::getMuzzle`: the barrel's reach grows and shrinks with the tank.
-      muzzleForward: TANK.muzzleForward * getTankDimensionScale(tank.flag ?? null).length,
+      // The stock tank's muzzle, its reach grown and shrunk with the tank.
+      muzzleForward: getStockMuzzle({ lengthScale: getTankDimensionScale(tank.flag ?? null).length }).forward,
     }));
   }
 }

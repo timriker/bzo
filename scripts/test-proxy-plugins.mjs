@@ -94,7 +94,7 @@ async function say(session, ...lines) {
     const { session } = join(bzfs.port, 'wrongteam', RED);
     const error = await session.connect().then(() => null, (failure) => failure);
     assert.equal(error?.superKill, true, 'dropped as it joined');
-    assert.ok(session.state.messages.some((text) => text.startsWith('You have been kicked from the server for: HTF')),
+    assert.ok(session.state.messages.some(({ text }) => text.startsWith('You have been kicked from the server for: HTF')),
       'the reason came first');
   } finally {
     bzfs.stop();

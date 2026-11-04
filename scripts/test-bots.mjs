@@ -125,13 +125,14 @@ function makeDriver(think, flag = null, baseAt = undefined) {
   assert.ok(airborne.length >= 1 && airborne[0].vv > 18, 'the take-off is reported');
 }
 
-// A shot leaves the muzzle, after a move that says where from.
+// A shot leaves the stock muzzle, 4.42 ahead and 1.57 up, after a move that
+// says where from.
 {
   const { driver, sent } = makeDriver(() => ({ speed: 0, rotation: 0, fire: true }));
   driver.tick(0.05);
   const shoot = sent.findIndex((message) => message.type === 'shoot');
   assert.ok(shoot > 0 && sent[shoot - 1].type === 'm', 'a move rides ahead of the shot');
-  assert.ok(Math.abs(sent[shoot].y - 3) < 1e-9 && Math.abs(sent[shoot].z - 1.57) < 1e-9);
+  assert.ok(Math.abs(sent[shoot].y - 4.42) < 1e-9 && Math.abs(sent[shoot].z - 1.57) < 1e-9, JSON.stringify(sent[shoot]));
   assert.deepEqual([sent[shoot].vx, sent[shoot].vy, sent[shoot].vz].map((v) => Math.round(v * 1e6) / 1e6),
     [0, 100, 0], 'a standing tank fires at the shot speed');
 }

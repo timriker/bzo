@@ -996,6 +996,9 @@ async function handleProxyConnection(ws, req, request) {
   // knows it as a BZFlag client.
   const ownClient = { headset: isHeadsetBrowserUA(req.headers['user-agent']), mobile: false, xr: false, tankModel: null };
   const ownSeat = () => ({ id: session?.playerId, type: clientTypeOf(ownClient), tankModel: ownClient.tankModel });
+  // A notice the proxy itself gives this browser alone, addressed to it as
+  // a target's own `[SERVER->]` line would be, once there is an id to name.
+  const toViewer = () => (Number.isInteger(session?.playerId) ? proxyChatDestination(session.playerId) : ALL_PLAYERS);
   // The tank this browser draws itself as, where the player chose their name
   // too (`requireLogin: false`). A model id, never a path.
   const noteTankModel = (model) => {
@@ -1155,15 +1158,15 @@ async function handleProxyConnection(ws, req, request) {
     send(buildProxyInit(session, mapEntry, viewer, targetStatus, enterTeam, proxyZonedOf, ownSeat()));
     // What the target said to us on the way in -- its own greeting, and
     // whether the callsign we gave it is registered there.
-    for (const text of state.messages) {
-      send({ type: 'message', src: SERVER_PLAYER, dst: ALL_PLAYERS, msgType: 'server', text, ts: Date.now() });
+    for (const { text, to } of state.messages) {
+      send({ type: 'message', src: SERVER_PLAYER, dst: proxyChatDestination(to), msgType: 'server', text, ts: Date.now() });
     }
     // Why a Play landed on watching, which is otherwise only in this log.
     if (cannotSpawn && team !== PLAYER_TEAM.OBSERVER && !options.watch) {
       send({
         type: 'message',
         src: SERVER_PLAYER,
-        dst: ALL_PLAYERS,
+        dst: toViewer(),
         msgType: 'server',
         text: target.requireLogin
           ? `Playing on ${key} needs a global login, so you are watching. Sign in to play.`
@@ -1200,7 +1203,7 @@ async function handleProxyConnection(ws, req, request) {
       send({
         type: 'message',
         src: SERVER_PLAYER,
-        dst: ALL_PLAYERS,
+        dst: toViewer(),
         msgType: 'server',
         text: `Watching: playing on ${key} through this proxy needs a global`
           + ' login, so the target knows who every player is. Sign in and'
@@ -1679,8 +1682,8 @@ async function handleProxyConnection(ws, req, request) {
     // into the same refusal.
     if (err?.superKill && session) {
       log(`[PROXY] ${key}: target dropped "${viewer.callsign}" as it joined`);
-      for (const text of session.state.messages) {
-        send({ type: 'message', src: SERVER_PLAYER, dst: ALL_PLAYERS, msgType: 'server', text, ts: Date.now() });
+      for (const { text, to } of session.state.messages) {
+        send({ type: 'message', src: SERVER_PLAYER, dst: proxyChatDestination(to), msgType: 'server', text, ts: Date.now() });
       }
       send({ type: 'superKill', rejoin: false });
       ws.close();
@@ -1752,7 +1755,7 @@ async function handleProxyConnection(ws, req, request) {
         send({
           type: 'message',
           src: SERVER_PLAYER,
-          dst: ALL_PLAYERS,
+          dst: toViewer(),
           msgType: 'server',
           text: `${key} has "${viewer.callsign}" registered, so playing needs a global`
             + ' login. Sign in and rejoin, or watch as an observer.',
@@ -1781,7 +1784,7 @@ async function handleProxyConnection(ws, req, request) {
         send({
           type: 'message',
           src: SERVER_PLAYER,
-          dst: ALL_PLAYERS,
+          dst: toViewer(),
           msgType: 'server',
           text: `${key} takes plain ASCII chat only, so accents are stripped on the way out.`,
           ts: Date.now(),
@@ -1805,7 +1808,7 @@ async function handleProxyConnection(ws, req, request) {
           send({
             type: 'message',
             src: SERVER_PLAYER,
-            dst: ALL_PLAYERS,
+            dst: toViewer(),
             msgType: 'server',
             text: `${key} takes ${CHAT_TEXT_MAX} characters a line, so a longer command is cut short.`,
             ts: Date.now(),

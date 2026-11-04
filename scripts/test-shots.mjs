@@ -20,6 +20,11 @@ import {
   getWorldWeaponDirection,
 } from '../public/js/shots.mjs';
 
+import { readFileSync, readdirSync } from 'node:fs';
+import { TANK, buildCollisionColliders, getStockMuzzle, traceShotStep } from '../public/js/collision.mjs';
+import { shotFromTank } from '../public/js/drive.mjs';
+import { traceBeam } from '../public/js/trace.mjs';
+
 const require = createRequire(import.meta.url);
 const serverLimits = require('../server/shots.cjs');
 
@@ -320,6 +325,74 @@ for (const value of [1, 3, '3', MAX_SHOT_SLOTS, MAX_SHOT_SLOTS + 1, 0, '0', -1, 
     'options', '-sl GM 5', '-sl l 2', '-sl GM 7', '-sl XX 3', '-sl SW x', 'end',
   ]);
   assert.deepEqual(shotLimits, { GM: 7, L: 2 }, 'a later line for a flag replaces the earlier one');
+}
+
+// Every tank fires from upstream's stock muzzle (`Player::getMuzzle`,
+// Player.cxx:224), whatever model draws it: `_tankRadius + 0.1` ahead and
+// `_muzzleHeight` up. A model is how a tank looks, never how it plays.
+{
+  const close = (a, b) => Math.abs(a - b) < 1e-9;
+  const stock = getStockMuzzle();
+  assert.ok(close(stock.forward, 4.42), `4.42 ahead, not ${stock.forward}`);
+  assert.ok(close(stock.height, 1.57), `1.57 up, not ${stock.height}`);
+  // Obesity's length moves it forward; nothing a flag does moves it up.
+  assert.ok(close(getStockMuzzle({ lengthScale: 2 }).forward, (2 * 4.32) + 0.1), 'Obesity reaches further');
+  // Still growing: a tenth of the rate on top, as upstream adds it.
+  assert.ok(close(getStockMuzzle({ lengthScale: 1, lengthRate: 1.5 }).forward, 4.32 + 0.15 + 0.1), 'and further while it grows');
+  // A landing's squish lowers it, for as long as the squish lasts.
+  assert.ok(close(getStockMuzzle({ heightScale: 0.5 }).height, 0.785), 'squished');
+
+  const shot = shotFromTank({ x: 10, y: 20, z: 13, azimuth: 0, tankVelocity: { x: 0, y: 0, z: 0 }, config: { SHOT_SPEED: 100 } });
+  assert.ok(close(shot.x, 10 + 4.42) && close(shot.y, 20) && close(shot.z, 13 + 1.57),
+    `a tank on a 13.0 block fires from 14.57, as a BZFlag client does: ${JSON.stringify(shot)}`);
+}
+
+// Nothing a model's geometry measures reaches a shot: the barrel a model is
+// drawn with sets only the first-person eye.
+{
+  const sources = [
+    ...readdirSync(new URL('../public/js/', import.meta.url)).filter((name) => /\.m?js$/.test(name)).map((name) => `public/js/${name}`),
+    'server.js',
+  ];
+  for (const file of sources) {
+    const text = readFileSync(new URL(`../${file}`, import.meta.url), 'utf8');
+    assert.ok(!/userData\??\.muzzle(Forward|Height)/.test(text), `${file} reads a model's muzzle`);
+  }
+  const client = readFileSync(new URL('../public/js/client.js', import.meta.url), 'utf8');
+  const myMuzzle = client.slice(client.indexOf('function myMuzzle()'), client.indexOf('\n}\n', client.indexOf('function myMuzzle()')));
+  assert.ok(myMuzzle.includes('getStockMuzzle('), 'the local tank fires from the stock muzzle');
+}
+
+// Nosed up against a wall, the muzzle pokes through it; the first step's wall
+// test starts `_muzzleFront` behind the muzzle (`makeSegments`,
+// SegmentedShotStrategy.cxx:417), so the shot meets the wall and not the far
+// side of it (issue #83).
+{
+  const wall = buildCollisionColliders([{ type: 'box', name: 'wall', pos: [3.5, 0, 0], size: [0.25, 20, 10], angle: 0 }], 800, false);
+  const muzzle = { x: TANK.muzzleForward, y: 0, z: TANK.muzzleHeight };
+  const step = (backtrack) => traceShotStep({
+    obstacles: wall, ...muzzle, dirX: 1, dirY: 0, dirZ: 0, distance: 5, radius: 0.5, ricochet: false, backtrack,
+  });
+  assert.equal(step(0).obstacle, null, 'from the muzzle alone the wall is behind it');
+  const met = step(TANK.muzzleFront);
+  assert.equal(met.obstacle?.name, 'wall', 'from behind the muzzle the shot meets the wall');
+  assert.ok(met.x < 3.5, `and stops on the near face, at ${met.x}`);
+
+  const beam = traceBeam({ colliders: wall, teleports: { teleporters: new Map(), links: new Map() }, mapSize: 800 },
+    muzzle, { x: 1, y: 0, z: 0 }, 100, { backtrack: TANK.muzzleFront });
+  assert.equal(beam.segments[0].end, 'obstacle', `a laser meets it too: ${JSON.stringify(beam.segments)}`);
+}
+
+// A squashed tank's hit sphere sits half its present height up
+// (SegmentedShotStrategy.cxx:227), so a shell grazing past its shoulder at
+// 4.1 across and 2.0 up hits a tank at full height and misses a squished one.
+{
+  const tank = (heightScale) => ({ id: 2, team: 'red', alive: true, paused: false, position: { x: 0, y: 0, z: 0 }, heightScale });
+  const shot = { playerId: 1, flag: null, steals: false, bounces: 0, team: 'green' };
+  const from = { x: -20, y: 4.1, z: 2.0 };
+  const to = { x: 20, y: 4.1, z: 2.0 };
+  assert.ok(getShotTankHit(shot, from, to, tank(1)), 'a tank at full height is hit');
+  assert.equal(getShotTankHit(shot, from, to, tank(0.5)), null, 'a squished one is not');
 }
 
 console.log('Shot slot limit tests passed');

@@ -269,11 +269,10 @@ export class TankRendering {
   // person hides. A model whose barrels ride lower than its hull (bzfourtank's
   // sit at 0.4 under a body 2.0 high, bzship's under its superstructure) would
   // put the eye inside a body that stays drawn, so the eye clears the body's
-  // top instead. Shots still leave from the muzzle.
+  // top instead. Only the eye: a shot leaves from the stock tank's muzzle
+  // (`getStockMuzzle`), never from a model's barrel.
   _setTankMuzzleData(tankGroup, barrel, body) {
     const muzzle = this._computeMuzzleFromBarrel(barrel);
-    tankGroup.userData.muzzleForward = muzzle.forward;
-    tankGroup.userData.muzzleHeight = muzzle.height;
     tankGroup.userData.cameraHeight = Math.max(muzzle.height, this._bodyTop(body) + CAMERA_HULL_CLEARANCE);
   }
 
