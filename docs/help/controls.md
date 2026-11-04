@@ -32,11 +32,14 @@ keyboard and Y on a German one.
 
 ### Chat
 
-- `N` — message everyone (or click the `Send` button)
+- `N` — message everyone (or click the `Send` button). The line to type in
+  opens at the top of chat, beside the destination, and the tabs step aside
+  until it is sent; picking a destination opens it too
 - `M` — message your team
 - `Z` — message the admins, if you are one
 - `O` — type a server command: chat opens holding the `/`
-- `Enter` — send chat (while chat input is focused, or click `Send` again)
+- `Enter` — send the line and close it (or click `Send` again); `Esc` closes
+  it unsent
 - `Shift`+`1` / `2` / `3` / `4` / `5` — switch chat tab (`All` / `Chat` /
   `Server` / `Misc` / `Debug`)
 - `[` / `]` — previous/next chat tab
@@ -83,10 +86,10 @@ keyboard and Y on a German one.
   are transmitting and a red one means you are not, and the hover text names
   the channel it would speak on
 - `▲` beside the gear — hide the scoreboard and chat, leaving the name row and
-  the chat tabs; `▼` brings them back. Typing a message borrows the chat
-  window until you are done with it, and `U` or `7` borrows the scoreboard
-  until the hunt cursor closes; tapping a chat tab opens chat for good. Small
-  screens start collapsed
+  chat's top row -- `Send`, the destination and the tabs; `▼` brings them
+  back. Typing a message borrows the chat window until you are done with it,
+  and `U` or `7` borrows the scoreboard until the hunt cursor closes; tapping a
+  chat tab opens chat for good. Small screens start collapsed
 - `Settings -> Anaglyph 3D` — red/cyan glasses; `Settings -> VR Mode` enters a
   WebXR headset
 

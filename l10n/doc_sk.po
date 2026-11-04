@@ -98,9 +98,11 @@ msgid "Chat"
 msgstr "Chat"
 
 #: docs/help/controls.md
-#, fuzzy
-msgid "`N` — message everyone (or click the `Send` button)"
-msgstr "`N` — otvoriť chat (alebo klikni na tlačidlo `Send`)"
+msgid ""
+"`N` — message everyone (or click the `Send` button). The line to type in "
+"opens at the top of chat, beside the destination, and the tabs step aside "
+"until it is sent; picking a destination opens it too"
+msgstr ""
 
 # review: úhlavný nepriateľ (nemesis)
 #: docs/help/controls.md
@@ -119,8 +121,10 @@ msgid "`O` — type a server command: chat opens holding the `/`"
 msgstr ""
 
 #: docs/help/controls.md
+#, fuzzy
 msgid ""
-"`Enter` — send chat (while chat input is focused, or click `Send` again)"
+"`Enter` — send the line and close it (or click `Send` again); `Esc` closes "
+"it unsent"
 msgstr ""
 "`Enter` — odoslať správu (keď je aktívne pole chatu, alebo znova klikni na "
 "`Send`)"
@@ -292,12 +296,13 @@ msgstr ""
 "kanál, na ktorom by si hovoril"
 
 #: docs/help/controls.md
+#, fuzzy
 msgid ""
 "`▲` beside the gear — hide the scoreboard and chat, leaving the name row and "
-"the chat tabs; `▼` brings them back. Typing a message borrows the chat "
-"window until you are done with it, and `U` or `7` borrows the scoreboard "
-"until the hunt cursor closes; tapping a chat tab opens chat for good. Small "
-"screens start collapsed"
+"chat's top row -- `Send`, the destination and the tabs; `▼` brings them "
+"back. Typing a message borrows the chat window until you are done with it, "
+"and `U` or `7` borrows the scoreboard until the hunt cursor closes; tapping "
+"a chat tab opens chat for good. Small screens start collapsed"
 msgstr ""
 "`▲` vedľa ozubeného kolieska — skryje tabuľku skóre a chat, zostane riadok s "
 "menom a záložky chatu; `▼` ich vráti. Písanie správy si okno chatu požičia, "
@@ -1083,3 +1088,7 @@ msgstr ""
 "Je to slobodný softvér pod licenciou [GNU Affero General Public License v3.0]"
 "(https://www.gnu.org/licenses/agpl-3.0.html). Zdrojový kód je k dispozícii "
 "na [github.com/timriker/bzo](/source)."
+
+#, fuzzy
+#~ msgid "`N` — message everyone (or click the `Send` button)"
+#~ msgstr "`N` — otvoriť chat (alebo klikni na tlačidlo `Send`)"

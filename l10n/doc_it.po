@@ -99,9 +99,11 @@ msgid "Chat"
 msgstr "Chat"
 
 #: docs/help/controls.md
-#, fuzzy
-msgid "`N` — message everyone (or click the `Send` button)"
-msgstr "`N` — apri la chat (o clicca il pulsante `Send`)"
+msgid ""
+"`N` — message everyone (or click the `Send` button). The line to type in "
+"opens at the top of chat, beside the destination, and the tabs step aside "
+"until it is sent; picking a destination opens it too"
+msgstr ""
 
 #: docs/help/controls.md
 #, fuzzy
@@ -118,8 +120,10 @@ msgid "`O` — type a server command: chat opens holding the `/`"
 msgstr ""
 
 #: docs/help/controls.md
+#, fuzzy
 msgid ""
-"`Enter` — send chat (while chat input is focused, or click `Send` again)"
+"`Enter` — send the line and close it (or click `Send` again); `Esc` closes "
+"it unsent"
 msgstr ""
 "`Enter` — invia il messaggio (con il campo della chat attivo, o clicca di "
 "nuovo `Send`)"
@@ -293,12 +297,13 @@ msgstr ""
 "passaggio del mouse indica il canale su cui parlerebbe"
 
 #: docs/help/controls.md
+#, fuzzy
 msgid ""
 "`▲` beside the gear — hide the scoreboard and chat, leaving the name row and "
-"the chat tabs; `▼` brings them back. Typing a message borrows the chat "
-"window until you are done with it, and `U` or `7` borrows the scoreboard "
-"until the hunt cursor closes; tapping a chat tab opens chat for good. Small "
-"screens start collapsed"
+"chat's top row -- `Send`, the destination and the tabs; `▼` brings them "
+"back. Typing a message borrows the chat window until you are done with it, "
+"and `U` or `7` borrows the scoreboard until the hunt cursor closes; tapping "
+"a chat tab opens chat for good. Small screens start collapsed"
 msgstr ""
 "`▲` accanto all'ingranaggio — nasconde il tabellone e la chat, lasciando la "
 "riga dei nomi e le schede della chat; `▼` li riporta. Scrivere un messaggio "
@@ -1115,3 +1120,7 @@ msgstr ""
 "È software libero rilasciato sotto la licenza [GNU Affero General Public "
 "License v3.0](https://www.gnu.org/licenses/agpl-3.0.html). Il codice "
 "sorgente è disponibile su [github.com/timriker/bzo](/source)."
+
+#, fuzzy
+#~ msgid "`N` — message everyone (or click the `Send` button)"
+#~ msgstr "`N` — apri la chat (o clicca il pulsante `Send`)"

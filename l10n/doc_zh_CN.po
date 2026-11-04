@@ -93,9 +93,11 @@ msgid "Chat"
 msgstr "聊天"
 
 #: docs/help/controls.md
-#, fuzzy
-msgid "`N` — message everyone (or click the `Send` button)"
-msgstr "`N` — 打开聊天（或点击 `Send` 按钮）"
+msgid ""
+"`N` — message everyone (or click the `Send` button). The line to type in "
+"opens at the top of chat, beside the destination, and the tabs step aside "
+"until it is sent; picking a destination opens it too"
+msgstr ""
 
 # review: 宿敌
 #: docs/help/controls.md
@@ -114,8 +116,10 @@ msgid "`O` — type a server command: chat opens holding the `/`"
 msgstr ""
 
 #: docs/help/controls.md
+#, fuzzy
 msgid ""
-"`Enter` — send chat (while chat input is focused, or click `Send` again)"
+"`Enter` — send the line and close it (or click `Send` again); `Esc` closes "
+"it unsent"
 msgstr "`Enter` — 发送聊天（聊天输入框获得焦点时，或再次点击 `Send`）"
 
 #: docs/help/controls.md
@@ -279,12 +283,13 @@ msgstr ""
 "送，悬停文字会显示它将使用的频道"
 
 #: docs/help/controls.md
+#, fuzzy
 msgid ""
 "`▲` beside the gear — hide the scoreboard and chat, leaving the name row and "
-"the chat tabs; `▼` brings them back. Typing a message borrows the chat "
-"window until you are done with it, and `U` or `7` borrows the scoreboard "
-"until the hunt cursor closes; tapping a chat tab opens chat for good. Small "
-"screens start collapsed"
+"chat's top row -- `Send`, the destination and the tabs; `▼` brings them "
+"back. Typing a message borrows the chat window until you are done with it, "
+"and `U` or `7` borrows the scoreboard until the hunt cursor closes; tapping "
+"a chat tab opens chat for good. Small screens start collapsed"
 msgstr ""
 "齿轮旁的 `▲` — 隐藏记分板和聊天，只保留名字行和聊天标签页；`▼` 恢复显示。输入"
 "消息时会临时显示聊天窗口直到输入完毕，`U` 或 `7` 会临时显示记分板直到追踪光标"
@@ -1006,3 +1011,7 @@ msgstr ""
 "它是以 [GNU Affero 通用公共许可证 v3.0](https://www.gnu.org/licenses/"
 "agpl-3.0.html) 授权的自由软件。源代码可在 [github.com/timriker/bzo](/source) "
 "获取。"
+
+#, fuzzy
+#~ msgid "`N` — message everyone (or click the `Send` button)"
+#~ msgstr "`N` — 打开聊天（或点击 `Send` 按钮）"

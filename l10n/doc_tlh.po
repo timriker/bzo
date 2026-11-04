@@ -98,9 +98,11 @@ msgid "Chat"
 msgstr "ja'chuq"
 
 #: docs/help/controls.md
-#, fuzzy
-msgid "`N` — message everyone (or click the `Send` button)"
-msgstr "`N` — ja'chuq yIpoSmoH (pagh `Send` leQ yIchu')"
+msgid ""
+"`N` — message everyone (or click the `Send` button). The line to type in "
+"opens at the top of chat, beside the destination, and the tabs step aside "
+"until it is sent; picking a destination opens it too"
+msgstr ""
 
 # review: "nemesis" rendered as "jagh'a'lIj" (your great enemy)
 #: docs/help/controls.md
@@ -119,8 +121,10 @@ msgid "`O` — type a server command: chat opens holding the `/`"
 msgstr ""
 
 #: docs/help/controls.md
+#, fuzzy
 msgid ""
-"`Enter` — send chat (while chat input is focused, or click `Send` again)"
+"`Enter` — send the line and close it (or click `Send` again); `Esc` closes "
+"it unsent"
 msgstr ""
 "`Enter` — ja'chuq yIngeH (ja'chuq ghItlhwI' DaSeHtaHvIS, pagh `Send` "
 "yIchu'qa')"
@@ -294,12 +298,13 @@ msgstr ""
 
 # review: long sentence restructured; "chevron"-free, but check the borrowing logic reads
 #: docs/help/controls.md
+#, fuzzy
 msgid ""
 "`▲` beside the gear — hide the scoreboard and chat, leaving the name row and "
-"the chat tabs; `▼` brings them back. Typing a message borrows the chat "
-"window until you are done with it, and `U` or `7` borrows the scoreboard "
-"until the hunt cursor closes; tapping a chat tab opens chat for good. Small "
-"screens start collapsed"
+"chat's top row -- `Send`, the destination and the tabs; `▼` brings them "
+"back. Typing a message borrows the chat window until you are done with it, "
+"and `U` or `7` borrows the scoreboard until the hunt cursor closes; tapping "
+"a chat tab opens chat for good. Small screens start collapsed"
 msgstr ""
 "`▲` SeHlaw retlhDaq — mI' 'echlet ja'chuq je yISo'; pong tlhegh ja'chuq "
 "pa'mey je ratlh. chaq lucheghmoH `▼`. QIn DaghItlhtaHvIS ja'chuq Qorwagh "
@@ -1063,3 +1068,7 @@ msgstr ""
 "tlhab ghun 'oH, [GNU Affero General Public License v3.0](https://www.gnu.org/"
 "licenses/agpl-3.0.html) chaw' bIngDaq. [github.com/timriker/bzo](/source)Daq "
 "ngoq Hal tu'lu'."
+
+#, fuzzy
+#~ msgid "`N` — message everyone (or click the `Send` button)"
+#~ msgstr "`N` — ja'chuq yIpoSmoH (pagh `Send` leQ yIchu')"

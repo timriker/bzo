@@ -95,9 +95,11 @@ msgid "Chat"
 msgstr "チャット"
 
 #: docs/help/controls.md
-#, fuzzy
-msgid "`N` — message everyone (or click the `Send` button)"
-msgstr "`N` — チャットを開く（または `Send` ボタンをクリック）"
+msgid ""
+"`N` — message everyone (or click the `Send` button). The line to type in "
+"opens at the top of chat, beside the destination, and the tabs step aside "
+"until it is sent; picking a destination opens it too"
+msgstr ""
 
 #: docs/help/controls.md
 #, fuzzy
@@ -114,8 +116,10 @@ msgid "`O` — type a server command: chat opens holding the `/`"
 msgstr ""
 
 #: docs/help/controls.md
+#, fuzzy
 msgid ""
-"`Enter` — send chat (while chat input is focused, or click `Send` again)"
+"`Enter` — send the line and close it (or click `Send` again); `Esc` closes "
+"it unsent"
 msgstr ""
 "`Enter` — チャットを送信（入力欄にフォーカスがあるとき。または `Send` をもう"
 "一度クリック）"
@@ -286,12 +290,13 @@ msgstr ""
 "ないことを示し、ホバーテキストに話すチャンネルが表示されます"
 
 #: docs/help/controls.md
+#, fuzzy
 msgid ""
 "`▲` beside the gear — hide the scoreboard and chat, leaving the name row and "
-"the chat tabs; `▼` brings them back. Typing a message borrows the chat "
-"window until you are done with it, and `U` or `7` borrows the scoreboard "
-"until the hunt cursor closes; tapping a chat tab opens chat for good. Small "
-"screens start collapsed"
+"chat's top row -- `Send`, the destination and the tabs; `▼` brings them "
+"back. Typing a message borrows the chat window until you are done with it, "
+"and `U` or `7` borrows the scoreboard until the hunt cursor closes; tapping "
+"a chat tab opens chat for good. Small screens start collapsed"
 msgstr ""
 "歯車の横の `▲` — スコアボードとチャットを隠し、名前の行とチャットタブだけを残"
 "します。`▼` で元に戻ります。メッセージを入力している間はチャットウィンドウが"
@@ -1068,3 +1073,7 @@ msgstr ""
 "これは[GNU Affero General Public License v3.0](https://www.gnu.org/licenses/"
 "agpl-3.0.html)でライセンスされたフリーソフトウェアです。ソースコードは"
 "[github.com/timriker/bzo](/source)で入手できます。"
+
+#, fuzzy
+#~ msgid "`N` — message everyone (or click the `Send` button)"
+#~ msgstr "`N` — チャットを開く（または `Send` ボタンをクリック）"

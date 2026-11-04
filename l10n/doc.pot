@@ -68,7 +68,7 @@ msgid "Chat"
 msgstr ""
 
 #: docs/help/controls.md
-msgid "`N` — message everyone (or click the `Send` button)"
+msgid "`N` — message everyone (or click the `Send` button). The line to type in opens at the top of chat, beside the destination, and the tabs step aside until it is sent; picking a destination opens it too"
 msgstr ""
 
 #: docs/help/controls.md
@@ -84,7 +84,7 @@ msgid "`O` — type a server command: chat opens holding the `/`"
 msgstr ""
 
 #: docs/help/controls.md
-msgid "`Enter` — send chat (while chat input is focused, or click `Send` again)"
+msgid "`Enter` — send the line and close it (or click `Send` again); `Esc` closes it unsent"
 msgstr ""
 
 #: docs/help/controls.md
@@ -200,7 +200,7 @@ msgid "`🎤` beside the gear — the microphone, as `V` is: a green border mean
 msgstr ""
 
 #: docs/help/controls.md
-msgid "`▲` beside the gear — hide the scoreboard and chat, leaving the name row and the chat tabs; `▼` brings them back. Typing a message borrows the chat window until you are done with it, and `U` or `7` borrows the scoreboard until the hunt cursor closes; tapping a chat tab opens chat for good. Small screens start collapsed"
+msgid "`▲` beside the gear — hide the scoreboard and chat, leaving the name row and chat's top row -- `Send`, the destination and the tabs; `▼` brings them back. Typing a message borrows the chat window until you are done with it, and `U` or `7` borrows the scoreboard until the hunt cursor closes; tapping a chat tab opens chat for good. Small screens start collapsed"
 msgstr ""
 
 #: docs/help/controls.md

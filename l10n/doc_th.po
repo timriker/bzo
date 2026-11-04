@@ -95,9 +95,11 @@ msgid "Chat"
 msgstr "แชท"
 
 #: docs/help/controls.md
-#, fuzzy
-msgid "`N` — message everyone (or click the `Send` button)"
-msgstr "`N` — เปิดแชท (หรือคลิกปุ่ม `Send`)"
+msgid ""
+"`N` — message everyone (or click the `Send` button). The line to type in "
+"opens at the top of chat, beside the destination, and the tabs step aside "
+"until it is sent; picking a destination opens it too"
+msgstr ""
 
 # review: คู่ปรับ (nemesis)
 #: docs/help/controls.md
@@ -116,8 +118,10 @@ msgid "`O` — type a server command: chat opens holding the `/`"
 msgstr ""
 
 #: docs/help/controls.md
+#, fuzzy
 msgid ""
-"`Enter` — send chat (while chat input is focused, or click `Send` again)"
+"`Enter` — send the line and close it (or click `Send` again); `Esc` closes "
+"it unsent"
 msgstr "`Enter` — ส่งแชท (ขณะช่องพิมพ์แชทได้รับโฟกัส หรือคลิก `Send` อีกครั้ง)"
 
 #: docs/help/controls.md
@@ -282,12 +286,13 @@ msgstr ""
 "ขอบสีแดงหมายถึงไม่ได้ส่ง และข้อความเมื่อชี้เมาส์จะบอกชื่อช่องที่จะพูดออกไป"
 
 #: docs/help/controls.md
+#, fuzzy
 msgid ""
 "`▲` beside the gear — hide the scoreboard and chat, leaving the name row and "
-"the chat tabs; `▼` brings them back. Typing a message borrows the chat "
-"window until you are done with it, and `U` or `7` borrows the scoreboard "
-"until the hunt cursor closes; tapping a chat tab opens chat for good. Small "
-"screens start collapsed"
+"chat's top row -- `Send`, the destination and the tabs; `▼` brings them "
+"back. Typing a message borrows the chat window until you are done with it, "
+"and `U` or `7` borrows the scoreboard until the hunt cursor closes; tapping "
+"a chat tab opens chat for good. Small screens start collapsed"
 msgstr ""
 "`▲` ข้างไอคอนเฟือง — ซ่อนกระดานคะแนนและแชท เหลือไว้แค่แถวชื่อและแท็บแชท `▼` นำกลับมา "
 "การพิมพ์ข้อความจะยืมหน้าต่างแชทจนกว่าจะพิมพ์เสร็จ และ `U` หรือ `7` "
@@ -1027,3 +1032,7 @@ msgstr ""
 "เป็นซอฟต์แวร์เสรีภายใต้สัญญาอนุญาต [GNU Affero General Public License v3.0](https://"
 "www.gnu.org/licenses/agpl-3.0.html) ซอร์สโค้ดดูได้ที่ [github.com/timriker/bzo](/"
 "source)"
+
+#, fuzzy
+#~ msgid "`N` — message everyone (or click the `Send` button)"
+#~ msgstr "`N` — เปิดแชท (หรือคลิกปุ่ม `Send`)"

@@ -407,24 +407,25 @@
   </div>
 
   <div id="chatWindow">
-    <!-- The tabs sit outside the body, like the tabs on a manila folder: the
-         panel's dark background belongs to #chatBody, so the strip above it is
-         transparent between the tabs and the battlefield shows through. -->
-    <div id="chatTabs" class="chat-tabs"></div>
+    <!-- One row heads the panel: Send and the destination on the left, the
+         tabs on the right, and the input between them only while a line is
+         being typed -- the tabs give up their place to it then. The messages
+         are below, and get the line an always-there input would take. -->
+    <div id="chatHeader">
+      <button id="sendBtn" type="button" aria-pressed="false" title="Type a chat message, then send it" data-i18n-title data-i18n>Send</button>
+      <!-- Upstream's own PlayerId destinations (Address.h:73-78); see
+           CHAT_TARGET_ALL and friends in client.js. -->
+      <select id="chatTarget">
+        <option value="254" data-i18n>ALL</option>
+        <option value="team" data-i18n>TEAM</option>
+        <option value="252" data-i18n>ADMIN</option>
+        <option value="253" data-i18n>SERVER</option>
+      </select>
+      <input id="chatInput" dir="auto" type="text" />
+      <div id="chatTabs" class="chat-tabs"></div>
+    </div>
     <div id="chatBody">
       <div id="chatMessages"></div>
-      <div class="chat-input-row">
-        <button id="sendBtn" type="button" aria-pressed="false" title="Type a chat message, then send it" data-i18n-title data-i18n>Send</button>
-        <!-- Upstream's own PlayerId destinations (Address.h:73-78); see
-             CHAT_TARGET_ALL and friends in client.js. -->
-        <select id="chatTarget">
-          <option value="254" data-i18n>ALL</option>
-          <option value="team" data-i18n>TEAM</option>
-          <option value="252" data-i18n>ADMIN</option>
-          <option value="253" data-i18n>SERVER</option>
-        </select>
-        <input id="chatInput" dir="auto" type="text" />
-      </div>
     </div>
   </div>
 

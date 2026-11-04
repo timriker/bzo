@@ -2,8 +2,9 @@
 
 Bringing bzo's keyboard, chat panel and desktop HUD closer to BZFlag's, so a
 veteran's hands work here, without giving up WASD
-([#201](https://github.com/timriker/bzo/issues/201)). The keys and silencing
-from the scoreboard are built; the rest is not yet.
+([#201](https://github.com/timriker/bzo/issues/201)). The keys, silencing
+from the scoreboard and the chat panel are built; the desktop layout and
+binoculars are not yet.
 Upstream references are paths under `$HOME/bzflag/`; its default bindings are
 `src/bzflag/ActionBinding.cxx`. The current keys are in
 [help/controls.md](help/controls.md).
@@ -117,6 +118,8 @@ the shaded panel, because white text on a snowy map is unreadable.
 - Enter sends and closes the input. Escape closes it and keeps the draft.
 - Send opens the input when it is closed, and sends when it is open. On touch
   it is the only way in, and it brings up the keyboard.
+- Picking a target in the dropdown -- a player, the team, the admins -- opens
+  the input aimed at it, as Send does.
 - Full tab names when Send, the target selector and the tabs all fit in the
   header at their text size; otherwise single letters (`A C S M D`), each
   with its name as a tooltip. Measured, not a breakpoint, so a translation's

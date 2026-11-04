@@ -194,22 +194,23 @@ canvas {
   box-sizing: border-box;
 }
 #chatTarget {
-  margin-right: 6px;
   min-width: 80px;
   max-width: 160px;
 }
+/* Hidden until a line is being typed, then in the header between the
+   destination and where the tabs were. */
 #chatInput {
-  width: 100%;
-  margin-top: 2px;
-  display: block;
+  display: none;
   flex: 1 1 auto;
   min-width: 0;
 }
+body.chat-active #chatInput {
+  display: block;
+}
 /* The frame only: it positions the panel and carries the font the rows are
-   sized in. The dark background belongs to #chatBody below, so the tab strip
-   above it is transparent and the battlefield shows through between the tabs
-   -- the tabs stand up off the folder rather than sitting on a band that runs
-   the whole width of the screen. */
+   sized in. The header and the messages carry the shaded background, so the
+   input is on it whatever the map behind is -- white text on a snowy map is
+   unreadable on anything lighter. */
 #chatWindow {
   position: fixed;
   left: 50%;
@@ -230,12 +231,26 @@ canvas {
   min-height: 0;
 }
 
-/* The folder itself: everything below the tabs, and the only part with a
-   background. */
+/* The header: Send, the destination, the input while typing, and the tabs
+   pushed to the right. Clear while nobody is typing, so the map shows between
+   the controls, each of which carries its own background; shaded once a line
+   is being typed, so the input reads on any map. */
+#chatHeader {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 0 0 auto;
+  background: transparent;
+  padding: var(--hud-pad) var(--hud-pad) calc(var(--hud-pad) / 2);
+  border-radius: 12px 12px 0 0;
+  box-sizing: border-box;
+  min-width: 0;
+}
+
+/* The messages, under the header. */
 #chatBody {
   background: var(--chat-bg);
-  padding: var(--hud-pad) var(--hud-pad) calc(var(--hud-pad) * 0.75) var(--hud-pad);
-  border-radius: 12px 12px 0 0;
+  padding: 0 var(--hud-pad) calc(var(--hud-pad) * 0.75) var(--hud-pad);
   display: flex;
   flex-direction: column;
   justify-content: flex-end;
@@ -365,34 +380,28 @@ canvas {
 
 .chat-tabs {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   gap: 4px;
-  /* Neither of these gives up room; the messages above do. */
+  margin-left: auto;
   flex: 0 0 auto;
-  /* Against the folder below, so an active tab's missing bottom border meets
-     the body's own edge and the two read as one shape. The side padding lines
-     the strip up with the body's content rather than with its edge. */
-  padding: 0 var(--hud-pad);
-  margin-bottom: -1px;
 }
 
-/* Square at the bottom and rounded at the top, standing on the folder rather
-   than floating above it. Each tab carries its own background, which is what
-   leaves the strip between them transparent. */
+/* The input takes the tabs' place while a line is typed. */
+body.chat-active .chat-tabs {
+  display: none;
+}
+
 .chat-tab {
   border: 1px solid #777;
-  border-bottom: none;
   background: rgba(24, 24, 24, 0.9);
   color: var(--chat-tab-idle);
-  border-radius: 6px 6px 0 0;
+  border-radius: 6px;
   font: var(--hud-font-small) monospace;
   padding: calc(var(--hud-pad) / 2) var(--hud-pad);
   cursor: pointer;
+  white-space: nowrap;
 }
 
-/* The tab whose page is showing is the front of the folder: it takes the
-   body's own fill so the two read as one surface, where an idle tab stays
-   darker and behind it. */
 .chat-tab.active {
   border-color: var(--chat-tab-active);
   color: var(--chat-tab-active);
@@ -404,41 +413,19 @@ canvas {
   color: var(--chat-tab-unread);
 }
 
-/* The folder shuts and the tabs stay: an unread mark is the one thing chat
-   still owes a player who is not reading it, and the tab carrying the mark is
-   also what opens the folder again. With nothing behind them to stand on they
-   close up into buttons rather than tabs -- all four corners rounded, and the
-   bottom edge they lend to the body when it is open drawn back in. */
+/* The messages shut and the header stays: an unread mark is the one thing
+   chat still owes a player who is not reading it, and the tab carrying the
+   mark is also what opens it again. */
 body.chat-collapsed #chatBody {
   display: none;
 }
 
-body.chat-collapsed .chat-tabs {
-  margin-bottom: 0;
+body.chat-active #chatHeader {
+  background: var(--chat-bg);
+}
+
+body.chat-collapsed #chatHeader {
   padding-bottom: var(--hud-pad);
-}
-
-body.chat-collapsed .chat-tab {
-  border-bottom: 1px solid #777;
-  border-radius: 6px;
-}
-
-body.chat-collapsed .chat-tab.active {
-  border-bottom-color: var(--chat-tab-active);
-}
-
-body.chat-collapsed .chat-tab.unread {
-  border-bottom-color: #c62828;
-}
-
-#chatWindow .chat-input-row {
-  display: flex;
-  align-items: center;
-  flex-grow: 0;
-  flex-shrink: 0;
-  min-height: clamp(30px, calc(15 * var(--hud-unit)), 40px);
-  width: 100%;
-  background: transparent;
 }
 
 /* The panel covers the bottom of the screen, which is exactly where mouse
@@ -452,8 +439,8 @@ body.chat-collapsed .chat-tab.unread {
    transcript and the input, is a click on the battlefield until the input
    itself is activated. */
 #chatWindow,
-#chatWindow .chat-tabs,
-#chatWindow .chat-input-row {
+#chatWindow #chatHeader,
+#chatWindow .chat-tabs {
   pointer-events: none;
 }
 
@@ -472,10 +459,6 @@ body.chat-active #chatInput {
    because it acts on chat rather than selecting one of its views. */
 #sendBtn {
   flex: 0 0 auto;
-  /* Send comes first in the row -- `[Send] [target] [input]` -- so the gap it
-     owns is the one on its right. A left margin here would only inset the row
-     from the edge of the panel. */
-  margin-right: 6px;
   border: 1px solid var(--color-accent);
   border-radius: 5px;
   background: var(--color-btn-bg);
@@ -495,7 +478,6 @@ body.chat-active #chatInput {
 #chatTarget {
   height: 32px;
   font-size: 1em;
-  margin-right: 6px;
   border-radius: 8px;
   border: none;
   background: rgba(0,0,0,0.8);
@@ -553,9 +535,19 @@ body.chat-active #chatInput {
     box-sizing: border-box;
     z-index: 100;
   }
-  #chatBody {
+  #chatHeader {
     padding: 4px 4px 2px 4px;
     border-radius: 10px 10px 0 0;
+  }
+  /* The virtual controls' button column stands over the right of the panel
+     here, so the header stops short of it and the tabs stay where a thumb
+     can reach them -- `--mobile-btn-size` and `--mobile-btn-base` on
+     #controlsOverlay, plus a gap. */
+  body.virtual-controls-active #chatHeader {
+    padding-right: calc(min(80px, 15svh) + 2vw + 6px);
+  }
+  #chatBody {
+    padding: 0 4px 2px 4px;
   }
   #chatWindow input,
   #chatWindow textarea {

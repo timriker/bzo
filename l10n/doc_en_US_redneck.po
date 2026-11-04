@@ -98,9 +98,11 @@ msgid "Chat"
 msgstr "Jawin'"
 
 #: docs/help/controls.md
-#, fuzzy
-msgid "`N` — message everyone (or click the `Send` button)"
-msgstr "`N` — open chat (or click the `Send` button)"
+msgid ""
+"`N` — message everyone (or click the `Send` button). The line to type in "
+"opens at the top of chat, beside the destination, and the tabs step aside "
+"until it is sent; picking a destination opens it too"
+msgstr ""
 
 #: docs/help/controls.md
 #, fuzzy
@@ -117,8 +119,10 @@ msgid "`O` — type a server command: chat opens holding the `/`"
 msgstr ""
 
 #: docs/help/controls.md
+#, fuzzy
 msgid ""
-"`Enter` — send chat (while chat input is focused, or click `Send` again)"
+"`Enter` — send the line and close it (or click `Send` again); `Esc` closes "
+"it unsent"
 msgstr "`Enter` — send chat (while yer typin' in chat, or click `Send` again)"
 
 #: docs/help/controls.md
@@ -286,12 +290,13 @@ msgstr ""
 "channel it'd talk on"
 
 #: docs/help/controls.md
+#, fuzzy
 msgid ""
 "`▲` beside the gear — hide the scoreboard and chat, leaving the name row and "
-"the chat tabs; `▼` brings them back. Typing a message borrows the chat "
-"window until you are done with it, and `U` or `7` borrows the scoreboard "
-"until the hunt cursor closes; tapping a chat tab opens chat for good. Small "
-"screens start collapsed"
+"chat's top row -- `Send`, the destination and the tabs; `▼` brings them "
+"back. Typing a message borrows the chat window until you are done with it, "
+"and `U` or `7` borrows the scoreboard until the hunt cursor closes; tapping "
+"a chat tab opens chat for good. Small screens start collapsed"
 msgstr ""
 "`▲` next to the gear — hide the scoreboard an' chat, leavin' the name row "
 "an' the chat tabs; `▼` brings 'em back. Typin' a message borrows the chat "
@@ -1077,3 +1082,7 @@ msgstr ""
 "It's free software licensed under the [GNU Affero General Public License "
 "v3.0](https://www.gnu.org/licenses/agpl-3.0.html). The source code's at "
 "[github.com/timriker/bzo](/source)."
+
+#, fuzzy
+#~ msgid "`N` — message everyone (or click the `Send` button)"
+#~ msgstr "`N` — open chat (or click the `Send` button)"

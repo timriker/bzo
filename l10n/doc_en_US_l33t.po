@@ -98,9 +98,11 @@ msgid "Chat"
 msgstr "Ch47"
 
 #: docs/help/controls.md
-#, fuzzy
-msgid "`N` — message everyone (or click the `Send` button)"
-msgstr "`N` — 0p3n ch47 (0r cl1ck 73h `Send` bu770n)"
+msgid ""
+"`N` — message everyone (or click the `Send` button). The line to type in "
+"opens at the top of chat, beside the destination, and the tabs step aside "
+"until it is sent; picking a destination opens it too"
+msgstr ""
 
 #: docs/help/controls.md
 #, fuzzy
@@ -117,8 +119,10 @@ msgid "`O` — type a server command: chat opens holding the `/`"
 msgstr ""
 
 #: docs/help/controls.md
+#, fuzzy
 msgid ""
-"`Enter` — send chat (while chat input is focused, or click `Send` again)"
+"`Enter` — send the line and close it (or click `Send` again); `Esc` closes "
+"it unsent"
 msgstr ""
 "`Enter` — 53nd ch47 (wh1l3 ch47 1npu7 15 f0cu53d, 0r cl1ck `Send` 4g41n)"
 
@@ -287,12 +291,13 @@ msgstr ""
 "73h ch4nn3l 17 w0uld 5p34k 0n"
 
 #: docs/help/controls.md
+#, fuzzy
 msgid ""
 "`▲` beside the gear — hide the scoreboard and chat, leaving the name row and "
-"the chat tabs; `▼` brings them back. Typing a message borrows the chat "
-"window until you are done with it, and `U` or `7` borrows the scoreboard "
-"until the hunt cursor closes; tapping a chat tab opens chat for good. Small "
-"screens start collapsed"
+"chat's top row -- `Send`, the destination and the tabs; `▼` brings them "
+"back. Typing a message borrows the chat window until you are done with it, "
+"and `U` or `7` borrows the scoreboard until the hunt cursor closes; tapping "
+"a chat tab opens chat for good. Small screens start collapsed"
 msgstr ""
 "`▲` b351d3 73h g34r — h1d3 73h 5c0r3b04rd 4nd ch47, l34v1ng 73h n4m3 r0w 4nd "
 "73h ch47 74b5; `▼` br1ng5 7h3m b4ck. 7yp1ng 4 m3554g3 b0rr0w5 73h ch47 "
@@ -1078,3 +1083,7 @@ msgstr ""
 "17 15 fr33 50f7w4r3 l1c3n53d und3r 73h [GNU Affero General Public License "
 "v3.0](https://www.gnu.org/licenses/agpl-3.0.html). 50urc3 c0d3 15 4v41l4bl3 "
 "47 [github.com/timriker/bzo](/source)."
+
+#, fuzzy
+#~ msgid "`N` — message everyone (or click the `Send` button)"
+#~ msgstr "`N` — 0p3n ch47 (0r cl1ck 73h `Send` bu770n)"

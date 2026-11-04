@@ -3497,6 +3497,17 @@ function announceServerTextIfChanged() {
   }
 }
 
+// The input is hidden until a line is being typed (styles.css), and a hidden
+// input cannot take focus -- so it is shown first and then focused. Focus is
+// still what makes chat entry active; a focus the browser refuses takes the
+// input away again rather than leaving it up with nothing behind it.
+function focusChatInput() {
+  if (!chatInput) return;
+  document.body.classList.add('chat-active');
+  chatInput.focus();
+  if (document.activeElement !== chatInput && !chatActive) document.body.classList.remove('chat-active');
+}
+
 function focusChatWithTarget(targetId, { clearInput = true } = {}) {
   // A `focus()` on a hidden input does nothing at all, so anything that puts
   // the caret in the box opens the folder first (issue #145). Borrowed, not
@@ -3515,7 +3526,7 @@ function focusChatWithTarget(targetId, { clearInput = true } = {}) {
     if (clearInput) {
       chatInput.value = '';
     }
-    chatInput.focus();
+    focusChatInput();
   }
 }
 
@@ -3528,6 +3539,7 @@ function setChatEntryActive(active) {
   // back. A folder opened from its tabs was never borrowed and stays.
   if (!active) returnChat();
   document.body.classList.toggle('chat-active', active);
+  if (!active) fitChatTabLabels();
   if (sendBtn) {
     sendBtn.classList.toggle('active', active);
     sendBtn.setAttribute('aria-pressed', active ? 'true' : 'false');
@@ -3930,7 +3942,7 @@ function toggleChatEntry() {
     return;
   }
   borrowChat();
-  chatInput.focus();
+  focusChatInput();
 }
 
 function handleReplyToLastSender() {
@@ -7293,6 +7305,7 @@ function init() {
   // A ResizeObserver rather than a per-frame read: this changes when a line
   // arrives or a tab opens, which is thousands of frames apart, and the roster
   // is laid out by CSS from the variable either way.
+  window.addEventListener('resize', fitChatTabLabels);
   const chatWindowEl = document.getElementById('chatWindow');
   if (chatWindowEl && typeof ResizeObserver === 'function') {
     const publishChatHeight = () => {
@@ -7628,7 +7641,7 @@ function init() {
   // Picking a recipient is a step on the way to typing, so the keyboard follows
   // the choice into the input rather than being left with nothing focused.
   chatTarget.addEventListener('change', () => {
-    chatInput.focus();
+    focusChatInput();
   });
 
   // Acting on mousedown, with the default prevented, keeps the button from
@@ -17815,6 +17828,34 @@ function ensureXRSettingsMenu() {
   });
 }
 
+// Full tab names when Send, the destination and every tab fit the header at
+// their own text size, and one letter each with the name as a tooltip when
+// they do not. Measured rather than a breakpoint, so a translation's longer
+// words fall back on their own. Not while typing: the tabs are hidden then.
+function fitChatTabLabels() {
+  const header = document.getElementById('chatHeader');
+  const tabs = document.querySelectorAll('#chatTabs .chat-tab');
+  if (!header || tabs.length === 0 || chatActive) return;
+  const full = (btn) => t(CHAT_TABS.find((tab) => tab.id === btn.dataset.chatTab)?.label ?? '');
+  tabs.forEach((btn) => {
+    btn.textContent = full(btn);
+    btn.removeAttribute('title');
+  });
+  // The tabs can run past their own box rather than the header's, so both
+  // are asked: whether everything in the row fits beside them.
+  const strip = document.getElementById('chatTabs');
+  const overflows = () => {
+    const inner = header.getBoundingClientRect().right - parseFloat(window.getComputedStyle(header).paddingRight);
+    return strip.scrollWidth > strip.clientWidth || strip.getBoundingClientRect().right > inner + 0.5;
+  };
+  if (!overflows()) return;
+  tabs.forEach((btn) => {
+    const name = full(btn);
+    btn.textContent = [...name][0]?.toUpperCase() ?? '';
+    btn.title = name;
+  });
+}
+
 function updateChatWindow() {
   if (!chatWindowDirty) return;
   normalizeActiveChatTab();
@@ -17838,6 +17879,7 @@ function updateChatWindow() {
       btn.textContent = t(tab.label);
       chatTabsDiv.appendChild(btn);
     });
+    fitChatTabLabels();
   }
 
   // Captured before the rebuild below touches anything: a viewer already at

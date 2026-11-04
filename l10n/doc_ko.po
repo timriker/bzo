@@ -95,9 +95,11 @@ msgid "Chat"
 msgstr "채팅"
 
 #: docs/help/controls.md
-#, fuzzy
-msgid "`N` — message everyone (or click the `Send` button)"
-msgstr "`N` — 채팅 열기(또는 `Send` 버튼 클릭)"
+msgid ""
+"`N` — message everyone (or click the `Send` button). The line to type in "
+"opens at the top of chat, beside the destination, and the tabs step aside "
+"until it is sent; picking a destination opens it too"
+msgstr ""
 
 #: docs/help/controls.md
 #, fuzzy
@@ -114,8 +116,10 @@ msgid "`O` — type a server command: chat opens holding the `/`"
 msgstr ""
 
 #: docs/help/controls.md
+#, fuzzy
 msgid ""
-"`Enter` — send chat (while chat input is focused, or click `Send` again)"
+"`Enter` — send the line and close it (or click `Send` again); `Esc` closes "
+"it unsent"
 msgstr ""
 "`Enter` — 채팅 보내기(입력란에 포커스가 있을 때, 또는 `Send`를 다시 클릭)"
 
@@ -282,12 +286,13 @@ msgstr ""
 "테두리는 송신하지 않음을 뜻하고, 마우스를 올리면 말할 채널이 표시돼요"
 
 #: docs/help/controls.md
+#, fuzzy
 msgid ""
 "`▲` beside the gear — hide the scoreboard and chat, leaving the name row and "
-"the chat tabs; `▼` brings them back. Typing a message borrows the chat "
-"window until you are done with it, and `U` or `7` borrows the scoreboard "
-"until the hunt cursor closes; tapping a chat tab opens chat for good. Small "
-"screens start collapsed"
+"chat's top row -- `Send`, the destination and the tabs; `▼` brings them "
+"back. Typing a message borrows the chat window until you are done with it, "
+"and `U` or `7` borrows the scoreboard until the hunt cursor closes; tapping "
+"a chat tab opens chat for good. Small screens start collapsed"
 msgstr ""
 "톱니바퀴 옆 `▲` — 스코어보드와 채팅을 숨기고 이름 줄과 채팅 탭만 남겨요. `▼`"
 "로 다시 표시해요. 메시지를 입력하는 동안에는 채팅 창이 잠시 나타나고, `U` 또"
@@ -1051,3 +1056,7 @@ msgstr ""
 "[GNU Affero General Public License v3.0](https://www.gnu.org/licenses/"
 "agpl-3.0.html) 라이선스의 자유 소프트웨어예요. 소스 코드는 [github.com/"
 "timriker/bzo](/source)에서 받을 수 있어요."
+
+#, fuzzy
+#~ msgid "`N` — message everyone (or click the `Send` button)"
+#~ msgstr "`N` — 채팅 열기(또는 `Send` 버튼 클릭)"
