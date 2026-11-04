@@ -3,7 +3,7 @@
 Bringing bzo's keyboard, chat panel and desktop HUD closer to BZFlag's, so a
 veteran's hands work here, without giving up WASD
 ([#201](https://github.com/timriker/bzo/issues/201)). The keys, silencing
-from the scoreboard and the chat panel are built; the desktop layout and
+from the scoreboard, the chat panel and the desktop layout are built;
 binoculars are not yet.
 Upstream references are paths under `$HOME/bzflag/`; its default bindings are
 `src/bzflag/ActionBinding.cxx`. The current keys are in
@@ -133,12 +133,13 @@ clear of the joystick and buttons. With them off (`virtual-controls-active` is
 absent from `<body>`), the radar goes back to upstream's lower left, at its
 current size, with chat beside it along the bottom -- upstream's control
 panel. The debug HUD moves to the top right. The switch is the player's own
-toggle, so the layout never changes mid-fight. A window too narrow for radar
-and chat side by side keeps today's layout.
+toggle, so the layout never changes mid-fight. A portrait screen, or one
+narrower than 800px or shorter than 600px -- where the radar under the
+scoreboard would leave it fewer than three player rows -- keeps today's
+layout.
 
 ## Open questions
 
-- The width at which the desktop layout falls back.
 - Settings, the silence list included, live in each server's own
   `localStorage`, so a callsign silenced on one bzo is not silenced on
   another. No plan yet.

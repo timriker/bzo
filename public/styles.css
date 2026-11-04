@@ -461,7 +461,9 @@ body.chat-active #chatInput {
   flex: 0 0 auto;
   border: 1px solid var(--color-accent);
   border-radius: 5px;
-  background: var(--color-btn-bg);
+  /* The tabs' own shade, since the row behind it is clear until a line is
+     typed. */
+  background: rgba(24, 24, 24, 0.9);
   color: var(--color-accent);
   font: 12px monospace;
   padding: 3px 7px;
@@ -2771,4 +2773,49 @@ body.mouse-confined #mouseCursor {
   background: rgba(255, 255, 255, 0.06);
   white-space: pre-wrap;
   font-size: 12px;
+}
+
+/* Upstream's layout where there is room for it and nothing in the way: the
+   radar in the lower left, at the size it has today, with chat beside it
+   along the bottom -- upstream's control panel -- and the debug HUD in the top
+   right the radar leaves. Landscape, at least 800px wide and 600px tall, with
+   the virtual controls off: they need the bottom corners, a portrait screen
+   has no room for radar and chat side by side, and below 600px the radar
+   under the scoreboard leaves it fewer than three player rows -- so all of
+   those keep the radar top right (docs/controls-plan.md). Last in the file so
+   it wins over the rules above. */
+@media (orientation: landscape) and (min-width: 800px) and (min-height: 600px) {
+  body:not(.virtual-controls-active) #radar {
+    top: auto;
+    right: auto;
+    left: var(--hud-edge);
+    bottom: var(--hud-edge);
+  }
+
+  body:not(.virtual-controls-active) #chatWindow,
+  body.chat-avoid-debug:not(.virtual-controls-active) #chatWindow {
+    left: calc(var(--hud-edge) + var(--radar-size) + var(--hud-edge-gap));
+    right: var(--hud-edge);
+    width: auto;
+    max-width: none;
+    transform: none;
+  }
+
+  body:not(.virtual-controls-active) #debugHud {
+    top: var(--hud-edge);
+    bottom: auto;
+    max-height: calc(100vh - (2 * var(--hud-edge)));
+  }
+
+  body:not(.virtual-controls-active) .inspectPanel {
+    top: calc(var(--hud-edge) + env(safe-area-inset-top, 0px));
+  }
+
+  /* The roster stops above whichever is taller, chat or the radar under it. */
+  body:not(.virtual-controls-active) #mainhud {
+    max-height: calc(100vh
+      - max(var(--chat-height, var(--chat-max-height)), var(--radar-size))
+      - (2 * var(--hud-edge))
+      - var(--hud-edge-gap));
+  }
 }

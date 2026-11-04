@@ -7487,6 +7487,10 @@ function init() {
   let chatTouchY = null;
   const chatTouchTarget = (touch) => {
     if (chatActive) return null;
+    // A touch that starts on the joystick or a button is a control's, even
+    // where the control stands over the transcript: steering must not scroll
+    // chat.
+    if (touch.target?.closest?.('#controlsOverlay')) return null;
     const messagesDiv = document.getElementById('chatMessages');
     if (!messagesDiv) return null;
     const rect = messagesDiv.getBoundingClientRect();
