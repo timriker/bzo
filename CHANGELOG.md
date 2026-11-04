@@ -6,6 +6,20 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
 
 ## [Unreleased]
 
+## [1.3.85] - 2026-11-04
+
+### Changed
+- Every tank model plays as BZFlag's stock tank: shots leave from the
+  stock muzzle, 4.42 ahead and 1.57 up, whatever model fires them.
+- A hard landing's squish and the spawn grow lower the muzzle, the hit
+  sphere and the camera, in a headset too.
+- Server messages read as BZFlag's: `[SERVER->]` to you, `SERVER:` to
+  everyone, in yellow and cyan.
+
+### Fixed
+- A tank nosed against a wall shoots the wall, not the far side of it.
+- Guided missiles aim at a tank's muzzle height.
+
 ## [1.3.84] - 2026-11-03
 
 ### Fixed
