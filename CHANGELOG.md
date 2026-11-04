@@ -6,6 +6,31 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
 
 ## [Unreleased]
 
+## [1.3.86] - 2026-11-04
+
+### Added
+- `K` silences a player from the scoreboard: a cursor opens on no row, Enter
+  silences or lets one back, and a silenced row shows 🔇. `Settings ->
+  Silence` does the same without a keyboard.
+- `Q` shows or hides the radar, `F` the help for the flag you carry.
+- Help shows your own keyboard's label beside a key, where the browser can
+  tell, and documents the mouse wheel.
+
+### Changed
+- Keys match BZFlag's and are read by position on every layout: `1`–`3`
+  radar range and `4`/`5` zoom, Shift and a digit the chat tab, `M` team and
+  `Z` admin messages, `o` a command line. The microphone is `V`; mouse
+  steering, fullscreen and the operator panel are Shift with `M`, `F` and
+  `O`.
+- Chat's top row holds Send, the destination and the tabs, clear until you
+  type; the line opens there and the messages get its old place.
+- On a landscape screen at least 800 by 600 with no virtual controls, the
+  radar is back in BZFlag's lower left with chat beside it.
+
+### Fixed
+- A line aimed at the admins no longer goes to everyone.
+- Steering with the virtual joystick no longer scrolls chat.
+
 ## [1.3.85] - 2026-11-04
 
 ### Changed
