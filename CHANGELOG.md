@@ -20,6 +20,10 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
 - A tank nosed against a wall shoots the wall, not the far side of it.
 - Guided missiles aim at a tank's muzzle height.
 
+### Security
+- minimatch is 11 for every dependency, eslint's included, clearing
+  GHSA-g3hv-75wg-m249.
+
 ## [1.3.84] - 2026-11-03
 
 ### Fixed
