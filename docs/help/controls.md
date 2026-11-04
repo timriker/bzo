@@ -8,6 +8,11 @@ is also the in-game help's (`/` or `?`).
 
 ## Keyboard
 
+Keys are named by where they sit on a US keyboard, and bzo reads them by
+position, not by the letter printed on them. On another layout a key named
+here is the one in the same place: `Z` is the key labelled W on a French
+keyboard and Y on a German one.
+
 ### Driving
 
 - `W` / `S` or `Up` / `Down` — move forward/backward
@@ -27,10 +32,13 @@ is also the in-game help's (`/` or `?`).
 
 ### Chat
 
-- `N` — open chat (or click the `Send` button)
+- `N` — message everyone (or click the `Send` button)
+- `M` — message your team
+- `Z` — message the admins, if you are one
+- `O` — type a server command: chat opens holding the `/`
 - `Enter` — send chat (while chat input is focused, or click `Send` again)
-- `1` / `2` / `3` / `4` / `5` — switch chat tab (`All` / `Chat` / `Server` /
-  `Misc` / `Debug`)
+- `Shift`+`1` / `2` / `3` / `4` / `5` — switch chat tab (`All` / `Chat` /
+  `Server` / `Misc` / `Debug`)
 - `[` / `]` — previous/next chat tab
 - `Tab` — while typing, complete a player, command or flag name; `@` starts a
   mention and `#` a player's slot number
@@ -48,21 +56,25 @@ is also the in-game help's (`/` or `?`).
 - `Esc` — back out one step: exit chat input, leave fullscreen, leave mouse
   steering, then open Settings. Pressing it again closes Settings, so it is
   always safe to press one more time
-- `M` — toggle mouse steering
+- `Shift`+`M` — toggle mouse steering
 - `C` — cycle camera mode
-- `O` — toggle operator panel
-- `F` — toggle fullscreen
+- `Shift`+`O` — toggle operator panel
+- `F` — show or hide what the flag you carry does
+- `Shift`+`F` — toggle fullscreen
 - `` ` `` — toggle debug HUD
-- `=` or `+` or `Numpad +` — zoom radar out (increase range)
-- `-` or `Numpad -` — zoom radar in (decrease range)
-- `\` — reset radar zoom to the default medium range (half the world's radar
-  limit, which is the world size unless the map says otherwise)
+- `Q` — show or hide the radar
+- `1` / `2` / `3` — radar range: Short, Medium, Long (a quarter, half and all
+  of the world's radar limit, which is the world size unless the map says
+  otherwise)
+- `4` or `-` or `Numpad -` — zoom radar in (decrease range)
+- `5` or `=` or `+` or `Numpad +` — zoom radar out (increase range)
+- `\` — reset radar zoom to the default medium range
 - `Settings -> Radar: ...` — cycle Short/Medium/Long radar presets
-- `B` — toggle the voice microphone
+- `V` — toggle the voice microphone
 - `Settings -> Audio Settings` — set the game, voice, and microphone levels,
   and choose the voice channel: All, Nearby, or Team
 - `/` or `?` — show/hide help panel
-- `🎤` beside the gear — the microphone, as `B` is: a green border means you
+- `🎤` beside the gear — the microphone, as `V` is: a green border means you
   are transmitting and a red one means you are not, and the hover text names
   the channel it would speak on
 - `▲` beside the gear — hide the scoreboard and chat, leaving the name row and
@@ -135,8 +147,17 @@ Pausing and self-destruct do nothing.
 
 ## Mouse
 
-`M` turns mouse steering on and off, and nothing else does: the keys never take
-it away behind your back.
+`Shift`+`M` turns mouse steering on and off, and nothing else does: the keys
+never take it away behind your back.
+
+### The wheel
+
+The wheel acts on whatever is under the pointer:
+
+- chat: scrolls it
+- the radar: zooms it, up to zoom in
+- the scoreboard, the debug HUD and any dialog: scrolls it
+- the game view: nothing
 
 ### The targeting box
 
@@ -178,7 +199,8 @@ of their buttons does nothing rather than firing.
 ## Combining inputs
 
 Every input drives at once, and nothing switches between them on its own:
-`M` and the Settings rows are the only things that change which ones are on.
+`Shift`+`M` and the Settings rows are the only things that change which ones
+are on.
 
 **Driving is shared out an axis at a time** -- forward/back, and turn, each on
 its own. On each, the first of these with something to say wins:

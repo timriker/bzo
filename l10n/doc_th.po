@@ -30,6 +30,14 @@ msgid "Keyboard"
 msgstr "คีย์บอร์ด"
 
 #: docs/help/controls.md
+msgid ""
+"Keys are named by where they sit on a US keyboard, and bzo reads them by "
+"position, not by the letter printed on them. On another layout a key named "
+"here is the one in the same place: `Z` is the key labelled W on a French "
+"keyboard and Y on a German one."
+msgstr ""
+
+#: docs/help/controls.md
 msgid "Driving"
 msgstr "การขับ"
 
@@ -87,8 +95,25 @@ msgid "Chat"
 msgstr "แชท"
 
 #: docs/help/controls.md
-msgid "`N` — open chat (or click the `Send` button)"
+#, fuzzy
+msgid "`N` — message everyone (or click the `Send` button)"
 msgstr "`N` — เปิดแชท (หรือคลิกปุ่ม `Send`)"
+
+# review: คู่ปรับ (nemesis)
+#: docs/help/controls.md
+#, fuzzy
+msgid "`M` — message your team"
+msgstr "`,` — ส่งข้อความถึงคู่ปรับ (nemesis)"
+
+# review: คู่ปรับ (nemesis)
+#: docs/help/controls.md
+#, fuzzy
+msgid "`Z` — message the admins, if you are one"
+msgstr "`,` — ส่งข้อความถึงคู่ปรับ (nemesis)"
+
+#: docs/help/controls.md
+msgid "`O` — type a server command: chat opens holding the `/`"
+msgstr ""
 
 #: docs/help/controls.md
 msgid ""
@@ -96,9 +121,10 @@ msgid ""
 msgstr "`Enter` — ส่งแชท (ขณะช่องพิมพ์แชทได้รับโฟกัส หรือคลิก `Send` อีกครั้ง)"
 
 #: docs/help/controls.md
+#, fuzzy
 msgid ""
-"`1` / `2` / `3` / `4` / `5` — switch chat tab (`All` / `Chat` / `Server` / "
-"`Misc` / `Debug`)"
+"`Shift`+`1` / `2` / `3` / `4` / `5` — switch chat tab (`All` / `Chat` / "
+"`Server` / `Misc` / `Debug`)"
 msgstr ""
 "`1` / `2` / `3` / `4` / `5` — สลับแท็บแชท (`All` / `Chat` / `Server` / "
 "`Misc` / `Debug`)"
@@ -160,7 +186,8 @@ msgstr ""
 "แล้วเปิดการตั้งค่า กดอีกครั้งจะปิดการตั้งค่า จึงกดเพิ่มอีกครั้งได้อย่างปลอดภัยเสมอ"
 
 #: docs/help/controls.md
-msgid "`M` — toggle mouse steering"
+#, fuzzy
+msgid "`Shift`+`M` — toggle mouse steering"
 msgstr "`M` — เปิด/ปิดการบังคับด้วยเมาส์"
 
 #: docs/help/controls.md
@@ -168,11 +195,17 @@ msgid "`C` — cycle camera mode"
 msgstr "`C` — สลับโหมดกล้อง"
 
 #: docs/help/controls.md
-msgid "`O` — toggle operator panel"
+#, fuzzy
+msgid "`Shift`+`O` — toggle operator panel"
 msgstr "`O` — เปิด/ปิดแผงโอเปอเรเตอร์"
 
 #: docs/help/controls.md
-msgid "`F` — toggle fullscreen"
+msgid "`F` — show or hide what the flag you carry does"
+msgstr ""
+
+#: docs/help/controls.md
+#, fuzzy
+msgid "`Shift`+`F` — toggle fullscreen"
 msgstr "`F` — เปิด/ปิดโหมดเต็มจอ"
 
 #: docs/help/controls.md
@@ -180,27 +213,41 @@ msgid "`` ` `` — toggle debug HUD"
 msgstr "`` ` `` — เปิด/ปิด HUD ดีบัก"
 
 #: docs/help/controls.md
-msgid "`=` or `+` or `Numpad +` — zoom radar out (increase range)"
-msgstr "`=` หรือ `+` หรือ `Numpad +` — ซูมเรดาร์ออก (เพิ่มระยะ)"
+#, fuzzy
+msgid "`Q` — show or hide the radar"
+msgstr "`/` หรือ `?` — แสดง/ซ่อนแผงวิธีใช้"
 
 #: docs/help/controls.md
-msgid "`-` or `Numpad -` — zoom radar in (decrease range)"
-msgstr "`-` หรือ `Numpad -` — ซูมเรดาร์เข้า (ลดระยะ)"
-
-#: docs/help/controls.md
+#, fuzzy
 msgid ""
-"`\\` — reset radar zoom to the default medium range (half the world's radar "
-"limit, which is the world size unless the map says otherwise)"
+"`1` / `2` / `3` — radar range: Short, Medium, Long (a quarter, half and all "
+"of the world's radar limit, which is the world size unless the map says "
+"otherwise)"
 msgstr ""
 "`\\` — รีเซ็ตการซูมเรดาร์เป็นระยะกลางเริ่มต้น (ครึ่งหนึ่งของขีดจำกัดเรดาร์ของโลก "
 "ซึ่งเท่ากับขนาดโลก เว้นแต่แผนที่จะกำหนดไว้เป็นอย่างอื่น)"
+
+#: docs/help/controls.md
+#, fuzzy
+msgid "`4` or `-` or `Numpad -` — zoom radar in (decrease range)"
+msgstr "`-` หรือ `Numpad -` — ซูมเรดาร์เข้า (ลดระยะ)"
+
+#: docs/help/controls.md
+#, fuzzy
+msgid "`5` or `=` or `+` or `Numpad +` — zoom radar out (increase range)"
+msgstr "`=` หรือ `+` หรือ `Numpad +` — ซูมเรดาร์ออก (เพิ่มระยะ)"
+
+#: docs/help/controls.md
+msgid "`\\` — reset radar zoom to the default medium range"
+msgstr ""
 
 #: docs/help/controls.md
 msgid "`Settings -> Radar: ...` — cycle Short/Medium/Long radar presets"
 msgstr "`Settings -> Radar: ...` — สลับระยะเรดาร์สำเร็จรูป ใกล้/กลาง/ไกล"
 
 #: docs/help/controls.md
-msgid "`B` — toggle the voice microphone"
+#, fuzzy
+msgid "`V` — toggle the voice microphone"
 msgstr "`B` — เปิด/ปิดไมโครโฟนสำหรับเสียงพูด"
 
 #: docs/help/controls.md
@@ -216,8 +263,9 @@ msgid "`/` or `?` — show/hide help panel"
 msgstr "`/` หรือ `?` — แสดง/ซ่อนแผงวิธีใช้"
 
 #: docs/help/controls.md
+#, fuzzy
 msgid ""
-"`🎤` beside the gear — the microphone, as `B` is: a green border means you "
+"`🎤` beside the gear — the microphone, as `V` is: a green border means you "
 "are transmitting and a red one means you are not, and the hover text names "
 "the channel it would speak on"
 msgstr ""
@@ -419,11 +467,36 @@ msgid "Mouse"
 msgstr "เมาส์"
 
 #: docs/help/controls.md
+#, fuzzy
 msgid ""
-"`M` turns mouse steering on and off, and nothing else does: the keys never "
-"take it away behind your back."
+"`Shift`+`M` turns mouse steering on and off, and nothing else does: the keys "
+"never take it away behind your back."
 msgstr ""
 "`M` เปิดและปิดการบังคับด้วยเมาส์ และไม่มีอย่างอื่นทำแบบนี้: ปุ่มต่าง ๆ จะไม่ปิดมันโดยที่คุณไม่รู้ตัว"
+
+#: docs/help/controls.md
+msgid "The wheel"
+msgstr ""
+
+#: docs/help/controls.md
+msgid "The wheel acts on whatever is under the pointer:"
+msgstr ""
+
+#: docs/help/controls.md
+msgid "chat: scrolls it"
+msgstr ""
+
+#: docs/help/controls.md
+msgid "the radar: zooms it, up to zoom in"
+msgstr ""
+
+#: docs/help/controls.md
+msgid "the scoreboard, the debug HUD and any dialog: scrolls it"
+msgstr ""
+
+#: docs/help/controls.md
+msgid "the game view: nothing"
+msgstr ""
 
 #: docs/help/controls.md
 msgid "The targeting box"
@@ -477,11 +550,14 @@ msgstr ""
 "BZFlag ซึ่งปิดไว้เป็นค่าเริ่มต้น) จะค่อย ๆ เร่งรถถังขึ้นไป เหมือนเมื่อใช้ปุ่ม"
 
 #: docs/help/controls.md
+#, fuzzy
 msgid ""
-"The boxes are BZFlag's own sizes, scaled to the window. BZFlag also holds "
-"the cursor inside the box; a browser cannot without taking the pointer over, "
-"so in bzo the cursor can leave it -- the steering simply stays at full, and "
-"the cost is a longer move back to the centre."
+"The boxes are BZFlag's own sizes, scaled to the window. As in BZFlag, the "
+"cursor is held inside the box: the first click on the battlefield takes the "
+"pointer over and bzo draws the cursor itself. Escape lets it go, and so do a "
+"menu, dying, pausing and observing; the next click takes it back. A browser "
+"that refuses leaves the cursor free -- the steering stays at full past the "
+"box, and the cost is a longer move back to the centre."
 msgstr ""
 "กรอบมีขนาดเดียวกับของ BZFlag ปรับตามขนาดหน้าต่าง BZFlag ยังกักเคอร์เซอร์ไว้ในกรอบด้วย "
 "แต่เบราว์เซอร์ทำไม่ได้หากไม่ยึดตัวชี้ไว้ ใน bzo เคอร์เซอร์จึงออกนอกกรอบได้ "
@@ -516,9 +592,11 @@ msgid "Combining inputs"
 msgstr "การใช้อินพุตร่วมกัน"
 
 #: docs/help/controls.md
+#, fuzzy
 msgid ""
 "Every input drives at once, and nothing switches between them on its own: "
-"`M` and the Settings rows are the only things that change which ones are on."
+"`Shift`+`M` and the Settings rows are the only things that change which ones "
+"are on."
 msgstr ""
 "อินพุตทุกแบบขับได้พร้อมกัน และไม่มีอะไรสลับระหว่างกันเอง: `M` "
 "และแถวในการตั้งค่าเป็นสิ่งเดียวที่เปลี่ยนว่าอินพุตใดเปิดอยู่"
@@ -909,7 +987,8 @@ msgstr ""
 "**ทีม** คือทีมของคุณเองที่ใดก็ได้บนแผนที่"
 
 #: docs/help/voice.md
-msgid "`B` — toggle the microphone"
+#, fuzzy
+msgid "`V` — toggle the microphone"
 msgstr "`B` — เปิด/ปิดไมโครโฟน"
 
 #: docs/help/voice.md

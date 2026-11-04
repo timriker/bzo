@@ -106,6 +106,30 @@ export function cycleRadarZoomLevel(direction = 1) {
   setRadarZoomLevel(RADAR_ZOOM_LEVELS[nextIndex]);
 }
 
+// `toggleRadar` (`Q`, ActionBinding.cxx:112): the player's own radar on or off,
+// kept as upstream keeps `displayRadar`. A world with no radar has none either
+// way (`isRadarShown`).
+let radarDisplayed = true;
+try {
+  radarDisplayed = localStorage.getItem('radarDisplayed') !== 'false';
+} catch {
+  /* ignore storage errors */
+}
+
+export function toggleRadarDisplay() {
+  radarDisplayed = !radarDisplayed;
+  try {
+    localStorage.setItem('radarDisplayed', String(radarDisplayed));
+  } catch {
+    /* ignore storage errors */
+  }
+  return radarDisplayed;
+}
+
+export function isRadarShown() {
+  return radarDisplayed && worldRadarLimit() > 0;
+}
+
 export function adjustRadarZoom(direction) {
   if (direction > 0) {
     setRadarZoomLevel(radarZoomLevel * RADAR_ZOOM_STEP);
@@ -692,8 +716,9 @@ export function updateRadar() {
   // RadarRenderer::render: a world with a radar limit of 0 or less -- upstream's
   // `-noradar` -- has no radar for anyone (RadarRenderer.cxx:377).
   const radarLimit = worldRadarLimit();
-  client.radarCanvas.style.visibility = radarLimit > 0 ? '' : 'hidden';
-  if (!(radarLimit > 0)) return;
+  const shown = radarDisplayed && radarLimit > 0;
+  client.radarCanvas.style.visibility = shown ? '' : 'hidden';
+  if (!shown) return;
 
   // `bzfrand() > decay` is upstream's roll, and the decay it leaves behind is
   // what makes a jammed radar break through for a frame or two at a time rather

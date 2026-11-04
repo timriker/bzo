@@ -31,6 +31,14 @@ msgid "Keyboard"
 msgstr "Tastatur"
 
 #: docs/help/controls.md
+msgid ""
+"Keys are named by where they sit on a US keyboard, and bzo reads them by "
+"position, not by the letter printed on them. On another layout a key named "
+"here is the one in the same place: `Z` is the key labelled W on a French "
+"keyboard and Y on a German one."
+msgstr ""
+
+#: docs/help/controls.md
 msgid "Driving"
 msgstr "Fahren"
 
@@ -91,8 +99,23 @@ msgid "Chat"
 msgstr "Chat"
 
 #: docs/help/controls.md
-msgid "`N` — open chat (or click the `Send` button)"
+#, fuzzy
+msgid "`N` — message everyone (or click the `Send` button)"
 msgstr "`N` — Chat öffnen (oder auf den Button `Send` klicken)"
+
+#: docs/help/controls.md
+#, fuzzy
+msgid "`M` — message your team"
+msgstr "`,` — Nachricht an dein Nemesis-Ziel"
+
+#: docs/help/controls.md
+#, fuzzy
+msgid "`Z` — message the admins, if you are one"
+msgstr "`,` — Nachricht an dein Nemesis-Ziel"
+
+#: docs/help/controls.md
+msgid "`O` — type a server command: chat opens holding the `/`"
+msgstr ""
 
 #: docs/help/controls.md
 msgid ""
@@ -102,9 +125,10 @@ msgstr ""
 "auf `Send` klicken)"
 
 #: docs/help/controls.md
+#, fuzzy
 msgid ""
-"`1` / `2` / `3` / `4` / `5` — switch chat tab (`All` / `Chat` / `Server` / "
-"`Misc` / `Debug`)"
+"`Shift`+`1` / `2` / `3` / `4` / `5` — switch chat tab (`All` / `Chat` / "
+"`Server` / `Misc` / `Debug`)"
 msgstr ""
 "`1` / `2` / `3` / `4` / `5` — Chat-Tab wechseln (`All` / `Chat` / `Server` / "
 "`Misc` / `Debug`)"
@@ -169,7 +193,8 @@ msgstr ""
 "die Einstellungen, ein weiterer Druck ist also immer unbedenklich"
 
 #: docs/help/controls.md
-msgid "`M` — toggle mouse steering"
+#, fuzzy
+msgid "`Shift`+`M` — toggle mouse steering"
 msgstr "`M` — Maussteuerung an/aus"
 
 #: docs/help/controls.md
@@ -177,11 +202,17 @@ msgid "`C` — cycle camera mode"
 msgstr "`C` — Kameramodus durchschalten"
 
 #: docs/help/controls.md
-msgid "`O` — toggle operator panel"
+#, fuzzy
+msgid "`Shift`+`O` — toggle operator panel"
 msgstr "`O` — Operator-Panel an/aus"
 
 #: docs/help/controls.md
-msgid "`F` — toggle fullscreen"
+msgid "`F` — show or hide what the flag you carry does"
+msgstr ""
+
+#: docs/help/controls.md
+#, fuzzy
+msgid "`Shift`+`F` — toggle fullscreen"
 msgstr "`F` — Vollbild an/aus"
 
 #: docs/help/controls.md
@@ -189,28 +220,42 @@ msgid "`` ` `` — toggle debug HUD"
 msgstr "`` ` `` — Debug-HUD an/aus"
 
 #: docs/help/controls.md
-msgid "`=` or `+` or `Numpad +` — zoom radar out (increase range)"
-msgstr "`=` oder `+` oder `Numpad +` — Radar herauszoomen (Reichweite erhöhen)"
+#, fuzzy
+msgid "`Q` — show or hide the radar"
+msgstr "`/` oder `?` — Hilfe-Panel ein-/ausblenden"
 
 #: docs/help/controls.md
-msgid "`-` or `Numpad -` — zoom radar in (decrease range)"
-msgstr "`-` oder `Numpad -` — Radar hineinzoomen (Reichweite verringern)"
-
-#: docs/help/controls.md
+#, fuzzy
 msgid ""
-"`\\` — reset radar zoom to the default medium range (half the world's radar "
-"limit, which is the world size unless the map says otherwise)"
+"`1` / `2` / `3` — radar range: Short, Medium, Long (a quarter, half and all "
+"of the world's radar limit, which is the world size unless the map says "
+"otherwise)"
 msgstr ""
 "`\\` — Radarzoom auf die mittlere Standardreichweite zurücksetzen (die "
 "Hälfte des Radarlimits der Welt, also der Weltgröße, sofern die Karte nichts "
 "anderes vorgibt)"
 
 #: docs/help/controls.md
+#, fuzzy
+msgid "`4` or `-` or `Numpad -` — zoom radar in (decrease range)"
+msgstr "`-` oder `Numpad -` — Radar hineinzoomen (Reichweite verringern)"
+
+#: docs/help/controls.md
+#, fuzzy
+msgid "`5` or `=` or `+` or `Numpad +` — zoom radar out (increase range)"
+msgstr "`=` oder `+` oder `Numpad +` — Radar herauszoomen (Reichweite erhöhen)"
+
+#: docs/help/controls.md
+msgid "`\\` — reset radar zoom to the default medium range"
+msgstr ""
+
+#: docs/help/controls.md
 msgid "`Settings -> Radar: ...` — cycle Short/Medium/Long radar presets"
 msgstr "`Settings -> Radar: ...` — Radarstufen Kurz/Mittel/Lang durchschalten"
 
 #: docs/help/controls.md
-msgid "`B` — toggle the voice microphone"
+#, fuzzy
+msgid "`V` — toggle the voice microphone"
 msgstr "`B` — Sprachmikrofon an/aus"
 
 #: docs/help/controls.md
@@ -226,8 +271,9 @@ msgid "`/` or `?` — show/hide help panel"
 msgstr "`/` oder `?` — Hilfe-Panel ein-/ausblenden"
 
 #: docs/help/controls.md
+#, fuzzy
 msgid ""
-"`🎤` beside the gear — the microphone, as `B` is: a green border means you "
+"`🎤` beside the gear — the microphone, as `V` is: a green border means you "
 "are transmitting and a red one means you are not, and the hover text names "
 "the channel it would speak on"
 msgstr ""
@@ -448,12 +494,37 @@ msgid "Mouse"
 msgstr "Maus"
 
 #: docs/help/controls.md
+#, fuzzy
 msgid ""
-"`M` turns mouse steering on and off, and nothing else does: the keys never "
-"take it away behind your back."
+"`Shift`+`M` turns mouse steering on and off, and nothing else does: the keys "
+"never take it away behind your back."
 msgstr ""
 "`M` schaltet die Maussteuerung an und aus, und sonst nichts: die Tasten "
 "nehmen sie dir nie hinter deinem Rücken weg."
+
+#: docs/help/controls.md
+msgid "The wheel"
+msgstr ""
+
+#: docs/help/controls.md
+msgid "The wheel acts on whatever is under the pointer:"
+msgstr ""
+
+#: docs/help/controls.md
+msgid "chat: scrolls it"
+msgstr ""
+
+#: docs/help/controls.md
+msgid "the radar: zooms it, up to zoom in"
+msgstr ""
+
+#: docs/help/controls.md
+msgid "the scoreboard, the debug HUD and any dialog: scrolls it"
+msgstr ""
+
+#: docs/help/controls.md
+msgid "the game view: nothing"
+msgstr ""
 
 #: docs/help/controls.md
 msgid "The targeting box"
@@ -514,11 +585,14 @@ msgstr ""
 "den Panzer mit der Zeit darauf, genau wie mit den Tasten."
 
 #: docs/help/controls.md
+#, fuzzy
 msgid ""
-"The boxes are BZFlag's own sizes, scaled to the window. BZFlag also holds "
-"the cursor inside the box; a browser cannot without taking the pointer over, "
-"so in bzo the cursor can leave it -- the steering simply stays at full, and "
-"the cost is a longer move back to the centre."
+"The boxes are BZFlag's own sizes, scaled to the window. As in BZFlag, the "
+"cursor is held inside the box: the first click on the battlefield takes the "
+"pointer over and bzo draws the cursor itself. Escape lets it go, and so do a "
+"menu, dying, pausing and observing; the next click takes it back. A browser "
+"that refuses leaves the cursor free -- the steering stays at full past the "
+"box, and the cost is a longer move back to the centre."
 msgstr ""
 "Die Rahmen haben BZFlags eigene Größen, skaliert auf das Fenster. BZFlag "
 "hält den Cursor außerdem im Rahmen fest; ein Browser kann das nicht, ohne "
@@ -558,9 +632,11 @@ msgid "Combining inputs"
 msgstr "Eingaben kombinieren"
 
 #: docs/help/controls.md
+#, fuzzy
 msgid ""
 "Every input drives at once, and nothing switches between them on its own: "
-"`M` and the Settings rows are the only things that change which ones are on."
+"`Shift`+`M` and the Settings rows are the only things that change which ones "
+"are on."
 msgstr ""
 "Alle Eingaben steuern gleichzeitig, und nichts schaltet von selbst zwischen "
 "ihnen um: `M` und die Zeilen in den Einstellungen sind das Einzige, was "
@@ -987,7 +1063,8 @@ msgstr ""
 "Spieler in Hörweite, **Team** dein eigenes Team überall auf der Karte"
 
 #: docs/help/voice.md
-msgid "`B` — toggle the microphone"
+#, fuzzy
+msgid "`V` — toggle the microphone"
 msgstr "`B` — Mikrofon an/aus"
 
 #: docs/help/voice.md

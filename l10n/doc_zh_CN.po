@@ -30,6 +30,14 @@ msgid "Keyboard"
 msgstr "键盘"
 
 #: docs/help/controls.md
+msgid ""
+"Keys are named by where they sit on a US keyboard, and bzo reads them by "
+"position, not by the letter printed on them. On another layout a key named "
+"here is the one in the same place: `Z` is the key labelled W on a French "
+"keyboard and Y on a German one."
+msgstr ""
+
+#: docs/help/controls.md
 msgid "Driving"
 msgstr "驾驶"
 
@@ -85,8 +93,25 @@ msgid "Chat"
 msgstr "聊天"
 
 #: docs/help/controls.md
-msgid "`N` — open chat (or click the `Send` button)"
+#, fuzzy
+msgid "`N` — message everyone (or click the `Send` button)"
 msgstr "`N` — 打开聊天（或点击 `Send` 按钮）"
+
+# review: 宿敌
+#: docs/help/controls.md
+#, fuzzy
+msgid "`M` — message your team"
+msgstr "`,` — 给宿敌目标发消息"
+
+# review: 宿敌
+#: docs/help/controls.md
+#, fuzzy
+msgid "`Z` — message the admins, if you are one"
+msgstr "`,` — 给宿敌目标发消息"
+
+#: docs/help/controls.md
+msgid "`O` — type a server command: chat opens holding the `/`"
+msgstr ""
 
 #: docs/help/controls.md
 msgid ""
@@ -94,9 +119,10 @@ msgid ""
 msgstr "`Enter` — 发送聊天（聊天输入框获得焦点时，或再次点击 `Send`）"
 
 #: docs/help/controls.md
+#, fuzzy
 msgid ""
-"`1` / `2` / `3` / `4` / `5` — switch chat tab (`All` / `Chat` / `Server` / "
-"`Misc` / `Debug`)"
+"`Shift`+`1` / `2` / `3` / `4` / `5` — switch chat tab (`All` / `Chat` / "
+"`Server` / `Misc` / `Debug`)"
 msgstr ""
 "`1` / `2` / `3` / `4` / `5` — 切换聊天标签页（`All` / `Chat` / `Server` / "
 "`Misc` / `Debug`）"
@@ -157,7 +183,8 @@ msgstr ""
 "次会关闭设置，所以多按一次总是安全的"
 
 #: docs/help/controls.md
-msgid "`M` — toggle mouse steering"
+#, fuzzy
+msgid "`Shift`+`M` — toggle mouse steering"
 msgstr "`M` — 开关鼠标操控"
 
 #: docs/help/controls.md
@@ -165,11 +192,17 @@ msgid "`C` — cycle camera mode"
 msgstr "`C` — 切换视角模式"
 
 #: docs/help/controls.md
-msgid "`O` — toggle operator panel"
+#, fuzzy
+msgid "`Shift`+`O` — toggle operator panel"
 msgstr "`O` — 开关管理员面板"
 
 #: docs/help/controls.md
-msgid "`F` — toggle fullscreen"
+msgid "`F` — show or hide what the flag you carry does"
+msgstr ""
+
+#: docs/help/controls.md
+#, fuzzy
+msgid "`Shift`+`F` — toggle fullscreen"
 msgstr "`F` — 开关全屏"
 
 #: docs/help/controls.md
@@ -177,27 +210,41 @@ msgid "`` ` `` — toggle debug HUD"
 msgstr "`` ` `` — 开关调试 HUD"
 
 #: docs/help/controls.md
-msgid "`=` or `+` or `Numpad +` — zoom radar out (increase range)"
-msgstr "`=` 或 `+` 或 `Numpad +` — 雷达缩小（扩大范围）"
+#, fuzzy
+msgid "`Q` — show or hide the radar"
+msgstr "`/` 或 `?` — 显示/隐藏帮助面板"
 
 #: docs/help/controls.md
-msgid "`-` or `Numpad -` — zoom radar in (decrease range)"
-msgstr "`-` 或 `Numpad -` — 雷达放大（缩小范围）"
-
-#: docs/help/controls.md
+#, fuzzy
 msgid ""
-"`\\` — reset radar zoom to the default medium range (half the world's radar "
-"limit, which is the world size unless the map says otherwise)"
+"`1` / `2` / `3` — radar range: Short, Medium, Long (a quarter, half and all "
+"of the world's radar limit, which is the world size unless the map says "
+"otherwise)"
 msgstr ""
 "`\\` — 将雷达缩放重置为默认的中等范围（世界雷达上限的一半；除非地图另有设定，"
 "上限即世界大小）"
+
+#: docs/help/controls.md
+#, fuzzy
+msgid "`4` or `-` or `Numpad -` — zoom radar in (decrease range)"
+msgstr "`-` 或 `Numpad -` — 雷达放大（缩小范围）"
+
+#: docs/help/controls.md
+#, fuzzy
+msgid "`5` or `=` or `+` or `Numpad +` — zoom radar out (increase range)"
+msgstr "`=` 或 `+` 或 `Numpad +` — 雷达缩小（扩大范围）"
+
+#: docs/help/controls.md
+msgid "`\\` — reset radar zoom to the default medium range"
+msgstr ""
 
 #: docs/help/controls.md
 msgid "`Settings -> Radar: ...` — cycle Short/Medium/Long radar presets"
 msgstr "`Settings -> Radar: ...` — 在短/中/长雷达预设间切换"
 
 #: docs/help/controls.md
-msgid "`B` — toggle the voice microphone"
+#, fuzzy
+msgid "`V` — toggle the voice microphone"
 msgstr "`B` — 开关语音麦克风"
 
 #: docs/help/controls.md
@@ -213,8 +260,9 @@ msgid "`/` or `?` — show/hide help panel"
 msgstr "`/` 或 `?` — 显示/隐藏帮助面板"
 
 #: docs/help/controls.md
+#, fuzzy
 msgid ""
-"`🎤` beside the gear — the microphone, as `B` is: a green border means you "
+"`🎤` beside the gear — the microphone, as `V` is: a green border means you "
 "are transmitting and a red one means you are not, and the hover text names "
 "the channel it would speak on"
 msgstr ""
@@ -407,10 +455,35 @@ msgid "Mouse"
 msgstr "鼠标"
 
 #: docs/help/controls.md
+#, fuzzy
 msgid ""
-"`M` turns mouse steering on and off, and nothing else does: the keys never "
-"take it away behind your back."
+"`Shift`+`M` turns mouse steering on and off, and nothing else does: the keys "
+"never take it away behind your back."
 msgstr "只有 `M` 能开关鼠标操控：其他按键绝不会在你不知情时关掉它。"
+
+#: docs/help/controls.md
+msgid "The wheel"
+msgstr ""
+
+#: docs/help/controls.md
+msgid "The wheel acts on whatever is under the pointer:"
+msgstr ""
+
+#: docs/help/controls.md
+msgid "chat: scrolls it"
+msgstr ""
+
+#: docs/help/controls.md
+msgid "the radar: zooms it, up to zoom in"
+msgstr ""
+
+#: docs/help/controls.md
+msgid "the scoreboard, the debug HUD and any dialog: scrolls it"
+msgstr ""
+
+#: docs/help/controls.md
+msgid "the game view: nothing"
+msgstr ""
 
 #: docs/help/controls.md
 msgid "The targeting box"
@@ -464,11 +537,14 @@ msgstr ""
 "`-a`，默认关闭）会让坦克逐渐加速到该速度，与按键操作相同。"
 
 #: docs/help/controls.md
+#, fuzzy
 msgid ""
-"The boxes are BZFlag's own sizes, scaled to the window. BZFlag also holds "
-"the cursor inside the box; a browser cannot without taking the pointer over, "
-"so in bzo the cursor can leave it -- the steering simply stays at full, and "
-"the cost is a longer move back to the centre."
+"The boxes are BZFlag's own sizes, scaled to the window. As in BZFlag, the "
+"cursor is held inside the box: the first click on the battlefield takes the "
+"pointer over and bzo draws the cursor itself. Escape lets it go, and so do a "
+"menu, dying, pausing and observing; the next click takes it back. A browser "
+"that refuses leaves the cursor free -- the steering stays at full past the "
+"box, and the cost is a longer move back to the centre."
 msgstr ""
 "框的大小与 BZFlag 相同，并按窗口缩放。BZFlag 还会把光标限制在框内；浏览器若不"
 "接管指针就做不到，所以在 bzo 中光标可以移出框——方向控制只是保持最大值，代价是"
@@ -503,9 +579,11 @@ msgid "Combining inputs"
 msgstr "组合输入"
 
 #: docs/help/controls.md
+#, fuzzy
 msgid ""
 "Every input drives at once, and nothing switches between them on its own: "
-"`M` and the Settings rows are the only things that change which ones are on."
+"`Shift`+`M` and the Settings rows are the only things that change which ones "
+"are on."
 msgstr ""
 "所有输入同时生效，不会自行切换：只有 `M` 和设置中的选项能改变启用哪些输入。"
 
@@ -888,7 +966,8 @@ msgstr ""
 "伍**是你自己队伍的所有人，不论在地图何处"
 
 #: docs/help/voice.md
-msgid "`B` — toggle the microphone"
+#, fuzzy
+msgid "`V` — toggle the microphone"
 msgstr "`B` — 开关麦克风"
 
 #: docs/help/voice.md

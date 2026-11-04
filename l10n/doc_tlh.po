@@ -31,6 +31,14 @@ msgid "Keyboard"
 msgstr "leQ'echlet"
 
 #: docs/help/controls.md
+msgid ""
+"Keys are named by where they sit on a US keyboard, and bzo reads them by "
+"position, not by the letter printed on them. On another layout a key named "
+"here is the one in the same place: `Z` is the key labelled W on a French "
+"keyboard and Y on a German one."
+msgstr ""
+
+#: docs/help/controls.md
 msgid "Driving"
 msgstr "Duj chIj"
 
@@ -66,8 +74,7 @@ msgstr ""
 msgid ""
 "`Delete` — self-destruct, after a five second countdown; `Delete` again "
 "calls it off"
-msgstr ""
-"`Delete` — vagh lup pIq yIQaw''egh; `Delete` Dayuvqa'DI' qIllu'"
+msgstr "`Delete` — vagh lup pIq yIQaw''egh; `Delete` Dayuvqa'DI' qIllu'"
 
 # review: "corner" rendered as "tlhoy'mey ngeD" (between walls)
 #: docs/help/controls.md
@@ -79,8 +86,8 @@ msgid ""
 msgstr ""
 "`9` pagh `/autopilot [roger|ace]` — nIteb chIjwI': chIj, DoS, bach je "
 "chIjwI', Dayuvqa'pa'. leQ'echlet Hutlhbogh chIjwI' wIv `Settings -> "
-"Autopilot`. chIjtaHvIS ghaH bIchIjlaH je, tlhoy'mey ngeDvo' ghaH DaQaHmeH "
-"-- yIlegh [SeHmey muv](#combining-inputs)"
+"Autopilot`. chIjtaHvIS ghaH bIchIjlaH je, tlhoy'mey ngeDvo' ghaH DaQaHmeH -- "
+"yIlegh [SeHmey muv](#combining-inputs)"
 
 #: docs/help/controls.md
 msgid "`P` — pause/resume"
@@ -91,8 +98,25 @@ msgid "Chat"
 msgstr "ja'chuq"
 
 #: docs/help/controls.md
-msgid "`N` — open chat (or click the `Send` button)"
+#, fuzzy
+msgid "`N` — message everyone (or click the `Send` button)"
 msgstr "`N` — ja'chuq yIpoSmoH (pagh `Send` leQ yIchu')"
+
+# review: "nemesis" rendered as "jagh'a'lIj" (your great enemy)
+#: docs/help/controls.md
+#, fuzzy
+msgid "`M` — message your team"
+msgstr "`,` — jagh'a'lIjvaD QIn yIngeH"
+
+# review: "nemesis" rendered as "jagh'a'lIj" (your great enemy)
+#: docs/help/controls.md
+#, fuzzy
+msgid "`Z` — message the admins, if you are one"
+msgstr "`,` — jagh'a'lIjvaD QIn yIngeH"
+
+#: docs/help/controls.md
+msgid "`O` — type a server command: chat opens holding the `/`"
+msgstr ""
 
 #: docs/help/controls.md
 msgid ""
@@ -102,12 +126,13 @@ msgstr ""
 "yIchu'qa')"
 
 #: docs/help/controls.md
+#, fuzzy
 msgid ""
-"`1` / `2` / `3` / `4` / `5` — switch chat tab (`All` / `Chat` / `Server` / "
-"`Misc` / `Debug`)"
+"`Shift`+`1` / `2` / `3` / `4` / `5` — switch chat tab (`All` / `Chat` / "
+"`Server` / `Misc` / `Debug`)"
 msgstr ""
-"`1` / `2` / `3` / `4` / `5` — ja'chuq pa' yIchoH (`All` / `Chat` / `Server` "
-"/ `Misc` / `Debug`)"
+"`1` / `2` / `3` / `4` / `5` — ja'chuq pa' yIchoH (`All` / `Chat` / "
+"`Server` / `Misc` / `Debug`)"
 
 #: docs/help/controls.md
 msgid "`[` / `]` — previous/next chat tab"
@@ -126,8 +151,8 @@ msgid ""
 "`Up` / `Down` — while typing, recall earlier lines; type the start of a line "
 "first to recall only the ones beginning that way"
 msgstr ""
-"`Up` / `Down` — bIghItlhtaHvIS, tlheghmey ngo' yIqaw; tlhegh bI'reS "
-"yIghItlh wa'DIch, vaj tlheghmey taghbogh mIwvetlh neH Daqaw"
+"`Up` / `Down` — bIghItlhtaHvIS, tlheghmey ngo' yIqaw; tlhegh bI'reS yIghItlh "
+"wa'DIch, vaj tlheghmey taghbogh mIwvetlh neH Daqaw"
 
 #: docs/help/controls.md
 msgid "`.` — reply to last direct-message sender"
@@ -170,7 +195,8 @@ msgstr ""
 "latlh yuvlu'chugh"
 
 #: docs/help/controls.md
-msgid "`M` — toggle mouse steering"
+#, fuzzy
+msgid "`Shift`+`M` — toggle mouse steering"
 msgstr "`M` — mouse chIj yIchu'/yIchu'Ha'"
 
 #: docs/help/controls.md
@@ -178,11 +204,17 @@ msgid "`C` — cycle camera mode"
 msgstr "`C` — mIllogh qonwI' lo' yIchoH"
 
 #: docs/help/controls.md
-msgid "`O` — toggle operator panel"
+#, fuzzy
+msgid "`Shift`+`O` — toggle operator panel"
 msgstr "`O` — vu'wI' 'echlet yI'agh/yISo'"
 
 #: docs/help/controls.md
-msgid "`F` — toggle fullscreen"
+msgid "`F` — show or hide what the flag you carry does"
+msgstr ""
+
+#: docs/help/controls.md
+#, fuzzy
+msgid "`Shift`+`F` — toggle fullscreen"
 msgstr "`F` — Hoch HaSta yIchu'/yIchu'Ha'"
 
 #: docs/help/controls.md
@@ -190,28 +222,42 @@ msgid "`` ` `` — toggle debug HUD"
 msgstr "`` ` `` — Qagh HUD yI'agh/yISo'"
 
 #: docs/help/controls.md
-msgid "`=` or `+` or `Numpad +` — zoom radar out (increase range)"
-msgstr "`=` pagh `+` pagh `Numpad +` — noch chuq yIDuy'moH (chuq yIghurmoH)"
-
-#: docs/help/controls.md
-msgid "`-` or `Numpad -` — zoom radar in (decrease range)"
-msgstr "`-` pagh `Numpad -` — noch chuq yIlaghmoH (chuq yI'ovmoH)"
+#, fuzzy
+msgid "`Q` — show or hide the radar"
+msgstr "`/` pagh `?` — QaH 'echlet yI'agh/yISo'"
 
 # review: "zoom" verbs coined; check against the interface's radar strings
 #: docs/help/controls.md
+#, fuzzy
 msgid ""
-"`\\` — reset radar zoom to the default medium range (half the world's radar "
-"limit, which is the world size unless the map says otherwise)"
+"`1` / `2` / `3` — radar range: Short, Medium, Long (a quarter, half and all "
+"of the world's radar limit, which is the world size unless the map says "
+"otherwise)"
 msgstr ""
 "`\\` — noch chuq motlh yIchegh: chuq bID (qo' noch veH bID; qo' Hugh 'oH, "
 "latlh ja'be'chugh pu'jIn)"
+
+#: docs/help/controls.md
+#, fuzzy
+msgid "`4` or `-` or `Numpad -` — zoom radar in (decrease range)"
+msgstr "`-` pagh `Numpad -` — noch chuq yIlaghmoH (chuq yI'ovmoH)"
+
+#: docs/help/controls.md
+#, fuzzy
+msgid "`5` or `=` or `+` or `Numpad +` — zoom radar out (increase range)"
+msgstr "`=` pagh `+` pagh `Numpad +` — noch chuq yIDuy'moH (chuq yIghurmoH)"
+
+#: docs/help/controls.md
+msgid "`\\` — reset radar zoom to the default medium range"
+msgstr ""
 
 #: docs/help/controls.md
 msgid "`Settings -> Radar: ...` — cycle Short/Medium/Long radar presets"
 msgstr "`Settings -> Radar: ...` — noch chuq motlh yIchoH: ngaj/bID/nI'"
 
 #: docs/help/controls.md
-msgid "`B` — toggle the voice microphone"
+#, fuzzy
+msgid "`V` — toggle the voice microphone"
 msgstr "`B` — ghogh jan yIchu'/yIchu'Ha'"
 
 #: docs/help/controls.md
@@ -227,14 +273,15 @@ msgid "`/` or `?` — show/hide help panel"
 msgstr "`/` pagh `?` — QaH 'echlet yI'agh/yISo'"
 
 #: docs/help/controls.md
+#, fuzzy
 msgid ""
-"`🎤` beside the gear — the microphone, as `B` is: a green border means you "
+"`🎤` beside the gear — the microphone, as `V` is: a green border means you "
 "are transmitting and a red one means you are not, and the hover text names "
 "the channel it would speak on"
 msgstr ""
 "`🎤` SeHlaw retlhDaq — ghogh jan 'oH, `B` rur: SuDbogh HeH ngeHtaH SoH 'e' "
-"maq, Doqbogh HeH ngeHbe' SoH 'e' maq, 'ej ghogh He ponglu'bogh cha' "
-"ghItlh, Dung ghoS cursor'e'"
+"maq, Doqbogh HeH ngeHbe' SoH 'e' maq, 'ej ghogh He ponglu'bogh cha' ghItlh, "
+"Dung ghoS cursor'e'"
 
 # review: long sentence restructured; "chevron"-free, but check the borrowing logic reads
 #: docs/help/controls.md
@@ -265,8 +312,7 @@ msgstr "HIDjolevmey"
 #: docs/help/controls.md
 msgid ""
 "`Up` / `Down` — previous/next control, including from inside a text field"
-msgstr ""
-"`Up` / `Down` — SeHwI' nubwI'/veb, ghItlh yotlh qoDvo' je"
+msgstr "`Up` / `Down` — SeHwI' nubwI'/veb, ghItlh yotlh qoDvo' je"
 
 #: docs/help/controls.md
 msgid ""
@@ -330,16 +376,16 @@ msgid ""
 "`U` — hunt: open the scoreboard cursor, and press it again on a running hunt "
 "to clear every mark"
 msgstr ""
-"`U` — yIwam: mI' 'echlet cursor yIpoSmoH, 'ej wam QaptaHvIS Hoch ghan DateqmeH "
-"yIyuvqa'"
+"`U` — yIwam: mI' 'echlet cursor yIpoSmoH, 'ej wam QaptaHvIS Hoch ghan "
+"DateqmeH yIyuvqa'"
 
 #: docs/help/controls.md
 msgid ""
 "`7` — add hunt: the same cursor, but committing adds to what is marked "
 "rather than replacing it, and committing on a row already marked takes it off"
 msgstr ""
-"`7` — wam yIchel: cursor rap, 'ach Dawuvchugh ghanlu'bogh Doch chel, choHbe'; "
-"'ej tlhegh ghanlu'pu'bogh Dawuvchugh ghan teq"
+"`7` — wam yIchel: cursor rap, 'ach Dawuvchugh ghanlu'bogh Doch chel, "
+"choHbe'; 'ej tlhegh ghanlu'pu'bogh Dawuvchugh ghan teq"
 
 #: docs/help/controls.md
 msgid ""
@@ -352,8 +398,8 @@ msgstr ""
 "`Settings -> Hunt` — Doch rap, leQ'echlet Hutlh, ghogh HablI'vaD nach "
 "De'wI'vaD ghap. `Clear` vegh poS nIH je, vaj QujwI'pu' vegh, pongchaj "
 "mIwvo'. 'aghlu'bogh QujwI' ghan pagh ghanHa' wIv, pagh `Clear`Daq Hoch ghan "
-"teq. HotlaHbogh HaStaDaq pagh mouse lo'lu'DI', ghoSmeH tIq yIHot, 'ej "
-"wIvmeH tlhegh latlh Daq yIHot"
+"teq. HotlaHbogh HaStaDaq pagh mouse lo'lu'DI', ghoSmeH tIq yIHot, 'ej wIvmeH "
+"tlhegh latlh Daq yIHot"
 
 #: docs/help/controls.md
 msgid ""
@@ -364,9 +410,9 @@ msgid ""
 "arrow keys can reach it"
 msgstr ""
 "cursor poSmoHlu'taHvIS, `*SEL*` ja' 'echlet per, 'ej tlheghvetlhDaq ba' "
-"joqtaHbogh `○`, `◎` moj Dawuvchugh. 'oH vIH `Up` / `Down`, wuv `Enter`, "
-"'ej DoH `U` pagh `7`, ghanlu'pu'bogh Doch pol. cursor vIH `I` `Space` je, "
-"vaj 'oH SIchlaH naQ leQmey Hutlhbogh SeHwI'"
+"joqtaHbogh `○`, `◎` moj Dawuvchugh. 'oH vIH `Up` / `Down`, wuv `Enter`, 'ej "
+"DoH `U` pagh `7`, ghanlu'pu'bogh Doch pol. cursor vIH `I` `Space` je, vaj "
+"'oH SIchlaH naQ leQmey Hutlhbogh SeHwI'"
 
 #: docs/help/controls.md
 msgid "As an observer"
@@ -383,8 +429,8 @@ msgstr ""
 "bejwI' SoHDI' Duj Daghajbe'. mIllogh qonwI' puv chIj tlhe' je; Dung ghoS "
 "`Tab`, bIng ghoS `Space`, 'ej `Shift` Da'uchtaHvIS legh Dung bIng je "
 "Sang'moH chIj, 'ej Dop ghoSmoH tlhe'. yavDaq Duj mIn 'ab ba' mIllogh qonwI', "
-"'ej Sang'lu'chugh legh je, Hagh ghoSlu'taH. mevlu'chugh Qaw''eghlu'chugh "
-"je, pagh qaS."
+"'ej Sang'lu'chugh legh je, Hagh ghoSlu'taH. mevlu'chugh Qaw''eghlu'chugh je, "
+"pagh qaS."
 
 # review: the observer view names (Free, Track...) are translated, not quoted as UI strings
 #: docs/help/controls.md
@@ -404,8 +450,8 @@ msgid ""
 "the map file with the `group` blocks that placed it"
 msgstr ""
 "`I` pagh nIH chu' — tlhab leghDaq, Duj DaDoSbogh yIbej, pagh pa' botwI' "
-"yI'agh: nuq 'oH, Dejvo' HeH, 'ej pu'jIn ta'Daq ghItlh bIDDaj, 'oH "
-"lanpu'bogh `group` bIDmey je"
+"yI'agh: nuq 'oH, Dejvo' HeH, 'ej pu'jIn ta'Daq ghItlh bIDDaj, 'oH lanpu'bogh "
+"`group` bIDmey je"
 
 #: docs/help/controls.md
 msgid ""
@@ -423,8 +469,8 @@ msgid ""
 "shows that mesh"
 msgstr ""
 "pagh yIwIv -- chal, pagh Dung leghDaq yav chIm -- pagh qo' naQvaD 'echlet "
-"**World** leQ yIyuv: Daq ngaS, qabmey, textures, pu'jIn ta' "
-"ghuHmoHmey, 'ej mesh tInqu'mey; Hoch 'oH mesh'e' 'agh"
+"**World** leQ yIyuv: Daq ngaS, qabmey, textures, pu'jIn ta' ghuHmoHmey, 'ej "
+"mesh tInqu'mey; Hoch 'oH mesh'e' 'agh"
 
 #: docs/help/controls.md
 msgid ""
@@ -439,12 +485,37 @@ msgid "Mouse"
 msgstr "mouse"
 
 #: docs/help/controls.md
+#, fuzzy
 msgid ""
-"`M` turns mouse steering on and off, and nothing else does: the keys never "
-"take it away behind your back."
+"`Shift`+`M` turns mouse steering on and off, and nothing else does: the keys "
+"never take it away behind your back."
 msgstr ""
 "mouse chIj chu' chu'Ha' je `M`, 'ej latlh Doch ta'be': not 'oH nIH leQmey "
 "SoH Dalegh'be'DI'."
+
+#: docs/help/controls.md
+msgid "The wheel"
+msgstr ""
+
+#: docs/help/controls.md
+msgid "The wheel acts on whatever is under the pointer:"
+msgstr ""
+
+#: docs/help/controls.md
+msgid "chat: scrolls it"
+msgstr ""
+
+#: docs/help/controls.md
+msgid "the radar: zooms it, up to zoom in"
+msgstr ""
+
+#: docs/help/controls.md
+msgid "the scoreboard, the debug HUD and any dialog: scrolls it"
+msgstr ""
+
+#: docs/help/controls.md
+msgid "the game view: nothing"
+msgstr ""
 
 # review: "targeting box" coined as "DoS buq" (target bag)
 #: docs/help/controls.md
@@ -463,8 +534,7 @@ msgstr ""
 msgid ""
 "**Inside the inner box, nothing.** It is the dead zone: park the cursor "
 "there to stop."
-msgstr ""
-"**buq qoDDaq, pagh.** Qapbe'bogh Daq 'oH: bImevmeH pa' cursor yIlan."
+msgstr "**buq qoDDaq, pagh.** Qapbe'bogh Daq 'oH: bImevmeH pa' cursor yIlan."
 
 #: docs/help/controls.md
 msgid ""
@@ -481,15 +551,14 @@ msgid ""
 "running the cursor out past the top keeps the tank at full speed and leaves "
 "left and right free to steer."
 msgstr ""
-"**Hur buqDaq pagh juSDI', naQ.** nIteb ghurbe'choH Hoch tlhegh, vaj Dung "
-"HeH Dajuschugh cursor, Do naQ ghajtaH Duj, 'ej poS nIH je chIjmeH tlhab."
+"**Hur buqDaq pagh juSDI', naQ.** nIteb ghurbe'choH Hoch tlhegh, vaj Dung HeH "
+"Dajuschugh cursor, Do naQ ghajtaH Duj, 'ej poS nIH je chIjmeH tlhab."
 
 #: docs/help/controls.md
 msgid ""
 "**Reverse is half speed**, as it is from the keys, however far down the "
 "cursor goes."
-msgstr ""
-"**Do bID ghaj DoH**, leQmey rur, bIng Hop ghoSchugh cursor je."
+msgstr "**Do bID ghaj DoH**, leQmey rur, bIng Hop ghoSchugh cursor je."
 
 #: docs/help/controls.md
 msgid ""
@@ -501,15 +570,18 @@ msgstr ""
 "qo' (BZFlag `-a`, motlh Qapbe'), ruchmo' poH Do Suq Duj, leQmey rur."
 
 #: docs/help/controls.md
+#, fuzzy
 msgid ""
-"The boxes are BZFlag's own sizes, scaled to the window. BZFlag also holds "
-"the cursor inside the box; a browser cannot without taking the pointer over, "
-"so in bzo the cursor can leave it -- the steering simply stays at full, and "
-"the cost is a longer move back to the centre."
+"The boxes are BZFlag's own sizes, scaled to the window. As in BZFlag, the "
+"cursor is held inside the box: the first click on the battlefield takes the "
+"pointer over and bzo draws the cursor itself. Escape lets it go, and so do a "
+"menu, dying, pausing and observing; the next click takes it back. A browser "
+"that refuses leaves the cursor free -- the steering stays at full past the "
+"box, and the cost is a longer move back to the centre."
 msgstr ""
-"BZFlag buqmey Hugh rap ghaj buqmey, Qorwagh lughoD. buq qoDDaq cursor "
-"'uch BZFlag je; cursor yonbe'chugh, ta'laHbe' De' nejwI', vaj bzoDaq "
-"buq mejlaH cursor -- naQtaH chIj, 'ej botlhDaq chegh nI'qu' 'oH DIl'e'."
+"BZFlag buqmey Hugh rap ghaj buqmey, Qorwagh lughoD. buq qoDDaq cursor 'uch "
+"BZFlag je; cursor yonbe'chugh, ta'laHbe' De' nejwI', vaj bzoDaq buq mejlaH "
+"cursor -- naQtaH chIj, 'ej botlhDaq chegh nI'qu' 'oH DIl'e'."
 
 #: docs/help/controls.md
 msgid ""
@@ -534,17 +606,18 @@ msgstr ""
 "poS chu' bach cursor Daqvo', mouse chIj chu'lu'chugh chu'lu'be'chugh je, "
 "ja'chuq 'echletDaq leQDaq ghap chu'be'chugh. ngu' nIH chu'. mouse "
 "rarlu'be'chugh, qo' ngebDaq, HaSta SeHmey 'aghlu'taHvIS je, mouse chIj "
-"Dalo'laHbe', chIjmo' SeHmeyvetlh; leQchaj ngoQbe'bogh chu' bachbe', pagh "
-"qaS."
+"Dalo'laHbe', chIjmo' SeHmeyvetlh; leQchaj ngoQbe'bogh chu' bachbe', pagh qaS."
 
 #: docs/help/controls.md
 msgid "Combining inputs"
 msgstr "SeHmey muv"
 
 #: docs/help/controls.md
+#, fuzzy
 msgid ""
 "Every input drives at once, and nothing switches between them on its own: "
-"`M` and the Settings rows are the only things that change which ones are on."
+"`Shift`+`M` and the Settings rows are the only things that change which ones "
+"are on."
 msgstr ""
 "rap poHDaq chIj Hoch SeHwI', 'ej nIteb choHbe' vay': chu'lu'bogh SeHwI'mey "
 "choH `M` SeHlaw tlheghmey je neH."
@@ -554,8 +627,8 @@ msgid ""
 "**Driving is shared out an axis at a time** -- forward/back, and turn, each "
 "on its own. On each, the first of these with something to say wins:"
 msgstr ""
-"**wa' tlhegh wa' poH, chIj ngoplu'** -- ghoS/DoH, tlhe' je, nIteb Hoch. "
-"Hoch tlheghDaq, Qap Dochmeyvam wa'DIch, ja'meH Doch ghajbogh:"
+"**wa' tlhegh wa' poH, chIj ngoplu'** -- ghoS/DoH, tlhe' je, nIteb Hoch. Hoch "
+"tlheghDaq, Qap Dochmeyvam wa'DIch, ja'meH Doch ghajbogh:"
 
 #: docs/help/controls.md
 msgid ""
@@ -597,8 +670,8 @@ msgid ""
 "from `I`, a right click, or the stick source's. Any of them will do."
 msgstr ""
 "**leQmey boqlu'.** `Enter`, poS chu', naQ bachmeH leQ ghap lo'lu'chugh "
-"bachlu'; `Tab` naQ leQ ghap lo'lu'chugh Suplu'; `I`, nIH chu', naQ leQ "
-"ghap lo'lu'chugh ngu'lu'. Hoch Qap."
+"bachlu'; `Tab` naQ leQ ghap lo'lu'chugh Suplu'; `I`, nIH chu', naQ leQ ghap "
+"lo'lu'chugh ngu'lu'. Hoch Qap."
 
 #: docs/help/controls.md
 msgid ""
@@ -632,14 +705,14 @@ msgid ""
 "the pilot with it."
 msgstr ""
 "**nIteb chIjwI' mevmoHbe' HIDjolevmey.** SeHlaw pagh latlh HIDjolev "
-"DapoSmoHchugh, motlh DujlIj mevmoH. chIjtaH nIteb chIjwI'chugh, leQmey "
-"tlhap HIDjolev 'ej chIjtaH chIjwI'. `Settings -> Autopilot` tlheghDaq "
-"chIjwI' wIvlu'pu'chugh 'ach chIjbe'chugh, HIDjolev DapoSmoHchugh nIteb "
-"chIjwI' chu'lu', 'ej HIDjolev DaSoQmoHchugh chu'Ha'lu'qa' -- vaj \"qen "
-"jIHvaD yIchIj\" 'oH HIDjolev, \"yImev\" 'oHbe'. `None` (motlh) Daq "
-"tlhegh, pagh De'wI' QujwI'pu' lajQo'bogh toy' De'wI' (`-disableBots`), "
-"reH HIDjolevmey mevmoH. Qorwagh So'lu'bogh mevmoH reH: 'oH nargh 'e' mev "
-"De' nejwI', 'ej chIjwI' je."
+"DapoSmoHchugh, motlh DujlIj mevmoH. chIjtaH nIteb chIjwI'chugh, leQmey tlhap "
+"HIDjolev 'ej chIjtaH chIjwI'. `Settings -> Autopilot` tlheghDaq chIjwI' "
+"wIvlu'pu'chugh 'ach chIjbe'chugh, HIDjolev DapoSmoHchugh nIteb chIjwI' "
+"chu'lu', 'ej HIDjolev DaSoQmoHchugh chu'Ha'lu'qa' -- vaj \"qen jIHvaD "
+"yIchIj\" 'oH HIDjolev, \"yImev\" 'oHbe'. `None` (motlh) Daq tlhegh, pagh "
+"De'wI' QujwI'pu' lajQo'bogh toy' De'wI' (`-disableBots`), reH HIDjolevmey "
+"mevmoH. Qorwagh So'lu'bogh mevmoH reH: 'oH nargh 'e' mev De' nejwI', 'ej "
+"chIjwI' je."
 
 #: docs/help/controls.md
 msgid ""
@@ -671,8 +744,8 @@ msgid ""
 "**The stick**, bottom left: push it to drive and turn, as far as you push "
 "it. A mouse can drag it too."
 msgstr ""
-"**naQ**, bIng poS: bIchIjmeH bItlhe'meH je yIyuv; Hop Dayuvchugh, law'. "
-"'oH lISlaH mouse je."
+"**naQ**, bIng poS: bIchIjmeH bItlhe'meH je yIyuv; Hop Dayuvchugh, law'. 'oH "
+"lISlaH mouse je."
 
 #: docs/help/controls.md
 msgid ""
@@ -793,11 +866,10 @@ msgid ""
 "and never for an observer. **Rumble** in Settings turns it off. The browser "
 "has to support it; Chrome and Edge do."
 msgstr ""
-"bIbachDI' Hegh DujlIj je Qom SeHwI', BZFlag rur: nIchvaD Qom ngaj, "
-"jorwI'vaD Qom nI', tIHvaD cha' QuQ, 'ej HeghvaD wa' Qom nI' HoS. "
-"DaQujmeH Dalo'taHvIS neH Qom -- SeH chegh leQ chu' ghap, 'ej tam -- 'ej "
-"not bejwI'vaD Qom. 'oH chu'Ha' SeHlaw **Rumble**. 'oH QaHnIS De' nejwI'; "
-"QaH Chrome Edge je."
+"bIbachDI' Hegh DujlIj je Qom SeHwI', BZFlag rur: nIchvaD Qom ngaj, jorwI'vaD "
+"Qom nI', tIHvaD cha' QuQ, 'ej HeghvaD wa' Qom nI' HoS. DaQujmeH Dalo'taHvIS "
+"neH Qom -- SeH chegh leQ chu' ghap, 'ej tam -- 'ej not bejwI'vaD Qom. 'oH "
+"chu'Ha' SeHlaw **Rumble**. 'oH QaHnIS De' nejwI'; QaH Chrome Edge je."
 
 #: docs/help/controls.md
 msgid "XR controllers"
@@ -807,8 +879,7 @@ msgstr "XR SeHwI'mey"
 msgid ""
 "In VR the controllers are the only input. Turning the tank is independent of "
 "where you look."
-msgstr ""
-"qo' ngebDaq SeHwI'mey neH lo'lu'. Daq Dabejbogh lumbe' Duj tlhe'."
+msgstr "qo' ngebDaq SeHwI'mey neH lo'lu'. Daq Dabejbogh lumbe' Duj tlhe'."
 
 #: docs/help/controls.md
 msgid "In the XR menu"
@@ -926,8 +997,8 @@ msgid ""
 "player wears a cyan `◎` -- see [Hunting](controls.md#hunting)."
 msgstr ""
 "pong veb: QujwI'vetlh ghogh jan chu'lu' 'e' maq 🎤, 'ej jatlhDI' ghaH 'oH "
-"tam 🔊. mevlu' 'e' maq ⏳. QujwI' wamlu'bogh SuDqu' `◎` tuQ -- yIlegh "
-"[wam](controls.md#hunting)."
+"tam 🔊. mevlu' 'e' maq ⏳. QujwI' wamlu'bogh SuDqu' `◎` tuQ -- yIlegh [wam]"
+"(controls.md#hunting)."
 
 #: docs/help/voice.md
 msgid "Audio and voice"
@@ -950,7 +1021,8 @@ msgstr ""
 "neH 'oH **Sumbogh**'e', pu'jInDaq Daq Hoch boqlIj 'oH **boq**'e'"
 
 #: docs/help/voice.md
-msgid "`B` — toggle the microphone"
+#, fuzzy
+msgid "`V` — toggle the microphone"
 msgstr "`B` — ghogh jan yIchu'/yIchu'Ha'"
 
 #: docs/help/voice.md
@@ -979,6 +1051,6 @@ msgid ""
 "v3.0](https://www.gnu.org/licenses/agpl-3.0.html). Source code is available "
 "at [github.com/timriker/bzo](/source)."
 msgstr ""
-"tlhab ghun 'oH, [GNU Affero General Public License "
-"v3.0](https://www.gnu.org/licenses/agpl-3.0.html) chaw' bIngDaq. "
-"[github.com/timriker/bzo](/source)Daq ngoq Hal tu'lu'."
+"tlhab ghun 'oH, [GNU Affero General Public License v3.0](https://www.gnu.org/"
+"licenses/agpl-3.0.html) chaw' bIngDaq. [github.com/timriker/bzo](/source)Daq "
+"ngoq Hal tu'lu'."

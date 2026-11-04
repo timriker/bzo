@@ -2,7 +2,8 @@
 
 Bringing bzo's keyboard, chat panel and desktop HUD closer to BZFlag's, so a
 veteran's hands work here, without giving up WASD
-([#201](https://github.com/timriker/bzo/issues/201)). None of it is built yet.
+([#201](https://github.com/timriker/bzo/issues/201)). The keys are built;
+the rest is not yet.
 Upstream references are paths under `$HOME/bzflag/`; its default bindings are
 `src/bzflag/ActionBinding.cxx`. The current keys are in
 [help/controls.md](help/controls.md).
@@ -42,13 +43,15 @@ digit.
 | `Z` | -- | message to admins | same |
 | `F` | fullscreen | flag help | same |
 | Shift+`F` | -- | fullscreen | `F1` |
-| Shift+`S` | -- | show or hide the scoreboard | `S` |
-| Shift+`W` | -- | show or hide chat | `W` |
 | `O` | operator panel | message prompt opened with `/` | same |
 | Shift+`O` | -- | operator panel | -- |
 | `/` `?` | help | unchanged | -- |
 | `Q` | claimed, unbound | radar on or off | same |
 | `K` | -- | silence cursor on the scoreboard | silence a player |
+
+Upstream's `S` and `W` show and hide the scoreboard and chat. They have no
+key here: WASD takes the letters, and Shift with W and S already tilts an
+observer's view. The ▲ button beside the gear does it.
 
 `[` and `]` keep cycling the chat tabs. `N`, `,`, `.`, `Page Up`, `Page Down`
 and `End` already match upstream.

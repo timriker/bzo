@@ -857,13 +857,15 @@ const GAMEPLAY_OWNED_KEYS = new Set([
   // Fire, jump, self-destruct, pause. Enter would otherwise press whichever HUD
   // button holds focus, and the space bar is claimed though nothing is bound to
   // it yet: it is upstream's drop-flag key, and unclaimed it presses buttons.
-  'Enter', 'Space', 'Tab', 'KeyQ', 'KeyP',
-  // Chat and its tabs
-  'KeyN', 'Digit1', 'Digit2', 'Digit3', 'Digit4', 'Digit5',
+  'Enter', 'Space', 'Tab', 'KeyP',
+  // Chat and its tabs (Shift and a digit)
+  'KeyN', 'KeyM', 'KeyZ', 'KeyO',
   'BracketLeft', 'BracketRight', 'Period', 'Comma',
   'PageUp', 'PageDown', 'End',
-  // View, HUD, radar, help
-  'KeyM', 'KeyC', 'KeyO', 'KeyF', 'Backquote', 'KeyB', 'KeyI',
+  // Radar: on and off, and the digits' ranges and zoom
+  'KeyQ', 'Digit1', 'Digit2', 'Digit3', 'Digit4', 'Digit5',
+  // View, HUD, voice, help. `B` is held for binoculars.
+  'KeyC', 'KeyF', 'Backquote', 'KeyB', 'KeyV', 'KeyI',
   // Hunting: `U` is upstream's `hunt` and `7` its `addhunt`.
   'KeyU', 'Digit7',
   // Autopilot
@@ -1506,7 +1508,7 @@ function updateOperatorBtn() {
   if (!domRefs.operatorBtn || !domRefs.operatorOverlay) return;
   const isVisible = window.getComputedStyle(domRefs.operatorOverlay).display !== 'none';
   domRefs.operatorBtn.classList.toggle('active', isVisible);
-  domRefs.operatorBtn.title = isVisible ? t('Hide Operator Panel (O)') : t('Show Operator Panel (O)');
+  domRefs.operatorBtn.title = isVisible ? t('Hide Operator Panel (Shift+O)') : t('Show Operator Panel (Shift+O)');
 }
 
 function updateViewBtn() {
@@ -1950,9 +1952,13 @@ function bindHudElements() {
       setGameplayKeyState(e.code, true);
       if (hudContext.handleGameplayKeydown(e)) return;
 
-      if (e.key === 'm' || e.key === 'M') {
+      // By position, as every key is (docs/controls-plan.md). The plain
+      // letters here are upstream's and handled in `handleGameplayKeydown`;
+      // these are their Shift twins.
+      const shifted = e.shiftKey && !e.ctrlKey && !e.altKey && !e.metaKey;
+      if (e.code === 'KeyM' && shifted) {
         toggleMouseMode();
-      } else if (e.key === 'f' || e.key === 'F') {
+      } else if (e.code === 'KeyF' && shifted) {
         toggleFullscreen();
       } else if (e.code === 'Backquote') {
         resetHeldKeyPeak();
@@ -1967,15 +1973,15 @@ function bindHudElements() {
           updateDebugDisplay: hudContext.updateDebugDisplay,
           getDebugState: hudContext.getDebugState,
         });
-      } else if (e.key === 'c' || e.key === 'C') {
+      } else if (e.code === 'KeyC') {
         cycleCameraMode();
-      } else if (e.key === 'o' || e.key === 'O') {
+      } else if (e.code === 'KeyO' && shifted) {
         toggleOperatorPanel();
-      } else if ((e.key === 'b' || e.key === 'B') && !e.repeat) {
+      } else if (e.code === 'KeyV' && !e.repeat) {
         if (callOptionalHudCallback(['toggleVoiceMicrophone', 'toggleMicrophone'])) {
           e.preventDefault();
         }
-      } else if (e.key === '?' || e.key === '/') {
+      } else if (e.code === 'Slash') {
         toggleHelpPanel();
       }
     });

@@ -31,6 +31,14 @@ msgid "Keyboard"
 msgstr "キーボード"
 
 #: docs/help/controls.md
+msgid ""
+"Keys are named by where they sit on a US keyboard, and bzo reads them by "
+"position, not by the letter printed on them. On another layout a key named "
+"here is the one in the same place: `Z` is the key labelled W on a French "
+"keyboard and Y on a German one."
+msgstr ""
+
+#: docs/help/controls.md
 msgid "Driving"
 msgstr "走行"
 
@@ -87,8 +95,23 @@ msgid "Chat"
 msgstr "チャット"
 
 #: docs/help/controls.md
-msgid "`N` — open chat (or click the `Send` button)"
+#, fuzzy
+msgid "`N` — message everyone (or click the `Send` button)"
 msgstr "`N` — チャットを開く（または `Send` ボタンをクリック）"
+
+#: docs/help/controls.md
+#, fuzzy
+msgid "`M` — message your team"
+msgstr "`,` — 宿敵（ネメシス）にメッセージ"
+
+#: docs/help/controls.md
+#, fuzzy
+msgid "`Z` — message the admins, if you are one"
+msgstr "`,` — 宿敵（ネメシス）にメッセージ"
+
+#: docs/help/controls.md
+msgid "`O` — type a server command: chat opens holding the `/`"
+msgstr ""
 
 #: docs/help/controls.md
 msgid ""
@@ -98,9 +121,10 @@ msgstr ""
 "一度クリック）"
 
 #: docs/help/controls.md
+#, fuzzy
 msgid ""
-"`1` / `2` / `3` / `4` / `5` — switch chat tab (`All` / `Chat` / `Server` / "
-"`Misc` / `Debug`)"
+"`Shift`+`1` / `2` / `3` / `4` / `5` — switch chat tab (`All` / `Chat` / "
+"`Server` / `Misc` / `Debug`)"
 msgstr ""
 "`1` / `2` / `3` / `4` / `5` — チャットタブを切り替え（`All` / `Chat` / "
 "`Server` / `Misc` / `Debug`）"
@@ -163,7 +187,8 @@ msgstr ""
 "て設定を開く。もう一度押すと設定が閉じるので、いつでももう1回押して大丈夫です"
 
 #: docs/help/controls.md
-msgid "`M` — toggle mouse steering"
+#, fuzzy
+msgid "`Shift`+`M` — toggle mouse steering"
 msgstr "`M` — マウス操縦の切り替え"
 
 #: docs/help/controls.md
@@ -171,11 +196,17 @@ msgid "`C` — cycle camera mode"
 msgstr "`C` — カメラモードを切り替え"
 
 #: docs/help/controls.md
-msgid "`O` — toggle operator panel"
+#, fuzzy
+msgid "`Shift`+`O` — toggle operator panel"
 msgstr "`O` — オペレーターパネルの切り替え"
 
 #: docs/help/controls.md
-msgid "`F` — toggle fullscreen"
+msgid "`F` — show or hide what the flag you carry does"
+msgstr ""
+
+#: docs/help/controls.md
+#, fuzzy
+msgid "`Shift`+`F` — toggle fullscreen"
 msgstr "`F` — 全画面の切り替え"
 
 #: docs/help/controls.md
@@ -183,21 +214,34 @@ msgid "`` ` `` — toggle debug HUD"
 msgstr "`` ` `` — デバッグHUDの切り替え"
 
 #: docs/help/controls.md
-msgid "`=` or `+` or `Numpad +` — zoom radar out (increase range)"
+#, fuzzy
+msgid "`Q` — show or hide the radar"
+msgstr "`/` または `?` — ヘルプパネルの表示／非表示"
+
+#: docs/help/controls.md
+#, fuzzy
+msgid ""
+"`1` / `2` / `3` — radar range: Short, Medium, Long (a quarter, half and all "
+"of the world's radar limit, which is the world size unless the map says "
+"otherwise)"
+msgstr ""
+"`\\` — レーダーのズームを既定の中距離にリセット（ワールドのレーダー上限の半"
+"分。マップに指定がなければワールドの大きさです）"
+
+#: docs/help/controls.md
+#, fuzzy
+msgid "`4` or `-` or `Numpad -` — zoom radar in (decrease range)"
+msgstr "`-` または `Numpad -` — レーダーをズームイン（範囲を狭める）"
+
+#: docs/help/controls.md
+#, fuzzy
+msgid "`5` or `=` or `+` or `Numpad +` — zoom radar out (increase range)"
 msgstr ""
 "`=` または `+` または `Numpad +` — レーダーをズームアウト（範囲を広げる）"
 
 #: docs/help/controls.md
-msgid "`-` or `Numpad -` — zoom radar in (decrease range)"
-msgstr "`-` または `Numpad -` — レーダーをズームイン（範囲を狭める）"
-
-#: docs/help/controls.md
-msgid ""
-"`\\` — reset radar zoom to the default medium range (half the world's radar "
-"limit, which is the world size unless the map says otherwise)"
+msgid "`\\` — reset radar zoom to the default medium range"
 msgstr ""
-"`\\` — レーダーのズームを既定の中距離にリセット（ワールドのレーダー上限の半"
-"分。マップに指定がなければワールドの大きさです）"
 
 #: docs/help/controls.md
 msgid "`Settings -> Radar: ...` — cycle Short/Medium/Long radar presets"
@@ -206,7 +250,8 @@ msgstr ""
 "え"
 
 #: docs/help/controls.md
-msgid "`B` — toggle the voice microphone"
+#, fuzzy
+msgid "`V` — toggle the voice microphone"
 msgstr "`B` — ボイスのマイクを切り替え"
 
 #: docs/help/controls.md
@@ -222,8 +267,9 @@ msgid "`/` or `?` — show/hide help panel"
 msgstr "`/` または `?` — ヘルプパネルの表示／非表示"
 
 #: docs/help/controls.md
+#, fuzzy
 msgid ""
-"`🎤` beside the gear — the microphone, as `B` is: a green border means you "
+"`🎤` beside the gear — the microphone, as `V` is: a green border means you "
 "are transmitting and a red one means you are not, and the hover text names "
 "the channel it would speak on"
 msgstr ""
@@ -313,8 +359,8 @@ msgid ""
 msgstr ""
 "プレイヤーをマークすると、スコアボードの行にシアンの `◎`、レーダーの点にシア"
 "ンのリング、そしてその上空にその戦車の色のビーコンが付きます。複数マークして"
-"も一目で区別できます。そのうち1人が照準に入ると、HUDに **発見:** と表示さ"
-"れ、その位置から毎秒1回ピン音が鳴ります。ラビットチェイスではラビットが自動でマー"
+"も一目で区別できます。そのうち1人が照準に入ると、HUDに **発見:** と表示され、"
+"その位置から毎秒1回ピン音が鳴ります。ラビットチェイスではラビットが自動でマー"
 "クされ、そのビーコンはリングと同じシアンです。全員がラビットを追っているの"
 "で、全員のマークがそれを示します。"
 
@@ -430,12 +476,37 @@ msgid "Mouse"
 msgstr "マウス"
 
 #: docs/help/controls.md
+#, fuzzy
 msgid ""
-"`M` turns mouse steering on and off, and nothing else does: the keys never "
-"take it away behind your back."
+"`Shift`+`M` turns mouse steering on and off, and nothing else does: the keys "
+"never take it away behind your back."
 msgstr ""
 "マウス操縦のオン／オフは `M` だけで切り替わります。キー操作で勝手に解除される"
 "ことはありません。"
+
+#: docs/help/controls.md
+msgid "The wheel"
+msgstr ""
+
+#: docs/help/controls.md
+msgid "The wheel acts on whatever is under the pointer:"
+msgstr ""
+
+#: docs/help/controls.md
+msgid "chat: scrolls it"
+msgstr ""
+
+#: docs/help/controls.md
+msgid "the radar: zooms it, up to zoom in"
+msgstr ""
+
+#: docs/help/controls.md
+msgid "the scoreboard, the debug HUD and any dialog: scrolls it"
+msgstr ""
+
+#: docs/help/controls.md
+msgid "the game view: nothing"
+msgstr ""
 
 #: docs/help/controls.md
 msgid "The targeting box"
@@ -494,11 +565,14 @@ msgstr ""
 "く時間をかけて加速します。"
 
 #: docs/help/controls.md
+#, fuzzy
 msgid ""
-"The boxes are BZFlag's own sizes, scaled to the window. BZFlag also holds "
-"the cursor inside the box; a browser cannot without taking the pointer over, "
-"so in bzo the cursor can leave it -- the steering simply stays at full, and "
-"the cost is a longer move back to the centre."
+"The boxes are BZFlag's own sizes, scaled to the window. As in BZFlag, the "
+"cursor is held inside the box: the first click on the battlefield takes the "
+"pointer over and bzo draws the cursor itself. Escape lets it go, and so do a "
+"menu, dying, pausing and observing; the next click takes it back. A browser "
+"that refuses leaves the cursor free -- the steering stays at full past the "
+"box, and the cost is a longer move back to the centre."
 msgstr ""
 "ボックスの大きさはBZFlagと同じで、ウィンドウに合わせて拡大縮小します。BZFlag"
 "はカーソルをボックス内に留めますが、ブラウザはポインターを占有しない限りそれ"
@@ -536,9 +610,11 @@ msgid "Combining inputs"
 msgstr "入力の組み合わせ"
 
 #: docs/help/controls.md
+#, fuzzy
 msgid ""
 "Every input drives at once, and nothing switches between them on its own: "
-"`M` and the Settings rows are the only things that change which ones are on."
+"`Shift`+`M` and the Settings rows are the only things that change which ones "
+"are on."
 msgstr ""
 "すべての入力が同時に効き、勝手に切り替わることはありません。どれを有効にする"
 "かを変えるのは `M` と設定の項目だけです。"
@@ -898,8 +974,8 @@ msgid ""
 msgstr ""
 "各行の数字は **キル／デス**、チームキルがあれば **[チームキル]**、続いてその"
 "相手に対するあなたの戦績 **勝ち~負け** です（実際に戦うまでは空欄）。自分の行"
-"には、自分自身との戦績はないので代わりに自爆回数が表示されます。ラビットチェイス"
-"ではキル数の前に順位のパーセンテージが付きます。"
+"には、自分自身との戦績はないので代わりに自爆回数が表示されます。ラビットチェ"
+"イスではキル数の前に順位のパーセンテージが付きます。"
 
 #: docs/help/scoreboard.md
 msgid ""
@@ -950,7 +1026,8 @@ msgstr ""
 "レイヤーだけ、**チーム**はマップ上のどこにいても自分のチーム"
 
 #: docs/help/voice.md
-msgid "`B` — toggle the microphone"
+#, fuzzy
+msgid "`V` — toggle the microphone"
 msgstr "`B` — マイクの切り替え"
 
 #: docs/help/voice.md

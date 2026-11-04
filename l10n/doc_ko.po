@@ -31,6 +31,14 @@ msgid "Keyboard"
 msgstr "키보드"
 
 #: docs/help/controls.md
+msgid ""
+"Keys are named by where they sit on a US keyboard, and bzo reads them by "
+"position, not by the letter printed on them. On another layout a key named "
+"here is the one in the same place: `Z` is the key labelled W on a French "
+"keyboard and Y on a German one."
+msgstr ""
+
+#: docs/help/controls.md
 msgid "Driving"
 msgstr "주행"
 
@@ -87,8 +95,23 @@ msgid "Chat"
 msgstr "채팅"
 
 #: docs/help/controls.md
-msgid "`N` — open chat (or click the `Send` button)"
+#, fuzzy
+msgid "`N` — message everyone (or click the `Send` button)"
 msgstr "`N` — 채팅 열기(또는 `Send` 버튼 클릭)"
+
+#: docs/help/controls.md
+#, fuzzy
+msgid "`M` — message your team"
+msgstr "`,` — 네메시스 대상에게 메시지"
+
+#: docs/help/controls.md
+#, fuzzy
+msgid "`Z` — message the admins, if you are one"
+msgstr "`,` — 네메시스 대상에게 메시지"
+
+#: docs/help/controls.md
+msgid "`O` — type a server command: chat opens holding the `/`"
+msgstr ""
 
 #: docs/help/controls.md
 msgid ""
@@ -97,9 +120,10 @@ msgstr ""
 "`Enter` — 채팅 보내기(입력란에 포커스가 있을 때, 또는 `Send`를 다시 클릭)"
 
 #: docs/help/controls.md
+#, fuzzy
 msgid ""
-"`1` / `2` / `3` / `4` / `5` — switch chat tab (`All` / `Chat` / `Server` / "
-"`Misc` / `Debug`)"
+"`Shift`+`1` / `2` / `3` / `4` / `5` — switch chat tab (`All` / `Chat` / "
+"`Server` / `Misc` / `Debug`)"
 msgstr ""
 "`1` / `2` / `3` / `4` / `5` — 채팅 탭 전환(`All` / `Chat` / `Server` / "
 "`Misc` / `Debug`)"
@@ -162,7 +186,8 @@ msgstr ""
 "음 설정 열기. 다시 누르면 설정이 닫히므로 언제든 한 번 더 눌러도 안전해요"
 
 #: docs/help/controls.md
-msgid "`M` — toggle mouse steering"
+#, fuzzy
+msgid "`Shift`+`M` — toggle mouse steering"
 msgstr "`M` — 마우스 조종 켜기/끄기"
 
 #: docs/help/controls.md
@@ -170,11 +195,17 @@ msgid "`C` — cycle camera mode"
 msgstr "`C` — 카메라 모드 전환"
 
 #: docs/help/controls.md
-msgid "`O` — toggle operator panel"
+#, fuzzy
+msgid "`Shift`+`O` — toggle operator panel"
 msgstr "`O` — 오퍼레이터 패널 켜기/끄기"
 
 #: docs/help/controls.md
-msgid "`F` — toggle fullscreen"
+msgid "`F` — show or hide what the flag you carry does"
+msgstr ""
+
+#: docs/help/controls.md
+#, fuzzy
+msgid "`Shift`+`F` — toggle fullscreen"
 msgstr "`F` — 전체 화면 켜기/끄기"
 
 #: docs/help/controls.md
@@ -182,27 +213,41 @@ msgid "`` ` `` — toggle debug HUD"
 msgstr "`` ` `` — 디버그 HUD 켜기/끄기"
 
 #: docs/help/controls.md
-msgid "`=` or `+` or `Numpad +` — zoom radar out (increase range)"
-msgstr "`=` 또는 `+` 또는 `Numpad +` — 레이더 축소(범위 넓히기)"
+#, fuzzy
+msgid "`Q` — show or hide the radar"
+msgstr "`/` 또는 `?` — 도움말 패널 표시/숨기기"
 
 #: docs/help/controls.md
-msgid "`-` or `Numpad -` — zoom radar in (decrease range)"
-msgstr "`-` 또는 `Numpad -` — 레이더 확대(범위 좁히기)"
-
-#: docs/help/controls.md
+#, fuzzy
 msgid ""
-"`\\` — reset radar zoom to the default medium range (half the world's radar "
-"limit, which is the world size unless the map says otherwise)"
+"`1` / `2` / `3` — radar range: Short, Medium, Long (a quarter, half and all "
+"of the world's radar limit, which is the world size unless the map says "
+"otherwise)"
 msgstr ""
 "`\\` — 레이더 줌을 기본 중거리로 초기화(월드 레이더 한계의 절반이며, 맵에서 "
 "따로 정하지 않으면 월드 크기예요)"
+
+#: docs/help/controls.md
+#, fuzzy
+msgid "`4` or `-` or `Numpad -` — zoom radar in (decrease range)"
+msgstr "`-` 또는 `Numpad -` — 레이더 확대(범위 좁히기)"
+
+#: docs/help/controls.md
+#, fuzzy
+msgid "`5` or `=` or `+` or `Numpad +` — zoom radar out (increase range)"
+msgstr "`=` 또는 `+` 또는 `Numpad +` — 레이더 축소(범위 넓히기)"
+
+#: docs/help/controls.md
+msgid "`\\` — reset radar zoom to the default medium range"
+msgstr ""
 
 #: docs/help/controls.md
 msgid "`Settings -> Radar: ...` — cycle Short/Medium/Long radar presets"
 msgstr "`Settings -> Radar: ...` — 근거리/중거리/원거리 레이더 프리셋 전환"
 
 #: docs/help/controls.md
-msgid "`B` — toggle the voice microphone"
+#, fuzzy
+msgid "`V` — toggle the voice microphone"
 msgstr "`B` — 음성 마이크 켜기/끄기"
 
 #: docs/help/controls.md
@@ -218,8 +263,9 @@ msgid "`/` or `?` — show/hide help panel"
 msgstr "`/` 또는 `?` — 도움말 패널 표시/숨기기"
 
 #: docs/help/controls.md
+#, fuzzy
 msgid ""
-"`🎤` beside the gear — the microphone, as `B` is: a green border means you "
+"`🎤` beside the gear — the microphone, as `V` is: a green border means you "
 "are transmitting and a red one means you are not, and the hover text names "
 "the channel it would speak on"
 msgstr ""
@@ -308,10 +354,10 @@ msgid ""
 msgstr ""
 "플레이어를 표시하면 스코어보드 줄에 청록색 `◎`, 레이더 점에 청록색 고리, 그리"
 "고 그 위 하늘에 그 탱크 색의 비컨이 생겨요. 여러 명을 표시해도 한눈에 구별할 "
-"수 있어요. 그중 한 명이 조준선에 들어오면 HUD에 **발견:**가 표시되고, 그 위"
-"치에서 1초마다 핑 소리가 나요. 래빗 체이스에서는 래빗이 자동으로 표시되고, "
-"비컨도 고리처럼 청록색이에요. 모두가 래빗을 쫓고 있으니 모두의 표시가 그렇게 "
-"보여 주는 거예요."
+"수 있어요. 그중 한 명이 조준선에 들어오면 HUD에 **발견:**가 표시되고, 그 위치"
+"에서 1초마다 핑 소리가 나요. 래빗 체이스에서는 래빗이 자동으로 표시되고, 비컨"
+"도 고리처럼 청록색이에요. 모두가 래빗을 쫓고 있으니 모두의 표시가 그렇게 보"
+"여 주는 거예요."
 
 #: docs/help/controls.md
 msgid ""
@@ -423,11 +469,36 @@ msgid "Mouse"
 msgstr "마우스"
 
 #: docs/help/controls.md
+#, fuzzy
 msgid ""
-"`M` turns mouse steering on and off, and nothing else does: the keys never "
-"take it away behind your back."
+"`Shift`+`M` turns mouse steering on and off, and nothing else does: the keys "
+"never take it away behind your back."
 msgstr ""
 "마우스 조종은 `M`으로만 켜고 꺼요. 키 입력이 몰래 꺼 버리는 일은 없어요."
+
+#: docs/help/controls.md
+msgid "The wheel"
+msgstr ""
+
+#: docs/help/controls.md
+msgid "The wheel acts on whatever is under the pointer:"
+msgstr ""
+
+#: docs/help/controls.md
+msgid "chat: scrolls it"
+msgstr ""
+
+#: docs/help/controls.md
+msgid "the radar: zooms it, up to zoom in"
+msgstr ""
+
+#: docs/help/controls.md
+msgid "the scoreboard, the debug HUD and any dialog: scrolls it"
+msgstr ""
+
+#: docs/help/controls.md
+msgid "the game view: nothing"
+msgstr ""
 
 #: docs/help/controls.md
 msgid "The targeting box"
@@ -485,11 +556,14 @@ msgstr ""
 "도가 올라가요."
 
 #: docs/help/controls.md
+#, fuzzy
 msgid ""
-"The boxes are BZFlag's own sizes, scaled to the window. BZFlag also holds "
-"the cursor inside the box; a browser cannot without taking the pointer over, "
-"so in bzo the cursor can leave it -- the steering simply stays at full, and "
-"the cost is a longer move back to the centre."
+"The boxes are BZFlag's own sizes, scaled to the window. As in BZFlag, the "
+"cursor is held inside the box: the first click on the battlefield takes the "
+"pointer over and bzo draws the cursor itself. Escape lets it go, and so do a "
+"menu, dying, pausing and observing; the next click takes it back. A browser "
+"that refuses leaves the cursor free -- the steering stays at full past the "
+"box, and the cost is a longer move back to the centre."
 msgstr ""
 "박스 크기는 BZFlag와 같고 창 크기에 맞춰 조정돼요. BZFlag는 커서를 박스 안에 "
 "묶어 두지만, 브라우저는 포인터를 점유하지 않고는 그럴 수 없어서 bzo에서는 커"
@@ -527,9 +601,11 @@ msgid "Combining inputs"
 msgstr "입력 조합"
 
 #: docs/help/controls.md
+#, fuzzy
 msgid ""
 "Every input drives at once, and nothing switches between them on its own: "
-"`M` and the Settings rows are the only things that change which ones are on."
+"`Shift`+`M` and the Settings rows are the only things that change which ones "
+"are on."
 msgstr ""
 "모든 입력이 동시에 작동하고, 저절로 전환되는 일은 없어요. 어떤 입력을 켤지 바"
 "꾸는 건 `M`과 설정 항목뿐이에요."
@@ -883,8 +959,8 @@ msgid ""
 msgstr ""
 "각 줄의 숫자는 **킬 / 데스**, 팀킬이 있으면 **[팀킬]**, 그다음 그 상대에 대"
 "한 내 전적 **승~패**예요(실제로 싸우기 전에는 비어 있어요). 내 줄에는 나 자신"
-"과의 전적이 없으니 대신 자폭 횟수가 표시돼요. 래빗 체이스에서는 킬 수 앞에 "
-"순위 백분율이 붙어요."
+"과의 전적이 없으니 대신 자폭 횟수가 표시돼요. 래빗 체이스에서는 킬 수 앞에 순"
+"위 백분율이 붙어요."
 
 #: docs/help/scoreboard.md
 msgid ""
@@ -933,7 +1009,8 @@ msgstr ""
 "이어만, **팀**은 맵 어디에 있든 내 팀"
 
 #: docs/help/voice.md
-msgid "`B` — toggle the microphone"
+#, fuzzy
+msgid "`V` — toggle the microphone"
 msgstr "`B` — 마이크 켜기/끄기"
 
 #: docs/help/voice.md

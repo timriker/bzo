@@ -17,6 +17,35 @@ let loading = null;
 let currentSlug = null;
 let onPageShown = () => {};
 
+// The player's own keyboard, where the browser will say what it prints on
+// each key (`navigator.keyboard.getLayoutMap`, Chromium only). Bindings are
+// positions on a US layout (docs/controls-plan.md); a key named in the help
+// whose own label differs gets that label beside it.
+let layoutMap = null;
+navigator.keyboard?.getLayoutMap?.()
+  .then((map) => { layoutMap = map; })
+  .catch(() => {});
+
+const KEY_CODES = { '/': 'Slash', '`': 'Backquote', '\\': 'Backslash', '[': 'BracketLeft',
+  ']': 'BracketRight', ',': 'Comma', '.': 'Period', '-': 'Minus', '=': 'Equal' };
+
+function keyCode(name) {
+  if (/^[A-Z]$/.test(name)) return `Key${name}`;
+  if (/^[0-9]$/.test(name)) return `Digit${name}`;
+  return KEY_CODES[name] ?? null;
+}
+
+function labelKeys(root) {
+  if (!layoutMap) return;
+  for (const element of root.querySelectorAll('code')) {
+    const name = element.textContent;
+    const code = keyCode(name);
+    const label = code && layoutMap.get(code);
+    if (!label || label.toUpperCase() === name) continue;
+    element.after(` (${t('your {key}', { key: label.toUpperCase() })})`);
+  }
+}
+
 const nav = () => document.getElementById('helpNav');
 const content = () => document.getElementById('helpContent');
 const search = () => document.getElementById('helpSearch');
@@ -46,6 +75,7 @@ export function showPage(slug, anchor = null) {
   const body = document.createElement('div');
   // Our own markdown, rendered by our own server; nothing a player wrote.
   body.innerHTML = page.html;
+  labelKeys(body);
   content().replaceChildren(heading, body);
   for (const button of nav().querySelectorAll('[data-help-page]')) {
     if (button.dataset.helpPage === page.slug) button.setAttribute('aria-current', 'page');

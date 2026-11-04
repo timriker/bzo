@@ -30,6 +30,14 @@ msgid "Keyboard"
 msgstr "K3yb04rd"
 
 #: docs/help/controls.md
+msgid ""
+"Keys are named by where they sit on a US keyboard, and bzo reads them by "
+"position, not by the letter printed on them. On another layout a key named "
+"here is the one in the same place: `Z` is the key labelled W on a French "
+"keyboard and Y on a German one."
+msgstr ""
+
+#: docs/help/controls.md
 msgid "Driving"
 msgstr "Dr1v1ng"
 
@@ -90,8 +98,23 @@ msgid "Chat"
 msgstr "Ch47"
 
 #: docs/help/controls.md
-msgid "`N` — open chat (or click the `Send` button)"
+#, fuzzy
+msgid "`N` — message everyone (or click the `Send` button)"
 msgstr "`N` — 0p3n ch47 (0r cl1ck 73h `Send` bu770n)"
+
+#: docs/help/controls.md
+#, fuzzy
+msgid "`M` — message your team"
+msgstr "`,` — m3554g3 n3m3515 74rg37"
+
+#: docs/help/controls.md
+#, fuzzy
+msgid "`Z` — message the admins, if you are one"
+msgstr "`,` — m3554g3 n3m3515 74rg37"
+
+#: docs/help/controls.md
+msgid "`O` — type a server command: chat opens holding the `/`"
+msgstr ""
 
 #: docs/help/controls.md
 msgid ""
@@ -100,9 +123,10 @@ msgstr ""
 "`Enter` — 53nd ch47 (wh1l3 ch47 1npu7 15 f0cu53d, 0r cl1ck `Send` 4g41n)"
 
 #: docs/help/controls.md
+#, fuzzy
 msgid ""
-"`1` / `2` / `3` / `4` / `5` — switch chat tab (`All` / `Chat` / `Server` / "
-"`Misc` / `Debug`)"
+"`Shift`+`1` / `2` / `3` / `4` / `5` — switch chat tab (`All` / `Chat` / "
+"`Server` / `Misc` / `Debug`)"
 msgstr ""
 "`1` / `2` / `3` / `4` / `5` — 5w17ch ch47 74b (`All` / `Chat` / `Server` / "
 "`Misc` / `Debug`)"
@@ -166,7 +190,8 @@ msgstr ""
 "4lw4y5 54f3 70 pr355 0n3 m0r3 71m3"
 
 #: docs/help/controls.md
-msgid "`M` — toggle mouse steering"
+#, fuzzy
+msgid "`Shift`+`M` — toggle mouse steering"
 msgstr "`M` — 70ggl3 m0u53 5733r1ng"
 
 #: docs/help/controls.md
@@ -174,11 +199,17 @@ msgid "`C` — cycle camera mode"
 msgstr "`C` — cycl3 c4m3r4 m0d3"
 
 #: docs/help/controls.md
-msgid "`O` — toggle operator panel"
+#, fuzzy
+msgid "`Shift`+`O` — toggle operator panel"
 msgstr "`O` — 70ggl3 0p3r470r p4n3l"
 
 #: docs/help/controls.md
-msgid "`F` — toggle fullscreen"
+msgid "`F` — show or hide what the flag you carry does"
+msgstr ""
+
+#: docs/help/controls.md
+#, fuzzy
+msgid "`Shift`+`F` — toggle fullscreen"
 msgstr "`F` — 70ggl3 full5cr33n"
 
 #: docs/help/controls.md
@@ -186,27 +217,41 @@ msgid "`` ` `` — toggle debug HUD"
 msgstr "`` ` `` — 70ggl3 d3bug HUD"
 
 #: docs/help/controls.md
-msgid "`=` or `+` or `Numpad +` — zoom radar out (increase range)"
-msgstr "`=` 0r `+` 0r `Numpad +` — z00m r4d4r 0u7 (1ncr3453 r4ng3)"
+#, fuzzy
+msgid "`Q` — show or hide the radar"
+msgstr "`/` 0r `?` — 5h0w/h1d3 h3lp p4n3l"
 
 #: docs/help/controls.md
-msgid "`-` or `Numpad -` — zoom radar in (decrease range)"
-msgstr "`-` 0r `Numpad -` — z00m r4d4r 1n (d3cr3453 r4ng3)"
-
-#: docs/help/controls.md
+#, fuzzy
 msgid ""
-"`\\` — reset radar zoom to the default medium range (half the world's radar "
-"limit, which is the world size unless the map says otherwise)"
+"`1` / `2` / `3` — radar range: Short, Medium, Long (a quarter, half and all "
+"of the world's radar limit, which is the world size unless the map says "
+"otherwise)"
 msgstr ""
 "`\\` — r3537 r4d4r z00m 70 73h d3f4ul7 m3d1um r4ng3 (h4lf 73h w0rld'5 r4d4r "
 "l1m17, wh1ch 15 73h w0rld 51z3 unl355 73h m4p 54y5 07h3rw153)"
+
+#: docs/help/controls.md
+#, fuzzy
+msgid "`4` or `-` or `Numpad -` — zoom radar in (decrease range)"
+msgstr "`-` 0r `Numpad -` — z00m r4d4r 1n (d3cr3453 r4ng3)"
+
+#: docs/help/controls.md
+#, fuzzy
+msgid "`5` or `=` or `+` or `Numpad +` — zoom radar out (increase range)"
+msgstr "`=` 0r `+` 0r `Numpad +` — z00m r4d4r 0u7 (1ncr3453 r4ng3)"
+
+#: docs/help/controls.md
+msgid "`\\` — reset radar zoom to the default medium range"
+msgstr ""
 
 #: docs/help/controls.md
 msgid "`Settings -> Radar: ...` — cycle Short/Medium/Long radar presets"
 msgstr "`Settings -> Radar: ...` — cycl3 5h0r7/M3d1um/L0ng r4d4r pr35375"
 
 #: docs/help/controls.md
-msgid "`B` — toggle the voice microphone"
+#, fuzzy
+msgid "`V` — toggle the voice microphone"
 msgstr "`B` — 70ggl3 73h v01c3 m1cr0ph0n3"
 
 #: docs/help/controls.md
@@ -222,8 +267,9 @@ msgid "`/` or `?` — show/hide help panel"
 msgstr "`/` 0r `?` — 5h0w/h1d3 h3lp p4n3l"
 
 #: docs/help/controls.md
+#, fuzzy
 msgid ""
-"`🎤` beside the gear — the microphone, as `B` is: a green border means you "
+"`🎤` beside the gear — the microphone, as `V` is: a green border means you "
 "are transmitting and a red one means you are not, and the hover text names "
 "the channel it would speak on"
 msgstr ""
@@ -436,12 +482,37 @@ msgid "Mouse"
 msgstr "M0u53"
 
 #: docs/help/controls.md
+#, fuzzy
 msgid ""
-"`M` turns mouse steering on and off, and nothing else does: the keys never "
-"take it away behind your back."
+"`Shift`+`M` turns mouse steering on and off, and nothing else does: the keys "
+"never take it away behind your back."
 msgstr ""
 "`M` 7urn5 m0u53 5733r1ng 0n 4nd 0ff, 4nd n07h1ng 3l53 d035: 73h k3y5 n3v3r "
 "74k3 17 4w4y b3h1nd j00r b4ck."
+
+#: docs/help/controls.md
+msgid "The wheel"
+msgstr ""
+
+#: docs/help/controls.md
+msgid "The wheel acts on whatever is under the pointer:"
+msgstr ""
+
+#: docs/help/controls.md
+msgid "chat: scrolls it"
+msgstr ""
+
+#: docs/help/controls.md
+msgid "the radar: zooms it, up to zoom in"
+msgstr ""
+
+#: docs/help/controls.md
+msgid "the scoreboard, the debug HUD and any dialog: scrolls it"
+msgstr ""
+
+#: docs/help/controls.md
+msgid "the game view: nothing"
+msgstr ""
 
 #: docs/help/controls.md
 msgid "The targeting box"
@@ -502,11 +573,14 @@ msgstr ""
 "up 70 17 0v3r 71m3, 73h 54m3 45 17 d035 fr0m 73h k3y5."
 
 #: docs/help/controls.md
+#, fuzzy
 msgid ""
-"The boxes are BZFlag's own sizes, scaled to the window. BZFlag also holds "
-"the cursor inside the box; a browser cannot without taking the pointer over, "
-"so in bzo the cursor can leave it -- the steering simply stays at full, and "
-"the cost is a longer move back to the centre."
+"The boxes are BZFlag's own sizes, scaled to the window. As in BZFlag, the "
+"cursor is held inside the box: the first click on the battlefield takes the "
+"pointer over and bzo draws the cursor itself. Escape lets it go, and so do a "
+"menu, dying, pausing and observing; the next click takes it back. A browser "
+"that refuses leaves the cursor free -- the steering stays at full past the "
+"box, and the cost is a longer move back to the centre."
 msgstr ""
 "73h b0x35 4r3 BZFlag'5 0wn 51z35, 5c4l3d 70 73h w1nd0w. BZFlag 4l50 h0ld5 "
 "73h cur50r 1n51d3 73h b0x; 4 br0w53r c4nn07 w17h0u7 74k1ng 73h p01n73r 0v3r, "
@@ -544,9 +618,11 @@ msgid "Combining inputs"
 msgstr "C0mb1n1ng 1npu75"
 
 #: docs/help/controls.md
+#, fuzzy
 msgid ""
 "Every input drives at once, and nothing switches between them on its own: "
-"`M` and the Settings rows are the only things that change which ones are on."
+"`Shift`+`M` and the Settings rows are the only things that change which ones "
+"are on."
 msgstr ""
 "3v3ry 1npu7 dr1v35 47 0nc3, 4nd n07h1ng 5w17ch35 b37w33n 7h3m 0n 175 0wn: "
 "`M` 4nd 73h 53771ng5 r0w5 4r3 73h 0nly 7h1ng5 7h47 ch4ng3 wh1ch 0n35 4r3 0n."
@@ -960,7 +1036,8 @@ msgstr ""
 "pl4y3r5 w17h1n 34r5h07, **734m** 15 j00r 0wn 734m 4nywh3r3 0n 73h m4p"
 
 #: docs/help/voice.md
-msgid "`B` — toggle the microphone"
+#, fuzzy
+msgid "`V` — toggle the microphone"
 msgstr "`B` — 70ggl3 73h m1cr0ph0n3"
 
 #: docs/help/voice.md

@@ -21,8 +21,8 @@ msgid ""
 "all. This page is also the in-game help's (`/` or `?`)."
 msgstr ""
 "O mesmo cliente roda num computador, num celular e num headset, por isso "
-"cada ação tem um jeito de ser feita a partir de cada um deles. O teclado "
-"tem mais; a tela sensível ao toque, um controle e os controles XR cobrem as "
+"cada ação tem um jeito de ser feita a partir de cada um deles. O teclado tem "
+"mais; a tela sensível ao toque, um controle e os controles XR cobrem as "
 "ações de que uma partida precisa, e o menu Configurações alcança o resto -- "
 "inclusive num headset, onde não há teclado nenhum. Esta página é também a "
 "ajuda dentro do jogo (`/` ou `?`)."
@@ -30,6 +30,14 @@ msgstr ""
 #: docs/help/controls.md
 msgid "Keyboard"
 msgstr "Teclado"
+
+#: docs/help/controls.md
+msgid ""
+"Keys are named by where they sit on a US keyboard, and bzo reads them by "
+"position, not by the letter printed on them. On another layout a key named "
+"here is the one in the same place: `Z` is the key labelled W on a French "
+"keyboard and Y on a German one."
+msgstr ""
 
 #: docs/help/controls.md
 msgid "Driving"
@@ -78,8 +86,8 @@ msgid ""
 "without a keyboard. You can still drive while it does, to help it out of a "
 "corner -- see [Combining inputs](#combining-inputs)"
 msgstr ""
-"`9` ou `/autopilot [roger|ace]` — piloto automático: o piloto dirige, mira "
-"e atira até você apertar de novo. `Settings -> Autopilot` (Configurações -> "
+"`9` ou `/autopilot [roger|ace]` — piloto automático: o piloto dirige, mira e "
+"atira até você apertar de novo. `Settings -> Autopilot` (Configurações -> "
 "Piloto automático) escolhe o piloto sem teclado. Você pode continuar "
 "dirigindo enquanto ele dirige, para ajudá-lo a sair de um canto -- veja "
 "[Combinar entradas](#combining-inputs)"
@@ -93,8 +101,23 @@ msgid "Chat"
 msgstr "Chat"
 
 #: docs/help/controls.md
-msgid "`N` — open chat (or click the `Send` button)"
+#, fuzzy
+msgid "`N` — message everyone (or click the `Send` button)"
 msgstr "`N` — abrir o chat (ou clicar no botão `Send`)"
+
+#: docs/help/controls.md
+#, fuzzy
+msgid "`M` — message your team"
+msgstr "`,` — enviar mensagem ao seu nêmesis"
+
+#: docs/help/controls.md
+#, fuzzy
+msgid "`Z` — message the admins, if you are one"
+msgstr "`,` — enviar mensagem ao seu nêmesis"
+
+#: docs/help/controls.md
+msgid "`O` — type a server command: chat opens holding the `/`"
+msgstr ""
 
 #: docs/help/controls.md
 msgid ""
@@ -104,9 +127,10 @@ msgstr ""
 "em `Send`)"
 
 #: docs/help/controls.md
+#, fuzzy
 msgid ""
-"`1` / `2` / `3` / `4` / `5` — switch chat tab (`All` / `Chat` / `Server` / "
-"`Misc` / `Debug`)"
+"`Shift`+`1` / `2` / `3` / `4` / `5` — switch chat tab (`All` / `Chat` / "
+"`Server` / `Misc` / `Debug`)"
 msgstr ""
 "`1` / `2` / `3` / `4` / `5` — trocar de aba do chat (`All` / `Chat` / "
 "`Server` / `Misc` / `Debug`)"
@@ -166,11 +190,12 @@ msgid ""
 "always safe to press one more time"
 msgstr ""
 "`Esc` — volta um passo: sai do campo do chat, sai da tela cheia, sai da "
-"direção com o mouse e depois abre as Configurações. Apertar de novo fecha "
-"as Configurações, por isso é sempre seguro apertar mais uma vez"
+"direção com o mouse e depois abre as Configurações. Apertar de novo fecha as "
+"Configurações, por isso é sempre seguro apertar mais uma vez"
 
 #: docs/help/controls.md
-msgid "`M` — toggle mouse steering"
+#, fuzzy
+msgid "`Shift`+`M` — toggle mouse steering"
 msgstr "`M` — ligar/desligar a direção com o mouse"
 
 #: docs/help/controls.md
@@ -178,11 +203,17 @@ msgid "`C` — cycle camera mode"
 msgstr "`C` — alternar o modo de câmera"
 
 #: docs/help/controls.md
-msgid "`O` — toggle operator panel"
+#, fuzzy
+msgid "`Shift`+`O` — toggle operator panel"
 msgstr "`O` — mostrar/ocultar o painel de operador"
 
 #: docs/help/controls.md
-msgid "`F` — toggle fullscreen"
+msgid "`F` — show or hide what the flag you carry does"
+msgstr ""
+
+#: docs/help/controls.md
+#, fuzzy
+msgid "`Shift`+`F` — toggle fullscreen"
 msgstr "`F` — alternar tela cheia"
 
 #: docs/help/controls.md
@@ -190,21 +221,34 @@ msgid "`` ` `` — toggle debug HUD"
 msgstr "`` ` `` — mostrar/ocultar o HUD de depuração"
 
 #: docs/help/controls.md
-msgid "`=` or `+` or `Numpad +` — zoom radar out (increase range)"
-msgstr "`=` ou `+` ou `Numpad +` — afastar o radar (aumentar o alcance)"
+#, fuzzy
+msgid "`Q` — show or hide the radar"
+msgstr "`/` ou `?` — mostrar/ocultar o painel de ajuda"
 
 #: docs/help/controls.md
-msgid "`-` or `Numpad -` — zoom radar in (decrease range)"
-msgstr "`-` ou `Numpad -` — aproximar o radar (diminuir o alcance)"
-
-#: docs/help/controls.md
+#, fuzzy
 msgid ""
-"`\\` — reset radar zoom to the default medium range (half the world's radar "
-"limit, which is the world size unless the map says otherwise)"
+"`1` / `2` / `3` — radar range: Short, Medium, Long (a quarter, half and all "
+"of the world's radar limit, which is the world size unless the map says "
+"otherwise)"
 msgstr ""
 "`\\` — redefinir o zoom do radar para o alcance médio padrão (metade do "
 "limite de radar do mundo, que é o tamanho do mundo, a menos que o mapa diga "
 "o contrário)"
+
+#: docs/help/controls.md
+#, fuzzy
+msgid "`4` or `-` or `Numpad -` — zoom radar in (decrease range)"
+msgstr "`-` ou `Numpad -` — aproximar o radar (diminuir o alcance)"
+
+#: docs/help/controls.md
+#, fuzzy
+msgid "`5` or `=` or `+` or `Numpad +` — zoom radar out (increase range)"
+msgstr "`=` ou `+` ou `Numpad +` — afastar o radar (aumentar o alcance)"
+
+#: docs/help/controls.md
+msgid "`\\` — reset radar zoom to the default medium range"
+msgstr ""
 
 #: docs/help/controls.md
 msgid "`Settings -> Radar: ...` — cycle Short/Medium/Long radar presets"
@@ -213,7 +257,8 @@ msgstr ""
 "Médio/Longo"
 
 #: docs/help/controls.md
-msgid "`B` — toggle the voice microphone"
+#, fuzzy
+msgid "`V` — toggle the voice microphone"
 msgstr "`B` — ligar/desligar o microfone de voz"
 
 #: docs/help/controls.md
@@ -230,8 +275,9 @@ msgid "`/` or `?` — show/hide help panel"
 msgstr "`/` ou `?` — mostrar/ocultar o painel de ajuda"
 
 #: docs/help/controls.md
+#, fuzzy
 msgid ""
-"`🎤` beside the gear — the microphone, as `B` is: a green border means you "
+"`🎤` beside the gear — the microphone, as `V` is: a green border means you "
 "are transmitting and a red one means you are not, and the hover text names "
 "the channel it would speak on"
 msgstr ""
@@ -249,9 +295,9 @@ msgid ""
 msgstr ""
 "`▲` ao lado da engrenagem — oculta o placar e o chat, deixando a linha dos "
 "nomes e as abas do chat; `▼` volta a mostrá-los. Digitar uma mensagem "
-"empresta a janela do chat até você terminar, e `U` ou `7` emprestam o "
-"placar até o cursor de caça fechar; tocar numa aba do chat abre o chat de "
-"vez. Em telas pequenas começa recolhido"
+"empresta a janela do chat até você terminar, e `U` ou `7` emprestam o placar "
+"até o cursor de caça fechar; tocar numa aba do chat abre o chat de vez. Em "
+"telas pequenas começa recolhido"
 
 #: docs/help/controls.md
 msgid ""
@@ -322,13 +368,13 @@ msgid ""
 "and its beacon is cyan like its ring: everyone is hunting it, so everyone's "
 "mark over it says so."
 msgstr ""
-"Marcar um jogador coloca um `◎` ciano na linha dele no placar, um anel "
-"ciano no ponto dele no radar e um farol no céu acima dele na cor do próprio "
-"tanque -- assim, vários marcados ao mesmo tempo se distinguem num relance. "
-"Enquanto um deles está na sua mira, o HUD diz **AVISTADO:** e soa um sinal "
-"uma vez por segundo vindo de onde ele está. No Rabbit Chase o coelho já vem "
-"marcado, e o farol dele é ciano como o anel: todo mundo está caçando o "
-"coelho, então a marca de todos sobre ele mostra isso."
+"Marcar um jogador coloca um `◎` ciano na linha dele no placar, um anel ciano "
+"no ponto dele no radar e um farol no céu acima dele na cor do próprio tanque "
+"-- assim, vários marcados ao mesmo tempo se distinguem num relance. Enquanto "
+"um deles está na sua mira, o HUD diz **AVISTADO:** e soa um sinal uma vez "
+"por segundo vindo de onde ele está. No Rabbit Chase o coelho já vem marcado, "
+"e o farol dele é ciano como o anel: todo mundo está caçando o coelho, então "
+"a marca de todos sobre ele mostra isso."
 
 #: docs/help/controls.md
 msgid ""
@@ -371,9 +417,9 @@ msgid ""
 msgstr ""
 "Com o cursor aberto, o cabeçalho do placar mostra `*SEL*` e um `○` pulsando "
 "fica na linha onde ele está, preenchendo-se em `◎` quando você confirma. "
-"`Up` / `Down` o movem, `Enter` confirma, e `U` ou `7` saem mantendo o que "
-"já estava marcado. `I` e `Space` também movem o cursor, para que um "
-"dispositivo sem teclas de seta consiga usá-lo"
+"`Up` / `Down` o movem, `Enter` confirma, e `U` ou `7` saem mantendo o que já "
+"estava marcado. `I` e `Space` também movem o cursor, para que um dispositivo "
+"sem teclas de seta consiga usá-lo"
 
 #: docs/help/controls.md
 msgid "As an observer"
@@ -400,9 +446,9 @@ msgid ""
 "then every player, then on to the next view. The views are Free, Track, "
 "Follow, Driving with, and Flag where a map has team flags"
 msgstr ""
-"`Enter` ou `C` — percorre tudo: em cada visão, primeiro o líder, depois "
-"cada jogador, e depois a visão seguinte. As visões são Livre, Rastrear, "
-"Seguir, Dirigindo com, e Bandeira quando o mapa tem bandeiras de time"
+"`Enter` ou `C` — percorre tudo: em cada visão, primeiro o líder, depois cada "
+"jogador, e depois a visão seguinte. As visões são Livre, Rastrear, Seguir, "
+"Dirigindo com, e Bandeira quando o mapa tem bandeiras de time"
 
 #: docs/help/controls.md
 msgid ""
@@ -419,9 +465,9 @@ msgid ""
 "Right-click or tap an obstacle anywhere on screen, in any view and the "
 "Overview most of all, to show it the same way"
 msgstr ""
-"Clique com o botão direito ou toque num obstáculo em qualquer ponto da "
-"tela, em qualquer visão e principalmente na Visão geral, para mostrá-lo da "
-"mesma forma"
+"Clique com o botão direito ou toque num obstáculo em qualquer ponto da tela, "
+"em qualquer visão e principalmente na Visão geral, para mostrá-lo da mesma "
+"forma"
 
 #: docs/help/controls.md
 msgid ""
@@ -430,10 +476,10 @@ msgid ""
 "textures, the map file's warnings and its largest meshes, each of which "
 "shows that mesh"
 msgstr ""
-"Não escolha nada -- o céu, ou chão vazio na Visão geral -- ou aperte o "
-"botão **Mundo** do painel para ver o mundo inteiro: o que ele contém, "
-"faces, texturas, os avisos do arquivo do mapa e as maiores malhas dele, "
-"cada uma das quais mostra essa malha"
+"Não escolha nada -- o céu, ou chão vazio na Visão geral -- ou aperte o botão "
+"**Mundo** do painel para ver o mundo inteiro: o que ele contém, faces, "
+"texturas, os avisos do arquivo do mapa e as maiores malhas dele, cada uma "
+"das quais mostra essa malha"
 
 #: docs/help/controls.md
 msgid ""
@@ -448,12 +494,37 @@ msgid "Mouse"
 msgstr "Mouse"
 
 #: docs/help/controls.md
+#, fuzzy
 msgid ""
-"`M` turns mouse steering on and off, and nothing else does: the keys never "
-"take it away behind your back."
+"`Shift`+`M` turns mouse steering on and off, and nothing else does: the keys "
+"never take it away behind your back."
 msgstr ""
 "`M` liga e desliga a direção com o mouse, e nada mais faz isso: as teclas "
 "nunca a desligam sem você perceber."
+
+#: docs/help/controls.md
+msgid "The wheel"
+msgstr ""
+
+#: docs/help/controls.md
+msgid "The wheel acts on whatever is under the pointer:"
+msgstr ""
+
+#: docs/help/controls.md
+msgid "chat: scrolls it"
+msgstr ""
+
+#: docs/help/controls.md
+msgid "the radar: zooms it, up to zoom in"
+msgstr ""
+
+#: docs/help/controls.md
+msgid "the scoreboard, the debug HUD and any dialog: scrolls it"
+msgstr ""
+
+#: docs/help/controls.md
+msgid "the game view: nothing"
+msgstr ""
 
 #: docs/help/controls.md
 msgid "The targeting box"
@@ -481,10 +552,9 @@ msgid ""
 "reverse; left and right turn. Each grows evenly from nothing at the inner "
 "box's edge to full at the outer box's."
 msgstr ""
-"**Entre as caixas, tanto mais quanto mais longe.** Para cima é para frente "
-"e para baixo é marcha à ré; esquerda e direita viram. Cada um cresce de "
-"forma uniforme, de nada na borda da caixa interna até o máximo na da caixa "
-"externa."
+"**Entre as caixas, tanto mais quanto mais longe.** Para cima é para frente e "
+"para baixo é marcha à ré; esquerda e direita viram. Cada um cresce de forma "
+"uniforme, de nada na borda da caixa interna até o máximo na da caixa externa."
 
 #: docs/help/controls.md
 msgid ""
@@ -515,11 +585,14 @@ msgstr ""
 "padrão) leva o tanque até ela ao longo do tempo, assim como com as teclas."
 
 #: docs/help/controls.md
+#, fuzzy
 msgid ""
-"The boxes are BZFlag's own sizes, scaled to the window. BZFlag also holds "
-"the cursor inside the box; a browser cannot without taking the pointer over, "
-"so in bzo the cursor can leave it -- the steering simply stays at full, and "
-"the cost is a longer move back to the centre."
+"The boxes are BZFlag's own sizes, scaled to the window. As in BZFlag, the "
+"cursor is held inside the box: the first click on the battlefield takes the "
+"pointer over and bzo draws the cursor itself. Escape lets it go, and so do a "
+"menu, dying, pausing and observing; the next click takes it back. A browser "
+"that refuses leaves the cursor free -- the steering stays at full past the "
+"box, and the cost is a longer move back to the centre."
 msgstr ""
 "As caixas têm os tamanhos do próprio BZFlag, em escala com a janela. O "
 "BZFlag também prende o cursor dentro da caixa; um navegador não consegue "
@@ -559,13 +632,15 @@ msgid "Combining inputs"
 msgstr "Combinar entradas"
 
 #: docs/help/controls.md
+#, fuzzy
 msgid ""
 "Every input drives at once, and nothing switches between them on its own: "
-"`M` and the Settings rows are the only things that change which ones are on."
+"`Shift`+`M` and the Settings rows are the only things that change which ones "
+"are on."
 msgstr ""
-"Todas as entradas dirigem ao mesmo tempo, e nada alterna entre elas "
-"sozinho: `M` e as linhas das Configurações são as únicas coisas que mudam "
-"quais estão ligadas."
+"Todas as entradas dirigem ao mesmo tempo, e nada alterna entre elas sozinho: "
+"`M` e as linhas das Configurações são as únicas coisas que mudam quais estão "
+"ligadas."
 
 #: docs/help/controls.md
 msgid ""
@@ -590,9 +665,8 @@ msgid ""
 "otherwise the on-screen stick. Only one of the three is read at a time -- "
 "they are not added together."
 msgstr ""
-"**O analógico:** os controles XR em RV, senão um controle conectado, senão "
-"o analógico na tela. Só um dos três é lido de cada vez -- eles não se "
-"somam."
+"**O analógico:** os controles XR em RV, senão um controle conectado, senão o "
+"analógico na tela. Só um dos três é lido de cada vez -- eles não se somam."
 
 #: docs/help/controls.md
 msgid "**The mouse**, in the targeting box, with mouse steering on."
@@ -617,8 +691,8 @@ msgid ""
 "source's own fire button; jump from `Tab` or the stick source's; identify "
 "from `I`, a right click, or the stick source's. Any of them will do."
 msgstr ""
-"**Os botões se somam.** Atirar funciona com `Enter`, um clique esquerdo ou "
-"o botão de tiro da própria fonte do analógico; pular com `Tab` ou o dela; "
+"**Os botões se somam.** Atirar funciona com `Enter`, um clique esquerdo ou o "
+"botão de tiro da própria fonte do analógico; pular com `Tab` ou o dela; "
 "identificar com `I`, um clique direito ou o dela. Qualquer um serve."
 
 #: docs/help/controls.md
@@ -634,14 +708,14 @@ msgid ""
 msgstr ""
 "**Com o piloto automático ligado**, o piloto toma o lugar do mouse, por "
 "último na fila: uma tecla de movimento ou o analógico que você segura "
-"continua ficando com o eixo dele, e o piloto fica com o resto. Assim, "
-"quando ele fica preso contra algo, você pode segurar `A` para virá-lo para "
-"fora, ou `S` para fazê-lo recuar, enquanto ele mantém o outro eixo, e soltar "
-"para devolver o controle a ele -- ele continua de onde você o deixou, "
+"continua ficando com o eixo dele, e o piloto fica com o resto. Assim, quando "
+"ele fica preso contra algo, você pode segurar `A` para virá-lo para fora, ou "
+"`S` para fazê-lo recuar, enquanto ele mantém o outro eixo, e soltar para "
+"devolver o controle a ele -- ele continua de onde você o deixou, "
 "replanejando a rota se você o levou para outro lugar. Seus tiros, pulos e "
 "bandeiras soltas se somam aos dele. A caixa do mouse não vira enquanto o "
-"piloto automático dirige: ela mantém um desvio onde quer que o cursor "
-"esteja parado, por isso nunca devolveria nada."
+"piloto automático dirige: ela mantém um desvio onde quer que o cursor esteja "
+"parado, por isso nunca devolveria nada."
 
 #: docs/help/controls.md
 msgid ""
@@ -656,15 +730,14 @@ msgid ""
 "the pilot with it."
 msgstr ""
 "**Os menus não param o piloto automático.** Abrir as Configurações, ou "
-"qualquer outro menu, normalmente pausa o seu tanque. Com o piloto "
-"automático dirigindo, o menu fica com as teclas e o piloto continua "
-"dirigindo. Com um piloto escolhido na linha `Settings -> Autopilot` mas sem "
-"estar dirigindo, abrir um menu liga o piloto automático, e fechar o menu o "
-"desliga de novo -- assim um menu significa “dirija por mim um momento” em "
-"vez de “pare”. Com a linha em `None`, o padrão, ou num servidor que recusa "
-"bots (`-disableBots`), os menus pausam como sempre. Uma janela oculta "
-"continua pausando em qualquer caso: o navegador para de desenhá-la, e o "
-"piloto junto."
+"qualquer outro menu, normalmente pausa o seu tanque. Com o piloto automático "
+"dirigindo, o menu fica com as teclas e o piloto continua dirigindo. Com um "
+"piloto escolhido na linha `Settings -> Autopilot` mas sem estar dirigindo, "
+"abrir um menu liga o piloto automático, e fechar o menu o desliga de novo -- "
+"assim um menu significa “dirija por mim um momento” em vez de “pare”. Com a "
+"linha em `None`, o padrão, ou num servidor que recusa bots (`-disableBots`), "
+"os menus pausam como sempre. Uma janela oculta continua pausando em qualquer "
+"caso: o navegador para de desenhá-la, e o piloto junto."
 
 #: docs/help/controls.md
 msgid ""
@@ -678,8 +751,8 @@ msgstr ""
 "informar certas combinações de três teclas -- o pressionamento da terceira "
 "tecla nunca chega ao navegador -- por isso virar e dar ré ao mesmo tempo "
 "pode engolir um pulo (#146). O HUD de depuração (`` ` ``) mostra quantas "
-"teclas o navegador viu pressionadas ao mesmo tempo, o que distingue o "
-"limite do teclado do limite do bzo."
+"teclas o navegador viu pressionadas ao mesmo tempo, o que distingue o limite "
+"do teclado do limite do bzo."
 
 #: docs/help/controls.md
 msgid "Touch: the on-screen controls"
@@ -698,8 +771,8 @@ msgid ""
 "**The stick**, bottom left: push it to drive and turn, as far as you push "
 "it. A mouse can drag it too."
 msgstr ""
-"**O analógico**, no canto inferior esquerdo: empurre-o para dirigir e "
-"virar, tanto quanto você empurrar. Um mouse também pode arrastá-lo."
+"**O analógico**, no canto inferior esquerdo: empurre-o para dirigir e virar, "
+"tanto quanto você empurrar. Um mouse também pode arrastá-lo."
 
 #: docs/help/controls.md
 msgid ""
@@ -808,9 +881,8 @@ msgid ""
 "The sticks have a dead zone of a fifth of their travel, so a pad left on the "
 "desk does not creep. The right stick is free."
 msgstr ""
-"Os analógicos têm uma zona morta de um quinto do curso, para que um "
-"controle largado na mesa não se mexa sozinho. O analógico direito fica "
-"livre."
+"Os analógicos têm uma zona morta de um quinto do curso, para que um controle "
+"largado na mesa não se mexa sozinho. O analógico direito fica livre."
 
 #: docs/help/controls.md
 msgid ""
@@ -826,8 +898,8 @@ msgstr ""
 "os dois motores para um laser, e uma tremida longa e forte para uma morte. "
 "Ele só vibra enquanto é com ele que você está jogando -- uma tecla ou um "
 "clique devolvem o controle e o mantêm em silêncio -- e nunca para um "
-"observador. **Vibração** nas Configurações desliga isso. O navegador "
-"precisa ter suporte; o Chrome e o Edge têm."
+"observador. **Vibração** nas Configurações desliga isso. O navegador precisa "
+"ter suporte; o Chrome e o Edge têm."
 
 #: docs/help/controls.md
 msgid "XR controllers"
@@ -896,11 +968,11 @@ msgid ""
 "keyboard, raised when the row takes focus; see the README's WebXR section "
 "for headsets that have none."
 msgstr ""
-"Identificar fica no clique do analógico porque um polegar que está "
-"dirigindo o pressiona sem querer, e identificar não custa nada; o menu fica "
-"em `B` pelo mesmo motivo. Digitar -- um nome, uma MOTD -- usa o teclado do "
-"próprio sistema do headset, que aparece quando a linha recebe o foco; veja "
-"a seção WebXR do README para os headsets que não têm teclado."
+"Identificar fica no clique do analógico porque um polegar que está dirigindo "
+"o pressiona sem querer, e identificar não custa nada; o menu fica em `B` "
+"pelo mesmo motivo. Digitar -- um nome, uma MOTD -- usa o teclado do próprio "
+"sistema do headset, que aparece quando a linha recebe o foco; veja a seção "
+"WebXR do README para os headsets que não têm teclado."
 
 #: docs/help/flags.md
 msgid "Flags"
@@ -947,8 +1019,8 @@ msgid ""
 "else."
 msgstr ""
 "Antes de um nome, em ciano: `@` significa que esse jogador é administrador, "
-"`+` significa que ele entrou com um nome de jogador verificado nesta "
-"sessão. Nenhum dos dois aparece para mais ninguém."
+"`+` significa que ele entrou com um nome de jogador verificado nesta sessão. "
+"Nenhum dos dois aparece para mais ninguém."
 
 #: docs/help/scoreboard.md
 msgid ""
@@ -988,11 +1060,12 @@ msgid ""
 "players within earshot, **Team** is your own team anywhere on the map"
 msgstr ""
 "**Canal de voz** — **Todos** é todo mundo no servidor, **Próximos** são só "
-"os jogadores ao alcance da voz, **Time** é o seu próprio time em "
-"qualquer ponto do mapa"
+"os jogadores ao alcance da voz, **Time** é o seu próprio time em qualquer "
+"ponto do mapa"
 
 #: docs/help/voice.md
-msgid "`B` — toggle the microphone"
+#, fuzzy
+msgid "`V` — toggle the microphone"
 msgstr "`B` — ligar/desligar o microfone"
 
 #: docs/help/voice.md

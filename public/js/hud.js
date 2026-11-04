@@ -614,14 +614,14 @@ export function updateHudButtons({
   // reads Unavailable, and the focus walks past it. Same as the rows gated on
   // what the renderer can draw.
   if (mouseBtn) mouseBtn.disabled = !mouseAvailable;
-  setActive(mouseBtn, mouseControlEnabled, t('Disable Mouse Steering (M)'), t('Enable Mouse Steering (M)'));
+  setActive(mouseBtn, mouseControlEnabled, t('Disable Mouse Steering (Shift+M)'), t('Enable Mouse Steering (Shift+M)'));
   if (mouseBtn && !mouseAvailable && mouseUnavailableTitle) mouseBtn.title = mouseUnavailableTitle;
   // The motion box wears the mode, set from here because this is what every
   // change to the mode already goes through.
   document.getElementById('controlBox')?.classList.toggle('keyboard-mode', !mouseControlEnabled);
   setActive(debugBtn, debugEnabled, t('Hide Debug HUD (`)'), t('Show Debug HUD (`)'));
   if (fullscreenBtn) fullscreenBtn.disabled = !fullscreenAvailable;
-  setActive(fullscreenBtn, document.fullscreenElement, t('Exit Fullscreen (F)'), t('Toggle Fullscreen (F)'));
+  setActive(fullscreenBtn, document.fullscreenElement, t('Exit Fullscreen (Shift+F)'), t('Toggle Fullscreen (Shift+F)'));
   if (cameraBtn) {
     // While roaming this arrives already spelled as a view name, because an
     // observer's camera modes are the roaming views rather than these three.

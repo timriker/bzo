@@ -142,8 +142,8 @@ import { HUNT_MARKER_COLOR, HuntState } from './hunt.mjs';
 import {
   adjustRadarZoom, ANTIDOTE_FLAG_STYLE, cycleRadarZoomLevel,
   RADAR_ZOOM_DEFAULT, radarCacheFrames, radarZoomKnob, radarZoomLevel,
-  resizeRadar, setRadarZoomLevel, updateRadar, updateRadarZoomButton,
-  useRadarClient
+  isRadarShown, resizeRadar, setRadarZoomLevel, toggleRadarDisplay, updateRadar,
+  updateRadarZoomButton, useRadarClient
 } from './radar.js';
 import { XRMenuRenderer } from './xr-menu.js';
 import {
@@ -3504,9 +3504,9 @@ function focusChatWithTarget(targetId, { clearInput = true } = {}) {
   const chatTarget = document.getElementById('chatTarget');
   const nextTarget = normalizeMessageEndpoint(targetId, CHAT_TARGET_ALL);
   if (chatTarget) {
-    const value = nextTarget === CHAT_TARGET_ALL || nextTarget === CHAT_TARGET_SERVER
-      ? String(nextTarget)
-      : nextTarget;
+    // An option's value is always a string; the ids that are numbers (ALL,
+    // SERVER, ADMIN, a player) are compared as one.
+    const value = String(nextTarget);
     const optionExists = Array.from(chatTarget.options).some((opt) => opt.value === value);
     chatTarget.value = optionExists ? value : String(CHAT_TARGET_ALL);
   }
@@ -4950,8 +4950,33 @@ function updateFlagHelp() {
   const flagType = getMyFlag()?.type ?? null;
   if (flagType === lastFlagHelpType) return;
   lastFlagHelpType = flagType;
-  const help = getFlagType(flagType)?.help;
+  if (displayFlagHelp) showMyFlagHelp();
+}
+
+function showMyFlagHelp() {
+  const help = getFlagType(getMyFlag()?.type ?? null)?.help;
   setFlagHelp(help ? t(help) : '', FLAG_HELP_SECONDS);
+}
+
+// `displayFlagHelp`, which `F` toggles (ActionBinding.cxx:141) and upstream
+// keeps between sessions. Turning it on shows the help of the flag in hand for
+// its minute again, and off clears it (callbacks.cxx:39).
+let displayFlagHelp = true;
+try {
+  displayFlagHelp = localStorage.getItem('displayFlagHelp') !== 'false';
+} catch {
+  /* ignore storage errors */
+}
+
+function toggleDisplayFlagHelp() {
+  displayFlagHelp = !displayFlagHelp;
+  try {
+    localStorage.setItem('displayFlagHelp', String(displayFlagHelp));
+  } catch {
+    /* ignore storage errors */
+  }
+  if (displayFlagHelp) showMyFlagHelp();
+  else setFlagHelp('');
 }
 
 // Mouse control
@@ -6509,8 +6534,41 @@ function handleGameplayKeydown(event) {
     return true;
   }
 
-  if (event.key === 'n' || event.key === 'N') {
+  // Every key is read by its position (`event.code`), never by the character
+  // it types, so WASD and the letters beside it agree on every layout
+  // (docs/controls-plan.md). Shift picks a second binding on the same key.
+  const plain = !event.shiftKey && !event.ctrlKey && !event.altKey && !event.metaKey;
+  const shifted = event.shiftKey && !event.ctrlKey && !event.altKey && !event.metaKey;
+
+  // Upstream's message keys (ActionBinding.cxx:100-104): `N` everyone, `M`
+  // team, `Z` admins, and `O` a line already holding the `/` of a command.
+  if (event.code === 'KeyN' && plain) {
     focusChatWithTarget(CHAT_TARGET_ALL);
+    return true;
+  }
+  if (event.code === 'KeyM' && plain) {
+    focusChatWithTarget(CHAT_TARGET_TEAM);
+    return true;
+  }
+  if (event.code === 'KeyZ' && plain) {
+    if (amAdmin) focusChatWithTarget(CHAT_TARGET_ADMIN);
+    else showMessage(t('You do not have permission to speak on the admin channel.'));
+    return true;
+  }
+  if (event.code === 'KeyO' && plain) {
+    focusChatWithTarget(CHAT_TARGET_ALL);
+    if (chatInput) {
+      chatInput.value = '/';
+      chatInput.setSelectionRange(1, 1);
+    }
+    return true;
+  }
+  if (event.code === 'KeyF' && plain && !event.repeat) {
+    toggleDisplayFlagHelp();
+    return true;
+  }
+  if (event.code === 'KeyQ' && plain && !event.repeat) {
+    toggleRadarDisplay();
     return true;
   }
 
@@ -6524,6 +6582,10 @@ function handleGameplayKeydown(event) {
     return true;
   }
 
+  // The digits are upstream's radar keys (ActionBinding.cxx:147-151): `1`-`3`
+  // the quarter, half and whole of `_radarLimit` -- bzo's Short, Medium and
+  // Long -- and `4` / `5` its fine zoom in and out. Shift and a digit is the
+  // message tab, which upstream puts on Shift and a function key.
   const chatTabsByCode = {
     Digit1: 'all',
     Digit2: 'chat',
@@ -6531,9 +6593,21 @@ function handleGameplayKeydown(event) {
     Digit4: 'misc',
     Digit5: 'debug',
   };
-  const tabId = chatTabsByCode[event.code];
-  if (tabId) {
-    setActiveChatTab(tabId);
+  if (shifted && chatTabsByCode[event.code]) {
+    setActiveChatTab(chatTabsByCode[event.code]);
+    return true;
+  }
+  const radarRangeByCode = { Digit1: 0.25, Digit2: 0.5, Digit3: 1.0 };
+  if (plain && radarRangeByCode[event.code]) {
+    setRadarZoomLevel(radarRangeByCode[event.code]);
+    return true;
+  }
+  if (plain && event.code === 'Digit4') {
+    adjustRadarZoom(-1);
+    return true;
+  }
+  if (plain && event.code === 'Digit5') {
+    adjustRadarZoom(1);
     return true;
   }
 
@@ -16521,6 +16595,7 @@ function ensureXRFlagHelpOverlay() {
 function ensureXRRadarTexture() {
   if (!radarCanvas) return;
   if (!ensureXRHudPanel(xrRadarPanel, { canvas: radarCanvas })) return;
+  xrRadarPanel.mesh.visible = isRadarShown();
 
   const size = XR_RADAR_PLANE_SIZE;
   placeXRHudPanel(xrRadarPanel, {

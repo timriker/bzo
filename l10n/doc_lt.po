@@ -32,6 +32,14 @@ msgid "Keyboard"
 msgstr "Klaviatūra"
 
 #: docs/help/controls.md
+msgid ""
+"Keys are named by where they sit on a US keyboard, and bzo reads them by "
+"position, not by the letter printed on them. On another layout a key named "
+"here is the one in the same place: `Z` is the key labelled W on a French "
+"keyboard and Y on a German one."
+msgstr ""
+
+#: docs/help/controls.md
 msgid "Driving"
 msgstr "Važiavimas"
 
@@ -92,8 +100,25 @@ msgid "Chat"
 msgstr "Pokalbiai"
 
 #: docs/help/controls.md
-msgid "`N` — open chat (or click the `Send` button)"
+#, fuzzy
+msgid "`N` — message everyone (or click the `Send` button)"
 msgstr "`N` – atidaryti pokalbį (arba spustelėk mygtuką `Send`)"
+
+# review: nemesis translated with the English kept in brackets
+#: docs/help/controls.md
+#, fuzzy
+msgid "`M` — message your team"
+msgstr "`,` – rašyti savo priešui (nemesis)"
+
+# review: nemesis translated with the English kept in brackets
+#: docs/help/controls.md
+#, fuzzy
+msgid "`Z` — message the admins, if you are one"
+msgstr "`,` – rašyti savo priešui (nemesis)"
+
+#: docs/help/controls.md
+msgid "`O` — type a server command: chat opens holding the `/`"
+msgstr ""
 
 #: docs/help/controls.md
 msgid ""
@@ -103,9 +128,10 @@ msgstr ""
 "spustelėk `Send`)"
 
 #: docs/help/controls.md
+#, fuzzy
 msgid ""
-"`1` / `2` / `3` / `4` / `5` — switch chat tab (`All` / `Chat` / `Server` / "
-"`Misc` / `Debug`)"
+"`Shift`+`1` / `2` / `3` / `4` / `5` — switch chat tab (`All` / `Chat` / "
+"`Server` / `Misc` / `Debug`)"
 msgstr ""
 "`1` / `2` / `3` / `4` / `5` – perjungti pokalbio kortelę (`All` / `Chat` / "
 "`Server` / `Misc` / `Debug`)"
@@ -170,7 +196,8 @@ msgstr ""
 "paspaudus nustatymai užsidaro, tad dar kartą paspausti visada saugu"
 
 #: docs/help/controls.md
-msgid "`M` — toggle mouse steering"
+#, fuzzy
+msgid "`Shift`+`M` — toggle mouse steering"
 msgstr "`M` – įjungti/išjungti valdymą pele"
 
 #: docs/help/controls.md
@@ -178,11 +205,17 @@ msgid "`C` — cycle camera mode"
 msgstr "`C` – keisti kameros režimą"
 
 #: docs/help/controls.md
-msgid "`O` — toggle operator panel"
+#, fuzzy
+msgid "`Shift`+`O` — toggle operator panel"
 msgstr "`O` – rodyti/slėpti operatoriaus skydelį"
 
 #: docs/help/controls.md
-msgid "`F` — toggle fullscreen"
+msgid "`F` — show or hide what the flag you carry does"
+msgstr ""
+
+#: docs/help/controls.md
+#, fuzzy
+msgid "`Shift`+`F` — toggle fullscreen"
 msgstr "`F` – įjungti/išjungti visą ekraną"
 
 #: docs/help/controls.md
@@ -190,20 +223,33 @@ msgid "`` ` `` — toggle debug HUD"
 msgstr "`` ` `` – rodyti/slėpti derinimo HUD"
 
 #: docs/help/controls.md
-msgid "`=` or `+` or `Numpad +` — zoom radar out (increase range)"
-msgstr "`=` arba `+` arba `Numpad +` – nutolinti radarą (padidinti nuotolį)"
+#, fuzzy
+msgid "`Q` — show or hide the radar"
+msgstr "`/` arba `?` – rodyti/slėpti pagalbą"
 
 #: docs/help/controls.md
-msgid "`-` or `Numpad -` — zoom radar in (decrease range)"
-msgstr "`-` arba `Numpad -` – priartinti radarą (sumažinti nuotolį)"
-
-#: docs/help/controls.md
+#, fuzzy
 msgid ""
-"`\\` — reset radar zoom to the default medium range (half the world's radar "
-"limit, which is the world size unless the map says otherwise)"
+"`1` / `2` / `3` — radar range: Short, Medium, Long (a quarter, half and all "
+"of the world's radar limit, which is the world size unless the map says "
+"otherwise)"
 msgstr ""
 "`\\` – grąžinti radaro mastelį į numatytąjį vidutinį nuotolį (pusę pasaulio "
 "radaro ribos, kuri lygi pasaulio dydžiui, nebent žemėlapis nurodo kitaip)"
+
+#: docs/help/controls.md
+#, fuzzy
+msgid "`4` or `-` or `Numpad -` — zoom radar in (decrease range)"
+msgstr "`-` arba `Numpad -` – priartinti radarą (sumažinti nuotolį)"
+
+#: docs/help/controls.md
+#, fuzzy
+msgid "`5` or `=` or `+` or `Numpad +` — zoom radar out (increase range)"
+msgstr "`=` arba `+` arba `Numpad +` – nutolinti radarą (padidinti nuotolį)"
+
+#: docs/help/controls.md
+msgid "`\\` — reset radar zoom to the default medium range"
+msgstr ""
 
 #: docs/help/controls.md
 msgid "`Settings -> Radar: ...` — cycle Short/Medium/Long radar presets"
@@ -212,7 +258,8 @@ msgstr ""
 "ilgas"
 
 #: docs/help/controls.md
-msgid "`B` — toggle the voice microphone"
+#, fuzzy
+msgid "`V` — toggle the voice microphone"
 msgstr "`B` – įjungti/išjungti mikrofoną"
 
 #: docs/help/controls.md
@@ -228,8 +275,9 @@ msgid "`/` or `?` — show/hide help panel"
 msgstr "`/` arba `?` – rodyti/slėpti pagalbą"
 
 #: docs/help/controls.md
+#, fuzzy
 msgid ""
-"`🎤` beside the gear — the microphone, as `B` is: a green border means you "
+"`🎤` beside the gear — the microphone, as `V` is: a green border means you "
 "are transmitting and a red one means you are not, and the hover text names "
 "the channel it would speak on"
 msgstr ""
@@ -322,10 +370,10 @@ msgstr ""
 "Pažymėtas žaidėjas gauna žydrą `◎` savo rezultatų lentelės eilutėje, žydrą "
 "žiedą ant savo radaro taško ir švyturį danguje virš savęs savo tanko spalva "
 "– todėl kelis pažymėtus vienu metu galima atskirti vienu žvilgsniu. Kol "
-"kuris nors jų yra tavo taikiklyje, HUD rodo **PASTEBĖTAS:**, o kartą per sekundę "
-"iš jo pusės pasigirsta signalas. Rabbit Chase režime triušis pažymimas už "
-"tave, ir jo švyturys žydras kaip ir žiedas: jį medžioja visi, ir tai rodo "
-"bendra žymė."
+"kuris nors jų yra tavo taikiklyje, HUD rodo **PASTEBĖTAS:**, o kartą per "
+"sekundę iš jo pusės pasigirsta signalas. Rabbit Chase režime triušis "
+"pažymimas už tave, ir jo švyturys žydras kaip ir žiedas: jį medžioja visi, "
+"ir tai rodo bendra žymė."
 
 #: docs/help/controls.md
 msgid ""
@@ -445,12 +493,37 @@ msgid "Mouse"
 msgstr "Pelė"
 
 #: docs/help/controls.md
+#, fuzzy
 msgid ""
-"`M` turns mouse steering on and off, and nothing else does: the keys never "
-"take it away behind your back."
+"`Shift`+`M` turns mouse steering on and off, and nothing else does: the keys "
+"never take it away behind your back."
 msgstr ""
 "`M` įjungia ir išjungia valdymą pele, ir niekas kitas: klavišai niekada jo "
 "neišjungia tau nematant."
+
+#: docs/help/controls.md
+msgid "The wheel"
+msgstr ""
+
+#: docs/help/controls.md
+msgid "The wheel acts on whatever is under the pointer:"
+msgstr ""
+
+#: docs/help/controls.md
+msgid "chat: scrolls it"
+msgstr ""
+
+#: docs/help/controls.md
+msgid "the radar: zooms it, up to zoom in"
+msgstr ""
+
+#: docs/help/controls.md
+msgid "the scoreboard, the debug HUD and any dialog: scrolls it"
+msgstr ""
+
+#: docs/help/controls.md
+msgid "the game view: nothing"
+msgstr ""
 
 #: docs/help/controls.md
 msgid "The targeting box"
@@ -511,11 +584,14 @@ msgstr ""
 "palaipsniui – taip pat kaip klavišais."
 
 #: docs/help/controls.md
+#, fuzzy
 msgid ""
-"The boxes are BZFlag's own sizes, scaled to the window. BZFlag also holds "
-"the cursor inside the box; a browser cannot without taking the pointer over, "
-"so in bzo the cursor can leave it -- the steering simply stays at full, and "
-"the cost is a longer move back to the centre."
+"The boxes are BZFlag's own sizes, scaled to the window. As in BZFlag, the "
+"cursor is held inside the box: the first click on the battlefield takes the "
+"pointer over and bzo draws the cursor itself. Escape lets it go, and so do a "
+"menu, dying, pausing and observing; the next click takes it back. A browser "
+"that refuses leaves the cursor free -- the steering stays at full past the "
+"box, and the cost is a longer move back to the centre."
 msgstr ""
 "Rėmeliai yra tokio pat dydžio kaip BZFlag, pritaikyti prie lango. BZFlag dar "
 "ir laiko žymeklį rėmelio viduje; naršyklė to negali, neperimdama žymeklio, "
@@ -553,9 +629,11 @@ msgid "Combining inputs"
 msgstr "Įvesties būdų derinimas"
 
 #: docs/help/controls.md
+#, fuzzy
 msgid ""
 "Every input drives at once, and nothing switches between them on its own: "
-"`M` and the Settings rows are the only things that change which ones are on."
+"`Shift`+`M` and the Settings rows are the only things that change which ones "
+"are on."
 msgstr ""
 "Visi įvesties būdai veikia vienu metu, ir niekas savaime tarp jų "
 "neperjungia: tik `M` ir nustatymų eilutės keičia, kurie jų įjungti."
@@ -972,7 +1050,8 @@ msgstr ""
 "esantys žaidėjai, **Komanda**: tavo komanda bet kurioje žemėlapio vietoje"
 
 #: docs/help/voice.md
-msgid "`B` — toggle the microphone"
+#, fuzzy
+msgid "`V` — toggle the microphone"
 msgstr "`B` – įjungti/išjungti mikrofoną"
 
 #: docs/help/voice.md

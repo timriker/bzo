@@ -31,6 +31,14 @@ msgid "Keyboard"
 msgstr "Klávesnica"
 
 #: docs/help/controls.md
+msgid ""
+"Keys are named by where they sit on a US keyboard, and bzo reads them by "
+"position, not by the letter printed on them. On another layout a key named "
+"here is the one in the same place: `Z` is the key labelled W on a French "
+"keyboard and Y on a German one."
+msgstr ""
+
+#: docs/help/controls.md
 msgid "Driving"
 msgstr "Jazda"
 
@@ -90,8 +98,25 @@ msgid "Chat"
 msgstr "Chat"
 
 #: docs/help/controls.md
-msgid "`N` — open chat (or click the `Send` button)"
+#, fuzzy
+msgid "`N` — message everyone (or click the `Send` button)"
 msgstr "`N` — otvoriť chat (alebo klikni na tlačidlo `Send`)"
+
+# review: úhlavný nepriateľ (nemesis)
+#: docs/help/controls.md
+#, fuzzy
+msgid "`M` — message your team"
+msgstr "`,` — napísať svojmu úhlavnému nepriateľovi (nemesis)"
+
+# review: úhlavný nepriateľ (nemesis)
+#: docs/help/controls.md
+#, fuzzy
+msgid "`Z` — message the admins, if you are one"
+msgstr "`,` — napísať svojmu úhlavnému nepriateľovi (nemesis)"
+
+#: docs/help/controls.md
+msgid "`O` — type a server command: chat opens holding the `/`"
+msgstr ""
 
 #: docs/help/controls.md
 msgid ""
@@ -101,9 +126,10 @@ msgstr ""
 "`Send`)"
 
 #: docs/help/controls.md
+#, fuzzy
 msgid ""
-"`1` / `2` / `3` / `4` / `5` — switch chat tab (`All` / `Chat` / `Server` / "
-"`Misc` / `Debug`)"
+"`Shift`+`1` / `2` / `3` / `4` / `5` — switch chat tab (`All` / `Chat` / "
+"`Server` / `Misc` / `Debug`)"
 msgstr ""
 "`1` / `2` / `3` / `4` / `5` — prepnúť záložku chatu (`All` / `Chat` / "
 "`Server` / `Misc` / `Debug`)"
@@ -168,7 +194,8 @@ msgstr ""
 "bezpečné stlačiť ho ešte raz"
 
 #: docs/help/controls.md
-msgid "`M` — toggle mouse steering"
+#, fuzzy
+msgid "`Shift`+`M` — toggle mouse steering"
 msgstr "`M` — zapnúť/vypnúť riadenie myšou"
 
 #: docs/help/controls.md
@@ -176,11 +203,17 @@ msgid "`C` — cycle camera mode"
 msgstr "`C` — prepínať režim kamery"
 
 #: docs/help/controls.md
-msgid "`O` — toggle operator panel"
+#, fuzzy
+msgid "`Shift`+`O` — toggle operator panel"
 msgstr "`O` — zobraziť/skryť panel operátora"
 
 #: docs/help/controls.md
-msgid "`F` — toggle fullscreen"
+msgid "`F` — show or hide what the flag you carry does"
+msgstr ""
+
+#: docs/help/controls.md
+#, fuzzy
+msgid "`Shift`+`F` — toggle fullscreen"
 msgstr "`F` — zapnúť/vypnúť celú obrazovku"
 
 #: docs/help/controls.md
@@ -188,20 +221,33 @@ msgid "`` ` `` — toggle debug HUD"
 msgstr "`` ` `` — zobraziť/skryť ladiaci HUD"
 
 #: docs/help/controls.md
-msgid "`=` or `+` or `Numpad +` — zoom radar out (increase range)"
-msgstr "`=` alebo `+` alebo `Numpad +` — oddialiť radar (zväčšiť dosah)"
+#, fuzzy
+msgid "`Q` — show or hide the radar"
+msgstr "`/` alebo `?` — zobraziť/skryť panel pomoci"
 
 #: docs/help/controls.md
-msgid "`-` or `Numpad -` — zoom radar in (decrease range)"
-msgstr "`-` alebo `Numpad -` — priblížiť radar (zmenšiť dosah)"
-
-#: docs/help/controls.md
+#, fuzzy
 msgid ""
-"`\\` — reset radar zoom to the default medium range (half the world's radar "
-"limit, which is the world size unless the map says otherwise)"
+"`1` / `2` / `3` — radar range: Short, Medium, Long (a quarter, half and all "
+"of the world's radar limit, which is the world size unless the map says "
+"otherwise)"
 msgstr ""
 "`\\` — vrátiť priblíženie radaru na predvolený stredný dosah (polovica "
 "radarového limitu sveta, čo je veľkosť sveta, ak mapa neurčí inak)"
+
+#: docs/help/controls.md
+#, fuzzy
+msgid "`4` or `-` or `Numpad -` — zoom radar in (decrease range)"
+msgstr "`-` alebo `Numpad -` — priblížiť radar (zmenšiť dosah)"
+
+#: docs/help/controls.md
+#, fuzzy
+msgid "`5` or `=` or `+` or `Numpad +` — zoom radar out (increase range)"
+msgstr "`=` alebo `+` alebo `Numpad +` — oddialiť radar (zväčšiť dosah)"
+
+#: docs/help/controls.md
+msgid "`\\` — reset radar zoom to the default medium range"
+msgstr ""
 
 #: docs/help/controls.md
 msgid "`Settings -> Radar: ...` — cycle Short/Medium/Long radar presets"
@@ -209,7 +255,8 @@ msgstr ""
 "`Settings -> Radar: ...` — prepínať predvoľby radaru Krátky/Stredný/Dlhý"
 
 #: docs/help/controls.md
-msgid "`B` — toggle the voice microphone"
+#, fuzzy
+msgid "`V` — toggle the voice microphone"
 msgstr "`B` — zapnúť/vypnúť hlasový mikrofón"
 
 #: docs/help/controls.md
@@ -225,8 +272,9 @@ msgid "`/` or `?` — show/hide help panel"
 msgstr "`/` alebo `?` — zobraziť/skryť panel pomoci"
 
 #: docs/help/controls.md
+#, fuzzy
 msgid ""
-"`🎤` beside the gear — the microphone, as `B` is: a green border means you "
+"`🎤` beside the gear — the microphone, as `V` is: a green border means you "
 "are transmitting and a red one means you are not, and the hover text names "
 "the channel it would speak on"
 msgstr ""
@@ -438,12 +486,37 @@ msgid "Mouse"
 msgstr "Myš"
 
 #: docs/help/controls.md
+#, fuzzy
 msgid ""
-"`M` turns mouse steering on and off, and nothing else does: the keys never "
-"take it away behind your back."
+"`Shift`+`M` turns mouse steering on and off, and nothing else does: the keys "
+"never take it away behind your back."
 msgstr ""
 "`M` zapína a vypína riadenie myšou a nič iné: klávesy ti ho nikdy za chrbtom "
 "nevypnú."
+
+#: docs/help/controls.md
+msgid "The wheel"
+msgstr ""
+
+#: docs/help/controls.md
+msgid "The wheel acts on whatever is under the pointer:"
+msgstr ""
+
+#: docs/help/controls.md
+msgid "chat: scrolls it"
+msgstr ""
+
+#: docs/help/controls.md
+msgid "the radar: zooms it, up to zoom in"
+msgstr ""
+
+#: docs/help/controls.md
+msgid "the scoreboard, the debug HUD and any dialog: scrolls it"
+msgstr ""
+
+#: docs/help/controls.md
+msgid "the game view: nothing"
+msgstr ""
 
 #: docs/help/controls.md
 msgid "The targeting box"
@@ -504,11 +577,14 @@ msgstr ""
 "rozbieha postupne, rovnako ako z klávesov."
 
 #: docs/help/controls.md
+#, fuzzy
 msgid ""
-"The boxes are BZFlag's own sizes, scaled to the window. BZFlag also holds "
-"the cursor inside the box; a browser cannot without taking the pointer over, "
-"so in bzo the cursor can leave it -- the steering simply stays at full, and "
-"the cost is a longer move back to the centre."
+"The boxes are BZFlag's own sizes, scaled to the window. As in BZFlag, the "
+"cursor is held inside the box: the first click on the battlefield takes the "
+"pointer over and bzo draws the cursor itself. Escape lets it go, and so do a "
+"menu, dying, pausing and observing; the next click takes it back. A browser "
+"that refuses leaves the cursor free -- the steering stays at full past the "
+"box, and the cost is a longer move back to the centre."
 msgstr ""
 "Rámčeky majú rovnaké veľkosti ako v BZFlagu, prepočítané na okno. BZFlag "
 "navyše drží kurzor vnútri rámčeka; prehliadač to bez prevzatia ukazovateľa "
@@ -546,9 +622,11 @@ msgid "Combining inputs"
 msgstr "Kombinovanie vstupov"
 
 #: docs/help/controls.md
+#, fuzzy
 msgid ""
 "Every input drives at once, and nothing switches between them on its own: "
-"`M` and the Settings rows are the only things that change which ones are on."
+"`Shift`+`M` and the Settings rows are the only things that change which ones "
+"are on."
 msgstr ""
 "Všetky vstupy riadia naraz a nič medzi nimi samo neprepína: `M` a riadky "
 "Nastavení sú jediné, čo mení, ktoré sú zapnuté."
@@ -963,7 +1041,8 @@ msgstr ""
 "doslech, **Tím** je tvoj tím kdekoľvek na mape"
 
 #: docs/help/voice.md
-msgid "`B` — toggle the microphone"
+#, fuzzy
+msgid "`V` — toggle the microphone"
 msgstr "`B` — zapnúť/vypnúť mikrofón"
 
 #: docs/help/voice.md
