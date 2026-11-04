@@ -46,6 +46,11 @@ keyboard and Y on a German one.
   first to recall only the ones beginning that way
 - `.` — reply to last direct-message sender
 - `,` — message nemesis target
+- `K` — silence a player: a cursor opens on the scoreboard, on no row and
+  headed `*SILENCE*`. `Up` / `Down` pick a player, `Enter` silences them or lets
+  them back, and `K` or `Esc` closes it. A silenced player's row shows 🔇, and
+  their chat and voice stop reaching you. `Settings -> Silence` does the same
+  without a keyboard, and `/silence` and `/unsilence` take a callsign
 - `Page Up` / `Page Down` — scroll chat history
 - `End` — jump chat to newest message
 - Drag across the history while chat is open to select it, then copy;

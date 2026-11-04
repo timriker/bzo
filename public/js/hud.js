@@ -1237,6 +1237,18 @@ export function getScoreboardHuntLabel(player) {
   return '';
 }
 
+// A silenced player's row, and the silence cursor `K` opens on the same board
+// (docs/controls-plan.md). Upstream's scoreboard marks neither; the speaker is
+// the same emoji the mic and paused marks are, from the system's emoji font.
+// The cursor shows it on an unsilenced row too, greyed, so the row Enter would
+// silence is said before it is pressed.
+export const SCOREBOARD_SILENCE_LABEL = '\u{1F507}';
+export const SCOREBOARD_SILENCE_SELECT_LABEL = ' *SILENCE*';
+
+export function getScoreboardSilenceLabel(player) {
+  return player.silenced || player.silenceCursor ? SCOREBOARD_SILENCE_LABEL : '';
+}
+
 // The one place a player's name, the flag they carry and the Rabbit Chase mark
 // are composed into a single string. The scoreboard draws the three as separate
 // elements because it colours each one; anything writing a line of plain text --
@@ -1335,6 +1347,10 @@ export function buildScoreboardRows({
   // so the two boards mark the same rows.
   huntedIds = null,
   huntCursorId = null,
+  // Silence, as client.js keeps it: whether a player is silenced, and the row
+  // the silence cursor is on while it is open.
+  isSilenced = () => false,
+  silenceCursorId = null,
 }) {
   const rows = [];
   const addRow = (id, name, state, isCurrent) => {
@@ -1389,6 +1405,8 @@ export function buildScoreboardRows({
       // while selecting.
       hunted: Boolean(huntedIds && huntedIds.has(id)),
       huntCursor: huntCursorId !== null && id === huntCursorId,
+      silenced: !isCurrent && isSilenced(id),
+      silenceCursor: silenceCursorId !== null && id === silenceCursorId,
       isObserver: isObserverTeam(state.team),
       // Watching a replay live, rather than in the recording (server.js's
       // `proxyPlayerRecord`). Always an observer too.
@@ -1445,7 +1463,7 @@ function makeScoreboardCell(column, tier) {
 // Upstream labels three columns and leaves the rank, the score and the
 // team-kill bracket unnamed inside them; bzo names every column it draws,
 // short-form on a phone where the long labels would not fit.
-function writeScoreboardHeader(columns, rabbitChase, tier, huntSelecting) {
+function writeScoreboardHeader(columns, rabbitChase, tier, huntSelecting, silenceSelecting) {
   const header = document.getElementById('scoreboardHeader');
   if (!header) return;
   header.innerHTML = '';
@@ -1461,10 +1479,10 @@ function writeScoreboardHeader(columns, rabbitChase, tier, huntSelecting) {
     }
     // `*SEL*` rides the name column's heading, which is the only one with room
     // to lend it, and goes out the moment the cursor closes.
-    if (huntSelecting && column.id === 'player') {
+    if ((huntSelecting || silenceSelecting) && column.id === 'player') {
       const sel = document.createElement('span');
       sel.className = 'scoreboardHuntSel';
-      sel.textContent = SCOREBOARD_HUNT_SELECT_LABEL;
+      sel.textContent = silenceSelecting ? SCOREBOARD_SILENCE_SELECT_LABEL : SCOREBOARD_HUNT_SELECT_LABEL;
       sel.style.color = colorToCSS(SCOREBOARD_HUNT_SELECT_COLOR);
       cell.appendChild(sel);
     }
@@ -1487,6 +1505,8 @@ export function updateScoreboard({
   // Whether the hunt cursor is open, which the header says with `*SEL*`. The
   // rows carry the cursor itself.
   huntSelecting = false,
+  // Whether the silence cursor is open, said the same way with `*SILENCE*`.
+  silenceSelecting = false,
   // Set while roaming: the id being watched, and the callback a row click
   // reports a new choice to. Absent for a playing tank, which leaves the rows
   // inert.
@@ -1516,7 +1536,7 @@ export function updateScoreboard({
   updateMatchClock(timeLeft, gameOver);
   updateTeamScoreboard(teamRows);
   const columns = getScoreboardColumns({ tier, isAdmin });
-  writeScoreboardHeader(columns, rabbitChase, tier, huntSelecting);
+  writeScoreboardHeader(columns, rabbitChase, tier, huntSelecting, silenceSelecting);
   const scoreboardList = document.getElementById('scoreboardList');
   if (!scoreboardList) return;
   // The roster scrolls now (styles.css), and every repaint rebuilds it from
@@ -1576,7 +1596,7 @@ export function updateScoreboard({
     if (player.color) {
       entry.style.color = colorToCSS(player.color);
     }
-    if (player.huntCursor) huntCursorEntry = entry;
+    if (player.huntCursor || player.silenceCursor) huntCursorEntry = entry;
     // Name and flag are one item, so the row's spacing pushes the score away
     // from the pair rather than the flag away from the name.
     const labelSpan = document.createElement('span');
@@ -1615,6 +1635,11 @@ export function updateScoreboard({
     // a colour-only difference would be lost on a colourblind viewer the same
     // way team colour alone would be.
     micSpan.textContent = player.speaking ? '\u{1F50A}' : player.micOn ? '\u{1F3A4}' : '';
+    const silenceSpan = document.createElement('span');
+    silenceSpan.className = 'scoreboardSilence'
+      + (player.silenceCursor ? ' silenceCursor' : '')
+      + (player.silenceCursor && !player.silenced ? ' silenceCandidate' : '');
+    silenceSpan.textContent = getScoreboardSilenceLabel(player);
     // After the flag, so the pair upstream draws tight together stays tight and
     // the mark reads as something said about the row rather than part of a name.
     const rabbitSpan = document.createElement('span');
@@ -1640,7 +1665,7 @@ export function updateScoreboard({
         : player.motto})`
       : '';
     labelSpan.append(
-      statusSpan, nameSpan, mottoSpan, flagSpan, pausedSpan, micSpan, rabbitSpan, huntSpan,
+      statusSpan, nameSpan, mottoSpan, flagSpan, pausedSpan, micSpan, silenceSpan, rabbitSpan, huntSpan,
     );
 
     // One cell per column, in the header's order. The name column holds the

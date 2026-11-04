@@ -17,6 +17,9 @@ export const SETTINGS_MENU_ITEMS = Object.freeze([
   // chevrons around the value rather than at the row's edges, to say outright
   // that it is not one of those. See getMenuClickZone in menus.js.
   { id: 'huntBtn', label: N_('Hunt'), kind: 'pick' },
+  // Left and right choose the player, select silences or lets them back --
+  // what `K` does on the scoreboard, for a phone or a headset.
+  { id: 'silenceBtn', label: N_('Silence'), kind: 'pick' },
   // Left and right choose the pilot, select flies it -- or lands, on `None` or
   // on the one already flying.
   { id: 'autopilotBtn', label: N_('Autopilot'), kind: 'pick' },

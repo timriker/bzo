@@ -172,7 +172,7 @@ msgstr "yIlan"
 msgid "Apply"
 msgstr "yIlo'"
 
-#: public/index.html:206 public/index.html:501
+#: public/index.html:206 public/index.html:502
 msgid "Cancel"
 msgstr "qIl"
 
@@ -256,7 +256,7 @@ msgstr "pu'jIn"
 msgid "Settings"
 msgstr "SeHlaw"
 
-#: public/index.html:274 public/index.html:398
+#: public/index.html:274 public/index.html:399
 msgid "Microphone off"
 msgstr "ghogh jan chu'Ha'lu'"
 
@@ -294,38 +294,44 @@ msgstr ""
 
 #: public/index.html:311
 msgid ""
+"Silence: step through players with the arrows, select to silence or let them "
+"back"
+msgstr ""
+
+#: public/index.html:312
+msgid ""
 "Autopilot: choose None or a pilot with the arrows, select to turn it on or "
 "off"
 msgstr ""
 "nIteb chIjwI': pagh pagh chIjwI' DawIvmeH naQjejmey yIlo'; yIwIv vaj yIchu' "
 "pagh yIchu'Ha'"
 
-#: public/index.html:315
+#: public/index.html:316
 msgid "Copy a link back to this map, camera and position"
 msgstr "naDev pu'jIn, mIllogh qonwI', Daq je rar yItlhap"
 
-#: public/index.html:316
+#: public/index.html:317
 msgid "Wireframe Mode"
 msgstr "SIrgh qach lo'"
 
 # review: kept in English
-#: public/index.html:317
+#: public/index.html:318
 msgid "Anaglyph 3D"
 msgstr "Anaglyph 3D"
 
-#: public/index.html:318
+#: public/index.html:319
 msgid "Dynamic Lighting"
 msgstr "wov choH"
 
-#: public/index.html:320
+#: public/index.html:321
 msgid "Open Audio Settings"
 msgstr "wab SeHlaw yIpoSmoH"
 
-#: public/index.html:327
+#: public/index.html:328
 msgid "Audio Settings"
 msgstr "wab SeHlaw"
 
-#: public/index.html:329
+#: public/index.html:330
 msgid ""
 "Each level runs from Off to 100%. Nearby voice uses your microphone only "
 "after you grant permission. Use B to toggle your microphone."
@@ -333,191 +339,191 @@ msgstr ""
 "Hoch patlh ghobe'vo' 100%-Daq. chaw' DanobDI' neH, Sum ghoghvaD ghogh janlIj "
 "lo'lu'. ghogh janlIj Dachu'meH pagh Dachu'Ha'meH B yIlo'."
 
-#: public/index.html:333
+#: public/index.html:334
 msgid "Game volume"
 msgstr "Quj wab HoS"
 
-#: public/index.html:340
+#: public/index.html:341
 msgid "Gameplay sound effects."
 msgstr "Quj wabmey."
 
-#: public/index.html:343
+#: public/index.html:344
 msgid "Voice volume"
 msgstr "ghogh HoS"
 
-#: public/index.html:350
+#: public/index.html:351
 msgid "How loud nearby players sound to you."
 msgstr "Sum QujwI'pu' DaQoybogh ghogh HoS."
 
-#: public/index.html:353
+#: public/index.html:354
 msgid "Microphone volume"
 msgstr "ghogh jan HoS"
 
-#: public/index.html:360
+#: public/index.html:361
 msgid "How loud you are to nearby players."
 msgstr "Sum QujwI'pu' Qoybogh ghoghlIj HoS."
 
-#: public/index.html:363
+#: public/index.html:364
 msgid "Voice channel"
 msgstr "ghogh He"
 
-#: public/index.html:365
+#: public/index.html:366
 msgid "All"
 msgstr "Hoch"
 
-#: public/index.html:366
+#: public/index.html:367
 msgid "Nearby"
 msgstr "Sum"
 
-#: public/index.html:367
+#: public/index.html:368
 msgid "Team"
 msgstr "boq"
 
-#: public/index.html:369
+#: public/index.html:370
 msgid "Players within earshot, whatever team they are on."
 msgstr "QoylaHbogh QujwI'pu', boqchaj ram."
 
-#: public/index.html:372
+#: public/index.html:373
 msgid "Microphone input"
 msgstr "ghogh jan 'el"
 
-#: public/index.html:376
+#: public/index.html:377
 msgid "Choose the microphone used for voice chat."
 msgstr "ghogh ja'chuqmeH ghogh jan yIwIv."
 
-#: public/index.html:379
+#: public/index.html:380
 msgid "Native audio processing"
 msgstr "De' nejwI' wab choHmoH"
 
-#: public/index.html:382
+#: public/index.html:383
 msgid "Echo cancellation"
 msgstr "ghogh HeD teq"
 
-#: public/index.html:386
+#: public/index.html:387
 msgid "Noise suppression"
 msgstr "chuS teq"
 
-#: public/index.html:390
+#: public/index.html:391
 msgid "Automatic gain control"
 msgstr "nIteb HoS SeH"
 
-#: public/index.html:392
+#: public/index.html:393
 msgid "Native browser processing is enabled when supported."
 msgstr "De' nejwI' laHDI', wab choHmoH chu'lu'."
 
-#: public/index.html:397
+#: public/index.html:398
 msgid "Enable microphone"
 msgstr "ghogh jan yIchu'"
 
-#: public/index.html:402
+#: public/index.html:403
 msgid "Microphone permission has not been requested."
 msgstr "wej ghogh jan chaw' tlhoblu'."
 
-#: public/index.html:416
+#: public/index.html:417
 msgid "Send"
 msgstr "yIngeH"
 
-#: public/index.html:416
+#: public/index.html:417
 msgid "Type a chat message, then send it"
 msgstr "ja'chuq QIn yIghItlh, vaj yIngeH"
 
-#: public/index.html:420
+#: public/index.html:421
 msgid "ALL"
 msgstr "Hoch"
 
-#: public/index.html:421
+#: public/index.html:422
 msgid "TEAM"
 msgstr "boq"
 
-#: public/index.html:422
+#: public/index.html:423
 msgid "ADMIN"
 msgstr "loHwI'"
 
-#: public/index.html:423
+#: public/index.html:424
 msgid "SERVER"
 msgstr "toy' De'wI'"
 
-#: public/index.html:437
+#: public/index.html:438
 msgid "Loading World"
 msgstr "qo' lI'lu'taH"
 
-#: public/index.html:438
+#: public/index.html:439
 msgid "Connecting render systems..."
 msgstr "mIllogh patmey rarlu'taH..."
 
-#: public/index.html:447 public/index.html:514
+#: public/index.html:448 public/index.html:515
 msgid "Close"
 msgstr "SoQmoH"
 
-#: public/index.html:448
+#: public/index.html:449
 msgid "A free 3D tank game in the browser that plays with BZFlag."
 msgstr "3D Duj Quj, DIlbe'lu'. De' nejwI'Daq Qujlu', BZFlag tlhej."
 
-#: public/index.html:449 public/index.html:514
+#: public/index.html:450 public/index.html:515
 msgid "Help"
 msgstr "QaH"
 
-#: public/index.html:449
+#: public/index.html:450
 msgid "Servers"
 msgstr "toy' De'wI'mey"
 
-#: public/index.html:449
+#: public/index.html:450
 msgid "Source"
 msgstr "Hal ngoq"
 
-#: public/index.html:454
+#: public/index.html:455
 msgid "Enter your name"
 msgstr "pong yIghItlh"
 
-#: public/index.html:459
+#: public/index.html:460
 msgid "Motto (optional)"
 msgstr "mu'tlhegh (DaneHchugh)"
 
-#: public/index.html:467
+#: public/index.html:468
 msgid "Server:"
 msgstr "toy' De'wI':"
 
-#: public/index.html:471
+#: public/index.html:472
 msgid "Team:"
 msgstr "boq:"
 
-#: public/index.html:479
+#: public/index.html:480
 msgid "Global login:"
 msgstr "Hoch qo' 'el:"
 
-#: public/index.html:485
+#: public/index.html:486
 msgid "Skin:"
 msgstr "rItlh:"
 
-#: public/index.html:489
+#: public/index.html:490
 msgid "Choose Tank"
 msgstr "Duj yIwIv"
 
-#: public/index.html:491
+#: public/index.html:492
 msgid "Previous tank"
 msgstr "Duj nubwI'"
 
-#: public/index.html:496
+#: public/index.html:497
 msgid "Next tank"
 msgstr "Duj veb"
 
-#: public/index.html:500
+#: public/index.html:501
 msgid "OK"
 msgstr "lu'"
 
-#: public/index.html:502
+#: public/index.html:503
 msgid "Default"
 msgstr "motlh"
 
-#: public/index.html:516
+#: public/index.html:517
 msgid "Search help"
 msgstr "QaH yInej"
 
-#: public/index.html:554
+#: public/index.html:555
 msgid "Identify: lock a Guided Missile onto the tank in your sights"
 msgstr "ngu': DabuStaHbogh DujDaq peng SeHlu'bogh yIngaQmoH"
 
-#: public/index.html:555
+#: public/index.html:556
 msgid "Drop flag"
 msgstr "joqwI' yIchagh"
 
@@ -1167,68 +1173,68 @@ msgstr "latlh"
 msgid "Debug"
 msgstr "Qagh"
 
-#: public/js/client.js:879
+#: public/js/client.js:880
 msgid "unlimited"
 msgstr "veH pagh"
 
-#: public/js/client.js:881
+#: public/js/client.js:882
 msgid "{count} left"
 msgstr "{count} ratlh"
 
-#: public/js/client.js:993
+#: public/js/client.js:994
 msgid "this is the designated list server"
 msgstr "list server wIvlu'bogh 'oH toy' De'wI'vam'e'"
 
 #. TRANSLATORS: listServerUrl is a server.json setting; keep it as written
-#: public/js/client.js:996
+#: public/js/client.js:997
 msgid "disabled (no listServerUrl)"
 msgstr "chu'Ha'lu' (listServerUrl tu'lu'be')"
 
-#: public/js/client.js:998
+#: public/js/client.js:999
 msgid "reporting to {url}: key configured"
 msgstr "{url} ja'taH: ngaQHa'moHwI' lanlu'"
 
-#: public/js/client.js:999
+#: public/js/client.js:1000
 msgid "reporting to {url}: no key yet"
 msgstr "{url} ja'taH: wej ngaQHa'moHwI' tu'lu'"
 
-#: public/js/client.js:1021
+#: public/js/client.js:1022
 msgid "{team} won the game"
 msgstr "Quj Qap {team}"
 
-#: public/js/client.js:1026
+#: public/js/client.js:1027
 msgid "{player} won the game"
 msgstr "Quj Qap {player}"
 
-#: public/js/client.js:1250
+#: public/js/client.js:1251
 msgid "Team: {team}"
 msgstr "boq: {team}"
 
-#: public/js/client.js:1384
+#: public/js/client.js:1385
 msgid "watching {server}"
 msgstr "{server} vIbejtaH"
 
-#: public/js/client.js:1386 public/js/client.js:10221
+#: public/js/client.js:1387 public/js/client.js:10265
 msgid "replay {name}"
 msgstr "qonta' {name}"
 
-#: public/js/client.js:1396
+#: public/js/client.js:1397
 msgid "local {map}"
 msgstr "naDev {map}"
 
-#: public/js/client.js:1396
+#: public/js/client.js:1397
 msgid "This server"
 msgstr "toy' De'wI'vam"
 
-#: public/js/client.js:1473
+#: public/js/client.js:1474
 msgid "Server: {server}"
 msgstr "toy' De'wI': {server}"
 
-#: public/js/client.js:1530
+#: public/js/client.js:1531
 msgid "Sign in & Play"
 msgstr "yI'el 'ej yIQuj"
 
-#: public/js/client.js:1532
+#: public/js/client.js:1533
 msgid ""
 "Playing here needs a bzflag.org global login. This signs you in, then joins "
 "on the team you picked."
@@ -1236,99 +1242,99 @@ msgstr ""
 "naDev Qujmeh bzflag.org Hoch qo' 'el DaghajnIS. 'elmoHlu', vaj boq DawIvbogh "
 "Damuv."
 
-#: public/js/client.js:1645 public/js/client.js:1663
+#: public/js/client.js:1646 public/js/client.js:1664
 msgid "a tank"
 msgstr "wa' Duj"
 
-#: public/js/client.js:1794
+#: public/js/client.js:1795
 msgid "You are now the rabbit."
 msgstr "DaH Ha'DIbaH SoH."
 
-#: public/js/client.js:1800
+#: public/js/client.js:1801
 msgid "{player} is now the rabbit"
 msgstr "DaH Ha'DIbaH ghaH {player}"
 
-#: public/js/client.js:1811
+#: public/js/client.js:1812
 msgid "operation failed"
 msgstr "Qapbe'"
 
-#: public/js/client.js:1811
+#: public/js/client.js:1812
 msgid "Voice error: {error}"
 msgstr "ghogh Qagh: {error}"
 
-#: public/js/client.js:2316
+#: public/js/client.js:2317
 msgid "Default microphone"
 msgstr "motlh ghogh jan"
 
-#: public/js/client.js:2324 public/js/voice.js:1218
+#: public/js/client.js:2325 public/js/voice.js:1218
 msgid "Microphone"
 msgstr "ghogh jan"
 
-#: public/js/client.js:2357 public/js/client.js:2372
+#: public/js/client.js:2358 public/js/client.js:2373
 msgid "Receive only"
 msgstr "Qoy neH"
 
-#: public/js/client.js:2359 public/js/client.js:2398
+#: public/js/client.js:2360 public/js/client.js:2399
 msgid "Microphone on"
 msgstr "ghogh jan chu'lu'"
 
-#: public/js/client.js:2361
+#: public/js/client.js:2362
 msgid "Permission denied"
 msgstr "chaw'be'lu'"
 
-#: public/js/client.js:2363 public/js/client.js:2365
+#: public/js/client.js:2364 public/js/client.js:2366
 msgid "Microphone unavailable"
 msgstr "ghogh jan tu'be'lu'"
 
-#: public/js/client.js:2373
+#: public/js/client.js:2374
 msgid "Mic blocked"
 msgstr "ghogh jan bot"
 
-#: public/js/client.js:2374
+#: public/js/client.js:2375
 msgid "Mic unavailable"
 msgstr "ghogh jan tu'be'"
 
-#: public/js/client.js:2375
+#: public/js/client.js:2376
 msgid "Disable Mic"
 msgstr "ghogh jan yIchu'Ha'"
 
-#: public/js/client.js:2375
+#: public/js/client.js:2376
 msgid "Enable Mic"
 msgstr "ghogh jan yIchu'"
 
-#: public/js/client.js:2384
+#: public/js/client.js:2385
 msgid "{action} - {channel}"
 msgstr "{action} - {channel}"
 
-#: public/js/client.js:2385
+#: public/js/client.js:2386
 msgid "{channel} voice channel, {status}"
 msgstr "{channel} ghogh He, {status}"
 
-#: public/js/client.js:2393
+#: public/js/client.js:2394
 msgid "Microphone permission granted"
 msgstr "ghogh jan chaw'lu'"
 
-#: public/js/client.js:2406
+#: public/js/client.js:2407
 msgid "Microphone is transmitting on the {channel} channel."
 msgstr "{channel} HeDaq lI'taH ghogh jan."
 
-#: public/js/client.js:2407
+#: public/js/client.js:2408
 msgid "Microphone permission granted; transmission is off."
 msgstr "ghogh jan chaw'lu'; lI'be'."
 
-#: public/js/client.js:2409
+#: public/js/client.js:2410
 msgid "Microphone permission was denied by the browser."
 msgstr "ghogh jan chaw'be' De' nejwI'."
 
-#: public/js/client.js:2411
+#: public/js/client.js:2412
 msgid "Microphone capture is unavailable in this browser or context."
 msgstr "De' nejwI'vamDaq pagh Daqvam ghogh jan Dalo'laHbe'."
 
-#: public/js/client.js:2424
+#: public/js/client.js:2425
 msgid "Voice operation failed."
 msgstr "Qapbe' ghogh."
 
-#: public/js/client.js:2686
+#: public/js/client.js:2687
 msgid ""
 "A proxied connection tells the target which bzo it came through, and nothing "
 "else. Your own motto is used on this server."
@@ -1336,134 +1342,134 @@ msgstr ""
 "rar ghoSwI'vo' ghoSDI', bzo DajuSbogh neH ja'lu' DoS; latlh pagh. naDev "
 "mu'tlheghlIj lo'lu'."
 
-#: public/js/client.js:3126
+#: public/js/client.js:3127
 msgid "Preparing battlefield..."
 msgstr "may' Daq ghuHmoHlu'taH..."
 
-#: public/js/client.js:3127
+#: public/js/client.js:3128
 msgid "Building world geometry"
 msgstr "qo' Hap chenmoHlu'taH"
 
-#: public/js/client.js:3136
+#: public/js/client.js:3137
 msgid "Placing obstacles..."
 msgstr "botwI'mey lanlu'taH..."
 
-#: public/js/client.js:3137
+#: public/js/client.js:3138
 msgid "Synchronizing world objects"
 msgstr "qo' Dochmey rapmoHlu'taH"
 
-#: public/js/client.js:3165
+#: public/js/client.js:3166
 msgid "Loading vehicle systems..."
 msgstr "Duj patmey lI'lu'taH..."
 
-#: public/js/client.js:3166
+#: public/js/client.js:3167
 msgid "Preparing tank models, textures, and audio"
 msgstr "Duj Hap, rItlh, wab je ghuHmoHlu'taH"
 
-#: public/js/client.js:3183
+#: public/js/client.js:3184
 msgid "Assembling tanks..."
 msgstr "Dujmey chenmoHlu'taH..."
 
-#: public/js/client.js:3184
+#: public/js/client.js:3185
 msgid "Creating player vehicles"
 msgstr "QujwI' Dujmey chenmoHlu'taH"
 
-#: public/js/client.js:3197
+#: public/js/client.js:3198
 msgid "Entering battle..."
 msgstr "may' 'ellu'taH..."
 
-#: public/js/client.js:3197
+#: public/js/client.js:3198
 msgid "Render ready"
 msgstr "mIllogh ghuH"
 
-#: public/js/client.js:3198
+#: public/js/client.js:3199
 msgid "Joining game"
 msgstr "Quj muvlu'taH"
 
-#: public/js/client.js:3198
+#: public/js/client.js:3199
 msgid "Waiting for player name"
 msgstr "QujwI' pong loSlu'taH"
 
 #. TRANSLATORS: prefix on a chat line this client wrote itself, not the server
-#: public/js/client.js:3469
+#: public/js/client.js:3470
 msgid "local: {message}"
 msgstr "naDev: {message}"
 
-#: public/js/client.js:3476
+#: public/js/client.js:3477
 msgid "client version: {version}"
 msgstr "De'wI' Segh mI': {version}"
 
-#: public/js/client.js:3477
+#: public/js/client.js:3478
 msgid "copyright: {copyright}"
 msgstr "ghItlh chaw': {copyright}"
 
-#: public/js/client.js:3478
+#: public/js/client.js:3479
 msgid "license: {license} ({url})"
 msgstr "chaw' ghItlh: {license} ({url})"
 
-#: public/js/client.js:3625
+#: public/js/client.js:3631 public/js/client.js:3691
+msgid "Unsilenced \"{callsign}\""
+msgstr "\"{callsign}\" vItammoHHa'"
+
+#: public/js/client.js:3632 public/js/client.js:3671
+msgid "Silenced \"{callsign}\""
+msgstr "\"{callsign}\" vItammoH"
+
+#: public/js/client.js:3646
 msgid "Usage: {command}"
 msgstr "lo': {command}"
 
 #. TRANSLATORS: /silence and - stay as written
-#: public/js/client.js:3637
+#: public/js/client.js:3658
 msgid "Usage: /silence <callsign>|-"
 msgstr "lo': /silence <callsign>|-"
 
-#: public/js/client.js:3644
+#: public/js/client.js:3665
 msgid "Silencing every unauthenticated player"
 msgstr "Hoch QujwI' ngu'lu'be'bogh vItammoHtaH"
 
-#: public/js/client.js:3650
-msgid "Silenced \"{callsign}\""
-msgstr "\"{callsign}\" vItammoH"
-
 #. TRANSLATORS: /unsilence and - stay as written
-#: public/js/client.js:3657
+#: public/js/client.js:3678
 msgid "Usage: /unsilence <callsign>|-"
 msgstr "lo': /unsilence <callsign>|-"
 
-#: public/js/client.js:3664
+#: public/js/client.js:3685
 msgid "No longer silencing unauthenticated players"
 msgstr "QujwI' ngu'lu'be'bogh vItammoHbe'choH"
 
-#: public/js/client.js:3670
-msgid "Unsilenced \"{callsign}\""
-msgstr "\"{callsign}\" vItammoHHa'"
-
-#: public/js/client.js:3727
+#: public/js/client.js:3748
 msgid "Highlight cleared"
 msgstr "wovmoH Say'moHlu'"
 
-#: public/js/client.js:3729
+#: public/js/client.js:3750
 msgid "Invalid highlight pattern: {pattern}"
 msgstr "wovmoH mIw lughbe': {pattern}"
 
-#: public/js/client.js:3731
+#: public/js/client.js:3752
 msgid "Highlighting \"{pattern}\""
 msgstr "\"{pattern}\" vIwovmoHtaH"
 
-#: public/js/client.js:3755
+#: public/js/client.js:3776
 msgid "Saved messages to: {filename}"
 msgstr "QInmey polta': {filename}"
 
-#: public/js/client.js:3763
+#: public/js/client.js:3784
 msgid "Client-side commands: {commands}"
 msgstr "De'wI'vam ra'mey: {commands}"
 
-#: public/js/client.js:3917
+#: public/js/client.js:3938
 msgid "No recent direct sender to reply to"
 msgstr "DajangmeH QIn ngeHwI' pagh tu'lu'"
 
-#: public/js/client.js:3925
+#: public/js/client.js:3946
 msgid "No nemesis target available"
 msgstr "jagh'a' DoS pagh tu'lu'"
 
-#: public/js/client.js:4133
+#: public/js/client.js:4154
 msgid "Show Operator Panel (O)"
 msgstr "SeHwI' SeHlaw yI'agh (O)"
 
-#: public/js/client.js:4134
+#: public/js/client.js:4155
 msgid ""
 "Operator: sign in with a bzflag.org global callsign that the server grants "
 "admin to"
@@ -1471,15 +1477,15 @@ msgstr ""
 "SeHwI': bzflag.org Hoch qo' pong yIlo' 'ej yI'el; toy' De'wI' loHwI' chaw' "
 "nobnIS"
 
-#: public/js/client.js:4175 public/js/client.js:4194
+#: public/js/client.js:4196 public/js/client.js:4215
 msgid "Sign in"
 msgstr "yI'el"
 
-#: public/js/client.js:4178
+#: public/js/client.js:4199
 msgid "Global login for {server}"
 msgstr "Hoch qo' 'el: {server}"
 
-#: public/js/client.js:4179
+#: public/js/client.js:4200
 msgid ""
 "Sign in at bzflag.org to play on {server}. A login is needed for each "
 "target, and bzo never sees your password."
@@ -1487,676 +1493,676 @@ msgstr ""
 "{server} DaQujmeH bzflag.org yI'el. Hoch DoSvaD 'el DaghajnIS. ngoq De'lIj "
 "legh not bzo."
 
-#: public/js/client.js:4187
+#: public/js/client.js:4208
 msgid "Signed in as {callsign}. Activate to sign out."
 msgstr "'eltaH: {callsign}. bImejmeH yIchu'."
 
-#: public/js/client.js:4189
+#: public/js/client.js:4210
 msgid "Signed in, and an admin on this server. Click to sign out."
 msgstr "bI'elta' 'ej naDev loHwI' SoH. bImejmeH yIchu'."
 
-#: public/js/client.js:4190
+#: public/js/client.js:4211
 msgid "Signed in with a bzflag.org global callsign. Click to sign out."
 msgstr "bzflag.org Hoch qo' pong Dalo'taH. bImejmeH yIchu'."
 
-#: public/js/client.js:4197
+#: public/js/client.js:4218
 msgid "Global login: sign in"
 msgstr "Hoch qo' 'el: yI'el"
 
-#: public/js/client.js:4198
+#: public/js/client.js:4219
 msgid ""
 "Sign in at bzflag.org with a global callsign. bzo never sees your password."
 msgstr "bzflag.org Hoch qo' pong yIlo' 'ej yI'el. ngoq De'lIj legh not bzo."
 
-#: public/js/client.js:4218
+#: public/js/client.js:4239
 msgid "Signing out leaves VR. Exit the headset session first."
 msgstr "bImejchugh qo' ngeb Damej. wa'DIch qo' ngeb mIv yImej."
 
-#: public/js/client.js:4219
+#: public/js/client.js:4240
 msgid "Global login leaves VR. Exit the headset session first."
 msgstr "Hoch qo' 'el Dalo'chugh qo' ngeb Damej. wa'DIch qo' ngeb mIv yImej."
 
-#: public/js/client.js:4659 public/js/client.js:10445
+#: public/js/client.js:4680 public/js/client.js:10489
 msgid "Fetching remote server's map..."
 msgstr "Hop toy' De'wI' pu'jIn Suqlu'taH..."
 
-#: public/js/client.js:4819
+#: public/js/client.js:4846
 msgid "Pausing in {seconds}"
 msgstr "{seconds} pIq mev"
 
-#: public/js/client.js:4843 public/js/client.js:6660
+#: public/js/client.js:4870 public/js/client.js:6696
 msgid "Self Destructing in {seconds}"
 msgstr "{seconds} pIq Qaw''egh Duj"
 
-#: public/js/client.js:4925
+#: public/js/client.js:4952
 msgid "AutoPilot {pilot}: {intent}"
 msgstr "nIteb chIjwI' {pilot}: {intent}"
 
-#: public/js/client.js:4926
+#: public/js/client.js:4953
 msgid "AutoPilot {pilot}"
 msgstr "nIteb chIjwI' {pilot}"
 
-#: public/js/client.js:6555 server.js:11421
+#: public/js/client.js:6591 server.js:11421
 msgid "You do not have permission to speak on the admin channel."
 msgstr "SeHwI' ghogh jan Dalo'meH chaw' Daghajbe'."
 
-#: public/js/client.js:6662
+#: public/js/client.js:6698
 msgid "Self Destruct cancelled"
 msgstr "Qaw''eghmeH ra' qIllu'"
 
-#: public/js/client.js:6828
+#: public/js/client.js:6868
 msgid "Hide Debug Labels"
 msgstr "Qagh: per yISo'"
 
-#: public/js/client.js:6831
+#: public/js/client.js:6871
 msgid "Show Debug Labels"
 msgstr "Qagh: per yI'agh"
 
-#: public/js/client.js:6848
+#: public/js/client.js:6888
 msgid "Disable Dynamic Lighting"
 msgstr "wov choH yIchu'Ha'"
 
-#: public/js/client.js:6849
+#: public/js/client.js:6889
 msgid "Enable Dynamic Lighting"
 msgstr "wov choH yIchu'"
 
-#: public/js/client.js:6851
+#: public/js/client.js:6891
 msgid "Dynamic Lighting needs more shader uniforms than this browser reports"
 msgstr "wov choH: shader uniform law' poQ; De' nejwI'vam ghaj puS"
 
-#: public/js/client.js:6860
+#: public/js/client.js:6900
 msgid "Disable Rumble"
 msgstr "Qom yIchu'Ha'"
 
-#: public/js/client.js:6861
+#: public/js/client.js:6901
 msgid "Enable Rumble"
 msgstr "Qom yIchu'"
 
-#: public/js/client.js:6867
+#: public/js/client.js:6907
 msgid "Disable Anaglyph 3D"
 msgstr "Anaglyph 3D yIchu'Ha'"
 
-#: public/js/client.js:6868
+#: public/js/client.js:6908
 msgid "Enable Anaglyph 3D"
 msgstr "Anaglyph 3D yIchu'"
 
-#: public/js/client.js:6871
+#: public/js/client.js:6911
 msgid "Anaglyph 3D is unavailable in VR mode"
 msgstr "qo' ngebDaq Anaglyph 3D Dalo'laHbe'"
 
-#: public/js/client.js:6880
+#: public/js/client.js:6920
 msgid "Hide Debug Geometry"
 msgstr "Qagh: Hap yISo'"
 
-#: public/js/client.js:6968
+#: public/js/client.js:7008
 msgid "Confirm"
 msgstr "yI'ol"
 
-#: public/js/client.js:7024
+#: public/js/client.js:7064
 msgid "Share View Link: only available while viewing a map"
 msgstr "legh rar yIngeH: pu'jIn DabejtaHvIS neH"
 
-#: public/js/client.js:7029
+#: public/js/client.js:7069
 msgid "View link copied to clipboard"
 msgstr "legh rar polta'"
 
-#: public/js/client.js:7058
+#: public/js/client.js:7098
 msgid "WebXR: {mode}"
 msgstr "WebXR: {mode}"
 
-#: public/js/client.js:7064
+#: public/js/client.js:7104
 msgid "WebXR not supported on this device"
 msgstr "janvam WebXR lo'laHbe'"
 
-#: public/js/client.js:7069
+#: public/js/client.js:7109
 msgid "Requesting VR..."
 msgstr "qo' ngeb tlhoblu'taH..."
 
-#: public/js/client.js:7072
+#: public/js/client.js:7112
 msgid "Error: Renderer not available"
 msgstr "Qagh: mIllogh chenmoHwI' tu'lu'be'"
 
-#: public/js/client.js:7085
+#: public/js/client.js:7125
 msgid "✓ WebXR VR Mode: ON"
 msgstr "✓ WebXR qo' ngeb lo': HIja'"
 
-#: public/js/client.js:7091
+#: public/js/client.js:7131
 msgid "✗ VR request failed - check server.log"
 msgstr "✗ qo' ngeb tlhoblu'; luj - server.log yInuD"
 
-#: public/js/client.js:7093 public/js/client.js:17566
+#: public/js/client.js:7133 public/js/client.js:17718
 msgid "WebXR VR Mode: OFF"
 msgstr "WebXR qo' ngeb lo': ghobe'"
 
-#: public/js/client.js:7646
+#: public/js/client.js:7686
 msgid "3D renderer unavailable: {reason}"
 msgstr "3D mIllogh chenmoHwI' tu'lu'be': {reason}"
 
-#: public/js/client.js:7653
+#: public/js/client.js:7693
 msgid "3D renderer failed to initialize."
 msgstr "3D mIllogh chenmoHwI' taghlaHbe'."
 
-#: public/js/client.js:7655
+#: public/js/client.js:7695
 msgid "Open the game in an external browser window for full WebGL support."
 msgstr "WebGL naQ DaghajmeH, Hur De' nejwI' HaStaDaq Quj yIpoSmoH."
 
-#: public/js/client.js:8084
+#: public/js/client.js:8124
 msgid "Connected to server!"
 msgstr "toy' De'wI' rarta'!"
 
-#: public/js/client.js:8090
+#: public/js/client.js:8130
 msgid "Connected to server"
 msgstr "toy' De'wI' rarta'"
 
-#: public/js/client.js:8091
+#: public/js/client.js:8131
 msgid "Waiting for world state"
 msgstr "qo' Dotlh loSlu'taH"
 
-#: public/js/client.js:8142
+#: public/js/client.js:8182
 msgid "Offline"
 msgstr "rarbe'"
 
-#: public/js/client.js:8142
+#: public/js/client.js:8182
 msgid "Cannot reach {host}"
 msgstr "{host} DaSuchlaHbe'"
 
-#: public/js/client.js:8143
+#: public/js/client.js:8183
 msgid "Trying again..."
 msgstr "nIDqa'lu'taH..."
 
-#: public/js/client.js:8154
+#: public/js/client.js:8194
 msgid "Disconnected from server | Kills: {kills} | Deaths: {deaths}"
 msgstr "toy' De'wI' rar ghorlu' | HoH: {kills} | Hegh: {deaths}"
 
-#: public/js/client.js:8159
+#: public/js/client.js:8199
 msgid "Press a key, tap or pull a trigger to rejoin"
 msgstr "bImuvqa'meH leQ yI'uy, yIHot, pagh baHwI' yI'uy"
 
-#: public/js/client.js:8319
+#: public/js/client.js:8359
 msgid "Server error: {error}"
 msgstr "toy' De'wI' Qagh: {error}"
 
-#: public/js/client.js:8324
+#: public/js/client.js:8364
 msgid "Server: action completed successfully"
 msgstr "toy' De'wI': ra' ta'lu'. Qapla'!"
 
-#: public/js/client.js:8404
+#: public/js/client.js:8444
 msgid "Operator Panel (v{version})"
 msgstr "SeHwI' SeHlaw (v{version})"
 
-#: public/js/client.js:8823
+#: public/js/client.js:8863
 msgid "{player} joined"
 msgstr "muv {player}"
 
-#: public/js/client.js:8868
+#: public/js/client.js:8908
 msgid "{player} left"
 msgstr "mej {player}"
 
-#: public/js/client.js:8884
+#: public/js/client.js:8924
 msgid "{callsign} not responding"
 msgstr "jangbe' {callsign}"
 
-#: public/js/client.js:8885
+#: public/js/client.js:8925
 msgid "{callsign} okay"
 msgstr "maj {callsign}"
 
-#: public/js/client.js:8999
+#: public/js/client.js:9039
 msgid "{player} grabbed {flag}"
 msgstr "{flag} tlhap {player}"
 
-#: public/js/client.js:9050
+#: public/js/client.js:9090
 msgid "{player} dropped {flag}"
 msgstr "{flag} chagh {player}"
 
-#: public/js/client.js:9144
+#: public/js/client.js:9184
 msgid "{player}: {pilot} taking controls"
 msgstr "{player}: SeHmey tlhap {pilot}"
 
-#: public/js/client.js:9145
+#: public/js/client.js:9185
 msgid "{player}: {pilot} releasing controls"
 msgstr "{player}: SeHmey chagh {pilot}"
 
-#: public/js/client.js:9177
+#: public/js/client.js:9217
 msgid "{player} paused"
 msgstr "mev {player}"
 
-#: public/js/client.js:9188
+#: public/js/client.js:9228
 msgid "{player} unpaused"
 msgstr "Qujqa' {player}"
 
-#: public/js/client.js:9318
+#: public/js/client.js:9358
 msgid "Server forced a disconnect"
 msgstr "rar ghor toy' De'wI'"
 
-#: public/js/client.js:9324
+#: public/js/client.js:9364
 msgid "Server updated - reloading..."
 msgstr "toy' De'wI' choHlu'pu' - lI'qa'lu'taH..."
 
-#: public/js/client.js:9851
+#: public/js/client.js:9892
 msgid "Got flattened by {player}"
 msgstr "DuQaw' {player}"
 
-#: public/js/client.js:9852
+#: public/js/client.js:9893
 msgid "Teammate hit with Genocide by {player}"
 msgstr "Hoch HoH lo'taHvIS jup qIp {player}"
 
-#: public/js/client.js:9853
+#: public/js/client.js:9894
 msgid "Got shot by {player}"
 msgstr "Dubach {player}"
 
-#: public/js/client.js:9855
+#: public/js/client.js:9896
 msgid "Got flattened by teammate {player}"
 msgstr "DuQaw' jup {player}"
 
-#: public/js/client.js:9856
+#: public/js/client.js:9897
 msgid "Teammate hit with Genocide by teammate {player}"
 msgstr "Hoch HoH lo'taHvIS jup qIp jup {player}"
 
-#: public/js/client.js:9857
+#: public/js/client.js:9898
 msgid "Got shot by teammate {player}"
 msgstr "Dubach jup {player}"
 
-#: public/js/client.js:9893
+#: public/js/client.js:9934
 msgid "Your team flag was captured!"
 msgstr "boqlIj joqwI' tlhaplu'pu'!"
 
-#: public/js/client.js:9895
+#: public/js/client.js:9936
 msgid "Time Expired - GAME OVER"
 msgstr "poH rIn - Quj rIn"
 
-#: public/js/client.js:9897
+#: public/js/client.js:9938
 msgid "Tank Self Destructed"
 msgstr "Qaw''egh Duj"
 
-#: public/js/client.js:9899
+#: public/js/client.js:9940
 msgid "Tank Rusted"
 msgstr "ragh Duj"
 
-#: public/js/client.js:9902 public/js/client.js:9906
+#: public/js/client.js:9943 public/js/client.js:9947
 msgid "Killed by the server"
 msgstr "DuHoH toy' De'wI'"
 
-#: public/js/client.js:9933
+#: public/js/client.js:9974
 msgid "You killed {player}"
 msgstr "{player} DaHoH"
 
-#: public/js/client.js:9945
+#: public/js/client.js:9986
 msgid "{player} self-destructed"
 msgstr "Qaw''egh {player}"
 
-#: public/js/client.js:9949
+#: public/js/client.js:9990
 msgid "{player} fell in the water"
 msgstr "bIQDaq pum {player}"
 
-#: public/js/client.js:9954
+#: public/js/client.js:9995
 msgid "{player}: {message}"
 msgstr "{player}: {message}"
 
-#: public/js/client.js:9957
+#: public/js/client.js:9998
 msgid "killed by the server"
 msgstr "HoH toy' De'wI'"
 
-#: public/js/client.js:9963
+#: public/js/client.js:10004
 msgid "{player} was killed by the server"
 msgstr "{player} HoH toy' De'wI'"
 
-#: public/js/client.js:9968
+#: public/js/client.js:10009
 msgid "{killer} killed {victim}"
 msgstr "{victim} HoH {killer}"
 
-#: public/js/client.js:10133
+#: public/js/client.js:10174
 msgid "You respawned!"
 msgstr "bIboghqa'!"
 
-#: public/js/client.js:10220
+#: public/js/client.js:10264
 msgid "map {name}"
 msgstr "pu'jIn {name}"
 
-#: public/js/client.js:10222
+#: public/js/client.js:10266
 msgid "plugin {name}"
 msgstr ""
 
-#: public/js/client.js:10226
+#: public/js/client.js:10270
 msgid "nothing uploaded"
 msgstr "pagh lI'lu'pu'"
 
-#: public/js/client.js:10253 public/js/client.js:10728
+#: public/js/client.js:10297 public/js/client.js:10772
 msgid "MOTD: {motd}"
 msgstr "MOTD: {motd}"
 
-#: public/js/client.js:10328
+#: public/js/client.js:10372
 msgid "{count} box"
 msgstr "{count} ngaSwI'"
 
-#: public/js/client.js:10328
+#: public/js/client.js:10372
 msgid "{count} boxes"
 msgstr "{count} ngaSwI'"
 
-#: public/js/client.js:10329
+#: public/js/client.js:10373
 msgid "{count} pyramid"
 msgstr "{count} pIra'mID"
 
-#: public/js/client.js:10329
+#: public/js/client.js:10373
 msgid "{count} pyramids"
 msgstr "{count} pIra'mID"
 
-#: public/js/client.js:10330
+#: public/js/client.js:10374
 msgid "{count} mesh"
 msgstr "{count} mesh"
 
-#: public/js/client.js:10330
+#: public/js/client.js:10374
 msgid "{count} meshes"
 msgstr "{count} mesh"
 
-#: public/js/client.js:10335
+#: public/js/client.js:10379
 msgid "{count} base"
 msgstr "{count} juH"
 
-#: public/js/client.js:10335
+#: public/js/client.js:10379
 msgid "{count} bases"
 msgstr "{count} juH"
 
-#: public/js/client.js:10337
+#: public/js/client.js:10381
 msgid "{count} teleporter"
 msgstr "{count} jolpa'"
 
-#: public/js/client.js:10337
+#: public/js/client.js:10381
 msgid "{count} teleporters"
 msgstr "{count} jolpa'"
 
-#: public/js/client.js:10340 server.js:2454
+#: public/js/client.js:10384 server.js:2454
 msgid "water"
 msgstr "bIQ"
 
-#: public/js/client.js:10341 server.js:2454
+#: public/js/client.js:10385 server.js:2454
 msgid "weather"
 msgstr "muD Dotlh"
 
-#: public/js/client.js:10342 server.js:2454
+#: public/js/client.js:10386 server.js:2454
 msgid "custom ground"
 msgstr "yav chenmoHlu'bogh"
 
-#: public/js/client.js:10380 public/js/client.js:10459
+#: public/js/client.js:10424 public/js/client.js:10503
 msgid "View {map}"
 msgstr "{map} yIlegh"
 
-#: public/js/client.js:10457
+#: public/js/client.js:10501
 msgid "{server} did not answer"
 msgstr "jangbe' {server}"
 
-#: public/js/client.js:10469 server.js:2384 server.js:2843 server.js:2893
+#: public/js/client.js:10513 server.js:2384 server.js:2843 server.js:2893
 msgid "Watch"
 msgstr "yIbej"
 
-#: public/js/client.js:10470
+#: public/js/client.js:10514
 msgid "Watch the live game on {server}"
 msgstr "{server}: DaH Quj yIbej"
 
-#: public/js/client.js:10488 public/js/client.js:10496 server.js:2852
+#: public/js/client.js:10532 public/js/client.js:10540 server.js:2852
 msgid "Re-import"
 msgstr "yISuqqa'"
 
-#: public/js/client.js:10492
+#: public/js/client.js:10536
 msgid "Importing…"
 msgstr "Suqlu'taH…"
 
-#: public/js/client.js:10535
+#: public/js/client.js:10579
 msgid "Loading map..."
 msgstr "pu'jIn lI'lu'taH..."
 
-#: public/js/client.js:10543
+#: public/js/client.js:10587
 msgid "Building world geometry..."
 msgstr "qo' Hap chenmoHlu'taH..."
 
-#: public/js/client.js:10607
+#: public/js/client.js:10651
 msgid "{count} watching now"
 msgstr "DaH {count} bejwI'"
 
-#: public/js/client.js:10610
+#: public/js/client.js:10654
 msgid "Watch {name}"
 msgstr "{name} yIbej"
 
-#: public/js/client.js:10646
+#: public/js/client.js:10690
 msgid "That server's map could not be fetched"
 msgstr "toy' De'wI'vetlh pu'jIn Suqlu'laHbe'"
 
-#: public/js/client.js:10664
+#: public/js/client.js:10708
 msgid "import failed"
 msgstr "Suqlu'be'"
 
-#: public/js/client.js:10664
+#: public/js/client.js:10708
 msgid "Could not load that server's map: {reason}"
 msgstr "toy' De'wI'vetlh pu'jIn lI'laHbe': {reason}"
 
-#: public/js/client.js:10878
+#: public/js/client.js:10922
 msgid "{team} Limit:"
 msgstr "{team} veH:"
 
-#: public/js/client.js:10971
+#: public/js/client.js:11015
 msgid "Failed: {error}"
 msgstr ""
 
-#: public/js/client.js:11076
+#: public/js/client.js:11120
 msgid "No limit"
 msgstr "veH pagh"
 
-#: public/js/client.js:11185
+#: public/js/client.js:11229
 msgid "Restart"
 msgstr "yItaghqa'"
 
-#: public/js/client.js:11189
+#: public/js/client.js:11233
 msgid "Starts a new game: every player reloads into the new settings"
 msgstr "Quj chu' tagh: chu' SeHlaw lo' 'ej lI'qa' Hoch QujwI'"
 
-#: public/js/client.js:11190
+#: public/js/client.js:11234
 msgid "Applies the staged changes"
 msgstr "choHmey ghuHmoHlu'bogh lo'"
 
-#: public/js/client.js:11537
+#: public/js/client.js:11581
 msgid "Paused"
 msgstr "mevpu'"
 
-#: public/js/client.js:11538
+#: public/js/client.js:11582
 msgid "Sealed"
 msgstr "qachDaq ngaQ"
 
-#: public/js/client.js:12470
+#: public/js/client.js:12514
 msgid "Already following someone"
 msgstr "DaH latlh vItlha'taH"
 
-#: public/js/client.js:12506 public/js/client.js:12631
+#: public/js/client.js:12550 public/js/client.js:12675
 msgid "Looking at {player}"
 msgstr "{player} vIbejtaH"
 
-#: public/js/client.js:12615
+#: public/js/client.js:12659
 msgid "{player} locked on me"
 msgstr "mungaQmoH {player}"
 
-#: public/js/client.js:12625
+#: public/js/client.js:12669
 msgid "Looking at nothing"
 msgstr "pagh vIbejtaH"
 
-#: public/js/client.js:12631
+#: public/js/client.js:12675
 msgid "Locked on {player}"
 msgstr "{player} vIngaQmoH"
 
-#: public/js/client.js:12867
+#: public/js/client.js:13012
 msgid "Clear ({count})"
 msgstr "yISay'moH ({count})"
 
-#: public/js/client.js:12867 public/js/list-page.js:534
+#: public/js/client.js:13012 public/js/list-page.js:534
 msgid "Clear"
 msgstr "yISay'moH"
 
-#: public/js/client.js:12967
+#: public/js/client.js:13112
 msgid "SPOTTED: {player}"
 msgstr "leghlu': {player}"
 
-#: public/js/client.js:13082 public/js/client.js:13088
+#: public/js/client.js:13227 public/js/client.js:13233
 msgid "nobody"
 msgstr "pagh"
 
-#: public/js/client.js:13092
+#: public/js/client.js:13237
 msgid "Leader {who}"
 msgstr "DevwI': {who}"
 
-#: public/js/client.js:13094 public/js/client.js:13099
+#: public/js/client.js:13239 public/js/client.js:13244
 msgid "Tracking {who}"
 msgstr "{who} vIbejtaH"
 
-#: public/js/client.js:13095
+#: public/js/client.js:13240
 msgid "Following {who}"
 msgstr "{who} vItlha'taH"
 
-#: public/js/client.js:13096
+#: public/js/client.js:13241
 msgid "Driving with {who}"
 msgstr "{who} vItlhejtaH"
 
-#: public/js/client.js:13101 public/js/hud.js:629 public/js/input.js:1389
+#: public/js/client.js:13246 public/js/hud.js:629 public/js/input.js:1397
 msgid "First Person"
 msgstr "jIH mIn"
 
-#: public/js/client.js:13102 public/js/hud.js:630 public/js/input.js:1390
+#: public/js/client.js:13247 public/js/hud.js:630 public/js/input.js:1398
 msgid "Third Person"
 msgstr "tlha'wI' mIn"
 
-#: public/js/client.js:13103 public/js/hud.js:631 public/js/input.js:1391
+#: public/js/client.js:13248 public/js/hud.js:631 public/js/input.js:1399
 msgid "Overview"
 msgstr "Dung mIn"
 
-#: public/js/client.js:13104
+#: public/js/client.js:13249
 msgid "Roaming"
 msgstr "leng"
 
-#: public/js/client.js:13393 public/js/client.js:13467
+#: public/js/client.js:13538 public/js/client.js:13612
 msgid "autopilot disabled"
 msgstr "nIteb chIjwI' chu'Ha'lu'"
 
-#: public/js/client.js:13402
+#: public/js/client.js:13547
 msgid "autopilot not allowed on this server"
 msgstr "naDev nIteb chIjwI' chaw'be'lu'"
 
-#: public/js/client.js:13414
+#: public/js/client.js:13559
 msgid "{pilot} has the controls"
 msgstr "SeHmey ghaj {pilot}"
 
-#: public/js/client.js:13419
+#: public/js/client.js:13564
 msgid "You may not enable the Autopilot more than once every five seconds."
 msgstr "vagh lup Hoch wa'logh neH nIteb chIjwI' Dachu'laH."
 
-#: public/js/client.js:13424
+#: public/js/client.js:13569
 msgid "autopilot enabled"
 msgstr "nIteb chIjwI' chu'lu'"
 
-#: public/js/client.js:13447
+#: public/js/client.js:13592
 msgid "Not allowed"
 msgstr "chaw'be'lu'"
 
-#: public/js/client.js:13447 public/js/input.js:1094 public/js/input.js:1104
-#: public/js/input.js:1108
+#: public/js/client.js:13592 public/js/input.js:1102 public/js/input.js:1112
+#: public/js/input.js:1116
 msgid "Unavailable"
 msgstr "tu'laHbe'lu'"
 
-#: public/js/client.js:13450
+#: public/js/client.js:13595
 msgid "None"
 msgstr "pagh"
 
-#: public/js/client.js:14272
+#: public/js/client.js:14417
 msgid "Zoned"
 msgstr "qa' SepDaq"
 
-#: public/js/client.js:14272
+#: public/js/client.js:14417
 msgid "Unzoned"
 msgstr "qa' Sepvo'"
 
-#: public/js/client.js:15073 public/js/client.js:15090
+#: public/js/client.js:15218 public/js/client.js:15235
 msgid "unidentified"
 msgstr "Sovbe'lu'"
 
-#: public/js/client.js:15110
+#: public/js/client.js:15255
 msgid "unknown"
 msgstr "Sovbe'lu'"
 
-#: public/js/client.js:15121
+#: public/js/client.js:15266
 msgid ""
 "This server bounces every shot off walls, whatever flag fired it, so the "
 "Ricochet flag is not in play here."
 msgstr ""
 "naDev tlhoy'vo' HeD nIch Hoch, joqwI' ram. vaj bach HeD joqwI' lo'be'lu'."
 
-#: public/js/client.js:15122
+#: public/js/client.js:15267
 msgid "On this server only the Ricochet flag bounces shots off walls."
 msgstr "naDev bach HeD joqwI' neH tlhoy'vo' nIch HeDmoH."
 
-#: public/js/client.js:15189
+#: public/js/client.js:15334
 msgid "{flag} {release}"
 msgstr "{flag} {release}"
 
-#: public/js/client.js:15200
+#: public/js/client.js:15345
 msgid "Can't drop the flag while zoned"
 msgstr "qa' SepDaq bItaHvIS joqwI' DachaghlaHbe'"
 
-#: public/js/client.js:15204
+#: public/js/client.js:15349
 msgid "Can't drop a flag while inside a building"
 msgstr "qachDaq bItaHvIS joqwI' DachaghlaHbe'"
 
-#: public/js/client.js:15254
+#: public/js/client.js:15399
 msgid "in {seconds}s"
 msgstr "{seconds} lup pIq"
 
-#: public/js/client.js:15255
+#: public/js/client.js:15400
 msgid "after {count} kill"
 msgstr "HoH {count} DaghajDI'"
 
-#: public/js/client.js:15255
+#: public/js/client.js:15400
 msgid "after {count} kills"
 msgstr "HoH {count} DaghajDI'"
 
-#: public/js/client.js:15256
+#: public/js/client.js:15401
 msgid "on the antidote"
 msgstr "Hergh joqwI' DaHotDI'"
 
-#: public/js/client.js:15257
+#: public/js/client.js:15402
 msgid "stays until it kills you"
 msgstr "DuHoHpa' ratlh"
 
-#: public/js/client.js:15258
+#: public/js/client.js:15403
 msgid "{first} or {second}"
 msgstr "{first} pagh {second}"
 
-#: public/js/client.js:15259
+#: public/js/client.js:15404
 msgid "shakes off {ways}"
 msgstr "teqlu' {ways}"
 
-#: public/js/client.js:15315
+#: public/js/client.js:15460
 msgid "Flag Alert!!!"
 msgstr "joqwI' ghuHmoH!!!"
 
-#: public/js/client.js:15323
+#: public/js/client.js:15468
 msgid "Team Grab!!!"
 msgstr "boq joqwI' tlhaplu'!!!"
 
-#: public/js/client.js:15339
+#: public/js/client.js:15484
 msgid "{thief} stole {victim}'s {flag} flag"
 msgstr "{victim} {flag} joqwI' nIH {thief}"
 
-#: public/js/client.js:15370
+#: public/js/client.js:15515
 msgid "Closest Flag: {flag}"
 msgstr "joqwI' Sumqu': {flag}"
 
-#: public/js/client.js:15432
+#: public/js/client.js:15577
 msgid "{player} took their own flag into {team} territory"
 msgstr "{team} yoSDaq joqwI'Daj qem {player}"
 
-#: public/js/client.js:15440
+#: public/js/client.js:15585
 msgid "Don't capture your own flag!!!"
 msgstr "joqwI'lIj yItlhapQo'!!!"
 
-#: public/js/client.js:15446
+#: public/js/client.js:15591
 msgid "{player} captured the {team} flag"
 msgstr "{team} joqwI' tlhap {player}"
 
-#: public/js/client.js:17062 public/js/client.js:17063
+#: public/js/client.js:17214 public/js/client.js:17215
 msgid "Exit WebXR VR Mode"
 msgstr "WebXR qo' ngeb yImej"
 
@@ -2269,11 +2275,11 @@ msgstr "HoH-Hegh"
 msgid "Kills-Deaths"
 msgstr "HoH-Hegh"
 
-#: public/js/hud.js:995 public/js/hud.js:1457
+#: public/js/hud.js:995 public/js/hud.js:1475
 msgid "Rank {score}"
 msgstr "patlh {score}"
 
-#: public/js/hud.js:1033 public/js/hud.js:1403
+#: public/js/hud.js:1033 public/js/hud.js:1421
 msgid "Player"
 msgstr "QujwI'"
 
@@ -2341,167 +2347,167 @@ msgstr "bejtaH"
 msgid "(rabbit)"
 msgstr "(Ha'DIbaH)"
 
-#: public/js/input.js:942
+#: public/js/input.js:947
 msgid "Mouse steering is unavailable in VR: there is no cursor to read"
 msgstr "qo' ngebDaq Mouse chIj Dalo'laHbe': cursor tu'lu'be'"
 
-#: public/js/input.js:943
+#: public/js/input.js:948
 msgid "Virtual controls steer instead of the mouse"
 msgstr "mouse lo'be'; chIj SeHlaw ngeb"
 
-#: public/js/input.js:944
+#: public/js/input.js:949
 msgid "Mouse steering needs a mouse attached"
 msgstr "Mouse chIj: mouse rarnIS"
 
-#: public/js/input.js:1082
+#: public/js/input.js:1089 public/js/input.js:1090
 msgid "No players"
 msgstr "QujwI' pagh"
 
-#: public/js/input.js:1090 public/js/radar.js:32
+#: public/js/input.js:1098 public/js/radar.js:32
 msgid "Medium"
 msgstr "botlh"
 
-#: public/js/input.js:1095 public/js/input.js:1097 public/js/input.js:1109
+#: public/js/input.js:1103 public/js/input.js:1105 public/js/input.js:1117
 msgid "On"
 msgstr "HIja'"
 
-#: public/js/input.js:1100
+#: public/js/input.js:1108
 msgid "Installed"
 msgstr "jomta'"
 
-#: public/js/input.js:1101
+#: public/js/input.js:1109
 msgid "Install"
 msgstr "yIjom"
 
-#: public/js/input.js:1101
+#: public/js/input.js:1109
 msgid "Browser menu"
 msgstr "De' nejwI' HIDjolev"
 
-#: public/js/input.js:1105 public/js/input.js:1119
+#: public/js/input.js:1113 public/js/input.js:1127
 msgid "Exit VR"
 msgstr "qo' ngeb yImej"
 
-#: public/js/input.js:1105
+#: public/js/input.js:1113
 msgid "Enter VR"
 msgstr "qo' ngeb yI'el"
 
-#: public/js/input.js:1111 public/js/settings.js:60
+#: public/js/input.js:1119 public/js/settings.js:63
 msgid "Open >"
 msgstr "yIpoSmoH >"
 
-#: public/js/input.js:1113 public/js/settings.js:62
+#: public/js/input.js:1121 public/js/settings.js:65
 msgid "Activate"
 msgstr "yIchu'"
 
-#: public/js/input.js:1171
+#: public/js/input.js:1179
 msgid "Hide Settings"
 msgstr "SeHlaw yISo'"
 
-#: public/js/input.js:1171
+#: public/js/input.js:1179
 msgid "Show Settings"
 msgstr "SeHlaw yI'agh"
 
-#: public/js/input.js:1185
+#: public/js/input.js:1193
 msgid "Settings: Hidden"
 msgstr "SeHlaw: So'lu'"
 
-#: public/js/input.js:1185
+#: public/js/input.js:1193
 msgid "Settings: Shown"
 msgstr "SeHlaw: 'aghlu'"
 
-#: public/js/input.js:1211
+#: public/js/input.js:1219
 msgid "Hide Audio Settings"
 msgstr "wab SeHlaw yISo'"
 
-#: public/js/input.js:1220
+#: public/js/input.js:1228
 msgid "Audio Settings: Hidden"
 msgstr "wab SeHlaw: So'lu'"
 
-#: public/js/input.js:1225
+#: public/js/input.js:1233
 msgid "Audio Settings: Shown"
 msgstr "wab SeHlaw: 'aghlu'"
 
-#: public/js/input.js:1234
+#: public/js/input.js:1242
 msgid "Hide Help (?)"
 msgstr "QaH yISo' (?)"
 
-#: public/js/input.js:1234
+#: public/js/input.js:1242
 msgid "Show Help (?)"
 msgstr "QaH yI'agh (?)"
 
-#: public/js/input.js:1243
+#: public/js/input.js:1251
 msgid "Help Panel: Hidden"
 msgstr "QaH HaSta: So'lu'"
 
-#: public/js/input.js:1249
+#: public/js/input.js:1257
 msgid "Help Panel: Shown"
 msgstr "QaH HaSta: 'aghlu'"
 
-#: public/js/input.js:1286
+#: public/js/input.js:1294
 msgid "iOS: use Share, Add to Home Screen for fullscreen"
 msgstr "iOS: Hoch HaSta DaneHchugh Share, Add to Home Screen yIlo'"
 
-#: public/js/input.js:1432
+#: public/js/input.js:1440
 msgid "Camera: {mode}"
 msgstr "mIllogh qonwI': {mode}"
 
-#: public/js/input.js:1459
+#: public/js/input.js:1467
 msgid "Controls: Mouse and keyboard"
 msgstr "SeHmey: mouse leQ'echlet je"
 
-#: public/js/input.js:1459
+#: public/js/input.js:1467
 msgid "Controls: Keyboard"
 msgstr "SeHmey: leQ'echlet"
 
-#: public/js/input.js:1467
+#: public/js/input.js:1475
 msgid "Hide Virtual Controls"
 msgstr "SeHlaw ngeb yISo'"
 
-#: public/js/input.js:1467
+#: public/js/input.js:1475
 msgid "Show Virtual Controls"
 msgstr "SeHlaw ngeb yI'agh"
 
-#: public/js/input.js:1504
+#: public/js/input.js:1512
 msgid "Virtual Controls: Enabled"
 msgstr "SeHlaw ngeb: chu'lu'"
 
-#: public/js/input.js:1504
+#: public/js/input.js:1512
 msgid "Virtual Controls: Disabled"
 msgstr "SeHlaw ngeb: chu'Ha'lu'"
 
-#: public/js/input.js:1511
+#: public/js/input.js:1519
 msgid "Hide Operator Panel (Shift+O)"
 msgstr ""
 
-#: public/js/input.js:1511
+#: public/js/input.js:1519
 msgid "Show Operator Panel (Shift+O)"
 msgstr ""
 
-#: public/js/input.js:1518
+#: public/js/input.js:1526
 msgid "Hide View"
 msgstr "legh yISo'"
 
-#: public/js/input.js:1518
+#: public/js/input.js:1526
 msgid "Show View"
 msgstr "legh yI'agh"
 
-#: public/js/input.js:1529
+#: public/js/input.js:1537
 msgid "Operator: enter a name to become an operator on this server"
 msgstr "SeHwI': naDev SeHwI' DamojmeH pong yIghItlh"
 
-#: public/js/input.js:1540
+#: public/js/input.js:1548
 msgid "Operator Panel: Hidden"
 msgstr "SeHwI' SeHlaw: So'lu'"
 
-#: public/js/input.js:1563
+#: public/js/input.js:1571
 msgid "Operator Panel: Shown"
 msgstr "SeHwI' SeHlaw: 'aghlu'"
 
-#: public/js/input.js:1580
+#: public/js/input.js:1588
 msgid "View: Hidden"
 msgstr "legh: So'lu'"
 
-#: public/js/input.js:1586
+#: public/js/input.js:1594
 msgid "View: Shown"
 msgstr "legh: 'aghlu'"
 
@@ -2744,63 +2750,67 @@ msgid "Hunt"
 msgstr "wam"
 
 #: public/js/settings.js:22
+msgid "Silence"
+msgstr ""
+
+#: public/js/settings.js:25
 msgid "Autopilot"
 msgstr "nIteb chIjwI'"
 
-#: public/js/settings.js:23
+#: public/js/settings.js:26
 msgid "Radar Range"
 msgstr "noch chuq"
 
-#: public/js/settings.js:25
+#: public/js/settings.js:28
 msgid "Language"
 msgstr "Hol"
 
 # review: half English, no sensible Klingon
-#: public/js/settings.js:26
+#: public/js/settings.js:29
 msgid "Mouse Steering"
 msgstr "Mouse chIj"
 
-#: public/js/settings.js:27
+#: public/js/settings.js:30
 msgid "Virtual Controls"
 msgstr "SeHlaw ngeb"
 
-#: public/js/settings.js:28
+#: public/js/settings.js:31
 msgid "Rumble"
 msgstr "Qom"
 
-#: public/js/settings.js:29
+#: public/js/settings.js:32
 msgid "Fullscreen"
 msgstr "Hoch HaSta"
 
-#: public/js/settings.js:30
+#: public/js/settings.js:33
 msgid "Install App"
 msgstr "ghun yIjom"
 
-#: public/js/settings.js:31
+#: public/js/settings.js:34
 msgid "Debug HUD"
 msgstr "Qagh: HaSta"
 
-#: public/js/settings.js:32
+#: public/js/settings.js:35
 msgid "Debug Geometry"
 msgstr "Qagh: Hap"
 
-#: public/js/settings.js:33
+#: public/js/settings.js:36
 msgid "Debug Labels"
 msgstr "Qagh: per"
 
-#: public/js/settings.js:34
+#: public/js/settings.js:37
 msgid "Wireframe"
 msgstr "SIrgh qach"
 
-#: public/js/settings.js:39
+#: public/js/settings.js:42
 msgid "Operator"
 msgstr "SeHwI'"
 
-#: public/js/settings.js:41
+#: public/js/settings.js:44
 msgid "Share View Link"
 msgstr "legh rar yIngeH"
 
-#: public/js/settings.js:42
+#: public/js/settings.js:45
 msgid "VR Mode"
 msgstr "qo' ngeb lo'"
 

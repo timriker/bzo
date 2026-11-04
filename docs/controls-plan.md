@@ -2,8 +2,8 @@
 
 Bringing bzo's keyboard, chat panel and desktop HUD closer to BZFlag's, so a
 veteran's hands work here, without giving up WASD
-([#201](https://github.com/timriker/bzo/issues/201)). The keys are built;
-the rest is not yet.
+([#201](https://github.com/timriker/bzo/issues/201)). The keys and silencing
+from the scoreboard are built; the rest is not yet.
 Upstream references are paths under `$HOME/bzflag/`; its default bindings are
 `src/bzflag/ActionBinding.cxx`. The current keys are in
 [help/controls.md](help/controls.md).

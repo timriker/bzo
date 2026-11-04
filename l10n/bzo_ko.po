@@ -172,7 +172,7 @@ msgstr "설정"
 msgid "Apply"
 msgstr "적용"
 
-#: public/index.html:206 public/index.html:501
+#: public/index.html:206 public/index.html:502
 msgid "Cancel"
 msgstr "취소"
 
@@ -257,7 +257,7 @@ msgstr "맵"
 msgid "Settings"
 msgstr "설정"
 
-#: public/index.html:274 public/index.html:398
+#: public/index.html:274 public/index.html:399
 msgid "Microphone off"
 msgstr "마이크 꺼짐"
 
@@ -293,35 +293,41 @@ msgstr "헌트: 화살표로 플레이어와 지우기를 넘기고, 선택해�
 
 #: public/index.html:311
 msgid ""
+"Silence: step through players with the arrows, select to silence or let them "
+"back"
+msgstr ""
+
+#: public/index.html:312
+msgid ""
 "Autopilot: choose None or a pilot with the arrows, select to turn it on or "
 "off"
 msgstr "오토파일럿: 화살표로 없음이나 파일럿을 고르고, 선택해서 켜기/끄기"
 
-#: public/index.html:315
+#: public/index.html:316
 msgid "Copy a link back to this map, camera and position"
 msgstr "이 맵, 카메라, 위치로 돌아오는 링크 복사"
 
-#: public/index.html:316
+#: public/index.html:317
 msgid "Wireframe Mode"
 msgstr "와이어프레임 모드"
 
-#: public/index.html:317
+#: public/index.html:318
 msgid "Anaglyph 3D"
 msgstr "애너글리프 3D"
 
-#: public/index.html:318
+#: public/index.html:319
 msgid "Dynamic Lighting"
 msgstr "동적 조명"
 
-#: public/index.html:320
+#: public/index.html:321
 msgid "Open Audio Settings"
 msgstr "오디오 설정 열기"
 
-#: public/index.html:327
+#: public/index.html:328
 msgid "Audio Settings"
 msgstr "오디오 설정"
 
-#: public/index.html:329
+#: public/index.html:330
 msgid ""
 "Each level runs from Off to 100%. Nearby voice uses your microphone only "
 "after you grant permission. Use B to toggle your microphone."
@@ -329,191 +335,191 @@ msgstr ""
 "각 레벨은 끔부터 100%까지예요. 근처 음성은 허락한 뒤에만 마이크를 사용해요. B"
 "로 마이크를 켜고 꺼요."
 
-#: public/index.html:333
+#: public/index.html:334
 msgid "Game volume"
 msgstr "게임 볼륨"
 
-#: public/index.html:340
+#: public/index.html:341
 msgid "Gameplay sound effects."
 msgstr "게임 효과음."
 
-#: public/index.html:343
+#: public/index.html:344
 msgid "Voice volume"
 msgstr "음성 볼륨"
 
-#: public/index.html:350
+#: public/index.html:351
 msgid "How loud nearby players sound to you."
 msgstr "근처 플레이어 목소리가 들리는 크기."
 
-#: public/index.html:353
+#: public/index.html:354
 msgid "Microphone volume"
 msgstr "마이크 볼륨"
 
-#: public/index.html:360
+#: public/index.html:361
 msgid "How loud you are to nearby players."
 msgstr "근처 플레이어에게 들리는 내 목소리 크기."
 
-#: public/index.html:363
+#: public/index.html:364
 msgid "Voice channel"
 msgstr "음성 채널"
 
-#: public/index.html:365
+#: public/index.html:366
 msgid "All"
 msgstr "전체"
 
-#: public/index.html:366
+#: public/index.html:367
 msgid "Nearby"
 msgstr "근처"
 
-#: public/index.html:367
+#: public/index.html:368
 msgid "Team"
 msgstr "팀"
 
-#: public/index.html:369
+#: public/index.html:370
 msgid "Players within earshot, whatever team they are on."
 msgstr "팀에 상관없이 들리는 거리 안의 플레이어."
 
-#: public/index.html:372
+#: public/index.html:373
 msgid "Microphone input"
 msgstr "마이크 입력"
 
-#: public/index.html:376
+#: public/index.html:377
 msgid "Choose the microphone used for voice chat."
 msgstr "음성 채팅에 쓸 마이크를 골라요."
 
-#: public/index.html:379
+#: public/index.html:380
 msgid "Native audio processing"
 msgstr "기본 오디오 처리"
 
-#: public/index.html:382
+#: public/index.html:383
 msgid "Echo cancellation"
 msgstr "에코 제거"
 
-#: public/index.html:386
+#: public/index.html:387
 msgid "Noise suppression"
 msgstr "소음 억제"
 
-#: public/index.html:390
+#: public/index.html:391
 msgid "Automatic gain control"
 msgstr "자동 게인 조절"
 
-#: public/index.html:392
+#: public/index.html:393
 msgid "Native browser processing is enabled when supported."
 msgstr "지원되면 브라우저 기본 처리가 켜져요."
 
-#: public/index.html:397
+#: public/index.html:398
 msgid "Enable microphone"
 msgstr "마이크 켜기"
 
-#: public/index.html:402
+#: public/index.html:403
 msgid "Microphone permission has not been requested."
 msgstr "마이크 권한을 아직 요청하지 않았어요."
 
-#: public/index.html:416
+#: public/index.html:417
 msgid "Send"
 msgstr "보내기"
 
-#: public/index.html:416
+#: public/index.html:417
 msgid "Type a chat message, then send it"
 msgstr "채팅 메시지를 입력하고 보내기"
 
-#: public/index.html:420
+#: public/index.html:421
 msgid "ALL"
 msgstr "전체"
 
-#: public/index.html:421
+#: public/index.html:422
 msgid "TEAM"
 msgstr "팀"
 
-#: public/index.html:422
+#: public/index.html:423
 msgid "ADMIN"
 msgstr "관리자"
 
-#: public/index.html:423
+#: public/index.html:424
 msgid "SERVER"
 msgstr "서버"
 
-#: public/index.html:437
+#: public/index.html:438
 msgid "Loading World"
 msgstr "월드 불러오는 중"
 
-#: public/index.html:438
+#: public/index.html:439
 msgid "Connecting render systems..."
 msgstr "렌더링 시스템 연결 중..."
 
-#: public/index.html:447 public/index.html:514
+#: public/index.html:448 public/index.html:515
 msgid "Close"
 msgstr "닫기"
 
-#: public/index.html:448
+#: public/index.html:449
 msgid "A free 3D tank game in the browser that plays with BZFlag."
 msgstr "브라우저에서 BZFlag와 함께 즐기는 무료 3D 탱크 게임."
 
-#: public/index.html:449 public/index.html:514
+#: public/index.html:450 public/index.html:515
 msgid "Help"
 msgstr "도움말"
 
-#: public/index.html:449
+#: public/index.html:450
 msgid "Servers"
 msgstr "서버"
 
-#: public/index.html:449
+#: public/index.html:450
 msgid "Source"
 msgstr "소스"
 
-#: public/index.html:454
+#: public/index.html:455
 msgid "Enter your name"
 msgstr "이름 입력"
 
-#: public/index.html:459
+#: public/index.html:460
 msgid "Motto (optional)"
 msgstr "모토(선택)"
 
-#: public/index.html:467
+#: public/index.html:468
 msgid "Server:"
 msgstr "서버:"
 
-#: public/index.html:471
+#: public/index.html:472
 msgid "Team:"
 msgstr "팀:"
 
-#: public/index.html:479
+#: public/index.html:480
 msgid "Global login:"
 msgstr "글로벌 로그인:"
 
-#: public/index.html:485
+#: public/index.html:486
 msgid "Skin:"
 msgstr "스킨:"
 
-#: public/index.html:489
+#: public/index.html:490
 msgid "Choose Tank"
 msgstr "탱크 선택"
 
-#: public/index.html:491
+#: public/index.html:492
 msgid "Previous tank"
 msgstr "이전 탱크"
 
-#: public/index.html:496
+#: public/index.html:497
 msgid "Next tank"
 msgstr "다음 탱크"
 
-#: public/index.html:500
+#: public/index.html:501
 msgid "OK"
 msgstr "확인"
 
-#: public/index.html:502
+#: public/index.html:503
 msgid "Default"
 msgstr "기본값"
 
-#: public/index.html:516
+#: public/index.html:517
 msgid "Search help"
 msgstr "도움말 검색"
 
-#: public/index.html:554
+#: public/index.html:555
 msgid "Identify: lock a Guided Missile onto the tank in your sights"
 msgstr "식별: 조준선 안의 탱크에 유도 미사일 고정"
 
-#: public/index.html:555
+#: public/index.html:556
 msgid "Drop flag"
 msgstr "플래그 버리기"
 
@@ -1175,68 +1181,68 @@ msgstr "기타"
 msgid "Debug"
 msgstr "디버그"
 
-#: public/js/client.js:879
+#: public/js/client.js:880
 msgid "unlimited"
 msgstr "무제한"
 
-#: public/js/client.js:881
+#: public/js/client.js:882
 msgid "{count} left"
 msgstr "{count} 남음"
 
-#: public/js/client.js:993
+#: public/js/client.js:994
 msgid "this is the designated list server"
 msgstr "이곳이 지정된 목록 서버예요"
 
 #. TRANSLATORS: listServerUrl is a server.json setting; keep it as written
-#: public/js/client.js:996
+#: public/js/client.js:997
 msgid "disabled (no listServerUrl)"
 msgstr "꺼짐 (listServerUrl 없음)"
 
-#: public/js/client.js:998
+#: public/js/client.js:999
 msgid "reporting to {url}: key configured"
 msgstr "{url}에 보고 중: 키 설정됨"
 
-#: public/js/client.js:999
+#: public/js/client.js:1000
 msgid "reporting to {url}: no key yet"
 msgstr "{url}에 보고 중: 아직 키 없음"
 
-#: public/js/client.js:1021
+#: public/js/client.js:1022
 msgid "{team} won the game"
 msgstr "{team} 승리"
 
-#: public/js/client.js:1026
+#: public/js/client.js:1027
 msgid "{player} won the game"
 msgstr "{player} 님 승리"
 
-#: public/js/client.js:1250
+#: public/js/client.js:1251
 msgid "Team: {team}"
 msgstr "팀: {team}"
 
-#: public/js/client.js:1384
+#: public/js/client.js:1385
 msgid "watching {server}"
 msgstr "{server} 관전 중"
 
-#: public/js/client.js:1386 public/js/client.js:10221
+#: public/js/client.js:1387 public/js/client.js:10265
 msgid "replay {name}"
 msgstr "리플레이 {name}"
 
-#: public/js/client.js:1396
+#: public/js/client.js:1397
 msgid "local {map}"
 msgstr "로컬 {map}"
 
-#: public/js/client.js:1396
+#: public/js/client.js:1397
 msgid "This server"
 msgstr "이 서버"
 
-#: public/js/client.js:1473
+#: public/js/client.js:1474
 msgid "Server: {server}"
 msgstr "서버: {server}"
 
-#: public/js/client.js:1530
+#: public/js/client.js:1531
 msgid "Sign in & Play"
 msgstr "로그인 후 플레이"
 
-#: public/js/client.js:1532
+#: public/js/client.js:1533
 msgid ""
 "Playing here needs a bzflag.org global login. This signs you in, then joins "
 "on the team you picked."
@@ -1244,99 +1250,99 @@ msgstr ""
 "여기서 플레이하려면 bzflag.org 글로벌 로그인이 필요해요. 로그인한 뒤 선택한 "
 "팀으로 참가해요."
 
-#: public/js/client.js:1645 public/js/client.js:1663
+#: public/js/client.js:1646 public/js/client.js:1664
 msgid "a tank"
 msgstr "탱크"
 
-#: public/js/client.js:1794
+#: public/js/client.js:1795
 msgid "You are now the rabbit."
 msgstr "이제 내가 래빗이에요."
 
-#: public/js/client.js:1800
+#: public/js/client.js:1801
 msgid "{player} is now the rabbit"
 msgstr "{player} 님이 래빗이 됐어요"
 
-#: public/js/client.js:1811
+#: public/js/client.js:1812
 msgid "operation failed"
 msgstr "작업 실패"
 
-#: public/js/client.js:1811
+#: public/js/client.js:1812
 msgid "Voice error: {error}"
 msgstr "음성 오류: {error}"
 
-#: public/js/client.js:2316
+#: public/js/client.js:2317
 msgid "Default microphone"
 msgstr "기본 마이크"
 
-#: public/js/client.js:2324 public/js/voice.js:1218
+#: public/js/client.js:2325 public/js/voice.js:1218
 msgid "Microphone"
 msgstr "마이크"
 
-#: public/js/client.js:2357 public/js/client.js:2372
+#: public/js/client.js:2358 public/js/client.js:2373
 msgid "Receive only"
 msgstr "수신 전용"
 
-#: public/js/client.js:2359 public/js/client.js:2398
+#: public/js/client.js:2360 public/js/client.js:2399
 msgid "Microphone on"
 msgstr "마이크 켜짐"
 
-#: public/js/client.js:2361
+#: public/js/client.js:2362
 msgid "Permission denied"
 msgstr "권한 거부됨"
 
-#: public/js/client.js:2363 public/js/client.js:2365
+#: public/js/client.js:2364 public/js/client.js:2366
 msgid "Microphone unavailable"
 msgstr "마이크 사용 불가"
 
-#: public/js/client.js:2373
+#: public/js/client.js:2374
 msgid "Mic blocked"
 msgstr "마이크 차단됨"
 
-#: public/js/client.js:2374
+#: public/js/client.js:2375
 msgid "Mic unavailable"
 msgstr "마이크 없음"
 
-#: public/js/client.js:2375
+#: public/js/client.js:2376
 msgid "Disable Mic"
 msgstr "마이크 끄기"
 
-#: public/js/client.js:2375
+#: public/js/client.js:2376
 msgid "Enable Mic"
 msgstr "마이크 켜기"
 
-#: public/js/client.js:2384
+#: public/js/client.js:2385
 msgid "{action} - {channel}"
 msgstr "{action} - {channel}"
 
-#: public/js/client.js:2385
+#: public/js/client.js:2386
 msgid "{channel} voice channel, {status}"
 msgstr "{channel} 음성 채널, {status}"
 
-#: public/js/client.js:2393
+#: public/js/client.js:2394
 msgid "Microphone permission granted"
 msgstr "마이크 권한 허용됨"
 
-#: public/js/client.js:2406
+#: public/js/client.js:2407
 msgid "Microphone is transmitting on the {channel} channel."
 msgstr "마이크가 {channel} 채널로 송신 중이에요."
 
-#: public/js/client.js:2407
+#: public/js/client.js:2408
 msgid "Microphone permission granted; transmission is off."
 msgstr "마이크 권한은 허용됐지만 송신은 꺼져 있어요."
 
-#: public/js/client.js:2409
+#: public/js/client.js:2410
 msgid "Microphone permission was denied by the browser."
 msgstr "브라우저가 마이크 권한을 거부했어요."
 
-#: public/js/client.js:2411
+#: public/js/client.js:2412
 msgid "Microphone capture is unavailable in this browser or context."
 msgstr "이 브라우저나 환경에서는 마이크 입력을 쓸 수 없어요."
 
-#: public/js/client.js:2424
+#: public/js/client.js:2425
 msgid "Voice operation failed."
 msgstr "음성 작업에 실패했어요."
 
-#: public/js/client.js:2686
+#: public/js/client.js:2687
 msgid ""
 "A proxied connection tells the target which bzo it came through, and nothing "
 "else. Your own motto is used on this server."
@@ -1344,134 +1350,134 @@ msgstr ""
 "프록시 연결은 어느 bzo를 거쳐 왔는지만 대상에 알리고, 그 밖의 것은 알리지 않"
 "아요. 이 서버에서는 내 모토가 쓰여요."
 
-#: public/js/client.js:3126
+#: public/js/client.js:3127
 msgid "Preparing battlefield..."
 msgstr "전장 준비 중..."
 
-#: public/js/client.js:3127
+#: public/js/client.js:3128
 msgid "Building world geometry"
 msgstr "월드 지오메트리 구성 중"
 
-#: public/js/client.js:3136
+#: public/js/client.js:3137
 msgid "Placing obstacles..."
 msgstr "장애물 배치 중..."
 
-#: public/js/client.js:3137
+#: public/js/client.js:3138
 msgid "Synchronizing world objects"
 msgstr "월드 오브젝트 동기화 중"
 
-#: public/js/client.js:3165
+#: public/js/client.js:3166
 msgid "Loading vehicle systems..."
 msgstr "차량 시스템 불러오는 중..."
 
-#: public/js/client.js:3166
+#: public/js/client.js:3167
 msgid "Preparing tank models, textures, and audio"
 msgstr "탱크 모델, 텍스처, 오디오 준비 중"
 
-#: public/js/client.js:3183
+#: public/js/client.js:3184
 msgid "Assembling tanks..."
 msgstr "탱크 조립 중..."
 
-#: public/js/client.js:3184
+#: public/js/client.js:3185
 msgid "Creating player vehicles"
 msgstr "플레이어 차량 생성 중"
 
-#: public/js/client.js:3197
+#: public/js/client.js:3198
 msgid "Entering battle..."
 msgstr "전투 진입 중..."
 
-#: public/js/client.js:3197
+#: public/js/client.js:3198
 msgid "Render ready"
 msgstr "렌더링 준비 완료"
 
-#: public/js/client.js:3198
+#: public/js/client.js:3199
 msgid "Joining game"
 msgstr "게임 참가 중"
 
-#: public/js/client.js:3198
+#: public/js/client.js:3199
 msgid "Waiting for player name"
 msgstr "플레이어 이름 대기 중"
 
 #. TRANSLATORS: prefix on a chat line this client wrote itself, not the server
-#: public/js/client.js:3469
+#: public/js/client.js:3470
 msgid "local: {message}"
 msgstr "로컬: {message}"
 
-#: public/js/client.js:3476
+#: public/js/client.js:3477
 msgid "client version: {version}"
 msgstr "클라이언트 버전: {version}"
 
-#: public/js/client.js:3477
+#: public/js/client.js:3478
 msgid "copyright: {copyright}"
 msgstr "저작권: {copyright}"
 
-#: public/js/client.js:3478
+#: public/js/client.js:3479
 msgid "license: {license} ({url})"
 msgstr "라이선스: {license} ({url})"
 
-#: public/js/client.js:3625
+#: public/js/client.js:3631 public/js/client.js:3691
+msgid "Unsilenced \"{callsign}\""
+msgstr "\"{callsign}\" 음소거 해제함"
+
+#: public/js/client.js:3632 public/js/client.js:3671
+msgid "Silenced \"{callsign}\""
+msgstr "\"{callsign}\" 음소거함"
+
+#: public/js/client.js:3646
 msgid "Usage: {command}"
 msgstr "사용법: {command}"
 
 #. TRANSLATORS: /silence and - stay as written
-#: public/js/client.js:3637
+#: public/js/client.js:3658
 msgid "Usage: /silence <callsign>|-"
 msgstr "사용법: /silence <콜사인>|-"
 
-#: public/js/client.js:3644
+#: public/js/client.js:3665
 msgid "Silencing every unauthenticated player"
 msgstr "인증되지 않은 플레이어를 모두 음소거해요"
 
-#: public/js/client.js:3650
-msgid "Silenced \"{callsign}\""
-msgstr "\"{callsign}\" 음소거함"
-
 #. TRANSLATORS: /unsilence and - stay as written
-#: public/js/client.js:3657
+#: public/js/client.js:3678
 msgid "Usage: /unsilence <callsign>|-"
 msgstr "사용법: /unsilence <콜사인>|-"
 
-#: public/js/client.js:3664
+#: public/js/client.js:3685
 msgid "No longer silencing unauthenticated players"
 msgstr "인증되지 않은 플레이어 음소거를 해제했어요"
 
-#: public/js/client.js:3670
-msgid "Unsilenced \"{callsign}\""
-msgstr "\"{callsign}\" 음소거 해제함"
-
-#: public/js/client.js:3727
+#: public/js/client.js:3748
 msgid "Highlight cleared"
 msgstr "강조 해제됨"
 
-#: public/js/client.js:3729
+#: public/js/client.js:3750
 msgid "Invalid highlight pattern: {pattern}"
 msgstr "잘못된 강조 패턴: {pattern}"
 
-#: public/js/client.js:3731
+#: public/js/client.js:3752
 msgid "Highlighting \"{pattern}\""
 msgstr "\"{pattern}\" 강조 중"
 
-#: public/js/client.js:3755
+#: public/js/client.js:3776
 msgid "Saved messages to: {filename}"
 msgstr "메시지 저장 위치: {filename}"
 
-#: public/js/client.js:3763
+#: public/js/client.js:3784
 msgid "Client-side commands: {commands}"
 msgstr "클라이언트 명령: {commands}"
 
-#: public/js/client.js:3917
+#: public/js/client.js:3938
 msgid "No recent direct sender to reply to"
 msgstr "답장할 최근 개인 메시지 발신자가 없어요"
 
-#: public/js/client.js:3925
+#: public/js/client.js:3946
 msgid "No nemesis target available"
 msgstr "네메시스 대상이 없어요"
 
-#: public/js/client.js:4133
+#: public/js/client.js:4154
 msgid "Show Operator Panel (O)"
 msgstr "오퍼레이터 패널 표시 (O)"
 
-#: public/js/client.js:4134
+#: public/js/client.js:4155
 msgid ""
 "Operator: sign in with a bzflag.org global callsign that the server grants "
 "admin to"
@@ -1479,15 +1485,15 @@ msgstr ""
 "오퍼레이터: 이 서버에서 관리자 권한이 있는 bzflag.org 글로벌 콜사인으로 로그"
 "인"
 
-#: public/js/client.js:4175 public/js/client.js:4194
+#: public/js/client.js:4196 public/js/client.js:4215
 msgid "Sign in"
 msgstr "로그인"
 
-#: public/js/client.js:4178
+#: public/js/client.js:4199
 msgid "Global login for {server}"
 msgstr "{server} 글로벌 로그인"
 
-#: public/js/client.js:4179
+#: public/js/client.js:4200
 msgid ""
 "Sign in at bzflag.org to play on {server}. A login is needed for each "
 "target, and bzo never sees your password."
@@ -1495,602 +1501,602 @@ msgstr ""
 "{server}에서 플레이하려면 bzflag.org에서 로그인하세요. 대상마다 로그인이 필요"
 "하고, bzo는 비밀번호를 절대 보지 않아요."
 
-#: public/js/client.js:4187
+#: public/js/client.js:4208
 msgid "Signed in as {callsign}. Activate to sign out."
 msgstr "로그인됨: {callsign}. 실행하면 로그아웃돼요."
 
-#: public/js/client.js:4189
+#: public/js/client.js:4210
 msgid "Signed in, and an admin on this server. Click to sign out."
 msgstr "로그인됨, 이 서버의 관리자예요. 클릭하면 로그아웃돼요."
 
-#: public/js/client.js:4190
+#: public/js/client.js:4211
 msgid "Signed in with a bzflag.org global callsign. Click to sign out."
 msgstr "bzflag.org 글로벌 콜사인으로 로그인됨. 클릭하면 로그아웃돼요."
 
-#: public/js/client.js:4197
+#: public/js/client.js:4218
 msgid "Global login: sign in"
 msgstr "글로벌 로그인: 로그인"
 
-#: public/js/client.js:4198
+#: public/js/client.js:4219
 msgid ""
 "Sign in at bzflag.org with a global callsign. bzo never sees your password."
 msgstr ""
 "bzflag.org에서 글로벌 콜사인으로 로그인하세요. bzo는 비밀번호를 절대 보지 않"
 "아요."
 
-#: public/js/client.js:4218
+#: public/js/client.js:4239
 msgid "Signing out leaves VR. Exit the headset session first."
 msgstr "로그아웃하면 VR을 나가게 돼요. 먼저 헤드셋 세션을 끝내세요."
 
-#: public/js/client.js:4219
+#: public/js/client.js:4240
 msgid "Global login leaves VR. Exit the headset session first."
 msgstr "글로벌 로그인을 하면 VR을 나가게 돼요. 먼저 헤드셋 세션을 끝내세요."
 
-#: public/js/client.js:4659 public/js/client.js:10445
+#: public/js/client.js:4680 public/js/client.js:10489
 msgid "Fetching remote server's map..."
 msgstr "원격 서버의 맵 가져오는 중..."
 
-#: public/js/client.js:4819
+#: public/js/client.js:4846
 msgid "Pausing in {seconds}"
 msgstr "{seconds}초 후 일시 정지"
 
-#: public/js/client.js:4843 public/js/client.js:6660
+#: public/js/client.js:4870 public/js/client.js:6696
 msgid "Self Destructing in {seconds}"
 msgstr "{seconds}초 후 자폭"
 
-#: public/js/client.js:4925
+#: public/js/client.js:4952
 msgid "AutoPilot {pilot}: {intent}"
 msgstr "오토파일럿 {pilot}: {intent}"
 
-#: public/js/client.js:4926
+#: public/js/client.js:4953
 msgid "AutoPilot {pilot}"
 msgstr "오토파일럿 {pilot}"
 
-#: public/js/client.js:6555 server.js:11421
+#: public/js/client.js:6591 server.js:11421
 msgid "You do not have permission to speak on the admin channel."
 msgstr "관리자 채널에서 말할 권한이 없어요."
 
-#: public/js/client.js:6662
+#: public/js/client.js:6698
 msgid "Self Destruct cancelled"
 msgstr "자폭 취소됨"
 
-#: public/js/client.js:6828
+#: public/js/client.js:6868
 msgid "Hide Debug Labels"
 msgstr "디버그 라벨 숨기기"
 
-#: public/js/client.js:6831
+#: public/js/client.js:6871
 msgid "Show Debug Labels"
 msgstr "디버그 라벨 표시"
 
-#: public/js/client.js:6848
+#: public/js/client.js:6888
 msgid "Disable Dynamic Lighting"
 msgstr "동적 조명 끄기"
 
-#: public/js/client.js:6849
+#: public/js/client.js:6889
 msgid "Enable Dynamic Lighting"
 msgstr "동적 조명 켜기"
 
-#: public/js/client.js:6851
+#: public/js/client.js:6891
 msgid "Dynamic Lighting needs more shader uniforms than this browser reports"
 msgstr ""
 "동적 조명에는 이 브라우저가 지원하는 것보다 많은 셰이더 유니폼이 필요해요"
 
-#: public/js/client.js:6860
+#: public/js/client.js:6900
 msgid "Disable Rumble"
 msgstr "진동 끄기"
 
-#: public/js/client.js:6861
+#: public/js/client.js:6901
 msgid "Enable Rumble"
 msgstr "진동 켜기"
 
-#: public/js/client.js:6867
+#: public/js/client.js:6907
 msgid "Disable Anaglyph 3D"
 msgstr "애너글리프 3D 끄기"
 
-#: public/js/client.js:6868
+#: public/js/client.js:6908
 msgid "Enable Anaglyph 3D"
 msgstr "애너글리프 3D 켜기"
 
-#: public/js/client.js:6871
+#: public/js/client.js:6911
 msgid "Anaglyph 3D is unavailable in VR mode"
 msgstr "VR 모드에서는 애너글리프 3D를 쓸 수 없어요"
 
-#: public/js/client.js:6880
+#: public/js/client.js:6920
 msgid "Hide Debug Geometry"
 msgstr "디버그 지오메트리 숨기기"
 
-#: public/js/client.js:6968
+#: public/js/client.js:7008
 msgid "Confirm"
 msgstr "확인"
 
-#: public/js/client.js:7024
+#: public/js/client.js:7064
 msgid "Share View Link: only available while viewing a map"
 msgstr "뷰 링크 공유: 맵을 볼 때만 쓸 수 있어요"
 
-#: public/js/client.js:7029
+#: public/js/client.js:7069
 msgid "View link copied to clipboard"
 msgstr "뷰 링크를 클립보드에 복사했어요"
 
-#: public/js/client.js:7058
+#: public/js/client.js:7098
 msgid "WebXR: {mode}"
 msgstr "WebXR: {mode}"
 
-#: public/js/client.js:7064
+#: public/js/client.js:7104
 msgid "WebXR not supported on this device"
 msgstr "이 기기는 WebXR을 지원하지 않아요"
 
-#: public/js/client.js:7069
+#: public/js/client.js:7109
 msgid "Requesting VR..."
 msgstr "VR 요청 중..."
 
-#: public/js/client.js:7072
+#: public/js/client.js:7112
 msgid "Error: Renderer not available"
 msgstr "오류: 렌더러를 사용할 수 없어요"
 
-#: public/js/client.js:7085
+#: public/js/client.js:7125
 msgid "✓ WebXR VR Mode: ON"
 msgstr "✓ WebXR VR 모드: 켜짐"
 
-#: public/js/client.js:7091
+#: public/js/client.js:7131
 msgid "✗ VR request failed - check server.log"
 msgstr "✗ VR 요청 실패 - server.log 확인"
 
-#: public/js/client.js:7093 public/js/client.js:17566
+#: public/js/client.js:7133 public/js/client.js:17718
 msgid "WebXR VR Mode: OFF"
 msgstr "WebXR VR 모드: 꺼짐"
 
-#: public/js/client.js:7646
+#: public/js/client.js:7686
 msgid "3D renderer unavailable: {reason}"
 msgstr "3D 렌더러를 사용할 수 없어요: {reason}"
 
-#: public/js/client.js:7653
+#: public/js/client.js:7693
 msgid "3D renderer failed to initialize."
 msgstr "3D 렌더러 초기화에 실패했어요."
 
-#: public/js/client.js:7655
+#: public/js/client.js:7695
 msgid "Open the game in an external browser window for full WebGL support."
 msgstr "WebGL을 온전히 쓰려면 외부 브라우저 창에서 게임을 여세요."
 
-#: public/js/client.js:8084
+#: public/js/client.js:8124
 msgid "Connected to server!"
 msgstr "서버에 연결됐어요!"
 
-#: public/js/client.js:8090
+#: public/js/client.js:8130
 msgid "Connected to server"
 msgstr "서버에 연결됨"
 
-#: public/js/client.js:8091
+#: public/js/client.js:8131
 msgid "Waiting for world state"
 msgstr "월드 상태 대기 중"
 
-#: public/js/client.js:8142
+#: public/js/client.js:8182
 msgid "Offline"
 msgstr "오프라인"
 
-#: public/js/client.js:8142
+#: public/js/client.js:8182
 msgid "Cannot reach {host}"
 msgstr "{host}에 연결할 수 없어요"
 
-#: public/js/client.js:8143
+#: public/js/client.js:8183
 msgid "Trying again..."
 msgstr "다시 시도하는 중..."
 
-#: public/js/client.js:8154
+#: public/js/client.js:8194
 msgid "Disconnected from server | Kills: {kills} | Deaths: {deaths}"
 msgstr "서버 연결 끊김 | 킬: {kills} | 데스: {deaths}"
 
-#: public/js/client.js:8159
+#: public/js/client.js:8199
 msgid "Press a key, tap or pull a trigger to rejoin"
 msgstr "키를 누르거나 탭하거나 트리거를 당기면 다시 참가해요"
 
-#: public/js/client.js:8319
+#: public/js/client.js:8359
 msgid "Server error: {error}"
 msgstr "서버 오류: {error}"
 
-#: public/js/client.js:8324
+#: public/js/client.js:8364
 msgid "Server: action completed successfully"
 msgstr "서버: 작업이 완료됐어요"
 
-#: public/js/client.js:8404
+#: public/js/client.js:8444
 msgid "Operator Panel (v{version})"
 msgstr "오퍼레이터 패널 (v{version})"
 
-#: public/js/client.js:8823
+#: public/js/client.js:8863
 msgid "{player} joined"
 msgstr "{player} 님이 참가했어요"
 
-#: public/js/client.js:8868
+#: public/js/client.js:8908
 msgid "{player} left"
 msgstr "{player} 님이 나갔어요"
 
-#: public/js/client.js:8884
+#: public/js/client.js:8924
 msgid "{callsign} not responding"
 msgstr "{callsign} 응답 없음"
 
-#: public/js/client.js:8885
+#: public/js/client.js:8925
 msgid "{callsign} okay"
 msgstr "{callsign} 정상"
 
-#: public/js/client.js:8999
+#: public/js/client.js:9039
 msgid "{player} grabbed {flag}"
 msgstr "{player} 님이 {flag} 획득"
 
-#: public/js/client.js:9050
+#: public/js/client.js:9090
 msgid "{player} dropped {flag}"
 msgstr "{player} 님이 {flag} 버림"
 
-#: public/js/client.js:9144
+#: public/js/client.js:9184
 msgid "{player}: {pilot} taking controls"
 msgstr "{player}: {pilot} 조종 시작"
 
-#: public/js/client.js:9145
+#: public/js/client.js:9185
 msgid "{player}: {pilot} releasing controls"
 msgstr "{player}: {pilot} 조종 해제"
 
-#: public/js/client.js:9177
+#: public/js/client.js:9217
 msgid "{player} paused"
 msgstr "{player} 님이 일시 정지"
 
-#: public/js/client.js:9188
+#: public/js/client.js:9228
 msgid "{player} unpaused"
 msgstr "{player} 님이 재개"
 
-#: public/js/client.js:9318
+#: public/js/client.js:9358
 msgid "Server forced a disconnect"
 msgstr "서버가 연결을 끊었어요"
 
-#: public/js/client.js:9324
+#: public/js/client.js:9364
 msgid "Server updated - reloading..."
 msgstr "서버 업데이트됨 - 다시 불러오는 중..."
 
-#: public/js/client.js:9851
+#: public/js/client.js:9892
 msgid "Got flattened by {player}"
 msgstr "{player} 님에게 깔렸어요"
 
-#: public/js/client.js:9852
+#: public/js/client.js:9893
 msgid "Teammate hit with Genocide by {player}"
 msgstr "팀원이 {player} 님의 제노사이드에 맞았어요"
 
-#: public/js/client.js:9853
+#: public/js/client.js:9894
 msgid "Got shot by {player}"
 msgstr "{player} 님에게 맞았어요"
 
-#: public/js/client.js:9855
+#: public/js/client.js:9896
 msgid "Got flattened by teammate {player}"
 msgstr "팀원 {player} 님에게 깔렸어요"
 
-#: public/js/client.js:9856
+#: public/js/client.js:9897
 msgid "Teammate hit with Genocide by teammate {player}"
 msgstr "팀원이 팀원 {player} 님의 제노사이드에 맞았어요"
 
-#: public/js/client.js:9857
+#: public/js/client.js:9898
 msgid "Got shot by teammate {player}"
 msgstr "팀원 {player} 님에게 맞았어요"
 
-#: public/js/client.js:9893
+#: public/js/client.js:9934
 msgid "Your team flag was captured!"
 msgstr "내 팀 플래그가 점령됐어요!"
 
-#: public/js/client.js:9895
+#: public/js/client.js:9936
 msgid "Time Expired - GAME OVER"
 msgstr "시간 종료 - 게임 오버"
 
-#: public/js/client.js:9897
+#: public/js/client.js:9938
 msgid "Tank Self Destructed"
 msgstr "탱크 자폭"
 
-#: public/js/client.js:9899
+#: public/js/client.js:9940
 msgid "Tank Rusted"
 msgstr "탱크가 녹슬었어요"
 
-#: public/js/client.js:9902 public/js/client.js:9906
+#: public/js/client.js:9943 public/js/client.js:9947
 msgid "Killed by the server"
 msgstr "서버에 의해 처치됨"
 
-#: public/js/client.js:9933
+#: public/js/client.js:9974
 msgid "You killed {player}"
 msgstr "{player} 님을 처치했어요"
 
-#: public/js/client.js:9945
+#: public/js/client.js:9986
 msgid "{player} self-destructed"
 msgstr "{player} 님이 자폭"
 
-#: public/js/client.js:9949
+#: public/js/client.js:9990
 msgid "{player} fell in the water"
 msgstr "{player} 님이 물에 빠짐"
 
-#: public/js/client.js:9954
+#: public/js/client.js:9995
 msgid "{player}: {message}"
 msgstr "{player}: {message}"
 
-#: public/js/client.js:9957
+#: public/js/client.js:9998
 msgid "killed by the server"
 msgstr "서버에 의해 처치됨"
 
-#: public/js/client.js:9963
+#: public/js/client.js:10004
 msgid "{player} was killed by the server"
 msgstr "{player} 님이 서버에 의해 처치됨"
 
-#: public/js/client.js:9968
+#: public/js/client.js:10009
 msgid "{killer} killed {victim}"
 msgstr "{killer} 님이 {victim} 님을 처치"
 
-#: public/js/client.js:10133
+#: public/js/client.js:10174
 msgid "You respawned!"
 msgstr "리스폰했어요!"
 
-#: public/js/client.js:10220
+#: public/js/client.js:10264
 msgid "map {name}"
 msgstr "맵 {name}"
 
-#: public/js/client.js:10222
+#: public/js/client.js:10266
 msgid "plugin {name}"
 msgstr ""
 
-#: public/js/client.js:10226
+#: public/js/client.js:10270
 msgid "nothing uploaded"
 msgstr "업로드 없음"
 
-#: public/js/client.js:10253 public/js/client.js:10728
+#: public/js/client.js:10297 public/js/client.js:10772
 msgid "MOTD: {motd}"
 msgstr "MOTD: {motd}"
 
-#: public/js/client.js:10328
+#: public/js/client.js:10372
 msgid "{count} box"
 msgstr "박스 {count}개"
 
-#: public/js/client.js:10328
+#: public/js/client.js:10372
 msgid "{count} boxes"
 msgstr "박스 {count}개"
 
-#: public/js/client.js:10329
+#: public/js/client.js:10373
 msgid "{count} pyramid"
 msgstr "피라미드 {count}개"
 
-#: public/js/client.js:10329
+#: public/js/client.js:10373
 msgid "{count} pyramids"
 msgstr "피라미드 {count}개"
 
-#: public/js/client.js:10330
+#: public/js/client.js:10374
 msgid "{count} mesh"
 msgstr "메시 {count}개"
 
-#: public/js/client.js:10330
+#: public/js/client.js:10374
 msgid "{count} meshes"
 msgstr "메시 {count}개"
 
-#: public/js/client.js:10335
+#: public/js/client.js:10379
 msgid "{count} base"
 msgstr "기지 {count}개"
 
-#: public/js/client.js:10335
+#: public/js/client.js:10379
 msgid "{count} bases"
 msgstr "기지 {count}개"
 
-#: public/js/client.js:10337
+#: public/js/client.js:10381
 msgid "{count} teleporter"
 msgstr "텔레포터 {count}개"
 
-#: public/js/client.js:10337
+#: public/js/client.js:10381
 msgid "{count} teleporters"
 msgstr "텔레포터 {count}개"
 
-#: public/js/client.js:10340 server.js:2454
+#: public/js/client.js:10384 server.js:2454
 msgid "water"
 msgstr "물"
 
-#: public/js/client.js:10341 server.js:2454
+#: public/js/client.js:10385 server.js:2454
 msgid "weather"
 msgstr "날씨"
 
-#: public/js/client.js:10342 server.js:2454
+#: public/js/client.js:10386 server.js:2454
 msgid "custom ground"
 msgstr "사용자 지정 지면"
 
-#: public/js/client.js:10380 public/js/client.js:10459
+#: public/js/client.js:10424 public/js/client.js:10503
 msgid "View {map}"
 msgstr "{map} 보기"
 
-#: public/js/client.js:10457
+#: public/js/client.js:10501
 msgid "{server} did not answer"
 msgstr "{server} 응답 없음"
 
-#: public/js/client.js:10469 server.js:2384 server.js:2843 server.js:2893
+#: public/js/client.js:10513 server.js:2384 server.js:2843 server.js:2893
 msgid "Watch"
 msgstr "관전"
 
-#: public/js/client.js:10470
+#: public/js/client.js:10514
 msgid "Watch the live game on {server}"
 msgstr "{server}의 라이브 게임 관전"
 
-#: public/js/client.js:10488 public/js/client.js:10496 server.js:2852
+#: public/js/client.js:10532 public/js/client.js:10540 server.js:2852
 msgid "Re-import"
 msgstr "다시 가져오기"
 
-#: public/js/client.js:10492
+#: public/js/client.js:10536
 msgid "Importing…"
 msgstr "가져오는 중…"
 
-#: public/js/client.js:10535
+#: public/js/client.js:10579
 msgid "Loading map..."
 msgstr "맵 불러오는 중..."
 
-#: public/js/client.js:10543
+#: public/js/client.js:10587
 msgid "Building world geometry..."
 msgstr "월드 지오메트리 구성 중..."
 
-#: public/js/client.js:10607
+#: public/js/client.js:10651
 msgid "{count} watching now"
 msgstr "{count}명 관전 중"
 
-#: public/js/client.js:10610
+#: public/js/client.js:10654
 msgid "Watch {name}"
 msgstr "{name} 관전"
 
-#: public/js/client.js:10646
+#: public/js/client.js:10690
 msgid "That server's map could not be fetched"
 msgstr "그 서버의 맵을 가져올 수 없었어요"
 
-#: public/js/client.js:10664
+#: public/js/client.js:10708
 msgid "import failed"
 msgstr "가져오기 실패"
 
-#: public/js/client.js:10664
+#: public/js/client.js:10708
 msgid "Could not load that server's map: {reason}"
 msgstr "그 서버의 맵을 불러올 수 없었어요: {reason}"
 
-#: public/js/client.js:10878
+#: public/js/client.js:10922
 msgid "{team} Limit:"
 msgstr "{team} 제한:"
 
-#: public/js/client.js:10971
+#: public/js/client.js:11015
 msgid "Failed: {error}"
 msgstr ""
 
-#: public/js/client.js:11076
+#: public/js/client.js:11120
 msgid "No limit"
 msgstr "제한 없음"
 
-#: public/js/client.js:11185
+#: public/js/client.js:11229
 msgid "Restart"
 msgstr "다시 시작"
 
-#: public/js/client.js:11189
+#: public/js/client.js:11233
 msgid "Starts a new game: every player reloads into the new settings"
 msgstr "새 게임 시작: 모든 플레이어가 새 설정으로 다시 불러와요"
 
-#: public/js/client.js:11190
+#: public/js/client.js:11234
 msgid "Applies the staged changes"
 msgstr "대기 중인 변경 사항을 적용해요"
 
-#: public/js/client.js:11537
+#: public/js/client.js:11581
 msgid "Paused"
 msgstr "일시 정지됨"
 
-#: public/js/client.js:11538
+#: public/js/client.js:11582
 msgid "Sealed"
 msgstr "건물 안"
 
-#: public/js/client.js:12470
+#: public/js/client.js:12514
 msgid "Already following someone"
 msgstr "이미 누군가를 따라가는 중"
 
-#: public/js/client.js:12506 public/js/client.js:12631
+#: public/js/client.js:12550 public/js/client.js:12675
 msgid "Looking at {player}"
 msgstr "{player} 님을 보는 중"
 
-#: public/js/client.js:12615
+#: public/js/client.js:12659
 msgid "{player} locked on me"
 msgstr "{player} 님이 나를 조준 고정"
 
-#: public/js/client.js:12625
+#: public/js/client.js:12669
 msgid "Looking at nothing"
 msgstr "아무것도 보지 않는 중"
 
-#: public/js/client.js:12631
+#: public/js/client.js:12675
 msgid "Locked on {player}"
 msgstr "{player} 님을 조준 고정"
 
-#: public/js/client.js:12867
+#: public/js/client.js:13012
 msgid "Clear ({count})"
 msgstr "지우기 ({count})"
 
-#: public/js/client.js:12867 public/js/list-page.js:534
+#: public/js/client.js:13012 public/js/list-page.js:534
 msgid "Clear"
 msgstr "지우기"
 
 # review: was left in English to match the help page; now translated
-#: public/js/client.js:12967
+#: public/js/client.js:13112
 msgid "SPOTTED: {player}"
 msgstr "발견: {player}"
 
-#: public/js/client.js:13082 public/js/client.js:13088
+#: public/js/client.js:13227 public/js/client.js:13233
 msgid "nobody"
 msgstr "없음"
 
-#: public/js/client.js:13092
+#: public/js/client.js:13237
 msgid "Leader {who}"
 msgstr "선두: {who}"
 
-#: public/js/client.js:13094 public/js/client.js:13099
+#: public/js/client.js:13239 public/js/client.js:13244
 msgid "Tracking {who}"
 msgstr "{who} 추적 중"
 
-#: public/js/client.js:13095
+#: public/js/client.js:13240
 msgid "Following {who}"
 msgstr "{who} 따라가는 중"
 
-#: public/js/client.js:13096
+#: public/js/client.js:13241
 msgid "Driving with {who}"
 msgstr "{who} 동승 중"
 
-#: public/js/client.js:13101 public/js/hud.js:629 public/js/input.js:1389
+#: public/js/client.js:13246 public/js/hud.js:629 public/js/input.js:1397
 msgid "First Person"
 msgstr "1인칭"
 
-#: public/js/client.js:13102 public/js/hud.js:630 public/js/input.js:1390
+#: public/js/client.js:13247 public/js/hud.js:630 public/js/input.js:1398
 msgid "Third Person"
 msgstr "3인칭"
 
 # review: 전체 보기
-#: public/js/client.js:13103 public/js/hud.js:631 public/js/input.js:1391
+#: public/js/client.js:13248 public/js/hud.js:631 public/js/input.js:1399
 msgid "Overview"
 msgstr "전체 보기"
 
-#: public/js/client.js:13104
+#: public/js/client.js:13249
 msgid "Roaming"
 msgstr "자유 시점"
 
-#: public/js/client.js:13393 public/js/client.js:13467
+#: public/js/client.js:13538 public/js/client.js:13612
 msgid "autopilot disabled"
 msgstr "오토파일럿 꺼짐"
 
-#: public/js/client.js:13402
+#: public/js/client.js:13547
 msgid "autopilot not allowed on this server"
 msgstr "이 서버에서는 오토파일럿을 쓸 수 없어요"
 
-#: public/js/client.js:13414
+#: public/js/client.js:13559
 msgid "{pilot} has the controls"
 msgstr "{pilot} 조종 중"
 
-#: public/js/client.js:13419
+#: public/js/client.js:13564
 msgid "You may not enable the Autopilot more than once every five seconds."
 msgstr "오토파일럿은 5초에 한 번만 켤 수 있어요."
 
-#: public/js/client.js:13424
+#: public/js/client.js:13569
 msgid "autopilot enabled"
 msgstr "오토파일럿 켜짐"
 
-#: public/js/client.js:13447
+#: public/js/client.js:13592
 msgid "Not allowed"
 msgstr "허용 안 됨"
 
-#: public/js/client.js:13447 public/js/input.js:1094 public/js/input.js:1104
-#: public/js/input.js:1108
+#: public/js/client.js:13592 public/js/input.js:1102 public/js/input.js:1112
+#: public/js/input.js:1116
 msgid "Unavailable"
 msgstr "사용 불가"
 
-#: public/js/client.js:13450
+#: public/js/client.js:13595
 msgid "None"
 msgstr "없음"
 
-#: public/js/client.js:14272
+#: public/js/client.js:14417
 msgid "Zoned"
 msgstr "존 진입"
 
-#: public/js/client.js:14272
+#: public/js/client.js:14417
 msgid "Unzoned"
 msgstr "존 해제"
 
-#: public/js/client.js:15073 public/js/client.js:15090
+#: public/js/client.js:15218 public/js/client.js:15235
 msgid "unidentified"
 msgstr "미확인"
 
-#: public/js/client.js:15110
+#: public/js/client.js:15255
 msgid "unknown"
 msgstr "알 수 없음"
 
-#: public/js/client.js:15121
+#: public/js/client.js:15266
 msgid ""
 "This server bounces every shot off walls, whatever flag fired it, so the "
 "Ricochet flag is not in play here."
@@ -2098,79 +2104,79 @@ msgstr ""
 "이 서버에서는 어떤 플래그로 쏘든 모든 탄이 벽에 튕기므로 도탄 플래그는 나오"
 "지 않아요."
 
-#: public/js/client.js:15122
+#: public/js/client.js:15267
 msgid "On this server only the Ricochet flag bounces shots off walls."
 msgstr "이 서버에서는 도탄 플래그만 탄을 벽에 튕겨요."
 
-#: public/js/client.js:15189
+#: public/js/client.js:15334
 msgid "{flag} {release}"
 msgstr "{flag}: {release}"
 
-#: public/js/client.js:15200
+#: public/js/client.js:15345
 msgid "Can't drop the flag while zoned"
 msgstr "존 안에서는 플래그를 버릴 수 없어요"
 
-#: public/js/client.js:15204
+#: public/js/client.js:15349
 msgid "Can't drop a flag while inside a building"
 msgstr "건물 안에서는 플래그를 버릴 수 없어요"
 
-#: public/js/client.js:15254
+#: public/js/client.js:15399
 msgid "in {seconds}s"
 msgstr "{seconds}초 후"
 
-#: public/js/client.js:15255
+#: public/js/client.js:15400
 msgid "after {count} kill"
 msgstr "{count}킬 후"
 
-#: public/js/client.js:15255
+#: public/js/client.js:15400
 msgid "after {count} kills"
 msgstr "{count}킬 후"
 
-#: public/js/client.js:15256
+#: public/js/client.js:15401
 msgid "on the antidote"
 msgstr "해독 플래그 획득 시"
 
-#: public/js/client.js:15257
+#: public/js/client.js:15402
 msgid "stays until it kills you"
 msgstr "죽을 때까지 안 떨어짐"
 
-#: public/js/client.js:15258
+#: public/js/client.js:15403
 msgid "{first} or {second}"
 msgstr "{first} 또는 {second}"
 
-#: public/js/client.js:15259
+#: public/js/client.js:15404
 msgid "shakes off {ways}"
 msgstr "{ways} 떨쳐 냄"
 
-#: public/js/client.js:15315
+#: public/js/client.js:15460
 msgid "Flag Alert!!!"
 msgstr "플래그 경보!!!"
 
-#: public/js/client.js:15323
+#: public/js/client.js:15468
 msgid "Team Grab!!!"
 msgstr "팀 플래그 탈취!!!"
 
-#: public/js/client.js:15339
+#: public/js/client.js:15484
 msgid "{thief} stole {victim}'s {flag} flag"
 msgstr "{thief} 님이 {victim} 님의 {flag} 플래그를 훔침"
 
-#: public/js/client.js:15370
+#: public/js/client.js:15515
 msgid "Closest Flag: {flag}"
 msgstr "가장 가까운 플래그: {flag}"
 
-#: public/js/client.js:15432
+#: public/js/client.js:15577
 msgid "{player} took their own flag into {team} territory"
 msgstr "{player} 님이 자기 팀 플래그를 {team} 진영에 가져감"
 
-#: public/js/client.js:15440
+#: public/js/client.js:15585
 msgid "Don't capture your own flag!!!"
 msgstr "자기 플래그를 점령하지 마세요!!!"
 
-#: public/js/client.js:15446
+#: public/js/client.js:15591
 msgid "{player} captured the {team} flag"
 msgstr "{player} 님이 {team} 플래그 점령"
 
-#: public/js/client.js:17062 public/js/client.js:17063
+#: public/js/client.js:17214 public/js/client.js:17215
 msgid "Exit WebXR VR Mode"
 msgstr "WebXR VR 모드 종료"
 
@@ -2282,11 +2288,11 @@ msgstr "K-D"
 msgid "Kills-Deaths"
 msgstr "킬-데스"
 
-#: public/js/hud.js:995 public/js/hud.js:1457
+#: public/js/hud.js:995 public/js/hud.js:1475
 msgid "Rank {score}"
 msgstr "랭크 {score}"
 
-#: public/js/hud.js:1033 public/js/hud.js:1403
+#: public/js/hud.js:1033 public/js/hud.js:1421
 msgid "Player"
 msgstr "플레이어"
 
@@ -2354,168 +2360,168 @@ msgstr "관전 중"
 msgid "(rabbit)"
 msgstr "(래빗)"
 
-#: public/js/input.js:942
+#: public/js/input.js:947
 msgid "Mouse steering is unavailable in VR: there is no cursor to read"
 msgstr "VR에서는 마우스 조종을 쓸 수 없어요: 읽을 커서가 없어요"
 
-#: public/js/input.js:943
+#: public/js/input.js:948
 msgid "Virtual controls steer instead of the mouse"
 msgstr "마우스 대신 화면 컨트롤로 조종해요"
 
-#: public/js/input.js:944
+#: public/js/input.js:949
 msgid "Mouse steering needs a mouse attached"
 msgstr "마우스 조종에는 마우스 연결이 필요해요"
 
-#: public/js/input.js:1082
+#: public/js/input.js:1089 public/js/input.js:1090
 msgid "No players"
 msgstr "플레이어 없음"
 
 # review: 중거리
-#: public/js/input.js:1090 public/js/radar.js:32
+#: public/js/input.js:1098 public/js/radar.js:32
 msgid "Medium"
 msgstr "중거리"
 
-#: public/js/input.js:1095 public/js/input.js:1097 public/js/input.js:1109
+#: public/js/input.js:1103 public/js/input.js:1105 public/js/input.js:1117
 msgid "On"
 msgstr "켬"
 
-#: public/js/input.js:1100
+#: public/js/input.js:1108
 msgid "Installed"
 msgstr "설치됨"
 
-#: public/js/input.js:1101
+#: public/js/input.js:1109
 msgid "Install"
 msgstr "설치"
 
-#: public/js/input.js:1101
+#: public/js/input.js:1109
 msgid "Browser menu"
 msgstr "브라우저 메뉴"
 
-#: public/js/input.js:1105 public/js/input.js:1119
+#: public/js/input.js:1113 public/js/input.js:1127
 msgid "Exit VR"
 msgstr "VR 종료"
 
-#: public/js/input.js:1105
+#: public/js/input.js:1113
 msgid "Enter VR"
 msgstr "VR 시작"
 
-#: public/js/input.js:1111 public/js/settings.js:60
+#: public/js/input.js:1119 public/js/settings.js:63
 msgid "Open >"
 msgstr "열기 >"
 
-#: public/js/input.js:1113 public/js/settings.js:62
+#: public/js/input.js:1121 public/js/settings.js:65
 msgid "Activate"
 msgstr "실행"
 
-#: public/js/input.js:1171
+#: public/js/input.js:1179
 msgid "Hide Settings"
 msgstr "설정 숨기기"
 
-#: public/js/input.js:1171
+#: public/js/input.js:1179
 msgid "Show Settings"
 msgstr "설정 표시"
 
-#: public/js/input.js:1185
+#: public/js/input.js:1193
 msgid "Settings: Hidden"
 msgstr "설정: 숨김"
 
-#: public/js/input.js:1185
+#: public/js/input.js:1193
 msgid "Settings: Shown"
 msgstr "설정: 표시"
 
-#: public/js/input.js:1211
+#: public/js/input.js:1219
 msgid "Hide Audio Settings"
 msgstr "오디오 설정 숨기기"
 
-#: public/js/input.js:1220
+#: public/js/input.js:1228
 msgid "Audio Settings: Hidden"
 msgstr "오디오 설정: 숨김"
 
-#: public/js/input.js:1225
+#: public/js/input.js:1233
 msgid "Audio Settings: Shown"
 msgstr "오디오 설정: 표시"
 
-#: public/js/input.js:1234
+#: public/js/input.js:1242
 msgid "Hide Help (?)"
 msgstr "도움말 숨기기 (?)"
 
-#: public/js/input.js:1234
+#: public/js/input.js:1242
 msgid "Show Help (?)"
 msgstr "도움말 표시 (?)"
 
-#: public/js/input.js:1243
+#: public/js/input.js:1251
 msgid "Help Panel: Hidden"
 msgstr "도움말 패널: 숨김"
 
-#: public/js/input.js:1249
+#: public/js/input.js:1257
 msgid "Help Panel: Shown"
 msgstr "도움말 패널: 표시"
 
-#: public/js/input.js:1286
+#: public/js/input.js:1294
 msgid "iOS: use Share, Add to Home Screen for fullscreen"
 msgstr "iOS: 전체 화면은 공유 > 홈 화면에 추가를 사용하세요"
 
-#: public/js/input.js:1432
+#: public/js/input.js:1440
 msgid "Camera: {mode}"
 msgstr "카메라: {mode}"
 
-#: public/js/input.js:1459
+#: public/js/input.js:1467
 msgid "Controls: Mouse and keyboard"
 msgstr "조작: 마우스와 키보드"
 
-#: public/js/input.js:1459
+#: public/js/input.js:1467
 msgid "Controls: Keyboard"
 msgstr "조작: 키보드"
 
-#: public/js/input.js:1467
+#: public/js/input.js:1475
 msgid "Hide Virtual Controls"
 msgstr "화면 컨트롤 숨기기"
 
-#: public/js/input.js:1467
+#: public/js/input.js:1475
 msgid "Show Virtual Controls"
 msgstr "화면 컨트롤 표시"
 
-#: public/js/input.js:1504
+#: public/js/input.js:1512
 msgid "Virtual Controls: Enabled"
 msgstr "화면 컨트롤: 켜짐"
 
-#: public/js/input.js:1504
+#: public/js/input.js:1512
 msgid "Virtual Controls: Disabled"
 msgstr "화면 컨트롤: 꺼짐"
 
-#: public/js/input.js:1511
+#: public/js/input.js:1519
 msgid "Hide Operator Panel (Shift+O)"
 msgstr ""
 
-#: public/js/input.js:1511
+#: public/js/input.js:1519
 msgid "Show Operator Panel (Shift+O)"
 msgstr ""
 
-#: public/js/input.js:1518
+#: public/js/input.js:1526
 msgid "Hide View"
 msgstr "뷰어 숨기기"
 
-#: public/js/input.js:1518
+#: public/js/input.js:1526
 msgid "Show View"
 msgstr "뷰어 표시"
 
-#: public/js/input.js:1529
+#: public/js/input.js:1537
 msgid "Operator: enter a name to become an operator on this server"
 msgstr "오퍼레이터: 이 서버의 오퍼레이터가 되려면 이름을 입력하세요"
 
-#: public/js/input.js:1540
+#: public/js/input.js:1548
 msgid "Operator Panel: Hidden"
 msgstr "오퍼레이터 패널: 숨김"
 
-#: public/js/input.js:1563
+#: public/js/input.js:1571
 msgid "Operator Panel: Shown"
 msgstr "오퍼레이터 패널: 표시"
 
-#: public/js/input.js:1580
+#: public/js/input.js:1588
 msgid "View: Hidden"
 msgstr "뷰어: 숨김"
 
-#: public/js/input.js:1586
+#: public/js/input.js:1594
 msgid "View: Shown"
 msgstr "뷰어: 표시"
 
@@ -2760,65 +2766,69 @@ msgid "Hunt"
 msgstr "헌트"
 
 #: public/js/settings.js:22
+msgid "Silence"
+msgstr ""
+
+#: public/js/settings.js:25
 msgid "Autopilot"
 msgstr "오토파일럿"
 
-#: public/js/settings.js:23
+#: public/js/settings.js:26
 msgid "Radar Range"
 msgstr "레이더 범위"
 
-#: public/js/settings.js:25
+#: public/js/settings.js:28
 msgid "Language"
 msgstr "언어"
 
-#: public/js/settings.js:26
+#: public/js/settings.js:29
 msgid "Mouse Steering"
 msgstr "마우스 조종"
 
 # review: 화면 컨트롤
-#: public/js/settings.js:27
+#: public/js/settings.js:30
 msgid "Virtual Controls"
 msgstr "화면 컨트롤"
 
-#: public/js/settings.js:28
+#: public/js/settings.js:31
 msgid "Rumble"
 msgstr "진동"
 
-#: public/js/settings.js:29
+#: public/js/settings.js:32
 msgid "Fullscreen"
 msgstr "전체 화면"
 
-#: public/js/settings.js:30
+#: public/js/settings.js:33
 msgid "Install App"
 msgstr "앱 설치"
 
-#: public/js/settings.js:31
+#: public/js/settings.js:34
 msgid "Debug HUD"
 msgstr "디버그 HUD"
 
 # review: 디버그 지오메트리
-#: public/js/settings.js:32
+#: public/js/settings.js:35
 msgid "Debug Geometry"
 msgstr "디버그 지오메트리"
 
-#: public/js/settings.js:33
+#: public/js/settings.js:36
 msgid "Debug Labels"
 msgstr "디버그 라벨"
 
-#: public/js/settings.js:34
+#: public/js/settings.js:37
 msgid "Wireframe"
 msgstr "와이어프레임"
 
 # review: 오퍼레이터, or 운영자
-#: public/js/settings.js:39
+#: public/js/settings.js:42
 msgid "Operator"
 msgstr "오퍼레이터"
 
-#: public/js/settings.js:41
+#: public/js/settings.js:44
 msgid "Share View Link"
 msgstr "뷰 링크 공유"
 
-#: public/js/settings.js:42
+#: public/js/settings.js:45
 msgid "VR Mode"
 msgstr "VR 모드"
 

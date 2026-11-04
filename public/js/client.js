@@ -165,6 +165,7 @@ import {
   getScoreboardStatsHeader,
   buildScoreboardRows,
   getScoreboardHuntLabel,
+  getScoreboardSilenceLabel,
   SCOREBOARD_HUNT_COLOR,
   SCOREBOARD_STATUS_COLOR,
   getActiveHudAlerts,
@@ -3610,6 +3611,26 @@ function applySilenceToVoice(playerId) {
 // unless the peer's own mute state actually flips.
 function refreshAllSilencedVoice() {
   tanks.forEach((_tank, playerId) => applySilenceToVoice(playerId));
+  // The 🔇 on a row is the same list, so every change to it repaints the
+  // board. Guarded: the list loads before the board exists.
+  if (typeof refreshScoreboards === 'function' && tanks.size > 0) refreshScoreboards();
+}
+
+// One player silenced or let back, by the callsign `/silence` keeps -- what
+// the scoreboard cursor and the Settings row both do on select.
+function toggleSilencedPlayer(playerId) {
+  const name = tanks.get(playerId)?.userData?.playerState?.name?.trim();
+  if (!name || playerId === myPlayerId) return false;
+  const key = name.toLowerCase();
+  const silenced = silencedCallsigns.has(key);
+  if (silenced) silencedCallsigns.delete(key);
+  else silencedCallsigns.add(key);
+  saveSilenceState();
+  refreshAllSilencedVoice();
+  showMessage(silenced
+    ? t('Unsilenced "{callsign}"', { callsign: name })
+    : t('Silenced "{callsign}"', { callsign: name }));
+  return true;
 }
 
 // cmdAutoPilot (clientCommands.cxx:490), which upstream reaches from its own
@@ -4714,6 +4735,12 @@ let huntRowTargetId = null;
 // here to avoid -- it simply does nothing then. Not a player id any roster can
 // produce.
 const HUNT_ROW_CLEAR_ID = 'hunt:clear';
+// The silence cursor `K` opens on the scoreboard, and the Settings row's own
+// subject for the same thing -- kept apart for the reason the hunt's two are.
+// The cursor opens on no row at all, so `K` then Enter silences nobody.
+let silenceCursorOpen = false;
+let silenceCursorId = null;
+let silenceRowTargetId = null;
 
 // Both live up here rather than beside the row they serve because
 // `initHudControls` refreshes the Settings menu synchronously as it binds, long
@@ -6512,11 +6539,20 @@ function handleGameplayKeydown(event) {
   // open (playing.cxx:609), so Up and Down pick a row rather than driving and
   // Enter commits rather than firing.
   if (huntState.isSelecting() && handleHuntSelectionKey(event)) return true;
+  if (silenceCursorOpen && handleSilenceSelectionKey(event)) return true;
   // huntKeyEvent (ScoreboardRenderer.cxx:283), on upstream's own two bindings:
   // `U` is `hunt` (ActionBinding.cxx:153) and `7` is `addhunt`
   // (clientConfig.cxx:259).
   if ((event.code === 'KeyU' || event.code === 'Digit7') && !event.repeat) {
+    if (silenceCursorOpen) closeSilenceCursor();
     pressHuntKey(event.code === 'Digit7');
+    return true;
+  }
+  // Upstream's `silence` key (ActionBinding.cxx:120), as a cursor on the board
+  // rather than a prompt (docs/controls-plan.md).
+  if (event.code === 'KeyK' && !event.repeat && !event.shiftKey && !event.ctrlKey
+    && !event.altKey && !event.metaKey) {
+    pressSilenceKey();
     return true;
   }
   // `autopilot` on `9` (ActionBinding.cxx:157).
@@ -6745,6 +6781,10 @@ initHudControls({
   getHuntRowValue,
   stepHuntRow,
   toggleHuntRow,
+  getSilenceRowValue,
+  stepSilenceRow,
+  toggleSilenceRow,
+  hasSilenceCandidates: () => getSilenceRowPlayers().length > 0,
   getAutopilotRowValue,
   stepAutopilotRow,
   selectAutopilotRow,
@@ -9516,6 +9556,7 @@ function removePlayer(playerId) {
     // and hunting that has run out of targets is already over by the time the
     // board is drawn.
     pruneHuntedPlayers();
+    pruneSilenceCursor();
     refreshScoreboards();
   }
   removePausedSphere(playerId);
@@ -10159,12 +10200,15 @@ function getScoreboardModel() {
         rabbitChase: rabbitChaseEnabled,
         huntedIds: huntState.hunted,
         huntCursorId: huntState.getCursorId(),
+        isSilenced: isPlayerSilenced,
+        silenceCursorId: silenceCursorOpen ? silenceCursorId : null,
       }),
       teamRows: getTeamScoreRows(teamScores),
       // Only the column heading reads this; the rows carry their own rank.
       rabbitChase: rabbitChaseEnabled,
       // Only the heading reads this too: the cursor itself is on a row.
       huntSelecting: huntState.isSelecting(),
+      silenceSelecting: silenceCursorOpen,
       timeLeft: getDisplayedMatchTimeLeft(),
       gameOver: matchGameOver,
       // Only an observer can pick a roam target, and only an explicit one is
@@ -10191,7 +10235,7 @@ function getScoreboardModel() {
 // the Hunt row in Settings, a marked player leaving -- repaints the board, so
 // asking here covers all of them rather than each remembering to.
 function syncHuntScoreboard() {
-  if (huntState.isSelecting()) borrowScoreboard();
+  if (huntState.isSelecting() || silenceCursorOpen) borrowScoreboard();
   else returnScoreboard();
 }
 
@@ -12810,6 +12854,107 @@ function pruneHuntedPlayers() {
   // A cursor whose row has left, or that has nobody left to point at. Asked
   // after the marks, because a departure can empty both at once.
   huntState.refreshCursor(getHuntCandidates());
+}
+
+// --- silencing ----------------------------------------------------------
+
+// The rows the silence cursor may land on, in the board's order: everybody
+// but you, observers included, since an observer talks too.
+function getSilenceCandidates() {
+  return getScoreboardModel().rows.filter((row) => !row.isCurrent).map((row) => row.id);
+}
+
+// `K`: open the cursor on no row, or close it. One cursor at a time on the
+// board, so opening it backs out of a hunt being aimed.
+function pressSilenceKey() {
+  if (silenceCursorOpen) {
+    closeSilenceCursor();
+    return;
+  }
+  if (huntState.isSelecting()) huntState.exitSelect();
+  silenceCursorOpen = true;
+  silenceCursorId = null;
+  releaseHuntSelectionKeys();
+  refreshScoreboards();
+}
+
+function closeSilenceCursor() {
+  silenceCursorOpen = false;
+  silenceCursorId = null;
+  refreshScoreboards();
+}
+
+// The hunt cursor's keys, for the silence cursor: Up and Down (and `I` and
+// `Space`) move it, fire toggles the row it is on, and Escape closes it. From
+// no row, down lands on the first and up on the last.
+function handleSilenceSelectionKey(event) {
+  if (event.code === 'Escape') {
+    closeSilenceCursor();
+    return true;
+  }
+  const direction = (event.code === 'ArrowDown' || event.code === 'KeyI') ? 1
+    : (event.code === 'ArrowUp' || event.code === 'Space') ? -1
+      : 0;
+  const candidates = getSilenceCandidates();
+  if (direction !== 0) {
+    releaseHuntSelectionKeys();
+    const at = candidates.indexOf(silenceCursorId);
+    if (candidates.length === 0) silenceCursorId = null;
+    else if (at === -1) silenceCursorId = direction > 0 ? candidates[0] : candidates[candidates.length - 1];
+    else silenceCursorId = candidates[(at + direction + candidates.length) % candidates.length];
+    refreshScoreboards();
+    return true;
+  }
+  if (event.code !== FIRE_KEY) return false;
+  releaseHuntSelectionKeys();
+  if (silenceCursorId !== null && candidates.includes(silenceCursorId)) toggleSilencedPlayer(silenceCursorId);
+  return true;
+}
+
+// A cursor left on somebody who has gone goes back to no row.
+function pruneSilenceCursor() {
+  if (silenceCursorOpen && silenceCursorId !== null && !tanks.has(silenceCursorId)) silenceCursorId = null;
+}
+
+// The Settings row: the same players in alphabetical order, as the Hunt row
+// steps them and for the same reason, observers included.
+function getSilenceRowPlayers() {
+  const players = [];
+  tanks.forEach((tank, id) => {
+    const state = tank.userData?.playerState;
+    if (!state || id === myPlayerId) return;
+    players.push({ id, name: state.name || 'Player' });
+  });
+  return players.sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' })
+    || String(a.id).localeCompare(String(b.id)));
+}
+
+function getSilenceRowTarget() {
+  const players = getSilenceRowPlayers();
+  const found = players.find((player) => player.id === silenceRowTargetId);
+  if (found) return found;
+  silenceRowTargetId = players[0]?.id ?? null;
+  return players[0] ?? null;
+}
+
+function getSilenceRowValue() {
+  const target = getSilenceRowTarget();
+  if (!target) return null;
+  return isPlayerSilenced(target.id) ? `${target.name} ${getScoreboardSilenceLabel({ silenced: true })}` : target.name;
+}
+
+function stepSilenceRow(direction) {
+  const players = getSilenceRowPlayers();
+  if (players.length < 2) return false;
+  const at = players.findIndex((player) => player.id === silenceRowTargetId);
+  const next = at === -1 ? 0 : (at + (direction < 0 ? -1 : 1) + players.length) % players.length;
+  silenceRowTargetId = players[next].id;
+  return true;
+}
+
+function toggleSilenceRow() {
+  const target = getSilenceRowTarget();
+  return target ? toggleSilencedPlayer(target.id) : false;
 }
 
 // --- the Hunt row in Settings -------------------------------------------
@@ -16976,6 +17121,7 @@ function ensureXRScoreboardOverlay() {
     // the flag the same way there.
     const pausedLabel = player.paused ? '⏳' : (player.notResponding ? '[nr]' : '');
     const micLabel = player.speaking ? '\u{1F50A}' : player.micOn ? '\u{1F3A4}' : '';
+    const silenceLabel = player.silenced ? getScoreboardSilenceLabel(player) : '';
     // A carried flag shares the row with the name, so the name gives up room for
     // it rather than the panel growing a column nothing usually fills. The mark
     // comes out of the same allowance.
@@ -16987,6 +17133,7 @@ function ensureXRScoreboardOverlay() {
       - (flagLabel ? ctx.measureText(flagLabel).width : 0)
       - (pausedLabel ? ctx.measureText(pausedLabel).width : 0)
       - (micLabel ? ctx.measureText(micLabel).width : 0)
+      - (silenceLabel ? ctx.measureText(silenceLabel).width : 0)
       - (rabbitLabel ? ctx.measureText(rabbitLabel).width : 0)
       - (huntLabel ? ctx.measureText(huntLabel).width : 0);
     const shown = fitText(ctx, String(player.name || 'Player'), Math.max(0, nameWidth));
@@ -17016,6 +17163,11 @@ function ensureXRScoreboardOverlay() {
       ctx.fillStyle = rowColor;
       ctx.fillText(micLabel, labelRight, y);
       labelRight += ctx.measureText(micLabel).width;
+    }
+    if (silenceLabel) {
+      ctx.fillStyle = rowColor;
+      ctx.fillText(silenceLabel, labelRight, y);
+      labelRight += ctx.measureText(silenceLabel).width;
     }
     if (rabbitLabel) {
       ctx.fillStyle = colorToCSS(player.rabbit.color);

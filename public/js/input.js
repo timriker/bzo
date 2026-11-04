@@ -759,6 +759,10 @@ const defaultHudContext = {
   getHuntRowValue: () => null,
   stepHuntRow: () => false,
   toggleHuntRow: () => false,
+  getSilenceRowValue: () => null,
+  stepSilenceRow: () => false,
+  toggleSilenceRow: () => false,
+  hasSilenceCandidates: () => false,
   hasHuntCandidates: () => false,
   // The Autopilot row, which asks client.js the same way.
   getAutopilotRowValue: () => '',
@@ -777,6 +781,7 @@ const domRefs = {
   debugBtn: null,
   cameraBtn: null,
   huntBtn: null,
+  silenceBtn: null,
   autopilotBtn: null,
   helpBtn: null,
   playerOptionsBtn: null,
@@ -1002,6 +1007,7 @@ function stopPropagationForHud(ids, preventDefault = true) {
 // and neither adjust nor activate will touch a disabled row.
 function syncHuntRows() {
   if (domRefs.huntBtn) domRefs.huntBtn.disabled = !hudContext.hasHuntCandidates();
+  if (domRefs.silenceBtn) domRefs.silenceBtn.disabled = !hudContext.hasSilenceCandidates();
 }
 
 export function refreshHudButtons() {
@@ -1043,6 +1049,7 @@ export function adjustSettingsMenuRow(id, direction) {
   // its own rather than a `choice` with a special case.
   if (item.kind === 'pick') {
     if (id === 'huntBtn') return hudContext.stepHuntRow(direction);
+    if (id === 'silenceBtn') return hudContext.stepSilenceRow(direction);
     if (id === 'autopilotBtn') return hudContext.stepAutopilotRow(direction);
     return false;
   }
@@ -1080,6 +1087,7 @@ function getSettingsMenuValue(id, item) {
   // The player the row is pointed at and whether they are marked, or why there
   // is nobody to point at. Composed in client.js, which owns the roster.
   if (id === 'huntBtn') return hudContext.getHuntRowValue() ?? t('No players');
+  if (id === 'silenceBtn') return hudContext.getSilenceRowValue() ?? t('No players');
   if (id === 'autopilotBtn') return hudContext.getAutopilotRowValue();
   if (id === 'cameraBtn') {
     return hudContext.isObserver()
@@ -1653,6 +1661,7 @@ function bindHudElements() {
   domRefs.debugBtn = document.getElementById('debugBtn');
   domRefs.cameraBtn = document.getElementById('cameraBtn');
   domRefs.huntBtn = document.getElementById('huntBtn');
+  domRefs.silenceBtn = document.getElementById('silenceBtn');
   domRefs.autopilotBtn = document.getElementById('autopilotBtn');
   domRefs.helpBtn = document.getElementById('helpBtn');
   domRefs.playerOptionsBtn = document.getElementById('playerOptionsBtn');
@@ -1768,6 +1777,17 @@ function bindHudElements() {
       const zone = getMenuClickZone(e, domRefs.huntBtn);
       if (zone === 0) hudContext.toggleHuntRow();
       else hudContext.stepHuntRow(zone);
+      refreshSettingsMenu();
+    });
+  }
+
+  if (domRefs.silenceBtn) {
+    domRefs.silenceBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const zone = getMenuClickZone(e, domRefs.silenceBtn);
+      if (zone === 0) hudContext.toggleSilenceRow();
+      else hudContext.stepSilenceRow(zone);
       refreshSettingsMenu();
     });
   }

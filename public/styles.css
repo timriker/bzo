@@ -1030,7 +1030,8 @@ body.scoreboard-collapsed #mainhud {
 /* A tight suffix like the flag and status glyph, not a word off to the side
    like the rabbit mark. */
 .scoreboardPaused,
-.scoreboardMic {
+.scoreboardMic,
+.scoreboardSilence {
   white-space: nowrap;
 }
 
@@ -1099,8 +1100,15 @@ body.scoreboard-collapsed #mainhud {
    -- about to be marked -- from the rows already marked. Both the cursor arrow
    and the `*SEL*` at the head of the board wear it. */
 .scoreboardHunt.huntCursor,
+.scoreboardSilence.silenceCursor,
 .scoreboardHuntSel {
   animation: huntPulse 1s ease-in-out infinite;
+}
+
+/* The silence cursor on a row not yet silenced: the speaker it would get,
+   greyed until Enter gives it. */
+.scoreboardSilence.silenceCandidate {
+  filter: grayscale(1);
 }
 
 .scoreboardHuntSel {
@@ -1117,6 +1125,7 @@ body.scoreboard-collapsed #mainhud {
    loses the blink; the arrow still says which row the cursor is on. */
 @media (prefers-reduced-motion: reduce) {
   .scoreboardHunt.huntCursor,
+  .scoreboardSilence.silenceCursor,
   .scoreboardHuntSel {
     animation: none;
   }

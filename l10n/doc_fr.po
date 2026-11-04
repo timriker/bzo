@@ -164,6 +164,15 @@ msgid "`,` — message nemesis target"
 msgstr "`,` — envoyer un message à ta némésis"
 
 #: docs/help/controls.md
+msgid ""
+"`K` — silence a player: a cursor opens on the scoreboard, on no row and "
+"headed `*SILENCE*`. `Up` / `Down` pick a player, `Enter` silences them or "
+"lets them back, and `K` or `Esc` closes it. A silenced player's row shows "
+"🔇, and their chat and voice stop reaching you. `Settings -> Silence` does "
+"the same without a keyboard, and `/silence` and `/unsilence` take a callsign"
+msgstr ""
+
+#: docs/help/controls.md
 msgid "`Page Up` / `Page Down` — scroll chat history"
 msgstr "`Page Up` / `Page Down` — faire défiler l'historique du chat"
 
