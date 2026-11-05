@@ -20,7 +20,7 @@ const os = require('os');
 const {
   PROTOCOL_VERSION, GAME_STYLES, sendFrame,
 } = require('./remote-world-import.cjs');
-const { parseProxyHeader, setSocketPeer } = require('./proxy-protocol.cjs');
+const { parseProxyHeader, opensWithProxyHeader, setSocketPeer } = require('./proxy-protocol.cjs');
 
 // BZ_CONNECT_HEADER (version.h:31): what a client says first.
 const CONNECT_HEADER = 'BZFLAG\r\n\r\n';
@@ -64,6 +64,14 @@ const REJECT_ID_BANNED = 0x000B;
 const IDLE_TIMEOUT_MS = 30000;
 // Connections held at once; past it a client gets 0xff, bzfs's "full".
 const MAX_CONNECTIONS = 32;
+// BZFlag connections one address may have open at once without a verified
+// login, banned or not. One stops counting once its login is verified
+// (`link.verified`); a trusted proxy that names no client is exempt.
+const MAX_CONNECTIONS_PER_ADDRESS = 8;
+// MaxPacketLen (Protocol.h:47) holds a message's 4-byte header and its body,
+// so a body is at most 1020 bytes. A longer one drops the connection, as
+// bzfs's "huge packet" does (NetHandler.cxx:581).
+const MAX_PAYLOAD_LEN = 1024 - 4;
 // The ping packet's hex form (Ping.cxx `packHex`): eight u16s, thirteen u8s.
 const PING_HEX_LENGTH = 4 * 8 + 2 * 13;
 
@@ -255,6 +263,7 @@ function packReject(reason, code = REJECT_BAD_REQUEST) {
 // payload)` seats a client that sent MsgEnter, and `link.onFrame` then takes
 // every frame it sends. `trustsProxyHeader(address)` says whether a peer may
 // open with a PROXY header naming its client (`proxyProtocolFrom`).
+// `banRefusal(address)` is the reject reason for a banned address, or null.
 // FlagType::packCustom (Flag.cxx:281): a plugin's flag type, as a client's
 // MsgFlagType carries it -- abbreviation, quality, shot type (always normal,
 // as 2.4's), name, help.
@@ -276,7 +285,7 @@ function packCustomFlagType(type) {
 function createBzflagServer({
   getStatus, getPingStatus = getStatus, getPlayers, getTeams, getGameSettings, getWorld, getCacheUrl = () => null, onEnter,
   reserveId, releaseId, rejectReason, log = () => {}, countIn = () => {}, countOut = () => {},
-  onHttp = null, onTls = null, trustsProxyHeader = () => false,
+  onHttp = null, onTls = null, trustsProxyHeader = () => false, banRefusal = () => null,
   // The flag types plugins registered: `{ abbreviation, name, help, quality }`.
   getCustomFlagTypes = () => [],
   // False keeps the port to the web app, WebTransport and WebRTC: BZFlag
@@ -285,6 +294,10 @@ function createBzflagServer({
 }) {
   const startedAt = Date.now();
   const connections = new Set();
+  // Open BZFlag connections by address, and the addresses at the cap whose
+  // refusal has been logged.
+  const perAddress = new Map();
+  const capLogged = new Set();
 
   // A connection's id is the player id it will have if it joins
   // (`reserveId`), handed back when it closes.
@@ -362,6 +375,7 @@ function createBzflagServer({
       if (!world || payload.length < 4) return reject(connection, 'world asked for before its hash');
       sendFrame(socket, 'gw', packWorldChunk(world.blob, payload.readUInt32BE(0)));
     } else if (code === 'en') {
+      if (connection.ban) return reject(connection, connection.ban, REJECT_IP_BANNED);
       if (!connection.world) return reject(connection, 'joined before the world');
       const link = {
         id: connection.id,
@@ -380,6 +394,8 @@ function createBzflagServer({
         cork: () => socket.cork(),
         uncork: () => socket.uncork(),
         reject: (reason, code) => reject(connection, reason, code),
+        // Its login checked out: it no longer counts toward its address's cap.
+        verified: () => connection.uncount(),
         // `getPlayerHostInfo`'s ` udp` and `+` (NetHandler.cxx:831): heard
         // from on UDP, and sent to on UDP.
         udpIn: () => Boolean(connection.udpAddr),
@@ -400,16 +416,38 @@ function createBzflagServer({
   }
 
   function accept(socket) {
+    const ip = peerAddress(socket.remoteAddress);
     const connection = {
-      socket, id: 0xff, address: `${peerAddress(socket.remoteAddress)}:${socket.remotePort}`, buffer: Buffer.alloc(0), greeted: false,
+      socket, id: 0xff, address: `${ip}:${socket.remotePort}`, buffer: Buffer.alloc(0), greeted: false,
       asked: [],
     };
+    let counted = !trustsProxyHeader(ip);
+    const uncount = () => {
+      if (!counted) return;
+      counted = false;
+      const held = perAddress.get(ip) - 1;
+      if (held > 0) perAddress.set(ip, held);
+      else perAddress.delete(ip);
+      capLogged.delete(ip);
+    };
+    connection.uncount = uncount;
+    if (counted) {
+      const held = perAddress.get(ip) || 0;
+      if (held >= MAX_CONNECTIONS_PER_ADDRESS) {
+        if (!capLogged.has(ip)) log(`[BZFLAG] ${ip} refused: ${held} connections open`);
+        capLogged.add(ip);
+        socket.destroy();
+        return;
+      }
+      perAddress.set(ip, held + 1);
+    }
     socket.setNoDelay(true);
     socket.setTimeout(IDLE_TIMEOUT_MS, () => socket.destroy());
     socket.on('error', () => {});
     socket.on('close', () => {
       clearTimeout(connection.gameTimeTimer);
       connections.delete(connection);
+      uncount();
       if (connection.id !== 0xff) releaseId(connection.id);
       if (connection.link) {
         connection.link.closed = true;
@@ -434,22 +472,32 @@ function createBzflagServer({
         }
         connection.buffer = connection.buffer.subarray(CONNECT_HEADER.length);
         connection.greeted = true;
-        connection.id = freeId();
+        // A banned address is told so at MsgEnter, as bzfs tells it
+        // (bzfs.cxx:2217), but holds no player number meanwhile: its hello
+        // names slot 0, which the client keeps only until the reject.
+        connection.ban = banRefusal(ip);
+        if (!connection.ban) connection.id = freeId();
         // `MakePlayer` (bzfs.cxx:1398): the version and a player id, 0xff
         // when full.
         const hello = Buffer.alloc(9);
         hello.write(PROTOCOL_VERSION, 0, 8, 'latin1');
-        hello.writeUInt8(connection.id, 8);
+        hello.writeUInt8(connection.ban ? 0 : connection.id, 8);
         socket.write(hello);
-        if (connection.id === 0xff) {
+        if (!connection.ban && connection.id === 0xff) {
           socket.end();
           return;
         }
-        connections.add(connection);
+        if (!connection.ban) connections.add(connection);
         sendGameTime(connection, GAME_TIME_START_RATE);
       }
       while (connection.buffer.length >= 4) {
         const length = connection.buffer.readUInt16BE(0);
+        if (length > MAX_PAYLOAD_LEN) {
+          log(`[BZFLAG] ${connection.address} dropped: a ${length}-byte message`);
+          connection.rejected = true;
+          socket.destroy();
+          return;
+        }
         if (connection.buffer.length < 4 + length) return;
         const code = connection.buffer.toString('latin1', 2, 4);
         const frame = Buffer.from(connection.buffer.subarray(4, 4 + length));
@@ -479,6 +527,7 @@ function createBzflagServer({
       socket.destroy();
       return;
     }
+    const trusted = trustsProxyHeader(from);
     const timer = setTimeout(() => socket.destroy(), CLASSIFY_TIMEOUT_MS);
     const handOff = (to) => {
       clearTimeout(timer);
@@ -503,10 +552,12 @@ function createBzflagServer({
       buffer = Buffer.concat([buffer, chunk]);
       if (!proxyRead) {
         const header = parseProxyHeader(buffer);
-        if (header.state === 'more') return;
+        // An untrusted peer is refused on the signature alone, not left to
+        // send all of the 64 KB a v2 length may claim.
+        if (header.state === 'more' && (trusted || !opensWithProxyHeader(buffer))) return;
         proxyRead = true;
         if (header.state !== 'none') {
-          const refusal = !trustsProxyHeader(from) ? 'not in proxyProtocolFrom'
+          const refusal = !trusted ? 'not in proxyProtocolFrom'
             : header.state === 'bad' ? header.reason : null;
           if (refusal) {
             clearTimeout(timer);

@@ -13206,6 +13206,10 @@ let bzflagServer = null;
     acceptBzflag: LISTEN_IS_BZFLAG,
     getCustomFlagTypes: () => pluginFlagTypes,
     trustsProxyHeader: (address) => addressMatchesWhitelist(address, proxyProtocolFrom),
+    banRefusal: (address) => {
+      const ban = bans.ipBanned(address);
+      return ban ? bans.ipBanRefusal(ban) : null;
+    },
     // The rest of what the port is asked: the web app, plain or over TLS.
     onHttp: (socket) => server.emit('connection', socket),
     onTls: httpsServer ? (socket) => httpsServer.emit('connection', socket) : null,
@@ -13518,6 +13522,7 @@ async function seatNativeClient(link, payload) {
     logError(`[BZFLAG] "${enter.callsign}" CHECKTOKENS failed: ${error.message}`);
   }
   if (link.closed) return;
+  if (login?.good) link.verified();
   const socket = new EventEmitter();
   socket.OPEN = 1;
   socket.readyState = 1;

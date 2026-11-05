@@ -30,6 +30,13 @@ function couldBe(buffer, prefix) {
   return buffer.subarray(0, length).equals(prefix.subarray(0, length));
 }
 
+// Whether `buffer` opens with a whole v1 or v2 signature: a header for
+// certain, though perhaps not all of it yet.
+function opensWithProxyHeader(buffer) {
+  const starts = (prefix) => buffer.length >= prefix.length && couldBe(buffer, prefix);
+  return starts(V1_PREFIX) || starts(V2_SIGNATURE);
+}
+
 function ipv6Text(bytes) {
   const groups = [];
   for (let i = 0; i < 16; i += 2) groups.push(bytes.readUInt16BE(i).toString(16));
@@ -109,4 +116,4 @@ function setSocketPeer(socket, address, port) {
   Object.defineProperty(socket, 'remoteFamily', { value: address.includes(':') ? 'IPv6' : 'IPv4', configurable: true });
 }
 
-module.exports = { parseProxyHeader, setSocketPeer };
+module.exports = { parseProxyHeader, opensWithProxyHeader, setSocketPeer };

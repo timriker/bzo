@@ -104,6 +104,113 @@ for (const trusted of [true, false]) {
   await mux.close?.();
 }
 
+// Limits on the BZFlag port: an untrusted PROXY signature is refused before
+// the rest of its header, a message longer than MaxPacketLen allows drops the
+// connection, one address holds only so many connections, and a banned
+// address is rejected at MsgEnter without holding a player number.
+{
+  const port = 20000 + Math.floor(Math.random() * 20000);
+  let banned = null;
+  let reserved = 0;
+  const mux = createBzflagServer({
+    getStatus: () => ({}), getPlayers: () => [], getTeams: () => [], getGameSettings: () => ({}),
+    getWorld: () => ({ blob: Buffer.alloc(0), hash: 'h' }), onEnter: (link) => link.verified(),
+    reserveId: () => { reserved += 1; return 5; }, releaseId: () => {},
+    rejectReason: () => '', banRefusal: () => banned,
+  });
+  await mux.listen('127.0.0.1', port);
+  // Writes `opening`, then resolves with everything received and how long the
+  // server took to close, or with what arrived by `waitMs` if it did not.
+  const session = (opening, { then = null, waitMs = 2000 } = {}) => new Promise((resolve) => {
+    const started = Date.now();
+    let got = Buffer.alloc(0);
+    let sentThen = false;
+    const socket = net.connect(port, '127.0.0.1', () => socket.write(opening));
+    const finish = (closed) => {
+      clearTimeout(timer);
+      socket.destroy();
+      resolve({ got, closed, ms: Date.now() - started });
+    };
+    const timer = setTimeout(() => finish(false), waitMs);
+    socket.on('data', (data) => {
+      got = Buffer.concat([got, data]);
+      if (then && !sentThen && got.length >= 9) {
+        sentThen = true;
+        socket.write(then);
+      }
+    });
+    socket.on('close', () => finish(true));
+    socket.on('error', () => {});
+  });
+  const message = (code, body = []) => {
+    const out = Buffer.alloc(4 + body.length);
+    out.writeUInt16BE(body.length, 0);
+    out.write(code, 2, 2, 'latin1');
+    Buffer.from(body).copy(out, 4);
+    return out;
+  };
+  const header = Buffer.from('BZFLAG\r\n\r\n', 'latin1');
+  const claimsMore = Buffer.from([...SIGNATURE, 0x21, 0x11, 0, 0]);
+  claimsMore.writeUInt16BE(60000, 14);
+  const proxy = await session(claimsMore);
+  assert.ok(proxy.closed && proxy.ms < 1000, 'an untrusted v2 signature is refused at once');
+
+  const huge = await session(header, { then: message('qg', new Array(1021).fill(0)) });
+  assert.ok(huge.closed, 'a 1021-byte message drops the connection');
+  const largest = await session(header, { then: message('lp', new Array(1020).fill(0)), waitMs: 500 });
+  assert.ok(!largest.closed, 'a 1020-byte message is allowed');
+
+  const open = await Promise.all(Array.from({ length: 8 }, () => new Promise((resolve) => {
+    const socket = net.connect(port, '127.0.0.1', () => {
+      socket.write(header);
+      resolve(socket);
+    });
+    socket.on('error', () => {});
+  })));
+  await new Promise((resolve) => setTimeout(resolve, 100));
+  const ninth = await session(header);
+  assert.ok(ninth.closed && ninth.got.length === 0, 'the ninth connection from one address is refused');
+  for (const socket of open) socket.destroy();
+  await new Promise((resolve) => setTimeout(resolve, 100));
+
+  // A verified login stops counting: eight logged in leave room for eight more.
+  const enter = () => new Promise((resolve) => {
+    const socket = net.connect(port, '127.0.0.1', () => socket.write(Buffer.concat([header, message('wh')])));
+    let got = Buffer.alloc(0);
+    socket.on('data', (data) => {
+      got = Buffer.concat([got, data]);
+      if (got.includes(Buffer.from('wh', 'latin1'))) {
+        socket.write(message('en'));
+        setTimeout(() => resolve(socket), 50);
+      }
+    });
+    socket.on('error', () => {});
+  });
+  const seated = [];
+  for (let i = 0; i < 8; i += 1) seated.push(await enter());
+  const guests = await Promise.all(Array.from({ length: 8 }, () => new Promise((resolve) => {
+    const socket = net.connect(port, '127.0.0.1', () => {
+      socket.write(header);
+      resolve(socket);
+    });
+    socket.on('error', () => {});
+  })));
+  await new Promise((resolve) => setTimeout(resolve, 100));
+  const pastGuests = await session(header);
+  assert.ok(pastGuests.closed && pastGuests.got.length === 0, 'eight guests still fill the cap');
+  for (const socket of [...seated, ...guests]) socket.destroy();
+  await new Promise((resolve) => setTimeout(resolve, 100));
+
+  banned = 'REFUSED:testing';
+  reserved = 0;
+  const ban = await session(header, { then: message('en') });
+  assert.equal(reserved, 0, 'a banned address holds no player number');
+  assert.equal(ban.got.readUInt8(8), 0, 'its hello names slot 0');
+  assert.ok(ban.got.includes(Buffer.from('rj', 'latin1')) && ban.got.includes(Buffer.from('REFUSED:testing')),
+    'MsgEnter is rejected with the ban');
+  await mux.close?.();
+}
+
 // What a datagram on the BZFlag port is (#189): BZFlag by its length and
 // code, STUN by its length and cookie, DTLS and QUIC by the first byte.
 const frame = (code, body = []) => {
