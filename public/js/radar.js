@@ -411,9 +411,29 @@ let radarObstacleCache = null;
 // Frames drawn each way since the last `renderer.stats` line.
 export const radarCacheFrames = { cached: 0, live: 0, bakes: 0 };
 
+// Half the side of the square the image covers: the world's, or wider where
+// an obstacle reaches past the world's edge (hix's outer walkways, #203), so
+// the image holds every footprint the live path would draw.
+let radarCacheExtent = { source: null, mapSize: 0, half: 0 };
+function getRadarCacheHalf(mapSize) {
+  if (radarCacheExtent.source !== client.OBSTACLES || radarCacheExtent.mapSize !== mapSize) {
+    let half = mapSize / 2;
+    for (const { obs, cullRadius } of getRadarObstacles()) {
+      half = Math.max(half, Math.abs(obs.pos[0]) + cullRadius, Math.abs(obs.pos[1]) + cullRadius);
+    }
+    for (const { obs } of getRadarMeshObstacles()) {
+      const { minX, maxX, minY, maxY } = obs.bounds;
+      half = Math.max(half, -minX, maxX, -minY, maxY);
+    }
+    radarCacheExtent = { source: client.OBSTACLES, mapSize, half };
+  }
+  return radarCacheExtent.half;
+}
+
 function getRadarObstacleCache({ mapSize, pz, size, radarDistance, scale }) {
   const resolution = scale * RADAR_CACHE_OVERSAMPLE;
-  const pixels = Math.ceil(mapSize * resolution);
+  const half = getRadarCacheHalf(mapSize);
+  const pixels = Math.ceil(2 * half * resolution);
   if (!(pixels > 0) || pixels > RADAR_CACHE_MAX_PIXELS) {
     radarCacheFrames.live += 1;
     return { ready: false, bakeNow: false };
@@ -433,6 +453,7 @@ function getRadarObstacleCache({ mapSize, pz, size, radarDistance, scale }) {
       canvas,
       ctx: canvas.getContext('2d'),
       resolution,
+      half,
       bakedZ: NaN,
       lastZ: pz,
       stillSince: now,
@@ -448,7 +469,7 @@ function getRadarObstacleCache({ mapSize, pz, size, radarDistance, scale }) {
   const heightTolerance = (RADAR_DEPTH_FACTOR / RADAR_FILL_ALPHA_STEPS) / 2;
   if (Math.abs(pz - cache.bakedZ) <= heightTolerance) {
     radarCacheFrames.cached += 1;
-    return { ready: true, canvas: cache.canvas };
+    return { ready: true, canvas: cache.canvas, half: cache.half };
   }
   radarCacheFrames.live += 1;
   const bakeNow = now - cache.stillSince >= RADAR_CACHE_SETTLE_MS;
@@ -458,6 +479,7 @@ function getRadarObstacleCache({ mapSize, pz, size, radarDistance, scale }) {
     canvas: cache.canvas,
     ctx: cache.ctx,
     resolution: cache.resolution,
+    half: cache.half,
     markBaked: () => {
       cache.bakedZ = pz;
       radarCacheFrames.bakes += 1;
@@ -1105,7 +1127,6 @@ export function updateRadar() {
       // put each polygon, clipped to the square the live path clips to. The
       // image holds (x, -y), so the player is at (px, -py) on it.
       const k = radarWorldHalfExtent / radarDistance;
-      const halfMap = mapSize / 2;
       client.radarCtx.save();
       client.radarCtx.beginPath();
       client.radarCtx.rect(center - radarWorldHalfExtent, center - radarWorldHalfExtent,
@@ -1115,18 +1136,18 @@ export function updateRadar() {
       client.radarCtx.scale(k, k);
       client.radarCtx.rotate(azimuth - (Math.PI / 2));
       client.radarCtx.translate(-px, py);
-      client.radarCtx.drawImage(cache.canvas, -halfMap, -halfMap, mapSize, mapSize);
+      client.radarCtx.drawImage(cache.canvas, -cache.half, -cache.half, cache.half * 2, cache.half * 2);
       client.radarCtx.restore();
       paintRadarObstacleLayer(panelView, 'only');
     } else {
       paintRadarObstacleLayer(panelView, 'all');
       if (cache.bakeNow) {
         // Painted in the world's own frame, north up: no player offset, the
-        // map's whole square, a pixel per `cache.resolution` world units.
+        // square `cache.half` covers, a pixel per `cache.resolution` world units.
         const target = fillTarget;
-        fillTarget = { ctx: cache.ctx, offset: (mapSize / 2) * cache.resolution, scale: cache.resolution };
+        fillTarget = { ctx: cache.ctx, offset: cache.half * cache.resolution, scale: cache.resolution };
         cache.ctx.clearRect(0, 0, cache.canvas.width, cache.canvas.height);
-        paintRadarObstacleLayer({ ox: 0, oy: 0, cos: 0, sin: 1, half: mapSize / 2 }, 'skip');
+        paintRadarObstacleLayer({ ox: 0, oy: 0, cos: 0, sin: 1, half: cache.half }, 'skip');
         fillTarget = target;
         cache.markBaked();
       }
