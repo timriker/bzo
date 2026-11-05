@@ -6681,11 +6681,11 @@ function handleGameplayKeydown(event) {
   }
   // Shift is ignored: + and = are one key, and demanding the shift made zooming
   // out a two-handed job while zooming in needed none.
-  if (event.code === 'Equal' || event.code === 'NumpadAdd') {
+  if (event.code === 'Equal') {
     adjustRadarZoom(1);
     return true;
   }
-  if (event.code === 'Minus' || event.code === 'NumpadSubtract') {
+  if (event.code === 'Minus') {
     adjustRadarZoom(-1);
     return true;
   }

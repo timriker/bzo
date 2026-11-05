@@ -105,6 +105,66 @@ export function resetHeldKeyPeak() {
   peakHeldCodes = [...heldKeyCodes];
 }
 
+// The numeric keypad, as upstream reads it (SDL2Display.cxx:204-326): with
+// Num Lock off a key is the navigation key printed under its digit, and on,
+// it is the main key with the same character -- upstream's binding lookup
+// matches a keypad key by its character as well as its button
+// (KeyManager.cxx:257), so keypad 1 sets the radar range as 1 does. 5 with
+// Num Lock off is nothing. Which mode a key is in shows in its `key`, the
+// one place a Mac keypad (no Num Lock) and Shift with the keypad on Windows
+// both tell the truth; `code` names the physical key either way, and is
+// rewritten here, ahead of every other listener, to the key it stands for.
+const NUMPAD_KEYS = {
+  Numpad0: ['Insert', 'Digit0'],
+  Numpad1: ['End', 'Digit1'],
+  Numpad2: ['ArrowDown', 'Digit2'],
+  Numpad3: ['PageDown', 'Digit3'],
+  Numpad4: ['ArrowLeft', 'Digit4'],
+  Numpad5: [null, 'Digit5'],
+  Numpad6: ['ArrowRight', 'Digit6'],
+  Numpad7: ['Home', 'Digit7'],
+  Numpad8: ['ArrowUp', 'Digit8'],
+  Numpad9: ['PageUp', 'Digit9'],
+  NumpadDecimal: ['Delete', 'Period'],
+  NumpadEnter: ['Enter', 'Enter'],
+  NumpadAdd: ['Equal', 'Equal'],
+  NumpadSubtract: ['Minus', 'Minus'],
+  NumpadDivide: ['Slash', 'Slash'],
+  NumpadEqual: ['Equal', 'Equal'],
+  NumpadComma: ['Comma', 'Comma'],
+};
+// What each physical keypad key went down as, so its release lifts the same
+// key even when Num Lock changed while it was held.
+const numpadHeldAs = new Map();
+
+export function numpadKeyCode(code, key) {
+  const pair = NUMPAD_KEYS[code];
+  if (!pair) return code;
+  const [navigation, character] = pair;
+  // Navigation mode names a key rather than printing one character.
+  return key && key.length > 1 && key !== 'Enter' ? (navigation ?? '') : character;
+}
+
+function relabelNumpadKey(event) {
+  const physical = event.code;
+  if (!NUMPAD_KEYS[physical]) return;
+  let code;
+  if (event.type === 'keyup') {
+    code = numpadHeldAs.get(physical) ?? numpadKeyCode(physical, event.key);
+    numpadHeldAs.delete(physical);
+  } else {
+    code = numpadKeyCode(physical, event.key);
+    numpadHeldAs.set(physical, code);
+  }
+  Object.defineProperty(event, 'code', { value: code });
+}
+
+if (typeof window !== 'undefined') {
+  window.addEventListener('keydown', relabelNumpadKey, { capture: true });
+  window.addEventListener('keyup', relabelNumpadKey, { capture: true });
+  window.addEventListener('blur', () => numpadHeldAs.clear());
+}
+
 function trackHeldKeys() {
   window.addEventListener('keydown', (e) => {
     // An auto-repeat is the same key still down, not another one.
@@ -875,7 +935,7 @@ const GAMEPLAY_OWNED_KEYS = new Set([
   'KeyU', 'Digit7',
   // Autopilot
   'Digit9',
-  'Slash', 'Backslash', 'Minus', 'Equal', 'NumpadAdd', 'NumpadSubtract',
+  'Slash', 'Backslash', 'Minus', 'Equal',
   // Not a binding: Firefox opens its link quick-find on an apostrophe and eats
   // the keyboard until dismissed, which from inside a tank looks like a freeze.
   'Quote',
