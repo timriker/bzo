@@ -71,10 +71,23 @@ assert.ok(parsed.includes('"/img/mywall"'), 'a bare name goes to /img/');
 assert.ok(parsed.includes('"/img/sign.png"'));
 assert.ok(!parsed.includes('/img/boxwall'), 'a stock name is not local');
 
+// Every texture name or URL anywhere in a parsed map or compiled world, for
+// comparing whole rather than by substring.
+const textureValues = (value, found = new Set()) => {
+  if (Array.isArray(value)) value.forEach((item) => textureValues(item, found));
+  else if (value && typeof value === 'object') {
+    for (const [key, item] of Object.entries(value)) {
+      if (typeof item === 'string' && /texture|^name$/i.test(key) && /^(\/|https?:)/.test(item)) found.add(item);
+      else textureValues(item, found);
+    }
+  }
+  return found;
+};
+
 // A texture URL on one of this server's own names reaches a browser as its
 // path; another host's stays a URL.
 configureBzwParse({ ownHosts: ['bz.example.org'] });
-const own = JSON.stringify(parseBZWMap('own.bzw', { quiet: true, text: [
+const own = textureValues(parseBZWMap('own.bzw', { quiet: true, text: [
   'material', '  name a', '  texture http://bz.example.org:5154/img/a.png', 'end',
   'material', '  name b', '  texture https://BZ.example.org/img/b.png', 'end',
   'material', '  name c', '  texture http://images.bzflag.org/x/c.png', 'end',
@@ -82,17 +95,17 @@ const own = JSON.stringify(parseBZWMap('own.bzw', { quiet: true, text: [
   'box', '  position 50 0 0', '  size 10 10 10', '  matref b', 'end',
   'box', '  position -50 0 0', '  size 10 10 10', '  matref c', 'end',
 ].join('\n') }));
-assert.ok(own.includes('"/img/a.png"') && own.includes('"/img/b.png"'), 'our host becomes a path');
-assert.ok(!own.includes('bz.example.org'));
-assert.ok(own.includes('"//images.bzflag.org/x/c.png"'), 'another host stays a URL');
+assert.deepEqual([...own].sort(), ['//images.bzflag.org/x/c.png', '/img/a.png', '/img/b.png'],
+  'our host becomes a path; another host stays a URL');
 configureBzwParse({ ownHosts: [] });
 
 // A native client is sent an `/img/` name as an absolute URL, and a bare
 // name as written.
 const names = (tree) => JSON.stringify(tree);
 const rename = (name) => (name.startsWith('/img/') ? `http://example.org:5154${name}` : name);
-const native = names(compileBzwWorld(text, { textureName: rename }));
-assert.ok(native.includes('http://example.org:5154/img/sign.png'));
+const nativeTree = compileBzwWorld(text, { textureName: rename });
+const native = names(nativeTree);
+assert.ok(textureValues(nativeTree).has('http://example.org:5154/img/sign.png'));
 assert.ok(native.includes('"mywall"'));
 assert.ok(!names(compileBzwWorld(text)).includes('http://'), 'no rename without one');
 
