@@ -39,6 +39,15 @@ msgid ""
 msgstr ""
 
 #: docs/help/controls.md
+msgid ""
+"The numeric keypad works as in BZFlag. With Num Lock off its keys are the "
+"ones printed under the digits: the arrows drive, `1` is `End`, `9` and `3` "
+"are `Page Up` and `Page Down`, and `.` is `Delete`. With Num Lock on, a "
+"keypad key is the main key with the same character. Keypad `Enter` shoots "
+"either way."
+msgstr "Het numerieke toetsenblok werkt zoals in BZFlag. Met Num Lock uit zijn de toetsen die onder de cijfers gedrukt staan: de pijlen rijden, `1` is `End`, `9` en `3` zijn `Page Up` en `Page Down`, en `.` is `Delete`. Met Num Lock aan is een toets op het toetsenblok de hoofdtoets met hetzelfde teken. `Enter` op het toetsenblok schiet in beide gevallen."
+
+#: docs/help/controls.md
 msgid "Driving"
 msgstr "Rijden"
 
@@ -505,13 +514,14 @@ msgid "Mouse"
 msgstr "Muis"
 
 #: docs/help/controls.md
-#, fuzzy
 msgid ""
-"`Shift`+`M` turns mouse steering on and off, and nothing else does: the keys "
-"never take it away behind your back."
+"`Shift`+`M` or Settings -> Mouse Steering turns mouse steering on and off. "
+"`Esc` turns it off once it has released the pointer and left fullscreen. "
+"Driving never changes it."
 msgstr ""
-"`M` zet muisbesturing aan en uit, en niets anders: de toetsen nemen haar "
-"nooit achter je rug om af."
+"`Shift`+`M` of Instellingen -> Muisbesturing zet muisbesturing aan en uit. "
+"`Esc` zet haar uit zodra het de aanwijzer heeft vrijgegeven en volledig "
+"scherm heeft verlaten. Rijden verandert haar nooit."
 
 #: docs/help/controls.md
 msgid "The wheel"
@@ -1106,6 +1116,14 @@ msgstr ""
 "Het is vrije software onder de [GNU Affero General Public License v3.0]"
 "(https://www.gnu.org/licenses/agpl-3.0.html). De broncode is beschikbaar op "
 "[github.com/timriker/bzo](/source)."
+
+#, fuzzy
+#~ msgid ""
+#~ "`Shift`+`M` turns mouse steering on and off, and nothing else does: the "
+#~ "keys never take it away behind your back."
+#~ msgstr ""
+#~ "`M` zet muisbesturing aan en uit, en niets anders: de toetsen nemen haar "
+#~ "nooit achter je rug om af."
 
 #, fuzzy
 #~ msgid "`N` — message everyone (or click the `Send` button)"

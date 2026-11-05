@@ -39,6 +39,15 @@ msgid ""
 msgstr ""
 
 #: docs/help/controls.md
+msgid ""
+"The numeric keypad works as in BZFlag. With Num Lock off its keys are the "
+"ones printed under the digits: the arrows drive, `1` is `End`, `9` and `3` "
+"are `Page Up` and `Page Down`, and `.` is `Delete`. With Num Lock on, a "
+"keypad key is the main key with the same character. Keypad `Enter` shoots "
+"either way."
+msgstr "Det numeriska tangentbordet fungerar som i BZFlag. Med Num Lock av är dess tangenter de som står under siffrorna: pilarna kör, `1` är `End`, `9` och `3` är `Page Up` och `Page Down`, och `.` är `Delete`. Med Num Lock på är en tangent på det numeriska tangentbordet huvudtangenten med samma tecken. `Enter` på det numeriska tangentbordet skjuter i båda fallen."
+
+#: docs/help/controls.md
 msgid "Driving"
 msgstr "Körning"
 
@@ -499,13 +508,14 @@ msgid "Mouse"
 msgstr "Mus"
 
 #: docs/help/controls.md
-#, fuzzy
 msgid ""
-"`Shift`+`M` turns mouse steering on and off, and nothing else does: the keys "
-"never take it away behind your back."
+"`Shift`+`M` or Settings -> Mouse Steering turns mouse steering on and off. "
+"`Esc` turns it off once it has released the pointer and left fullscreen. "
+"Driving never changes it."
 msgstr ""
-"`M` slår på och av musstyrning, och inget annat gör det: tangenterna tar den "
-"aldrig ifrån dig bakom din rygg."
+"`Shift`+`M` eller Inställningar -> Musstyrning slår på och av musstyrning. "
+"`Esc` slår av den när den har släppt pekaren och lämnat helskärm. Körning "
+"ändrar den aldrig."
 
 #: docs/help/controls.md
 msgid "The wheel"
@@ -1093,6 +1103,14 @@ msgstr ""
 "Det är fri programvara licensierad under [GNU Affero General Public License "
 "v3.0](https://www.gnu.org/licenses/agpl-3.0.html). Källkoden finns på "
 "[github.com/timriker/bzo](/source)."
+
+#, fuzzy
+#~ msgid ""
+#~ "`Shift`+`M` turns mouse steering on and off, and nothing else does: the "
+#~ "keys never take it away behind your back."
+#~ msgstr ""
+#~ "`M` slår på och av musstyrning, och inget annat gör det: tangenterna tar "
+#~ "den aldrig ifrån dig bakom din rygg."
 
 #, fuzzy
 #~ msgid "`N` — message everyone (or click the `Send` button)"

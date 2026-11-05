@@ -40,6 +40,15 @@ msgid ""
 msgstr ""
 
 #: docs/help/controls.md
+msgid ""
+"The numeric keypad works as in BZFlag. With Num Lock off its keys are the "
+"ones printed under the digits: the arrows drive, `1` is `End`, `9` and `3` "
+"are `Page Up` and `Page Down`, and `.` is `Delete`. With Num Lock on, a "
+"keypad key is the main key with the same character. Keypad `Enter` shoots "
+"either way."
+msgstr "El teclado numérico funciona como en BZFlag. Con Bloq Num desactivado, sus teclas son las impresas bajo los dígitos: las flechas conducen, `1` es `End`, `9` y `3` son `Page Up` y `Page Down`, y `.` es `Delete`. Con Bloq Num activado, una tecla del teclado numérico es la tecla principal con el mismo carácter. `Enter` del teclado numérico dispara en ambos casos."
+
+#: docs/help/controls.md
 msgid "Driving"
 msgstr "Conducción"
 
@@ -510,13 +519,14 @@ msgid "Mouse"
 msgstr "Ratón"
 
 #: docs/help/controls.md
-#, fuzzy
 msgid ""
-"`Shift`+`M` turns mouse steering on and off, and nothing else does: the keys "
-"never take it away behind your back."
+"`Shift`+`M` or Settings -> Mouse Steering turns mouse steering on and off. "
+"`Esc` turns it off once it has released the pointer and left fullscreen. "
+"Driving never changes it."
 msgstr ""
-"`M` activa y desactiva la dirección con ratón, y nada más lo hace: las "
-"teclas nunca te la quitan sin que te des cuenta."
+"`Shift`+`M` o Ajustes -> Dirección con ratón activa y desactiva la dirección "
+"con ratón. `Esc` la desactiva una vez que ha liberado el puntero y salido de "
+"la pantalla completa. Conducir nunca la cambia."
 
 #: docs/help/controls.md
 msgid "The wheel"
@@ -1118,6 +1128,14 @@ msgstr ""
 "Es software libre con licencia [GNU Affero General Public License v3.0]"
 "(https://www.gnu.org/licenses/agpl-3.0.html). El código fuente está "
 "disponible en [github.com/timriker/bzo](/source)."
+
+#, fuzzy
+#~ msgid ""
+#~ "`Shift`+`M` turns mouse steering on and off, and nothing else does: the "
+#~ "keys never take it away behind your back."
+#~ msgstr ""
+#~ "`M` activa y desactiva la dirección con ratón, y nada más lo hace: las "
+#~ "teclas nunca te la quitan sin que te des cuenta."
 
 #, fuzzy
 #~ msgid "`N` — message everyone (or click the `Send` button)"

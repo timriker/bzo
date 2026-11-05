@@ -39,6 +39,15 @@ msgid ""
 msgstr ""
 
 #: docs/help/controls.md
+msgid ""
+"The numeric keypad works as in BZFlag. With Num Lock off its keys are the "
+"ones printed under the digits: the arrows drive, `1` is `End`, `9` and `3` "
+"are `Page Up` and `Page Down`, and `.` is `Delete`. With Num Lock on, a "
+"keypad key is the main key with the same character. Keypad `Enter` shoots "
+"either way."
+msgstr "BZFlag Daq rur mI' leQ tlhoy'. Num Lock chu'Ha'lu'DI', mI'mey bIng leQmey ghItlhlu'pu'bogh chaH: chIj 'uchmey, `End` 'oH `1`'e', `Page Up` `Page Down` je chaH `9` `3` je, `Delete` 'oH `.`'e'. Num Lock chu'lu'DI', ngutlh rap ghajbogh leQ'a' 'oH mI' leQ'e'. reH bach mI' leQ `Enter`."
+
+#: docs/help/controls.md
 msgid "Driving"
 msgstr "Duj chIj"
 
@@ -499,13 +508,13 @@ msgid "Mouse"
 msgstr "mouse"
 
 #: docs/help/controls.md
-#, fuzzy
 msgid ""
-"`Shift`+`M` turns mouse steering on and off, and nothing else does: the keys "
-"never take it away behind your back."
+"`Shift`+`M` or Settings -> Mouse Steering turns mouse steering on and off. "
+"`Esc` turns it off once it has released the pointer and left fullscreen. "
+"Driving never changes it."
 msgstr ""
-"mouse chIj chu' chu'Ha' je `M`, 'ej latlh Doch ta'be': not 'oH nIH leQmey "
-"SoH Dalegh'be'DI'."
+"mouse chIj chu' chu'Ha' je `Shift`+`M` pagh SeHlaw -> Mouse chIj. Hoch HaSta "
+"mejpu'DI' `Esc`, mouse chIj chu'Ha'. not choH Dujmo'."
 
 #: docs/help/controls.md
 msgid "The wheel"
@@ -1068,6 +1077,14 @@ msgstr ""
 "tlhab ghun 'oH, [GNU Affero General Public License v3.0](https://www.gnu.org/"
 "licenses/agpl-3.0.html) chaw' bIngDaq. [github.com/timriker/bzo](/source)Daq "
 "ngoq Hal tu'lu'."
+
+#, fuzzy
+#~ msgid ""
+#~ "`Shift`+`M` turns mouse steering on and off, and nothing else does: the "
+#~ "keys never take it away behind your back."
+#~ msgstr ""
+#~ "mouse chIj chu' chu'Ha' je `M`, 'ej latlh Doch ta'be': not 'oH nIH leQmey "
+#~ "SoH Dalegh'be'DI'."
 
 #, fuzzy
 #~ msgid "`N` — message everyone (or click the `Send` button)"

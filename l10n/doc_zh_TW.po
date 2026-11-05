@@ -38,6 +38,15 @@ msgid ""
 msgstr ""
 
 #: docs/help/controls.md
+msgid ""
+"The numeric keypad works as in BZFlag. With Num Lock off its keys are the "
+"ones printed under the digits: the arrows drive, `1` is `End`, `9` and `3` "
+"are `Page Up` and `Page Down`, and `.` is `Delete`. With Num Lock on, a "
+"keypad key is the main key with the same character. Keypad `Enter` shoots "
+"either way."
+msgstr "數字鍵台的用法與 BZFlag 相同。關閉 Num Lock 時，各鍵就是數字下方印著的鍵：方向鍵駕駛，`1` 是 `End`，`9` 和 `3` 是 `Page Up` 和 `Page Down`，`.` 是 `Delete`。開啟 Num Lock 時，鍵台上的鍵等同於字元相同的主鍵盤按鍵。鍵台的 `Enter` 兩種情況下都是射擊。"
+
+#: docs/help/controls.md
 msgid "Driving"
 msgstr "駕駛"
 
@@ -467,11 +476,13 @@ msgid "Mouse"
 msgstr "滑鼠"
 
 #: docs/help/controls.md
-#, fuzzy
 msgid ""
-"`Shift`+`M` turns mouse steering on and off, and nothing else does: the keys "
-"never take it away behind your back."
-msgstr "只有 `M` 能開關滑鼠操控：其他按鍵絕不會在你不知情時關掉它。"
+"`Shift`+`M` or Settings -> Mouse Steering turns mouse steering on and off. "
+"`Esc` turns it off once it has released the pointer and left fullscreen. "
+"Driving never changes it."
+msgstr ""
+"`Shift`+`M` 或 設定 -> 滑鼠操控 可開關滑鼠操控。`Esc` 在釋放指標並離開全螢幕"
+"之後會關閉它。駕駛永遠不會改變它。"
 
 #: docs/help/controls.md
 msgid "The wheel"
@@ -1010,6 +1021,12 @@ msgstr ""
 "它是以 [GNU Affero 通用公眾授權條款 v3.0](https://www.gnu.org/licenses/"
 "agpl-3.0.html) 授權的自由軟體。原始碼可在 [github.com/timriker/bzo](/source) "
 "取得。"
+
+#, fuzzy
+#~ msgid ""
+#~ "`Shift`+`M` turns mouse steering on and off, and nothing else does: the "
+#~ "keys never take it away behind your back."
+#~ msgstr "只有 `M` 能開關滑鼠操控：其他按鍵絕不會在你不知情時關掉它。"
 
 #, fuzzy
 #~ msgid "`N` — message everyone (or click the `Send` button)"

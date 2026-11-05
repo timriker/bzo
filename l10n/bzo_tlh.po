@@ -1214,7 +1214,7 @@ msgstr "boq: {team}"
 msgid "watching {server}"
 msgstr "{server} vIbejtaH"
 
-#: public/js/client.js:1387 public/js/client.js:10278
+#: public/js/client.js:1387 public/js/client.js:10284
 msgid "replay {name}"
 msgstr "qonta' {name}"
 
@@ -1522,7 +1522,7 @@ msgstr "bImejchugh qo' ngeb Damej. wa'DIch qo' ngeb mIv yImej."
 msgid "Global login leaves VR. Exit the headset session first."
 msgstr "Hoch qo' 'el Dalo'chugh qo' ngeb Damej. wa'DIch qo' ngeb mIv yImej."
 
-#: public/js/client.js:4692 public/js/client.js:10502
+#: public/js/client.js:4692 public/js/client.js:10508
 msgid "Fetching remote server's map..."
 msgstr "Hop toy' De'wI' pu'jIn Suqlu'taH..."
 
@@ -1542,7 +1542,7 @@ msgstr "nIteb chIjwI' {pilot}: {intent}"
 msgid "AutoPilot {pilot}"
 msgstr "nIteb chIjwI' {pilot}"
 
-#: public/js/client.js:6603 server.js:11421
+#: public/js/client.js:6603 server.js:11445
 msgid "You do not have permission to speak on the admin channel."
 msgstr "SeHwI' ghogh jan Dalo'meH chaw' Daghajbe'."
 
@@ -1630,539 +1630,539 @@ msgstr "✓ WebXR qo' ngeb lo': HIja'"
 msgid "✗ VR request failed - check server.log"
 msgstr "✗ qo' ngeb tlhoblu'; luj - server.log yInuD"
 
-#: public/js/client.js:7145 public/js/client.js:17731
+#: public/js/client.js:7145 public/js/client.js:17744
 msgid "WebXR VR Mode: OFF"
 msgstr "WebXR qo' ngeb lo': ghobe'"
 
-#: public/js/client.js:7699
+#: public/js/client.js:7703
 msgid "3D renderer unavailable: {reason}"
 msgstr "3D mIllogh chenmoHwI' tu'lu'be': {reason}"
 
-#: public/js/client.js:7706
+#: public/js/client.js:7710
 msgid "3D renderer failed to initialize."
 msgstr "3D mIllogh chenmoHwI' taghlaHbe'."
 
-#: public/js/client.js:7708
+#: public/js/client.js:7712
 msgid "Open the game in an external browser window for full WebGL support."
 msgstr "WebGL naQ DaghajmeH, Hur De' nejwI' HaStaDaq Quj yIpoSmoH."
 
-#: public/js/client.js:8137
+#: public/js/client.js:8141
 msgid "Connected to server!"
 msgstr "toy' De'wI' rarta'!"
 
-#: public/js/client.js:8143
+#: public/js/client.js:8147
 msgid "Connected to server"
 msgstr "toy' De'wI' rarta'"
 
-#: public/js/client.js:8144
+#: public/js/client.js:8148
 msgid "Waiting for world state"
 msgstr "qo' Dotlh loSlu'taH"
 
-#: public/js/client.js:8195
+#: public/js/client.js:8199
 msgid "Offline"
 msgstr "rarbe'"
 
-#: public/js/client.js:8195
+#: public/js/client.js:8199
 msgid "Cannot reach {host}"
 msgstr "{host} DaSuchlaHbe'"
 
-#: public/js/client.js:8196
+#: public/js/client.js:8200
 msgid "Trying again..."
 msgstr "nIDqa'lu'taH..."
 
-#: public/js/client.js:8207
+#: public/js/client.js:8211
 msgid "Disconnected from server | Kills: {kills} | Deaths: {deaths}"
 msgstr "toy' De'wI' rar ghorlu' | HoH: {kills} | Hegh: {deaths}"
 
-#: public/js/client.js:8212
+#: public/js/client.js:8216
 msgid "Press a key, tap or pull a trigger to rejoin"
 msgstr "bImuvqa'meH leQ yI'uy, yIHot, pagh baHwI' yI'uy"
 
-#: public/js/client.js:8372
+#: public/js/client.js:8376
 msgid "Server error: {error}"
 msgstr "toy' De'wI' Qagh: {error}"
 
-#: public/js/client.js:8377
+#: public/js/client.js:8381
 msgid "Server: action completed successfully"
 msgstr "toy' De'wI': ra' ta'lu'. Qapla'!"
 
-#: public/js/client.js:8457
+#: public/js/client.js:8463
 msgid "Operator Panel (v{version})"
 msgstr "SeHwI' SeHlaw (v{version})"
 
-#: public/js/client.js:8876
+#: public/js/client.js:8882
 msgid "{player} joined"
 msgstr "muv {player}"
 
-#: public/js/client.js:8921
+#: public/js/client.js:8927
 msgid "{player} left"
 msgstr "mej {player}"
 
-#: public/js/client.js:8937
+#: public/js/client.js:8943
 msgid "{callsign} not responding"
 msgstr "jangbe' {callsign}"
 
-#: public/js/client.js:8938
+#: public/js/client.js:8944
 msgid "{callsign} okay"
 msgstr "maj {callsign}"
 
-#: public/js/client.js:9052
+#: public/js/client.js:9058
 msgid "{player} grabbed {flag}"
 msgstr "{flag} tlhap {player}"
 
-#: public/js/client.js:9103
+#: public/js/client.js:9109
 msgid "{player} dropped {flag}"
 msgstr "{flag} chagh {player}"
 
-#: public/js/client.js:9197
+#: public/js/client.js:9203
 msgid "{player}: {pilot} taking controls"
 msgstr "{player}: SeHmey tlhap {pilot}"
 
-#: public/js/client.js:9198
+#: public/js/client.js:9204
 msgid "{player}: {pilot} releasing controls"
 msgstr "{player}: SeHmey chagh {pilot}"
 
-#: public/js/client.js:9230
+#: public/js/client.js:9236
 msgid "{player} paused"
 msgstr "mev {player}"
 
-#: public/js/client.js:9241
+#: public/js/client.js:9247
 msgid "{player} unpaused"
 msgstr "Qujqa' {player}"
 
-#: public/js/client.js:9371
+#: public/js/client.js:9377
 msgid "Server forced a disconnect"
 msgstr "rar ghor toy' De'wI'"
 
-#: public/js/client.js:9377
+#: public/js/client.js:9383
 msgid "Server updated - reloading..."
 msgstr "toy' De'wI' choHlu'pu' - lI'qa'lu'taH..."
 
-#: public/js/client.js:9905
+#: public/js/client.js:9911
 msgid "Got flattened by {player}"
 msgstr "DuQaw' {player}"
 
-#: public/js/client.js:9906
+#: public/js/client.js:9912
 msgid "Teammate hit with Genocide by {player}"
 msgstr "Hoch HoH lo'taHvIS jup qIp {player}"
 
-#: public/js/client.js:9907
+#: public/js/client.js:9913
 msgid "Got shot by {player}"
 msgstr "Dubach {player}"
 
-#: public/js/client.js:9909
+#: public/js/client.js:9915
 msgid "Got flattened by teammate {player}"
 msgstr "DuQaw' jup {player}"
 
-#: public/js/client.js:9910
+#: public/js/client.js:9916
 msgid "Teammate hit with Genocide by teammate {player}"
 msgstr "Hoch HoH lo'taHvIS jup qIp jup {player}"
 
-#: public/js/client.js:9911
+#: public/js/client.js:9917
 msgid "Got shot by teammate {player}"
 msgstr "Dubach jup {player}"
 
-#: public/js/client.js:9947
+#: public/js/client.js:9953
 msgid "Your team flag was captured!"
 msgstr "boqlIj joqwI' tlhaplu'pu'!"
 
-#: public/js/client.js:9949
+#: public/js/client.js:9955
 msgid "Time Expired - GAME OVER"
 msgstr "poH rIn - Quj rIn"
 
-#: public/js/client.js:9951
+#: public/js/client.js:9957
 msgid "Tank Self Destructed"
 msgstr "Qaw''egh Duj"
 
-#: public/js/client.js:9953
+#: public/js/client.js:9959
 msgid "Tank Rusted"
 msgstr "ragh Duj"
 
-#: public/js/client.js:9956 public/js/client.js:9960
+#: public/js/client.js:9962 public/js/client.js:9966
 msgid "Killed by the server"
 msgstr "DuHoH toy' De'wI'"
 
-#: public/js/client.js:9987
+#: public/js/client.js:9993
 msgid "You killed {player}"
 msgstr "{player} DaHoH"
 
-#: public/js/client.js:9999
+#: public/js/client.js:10005
 msgid "{player} self-destructed"
 msgstr "Qaw''egh {player}"
 
-#: public/js/client.js:10003
+#: public/js/client.js:10009
 msgid "{player} fell in the water"
 msgstr "bIQDaq pum {player}"
 
-#: public/js/client.js:10008
+#: public/js/client.js:10014
 msgid "{player}: {message}"
 msgstr "{player}: {message}"
 
-#: public/js/client.js:10011
+#: public/js/client.js:10017
 msgid "killed by the server"
 msgstr "HoH toy' De'wI'"
 
-#: public/js/client.js:10017
+#: public/js/client.js:10023
 msgid "{player} was killed by the server"
 msgstr "{player} HoH toy' De'wI'"
 
-#: public/js/client.js:10022
+#: public/js/client.js:10028
 msgid "{killer} killed {victim}"
 msgstr "{victim} HoH {killer}"
 
-#: public/js/client.js:10187
+#: public/js/client.js:10193
 msgid "You respawned!"
 msgstr "bIboghqa'!"
 
-#: public/js/client.js:10277
+#: public/js/client.js:10283
 msgid "map {name}"
 msgstr "pu'jIn {name}"
 
-#: public/js/client.js:10279
+#: public/js/client.js:10285
 msgid "plugin {name}"
 msgstr ""
 
-#: public/js/client.js:10283
+#: public/js/client.js:10289
 msgid "nothing uploaded"
 msgstr "pagh lI'lu'pu'"
 
-#: public/js/client.js:10310 public/js/client.js:10785
+#: public/js/client.js:10316 public/js/client.js:10791
 msgid "MOTD: {motd}"
 msgstr "MOTD: {motd}"
 
-#: public/js/client.js:10385
+#: public/js/client.js:10391
 msgid "{count} box"
 msgstr "{count} ngaSwI'"
 
-#: public/js/client.js:10385
+#: public/js/client.js:10391
 msgid "{count} boxes"
 msgstr "{count} ngaSwI'"
 
-#: public/js/client.js:10386
+#: public/js/client.js:10392
 msgid "{count} pyramid"
 msgstr "{count} pIra'mID"
 
-#: public/js/client.js:10386
+#: public/js/client.js:10392
 msgid "{count} pyramids"
 msgstr "{count} pIra'mID"
 
-#: public/js/client.js:10387
+#: public/js/client.js:10393
 msgid "{count} mesh"
 msgstr "{count} mesh"
 
-#: public/js/client.js:10387
+#: public/js/client.js:10393
 msgid "{count} meshes"
 msgstr "{count} mesh"
 
-#: public/js/client.js:10392
+#: public/js/client.js:10398
 msgid "{count} base"
 msgstr "{count} juH"
 
-#: public/js/client.js:10392
+#: public/js/client.js:10398
 msgid "{count} bases"
 msgstr "{count} juH"
 
-#: public/js/client.js:10394
+#: public/js/client.js:10400
 msgid "{count} teleporter"
 msgstr "{count} jolpa'"
 
-#: public/js/client.js:10394
+#: public/js/client.js:10400
 msgid "{count} teleporters"
 msgstr "{count} jolpa'"
 
-#: public/js/client.js:10397 server.js:2454
+#: public/js/client.js:10403 server.js:2477
 msgid "water"
 msgstr "bIQ"
 
-#: public/js/client.js:10398 server.js:2454
+#: public/js/client.js:10404 server.js:2477
 msgid "weather"
 msgstr "muD Dotlh"
 
-#: public/js/client.js:10399 server.js:2454
+#: public/js/client.js:10405 server.js:2477
 msgid "custom ground"
 msgstr "yav chenmoHlu'bogh"
 
-#: public/js/client.js:10437 public/js/client.js:10516
+#: public/js/client.js:10443 public/js/client.js:10522
 msgid "View {map}"
 msgstr "{map} yIlegh"
 
-#: public/js/client.js:10514
+#: public/js/client.js:10520
 msgid "{server} did not answer"
 msgstr "jangbe' {server}"
 
-#: public/js/client.js:10526 server.js:2384 server.js:2843 server.js:2893
+#: public/js/client.js:10532 server.js:2407 server.js:2866 server.js:2916
 msgid "Watch"
 msgstr "yIbej"
 
-#: public/js/client.js:10527
+#: public/js/client.js:10533
 msgid "Watch the live game on {server}"
 msgstr "{server}: DaH Quj yIbej"
 
-#: public/js/client.js:10545 public/js/client.js:10553 server.js:2852
+#: public/js/client.js:10551 public/js/client.js:10559 server.js:2875
 msgid "Re-import"
 msgstr "yISuqqa'"
 
-#: public/js/client.js:10549
+#: public/js/client.js:10555
 msgid "Importing…"
 msgstr "Suqlu'taH…"
 
-#: public/js/client.js:10592
+#: public/js/client.js:10598
 msgid "Loading map..."
 msgstr "pu'jIn lI'lu'taH..."
 
-#: public/js/client.js:10600
+#: public/js/client.js:10606
 msgid "Building world geometry..."
 msgstr "qo' Hap chenmoHlu'taH..."
 
-#: public/js/client.js:10664
+#: public/js/client.js:10670
 msgid "{count} watching now"
 msgstr "DaH {count} bejwI'"
 
-#: public/js/client.js:10667
+#: public/js/client.js:10673
 msgid "Watch {name}"
 msgstr "{name} yIbej"
 
-#: public/js/client.js:10703
+#: public/js/client.js:10709
 msgid "That server's map could not be fetched"
 msgstr "toy' De'wI'vetlh pu'jIn Suqlu'laHbe'"
 
-#: public/js/client.js:10721
+#: public/js/client.js:10727
 msgid "import failed"
 msgstr "Suqlu'be'"
 
-#: public/js/client.js:10721
+#: public/js/client.js:10727
 msgid "Could not load that server's map: {reason}"
 msgstr "toy' De'wI'vetlh pu'jIn lI'laHbe': {reason}"
 
-#: public/js/client.js:10935
+#: public/js/client.js:10941
 msgid "{team} Limit:"
 msgstr "{team} veH:"
 
-#: public/js/client.js:11028
+#: public/js/client.js:11034
 msgid "Failed: {error}"
 msgstr ""
 
-#: public/js/client.js:11133
+#: public/js/client.js:11139
 msgid "No limit"
 msgstr "veH pagh"
 
-#: public/js/client.js:11242
+#: public/js/client.js:11248
 msgid "Restart"
 msgstr "yItaghqa'"
 
-#: public/js/client.js:11246
+#: public/js/client.js:11252
 msgid "Starts a new game: every player reloads into the new settings"
 msgstr "Quj chu' tagh: chu' SeHlaw lo' 'ej lI'qa' Hoch QujwI'"
 
-#: public/js/client.js:11247
+#: public/js/client.js:11253
 msgid "Applies the staged changes"
 msgstr "choHmey ghuHmoHlu'bogh lo'"
 
-#: public/js/client.js:11594
+#: public/js/client.js:11600
 msgid "Paused"
 msgstr "mevpu'"
 
-#: public/js/client.js:11595
+#: public/js/client.js:11601
 msgid "Sealed"
 msgstr "qachDaq ngaQ"
 
-#: public/js/client.js:12527
+#: public/js/client.js:12533
 msgid "Already following someone"
 msgstr "DaH latlh vItlha'taH"
 
-#: public/js/client.js:12563 public/js/client.js:12688
+#: public/js/client.js:12569 public/js/client.js:12694
 msgid "Looking at {player}"
 msgstr "{player} vIbejtaH"
 
-#: public/js/client.js:12672
+#: public/js/client.js:12678
 msgid "{player} locked on me"
 msgstr "mungaQmoH {player}"
 
-#: public/js/client.js:12682
+#: public/js/client.js:12688
 msgid "Looking at nothing"
 msgstr "pagh vIbejtaH"
 
-#: public/js/client.js:12688
+#: public/js/client.js:12694
 msgid "Locked on {player}"
 msgstr "{player} vIngaQmoH"
 
-#: public/js/client.js:13025
+#: public/js/client.js:13031
 msgid "Clear ({count})"
 msgstr "yISay'moH ({count})"
 
-#: public/js/client.js:13025 public/js/list-page.js:534
+#: public/js/client.js:13031 public/js/list-page.js:534
 msgid "Clear"
 msgstr "yISay'moH"
 
-#: public/js/client.js:13125
+#: public/js/client.js:13131
 msgid "SPOTTED: {player}"
 msgstr "leghlu': {player}"
 
-#: public/js/client.js:13240 public/js/client.js:13246
+#: public/js/client.js:13246 public/js/client.js:13252
 msgid "nobody"
 msgstr "pagh"
 
-#: public/js/client.js:13250
+#: public/js/client.js:13256
 msgid "Leader {who}"
 msgstr "DevwI': {who}"
 
-#: public/js/client.js:13252 public/js/client.js:13257
+#: public/js/client.js:13258 public/js/client.js:13263
 msgid "Tracking {who}"
 msgstr "{who} vIbejtaH"
 
-#: public/js/client.js:13253
+#: public/js/client.js:13259
 msgid "Following {who}"
 msgstr "{who} vItlha'taH"
 
-#: public/js/client.js:13254
+#: public/js/client.js:13260
 msgid "Driving with {who}"
 msgstr "{who} vItlhejtaH"
 
-#: public/js/client.js:13259 public/js/hud.js:629 public/js/input.js:1397
+#: public/js/client.js:13265 public/js/hud.js:629 public/js/input.js:1457
 msgid "First Person"
 msgstr "jIH mIn"
 
-#: public/js/client.js:13260 public/js/hud.js:630 public/js/input.js:1398
+#: public/js/client.js:13266 public/js/hud.js:630 public/js/input.js:1458
 msgid "Third Person"
 msgstr "tlha'wI' mIn"
 
-#: public/js/client.js:13261 public/js/hud.js:631 public/js/input.js:1399
+#: public/js/client.js:13267 public/js/hud.js:631 public/js/input.js:1459
 msgid "Overview"
 msgstr "Dung mIn"
 
-#: public/js/client.js:13262
+#: public/js/client.js:13268
 msgid "Roaming"
 msgstr "leng"
 
-#: public/js/client.js:13551 public/js/client.js:13625
+#: public/js/client.js:13557 public/js/client.js:13631
 msgid "autopilot disabled"
 msgstr "nIteb chIjwI' chu'Ha'lu'"
 
-#: public/js/client.js:13560
+#: public/js/client.js:13566
 msgid "autopilot not allowed on this server"
 msgstr "naDev nIteb chIjwI' chaw'be'lu'"
 
-#: public/js/client.js:13572
+#: public/js/client.js:13578
 msgid "{pilot} has the controls"
 msgstr "SeHmey ghaj {pilot}"
 
-#: public/js/client.js:13577
+#: public/js/client.js:13583
 msgid "You may not enable the Autopilot more than once every five seconds."
 msgstr "vagh lup Hoch wa'logh neH nIteb chIjwI' Dachu'laH."
 
-#: public/js/client.js:13582
+#: public/js/client.js:13588
 msgid "autopilot enabled"
 msgstr "nIteb chIjwI' chu'lu'"
 
-#: public/js/client.js:13605
+#: public/js/client.js:13611
 msgid "Not allowed"
 msgstr "chaw'be'lu'"
 
-#: public/js/client.js:13605 public/js/input.js:1102 public/js/input.js:1112
-#: public/js/input.js:1116
+#: public/js/client.js:13611 public/js/input.js:1162 public/js/input.js:1172
+#: public/js/input.js:1176
 msgid "Unavailable"
 msgstr "tu'laHbe'lu'"
 
-#: public/js/client.js:13608
+#: public/js/client.js:13614
 msgid "None"
 msgstr "pagh"
 
-#: public/js/client.js:14430
+#: public/js/client.js:14443
 msgid "Zoned"
 msgstr "qa' SepDaq"
 
-#: public/js/client.js:14430
+#: public/js/client.js:14443
 msgid "Unzoned"
 msgstr "qa' Sepvo'"
 
-#: public/js/client.js:15231 public/js/client.js:15248
+#: public/js/client.js:15244 public/js/client.js:15261
 msgid "unidentified"
 msgstr "Sovbe'lu'"
 
-#: public/js/client.js:15268
+#: public/js/client.js:15281
 msgid "unknown"
 msgstr "Sovbe'lu'"
 
-#: public/js/client.js:15279
+#: public/js/client.js:15292
 msgid ""
 "This server bounces every shot off walls, whatever flag fired it, so the "
 "Ricochet flag is not in play here."
 msgstr ""
 "naDev tlhoy'vo' HeD nIch Hoch, joqwI' ram. vaj bach HeD joqwI' lo'be'lu'."
 
-#: public/js/client.js:15280
+#: public/js/client.js:15293
 msgid "On this server only the Ricochet flag bounces shots off walls."
 msgstr "naDev bach HeD joqwI' neH tlhoy'vo' nIch HeDmoH."
 
-#: public/js/client.js:15347
+#: public/js/client.js:15360
 msgid "{flag} {release}"
 msgstr "{flag} {release}"
 
-#: public/js/client.js:15358
+#: public/js/client.js:15371
 msgid "Can't drop the flag while zoned"
 msgstr "qa' SepDaq bItaHvIS joqwI' DachaghlaHbe'"
 
-#: public/js/client.js:15362
+#: public/js/client.js:15375
 msgid "Can't drop a flag while inside a building"
 msgstr "qachDaq bItaHvIS joqwI' DachaghlaHbe'"
 
-#: public/js/client.js:15412
+#: public/js/client.js:15425
 msgid "in {seconds}s"
 msgstr "{seconds} lup pIq"
 
-#: public/js/client.js:15413
+#: public/js/client.js:15426
 msgid "after {count} kill"
 msgstr "HoH {count} DaghajDI'"
 
-#: public/js/client.js:15413
+#: public/js/client.js:15426
 msgid "after {count} kills"
 msgstr "HoH {count} DaghajDI'"
 
-#: public/js/client.js:15414
+#: public/js/client.js:15427
 msgid "on the antidote"
 msgstr "Hergh joqwI' DaHotDI'"
 
-#: public/js/client.js:15415
+#: public/js/client.js:15428
 msgid "stays until it kills you"
 msgstr "DuHoHpa' ratlh"
 
-#: public/js/client.js:15416
+#: public/js/client.js:15429
 msgid "{first} or {second}"
 msgstr "{first} pagh {second}"
 
-#: public/js/client.js:15417
+#: public/js/client.js:15430
 msgid "shakes off {ways}"
 msgstr "teqlu' {ways}"
 
-#: public/js/client.js:15473
+#: public/js/client.js:15486
 msgid "Flag Alert!!!"
 msgstr "joqwI' ghuHmoH!!!"
 
-#: public/js/client.js:15481
+#: public/js/client.js:15494
 msgid "Team Grab!!!"
 msgstr "boq joqwI' tlhaplu'!!!"
 
-#: public/js/client.js:15497
+#: public/js/client.js:15510
 msgid "{thief} stole {victim}'s {flag} flag"
 msgstr "{victim} {flag} joqwI' nIH {thief}"
 
-#: public/js/client.js:15528
+#: public/js/client.js:15541
 msgid "Closest Flag: {flag}"
 msgstr "joqwI' Sumqu': {flag}"
 
-#: public/js/client.js:15590
+#: public/js/client.js:15603
 msgid "{player} took their own flag into {team} territory"
 msgstr "{team} yoSDaq joqwI'Daj qem {player}"
 
-#: public/js/client.js:15598
+#: public/js/client.js:15611
 msgid "Don't capture your own flag!!!"
 msgstr "joqwI'lIj yItlhapQo'!!!"
 
-#: public/js/client.js:15604
+#: public/js/client.js:15617
 msgid "{player} captured the {team} flag"
 msgstr "{team} joqwI' tlhap {player}"
 
-#: public/js/client.js:17227 public/js/client.js:17228
+#: public/js/client.js:17240 public/js/client.js:17241
 msgid "Exit WebXR VR Mode"
 msgstr "WebXR qo' ngeb yImej"
 
@@ -2243,19 +2243,19 @@ msgid "Debug Mode: OFF"
 msgstr "Qagh lo': ghobe'"
 
 # review: upstream uses ordinals, not colours
-#: public/js/hud.js:821 server.js:1984
+#: public/js/hud.js:821 server.js:2007
 msgid "Red"
 msgstr "wa'DIch"
 
-#: public/js/hud.js:822 server.js:1984
+#: public/js/hud.js:822 server.js:2007
 msgid "Green"
 msgstr "cha'DIch"
 
-#: public/js/hud.js:823 server.js:1984
+#: public/js/hud.js:823 server.js:2007
 msgid "Blue"
 msgstr "wejDIch"
 
-#: public/js/hud.js:824 server.js:1984
+#: public/js/hud.js:824 server.js:2007
 msgid "Purple"
 msgstr "loSDIch"
 
@@ -2347,167 +2347,167 @@ msgstr "bejtaH"
 msgid "(rabbit)"
 msgstr "(Ha'DIbaH)"
 
-#: public/js/input.js:947
+#: public/js/input.js:1007
 msgid "Mouse steering is unavailable in VR: there is no cursor to read"
 msgstr "qo' ngebDaq Mouse chIj Dalo'laHbe': cursor tu'lu'be'"
 
-#: public/js/input.js:948
+#: public/js/input.js:1008
 msgid "Virtual controls steer instead of the mouse"
 msgstr "mouse lo'be'; chIj SeHlaw ngeb"
 
-#: public/js/input.js:949
+#: public/js/input.js:1009
 msgid "Mouse steering needs a mouse attached"
 msgstr "Mouse chIj: mouse rarnIS"
 
-#: public/js/input.js:1089 public/js/input.js:1090
+#: public/js/input.js:1149 public/js/input.js:1150
 msgid "No players"
 msgstr "QujwI' pagh"
 
-#: public/js/input.js:1098 public/js/radar.js:32
+#: public/js/input.js:1158 public/js/radar.js:32
 msgid "Medium"
 msgstr "botlh"
 
-#: public/js/input.js:1103 public/js/input.js:1105 public/js/input.js:1117
+#: public/js/input.js:1163 public/js/input.js:1165 public/js/input.js:1177
 msgid "On"
 msgstr "HIja'"
 
-#: public/js/input.js:1108
+#: public/js/input.js:1168
 msgid "Installed"
 msgstr "jomta'"
 
-#: public/js/input.js:1109
+#: public/js/input.js:1169
 msgid "Install"
 msgstr "yIjom"
 
-#: public/js/input.js:1109
+#: public/js/input.js:1169
 msgid "Browser menu"
 msgstr "De' nejwI' HIDjolev"
 
-#: public/js/input.js:1113 public/js/input.js:1127
+#: public/js/input.js:1173 public/js/input.js:1187
 msgid "Exit VR"
 msgstr "qo' ngeb yImej"
 
-#: public/js/input.js:1113
+#: public/js/input.js:1173
 msgid "Enter VR"
 msgstr "qo' ngeb yI'el"
 
-#: public/js/input.js:1119 public/js/settings.js:63
+#: public/js/input.js:1179 public/js/settings.js:63
 msgid "Open >"
 msgstr "yIpoSmoH >"
 
-#: public/js/input.js:1121 public/js/settings.js:65
+#: public/js/input.js:1181 public/js/settings.js:65
 msgid "Activate"
 msgstr "yIchu'"
 
-#: public/js/input.js:1179
+#: public/js/input.js:1239
 msgid "Hide Settings"
 msgstr "SeHlaw yISo'"
 
-#: public/js/input.js:1179
+#: public/js/input.js:1239
 msgid "Show Settings"
 msgstr "SeHlaw yI'agh"
 
-#: public/js/input.js:1193
+#: public/js/input.js:1253
 msgid "Settings: Hidden"
 msgstr "SeHlaw: So'lu'"
 
-#: public/js/input.js:1193
+#: public/js/input.js:1253
 msgid "Settings: Shown"
 msgstr "SeHlaw: 'aghlu'"
 
-#: public/js/input.js:1219
+#: public/js/input.js:1279
 msgid "Hide Audio Settings"
 msgstr "wab SeHlaw yISo'"
 
-#: public/js/input.js:1228
+#: public/js/input.js:1288
 msgid "Audio Settings: Hidden"
 msgstr "wab SeHlaw: So'lu'"
 
-#: public/js/input.js:1233
+#: public/js/input.js:1293
 msgid "Audio Settings: Shown"
 msgstr "wab SeHlaw: 'aghlu'"
 
-#: public/js/input.js:1242
+#: public/js/input.js:1302
 msgid "Hide Help (?)"
 msgstr "QaH yISo' (?)"
 
-#: public/js/input.js:1242
+#: public/js/input.js:1302
 msgid "Show Help (?)"
 msgstr "QaH yI'agh (?)"
 
-#: public/js/input.js:1251
+#: public/js/input.js:1311
 msgid "Help Panel: Hidden"
 msgstr "QaH HaSta: So'lu'"
 
-#: public/js/input.js:1257
+#: public/js/input.js:1317
 msgid "Help Panel: Shown"
 msgstr "QaH HaSta: 'aghlu'"
 
-#: public/js/input.js:1294
+#: public/js/input.js:1354
 msgid "iOS: use Share, Add to Home Screen for fullscreen"
 msgstr "iOS: Hoch HaSta DaneHchugh Share, Add to Home Screen yIlo'"
 
-#: public/js/input.js:1440
+#: public/js/input.js:1500
 msgid "Camera: {mode}"
 msgstr "mIllogh qonwI': {mode}"
 
-#: public/js/input.js:1467
+#: public/js/input.js:1527
 msgid "Controls: Mouse and keyboard"
 msgstr "SeHmey: mouse leQ'echlet je"
 
-#: public/js/input.js:1467
+#: public/js/input.js:1527
 msgid "Controls: Keyboard"
 msgstr "SeHmey: leQ'echlet"
 
-#: public/js/input.js:1475
+#: public/js/input.js:1535
 msgid "Hide Virtual Controls"
 msgstr "SeHlaw ngeb yISo'"
 
-#: public/js/input.js:1475
+#: public/js/input.js:1535
 msgid "Show Virtual Controls"
 msgstr "SeHlaw ngeb yI'agh"
 
-#: public/js/input.js:1512
+#: public/js/input.js:1572
 msgid "Virtual Controls: Enabled"
 msgstr "SeHlaw ngeb: chu'lu'"
 
-#: public/js/input.js:1512
+#: public/js/input.js:1572
 msgid "Virtual Controls: Disabled"
 msgstr "SeHlaw ngeb: chu'Ha'lu'"
 
-#: public/js/input.js:1519
+#: public/js/input.js:1579
 msgid "Hide Operator Panel (Shift+O)"
 msgstr ""
 
-#: public/js/input.js:1519
+#: public/js/input.js:1579
 msgid "Show Operator Panel (Shift+O)"
 msgstr ""
 
-#: public/js/input.js:1526
+#: public/js/input.js:1586
 msgid "Hide View"
 msgstr "legh yISo'"
 
-#: public/js/input.js:1526
+#: public/js/input.js:1586
 msgid "Show View"
 msgstr "legh yI'agh"
 
-#: public/js/input.js:1537
+#: public/js/input.js:1597
 msgid "Operator: enter a name to become an operator on this server"
 msgstr "SeHwI': naDev SeHwI' DamojmeH pong yIghItlh"
 
-#: public/js/input.js:1548
+#: public/js/input.js:1608
 msgid "Operator Panel: Hidden"
 msgstr "SeHwI' SeHlaw: So'lu'"
 
-#: public/js/input.js:1571
+#: public/js/input.js:1631
 msgid "Operator Panel: Shown"
 msgstr "SeHwI' SeHlaw: 'aghlu'"
 
-#: public/js/input.js:1588
+#: public/js/input.js:1648
 msgid "View: Hidden"
 msgstr "legh: So'lu'"
 
-#: public/js/input.js:1594
+#: public/js/input.js:1654
 msgid "View: Shown"
 msgstr "legh: 'aghlu'"
 
@@ -2556,7 +2556,7 @@ msgid "{n} more lines"
 msgstr "{n} latlh tlhegh"
 
 #: public/js/inspect-panel.mjs:123 public/js/inspect-panel.mjs:188
-#: server.js:1817
+#: server.js:1840
 msgid "World"
 msgstr "qo'"
 
@@ -2718,22 +2718,22 @@ msgid "Radar range: {range}"
 msgstr "noch chuq: {range}"
 
 #. TRANSLATORS: compass point on the radar, north; one letter.
-#: public/js/radar.js:903
+#: public/js/radar.js:925
 msgid "N"
 msgstr "N"
 
 #. TRANSLATORS: compass point on the radar, east; one letter.
-#: public/js/radar.js:905
+#: public/js/radar.js:927
 msgid "E"
 msgstr "E"
 
 #. TRANSLATORS: compass point on the radar, south; one letter.
-#: public/js/radar.js:907
+#: public/js/radar.js:929
 msgid "S"
 msgstr "S"
 
 #. TRANSLATORS: compass point on the radar, west; one letter.
-#: public/js/radar.js:909
+#: public/js/radar.js:931
 msgid "W"
 msgstr "W"
 
@@ -2890,349 +2890,349 @@ msgstr "ghogh jan vItaghmoHlaHbe'."
 msgid "Could not enumerate microphone devices."
 msgstr "ghogh jan tetlh vIchenmoHlaHbe'."
 
-#: server.js:1750
+#: server.js:1773
 msgid "Map hash"
 msgstr "pu'jIn nItlh Degh"
 
-#: server.js:1789
+#: server.js:1812
 msgid "ignored by bzo"
 msgstr "bzo buSbe'"
 
-#: server.js:1789
+#: server.js:1812
 msgid "read by bzo"
 msgstr "bzo laD"
 
-#: server.js:1791
+#: server.js:1814
 msgid "{read}/{total} set"
 msgstr "{read}/{total} lanlu'"
 
-#: server.js:1813 server.js:2956
+#: server.js:1836 server.js:2979
 msgid "Version"
 msgstr "Segh mI'"
 
-#: server.js:1814
+#: server.js:1837
 msgid "BZFlag hash"
 msgstr "BZFlag nItlh Degh"
 
-#: server.js:1817
+#: server.js:1840
 msgid "temporary"
 msgstr "ru'"
 
-#: server.js:1820
+#: server.js:1843
 msgid "Variables"
 msgstr "choHwI'mey"
 
-#: server.js:1821
+#: server.js:1844
 msgid "sent/inflated"
 msgstr "ngeHlu'/tInmoHlu'"
 
-#: server.js:1865 server.js:1894
+#: server.js:1888 server.js:1917
 msgid "Classic Capture-the-Flag"
 msgstr "ngo' joqwI' tlhap"
 
-#: server.js:1866 server.js:1897
+#: server.js:1889 server.js:1920
 msgid "Rabbit Chase"
 msgstr "Ha'DIbaH wam"
 
-#: server.js:1867
+#: server.js:1890
 msgid "Open (Teamless) Free-For-All"
 msgstr "poSbogh Hoch Hoch Suv (boq tu'lu'be')"
 
-#: server.js:1868
+#: server.js:1891
 msgid "Free-style"
 msgstr "Hoch mIw"
 
-#: server.js:1891
+#: server.js:1914
 msgid "Replay server"
 msgstr "qonta' toy' De'wI'"
 
-#: server.js:1899
+#: server.js:1922
 msgid "Free-for-all"
 msgstr "Hoch Hoch Suv"
 
-#: server.js:1934
+#: server.js:1957
 msgid "World hash: sorts rows sharing a world together, unhashed last"
 msgstr ""
 "qo' nItlh Degh: qo' rap ghajbogh tlhegh tay'moH; nItlh Degh ghajbe'bogh "
 "tlhegh Qav"
 
-#: server.js:1956
+#: server.js:1979
 msgid "just started"
 msgstr "DaH taghlu'pu'"
 
-#: server.js:1957
+#: server.js:1980
 msgid "{minutes}m"
 msgstr "{minutes}m"
 
-#: server.js:1959
+#: server.js:1982
 msgid "{hours}h {minutes}m"
 msgstr "{hours}h {minutes}m"
 
-#: server.js:1960
+#: server.js:1983
 msgid "{days}d {hours}h"
 msgstr "{days}d {hours}h"
 
-#: server.js:1984 server.js:2435 server.js:2676
+#: server.js:2007 server.js:2458 server.js:2699
 msgid "Observers"
 msgstr "bejwI'pu'"
 
-#: server.js:2003 server.js:2440
+#: server.js:2026 server.js:2463
 msgid "none"
 msgstr "pagh"
 
-#: server.js:2008
+#: server.js:2031
 msgid "{servers} with {players} player"
 msgstr "{servers}, {players} QujwI'"
 
-#: server.js:2009
+#: server.js:2032
 msgid "{servers} with {players} players"
 msgstr "{servers}, {players} QujwI'pu'"
 
-#: server.js:2010
+#: server.js:2033
 msgid ", {bots} bot"
 msgstr ", {bots} qoq"
 
-#: server.js:2010
+#: server.js:2033
 msgid ", {bots} bots"
 msgstr ", {bots} qoqmey"
 
-#: server.js:2021
+#: server.js:2044
 msgid ", {waiting} without overview"
 msgstr ", {waiting} Hoch legh ghajbe'"
 
-#: server.js:2047
+#: server.js:2070
 msgid "Super Flags"
 msgstr "joqwI' nIv"
 
-#: server.js:2048
+#: server.js:2071
 msgid "Antidote Flags"
 msgstr "joqwI' vor"
 
-#: server.js:2052
+#: server.js:2075
 msgid "{secs} sec To Drop Bad Flag"
 msgstr "{secs} lup, joqwI' qab chuH"
 
-#: server.js:2053
+#: server.js:2076
 msgid "{secs} secs To Drop Bad Flag"
 msgstr "{secs} lup, joqwI' qab chuH"
 
-#: server.js:2057
+#: server.js:2080
 msgid "{wins} Win Drops Bad Flag"
 msgstr "{wins} Qap, joqwI' qab chuH"
 
-#: server.js:2057
+#: server.js:2080
 msgid "{wins} Wins Drops Bad Flag"
 msgstr "{wins} Qap, joqwI' qab chuH"
 
-#: server.js:2059
+#: server.js:2082
 msgid "No Teamkills"
 msgstr "jup HoHQo'"
 
-#: server.js:2062
+#: server.js:2085
 msgid "Handicap"
 msgstr "Hel"
 
-#: server.js:2063
+#: server.js:2086
 msgid "Inertia"
 msgstr "QIt nom moj"
 
-#: server.js:2066
+#: server.js:2089
 msgid "No Bots"
 msgstr "qoq tu'lu'be'"
 
-#: server.js:2070
+#: server.js:2093
 msgid "Guests Watch"
 msgstr "mebpu' bej"
 
-#: server.js:2071
+#: server.js:2094
 msgid "No Guests"
 msgstr "mebpu' tu'lu'be'"
 
-#: server.js:2072
+#: server.js:2095
 msgid "Guests Play"
 msgstr "mebpu' Quj"
 
-#: server.js:2073
+#: server.js:2096
 msgid "Registered Only"
 msgstr "ghItlhlu'pu'bogh neH"
 
-#: server.js:2074
+#: server.js:2097
 msgid "Guests Chat"
 msgstr "mebpu' ja'chuq"
 
-#: server.js:2075
+#: server.js:2098
 msgid "Guests Muted"
 msgstr "mebpu' tamlu'"
 
-#: server.js:2078
+#: server.js:2101
 msgid "Time limit"
 msgstr "poH veH"
 
-#: server.js:2079
+#: server.js:2102
 msgid "Max team score"
 msgstr "boq mI' law'qu'"
 
-#: server.js:2080
+#: server.js:2103
 msgid "Max player score"
 msgstr "QujwI' mI' law'qu'"
 
-#: server.js:2087
+#: server.js:2110
 msgid "{shots} Shot"
 msgstr "{shots} nIch"
 
-#: server.js:2088
+#: server.js:2111
 msgid "{shots} Shots"
 msgstr "{shots} nIch"
 
-#: server.js:2112
+#: server.js:2135
 msgid "Bots"
 msgstr "qoqmey"
 
-#: server.js:2151 server.js:2342 server.js:2581
+#: server.js:2174 server.js:2365 server.js:2604
 msgid "None."
 msgstr "pagh."
 
-#: server.js:2187
+#: server.js:2210
 msgid "hashing…"
 msgstr "nItlh Degh chenmoHlu'taH…"
 
-#: server.js:2206
+#: server.js:2229
 msgid "Obj"
 msgstr "Obj"
 
-#: server.js:2210
+#: server.js:2233
 msgid "Obstacles in the world"
 msgstr "qo'Daq botwI'mey"
 
-#: server.js:2211
+#: server.js:2234
 msgid "Mesh faces in the world"
 msgstr "qo'Daq mesh Dopmey"
 
-#: server.js:2212 server.js:2474
+#: server.js:2235 server.js:2497
 msgid "World size"
 msgstr "qo' tlhoy"
 
-#: server.js:2214
+#: server.js:2237
 msgid "Map file name"
 msgstr "pu'jIn teywI' pong"
 
-#: server.js:2214 server.js:2372
+#: server.js:2237 server.js:2395
 msgid "Name"
 msgstr "pong"
 
-#: server.js:2215
+#: server.js:2238
 msgid "Game style the map sets"
 msgstr "pu'jIn Quj mIw"
 
-#: server.js:2231 server.js:2387 server.js:2791
+#: server.js:2254 server.js:2410 server.js:2814
 msgid "View map"
 msgstr "pu'jIn yIlegh"
 
-#: server.js:2232
+#: server.js:2255
 msgid "Still hashing"
 msgstr "nItlh Degh chenmoHlu'taH"
 
-#: server.js:2322
+#: server.js:2345
 msgid "Overview of {name}"
 msgstr "{name}: Hoch legh"
 
-#: server.js:2354
+#: server.js:2377
 msgid "unreadable: {error}"
 msgstr "laDlu'laHbe': {error}"
 
-#: server.js:2355
+#: server.js:2378
 msgid " -- {viewers} watching"
 msgstr " -- {viewers} bej"
 
-#: server.js:2368
+#: server.js:2391
 msgid "When it was recorded (UTC)"
 msgstr "qonta'lu'pu'DI' (UTC)"
 
-#: server.js:2369
+#: server.js:2392
 msgid "How long it runs"
 msgstr "poH tIq"
 
-#: server.js:2370
+#: server.js:2393
 msgid "Players in it, observers not counted"
 msgstr "QujwI'pu' (bejwI'pu' toghlu'be')"
 
-#: server.js:2372
+#: server.js:2395
 msgid "Replay file name"
 msgstr "qonta' teywI' pong"
 
-#: server.js:2373
+#: server.js:2396
 msgid "The map it was played on"
 msgstr "Qujlu'pu'bogh pu'jIn"
 
-#: server.js:2385
+#: server.js:2408
 msgid "Unreadable"
 msgstr "laDlu'laHbe'"
 
-#: server.js:2418
+#: server.js:2441
 msgid "{viewers} watching, at {time}"
 msgstr "{viewers} bej, {time}"
 
-#: server.js:2433
+#: server.js:2456
 msgid "Recorded by"
 msgstr "qonta'wI'"
 
-#: server.js:2436
+#: server.js:2459
 msgid "Now"
 msgstr "DaH"
 
-#: server.js:2438
+#: server.js:2461
 msgid "Error"
 msgstr "Qagh"
 
-#: server.js:2466
+#: server.js:2489
 msgid "Boxes"
 msgstr "ngaSwI'mey"
 
-#: server.js:2467
+#: server.js:2490
 msgid "Pyramids"
 msgstr "pIra'mIDmey"
 
-#: server.js:2468
+#: server.js:2491
 msgid "Meshes"
 msgstr "meshmey"
 
-#: server.js:2469
+#: server.js:2492
 msgid "Bases"
 msgstr "juHmey"
 
-#: server.js:2470
+#: server.js:2493
 msgid "Teleporters"
 msgstr "jolpa'mey"
 
-#: server.js:2475
+#: server.js:2498
 msgid "Has"
 msgstr "ghaj"
 
-#: server.js:2476
+#: server.js:2499
 msgid "Hashed"
 msgstr "nItlh Degh ghaj"
 
-#: server.js:2476
+#: server.js:2499
 msgid "generated at boot"
 msgstr "tagh poHDaq chenmoHlu'"
 
-#: server.js:2476
+#: server.js:2499
 msgid "yes"
 msgstr "HIja'"
 
-#: server.js:2476
+#: server.js:2499
 msgid "not yet"
 msgstr "wej"
 
-#: server.js:2477
+#: server.js:2500
 msgid "Hash"
 msgstr "nItlh Degh"
 
-#: server.js:2478
+#: server.js:2501
 msgid "Modified"
 msgstr "choHlu'"
 
-#: server.js:2497
+#: server.js:2520
 msgid ""
 "Plain text is a glob over the address, description, version, hash and owner "
 "-- {examples} -- and a word with no {star} or {query} in it is wrapped in "
@@ -3242,7 +3242,7 @@ msgstr ""
 "{examples} -- {star} {query} ghajbe'bogh mu' chorDaq chaH lanlu', vaj Dat "
 "rap."
 
-#: server.js:2500
+#: server.js:2523
 msgid ""
 "A leading {slash} starts filters instead: comma-separated, combined with "
 "{and}."
@@ -3250,11 +3250,11 @@ msgstr ""
 "{slash} wa'DIch Dalo'chugh nejmeH ra'mey Dataghlaw': 'en'em DaSIjmoH, {and} "
 "DaboSmoH."
 
-#: server.js:2501
+#: server.js:2524
 msgid "and"
 msgstr "je"
 
-#: server.js:2503
+#: server.js:2526
 msgid ""
 "A second {slash} starts another set, and a server matching either set is "
 "shown."
@@ -3262,79 +3262,79 @@ msgstr ""
 "{slash} cha'DIch Dalo'chugh latlh ghom Datagh; ghom wa' rapbogh toy' De'wI' "
 "'aghlu'."
 
-#: server.js:2504
+#: server.js:2527
 msgid "{hash} begins a comment."
 msgstr "{hash}: QIjmeH ghItlh tagh."
 
-#: server.js:2505
+#: server.js:2528
 msgid "Booleans -- {on} for on, {off} for off"
 msgstr "teH ngeb -- {on} chu', {off} chu'Ha'"
 
-#: server.js:2506
+#: server.js:2529
 msgid "Free-for-all with teams"
 msgstr "boqmey ghajbogh Hoch Hoch Suv"
 
-#: server.js:2507
+#: server.js:2530
 msgid "Open free-for-all, no teams"
 msgstr "poSbogh Hoch Hoch Suv, boq tu'lu'be'"
 
-#: server.js:2508
+#: server.js:2531
 msgid "Capture-the-flag"
 msgstr "joqwI' tlhap"
 
-#: server.js:2509
+#: server.js:2532
 msgid "Rabbit chase"
 msgstr "Ha'DIbaH wam"
 
-#: server.js:2510
+#: server.js:2533
 msgid "Tanks can jump unaided"
 msgstr "SuplaH Duj, QaHbe'lu'"
 
-#: server.js:2511
+#: server.js:2534
 msgid "Shots ricochet"
 msgstr "nIch HeD"
 
-#: server.js:2512
+#: server.js:2535
 msgid "Score affects tank performance"
 msgstr "Duj nom choH mI'"
 
-#: server.js:2513
+#: server.js:2536
 msgid "Tanks have inertia"
 msgstr "QIt nom moj Duj"
 
-#: server.js:2514
+#: server.js:2537
 msgid "Antidote flags are spawned"
 msgstr "joqwI' vor boghmoHlu'"
 
-#: server.js:2515
+#: server.js:2538
 msgid "A replay server"
 msgstr "qonta' toy' De'wI'"
 
-#: server.js:2516
+#: server.js:2539
 msgid "The pane has a map overview"
 msgstr "Hoch legh ghaj HeySel"
 
-#: server.js:2517
+#: server.js:2540
 msgid "A generated world, which usually changes on restart"
 msgstr "qo' chenmoHlu'pu'bogh; taghqa'lu'DI' pIj choH"
 
-#: server.js:2518
+#: server.js:2541
 msgid "Autopilot and robots allowed"
 msgstr "nIteb chIjwI' qoqmey je chaw'lu'"
 
-#: server.js:2519
+#: server.js:2542
 msgid "Players with no bzflag.org login may join to observe"
 msgstr "bzflag.org 'el ghajbe'bogh QujwI'pu' bejmeH muvlaH"
 
-#: server.js:2520
+#: server.js:2543
 msgid "Players with no bzflag.org login may spawn"
 msgstr "bzflag.org 'el ghajbe'bogh QujwI'pu' boghlaH"
 
-#: server.js:2521
+#: server.js:2544
 msgid "Players with no bzflag.org login may chat"
 msgstr "bzflag.org 'el ghajbe'bogh QujwI'pu' ja'chuqlaH"
 
-#: server.js:2523
+#: server.js:2546
 msgid ""
 "For {bots}, {guestWatch}, {guests} and {guestChat}, a server bzo has not "
 "found out about matches neither {plus} nor {minus}."
@@ -3342,160 +3342,160 @@ msgstr ""
 "{bots}, {guestWatch}, {guests}, {guestChat}: bzo Sovbe'bogh toy' De'wI' "
 "{plus} {minus} je rapbe'."
 
-#: server.js:2527
+#: server.js:2550
 msgid "Numbers -- a name, then {operators}, then a number"
 msgstr "mI'mey -- pong, {operators}, mI' je"
 
-#: server.js:2530
+#: server.js:2553
 msgid "Active shots a tank may have"
 msgstr "Duj bachmey veH"
 
-#: server.js:2531
+#: server.js:2554
 msgid "Players now, observers excluded"
 msgstr "DaH QujwI'pu', bejwI'pu' toghlu'be'"
 
-#: server.js:2532
+#: server.js:2555
 msgid "Bots now"
 msgstr "DaH qoqmey"
 
-#: server.js:2533
+#: server.js:2556
 msgid "Playing slots still free"
 msgstr "QujmeH Daq chIm"
 
-#: server.js:2534
+#: server.js:2557
 msgid "Colour teams the server offers"
 msgstr "toy' De'wI' boq rItlhmey"
 
-#: server.js:2535
+#: server.js:2558
 msgid "Time limit, in seconds"
 msgstr "poH veH, lupmey"
 
-#: server.js:2536
+#: server.js:2559
 msgid "The server's own player ceiling"
 msgstr "toy' De'wI' QujwI' veH"
 
-#: server.js:2537
+#: server.js:2560
 msgid "Team score that ends the game"
 msgstr "Quj rInmoHbogh boq mI'"
 
-#: server.js:2538
+#: server.js:2561
 msgid "Player score that ends the game"
 msgstr "Quj rInmoHbogh QujwI' mI'"
 
-#: server.js:2539
+#: server.js:2562
 msgid "Kills that shed a bad flag"
 msgstr "joqwI' qab chuHmeH HoHmey"
 
-#: server.js:2540
+#: server.js:2563
 msgid "Tenths of a second to shed a bad flag"
 msgstr "joqwI' qab chuHmeH lup 'ay'mey"
 
-#: server.js:2541
+#: server.js:2564
 msgid "Players on rogue, red, green, blue, purple, observer"
 msgstr "nIteb SuvwI', wa'DIch, cha'DIch, wejDIch, loSDIch, bejwI' QujwI'pu'"
 
-#: server.js:2542
+#: server.js:2565
 msgid "That team's maximum"
 msgstr "boqvetlh veH"
 
-#: server.js:2543
+#: server.js:2566
 msgid "That team's free slots"
 msgstr "boqvetlh Daq chIm"
 
-#: server.js:2545
+#: server.js:2568
 msgid ""
 "Patterns -- a name, then {glob} for a glob or {regex} for a regular "
 "expression"
 msgstr "HaSta Hal -- pong, {glob} (glob) pagh {regex} (regular expression)"
 
-#: server.js:2548
+#: server.js:2571
 msgid "The address, host and port"
 msgstr "Daq, host, port je"
 
-#: server.js:2549
+#: server.js:2572
 msgid "The description"
 msgstr "Del"
 
-#: server.js:2550
+#: server.js:2573
 msgid "Either one"
 msgstr "wa' DaH"
 
-#: server.js:2551
+#: server.js:2574
 msgid "The world hash the pane shows"
 msgstr "HeySel cha'bogh qo' nItlh Degh"
 
-#: server.js:2552
+#: server.js:2575
 msgid "The server's version: {bzo} or bzfs's own build"
 msgstr "toy' De'wI' Segh mI': {bzo} pagh bzfs Segh mI'"
 
-#: server.js:2553
+#: server.js:2576
 msgid "The bzflag.org account that registered it"
 msgstr "ghItlhbogh bzflag.org mI'"
 
-#: server.js:2554
+#: server.js:2577
 msgid "The IP address the list server has for it"
 msgstr "list server ghajbogh IP Daq"
 
-#: server.js:2555
+#: server.js:2578
 msgid "Any one world variable it sets, as {pair}"
 msgstr "lanbogh qo' choHwI' wa', {pair}"
 
-#: server.js:2557
+#: server.js:2580
 msgid ""
 "A capitalised pattern name matches case-sensitively: {lower} ignores case, "
 "{upper} does not."
 msgstr ""
 "tlhaw'DIyus tInbogh HaSta Hal pong: {lower} tlhaw'DIyus buSbe', {upper} buS."
 
-#: server.js:2560
+#: server.js:2583
 msgid "Examples"
 msgstr "ghantoH"
 
-#: server.js:2561
+#: server.js:2584
 msgid "Two or three shots, and somebody playing"
 msgstr "cha' pagh wej nIch, 'ej QujtaH vay'"
 
-#: server.js:2562
+#: server.js:2585
 msgid "Capture-the-flag between exactly two teams"
 msgstr "cha' boq neH, joqwI' tlhap"
 
-#: server.js:2563
+#: server.js:2586
 msgid "Leagues, by description"
 msgstr "ghommey, Del"
 
-#: server.js:2564
+#: server.js:2587
 msgid "bzo servers only"
 msgstr "bzo toy' De'wI'mey neH"
 
-#: server.js:2565
+#: server.js:2588
 msgid "No version known yet"
 msgstr "wej Segh mI' Sovlu'"
 
-#: server.js:2566
+#: server.js:2589
 msgid "Somebody is watching"
 msgstr "bejtaH vay'"
 
-#: server.js:2567
+#: server.js:2590
 msgid "Rabbit chase, ricochet, three shots"
 msgstr "Ha'DIbaH wam, nIch HeD, wej nIch"
 
-#: server.js:2568
+#: server.js:2591
 msgid "Either capture-the-flag or rabbit chase"
 msgstr "joqwI' tlhap pagh Ha'DIbaH wam"
 
-#: server.js:2569
+#: server.js:2592
 msgid "No map overview yet"
 msgstr "wej pu'jIn Hoch legh"
 
-#: server.js:2570
+#: server.js:2593
 msgid "Lists {variable} at all, on or off; {off} is the one that means off"
 msgstr "{variable} chu' pagh chu'Ha', 'ach tu'lu'; {off} chu'Ha' 'oH"
 
-#: server.js:2677
+#: server.js:2700
 msgid "Bots, blank where unknown"
 msgstr "qoqmey, Sovbe'lu'chugh chIm"
 
-#: server.js:2679
+#: server.js:2702
 msgid ""
 "Game type: yellow free-for-all, red capture-the-flag, white rabbit chase, "
 "cyan replay"
@@ -3503,131 +3503,131 @@ msgstr ""
 "Quj Segh: SuD Hoch Hoch Suv, Doq joqwI' tlhap, chIS Ha'DIbaH wam, SuDqu' "
 "qonta'"
 
-#: server.js:2681
+#: server.js:2704
 msgid "Superflags"
 msgstr "joqwI'mey nIv"
 
-#: server.js:2684
+#: server.js:2707
 msgid "This server already holds an import of that map"
 msgstr "pu'jInvetlh Suqpu' toy' De'wI'vam"
 
-#: server.js:2688
+#: server.js:2711
 msgid "The name, or the address when a server has none"
 msgstr "pong; pong ghajbe'chugh toy' De'wI', Daq"
 
-#: server.js:2688
+#: server.js:2711
 msgid "Name & Description"
 msgstr "pong, Del je"
 
-#: server.js:2700
+#: server.js:2723
 msgid "Filter syntax"
 msgstr "nejmeH ra' mu'tlhegh"
 
-#: server.js:2824
+#: server.js:2847
 msgid "Address"
 msgstr "Daq"
 
-#: server.js:2826 server.js:2944 server.js:2960 server.js:6227
+#: server.js:2849 server.js:2967 server.js:2983 server.js:6250
 msgid "Owner"
 msgstr "ghajwI'"
 
-#: server.js:2827
+#: server.js:2850
 msgid "Imported"
 msgstr "Suqlu'pu'"
 
-#: server.js:2841 server.js:2906
+#: server.js:2864 server.js:2929
 msgid "Launch"
 msgstr "yItagh"
 
-#: server.js:2847 server.js:2903 server/discovery.cjs:265
+#: server.js:2870 server.js:2926 server/discovery.cjs:265
 msgid "Play"
 msgstr "yIQuj"
 
-#: server.js:2852
+#: server.js:2875
 msgid "Import"
 msgstr "yISuq"
 
-#: server.js:2893
+#: server.js:2916
 msgid "Enter game"
 msgstr "Quj yI'el"
 
-#: server.js:2905
+#: server.js:2928
 msgid "Login and Play"
 msgstr "yI'el 'ej yIQuj"
 
-#: server.js:2943
+#: server.js:2966
 msgid "BZFlag server"
 msgstr "BZFlag toy' De'wI'"
 
-#: server.js:2945
+#: server.js:2968
 msgid "Carried by"
 msgstr "qengwI'"
 
-#: server.js:2959
+#: server.js:2982
 msgid "Up"
 msgstr "taH"
 
-#: server.js:2961
+#: server.js:2984
 msgid "Voice chat"
 msgstr "ghogh ja'chuq"
 
-#: server.js:2961
+#: server.js:2984
 msgid "configured"
 msgstr "lanlu'"
 
-#: server.js:2963
+#: server.js:2986
 msgid "Also at"
 msgstr "latlh Daq"
 
-#: server.js:3014
+#: server.js:3037
 msgid "(admin)"
 msgstr "(loHwI')"
 
-#: server.js:3015
+#: server.js:3038
 msgid "Log out"
 msgstr "yImej"
 
-#: server.js:3017
+#: server.js:3040
 msgid "Log in with your bzflag.org account to register a server"
 msgstr "toy' De'wI' DaghItlhmeH bzflag.org mI'lIj yIlo' 'ej yI'el"
 
-#: server.js:3018
+#: server.js:3041
 msgid "Log in with your bzflag.org account"
 msgstr "bzflag.org mI'lIj yIlo' 'ej yI'el"
 
-#: server.js:3029
+#: server.js:3052
 msgid "maps"
 msgstr "pu'jInmey"
 
-#: server.js:3029
+#: server.js:3052
 msgid "replays"
 msgstr "qonta'mey"
 
-#: server.js:3030
+#: server.js:3053
 msgid "keys"
 msgstr "ngaQHa'moHwI'mey"
 
-#: server.js:3030
+#: server.js:3053
 msgid "help"
 msgstr "QaH"
 
-#: server.js:3034
+#: server.js:3057
 msgid "Imported {file} -- it is in the local maps table below."
 msgstr "{file} Suqlu'pu' -- bIngDaq naDev pu'jInmey SomDaq tu'lu'."
 
-#: server.js:3036
+#: server.js:3059
 msgid "Import failed: {error}"
 msgstr "Suqlu'be': {error}"
 
-#: server.js:3044
+#: server.js:3067
 msgid "bzo servers"
 msgstr "bzo toy' De'wI'mey"
 
-#: server.js:3277
+#: server.js:3300
 msgid "Public bzo servers - {count}"
 msgstr "Hoch bzo toy' De'wI'mey - {count}"
 
-#: server.js:3278
+#: server.js:3301
 msgid ""
 "From the designated bzo list server, {server} -- pick a row to read it; "
 "Enter, or the pane's own link, goes in."
@@ -3635,34 +3635,34 @@ msgstr ""
 "bzo list server wIvlu'pu'bogh, {server} -- tlhegh yIwIv 'ej yIlaD; Enter "
 "pagh HeySel rar Dalo'chugh bI'el."
 
-#: server.js:3279
+#: server.js:3302
 msgid "disabled on this instance"
 msgstr "naDev chu'Ha'lu'"
 
-#: server.js:3283
+#: server.js:3306
 msgid "Public BZFlag servers - {count}"
 msgstr "Hoch BZFlag toy' De'wI'mey - {count}"
 
-#: server.js:3284
+#: server.js:3307
 msgid ""
 "From the public list server (my.bzflag.org), cached {seconds}s ago -- "
 "{refresh}."
 msgstr "Hoch list server (my.bzflag.org), {seconds}s ret pollu' -- {refresh}."
 
-#: server.js:3285
+#: server.js:3308
 msgid "refresh"
 msgstr "yIchu'qa'"
 
-#: server.js:3287
+#: server.js:3310
 msgid ""
 "Pick a row to read it; its link views that map, and does not enter that game."
 msgstr "tlhegh yIwIv 'ej yIlaD; rarDaj Dalo'chugh pu'jIn Dalegh, Quj Da'elbe'."
 
-#: server.js:3291
+#: server.js:3314
 msgid "Local maps - {count}"
 msgstr "naDev pu'jInmey - {count}"
 
-#: server.js:3292
+#: server.js:3315
 msgid ""
 "Already in this server's {directory} -- pick a row to read it; its link "
 "views that map."
@@ -3670,11 +3670,11 @@ msgstr ""
 "toy' De'wI'vam {directory} pa'Daq tu'lu' -- tlhegh yIwIv 'ej yIlaD; rarDaj "
 "Dalo'chugh pu'jIn Dalegh."
 
-#: server.js:3297
+#: server.js:3320
 msgid "Local replays - {count}"
 msgstr "naDev qonta'mey - {count}"
 
-#: server.js:3298
+#: server.js:3321
 msgid ""
 "bzfs recordings in this server's {directory} -- pick a row to read it; Watch "
 "plays it to everyone watching that replay."
@@ -3682,7 +3682,7 @@ msgstr ""
 "toy' De'wI'vam {directory} pa'Daq bzfs qonta'mey -- tlhegh yIwIv 'ej yIlaD; "
 "bej Dalo'chugh, qonta'vetlh bejbogh Hoch luDaQ."
 
-#: server.js:3313
+#: server.js:3336
 msgid ""
 "bzo {version} (build {build}): BZFlag in the browser, on desktop, phone and "
 "headset, and this list of the servers to play it on."
@@ -3690,22 +3690,22 @@ msgstr ""
 "bzo {version} (build {build}): De' nejwI'Daq BZFlag, De'wI' raS, ghogh "
 "HablI', qo' ngeb mIv je, 'ej QujmeH toy' De'wI'mey tetlh."
 
-#: server.js:3316
+#: server.js:3339
 msgid ""
 "Copyright (C) 2025-2026 Tim Riker. Free software under the {license}; source "
 "at {source}."
 msgstr ""
 "Copyright (C) 2025-2026 Tim Riker. {license}: tlhab ghun; Hal: {source}."
 
-#: server.js:3376
+#: server.js:3399
 msgid "Could not reach the BZFlag list server. Try again shortly."
 msgstr "BZFlag list server vISamlaHbe'. tugh yInIDqa'."
 
-#: server.js:6184
+#: server.js:6207
 msgid "List server key"
 msgstr "list server ngaQHa'moHwI'"
 
-#: server.js:6186
+#: server.js:6209
 msgid ""
 "This instance is not the designated bzo list server. Manage this server's "
 "key at {link}."
@@ -3713,15 +3713,15 @@ msgstr ""
 "bzo list server wIvlu'pu'bogh 'oHbe' naDev. toy' De'wI'vam ngaQHa'moHwI' "
 "yIche': {link}."
 
-#: server.js:6189
+#: server.js:6212
 msgid "The list server is disabled on this instance ({setting} is empty)."
 msgstr "naDev list server chu'Ha'lu' ({setting} chIm)."
 
-#: server.js:6196
+#: server.js:6219
 msgid "Generate key"
 msgstr "ngaQHa'moHwI' yIchenmoH"
 
-#: server.js:6198
+#: server.js:6221
 msgid ""
 "Enter the server's own {setting} -- the same address it already answers "
 "admin-whitelist probes on."
@@ -3729,60 +3729,60 @@ msgstr ""
 "toy' De'wI' {setting} yIghItlh -- admin-whitelist nejmeH tlhobmey jangbogh "
 "Daq rap."
 
-#: server.js:6201
+#: server.js:6224
 msgid ""
 "The list server calls this address back to validate a report; it never "
 "trusts one a report claims for itself."
 msgstr "ja'ghach 'ol list server: Daqvam ja'qa'. ja'ghach ja'bogh Daq not voq."
 
-#: server.js:6203
+#: server.js:6226
 msgid "Log in above to register a server and generate a key."
 msgstr "toy' De'wI' DaghItlhmeH ngaQHa'moHwI' DachenmoHmeH je, Dung yI'el."
 
-#: server.js:6206
+#: server.js:6229
 msgid "never"
 msgstr "not"
 
-#: server.js:6207
+#: server.js:6230
 msgid "stale"
 msgstr "ngo'"
 
-#: server.js:6208
+#: server.js:6231
 msgid "{players}/{max} players"
 msgstr "{players}/{max} QujwI'pu'"
 
-#: server.js:6209
+#: server.js:6232
 msgid "never reported"
 msgstr "not ja'"
 
-#: server.js:6210
+#: server.js:6233
 msgid "Revoke"
 msgstr "yIQaw'"
 
-#: server.js:6211
+#: server.js:6234
 msgid "Failed"
 msgstr "Qapbe'"
 
-#: server.js:6212
+#: server.js:6235
 msgid "Key for {url}: {key}"
 msgstr "{url} ngaQHa'moHwI': {key}"
 
-#: server.js:6213
+#: server.js:6236
 msgid ""
 "Paste this into that server's Operator panel -- also readable from the table "
 "above any time."
 msgstr ""
 "toy' De'wI'vetlh SeHwI' SeHlawDaq yIlan -- Dung SomDaq reH DalaDlaH je."
 
-#: server.js:6215
+#: server.js:6238
 msgid "All registered keys"
 msgstr "Hoch ngaQHa'moHwI'mey ghItlhlu'pu'bogh"
 
-#: server.js:6215
+#: server.js:6238
 msgid "Your keys"
 msgstr "ngaQHa'moHwI'meylIj"
 
-#: server.js:6216
+#: server.js:6239
 msgid ""
 "This instance ({url}) is the designated bzo list server -- every other bzo "
 "instance reports here, so its own {list} can show the {table} above."
@@ -3790,990 +3790,996 @@ msgstr ""
 "bzo list server wIvlu'pu'bogh 'oH naDev ({url}) -- naDev ja' latlh bzo Hoch, "
 "vaj Dung {table} 'agh {list}."
 
-#: server.js:6219
+#: server.js:6242
 msgid "bzo servers table"
 msgstr "bzo toy' De'wI'mey Som"
 
-#: server.js:6221
+#: server.js:6244
 msgid "A {bzfs} server's key is a different one, from {link}."
 msgstr "{bzfs} toy' De'wI' ngaQHa'moHwI' latlh 'oH; Suq: {link}."
 
-#: server.js:6227
+#: server.js:6250
 msgid "Key"
 msgstr "ngaQHa'moHwI'"
 
-#: server.js:6228
+#: server.js:6251
 msgid "Requested"
 msgstr "tlhoblu'pu'"
 
-#: server.js:6228
+#: server.js:6251
 msgid "Last checked"
 msgstr "Qav nejlu'"
 
-#: server.js:6229
+#: server.js:6252
 msgid "Status"
 msgstr "Dotlh"
 
-#: server.js:7544
+#: server.js:7568
 msgid "Match duration is {duration}"
 msgstr "Quj poH: {duration}"
 
-#: server.js:7554
+#: server.js:7578
 msgid "Match started"
 msgstr "Quj taghlu'"
 
-#: server.js:7961
+#: server.js:7985
 msgid "Your score record will be saved while you are in observer mode."
 msgstr "bejwI' SoHtaHvIS mI'lIj polbej."
 
-#: server.js:7966
+#: server.js:7990
 msgid "Your score has been restored."
 msgstr "mI'lIj chenmoHqa'lu'pu'."
 
 #. TRANSLATORS: /me is a command name; keep it as it is
-#: server.js:8736
+#: server.js:8760
 msgid "{player}, the /me command requires an argument"
 msgstr "{player}, /me ra'meH mu' poQ"
 
-#: server.js:8794
+#: server.js:8818
 msgid "Commands (use /<command>? for one of them):"
 msgstr "ra'meH mu'mey (wa' DaSovmeH /<command>? yIlo'):"
 
-#: server.js:8839
+#: server.js:8863
 msgid "Recording started"
 msgstr "qonta' taghlu'"
 
-#: server.js:8847 server.js:8904 server/messages-operator.cjs:336
+#: server.js:8871 server.js:8928 server/messages-operator.cjs:336
 msgid "Could not open for writing: {name} ({error})"
 msgstr "ghItlhmeH poSmoHlaHbe': {name} ({error})"
 
-#: server.js:8851
+#: server.js:8875
 msgid "Recording stopped"
 msgstr "qonta' mevlu'"
 
-#: server.js:8859
+#: server.js:8883
 msgid "Record size set to {mbytes}"
 msgstr "qonta' tlhoy: {mbytes}"
 
-#: server.js:8867
+#: server.js:8891
 msgid "Record rate set to {seconds}"
 msgstr "qonta' Do: {seconds}"
 
-#: server.js:8871
+#: server.js:8895
 msgid "Not Recording"
 msgstr "qonta'lu'be'"
 
-#: server.js:8875
+#: server.js:8899
 msgid "Filename:  {name}"
 msgstr "teywI' pong:  {name}"
 
-#: server.js:8876
+#: server.js:8900
 msgid "   saved:  {bytes} bytes / {packets} packets / {seconds} seconds"
 msgstr "   pollu':  {bytes} bytes / {packets} ngutlh tlhegh / {seconds} lup"
 
-#: server.js:8882
+#: server.js:8906
 msgid "Buffered:  {bytes} bytes / {packets} packets / {seconds} seconds"
 msgstr "   polHa':  {bytes} bytes / {packets} ngutlh tlhegh / {seconds} lup"
 
-#: server.js:8896 server/messages-operator.cjs:327
+#: server.js:8920 server/messages-operator.cjs:327
 msgid "No buffer to save"
 msgstr "pollu'meH qonta' tu'lu'be'"
 
-#: server.js:8901 server/messages-operator.cjs:332
+#: server.js:8925 server/messages-operator.cjs:332
 msgid "Record buffer saved to: {name}"
 msgstr "qonta' pollu'pu', naDev: {name}"
 
-#: server.js:8915
+#: server.js:8939
 msgid "Recording to file: {name}"
 msgstr "qonta'lu'taH, teywI': {name}"
 
-#: server.js:8938 server.js:9877
+#: server.js:8962 server.js:9901
 msgid "BZFS Version: {version}"
 msgstr "BZFS mI': {version}"
 
-#: server.js:8976 server.js:10080
+#: server.js:9000 server.js:10104
 msgid "Nobody is here"
 msgstr "pagh naDev"
 
-#: server.js:8983
+#: server.js:9007
 msgid "server: {stats}"
 msgstr "toy' De'wI': {stats}"
 
-#: server.js:9025
+#: server.js:9049
 msgid "Usage: /setteam <#slot|PlayerName> <team>"
 msgstr "Usage: /setteam <#slot|PlayerName> <team>"
 
 #. TRANSLATORS: /setteam is a command name and {teams} lists team names as typed
-#: server.js:9032
+#: server.js:9056
 msgid "Usage: /setteam <#slot|PlayerName> <team> -- one of {teams}"
 msgstr "Usage: /setteam <#slot|PlayerName> <team> -- {teams}"
 
-#: server.js:9038
+#: server.js:9062
 msgid "\"{player}\" is not on a team to move from"
 msgstr "boq ghajbe' \"{player}\""
 
-#: server.js:9042
+#: server.js:9066
 msgid "\"{player}\" is already {team}"
 msgstr "DaH {team} ghaH \"{player}\""
 
-#: server.js:9048
+#: server.js:9072
 msgid "\"{player}\" moved to {team}"
 msgstr "\"{player}\" lup: {team}"
 
-#: server.js:9049
+#: server.js:9073
 msgid "@{player} moved you to {team}"
 msgstr "{team} Dalup, @{player} ra'"
 
-#: server.js:9078
+#: server.js:9102
 msgid "Moved to {position} facing {bearing}"
 msgstr "{position} Dalup, {bearing} Dabej"
 
-#: server.js:9081
+#: server.js:9105
 msgid "\"{player}\" moved to {position} facing {bearing}"
 msgstr "\"{player}\" lup: {position}, {bearing} bej"
 
-#: server.js:9082
+#: server.js:9106
 msgid "@{player} moved you to {position} facing {bearing}"
 msgstr "{position} Dalup, {bearing} Dabej, @{player} ra'"
 
-#: server.js:9095
+#: server.js:9119
 msgid "Usage: /msg \"some callsign\" some message"
 msgstr "Usage: /msg \"some callsign\" some message"
 
-#: server.js:9142
+#: server.js:9166
 msgid "Usage: /kill <#slot|PlayerName> [reason]"
 msgstr "Usage: /kill <#slot|PlayerName> [reason]"
 
-#: server.js:9147
+#: server.js:9171
 msgid "An observer has no tank to kill"
 msgstr "Duj ghajbe' bejwI'; HoHlaHbe'lu'"
 
-#: server.js:9151
+#: server.js:9175
 msgid "\"{player}\" is already dead"
 msgstr "Heghpu'ta' \"{player}\""
 
-#: server.js:9158
+#: server.js:9182
 msgid "\"{player}\" killed"
 msgstr "\"{player}\" HoHlu'pu'"
 
-#: server.js:9159
+#: server.js:9183
 msgid "You were killed by an operator: {reason}"
 msgstr "SeHwI' DuHoHpu'. meq: {reason}"
 
-#: server.js:9160
+#: server.js:9184
 msgid "You were killed by an operator"
 msgstr "SeHwI' DuHoHpu'"
 
-#: server.js:9208
+#: server.js:9232
 msgid "You were banned from this server"
 msgstr "toy' De'wI'vamvo' DughImlu'pu'"
 
-#: server.js:9209 server.js:9232
+#: server.js:9233 server.js:9256
 msgid "Reason given: {reason}"
 msgstr "meq: {reason}"
 
-#: server.js:9210
+#: server.js:9234
 msgid "{player} banned by {admin}, reason: {reason}"
 msgstr "{player} ghIm {admin}. meq: {reason}"
 
-#: server.js:9222
+#: server.js:9246
 msgid "Syntax: /kick <#slot | PlayerName | \"Player Name\"> <reason>"
 msgstr "Syntax: /kick <#slot | PlayerName | \"Player Name\"> <reason>"
 
-#: server.js:9223 server.js:9252
+#: server.js:9247 server.js:9276
 msgid "\tPlease keep in mind that reason is displayed to the user."
 msgstr "\tyIqaw: QujwI'vaD meq 'aghlu'."
 
-#: server.js:9226
+#: server.js:9250
 msgid "player \"{player}\" not found"
 msgstr "QujwI' \"{player}\" tu'lu'be'"
 
-#: server.js:9231
+#: server.js:9255
 msgid "You were kicked off the server"
 msgstr "toy' De'wI'vo' DuwoDlu'pu'"
 
-#: server.js:9233
+#: server.js:9257
 msgid "{player} kicked by {admin}, reason: {reason}"
 msgstr "{player} woD {admin}. meq: {reason}"
 
-#: server.js:9247
+#: server.js:9271
 msgid ""
 "Syntax: /ban <#slot | PlayerName | \"Player Name\" | ip> <duration> <reason>"
 msgstr ""
 "Syntax: /ban <#slot | PlayerName | \"Player Name\" | ip> <duration> <reason>"
 
-#: server.js:9248
+#: server.js:9272
 msgid "\t<duration> can be 'short' or 'default' for the default ban time "
 msgstr "\t<duration>: 'short' pagh 'default' (motlh ghIm poH) "
 
-#: server.js:9249
+#: server.js:9273
 msgid "\tor 'forever' or 'max' for infinite bans "
 msgstr "\tpagh 'forever' pagh 'max' (reH ghIm) "
 
-#: server.js:9250
+#: server.js:9274
 msgid "\tor a time in the format <weeks>W<days>D<hours>H<minutes>M "
 msgstr "\tpagh poH, <weeks>W<days>D<hours>H<minutes>M "
 
-#: server.js:9251
+#: server.js:9275
 msgid "\tor just a number of minutes "
 msgstr "\tpagh tup mI' neH "
 
-#: server.js:9274 server.js:9382
+#: server.js:9298 server.js:9406
 msgid "Error: invalid ban duration"
 msgstr "Qagh: ghIm poH lughbe'"
 
-#: server.js:9275 server.js:9383
+#: server.js:9299 server.js:9407
 msgid "Duration examples:  30m 1h  1d  1w  and mixing: 1w2d4h 1w2d1m"
 msgstr "poH ghantoH:  30m 1h  1d  1w  DuD:  1w2d4h 1w2d1m"
 
-#: server.js:9284 server.js:9668
+#: server.js:9308 server.js:9692
 msgid "{player} has no trusted address to ban"
 msgstr "ghImmeH Daq voqlu'bogh ghajbe' {player}"
 
-#: server.js:9290 server.js:9392
+#: server.js:9314 server.js:9416
 msgid "Pattern added to the BZID banlist"
 msgstr "BZID ghIm tetlhDaq HaSta chel"
 
-#: server.js:9296
+#: server.js:9320
 msgid "Malformed address or invalid Player/Slot: {target}"
 msgstr "Daq pagh QujwI'/Daq lughbe': {target}"
 
-#: server.js:9300
+#: server.js:9324
 msgid "Pattern added to the IP banlist"
 msgstr "IP ghIm tetlhDaq HaSta chel"
 
-#: server.js:9311
+#: server.js:9335
 msgid "Removed IP pattern from the ban list"
 msgstr "ghIm tetlhvo' IP HaSta teq"
 
-#: server.js:9313 server.js:9402
+#: server.js:9337 server.js:9426
 msgid "No pattern removed"
 msgstr "HaSta teqbe'lu'"
 
-#: server.js:9328
+#: server.js:9352
 msgid "Syntax: /checkip <ip>"
 msgstr "Syntax: /checkip <ip>"
 
-#: server.js:9333
+#: server.js:9357
 msgid "{address} is not banned."
 msgstr "ghImbe'lu' {address}."
 
-#: server.js:9336
+#: server.js:9360
 msgid "{address} is banned:"
 msgstr "ghImlu' {address}:"
 
-#: server.js:9344
+#: server.js:9368
 msgid ""
 "Syntax: /idban <#slot|+id|PlayerName|\"Player Name\"> <duration> <reason>"
 msgstr ""
 "Syntax: /idban <#slot|+id|PlayerName|\"Player Name\"> <duration> <reason>"
 
-#: server.js:9345
+#: server.js:9369
 msgid "  Please keep in mind that reason is displayed to the user."
 msgstr "  yIqaw: QujwI'vaD meq 'aghlu'."
 
-#: server.js:9356
+#: server.js:9380
 msgid "Error: invalid id pattern"
 msgstr "Qagh: id HaSta lughbe'"
 
-#: server.js:9364
+#: server.js:9388
 msgid "could not find player ({player})"
 msgstr "QujwI' vItu'laHbe' ({player})"
 
-#: server.js:9369
+#: server.js:9393
 msgid "no BZID for player ({player})"
 msgstr "QujwI' BZID ghajbe' ({player})"
 
-#: server.js:9400
+#: server.js:9424
 msgid "Removed id from the ban list"
 msgstr "ghIm tetlhvo' id teq"
 
-#: server.js:9496
+#: server.js:9520
 msgid "Usage: /poll vote yes|no"
 msgstr "Usage: /poll vote yes|no"
 
-#: server.js:9497
+#: server.js:9521
 msgid "    or /poll ban playername"
 msgstr "    pagh /poll ban playername"
 
-#: server.js:9498
+#: server.js:9522
 msgid "    or /poll kick playername"
 msgstr "    pagh /poll kick playername"
 
-#: server.js:9499
+#: server.js:9523
 msgid "    or /poll kill playername"
 msgstr "    pagh /poll kill playername"
 
-#: server.js:9500
+#: server.js:9524
 msgid "    or /poll set variable value"
 msgstr "    pagh /poll set variable value"
 
-#: server.js:9501
+#: server.js:9525
 msgid "    or /poll flagreset"
 msgstr "    pagh /poll flagreset"
 
-#: server.js:9503
+#: server.js:9527
 msgid "    or /poll {action} {parameters}"
 msgstr ""
 
 #. TRANSLATORS: /vote is a command name; keep it as it is
-#: server.js:9512
+#: server.js:9536
 msgid "{player}, you are presently not authorized to run /vote"
 msgstr "{player}, DaH /vote Dalo'meH chaw' Daghajbe'"
 
-#: server.js:9516 server.js:9563 server.js:9590
+#: server.js:9540 server.js:9587 server.js:9614
 msgid "ERROR: the poll arbiter has disappeared (this should never happen)"
 msgstr "Qagh: wIv SeHwI' ngabpu' (not qaSnIS)"
 
-#: server.js:9520
+#: server.js:9544
 msgid "A poll is not presently in progress.  There is nothing to vote on"
 msgstr "DaH wIv tu'lu'be'. DawIvmeH pagh tu'lu'"
 
-#: server.js:9525
+#: server.js:9549
 msgid "{player}, you did not vote in favor or in opposition"
 msgstr "{player}, HIja' ghobe' joq DaQIjbe'"
 
-#: server.js:9526
+#: server.js:9550
 msgid "{player}, you did not provide a vote answer"
 msgstr "{player}, wIv jang Danobbe'"
 
-#: server.js:9527
+#: server.js:9551
 msgid "Usage: /vote yes|no|y|n|1|0|yea|nay|si|ja|nein|oui|non|sim|nao"
 msgstr "Usage: /vote yes|no|y|n|1|0|yea|nay|si|ja|nein|oui|non|sim|nao"
 
 #. TRANSLATORS: {action} is a /poll keyword (ban, kick, kill, set, reset), sent as typed
-#: server.js:9541
+#: server.js:9565
 msgid "{player}, your vote in favor of the {action} has been recorded"
 msgstr "{player}, {action} DaHIja'pu'; qonlu'pu'"
 
-#: server.js:9542
+#: server.js:9566
 msgid "{player}, your vote in opposition of the {action} has been recorded"
 msgstr "{player}, {action} Daghobe'pu'; qonlu'pu'"
 
-#: server.js:9544
+#: server.js:9568
 msgid "{player}, you have already voted on the poll to {action} {target}"
 msgstr "{player}, wIvvam: {action} {target}; DawIvpu'ta'"
 
-#: server.js:9548
+#: server.js:9572
 msgid ""
 "{player}, there was an error while voting on the poll to {action} {target}"
 msgstr "{player}, wIvvam: {action} {target}; DawIvtaHvIS Qagh"
 
 #. TRANSLATORS: /veto is a command name; keep it as it is
-#: server.js:9559
+#: server.js:9583
 msgid "{player}, you are presently not authorized to run /veto"
 msgstr "{player}, DaH /veto Dalo'meH chaw' Daghajbe'"
 
-#: server.js:9567
+#: server.js:9591
 msgid "{player}, there is presently no active poll to veto"
 msgstr "{player}, DaH wIv tu'lu'be'; DaqIllaHbe'"
 
-#: server.js:9570
+#: server.js:9594
 msgid "{player}, you have cancelled the poll to {action} {target}"
 msgstr "{player}, wIvvam DaqIlpu': {action} {target}"
 
-#: server.js:9576
+#: server.js:9600
 msgid "The poll was cancelled by {player}"
 msgstr "wIv qIl {player}"
 
 #. TRANSLATORS: /poll is a command name; keep it as it is
-#: server.js:9586
+#: server.js:9610
 msgid "{player}, you are presently not authorized to run /poll"
 msgstr "{player}, DaH /poll Dalo'meH chaw' Daghajbe'"
 
-#: server.js:9606
+#: server.js:9630
 msgid "A poll to {action} {target} is presently in progress"
 msgstr "DaH wIvlu'taH: {action} {target}"
 
-#: server.js:9609
+#: server.js:9633
 msgid "Unable to start a new poll until the current one is over"
 msgstr "wIv chu' DataghlaHbe'; wIv DaH rIn"
 
-#: server.js:9614
+#: server.js:9638
 msgid ""
 "Unable to initiate a new poll.  There are not enough registered players "
 "playing."
 msgstr "wIv chu' taghlaHbe'lu'. QujwI'pu' qonlu'bogh yapbe'."
 
-#: server.js:9618
+#: server.js:9642
 msgid ""
 "There needs to be at least {required} other player and only {others} is "
 "available."
 msgstr "latlh QujwI' {required} poQlu', {others} neH naDev."
 
-#: server.js:9619
+#: server.js:9643
 msgid ""
 "There needs to be at least {required} other player and only {others} are "
 "available."
 msgstr "latlh QujwI' {required} poQlu', {others} neH naDev."
 
-#: server.js:9621
+#: server.js:9645
 msgid ""
 "There needs to be at least {required} other players and only {others} is "
 "available."
 msgstr "latlh QujwI'pu' {required} poQlu', {others} neH naDev."
 
-#: server.js:9623
+#: server.js:9647
 msgid ""
 "There needs to be at least {required} other players and only {others} are "
 "available."
 msgstr "latlh QujwI'pu' {required} poQlu', {others} neH naDev."
 
-#: server.js:9633
+#: server.js:9657
 msgid "/poll: incorrect syntax, argument required."
 msgstr "/poll: mu' poQlu'."
 
-#: server.js:9639
+#: server.js:9663
 msgid "{player}, no target was specified for the [{action}] vote"
 msgstr "{player}, [{action}] wIvmeH DoS pong Danobbe'"
 
 #. TRANSLATORS: /poll and {action} are a command as typed; keep them as they are
-#: server.js:9641
+#: server.js:9665
 msgid "Usage: /poll {action} target"
 msgstr "Usage: /poll {action} target"
 
 #. TRANSLATORS: /poll {action} is a command as typed; keep it as it is
-#: server.js:9646
+#: server.js:9670
 msgid "{player}, you may not /poll {action} on this server"
 msgstr "{player}, naDev /poll {action} chaw'be'lu'"
 
-#: server.js:9654
+#: server.js:9678
 msgid "The player specified for a {action} vote is not here"
 msgstr "{action} wIvmeH QujwI' naDev ghaHbe'"
 
-#: server.js:9658
+#: server.js:9682
 msgid "You can't kill an observer!"
 msgstr "bejwI' DaHoHlaHbe'!"
 
-#: server.js:9664
+#: server.js:9688
 msgid "{player} is protected from being polled against."
 msgstr "{player} Do'Ha' wIvlu'laHbe'."
 
-#: server.js:9696
+#: server.js:9720
 msgid "You are not able to request a {action} poll right now, {player}"
 msgstr "DaH {action} wIv DatlhoblaHbe', {player}"
 
-#: server.js:9701
+#: server.js:9725
 msgid "A poll to {action} {target} has been requested by {player}"
 msgstr "wIv tlhob {player}: {action} {target}"
 
-#: server.js:9709
+#: server.js:9733
 msgid ""
 "{available} player is available, {needed} additional affirming vote required "
 "to pass the poll ({percentage} %)"
 msgstr "{available} QujwI' naDev; {needed} HIja' latlh poQlu' ({percentage} %)"
 
-#: server.js:9710
+#: server.js:9734
 msgid ""
 "{available} player is available, {needed} additional affirming votes "
 "required to pass the poll ({percentage} %)"
 msgstr "{available} QujwI' naDev; {needed} HIja' latlh poQlu' ({percentage} %)"
 
-#: server.js:9713
+#: server.js:9737
 msgid ""
 "{available} players are available, {needed} additional affirming vote "
 "required to pass the poll ({percentage} %)"
 msgstr ""
 "{available} QujwI'pu' naDev; {needed} HIja' latlh poQlu' ({percentage} %)"
 
-#: server.js:9714
+#: server.js:9738
 msgid ""
 "{available} players are available, {needed} additional affirming votes "
 "required to pass the poll ({percentage} %)"
 msgstr ""
 "{available} QujwI'pu' naDev; {needed} HIja' latlh poQlu' ({percentage} %)"
 
-#: server.js:9719
+#: server.js:9743
 msgid "Unable to automatically place your vote for some unknown reason"
 msgstr "wIvlIj vIlanlaHbe'; meq vISovbe'"
 
-#: server.js:9747
+#: server.js:9771
 msgid ""
 "You have been temporarily banned due to sufficient votes to have you removed"
 msgstr "QujwI'pu' law' Dughoblu'pu'; poH ghIm DughImlu'pu'"
 
-#: server.js:9753
+#: server.js:9777
 msgid "You have been kicked due to sufficient votes to have you removed"
 msgstr "QujwI'pu' law' Dughoblu'pu'; DuwoDlu'pu'"
 
-#: server.js:9759
+#: server.js:9783
 msgid "You have been killed due to sufficient votes"
 msgstr "QujwI'pu' law' Dughoblu'pu'; DuHoHlu'pu'"
 
-#: server.js:9782
+#: server.js:9806
 msgid ""
 "A poll to {action} {target} has begun.  Players have up to {seconds} seconds "
 "to vote."
 msgstr "wIv taghlu': {action} {target}. {seconds} lup DawIvmeH."
 
-#: server.js:9790
+#: server.js:9814
 msgid "{seconds} seconds remain in the poll to {action} {target}."
 msgstr "{seconds} lup ratlh. wIv: {action} {target}."
 
-#: server.js:9798
+#: server.js:9822
 msgid "Enough votes were collected to {action} {target} early."
 msgstr "wIv yap tu'lu'; tlhoy nom {action} {target}."
 
-#: server.js:9799
+#: server.js:9823
 msgid "Enough votes were collected to reset all unused flags early."
 msgstr "wIv yap tu'lu'; tlhoy nom joqwI'mey lo'be'lu'bogh Hoch chu'qa'lu'."
 
-#: server.js:9815
+#: server.js:9839
 msgid "Poll Results: {yes} in favor, {no} oppose, {abstain} abstain"
 msgstr "wIv: HIja' {yes}, ghobe' {no}, pagh {abstain}"
 
-#: server.js:9823
+#: server.js:9847
 msgid "The poll to {action} {target} was not successful"
 msgstr "wIv Qapbe': {action} {target}"
 
-#: server.js:9832
+#: server.js:9856
 msgid ""
 "The poll is now closed and was successful.  {target} is scheduled to be "
 "temporarily banned."
 msgstr "wIv rIn, Qap. poH ghIm {target} ghImlu'."
 
-#: server.js:9833
+#: server.js:9857
 msgid ""
 "The poll is now closed and was successful.  {target} is scheduled to be "
 "kicked."
 msgstr "wIv rIn, Qap. {target} woDlu'."
 
-#: server.js:9834
+#: server.js:9858
 msgid ""
 "The poll is now closed and was successful.  {target} is scheduled to be "
 "killed."
 msgstr "wIv rIn, Qap. {target} HoHlu'."
 
-#: server.js:9837
+#: server.js:9861
 msgid ""
 "The poll is now closed and was successful.  {target} is scheduled to be "
 "{action}."
 msgstr "wIv rIn, Qap. {target}: {action}."
 
-#: server.js:9845
+#: server.js:9869
 msgid "{target} has been kicked."
 msgstr "{target} woDlu'pu'."
 
-#: server.js:9846
+#: server.js:9870
 msgid "{target} has been killed."
 msgstr "{target} HoHlu'pu'."
 
-#: server.js:9848
+#: server.js:9872
 msgid "{target} has been {action}"
 msgstr "{target}: {action}"
 
-#: server.js:9863
+#: server.js:9887
 msgid "{player}'s client version:"
 msgstr "{player} De'wI' mI':"
 
-#: server.js:9864
+#: server.js:9888
 msgid "  {version}"
 msgstr "  {version}"
 
-#: server.js:9865
+#: server.js:9889
 msgid "  unknown"
 msgstr "  Sovbe'lu'"
 
-#: server.js:9871
+#: server.js:9895
 msgid "Player not found."
 msgstr "QujwI' tu'lu'be'."
 
-#: server.js:9902
+#: server.js:9926
 msgid "Countdown cancelled by {player}."
 msgstr "mI' 'echlet qIl {player}."
 
-#: server.js:9902
+#: server.js:9926
 msgid "Countdown cancelled"
 msgstr "mI' 'echlet qIllu'"
 
-#: server.js:9928
+#: server.js:9952
 msgid "No match is running to pause"
 msgstr "Quj Qapbe'; mevlaHbe'"
 
-#: server.js:9936
+#: server.js:9960
 msgid "No paused match to resume"
 msgstr "Quj mevlu'pu'be'; taghqa'laHbe'"
 
-#: server.js:9943
+#: server.js:9967
 msgid "There is no running countdown to cancel"
 msgstr "mI' 'echlet tu'lu'be'; qIllaHbe'"
 
-#: server.js:9951
+#: server.js:9975
 msgid "Usage: /countdown [<seconds>|pause|resume|cancel]"
 msgstr "Usage: /countdown [<seconds>|pause|resume|cancel]"
 
-#: server.js:9956
+#: server.js:9980
 msgid "There is a countdown already in progress"
 msgstr "mI' 'echlet QaptaH"
 
-#: server.js:9960
+#: server.js:9984
 msgid "A game is already in progress"
 msgstr "Quj QaptaHbejpu'"
 
-#: server.js:9964 server.js:9967
+#: server.js:9988 server.js:9991
 msgid "Countdown set to {seconds} instead of {asked}"
 msgstr "mI' 'echlet: {seconds}, {asked} Daneh"
 
-#: server.js:9976
+#: server.js:10000
 msgid "Countdown started by {player}."
 msgstr "mI' 'echlet tagh {player}."
 
-#: server.js:9977
+#: server.js:10001
 msgid "Match begins in about {duration}"
 msgstr "Quj tagh: {duration} ret"
 
-#: server.js:9985
+#: server.js:10009
 msgid "The match has started!...Good Luck Teams!"
 msgstr "Quj taghlu'!...boqmey Qapla'!"
 
-#: server.js:9989
+#: server.js:10013
 msgid "Start your engines!......"
 msgstr "QuQ yItaghmoH!......"
 
-#: server.js:9991
+#: server.js:10015
 msgid "{seconds}..."
 msgstr "{seconds}..."
 
-#: server.js:10003
+#: server.js:10027
 msgid "No match is running"
 msgstr "Quj Qapbe'"
 
-#: server.js:10015
+#: server.js:10039
 msgid "Usage: /say <message>"
 msgstr "Usage: /say <message>"
 
-#: server.js:10031
+#: server.js:10055
 msgid "Usage: /mute <#slot|PlayerName>"
 msgstr "Usage: /mute <#slot|PlayerName>"
 
-#: server.js:10037
+#: server.js:10061
 msgid "\"{player}\" is now muted"
 msgstr "DaH tam \"{player}\""
 
-#: server.js:10038
+#: server.js:10062
 msgid "You have been muted by an operator"
 msgstr "SeHwI' DutammoHpu'"
 
-#: server.js:10047
+#: server.js:10071
 msgid "Usage: /unmute <#slot|PlayerName>"
 msgstr "Usage: /unmute <#slot|PlayerName>"
 
-#: server.js:10053
+#: server.js:10077
 msgid "\"{player}\" is no longer muted"
 msgstr "DaH tambe' \"{player}\""
 
-#: server.js:10054
+#: server.js:10078
 msgid "You are no longer muted"
 msgstr "DaH bItambe'"
 
-#: server.js:10062
+#: server.js:10086
 msgid "Nobody is muted"
 msgstr "pagh tam"
 
-#: server.js:10175
+#: server.js:10199
 msgid "Usage: /flag drop [#slot|PlayerName]"
 msgstr "Usage: /flag drop [#slot|PlayerName]"
 
-#: server.js:10182
+#: server.js:10206
 msgid "You are not carrying a flag"
 msgstr "joqwI' DaqengtaHbe'"
 
-#: server.js:10183
+#: server.js:10207
 msgid "\"{player}\" is not carrying a flag"
 msgstr "joqwI' qengtaHbe' \"{player}\""
 
-#: server.js:10192
+#: server.js:10216
 msgid "Dropped {flag} from \"{player}\""
 msgstr "\"{player}\" joqwI' chaghlu': {flag}"
 
-#: server.js:10193
+#: server.js:10217
 msgid "Your {flag} flag was dropped"
 msgstr "joqwI'lIj chaghlu': {flag}"
 
-#: server.js:10207
+#: server.js:10231
 msgid "{count} flags sent up"
 msgstr "joqwI'mey {count} chenlu'"
 
-#: server.js:10217
+#: server.js:10241
 msgid "{count} flags reset"
 msgstr "joqwI'mey {count} chu'qa'lu'"
 
-#: server.js:10222
+#: server.js:10246
 msgid "No flags are in the world"
 msgstr "qo'Daq joqwI' tu'lu'be'"
 
-#: server.js:10240
+#: server.js:10264
 msgid "Usage: /flag take <#slot|PlayerName>"
 msgstr "Usage: /flag take <#slot|PlayerName>"
 
 #. TRANSLATORS: /flag take is a command name; keep it as it is
-#: server.js:10247
+#: server.js:10271
 msgid "/flag take: player ({player}) does not have a flag"
 msgstr "/flag take: joqwI' ghajbe' QujwI' ({player})"
 
-#: server.js:10256
+#: server.js:10280
 msgid "{admin} took flag {flag}/{slot} from {player}"
 msgstr "{player} joqwI' {flag}/{slot} tlhap {admin}"
 
-#: server.js:10268
+#: server.js:10292
 msgid "Usage: /flag give <#slot|PlayerName> <#flagId|FlagAbbr> [force]"
 msgstr "Usage: /flag give <#slot|PlayerName> <#flagId|FlagAbbr> [force]"
 
-#: server.js:10284
+#: server.js:10308
 msgid "flag {flag} is not in this world"
 msgstr "qo'vamDaq joqwI' {flag} tu'lu'be'"
 
-#: server.js:10291 server.js:10329
+#: server.js:10315 server.js:10353
 msgid "you may need to use the force"
 msgstr "force DapoQ net Sov"
 
-#: server.js:10298
+#: server.js:10322
 msgid "flag {flag} is an empty slot"
 msgstr "joqwI' {flag}: Daq chIm"
 
-#: server.js:10304
+#: server.js:10328
 msgid "bad flag type"
 msgstr "joqwI' Segh lughbe'"
 
-#: server.js:10326
+#: server.js:10350
 msgid "flag type not found"
 msgstr "joqwI' Segh tu'lu'be'"
 
-#: server.js:10335
+#: server.js:10359
 msgid "An observer has no tank to carry a flag"
 msgstr "Duj ghajbe' bejwI'; joqwI' qenglaHbe'"
 
 #. TRANSLATORS: /flag give is a command name; keep it as it is
-#: server.js:10342
+#: server.js:10366
 msgid "/flag give: player ({player}) is not alive"
 msgstr "/flag give: yInbe' QujwI' ({player})"
 
-#: server.js:10363
+#: server.js:10387
 msgid "{admin} gave flag {flag}/{slot} to {player}"
 msgstr "{player} joqwI' {flag}/{slot} nob {admin}"
 
-#: server.js:10390
+#: server.js:10414
 msgid "Usage: /mv [player] <x,y> [facing]"
 msgstr "Usage: /mv [player] <x,y> [facing]"
 
-#: server.js:10405
+#: server.js:10429
 msgid "An observer has no tank to move"
 msgstr "Duj ghajbe' bejwI'; lupHa'"
 
-#: server.js:10448
+#: server.js:10472
 msgid "Nowhere to stand at {x},{y}"
 msgstr "{x},{y}: QammeH Daq tu'lu'be'"
 
-#: server.js:10515
+#: server.js:10539
 msgid "Checking another player's position requires operator status"
 msgstr "latlh QujwI' Daq DaSovmeH SeHwI' patlh DapoQ"
 
-#: server.js:10521
+#: server.js:10545
 msgid "Usage: /pos [player]"
 msgstr "Usage: /pos [player]"
 
-#: server.js:10527
+#: server.js:10551
 msgid "An observer has no tank position"
 msgstr "Duj ghajbe' bejwI'; Daq ghajbe'"
 
-#: server.js:10535
+#: server.js:10559
 msgid "You are at {position} facing {bearing}"
 msgstr "{position} Dab, {bearing} Dabej"
 
-#: server.js:10536
+#: server.js:10560
 msgid "\"{player}\" is at {position} facing {bearing}"
 msgstr "\"{player}\" Daq: {position}, {bearing} bej"
 
-#: server.js:11007
+#: server.js:11031
 msgid "All shots now ricochet"
 msgstr "DaH Hoch nIch HeD"
 
-#: server.js:11007
+#: server.js:11031
 msgid "Shots no longer ricochet"
 msgstr "DaH nIch HeDbe'"
 
-#: server.js:11173
+#: server.js:11197
 msgid "usage: set <name> [<value>]"
 msgstr "usage: set <name> [<value>]"
 
-#: server.js:11174
+#: server.js:11198
 msgid "bzo's own: {variables}"
 msgstr "bzo Dochmey: {variables}"
 
 #. TRANSLATORS: /set is a command name; keep it as it is
-#: server.js:11194
+#: server.js:11218
 msgid "/set failed, reason: variable {name} does not exist"
 msgstr "/set Qapbe'. meq: {name} choHwI' tu'lu'be'"
 
-#: server.js:11195 server.js:11229
+#: server.js:11219 server.js:11253
 msgid "variable {name} does not exist"
 msgstr "{name} choHwI' tu'lu'be'"
 
-#: server.js:11199
+#: server.js:11223
 msgid "{name} is {value}"
 msgstr "{name}: {value}"
 
 #. TRANSLATORS: /set is a command name; keep it as it is
-#: server.js:11204
+#: server.js:11228
 msgid "/set failed, reason: variable {name} is not writeable"
 msgstr "/set Qapbe'. meq: {name} choHwI' ghItlhlaHbe'lu'"
 
-#: server.js:11210
+#: server.js:11234
 msgid "{name} set"
 msgstr "{name} lanlu'"
 
-#: server.js:11211
+#: server.js:11235
 msgid "Variable Modification Notice by {player} of set {name} {value}"
 msgstr "choHwI' choH {player}: set {name} {value}"
 
-#: server.js:11221
+#: server.js:11245
 msgid "usage: reset <name>"
 msgstr "usage: reset <name>"
 
-#: server.js:11232
+#: server.js:11256
 msgid "variable {name} is not writeable"
 msgstr "{name} choHwI' ghItlhlaHbe'lu'"
 
-#: server.js:11238
+#: server.js:11262
 msgid "all variables reset"
 msgstr "Hoch choHwI' chu'qa'lu'"
 
-#: server.js:11239
+#: server.js:11263
 msgid "{name} reset"
 msgstr "{name} chu'qa'lu'"
 
-#: server.js:11243
+#: server.js:11267
 msgid "Variable Reset Notice by {player} of reset {name}"
 msgstr "choHwI' chu'qa' {player}: reset {name}"
 
-#: server.js:11271
+#: server.js:11295
 msgid "No command starting with {prefix}"
 msgstr "ra'meH mu' tu'lu'be': {prefix}"
 
-#: server.js:11285 server.js:11308
+#: server.js:11309 server.js:11332
 msgid "You do not have permission to run the {command} command"
 msgstr "{command} ra'meH mu' Dalo'meH chaw' Daghajbe'"
 
-#: server.js:11350
+#: server.js:11374
 msgid "We're sorry, you are not allowed to talk!"
 msgstr "jIQoS, bIjatlhmeH chaw' Daghajbe'!"
 
-#: server.js:11583
+#: server.js:11607
 msgid "You signed in as {player} on another device."
 msgstr "latlh jan Dalo'taHvIS {player} pong Dalo'pu'."
 
-#: server.js:11605
+#: server.js:11629
 msgid "{player} signed in with that name, so yours is now {name}."
 msgstr "pongvetlh lo' {player}; DaH {name} ponglIj."
 
-#: server.js:13769
+#: server.js:13834
 msgid "Global login approved!"
 msgstr "Hoch qo' 'el chaw'lu'pu'!"
 
-#: server.js:13771
+#: server.js:13836
 msgid "Global login rejected, bad token."
 msgstr "Hoch qo' 'el chaw'be'lu'. ngaQHa'moHwI' lughbe'."
 
-#: server.js:13773
+#: server.js:13838
 msgid "This callsign is not registered."
 msgstr "pongvam qonlu'be'."
 
-#: server.js:13774
+#: server.js:13839
 msgid "You can register it at https://forums.bzflag.org/"
 msgstr "naDev Daqonlaw': https://forums.bzflag.org/"
 
-#: server.js:14456
+#: server.js:14521
 msgid "{count} shots left"
 msgstr "bachmey {count} ratlh"
 
-#: server.js:14457
+#: server.js:14522
 msgid "1 shot left"
 msgstr "wa' bach ratlh"
 
-#: server.js:14930
+#: server.js:14995
 msgid "I'm sorry, we do not allow autopilot on this server."
 msgstr "jIQoS, naDev ghop Duj chaw'be'lu'."
 
-#: server.js:17037
+#: server.js:17102
 msgid "Server restarting: {reason}"
 msgstr "toy' De'wI' taghqa'lu'taH: {reason}"
 
-#: server.js:18330
+#: server.js:18399
 msgid "The pilots have not loaded"
 msgstr "qoq chIjwI'pu' lI'lu'be'"
 
 #. TRANSLATORS: a command's syntax; keep it as it is
-#: server.js:18342
+#: server.js:18411
 msgid "Usage: /bot fill <0-{max}> [{pilots}]"
 msgstr "Usage: /bot fill <0-{max}> [{pilots}]"
 
-#: server.js:18346
+#: server.js:18415
 msgid "No pilot \"{pilot}\"; one of {pilots}"
 msgstr "chIjwI' \"{pilot}\" tu'lu'be'; {pilots}"
 
 #. TRANSLATORS: a command's syntax; keep /bot add as it is
-#: server.js:18368
+#: server.js:18437
 msgid "Usage: /bot add [{pilots}] [team] [count]"
 msgstr "Usage: /bot add [{pilots}] [team] [count]"
 
-#: server.js:18389
+#: server.js:18458
+msgid "{player} paused the bots and autopilots"
+msgstr "qoqmey nIteb chIjwI'mey je mevmoH {player}"
+
+#: server.js:18459
+msgid "{player} resumed the bots and autopilots"
+msgstr "qoqmey nIteb chIjwI'mey je taghqa'moH {player}"
+
+#: server.js:18471
 msgid "Usage: /bot remove <name|all>"
 msgstr "Usage: /bot remove <name|all>"
 
-#. TRANSLATORS: a command's syntax; keep /bot, fill, add, remove and all as they are
-#: server.js:18401
+#. TRANSLATORS: a command's syntax; keep /bot, fill, add, remove, all, pause and resume as they are
+#: server.js:18483
 msgid ""
 "Usage: /bot [fill <n> [{pilots}] | add [{pilots}] [team] [count] | remove "
-"<name|all>]"
-msgstr ""
-"Usage: /bot [fill <n> [{pilots}] | add [{pilots}] [team] [count] | remove "
-"<name|all>]"
+"<name|all> | pause | resume]"
+msgstr "Usage: /bot [fill <n> [{pilots}] | add [{pilots}] [team] [count] | remove <name|all> | pause | resume]"
 
-#: server.js:18428
+#: server.js:18510
 msgid "Server shutting down"
 msgstr "toy' De'wI' chu'Ha'lu'taH"
 
-#: server.js:18438
+#: server.js:18520
 msgid "Server restarting"
 msgstr "toy' De'wI' taghqa'lu'taH"
 
-#: server.js:18662
+#: server.js:18744
 msgid "You have been kicked from the server for: {reason}"
 msgstr ""
 
-#: server.js:18663
+#: server.js:18745
 msgid "{player} was kicked for:{reason}"
 msgstr ""
 
-#: server.js:18885
+#: server.js:18967
 msgid "No Plug-ins loaded."
 msgstr ""
 
-#: server.js:18888
+#: server.js:18970
 msgid "Plug-ins loaded:"
 msgstr ""
 
-#: server.js:18897
+#: server.js:18979
 msgid "Usage: /loadplugin plug-in"
 msgstr ""
 
-#: server.js:18905 server.js:18916
+#: server.js:18987 server.js:18998
 msgid "Plug-in load failed."
 msgstr ""
 
-#: server.js:18913
+#: server.js:18995
 msgid "Plug-in loaded."
 msgstr ""
 
-#: server.js:18925
+#: server.js:19007
 msgid "Usage: /unloadplugin plug-in"
 msgstr ""
 
-#: server.js:18931
+#: server.js:19013
 msgid "Plug-In {name} unloaded."
 msgstr ""
 
-#: server.js:18934
+#: server.js:19016
 msgid "Plug-in {name} is not loaded."
 msgstr ""
 
@@ -4950,6 +4956,13 @@ msgstr "boq teblu'ta': {team}"
 #: server/messages-play.cjs:1262
 msgid "You will join {team} when you next spawn"
 msgstr "bIboghqa'DI', {team} Damuv"
+
+#~ msgid ""
+#~ "Usage: /bot [fill <n> [{pilots}] | add [{pilots}] [team] [count] | remove "
+#~ "<name|all>]"
+#~ msgstr ""
+#~ "Usage: /bot [fill <n> [{pilots}] | add [{pilots}] [team] [count] | remove "
+#~ "<name|all>]"
 
 #~ msgid "Disable Mouse Steering (M)"
 #~ msgstr "Mouse chIj yIchu'Ha' (M)"

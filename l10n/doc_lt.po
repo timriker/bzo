@@ -40,6 +40,15 @@ msgid ""
 msgstr ""
 
 #: docs/help/controls.md
+msgid ""
+"The numeric keypad works as in BZFlag. With Num Lock off its keys are the "
+"ones printed under the digits: the arrows drive, `1` is `End`, `9` and `3` "
+"are `Page Up` and `Page Down`, and `.` is `Delete`. With Num Lock on, a "
+"keypad key is the main key with the same character. Keypad `Enter` shoots "
+"either way."
+msgstr "Skaičių klaviatūra veikia kaip BZFlag. Išjungus Num Lock, jos klavišai yra tie, kurie užrašyti po skaitmenimis: rodyklės vairuoja, `1` yra `End`, `9` ir `3` yra `Page Up` ir `Page Down`, o `.` yra `Delete`. Įjungus Num Lock, skaičių klaviatūros klavišas yra pagrindinis klavišas su tuo pačiu simboliu. Skaičių klaviatūros `Enter` šauna bet kuriuo atveju."
+
+#: docs/help/controls.md
 msgid "Driving"
 msgstr "Važiavimas"
 
@@ -507,13 +516,14 @@ msgid "Mouse"
 msgstr "Pelė"
 
 #: docs/help/controls.md
-#, fuzzy
 msgid ""
-"`Shift`+`M` turns mouse steering on and off, and nothing else does: the keys "
-"never take it away behind your back."
+"`Shift`+`M` or Settings -> Mouse Steering turns mouse steering on and off. "
+"`Esc` turns it off once it has released the pointer and left fullscreen. "
+"Driving never changes it."
 msgstr ""
-"`M` įjungia ir išjungia valdymą pele, ir niekas kitas: klavišai niekada jo "
-"neišjungia tau nematant."
+"`Shift`+`M` arba Nustatymai -> Valdymas pele įjungia ir išjungia valdymą "
+"pele. `Esc` jį išjungia, kai jau atlaisvino žymeklį ir išėjo iš viso ekrano. "
+"Važiavimas jo niekada nekeičia."
 
 #: docs/help/controls.md
 msgid "The wheel"
@@ -1097,6 +1107,14 @@ msgstr ""
 "Tai laisvoji programinė įranga, licencijuota pagal [GNU Affero General "
 "Public License v3.0](https://www.gnu.org/licenses/agpl-3.0.html). Išeities "
 "kodas pasiekiamas adresu [github.com/timriker/bzo](/source)."
+
+#, fuzzy
+#~ msgid ""
+#~ "`Shift`+`M` turns mouse steering on and off, and nothing else does: the "
+#~ "keys never take it away behind your back."
+#~ msgstr ""
+#~ "`M` įjungia ir išjungia valdymą pele, ir niekas kitas: klavišai niekada "
+#~ "jo neišjungia tau nematant."
 
 #, fuzzy
 #~ msgid "`N` — message everyone (or click the `Send` button)"

@@ -39,6 +39,15 @@ msgid ""
 msgstr ""
 
 #: docs/help/controls.md
+msgid ""
+"The numeric keypad works as in BZFlag. With Num Lock off its keys are the "
+"ones printed under the digits: the arrows drive, `1` is `End`, `9` and `3` "
+"are `Page Up` and `Page Down`, and `.` is `Delete`. With Num Lock on, a "
+"keypad key is the main key with the same character. Keypad `Enter` shoots "
+"either way."
+msgstr "Der Ziffernblock funktioniert wie in BZFlag. Mit ausgeschaltetem Num Lock sind seine Tasten die unter den Ziffern aufgedruckten: die Pfeile fahren, `1` ist `End`, `9` und `3` sind `Page Up` und `Page Down`, und `.` ist `Delete`. Mit eingeschaltetem Num Lock ist eine Ziffernblocktaste die Haupttaste mit demselben Zeichen. `Enter` auf dem Ziffernblock schießt in beiden Fällen."
+
+#: docs/help/controls.md
 msgid "Driving"
 msgstr "Fahren"
 
@@ -508,13 +517,14 @@ msgid "Mouse"
 msgstr "Maus"
 
 #: docs/help/controls.md
-#, fuzzy
 msgid ""
-"`Shift`+`M` turns mouse steering on and off, and nothing else does: the keys "
-"never take it away behind your back."
+"`Shift`+`M` or Settings -> Mouse Steering turns mouse steering on and off. "
+"`Esc` turns it off once it has released the pointer and left fullscreen. "
+"Driving never changes it."
 msgstr ""
-"`M` schaltet die Maussteuerung an und aus, und sonst nichts: die Tasten "
-"nehmen sie dir nie hinter deinem Rücken weg."
+"`Shift`+`M` oder Einstellungen -> Maussteuerung schaltet die Maussteuerung "
+"an und aus. `Esc` schaltet sie aus, sobald es den Mauszeiger freigegeben und "
+"das Vollbild verlassen hat. Fahren ändert sie nie."
 
 #: docs/help/controls.md
 msgid "The wheel"
@@ -1110,6 +1120,14 @@ msgstr ""
 "Es ist freie Software unter der [GNU Affero General Public License v3.0]"
 "(https://www.gnu.org/licenses/agpl-3.0.html). Der Quellcode ist unter "
 "[github.com/timriker/bzo](/source) verfügbar."
+
+#, fuzzy
+#~ msgid ""
+#~ "`Shift`+`M` turns mouse steering on and off, and nothing else does: the "
+#~ "keys never take it away behind your back."
+#~ msgstr ""
+#~ "`M` schaltet die Maussteuerung an und aus, und sonst nichts: die Tasten "
+#~ "nehmen sie dir nie hinter deinem Rücken weg."
 
 #, fuzzy
 #~ msgid "`N` — message everyone (or click the `Send` button)"

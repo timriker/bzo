@@ -40,6 +40,15 @@ msgid ""
 msgstr ""
 
 #: docs/help/controls.md
+msgid ""
+"The numeric keypad works as in BZFlag. With Num Lock off its keys are the "
+"ones printed under the digits: the arrows drive, `1` is `End`, `9` and `3` "
+"are `Page Up` and `Page Down`, and `.` is `Delete`. With Num Lock on, a "
+"keypad key is the main key with the same character. Keypad `Enter` shoots "
+"either way."
+msgstr "Цифровая клавиатура работает как в BZFlag. При выключенном Num Lock её клавиши — те, что подписаны под цифрами: стрелки ведут танк, `1` — это `End`, `9` и `3` — `Page Up` и `Page Down`, а `.` — `Delete`. При включённом Num Lock клавиша цифрового блока — это основная клавиша с тем же символом. `Enter` на цифровой клавиатуре стреляет в обоих случаях."
+
+#: docs/help/controls.md
 msgid "Driving"
 msgstr "Вождение"
 
@@ -503,13 +512,14 @@ msgid "Mouse"
 msgstr "Мышь"
 
 #: docs/help/controls.md
-#, fuzzy
 msgid ""
-"`Shift`+`M` turns mouse steering on and off, and nothing else does: the keys "
-"never take it away behind your back."
+"`Shift`+`M` or Settings -> Mouse Steering turns mouse steering on and off. "
+"`Esc` turns it off once it has released the pointer and left fullscreen. "
+"Driving never changes it."
 msgstr ""
-"`M` включает и выключает управление мышью, и больше ничто: клавиши никогда "
-"не отключают его за твоей спиной."
+"`Shift`+`M` или Настройки -> Управление мышью включает и выключает "
+"управление мышью. `Esc` выключает его, когда уже освободил указатель и вышел "
+"из полноэкранного режима. Езда его никогда не меняет."
 
 #: docs/help/controls.md
 msgid "The wheel"
@@ -1092,6 +1102,14 @@ msgstr ""
 "Это свободное программное обеспечение под лицензией [GNU Affero General "
 "Public License v3.0](https://www.gnu.org/licenses/agpl-3.0.html). Исходный "
 "код доступен на [github.com/timriker/bzo](/source)."
+
+#, fuzzy
+#~ msgid ""
+#~ "`Shift`+`M` turns mouse steering on and off, and nothing else does: the "
+#~ "keys never take it away behind your back."
+#~ msgstr ""
+#~ "`M` включает и выключает управление мышью, и больше ничто: клавиши "
+#~ "никогда не отключают его за твоей спиной."
 
 #, fuzzy
 #~ msgid "`N` — message everyone (or click the `Send` button)"

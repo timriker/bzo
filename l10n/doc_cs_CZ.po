@@ -39,6 +39,15 @@ msgid ""
 msgstr ""
 
 #: docs/help/controls.md
+msgid ""
+"The numeric keypad works as in BZFlag. With Num Lock off its keys are the "
+"ones printed under the digits: the arrows drive, `1` is `End`, `9` and `3` "
+"are `Page Up` and `Page Down`, and `.` is `Delete`. With Num Lock on, a "
+"keypad key is the main key with the same character. Keypad `Enter` shoots "
+"either way."
+msgstr "Numerická klávesnice funguje jako v BZFlagu. S vypnutým Num Lockem jsou její klávesy ty, co jsou natištěné pod číslicemi: šipky řídí, `1` je `End`, `9` a `3` jsou `Page Up` a `Page Down` a `.` je `Delete`. Se zapnutým Num Lockem je klávesa numerické klávesnice hlavní klávesou se stejným znakem. `Enter` na numerické klávesnici střílí v obou případech."
+
+#: docs/help/controls.md
 msgid "Driving"
 msgstr "Jízda"
 
@@ -500,13 +509,14 @@ msgid "Mouse"
 msgstr "Myš"
 
 #: docs/help/controls.md
-#, fuzzy
 msgid ""
-"`Shift`+`M` turns mouse steering on and off, and nothing else does: the keys "
-"never take it away behind your back."
+"`Shift`+`M` or Settings -> Mouse Steering turns mouse steering on and off. "
+"`Esc` turns it off once it has released the pointer and left fullscreen. "
+"Driving never changes it."
 msgstr ""
-"`M` zapíná a vypíná řízení myší a nic jiného: klávesy ti ho nikdy za zády "
-"nevypnou."
+"`Shift`+`M` nebo Nastavení -> Řízení myší zapíná a vypíná řízení myší. `Esc` "
+"ho vypne, až uvolní ukazatel a opustí celou obrazovku. Jízda ho nikdy "
+"nezmění."
 
 #: docs/help/controls.md
 msgid "The wheel"
@@ -1085,6 +1095,14 @@ msgstr ""
 "Je to svobodný software pod licencí [GNU Affero General Public License v3.0]"
 "(https://www.gnu.org/licenses/agpl-3.0.html). Zdrojový kód je k dispozici na "
 "[github.com/timriker/bzo](/source)."
+
+#, fuzzy
+#~ msgid ""
+#~ "`Shift`+`M` turns mouse steering on and off, and nothing else does: the "
+#~ "keys never take it away behind your back."
+#~ msgstr ""
+#~ "`M` zapíná a vypíná řízení myší a nic jiného: klávesy ti ho nikdy za zády "
+#~ "nevypnou."
 
 #, fuzzy
 #~ msgid "`N` — message everyone (or click the `Send` button)"

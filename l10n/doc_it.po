@@ -39,6 +39,15 @@ msgid ""
 msgstr ""
 
 #: docs/help/controls.md
+msgid ""
+"The numeric keypad works as in BZFlag. With Num Lock off its keys are the "
+"ones printed under the digits: the arrows drive, `1` is `End`, `9` and `3` "
+"are `Page Up` and `Page Down`, and `.` is `Delete`. With Num Lock on, a "
+"keypad key is the main key with the same character. Keypad `Enter` shoots "
+"either way."
+msgstr "Il tastierino numerico funziona come in BZFlag. Con Bloc Num disattivato i suoi tasti sono quelli stampati sotto le cifre: le frecce guidano, `1` è `End`, `9` e `3` sono `Page Up` e `Page Down`, e `.` è `Delete`. Con Bloc Num attivo, un tasto del tastierino è il tasto principale con lo stesso carattere. `Enter` del tastierino spara in entrambi i casi."
+
+#: docs/help/controls.md
 msgid "Driving"
 msgstr "Movimento"
 
@@ -512,13 +521,14 @@ msgid "Mouse"
 msgstr "Mouse"
 
 #: docs/help/controls.md
-#, fuzzy
 msgid ""
-"`Shift`+`M` turns mouse steering on and off, and nothing else does: the keys "
-"never take it away behind your back."
+"`Shift`+`M` or Settings -> Mouse Steering turns mouse steering on and off. "
+"`Esc` turns it off once it has released the pointer and left fullscreen. "
+"Driving never changes it."
 msgstr ""
-"`M` attiva e disattiva la guida col mouse, e nient'altro lo fa: i tasti non "
-"te la tolgono mai alle tue spalle."
+"`Shift`+`M` o Impostazioni -> Guida col mouse attiva e disattiva la guida "
+"col mouse. `Esc` la disattiva dopo aver rilasciato il puntatore e lasciato "
+"lo schermo intero. Guidare non la cambia mai."
 
 #: docs/help/controls.md
 msgid "The wheel"
@@ -1120,6 +1130,14 @@ msgstr ""
 "È software libero rilasciato sotto la licenza [GNU Affero General Public "
 "License v3.0](https://www.gnu.org/licenses/agpl-3.0.html). Il codice "
 "sorgente è disponibile su [github.com/timriker/bzo](/source)."
+
+#, fuzzy
+#~ msgid ""
+#~ "`Shift`+`M` turns mouse steering on and off, and nothing else does: the "
+#~ "keys never take it away behind your back."
+#~ msgstr ""
+#~ "`M` attiva e disattiva la guida col mouse, e nient'altro lo fa: i tasti "
+#~ "non te la tolgono mai alle tue spalle."
 
 #, fuzzy
 #~ msgid "`N` — message everyone (or click the `Send` button)"

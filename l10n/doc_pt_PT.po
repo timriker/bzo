@@ -40,6 +40,15 @@ msgid ""
 msgstr ""
 
 #: docs/help/controls.md
+msgid ""
+"The numeric keypad works as in BZFlag. With Num Lock off its keys are the "
+"ones printed under the digits: the arrows drive, `1` is `End`, `9` and `3` "
+"are `Page Up` and `Page Down`, and `.` is `Delete`. With Num Lock on, a "
+"keypad key is the main key with the same character. Keypad `Enter` shoots "
+"either way."
+msgstr "O teclado numérico funciona como no BZFlag. Com o Num Lock desligado, as suas teclas são as impressas por baixo dos dígitos: as setas conduzem, `1` é `End`, `9` e `3` são `Page Up` e `Page Down`, e `.` é `Delete`. Com o Num Lock ligado, uma tecla do teclado numérico é a tecla principal com o mesmo carácter. O `Enter` do teclado numérico dispara em ambos os casos."
+
+#: docs/help/controls.md
 msgid "Driving"
 msgstr "Condução"
 
@@ -507,13 +516,14 @@ msgid "Mouse"
 msgstr "Rato"
 
 #: docs/help/controls.md
-#, fuzzy
 msgid ""
-"`Shift`+`M` turns mouse steering on and off, and nothing else does: the keys "
-"never take it away behind your back."
+"`Shift`+`M` or Settings -> Mouse Steering turns mouse steering on and off. "
+"`Esc` turns it off once it has released the pointer and left fullscreen. "
+"Driving never changes it."
 msgstr ""
-"`M` liga e desliga a direção com o rato, e mais nada o faz: as teclas nunca "
-"ta tiram sem dares por isso."
+"`Shift`+`M` ou Definições -> Direção com rato liga e desliga a direção com o "
+"rato. `Esc` desliga-a depois de libertar o ponteiro e sair do ecrã inteiro. "
+"Conduzir nunca a altera."
 
 #: docs/help/controls.md
 msgid "The wheel"
@@ -1110,6 +1120,14 @@ msgstr ""
 "É software livre licenciado sob a [GNU Affero General Public License v3.0]"
 "(https://www.gnu.org/licenses/agpl-3.0.html). O código-fonte está disponível "
 "em [github.com/timriker/bzo](/source)."
+
+#, fuzzy
+#~ msgid ""
+#~ "`Shift`+`M` turns mouse steering on and off, and nothing else does: the "
+#~ "keys never take it away behind your back."
+#~ msgstr ""
+#~ "`M` liga e desliga a direção com o rato, e mais nada o faz: as teclas "
+#~ "nunca ta tiram sem dares por isso."
 
 #, fuzzy
 #~ msgid "`N` — message everyone (or click the `Send` button)"

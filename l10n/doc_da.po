@@ -39,6 +39,15 @@ msgid ""
 msgstr ""
 
 #: docs/help/controls.md
+msgid ""
+"The numeric keypad works as in BZFlag. With Num Lock off its keys are the "
+"ones printed under the digits: the arrows drive, `1` is `End`, `9` and `3` "
+"are `Page Up` and `Page Down`, and `.` is `Delete`. With Num Lock on, a "
+"keypad key is the main key with the same character. Keypad `Enter` shoots "
+"either way."
+msgstr "Det numeriske tastatur virker som i BZFlag. Med Num Lock slået fra er dets taster dem, der står under tallene: pilene kører, `1` er `End`, `9` og `3` er `Page Up` og `Page Down`, og `.` er `Delete`. Med Num Lock slået til er en tast på det numeriske tastatur hovedtasten med samme tegn. `Enter` på det numeriske tastatur skyder i begge tilfælde."
+
+#: docs/help/controls.md
 msgid "Driving"
 msgstr "Kørsel"
 
@@ -504,13 +513,14 @@ msgid "Mouse"
 msgstr "Mus"
 
 #: docs/help/controls.md
-#, fuzzy
 msgid ""
-"`Shift`+`M` turns mouse steering on and off, and nothing else does: the keys "
-"never take it away behind your back."
+"`Shift`+`M` or Settings -> Mouse Steering turns mouse steering on and off. "
+"`Esc` turns it off once it has released the pointer and left fullscreen. "
+"Driving never changes it."
 msgstr ""
-"`M` slår musestyring til og fra, og intet andet gør: tasterne tager den "
-"aldrig fra dig bag din ryg."
+"`Shift`+`M` eller Indstillinger -> Musestyring slår musestyring til og fra. "
+"`Esc` slår den fra, når den har frigivet markøren og forladt fuld skærm. "
+"Kørsel ændrer den aldrig."
 
 #: docs/help/controls.md
 msgid "The wheel"
@@ -1096,6 +1106,14 @@ msgstr ""
 "Det er fri software under licensen [GNU Affero General Public License v3.0]"
 "(https://www.gnu.org/licenses/agpl-3.0.html). Kildekoden findes på "
 "[github.com/timriker/bzo](/source)."
+
+#, fuzzy
+#~ msgid ""
+#~ "`Shift`+`M` turns mouse steering on and off, and nothing else does: the "
+#~ "keys never take it away behind your back."
+#~ msgstr ""
+#~ "`M` slår musestyring til og fra, og intet andet gør: tasterne tager den "
+#~ "aldrig fra dig bag din ryg."
 
 #, fuzzy
 #~ msgid "`N` — message everyone (or click the `Send` button)"

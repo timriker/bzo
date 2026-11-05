@@ -38,6 +38,15 @@ msgid ""
 msgstr ""
 
 #: docs/help/controls.md
+msgid ""
+"The numeric keypad works as in BZFlag. With Num Lock off its keys are the "
+"ones printed under the digits: the arrows drive, `1` is `End`, `9` and `3` "
+"are `Page Up` and `Page Down`, and `.` is `Delete`. With Num Lock on, a "
+"keypad key is the main key with the same character. Keypad `Enter` shoots "
+"either way."
+msgstr "73h num3r1c k3yp4d w0rk5 45 1n BZFl4g. W17h Num L0ck 0ff 175 k3y5 4r3 73h 0n35 pr1n73d und3r 73h d1g175: 73h 4rr0w5 dr1v3, `1` 15 `End`, `9` 4nd `3` 4r3 `Page Up` 4nd `Page Down`, 4nd `.` 15 `Delete`. W17h Num L0ck 0n, 4 k3yp4d k3y 15 73h m41n k3y w17h 73h 54m3 ch4r4c73r. K3yp4d `Enter` 5h0075 31h3r w4y."
+
+#: docs/help/controls.md
 msgid "Driving"
 msgstr "Dr1v1ng"
 
@@ -496,13 +505,14 @@ msgid "Mouse"
 msgstr "M0u53"
 
 #: docs/help/controls.md
-#, fuzzy
 msgid ""
-"`Shift`+`M` turns mouse steering on and off, and nothing else does: the keys "
-"never take it away behind your back."
+"`Shift`+`M` or Settings -> Mouse Steering turns mouse steering on and off. "
+"`Esc` turns it off once it has released the pointer and left fullscreen. "
+"Driving never changes it."
 msgstr ""
-"`M` 7urn5 m0u53 5733r1ng 0n 4nd 0ff, 4nd n07h1ng 3l53 d035: 73h k3y5 n3v3r "
-"74k3 17 4w4y b3h1nd j00r b4ck."
+"`Shift`+`M` 0r 53771ng5 -> M0u53 573r1ng 7urn5 m0u53 5733r1ng 0n 4nd 0ff. "
+"`Esc` 7urn5 17 0ff 0nc3 17 h45 r3l3453d 73h p01n73r 4nd l3f7 fu115cr33n. "
+"Dr1v1ng n3v3r ch4ng35 17."
 
 #: docs/help/controls.md
 msgid "The wheel"
@@ -1083,6 +1093,14 @@ msgstr ""
 "17 15 fr33 50f7w4r3 l1c3n53d und3r 73h [GNU Affero General Public License "
 "v3.0](https://www.gnu.org/licenses/agpl-3.0.html). 50urc3 c0d3 15 4v41l4bl3 "
 "47 [github.com/timriker/bzo](/source)."
+
+#, fuzzy
+#~ msgid ""
+#~ "`Shift`+`M` turns mouse steering on and off, and nothing else does: the "
+#~ "keys never take it away behind your back."
+#~ msgstr ""
+#~ "`M` 7urn5 m0u53 5733r1ng 0n 4nd 0ff, 4nd n07h1ng 3l53 d035: 73h k3y5 "
+#~ "n3v3r 74k3 17 4w4y b3h1nd j00r b4ck."
 
 #, fuzzy
 #~ msgid "`N` — message everyone (or click the `Send` button)"

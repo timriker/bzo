@@ -13,6 +13,11 @@ position, not by the letter printed on them. On another layout a key named
 here is the one in the same place: `Z` is the key labelled W on a French
 keyboard and Y on a German one.
 
+The numeric keypad works as in BZFlag. With Num Lock off its keys are the
+ones printed under the digits: the arrows drive, `1` is `End`, `9` and `3` are
+`Page Up` and `Page Down`, and `.` is `Delete`. With Num Lock on, a keypad key
+is the main key with the same character. Keypad `Enter` shoots either way.
+
 ### Driving
 
 - `W` / `S` or `Up` / `Down` — move forward/backward
@@ -155,8 +160,9 @@ Pausing and self-destruct do nothing.
 
 ## Mouse
 
-`Shift`+`M` turns mouse steering on and off, and nothing else does: the keys
-never take it away behind your back.
+`Shift`+`M` or Settings -> Mouse Steering turns mouse steering on and off.
+`Esc` turns it off once it has released the pointer and left fullscreen.
+Driving never changes it.
 
 ### The wheel
 

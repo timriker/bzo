@@ -38,6 +38,15 @@ msgid ""
 msgstr ""
 
 #: docs/help/controls.md
+msgid ""
+"The numeric keypad works as in BZFlag. With Num Lock off its keys are the "
+"ones printed under the digits: the arrows drive, `1` is `End`, `9` and `3` "
+"are `Page Up` and `Page Down`, and `.` is `Delete`. With Num Lock on, a "
+"keypad key is the main key with the same character. Keypad `Enter` shoots "
+"either way."
+msgstr "The number pad works like it does in BZFlag. With Num Lock off, its keys are the ones painted under the numbers: the arrows drive, `1` is `End`, `9` an' `3` are `Page Up` an' `Page Down`, an' `.` is `Delete`. With Num Lock on, a number-pad key is the main key with the same character. Number-pad `Enter` shoots either way."
+
+#: docs/help/controls.md
 msgid "Driving"
 msgstr "Drivin'"
 
@@ -494,13 +503,14 @@ msgid "Mouse"
 msgstr "Mouse"
 
 #: docs/help/controls.md
-#, fuzzy
 msgid ""
-"`Shift`+`M` turns mouse steering on and off, and nothing else does: the keys "
-"never take it away behind your back."
+"`Shift`+`M` or Settings -> Mouse Steering turns mouse steering on and off. "
+"`Esc` turns it off once it has released the pointer and left fullscreen. "
+"Driving never changes it."
 msgstr ""
-"`M` turns mouse steerin' on an' off, an' nothin' else does: the keys won't "
-"never take it away behind yer back."
+"`Shift`+`M` or Fixin's -> Mouse Steerin' turns mouse steerin' on an' off. "
+"`Esc` turns it off once it's done let go o' the pointer an' quit fullscreen. "
+"Drivin' won't never change it."
 
 #: docs/help/controls.md
 msgid "The wheel"
@@ -1082,6 +1092,14 @@ msgstr ""
 "It's free software licensed under the [GNU Affero General Public License "
 "v3.0](https://www.gnu.org/licenses/agpl-3.0.html). The source code's at "
 "[github.com/timriker/bzo](/source)."
+
+#, fuzzy
+#~ msgid ""
+#~ "`Shift`+`M` turns mouse steering on and off, and nothing else does: the "
+#~ "keys never take it away behind your back."
+#~ msgstr ""
+#~ "`M` turns mouse steerin' on an' off, an' nothin' else does: the keys "
+#~ "won't never take it away behind yer back."
 
 #, fuzzy
 #~ msgid "`N` — message everyone (or click the `Send` button)"

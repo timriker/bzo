@@ -39,6 +39,15 @@ msgid ""
 msgstr ""
 
 #: docs/help/controls.md
+msgid ""
+"The numeric keypad works as in BZFlag. With Num Lock off its keys are the "
+"ones printed under the digits: the arrows drive, `1` is `End`, `9` and `3` "
+"are `Page Up` and `Page Down`, and `.` is `Delete`. With Num Lock on, a "
+"keypad key is the main key with the same character. Keypad `Enter` shoots "
+"either way."
+msgstr "숫자 키패드는 BZFlag처럼 동작해요. Num Lock이 꺼져 있으면 숫자 아래에 적힌 키가 돼요: 화살표로 운전하고, `1`은 `End`, `9`와 `3`은 `Page Up`과 `Page Down`, `.`은 `Delete`예요. Num Lock이 켜져 있으면 키패드 키는 같은 글자의 메인 키와 같아요. 키패드 `Enter`는 어느 쪽이든 사격이에요."
+
+#: docs/help/controls.md
 msgid "Driving"
 msgstr "주행"
 
@@ -483,12 +492,14 @@ msgid "Mouse"
 msgstr "마우스"
 
 #: docs/help/controls.md
-#, fuzzy
 msgid ""
-"`Shift`+`M` turns mouse steering on and off, and nothing else does: the keys "
-"never take it away behind your back."
+"`Shift`+`M` or Settings -> Mouse Steering turns mouse steering on and off. "
+"`Esc` turns it off once it has released the pointer and left fullscreen. "
+"Driving never changes it."
 msgstr ""
-"마우스 조종은 `M`으로만 켜고 꺼요. 키 입력이 몰래 꺼 버리는 일은 없어요."
+"마우스 조종은 `Shift`+`M` 또는 설정 -> 마우스 조종으로 켜고 꺼요. `Esc`는 포"
+"인터를 풀고 전체 화면을 나간 뒤에 마우스 조종을 꺼요. 운전으로는 절대 바뀌지 "
+"않아요."
 
 #: docs/help/controls.md
 msgid "The wheel"
@@ -1056,6 +1067,13 @@ msgstr ""
 "[GNU Affero General Public License v3.0](https://www.gnu.org/licenses/"
 "agpl-3.0.html) 라이선스의 자유 소프트웨어예요. 소스 코드는 [github.com/"
 "timriker/bzo](/source)에서 받을 수 있어요."
+
+#, fuzzy
+#~ msgid ""
+#~ "`Shift`+`M` turns mouse steering on and off, and nothing else does: the "
+#~ "keys never take it away behind your back."
+#~ msgstr ""
+#~ "마우스 조종은 `M`으로만 켜고 꺼요. 키 입력이 몰래 꺼 버리는 일은 없어요."
 
 #, fuzzy
 #~ msgid "`N` — message everyone (or click the `Send` button)"

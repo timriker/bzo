@@ -39,6 +39,15 @@ msgid ""
 msgstr ""
 
 #: docs/help/controls.md
+msgid ""
+"The numeric keypad works as in BZFlag. With Num Lock off its keys are the "
+"ones printed under the digits: the arrows drive, `1` is `End`, `9` and `3` "
+"are `Page Up` and `Page Down`, and `.` is `Delete`. With Num Lock on, a "
+"keypad key is the main key with the same character. Keypad `Enter` shoots "
+"either way."
+msgstr "テンキーは BZFlag と同じように使えます。Num Lock がオフのときは数字の下に印字されたキーになります：矢印で運転、`1` は `End`、`9` と `3` は `Page Up` と `Page Down`、`.` は `Delete` です。Num Lock がオンのときは、同じ文字のメインキーとして働きます。テンキーの `Enter` はどちらの場合も射撃です。"
+
+#: docs/help/controls.md
 msgid "Driving"
 msgstr "走行"
 
@@ -490,13 +499,14 @@ msgid "Mouse"
 msgstr "マウス"
 
 #: docs/help/controls.md
-#, fuzzy
 msgid ""
-"`Shift`+`M` turns mouse steering on and off, and nothing else does: the keys "
-"never take it away behind your back."
+"`Shift`+`M` or Settings -> Mouse Steering turns mouse steering on and off. "
+"`Esc` turns it off once it has released the pointer and left fullscreen. "
+"Driving never changes it."
 msgstr ""
-"マウス操縦のオン／オフは `M` だけで切り替わります。キー操作で勝手に解除される"
-"ことはありません。"
+"マウス操縦は `Shift`+`M` か 設定 -> マウス操縦 でオン／オフを切り替えます。"
+"`Esc` はポインターを解放して全画面を解除したあとで、マウス操縦をオフにしま"
+"す。運転で変わることはありません。"
 
 #: docs/help/controls.md
 msgid "The wheel"
@@ -1073,6 +1083,14 @@ msgstr ""
 "これは[GNU Affero General Public License v3.0](https://www.gnu.org/licenses/"
 "agpl-3.0.html)でライセンスされたフリーソフトウェアです。ソースコードは"
 "[github.com/timriker/bzo](/source)で入手できます。"
+
+#, fuzzy
+#~ msgid ""
+#~ "`Shift`+`M` turns mouse steering on and off, and nothing else does: the "
+#~ "keys never take it away behind your back."
+#~ msgstr ""
+#~ "マウス操縦のオン／オフは `M` だけで切り替わります。キー操作で勝手に解除さ"
+#~ "れることはありません。"
 
 #, fuzzy
 #~ msgid "`N` — message everyone (or click the `Send` button)"
