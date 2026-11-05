@@ -6,6 +6,28 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
 
 ## [Unreleased]
 
+## [1.3.87] - 2026-11-05
+
+### Added
+- Map textures hosted by the server: PNGs in `data/img` (at most 4 MB and
+  2048 pixels a side) are served at `/img/`. A map names one as
+  `/img/name.png`, or by a bare name that is not stock, so a map made for
+  players who installed its textures can be hosted with them. BZFlag clients
+  load them once `DownloadAccess.txt` allows the server; see
+  [installation.md](docs/installation.md#map-textures).
+
+### Changed
+- A map's texture URL on the server's own name loads from whichever address
+  the browser opened.
+- The BZFlag port drops an oversized message, refuses an untrusted PROXY
+  header at once, turns a banned address away at the handshake without a
+  player number, and lets one address hold eight connections without a
+  verified login.
+
+### Fixed
+- Boxes that reach past the world's edge, like hix's outer ones, draw whole on
+  the radar when the tank is at rest (#203).
+
 ## [1.3.86] - 2026-11-04
 
 ### Added
