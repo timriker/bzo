@@ -8420,6 +8420,7 @@ const SERVER_MESSAGE_HANDLERS = Object.freeze({
   dropFlag: receiveDropFlag,
   shotBegin: receiveShotBegin,
   botIntents: receiveBotIntents,
+  botsPaused: receiveBotsPaused,
   gmUpdate: receiveGmUpdate,
   identifyResult: receiveIdentifyResult,
   lag: receiveLag,
@@ -8447,6 +8448,7 @@ const SERVER_MESSAGE_HANDLERS = Object.freeze({
 
 function receiveInit(message) {
   if (!checkClientBuild(message.clientBuild)) return;
+  botsPaused = Boolean(message.botsPaused);
   saveOfflineWorld(message);
   // A batch number and a shot id are this server process's; a new init
   // may be another.
@@ -14083,8 +14085,15 @@ function drawFollowedBotPlan() {
 }
 let followedBotPlanDrawn = false;
 
+// The server's `/bot pause`: the autopilot holds, as the server's own bots do,
+// and picks up again on `/bot resume`.
+let botsPaused = false;
+function receiveBotsPaused(message) {
+  botsPaused = Boolean(message.paused);
+}
+
 function runAutopilot() {
-  if (!autopilotOn || isObserver() || !isMyTankAlive() || pauseState.paused) {
+  if (!autopilotOn || isObserver() || !isMyTankAlive() || pauseState.paused || botsPaused) {
     if (autopilotOutput) clearAutopilotIntent();
     autopilotOutput = null;
     if (isObserver()) drawFollowedBotPlan();

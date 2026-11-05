@@ -16,6 +16,7 @@
 //   node scripts/headless-client.mjs --window 320,240   # ~60fps instead of ~8
 //   node scripts/headless-client.mjs --mv "280,15,-280 sw" --drive 20 --steer center
 //   node scripts/headless-client.mjs --chat "/flag give headless GM"
+//   node scripts/headless-client.mjs --pause-bots yes --mv "0,-200 n" --drive 5
 //
 // It renders through SwiftShader, so it answers "does this draw without
 // throwing, and what does it look like" and never "how fast is this". The frame
@@ -298,6 +299,41 @@ if (extraCss && joined.startsWith('joined')) {
 // same path for anything else; both run before the drive, `--mv` first.
 const mvArgs = args.get('mv') || '';
 const chatLine = args.get('chat') || '';
+
+// `--pause-bots yes`: with nobody on but the server's own bots (client type
+// `s`) and this probe, `/bot pause` for the run and `/bot resume` after it,
+// however it ends. Neither touches server.json, so neither restarts the
+// server, and a restart would end the pause anyway. Anyone else on and the
+// bots are left as they are, since they may be playing them.
+let resumeBots = null;
+if (args.get('pause-bots') === 'yes' && joined.startsWith('joined')) {
+  const { players = [] } = await (await fetch(`${url}/api/players`)).json();
+  const others = players.filter((p) => p.clientType !== 's' && p.name !== playerName).map((p) => p.name);
+  if (others.length) {
+    console.log(`pause-bots: left running, ${others.join(', ')} on`);
+  } else {
+    await sleep(2000);
+    await sendChat('/bot pause');
+    console.log('pause-bots: paused');
+    resumeBots = async () => {
+      if (!resumeBots) return;
+      resumeBots = null;
+      await sendChat('/bot resume');
+      await sleep(500);
+      console.log('pause-bots: resumed');
+    };
+    for (const signal of ['SIGINT', 'SIGTERM', 'SIGHUP']) {
+      process.removeAllListeners(signal);
+      process.on(signal, () => {
+        Promise.race([resumeBots?.(), sleep(3000)]).finally(() => process.exit(130));
+      });
+    }
+    process.on('exit', () => {
+      if (resumeBots) console.log('pause-bots: NOT resumed; run /bot resume');
+    });
+  }
+}
+
 if ((mvArgs || chatLine) && joined.startsWith('joined')) {
   // The entry dialog closing is not the tank existing -- gameConfig, the
   // world, and the tank itself all still have to arrive before chat is a
@@ -588,6 +624,7 @@ if (shotPath) {
   console.log(`screenshot: ${shotPath}`);
 }
 console.log(problems.length ? problems.slice(0, 20).join('\n') : 'no console errors or exceptions');
+await resumeBots?.();
 
 socket.close();
 // The profile goes when Chrome has exited (`removeProfile`).

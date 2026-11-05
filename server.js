@@ -17466,6 +17466,7 @@ function acceptConnection(ws, req) {
     commands: clientCommandList(),
     config: clientGameConfig,
     bzdb: clientBzdb(),
+    botsPaused,
     // The flag types plugins registered (`bz_RegisterCustomFlag`).
     customFlagTypes: pluginFlagTypes,
     // The server's own `-set`s alone, which a Map Viewer preview lays its
@@ -17836,6 +17837,9 @@ let botFill = Math.max(0, Math.floor(Number(serverConfig.bots?.fill) || 0));
 // `bots.pilot`, or the pilots' own default once they load.
 let botFillPilot = typeof serverConfig.bots?.pilot === 'string' ? serverConfig.bots.pilot : null;
 let botsIdle = false;
+// `/bot pause`: every bot idles as if nobody were connected, and a player's
+// own autopilot holds, until `/bot resume`. Not saved, so a restart ends it.
+let botsPaused = false;
 let nextBotNumber = 1;
 
 // The socket a bot's client holds: what the server sends it goes nowhere, and
@@ -18302,11 +18306,11 @@ function hasRealConnection() {
 
 setInterval(() => {
   if (bots.size === 0) return;
-  const idle = !hasRealConnection();
+  const idle = botsPaused || !hasRealConnection();
   if (!botWorker) return;
   if (idle !== botsIdle) {
     botsIdle = idle;
-    log(`[BOT] ${idle ? 'idle: nobody connected' : 'awake'}`);
+    log(`[BOT] ${idle ? (botsPaused ? 'idle: paused' : 'idle: nobody connected') : 'awake'}`);
     lastBotHeartbeatAt = 0;
   }
   // Idle, a bot only stands still and says so once a second, as a client's
@@ -18384,11 +18388,11 @@ import('./public/js/autopilot.mjs').then((module) => {
 function describeBots() {
   const list = [...bots.values()].map((bot) => `${bot.player.name} (${bot.pilotId}${bot.auto ? ', fill' : ''})`);
   return `fill ${botFill} with ${botFillPilot}; ${list.length ? list.join(', ') : 'no bots'}`
-    + (botsIdle ? '; idle' : '');
+    + (botsPaused ? '; paused' : (botsIdle ? '; idle' : ''));
 }
 
 defineCommand('/bot', COMMAND_TIER.OPERATOR,
-  '[fill <n> [pilot] | add [pilot] [team] [count] | remove <name|all>] - server-run bots',
+  '[fill <n> [pilot] | add [pilot] [team] [count] | remove <name|all> | pause | resume] - server-run bots',
   (player, args) => {
     const [verb, ...rest] = args.trim().split(/\s+/).filter(Boolean);
     if (!AUTOPILOT_MODULE) {
@@ -18445,6 +18449,19 @@ defineCommand('/bot', COMMAND_TIER.OPERATOR,
       replyToPlayer(player, describeBots());
       return;
     }
+    if (verb === 'pause' || verb === 'resume') {
+      const paused = verb === 'pause';
+      if (paused !== botsPaused) {
+        botsPaused = paused;
+        broadcastAll({ type: 'botsPaused', paused });
+        announceToAll(paused
+          ? localized('{player} paused the bots and autopilots', { player: player.name })
+          : localized('{player} resumed the bots and autopilots', { player: player.name }));
+        log(`[CMD] "${player.name}" ${verb}d the bots`);
+      }
+      replyToPlayer(player, describeBots());
+      return;
+    }
     if (verb === 'remove') {
       const target = rest.join(' ');
       const chosen = target === 'all'
@@ -18462,8 +18479,8 @@ defineCommand('/bot', COMMAND_TIER.OPERATOR,
       replyToPlayer(player, describeBots());
       return;
     }
-    // TRANSLATORS: a command's syntax; keep /bot, fill, add, remove and all as they are
-    replyToPlayer(player, 'Usage: /bot [fill <n> [{pilots}] | add [{pilots}] [team] [count] | remove <name|all>]', { pilots });
+    // TRANSLATORS: a command's syntax; keep /bot, fill, add, remove, all, pause and resume as they are
+    replyToPlayer(player, 'Usage: /bot [fill <n> [{pilots}] | add [{pilots}] [team] [count] | remove <name|all> | pause | resume]', { pilots });
   });
 
 // Expose the forceClientReload function for manual triggering

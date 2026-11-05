@@ -493,6 +493,8 @@ slot and score again.
 An operator changes it live with `/bot fill <n> [pilot]`, adds bots outside
 the fill with `/bot add [pilot] [team] [count]`, removes them with
 `/bot remove <name|all>`, and sees what is running with `/bot`.
+`/bot pause` holds every bot and every player's autopilot still until
+`/bot resume`; it is not saved, so a restart ends it.
 `"disableBots": true`, or `-disableBots` in a map's options, turns all
 of it off, autopilot included. `AGENTS.md` (the `docs/bots-plan.md`
 paragraph) has how they work.
