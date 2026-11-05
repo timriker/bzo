@@ -6,6 +6,19 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
 
 ## [Unreleased]
 
+## [1.3.88] - 2026-11-05
+
+### Added
+- The numeric keypad works as in BZFlag: with Num Lock off its arrows drive,
+  `1` is `End`, `9` and `3` page chat and `.` is `Delete`; with Num Lock on a
+  keypad key is the main key with the same character. Keypad `Enter` shoots.
+- `/bot pause` and `/bot resume`: every bot and every player's autopilot holds
+  still until resumed. Nothing is saved, so the server does not restart.
+
+### Fixed
+- Help no longer says only `Shift`+`M` changes mouse steering: Settings ->
+  Mouse Steering does too, and `Esc` turns it off.
+
 ## [1.3.87] - 2026-11-05
 
 ### Added
