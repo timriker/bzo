@@ -83,7 +83,8 @@ Use `--platform linux/arm64` on ARM hosts if you want to pin that explicitly.
 - `SERVER_CONFIG_PATH` defaults to `/data/server.json`.
 - `/data` holds what wants to survive an image upgrade: `server.json` and
   the state files beside it, the maps, replays and plugins added to the
-  bundled ones (`/data/maps`, `/data/replays`, `/data/plugins`), and
+  bundled ones (`/data/maps`, `/data/replays`, `/data/plugins`), map
+  textures (`/data/img`, see [bzw.md](bzw.md)), and
   `/data/cache`. The cache is
   where parsed worlds, their overview pictures and the world hashes bzo has
   collected from other servers live -- rebuilding it means downloading every
@@ -129,6 +130,35 @@ only where `"pluginUpload": true` is in `server.json`: a plugin runs as the
 server, with every right the server's user has, so it is off unless turned
 on. An upload is written off, and runs once an admin switches it on.
 
+### Map textures
+
+A map whose textures are not stock and not on images.bzflag.org -- one made
+for players who installed its pictures -- can be hosted with them: put the
+PNGs in `$(dirname $SERVER_CONFIG_PATH)/img` (`data/img`, or `/data/img` in
+Docker), keeping any subdirectories the map's names use. Each is served at
+`/img/`, if it is at most 4 MB and 2048 pixels a side. How a map names one is
+in [bzw.md](bzw.md#materials).
+
+Browsers load them from whichever address they opened the server at, so
+nothing more is needed for them.
+
+A BZFlag client loads a map's `/img/` texture from
+`http://<publicAddr>/img/...` -- the address it is listed under (`bzflag` in
+`server.json`), else `publicUrl`'s host -- and only once the player allows
+that host. By default it fetches textures from images.bzflag.org alone; a
+player adds a line such as `allow bz.example.org` above `deny *` in
+`DownloadAccess.txt`:
+
+| System | File |
+| --- | --- |
+| Linux | `~/.bzf/DownloadAccess.txt` |
+| macOS | `~/Library/Application Support/BZFlag/DownloadAccess.txt` |
+| Windows | `%LOCALAPPDATA%\BZFlag\DownloadAccess.txt` |
+
+Until then the client shows the plain texture and a "local denial" message.
+A bare texture name is sent to it as the map wrote it, so a player who
+installed the map's pictures sees them as before.
+
 ## Install from source
 
 ### Prerequisites
@@ -144,9 +174,10 @@ npm install
 
 A checkout keeps the operator's own files in `data/`, laid out as the image's
 `/data` is: `data/server.json` and its state, `data/maps`, `data/replays`,
-`data/plugins` and `data/cache`. `maps/`, `replays/` and `plugins/` hold only
-what ships with bzo. If `data/server.json` does not exist, the server creates
-it from [example-server.json](../example-server.json) on first start.
+`data/plugins`, `data/img` and `data/cache`. `maps/`, `replays/` and
+`plugins/` hold only what ships with bzo. If `data/server.json` does not
+exist, the server creates it from [example-server.json](../example-server.json)
+on first start.
 
 A checkout from before this keeps `server.json` at the top, which the server
 still reads there. `npm run move-data` moves it, its state, the cache and every

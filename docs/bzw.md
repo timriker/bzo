@@ -450,6 +450,24 @@ reads both:
   malformed line is a mapper's own typo rather than a remote host's
   behavior worth a runtime warning.
 
+- **The server's own textures.** PNGs in `img/` beside the config
+  (`data/img/` in a checkout, `/data/img/` in Docker) are served at `/img/`
+  and survive an update. A map names one as `/img/wall.png`, or by a bare
+  name that is not stock -- `wall`, `mymap/wall.png` -- the way a map made
+  for players who installed its textures names them; the file is tried as
+  written, then with `.png`, as `MediaFile::readImage` does. A name no file
+  answers keeps the obstacle's plain default. Only a PNG of at most 4 MB and
+  2048 pixels a side is served (`server/local-images.cjs`); a refused one is
+  logged as `[IMG]`.
+
+  A browser is sent the path, so it loads from its own origin with no CORS;
+  a texture URL naming one of the server's own hosts (any `publicUrl`, or the
+  BZFlag `publicAddr`) reaches it as the path alone too.
+  A native client is sent a `/img/` name as `http://<publicAddr>/img/...`,
+  which it fetches only once its `DownloadAccess.txt` allows that host; a
+  bare name is sent as written, for its own data directory, as upstream.
+  Hosting such a map: [installation.md](installation.md#map-textures).
+
   **A texture that actually has transparency gets it, real maps do use
   this.** A survey of every texture referenced by the public server list's
   own live maps found 39 distinct pictures with genuine, non-uniform alpha

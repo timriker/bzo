@@ -21,8 +21,9 @@ const { bzfsWorldHashOfBzw } = require('./bzflag-world.cjs');
 // `writeDir`: where to write the world's JSON, when it is to be kept. Written
 // here rather than sent back, so the server's thread never holds a big map's
 // JSON at all; what goes back is its hash and its sidecar digest.
-const { filePath, quiet, gameConfigDefaults, build, writeDir } = workerData;
+const { filePath, quiet, gameConfigDefaults, ownHosts, build, writeDir } = workerData;
 configureBzwParse({
+  ownHosts,
   log: (...args) => parentPort.postMessage({ log: args.map(String).join(' ') }),
   gameConfigDefaults,
 });

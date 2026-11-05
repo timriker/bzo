@@ -373,6 +373,7 @@ const {
   NativeTranslator, decodeEnter, decodeClientMessage, moveFromBzfs, shootFromBzfs,
 } = require('./server/bzflag-native.cjs');
 const { compileBzwWorld } = require('./server/bzw-compile.cjs');
+const { findLocalImage, localImageRefusal, IMG_URL_PREFIX } = require('./server/local-images.cjs');
 const { packWorldDatabase, bzfsWorldHashOfBzw } = require('./server/bzflag-world.cjs');
 const {
   DEFAULT_VOICE_CHANNEL,
@@ -635,6 +636,28 @@ app.use('/vendor/three', express.static(threeBuildDir, {
 // brotli sidecar `precompress.middleware()` serves for the same path.
 const MAP_CACHE_DIR = path.join(CACHE_DIR, 'maps');
 app.use('/maps', express.static(MAP_CACHE_DIR, { setHeaders: setStaticHeaders }));
+
+// The server's own map textures (server/local-images.cjs), beside its config
+// so they outlive an update. A refused file is logged once per change.
+const IMG_DIR = path.join(path.dirname(CONFIG_PATH), 'img');
+const imgRefusalsLogged = new Map();
+app.use('/img', (req, res) => {
+  const file = findLocalImage(IMG_DIR, req.path);
+  if (!file) {
+    res.status(404).set('Cache-Control', 'public, max-age=60').type('text/plain').send('No such image here.\n');
+    return;
+  }
+  const refusal = localImageRefusal(file);
+  if (refusal) {
+    const key = `${refusal}|${fs.statSync(file).mtimeMs}`;
+    if (imgRefusalsLogged.get(file) !== key) log(`[IMG] ${path.relative(IMG_DIR, file)} refused: ${refusal}`);
+    imgRefusalsLogged.set(file, key);
+    res.status(404).set('Cache-Control', 'public, max-age=60').type('text/plain').send('No such image here.\n');
+    return;
+  }
+  res.set('Cache-Control', 'public, max-age=3600');
+  res.sendFile(file);
+});
 
 // The overview pictures this instance has drawn for *other* bzo instances'
 // worlds (issue #147), kept apart from `MAP_CACHE_DIR` because that directory
@@ -6348,7 +6371,7 @@ const SDT_JITTER_ALLOWANCE = 0.25;
 // What GAME_CONFIG holds before server.json touches it, so the startup line
 // can name only what an operator changed.
 const GAME_CONFIG_DEFAULTS = { ...GAME_CONFIG };
-configureBzwParse({ log, gameConfigDefaults: GAME_CONFIG_DEFAULTS });
+configureBzwParse({ log, gameConfigDefaults: GAME_CONFIG_DEFAULTS, ownHosts: ownHostNames() });
 
 
 // server.json's `bzdb`: upstream's command-line `-set`, by upstream's names and
@@ -6948,6 +6971,7 @@ function convertMapFile(fileName, filePath, { quiet = true, keepWorld = true } =
         filePath,
         quiet,
         gameConfigDefaults: GAME_CONFIG_DEFAULTS,
+        ownHosts: ownHostNames(),
         build: worldBuildOptions(fileName),
         writeDir: keepWorld ? MAP_CACHE_DIR : null,
       },
@@ -13429,7 +13453,7 @@ function getBzflagWorld() {
   let promise;
   try {
     const text = generated ? RANDOM_WORLD_BZW : fs.readFileSync(mapPath, 'latin1');
-    const tree = compileBzwWorld(text, { bzdb: SERVER_BZDB });
+    const tree = compileBzwWorld(text, { bzdb: SERVER_BZDB, textureName: nativeTextureName });
     if (tree.unsupported.length > 0) {
       promise = generated
         ? Promise.resolve(null)
@@ -13463,6 +13487,42 @@ function getBzflagWorld() {
 // file its operator hosts; bzo is a web server, so by default it points at
 // its own copy (`/bzflag/world/<md5>.bwc`). `cacheUrl` false turns it off,
 // and a string is used as written, as bzfs uses it.
+// A map's `/img/` texture as a native client must name it: an absolute
+// `http://` URL on the address it found this server by (`publicAddr`, else
+// `publicUrl`'s host), the only scheme its downloader follows
+// (CacheManager.cxx:72), which its DownloadAccess.txt then has to allow. A
+// bare name stays as it is, for the client's own data directory, as upstream.
+// A browser needs none of this: it is sent the path, on its own origin.
+// The host names this server answers at: every `publicUrl`'s and the
+// BZFlag `publicAddr`'s. A map's texture URL on one reaches a browser as a
+// path (`ownPath`, server/bzw-parse.cjs).
+function ownHostNames() {
+  const hosts = new Set();
+  for (const url of PUBLIC_URLS) {
+    try {
+      hosts.add(new URL(url).hostname);
+    } catch {
+      // Not a URL; nothing to add.
+    }
+  }
+  const addr = typeof serverConfig.bzflag?.publicAddr === 'string' ? serverConfig.bzflag.publicAddr.trim() : '';
+  if (addr) hosts.add(addr.replace(/:\d+$/, '').replace(/^\[|\]$/g, ''));
+  return [...hosts];
+}
+
+function nativeTextureName(name) {
+  if (!String(name).toLowerCase().startsWith(IMG_URL_PREFIX)) return name;
+  let host = bzflagPublicAddr;
+  if (!host && PUBLIC_URL) {
+    try {
+      host = new URL(PUBLIC_URL).host;
+    } catch {
+      host = '';
+    }
+  }
+  return host ? `http://${host}${name}` : name;
+}
+
 function bzflagCacheUrl(world) {
   const configured = BZFLAG_CONFIG?.cacheUrl;
   if (configured === false) return null;

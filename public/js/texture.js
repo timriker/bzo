@@ -167,9 +167,9 @@ export function createTeleporterPortalTexture() {
 // picture for is here, not just the common wall/roof/pyramid handful, since
 // there is no predicting which one a map maker's `material` block reaches
 // for -- see `BZW_STOCK_TEXTURES`'s own comment in server.js, which this list
-// has to agree with: that is what turns away, at parse time, any name not
-// one of these, or an external URL a map links a texture in from -- so a
-// name reaching here always resolves.
+// has to agree with: that is what sends, at parse time, any name not one of
+// these down the URL path instead -- an external URL, or the server's own
+// `/img/` -- so a name reaching here always resolves.
 const STOCK_MATERIAL_TEXTURE_FILES = new Map([
   ['automatic_icon', 'automatic_icon.png'],
   ['blend_flash', 'blend_flash.png'],

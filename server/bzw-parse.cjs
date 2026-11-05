@@ -18,6 +18,7 @@ const { getObstacleHeight } = require('../public/js/collision.mjs');
 // written in: +Z up, +Y north, x east, an angle counter-clockwise about +Z.
 const crypto = require('crypto');
 const { parseBZWTeamMode, getTeamFromColorIndex } = require('./teams.cjs');
+const { localImageUrl } = require('./local-images.cjs');
 const {
   normalizeShotLimit, normalizeShotSlotCount, WORLD_WEAPON_DEFAULT_DELAY, normalizeWorldWeaponDelays,
 } = require('./shots.cjs');
@@ -26,13 +27,15 @@ const fs = require('fs');
 const mapOverview = require('./map-overview.cjs');
 const path = require('path');
 
-// Where the parser's own log lines go, and the server's config defaults it
-// reads a map's options against.
+// Where the parser's own log lines go, the server's config defaults it
+// reads a map's options against, and the host names the server answers at.
 let log = () => {};
 let GAME_CONFIG_DEFAULTS = {};
+let OWN_HOSTS = new Set();
 function configureBzwParse(options) {
   if (options.log) log = options.log;
   if (options.gameConfigDefaults) GAME_CONFIG_DEFAULTS = options.gameConfigDefaults;
+  if (options.ownHosts) OWN_HOSTS = new Set(options.ownHosts.map((host) => String(host).toLowerCase()));
 }
 
 // Top-level BZW keywords a real map may use that bzo does not read at all --
@@ -1603,10 +1606,9 @@ function parseBzwColor(words) {
 // which is the other half of this: this set decides what a map is *allowed*
 // to name, that one decides what picture the name actually draws.
 //
-// A name not in this set -- anything not shipped in upstream's own `data/`,
-// or an external URL a map links a texture in from -- resolves to nothing:
-// no network fetch, no CORS/CSP surface, and the obstacle keeps its type's
-// plain default texture.
+// A name not in this set is a URL (`parseBzwTextureUrl`) or a name for the
+// server's own `/img/` (`localImageUrl`); one that is neither keeps its
+// obstacle's plain default texture.
 const BZW_STOCK_TEXTURES = new Set([
   'automatic_icon', 'blend_flash', 'blue_basetop', 'blue_basewall', 'blue_bolt', 'blue_icon',
   'blue_laser', 'blue_super_bolt', 'blue_tank', 'boxwall', 'bubble', 'bzflag-256x256',
@@ -1681,14 +1683,28 @@ function parseBzwTextureUrl(rawName) {
 }
 
 // Classifies one `addtexture`/`texture` argument -- a material's own, or a
-// bare one straight on an obstacle -- into whichever of the two things bzo
-// can do with it, or neither.
+// bare one straight on an obstacle: a stock texture, a URL, or the server's
+// own `/img/` (server/local-images.cjs), which the request looks up, so a
+// name no file answers falls back to the plain default in the browser.
 function resolveBzwTextureName(rawName) {
   const stock = resolveBzwStockTexture(rawName);
   if (stock) return { stock };
-  const url = parseBzwTextureUrl(rawName);
+  const url = ownPath(parseBzwTextureUrl(rawName)) || localImageUrl(rawName);
   if (url) return { url };
   return null;
+}
+
+// A protocol-relative texture URL on one of this server's own host names,
+// as its path alone: a browser loads it from whichever address it opened,
+// with no cross-origin request.
+function ownPath(url) {
+  if (!url || OWN_HOSTS.size === 0) return url;
+  try {
+    const parsed = new URL(`https:${url}`);
+    return OWN_HOSTS.has(parsed.hostname.toLowerCase()) ? parsed.pathname : url;
+  } catch {
+    return url;
+  }
 }
 
 // `MeshFace::finalize` (MeshFace.cxx:80-129) picks the vertex triple with

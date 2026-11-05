@@ -2545,7 +2545,9 @@ const compareHeights = (a, b) => {
 
 // `compileBzwWorld(text, { bzdb })`: the world tree for a map, `bzdb` being
 // the server's own variables (a Map of names to raw strings) under the map's.
-function compileBzwWorld(text, { bzdb = null } = {}) {
+// `textureName(name)`, when given, renames each material's textures as the
+// world is sent: how a server points native clients at its own `/img/`.
+function compileBzwWorld(text, { bzdb = null, textureName = null } = {}) {
   const vars = new Map(bzdb ? [...bzdb] : []);
   for (const [name, value] of optionVars(text)) vars.set(name, value);
   const world = new World(makeBzdb(vars));
@@ -2594,6 +2596,11 @@ function compileBzwWorld(text, { bzdb = null } = {}) {
     world.waterMat = world.addMaterial(water);
   }
 
+  if (textureName) {
+    for (const material of world.materials) {
+      for (const texture of material.textures) texture.name = textureName(texture.name);
+    }
+  }
   return toTree(world);
 }
 
