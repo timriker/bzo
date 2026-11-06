@@ -1234,7 +1234,7 @@ msgstr "Squadra: {team}"
 msgid "watching {server}"
 msgstr "osservando {server}"
 
-#: public/js/client.js:1387 public/js/client.js:10311
+#: public/js/client.js:1387 public/js/client.js:10319
 msgid "replay {name}"
 msgstr "replay {name}"
 
@@ -1547,7 +1547,7 @@ msgstr ""
 msgid "Global login leaves VR. Exit the headset session first."
 msgstr "Il login globale chiude la VR. Esci prima dalla sessione del visore."
 
-#: public/js/client.js:4692 public/js/client.js:10535
+#: public/js/client.js:4692 public/js/client.js:10543
 msgid "Fetching remote server's map..."
 msgstr "Recupero della mappa del server remoto..."
 
@@ -1555,7 +1555,7 @@ msgstr "Recupero della mappa del server remoto..."
 msgid "Pausing in {seconds}"
 msgstr "Pausa tra {seconds}"
 
-#: public/js/client.js:4882 public/js/client.js:6728
+#: public/js/client.js:4882 public/js/client.js:6736
 msgid "Self Destructing in {seconds}"
 msgstr "Autodistruzione tra {seconds}"
 
@@ -1567,554 +1567,554 @@ msgstr "Pilota automatico {pilot}: {intent}"
 msgid "AutoPilot {pilot}"
 msgstr "Pilota automatico {pilot}"
 
-#: public/js/client.js:6619 server.js:11445
+#: public/js/client.js:6623 server.js:11445
 msgid "You do not have permission to speak on the admin channel."
 msgstr "Non hai il permesso di parlare nel canale admin."
 
-#: public/js/client.js:6730
+#: public/js/client.js:6738
 msgid "Self Destruct cancelled"
 msgstr "Autodistruzione annullata"
 
-#: public/js/client.js:6900
+#: public/js/client.js:6908
 msgid "Hide Debug Labels"
 msgstr "Nascondi etichette di debug"
 
-#: public/js/client.js:6903
+#: public/js/client.js:6911
 msgid "Show Debug Labels"
 msgstr "Mostra etichette di debug"
 
-#: public/js/client.js:6920
+#: public/js/client.js:6928
 msgid "Disable Dynamic Lighting"
 msgstr "Disattiva illuminazione dinamica"
 
-#: public/js/client.js:6921
+#: public/js/client.js:6929
 msgid "Enable Dynamic Lighting"
 msgstr "Attiva illuminazione dinamica"
 
-#: public/js/client.js:6923
+#: public/js/client.js:6931
 msgid "Dynamic Lighting needs more shader uniforms than this browser reports"
 msgstr ""
 "L'illuminazione dinamica richiede più uniform di shader di quanti ne indichi "
 "questo browser"
 
-#: public/js/client.js:6932
+#: public/js/client.js:6940
 msgid "Disable Rumble"
 msgstr "Disattiva vibrazione"
 
-#: public/js/client.js:6933
+#: public/js/client.js:6941
 msgid "Enable Rumble"
 msgstr "Attiva vibrazione"
 
-#: public/js/client.js:6939
+#: public/js/client.js:6947
 msgid "Disable Anaglyph 3D"
 msgstr "Disattiva 3D anaglifo"
 
-#: public/js/client.js:6940
+#: public/js/client.js:6948
 msgid "Enable Anaglyph 3D"
 msgstr "Attiva 3D anaglifo"
 
-#: public/js/client.js:6943
+#: public/js/client.js:6951
 msgid "Anaglyph 3D is unavailable in VR mode"
 msgstr "Il 3D anaglifo non è disponibile in modalità VR"
 
-#: public/js/client.js:6952
+#: public/js/client.js:6960
 msgid "Hide Debug Geometry"
 msgstr "Nascondi geometria di debug"
 
-#: public/js/client.js:7040
+#: public/js/client.js:7048
 msgid "Confirm"
 msgstr "Conferma"
 
-#: public/js/client.js:7096
+#: public/js/client.js:7104
 msgid "Share View Link: only available while viewing a map"
 msgstr "Condividi link vista: disponibile solo mentre visualizzi una mappa"
 
-#: public/js/client.js:7101
+#: public/js/client.js:7109
 msgid "View link copied to clipboard"
 msgstr "Link vista copiato negli appunti"
 
-#: public/js/client.js:7130
+#: public/js/client.js:7138
 msgid "WebXR: {mode}"
 msgstr "WebXR: {mode}"
 
-#: public/js/client.js:7136
+#: public/js/client.js:7144
 msgid "WebXR not supported on this device"
 msgstr "WebXR non è supportato su questo dispositivo"
 
-#: public/js/client.js:7141
+#: public/js/client.js:7149
 msgid "Requesting VR..."
 msgstr "Richiesta VR..."
 
-#: public/js/client.js:7144
+#: public/js/client.js:7152
 msgid "Error: Renderer not available"
 msgstr "Errore: renderer non disponibile"
 
-#: public/js/client.js:7157
+#: public/js/client.js:7165
 msgid "✓ WebXR VR Mode: ON"
 msgstr "✓ Modalità VR WebXR: ATTIVA"
 
-#: public/js/client.js:7163
+#: public/js/client.js:7171
 msgid "✗ VR request failed - check server.log"
 msgstr "✗ Richiesta VR non riuscita - controlla server.log"
 
-#: public/js/client.js:7165 public/js/client.js:17772
+#: public/js/client.js:7173 public/js/client.js:17784
 msgid "WebXR VR Mode: OFF"
 msgstr "Modalità VR WebXR: DISATTIVA"
 
-#: public/js/client.js:7730
+#: public/js/client.js:7738
 msgid "3D renderer unavailable: {reason}"
 msgstr "Renderer 3D non disponibile: {reason}"
 
-#: public/js/client.js:7737
+#: public/js/client.js:7745
 msgid "3D renderer failed to initialize."
 msgstr "Inizializzazione del renderer 3D non riuscita."
 
-#: public/js/client.js:7739
+#: public/js/client.js:7747
 msgid "Open the game in an external browser window for full WebGL support."
 msgstr ""
 "Apri il gioco in una finestra del browser esterna per il pieno supporto "
 "WebGL."
 
-#: public/js/client.js:8168
+#: public/js/client.js:8176
 msgid "Connected to server!"
 msgstr "Connesso al server!"
 
-#: public/js/client.js:8174
+#: public/js/client.js:8182
 msgid "Connected to server"
 msgstr "Connesso al server"
 
-#: public/js/client.js:8175
+#: public/js/client.js:8183
 msgid "Waiting for world state"
 msgstr "In attesa dello stato del mondo"
 
-#: public/js/client.js:8226
+#: public/js/client.js:8234
 msgid "Offline"
 msgstr "Offline"
 
-#: public/js/client.js:8226
+#: public/js/client.js:8234
 msgid "Cannot reach {host}"
 msgstr "Impossibile raggiungere {host}"
 
-#: public/js/client.js:8227
+#: public/js/client.js:8235
 msgid "Trying again..."
 msgstr "Nuovo tentativo..."
 
-#: public/js/client.js:8238
+#: public/js/client.js:8246
 msgid "Disconnected from server | Kills: {kills} | Deaths: {deaths}"
 msgstr "Disconnesso dal server | Uccisioni: {kills} | Morti: {deaths}"
 
-#: public/js/client.js:8243
+#: public/js/client.js:8251
 msgid "Press a key, tap or pull a trigger to rejoin"
 msgstr "Premi un tasto, tocca lo schermo o premi un grilletto per rientrare"
 
-#: public/js/client.js:8403
+#: public/js/client.js:8411
 msgid "Server error: {error}"
 msgstr "Errore del server: {error}"
 
-#: public/js/client.js:8408
+#: public/js/client.js:8416
 msgid "Server: action completed successfully"
 msgstr "Server: azione completata con successo"
 
-#: public/js/client.js:8490
+#: public/js/client.js:8498
 msgid "Operator Panel (v{version})"
 msgstr "Pannello operatore (v{version})"
 
-#: public/js/client.js:8909
+#: public/js/client.js:8917
 msgid "{player} joined"
 msgstr "{player} è entrato"
 
-#: public/js/client.js:8954
+#: public/js/client.js:8962
 msgid "{player} left"
 msgstr "{player} è uscito"
 
-#: public/js/client.js:8970
+#: public/js/client.js:8978
 msgid "{callsign} not responding"
 msgstr "{callsign} non risponde"
 
-#: public/js/client.js:8971
+#: public/js/client.js:8979
 msgid "{callsign} okay"
 msgstr "{callsign} ok"
 
-#: public/js/client.js:9085
+#: public/js/client.js:9093
 msgid "{player} grabbed {flag}"
 msgstr "{player} ha preso {flag}"
 
-#: public/js/client.js:9136
+#: public/js/client.js:9144
 msgid "{player} dropped {flag}"
 msgstr "{player} ha lasciato {flag}"
 
-#: public/js/client.js:9230
+#: public/js/client.js:9238
 msgid "{player}: {pilot} taking controls"
 msgstr "{player}: {pilot} prende i comandi"
 
-#: public/js/client.js:9231
+#: public/js/client.js:9239
 msgid "{player}: {pilot} releasing controls"
 msgstr "{player}: {pilot} rilascia i comandi"
 
-#: public/js/client.js:9263
+#: public/js/client.js:9271
 msgid "{player} paused"
 msgstr "{player} è in pausa"
 
-#: public/js/client.js:9274
+#: public/js/client.js:9282
 msgid "{player} unpaused"
 msgstr "{player} non è più in pausa"
 
-#: public/js/client.js:9404
+#: public/js/client.js:9412
 msgid "Server forced a disconnect"
 msgstr "Il server ha forzato una disconnessione"
 
-#: public/js/client.js:9410
+#: public/js/client.js:9418
 msgid "Server updated - reloading..."
 msgstr "Server aggiornato - ricaricamento..."
 
-#: public/js/client.js:9938
+#: public/js/client.js:9946
 msgid "Got flattened by {player}"
 msgstr "Schiacciato da {player}"
 
-#: public/js/client.js:9939
+#: public/js/client.js:9947
 msgid "Teammate hit with Genocide by {player}"
 msgstr "Compagno colpito con Genocidio da {player}"
 
-#: public/js/client.js:9940
+#: public/js/client.js:9948
 msgid "Got shot by {player}"
 msgstr "Colpito da {player}"
 
-#: public/js/client.js:9942
+#: public/js/client.js:9950
 msgid "Got flattened by teammate {player}"
 msgstr "Schiacciato dal compagno {player}"
 
-#: public/js/client.js:9943
+#: public/js/client.js:9951
 msgid "Teammate hit with Genocide by teammate {player}"
 msgstr "Compagno colpito con Genocidio dal compagno {player}"
 
-#: public/js/client.js:9944
+#: public/js/client.js:9952
 msgid "Got shot by teammate {player}"
 msgstr "Colpito dal compagno {player}"
 
-#: public/js/client.js:9980
+#: public/js/client.js:9988
 msgid "Your team flag was captured!"
 msgstr "La tua bandiera di squadra è stata catturata!"
 
-#: public/js/client.js:9982
+#: public/js/client.js:9990
 msgid "Time Expired - GAME OVER"
 msgstr "Tempo scaduto - PARTITA FINITA"
 
-#: public/js/client.js:9984
+#: public/js/client.js:9992
 msgid "Tank Self Destructed"
 msgstr "Carro autodistrutto"
 
-#: public/js/client.js:9986
+#: public/js/client.js:9994
 msgid "Tank Rusted"
 msgstr "Carro arrugginito"
 
-#: public/js/client.js:9989 public/js/client.js:9993
+#: public/js/client.js:9997 public/js/client.js:10001
 msgid "Killed by the server"
 msgstr "Ucciso dal server"
 
-#: public/js/client.js:10020
+#: public/js/client.js:10028
 msgid "You killed {player}"
 msgstr "Hai ucciso {player}"
 
-#: public/js/client.js:10032
+#: public/js/client.js:10040
 msgid "{player} self-destructed"
 msgstr "{player} si è autodistrutto"
 
-#: public/js/client.js:10036
+#: public/js/client.js:10044
 msgid "{player} fell in the water"
 msgstr "{player} è caduto in acqua"
 
-#: public/js/client.js:10041
+#: public/js/client.js:10049
 msgid "{player}: {message}"
 msgstr "{player}: {message}"
 
-#: public/js/client.js:10044
+#: public/js/client.js:10052
 msgid "killed by the server"
 msgstr "ucciso dal server"
 
-#: public/js/client.js:10050
+#: public/js/client.js:10058
 msgid "{player} was killed by the server"
 msgstr "{player} è stato ucciso dal server"
 
-#: public/js/client.js:10055
+#: public/js/client.js:10063
 msgid "{killer} killed {victim}"
 msgstr "{killer} ha ucciso {victim}"
 
-#: public/js/client.js:10220
+#: public/js/client.js:10228
 msgid "You respawned!"
 msgstr "Sei rinato!"
 
-#: public/js/client.js:10310
+#: public/js/client.js:10318
 msgid "map {name}"
 msgstr "mappa {name}"
 
-#: public/js/client.js:10312
+#: public/js/client.js:10320
 msgid "plugin {name}"
 msgstr ""
 
-#: public/js/client.js:10316
+#: public/js/client.js:10324
 msgid "nothing uploaded"
 msgstr "nulla di caricato"
 
-#: public/js/client.js:10343 public/js/client.js:10818
+#: public/js/client.js:10351 public/js/client.js:10826
 msgid "MOTD: {motd}"
 msgstr "MOTD: {motd}"
 
-#: public/js/client.js:10418
+#: public/js/client.js:10426
 msgid "{count} box"
 msgstr "{count} scatola"
 
-#: public/js/client.js:10418
+#: public/js/client.js:10426
 msgid "{count} boxes"
 msgstr "{count} scatole"
 
-#: public/js/client.js:10419
+#: public/js/client.js:10427
 msgid "{count} pyramid"
 msgstr "{count} piramide"
 
-#: public/js/client.js:10419
+#: public/js/client.js:10427
 msgid "{count} pyramids"
 msgstr "{count} piramidi"
 
-#: public/js/client.js:10420
+#: public/js/client.js:10428
 msgid "{count} mesh"
 msgstr "{count} mesh"
 
-#: public/js/client.js:10420
+#: public/js/client.js:10428
 msgid "{count} meshes"
 msgstr "{count} mesh"
 
-#: public/js/client.js:10425
+#: public/js/client.js:10433
 msgid "{count} base"
 msgstr "{count} base"
 
-#: public/js/client.js:10425
+#: public/js/client.js:10433
 msgid "{count} bases"
 msgstr "{count} basi"
 
-#: public/js/client.js:10427
+#: public/js/client.js:10435
 msgid "{count} teleporter"
 msgstr "{count} teletrasporto"
 
-#: public/js/client.js:10427
+#: public/js/client.js:10435
 msgid "{count} teleporters"
 msgstr "{count} teletrasporti"
 
-#: public/js/client.js:10430 server.js:2477
+#: public/js/client.js:10438 server.js:2477
 msgid "water"
 msgstr "acqua"
 
-#: public/js/client.js:10431 server.js:2477
+#: public/js/client.js:10439 server.js:2477
 msgid "weather"
 msgstr "meteo"
 
-#: public/js/client.js:10432 server.js:2477
+#: public/js/client.js:10440 server.js:2477
 msgid "custom ground"
 msgstr "terreno personalizzato"
 
-#: public/js/client.js:10470 public/js/client.js:10549
+#: public/js/client.js:10478 public/js/client.js:10557
 msgid "View {map}"
 msgstr "Visualizza {map}"
 
-#: public/js/client.js:10547
+#: public/js/client.js:10555
 msgid "{server} did not answer"
 msgstr "{server} non ha risposto"
 
-#: public/js/client.js:10559 server.js:2407 server.js:2866 server.js:2916
+#: public/js/client.js:10567 server.js:2407 server.js:2866 server.js:2916
 msgid "Watch"
 msgstr "Guarda"
 
-#: public/js/client.js:10560
+#: public/js/client.js:10568
 msgid "Watch the live game on {server}"
 msgstr "Guarda la partita dal vivo su {server}"
 
-#: public/js/client.js:10578 public/js/client.js:10586 server.js:2875
+#: public/js/client.js:10586 public/js/client.js:10594 server.js:2875
 msgid "Re-import"
 msgstr "Reimporta"
 
-#: public/js/client.js:10582
+#: public/js/client.js:10590
 msgid "Importing…"
 msgstr "Importazione…"
 
-#: public/js/client.js:10625
+#: public/js/client.js:10633
 msgid "Loading map..."
 msgstr "Caricamento mappa..."
 
-#: public/js/client.js:10633
+#: public/js/client.js:10641
 msgid "Building world geometry..."
 msgstr "Costruzione della geometria del mondo..."
 
-#: public/js/client.js:10697
+#: public/js/client.js:10705
 msgid "{count} watching now"
 msgstr "{count} spettatori ora"
 
-#: public/js/client.js:10700
+#: public/js/client.js:10708
 msgid "Watch {name}"
 msgstr "Guarda {name}"
 
-#: public/js/client.js:10736
+#: public/js/client.js:10744
 msgid "That server's map could not be fetched"
 msgstr "Non è stato possibile recuperare la mappa di quel server"
 
-#: public/js/client.js:10754
+#: public/js/client.js:10762
 msgid "import failed"
 msgstr "importazione non riuscita"
 
-#: public/js/client.js:10754
+#: public/js/client.js:10762
 msgid "Could not load that server's map: {reason}"
 msgstr "Impossibile caricare la mappa di quel server: {reason}"
 
-#: public/js/client.js:10968
+#: public/js/client.js:10976
 msgid "{team} Limit:"
 msgstr "Limite {team}:"
 
-#: public/js/client.js:11061
+#: public/js/client.js:11069
 msgid "Failed: {error}"
 msgstr ""
 
-#: public/js/client.js:11166
+#: public/js/client.js:11174
 msgid "No limit"
 msgstr "Nessun limite"
 
-#: public/js/client.js:11275
+#: public/js/client.js:11283
 msgid "Restart"
 msgstr "Riavvia"
 
-#: public/js/client.js:11279
+#: public/js/client.js:11287
 msgid "Starts a new game: every player reloads into the new settings"
 msgstr ""
 "Avvia una nuova partita: ogni giocatore ricarica con le nuove impostazioni"
 
-#: public/js/client.js:11280
+#: public/js/client.js:11288
 msgid "Applies the staged changes"
 msgstr "Applica le modifiche in sospeso"
 
-#: public/js/client.js:11627
+#: public/js/client.js:11635
 msgid "Paused"
 msgstr "In pausa"
 
-#: public/js/client.js:11628
+#: public/js/client.js:11636
 msgid "Sealed"
 msgstr "Sigillato"
 
-#: public/js/client.js:12560
+#: public/js/client.js:12568
 msgid "Already following someone"
 msgstr "Stai già seguendo qualcuno"
 
-#: public/js/client.js:12596 public/js/client.js:12721
+#: public/js/client.js:12604 public/js/client.js:12729
 msgid "Looking at {player}"
 msgstr "Guardi {player}"
 
-#: public/js/client.js:12705
+#: public/js/client.js:12713
 msgid "{player} locked on me"
 msgstr "{player} mi ha agganciato"
 
-#: public/js/client.js:12715
+#: public/js/client.js:12723
 msgid "Looking at nothing"
 msgstr "Non guardi nulla"
 
-#: public/js/client.js:12721
+#: public/js/client.js:12729
 msgid "Locked on {player}"
 msgstr "Agganciato a {player}"
 
-#: public/js/client.js:13058
+#: public/js/client.js:13066
 msgid "Clear ({count})"
 msgstr "Cancella ({count})"
 
-#: public/js/client.js:13058 public/js/list-page.js:534
+#: public/js/client.js:13066 public/js/list-page.js:534
 msgid "Clear"
 msgstr "Cancella"
 
-#: public/js/client.js:13158
+#: public/js/client.js:13166
 msgid "SPOTTED: {player}"
 msgstr "AVVISTATO: {player}"
 
-#: public/js/client.js:13273 public/js/client.js:13279
+#: public/js/client.js:13281 public/js/client.js:13287
 msgid "nobody"
 msgstr "nessuno"
 
-#: public/js/client.js:13283
+#: public/js/client.js:13291
 msgid "Leader {who}"
 msgstr "Leader: {who}"
 
-#: public/js/client.js:13285 public/js/client.js:13290
+#: public/js/client.js:13293 public/js/client.js:13298
 msgid "Tracking {who}"
 msgstr "Inquadrando {who}"
 
-#: public/js/client.js:13286
+#: public/js/client.js:13294
 msgid "Following {who}"
 msgstr "Seguendo {who}"
 
-#: public/js/client.js:13287
+#: public/js/client.js:13295
 msgid "Driving with {who}"
 msgstr "A bordo con {who}"
 
-#: public/js/client.js:13292 public/js/hud.js:629 public/js/input.js:1457
+#: public/js/client.js:13300 public/js/hud.js:629 public/js/input.js:1457
 msgid "First Person"
 msgstr "Prima persona"
 
-#: public/js/client.js:13293 public/js/hud.js:630 public/js/input.js:1458
+#: public/js/client.js:13301 public/js/hud.js:630 public/js/input.js:1458
 msgid "Third Person"
 msgstr "Terza persona"
 
-#: public/js/client.js:13294 public/js/hud.js:631 public/js/input.js:1459
+#: public/js/client.js:13302 public/js/hud.js:631 public/js/input.js:1459
 msgid "Overview"
 msgstr "Panoramica"
 
-#: public/js/client.js:13295
+#: public/js/client.js:13303
 msgid "Roaming"
 msgstr "Visuale libera"
 
-#: public/js/client.js:13584 public/js/client.js:13658
+#: public/js/client.js:13592 public/js/client.js:13666
 msgid "autopilot disabled"
 msgstr "pilota automatico disattivato"
 
-#: public/js/client.js:13593
+#: public/js/client.js:13601
 msgid "autopilot not allowed on this server"
 msgstr "pilota automatico non consentito su questo server"
 
-#: public/js/client.js:13605
+#: public/js/client.js:13613
 msgid "{pilot} has the controls"
 msgstr "{pilot} ha i comandi"
 
-#: public/js/client.js:13610
+#: public/js/client.js:13618
 msgid "You may not enable the Autopilot more than once every five seconds."
 msgstr ""
 "Non puoi attivare il pilota automatico più di una volta ogni cinque secondi."
 
-#: public/js/client.js:13615
+#: public/js/client.js:13623
 msgid "autopilot enabled"
 msgstr "pilota automatico attivato"
 
-#: public/js/client.js:13638
+#: public/js/client.js:13646
 msgid "Not allowed"
 msgstr "Non consentito"
 
-#: public/js/client.js:13638 public/js/input.js:1162 public/js/input.js:1172
+#: public/js/client.js:13646 public/js/input.js:1162 public/js/input.js:1172
 #: public/js/input.js:1176
 msgid "Unavailable"
 msgstr "Non disponibile"
 
-#: public/js/client.js:13641
+#: public/js/client.js:13649
 msgid "None"
 msgstr "Nessuno"
 
-#: public/js/client.js:14471
+#: public/js/client.js:14483
 msgid "Zoned"
 msgstr "Zona fantasma"
 
-#: public/js/client.js:14471
+#: public/js/client.js:14483
 msgid "Unzoned"
 msgstr "Fuori zona"
 
-#: public/js/client.js:15272 public/js/client.js:15289
+#: public/js/client.js:15284 public/js/client.js:15301
 msgid "unidentified"
 msgstr "non identificata"
 
-#: public/js/client.js:15309
+#: public/js/client.js:15321
 msgid "unknown"
 msgstr "sconosciuto"
 
-#: public/js/client.js:15320
+#: public/js/client.js:15332
 msgid ""
 "This server bounces every shot off walls, whatever flag fired it, so the "
 "Ricochet flag is not in play here."
@@ -2122,80 +2122,80 @@ msgstr ""
 "Questo server fa rimbalzare ogni colpo sui muri, qualunque bandiera l'abbia "
 "sparato, quindi la bandiera Rimbalzo qui non è in gioco."
 
-#: public/js/client.js:15321
+#: public/js/client.js:15333
 msgid "On this server only the Ricochet flag bounces shots off walls."
 msgstr ""
 "Su questo server solo la bandiera Rimbalzo fa rimbalzare i colpi sui muri."
 
-#: public/js/client.js:15388
+#: public/js/client.js:15400
 msgid "{flag} {release}"
 msgstr "{flag} {release}"
 
-#: public/js/client.js:15399
+#: public/js/client.js:15411
 msgid "Can't drop the flag while zoned"
 msgstr "Non puoi lasciare la bandiera mentre sei nella zona fantasma"
 
-#: public/js/client.js:15403
+#: public/js/client.js:15415
 msgid "Can't drop a flag while inside a building"
 msgstr "Non puoi lasciare una bandiera dentro un edificio"
 
-#: public/js/client.js:15453
+#: public/js/client.js:15465
 msgid "in {seconds}s"
 msgstr "tra {seconds} s"
 
-#: public/js/client.js:15454
+#: public/js/client.js:15466
 msgid "after {count} kill"
 msgstr "dopo {count} uccisione"
 
-#: public/js/client.js:15454
+#: public/js/client.js:15466
 msgid "after {count} kills"
 msgstr "dopo {count} uccisioni"
 
-#: public/js/client.js:15455
+#: public/js/client.js:15467
 msgid "on the antidote"
 msgstr "con l'antidoto"
 
-#: public/js/client.js:15456
+#: public/js/client.js:15468
 msgid "stays until it kills you"
 msgstr "resta finché non ti uccide"
 
-#: public/js/client.js:15457
+#: public/js/client.js:15469
 msgid "{first} or {second}"
 msgstr "{first} o {second}"
 
-#: public/js/client.js:15458
+#: public/js/client.js:15470
 msgid "shakes off {ways}"
 msgstr "se ne va {ways}"
 
-#: public/js/client.js:15514
+#: public/js/client.js:15526
 msgid "Flag Alert!!!"
 msgstr "Allarme bandiera!!!"
 
-#: public/js/client.js:15522
+#: public/js/client.js:15534
 msgid "Team Grab!!!"
 msgstr "Furto di squadra!!!"
 
-#: public/js/client.js:15538
+#: public/js/client.js:15550
 msgid "{thief} stole {victim}'s {flag} flag"
 msgstr "{thief} ha rubato la bandiera {flag} di {victim}"
 
-#: public/js/client.js:15569
+#: public/js/client.js:15581
 msgid "Closest Flag: {flag}"
 msgstr "Bandiera più vicina: {flag}"
 
-#: public/js/client.js:15631
+#: public/js/client.js:15643
 msgid "{player} took their own flag into {team} territory"
 msgstr "{player} ha portato la propria bandiera nel territorio {team}"
 
-#: public/js/client.js:15639
+#: public/js/client.js:15651
 msgid "Don't capture your own flag!!!"
 msgstr "Non catturare la tua bandiera!!!"
 
-#: public/js/client.js:15645
+#: public/js/client.js:15657
 msgid "{player} captured the {team} flag"
 msgstr "{player} ha catturato la bandiera {team}"
 
-#: public/js/client.js:17268 public/js/client.js:17269
+#: public/js/client.js:17280 public/js/client.js:17281
 msgid "Exit WebXR VR Mode"
 msgstr "Esci dalla modalità VR WebXR"
 

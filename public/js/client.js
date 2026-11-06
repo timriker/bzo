@@ -6562,6 +6562,10 @@ function toggleViewZoom() {
   setDisplayFov(displayFov < ZOOMED_DISPLAY_FOV + 0.5 ? DEFAULT_DISPLAY_FOV : ZOOMED_DISPLAY_FOV);
 }
 
+// Upstream's `toggle slowKeyboard` (playing.cxx:1041) halves speed and turning
+// from the keys. Its key is `A`, which WASD turns with, so here it is `X`.
+let slowKeyboard = false;
+
 function handleGameplayKeydown(event) {
   // doKeyCommon puts the hunt cursor ahead of every driving key while it is
   // open (playing.cxx:609), so Up and Down pick a row rather than driving and
@@ -6633,6 +6637,10 @@ function handleGameplayKeydown(event) {
   }
   if (event.code === 'KeyB' && plain && !event.repeat) {
     toggleViewZoom();
+    return true;
+  }
+  if (event.code === 'KeyX' && plain && !event.repeat) {
+    slowKeyboard = !slowKeyboard;
     return true;
   }
   if (event.code === 'KeyQ' && plain && !event.repeat) {
@@ -14202,6 +14210,10 @@ function gatherDriveInput({ player = true } = {}) {
   // a deliberate stop, so a held pair still owns its axis at zero, which is
   // what upstream's keyboardSpeed does with the same pair of keys.
   keyTurn *= displayFov / DEFAULT_DISPLAY_FOV;
+  if (slowKeyboard) {
+    keyForward *= 0.5;
+    keyTurn *= 0.5;
+  }
   let forward = forwardKeyHeld ? keyForward : stickForward;
   let turn = turnKeyHeld ? keyTurn : stickTurn;
 

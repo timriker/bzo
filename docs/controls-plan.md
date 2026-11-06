@@ -49,6 +49,7 @@ digit.
 | `/` `?` | help | unchanged | -- |
 | `Q` | claimed, unbound | radar on or off | same |
 | `K` | -- | silence cursor on the scoreboard | silence a player |
+| `X` | slow keyboard | unchanged | `A` |
 
 Upstream's `S` and `W` show and hide the scoreboard and chat. They have no
 key here: WASD takes the letters, and Shift with W and S already tilts an

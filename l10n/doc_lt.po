@@ -236,7 +236,16 @@ msgid ""
 "`B` — binoculars: narrow the view to a quarter, and back. `Ctrl` and the "
 "wheel narrow or widen it a step at a time. Turning with the keys slows to "
 "match"
-msgstr "`B` — žiūronai: susiaurina vaizdą iki ketvirtadalio ir atgal. `Ctrl` ir ratukas jį siaurina ar platina po žingsnį. Sukimas klavišais atitinkamai sulėtėja"
+msgstr ""
+"`B` — žiūronai: susiaurina vaizdą iki ketvirtadalio ir atgal. `Ctrl` ir "
+"ratukas jį siaurina ar platina po žingsnį. Sukimas klavišais atitinkamai "
+"sulėtėja"
+
+#: docs/help/controls.md
+msgid ""
+"`X` — slow keyboard: driving and turning with the keys go at half speed, and "
+"back"
+msgstr "`X` — lėta klaviatūra: važiavimas ir sukimasis klavišais perpus lėtesni, ir atgal"
 
 #: docs/help/controls.md
 #, fuzzy

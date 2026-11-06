@@ -1231,7 +1231,7 @@ msgstr "Hold: {team}"
 msgid "watching {server}"
 msgstr "ser {server}"
 
-#: public/js/client.js:1387 public/js/client.js:10311
+#: public/js/client.js:1387 public/js/client.js:10319
 msgid "replay {name}"
 msgstr "genafspilning {name}"
 
@@ -1542,7 +1542,7 @@ msgstr "Når du logger ud, forlader du VR. Afslut headset-sessionen først."
 msgid "Global login leaves VR. Exit the headset session first."
 msgstr "Globalt login forlader VR. Afslut headset-sessionen først."
 
-#: public/js/client.js:4692 public/js/client.js:10535
+#: public/js/client.js:4692 public/js/client.js:10543
 msgid "Fetching remote server's map..."
 msgstr "Henter fjernserverens kort..."
 
@@ -1550,7 +1550,7 @@ msgstr "Henter fjernserverens kort..."
 msgid "Pausing in {seconds}"
 msgstr "Pause om {seconds}"
 
-#: public/js/client.js:4882 public/js/client.js:6728
+#: public/js/client.js:4882 public/js/client.js:6736
 msgid "Self Destructing in {seconds}"
 msgstr "Selvdestruktion om {seconds}"
 
@@ -1562,550 +1562,550 @@ msgstr "Autopilot {pilot}: {intent}"
 msgid "AutoPilot {pilot}"
 msgstr "Autopilot {pilot}"
 
-#: public/js/client.js:6619 server.js:11445
+#: public/js/client.js:6623 server.js:11445
 msgid "You do not have permission to speak on the admin channel."
 msgstr "Du har ikke tilladelse til at tale på admin-kanalen."
 
-#: public/js/client.js:6730
+#: public/js/client.js:6738
 msgid "Self Destruct cancelled"
 msgstr "Selvdestruktion afblæst"
 
-#: public/js/client.js:6900
+#: public/js/client.js:6908
 msgid "Hide Debug Labels"
 msgstr "Skjul fejlsøgningsetiketter"
 
-#: public/js/client.js:6903
+#: public/js/client.js:6911
 msgid "Show Debug Labels"
 msgstr "Vis fejlsøgningsetiketter"
 
-#: public/js/client.js:6920
+#: public/js/client.js:6928
 msgid "Disable Dynamic Lighting"
 msgstr "Slå dynamisk lys fra"
 
-#: public/js/client.js:6921
+#: public/js/client.js:6929
 msgid "Enable Dynamic Lighting"
 msgstr "Slå dynamisk lys til"
 
-#: public/js/client.js:6923
+#: public/js/client.js:6931
 msgid "Dynamic Lighting needs more shader uniforms than this browser reports"
 msgstr "Dynamisk lys kræver flere shader-uniforms, end denne browser angiver"
 
-#: public/js/client.js:6932
+#: public/js/client.js:6940
 msgid "Disable Rumble"
 msgstr "Slå vibration fra"
 
-#: public/js/client.js:6933
+#: public/js/client.js:6941
 msgid "Enable Rumble"
 msgstr "Slå vibration til"
 
-#: public/js/client.js:6939
+#: public/js/client.js:6947
 msgid "Disable Anaglyph 3D"
 msgstr "Slå anaglyf 3D fra"
 
-#: public/js/client.js:6940
+#: public/js/client.js:6948
 msgid "Enable Anaglyph 3D"
 msgstr "Slå anaglyf 3D til"
 
-#: public/js/client.js:6943
+#: public/js/client.js:6951
 msgid "Anaglyph 3D is unavailable in VR mode"
 msgstr "Anaglyf 3D er ikke tilgængelig i VR-tilstand"
 
-#: public/js/client.js:6952
+#: public/js/client.js:6960
 msgid "Hide Debug Geometry"
 msgstr "Skjul fejlsøgningsgeometri"
 
-#: public/js/client.js:7040
+#: public/js/client.js:7048
 msgid "Confirm"
 msgstr "Bekræft"
 
-#: public/js/client.js:7096
+#: public/js/client.js:7104
 msgid "Share View Link: only available while viewing a map"
 msgstr "Del visningslink: kun tilgængelig, mens du ser et kort"
 
-#: public/js/client.js:7101
+#: public/js/client.js:7109
 msgid "View link copied to clipboard"
 msgstr "Visningslink kopieret til udklipsholderen"
 
-#: public/js/client.js:7130
+#: public/js/client.js:7138
 msgid "WebXR: {mode}"
 msgstr "WebXR: {mode}"
 
-#: public/js/client.js:7136
+#: public/js/client.js:7144
 msgid "WebXR not supported on this device"
 msgstr "WebXR understøttes ikke på denne enhed"
 
-#: public/js/client.js:7141
+#: public/js/client.js:7149
 msgid "Requesting VR..."
 msgstr "Anmoder om VR..."
 
-#: public/js/client.js:7144
+#: public/js/client.js:7152
 msgid "Error: Renderer not available"
 msgstr "Fejl: Renderer ikke tilgængelig"
 
-#: public/js/client.js:7157
+#: public/js/client.js:7165
 msgid "✓ WebXR VR Mode: ON"
 msgstr "✓ WebXR VR-tilstand: TIL"
 
-#: public/js/client.js:7163
+#: public/js/client.js:7171
 msgid "✗ VR request failed - check server.log"
 msgstr "✗ VR-anmodning mislykkedes - se server.log"
 
-#: public/js/client.js:7165 public/js/client.js:17772
+#: public/js/client.js:7173 public/js/client.js:17784
 msgid "WebXR VR Mode: OFF"
 msgstr "WebXR VR-tilstand: FRA"
 
-#: public/js/client.js:7730
+#: public/js/client.js:7738
 msgid "3D renderer unavailable: {reason}"
 msgstr "3D-renderer ikke tilgængelig: {reason}"
 
-#: public/js/client.js:7737
+#: public/js/client.js:7745
 msgid "3D renderer failed to initialize."
 msgstr "3D-rendereren kunne ikke starte."
 
-#: public/js/client.js:7739
+#: public/js/client.js:7747
 msgid "Open the game in an external browser window for full WebGL support."
 msgstr "Åbn spillet i et eksternt browservindue for fuld WebGL-understøttelse."
 
-#: public/js/client.js:8168
+#: public/js/client.js:8176
 msgid "Connected to server!"
 msgstr "Forbundet til serveren!"
 
-#: public/js/client.js:8174
+#: public/js/client.js:8182
 msgid "Connected to server"
 msgstr "Forbundet til serveren"
 
-#: public/js/client.js:8175
+#: public/js/client.js:8183
 msgid "Waiting for world state"
 msgstr "Venter på verdenstilstand"
 
-#: public/js/client.js:8226
+#: public/js/client.js:8234
 msgid "Offline"
 msgstr "Offline"
 
-#: public/js/client.js:8226
+#: public/js/client.js:8234
 msgid "Cannot reach {host}"
 msgstr "Kan ikke nå {host}"
 
-#: public/js/client.js:8227
+#: public/js/client.js:8235
 msgid "Trying again..."
 msgstr "Prøver igen..."
 
-#: public/js/client.js:8238
+#: public/js/client.js:8246
 msgid "Disconnected from server | Kills: {kills} | Deaths: {deaths}"
 msgstr "Afbrudt fra serveren | Drab: {kills} | Dødsfald: {deaths}"
 
-#: public/js/client.js:8243
+#: public/js/client.js:8251
 msgid "Press a key, tap or pull a trigger to rejoin"
 msgstr ""
 "Tryk på en tast, tryk på skærmen eller en aftrækker for at deltage igen"
 
-#: public/js/client.js:8403
+#: public/js/client.js:8411
 msgid "Server error: {error}"
 msgstr "Serverfejl: {error}"
 
-#: public/js/client.js:8408
+#: public/js/client.js:8416
 msgid "Server: action completed successfully"
 msgstr "Server: handlingen er gennemført"
 
-#: public/js/client.js:8490
+#: public/js/client.js:8498
 msgid "Operator Panel (v{version})"
 msgstr "Operatørpanel (v{version})"
 
-#: public/js/client.js:8909
+#: public/js/client.js:8917
 msgid "{player} joined"
 msgstr "{player} kom ind"
 
-#: public/js/client.js:8954
+#: public/js/client.js:8962
 msgid "{player} left"
 msgstr "{player} forlod spillet"
 
-#: public/js/client.js:8970
+#: public/js/client.js:8978
 msgid "{callsign} not responding"
 msgstr "{callsign} svarer ikke"
 
-#: public/js/client.js:8971
+#: public/js/client.js:8979
 msgid "{callsign} okay"
 msgstr "{callsign} okay"
 
-#: public/js/client.js:9085
+#: public/js/client.js:9093
 msgid "{player} grabbed {flag}"
 msgstr "{player} tog {flag}"
 
-#: public/js/client.js:9136
+#: public/js/client.js:9144
 msgid "{player} dropped {flag}"
 msgstr "{player} smed {flag}"
 
-#: public/js/client.js:9230
+#: public/js/client.js:9238
 msgid "{player}: {pilot} taking controls"
 msgstr "{player}: {pilot} overtager styringen"
 
-#: public/js/client.js:9231
+#: public/js/client.js:9239
 msgid "{player}: {pilot} releasing controls"
 msgstr "{player}: {pilot} slipper styringen"
 
-#: public/js/client.js:9263
+#: public/js/client.js:9271
 msgid "{player} paused"
 msgstr "{player} holder pause"
 
-#: public/js/client.js:9274
+#: public/js/client.js:9282
 msgid "{player} unpaused"
 msgstr "{player} fortsætter"
 
-#: public/js/client.js:9404
+#: public/js/client.js:9412
 msgid "Server forced a disconnect"
 msgstr "Serveren afbrød forbindelsen"
 
-#: public/js/client.js:9410
+#: public/js/client.js:9418
 msgid "Server updated - reloading..."
 msgstr "Serveren er opdateret - genindlæser..."
 
-#: public/js/client.js:9938
+#: public/js/client.js:9946
 msgid "Got flattened by {player}"
 msgstr "Blev mast af {player}"
 
-#: public/js/client.js:9939
+#: public/js/client.js:9947
 msgid "Teammate hit with Genocide by {player}"
 msgstr "Holdkammerat ramt med Massemord af {player}"
 
-#: public/js/client.js:9940
+#: public/js/client.js:9948
 msgid "Got shot by {player}"
 msgstr "Blev skudt af {player}"
 
-#: public/js/client.js:9942
+#: public/js/client.js:9950
 msgid "Got flattened by teammate {player}"
 msgstr "Blev mast af holdkammerat {player}"
 
-#: public/js/client.js:9943
+#: public/js/client.js:9951
 msgid "Teammate hit with Genocide by teammate {player}"
 msgstr "Holdkammerat ramt med Massemord af holdkammerat {player}"
 
-#: public/js/client.js:9944
+#: public/js/client.js:9952
 msgid "Got shot by teammate {player}"
 msgstr "Blev skudt af holdkammerat {player}"
 
-#: public/js/client.js:9980
+#: public/js/client.js:9988
 msgid "Your team flag was captured!"
 msgstr "Dit holdflag blev erobret!"
 
-#: public/js/client.js:9982
+#: public/js/client.js:9990
 msgid "Time Expired - GAME OVER"
 msgstr "Tiden er udløbet - SPILLET ER SLUT"
 
-#: public/js/client.js:9984
+#: public/js/client.js:9992
 msgid "Tank Self Destructed"
 msgstr "Kampvognen selvdestruerede"
 
-#: public/js/client.js:9986
+#: public/js/client.js:9994
 msgid "Tank Rusted"
 msgstr "Kampvognen rustede"
 
-#: public/js/client.js:9989 public/js/client.js:9993
+#: public/js/client.js:9997 public/js/client.js:10001
 msgid "Killed by the server"
 msgstr "Dræbt af serveren"
 
-#: public/js/client.js:10020
+#: public/js/client.js:10028
 msgid "You killed {player}"
 msgstr "Du dræbte {player}"
 
-#: public/js/client.js:10032
+#: public/js/client.js:10040
 msgid "{player} self-destructed"
 msgstr "{player} selvdestruerede"
 
-#: public/js/client.js:10036
+#: public/js/client.js:10044
 msgid "{player} fell in the water"
 msgstr "{player} faldt i vandet"
 
-#: public/js/client.js:10041
+#: public/js/client.js:10049
 msgid "{player}: {message}"
 msgstr "{player}: {message}"
 
-#: public/js/client.js:10044
+#: public/js/client.js:10052
 msgid "killed by the server"
 msgstr "dræbt af serveren"
 
-#: public/js/client.js:10050
+#: public/js/client.js:10058
 msgid "{player} was killed by the server"
 msgstr "{player} blev dræbt af serveren"
 
-#: public/js/client.js:10055
+#: public/js/client.js:10063
 msgid "{killer} killed {victim}"
 msgstr "{killer} dræbte {victim}"
 
-#: public/js/client.js:10220
+#: public/js/client.js:10228
 msgid "You respawned!"
 msgstr "Du er genopstået!"
 
-#: public/js/client.js:10310
+#: public/js/client.js:10318
 msgid "map {name}"
 msgstr "kort {name}"
 
-#: public/js/client.js:10312
+#: public/js/client.js:10320
 msgid "plugin {name}"
 msgstr ""
 
-#: public/js/client.js:10316
+#: public/js/client.js:10324
 msgid "nothing uploaded"
 msgstr "intet uploadet"
 
-#: public/js/client.js:10343 public/js/client.js:10818
+#: public/js/client.js:10351 public/js/client.js:10826
 msgid "MOTD: {motd}"
 msgstr "MOTD: {motd}"
 
-#: public/js/client.js:10418
+#: public/js/client.js:10426
 msgid "{count} box"
 msgstr "{count} kasse"
 
-#: public/js/client.js:10418
+#: public/js/client.js:10426
 msgid "{count} boxes"
 msgstr "{count} kasser"
 
-#: public/js/client.js:10419
+#: public/js/client.js:10427
 msgid "{count} pyramid"
 msgstr "{count} pyramide"
 
-#: public/js/client.js:10419
+#: public/js/client.js:10427
 msgid "{count} pyramids"
 msgstr "{count} pyramider"
 
-#: public/js/client.js:10420
+#: public/js/client.js:10428
 msgid "{count} mesh"
 msgstr "{count} mesh"
 
-#: public/js/client.js:10420
+#: public/js/client.js:10428
 msgid "{count} meshes"
 msgstr "{count} meshes"
 
-#: public/js/client.js:10425
+#: public/js/client.js:10433
 msgid "{count} base"
 msgstr "{count} base"
 
-#: public/js/client.js:10425
+#: public/js/client.js:10433
 msgid "{count} bases"
 msgstr "{count} baser"
 
-#: public/js/client.js:10427
+#: public/js/client.js:10435
 msgid "{count} teleporter"
 msgstr "{count} teleporter"
 
-#: public/js/client.js:10427
+#: public/js/client.js:10435
 msgid "{count} teleporters"
 msgstr "{count} teleportere"
 
-#: public/js/client.js:10430 server.js:2477
+#: public/js/client.js:10438 server.js:2477
 msgid "water"
 msgstr "vand"
 
-#: public/js/client.js:10431 server.js:2477
+#: public/js/client.js:10439 server.js:2477
 msgid "weather"
 msgstr "vejr"
 
-#: public/js/client.js:10432 server.js:2477
+#: public/js/client.js:10440 server.js:2477
 msgid "custom ground"
 msgstr "tilpasset jord"
 
-#: public/js/client.js:10470 public/js/client.js:10549
+#: public/js/client.js:10478 public/js/client.js:10557
 msgid "View {map}"
 msgstr "Vis {map}"
 
-#: public/js/client.js:10547
+#: public/js/client.js:10555
 msgid "{server} did not answer"
 msgstr "{server} svarede ikke"
 
-#: public/js/client.js:10559 server.js:2407 server.js:2866 server.js:2916
+#: public/js/client.js:10567 server.js:2407 server.js:2866 server.js:2916
 msgid "Watch"
 msgstr "Se"
 
-#: public/js/client.js:10560
+#: public/js/client.js:10568
 msgid "Watch the live game on {server}"
 msgstr "Se det direkte spil på {server}"
 
-#: public/js/client.js:10578 public/js/client.js:10586 server.js:2875
+#: public/js/client.js:10586 public/js/client.js:10594 server.js:2875
 msgid "Re-import"
 msgstr "Genimportér"
 
-#: public/js/client.js:10582
+#: public/js/client.js:10590
 msgid "Importing…"
 msgstr "Importerer…"
 
-#: public/js/client.js:10625
+#: public/js/client.js:10633
 msgid "Loading map..."
 msgstr "Indlæser kort..."
 
-#: public/js/client.js:10633
+#: public/js/client.js:10641
 msgid "Building world geometry..."
 msgstr "Bygger verdensgeometri..."
 
-#: public/js/client.js:10697
+#: public/js/client.js:10705
 msgid "{count} watching now"
 msgstr "{count} ser med nu"
 
-#: public/js/client.js:10700
+#: public/js/client.js:10708
 msgid "Watch {name}"
 msgstr "Se {name}"
 
-#: public/js/client.js:10736
+#: public/js/client.js:10744
 msgid "That server's map could not be fetched"
 msgstr "Den servers kort kunne ikke hentes"
 
-#: public/js/client.js:10754
+#: public/js/client.js:10762
 msgid "import failed"
 msgstr "import mislykkedes"
 
-#: public/js/client.js:10754
+#: public/js/client.js:10762
 msgid "Could not load that server's map: {reason}"
 msgstr "Kunne ikke indlæse den servers kort: {reason}"
 
-#: public/js/client.js:10968
+#: public/js/client.js:10976
 msgid "{team} Limit:"
 msgstr "Grænse for {team}:"
 
-#: public/js/client.js:11061
+#: public/js/client.js:11069
 msgid "Failed: {error}"
 msgstr ""
 
-#: public/js/client.js:11166
+#: public/js/client.js:11174
 msgid "No limit"
 msgstr "Ingen grænse"
 
-#: public/js/client.js:11275
+#: public/js/client.js:11283
 msgid "Restart"
 msgstr "Genstart"
 
-#: public/js/client.js:11279
+#: public/js/client.js:11287
 msgid "Starts a new game: every player reloads into the new settings"
 msgstr ""
 "Starter et nyt spil: alle spillere genindlæser med de nye indstillinger"
 
-#: public/js/client.js:11280
+#: public/js/client.js:11288
 msgid "Applies the staged changes"
 msgstr "Anvender de forberedte ændringer"
 
-#: public/js/client.js:11627
+#: public/js/client.js:11635
 msgid "Paused"
 msgstr "På pause"
 
-#: public/js/client.js:11628
+#: public/js/client.js:11636
 msgid "Sealed"
 msgstr "Forseglet"
 
-#: public/js/client.js:12560
+#: public/js/client.js:12568
 msgid "Already following someone"
 msgstr "Følger allerede nogen"
 
-#: public/js/client.js:12596 public/js/client.js:12721
+#: public/js/client.js:12604 public/js/client.js:12729
 msgid "Looking at {player}"
 msgstr "Kigger på {player}"
 
-#: public/js/client.js:12705
+#: public/js/client.js:12713
 msgid "{player} locked on me"
 msgstr "{player} har låst på mig"
 
-#: public/js/client.js:12715
+#: public/js/client.js:12723
 msgid "Looking at nothing"
 msgstr "Kigger ikke på nogen"
 
-#: public/js/client.js:12721
+#: public/js/client.js:12729
 msgid "Locked on {player}"
 msgstr "Låst på {player}"
 
-#: public/js/client.js:13058
+#: public/js/client.js:13066
 msgid "Clear ({count})"
 msgstr "Ryd ({count})"
 
-#: public/js/client.js:13058 public/js/list-page.js:534
+#: public/js/client.js:13066 public/js/list-page.js:534
 msgid "Clear"
 msgstr "Ryd"
 
-#: public/js/client.js:13158
+#: public/js/client.js:13166
 msgid "SPOTTED: {player}"
 msgstr "SPOTTET: {player}"
 
-#: public/js/client.js:13273 public/js/client.js:13279
+#: public/js/client.js:13281 public/js/client.js:13287
 msgid "nobody"
 msgstr "ingen"
 
-#: public/js/client.js:13283
+#: public/js/client.js:13291
 msgid "Leader {who}"
 msgstr "Fører: {who}"
 
-#: public/js/client.js:13285 public/js/client.js:13290
+#: public/js/client.js:13293 public/js/client.js:13298
 msgid "Tracking {who}"
 msgstr "Holder øje med {who}"
 
-#: public/js/client.js:13286
+#: public/js/client.js:13294
 msgid "Following {who}"
 msgstr "Følger {who}"
 
-#: public/js/client.js:13287
+#: public/js/client.js:13295
 msgid "Driving with {who}"
 msgstr "Kører med {who}"
 
-#: public/js/client.js:13292 public/js/hud.js:629 public/js/input.js:1457
+#: public/js/client.js:13300 public/js/hud.js:629 public/js/input.js:1457
 msgid "First Person"
 msgstr "Førsteperson"
 
-#: public/js/client.js:13293 public/js/hud.js:630 public/js/input.js:1458
+#: public/js/client.js:13301 public/js/hud.js:630 public/js/input.js:1458
 msgid "Third Person"
 msgstr "Tredjeperson"
 
-#: public/js/client.js:13294 public/js/hud.js:631 public/js/input.js:1459
+#: public/js/client.js:13302 public/js/hud.js:631 public/js/input.js:1459
 msgid "Overview"
 msgstr "Oversigt"
 
-#: public/js/client.js:13295
+#: public/js/client.js:13303
 msgid "Roaming"
 msgstr "Fri kamera"
 
-#: public/js/client.js:13584 public/js/client.js:13658
+#: public/js/client.js:13592 public/js/client.js:13666
 msgid "autopilot disabled"
 msgstr "autopilot slået fra"
 
-#: public/js/client.js:13593
+#: public/js/client.js:13601
 msgid "autopilot not allowed on this server"
 msgstr "autopilot er ikke tilladt på denne server"
 
-#: public/js/client.js:13605
+#: public/js/client.js:13613
 msgid "{pilot} has the controls"
 msgstr "{pilot} har styringen"
 
-#: public/js/client.js:13610
+#: public/js/client.js:13618
 msgid "You may not enable the Autopilot more than once every five seconds."
 msgstr "Du må ikke slå autopiloten til mere end én gang hvert femte sekund."
 
-#: public/js/client.js:13615
+#: public/js/client.js:13623
 msgid "autopilot enabled"
 msgstr "autopilot slået til"
 
-#: public/js/client.js:13638
+#: public/js/client.js:13646
 msgid "Not allowed"
 msgstr "Ikke tilladt"
 
-#: public/js/client.js:13638 public/js/input.js:1162 public/js/input.js:1172
+#: public/js/client.js:13646 public/js/input.js:1162 public/js/input.js:1172
 #: public/js/input.js:1176
 msgid "Unavailable"
 msgstr "Ikke tilgængelig"
 
-#: public/js/client.js:13641
+#: public/js/client.js:13649
 msgid "None"
 msgstr "Ingen"
 
-#: public/js/client.js:14471
+#: public/js/client.js:14483
 msgid "Zoned"
 msgstr "I fantomzonen"
 
-#: public/js/client.js:14471
+#: public/js/client.js:14483
 msgid "Unzoned"
 msgstr "Ude af fantomzonen"
 
-#: public/js/client.js:15272 public/js/client.js:15289
+#: public/js/client.js:15284 public/js/client.js:15301
 msgid "unidentified"
 msgstr "uidentificeret"
 
-#: public/js/client.js:15309
+#: public/js/client.js:15321
 msgid "unknown"
 msgstr "ukendt"
 
-#: public/js/client.js:15320
+#: public/js/client.js:15332
 msgid ""
 "This server bounces every shot off walls, whatever flag fired it, so the "
 "Ricochet flag is not in play here."
@@ -2113,81 +2113,81 @@ msgstr ""
 "Denne server lader alle skud prelle af på vægge, uanset hvilket flag der "
 "affyrede dem, så Rikochet-flaget er ikke i spil her."
 
-#: public/js/client.js:15321
+#: public/js/client.js:15333
 msgid "On this server only the Ricochet flag bounces shots off walls."
 msgstr ""
 "På denne server er det kun Rikochet-flaget, der lader skud prelle af på "
 "vægge."
 
-#: public/js/client.js:15388
+#: public/js/client.js:15400
 msgid "{flag} {release}"
 msgstr "{flag} {release}"
 
-#: public/js/client.js:15399
+#: public/js/client.js:15411
 msgid "Can't drop the flag while zoned"
 msgstr "Kan ikke smide flaget i fantomzonen"
 
-#: public/js/client.js:15403
+#: public/js/client.js:15415
 msgid "Can't drop a flag while inside a building"
 msgstr "Kan ikke smide et flag inde i en bygning"
 
-#: public/js/client.js:15453
+#: public/js/client.js:15465
 msgid "in {seconds}s"
 msgstr "om {seconds} s"
 
-#: public/js/client.js:15454
+#: public/js/client.js:15466
 msgid "after {count} kill"
 msgstr "efter {count} drab"
 
-#: public/js/client.js:15454
+#: public/js/client.js:15466
 msgid "after {count} kills"
 msgstr "efter {count} drab"
 
-#: public/js/client.js:15455
+#: public/js/client.js:15467
 msgid "on the antidote"
 msgstr "på modgiften"
 
-#: public/js/client.js:15456
+#: public/js/client.js:15468
 msgid "stays until it kills you"
 msgstr "bliver, til det dræber dig"
 
-#: public/js/client.js:15457
+#: public/js/client.js:15469
 msgid "{first} or {second}"
 msgstr "{first} eller {second}"
 
-#: public/js/client.js:15458
+#: public/js/client.js:15470
 msgid "shakes off {ways}"
 msgstr "rystes af {ways}"
 
-#: public/js/client.js:15514
+#: public/js/client.js:15526
 msgid "Flag Alert!!!"
 msgstr "Flagalarm!!!"
 
-#: public/js/client.js:15522
+#: public/js/client.js:15534
 msgid "Team Grab!!!"
 msgstr "Holdflag taget!!!"
 
-#: public/js/client.js:15538
+#: public/js/client.js:15550
 msgid "{thief} stole {victim}'s {flag} flag"
 msgstr "{thief} stjal flaget {flag} fra {victim}"
 
-#: public/js/client.js:15569
+#: public/js/client.js:15581
 msgid "Closest Flag: {flag}"
 msgstr "Nærmeste flag: {flag}"
 
-#: public/js/client.js:15631
+#: public/js/client.js:15643
 msgid "{player} took their own flag into {team} territory"
 msgstr "{player} tog sit eget flag ind på {team}s område"
 
-#: public/js/client.js:15639
+#: public/js/client.js:15651
 msgid "Don't capture your own flag!!!"
 msgstr "Erobr ikke dit eget flag!!!"
 
-#: public/js/client.js:15645
+#: public/js/client.js:15657
 msgid "{player} captured the {team} flag"
 msgstr "{player} erobrede flaget fra {team}"
 
-#: public/js/client.js:17268 public/js/client.js:17269
+#: public/js/client.js:17280 public/js/client.js:17281
 msgid "Exit WebXR VR Mode"
 msgstr "Afslut WebXR VR-tilstand"
 

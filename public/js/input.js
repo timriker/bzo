@@ -929,8 +929,8 @@ const GAMEPLAY_OWNED_KEYS = new Set([
   'PageUp', 'PageDown', 'End',
   // Radar: on and off, and the digits' ranges and zoom
   'KeyQ', 'Digit1', 'Digit2', 'Digit3', 'Digit4', 'Digit5',
-  // View, HUD, voice, help. `B` is held for binoculars.
-  'KeyC', 'KeyF', 'Backquote', 'KeyB', 'KeyV', 'KeyI',
+  // View, HUD, voice, help, and `X` for upstream's slow keyboard.
+  'KeyC', 'KeyX', 'KeyF', 'Backquote', 'KeyB', 'KeyV', 'KeyI',
   // Hunting: `U` is upstream's `hunt` and `7` its `addhunt`.
   'KeyU', 'Digit7',
   // Autopilot

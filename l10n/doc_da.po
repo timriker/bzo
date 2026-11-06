@@ -232,7 +232,16 @@ msgid ""
 "`B` — binoculars: narrow the view to a quarter, and back. `Ctrl` and the "
 "wheel narrow or widen it a step at a time. Turning with the keys slows to "
 "match"
-msgstr "`B` — kikkert: gør synsfeltet en fjerdedel så bredt og tilbage igen. `Ctrl` og hjulet gør det smallere eller bredere et trin ad gangen. Drejning med tasterne bliver tilsvarende langsommere"
+msgstr ""
+"`B` — kikkert: gør synsfeltet en fjerdedel så bredt og tilbage igen. `Ctrl` "
+"og hjulet gør det smallere eller bredere et trin ad gangen. Drejning med "
+"tasterne bliver tilsvarende langsommere"
+
+#: docs/help/controls.md
+msgid ""
+"`X` — slow keyboard: driving and turning with the keys go at half speed, and "
+"back"
+msgstr "`X` — langsomt tastatur: kørsel og drejning med tasterne går med halv fart, og tilbage"
 
 #: docs/help/controls.md
 #, fuzzy

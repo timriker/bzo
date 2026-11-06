@@ -234,7 +234,16 @@ msgid ""
 "`B` — binoculars: narrow the view to a quarter, and back. `Ctrl` and the "
 "wheel narrow or widen it a step at a time. Turning with the keys slows to "
 "match"
-msgstr "`B` — dalekohled: zúží pohled na čtvrtinu a zase zpět. `Ctrl` s kolečkem ho zužuje nebo rozšiřuje po krocích. Otáčení klávesami se tomu přizpůsobí a zpomalí"
+msgstr ""
+"`B` — dalekohled: zúží pohled na čtvrtinu a zase zpět. `Ctrl` s kolečkem ho "
+"zužuje nebo rozšiřuje po krocích. Otáčení klávesami se tomu přizpůsobí a "
+"zpomalí"
+
+#: docs/help/controls.md
+msgid ""
+"`X` — slow keyboard: driving and turning with the keys go at half speed, and "
+"back"
+msgstr "`X` — pomalá klávesnice: jízda a otáčení klávesami poloviční rychlostí, a zpět"
 
 #: docs/help/controls.md
 #, fuzzy

@@ -229,7 +229,16 @@ msgid ""
 "`B` — binoculars: narrow the view to a quarter, and back. `Ctrl` and the "
 "wheel narrow or widen it a step at a time. Turning with the keys slows to "
 "match"
-msgstr "`B` — binoculars: squints the view down to a quarter, an' back. `Ctrl` an' the wheel squint it or widen it a notch at a time. Turnin' with the keys slows down to match"
+msgstr ""
+"`B` — binoculars: squints the view down to a quarter, an' back. `Ctrl` an' "
+"the wheel squint it or widen it a notch at a time. Turnin' with the keys "
+"slows down to match"
+
+#: docs/help/controls.md
+msgid ""
+"`X` — slow keyboard: driving and turning with the keys go at half speed, and "
+"back"
+msgstr "`X` — slow keyboard: drivin' an' turnin' with the keys go half as fast, an' back agin"
 
 #: docs/help/controls.md
 #, fuzzy

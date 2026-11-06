@@ -222,7 +222,15 @@ msgid ""
 "`B` — binoculars: narrow the view to a quarter, and back. `Ctrl` and the "
 "wheel narrow or widen it a step at a time. Turning with the keys slows to "
 "match"
-msgstr "`B` — 望远镜：把视野缩窄到四分之一，再按恢复。`Ctrl` 加滚轮逐步缩窄或放宽。用按键转向也会相应变慢"
+msgstr ""
+"`B` — 望远镜：把视野缩窄到四分之一，再按恢复。`Ctrl` 加滚轮逐步缩窄或放宽。用"
+"按键转向也会相应变慢"
+
+#: docs/help/controls.md
+msgid ""
+"`X` — slow keyboard: driving and turning with the keys go at half speed, and "
+"back"
+msgstr "`X` — 慢速键盘：用按键前进和转向的速度减半，再按恢复"
 
 #: docs/help/controls.md
 #, fuzzy

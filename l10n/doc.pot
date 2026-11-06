@@ -152,6 +152,10 @@ msgid "`B` — binoculars: narrow the view to a quarter, and back. `Ctrl` and th
 msgstr ""
 
 #: docs/help/controls.md
+msgid "`X` — slow keyboard: driving and turning with the keys go at half speed, and back"
+msgstr ""
+
+#: docs/help/controls.md
 msgid "`Shift`+`O` — toggle operator panel"
 msgstr ""
 

@@ -234,7 +234,15 @@ msgid ""
 "`B` — binoculars: narrow the view to a quarter, and back. `Ctrl` and the "
 "wheel narrow or widen it a step at a time. Turning with the keys slows to "
 "match"
-msgstr "`B` — Hov tut Hap: legh'a' loS'ay' wa' ghaH, 'ej chegh. `Ctrl` gho je: wa' mIw ghaH ngaQmoH pagh ghaH tInmoH. leQmey lo'DI' tlhe'meH QIt"
+msgstr ""
+"`B` — Hov tut Hap: legh'a' loS'ay' wa' ghaH, 'ej chegh. `Ctrl` gho je: wa' "
+"mIw ghaH ngaQmoH pagh ghaH tInmoH. leQmey lo'DI' tlhe'meH QIt"
+
+#: docs/help/controls.md
+msgid ""
+"`X` — slow keyboard: driving and turning with the keys go at half speed, and "
+"back"
+msgstr "`X` — QItlh SeHlaw: leQmey lo'taHvIS ghIr je, bID Do' neH, 'ej chegh"
 
 #: docs/help/controls.md
 #, fuzzy

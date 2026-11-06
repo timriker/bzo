@@ -74,6 +74,8 @@ is the main key with the same character. Keypad `Enter` shoots either way.
 - `B` — binoculars: narrow the view to a quarter, and back. `Ctrl` and the
   wheel narrow or widen it a step at a time. Turning with the keys slows to
   match
+- `X` — slow keyboard: driving and turning with the keys go at half speed,
+  and back
 - `Shift`+`O` — toggle operator panel
 - `F` — show or hide what the flag you carry does
 - `Shift`+`F` — toggle fullscreen

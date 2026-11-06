@@ -235,7 +235,16 @@ msgid ""
 "`B` — binoculars: narrow the view to a quarter, and back. `Ctrl` and the "
 "wheel narrow or widen it a step at a time. Turning with the keys slows to "
 "match"
-msgstr "`B` — prismáticos: reduce la vista a una cuarta parte y vuelve. `Ctrl` y la rueda la estrechan o ensanchan paso a paso. Girar con las teclas se ralentiza en proporción"
+msgstr ""
+"`B` — prismáticos: reduce la vista a una cuarta parte y vuelve. `Ctrl` y la "
+"rueda la estrechan o ensanchan paso a paso. Girar con las teclas se "
+"ralentiza en proporción"
+
+#: docs/help/controls.md
+msgid ""
+"`X` — slow keyboard: driving and turning with the keys go at half speed, and "
+"back"
+msgstr "`X` — teclado lento: conducir y girar con las teclas va a media velocidad, y de vuelta"
 
 #: docs/help/controls.md
 #, fuzzy
@@ -566,7 +575,8 @@ msgstr ""
 
 #: docs/help/controls.md
 msgid "with `Ctrl`, anywhere: binoculars, up to narrow the view"
-msgstr "con `Ctrl`, en cualquier sitio: prismáticos, hacia arriba estrecha la vista"
+msgstr ""
+"con `Ctrl`, en cualquier sitio: prismáticos, hacia arriba estrecha la vista"
 
 #: docs/help/controls.md
 msgid "The targeting box"
