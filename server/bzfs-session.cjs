@@ -436,15 +436,22 @@ function decodePlayerInfo(payload) {
 // garbage message". An upstream client never meets this because its own text
 // input cannot produce one; a browser can type anything.
 //
-// So the accents come off rather than the player: NFD splits a letter from
-// its marks, the marks go, and `á` arrives as `a`. What has no ASCII spelling
-// at all -- CJK, emoji -- is dropped, since sending it would cost the player
-// their connection. The caller compares the result with what it was given and
-// says so once, because a line that quietly changed is worse than one that
-// changed out loud.
+// So the accents come off rather than the player: NFKD splits a letter from
+// its marks, the marks go, and `á` arrives as `a`; it also turns styled
+// letters -- bold, italic, full width -- into plain ones. Small capitals have
+// no plain form in Unicode, so they are mapped to the lower case they stand
+// for. What has no ASCII spelling at all -- CJK, emoji -- is dropped, since
+// sending it would cost the player their connection. The caller compares the
+// result with what it was given and says so once, because a line that quietly
+// changed is worse than one that changed out loud.
+const SMALL_CAPITALS = new Map([...'ᴀʙᴄᴅᴇꜰɢʜɪᴊᴋʟᴍɴᴏᴘꞯʀꜱᴛᴜᴠᴡʏᴢ']
+  .map((letter, index) => [letter, 'abcdefghijklmnopqrstuvwyz'[index]]));
+const SMALL_CAPITAL = new RegExp(`[${[...SMALL_CAPITALS.keys()].join('')}]`, 'gu');
+
 function toBzfsChatText(text) {
   return String(text)
-    .normalize('NFD')
+    .replace(SMALL_CAPITAL, (letter) => SMALL_CAPITALS.get(letter))
+    .normalize('NFKD')
     .replace(/[\u0300-\u036f]/g, '')
     .replace(/[^\x20-\x7e]/g, '');
 }

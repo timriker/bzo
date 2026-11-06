@@ -37,6 +37,8 @@ assert.equal(
   'Las banderas malas estan sobre almohadillas oscuras.',
 );
 assert.equal(toBzfsChatText('naïve café piñata über'), 'naive cafe pinata uber');
+assert.equal(toBzfsChatText('TɪᴍRɪᴋᴇʀ'), 'TimRiker', 'small capitals as the lower case they stand for');
+assert.equal(toBzfsChatText('𝐓𝐢𝐦 Ｔｉｍ'), 'Tim Tim', 'styled letters as plain ones');
 // Plain ASCII is untouched, which is what lets the caller tell whether it had
 // to change anything.
 assert.equal(toBzfsChatText('/flag show'), '/flag show');
