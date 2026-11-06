@@ -11,8 +11,8 @@
 // The client/server protocol is lockstep, so code is fetched network-first and
 // the cache is only an offline fallback. Textures, audio, models and Three.js
 // cannot desync anything, so those are served cache-first out of a cache keyed
-// to the build the server is serving: any change to it changes the key and
-// refills the cache.
+// to the build the server is serving: any change to it changes the key, and
+// a new worker carries over only the assets whose bytes the build left alone.
 //
 // The build id arrives in the worker's own script URL (`/sw.js?v=abdf5ccd7c45`).
 // Because the registration URL is part of the worker's identity, a change
@@ -65,14 +65,57 @@ const PRECACHE = [
 // came from.
 const ASSET_PATHS = /^\/(?:textures|obj|audio|vendor|maps)\//;
 
+// The digest a cached response was served under: its ETag, which the server
+// makes from the file's content (`setContentEtag` in server.js), with the
+// brotli sidecar's `-br` taken off. Anything else -- an mtime tag from an older
+// server -- matches no digest.
+function etagDigest(response) {
+  const match = /^"([0-9a-f]+)(?:-br)?"$/.exec(response.headers.get('ETag') || '');
+  return match ? match[1] : null;
+}
+
+// What the older caches hold that this build serves byte for byte, copied
+// into this one, so an unchanged asset costs no request after an update
+// (#180). A `/maps/` file is named for its own content, so it always is; any
+// other asset only when its digest is the one the server now lists. Nothing
+// is carried if the list cannot be had, which is the old behaviour: every
+// asset revalidated on first use.
+async function carryUnchangedAssets(oldNames) {
+  if (oldNames.length === 0) return;
+  let digests;
+  try {
+    const response = await fetch('/api/asset-digests', { cache: 'no-store' });
+    if (!response.ok) return;
+    ({ digests } = await response.json());
+  } catch {
+    return;
+  }
+  const cache = await caches.open(CACHE);
+  for (const name of oldNames) {
+    const old = await caches.open(name);
+    for (const request of await old.keys()) {
+      const { pathname } = new URL(request.url);
+      if (!ASSET_PATHS.test(pathname)) continue;
+      const response = await old.match(request);
+      if (!response) continue;
+      if (pathname.startsWith('/maps/') || etagDigest(response) === digests[pathname]) {
+        await cache.put(request, response);
+      }
+    }
+  }
+}
+
 self.addEventListener('install', (event) => {
   event.waitUntil((async () => {
-    // Drop every other version's cache here as well as in activate. Without
-    // skipWaiting a new worker can wait indefinitely behind a page that never
-    // closes -- an installed app on a phone may not close for days -- and until
-    // it activates those older caches are still reachable.
+    // Drop every other version's cache here as well as in activate, once what
+    // is still good in them has been carried over. Without skipWaiting a new
+    // worker can wait indefinitely behind a page that never closes -- an
+    // installed app on a phone may not close for days -- and until it
+    // activates those older caches are still reachable.
     const names = await caches.keys();
-    await Promise.all(names.filter((n) => n !== CACHE && n !== OFFLINE_CACHE).map((n) => caches.delete(n)));
+    const oldNames = names.filter((n) => n !== CACHE && n !== OFFLINE_CACHE);
+    await carryUnchangedAssets(oldNames).catch(() => {});
+    await Promise.all(oldNames.map((n) => caches.delete(n)));
     // Individually, so one missing asset does not fail the whole install.
     const cache = await caches.open(CACHE);
     await Promise.all(PRECACHE.map((url) => cache.add(url).catch(() => {})));
@@ -119,8 +162,8 @@ async function networkFirst(request) {
 // with a seven day max-age, so a plain fetch on a miss would be answered from
 // the HTTP cache without a request reaching the server -- and an edited texture
 // would survive the new build, the new worker and the reload, all of which
-// exist to get rid of it. Revalidating costs one conditional request per asset
-// on a build change, and the unchanged ones answer 304 with no body.
+// exist to get rid of it. Revalidating costs one conditional request, and an
+// unchanged asset the install did not carry over answers 304 with no body.
 async function cacheFirst(request) {
   const cached = await matchThisVersion(request);
   if (cached) return cached;

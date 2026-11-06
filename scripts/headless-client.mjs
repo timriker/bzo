@@ -81,7 +81,11 @@ const port = Number(args.get('port') || 9333);
 // how far a tank moves in one frame.
 const windowSize = args.get('window') || '1280,800';
 
-const profile = fs.mkdtempSync(path.join(os.tmpdir(), 'bzo-headless-'));
+// `--profile <dir>` keeps the browser's profile there across runs, for a probe
+// of what a returning player has cached -- the service worker's caches above
+// all. The caller removes it.
+const keptProfile = args.get('profile') || '';
+const profile = keptProfile || fs.mkdtempSync(path.join(os.tmpdir(), 'bzo-headless-'));
 const chrome = spawn('google-chrome', [
   '--headless=new',
   `--remote-debugging-port=${port}`,
@@ -103,7 +107,7 @@ const chrome = spawn('google-chrome', [
 // Removed once Chrome has exited, since Chrome writes into it until then.
 let profileRemoved = false;
 function removeProfile() {
-  if (profileRemoved) return;
+  if (profileRemoved || keptProfile) return;
   profileRemoved = true;
   try {
     fs.rmSync(profile, { recursive: true, force: true });

@@ -350,6 +350,11 @@ const os = require('os');
 // The same walk plans the brotli sidecars, because it is already holding every
 // file's bytes and a sidecar is named for their digest -- see
 // `server/precompress.cjs`. It only plans: nothing is compressed until `start`.
+// And it keeps each file's own digest, by URL for what a new service worker
+// checks its old cache against (`/api/asset-digests`) and by file for the
+// ETag the file is served under (`setContentEtag`).
+const CONTENT_DIGESTS = new Map();
+const FILE_DIGESTS = new Map();
 function computeClientBuild() {
   const hash = crypto.createHash('sha256');
   const hashTree = ({ root, urlPrefix }) => {
@@ -357,7 +362,11 @@ function computeClientBuild() {
       const bytes = fs.readFileSync(full);
       hash.update(relative);
       hash.update(bytes);
-      precompress.consider(`${urlPrefix}${relative.split(path.sep).join('/')}`, full, bytes);
+      const urlPath = `${urlPrefix}${relative.split(path.sep).join('/')}`;
+      const digest = precompress.digestOf(bytes);
+      CONTENT_DIGESTS.set(urlPath, digest);
+      FILE_DIGESTS.set(full, digest);
+      precompress.consider(urlPath, full, { digest, size: bytes.length });
     });
   };
   precompress.assetRoots().forEach(hashTree);
@@ -539,7 +548,20 @@ const CACHE_DIR = process.env.CACHE_PATH
 const REVALIDATE = 'no-cache';
 const ASSET_MAX_AGE = 604800; // 7 days
 
+// A served file's ETag is its content digest, the one its brotli sidecar is
+// tagged with less the `-br`, rather than express's size and mtime: a release
+// image stamps its files afresh, and a tag that moved with the stamp would send
+// every client every asset again after an upgrade (#180). The static handlers
+// make neither validator themselves, and `send` answers a matching
+// `If-None-Match` from this one, set in its `headers` event, with a 304.
+const STATIC_VALIDATORS = { etag: false, lastModified: false };
+function setContentEtag(res, filePath) {
+  const digest = FILE_DIGESTS.get(filePath);
+  if (digest) res.setHeader('ETag', `"${digest}"`);
+}
+
 function setStaticHeaders(res, filePath) {
+  setContentEtag(res, filePath);
   // `MAP_CACHE_DIR` (below) is named for the file's own content hash, so
   // unlike everything else `express.static` serves here it can promise never
   // to change -- checked first because this same function is also the
@@ -625,10 +647,18 @@ app.use(precompress.middleware({ cacheControl: setStaticHeaders }));
 const threeBuildDir = path.dirname(require.resolve('three'));
 const threeAddonsDir = path.dirname(require.resolve('three/addons'));
 app.use('/vendor/three/addons', express.static(threeAddonsDir, {
-  setHeaders: (res) => res.setHeader('Cache-Control', REVALIDATE),
+  ...STATIC_VALIDATORS,
+  setHeaders: (res, filePath) => {
+    setContentEtag(res, filePath);
+    res.setHeader('Cache-Control', REVALIDATE);
+  },
 }));
 app.use('/vendor/three', express.static(threeBuildDir, {
-  setHeaders: (res) => res.setHeader('Cache-Control', REVALIDATE),
+  ...STATIC_VALIDATORS,
+  setHeaders: (res, filePath) => {
+    setContentEtag(res, filePath);
+    res.setHeader('Cache-Control', REVALIDATE);
+  },
 }));
 
 // Content-hashed world files (see `MAP_REGISTRY` below) -- the filename is the
@@ -1259,7 +1289,20 @@ app.use((req, res, next) => {
 });
 
 // Serve static files
-app.use(express.static('public', { setHeaders: setStaticHeaders }));
+app.use(express.static('public', { ...STATIC_VALIDATORS, setHeaders: setStaticHeaders }));
+
+// Each cache-first asset's content digest, for a new service worker to keep
+// what it already holds of this build (`public/sw.js`, `install`). The paths
+// are sw.js's `ASSET_PATHS` less `/maps/`, whose names are their digests.
+const SW_ASSET_PATHS = /^\/(?:textures|obj|audio|vendor)\//;
+app.get('/api/asset-digests', (req, res) => {
+  const digests = {};
+  CONTENT_DIGESTS.forEach((digest, urlPath) => {
+    if (SW_ASSET_PATHS.test(urlPath)) digests[urlPath] = digest;
+  });
+  res.setHeader('Cache-Control', 'no-store');
+  res.json({ build: CLIENT_BUILD, digests });
+});
 
 // Whether an OBJ carries the parts the renderer clones, keyed by file and
 // mtime: the list is rebuilt on every request and on every setTankModel, and

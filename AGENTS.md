@@ -119,7 +119,9 @@ These are deliberate. Do not "fix" them without being asked.
   nobody can attribute. Editing `server.json` or a map does not change the id,
   so those restarts stay silent. The same id keys the service worker's cache, so
   a reload reaches new textures and audio rather than the copies a cache keyed
-  to the release version would have kept alive.
+  to the release version would have kept alive. A new worker carries over the
+  old cache's assets whose content digest (their ETag, and
+  `/api/asset-digests`) is unchanged, so only edited files are fetched again.
 
 - **bzo does not mirror BZFlag's client display options.** Upstream exposes
   `useFancyEffects`, `spawnEffect`, `shotEffect`, `deathEffect`, `landEffect`,
