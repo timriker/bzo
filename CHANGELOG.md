@@ -6,6 +6,27 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
 
 ## [Unreleased]
 
+## [1.3.91] - 2026-11-06
+
+### Added
+- A Matrix bridge: the bundled `matrix` plugin carries a game's public chat
+  to a Matrix room and the room's back into the game (`docs/matrix.md`).
+- Plugin pages can ask for a bzflag.org login or HTTP Basic, as upstream's
+  do, and plugins hear every delivered chat line
+  (`bz_eFilteredChatMessageEvent`) (`docs/plugins.md`).
+
+### Changed
+- Discord is the bundled `discord` plugin: its options move from
+  `server.json`'s `discord` block to `"plugins": { "discord": { ... } }`,
+  with `bridge.webhookUrl` as `webhookUrl`. Linked Roles is at
+  `/plugins/discord/link` and `/plugins/discord/callback`; update the
+  Verification URL and redirect in the Discord developer portal
+  (`docs/discord.md`).
+
+### Fixed
+- A BZFlag client reads bold, italic, full-width and small-capital letters in
+  chat as plain ones rather than losing them.
+
 ## [1.3.90] - 2026-11-06
 
 ### Added
