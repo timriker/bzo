@@ -307,6 +307,7 @@ const {
   PING_INTERVAL_MS,
 } = require('./server/lag.cjs');
 const { createServerStats, formatServerStats } = require('./server/server-stats.cjs');
+const { WS_BACKLOG_SOFT_BYTES, sendMoveBatch, backlogOverFor } = require('./server/ws-backlog.cjs');
 const { createUpnpMapping, nameForAddress } = require('./server/upnp.cjs');
 const { createUdpChannels } = require('./server/udp-channel.cjs');
 const { createWebTransport } = require('./server/webtransport.cjs');
@@ -16721,7 +16722,7 @@ function flushMoveBroadcasts() {
   // `queueChannelMove`).
   players.forEach((player) => {
     if (player.ws.readyState !== 1 || player.ws.sendMessage || player.udpChannel?.isOpen()) return;
-    player.ws.send(data);
+    sendMoveBatch(player, message, data);
   });
 }
 
@@ -17009,6 +17010,13 @@ setInterval(() => {
       // Check if connection is dead (no pong response)
       if (now - player.lastPongTime > WS_PONG_TIMEOUT) {
         log(`"${player.name}" connection timeout (no pong for ${Math.floor((now - player.lastPongTime) / 1000)}s)`);
+        player.ws.terminate();
+        return;
+      }
+      const backlogMs = backlogOverFor(player, now);
+      if (backlogMs !== null) {
+        log(`"${player.name}" connection backlog (${Math.round(player.ws.bufferedAmount / 1024)} KB`
+          + ` for ${Math.floor(backlogMs / 1000)}s)`);
         player.ws.terminate();
         return;
       }
@@ -17300,9 +17308,12 @@ wss.on('connection', (ws, req) => {
     if (Buffer.isBuffer(data) || typeof data === 'string') serverStats.countIn(data.length);
   });
   const send = ws.send.bind(ws);
+  ws.backlogPeak = 0;
   ws.send = (data, ...rest) => {
     serverStats.countOut(data.length ?? 0);
-    return send(data, ...rest);
+    const sent = send(data, ...rest);
+    if (ws.bufferedAmount > ws.backlogPeak) ws.backlogPeak = ws.bufferedAmount;
+    return sent;
   };
   acceptConnection(ws, req);
 });
@@ -17563,6 +17574,9 @@ function acceptConnection(ws, req) {
   // Handle disconnect
   ws.on('close', () => {
     player.udpChannel?.close();
+    if (ws.backlogPeak > WS_BACKLOG_SOFT_BYTES) {
+      log(`"${player.name}" backlog peak ${Math.round(ws.backlogPeak / 1024)} KB`);
+    }
     webTransportTokens.delete(player.webTransportToken);
     const playerName = player.name;
     const playerNum = player.playerNumber;
