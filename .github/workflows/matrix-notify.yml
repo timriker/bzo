@@ -1,0 +1,47 @@
+# GitHub activity as notices in the Matrix room #bzo-dev:matrix.org, the job
+# the repository's Discord webhook does for #bzo-dev there. Matrix has no
+# GitHub endpoint of its own, so a runner posts each event with the bridge
+# account's token (secret MATRIX_TOKEN). Notices, so the game's chat bridge
+# never relays them.
+#
+# pull_request_target, not pull_request, so a fork's pull request has the
+# secret too; nothing of the fork is checked out or run, only the event read.
+name: Matrix notify
+
+on:
+  push:
+    branches: ['**']
+  create:
+  delete:
+  issues:
+    types: [opened, closed, reopened]
+  issue_comment:
+    types: [created]
+  pull_request_target:
+    types: [opened, closed, reopened]
+  pull_request_review:
+    types: [submitted]
+  release:
+    types: [published]
+  fork:
+  watch:
+    types: [started]
+
+permissions:
+  contents: read
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: scripts/matrix-notify.mjs
+          sparse-checkout-cone-mode: false
+          persist-credentials: false
+      - run: node scripts/matrix-notify.mjs
+        env:
+          MATRIX_TOKEN: ${{ secrets.MATRIX_TOKEN }}
+          MATRIX_HOMESERVER: https://matrix-client.matrix.org
+          MATRIX_ROOM: '#bzo-dev:matrix.org'

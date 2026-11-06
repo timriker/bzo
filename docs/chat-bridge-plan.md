@@ -7,8 +7,10 @@ Matrix chat both ways (`docs/matrix.md`). Still to come are commands from
 linked members, Matrix links and IRC. Voice is not planned on any of them.
 
 GitHub events reach the BZFlag Discord's #bzo-dev channel through a repository
-webhook pointed at Discord's `/github` endpoint. That needs nothing from bzo
-and is not part of this plan.
+webhook pointed at Discord's `/github` endpoint, and `#bzo-dev:matrix.org`
+through `.github/workflows/matrix-notify.yml`, which posts each as a notice
+with the bridge account's token (secret `MATRIX_TOKEN`). Neither is part of
+this plan.
 
 ## Who runs what
 
