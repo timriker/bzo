@@ -357,9 +357,9 @@ class RenderManager {
     return Math.max(CHASE_SCALE_MIN, Math.min(1, Math.sqrt(Math.sqrt(aspect / CHASE_REFERENCE_ASPECT))));
   }
 
-  _getVerticalFovForAspect(aspect) {
+  _getVerticalFovForAspect(aspect, horizontalFov = BZFlag_DEFAULT_HORIZONTAL_FOV) {
     const safeAspect = Number.isFinite(aspect) && aspect > 0 ? aspect : (16 / 9);
-    const halfHorizontalRadians = THREE.MathUtils.degToRad(BZFlag_DEFAULT_HORIZONTAL_FOV * 0.5);
+    const halfHorizontalRadians = THREE.MathUtils.degToRad(horizontalFov * 0.5);
     const halfVerticalRadians = Math.atan(Math.tan(halfHorizontalRadians) / safeAspect);
     return THREE.MathUtils.radToDeg(halfVerticalRadians * 2);
   }
@@ -1200,11 +1200,30 @@ class RenderManager {
     this.renderer.setSize(viewport.width, viewport.height);
   }
 
+  // Upstream's `displayFOV`: the horizontal angle of the view a player drives
+  // by, which binoculars narrow (`viewZoom`, clientCommands.cxx:573). The
+  // overview frames the whole map and keeps the default; a headset owns its
+  // own projection.
+  setDisplayFov(fov) {
+    this.displayFov = fov;
+  }
+
+  _applyDisplayFov(cameraMode) {
+    if (!this.camera || xrState.enabled) return;
+    const horizontal = cameraMode === 'overview'
+      ? BZFlag_DEFAULT_HORIZONTAL_FOV
+      : (this.displayFov ?? BZFlag_DEFAULT_HORIZONTAL_FOV);
+    if (horizontal === this._appliedHorizontalFov) return;
+    this._appliedHorizontalFov = horizontal;
+    this.camera.fov = this._getVerticalFovForAspect(this.camera.aspect, horizontal);
+    this.camera.updateProjectionMatrix();
+  }
+
   handleResize() {
     if (!this.camera || !this.renderer) return;
     const viewport = this._getViewportSize();
     this.camera.aspect = viewport.width / viewport.height;
-    this.camera.fov = this._getVerticalFovForAspect(this.camera.aspect);
+    this.camera.fov = this._getVerticalFovForAspect(this.camera.aspect, this._appliedHorizontalFov);
     this.camera.updateProjectionMatrix();
     this._applyRendererSize(viewport);
     if (this.anaglyphEffect) {
@@ -1297,6 +1316,7 @@ class RenderManager {
 
   updateCamera({ cameraMode, myTank, azimuth, deathFollowTarget, roamFraming, roamInsideTank = false }) {
     const heading = azimuth || 0;
+    this._applyDisplayFov(cameraMode);
     if (this.camera) {
       this._setNearPlane(cameraMode === 'first-person' || (cameraMode === 'roam' && roamInsideTank));
     }

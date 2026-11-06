@@ -44,7 +44,12 @@ msgid ""
 "are `Page Up` and `Page Down`, and `.` is `Delete`. With Num Lock on, a "
 "keypad key is the main key with the same character. Keypad `Enter` shoots "
 "either way."
-msgstr "The number pad works like it does in BZFlag. With Num Lock off, its keys are the ones painted under the numbers: the arrows drive, `1` is `End`, `9` an' `3` are `Page Up` an' `Page Down`, an' `.` is `Delete`. With Num Lock on, a number-pad key is the main key with the same character. Number-pad `Enter` shoots either way."
+msgstr ""
+"The number pad works like it does in BZFlag. With Num Lock off, its keys are "
+"the ones painted under the numbers: the arrows drive, `1` is `End`, `9` an' "
+"`3` are `Page Up` an' `Page Down`, an' `.` is `Delete`. With Num Lock on, a "
+"number-pad key is the main key with the same character. Number-pad `Enter` "
+"shoots either way."
 
 #: docs/help/controls.md
 msgid "Driving"
@@ -218,6 +223,13 @@ msgstr "`M` — flip mouse steerin' on or off"
 #: docs/help/controls.md
 msgid "`C` — cycle camera mode"
 msgstr "`C` — cycle camera mode"
+
+#: docs/help/controls.md
+msgid ""
+"`B` — binoculars: narrow the view to a quarter, and back. `Ctrl` and the "
+"wheel narrow or widen it a step at a time. Turning with the keys slows to "
+"match"
+msgstr "`B` — binoculars: squints the view down to a quarter, an' back. `Ctrl` an' the wheel squint it or widen it a notch at a time. Turnin' with the keys slows down to match"
 
 #: docs/help/controls.md
 #, fuzzy
@@ -535,6 +547,10 @@ msgstr ""
 #: docs/help/controls.md
 msgid "the game view: nothing"
 msgstr ""
+
+#: docs/help/controls.md
+msgid "with `Ctrl`, anywhere: binoculars, up to narrow the view"
+msgstr "with `Ctrl`, anywheres: binoculars, up squints the view"
 
 #: docs/help/controls.md
 msgid "The targeting box"

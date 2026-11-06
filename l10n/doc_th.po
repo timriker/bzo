@@ -44,7 +44,11 @@ msgid ""
 "are `Page Up` and `Page Down`, and `.` is `Delete`. With Num Lock on, a "
 "keypad key is the main key with the same character. Keypad `Enter` shoots "
 "either way."
-msgstr "แป้นตัวเลขทำงานเหมือนใน BZFlag เมื่อปิด Num Lock ปุ่มจะเป็นปุ่มที่พิมพ์ไว้ใต้ตัวเลข: ลูกศรใช้ขับ `1` คือ `End` `9` และ `3` คือ `Page Up` และ `Page Down` และ `.` คือ `Delete` เมื่อเปิด Num Lock ปุ่มบนแป้นตัวเลขคือปุ่มหลักที่มีตัวอักษรเดียวกัน `Enter` บนแป้นตัวเลขยิงได้ทั้งสองแบบ"
+msgstr ""
+"แป้นตัวเลขทำงานเหมือนใน BZFlag เมื่อปิด Num Lock ปุ่มจะเป็นปุ่มที่พิมพ์ไว้ใต้ตัวเลข: ลูกศรใช้ขับ "
+"`1` คือ `End` `9` และ `3` คือ `Page Up` และ `Page Down` และ `.` คือ `Delete` "
+"เมื่อเปิด Num Lock ปุ่มบนแป้นตัวเลขคือปุ่มหลักที่มีตัวอักษรเดียวกัน `Enter` "
+"บนแป้นตัวเลขยิงได้ทั้งสองแบบ"
 
 #: docs/help/controls.md
 msgid "Driving"
@@ -215,6 +219,13 @@ msgstr "`M` — เปิด/ปิดการบังคับด้วยเ
 #: docs/help/controls.md
 msgid "`C` — cycle camera mode"
 msgstr "`C` — สลับโหมดกล้อง"
+
+#: docs/help/controls.md
+msgid ""
+"`B` — binoculars: narrow the view to a quarter, and back. `Ctrl` and the "
+"wheel narrow or widen it a step at a time. Turning with the keys slows to "
+"match"
+msgstr "`B` — กล้องส่องทางไกล: ทำให้มุมมองแคบลงเหลือหนึ่งในสี่ แล้วกลับคืน `Ctrl` กับลูกล้อปรับให้แคบลงหรือกว้างขึ้นทีละขั้น การหมุนด้วยปุ่มจะช้าลงตามไปด้วย"
 
 #: docs/help/controls.md
 #, fuzzy
@@ -521,6 +532,10 @@ msgstr ""
 #: docs/help/controls.md
 msgid "the game view: nothing"
 msgstr ""
+
+#: docs/help/controls.md
+msgid "with `Ctrl`, anywhere: binoculars, up to narrow the view"
+msgstr "กด `Ctrl` ที่ไหนก็ได้: กล้องส่องทางไกล หมุนขึ้นทำให้มุมมองแคบลง"
 
 #: docs/help/controls.md
 msgid "The targeting box"

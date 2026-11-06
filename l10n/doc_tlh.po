@@ -45,7 +45,11 @@ msgid ""
 "are `Page Up` and `Page Down`, and `.` is `Delete`. With Num Lock on, a "
 "keypad key is the main key with the same character. Keypad `Enter` shoots "
 "either way."
-msgstr "BZFlag Daq rur mI' leQ tlhoy'. Num Lock chu'Ha'lu'DI', mI'mey bIng leQmey ghItlhlu'pu'bogh chaH: chIj 'uchmey, `End` 'oH `1`'e', `Page Up` `Page Down` je chaH `9` `3` je, `Delete` 'oH `.`'e'. Num Lock chu'lu'DI', ngutlh rap ghajbogh leQ'a' 'oH mI' leQ'e'. reH bach mI' leQ `Enter`."
+msgstr ""
+"BZFlag Daq rur mI' leQ tlhoy'. Num Lock chu'Ha'lu'DI', mI'mey bIng leQmey "
+"ghItlhlu'pu'bogh chaH: chIj 'uchmey, `End` 'oH `1`'e', `Page Up` `Page Down` "
+"je chaH `9` `3` je, `Delete` 'oH `.`'e'. Num Lock chu'lu'DI', ngutlh rap "
+"ghajbogh leQ'a' 'oH mI' leQ'e'. reH bach mI' leQ `Enter`."
 
 #: docs/help/controls.md
 msgid "Driving"
@@ -224,6 +228,13 @@ msgstr "`M` — mouse chIj yIchu'/yIchu'Ha'"
 #: docs/help/controls.md
 msgid "`C` — cycle camera mode"
 msgstr "`C` — mIllogh qonwI' lo' yIchoH"
+
+#: docs/help/controls.md
+msgid ""
+"`B` — binoculars: narrow the view to a quarter, and back. `Ctrl` and the "
+"wheel narrow or widen it a step at a time. Turning with the keys slows to "
+"match"
+msgstr "`B` — Hov tut Hap: legh'a' loS'ay' wa' ghaH, 'ej chegh. `Ctrl` gho je: wa' mIw ghaH ngaQmoH pagh ghaH tInmoH. leQmey lo'DI' tlhe'meH QIt"
 
 #: docs/help/controls.md
 #, fuzzy
@@ -539,6 +550,10 @@ msgstr ""
 #: docs/help/controls.md
 msgid "the game view: nothing"
 msgstr ""
+
+#: docs/help/controls.md
+msgid "with `Ctrl`, anywhere: binoculars, up to narrow the view"
+msgstr "`Ctrl` lo'DI', Dat: Hov tut Hap, Dung legh'a' ngaQmoH"
 
 # review: "targeting box" coined as "DoS buq" (target bag)
 #: docs/help/controls.md

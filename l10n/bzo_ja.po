@@ -1219,7 +1219,7 @@ msgstr "チーム：{team}"
 msgid "watching {server}"
 msgstr "{server}を観戦中"
 
-#: public/js/client.js:1387 public/js/client.js:10284
+#: public/js/client.js:1387 public/js/client.js:10311
 msgid "replay {name}"
 msgstr "リプレイ {name}"
 
@@ -1533,7 +1533,7 @@ msgstr ""
 "グローバルログインするとVRを抜けます。先にヘッドセットのセッションを終了して"
 "ください。"
 
-#: public/js/client.js:4692 public/js/client.js:10508
+#: public/js/client.js:4692 public/js/client.js:10535
 msgid "Fetching remote server's map..."
 msgstr "リモートサーバーのマップを取得中..."
 
@@ -1541,7 +1541,7 @@ msgstr "リモートサーバーのマップを取得中..."
 msgid "Pausing in {seconds}"
 msgstr "{seconds}秒後に一時停止"
 
-#: public/js/client.js:4882 public/js/client.js:6708
+#: public/js/client.js:4882 public/js/client.js:6728
 msgid "Self Destructing in {seconds}"
 msgstr "{seconds}秒後に自爆"
 
@@ -1553,553 +1553,553 @@ msgstr "オートパイロット {pilot}：{intent}"
 msgid "AutoPilot {pilot}"
 msgstr "オートパイロット {pilot}"
 
-#: public/js/client.js:6603 server.js:11445
+#: public/js/client.js:6619 server.js:11445
 msgid "You do not have permission to speak on the admin channel."
 msgstr "管理者チャンネルで発言する権限がありません。"
 
-#: public/js/client.js:6710
+#: public/js/client.js:6730
 msgid "Self Destruct cancelled"
 msgstr "自爆を取り消しました"
 
-#: public/js/client.js:6880
+#: public/js/client.js:6900
 msgid "Hide Debug Labels"
 msgstr "デバッグラベルを隠す"
 
-#: public/js/client.js:6883
+#: public/js/client.js:6903
 msgid "Show Debug Labels"
 msgstr "デバッグラベルを表示"
 
-#: public/js/client.js:6900
+#: public/js/client.js:6920
 msgid "Disable Dynamic Lighting"
 msgstr "動的ライティングを無効化"
 
-#: public/js/client.js:6901
+#: public/js/client.js:6921
 msgid "Enable Dynamic Lighting"
 msgstr "動的ライティングを有効化"
 
-#: public/js/client.js:6903
+#: public/js/client.js:6923
 msgid "Dynamic Lighting needs more shader uniforms than this browser reports"
 msgstr ""
 "動的ライティングには、このブラウザが報告するより多くのシェーダーユニフォーム"
 "が必要です"
 
-#: public/js/client.js:6912
+#: public/js/client.js:6932
 msgid "Disable Rumble"
 msgstr "振動を無効化"
 
-#: public/js/client.js:6913
+#: public/js/client.js:6933
 msgid "Enable Rumble"
 msgstr "振動を有効化"
 
-#: public/js/client.js:6919
+#: public/js/client.js:6939
 msgid "Disable Anaglyph 3D"
 msgstr "アナグリフ3Dを無効化"
 
-#: public/js/client.js:6920
+#: public/js/client.js:6940
 msgid "Enable Anaglyph 3D"
 msgstr "アナグリフ3Dを有効化"
 
-#: public/js/client.js:6923
+#: public/js/client.js:6943
 msgid "Anaglyph 3D is unavailable in VR mode"
 msgstr "VRモードではアナグリフ3Dを使えません"
 
-#: public/js/client.js:6932
+#: public/js/client.js:6952
 msgid "Hide Debug Geometry"
 msgstr "デバッグ形状を隠す"
 
-#: public/js/client.js:7020
+#: public/js/client.js:7040
 msgid "Confirm"
 msgstr "確認"
 
-#: public/js/client.js:7076
+#: public/js/client.js:7096
 msgid "Share View Link: only available while viewing a map"
 msgstr "ビューのリンクを共有：マップ表示中のみ利用できます"
 
-#: public/js/client.js:7081
+#: public/js/client.js:7101
 msgid "View link copied to clipboard"
 msgstr "ビューのリンクをクリップボードにコピーしました"
 
-#: public/js/client.js:7110
+#: public/js/client.js:7130
 msgid "WebXR: {mode}"
 msgstr "WebXR：{mode}"
 
-#: public/js/client.js:7116
+#: public/js/client.js:7136
 msgid "WebXR not supported on this device"
 msgstr "このデバイスはWebXRに対応していません"
 
-#: public/js/client.js:7121
+#: public/js/client.js:7141
 msgid "Requesting VR..."
 msgstr "VRを要求中..."
 
-#: public/js/client.js:7124
+#: public/js/client.js:7144
 msgid "Error: Renderer not available"
 msgstr "エラー：レンダラーを利用できません"
 
-#: public/js/client.js:7137
+#: public/js/client.js:7157
 msgid "✓ WebXR VR Mode: ON"
 msgstr "✓ WebXR VRモード：オン"
 
-#: public/js/client.js:7143
+#: public/js/client.js:7163
 msgid "✗ VR request failed - check server.log"
 msgstr "✗ VRの要求に失敗 - server.log を確認"
 
-#: public/js/client.js:7145 public/js/client.js:17744
+#: public/js/client.js:7165 public/js/client.js:17772
 msgid "WebXR VR Mode: OFF"
 msgstr "WebXR VRモード：オフ"
 
-#: public/js/client.js:7703
+#: public/js/client.js:7730
 msgid "3D renderer unavailable: {reason}"
 msgstr "3Dレンダラーを利用できません：{reason}"
 
-#: public/js/client.js:7710
+#: public/js/client.js:7737
 msgid "3D renderer failed to initialize."
 msgstr "3Dレンダラーの初期化に失敗しました。"
 
-#: public/js/client.js:7712
+#: public/js/client.js:7739
 msgid "Open the game in an external browser window for full WebGL support."
 msgstr ""
 "WebGLを完全に使うには、外部のブラウザウィンドウでゲームを開いてください。"
 
-#: public/js/client.js:8141
+#: public/js/client.js:8168
 msgid "Connected to server!"
 msgstr "サーバーに接続しました！"
 
-#: public/js/client.js:8147
+#: public/js/client.js:8174
 msgid "Connected to server"
 msgstr "サーバーに接続済み"
 
-#: public/js/client.js:8148
+#: public/js/client.js:8175
 msgid "Waiting for world state"
 msgstr "ワールドの状態を待っています"
 
-#: public/js/client.js:8199
+#: public/js/client.js:8226
 msgid "Offline"
 msgstr "オフライン"
 
-#: public/js/client.js:8199
+#: public/js/client.js:8226
 msgid "Cannot reach {host}"
 msgstr "{host}に接続できません"
 
-#: public/js/client.js:8200
+#: public/js/client.js:8227
 msgid "Trying again..."
 msgstr "再試行中..."
 
-#: public/js/client.js:8211
+#: public/js/client.js:8238
 msgid "Disconnected from server | Kills: {kills} | Deaths: {deaths}"
 msgstr "サーバーから切断されました | キル：{kills} | デス：{deaths}"
 
-#: public/js/client.js:8216
+#: public/js/client.js:8243
 msgid "Press a key, tap or pull a trigger to rejoin"
 msgstr "キーを押す、タップする、またはトリガーを引くと再参加します"
 
-#: public/js/client.js:8376
+#: public/js/client.js:8403
 msgid "Server error: {error}"
 msgstr "サーバーエラー：{error}"
 
-#: public/js/client.js:8381
+#: public/js/client.js:8408
 msgid "Server: action completed successfully"
 msgstr "サーバー：操作が完了しました"
 
-#: public/js/client.js:8463
+#: public/js/client.js:8490
 msgid "Operator Panel (v{version})"
 msgstr "オペレーターパネル (v{version})"
 
-#: public/js/client.js:8882
+#: public/js/client.js:8909
 msgid "{player} joined"
 msgstr "{player}が参加しました"
 
-#: public/js/client.js:8927
+#: public/js/client.js:8954
 msgid "{player} left"
 msgstr "{player}が退出しました"
 
-#: public/js/client.js:8943
+#: public/js/client.js:8970
 msgid "{callsign} not responding"
 msgstr "{callsign}が応答していません"
 
-#: public/js/client.js:8944
+#: public/js/client.js:8971
 msgid "{callsign} okay"
 msgstr "{callsign}が復帰しました"
 
-#: public/js/client.js:9058
+#: public/js/client.js:9085
 msgid "{player} grabbed {flag}"
 msgstr "{player}が{flag}を獲得"
 
-#: public/js/client.js:9109
+#: public/js/client.js:9136
 msgid "{player} dropped {flag}"
 msgstr "{player}が{flag}を捨てた"
 
-#: public/js/client.js:9203
+#: public/js/client.js:9230
 msgid "{player}: {pilot} taking controls"
 msgstr "{player}：{pilot}が操縦を開始"
 
-#: public/js/client.js:9204
+#: public/js/client.js:9231
 msgid "{player}: {pilot} releasing controls"
 msgstr "{player}：{pilot}が操縦を返却"
 
-#: public/js/client.js:9236
+#: public/js/client.js:9263
 msgid "{player} paused"
 msgstr "{player}が一時停止"
 
-#: public/js/client.js:9247
+#: public/js/client.js:9274
 msgid "{player} unpaused"
 msgstr "{player}が再開"
 
-#: public/js/client.js:9377
+#: public/js/client.js:9404
 msgid "Server forced a disconnect"
 msgstr "サーバーにより切断されました"
 
-#: public/js/client.js:9383
+#: public/js/client.js:9410
 msgid "Server updated - reloading..."
 msgstr "サーバーが更新されました - 再読み込み中..."
 
-#: public/js/client.js:9911
+#: public/js/client.js:9938
 msgid "Got flattened by {player}"
 msgstr "{player}に踏み潰された"
 
-#: public/js/client.js:9912
+#: public/js/client.js:9939
 msgid "Teammate hit with Genocide by {player}"
 msgstr "味方が{player}のジェノサイドを受けた"
 
-#: public/js/client.js:9913
+#: public/js/client.js:9940
 msgid "Got shot by {player}"
 msgstr "{player}に撃たれた"
 
-#: public/js/client.js:9915
+#: public/js/client.js:9942
 msgid "Got flattened by teammate {player}"
 msgstr "味方の{player}に踏み潰された"
 
-#: public/js/client.js:9916
+#: public/js/client.js:9943
 msgid "Teammate hit with Genocide by teammate {player}"
 msgstr "味方が味方の{player}のジェノサイドを受けた"
 
-#: public/js/client.js:9917
+#: public/js/client.js:9944
 msgid "Got shot by teammate {player}"
 msgstr "味方の{player}に撃たれた"
 
-#: public/js/client.js:9953
+#: public/js/client.js:9980
 msgid "Your team flag was captured!"
 msgstr "自チームのフラグがキャプチャーされた！"
 
-#: public/js/client.js:9955
+#: public/js/client.js:9982
 msgid "Time Expired - GAME OVER"
 msgstr "時間切れ - ゲームオーバー"
 
-#: public/js/client.js:9957
+#: public/js/client.js:9984
 msgid "Tank Self Destructed"
 msgstr "戦車が自爆した"
 
-#: public/js/client.js:9959
+#: public/js/client.js:9986
 msgid "Tank Rusted"
 msgstr "戦車が錆びついた"
 
-#: public/js/client.js:9962 public/js/client.js:9966
+#: public/js/client.js:9989 public/js/client.js:9993
 msgid "Killed by the server"
 msgstr "サーバーに倒された"
 
-#: public/js/client.js:9993
+#: public/js/client.js:10020
 msgid "You killed {player}"
 msgstr "{player}を倒した"
 
-#: public/js/client.js:10005
+#: public/js/client.js:10032
 msgid "{player} self-destructed"
 msgstr "{player}が自爆"
 
-#: public/js/client.js:10009
+#: public/js/client.js:10036
 msgid "{player} fell in the water"
 msgstr "{player}が水に落ちた"
 
-#: public/js/client.js:10014
+#: public/js/client.js:10041
 msgid "{player}: {message}"
 msgstr "{player}：{message}"
 
-#: public/js/client.js:10017
+#: public/js/client.js:10044
 msgid "killed by the server"
 msgstr "サーバーに倒された"
 
-#: public/js/client.js:10023
+#: public/js/client.js:10050
 msgid "{player} was killed by the server"
 msgstr "{player}がサーバーに倒された"
 
-#: public/js/client.js:10028
+#: public/js/client.js:10055
 msgid "{killer} killed {victim}"
 msgstr "{killer}が{victim}を撃破"
 
-#: public/js/client.js:10193
+#: public/js/client.js:10220
 msgid "You respawned!"
 msgstr "リスポーンしました！"
 
-#: public/js/client.js:10283
+#: public/js/client.js:10310
 msgid "map {name}"
 msgstr "マップ {name}"
 
-#: public/js/client.js:10285
+#: public/js/client.js:10312
 msgid "plugin {name}"
 msgstr ""
 
-#: public/js/client.js:10289
+#: public/js/client.js:10316
 msgid "nothing uploaded"
 msgstr "アップロードなし"
 
-#: public/js/client.js:10316 public/js/client.js:10791
+#: public/js/client.js:10343 public/js/client.js:10818
 msgid "MOTD: {motd}"
 msgstr "MOTD：{motd}"
 
-#: public/js/client.js:10391
+#: public/js/client.js:10418
 msgid "{count} box"
 msgstr "ボックス{count}個"
 
-#: public/js/client.js:10391
+#: public/js/client.js:10418
 msgid "{count} boxes"
 msgstr "ボックス{count}個"
 
-#: public/js/client.js:10392
+#: public/js/client.js:10419
 msgid "{count} pyramid"
 msgstr "ピラミッド{count}個"
 
-#: public/js/client.js:10392
+#: public/js/client.js:10419
 msgid "{count} pyramids"
 msgstr "ピラミッド{count}個"
 
-#: public/js/client.js:10393
+#: public/js/client.js:10420
 msgid "{count} mesh"
 msgstr "メッシュ{count}個"
 
-#: public/js/client.js:10393
+#: public/js/client.js:10420
 msgid "{count} meshes"
 msgstr "メッシュ{count}個"
 
-#: public/js/client.js:10398
+#: public/js/client.js:10425
 msgid "{count} base"
 msgstr "基地{count}個"
 
-#: public/js/client.js:10398
+#: public/js/client.js:10425
 msgid "{count} bases"
 msgstr "基地{count}個"
 
-#: public/js/client.js:10400
+#: public/js/client.js:10427
 msgid "{count} teleporter"
 msgstr "テレポーター{count}個"
 
-#: public/js/client.js:10400
+#: public/js/client.js:10427
 msgid "{count} teleporters"
 msgstr "テレポーター{count}個"
 
-#: public/js/client.js:10403 server.js:2477
+#: public/js/client.js:10430 server.js:2477
 msgid "water"
 msgstr "水"
 
-#: public/js/client.js:10404 server.js:2477
+#: public/js/client.js:10431 server.js:2477
 msgid "weather"
 msgstr "天候"
 
-#: public/js/client.js:10405 server.js:2477
+#: public/js/client.js:10432 server.js:2477
 msgid "custom ground"
 msgstr "カスタム地面"
 
-#: public/js/client.js:10443 public/js/client.js:10522
+#: public/js/client.js:10470 public/js/client.js:10549
 msgid "View {map}"
 msgstr "{map}を表示"
 
-#: public/js/client.js:10520
+#: public/js/client.js:10547
 msgid "{server} did not answer"
 msgstr "{server}から応答がありません"
 
-#: public/js/client.js:10532 server.js:2407 server.js:2866 server.js:2916
+#: public/js/client.js:10559 server.js:2407 server.js:2866 server.js:2916
 msgid "Watch"
 msgstr "観戦"
 
-#: public/js/client.js:10533
+#: public/js/client.js:10560
 msgid "Watch the live game on {server}"
 msgstr "{server}のライブゲームを観戦"
 
-#: public/js/client.js:10551 public/js/client.js:10559 server.js:2875
+#: public/js/client.js:10578 public/js/client.js:10586 server.js:2875
 msgid "Re-import"
 msgstr "再インポート"
 
-#: public/js/client.js:10555
+#: public/js/client.js:10582
 msgid "Importing…"
 msgstr "インポート中…"
 
-#: public/js/client.js:10598
+#: public/js/client.js:10625
 msgid "Loading map..."
 msgstr "マップを読み込み中..."
 
-#: public/js/client.js:10606
+#: public/js/client.js:10633
 msgid "Building world geometry..."
 msgstr "ワールドの形状を構築中..."
 
-#: public/js/client.js:10670
+#: public/js/client.js:10697
 msgid "{count} watching now"
 msgstr "{count}人が観戦中"
 
-#: public/js/client.js:10673
+#: public/js/client.js:10700
 msgid "Watch {name}"
 msgstr "{name}を観戦"
 
-#: public/js/client.js:10709
+#: public/js/client.js:10736
 msgid "That server's map could not be fetched"
 msgstr "そのサーバーのマップを取得できませんでした"
 
-#: public/js/client.js:10727
+#: public/js/client.js:10754
 msgid "import failed"
 msgstr "インポートに失敗しました"
 
-#: public/js/client.js:10727
+#: public/js/client.js:10754
 msgid "Could not load that server's map: {reason}"
 msgstr "そのサーバーのマップを読み込めませんでした：{reason}"
 
-#: public/js/client.js:10941
+#: public/js/client.js:10968
 msgid "{team} Limit:"
 msgstr "{team}上限："
 
-#: public/js/client.js:11034
+#: public/js/client.js:11061
 msgid "Failed: {error}"
 msgstr ""
 
-#: public/js/client.js:11139
+#: public/js/client.js:11166
 msgid "No limit"
 msgstr "無制限"
 
-#: public/js/client.js:11248
+#: public/js/client.js:11275
 msgid "Restart"
 msgstr "リスタート"
 
-#: public/js/client.js:11252
+#: public/js/client.js:11279
 msgid "Starts a new game: every player reloads into the new settings"
 msgstr "新しいゲームを開始：全プレイヤーが新しい設定で再読み込みします"
 
-#: public/js/client.js:11253
+#: public/js/client.js:11280
 msgid "Applies the staged changes"
 msgstr "保留中の変更を適用します"
 
-#: public/js/client.js:11600
+#: public/js/client.js:11627
 msgid "Paused"
 msgstr "一時停止中"
 
-#: public/js/client.js:11601
+#: public/js/client.js:11628
 msgid "Sealed"
 msgstr "建物内"
 
-#: public/js/client.js:12533
+#: public/js/client.js:12560
 msgid "Already following someone"
 msgstr "すでに誰かを追従中"
 
-#: public/js/client.js:12569 public/js/client.js:12694
+#: public/js/client.js:12596 public/js/client.js:12721
 msgid "Looking at {player}"
 msgstr "{player}を注視中"
 
-#: public/js/client.js:12678
+#: public/js/client.js:12705
 msgid "{player} locked on me"
 msgstr "{player}が自分をロックオン"
 
-#: public/js/client.js:12688
+#: public/js/client.js:12715
 msgid "Looking at nothing"
 msgstr "何も見ていません"
 
-#: public/js/client.js:12694
+#: public/js/client.js:12721
 msgid "Locked on {player}"
 msgstr "{player}をロックオン"
 
-#: public/js/client.js:13031
+#: public/js/client.js:13058
 msgid "Clear ({count})"
 msgstr "クリア（{count}）"
 
-#: public/js/client.js:13031 public/js/list-page.js:534
+#: public/js/client.js:13058 public/js/list-page.js:534
 msgid "Clear"
 msgstr "クリア"
 
 # review: was left in English to match the help page; now translated
-#: public/js/client.js:13131
+#: public/js/client.js:13158
 msgid "SPOTTED: {player}"
 msgstr "発見: {player}"
 
-#: public/js/client.js:13246 public/js/client.js:13252
+#: public/js/client.js:13273 public/js/client.js:13279
 msgid "nobody"
 msgstr "なし"
 
-#: public/js/client.js:13256
+#: public/js/client.js:13283
 msgid "Leader {who}"
 msgstr "トップ: {who}"
 
-#: public/js/client.js:13258 public/js/client.js:13263
+#: public/js/client.js:13285 public/js/client.js:13290
 msgid "Tracking {who}"
 msgstr "{who}を追跡"
 
-#: public/js/client.js:13259
+#: public/js/client.js:13286
 msgid "Following {who}"
 msgstr "{who}を追従"
 
-#: public/js/client.js:13260
+#: public/js/client.js:13287
 msgid "Driving with {who}"
 msgstr "{who}に同乗"
 
-#: public/js/client.js:13265 public/js/hud.js:629 public/js/input.js:1457
+#: public/js/client.js:13292 public/js/hud.js:629 public/js/input.js:1457
 msgid "First Person"
 msgstr "一人称"
 
-#: public/js/client.js:13266 public/js/hud.js:630 public/js/input.js:1458
+#: public/js/client.js:13293 public/js/hud.js:630 public/js/input.js:1458
 msgid "Third Person"
 msgstr "三人称"
 
 # review: 俯瞰
-#: public/js/client.js:13267 public/js/hud.js:631 public/js/input.js:1459
+#: public/js/client.js:13294 public/js/hud.js:631 public/js/input.js:1459
 msgid "Overview"
 msgstr "俯瞰"
 
-#: public/js/client.js:13268
+#: public/js/client.js:13295
 msgid "Roaming"
 msgstr "自由視点"
 
-#: public/js/client.js:13557 public/js/client.js:13631
+#: public/js/client.js:13584 public/js/client.js:13658
 msgid "autopilot disabled"
 msgstr "オートパイロット無効"
 
-#: public/js/client.js:13566
+#: public/js/client.js:13593
 msgid "autopilot not allowed on this server"
 msgstr "このサーバーではオートパイロットは使えません"
 
-#: public/js/client.js:13578
+#: public/js/client.js:13605
 msgid "{pilot} has the controls"
 msgstr "{pilot}が操縦中"
 
-#: public/js/client.js:13583
+#: public/js/client.js:13610
 msgid "You may not enable the Autopilot more than once every five seconds."
 msgstr "オートパイロットは5秒に1回までしか有効にできません。"
 
-#: public/js/client.js:13588
+#: public/js/client.js:13615
 msgid "autopilot enabled"
 msgstr "オートパイロット有効"
 
-#: public/js/client.js:13611
+#: public/js/client.js:13638
 msgid "Not allowed"
 msgstr "許可されていません"
 
-#: public/js/client.js:13611 public/js/input.js:1162 public/js/input.js:1172
+#: public/js/client.js:13638 public/js/input.js:1162 public/js/input.js:1172
 #: public/js/input.js:1176
 msgid "Unavailable"
 msgstr "利用不可"
 
-#: public/js/client.js:13614
+#: public/js/client.js:13641
 msgid "None"
 msgstr "なし"
 
-#: public/js/client.js:14443
+#: public/js/client.js:14471
 msgid "Zoned"
 msgstr "ゾーン突入"
 
-#: public/js/client.js:14443
+#: public/js/client.js:14471
 msgid "Unzoned"
 msgstr "ゾーン解除"
 
-#: public/js/client.js:15244 public/js/client.js:15261
+#: public/js/client.js:15272 public/js/client.js:15289
 msgid "unidentified"
 msgstr "不明"
 
-#: public/js/client.js:15281
+#: public/js/client.js:15309
 msgid "unknown"
 msgstr "不明"
 
-#: public/js/client.js:15292
+#: public/js/client.js:15320
 msgid ""
 "This server bounces every shot off walls, whatever flag fired it, so the "
 "Ricochet flag is not in play here."
@@ -2107,79 +2107,79 @@ msgstr ""
 "このサーバーでは、どのフラグの弾でもすべて壁で跳ね返るため、跳弾フラグは使わ"
 "れません。"
 
-#: public/js/client.js:15293
+#: public/js/client.js:15321
 msgid "On this server only the Ricochet flag bounces shots off walls."
 msgstr "このサーバーでは、跳弾フラグだけが弾を壁で跳ね返します。"
 
-#: public/js/client.js:15360
+#: public/js/client.js:15388
 msgid "{flag} {release}"
 msgstr "{flag}は{release}"
 
-#: public/js/client.js:15371
+#: public/js/client.js:15399
 msgid "Can't drop the flag while zoned"
 msgstr "ゾーン内ではフラグを捨てられません"
 
-#: public/js/client.js:15375
+#: public/js/client.js:15403
 msgid "Can't drop a flag while inside a building"
 msgstr "建物の中ではフラグを捨てられません"
 
-#: public/js/client.js:15425
+#: public/js/client.js:15453
 msgid "in {seconds}s"
 msgstr "{seconds}秒後"
 
-#: public/js/client.js:15426
+#: public/js/client.js:15454
 msgid "after {count} kill"
 msgstr "{count}キル後"
 
-#: public/js/client.js:15426
+#: public/js/client.js:15454
 msgid "after {count} kills"
 msgstr "{count}キル後"
 
-#: public/js/client.js:15427
+#: public/js/client.js:15455
 msgid "on the antidote"
 msgstr "解毒フラグ取得時"
 
-#: public/js/client.js:15428
+#: public/js/client.js:15456
 msgid "stays until it kills you"
 msgstr "倒されるまで外れません"
 
-#: public/js/client.js:15429
+#: public/js/client.js:15457
 msgid "{first} or {second}"
 msgstr "{first}か{second}"
 
-#: public/js/client.js:15430
+#: public/js/client.js:15458
 msgid "shakes off {ways}"
 msgstr "{ways}に外れます"
 
-#: public/js/client.js:15486
+#: public/js/client.js:15514
 msgid "Flag Alert!!!"
 msgstr "フラグ警報!!!"
 
-#: public/js/client.js:15494
+#: public/js/client.js:15522
 msgid "Team Grab!!!"
 msgstr "チームフラグ奪取!!!"
 
-#: public/js/client.js:15510
+#: public/js/client.js:15538
 msgid "{thief} stole {victim}'s {flag} flag"
 msgstr "{thief}が{victim}の{flag}フラグを盗んだ"
 
-#: public/js/client.js:15541
+#: public/js/client.js:15569
 msgid "Closest Flag: {flag}"
 msgstr "最寄りのフラグ：{flag}"
 
-#: public/js/client.js:15603
+#: public/js/client.js:15631
 msgid "{player} took their own flag into {team} territory"
 msgstr "{player}が自チームのフラグを{team}の陣地に持ち込んだ"
 
-#: public/js/client.js:15611
+#: public/js/client.js:15639
 msgid "Don't capture your own flag!!!"
 msgstr "自分のフラグをキャプチャーするな!!!"
 
-#: public/js/client.js:15617
+#: public/js/client.js:15645
 msgid "{player} captured the {team} flag"
 msgstr "{player}が{team}のフラグをキャプチャー"
 
-#: public/js/client.js:17240 public/js/client.js:17241
+#: public/js/client.js:17268 public/js/client.js:17269
 msgid "Exit WebXR VR Mode"
 msgstr "WebXR VRモードを終了"
 
@@ -4774,7 +4774,9 @@ msgstr "使い方：/bot remove <name|all>"
 msgid ""
 "Usage: /bot [fill <n> [{pilots}] | add [{pilots}] [team] [count] | remove "
 "<name|all> | pause | resume]"
-msgstr "使い方：/bot [fill <n> [{pilots}] | add [{pilots}] [team] [count] | remove <name|all> | pause | resume]"
+msgstr ""
+"使い方：/bot [fill <n> [{pilots}] | add [{pilots}] [team] [count] | remove "
+"<name|all> | pause | resume]"
 
 #: server.js:18510
 msgid "Server shutting down"

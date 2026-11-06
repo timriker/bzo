@@ -45,7 +45,12 @@ msgid ""
 "are `Page Up` and `Page Down`, and `.` is `Delete`. With Num Lock on, a "
 "keypad key is the main key with the same character. Keypad `Enter` shoots "
 "either way."
-msgstr "Numerická klávesnice funguje jako v BZFlagu. S vypnutým Num Lockem jsou její klávesy ty, co jsou natištěné pod číslicemi: šipky řídí, `1` je `End`, `9` a `3` jsou `Page Up` a `Page Down` a `.` je `Delete`. Se zapnutým Num Lockem je klávesa numerické klávesnice hlavní klávesou se stejným znakem. `Enter` na numerické klávesnici střílí v obou případech."
+msgstr ""
+"Numerická klávesnice funguje jako v BZFlagu. S vypnutým Num Lockem jsou její "
+"klávesy ty, co jsou natištěné pod číslicemi: šipky řídí, `1` je `End`, `9` a "
+"`3` jsou `Page Up` a `Page Down` a `.` je `Delete`. Se zapnutým Num Lockem "
+"je klávesa numerické klávesnice hlavní klávesou se stejným znakem. `Enter` "
+"na numerické klávesnici střílí v obou případech."
 
 #: docs/help/controls.md
 msgid "Driving"
@@ -223,6 +228,13 @@ msgstr "`M` — zapnout/vypnout řízení myší"
 #: docs/help/controls.md
 msgid "`C` — cycle camera mode"
 msgstr "`C` — přepínat režim kamery"
+
+#: docs/help/controls.md
+msgid ""
+"`B` — binoculars: narrow the view to a quarter, and back. `Ctrl` and the "
+"wheel narrow or widen it a step at a time. Turning with the keys slows to "
+"match"
+msgstr "`B` — dalekohled: zúží pohled na čtvrtinu a zase zpět. `Ctrl` s kolečkem ho zužuje nebo rozšiřuje po krocích. Otáčení klávesami se tomu přizpůsobí a zpomalí"
 
 #: docs/help/controls.md
 #, fuzzy
@@ -541,6 +553,10 @@ msgstr ""
 #: docs/help/controls.md
 msgid "the game view: nothing"
 msgstr ""
+
+#: docs/help/controls.md
+msgid "with `Ctrl`, anywhere: binoculars, up to narrow the view"
+msgstr "s `Ctrl` kdekoli: dalekohled, nahoru zužuje pohled"
 
 #: docs/help/controls.md
 msgid "The targeting box"

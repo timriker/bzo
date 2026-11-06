@@ -45,7 +45,11 @@ msgid ""
 "are `Page Up` and `Page Down`, and `.` is `Delete`. With Num Lock on, a "
 "keypad key is the main key with the same character. Keypad `Enter` shoots "
 "either way."
-msgstr "숫자 키패드는 BZFlag처럼 동작해요. Num Lock이 꺼져 있으면 숫자 아래에 적힌 키가 돼요: 화살표로 운전하고, `1`은 `End`, `9`와 `3`은 `Page Up`과 `Page Down`, `.`은 `Delete`예요. Num Lock이 켜져 있으면 키패드 키는 같은 글자의 메인 키와 같아요. 키패드 `Enter`는 어느 쪽이든 사격이에요."
+msgstr ""
+"숫자 키패드는 BZFlag처럼 동작해요. Num Lock이 꺼져 있으면 숫자 아래에 적힌 키"
+"가 돼요: 화살표로 운전하고, `1`은 `End`, `9`와 `3`은 `Page Up`과 `Page "
+"Down`, `.`은 `Delete`예요. Num Lock이 켜져 있으면 키패드 키는 같은 글자의 메"
+"인 키와 같아요. 키패드 `Enter`는 어느 쪽이든 사격이에요."
 
 #: docs/help/controls.md
 msgid "Driving"
@@ -215,6 +219,13 @@ msgstr "`M` — 마우스 조종 켜기/끄기"
 #: docs/help/controls.md
 msgid "`C` — cycle camera mode"
 msgstr "`C` — 카메라 모드 전환"
+
+#: docs/help/controls.md
+msgid ""
+"`B` — binoculars: narrow the view to a quarter, and back. `Ctrl` and the "
+"wheel narrow or widen it a step at a time. Turning with the keys slows to "
+"match"
+msgstr "`B` — 쌍안경: 시야를 4분의 1로 좁히고, 다시 누르면 돌아와요. `Ctrl`과 휠로 한 단계씩 좁히거나 넓혀요. 키로 도는 속도도 그만큼 느려져요"
 
 #: docs/help/controls.md
 #, fuzzy
@@ -524,6 +535,10 @@ msgstr ""
 #: docs/help/controls.md
 msgid "the game view: nothing"
 msgstr ""
+
+#: docs/help/controls.md
+msgid "with `Ctrl`, anywhere: binoculars, up to narrow the view"
+msgstr "`Ctrl`과 함께, 어디서든: 쌍안경, 위로 굴리면 시야가 좁아져요"
 
 #: docs/help/controls.md
 msgid "The targeting box"

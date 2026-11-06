@@ -45,7 +45,12 @@ msgid ""
 "are `Page Up` and `Page Down`, and `.` is `Delete`. With Num Lock on, a "
 "keypad key is the main key with the same character. Keypad `Enter` shoots "
 "either way."
-msgstr "Det numeriske tastatur virker som i BZFlag. Med Num Lock slået fra er dets taster dem, der står under tallene: pilene kører, `1` er `End`, `9` og `3` er `Page Up` og `Page Down`, og `.` er `Delete`. Med Num Lock slået til er en tast på det numeriske tastatur hovedtasten med samme tegn. `Enter` på det numeriske tastatur skyder i begge tilfælde."
+msgstr ""
+"Det numeriske tastatur virker som i BZFlag. Med Num Lock slået fra er dets "
+"taster dem, der står under tallene: pilene kører, `1` er `End`, `9` og `3` "
+"er `Page Up` og `Page Down`, og `.` er `Delete`. Med Num Lock slået til er "
+"en tast på det numeriske tastatur hovedtasten med samme tegn. `Enter` på det "
+"numeriske tastatur skyder i begge tilfælde."
 
 #: docs/help/controls.md
 msgid "Driving"
@@ -221,6 +226,13 @@ msgstr "`M` — slå musestyring til/fra"
 #: docs/help/controls.md
 msgid "`C` — cycle camera mode"
 msgstr "`C` — skift kameratilstand"
+
+#: docs/help/controls.md
+msgid ""
+"`B` — binoculars: narrow the view to a quarter, and back. `Ctrl` and the "
+"wheel narrow or widen it a step at a time. Turning with the keys slows to "
+"match"
+msgstr "`B` — kikkert: gør synsfeltet en fjerdedel så bredt og tilbage igen. `Ctrl` og hjulet gør det smallere eller bredere et trin ad gangen. Drejning med tasterne bliver tilsvarende langsommere"
 
 #: docs/help/controls.md
 #, fuzzy
@@ -545,6 +557,10 @@ msgstr ""
 #: docs/help/controls.md
 msgid "the game view: nothing"
 msgstr ""
+
+#: docs/help/controls.md
+msgid "with `Ctrl`, anywhere: binoculars, up to narrow the view"
+msgstr "med `Ctrl`, hvor som helst: kikkert, op gør synsfeltet smallere"
 
 #: docs/help/controls.md
 msgid "The targeting box"

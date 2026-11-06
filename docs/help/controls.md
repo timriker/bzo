@@ -71,6 +71,9 @@ is the main key with the same character. Keypad `Enter` shoots either way.
   always safe to press one more time
 - `Shift`+`M` — toggle mouse steering
 - `C` — cycle camera mode
+- `B` — binoculars: narrow the view to a quarter, and back. `Ctrl` and the
+  wheel narrow or widen it a step at a time. Turning with the keys slows to
+  match
 - `Shift`+`O` — toggle operator panel
 - `F` — show or hide what the flag you carry does
 - `Shift`+`F` — toggle fullscreen
@@ -172,6 +175,7 @@ The wheel acts on whatever is under the pointer:
 - the radar: zooms it, up to zoom in
 - the scoreboard, the debug HUD and any dialog: scrolls it
 - the game view: nothing
+- with `Ctrl`, anywhere: binoculars, up to narrow the view
 
 ### The targeting box
 

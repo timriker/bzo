@@ -45,7 +45,12 @@ msgid ""
 "are `Page Up` and `Page Down`, and `.` is `Delete`. With Num Lock on, a "
 "keypad key is the main key with the same character. Keypad `Enter` shoots "
 "either way."
-msgstr "Il tastierino numerico funziona come in BZFlag. Con Bloc Num disattivato i suoi tasti sono quelli stampati sotto le cifre: le frecce guidano, `1` è `End`, `9` e `3` sono `Page Up` e `Page Down`, e `.` è `Delete`. Con Bloc Num attivo, un tasto del tastierino è il tasto principale con lo stesso carattere. `Enter` del tastierino spara in entrambi i casi."
+msgstr ""
+"Il tastierino numerico funziona come in BZFlag. Con Bloc Num disattivato i "
+"suoi tasti sono quelli stampati sotto le cifre: le frecce guidano, `1` è "
+"`End`, `9` e `3` sono `Page Up` e `Page Down`, e `.` è `Delete`. Con Bloc "
+"Num attivo, un tasto del tastierino è il tasto principale con lo stesso "
+"carattere. `Enter` del tastierino spara in entrambi i casi."
 
 #: docs/help/controls.md
 msgid "Driving"
@@ -222,6 +227,13 @@ msgstr "`M` — attiva/disattiva la guida col mouse"
 #: docs/help/controls.md
 msgid "`C` — cycle camera mode"
 msgstr "`C` — cambia modalità della telecamera"
+
+#: docs/help/controls.md
+msgid ""
+"`B` — binoculars: narrow the view to a quarter, and back. `Ctrl` and the "
+"wheel narrow or widen it a step at a time. Turning with the keys slows to "
+"match"
+msgstr "`B` — binocolo: restringe la vista a un quarto, e ritorno. `Ctrl` e la rotella la restringono o allargano un passo alla volta. Girare con i tasti rallenta di conseguenza"
 
 #: docs/help/controls.md
 #, fuzzy
@@ -553,6 +565,10 @@ msgstr ""
 #: docs/help/controls.md
 msgid "the game view: nothing"
 msgstr ""
+
+#: docs/help/controls.md
+msgid "with `Ctrl`, anywhere: binoculars, up to narrow the view"
+msgstr "con `Ctrl`, ovunque: binocolo, in su restringe la vista"
 
 #: docs/help/controls.md
 msgid "The targeting box"

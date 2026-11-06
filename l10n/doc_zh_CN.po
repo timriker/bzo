@@ -44,7 +44,11 @@ msgid ""
 "are `Page Up` and `Page Down`, and `.` is `Delete`. With Num Lock on, a "
 "keypad key is the main key with the same character. Keypad `Enter` shoots "
 "either way."
-msgstr "数字小键盘的用法与 BZFlag 相同。关闭 Num Lock 时，各键就是数字下方印着的键：方向键驾驶，`1` 是 `End`，`9` 和 `3` 是 `Page Up` 和 `Page Down`，`.` 是 `Delete`。打开 Num Lock 时，小键盘上的键等同于字符相同的主键盘按键。小键盘的 `Enter` 两种情况下都是射击。"
+msgstr ""
+"数字小键盘的用法与 BZFlag 相同。关闭 Num Lock 时，各键就是数字下方印着的键："
+"方向键驾驶，`1` 是 `End`，`9` 和 `3` 是 `Page Up` 和 `Page Down`，`.` 是 "
+"`Delete`。打开 Num Lock 时，小键盘上的键等同于字符相同的主键盘按键。小键盘的 "
+"`Enter` 两种情况下都是射击。"
 
 #: docs/help/controls.md
 msgid "Driving"
@@ -212,6 +216,13 @@ msgstr "`M` — 开关鼠标操控"
 #: docs/help/controls.md
 msgid "`C` — cycle camera mode"
 msgstr "`C` — 切换视角模式"
+
+#: docs/help/controls.md
+msgid ""
+"`B` — binoculars: narrow the view to a quarter, and back. `Ctrl` and the "
+"wheel narrow or widen it a step at a time. Turning with the keys slows to "
+"match"
+msgstr "`B` — 望远镜：把视野缩窄到四分之一，再按恢复。`Ctrl` 加滚轮逐步缩窄或放宽。用按键转向也会相应变慢"
 
 #: docs/help/controls.md
 #, fuzzy
@@ -509,6 +520,10 @@ msgstr ""
 #: docs/help/controls.md
 msgid "the game view: nothing"
 msgstr ""
+
+#: docs/help/controls.md
+msgid "with `Ctrl`, anywhere: binoculars, up to narrow the view"
+msgstr "按住 `Ctrl`，任意位置：望远镜，向上缩窄视野"
 
 #: docs/help/controls.md
 msgid "The targeting box"

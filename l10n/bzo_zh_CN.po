@@ -1213,7 +1213,7 @@ msgstr "队伍：{team}"
 msgid "watching {server}"
 msgstr "正在观战 {server}"
 
-#: public/js/client.js:1387 public/js/client.js:10284
+#: public/js/client.js:1387 public/js/client.js:10311
 msgid "replay {name}"
 msgstr "回放 {name}"
 
@@ -1519,7 +1519,7 @@ msgstr "退出登录会离开 VR。请先退出头显会话。"
 msgid "Global login leaves VR. Exit the headset session first."
 msgstr "全局登录会离开 VR。请先退出头显会话。"
 
-#: public/js/client.js:4692 public/js/client.js:10508
+#: public/js/client.js:4692 public/js/client.js:10535
 msgid "Fetching remote server's map..."
 msgstr "正在获取远程服务器的地图..."
 
@@ -1527,7 +1527,7 @@ msgstr "正在获取远程服务器的地图..."
 msgid "Pausing in {seconds}"
 msgstr "{seconds} 后暂停"
 
-#: public/js/client.js:4882 public/js/client.js:6708
+#: public/js/client.js:4882 public/js/client.js:6728
 msgid "Self Destructing in {seconds}"
 msgstr "{seconds} 后自毁"
 
@@ -1539,549 +1539,549 @@ msgstr "自动驾驶 {pilot}：{intent}"
 msgid "AutoPilot {pilot}"
 msgstr "自动驾驶 {pilot}"
 
-#: public/js/client.js:6603 server.js:11445
+#: public/js/client.js:6619 server.js:11445
 msgid "You do not have permission to speak on the admin channel."
 msgstr "你无权在管理员频道发言。"
 
-#: public/js/client.js:6710
+#: public/js/client.js:6730
 msgid "Self Destruct cancelled"
 msgstr "已取消自毁"
 
-#: public/js/client.js:6880
+#: public/js/client.js:6900
 msgid "Hide Debug Labels"
 msgstr "隐藏调试标签"
 
-#: public/js/client.js:6883
+#: public/js/client.js:6903
 msgid "Show Debug Labels"
 msgstr "显示调试标签"
 
-#: public/js/client.js:6900
+#: public/js/client.js:6920
 msgid "Disable Dynamic Lighting"
 msgstr "关闭动态光照"
 
-#: public/js/client.js:6901
+#: public/js/client.js:6921
 msgid "Enable Dynamic Lighting"
 msgstr "开启动态光照"
 
-#: public/js/client.js:6903
+#: public/js/client.js:6923
 msgid "Dynamic Lighting needs more shader uniforms than this browser reports"
 msgstr "动态光照需要的着色器 uniform 数量超出了此浏览器报告的上限"
 
-#: public/js/client.js:6912
+#: public/js/client.js:6932
 msgid "Disable Rumble"
 msgstr "关闭震动"
 
-#: public/js/client.js:6913
+#: public/js/client.js:6933
 msgid "Enable Rumble"
 msgstr "开启震动"
 
-#: public/js/client.js:6919
+#: public/js/client.js:6939
 msgid "Disable Anaglyph 3D"
 msgstr "关闭红蓝 3D"
 
-#: public/js/client.js:6920
+#: public/js/client.js:6940
 msgid "Enable Anaglyph 3D"
 msgstr "开启红蓝 3D"
 
-#: public/js/client.js:6923
+#: public/js/client.js:6943
 msgid "Anaglyph 3D is unavailable in VR mode"
 msgstr "VR 模式下无法使用红蓝 3D"
 
-#: public/js/client.js:6932
+#: public/js/client.js:6952
 msgid "Hide Debug Geometry"
 msgstr "隐藏调试几何体"
 
-#: public/js/client.js:7020
+#: public/js/client.js:7040
 msgid "Confirm"
 msgstr "确认"
 
-#: public/js/client.js:7076
+#: public/js/client.js:7096
 msgid "Share View Link: only available while viewing a map"
 msgstr "分享视图链接：仅在查看地图时可用"
 
-#: public/js/client.js:7081
+#: public/js/client.js:7101
 msgid "View link copied to clipboard"
 msgstr "视图链接已复制到剪贴板"
 
-#: public/js/client.js:7110
+#: public/js/client.js:7130
 msgid "WebXR: {mode}"
 msgstr "WebXR：{mode}"
 
-#: public/js/client.js:7116
+#: public/js/client.js:7136
 msgid "WebXR not supported on this device"
 msgstr "此设备不支持 WebXR"
 
-#: public/js/client.js:7121
+#: public/js/client.js:7141
 msgid "Requesting VR..."
 msgstr "正在请求 VR..."
 
-#: public/js/client.js:7124
+#: public/js/client.js:7144
 msgid "Error: Renderer not available"
 msgstr "错误：渲染器不可用"
 
-#: public/js/client.js:7137
+#: public/js/client.js:7157
 msgid "✓ WebXR VR Mode: ON"
 msgstr "✓ WebXR VR 模式：开"
 
-#: public/js/client.js:7143
+#: public/js/client.js:7163
 msgid "✗ VR request failed - check server.log"
 msgstr "✗ VR 请求失败 - 请查看 server.log"
 
-#: public/js/client.js:7145 public/js/client.js:17744
+#: public/js/client.js:7165 public/js/client.js:17772
 msgid "WebXR VR Mode: OFF"
 msgstr "WebXR VR 模式：关"
 
-#: public/js/client.js:7703
+#: public/js/client.js:7730
 msgid "3D renderer unavailable: {reason}"
 msgstr "3D 渲染器不可用：{reason}"
 
-#: public/js/client.js:7710
+#: public/js/client.js:7737
 msgid "3D renderer failed to initialize."
 msgstr "3D 渲染器初始化失败。"
 
-#: public/js/client.js:7712
+#: public/js/client.js:7739
 msgid "Open the game in an external browser window for full WebGL support."
 msgstr "请在外部浏览器窗口中打开游戏，以获得完整的 WebGL 支持。"
 
-#: public/js/client.js:8141
+#: public/js/client.js:8168
 msgid "Connected to server!"
 msgstr "已连接到服务器！"
 
-#: public/js/client.js:8147
+#: public/js/client.js:8174
 msgid "Connected to server"
 msgstr "已连接到服务器"
 
-#: public/js/client.js:8148
+#: public/js/client.js:8175
 msgid "Waiting for world state"
 msgstr "正在等待世界状态"
 
-#: public/js/client.js:8199
+#: public/js/client.js:8226
 msgid "Offline"
 msgstr "离线"
 
-#: public/js/client.js:8199
+#: public/js/client.js:8226
 msgid "Cannot reach {host}"
 msgstr "无法连接 {host}"
 
-#: public/js/client.js:8200
+#: public/js/client.js:8227
 msgid "Trying again..."
 msgstr "正在重试..."
 
-#: public/js/client.js:8211
+#: public/js/client.js:8238
 msgid "Disconnected from server | Kills: {kills} | Deaths: {deaths}"
 msgstr "已与服务器断开 | 击杀：{kills} | 阵亡：{deaths}"
 
-#: public/js/client.js:8216
+#: public/js/client.js:8243
 msgid "Press a key, tap or pull a trigger to rejoin"
 msgstr "按任意键、轻触或扣动扳机即可重新加入"
 
-#: public/js/client.js:8376
+#: public/js/client.js:8403
 msgid "Server error: {error}"
 msgstr "服务器错误：{error}"
 
-#: public/js/client.js:8381
+#: public/js/client.js:8408
 msgid "Server: action completed successfully"
 msgstr "服务器：操作已成功完成"
 
-#: public/js/client.js:8463
+#: public/js/client.js:8490
 msgid "Operator Panel (v{version})"
 msgstr "管理员面板 (v{version})"
 
-#: public/js/client.js:8882
+#: public/js/client.js:8909
 msgid "{player} joined"
 msgstr "{player} 加入了"
 
-#: public/js/client.js:8927
+#: public/js/client.js:8954
 msgid "{player} left"
 msgstr "{player} 离开了"
 
-#: public/js/client.js:8943
+#: public/js/client.js:8970
 msgid "{callsign} not responding"
 msgstr "{callsign} 无响应"
 
-#: public/js/client.js:8944
+#: public/js/client.js:8971
 msgid "{callsign} okay"
 msgstr "{callsign} 已恢复"
 
-#: public/js/client.js:9058
+#: public/js/client.js:9085
 msgid "{player} grabbed {flag}"
 msgstr "{player} 拿到了 {flag}"
 
-#: public/js/client.js:9109
+#: public/js/client.js:9136
 msgid "{player} dropped {flag}"
 msgstr "{player} 丢下了 {flag}"
 
-#: public/js/client.js:9203
+#: public/js/client.js:9230
 msgid "{player}: {pilot} taking controls"
 msgstr "{player}：{pilot} 接管操控"
 
-#: public/js/client.js:9204
+#: public/js/client.js:9231
 msgid "{player}: {pilot} releasing controls"
 msgstr "{player}：{pilot} 交还操控"
 
-#: public/js/client.js:9236
+#: public/js/client.js:9263
 msgid "{player} paused"
 msgstr "{player} 暂停了"
 
-#: public/js/client.js:9247
+#: public/js/client.js:9274
 msgid "{player} unpaused"
 msgstr "{player} 取消了暂停"
 
-#: public/js/client.js:9377
+#: public/js/client.js:9404
 msgid "Server forced a disconnect"
 msgstr "服务器强制断开了连接"
 
-#: public/js/client.js:9383
+#: public/js/client.js:9410
 msgid "Server updated - reloading..."
 msgstr "服务器已更新 - 正在重新加载..."
 
-#: public/js/client.js:9911
+#: public/js/client.js:9938
 msgid "Got flattened by {player}"
 msgstr "被 {player} 压扁了"
 
-#: public/js/client.js:9912
+#: public/js/client.js:9939
 msgid "Teammate hit with Genocide by {player}"
 msgstr "队友被 {player} 用灭队击中"
 
-#: public/js/client.js:9913
+#: public/js/client.js:9940
 msgid "Got shot by {player}"
 msgstr "被 {player} 击中了"
 
-#: public/js/client.js:9915
+#: public/js/client.js:9942
 msgid "Got flattened by teammate {player}"
 msgstr "被队友 {player} 压扁了"
 
-#: public/js/client.js:9916
+#: public/js/client.js:9943
 msgid "Teammate hit with Genocide by teammate {player}"
 msgstr "队友被队友 {player} 用灭队击中"
 
-#: public/js/client.js:9917
+#: public/js/client.js:9944
 msgid "Got shot by teammate {player}"
 msgstr "被队友 {player} 击中了"
 
-#: public/js/client.js:9953
+#: public/js/client.js:9980
 msgid "Your team flag was captured!"
 msgstr "你的队旗被夺走了！"
 
-#: public/js/client.js:9955
+#: public/js/client.js:9982
 msgid "Time Expired - GAME OVER"
 msgstr "时间到 - 游戏结束"
 
-#: public/js/client.js:9957
+#: public/js/client.js:9984
 msgid "Tank Self Destructed"
 msgstr "坦克已自毁"
 
-#: public/js/client.js:9959
+#: public/js/client.js:9986
 msgid "Tank Rusted"
 msgstr "坦克锈坏了"
 
-#: public/js/client.js:9962 public/js/client.js:9966
+#: public/js/client.js:9989 public/js/client.js:9993
 msgid "Killed by the server"
 msgstr "被服务器击杀"
 
-#: public/js/client.js:9993
+#: public/js/client.js:10020
 msgid "You killed {player}"
 msgstr "你击杀了 {player}"
 
-#: public/js/client.js:10005
+#: public/js/client.js:10032
 msgid "{player} self-destructed"
 msgstr "{player} 自毁了"
 
-#: public/js/client.js:10009
+#: public/js/client.js:10036
 msgid "{player} fell in the water"
 msgstr "{player} 掉进了水里"
 
-#: public/js/client.js:10014
+#: public/js/client.js:10041
 msgid "{player}: {message}"
 msgstr "{player}：{message}"
 
-#: public/js/client.js:10017
+#: public/js/client.js:10044
 msgid "killed by the server"
 msgstr "被服务器击杀"
 
-#: public/js/client.js:10023
+#: public/js/client.js:10050
 msgid "{player} was killed by the server"
 msgstr "{player} 被服务器击杀"
 
-#: public/js/client.js:10028
+#: public/js/client.js:10055
 msgid "{killer} killed {victim}"
 msgstr "{killer} 击杀了 {victim}"
 
-#: public/js/client.js:10193
+#: public/js/client.js:10220
 msgid "You respawned!"
 msgstr "你已重生！"
 
-#: public/js/client.js:10283
+#: public/js/client.js:10310
 msgid "map {name}"
 msgstr "地图 {name}"
 
-#: public/js/client.js:10285
+#: public/js/client.js:10312
 msgid "plugin {name}"
 msgstr ""
 
-#: public/js/client.js:10289
+#: public/js/client.js:10316
 msgid "nothing uploaded"
 msgstr "没有上传内容"
 
-#: public/js/client.js:10316 public/js/client.js:10791
+#: public/js/client.js:10343 public/js/client.js:10818
 msgid "MOTD: {motd}"
 msgstr "每日消息：{motd}"
 
-#: public/js/client.js:10391
+#: public/js/client.js:10418
 msgid "{count} box"
 msgstr "{count} 个方块"
 
-#: public/js/client.js:10391
+#: public/js/client.js:10418
 msgid "{count} boxes"
 msgstr "{count} 个方块"
 
-#: public/js/client.js:10392
+#: public/js/client.js:10419
 msgid "{count} pyramid"
 msgstr "{count} 个金字塔"
 
-#: public/js/client.js:10392
+#: public/js/client.js:10419
 msgid "{count} pyramids"
 msgstr "{count} 个金字塔"
 
-#: public/js/client.js:10393
+#: public/js/client.js:10420
 msgid "{count} mesh"
 msgstr "{count} 个网格"
 
-#: public/js/client.js:10393
+#: public/js/client.js:10420
 msgid "{count} meshes"
 msgstr "{count} 个网格"
 
-#: public/js/client.js:10398
+#: public/js/client.js:10425
 msgid "{count} base"
 msgstr "{count} 个基地"
 
-#: public/js/client.js:10398
+#: public/js/client.js:10425
 msgid "{count} bases"
 msgstr "{count} 个基地"
 
-#: public/js/client.js:10400
+#: public/js/client.js:10427
 msgid "{count} teleporter"
 msgstr "{count} 个传送器"
 
-#: public/js/client.js:10400
+#: public/js/client.js:10427
 msgid "{count} teleporters"
 msgstr "{count} 个传送器"
 
-#: public/js/client.js:10403 server.js:2477
+#: public/js/client.js:10430 server.js:2477
 msgid "water"
 msgstr "水面"
 
-#: public/js/client.js:10404 server.js:2477
+#: public/js/client.js:10431 server.js:2477
 msgid "weather"
 msgstr "天气"
 
-#: public/js/client.js:10405 server.js:2477
+#: public/js/client.js:10432 server.js:2477
 msgid "custom ground"
 msgstr "自定义地面"
 
-#: public/js/client.js:10443 public/js/client.js:10522
+#: public/js/client.js:10470 public/js/client.js:10549
 msgid "View {map}"
 msgstr "查看 {map}"
 
-#: public/js/client.js:10520
+#: public/js/client.js:10547
 msgid "{server} did not answer"
 msgstr "{server} 没有响应"
 
-#: public/js/client.js:10532 server.js:2407 server.js:2866 server.js:2916
+#: public/js/client.js:10559 server.js:2407 server.js:2866 server.js:2916
 msgid "Watch"
 msgstr "观战"
 
-#: public/js/client.js:10533
+#: public/js/client.js:10560
 msgid "Watch the live game on {server}"
 msgstr "观战 {server} 上的实时游戏"
 
-#: public/js/client.js:10551 public/js/client.js:10559 server.js:2875
+#: public/js/client.js:10578 public/js/client.js:10586 server.js:2875
 msgid "Re-import"
 msgstr "重新导入"
 
-#: public/js/client.js:10555
+#: public/js/client.js:10582
 msgid "Importing…"
 msgstr "正在导入…"
 
-#: public/js/client.js:10598
+#: public/js/client.js:10625
 msgid "Loading map..."
 msgstr "正在加载地图..."
 
-#: public/js/client.js:10606
+#: public/js/client.js:10633
 msgid "Building world geometry..."
 msgstr "正在构建世界几何体..."
 
-#: public/js/client.js:10670
+#: public/js/client.js:10697
 msgid "{count} watching now"
 msgstr "{count} 人正在观看"
 
-#: public/js/client.js:10673
+#: public/js/client.js:10700
 msgid "Watch {name}"
 msgstr "观看 {name}"
 
-#: public/js/client.js:10709
+#: public/js/client.js:10736
 msgid "That server's map could not be fetched"
 msgstr "无法获取该服务器的地图"
 
-#: public/js/client.js:10727
+#: public/js/client.js:10754
 msgid "import failed"
 msgstr "导入失败"
 
-#: public/js/client.js:10727
+#: public/js/client.js:10754
 msgid "Could not load that server's map: {reason}"
 msgstr "无法加载该服务器的地图：{reason}"
 
-#: public/js/client.js:10941
+#: public/js/client.js:10968
 msgid "{team} Limit:"
 msgstr "{team}上限："
 
-#: public/js/client.js:11034
+#: public/js/client.js:11061
 msgid "Failed: {error}"
 msgstr ""
 
-#: public/js/client.js:11139
+#: public/js/client.js:11166
 msgid "No limit"
 msgstr "无限制"
 
-#: public/js/client.js:11248
+#: public/js/client.js:11275
 msgid "Restart"
 msgstr "重新开始"
 
-#: public/js/client.js:11252
+#: public/js/client.js:11279
 msgid "Starts a new game: every player reloads into the new settings"
 msgstr "开始新游戏：所有玩家都会以新设置重新加载"
 
-#: public/js/client.js:11253
+#: public/js/client.js:11280
 msgid "Applies the staged changes"
 msgstr "应用暂存的更改"
 
-#: public/js/client.js:11600
+#: public/js/client.js:11627
 msgid "Paused"
 msgstr "已暂停"
 
-#: public/js/client.js:11601
+#: public/js/client.js:11628
 msgid "Sealed"
 msgstr "已封闭"
 
-#: public/js/client.js:12533
+#: public/js/client.js:12560
 msgid "Already following someone"
 msgstr "已在跟随某人"
 
-#: public/js/client.js:12569 public/js/client.js:12694
+#: public/js/client.js:12596 public/js/client.js:12721
 msgid "Looking at {player}"
 msgstr "正在看 {player}"
 
-#: public/js/client.js:12678
+#: public/js/client.js:12705
 msgid "{player} locked on me"
 msgstr "{player} 锁定了我"
 
-#: public/js/client.js:12688
+#: public/js/client.js:12715
 msgid "Looking at nothing"
 msgstr "未看向任何目标"
 
-#: public/js/client.js:12694
+#: public/js/client.js:12721
 msgid "Locked on {player}"
 msgstr "已锁定 {player}"
 
-#: public/js/client.js:13031
+#: public/js/client.js:13058
 msgid "Clear ({count})"
 msgstr "清除 ({count})"
 
-#: public/js/client.js:13031 public/js/list-page.js:534
+#: public/js/client.js:13058 public/js/list-page.js:534
 msgid "Clear"
 msgstr "清除"
 
-#: public/js/client.js:13131
+#: public/js/client.js:13158
 msgid "SPOTTED: {player}"
 msgstr "发现：{player}"
 
-#: public/js/client.js:13246 public/js/client.js:13252
+#: public/js/client.js:13273 public/js/client.js:13279
 msgid "nobody"
 msgstr "无人"
 
-#: public/js/client.js:13256
+#: public/js/client.js:13283
 msgid "Leader {who}"
 msgstr "领先：{who}"
 
-#: public/js/client.js:13258 public/js/client.js:13263
+#: public/js/client.js:13285 public/js/client.js:13290
 msgid "Tracking {who}"
 msgstr "追踪：{who}"
 
-#: public/js/client.js:13259
+#: public/js/client.js:13286
 msgid "Following {who}"
 msgstr "跟随：{who}"
 
-#: public/js/client.js:13260
+#: public/js/client.js:13287
 msgid "Driving with {who}"
 msgstr "同乘：{who}"
 
-#: public/js/client.js:13265 public/js/hud.js:629 public/js/input.js:1457
+#: public/js/client.js:13292 public/js/hud.js:629 public/js/input.js:1457
 msgid "First Person"
 msgstr "第一人称"
 
-#: public/js/client.js:13266 public/js/hud.js:630 public/js/input.js:1458
+#: public/js/client.js:13293 public/js/hud.js:630 public/js/input.js:1458
 msgid "Third Person"
 msgstr "第三人称"
 
 # review: 俯瞰
-#: public/js/client.js:13267 public/js/hud.js:631 public/js/input.js:1459
+#: public/js/client.js:13294 public/js/hud.js:631 public/js/input.js:1459
 msgid "Overview"
 msgstr "俯瞰"
 
-#: public/js/client.js:13268
+#: public/js/client.js:13295
 msgid "Roaming"
 msgstr "自由视角"
 
-#: public/js/client.js:13557 public/js/client.js:13631
+#: public/js/client.js:13584 public/js/client.js:13658
 msgid "autopilot disabled"
 msgstr "自动驾驶已关闭"
 
-#: public/js/client.js:13566
+#: public/js/client.js:13593
 msgid "autopilot not allowed on this server"
 msgstr "此服务器不允许自动驾驶"
 
-#: public/js/client.js:13578
+#: public/js/client.js:13605
 msgid "{pilot} has the controls"
 msgstr "{pilot} 正在操控"
 
-#: public/js/client.js:13583
+#: public/js/client.js:13610
 msgid "You may not enable the Autopilot more than once every five seconds."
 msgstr "每五秒最多只能开启一次自动驾驶。"
 
-#: public/js/client.js:13588
+#: public/js/client.js:13615
 msgid "autopilot enabled"
 msgstr "自动驾驶已开启"
 
-#: public/js/client.js:13611
+#: public/js/client.js:13638
 msgid "Not allowed"
 msgstr "不允许"
 
-#: public/js/client.js:13611 public/js/input.js:1162 public/js/input.js:1172
+#: public/js/client.js:13638 public/js/input.js:1162 public/js/input.js:1172
 #: public/js/input.js:1176
 msgid "Unavailable"
 msgstr "不可用"
 
-#: public/js/client.js:13614
+#: public/js/client.js:13641
 msgid "None"
 msgstr "无"
 
-#: public/js/client.js:14443
+#: public/js/client.js:14471
 msgid "Zoned"
 msgstr "已进入幻影区"
 
-#: public/js/client.js:14443
+#: public/js/client.js:14471
 msgid "Unzoned"
 msgstr "已离开幻影区"
 
-#: public/js/client.js:15244 public/js/client.js:15261
+#: public/js/client.js:15272 public/js/client.js:15289
 msgid "unidentified"
 msgstr "未识别"
 
-#: public/js/client.js:15281
+#: public/js/client.js:15309
 msgid "unknown"
 msgstr "未知"
 
-#: public/js/client.js:15292
+#: public/js/client.js:15320
 msgid ""
 "This server bounces every shot off walls, whatever flag fired it, so the "
 "Ricochet flag is not in play here."
@@ -2089,79 +2089,79 @@ msgstr ""
 "本服务器上所有子弹都会在墙上反弹，无论由哪面旗帜发射，因此跳弹旗帜在这里不会"
 "出现。"
 
-#: public/js/client.js:15293
+#: public/js/client.js:15321
 msgid "On this server only the Ricochet flag bounces shots off walls."
 msgstr "本服务器上只有跳弹旗帜会让子弹在墙上反弹。"
 
-#: public/js/client.js:15360
+#: public/js/client.js:15388
 msgid "{flag} {release}"
 msgstr "{flag} {release}"
 
-#: public/js/client.js:15371
+#: public/js/client.js:15399
 msgid "Can't drop the flag while zoned"
 msgstr "处于幻影区时无法丢下旗帜"
 
-#: public/js/client.js:15375
+#: public/js/client.js:15403
 msgid "Can't drop a flag while inside a building"
 msgstr "在建筑物内无法丢下旗帜"
 
-#: public/js/client.js:15425
+#: public/js/client.js:15453
 msgid "in {seconds}s"
 msgstr "{seconds} 秒后"
 
-#: public/js/client.js:15426
+#: public/js/client.js:15454
 msgid "after {count} kill"
 msgstr "击杀 {count} 次后"
 
-#: public/js/client.js:15426
+#: public/js/client.js:15454
 msgid "after {count} kills"
 msgstr "击杀 {count} 次后"
 
-#: public/js/client.js:15427
+#: public/js/client.js:15455
 msgid "on the antidote"
 msgstr "碰到解药时"
 
-#: public/js/client.js:15428
+#: public/js/client.js:15456
 msgid "stays until it kills you"
 msgstr "直到你阵亡才会消失"
 
-#: public/js/client.js:15429
+#: public/js/client.js:15457
 msgid "{first} or {second}"
 msgstr "{first}或{second}"
 
-#: public/js/client.js:15430
+#: public/js/client.js:15458
 msgid "shakes off {ways}"
 msgstr "{ways}解除"
 
-#: public/js/client.js:15486
+#: public/js/client.js:15514
 msgid "Flag Alert!!!"
 msgstr "旗帜警报！！！"
 
-#: public/js/client.js:15494
+#: public/js/client.js:15522
 msgid "Team Grab!!!"
 msgstr "队友夺旗！！！"
 
-#: public/js/client.js:15510
+#: public/js/client.js:15538
 msgid "{thief} stole {victim}'s {flag} flag"
 msgstr "{thief} 偷走了 {victim} 的 {flag} 旗帜"
 
-#: public/js/client.js:15541
+#: public/js/client.js:15569
 msgid "Closest Flag: {flag}"
 msgstr "最近的旗帜：{flag}"
 
-#: public/js/client.js:15603
+#: public/js/client.js:15631
 msgid "{player} took their own flag into {team} territory"
 msgstr "{player} 把自己的旗帜带进了 {team} 领地"
 
-#: public/js/client.js:15611
+#: public/js/client.js:15639
 msgid "Don't capture your own flag!!!"
 msgstr "不要夺取自己的旗帜！！！"
 
-#: public/js/client.js:15617
+#: public/js/client.js:15645
 msgid "{player} captured the {team} flag"
 msgstr "{player} 夺取了 {team} 旗帜"
 
-#: public/js/client.js:17240 public/js/client.js:17241
+#: public/js/client.js:17268 public/js/client.js:17269
 msgid "Exit WebXR VR Mode"
 msgstr "退出 WebXR VR 模式"
 
@@ -4719,7 +4719,9 @@ msgstr "用法：/bot remove <name|all>"
 msgid ""
 "Usage: /bot [fill <n> [{pilots}] | add [{pilots}] [team] [count] | remove "
 "<name|all> | pause | resume]"
-msgstr "用法：/bot [fill <n> [{pilots}] | add [{pilots}] [team] [count] | remove <name|all> | pause | resume]"
+msgstr ""
+"用法：/bot [fill <n> [{pilots}] | add [{pilots}] [team] [count] | remove "
+"<name|all> | pause | resume]"
 
 #: server.js:18510
 msgid "Server shutting down"

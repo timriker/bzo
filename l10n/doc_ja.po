@@ -45,7 +45,11 @@ msgid ""
 "are `Page Up` and `Page Down`, and `.` is `Delete`. With Num Lock on, a "
 "keypad key is the main key with the same character. Keypad `Enter` shoots "
 "either way."
-msgstr "テンキーは BZFlag と同じように使えます。Num Lock がオフのときは数字の下に印字されたキーになります：矢印で運転、`1` は `End`、`9` と `3` は `Page Up` と `Page Down`、`.` は `Delete` です。Num Lock がオンのときは、同じ文字のメインキーとして働きます。テンキーの `Enter` はどちらの場合も射撃です。"
+msgstr ""
+"テンキーは BZFlag と同じように使えます。Num Lock がオフのときは数字の下に印字"
+"されたキーになります：矢印で運転、`1` は `End`、`9` と `3` は `Page Up` と "
+"`Page Down`、`.` は `Delete` です。Num Lock がオンのときは、同じ文字のメイン"
+"キーとして働きます。テンキーの `Enter` はどちらの場合も射撃です。"
 
 #: docs/help/controls.md
 msgid "Driving"
@@ -216,6 +220,13 @@ msgstr "`M` — マウス操縦の切り替え"
 #: docs/help/controls.md
 msgid "`C` — cycle camera mode"
 msgstr "`C` — カメラモードを切り替え"
+
+#: docs/help/controls.md
+msgid ""
+"`B` — binoculars: narrow the view to a quarter, and back. `Ctrl` and the "
+"wheel narrow or widen it a step at a time. Turning with the keys slows to "
+"match"
+msgstr "`B` — 双眼鏡：視野を4分の1に狭め、もう一度押すと戻ります。`Ctrl` とホイールで1段階ずつ狭めたり広げたりできます。キーでの旋回もそれに合わせて遅くなります"
 
 #: docs/help/controls.md
 #, fuzzy
@@ -531,6 +542,10 @@ msgstr ""
 #: docs/help/controls.md
 msgid "the game view: nothing"
 msgstr ""
+
+#: docs/help/controls.md
+msgid "with `Ctrl`, anywhere: binoculars, up to narrow the view"
+msgstr "`Ctrl` を押しながら、どこでも：双眼鏡。上で視野を狭めます"
 
 #: docs/help/controls.md
 msgid "The targeting box"

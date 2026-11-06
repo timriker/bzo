@@ -45,7 +45,12 @@ msgid ""
 "are `Page Up` and `Page Down`, and `.` is `Delete`. With Num Lock on, a "
 "keypad key is the main key with the same character. Keypad `Enter` shoots "
 "either way."
-msgstr "Het numerieke toetsenblok werkt zoals in BZFlag. Met Num Lock uit zijn de toetsen die onder de cijfers gedrukt staan: de pijlen rijden, `1` is `End`, `9` en `3` zijn `Page Up` en `Page Down`, en `.` is `Delete`. Met Num Lock aan is een toets op het toetsenblok de hoofdtoets met hetzelfde teken. `Enter` op het toetsenblok schiet in beide gevallen."
+msgstr ""
+"Het numerieke toetsenblok werkt zoals in BZFlag. Met Num Lock uit zijn de "
+"toetsen die onder de cijfers gedrukt staan: de pijlen rijden, `1` is `End`, "
+"`9` en `3` zijn `Page Up` en `Page Down`, en `.` is `Delete`. Met Num Lock "
+"aan is een toets op het toetsenblok de hoofdtoets met hetzelfde teken. "
+"`Enter` op het toetsenblok schiet in beide gevallen."
 
 #: docs/help/controls.md
 msgid "Driving"
@@ -221,6 +226,13 @@ msgstr "`M` — muisbesturing aan/uit"
 #: docs/help/controls.md
 msgid "`C` — cycle camera mode"
 msgstr "`C` — cameramodus doorlopen"
+
+#: docs/help/controls.md
+msgid ""
+"`B` — binoculars: narrow the view to a quarter, and back. `Ctrl` and the "
+"wheel narrow or widen it a step at a time. Turning with the keys slows to "
+"match"
+msgstr "`B` — verrekijker: maakt het beeld een kwart zo breed, en terug. `Ctrl` en het wiel maken het stap voor stap smaller of breder. Draaien met de toetsen wordt even zoveel trager"
 
 #: docs/help/controls.md
 #, fuzzy
@@ -546,6 +558,10 @@ msgstr ""
 #: docs/help/controls.md
 msgid "the game view: nothing"
 msgstr ""
+
+#: docs/help/controls.md
+msgid "with `Ctrl`, anywhere: binoculars, up to narrow the view"
+msgstr "met `Ctrl`, overal: verrekijker, omhoog maakt het beeld smaller"
 
 #: docs/help/controls.md
 msgid "The targeting box"

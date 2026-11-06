@@ -6546,6 +6546,22 @@ function getDebugState() {
 
 // Keys the game acts on. Holding the browser off them is the keydown
 // listener's job in input.js, which claims the whole set before this runs.
+// Binoculars: upstream's `viewZoom` (clientCommands.cxx:573). `B` toggles the
+// view between its default 60 degrees and 15, Ctrl and the wheel narrow or
+// widen it a degree at a time between the two, and turning from the keys slows
+// with it so the sight crosses a narrowed view as fast as a full one
+// (playing.cxx:1041). The mouse and a stick turn as they always do.
+const DEFAULT_DISPLAY_FOV = 60;
+const ZOOMED_DISPLAY_FOV = 15;
+let displayFov = DEFAULT_DISPLAY_FOV;
+function setDisplayFov(fov) {
+  displayFov = Math.min(DEFAULT_DISPLAY_FOV, Math.max(ZOOMED_DISPLAY_FOV, fov));
+  renderManager.setDisplayFov(displayFov);
+}
+function toggleViewZoom() {
+  setDisplayFov(displayFov < ZOOMED_DISPLAY_FOV + 0.5 ? DEFAULT_DISPLAY_FOV : ZOOMED_DISPLAY_FOV);
+}
+
 function handleGameplayKeydown(event) {
   // doKeyCommon puts the hunt cursor ahead of every driving key while it is
   // open (playing.cxx:609), so Up and Down pick a row rather than driving and
@@ -6613,6 +6629,10 @@ function handleGameplayKeydown(event) {
   }
   if (event.code === 'KeyF' && plain && !event.repeat) {
     toggleDisplayFlagHelp();
+    return true;
+  }
+  if (event.code === 'KeyB' && plain && !event.repeat) {
+    toggleViewZoom();
     return true;
   }
   if (event.code === 'KeyQ' && plain && !event.repeat) {
@@ -7375,6 +7395,13 @@ function init() {
   // to take the pointer -- a touch drag still cannot reach either while idle
   // for the same reason a click cannot.
   window.addEventListener('wheel', (e) => {
+    // Ctrl+wheel is upstream's `viewZoom in`/`out` (ActionBinding.cxx:107),
+    // taken from the browser's page zoom while the game has the keyboard.
+    if (e.ctrlKey && isGameplayInputActive()) {
+      setDisplayFov(displayFov + (e.deltaY < 0 ? -1 : 1));
+      e.preventDefault();
+      return;
+    }
     const messagesDiv = document.getElementById('chatMessages');
     if (messagesDiv) {
       const rect = messagesDiv.getBoundingClientRect();
@@ -14174,6 +14201,7 @@ function gatherDriveInput({ player = true } = {}) {
   // offset with the cursor parked away from centre. Holding W and S together is
   // a deliberate stop, so a held pair still owns its axis at zero, which is
   // what upstream's keyboardSpeed does with the same pair of keys.
+  keyTurn *= displayFov / DEFAULT_DISPLAY_FOV;
   let forward = forwardKeyHeld ? keyForward : stickForward;
   let turn = turnKeyHeld ? keyTurn : stickTurn;
 

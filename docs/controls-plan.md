@@ -3,8 +3,8 @@
 Bringing bzo's keyboard, chat panel and desktop HUD closer to BZFlag's, so a
 veteran's hands work here, without giving up WASD
 ([#201](https://github.com/timriker/bzo/issues/201)). The keys, silencing
-from the scoreboard, the chat panel and the desktop layout are built;
-binoculars are not yet.
+from the scoreboard, the chat panel, the desktop layout and binoculars are
+built; binoculars in a headset are not yet.
 Upstream references are paths under `$HOME/bzflag/`; its default bindings are
 `src/bzflag/ActionBinding.cxx`. The current keys are in
 [help/controls.md](help/controls.md).
@@ -93,8 +93,10 @@ Documented as it is, which is upstream's in spirit:
 
 ## Binoculars
 
-Upstream's `viewZoom` narrows the field of view (`B`, and Ctrl+wheel to zoom).
-That is desktop only: in a headset the device owns the projection, and
+Upstream's `viewZoom` narrows the field of view (`B`, and Ctrl+wheel to zoom),
+and bzo does the same on a screen: `B` toggles 60 and 15 degrees, Ctrl+wheel
+steps a degree, and turning from the keys slows with it. The overview keeps the
+whole map. In a headset the device owns the projection, and
 scaling the world makes people sick. The XR answer is a scope -- a second,
 narrow camera drawn onto a small panel at the gunsight -- built separately,
 since it costs a render pass while it is up. Ctrl+wheel is the browser's page

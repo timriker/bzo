@@ -46,7 +46,12 @@ msgid ""
 "are `Page Up` and `Page Down`, and `.` is `Delete`. With Num Lock on, a "
 "keypad key is the main key with the same character. Keypad `Enter` shoots "
 "either way."
-msgstr "Цифровая клавиатура работает как в BZFlag. При выключенном Num Lock её клавиши — те, что подписаны под цифрами: стрелки ведут танк, `1` — это `End`, `9` и `3` — `Page Up` и `Page Down`, а `.` — `Delete`. При включённом Num Lock клавиша цифрового блока — это основная клавиша с тем же символом. `Enter` на цифровой клавиатуре стреляет в обоих случаях."
+msgstr ""
+"Цифровая клавиатура работает как в BZFlag. При выключенном Num Lock её "
+"клавиши — те, что подписаны под цифрами: стрелки ведут танк, `1` — это "
+"`End`, `9` и `3` — `Page Up` и `Page Down`, а `.` — `Delete`. При включённом "
+"Num Lock клавиша цифрового блока — это основная клавиша с тем же символом. "
+"`Enter` на цифровой клавиатуре стреляет в обоих случаях."
 
 #: docs/help/controls.md
 msgid "Driving"
@@ -225,6 +230,13 @@ msgstr "`M` — вкл./выкл. управление мышью"
 #: docs/help/controls.md
 msgid "`C` — cycle camera mode"
 msgstr "`C` — переключить режим камеры"
+
+#: docs/help/controls.md
+msgid ""
+"`B` — binoculars: narrow the view to a quarter, and back. `Ctrl` and the "
+"wheel narrow or widen it a step at a time. Turning with the keys slows to "
+"match"
+msgstr "`B` — бинокль: сужает обзор до четверти и обратно. `Ctrl` с колесом сужают или расширяют его по шагу. Поворот клавишами замедляется соответственно"
 
 #: docs/help/controls.md
 #, fuzzy
@@ -544,6 +556,10 @@ msgstr ""
 #: docs/help/controls.md
 msgid "the game view: nothing"
 msgstr ""
+
+#: docs/help/controls.md
+msgid "with `Ctrl`, anywhere: binoculars, up to narrow the view"
+msgstr "с `Ctrl`, где угодно: бинокль, вверх сужает обзор"
 
 #: docs/help/controls.md
 msgid "The targeting box"

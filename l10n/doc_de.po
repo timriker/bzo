@@ -45,7 +45,13 @@ msgid ""
 "are `Page Up` and `Page Down`, and `.` is `Delete`. With Num Lock on, a "
 "keypad key is the main key with the same character. Keypad `Enter` shoots "
 "either way."
-msgstr "Der Ziffernblock funktioniert wie in BZFlag. Mit ausgeschaltetem Num Lock sind seine Tasten die unter den Ziffern aufgedruckten: die Pfeile fahren, `1` ist `End`, `9` und `3` sind `Page Up` und `Page Down`, und `.` ist `Delete`. Mit eingeschaltetem Num Lock ist eine Ziffernblocktaste die Haupttaste mit demselben Zeichen. `Enter` auf dem Ziffernblock schießt in beiden Fällen."
+msgstr ""
+"Der Ziffernblock funktioniert wie in BZFlag. Mit ausgeschaltetem Num Lock "
+"sind seine Tasten die unter den Ziffern aufgedruckten: die Pfeile fahren, "
+"`1` ist `End`, `9` und `3` sind `Page Up` und `Page Down`, und `.` ist "
+"`Delete`. Mit eingeschaltetem Num Lock ist eine Ziffernblocktaste die "
+"Haupttaste mit demselben Zeichen. `Enter` auf dem Ziffernblock schießt in "
+"beiden Fällen."
 
 #: docs/help/controls.md
 msgid "Driving"
@@ -222,6 +228,13 @@ msgstr "`M` — Maussteuerung an/aus"
 #: docs/help/controls.md
 msgid "`C` — cycle camera mode"
 msgstr "`C` — Kameramodus durchschalten"
+
+#: docs/help/controls.md
+msgid ""
+"`B` — binoculars: narrow the view to a quarter, and back. `Ctrl` and the "
+"wheel narrow or widen it a step at a time. Turning with the keys slows to "
+"match"
+msgstr "`B` — Fernglas: verengt die Sicht auf ein Viertel und zurück. `Ctrl` und das Mausrad verengen oder weiten sie schrittweise. Das Drehen mit den Tasten wird entsprechend langsamer"
 
 #: docs/help/controls.md
 #, fuzzy
@@ -549,6 +562,10 @@ msgstr ""
 #: docs/help/controls.md
 msgid "the game view: nothing"
 msgstr ""
+
+#: docs/help/controls.md
+msgid "with `Ctrl`, anywhere: binoculars, up to narrow the view"
+msgstr "mit `Ctrl`, überall: Fernglas, nach oben verengt die Sicht"
 
 #: docs/help/controls.md
 msgid "The targeting box"

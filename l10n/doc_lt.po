@@ -46,7 +46,12 @@ msgid ""
 "are `Page Up` and `Page Down`, and `.` is `Delete`. With Num Lock on, a "
 "keypad key is the main key with the same character. Keypad `Enter` shoots "
 "either way."
-msgstr "Skaičių klaviatūra veikia kaip BZFlag. Išjungus Num Lock, jos klavišai yra tie, kurie užrašyti po skaitmenimis: rodyklės vairuoja, `1` yra `End`, `9` ir `3` yra `Page Up` ir `Page Down`, o `.` yra `Delete`. Įjungus Num Lock, skaičių klaviatūros klavišas yra pagrindinis klavišas su tuo pačiu simboliu. Skaičių klaviatūros `Enter` šauna bet kuriuo atveju."
+msgstr ""
+"Skaičių klaviatūra veikia kaip BZFlag. Išjungus Num Lock, jos klavišai yra "
+"tie, kurie užrašyti po skaitmenimis: rodyklės vairuoja, `1` yra `End`, `9` "
+"ir `3` yra `Page Up` ir `Page Down`, o `.` yra `Delete`. Įjungus Num Lock, "
+"skaičių klaviatūros klavišas yra pagrindinis klavišas su tuo pačiu simboliu. "
+"Skaičių klaviatūros `Enter` šauna bet kuriuo atveju."
 
 #: docs/help/controls.md
 msgid "Driving"
@@ -225,6 +230,13 @@ msgstr "`M` – įjungti/išjungti valdymą pele"
 #: docs/help/controls.md
 msgid "`C` — cycle camera mode"
 msgstr "`C` – keisti kameros režimą"
+
+#: docs/help/controls.md
+msgid ""
+"`B` — binoculars: narrow the view to a quarter, and back. `Ctrl` and the "
+"wheel narrow or widen it a step at a time. Turning with the keys slows to "
+"match"
+msgstr "`B` — žiūronai: susiaurina vaizdą iki ketvirtadalio ir atgal. `Ctrl` ir ratukas jį siaurina ar platina po žingsnį. Sukimas klavišais atitinkamai sulėtėja"
 
 #: docs/help/controls.md
 #, fuzzy
@@ -548,6 +560,10 @@ msgstr ""
 #: docs/help/controls.md
 msgid "the game view: nothing"
 msgstr ""
+
+#: docs/help/controls.md
+msgid "with `Ctrl`, anywhere: binoculars, up to narrow the view"
+msgstr "su `Ctrl`, bet kur: žiūronai, aukštyn siaurina vaizdą"
 
 #: docs/help/controls.md
 msgid "The targeting box"

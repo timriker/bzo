@@ -45,7 +45,12 @@ msgid ""
 "are `Page Up` and `Page Down`, and `.` is `Delete`. With Num Lock on, a "
 "keypad key is the main key with the same character. Keypad `Enter` shoots "
 "either way."
-msgstr "Det numeriska tangentbordet fungerar som i BZFlag. Med Num Lock av är dess tangenter de som står under siffrorna: pilarna kör, `1` är `End`, `9` och `3` är `Page Up` och `Page Down`, och `.` är `Delete`. Med Num Lock på är en tangent på det numeriska tangentbordet huvudtangenten med samma tecken. `Enter` på det numeriska tangentbordet skjuter i båda fallen."
+msgstr ""
+"Det numeriska tangentbordet fungerar som i BZFlag. Med Num Lock av är dess "
+"tangenter de som står under siffrorna: pilarna kör, `1` är `End`, `9` och "
+"`3` är `Page Up` och `Page Down`, och `.` är `Delete`. Med Num Lock på är en "
+"tangent på det numeriska tangentbordet huvudtangenten med samma tecken. "
+"`Enter` på det numeriska tangentbordet skjuter i båda fallen."
 
 #: docs/help/controls.md
 msgid "Driving"
@@ -221,6 +226,13 @@ msgstr "`M` — slå på/av musstyrning"
 #: docs/help/controls.md
 msgid "`C` — cycle camera mode"
 msgstr "`C` — byt kameraläge"
+
+#: docs/help/controls.md
+msgid ""
+"`B` — binoculars: narrow the view to a quarter, and back. `Ctrl` and the "
+"wheel narrow or widen it a step at a time. Turning with the keys slows to "
+"match"
+msgstr "`B` — kikare: smalnar av vyn till en fjärdedel, och tillbaka. `Ctrl` och hjulet smalnar av eller vidgar den ett steg i taget. Svängning med tangenterna blir lika mycket långsammare"
 
 #: docs/help/controls.md
 #, fuzzy
@@ -540,6 +552,10 @@ msgstr ""
 #: docs/help/controls.md
 msgid "the game view: nothing"
 msgstr ""
+
+#: docs/help/controls.md
+msgid "with `Ctrl`, anywhere: binoculars, up to narrow the view"
+msgstr "med `Ctrl`, var som helst: kikare, uppåt smalnar av vyn"
 
 #: docs/help/controls.md
 msgid "The targeting box"

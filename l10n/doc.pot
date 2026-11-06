@@ -148,6 +148,10 @@ msgid "`C` — cycle camera mode"
 msgstr ""
 
 #: docs/help/controls.md
+msgid "`B` — binoculars: narrow the view to a quarter, and back. `Ctrl` and the wheel narrow or widen it a step at a time. Turning with the keys slows to match"
+msgstr ""
+
+#: docs/help/controls.md
 msgid "`Shift`+`O` — toggle operator panel"
 msgstr ""
 
@@ -325,6 +329,10 @@ msgstr ""
 
 #: docs/help/controls.md
 msgid "the game view: nothing"
+msgstr ""
+
+#: docs/help/controls.md
+msgid "with `Ctrl`, anywhere: binoculars, up to narrow the view"
 msgstr ""
 
 #: docs/help/controls.md

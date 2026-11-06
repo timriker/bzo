@@ -46,7 +46,12 @@ msgid ""
 "are `Page Up` and `Page Down`, and `.` is `Delete`. With Num Lock on, a "
 "keypad key is the main key with the same character. Keypad `Enter` shoots "
 "either way."
-msgstr "Le pavé numérique fonctionne comme dans BZFlag. Verr Num désactivé, ses touches sont celles imprimées sous les chiffres : les flèches conduisent, `1` est `End`, `9` et `3` sont `Page Up` et `Page Down`, et `.` est `Delete`. Verr Num activé, une touche du pavé est la touche principale portant le même caractère. `Enter` du pavé tire dans les deux cas."
+msgstr ""
+"Le pavé numérique fonctionne comme dans BZFlag. Verr Num désactivé, ses "
+"touches sont celles imprimées sous les chiffres : les flèches conduisent, "
+"`1` est `End`, `9` et `3` sont `Page Up` et `Page Down`, et `.` est "
+"`Delete`. Verr Num activé, une touche du pavé est la touche principale "
+"portant le même caractère. `Enter` du pavé tire dans les deux cas."
 
 #: docs/help/controls.md
 msgid "Driving"
@@ -224,6 +229,13 @@ msgstr "`M` — activer/désactiver le pilotage à la souris"
 #: docs/help/controls.md
 msgid "`C` — cycle camera mode"
 msgstr "`C` — changer de mode de caméra"
+
+#: docs/help/controls.md
+msgid ""
+"`B` — binoculars: narrow the view to a quarter, and back. `Ctrl` and the "
+"wheel narrow or widen it a step at a time. Turning with the keys slows to "
+"match"
+msgstr "`B` — jumelles : réduit la vue au quart, et retour. `Ctrl` et la molette la resserrent ou l'élargissent pas à pas. Tourner avec les touches ralentit d'autant"
 
 #: docs/help/controls.md
 #, fuzzy
@@ -555,6 +567,10 @@ msgstr ""
 #: docs/help/controls.md
 msgid "the game view: nothing"
 msgstr ""
+
+#: docs/help/controls.md
+msgid "with `Ctrl`, anywhere: binoculars, up to narrow the view"
+msgstr "avec `Ctrl`, n'importe où : jumelles, vers le haut resserre la vue"
 
 #: docs/help/controls.md
 msgid "The targeting box"

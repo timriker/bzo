@@ -1228,7 +1228,7 @@ msgstr "Tým: {team}"
 msgid "watching {server}"
 msgstr "sledování {server}"
 
-#: public/js/client.js:1387 public/js/client.js:10284
+#: public/js/client.js:1387 public/js/client.js:10311
 msgid "replay {name}"
 msgstr "záznam {name}"
 
@@ -1537,7 +1537,7 @@ msgstr "Odhlášení opustí VR. Nejdřív ukonči relaci v headsetu."
 msgid "Global login leaves VR. Exit the headset session first."
 msgstr "Globální přihlášení opustí VR. Nejdřív ukonči relaci v headsetu."
 
-#: public/js/client.js:4692 public/js/client.js:10508
+#: public/js/client.js:4692 public/js/client.js:10535
 msgid "Fetching remote server's map..."
 msgstr "Stahování mapy vzdáleného serveru..."
 
@@ -1545,7 +1545,7 @@ msgstr "Stahování mapy vzdáleného serveru..."
 msgid "Pausing in {seconds}"
 msgstr "Pauza za {seconds}"
 
-#: public/js/client.js:4882 public/js/client.js:6708
+#: public/js/client.js:4882 public/js/client.js:6728
 msgid "Self Destructing in {seconds}"
 msgstr "Sebedestrukce za {seconds}"
 
@@ -1557,550 +1557,550 @@ msgstr "Autopilot {pilot}: {intent}"
 msgid "AutoPilot {pilot}"
 msgstr "Autopilot {pilot}"
 
-#: public/js/client.js:6603 server.js:11445
+#: public/js/client.js:6619 server.js:11445
 msgid "You do not have permission to speak on the admin channel."
 msgstr "Nemáš oprávnění psát do kanálu adminů."
 
-#: public/js/client.js:6710
+#: public/js/client.js:6730
 msgid "Self Destruct cancelled"
 msgstr "Sebedestrukce zrušena"
 
-#: public/js/client.js:6880
+#: public/js/client.js:6900
 msgid "Hide Debug Labels"
 msgstr "Skrýt ladicí popisky"
 
-#: public/js/client.js:6883
+#: public/js/client.js:6903
 msgid "Show Debug Labels"
 msgstr "Zobrazit ladicí popisky"
 
-#: public/js/client.js:6900
+#: public/js/client.js:6920
 msgid "Disable Dynamic Lighting"
 msgstr "Vypnout dynamické osvětlení"
 
-#: public/js/client.js:6901
+#: public/js/client.js:6921
 msgid "Enable Dynamic Lighting"
 msgstr "Zapnout dynamické osvětlení"
 
-#: public/js/client.js:6903
+#: public/js/client.js:6923
 msgid "Dynamic Lighting needs more shader uniforms than this browser reports"
 msgstr ""
 "Dynamické osvětlení potřebuje víc uniformních proměnných shaderu, než tento "
 "prohlížeč hlásí"
 
-#: public/js/client.js:6912
+#: public/js/client.js:6932
 msgid "Disable Rumble"
 msgstr "Vypnout vibrace"
 
-#: public/js/client.js:6913
+#: public/js/client.js:6933
 msgid "Enable Rumble"
 msgstr "Zapnout vibrace"
 
-#: public/js/client.js:6919
+#: public/js/client.js:6939
 msgid "Disable Anaglyph 3D"
 msgstr "Vypnout anaglyf 3D"
 
-#: public/js/client.js:6920
+#: public/js/client.js:6940
 msgid "Enable Anaglyph 3D"
 msgstr "Zapnout anaglyf 3D"
 
-#: public/js/client.js:6923
+#: public/js/client.js:6943
 msgid "Anaglyph 3D is unavailable in VR mode"
 msgstr "Anaglyf 3D není v režimu VR dostupný"
 
-#: public/js/client.js:6932
+#: public/js/client.js:6952
 msgid "Hide Debug Geometry"
 msgstr "Skrýt ladicí geometrii"
 
-#: public/js/client.js:7020
+#: public/js/client.js:7040
 msgid "Confirm"
 msgstr "Potvrdit"
 
-#: public/js/client.js:7076
+#: public/js/client.js:7096
 msgid "Share View Link: only available while viewing a map"
 msgstr "Sdílet odkaz na pohled: dostupné jen při prohlížení mapy"
 
-#: public/js/client.js:7081
+#: public/js/client.js:7101
 msgid "View link copied to clipboard"
 msgstr "Odkaz na pohled zkopírován do schránky"
 
-#: public/js/client.js:7110
+#: public/js/client.js:7130
 msgid "WebXR: {mode}"
 msgstr "WebXR: {mode}"
 
-#: public/js/client.js:7116
+#: public/js/client.js:7136
 msgid "WebXR not supported on this device"
 msgstr "WebXR není na tomto zařízení podporováno"
 
-#: public/js/client.js:7121
+#: public/js/client.js:7141
 msgid "Requesting VR..."
 msgstr "Žádost o VR..."
 
-#: public/js/client.js:7124
+#: public/js/client.js:7144
 msgid "Error: Renderer not available"
 msgstr "Chyba: vykreslovač není dostupný"
 
-#: public/js/client.js:7137
+#: public/js/client.js:7157
 msgid "✓ WebXR VR Mode: ON"
 msgstr "✓ Režim WebXR VR: ZAP"
 
-#: public/js/client.js:7143
+#: public/js/client.js:7163
 msgid "✗ VR request failed - check server.log"
 msgstr "✗ Žádost o VR selhala – zkontroluj server.log"
 
-#: public/js/client.js:7145 public/js/client.js:17744
+#: public/js/client.js:7165 public/js/client.js:17772
 msgid "WebXR VR Mode: OFF"
 msgstr "Režim WebXR VR: VYP"
 
-#: public/js/client.js:7703
+#: public/js/client.js:7730
 msgid "3D renderer unavailable: {reason}"
 msgstr "3D vykreslovač nedostupný: {reason}"
 
-#: public/js/client.js:7710
+#: public/js/client.js:7737
 msgid "3D renderer failed to initialize."
 msgstr "3D vykreslovač se nepodařilo inicializovat."
 
-#: public/js/client.js:7712
+#: public/js/client.js:7739
 msgid "Open the game in an external browser window for full WebGL support."
 msgstr "Pro plnou podporu WebGL otevři hru v samostatném okně prohlížeče."
 
-#: public/js/client.js:8141
+#: public/js/client.js:8168
 msgid "Connected to server!"
 msgstr "Připojeno k serveru!"
 
-#: public/js/client.js:8147
+#: public/js/client.js:8174
 msgid "Connected to server"
 msgstr "Připojeno k serveru"
 
-#: public/js/client.js:8148
+#: public/js/client.js:8175
 msgid "Waiting for world state"
 msgstr "Čekání na stav světa"
 
-#: public/js/client.js:8199
+#: public/js/client.js:8226
 msgid "Offline"
 msgstr "Offline"
 
-#: public/js/client.js:8199
+#: public/js/client.js:8226
 msgid "Cannot reach {host}"
 msgstr "Nelze se spojit s {host}"
 
-#: public/js/client.js:8200
+#: public/js/client.js:8227
 msgid "Trying again..."
 msgstr "Zkouším znovu..."
 
-#: public/js/client.js:8211
+#: public/js/client.js:8238
 msgid "Disconnected from server | Kills: {kills} | Deaths: {deaths}"
 msgstr "Odpojeno od serveru | Zabití: {kills} | Smrti: {deaths}"
 
-#: public/js/client.js:8216
+#: public/js/client.js:8243
 msgid "Press a key, tap or pull a trigger to rejoin"
 msgstr "Stiskni klávesu, klepni nebo zmáčkni spoušť pro návrat do hry"
 
-#: public/js/client.js:8376
+#: public/js/client.js:8403
 msgid "Server error: {error}"
 msgstr "Chyba serveru: {error}"
 
-#: public/js/client.js:8381
+#: public/js/client.js:8408
 msgid "Server: action completed successfully"
 msgstr "Server: akce úspěšně dokončena"
 
-#: public/js/client.js:8463
+#: public/js/client.js:8490
 msgid "Operator Panel (v{version})"
 msgstr "Panel operátora (v{version})"
 
-#: public/js/client.js:8882
+#: public/js/client.js:8909
 msgid "{player} joined"
 msgstr "{player} přichází"
 
-#: public/js/client.js:8927
+#: public/js/client.js:8954
 msgid "{player} left"
 msgstr "{player} odchází"
 
-#: public/js/client.js:8943
+#: public/js/client.js:8970
 msgid "{callsign} not responding"
 msgstr "{callsign} neodpovídá"
 
-#: public/js/client.js:8944
+#: public/js/client.js:8971
 msgid "{callsign} okay"
 msgstr "{callsign} v pořádku"
 
-#: public/js/client.js:9058
+#: public/js/client.js:9085
 msgid "{player} grabbed {flag}"
 msgstr "{player} bere vlajku {flag}"
 
-#: public/js/client.js:9109
+#: public/js/client.js:9136
 msgid "{player} dropped {flag}"
 msgstr "{player} pouští vlajku {flag}"
 
-#: public/js/client.js:9203
+#: public/js/client.js:9230
 msgid "{player}: {pilot} taking controls"
 msgstr "{player}: {pilot} přebírá řízení"
 
-#: public/js/client.js:9204
+#: public/js/client.js:9231
 msgid "{player}: {pilot} releasing controls"
 msgstr "{player}: {pilot} předává řízení"
 
-#: public/js/client.js:9236
+#: public/js/client.js:9263
 msgid "{player} paused"
 msgstr "{player} pauzuje"
 
-#: public/js/client.js:9247
+#: public/js/client.js:9274
 msgid "{player} unpaused"
 msgstr "{player} pokračuje"
 
-#: public/js/client.js:9377
+#: public/js/client.js:9404
 msgid "Server forced a disconnect"
 msgstr "Server vynutil odpojení"
 
-#: public/js/client.js:9383
+#: public/js/client.js:9410
 msgid "Server updated - reloading..."
 msgstr "Server aktualizován – načítám znovu..."
 
-#: public/js/client.js:9911
+#: public/js/client.js:9938
 msgid "Got flattened by {player}"
 msgstr "Rozdrcen hráčem {player}"
 
-#: public/js/client.js:9912
+#: public/js/client.js:9939
 msgid "Teammate hit with Genocide by {player}"
 msgstr "Spoluhráče zasáhla Genocida hráče {player}"
 
-#: public/js/client.js:9913
+#: public/js/client.js:9940
 msgid "Got shot by {player}"
 msgstr "Zastřelen hráčem {player}"
 
-#: public/js/client.js:9915
+#: public/js/client.js:9942
 msgid "Got flattened by teammate {player}"
 msgstr "Rozdrcen spoluhráčem {player}"
 
-#: public/js/client.js:9916
+#: public/js/client.js:9943
 msgid "Teammate hit with Genocide by teammate {player}"
 msgstr "Spoluhráče zasáhla Genocida spoluhráče {player}"
 
-#: public/js/client.js:9917
+#: public/js/client.js:9944
 msgid "Got shot by teammate {player}"
 msgstr "Zastřelen spoluhráčem {player}"
 
-#: public/js/client.js:9953
+#: public/js/client.js:9980
 msgid "Your team flag was captured!"
 msgstr "Vlajka tvého týmu byla dobyta!"
 
-#: public/js/client.js:9955
+#: public/js/client.js:9982
 msgid "Time Expired - GAME OVER"
 msgstr "Čas vypršel – KONEC HRY"
 
-#: public/js/client.js:9957
+#: public/js/client.js:9984
 msgid "Tank Self Destructed"
 msgstr "Tank se sám zničil"
 
-#: public/js/client.js:9959
+#: public/js/client.js:9986
 msgid "Tank Rusted"
 msgstr "Tank zrezivěl"
 
-#: public/js/client.js:9962 public/js/client.js:9966
+#: public/js/client.js:9989 public/js/client.js:9993
 msgid "Killed by the server"
 msgstr "Zabit serverem"
 
-#: public/js/client.js:9993
+#: public/js/client.js:10020
 msgid "You killed {player}"
 msgstr "Zničil jsi hráče {player}"
 
-#: public/js/client.js:10005
+#: public/js/client.js:10032
 msgid "{player} self-destructed"
 msgstr "{player}: sebedestrukce"
 
-#: public/js/client.js:10009
+#: public/js/client.js:10036
 msgid "{player} fell in the water"
 msgstr "{player} spadl do vody"
 
-#: public/js/client.js:10014
+#: public/js/client.js:10041
 msgid "{player}: {message}"
 msgstr "{player}: {message}"
 
-#: public/js/client.js:10017
+#: public/js/client.js:10044
 msgid "killed by the server"
 msgstr "zabit serverem"
 
-#: public/js/client.js:10023
+#: public/js/client.js:10050
 msgid "{player} was killed by the server"
 msgstr "{player}: zabit serverem"
 
-#: public/js/client.js:10028
+#: public/js/client.js:10055
 msgid "{killer} killed {victim}"
 msgstr "{killer} zničil {victim}"
 
-#: public/js/client.js:10193
+#: public/js/client.js:10220
 msgid "You respawned!"
 msgstr "Znovu ve hře!"
 
-#: public/js/client.js:10283
+#: public/js/client.js:10310
 msgid "map {name}"
 msgstr "mapa {name}"
 
-#: public/js/client.js:10285
+#: public/js/client.js:10312
 msgid "plugin {name}"
 msgstr ""
 
-#: public/js/client.js:10289
+#: public/js/client.js:10316
 msgid "nothing uploaded"
 msgstr "nic nenahráno"
 
-#: public/js/client.js:10316 public/js/client.js:10791
+#: public/js/client.js:10343 public/js/client.js:10818
 msgid "MOTD: {motd}"
 msgstr "MOTD: {motd}"
 
-#: public/js/client.js:10391
+#: public/js/client.js:10418
 msgid "{count} box"
 msgstr "{count} kvádr"
 
-#: public/js/client.js:10391
+#: public/js/client.js:10418
 msgid "{count} boxes"
 msgstr "{count} kvádrů"
 
-#: public/js/client.js:10392
+#: public/js/client.js:10419
 msgid "{count} pyramid"
 msgstr "{count} pyramida"
 
-#: public/js/client.js:10392
+#: public/js/client.js:10419
 msgid "{count} pyramids"
 msgstr "{count} pyramid"
 
-#: public/js/client.js:10393
+#: public/js/client.js:10420
 msgid "{count} mesh"
 msgstr "{count} síť"
 
-#: public/js/client.js:10393
+#: public/js/client.js:10420
 msgid "{count} meshes"
 msgstr "{count} sítí"
 
-#: public/js/client.js:10398
+#: public/js/client.js:10425
 msgid "{count} base"
 msgstr "{count} základna"
 
-#: public/js/client.js:10398
+#: public/js/client.js:10425
 msgid "{count} bases"
 msgstr "{count} základen"
 
-#: public/js/client.js:10400
+#: public/js/client.js:10427
 msgid "{count} teleporter"
 msgstr "{count} teleport"
 
-#: public/js/client.js:10400
+#: public/js/client.js:10427
 msgid "{count} teleporters"
 msgstr "{count} teleportů"
 
-#: public/js/client.js:10403 server.js:2477
+#: public/js/client.js:10430 server.js:2477
 msgid "water"
 msgstr "voda"
 
-#: public/js/client.js:10404 server.js:2477
+#: public/js/client.js:10431 server.js:2477
 msgid "weather"
 msgstr "počasí"
 
-#: public/js/client.js:10405 server.js:2477
+#: public/js/client.js:10432 server.js:2477
 msgid "custom ground"
 msgstr "vlastní terén"
 
-#: public/js/client.js:10443 public/js/client.js:10522
+#: public/js/client.js:10470 public/js/client.js:10549
 msgid "View {map}"
 msgstr "Zobrazit {map}"
 
-#: public/js/client.js:10520
+#: public/js/client.js:10547
 msgid "{server} did not answer"
 msgstr "{server} neodpověděl"
 
-#: public/js/client.js:10532 server.js:2407 server.js:2866 server.js:2916
+#: public/js/client.js:10559 server.js:2407 server.js:2866 server.js:2916
 msgid "Watch"
 msgstr "Sledovat"
 
-#: public/js/client.js:10533
+#: public/js/client.js:10560
 msgid "Watch the live game on {server}"
 msgstr "Sledovat živou hru na {server}"
 
-#: public/js/client.js:10551 public/js/client.js:10559 server.js:2875
+#: public/js/client.js:10578 public/js/client.js:10586 server.js:2875
 msgid "Re-import"
 msgstr "Znovu importovat"
 
-#: public/js/client.js:10555
+#: public/js/client.js:10582
 msgid "Importing…"
 msgstr "Importuji…"
 
-#: public/js/client.js:10598
+#: public/js/client.js:10625
 msgid "Loading map..."
 msgstr "Načítání mapy..."
 
-#: public/js/client.js:10606
+#: public/js/client.js:10633
 msgid "Building world geometry..."
 msgstr "Stavba geometrie světa..."
 
-#: public/js/client.js:10670
+#: public/js/client.js:10697
 msgid "{count} watching now"
 msgstr "Právě sleduje: {count}"
 
-#: public/js/client.js:10673
+#: public/js/client.js:10700
 msgid "Watch {name}"
 msgstr "Sledovat {name}"
 
-#: public/js/client.js:10709
+#: public/js/client.js:10736
 msgid "That server's map could not be fetched"
 msgstr "Mapu tohoto serveru se nepodařilo stáhnout"
 
-#: public/js/client.js:10727
+#: public/js/client.js:10754
 msgid "import failed"
 msgstr "import selhal"
 
-#: public/js/client.js:10727
+#: public/js/client.js:10754
 msgid "Could not load that server's map: {reason}"
 msgstr "Mapu tohoto serveru nelze načíst: {reason}"
 
-#: public/js/client.js:10941
+#: public/js/client.js:10968
 msgid "{team} Limit:"
 msgstr "Limit ({team}):"
 
-#: public/js/client.js:11034
+#: public/js/client.js:11061
 msgid "Failed: {error}"
 msgstr ""
 
-#: public/js/client.js:11139
+#: public/js/client.js:11166
 msgid "No limit"
 msgstr "Bez limitu"
 
-#: public/js/client.js:11248
+#: public/js/client.js:11275
 msgid "Restart"
 msgstr "Restartovat"
 
-#: public/js/client.js:11252
+#: public/js/client.js:11279
 msgid "Starts a new game: every player reloads into the new settings"
 msgstr "Spustí novou hru: všichni hráči se znovu načtou s novým nastavením"
 
-#: public/js/client.js:11253
+#: public/js/client.js:11280
 msgid "Applies the staged changes"
 msgstr "Použije připravené změny"
 
-#: public/js/client.js:11600
+#: public/js/client.js:11627
 msgid "Paused"
 msgstr "Pozastaveno"
 
-#: public/js/client.js:11601
+#: public/js/client.js:11628
 msgid "Sealed"
 msgstr "Uzamčeno"
 
-#: public/js/client.js:12533
+#: public/js/client.js:12560
 msgid "Already following someone"
 msgstr "Už někoho sleduješ"
 
-#: public/js/client.js:12569 public/js/client.js:12694
+#: public/js/client.js:12596 public/js/client.js:12721
 msgid "Looking at {player}"
 msgstr "Díváš se na {player}"
 
-#: public/js/client.js:12678
+#: public/js/client.js:12705
 msgid "{player} locked on me"
 msgstr "{player} mě zaměřuje"
 
-#: public/js/client.js:12688
+#: public/js/client.js:12715
 msgid "Looking at nothing"
 msgstr "Na nic se nedíváš"
 
-#: public/js/client.js:12694
+#: public/js/client.js:12721
 msgid "Locked on {player}"
 msgstr "Zaměřen: {player}"
 
-#: public/js/client.js:13031
+#: public/js/client.js:13058
 msgid "Clear ({count})"
 msgstr "Vymazat ({count})"
 
-#: public/js/client.js:13031 public/js/list-page.js:534
+#: public/js/client.js:13058 public/js/list-page.js:534
 msgid "Clear"
 msgstr "Vymazat"
 
-#: public/js/client.js:13131
+#: public/js/client.js:13158
 msgid "SPOTTED: {player}"
 msgstr "SPATŘEN: {player}"
 
-#: public/js/client.js:13246 public/js/client.js:13252
+#: public/js/client.js:13273 public/js/client.js:13279
 msgid "nobody"
 msgstr "nikdo"
 
-#: public/js/client.js:13256
+#: public/js/client.js:13283
 msgid "Leader {who}"
 msgstr "Vedoucí: {who}"
 
-#: public/js/client.js:13258 public/js/client.js:13263
+#: public/js/client.js:13285 public/js/client.js:13290
 msgid "Tracking {who}"
 msgstr "Sledování: {who}"
 
-#: public/js/client.js:13259
+#: public/js/client.js:13286
 msgid "Following {who}"
 msgstr "Pohled zezadu: {who}"
 
-#: public/js/client.js:13260
+#: public/js/client.js:13287
 msgid "Driving with {who}"
 msgstr "Spolujízda: {who}"
 
-#: public/js/client.js:13265 public/js/hud.js:629 public/js/input.js:1457
+#: public/js/client.js:13292 public/js/hud.js:629 public/js/input.js:1457
 msgid "First Person"
 msgstr "Z první osoby"
 
-#: public/js/client.js:13266 public/js/hud.js:630 public/js/input.js:1458
+#: public/js/client.js:13293 public/js/hud.js:630 public/js/input.js:1458
 msgid "Third Person"
 msgstr "Z třetí osoby"
 
-#: public/js/client.js:13267 public/js/hud.js:631 public/js/input.js:1459
+#: public/js/client.js:13294 public/js/hud.js:631 public/js/input.js:1459
 msgid "Overview"
 msgstr "Přehled"
 
-#: public/js/client.js:13268
+#: public/js/client.js:13295
 msgid "Roaming"
 msgstr "Volný pohyb"
 
-#: public/js/client.js:13557 public/js/client.js:13631
+#: public/js/client.js:13584 public/js/client.js:13658
 msgid "autopilot disabled"
 msgstr "autopilot vypnut"
 
-#: public/js/client.js:13566
+#: public/js/client.js:13593
 msgid "autopilot not allowed on this server"
 msgstr "autopilot není na tomto serveru povolen"
 
-#: public/js/client.js:13578
+#: public/js/client.js:13605
 msgid "{pilot} has the controls"
 msgstr "Řízení má {pilot}"
 
-#: public/js/client.js:13583
+#: public/js/client.js:13610
 msgid "You may not enable the Autopilot more than once every five seconds."
 msgstr "Autopilota nemůžeš zapnout častěji než jednou za pět sekund."
 
-#: public/js/client.js:13588
+#: public/js/client.js:13615
 msgid "autopilot enabled"
 msgstr "autopilot zapnut"
 
-#: public/js/client.js:13611
+#: public/js/client.js:13638
 msgid "Not allowed"
 msgstr "Nepovoleno"
 
-#: public/js/client.js:13611 public/js/input.js:1162 public/js/input.js:1172
+#: public/js/client.js:13638 public/js/input.js:1162 public/js/input.js:1172
 #: public/js/input.js:1176
 msgid "Unavailable"
 msgstr "Nedostupné"
 
-#: public/js/client.js:13614
+#: public/js/client.js:13641
 msgid "None"
 msgstr "Žádný"
 
-#: public/js/client.js:14443
+#: public/js/client.js:14471
 msgid "Zoned"
 msgstr "Přízrak"
 
-#: public/js/client.js:14443
+#: public/js/client.js:14471
 msgid "Unzoned"
 msgstr "Mimo přízrak"
 
-#: public/js/client.js:15244 public/js/client.js:15261
+#: public/js/client.js:15272 public/js/client.js:15289
 msgid "unidentified"
 msgstr "neidentifikovaná"
 
-#: public/js/client.js:15281
+#: public/js/client.js:15309
 msgid "unknown"
 msgstr "neznámý"
 
-#: public/js/client.js:15292
+#: public/js/client.js:15320
 msgid ""
 "This server bounces every shot off walls, whatever flag fired it, so the "
 "Ricochet flag is not in play here."
@@ -2108,79 +2108,79 @@ msgstr ""
 "Tento server odráží od zdí každou střelu, ať ji vystřelila jakákoli vlajka, "
 "takže vlajka Odražení střel tu ve hře není."
 
-#: public/js/client.js:15293
+#: public/js/client.js:15321
 msgid "On this server only the Ricochet flag bounces shots off walls."
 msgstr "Na tomto serveru odráží střely od zdí jen vlajka Odražení střel."
 
-#: public/js/client.js:15360
+#: public/js/client.js:15388
 msgid "{flag} {release}"
 msgstr "{flag} {release}"
 
-#: public/js/client.js:15371
+#: public/js/client.js:15399
 msgid "Can't drop the flag while zoned"
 msgstr "V přízraku nelze odhodit vlajku"
 
-#: public/js/client.js:15375
+#: public/js/client.js:15403
 msgid "Can't drop a flag while inside a building"
 msgstr "Uvnitř budovy nelze odhodit vlajku"
 
-#: public/js/client.js:15425
+#: public/js/client.js:15453
 msgid "in {seconds}s"
 msgstr "za {seconds} s"
 
-#: public/js/client.js:15426
+#: public/js/client.js:15454
 msgid "after {count} kill"
 msgstr "po {count} zabití"
 
-#: public/js/client.js:15426
+#: public/js/client.js:15454
 msgid "after {count} kills"
 msgstr "po {count} zabitích"
 
-#: public/js/client.js:15427
+#: public/js/client.js:15455
 msgid "on the antidote"
 msgstr "na protijedu"
 
-#: public/js/client.js:15428
+#: public/js/client.js:15456
 msgid "stays until it kills you"
 msgstr "zůstane, dokud tě nezabije"
 
-#: public/js/client.js:15429
+#: public/js/client.js:15457
 msgid "{first} or {second}"
 msgstr "{first} nebo {second}"
 
-#: public/js/client.js:15430
+#: public/js/client.js:15458
 msgid "shakes off {ways}"
 msgstr "odpadne {ways}"
 
-#: public/js/client.js:15486
+#: public/js/client.js:15514
 msgid "Flag Alert!!!"
 msgstr "Pozor, vlajka!!!"
 
-#: public/js/client.js:15494
+#: public/js/client.js:15522
 msgid "Team Grab!!!"
 msgstr "Tým získal vlajku!!!"
 
-#: public/js/client.js:15510
+#: public/js/client.js:15538
 msgid "{thief} stole {victim}'s {flag} flag"
 msgstr "{thief} ukradl hráči {victim} vlajku {flag}"
 
-#: public/js/client.js:15541
+#: public/js/client.js:15569
 msgid "Closest Flag: {flag}"
 msgstr "Nejbližší vlajka: {flag}"
 
-#: public/js/client.js:15603
+#: public/js/client.js:15631
 msgid "{player} took their own flag into {team} territory"
 msgstr "{player} donesl vlastní vlajku na území týmu {team}"
 
-#: public/js/client.js:15611
+#: public/js/client.js:15639
 msgid "Don't capture your own flag!!!"
 msgstr "Nedobývej vlastní vlajku!!!"
 
-#: public/js/client.js:15617
+#: public/js/client.js:15645
 msgid "{player} captured the {team} flag"
 msgstr "{player} dobyl vlajku týmu {team}"
 
-#: public/js/client.js:17240 public/js/client.js:17241
+#: public/js/client.js:17268 public/js/client.js:17269
 msgid "Exit WebXR VR Mode"
 msgstr "Opustit režim WebXR VR"
 
@@ -4767,7 +4767,9 @@ msgstr "Použití: /bot remove <name|all>"
 msgid ""
 "Usage: /bot [fill <n> [{pilots}] | add [{pilots}] [team] [count] | remove "
 "<name|all> | pause | resume]"
-msgstr "Použití: /bot [fill <n> [{pilots}] | add [{pilots}] [team] [count] | remove <name|all> | pause | resume]"
+msgstr ""
+"Použití: /bot [fill <n> [{pilots}] | add [{pilots}] [team] [count] | remove "
+"<name|all> | pause | resume]"
 
 #: server.js:18510
 msgid "Server shutting down"

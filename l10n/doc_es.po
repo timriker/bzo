@@ -46,7 +46,12 @@ msgid ""
 "are `Page Up` and `Page Down`, and `.` is `Delete`. With Num Lock on, a "
 "keypad key is the main key with the same character. Keypad `Enter` shoots "
 "either way."
-msgstr "El teclado numérico funciona como en BZFlag. Con Bloq Num desactivado, sus teclas son las impresas bajo los dígitos: las flechas conducen, `1` es `End`, `9` y `3` son `Page Up` y `Page Down`, y `.` es `Delete`. Con Bloq Num activado, una tecla del teclado numérico es la tecla principal con el mismo carácter. `Enter` del teclado numérico dispara en ambos casos."
+msgstr ""
+"El teclado numérico funciona como en BZFlag. Con Bloq Num desactivado, sus "
+"teclas son las impresas bajo los dígitos: las flechas conducen, `1` es "
+"`End`, `9` y `3` son `Page Up` y `Page Down`, y `.` es `Delete`. Con Bloq "
+"Num activado, una tecla del teclado numérico es la tecla principal con el "
+"mismo carácter. `Enter` del teclado numérico dispara en ambos casos."
 
 #: docs/help/controls.md
 msgid "Driving"
@@ -224,6 +229,13 @@ msgstr "`M` — activar/desactivar la dirección con ratón"
 #: docs/help/controls.md
 msgid "`C` — cycle camera mode"
 msgstr "`C` — cambiar el modo de cámara"
+
+#: docs/help/controls.md
+msgid ""
+"`B` — binoculars: narrow the view to a quarter, and back. `Ctrl` and the "
+"wheel narrow or widen it a step at a time. Turning with the keys slows to "
+"match"
+msgstr "`B` — prismáticos: reduce la vista a una cuarta parte y vuelve. `Ctrl` y la rueda la estrechan o ensanchan paso a paso. Girar con las teclas se ralentiza en proporción"
 
 #: docs/help/controls.md
 #, fuzzy
@@ -551,6 +563,10 @@ msgstr ""
 #: docs/help/controls.md
 msgid "the game view: nothing"
 msgstr ""
+
+#: docs/help/controls.md
+msgid "with `Ctrl`, anywhere: binoculars, up to narrow the view"
+msgstr "con `Ctrl`, en cualquier sitio: prismáticos, hacia arriba estrecha la vista"
 
 #: docs/help/controls.md
 msgid "The targeting box"

@@ -44,7 +44,12 @@ msgid ""
 "are `Page Up` and `Page Down`, and `.` is `Delete`. With Num Lock on, a "
 "keypad key is the main key with the same character. Keypad `Enter` shoots "
 "either way."
-msgstr "73h num3r1c k3yp4d w0rk5 45 1n BZFl4g. W17h Num L0ck 0ff 175 k3y5 4r3 73h 0n35 pr1n73d und3r 73h d1g175: 73h 4rr0w5 dr1v3, `1` 15 `End`, `9` 4nd `3` 4r3 `Page Up` 4nd `Page Down`, 4nd `.` 15 `Delete`. W17h Num L0ck 0n, 4 k3yp4d k3y 15 73h m41n k3y w17h 73h 54m3 ch4r4c73r. K3yp4d `Enter` 5h0075 31h3r w4y."
+msgstr ""
+"73h num3r1c k3yp4d w0rk5 45 1n BZFl4g. W17h Num L0ck 0ff 175 k3y5 4r3 73h "
+"0n35 pr1n73d und3r 73h d1g175: 73h 4rr0w5 dr1v3, `1` 15 `End`, `9` 4nd `3` "
+"4r3 `Page Up` 4nd `Page Down`, 4nd `.` 15 `Delete`. W17h Num L0ck 0n, 4 "
+"k3yp4d k3y 15 73h m41n k3y w17h 73h 54m3 ch4r4c73r. K3yp4d `Enter` 5h0075 "
+"31h3r w4y."
 
 #: docs/help/controls.md
 msgid "Driving"
@@ -219,6 +224,13 @@ msgstr "`M` — 70ggl3 m0u53 5733r1ng"
 #: docs/help/controls.md
 msgid "`C` — cycle camera mode"
 msgstr "`C` — cycl3 c4m3r4 m0d3"
+
+#: docs/help/controls.md
+msgid ""
+"`B` — binoculars: narrow the view to a quarter, and back. `Ctrl` and the "
+"wheel narrow or widen it a step at a time. Turning with the keys slows to "
+"match"
+msgstr "`B` — b1n0cul4r5: n4rr0w 73h v13w 70 4 qu4r73r, 4nd b4ck. `Ctrl` 4nd 73h wh33l n4rr0w 0r w1d3n 17 4 573p 47 4 71m3. 7urn1ng w17h 73h k3y5 510w5 70 m47ch"
 
 #: docs/help/controls.md
 #, fuzzy
@@ -537,6 +549,10 @@ msgstr ""
 #: docs/help/controls.md
 msgid "the game view: nothing"
 msgstr ""
+
+#: docs/help/controls.md
+msgid "with `Ctrl`, anywhere: binoculars, up to narrow the view"
+msgstr "w17h `Ctrl`, 4nywh3r3: b1n0cul4r5, up 70 n4rr0w 73h v13w"
 
 #: docs/help/controls.md
 msgid "The targeting box"
