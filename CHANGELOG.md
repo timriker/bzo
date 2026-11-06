@@ -6,6 +6,20 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
 
 ## [Unreleased]
 
+## [1.3.90] - 2026-11-06
+
+### Added
+- `X` toggles BZFlag's slow keyboard: driving and turning with the keys go
+  at half speed, and back.
+
+### Changed
+- After an update, a returning player downloads only the textures, models
+  and sounds that changed rather than all of them again (#180).
+
+### Fixed
+- A player whose connection stops keeping up no longer piles up game traffic
+  on the server without bound (#178).
+
 ## [1.3.89] - 2026-11-06
 
 ### Added
