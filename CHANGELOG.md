@@ -6,6 +6,17 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
 
 ## [Unreleased]
 
+## [1.3.89] - 2026-11-06
+
+### Added
+- Binoculars, as in BZFlag: `B` narrows the view to 15 degrees and back,
+  `Ctrl` and the wheel step it a degree at a time, and turning with the keys
+  slows to match.
+
+### Fixed
+- An exploding BZFlag tank throws solid casings rather than two flat sheets
+  with the body (#200).
+
 ## [1.3.88] - 2026-11-05
 
 ### Added
