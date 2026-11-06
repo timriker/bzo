@@ -87,6 +87,6 @@ module.exports = {
 
   // Translations of what the plugin says, `{ locale: { msgid: msgstr } }`,
   // merged into what a bzo client is sent while the plugin runs
-  // (docs/plugins-plan.md, "Translations"). Its one message is the map's own.
+  // (docs/plugins.md, "Translations"). Its one message is the map's own.
   l10n: {},
 };

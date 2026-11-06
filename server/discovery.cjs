@@ -267,7 +267,7 @@ ${pages.map((page) => `<h2 id="${page.slug}"><a href="/help/${page.slug}">${esca
 ${single ? '' : `<h2 id="discord">Discord</h2>
 <p>${html(t('Talk with other players on the {discord}.'), { discord: `<a href="${DISCORD_INVITE_URL}">BZFlag Discord</a>` })}${discordLink
     ? ` ${html(t('Once you are there, {link} for the BZFlag player role, and your callsign as your name there.'), {
-      link: `<a href="/discord/link">${escapeHtml(t('link your bzflag.org account'))}</a>`,
+      link: `<a href="/plugins/discord/link">${escapeHtml(t('link your bzflag.org account'))}</a>`,
     })}`
     : ''}</p>`}
 <p>${escapeHtml(GAME_NAME)} ${escapeHtml(version)} · <a href="${REPO_URL}">${escapeHtml(t('Source'))}</a>, AGPL-3.0</p>

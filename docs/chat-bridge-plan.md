@@ -1,10 +1,10 @@
 # Chat bridges -- plan
 
 Issue #193. A game server's public chat carried both ways to a chat platform,
-and members there proving which BZFlag account is theirs. Discord is built:
-Linked Roles, callsign nicknames and the chat mirror both ways, all in
-`docs/discord.md`. Still to come are commands from linked members, Matrix and
-IRC. Voice is not planned on any of them.
+and members there proving which BZFlag account is theirs. Built: Discord's
+Linked Roles, callsign nicknames and chat both ways (`docs/discord.md`), and
+Matrix chat both ways (`docs/matrix.md`). Still to come are commands from
+linked members, Matrix links and IRC. Voice is not planned on any of them.
 
 GitHub events reach the BZFlag Discord's #bzo-dev channel through a repository
 webhook pointed at Discord's `/github` endpoint. That needs nothing from bzo
@@ -24,12 +24,14 @@ bot account and one community, one channel each.
 
 ## One bridge, several transports
 
-`server/discord-bridge.cjs` holds rules that are not Discord's. They move to a
-shared bridge with Discord, Matrix and IRC as transports under it, each doing
-only what its platform needs: how a line is sent, how one arrives, and who
-sent it.
+Each transport is a plugin (`docs/plugins.md`), doing only what its platform
+needs: how a line is sent, how one arrives, and who sent it. The rules they
+share are `plugins/bridge/lines.cjs`: colour codes removed, three lines of 200
+characters into the game, commands kept out. What is left to share is the
+outgoing queue, which Discord's and Matrix's each keep for themselves, and the
+links.
 
-What the bridge decides, the same for every transport:
+What every transport does:
 
 - **Out of the game:** public chat only -- team chat, private messages and the
   admin channel never leave. Never a muted player, never a command line, and
@@ -80,47 +82,20 @@ app's `publicKey`.
 
 ## Matrix
 
-Matrix is open and federated: anyone can run a homeserver, and a room is
-shared by every homeserver with a member in it. There are three ways for bzo
-to take part, in rising cost.
+Chat both ways through a bot account is built (`docs/matrix.md`). Left:
 
-### A bot account (first)
-
-The operator makes a Matrix account for the bridge on any homeserver --
-matrix.org or their own -- and puts its access token in `server.json`:
-
-```json
-"matrix": {
-  "homeserver": "https://matrix.example.org",
-  "userId": "@bzo:example.org",
-  "accessToken": "...",
-  "roomId": "!abc:example.org"
-}
-```
-
-bzo is then an ordinary Matrix client: the client-server API over HTTPS, no
-SDK needed.
-
-- **Game to Matrix:** `PUT /rooms/{roomId}/send/m.room.message/{txnId}`, a
-  `body` and an HTML `formatted_body` with the callsign in bold, and an empty
-  `m.mentions` so nothing pings. A unique `txnId` per line makes a retry safe.
-- **Matrix to game:** a `/sync` long poll, which the server keeps open as it
-  keeps Discord's gateway. Its `next_batch` token is kept in
-  `matrix-sync.json`, so a restart picks up where it left off and the lines
-  said meanwhile arrive late rather than never.
-- **Unencrypted rooms only.** Matrix's end-to-end encryption needs a full
-  Olm/Megolm implementation and its keys kept safe on the server. A bridged
-  room is a public one, which Element creates unencrypted.
-- **Names:** every game line comes from the bot, with the callsign in bold, as
-  a Discord webhook line would without its per-message name. A bot cannot set
-  another member's display name, so a linked member's callsign shows only in
-  the game, not as their Matrix name.
+- **Links:** a member types `!link` in the room and the bot answers in a
+  direct message, never the room, with a one-time URL to a BZID page
+  (`eBZID`), which pairs their Matrix user ID with their BZID. Creating that
+  direct room is the cost.
+- **Names:** a linked member's callsign in game, as Discord's are. A bot
+  cannot set another member's display name, so it shows only in the game.
 - **Admins:** a link that found the member in an admin group raises their
   power level in the room to moderator, which the bot can do once it has
   enough power itself.
 
 A Matrix space can gather a community's game rooms -- one per bzo server,
-named for it like `#bz-rikers-org-5154:example.org`.
+named for it like `#bz-rikers-org:matrix.org`.
 
 ### An application service (later)
 
@@ -197,9 +172,7 @@ Voice waits until the text bridges are in use and somebody asks for it.
 
 ## Order
 
-1. Split `server/discord-bridge.cjs` into the shared bridge and a Discord
-   transport, with no change in behaviour.
-2. Commands from linked members, through Discord first.
-3. Matrix as a bot account: chat both ways, then links and power levels.
-4. IRC, if it is wanted.
-5. A Matrix application service, and the optional homeserver container.
+1. Commands from linked members, through Discord first.
+2. Matrix links and power levels, on the shared links.
+3. IRC, if it is wanted.
+4. A Matrix application service, and the optional homeserver container.

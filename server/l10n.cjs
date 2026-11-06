@@ -71,7 +71,7 @@ function hasLocale(id) {
 }
 
 // The loaded plugins' own strings for one locale, `{ msgid: msgstr }`, which
-// server.js supplies (docs/plugins-plan.md, "Translations").
+// server.js supplies (docs/plugins.md, "Translations").
 let pluginMessages = () => ({});
 
 function usePluginMessages(lookup) {

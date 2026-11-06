@@ -84,7 +84,7 @@ module.exports = {
   },
 
   // Translations of what the plugin says, merged into what a bzo client is
-  // sent while the plugin runs (docs/plugins-plan.md, "Translations").
+  // sent while the plugin runs (docs/plugins.md, "Translations").
   l10n: {
     cs_CZ: {
       'Team flags cannot be grabbed for {seconds} seconds after they were last capped.':

@@ -5,20 +5,20 @@
  * See LICENSE or https://www.gnu.org/licenses/agpl-3.0.html
  */
 
-// Discord Linked Roles (server/discord.cjs) against a Discord and a
-// bzflag.org that answer from here: the whole round trip, and each way it is
-// refused.
+// Discord Linked Roles (plugins/discord/link.cjs) against a Discord that
+// answers from here: the whole round trip after a BZID login, and each way it
+// is refused.
 
 import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
 import { URLSearchParams } from 'node:url';
 
 const require = createRequire(import.meta.url);
-const { createDiscordLink, discordLinkConfigured, ROLE_METADATA } = require('../server/discord.cjs');
+const { createDiscordLink, discordLinkConfigured, ROLE_METADATA } = require('../plugins/discord/link.cjs');
 
 const config = { applicationId: '111', clientSecret: 'secret', botToken: 'bot', publicKey: 'pk', guildId: '777' };
 
-function harness({ tokenGood = true, groups = [], held = [], nickStatus = 200 } = {}) {
+function harness({ held = [], nickStatus = 200 } = {}) {
   const calls = [];
   const saved = [];
   const fetchImpl = async (url, init = {}) => {
@@ -36,10 +36,6 @@ function harness({ tokenGood = true, groups = [], held = [], nickStatus = 200 } 
   };
   const link = createDiscordLink({
     config,
-    checkToken: async (callsign) => (tokenGood
-      ? { good: true, bzid: '4242', callsign, groups }
-      : { good: false, bzid: null, callsign: null, groups: [] }),
-    isAdmin: (named) => named.includes('BZBB.ADMIN'),
     store: { load: () => ({}), save: (links) => saved.push(links) },
     log: () => {},
     logError: () => {},
@@ -48,42 +44,28 @@ function harness({ tokenGood = true, groups = [], held = [], nickStatus = 200 } 
   return { link, calls, saved };
 }
 
-function response() {
-  const res = { statusCode: 200, headers: {}, body: '' };
-  res.status = (code) => { res.statusCode = code; return res; };
-  res.set = (name, value) => { res.headers[name.toLowerCase()] = value; return res; };
-  res.send = (body) => { res.body = body; return res; };
-  res.end = () => res;
-  res.redirect = (code, url) => { res.statusCode = code; res.headers.location = url; return res; };
-  return res;
-}
+const base = 'https://bz.example.org';
+const signedIn = (callsign, admin = false) => ({ base, bzid: '4242', callsign, admin });
+const stateOf = (outcome) => new URL(outcome.location).searchParams.get('state');
 
-const host = 'bz.example.org';
+assert.equal(discordLinkConfigured(config), true);
+assert.equal(discordLinkConfigured({ applicationId: '111' }), false);
 
-// The whole way round: Discord consent, Discord's callback, bzflag.org's.
+// The whole way round: signed in, Discord consent, Discord's callback.
 {
-  const { link, calls, saved } = harness({ groups: ['BZBB.ADMIN'] });
-  const started = response();
-  link.start({ query: {} }, started, host);
-  const authorize = new URL(started.headers.location);
+  const { link, calls, saved } = harness();
+  const started = link.start(signedIn('Tim Riker', true));
+  assert.equal(started.status, 302);
+  const authorize = new URL(started.location);
   assert.equal(authorize.origin + authorize.pathname, 'https://discord.com/oauth2/authorize');
   assert.equal(authorize.searchParams.get('client_id'), '111');
-  assert.equal(authorize.searchParams.get('redirect_uri'), `https://${host}/discord/link/callback`);
+  assert.equal(authorize.searchParams.get('redirect_uri'), `${base}/plugins/discord/callback`);
   assert.equal(authorize.searchParams.get('scope'), 'identify role_connections.write');
-  const state = authorize.searchParams.get('state');
+  const state = stateOf(started);
 
-  const back = response();
-  await link.discordCallback({ query: { state, code: 'good-code' } }, back, host);
-  assert.equal(back.statusCode, 302);
-  const weblogin = back.headers.location;
-  assert.ok(weblogin.startsWith('https://my.bzflag.org/weblogin.php?action=weblogin&url='), weblogin);
-  assert.ok(weblogin.endsWith('?t=%TOKEN%:%USERNAME%'), 'placeholders left for weblogin.php');
-  const key = /\/discord\/link\/bzflag\/([^?]+)\?/.exec(weblogin)[1];
-
-  const done = response();
-  await link.bzflagCallback({ params: { key }, query: { t: 'tok123:Tim Riker' } }, done);
-  assert.equal(done.statusCode, 200, done.body);
-  assert.match(done.body, /Linked: Discord "tim" is BZFlag "Tim Riker"/);
+  const done = await link.callback({ ...signedIn('Tim Riker', true), params: { state, code: 'good-code' } });
+  assert.equal(done.status, 200, done.text);
+  assert.match(done.text, /Linked: Discord "tim" is BZFlag "Tim Riker"/);
   const put = calls.find((call) => call.url.endsWith('/users/@me/applications/111/role-connection'));
   assert.equal(put.init.headers.Authorization, 'Bearer member-token');
   assert.deepEqual(JSON.parse(put.init.body), {
@@ -94,72 +76,47 @@ const host = 'bz.example.org';
   assert.equal(nick.init.method, 'PATCH');
   assert.equal(nick.init.headers.Authorization, 'Bot bot');
   assert.deepEqual(JSON.parse(nick.init.body), { nick: 'Tim Riker' });
-  assert.match(done.body, /nickname there is now your callsign/);
+  assert.match(done.text, /nickname there is now your callsign/);
   assert.equal(link.linkFor('999').callsign, 'Tim Riker');
 
-  // Each key is good once.
-  const again = response();
-  await link.bzflagCallback({ params: { key }, query: { t: 'tok123:Tim Riker' } }, again);
-  assert.equal(again.statusCode, 400);
-  const replay = response();
-  await link.discordCallback({ query: { state, code: 'good-code' } }, replay, host);
-  assert.equal(replay.statusCode, 400);
+  // Each state is good once.
+  const again = await link.callback({ ...signedIn('Tim Riker', true), params: { state, code: 'good-code' } });
+  assert.equal(again.status, 403);
 }
 
-// Refusals: a state nobody issued, Discord saying no, bzflag.org saying no.
+// Refusals: a state nobody issued, one issued to another BZID, Discord saying no.
 {
-  const { link } = harness({ tokenGood: false });
-  const forged = response();
-  await link.discordCallback({ query: { state: 'made-up', code: 'good-code' } }, forged, host);
-  assert.equal(forged.statusCode, 400);
+  const { link } = harness();
+  const forged = await link.callback({ ...signedIn('Tim'), params: { state: 'made-up', code: 'good-code' } });
+  assert.equal(forged.status, 403);
 
-  const started = response();
-  link.start({ query: {} }, started, host);
-  const state = new URL(started.headers.location).searchParams.get('state');
-  const denied = response();
-  await link.discordCallback({ query: { state, code: 'bad-code' } }, denied, host);
-  assert.equal(denied.statusCode, 502, 'a code Discord will not exchange');
+  const theirs = stateOf(link.start(signedIn('Tim')));
+  const other = await link.callback({ base, bzid: '1', callsign: 'Other', admin: false,
+    params: { state: theirs, code: 'good-code' } });
+  assert.equal(other.status, 403, 'a state is for the BZID that started it');
 
-  const started2 = response();
-  link.start({ query: {} }, started2, host);
-  const state2 = new URL(started2.headers.location).searchParams.get('state');
-  const back = response();
-  await link.discordCallback({ query: { state: state2, code: 'good-code' } }, back, host);
-  const key = /\/discord\/link\/bzflag\/([^?]+)\?/.exec(back.headers.location)[1];
-  const refused = response();
-  await link.bzflagCallback({ params: { key }, query: { t: 'tok:Someone' } }, refused);
-  assert.equal(refused.statusCode, 403);
+  const state = stateOf(link.start(signedIn('Tim')));
+  const denied = await link.callback({ ...signedIn('Tim'), params: { state, code: 'bad-code' } });
+  assert.equal(denied.status, 500, 'a code Discord will not exchange');
   assert.equal(link.size, 0, 'nothing linked');
-  assert.doesNotMatch(refused.body, /Someone/, 'nothing from the query string echoed back');
 }
 
 // A nickname Discord refuses -- the owner's, or no Manage Nicknames -- leaves
 // the link made.
 {
   const { link } = harness({ nickStatus: 403 });
-  const started = response();
-  link.start({ query: {} }, started, host);
-  const state = new URL(started.headers.location).searchParams.get('state');
-  const back = response();
-  await link.discordCallback({ query: { state, code: 'good-code' } }, back, host);
-  const key = /\/discord\/link\/bzflag\/([^?]+)\?/.exec(back.headers.location)[1];
-  const done = response();
-  await link.bzflagCallback({ params: { key }, query: { t: 'tok:Owner' } }, done);
-  assert.equal(done.statusCode, 200);
-  assert.doesNotMatch(done.body, /nickname/);
+  const state = stateOf(link.start(signedIn('Owner')));
+  const done = await link.callback({ ...signedIn('Owner'), params: { state, code: 'good-code' } });
+  assert.equal(done.status, 200);
+  assert.doesNotMatch(done.text, /nickname/);
   assert.equal(link.linkFor('999').callsign, 'Owner');
 }
 
 // Not an admin: verified, and admin 0.
 {
-  const { link, calls } = harness({ groups: [] });
-  const started = response();
-  link.start({ query: {} }, started, host);
-  const state = new URL(started.headers.location).searchParams.get('state');
-  const back = response();
-  await link.discordCallback({ query: { state, code: 'good-code' } }, back, host);
-  const key = /\/discord\/link\/bzflag\/([^?]+)\?/.exec(back.headers.location)[1];
-  await link.bzflagCallback({ params: { key }, query: { t: 'tok:Player' } }, response());
+  const { link, calls } = harness();
+  const state = stateOf(link.start(signedIn('Player')));
+  await link.callback({ ...signedIn('Player'), params: { state, code: 'good-code' } });
   const put = calls.find((call) => call.url.includes('/role-connection'));
   assert.deepEqual(JSON.parse(put.init.body).metadata, { verified: '1', bzflag_admin: '0' });
 }
@@ -195,7 +152,7 @@ const host = 'bz.example.org';
 // The chat mirror: one post per window, under the speaker's callsign when there
 // is one speaker and the server's otherwise; no mentions; a rate limit waited out.
 {
-  const { createChatMirror, senderName } = require('../server/discord-bridge.cjs');
+  const { createChatMirror, senderName } = require('../plugins/discord/bridge.cjs');
   const posts = [];
   let status = 204;
   let clock = 0;
@@ -253,7 +210,7 @@ const host = 'bz.example.org';
 // Discord to game: the bridged channel only, nothing from a bot or the
 // mirror's webhook, mentions made readable, three lines at most, commands kept.
 {
-  const { createDiscordToGame } = require('../server/discord-bridge.cjs');
+  const { createDiscordToGame } = require('../plugins/discord/bridge.cjs');
   const said = [];
   const logged = [];
   const onMessage = createDiscordToGame({
@@ -283,7 +240,7 @@ const host = 'bz.example.org';
 
 // The gateway: identify the first time, resume after, and hand dispatches on.
 {
-  const { createGateway, INTENTS, OP } = require('../server/discord-gateway.cjs');
+  const { createGateway, INTENTS, OP } = require('../plugins/discord/gateway.cjs');
   const sockets = [];
   class FakeSocket {
     constructor(url) { this.url = url; this.sent = []; this.handlers = {}; this.readyState = 1; sockets.push(this); }

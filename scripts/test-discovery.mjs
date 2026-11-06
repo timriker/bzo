@@ -83,8 +83,8 @@ const ldBlocks = (html) => [...html.matchAll(/<script type="application\/ld\+jso
   assert.match(helpDocs.renderPages('en', { live: true })[1].html, /<p id="helpRicochet"><\/p>/);
   assert.equal(ldBlocks(html).length, 1);
   assert.match(html, /<a href="https:\/\/discord\.gg\/6DHkggcXM9">BZFlag Discord<\/a>/);
-  assert.doesNotMatch(html, /\/discord\/link/, 'no account link where Linked Roles is off');
-  assert.match(discovery.helpPage({ ...context, discordLink: true }), /<a href="\/discord\/link">link your bzflag\.org account<\/a>/);
+  assert.doesNotMatch(html, /\/plugins\/discord\/link/, 'no account link where Linked Roles is off');
+  assert.match(discovery.helpPage({ ...context, discordLink: true }), /<a href="\/plugins\/discord\/link">link your bzflag\.org account<\/a>/);
   const one = discovery.helpPage({ ...context, pages: context.pages.filter((page) => page.slug === 'flags'), path: '/help/flags' });
   assert.match(one, /<title>Flags -- /);
   assert.match(one, /<link rel="canonical" href="https:\/\/bz\.example\.org\/help\/flags">/);

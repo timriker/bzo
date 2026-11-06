@@ -19,7 +19,7 @@ const require = createRequire(import.meta.url);
 const {
   createPluginHost, pluginSetting, EVENT_TYPES, CustomZoneObject, scanCustomMapObjects,
 } = require('../server/plugins.cjs');
-const { indexPage, servePage } = require('../server/plugin-http.cjs');
+const { createWebAuth, indexPage, servePage } = require('../server/plugin-http.cjs');
 const express = require('express');
 
 const root = fs.mkdtempSync(path.join(os.tmpdir(), 'bzo-plugins-'));
@@ -1035,6 +1035,119 @@ end
     host.unload('stats');
     assert.equal(host.webPage('stats'), null, 'its pages go with it');
     assert.ok((await (await fetch(`${base}/`)).text()).includes('No HTTP Services'));
+  } finally {
+    server.close();
+  }
+}
+
+// A page behind a login: eBZID sends a visitor to bzflag.org and checks the
+// token that comes back, and keeps it behind a cookie where the VDir asks;
+// eHTTPBasic asks the VDir about the Authorization header.
+{
+  const dir = path.join(root, 'auth');
+  fs.mkdirSync(dir);
+  write(dir, 'members', `module.exports = {
+    meta: { name: 'Members', version: '1.0', author: 'a', description: 'd' },
+    Init(bz) {
+      const page = (request, response) => {
+        response.ReturnCode = bz.e200OK;
+        response.DocumentType = bz.eJSON;
+        response.AddBodyData(JSON.stringify({
+          url: request.URL, bzid: request.BZID, callsign: request.BZIDCallsign, groups: request.BZIDGroups,
+          ban: request.UserHasPerm('ban'), inLeague: request.InBZIDGroup('league'),
+        }));
+        return bz.ePageDone;
+      };
+      bz.bzhttp_RegisterVDir({
+        VDirName: () => 'members', RequiredAuthentiction: bz.eBZID, CacheAuthentication: true,
+        BZIDAuthenicationGroups: ['LEAGUE'], GeneratePage: page,
+      });
+      bz.bzhttp_RegisterVDir({
+        VDirName: () => 'once', RequiredAuthentiction: bz.eBZID, GeneratePage: page,
+        GenerateNoAuthPage(request, response) {
+          response.ReturnCode = bz.e403Forbiden;
+          response.AddBodyData('not you');
+          return true;
+        },
+      });
+      bz.bzhttp_RegisterVDir({
+        VDirName: () => 'basic', RequiredAuthentiction: bz.eHTTPBasic, HTTPAuthenicationRelalm: 'ops',
+        AuthenticateHTTPUser: (ip, user, password) => (user === 'op' && password === 'pw' ? bz.eAuthOK : bz.eAuthFail),
+        GeneratePage: page,
+      });
+      bz.bzhttp_RegisterVDir({ VDirName: () => 'open', GeneratePage: page });
+    },
+  };`);
+  const host = createPluginHost({ dirs: [dir], log: () => {}, settings: { members: true } });
+  host.loadAll();
+  assert.equal(host.list()[0].state, 'loaded', host.list()[0].error);
+  const asked = [];
+  const webAuth = createWebAuth({
+    checkToken: async (callsign, token, groups) => {
+      asked.push({ callsign, token, groups });
+      return token === 'good'
+        ? { good: true, bzid: '42', callsign, groups: ['ADMINS', 'LEAGUE'] }
+        : { good: false, bzid: null, callsign: null, groups: [] };
+    },
+    serverGroups: () => ['ADMINS'],
+    groupsHavePerm: (groups, perm) => groups.includes('ADMINS') && perm.toUpperCase() !== 'HIDEADMIN',
+  });
+  const app = express();
+  app.use('/plugins', express.raw({ type: () => true }), (req, res) => {
+    const [, name = ''] = req.path.split('/');
+    const page = host.webPage(name);
+    servePage(page.vdir, page.name, req, res, {
+      body: req.body, address: '1.2.3.4', report: (e) => { throw e; }, webAuth, base: 'https://bz.example.org',
+    });
+  });
+  const server = await new Promise((resolve) => { const s = app.listen(0, '127.0.0.1', () => resolve(s)); });
+  const base = `http://127.0.0.1:${server.address().port}/plugins`;
+  // weblogin.php's way back: what it puts in place of %TOKEN% and %USERNAME%.
+  const returnFrom = (location, token, callsign) => {
+    const url = location.slice(location.indexOf('&url=') + '&url='.length)
+      .replace('%TOKEN%', token).replace('%USERNAME%', encodeURIComponent(callsign));
+    return url.replace('https://bz.example.org/plugins', base);
+  };
+  try {
+    const open = await fetch(`${base}/open/`);
+    assert.deepEqual((await open.json()).bzid, '', 'no login asked, none given');
+
+    const sent = await fetch(`${base}/members/page?x=1`, { redirect: 'manual' });
+    assert.equal(sent.status, 302);
+    const location = sent.headers.get('location');
+    assert.ok(location.startsWith('https://my.bzflag.org/weblogin.php?action=weblogin&url='
+      + 'https://bz.example.org/plugins/members/page?bzauth='), location);
+    assert.ok(location.endsWith(':%TOKEN%:%USERNAME%'), 'placeholders left for weblogin.php');
+
+    const back = await fetch(returnFrom(location, 'good', 'Tim Riker'), { redirect: 'manual' });
+    assert.equal(back.status, 200);
+    const who = await back.json();
+    assert.deepEqual(who, {
+      url: '/plugins/members/page?x=1', bzid: '42', callsign: 'Tim Riker', groups: ['ADMINS', 'LEAGUE'],
+      ban: true, inLeague: true,
+    });
+    assert.deepEqual(asked.at(-1).groups, ['ADMINS', 'LEAGUE'], "the server's groups and the VDir's");
+
+    const cookie = back.headers.get('set-cookie').split(';')[0];
+    const cached = await fetch(`${base}/members/other`, { headers: { cookie }, redirect: 'manual' });
+    assert.equal(cached.status, 200, 'CacheAuthentication keeps the login');
+    assert.equal((await cached.json()).callsign, 'Tim Riker');
+    assert.equal((await fetch(returnFrom(location, 'good', 'Tim Riker'), { redirect: 'manual' })).status, 403,
+      'a way back is good once');
+
+    const once = (await fetch(`${base}/once/`, { redirect: 'manual' })).headers.get('location');
+    const refused = await fetch(returnFrom(once, 'bad', 'Someone'), { redirect: 'manual' });
+    assert.equal(refused.status, 403);
+    assert.equal(await refused.text(), 'not you', 'GenerateNoAuthPage');
+    const noCache = (await fetch(`${base}/once/`, { headers: { cookie }, redirect: 'manual' })).status;
+    assert.equal(noCache, 302, 'a VDir without CacheAuthentication asks every time');
+
+    const asks = await fetch(`${base}/basic/`);
+    assert.equal(asks.status, 401);
+    assert.equal(asks.headers.get('www-authenticate'), 'Basic realm="ops"');
+    const basic = (user) => ({ headers: { authorization: `Basic ${Buffer.from(user).toString('base64')}` } });
+    assert.equal((await fetch(`${base}/basic/`, basic('op:pw'))).status, 200);
+    assert.equal((await fetch(`${base}/basic/`, basic('op:no'))).status, 403);
   } finally {
     server.close();
   }

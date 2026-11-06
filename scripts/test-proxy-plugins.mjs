@@ -7,7 +7,7 @@
  */
 
 // What upstream's own plugins, running in a real bzfs, send a proxied player
-// (docs/plugins-plan.md, "Behind the proxy"): each case starts a private bzfs
+// (docs/plugins.md, "Behind the proxy"): each case starts a private bzfs
 // with the plugin's `.so` and joins it through `BzfsSession`, the proxy's own
 // connection. Skipped where bzfs or its plugins are not installed.
 

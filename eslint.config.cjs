@@ -24,7 +24,7 @@ module.exports = [
   },
   js.configs.recommended,
   {
-    files: ["server.js", "server/**/*.cjs", "scripts/**/*.mjs"],
+    files: ["server.js", "server/**/*.cjs", "plugins/**/*.cjs", "scripts/**/*.mjs"],
     languageOptions: {
       ecmaVersion: "latest",
       sourceType: "commonjs",

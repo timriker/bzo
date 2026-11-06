@@ -531,8 +531,10 @@ BZFlag's `-poll` settings, and `"voteTime": 0` turns polls off:
 
 ## Discord
 
-A `discord` block in `server.json` lets members of a Discord server link
-their BZFlag account for roles: [discord.md](discord.md).
+The bundled `discord` plugin mirrors a game's chat to a Discord channel and
+back, and lets members link their BZFlag account for roles:
+[discord.md](discord.md). The bundled `matrix` plugin mirrors chat to a Matrix
+room and back: [matrix.md](matrix.md).
 
 ## Updating
 

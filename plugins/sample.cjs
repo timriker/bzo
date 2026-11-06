@@ -1,6 +1,6 @@
 // sample.cjs - upstream's plugins/SAMPLE_PLUGIN, the starting point for
 // a new plugin. Copy it to data/plugins under a new name and fill it in;
-// docs/plugins-plan.md says what a plugin is. Off unless server.json's
+// docs/plugins.md says what a plugin is. Off unless server.json's
 // "plugins" turns it on, as upstream ships it but loads it nowhere.
 //
 // Licensed under BSD so plug-ins can re-license as needed, as upstream's is.

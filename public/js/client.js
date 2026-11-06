@@ -37,8 +37,9 @@ const CHAT_KIND_DIRECT_OUT = 'direct-out';
 const CLIENT_COPYRIGHT = 'Copyright (C) 2025-2026 Tim Riker <timriker@gmail.com>';
 const CLIENT_LICENSE = 'AGPL-3.0-only';
 const CLIENT_LICENSE_URL = 'https://www.gnu.org/licenses/agpl-3.0.html';
-// Discord's own blurple, on the label of a line said in its channel.
-const DISCORD_LABEL_COLOR = '#5865f2';
+// The label of a line relayed from another network: Discord's own blurple for
+// its channel, the server's label colour for any other.
+const RELAY_LABEL_COLORS = Object.freeze({ Discord: '#5865f2' });
 // A server line's colours (FontManager.cxx:40): its label in the console's
 // yellow, what it says in cyan (playing.cxx:3197, :3244, :3309).
 const SERVER_LABEL_COLOR = '#ffff00';
@@ -4016,16 +4017,20 @@ function formatNetworkMessage(message) {
   const toSuffix = toMark ? ` ${toMark.label}` : '';
   const markSegment = (mark) => (mark ? [{ text: ` ${mark.label}`, color: colorToCSS(mark.color) }] : []);
 
-  // A line said in the server's Discord channel (docs/discord.md). The server
-  // sends it as a server message, which is what a BZFlag client shows; the
-  // `discord` part puts it with the chat here, as what it is.
-  if (message.discord && typeof message.discord.name === 'string' && typeof message.discord.text === 'string') {
-    const { name, text: said } = message.discord;
+  // A line said on another network, relayed by a plugin (bz_sendRelayMessage,
+  // docs/plugins.md). The server sends it as a server message, which is what a
+  // BZFlag client shows; the `relay` part puts it with the chat here, as what
+  // it is.
+  if (message.relay) {
+    const { network, name, text: said } = message.relay;
     return {
-      text: `[Discord] ${name}: ${said}`,
+      text: `[${network}] ${name}: ${said}`,
       tabs: ['chat', 'all'],
       kind: CHAT_KIND_CHAT,
-      segments: [{ text: '[Discord]', color: DISCORD_LABEL_COLOR }, { text: ` ${name}: ${said}` }],
+      segments: [
+        { text: `[${network}]`, color: RELAY_LABEL_COLORS[network] || SERVER_LABEL_COLOR },
+        { text: ` ${name}: ${said}` },
+      ],
     };
   }
   // playing.cxx:3209. The server's line says who it went to, as a player's

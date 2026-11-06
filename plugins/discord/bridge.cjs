@@ -6,11 +6,12 @@
  */
 
 // A game's public chat, mirrored into one Discord channel through that
-// channel's webhook. See docs/chat-bridge-plan.md, "Game to Discord" (issue #193).
+// channel's webhook, and that channel's messages back as game lines. See
+// docs/discord.md.
 //
-// Only what `deliverChatMessage` sends to every player arrives here: team
-// chat, private messages, the admin channel, a muted player and every command
-// line are refused or routed before it. Nothing comes back the other way.
+// The plugin hands the mirror only lines bz_eFilteredChatMessageEvent says
+// went to every player: team chat, private messages, the admin channel, a
+// muted player and every command line never get that far.
 //
 // A webhook takes about 30 posts a minute, so lines queue and go at most one
 // post every `FLUSH_MS`. A post from one player carries their callsign as its
@@ -19,19 +20,12 @@
 // so no line can ping `@everyone`, a role or a member. A speaker's name carries
 // BZFlag's scoreboard mark: `@` for an admin, `+` for a signed-in player.
 
+const { QUEUE_LIMIT, plain, gameLines, isCommand } = require('../bridge/lines.cjs');
+
 const FLUSH_MS = 2000;
 // Discord's own limits: a post's text and a webhook sender's name.
 const CONTENT_LIMIT = 2000;
 const NAME_LIMIT = 80;
-// Lines held while Discord is not answering, beyond which the oldest go.
-const QUEUE_LIMIT = 200;
-
-// Text as Discord shows it: no BZFlag colour codes (`ESC[...m`, whole) and no
-// other control characters.
-function plain(text) {
-  // eslint-disable-next-line no-control-regex
-  return String(text).replace(/\u001b\[[0-9;]*[A-Za-z]/g, '').replace(/[\u0000-\u001f\u007f]/g, '').trim();
-}
 
 // A sender name Discord accepts for a webhook post: it refuses one naming
 // Discord or Clyde, and a few characters, so those are taken out.
@@ -58,7 +52,7 @@ function createChatMirror({
     if (timer || queue.length === 0) return;
     timer = setTimer(() => {
       timer = null;
-      flush().catch((err) => logError('[DISCORD] chat mirror failed', err));
+      flush().catch((err) => logError('chat mirror failed', err));
     }, delay);
   };
 
@@ -99,9 +93,9 @@ function createChatMirror({
       const body = await response.json().catch(() => ({}));
       pausedUntil = now() + Math.ceil((Number(body.retry_after) || 2) * 1000);
       queue.unshift(...lines);
-      log(`[DISCORD] chat mirror rate limited for ${pausedUntil - now()}ms`);
+      log(`chat mirror rate limited for ${pausedUntil - now()}ms`);
     } else if (!response.ok) {
-      log(`[DISCORD] chat mirror dropped ${lines.length} line(s): ${response.status}`);
+      log(`chat mirror dropped ${lines.length} line(s): ${response.status}`);
     }
     schedule();
   }
@@ -120,11 +114,6 @@ function createChatMirror({
     get pending() { return queue.length; },
   };
 }
-
-// How many lines of one Discord message reach the game, and how long each may
-// be: a chat line is short, and a long post is better read in Discord.
-const GAME_LINES = 3;
-const GAME_LINE_LIMIT = 200;
 
 // Discord's own markup for a mention, a channel and a custom emoji, as the
 // name a reader would see.
@@ -150,16 +139,11 @@ function createDiscordToGame({ channelId, nameFor, announce, log }) {
     const name = plain(nameFor(message)) || 'someone';
     let text = readable(message.content || '', message.mentions);
     if (!text.trim() && message.attachments?.length) text = '[attachment]';
-    if (text.trim().startsWith('/')) {
-      log(`[DISCORD] "${name}" sent a command, not relayed: ${plain(text).slice(0, 80)}`);
+    if (isCommand(text)) {
+      log(`"${name}" sent a command, not relayed: ${plain(text).slice(0, 80)}`);
       return;
     }
-    const lines = text.split('\n').map(plain).filter(Boolean);
-    if (lines.length === 0) return;
-    const shown = lines.slice(0, GAME_LINES).map((line) => (line.length > GAME_LINE_LIMIT
-      ? `${line.slice(0, GAME_LINE_LIMIT - 1)}…` : line));
-    if (lines.length > GAME_LINES) shown[GAME_LINES - 1] += ' (more in Discord)';
-    for (const line of shown) announce({ name, line, text: `[Discord] ${name}: ${line}` });
+    for (const line of gameLines(text, 'Discord')) announce({ name, line, text: `[Discord] ${name}: ${line}` });
   };
 }
 

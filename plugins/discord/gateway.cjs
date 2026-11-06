@@ -8,7 +8,7 @@
 // A connection to Discord's gateway, the WebSocket a bot hears messages on.
 // Only as much of the protocol as reading one channel takes: hello and
 // heartbeat, identify and resume, and dispatches handed to `onDispatch`.
-// See docs/chat-bridge-plan.md, "Discord to game" (issue #193).
+// See docs/discord.md, "Discord to game".
 //
 // The session is saved (`store`) after every event, so a server that restarts
 // -- a dev server does on every edit -- resumes it rather than identifying
@@ -56,7 +56,7 @@ function createGateway({
     try {
       store.save(session);
     } catch (err) {
-      logError('[DISCORD] could not save the gateway session', err);
+      logError('could not save the gateway session', err);
     }
   };
   const send = (op, d) => {
@@ -81,7 +81,7 @@ function createGateway({
       receive(packet);
     });
     socket.on('close', (code) => closed(code));
-    socket.on('error', (err) => log(`[DISCORD] gateway error: ${err.message}`));
+    socket.on('error', (err) => log(`gateway error: ${err.message}`));
   }
 
   function closed(code) {
@@ -89,10 +89,10 @@ function createGateway({
     socket = null;
     if (stopped) return;
     if (FATAL_CLOSES.has(code)) {
-      log(`[DISCORD] gateway closed ${code}; not reconnecting (check the token and the app's intents)`);
+      log(`gateway closed ${code}; not reconnecting (check the token and the app's intents)`);
       return;
     }
-    log(`[DISCORD] gateway closed ${code}; reconnecting in ${Math.round(retryMs / 1000)}s`);
+    log(`gateway closed ${code}; reconnecting in ${Math.round(retryMs / 1000)}s`);
     setTimer(connect, retryMs);
     retryMs = Math.min(RETRY_MAX_MS, retryMs * 2);
   }
@@ -106,7 +106,7 @@ function createGateway({
       // No acknowledgement since the last one: the connection is a zombie, so
       // close it and resume on a fresh one.
       if (!acked) {
-        log('[DISCORD] gateway heartbeat unanswered; reconnecting');
+        log('gateway heartbeat unanswered; reconnecting');
         socket?.close(4000);
         return;
       }
@@ -155,16 +155,16 @@ function createGateway({
         if (t === 'READY') {
           session = { sessionId: d.session_id, resumeUrl: d.resume_gateway_url, seq: session.seq };
           retryMs = RETRY_MIN_MS;
-          log(`[DISCORD] gateway ready as ${d.user?.username}`);
+          log(`gateway ready as ${d.user?.username}`);
         } else if (t === 'RESUMED') {
           retryMs = RETRY_MIN_MS;
-          log('[DISCORD] gateway resumed');
+          log('gateway resumed');
         }
         save();
         try {
           onDispatch(t, d);
         } catch (err) {
-          logError(`[DISCORD] ${t} handler failed`, err);
+          logError(`${t} handler failed`, err);
         }
         break;
       default:
@@ -174,10 +174,12 @@ function createGateway({
 
   return {
     start: connect,
+    // Closed with a code other than 1000 or 1001, which would end the
+    // session: a plugin switched off and on again resumes it.
     stop() {
       stopped = true;
       stopHeartbeat();
-      socket?.close(1000);
+      socket?.close(4000);
     },
   };
 }

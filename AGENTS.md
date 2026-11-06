@@ -567,6 +567,11 @@ may change once that stops being the dominant cost.
   behavior with an older version -- `git log` and `CHANGELOG.md` already hold
   that, and a note about code that no longer exists is noise a reader has to
   disprove. The same applies to commented-out code: delete it.
+- **A plan holds only what is not built.** `docs/<topic>-plan.md` lists the
+  work still to do. What is built is documented in `docs/<topic>.md` --
+  behavior, API, configuration -- and the plan links to it. When a step
+  lands, move its description out of the plan into the topic doc, and point
+  code comments at the topic doc, not the plan.
 - **Preserve the AGPL license header** that already appears at the top of major
   source files when creating or modifying files.
 
@@ -602,8 +607,8 @@ can carry both.
 language (issue #44), and `docs/chat-translation-plan.md` for translating
 player chat.
 
-`docs/plugins-plan.md` is the plan for server plugins in JavaScript
-(issue #195).
+`docs/plugins.md` documents server plugins in JavaScript (issue #195), and
+`docs/plugins-plan.md` what is left of them.
 
 `docs/bots-plan.md` is the plan for the autopilot and for bots (issue #151).
 `public/js/autopilot.mjs` reads the world only through a view, so the client's

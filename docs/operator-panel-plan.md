@@ -18,7 +18,7 @@ Server name, `motd`, `shotMaxActive`, `ricochet`, a map list, a map upload,
 bot fill and pilot, the game's shape -- teams, rabbit chase, jumping, a
 playing limit and a limit per team -- and the match limits (`timeLimit`,
 `timeManualStart`, `maxPlayerScore`, `maxTeamScore`) beside the Match Timer
-buttons, and a row per plugin to turn it on or off (`docs/plugins-plan.md`).
+buttons, and a row per plugin to turn it on or off (`docs/plugins.md`).
 Every row is staged behind one Apply/Restart button; see "Admins and the admin
 channel" in `AGENTS.md`. What is left is the rules pass, and the rest of the
 Plugins section: options and upload.

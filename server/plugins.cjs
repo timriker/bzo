@@ -6,7 +6,7 @@
  */
 
 // plugins.cjs - server plugins in JavaScript, shaped as bzfs's are
-// (include/bzfsAPI.h) so a C++ plugin ports line for line; docs/plugins-plan.md.
+// (include/bzfsAPI.h) so a C++ plugin ports line for line; docs/plugins.md.
 //
 // A plugin is one `.cjs` file exporting upstream's bz_Plugin methods, a
 // `meta` that says what it is, and the translations of what it says:

@@ -215,7 +215,7 @@ const {
 } = require('./public/js/bzdb.mjs');
 const { POLL_DEFAULTS, VotingArbiter, parseVoteAnswer } = require('./server/polls.cjs');
 const { CustomZoneObject, createPluginHost, scanCustomMapObjects } = require('./server/plugins.cjs');
-const { indexPage, servePage } = require('./server/plugin-http.cjs');
+const { createWebAuth, indexPage, servePage } = require('./server/plugin-http.cjs');
 const { getKillScoreDeltas } = require('./public/js/scoring.mjs');
 const { createBanStore, parseDuration } = require('./server/bans.cjs');
 const {
@@ -260,8 +260,6 @@ const {
   isRealPlayerId,
   teamChannel,
 } = require('./server/player-ids.cjs');
-const { createDiscordLink, discordLinkConfigured } = require('./server/discord.cjs');
-const { createChatMirror, createDiscordToGame } = require('./server/discord-bridge.cjs');
 const bzfsProxy = require('./server/bzfs-proxy.cjs');
 const { sanitizeMotto, resolveProxyRequest, handleProxyConnection } = bzfsProxy;
 const messagesVoice = require('./server/messages-voice.cjs');
@@ -275,7 +273,6 @@ const MESSAGE_HANDLERS = Object.freeze({
   ...messagesPlay.MESSAGE_HANDLERS,
   ...messagesOperator.MESSAGE_HANDLERS,
 });
-const { createGateway } = require('./server/discord-gateway.cjs');
 const {
   SESSION_COOKIE_NAME,
   SESSION_TTL_MS,
@@ -459,11 +456,31 @@ app.use('/plugins', express.raw({ type: () => true, limit: '1mb' }), (req, res) 
     res.redirect(301, `${req.baseUrl}/${encodeURIComponent(page.name)}/`);
     return;
   }
-  servePage(page.vdir, page.name, req, res, {
+  const serve = () => servePage(page.vdir, page.name, req, res, {
     body: Buffer.isBuffer(req.body) ? req.body : null,
     address: requestAddress(req),
     report: (error) => log(`[PLUGIN] ${page.plugin}: GeneratePage: ${error?.stack || error}`),
+    webAuth: pluginWebAuth,
+    base: requestBase(req) || '',
   });
+  // The way back from a BZID login asks bzflag.org about a token, as /login's
+  // does, so it is metered as /login is.
+  if (req.query.bzauth !== undefined) loginRateLimit(req, res, serve);
+  else serve();
+});
+// A plugin page's BZID login (`eBZID`): the server's admin groups are asked
+// about as a /login asks about them, and decide what the visitor may do.
+const pluginWebAuth = createWebAuth({
+  checkToken: async (callsign, token, groups) => {
+    const { status, body } = await checkGlobalToken(callsign, token, groups);
+    const parsed = parseGlobalTokenReply(body);
+    log(`[PLUGIN] CHECKTOKENS ${status} good=${parsed.good} bzid=${parsed.bzid || 'none'}`
+      + ` callsign="${parsed.callsign || ''}" groups=${parsed.groups.join(',') || 'none'}`);
+    return parsed;
+  },
+  serverGroups: () => ADMIN_GROUPS,
+  groupsHavePerm: (groups, perm) => groupsHavePerm(groups, perm),
+  log,
 });
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -3487,7 +3504,8 @@ function discoveryContext(req) {
     version: SERVER_VERSION,
     listServerUrl: IS_DESIGNATED_LIST_SERVER || !LIST_SERVER_URL ? base : LIST_SERVER_URL,
     helpMarkdown: helpDocs.helpMarkdown(),
-    discordLink: Boolean(discordLink),
+    // Linked Roles' page, while the discord plugin serves it.
+    discordLink: Boolean(plugins?.webPage('discord')),
   };
 }
 
@@ -3905,7 +3923,7 @@ const BUNDLED_REPLAYS_DIR = path.join(__dirname, 'replays');
 const RUNTIME_REPLAYS_DIR = process.env.REPLAYS_PATH
   ? path.resolve(process.env.REPLAYS_PATH)
   : path.join(path.dirname(configPath), 'replays');
-// Server plugins (docs/plugins-plan.md), laid out as maps are: the bundled
+// Server plugins (docs/plugins.md), laid out as maps are: the bundled
 // ones, which an upgrade replaces, then the operator's beside `server.json`,
 // which it keeps. An operator's plugin wins over a bundled one of the same
 // name. The two are one directory only in the old layout (`CONFIG_IS_LEGACY`).
@@ -5126,108 +5144,9 @@ if (refusedAdminGroups.length > 0) {
     + ` ${refusedAdminGroups.map((group) => JSON.stringify(group)).join(', ')}`);
 }
 
-// Discord Linked Roles (server/discord.cjs, docs/chat-bridge-plan.md), when
-// server.json has a `discord` block with the app's credentials. The links are
-// kept beside bans.json; the same sign-in path and the same admin groups as
-// /login decide who is who.
-const DISCORD_LINKS_PATH = path.join(path.dirname(CONFIG_PATH), 'discord-links.json');
-const discordLink = discordLinkConfigured(serverConfig.discord)
-  ? createDiscordLink({
-    config: serverConfig.discord,
-    checkToken: async (callsign, token) => {
-      const { status, body } = await checkGlobalToken(callsign, token, ADMIN_GROUPS);
-      const parsed = parseGlobalTokenReply(body);
-      log(`[DISCORD] CHECKTOKENS ${status} good=${parsed.good} bzid=${parsed.bzid || 'none'}`
-        + ` callsign="${parsed.callsign || ''}" groups=${parsed.groups.join(',') || 'none'}`);
-      return parsed;
-    },
-    isAdmin: (groups) => groupsGrantAdmin(groups, ADMIN_GROUPS),
-    store: {
-      load: () => (fs.existsSync(DISCORD_LINKS_PATH)
-        ? JSON.parse(fs.readFileSync(DISCORD_LINKS_PATH, 'utf8')) : {}),
-      save: (links) => fs.writeFileSync(DISCORD_LINKS_PATH, `${JSON.stringify(links, null, 2)}\n`, { mode: 0o600 }),
-    },
-    log,
-    logError,
-  })
-  : null;
-if (discordLink) {
-  const withHost = (handler) => (req, res) => {
-    const host = requestHost(req);
-    if (!host) {
-      res.status(400).type('text/plain').send('Malformed Host header');
-      return;
-    }
-    handler(req, res, host);
-  };
-  app.get('/discord/link', loginRateLimit, withHost(discordLink.start));
-  app.get('/discord/link/callback', loginRateLimit, withHost(discordLink.discordCallback));
-  app.get('/discord/link/bzflag/:key', loginRateLimit, (req, res) => discordLink.bzflagCallback(req, res));
-  log(`Discord: Linked Roles on, ${discordLink.size} linked`);
-  discordLink.registerMetadata().catch((err) => logError('[DISCORD] role metadata failed', err));
-}
-
-// Public chat mirrored to a Discord channel (server/discord-bridge.cjs), when
-// `discord.bridge.webhookUrl` names that channel's webhook. Fed from
-// `deliverChatMessage`'s all-players branch and nowhere else.
-const DISCORD_BRIDGE_WEBHOOK = serverConfig.discord?.bridge?.webhookUrl;
-const chatMirror = typeof DISCORD_BRIDGE_WEBHOOK === 'string'
-  && DISCORD_BRIDGE_WEBHOOK.startsWith('https://discord.com/api/webhooks/')
-  ? createChatMirror({
-    webhookUrl: DISCORD_BRIDGE_WEBHOOK,
-    serverName: serverConfig.title || 'bzo',
-    log,
-    logError,
-  })
-  : null;
-if (chatMirror) log('Discord: public chat mirrored to a channel');
-
-// And the channel's own messages back into the game, through the bot's
-// gateway connection (server/discord-gateway.cjs), when there is a bot token
-// as well. The channel is the one the mirror's webhook posts to, asked of the
-// webhook itself. The gateway session is kept beside bans.json so a restart
-// resumes it.
-const DISCORD_GATEWAY_PATH = path.join(path.dirname(CONFIG_PATH), 'discord-gateway.json');
-if (chatMirror && typeof serverConfig.discord?.botToken === 'string' && serverConfig.discord.botToken) {
-  fetch(DISCORD_BRIDGE_WEBHOOK, { signal: AbortSignal.timeout(10000) })
-    .then((response) => response.json())
-    .then((webhook) => {
-      if (!webhook.channel_id) throw new Error('the bridge webhook named no channel');
-      const onMessage = createDiscordToGame({
-        channelId: webhook.channel_id,
-        nameFor: (message) => {
-          const linked = discordLink?.linkFor(message.author?.id);
-          if (linked) return `${linked.admin ? '@' : '+'}${linked.callsign}`;
-          return message.member?.nick || message.author?.global_name || message.author?.username;
-        },
-        // A server message, so a native BZFlag client shows it as one; the
-        // `discord` part is for bzo's own, which puts it with the chat.
-        announce: ({ name, line, text }) => {
-          log(`[CHAT] ${text}`);
-          broadcastAll({
-            type: 'message', src: SERVER_PLAYER, dst: ALL_PLAYERS, msgType: 'server', text,
-            discord: { name, text: line }, ts: Date.now(),
-          });
-        },
-        log,
-      });
-      createGateway({
-        token: serverConfig.discord.botToken,
-        onDispatch: (type, data) => {
-          if (type === 'MESSAGE_CREATE') onMessage(data);
-        },
-        store: {
-          load: () => (fs.existsSync(DISCORD_GATEWAY_PATH)
-            ? JSON.parse(fs.readFileSync(DISCORD_GATEWAY_PATH, 'utf8')) : null),
-          save: (session) => fs.writeFileSync(DISCORD_GATEWAY_PATH, JSON.stringify(session), { mode: 0o600 }),
-        },
-        log,
-        logError,
-      }).start();
-      log('Discord: channel messages relayed into the game');
-    })
-    .catch((err) => logError('[DISCORD] could not start the channel relay', err));
-}
+// Discord is a plugin (plugins/discord.cjs), whose options are its entry in
+// `plugins`; a `discord` block anywhere else does nothing, so say so.
+if (serverConfig.discord) log('server.json: "discord" is not read; its options go in "plugins": { "discord": {...} }');
 
 // The bzfs servers this instance may proxy, from `proxies` in `server.json`
 // (`server/proxies.cjs`). The map is the allowlist: a target not named there
@@ -9522,6 +9441,16 @@ function hasPerm(player, perm) {
   return isAdmin(player) && name !== 'HIDEADMIN';
 }
 
+// What a visitor signed in to a plugin's page by BZID may do: the same
+// groups as a player, VERIFIED's for anyone and every permission for one in
+// an admin group (bzhttp_Request::UserHasPerm, bzfsHTTPAPI.cxx:524).
+function groupsHavePerm(groups, perm) {
+  const name = String(perm || '').toUpperCase();
+  if (!name) return false;
+  if (groupsGrantAdmin(groups, ADMIN_GROUPS)) return name !== 'HIDEADMIN';
+  return EVERYONE_PERMS.has(name) || VERIFIED_PERMS.has(name);
+}
+
 // bz_modifyPerm (bzfsAPI.cxx:1027), and bz_ePermissionModificationEvent.
 function modifyPerm(player, perm, grant) {
   const name = String(perm || '').toUpperCase();
@@ -11396,18 +11325,23 @@ function deliverChatMessage(player, targetId, msgType, rawText) {
   // bz_eRawChatMessageEvent (bzfs.cxx sendChatMessage), before anything else
   // is asked of the line: a plugin may rewrite it, and one it empties is not
   // sent at all.
-  const raw = pluginEvent('bz_eRawChatMessageEvent', () => {
+  const chatData = (message) => {
     const team = channelTeam(targetId);
     return {
       from: Number(fromId),
       to: targetId === ALL_PLAYERS ? BZ_ALLUSERS : (isRealPlayerId(targetId) ? Number(targetId) : BZ_NULLUSER),
       team: targetId === ADMIN_PLAYERS ? 8 : (team === null ? -1 : bzTeam(getTeamFromColorIndex(team))),
-      message: rawText,
+      message,
       messageType: msgType === 'action' ? 1 : 0,
     };
-  });
+  };
+  const raw = pluginEvent('bz_eRawChatMessageEvent', () => chatData(rawText));
   const text = raw ? String(raw.message ?? '') : rawText;
   if (!text) return;
+  // bz_eFilteredChatMessageEvent, once a line has gone to whoever it was for:
+  // the line as they read it, which a plugin only hears. Upstream fires it
+  // from `/msg` alone (commands.cxx:1044); here every delivered line does.
+  const delivered = () => pluginEvent('bz_eFilteredChatMessageEvent', () => chatData(text));
 
   // A muted player has no `talk` permission upstream, and this is upstream's own
   // sentence for it (bzfs.cxx:1667). The exception is upstream's too: somebody
@@ -11441,7 +11375,6 @@ function deliverChatMessage(player, targetId, msgType, rawText) {
 
   if (targetId === ALL_PLAYERS) {
     log(`[CHAT] "${fromName}"->ALL: ${text}`);
-    chatMirror?.relay(fromName, text, msgType, isAdmin(player) ? '@' : (player.verified ? '+' : ''));
     broadcastAll({
       type: 'message',
       src: fromId,
@@ -11450,6 +11383,7 @@ function deliverChatMessage(player, targetId, msgType, rawText) {
       text,
       ts: Date.now(),
     });
+    delivered();
     return;
   }
 
@@ -11476,6 +11410,7 @@ function deliverChatMessage(player, targetId, msgType, rawText) {
       if (other.team !== chatTeam && other !== player) return;
       if (other.ws && other.ws.readyState === 1) other.ws.send(encoded);
     });
+    delivered();
     return;
   }
 
@@ -11503,6 +11438,7 @@ function deliverChatMessage(player, targetId, msgType, rawText) {
     for (const admin of getAdmins()) {
       if (admin.ws && admin.ws.readyState === 1) admin.ws.send(payload);
     }
+    delivered();
     return;
   }
 
@@ -11524,6 +11460,7 @@ function deliverChatMessage(player, targetId, msgType, rawText) {
     if (player.ws && player.ws.readyState === 1 && targetId !== fromId) {
       player.ws.send(JSON.stringify(payload));
     }
+    delivered();
     return;
   }
 
@@ -18666,6 +18603,8 @@ const PLUGIN_API = Object.freeze({
   BZ_SERVER, BZ_ALLUSERS, BZ_NULLUSER,
   eNoTeam: -1, eRogueTeam: 0, eRedTeam: 1, eGreenTeam: 2, eBlueTeam: 3, ePurpleTeam: 4,
   eRabbitTeam: 5, eHunterTeam: 6, eObservers: 7, eAdministrators: 8,
+  // bz_eMessageType: a chat event's `messageType`, a `/me` line an action.
+  eChatMessage: 0, eActionMessage: 1,
 
   bz_getCurrentTime: () => Date.now() / 1000,
   bz_getPlayerIndexList: () => [...players.values()].filter((player) => player.joined)
@@ -18803,6 +18742,25 @@ const PLUGIN_API = Object.freeze({
     }
     log(`[PLUGIN] kicked "${victim.name}": ${reason}`);
     removeFromServer(victim);
+    return true;
+  },
+  // bz_getPublicDescription (bzfsAPI.cxx:3395): the server's title, as the
+  // list server shows it.
+  bz_getPublicDescription: () => serverConfig.title || '',
+  // bzo's own: the directory `server.json` is in, where a plugin keeps what
+  // it saves (`data/` in a checkout, `/data` in Docker), kept by an upgrade.
+  bz_getDataDir: () => path.dirname(CONFIG_PATH),
+  // bzo's own: a line said somewhere else -- a Discord channel, IRC -- to
+  // every player, from `name` on `network`. A BZFlag client reads it as the
+  // server message `[network] name: text`; bzo's own puts it with the chat.
+  bz_sendRelayMessage: (network, name, text) => {
+    const relay = { network: String(network), name: String(name), text: String(text) };
+    if (!relay.network || !relay.text) return false;
+    const line = `[${relay.network}] ${relay.name}: ${relay.text}`;
+    log(`[CHAT] ${line}`);
+    broadcastAll({
+      type: 'message', src: SERVER_PLAYER, dst: ALL_PLAYERS, msgType: 'server', text: line, relay, ts: Date.now(),
+    });
     return true;
   },
   // bz_debugMessage(level, message): logged at level 1 and below, which is
