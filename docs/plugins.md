@@ -305,8 +305,8 @@ TimeLimit and wwzones. Of allejo's: ctfOverseer (`_disallowSelfCap` and
 `bz_changeMap`. bzo's own: compassletters, the compass letters a native
 client sees, and discord, a Discord channel's chat both ways and Linked Roles
 (`docs/discord.md`), the job upstream's ircRelay did for IRC; and matrix, a
-Matrix room's chat both ways (`docs/matrix.md`). Each is off until `server.json` names it, and when on does what
-its upstream does by default.
+Matrix room's chat both ways (`docs/matrix.md`). Each is off until
+`server.json` names it, and when on does what its upstream does by default.
 
 ## Behind the proxy
 
