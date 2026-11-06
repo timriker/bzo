@@ -1154,6 +1154,8 @@ export class TankRendering {
       rightTreadRearCap: this._findFirstTankTemplateMesh(TANK_PART_ALIASES.rightTreadRearCap, modelPath),
       turret: this._findFirstTankTemplateMesh(TANK_PART_ALIASES.turret, modelPath),
       barrel: this._findFirstTankTemplateMesh(TANK_PART_ALIASES.barrel, modelPath),
+      leftCasing: this._findFirstTankTemplateMesh(TANK_PART_ALIASES.leftCasing, modelPath),
+      rightCasing: this._findFirstTankTemplateMesh(TANK_PART_ALIASES.rightCasing, modelPath),
     };
     const leftWheelParts = this._getTemplateMeshesByPrefixes(TANK_WHEEL_PREFIX_ALIASES.left, modelPath);
     const rightWheelParts = this._getTemplateMeshesByPrefixes(TANK_WHEEL_PREFIX_ALIASES.right, modelPath);
@@ -1198,6 +1200,12 @@ export class TankRendering {
     const body = this._cloneTemplateMesh(templateParts.body, bodyMaterial);
     tankGroup.add(body);
     tankGroup.userData.body = body;
+    // The body's own material, which is what they were drawn in when they were
+    // part of it.
+    const casings = [templateParts.leftCasing, templateParts.rightCasing]
+      .filter(Boolean)
+      .map((part) => this._cloneTemplateMesh(part, bodyMaterial));
+    casings.forEach((casing) => tankGroup.add(casing));
 
     const treadMaterials = {
       treadTexture,
@@ -1273,6 +1281,7 @@ export class TankRendering {
       body,
       turret,
       barrel,
+      ...casings,
       ...tankGroup.userData.treadGroups,
       ...tankGroup.userData.leftWheels,
       ...tankGroup.userData.rightWheels,

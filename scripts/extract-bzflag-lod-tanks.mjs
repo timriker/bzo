@@ -307,10 +307,14 @@ function buildTread(yOffset, divisions, tiles) {
 }
 
 
-// `buildCasing`. The plate that closes the hull in beside each belt --
+// `buildCasing`. The housing behind the road wheels inside each belt --
 // upstream's animated tank draws it from `buildHighLCasingAnim`, which is this
-// plus a cover that only the Covered tread style has. Without it the hull has
-// an open end where the tread runs past it.
+// plus a cover that only the Covered tread style has. Upstream's is its two
+// side plates alone; this closes them into a box, with a top, a bottom and two
+// ends, because an explosion throws it clear of the tank (issue #200) and two
+// plates with nothing between them read as stray sheets. The faces added lie
+// against the inside of the belt and the middle of the end wheels, so a whole
+// tank looks the same either way.
 function buildCasing(yOffset) {
   const { treadWidth, treadThickness, treadHeight, wheelSpacing } = TREAD;
   // Upstream makes this plate 0.6 of the track's width. Narrower here, so it
@@ -343,7 +347,33 @@ function buildCasing(yOffset) {
     at(+xc, yLeft, zt, [0, 1, 0], -tx, +ty),
     at(-xc, yLeft, zt, [0, 1, 0], +tx, +ty),
   ];
-  return [...stripToTriangles(right), ...stripToTriangles(left)];
+  // Top, bottom and ends, each facing out, textured as the plates are.
+  const tz = (2 * ty) * ((yLeft - yRight) / (zt - zb));
+  const top = [
+    at(-xc, yRight, zt, [0, 0, 1], -tx, -tz),
+    at(+xc, yRight, zt, [0, 0, 1], +tx, -tz),
+    at(-xc, yLeft, zt, [0, 0, 1], -tx, +tz),
+    at(+xc, yLeft, zt, [0, 0, 1], +tx, +tz),
+  ];
+  const bottom = [
+    at(+xc, yRight, zb, [0, 0, -1], -tx, -tz),
+    at(-xc, yRight, zb, [0, 0, -1], +tx, -tz),
+    at(+xc, yLeft, zb, [0, 0, -1], -tx, +tz),
+    at(-xc, yLeft, zb, [0, 0, -1], +tx, +tz),
+  ];
+  const front = [
+    at(+xc, yRight, zb, [1, 0, 0], -tz, -ty),
+    at(+xc, yLeft, zb, [1, 0, 0], +tz, -ty),
+    at(+xc, yRight, zt, [1, 0, 0], -tz, +ty),
+    at(+xc, yLeft, zt, [1, 0, 0], +tz, +ty),
+  ];
+  const back = [
+    at(-xc, yLeft, zb, [-1, 0, 0], -tz, -ty),
+    at(-xc, yRight, zb, [-1, 0, 0], +tz, -ty),
+    at(-xc, yLeft, zt, [-1, 0, 0], -tz, +ty),
+    at(-xc, yRight, zt, [-1, 0, 0], +tz, +ty),
+  ];
+  return [right, left, top, bottom, front, back].flatMap(stripToTriangles);
 }
 
 // `buildWheel`, the four road wheels inside each belt.
@@ -1114,15 +1144,11 @@ for (const [label, files] of Object.entries(LODS)) {
     // quality: 32 round the belt and 16 round a wheel.
     const TREAD_DIVS = 32;
     const WHEEL_DIVS = 16;
-    // The hull is closed before the casing plates are added to it. The plates
-    // are flat quads with no thickness, so their rim reads as a hole, and
-    // capping one would only lay a second quad on top of the first.
     parts.body = [...parts.body, ...capBoundaryLoops(parts.body)];
-    parts.body = [
-      ...parts.body,
-      ...buildCasing(+TREAD.treadYCenter),
-      ...buildCasing(-TREAD.treadYCenter),
-    ];
+    // Each casing its own part, so an explosion throws it on its own, as
+    // upstream throws its `LeftCasing` and `RightCasing`.
+    parts.lcasing = buildCasing(+TREAD.treadYCenter);
+    parts.rcasing = buildCasing(-TREAD.treadYCenter);
     parts.barrel = barrelToPipe(parts.barrel) || parts.barrel;
     parts.ltread = buildTread(+TREAD.treadYCenter, TREAD_DIVS, tiles);
     parts.rtread = buildTread(-TREAD.treadYCenter, TREAD_DIVS, tiles);
@@ -1139,7 +1165,7 @@ for (const [label, files] of Object.entries(LODS)) {
   // Every part a solid in its own right, because an explosion takes the tank
   // apart and throws the pieces: each is then seen from every side, including
   // the one that used to face another part. The treads variant has already had
-  // its hull done above, before its casing plates went on.
+  // its hull done above.
   for (const part of ['body', 'turret', 'barrel']) {
     if (!parts[part]) continue;
     if (label === 'treads' && (part === 'body' || part === 'barrel')) continue;

@@ -28,6 +28,11 @@ export const TANK_PART_ALIASES = {
   rightTreadMiddle: ['rightTreadMiddle', 'tread_belt_right', 'rightTrack', 'rtread'],
   rightTreadFrontCap: ['rightTreadFrontCap', 'tread_cap_right_front', 'rightTrack', 'rtread'],
   rightTreadRearCap: ['rightTreadRearCap', 'tread_cap_right_rear', 'rightTrack', 'rtread'],
+  // Optional: the housing behind the road wheels inside a belt, upstream's
+  // `LeftCasing` and `RightCasing`, drawn in the body's material and thrown
+  // on its own when the tank explodes.
+  leftCasing: ['leftCasing', 'lcasing'],
+  rightCasing: ['rightCasing', 'rcasing'],
 };
 
 // The three navigation lights, which a model places itself. Upstream fixes

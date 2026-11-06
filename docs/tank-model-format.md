@@ -93,6 +93,17 @@ The renderer animates however many indexed wheels it finds on each side, in
 numeric order. This supports 3-wheel, 4-wheel, and other tracked layouts
 without model-specific code.
 
+## Casing Object Names
+
+Optional: the housing behind the road wheels inside each belt, upstream's
+`LeftCasing` and `RightCasing`.
+
+- `lcasing` or `leftCasing`
+- `rcasing` or `rightCasing`
+
+Each is drawn in the body's material and thrown as its own piece when the
+tank explodes, so it should be a closed solid rather than bare plates.
+
 ## Navigation Light Object Names
 
 Upstream BZFlag draws three navigation lights above the turret, read the way an
