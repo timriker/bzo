@@ -6,6 +6,30 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
 
 ## [Unreleased]
 
+## [1.3.94] - 2026-11-07
+
+### Added
+- The Discord and Matrix bridges say when a person joins or leaves, with who
+  is in after: `Foo joined, p 2 o 1 b 1` -- players, observers and bots.
+- Ace bots use Thief: they go after and shoot only a foe carrying a flag worth
+  taking, and drop Thief when there is none near.
+- Ace bots send their team flag home by jumping a pyramid it cannot rest on,
+  as well as by driving over an enemy base.
+
+### Changed
+- Ace bots leave their team flag where a team mate put it, such as the tower
+  behind the base on hix, or near home and no nearer the enemy, unless a foe
+  is beside it.
+- Ace bots go after a foe in Masquerade, or anyone while they hold
+  Colorblindness, more warily, and shoot only up close or once shot at.
+
+### Fixed
+- Ace bots no longer shoot through a team mate at the foe behind him.
+- Ace bots with Forward Only turn round instead of stalling where they would
+  back up.
+- Ace bots drive hix's narrow diagonal walkways straight rather than in a
+  zigzag.
+
 ## [1.3.93] - 2026-11-07
 
 ### Changed
