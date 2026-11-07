@@ -6,6 +6,19 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
 
 ## [Unreleased]
 
+## [1.3.93] - 2026-11-07
+
+### Changed
+- Ace bots plan routes whose jumps and drops land out of a nearby foe's
+  sight, along the tops or round on the ground, rather than coming down in
+  front of him (#202).
+- An Ace bot jumping out of a shot leaves moving, onto cover or well aside
+  rather than straight up, and turns in the air to face the shooter from
+  where he lands.
+
+### Fixed
+- An Ace bot no longer jumps over a shot too late to clear it.
+
 ## [1.3.92] - 2026-11-07
 
 ### Added
