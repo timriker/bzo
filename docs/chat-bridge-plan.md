@@ -3,8 +3,10 @@
 Issue #193. A game server's public chat carried both ways to a chat platform,
 and members there proving which BZFlag account is theirs. Built: Discord's
 Linked Roles, callsign nicknames and chat both ways (`docs/discord.md`), and
-Matrix chat both ways (`docs/matrix.md`). Still to come are commands from
-linked members, Matrix links and IRC. Voice is not planned on any of them.
+Matrix chat both ways, links, and power levels and rooms from groups
+(`docs/matrix.md`), and commands from linked members on both. Still to come
+is IRC.
+Voice is not planned on any of them.
 
 GitHub events reach the BZFlag Discord's #bzo-dev channel through a repository
 webhook pointed at Discord's `/github` endpoint, and `#bzo-dev:matrix.org`
@@ -53,51 +55,32 @@ What every transport does:
   that is the one thing linking adds, and it is decided once for all
   transports.
 
-### Commands from linked members
-
-A command line from the far side runs only for a linked member, as their BZID:
-the permission each command carries in `commands.cjs`, checked as it is for a
-signed-in player, with the groups their link recorded. An admin in game is an
-admin from Discord, Matrix or IRC, and nobody else is. The reply goes to that
-member alone. An unlinked member's command is refused, not relayed as chat.
-
-The prefix is the platform's: Discord's `/bzo` slash command answers
-ephemerally; on Matrix and IRC a line starting `!` is the command, since
-Element takes `/` for its own commands and IRC clients do too, and the reply
-goes as a private message.
-
 ### Links
 
 Every platform links the same way bzo's Discord links do: the member gets a
 one-time bzo URL, signs in through BZFlag's `weblogin` (`docs/login.md`), and
 bzo stores the pair. The far-side identity is what the platform vouches for --
 a Discord user ID, a Matrix user ID, an IRC services account -- never a
-display name. Each platform keeps its own file beside `discord-links.json`, in
-the same shape.
+display name. Where the platform can hold them, the links live there, for
+every bzo server in the community: Matrix's are state events in the space
+(`docs/matrix.md`). Discord's are still one server's file,
+`discord-links.json`.
 
 ## Discord
 
-Built, and documented in `docs/discord.md`. What is left is commands from
-linked members, above, answering a `/bzo` slash command through the
-interactions endpoint, `https://<server>/discord/interactions`, signed with the
-app's `publicKey`.
+Built, and documented in `docs/discord.md`. Its links are still one server's
+file; moving them where every server in the community can read them, as
+Matrix's are, is left.
 
 ## Matrix
 
-Chat both ways through a bot account is built (`docs/matrix.md`). Left:
+Chat both ways, links, callsigns in game, and power levels and rooms from
+groups are built (`docs/matrix.md`). Left is commands from linked members,
+above, and an application service, below.
 
-- **Links:** a member types `!link` in the room and the bot answers in a
-  direct message, never the room, with a one-time URL to a BZID page
-  (`eBZID`), which pairs their Matrix user ID with their BZID. Creating that
-  direct room is the cost.
-- **Names:** a linked member's callsign in game, as Discord's are. A bot
-  cannot set another member's display name, so it shows only in the game.
-- **Admins:** a link that found the member in an admin group raises their
-  power level in the room to moderator, which the bot can do once it has
-  enough power itself.
-
-A Matrix space can gather a community's game rooms -- one per bzo server,
-named for it like `#bz-rikers-org:matrix.org`.
+A Matrix space gathers a community's rooms: `#bzo:matrix.org` holds
+`#bzo-chat`, `#bzo-dev` and one room per bzo server, named for it like
+`#bz-rikers-org:matrix.org`.
 
 ### An application service (later)
 
@@ -131,6 +114,9 @@ As upstream's `bzflag-ircRelay` plugin
 (<https://github.com/d03n3rfr1tz3/bzflag-ircRelay>) does for bzfs. A TLS
 connection on 6697, signing in to services by SASL with a password from
 `server.json`, joining one channel per game server with its key.
+
+Its server commands take `!`, as Matrix's do, since IRC clients take `/`
+for their own.
 
 - **Game to IRC:** `PRIVMSG`, a line at most 512 bytes with its prefix, so
   long chat is split; and slow, about one line every two seconds, which a busy
@@ -174,7 +160,5 @@ Voice waits until the text bridges are in use and somebody asks for it.
 
 ## Order
 
-1. Commands from linked members, through Discord first.
-2. Matrix links and power levels, on the shared links.
-3. IRC, if it is wanted.
-4. A Matrix application service, and the optional homeserver container.
+1. IRC, if it is wanted.
+2. A Matrix application service, and the optional homeserver container.

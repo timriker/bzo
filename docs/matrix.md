@@ -2,8 +2,9 @@
 
 The bundled `matrix` plugin (`plugins/matrix.cjs`, `docs/plugins.md`): a game
 server's public chat and one Matrix room, both ways, through a Matrix account
-of the bridge's own. Links, commands from linked members and an application
-service are `docs/chat-bridge-plan.md`.
+of the bridge's own, and Matrix accounts linked to BZFlag ones, with power
+levels and rooms from their bzflag.org groups, and server commands from
+linked members. An application service is `docs/chat-bridge-plan.md`.
 
 ## Setting it up
 
@@ -79,3 +80,107 @@ The bridge reads the room with a `/sync` long poll. Where it has read to is
 kept in `matrix-sync.json` beside `server.json`, so a restart picks up where
 it left off and lines said meanwhile arrive late rather than never. With none
 kept, as on the first start, the room's past is skipped.
+
+## Links
+
+A member types `!link` in the bridged room -- or, with a `space`, in any room
+the bot is in. The bot answers in a direct message -- never the room --
+with a URL to `/plugins/matrix/link`, good once
+and for ten minutes. The page signs them in at bzflag.org (`eBZID`,
+`docs/plugins.md`), asking about the server's `adminGroups` and every group
+the options below name, and pairs the Matrix user ID the URL was made for
+with their BZID. The bot then says in the room who is who: `@tim:matrix.org is
+BZFlag Tim Riker`. `!unlink` undoes it. The URL needs `publicUrl` in
+`server.json`; without one, `!link` is only logged.
+
+`!whois` says who someone is: `!whois @tim:matrix.org`, `!whois Tim Riker` by
+callsign, or `!whois` alone for yourself.
+
+A linked member reads in the game by callsign, marked `@` for an admin and
+`+` otherwise, not by their Matrix name. Matrix does not let a bot set
+anyone's display name, so in Matrix they keep the name they chose.
+
+With `space` set, the space keeps the links: an `org.bzflag.link` state
+event per member, holding their callsign, BZID, whether an admin, and what
+the link granted -- never their other groups. On start the bot lets only the
+space's admins (100) send that event, so nobody can write a link for
+themselves. Every bzo server bridging a room in the space reads the same
+links, so a member links once and is known on every one, including a server
+added later. Give each server's `matrix` options the same `space`, with the
+bot account admin there; every server can use the same account, each with a
+token of its own. One of them -- the list server, say -- also has `"links":
+true`: it answers `!link`, `!unlink` and `!whois` in every room of the space
+its account is in, and serves the link page, so only it needs a `publicUrl`
+for links. The others only read the links, and answer none of them.
+Without `space`, links are this server's own, in `matrix-links.json` beside
+`server.json`; that file also keeps the direct rooms the bot made, either
+way. A server moves its file's links into the space the first time it
+starts with one.
+
+### Power levels and rooms from groups
+
+```json
+"matrix": {
+  "space": "#bzo:matrix.org",
+  "powerLevels": { "linked": 20, "admin": 50, "SOME.GROUP": 30 },
+  "groupRooms": { "admin": "#bzo-admins:matrix.org" }
+}
+```
+
+`powerLevels` maps a bzflag.org group, `admin` for any of the server's
+`adminGroups`, or `linked` for every linked member, to a power level; `admin`
+is moderator (50) unless it says otherwise. A level is only a number: Matrix
+has no way to name one, so Element calls 100 Admin and 50 Moderator and shows
+any other, such as 20 for `linked`, as a custom level. A link sets the
+highest level the member's groups give in the `space` and every
+room in it -- or the bridged room alone, without `space` -- wherever the bot
+can: it needs the power to change power levels there (admin, 100, by
+default), never grants more than it holds, and never changes anyone it does
+not outrank. `groupRooms` maps a group to a room its linked members are
+invited to.
+
+Groups are what bzflag.org named when the member signed in: it answers about
+groups only for a fresh login, so linking again is what refreshes them. What
+a group no longer named gave is taken back -- a level lowered, a group's room
+left -- but only a level the bot set: one raised by hand since is kept.
+`!unlink` takes back all of it.
+
+The server that answers links (`"links": true`, or any server without a
+space) also raises every existing link to what `linked` and `admin` give
+each time it starts, so a level set after people linked, or a room added to
+the space since, reaches them. That never lowers anyone: a link does not
+keep the member's other groups, so only their next `!link` can take back
+what those gave.
+
+## Server commands
+
+A linked member talks to the game servers in their direct room with the bot.
+To start one, open a direct chat with the bot's account in Element; the bot
+joins, keeps the room as theirs, and says what it is for. `!link` and
+`!whois` answer there too.
+
+- `!servers` lists every server whose `matrix` options name the same
+  `space`: each announces itself there, by its `name` -- the host of its
+  `publicUrl` unless the options set one -- and its room.
+- `!use <server>` picks the one their commands go to, by its name, its name
+  without the port, or its room's alias; `!use` alone says which.
+- `!playerlist`, or any server command with `!` for its slash, runs on that
+  server; `/playerlist` works too, where Element is told to send it as a
+  message. With nothing picked, the server with `"links": true` runs it.
+- `!help` says all this in the room.
+
+A command runs as the member's linked account: their callsign, and admin as
+their link found it, so an admin command works for admins alone, and a BZID
+banned there runs nothing. The answer, led by the server's name, comes back
+in the same room. A plugin's own commands, which need a player in the game,
+answer that they are only for players there.
+
+Every server shares the bot account, so all of them see the direct room;
+they agree on which answers through the space and the account. A member's
+choice is kept in the account's `org.bzflag.targets` data, the direct rooms
+in its `m.direct`, and the servers in the space's `org.bzflag.server` state,
+which only the space's admins may send.
+
+A `!` command typed in a server's bridged room runs on that server, with the
+answer in the member's direct room, never the bridged one, since an answer
+may name addresses.

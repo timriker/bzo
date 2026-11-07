@@ -31,13 +31,17 @@ const REQUEST_MS = 10000;
 const RETRY_MIN_MS = 2000;
 const RETRY_MAX_MS = 5 * 60 * 1000;
 
-// Only the room's messages and the members who sent them.
+// Where a space keeps who is linked to whom (links.cjs), one state event per
+// Matrix user.
+const LINK_EVENT = 'org.bzflag.link';
+
+// Only messages, the members who sent them, and links.
 const SYNC_FILTER = JSON.stringify({
   presence: { not_types: ['*'] },
   account_data: { not_types: ['*'] },
   room: {
-    timeline: { types: ['m.room.message'], limit: 50 },
-    state: { types: ['m.room.member'], lazy_load_members: true },
+    timeline: { types: ['m.room.message', LINK_EVENT], limit: 50 },
+    state: { types: ['m.room.member', LINK_EVENT], lazy_load_members: true },
     ephemeral: { not_types: ['*'] },
     account_data: { not_types: ['*'] },
   },
@@ -57,10 +61,15 @@ function withoutReplyFallback(body) {
 
 // `homeserver` is the client-server API's base URL; `room` an id or an alias.
 // `nameFor(userId, displayName)` is the speaker's name in game.
-// `announce({ name, line })` says a line to every player.
+// `announce({ name, line })` says a line to every player. `onCommand({
+// roomId, userId, name, text })` hears a line that starts with `!` -- or,
+// outside the bridged room, `/` -- in any room the account is in, which never
+// reaches the game. `onLink({ roomId, event })` hears a link event in any
+// room, for the space that keeps them. `onInvite({ roomId, inviter, direct
+// })` hears the account invited to a room.
 function createMatrixBridge({
   homeserver, accessToken, room, nameFor = (userId, displayName) => displayName || userId,
-  announce, store, log, logError,
+  announce, onCommand = () => {}, onLink = () => {}, onInvite = () => {}, store, log, logError,
   fetchImpl = fetch, setTimer = setTimeout, now = Date.now,
 }) {
   const base = String(homeserver).replace(/\/+$/, '');
@@ -74,8 +83,10 @@ function createMatrixBridge({
   let userId = null;
   const names = new Map();
 
-  async function api(method, path, { body, query, timeoutMs = REQUEST_MS, signal } = {}) {
-    const url = new URL(`${base}/_matrix/client/v3${path}`);
+  // `version` is the API's: v3 for most, v1 for the newer endpoints such as
+  // a space's hierarchy.
+  async function api(method, path, { body, query, timeoutMs = REQUEST_MS, signal, version = 'v3' } = {}) {
+    const url = new URL(`${base}/_matrix/client/${version}${path}`);
     for (const [key, value] of Object.entries(query || {})) if (value !== undefined) url.searchParams.set(key, value);
     const response = await fetchImpl(url, {
       method,
@@ -144,7 +155,34 @@ function createMatrixBridge({
 
   // --- In ---
 
+  // A line someone else wrote, as text: an edit repeats the message it
+  // changes, and a notice is a bot's.
+  const said = (event) => {
+    const content = event.content || {};
+    if (event.type !== 'm.room.message' || event.sender === userId) return null;
+    if (content['m.relates_to']?.rel_type === 'm.replace') return null;
+    if (content.msgtype !== 'm.text' && content.msgtype !== 'm.emote') return null;
+    return { text: withoutReplyFallback(content.body || ''), emote: content.msgtype === 'm.emote' };
+  };
+
   function receive(sync) {
+    for (const [inRoom, room] of Object.entries(sync.rooms?.join || {})) {
+      for (const event of [...(room.state?.events || []), ...(room.timeline?.events || [])]) {
+        if (event.type === LINK_EVENT) onLink({ roomId: inRoom, event });
+        if (inRoom === roomId) continue;
+        // Outside the bridged room nothing is chat, so a `/` line Element
+        // was told to send as a message is a command too.
+        const line = said(event);
+        if (line && isCommand(line.text, ['!', '/'])) {
+          onCommand({ roomId: inRoom, userId: event.sender, name: event.sender, text: line.text.trim() });
+        }
+      }
+    }
+    for (const [inRoom, room] of Object.entries(sync.rooms?.invite || {})) {
+      const mine = (room.invite_state?.events || [])
+        .find((event) => event.type === 'm.room.member' && event.state_key === userId);
+      if (mine) onInvite({ roomId: inRoom, inviter: mine.sender, direct: Boolean(mine.content?.is_direct) });
+    }
     const joined = sync.rooms?.join?.[roomId];
     if (!joined) return;
     for (const event of joined.state?.events || []) {
@@ -155,19 +193,20 @@ function createMatrixBridge({
         names.set(event.state_key, event.content?.displayname);
         continue;
       }
-      if (event.type !== 'm.room.message' || event.sender === userId) continue;
-      const content = event.content || {};
-      // An edit repeats the message it changes; a notice is a bot's.
-      if (content['m.relates_to']?.rel_type === 'm.replace') continue;
-      if (content.msgtype !== 'm.text' && content.msgtype !== 'm.emote') continue;
+      const line = said(event);
+      if (!line) continue;
+      const { text } = line;
       const name = plain(nameFor(event.sender, names.get(event.sender))) || 'someone';
-      const text = withoutReplyFallback(content.body || '');
-      if (isCommand(text, ['/', '!'])) {
+      if (isCommand(text, ['!'])) {
+        onCommand({ roomId, userId: event.sender, name, text: text.trim() });
+        continue;
+      }
+      if (isCommand(text, ['/'])) {
         log(`"${name}" sent a command, not relayed: ${plain(text).slice(0, 80)}`);
         continue;
       }
-      for (const line of gameLines(content.msgtype === 'm.emote' ? `* ${text}` : text, 'Matrix')) {
-        announce({ name, line });
+      for (const each of gameLines(line.emote ? `* ${text}` : text, 'Matrix')) {
+        announce({ name, line: each });
       }
     }
   }
@@ -205,6 +244,10 @@ function createMatrixBridge({
   // read or write.
   async function start() {
     userId = (await must('GET', '/account/whoami')).user_id;
+    // A homeserver URL that is a web page rather than the client-server API
+    // -- https://matrix.org, not https://matrix-client.matrix.org -- answers
+    // with no account at all.
+    if (!userId) throw new Error(`${base} named no account; is homeserver its client-server API?`);
     roomId = room.startsWith('#')
       ? (await must('GET', `/directory/room/${encodeURIComponent(room)}`)).room_id
       : room;
@@ -218,8 +261,25 @@ function createMatrixBridge({
     return { userId, roomId };
   }
 
+  // A notice to a room: what the bot says for itself, which bridges and bots
+  // know not to repeat.
+  async function notice(toRoom, body, html) {
+    const txnId = `bzo-${now()}-${crypto.randomBytes(6).toString('hex')}`;
+    return must('PUT', `/rooms/${encodeURIComponent(toRoom)}/send/m.room.message/${txnId}`, {
+      body: {
+        msgtype: 'm.notice', body, ...(html ? { format: 'org.matrix.custom.html', formatted_body: html } : {}),
+        'm.mentions': {},
+      },
+    });
+  }
+
   return {
     start,
+    api,
+    must,
+    notice,
+    get roomId() { return roomId; },
+    get userId() { return userId; },
     stop() {
       stopped = true;
       syncAbort?.abort();
@@ -239,4 +299,4 @@ function createMatrixBridge({
   };
 }
 
-module.exports = { createMatrixBridge, withoutReplyFallback, SYNC_FILTER };
+module.exports = { createMatrixBridge, withoutReplyFallback, SYNC_FILTER, LINK_EVENT };
