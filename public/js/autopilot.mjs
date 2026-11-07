@@ -217,7 +217,7 @@ export class Ace extends AceFighter {
     this.dropDriveUntil = -Infinity;
     this.lastTrace = null;
     this.extraReport = (stats) => `, routes ${stats.plans} (${stats.unreachable} none`
-      + `${stats.safer ? `, ${stats.safer} round a covered jump` : ''}`
+      + `${stats.safer ? `, ${stats.safer} landing out of sight` : ''}`
       + `${stats.waits ? `, ${stats.waits} frames waiting` : ''}),`
       + ` unsticks ${stats.unsticks}, held shots ${stats.held}, kept shots ${stats.kept}`;
     // The landing each airborne foe has been shot at for, as a clock time, and

@@ -263,7 +263,7 @@ for (const flag of ['US', 'MG', 'ID']) {
 // An invisible bullet is off the radar but not out of the window, so Ace
 // dodges it unless he is blind, when it is not there to him at all.
 {
-  const bullet = { ownerId: 'foe', ownerZoned: false, flag: 'IB', x: 0, y: 10, z: 1.57, vx: 0, vy: -100, vz: 0 };
+  const bullet = { ownerId: 'foe', ownerZoned: false, flag: 'IB', x: 0, y: 40, z: 1.57, vx: 0, vy: -100, vz: 0 };
   const seen = new Ace().think(makeView({ self: { flag: 'JM', flagIndex: 4 }, shots: [bullet] }));
   assert.equal(seen.intent.mode, 'dodge', 'a jammed Ace dodges an invisible bullet');
   const blind = new Ace().think(makeView({ self: { flag: 'B', flagIndex: 4 }, shots: [bullet] }));
@@ -474,37 +474,70 @@ for (const flag of ['US', 'MG', 'ID']) {
   assert.equal(near.jump, true, 'one with no time to drive clear is jumped');
 }
 
-// A jump he cannot avoid is turned on the way up, so that coming down his
-// sights are on the shooter as his muzzle falls to the shooter's height --
-// and he fires then, from the air, before the landing the shooter waits for.
+// A jump he cannot avoid leaves moving -- straight up comes down where the
+// shooter is aimed already -- and is turned on the way up, so that coming
+// down his sights are on the shooter from wherever the jump has brought him,
+// as his muzzle falls to the shooter's height; and he fires then, from the
+// air, before the landing the shooter waits for.
 {
-  const foe = enemy(60, 0);
+  const foe = enemy(60, 60);
   const self = { muzzleHeight: 1.57, muzzleForward: 3, shotSpeed: 100, shotLifetime: 3.5, turnRate: Math.PI / 4 };
-  const shot = { ownerId: 'foe', ownerZoned: false, flag: null, x: 12, y: 0, z: 1.5, vx: -100, vy: 0, vz: 0 };
+  // Down his heading, as a ricochet comes: no speed along it gets him out.
+  const shot = { ownerId: 'foe', ownerZoned: false, flag: null, x: 0, y: 30, z: 1.5, vx: 0, vy: -100, vz: 0 };
   const ace = new Ace();
   const takeoff = ace.think(makeView({ self, players: [foe], shots: [shot], world: { maxShots: 5 } }));
   assert.equal(takeoff.jump, true);
+  assert.notEqual(takeoff.speed, 0, 'not straight up');
   assert.ok(takeoff.rotation < 0, 'turning right, toward the shooter');
   let azimuth = Math.PI / 2;
+  const vy = takeoff.speed * 25;
+  let y = 0;
   let z = 0;
   let vz = 19;
   let firedAt = null;
   for (let frame = 1; frame < 300 && firedAt === null; frame++) {
     const dt = 1 / 60;
     azimuth += takeoff.rotation * (Math.PI / 4) * dt;
+    y += vy * dt;
     z += vz * dt;
     vz -= 9.8 * dt;
     if (z <= 0) break;
     const out = ace.think(makeView({
       now: 100 + (frame * dt),
-      self: { ...self, azimuth, z, inAir: true, velocity: { x: 0, y: 0, z: vz } },
+      self: { ...self, y, azimuth, z, inAir: true, vx: 0, vy, velocity: { x: 0, y: vy, z: vz } },
       players: [foe],
       world: { maxShots: 5 },
     }));
-    if (out.fire) firedAt = { z, off: Math.abs(Math.atan2(Math.sin(azimuth), Math.cos(azimuth))) };
+    if (out.fire) {
+      const bearing = Math.atan2(foe.y - y, foe.x);
+      firedAt = { z, off: Math.abs(Math.atan2(Math.sin(azimuth - bearing), Math.cos(azimuth - bearing))) };
+    }
   }
   assert.ok(firedAt, 'a shot from the air before the landing');
-  assert.ok(firedAt.off < 0.05, `on him (${firedAt?.off})`);
+  assert.ok(firedAt.off < 0.15, `on him (${firedAt?.off})`);
+}
+
+// With a box beside him, the jump out of a shot comes down on it, out of the
+// shooter's sight, rather than on the ground in it.
+{
+  const foe = enemy(60, 60);
+  const shot = { ownerId: 'foe', ownerZoned: false, flag: null, x: 0, y: 30, z: 1.5, vx: 0, vy: -100, vz: 0 };
+  // A 6-high box from 40 to 55 behind him: backing off the shot, the jump
+  // comes down on it, and from up there the shooter on the ground cannot see
+  // him.
+  const firstHit = (from, to) => {
+    const inside = (p) => p.y <= -40 && p.y >= -55 && Math.abs(p.x) <= 10 && p.z <= 6;
+    if (!inside(to)) return null;
+    if (from.z > 6 && to.z <= 6) return { x: to.x, y: to.y, z: 6 };
+    return { ...to };
+  };
+  const out = new Ace().think(makeView({
+    self: { muzzleHeight: 1.57, turnRate: Math.PI / 4 }, players: [foe], shots: [shot], world: { maxShots: 5 },
+    firstHit,
+    isObscured: (from, to) => to.z > 6,
+  }));
+  assert.equal(out.jump, true);
+  assert.equal(out.intent.landing?.z, 6, 'on the box');
 }
 
 // A Shield takes one hit for its holder, so a shielded foe coming down gets
@@ -1053,23 +1086,28 @@ for (const flag of ['US', 'MG', 'ID']) {
   assert.equal(at(3, 'GM').fire, true, 'a Guided Missile climbs to it');
 }
 
-// A jump whose landing a foe covers is gone round on the ground, when that
-// is not much further; one nobody covers, or with no way round, is jumped.
+// A route is asked for with every live foe whose sight its landings are
+// kept out of (scripts/test-nav.mjs has the search): a Super Bullet's
+// holder sees through walls; a teammate, a dead or a paused foe watches
+// nothing.
 {
-  const jumping = [{ x: 0, y: 20, z: 0 }, { x: 0, y: 40, z: 15, jump: true }, { x: 0, y: 60, z: 15 }];
-  const round = [{ x: 40, y: 20, z: 0 }, { x: 40, y: 60, z: 15 }, { x: 0, y: 60, z: 15 }];
-  const route = (players, ground = round) => {
-    const pilot = new Ace();
-    pilot.plan(makeView({
-      players,
-      findRoute: (from, to, { canJump }) => (canJump ? jumping : ground),
-    }), { x: 0, y: 0, z: 0 }, { x: 0, y: 60, z: 15 });
-    return pilot.route.nodes;
-  };
-  assert.equal(route([]), jumping, 'nobody covering it, the jump');
-  assert.equal(route([enemy(0, 120, { z: 15 })]), round, 'a foe on the landing\'s level, round');
-  assert.equal(route([enemy(0, 120, { z: 0 })]), jumping, 'one on another level cannot shoot it');
-  assert.equal(route([enemy(0, 120, { z: 15 })], null), jumping, 'no way round, the jump');
+  let asked = null;
+  const pilot = new Ace();
+  pilot.plan(makeView({
+    players: [
+      enemy(0, 120, { z: 15 }),
+      enemy(50, 0, { id: 'sb', flag: 'SB', flagIndex: 3 }),
+      enemy(9, 9, { id: 'dead', alive: false }),
+      enemy(8, 8, { id: 'paused', paused: true }),
+      enemy(7, 7, { id: 'mate', team: 'blue' }),
+    ],
+    isFoe: (p) => p.team !== 'blue',
+    findRoute: (from, to, options) => { asked = options.foes; return [{ x: 0, y: 60, z: 15 }]; },
+  }), { x: 0, y: 0, z: 0 }, { x: 0, y: 60, z: 15 });
+  assert.deepEqual(asked, [
+    { x: 0, y: 120, z: 15, reach: 150, seeThrough: false },
+    { x: 50, y: 0, z: 0, reach: 150, seeThrough: true },
+  ]);
 }
 
 // His own flag home: on the edge of his base he drives on to the middle

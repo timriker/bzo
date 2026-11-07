@@ -41,6 +41,25 @@ const box = (name, x, y, w, d, h, base = 0) => ({
   assert.ok(route.some((node) => Math.abs(node.y) > 60), 'and it goes round the end');
 }
 
+// Off a deck toward a foe watching the edge he would drive off: the drop
+// comes down out of the foe's sight, behind the deck, and the way round is
+// driven; with nowhere hidden to land, the landing is marked exposed.
+{
+  const nav = buildNavGraph({ obstacles: [box('deck', 0, 0, 40, 40, 10)], mapSize: 300, jump: JUMP });
+  const from = { x: 0, y: 0, z: 10 };
+  const to = { x: -100, y: 0, z: 0 };
+  const landing = (route) => route.find((node) => node.flight);
+  const plain = nav.findRoute(from, to);
+  assert.ok(landing(plain).x < -20, 'plainly, off the edge facing the goal');
+  const foe = { x: -70, y: 0, z: 0, reach: 350, seeThrough: false };
+  const safe = nav.findRoute(from, to, { foes: [foe] });
+  assert.ok(safe && safe.at(-1).x === plain.at(-1).x, 'still there');
+  assert.ok(!safe.some((node) => node.exposed), 'landing where he cannot see');
+  assert.ok(landing(safe).x > -20, 'off another edge');
+  const seen = nav.findRoute(from, to, { foes: [{ ...foe, seeThrough: true }] });
+  assert.ok(seen.some((node) => node.exposed), 'a Super Bullet sees every landing');
+}
+
 // A platform one jump reaches is jumped onto; one too high is not reached.
 {
   const low = buildNavGraph({ obstacles: [box('deck', 0, 0, 40, 40, 10)], mapSize: 200, jump: JUMP });

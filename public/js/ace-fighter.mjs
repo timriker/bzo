@@ -89,6 +89,13 @@ const DODGE_TURN_COST = 0.5;
 // within a step a shot is tested.
 const DODGE_HIT_MARGIN = 0.8;
 const DODGE_HIT_STEPS = 5;
+// The dodge's jump (`dodgeJump`): how finely each arc is flown out, how long
+// at most, and how a landing ranks -- out of the shooter's sight first, then
+// up on something, then furthest from where he stands.
+const JUMP_STEP_SECONDS = 0.1;
+const JUMP_MAX_SECONDS = 6;
+const JUMP_UNSEEN_SCORE = 1000;
+const JUMP_RAISED_SCORE = 100;
 // Burrowed: how far ahead a tank about to drive over him is looked for, and
 // the room past its reach he wants.
 const SQUASH_HORIZON_SECONDS = 1.5;
@@ -1088,9 +1095,9 @@ export class AceFighter extends AceDriver {
   // he is already driving clear of is left alone. Otherwise every speed and
   // turn he could put on (`dodgePath`) is driven out against every shot in
   // sight, and the clear one nearest what he is doing is taken. A jump only
-  // when none is clear -- however the landing looks, since the shot is
-  // certain and the landing is not -- and only where it is above the shot
-  // before it arrives; and otherwise Roger's dodge.
+  // when none is clear, and one that clears every shot however its landing
+  // looks, since the shot is certain and the landing is not (`dodgeJump`);
+  // and otherwise Roger's dodge.
   avoidBullet(ctx) {
     const { view, me, out } = ctx;
     const top = me.topSpeed ?? view.world.tankSpeed;
@@ -1146,25 +1153,117 @@ export class AceFighter extends AceDriver {
       return false;
     }
     if (me.flag === 'BU' && me.z < 0) return false;
-    if (this.canJumpClear(ctx, shot)) {
-      // Straight up, turning: a tank keeps through the air the turn it left
+    const jump = this.dodgeJump(ctx, shot);
+    if (jump) {
+      // Turning as he goes: a tank keeps through the air the turn it left
       // with, so the one put on now brings his sights onto the shooter as his
-      // muzzle comes down to the shooter's height -- the moment a shot from
-      // the air can hit him, and `fireAtTank` takes it then, before the
-      // landing he is waiting for; and again on the ground.
+      // muzzle comes down to the shooter's height, from wherever the jump
+      // brings him -- the moment a shot from the air can hit him, and
+      // `fireAtTank` takes it then, before the landing he is waiting for;
+      // and again on the ground.
       out.jump = true;
-      out.speed = 0;
-      out.rotation = this.jumpTurnToward(ctx, shot.ownerId) ?? 0;
+      out.speed = jump.speed;
+      out.rotation = this.jumpTurnToward(ctx, shot.ownerId, jump) ?? 0;
+      out.intent.landing = jump.landing;
       return true;
     }
     return super.avoidBullet(ctx);
   }
 
+  // The jump out of a shot: of every speed he can leave the ground with
+  // along his heading -- only the one he has, under an acceleration limit --
+  // each arc flown out until it lands, stopped short by a wall it meets, and
+  // kept only if no shot in sight hits it on the way. Straight up comes down
+  // where he stood, where the shooter only has to fire again; so a landing
+  // the shooter cannot see is best, then one up on something, then the one
+  // furthest from here that brings him no nearer the shooter. `{ speed, vx,
+  // vy, landing, landsAt }`, or null when no jump clears.
+  dodgeJump(ctx, threat) {
+    const { view, me } = ctx;
+    if (!this.canJumpClear(ctx, threat)) return null;
+    const top = me.topSpeed ?? view.world.tankSpeed;
+    const heading = { x: Math.cos(me.azimuth), y: Math.sin(me.azimuth) };
+    const along = ((me.vx ?? 0) * heading.x) + ((me.vy ?? 0) * heading.y);
+    const speeds = me.accel > 0 || !(top > 0) ? [top > 0 ? along / top : 0] : DODGE_SPEEDS;
+    const shooter = this.remotePlayers(view).find((p) => p.id === threat.ownerId) ?? null;
+    let best = null;
+    for (const speed of speeds) {
+      const arc = this.jumpArc(ctx, { x: heading.x * speed * top, y: heading.y * speed * top });
+      if (!arc) continue;
+      const { landing } = arc;
+      const raised = landing.z > me.z + 1;
+      const seen = shooter !== null && Math.abs(landing.z - shooter.z) < view.world.tankHeight
+        && (shooter.flag === 'SB' || !view.isObscured(
+          { x: shooter.x, y: shooter.y, z: shooter.z + (me.muzzleHeight ?? TANK.muzzleHeight) },
+          { x: landing.x, y: landing.y, z: landing.z + 1 },
+        ));
+      // How far the landing is from here, less any nearer the shooter it
+      // comes: over his shot and into his lap is no escape.
+      const closing = shooter ? Math.max(0, distance2D(shooter, me) - distance2D(shooter, landing)) : 0;
+      const score = (seen ? 0 : JUMP_UNSEEN_SCORE) + (raised ? JUMP_RAISED_SCORE : 0)
+        + distance2D(me, landing) - (2 * closing);
+      if (!best || score > best.score) {
+        best = { score, speed, ...arc };
+      }
+    }
+    return best;
+  }
+
+  // A jump from where he stands at velocity `v`, flown out every
+  // `JUMP_STEP_SECONDS`: a wall met stops it across and it falls on straight
+  // down, and it lands on the first surface it comes down on, or the
+  // ground. Null when a shot in sight hits it before it lands.
+  jumpArc(ctx, v) {
+    const { view, me } = ctx;
+    const g = view.world.gravity;
+    const radius = 0.99 * TANK.radius * getTankHitRadiusScale(me.flag ?? null);
+    const shots = view.shots.filter((shot) => (shot.ownerId !== me.id || shot.bounces > 0)
+      && canSeeShot(me.flag, shot.flag) && !(shot.ownerZoned && !me.zoned)
+      && !(shot.flag === 'L' && me.flag === 'CL') && ((shot.vx * shot.vx) + (shot.vy * shot.vy)) > 1e-6);
+    // The hit a shot really makes (`getSegmentTankHitFraction`): within
+    // `radius` of the tank's middle, half its height up.
+    const hits = (at, t) => shots.some((shot) => Math.hypot(
+      shot.x + (shot.vx * t) - at.x,
+      shot.y + (shot.vy * t) - at.y,
+      shot.z + ((shot.vz ?? 0) * t) - (at.z + (TANK.hitHeight / 2)),
+    ) < radius);
+    let vx = v.x;
+    let vy = v.y;
+    let at = { x: me.x, y: me.y, z: me.z };
+    for (let t = JUMP_STEP_SECONDS; t <= JUMP_MAX_SECONDS; t += JUMP_STEP_SECONDS) {
+      const z = me.z + (view.world.jumpVelocity * t) - (0.5 * g * t * t);
+      let next = { x: at.x + (vx * JUMP_STEP_SECONDS), y: at.y + (vy * JUMP_STEP_SECONDS), z: at.z };
+      if ((vx || vy) && view.firstHit({ ...at, z: at.z + 0.1 }, { ...next, z: at.z + 0.1 })) {
+        vx = 0;
+        vy = 0;
+        next = { ...at };
+      }
+      const falling = z < at.z;
+      const floor = falling ? view.firstHit({ x: next.x, y: next.y, z: at.z }, { x: next.x, y: next.y, z }) : null;
+      if (floor || z <= 0) {
+        const landing = { x: next.x, y: next.y, z: floor ? floor.z : 0 };
+        return hits(landing, t) ? null : { vx, vy, landing, landsAt: t };
+      }
+      at = { x: next.x, y: next.y, z };
+      for (let k = 1; k <= DODGE_HIT_STEPS; k++) {
+        const s = t - JUMP_STEP_SECONDS + ((JUMP_STEP_SECONDS * k) / DODGE_HIT_STEPS);
+        const zs = me.z + (view.world.jumpVelocity * s) - (0.5 * g * s * s);
+        const f = k / DODGE_HIT_STEPS;
+        if (hits({ x: at.x - (vx * JUMP_STEP_SECONDS * (1 - f)), y: at.y - (vy * JUMP_STEP_SECONDS * (1 - f)), z: zs }, s)) {
+          return null;
+        }
+      }
+    }
+    return null;
+  }
+
   // The turn to leave the ground with, as a share of full stick, that faces
   // where a shot fired on the way down meets the foe `id`: when the muzzle
-  // falls to the top of his body, aimed ahead of him by the shot's flight.
-  // Null when there is no such foe or the jump never comes down that low.
-  jumpTurnToward(ctx, id) {
+  // falls to the top of his body, from where `jump` -- `{ vx, vy, landing,
+  // landsAt }`, or straight up without one -- has brought him by then, aimed
+  // ahead of the foe by the shot's flight. A jump that never comes down that
+  // low faces him from the landing. Null when there is no such foe.
+  jumpTurnToward(ctx, id, jump = null) {
     const { view, me } = ctx;
     if (id === undefined || id === null) return null;
     const foe = this.remotePlayers(view).find((p) => p.id === id);
@@ -1175,13 +1274,22 @@ export class AceFighter extends AceDriver {
     if (!(g > 0) || !(rate > 0)) return null;
     const drop = (me.z + (me.muzzleHeight ?? TANK.muzzleHeight)) - (foe.z + view.world.tankHeight);
     const disc = (v * v) + (2 * g * drop);
-    if (disc < 0) return null;
-    const t = (v + Math.sqrt(disc)) / g;
+    const down = disc < 0 ? Infinity : (v + Math.sqrt(disc)) / g;
+    const t = jump ? Math.min(down, jump.landsAt) : down;
+    if (!Number.isFinite(t)) return null;
+    const from = jump && t < jump.landsAt
+      ? { x: me.x + (jump.vx * t), y: me.y + (jump.vy * t) }
+      : jump ? jump.landing : me;
     const shotSpeed = me.shotSpeed ?? view.world.shotSpeed;
     const ahead = { x: foe.x + ((foe.vx ?? 0) * t), y: foe.y + ((foe.vy ?? 0) * t) };
-    const flight = shotSpeed > 0 ? distance2D(me, ahead) / shotSpeed : 0;
+    const flight = shotSpeed > 0 ? distance2D(from, ahead) / shotSpeed : 0;
     const aim = { x: ahead.x + ((foe.vx ?? 0) * flight), y: ahead.y + ((foe.vy ?? 0) * flight) };
-    const turn = normalizeAngle(azimuthTo(me, aim) - me.azimuth);
+    // In the air the shot leaves with the tank's own velocity too, so the
+    // barrel is turned into the drift across the line.
+    const toward = azimuthTo(from, aim);
+    const moving = jump && t < jump.landsAt && (jump.vx || jump.vy);
+    const barrel = moving && shotSpeed > 0 ? skewedBarrel(jump.vx, jump.vy, toward, shotSpeed) : null;
+    const turn = normalizeAngle((barrel ? barrel.azimuth : toward) - me.azimuth);
     return Math.max(-1, Math.min(1, turn / (rate * t)));
   }
 

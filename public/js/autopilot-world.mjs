@@ -248,7 +248,8 @@ export function createWorldProbes({
 // `canJump` is the tank's own: a flag can take jumping away (NJ) or give it
 // where the world does not (JP, WG), so a route only has jump legs for a tank
 // that can take them. A graph is kept for each, rebuilt when the world or its
-// jump changes.
+// jump changes. `foes` are the ones whose sight a landing is kept out of
+// (`buildNavGraph`'s `findRoute`).
 export function createRouter(world) {
   let built = null;
   return (from, to, options = {}) => {
@@ -279,7 +280,7 @@ export function createRouter(world) {
       built.graphs.set(key, buildNavGraph({ ...current, jump, teleporterLinks: burrowed ? [] : current.teleporterLinks }));
     }
     const graph = built.graphs.get(key);
-    return graph.smoothRoute(graph.findRoute(from, to), from);
+    return graph.smoothRoute(graph.findRoute(from, to, { foes: options.foes ?? [] }), from);
   };
 }
 

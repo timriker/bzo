@@ -39,6 +39,7 @@
 import { getWingsJumpVelocity } from './flags.mjs';
 import { getShotTeleporterCrossing } from './teleport.mjs';
 import {
+  findShotSegmentImpact,
   findTankObstacle,
   getColliderLocalPoint,
   getObstacleBase,
@@ -96,6 +97,15 @@ const BRIDGE_COST = 0.05;
 // Fields kept at once, and the longest route walked.
 const MAX_FIELDS = 32;
 const MAX_ROUTE_NODES = 4000;
+// A jump or a drive-off that lands in a foe's sight -- on his level, within
+// his shot's reach, nothing in between -- costs this many seconds more, so a
+// way round, or along the tops, is taken when one is near enough. How many
+// nodes that search may open before it settles for the plain route; and the
+// heights a foe's shot and a landed tank are seen at.
+const EXPOSED_LANDING_SECONDS = 10;
+const MAX_SAFE_EXPANSIONS = 20000;
+const FOE_MUZZLE = 1.57;
+const LANDED_BODY = 1;
 // How much a unit of height counts against a unit across, choosing the node a
 // point stands on.
 const NODE_HEIGHT_WEIGHT = 10;
@@ -719,8 +729,12 @@ export function buildNavGraph(world) {
   };
 
   // The nodes to drive through from where a tank is to a place, each with
-  // whether it is reached by a jump, or null when nothing reaches.
-  const findRoute = (from, to) => {
+  // whether it is reached by a jump, or null when nothing reaches. With
+  // `foes` -- `{ x, y, z, reach, seeThrough }` each -- a landing in one's
+  // sight is costed more (`EXPOSED_LANDING_SECONDS`) and the route searched
+  // for again, the plain distances to the goal guiding it, and a landing
+  // still in sight is marked `exposed`.
+  const findRoute = (from, to, { foes = [] } = {}) => {
     const start = nodeAt(from.x, from.y, from.z);
     const goal = nodeAt(to.x, to.y, to.z);
     if (start === null || goal === null) return null;
@@ -743,7 +757,105 @@ export function buildNavGraph(world) {
       id = to[best];
       route.push({ id, x: nodes[id].x, y: nodes[id].y, z: nodes[id].z, ...moveStep(best) });
     }
+    // Searched again only when a landing on the plain route is in sight.
+    if (foes.length > 0 && route.some((node) => node.flight && inSight(node.id, foes))) {
+      return safeRoute(start, goal, field, foes) ?? route.map((node) => (
+        node.flight && inSight(node.id, foes) ? { ...node, exposed: true } : node));
+    }
     return route;
+  };
+
+  // Whether a tank landed on node `id` is in a foe's sight.
+  const inSight = (id, foes) => {
+    const node = nodes[id];
+    return foes.some((foe) => Math.abs(foe.z - node.z) < TANK_TALL
+      && Math.hypot(foe.x - node.x, foe.y - node.y) <= foe.reach
+      && (foe.seeThrough || !findShotSegmentImpact(
+        obstacles,
+        { x: foe.x, y: foe.y, z: foe.z + FOE_MUZZLE },
+        { x: node.x, y: node.y, z: node.z + LANDED_BODY },
+        0,
+      )));
+  };
+
+  // A* over the moves, every flight that lands in sight costed more, and the
+  // plain distances to the goal as the estimate: never more than the real
+  // cost, which only grows, so the first time a node comes off the heap is
+  // the cheapest way to it. A landing's sight is tested only when the search
+  // gets to it -- costed plainly until then, which is never more than it
+  // is, and put back with the extra if it is seen -- since the test is most
+  // of the work. Null when that takes more than `MAX_SAFE_EXPANSIONS`.
+  const safeRoute = (start, goal, field, foes) => {
+    const seen = new Map();
+    const exposed = (id) => {
+      let value = seen.get(id);
+      if (value === undefined) {
+        value = inSight(id, foes);
+        seen.set(id, value);
+      }
+      return value;
+    };
+    const best = new Map();
+    const via = new Map();
+    const parent = new Map();
+    // Each way onto a node the search has found: the node, its cost, the
+    // move and where from, and whether its landing has been tested.
+    const entries = { node: [], g: [], row: [], from: [], tested: [] };
+    const open = new MinHeap();
+    const offer = (node, g, row, from, tested) => {
+      const at = entries.node.length;
+      entries.node.push(node);
+      entries.g.push(g);
+      entries.row.push(row);
+      entries.from.push(from);
+      entries.tested.push(tested);
+      open.push(at, g + field[node]);
+    };
+    offer(start, 0, -1, -1, true);
+    let expansions = 0;
+    while (open.size) {
+      const at = open.pop();
+      const id = entries.node[at];
+      if (best.has(id)) continue;
+      let g = entries.g[at];
+      const row = entries.row[at];
+      if (!entries.tested[at] && exposed(id)) {
+        offer(id, g + EXPOSED_LANDING_SECONDS, row, entries.from[at], true);
+        continue;
+      }
+      best.set(id, g);
+      if (row >= 0) {
+        via.set(id, row);
+        parent.set(id, entries.from[at]);
+      }
+      if (id === goal) break;
+      if (++expansions > MAX_SAFE_EXPANSIONS) return null;
+      ensureMoves(id);
+      const { to, cost, flight } = moveTable.columns;
+      g = best.get(id);
+      for (let r = moveStart[id]; r < moveStart[id] + moveCount[id]; r++) {
+        const next = to[r];
+        if (best.has(next) || !Number.isFinite(field[next])) continue;
+        offer(next, g + cost[r], r, id, flight[r] < 0);
+      }
+    }
+    if (!via.has(goal) && goal !== start) return null;
+    const rows = [];
+    for (let id = goal; id !== start;) {
+      const row = via.get(id);
+      rows.push(row);
+      id = parent.get(id);
+      if (rows.length > MAX_ROUTE_NODES) return null;
+    }
+    rows.reverse();
+    return rows.map((row) => {
+      const id = moveTable.columns.to[row];
+      const step = moveStep(row);
+      return {
+        id, x: nodes[id].x, y: nodes[id].y, z: nodes[id].z, ...step,
+        ...(step.flight && seen.get(id) ? { exposed: true } : {}),
+      };
+    });
   };
 
   // Whether a tank drives straight from `a` to `b` on one level: every point

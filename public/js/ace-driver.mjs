@@ -125,14 +125,12 @@ const AIM_RECHECK_DISTANCE = 2;
 // Just over the bump a tank drives up without noticing.
 const AIM_LANE_LIFT = 0.4;
 const ROUTE_REPLAN_SECONDS = 3;
+// How near a foe has to be for a landing in his sight to be planned round:
+// a shot from further takes a second and a half or more to arrive, time
+// enough to drive out of its way.
+const LANDING_WATCH_RANGE = 150;
 const ROUTE_STRAY = 12;
 export const UNREACHABLE_SECONDS = 10;
-// A jump whose landing a foe can shoot, this far ahead on the route, is gone
-// round on the ground instead when that way is no more than
-// `SAFE_DETOUR_SHARE` as long plus `SAFE_DETOUR_EXTRA`.
-const JUMP_RISK_LOOKAHEAD = 60;
-const SAFE_DETOUR_SHARE = 1.5;
-const SAFE_DETOUR_EXTRA = 40;
 // A flag Ace has had to back off this many times within `STUCK_FLAG_RANGE`
 // of, each within `STUCK_FLAG_WINDOW` of the last, is behind or inside
 // something the route graph does not know about, and is left alone for
@@ -329,21 +327,16 @@ export class AceDriver extends Roger {
     const canJump = canTankJump(view.world, view.self.flag, view.self.z);
     const wings = hasAirControl(view.self.flag);
     const burrowed = view.self.z < 0;
-    let nodes = view.findRoute(here, there, { canJump, wings, burrowed });
+    // A jump or drop is a second or more Ace cannot steer, and comes down
+    // where it was always going to: the route keeps its landings out of
+    // every live foe's sight where a way round is near enough.
+    const foes = this.landingWatchers(view);
+    const nodes = view.findRoute(here, there, { canJump, wings, burrowed, foes });
     if (nodes === ROUTE_PENDING) return this.awaitRoute(view, here, there);
     // Nowhere to go underground -- a raised base, a lift's far end -- is
     // somewhere Burrow keeps him from: it goes, and the tank comes up.
     if (!nodes && burrowed) this.shedBurrow = true;
-    // A jump is a second or more Ace cannot steer, and comes down where it
-    // was always going to: one whose landing a foe has a level, clear shot
-    // at is taken only when the way round on the ground is much longer.
-    if (canJump && nodes && this.exposedJump(view, here, nodes)) {
-      const ground = view.findRoute(here, there, { canJump: false });
-      if (ground && ground !== ROUTE_PENDING && routeLength(here, ground) <= (routeLength(here, nodes) * SAFE_DETOUR_SHARE) + SAFE_DETOUR_EXTRA) {
-        nodes = ground;
-        this.stats.safer++;
-      }
-    }
+    if (foes.length > 0 && nodes?.some((node) => node.flight) && !nodes.some((node) => node.exposed)) this.stats.safer++;
     this.stats.plans++;
     if (!nodes) this.stats.unreachable++;
     this.route = { dest: there, from: here, nodes, at: 0, plannedAt: view.now };
@@ -366,27 +359,12 @@ export class AceDriver extends Roger {
     return this.route;
   }
 
-  // The next jump on `nodes`, within `JUMP_RISK_LOOKAHEAD` of driving, if a
-  // live foe could shoot where it lands: within a shot's reach, on the
-  // landing's level, and in sight of it -- a Super Bullet sees through.
-  exposedJump(view, here, nodes) {
-    let travelled = 0;
-    let last = here;
-    for (const node of nodes) {
-      travelled += distance2D(last, node);
-      last = node;
-      if (travelled > JUMP_RISK_LOOKAHEAD) return false;
-      if (!node.jump) continue;
-      const reach = view.world.shotSpeed * (view.self.shotLifetime ?? 3.5);
-      const tall = view.world.tankHeight;
-      return this.remotePlayers(view).some((p) => p.alive && !p.paused && view.isFoe(p)
-        && Math.abs(p.z - node.z) < tall
-        && distance2D(p, node) <= reach
-        && (p.flag === 'SB' || !view.isObscured(
-          { x: p.x, y: p.y, z: p.z + 1.5 }, { x: node.x, y: node.y, z: node.z + 1 },
-        )));
-    }
-    return false;
+  // The live foes a landing is kept out of the sight of, as the router takes
+  // them: within `LANDING_WATCH_RANGE` of one, and through walls for a Super
+  // Bullet.
+  landingWatchers(view) {
+    return this.remotePlayers(view).filter((p) => p.alive && !p.paused && view.isFoe(p))
+      .map((p) => ({ x: p.x, y: p.y, z: p.z, reach: LANDING_WATCH_RANGE, seeThrough: p.flag === 'SB' }));
   }
 
   // Measured from the last node reached rather than the next, which across a
@@ -1247,17 +1225,6 @@ export class AceDriver extends Roger {
 // jumps from under the ground (LocalPlayer.cxx:1406), whatever the flag.
 export function canTankJump(world, flag, z = 0) {
   return (world.allowJumping || flag === 'JP' || flag === 'WG') && flag !== 'NJ' && !(z < 0);
-}
-
-// How far a route drives, from `here` along every node.
-function routeLength(here, nodes) {
-  let length = 0;
-  let last = here;
-  for (const node of nodes) {
-    length += distance2D(last, node);
-    last = node;
-  }
-  return length;
 }
 
 // Whether `pos` is inside a zone's footprint, at any height.
