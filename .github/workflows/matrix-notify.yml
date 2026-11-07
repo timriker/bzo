@@ -7,7 +7,8 @@
 # pull_request_target, not pull_request, so a fork's pull request has the
 # secret too; nothing of the fork is checked out or run, only the event read.
 # A comment on a fork's pull request's code has no such variant: its run has
-# no secret and sends nothing.
+# no secret and sends nothing. A comment on a commit is no workflow event at
+# all, so it is not posted.
 name: Matrix notify
 
 on:
@@ -25,7 +26,6 @@ on:
     types: [submitted]
   pull_request_review_comment:
     types: [created]
-  commit_comment:
   release:
     types: [published]
   fork:
