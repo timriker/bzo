@@ -125,9 +125,11 @@ function createMatrixBridge({
     }, delay);
   };
 
+  // Lines led by their speakers; a join or leave has none, and is in italics.
   function compose(lines) {
-    const said = (line) => (line.action ? `* ${line.mark}${line.name} ${line.text}` : `${line.mark}${line.name}: ${line.text}`);
-    const html = (line) => (line.action
+    const said = (line) => (line.event ? line.text
+      : line.action ? `* ${line.mark}${line.name} ${line.text}` : `${line.mark}${line.name}: ${line.text}`);
+    const html = (line) => (line.event ? `<i>${escapeHtml(line.text)}</i>` : line.action
       ? `* <b>${escapeHtml(line.mark + line.name)}</b> ${escapeHtml(line.text)}`
       : `<b>${escapeHtml(line.mark + line.name)}</b>: ${escapeHtml(line.text)}`);
     return {
@@ -321,6 +323,14 @@ function createMatrixBridge({
       const said = plain(text);
       if (!said) return;
       queue.push({ name: plain(name), text: said, action: msgType === 'action', mark });
+      if (queue.length > QUEUE_LIMIT) queue.splice(0, queue.length - QUEUE_LIMIT);
+      schedule();
+    },
+    // A line about the game rather than said in it: a join or a leave.
+    event(text) {
+      const said = plain(text);
+      if (!said) return;
+      queue.push({ event: true, text: said });
       if (queue.length > QUEUE_LIMIT) queue.splice(0, queue.length - QUEUE_LIMIT);
       schedule();
     },

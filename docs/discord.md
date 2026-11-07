@@ -108,6 +108,10 @@ player. When
 Discord asks bzo to slow down, the lines wait and go when it says, up to 200
 of them.
 
+A person joining or leaving is said too, in italics with who is in after:
+`Foo joined, p 2 o 1 b 1` -- players, observers and bots, each left out at
+none. Bots coming and going are not.
+
 ## Discord to game
 
 With `botToken` set as well, what members say in that channel comes back into

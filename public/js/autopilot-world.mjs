@@ -15,6 +15,7 @@ import {
   getShotObstacleNormal, reflectShotDirection, SHOT_BOUNCE_CLEARANCE, SHOT_COLLISION_RADIUS, traceShotStep,
 } from './collision.mjs';
 import { buildNavGraph } from './nav.mjs';
+import { findFlagRestZ } from './flag-drop.mjs';
 import { getShotTeleporterCrossing, getShotTeleporterFrameHit } from './teleport.mjs';
 import { traceShotThroughTeleporters } from './trace.mjs';
 
@@ -70,6 +71,7 @@ export function findVantagePoints(obstacles, topOf, { minHeight = 3, minHalfSize
 
 export function createWorldProbes({
   obstacles, colliders, mapSize, findImpact, topOf, teleports = () => null,
+  waterLevel = () => null, flagHeight = () => 0,
 }) {
   const rayFraction = (from, to) => {
     const impact = findImpact(obstacles(), from, to, 0);
@@ -82,6 +84,7 @@ export function createWorldProbes({
     }
     return { fraction: Math.max(0, fraction), obstacle: impact ? impact.obstacle : null, hit: fraction < 1 };
   };
+  let traps = null;
   const ray = (pos, azimuth, range) => {
     const from = { x: pos.x, y: pos.y, z: surfaceZ(pos.z) + 0.1 };
     const to = {
@@ -97,6 +100,39 @@ export function createWorldProbes({
       return hit.hit ? hit.fraction * PROBE_RANGE : Infinity;
     },
     isObscured: (from, to) => rayFraction(from, to).hit,
+    // Whether a flag let go of by a tank at `pos` comes to rest there, by
+    // the server's own rule (public/js/flag-drop.mjs): not over open water,
+    // nor inside a building it cannot climb out of, such as a pyramid.
+    flagRestsAt: (pos) => {
+      const water = waterLevel();
+      return findFlagRestZ(colliders(), water > 0 ? water : 0, pos.x, pos.y, pos.z, flagHeight() || 0) !== null;
+    },
+    // The pyramids a flag let go of over has nowhere to rest on, so a team
+    // flag goes home instead, footprints as a base's are: worked out once a
+    // world.
+    flagTraps: () => {
+      const list = obstacles();
+      if (traps?.of !== list) {
+        const water = waterLevel();
+        const floor = water > 0 ? water : 0;
+        traps = {
+          of: list,
+          spots: list.filter((obs) => obs.type === 'pyramid' && Array.isArray(obs.pos) && Array.isArray(obs.size))
+            .filter((obs) => findFlagRestZ(colliders(), floor, obs.pos[0], obs.pos[1],
+              obs.pos[2] + obs.size[2] + 1, flagHeight() || 0) === null)
+            .map((obs) => ({
+              x: obs.pos[0],
+              y: obs.pos[1],
+              z: obs.pos[2],
+              top: obs.pos[2] + obs.size[2],
+              halfWidth: obs.size[0],
+              halfDepth: obs.size[1],
+              rotation: obs.angle || 0,
+            })),
+        };
+      }
+      return traps.spots;
+    },
     // Whether a teleporter is in the way of a drive from one point to the
     // other: sent through its doorway, or into the frame round it. A ray
     // reads both as open air, so a lane that is clear can still be a lift.

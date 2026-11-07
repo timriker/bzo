@@ -178,7 +178,6 @@ const {
   getObstacleBase,
   getObstacleHeight,
   getShotObstacleNormal,
-  isOverFlatTop,
   reflectShotDirection,
   traceShotStep,
   buildCollisionColliders,
@@ -187,6 +186,7 @@ const {
   WORLD_WALL_HEIGHT,
   TANK,
 } = require('./public/js/collision.mjs');
+const flagDrop = require('./public/js/flag-drop.mjs');
 const {
   buildTeleporterIndex,
   getTeleportDestinationFace,
@@ -12546,12 +12546,8 @@ const UDP_CHANNEL_CHUNK_BYTES = 1000;
 // the identity of an unheld superflag from every client (bzfs.cxx:361). Picking
 // one up reveals it to everyone.
 
-// The radius the flag drop test uses for its clearance cylinder, and the step it
-// walks that cylinder in. DropGeometry uses the tank radius; bzo's is 2.
-const FLAG_DROP_TEST_RADIUS = 2;
-// Upstream's drop clearance radius is 0; the collision test sees nothing of
-// no width, so a drop is tested this thin instead.
-const FLAG_DROP_POINT_RADIUS = 0.05;
+// The drop test's radii (public/js/flag-drop.mjs).
+const { FLAG_DROP_TEST_RADIUS, FLAG_DROP_POINT_RADIUS } = flagDrop;
 // launchPosition sits on top of the tank, not at its feet. Upstream reads
 // tankHeight from BZDB; bzo's tanks are 2 units tall.
 const FLAG_LAUNCH_TANK_HEIGHT = 2;
@@ -14025,13 +14021,7 @@ setInterval(() => {
 // stands in. Each step is a test as tall as the spawn radius, whatever the
 // radius, so a drop's thin one still reaches into what it stands in.
 function hasFlagClearance(x, y, z, radius = FLAG_DROP_TEST_RADIUS) {
-  let offset = 0;
-  do {
-    const options = { suppressLog: true, height: FLAG_DROP_TEST_RADIUS };
-    if (checkCollision(x, y, z + offset, radius, options)) return false;
-    offset += FLAG_DROP_TEST_RADIUS;
-  } while (offset < FLAG_HEIGHT);
-  return true;
+  return flagDrop.hasFlagClearance(getCollisionColliders(), x, y, z, radius, FLAG_HEIGHT);
 }
 
 // resetFlag() for a flag with no team: a random spot with room for the flag and
@@ -14185,6 +14175,7 @@ function addFlag(flag) {
 function resetFlag(flag) {
   if (flag.status === FLAG_STATUS.ON_TANK) sendFlagDrop(flag);
   flag.owner = null;
+  flag.placedBy = null;
   flag.flightStartedAt = 0;
   flag.grabbedAt = 0;
 
@@ -14287,21 +14278,7 @@ function getFlagFloorY() {
 // "no safe landing here" once there is -- an open stretch of water is not a
 // place a flag may rest, any more than it is a place a tank may stand.
 function findFlagLandingZ(x, y, fromZ) {
-  const floorZ = getFlagFloorY();
-  let landingZ = floorZ;
-  let found = floorZ <= 0;
-  for (const obs of getCollisionColliders()) {
-    // isValidLanding() skips anything a tank can drive through, and the world
-    // boundary is not somewhere a flag belongs.
-    if (obs.collisionKind === 'boundary' || obs.kind === 'teleporter') continue;
-    const top = getColliderTopY(obs);
-    if (top > fromZ || top <= landingZ) continue;
-    if (!isOverFlatTop(obs, x, y)) continue;
-    landingZ = top;
-    found = true;
-  }
-  return found ? landingZ : null;
-
+  return flagDrop.findFlagLandingZ(getCollisionColliders(), getFlagFloorY(), x, y, fromZ);
 }
 
 // dropIt's other branch: a flag let go of inside a building -- by a Phantom
@@ -14309,15 +14286,7 @@ function findFlagLandingZ(x, y, fromZ) {
 // top above it with room on it, and has nowhere to land when there is none.
 // The radius is a drop's, `FLAG_DROP_POINT_RADIUS`.
 function findFlagClimbZ(x, y, fromZ) {
-  const tops = [];
-  for (const obs of getCollisionColliders()) {
-    if (obs.collisionKind === 'boundary' || obs.kind === 'teleporter') continue;
-    const top = getColliderTopY(obs);
-    if (top < fromZ || !isOverFlatTop(obs, x, y)) continue;
-    tops.push(top);
-  }
-  tops.sort((a, b) => a - b);
-  return tops.find((top) => hasFlagClearance(x, y, top, FLAG_DROP_POINT_RADIUS)) ?? null;
+  return flagDrop.findFlagClimbZ(getCollisionColliders(), x, y, fromZ, FLAG_HEIGHT);
 }
 
 // isOpposingTeam(). A team flag may not come to rest on another team's base:
@@ -14695,12 +14664,15 @@ function getFlagDropPosition(owner, now = Date.now()) {
 // `now = Date.now()` is evaluated once and reused for both the drop position's
 // extrapolation and `flightStartedAt` below, so the flag does not fly from a
 // position measured at one instant but timed from another.
-function dropFlag(flag, now = Date.now()) {
+// `placedBy` is the team of a player who put the flag down on purpose; any
+// other drop -- a death, a shake, a pause -- leaves it unset.
+function dropFlag(flag, now = Date.now(), { placedBy = null } = {}) {
   if (flag.status !== FLAG_STATUS.ON_TANK) return;
   const owner = getFlagOwner(flag);
   if (!owner) return;
   flag.grabbedAt = 0;
   flag.zoned = false;
+  flag.placedBy = placedBy;
 
   const from = getFlagDropPosition(owner, now);
   const half = GAME_CONFIG.MAP_SIZE / 2;
@@ -17981,6 +17953,7 @@ function startBotWorker() {
       noWalls: mapNoWalls,
       wallHeight: GAME_CONFIG.WALL_HEIGHT,
       waterLevel: mapWaterLevel && mapWaterLevel.height > 0 ? mapWaterLevel.height : null,
+      flagHeight: FLAG_HEIGHT,
       teleporterLinks: TELEPORTER_GRAPH.links,
       // The zones a client's world carries, as `buildWorldFile` writes them.
       ...clientZones(MAP_ZONES),
@@ -18067,6 +18040,9 @@ function botSharedView(now) {
       type: state.type,
       team,
       onGround: state.status === FLAG_STATUS.ON_GROUND,
+      // A team flag a player of that team put where it lies.
+      placed: team !== null && flag.placedBy !== null && flag.placedBy !== undefined
+        && getTeamColorIndex(flag.placedBy) === team,
       x: state.position.x,
       y: state.position.y,
       z: state.position.z,
@@ -18618,6 +18594,8 @@ function pluginRecord(player) {
     losses: player.losses,
     teamKills: player.tks,
     clientVersion: player.clientVersion ?? '',
+    // bzo's: a robot, one this server runs or a client that joined as one.
+    bot: !isRealPlayer(player),
   };
 }
 

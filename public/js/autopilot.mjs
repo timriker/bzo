@@ -69,6 +69,9 @@ const RETALIATE_LOOKAHEAD = 2;
 const RETALIATE_SECONDS = 6;
 const RETALIATE_RANGE = 150;
 const RETALIATE_WEIGHT = 0.5;
+// How much further a foe who may be a teammate, by Masquerade or Ace's own
+// Colorblindness, counts as being.
+const DISGUISED_WEIGHT = 2;
 // A foe whose score is this far clear of everyone else's counts as nearer
 // by `LEADER_WEIGHT`.
 const LEADER_LEAD = 5;
@@ -97,6 +100,16 @@ const OVER_BASE_RANGE = 30;
 const OVER_BASE_MIN_HOME = 150;
 const OVER_BASE_LANDING_RANGE = 50;
 const OVER_BASE_FOE_RANGE = 60;
+// A pyramid that sends the flag home is jumped over: from within
+// `TRAP_JUMP_EDGE` of its footprint, square to its middle within
+// `TRAP_JUMP_AIM`.
+const TRAP_JUMP_EDGE = 10;
+const TRAP_JUMP_AIM = 0.2;
+// Ace's own flag away from his base is left where it lies when a team mate
+// put it there, or when it is within `HOME_KEEP_RANGE` of home and no nearer
+// the enemy -- unless a foe is within `FLAG_GUARD_RANGE` of it.
+const HOME_KEEP_RANGE = 100;
+const FLAG_GUARD_RANGE = 60;
 // Camping. With nobody within `CAMP_CLEAR_RANGE` and nobody running away
 // with the score, Ace goes looking for a flag to camp with; holding one, he
 // takes the best vantage point he can reach and shoots from there. The spot is
@@ -292,6 +305,13 @@ export class Ace extends AceFighter {
     // tank may jump.
     if (out.jump && !canTankJump(view.world, view.self.flag, view.self.z)) out.jump = false;
     this.oneWayTurn(view.self.flag, out);
+    // Forward Only refuses reverse, which a run-up, an overshot takeoff, an
+    // unstick and a dodge all ask for: the tank turns round on the spot
+    // instead, the way it was turning, and goes forward from there.
+    if (view.self.flag === 'FO' && out.speed < 0) {
+      out.speed = 0;
+      out.rotation = Math.sign(out.rotation) || 1;
+    }
     // Reversed Controls negates both sticks before the tank reads them
     // (`applyMotionInput`), so Ace asks for the opposite of what he wants.
     if (view.self.flag === 'RC') {
@@ -305,14 +325,17 @@ export class Ace extends AceFighter {
       out.dropFlag = false;
     }
     // A team flag is only ever let go of at home: Ace's own on his base,
-    // where it is returned, or any one in a world with no base to take it to.
-    // An enemy one is captured by reaching the base, not by dropping it.
+    // where it is returned, over another team's base or anywhere else it has
+    // nowhere to rest, which sends it home, or any one in a world with no base
+    // to take it to. An enemy one is captured by reaching the base, not by
+    // dropping it.
     if (out.dropFlag && view.self.flagTeam !== null) {
       const base = view.myBase();
       const own = view.self.flagTeam === view.self.teamColor;
       const home = base && own && this.isHome(view.self, base);
       const overEnemy = own && (view.bases || []).some((b) => b.team !== view.self.teamColor && isOverBase(b, view.self));
-      if (base && !home && !overEnemy) out.dropFlag = false;
+      const flies = own && typeof view.flagRestsAt === 'function' && !view.flagRestsAt(pointOf(view.self));
+      if (base && !home && !overEnemy && !flies) out.dropFlag = false;
     }
     this.paceAgility(view, out);
     return out;
@@ -513,6 +536,8 @@ export class Ace extends AceFighter {
       return this.camperStance(ctx.me) === 'wait' ? CAMPER_WAIT_WEIGHT : DOMINANT_WEIGHT;
     }
     if (this.isRetaliationTarget(ctx, p)) weight *= RETALIATE_WEIGHT;
+    // One who may be a teammate is gone after more warily: as if further.
+    else if (this.disguised(ctx, p)) weight *= DISGUISED_WEIGHT;
     if (p.id === ctx.leaderId) weight *= ctx.leaderLead >= DOMINANT_LEAD ? DOMINANT_WEIGHT : LEADER_WEIGHT;
     return weight;
   }
@@ -522,7 +547,8 @@ export class Ace extends AceFighter {
     const lead = this.scoreLead(ctx);
     ctx.leaderId = lead?.top.id ?? null;
     ctx.leaderLead = lead?.lead ?? 0;
-    const target = super.findBestTarget(ctx, players);
+    // Holding Thief, only a foe with a flag to take is any use to chase.
+    const target = super.findBestTarget(ctx, players.filter((p) => this.canHit(ctx, p)));
     if (target) ctx.out.intent.reason = this.targetReason(ctx, target);
     return target;
   }
@@ -572,6 +598,8 @@ export class Ace extends AceFighter {
     // Identify is worth going for only with nothing better to do: ahead of
     // every foe, and the team ahead of every other.
     if (type === 'ID') return this.winning;
+    // Thief, only with a flag near enough to take with it.
+    if (type === 'TH') return this.stealableNear === true;
     if (isBadFlag(type) || HARD_FLAGS.has(type)) return false;
     return this.isFlagUseful(type);
   }
@@ -581,6 +609,11 @@ export class Ace extends AceFighter {
   // him and his team. Shooting is a separate step and still happens. And a foe
   // in the air is met where it will land rather than chased where it is.
   chasePlayer(ctx) {
+    // Holding Thief there is one kind of foe worth going after, one with a
+    // flag to take: Roger's chase of the nearest such, closed to the beam's
+    // short reach, and none of the hunts, ambushes and fights below, which
+    // are for killing.
+    if (ctx.me.flag === 'TH') return super.chasePlayer(ctx);
     // A foe coming down on Ace's level within a shot's reach is a free kill,
     // and comes before everything but a dodge: flags, captures and a team
     // flag on its way home wait the second it takes.
@@ -785,7 +818,7 @@ export class Ace extends AceFighter {
         continue;
       }
       if (flag.team === me.teamColor) {
-        if (!base || this.isHome(pos, base)) continue;
+        if (!base || this.isHome(pos, base) || this.restsWell(ctx, flag, base)) continue;
       }
       const dist = distance2D(me, pos);
       if (flag.team === me.teamColor) {
@@ -1073,18 +1106,34 @@ export class Ace extends AceFighter {
     return covered ? view.myBase() : centre;
   }
 
-  // The enemy base to let Ace's own flag go over, when that sets it down
-  // near home for a short drive rather than a long carry.
+  // Whether letting Ace's own flag go here sends it near home for a short
+  // drive rather than a long carry: far from home, no foe near, and where
+  // the server puts a flag with nowhere to rest is near home.
+  flagFliesHome(ctx, from) {
+    const { view, me } = ctx;
+    if (me.flagTeam === null || me.flagTeam !== me.teamColor) return false;
+    const home = view.myBase();
+    if (!home || distance2D(me, home) < OVER_BASE_MIN_HOME) return false;
+    const landing = this.overBaseLanding(ctx, from);
+    if (!landing || distance2D(landing, home) > OVER_BASE_LANDING_RANGE) return false;
+    return !this.remotePlayers(view).some((p) => p.alive && !p.paused && view.isFoe(p)
+      && distance2D(me, p) < OVER_BASE_FOE_RANGE);
+  }
+
+  // Where to let Ace's own flag go so it goes home by itself: another team's
+  // base, where a team flag may not rest, or a pyramid it has nowhere to
+  // rest on (`flagTraps`), within `OVER_BASE_RANGE` of its edge. A base is
+  // driven onto, so its top must be within a jump; a pyramid is jumped over,
+  // so Ace must be able to jump.
   dropOverBaseTarget(ctx) {
     const { view, me } = ctx;
-    if (me.flagTeam === null || me.flagTeam !== me.teamColor) return null;
-    const home = view.myBase();
-    if (!home || distance2D(me, home) < OVER_BASE_MIN_HOME) return null;
+    if (!this.flagFliesHome(ctx, me)) return null;
     let base = null;
     let best = Infinity;
     const reach = Math.max(MAX_STEP_UP, this.jumpReach(ctx));
-    for (const b of view.bases || []) {
-      if (b.team === me.teamColor) continue;
+    const pyramids = this.jumpReach(ctx) > 0 && typeof view.flagTraps === 'function'
+      ? view.flagTraps().map((trap) => ({ ...trap, pyramid: true })) : [];
+    for (const b of [...(view.bases || []).filter((each) => each.team !== me.teamColor), ...pyramids]) {
       // Near it across, and up to its top from here: under a raised base is
       // not near it at all.
       if (b.z - me.z > reach) continue;
@@ -1094,18 +1143,40 @@ export class Ace extends AceFighter {
         best = edge;
       }
     }
-    if (!base) return null;
-    const landing = this.overBaseLanding(ctx, base);
-    if (!landing || distance2D(landing, home) > OVER_BASE_LANDING_RANGE) return null;
-    const threat = this.remotePlayers(view).some((p) => p.alive && !p.paused && view.isFoe(p)
-      && distance2D(me, p) < OVER_BASE_FOE_RANGE);
-    return threat ? null : base;
+    if (!base || !this.flagFliesHome(ctx, base)) return null;
+    return base;
+  }
+
+  // Over a pyramid, by jumping: square to its middle and near its edge, a
+  // jump at full speed; otherwise turned to it and driven at.
+  jumpOverTrap(ctx, trap) {
+    const { me, out } = ctx;
+    const turn = normalizeAngle(azimuthTo(me, trap) - me.azimuth);
+    out.intent.mode = 'drop-over';
+    out.intent.target = pointOf(trap);
+    out.rotation = Math.max(-1, Math.min(1, turn / (this.turnRate(ctx) * 0.25)));
+    if (me.inAir) {
+      out.rotation = 0;
+      return true;
+    }
+    out.speed = Math.abs(turn) > TRAP_JUMP_AIM ? 0.3 : 1;
+    const edge = distance2D(me, trap) - Math.min(trap.halfWidth, trap.halfDepth);
+    if (Math.abs(turn) <= TRAP_JUMP_AIM && edge <= TRAP_JUMP_EDGE) out.jump = true;
+    return true;
   }
 
   // Carrying a team flag home, by the route there rather than straight at it.
   navigate(ctx) {
     const { view, me } = ctx;
+    // Wherever he is, a flag with nowhere to rest goes home: let go now.
+    if (typeof view.flagRestsAt === 'function' && me.flagTeam === me.teamColor
+      && !view.flagRestsAt(pointOf(me)) && this.flagFliesHome(ctx, me)) {
+      ctx.out.intent.mode = 'drop-over';
+      ctx.out.dropFlag = true;
+      return true;
+    }
     const overBase = this.dropOverBaseTarget(ctx);
+    if (overBase?.pyramid) return this.jumpOverTrap(ctx, overBase);
     if (overBase) {
       if (isOverBase(overBase, me)) {
         ctx.out.intent.mode = 'drop-over';
@@ -1187,6 +1258,22 @@ export class Ace extends AceFighter {
   // On one of Ace's own team's bases, by its real footprint where the view
   // has the bases -- a base turned 45 degrees, as on hix, has corners well
   // outside the circle that fits inside it -- and by that circle where not.
+  // Ace's own flag lying somewhere other than his base, and as well kept
+  // there: put down by a team mate on purpose -- the tower behind the base
+  // on hix -- or near home and no nearer the enemy than home is. Not with a
+  // foe beside it, when it goes home after all.
+  restsWell(ctx, flag, base) {
+    const { view } = ctx;
+    const pos = pointOf(flag);
+    if (this.remotePlayers(view).some((p) => p.alive && !p.paused && view.isFoe(p)
+      && distance2D(p, pos) < FLAG_GUARD_RANGE)) return false;
+    if (flag.placed) return true;
+    if (distance2D(pos, base) > HOME_KEEP_RANGE) return false;
+    const enemies = (view.bases || []).filter((b) => b.team !== ctx.me.teamColor);
+    const nearest = (from) => Math.min(...enemies.map((b) => distance2D(from, b)));
+    return enemies.length === 0 || nearest(pos) >= nearest(base);
+  }
+
   isHome(pos, base) {
     const own = (this.viewBases || []).filter((b) => b.team === this.teamColor);
     if (own.length > 0) return own.some((b) => isOverBase(b, { x: pos.x, y: pos.y, z: pos.z ?? b.z }));

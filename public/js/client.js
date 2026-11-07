@@ -13725,6 +13725,7 @@ const autopilotProbes = createWorldProbes({
   findImpact: findShotSegmentImpact,
   topOf: getColliderTopY,
   teleports: () => TELEPORTER_INDEX,
+  waterLevel: () => currentWorldWaterHeight,
 });
 
 

@@ -65,6 +65,8 @@ const LUNGE_CLEARANCE = 4;
 // he may have moved a little by then -- and how long a shot is clear of its
 // own muzzle.
 const SELF_HIT_MARGIN = 2;
+// The room a shot is given past a team mate before it counts as hitting him.
+const TEAMMATE_HIT_MARGIN = 1.5;
 // Trigger Happy: how far ahead the heading of its next shot is judged, in
 // seconds, the steps the headings round him are tried in, and the least time
 // a turn to one is spread over.
@@ -82,6 +84,8 @@ const DODGE_DEAD_ON = 0.5;
 // full stick, how finely each path is driven out, and what a unit of turn
 // costs against a unit of speed when choosing between clear ones.
 const DODGE_SPEEDS = [1, 0.5, 0, -0.5];
+// The speeds a tank's flag lets it hold: Forward Only none below zero.
+const dodgeSpeeds = (flag) => (flag === 'FO' ? DODGE_SPEEDS.filter((speed) => speed >= 0) : DODGE_SPEEDS);
 const DODGE_TURNS = [0, -0.5, 0.5, -1, 1];
 const DODGE_STEP_SECONDS = 0.05;
 const DODGE_TURN_COST = 0.5;
@@ -849,7 +853,75 @@ export class AceFighter extends AceDriver {
       ctx.out.intent.shot = { ...shot, segments: this.lastTrace, held: true };
       return;
     }
+    if (this.shotEndangersTeammate(ctx)) {
+      ctx.out.fire = false;
+      ctx.out.shotTargetId = null;
+      ctx.out.speed = speed;
+      this.lastShot = lastShot;
+      this.landingShots = landingShots;
+      this.stats.held++;
+      ctx.out.intent.shot = { ...shot, segments: this.lastTrace, held: true };
+      return;
+    }
     ctx.out.intent.shot = { ...shot, segments: this.lastTrace };
+  }
+
+  // Whether the shot about to be fired meets a team mate before the foe it is
+  // for: along its path, bounces and all where it has them, each team mate
+  // where he will be when the shot gets there. A shot stops at the first tank
+  // it meets, so one that reaches the target first is safe. Never in a world
+  // without team kills, and never a Shock Wave's, which `fireShockWave` keeps
+  // from team mates on its own.
+  shotEndangersTeammate(ctx) {
+    const { view, me, out } = ctx;
+    if (view.world.noTeamKills || me.flag === 'SW') return false;
+    const mates = this.remotePlayers(view).filter((p) => p.alive && !p.paused && !view.isFoe(p)
+      && !(p.zoned && !me.zoned));
+    if (mates.length === 0) return false;
+    const self = view.self;
+    const azimuth = self.azimuth;
+    const muzzle = {
+      x: self.x + (Math.cos(azimuth) * (self.muzzleForward ?? 0)),
+      y: self.y + (Math.sin(azimuth) * (self.muzzleForward ?? 0)),
+      z: self.z + (self.muzzleHeight ?? TANK.muzzleHeight),
+    };
+    const shot = this.shotVelocity(ctx, azimuth);
+    const life = self.shotLifetime ?? 3.5;
+    const segments = typeof view.traceShot === 'function'
+      ? view.traceShot(muzzle, shot.dir, shot.speed, life, Boolean(self.ricochet))
+      : [{
+        t0: 0,
+        t1: life,
+        from: muzzle,
+        to: { x: muzzle.x + (shot.dir.x * shot.speed * life), y: muzzle.y + (shot.dir.y * shot.speed * life), z: muzzle.z },
+      }];
+    const target = this.remotePlayers(view).find((p) => p.id === out.shotTargetId) ?? null;
+    const reach = (p) => (TANK.radius * getTankHitRadiusScale(p.flag ?? null)) + TEAMMATE_HIT_MARGIN;
+    // When along a leg a tank, moving as it is, comes nearest the shot, and
+    // whether that is a hit: a fraction of the leg, or null.
+    const meets = (segment, p) => {
+      const span = segment.t1 - segment.t0;
+      const steps = Math.max(1, Math.ceil(span / 0.02));
+      for (let k = 0; k <= steps; k++) {
+        const f = k / steps;
+        const t = segment.t0 + (span * f);
+        const sx = segment.from.x + ((segment.to.x - segment.from.x) * f);
+        const sy = segment.from.y + ((segment.to.y - segment.from.y) * f);
+        const sz = segment.from.z + ((segment.to.z - segment.from.z) * f);
+        const px = p.x + ((p.vx ?? 0) * t);
+        const py = p.y + ((p.vy ?? 0) * t);
+        if (sz < p.z - 0.5 || sz > p.z + view.world.tankHeight + 0.5) continue;
+        if (Math.hypot(sx - px, sy - py) < reach(p)) return f;
+      }
+      return null;
+    };
+    for (const segment of segments) {
+      const mate = Math.min(...mates.map((p) => meets(segment, p) ?? Infinity));
+      const foe = target ? meets(segment, target) ?? Infinity : Infinity;
+      if (foe <= mate && foe !== Infinity) return false;
+      if (mate !== Infinity) return true;
+    }
+    return false;
   }
 
   // A foe lined up, standing still and in sight, whom a shot fired at full
@@ -985,7 +1057,7 @@ export class AceFighter extends AceDriver {
     }
     const players = this.remotePlayers(view);
     for (const p of players) {
-      if (!p.airborne || !p.alive || p.paused || !view.isFoe(p)) continue;
+      if (!p.airborne || !p.alive || p.paused || !view.isFoe(p) || !this.canHit(ctx, p) || !this.sureOf(ctx, p)) continue;
       if (!me.canFire) continue;
       for (const planned of this.planShots(ctx, p)) {
         // How far the shot's arrival may be off, from the network's jitter
@@ -1072,7 +1144,7 @@ export class AceFighter extends AceDriver {
     const floorShotSpare = !Number.isFinite(free) || free - 1 >= keep;
     const grounded = {
       ...view,
-      players: this.remotePlayers(view).filter((p) => !p.airborne
+      players: this.remotePlayers(view).filter((p) => !p.airborne && this.canHit(ctx, p) && this.sureOf(ctx, p)
         && !(view.now <= (this.landingShots.get(p.id)?.landsAt ?? -Infinity) + 0.5
           && this.landingShotsSpent(p, this.landingShots.get(p.id).landsAt) >= this.shotsToKill(p))
         && inRange(p)
@@ -1184,7 +1256,7 @@ export class AceFighter extends AceDriver {
     const top = me.topSpeed ?? view.world.tankSpeed;
     const heading = { x: Math.cos(me.azimuth), y: Math.sin(me.azimuth) };
     const along = ((me.vx ?? 0) * heading.x) + ((me.vy ?? 0) * heading.y);
-    const speeds = me.accel > 0 || !(top > 0) ? [top > 0 ? along / top : 0] : DODGE_SPEEDS;
+    const speeds = me.accel > 0 || !(top > 0) ? [top > 0 ? along / top : 0] : dodgeSpeeds(me.flag);
     const shooter = this.remotePlayers(view).find((p) => p.id === threat.ownerId) ?? null;
     let best = null;
     for (const speed of speeds) {
@@ -1332,7 +1404,7 @@ export class AceFighter extends AceDriver {
     const turning = rate > 0 ? (me.angVel ?? 0) / rate : 0;
     const z = me.z + 1;
     let best = null;
-    for (const speed of DODGE_SPEEDS) {
+    for (const speed of dodgeSpeeds(me.flag)) {
       for (const turn of DODGE_TURNS) {
         let x = me.x;
         let y = me.y;

@@ -137,7 +137,27 @@ const sync = (next, events = [], state = []) => ({
     formatted_body: '<b>@Tim Riker</b>: hi @room &#60;b&#62;<br>* <b>+Red</b> drives off',
     'm.mentions': {},
   });
+  // A join or leave: no speaker, in italics.
+  bridge.event('Tim joined, p 1 b 4');
+  await clock.run();
+  assert.equal(server.sent.at(-1).body, 'Tim joined, p 1 b 4');
+  assert.equal(server.sent.at(-1).formatted_body, '<i>Tim joined, p 1 b 4</i>');
   bridge.stop();
+}
+
+// Who is in, as a join or leave says it: players, observers and bots, each
+// left out at none.
+{
+  const { rosterLine } = require('../plugins/bridge/lines.cjs');
+  const roster = (records) => ({
+    eObservers: 7,
+    bz_getPlayerIndexList: () => records.map((record, id) => id),
+    bz_getPlayerByIndex: (id) => records[id],
+  });
+  const people = [{ team: 1 }, { team: 2 }, { team: 7 }, { team: 1, bot: true }];
+  assert.equal(rosterLine(roster(people), 'Foo', true), 'Foo joined, p 2 o 1 b 1');
+  assert.equal(rosterLine(roster([{ team: 1, bot: true }]), '\u001b[31mFoo', false), 'Foo left, b 1');
+  assert.equal(rosterLine(roster([]), 'Foo', false), 'Foo left, p 0');
 }
 
 // A rate limit: the lines wait as long as the homeserver says, then go.

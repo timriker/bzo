@@ -60,6 +60,10 @@ What goes is what every player in the game sees: chat to all, and `/me`, as
 admin channel, a muted player's lines and every command never leave the game.
 A BZFlag client's colour codes are removed.
 
+A person joining or leaving is said too, in italics with who is in after:
+`Foo joined, p 2 o 1 b 1` -- players, observers and bots, each left out at
+none. Bots coming and going are not.
+
 Lines go at most one message every two seconds, each led by its speaker in
 bold, with BZFlag's scoreboard mark: `@` for an admin, `+` for a signed-in
 player. Every message has its mentions off, so `@room` and names show as

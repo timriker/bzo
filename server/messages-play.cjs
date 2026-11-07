@@ -901,7 +901,8 @@ function handleDropFlag(player) {
       'DROP REJECTED: inside a building');
     if (refused) return;
   }
-  dropFlag(flag, now);
+  // Put down on purpose, which a team mate's bot leaves where it is.
+  dropFlag(flag, now, { placedBy: player.team });
   return;
 }
 

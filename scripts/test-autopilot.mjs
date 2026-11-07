@@ -540,6 +540,86 @@ for (const flag of ['US', 'MG', 'ID']) {
   assert.equal(out.intent.landing?.z, 6, 'on the box');
 }
 
+// Holding Thief, whose hit takes a flag and kills nobody, Ace chases and
+// shoots only a foe with a flag worth taking -- within the beam's short
+// reach -- and drops Thief when there is none near.
+{
+  const thief = { flag: 'TH', flagIndex: 4, muzzleHeight: 1.57, muzzleForward: 3, shotSpeed: 800, shotLifetime: 0.0175 };
+  // Moving, since a drop waits for that.
+  const bare = new Ace().think(makeView({ self: { ...thief, speed: 25 }, players: [enemy(0, 10)] }));
+  assert.equal(bare.fire, false, 'a foe with no flag is not shot');
+  assert.notEqual(bare.targetId, 'foe', 'nor chased');
+  assert.equal(bare.dropFlag, true, 'and Thief goes, with nothing to steal');
+  const carrying = new Ace().think(makeView({ self: thief, players: [enemy(0, 10, { flag: 'GM', flagIndex: 7 })] }));
+  assert.equal(carrying.fire, true, 'a foe with a good flag is');
+  assert.equal(carrying.dropFlag, false, 'and Thief kept');
+  const bad = new Ace().think(makeView({ self: thief, players: [enemy(0, 10, { flag: 'B', flagIndex: 7 })] }));
+  assert.equal(bad.fire, false, 'a bad flag is not worth taking');
+  const far = new Ace().think(makeView({ self: thief, players: [enemy(0, 100, { flag: 'GM', flagIndex: 7 })] }));
+  assert.equal(far.targetId, 'foe', 'one out of the beam\'s reach is chased');
+  assert.equal(far.fire, false, 'not shot');
+}
+
+// Forward Only: a dodge never asks for reverse, and anything that would back
+// up turns round on the spot instead.
+{
+  const shot = { ownerId: 'foe', ownerZoned: false, flag: null, x: 0, y: 100, z: 1.5, vx: 0, vy: -100, vz: 0 };
+  const out = new Ace().think(makeView({
+    self: { flag: 'FO', flagIndex: 4 }, players: [enemy(0, 150)], shots: [shot], world: { allowJumping: false },
+  }));
+  assert.equal(out.intent.mode, 'dodge');
+  assert.ok(out.speed >= 0, `never reverse (${out.speed})`);
+  // A back-up asked for by anything is a turn on the spot.
+  const ace = new Ace();
+  const backing = Object.getPrototypeOf(Object.getPrototypeOf(ace));
+  const think = backing.think;
+  backing.think = function thinkBacking(view) {
+    const result = think.call(this, view);
+    result.speed = -0.5;
+    result.rotation = -0.2;
+    return result;
+  };
+  try {
+    const turned = ace.think(makeView({ self: { flag: 'FO', flagIndex: 4 } }));
+    assert.equal(turned.speed, 0);
+    assert.equal(turned.rotation, -1, 'round the way it was turning');
+  } finally {
+    backing.think = think;
+  }
+}
+
+// Masquerade, or Ace's own Colorblindness: a foe who may be a teammate is
+// chased, but shot only up close or once he has shot at Ace.
+{
+  const red = { team: 'red', teamColor: 1 };
+  const fire = (self, foe) => new Ace().think(makeView({ self: { ...red, ...self }, players: [foe] })).fire;
+  assert.equal(fire({}, enemy(0, 150)), true, 'a plain foe is shot');
+  assert.equal(fire({}, enemy(0, 150, { flag: 'MQ', flagIndex: 5 })), false, 'one in Masquerade is not, far off');
+  assert.equal(fire({}, enemy(0, 40, { flag: 'MQ', flagIndex: 5 })), true, 'up close he is');
+  assert.equal(fire({ flag: 'CB', flagIndex: 4 }, enemy(0, 150)), false, 'Colorblind, nobody far off is');
+  const chased = new Ace().think(makeView({ self: red, players: [enemy(0, 150, { flag: 'MQ', flagIndex: 5 })] }));
+  assert.equal(chased.targetId, 'foe', 'but he is still gone after');
+  assert.equal(fire({ team: 'rogue', teamColor: 0 }, enemy(0, 150, { flag: 'MQ', flagIndex: 5 })), true,
+    'without teams there is nobody to mistake him for');
+}
+
+// A team mate in the shot's path, before the foe it is for, holds the shot;
+// one beside the line, or past the foe, does not.
+{
+  const mate = (x, y) => enemy(x, y, { id: 'mate', team: 'red' });
+  const fire = (players, world = {}) => new Ace().think(makeView({
+    self: { team: 'red', teamColor: 1, muzzleHeight: 1.57, muzzleForward: 3, shotSpeed: 100, shotLifetime: 3.5 },
+    players: [enemy(0, 150, { team: 'green' }), ...players],
+    isFoe: (p) => p.team !== 'red',
+    world,
+  })).fire;
+  assert.equal(fire([]), true, 'a clear shot');
+  assert.equal(fire([mate(0, 80)]), false, 'not through a team mate');
+  assert.equal(fire([mate(30, 80)]), true, 'one well beside the line is no matter');
+  assert.equal(fire([mate(0, 200)]), true, 'nor one past the foe');
+  assert.equal(fire([mate(0, 80)], { noTeamKills: true }), true, 'nor any, where team kills are off');
+}
+
 // A Shield takes one hit for its holder, so a shielded foe coming down gets
 // two landing shots where an unshielded one gets one.
 {
@@ -1596,6 +1676,51 @@ for (const flag of ['US', 'MG', 'ID']) {
 
   const guarded = new Ace().think(holding({ players: [enemy(10, 10)] }));
   assert.notEqual(guarded.intent.mode, 'drop-over', 'nor with a foe close by');
+}
+
+// A pyramid the flag has nowhere to rest on is jumped over, the flag let go
+// of above it; and anywhere the flag would not rest, it is let go of at once.
+{
+  const nearHome = { x: 0, y: -290, z: 0, halfWidth: 5, halfDepth: 5, rotation: 0, teams: [0] };
+  const trap = { x: 0, y: 15, z: 0, top: 10, halfWidth: 6, halfDepth: 6, rotation: 0 };
+  const holding = (self = {}, extra = {}) => makeView({
+    world: { teamFlags: true },
+    self: { team: 'blue', teamColor: 0, flag: 'B*', flagIndex: 0, flagTeam: 0, speed: 25, ...self },
+    myBase: () => ({ x: 0, y: -300, z: 0, radius: 20 }),
+    bases: [{ team: 0, x: 0, y: -300, z: 0, halfWidth: 20, halfDepth: 20, rotation: 0 }],
+    safetyZones: [nearHome],
+    flagTraps: () => [trap],
+    flagRestsAt: (pos) => !(Math.abs(pos.x) <= 6 && Math.abs(pos.y - 15) <= 6),
+    ...extra,
+  });
+  const jumping = new Ace().think(holding());
+  assert.equal(jumping.intent.mode, 'drop-over');
+  assert.equal(jumping.jump, true, 'square to it and near its edge, a jump');
+  assert.equal(jumping.dropFlag, false);
+  const above = new Ace().think(holding({ y: 15, z: 12, inAir: true }));
+  assert.equal(above.dropFlag, true, 'let go of over it');
+  const grounded = new Ace().think(holding({}, { world: { teamFlags: true, allowJumping: false } }));
+  assert.notEqual(grounded.intent.mode, 'drop-over', 'not a pyramid without a jump');
+}
+
+// His own flag where a team mate put it, or near home and no nearer the
+// enemy, is left there -- unless a foe is beside it.
+{
+  const base = { team: 0, x: 0, y: -300, z: 0, halfWidth: 20, halfDepth: 20, rotation: 0 };
+  const enemyBase = { team: 1, x: 0, y: 300, z: 0, halfWidth: 20, halfDepth: 20, rotation: 0 };
+  const mode = (flag, players = []) => new Ace().think(makeView({
+    world: { teamFlags: true },
+    self: { team: 'blue', teamColor: 0, x: 0, y: 0 },
+    myBase: () => ({ x: 0, y: -300, z: 0, radius: 20 }),
+    bases: [base, enemyBase],
+    flags: [{ index: 0, type: 'B*', team: 0, onGround: true, z: 0, ...flag }],
+    players,
+  })).intent.mode;
+  assert.equal(mode({ x: 200, y: 0 }), 'return', 'lost out in the field, it goes home');
+  assert.notEqual(mode({ x: 200, y: 0, placed: true }), 'return', 'put there by a team mate, it stays');
+  assert.notEqual(mode({ x: 0, y: -360 }), 'return', 'behind home, it stays');
+  assert.equal(mode({ x: 0, y: -240 }), 'return', 'in front of home, nearer the enemy, it goes home');
+  assert.equal(mode({ x: 200, y: 0, placed: true }, [enemy(200, 30)]), 'return', 'with a foe beside it, it goes home');
 }
 
 // Camping: hunting for a flag to camp with, then shooting from a vantage point.

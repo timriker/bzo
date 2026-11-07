@@ -57,11 +57,13 @@ function createChatMirror({
   };
 
   // What one post says: one speaker's lines under their name, or several
-  // speakers' under the server's.
+  // speakers' under the server's. A join or leave has no speaker, and is in
+  // italics.
   function compose(lines) {
-    const speakers = new Set(lines.map((line) => `${line.mark}${line.name}`));
-    const one = speakers.size === 1;
+    const speakers = new Set(lines.map((line) => (line.event ? '' : `${line.mark}${line.name}`)));
+    const one = speakers.size === 1 && !lines[0].event;
     const text = lines.map((line) => {
+      if (line.event) return `_${line.text.replace(/([\\*_~`|>])/g, '\\$1')}_`;
       const said = line.action ? `*${line.text}*` : line.text;
       return one ? said : `${boldName(`${line.mark}${line.name}`)}: ${said}`;
     }).join('\n');
@@ -107,6 +109,14 @@ function createChatMirror({
       const said = plain(text);
       if (!said) return;
       queue.push({ name, text: said, action: msgType === 'action', mark });
+      if (queue.length > QUEUE_LIMIT) queue.splice(0, queue.length - QUEUE_LIMIT);
+      schedule();
+    },
+    // A line about the game rather than said in it: a join or a leave.
+    event(text) {
+      const said = plain(text);
+      if (!said) return;
+      queue.push({ event: true, text: said });
       if (queue.length > QUEUE_LIMIT) queue.splice(0, queue.length - QUEUE_LIMIT);
       schedule();
     },

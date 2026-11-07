@@ -134,6 +134,8 @@ function getProbes() {
       findImpact: findShotSegmentImpact,
       topOf,
       teleports: getTeleporterIndex,
+      waterLevel: () => world.waterLevel,
+      flagHeight: () => world.flagHeight,
     });
   }
   return probes;

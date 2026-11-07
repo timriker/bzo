@@ -203,6 +203,16 @@ assert.equal(discordLinkConfigured({ applicationId: '111' }), false);
   await mirror.flush();
   assert.equal(posts.at(-1).content, '**@Tim Riker**: one\n**+Orin**: two');
 
+  // A join or leave: no speaker, so under the server's name, in italics.
+  mirror.event('Tim_R joined, p 2 o 1');
+  await mirror.flush();
+  assert.equal(posts.at(-1).username, 'bz.example.org');
+  assert.equal(posts.at(-1).content, '_Tim\\_R joined, p 2 o 1_');
+  mirror.event('Orin left, b 3');
+  mirror.relay('Tim Riker', 'bye', 'chat');
+  await mirror.flush();
+  assert.equal(posts.at(-1).content, '_Orin left, b 3_\n**Tim Riker**: bye');
+
   assert.equal(senderName('Discord King', 'x'), 'King');
   assert.equal(senderName('@#:', 'fallback'), 'fallback');
 }

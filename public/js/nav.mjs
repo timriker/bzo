@@ -73,6 +73,9 @@ const STRAIGHT_SAMPLE = 1;
 // The room a straightened leg keeps from anything solid either side of it:
 // the tight radius, so it is no closer than the grid route allows itself.
 const STRAIGHT_CLEARANCE = TIGHT_RADIUS;
+// How far a grid route beside something may stray from a straight leg and
+// still be taken for one: the step of a diagonal walked across and along.
+const ZIGZAG_SLACK = NAV_CELL * 0.75;
 const STEP_UP = 0.33;
 // Flights: the forward speeds tried, the step an arc is flown in, how far
 // one can reach and how long it can last, the tank's height against what it
@@ -863,7 +866,7 @@ export function buildNavGraph(world) {
   // to stand -- and none of them is tight. The line itself is enough: a tank
   // leans out over an edge and stays up. A line through open floor, then,
   // which is what a grid route across a base or a field zigzags over.
-  const straightWalk = (a, b) => {
+  const straightWalk = (a, b, clearance = STRAIGHT_CLEARANCE) => {
     if (crossesTeleporter(a.x, a.y, b.x, b.y, a.z)) return false;
     const dx = b.x - a.x;
     const dy = b.y - a.y;
@@ -878,7 +881,7 @@ export function buildNavGraph(world) {
       if (level === undefined) return false;
       // Clear where the line actually runs, not at the column's centre, which
       // can be two units off it -- enough to shave a rib a column test passes.
-      if (findTankObstacle(near(x, y), x, y, a.z + 0.01, { radius: STRAIGHT_CLEARANCE })) return false;
+      if (findTankObstacle(near(x, y), x, y, a.z + 0.01, { radius: clearance })) return false;
     }
     return true;
   };
@@ -904,12 +907,20 @@ export function buildNavGraph(world) {
       for (let k = i + 1; k < Math.min(route.length, i + SMOOTH_LOOKAHEAD); k++) {
         const next = route[k];
         if (next.jump || next.bridge || next.flight || next.teleport) break;
+        if (Math.abs(next.z - anchor.z) > STEP_UP) break;
         // Where the grid route went close by something it is kept: its many
         // short legs are a curve round it, and a straight leg there is a
         // sharp corner a tank at speed swings wide of, into what it was
-        // going round.
-        if (tight(route[k - 1].id) || tight(next.id)) break;
-        if (Math.abs(next.z - anchor.z) > STEP_UP || !straightWalk(anchor, next)) break;
+        // going round. Unless every node it skips lies along the leg: a
+        // lane too narrow for the grid's diagonal moves, which steps
+        // across and along it, is a straight line all the same, and is
+        // driven with room for the tank alone.
+        if (tight(route[k - 1].id) || tight(next.id)) {
+          const along = route.slice(i, k).every((node) => segmentDistance(anchor, next, node) <= ZIGZAG_SLACK);
+          if (!along || !straightWalk(anchor, next, STAND_RADIUS)) break;
+        } else if (!straightWalk(anchor, next)) {
+          break;
+        }
         j = k;
       }
       out.push(route[j]);
@@ -952,6 +963,15 @@ class PackedRows {
     for (let i = 0; i < values.length; i++) this.columns[this.names[i]][this.length] = values[i];
     this.length += 1;
   }
+}
+
+// The nearest a segment comes to a point, across the ground.
+function segmentDistance(a, b, p) {
+  const dx = b.x - a.x;
+  const dy = b.y - a.y;
+  const length2 = (dx * dx) + (dy * dy);
+  const t = length2 > 0 ? Math.max(0, Math.min(1, (((p.x - a.x) * dx) + ((p.y - a.y) * dy)) / length2)) : 0;
+  return Math.hypot(a.x + (dx * t) - p.x, a.y + (dy * t) - p.y);
 }
 
 class MinHeap {

@@ -41,6 +41,7 @@ const path = require('node:path');
 const { createMatrixBridge } = require('./matrix/client.cjs');
 const { createMatrixLinks } = require('./matrix/links.cjs');
 const { createMatrixCommands } = require('./matrix/commands.cjs');
+const { rosterLine } = require('./bridge/lines.cjs');
 
 let running = null;
 
@@ -159,6 +160,8 @@ module.exports = {
     });
     running = { bz, bridge };
     bz.Register(bz.bz_eFilteredChatMessageEvent);
+    bz.Register(bz.bz_ePlayerJoinEvent);
+    bz.Register(bz.bz_ePlayerPartEvent);
     if (links.answer) bz.bzhttp_RegisterVDir(linkPage(bz, links));
     bridge.start()
       .then((started) => started && links.start().then(() => commands.start()))
@@ -168,8 +171,16 @@ module.exports = {
   // Public chat, as every player read it, to the room: with BZFlag's
   // scoreboard mark, `@` for an admin and `+` for a signed-in player.
   Event(data) {
-    if (data.eventType !== 'bz_eFilteredChatMessageEvent' || !running) return;
+    if (!running) return;
     const { bz, bridge } = running;
+    // A person coming or going, with who is in now; bots come and go unsaid.
+    if (data.eventType === 'bz_ePlayerJoinEvent' || data.eventType === 'bz_ePlayerPartEvent') {
+      if (data.record && !data.record.bot) {
+        bridge.event(rosterLine(bz, data.record.callsign, data.eventType === 'bz_ePlayerJoinEvent'));
+      }
+      return;
+    }
+    if (data.eventType !== 'bz_eFilteredChatMessageEvent') return;
     if (data.to !== bz.BZ_ALLUSERS) return;
     const record = bz.bz_getPlayerByIndex(data.from);
     if (!record) return;

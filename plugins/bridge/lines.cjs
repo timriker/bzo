@@ -46,4 +46,24 @@ function isCommand(text, prefixes = ['/']) {
   return prefixes.some((prefix) => start.startsWith(prefix));
 }
 
-module.exports = { GAME_LINES, GAME_LINE_LIMIT, QUEUE_LIMIT, plain, gameLines, isCommand };
+// A person joining or leaving, as a bridge says it, with who is in now:
+// `Foo joined, p 2 o 1 b 1` -- players, observers and bots, each left out at
+// none. Bots and observers are counted from what the game reports; the one
+// leaving is already gone from it.
+function rosterLine(bz, callsign, joined) {
+  let playing = 0;
+  let observing = 0;
+  let bots = 0;
+  for (const id of bz.bz_getPlayerIndexList()) {
+    const record = bz.bz_getPlayerByIndex(id);
+    if (!record) continue;
+    if (record.team === bz.eObservers) observing++;
+    else if (record.bot) bots++;
+    else playing++;
+  }
+  const counts = [['p', playing], ['o', observing], ['b', bots]].filter(([, n]) => n > 0)
+    .map(([key, n]) => `${key} ${n}`).join(' ');
+  return `${plain(callsign)} ${joined ? 'joined' : 'left'}, ${counts || 'p 0'}`;
+}
+
+module.exports = { GAME_LINES, GAME_LINE_LIMIT, QUEUE_LIMIT, plain, gameLines, isCommand, rosterLine };

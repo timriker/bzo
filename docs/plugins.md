@@ -153,6 +153,8 @@ Where bzo differs:
   muted player's.
 - A player record's `currentFlag` names every flag alike, "Red Team (+R*)"
   as "Shock Wave (+SW)", where upstream's says "Red team flag".
+- A player record has `bot`, bzo's: a robot, whether this server runs it or
+  a client joined as one. Upstream's record cannot tell.
 
 ## API
 

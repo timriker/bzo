@@ -60,6 +60,33 @@ const box = (name, x, y, w, d, h, base = 0) => ({
   assert.ok(seen.some((node) => node.exposed), 'a Super Bullet sees every landing');
 }
 
+// A diagonal walkway split down the middle by a wall, as hix's from the
+// corner boxes out: each half is too narrow for the grid's diagonal moves,
+// so the grid route steps across and along it, and the smoothed route is one
+// straight leg.
+{
+  const turned = (b, angle) => {
+    const reach = Math.hypot(b.size[0], b.size[1]);
+    return {
+      ...b,
+      angle,
+      bounds: {
+        ...b.bounds, minX: b.pos[0] - reach, maxX: b.pos[0] + reach, minY: b.pos[1] - reach, maxY: b.pos[1] + reach,
+      },
+    };
+  };
+  const walkway = turned(box('walk', 0, 0, 120, 14, 15), Math.PI / 4);
+  const wall = turned(box('wall', 0, 0, 120, 1, 14, 15), Math.PI / 4);
+  const nav = buildNavGraph({ obstacles: [walkway, wall], mapSize: 300, jump: null });
+  const from = { x: -32, y: -28, z: 15 };
+  const to = { x: 28, y: 32, z: 15 };
+  const raw = nav.findRoute(from, to);
+  assert.ok(raw && raw.length > 10, 'the grid route steps along the lane');
+  const smooth = nav.smoothRoute(raw, from);
+  // The first node is where the start stands; one leg from there.
+  assert.ok(smooth.length <= 2, `and is driven as one leg (${smooth.map((n) => `${n.x},${n.y}`).join(' ')})`);
+}
+
 // A platform one jump reaches is jumped onto; one too high is not reached.
 {
   const low = buildNavGraph({ obstacles: [box('deck', 0, 0, 40, 40, 10)], mapSize: 200, jump: JUMP });

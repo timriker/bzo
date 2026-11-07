@@ -14,7 +14,8 @@ import {
 import { NAV_CELL, planJump } from './nav.mjs';
 import { normalizeAngle } from './motion.mjs';
 import { ROUTE_DEST_SLACK, ROUTE_PENDING, surfaceZ } from './autopilot-world.mjs';
-import { azimuthTo, distance2D, HALF_PI, pointOf, Roger } from './roger.mjs';
+import { isColorTeam } from './teams.mjs';
+import { azimuthTo, distance2D, HALF_PI, HARD_FLAGS, pointOf, Roger } from './roger.mjs';
 
 // How close a foe has to be to pull Ace off a capture, and how far it has to
 // get before he goes back to it. The gap is what keeps him from flipping
@@ -125,6 +126,13 @@ const AIM_RECHECK_DISTANCE = 2;
 // Just over the bump a tank drives up without noticing.
 const AIM_LANE_LIFT = 0.4;
 const ROUTE_REPLAN_SECONDS = 3;
+// How near a foe with a flag worth stealing has to be for Ace to keep Thief:
+// as far as Roger chases.
+const THIEF_KEEP_RANGE = 250;
+// A foe whose team Ace cannot be sure of -- one in Masquerade, or anyone
+// while Ace holds Colorblindness -- is shot only this near, where a tank is
+// made out by more than its colour, or once he has shot at Ace.
+const DISGUISE_SURE_RANGE = 50;
 // How near a foe has to be for a landing in his sight to be planned round:
 // a shot from further takes a second and a half or more to arrive, time
 // enough to drive out of its way.
@@ -1123,6 +1131,13 @@ export class AceDriver extends Roger {
     const { me, out } = ctx;
     // Roger has no use for Identify; Ace does.
     if (me.flag !== 'ID') super.dropHardFlags(ctx);
+    // Thief is worth holding only with a flag near enough to take.
+    this.stealableNear = this.remotePlayers(ctx.view).some((p) => this.stealable(ctx, p)
+      && distance2D(me, p) <= THIEF_KEEP_RANGE);
+    if (me.flag === 'TH' && !this.stealableNear) {
+      out.dropFlag = true;
+      this.noteShed(ctx);
+    }
     // Asked for until it is gone: a drop waits for the tank to be moving
     // (`dropOnTheMove`), and the goal that set this is not asked for again.
     if (this.shedBurrow) {
@@ -1147,6 +1162,36 @@ export class AceDriver extends Roger {
   }
 
   // A flag let go of on purpose is not one to go straight back for.
+  // A foe whose flag a Thief's hit would be worth taking: Ace's team flag
+  // first of all, any team flag, or a flag Ace would carry himself -- not a
+  // bad one, nor one he cannot use. A Thief's hit takes a flag and nothing
+  // else, so a foe without one is no target.
+  stealable(ctx, p) {
+    if (!p.alive || p.paused || p.notResponding || !ctx.view.isFoe(p) || !p.flag) return false;
+    if (p.flagTeam !== null && p.flagTeam !== undefined) return true;
+    return !isBadFlag(p.flag) && !HARD_FLAGS.has(p.flag) && p.flag !== 'TH';
+  }
+
+  // Whether Ace may shoot `p` to any end: holding Thief, only a foe with a
+  // flag worth stealing.
+  canHit(ctx, p) {
+    return ctx.me.flag !== 'TH' || this.stealable(ctx, p);
+  }
+
+  // Whether `p` might be a teammate to Ace's eyes: wearing Ace's colour in
+  // Masquerade, or any tank while Ace's Colorblindness hides the colours. In
+  // a game of teams only; every tank is a foe without them.
+  disguised(ctx, p) {
+    return isColorTeam(ctx.me.team) && (p.flag === 'MQ' || ctx.me.flag === 'CB');
+  }
+
+  // Whether Ace is sure enough of `p` to fire: one not disguised, or one
+  // near enough to make out, or one who has shot at him.
+  sureOf(ctx, p) {
+    return !this.disguised(ctx, p) || distance2D(ctx.me, p) <= DISGUISE_SURE_RANGE
+      || Boolean(this.isRetaliationTarget?.(ctx, p));
+  }
+
   noteShed(ctx) {
     if (Number.isInteger(ctx.me.flagIndex)) this.shedFlags.set(ctx.me.flagIndex, ctx.view.now + SHED_FORGET_SECONDS);
   }
