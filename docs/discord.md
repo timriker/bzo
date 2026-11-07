@@ -131,3 +131,20 @@ linked members is still to come (`docs/chat-bridge-plan.md`).
 The gateway session is kept in `discord-gateway.json` beside `server.json`, so
 a restart resumes it, as does switching the plugin off and on, and Discord
 then sends what was said while it was off.
+
+## Server commands
+
+A linked member runs a server command in the bridged channel either way:
+`/bzo playerlist`, Discord's own slash command, or `!playerlist`, as in a
+Matrix room. It runs as their linked BZFlag account (Linked Roles, above):
+their callsign, and admin as their link found it, so an admin command works
+for admins alone, and a BZID banned there runs nothing. A `!` line never
+reaches the game as chat.
+
+The answer comes in a direct message from the bot, never the channel, since
+an answer may name addresses. A member who takes no direct messages from the
+server's members gets `/bzo`'s answer in the reply only they see instead, and
+nothing for a `!` line. The server registers `/bzo` with the app when the
+channel relay starts -- in `guildId`'s server, or everywhere the app is
+without one -- and logs `discord: /bzo registered`; it answers through the
+bot's gateway, so there is no interactions URL to set.

@@ -131,7 +131,9 @@ function readable(content, mentions) {
 // mark: `@` for a link made by an admin, `+` for any other link.
 // `announce({ name, line, text })` says a line to every player: `text` is the
 // whole of it, `[Discord] name: line`, for a client that shows it as is.
-function createDiscordToGame({ channelId, nameFor, announce, log }) {
+// `onCommand({ message, text })` hears a line that starts with `!`, a server
+// command, which never reaches the game as chat.
+function createDiscordToGame({ channelId, nameFor, announce, onCommand = () => {}, log }) {
   return function onMessage(message) {
     if (message.channel_id !== channelId) return;
     // A bot's post, or the mirror's own webhook: never back into the game.
@@ -139,6 +141,10 @@ function createDiscordToGame({ channelId, nameFor, announce, log }) {
     const name = plain(nameFor(message)) || 'someone';
     let text = readable(message.content || '', message.mentions);
     if (!text.trim() && message.attachments?.length) text = '[attachment]';
+    if (isCommand(text, ['!'])) {
+      onCommand({ message, text: text.trim() });
+      return;
+    }
     if (isCommand(text)) {
       log(`"${name}" sent a command, not relayed: ${plain(text).slice(0, 80)}`);
       return;

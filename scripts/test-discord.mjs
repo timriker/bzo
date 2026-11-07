@@ -213,6 +213,7 @@ assert.equal(discordLinkConfigured({ applicationId: '111' }), false);
   const { createDiscordToGame } = require('../plugins/discord/bridge.cjs');
   const said = [];
   const logged = [];
+  const commands = [];
   const onMessage = createDiscordToGame({
     channelId: 'chan',
     nameFor: (message) => (message.author.id === '999' ? 'Tim Riker' : message.author.username),
@@ -220,6 +221,7 @@ assert.equal(discordLinkConfigured({ applicationId: '111' }), false);
       assert.equal(text, `[Discord] ${name}: ${line}`);
       said.push(text);
     },
+    onCommand: ({ text }) => commands.push(text),
     log: (line) => logged.push(line),
   });
   const message = (extra) => ({ channel_id: 'chan', author: { id: '5', username: 'guest' }, content: '', ...extra });
@@ -234,6 +236,9 @@ assert.equal(discordLinkConfigured({ applicationId: '111' }), false);
   onMessage(message({ content: '/kick someone' }));
   assert.equal(said.length, 4, 'a command is not chat');
   assert.match(logged.at(-1), /command, not relayed/);
+  onMessage(message({ content: '!playerlist' }));
+  assert.equal(said.length, 4, 'a server command is not chat either');
+  assert.deepEqual(commands, ['!playerlist']);
   onMessage(message({ attachments: [{}] }));
   assert.equal(said.at(-1), '[Discord] guest: [attachment]');
 }

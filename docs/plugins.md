@@ -184,7 +184,9 @@ Upstream's, by its names:
 - Map: `bz_registerCustomMapObject`, `bz_removeCustomMapObject`,
   `bz_CustomZoneObject`.
 - Web: `bzhttp_RegisterVDir`, `bzhttp_RemoveVDir`, `bzhttp_RemoveAllVdirs`.
-- Server: `bz_getPublicDescription`, the server's title.
+- Server: `bz_getPublicDescription`, the server's title, and
+  `bz_getPublicAddr`, the first `publicUrl` -- a URL, where upstream's is
+  host:port.
 
 bzo's own:
 
@@ -194,6 +196,11 @@ bzo's own:
   the server message `[network] name: text`; bzo's own puts it with the chat.
 - `bz_getDataDir()` is the directory `server.json` is in, where a plugin
   keeps what it saves; an upgrade keeps it.
+- `bz_runCommand(line, { callsign, bzid, admin, via })` runs a slash command
+  for a linked account on another network, as a player who is not in the
+  game, and resolves to the lines it answered. A BZID banned here runs
+  nothing; a plugin's own commands answer that they are for players in the
+  game.
 - `bz.setTimeout`, `bz.setInterval` and `bz.clearTimer`, cleared when the
   plugin is; upstream's plugins count ticks.
 - `bz_registerCustomSlashCommand` takes a third argument, `{ help,

@@ -8661,6 +8661,9 @@ class Projectile {
 // client that draws itself the Operator panel cannot change the map.
 function isAdmin(player) {
   if (!player || !player.joined) return false;
+  // A command from a linked account elsewhere (runRemoteCommand): admin as
+  // the link found it.
+  if (player.remote) return player.remote.admin;
   // A connection from this machine, where the operator asked for that to count.
   // Decided once at connect because it is a property of the socket, not of a
   // session that can expire under it.
@@ -8687,6 +8690,41 @@ function refuseNonOperator(ws, player, what) {
 }
 
 // One line of server chat to one player, which is how every command answers.
+// A command typed on another network by a linked account (bz_runCommand):
+// run as a player who is not in the game -- the link's callsign, and admin as
+// the link found it -- and answered with what it said back, gathered for a
+// moment since some replies follow the first. A BZID banned here runs
+// nothing.
+const REMOTE_COMMAND_MS = 750;
+let remoteCommandSerial = 0;
+
+async function runRemoteCommand(line, { callsign, bzid = '', admin = false, via = 'elsewhere' }) {
+  const text = String(line || '').trim();
+  if (!text.startsWith('/')) return ['A command starts with /'];
+  if (bzid && bans.idBanned(bzid)) {
+    log(`[CMD] "${callsign}" via ${via}: ${text} -- refused, banned`);
+    return ['You are banned from this server'];
+  }
+  const replies = [];
+  const remote = {
+    id: `remote-${++remoteCommandSerial}`,
+    name: String(callsign),
+    joined: true,
+    verified: true,
+    bzid: String(bzid),
+    remote: { admin: Boolean(admin), replies, via },
+  };
+  log(`[CMD] "${remote.name}" via ${via}`);
+  try {
+    handleServerCommand(remote, text, SERVER_PLAYER);
+  } catch (error) {
+    logError(`[CMD] "${remote.name}" via ${via}: ${text}`, error);
+    replies.push('That command failed');
+  }
+  await new Promise((resolve) => { setTimeout(resolve, REMOTE_COMMAND_MS); });
+  return replies;
+}
+
 // `sendMessage(ServerPlayer, playerId, text)` upstream, and the same shape a
 // map's `-srvmsg` already uses here.
 // The reply in English, and with `params` its msgid beside it so a bzo client
@@ -11276,6 +11314,12 @@ function handleServerCommand(player, text, channel = ALL_PLAYERS) {
   // A plugin's command goes before the built-in one of the same name, as
   // upstream's custom commands do (commands.cxx:3903).
   const pluginCommand = commands.get(parseCommandLine(text)?.name);
+  // A plugin's command is handed a player in the game, which a command from
+  // elsewhere has not got.
+  if (pluginCommand?.plugin && player.remote) {
+    replyToPlayer(player, 'The {command} command is only for players in the game', { command: pluginCommand.name });
+    return true;
+  }
   if (pluginCommand?.plugin) {
     if (!canRunCommand(player, pluginCommand)) {
       log(`[CMD] "${player.name}": ${text} -- refused, not an admin`);
@@ -15238,6 +15282,10 @@ const MAX_VOICE_SDP_LENGTH = 128 * 1024;
 const MAX_VOICE_CANDIDATE_LENGTH = 16 * 1024;
 
 function sendToPlayer(player, message) {
+  if (player?.remote) {
+    if (message.type === 'message' && message.text) player.remote.replies.push(message.text);
+    return;
+  }
   if (player?.ws?.readyState === 1) {
     player.ws.send(JSON.stringify(message));
   }
@@ -18747,12 +18795,19 @@ const PLUGIN_API = Object.freeze({
   // bz_getPublicDescription (bzfsAPI.cxx:3395): the server's title, as the
   // list server shows it.
   bz_getPublicDescription: () => serverConfig.title || '',
+  // bz_getPublicAddr (bzfsAPI.cxx:3387): where players reach this server --
+  // here the first `publicUrl`, a URL where upstream's is host:port, since a
+  // plugin's links need the scheme too. Empty when none is set.
+  bz_getPublicAddr: () => PUBLIC_URL,
   // bzo's own: the directory `server.json` is in, where a plugin keeps what
   // it saves (`data/` in a checkout, `/data` in Docker), kept by an upgrade.
   bz_getDataDir: () => path.dirname(CONFIG_PATH),
   // bzo's own: a line said somewhere else -- a Discord channel, IRC -- to
   // every player, from `name` on `network`. A BZFlag client reads it as the
   // server message `[network] name: text`; bzo's own puts it with the chat.
+  // bzo's own: a slash command from a linked account on another network, as
+  // `{ callsign, bzid, admin, via }`. Resolves to the lines it answered.
+  bz_runCommand: (line, who) => runRemoteCommand(line, who || {}),
   bz_sendRelayMessage: (network, name, text) => {
     const relay = { network: String(network), name: String(name), text: String(text) };
     if (!relay.network || !relay.text) return false;
