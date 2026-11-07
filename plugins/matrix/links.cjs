@@ -124,8 +124,8 @@ function createMatrixLinks({
     }
   }
 
-  // The space's links read, only its admins allowed to send them, and this
-  // server's own file links moved into it.
+  // The space's links read; by the server that answers links, only the
+  // space's admins allowed to send them, and its own file links moved in.
   async function start() {
     if (space) await startSpace();
     await shareDirectRooms();
@@ -152,8 +152,21 @@ function createMatrixLinks({
 
   async function startSpace() {
     spaceId = await roomIdOf(space);
-    const state = await client.must('GET', `/rooms/${enc(spaceId)}/state`);
-    for (const event of state.filter((each) => each.type === LINK_EVENT)) heard({ roomId: spaceId, event });
+    // An operator's own bot joins the space to read it, as anyone may a
+    // public one.
+    let state = await client.api('GET', `/rooms/${enc(spaceId)}/state`);
+    if (!state.ok) {
+      await client.must('POST', `/join/${enc(spaceId)}`, { body: {} });
+      state = await client.api('GET', `/rooms/${enc(spaceId)}/state`);
+    }
+    if (!state.ok) throw new Error(`${space}'s links: ${state.status} ${state.data.errcode || ''}`);
+    for (const event of state.data.filter((each) => each.type === LINK_EVENT)) heard({ roomId: spaceId, event });
+    // Only the server that answers links writes them, and needs to be
+    // admin of the space; the others read.
+    if (!answer) {
+      log(`${links.size} linked in ${space}`);
+      return;
+    }
     const path = `/rooms/${enc(spaceId)}/state/m.room.power_levels/`;
     const power = await client.must('GET', path);
     if ((power.events?.[LINK_EVENT] ?? -1) < 100) {
@@ -319,15 +332,19 @@ function createMatrixLinks({
   // or a new one, added there.
   async function directRoom(userId) {
     if (local.dms[userId]) return local.dms[userId];
-    let roomId = ((await directRooms())[userId] || [])[0];
-    if (!roomId) {
-      roomId = (await client.must('POST', '/createRoom', {
-        body: { is_direct: true, invite: [userId], preset: 'private_chat' },
-      })).room_id;
-      await addDirect(userId, roomId);
-    }
+    const roomId = ((await directRooms())[userId] || [])[0] || await openDirectRoom(userId);
     local.dms[userId] = roomId;
     saveLocal();
+    return roomId;
+  }
+
+  // A new direct room with a member, unencrypted -- the bot reads no
+  // encrypted message -- and first in their list from now on.
+  async function openDirectRoom(userId) {
+    const roomId = (await client.must('POST', '/createRoom', {
+      body: { is_direct: true, invite: [userId], preset: 'private_chat' },
+    })).room_id;
+    await addDirect(userId, roomId);
     return roomId;
   }
 
@@ -427,6 +444,7 @@ function createMatrixLinks({
     heard,
     answer,
     directRoom,
+    openDirectRoom,
     addDirect,
     isDirect,
     command,

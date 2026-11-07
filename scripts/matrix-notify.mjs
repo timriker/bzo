@@ -66,6 +66,13 @@ function describe() {
       return [`${who} ${verdict} pull request #${pr.number}: ${firstLine(pr.title)}`, event.review.html_url,
         event.review.body ? [firstLine(event.review.body, 200)] : []];
     }
+    case 'pull_request_review_comment':
+      return [`${who} commented on ${event.comment.path} in pull request #${pr.number}: ${firstLine(pr.title)}`,
+        event.comment.html_url, [firstLine(event.comment.body, 200)]];
+    case 'commit_comment':
+      return [`${who} commented on commit ${event.comment.commit_id.slice(0, 7)}`
+        + `${event.comment.path ? ` (${event.comment.path})` : ''}`,
+      event.comment.html_url, [firstLine(event.comment.body, 200)]];
     case 'release':
       return [`${who} released ${event.release.tag_name}: ${firstLine(event.release.name || '')}`,
         event.release.html_url];

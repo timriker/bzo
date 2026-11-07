@@ -79,7 +79,8 @@ and lines that start with `/` or `!`, which are commands, never come in.
 The bridge reads the room with a `/sync` long poll. Where it has read to is
 kept in `matrix-sync.json` beside `server.json`, so a restart picks up where
 it left off and lines said meanwhile arrive late rather than never. With none
-kept, as on the first start, the room's past is skipped.
+kept, as on the first start, the room's past is skipped, and so is the past
+a room arrives with when the bot joins it, or joins again after leaving.
 
 ## Links
 
@@ -157,11 +158,15 @@ what those gave.
 A linked member talks to the game servers in their direct room with the bot.
 To start one, open a direct chat with the bot's account in Element; the bot
 joins, keeps the room as theirs, and says what it is for. `!link` and
-`!whois` answer there too.
+`!whois` answer there too. Element encrypts a new direct chat unless told
+not to, and the bot reads no encrypted message: invited to an encrypted
+chat, or sent an encrypted message in one, it says so there and opens an
+unencrypted chat with the member in its place.
 
 - `!servers` lists every server whose `matrix` options name the same
-  `space`: each announces itself there, by its `name` -- the host of its
-  `publicUrl` unless the options set one -- and its room.
+  `space`: each announces itself in its own room, by its `name` -- the host
+  of its `publicUrl` unless the options set one -- its room, and the account
+  it answers as.
 - `!use <server>` picks the one their commands go to, by its name, its name
   without the port, or its room's alias; `!use` alone says which.
 - `!playerlist`, or any server command with `!` for its slash, runs on that
@@ -169,18 +174,48 @@ joins, keeps the room as theirs, and says what it is for. `!link` and
   message. With nothing picked, the server with `"links": true` runs it.
 - `!help` says all this in the room.
 
+`!servers` and `!help` answer in any room of the space too, from the server
+with `"links": true`, since neither says anything private. Any other `!`
+command there gets a pointer to the direct room -- opened for the member if
+they have none -- and never runs where others could read its answer.
+
 A command runs as the member's linked account: their callsign, and admin as
 their link found it, so an admin command works for admins alone, and a BZID
 banned there runs nothing. The answer, led by the server's name, comes back
 in the same room. A plugin's own commands, which need a player in the game,
 answer that they are only for players there.
 
-Every server shares the bot account, so all of them see the direct room;
-they agree on which answers through the space and the account. A member's
-choice is kept in the account's `org.bzflag.targets` data, the direct rooms
-in its `m.direct`, and the servers in the space's `org.bzflag.server` state,
-which only the space's admins may send.
+Servers sharing a bot account all see its direct rooms; they agree on which
+answers through their rooms and the account. A member's choice is kept in
+the account's `org.bzflag.targets` data, the direct rooms in its `m.direct`,
+and each server in its own room's `org.bzflag.server` state, which only that
+room's admins may send. The server with `"links": true` joins every public
+room of the space, and each new one as it is added, to read them.
 
 A `!` command typed in a server's bridged room runs on that server, with the
 answer in the member's direct room, never the bridged one, since an answer
 may name addresses.
+
+## Your own bot
+
+Another operator's server can join the space without the space's bot
+account, whose token would let it act as every server and the link page.
+They make a bot account of their own, as in "Setting it up", and:
+
+1. Make the server's room, public and unencrypted, with their bot admin
+   there.
+2. Ask an admin of the space to add the room to it.
+3. Give the server's `matrix` options the same `space`, without `"links":
+   true`.
+
+Their bot joins the space, as anyone may a public one, and reads the links
+there; it writes nothing in the space and needs no power in it. It bridges
+and runs commands in its own room, as any server does, and answers its own
+direct chats, since no server on its account answers links. `!servers` from
+any bot lists it, as `-- message @their-bot:server`: a member talks to it in
+a direct chat with that account. Levels from `powerLevels` are set only
+where the space's bot is admin, so not in their room.
+
+One bot account can bridge several servers, each with its own token and
+room, as the space's bot does. Its direct chats are then answered by the
+first of them by name, until a member picks another with `!use`.

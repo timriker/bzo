@@ -74,13 +74,33 @@ Matrix's are, is left.
 
 ## Matrix
 
-Chat both ways, links, callsigns in game, and power levels and rooms from
-groups are built (`docs/matrix.md`). Left is commands from linked members,
-above, and an application service, below.
+Chat both ways, links, callsigns in game, power levels and rooms from
+groups, server commands, and operators' own bots are built
+(`docs/matrix.md`). Left are a bzfs plugin and an application service,
+below.
 
 A Matrix space gathers a community's rooms: `#bzo:matrix.org` holds
 `#bzo-chat`, `#bzo-dev` and one room per bzo server, named for it like
 `#bz-rikers-org:matrix.org`.
+
+### A bzfs plugin
+
+A C++ plugin for upstream's bzfs, so a BZFlag server joins the space as a
+bzo one does with its own bot (`docs/matrix.md`, "Your own bot"), without a
+bzo server in front of it. The same conventions: chat both ways through
+`bz_eFilteredChatMessageEvent` and server messages, links read from the
+space's `org.bzflag.link` state, the server announced in its own room's
+`org.bzflag.server` state, and commands from linked members run as their
+account in its bridged room and direct chats.
+
+It speaks Matrix with libcurl, which bzfs already links: `bz_addURLJob`
+sends only GET and POST, and Matrix sends messages and state with PUT. A
+thread of its own, or the multi interface polled from `bz_eTickEvent`, keeps
+the `/sync` long poll from stalling the game. It answers no links -- the link
+page needs bzo's web login -- so a member links through a bzo server in the
+space. bzfs has no way to run a command as an account not in the game; a
+server-side player's `sendServerCommand` runs as that player, so commands
+from Matrix would be limited to what such a player may do, or left out.
 
 ### An application service (later)
 
@@ -160,5 +180,6 @@ Voice waits until the text bridges are in use and somebody asks for it.
 
 ## Order
 
-1. IRC, if it is wanted.
-2. A Matrix application service, and the optional homeserver container.
+1. The bzfs Matrix plugin.
+2. IRC, if it is wanted.
+3. A Matrix application service, and the optional homeserver container.

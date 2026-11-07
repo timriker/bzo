@@ -34,14 +34,16 @@ const RETRY_MAX_MS = 5 * 60 * 1000;
 // Where a space keeps who is linked to whom (links.cjs), one state event per
 // Matrix user.
 const LINK_EVENT = 'org.bzflag.link';
+// A server's announcement in its room, and a room added to a space.
+const SERVER_EVENTS = ['org.bzflag.server', 'm.space.child'];
 
-// Only messages, the members who sent them, and links.
+// Only messages, the members who sent them, links and servers.
 const SYNC_FILTER = JSON.stringify({
   presence: { not_types: ['*'] },
   account_data: { not_types: ['*'] },
   room: {
-    timeline: { types: ['m.room.message', LINK_EVENT], limit: 50 },
-    state: { types: ['m.room.member', LINK_EVENT], lazy_load_members: true },
+    timeline: { types: ['m.room.message', 'm.room.encrypted', LINK_EVENT, ...SERVER_EVENTS], limit: 50 },
+    state: { types: ['m.room.member', LINK_EVENT, ...SERVER_EVENTS], lazy_load_members: true },
     ephemeral: { not_types: ['*'] },
     account_data: { not_types: ['*'] },
   },
@@ -65,11 +67,15 @@ function withoutReplyFallback(body) {
 // roomId, userId, name, text })` hears a line that starts with `!` -- or,
 // outside the bridged room, `/` -- in any room the account is in, which never
 // reaches the game. `onLink({ roomId, event })` hears a link event in any
-// room, for the space that keeps them. `onInvite({ roomId, inviter, direct
-// })` hears the account invited to a room.
+// room, for the space that keeps them; `onServer({ roomId, event })` a
+// server's announcement or a room added to a space. `onInvite({ roomId, inviter, direct
+// })` hears the account invited to a room, and `encrypted` is whether the
+// room encrypts. `onEncrypted({ roomId, userId })` hears an encrypted message,
+// which this client cannot read.
 function createMatrixBridge({
   homeserver, accessToken, room, nameFor = (userId, displayName) => displayName || userId,
-  announce, onCommand = () => {}, onLink = () => {}, onInvite = () => {}, store, log, logError,
+  announce, onCommand = () => {}, onLink = () => {}, onServer = () => {}, onInvite = () => {}, onEncrypted = () => {},
+  store, log, logError,
   fetchImpl = fetch, setTimer = setTimeout, now = Date.now,
 }) {
   const base = String(homeserver).replace(/\/+$/, '');
@@ -82,6 +88,9 @@ function createMatrixBridge({
   let roomId = null;
   let userId = null;
   const names = new Map();
+  // The rooms the account is in. A room it joins arrives in the next sync
+  // with its recent past, which is not new: only that room's state is read.
+  const known = new Set();
 
   // `version` is the API's: v3 for most, v1 for the newer endpoints such as
   // a space's hierarchy.
@@ -166,9 +175,17 @@ function createMatrixBridge({
   };
 
   function receive(sync) {
+    for (const inRoom of Object.keys(sync.rooms?.leave || {})) known.delete(inRoom);
+    const joinedNow = new Set(Object.keys(sync.rooms?.join || {}).filter((inRoom) => !known.has(inRoom)));
+    for (const inRoom of joinedNow) known.add(inRoom);
     for (const [inRoom, room] of Object.entries(sync.rooms?.join || {})) {
       for (const event of [...(room.state?.events || []), ...(room.timeline?.events || [])]) {
         if (event.type === LINK_EVENT) onLink({ roomId: inRoom, event });
+        if (SERVER_EVENTS.includes(event.type)) onServer({ roomId: inRoom, event });
+        if (joinedNow.has(inRoom)) continue;
+        if (event.type === 'm.room.encrypted' && event.sender !== userId) {
+          onEncrypted({ roomId: inRoom, userId: event.sender });
+        }
         if (inRoom === roomId) continue;
         // Outside the bridged room nothing is chat, so a `/` line Element
         // was told to send as a message is a command too.
@@ -181,10 +198,20 @@ function createMatrixBridge({
     for (const [inRoom, room] of Object.entries(sync.rooms?.invite || {})) {
       const mine = (room.invite_state?.events || [])
         .find((event) => event.type === 'm.room.member' && event.state_key === userId);
-      if (mine) onInvite({ roomId: inRoom, inviter: mine.sender, direct: Boolean(mine.content?.is_direct) });
+      const encrypted = (room.invite_state?.events || []).some((event) => event.type === 'm.room.encryption');
+      if (mine) {
+        onInvite({ roomId: inRoom, inviter: mine.sender, direct: Boolean(mine.content?.is_direct), encrypted });
+      }
     }
     const joined = sync.rooms?.join?.[roomId];
     if (!joined) return;
+    if (joinedNow.has(roomId)) {
+      for (const event of [...(joined.state?.events || []), ...(joined.timeline?.events || [])]) {
+        if (event.type === 'm.room.member') names.set(event.state_key, event.content?.displayname);
+      }
+      log(`joined ${room}; its past is not relayed`);
+      return;
+    }
     for (const event of joined.state?.events || []) {
       if (event.type === 'm.room.member') names.set(event.state_key, event.content?.displayname);
     }
@@ -221,8 +248,9 @@ function createMatrixBridge({
           timeoutMs: SYNC_WAIT_MS + SYNC_GRACE_MS,
           signal: syncAbort.signal,
         });
-        // The first sync with nothing saved is the room's past: skipped.
+        // The first sync with nothing saved is the rooms' past: skipped.
         if (since) receive(data);
+        else for (const inRoom of Object.keys(data.rooms?.join || {})) known.add(inRoom);
         since = data.next_batch;
         try {
           store.save({ since });
@@ -251,6 +279,9 @@ function createMatrixBridge({
     roomId = room.startsWith('#')
       ? (await must('GET', `/directory/room/${encodeURIComponent(room)}`)).room_id
       : room;
+    // The rooms it is in before the join, so a first join here is read as
+    // one.
+    for (const inRoom of (await must('GET', '/joined_rooms')).joined_rooms || []) known.add(inRoom);
     await must('POST', `/join/${encodeURIComponent(roomId)}`, { body: {} });
     const encrypted = await api('GET', `/rooms/${encodeURIComponent(roomId)}/state/m.room.encryption/`);
     if (encrypted.ok) throw new Error(`${room} is encrypted; bridge an unencrypted room`);

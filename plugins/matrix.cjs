@@ -117,14 +117,16 @@ module.exports = {
       nameFor: (userId, displayName) => links?.nameFor(userId) || displayName || userId,
       announce: ({ name, line }) => bz.bz_sendRelayMessage('Matrix', name, line),
       onCommand: (command) => {
-        // `/link` sent as a message in a direct room is `!link`.
+        // `/link` sent as a message in a direct room is `!link`, and so on.
         const text = command.text.replace(/^\//, '!');
         const word = text.split(/\s+/)[0].toLowerCase();
-        const run = LINK_COMMANDS.has(word) ? links?.command({ ...command, text }) : commands?.handle(command);
+        const run = LINK_COMMANDS.has(word) ? links?.command({ ...command, text }) : commands?.handle({ ...command, text });
         Promise.resolve(run).catch((error) => logError(command.text, error));
       },
       onInvite: (invite) => commands?.invited(invite).catch((error) => logError(`invite to ${invite.roomId}`, error)),
+      onEncrypted: (event) => commands?.encrypted(event).catch((error) => logError('encrypted message', error)),
       onLink: (event) => links?.heard(event),
+      onServer: (event) => commands?.heard(event).catch((error) => logError('server event', error)),
       store: jsonStore('matrix-sync.json'),
       log,
       logError,
