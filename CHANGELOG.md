@@ -6,6 +6,24 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
 
 ## [Unreleased]
 
+## [1.3.92] - 2026-11-07
+
+### Added
+- Matrix links: `!link` pairs a Matrix account with a BZID through a
+  bzflag.org sign-in, kept in the space so every server bridging a room
+  there knows it. Linked members read in game by callsign and get power
+  levels and rooms from their bzflag.org groups (`docs/matrix.md`).
+- Server commands from Matrix and Discord: linked members run `!playerlist`
+  and the like as their BZFlag account, answered in a direct message
+  (`docs/matrix.md`, `docs/discord.md`).
+- Another operator's server joins the Matrix space with its own bot, without
+  the space's bot account (`docs/matrix.md`, "Your own bot").
+- GitHub activity is posted to `#bzo-dev:matrix.org`.
+
+### Fixed
+- The Matrix bridge no longer replays a room's past into the game, or reruns
+  its commands, when the bot joins or rejoins the room.
+
 ## [1.3.91] - 2026-11-06
 
 ### Added
