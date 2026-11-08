@@ -21,6 +21,7 @@ import {
   normalizePlayerTeamSelection,
 } from '../public/js/teams.mjs';
 import { getKillScoreDeltas } from '../public/js/scoring.mjs';
+import { getInitialPlayerColor, getJoinPlayerColor } from '../public/js/player-colors.mjs';
 
 const require = createRequire(import.meta.url);
 const serverTeams = require('../server/teams.cjs');
@@ -323,7 +324,7 @@ for (const capping of [RED, BLUE, ROGUE, PLAYER_TEAM.OBSERVER, null, undefined])
 // PlayerInfo::canBeRabbit (PlayerInfo.cxx:504) and
 // GameKeeper::Player::anointRabbit (GameKeeper.cxx:145).
 {
-  const { canBeRabbit, anointRabbit, pickNewRabbit } = serverTeams;
+  const { canBeRabbit, anointRabbit, pickNewRabbit } = await import('../public/js/rabbit.mjs');
   const player = (id, extra = {}) => ({
     id, paused: false, observer: false, alive: true, playing: true, ranking: 0.5, ...extra,
   });
@@ -458,7 +459,7 @@ for (const capping of [RED, BLUE, ROGUE, PLAYER_TEAM.OBSERVER, null, undefined])
 // colour teams on, and with them off the colour a player already has stands --
 // changing it mid-match would undo the only thing a distinct colour is for.
 {
-  const { getInitialPlayerColor, getJoinPlayerColor, getPlayerTeamColor: serverTeamColor } = serverTeams;
+  const { getPlayerTeamColor: serverTeamColor } = serverTeams;
   const WHITE = serverTeamColor(PLAYER_TEAM.OBSERVER);
   const teams = { enabled: true };
   const noTeams = { enabled: false };

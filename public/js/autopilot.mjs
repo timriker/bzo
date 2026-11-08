@@ -153,6 +153,13 @@ const CAMP_SHOWN_SPOTS = 12;
 // far it keeps from the world's edge doing so, and how fast a hunter has to
 // be closing on it to count as coming for it rather than passing by.
 const RABBIT_FLEE_RANGE = 200;
+// Where the rabbit looks for cover: this many bearings at each of these
+// distances, kept for `COVER_KEEP` seconds unless a hunter can see it, and
+// held once within `COVER_REACHED`.
+const COVER_BEARINGS = 12;
+const COVER_RADII = [45, 90, 140];
+const COVER_KEEP = 1;
+const COVER_REACHED = 6;
 // How Ace drives a route, as numbers a benchmark can vary
 // (scripts/bench-pilot.mjs): `follow` is `nodes` -- the next node, or a few
 // ahead on the ground -- or `pursuit`, a point `pursuitGround`/`pursuitRaised`
@@ -182,6 +189,13 @@ export const ACE_TUNING = Object.freeze({
   raised: 'factor',
   cornerLookahead: 12,
   cornerSlowest: 0.2,
+  // As the rabbit, with fewer than this many hunters within
+  // `RABBIT_FLEE_RANGE`, Ace fights the nearest rather than only one coming
+  // for him; 0 fights only those coming.
+  rabbitCrowd: 0,
+  // As the rabbit with this many hunters within `RABBIT_FLEE_RANGE` or more,
+  // Ace makes for somewhere they cannot see him (`takeCover`); 0 never does.
+  rabbitCover: 0,
 });
 // Where Ace puts his own flag down: within this share of his base's radius
 // of its middle, and no less than `HOME_DROP_MIN` across a small one.
@@ -663,6 +677,7 @@ export class Ace extends AceFighter {
     // short reach, and none of the hunts, ambushes and fights below, which
     // are for killing.
     if (ctx.me.flag === 'TH') return super.chasePlayer(ctx);
+    if (this.isRabbit(ctx) && this.takeCover(ctx)) return true;
     // A foe coming down on Ace's level within a shot's reach is a free kill,
     // and comes before everything but a dodge: flags, captures and a team
     // flag on its way home wait the second it takes.
@@ -760,20 +775,76 @@ export class Ace extends AceFighter {
   // closing on it. Anything else it would sooner leave behind than fight.
   rabbitTarget(ctx, players) {
     const { me, view } = ctx;
+    const hunters = players.filter((p) => p.alive && !p.paused && !p.notResponding && view.isFoe(p));
+    const near = hunters.filter((p) => distance2D(me, p) <= RABBIT_FLEE_RANGE).length;
+    const fighting = near < this.tuning.rabbitCrowd;
     let target = null;
     let best = Infinity;
-    for (const p of players) {
-      if (!p.alive || p.paused || p.notResponding || !view.isFoe(p)) continue;
+    for (const p of hunters) {
       const dx = me.x - p.x;
       const dy = me.y - p.y;
       const d = Math.hypot(dx, dy);
       if (d === 0 || d >= best) continue;
       const closing = ((p.vx * dx) + (p.vy * dy)) / d;
-      if (closing < RABBIT_CLOSING_SPEED) continue;
+      if (!fighting && closing < RABBIT_CLOSING_SPEED) continue;
       target = p;
       best = d;
     }
     return target;
+  }
+
+  // The rabbit outnumbered: to the nearest place every hunter near has no
+  // line of sight to, round a building rather than across open ground, and
+  // there it waits, guns on whoever comes round the corner. False with too
+  // few hunters near to bother, or nowhere hidden in reach.
+  takeCover(ctx) {
+    const { me, view, out } = ctx;
+    const need = this.tuning.rabbitCover;
+    if (!need || typeof view.clearLine !== 'function') return false;
+    const hunters = this.remotePlayers(view).filter((p) => p.alive && !p.paused && view.isFoe(p)
+      && distance2D(me, p) <= RABBIT_FLEE_RANGE);
+    if (hunters.length < need) {
+      this.cover = null;
+      return false;
+    }
+    const eye = Math.min(view.world.tankHeight || 2.05, 2) * 0.75;
+    const seen = (point) => hunters.some((p) => view.clearLine(
+      { x: p.x, y: p.y, z: p.z + eye }, { x: point.x, y: point.y, z: point.z + eye },
+    ));
+    const fresh = this.cover && view.now - this.cover.at < COVER_KEEP;
+    if (!fresh || seen(this.cover.point)) {
+      const limit = Math.max(0, ((view.world.mapSize || 800) / 2) - RABBIT_FLEE_MARGIN);
+      let best = null;
+      for (const radius of COVER_RADII) {
+        for (let i = 0; i < COVER_BEARINGS; i++) {
+          const angle = (i / COVER_BEARINGS) * 2 * Math.PI;
+          const point = { x: me.x + (Math.cos(angle) * radius), y: me.y + (Math.sin(angle) * radius), z: me.z };
+          if (Math.abs(point.x) > limit || Math.abs(point.y) > limit) continue;
+          // Not past a hunter to get there.
+          if (hunters.some((p) => distance2D(p, point) < distance2D(me, point))) continue;
+          if (seen(point)) continue;
+          best = point;
+          break;
+        }
+        if (best) break;
+      }
+      this.cover = best ? { point: best, at: view.now } : null;
+    }
+    if (!this.cover) return false;
+    const { point } = this.cover;
+    out.intent.mode = 'cover';
+    out.intent.target = point;
+    if (distance2D(me, point) <= COVER_REACHED) {
+      const nearest = hunters.reduce((a, b) => (distance2D(me, a) <= distance2D(me, b) ? a : b));
+      out.rotation = normalizeAngle(azimuthTo(me, nearest) - me.azimuth);
+      out.speed = 0;
+      return true;
+    }
+    const route = typeof view.findRoute === 'function' ? this.routeTo(ctx, point, CHASE_DEST_SLACK) : null;
+    if (route && this.followRoute(ctx, route)) return true;
+    out.rotation = normalizeAngle(azimuthTo(me, point) - me.azimuth);
+    out.speed = HALF_PI - Math.abs(out.rotation);
+    return true;
   }
 
   // A hunter's chase beyond Roger's range: the route to the rabbit, kept until

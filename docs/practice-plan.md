@@ -130,15 +130,24 @@ it could have.
       flag (`public/js/flag-rules.mjs`), and where a dropped one comes to rest
       (`public/js/flag-drop.mjs`); shaking was shared already (`canShakeFlag`).
       Offline, a map's `-s`, `+f`, `-f` and `-fb` reach the game through its
-      config, and Shield and Thief act on a bot. Left: a dropped flag's
-      flight, team flags and captures, antidotes, and flagged shots' flight.
-   4. match rules: clock, rabbit, team scores
+      config, and Shield and Thief act on a bot. On a map with bases for two
+      colour teams or more, practice is capture the flag -- the player and
+      every other bot against the rest -- with a team flag on each base, and
+      a capture sends the flag home, moves the team scores by the shared rule
+      (`getTeamScoreDeltasForCapture`) and kills the losing team. Left: a
+      dropped flag's flight, a team flag's timeout home, and antidotes.
+   4. match rules: clock, rabbit, team scores. The rabbit is shared: who
+      takes it (`public/js/rabbit.mjs`) is the server's rule, and practice on
+      a `-rabbit` server is Rabbit Chase, as is `scripts/arena.mjs` there or
+      with `--rabbit`. Left: the clock.
 3. **Bots that declare their own deaths.** Built for plain shells:
    `offline-worker.mjs` steps every shell with `traceShotStep` and tests it
    against each bot with `getShotTankHit`, as the proxied browser does for
-   itself. Left: teleporters, guided missiles, lasers and the rest of a
-   flagged shot's flight, which is when the browser's own stepping moves into
-   a shared module so the two are one.
+   itself. A flagged shot flies as the server flies it, by the same shared
+   pieces: a Laser traced at once (`traceBeam`), a Shock Wave swelling
+   (`shockWaveHitsTank`), a Guided Missile steering at its lock
+   (`steerGuidedShot`), a Super Bullet through buildings. Left: a shell
+   through a teleporter.
 4. **Practice host.** Built as offline play: `offline-worker.mjs` seats the
    player in `clientTracesShots` mode and runs three Ace bots, free-for-all,
    no flags. The game itself -- shells, the bots' deaths, spawns, respawns,
@@ -154,9 +163,10 @@ it could have.
    hard, as on a server, he plays his best until he is well ahead of
    everyone.
 
-   Any map this server holds can be practised on too, bzfs imports included:
-   `/list` gives each imported bzfs server a Practice link
-   (`?practice=normal&map=<file>`), and `/api/practice/<file>` answers it
+   Any map this server holds can be practised on too, and any public bzfs
+   server's: `/list` gives every bzfs server a Practice link
+   (`?practice=normal&map=<file>`), and `/api/practice/<file>` imports the
+   world first when it is not held, as `?viewmap=` does, then answers
    with the map and the config it plays by -- bzo's defaults with the map's
    `-ms`, options and BZDB over them. The client keeps that answer per map,
    so the link opens again offline. A bzfs server's plugins do not come with

@@ -20,9 +20,16 @@
 //   node scripts/arena.mjs --level-a easy --level-b normal   # practice levels
 //   node scripts/arena.mjs --level-a easy --scale yes        # skill follows the score
 //   node scripts/arena.mjs --flags 30                        # with superflags
+//   node scripts/arena.mjs --ctf yes                         # capture the flag
+//   node scripts/arena.mjs --map import-1vs1.catay.be_5157.bzw --ctf yes
+//   node scripts/arena.mjs --map import-bmbz.org_5174.bzw    # rabbit chase, as it runs
+//   node scripts/arena.mjs --rabbit killer                   # rabbit chase anywhere
 //
-// The world is the server's cached conversion (data/cache/map-index.json), so
-// a map has to have been served once.
+// The world is what practice gets for the map from the running server
+// (`/api/practice/<map>`, `--server`, http://localhost:5154 by default): any
+// map it holds, bzfs imports included, with the shots, jumping, ricochet and
+// flags it plays by. With no server answering, the server's cached conversion
+// (data/cache/map-index.json) of a map it has served, by bzo's defaults.
 
 import fs from 'node:fs';
 import path from 'node:path';
@@ -49,15 +56,44 @@ const why = args.get('why') === 'yes';
 // `--scale yes`: skill moves with the score, as in play. Off by default, so a
 // comparison is of each side at its level.
 const scale = args.get('scale') === 'yes';
+// `--ctf yes`: each side's team flag on its base, and captures.
+const ctf = args.get('ctf') === 'yes';
 
-const index = JSON.parse(fs.readFileSync(path.join(root, 'data/cache/map-index.json'), 'utf8'));
-if (!index[mapName]) {
-  console.error(`${mapName} is not in data/cache/map-index.json; serve it once first`);
-  process.exit(1);
+const server = args.get('server') || 'http://localhost:5154';
+
+// The practice answer for the map and its world, or null with no server.
+async function fetchPractice() {
+  try {
+    const response = await fetch(`${server}/api/practice/${encodeURIComponent(mapName)}`);
+    if (!response.ok) throw new Error(`${mapName}: HTTP ${response.status} from ${server}`);
+    const practice = await response.json();
+    const world = await fetch(new URL(practice.init.world.url, server));
+    if (!world.ok) throw new Error(`${mapName}: world HTTP ${world.status}`);
+    return { practice, file: await world.json() };
+  } catch (error) {
+    if (error.cause?.code !== 'ECONNREFUSED') throw error;
+    return null;
+  }
 }
-const file = JSON.parse(fs.readFileSync(path.join(root, `data/cache/maps/${index[mapName].hash}.json`), 'utf8'));
 
-// The server's defaults for what a bot game reads.
+function readCached() {
+  const index = JSON.parse(fs.readFileSync(path.join(root, 'data/cache/map-index.json'), 'utf8'));
+  if (!index[mapName]) {
+    console.error(`${mapName} is not in data/cache/map-index.json, and no server at ${server}`);
+    process.exit(1);
+  }
+  return { practice: null, file: JSON.parse(fs.readFileSync(path.join(root, `data/cache/maps/${index[mapName].hash}.json`), 'utf8')) };
+}
+
+const { practice, file } = (await fetchPractice()) || readCached();
+const mapConfig = practice?.init.config || {};
+// `--rabbit score|killer|random`, or the server's own `-rabbit`: everybody a
+// hunter but the rabbit, and each side's time and kills as the rabbit told.
+const rabbit = args.has('rabbit') ? (args.get('rabbit') === 'no' ? null : args.get('rabbit'))
+  : practice?.init.teamMode?.rabbitSelection || null;
+
+// The server's defaults for what a bot game reads, under the map's own, under
+// what the command line says.
 const config = {
   MAP_SIZE: Number.isFinite(file.mapSize) ? file.mapSize : 800,
   TANK_SPEED: 25,
@@ -67,20 +103,24 @@ const config = {
   ANGULAR_ACCELERATION: 0,
   SHOT_SPEED: 100,
   SHOT_RANGE: 350,
-  SHOT_MAX_ACTIVE: Number(args.get('shots') || 3),
+  SHOT_MAX_ACTIVE: 3,
   SHOT_RADIUS: 0.5,
   RESPAWN_DELAY: 5000,
   JUMP_VELOCITY: 19,
   GRAVITY: 9.8,
-  ALLOW_JUMPING: args.get('jumping') !== 'off',
+  ALLOW_JUMPING: true,
   MAX_BUMP_HEIGHT: 0.33,
   WALL_HEIGHT: 6.15,
   NO_TEAM_KILLS: false,
   ALL_SHOTS_RICOCHET: false,
-  SUPER_FLAG_COUNT: Number(args.get('flags') || 0),
+  SUPER_FLAG_COUNT: 0,
   // Upstream's `-st` as most servers set it: a bad flag shakes off in 10s.
   FLAG_SHAKE_TIMEOUT: 100,
   SUPER_FLAG_POOL: FLAG_ABBREVIATIONS.filter((type) => !isTeamFlag(type)),
+  ...mapConfig,
+  ...(args.has('shots') ? { SHOT_MAX_ACTIVE: Number(args.get('shots')) } : {}),
+  ...(args.has('jumping') ? { ALLOW_JUMPING: args.get('jumping') !== 'off' } : {}),
+  ...(args.has('flags') ? { SUPER_FLAG_COUNT: Number(args.get('flags')) } : {}),
 };
 const shared = {
   obstacles: file.obstacles || [],
@@ -97,25 +137,42 @@ const colours = [...new Set(shared.obstacles.filter((obs) => obs.kind === 'base'
 const teams = colours.length >= 2 ? colours.slice(0, 2).map(getTeamFromColorIndex) : ['red', 'blue'];
 
 let now = 0;
+const zero = { kills: 0, deaths: 0, teamKills: 0, shots: 0, captures: 0, rabbits: 0, rabbitSeconds: 0, rabbitKills: 0 };
 
 function play(game) {
-  const score = Object.fromEntries(sides.map((side) => [side.key, { kills: 0, deaths: 0, teamKills: 0, shots: 0 }]));
+  const score = Object.fromEntries(sides.map((side) => [side.key, { ...zero }]));
   const sideOf = new Map();
+  let holder = null;
+  let rabbitSince = 0;
   const arena = createBotGame({
     config,
     world: shared,
     now: () => now,
+    teamFlags: ctf ? teams : [],
+    rabbitSelection: rabbit,
     emit: (type, data, shot) => {
       if (type === 'shotBegin') score[sideOf.get(data.playerId)].shots++;
-      if (type !== 'killed') return;
+      if (type === 'captureFlag') score[sideOf.get(data.playerId)].captures++;
+      if (type === 'newRabbit') {
+        if (holder !== null) score[sideOf.get(holder)].rabbitSeconds += (now - rabbitSince) / 1000;
+        holder = data.playerId;
+        if (holder !== null) score[sideOf.get(holder)].rabbits++;
+        rabbitSince = now;
+      }
+      // A capture kills the team that lost its flag and scores nobody.
+      if (type !== 'killed' || data.captured) return;
       const victim = arena.bots.get(data.victimId);
       const killer = arena.bots.get(data.shooterId);
       score[sideOf.get(data.victimId)].deaths++;
       if (!killer || data.shooterId === data.victimId) return;
+      // The rabbit's team is still rabbit here: the new one is anointed after.
+      if (killer.record.team === 'rabbit') score[sideOf.get(data.shooterId)].rabbitKills++;
       if (killer.record.team !== victim.record.team) {
         score[sideOf.get(data.shooterId)].kills++;
         return;
       }
+      // A deposed rabbit's shells are excused, as upstream excuses them.
+      if (killer.record.wasRabbit) return;
       score[sideOf.get(data.shooterId)].teamKills++;
       if (why) tellTeamKill(arena, data, shot, victim);
     },
@@ -125,7 +182,7 @@ function play(game) {
     for (let n = 0; n < size; n++) {
       const id = `${game}-${side.key}${n}`;
       sideOf.set(id, side.key);
-      const record = arena.addBot(id, { name: `${side.pilot}-${side.key}${n}`, team: teams[s] }, {
+      const record = arena.addBot(id, { name: `${side.pilot}-${side.key}${n}`, team: rabbit ? 'hunter' : teams[s] }, {
         pilotId: side.pilot, options: { tuning: side.tuning, level: side.level, scale },
       });
       if (typeof record === 'string') throw new Error(record);
@@ -144,6 +201,7 @@ function play(game) {
     }
     arena.tick(TICK_SECONDS);
   }
+  if (holder !== null) score[sideOf.get(holder)].rabbitSeconds += (now - rabbitSince) / 1000;
   arena.removeBots();
   return score;
 }
@@ -157,18 +215,21 @@ function tellTeamKill(arena, data, shot, victim) {
   console.log(`  team kill at ${(now / 1000).toFixed(1)}s: ${data.shooterId} shot ${data.victimId};`
     + ` fired ${((now - shot.firedAt) / 1000).toFixed(2)}s before${from ? ` from ${at(from)}` : ''}`
     + ` at ${shot.aimedAt ?? 'nobody'}, ${shot.bounces} bounce(s); victim at ${at(victim.record)}`
-    + `${shot.mode ? `, shooter was ${shot.mode}` : ''}`);
+    + `${shot.mode ? `, shooter was ${from?.team ?? ''} ${shot.mode}` : ''}`);
   if (then) {
-    console.log(`    when fired the victim was at ${at(then)}${then.airborne ? ' in the air' : ''}, moving`
+    console.log(`    when fired the victim was ${then.team} at ${at(then)}${then.airborne ? ' in the air' : ''}, moving`
       + ` ${then.vx.toFixed(1)},${then.vy.toFixed(1)}; shot heading ${Math.atan2(shot.dirY, shot.dirX).toFixed(2)}`);
   }
 }
 
 const label = (side) => `${side.pilot}${side.level ? ` ${side.level}` : ''}`
   + `${side.tuning ? ` ${JSON.stringify(side.tuning)}` : ''}`;
-console.log(`${mapName}: ${teams[0]} ${label(sides[0])} v ${teams[1]} ${label(sides[1])}, ${size} a side,`
-  + ` ${games} game(s) of ${minutes} minutes`);
-const total = Object.fromEntries(sides.map((side) => [side.key, { kills: 0, deaths: 0, teamKills: 0, shots: 0 }]));
+console.log(`${practice ? 'from the server' : 'from the cache'}: ${config.SHOT_MAX_ACTIVE} shots,`
+  + ` jumping ${config.ALLOW_JUMPING ? 'on' : 'off'}, ricochet ${config.ALL_SHOTS_RICOCHET ? 'on' : 'off'},`
+  + ` ${config.SUPER_FLAG_COUNT} superflags`);
+console.log(`${mapName}: ${rabbit ? `rabbit chase (${rabbit}),` : ''} ${rabbit ? 'a' : teams[0]} ${label(sides[0])}`
+  + ` v ${rabbit ? 'b' : teams[1]} ${label(sides[1])}, ${size} a side, ${games} game(s) of ${minutes} minutes`);
+const total = Object.fromEntries(sides.map((side) => [side.key, { ...zero }]));
 const started = Date.now();
 for (let game = 1; game <= games; game++) {
   const score = play(game);
@@ -179,6 +240,7 @@ const seconds = (Date.now() - started) / 1000;
 for (const side of sides) {
   const t = total[side.key];
   console.log(`${side.key} ${label(side)}: kills ${t.kills}, deaths ${t.deaths}, k/d ${(t.kills / Math.max(1, t.deaths)).toFixed(2)},`
-    + ` team kills ${t.teamKills}, shots ${t.shots}`);
+    + ` team kills ${t.teamKills}, shots ${t.shots}${ctf ? `, captures ${t.captures}` : ''}`
+    + (rabbit ? `, rabbit ${t.rabbits} times for ${t.rabbitSeconds.toFixed(0)}s with ${t.rabbitKills} kills` : ''));
 }
 console.log(`${(games * minutes).toFixed(0)} game minutes in ${seconds.toFixed(0)}s, ${((games * minutes * 60) / seconds).toFixed(1)}x real time`);

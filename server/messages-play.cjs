@@ -28,7 +28,6 @@ const {
 } = require('../public/js/flags.mjs');
 const {
   PLAYER_TEAM,
-  getJoinPlayerColor,
   getTeamColorIndex,
   isColorTeam,
   isColorTeamIndex,
@@ -37,6 +36,7 @@ const {
   selectPlayerTeam,
 } = require('./teams.cjs');
 const { getShotFlight } = require('./shots.cjs');
+const { getJoinPlayerColor } = require('../public/js/player-colors.mjs');
 
 // What the handlers need of server.js, from `useServer`. `UDP_CHANNELS`,
 // `pendingMoveBroadcasts`, `projectileIdCounter`, `rabbitPlayerId` change

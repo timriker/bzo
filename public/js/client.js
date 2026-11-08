@@ -8134,6 +8134,7 @@ function noteOfflineSpawn(player) {
 // kept per map so the link opens offline once it has been followed online.
 // Null when neither is to hand, which plays the last world instead.
 let practiceWorld = null;
+let practiceWorldAsked = false;
 const PRACTICE_WORLD_KEY = 'practiceWorld:';
 async function loadPracticeWorld(map) {
   try {
@@ -8212,7 +8213,8 @@ function connectToServer() {
   // on the map `&map=` names (`/api/practice/<map>`, kept so it opens again
   // offline), or else the last world played.
   const practiceMap = params.get('map');
-  if (currentDestination().startsWith('practice:') && practiceMap && !practiceWorld) {
+  if (currentDestination().startsWith('practice:') && practiceMap && !practiceWorldAsked) {
+    practiceWorldAsked = true;
     loadPracticeWorld(practiceMap).then((world) => {
       practiceWorld = world;
       connectToServer();

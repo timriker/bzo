@@ -213,6 +213,28 @@ export function createWorldProbes({
       }
       return legs;
     },
+    // Whether nothing solid lies on the straight line from `from` to `to`:
+    // one trace, no teleporters, for whether one tank can see another.
+    clearLine: (from, to) => {
+      const dx = to.x - from.x;
+      const dy = to.y - from.y;
+      const dz = to.z - from.z;
+      const length = Math.hypot(dx, dy, dz);
+      if (length === 0) return true;
+      const step = traceShotStep({
+        obstacles: colliders(),
+        x: from.x,
+        y: from.y,
+        z: from.z,
+        dirX: dx / length,
+        dirY: dy / length,
+        dirZ: dz / length,
+        distance: length,
+        radius: SHOT_COLLISION_RADIUS,
+        ricochet: false,
+      });
+      return !step.obstacle && !step.ground;
+    },
     // A shell's flight as the server flies it (`server.js`, its step): through
     // the teleporters first, off a teleporter's frame as off any wall, then
     // the step. A step that crossed a portal is measured back from where it

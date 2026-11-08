@@ -1142,13 +1142,14 @@ an outline in the team's radar colour (`RadarRenderer::renderBasesAndTeles`, a
 and in the overview pictures (`baseOutlines` in `server/map-overview.cjs`). A
 filled base hid the players and the flag standing on it.
 
-Outside team mode that colour comes from the whole wheel. Inside it, the server
-shades team mates apart within a band around the team colour
-(`TEAM_SHADE_HUE_SPREAD` and friends in `server/teams.cjs`), so a red tank is
-still unmistakably red. Nothing is rebalanced when a player leaves: the gap they
-free is the one the next joiner is most likely to take, and a tank that changed
-colour mid-match would undo the only thing the shade is for. A restart starts
-over, which is a fresh set of players to learn in any case.
+Outside team mode that colour comes from the whole wheel. Inside it, team mates
+are shaded apart within a band around the team colour (`TEAM_SHADE_HUE_SPREAD`
+and friends in `public/js/player-colors.mjs`, which the server and practice
+share), so a red tank is still unmistakably red. Nothing is rebalanced when a
+player leaves: the gap they free is the one the next joiner is most likely to
+take, and a tank that changed colour mid-match would undo the only thing the
+shade is for. A restart starts over, which is a fresh set of players to learn
+in any case.
 
 Depth dimming mirrors upstream's two functions, which differ only in their floor:
 `colorScale` fades objects to 0.35 and `transScale` fades the obstacles they

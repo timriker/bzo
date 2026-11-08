@@ -188,6 +188,8 @@ const {
 const flagDrop = require('./public/js/flag-drop.mjs');
 const flagSpawn = require('./public/js/flag-spawn.mjs');
 const flagRules = require('./public/js/flag-rules.mjs');
+const { getInitialPlayerColor, getJoinPlayerColor, pickDistinctColor } = require('./public/js/player-colors.mjs');
+const { pickNewRabbit } = require('./public/js/rabbit.mjs');
 const {
   buildTeleporterIndex,
   getTeleportDestinationFace,
@@ -226,14 +228,6 @@ const {
   normalizeTeamLimits,
   resolveTeamMode,
   teamModeFromMaximums,
-  getPlayerTeamColor,
-  getInitialPlayerColor,
-  getJoinPlayerColor,
-  TEAM_SHADE_HUE_SPREAD,
-  TEAM_SHADE_HUE_STEP,
-  TEAM_SHADE_SAT_SPREAD,
-  TEAM_SHADE_LIGHT_SPREAD,
-  TEAM_SHADE_MIN_SATURATION,
   isColorTeam,
   isObserverTeam,
   isRabbitTeam,
@@ -244,7 +238,6 @@ const {
   getGameType,
   allowTeams,
   getPlayerRanking,
-  pickNewRabbit,
   PLAYER_TEAM,
   PLAYER_TEAMS,
   BZFLAG_MP_TEAM_ORDER,
@@ -1565,9 +1558,18 @@ app.get('/api/world/file/:file', async (req, res) => {
 // bzfs server's plugins do not come with it.
 app.get('/api/practice/:file', async (req, res) => {
   const { file } = req.params;
+  if (parseImportMapFileName(file)) {
+    try {
+      await holdImportedWorld(file);
+    } catch (error) {
+      logError(`Practice on ${file} could not import it:`, error);
+      res.status(404).json({ error: error.message });
+      return;
+    }
+  }
   const held = MAP_REGISTRY.get(file);
   const entry = held && fs.existsSync(path.join(MAP_CACHE_DIR, `${held.hash}.json`)) ? held
-    : await prepareMapForView(file);
+    : await prepareMapForView(file, { imports: true });
   if (!entry || !entry.hash) {
     res.status(404).json({ error: 'no such map' });
     return;
@@ -2982,9 +2984,10 @@ function renderListTables({ servers, bzoServers, canWatch, locale }) {
             + (entryGuestSpawn(s) === 'no' ? ''
               : action(`/?watch=${encodeURIComponent(`${s.host}_${s.port}`)}&team=play`, t('Play')))
           : '')
-        // The same map offline, against bots, once it is held here: its
-        // settings come with it, its plugins do not.
-        + (importedPath ? action(`/?practice=normal&map=${encodeURIComponent(importFileName)}`, t('Practice')) : '')
+        // The same map offline, against bots, imported first when it is not
+        // held here (`holdImportedWorld`): its settings come with it, its
+        // plugins do not.
+        + action(`/?practice=normal&map=${encodeURIComponent(importFileName)}`, t('Practice'))
         + `<form method="post" action="/list/import" class="inlineForm">`
         + `<input type="hidden" name="host" value="${escapeHtml(s.host)}">`
         + `<input type="hidden" name="port" value="${s.port}">`
@@ -4300,6 +4303,22 @@ async function registerFreshImportFromDisk(fileName) {
   }
 }
 
+// An import's world held and registered, read back from disk or fetched from
+// its server when this process has none fresh: what a `?viewmap=` link and a
+// practice game on a bzfs server both wait on. Resolves to how it came
+// (`held`, `disk`, `unchanged`, `reused` or `imported`, with the bytes
+// fetched), and rejects as `performRemoteMapImport` does -- a server off the
+// public list with no copy here, or one that will not send its world.
+async function holdImportedWorld(file) {
+  const { host, port } = parseImportMapFileName(file);
+  const existing = MAP_REGISTRY.get(file);
+  if (existing && Date.now() - existing.registeredAt < IMPORT_REUSE_MS) return { how: 'held' };
+  if (!existing && await registerFreshImportFromDisk(file)) return { how: 'disk' };
+  if (await confirmImportUnchanged(file, host, port)) return { how: 'unchanged' };
+  const { byteLength, reused } = await performRemoteMapImport(host, port);
+  return { how: reused ? 'reused' : 'imported', byteLength };
+}
+
 // The world hash an import was saved with: the `# world hash` line its header
 // carries (remote-world-import.cjs), read without reading the whole world.
 function importedWorldHash(fileName) {
@@ -4417,16 +4436,20 @@ async function parseAndRegisterMap(fileName, filePath, { keepWorld = true } = {}
 // A local map's world JSON, written now for someone about to load it -- the
 // same step a `?viewmap=` of a remote server's map takes once its import is
 // on disk. Only the live map keeps its JSON otherwise. Returns the entry, or
-// null where the file is not a listed map or will not parse.
+// null where the file is not a listed map or will not parse. `imports` lets a
+// bzfs import on disk through as well, for practice on it.
 // One conversion per file however many viewers ask for it at once.
 const mapViewPreparations = new Map();
-function prepareMapForView(fileName) {
+function prepareMapForView(fileName, { imports = false } = {}) {
   const existing = MAP_REGISTRY.get(fileName);
   if (existing && existing.keptAt && fs.existsSync(path.join(MAP_CACHE_DIR, `${existing.hash}.json`))) {
     existing.keptAt = Date.now();
     return Promise.resolve(existing);
   }
-  if (!listLocalMapFiles().includes(fileName)) return Promise.resolve(null);
+  const listed = imports && parseImportMapFileName(fileName)
+    ? listAvailableMapFiles().includes(fileName)
+    : listLocalMapFiles().includes(fileName);
+  if (!listed) return Promise.resolve(null);
   const filePath = resolveMapFilePath(fileName);
   if (!filePath) return Promise.resolve(null);
   let pending = mapViewPreparations.get(fileName);
@@ -8227,184 +8250,11 @@ class Player {
     };
   }
 
-  static colorIntToRgb(color) {
-    return {
-      r: (color >> 16) & 0xff,
-      g: (color >> 8) & 0xff,
-      b: color & 0xff
-    };
-  }
-
-  static hslToRgb(h, s, l) {
-    s /= 100;
-    l /= 100;
-    const k = (n) => (n + h / 30) % 12;
-    const a = s * Math.min(l, 1 - l);
-    const f = (n) => l - a * Math.max(-1, Math.min(Math.min(k(n) - 3, 9 - k(n)), 1));
-    return {
-      r: Math.round(255 * f(0)),
-      g: Math.round(255 * f(8)),
-      b: Math.round(255 * f(4))
-    };
-  }
-
-  static rgbToColorInt({ r, g, b }) {
-    return (r << 16) | (g << 8) | b;
-  }
-
-  static rgbToHsl(r, g, b) {
-    const rn = r / 255;
-    const gn = g / 255;
-    const bn = b / 255;
-    const max = Math.max(rn, gn, bn);
-    const min = Math.min(rn, gn, bn);
-    const light = (max + min) / 2;
-    const delta = max - min;
-
-    if (delta === 0) {
-      return { hue: 0, sat: 0, light: light * 100 };
-    }
-
-    const sat = delta / (1 - Math.abs(2 * light - 1));
-    let hue;
-    switch (max) {
-      case rn:
-        hue = 60 * (((gn - bn) / delta) % 6);
-        break;
-      case gn:
-        hue = 60 * ((bn - rn) / delta + 2);
-        break;
-      default:
-        hue = 60 * ((rn - gn) / delta + 4);
-        break;
-    }
-    if (hue < 0) hue += 360;
-    return { hue, sat: sat * 100, light: light * 100 };
-  }
-
-  static hueDistance(a, b) {
-    const diff = Math.abs(a - b) % 360;
-    return Math.min(diff, 360 - diff);
-  }
-
-  static scoreCandidateColor(candidate, existingColors) {
-    if (existingColors.length === 0) {
-      return Number.POSITIVE_INFINITY;
-    }
-
-    let minScore = Number.POSITIVE_INFINITY;
-    for (const existing of existingColors) {
-      const dr = candidate.rgb.r - existing.rgb.r;
-      const dg = candidate.rgb.g - existing.rgb.g;
-      const db = candidate.rgb.b - existing.rgb.b;
-      const rgbDistanceSq = dr * dr + dg * dg + db * db;
-      const hueDistance = Player.hueDistance(candidate.hue, existing.hue);
-      const satDistance = Math.abs(candidate.sat - existing.sat);
-      const lightDistance = Math.abs(candidate.light - existing.light);
-      const separationScore = rgbDistanceSq + hueDistance * 64 + satDistance * 12 + lightDistance * 10;
-      if (separationScore < minScore) {
-        minScore = separationScore;
-      }
-    }
-    return minScore;
-  }
-
-  // Pick a pastel-ish color that is as far as practical from current players.
-  // Without a team, the whole wheel: every player gets a colour of their own.
-  // With one, a band around the team's colour and only team mates to stay clear
-  // of, so a red tank is still unmistakably red. See getInitialPlayerColor in
-  // server/teams.cjs for why bzo does this and upstream does not.
-  //
-  // Nothing is rebalanced when a player leaves. The gap they free is the one the
-  // next joiner is most likely to take, and a tank that changed colour mid-match
-  // would undo the only thing the shade is for. A restart starts over, which is
-  // a new set of players to learn in any case.
+  // The shared rule (public/js/player-colors.mjs), clear of every player but
+  // `exclude`.
   static pickDistinctColor(team = null, exclude = null) {
-    const teamColor = team === null || team === undefined
-      ? null
-      : getPlayerTeamColor(team);
-    // A team with no colour to shade -- observer's white -- keeps it as it is.
-    const teamHsl = Number.isFinite(teamColor)
-      ? (() => {
-        const rgb = Player.colorIntToRgb(teamColor);
-        return Player.rgbToHsl(rgb.r, rgb.g, rgb.b);
-      })()
-      : null;
-    if (teamHsl && teamHsl.sat < TEAM_SHADE_MIN_SATURATION) return teamColor;
-
-    const existingColors = Array.from(players.values())
-      .filter((player) => player !== exclude)
-      // Team mates are the only ones worth staying clear of: a red tank has no
-      // reason to avoid looking like a particular blue one.
-      .filter((player) => (teamHsl ? player.team === team : true))
-      .map((player) => player.color)
-      .filter((color) => Number.isFinite(color))
-      .map((color) => {
-        const rgb = Player.colorIntToRgb(color);
-        const hsl = Player.rgbToHsl(rgb.r, rgb.g, rgb.b);
-        return {
-          rgb,
-          hue: hsl.hue,
-          sat: hsl.sat,
-          light: hsl.light
-        };
-      });
-
-    const clampPercent = (value) => Math.max(0, Math.min(100, value));
-    const hues = [];
-    const saturationOptions = [];
-    const lightnessOptions = [];
-    let hueStep;
-    if (teamHsl) {
-      hueStep = TEAM_SHADE_HUE_STEP;
-      for (let offset = -TEAM_SHADE_HUE_SPREAD; offset <= TEAM_SHADE_HUE_SPREAD; offset += hueStep) {
-        hues.push((teamHsl.hue + offset + 360) % 360);
-      }
-      // The team colours are fully saturated already, so saturation only has
-      // room downwards; lightness has room both ways.
-      for (const offset of [0, -TEAM_SHADE_SAT_SPREAD, -2 * TEAM_SHADE_SAT_SPREAD]) {
-        saturationOptions.push(clampPercent(teamHsl.sat + offset));
-      }
-      for (const offset of [0, -TEAM_SHADE_LIGHT_SPREAD, TEAM_SHADE_LIGHT_SPREAD]) {
-        lightnessOptions.push(clampPercent(teamHsl.light + offset));
-      }
-    } else {
-      hueStep = 12;
-      for (let hue = 0; hue < 360; hue += hueStep) hues.push(hue);
-      saturationOptions.push(58, 66, 74);
-      lightnessOptions.push(58, 64, 70);
-    }
-
-    const scoredCandidates = [];
-    let bestScore = -1;
-
-    for (const hue of hues) {
-      for (const sat of saturationOptions) {
-        for (const light of lightnessOptions) {
-          const rgb = Player.hslToRgb(hue, sat, light);
-          const candidate = { hue, sat, light, rgb };
-          const score = Player.scoreCandidateColor(candidate, existingColors);
-          scoredCandidates.push({ candidate, score });
-          if (score > bestScore) {
-            bestScore = score;
-          }
-        }
-      }
-    }
-
-    if (scoredCandidates.length === 0) {
-      if (teamHsl) return teamColor;
-      const fallbackRgb = Player.hslToRgb(Math.floor(Math.random() * 360), 66, 64);
-      return Player.rgbToColorInt(fallbackRgb);
-    }
-
-    const scoreThreshold = bestScore * 0.72;
-    const topCandidates = scoredCandidates
-      .filter(({ score }) => score >= scoreThreshold)
-      .sort((left, right) => right.score - left.score)
-      .slice(0, 28);
-    const chosen = topCandidates[Math.floor(Math.random() * topCandidates.length)] || scoredCandidates[0];
-    return Player.rgbToColorInt(chosen.candidate.rgb);
+    const others = Array.from(players.values()).filter((player) => player !== exclude);
+    return pickDistinctColor(team, others);
   }
 
   respawn() {
@@ -17759,7 +17609,6 @@ messagesPlay.useServer({
   wireShot,
 }, MESSAGE_SERVER);
 messagesOperator.useServer({
-  IMPORT_REUSE_MS,
   PLUGIN_UPLOAD_MAX_BYTES,
   RUNTIME_PLUGINS_DIR,
   announcePluginChange,
@@ -17787,8 +17636,7 @@ messagesOperator.useServer({
   recorder,
   recordingName,
   refuseNonOperator,
-  registerFreshImportFromDisk,
-  confirmImportUnchanged,
+  holdImportedWorld,
   replayRooms,
   replaySummaries,
   replyToPlayer,

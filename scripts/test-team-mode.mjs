@@ -16,10 +16,9 @@ const {
   resolveTeamMode,
   selectPlayerTeam,
   getPlayerTeamColor,
-  getInitialPlayerColor,
   PLAYER_TEAM_COLORS,
-  TEAM_SHADE_HUE_SPREAD,
 } = require('../server/teams.cjs');
+const { getInitialPlayerColor, TEAM_SHADE_HUE_SPREAD } = require('../public/js/player-colors.mjs');
 
 assert.deepEqual(normalizeServerTeamMode(false), {
   enabled: false,

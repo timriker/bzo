@@ -24,6 +24,8 @@
 import { createBotGame, motionOf, TICK_SECONDS } from './bot-game.mjs';
 import { DEFAULT_PILOT } from './autopilot.mjs';
 import { ALL_PLAYERS, SERVER_PLAYER } from './player-ids.mjs';
+import { getTeamColorIndex, isColorTeam } from './teams.mjs';
+import { getInitialPlayerColor, getJoinPlayerColor, pickDistinctColor } from './player-colors.mjs';
 
 const PLAYER_ID = '0';
 const BOT_COUNT = 3;
@@ -44,6 +46,9 @@ let lastTickAt = 0;
 
 const send = (message) => self.postMessage(JSON.stringify(message));
 
+const offlineLine = () => `Offline, against bots, on ${world.init.currentMap || 'the last map played'}.`
+  + ' Reload to reconnect.';
+
 function serverMessage(text) {
   send({ type: 'message', src: SERVER_PLAYER, dst: ALL_PLAYERS, msgType: 'server', text, ts: Date.now() });
 }
@@ -53,16 +58,33 @@ function playingTeams() {
   return teams.length > 0 ? teams : ['rogue'];
 }
 
+// Rabbit Chase, where the server runs `-rabbit`: everybody hunts until the
+// game makes them the rabbit.
+const rabbitSelection = () => world.init.teamMode?.rabbitSelection || null;
+
 // What `automatic` lands on: rogue where the map allows one, else the first
 // team it does.
 function pickTeam(asked) {
+  if (rabbitSelection()) return asked === 'observer' ? asked : 'hunter';
+  if (ctfTeams.length >= 2) return ctfTeams.includes(asked) || asked === 'observer' ? asked : ctfTeams[0];
   if (asked === 'observer' || playingTeams().includes(asked)) return asked;
   return playingTeams()[0];
 }
 
+// Capture the flag where the map has bases for two colour teams or more: the
+// colour teams that have one. Empty otherwise, which is a free-for-all.
+let ctfTeams = [];
+
 // A free-for-all: each bot on a team of its own where the map has teams, rogue
-// where it has rogues.
+// where it has rogues. Capture the flag: the player's team gets every other
+// bot, and the rest go to the other teams in turn.
 function pickBotTeam(index) {
+  if (rabbitSelection()) return 'hunter';
+  if (ctfTeams.length >= 2) {
+    const mine = ctfTeams.includes(player.team) ? player.team : ctfTeams[0];
+    const theirs = ctfTeams.filter((team) => team !== mine);
+    return index % 2 === 1 ? mine : theirs[Math.floor(index / 2) % theirs.length];
+  }
   const teams = playingTeams();
   if (teams.includes('rogue')) return 'rogue';
   const others = teams.filter((team) => team !== player.team);
@@ -78,7 +100,19 @@ async function loadWorld() {
   const response = await fetch(world.init.world.url);
   if (!response.ok) throw new Error(`HTTP ${response.status}`);
   const file = await response.json();
+  ctfTeams = playingTeams().filter((team) => isColorTeam(team)
+    && (file.obstacles || []).some((obs) => obs.kind === 'base' && obs.team === getTeamColorIndex(team)));
+  if (ctfTeams.length < 2) ctfTeams = [];
   game = createBotGame({
+    teamFlags: ctfTeams,
+    rabbitSelection: rabbitSelection(),
+    onRabbit: (newId, oldId) => {
+      if (oldId === PLAYER_ID) player = { ...player, team: 'hunter' };
+      if (newId === PLAYER_ID) player = { ...player, team: 'rabbit' };
+    },
+    onTeamCaptured: (team, killerId) => {
+      if (player.team === team && player.alive && human) die({ type: 'killed', killerId, captured: true });
+    },
     config,
     world: {
       obstacles: file.obstacles || [],
@@ -95,6 +129,7 @@ async function loadWorld() {
     teamsAllowed: teamsAllowed(),
     others: () => (human && player.alive ? [{
       ...humanView(Date.now()), team: player.team, alive: true, score: player.wins - player.losses,
+      wins: player.wins, losses: player.losses,
     }] : []),
     emit: (type, data) => {
       if (type === 'moves') {
@@ -142,7 +177,7 @@ function open() {
     proxies: [],
     viewableMaps: [],
     title: `Offline: ${init.currentMap || 'last map'}`,
-    motd: 'Offline, against bots, on the last map played. Reload to reconnect.',
+    motd: offlineLine(),
   });
 }
 
@@ -153,22 +188,33 @@ function join(message) {
     ...player,
     name: typeof message.name === 'string' && message.name ? message.name : player.name,
     team,
+    color: getJoinPlayerColor(colorTeams(), team, player.team ?? null, colorPick(PLAYER_ID)) ?? player.color,
     alive: playing,
     // Before the map is in, somewhere to stand until it is (`loadWorld`).
     ...(playing ? (game ? game.pickSpawn(PLAYER_ID, team) : { x: 0, y: 0, z: 0, azimuth: 0 }) : {}),
   };
   human = playing ? { x: player.x, y: player.y, z: player.z, azimuth: player.azimuth, at: Date.now() } : null;
   send({ type: 'playerJoined', player });
-  serverMessage('Offline, against bots, on the last map played. Reload to reconnect.');
+  serverMessage(offlineLine());
   // The bots spawn clear of each other once the world is there to check.
   if (game && game.bots.size === 0) addBots();
+}
+
+// Each tank's colour by the server's rule: a shade of its team's in capture
+// the flag, else one of its own off the whole wheel.
+const colorTeams = () => ({ enabled: ctfTeams.length >= 2 });
+function colorPick(id) {
+  const others = [player, ...(game ? [...game.bots.values()].map((bot) => bot.record) : [])];
+  return (team) => pickDistinctColor(team, others.filter((other) => other && other.id !== id));
 }
 
 function addBots() {
   for (let index = 0; index < BOT_COUNT; index++) {
     const id = String(index + 1);
+    const team = pickBotTeam(index);
     const record = game.addBot(id, {
-      ...player, name: `Ace${id}`, motto: 'Ace', team: pickBotTeam(index), clientType: 's',
+      ...player, name: `Ace${id}`, motto: 'Ace', team, clientType: 's',
+      color: getInitialPlayerColor(colorTeams(), team, colorPick(id)),
     }, { pilotId: DEFAULT_PILOT, options: { level } });
     if (typeof record === 'string') {
       console.error(`offline bot ${id}: ${record}`);
@@ -208,19 +254,20 @@ function die(message) {
   if (typeof message.shotId === 'string' && game?.shots.has(message.shotId) && message.stoppedByHit !== false) {
     game.shots.delete(message.shotId);
   }
-  game?.noteKill(killerId, PLAYER_ID);
   send({
     type: 'killed',
     victimId: PLAYER_ID,
     shooterId: killerId,
     projectileId: message.shotId ?? null,
     reason: selfDestruct ? 'selfDestruct' : (message.reason || 'shot'),
+    ...(message.captured ? { captured: true } : {}),
     deathMessage: message.deathMessage ?? null,
     phydrv: message.phydrv ?? null,
     victimFlag: null,
     shooterFlag: null,
     suicide: killerId === PLAYER_ID,
   });
+  game?.noteKill(killerId, PLAYER_ID);
   setTimeout(() => {
     player = { ...player, alive: true, ...game.pickSpawn(PLAYER_ID, player.team) };
     human = { x: player.x, y: player.y, z: player.z, azimuth: player.azimuth, at: Date.now() };
@@ -257,13 +304,23 @@ self.onmessage = ({ data }) => {
     if (typeof data.level === 'string') level = data.level;
     open();
     loadWorld().then(() => {
-      // Joined while the map loaded: spawned properly now that it is here.
+      // Joined while the map loaded: on a team of the game it turned out to
+      // be, and spawned properly now that it is here.
       if (human && player.alive) {
+        if (ctfTeams.length >= 2 && !ctfTeams.includes(player.team)) {
+          player = {
+            ...player,
+            team: ctfTeams[0],
+            color: getJoinPlayerColor(colorTeams(), ctfTeams[0], player.team, colorPick(PLAYER_ID)) ?? player.color,
+          };
+          send({ type: 'playerUpdated', player });
+        }
         player = { ...player, ...game.pickSpawn(PLAYER_ID, player.team) };
         human = { x: player.x, y: player.y, z: player.z, azimuth: player.azimuth, at: Date.now() };
         send({ type: 'alive', player });
       }
       game.announceFlags();
+      if (ctfTeams.length >= 2) game.announceTeams();
       if (human && game.bots.size === 0) addBots();
       setInterval(tick, TICK_SECONDS * 1000);
     }).catch((error) => {
@@ -292,5 +349,7 @@ self.onmessage = ({ data }) => {
     game.grab(PLAYER_ID, Number(message.index), humanView(Date.now()));
   } else if (message.type === 'dropFlag' && player.alive && game && human) {
     game.drop(PLAYER_ID, humanView(Date.now()));
+  } else if (message.type === 'captureFlag' && player.alive && game) {
+    game.capture(PLAYER_ID, player.team, Number(message.team));
   } else if (message.type === 'killed' || message.type === 'selfDestruct') die(message);
 };

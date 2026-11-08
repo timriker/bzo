@@ -566,71 +566,6 @@ function getPlayerRanking(wins, losses) {
   return (wins / sum) * (1 - (0.5 / Math.sqrt(sum)));
 }
 
-// PlayerInfo::canBeRabbit (PlayerInfo.cxx:504). A paused or observing player
-// cannot hold it, and it wants someone alive -- `relaxing` is the pass that will
-// settle for a dead player in the game, which anointRabbit below makes when
-// nobody alive qualifies.
-//
-// A candidate is `{ paused, observer, alive, playing }`. Upstream also refuses a
-// `notResponding` player; bzo has no such state, because a client that stops
-// answering has a socket that closes and leaves the roster outright.
-//
-// Server-only.
-function canBeRabbit(candidate, relaxing = false) {
-  if (!candidate) return false;
-  if (candidate.paused || candidate.observer) return false;
-  return relaxing ? Boolean(candidate.playing) : Boolean(candidate.alive);
-}
-
-// GameKeeper::Player::anointRabbit (GameKeeper.cxx:145). The best candidate by
-// ranking, preferring anyone alive who is not the old rabbit: a "good" rabbit
-// beats every not-good one however they rank, and among equals the ranking
-// decides. Settling for the old rabbit or for a dead player is the fallback that
-// keeps a two-player game moving.
-//
-// `candidates` is one entry per player, `{ id, paused, observer, alive, playing,
-// ranking }`, with the ranking already computed -- upstream swaps the whole
-// ranking function out for `-rabbit random` (Score::setRandomRanking) rather
-// than branching inside the loop, so the caller owns that choice here too.
-// Returns the new rabbit's id, or null if nobody at all may hold it.
-//
-// Server-only.
-function anointRabbit(candidates, oldRabbitId = null) {
-  let chosenId = null;
-  let topRanking = -Infinity;
-  let goodRabbitChosen = false;
-
-  for (const candidate of candidates) {
-    if (!canBeRabbit(candidate, true)) continue;
-    const good = candidate.id !== oldRabbitId && Boolean(candidate.alive);
-    if (goodRabbitChosen && !good) continue;
-    if (good && !goodRabbitChosen) {
-      goodRabbitChosen = true;
-    } else if (!(candidate.ranking > topRanking)) {
-      continue;
-    }
-    topRanking = candidate.ranking;
-    chosenId = candidate.id;
-  }
-
-  return chosenId;
-}
-
-// The selection half of anointNewRabbit (bzfs.cxx:2737), without the broadcast:
-// under `-rabbit killer` whoever just killed the rabbit takes it if they are
-// still around and still eligible, and otherwise -- and for the other two styles
-// -- anointRabbit picks. Upstream asks the killer for the strict `canBeRabbit()`,
-// so a killer who died in the same exchange does not inherit it.
-//
-// Server-only.
-function pickNewRabbit({ candidates, oldRabbitId = null, killerId = null, selection = 'score' } = {}) {
-  if (selection === 'killer' && killerId !== null && killerId !== oldRabbitId) {
-    const killer = candidates.find((candidate) => candidate.id === killerId);
-    if (killer?.playing && canBeRabbit(killer)) return killerId;
-  }
-  return anointRabbit(candidates, oldRabbitId);
-}
-
 function getTeamScoreDeltasForKill(killerTeam, victimTeam, selfKill = false) {
   const deltas = [];
   if (killerTeam && killerTeam === victimTeam) {
@@ -676,20 +611,6 @@ function getTeamScoreDeltasForCapture(cappingTeam, cappedTeam) {
   return deltas;
 }
 
-// How far a team mate's shade may sit from the team colour, for
-// getInitialPlayerColor below. The hue spread is bounded by the closest pair of
-// team colours -- red at 0 and purple at 300, 60 degrees apart -- so ten degrees
-// either side leaves 40 of clearance and no red is ever within reach of a
-// purple. `check:team-shade-bands` asserts that against the table above rather
-// than trusting this comment. Most of the separation comes from lightness for
-// that reason, and because the team colours are already fully saturated and can
-// only move down.
-const TEAM_SHADE_HUE_SPREAD = 10;
-const TEAM_SHADE_HUE_STEP = 5;
-const TEAM_SHADE_SAT_SPREAD = 12;
-const TEAM_SHADE_LIGHT_SPREAD = 14;
-// Below this there is no hue to shade: observer's white would only go grey.
-const TEAM_SHADE_MIN_SATURATION = 15;
 
 function getPlayerTeamRadarColor(team) {
   return PLAYER_TEAM_RADAR_COLORS[normalizePlayerTeam(team)];
@@ -699,51 +620,8 @@ function getPlayerTeamColor(team) {
   return PLAYER_TEAM_COLORS[normalizePlayerTeam(team)];
 }
 
-// Upstream gives every tank on a team the one team colour (Team::getTankColor,
-// Team.cxx:30) and has nothing per player -- do not go looking for it there.
-// bzo shades team mates apart inside a band around that colour, for the same
-// reason it gives every player a distinct colour outside team mode: so a player
-// can tell two team mates apart at a range where the labels are unreadable. The
-// team is still what the colour says first; the band is narrow enough that no
-// shade of one team reads as another.
-//
-// Observer is the exception at both ends: it keeps upstream's flat white on every
-// server, whatever the team mode. An observer has no tank to tell apart from
-// another observer's -- it is never drawn -- and its scoreboard row is read by
-// name, so there is nothing for a distinct colour to distinguish. With colour
-// teams on `pickDistinctColor` already answers white for it, white having no hue
-// to shade; this makes it true with them off as well.
-function getInitialPlayerColor(teamMode, team, pickDistinctColor) {
-  if (isObserverTeam(team)) return PLAYER_TEAM_COLORS[PLAYER_TEAM.OBSERVER];
-  return pickDistinctColor(teamMode.enabled ? team : null);
-}
-
-// What colour a player takes when a join puts them on `team`, having been on
-// `previousTeam` (null for a first join). `null` means the colour they already
-// have stands, which is what a rejoin on a world with no colour teams gets: a
-// tank that changed colour mid-match would undo the only thing a distinct colour
-// is for.
-//
-// Server-only. The constructor uses getInitialPlayerColor above, before any team
-// has been chosen; this is the one that sees a real team.
-function getJoinPlayerColor(teamMode, team, previousTeam, pickDistinctColor) {
-  if (isObserverTeam(team)) return PLAYER_TEAM_COLORS[PLAYER_TEAM.OBSERVER];
-  // A shade inside the new team's band rather than the flat team colour.
-  if (teamMode.enabled) return pickDistinctColor(team);
-  // Coming back from observer on a world with no colour teams, where the
-  // constructor's colour is long gone: the white it was wearing is nobody's, so
-  // it takes a fresh one off the whole wheel rather than staying white.
-  if (isObserverTeam(previousTeam)) return pickDistinctColor(null);
-  return null;
-}
-
 module.exports = {
   PLAYER_TEAM_COLORS,
-  TEAM_SHADE_HUE_SPREAD,
-  TEAM_SHADE_HUE_STEP,
-  TEAM_SHADE_SAT_SPREAD,
-  TEAM_SHADE_LIGHT_SPREAD,
-  TEAM_SHADE_MIN_SATURATION,
   PLAYER_TEAM,
   PLAYER_TEAMS,
   ALL_PLAYER_TEAMS,
@@ -764,8 +642,6 @@ module.exports = {
   selectPlayerTeam,
   getPlayerTeamColor,
   getPlayerTeamRadarColor,
-  getInitialPlayerColor,
-  getJoinPlayerColor,
   isColorTeam,
   isObserverTeam,
   isRabbitTeam,
@@ -775,9 +651,6 @@ module.exports = {
   normalizeRabbitSelection,
   resolveRabbitSelection,
   getPlayerRanking,
-  canBeRabbit,
-  anointRabbit,
-  pickNewRabbit,
   teamScoreMovesOnKill,
   getTeamScoreDeltasForKill,
   getTeamScoreDeltasForCapture,

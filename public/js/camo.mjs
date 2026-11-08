@@ -228,8 +228,8 @@ export function camoColor(hueOffset, saturation, value, player, rogue = false) {
 // and wants moving only as far as a player's shade is from the team colour:
 // at the team colour itself it is upstream's file texel for texel. How far a
 // shade may sit from its team's hue and still count as one of its shades is
-// the server's band (`TEAM_SHADE_HUE_SPREAD`, server/teams.cjs) with room for
-// the trip through RGB.
+// the shading band (`TEAM_SHADE_HUE_SPREAD`, public/js/player-colors.mjs)
+// with room for the trip through RGB.
 export const TEAM_FILE_HUE_REACH = 20 / 360;
 // Below this the team colour has no hue to measure a shade from: the rabbit's
 // grey, which every rabbit wears exactly.

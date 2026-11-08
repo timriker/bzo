@@ -21,7 +21,6 @@ const { localized } = require('../public/js/i18n.mjs');
 // `serverConfig`, `LIST_SERVER_KEY` change while the server runs, so they are
 // read and written through `server` each time instead.
 let server = null;
-let IMPORT_REUSE_MS;
 let MAP_REGISTRY;
 let OPERATOR_CONFIG_KEYS;
 let REPLAY_UPLOAD_MAX_BYTES;
@@ -44,8 +43,7 @@ let prepareMapForView;
 let recorder;
 let recordingName;
 let refuseNonOperator;
-let registerFreshImportFromDisk;
-let confirmImportUnchanged;
+let holdImportedWorld;
 let replayRooms;
 let replaySummaries;
 let replyToPlayer;
@@ -68,7 +66,6 @@ let pluginUploadAllowed;
 function useServer(deps, live) {
   server = live;
   ({
-    IMPORT_REUSE_MS,
     PLUGIN_UPLOAD_MAX_BYTES,
     RUNTIME_PLUGINS_DIR,
     announcePluginChange,
@@ -96,8 +93,7 @@ function useServer(deps, live) {
     recorder,
     recordingName,
     refuseNonOperator,
-    registerFreshImportFromDisk,
-    confirmImportUnchanged,
+    holdImportedWorld,
     replayRooms,
     replaySummaries,
     replyToPlayer,
@@ -497,33 +493,15 @@ function handleImportMapForView(player, ws, message) {
     return;
   }
   const { host, port } = target;
-  const existing = MAP_REGISTRY.get(file);
-  if (existing && (Date.now() - existing.registeredAt) < IMPORT_REUSE_MS) {
-    reply(true, { viewableMaps: getViewableMapsList() });
-    return;
-  }
-  // Not parsed at boot (`listLocalMapFiles`), but a copy fetched inside
-  // the reuse window is still on disk: read it back rather than
-  // download the same world again. Older than that, a copy whose server
-  // still reports the same world hash is kept too.
-  const kept = existing ? Promise.resolve(false) : registerFreshImportFromDisk(file);
-  kept
-    .then((fromDisk) => fromDisk || confirmImportUnchanged(file, host, port).then((same) => {
-      if (same) log(`Viewmap link kept the cached copy of ${host}:${port}: its world hash is unchanged`);
-      return same;
-    }))
-    .then((reusable) => {
-      if (reusable) {
-        reply(true, { viewableMaps: getViewableMapsList() });
-        return null;
-      }
-      log(`A viewmap link is importing a remote map from ${host}:${port}`);
-      return performRemoteMapImport(host, port).then(({ safeMapName, byteLength, reused }) => {
-        log(reused
-          ? `Viewmap link reused the cached copy of ${host}:${port}, ${safeMapName} (${byteLength} bytes)`
-          : `Viewmap link imported remote map ${host}:${port} as ${safeMapName} (${byteLength} bytes)`);
-        reply(true, { viewableMaps: getViewableMapsList() });
-      });
+  // Not parsed at boot (`listLocalMapFiles`), but a copy fetched inside the
+  // reuse window is still on disk, or its server still reports the same world
+  // hash: kept rather than downloaded again (`holdImportedWorld`).
+  holdImportedWorld(file)
+    .then(({ how, byteLength }) => {
+      if (how === 'unchanged') log(`Viewmap link kept the cached copy of ${host}:${port}: its world hash is unchanged`);
+      if (how === 'reused') log(`Viewmap link reused the cached copy of ${host}:${port}, ${file} (${byteLength} bytes)`);
+      if (how === 'imported') log(`Viewmap link imported remote map ${host}:${port} as ${file} (${byteLength} bytes)`);
+      reply(true, { viewableMaps: getViewableMapsList() });
     })
     .catch((error) => {
       logError(`Remote map import from ${host}:${port} for a viewmap link failed:`, error);
