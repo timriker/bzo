@@ -6,6 +6,24 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
 
 ## [Unreleased]
 
+## [1.3.96] - 2026-11-08
+
+### Added
+- Practice is capture the flag on a map with two teams' bases or more, with
+  team flags, captures and team scores, and Rabbit Chase on a `-rabbit`
+  server's map.
+- Offline bots fire Laser, Shock Wave, Guided Missile and Super Bullet as
+  they do on a server.
+- Every bzfs server on `/list` has a Practice link; a map not yet held here
+  is imported when the link is followed.
+
+### Changed
+- Offline tanks get distinct colours, or shades of their team's, as on a
+  server.
+
+### Fixed
+- Practice on an imported map no longer fails after a server restart.
+
 ## [1.3.95] - 2026-11-08
 
 ### Added
