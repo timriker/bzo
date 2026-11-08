@@ -6,6 +6,28 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
 
 ## [Unreleased]
 
+## [1.3.95] - 2026-11-08
+
+### Added
+- Practice: play offline against Ace bots at easy, normal or hard, from the
+  entry dialog's Server row, or on any listed bzfs server's map from its
+  Practice link on `/list`, with that map's shots, jumping, ricochet and
+  flags. A practised map opens again offline (`docs/practice-plan.md`).
+- Flags in practice: superflags and required flags spawn, are picked up,
+  dropped and shaken off by the server's own rules.
+
+### Changed
+- Bots' skill follows the score: sharper when behind, easing off when well
+  ahead. On servers they play their best until they lead everyone by a wide
+  margin.
+
+### Fixed
+- The chat bridges no longer announce everyone again after a server
+  restart.
+- Offline bots see other tanks moving, so they lead their shots and keep
+  team mates out of their line of fire.
+- Map Viewer previews play by the map's own jumping and ricochet.
+
 ## [1.3.94] - 2026-11-07
 
 ### Added
