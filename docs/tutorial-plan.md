@@ -94,15 +94,33 @@ no flag authority, nothing to drift because nothing is adjudicated. That is why
 stage 2 is a shim and stage 4 is a second game, and why the stages are worth
 shipping in order.
 
-## Tutorial ideas
+## Lessons
 
-From issue #129:
+Tutorial maps are an old idea; bzo's lessons are its own, built round its bots
+rather than fixed targets and turrets. In a lesson a bot is given a job, and
+does it as well as the lesson's level lets it:
 
-- Basic driving: reach a place on the map.
-- Basic shooting: hit a tank.
-- Basic dodging: a slow opponent, then a faster one.
-- Team play: flags, team captures, friend and foe.
-- GM: hit someone behind an obstacle.
-- Parkour.
+- **Target** -- drives a path or wanders and never shoots; faster, then
+  dodging, as the player gets it.
+- **Duellist** -- fights the player alone, a level up with each win and down
+  with each loss.
+- **Sniper** -- holds a high spot and shoots: cover, and the jump onto a ledge.
+- **Carrier** -- carries a flag the player is to take, by shot or with Thief.
+- **Runner** -- takes the player's team flag toward its base; the player
+  stops it.
+- **Partner** -- plays on the player's team: escorts a capture, takes a pass.
 
-The first two need nothing past stage 3. The rest need bots.
+A lesson is data: the map, where everyone starts, each bot's job and level, the
+flags given out, a line of instruction, and what counts as done. The game
+checks it each tick and says the next line when a step is met. Because lessons
+run in the shared game (`public/js/bot-game.mjs`), the arena can play each one
+with a bot standing in for the player and check it can be passed.
+
+The skills, from issue #129 and since: driving to a place; aiming and leading
+a moving target; jumping and shooting from the air; ricochets; dodging;
+teleporters; flags, good and bad; capture the flag, defending and passing;
+each superflag the offline game supports; parkour.
+
+Driving and shooting a target need only stage 3. The rest need flags in the
+offline game ([practice-plan.md](practice-plan.md), step 2) and a job option
+on Ace, read where his goals are chosen.

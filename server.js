@@ -118,7 +118,6 @@ const {
   hidesFromRadar,
   seesThroughDisguises,
   getTankDimensionScale,
-  getTeamFlagAbbreviation,
   formatFlagInfo,
   isTeamFlag,
   getFlagTeamIndex,
@@ -187,6 +186,7 @@ const {
   TANK,
 } = require('./public/js/collision.mjs');
 const flagDrop = require('./public/js/flag-drop.mjs');
+const flagSpawn = require('./public/js/flag-spawn.mjs');
 const {
   buildTeleporterIndex,
   getTeleportDestinationFace,
@@ -210,6 +210,7 @@ const { packetVelocity } = require('./public/js/drive.mjs');
 const { BZDB_DEFAULTS } = require('./public/js/bzdb-defaults.mjs');
 const {
   BZDB_CONFIG_VARS,
+  bzdbFromObject,
   bzdbIsTrue,
   worldConfig,
 } = require('./public/js/bzdb.mjs');
@@ -1554,6 +1555,50 @@ app.get('/api/world/file/:file', async (req, res) => {
   }
   res.set('Cache-Control', 'no-store');
   res.json({ file: entry.fileName || MAP_SOURCE, hash: entry.hash, url: entry.url });
+});
+
+// A practice game on any map this server holds, bzfs imports included
+// (docs/practice-plan.md): what offline play needs in place of a server's
+// `init` -- the map, and the config it plays by: bzo's defaults with the map's
+// own `-ms`, options and BZDB laid over, as a server running it would. A
+// bzfs server's plugins do not come with it.
+app.get('/api/practice/:file', async (req, res) => {
+  const { file } = req.params;
+  const held = MAP_REGISTRY.get(file);
+  const entry = held && fs.existsSync(path.join(MAP_CACHE_DIR, `${held.hash}.json`)) ? held
+    : await prepareMapForView(file);
+  if (!entry || !entry.hash) {
+    res.status(404).json({ error: 'no such map' });
+    return;
+  }
+  let map;
+  try {
+    map = JSON.parse(await fs.promises.readFile(path.join(MAP_CACHE_DIR, `${entry.hash}.json`), 'utf8'));
+  } catch {
+    res.status(404).json({ error: 'no such map' });
+    return;
+  }
+  const bzdb = map.bzdb || {};
+  res.set('Cache-Control', 'no-store');
+  res.json({
+    init: {
+      // Jumping as this server's own config has it, or for a bzfs import off
+      // unless its `-j` says otherwise, as that server ran it; ricochet off
+      // unless the map's `+r` turns it on.
+      config: worldConfig({
+        ...GAME_CONFIG_DEFAULTS,
+        ALLOW_JUMPING: !parseImportMapFileName(file) && serverConfig.jumping === true,
+        ALL_SHOTS_RICOCHET: false,
+        ...(map.gameplay || {}),
+      }, bzdbFromObject(bzdb)),
+      bzdb,
+      world: { url: entry.url, hash: entry.hash },
+      teamMode: map.teamMode || { enabled: false, teams: ['rogue'] },
+      currentMap: entry.fileName || file,
+      player: {},
+    },
+    spawns: [],
+  });
 });
 
 // One obstacle's block in its map file (`obstacleSourceFor`), by world hash
@@ -2930,6 +2975,9 @@ function renderListTables({ servers, bzoServers, canWatch, locale }) {
             + (entryGuestSpawn(s) === 'no' ? ''
               : action(`/?watch=${encodeURIComponent(`${s.host}_${s.port}`)}&team=play`, t('Play')))
           : '')
+        // The same map offline, against bots, once it is held here: its
+        // settings come with it, its plugins do not.
+        + (importedPath ? action(`/?practice=normal&map=${encodeURIComponent(importFileName)}`, t('Practice')) : '')
         + `<form method="post" action="/list/import" class="inlineForm">`
         + `<input type="hidden" name="host" value="${escapeHtml(s.host)}">`
         + `<input type="hidden" name="port" value="${s.port}">`
@@ -14037,52 +14085,23 @@ function hasFlagClearance(x, y, z, radius = FLAG_DROP_TEST_RADIUS) {
 // area between them give no answer, as upstream's division by their total
 // does, and the flag goes anywhere.
 function getFlagSpawnZone(flag) {
-  if (!flag) return null;
-  if (flag.zoneIndex !== null && flag.zoneIndex !== undefined) return MAP_ZONES[flag.zoneIndex] || null;
-  // The type the flag has now -- upstream asks before a reset clears it -- or,
-  // for a required slot not yet in the world, the one it is pinned to.
-  const type = flag.type ?? flag.requiredType ?? null;
-  if (!type || isTeamFlag(type)) return null;
-  const named = MAP_ZONES.filter((zone) => zone.flagTypes?.has(type));
-  if (named.length === 0) return null;
-  const area = (zone) => 4 * zone.halfWidth * zone.halfDepth;
-  const total = named.reduce((sum, zone) => sum + area(zone), 0);
-  if (!(total > 0)) return null;
-  let pick = Math.random() * total;
-  for (const zone of named) {
-    pick -= area(zone);
-    if (pick < 0) return zone;
-  }
-  return named[named.length - 1];
+  return flagSpawn.getFlagSpawnZone(flag, MAP_ZONES);
 }
 
 function findFlagSpawnPosition(flag = null) {
-  let zone = null;
-  const span = Math.max(1, GAME_CONFIG.MAP_SIZE - BASE_SIZE);
-  const maxHeight = getMaxObstacleTopY(OBSTACLES);
-  for (let attempt = 0; attempt < 10000; attempt++) {
-    // Upstream re-asks getFlagSpawnPoint on every attempt and only falls back to
-    // a random world point when it has no answer, so a zone flag re-rolls inside
-    // its zones rather than escaping them once one proves crowded -- and a type
-    // several zones name may land in a different one each time.
-    zone = getFlagSpawnZone(flag);
-    const spot = zone
-      ? getRandomZonePoint(zone)
-      : {
-        x: span * (Math.random() - 0.5),
-        y: span * (Math.random() - 0.5),
-        z: maxHeight * Math.random(),
-      };
-    const z = FLAGS_ON_BUILDINGS ? findFlagLandingZ(spot.x, spot.y, spot.z) : 0;
-    // `null` -- open water under this point, nothing to land on above the
-    // waterline. Re-roll rather than spawn a flag there, the same as a point
-    // `hasFlagClearance` refuses.
-    if (z === null) continue;
-    if (hasFlagClearance(spot.x, spot.y, z)) return { x: spot.x, y: spot.y, z };
-  }
+  const spot = flagSpawn.findFlagSpawnPosition(flag, {
+    zones: MAP_ZONES,
+    mapSize: GAME_CONFIG.MAP_SIZE,
+    baseSize: BASE_SIZE,
+    maxHeight: getMaxObstacleTopY(OBSTACLES),
+    flagsOnBuildings: FLAGS_ON_BUILDINGS,
+    landingZ: findFlagLandingZ,
+    clearance: (x, y, z) => hasFlagClearance(x, y, z),
+  });
+  if (spot) return spot;
   log(`Unable to position flag ${flag ? flag.index : '?'} on this world.`);
+  const zone = getFlagSpawnZone(flag);
   return zone ? { x: zone.x, y: zone.y, z: zone.z } : { x: 0, y: 0, z: getFlagFloorY() };
-
 }
 
 function getFlagOwner(flag) {
@@ -15063,81 +15082,23 @@ function requestPause(player) {
 
 // A team flag's identity is fixed and never hidden; a superflag slot starts
 // empty and the insertion schedule gives it one.
-function createFlagSlot(index, teamColorIndex, { requiredType = null, zoneIndex = null } = {}) {
-  return {
-    index,
-    team: teamColorIndex,
-    // FlagInfo::setRequiredFlag. A slot with a required type always holds that
-    // type; a `zoneflag` slot also names the zone it respawns in.
-    requiredType,
-    zoneIndex,
-    type: teamColorIndex === null ? requiredType : getTeamFlagAbbreviation(teamColorIndex),
-    status: FLAG_STATUS.NO_EXIST,
-    endurance: teamColorIndex === null ? FLAG_ENDURANCE.UNSTABLE : FLAG_ENDURANCE.NORMAL,
-    owner: null,
-    grabs: 0,
-    // When the current carrier picked it up, which is the shake clock the
-    // server checks a sticky drop against. Zero whenever nobody holds it.
-    grabbedAt: 0,
-    // `PlayerState::FlagActive`, which only Phantom Zone reads. A flag arrives
-    // in a tank's hands switched off, so picking `PZ` up gives you nothing until
-    // you have driven through a teleporter.
-    zoned: false,
-    position: { x: 0, y: 0, z: 0 },
-    launchPosition: { x: 0, y: 0, z: 0 },
-    landingPosition: { x: 0, y: 0, z: 0 },
-    flightEnd: 0,
-    initialVelocity: 0,
-    flightStartedAt: 0,
-  };
-}
-
 function createFlags() {
   flags.length = 0;
-  // Team flags come first, as they do upstream, so a team's flag index does not
-  // move when the superflag count changes.
+  // Team flags first, as upstream, so a team's flag index does not move when
+  // the superflag count changes; then `+f`, zone and `-s` slots
+  // (`planFlagSlots`). A team flag is only for a team with a base here.
   const teamFlagTeams = CTF_ENABLED
     ? TEAM_MODE.teams.filter((team) => isColorTeam(team) && getTeamBases(getTeamColorIndex(team)).length > 0)
     : [];
-  teamFlagTeams.forEach((team) => {
-    flags.push(createFlagSlot(flags.length, getTeamColorIndex(team)));
-  });
-  // `+f` flags next: required types with no zone, so they spawn anywhere a
-  // `flag` zone does not claim them. A forbidden type is skipped, as a zone's
-  // is below.
-  Object.entries(REQUIRED_FLAG_COUNTS).forEach(([abbreviation, count]) => {
-    if (getForbiddenFlags().includes(abbreviation)) return;
-    for (let slot = 0; slot < count; slot++) {
-      flags.push(createFlagSlot(flags.length, null, { requiredType: abbreviation }));
-    }
-  });
-  // Zone flags next, before the random slots, which is upstream's order in
-  // finalizeParsing: team flags, then `+f` flags, then zone flags, then the `-s`
-  // tail. Keeping it means a zone flag's index does not move when `-s` changes,
-  // and the tail stays the part that draws from the pool.
   const zoneForbiddenFlags = getForbiddenFlags();
-  const skippedZoneFlags = new Set();
-  MAP_ZONES.forEach((zone) => {
-    zone.unknownFlags.forEach((abbreviation) => skippedZoneFlags.add(abbreviation));
-    zone.flagCounts.forEach((count, abbreviation) => {
-      // Upstream skips a forbidden type here too, so a zone cannot put back what
-      // the game style or a `-f` took out. A team type belongs to
-      // addZoneTeamFlags, which bzo does not have: its team flags live on bases.
-      if (zoneForbiddenFlags.includes(abbreviation) || isTeamFlag(abbreviation)) {
-        skippedZoneFlags.add(abbreviation);
-        return;
-      }
-      for (let slot = 0; slot < count; slot++) {
-        flags.push(createFlagSlot(flags.length, null, {
-          requiredType: abbreviation,
-          zoneIndex: zone.index,
-        }));
-      }
-    });
+  const { slots, skipped: skippedZoneFlags } = flagSpawn.planFlagSlots({
+    teamColors: teamFlagTeams.map(getTeamColorIndex),
+    requiredCounts: REQUIRED_FLAG_COUNTS,
+    zones: MAP_ZONES,
+    forbidden: zoneForbiddenFlags,
+    superCount: SUPER_FLAGS.count,
   });
-  for (let slot = 0; slot < SUPER_FLAGS.count; slot++) {
-    flags.push(createFlagSlot(flags.length, null));
-  }
+  flags.push(...slots);
 
   flags.forEach((flag) => {
     // A team flag waits at its base for its team's first player; upstream starts
@@ -18149,7 +18110,7 @@ function applyBotResults(results) {
       logError(`[BOT] "${bot.player.name}" ${err.stack || err.message}`);
     }
     bot.lastOut = { mode: result.mode, reason: result.reason ?? null, targetId: result.targetId, intent: result.intent ?? null };
-    if (result.report !== undefined) reportBot(bot, result.report);
+    if (result.report !== undefined) reportBot(bot, result.report, result.stats);
   }
   broadcastBotIntents(now);
 }
@@ -18250,12 +18211,45 @@ function addBot(pilotId = botFillPilot, team = PLAYER_TEAM.AUTOMATIC, { auto = f
 // What a bot has been doing, every so often, in the log: the pilot's own
 // account (`takeReport`, which the worker asks for) and the kills and deaths
 // the server scored it.
-function reportBot(bot, report) {
+function reportBot(bot, report, stats) {
   const kills = bot.player.wins - bot.reportedWins;
   const deaths = bot.player.losses - bot.reportedLosses;
+  const teamKills = (bot.player.tks || 0) - (bot.reportedTks || 0);
   bot.reportedWins = bot.player.wins;
   bot.reportedLosses = bot.player.losses;
+  bot.reportedTks = bot.player.tks || 0;
   log(`[BOT] "${bot.player.name}" ${report}; kills ${kills}, deaths ${deaths}`);
+  tallyBot(bot.pilotId, { ...stats, kills, deaths, teamKills });
+}
+
+// Every bot's reports added up, by bzo version, pilot and map, in
+// `bot-stats.json` beside server.json: whether a release made the bots better
+// or worse in real play (`node scripts/bot-stats.mjs`). Written at most once
+// a minute.
+const BOT_STATS_PATH = path.join(path.dirname(CONFIG_PATH), 'bot-stats.json');
+let botStats = null;
+let botStatsTimer = null;
+function tallyBot(pilotId, counts) {
+  if (!botStats) {
+    try {
+      botStats = JSON.parse(fs.readFileSync(BOT_STATS_PATH, 'utf8'));
+    } catch {
+      botStats = {};
+    }
+  }
+  const key = `${SERVER_VERSION} ${pilotId} ${path.basename(MAP_SOURCE || 'random')}`;
+  const tally = botStats[key] || (botStats[key] = {});
+  for (const [name, value] of Object.entries(counts)) {
+    if (Number.isFinite(value)) tally[name] = (tally[name] || 0) + value;
+  }
+  if (botStatsTimer) return;
+  botStatsTimer = setTimeout(() => {
+    botStatsTimer = null;
+    fs.writeFile(BOT_STATS_PATH, `${JSON.stringify(botStats, null, 1)}\n`, (error) => {
+      if (error) log(`[BOT] stats not saved: ${error.message}`);
+    });
+  }, 60000);
+  botStatsTimer.unref?.();
 }
 
 function removeBot(bot) {
@@ -18949,7 +18943,7 @@ function addPluginZoneFlags(abbreviation) {
   MAP_ZONES.forEach((zone) => {
     const count = zone.unknownFlagCounts?.get(abbreviation) || 0;
     for (let slot = 0; slot < count; slot++) {
-      const flag = createFlagSlot(flags.length, null, { requiredType: abbreviation, zoneIndex: zone.index });
+      const flag = flagSpawn.createFlagSlot(flags.length, null, { requiredType: abbreviation, zoneIndex: zone.index });
       flags.push(flag);
       resetFlag(flag);
     }

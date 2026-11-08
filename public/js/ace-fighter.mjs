@@ -869,7 +869,8 @@ export class AceFighter extends AceDriver {
   // Whether the shot about to be fired meets a team mate before the foe it is
   // for: along its path, bounces and all where it has them, each team mate
   // where he will be when the shot gets there. A shot stops at the first tank
-  // it meets, so one that reaches the target first is safe. Never in a world
+  // it meets, so one that reaches the target first is safe -- a target on
+  // the ground. Never in a world
   // without team kills, and never a Shock Wave's, which `fireShockWave` keeps
   // from team mates on its own.
   shotEndangersTeammate(ctx) {
@@ -895,7 +896,11 @@ export class AceFighter extends AceDriver {
         from: muzzle,
         to: { x: muzzle.x + (shot.dir.x * shot.speed * life), y: muzzle.y + (shot.dir.y * shot.speed * life), z: muzzle.z },
       }];
-    const target = this.remotePlayers(view).find((p) => p.id === out.shotTargetId) ?? null;
+    // A target in the air is aimed at where it will be, which a straight line
+    // of its motion now does not say, so it is no promise of stopping the
+    // shot before a team mate.
+    const found = this.remotePlayers(view).find((p) => p.id === out.shotTargetId) ?? null;
+    const target = found && !found.airborne ? found : null;
     const reach = (p) => (TANK.radius * getTankHitRadiusScale(p.flag ?? null)) + TEAMMATE_HIT_MARGIN;
     // When along a leg a tank, moving as it is, comes nearest the shot, and
     // whether that is a hit: a fraction of the leg, or null.

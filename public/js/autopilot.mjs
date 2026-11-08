@@ -197,6 +197,12 @@ export class Ace extends AceFighter {
   constructor(options = {}) {
     super(options);
     this.tuning = { ...ACE_TUNING, ...options.tuning };
+    // His skill for a practice level (`atLevel`): unknown is hard, his best.
+    // `scale: false` keeps it where the level puts it, whatever the score.
+    this.skill = ACE_LEVELS[options.level] ?? ACE_LEVELS.hard;
+    this.scaleByScore = options.scale !== false;
+    this.pending = [];
+    this.reacted = null;
     // What each flag slot is, as far as this pilot has seen: what it carried,
     // and what it saw anyone else carry. A superflag on the ground arrives with
     // its type hidden, so this is how a pilot that dropped a flag knows not to
@@ -338,7 +344,50 @@ export class Ace extends AceFighter {
       if (base && !home && !overEnemy && !flies) out.dropFlag = false;
     }
     this.paceAgility(view, out);
-    return out;
+    return this.atLevel(view, out);
+  }
+
+  // His skill now, 1 his best: the level's, raised while he is behind the
+  // best foe and lowered while he is ahead -- more aggressive losing, less
+  // winning. At his best he only ever eases off, and only once he is
+  // `SKILL_EASE_LEAD` ahead of everyone.
+  skillNow(view) {
+    const base = this.skill;
+    if (!this.scaleByScore) return base;
+    const foes = view.players.filter((p) => view.isFoe(p));
+    if (foes.length === 0) return base;
+    const lead = (view.self.score ?? 0) - Math.max(...foes.map((p) => p.score ?? 0));
+    if (base >= 1) return lead > SKILL_EASE_LEAD ? Math.max(SKILL_MIN, 1 - (SKILL_PER_POINT * (lead - SKILL_EASE_LEAD))) : 1;
+    return Math.min(1, Math.max(SKILL_MIN, base - (SKILL_PER_POINT * lead)));
+  }
+
+  // Below his best: everything he decides reaches the tank late, and a shot
+  // he would take goes only some of the time -- both from his skill now. A
+  // shot decided in the wait is kept for when it ends.
+  atLevel(view, out) {
+    const skill = this.skillNow(view);
+    this.skillShown = skill;
+    if (skill >= 1 && this.pending.length === 0) {
+      this.reacted = null;
+      return out;
+    }
+    const reaction = SKILL_SLOWEST_REACTION * (1 - skill);
+    const fire = SKILL_FEWEST_SHOTS + ((1 - SKILL_FEWEST_SHOTS) * skill);
+    if (out.fire && Math.random() > fire) {
+      out.fire = false;
+      out.shotTargetId = null;
+    }
+    this.pending.push({ at: view.now, out });
+    let firing = false;
+    while (this.pending.length && this.pending[0].at <= view.now - reaction) {
+      const next = this.pending.shift();
+      firing = firing || next.out.fire;
+      this.reacted = next.out;
+    }
+    if (!this.reacted) {
+      return { ...out, speed: 0, rotation: 0, fire: false, jump: false, dropFlag: false, shotTargetId: null };
+    }
+    return { ...this.reacted, fire: firing };
   }
 
   // Every foe's shot that would pass within `RETALIATE_MISS` of Ace in the
@@ -1296,6 +1345,18 @@ function isOverBase(base, pos) {
 export const DEFAULT_PILOT = 'ace';
 
 // What the Settings row offers, in order, and the key each is chosen by.
+// Practice levels as Ace's skill, 1 his best (`skillNow`, `atLevel`). At
+// none he reacts `SKILL_SLOWEST_REACTION` seconds late and takes
+// `SKILL_FEWEST_SHOTS` of his shots; each point of score he is ahead of the
+// best foe takes `SKILL_PER_POINT` off, and each behind adds it, down to
+// `SKILL_MIN`.
+export const ACE_LEVELS = Object.freeze({ easy: 0.3, normal: 0.6, hard: 1 });
+const SKILL_SLOWEST_REACTION = 0.7;
+const SKILL_FEWEST_SHOTS = 0.15;
+const SKILL_PER_POINT = 0.05;
+const SKILL_MIN = 0.1;
+const SKILL_EASE_LEAD = 5;
+
 export const AUTOPILOTS = Object.freeze([
   Object.freeze({ id: 'roger', name: 'Roger', Pilot: Roger }),
   Object.freeze({ id: 'ace', name: 'Ace', Pilot: Ace }),

@@ -2,8 +2,9 @@
 
 Plan for a match against bots on any map, in the browser, and offline from an
 installed client. It is stage 4 of [tutorial-plan.md](tutorial-plan.md) -- "bots,
-and a real offline match" -- made concrete now that the bots exist. Nothing here
-is built.
+and a real offline match" -- made concrete now that the bots exist. A
+free-for-all on the last map played, at three levels, is built (steps 4 and
+5); the rest is a plan.
 
 ## What it is
 
@@ -123,7 +124,10 @@ it could have.
    1. spawn selection
    2. kills declared, respawns, scores
    3. flags: spawning, grab, drop, capture, antidote, shake (the effects are
-      already the `flags` module)
+      already the `flags` module). Started: which slots a game has and where
+      each comes into the world (`public/js/flag-spawn.mjs`), and where a
+      dropped one comes to rest (`public/js/flag-drop.mjs`), both run by the
+      server.
    4. match rules: clock, rabbit, team scores
 3. **Bots that declare their own deaths.** Built for plain shells:
    `offline-worker.mjs` steps every shell with `traceShotStep` and tests it
@@ -132,13 +136,29 @@ it could have.
    flagged shot's flight, which is when the browser's own stepping moves into
    a shared module so the two are one.
 4. **Practice host.** Built as offline play: `offline-worker.mjs` seats the
-   player in `clientTracesShots` mode and runs three Ace bots on
-   `bot-host.mjs`, free-for-all, no flags, with its own spawn pick (open
-   ground and the server's saved spawns, farthest from every live tank) and
-   its own respawns and tallies. Those rules are the worker's own until step
-   2's slices replace them.
-5. **The entry.** A "Practice" choice beside Map Viewer: the map, how many bots,
-   which pilot, teams or not. The settings are the same names as `server.json`'s.
+   player in `clientTracesShots` mode and runs three Ace bots, free-for-all,
+   no flags. The game itself -- shells, the bots' deaths, spawns, respawns,
+   tallies and each bot's view -- is `public/js/bot-game.mjs`, which
+   `scripts/arena.mjs` runs too, bots only and faster than real time, so a
+   change to the bots is measured on exactly the game offline players get.
+   Those rules are the game's own until step 2's slices replace them.
+5. **The entry.** Built in part: the entry dialog's Server row offers
+   "Practice offline" at easy, normal and hard once a world has been saved
+   (`?practice=<level>`), on the last map played. A level is Ace's skill
+   (`ACE_LEVELS`): how late he reacts and how many of his shots he takes,
+   raised while he is behind the best foe and lowered while he is ahead. At
+   hard, as on a server, he plays his best until he is well ahead of
+   everyone.
+
+   Any map this server holds can be practised on too, bzfs imports included:
+   `/list` gives each imported bzfs server a Practice link
+   (`?practice=normal&map=<file>`), and `/api/practice/<file>` answers it
+   with the map and the config it plays by -- bzo's defaults with the map's
+   `-ms`, options and BZDB over them. The client keeps that answer per map,
+   so the link opens again offline. A bzfs server's plugins do not come with
+   it; a game-play plugin bzo has its own port of could be switched on for
+   that map later. Left: the map, how many bots,
+   which pilot, teams or not, with the settings named as `server.json`'s.
 6. **Offline.** The service worker precaches the core, the pilots and the route
    graph; the client remembers the worlds it has played (the `worldRef`s from
    `init`); an installed client with no server offers Practice on those.

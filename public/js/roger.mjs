@@ -222,6 +222,8 @@ export class Roger {
     const report = `${modes || 'idle'}; shots ${stats.shots}, jumps ${stats.jumps}, falls ${stats.falls}`
       + `, switches ${stats.switches}${flipReport(stats)}`
       + (this.extraReport ? this.extraReport(stats) : '');
+    // The counts the line was made from, for whoever keeps a tally.
+    this.lastStats = stats;
     this.stats = createStats();
     return report;
   }

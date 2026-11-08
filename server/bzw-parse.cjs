@@ -1277,9 +1277,17 @@ function parseBZWServerOptions(lines) {
     if (readOption('-noradar')) setVars.set('_radarLimit', '-1.0');
     // -j: tanks may jump. bzo already defaults this on, so the switch only
     // matters on a server whose config has turned jumping off.
-    if (readOption('-j')) options.jumping = true;
+    if (readOption('-j')) {
+      options.jumping = true;
+      // Part of how this map plays, for a preview and for practice
+      // (`/api/practice`), as `-ms` is.
+      options.gameplay.ALLOW_JUMPING = true;
+    }
     // +r: every shot ricochets, whatever flag fired it.
-    if (readOption('+r')) options.ricochet = true;
+    if (readOption('+r')) {
+      options.ricochet = true;
+      options.gameplay.ALL_SHOTS_RICOCHET = true;
+    }
     // -st <seconds>: how long a bad flag sticks before it shakes off, kept in
     // tenths as bzfs keeps it, and -sw <kills>: how many wins shake one off.
     if (readOption('-st')) options.flagShakeTimeout = shakeTimeoutTenths(value);
@@ -5748,8 +5756,8 @@ function parseBZWMap(filename, { quiet = false, extraMessages = [], text: givenT
 // would come out different, so a server does not restore a world it wrote
 // in an older one: 2 is upstream's frame (#182), 4 keeps a mesh face's
 // `nolighting`, 5 its `noshadow`, 6 its `spheremap`, 7 a group's
-// `matswap`.
-const WORLD_FORMAT = 7;
+// `matswap`, 8 jumping and ricochet in `gameplay`.
+const WORLD_FORMAT = 8;
 
 // `instanced 18/22 groups, 15 templates, 52 faces` -- group instances drawn
 // from a shared template rather than a copy apiece (#153).

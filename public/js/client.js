@@ -1334,6 +1334,10 @@ function syncMapViewerPreview() {
 // synthesized from it. See docs/proxy-plan.md, "How the selector behaves".
 
 const DESTINATION_LOCAL = 'local';
+// Practice against bots, offline (`offline-worker.mjs`), at one of Ace's
+// levels: `practice:easy`, and so on. Offered once a world has been saved to
+// play offline in.
+const PRACTICE_LEVELS = ['easy', 'normal', 'hard'];
 
 let availableProxies = [];
 let localDestinationTeams = [];
@@ -1353,6 +1357,10 @@ function currentDestination() {
   // watches it (docs/replay.md).
   const replaying = params.get('replay');
   if (replaying) return `replay:${replaying}`;
+  if (params.has('practice')) {
+    const level = params.get('practice');
+    return `practice:${PRACTICE_LEVELS.includes(level) ? level : 'normal'}`;
+  }
   const key = params.get('proxy');
   return key ? `proxy:${key}` : DESTINATION_LOCAL;
 }
@@ -1361,6 +1369,7 @@ let selectedDestination = currentDestination();
 
 function getDestinationChoices() {
   const choices = [DESTINATION_LOCAL, ...availableProxies.map((proxy) => `proxy:${proxy.key}`)];
+  if (readOfflineWorld()) choices.push(...PRACTICE_LEVELS.map((level) => `practice:${level}`));
   // Watching is reached from the View dialog rather than chosen here, but a
   // page already on one has to be able to name where it is -- and to leave.
   const here = currentDestination();
@@ -1386,6 +1395,9 @@ function destinationLabel(destination) {
     return t('watching {server}', { server: destination.slice('watch:'.length).replace(/_(\d+)$/, ':$1') });
   }
   if (destination.startsWith('replay:')) return t('replay {name}', { name: destination.slice('replay:'.length) });
+  if (destination.startsWith('practice:')) {
+    return t('Practice offline, {level}', { level: t(destination.slice('practice:'.length)) });
+  }
   const proxy = findProxyDestination(destination);
   // `host:port`, not the title the public list carries. A title is a
   // description -- two servers may well share one, and "bzo compatibilty
@@ -1412,6 +1424,11 @@ function getDestinationTeams(destination) {
   }
   // Nobody plays in a recording.
   if (destination.startsWith('replay:')) return [PLAYER_TEAM.OBSERVER];
+  // Practice is played on the saved world's teams.
+  if (destination.startsWith('practice:')) {
+    const teams = readOfflineWorld()?.init?.teamMode?.teams || [];
+    return PLAYER_TEAMS.filter((team) => team === PLAYER_TEAM.OBSERVER || teams.includes(team));
+  }
   if (destination === currentDestination()) return availablePlayerTeams;
   const proxy = findProxyDestination(destination);
   if (proxy) return PLAYER_TEAMS.filter((team) => proxy.teams.includes(team));
@@ -1441,6 +1458,8 @@ function destinationNeedsLogin(destination, team) {
   // server.js), which no login could help with.
   if (destination.startsWith('watch:')) return false;
   if (destination.startsWith('replay:')) return false;
+  // Practice is offline, against bots: nobody to sign in to.
+  if (destination.startsWith('practice:')) return false;
   // Anyone may play there, except under the forum callsign this browser is
   // signed in as: that name is registered, and spawns only with its token.
   if (destinationIsOpen(destination)) return Boolean(myGlobalCallsign) && stagedEntryName() === myGlobalCallsign;
@@ -1503,6 +1522,9 @@ function selectRelativeDestination(direction) {
 // Where the dialog's OK goes when the destination is not where we already are.
 function destinationHref(destination, team) {
   if (destination === DESTINATION_LOCAL) return `${window.location.pathname}`;
+  if (destination.startsWith('practice:')) {
+    return `${window.location.pathname}?practice=${encodeURIComponent(destination.slice('practice:'.length))}`;
+  }
   const proxy = findProxyDestination(destination);
   if (!proxy) return `${window.location.pathname}`;
   const params = new URLSearchParams({ proxy: proxy.key });
@@ -8108,6 +8130,33 @@ function noteOfflineSpawn(player) {
 
 // A page that has never reached a server, and is offline or has failed three
 // times, drives the last world it played instead -- if it has one.
+// The world a `?practice=&map=` link plays: this server's answer for that map,
+// kept per map so the link opens offline once it has been followed online.
+// Null when neither is to hand, which plays the last world instead.
+let practiceWorld = null;
+const PRACTICE_WORLD_KEY = 'practiceWorld:';
+async function loadPracticeWorld(map) {
+  try {
+    const response = await fetch(`/api/practice/${encodeURIComponent(map)}`, { cache: 'no-store' });
+    if (response.ok) {
+      const world = await response.json();
+      try {
+        localStorage.setItem(PRACTICE_WORLD_KEY + map, JSON.stringify(world));
+      } catch {
+        // Too full to keep it: it still plays this once.
+      }
+      return world;
+    }
+  } catch {
+    // Offline: the copy kept last time, if there is one.
+  }
+  try {
+    return JSON.parse(localStorage.getItem(PRACTICE_WORLD_KEY + map)) || null;
+  } catch {
+    return null;
+  }
+}
+
 function shouldPlayOffline() {
   if (everConnected || offlinePlay) return false;
   if (navigator.onLine !== false && failedConnectAttempts < 3) return false;
@@ -8159,9 +8208,26 @@ function connectToServer() {
         + (IS_BOT_CLIENT ? '&bot' : '')
       : '');
   const socketUrl = `${protocol}//${window.location.host}${query}`;
+  // Practice is offline play asked for, at a level, rather than fallen into:
+  // on the map `&map=` names (`/api/practice/<map>`, kept so it opens again
+  // offline), or else the last world played.
+  const practiceMap = params.get('map');
+  if (currentDestination().startsWith('practice:') && practiceMap && !practiceWorld) {
+    loadPracticeWorld(practiceMap).then((world) => {
+      practiceWorld = world;
+      connectToServer();
+    });
+    return;
+  }
+  const practiceSource = practiceWorld || readOfflineWorld();
+  const practicing = currentDestination().startsWith('practice:') && practiceSource !== null;
+  if (practicing) offlinePlay = true;
   if (offlinePlay) {
     const host = new Worker(new URL('./offline-worker.mjs', import.meta.url), { type: 'module' });
-    host.postMessage({ world: readOfflineWorld() });
+    host.postMessage({
+      world: practicing ? practiceSource : readOfflineWorld(),
+      level: practicing ? currentDestination().slice('practice:'.length) : 'hard',
+    });
     ws = createPortTransport(host);
   } else if (LOOPBACK) {
     const relay = new Worker(new URL('./loopback-worker.mjs', import.meta.url), { type: 'module' });

@@ -177,18 +177,26 @@ function buildView(bot, self, shared) {
   };
 }
 
-export function addBot({ id, pilotId }) {
+// The clock bots are timed by: the real one, or a script's own that runs
+// faster (scripts/arena.mjs).
+let clock = () => Date.now();
+export function setClock(fn) {
+  clock = fn;
+}
+
+// `options` go to the pilot: Ace's `tuning`, for a script comparing two.
+export function addBot({ id, pilotId, options }) {
   const entry = autopilot.AUTOPILOTS.find((candidate) => candidate.id === pilotId);
   if (!entry) return `no pilot "${pilotId}"`;
   const bot = { id, own: null, shared: null, sends: null, reportAt: 0 };
   const teleporter = createTankTeleporter(getTeleporterIndex);
   bot.driver = new BotDriver({
-    pilot: new entry.Pilot(),
+    pilot: new entry.Pilot(options),
     env: {
       config: () => config,
       colliders: () => colliders,
       topOf,
-      teleport: (from, to) => teleporter(from, to, Date.now()),
+      teleport: (from, to) => teleporter(from, to, clock()),
       state: () => bot.own.state,
       flag: () => bot.own.flag,
       view: (self) => buildView(bot, self, bot.shared),
@@ -212,7 +220,7 @@ export function addBot({ id, pilotId }) {
 const REPORT_MS = 10000;
 
 export function tick({ dt, shared, bots: owns, followId }) {
-  const now = Date.now();
+  const now = clock();
   const out = [];
   for (const own of owns) {
     const bot = bots.get(own.id);
@@ -241,7 +249,12 @@ export function tick({ dt, shared, bots: owns, followId }) {
       // The first report covers only the moments since the bot joined, and
       // is not worth a line.
       const report = bot.driver.pilot.takeReport();
-      if (bot.reportAt !== 0) result.report = report;
+      if (bot.reportAt !== 0) {
+        result.report = report;
+        // The plain counts, not the per-mode and per-target tables.
+        const counts = Object.entries(bot.driver.pilot.lastStats || {}).filter(([, value]) => Number.isFinite(value));
+        result.stats = { ...Object.fromEntries(counts), seconds: REPORT_MS / 1000 };
+      }
       bot.reportAt = now + REPORT_MS;
     }
     out.push(result);
