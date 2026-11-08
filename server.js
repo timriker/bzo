@@ -187,6 +187,7 @@ const {
 } = require('./public/js/collision.mjs');
 const flagDrop = require('./public/js/flag-drop.mjs');
 const flagSpawn = require('./public/js/flag-spawn.mjs');
+const flagRules = require('./public/js/flag-rules.mjs');
 const {
   buildTeleporterIndex,
   getTeleportDestinationFace,
@@ -1589,6 +1590,12 @@ app.get('/api/practice/:file', async (req, res) => {
         ...GAME_CONFIG_DEFAULTS,
         ALLOW_JUMPING: !parseImportMapFileName(file) && serverConfig.jumping === true,
         ALL_SHOTS_RICOCHET: false,
+        // Flags as this server deals them for its own maps; an import has the
+        // count its `-s` gave, from every flag but those its `-f` took out.
+        SUPER_FLAG_COUNT: parseImportMapFileName(file) ? 0 : SUPER_FLAGS.count,
+        FLAGS_ON_BUILDINGS: !parseImportMapFileName(file) && FLAGS_ON_BUILDINGS,
+        SUPER_FLAG_POOL: parseImportMapFileName(file) ? FLAG_ABBREVIATIONS.filter((type) => !isTeamFlag(type))
+          : SUPER_FLAGS.allowed,
         ...(map.gameplay || {}),
       }, bzdbFromObject(bzdb)),
       bzdb,
@@ -12941,6 +12948,14 @@ const SUPER_FLAGS = normalizeSuperFlagConfig(
     : (MAP_NAMES_ITS_FLAGS ? { ...serverConfig.superFlags, count: 0 } : serverConfig.superFlags)
 );
 
+// The flags this server plays with, in the config every client is sent, so
+// practice on the last world played has them too.
+GAME_CONFIG.SUPER_FLAG_COUNT = SUPER_FLAGS.count;
+GAME_CONFIG.FLAGS_ON_BUILDINGS = FLAGS_ON_BUILDINGS;
+GAME_CONFIG.SUPER_FLAG_POOL = SUPER_FLAGS.allowed;
+GAME_CONFIG.REQUIRED_FLAGS = { ...REQUIRED_FLAG_COUNTS };
+GAME_CONFIG.FORBIDDEN_FLAGS = [...MAP_FORBIDDEN_FLAGS];
+
 // What a slot is actually drawn from: everything the config allows, less
 // whatever the map and the game style forbid right now. The game style can
 // change while the server runs, so this is asked per draw rather than settled at
@@ -14113,26 +14128,7 @@ function getFlagOwner(flag) {
 // every flag update, and what an operator asking `/flag show` gets is the
 // text reply, which their client reads (`parseFlagInfo`).
 function getFlagState(flag, now = Date.now()) {
-  const hidden = flag.owner === null && flag.team === null;
-  const flightTime = flag.flightStartedAt === 0
-    ? 0
-    : Math.min(flag.flightEnd, (now - flag.flightStartedAt) / 1000);
-  return {
-    index: flag.index,
-    type: hidden ? null : flag.type,
-    status: flag.status,
-    owner: flag.owner,
-    position: { ...flag.position },
-    launchPosition: { ...flag.launchPosition },
-    landingPosition: { ...flag.landingPosition },
-    flightTime,
-    flightEnd: flag.flightEnd,
-    initialVelocity: flag.initialVelocity,
-    // Phantom Zone's `PlayerState::FlagActive`. Sent as the state it is rather
-    // than as a toggle, so a client that predicted its own crossing converges on
-    // this instead of flipping a second time.
-    zoned: flag.zoned === true,
-  };
+  return flagRules.flagState(flag, now);
 }
 
 // The fields `/flag show` prints, read off a slot. `required` is upstream's
@@ -14466,14 +14462,18 @@ function isPlayerInsideBuilding(player, x, y, z, azimuth) {
 // STICKY check counts against starts from a slightly different instant than
 // the one the reach check used.
 function grabFlag(player, flag, now = Date.now(), { checkPos = true } = {}) {
-  if (isObserverTeam(player.team)) return;
-  if (!player.alive || player.paused) return;
-  if (getPlayerFlag(player.id)) return;
-  // `checkPos` is upstream's own argument, and it guards exactly these two:
+  // `checkPos` is upstream's own argument, and it guards exactly two things:
   // where the flag is and how far away the tank is. `/flag give` is the caller
   // that turns it off, because the operator handing the flag out is not the
   // tank receiving it, and the flag need not be lying on the ground.
-  if (checkPos && flag.status !== FLAG_STATUS.ON_GROUND) return;
+  if (!flagRules.mayGrab({
+    observer: isObserverTeam(player.team),
+    alive: player.alive,
+    paused: player.paused,
+    holding: Boolean(getPlayerFlag(player.id)),
+    flag,
+    checkPos,
+  })) return;
   // bz_eAllowFlagGrab (bzfs.cxx:3715), asked of a grab a tank made: a
   // plugin may refuse it.
   if (checkPos) {
@@ -14483,10 +14483,11 @@ function grabFlag(player, flag, now = Date.now(), { checkPos = true } = {}) {
     if (allowed && !allowed.allow) return;
   }
 
-  const reach = GAME_CONFIG.TANK_SPEED + TANK.radius + FLAG_RADIUS;
-  const extrapolated = player.getExtrapolatedPosition(now);
-  const gap = distance(extrapolated.x, extrapolated.y, flag.position.x, flag.position.y);
-  if (checkPos && Math.abs(extrapolated.z - flag.position.z) < FLAG_GRAB_LEVEL_TOLERANCE && gap > reach) {
+  const gap = checkPos ? flagRules.grabOutOfReach(
+    player.getExtrapolatedPosition(now), flag, GAME_CONFIG.TANK_SPEED, TANK.radius, FLAG_RADIUS,
+  ) : null;
+  if (gap !== null) {
+    const reach = GAME_CONFIG.TANK_SPEED + TANK.radius + FLAG_RADIUS;
     const refused = reportCheat(player, 'flagRejected',
       `FLAG GRAB REJECTED flag ${flag.index} `
       + `${flag.position.x.toFixed(2)},${flag.position.y.toFixed(2)} is ${gap.toFixed(2)} away`
@@ -14494,13 +14495,7 @@ function grabFlag(player, flag, now = Date.now(), { checkPos = true } = {}) {
     if (refused) return;
   }
 
-  flag.owner = player.id;
-  flag.status = FLAG_STATUS.ON_TANK;
-  flag.flightStartedAt = 0;
-  flag.grabbedAt = now;
-  flag.zoned = false;
-  // FlagInfo::grab: a grab starts the shot count again.
-  flag.shots = 0;
+  flagRules.takeFlag(flag, player.id, now);
   armBadFlagRelease(player, flag);
   log(`"${player.name}" grabbed ${getFlagType(flag.type).name} flag ${flag.index}`);
   broadcastAll({ type: 'grabFlag', playerId: player.id, flag: getFlagState(flag) });
@@ -18121,27 +18116,17 @@ function botCheckEnvironment(bot, self) {
   const me = bot.player;
   const now = Date.now();
   if (now - bot.lastGrabAt < FLAG_GRAB_INTERVAL_MS) return;
-  const carried = getPlayerFlag(me.id);
-  if (carried) {
-    const flagTeam = getFlagTeamIndex(carried.type);
-    if (flagTeam === null) return;
-    const baseTeam = getBaseTeamAtPoint(OBSTACLES, self.x, self.y, self.z);
-    if (baseTeam === null) return;
-    const myTeam = getTeamColorIndex(me.team);
-    if ((flagTeam === myTeam) === (baseTeam === myTeam)) return;
-    bot.lastGrabAt = now;
-    bot.socket.say({ type: 'captureFlag', team: baseTeam });
-    return;
-  }
-  if (self.inAir) return;
-  for (const flag of flags) {
-    if (flag.status !== FLAG_STATUS.ON_GROUND) continue;
-    if (Math.abs(self.z - flag.position.z) >= FLAG_GRAB_LEVEL_TOLERANCE) continue;
-    if (distance(self.x, self.y, flag.position.x, flag.position.y) >= getFlagGrabRadius()) continue;
-    bot.lastGrabAt = now;
-    bot.socket.say({ type: 'grabFlag', index: flag.index });
-    return;
-  }
+  const ask = flagRules.environmentAsk({
+    self,
+    myTeam: getTeamColorIndex(me.team),
+    carriedType: getPlayerFlag(me.id)?.type ?? null,
+    flags,
+    baseTeamAt: (x, y, z) => getBaseTeamAtPoint(OBSTACLES, x, y, z),
+  });
+  if (!ask) return;
+  bot.lastGrabAt = now;
+  if (ask.capture !== undefined) bot.socket.say({ type: 'captureFlag', team: ask.capture });
+  else bot.socket.say({ type: 'grabFlag', index: ask.grab.index });
 }
 
 // How many player slots a BZFlag 2.4 client holds (`maxRemotePlayers`,

@@ -1272,7 +1272,10 @@ function parseBZWServerOptions(lines) {
       return true;
     };
     // -fb: superflags may come to rest on buildings, and may spawn on them.
-    if (readOption('-fb')) options.flagsOnBuildings = true;
+    if (readOption('-fb')) {
+      options.flagsOnBuildings = true;
+      options.gameplay.FLAGS_ON_BUILDINGS = true;
+    }
     // -noradar: `_radarLimit` -1, no radar for anyone (CmdLineOptions.cxx:935).
     if (readOption('-noradar')) setVars.set('_radarLimit', '-1.0');
     // -j: tanks may jump. bzo already defaults this on, so the switch only
@@ -1374,6 +1377,8 @@ function parseBZWServerOptions(lines) {
       options.superFlagCount = Number.isFinite(requestedFlags) && requestedFlags > 0
         ? requestedFlags
         : 16;
+      // How many flags this map plays with, for practice (`/api/practice`).
+      options.gameplay.SUPER_FLAG_COUNT = options.superFlagCount;
     }
     // +f <abbreviation|good|bad>[{count}]: flags of a type that are always in
     // the world, upstream's `flagCount` (CmdLineOptions.cxx:1635-1675) --
@@ -1525,6 +1530,12 @@ function parseBZWServerOptions(lines) {
   }
 
   options.bzdbVars = setVars;
+  // The flags this map always has (`+f`) and never has (`-f`), beside its
+  // count, for practice.
+  if (Object.keys(options.requiredFlagCounts).length > 0) {
+    options.gameplay.REQUIRED_FLAGS = { ...options.requiredFlagCounts };
+  }
+  if (options.forbiddenFlags.length > 0) options.gameplay.FORBIDDEN_FLAGS = [...options.forbiddenFlags];
 
   return options;
 }
@@ -5756,8 +5767,8 @@ function parseBZWMap(filename, { quiet = false, extraMessages = [], text: givenT
 // would come out different, so a server does not restore a world it wrote
 // in an older one: 2 is upstream's frame (#182), 4 keeps a mesh face's
 // `nolighting`, 5 its `noshadow`, 6 its `spheremap`, 7 a group's
-// `matswap`, 8 jumping and ricochet in `gameplay`.
-const WORLD_FORMAT = 8;
+// `matswap`, 8 jumping and ricochet in `gameplay`, 9 its flags there.
+const WORLD_FORMAT = 9;
 
 // `instanced 18/22 groups, 15 templates, 52 faces` -- group instances drawn
 // from a shared template rather than a copy apiece (#153).

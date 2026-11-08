@@ -1993,4 +1993,30 @@ for (const theirs of ['ST', 'CL', 'MQ', 'SE', null]) {
   assert.equal(TANK.halfLength, 3);
 }
 
+// The flag rules the server and practice share: which slots a game has, what
+// a tank driving about asks for, and taking a flag.
+{
+  const { planFlagSlots } = await import('../public/js/flag-spawn.mjs');
+  const { environmentAsk, mayGrab, takeFlag, flagState } = await import('../public/js/flag-rules.mjs');
+  const { FLAG_STATUS: STATUS } = await import('../public/js/flags.mjs');
+  const { slots } = planFlagSlots({ teamColors: [1, 3], requiredCounts: { GM: 2, L: 1 }, forbidden: ['L'], superCount: 3 });
+  assert.deepEqual(slots.map((slot) => slot.type), ['R*', 'B*', 'GM', 'GM', null, null, null],
+    'team flags, then +f less forbidden ones, then the -s slots');
+  const ground = { index: 4, type: 'V', team: null, status: STATUS.ON_GROUND, position: { x: 10, y: 0, z: 0 }, owner: null };
+  const near = { x: 8, y: 0, z: 0, inAir: false };
+  assert.equal(environmentAsk({ self: near, myTeam: 1, carriedType: null, flags: [ground], baseTeamAt: () => null }).grab, ground);
+  assert.equal(environmentAsk({ self: { ...near, inAir: true }, myTeam: 1, carriedType: null, flags: [ground], baseTeamAt: () => null }),
+    null, 'nothing from the air');
+  assert.deepEqual(environmentAsk({ self: near, myTeam: 1, carriedType: 'B*', flags: [], baseTeamAt: () => 1 }),
+    { capture: 1 }, "another team's flag onto your own base is a capture");
+  assert.equal(environmentAsk({ self: near, myTeam: 1, carriedType: 'R*', flags: [], baseTeamAt: () => 1 }),
+    null, 'your own onto your own base is not');
+  assert.equal(mayGrab({ alive: true, holding: false, flag: ground }), true);
+  assert.equal(mayGrab({ alive: true, holding: true, flag: ground }), false, 'one flag at a time');
+  assert.equal(flagState(ground, 0).type, null, 'a superflag on the ground hides its type');
+  takeFlag(ground, '7', 1000);
+  assert.equal(ground.status, STATUS.ON_TANK);
+  assert.equal(flagState(ground, 0).type, 'V', 'and shows it once held');
+}
+
 console.log('Flag flight and type tests passed');

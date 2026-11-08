@@ -10,8 +10,8 @@
 // team colours, each with its own pilot and tuning, playing team deathmatch
 // on a clock of the script's own. The game is offline play's, shared with it
 // (public/js/bot-game.mjs) -- the server's bot brain, shells stepped through
-// the world, hits by the browser's own test -- with nobody in it. No flags
-// yet.
+// the world, hits by the browser's own test -- with nobody in it. `--flags`
+// superflags lie about the map, of every type but team flags.
 //
 //   node scripts/arena.mjs                                  # hix, Ace v Ace, 10 minutes
 //   node scripts/arena.mjs --map hix.bzw --minutes 30 --size 4
@@ -19,6 +19,7 @@
 //   node scripts/arena.mjs --tuning-b '{"raisedFactor":0.7}' --games 5
 //   node scripts/arena.mjs --level-a easy --level-b normal   # practice levels
 //   node scripts/arena.mjs --level-a easy --scale yes        # skill follows the score
+//   node scripts/arena.mjs --flags 30                        # with superflags
 //
 // The world is the server's cached conversion (data/cache/map-index.json), so
 // a map has to have been served once.
@@ -27,6 +28,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createBotGame, motionOf, TICK_SECONDS } from '../public/js/bot-game.mjs';
+import { FLAG_ABBREVIATIONS, isTeamFlag } from '../public/js/flags.mjs';
 import { getTeamFromColorIndex } from '../public/js/teams.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -75,6 +77,10 @@ const config = {
   WALL_HEIGHT: 6.15,
   NO_TEAM_KILLS: false,
   ALL_SHOTS_RICOCHET: false,
+  SUPER_FLAG_COUNT: Number(args.get('flags') || 0),
+  // Upstream's `-st` as most servers set it: a bad flag shakes off in 10s.
+  FLAG_SHAKE_TIMEOUT: 100,
+  SUPER_FLAG_POOL: FLAG_ABBREVIATIONS.filter((type) => !isTeamFlag(type)),
 };
 const shared = {
   obstacles: file.obstacles || [],

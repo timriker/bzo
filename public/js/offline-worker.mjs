@@ -16,7 +16,7 @@
 // proxy. The bots are the server's own (`bot-host.mjs`), and each decides its
 // own death the same way: the shots the shared bot game (`bot-game.mjs`)
 // steps through the world, tested against the bot with the browser's
-// `getShotTankHit`. No flags.
+// `getShotTankHit`, and its flags.
 //
 // The page's first message is `{ world }`; after that, strings are game
 // messages either way and objects are the port's open and close.
@@ -203,6 +203,7 @@ function die(message) {
   if (!player.alive || message.reason === 'shielded') return;
   const selfDestruct = message.type === 'selfDestruct';
   const killerId = selfDestruct ? PLAYER_ID : (message.killerId ?? null);
+  if (human) game?.drop(PLAYER_ID, humanView(Date.now()), true);
   player = { ...player, alive: false, losses: player.losses + 1 };
   if (typeof message.shotId === 'string' && game?.shots.has(message.shotId) && message.stoppedByHit !== false) {
     game.shots.delete(message.shotId);
@@ -262,6 +263,7 @@ self.onmessage = ({ data }) => {
         human = { x: player.x, y: player.y, z: player.z, azimuth: player.azimuth, at: Date.now() };
         send({ type: 'alive', player });
       }
+      game.announceFlags();
       if (human && game.bots.size === 0) addBots();
       setInterval(tick, TICK_SECONDS * 1000);
     }).catch((error) => {
@@ -285,6 +287,10 @@ self.onmessage = ({ data }) => {
   else if (message.type === 'shoot' && player.alive && game) {
     const slot = nextShotSlot;
     nextShotSlot = (nextShotSlot + 1) % game.maxShots();
-    game.fire(PLAYER_ID, player.team, message, slot);
+    game.fire(PLAYER_ID, player.team, message, slot, game.flagOf(PLAYER_ID)?.type ?? null);
+  } else if (message.type === 'grabFlag' && player.alive && game && human) {
+    game.grab(PLAYER_ID, Number(message.index), humanView(Date.now()));
+  } else if (message.type === 'dropFlag' && player.alive && game && human) {
+    game.drop(PLAYER_ID, humanView(Date.now()));
   } else if (message.type === 'killed' || message.type === 'selfDestruct') die(message);
 };

@@ -124,10 +124,14 @@ it could have.
    1. spawn selection
    2. kills declared, respawns, scores
    3. flags: spawning, grab, drop, capture, antidote, shake (the effects are
-      already the `flags` module). Started: which slots a game has and where
-      each comes into the world (`public/js/flag-spawn.mjs`), and where a
-      dropped one comes to rest (`public/js/flag-drop.mjs`), both run by the
-      server.
+      already the `flags` module). Shared and run by both the server and the
+      offline game: which slots a game has and where each comes into the
+      world (`public/js/flag-spawn.mjs`), what a tank asks for and taking a
+      flag (`public/js/flag-rules.mjs`), and where a dropped one comes to rest
+      (`public/js/flag-drop.mjs`); shaking was shared already (`canShakeFlag`).
+      Offline, a map's `-s`, `+f`, `-f` and `-fb` reach the game through its
+      config, and Shield and Thief act on a bot. Left: a dropped flag's
+      flight, team flags and captures, antidotes, and flagged shots' flight.
    4. match rules: clock, rabbit, team scores
 3. **Bots that declare their own deaths.** Built for plain shells:
    `offline-worker.mjs` steps every shell with `traceShotStep` and tests it
