@@ -41,7 +41,7 @@ const path = require('node:path');
 const { createMatrixBridge } = require('./matrix/client.cjs');
 const { createMatrixLinks } = require('./matrix/links.cjs');
 const { createMatrixCommands } = require('./matrix/commands.cjs');
-const { rosterLine } = require('./bridge/lines.cjs');
+const { createRoster } = require('./bridge/lines.cjs');
 
 let running = null;
 
@@ -158,7 +158,10 @@ module.exports = {
       answer: links.answer,
       log,
     });
-    running = { bz, bridge };
+    const roster = createRoster({
+      bz, store: jsonStore('matrix-roster.json'), say: (line) => bridge.event(line), setTimer: bz.setTimeout,
+    });
+    running = { bz, bridge, roster };
     bz.Register(bz.bz_eFilteredChatMessageEvent);
     bz.Register(bz.bz_ePlayerJoinEvent);
     bz.Register(bz.bz_ePlayerPartEvent);
@@ -172,12 +175,10 @@ module.exports = {
   // scoreboard mark, `@` for an admin and `+` for a signed-in player.
   Event(data) {
     if (!running) return;
-    const { bz, bridge } = running;
+    const { bz, bridge, roster } = running;
     // A person coming or going, with who is in now; bots come and go unsaid.
     if (data.eventType === 'bz_ePlayerJoinEvent' || data.eventType === 'bz_ePlayerPartEvent') {
-      if (data.record && !data.record.bot) {
-        bridge.event(rosterLine(bz, data.record.callsign, data.eventType === 'bz_ePlayerJoinEvent'));
-      }
+      roster.heard(data.record, data.eventType === 'bz_ePlayerJoinEvent');
       return;
     }
     if (data.eventType !== 'bz_eFilteredChatMessageEvent') return;

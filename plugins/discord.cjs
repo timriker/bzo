@@ -25,7 +25,7 @@ const path = require('node:path');
 const { createDiscordLink, discordLinkConfigured } = require('./discord/link.cjs');
 const { createChatMirror, createDiscordToGame } = require('./discord/bridge.cjs');
 const { createGateway } = require('./discord/gateway.cjs');
-const { rosterLine } = require('./bridge/lines.cjs');
+const { createRoster } = require('./bridge/lines.cjs');
 
 const WEBHOOK_PREFIX = 'https://discord.com/api/webhooks/';
 const DISCORD_API = 'https://discord.com/api/v10';
@@ -204,6 +204,10 @@ module.exports = {
     bz.Register(bz.bz_eFilteredChatMessageEvent);
     bz.Register(bz.bz_ePlayerJoinEvent);
     bz.Register(bz.bz_ePlayerPartEvent);
+    state.roster = createRoster({
+      bz, store: jsonStore(bz, 'discord-roster.json', null), say: (line) => state.mirror.event(line),
+      setTimer: bz.setTimeout,
+    });
     log('public chat mirrored to a channel');
 
     // The channel's own messages back into the game, through the bot's
@@ -255,12 +259,10 @@ module.exports = {
   // scoreboard mark, `@` for an admin and `+` for a signed-in player.
   Event(data) {
     if (!running?.mirror) return;
-    const { bz, mirror } = running;
+    const { bz, mirror, roster } = running;
     // A person coming or going, with who is in now; bots come and go unsaid.
     if (data.eventType === 'bz_ePlayerJoinEvent' || data.eventType === 'bz_ePlayerPartEvent') {
-      if (data.record && !data.record.bot) {
-        mirror.event(rosterLine(bz, data.record.callsign, data.eventType === 'bz_ePlayerJoinEvent'));
-      }
+      roster.heard(data.record, data.eventType === 'bz_ePlayerJoinEvent');
       return;
     }
     if (data.eventType !== 'bz_eFilteredChatMessageEvent') return;

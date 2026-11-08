@@ -160,6 +160,50 @@ const sync = (next, events = [], state = []) => ({
   assert.equal(rosterLine(roster([]), 'Foo', false), 'Foo left, p 0');
 }
 
+// Joins and leaves said once: after a restart, a person coming back is not
+// announced again, and one who does not is said to have left, once.
+{
+  const { createRoster } = require('../plugins/bridge/lines.cjs');
+  let saved = null;
+  const store = { load: () => saved, save: (value) => { saved = value; } };
+  let present = [];
+  const bz = {
+    eObservers: 7,
+    bz_getPlayerIndexList: () => present.map((record, id) => id),
+    bz_getPlayerByIndex: (id) => present[id],
+  };
+  const tim = { callsign: 't5810', team: 1 };
+  const ann = { callsign: 'ann', team: 2 };
+  const run = () => {
+    const said = [];
+    const timers = [];
+    let clock = 0;
+    const roster = createRoster({
+      bz, store, say: (line) => said.push(line), setTimer: (fn) => timers.push(fn), now: () => clock,
+    });
+    return { said, roster, later: () => { clock = 1e9; timers.forEach((fn) => fn()); } };
+  };
+  const first = run();
+  present = [tim];
+  first.roster.heard(tim, true);
+  present = [tim, ann];
+  first.roster.heard(ann, true);
+  first.roster.heard({ callsign: 'Ace40', team: 1, bot: true }, true);
+  assert.deepEqual(first.said, ['t5810 joined, p 1', 'ann joined, p 2']);
+
+  // A restart: nobody's leaving heard, t5810 back, ann not.
+  const second = run();
+  present = [tim];
+  second.roster.heard(tim, true);
+  assert.deepEqual(second.said, [], 'a rejoin after a restart is not said again');
+  second.later();
+  assert.deepEqual(second.said, ['ann left, p 1'], 'who did not come back is said to have left');
+  present = [];
+  second.roster.heard(tim, false);
+  second.roster.heard(tim, false);
+  assert.deepEqual(second.said.slice(1), ['t5810 left, p 0'], 'a leave once');
+}
+
 // A rate limit: the lines wait as long as the homeserver says, then go.
 {
   let time = 1000;

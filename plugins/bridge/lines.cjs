@@ -66,4 +66,45 @@ function rosterLine(bz, callsign, joined) {
   return `${plain(callsign)} ${joined ? 'joined' : 'left'}, ${counts || 'p 0'}`;
 }
 
-module.exports = { GAME_LINES, GAME_LINE_LIMIT, QUEUE_LIMIT, plain, gameLines, isCommand, rosterLine };
+// How long after a bridge starts a person counts as rejoining: a restart
+// drops everyone without their leaving being heard, and they come back
+// within it.
+const REJOIN_SECONDS = 120;
+
+// Joins and leaves as a bridge says them, once: who the room was last told
+// is in is kept in `store`, so a restart says nothing of the people coming
+// back, and after `REJOIN_SECONDS` says who did not. `say(line)` posts.
+function createRoster({ bz, store, say, setTimer = setTimeout, now = Date.now }) {
+  const startedAt = now();
+  const told = new Set(store.load()?.in || []);
+  const save = () => store.save({ in: [...told] });
+  const present = () => new Set(bz.bz_getPlayerIndexList()
+    .map((id) => bz.bz_getPlayerByIndex(id))
+    .filter((record) => record && !record.bot)
+    .map((record) => plain(record.callsign)));
+  setTimer(() => {
+    const here = present();
+    for (const callsign of [...told]) {
+      if (here.has(callsign)) continue;
+      told.delete(callsign);
+      say(rosterLine(bz, callsign, false));
+    }
+    save();
+  }, REJOIN_SECONDS * 1000);
+  return {
+    // A person's join or leave event.
+    heard(record, joined) {
+      if (!record || record.bot) return;
+      const callsign = plain(record.callsign);
+      const rejoined = joined && told.has(callsign) && now() - startedAt < REJOIN_SECONDS * 1000;
+      if (joined) told.add(callsign);
+      else if (!told.delete(callsign)) return;
+      save();
+      if (!rejoined) say(rosterLine(bz, record.callsign, joined));
+    },
+  };
+}
+
+module.exports = {
+  GAME_LINES, GAME_LINE_LIMIT, QUEUE_LIMIT, REJOIN_SECONDS, plain, gameLines, isCommand, rosterLine, createRoster,
+};

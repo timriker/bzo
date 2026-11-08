@@ -62,7 +62,10 @@ A BZFlag client's colour codes are removed.
 
 A person joining or leaving is said too, in italics with who is in after:
 `Foo joined, p 2 o 1 b 1` -- players, observers and bots, each left out at
-none. Bots coming and going are not.
+none. Bots coming and going are not. Who the room was last told is in is
+kept beside `server.json` (`matrix-roster.json`), so after a restart the people
+coming back are not announced again, and two minutes on anyone who did not
+is said to have left.
 
 Lines go at most one message every two seconds, each led by its speaker in
 bold, with BZFlag's scoreboard mark: `@` for an admin, `+` for a signed-in
