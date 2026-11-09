@@ -6,6 +6,27 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
 
 ## [Unreleased]
 
+## [1.3.97] - 2026-11-09
+
+### Added
+- Matrix: `!whois *` lists everyone linked, `!shelp` runs `/help` on the
+  server `!use` picked, and `!use none` drops the choice
+  (`docs/matrix.md`).
+
+### Changed
+- Matrix: `!use gus` picks a server by the start or any part of its name,
+  and asks which when that names more than one.
+- Ace leads his shots to where they meet a moving tank, and follows with a
+  second for a tank that slows to dodge.
+- Gravity is BZDB's signed value, as BZFlag's: a map with a positive
+  `_gravity` makes tanks fall up.
+- Each browser tab keeps its own name and team, so tabs can play side by
+  side.
+
+### Fixed
+- A page reloading for a new build no longer mistakes another player's
+  join for its own.
+
 ## [1.3.96] - 2026-11-08
 
 ### Added
