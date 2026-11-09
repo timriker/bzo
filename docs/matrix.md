@@ -102,7 +102,7 @@ BZFlag Tim Riker`. `!unlink` undoes it. The URL needs `publicUrl` in
 `server.json`; without one, `!link` is only logged.
 
 `!whois` says who someone is: `!whois @tim:matrix.org`, `!whois Tim Riker` by
-callsign, or `!whois` alone for yourself.
+callsign, `!whois *` for everyone linked, or `!whois` alone for yourself.
 
 A linked member reads in the game by callsign, marked `@` for an admin and
 `+` otherwise, not by their Matrix name. Matrix does not let a bot set
@@ -175,10 +175,13 @@ unencrypted chat with the member in its place.
   of its `publicUrl` unless the options set one -- its room, and the account
   it answers as.
 - `!use <server>` picks the one their commands go to, by its name, its name
-  without the port, or its room's alias; `!use` alone says which.
+  without the port, or its room's alias -- or the start or any part of one,
+  if that names only one server; `!use` alone says which, and
+  `!use none` drops the choice.
 - `!playerlist`, or any server command with `!` for its slash, runs on that
   server; `/playerlist` works too, where Element is told to send it as a
   message. With nothing picked, the server with `"links": true` runs it.
+- `!shelp` runs `/help` on that server.
 - `!help` says all this in the room.
 
 `!servers` and `!help` answer in any room of the space too, from the server

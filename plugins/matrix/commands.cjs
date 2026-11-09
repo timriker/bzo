@@ -31,9 +31,9 @@ const TARGETS = 'org.bzflag.targets';
 const REPLY_LIMIT = 4000;
 const HELP = [
   'Talk to the game servers here:',
-  '!servers lists them, and !use <server> picks the one your commands go to.',
-  'Then !playerlist, or any server command with ! for its slash.',
-  '!link links your BZFlag account, which commands run as; !whois says who someone is.',
+  '!servers lists them, !use <server> picks the one your commands go to, and !use none goes back to mine.',
+  'Then !playerlist, or any server command with ! for its slash; !shelp is that server\'s /help.',
+  '!link links your BZFlag account, which commands run as; !whois says who someone is, !whois * who is linked.',
 ].join('\n');
 
 const enc = encodeURIComponent;
@@ -62,6 +62,17 @@ function createMatrixCommands({ bz, client, links, name, room, url = '', space =
       alias.replace(/^#/, '').split(':')[0], host].filter(Boolean).map((each) => each.toLowerCase()));
   };
   const isNamed = (server, asked) => namesOf(server).has(String(asked).trim().toLowerCase());
+  // The servers a member's word best names: by one of its names exactly,
+  // else as the start of one, else anywhere in one -- the first of these
+  // that names any.
+  const bestNamed = (all, asked) => {
+    const word = String(asked).trim().toLowerCase();
+    for (const fits of [(each) => each === word, (each) => each.startsWith(word), (each) => each.includes(word)]) {
+      const found = all.filter((server) => [...namesOf(server)].some(fits));
+      if (found.length) return found;
+    }
+    return [];
+  };
 
   // The space's rooms, by the space's own hierarchy.
   async function spaceRooms() {
@@ -158,7 +169,7 @@ function createMatrixCommands({ bz, client, links, name, room, url = '', space =
   async function run(userId, text) {
     const record = links.linkFor(userId);
     if (!record) return 'Link your BZFlag account first: type !link.';
-    const line = `/${text.replace(/^[!/]/, '')}`;
+    const line = /^[!/]shelp$/i.test(text.trim()) ? '/help' : `/${text.replace(/^[!/]/, '')}`;
     const replies = await bz.bz_runCommand(line, {
       callsign: record.callsign, bzid: record.bzid, admin: record.admin, via: 'Matrix',
     });
@@ -175,13 +186,25 @@ function createMatrixCommands({ bz, client, links, name, room, url = '', space =
   }
 
   // A direct room with a member: the servers, a choice of one, help, or a
-  // command for the chosen one.
+  // command for the chosen one. `!shelp` is that server's `/help`, which
+  // the server that answers direct rooms names first -- said even if the
+  // server picked runs too old a bzo to answer.
   async function direct({ roomId, userId, text }) {
     const [word, ...rest] = text.split(/\s+/);
     const asked = rest.join(' ').trim();
     switch (word.toLowerCase()) {
       case '!help': {
         if (directs) await client.notice(roomId, HELP);
+        return;
+      }
+      case '!shelp': {
+        const chosen = (await targets())[userId];
+        const header = `/help on ${chosen || name}; !use <server> changes it.`;
+        if (chosen ? isNamed(me(), chosen) : directs) {
+          await client.notice(roomId, directs ? `${header}\n${await run(userId, '/help')}` : await run(userId, '/help'));
+        } else if (directs) {
+          await client.notice(roomId, header);
+        }
         return;
       }
       case '!servers': {
@@ -195,14 +218,24 @@ function createMatrixCommands({ bz, client, links, name, room, url = '', space =
         if (!asked) {
           const chosen = (await targets())[userId];
           await client.notice(roomId, chosen ? `Your commands go to ${chosen}.`
-            : `Your commands go to ${name}, until you pick another with !use <server>.`);
+            : `No server picked: your commands go to ${name}, the default. !use <server> picks one.`);
           return;
         }
-        const found = (await refresh()).find((server) => isNamed(server, asked));
-        if (!found) {
-          await client.notice(roomId, `No server is called ${asked}. !servers lists them.`);
+        if (asked.toLowerCase() === 'none') {
+          const now = await targets();
+          delete now[userId];
+          await client.must('PUT', targetsPath(), { body: now });
+          await client.notice(roomId, `No server picked: your commands go to ${name}, the default. !use <server> picks one.`);
           return;
         }
+        const named = bestNamed(await refresh(), asked);
+        if (named.length !== 1) {
+          await client.notice(roomId, named.length
+            ? `${asked} could be ${named.map((server) => server.name).join(' or ')}; say which.`
+            : `No server is called ${asked}. !servers lists them.`);
+          return;
+        }
+        const [found] = named;
         if (found.account && found.account !== client.userId) {
           await client.notice(roomId, `${found.name} answers as ${found.account}: message it there.`);
           return;

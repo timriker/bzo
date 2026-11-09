@@ -417,6 +417,9 @@ const sync = (next, events = [], state = []) => ({
     '@nobody:example.org is not linked to a BZFlag account.',
     '@ann:example.org is BZFlag Ann.',
   ]);
+  await links.command({ userId: '@ann:example.org', text: '!whois *' });
+  assert.match(notices.at(-1).body, /^@ann:example\.org is BZFlag Ann\.\n[\s\S]*is BZFlag Tim Riker \(admin\)\./,
+    'everyone linked, by callsign');
 
   // Another server's bot unlinking someone: heard from the space.
   links.heard({ roomId: '!space', event: { type: 'org.bzflag.link', state_key: 'ann:example.org', content: {} } });
@@ -738,6 +741,12 @@ const sync = (next, events = [], state = []) => ({
   assert.equal(notices.at(-1).body, 'No server is called nowhere. !servers lists them.');
   await both('!use bz.example.net');
   assert.equal(notices.at(-1).body, 'bz.example.net answers as @ops:x: message it there.');
+  await both('!use rikers');
+  assert.equal(notices.at(-1).body, 'rikers could be bz.rikers.org:5154 or gus.rikers.org:5154; say which.');
+  await both('!use gus');
+  assert.equal(notices.at(-1).body, 'Your commands now go to gus.rikers.org:5154.');
+  await both('!use bz');
+  assert.equal(notices.at(-1).body, 'bz could be bz.rikers.org:5154 or bz.example.net; say which.');
   await both('!use gus-rikers-org');
   assert.equal(notices.at(-1).body, 'Your commands now go to gus.rikers.org:5154.');
   assert.deepEqual(accounts['@bot:x']['org.bzflag.targets'], { [TIM]: 'gus.rikers.org:5154' });
@@ -749,6 +758,36 @@ const sync = (next, events = [], state = []) => ({
   assert.equal(notices.at(-1).body, 'Your commands go to gus.rikers.org:5154.');
   await both('!servers');
   assert.match(notices.at(-1).body, /gus\.rikers\.org:5154 \(#gus-rikers-org:x\) -- yours/);
+
+  // `!shelp`: the picked server's `/help`, named by the server that answers
+  // direct rooms; `!help` is still the bot's.
+  ran.length = 0;
+  let heard = notices.length;
+  await both('!shelp');
+  assert.deepEqual(ran.map((each) => each.server + each.line), ['gus.rikers.org:5154/help']);
+  assert.deepEqual(notices.slice(heard).map((notice) => notice.body), [
+    '/help on gus.rikers.org:5154; !use <server> changes it.',
+    'gus.rikers.org:5154: /help\ngus.rikers.org:5154 answers /help',
+  ], 'the server that answers direct rooms says so, the one picked answers');
+  heard = notices.length;
+  await both('!help');
+  assert.equal(notices.length, heard + 1);
+  assert.match(notices.at(-1).body, /^Talk to the game servers/);
+  // `!use none`: back to the server that answers links, `!shelp` its own.
+  await both('!use none');
+  assert.equal(notices.at(-1).body, 'No server picked: your commands go to bz.rikers.org:5154, the default. !use <server> picks one.');
+  assert.deepEqual(accounts['@bot:x']['org.bzflag.targets'], {});
+  ran.length = 0;
+  heard = notices.length;
+  await both('!shelp');
+  assert.deepEqual(ran.map((each) => each.server + each.line), ['bz.rikers.org:5154/help']);
+  assert.equal(notices.length, heard + 1);
+  assert.match(notices.at(-1).body, /^\/help on bz\.rikers\.org:5154; !use <server> changes it\.\nbz\.rikers/);
+  // In a bridged room, that server's `/help`, in the direct room.
+  ran.length = 0;
+  await gus.handle({ roomId: '!gus', userId: TIM, text: '!shelp' });
+  assert.deepEqual(ran.map((each) => each.server + each.line), ['gus.rikers.org:5154/help']);
+  await both('!use gus-rikers-org');
 
   // The operator's bot, in its own direct room with the member.
   ran.length = 0;

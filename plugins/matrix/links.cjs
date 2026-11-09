@@ -392,9 +392,14 @@ function createMatrixLinks({
         return;
       }
       case '!whois': {
-        // A Matrix user, a callsign, or with neither, the asker.
+        // A Matrix user, a callsign, `*` for everyone linked, or with
+        // none, the asker.
         const asked = rest.join(' ').trim();
-        if (!asked) {
+        if (asked === '*') {
+          const all = [...links].sort(([, a], [, b]) => a.callsign.localeCompare(b.callsign))
+            .map(([who]) => describe(who));
+          await client.notice(roomId, all.length ? all.join('\n') : 'Nobody is linked to a BZFlag account.');
+        } else if (!asked) {
           await client.notice(roomId, describe(userId));
         } else if (asked.startsWith('@')) {
           await client.notice(roomId, describe(asked.split(/\s+/)[0]));
