@@ -68,7 +68,7 @@ const topOf = (obs) => ((obs.type === 'mesh' && obs.bounds) ? obs.bounds.maxZ : 
 const CONFIG = {
   TANK_SPEED: 25,
   TANK_ROTATION_SPEED: Math.PI / 4,
-  GRAVITY: 9.8,
+  GRAVITY: -9.8,
   JUMP_VELOCITY: 19,
   ALLOW_JUMPING: jumping,
   MAX_BUMP_HEIGHT: 0.33,
@@ -76,7 +76,7 @@ const CONFIG = {
   // gives one flap, as bz.rikers.org's server.json does.
   WINGS_JUMP_COUNT: Number(args.get('wings') || 1),
   WINGS_JUMP_VELOCITY: 19,
-  WINGS_GRAVITY: 9.8,
+  WINGS_GRAVITY: -9.8,
   // BZFlag's `-a <linear> <angular>`, off unless BENCH_ACCEL says otherwise.
   LINEAR_ACCELERATION: Number((process.env.BENCH_ACCEL || '0 0').split(' ')[0]) || 0,
   ANGULAR_ACCELERATION: Number((process.env.BENCH_ACCEL || '0 0').split(' ')[1]) || 0,

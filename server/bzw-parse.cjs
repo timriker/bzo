@@ -5847,7 +5847,9 @@ function getMaxObstacleTopY(obstacles = []) {
 //
 // `config` is the world's own (`worldConfig`), so the answer is that map's.
 function getJumpApexHeight(config) {
-  const apex = (velocity, gravity) => (velocity * velocity) / (2 * gravity);
+  // Gravity is BZDB's, negative down. Under gravity that pulls up there is no
+  // top, and upstream keeps its own default then (bzfs.cxx:1270).
+  const apex = (velocity, gravity) => (gravity < 0 ? (velocity * velocity) / (-2 * gravity) : 0);
   return Math.max(
     apex(config.JUMP_VELOCITY, config.GRAVITY),
     config.WINGS_JUMP_COUNT * apex(config.WINGS_JUMP_VELOCITY, config.WINGS_GRAVITY)

@@ -129,7 +129,7 @@ export const JUMP_LAND_MARGIN = 4;
 
 function jumpTimes(jump, rise) {
   const v = jump.velocity;
-  const g = jump.gravity;
+  const g = -jump.gravity;
   const disc = (v * v) - (2 * g * rise);
   if (!(g > 0) || disc < 0) return null;
   const root = Math.sqrt(disc);
@@ -308,7 +308,8 @@ export function buildNavGraph(world) {
 
   const jump = world.jump;
   const tankSpeed = world.tankSpeed ?? jump?.tankSpeed ?? 25;
-  const gravity = jump?.gravity ?? world.gravity ?? 9.8;
+  // The pull downward: BZDB's gravity, negative down, turned round.
+  const gravity = -(jump?.gravity ?? world.gravity ?? -9.8);
   // Flaps a jump may take in the air: Wings' `_wingsJumpCount` less the
   // take-off.
   const jumpFlaps = Math.max(0, Math.floor(jump?.flaps ?? 0));

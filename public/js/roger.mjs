@@ -403,7 +403,7 @@ export class Roger {
         // "assuming 20-50 is a good range"
         if (d > 20 && d < 50 && building.isBox) {
           const jumpVel = view.world.jumpVelocity;
-          const maxJump = (jumpVel * jumpVel) / (2 * view.world.gravity);
+          const maxJump = (jumpVel * jumpVel) / (-2 * view.world.gravity);
           if (building.top - me.z < maxJump) {
             out.speed = d / 50;
             out.jump = true;
@@ -549,22 +549,37 @@ export class Roger {
       return;
     }
 
-    const errorLimit = (view.world.maxShots * view.world.lockOnAngle) / 8;
-    const closeErrorLimit = errorLimit * 2;
     for (const p of players) {
       if (!view.isFoe(p)) continue;
       if (p.zoned && !me.zoned && me.flag !== 'SB' && me.flag !== 'SW') continue;
-      const enemy = predict(p);
-      if (me.flag !== 'GM' && Math.abs(pos.z - enemy.z) >= 2 * view.world.tankHeight) continue;
-      const dist = distance2D(pos, enemy);
-      const diff = angleDifference(pos, me.azimuth, enemy);
-      if (diff >= errorLimit
-        && !(dist < 2 * view.world.shotSpeed && diff < closeErrorLimit)) continue;
-      if (me.flag !== 'SB' && this.isObscured(ctx, pos, enemy)) continue;
-      out.fire = true;
-      out.shotTargetId = p.id;
-      this.lastShot = view.now;
-      return;
+      for (const enemy of this.aimPoints(ctx, p)) {
+        if (me.flag !== 'GM' && Math.abs(pos.z - enemy.z) >= 2 * view.world.tankHeight) continue;
+        const dist = distance2D(pos, enemy);
+        const diff = angleDifference(pos, me.azimuth, enemy);
+        if (!this.onTarget(ctx, p, dist, diff)) continue;
+        if (me.flag !== 'SB' && this.isObscured(ctx, pos, enemy)) continue;
+        out.fire = true;
+        out.shotTargetId = p.id;
+        this.lastShot = view.now;
+        this.firedAt(ctx, p, enemy);
+        return;
+      }
     }
   }
+
+  // Where a shot at `p` would go: upstream's, 0.3 seconds ahead.
+  aimPoints(ctx, p) {
+    return [predict(p)];
+  }
+
+  // Whether a heading `diff` radians off a point `dist` away is near enough to
+  // fire: upstream's limit, twice as wide within two seconds of shot.
+  onTarget(ctx, p, dist, diff) {
+    const { world } = ctx.view;
+    const errorLimit = (world.maxShots * world.lockOnAngle) / 8;
+    return diff < errorLimit || (dist < 2 * world.shotSpeed && diff < errorLimit * 2);
+  }
+
+  // Told of each shot `fireAtTank` takes, and at which point.
+  firedAt() {}
 }

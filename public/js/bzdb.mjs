@@ -184,11 +184,12 @@ export const BZDB_CONFIG_VARS = new Map([
   ['_spawnMaxCompTime', { key: 'SPAWN_MAX_COMP_TIME', transform: (n) => n * 1000, allowZero: true }],
   ['_tankSpeed', { key: 'TANK_SPEED' }],
   ['_tankAngVel', { key: 'TANK_ROTATION_SPEED' }],
-  // Upstream states gravity as a negative acceleration and bzo keeps the
-  // magnitude, so a map's `-9.81` and its `9.81` mean the same thing here.
-  ['_gravity', { key: 'GRAVITY', transform: Math.abs }],
-  // 0 is a jump that leaves the ground with no lift, as upstream's is.
-  ['_jumpVelocity', { key: 'JUMP_VELOCITY', allowZero: true }],
+  // An acceleration, negative down, as upstream keeps it: a positive one --
+  // which upstream allows, refusing only 0 -- is a world where tanks fall up.
+  ['_gravity', { key: 'GRAVITY', any: true, nonZero: true }],
+  // Unchecked, as upstream reads it for each jump (LocalPlayer.cxx:1453): 0 is
+  // a jump with no lift, and a negative one pushes down.
+  ['_jumpVelocity', { key: 'JUMP_VELOCITY', any: true }],
   ['_shotSpeed', { key: 'SHOT_SPEED' }],
   ['_shotRange', { key: 'SHOT_RANGE' }],
   ['_shotRadius', { key: 'SHOT_RADIUS' }],
@@ -322,8 +323,10 @@ export const BZDB_CONFIG_VARS = new Map([
   ['_pyrHeight', { key: 'PYR_HEIGHT', derived: true }],
   // Wings' own. Upstream defaults the first two to the strings "_jumpVelocity"
   // and "_gravity"; a map that states a number pins it, as server.json does.
-  ['_wingsJumpVelocity', { key: 'WINGS_JUMP_VELOCITY', allowZero: true }],
-  ['_wingsGravity', { key: 'WINGS_GRAVITY', transform: Math.abs }],
+  ['_wingsJumpVelocity', { key: 'WINGS_JUMP_VELOCITY', any: true }],
+  // Read raw every frame upstream (LocalPlayer.cxx:361), with no check: 0
+  // is Wings hovering.
+  ['_wingsGravity', { key: 'WINGS_GRAVITY', any: true }],
   // Gliding with no slide at all is upstream's default.
   ['_wingsSlideTime', { key: 'WINGS_SLIDE_TIME', allowZero: true }],
   // A wall 0 high is a real choice -- 37 of the public servers make it -- so
@@ -340,7 +343,7 @@ export function gameplayFromBzdb(vars) {
   const gameplay = {};
   const evalVar = (name) => evalBzdb(vars, name);
   const defaults = new Map();
-  for (const [name, { key, transform, allowZero, parse, derived, any }] of BZDB_CONFIG_VARS) {
+  for (const [name, { key, transform, allowZero, parse, derived, any, nonZero }] of BZDB_CONFIG_VARS) {
     let stated = vars.has(name);
     if (!stated && derived) {
       const value = evalVar(name);
@@ -356,8 +359,10 @@ export function gameplayFromBzdb(vars) {
     if (!Number.isFinite(num)) continue;
     const applied = transform ? transform(num) : num;
     // A switch is stated either way; a quantity only when positive, unless
-    // it is one -- a longitude -- that may be anything.
-    if (typeof applied === 'boolean' || applied > 0 || (allowZero && applied === 0) || any) {
+    // it is one -- a longitude -- that may be anything, or gravity, anything
+    // but 0 (upstream's getGoodNonZeroValue).
+    if (typeof applied === 'boolean' || applied > 0 || (allowZero && applied === 0)
+      || (any && !(nonZero && applied === 0))) {
       gameplay[key] = applied;
     }
   }

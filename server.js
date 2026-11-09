@@ -3796,7 +3796,7 @@ const GAME_CONFIG = {
   // `_explodeTime`.
   REJOIN_TIME: null,
   JUMP_VELOCITY: 19, // BZFlag _jumpVelocity default
-  GRAVITY: 9.8, // BZFlag _gravity magnitude (units per second squared)
+  GRAVITY: -9.8, // BZFlag _gravity: an acceleration, negative down
   // Wings' four BZDB variables. Locked upstream, which means the server sets
   // them and the client obeys, so they travel with the rest of the world's
   // physics. The two nulls are upstream's own defaults, which are the strings
@@ -3806,7 +3806,7 @@ const GAME_CONFIG = {
   MAX_FLAG_GRABS, // BZFlag _maxFlagGrabs
   MAX_BUMP_HEIGHT: DEFAULT_MAX_BUMP_HEIGHT, // BZFlag _maxBumpHeight
   WINGS_JUMP_VELOCITY: null, // BZFlag _wingsJumpVelocity; defaults to JUMP_VELOCITY
-  WINGS_GRAVITY: null, // BZFlag _wingsGravity magnitude; defaults to GRAVITY
+  WINGS_GRAVITY: null, // BZFlag _wingsGravity; defaults to GRAVITY
   WINGS_SLIDE_TIME: DEFAULT_WINGS_SLIDE_TIME, // BZFlag _wingsSlideTime
   // Machine Gun's three, locked upstream like the rest. The life is null for
   // upstream's default, "1.0 / _mGunAdRate" (`configureFlagEffects`).
@@ -6455,7 +6455,10 @@ function readServerBzdb(config) {
   const legacy = [];
   for (const [key, name] of Object.entries(LEGACY_BZDB_KEYS)) {
     if (config[key] === undefined || config[key] === null) continue;
-    vars.set(name, bzdbString(config[key]));
+    // These two were magnitudes, where upstream's gravity is a signed
+    // acceleration and negative is down.
+    const magnitude = (key === 'gravity' || key === 'wingsGravity') && Number.isFinite(Number(config[key]));
+    vars.set(name, bzdbString(magnitude ? -Math.abs(Number(config[key])) : config[key]));
     legacy.push(`${key} -> bzdb.${name}`);
   }
   // `shotDuration` and `shotDistance` were two more spellings of `_shotRange`,
@@ -8398,7 +8401,7 @@ class Player {
       const gravity = hasAirControl(getPlayerFlag(this.id)?.type)
         ? GAME_CONFIG.WINGS_GRAVITY
         : GAME_CONFIG.GRAVITY;
-      const vv = this.verticalVelocity - gravity * dt;
+      const vv = this.verticalVelocity + gravity * dt;
       const dz = (this.verticalVelocity + vv) / 2 * dt; // Average velocity over dt
       return {
         x: this.x + dx,
@@ -14516,8 +14519,8 @@ function getFlagDropPosition(owner, now = Date.now()) {
   // a connection that stopped sending is the usual reason, and it still carries
   // whatever speed it had -- so the stored position beats extrapolating seconds
   // of travel that may never have happened.
-  const gravity = GAME_CONFIG.GRAVITY > 0 ? GAME_CONFIG.GRAVITY : 9.8;
-  const maxSilence = (2 * GAME_CONFIG.JUMP_VELOCITY / gravity) * 1000;
+  const pull = GAME_CONFIG.GRAVITY < 0 ? -GAME_CONFIG.GRAVITY : 9.8;
+  const maxSilence = (2 * GAME_CONFIG.JUMP_VELOCITY / pull) * 1000;
   if (now - owner.lastUpdate > maxSilence) {
     return { x: owner.x, y: owner.y, z: owner.z };
   }
@@ -17701,13 +17704,15 @@ function getPlayerMotion(player, flagType, now) {
       gravity,
       vx: player.airVelocityX || 0,
       vy: player.airVelocityY || 0,
-      vz: (player.verticalVelocity || 0) - (gravity * elapsed),
+      vz: (player.verticalVelocity || 0) + (gravity * elapsed),
     };
   }
   const azimuth = player.slideAzimuth ?? player.azimuth;
   const speed = (player.forwardSpeed || 0) * GAME_CONFIG.TANK_SPEED;
   return {
     airborne, gravity, vx: Math.cos(azimuth) * speed, vy: Math.sin(azimuth) * speed, vz: 0,
+    // Its turn, radians a second: where a shot meets it depends on it.
+    angVel: (player.rotationSpeed || 0) * GAME_CONFIG.TANK_ROTATION_SPEED,
   };
 }
 

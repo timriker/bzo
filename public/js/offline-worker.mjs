@@ -234,6 +234,7 @@ function move(message) {
     z: Number(message.z) || 0,
     azimuth: Number(message.a) || 0,
     fs: Number(message.fs) || 0,
+    rs: Number(message.rs) || 0,
     vv: Number(message.vv) || 0,
     vx: Number(message.vx) || 0,
     vy: Number(message.vy) || 0,

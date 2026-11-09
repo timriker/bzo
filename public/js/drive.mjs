@@ -528,7 +528,7 @@ export function stepDrive(state, intended, tank, world, clock, dt) {
   // a building is held up by the building.
   const sinking = state.onGround && state.z > groundLimit;
   if (state.inAir || state.onObstacle || sinking) {
-    state.verticalVelocity -= gravityFor(tank, airControl, state.z, config) * dt;
+    state.verticalVelocity += gravityFor(tank, airControl, state.z, config) * dt;
   }
   if (state.z < groundLimit) {
     state.verticalVelocity = applyGroundLimitCreep(state.verticalVelocity, state.z, groundLimit);

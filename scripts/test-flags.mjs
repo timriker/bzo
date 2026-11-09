@@ -179,7 +179,8 @@ import {
 const require = createRequire(import.meta.url);
 const serverFlags = require('../public/js/flags.mjs');
 
-const GRAVITY = 9.8;
+// BZDB's, negative down, as upstream states it.
+const GRAVITY = -9.8;
 const EPSILON = 1e-9;
 // Upstream's azimuth of due north: forward is (cos, sin), so +Y.
 const NORTH = Math.PI / 2;
@@ -993,9 +994,9 @@ assert.equal(
 
 // FlagInfo::addFlag -- flightTime is 2 * sqrt(-2 * flagAltitude / gravity).
 const flight = computeFlagFlight(FLAG_ALTITUDE, GRAVITY);
-close(flight.flightEnd, 2 * Math.sqrt(2 * FLAG_ALTITUDE / GRAVITY), 'flight duration');
+close(flight.flightEnd, 2 * Math.sqrt(-2 * FLAG_ALTITUDE / GRAVITY), 'flight duration');
 close(flight.flightEnd, 2.996597, 'flight duration at bzo gravity');
-close(flight.initialVelocity, GRAVITY * Math.sqrt(2 * FLAG_ALTITUDE / GRAVITY), 'launch velocity');
+close(flight.initialVelocity, -GRAVITY * Math.sqrt(-2 * FLAG_ALTITUDE / GRAVITY), 'launch velocity');
 
 // The parabola leaves the ground, reaches exactly the thrown altitude at the
 // halfway point, and comes back to zero at the end.
@@ -1041,7 +1042,7 @@ close(
   }
 
   const shieldFlight = computeFlagFlight(getFlagThrownAltitude('SH'), GRAVITY);
-  close(shieldFlight.flightEnd, 2 * Math.sqrt(2 * 29.7 / GRAVITY), 'shield flight duration');
+  close(shieldFlight.flightEnd, 2 * Math.sqrt(-2 * 29.7 / GRAVITY), 'shield flight duration');
   close(shieldFlight.flightEnd, 4.923911, 'shield flight duration at bzo gravity');
   close(
     shieldFlight.flightEnd / flight.flightEnd,
@@ -1203,7 +1204,7 @@ for (const flag of parityFlags) {
 }
 
 for (const altitude of [1, 5, FLAG_ALTITUDE, 40]) {
-  for (const gravity of [4.9, GRAVITY, 19.6]) {
+  for (const gravity of [-4.9, GRAVITY, -19.6]) {
     assert.deepEqual(
       serverFlags.computeFlagFlight(altitude, gravity),
       computeFlagFlight(altitude, gravity),

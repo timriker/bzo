@@ -196,6 +196,13 @@ export const ACE_TUNING = Object.freeze({
   // As the rabbit with this many hunters within `RABBIT_FLEE_RANGE` or more,
   // Ace makes for somewhere they cannot see him (`takeCover`); 0 never does.
   rabbitCover: 0,
+  // Ground shots: `intercept`, where the shell meets the foe on his speed and
+  // turn, then behind it with slots to spare; or `roger`, upstream's 0.3
+  // seconds ahead and its wide firing angle.
+  aim: 'intercept',
+  // With `intercept`, a second shot with slots to spare where a foe who
+  // slowed to dodge the first would be; false leaves it out.
+  behind: true,
 });
 // Where Ace puts his own flag down: within this share of his base's radius
 // of its middle, and no less than `HOME_DROP_MIN` across a small one.

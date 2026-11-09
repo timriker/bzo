@@ -18,7 +18,7 @@ import { worldConfig } from '../public/js/bzdb.mjs';
 const CONFIG = {
   TANK_SPEED: 25,
   TANK_ROTATION_SPEED: Math.PI / 4,
-  GRAVITY: 9.8,
+  GRAVITY: -9.8,
   JUMP_VELOCITY: 19,
   ALLOW_JUMPING: true,
   MAX_BUMP_HEIGHT: 0.33,

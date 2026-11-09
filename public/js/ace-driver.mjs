@@ -240,8 +240,8 @@ export class AceDriver extends Roger {
   jumpReach(ctx) {
     const { view, me } = ctx;
     const canJump = (view.world.allowJumping || me.flag === 'JP' || me.flag === 'WG') && me.flag !== 'NJ';
-    if (!canJump || !(view.world.gravity > 0)) return 0;
-    return (view.world.jumpVelocity * view.world.jumpVelocity) / (2 * view.world.gravity);
+    if (!canJump || !(view.world.gravity < 0)) return 0;
+    return (view.world.jumpVelocity * view.world.jumpVelocity) / (-2 * view.world.gravity);
   }
 
   // Somewhere to be, by a route where there is one and straight there where not.
@@ -911,7 +911,7 @@ export class AceDriver extends Roger {
   driveOffDirect(ctx, here, landing) {
     const { view, me, out } = ctx;
     const drop = here.z - landing.z;
-    if (drop <= MAX_STEP_UP || !(view.world.gravity > 0)) return false;
+    if (drop <= MAX_STEP_UP || !(view.world.gravity < 0)) return false;
     const dx = landing.x - here.x;
     const dy = landing.y - here.y;
     const length = Math.hypot(dx, dy);
@@ -930,7 +930,7 @@ export class AceDriver extends Roger {
     const brink = { x: here.x + (ux * edge), y: here.y + (uy * edge), z: here.z };
     if (!this.laneClear(ctx, here, brink, ux, uy, AIM_LANE_LIFT)) return false;
     const top = me.topSpeed ?? view.world.tankSpeed;
-    const fall = Math.sqrt((2 * drop) / view.world.gravity);
+    const fall = Math.sqrt((-2 * drop) / view.world.gravity);
     // The tank tips once its centre is past the edge.
     const leave = edge + DRIVE_OFF_TIP;
     const speed = Math.min(top, Math.max(DRIVE_OFF_SLOWEST * top, (length - leave) / fall));
@@ -967,7 +967,7 @@ export class AceDriver extends Roger {
   // Null where the flight never gets there, or gets there too soon to turn.
   foePass(ctx, here, flight, foe) {
     const { view, me } = ctx;
-    const g = view.world.gravity;
+    const g = -view.world.gravity;
     if (!(g > 0)) return null;
     const vz = flight.jump ? view.world.jumpVelocity : 0;
     const rise = (foe.z + (view.world.tankHeight / 2) - (me.muzzleHeight ?? 1.57)) - here.z;

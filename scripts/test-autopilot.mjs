@@ -49,7 +49,7 @@ function makeView(overrides = {}) {
       tankSpeed: 25,
       tankLength: 6,
       jumpVelocity: 19,
-      gravity: 9.8,
+      gravity: -9.8,
       lockOnAngle: 0.15,
       shockOutRadius: 60,
     },
@@ -633,7 +633,7 @@ for (const flag of ['US', 'MG', 'ID']) {
       const out = ace.think(makeView({
         now: 100 + t,
         self: { muzzleHeight: 1.57, muzzleForward: 3, shotSpeed: 100, shotLifetime: 3.5 },
-        players: [enemy(0, 80, { z, vz: -9.8 * t, airborne: true, gravity: 9.8, flag, flagIndex: flag ? 3 : null })],
+        players: [enemy(0, 80, { z, vz: -9.8 * t, airborne: true, gravity: -9.8, flag, flagIndex: flag ? 3 : null })],
         world: { maxShots: 5 },
       }));
       if (out.fire) fired++;
@@ -761,7 +761,7 @@ for (const flag of ['US', 'MG', 'ID']) {
         self: { muzzleHeight, muzzleForward: 3, shotSpeed },
         world: { tankAngVel: Math.PI / 4 },
         players: [enemy(0, north, {
-          z, airborne, gravity: g, vz: airborne ? jumpVelocity - (g * t) : 0,
+          z, airborne, gravity: -g, vz: airborne ? jumpVelocity - (g * t) : 0,
         })],
       });
       const out = pilot.think(view);
@@ -921,7 +921,7 @@ for (const flag of ['US', 'MG', 'ID']) {
 // a round trip and a little behind, so its touchdown comes that much sooner,
 // and one already down by then is no shot at all.
 {
-  const falling = (vz) => enemy(0, 60, { z: 5, vz, airborne: true, gravity: 9.8 });
+  const falling = (vz) => enemy(0, 60, { z: 5, vz, airborne: true, gravity: -9.8 });
   const self = { muzzleHeight: 1.57, muzzleForward: 3, shotSpeed: 100 };
   const plans = (lag, foe) => {
     const view = makeView({ self: { ...self, lag } });
@@ -965,7 +965,7 @@ for (const flag of ['US', 'MG', 'ID']) {
 {
   const out = new Ace().think(makeView({
     self: { flag: 'SW', azimuth: 0, canFire: false },
-    players: [enemy(80, 0, { z: 10, airborne: true, gravity: 9.8 })],
+    players: [enemy(80, 0, { z: 10, airborne: true, gravity: -9.8 })],
   }));
   assert.ok(out.speed > 0.5 && out.targetId === 'foe', `driving at it (${out.intent.mode} ${out.speed})`);
 }
@@ -1019,7 +1019,7 @@ for (const flag of ['US', 'MG', 'ID']) {
         now: 100 + t,
         self: { flag: 'BU', z: -1.32, muzzleHeight: 1.57, muzzleForward: 3, shotSpeed: 100, jitter },
         world: { maxShots: 3, tankAngVel: Math.PI / 4 },
-        players: [enemy(0, 120, { z, airborne, gravity: g, vz: airborne ? v - (g * t) : 0 })],
+        players: [enemy(0, 120, { z, airborne, gravity: -g, vz: airborne ? v - (g * t) : 0 })],
       }));
       if (out.fire) arrivals.push(t + ((120 - 3 - 2) / (100 + (out.speed * 25))));
     }
@@ -1060,7 +1060,7 @@ for (const flag of ['US', 'MG', 'ID']) {
       self: {
         azimuth: 0.79, muzzleHeight: 1.57, muzzleForward: 3, shotSpeed: 100, shotLifetime: 3.5, ricochet: true,
       },
-      players: [enemy(0, 60, { z: 40 - (4.9 * t * t), vz: -9.8 * t, airborne: true, gravity: 9.8 })],
+      players: [enemy(0, 60, { z: 40 - (4.9 * t * t), vz: -9.8 * t, airborne: true, gravity: -9.8 })],
       ...probes,
     }));
     if (out.fire) fired = out;
@@ -1319,7 +1319,7 @@ for (const flag of ['US', 'MG', 'ID']) {
       now: 100 + t,
       self: { z: 30, azimuth: -Math.PI / 2, muzzleHeight: 1.57, muzzleForward: 3, shotSpeed: 100, speed: 0, topSpeed: 25 },
       world: { maxShots: 5, tankAngVel: Math.PI / 4 },
-      players: [enemy(0, -67, { z: 15 + h, airborne: true, gravity: 9.8, vz: 19 - (9.8 * t) })],
+      players: [enemy(0, -67, { z: 15 + h, airborne: true, gravity: -9.8, vz: 19 - (9.8 * t) })],
     }));
     if (out.fire) firedAt = t;
   }
@@ -1337,7 +1337,7 @@ for (const flag of ['US', 'MG', 'ID']) {
     flags: [redFlag],
     myBase: () => ({ x: -300, y: 0, z: 0, radius: 15 }),
     firstHit: (from) => (landsOn > 0 && from.z > landsOn ? { ...from, z: landsOn } : null),
-    players: [enemy(0, 120, { z: 8, airborne: true, gravity: 9.8, vz: 5, vx: 0, vy: -10 })],
+    players: [enemy(0, 120, { z: 8, airborne: true, gravity: -9.8, vz: 5, vx: 0, vy: -10 })],
   });
   const level = new Ace().think(view(0));
   assert.equal(level.intent.mode, 'ambush', `a landing on his level comes first (${level.intent.mode})`);
@@ -1564,7 +1564,7 @@ for (const flag of ['US', 'MG', 'ID']) {
       now: 100 + t,
       self: { muzzleHeight: 1.57, muzzleForward: 3, shotSpeed: 100, freeShots: 2 },
       world: { maxShots: 5, tankAngVel: Math.PI / 4 },
-      players: [enemy(0, 120, { z, airborne, gravity: 9.8, vz: airborne ? 19 - (9.8 * t) : 0 })],
+      players: [enemy(0, 120, { z, airborne, gravity: -9.8, vz: airborne ? 19 - (9.8 * t) : 0 })],
     }));
     if (out.fire) fired += 1;
   }

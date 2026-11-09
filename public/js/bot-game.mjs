@@ -67,6 +67,7 @@ export function motionOf(move, azimuth, config) {
     vx: air ? (Number(move.vx) || 0) : Math.cos(azimuth) * speed,
     vy: air ? (Number(move.vy) || 0) : Math.sin(azimuth) * speed,
     vz: air ? (Number(move.vv) || 0) : 0,
+    angVel: air ? 0 : (Number(move?.rs) || 0) * config.TANK_ROTATION_SPEED,
   };
 }
 

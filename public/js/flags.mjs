@@ -1973,25 +1973,27 @@ export function getFlagThrownAltitude(abbreviation) {
 // landing altitude (FlagInfo.cxx:170), so the flight always lasts
 // 2 * sqrt(2 * altitude / gravity) however far the flag has to fall; the height
 // curve below is a lerp between the two altitudes plus this parabola, so it
-// still arrives in the right place. `gravity` is bzo's positive magnitude where
-// upstream's is negative.
+// still arrives in the right place. `gravity` is BZDB's, negative down. Under
+// gravity that pulls up there is no arc -- upstream's flight time is NaN then
+// -- so the flag is simply there.
 export function computeFlagFlight(thrownAltitude, gravity) {
-  const upTime = Math.sqrt(2 * thrownAltitude / gravity);
+  if (!(gravity < 0)) return { flightEnd: 0, initialVelocity: 0 };
+  const upTime = Math.sqrt(-2 * thrownAltitude / gravity);
   return {
     flightEnd: 2 * upTime,
-    initialVelocity: gravity * upTime,
+    initialVelocity: -gravity * upTime,
   };
 }
 
 // The parabola a thrown flag follows, relative to the interpolated altitude.
 export function getFlagFlightHeight(elapsed, initialVelocity, gravity) {
-  return elapsed * (initialVelocity - 0.5 * gravity * elapsed);
+  return elapsed * (initialVelocity + 0.5 * gravity * elapsed);
 }
 
 // Where a Coming or Going flag hangs while it fades. Equals the thrown altitude
 // exactly, which is what the apex of the parabola above reaches.
 export function getFlagHoverHeight(flightEnd, initialVelocity, gravity) {
-  return 0.5 * flightEnd * (initialVelocity - 0.25 * gravity * flightEnd);
+  return 0.5 * flightEnd * (initialVelocity + 0.25 * gravity * flightEnd);
 }
 
 function lerp(from, to, t) {

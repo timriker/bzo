@@ -2298,8 +2298,9 @@ export class EffectsRendering {
     if (!tanks || deltaTime <= 0) return;
 
     const jumpVelocity = gameConfig?.JUMP_VELOCITY || 19;
-    const gravity = gameConfig?.GRAVITY || 9.8;
-    const jetTime = 0.5 * (jumpVelocity / gravity);
+    // Player.cxx:447, gravity negative down.
+    const gravity = gameConfig?.GRAVITY || -9.8;
+    const jetTime = gravity < 0 ? 0.5 * (jumpVelocity / -gravity) : 0;
 
     tanks.forEach((tank) => {
       const scale = tank?.userData?.jumpJetsScale;

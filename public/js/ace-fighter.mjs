@@ -124,6 +124,50 @@ const LASER_STANDOFF_SLACK = 60;
 // How soon Ace means to have his sights back on a foe he is tracking: the
 // angle off over this, as a turn rate, is the stick.
 const TRACK_TURN_SECONDS = 0.25;
+// A shot is taken once the barrel is within the foe's own width of where it
+// meets him -- his hit radius and the shell's -- times this.
+const LEAD_TOLERANCE = 1;
+// After a shot at the intercept, with slots to spare, one more goes where he
+// would be had he slowed to this share of his speed to let the first go by:
+// at full speed a tank can only dodge by slowing. Taken within this long of
+// the first.
+const BEHIND_SPEED = 0.5;
+const BEHIND_SECONDS = 1;
+
+// Where a shell fired from `from` now meets `target`, if he holds his speed
+// and his turn (`angVel`, radians a second): the shell flies at `shotSpeed`
+// along the barrel plus the shooter's own velocity, as every shot does.
+// `speedFactor` scales the target's speed. `{ x, y, t, aimX, aimY }`: where
+// and when they meet, and the point to put the barrel on, which is the meeting
+// less the shooter's own motion. Null past `lifetime`, or for a target the
+// shell cannot catch.
+export function interceptPoint(from, shooterVelocity, shotSpeed, target, lifetime = Infinity, speedFactor = 1) {
+  if (!(shotSpeed > 0)) return null;
+  const vx = (target.vx ?? 0) * speedFactor;
+  const vy = (target.vy ?? 0) * speedFactor;
+  const speed = Math.hypot(vx, vy);
+  const heading = Math.atan2(vy, vx);
+  const turn = target.airborne ? 0 : (target.angVel ?? 0);
+  const at = (t) => {
+    if (Math.abs(turn) < 1e-3) return { x: target.x + (vx * t), y: target.y + (vy * t) };
+    const r = speed / turn;
+    return {
+      x: target.x + (r * (Math.sin(heading + (turn * t)) - Math.sin(heading))),
+      y: target.y - (r * (Math.cos(heading + (turn * t)) - Math.cos(heading))),
+    };
+  };
+  const svx = shooterVelocity.x ?? 0;
+  const svy = shooterVelocity.y ?? 0;
+  const gap = (t) => {
+    const p = at(t);
+    return Math.hypot(p.x - from.x - (svx * t), p.y - from.y - (svy * t));
+  };
+  let t = gap(0) / shotSpeed;
+  for (let i = 0; i < 8; i += 1) t = gap(t) / shotSpeed;
+  if (!(t <= lifetime) || Math.abs(gap(t) - (shotSpeed * t)) > 1) return null;
+  const meet = at(t);
+  return { ...meet, t, aimX: meet.x - (svx * t), aimY: meet.y - (svy * t) };
+}
 // The fastest a tank backs up, as a share of its top speed: upstream's
 // `setDesiredSpeed` clamp (LocalPlayer.cxx:1096).
 const REVERSE_SPEED_SHARE = 0.5;
@@ -211,8 +255,8 @@ export class AceFighter extends AceDriver {
   // gets to. Asked twice, since the surface decides the time and the time the
   // place.
   predictLanding(ctx, p) {
-    if (!p.airborne || !(p.gravity > 0)) return null;
-    const g = p.gravity;
+    if (!p.airborne || !(p.gravity < 0)) return null;
+    const g = -p.gravity;
     const apex = p.vz > 0 ? p.z + ((p.vz * p.vz) / (2 * g)) : p.z;
     let floor = 0;
     let landing = null;
@@ -243,7 +287,7 @@ export class AceFighter extends AceDriver {
     // A level shot meets the tank only if it lands with the muzzle's height
     // inside its body.
     if (muzzleZ < landing.z || muzzleZ > landing.z + view.world.tankHeight) return null;
-    const g = p.gravity;
+    const g = -p.gravity;
     // When the body's underside comes down past the shot's height, on the way
     // down: a tank still rising through it is about to leave. A hop that never
     // gets that high is in the shot's path all along.
@@ -406,7 +450,7 @@ export class AceFighter extends AceDriver {
     }
     const muzzleZ = me.z + me.muzzleHeight;
     const tall = view.world.tankHeight;
-    const g = p.gravity;
+    const g = -p.gravity;
     const piece = (from, to) => {
       for (let a = from; a < to - 1e-6; a += INTERCEPT_PIECE_SECONDS) {
         const b = Math.min(to, a + INTERCEPT_PIECE_SECONDS);
@@ -444,15 +488,15 @@ export class AceFighter extends AceDriver {
     // much older again by the time the shot goes.
     const lead = Math.max(0, ctx.view.self.lag ?? 0) + LANDING_SHOT_BIAS
       + Math.max(0, (this.frameSeconds || 0) - (1 / 60));
-    if (!p.airborne || !(p.gravity > 0)) return p;
+    if (!p.airborne || !(p.gravity < 0)) return p;
     const first = this.predictLanding(ctx, p);
     if (!first || first.t <= lead) return null;
     return {
       ...p,
       x: p.x + (p.vx * lead),
       y: p.y + (p.vy * lead),
-      z: p.z + (p.vz * lead) - (0.5 * p.gravity * lead * lead),
-      vz: p.vz - (p.gravity * lead),
+      z: p.z + (p.vz * lead) + (0.5 * p.gravity * lead * lead),
+      vz: p.vz + (p.gravity * lead),
     };
   }
 
@@ -587,12 +631,63 @@ export class AceFighter extends AceDriver {
     const rvx = (foe.vx ?? 0) - (me.vx ?? 0);
     const rvy = (foe.vy ?? 0) - (me.vy ?? 0);
     const t = d / shotSpeed;
-    const bearing = normalizeAngle(azimuthTo(me, { x: foe.x + (rvx * t), y: foe.y + (rvy * t) }) - me.azimuth);
+    const lead = this.tuning?.aim === 'roger' ? null : this.trackPoint(ctx, foe);
+    const bearing = normalizeAngle(azimuthTo(me, lead ?? { x: foe.x + (rvx * t), y: foe.y + (rvy * t) }) - me.azimuth);
     const rx = foe.x - me.x;
     const ry = foe.y - me.y;
     const sweep = ((rx * rvy) - (ry * rvx)) / (d * d);
     const rate = this.turnRate(ctx);
     out.rotation = Math.max(-1, Math.min(1, (bearing / (rate * TRACK_TURN_SECONDS)) + (sweep / rate)));
+  }
+
+  // Where a shell fired now at `p` meets him, with his speed scaled by
+  // `factor` (`interceptPoint`): the point to put the barrel on.
+  leadPoint(ctx, p, factor = 1) {
+    const { me, view } = ctx;
+    const meet = interceptPoint(this.muzzleRay(ctx).from, { x: me.vx ?? 0, y: me.vy ?? 0 },
+      me.shotSpeed ?? view.world.shotSpeed, p, me.shotLifetime ?? Infinity, factor);
+    return meet ? { x: meet.aimX, y: meet.aimY, z: p.z, t: meet.t } : null;
+  }
+
+  // A shot at the intercept taken, slots to spare and none yet behind it.
+  behindDue(ctx, p) {
+    if (this.tuning?.behind === false) return false;
+    const last = this.leadShot;
+    const free = ctx.view.self.freeShots;
+    return Boolean(last && last.id === p.id && !last.behind && ctx.view.now - last.at < BEHIND_SECONDS
+      && Number.isFinite(free) && free >= 2);
+  }
+
+  // What the barrel tracks: the intercept, or the point behind it once that
+  // shot is due.
+  trackPoint(ctx, p) {
+    return this.behindDue(ctx, p) ? this.leadPoint(ctx, p, BEHIND_SPEED) : this.leadPoint(ctx, p);
+  }
+
+  // Ground shots go at the intercept, and then behind it (`behindDue`);
+  // `aim: 'roger'` keeps upstream's 0.3 seconds ahead.
+  aimPoints(ctx, p) {
+    if (this.tuning?.aim === 'roger') return super.aimPoints(ctx, p);
+    const lead = this.leadPoint(ctx, p);
+    if (!lead) return [];
+    if (!this.behindDue(ctx, p)) return [lead];
+    const behind = this.leadPoint(ctx, p, BEHIND_SPEED);
+    return behind ? [lead, { ...behind, behind: true }] : [lead];
+  }
+
+  // On target once the barrel is within the foe's own width of the point.
+  onTarget(ctx, p, dist, diff) {
+    if (this.tuning?.aim === 'roger') return super.onTarget(ctx, p, dist, diff);
+    const reach = (TANK.radius * getTankHitRadiusScale(p.flag ?? null)) + SHOT_COLLISION_RADIUS;
+    return diff < Math.atan2(reach * LEAD_TOLERANCE, Math.max(dist, 1));
+  }
+
+  firedAt(ctx, p, point) {
+    if (point.behind) {
+      if (this.leadShot) this.leadShot.behind = true;
+    } else {
+      this.leadShot = { id: p.id, at: ctx.view.now, behind: false };
+    }
   }
 
   // A burrowed foe is under every shell Ace fires, so the kill is driving
@@ -635,7 +730,7 @@ export class AceFighter extends AceDriver {
     if (me.inAir || !canTankJump(view.world, me.flag, me.z)) return null;
     if (!canRunOver(me.flag ?? null, 'BU', 0, me.zoned === true)) return null;
     const v = view.world.jumpVelocity;
-    const g = view.world.gravity;
+    const g = -view.world.gravity;
     if (!(v > 0) || !(g > 0)) return null;
     const t = (v + Math.sqrt((v * v) + (2 * g * Math.max(0, me.z)))) / g;
     const at = { x: foe.x + ((foe.vx ?? 0) * t), y: foe.y + ((foe.vy ?? 0) * t), z: 0 };
@@ -738,7 +833,8 @@ export class AceFighter extends AceDriver {
     out.intent.target = { ...pointOf(foe), id: foe.id };
     out.intent.mode = 'fight';
     if (ctx.me.flag === 'SW') return this.closeWithShockWave(ctx, foe, 'fight');
-    this.aimAt(ctx, azimuthTo(ctx.me, predict(foe)));
+    const lead = this.tuning?.aim === 'roger' ? null : this.trackPoint(ctx, foe);
+    this.aimAt(ctx, azimuthTo(ctx.me, lead ?? predict(foe)));
     out.speed = 0;
     return true;
   }
@@ -1292,7 +1388,7 @@ export class AceFighter extends AceDriver {
   // ground. Null when a shot in sight hits it before it lands.
   jumpArc(ctx, v) {
     const { view, me } = ctx;
-    const g = view.world.gravity;
+    const g = -view.world.gravity;
     const radius = 0.99 * TANK.radius * getTankHitRadiusScale(me.flag ?? null);
     const shots = view.shots.filter((shot) => (shot.ownerId !== me.id || shot.bounces > 0)
       && canSeeShot(me.flag, shot.flag) && !(shot.ownerZoned && !me.zoned)
@@ -1345,7 +1441,7 @@ export class AceFighter extends AceDriver {
     if (id === undefined || id === null) return null;
     const foe = this.remotePlayers(view).find((p) => p.id === id);
     if (!foe || !foe.alive || foe.paused) return null;
-    const g = view.world.gravity;
+    const g = -view.world.gravity;
     const v = view.world.jumpVelocity;
     const rate = this.turnRate(ctx);
     if (!(g > 0) || !(rate > 0)) return null;
@@ -1545,7 +1641,7 @@ export class AceFighter extends AceDriver {
     const { view, me } = ctx;
     if (me.inAir || this.jumpReach(ctx) <= 0) return false;
     const v = view.world.jumpVelocity;
-    const g = view.world.gravity;
+    const g = -view.world.gravity;
     const rise = threat.height + SHOT_COLLISION_RADIUS;
     if (rise <= 0) return true;
     const disc = (v * v) - (2 * g * rise);

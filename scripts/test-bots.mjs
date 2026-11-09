@@ -37,7 +37,7 @@ assert.equal(planBotFill({ fill: 0, humans: 0, bots: 2 }), -2);
 const CONFIG = {
   TANK_SPEED: 25,
   TANK_ROTATION_SPEED: Math.PI / 4,
-  GRAVITY: 9.8,
+  GRAVITY: -9.8,
   JUMP_VELOCITY: 19,
   ALLOW_JUMPING: true,
   MAX_BUMP_HEIGHT: 0.33,
@@ -117,7 +117,7 @@ function makeDriver(think, flag = null, baseAt = undefined) {
     driver.tick(0.05);
     peak = Math.max(peak, driver.z);
   }
-  const expected = (CONFIG.JUMP_VELOCITY ** 2) / (2 * CONFIG.GRAVITY);
+  const expected = (CONFIG.JUMP_VELOCITY ** 2) / (-2 * CONFIG.GRAVITY);
   assert.ok(Math.abs(peak - expected) < 1.5, `peak ${peak.toFixed(2)} near ${expected.toFixed(2)}`);
   assert.equal(driver.z, 0, 'back on the ground');
   assert.equal(driver.jumpDirection, null);

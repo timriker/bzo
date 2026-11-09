@@ -12,7 +12,7 @@ import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
 import { buildNavGraph } from '../public/js/nav.mjs';
 
-const JUMP = { velocity: 19, gravity: 9.8, tankSpeed: 25 };
+const JUMP = { velocity: 19, gravity: -9.8, tankSpeed: 25 };
 // A box `w` across in x and `d` in y, standing `h` tall on `base`.
 const box = (name, x, y, w, d, h, base = 0) => ({
   type: 'box',
@@ -201,7 +201,7 @@ const box = (name, x, y, w, d, h, base = 0) => ({
   const { parseBZWMap } = createRequire(import.meta.url)('../server/bzw-parse.cjs');
   const hix = parseBZWMap(new URL('../maps/hix.bzw', import.meta.url).pathname, { quiet: true });
   const nav = buildNavGraph({
-    obstacles: hix.obstacles, mapSize: hix.mapSize, jump: { velocity: 19, gravity: 9.8, tankSpeed: 25 },
+    obstacles: hix.obstacles, mapSize: hix.mapSize, jump: { velocity: 19, gravity: -9.8, tankSpeed: 25 },
   });
   const trips = [
     [{ x: 194, y: 190, z: 15 }, { x: -73, y: 224, z: 0 }],

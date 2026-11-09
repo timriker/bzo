@@ -483,6 +483,11 @@ let bootClientBuild = null;
 
 // Returns false when the page is on its way out, so the caller stops handling a
 // message meant for code that is about to be replaced.
+// Set once an `init` from a newer build has sent this page to reload: until
+// it does, nothing more from the server is handled. That `init` was never
+// taken, so `myPlayerId` is still the last connection's -- an id the server
+// may already have handed to someone else, whose join would read as ours.
+let reloadingForBuild = false;
 function checkClientBuild(build) {
   if (!build) return true;
   if (bootClientBuild === null) {
@@ -502,6 +507,7 @@ function checkClientBuild(build) {
     return true;
   }
   sessionStorage.setItem(RELOADED_FOR_KEY, build);
+  reloadingForBuild = true;
   debugLog(`client.build stale boot=${bootClientBuild} server=${build} reloading`);
   // Long enough for that line to reach the socket, short enough not to be seen.
   setTimeout(reloadWhenServerIsUp, 250);
@@ -1037,6 +1043,29 @@ function getDisplayedMatchTimeLeft() {
   const elapsed = (frameEpochMs - matchTimeReceivedAt) / 1000;
   return Math.max(0, Math.round(matchTimeLeft - elapsed));
 }
+// Who a tab plays as -- its name, team and pilot -- is the tab's own
+// (`sessionStorage`, which a reload keeps and no other tab sees), so several
+// tabs can play side by side and each comes back as itself after a restart.
+// The browser-wide copy (`localStorage`) is written too and only seeds a tab
+// that has none yet. An empty string in the tab's copy is a choice of nothing,
+// kept from falling through to another tab's.
+function readTabSetting(key) {
+  try {
+    const own = sessionStorage.getItem(key);
+    return own !== null ? own : localStorage.getItem(key);
+  } catch {
+    return null;
+  }
+}
+function writeTabSetting(key, value) {
+  try {
+    sessionStorage.setItem(key, value ?? '');
+    if (value) localStorage.setItem(key, value);
+    else localStorage.removeItem(key);
+  } catch {
+    /* ignore storage errors */
+  }
+}
 // The team row's choice, kept like the name and the tank (issue #163): a
 // server restart reloads every client onto its new build, and an observer has
 // to come back an observer. What is kept is the choice -- Automatic stays
@@ -1045,7 +1074,7 @@ function getDisplayedMatchTimeLeft() {
 const PLAYER_TEAM_STORAGE_KEY = 'playerTeam';
 function readStoredPlayerTeam() {
   try {
-    const stored = localStorage.getItem(PLAYER_TEAM_STORAGE_KEY);
+    const stored = readTabSetting(PLAYER_TEAM_STORAGE_KEY);
     return stored ? stored : null;
   } catch {
     return null;
@@ -1061,7 +1090,7 @@ function storePlayerTeamChoice(team) {
   try {
     // Map Viewer needs its map, which its own link carries; without one the
     // nearest thing is to watch.
-    localStorage.setItem(PLAYER_TEAM_STORAGE_KEY, team === PLAYER_TEAM.MAP_VIEWER ? PLAYER_TEAM.OBSERVER : team);
+    writeTabSetting(PLAYER_TEAM_STORAGE_KEY, team === PLAYER_TEAM.MAP_VIEWER ? PLAYER_TEAM.OBSERVER : team);
   } catch {
     /* ignore storage errors */
   }
@@ -4367,7 +4396,7 @@ function savePlayerMotto(motto) {
 
 function savePlayerName(name) {
   const trimmed = String(name).trim().substring(0, 20);
-  localStorage.setItem('playerName', trimmed);
+  writeTabSetting('playerName', trimmed);
   myPlayerName = trimmed;
   const entryInput = document.getElementById('entryInput');
   if (entryInput) entryInput.value = trimmed;
@@ -4375,7 +4404,7 @@ function savePlayerName(name) {
 }
 
 function getSavedJoinableName() {
-  const savedName = localStorage.getItem('playerName');
+  const savedName = readTabSetting('playerName');
   if (typeof savedName !== 'string') return '';
   const trimmed = savedName.trim();
   if (!trimmed || isDefaultPlayerName(trimmed)) return '';
@@ -4386,7 +4415,7 @@ function getDebugSenderName() {
   if (typeof myPlayerName === 'string' && myPlayerName.trim().length > 0) {
     return myPlayerName.trim();
   }
-  const savedName = localStorage.getItem('playerName');
+  const savedName = readTabSetting('playerName');
   if (typeof savedName === 'string' && savedName.trim().length > 0) {
     return savedName.trim();
   }
@@ -5973,9 +6002,11 @@ function samplePredictedAirPath(state) {
   if (!landed) {
     const initialZ = Number.isFinite(state.z) ? state.z : 0;
     const initialVV = Number.isFinite(state.verticalVelocity) ? state.verticalVelocity : 0;
-    const discriminant = (initialVV * initialVV) + (2 * gravity * initialZ);
-    if (gravity > 0 && discriminant >= 0) {
-      const landingTime = (initialVV + Math.sqrt(discriminant)) / gravity;
+    // Gravity is BZDB's, negative down; the solve wants the pull.
+    const pull = -gravity;
+    const discriminant = (initialVV * initialVV) + (2 * pull * initialZ);
+    if (pull > 0 && discriminant >= 0) {
+      const landingTime = (initialVV + Math.sqrt(discriminant)) / pull;
       if (Number.isFinite(landingTime) && landingTime > 0) {
         const landingPos = extrapolatePosition(state, landingTime);
         points.push(new THREE.Vector3(landingPos.x, landingPos.y, 0));
@@ -7885,7 +7916,7 @@ function init() {
   });
 
   // Load saved player name from localStorage
-  const savedName = localStorage.getItem('playerName');
+  const savedName = readTabSetting('playerName');
   const entryDialog = document.getElementById('entryDialog');
   const entryInput = document.getElementById('entryInput');
   if (savedName && savedName.trim().length > 0) {
@@ -8060,9 +8091,22 @@ function onNextPlayerAction(run) {
   session?.addEventListener('select', once);
 }
 
+// A kept world's format: 2 has gravity as BZDB states it, negative down. One
+// kept before that has the pull, always positive, and is turned round once
+// read.
+const KEPT_WORLD_FORMAT = 2;
+function upgradeKeptWorld(world) {
+  if (!world?.init?.config || world.format === KEPT_WORLD_FORMAT) return world;
+  const config = { ...world.init.config };
+  for (const key of ['GRAVITY', 'WINGS_GRAVITY']) {
+    if (config[key] > 0) config[key] = -config[key];
+  }
+  return { ...world, init: { ...world.init, config }, format: KEPT_WORLD_FORMAT };
+}
+
 function readOfflineWorld() {
   try {
-    const world = JSON.parse(localStorage.getItem(OFFLINE_WORLD_KEY));
+    const world = upgradeKeptWorld(JSON.parse(localStorage.getItem(OFFLINE_WORLD_KEY)));
     return world?.init?.world && world.spawns?.length > 0 ? world : null;
   } catch {
     return null;
@@ -8071,7 +8115,7 @@ function readOfflineWorld() {
 
 function writeOfflineWorld(world) {
   try {
-    localStorage.setItem(OFFLINE_WORLD_KEY, JSON.stringify(world));
+    localStorage.setItem(OFFLINE_WORLD_KEY, JSON.stringify({ ...world, format: KEPT_WORLD_FORMAT }));
   } catch {
     // A full store keeps whatever world it had.
   }
@@ -8118,7 +8162,7 @@ function noteOfflineSpawn(player) {
   if (offlinePlay || !player?.alive || !Number.isFinite(player.x)) return;
   let world = null;
   try {
-    world = JSON.parse(localStorage.getItem(OFFLINE_WORLD_KEY));
+    world = upgradeKeptWorld(JSON.parse(localStorage.getItem(OFFLINE_WORLD_KEY)));
   } catch {
     world = null;
   }
@@ -8142,7 +8186,7 @@ async function loadPracticeWorld(map) {
     if (response.ok) {
       const world = await response.json();
       try {
-        localStorage.setItem(PRACTICE_WORLD_KEY + map, JSON.stringify(world));
+        localStorage.setItem(PRACTICE_WORLD_KEY + map, JSON.stringify({ ...world, format: KEPT_WORLD_FORMAT }));
       } catch {
         // Too full to keep it: it still plays this once.
       }
@@ -8152,7 +8196,7 @@ async function loadPracticeWorld(map) {
     // Offline: the copy kept last time, if there is one.
   }
   try {
-    return JSON.parse(localStorage.getItem(PRACTICE_WORLD_KEY + map)) || null;
+    return upgradeKeptWorld(JSON.parse(localStorage.getItem(PRACTICE_WORLD_KEY + map))) || null;
   } catch {
     return null;
   }
@@ -8272,6 +8316,9 @@ function connectToServer() {
 
   ws.onclose = (event) => {
     udpChannel.close();
+    // The id was this connection's; the server hands it to the next joiner,
+    // and the next `init` gives this page its own.
+    myPlayerId = null;
     renderReadyForJoin = false;
     gameplayJoinConfirmed = false;
     activeInitSequence = 0;
@@ -8469,6 +8516,7 @@ function applyPlayerMoveMessage(message, isTeleportPacket) {
 }
 
 function handleServerMessage(message) {
+  if (reloadingForBuild) return;
   // Let the voice manager consume signaling and nearby voice state while the
   // regular game switch continues to own player, render, and chat messages.
   if (voiceManager) {
@@ -8910,7 +8958,7 @@ function receivePlayerJoined(message) {
     // otherwise replace the real one, and every later join would ask for
     // `Player n` too.
     if (!isDefaultPlayerName(myPlayerName) || isDefaultPlayerName(pendingJoinRequest?.name)) {
-      localStorage.setItem('playerName', myPlayerName);
+      writeTabSetting('playerName', myPlayerName);
     }
     pendingJoinRequest = null;
 
@@ -11962,8 +12010,8 @@ function applyLandingSquish(tank, impactSpeed = 0) {
 
   ensureTankDimensionState(tank);
 
-  const gravity = Number.isFinite(gameConfig.GRAVITY) && gameConfig.GRAVITY > 0
-    ? gameConfig.GRAVITY
+  const gravity = Number.isFinite(gameConfig.GRAVITY) && gameConfig.GRAVITY < 0
+    ? -gameConfig.GRAVITY
     : 9.8;
   const velocity = Math.max(0, impactSpeed || 0);
   let k = 0.1 / (2 * gravity * gravity);
@@ -13597,7 +13645,7 @@ let autopilotId = null;
 const AUTOPILOT_STORAGE_KEY = 'autopilot';
 function readStoredAutopilot() {
   try {
-    const id = localStorage.getItem(AUTOPILOT_STORAGE_KEY);
+    const id = readTabSetting(AUTOPILOT_STORAGE_KEY);
     return AUTOPILOTS.some((entry) => entry.id === id) ? id : null;
   } catch {
     return null;
@@ -13605,8 +13653,7 @@ function readStoredAutopilot() {
 }
 function storeAutopilot(id) {
   try {
-    if (id) localStorage.setItem(AUTOPILOT_STORAGE_KEY, id);
-    else localStorage.removeItem(AUTOPILOT_STORAGE_KEY);
+    writeTabSetting(AUTOPILOT_STORAGE_KEY, id);
   } catch {
     /* ignore storage errors */
   }
@@ -13812,13 +13859,15 @@ function getTankMotion(tank, flagType, now) {
       gravity,
       vx: data.airVelocityX || 0,
       vy: data.airVelocityY || 0,
-      vz: (data.verticalVelocity || 0) - (gravity * elapsed),
+      vz: (data.verticalVelocity || 0) + (gravity * elapsed),
     };
   }
   const azimuth = data.slideAzimuth ?? tankAzimuth(tank);
   const speed = (data.forwardSpeed || 0) * gameConfig.TANK_SPEED;
   return {
     airborne, gravity, vx: Math.cos(azimuth) * speed, vy: Math.sin(azimuth) * speed, vz: 0,
+    // Its turn, radians a second: where a shot meets it depends on it.
+    angVel: (data.rotationSpeed || 0) * gameConfig.TANK_ROTATION_SPEED,
   };
 }
 
@@ -15940,7 +15989,7 @@ function updateFlags(deltaTime) {
   // preview started, so there is nothing left to keep updating.
   if (isPreviewingAltWorld()) return;
   if (flags.size === 0 && !antidotePosition) return;
-  const gravity = Number.isFinite(gameConfig?.GRAVITY) ? gameConfig.GRAVITY : 9.8;
+  const gravity = Number.isFinite(gameConfig?.GRAVITY) ? gameConfig.GRAVITY : -9.8;
 
   flags.forEach((flag) => {
     if (flag.status === FLAG_STATUS.NO_EXIST) return;
@@ -18124,7 +18173,7 @@ function extrapolatePosition(player, dt) {
     // Apply gravity to vertical velocity. Wings falls at _wingsGravity, which is
     // the world's own unless a server has said otherwise.
     const gravity = hasAirControl(flagType) ? gameConfig.WINGS_GRAVITY : gameConfig.GRAVITY;
-    const vv = (verticalVelocity || 0) - gravity * dt;
+    const vv = (verticalVelocity || 0) + gravity * dt;
     const dz = ((verticalVelocity || 0) + vv) / 2 * dt; // Average velocity over dt
 
     return {
