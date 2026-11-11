@@ -6,6 +6,31 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
 
 ## [Unreleased]
 
+## [1.3.98] - 2026-11-11
+
+### Added
+- Chat in your language: in a browser that can translate on the device
+  (Chrome, Edge), chat in another language arrives translated, with
+  **Show original** beside it and **Translate** the first time a language
+  is needed. BZFlag clients get an English copy of a line they could not
+  draw at all.
+- Matrix: a pinned status with the map, game type, counts and who is
+  playing, kept up to date; joins and leaves are grey notices, apart from
+  chat.
+
+### Changed
+- Ace dodges on the ground: he sees shots coming off walls, uses walls as
+  cover, and jumps only when nothing else escapes and the landing is out of
+  sight -- far fewer deaths in the air.
+- Ace shoots more, banks Lasers off walls, curves Guided Missiles round
+  buildings, snipes with Laser from range, and goes after the score leader
+  only when nobody nearer is in the fight.
+- Ace hunts flags on the way to his target, avoids unknown flags where bad
+  ones stick, keeps moving rather than spinning, and gets unstuck from
+  corners sooner.
+- hix: 50 random flags and three of every good one, so about one flag in
+  eight is bad.
+
 ## [1.3.97] - 2026-11-09
 
 ### Added
