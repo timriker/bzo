@@ -132,6 +132,10 @@ msgid "Drag across the history while chat is open to select it, then copy; typin
 msgstr ""
 
 #: docs/help/controls.md
+msgid "Chat in another language arrives in yours where the browser can translate it on the device: `Show original` beside a translated line shows the words as written, and `Translate` fetches a language the first time it is needed"
+msgstr ""
+
+#: docs/help/controls.md
 msgid "View and panels"
 msgstr ""
 

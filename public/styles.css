@@ -339,6 +339,28 @@ body.chat-active #chatInput {
   color: var(--chat-kind-direct-out);
 }
 
+/* A translated line's Show original, and Translate on a line whose language
+   pack is not on the device yet: small, after the words, and plainly
+   something to press without drawing the eye from the chat itself. */
+#chatMessages .chat-translate {
+  margin-left: 0.5em;
+  padding: 0 0.35em;
+  font: inherit;
+  font-size: 0.8em;
+  color: inherit;
+  opacity: 0.65;
+  background: transparent;
+  border: 1px solid currentColor;
+  border-radius: 0.3em;
+  cursor: pointer;
+  vertical-align: baseline;
+}
+
+#chatMessages .chat-translate:hover,
+#chatMessages .chat-translate:focus-visible {
+  opacity: 1;
+}
+
 /* When a line arrived, in front of it. The window is monospace, so the stamps
    line up into a column on their own and the words start at the same place on
    every line. `pre` rather than the line's own `pre-wrap`, so a line long

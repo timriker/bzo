@@ -11270,7 +11270,7 @@ function handleServerCommand(player, text, channel = ALL_PLAYERS) {
 // `targetId` is a player id, or one of upstream's addresses above them -- 254
 // all, 253 the server's log, 252 the admin channel, 251 down to 244 a team
 // (server/player-ids.cjs).
-function deliverChatMessage(player, targetId, msgType, rawText) {
+function deliverChatMessage(player, targetId, msgType, rawText, english = null) {
   const fromId = player.id;
   const fromName = player.name;
 
@@ -11290,6 +11290,10 @@ function deliverChatMessage(player, targetId, msgType, rawText) {
   const raw = pluginEvent('bz_eRawChatMessageEvent', () => chatData(rawText));
   const text = raw ? String(raw.message ?? '') : rawText;
   if (!text) return;
+  // The writer's English copy goes beside the line for BZFlag clients
+  // (`bzflag-native`), and only as long as the line is still what they wrote:
+  // one a plugin has changed is sent as it now reads, without it.
+  const en = english && text === rawText ? { en: english } : {};
   // bz_eFilteredChatMessageEvent, once a line has gone to whoever it was for:
   // the line as they read it, which a plugin only hears. Upstream fires it
   // from `/msg` alone (commands.cxx:1044); here every delivered line does.
@@ -11333,6 +11337,7 @@ function deliverChatMessage(player, targetId, msgType, rawText) {
       dst: ALL_PLAYERS,
       msgType,
       text,
+      ...en,
       ts: Date.now(),
     });
     delivered();
@@ -11355,6 +11360,7 @@ function deliverChatMessage(player, targetId, msgType, rawText) {
       dst: targetId,
       msgType,
       text,
+      ...en,
       ts: Date.now(),
     };
     const encoded = JSON.stringify(payload);
@@ -11383,6 +11389,7 @@ function deliverChatMessage(player, targetId, msgType, rawText) {
       dst: ADMIN_PLAYERS,
       msgType,
       text,
+      ...en,
       ts: Date.now(),
     });
     // The sender is included, as they are for team chat: a message you cannot
@@ -11404,6 +11411,7 @@ function deliverChatMessage(player, targetId, msgType, rawText) {
       dst: targetId,
       msgType,
       text,
+      ...en,
       ts: Date.now(),
     };
     if (targetPlayer && targetPlayer.ws && targetPlayer.ws.readyState === 1) {

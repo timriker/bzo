@@ -133,7 +133,10 @@ import {
   teamChannel,
 } from './player-ids.mjs';
 import { getMenuClickDirection, playMenuBackSound, playMenuSelectSound, setMenuSoundPlayer } from './menus.js';
-import { N_, onLocaleChange, reloadLocale, t, translateServerText } from './i18n.mjs';
+import { getLocale, N_, onLocaleChange, reloadLocale, t, translateServerText } from './i18n.mjs';
+import {
+  chatTranslationSupported, downloadTranslator, englishCopy, translateLine,
+} from './chat-translate.mjs';
 import { initHelpPanel } from './help.js';
 
 setMenuSoundPlayer((name) => renderManager.playLocalSound(name));
@@ -315,6 +318,7 @@ import {
   getRunOverRadius,
   getRunOverSeparation,
   configureFlagEffects,
+  FLAG_ABBREVIATIONS,
 } from './flags.mjs';
 import { steerGuidedShot, pickTargetInSights, getFlagFlightState } from './flags.mjs';
 import { pickObstacle } from './world-pick.mjs';
@@ -3414,6 +3418,66 @@ function addChatEntry(tabIds, text, kind = CHAT_KIND_MISC, segments = null) {
   });
   if (uniqueTabIds.some((tabId) => CHAT_CACHE_TABS.includes(tabId))) scheduleChatCacheSave();
   chatWindowDirty = true;
+  return entry;
+}
+
+// Chat in the reader's language (docs/chat-translation-plan.md): a line from
+// another player, or from Matrix or Discord, translated on the device where
+// the browser can, with the words as written a tap away. The callsigns in the
+// game and the flag abbreviations are held out of what is translated.
+function chatTranslationContext() {
+  const names = [];
+  tanks.forEach((tank) => {
+    const name = tank?.userData?.playerState?.name;
+    if (name) names.push(name);
+  });
+  return { names, flags: FLAG_ABBREVIATIONS };
+}
+
+// Lines waiting on a language pack still to be downloaded, by language.
+const chatTranslationOffers = new Map();
+// Counts each translation that lands, for the XR panel, which redraws only
+// when its signature changes.
+let chatTranslationsLanded = 0;
+
+function translateChatEntry(entry, body) {
+  if (!chatTranslationSupported() || !body) return;
+  entry.body = body;
+  translateLine(body, getLocale(), chatTranslationContext()).then((result) => {
+    if (!result) return;
+    if (result.offer) {
+      entry.translateOffer = result.offer;
+      if (!chatTranslationOffers.has(result.offer)) chatTranslationOffers.set(result.offer, []);
+      chatTranslationOffers.get(result.offer).push(entry);
+    } else {
+      entry.translateOffer = null;
+      entry.translation = result.text;
+      chatTranslationsLanded += 1;
+    }
+    chatWindowDirty = true;
+    updateChatWindow();
+  });
+}
+
+// A click on a line's Translate: the user gesture a pack's download needs.
+// Every line waiting on that language is translated once it is in.
+function acceptChatTranslation(from) {
+  const waiting = chatTranslationOffers.get(from) || [];
+  chatTranslationOffers.delete(from);
+  waiting.forEach((entry) => { entry.translateOffer = null; });
+  chatWindowDirty = true;
+  updateChatWindow();
+  downloadTranslator(from, getLocale()).then(() => {
+    waiting.forEach((entry) => translateChatEntry(entry, entry.body));
+  }).catch(() => {});
+}
+
+// What a line shows of `text`, one of its runs: the translation in place of
+// the words as written, unless the reader asked for those.
+function chatRunText(msg, text, isLast) {
+  if (!isLast || !msg.translation || msg.showOriginal || !msg.body) return text;
+  const at = text.lastIndexOf(msg.body);
+  return at < 0 ? text : `${text.slice(0, at)}${msg.translation}${text.slice(at + msg.body.length)}`;
 }
 
 // `sessionStorage` rather than `localStorage`, because the transcript belongs
@@ -3984,9 +4048,24 @@ function sendChatInputText() {
   }
   const endpoint = normalizeMessageEndpoint(chatTarget.value, CHAT_TARGET_ALL);
   const dst = endpoint === CHAT_TARGET_TEAM ? teamChannel(getMyTeamColorIndex() ?? 0) : endpoint;
-  sendToServer({ type: 'message', dst, msgType: CHAT_KIND_CHAT, text });
   chatInput.value = '';
+  const payload = { type: 'message', dst, msgType: CHAT_KIND_CHAT, text };
+  if (text.startsWith('/') || !chatTranslationSupported()) {
+    sendToServer(payload);
+    return;
+  }
+  // A line not in English goes with an English copy, for the BZFlag clients
+  // that draw only ASCII (docs/chat-translation-plan.md). In turn, so a
+  // quick second line cannot pass the first; never held up for long.
+  chatSendQueue = chatSendQueue.then(() => Promise.race([
+    englishCopy(text, chatTranslationContext()),
+    new Promise((resolve) => { setTimeout(() => resolve(null), CHAT_ENGLISH_WAIT_MS); }),
+  ])).then((en) => sendToServer(en ? { ...payload, en } : payload));
 }
+
+// How long a line waits for its English copy before it goes without one.
+const CHAT_ENGLISH_WAIT_MS = 1500;
+let chatSendQueue = Promise.resolve();
 
 function toggleChatEntry() {
   if (chatActive) {
@@ -9466,7 +9545,16 @@ function receiveMessage(message) {
   // looks like one is a player talking.
   if (srcId === CHAT_TARGET_SERVER) applyFlagInfoLine(message.text);
   const formatted = formatNetworkMessage(message);
-  addChatEntry(formatted.tabs, formatted.text, formatted.kind, formatted.segments);
+  const entry = addChatEntry(formatted.tabs, formatted.text, formatted.kind, formatted.segments);
+  // A player's words, or a line from Matrix or Discord, but never the
+  // server's -- those are catalog strings, translated exactly -- and never
+  // the reader's own.
+  if (message.relay) {
+    translateChatEntry(entry, message.relay.text);
+  } else if ((message.msgType === CHAT_KIND_CHAT || message.msgType === CHAT_KIND_ACTION)
+    && typeof srcId === 'string' && srcId !== myPlayerId) {
+    translateChatEntry(entry, typeof message.text === 'string' ? message.text : '');
+  }
   updateChatWindow();
 }
 
@@ -16977,7 +17065,7 @@ function ensureXRChatOverlay() {
   const unreadCount = tabs.filter((tab) => tab.id !== chatState.activeTab && chatState.unread[tab.id]).length;
   const activeMessages = chatState.messages[chatState.activeTab] || [];
   const signature = `${chatState.activeTab}|${unreadCount}|${activeMessages.length}|`
-    + `${activeMessages[activeMessages.length - 1]?.seq ?? ''}|${activeTab?.label ?? ''}`;
+    + `${activeMessages[activeMessages.length - 1]?.seq ?? ''}|${activeTab?.label ?? ''}|${chatTranslationsLanded}`;
   if (xrChatPanel.signature === signature) return;
   xrChatPanel.signature = signature;
 
@@ -17030,12 +17118,16 @@ function ensureXRChatOverlay() {
   for (let index = activeMessages.length - 1; index >= 0 && rows.length < CHAT_VISIBLE_MESSAGES; index -= 1) {
     const msg = activeMessages[index];
     const kindColor = getChatKindColor(msg.kind);
+    // A translated line in the reader's language here too: the panel has no
+    // Show original, which the flat chat keeps.
+    const lastWithBody = msg.segments && msg.body
+      ? msg.segments.map((segment) => (segment.text || '').includes(msg.body)).lastIndexOf(true) : -1;
     const runs = msg.segments
-      ? msg.segments.map((segment) => ({
-        text: segment.text || '',
+      ? msg.segments.map((segment, segmentIndex) => ({
+        text: chatRunText(msg, segment.text || '', segmentIndex === lastWithBody),
         color: segment.color ? colorToCSS(segment.color) : kindColor,
       }))
-      : [{ text: msg.text || '', color: kindColor }];
+      : [{ text: chatRunText(msg, msg.text || '', true), color: kindColor }];
     let lines = wrapRuns(ctx, runs, maxWidth);
     if (lines.length > XR_CHAT_ROWS_PER_LINE) {
       lines = lines.slice(0, XR_CHAT_ROWS_PER_LINE);
@@ -18109,16 +18201,40 @@ function updateChatWindow() {
       // written here have always used CSS strings, and a segment describing a
       // player carries the packed integer every other part of bzo colours a
       // player with.
-      msg.segments.forEach((segment) => {
+      const lastWithBody = msg.body ? msg.segments.map((segment) => segment.text.includes(msg.body)).lastIndexOf(true) : -1;
+      msg.segments.forEach((segment, index) => {
         const span = document.createElement('span');
-        span.textContent = segment.text;
+        span.textContent = chatRunText(msg, segment.text, index === lastWithBody);
         if (segment.color) span.style.color = colorToCSS(segment.color);
         div.appendChild(span);
       });
     } else {
       // Appended rather than set as the line's `textContent`, which would take
       // the stamp with it.
-      div.appendChild(document.createTextNode(msg.text));
+      div.appendChild(document.createTextNode(chatRunText(msg, msg.text, true)));
+    }
+    // A translated line's switch back to the words as written, and a line in
+    // a language whose pack is not yet on the device, its Translate.
+    if (msg.translation || msg.translateOffer) {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'chat-translate';
+      if (msg.translation) {
+        button.textContent = msg.showOriginal ? t('Show translation') : t('Show original');
+        button.addEventListener('click', (event) => {
+          event.stopPropagation();
+          msg.showOriginal = !msg.showOriginal;
+          chatWindowDirty = true;
+          updateChatWindow();
+        });
+      } else {
+        button.textContent = t('Translate');
+        button.addEventListener('click', (event) => {
+          event.stopPropagation();
+          acceptChatTranslation(msg.translateOffer);
+        });
+      }
+      div.appendChild(button);
     }
     chatMessagesDiv.appendChild(div);
   });

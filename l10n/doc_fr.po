@@ -207,6 +207,13 @@ msgstr ""
 "puis copie ; la saisie continue dans le champ"
 
 #: docs/help/controls.md
+msgid ""
+"Chat in another language arrives in yours where the browser can translate it "
+"on the device: `Show original` beside a translated line shows the words as "
+"written, and `Translate` fetches a language the first time it is needed"
+msgstr ""
+
+#: docs/help/controls.md
 msgid "View and panels"
 msgstr "Vue et panneaux"
 
@@ -244,7 +251,9 @@ msgstr ""
 msgid ""
 "`X` — slow keyboard: driving and turning with the keys go at half speed, and "
 "back"
-msgstr "`X` — clavier lent : avancer et tourner au clavier se fait à mi-vitesse, et retour"
+msgstr ""
+"`X` — clavier lent : avancer et tourner au clavier se fait à mi-vitesse, et "
+"retour"
 
 #: docs/help/controls.md
 #, fuzzy

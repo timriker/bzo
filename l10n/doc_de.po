@@ -207,6 +207,13 @@ msgstr ""
 "ihn dann; Tippen geht im Eingabefeld weiter"
 
 #: docs/help/controls.md
+msgid ""
+"Chat in another language arrives in yours where the browser can translate it "
+"on the device: `Show original` beside a translated line shows the words as "
+"written, and `Translate` fetches a language the first time it is needed"
+msgstr ""
+
+#: docs/help/controls.md
 msgid "View and panels"
 msgstr "Ansicht und Panels"
 
@@ -243,7 +250,9 @@ msgstr ""
 msgid ""
 "`X` — slow keyboard: driving and turning with the keys go at half speed, and "
 "back"
-msgstr "`X` — langsame Tastatur: Fahren und Drehen mit den Tasten mit halber Geschwindigkeit, und zurück"
+msgstr ""
+"`X` — langsame Tastatur: Fahren und Drehen mit den Tasten mit halber "
+"Geschwindigkeit, und zurück"
 
 #: docs/help/controls.md
 #, fuzzy

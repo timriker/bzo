@@ -656,8 +656,10 @@ class NativeTranslator {
         if (!this.accepted) break;
         // As the proxy speaks to a bzfs: folded to the ASCII a BZFlag client
         // draws, and a line longer than `MessageLen` as several. A line with
-        // nothing left after the fold is not sent.
-        for (const piece of splitBzfsChat(toBzfsChatText(message.text ?? ''))) {
+        // nothing left after the fold is not sent. A line not in English
+        // that came with the writer's English copy is read in that, which
+        // folds to something (docs/chat-translation-plan.md).
+        for (const piece of splitBzfsChat(toBzfsChatText(message.en ?? message.text ?? ''))) {
           const w = new Writer(piece.length + 4)
             .u8(this.sourceSlot(message.src))
             .u8(this.sourceSlot(message.dst))

@@ -113,6 +113,17 @@ BZFlag native client, whose wire is ASCII.
 - Translating what a player sends for other bzo readers or for the bridges:
   only BZFlag clients get the English copy above.
 
+## Built
+
+Steps 1 to 3, in `public/js/chat-translate.mjs`: incoming chat, team chat,
+direct messages and lines from Matrix and Discord are translated on the
+device, with **Show original** and **Translate** on the line (and the
+translation, with no button, on the XR panel); callsigns, `@names`,
+`/commands`, links and flag abbreviations are held out; and a line not in
+English is sent with an English copy (`en`) that a BZFlag client, and a
+proxied bzfs, read in its place. Tested against stand-ins for the APIs
+(`scripts/test-chat-translate.mjs`), not yet in Chrome itself.
+
 ## Order of Work
 
 1. Translation of incoming chat lines where the browser has the API, with

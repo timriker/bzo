@@ -203,6 +203,13 @@ msgstr ""
 "c4rr135 0n 1n 73h 1npu7"
 
 #: docs/help/controls.md
+msgid ""
+"Chat in another language arrives in yours where the browser can translate it "
+"on the device: `Show original` beside a translated line shows the words as "
+"written, and `Translate` fetches a language the first time it is needed"
+msgstr ""
+
+#: docs/help/controls.md
 msgid "View and panels"
 msgstr "V13w 4nd p4n3l5"
 
@@ -239,7 +246,9 @@ msgstr ""
 msgid ""
 "`X` — slow keyboard: driving and turning with the keys go at half speed, and "
 "back"
-msgstr "`X` — 5l0w k3yb04rd: dr1v1n6 4nd 7urn1n6 w17h 7h3 k3y5 60 47 h4lf 5p33d, 4nd b4ck"
+msgstr ""
+"`X` — 5l0w k3yb04rd: dr1v1n6 4nd 7urn1n6 w17h 7h3 k3y5 60 47 h4lf 5p33d, 4nd "
+"b4ck"
 
 #: docs/help/controls.md
 #, fuzzy

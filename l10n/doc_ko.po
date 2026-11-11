@@ -199,6 +199,13 @@ msgstr ""
 "란에서 그대로 계속돼요"
 
 #: docs/help/controls.md
+msgid ""
+"Chat in another language arrives in yours where the browser can translate it "
+"on the device: `Show original` beside a translated line shows the words as "
+"written, and `Translate` fetches a language the first time it is needed"
+msgstr ""
+
+#: docs/help/controls.md
 msgid "View and panels"
 msgstr "화면과 패널"
 
@@ -233,7 +240,8 @@ msgstr ""
 msgid ""
 "`X` — slow keyboard: driving and turning with the keys go at half speed, and "
 "back"
-msgstr "`X` — 느린 키보드: 키로 하는 주행과 회전이 절반 속도로, 다시 누르면 원래대로"
+msgstr ""
+"`X` — 느린 키보드: 키로 하는 주행과 회전이 절반 속도로, 다시 누르면 원래대로"
 
 #: docs/help/controls.md
 #, fuzzy

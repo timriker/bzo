@@ -196,6 +196,13 @@ msgid ""
 msgstr "聊天打开时在记录上拖动即可选中并复制；输入框中的输入不受影响"
 
 #: docs/help/controls.md
+msgid ""
+"Chat in another language arrives in yours where the browser can translate it "
+"on the device: `Show original` beside a translated line shows the words as "
+"written, and `Translate` fetches a language the first time it is needed"
+msgstr ""
+
+#: docs/help/controls.md
 msgid "View and panels"
 msgstr "视图与面板"
 

@@ -75,4 +75,16 @@ assert.ok(update, 'and a MsgGMUpdate');
 assert.equal(update.payload.readUInt8(0), 253);
 assert.equal(update.payload.readUInt8(update.payload.length - 1), 7, 'naming the target');
 
+// Chat a BZFlag client cannot draw -- Cyrillic folds to nothing -- is read in
+// the writer's English copy where the line came with one, and dropped as
+// before where it did not (docs/chat-translation-plan.md).
+const chatTo = (message) => {
+  frames.length = 0;
+  translator.handle({ type: 'message', src: '3', dst: -1, msgType: 'chat', ts: 0, ...message });
+  return frames.filter((frame) => frame.code === 'mg').map((frame) => frame.payload.subarray(3).toString('latin1').replace(/\0+$/, ''));
+};
+assert.deepEqual(chatTo({ text: 'привет всем' }), [], 'a line that folds to nothing is not sent');
+assert.deepEqual(chatTo({ text: 'привет всем', en: 'hello everyone' }), ['hello everyone'], 'its English copy is');
+assert.deepEqual(chatTo({ text: 'hello' }), ['hello'], 'a plain line as written');
+
 console.log('test-bzflag-native: ok');

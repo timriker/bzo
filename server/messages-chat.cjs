@@ -69,7 +69,11 @@ function handleMessage(player, ws, message) {
   // announce itself to the room as chat.
   if (handleServerCommand(player, text, targetId)) return;
 
-  deliverChatMessage(player, targetId, msgType, text);
+  // The writer's own English copy of a line not in English, made in their
+  // browser for the BZFlag clients that draw only ASCII
+  // (docs/chat-translation-plan.md): held to the same length as the line.
+  const en = typeof message.en === 'string' ? clipChatText(message.en.trim()).trim() : '';
+  deliverChatMessage(player, targetId, msgType, text, en && en !== text ? en : null);
   return;
 }
 

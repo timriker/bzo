@@ -63,6 +63,9 @@ is the main key with the same character. Keypad `Enter` shoots either way.
 - `End` — jump chat to newest message
 - Drag across the history while chat is open to select it, then copy;
   typing carries on in the input
+- Chat in another language arrives in yours where the browser can translate
+  it on the device: `Show original` beside a translated line shows the words
+  as written, and `Translate` fetches a language the first time it is needed
 
 ### View and panels
 

@@ -207,6 +207,13 @@ msgstr ""
 "psaní pokračuje ve vstupním poli"
 
 #: docs/help/controls.md
+msgid ""
+"Chat in another language arrives in yours where the browser can translate it "
+"on the device: `Show original` beside a translated line shows the words as "
+"written, and `Translate` fetches a language the first time it is needed"
+msgstr ""
+
+#: docs/help/controls.md
 msgid "View and panels"
 msgstr "Pohled a panely"
 
@@ -243,7 +250,9 @@ msgstr ""
 msgid ""
 "`X` — slow keyboard: driving and turning with the keys go at half speed, and "
 "back"
-msgstr "`X` — pomalá klávesnice: jízda a otáčení klávesami poloviční rychlostí, a zpět"
+msgstr ""
+"`X` — pomalá klávesnice: jízda a otáčení klávesami poloviční rychlostí, a "
+"zpět"
 
 #: docs/help/controls.md
 #, fuzzy

@@ -209,6 +209,13 @@ msgstr ""
 "набор текста при этом продолжается в поле ввода"
 
 #: docs/help/controls.md
+msgid ""
+"Chat in another language arrives in yours where the browser can translate it "
+"on the device: `Show original` beside a translated line shows the words as "
+"written, and `Translate` fetches a language the first time it is needed"
+msgstr ""
+
+#: docs/help/controls.md
 msgid "View and panels"
 msgstr "Вид и панели"
 
@@ -244,7 +251,9 @@ msgstr ""
 msgid ""
 "`X` — slow keyboard: driving and turning with the keys go at half speed, and "
 "back"
-msgstr "`X` — медленная клавиатура: езда и повороты клавишами вдвое медленнее, и обратно"
+msgstr ""
+"`X` — медленная клавиатура: езда и повороты клавишами вдвое медленнее, и "
+"обратно"
 
 #: docs/help/controls.md
 #, fuzzy

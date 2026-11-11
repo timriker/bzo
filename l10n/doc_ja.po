@@ -200,6 +200,13 @@ msgstr ""
 "力欄でそのまま続けられます"
 
 #: docs/help/controls.md
+msgid ""
+"Chat in another language arrives in yours where the browser can translate it "
+"on the device: `Show original` beside a translated line shows the words as "
+"written, and `Translate` fetches a language the first time it is needed"
+msgstr ""
+
+#: docs/help/controls.md
 msgid "View and panels"
 msgstr "表示とパネル"
 
@@ -234,7 +241,9 @@ msgstr ""
 msgid ""
 "`X` — slow keyboard: driving and turning with the keys go at half speed, and "
 "back"
-msgstr "`X` — スローキーボード：キーでの走行と旋回を半分の速さにする。もう一度で元に戻る"
+msgstr ""
+"`X` — スローキーボード：キーでの走行と旋回を半分の速さにする。もう一度で元に"
+"戻る"
 
 #: docs/help/controls.md
 #, fuzzy

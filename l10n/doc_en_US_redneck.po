@@ -202,6 +202,13 @@ msgstr ""
 "keeps on goin' in the input"
 
 #: docs/help/controls.md
+msgid ""
+"Chat in another language arrives in yours where the browser can translate it "
+"on the device: `Show original` beside a translated line shows the words as "
+"written, and `Translate` fetches a language the first time it is needed"
+msgstr ""
+
+#: docs/help/controls.md
 msgid "View and panels"
 msgstr "Lookin' an' panels"
 
@@ -238,7 +245,9 @@ msgstr ""
 msgid ""
 "`X` — slow keyboard: driving and turning with the keys go at half speed, and "
 "back"
-msgstr "`X` — slow keyboard: drivin' an' turnin' with the keys go half as fast, an' back agin"
+msgstr ""
+"`X` — slow keyboard: drivin' an' turnin' with the keys go half as fast, an' "
+"back agin"
 
 #: docs/help/controls.md
 #, fuzzy

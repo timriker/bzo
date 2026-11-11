@@ -1772,7 +1772,11 @@ async function handleProxyConnection(ws, req, request) {
     // also how an upstream client sends them -- an ordinary chat line that
     // bzfs reads as a command.
     if (message.type === 'message') {
-      const typed = typeof message.text === 'string' ? message.text.trim() : '';
+      // A line not in English that came with the writer's English copy goes
+      // out in that: everyone on a bzfs reads ASCII
+      // (docs/chat-translation-plan.md).
+      const said = typeof message.en === 'string' && message.en.trim() ? message.en : message.text;
+      const typed = typeof said === 'string' ? said.trim() : '';
       if (typed.length === 0) return;
       // bzfs reads a chat line byte by byte and kicks for anything its own
       // character classes do not recognise, which is everything above ASCII

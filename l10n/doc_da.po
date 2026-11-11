@@ -205,6 +205,13 @@ msgstr ""
 "det, du skriver, fortsætter i inputfeltet"
 
 #: docs/help/controls.md
+msgid ""
+"Chat in another language arrives in yours where the browser can translate it "
+"on the device: `Show original` beside a translated line shows the words as "
+"written, and `Translate` fetches a language the first time it is needed"
+msgstr ""
+
+#: docs/help/controls.md
 msgid "View and panels"
 msgstr "Visning og paneler"
 
@@ -241,7 +248,9 @@ msgstr ""
 msgid ""
 "`X` — slow keyboard: driving and turning with the keys go at half speed, and "
 "back"
-msgstr "`X` — langsomt tastatur: kørsel og drejning med tasterne går med halv fart, og tilbage"
+msgstr ""
+"`X` — langsomt tastatur: kørsel og drejning med tasterne går med halv fart, "
+"og tilbage"
 
 #: docs/help/controls.md
 #, fuzzy

@@ -209,6 +209,13 @@ msgstr ""
 "nukopijuok; rašymas tęsiasi įvesties lauke"
 
 #: docs/help/controls.md
+msgid ""
+"Chat in another language arrives in yours where the browser can translate it "
+"on the device: `Show original` beside a translated line shows the words as "
+"written, and `Translate` fetches a language the first time it is needed"
+msgstr ""
+
+#: docs/help/controls.md
 msgid "View and panels"
 msgstr "Vaizdas ir skydeliai"
 
@@ -245,7 +252,9 @@ msgstr ""
 msgid ""
 "`X` — slow keyboard: driving and turning with the keys go at half speed, and "
 "back"
-msgstr "`X` — lėta klaviatūra: važiavimas ir sukimasis klavišais perpus lėtesni, ir atgal"
+msgstr ""
+"`X` — lėta klaviatūra: važiavimas ir sukimasis klavišais perpus lėtesni, ir "
+"atgal"
 
 #: docs/help/controls.md
 #, fuzzy
