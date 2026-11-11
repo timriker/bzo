@@ -186,9 +186,10 @@ Upstream's, by its names:
 - Map: `bz_registerCustomMapObject`, `bz_removeCustomMapObject`,
   `bz_CustomZoneObject`.
 - Web: `bzhttp_RegisterVDir`, `bzhttp_RemoveVDir`, `bzhttp_RemoveAllVdirs`.
-- Server: `bz_getPublicDescription`, the server's title, and
+- Server: `bz_getPublicDescription`, the server's title,
   `bz_getPublicAddr`, the first `publicUrl` -- a URL, where upstream's is
-  host:port.
+  host:port -- and `bz_getGameType`, one of `eFFAGame` (team free-for-all),
+  `eOpenFFAGame`, `eCTFGame` or `eRabbitGame`.
 
 bzo's own:
 
@@ -198,6 +199,8 @@ bzo's own:
   the server message `[network] name: text`; bzo's own puts it with the chat.
 - `bz_getDataDir()` is the directory `server.json` is in, where a plugin
   keeps what it saves; an upgrade keeps it.
+- `bz_getMapName()` is the map being played, by its file name without
+  `.bzw`, or `random` for a generated world.
 - `bz_runCommand(line, { callsign, bzid, admin, via })` runs a slash command
   for a linked account on another network, as a player who is not in the
   game, and resolves to the lines it answered. A BZID banned here runs

@@ -137,11 +137,24 @@ const sync = (next, events = [], state = []) => ({
     formatted_body: '<b>@Tim Riker</b>: hi @room &#60;b&#62;<br>* <b>+Red</b> drives off',
     'm.mentions': {},
   });
-  // A join or leave: no speaker, in italics.
+  // A join or leave: no speaker, a notice of its own, in grey italics.
   bridge.event('Tim joined, p 1 b 4');
   await clock.run();
+  assert.equal(server.sent.at(-1).msgtype, 'm.notice');
   assert.equal(server.sent.at(-1).body, 'Tim joined, p 1 b 4');
-  assert.equal(server.sent.at(-1).formatted_body, '<i>Tim joined, p 1 b 4</i>');
+  assert.equal(server.sent.at(-1).formatted_body,
+    '<font color="#888888" data-mx-color="#888888"><i>Tim joined, p 1 b 4</i></font>');
+  // Chat and a join together: never one message, each run its own, in order.
+  const before = server.sent.length;
+  bridge.relay('Tim Riker', 'gg', 'chat', '@');
+  bridge.event('Ann joined, p 2');
+  bridge.relay('Tim Riker', 'hi Ann', 'chat', '@');
+  await clock.run();
+  assert.deepEqual(server.sent.slice(before).map((sent) => [sent.msgtype, sent.body]), [
+    ['m.text', '@Tim Riker: gg'],
+    ['m.notice', 'Ann joined, p 2'],
+    ['m.text', '@Tim Riker: hi Ann'],
+  ]);
   bridge.stop();
 }
 
@@ -767,7 +780,7 @@ const sync = (next, events = [], state = []) => ({
   assert.deepEqual(ran.map((each) => each.server + each.line), ['gus.rikers.org:5154/help']);
   assert.deepEqual(notices.slice(heard).map((notice) => notice.body), [
     '/help on gus.rikers.org:5154; !use <server> changes it.',
-    'gus.rikers.org:5154: /help\ngus.rikers.org:5154 answers /help',
+    'gus.rikers.org:5154 answers /help',
   ], 'the server that answers direct rooms says so, the one picked answers');
   heard = notices.length;
   await both('!help');
@@ -848,6 +861,63 @@ const sync = (next, events = [], state = []) => ({
   await ops.heard({ roomId: '!ops2', event: { type: 'org.bzflag.server' } });
   assert.equal(ops2.directs, true);
   assert.equal(ops.directs, false);
+}
+
+// The pinned status: the map, the game type and who is in, posted and
+// pinned once, then edited in place, and only when it says something new.
+{
+  const { createMatrixStatus, statusText } = require('../plugins/matrix/status.cjs');
+  let present = [
+    { team: 1, callsign: 'Bob', verified: true }, { team: 2, callsign: '\u001b[31mAlice', admin: true },
+    { team: 7, callsign: 'Watcher' }, { team: 1, bot: true, callsign: 'Ace1' },
+  ];
+  const bz = {
+    eObservers: 7,
+    bz_getPlayerIndexList: () => present.map((record, id) => id),
+    bz_getPlayerByIndex: (id) => present[id],
+    bz_getMapName: () => 'hix',
+    bz_getGameType: () => 2,
+  };
+  assert.equal(statusText(bz), 'hix, ctf, 2p 1o 1b, @Alice, +Bob');
+  const calls = [];
+  let pinned = ['$other'];
+  let next = 0;
+  const client = {
+    roomId: '!room',
+    async api(method, path, options = {}) {
+      calls.push({ method, path, body: options.body });
+      if (path.endsWith('/state/m.room.pinned_events')) {
+        if (method === 'PUT') pinned = options.body.pinned;
+        return { ok: true, status: 200, data: { pinned } };
+      }
+      return { ok: true, status: 200, data: { event_id: `$e${++next}` } };
+    },
+    async must(...args) { return (await this.api(...args)).data; },
+  };
+  let saved = null;
+  const timers = [];
+  const status = createMatrixStatus({
+    bz, client, store: { load: () => saved, save: (value) => { saved = value; } }, setTimer: (fn) => timers.push(fn),
+  });
+  await status.update();
+  const sends = () => calls.filter((call) => call.path.includes('/send/'));
+  assert.equal(sends().length, 1);
+  assert.equal(sends()[0].body.msgtype, 'm.notice');
+  assert.deepEqual(saved, { eventId: '$e1' });
+  assert.deepEqual(pinned, ['$other', '$e1'], 'pinned beside what was');
+  // Someone leaves: an edit of the same message, with no new line.
+  present = present.slice(1);
+  status.changed();
+  status.changed();
+  assert.equal(timers.length, 1, 'a burst is one edit');
+  await timers.shift()();
+  const edit = sends().at(-1).body;
+  assert.deepEqual(edit['m.relates_to'], { rel_type: 'm.replace', event_id: '$e1' });
+  assert.equal(edit['m.new_content'].body, 'hix, ctf, 1p 1o 1b, @Alice');
+  // Nothing new: nothing sent.
+  const before = sends().length;
+  await status.update();
+  assert.equal(sends().length, before);
 }
 
 assert.equal(withoutReplyFallback('> <@a:b> quoted\n> more\n\nanswer'), 'answer');

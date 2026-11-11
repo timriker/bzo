@@ -42,6 +42,7 @@ const { createMatrixBridge } = require('./matrix/client.cjs');
 const { createMatrixLinks } = require('./matrix/links.cjs');
 const { createMatrixCommands } = require('./matrix/commands.cjs');
 const { createRoster } = require('./bridge/lines.cjs');
+const { createMatrixStatus } = require('./matrix/status.cjs');
 
 let running = null;
 
@@ -161,13 +162,17 @@ module.exports = {
     const roster = createRoster({
       bz, store: jsonStore('matrix-roster.json'), say: (line) => bridge.event(line), setTimer: bz.setTimeout,
     });
-    running = { bz, bridge, roster };
+    // The map, game type and who is in, pinned and edited as it changes.
+    const status = createMatrixStatus({
+      bz, client: bridge, store: jsonStore('matrix-status.json'), setTimer: bz.setTimeout, log,
+    });
+    running = { bz, bridge, roster, status };
     bz.Register(bz.bz_eFilteredChatMessageEvent);
     bz.Register(bz.bz_ePlayerJoinEvent);
     bz.Register(bz.bz_ePlayerPartEvent);
     if (links.answer) bz.bzhttp_RegisterVDir(linkPage(bz, links));
     bridge.start()
-      .then((started) => started && links.start().then(() => commands.start()))
+      .then((started) => started && links.start().then(() => commands.start()).then(() => status.update()))
       .catch((error) => logError('could not start', error));
   },
 
@@ -175,10 +180,12 @@ module.exports = {
   // scoreboard mark, `@` for an admin and `+` for a signed-in player.
   Event(data) {
     if (!running) return;
-    const { bz, bridge, roster } = running;
-    // A person coming or going, with who is in now; bots come and go unsaid.
+    const { bz, bridge, roster, status } = running;
+    // A person coming or going, with who is in now; bots come and go unsaid,
+    // though the pinned status counts them.
     if (data.eventType === 'bz_ePlayerJoinEvent' || data.eventType === 'bz_ePlayerPartEvent') {
       roster.heard(data.record, data.eventType === 'bz_ePlayerJoinEvent');
+      status.changed();
       return;
     }
     if (data.eventType !== 'bz_eFilteredChatMessageEvent') return;

@@ -60,9 +60,11 @@ What goes is what every player in the game sees: chat to all, and `/me`, as
 admin channel, a muted player's lines and every command never leave the game.
 A BZFlag client's colour codes are removed.
 
-A person joining or leaving is said too, in italics with who is in after:
+A person joining or leaving is said too, with who is in after:
 `Foo joined, p 2 o 1 b 1` -- players, observers and bots, each left out at
-none. Bots coming and going are not. Who the room was last told is in is
+none. These go as notices of their own, in grey italics, never in a message
+with chat: Element dims a notice and does not notify for one, so chat
+stands out. Bots coming and going are not. Who the room was last told is in is
 kept beside `server.json` (`matrix-roster.json`), so after a restart the people
 coming back are not announced again, and two minutes on anyone who did not
 is said to have left.
@@ -72,6 +74,19 @@ bold, with BZFlag's scoreboard mark: `@` for an admin, `+` for a signed-in
 player. Every message has its mentions off, so `@room` and names show as
 text. When the homeserver asks the bridge to slow down, the lines wait and go
 when it says, up to 200 of them.
+
+## Status
+
+The bot pins one notice in the bridged room saying what is on: `hix, ctf,
+3p 1o 2b, @Alice, +Bob, Charlie` -- the map, the game type (`ffa`, `offa`,
+`ctf`, `rabbit`), how many players, observers and bots, and the players by
+name with the scoreboard's `@` and `+`. It edits that message as
+people and bots come and go, at most every ten seconds, so the room gains no
+line and nobody is notified; Element shows it under the room's name. Which
+message it is is kept in `matrix-status.json` beside `server.json`, so a
+restart edits the same one. Pinning needs the power to change the room's
+pinned events (moderator, 50, by default); without it the notice is only
+posted, and the log says so.
 
 ## Matrix to game
 

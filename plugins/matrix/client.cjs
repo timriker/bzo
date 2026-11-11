@@ -23,6 +23,8 @@ const crypto = require('node:crypto');
 const { QUEUE_LIMIT, plain, gameLines, isCommand } = require('../bridge/lines.cjs');
 
 const FLUSH_MS = 2000;
+// Joins and leaves in a grey that reads on Element's light and dark themes.
+const EVENT_COLOR = '#888888';
 // How long a sync waits for something to happen, and how long past that the
 // request itself is given before it counts as lost.
 const SYNC_WAIT_MS = 30000;
@@ -125,15 +127,20 @@ function createMatrixBridge({
     }, delay);
   };
 
-  // Lines led by their speakers; a join or leave has none, and is in italics.
+  // Lines led by their speakers. Joins and leaves, which have none, go as
+  // a notice of their own, in grey italics: Element dims a notice, and the
+  // default push rules leave it out of what notifies, so chat stands out.
   function compose(lines) {
+    const events = lines.every((line) => line.event);
     const said = (line) => (line.event ? line.text
       : line.action ? `* ${line.mark}${line.name} ${line.text}` : `${line.mark}${line.name}: ${line.text}`);
-    const html = (line) => (line.event ? `<i>${escapeHtml(line.text)}</i>` : line.action
-      ? `* <b>${escapeHtml(line.mark + line.name)}</b> ${escapeHtml(line.text)}`
-      : `<b>${escapeHtml(line.mark + line.name)}</b>: ${escapeHtml(line.text)}`);
+    const html = (line) => (line.event
+      ? `<font color="${EVENT_COLOR}" data-mx-color="${EVENT_COLOR}"><i>${escapeHtml(line.text)}</i></font>`
+      : line.action
+        ? `* <b>${escapeHtml(line.mark + line.name)}</b> ${escapeHtml(line.text)}`
+        : `<b>${escapeHtml(line.mark + line.name)}</b>: ${escapeHtml(line.text)}`);
     return {
-      msgtype: 'm.text',
+      msgtype: events ? 'm.notice' : 'm.text',
       body: lines.map(said).join('\n'),
       format: 'org.matrix.custom.html',
       formatted_body: lines.map(html).join('<br>'),
@@ -147,7 +154,11 @@ function createMatrixBridge({
       schedule(pausedUntil - now());
       return;
     }
-    const lines = queue.splice(0, queue.length);
+    // One message is chat or joins and leaves, not both: the run of one kind
+    // at the front of the queue goes now, and the rest at the next window.
+    let run = 1;
+    while (run < queue.length && Boolean(queue[run].event) === Boolean(queue[0].event)) run++;
+    const lines = queue.splice(0, run);
     const txnId = `bzo-${now()}-${crypto.randomBytes(6).toString('hex')}`;
     const answer = await api('PUT', `/rooms/${encodeURIComponent(roomId)}/send/m.room.message/${txnId}`, {
       body: compose(lines),

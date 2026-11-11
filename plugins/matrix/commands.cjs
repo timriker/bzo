@@ -165,15 +165,16 @@ function createMatrixCommands({ bz, client, links, name, room, url = '', space =
     return answered.ok ? answered.data : {};
   }
 
-  // Run as the member's linked account, the answer cut to a message's size.
-  async function run(userId, text) {
+  // Run as the member's linked account, the answer cut to a message's size,
+  // led by the server and the command unless `echo` is false.
+  async function run(userId, text, { echo = true } = {}) {
     const record = links.linkFor(userId);
     if (!record) return 'Link your BZFlag account first: type !link.';
     const line = /^[!/]shelp$/i.test(text.trim()) ? '/help' : `/${text.replace(/^[!/]/, '')}`;
     const replies = await bz.bz_runCommand(line, {
       callsign: record.callsign, bzid: record.bzid, admin: record.admin, via: 'Matrix',
     });
-    const body = [`${name}: ${line}`, ...(replies.length ? replies : ['(no reply)'])].join('\n');
+    const body = [...(echo ? [`${name}: ${line}`] : []), ...(replies.length ? replies : ['(no reply)'])].join('\n');
     return body.length > REPLY_LIMIT ? `${body.slice(0, REPLY_LIMIT - 1)}…` : body;
   }
 
@@ -201,7 +202,8 @@ function createMatrixCommands({ bz, client, links, name, room, url = '', space =
         const chosen = (await targets())[userId];
         const header = `/help on ${chosen || name}; !use <server> changes it.`;
         if (chosen ? isNamed(me(), chosen) : directs) {
-          await client.notice(roomId, directs ? `${header}\n${await run(userId, '/help')}` : await run(userId, '/help'));
+          const help = await run(userId, '/help', { echo: false });
+          await client.notice(roomId, directs ? `${header}\n${help}` : help);
         } else if (directs) {
           await client.notice(roomId, header);
         }
