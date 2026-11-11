@@ -138,6 +138,36 @@ export function createWorldProbes({
     // reads both as open air, so a lane that is clear can still be a lift.
     teleporterInWay: (from, to) => obstacles().some((obs) => obs.kind === 'teleporter'
       && (getShotTeleporterCrossing(from, to, obs) !== null || getShotTeleporterFrameHit(from, to, obs) !== null)),
+    // Where a shell moving at `velocity` from `from` first meets something
+    // within `seconds`, and how it leaves it: `{ t, x, y, z, vx, vy, vz }`,
+    // the velocity reflected off the obstacle as the server reflects it, or
+    // off the world's wall; null for open air. One ray, for a pilot looking
+    // ahead at a shot's next bounce rather than flying it out.
+    shotBounce: (from, velocity, seconds) => {
+      const to = {
+        x: from.x + (velocity.x * seconds),
+        y: from.y + (velocity.y * seconds),
+        z: from.z + ((velocity.z || 0) * seconds),
+      };
+      const hit = rayFraction(from, to);
+      if (!hit.hit) return null;
+      const at = {
+        x: from.x + ((to.x - from.x) * hit.fraction),
+        y: from.y + ((to.y - from.y) * hit.fraction),
+        z: from.z + ((to.z - from.z) * hit.fraction),
+      };
+      const half = mapSize() / 2;
+      let normal;
+      if (hit.obstacle) {
+        normal = getShotObstacleNormal(hit.obstacle, at.x, at.y, at.z, SHOT_COLLISION_RADIUS);
+      } else {
+        normal = Math.abs(Math.abs(at.x) - half) < Math.abs(Math.abs(at.y) - half)
+          ? { x: -Math.sign(at.x), y: 0, z: 0 } : { x: 0, y: -Math.sign(at.y), z: 0 };
+      }
+      const speed = Math.hypot(velocity.x, velocity.y, velocity.z || 0);
+      const dir = reflectShotDirection(velocity.x / speed, velocity.y / speed, (velocity.z || 0) / speed, normal);
+      return { t: hit.fraction * seconds, ...at, vx: dir.x * speed, vy: dir.y * speed, vz: dir.z * speed };
+    },
     firstHit: (from, to) => {
       const hit = rayFraction(from, to);
       if (!hit.hit) return null;
@@ -333,9 +363,14 @@ export function createRouter(world) {
         flaps: Math.max(0, (wings.count ?? 1) - 1),
       }
       : (current.jump ?? null);
-    const key = burrowed ? 'burrowed' : wings ? 'wings' : jump ? 'jump' : 'ground';
+    // Oscillation Overthruster drives through buildings on the ground
+    // (`buildNavGraph`'s `phasing`).
+    const phasing = !burrowed && options.phasing === true;
+    const key = `${burrowed ? 'burrowed' : wings ? 'wings' : jump ? 'jump' : 'ground'}${phasing ? ':phasing' : ''}`;
     if (!built.graphs.has(key)) {
-      built.graphs.set(key, buildNavGraph({ ...current, jump, teleporterLinks: burrowed ? [] : current.teleporterLinks }));
+      built.graphs.set(key, buildNavGraph({
+        ...current, jump, phasing, teleporterLinks: burrowed ? [] : current.teleporterLinks,
+      }));
     }
     const graph = built.graphs.get(key);
     return graph.smoothRoute(graph.findRoute(from, to, { foes: options.foes ?? [] }), from);
@@ -373,7 +408,8 @@ export function createAsyncRouter(world, post) {
       answers.clear();
       post({ type: 'world', world: current });
     }
-    const key = `${options.canJump ?? current.allowJumping !== false}:${Boolean(options.wings)}:${options.burrowed === true}`;
+    const key = `${options.canJump ?? current.allowJumping !== false}:${Boolean(options.wings)}:${options.burrowed === true}`
+      + `:${options.phasing === true}`;
     const answer = answers.get(key);
     if (answer && near(answer.from, from, ANSWER_FROM_SLACK) && near(answer.to, to, ANSWER_TO_SLACK)) {
       return answer.nodes;

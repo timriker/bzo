@@ -21,9 +21,14 @@ options
 	# Five shots in the air at once, where bzfs gives one. The reload time
 	# follows from it: a slot comes back after shotRange / shotSpeed / this.
 	-ms 5
-	# Superflag slots. Left off, this is 16; the world is 800 units across,
-	# so it takes rather more than that to find one.
-	-s 200
+	# Superflag slots, each any type, bad ones included. Left off, this is
+	# 16; the world is 800 units across, so it takes more than that to find
+	# one.
+	-s 50
+	# Three of every good flag on top, each always coming back as its own
+	# type: about one flag in eight is bad, where -s alone makes it one in
+	# three.
+	+f good{3}
 	# A bad flag falls off by itself after this many seconds.
 	-st 5
 	# A bad flag also falls off after this many kills.

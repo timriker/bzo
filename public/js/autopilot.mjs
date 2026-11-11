@@ -22,7 +22,7 @@
 // AutoPilot.cxx: the view, its probes, the routes `nav` plans, and the intent
 // the pilot reports. A positive rotation turns left.
 
-import { canSeeShot, FLAG_ENDURANCE, getFlagEndurance, isBadFlag } from './flags.mjs';
+import { canSeeShot, FLAG_ENDURANCE, getFlagEndurance, isBadFlag, isTeamFlag } from './flags.mjs';
 import { normalizeAngle } from './motion.mjs';
 import { isRabbitTeam } from './teams.mjs';
 import { azimuthTo, distance2D, HALF_PI, HARD_FLAGS, pointOf, predict, Roger } from './roger.mjs';
@@ -72,15 +72,23 @@ const RETALIATE_WEIGHT = 0.5;
 // How much further a foe who may be a teammate, by Masquerade or Ace's own
 // Colorblindness, counts as being.
 const DISGUISED_WEIGHT = 2;
+// How much further a Phantom Zoned foe out of reach counts as being: one
+// with no foe Ace can hit nearer is gone after with a Shock Wave or Super
+// Bullet picked up first (`arm`).
+const ZONED_WEIGHT = 3;
+const ARMS = new Set(['SW', 'SB']);
 // A foe whose score is this far clear of everyone else's counts as nearer
-// by `LEADER_WEIGHT`.
+// by `LEADER_WEIGHT`: picked over another at much the same range, but not
+// driven past a nearer one for, since Ace's own score counts for more than
+// the leader's.
 const LEADER_LEAD = 5;
-const LEADER_WEIGHT = 0.6;
+const LEADER_WEIGHT = 0.8;
 // One this far clear is running away with the game: Ace hunts him wherever
-// he is, ahead of captures and flags, and he counts as nearer by
+// he is, ahead of captures and flags -- once no foe is in sight within a
+// chase, who would shoot him on the way -- and he counts as nearer by
 // `DOMINANT_WEIGHT` instead.
 const DOMINANT_LEAD = 10;
-const DOMINANT_WEIGHT = 0.3;
+const DOMINANT_WEIGHT = 0.6;
 // Ace this far below his foes' average score is losing, and goes after his
 // own score -- kills -- rather than captures and flags: a capture gives way
 // to any foe he can shoot within `LOSING_FIGHT_RANGE`, a foe past Roger's
@@ -121,6 +129,20 @@ const CAMP_FLAGS = new Set(['GM', 'L', 'SB']);
 // then driven round -- and given up only for one of these, known for what it
 // is.
 const ID_TRADE_FLAGS = new Set([...CAMP_FLAGS, 'SW', 'G', 'ST']);
+// A flag of a type Ace does not know may be a bad one. He reckons the chance
+// from the flags he has seen carried or identified, starting from
+// `BAD_PRIOR` of `BAD_PRIOR_FLAGS` seen, and the cost as the quickest way the
+// server sheds one -- its timeout, `BAD_SECONDS_PER_KILL` for each kill its
+// shake wins ask, or an antidote -- up to a whole life, `BAD_LIFE_SECONDS`,
+// with none. Their product, out of a life, times the tuning's `badFlagRisk`,
+// is taken off what an unknown flag is worth to him; worth
+// `UNKNOWN_FLAG_FLOOR` or less, he leaves unknown flags be.
+const BAD_PRIOR = 1;
+const BAD_PRIOR_FLAGS = 3;
+const BAD_SECONDS_PER_KILL = 20;
+const BAD_ANTIDOTE_SECONDS = 10;
+const BAD_LIFE_SECONDS = 60;
+const UNKNOWN_FLAG_FLOOR = 0.25;
 // How far off a flag on the ground is worth a detour, as Roger's, and how
 // much nearer another must be to be gone for instead of the one chosen.
 const PICKUP_RANGE = 200;
@@ -170,6 +192,34 @@ const COVER_REACHED = 6;
 export const ACE_TUNING = Object.freeze({
   follow: 'nodes',
   speed: 'bearing',
+  // With a foe to go after, a flag is gone for only on the way: the longest
+  // detour it may add to the drive to him, at his best, and as much again at
+  // no skill -- the better Ace is, the more he keeps to the fight.
+  flagDetour: 40,
+  // Shots kept back on a server with several slots, as a share of them
+  // rounded up (`spareShots`), and how much wider the trigger is while more
+  // than those are free (`onTarget`). In the arena on hix, keeping none and
+  // twice the width took k/d from 0.8 to 1.2 against the old quarter kept
+  // and plain width; four times the width was worse again.
+  shotReserve: 0,
+  spareSpread: 2,
+  // How shots are dodged: `legs`, each shot followed through its bounces
+  // and stopped by what it meets, with the wider search; `straight`, the
+  // older straight-line one, for a comparison.
+  dodge: 'legs',
+  // When a dodge may jump: `hidden`, only where nothing on the ground
+  // clears and the landing is out of every foe's sight; `any`, wherever
+  // nothing on the ground clears; `never`.
+  jumpDodge: 'hidden',
+  // Shots off a wall where ricochet allows (`bankShot`): `laser` for a
+  // Laser's alone, true for every shell, false for none. A shell's search
+  // traces seconds of flight a heading, which in the arena slowed the game
+  // to a crawl and lost fights while the barrel swung to banks; a Laser's
+  // beam is a third of a second and arrives at once.
+  bank: 'laser',
+  // How heavily the risk of a bad flag counts against one of unknown type
+  // (`unknownFlagWorth`); 0 ignores it.
+  badFlagRisk: 3,
   groundLookahead: 10,
   pursuitGround: 10,
   pursuitRaised: 5,
@@ -218,6 +268,13 @@ export class Ace extends AceFighter {
   constructor(options = {}) {
     super(options);
     this.tuning = { ...ACE_TUNING, ...options.tuning };
+    // A zoned foe out of reach counts, as further off (`ZONED_WEIGHT`).
+    this.chasesZoned = true;
+    // The flags whose types Ace has learned, by index and type, and how many
+    // of them were bad (`unknownFlagWorth`).
+    this.typesSeen = new Set();
+    this.badSeen = 0;
+    this.unknownWorth = 1;
     // His skill for a practice level (`atLevel`): unknown is hard, his best.
     // `scale: false` keeps it where the level puts it, whatever the score.
     this.skill = ACE_LEVELS[options.level] ?? ACE_LEVELS.hard;
@@ -259,7 +316,8 @@ export class Ace extends AceFighter {
     this.extraReport = (stats) => `, routes ${stats.plans} (${stats.unreachable} none`
       + `${stats.safer ? `, ${stats.safer} landing out of sight` : ''}`
       + `${stats.waits ? `, ${stats.waits} frames waiting` : ''}),`
-      + ` unsticks ${stats.unsticks}, held shots ${stats.held}, kept shots ${stats.kept}`;
+      + ` unsticks ${stats.unsticks}, held shots ${stats.held}, kept shots ${stats.kept}`
+      + `${stats.banks ? `, bank shots ${stats.banks}` : ''}`;
     // The landing each airborne foe has been shot at for, as a clock time, and
     // how many shots it has had, so a jump costs the shots it takes to kill
     // (`shotsToKill`) and no more.
@@ -331,12 +389,13 @@ export class Ace extends AceFighter {
     // Roger's chase jumps a building in the way without asking whether the
     // tank may jump.
     if (out.jump && !canTankJump(view.world, view.self.flag, view.self.z)) out.jump = false;
-    this.oneWayTurn(view.self.flag, out);
+    this.oneWayTurn(view, out);
     // Forward Only refuses reverse, which a run-up, an overshot takeoff, an
-    // unstick and a dodge all ask for: the tank turns round on the spot
-    // instead, the way it was turning, and goes forward from there.
+    // unstick and a dodge all ask for: the tank turns round instead, the way
+    // it was turning, as a loop where there is room (`loopSpeed`), and goes
+    // forward from there.
     if (view.self.flag === 'FO' && out.speed < 0) {
-      out.speed = 0;
+      out.speed = this.loopSpeed(view);
       out.rotation = Math.sign(out.rotation) || 1;
     }
     // Reversed Controls negates both sticks before the tank reads them
@@ -605,6 +664,7 @@ export class Ace extends AceFighter {
     if (this.camper && p.id === this.camper.id) {
       return this.camperStance(ctx.me) === 'wait' ? CAMPER_WAIT_WEIGHT : DOMINANT_WEIGHT;
     }
+    if (this.zonedAway(ctx.me, p)) weight *= ZONED_WEIGHT;
     if (this.isRetaliationTarget(ctx, p)) weight *= RETALIATE_WEIGHT;
     // One who may be a teammate is gone after more warily: as if further.
     else if (this.disguised(ctx, p)) weight *= DISGUISED_WEIGHT;
@@ -619,6 +679,12 @@ export class Ace extends AceFighter {
     ctx.leaderLead = lead?.lead ?? 0;
     // Holding Thief, only a foe with a flag to take is any use to chase.
     const target = super.findBestTarget(ctx, players.filter((p) => this.canHit(ctx, p)));
+    // A zoned foe out of reach, the best there is: nobody to chase until
+    // Ace holds what reaches him.
+    if (target && this.zonedAway(ctx.me, target)) {
+      ctx.zonedFoe = target;
+      return null;
+    }
     if (target) ctx.out.intent.reason = this.targetReason(ctx, target);
     return target;
   }
@@ -636,8 +702,15 @@ export class Ace extends AceFighter {
   // lies where it was last seen, or comes down after being seen carried; one
   // that turns up anywhere else has gone and come back as something new.
   noteFlagTypes(view) {
+    const learned = (index, type) => {
+      if (isTeamFlag(type) || this.typesSeen.has(`${index}:${type}`)) return;
+      this.typesSeen.add(`${index}:${type}`);
+      if (isBadFlag(type)) this.badSeen++;
+    };
     const carried = (index, type) => {
-      if (type && Number.isInteger(index)) this.knownFlagTypes.set(index, { type, at: null });
+      if (!type || !Number.isInteger(index)) return;
+      this.knownFlagTypes.set(index, { type, at: null });
+      learned(index, type);
     };
     carried(view.self.flagIndex, view.self.flag);
     for (const player of view.players) carried(player.flagIndex, player.flag);
@@ -645,6 +718,7 @@ export class Ace extends AceFighter {
       if (!flag.onGround || flag.team !== null) continue;
       if (flag.type) {
         this.knownFlagTypes.set(flag.index, { type: flag.type, at: pointOf(flag) });
+        learned(flag.index, flag.type);
         continue;
       }
       const known = this.knownFlagTypes.get(flag.index);
@@ -652,6 +726,25 @@ export class Ace extends AceFighter {
       if (!known.at) known.at = pointOf(flag);
       else if (distance2D(known.at, flag) > 1) this.knownFlagTypes.delete(flag.index);
     }
+    this.unknownWorth = this.unknownFlagWorth(view.world);
+  }
+
+  // What a flag of unknown type is worth to Ace, 1 a sure good one: less the
+  // likelier it is bad and the longer a bad one would stay with him. See
+  // `BAD_PRIOR`.
+  unknownFlagWorth(world) {
+    const chance = (this.badSeen + BAD_PRIOR) / (this.typesSeen.size + BAD_PRIOR_FLAGS);
+    const ways = [BAD_LIFE_SECONDS];
+    if (world.shakeTimeout > 0) ways.push(world.shakeTimeout);
+    if (world.shakeWins > 0) ways.push(world.shakeWins * BAD_SECONDS_PER_KILL);
+    if (world.antidoteFlags) ways.push(BAD_ANTIDOTE_SECONDS);
+    const stuck = Math.min(...ways) / BAD_LIFE_SECONDS;
+    return Math.max(0, 1 - (this.tuning.badFlagRisk * chance * stuck));
+  }
+
+  // Whether an unknown flag is worth going for at all.
+  wantsUnknownFlag() {
+    return this.unknownWorth > UNKNOWN_FLAG_FLOOR;
   }
 
   // A type this pilot has learned is one it can refuse. Holding a flag to camp
@@ -663,8 +756,10 @@ export class Ace extends AceFighter {
     // What beats a camper's flag is worth having, whatever it has done for Ace
     // before, and worth trading Identify for.
     if (type && type === this.camper?.counter) return true;
+    // Genocide, only with a foe team of two or more to take (`genocideWorth`).
+    if (type === 'G' && this.genocideUseful === false) return false;
     if (this.heldFlag === 'ID') return ID_TRADE_FLAGS.has(type);
-    if (!type) return true;
+    if (!type) return this.wantsUnknownFlag();
     // Identify is worth going for only with nothing better to do: ahead of
     // every foe, and the team ahead of every other.
     if (type === 'ID') return this.winning;
@@ -703,16 +798,24 @@ export class Ace extends AceFighter {
       ctx.out.intent.reason = 'ours-carrier';
       return this.huntFar(ctx, carrier);
     }
+    // Holding Laser, he shoots from far off rather than chase at all: the
+    // beam crosses the map in an instant, and from beyond a shot's reach
+    // nothing answers it (`campAt`, `laserStandoffSpeed`). Only whoever has
+    // his flag takes him from it.
+    if (!carrier && ctx.me.flag === 'L') return false;
     // A camper is hunted wherever he is, unless his flag is all but spent.
     const camper = carrier || this.camperStance(ctx.me) !== 'hunt' ? null
       : this.remotePlayers(ctx.view).find((p) => p.id === this.camper.id && p.alive && !p.paused);
-    if (camper && distance2D(ctx.me, camper) > ROGER_CHASE_RANGE) {
+    // Both of these only with nobody nearer to fight: a hunt across the map
+    // drives through whoever is between, and they shoot.
+    const fightNear = this.foeInSight(ctx, ROGER_CHASE_RANGE);
+    if (camper && !fightNear && distance2D(ctx.me, camper) > ROGER_CHASE_RANGE) {
       ctx.out.intent.reason = 'camper';
       return this.huntFar(ctx, camper);
     }
     // A foe running away with the game is hunted wherever he is.
     const dominant = carrier ? null : this.dominantFoe(ctx);
-    if (dominant && distance2D(ctx.me, dominant) > ROGER_CHASE_RANGE) {
+    if (dominant && !fightNear && distance2D(ctx.me, dominant) > ROGER_CHASE_RANGE) {
       ctx.out.intent.reason = 'leader';
       return this.huntFar(ctx, dominant);
     }
@@ -959,11 +1062,20 @@ export class Ace extends AceFighter {
     return best;
   }
 
+  // Whether Ace could take another flag: a sticky one in hand does not let
+  // go (`dropOnTheMove`), so a flag driven to is one he would only sit on.
+  canSwapFlag(me) {
+    return !me.flag || getFlagEndurance(me.flag) !== FLAG_ENDURANCE.STICKY;
+  }
+
   lookForFlag(ctx) {
     // A team flag in hand goes home before any other flag is looked at.
     if (ctx.me.flagTeam !== null) return false;
     const antidote = this.antidoteTarget(ctx);
     if (antidote) return this.goTo(ctx, antidote, 'antidote');
+    // Holding a flag that will not drop, no other is his to take.
+    if (!this.canSwapFlag(ctx.me)) return false;
+    if (ctx.zonedFoe && this.arm(ctx)) return true;
     const target = this.captureTarget(ctx);
     if (!target) return CAMP_FLAGS.has(ctx.me.flag) ? false : this.pickUpFlag(ctx);
     const { me, out } = ctx;
@@ -999,7 +1111,8 @@ export class Ace extends AceFighter {
   // Only empty-handed, or holding Identify: a good flag in hand is kept rather
   // than traded for the next one passed -- a bad one is shed on its own,
   // camping trades up for its own flags (`huntFlag`), and Identify for what
-  // `wantsGroundFlag` allows. The flag chosen stays chosen while it
+  // `wantsGroundFlag` allows. With a foe to go after, only a flag on the way
+  // to him (`onTheWay`). The flag chosen stays chosen while it
   // lies there, unless another is much nearer: a nearest-flag pick made
   // afresh each frame flips as the tank changes level, and a route up a lift
   // and back down again is the result.
@@ -1011,8 +1124,9 @@ export class Ace extends AceFighter {
     for (const flag of view.flags) {
       if (!flag.onGround || flag.team !== null || !this.wantsGroundFlag(flag)) continue;
       if ((this.unreachable.get(flag.index) ?? -Infinity) > view.now) continue;
+      const worth = this.knownType(flag) ? 1 : this.unknownWorth;
       let d = distance2D(me, flag);
-      if (d >= PICKUP_RANGE) continue;
+      if (d >= PICKUP_RANGE * worth || !this.onTheWay(ctx, flag, worth)) continue;
       if (this.isObscured(ctx, me, pointOf(flag))) d *= 1.25;
       if (this.camper?.counter && this.knownType(flag) === this.camper.counter) d *= CAMPER_COUNTER_PULL;
       if (flag.index === this.pickupIndex) kept = { flag, d };
@@ -1021,6 +1135,48 @@ export class Ace extends AceFighter {
     const chosen = kept && !(best.d < kept.d * PICKUP_SWITCH_SHARE) ? kept : best;
     this.pickupIndex = chosen?.flag.index ?? null;
     return chosen?.flag ?? null;
+  }
+
+  // Whether `flag` is on the way to the foe Ace would go after: going by it
+  // adds no more than `flagDetour` to the drive, more the less his skill
+  // now, scaled by what the flag is `worth` to him. With nobody to go after,
+  // any flag is.
+  onTheWay(ctx, flag, worth = 1) {
+    if (ctx.quarry === undefined) {
+      const { reason } = ctx.out.intent;
+      ctx.quarry = this.findBestTarget(ctx, this.remotePlayers(ctx.view)) ?? null;
+      ctx.out.intent.reason = reason;
+    }
+    const foe = ctx.quarry;
+    if (!foe) return true;
+    const detour = distance2D(ctx.me, flag) + distance2D(flag, foe) - distance2D(ctx.me, foe);
+    return detour <= this.tuning.flagDetour * (2 - this.skillNow(ctx.view)) * worth;
+  }
+
+  // To the nearest Shock Wave or Super Bullet Ace knows of, for the zoned
+  // foe (`zonedFoe`) nothing else reaches, letting go of whatever is held
+  // once it is in reach. None known, or none he can get to, and he does not.
+  arm(ctx) {
+    const { view, me, out } = ctx;
+    let best = null;
+    for (const flag of view.flags) {
+      if (!flag.onGround || flag.team !== null || !ARMS.has(this.knownType(flag))) continue;
+      if ((this.unreachable.get(flag.index) ?? -Infinity) > view.now) continue;
+      const d = distance2D(me, flag);
+      if (!best || d < best.d) best = { flag, d };
+    }
+    if (!best) return false;
+    const pos = pointOf(best.flag);
+    if (typeof view.findRoute === 'function' && !this.routeTo(ctx, pos)) {
+      this.unreachable.set(best.flag.index, view.now + UNREACHABLE_SECONDS);
+      return false;
+    }
+    if (me.flag && best.d < 10) out.dropFlag = true;
+    this.goalFlag = best.flag;
+    this.goTo(ctx, pos, 'arm');
+    // The flag is the way there; the zoned foe is who it is for.
+    out.intent.target = { ...pos, flag: best.flag.type ?? null, id: ctx.zonedFoe.id };
+    return true;
   }
 
   pickUpFlag(ctx) {
@@ -1048,8 +1204,9 @@ export class Ace extends AceFighter {
       && distance2D(me, p) < CAMP_CLEAR_RANGE);
   }
 
-  // The nearest flag on the ground that might be one to camp with: any whose
-  // type Ace has not seen yet, and any he knows is.
+  // The nearest flag on the ground that might be one to camp with, on the
+  // way to his foe (`onTheWay`): any whose type Ace has not seen yet, and
+  // any he knows is.
   campFlagTarget(ctx) {
     const { view, me } = ctx;
     let best = null;
@@ -1058,7 +1215,8 @@ export class Ace extends AceFighter {
       if ((this.unreachable.get(flag.index) ?? -Infinity) > view.now) continue;
       const type = this.knownType(flag);
       if (type !== null && !CAMP_FLAGS.has(type)) continue;
-      if (type === null && me.flag === 'ID') continue;
+      if (type === null && (me.flag === 'ID' || !this.wantsUnknownFlag())) continue;
+      if (!this.onTheWay(ctx, flag, type === null ? this.unknownWorth : 1)) continue;
       const d = distance2D(me, flag);
       if (!best || d < best.d) best = { flag, d };
     }
@@ -1343,7 +1501,10 @@ export class Ace extends AceFighter {
     // Holding what beats a camper's flag, he keeps it rather than trade it for
     // one to camp with himself.
     const countering = this.camper?.counter && me.flag === this.camper.counter;
-    if (me.flagTeam === null && !this.isRabbit(ctx) && !countering && this.campClear(ctx)) {
+    // Laser in hand, its stance whoever is near (`chasePlayer`).
+    if (me.flag === 'L' && me.flagTeam === null && !this.isRabbit(ctx) && !this.ourFlagCarrier(ctx)
+      && this.campAt(ctx)) return true;
+    if (me.flagTeam === null && !this.isRabbit(ctx) && !countering && this.canSwapFlag(me) && this.campClear(ctx)) {
       if (CAMP_FLAGS.has(me.flag) && this.campAt(ctx)) return true;
       const flag = this.campFlagTarget(ctx);
       if (flag) return this.huntFlag(ctx, flag);

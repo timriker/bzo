@@ -77,9 +77,11 @@ export function motionOf(move, azimuth, config) {
 // tanks may be on. `rabbitSelection` (`score`, `killer` or `random`, as
 // `-rabbit` says) makes it Rabbit Chase, every tank a hunter until it holds
 // the rabbit; `onRabbit(newId, oldId)` hears it move, for a host's own tank.
+// `onThought(id, result)` hears each bot's tick, what it chose and why.
 export function createBotGame({
   config, world, now, teamsAllowed = true, others = () => [], emit = () => {}, onError = () => {},
   teamFlags = [], onTeamCaptured = () => {}, rabbitSelection = null, onRabbit = () => {},
+  onThought = () => {},
 }) {
   const colliders = buildCollisionColliders(world.obstacles, world.mapSize, world.noWalls, world.wallHeight);
   const teleports = buildTeleporterIndex(world.obstacles, world.teleporterLinks || []);
@@ -579,6 +581,9 @@ export function createBotGame({
         tankAngVel: config.TANK_ROTATION_SPEED,
         tankSpeed: config.TANK_SPEED,
         shakeTimeout: shakeTimeoutSeconds(config.FLAG_SHAKE_TIMEOUT),
+        // Neither is played here yet: a bad flag sheds only on its timeout.
+        shakeWins: 0,
+        antidoteFlags: false,
         jumpVelocity: config.JUMP_VELOCITY,
         gravity: config.GRAVITY,
         lockOnAngle: getFlagTuning().lockOnAngle,
@@ -616,6 +621,7 @@ export function createBotGame({
         ricochet: config.ALL_SHOTS_RICOCHET === true,
         canFire: bot.slotFreeAt.length < maxShots(),
         freeShots: maxShots() - bot.slotFreeAt.length,
+        lockTargetId: bot.lock ?? null,
       },
     };
   }
@@ -644,7 +650,7 @@ export function createBotGame({
     } else if (message.type === 'identify') {
       // A Guided Missile's lock, which a player takes with Identify: on the
       // tank the pilot is about to shoot.
-      bot.lock = result.targetId ?? null;
+      bot.lock = result.lockTargetId ?? result.targetId ?? null;
     }
   }
 
@@ -671,6 +677,7 @@ export function createBotGame({
     for (const result of results) {
       const bot = bots.get(result.id);
       if (!bot) continue;
+      if (bot.record.alive) onThought(result.id, result);
       for (const message of [...result.pre, ...result.post]) applyBotMessage(result.id, bot, message, result);
       // The check a client makes for its own tank: driving over a flag.
       if (bot.record.alive && at - bot.grabAt >= FLAG_GRAB_INTERVAL_MS) {

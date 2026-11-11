@@ -16,7 +16,7 @@
 //   node scripts/bench-pilot.mjs --map hix.bzw --only default,pursuit --detail 1
 //   node scripts/bench-pilot.mjs --tuning '{"raisedFactor":0.7}'
 //
-// The world is the server's cached conversion (`cache/map-index.json`), so a
+// The world is the server's cached conversion (`data/cache/map-index.json`), so a
 // map has to have been served once. Nobody shoots, nobody else drives: this
 // measures getting there, and nothing else.
 
@@ -56,13 +56,13 @@ const STRATEGIES = {
   'curve+pursuit': { raised: 'curve', follow: 'pursuit' },
 };
 
-const index = JSON.parse(fs.readFileSync(path.join(root, 'cache/map-index.json'), 'utf8'));
+const index = JSON.parse(fs.readFileSync(path.join(root, 'data/cache/map-index.json'), 'utf8'));
 const entry = index[mapName];
 if (!entry) {
-  console.error(`${mapName} is not in cache/map-index.json; serve it once first`);
+  console.error(`${mapName} is not in data/cache/map-index.json; serve it once first`);
   process.exit(1);
 }
-const world = JSON.parse(fs.readFileSync(path.join(root, `cache/maps/${entry.hash}.json`), 'utf8'));
+const world = JSON.parse(fs.readFileSync(path.join(root, `data/cache/maps/${entry.hash}.json`), 'utf8'));
 const obstacles = world.obstacles;
 const topOf = (obs) => ((obs.type === 'mesh' && obs.bounds) ? obs.bounds.maxZ : getObstacleBase(obs) + (obs.size?.[2] || 0));
 const CONFIG = {
@@ -126,7 +126,7 @@ function run(tuning, from, to) {
           allowJumping: jumping, teamFlags: true, waterLevel: null, shotSpeed: 100, maxShots: 1,
           tankHeight: 2.05, tankLength: 6, tankAngVel: CONFIG.TANK_ROTATION_SPEED,
           tankSpeed: CONFIG.TANK_SPEED, jumpVelocity: CONFIG.JUMP_VELOCITY, gravity: CONFIG.GRAVITY,
-          lockOnAngle: 0.15, shockOutRadius: 60, shakeTimeout: 0,
+          lockOnAngle: 0.15, shockOutRadius: 60, shakeTimeout: 5,
         },
         isFoe: () => true,
         myBase: () => ({ ...start, radius: Math.min(from.size[0], from.size[1]) }),

@@ -9,15 +9,15 @@
 // view he reads and the frame everything is in.
 
 import {
-  canRunOver, canSeeShot, firesContinuously, getRunOverRadius, getRunOverSeparation, getTankHitRadiusScale,
-  usesNarrowHitBox,
+  canRunOver, canSeeShot, firesContinuously, getFlagTuning, getRunOverRadius, getRunOverSeparation, getShotEffects,
+  getTankHitRadiusScale, steerGuidedShot, usesNarrowHitBox,
 } from './flags.mjs';
 import { SHOT_COLLISION_RADIUS, TANK } from './collision.mjs';
 import { normalizeAngle } from './motion.mjs';
 import { angleDifference, azimuthTo, distance2D, pointOf, predict } from './roger.mjs';
 import {
-  AceDriver, canTankJump, CAPTURE_CHASE_RANGE, CAPTURE_RELEASE_RANGE, JUMP_SPEED_SLACK, segmentDistance2D,
-  skewedBarrel,
+  AceDriver, canTankJump, CAPTURE_CHASE_RANGE, CAPTURE_RELEASE_RANGE, JUMP_SPEED_SLACK, REVERSE_SPEED_SHARE,
+  segmentDistance2D, segmentDistance3D, skewedBarrel,
 } from './ace-driver.mjs';
 
 // A landing shot's plan aimed `early` seconds sooner: the same spot, the
@@ -83,16 +83,51 @@ const DODGE_DEAD_ON = 0.5;
 // The dodge's search (`dodgePath`): the speeds and turns tried, as shares of
 // full stick, how finely each path is driven out, and what a unit of turn
 // costs against a unit of speed when choosing between clear ones.
-const DODGE_SPEEDS = [1, 0.5, 0, -0.5];
+const DODGE_SPEEDS = [1, 0.75, 0.5, 0.25, 0, -0.5, -1];
+// The search before shots were looked at leg by leg, for a comparison
+// (`dodge: 'straight'`).
+const STRAIGHT_DODGE_SPEEDS = [1, 0.5, 0, -0.5];
+const STRAIGHT_DODGE_TURNS = [0, -0.5, 0.5, -1, 1];
 // The speeds a tank's flag lets it hold: Forward Only none below zero.
-const dodgeSpeeds = (flag) => (flag === 'FO' ? DODGE_SPEEDS.filter((speed) => speed >= 0) : DODGE_SPEEDS);
-const DODGE_TURNS = [0, -0.5, 0.5, -1, 1];
+const dodgeSpeeds = (flag, speeds = DODGE_SPEEDS) => (flag === 'FO' ? speeds.filter((speed) => speed >= 0) : speeds);
+const DODGE_TURNS = [0, -0.25, 0.25, -0.5, 0.5, -0.75, 0.75, -1, 1];
 const DODGE_STEP_SECONDS = 0.05;
 const DODGE_TURN_COST = 0.5;
 // The room a dodge leaves past where a shot would hit, and how many times
 // within a step a shot is tested.
 const DODGE_HIT_MARGIN = 0.8;
 const DODGE_HIT_STEPS = 5;
+// A shot is looked at leg by leg (`shotLegs`): straight on until the first
+// thing it meets, which ends it, and -- where shots ricochet -- off that and
+// on to the next, up to `DODGE_BOUNCES` bounces, all within the dodge's
+// horizon. A spot behind a wall is out of a shot's way because the shot
+// stops there, and one round a corner is in it because the shot comes back.
+const DODGE_BOUNCES = 2;
+// A Guided Missile locked on him turns after him at `_gmTurnAngle`, so no
+// straight-line dodge or jump in place shakes it: a building between them
+// does, since it flies into whatever is in its way, and so, often enough,
+// does driving square across its path, faster sideways than it can turn.
+// Cover is looked for along `COVER_BEARINGS` bearings at `COVER_STEPS`
+// distances, each reached at full stick, with `COVER_SPARE_SECONDS` to spare
+// before the missile arrives.
+// Firing a Guided Missile of his own (`fireGuided`): it steers at his lock
+// and dies on the first building in its way, so before a shot its flight is
+// flown out (`missileReaches`) in `GUIDED_STEP_SECONDS` steps, from each of
+// `GUIDED_LAUNCH_OFFSETS` off the bearing to the foe; one that reaches him
+// is taken, the launch nearest the barrel first, and the choice kept for
+// `GUIDED_PLAN_SECONDS`. The barrel is on a launch heading within
+// `GUIDED_AIM_TOLERANCE`.
+const GUIDED_STEP_SECONDS = 0.05;
+const GUIDED_LAUNCH_OFFSETS = [0, ...Array.from({ length: 13 }, (_, i) => (i + 1) / 10).flatMap((a) => [a, -a])];
+const GUIDED_PLAN_SECONDS = 0.25;
+const GUIDED_AIM_TOLERANCE = 0.05;
+// A Laser crosses the map at once, so a foe up on a building is shot by a
+// jump that brings the muzzle to his height (`laserJump`), with the barrel
+// within `LASER_JUMP_AIM` of him.
+const LASER_JUMP_AIM = 0.05;
+const MISSILE_COVER_BEARINGS = 16;
+const MISSILE_COVER_STEPS = [6, 12, 20, 30, 45, 60];
+const MISSILE_COVER_SPARE_SECONDS = 0.2;
 // The dodge's jump (`dodgeJump`): how finely each arc is flown out, how long
 // at most, and how a landing ranks -- out of the shooter's sight first, then
 // up on something, then furthest from where he stands.
@@ -168,9 +203,58 @@ export function interceptPoint(from, shooterVelocity, shotSpeed, target, lifetim
   const meet = at(t);
   return { ...meet, t, aimX: meet.x - (svx * t), aimY: meet.y - (svy * t) };
 }
-// The fastest a tank backs up, as a share of its top speed: upstream's
-// `setDesiredSpeed` clamp (LocalPlayer.cxx:1096).
-const REVERSE_SPEED_SHARE = 0.5;
+// Where along a traced leg of a shot (`traceShot`'s `{ t0, t1, from, to }`)
+// tank `p`, moving as he is, meets it, `reach` from his middle and inside
+// his height: the fraction of the leg, or null. Sampled every fiftieth of a
+// second and every two units, so a Laser's leg -- the length of the map in
+// no time at all -- is looked along too.
+export function legMeets(segment, p, reach, tankHeight) {
+  const span = segment.t1 - segment.t0;
+  const length = Math.hypot(segment.to.x - segment.from.x, segment.to.y - segment.from.y);
+  const steps = Math.max(1, Math.ceil(span / 0.02), Math.ceil(length / 2));
+  for (let k = 0; k <= steps; k++) {
+    const f = k / steps;
+    const t = segment.t0 + (span * f);
+    const sz = segment.from.z + ((segment.to.z - segment.from.z) * f);
+    if (sz < p.z - 0.5 || sz > p.z + tankHeight + 0.5) continue;
+    const sx = segment.from.x + ((segment.to.x - segment.from.x) * f);
+    const sy = segment.from.y + ((segment.to.y - segment.from.y) * f);
+    if (Math.hypot(sx - (p.x + ((p.vx ?? 0) * t)), sy - (p.y + ((p.vy ?? 0) * t))) < reach) return f;
+  }
+  return null;
+}
+
+// A bank shot (`bankShot`): headings tried every `BANK_STEP` radians within
+// `BANK_RANGE` of the barrel, the search made afresh every
+// `BANK_PLAN_SECONDS`; fired once the barrel is within `BANK_AIM` of the one
+// chosen and a trace from where it really points still meets the foe after
+// a bounce.
+const BANK_STEP = Math.PI / 60;
+const BANK_RANGE = Math.PI / 2;
+const BANK_PLAN_SECONDS = 0.3;
+const BANK_AIM = 0.01;
+// A search that found nothing is not made again for this long.
+const BANK_RETRY_SECONDS = 1;
+// A shell's bank shots, which trace seconds of flight a heading and so are
+// looked for sparingly: the barrel's own heading every `BANK_CHECK_SECONDS`,
+// fired the moment its shot bounces onto a foe; and, with the foe he is
+// after hidden behind something, headings within `BANK_NEAR_RANGE` either
+// side of the bearing to him every `BANK_NEAR_SECONDS`, a way he is turning
+// anyway -- as finely as his width at his range needs, no finer than
+// `BANK_NEAR_FINEST`, and no more than `BANK_NEAR_STEPS` each side. Each
+// trace runs only as far as `BANK_TRACE_SHARE` times the distance to the
+// furthest foe it could be for, and a little more: a bank near the bearing
+// is not much longer than the line. A trace is some milliseconds of
+// collision tests, so these are spread thin: `BANK_TRACES_PER_SECOND` of
+// them at most, the barrel's own heading's included.
+const BANK_CHECK_SECONDS = 0.5;
+const BANK_TRACES_PER_SECOND = 4;
+const BANK_NEAR_RANGE = 0.25;
+const BANK_NEAR_FINEST = Math.PI / 180;
+const BANK_NEAR_STEPS = 10;
+const BANK_NEAR_SECONDS = 1;
+const BANK_TRACE_SHARE = 1.5;
+
 export const TARGET_MODES = new Set(['chase', 'hunt', 'fight', 'ambush', 'lunge', 'camp']);
 export const CHASE_DEST_SLACK = 40;
 // Shots Ace keeps back on a server that allows several: a quarter of them,
@@ -679,7 +763,10 @@ export class AceFighter extends AceDriver {
   onTarget(ctx, p, dist, diff) {
     if (this.tuning?.aim === 'roger') return super.onTarget(ctx, p, dist, diff);
     const reach = (TANK.radius * getTankHitRadiusScale(p.flag ?? null)) + SHOT_COLLISION_RADIUS;
-    return diff < Math.atan2(reach * LEAD_TOLERANCE, Math.max(dist, 1));
+    // Wider while more slots are free than he keeps back: a near miss costs
+    // a slot that would only have sat there.
+    const spare = this.spareShots(ctx) ? (this.tuning?.spareSpread ?? 1) : 1;
+    return diff < Math.atan2(reach * LEAD_TOLERANCE * spare, Math.max(dist, 1));
   }
 
   firedAt(ctx, p, point) {
@@ -917,9 +1004,11 @@ export class AceFighter extends AceDriver {
     // Still lunging: keep the speed the shot is waiting on, so the move it goes
     // with says the same.
     if (this.lunge) ctx.out.speed = 1;
+    this.laserJump(ctx);
     const speed = ctx.out.speed;
     this.landingShotChosen = false;
     this.chooseShot(ctx);
+    if (!ctx.out.fire) this.bankShot(ctx);
     if (!ctx.out.fire) {
       if (!this.lunge && holding) this.startLunge(ctx);
       return;
@@ -1000,22 +1089,7 @@ export class AceFighter extends AceDriver {
     const reach = (p) => (TANK.radius * getTankHitRadiusScale(p.flag ?? null)) + TEAMMATE_HIT_MARGIN;
     // When along a leg a tank, moving as it is, comes nearest the shot, and
     // whether that is a hit: a fraction of the leg, or null.
-    const meets = (segment, p) => {
-      const span = segment.t1 - segment.t0;
-      const steps = Math.max(1, Math.ceil(span / 0.02));
-      for (let k = 0; k <= steps; k++) {
-        const f = k / steps;
-        const t = segment.t0 + (span * f);
-        const sx = segment.from.x + ((segment.to.x - segment.from.x) * f);
-        const sy = segment.from.y + ((segment.to.y - segment.from.y) * f);
-        const sz = segment.from.z + ((segment.to.z - segment.from.z) * f);
-        const px = p.x + ((p.vx ?? 0) * t);
-        const py = p.y + ((p.vy ?? 0) * t);
-        if (sz < p.z - 0.5 || sz > p.z + view.world.tankHeight + 0.5) continue;
-        if (Math.hypot(sx - px, sy - py) < reach(p)) return f;
-      }
-      return null;
-    };
+    const meets = (segment, p) => legMeets(segment, p, reach(p), view.world.tankHeight);
     for (const segment of segments) {
       const mate = Math.min(...mates.map((p) => meets(segment, p) ?? Infinity));
       const foe = target ? meets(segment, target) ?? Infinity : Infinity;
@@ -1064,6 +1138,16 @@ export class AceFighter extends AceDriver {
     out.intent.target = { ...pointOf(target), id: target.id };
   }
 
+  // Whether more slots are free than Ace keeps back (`shotReserve`, a share
+  // of them rounded up): true, false, or null where slots are not counted or
+  // there is only one.
+  spareShots(ctx) {
+    const free = ctx.view.self.freeShots;
+    const maxShots = ctx.view.world.maxShots;
+    if (!Number.isFinite(free) || !(maxShots > 1)) return null;
+    return free > Math.ceil(maxShots * (this.tuning?.shotReserve ?? SHOT_RESERVE_FRACTION));
+  }
+
   // Whether the shot chosen this frame may go: always while more slots are
   // free than Ace keeps back, and from the kept ones only at a foe close
   // enough to need it, or at one coming down where a landing shot meets it --
@@ -1071,11 +1155,7 @@ export class AceFighter extends AceDriver {
   mayUseShot(ctx) {
     const { view, me, out } = ctx;
     if (this.landingShotChosen) return true;
-    const free = view.self.freeShots;
-    const maxShots = view.world.maxShots;
-    if (!Number.isFinite(free) || !(maxShots > 1)) return true;
-    const reserve = Math.ceil(maxShots * SHOT_RESERVE_FRACTION);
-    if (free > reserve) return true;
+    if (this.spareShots(ctx) !== false) return true;
     const target = this.remotePlayers(view).find((p) => p.id === out.shotTargetId);
     return Boolean(target) && distance2D(me, target) <= SHOT_RESERVE_SPEND_RANGE;
   }
@@ -1100,6 +1180,167 @@ export class AceFighter extends AceDriver {
       dir: { x: vx / length, y: vy / length, z: 0 },
       speed: me.flag === 'GM' ? base : length * (self.shotSpeed / base),
     };
+  }
+
+  // A foe off a wall: with ricochet, the heading near the barrel whose shot,
+  // bounced once or more, meets a foe where he will be -- the best of them
+  // turned onto, and fired once on it. The direct shot is the trigger's
+  // own; this is for the foe it cannot reach. Only with slots to spare, on
+  // the ground, and with nothing to dodge.
+  bankShot(ctx) {
+    const { view, me, out } = ctx;
+    const self = view.self;
+    const laser = me.flag === 'L';
+    // A Laser's full search (`bank`), a shell's sparing one (`shellBank`).
+    if (laser ? (this.tuning?.bank ?? 'laser') === false : (this.tuning?.shellBank ?? true) === false) return false;
+    if (!self.ricochet || typeof view.traceShot !== 'function' || me.inAir || !me.canFire) return false;
+    if (me.flag === 'GM' || me.flag === 'SW' || this.spareShots(ctx) === false) return false;
+    if (['dodge', 'evade', 'cover'].includes(out.intent.mode)) return false;
+    const foes = this.remotePlayers(view).filter((p) => p.alive && !p.paused && !p.notResponding
+      && view.isFoe(p) && !this.zonedAway(me, p) && this.canHit(ctx, p) && this.sureOf(ctx, p) && !p.airborne);
+    if (foes.length === 0) return false;
+    const eye = { x: me.x, y: me.y, z: me.z + (self.muzzleHeight ?? TANK.muzzleHeight) };
+    const inSight = (p) => !this.isObscured(ctx, eye, { x: p.x, y: p.y, z: p.z + (self.muzzleHeight ?? TANK.muzzleHeight) });
+    // The foe a heading's shot meets after a bounce, before any other tank,
+    // traced for `life` seconds at most.
+    const banked = (azimuth, life = self.shotLifetime ?? 3.5) => {
+      const muzzle = {
+        x: self.x + (Math.cos(azimuth) * (self.muzzleForward ?? 0)),
+        y: self.y + (Math.sin(azimuth) * (self.muzzleForward ?? 0)),
+        z: self.z + (self.muzzleHeight ?? TANK.muzzleHeight),
+      };
+      const shot = this.shotVelocity(ctx, azimuth);
+      const segments = view.traceShot(muzzle, shot.dir, shot.speed, Math.min(life, self.shotLifetime ?? 3.5), true);
+      for (let i = 0; i < segments.length; i++) {
+        const leg = segments[i];
+        for (const p of foes) {
+          const reach = (TANK.radius * getTankHitRadiusScale(p.flag ?? null)) + SHOT_COLLISION_RADIUS;
+          // Nowhere near the leg, however he moves in its time: no closer look.
+          const mid = (leg.t0 + leg.t1) / 2;
+          const drift = Math.hypot(p.vx ?? 0, p.vy ?? 0) * ((leg.t1 - leg.t0) / 2);
+          const at = { x: p.x + ((p.vx ?? 0) * mid), y: p.y + ((p.vy ?? 0) * mid) };
+          if (segmentDistance2D(leg.from, leg.to, at) > reach + drift) continue;
+          if (legMeets(leg, p, reach, view.world.tankHeight) !== null) return i > 0 ? p : null;
+        }
+      }
+      return null;
+    };
+    if (!laser) return this.shellBank(ctx, foes, banked, inSight);
+    // A foe in plain sight is the trigger's, and the barrel is on its way to
+    // him: a Laser's search is for when none is.
+    if (foes.some(inSight)) {
+      this.bankPlan = null;
+      return false;
+    }
+    const stale = this.bankPlan && view.now - this.bankPlan.at > (this.bankPlan.plan ? BANK_PLAN_SECONDS : BANK_RETRY_SECONDS);
+    if (!this.bankPlan || stale) {
+      let plan = null;
+      for (let k = 0; k * BANK_STEP <= BANK_RANGE && !plan; k++) {
+        for (const side of k === 0 ? [0] : [1, -1]) {
+          const azimuth = self.azimuth + (side * k * BANK_STEP);
+          const p = banked(azimuth);
+          if (p) {
+            plan = { azimuth, id: p.id };
+            break;
+          }
+        }
+      }
+      this.bankPlan = { at: view.now, plan };
+    }
+    const { plan } = this.bankPlan;
+    if (!plan) return false;
+    const off = normalizeAngle(plan.azimuth - self.azimuth);
+    if (Math.abs(off) > BANK_AIM) {
+      out.rotation = this.steer(ctx, off);
+      out.intent.reason = 'bank';
+      return true;
+    }
+    const p = banked(self.azimuth);
+    if (!p || this.shotEndangersSelf(ctx)) {
+      this.bankPlan = null;
+      return false;
+    }
+    out.fire = true;
+    out.shotTargetId = p.id;
+    out.targetId = out.targetId ?? p.id;
+    this.lastShot = view.now;
+    this.bankPlan = null;
+    this.stats.banks = (this.stats.banks || 0) + 1;
+    return true;
+  }
+
+  // A shell's bank shot, sparingly (`BANK_CHECK_SECONDS`): the barrel's own
+  // heading, fired when it bounces onto a foe; then, with the foe he is
+  // after out of sight, the headings either side of the bearing to him,
+  // turned onto where one bounces onto him. `banked(azimuth, life)` is the
+  // foe a heading's shot meets after a bounce.
+  shellBank(ctx, foes, banked, inSight) {
+    const { view, me, out } = ctx;
+    const self = view.self;
+    const speed = this.shotVelocity(ctx).speed || view.world.shotSpeed;
+    // The barrel's own heading may bank onto anyone; the near search is for
+    // the one foe.
+    const lifeFor = (d) => ((BANK_TRACE_SHARE * d) / speed) + 0.1;
+    // Traces as a bucket refilled at `BANK_TRACES_PER_SECOND`.
+    const elapsed = view.now - (this.bankTokenAt ?? view.now);
+    this.bankTokenAt = view.now;
+    this.bankTokens = Math.min(BANK_TRACES_PER_SECOND, (this.bankTokens ?? BANK_TRACES_PER_SECOND)
+      + (elapsed * BANK_TRACES_PER_SECOND));
+    const spend = () => {
+      if (this.bankTokens < 1) return false;
+      this.bankTokens -= 1;
+      return true;
+    };
+    const life = lifeFor(Math.max(...foes.map((p) => distance2D(me, p))));
+    const fire = (p) => {
+      if (this.shotEndangersSelf(ctx)) return false;
+      out.fire = true;
+      out.shotTargetId = p.id;
+      out.targetId = out.targetId ?? p.id;
+      this.lastShot = view.now;
+      this.bankNear = null;
+      this.stats.banks = (this.stats.banks || 0) + 1;
+      return true;
+    };
+    if (view.now - (this.bankCheckAt ?? -Infinity) >= BANK_CHECK_SECONDS && spend()) {
+      this.bankCheckAt = view.now;
+      const p = banked(self.azimuth, life);
+      if (p && fire(p)) return true;
+    }
+    const target = foes.find((p) => p.id === out.targetId);
+    // None to look for, or him in plain sight, the trigger's: the search
+    // waits, kept for when he is hidden again.
+    if (!target || inSight(target)) return false;
+    // Begun again for another foe, once a sweep is done and old, or once he
+    // has moved round far enough that it was of the wrong place.
+    const was = this.bankNear;
+    const done = was && (was.heading !== null || was.next >= was.offsets.length);
+    if (!was || was.id !== target.id || (done && view.now - was.at > BANK_NEAR_SECONDS)
+      || Math.abs(normalizeAngle(azimuthTo(me, target) - was.bearing)) > BANK_NEAR_RANGE / 2) {
+      const reach = (TANK.radius * getTankHitRadiusScale(target.flag ?? null)) + SHOT_COLLISION_RADIUS;
+      const step = Math.max(BANK_NEAR_FINEST, Math.min(BANK_STEP, Math.atan2(reach, Math.max(1, distance2D(me, target)))));
+      // Headings from the bearing outward, alternately either side.
+      const offsets = [0];
+      for (let k = 1; k <= BANK_NEAR_STEPS && k * step <= BANK_NEAR_RANGE; k++) offsets.push(k * step, -k * step);
+      this.bankNear = { id: target.id, at: view.now, bearing: azimuthTo(me, target), offsets, next: 0, heading: null };
+    }
+    const near = this.bankNear;
+    const nearLife = lifeFor(distance2D(me, target));
+    // Searched on from where the last frame stopped, as the bucket allows.
+    while (near.heading === null && near.next < near.offsets.length && spend()) {
+      const azimuth = near.bearing + near.offsets[near.next++];
+      if (banked(azimuth, nearLife)?.id === target.id) near.heading = azimuth;
+    }
+    if (near.heading === null) return false;
+    const off = normalizeAngle(near.heading - self.azimuth);
+    if (Math.abs(off) > BANK_AIM) {
+      out.rotation = this.steer(ctx, off);
+      out.intent.reason = 'bank';
+      return true;
+    }
+    if (!spend()) return true;
+    const p = banked(self.azimuth, life);
+    return Boolean(p) && fire(p);
   }
 
   // Whether the shot about to be fired, or one fired facing `azimuth`, comes
@@ -1156,6 +1397,7 @@ export class AceFighter extends AceDriver {
       this.fireShockWave(ctx);
       return;
     }
+    if (me.flag === 'GM' && this.fireGuided(ctx)) return;
     const players = this.remotePlayers(view);
     for (const p of players) {
       if (!p.airborne || !p.alive || p.paused || !view.isFoe(p) || !this.canHit(ctx, p) || !this.sureOf(ctx, p)) continue;
@@ -1272,6 +1514,7 @@ export class AceFighter extends AceDriver {
   // looks, since the shot is certain and the landing is not (`dodgeJump`);
   // and otherwise Roger's dodge.
   avoidBullet(ctx) {
+    if (this.evadeMissile(ctx)) return true;
     const { view, me, out } = ctx;
     const top = me.topSpeed ?? view.world.tankSpeed;
     const heading = { x: Math.cos(me.azimuth), y: Math.sin(me.azimuth) };
@@ -1326,8 +1569,22 @@ export class AceFighter extends AceDriver {
       return false;
     }
     if (me.flag === 'BU' && me.z < 0) return false;
-    const jump = this.dodgeJump(ctx, shot);
-    if (jump) {
+    // A jump is a second or more he cannot steer, coming down where anyone
+    // can wait for it: in the arena nearly every death in the air was one.
+    // So only where no way on the ground clears, only one that clears every
+    // shot, and -- as `jumpDodge: 'hidden'` has it -- only one that comes
+    // down out of every foe's sight. Otherwise the way on the ground that
+    // comes nearest missing.
+    const jumpDodge = this.tuning?.jumpDodge ?? 'hidden';
+    const jump = jumpDodge === 'never' ? null : this.dodgeJump(ctx, shot);
+    const partial = this.dodgePartial;
+    // `any` is the old way: a jump, or else Roger's dodge, which jumps too.
+    if (partial && !me.inAir && jumpDodge !== 'any' && (!jump || (jumpDodge === 'hidden' && !jump.hidden))) {
+      out.speed = partial.speed;
+      out.rotation = partial.turn;
+      return true;
+    }
+    if (jump && (jumpDodge !== 'hidden' || jump.hidden)) {
       // Turning as he goes: a tank keeps through the air the turn it left
       // with, so the one put on now brings his sights onto the shooter as his
       // muzzle comes down to the shooter's height, from wherever the jump
@@ -1378,6 +1635,13 @@ export class AceFighter extends AceDriver {
       if (!best || score > best.score) {
         best = { score, speed, ...arc };
       }
+    }
+    // Whether any foe sees where it comes down, on that level.
+    if (best) {
+      const at = { x: best.landing.x, y: best.landing.y, z: best.landing.z + 1 };
+      best.hidden = !this.remotePlayers(view).some((p) => p.alive && !p.paused && view.isFoe(p)
+        && Math.abs(best.landing.z - p.z) < 2 * view.world.tankHeight
+        && (p.flag === 'SB' || !view.isObscured({ x: p.x, y: p.y, z: p.z + (me.muzzleHeight ?? TANK.muzzleHeight) }, at)));
     }
     return best;
   }
@@ -1479,25 +1743,28 @@ export class AceFighter extends AceDriver {
   // there is none.
   dodgePath(ctx, top, current) {
     const { view, me } = ctx;
+    this.dodgePartial = null;
     const narrow = usesNarrowHitBox(me.flag ?? null);
     const radius = 0.99 * TANK.radius * getTankHitRadiusScale(me.flag ?? null);
     const middle = me.z + (TANK.hitHeight / 2);
     const shots = [];
     let horizon = 0;
-    for (const shot of view.shots) {
+    for (const leg of this.shotLegs(ctx)) {
+      const { shot } = leg;
       if (shot.ownerId !== me.id && !canSeeShot(me.flag, shot.flag)) continue;
       if (shot.ownerZoned && !me.zoned) continue;
       if (shot.flag === 'L' && me.flag === 'CL') continue;
       if (shot.flag !== 'GM' && (shot.z < me.z - SHOT_COLLISION_RADIUS
         || shot.z > me.z + view.world.tankHeight + SHOT_COLLISION_RADIUS)) continue;
-      const speed2 = (shot.vx * shot.vx) + (shot.vy * shot.vy);
+      const speed2 = (leg.vx * leg.vx) + (leg.vy * leg.vy);
       if (speed2 < 1e-6) continue;
-      // When it is nearest where he stands, as a bound on how long to look.
-      const t = (((me.x - shot.x) * shot.vx) + ((me.y - shot.y) * shot.vy)) / speed2;
-      if (t + DODGE_MARGIN_SECONDS < 0) continue;
+      // When it is nearest where he stands, within the leg, as a bound on
+      // how long to look.
+      const t = Math.min(leg.until, Math.max(leg.after, (((me.x - leg.x) * leg.vx) + ((me.y - leg.y) * leg.vy)) / speed2));
+      if (t + DODGE_MARGIN_SECONDS < 0 || leg.until < 0) continue;
       const dz = shot.z - middle;
       const reach = narrow ? null : Math.sqrt(Math.max(0, (radius * radius) - (dz * dz))) + DODGE_HIT_MARGIN;
-      shots.push({ ...shot, reach });
+      shots.push({ ...shot, x: leg.x, y: leg.y, vx: leg.vx, vy: leg.vy, after: leg.after, until: leg.until, reach });
       horizon = Math.max(horizon, t + DODGE_MARGIN_SECONDS);
     }
     horizon = Math.min(DODGE_HORIZON_SECONDS, Math.max(horizon, DODGE_STEP_SECONDS * 4));
@@ -1505,8 +1772,9 @@ export class AceFighter extends AceDriver {
     const turning = rate > 0 ? (me.angVel ?? 0) / rate : 0;
     const z = me.z + 1;
     let best = null;
-    for (const speed of dodgeSpeeds(me.flag)) {
-      for (const turn of DODGE_TURNS) {
+    const straight = this.tuning?.dodge === 'straight';
+    for (const speed of dodgeSpeeds(me.flag, straight ? STRAIGHT_DODGE_SPEEDS : DODGE_SPEEDS)) {
+      for (const turn of straight ? STRAIGHT_DODGE_TURNS : DODGE_TURNS) {
         let x = me.x;
         let y = me.y;
         let azimuth = me.azimuth;
@@ -1525,6 +1793,8 @@ export class AceFighter extends AceDriver {
             const c = Math.cos(a);
             const sn = Math.sin(a);
             for (const shot of shots) {
+              // Only while this leg of it is flying.
+              if (at < shot.after - DODGE_MARGIN_SECONDS || at > shot.until + DODGE_MARGIN_SECONDS) continue;
               const rx = shot.x + (shot.vx * at) - px;
               const ry = shot.y + (shot.vy * at) - py;
               if (shot.reach !== null) {
@@ -1549,7 +1819,12 @@ export class AceFighter extends AceDriver {
             from = to;
           }
         }
-        if (!clear) continue;
+        if (!clear) {
+          // Hit on every way he can go, the one that comes nearest missing,
+          // for when nothing clears: a near miss on the ground before a jump.
+          if (!this.dodgePartial || margin > this.dodgePartial.margin) this.dodgePartial = { speed, turn, margin };
+          continue;
+        }
         const cost = Math.abs(speed - current) + (DODGE_TURN_COST * Math.abs(turn - turning));
         if (!best || cost < best.cost || (cost === best.cost && margin > best.margin)) {
           best = { speed, turn, cost, margin };
@@ -1557,6 +1832,219 @@ export class AceFighter extends AceDriver {
       }
     }
     return best;
+  }
+
+  // Whether a Guided Missile fired now on `heading` reaches `p`: flown out
+  // step by step as upstream flies one (`steerGuidedShot`), turning after
+  // where he will be on his present velocity, until it meets him, meets a
+  // building or the ground, or runs out of life.
+  missileReaches(ctx, p, heading) {
+    const { view, me } = ctx;
+    const effects = getShotEffects('GM');
+    const speed = view.world.shotSpeed;
+    const life = me.shotLifetime ?? (3.5 * effects.lifeFactor);
+    const reach = TANK.radius * getTankHitRadiusScale(p.flag ?? null);
+    let pos = {
+      x: me.x + (Math.cos(heading) * (me.muzzleForward ?? 3)),
+      y: me.y + (Math.sin(heading) * (me.muzzleForward ?? 3)),
+      z: me.z + (me.muzzleHeight ?? 1.57),
+    };
+    let dir = { x: Math.cos(heading), y: Math.sin(heading), z: 0 };
+    for (let t = GUIDED_STEP_SECONDS; t <= life + 1e-9; t += GUIDED_STEP_SECONDS) {
+      const foe = { x: p.x + ((p.vx ?? 0) * t), y: p.y + ((p.vy ?? 0) * t), z: p.z ?? 0 };
+      const eyes = { ...foe, z: foe.z + (me.muzzleHeight ?? 1.57) };
+      dir = steerGuidedShot(dir, pos, eyes, effects.turnAngle, GUIDED_STEP_SECONDS);
+      const next = {
+        x: pos.x + (dir.x * speed * GUIDED_STEP_SECONDS),
+        y: pos.y + (dir.y * speed * GUIDED_STEP_SECONDS),
+        z: pos.z + (dir.z * speed * GUIDED_STEP_SECONDS),
+      };
+      if (next.z < 0 || this.isObscured(ctx, pos, next)) return false;
+      const body = { x: foe.x, y: foe.y, z: foe.z + (TANK.hitHeight / 2) };
+      if (segmentDistance3D(pos, next, body) < reach) return true;
+      pos = next;
+    }
+    return false;
+  }
+
+  // His own Guided Missile at the foe he is after, wherever that foe hides:
+  // the lock first, with the barrel on him (`lockTargetId`); then the
+  // launch heading whose flight reaches him (`missileReaches`), turned onto
+  // and fired. False when there is nobody to fire it at, for the plain
+  // shot to have its turn.
+  fireGuided(ctx) {
+    const { view, me, out } = ctx;
+    const foe = this.remotePlayers(view).find((p) => p.id === out.targetId)
+      ?? this.findBestTarget({ ...ctx, out: { ...out, intent: { ...out.intent } } }, this.remotePlayers(view));
+    if (!foe || !foe.alive || foe.paused || !view.isFoe(foe) || this.zonedAway(me, foe)) return false;
+    const bearing = azimuthTo(me, foe);
+    const free = !['dodge', 'evade', 'cover'].includes(out.intent.mode);
+    const lockCone = getFlagTuning().lockOnAngle;
+    const toFoe = normalizeAngle(bearing - me.azimuth);
+    const locked = String(me.lockTargetId) === String(foe.id);
+    if (!me.canFire) return true;
+    if (!this.guidedPlan || this.guidedPlan.id !== foe.id || view.now - this.guidedPlan.at > GUIDED_PLAN_SECONDS) {
+      this.guidedPlan = { id: foe.id, at: view.now, ...this.planGuided(ctx, foe, bearing) };
+    }
+    const plan = this.guidedPlan;
+    if (plan.heading === null) {
+      // Nothing reaches him: the lock taken all the same, for the plain shot
+      // the moment he shows.
+      if (!locked && Math.abs(toFoe) < lockCone) out.lockTargetId = foe.id;
+      return false;
+    }
+    if (!locked) {
+      // The lock first, with the barrel on him.
+      if (Math.abs(toFoe) < lockCone) out.lockTargetId = foe.id;
+      else if (free) out.rotation = this.steer(ctx, toFoe);
+      return true;
+    }
+    const off = normalizeAngle(plan.heading - me.azimuth);
+    if (Math.abs(off) > GUIDED_AIM_TOLERANCE) {
+      if (free) out.rotation = this.steer(ctx, off);
+      return true;
+    }
+    out.fire = true;
+    out.shotTargetId = foe.id;
+    this.lastShot = view.now;
+    this.guidedPlan = null;
+    return true;
+  }
+
+  // The launch for a missile at `p`, nearest the barrel first: `{ heading }`,
+  // null when nothing reaches. Fired off to one side, a homing missile swings
+  // out past a building's corner and back, which reaches every foe a missile
+  // fired past it unlocked and locked on the way does: flown out on hix-like
+  // walls, firing past never found one the wide launch had not.
+  planGuided(ctx, p, bearing) {
+    const { me } = ctx;
+    const byTurn = (a, b) => Math.abs(normalizeAngle(a - me.azimuth)) - Math.abs(normalizeAngle(b - me.azimuth));
+    for (const launch of GUIDED_LAUNCH_OFFSETS.map((offset) => bearing + offset).sort(byTurn)) {
+      if (this.missileReaches(ctx, p, launch)) return { heading: launch };
+    }
+    return { heading: null };
+  }
+
+  // Holding Laser, a foe up on a building in sight from the top of a jump:
+  // faced, and jumped for straight up, the in-air shot taken as the muzzle
+  // passes his height (`fireAtGrounded`). False when there is none.
+  laserJump(ctx) {
+    const { view, me, out } = ctx;
+    if (me.flag !== 'L' || me.inAir || !me.canFire || !canTankJump(view.world, me.flag, me.z)) return false;
+    if (['dodge', 'evade', 'cover'].includes(out.intent.mode)) return false;
+    const reach = this.jumpReach(ctx);
+    const muzzle = me.muzzleHeight ?? 1.57;
+    let best = null;
+    for (const p of this.remotePlayers(view)) {
+      if (!p.alive || p.paused || p.airborne || !view.isFoe(p) || !this.canHit(ctx, p) || !this.sureOf(ctx, p)) continue;
+      // The muzzle at his middle: above what a level shot reaches, under what
+      // a jump does.
+      const rise = (p.z + (TANK.hitHeight / 2)) - (me.z + muzzle);
+      if (rise < view.world.tankHeight || rise > reach * 0.95) continue;
+      const top = { x: me.x, y: me.y, z: me.z + muzzle + rise };
+      if (this.isObscured(ctx, top, { x: p.x, y: p.y, z: p.z + (TANK.hitHeight / 2) })) continue;
+      const d = distance2D(me, p);
+      if (!best || d < best.d) best = { p, d };
+    }
+    if (!best) return false;
+    const off = normalizeAngle(azimuthTo(me, best.p) - me.azimuth);
+    out.targetId = best.p.id;
+    out.intent.target = { ...pointOf(best.p), id: best.p.id };
+    out.rotation = this.steer(ctx, off);
+    out.speed = 0;
+    if (Math.abs(off) <= LASER_JUMP_AIM) {
+      out.jump = true;
+      out.rotation = 0;
+    }
+    return true;
+  }
+
+  // The Guided Missile locked on him that arrives first, by its distance at
+  // shot speed, or null.
+  lockedMissile(ctx) {
+    const { view, me } = ctx;
+    let best = null;
+    for (const shot of view.shots) {
+      if (shot.flag !== 'GM' || shot.targetId === null || shot.targetId === undefined) continue;
+      if (String(shot.targetId) !== String(me.id)) continue;
+      if (shot.ownerZoned && !me.zoned) continue;
+      const speed = Math.hypot(shot.vx, shot.vy, shot.vz ?? 0);
+      if (speed < 1e-6) continue;
+      const time = Math.hypot(me.x - shot.x, me.y - shot.y, me.z - shot.z) / speed;
+      if (!best || time < best.time) best = { shot, time, speed };
+    }
+    return best;
+  }
+
+  // Away from a missile locked on him (`MISSILE_COVER_BEARINGS`): into cover
+  // he can reach before it does, the nearest in time, or else square across
+  // its path at full stick, to the side with more room. Never a jump: in
+  // the air he can neither steer nor turn faster than it does.
+  evadeMissile(ctx) {
+    const { view, me, out } = ctx;
+    const threat = this.lockedMissile(ctx);
+    if (!threat) return false;
+    const { shot, time, speed } = threat;
+    const top = me.topSpeed ?? view.world.tankSpeed;
+    const rate = this.turnRate(ctx);
+    const body = { z: me.z + (TANK.hitHeight / 2) };
+    let cover = null;
+    if (top > 0) {
+      for (let i = 0; i < MISSILE_COVER_BEARINGS; i++) {
+        const bearing = (2 * Math.PI * i) / MISSILE_COVER_BEARINGS;
+        const turn = rate > 0 ? Math.abs(normalizeAngle(bearing - me.azimuth)) / rate : Infinity;
+        const open = this.openDistance(ctx, me, bearing);
+        for (const step of MISSILE_COVER_STEPS) {
+          const arrive = turn + (step / top);
+          if (arrive + MISSILE_COVER_SPARE_SECONDS > time) break;
+          if (cover && arrive >= cover.arrive) break;
+          if (open < step) break;
+          const spot = { x: me.x + (Math.cos(bearing) * step), y: me.y + (Math.sin(bearing) * step), ...body };
+          // Hidden from where the missile is now and from where it will be
+          // when he gets there, flying at him all the way.
+          const ahead = Math.min(1, (arrive * speed) / Math.max(1e-6, speed * time));
+          const then = {
+            x: shot.x + ((me.x - shot.x) * ahead), y: shot.y + ((me.y - shot.y) * ahead), z: shot.z,
+          };
+          if (!this.isObscured(ctx, pointOf(shot), spot) || !this.isObscured(ctx, then, spot)) continue;
+          cover = { spot, bearing, arrive };
+          break;
+        }
+      }
+    }
+    out.jump = false;
+    out.intent.target = { x: shot.x, y: shot.y, z: shot.z, id: shot.ownerId };
+    if (cover) {
+      out.intent.mode = 'cover';
+      out.intent.target = { ...cover.spot, id: shot.ownerId };
+      out.rotation = Math.max(-1, Math.min(1, normalizeAngle(cover.bearing - me.azimuth) / Math.max(1e-6, rate * 0.1)));
+      out.speed = Math.abs(normalizeAngle(cover.bearing - me.azimuth)) < Math.PI / 2 ? 1 : 0;
+      return true;
+    }
+    // Square across its path: of either side, forward or in reverse (at
+    // half speed), the way that gets him furthest sideways before it
+    // arrives, counting the turn onto it; the side with more room breaks a
+    // tie, and a side with no room is no way at all.
+    const from = Math.atan2(me.y - shot.y, me.x - shot.x);
+    let best = null;
+    for (const side of [from + (Math.PI / 2), from - (Math.PI / 2)]) {
+      const room = this.openDistance(ctx, me, side);
+      for (const reverse of me.flag === 'FO' ? [false] : [false, true]) {
+        const heading = reverse ? side + Math.PI : side;
+        const turnTime = rate > 0 ? Math.abs(normalizeAngle(heading - me.azimuth)) / rate : Infinity;
+        const pace = (reverse ? REVERSE_SPEED_SHARE : 1) * top;
+        const across = Math.min(room, pace * Math.max(0, time - turnTime));
+        if (!best || across > best.across || (across === best.across && room > best.room)) {
+          best = { heading, across, room, speed: reverse ? -1 : 1 };
+        }
+      }
+    }
+    const bearing = best.heading;
+    const { speed: stick } = best;
+    out.intent.mode = 'evade';
+    out.rotation = Math.max(-1, Math.min(1, normalizeAngle(bearing - me.azimuth) / Math.max(1e-6, rate * 0.1)));
+    out.speed = stick;
+    return true;
   }
 
   // Burrowed, the one thing that kills him from above ground is being driven
@@ -1592,6 +2080,48 @@ export class AceFighter extends AceDriver {
     return best;
   }
 
+  // The shots in view as legs, once a view (`DODGE_BOUNCES`): each
+  // `{ shot, x, y, z, vx, vy, vz, after, until }`, where the shell is
+  // `(x, y, z) + v t` for `after <= t <= until`, in seconds from now. A
+  // Guided Missile steers and a Laser is already where it goes: each is one
+  // leg, as it is.
+  shotLegs(ctx) {
+    const { view } = ctx;
+    if (this.legsView === view) return this.legs;
+    const self = view.self;
+    // Every shot bounces in a world that says so, which a tank's own ricochet
+    // gives away unless its flag is the reason.
+    const worldRico = Boolean(self.ricochet) && self.flag !== 'R';
+    const bounce = typeof view.shotBounce === 'function' && this.tuning?.dodge !== 'straight' ? view.shotBounce : null;
+    const legs = [];
+    for (const shot of view.shots) {
+      let leg = { shot, x: shot.x, y: shot.y, z: shot.z, vx: shot.vx, vy: shot.vy, vz: shot.vz ?? 0, after: 0, until: Infinity };
+      if (!bounce || shot.flag === 'GM' || shot.flag === 'L') {
+        legs.push(leg);
+        continue;
+      }
+      const ricochets = worldRico || shot.flag === 'R';
+      for (let n = 0; n <= DODGE_BOUNCES; n++) {
+        const left = DODGE_HORIZON_SECONDS - leg.after;
+        const from = { x: leg.x + (leg.vx * leg.after), y: leg.y + (leg.vy * leg.after), z: leg.z + (leg.vz * leg.after) };
+        const hit = left > 0 ? bounce(from, { x: leg.vx, y: leg.vy, z: leg.vz }, left) : null;
+        if (!hit) {
+          legs.push(leg);
+          break;
+        }
+        const at = leg.after + hit.t;
+        legs.push({ ...leg, until: at });
+        if (!ricochets || n === DODGE_BOUNCES) break;
+        // On from the bounce: where it would have been at 0, so `p + v t`
+        // still holds from `after` on.
+        leg = { shot, x: hit.x - (hit.vx * at), y: hit.y - (hit.vy * at), z: hit.z - (hit.vz * at), vx: hit.vx, vy: hit.vy, vz: hit.vz, after: at, until: Infinity };
+      }
+    }
+    this.legsView = view;
+    this.legs = legs;
+    return legs;
+  }
+
   // Of the shots Ace can see, the one that will hit him soonest if he stays
   // put: when it passes closest, by how much, and which way is away from it.
   // His own are in the view once they have bounced, and count like any
@@ -1601,12 +2131,13 @@ export class AceFighter extends AceDriver {
     const { view, me } = ctx;
     const clearance = TANK.radius + SHOT_COLLISION_RADIUS + DODGE_CLEARANCE;
     let best = null;
-    for (const shot of view.shots) {
+    for (const leg of this.shotLegs(ctx)) {
+      const { shot } = leg;
       if (shot.ownerId !== me.id && !canSeeShot(me.flag, shot.flag)) continue;
       if (shot.ownerZoned && !me.zoned) continue;
       if (shot.flag === 'L' && me.flag === 'CL') continue;
-      const pos = pointOf(shot);
-      const { vx, vy } = shot;
+      const pos = pointOf(leg);
+      const { vx, vy } = leg;
       const speed2 = (vx * vx) + (vy * vy);
       if (speed2 < 1e-6) continue;
       // Only a shot at the height of his body: a burrowed tank's body is
@@ -1622,7 +2153,9 @@ export class AceFighter extends AceDriver {
       if (rv2 < 1e-6) continue;
       const rx = me.x - pos.x;
       const ry = me.y - pos.y;
-      const time = ((rx * rvx) + (ry * rvy)) / rv2;
+      // Nearest within the leg: a bounce's leg starts later, and a leg ends
+      // at what it meets.
+      const time = Math.min(leg.until, Math.max(leg.after, ((rx * rvx) + (ry * rvy)) / rv2));
       if (time <= 0 || time > DODGE_HORIZON_SECONDS) continue;
       const mx = rx - (rvx * time);
       const my = ry - (rvy * time);

@@ -41,6 +41,28 @@ const box = (name, x, y, w, d, h, base = 0) => ({
   assert.ok(route.some((node) => Math.abs(node.y) > 60), 'and it goes round the end');
 }
 
+// Oscillation Overthruster: the same wall is driven straight through on the
+// ground, and smoothed to one leg; a tall block's inside is ground he may
+// cross but never jump from, so a route onto a deck beside it takes off
+// outside.
+{
+  const nav = buildNavGraph({ obstacles: [box('wall', 0, 0, 4, 120, 20)], mapSize: 200, jump: null, phasing: true });
+  const route = nav.findRoute({ x: -40, y: 0, z: 0 }, { x: 40, y: 0, z: 0 });
+  assert.ok(route, 'a way through');
+  assert.ok(route.every((node) => Math.abs(node.y) < 10), 'straight through, not round the end');
+  const smooth = nav.smoothRoute(route, { x: -40, y: 0, z: 0 });
+  assert.ok(smooth.length <= 2, `one straight leg (${smooth.length})`);
+  const deck = buildNavGraph({
+    obstacles: [box('block', 0, 0, 40, 40, 30), box('deck', 40, 0, 20, 20, 3)], mapSize: 200, jump: JUMP, phasing: true,
+  });
+  const up = deck.findRoute({ x: 0, y: 0, z: 0 }, { x: 40, y: 0, z: 3 });
+  assert.ok(up, 'the deck is reached from inside the block');
+  const takeoff = up.findIndex((node) => node.jump);
+  assert.ok(takeoff >= 0, 'by a jump');
+  const from = takeoff > 0 ? up[takeoff - 1] : { x: 0, y: 0 };
+  assert.ok(Math.abs(from.x) > 20 || Math.abs(from.y) > 20, `taking off outside the block (${from.x}, ${from.y})`);
+}
+
 // Off a deck toward a foe watching the edge he would drive off: the drop
 // comes down out of the foe's sight, behind the deck, and the way round is
 // driven; with nowhere hidden to land, the landing is marked exposed.

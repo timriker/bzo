@@ -21,13 +21,14 @@
 //   setConfig(GAME_CONFIG)
 //   addBot({ id, pilotId })   -> an error message, or null
 //   removeBot(id)
-//   tick({ dt, shared, bots: [own], followId }) -> [{ id, pre, self, post, mode, targetId, intent?, report? }]
+//   tick({ dt, shared, bots: [own], followId }) -> [{ id, pre, self, post, mode, targetId, foeId, intent?, report? }]
 //   halt({ bots: [own] })     -> the same, each tank stopped where it is
 //   onError(fn)               fn(id, message) for a bot whose tick threw
 
 import * as autopilot from './autopilot.mjs';
 import * as pilotWorld from './autopilot-world.mjs';
 import { BotDriver } from './bot-driver.mjs';
+import { pilotFoeId } from './roger.mjs';
 import {
   buildCollisionColliders,
   configureTankDimensions,
@@ -243,6 +244,8 @@ export function tick({ dt, shared, bots: owns, followId }) {
       mode: bot.driver.lastOut?.intent?.mode ?? null,
       reason: bot.driver.lastOut?.intent?.reason ?? null,
       targetId: bot.driver.lastOut?.targetId ?? null,
+      foeId: pilotFoeId(bot.driver.lastOut),
+      lockTargetId: bot.driver.lastOut?.lockTargetId ?? null,
     };
     if (bot.id === followId && bot.driver.lastOut) result.intent = bot.driver.lastOut.intent;
     if (now >= bot.reportAt) {

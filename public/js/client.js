@@ -421,6 +421,7 @@ import {
 } from './teleport.mjs';
 import { findMapEdgeImpactPoint, traceBeam, traceShotThroughTeleporters } from './trace.mjs';
 import { AUTOPILOTS, DEFAULT_PILOT } from './autopilot.mjs';
+import { pilotFoeId } from './roger.mjs';
 import { createPortTransport } from './port-transport.mjs';
 import {
   createAsyncRouter, createRouter, createWorldProbes, findVantagePoints, teamBasesOf,
@@ -5016,8 +5017,11 @@ function getHudStatusParts(observing) {
     const mode = autopilotOutput?.intent?.mode;
     const reason = autopilotOutput?.intent?.reason;
     const pilot = getAutopilotName(autopilotId);
-    const text = mode
-      ? t('AutoPilot {pilot}: {intent}', { pilot, intent: describePilotIntent(mode, reason) })
+    const foeId = pilotFoeId(autopilotOutput);
+    const foe = foeId !== null ? tanks.get(foeId)?.userData?.playerState?.name : null;
+    const intent = mode ? `${describePilotIntent(mode, reason)}${foe ? ` ${foe}` : ''}` : null;
+    const text = intent
+      ? t('AutoPilot {pilot}: {intent}', { pilot, intent })
       : t('AutoPilot {pilot}', { pilot });
     return { text, segments: [{ text }] };
   }
@@ -13934,6 +13938,10 @@ function buildAutopilotView() {
       ownerId: data.playerId,
       ownerZoned: isZoned(ownerFlag?.type ?? null, ownerFlag?.zoned === true),
       flag: data.flag ?? null,
+      // Whom a Guided Missile steers at, as it is steered: a player's at the
+      // shooter's lock as it stands, taken before the shot or after.
+      targetId: !data.guided ? null : (data.playerId === SERVER_PLAYER
+        ? data.targetId : playerLockTargets.get(data.playerId)) ?? null,
       ...data.at,
       vx: (data.dirX || 0) * data.speed,
       vy: (data.dirY || 0) * data.speed,
@@ -13976,6 +13984,8 @@ function buildAutopilotView() {
       shotSpeed: getShotSpeed(getMyShotFlag()),
       shotLifetime: getShotLifetimeSeconds(getMyShotFlag()),
       ricochet: shotRicochets(getMyShotFlag(), gameConfig?.ALL_SHOTS_RICOCHET),
+      // Whom its missiles steer at, as Identify last locked.
+      lockTargetId: playerLockTargets.get(myPlayerId) ?? null,
       canFire: findFreeShotSlot(
         myShotSlotFreeAt, normalizeShotSlotCount(gameConfig.SHOT_MAX_ACTIVE), frameEpochMs) >= 0,
       freeShots: countFreeShotSlots(
@@ -14267,9 +14277,10 @@ function runAutopilot() {
   // player does, with Identify, so the server keeps its sights check. Roger
   // only fires inside a cone narrower than the lock's, so a shot it is about to
   // take is one Identify would lock.
-  if (autopilotOutput.shotTargetId !== null
+  const wantsLock = autopilotOutput.lockTargetId ?? autopilotOutput.shotTargetId;
+  if (wantsLock !== null && wantsLock !== undefined
     && getMyFlag()?.type === 'GM'
-    && playerLockTargets.get(myPlayerId) !== autopilotOutput.shotTargetId
+    && playerLockTargets.get(myPlayerId) !== wantsLock
     && now - autopilotLockAt > AUTOPILOT_LOCK_RETRY_MS) {
     autopilotLockAt = now;
     requestLockOn();

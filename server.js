@@ -17828,6 +17828,10 @@ function botSharedView(now) {
       ownerId: proj.playerId,
       ownerZoned: isZoned(owner?.type ?? null, owner?.zoned === true),
       flag: proj.flag ?? null,
+      // Whom a Guided Missile steers at, as it is steered: a player's at the
+      // shooter's lock as it stands, taken before the shot or after.
+      targetId: !proj.guided ? null : (proj.playerId === WORLD_WEAPON_PLAYER_ID
+        ? getServerShotTarget(proj) : getLockTarget(proj.playerId))?.id ?? null,
       x: proj.x,
       y: proj.y,
       z: proj.z,
@@ -17878,6 +17882,8 @@ function botSharedView(now) {
       tankAngVel: GAME_CONFIG.TANK_ROTATION_SPEED,
       tankSpeed: GAME_CONFIG.TANK_SPEED,
       shakeTimeout: shakeTimeoutSeconds(FLAG_SHAKE_TIMEOUT),
+      shakeWins: FLAG_SHAKE_WINS,
+      antidoteFlags: ANTIDOTE_FLAGS,
       jumpVelocity: GAME_CONFIG.JUMP_VELOCITY,
       gravity: GAME_CONFIG.GRAVITY,
       lockOnAngle: getFlagTuning().lockOnAngle,
@@ -17923,6 +17929,8 @@ function botOwnView(bot, now) {
       ricochet: shotRicochets(myType, GAME_CONFIG.ALL_SHOTS_RICOCHET),
       canFire: findFreeShotSlot(me.shotSlotFreeAt, maxShots, now) >= 0,
       freeShots: countFreeShotSlots(me.shotSlotFreeAt, maxShots, now),
+      // Whom its missiles steer at, as its Identify last locked.
+      lockTargetId: getLockTarget(me.id)?.id ?? null,
     },
   };
 }
@@ -17957,7 +17965,10 @@ function applyBotResults(results) {
     } catch (err) {
       logError(`[BOT] "${bot.player.name}" ${err.stack || err.message}`);
     }
-    bot.lastOut = { mode: result.mode, reason: result.reason ?? null, targetId: result.targetId, intent: result.intent ?? null };
+    bot.lastOut = {
+      mode: result.mode, reason: result.reason ?? null, targetId: result.targetId, foeId: result.foeId ?? null,
+      intent: result.intent ?? null,
+    };
     if (result.report !== undefined) reportBot(bot, result.report, result.stats);
   }
   broadcastBotIntents(now);
@@ -18056,7 +18067,12 @@ function reportBot(bot, report, stats) {
   bot.reportedWins = bot.player.wins;
   bot.reportedLosses = bot.player.losses;
   bot.reportedTks = bot.player.tks || 0;
-  log(`[BOT] "${bot.player.name}" ${report}; kills ${kills}, deaths ${deaths}`);
+  // The pilot names the foes it went after by id; the log, by name.
+  const named = report.replace(/#(\d+)\b/g, (whole, id) => {
+    const foe = players.get(Number(id));
+    return foe ? `"${foe.name}"` : whole;
+  });
+  log(`[BOT] "${bot.player.name}" ${named}; kills ${kills}, deaths ${deaths}`);
   tallyBot(bot.pilotId, { ...stats, kills, deaths, teamKills });
 }
 
@@ -18208,7 +18224,7 @@ function broadcastBotIntents(now) {
     id: bot.player.id,
     mode: bot.lastOut?.mode ?? null,
     reason: bot.lastOut?.reason ?? null,
-    targetId: bot.lastOut?.targetId ?? null,
+    targetId: bot.lastOut?.foeId ?? bot.lastOut?.targetId ?? null,
   }));
   const plain = JSON.stringify({ type: 'botIntents', bots: summary });
   for (const watcher of watchers) {
@@ -18463,6 +18479,8 @@ const PLUGIN_API = Object.freeze({
   eRabbitTeam: 5, eHunterTeam: 6, eObservers: 7, eAdministrators: 8,
   // bz_eMessageType: a chat event's `messageType`, a `/me` line an action.
   eChatMessage: 0, eActionMessage: 1,
+  // bz_eGameType (bzfsAPI.h:456), what bz_getGameType answers.
+  eFFAGame: 0, eOpenFFAGame: 1, eCTFGame: 2, eRabbitGame: 3,
 
   bz_getCurrentTime: () => Date.now() / 1000,
   bz_getPlayerIndexList: () => [...players.values()].filter((player) => player.joined)
@@ -18612,6 +18630,12 @@ const PLUGIN_API = Object.freeze({
   // bzo's own: the directory `server.json` is in, where a plugin keeps what
   // it saves (`data/` in a checkout, `/data` in Docker), kept by an upgrade.
   bz_getDataDir: () => path.dirname(CONFIG_PATH),
+  // bz_getGameType (bzfsAPI.cxx): team free-for-all, open free-for-all,
+  // capture the flag or rabbit chase, as `GAME_TYPE` is.
+  bz_getGameType: () => ({ TeamFFA: 0, OpenFFA: 1, ClassicCTF: 2, RabbitChase: 3 })[GAME_TYPE] ?? 0,
+  // bzo's own: the map being played, by its file name without `.bzw`, or
+  // `random` for a generated world. Upstream has no such call.
+  bz_getMapName: () => (MAP_SOURCE === 'random' ? 'random' : path.basename(MAP_SOURCE).replace(/\.bzw$/i, '')),
   // bzo's own: a line said somewhere else -- a Discord channel, IRC -- to
   // every player, from `name` on `network`. A BZFlag client reads it as the
   // server message `[network] name: text`; bzo's own puts it with the chat.

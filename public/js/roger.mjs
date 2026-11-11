@@ -55,9 +55,21 @@ export const HARD_FLAGS = new Set(['US', 'MG', 'ID']);
 function createStats() {
   return {
     modes: {}, shots: 0, jumps: 0, falls: 0, plans: 0, unreachable: 0, waits: 0, unsticks: 0, held: 0, kept: 0, safer: 0,
-    switches: 0, pairs: {}, targets: {},
+    switches: 0, pairs: {}, targets: {}, foes: {},
   };
 }
+
+// Who a pilot is after: the tank it chases or shoots at, or the one a
+// detour is for -- `arm`'s flag fetched for a zoned foe -- named as the
+// target's `id`.
+export function pilotFoeId(out) {
+  return out?.targetId ?? out?.intent?.target?.id ?? null;
+}
+
+// The foes a report names, and the share of frames each must have been gone
+// after to be named.
+const FOE_REPORT_LIMIT = 2;
+const FOE_REPORT_MIN_SHARE = 0.1;
 
 // The pair of modes that traded places most, once it has done so often enough
 // to be a tank going nowhere, and where each was headed.
@@ -145,6 +157,9 @@ export class Roger {
       },
       out: {
         rotation: 0, speed: 0, jump: false, fire: false, dropFlag: false, targetId: null, shotTargetId: null,
+        // A Guided Missile's lock wanted before a shot is taken: Identify,
+        // with the barrel on this tank.
+        lockTargetId: null,
         // What the pilot is doing and why, for whoever wants to show it: a
         // client draws it, a server bot reports it, and nothing reads it to
         // decide anything.
@@ -155,7 +170,7 @@ export class Roger {
     };
     const { intent } = ctx.out;
     this.dropHardFlags(ctx);
-    if (this.avoidBullet(ctx)) intent.mode = 'dodge';
+    if (this.avoidBullet(ctx)) intent.mode = intent.mode || 'dodge';
     else if (this.stuckOnWall(ctx)) intent.mode = 'unstick';
     else if (this.chasePlayer(ctx)) intent.mode = intent.mode || 'chase';
     else if (this.lookForFlag(ctx)) intent.mode = intent.mode || 'flag';
@@ -203,6 +218,8 @@ export class Roger {
     this.lastMode = mode;
     const target = out.intent.target;
     if (target && Number.isFinite(target.x)) stats.targets[mode] = `${Math.round(target.x)},${Math.round(target.y)}`;
+    const foe = pilotFoeId(out);
+    if (foe !== null) stats.foes[foe] = (stats.foes[foe] || 0) + 1;
     if (out.fire) stats.shots++;
     if (out.jump && !me.inAir) stats.jumps++;
     if (me.inAir && !this.wasInAir && !this.jumpedLast) stats.falls++;
@@ -219,7 +236,14 @@ export class Roger {
       .sort((a, b) => b[1] - a[1])
       .map(([mode, n]) => `${mode} ${Math.round((100 * n) / frames)}%`)
       .join(', ');
-    const report = `${modes || 'idle'}; shots ${stats.shots}, jumps ${stats.jumps}, falls ${stats.falls}`
+    // Who he was after, as `#<id>`, which the server writes as a name.
+    const foes = Object.entries(stats.foes)
+      .filter(([, n]) => n / frames >= FOE_REPORT_MIN_SHARE)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, FOE_REPORT_LIMIT)
+      .map(([id, n]) => `#${id} ${Math.round((100 * n) / frames)}%`);
+    const report = `${modes || 'idle'}${foes.length ? ` at ${foes.join(', ')}` : ''}`
+      + `; shots ${stats.shots}, jumps ${stats.jumps}, falls ${stats.falls}`
       + `, switches ${stats.switches}${flipReport(stats)}`
       + (this.extraReport ? this.extraReport(stats) : '');
     // The counts the line was made from, for whoever keeps a tally.
@@ -338,13 +362,20 @@ export class Roger {
   // Roger's is empty.
   checkProgress() {}
 
+  // Whether `p` is Phantom Zoned out of reach of Ace's shots: only Shock
+  // Wave, Super Bullet or being zoned himself reach him. Roger, as upstream,
+  // never chases such a foe (`chasesZoned`).
+  zonedAway(me, p) {
+    return p.zoned && !me.zoned && me.flag !== 'SW' && me.flag !== 'SB';
+  }
+
   findBestTarget(ctx, players) {
     const { view, me } = ctx;
     let target = null;
     let best = Infinity;
     for (const p of players) {
       if (!p.alive || p.paused || p.notResponding || !view.isFoe(p)) continue;
-      if (p.zoned && !me.zoned && me.flag !== 'SW' && me.flag !== 'SB') continue;
+      if (this.zonedAway(me, p) && !this.chasesZoned) continue;
       if (p.flag === 'CL' && me.flag === 'L') continue;
       // "chase the proposed opponent if they have our flag"
       if (view.world.teamFlags && p.flagTeam !== null && p.flagTeam === me.teamColor) {

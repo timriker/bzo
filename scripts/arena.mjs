@@ -24,6 +24,9 @@
 //   node scripts/arena.mjs --map import-1vs1.catay.be_5157.bzw --ctf yes
 //   node scripts/arena.mjs --map import-bmbz.org_5174.bzw    # rabbit chase, as it runs
 //   node scripts/arena.mjs --rabbit killer                   # rabbit chase anywhere
+//   node scripts/arena.mjs --flags 30 --modes yes            # time spent on each mode
+//   node scripts/arena.mjs --flags 30 --shake 0              # bad flags kept until death
+//   node scripts/arena.mjs --flags 30 --still yes            # time standing still, by flag held
 //
 // The world is what practice gets for the map from the running server
 // (`/api/practice/<map>`, `--server`, http://localhost:5154 by default): any
@@ -119,6 +122,9 @@ const config = {
   SUPER_FLAG_POOL: FLAG_ABBREVIATIONS.filter((type) => !isTeamFlag(type)),
   ...mapConfig,
   ...(args.has('shots') ? { SHOT_MAX_ACTIVE: Number(args.get('shots')) } : {}),
+  // `--shake <seconds>`: the shake timeout, 0 for none, a bad flag then kept
+  // until death.
+  ...(args.has('shake') ? { FLAG_SHAKE_TIMEOUT: Math.round(Number(args.get('shake')) * 10) } : {}),
   ...(args.has('jumping') ? { ALLOW_JUMPING: args.get('jumping') !== 'off' } : {}),
   ...(args.has('flags') ? { SUPER_FLAG_COUNT: Number(args.get('flags')) } : {}),
 };
@@ -137,7 +143,18 @@ const colours = [...new Set(shared.obstacles.filter((obs) => obs.kind === 'base'
 const teams = colours.length >= 2 ? colours.slice(0, 2).map(getTeamFromColorIndex) : ['red', 'blue'];
 
 let now = 0;
-const zero = { kills: 0, deaths: 0, teamKills: 0, shots: 0, captures: 0, rabbits: 0, rabbitSeconds: 0, rabbitKills: 0 };
+const zero = { kills: 0, deaths: 0, airDeaths: 0, teamKills: 0, shots: 0, captures: 0, rabbits: 0, rabbitSeconds: 0, rabbitKills: 0 };
+
+// What each bot was doing as it left the ground, for the deaths in the air.
+const takeoff = new Map();
+const airWhy = new Map();
+// `--modes yes`: each side's share of its live time in each intent mode.
+const modes = args.get('modes') === 'yes';
+const modeTicks = Object.fromEntries(sides.map((side) => [side.key, new Map()]));
+// `--still yes`: by the flag held, the share of live time spent with the
+// tank standing still on the ground, turning or not.
+const still = args.get('still') === 'yes';
+const stillTicks = new Map();
 
 function play(game) {
   const score = Object.fromEntries(sides.map((side) => [side.key, { ...zero }]));
@@ -164,6 +181,11 @@ function play(game) {
       const victim = arena.bots.get(data.victimId);
       const killer = arena.bots.get(data.shooterId);
       score[sideOf.get(data.victimId)].deaths++;
+      if (Number(victim?.motion?.air) === 1) {
+        score[sideOf.get(data.victimId)].airDeaths++;
+        const why = takeoff.get(data.victimId) ?? 'unknown';
+        airWhy.set(why, (airWhy.get(why) || 0) + 1);
+      }
       if (!killer || data.shooterId === data.victimId) return;
       // The rabbit's team is still rabbit here: the new one is anointed after.
       if (killer.record.team === 'rabbit') score[sideOf.get(data.shooterId)].rabbitKills++;
@@ -177,6 +199,29 @@ function play(game) {
       if (why) tellTeamKill(arena, data, shot, victim);
     },
     onError: (id, message) => console.error(`bot ${id}: ${message}`),
+    onThought: (id, result) => {
+      // The mode as it left the ground: a jump, a drop off an edge.
+      const air = Number(arena.bots.get(id)?.motion?.air) === 1;
+      if (!air) takeoff.set(id, `${result.mode ?? 'none'}${result.reason ? ` (${result.reason})` : ''}`);
+      if (!modes && !still) return;
+      if (modes) {
+        const tally = modeTicks[sideOf.get(id)];
+        const mode = result.mode ?? 'none';
+        tally.set(mode, (tally.get(mode) ?? 0) + 1);
+      }
+      if (still) {
+        const move = arena.bots.get(id)?.motion;
+        const type = arena.flagOf(id)?.type ?? 'none';
+        const entry = stillTicks.get(type) ?? { all: 0, still: 0, modes: new Map() };
+        entry.all++;
+        if (move && Number(move.air) !== 1 && Math.abs(Number(move.fs) || 0) < 0.05) {
+          entry.still++;
+          const mode = result.mode ?? 'none';
+          entry.modes.set(mode, (entry.modes.get(mode) ?? 0) + 1);
+        }
+        stillTicks.set(type, entry);
+      }
+    },
   });
   sides.forEach((side, s) => {
     for (let n = 0; n < size; n++) {
@@ -240,7 +285,28 @@ const seconds = (Date.now() - started) / 1000;
 for (const side of sides) {
   const t = total[side.key];
   console.log(`${side.key} ${label(side)}: kills ${t.kills}, deaths ${t.deaths}, k/d ${(t.kills / Math.max(1, t.deaths)).toFixed(2)},`
-    + ` team kills ${t.teamKills}, shots ${t.shots}${ctf ? `, captures ${t.captures}` : ''}`
+    + ` team kills ${t.teamKills}, shots ${t.shots}, died in the air ${t.airDeaths}${ctf ? `, captures ${t.captures}` : ''}`
     + (rabbit ? `, rabbit ${t.rabbits} times for ${t.rabbitSeconds.toFixed(0)}s with ${t.rabbitKills} kills` : ''));
+}
+if (airWhy.size) {
+  console.log(`died in the air, by what each was doing as it left the ground: ${[...airWhy].sort((a, b) => b[1] - a[1])
+    .map(([why, n]) => `${why} ${n}`).join(', ')}`);
+}
+if (still) {
+  const rows = [...stillTicks].filter(([, e]) => e.all >= 200).sort((a, b) => (b[1].still / b[1].all) - (a[1].still / a[1].all));
+  console.log(`still, by flag held: ${rows.map(([type, e]) => `${type} ${((100 * e.still) / e.all).toFixed(0)}%`).join(', ')}`);
+  // Where the still time went, for the stillest.
+  for (const [type, e] of rows.slice(0, 6)) {
+    const by = [...e.modes].sort((a, b) => b[1] - a[1]).slice(0, 5)
+      .map(([mode, n]) => `${mode} ${((100 * n) / e.all).toFixed(0)}%`);
+    console.log(`  ${type}: ${by.join(', ')}`);
+  }
+}
+if (modes) {
+  for (const side of sides) {
+    const tally = [...modeTicks[side.key]].sort((a, b) => b[1] - a[1]);
+    const all = tally.reduce((sum, [, n]) => sum + n, 0) || 1;
+    console.log(`${side.key} modes: ${tally.map(([mode, n]) => `${mode} ${((100 * n) / all).toFixed(0)}%`).join(', ')}`);
+  }
 }
 console.log(`${(games * minutes).toFixed(0)} game minutes in ${seconds.toFixed(0)}s, ${((games * minutes * 60) / seconds).toFixed(1)}x real time`);

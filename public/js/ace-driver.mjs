@@ -47,6 +47,16 @@ const TELEPORT_JUMP = 8;
 // With a one-way turning flag, a correction the wrong way smaller than this
 // stick share is dropped rather than turned the long way round.
 const ONE_WAY_SLACK = 0.15;
+// A turn the long way round, or Forward Only's turn in place of a reverse,
+// is driven as a loop rather than on the spot: a tank on the move is harder
+// to hit than one sitting still. The loop's speed is what keeps it inside the
+// room ahead, no less than `LOOP_MIN_SPEED`; with less than `LOOP_MIN_ROOM`
+// ahead there is no loop, and he turns where he stands.
+// The fastest a tank backs up, as a share of its top speed: upstream's
+// `setDesiredSpeed` clamp (LocalPlayer.cxx:1096).
+export const REVERSE_SPEED_SHARE = 0.5;
+const LOOP_MIN_SPEED = 0.3;
+const LOOP_MIN_ROOM = 3;
 // After a teleport onto a raised level, how long Ace turns to the route on
 // the spot rather than drive while more than `TELEPORT_SETTLE_TURN` off it.
 const TELEPORT_SETTLE_SECONDS = 3;
@@ -99,6 +109,8 @@ const UNSTICK_BACKOFF_SECONDS = 0.6;
 const UNSTICK_DRIVE_SECONDS = 0.4;
 const UNSTICK_SPEED = -0.5;
 const UNSTICK_TURN = 0.05;
+// Under this share of full speed, a tank is turning more than driving.
+const UNSTICK_TURNING_SPEED = 0.3;
 const UNSTICK_MOVE = 0.3;
 // Less than this share of the distance asked for is not getting anywhere,
 // however far it comes to: a tank grinding along a wall at full throttle
@@ -109,7 +121,7 @@ const UNSTICK_SHARE = 0.25;
 // `STALL_ASKED` units over `STALL_SECONDS` and still within `STALL_RADIUS` of
 // where it began, it is stuck. A tank holding still on purpose asks for no
 // distance; an ambush and a dodge rock on purpose.
-const STALL_SECONDS = 3;
+const STALL_SECONDS = 1.5;
 const STALL_ASKED = 15;
 const STALL_RADIUS = 3;
 const STALL_EXEMPT = new Set(['ambush', 'dodge', 'unstick']);
@@ -163,18 +175,69 @@ const BAD_FLAG_MARGIN = 1.5;
 // of them.
 export class AceDriver extends Roger {
   // Left Turn Only and Right Turn Only refuse the other way, so a turn that
-  // way is made the long way round, on the spot -- every pilot decision asks
-  // for the short way, and a tank that cannot take it never turns at all. A
-  // small correction the wrong way is let go rather than costing a circle.
-  oneWayTurn(flag, out) {
-    const sign = flag === 'LT' ? 1 : (flag === 'RT' ? -1 : 0);
+  // way is made the long way round, as a loop (`loopSpeed`) -- every pilot
+  // decision asks for the short way, and a tank that cannot take it never
+  // turns at all. A small correction the wrong way is let go rather than
+  // costing a circle.
+  oneWayTurn(view, out) {
+    const sign = view.self.flag === 'LT' ? 1 : (view.self.flag === 'RT' ? -1 : 0);
     if (sign === 0 || out.rotation * sign >= 0) return;
     if (Math.abs(out.rotation) < ONE_WAY_SLACK) {
       out.rotation = 0;
       return;
     }
     out.rotation = sign;
-    out.speed = 0;
+    out.speed = this.loopSpeed(view);
+  }
+
+  // The speed for a heading `bearing` off the way to a point `distance` away:
+  // within `turnInPlace` of it, Roger's -- slower the further off. Past
+  // that, on the ground, an arc rather than a turn on the spot, as fast as
+  // keeps its circle inside half the distance, so it closes on the point
+  // rather than orbiting it, and inside the room ahead (`loopSpeed`); too
+  // slow for a loop, or up on a building, where an arc runs off the edge,
+  // on the spot.
+  turnSpeed(ctx, bearing, distance) {
+    const { view, me } = ctx;
+    if (Math.abs(bearing) <= this.tuning.turnInPlace) return HALF_PI - Math.abs(bearing);
+    if (me.z > MAX_STEP_UP) return 0;
+    const rate = this.turnRate(ctx);
+    const top = me.topSpeed ?? view.world.tankSpeed;
+    const fits = top > 0 ? (distance * rate) / (2 * top) : 0;
+    const speed = Math.min(this.loopSpeed(view), fits);
+    return speed >= LOOP_MIN_SPEED ? speed : 0;
+  }
+
+  // A point `bearing` off his heading and `distance` away, reached backing
+  // up, tail first, when that is sooner than turning to face it and driving
+  // there: reverse is half speed, but the turn it saves is the larger part
+  // of the way. Not with Forward Only, nor with a wall behind. Sets the
+  // sticks and says whether it did.
+  reverseOnto(ctx, bearing, distance) {
+    const { view, me, out } = ctx;
+    if (me.flag === 'FO' || me.z > MAX_STEP_UP) return false;
+    const rate = this.turnRate(ctx);
+    const top = me.topSpeed ?? view.world.tankSpeed;
+    if (!(rate > 0) || !(top > 0)) return false;
+    const tail = normalizeAngle(bearing - Math.PI);
+    const facing = (Math.abs(bearing) / rate) + (distance / top);
+    const backing = (Math.abs(tail) / rate) + (distance / (REVERSE_SPEED_SHARE * top));
+    if (backing >= facing) return false;
+    if (this.openDistance(ctx, me, me.azimuth + Math.PI) < Math.min(distance, LOOP_MIN_ROOM * 2)) return false;
+    out.speed = -1;
+    out.rotation = this.steer(ctx, tail);
+    return true;
+  }
+
+  // How fast to drive a full-stick turn so the loop stays in the room ahead:
+  // a loop at full speed is `2 * top / rate` across.
+  loopSpeed(view) {
+    const self = view.self;
+    const room = typeof view.openDistance === 'function' ? view.openDistance(self, self.azimuth) : Infinity;
+    if (!(room >= LOOP_MIN_ROOM)) return 0;
+    const rate = self.turnRate || view.world.tankAngVel || (Math.PI / 4);
+    const across = (2 * (self.topSpeed ?? view.world.tankSpeed)) / rate;
+    return Math.max(LOOP_MIN_SPEED, Math.min(1, room / across));
   }
 
   // A position that jumped further than a frame's driving is a teleport.
@@ -339,7 +402,10 @@ export class AceDriver extends Roger {
     // where it was always going to: the route keeps its landings out of
     // every live foe's sight where a way round is near enough.
     const foes = this.landingWatchers(view);
-    const nodes = view.findRoute(here, there, { canJump, wings, burrowed, foes });
+    // Oscillation Overthruster drives through buildings on the ground, and
+    // goes on a take-off (`shedPhasingOnTakeoff`) so a jump up lands.
+    const phasing = view.self.flag === 'OO';
+    const nodes = view.findRoute(here, there, { canJump, wings, burrowed, foes, phasing });
     if (nodes === ROUTE_PENDING) return this.awaitRoute(view, here, there);
     // Nowhere to go underground -- a raised base, a lift's far end -- is
     // somewhere Burrow keeps him from: it goes, and the tank comes up.
@@ -466,9 +532,9 @@ export class AceDriver extends Roger {
     if (tuning.speed === 'arrival') {
       out.speed = this.arrivalSpeed(ctx, here, aim, out.rotation);
     } else {
-      // Far off the heading, turn on the spot rather than drive a wide arc --
-      // or, past a right angle, backwards away from the route.
-      out.speed = Math.abs(out.rotation) > tuning.turnInPlace ? 0 : HALF_PI - Math.abs(out.rotation);
+      // Far off the heading, turn without backing away from the route: an
+      // arc where it fits (`turnSpeed`), on the spot where not.
+      out.speed = this.turnSpeed(ctx, out.rotation, distance2D(me, aim));
     }
     // Out of a teleporter onto a raised level -- a lift's landing, a walkway
     // a tank wide -- the tank faces wherever the face sent it. Turned to the
@@ -486,6 +552,10 @@ export class AceDriver extends Roger {
     if (next.jump && !next.flight && !me.inAir) this.lineUpJump(ctx, here, next);
     // A gap is crossed square to it, or a corner of the tank drops into it.
     if (next.bridge && Math.abs(out.rotation) >= BRIDGE_AIM_TOLERANCE) out.speed = 0;
+    // Left standing to turn, with the point behind him and near: backed onto
+    // it instead, where that is the sooner (`reverseOnto`).
+    if (out.speed === 0 && !raised && !next.jump && !next.flight && !next.bridge
+      && this.reverseOnto(ctx, out.rotation, distance2D(me, aim))) return true;
     // Everything above reads `out.rotation` as the bearing off the aim; the
     // tank is steered by it only now. A turn in proportion to the bearing --
     // Roger's -- closes it slowly, which on a long straight leg means curving
@@ -620,9 +690,13 @@ export class AceDriver extends Roger {
     }
     sample.last = view.now;
     sample.asked += Math.abs(out.speed) * top * (this.frameSeconds || 0);
-    const turned = Math.abs(normalizeAngle(me.azimuth - sample.azimuth));
+    // Turning is getting somewhere only for a tank asked mostly to turn: one
+    // asked to drive that turns and goes nowhere is steering into a corner,
+    // which the replays show pinned for seconds at a time.
+    const turned = Math.abs(out.speed) < UNSTICK_TURNING_SPEED
+      && Math.abs(normalizeAngle(me.azimuth - sample.azimuth)) > UNSTICK_TURN;
     const moved = Math.hypot(me.x - sample.x, me.y - sample.y);
-    if (turned > UNSTICK_TURN || moved > Math.max(UNSTICK_MOVE, UNSTICK_SHARE * sample.asked)) {
+    if (turned || moved > Math.max(UNSTICK_MOVE, UNSTICK_SHARE * sample.asked)) {
       restart();
       return;
     }
@@ -1131,6 +1205,14 @@ export class AceDriver extends Roger {
     const { me, out } = ctx;
     // Roger has no use for Identify; Ace does.
     if (me.flag !== 'ID') super.dropHardFlags(ctx);
+    // Genocide kills the victim's whole team, so it is worth more than any
+    // shot only while some foe's colour team has two or more alive: with
+    // none, it goes at once, as a flag worth nothing that holds a slot.
+    this.genocideUseful = this.genocideWorth(ctx);
+    if (me.flag === 'G' && !this.genocideUseful) {
+      out.dropFlag = true;
+      this.noteShed(ctx);
+    }
     // Thief is worth holding only with a flag near enough to take.
     this.stealableNear = this.remotePlayers(ctx.view).some((p) => this.stealable(ctx, p)
       && distance2D(me, p) <= THIEF_KEEP_RANGE);
@@ -1159,6 +1241,17 @@ export class AceDriver extends Roger {
       out.dropFlag = true;
       this.noteShed(ctx);
     }
+  }
+
+  // Whether a Genocide kill takes more than the one tank: a foe on a colour
+  // team with a team mate alive.
+  genocideWorth(ctx) {
+    const counts = new Map();
+    for (const p of this.remotePlayers(ctx.view)) {
+      if (!p.alive || !ctx.view.isFoe(p) || !isColorTeam(p.team)) continue;
+      counts.set(p.team, (counts.get(p.team) || 0) + 1);
+    }
+    return [...counts.values()].some((n) => n >= 2);
   }
 
   // A flag let go of on purpose is not one to go straight back for.
@@ -1300,6 +1393,19 @@ export function skewedBarrel(vx, vy, toward, base) {
     azimuth: Math.atan2((forward * uy) - (acrossY / base), (forward * ux) - (acrossX / base)),
     speed: along + (base * forward),
   };
+}
+
+// The nearest a segment comes to a point, in all three dimensions.
+export function segmentDistance3D(from, to, point) {
+  const dx = to.x - from.x;
+  const dy = to.y - from.y;
+  const dz = to.z - from.z;
+  const lengthSquared = (dx * dx) + (dy * dy) + (dz * dz);
+  const t = lengthSquared > 0
+    ? Math.max(0, Math.min(1, (((point.x - from.x) * dx) + ((point.y - from.y) * dy)
+      + ((point.z - from.z) * dz)) / lengthSquared))
+    : 0;
+  return Math.hypot(from.x + (dx * t) - point.x, from.y + (dy * t) - point.y, from.z + (dz * t) - point.z);
 }
 
 // The nearest a segment comes to a point, on the ground plane.

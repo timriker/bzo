@@ -241,6 +241,12 @@ export function buildNavGraph(world) {
   const origin = -half + (NAV_CELL / 2);
   const north = -origin;
   const water = Number.isFinite(world.waterLevel) ? world.waterLevel : -Infinity;
+  // Oscillation Overthruster (`phasing`): a tank on the ground drives through
+  // buildings, so the ground is a level everywhere, inside them too. A node
+  // inside one is marked `inside`, and no flight leaves from it: the flag
+  // goes on take-off, so the landing holds, and gone inside a building it
+  // leaves the tank stuck in it.
+  const phasing = world.phasing === true;
 
   // A tank whose centre crosses a teleporter's face is sent through it, so a
   // walk or a straight drive across one is not a move on this level at all:
@@ -295,9 +301,10 @@ export function buildNavGraph(world) {
       const here = [];
       for (const z of [...levels].sort((a, b) => a - b)) {
         if (z <= water) continue;
-        if (findTankObstacle(local, x, y, z + 0.01, { radius: STAND_RADIUS })) continue;
+        const inside = Boolean(findTankObstacle(local, x, y, z + 0.01, { radius: STAND_RADIUS }));
+        if (inside && !(phasing && z === 0)) continue;
         const id = nodes.length;
-        nodes.push({ id, cx, cy, x, y, z });
+        nodes.push(inside ? { id, cx, cy, x, y, z, inside } : { id, cx, cy, x, y, z });
         here.push(id);
       }
       if (here.length) columnNodes[(cy * columns) + cx] = here;
@@ -377,7 +384,9 @@ export function buildNavGraph(world) {
   const tight = (id) => {
     if (tightKnown[id] < 0) {
       const n = nodes[id];
-      tightKnown[id] = findTankObstacle(near(n.x, n.y), n.x, n.y, n.z + 0.01, { radius: TIGHT_RADIUS }) ? 1 : 0;
+      // Phasing, nothing on the ground is in the way.
+      tightKnown[id] = !(phasing && n.z === 0)
+        && findTankObstacle(near(n.x, n.y), n.x, n.y, n.z + 0.01, { radius: TIGHT_RADIUS }) ? 1 : 0;
     }
     return tightKnown[id] === 1;
   };
@@ -494,6 +503,7 @@ export function buildNavGraph(world) {
   // anything on the way is no flight. A direction with nothing but the same
   // floor ahead has no flight worth taking and is not flown at all.
   const flights = (node, dx, dy, out) => {
+    if (node.inside) return;
     // Neighbouring columns fly nearly the same arcs, so flights leave from
     // every other column each way, and a route walks to one.
     if (node.cx % FLIGHT_STRIDE !== 0 || node.cy % FLIGHT_STRIDE !== 0) return;
@@ -882,7 +892,10 @@ export function buildNavGraph(world) {
       if (level === undefined) return false;
       // Clear where the line actually runs, not at the column's centre, which
       // can be two units off it -- enough to shave a rib a column test passes.
-      if (findTankObstacle(near(x, y), x, y, a.z + 0.01, { radius: clearance })) return false;
+      // Phasing, the ground is clear through anything.
+      if (!(phasing && a.z === 0) && findTankObstacle(near(x, y), x, y, a.z + 0.01, { radius: clearance })) {
+        return false;
+      }
     }
     return true;
   };
