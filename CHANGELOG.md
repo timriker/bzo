@@ -6,6 +6,13 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
 
 ## [Unreleased]
 
+## [1.4.0] - 2026-11-12
+
+### Changed
+- 1.4: the same game as 1.3.98, as the start of a new minor line -- chat
+  in your own language, the Matrix status, and Ace playing on the ground,
+  shooting more and banking shots, with the 1.3 releases before it.
+
 ## [1.3.98] - 2026-11-11
 
 ### Added
