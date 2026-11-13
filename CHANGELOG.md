@@ -6,6 +6,8 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
 
 ## [Unreleased]
 
+## [1.4.1] - 2026-11-13
+
 ### Changed
 - The scoreboard's head-to-head column is headed **1v1**, short enough to
   fit in every language, and the Scoreboard help names each column.
