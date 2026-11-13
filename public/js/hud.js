@@ -1039,7 +1039,7 @@ export const SCOREBOARD_COLUMNS = Object.freeze([
   // Upstream's second column, the head-to-head record against me. The first
   // thing a narrow board gives up, because it is the only one here bzo added
   // on top of upstream's own (issue #65).
-  Object.freeze({ id: 'tally', label: N_('1-on-1'), short: N_('1-on-1'), width: 7, narrowWidth: 7, align: 'right' }),
+  Object.freeze({ id: 'tally', label: N_('1v1'), short: N_('1v1'), width: 7, narrowWidth: 7, align: 'right' }),
 ]);
 
 // What each `T` letter stands for, for the hover text. The letters are the

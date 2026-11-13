@@ -1040,18 +1040,28 @@ msgstr "Таблица счёта"
 
 #: docs/help/scoreboard.md
 msgid ""
-"Each row's numbers read **Kills / Deaths**, then **[Team Kills]** once you "
-"have any, then your own record against that one opponent: **wins~losses**, "
-"blank until you've actually fought them. Your own row shows a self-destruct "
-"count there instead, since you have no record against yourself. Rabbit Chase "
-"adds a rank percentage in front of the kill count."
-msgstr ""
-"Числа в каждой строке — это **Убийства / Смерти**, затем **[Убийства "
-"своих]**, если они у тебя есть, затем твой личный счёт против этого "
-"соперника: **победы~поражения**, пусто, пока вы на самом деле не сражались. "
-"В твоей собственной строке там вместо этого число самоуничтожений, ведь "
-"счёта против самого себя нет. В Охота на кролика перед числом убийств "
-"добавляется процент ранга."
+"**Score** is kills minus deaths, and the board is sorted by it. Rabbit Chase "
+"puts a rank percentage in front of it."
+msgstr "**Очки** — это убийства минус смерти, по ним сортируется таблица. В Охоте на кролика перед ними стоит процент ранга."
+
+#: docs/help/scoreboard.md
+msgid ""
+"**Kills-Deaths** is the record behind that score, then **[team kills]** once "
+"there are any."
+msgstr "**Убийства-Смерти** — счёт, из которого получаются очки, затем **[убийства своих]**, если они есть."
+
+#: docs/help/scoreboard.md
+msgid ""
+"**1v1** is your own record against that one player: **wins~losses**, blank "
+"until you've fought them. Your own row shows how often you've self-"
+"destructed instead. A narrower screen drops 1v1 first, then Kills-Deaths."
+msgstr "**1 на 1** — твой личный счёт против этого игрока: **победы~поражения**, пусто, пока вы не сражались. В твоей собственной строке вместо этого видно, сколько раз ты самоуничтожился. На узком экране сначала пропадает 1 на 1, затем Убийства-Смерти."
+
+#: docs/help/scoreboard.md
+msgid ""
+"**T** is the player's device, then how they're connected; hover the heading "
+"for what each letter means."
+msgstr "**T** — устройство игрока, затем способ подключения; наведи курсор на заголовок, чтобы увидеть, что значит каждая буква."
 
 #: docs/help/scoreboard.md
 msgid ""
@@ -1135,6 +1145,21 @@ msgstr ""
 "Это свободное программное обеспечение под лицензией [GNU Affero General "
 "Public License v3.0](https://www.gnu.org/licenses/agpl-3.0.html). Исходный "
 "код доступен на [github.com/timriker/bzo](/source)."
+
+#~ msgid ""
+#~ "Each row's numbers read **Kills / Deaths**, then **[Team Kills]** once "
+#~ "you have any, then your own record against that one opponent: "
+#~ "**wins~losses**, blank until you've actually fought them. Your own row "
+#~ "shows a self-destruct count there instead, since you have no record "
+#~ "against yourself. Rabbit Chase adds a rank percentage in front of the "
+#~ "kill count."
+#~ msgstr ""
+#~ "Числа в каждой строке — это **Убийства / Смерти**, затем **[Убийства "
+#~ "своих]**, если они у тебя есть, затем твой личный счёт против этого "
+#~ "соперника: **победы~поражения**, пусто, пока вы на самом деле не "
+#~ "сражались. В твоей собственной строке там вместо этого число "
+#~ "самоуничтожений, ведь счёта против самого себя нет. В Охота на кролика "
+#~ "перед числом убийств добавляется процент ранга."
 
 #, fuzzy
 #~ msgid ""

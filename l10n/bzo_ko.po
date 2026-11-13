@@ -2313,7 +2313,7 @@ msgid "Player"
 msgstr "플레이어"
 
 #: public/js/hud.js:1042
-msgid "1-on-1"
+msgid "1v1"
 msgstr "1대1"
 
 #: public/js/hud.js:1048
@@ -5020,6 +5020,9 @@ msgstr "팀이 가득 찼어요: {team}"
 #: server/messages-play.cjs:1263
 msgid "You will join {team} when you next spawn"
 msgstr "다음 스폰 때 {team}에 합류해요"
+
+#~ msgid "1-on-1"
+#~ msgstr "1대1"
 
 #~ msgid ""
 #~ "Usage: /bot [fill <n> [{pilots}] | add [{pilots}] [team] [count] | remove "

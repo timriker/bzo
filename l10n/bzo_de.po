@@ -2337,8 +2337,8 @@ msgid "Player"
 msgstr "Spieler"
 
 #: public/js/hud.js:1042
-msgid "1-on-1"
-msgstr "1 gegen 1"
+msgid "1v1"
+msgstr "1v1"
 
 #: public/js/hud.js:1048
 msgid "desktop"
@@ -5070,6 +5070,9 @@ msgstr "Team ist voll: {team}"
 #: server/messages-play.cjs:1263
 msgid "You will join {team} when you next spawn"
 msgstr "Du trittst beim nächsten Spawn {team} bei"
+
+#~ msgid "1-on-1"
+#~ msgstr "1 gegen 1"
 
 #~ msgid ""
 #~ "Usage: /bot [fill <n> [{pilots}] | add [{pilots}] [team] [count] | remove "

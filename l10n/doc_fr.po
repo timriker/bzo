@@ -1066,21 +1066,30 @@ msgstr ""
 msgid "Scoreboard"
 msgstr "Tableau des scores"
 
-# review: Éliminations
 #: docs/help/scoreboard.md
 msgid ""
-"Each row's numbers read **Kills / Deaths**, then **[Team Kills]** once you "
-"have any, then your own record against that one opponent: **wins~losses**, "
-"blank until you've actually fought them. Your own row shows a self-destruct "
-"count there instead, since you have no record against yourself. Rabbit Chase "
-"adds a rank percentage in front of the kill count."
-msgstr ""
-"Les chiffres de chaque ligne se lisent **Éliminations / Morts**, puis "
-"**[Éliminations d'équipiers]** dès que tu en as, puis ton propre bilan "
-"contre cet adversaire précis : **victoires~défaites**, vide tant que tu ne "
-"l'as pas vraiment affronté. Ta propre ligne affiche à la place un nombre "
-"d'autodestructions, puisque tu n'as pas de bilan contre toi-même. Rabbit "
-"Chase ajoute un pourcentage de classement devant le nombre d'éliminations."
+"**Score** is kills minus deaths, and the board is sorted by it. Rabbit Chase "
+"puts a rank percentage in front of it."
+msgstr "**Score** correspond aux victimes moins les morts, et le tableau est trié dessus. Rabbit Chase y ajoute devant un pourcentage de classement."
+
+#: docs/help/scoreboard.md
+msgid ""
+"**Kills-Deaths** is the record behind that score, then **[team kills]** once "
+"there are any."
+msgstr "**Victimes-Morts** est le bilan derrière ce score, puis **[éliminations d'équipiers]** dès qu'il y en a."
+
+#: docs/help/scoreboard.md
+msgid ""
+"**1v1** is your own record against that one player: **wins~losses**, blank "
+"until you've fought them. Your own row shows how often you've self-"
+"destructed instead. A narrower screen drops 1v1 first, then Kills-Deaths."
+msgstr "**1v1** est ton propre bilan contre ce joueur précis : **victoires~défaites**, vide tant que vous ne vous êtes pas affrontés. Ta propre ligne affiche à la place combien de fois tu t'es autodétruit. Un écran plus étroit retire d'abord 1v1, puis Victimes-Morts."
+
+#: docs/help/scoreboard.md
+msgid ""
+"**T** is the player's device, then how they're connected; hover the heading "
+"for what each letter means."
+msgstr "**T** est l'appareil du joueur, puis son type de connexion ; survole l'en-tête pour voir ce que signifie chaque lettre."
 
 #: docs/help/scoreboard.md
 msgid ""
@@ -1166,6 +1175,23 @@ msgstr ""
 "C'est un logiciel libre sous licence [GNU Affero General Public License v3.0]"
 "(https://www.gnu.org/licenses/agpl-3.0.html). Le code source est disponible "
 "sur [github.com/timriker/bzo](/source)."
+
+# review: Éliminations
+#~ msgid ""
+#~ "Each row's numbers read **Kills / Deaths**, then **[Team Kills]** once "
+#~ "you have any, then your own record against that one opponent: "
+#~ "**wins~losses**, blank until you've actually fought them. Your own row "
+#~ "shows a self-destruct count there instead, since you have no record "
+#~ "against yourself. Rabbit Chase adds a rank percentage in front of the "
+#~ "kill count."
+#~ msgstr ""
+#~ "Les chiffres de chaque ligne se lisent **Éliminations / Morts**, puis "
+#~ "**[Éliminations d'équipiers]** dès que tu en as, puis ton propre bilan "
+#~ "contre cet adversaire précis : **victoires~défaites**, vide tant que tu "
+#~ "ne l'as pas vraiment affronté. Ta propre ligne affiche à la place un "
+#~ "nombre d'autodestructions, puisque tu n'as pas de bilan contre toi-même. "
+#~ "Rabbit Chase ajoute un pourcentage de classement devant le nombre "
+#~ "d'éliminations."
 
 #, fuzzy
 #~ msgid ""

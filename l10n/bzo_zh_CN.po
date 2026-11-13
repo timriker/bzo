@@ -2298,7 +2298,7 @@ msgid "Player"
 msgstr "玩家"
 
 #: public/js/hud.js:1042
-msgid "1-on-1"
+msgid "1v1"
 msgstr "单挑"
 
 #: public/js/hud.js:1048
@@ -4966,6 +4966,9 @@ msgstr "队伍已满：{team}"
 #: server/messages-play.cjs:1263
 msgid "You will join {team} when you next spawn"
 msgstr "下次重生时你将加入{team}"
+
+#~ msgid "1-on-1"
+#~ msgstr "单挑"
 
 #~ msgid ""
 #~ "Usage: /bot [fill <n> [{pilots}] | add [{pilots}] [team] [count] | remove "

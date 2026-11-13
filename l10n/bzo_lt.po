@@ -50,7 +50,7 @@ msgstr "Išjungta"
 
 #: public/index.html:76
 msgid "Score"
-msgstr "Pagal taškus"
+msgstr "Taškai"
 
 #: public/index.html:77
 msgid "Killer"
@@ -2325,8 +2325,8 @@ msgid "Player"
 msgstr "Žaidėjas"
 
 #: public/js/hud.js:1042
-msgid "1-on-1"
-msgstr "1 prieš 1"
+msgid "1v1"
+msgstr "1v1"
 
 #: public/js/hud.js:1048
 msgid "desktop"
@@ -5043,6 +5043,9 @@ msgstr "Komanda pilna: {team}"
 #: server/messages-play.cjs:1263
 msgid "You will join {team} when you next spawn"
 msgstr "Kitą kartą atsiradęs prisijungsi prie komandos: {team}"
+
+#~ msgid "1-on-1"
+#~ msgstr "1 prieš 1"
 
 #~ msgid ""
 #~ "Usage: /bot [fill <n> [{pilots}] | add [{pilots}] [team] [count] | remove "

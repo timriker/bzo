@@ -1050,21 +1050,30 @@ msgstr ""
 msgid "Scoreboard"
 msgstr "Scorebord"
 
-# review: Kills / Doden
 #: docs/help/scoreboard.md
 msgid ""
-"Each row's numbers read **Kills / Deaths**, then **[Team Kills]** once you "
-"have any, then your own record against that one opponent: **wins~losses**, "
-"blank until you've actually fought them. Your own row shows a self-destruct "
-"count there instead, since you have no record against yourself. Rabbit Chase "
-"adds a rank percentage in front of the kill count."
-msgstr ""
-"De getallen op elke regel zijn **Kills / Doden**, dan **[Teamkills]** zodra "
-"je die hebt, dan je eigen score tegen precies die tegenstander: "
-"**winst~verlies**, leeg tot jullie echt tegen elkaar hebben gevochten. Je "
-"eigen regel toont daar in plaats daarvan het aantal zelfvernietigingen, "
-"omdat je geen score tegen jezelf hebt. Rabbit Chase zet een rangpercentage "
-"voor het aantal kills."
+"**Score** is kills minus deaths, and the board is sorted by it. Rabbit Chase "
+"puts a rank percentage in front of it."
+msgstr "**Score** is kills min doden, en het bord is erop gesorteerd. Rabbit Chase zet er een rangpercentage voor."
+
+#: docs/help/scoreboard.md
+msgid ""
+"**Kills-Deaths** is the record behind that score, then **[team kills]** once "
+"there are any."
+msgstr "**Kills-Doden** is de score daarachter, dan **[teamkills]** zodra die er zijn."
+
+#: docs/help/scoreboard.md
+msgid ""
+"**1v1** is your own record against that one player: **wins~losses**, blank "
+"until you've fought them. Your own row shows how often you've self-"
+"destructed instead. A narrower screen drops 1v1 first, then Kills-Deaths."
+msgstr "**1v1** is je eigen score tegen precies die speler: **winst~verlies**, leeg tot jullie tegen elkaar hebben gevochten. Je eigen regel toont in plaats daarvan hoe vaak je jezelf hebt vernietigd. Een smaller scherm laat eerst 1v1 weg, dan Kills-Doden."
+
+#: docs/help/scoreboard.md
+msgid ""
+"**T** is the player's device, then how they're connected; hover the heading "
+"for what each letter means."
+msgstr "**T** is het apparaat van de speler, dan hoe die verbonden is; houd de muis boven de kop om te zien wat elke letter betekent."
 
 #: docs/help/scoreboard.md
 msgid ""
@@ -1150,6 +1159,22 @@ msgstr ""
 "Het is vrije software onder de [GNU Affero General Public License v3.0]"
 "(https://www.gnu.org/licenses/agpl-3.0.html). De broncode is beschikbaar op "
 "[github.com/timriker/bzo](/source)."
+
+# review: Kills / Doden
+#~ msgid ""
+#~ "Each row's numbers read **Kills / Deaths**, then **[Team Kills]** once "
+#~ "you have any, then your own record against that one opponent: "
+#~ "**wins~losses**, blank until you've actually fought them. Your own row "
+#~ "shows a self-destruct count there instead, since you have no record "
+#~ "against yourself. Rabbit Chase adds a rank percentage in front of the "
+#~ "kill count."
+#~ msgstr ""
+#~ "De getallen op elke regel zijn **Kills / Doden**, dan **[Teamkills]** "
+#~ "zodra je die hebt, dan je eigen score tegen precies die tegenstander: "
+#~ "**winst~verlies**, leeg tot jullie echt tegen elkaar hebben gevochten. Je "
+#~ "eigen regel toont daar in plaats daarvan het aantal zelfvernietigingen, "
+#~ "omdat je geen score tegen jezelf hebt. Rabbit Chase zet een "
+#~ "rangpercentage voor het aantal kills."
 
 #, fuzzy
 #~ msgid ""

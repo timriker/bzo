@@ -1007,16 +1007,28 @@ msgstr "스코어보드"
 
 #: docs/help/scoreboard.md
 msgid ""
-"Each row's numbers read **Kills / Deaths**, then **[Team Kills]** once you "
-"have any, then your own record against that one opponent: **wins~losses**, "
-"blank until you've actually fought them. Your own row shows a self-destruct "
-"count there instead, since you have no record against yourself. Rabbit Chase "
-"adds a rank percentage in front of the kill count."
-msgstr ""
-"각 줄의 숫자는 **킬 / 데스**, 팀킬이 있으면 **[팀킬]**, 그다음 그 상대에 대"
-"한 내 전적 **승~패**예요(실제로 싸우기 전에는 비어 있어요). 내 줄에는 나 자신"
-"과의 전적이 없으니 대신 자폭 횟수가 표시돼요. 래빗 체이스에서는 킬 수 앞에 순"
-"위 백분율이 붙어요."
+"**Score** is kills minus deaths, and the board is sorted by it. Rabbit Chase "
+"puts a rank percentage in front of it."
+msgstr "**점수**는 킬 수에서 데스 수를 뺀 값이고, 점수판은 이 순서로 정렬돼요. 래빗 체이스에서는 앞에 순위 백분율이 붙어요."
+
+#: docs/help/scoreboard.md
+msgid ""
+"**Kills-Deaths** is the record behind that score, then **[team kills]** once "
+"there are any."
+msgstr "**킬-데스**는 그 점수의 바탕이 되는 전적이고, 팀킬이 있으면 **[팀킬]**이 뒤에 붙어요."
+
+#: docs/help/scoreboard.md
+msgid ""
+"**1v1** is your own record against that one player: **wins~losses**, blank "
+"until you've fought them. Your own row shows how often you've self-"
+"destructed instead. A narrower screen drops 1v1 first, then Kills-Deaths."
+msgstr "**1대1**은 그 상대에 대한 내 전적 **승~패**예요(실제로 싸우기 전에는 비어 있어요). 내 줄에는 대신 자폭한 횟수가 표시돼요. 화면이 좁으면 1대1이 먼저, 그다음 킬-데스가 빠져요."
+
+#: docs/help/scoreboard.md
+msgid ""
+"**T** is the player's device, then how they're connected; hover the heading "
+"for what each letter means."
+msgstr "**T**는 플레이어의 기기, 그다음 연결 방식이에요. 제목에 마우스를 올리면 각 글자의 뜻이 보여요."
 
 #: docs/help/scoreboard.md
 msgid ""
@@ -1098,6 +1110,19 @@ msgstr ""
 "[GNU Affero General Public License v3.0](https://www.gnu.org/licenses/"
 "agpl-3.0.html) 라이선스의 자유 소프트웨어예요. 소스 코드는 [github.com/"
 "timriker/bzo](/source)에서 받을 수 있어요."
+
+#~ msgid ""
+#~ "Each row's numbers read **Kills / Deaths**, then **[Team Kills]** once "
+#~ "you have any, then your own record against that one opponent: "
+#~ "**wins~losses**, blank until you've actually fought them. Your own row "
+#~ "shows a self-destruct count there instead, since you have no record "
+#~ "against yourself. Rabbit Chase adds a rank percentage in front of the "
+#~ "kill count."
+#~ msgstr ""
+#~ "각 줄의 숫자는 **킬 / 데스**, 팀킬이 있으면 **[팀킬]**, 그다음 그 상대에 "
+#~ "대한 내 전적 **승~패**예요(실제로 싸우기 전에는 비어 있어요). 내 줄에는 "
+#~ "나 자신과의 전적이 없으니 대신 자폭 횟수가 표시돼요. 래빗 체이스에서는 킬 "
+#~ "수 앞에 순위 백분율이 붙어요."
 
 #, fuzzy
 #~ msgid ""

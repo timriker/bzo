@@ -1,10 +1,17 @@
 # Scoreboard
 
-Each row's numbers read **Kills / Deaths**, then **[Team Kills]** once you have
-any, then your own record against that one opponent: **wins~losses**, blank
-until you've actually fought them. Your own row shows a self-destruct count
-there instead, since you have no record against yourself. Rabbit Chase adds a
-rank percentage in front of the kill count.
+**Score** is kills minus deaths, and the board is sorted by it. Rabbit Chase
+puts a rank percentage in front of it.
+
+**Kills-Deaths** is the record behind that score, then **[team kills]** once
+there are any.
+
+**1v1** is your own record against that one player: **wins~losses**, blank
+until you've fought them. Your own row shows how often you've self-destructed
+instead. A narrower screen drops 1v1 first, then Kills-Deaths.
+
+**T** is the player's device, then how they're connected; hover the heading
+for what each letter means.
 
 Before a name, in cyan: `@` means that player is an admin, `+` means they're
 signed in with a verified callsign this session. Neither shows for anyone else.

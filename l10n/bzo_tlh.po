@@ -2300,8 +2300,8 @@ msgid "Player"
 msgstr "QujwI'"
 
 #: public/js/hud.js:1042
-msgid "1-on-1"
-msgstr "wa' wa' je"
+msgid "1v1"
+msgstr "1v1"
 
 #: public/js/hud.js:1048
 msgid "desktop"
@@ -4982,6 +4982,9 @@ msgstr "boq teblu'ta': {team}"
 #: server/messages-play.cjs:1263
 msgid "You will join {team} when you next spawn"
 msgstr "bIboghqa'DI', {team} Damuv"
+
+#~ msgid "1-on-1"
+#~ msgstr "wa' wa' je"
 
 #~ msgid ""
 #~ "Usage: /bot [fill <n> [{pilots}] | add [{pilots}] [team] [count] | remove "

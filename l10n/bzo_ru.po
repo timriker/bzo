@@ -50,7 +50,7 @@ msgstr "Выкл"
 
 #: public/index.html:76
 msgid "Score"
-msgstr "По очкам"
+msgstr "Очки"
 
 #: public/index.html:77
 msgid "Killer"
@@ -2320,7 +2320,7 @@ msgid "Player"
 msgstr "Игрок"
 
 #: public/js/hud.js:1042
-msgid "1-on-1"
+msgid "1v1"
 msgstr "1 на 1"
 
 #: public/js/hud.js:1048
@@ -5035,6 +5035,9 @@ msgstr "Команда заполнена: {team}"
 #: server/messages-play.cjs:1263
 msgid "You will join {team} when you next spawn"
 msgstr "При следующем появлении ты перейдёшь в команду: {team}"
+
+#~ msgid "1-on-1"
+#~ msgstr "1 на 1"
 
 #~ msgid ""
 #~ "Usage: /bot [fill <n> [{pilots}] | add [{pilots}] [team] [count] | remove "

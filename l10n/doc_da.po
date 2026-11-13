@@ -1045,17 +1045,28 @@ msgstr "Resultattavle"
 
 #: docs/help/scoreboard.md
 msgid ""
-"Each row's numbers read **Kills / Deaths**, then **[Team Kills]** once you "
-"have any, then your own record against that one opponent: **wins~losses**, "
-"blank until you've actually fought them. Your own row shows a self-destruct "
-"count there instead, since you have no record against yourself. Rabbit Chase "
-"adds a rank percentage in front of the kill count."
-msgstr ""
-"Hver rækkes tal lyder **Drab / Døde**, derefter **[Holddrab]**, når du har "
-"nogen, og derefter din egen rekord mod netop den modstander: "
-"**sejre~nederlag**, tom, indtil I faktisk har kæmpet. Din egen række viser i "
-"stedet et antal selvdestruktioner, da du ikke har nogen rekord mod dig selv. "
-"Rabbit Chase tilføjer en rangprocent foran drabstallet."
+"**Score** is kills minus deaths, and the board is sorted by it. Rabbit Chase "
+"puts a rank percentage in front of it."
+msgstr "**Score** er drab minus dødsfald, og tavlen er sorteret efter den. Rabbit Chase sætter en rangprocent foran."
+
+#: docs/help/scoreboard.md
+msgid ""
+"**Kills-Deaths** is the record behind that score, then **[team kills]** once "
+"there are any."
+msgstr "**Drab-dødsfald** er rekorden bag den score, derefter **[holddrab]**, når der er nogen."
+
+#: docs/help/scoreboard.md
+msgid ""
+"**1v1** is your own record against that one player: **wins~losses**, blank "
+"until you've fought them. Your own row shows how often you've self-"
+"destructed instead. A narrower screen drops 1v1 first, then Kills-Deaths."
+msgstr "**1 mod 1** er din egen rekord mod netop den spiller: **sejre~nederlag**, tom, indtil I har kæmpet. Din egen række viser i stedet, hvor tit du har selvdestrueret. En smallere skærm dropper først 1 mod 1, derefter Drab-dødsfald."
+
+#: docs/help/scoreboard.md
+msgid ""
+"**T** is the player's device, then how they're connected; hover the heading "
+"for what each letter means."
+msgstr "**T** er spillerens enhed og derefter, hvordan spilleren er forbundet; hold musen over overskriften for at se, hvad hvert bogstav betyder."
 
 #: docs/help/scoreboard.md
 msgid ""
@@ -1140,6 +1151,20 @@ msgstr ""
 "Det er fri software under licensen [GNU Affero General Public License v3.0]"
 "(https://www.gnu.org/licenses/agpl-3.0.html). Kildekoden findes på "
 "[github.com/timriker/bzo](/source)."
+
+#~ msgid ""
+#~ "Each row's numbers read **Kills / Deaths**, then **[Team Kills]** once "
+#~ "you have any, then your own record against that one opponent: "
+#~ "**wins~losses**, blank until you've actually fought them. Your own row "
+#~ "shows a self-destruct count there instead, since you have no record "
+#~ "against yourself. Rabbit Chase adds a rank percentage in front of the "
+#~ "kill count."
+#~ msgstr ""
+#~ "Hver rækkes tal lyder **Drab / Døde**, derefter **[Holddrab]**, når du "
+#~ "har nogen, og derefter din egen rekord mod netop den modstander: "
+#~ "**sejre~nederlag**, tom, indtil I faktisk har kæmpet. Din egen række "
+#~ "viser i stedet et antal selvdestruktioner, da du ikke har nogen rekord "
+#~ "mod dig selv. Rabbit Chase tilføjer en rangprocent foran drabstallet."
 
 #, fuzzy
 #~ msgid ""

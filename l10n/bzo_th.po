@@ -2291,7 +2291,7 @@ msgid "Player"
 msgstr "ผู้เล่น"
 
 #: public/js/hud.js:1042
-msgid "1-on-1"
+msgid "1v1"
 msgstr "ตัวต่อตัว"
 
 #: public/js/hud.js:1048
@@ -4975,6 +4975,9 @@ msgstr "ทีมเต็ม: {team}"
 #: server/messages-play.cjs:1263
 msgid "You will join {team} when you next spawn"
 msgstr "คุณจะเข้า {team} เมื่อเกิดใหม่ครั้งถัดไป"
+
+#~ msgid "1-on-1"
+#~ msgstr "ตัวต่อตัว"
 
 #~ msgid ""
 #~ "Usage: /bot [fill <n> [{pilots}] | add [{pilots}] [team] [count] | remove "

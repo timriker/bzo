@@ -1035,17 +1035,28 @@ msgstr "Tabulka skóre"
 
 #: docs/help/scoreboard.md
 msgid ""
-"Each row's numbers read **Kills / Deaths**, then **[Team Kills]** once you "
-"have any, then your own record against that one opponent: **wins~losses**, "
-"blank until you've actually fought them. Your own row shows a self-destruct "
-"count there instead, since you have no record against yourself. Rabbit Chase "
-"adds a rank percentage in front of the kill count."
-msgstr ""
-"Čísla na každém řádku znamenají **zabití / smrti**, pak **[týmová zabití]**, "
-"jakmile nějaká máš, pak tvoje vlastní bilance proti tomu jednomu soupeři: "
-"**výhry~prohry**, prázdné, dokud jste spolu skutečně nebojovali. Tvůj "
-"vlastní řádek místo toho ukazuje počet sebedestrukcí, protože proti sobě "
-"bilanci nemáš. Rabbit Chase přidává před počet zabití procentuální hodnocení."
+"**Score** is kills minus deaths, and the board is sorted by it. Rabbit Chase "
+"puts a rank percentage in front of it."
+msgstr "**Skóre** jsou zabití mínus smrti a podle něj je tabulka seřazená. Rabbit Chase před něj přidává procentuální hodnocení."
+
+#: docs/help/scoreboard.md
+msgid ""
+"**Kills-Deaths** is the record behind that score, then **[team kills]** once "
+"there are any."
+msgstr "**Zabití-Smrti** je bilance za tímto skóre, pak **[týmová zabití]**, jakmile nějaká jsou."
+
+#: docs/help/scoreboard.md
+msgid ""
+"**1v1** is your own record against that one player: **wins~losses**, blank "
+"until you've fought them. Your own row shows how often you've self-"
+"destructed instead. A narrower screen drops 1v1 first, then Kills-Deaths."
+msgstr "**1 na 1** je tvoje vlastní bilance proti tomu jednomu hráči: **výhry~prohry**, prázdné, dokud jste spolu nebojovali. Tvůj vlastní řádek místo toho ukazuje, kolikrát ses zničil sám. Užší obrazovka vynechá nejdřív 1 na 1, pak Zabití-Smrti."
+
+#: docs/help/scoreboard.md
+msgid ""
+"**T** is the player's device, then how they're connected; hover the heading "
+"for what each letter means."
+msgstr "**T** je zařízení hráče a za ním způsob připojení; najeď na záhlaví a uvidíš, co které písmeno znamená."
 
 #: docs/help/scoreboard.md
 msgid ""
@@ -1129,6 +1140,21 @@ msgstr ""
 "Je to svobodný software pod licencí [GNU Affero General Public License v3.0]"
 "(https://www.gnu.org/licenses/agpl-3.0.html). Zdrojový kód je k dispozici na "
 "[github.com/timriker/bzo](/source)."
+
+#~ msgid ""
+#~ "Each row's numbers read **Kills / Deaths**, then **[Team Kills]** once "
+#~ "you have any, then your own record against that one opponent: "
+#~ "**wins~losses**, blank until you've actually fought them. Your own row "
+#~ "shows a self-destruct count there instead, since you have no record "
+#~ "against yourself. Rabbit Chase adds a rank percentage in front of the "
+#~ "kill count."
+#~ msgstr ""
+#~ "Čísla na každém řádku znamenají **zabití / smrti**, pak **[týmová "
+#~ "zabití]**, jakmile nějaká máš, pak tvoje vlastní bilance proti tomu "
+#~ "jednomu soupeři: **výhry~prohry**, prázdné, dokud jste spolu skutečně "
+#~ "nebojovali. Tvůj vlastní řádek místo toho ukazuje počet sebedestrukcí, "
+#~ "protože proti sobě bilanci nemáš. Rabbit Chase přidává před počet zabití "
+#~ "procentuální hodnocení."
 
 #, fuzzy
 #~ msgid ""

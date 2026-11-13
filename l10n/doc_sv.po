@@ -1039,21 +1039,30 @@ msgstr ""
 msgid "Scoreboard"
 msgstr "Resultattavla"
 
-# review: Dödade / Döda
 #: docs/help/scoreboard.md
 msgid ""
-"Each row's numbers read **Kills / Deaths**, then **[Team Kills]** once you "
-"have any, then your own record against that one opponent: **wins~losses**, "
-"blank until you've actually fought them. Your own row shows a self-destruct "
-"count there instead, since you have no record against yourself. Rabbit Chase "
-"adds a rank percentage in front of the kill count."
-msgstr ""
-"Varje rads siffror lyder **Dödade / Döda**, sedan **[Lagdödade]** när du har "
-"några, och sedan ditt eget resultat mot just den motståndaren: "
-"**vinster~förluster**, tomt tills ni faktiskt har stridit. Din egen rad "
-"visar i stället antalet självförstörelser, eftersom du inte har något "
-"resultat mot dig själv. Rabbit Chase lägger till en rangprocent framför "
-"antalet dödade."
+"**Score** is kills minus deaths, and the board is sorted by it. Rabbit Chase "
+"puts a rank percentage in front of it."
+msgstr "**Poäng** är dödade minus döda, och tavlan sorteras efter det. Rabbit Chase sätter en rangprocent framför."
+
+#: docs/help/scoreboard.md
+msgid ""
+"**Kills-Deaths** is the record behind that score, then **[team kills]** once "
+"there are any."
+msgstr "**Dödade-döda** är resultatet bakom poängen, sedan **[lagdödade]** när det finns några."
+
+#: docs/help/scoreboard.md
+msgid ""
+"**1v1** is your own record against that one player: **wins~losses**, blank "
+"until you've fought them. Your own row shows how often you've self-"
+"destructed instead. A narrower screen drops 1v1 first, then Kills-Deaths."
+msgstr "**1 mot 1** är ditt eget resultat mot just den spelaren: **vinster~förluster**, tomt tills ni har stridit. Din egen rad visar i stället hur ofta du har självförstört. En smalare skärm tar bort 1 mot 1 först, sedan Dödade-döda."
+
+#: docs/help/scoreboard.md
+msgid ""
+"**T** is the player's device, then how they're connected; hover the heading "
+"for what each letter means."
+msgstr "**T** är spelarens enhet, sedan hur spelaren är ansluten; håll muspekaren över rubriken för att se vad varje bokstav betyder."
 
 #: docs/help/scoreboard.md
 msgid ""
@@ -1137,6 +1146,22 @@ msgstr ""
 "Det är fri programvara licensierad under [GNU Affero General Public License "
 "v3.0](https://www.gnu.org/licenses/agpl-3.0.html). Källkoden finns på "
 "[github.com/timriker/bzo](/source)."
+
+# review: Dödade / Döda
+#~ msgid ""
+#~ "Each row's numbers read **Kills / Deaths**, then **[Team Kills]** once "
+#~ "you have any, then your own record against that one opponent: "
+#~ "**wins~losses**, blank until you've actually fought them. Your own row "
+#~ "shows a self-destruct count there instead, since you have no record "
+#~ "against yourself. Rabbit Chase adds a rank percentage in front of the "
+#~ "kill count."
+#~ msgstr ""
+#~ "Varje rads siffror lyder **Dödade / Döda**, sedan **[Lagdödade]** när du "
+#~ "har några, och sedan ditt eget resultat mot just den motståndaren: "
+#~ "**vinster~förluster**, tomt tills ni faktiskt har stridit. Din egen rad "
+#~ "visar i stället antalet självförstörelser, eftersom du inte har något "
+#~ "resultat mot dig själv. Rabbit Chase lägger till en rangprocent framför "
+#~ "antalet dödade."
 
 #, fuzzy
 #~ msgid ""

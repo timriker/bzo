@@ -1054,21 +1054,30 @@ msgstr ""
 msgid "Scoreboard"
 msgstr "Marcador"
 
-# review: Abates / Mortes
 #: docs/help/scoreboard.md
 msgid ""
-"Each row's numbers read **Kills / Deaths**, then **[Team Kills]** once you "
-"have any, then your own record against that one opponent: **wins~losses**, "
-"blank until you've actually fought them. Your own row shows a self-destruct "
-"count there instead, since you have no record against yourself. Rabbit Chase "
-"adds a rank percentage in front of the kill count."
-msgstr ""
-"Os números de cada linha leem-se **Abates / Mortes**, depois **[Abates de "
-"equipa]** quando tiveres algum, e depois o teu próprio registo contra esse "
-"adversário: **vitórias~derrotas**, em branco até teres realmente lutado com "
-"ele. A tua própria linha mostra ali uma contagem de autodestruições, já que "
-"não tens registo contra ti mesmo. O Rabbit Chase acrescenta uma percentagem "
-"de classificação antes da contagem de abates."
+"**Score** is kills minus deaths, and the board is sorted by it. Rabbit Chase "
+"puts a rank percentage in front of it."
+msgstr "**Pontuação** é abates menos mortes, e o quadro é ordenado por ela. O Rabbit Chase coloca uma percentagem de classificação à frente."
+
+#: docs/help/scoreboard.md
+msgid ""
+"**Kills-Deaths** is the record behind that score, then **[team kills]** once "
+"there are any."
+msgstr "**Abates-Mortes** é o registo por trás dessa pontuação, depois **[abates de equipa]** quando houver algum."
+
+#: docs/help/scoreboard.md
+msgid ""
+"**1v1** is your own record against that one player: **wins~losses**, blank "
+"until you've fought them. Your own row shows how often you've self-"
+"destructed instead. A narrower screen drops 1v1 first, then Kills-Deaths."
+msgstr "**1v1** é o teu próprio registo contra esse jogador: **vitórias~derrotas**, em branco até terem lutado. A tua própria linha mostra em vez disso quantas vezes te autodestruíste. Um ecrã mais estreito retira primeiro o 1v1, depois Abates-Mortes."
+
+#: docs/help/scoreboard.md
+msgid ""
+"**T** is the player's device, then how they're connected; hover the heading "
+"for what each letter means."
+msgstr "**T** é o dispositivo do jogador e depois como está ligado; passa o rato sobre o cabeçalho para ver o que significa cada letra."
 
 #: docs/help/scoreboard.md
 msgid ""
@@ -1154,6 +1163,22 @@ msgstr ""
 "É software livre licenciado sob a [GNU Affero General Public License v3.0]"
 "(https://www.gnu.org/licenses/agpl-3.0.html). O código-fonte está disponível "
 "em [github.com/timriker/bzo](/source)."
+
+# review: Abates / Mortes
+#~ msgid ""
+#~ "Each row's numbers read **Kills / Deaths**, then **[Team Kills]** once "
+#~ "you have any, then your own record against that one opponent: "
+#~ "**wins~losses**, blank until you've actually fought them. Your own row "
+#~ "shows a self-destruct count there instead, since you have no record "
+#~ "against yourself. Rabbit Chase adds a rank percentage in front of the "
+#~ "kill count."
+#~ msgstr ""
+#~ "Os números de cada linha leem-se **Abates / Mortes**, depois **[Abates de "
+#~ "equipa]** quando tiveres algum, e depois o teu próprio registo contra "
+#~ "esse adversário: **vitórias~derrotas**, em branco até teres realmente "
+#~ "lutado com ele. A tua própria linha mostra ali uma contagem de "
+#~ "autodestruições, já que não tens registo contra ti mesmo. O Rabbit Chase "
+#~ "acrescenta uma percentagem de classificação antes da contagem de abates."
 
 #, fuzzy
 #~ msgid ""

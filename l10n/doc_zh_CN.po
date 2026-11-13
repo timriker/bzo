@@ -964,15 +964,28 @@ msgstr "记分板"
 
 #: docs/help/scoreboard.md
 msgid ""
-"Each row's numbers read **Kills / Deaths**, then **[Team Kills]** once you "
-"have any, then your own record against that one opponent: **wins~losses**, "
-"blank until you've actually fought them. Your own row shows a self-destruct "
-"count there instead, since you have no record against yourself. Rabbit Chase "
-"adds a rank percentage in front of the kill count."
-msgstr ""
-"每行的数字依次为**击杀 / 阵亡**，有队友击杀后接着是**[队友击杀]**，然后是你对"
-"该对手的战绩：**胜~负**，真正交手前为空。你自己的行在此处显示自毁次数，因为你"
-"没有对自己的战绩。兔子追逐 会在击杀数前加上排名百分比。"
+"**Score** is kills minus deaths, and the board is sorted by it. Rabbit Chase "
+"puts a rank percentage in front of it."
+msgstr "**得分**是击杀数减去阵亡数，计分板按它排序。兔子追逐 会在前面加上排名百分比。"
+
+#: docs/help/scoreboard.md
+msgid ""
+"**Kills-Deaths** is the record behind that score, then **[team kills]** once "
+"there are any."
+msgstr "**击杀-阵亡**是该得分背后的战绩，有队友击杀后接着是**[队友击杀]**。"
+
+#: docs/help/scoreboard.md
+msgid ""
+"**1v1** is your own record against that one player: **wins~losses**, blank "
+"until you've fought them. Your own row shows how often you've self-"
+"destructed instead. A narrower screen drops 1v1 first, then Kills-Deaths."
+msgstr "**单挑**是你对该玩家的战绩：**胜~负**，交手前为空。你自己的行改为显示你自毁的次数。屏幕较窄时先省去单挑，再省去击杀-阵亡。"
+
+#: docs/help/scoreboard.md
+msgid ""
+"**T** is the player's device, then how they're connected; hover the heading "
+"for what each letter means."
+msgstr "**T** 是玩家的设备，后面是连接方式；将鼠标悬停在表头上可查看每个字母的含义。"
 
 #: docs/help/scoreboard.md
 msgid ""
@@ -1052,6 +1065,18 @@ msgstr ""
 "它是以 [GNU Affero 通用公共许可证 v3.0](https://www.gnu.org/licenses/"
 "agpl-3.0.html) 授权的自由软件。源代码可在 [github.com/timriker/bzo](/source) "
 "获取。"
+
+#~ msgid ""
+#~ "Each row's numbers read **Kills / Deaths**, then **[Team Kills]** once "
+#~ "you have any, then your own record against that one opponent: "
+#~ "**wins~losses**, blank until you've actually fought them. Your own row "
+#~ "shows a self-destruct count there instead, since you have no record "
+#~ "against yourself. Rabbit Chase adds a rank percentage in front of the "
+#~ "kill count."
+#~ msgstr ""
+#~ "每行的数字依次为**击杀 / 阵亡**，有队友击杀后接着是**[队友击杀]**，然后是"
+#~ "你对该对手的战绩：**胜~负**，真正交手前为空。你自己的行在此处显示自毁次"
+#~ "数，因为你没有对自己的战绩。兔子追逐 会在击杀数前加上排名百分比。"
 
 #, fuzzy
 #~ msgid ""

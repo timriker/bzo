@@ -1031,17 +1031,28 @@ msgstr "Scoreboard"
 
 #: docs/help/scoreboard.md
 msgid ""
-"Each row's numbers read **Kills / Deaths**, then **[Team Kills]** once you "
-"have any, then your own record against that one opponent: **wins~losses**, "
-"blank until you've actually fought them. Your own row shows a self-destruct "
-"count there instead, since you have no record against yourself. Rabbit Chase "
-"adds a rank percentage in front of the kill count."
-msgstr ""
-"Each row's numbers read **Kills / Deaths**, then **[Team Kills]** once ya "
-"got any, then yer own record against that one feller: **wins~losses**, blank "
-"till y'all actually tangled. Yer own row shows a blowed-yerself-up count "
-"there instead, since ya ain't got no record against yerself. Rabbit Chase "
-"sticks a rank percentage out front of the kill count."
+"**Score** is kills minus deaths, and the board is sorted by it. Rabbit Chase "
+"puts a rank percentage in front of it."
+msgstr "**Score** is kills minus deaths, and the board's sorted by it. Rabbit Chase sticks a rank percentage out front of it."
+
+#: docs/help/scoreboard.md
+msgid ""
+"**Kills-Deaths** is the record behind that score, then **[team kills]** once "
+"there are any."
+msgstr "**Kills-Deaths** is the record behind that score, then **[Team Kills]** once there's any."
+
+#: docs/help/scoreboard.md
+msgid ""
+"**1v1** is your own record against that one player: **wins~losses**, blank "
+"until you've fought them. Your own row shows how often you've self-"
+"destructed instead. A narrower screen drops 1v1 first, then Kills-Deaths."
+msgstr "**1v1** is yer own record against that one feller: **wins~losses**, blank till y'all have tangled. Yer own row shows how many times ya blowed yerself up instead. A skinnier screen drops 1v1 first, then Kills-Deaths."
+
+#: docs/help/scoreboard.md
+msgid ""
+"**T** is the player's device, then how they're connected; hover the heading "
+"for what each letter means."
+msgstr "**T** is what the feller's playin' on, then how they're hooked up; hover over the heading for what each letter means."
 
 #: docs/help/scoreboard.md
 msgid ""
@@ -1126,6 +1137,20 @@ msgstr ""
 "It's free software licensed under the [GNU Affero General Public License "
 "v3.0](https://www.gnu.org/licenses/agpl-3.0.html). The source code's at "
 "[github.com/timriker/bzo](/source)."
+
+#~ msgid ""
+#~ "Each row's numbers read **Kills / Deaths**, then **[Team Kills]** once "
+#~ "you have any, then your own record against that one opponent: "
+#~ "**wins~losses**, blank until you've actually fought them. Your own row "
+#~ "shows a self-destruct count there instead, since you have no record "
+#~ "against yourself. Rabbit Chase adds a rank percentage in front of the "
+#~ "kill count."
+#~ msgstr ""
+#~ "Each row's numbers read **Kills / Deaths**, then **[Team Kills]** once ya "
+#~ "got any, then yer own record against that one feller: **wins~losses**, "
+#~ "blank till y'all actually tangled. Yer own row shows a blowed-yerself-up "
+#~ "count there instead, since ya ain't got no record against yerself. Rabbit "
+#~ "Chase sticks a rank percentage out front of the kill count."
 
 #, fuzzy
 #~ msgid ""

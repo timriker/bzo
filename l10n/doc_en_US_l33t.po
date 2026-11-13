@@ -1033,17 +1033,28 @@ msgstr "5c0r3b04rd"
 
 #: docs/help/scoreboard.md
 msgid ""
-"Each row's numbers read **Kills / Deaths**, then **[Team Kills]** once you "
-"have any, then your own record against that one opponent: **wins~losses**, "
-"blank until you've actually fought them. Your own row shows a self-destruct "
-"count there instead, since you have no record against yourself. Rabbit Chase "
-"adds a rank percentage in front of the kill count."
-msgstr ""
-"34ch r0w'5 numb3r5 r34d **K1ll5 / D347h5**, 7h3n **[734m K1ll5]** 0nc3 j00 "
-"h4v3 4ny, 7h3n j00r 0wn r3c0rd 4g41n57 7h47 0n3 0pp0n3n7: **w1n5~l05535**, "
-"bl4nk un71l j00'v3 4c7u4lly f0ugh7 7h3m. J00r 0wn r0w 5h0w5 4 53lf-d357ruc7 "
-"c0un7 7h3r3 1n5734d, 51nc3 j00 h4v3 n0 r3c0rd 4g41n57 y0ur53lf. R4bb17 Ch453 "
-"4dd5 4 r4nk p3rc3n74g3 1n fr0n7 0f 73h k1ll c0un7."
+"**Score** is kills minus deaths, and the board is sorted by it. Rabbit Chase "
+"puts a rank percentage in front of it."
+msgstr "**5c0r3** 15 k1ll5 m1nu5 d347h5, 4nd 7h3 b04rd 15 50r73d by 17. R4bb17 Ch453 pu75 4 r4nk p3rc3n74g3 1n fr0n7 0f 17."
+
+#: docs/help/scoreboard.md
+msgid ""
+"**Kills-Deaths** is the record behind that score, then **[team kills]** once "
+"there are any."
+msgstr "**K1ll5-D347h5** 15 7h3 r3c0rd b3h1nd 7h47 5c0r3, 7h3n **[734m k1ll5]** 0nc3 7h3r3 4r3 4ny."
+
+#: docs/help/scoreboard.md
+msgid ""
+"**1v1** is your own record against that one player: **wins~losses**, blank "
+"until you've fought them. Your own row shows how often you've self-"
+"destructed instead. A narrower screen drops 1v1 first, then Kills-Deaths."
+msgstr "**1v1** 15 j00r 0wn r3c0rd 4g41n57 7h47 0n3 pl4y3r: **w1n5~l05535**, bl4nk un71l j00'v3 f0ugh7 7h3m. J00r 0wn r0w 5h0w5 h0w 0f73n j00'v3 53lf-d357ruc73d 1n5734d. 4 n4rr0w3r 5cr33n dr0p5 1v1 f1r57, 7h3n K1ll5-D347h5."
+
+#: docs/help/scoreboard.md
+msgid ""
+"**T** is the player's device, then how they're connected; hover the heading "
+"for what each letter means."
+msgstr "**T** 15 7h3 pl4y3r'5 d3v1c3, 7h3n h0w 7h3y'r3 c0nn3c73d; h0v3r 7h3 h34d1ng f0r wh47 34ch l3773r m34n5."
 
 #: docs/help/scoreboard.md
 msgid ""
@@ -1127,6 +1138,21 @@ msgstr ""
 "17 15 fr33 50f7w4r3 l1c3n53d und3r 73h [GNU Affero General Public License "
 "v3.0](https://www.gnu.org/licenses/agpl-3.0.html). 50urc3 c0d3 15 4v41l4bl3 "
 "47 [github.com/timriker/bzo](/source)."
+
+#~ msgid ""
+#~ "Each row's numbers read **Kills / Deaths**, then **[Team Kills]** once "
+#~ "you have any, then your own record against that one opponent: "
+#~ "**wins~losses**, blank until you've actually fought them. Your own row "
+#~ "shows a self-destruct count there instead, since you have no record "
+#~ "against yourself. Rabbit Chase adds a rank percentage in front of the "
+#~ "kill count."
+#~ msgstr ""
+#~ "34ch r0w'5 numb3r5 r34d **K1ll5 / D347h5**, 7h3n **[734m K1ll5]** 0nc3 "
+#~ "j00 h4v3 4ny, 7h3n j00r 0wn r3c0rd 4g41n57 7h47 0n3 0pp0n3n7: "
+#~ "**w1n5~l05535**, bl4nk un71l j00'v3 4c7u4lly f0ugh7 7h3m. J00r 0wn r0w "
+#~ "5h0w5 4 53lf-d357ruc7 c0un7 7h3r3 1n5734d, 51nc3 j00 h4v3 n0 r3c0rd "
+#~ "4g41n57 y0ur53lf. R4bb17 Ch453 4dd5 4 r4nk p3rc3n74g3 1n fr0n7 0f 73h "
+#~ "k1ll c0un7."
 
 #, fuzzy
 #~ msgid ""

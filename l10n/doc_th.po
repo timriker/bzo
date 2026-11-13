@@ -983,16 +983,28 @@ msgstr "กระดานคะแนน"
 
 #: docs/help/scoreboard.md
 msgid ""
-"Each row's numbers read **Kills / Deaths**, then **[Team Kills]** once you "
-"have any, then your own record against that one opponent: **wins~losses**, "
-"blank until you've actually fought them. Your own row shows a self-destruct "
-"count there instead, since you have no record against yourself. Rabbit Chase "
-"adds a rank percentage in front of the kill count."
-msgstr ""
-"ตัวเลขในแต่ละแถวอ่านว่า **ฆ่า / ตาย** ตามด้วย **[ฆ่าเพื่อนร่วมทีม]** เมื่อคุณมี "
-"แล้วตามด้วยสถิติของคุณเองกับคู่ต่อสู้คนนั้น: **ชนะ~แพ้** ซึ่งว่างไว้จนกว่าคุณจะได้สู้กับเขาจริง ๆ "
-"แถวของคุณเองจะแสดงจำนวนการทำลายตัวเองตรงนั้นแทน เพราะคุณไม่มีสถิติกับตัวเอง Rabbit "
-"Chase จะเพิ่มเปอร์เซ็นต์อันดับไว้หน้าจำนวนการฆ่า"
+"**Score** is kills minus deaths, and the board is sorted by it. Rabbit Chase "
+"puts a rank percentage in front of it."
+msgstr "**คะแนน** คือจำนวนฆ่าลบจำนวนตาย และตารางเรียงตามค่านี้ Rabbit Chase จะเพิ่มเปอร์เซ็นต์อันดับไว้ข้างหน้า"
+
+#: docs/help/scoreboard.md
+msgid ""
+"**Kills-Deaths** is the record behind that score, then **[team kills]** once "
+"there are any."
+msgstr "**ฆ่า-ตาย** คือสถิติเบื้องหลังคะแนนนั้น ตามด้วย **[ฆ่าเพื่อนร่วมทีม]** เมื่อมี"
+
+#: docs/help/scoreboard.md
+msgid ""
+"**1v1** is your own record against that one player: **wins~losses**, blank "
+"until you've fought them. Your own row shows how often you've self-"
+"destructed instead. A narrower screen drops 1v1 first, then Kills-Deaths."
+msgstr "**ตัวต่อตัว** คือสถิติของคุณเองกับผู้เล่นคนนั้น: **ชนะ~แพ้** ว่างไว้จนกว่าจะได้สู้กัน แถวของคุณเองจะแสดงจำนวนครั้งที่คุณทำลายตัวเองแทน หน้าจอที่แคบลงจะตัด ตัวต่อตัว ออกก่อน แล้วจึงตัด ฆ่า-ตาย"
+
+#: docs/help/scoreboard.md
+msgid ""
+"**T** is the player's device, then how they're connected; hover the heading "
+"for what each letter means."
+msgstr "**T** คืออุปกรณ์ของผู้เล่น ตามด้วยวิธีเชื่อมต่อ วางเมาส์บนหัวคอลัมน์เพื่อดูว่าแต่ละตัวอักษรหมายถึงอะไร"
 
 #: docs/help/scoreboard.md
 msgid ""
@@ -1072,6 +1084,19 @@ msgstr ""
 "เป็นซอฟต์แวร์เสรีภายใต้สัญญาอนุญาต [GNU Affero General Public License v3.0](https://"
 "www.gnu.org/licenses/agpl-3.0.html) ซอร์สโค้ดดูได้ที่ [github.com/timriker/bzo](/"
 "source)"
+
+#~ msgid ""
+#~ "Each row's numbers read **Kills / Deaths**, then **[Team Kills]** once "
+#~ "you have any, then your own record against that one opponent: "
+#~ "**wins~losses**, blank until you've actually fought them. Your own row "
+#~ "shows a self-destruct count there instead, since you have no record "
+#~ "against yourself. Rabbit Chase adds a rank percentage in front of the "
+#~ "kill count."
+#~ msgstr ""
+#~ "ตัวเลขในแต่ละแถวอ่านว่า **ฆ่า / ตาย** ตามด้วย **[ฆ่าเพื่อนร่วมทีม]** เมื่อคุณมี "
+#~ "แล้วตามด้วยสถิติของคุณเองกับคู่ต่อสู้คนนั้น: **ชนะ~แพ้** ซึ่งว่างไว้จนกว่าคุณจะได้สู้กับเขาจริง ๆ "
+#~ "แถวของคุณเองจะแสดงจำนวนการทำลายตัวเองตรงนั้นแทน เพราะคุณไม่มีสถิติกับตัวเอง Rabbit "
+#~ "Chase จะเพิ่มเปอร์เซ็นต์อันดับไว้หน้าจำนวนการฆ่า"
 
 #, fuzzy
 #~ msgid ""

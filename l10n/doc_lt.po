@@ -1046,18 +1046,28 @@ msgstr "Rezultatų lentelė"
 
 #: docs/help/scoreboard.md
 msgid ""
-"Each row's numbers read **Kills / Deaths**, then **[Team Kills]** once you "
-"have any, then your own record against that one opponent: **wins~losses**, "
-"blank until you've actually fought them. Your own row shows a self-destruct "
-"count there instead, since you have no record against yourself. Rabbit Chase "
-"adds a rank percentage in front of the kill count."
-msgstr ""
-"Kiekvienos eilutės skaičiai yra **Nužudymai / Žūtys**, tada **[Savųjų "
-"nužudymai]**, jei jų turi, tada tavo asmeninis rezultatas prieš tą varžovą: "
-"**pergalės~pralaimėjimai**, tuščia, kol iš tiesų nesikovėte. Tavo paties "
-"eilutėje ten vietoj to rodomas susinaikinimų skaičius, nes rezultato prieš "
-"save nėra. Rabbit Chase režime prieš nužudymų skaičių pridedamas reitingo "
-"procentas."
+"**Score** is kills minus deaths, and the board is sorted by it. Rabbit Chase "
+"puts a rank percentage in front of it."
+msgstr "**Taškai** – tai nužudymai minus žūtys, ir lentelė rikiuojama pagal juos. Rabbit Chase režime priekyje pridedamas reitingo procentas."
+
+#: docs/help/scoreboard.md
+msgid ""
+"**Kills-Deaths** is the record behind that score, then **[team kills]** once "
+"there are any."
+msgstr "**Nužudymai-Žūtys** – rezultatas, iš kurio gaunami taškai, tada **[savųjų nužudymai]**, jei jų yra."
+
+#: docs/help/scoreboard.md
+msgid ""
+"**1v1** is your own record against that one player: **wins~losses**, blank "
+"until you've fought them. Your own row shows how often you've self-"
+"destructed instead. A narrower screen drops 1v1 first, then Kills-Deaths."
+msgstr "**1v1** – tavo asmeninis rezultatas prieš tą žaidėją: **pergalės~pralaimėjimai**, tuščia, kol nesikovėte. Tavo paties eilutėje vietoj to rodoma, kiek kartų susinaikinai. Siauresniame ekrane pirmiausia dingsta 1v1, tada Nužudymai-Žūtys."
+
+#: docs/help/scoreboard.md
+msgid ""
+"**T** is the player's device, then how they're connected; hover the heading "
+"for what each letter means."
+msgstr "**T** – žaidėjo įrenginys, tada ryšio būdas; užvesk pelę ant antraštės ir pamatysi, ką reiškia kiekviena raidė."
 
 #: docs/help/scoreboard.md
 msgid ""
@@ -1141,6 +1151,21 @@ msgstr ""
 "Tai laisvoji programinė įranga, licencijuota pagal [GNU Affero General "
 "Public License v3.0](https://www.gnu.org/licenses/agpl-3.0.html). Išeities "
 "kodas pasiekiamas adresu [github.com/timriker/bzo](/source)."
+
+#~ msgid ""
+#~ "Each row's numbers read **Kills / Deaths**, then **[Team Kills]** once "
+#~ "you have any, then your own record against that one opponent: "
+#~ "**wins~losses**, blank until you've actually fought them. Your own row "
+#~ "shows a self-destruct count there instead, since you have no record "
+#~ "against yourself. Rabbit Chase adds a rank percentage in front of the "
+#~ "kill count."
+#~ msgstr ""
+#~ "Kiekvienos eilutės skaičiai yra **Nužudymai / Žūtys**, tada **[Savųjų "
+#~ "nužudymai]**, jei jų turi, tada tavo asmeninis rezultatas prieš tą "
+#~ "varžovą: **pergalės~pralaimėjimai**, tuščia, kol iš tiesų nesikovėte. "
+#~ "Tavo paties eilutėje ten vietoj to rodomas susinaikinimų skaičius, nes "
+#~ "rezultato prieš save nėra. Rabbit Chase režime prieš nužudymų skaičių "
+#~ "pridedamas reitingo procentas."
 
 #, fuzzy
 #~ msgid ""

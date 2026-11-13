@@ -1057,21 +1057,30 @@ msgstr ""
 msgid "Scoreboard"
 msgstr "Punktetabelle"
 
-# review: Abschüsse / Tode
 #: docs/help/scoreboard.md
 msgid ""
-"Each row's numbers read **Kills / Deaths**, then **[Team Kills]** once you "
-"have any, then your own record against that one opponent: **wins~losses**, "
-"blank until you've actually fought them. Your own row shows a self-destruct "
-"count there instead, since you have no record against yourself. Rabbit Chase "
-"adds a rank percentage in front of the kill count."
-msgstr ""
-"Die Zahlen jeder Zeile lauten **Abschüsse / Tode**, dann "
-"**[Teamabschüsse]**, sobald du welche hast, dann deine eigene Bilanz gegen "
-"genau diesen Gegner: **Siege~Niederlagen**, leer, bis ihr wirklich "
-"gegeneinander gekämpft habt. Deine eigene Zeile zeigt dort stattdessen die "
-"Zahl der Selbstzerstörungen, da du keine Bilanz gegen dich selbst hast. "
-"Rabbit Chase stellt der Abschusszahl einen Rang in Prozent voran."
+"**Score** is kills minus deaths, and the board is sorted by it. Rabbit Chase "
+"puts a rank percentage in front of it."
+msgstr "**Punkte** sind Abschüsse minus Tode, und danach ist die Tafel sortiert. Rabbit Chase stellt einen Rang in Prozent davor."
+
+#: docs/help/scoreboard.md
+msgid ""
+"**Kills-Deaths** is the record behind that score, then **[team kills]** once "
+"there are any."
+msgstr "**Abschüsse-Tode** ist die Bilanz hinter diesen Punkten, dann **[Teamabschüsse]**, sobald es welche gibt."
+
+#: docs/help/scoreboard.md
+msgid ""
+"**1v1** is your own record against that one player: **wins~losses**, blank "
+"until you've fought them. Your own row shows how often you've self-"
+"destructed instead. A narrower screen drops 1v1 first, then Kills-Deaths."
+msgstr "**1v1** ist deine eigene Bilanz gegen genau diesen Spieler: **Siege~Niederlagen**, leer, bis ihr gegeneinander gekämpft habt. Deine eigene Zeile zeigt stattdessen, wie oft du dich selbst zerstört hast. Ein schmalerer Bildschirm lässt zuerst 1v1 weg, dann Abschüsse-Tode."
+
+#: docs/help/scoreboard.md
+msgid ""
+"**T** is the player's device, then how they're connected; hover the heading "
+"for what each letter means."
+msgstr "**T** ist das Gerät des Spielers, dann die Art der Verbindung; fahr mit der Maus über die Überschrift, um zu sehen, was jeder Buchstabe bedeutet."
 
 #: docs/help/scoreboard.md
 msgid ""
@@ -1155,6 +1164,22 @@ msgstr ""
 "Es ist freie Software unter der [GNU Affero General Public License v3.0]"
 "(https://www.gnu.org/licenses/agpl-3.0.html). Der Quellcode ist unter "
 "[github.com/timriker/bzo](/source) verfügbar."
+
+# review: Abschüsse / Tode
+#~ msgid ""
+#~ "Each row's numbers read **Kills / Deaths**, then **[Team Kills]** once "
+#~ "you have any, then your own record against that one opponent: "
+#~ "**wins~losses**, blank until you've actually fought them. Your own row "
+#~ "shows a self-destruct count there instead, since you have no record "
+#~ "against yourself. Rabbit Chase adds a rank percentage in front of the "
+#~ "kill count."
+#~ msgstr ""
+#~ "Die Zahlen jeder Zeile lauten **Abschüsse / Tode**, dann "
+#~ "**[Teamabschüsse]**, sobald du welche hast, dann deine eigene Bilanz "
+#~ "gegen genau diesen Gegner: **Siege~Niederlagen**, leer, bis ihr wirklich "
+#~ "gegeneinander gekämpft habt. Deine eigene Zeile zeigt dort stattdessen "
+#~ "die Zahl der Selbstzerstörungen, da du keine Bilanz gegen dich selbst "
+#~ "hast. Rabbit Chase stellt der Abschusszahl einen Rang in Prozent voran."
 
 #, fuzzy
 #~ msgid ""

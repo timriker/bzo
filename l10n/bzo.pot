@@ -2276,7 +2276,7 @@ msgid "Player"
 msgstr ""
 
 #: public/js/hud.js:1042
-msgid "1-on-1"
+msgid "1v1"
 msgstr ""
 
 #: public/js/hud.js:1048
