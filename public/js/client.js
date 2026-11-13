@@ -4716,6 +4716,15 @@ function closeEntryDialog({ revert = true } = {}) {
   entryDialogFreeze = false;
   cameraMode = entryDialogReturnCameraMode === 'overview' ? 'first-person' : entryDialogReturnCameraMode;
   syncInputContextFromUi();
+
+  // Cancel, [X] or Escape on the first dialog is OK with nothing changed: the
+  // offered name, here, rather than a view of a game the player is not in.
+  if (revert && entrySnapshot && !gameplayJoinConfirmed && !pendingJoinRequest) {
+    const mottoInput = document.getElementById('entryMottoInput');
+    if (mottoInput) mottoInput.value = entrySnapshot.motto ?? '';
+    selectedDestination = currentDestination();
+    applyEntrySelections();
+  }
 }
 
 // OK. The name and the team are settled by the server at join time, so either
@@ -8023,7 +8032,8 @@ function init() {
       applyEntrySelections();
     });
 
-    // Cancel and the [X] are the same button in two places.
+    // Cancel and the [X] are the same button in two places. Before the first
+    // join either one joins as offered (`closeEntryDialog`).
     const cancelEntry = () => closeEntryDialog();
     entryCancelButton.addEventListener('click', cancelEntry);
     closeEntryBtn.addEventListener('click', cancelEntry);
