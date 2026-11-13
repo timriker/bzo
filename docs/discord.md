@@ -102,7 +102,7 @@ removed.
 
 Lines go at most one post every two seconds, within a webhook's 30 a minute.
 One speaker's lines go under their callsign as the sender; several speakers'
-go together under the server's title, each line led by its speaker. A name
+go together under the webhook's own name, each line led by its speaker. A name
 carries BZFlag's scoreboard mark: `@` for an admin, `+` for a signed-in
 player. When
 Discord asks bzo to slow down, the lines wait and go when it says, up to 200

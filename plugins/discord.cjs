@@ -196,7 +196,6 @@ module.exports = {
     if (!webhookUrl) return;
     state.mirror = createChatMirror({
       webhookUrl,
-      serverName: bz.bz_getPublicDescription() || 'bzo',
       log,
       logError,
       setTimer: bz.setTimeout,

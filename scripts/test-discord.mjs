@@ -159,7 +159,6 @@ assert.equal(discordLinkConfigured({ applicationId: '111' }), false);
   const timers = [];
   const mirror = createChatMirror({
     webhookUrl: 'https://discord.com/api/webhooks/1/x',
-    serverName: 'bz.example.org',
     log: () => {},
     logError: (label, err) => { throw err; },
     now: () => clock,
@@ -180,7 +179,7 @@ assert.equal(discordLinkConfigured({ applicationId: '111' }), false);
   mirror.relay('a_b', 'one', 'chat');
   mirror.relay('Orin', '\u001b[31mred @everyone', 'chat');
   await mirror.flush();
-  assert.equal(posts[1].username, 'bz.example.org');
+  assert.equal(posts[1].username, undefined, 'under the webhook name');
   assert.equal(posts[1].content, '**a\\_b**: one\n**Orin**: red @everyone');
   assert.deepEqual(posts[1].allowed_mentions, { parse: [] });
 
@@ -203,10 +202,10 @@ assert.equal(discordLinkConfigured({ applicationId: '111' }), false);
   await mirror.flush();
   assert.equal(posts.at(-1).content, '**@Tim Riker**: one\n**+Orin**: two');
 
-  // A join or leave: no speaker, so under the server's name, in italics.
+  // A join or leave: no speaker, so under the webhook's own name, in italics.
   mirror.event('Tim_R joined, p 2 o 1');
   await mirror.flush();
-  assert.equal(posts.at(-1).username, 'bz.example.org');
+  assert.equal(posts.at(-1).username, undefined);
   assert.equal(posts.at(-1).content, '_Tim\\_R joined, p 2 o 1_');
   mirror.event('Orin left, b 3');
   mirror.relay('Tim Riker', 'bye', 'chat');

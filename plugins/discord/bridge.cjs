@@ -16,7 +16,7 @@
 // A webhook takes about 30 posts a minute, so lines queue and go at most one
 // post every `FLUSH_MS`. A post from one player carries their callsign as its
 // sender; lines from several players in one window go as one post under the
-// server's own name, each line led by its speaker. Mentions are switched off,
+// webhook's own name, each line led by its speaker. Mentions are switched off,
 // so no line can ping `@everyone`, a role or a member. A speaker's name carries
 // BZFlag's scoreboard mark: `@` for an admin, `+` for a signed-in player.
 
@@ -41,7 +41,7 @@ function boldName(name) {
 }
 
 function createChatMirror({
-  webhookUrl, serverName, log, logError,
+  webhookUrl, log, logError,
   fetchImpl = fetch, setTimer = setTimeout, now = Date.now,
 }) {
   const queue = [];
@@ -67,8 +67,11 @@ function createChatMirror({
       const said = line.action ? `*${line.text}*` : line.text;
       return one ? said : `${boldName(`${line.mark}${line.name}`)}: ${said}`;
     }).join('\n');
+    // A post with no one speaker goes under the webhook's own name, as set in
+    // Discord, rather than the server's description on every join and leave.
+    const name = one ? senderName(lines[0].name, '') : '';
     return {
-      username: one ? `${lines[0].mark}${senderName(lines[0].name, serverName)}` : senderName(serverName, 'bzo'),
+      ...(name ? { username: `${lines[0].mark}${name}` } : {}),
       content: text.length > CONTENT_LIMIT ? `${text.slice(0, CONTENT_LIMIT - 1)}…` : text,
       allowed_mentions: { parse: [] },
     };

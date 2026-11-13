@@ -6,6 +6,18 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
 
 ## [Unreleased]
 
+### Changed
+- The scoreboard's head-to-head column is headed **1v1**, short enough to
+  fit in every language, and the Scoreboard help names each column.
+- The renderer bench (WebGL, WebGPU) writes each run's GPU and timings to
+  server.log under `[renderer-bench]`.
+
+### Fixed
+- Cancel, [X] or Escape on the first entry dialog joins under the offered
+  name, as OK would, rather than leaving a view of the game with no tank.
+- Discord: joins, leaves and several speakers' lines post under the
+  webhook's own name, not the server's description on every one.
+
 ## [1.4.0] - 2026-11-12
 
 ### Changed
