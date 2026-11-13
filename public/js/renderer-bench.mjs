@@ -18,8 +18,8 @@
 // Objects drawn with a hand-written GLSL `ShaderMaterial` are hidden in every
 // mode, since the WebGPU renderer cannot draw them. Its lighting is three's
 // own, not upstream's (color-management.mjs patches WebGL's shaders only), so
-// its picture is darker; the draw work is the same. The result is on the page
-// and in `window.benchResult`.
+// its picture is darker; the draw work is the same. The result is on the page,
+// in `window.benchResult`, and in server.log under `[renderer-bench]`.
 
 import './color-management.mjs';
 import { renderManager } from './render.js';
@@ -32,6 +32,25 @@ const report = document.getElementById('benchReport');
 
 function show(text) {
   report.textContent = text;
+}
+
+// Into server.log, through the endpoint the network test pages use, so a run
+// on someone else's device can be read without a screenshot.
+function logToServer(lines) {
+  fetch('/api/webrtc-test-log', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ page: 'renderer-bench', lines: lines.map((line) => `${mode} ${line}`) }),
+  }).catch(() => {});
+}
+
+// The GPU and driver the browser reports, where it reports one.
+function gpuName(renderer) {
+  const info = renderer.backend?.device?.adapterInfo;
+  if (info) return [info.vendor, info.architecture, info.description].filter(Boolean).join(' ') || 'unnamed adapter';
+  const gl = renderer.backend?.gl || renderer.getContext?.();
+  const debug = gl?.getExtension('WEBGL_debug_renderer_info');
+  return debug ? gl.getParameter(debug.UNMASKED_RENDERER_WEBGL) : 'unknown';
 }
 
 function percentile(sorted, p) {
@@ -80,6 +99,8 @@ async function main() {
   }
   const backend = mode === 'webgl' ? 'WebGL 2'
     : renderer.backend?.isWebGPUBackend ? 'WebGPU' : 'WebGL 2 (WebGPU renderer fallback)';
+  logToServer([navigator.userAgent, `${backend} on ${gpuName(renderer)}, ${window.innerWidth}x${window.innerHeight}`
+    + ` @${renderer.getPixelRatio()}, world ${hash}`]);
 
   let hidden = 0;
   scene.traverse((object) => {
@@ -142,9 +163,13 @@ async function main() {
     `frame interval   ${ms(frame)}`,
   ].join('\n'));
   console.log('benchResult', JSON.stringify(result));
+  const brief = (s) => `p50 ${s.p50.toFixed(2)} p95 ${s.p95.toFixed(2)} max ${s.max.toFixed(1)}`;
+  logToServer([`${result.fps.toFixed(1)} fps over ${result.frames} frames, ${meshes} meshes;`
+    + ` render() ms ${brief(render)}; frame ms ${brief(frame)}`]);
 }
 
 main().catch((error) => {
   show(`bench failed: ${error.message}`);
+  logToServer([navigator.userAgent, `failed: ${error.message}`]);
   console.error(error);
 });

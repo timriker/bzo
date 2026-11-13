@@ -1686,8 +1686,9 @@ app.get('/api/voice-ice', (req, res) => {
 // own clock. Short lines only, and only from that page's shape of request.
 app.post('/api/webrtc-test-log', (req, res) => {
   const lines = Array.isArray(req.body?.lines) ? req.body.lines.slice(0, 50) : [];
-  // public/wt-test.html logs the same way, under its own tag.
-  const tag = req.body?.page === 'wt-test' ? 'wt-test' : 'webrtc-test';
+  // public/wt-test.html and the renderer bench log the same way, under their
+  // own tags.
+  const tag = ['wt-test', 'renderer-bench'].includes(req.body?.page) ? req.body.page : 'webrtc-test';
   const ip = (req.get('x-forwarded-for') || '').split(',')[0].trim() || req.socket.remoteAddress;
   lines.forEach((line) => {
     if (typeof line === 'string') log(`[${tag}] ${ip} ${line.slice(0, 200).replace(/[\r\n]/g, ' ')}`);
