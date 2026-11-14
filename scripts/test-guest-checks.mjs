@@ -78,6 +78,27 @@ tracker.noteGuest(server.host, server.port, { spawn: 'yes', spawnDetail: '' });
 assert.equal(tracker.recordFor(server.host, server.port).guest.spawn, 'yes');
 assert.ok(GUEST_RETRY_MS < GUEST_RECHECK_MS);
 
+// A server its operator asked bzo to leave alone (`excludeServers`) is never
+// dialled, for its world or its guest questions, however overdue.
+{
+  const excluded = { host: 'leave.example.org', port: 5155, title: 'x', info: {} };
+  const dials = [];
+  const quiet = createBzfsWorldTracker({
+    statePath: path.join(dir, 'excluded.json'),
+    queryServerStatus: async (host) => { dials.push(host); return status; },
+    importWorld: async (host) => { dials.push(host); },
+    probeGuestAccess: async (host) => { dials.push(host); return {}; },
+    hasPicture: () => false,
+    isExcluded: (host) => host === excluded.host,
+    log: () => {},
+    logError: () => {},
+  });
+  quiet.observe([excluded]);
+  clock += 40 * 24 * 60 * 60 * 1000;
+  await quiet.tick();
+  assert.deepEqual(dials, [], 'an excluded server is never dialled');
+}
+
 Date.now = realNow;
 fs.rmSync(dir, { recursive: true, force: true });
 console.log('guest check tests passed');

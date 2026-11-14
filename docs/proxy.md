@@ -577,4 +577,5 @@ for a world's variables, and /list shows the answer as **Guests Watch** or
   -- spawned it, refused it, echoed or refused its chat.
 
 The visitor is `bzo-import` with the motto `bzo server check --
-<publicUrl>/list`, so an operator who sees it knows where the answers are.
+<publicUrl>/list`, so an operator who sees it knows where the answers are;
+[server-check.md](server-check.md) explains the visits to them.

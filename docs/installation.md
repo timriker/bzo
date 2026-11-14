@@ -409,6 +409,14 @@ different key from <https://my.bzflag.org/listkeys/> and does not go here.
 `docs/list-server.md` has the protocol, the validation callback, key lifetime
 and what a row carries.
 
+### Visiting BZFlag servers
+
+`/list` connects to the BZFlag servers it lists, to draw and show their
+worlds. [server-check.md](server-check.md) says what an operator of one sees
+and how often. An operator who asks you to stay away goes in
+`excludeServers`, `host` or `host:port`, and this server then never connects
+to it.
+
 ### On the BZFlag list
 
 A `bzflag` block also lists the server where BZFlag clients look, with a

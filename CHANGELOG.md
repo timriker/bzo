@@ -6,6 +6,24 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
 
 ## [Unreleased]
 
+### Added
+- `excludeServers` in `server.json` names BZFlag servers whose operators
+  asked bzo to stay away; this server then never connects to them.
+  docs/server-check.md tells such an operator what bzo's visits are and how
+  often, linked from `/list`.
+
+### Fixed
+- A variable a server sets during play no longer rebuilds the whole world,
+  as upstream: fog, sky and the mirror's tint change in place, a scene
+  switch rebuilds only its mountains, clouds or ground, and the `_rain*`
+  variables now change the rain live. Watching whammo, which moves its fog,
+  mirror and rain every second, stalled for seconds a frame.
+- Following the leader passes over a dead leader to the next player down
+  the board who is alive, and goes back when the leader spawns.
+- Chat's Translate button shows a language pack's download as it goes, and
+  **Translation unavailable** with the reason if it fails, rather than
+  vanishing with nothing to show for it.
+
 ## [1.4.1] - 2026-11-13
 
 ### Changed

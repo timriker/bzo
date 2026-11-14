@@ -390,6 +390,8 @@ itself, because a map played at `_tankSpeed 40` should say so in the file.
 A rejected or timed-out join costs the import nothing: everything above it
 already arrived, and the map loads without `-set`. `enterForVariables: false`
 skips the join for a caller that would rather stay invisible.
+[server-check.md](server-check.md) is the same for that server's operator:
+what they see, how often, and `excludeServers`.
 
 That covers the world download, the game settings and the world variables. A
 proxy that let a browser *play* on a real server would need the rest: the join

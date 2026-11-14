@@ -3460,6 +3460,9 @@ ${renderListServerKeyAdminSection({ session, admin, t })}
     license: link('https://www.gnu.org/licenses/agpl-3.0.html', 'GNU AGPL v3'),
     source: link('https://github.com/timriker/bzo', 'github.com/timriker/bzo'),
   })}</p>
+<p>${l10n.html(t('Run a BZFlag server? {page} says when bzo visits it, and how to ask it to stay away.'), {
+    page: link('https://github.com/timriker/bzo/blob/main/docs/server-check.md', t('bzo on your BZFlag server')),
+  })}</p>
 </footer>
 </body>
 </html>`;
@@ -4035,9 +4038,22 @@ const bzfsWorlds = createBzfsWorldTracker({
     return MAP_REGISTRY.has(fileName) || mapIndex.has(fileName, resolveMapFilePath(fileName));
   },
   onPassComplete: () => purgeUnreferencedOverviews(),
+  isExcluded: (host, port) => isExcludedServer(host, port),
   log,
   logError,
 });
+
+// `excludeServers` in server.json: BZFlag servers whose operators asked this
+// one to stay away (docs/server-check.md). Each is `host` or `host:port`;
+// nothing here ever dials one -- no world check, no import, no visit.
+function isExcludedServer(host, port) {
+  const entries = Array.isArray(serverConfig.excludeServers) ? serverConfig.excludeServers : [];
+  const name = String(host || '').toLowerCase();
+  return entries.some((entry) => {
+    const text = String(entry || '').trim().toLowerCase();
+    return text === name || text === `${name}:${port}`;
+  });
+}
 
 // What `cache/overviews/` holds that nothing points at any more: a bzo
 // instance that has changed map leaves its old world's picture behind, and
@@ -4346,6 +4362,7 @@ function importedWorldHash(fileName) {
 // own address (`dialHost`), not the name its import is filed under.
 async function confirmImportUnchanged(fileName, host, port,
   { current = '', dialHost = host, dialPort = port } = {}) {
+  if (isExcludedServer(host, port)) return false;
   const saved = importedWorldHash(fileName);
   if (!isBzfsWorldHash(saved)) return false;
   const record = bzfsWorlds.recordFor(host, port);
@@ -4889,6 +4906,7 @@ function serverCheckMotto() {
 }
 
 async function performRemoteMapImport(host, port, timeout, guest = null) {
+  if (isExcludedServer(host, port)) throw new Error('its operator asked this server not to visit it');
   let publicServers;
   try {
     publicServers = await getRemoteServerList();

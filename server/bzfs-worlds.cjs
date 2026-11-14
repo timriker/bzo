@@ -153,10 +153,13 @@ function serverKey(host, port) {
 // guest questions to ask while joined; `probeGuestAccess(host, port, { spawn })`
 // for those questions alone, when the world needs no download; `hasPicture(host,
 // port, worldHash)` for whether a picture of that world is held -- the import
-// itself is swept after two hours, the picture is not -- and `log`/`logError`.
+// itself is swept after two hours, the picture is not -- `isExcluded(host,
+// port)` for a server this one's operator has been asked to leave alone
+// (`excludeServers`, docs/server-check.md), and `log`/`logError`.
 function createBzfsWorldTracker(deps) {
   const {
     statePath, queryServerStatus, importWorld, probeGuestAccess, hasPicture, onPassComplete, log, logError,
+    isExcluded = () => false,
   } = deps;
   // `host:port` -> { worldHash, fingerprint, checkedAt, error, errorAt }
   const records = new Map();
@@ -267,6 +270,7 @@ function createBzfsWorldTracker(deps) {
     let best = null;
     let bestAge = -Infinity;
     for (const [key, server] of listed) {
+      if (isExcluded(server.host, server.port)) continue;
       const record = records.get(key);
       if (record?.error && now - (record.errorAt || 0) < failureCooldown(record.failCount)) continue;
       let age;
