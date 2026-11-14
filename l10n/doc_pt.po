@@ -535,9 +535,10 @@ msgstr ""
 "das quais mostra essa malha"
 
 #: docs/help/controls.md
+#, fuzzy
 msgid ""
-"Click a scoreboard row to watch that player; click the marked row again to "
-"go back to following the leader"
+"Click a scoreboard row to watch that player, alive or dead; click the marked "
+"row again to go back to following the leader, who is the top player alive"
 msgstr ""
 "Clique numa linha do placar para observar esse jogador; clique de novo na "
 "linha marcada para voltar a seguir o líder"
@@ -1058,26 +1059,36 @@ msgstr "Placar"
 msgid ""
 "**Score** is kills minus deaths, and the board is sorted by it. Rabbit Chase "
 "puts a rank percentage in front of it."
-msgstr "**Pontuação** é abates menos mortes, e o placar é ordenado por ela. O Rabbit Chase coloca uma porcentagem de classificação na frente."
+msgstr ""
+"**Pontuação** é abates menos mortes, e o placar é ordenado por ela. O Rabbit "
+"Chase coloca uma porcentagem de classificação na frente."
 
 #: docs/help/scoreboard.md
 msgid ""
 "**Kills-Deaths** is the record behind that score, then **[team kills]** once "
 "there are any."
-msgstr "**Abates-Mortes** é o histórico por trás dessa pontuação, depois **[abates de time]** quando houver algum."
+msgstr ""
+"**Abates-Mortes** é o histórico por trás dessa pontuação, depois **[abates "
+"de time]** quando houver algum."
 
 #: docs/help/scoreboard.md
 msgid ""
 "**1v1** is your own record against that one player: **wins~losses**, blank "
 "until you've fought them. Your own row shows how often you've self-"
 "destructed instead. A narrower screen drops 1v1 first, then Kills-Deaths."
-msgstr "**1x1** é o seu próprio histórico contra esse jogador: **vitórias~derrotas**, em branco até vocês terem lutado. A sua própria linha mostra em vez disso quantas vezes você se autodestruiu. Uma tela mais estreita tira primeiro o 1x1, depois Abates-Mortes."
+msgstr ""
+"**1x1** é o seu próprio histórico contra esse jogador: "
+"**vitórias~derrotas**, em branco até vocês terem lutado. A sua própria linha "
+"mostra em vez disso quantas vezes você se autodestruiu. Uma tela mais "
+"estreita tira primeiro o 1x1, depois Abates-Mortes."
 
 #: docs/help/scoreboard.md
 msgid ""
 "**T** is the player's device, then how they're connected; hover the heading "
 "for what each letter means."
-msgstr "**T** é o dispositivo do jogador e depois como ele está conectado; passe o mouse sobre o cabeçalho para ver o que cada letra significa."
+msgstr ""
+"**T** é o dispositivo do jogador e depois como ele está conectado; passe o "
+"mouse sobre o cabeçalho para ver o que cada letra significa."
 
 #: docs/help/scoreboard.md
 msgid ""

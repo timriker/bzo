@@ -515,9 +515,10 @@ msgstr ""
 "の警告、最大のメッシュ（それぞれそのメッシュを表示します）"
 
 #: docs/help/controls.md
+#, fuzzy
 msgid ""
-"Click a scoreboard row to watch that player; click the marked row again to "
-"go back to following the leader"
+"Click a scoreboard row to watch that player, alive or dead; click the marked "
+"row again to go back to following the leader, who is the top player alive"
 msgstr ""
 "スコアボードの行をクリックするとそのプレイヤーを観戦。マークされた行をもう一"
 "度クリックするとリーダーの追従に戻ります"
@@ -1024,26 +1025,35 @@ msgstr "スコアボード"
 msgid ""
 "**Score** is kills minus deaths, and the board is sorted by it. Rabbit Chase "
 "puts a rank percentage in front of it."
-msgstr "**スコア** はキル数からデス数を引いたもので、スコアボードはこの順に並びます。ラビットチェイスでは前に順位のパーセンテージが付きます。"
+msgstr ""
+"**スコア** はキル数からデス数を引いたもので、スコアボードはこの順に並びます。"
+"ラビットチェイスでは前に順位のパーセンテージが付きます。"
 
 #: docs/help/scoreboard.md
 msgid ""
 "**Kills-Deaths** is the record behind that score, then **[team kills]** once "
 "there are any."
-msgstr "**キル-デス** はそのスコアの内訳で、チームキルがあれば **[チームキル]** が続きます。"
+msgstr ""
+"**キル-デス** はそのスコアの内訳で、チームキルがあれば **[チームキル]** が続"
+"きます。"
 
 #: docs/help/scoreboard.md
 msgid ""
 "**1v1** is your own record against that one player: **wins~losses**, blank "
 "until you've fought them. Your own row shows how often you've self-"
 "destructed instead. A narrower screen drops 1v1 first, then Kills-Deaths."
-msgstr "**1対1** はその相手に対するあなたの戦績 **勝ち~負け** です（実際に戦うまでは空欄）。自分の行には代わりに自爆した回数が表示されます。画面が狭いと、まず1対1が、次にキル-デスが省かれます。"
+msgstr ""
+"**1対1** はその相手に対するあなたの戦績 **勝ち~負け** です（実際に戦うまでは"
+"空欄）。自分の行には代わりに自爆した回数が表示されます。画面が狭いと、まず1対"
+"1が、次にキル-デスが省かれます。"
 
 #: docs/help/scoreboard.md
 msgid ""
 "**T** is the player's device, then how they're connected; hover the heading "
 "for what each letter means."
-msgstr "**T** はプレイヤーの端末と、続いて接続方法を示します。見出しにカーソルを合わせると各文字の意味が表示されます。"
+msgstr ""
+"**T** はプレイヤーの端末と、続いて接続方法を示します。見出しにカーソルを合わ"
+"せると各文字の意味が表示されます。"
 
 #: docs/help/scoreboard.md
 msgid ""

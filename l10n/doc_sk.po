@@ -527,9 +527,10 @@ msgstr ""
 "zobrazí"
 
 #: docs/help/controls.md
+#, fuzzy
 msgid ""
-"Click a scoreboard row to watch that player; click the marked row again to "
-"go back to following the leader"
+"Click a scoreboard row to watch that player, alive or dead; click the marked "
+"row again to go back to following the leader, who is the top player alive"
 msgstr ""
 "Klikni na riadok tabuľky skóre a sleduj toho hráča; ďalším kliknutím na "
 "označený riadok sa vrátiš k sledovaniu vedúceho"
@@ -1039,26 +1040,36 @@ msgstr "Tabuľka skóre"
 msgid ""
 "**Score** is kills minus deaths, and the board is sorted by it. Rabbit Chase "
 "puts a rank percentage in front of it."
-msgstr "**Skóre** sú zabitia mínus smrti a podľa neho je tabuľka zoradená. Rabbit Chase pred neho pridáva percentuálne hodnotenie."
+msgstr ""
+"**Skóre** sú zabitia mínus smrti a podľa neho je tabuľka zoradená. Rabbit "
+"Chase pred neho pridáva percentuálne hodnotenie."
 
 #: docs/help/scoreboard.md
 msgid ""
 "**Kills-Deaths** is the record behind that score, then **[team kills]** once "
 "there are any."
-msgstr "**Zabitia-Smrti** je bilancia za týmto skóre, potom **[tímové zabitia]**, len čo nejaké sú."
+msgstr ""
+"**Zabitia-Smrti** je bilancia za týmto skóre, potom **[tímové zabitia]**, "
+"len čo nejaké sú."
 
 #: docs/help/scoreboard.md
 msgid ""
 "**1v1** is your own record against that one player: **wins~losses**, blank "
 "until you've fought them. Your own row shows how often you've self-"
 "destructed instead. A narrower screen drops 1v1 first, then Kills-Deaths."
-msgstr "**1 na 1** je tvoja vlastná bilancia proti tomu jednému hráčovi: **výhry~prehry**, prázdne, kým ste spolu nebojovali. Tvoj vlastný riadok namiesto toho ukazuje, koľkokrát si sa zničil sám. Užšia obrazovka vynechá najprv 1 na 1, potom Zabitia-Smrti."
+msgstr ""
+"**1 na 1** je tvoja vlastná bilancia proti tomu jednému hráčovi: "
+"**výhry~prehry**, prázdne, kým ste spolu nebojovali. Tvoj vlastný riadok "
+"namiesto toho ukazuje, koľkokrát si sa zničil sám. Užšia obrazovka vynechá "
+"najprv 1 na 1, potom Zabitia-Smrti."
 
 #: docs/help/scoreboard.md
 msgid ""
 "**T** is the player's device, then how they're connected; hover the heading "
 "for what each letter means."
-msgstr "**T** je zariadenie hráča a za ním spôsob pripojenia; prejdi myšou nad záhlavie a uvidíš, čo ktoré písmeno znamená."
+msgstr ""
+"**T** je zariadenie hráča a za ním spôsob pripojenia; prejdi myšou nad "
+"záhlavie a uvidíš, čo ktoré písmeno znamená."
 
 #: docs/help/scoreboard.md
 msgid ""

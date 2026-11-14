@@ -523,9 +523,10 @@ msgstr ""
 "5h0w5 7h47 m35h"
 
 #: docs/help/controls.md
+#, fuzzy
 msgid ""
-"Click a scoreboard row to watch that player; click the marked row again to "
-"go back to following the leader"
+"Click a scoreboard row to watch that player, alive or dead; click the marked "
+"row again to go back to following the leader, who is the top player alive"
 msgstr ""
 "Cl1ck 4 5c0r3b04rd r0w 70 w47ch 7h47 pl4y3r; cl1ck 73h m4rk3d r0w 4g41n 70 "
 "g0 b4ck 70 f0ll0w1ng 73h l34d3r"
@@ -1035,26 +1036,35 @@ msgstr "5c0r3b04rd"
 msgid ""
 "**Score** is kills minus deaths, and the board is sorted by it. Rabbit Chase "
 "puts a rank percentage in front of it."
-msgstr "**5c0r3** 15 k1ll5 m1nu5 d347h5, 4nd 7h3 b04rd 15 50r73d by 17. R4bb17 Ch453 pu75 4 r4nk p3rc3n74g3 1n fr0n7 0f 17."
+msgstr ""
+"**5c0r3** 15 k1ll5 m1nu5 d347h5, 4nd 7h3 b04rd 15 50r73d by 17. R4bb17 Ch453 "
+"pu75 4 r4nk p3rc3n74g3 1n fr0n7 0f 17."
 
 #: docs/help/scoreboard.md
 msgid ""
 "**Kills-Deaths** is the record behind that score, then **[team kills]** once "
 "there are any."
-msgstr "**K1ll5-D347h5** 15 7h3 r3c0rd b3h1nd 7h47 5c0r3, 7h3n **[734m k1ll5]** 0nc3 7h3r3 4r3 4ny."
+msgstr ""
+"**K1ll5-D347h5** 15 7h3 r3c0rd b3h1nd 7h47 5c0r3, 7h3n **[734m k1ll5]** 0nc3 "
+"7h3r3 4r3 4ny."
 
 #: docs/help/scoreboard.md
 msgid ""
 "**1v1** is your own record against that one player: **wins~losses**, blank "
 "until you've fought them. Your own row shows how often you've self-"
 "destructed instead. A narrower screen drops 1v1 first, then Kills-Deaths."
-msgstr "**1v1** 15 j00r 0wn r3c0rd 4g41n57 7h47 0n3 pl4y3r: **w1n5~l05535**, bl4nk un71l j00'v3 f0ugh7 7h3m. J00r 0wn r0w 5h0w5 h0w 0f73n j00'v3 53lf-d357ruc73d 1n5734d. 4 n4rr0w3r 5cr33n dr0p5 1v1 f1r57, 7h3n K1ll5-D347h5."
+msgstr ""
+"**1v1** 15 j00r 0wn r3c0rd 4g41n57 7h47 0n3 pl4y3r: **w1n5~l05535**, bl4nk "
+"un71l j00'v3 f0ugh7 7h3m. J00r 0wn r0w 5h0w5 h0w 0f73n j00'v3 53lf-"
+"d357ruc73d 1n5734d. 4 n4rr0w3r 5cr33n dr0p5 1v1 f1r57, 7h3n K1ll5-D347h5."
 
 #: docs/help/scoreboard.md
 msgid ""
 "**T** is the player's device, then how they're connected; hover the heading "
 "for what each letter means."
-msgstr "**T** 15 7h3 pl4y3r'5 d3v1c3, 7h3n h0w 7h3y'r3 c0nn3c73d; h0v3r 7h3 h34d1ng f0r wh47 34ch l3773r m34n5."
+msgstr ""
+"**T** 15 7h3 pl4y3r'5 d3v1c3, 7h3n h0w 7h3y'r3 c0nn3c73d; h0v3r 7h3 h34d1ng "
+"f0r wh47 34ch l3773r m34n5."
 
 #: docs/help/scoreboard.md
 msgid ""

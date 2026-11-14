@@ -527,9 +527,10 @@ msgstr ""
 "zobrazí"
 
 #: docs/help/controls.md
+#, fuzzy
 msgid ""
-"Click a scoreboard row to watch that player; click the marked row again to "
-"go back to following the leader"
+"Click a scoreboard row to watch that player, alive or dead; click the marked "
+"row again to go back to following the leader, who is the top player alive"
 msgstr ""
 "Klikni na řádek tabulky skóre a sleduj toho hráče; dalším kliknutím na "
 "označený řádek se vrátíš ke sledování vedoucího"
@@ -1037,26 +1038,36 @@ msgstr "Tabulka skóre"
 msgid ""
 "**Score** is kills minus deaths, and the board is sorted by it. Rabbit Chase "
 "puts a rank percentage in front of it."
-msgstr "**Skóre** jsou zabití mínus smrti a podle něj je tabulka seřazená. Rabbit Chase před něj přidává procentuální hodnocení."
+msgstr ""
+"**Skóre** jsou zabití mínus smrti a podle něj je tabulka seřazená. Rabbit "
+"Chase před něj přidává procentuální hodnocení."
 
 #: docs/help/scoreboard.md
 msgid ""
 "**Kills-Deaths** is the record behind that score, then **[team kills]** once "
 "there are any."
-msgstr "**Zabití-Smrti** je bilance za tímto skóre, pak **[týmová zabití]**, jakmile nějaká jsou."
+msgstr ""
+"**Zabití-Smrti** je bilance za tímto skóre, pak **[týmová zabití]**, jakmile "
+"nějaká jsou."
 
 #: docs/help/scoreboard.md
 msgid ""
 "**1v1** is your own record against that one player: **wins~losses**, blank "
 "until you've fought them. Your own row shows how often you've self-"
 "destructed instead. A narrower screen drops 1v1 first, then Kills-Deaths."
-msgstr "**1 na 1** je tvoje vlastní bilance proti tomu jednomu hráči: **výhry~prohry**, prázdné, dokud jste spolu nebojovali. Tvůj vlastní řádek místo toho ukazuje, kolikrát ses zničil sám. Užší obrazovka vynechá nejdřív 1 na 1, pak Zabití-Smrti."
+msgstr ""
+"**1 na 1** je tvoje vlastní bilance proti tomu jednomu hráči: "
+"**výhry~prohry**, prázdné, dokud jste spolu nebojovali. Tvůj vlastní řádek "
+"místo toho ukazuje, kolikrát ses zničil sám. Užší obrazovka vynechá nejdřív "
+"1 na 1, pak Zabití-Smrti."
 
 #: docs/help/scoreboard.md
 msgid ""
 "**T** is the player's device, then how they're connected; hover the heading "
 "for what each letter means."
-msgstr "**T** je zařízení hráče a za ním způsob připojení; najeď na záhlaví a uvidíš, co které písmeno znamená."
+msgstr ""
+"**T** je zařízení hráče a za ním způsob připojení; najeď na záhlaví a "
+"uvidíš, co které písmeno znamená."
 
 #: docs/help/scoreboard.md
 msgid ""

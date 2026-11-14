@@ -163,8 +163,8 @@ Pausing and self-destruct do nothing.
   panel's **World** button for the whole world: what is in it, faces,
   textures, the map file's warnings and its largest meshes, each of which
   shows that mesh
-- Click a scoreboard row to watch that player; click the marked row again to go
-  back to following the leader
+- Click a scoreboard row to watch that player, alive or dead; click the marked
+  row again to go back to following the leader, who is the top player alive
 
 ## Mouse
 

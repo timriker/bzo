@@ -529,9 +529,10 @@ msgstr ""
 "показать"
 
 #: docs/help/controls.md
+#, fuzzy
 msgid ""
-"Click a scoreboard row to watch that player; click the marked row again to "
-"go back to following the leader"
+"Click a scoreboard row to watch that player, alive or dead; click the marked "
+"row again to go back to following the leader, who is the top player alive"
 msgstr ""
 "Клик по строке таблицы счёта — следить за этим игроком; повторный клик по "
 "отмеченной строке — вернуться к слежению за лидером"
@@ -1042,26 +1043,36 @@ msgstr "Таблица счёта"
 msgid ""
 "**Score** is kills minus deaths, and the board is sorted by it. Rabbit Chase "
 "puts a rank percentage in front of it."
-msgstr "**Очки** — это убийства минус смерти, по ним сортируется таблица. В Охоте на кролика перед ними стоит процент ранга."
+msgstr ""
+"**Очки** — это убийства минус смерти, по ним сортируется таблица. В Охоте на "
+"кролика перед ними стоит процент ранга."
 
 #: docs/help/scoreboard.md
 msgid ""
 "**Kills-Deaths** is the record behind that score, then **[team kills]** once "
 "there are any."
-msgstr "**Убийства-Смерти** — счёт, из которого получаются очки, затем **[убийства своих]**, если они есть."
+msgstr ""
+"**Убийства-Смерти** — счёт, из которого получаются очки, затем **[убийства "
+"своих]**, если они есть."
 
 #: docs/help/scoreboard.md
 msgid ""
 "**1v1** is your own record against that one player: **wins~losses**, blank "
 "until you've fought them. Your own row shows how often you've self-"
 "destructed instead. A narrower screen drops 1v1 first, then Kills-Deaths."
-msgstr "**1 на 1** — твой личный счёт против этого игрока: **победы~поражения**, пусто, пока вы не сражались. В твоей собственной строке вместо этого видно, сколько раз ты самоуничтожился. На узком экране сначала пропадает 1 на 1, затем Убийства-Смерти."
+msgstr ""
+"**1 на 1** — твой личный счёт против этого игрока: **победы~поражения**, "
+"пусто, пока вы не сражались. В твоей собственной строке вместо этого видно, "
+"сколько раз ты самоуничтожился. На узком экране сначала пропадает 1 на 1, "
+"затем Убийства-Смерти."
 
 #: docs/help/scoreboard.md
 msgid ""
 "**T** is the player's device, then how they're connected; hover the heading "
 "for what each letter means."
-msgstr "**T** — устройство игрока, затем способ подключения; наведи курсор на заголовок, чтобы увидеть, что значит каждая буква."
+msgstr ""
+"**T** — устройство игрока, затем способ подключения; наведи курсор на "
+"заголовок, чтобы увидеть, что значит каждая буква."
 
 #: docs/help/scoreboard.md
 msgid ""

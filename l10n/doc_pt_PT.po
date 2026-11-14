@@ -534,9 +534,10 @@ msgstr ""
 "das quais mostra essa malha"
 
 #: docs/help/controls.md
+#, fuzzy
 msgid ""
-"Click a scoreboard row to watch that player; click the marked row again to "
-"go back to following the leader"
+"Click a scoreboard row to watch that player, alive or dead; click the marked "
+"row again to go back to following the leader, who is the top player alive"
 msgstr ""
 "Clica numa linha do marcador para observar esse jogador; clica outra vez na "
 "linha marcada para voltar a seguir o líder"
@@ -1058,26 +1059,36 @@ msgstr "Marcador"
 msgid ""
 "**Score** is kills minus deaths, and the board is sorted by it. Rabbit Chase "
 "puts a rank percentage in front of it."
-msgstr "**Pontuação** é abates menos mortes, e o quadro é ordenado por ela. O Rabbit Chase coloca uma percentagem de classificação à frente."
+msgstr ""
+"**Pontuação** é abates menos mortes, e o quadro é ordenado por ela. O Rabbit "
+"Chase coloca uma percentagem de classificação à frente."
 
 #: docs/help/scoreboard.md
 msgid ""
 "**Kills-Deaths** is the record behind that score, then **[team kills]** once "
 "there are any."
-msgstr "**Abates-Mortes** é o registo por trás dessa pontuação, depois **[abates de equipa]** quando houver algum."
+msgstr ""
+"**Abates-Mortes** é o registo por trás dessa pontuação, depois **[abates de "
+"equipa]** quando houver algum."
 
 #: docs/help/scoreboard.md
 msgid ""
 "**1v1** is your own record against that one player: **wins~losses**, blank "
 "until you've fought them. Your own row shows how often you've self-"
 "destructed instead. A narrower screen drops 1v1 first, then Kills-Deaths."
-msgstr "**1v1** é o teu próprio registo contra esse jogador: **vitórias~derrotas**, em branco até terem lutado. A tua própria linha mostra em vez disso quantas vezes te autodestruíste. Um ecrã mais estreito retira primeiro o 1v1, depois Abates-Mortes."
+msgstr ""
+"**1v1** é o teu próprio registo contra esse jogador: **vitórias~derrotas**, "
+"em branco até terem lutado. A tua própria linha mostra em vez disso quantas "
+"vezes te autodestruíste. Um ecrã mais estreito retira primeiro o 1v1, depois "
+"Abates-Mortes."
 
 #: docs/help/scoreboard.md
 msgid ""
 "**T** is the player's device, then how they're connected; hover the heading "
 "for what each letter means."
-msgstr "**T** é o dispositivo do jogador e depois como está ligado; passa o rato sobre o cabeçalho para ver o que significa cada letra."
+msgstr ""
+"**T** é o dispositivo do jogador e depois como está ligado; passa o rato "
+"sobre o cabeçalho para ver o que significa cada letra."
 
 #: docs/help/scoreboard.md
 msgid ""

@@ -521,9 +521,10 @@ msgstr ""
 "shows that mesh"
 
 #: docs/help/controls.md
+#, fuzzy
 msgid ""
-"Click a scoreboard row to watch that player; click the marked row again to "
-"go back to following the leader"
+"Click a scoreboard row to watch that player, alive or dead; click the marked "
+"row again to go back to following the leader, who is the top player alive"
 msgstr ""
 "Click a scoreboard row to watch that player; click the marked row again to "
 "go back to tailin' the leader"
@@ -1033,26 +1034,35 @@ msgstr "Scoreboard"
 msgid ""
 "**Score** is kills minus deaths, and the board is sorted by it. Rabbit Chase "
 "puts a rank percentage in front of it."
-msgstr "**Score** is kills minus deaths, and the board's sorted by it. Rabbit Chase sticks a rank percentage out front of it."
+msgstr ""
+"**Score** is kills minus deaths, and the board's sorted by it. Rabbit Chase "
+"sticks a rank percentage out front of it."
 
 #: docs/help/scoreboard.md
 msgid ""
 "**Kills-Deaths** is the record behind that score, then **[team kills]** once "
 "there are any."
-msgstr "**Kills-Deaths** is the record behind that score, then **[Team Kills]** once there's any."
+msgstr ""
+"**Kills-Deaths** is the record behind that score, then **[Team Kills]** once "
+"there's any."
 
 #: docs/help/scoreboard.md
 msgid ""
 "**1v1** is your own record against that one player: **wins~losses**, blank "
 "until you've fought them. Your own row shows how often you've self-"
 "destructed instead. A narrower screen drops 1v1 first, then Kills-Deaths."
-msgstr "**1v1** is yer own record against that one feller: **wins~losses**, blank till y'all have tangled. Yer own row shows how many times ya blowed yerself up instead. A skinnier screen drops 1v1 first, then Kills-Deaths."
+msgstr ""
+"**1v1** is yer own record against that one feller: **wins~losses**, blank "
+"till y'all have tangled. Yer own row shows how many times ya blowed yerself "
+"up instead. A skinnier screen drops 1v1 first, then Kills-Deaths."
 
 #: docs/help/scoreboard.md
 msgid ""
 "**T** is the player's device, then how they're connected; hover the heading "
 "for what each letter means."
-msgstr "**T** is what the feller's playin' on, then how they're hooked up; hover over the heading for what each letter means."
+msgstr ""
+"**T** is what the feller's playin' on, then how they're hooked up; hover "
+"over the heading for what each letter means."
 
 #: docs/help/scoreboard.md
 msgid ""

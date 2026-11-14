@@ -304,7 +304,7 @@ msgid "Pick nothing -- the sky, or empty ground in the Overview -- or press the 
 msgstr ""
 
 #: docs/help/controls.md
-msgid "Click a scoreboard row to watch that player; click the marked row again to go back to following the leader"
+msgid "Click a scoreboard row to watch that player, alive or dead; click the marked row again to go back to following the leader, who is the top player alive"
 msgstr ""
 
 #: docs/help/controls.md

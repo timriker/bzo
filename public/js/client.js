@@ -12661,9 +12661,10 @@ function isFireHeld() {
 // belong to `ID` Identify, which is a tank locking on to another tank, and
 // they live where that decision is made (`identifyRoamTarget`).
 //
-// Not whether they are alive, either. A followed tank that dies is still the
-// tank being followed upstream, and the view picks them up again when they
-// spawn rather than dropping to free roam the moment they are shot.
+// Not whether they are alive, either. A tank followed by choice that dies is
+// still the tank being followed, as upstream, and the view picks them up again
+// when they spawn rather than dropping to free roam the moment they are shot.
+// Only following the leader passes over a dead one (`getRoamTargetId`).
 function getRoamCandidates() {
   const candidates = [];
   tanks.forEach((tank, id) => {
@@ -12717,7 +12718,12 @@ function getRoamTargetId() {
   // A target that left the game drops us back to the leader, as changePlayer does.
   roamTargetId = null;
   if (candidates.length === 0) return null;
-  return candidates.sort(compareScoreboardPlayers)[0].id;
+  // The leader still playing: upstream stays on a dead leader until they
+  // spawn again, bzo goes to the next one down the board who is alive, and
+  // back when the leader is. With nobody alive, the leader.
+  const ordered = candidates.sort(compareScoreboardPlayers);
+  const alive = ordered.find((candidate) => tanks.get(candidate.id)?.userData.playerState?.alive);
+  return (alive || ordered[0]).id;
 }
 
 function getRoamTargetTank() {

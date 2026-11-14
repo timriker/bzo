@@ -522,9 +522,10 @@ msgstr ""
 "mesh tInqu'mey; Hoch 'oH mesh'e' 'agh"
 
 #: docs/help/controls.md
+#, fuzzy
 msgid ""
-"Click a scoreboard row to watch that player; click the marked row again to "
-"go back to following the leader"
+"Click a scoreboard row to watch that player, alive or dead; click the marked "
+"row again to go back to following the leader, who is the top player alive"
 msgstr ""
 "QujwI'vetlh DabejmeH mI' 'echlet tlhegh yIchu'; DevwI' Datlha'qa'meH, tlhegh "
 "ghanlu'bogh yIchu'qa'"
@@ -1017,7 +1018,9 @@ msgstr "mI' 'echlet"
 msgid ""
 "**Score** is kills minus deaths, and the board is sorted by it. Rabbit Chase "
 "puts a rank percentage in front of it."
-msgstr "**mI'** HoH mI' Hegh mI' je chuvmo' chenlu'. mI'vaD ghItlh lutlhoS. patlh vatlhvI' chel Ha'DIbaH wam."
+msgstr ""
+"**mI'** HoH mI' Hegh mI' je chuvmo' chenlu'. mI'vaD ghItlh lutlhoS. patlh "
+"vatlhvI' chel Ha'DIbaH wam."
 
 #: docs/help/scoreboard.md
 msgid ""
@@ -1030,13 +1033,17 @@ msgid ""
 "**1v1** is your own record against that one player: **wins~losses**, blank "
 "until you've fought them. Your own row shows how often you've self-"
 "destructed instead. A narrower screen drops 1v1 first, then Kills-Deaths."
-msgstr "**1v1** wa' QuchvaD qunlIj 'oH: **Qapla'~luj**, chIm, ghaH DaSuvpa'. tlheghlIjDaq Qaw''egh mI' 'aghlu'. HaSta tIn law'be'DI' 1v1 teqlu' wa'DIch, vaj HoH-Hegh."
+msgstr ""
+"**1v1** wa' QuchvaD qunlIj 'oH: **Qapla'~luj**, chIm, ghaH DaSuvpa'. "
+"tlheghlIjDaq Qaw''egh mI' 'aghlu'. HaSta tIn law'be'DI' 1v1 teqlu' wa'DIch, "
+"vaj HoH-Hegh."
 
 #: docs/help/scoreboard.md
 msgid ""
 "**T** is the player's device, then how they're connected; hover the heading "
 "for what each letter means."
-msgstr "**T** Quchvaj jan 'oH, vaj rarmeH mIw; nIb 'ay' Dachoqqu'DI' Degh Hoch QIj."
+msgstr ""
+"**T** Quchvaj jan 'oH, vaj rarmeH mIw; nIb 'ay' Dachoqqu'DI' Degh Hoch QIj."
 
 #: docs/help/scoreboard.md
 msgid ""

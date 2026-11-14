@@ -492,9 +492,10 @@ msgstr ""
 "界：其中的內容、面數、材質、地圖檔的警告和最大的網格，每個網格都可點開顯示"
 
 #: docs/help/controls.md
+#, fuzzy
 msgid ""
-"Click a scoreboard row to watch that player; click the marked row again to "
-"go back to following the leader"
+"Click a scoreboard row to watch that player, alive or dead; click the marked "
+"row again to go back to following the leader, who is the top player alive"
 msgstr "點選計分板列觀看該玩家；再點一次已標記的列則回到跟隨領先者"
 
 #: docs/help/controls.md
@@ -965,7 +966,8 @@ msgstr "計分板"
 msgid ""
 "**Score** is kills minus deaths, and the board is sorted by it. Rabbit Chase "
 "puts a rank percentage in front of it."
-msgstr "**得分**是擊殺數減去陣亡數，計分板依它排序。兔子追逐 會在前面加上排名百分比。"
+msgstr ""
+"**得分**是擊殺數減去陣亡數，計分板依它排序。兔子追逐 會在前面加上排名百分比。"
 
 #: docs/help/scoreboard.md
 msgid ""
@@ -978,13 +980,16 @@ msgid ""
 "**1v1** is your own record against that one player: **wins~losses**, blank "
 "until you've fought them. Your own row shows how often you've self-"
 "destructed instead. A narrower screen drops 1v1 first, then Kills-Deaths."
-msgstr "**單挑**是你對該玩家的戰績：**勝~負**，交手前為空白。你自己的列改為顯示你自爆的次數。螢幕較窄時先省去單挑，再省去擊殺-陣亡。"
+msgstr ""
+"**單挑**是你對該玩家的戰績：**勝~負**，交手前為空白。你自己的列改為顯示你自爆"
+"的次數。螢幕較窄時先省去單挑，再省去擊殺-陣亡。"
 
 #: docs/help/scoreboard.md
 msgid ""
 "**T** is the player's device, then how they're connected; hover the heading "
 "for what each letter means."
-msgstr "**T** 是玩家的裝置，後面是連線方式；將滑鼠停在表頭上可查看每個字母的含義。"
+msgstr ""
+"**T** 是玩家的裝置，後面是連線方式；將滑鼠停在表頭上可查看每個字母的含義。"
 
 #: docs/help/scoreboard.md
 msgid ""

@@ -534,9 +534,10 @@ msgstr ""
 "kiekvieną galima parodyti"
 
 #: docs/help/controls.md
+#, fuzzy
 msgid ""
-"Click a scoreboard row to watch that player; click the marked row again to "
-"go back to following the leader"
+"Click a scoreboard row to watch that player, alive or dead; click the marked "
+"row again to go back to following the leader, who is the top player alive"
 msgstr ""
 "Spustelėk rezultatų lentelės eilutę, kad stebėtum tą žaidėją; spustelėjus "
 "pažymėtą eilutę dar kartą vėl sekamas lyderis"
@@ -1048,26 +1049,36 @@ msgstr "Rezultatų lentelė"
 msgid ""
 "**Score** is kills minus deaths, and the board is sorted by it. Rabbit Chase "
 "puts a rank percentage in front of it."
-msgstr "**Taškai** – tai nužudymai minus žūtys, ir lentelė rikiuojama pagal juos. Rabbit Chase režime priekyje pridedamas reitingo procentas."
+msgstr ""
+"**Taškai** – tai nužudymai minus žūtys, ir lentelė rikiuojama pagal juos. "
+"Rabbit Chase režime priekyje pridedamas reitingo procentas."
 
 #: docs/help/scoreboard.md
 msgid ""
 "**Kills-Deaths** is the record behind that score, then **[team kills]** once "
 "there are any."
-msgstr "**Nužudymai-Žūtys** – rezultatas, iš kurio gaunami taškai, tada **[savųjų nužudymai]**, jei jų yra."
+msgstr ""
+"**Nužudymai-Žūtys** – rezultatas, iš kurio gaunami taškai, tada **[savųjų "
+"nužudymai]**, jei jų yra."
 
 #: docs/help/scoreboard.md
 msgid ""
 "**1v1** is your own record against that one player: **wins~losses**, blank "
 "until you've fought them. Your own row shows how often you've self-"
 "destructed instead. A narrower screen drops 1v1 first, then Kills-Deaths."
-msgstr "**1v1** – tavo asmeninis rezultatas prieš tą žaidėją: **pergalės~pralaimėjimai**, tuščia, kol nesikovėte. Tavo paties eilutėje vietoj to rodoma, kiek kartų susinaikinai. Siauresniame ekrane pirmiausia dingsta 1v1, tada Nužudymai-Žūtys."
+msgstr ""
+"**1v1** – tavo asmeninis rezultatas prieš tą žaidėją: "
+"**pergalės~pralaimėjimai**, tuščia, kol nesikovėte. Tavo paties eilutėje "
+"vietoj to rodoma, kiek kartų susinaikinai. Siauresniame ekrane pirmiausia "
+"dingsta 1v1, tada Nužudymai-Žūtys."
 
 #: docs/help/scoreboard.md
 msgid ""
 "**T** is the player's device, then how they're connected; hover the heading "
 "for what each letter means."
-msgstr "**T** – žaidėjo įrenginys, tada ryšio būdas; užvesk pelę ant antraštės ir pamatysi, ką reiškia kiekviena raidė."
+msgstr ""
+"**T** – žaidėjo įrenginys, tada ryšio būdas; užvesk pelę ant antraštės ir "
+"pamatysi, ką reiškia kiekviena raidė."
 
 #: docs/help/scoreboard.md
 msgid ""

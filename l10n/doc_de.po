@@ -536,9 +536,10 @@ msgstr ""
 "dieses Mesh anzeigen"
 
 #: docs/help/controls.md
+#, fuzzy
 msgid ""
-"Click a scoreboard row to watch that player; click the marked row again to "
-"go back to following the leader"
+"Click a scoreboard row to watch that player, alive or dead; click the marked "
+"row again to go back to following the leader, who is the top player alive"
 msgstr ""
 "Klicke auf eine Zeile der Punktetabelle, um diesem Spieler zuzusehen; klicke "
 "erneut auf die markierte Zeile, um wieder dem Führenden zu folgen"
@@ -1061,26 +1062,36 @@ msgstr "Punktetabelle"
 msgid ""
 "**Score** is kills minus deaths, and the board is sorted by it. Rabbit Chase "
 "puts a rank percentage in front of it."
-msgstr "**Punkte** sind Abschüsse minus Tode, und danach ist die Tafel sortiert. Rabbit Chase stellt einen Rang in Prozent davor."
+msgstr ""
+"**Punkte** sind Abschüsse minus Tode, und danach ist die Tafel sortiert. "
+"Rabbit Chase stellt einen Rang in Prozent davor."
 
 #: docs/help/scoreboard.md
 msgid ""
 "**Kills-Deaths** is the record behind that score, then **[team kills]** once "
 "there are any."
-msgstr "**Abschüsse-Tode** ist die Bilanz hinter diesen Punkten, dann **[Teamabschüsse]**, sobald es welche gibt."
+msgstr ""
+"**Abschüsse-Tode** ist die Bilanz hinter diesen Punkten, dann "
+"**[Teamabschüsse]**, sobald es welche gibt."
 
 #: docs/help/scoreboard.md
 msgid ""
 "**1v1** is your own record against that one player: **wins~losses**, blank "
 "until you've fought them. Your own row shows how often you've self-"
 "destructed instead. A narrower screen drops 1v1 first, then Kills-Deaths."
-msgstr "**1v1** ist deine eigene Bilanz gegen genau diesen Spieler: **Siege~Niederlagen**, leer, bis ihr gegeneinander gekämpft habt. Deine eigene Zeile zeigt stattdessen, wie oft du dich selbst zerstört hast. Ein schmalerer Bildschirm lässt zuerst 1v1 weg, dann Abschüsse-Tode."
+msgstr ""
+"**1v1** ist deine eigene Bilanz gegen genau diesen Spieler: "
+"**Siege~Niederlagen**, leer, bis ihr gegeneinander gekämpft habt. Deine "
+"eigene Zeile zeigt stattdessen, wie oft du dich selbst zerstört hast. Ein "
+"schmalerer Bildschirm lässt zuerst 1v1 weg, dann Abschüsse-Tode."
 
 #: docs/help/scoreboard.md
 msgid ""
 "**T** is the player's device, then how they're connected; hover the heading "
 "for what each letter means."
-msgstr "**T** ist das Gerät des Spielers, dann die Art der Verbindung; fahr mit der Maus über die Überschrift, um zu sehen, was jeder Buchstabe bedeutet."
+msgstr ""
+"**T** ist das Gerät des Spielers, dann die Art der Verbindung; fahr mit der "
+"Maus über die Überschrift, um zu sehen, was jeder Buchstabe bedeutet."
 
 #: docs/help/scoreboard.md
 msgid ""

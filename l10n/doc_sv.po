@@ -526,9 +526,10 @@ msgstr ""
 "den meshen"
 
 #: docs/help/controls.md
+#, fuzzy
 msgid ""
-"Click a scoreboard row to watch that player; click the marked row again to "
-"go back to following the leader"
+"Click a scoreboard row to watch that player, alive or dead; click the marked "
+"row again to go back to following the leader, who is the top player alive"
 msgstr ""
 "Klicka på en rad i resultattavlan för att följa den spelaren; klicka på den "
 "markerade raden igen för att återgå till att följa ledaren"
@@ -1043,26 +1044,36 @@ msgstr "Resultattavla"
 msgid ""
 "**Score** is kills minus deaths, and the board is sorted by it. Rabbit Chase "
 "puts a rank percentage in front of it."
-msgstr "**Poäng** är dödade minus döda, och tavlan sorteras efter det. Rabbit Chase sätter en rangprocent framför."
+msgstr ""
+"**Poäng** är dödade minus döda, och tavlan sorteras efter det. Rabbit Chase "
+"sätter en rangprocent framför."
 
 #: docs/help/scoreboard.md
 msgid ""
 "**Kills-Deaths** is the record behind that score, then **[team kills]** once "
 "there are any."
-msgstr "**Dödade-döda** är resultatet bakom poängen, sedan **[lagdödade]** när det finns några."
+msgstr ""
+"**Dödade-döda** är resultatet bakom poängen, sedan **[lagdödade]** när det "
+"finns några."
 
 #: docs/help/scoreboard.md
 msgid ""
 "**1v1** is your own record against that one player: **wins~losses**, blank "
 "until you've fought them. Your own row shows how often you've self-"
 "destructed instead. A narrower screen drops 1v1 first, then Kills-Deaths."
-msgstr "**1 mot 1** är ditt eget resultat mot just den spelaren: **vinster~förluster**, tomt tills ni har stridit. Din egen rad visar i stället hur ofta du har självförstört. En smalare skärm tar bort 1 mot 1 först, sedan Dödade-döda."
+msgstr ""
+"**1 mot 1** är ditt eget resultat mot just den spelaren: "
+"**vinster~förluster**, tomt tills ni har stridit. Din egen rad visar i "
+"stället hur ofta du har självförstört. En smalare skärm tar bort 1 mot 1 "
+"först, sedan Dödade-döda."
 
 #: docs/help/scoreboard.md
 msgid ""
 "**T** is the player's device, then how they're connected; hover the heading "
 "for what each letter means."
-msgstr "**T** är spelarens enhet, sedan hur spelaren är ansluten; håll muspekaren över rubriken för att se vad varje bokstav betyder."
+msgstr ""
+"**T** är spelarens enhet, sedan hur spelaren är ansluten; håll muspekaren "
+"över rubriken för att se vad varje bokstav betyder."
 
 #: docs/help/scoreboard.md
 msgid ""
