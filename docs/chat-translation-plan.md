@@ -61,9 +61,10 @@ What it costs:
   Where `'Translator' in self` is false, chat shows as written, as today
 - each language pair is a one-time download, which must start from a user
   gesture: the first line needing a pack not yet on the device is shown as
-  written, with a **Translate** button that is that gesture, and a progress
-  line while it loads; every line after it, in that language, is translated
-  without asking
+  written, with a **Translate** button that is that gesture, its progress on
+  the button while it loads, and **Translation unavailable** (with the
+  browser's reason on hover, and a click to try again) if it fails; every line
+  after it, in that language, is translated without asking
 - packs are believed to be English-centred, so Spanish to Thai passes through
   English: two downloads, and errors compound. Players reading English get
   the best of it

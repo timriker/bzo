@@ -1188,72 +1188,72 @@ msgstr "Rôzne"
 msgid "Debug"
 msgstr "Ladenie"
 
-#: public/js/client.js:892
+#: public/js/client.js:894
 msgid "unlimited"
 msgstr "neobmedzene"
 
-#: public/js/client.js:894
+#: public/js/client.js:896
 msgid "{count} left"
 msgstr "zostáva {count}"
 
-#: public/js/client.js:1006
+#: public/js/client.js:1008
 msgid "this is the designated list server"
 msgstr "toto je určený list server"
 
 #. TRANSLATORS: listServerUrl is a server.json setting; keep it as written
-#: public/js/client.js:1009
+#: public/js/client.js:1011
 msgid "disabled (no listServerUrl)"
 msgstr "vypnuté (chýba listServerUrl)"
 
-#: public/js/client.js:1011
+#: public/js/client.js:1013
 msgid "reporting to {url}: key configured"
 msgstr "hlásenie na {url}: kľúč nastavený"
 
-#: public/js/client.js:1012
+#: public/js/client.js:1014
 msgid "reporting to {url}: no key yet"
 msgstr "hlásenie na {url}: zatiaľ bez kľúča"
 
-#: public/js/client.js:1034
+#: public/js/client.js:1036
 msgid "{team} won the game"
 msgstr "Víťaz hry: {team}"
 
-#: public/js/client.js:1039
+#: public/js/client.js:1041
 msgid "{player} won the game"
 msgstr "Víťaz hry: {player}"
 
-#: public/js/client.js:1286
+#: public/js/client.js:1288
 msgid "Team: {team}"
 msgstr "Tím: {team}"
 
-#: public/js/client.js:1429
+#: public/js/client.js:1431
 msgid "watching {server}"
 msgstr "sledovanie {server}"
 
-#: public/js/client.js:1431 public/js/client.js:10532
+#: public/js/client.js:1433 public/js/client.js:10610
 msgid "replay {name}"
 msgstr "záznam {name}"
 
-#: public/js/client.js:1433
+#: public/js/client.js:1435
 msgid "Practice offline, {level}"
 msgstr ""
 
-#: public/js/client.js:1444
+#: public/js/client.js:1446
 msgid "local {map}"
 msgstr "miestna {map}"
 
-#: public/js/client.js:1444
+#: public/js/client.js:1446
 msgid "This server"
 msgstr "Tento server"
 
-#: public/js/client.js:1528
+#: public/js/client.js:1530
 msgid "Server: {server}"
 msgstr "Server: {server}"
 
-#: public/js/client.js:1588
+#: public/js/client.js:1590
 msgid "Sign in & Play"
 msgstr "Prihlásiť a hrať"
 
-#: public/js/client.js:1590
+#: public/js/client.js:1592
 msgid ""
 "Playing here needs a bzflag.org global login. This signs you in, then joins "
 "on the team you picked."
@@ -1261,99 +1261,99 @@ msgstr ""
 "Hranie tu vyžaduje globálne prihlásenie na bzflag.org. Toto ťa prihlási a "
 "potom pripojí do tímu, ktorý si si vybral."
 
-#: public/js/client.js:1703 public/js/client.js:1721
+#: public/js/client.js:1705 public/js/client.js:1723
 msgid "a tank"
 msgstr "tank"
 
-#: public/js/client.js:1852
+#: public/js/client.js:1854
 msgid "You are now the rabbit."
 msgstr "Teraz si zajac."
 
-#: public/js/client.js:1858
+#: public/js/client.js:1860
 msgid "{player} is now the rabbit"
 msgstr "Zajacom je teraz {player}"
 
-#: public/js/client.js:1869
+#: public/js/client.js:1871
 msgid "operation failed"
 msgstr "operácia zlyhala"
 
-#: public/js/client.js:1869
+#: public/js/client.js:1871
 msgid "Voice error: {error}"
 msgstr "Chyba hlasu: {error}"
 
-#: public/js/client.js:2374
+#: public/js/client.js:2376
 msgid "Default microphone"
 msgstr "Predvolený mikrofón"
 
-#: public/js/client.js:2382 public/js/voice.js:1218
+#: public/js/client.js:2384 public/js/voice.js:1218
 msgid "Microphone"
 msgstr "Mikrofón"
 
-#: public/js/client.js:2415 public/js/client.js:2430
+#: public/js/client.js:2417 public/js/client.js:2432
 msgid "Receive only"
 msgstr "Iba príjem"
 
-#: public/js/client.js:2417 public/js/client.js:2456
+#: public/js/client.js:2419 public/js/client.js:2458
 msgid "Microphone on"
 msgstr "Mikrofón zapnutý"
 
-#: public/js/client.js:2419
+#: public/js/client.js:2421
 msgid "Permission denied"
 msgstr "Povolenie zamietnuté"
 
-#: public/js/client.js:2421 public/js/client.js:2423
+#: public/js/client.js:2423 public/js/client.js:2425
 msgid "Microphone unavailable"
 msgstr "Mikrofón nedostupný"
 
-#: public/js/client.js:2431
+#: public/js/client.js:2433
 msgid "Mic blocked"
 msgstr "Mikrofón blokovaný"
 
-#: public/js/client.js:2432
+#: public/js/client.js:2434
 msgid "Mic unavailable"
 msgstr "Mikrofón nedostupný"
 
-#: public/js/client.js:2433
+#: public/js/client.js:2435
 msgid "Disable Mic"
 msgstr "Vypnúť mikrofón"
 
-#: public/js/client.js:2433
+#: public/js/client.js:2435
 msgid "Enable Mic"
 msgstr "Zapnúť mikrofón"
 
-#: public/js/client.js:2442
+#: public/js/client.js:2444
 msgid "{action} - {channel}"
 msgstr "{action} – {channel}"
 
-#: public/js/client.js:2443
+#: public/js/client.js:2445
 msgid "{channel} voice channel, {status}"
 msgstr "Hlasový kanál {channel}, {status}"
 
-#: public/js/client.js:2451
+#: public/js/client.js:2453
 msgid "Microphone permission granted"
 msgstr "Povolenie mikrofónu udelené"
 
-#: public/js/client.js:2464
+#: public/js/client.js:2466
 msgid "Microphone is transmitting on the {channel} channel."
 msgstr "Mikrofón vysiela na kanáli {channel}."
 
-#: public/js/client.js:2465
+#: public/js/client.js:2467
 msgid "Microphone permission granted; transmission is off."
 msgstr "Povolenie mikrofónu udelené; vysielanie je vypnuté."
 
-#: public/js/client.js:2467
+#: public/js/client.js:2469
 msgid "Microphone permission was denied by the browser."
 msgstr "Prehliadač zamietol povolenie mikrofónu."
 
-#: public/js/client.js:2469
+#: public/js/client.js:2471
 msgid "Microphone capture is unavailable in this browser or context."
 msgstr "Záznam z mikrofónu nie je v tomto prehliadači alebo kontexte dostupný."
 
-#: public/js/client.js:2482
+#: public/js/client.js:2484
 msgid "Voice operation failed."
 msgstr "Hlasová operácia zlyhala."
 
-#: public/js/client.js:2744
+#: public/js/client.js:2746
 msgid ""
 "A proxied connection tells the target which bzo it came through, and nothing "
 "else. Your own motto is used on this server."
@@ -1361,134 +1361,134 @@ msgstr ""
 "Pripojenie cez proxy oznámi cieľu iba to, cez ktoré bzo prišlo, a nič iné. "
 "Na tomto serveri sa použije tvoje vlastné motto."
 
-#: public/js/client.js:3184
+#: public/js/client.js:3186
 msgid "Preparing battlefield..."
 msgstr "Pripravuje sa bojisko..."
 
-#: public/js/client.js:3185
+#: public/js/client.js:3187
 msgid "Building world geometry"
 msgstr "Stavia sa geometria sveta"
 
-#: public/js/client.js:3194
+#: public/js/client.js:3196
 msgid "Placing obstacles..."
 msgstr "Umiestňujú sa prekážky..."
 
-#: public/js/client.js:3195
+#: public/js/client.js:3197
 msgid "Synchronizing world objects"
 msgstr "Synchronizujú sa objekty sveta"
 
-#: public/js/client.js:3223
+#: public/js/client.js:3225
 msgid "Loading vehicle systems..."
 msgstr "Načítavajú sa systémy vozidiel..."
 
-#: public/js/client.js:3224
+#: public/js/client.js:3226
 msgid "Preparing tank models, textures, and audio"
 msgstr "Pripravujú sa modely tankov, textúry a zvuk"
 
-#: public/js/client.js:3241
+#: public/js/client.js:3243
 msgid "Assembling tanks..."
 msgstr "Skladajú sa tanky..."
 
-#: public/js/client.js:3242
+#: public/js/client.js:3244
 msgid "Creating player vehicles"
 msgstr "Vytvárajú sa vozidlá hráčov"
 
-#: public/js/client.js:3255
+#: public/js/client.js:3257
 msgid "Entering battle..."
 msgstr "Vstup do boja..."
 
-#: public/js/client.js:3255
+#: public/js/client.js:3257
 msgid "Render ready"
 msgstr "Vykresľovanie pripravené"
 
-#: public/js/client.js:3256
+#: public/js/client.js:3258
 msgid "Joining game"
 msgstr "Pripája sa do hry"
 
-#: public/js/client.js:3256
+#: public/js/client.js:3258
 msgid "Waiting for player name"
 msgstr "Čaká sa na meno hráča"
 
 #. TRANSLATORS: prefix on a chat line this client wrote itself, not the server
-#: public/js/client.js:3587
+#: public/js/client.js:3616
 msgid "local: {message}"
 msgstr "miestne: {message}"
 
-#: public/js/client.js:3594
+#: public/js/client.js:3623
 msgid "client version: {version}"
 msgstr "verzia klienta: {version}"
 
-#: public/js/client.js:3595
+#: public/js/client.js:3624
 msgid "copyright: {copyright}"
 msgstr "copyright: {copyright}"
 
-#: public/js/client.js:3596
+#: public/js/client.js:3625
 msgid "license: {license} ({url})"
 msgstr "licencia: {license} ({url})"
 
-#: public/js/client.js:3760 public/js/client.js:3820
+#: public/js/client.js:3789 public/js/client.js:3849
 msgid "Unsilenced \"{callsign}\""
 msgstr "Zrušené umlčanie „{callsign}“"
 
-#: public/js/client.js:3761 public/js/client.js:3800
+#: public/js/client.js:3790 public/js/client.js:3829
 msgid "Silenced \"{callsign}\""
 msgstr "Umlčaný „{callsign}“"
 
-#: public/js/client.js:3775
+#: public/js/client.js:3804
 msgid "Usage: {command}"
 msgstr "Použitie: {command}"
 
 #. TRANSLATORS: /silence and - stay as written
-#: public/js/client.js:3787
+#: public/js/client.js:3816
 msgid "Usage: /silence <callsign>|-"
 msgstr "Použitie: /silence <prezývka>|-"
 
-#: public/js/client.js:3794
+#: public/js/client.js:3823
 msgid "Silencing every unauthenticated player"
 msgstr "Umlčujem všetkých neoverených hráčov"
 
 #. TRANSLATORS: /unsilence and - stay as written
-#: public/js/client.js:3807
+#: public/js/client.js:3836
 msgid "Usage: /unsilence <callsign>|-"
 msgstr "Použitie: /unsilence <prezývka>|-"
 
-#: public/js/client.js:3814
+#: public/js/client.js:3843
 msgid "No longer silencing unauthenticated players"
 msgstr "Už neumlčujem neoverených hráčov"
 
-#: public/js/client.js:3877
+#: public/js/client.js:3906
 msgid "Highlight cleared"
 msgstr "Zvýraznenie zrušené"
 
-#: public/js/client.js:3879
+#: public/js/client.js:3908
 msgid "Invalid highlight pattern: {pattern}"
 msgstr "Neplatný vzor zvýraznenia: {pattern}"
 
-#: public/js/client.js:3881
+#: public/js/client.js:3910
 msgid "Highlighting \"{pattern}\""
 msgstr "Zvýrazňujem „{pattern}“"
 
-#: public/js/client.js:3905
+#: public/js/client.js:3934
 msgid "Saved messages to: {filename}"
 msgstr "Správy uložené do: {filename}"
 
-#: public/js/client.js:3913
+#: public/js/client.js:3942
 msgid "Client-side commands: {commands}"
 msgstr "Príkazy klienta: {commands}"
 
-#: public/js/client.js:4082
+#: public/js/client.js:4111
 msgid "No recent direct sender to reply to"
 msgstr "Žiadny nedávny odosielateľ súkromnej správy, komu odpovedať"
 
-#: public/js/client.js:4090
+#: public/js/client.js:4119
 msgid "No nemesis target available"
 msgstr "Žiadny cieľ nemesis nie je k dispozícii"
 
-#: public/js/client.js:4302
+#: public/js/client.js:4331
 msgid "Show Operator Panel (O)"
 msgstr "Zobraziť panel operátora (O)"
 
-#: public/js/client.js:4303
+#: public/js/client.js:4332
 msgid ""
 "Operator: sign in with a bzflag.org global callsign that the server grants "
 "admin to"
@@ -1496,15 +1496,15 @@ msgstr ""
 "Operátor: prihlás sa globálnou prezývkou z bzflag.org, ktorej server dáva "
 "práva admina"
 
-#: public/js/client.js:4344 public/js/client.js:4363
+#: public/js/client.js:4373 public/js/client.js:4392
 msgid "Sign in"
 msgstr "Prihlásiť sa"
 
-#: public/js/client.js:4347
+#: public/js/client.js:4376
 msgid "Global login for {server}"
 msgstr "Globálne prihlásenie pre {server}"
 
-#: public/js/client.js:4348
+#: public/js/client.js:4377
 msgid ""
 "Sign in at bzflag.org to play on {server}. A login is needed for each "
 "target, and bzo never sees your password."
@@ -1512,600 +1512,600 @@ msgstr ""
 "Prihlás sa na bzflag.org a hraj na {server}. Prihlásenie je potrebné pre "
 "každý cieľ zvlášť a bzo tvoje heslo nikdy nevidí."
 
-#: public/js/client.js:4356
+#: public/js/client.js:4385
 msgid "Signed in as {callsign}. Activate to sign out."
 msgstr "Prihlásený ako {callsign}. Aktivuj na odhlásenie."
 
-#: public/js/client.js:4358
+#: public/js/client.js:4387
 msgid "Signed in, and an admin on this server. Click to sign out."
 msgstr "Prihlásený a admin na tomto serveri. Klikni na odhlásenie."
 
-#: public/js/client.js:4359
+#: public/js/client.js:4388
 msgid "Signed in with a bzflag.org global callsign. Click to sign out."
 msgstr "Prihlásený globálnou prezývkou z bzflag.org. Klikni na odhlásenie."
 
-#: public/js/client.js:4366
+#: public/js/client.js:4395
 msgid "Global login: sign in"
 msgstr "Globálne prihlásenie: prihlásiť sa"
 
-#: public/js/client.js:4367
+#: public/js/client.js:4396
 msgid ""
 "Sign in at bzflag.org with a global callsign. bzo never sees your password."
 msgstr ""
 "Prihlás sa na bzflag.org globálnou prezývkou. bzo tvoje heslo nikdy nevidí."
 
-#: public/js/client.js:4387
+#: public/js/client.js:4416
 msgid "Signing out leaves VR. Exit the headset session first."
 msgstr "Odhlásenie opustí VR. Najprv ukonči reláciu v headsete."
 
-#: public/js/client.js:4388
+#: public/js/client.js:4417
 msgid "Global login leaves VR. Exit the headset session first."
 msgstr "Globálne prihlásenie opustí VR. Najprv ukonči reláciu v headsete."
 
-#: public/js/client.js:4828 public/js/client.js:10756
+#: public/js/client.js:4866 public/js/client.js:10834
 msgid "Fetching remote server's map..."
 msgstr "Sťahuje sa mapa vzdialeného servera..."
 
-#: public/js/client.js:4994
+#: public/js/client.js:5032
 msgid "Pausing in {seconds}"
 msgstr "Pauza o {seconds}"
 
-#: public/js/client.js:5018 public/js/client.js:6877
+#: public/js/client.js:5056 public/js/client.js:6915
 msgid "Self Destructing in {seconds}"
 msgstr "Sebadeštrukcia o {seconds}"
 
-#: public/js/client.js:5103
+#: public/js/client.js:5141
 msgid "AutoPilot {pilot}: {intent}"
 msgstr "Autopilot {pilot}: {intent}"
 
-#: public/js/client.js:5104
+#: public/js/client.js:5142
 msgid "AutoPilot {pilot}"
 msgstr "Autopilot {pilot}"
 
-#: public/js/client.js:6764 server.js:11382
+#: public/js/client.js:6802 server.js:11401
 msgid "You do not have permission to speak on the admin channel."
 msgstr "Nemáš oprávnenie písať do kanála adminov."
 
-#: public/js/client.js:6879
+#: public/js/client.js:6917
 msgid "Self Destruct cancelled"
 msgstr "Sebadeštrukcia zrušená"
 
-#: public/js/client.js:7049
+#: public/js/client.js:7087
 msgid "Hide Debug Labels"
 msgstr "Skryť ladiace štítky"
 
-#: public/js/client.js:7052
+#: public/js/client.js:7090
 msgid "Show Debug Labels"
 msgstr "Zobraziť ladiace štítky"
 
-#: public/js/client.js:7069
+#: public/js/client.js:7107
 msgid "Disable Dynamic Lighting"
 msgstr "Vypnúť dynamické osvetlenie"
 
-#: public/js/client.js:7070
+#: public/js/client.js:7108
 msgid "Enable Dynamic Lighting"
 msgstr "Zapnúť dynamické osvetlenie"
 
-#: public/js/client.js:7072
+#: public/js/client.js:7110
 msgid "Dynamic Lighting needs more shader uniforms than this browser reports"
 msgstr ""
 "Dynamické osvetlenie potrebuje viac uniformných premenných shadera, než "
 "tento prehliadač hlási"
 
-#: public/js/client.js:7081
+#: public/js/client.js:7119
 msgid "Disable Rumble"
 msgstr "Vypnúť vibrácie"
 
-#: public/js/client.js:7082
+#: public/js/client.js:7120
 msgid "Enable Rumble"
 msgstr "Zapnúť vibrácie"
 
-#: public/js/client.js:7088
+#: public/js/client.js:7126
 msgid "Disable Anaglyph 3D"
 msgstr "Vypnúť anaglyf 3D"
 
-#: public/js/client.js:7089
+#: public/js/client.js:7127
 msgid "Enable Anaglyph 3D"
 msgstr "Zapnúť anaglyf 3D"
 
-#: public/js/client.js:7092
+#: public/js/client.js:7130
 msgid "Anaglyph 3D is unavailable in VR mode"
 msgstr "Anaglyf 3D nie je v režime VR dostupný"
 
-#: public/js/client.js:7101
+#: public/js/client.js:7139
 msgid "Hide Debug Geometry"
 msgstr "Skryť ladiacu geometriu"
 
-#: public/js/client.js:7189
+#: public/js/client.js:7227
 msgid "Confirm"
 msgstr "Potvrdiť"
 
-#: public/js/client.js:7245
+#: public/js/client.js:7283
 msgid "Share View Link: only available while viewing a map"
 msgstr "Zdieľať odkaz na pohľad: dostupné iba pri prezeraní mapy"
 
-#: public/js/client.js:7250
+#: public/js/client.js:7288
 msgid "View link copied to clipboard"
 msgstr "Odkaz na pohľad skopírovaný do schránky"
 
-#: public/js/client.js:7279
+#: public/js/client.js:7317
 msgid "WebXR: {mode}"
 msgstr "WebXR: {mode}"
 
-#: public/js/client.js:7285
+#: public/js/client.js:7323
 msgid "WebXR not supported on this device"
 msgstr "WebXR nie je na tomto zariadení podporované"
 
-#: public/js/client.js:7290
+#: public/js/client.js:7328
 msgid "Requesting VR..."
 msgstr "Žiadosť o VR..."
 
-#: public/js/client.js:7293
+#: public/js/client.js:7331
 msgid "Error: Renderer not available"
 msgstr "Chyba: vykresľovač nie je dostupný"
 
-#: public/js/client.js:7306
+#: public/js/client.js:7344
 msgid "✓ WebXR VR Mode: ON"
 msgstr "✓ Režim WebXR VR: ZAP"
 
-#: public/js/client.js:7312
+#: public/js/client.js:7350
 msgid "✗ VR request failed - check server.log"
 msgstr "✗ Žiadosť o VR zlyhala – skontroluj server.log"
 
-#: public/js/client.js:7314 public/js/client.js:18010
+#: public/js/client.js:7352 public/js/client.js:18094
 msgid "WebXR VR Mode: OFF"
 msgstr "Režim WebXR VR: VYP"
 
-#: public/js/client.js:7879
+#: public/js/client.js:7917
 msgid "3D renderer unavailable: {reason}"
 msgstr "3D vykresľovač nedostupný: {reason}"
 
-#: public/js/client.js:7886
+#: public/js/client.js:7924
 msgid "3D renderer failed to initialize."
 msgstr "3D vykresľovač sa nepodarilo inicializovať."
 
-#: public/js/client.js:7888
+#: public/js/client.js:7926
 msgid "Open the game in an external browser window for full WebGL support."
 msgstr "Pre plnú podporu WebGL otvor hru v samostatnom okne prehliadača."
 
-#: public/js/client.js:8376
+#: public/js/client.js:8415
 msgid "Connected to server!"
 msgstr "Pripojené k serveru!"
 
-#: public/js/client.js:8382
+#: public/js/client.js:8421
 msgid "Connected to server"
 msgstr "Pripojené k serveru"
 
-#: public/js/client.js:8383
+#: public/js/client.js:8422
 msgid "Waiting for world state"
 msgstr "Čaká sa na stav sveta"
 
-#: public/js/client.js:8437
+#: public/js/client.js:8476
 msgid "Offline"
 msgstr "Offline"
 
-#: public/js/client.js:8437
+#: public/js/client.js:8476
 msgid "Cannot reach {host}"
 msgstr "Nedá sa spojiť s {host}"
 
-#: public/js/client.js:8438
+#: public/js/client.js:8477
 msgid "Trying again..."
 msgstr "Skúšam znova..."
 
-#: public/js/client.js:8449
+#: public/js/client.js:8488
 msgid "Disconnected from server | Kills: {kills} | Deaths: {deaths}"
 msgstr "Odpojené od servera | Zabitia: {kills} | Smrti: {deaths}"
 
-#: public/js/client.js:8454
+#: public/js/client.js:8493
 msgid "Press a key, tap or pull a trigger to rejoin"
 msgstr "Stlač kláves, ťukni alebo stlač spúšť na návrat do hry"
 
-#: public/js/client.js:8615
+#: public/js/client.js:8654
 msgid "Server error: {error}"
 msgstr "Chyba servera: {error}"
 
-#: public/js/client.js:8620
+#: public/js/client.js:8659
 msgid "Server: action completed successfully"
 msgstr "Server: akcia úspešne dokončená"
 
-#: public/js/client.js:8702
+#: public/js/client.js:8741
 msgid "Operator Panel (v{version})"
 msgstr "Panel operátora (v{version})"
 
-#: public/js/client.js:9121
+#: public/js/client.js:9160
 msgid "{player} joined"
 msgstr "{player} prichádza"
 
-#: public/js/client.js:9166
+#: public/js/client.js:9205
 msgid "{player} left"
 msgstr "{player} odchádza"
 
-#: public/js/client.js:9182
+#: public/js/client.js:9221
 msgid "{callsign} not responding"
 msgstr "{callsign} neodpovedá"
 
-#: public/js/client.js:9183
+#: public/js/client.js:9222
 msgid "{callsign} okay"
 msgstr "{callsign} v poriadku"
 
-#: public/js/client.js:9297
+#: public/js/client.js:9336
 msgid "{player} grabbed {flag}"
 msgstr "{player} berie vlajku {flag}"
 
-#: public/js/client.js:9348
+#: public/js/client.js:9387
 msgid "{player} dropped {flag}"
 msgstr "{player} púšťa vlajku {flag}"
 
-#: public/js/client.js:9442
+#: public/js/client.js:9481
 msgid "{player}: {pilot} taking controls"
 msgstr "{player}: {pilot} preberá riadenie"
 
-#: public/js/client.js:9443
+#: public/js/client.js:9482
 msgid "{player}: {pilot} releasing controls"
 msgstr "{player}: {pilot} odovzdáva riadenie"
 
-#: public/js/client.js:9475
+#: public/js/client.js:9514
 msgid "{player} paused"
 msgstr "{player} pauzuje"
 
-#: public/js/client.js:9486
+#: public/js/client.js:9525
 msgid "{player} unpaused"
 msgstr "{player} pokračuje"
 
-#: public/js/client.js:9625
+#: public/js/client.js:9703
 msgid "Server forced a disconnect"
 msgstr "Server si vynútil odpojenie"
 
-#: public/js/client.js:9631
+#: public/js/client.js:9709
 msgid "Server updated - reloading..."
 msgstr "Server aktualizovaný – načítavam znova..."
 
-#: public/js/client.js:10159
+#: public/js/client.js:10237
 msgid "Got flattened by {player}"
 msgstr "Rozdrvený hráčom {player}"
 
-#: public/js/client.js:10160
+#: public/js/client.js:10238
 msgid "Teammate hit with Genocide by {player}"
 msgstr "Spoluhráča zasiahla Genocída hráča {player}"
 
-#: public/js/client.js:10161
+#: public/js/client.js:10239
 msgid "Got shot by {player}"
 msgstr "Zastrelený hráčom {player}"
 
-#: public/js/client.js:10163
+#: public/js/client.js:10241
 msgid "Got flattened by teammate {player}"
 msgstr "Rozdrvený spoluhráčom {player}"
 
-#: public/js/client.js:10164
+#: public/js/client.js:10242
 msgid "Teammate hit with Genocide by teammate {player}"
 msgstr "Spoluhráča zasiahla Genocída spoluhráča {player}"
 
-#: public/js/client.js:10165
+#: public/js/client.js:10243
 msgid "Got shot by teammate {player}"
 msgstr "Zastrelený spoluhráčom {player}"
 
-#: public/js/client.js:10201
+#: public/js/client.js:10279
 msgid "Your team flag was captured!"
 msgstr "Vlajka tvojho tímu bola dobytá!"
 
-#: public/js/client.js:10203
+#: public/js/client.js:10281
 msgid "Time Expired - GAME OVER"
 msgstr "Čas vypršal – KONIEC HRY"
 
-#: public/js/client.js:10205
+#: public/js/client.js:10283
 msgid "Tank Self Destructed"
 msgstr "Tank sa zničil sám"
 
-#: public/js/client.js:10207
+#: public/js/client.js:10285
 msgid "Tank Rusted"
 msgstr "Tank zhrdzavel"
 
-#: public/js/client.js:10210 public/js/client.js:10214
+#: public/js/client.js:10288 public/js/client.js:10292
 msgid "Killed by the server"
 msgstr "Zabitý serverom"
 
-#: public/js/client.js:10241
+#: public/js/client.js:10319
 msgid "You killed {player}"
 msgstr "Zničil si hráča {player}"
 
-#: public/js/client.js:10253
+#: public/js/client.js:10331
 msgid "{player} self-destructed"
 msgstr "{player}: sebadeštrukcia"
 
-#: public/js/client.js:10257
+#: public/js/client.js:10335
 msgid "{player} fell in the water"
 msgstr "{player} spadol do vody"
 
-#: public/js/client.js:10262
+#: public/js/client.js:10340
 msgid "{player}: {message}"
 msgstr "{player}: {message}"
 
-#: public/js/client.js:10265
+#: public/js/client.js:10343
 msgid "killed by the server"
 msgstr "zabitý serverom"
 
-#: public/js/client.js:10271
+#: public/js/client.js:10349
 msgid "{player} was killed by the server"
 msgstr "{player}: zabitý serverom"
 
-#: public/js/client.js:10276
+#: public/js/client.js:10354
 msgid "{killer} killed {victim}"
 msgstr "{killer} zničil {victim}"
 
-#: public/js/client.js:10441
+#: public/js/client.js:10519
 msgid "You respawned!"
 msgstr "Znova v hre!"
 
-#: public/js/client.js:10531
+#: public/js/client.js:10609
 msgid "map {name}"
 msgstr "mapa {name}"
 
-#: public/js/client.js:10533
+#: public/js/client.js:10611
 msgid "plugin {name}"
 msgstr ""
 
-#: public/js/client.js:10537
+#: public/js/client.js:10615
 msgid "nothing uploaded"
 msgstr "nič nenahrané"
 
-#: public/js/client.js:10564 public/js/client.js:11039
+#: public/js/client.js:10642 public/js/client.js:11117
 msgid "MOTD: {motd}"
 msgstr "MOTD: {motd}"
 
-#: public/js/client.js:10639
+#: public/js/client.js:10717
 msgid "{count} box"
 msgstr "{count} kváder"
 
-#: public/js/client.js:10639
+#: public/js/client.js:10717
 msgid "{count} boxes"
 msgstr "{count} kvádrov"
 
-#: public/js/client.js:10640
+#: public/js/client.js:10718
 msgid "{count} pyramid"
 msgstr "{count} pyramída"
 
-#: public/js/client.js:10640
+#: public/js/client.js:10718
 msgid "{count} pyramids"
 msgstr "{count} pyramíd"
 
-#: public/js/client.js:10641
+#: public/js/client.js:10719
 msgid "{count} mesh"
 msgstr "{count} sieť"
 
-#: public/js/client.js:10641
+#: public/js/client.js:10719
 msgid "{count} meshes"
 msgstr "{count} sietí"
 
-#: public/js/client.js:10646
+#: public/js/client.js:10724
 msgid "{count} base"
 msgstr "{count} základňa"
 
-#: public/js/client.js:10646
+#: public/js/client.js:10724
 msgid "{count} bases"
 msgstr "{count} základní"
 
-#: public/js/client.js:10648
+#: public/js/client.js:10726
 msgid "{count} teleporter"
 msgstr "{count} teleport"
 
-#: public/js/client.js:10648
+#: public/js/client.js:10726
 msgid "{count} teleporters"
 msgstr "{count} teleportov"
 
-#: public/js/client.js:10651 server.js:2592
+#: public/js/client.js:10729 server.js:2593
 msgid "water"
 msgstr "voda"
 
-#: public/js/client.js:10652 server.js:2592
+#: public/js/client.js:10730 server.js:2593
 msgid "weather"
 msgstr "počasie"
 
-#: public/js/client.js:10653 server.js:2592
+#: public/js/client.js:10731 server.js:2593
 msgid "custom ground"
 msgstr "vlastný terén"
 
-#: public/js/client.js:10691 public/js/client.js:10770
+#: public/js/client.js:10769 public/js/client.js:10848
 msgid "View {map}"
 msgstr "Zobraziť {map}"
 
-#: public/js/client.js:10768
+#: public/js/client.js:10846
 msgid "{server} did not answer"
 msgstr "{server} neodpovedal"
 
-#: public/js/client.js:10780 server.js:2522 server.js:2981 server.js:3035
+#: public/js/client.js:10858 server.js:2523 server.js:2982 server.js:3036
 msgid "Watch"
 msgstr "Sledovať"
 
-#: public/js/client.js:10781
+#: public/js/client.js:10859
 msgid "Watch the live game on {server}"
 msgstr "Sledovať živú hru na {server}"
 
-#: public/js/client.js:10799 public/js/client.js:10807 server.js:2994
+#: public/js/client.js:10877 public/js/client.js:10885 server.js:2995
 msgid "Re-import"
 msgstr "Znova importovať"
 
-#: public/js/client.js:10803
+#: public/js/client.js:10881
 msgid "Importing…"
 msgstr "Importujem…"
 
-#: public/js/client.js:10846
+#: public/js/client.js:10924
 msgid "Loading map..."
 msgstr "Načítava sa mapa..."
 
-#: public/js/client.js:10854
+#: public/js/client.js:10932
 msgid "Building world geometry..."
 msgstr "Stavia sa geometria sveta..."
 
-#: public/js/client.js:10918
+#: public/js/client.js:10996
 msgid "{count} watching now"
 msgstr "Práve sleduje: {count}"
 
-#: public/js/client.js:10921
+#: public/js/client.js:10999
 msgid "Watch {name}"
 msgstr "Sledovať {name}"
 
-#: public/js/client.js:10957
+#: public/js/client.js:11035
 msgid "That server's map could not be fetched"
 msgstr "Mapu tohto servera sa nepodarilo stiahnuť"
 
-#: public/js/client.js:10975
+#: public/js/client.js:11053
 msgid "import failed"
 msgstr "import zlyhal"
 
-#: public/js/client.js:10975
+#: public/js/client.js:11053
 msgid "Could not load that server's map: {reason}"
 msgstr "Mapu tohto servera nemožno načítať: {reason}"
 
-#: public/js/client.js:11189
+#: public/js/client.js:11267
 msgid "{team} Limit:"
 msgstr "Limit ({team}):"
 
-#: public/js/client.js:11282
+#: public/js/client.js:11360
 msgid "Failed: {error}"
 msgstr ""
 
-#: public/js/client.js:11387
+#: public/js/client.js:11465
 msgid "No limit"
 msgstr "Bez limitu"
 
-#: public/js/client.js:11496
+#: public/js/client.js:11574
 msgid "Restart"
 msgstr "Reštartovať"
 
-#: public/js/client.js:11500
+#: public/js/client.js:11578
 msgid "Starts a new game: every player reloads into the new settings"
 msgstr "Spustí novú hru: všetci hráči sa znova načítajú s novými nastaveniami"
 
-#: public/js/client.js:11501
+#: public/js/client.js:11579
 msgid "Applies the staged changes"
 msgstr "Použije pripravené zmeny"
 
-#: public/js/client.js:11848
+#: public/js/client.js:11926
 msgid "Paused"
 msgstr "Pozastavené"
 
-#: public/js/client.js:11849
+#: public/js/client.js:11927
 msgid "Sealed"
 msgstr "Uzamknuté"
 
-#: public/js/client.js:12781
+#: public/js/client.js:12865
 msgid "Already following someone"
 msgstr "Už niekoho sleduješ"
 
-#: public/js/client.js:12817 public/js/client.js:12942
+#: public/js/client.js:12901 public/js/client.js:13026
 msgid "Looking at {player}"
 msgstr "Pozeráš sa na {player}"
 
-#: public/js/client.js:12926
+#: public/js/client.js:13010
 msgid "{player} locked on me"
 msgstr "{player} ma zameriava"
 
-#: public/js/client.js:12936
+#: public/js/client.js:13020
 msgid "Looking at nothing"
 msgstr "Na nič sa nepozeráš"
 
-#: public/js/client.js:12942
+#: public/js/client.js:13026
 msgid "Locked on {player}"
 msgstr "Zameraný: {player}"
 
-#: public/js/client.js:13279
+#: public/js/client.js:13363
 msgid "Clear ({count})"
 msgstr "Vymazať ({count})"
 
-#: public/js/client.js:13279 public/js/list-page.js:534
+#: public/js/client.js:13363 public/js/list-page.js:534
 msgid "Clear"
 msgstr "Vymazať"
 
-#: public/js/client.js:13379
+#: public/js/client.js:13463
 msgid "SPOTTED: {player}"
 msgstr "ZBADANÝ: {player}"
 
-#: public/js/client.js:13494 public/js/client.js:13500
+#: public/js/client.js:13578 public/js/client.js:13584
 msgid "nobody"
 msgstr "nikto"
 
-#: public/js/client.js:13504
+#: public/js/client.js:13588
 msgid "Leader {who}"
 msgstr "Vedúci: {who}"
 
-#: public/js/client.js:13506 public/js/client.js:13511
+#: public/js/client.js:13590 public/js/client.js:13595
 msgid "Tracking {who}"
 msgstr "Sledovanie: {who}"
 
-#: public/js/client.js:13507
+#: public/js/client.js:13591
 msgid "Following {who}"
 msgstr "Pohľad zozadu: {who}"
 
-#: public/js/client.js:13508
+#: public/js/client.js:13592
 msgid "Driving with {who}"
 msgstr "Spolujazda: {who}"
 
-#: public/js/client.js:13513 public/js/hud.js:629 public/js/input.js:1457
+#: public/js/client.js:13597 public/js/hud.js:629 public/js/input.js:1457
 msgid "First Person"
 msgstr "Z prvej osoby"
 
-#: public/js/client.js:13514 public/js/hud.js:630 public/js/input.js:1458
+#: public/js/client.js:13598 public/js/hud.js:630 public/js/input.js:1458
 msgid "Third Person"
 msgstr "Z tretej osoby"
 
-#: public/js/client.js:13515 public/js/hud.js:631 public/js/input.js:1459
+#: public/js/client.js:13599 public/js/hud.js:631 public/js/input.js:1459
 msgid "Overview"
 msgstr "Prehľad"
 
-#: public/js/client.js:13516
+#: public/js/client.js:13600
 msgid "Roaming"
 msgstr "Potulovanie"
 
-#: public/js/client.js:13804 public/js/client.js:13878
+#: public/js/client.js:13888 public/js/client.js:13962
 msgid "autopilot disabled"
 msgstr "autopilot vypnutý"
 
-#: public/js/client.js:13813
+#: public/js/client.js:13897
 msgid "autopilot not allowed on this server"
 msgstr "autopilot nie je na tomto serveri povolený"
 
-#: public/js/client.js:13825
+#: public/js/client.js:13909
 msgid "{pilot} has the controls"
 msgstr "Riadenie má {pilot}"
 
-#: public/js/client.js:13830
+#: public/js/client.js:13914
 msgid "You may not enable the Autopilot more than once every five seconds."
 msgstr "Autopilota nemôžeš zapnúť častejšie než raz za päť sekúnd."
 
-#: public/js/client.js:13835
+#: public/js/client.js:13919
 msgid "autopilot enabled"
 msgstr "autopilot zapnutý"
 
-#: public/js/client.js:13858
+#: public/js/client.js:13942
 msgid "Not allowed"
 msgstr "Nepovolené"
 
-#: public/js/client.js:13858 public/js/input.js:1162 public/js/input.js:1172
+#: public/js/client.js:13942 public/js/input.js:1162 public/js/input.js:1172
 #: public/js/input.js:1176
 msgid "Unavailable"
 msgstr "Nedostupné"
 
-#: public/js/client.js:13861
+#: public/js/client.js:13945
 msgid "None"
 msgstr "Žiadny"
 
-#: public/js/client.js:14705
+#: public/js/client.js:14789
 msgid "Zoned"
 msgstr "Prízrak"
 
-#: public/js/client.js:14705
+#: public/js/client.js:14789
 msgid "Unzoned"
 msgstr "Mimo prízraku"
 
-#: public/js/client.js:15506 public/js/client.js:15523
+#: public/js/client.js:15590 public/js/client.js:15607
 msgid "unidentified"
 msgstr "neidentifikovaná"
 
-#: public/js/client.js:15543
+#: public/js/client.js:15627
 msgid "unknown"
 msgstr "neznámy"
 
-#: public/js/client.js:15554
+#: public/js/client.js:15638
 msgid ""
 "This server bounces every shot off walls, whatever flag fired it, so the "
 "Ricochet flag is not in play here."
@@ -2113,91 +2113,99 @@ msgstr ""
 "Tento server odráža od stien každú strelu, nech ju vystrelila akákoľvek "
 "vlajka, takže vlajka Odrazené strely tu nie je v hre."
 
-#: public/js/client.js:15555
+#: public/js/client.js:15639
 msgid "On this server only the Ricochet flag bounces shots off walls."
 msgstr "Na tomto serveri odráža strely od stien iba vlajka Odrazené strely."
 
-#: public/js/client.js:15622
+#: public/js/client.js:15706
 msgid "{flag} {release}"
 msgstr "{flag} {release}"
 
-#: public/js/client.js:15633
+#: public/js/client.js:15717
 msgid "Can't drop the flag while zoned"
 msgstr "V prízraku nemožno odhodiť vlajku"
 
-#: public/js/client.js:15637
+#: public/js/client.js:15721
 msgid "Can't drop a flag while inside a building"
 msgstr "Vnútri budovy nemožno odhodiť vlajku"
 
-#: public/js/client.js:15687
+#: public/js/client.js:15771
 msgid "in {seconds}s"
 msgstr "o {seconds} s"
 
-#: public/js/client.js:15688
+#: public/js/client.js:15772
 msgid "after {count} kill"
 msgstr "po {count} zabití"
 
-#: public/js/client.js:15688
+#: public/js/client.js:15772
 msgid "after {count} kills"
 msgstr "po {count} zabitiach"
 
-#: public/js/client.js:15689
+#: public/js/client.js:15773
 msgid "on the antidote"
 msgstr "na protijede"
 
-#: public/js/client.js:15690
+#: public/js/client.js:15774
 msgid "stays until it kills you"
 msgstr "zostane, kým ťa nezabije"
 
-#: public/js/client.js:15691
+#: public/js/client.js:15775
 msgid "{first} or {second}"
 msgstr "{first} alebo {second}"
 
-#: public/js/client.js:15692
+#: public/js/client.js:15776
 msgid "shakes off {ways}"
 msgstr "odpadne {ways}"
 
-#: public/js/client.js:15748
+#: public/js/client.js:15832
 msgid "Flag Alert!!!"
 msgstr "Upozornenie na vlajku!!!"
 
-#: public/js/client.js:15756
+#: public/js/client.js:15840
 msgid "Team Grab!!!"
 msgstr "Tím získal vlajku!!!"
 
-#: public/js/client.js:15772
+#: public/js/client.js:15856
 msgid "{thief} stole {victim}'s {flag} flag"
 msgstr "{thief} ukradol hráčovi {victim} vlajku {flag}"
 
-#: public/js/client.js:15803
+#: public/js/client.js:15887
 msgid "Closest Flag: {flag}"
 msgstr "Najbližšia vlajka: {flag}"
 
-#: public/js/client.js:15865
+#: public/js/client.js:15949
 msgid "{player} took their own flag into {team} territory"
 msgstr "{player} priniesol vlastnú vlajku na územie tímu {team}"
 
-#: public/js/client.js:15873
+#: public/js/client.js:15957
 msgid "Don't capture your own flag!!!"
 msgstr "Nedobývaj vlastnú vlajku!!!"
 
-#: public/js/client.js:15879
+#: public/js/client.js:15963
 msgid "{player} captured the {team} flag"
 msgstr "{player} dobyl vlajku tímu {team}"
 
-#: public/js/client.js:17506 public/js/client.js:17507
+#: public/js/client.js:17590 public/js/client.js:17591
 msgid "Exit WebXR VR Mode"
 msgstr "Opustiť režim WebXR VR"
 
-#: public/js/client.js:18223
+#: public/js/client.js:18307
 msgid "Show translation"
 msgstr "Zobraziť preklad"
 
-#: public/js/client.js:18223
+#: public/js/client.js:18307
 msgid "Show original"
 msgstr "Zobraziť originál"
 
-#: public/js/client.js:18231
+#: public/js/client.js:18315
+msgid "Downloading {percent}%"
+msgstr "Sťahovanie {percent}%"
+
+#: public/js/client.js:18319
+msgid "Translation unavailable"
+msgstr "Preklad nie je k dispozícii"
+
+#: public/js/client.js:18319
 msgid "Translate"
 msgstr "Preložiť"
 
@@ -2277,19 +2285,19 @@ msgstr "Ladiaci režim: ZAP"
 msgid "Debug Mode: OFF"
 msgstr "Ladiaci režim: VYP"
 
-#: public/js/hud.js:821 server.js:2122
+#: public/js/hud.js:821 server.js:2123
 msgid "Red"
 msgstr "Červení"
 
-#: public/js/hud.js:822 server.js:2122
+#: public/js/hud.js:822 server.js:2123
 msgid "Green"
 msgstr "Zelení"
 
-#: public/js/hud.js:823 server.js:2122
+#: public/js/hud.js:823 server.js:2123
 msgid "Blue"
 msgstr "Modrí"
 
-#: public/js/hud.js:824 server.js:2122
+#: public/js/hud.js:824 server.js:2123
 msgid "Purple"
 msgstr "Fialoví"
 
@@ -2590,7 +2598,7 @@ msgid "{n} more lines"
 msgstr "ďalších riadkov: {n}"
 
 #: public/js/inspect-panel.mjs:123 public/js/inspect-panel.mjs:188
-#: server.js:1955
+#: server.js:1956
 msgid "World"
 msgstr "Svet"
 
@@ -2927,347 +2935,347 @@ msgstr "Nedá sa spustiť záznam z mikrofónu."
 msgid "Could not enumerate microphone devices."
 msgstr "Nedá sa zistiť zoznam mikrofónov."
 
-#: server.js:1888
+#: server.js:1889
 msgid "Map hash"
 msgstr "Hash mapy"
 
-#: server.js:1927
+#: server.js:1928
 msgid "ignored by bzo"
 msgstr "bzo ignoruje"
 
-#: server.js:1927
+#: server.js:1928
 msgid "read by bzo"
 msgstr "bzo číta"
 
-#: server.js:1929
+#: server.js:1930
 msgid "{read}/{total} set"
 msgstr "nastavené {read}/{total}"
 
-#: server.js:1951 server.js:3098
+#: server.js:1952 server.js:3099
 msgid "Version"
 msgstr "Verzia"
 
-#: server.js:1952
+#: server.js:1953
 msgid "BZFlag hash"
 msgstr "Hash BZFlag"
 
-#: server.js:1955
+#: server.js:1956
 msgid "temporary"
 msgstr "dočasné"
 
-#: server.js:1958
+#: server.js:1959
 msgid "Variables"
 msgstr "Premenné"
 
-#: server.js:1959
+#: server.js:1960
 msgid "sent/inflated"
 msgstr "odoslané/rozbalené"
 
-#: server.js:2003 server.js:2032
+#: server.js:2004 server.js:2033
 msgid "Classic Capture-the-Flag"
 msgstr "Klasické dobývanie vlajky"
 
-#: server.js:2004 server.js:2035
+#: server.js:2005 server.js:2036
 msgid "Rabbit Chase"
 msgstr "Rabbit Chase"
 
-#: server.js:2005
+#: server.js:2006
 msgid "Open (Teamless) Free-For-All"
 msgstr "Otvorený (bez tímov) každý proti každému"
 
-#: server.js:2006
+#: server.js:2007
 msgid "Free-style"
 msgstr "Voľný štýl"
 
-#: server.js:2029
+#: server.js:2030
 msgid "Replay server"
 msgstr "Server záznamov"
 
-#: server.js:2037
+#: server.js:2038
 msgid "Free-for-all"
 msgstr "Každý proti každému"
 
-#: server.js:2072
+#: server.js:2073
 msgid "World hash: sorts rows sharing a world together, unhashed last"
 msgstr "Hash sveta: radí k sebe riadky s rovnakým svetom, bez hashu na koniec"
 
-#: server.js:2094
+#: server.js:2095
 msgid "just started"
 msgstr "práve spustený"
 
-#: server.js:2095
+#: server.js:2096
 msgid "{minutes}m"
 msgstr "{minutes} min"
 
-#: server.js:2097
+#: server.js:2098
 msgid "{hours}h {minutes}m"
 msgstr "{hours} h {minutes} min"
 
-#: server.js:2098
+#: server.js:2099
 msgid "{days}d {hours}h"
 msgstr "{days} d {hours} h"
 
-#: server.js:2122 server.js:2573 server.js:2814
+#: server.js:2123 server.js:2574 server.js:2815
 msgid "Observers"
 msgstr "Pozorovatelia"
 
-#: server.js:2141 server.js:2578
+#: server.js:2142 server.js:2579
 msgid "none"
 msgstr "žiadne"
 
-#: server.js:2146
+#: server.js:2147
 msgid "{servers} with {players} player"
 msgstr "serverov: {servers}, hráčov: {players}"
 
-#: server.js:2147
+#: server.js:2148
 msgid "{servers} with {players} players"
 msgstr "serverov: {servers}, hráčov: {players}"
 
-#: server.js:2148
+#: server.js:2149
 msgid ", {bots} bot"
 msgstr ", botov: {bots}"
 
-#: server.js:2148
+#: server.js:2149
 msgid ", {bots} bots"
 msgstr ", botov: {bots}"
 
-#: server.js:2159
+#: server.js:2160
 msgid ", {waiting} without overview"
 msgstr ", bez prehľadu: {waiting}"
 
-#: server.js:2185
+#: server.js:2186
 msgid "Super Flags"
 msgstr "Supervlajky"
 
-#: server.js:2186
+#: server.js:2187
 msgid "Antidote Flags"
 msgstr "Vlajky protijedu"
 
-#: server.js:2190
+#: server.js:2191
 msgid "{secs} sec To Drop Bad Flag"
 msgstr "Zlá vlajka spadne za {secs} s"
 
-#: server.js:2191
+#: server.js:2192
 msgid "{secs} secs To Drop Bad Flag"
 msgstr "Zlá vlajka spadne za {secs} s"
 
-#: server.js:2195
+#: server.js:2196
 msgid "{wins} Win Drops Bad Flag"
 msgstr "Výhier na zhodenie zlej vlajky: {wins}"
 
-#: server.js:2195
+#: server.js:2196
 msgid "{wins} Wins Drops Bad Flag"
 msgstr "Výhier na zhodenie zlej vlajky: {wins}"
 
-#: server.js:2197
+#: server.js:2198
 msgid "No Teamkills"
 msgstr "Bez zabíjania spoluhráčov"
 
-#: server.js:2200
+#: server.js:2201
 msgid "Handicap"
 msgstr "Hendikep"
 
-#: server.js:2201
+#: server.js:2202
 msgid "Inertia"
 msgstr "Zotrvačnosť"
 
-#: server.js:2204
+#: server.js:2205
 msgid "No Bots"
 msgstr "Bez botov"
 
-#: server.js:2208
+#: server.js:2209
 msgid "Guests Watch"
 msgstr "Hostia sledujú"
 
-#: server.js:2209
+#: server.js:2210
 msgid "No Guests"
 msgstr "Bez hostí"
 
-#: server.js:2210
+#: server.js:2211
 msgid "Guests Play"
 msgstr "Hostia hrajú"
 
-#: server.js:2211
+#: server.js:2212
 msgid "Registered Only"
 msgstr "Len registrovaní"
 
-#: server.js:2212
+#: server.js:2213
 msgid "Guests Chat"
 msgstr "Hostia četujú"
 
-#: server.js:2213
+#: server.js:2214
 msgid "Guests Muted"
 msgstr "Hostia stlmení"
 
-#: server.js:2216
+#: server.js:2217
 msgid "Time limit"
 msgstr "Časový limit"
 
-#: server.js:2217
+#: server.js:2218
 msgid "Max team score"
 msgstr "Max. skóre tímu"
 
-#: server.js:2218
+#: server.js:2219
 msgid "Max player score"
 msgstr "Max. skóre hráča"
 
-#: server.js:2225
+#: server.js:2226
 msgid "{shots} Shot"
 msgstr "Striel: {shots}"
 
-#: server.js:2226
+#: server.js:2227
 msgid "{shots} Shots"
 msgstr "Striel: {shots}"
 
-#: server.js:2250
+#: server.js:2251
 msgid "Bots"
 msgstr "Boti"
 
-#: server.js:2289 server.js:2480 server.js:2719
+#: server.js:2290 server.js:2481 server.js:2720
 msgid "None."
 msgstr "Žiadne."
 
-#: server.js:2325
+#: server.js:2326
 msgid "hashing…"
 msgstr "počítam hash…"
 
-#: server.js:2344
+#: server.js:2345
 msgid "Obj"
 msgstr "Obj"
 
-#: server.js:2348
+#: server.js:2349
 msgid "Obstacles in the world"
 msgstr "Prekážky vo svete"
 
-#: server.js:2349
+#: server.js:2350
 msgid "Mesh faces in the world"
 msgstr "Plochy sietí vo svete"
 
-#: server.js:2350 server.js:2612
+#: server.js:2351 server.js:2613
 msgid "World size"
 msgstr "Veľkosť sveta"
 
-#: server.js:2352
+#: server.js:2353
 msgid "Map file name"
 msgstr "Názov súboru mapy"
 
-#: server.js:2352 server.js:2510
+#: server.js:2353 server.js:2511
 msgid "Name"
 msgstr "Názov"
 
-#: server.js:2353
+#: server.js:2354
 msgid "Game style the map sets"
 msgstr "Herný štýl, ktorý mapa nastavuje"
 
-#: server.js:2369 server.js:2525 server.js:2929
+#: server.js:2370 server.js:2526 server.js:2930
 msgid "View map"
 msgstr "Zobraziť mapu"
 
-#: server.js:2370
+#: server.js:2371
 msgid "Still hashing"
 msgstr "Hash sa ešte počíta"
 
-#: server.js:2460
+#: server.js:2461
 msgid "Overview of {name}"
 msgstr "Prehľad: {name}"
 
-#: server.js:2492
+#: server.js:2493
 msgid "unreadable: {error}"
 msgstr "nečitateľné: {error}"
 
-#: server.js:2493
+#: server.js:2494
 msgid " -- {viewers} watching"
 msgstr " — sleduje: {viewers}"
 
-#: server.js:2506
+#: server.js:2507
 msgid "When it was recorded (UTC)"
 msgstr "Kedy bol nahraný (UTC)"
 
-#: server.js:2507
+#: server.js:2508
 msgid "How long it runs"
 msgstr "Ako dlho trvá"
 
-#: server.js:2508
+#: server.js:2509
 msgid "Players in it, observers not counted"
 msgstr "Hráči v ňom, pozorovatelia sa nerátajú"
 
-#: server.js:2510
+#: server.js:2511
 msgid "Replay file name"
 msgstr "Názov súboru záznamu"
 
-#: server.js:2511
+#: server.js:2512
 msgid "The map it was played on"
 msgstr "Mapa, na ktorej sa hralo"
 
-#: server.js:2523
+#: server.js:2524
 msgid "Unreadable"
 msgstr "Nečitateľné"
 
-#: server.js:2556
+#: server.js:2557
 msgid "{viewers} watching, at {time}"
 msgstr "sleduje: {viewers}, čas {time}"
 
-#: server.js:2571
+#: server.js:2572
 msgid "Recorded by"
 msgstr "Nahral"
 
-#: server.js:2574
+#: server.js:2575
 msgid "Now"
 msgstr "Teraz"
 
-#: server.js:2576
+#: server.js:2577
 msgid "Error"
 msgstr "Chyba"
 
-#: server.js:2604
+#: server.js:2605
 msgid "Boxes"
 msgstr "Kvádre"
 
-#: server.js:2605
+#: server.js:2606
 msgid "Pyramids"
 msgstr "Pyramídy"
 
-#: server.js:2606
+#: server.js:2607
 msgid "Meshes"
 msgstr "Siete"
 
-#: server.js:2607
+#: server.js:2608
 msgid "Bases"
 msgstr "Základne"
 
-#: server.js:2608
+#: server.js:2609
 msgid "Teleporters"
 msgstr "Teleporty"
 
-#: server.js:2613
+#: server.js:2614
 msgid "Has"
 msgstr "Obsahuje"
 
-#: server.js:2614
+#: server.js:2615
 msgid "Hashed"
 msgstr "Hash spočítaný"
 
-#: server.js:2614
+#: server.js:2615
 msgid "generated at boot"
 msgstr "vytvorené pri štarte"
 
-#: server.js:2614
+#: server.js:2615
 msgid "yes"
 msgstr "áno"
 
-#: server.js:2614
+#: server.js:2615
 msgid "not yet"
 msgstr "zatiaľ nie"
 
-#: server.js:2615
+#: server.js:2616
 msgid "Hash"
 msgstr "Hash"
 
-#: server.js:2616
+#: server.js:2617
 msgid "Modified"
 msgstr "Zmenené"
 
-#: server.js:2635
+#: server.js:2636
 msgid ""
 "Plain text is a glob over the address, description, version, hash and owner "
 "-- {examples} -- and a word with no {star} or {query} in it is wrapped in "
@@ -3277,7 +3285,7 @@ msgstr ""
 "{examples} – a slovo bez {star} alebo {query} sa do oboch obalí, takže sa "
 "zhoduje kdekoľvek."
 
-#: server.js:2638
+#: server.js:2639
 msgid ""
 "A leading {slash} starts filters instead: comma-separated, combined with "
 "{and}."
@@ -3285,11 +3293,11 @@ msgstr ""
 "Úvodné {slash} namiesto toho začína filtre: oddelené čiarkami, spojené cez "
 "{and}."
 
-#: server.js:2639
+#: server.js:2640
 msgid "and"
 msgstr "a"
 
-#: server.js:2641
+#: server.js:2642
 msgid ""
 "A second {slash} starts another set, and a server matching either set is "
 "shown."
@@ -3297,79 +3305,79 @@ msgstr ""
 "Druhé {slash} začína ďalšiu sadu a zobrazí sa server, ktorý zodpovedá "
 "ktorejkoľvek z nich."
 
-#: server.js:2642
+#: server.js:2643
 msgid "{hash} begins a comment."
 msgstr "{hash} začína komentár."
 
-#: server.js:2643
+#: server.js:2644
 msgid "Booleans -- {on} for on, {off} for off"
 msgstr "Booleovské – {on} pre zapnuté, {off} pre vypnuté"
 
-#: server.js:2644
+#: server.js:2645
 msgid "Free-for-all with teams"
 msgstr "Každý proti každému s tímami"
 
-#: server.js:2645
+#: server.js:2646
 msgid "Open free-for-all, no teams"
 msgstr "Otvorený každý proti každému, bez tímov"
 
-#: server.js:2646
+#: server.js:2647
 msgid "Capture-the-flag"
 msgstr "Dobývanie vlajky"
 
-#: server.js:2647
+#: server.js:2648
 msgid "Rabbit chase"
 msgstr "Rabbit Chase"
 
-#: server.js:2648
+#: server.js:2649
 msgid "Tanks can jump unaided"
 msgstr "Tanky vedia skákať samy"
 
-#: server.js:2649
+#: server.js:2650
 msgid "Shots ricochet"
 msgstr "Strely sa odrážajú"
 
-#: server.js:2650
+#: server.js:2651
 msgid "Score affects tank performance"
 msgstr "Skóre ovplyvňuje výkon tanku"
 
-#: server.js:2651
+#: server.js:2652
 msgid "Tanks have inertia"
 msgstr "Tanky majú zotrvačnosť"
 
-#: server.js:2652
+#: server.js:2653
 msgid "Antidote flags are spawned"
 msgstr "Objavujú sa vlajky protijedu"
 
-#: server.js:2653
+#: server.js:2654
 msgid "A replay server"
 msgstr "Server záznamov"
 
-#: server.js:2654
+#: server.js:2655
 msgid "The pane has a map overview"
 msgstr "Panel má prehľad mapy"
 
-#: server.js:2655
+#: server.js:2656
 msgid "A generated world, which usually changes on restart"
 msgstr "Generovaný svet, ktorý sa zvyčajne mení pri reštarte"
 
-#: server.js:2656
+#: server.js:2657
 msgid "Autopilot and robots allowed"
 msgstr "Autopilot a roboty povolené"
 
-#: server.js:2657
+#: server.js:2658
 msgid "Players with no bzflag.org login may join to observe"
 msgstr "Hráči bez prihlásenia bzflag.org sa môžu pripojiť ako pozorovatelia"
 
-#: server.js:2658
+#: server.js:2659
 msgid "Players with no bzflag.org login may spawn"
 msgstr "Hráči bez prihlásenia bzflag.org sa môžu objaviť v hre"
 
-#: server.js:2659
+#: server.js:2660
 msgid "Players with no bzflag.org login may chat"
 msgstr "Hráči bez prihlásenia bzflag.org môžu četovať"
 
-#: server.js:2661
+#: server.js:2662
 msgid ""
 "For {bots}, {guestWatch}, {guests} and {guestChat}, a server bzo has not "
 "found out about matches neither {plus} nor {minus}."
@@ -3377,105 +3385,105 @@ msgstr ""
 "Pri {bots}, {guestWatch}, {guests} a {guestChat} nezodpovedá server, o "
 "ktorom bzo zatiaľ nič nezistilo, ani {plus}, ani {minus}."
 
-#: server.js:2665
+#: server.js:2666
 msgid "Numbers -- a name, then {operators}, then a number"
 msgstr "Čísla – názov, potom {operators}, potom číslo"
 
-#: server.js:2668
+#: server.js:2669
 msgid "Active shots a tank may have"
 msgstr "Aktívne strely, ktoré tank smie mať"
 
-#: server.js:2669
+#: server.js:2670
 msgid "Players now, observers excluded"
 msgstr "Hráči teraz, bez pozorovateľov"
 
-#: server.js:2670
+#: server.js:2671
 msgid "Bots now"
 msgstr "Boti teraz"
 
-#: server.js:2671
+#: server.js:2672
 msgid "Playing slots still free"
 msgstr "Voľné hráčske miesta"
 
-#: server.js:2672
+#: server.js:2673
 msgid "Colour teams the server offers"
 msgstr "Farebné tímy, ktoré server ponúka"
 
-#: server.js:2673
+#: server.js:2674
 msgid "Time limit, in seconds"
 msgstr "Časový limit v sekundách"
 
-#: server.js:2674
+#: server.js:2675
 msgid "The server's own player ceiling"
 msgstr "Vlastný strop hráčov servera"
 
-#: server.js:2675
+#: server.js:2676
 msgid "Team score that ends the game"
 msgstr "Skóre tímu, ktoré ukončí hru"
 
-#: server.js:2676
+#: server.js:2677
 msgid "Player score that ends the game"
 msgstr "Skóre hráča, ktoré ukončí hru"
 
-#: server.js:2677
+#: server.js:2678
 msgid "Kills that shed a bad flag"
 msgstr "Zabitia, po ktorých spadne zlá vlajka"
 
-#: server.js:2678
+#: server.js:2679
 msgid "Tenths of a second to shed a bad flag"
 msgstr "Desatiny sekundy, kým spadne zlá vlajka"
 
-#: server.js:2679
+#: server.js:2680
 msgid "Players on rogue, red, green, blue, purple, observer"
 msgstr "Hráči v tímoch zlí, červení, zelení, modrí, fialoví, pozorovatelia"
 
-#: server.js:2680
+#: server.js:2681
 msgid "That team's maximum"
 msgstr "Maximum toho tímu"
 
-#: server.js:2681
+#: server.js:2682
 msgid "That team's free slots"
 msgstr "Voľné miesta toho tímu"
 
-#: server.js:2683
+#: server.js:2684
 msgid ""
 "Patterns -- a name, then {glob} for a glob or {regex} for a regular "
 "expression"
 msgstr "Vzory – názov, potom {glob} pre glob alebo {regex} pre regulárny výraz"
 
-#: server.js:2686
+#: server.js:2687
 msgid "The address, host and port"
 msgstr "Adresa, hostiteľ a port"
 
-#: server.js:2687
+#: server.js:2688
 msgid "The description"
 msgstr "Popis"
 
-#: server.js:2688
+#: server.js:2689
 msgid "Either one"
 msgstr "Ktorékoľvek z nich"
 
-#: server.js:2689
+#: server.js:2690
 msgid "The world hash the pane shows"
 msgstr "Hash sveta, ktorý ukazuje panel"
 
-#: server.js:2690
+#: server.js:2691
 msgid "The server's version: {bzo} or bzfs's own build"
 msgstr "Verzia servera: {bzo} alebo vlastné zostavenie bzfs"
 
-#: server.js:2691
+#: server.js:2692
 msgid "The bzflag.org account that registered it"
 msgstr "Účet bzflag.org, ktorý ho zaregistroval"
 
-#: server.js:2692
+#: server.js:2693
 msgid "The IP address the list server has for it"
 msgstr "IP adresa, ktorú preň má list server"
 
-#: server.js:2693
+#: server.js:2694
 msgid "Any one world variable it sets, as {pair}"
 msgstr "Ktorákoľvek premenná sveta, ktorú nastavuje, ako {pair}"
 
-#: server.js:2695
+#: server.js:2696
 msgid ""
 "A capitalised pattern name matches case-sensitively: {lower} ignores case, "
 "{upper} does not."
@@ -3483,57 +3491,57 @@ msgstr ""
 "Názov vzoru s veľkým písmenom rozlišuje veľkosť písmen: {lower} ju "
 "nerozlišuje, {upper} áno."
 
-#: server.js:2698
+#: server.js:2699
 msgid "Examples"
 msgstr "Príklady"
 
-#: server.js:2699
+#: server.js:2700
 msgid "Two or three shots, and somebody playing"
 msgstr "Dve alebo tri strely a niekto hrá"
 
-#: server.js:2700
+#: server.js:2701
 msgid "Capture-the-flag between exactly two teams"
 msgstr "Dobývanie vlajky medzi presne dvoma tímami"
 
-#: server.js:2701
+#: server.js:2702
 msgid "Leagues, by description"
 msgstr "Ligy, podľa popisu"
 
-#: server.js:2702
+#: server.js:2703
 msgid "bzo servers only"
 msgstr "Len servery bzo"
 
-#: server.js:2703
+#: server.js:2704
 msgid "No version known yet"
 msgstr "Verzia zatiaľ neznáma"
 
-#: server.js:2704
+#: server.js:2705
 msgid "Somebody is watching"
 msgstr "Niekto sleduje"
 
-#: server.js:2705
+#: server.js:2706
 msgid "Rabbit chase, ricochet, three shots"
 msgstr "Rabbit Chase, odrážanie striel, tri strely"
 
-#: server.js:2706
+#: server.js:2707
 msgid "Either capture-the-flag or rabbit chase"
 msgstr "Buď dobývanie vlajky, alebo Rabbit Chase"
 
-#: server.js:2707
+#: server.js:2708
 msgid "No map overview yet"
 msgstr "Zatiaľ bez prehľadu mapy"
 
-#: server.js:2708
+#: server.js:2709
 msgid "Lists {variable} at all, on or off; {off} is the one that means off"
 msgstr ""
 "Uvádza {variable} vôbec, zapnuté aj vypnuté; {off} je tá, ktorá znamená "
 "vypnuté"
 
-#: server.js:2815
+#: server.js:2816
 msgid "Bots, blank where unknown"
 msgstr "Boti, prázdne, keď nie sú známi"
 
-#: server.js:2817
+#: server.js:2818
 msgid ""
 "Game type: yellow free-for-all, red capture-the-flag, white rabbit chase, "
 "cyan replay"
@@ -3541,135 +3549,135 @@ msgstr ""
 "Typ hry: žltá každý proti každému, červená dobývanie vlajky, biela Rabbit "
 "Chase, azúrová záznam"
 
-#: server.js:2819
+#: server.js:2820
 msgid "Superflags"
 msgstr "Supervlajky"
 
-#: server.js:2822
+#: server.js:2823
 msgid "This server already holds an import of that map"
 msgstr "Tento server už má import tejto mapy"
 
-#: server.js:2826
+#: server.js:2827
 msgid "The name, or the address when a server has none"
 msgstr "Názov, alebo adresa, keď server žiadny nemá"
 
-#: server.js:2826
+#: server.js:2827
 msgid "Name & Description"
 msgstr "Názov a popis"
 
-#: server.js:2838
+#: server.js:2839
 msgid "Filter syntax"
 msgstr "Syntax filtra"
 
-#: server.js:2962
+#: server.js:2963
 msgid "Address"
 msgstr "Adresa"
 
-#: server.js:2964 server.js:3086 server.js:3102 server.js:6291
+#: server.js:2965 server.js:3087 server.js:3103 server.js:6310
 msgid "Owner"
 msgstr "Vlastník"
 
-#: server.js:2965
+#: server.js:2966
 msgid "Imported"
 msgstr "Importované"
 
-#: server.js:2979 server.js:3048
+#: server.js:2980 server.js:3049
 msgid "Launch"
 msgstr "Spustiť"
 
-#: server.js:2985 server.js:3045 server/discovery.cjs:265
+#: server.js:2986 server.js:3046 server/discovery.cjs:265
 msgid "Play"
 msgstr "Hrať"
 
-#: server.js:2990
+#: server.js:2991
 msgid "Practice"
 msgstr ""
 
-#: server.js:2994
+#: server.js:2995
 msgid "Import"
 msgstr "Importovať"
 
-#: server.js:3035
+#: server.js:3036
 msgid "Enter game"
 msgstr "Vstúpiť do hry"
 
-#: server.js:3047
+#: server.js:3048
 msgid "Login and Play"
 msgstr "Prihlásiť a hrať"
 
-#: server.js:3085
+#: server.js:3086
 msgid "BZFlag server"
 msgstr "Server BZFlag"
 
-#: server.js:3087
+#: server.js:3088
 msgid "Carried by"
 msgstr "Cez"
 
-#: server.js:3101
+#: server.js:3102
 msgid "Up"
 msgstr "Beží"
 
-#: server.js:3103
+#: server.js:3104
 msgid "Voice chat"
 msgstr "Hlasový chat"
 
-#: server.js:3103
+#: server.js:3104
 msgid "configured"
 msgstr "nastavený"
 
-#: server.js:3105
+#: server.js:3106
 msgid "Also at"
 msgstr "Aj na"
 
-#: server.js:3156
+#: server.js:3157
 msgid "(admin)"
 msgstr "(admin)"
 
-#: server.js:3157
+#: server.js:3158
 msgid "Log out"
 msgstr "Odhlásiť sa"
 
-#: server.js:3159
+#: server.js:3160
 msgid "Log in with your bzflag.org account to register a server"
 msgstr "Prihlás sa účtom bzflag.org a zaregistruj server"
 
-#: server.js:3160
+#: server.js:3161
 msgid "Log in with your bzflag.org account"
 msgstr "Prihlás sa účtom bzflag.org"
 
-#: server.js:3171
+#: server.js:3172
 msgid "maps"
 msgstr "mapy"
 
-#: server.js:3171
+#: server.js:3172
 msgid "replays"
 msgstr "záznamy"
 
-#: server.js:3172
+#: server.js:3173
 msgid "keys"
 msgstr "kľúče"
 
-#: server.js:3172
+#: server.js:3173
 msgid "help"
 msgstr "pomoc"
 
-#: server.js:3176
+#: server.js:3177
 msgid "Imported {file} -- it is in the local maps table below."
 msgstr "Importované: {file} – je v tabuľke miestnych máp nižšie."
 
-#: server.js:3178
+#: server.js:3179
 msgid "Import failed: {error}"
 msgstr "Import zlyhal: {error}"
 
-#: server.js:3186
+#: server.js:3187
 msgid "bzo servers"
 msgstr "servery bzo"
 
-#: server.js:3419
+#: server.js:3420
 msgid "Public bzo servers - {count}"
 msgstr "Verejné servery bzo – {count}"
 
-#: server.js:3420
+#: server.js:3421
 msgid ""
 "From the designated bzo list server, {server} -- pick a row to read it; "
 "Enter, or the pane's own link, goes in."
@@ -3677,15 +3685,15 @@ msgstr ""
 "Z určeného list servera bzo, {server} – vyber riadok a prečítaj si ho; Enter "
 "alebo vlastný odkaz panelu ťa pustí do hry."
 
-#: server.js:3421
+#: server.js:3422
 msgid "disabled on this instance"
 msgstr "na tejto inštancii vypnuté"
 
-#: server.js:3425
+#: server.js:3426
 msgid "Public BZFlag servers - {count}"
 msgstr "Verejné servery BZFlag – {count}"
 
-#: server.js:3426
+#: server.js:3427
 msgid ""
 "From the public list server (my.bzflag.org), cached {seconds}s ago -- "
 "{refresh}."
@@ -3693,22 +3701,22 @@ msgstr ""
 "Z verejného list servera (my.bzflag.org), vo vyrovnávacej pamäti pred "
 "{seconds} s – {refresh}."
 
-#: server.js:3427
+#: server.js:3428
 msgid "refresh"
 msgstr "obnoviť"
 
-#: server.js:3429
+#: server.js:3430
 msgid ""
 "Pick a row to read it; its link views that map, and does not enter that game."
 msgstr ""
 "Vyber riadok a prečítaj si ho; jeho odkaz zobrazí tú mapu, ale do hry ťa "
 "nepustí."
 
-#: server.js:3433
+#: server.js:3434
 msgid "Local maps - {count}"
 msgstr "Miestne mapy – {count}"
 
-#: server.js:3434
+#: server.js:3435
 msgid ""
 "Already in this server's {directory} -- pick a row to read it; its link "
 "views that map."
@@ -3716,11 +3724,11 @@ msgstr ""
 "Už sú v adresári {directory} tohto servera – vyber riadok a prečítaj si ho; "
 "jeho odkaz zobrazí tú mapu."
 
-#: server.js:3439
+#: server.js:3440
 msgid "Local replays - {count}"
 msgstr "Miestne záznamy – {count}"
 
-#: server.js:3440
+#: server.js:3441
 msgid ""
 "bzfs recordings in this server's {directory} -- pick a row to read it; Watch "
 "plays it to everyone watching that replay."
@@ -3728,7 +3736,7 @@ msgstr ""
 "Nahrávky bzfs v adresári {directory} tohto servera – vyber riadok a prečítaj "
 "si ho; Sledovať ho prehrá všetkým, ktorí ten záznam sledujú."
 
-#: server.js:3455
+#: server.js:3456
 msgid ""
 "bzo {version} (build {build}): BZFlag in the browser, on desktop, phone and "
 "headset, and this list of the servers to play it on."
@@ -3736,7 +3744,7 @@ msgstr ""
 "bzo {version} (zostavenie {build}): BZFlag v prehliadači, na počítači, "
 "telefóne aj headsete, a tento zoznam serverov, na ktorých sa dá hrať."
 
-#: server.js:3458
+#: server.js:3459
 msgid ""
 "Copyright (C) 2025-2026 Tim Riker. Free software under the {license}; source "
 "at {source}."
@@ -3744,15 +3752,25 @@ msgstr ""
 "Copyright (C) 2025-2026 Tim Riker. Slobodný softvér pod licenciou {license}; "
 "zdrojový kód na {source}."
 
-#: server.js:3518
+#: server.js:3463
+msgid ""
+"Run a BZFlag server? {page} says when bzo visits it, and how to ask it to "
+"stay away."
+msgstr "Prevádzkujete server BZFlag? {page} hovorí, kedy ho bzo navštevuje a ako ho požiadať, aby to nerobil."
+
+#: server.js:3464
+msgid "bzo on your BZFlag server"
+msgstr "bzo na vašom serveri BZFlag"
+
+#: server.js:3522
 msgid "Could not reach the BZFlag list server. Try again shortly."
 msgstr "Nepodarilo sa spojiť s list serverom BZFlag. Skús to o chvíľu znova."
 
-#: server.js:6248
+#: server.js:6267
 msgid "List server key"
 msgstr "Kľúč list servera"
 
-#: server.js:6250
+#: server.js:6269
 msgid ""
 "This instance is not the designated bzo list server. Manage this server's "
 "key at {link}."
@@ -3760,15 +3778,15 @@ msgstr ""
 "Táto inštancia nie je určený list server bzo. Kľúč tohto servera spravuj na "
 "{link}."
 
-#: server.js:6253
+#: server.js:6272
 msgid "The list server is disabled on this instance ({setting} is empty)."
 msgstr "List server je na tejto inštancii vypnutý ({setting} je prázdne)."
 
-#: server.js:6260
+#: server.js:6279
 msgid "Generate key"
 msgstr "Vytvoriť kľúč"
 
-#: server.js:6262
+#: server.js:6281
 msgid ""
 "Enter the server's own {setting} -- the same address it already answers "
 "admin-whitelist probes on."
@@ -3776,7 +3794,7 @@ msgstr ""
 "Zadaj vlastné {setting} servera – tú istú adresu, na ktorej už odpovedá na "
 "kontroly admin-whitelistu."
 
-#: server.js:6265
+#: server.js:6284
 msgid ""
 "The list server calls this address back to validate a report; it never "
 "trusts one a report claims for itself."
@@ -3784,39 +3802,39 @@ msgstr ""
 "List server na túto adresu zavolá späť, aby overil hlásenie; nikdy neverí "
 "adrese, ktorú hlásenie uvádza samo o sebe."
 
-#: server.js:6267
+#: server.js:6286
 msgid "Log in above to register a server and generate a key."
 msgstr "Prihlás sa hore, aby si mohol zaregistrovať server a vytvoriť kľúč."
 
-#: server.js:6270
+#: server.js:6289
 msgid "never"
 msgstr "nikdy"
 
-#: server.js:6271
+#: server.js:6290
 msgid "stale"
 msgstr "zastarané"
 
-#: server.js:6272
+#: server.js:6291
 msgid "{players}/{max} players"
 msgstr "hráči: {players}/{max}"
 
-#: server.js:6273
+#: server.js:6292
 msgid "never reported"
 msgstr "nikdy nehlásil"
 
-#: server.js:6274
+#: server.js:6293
 msgid "Revoke"
 msgstr "Zrušiť"
 
-#: server.js:6275
+#: server.js:6294
 msgid "Failed"
 msgstr "Zlyhalo"
 
-#: server.js:6276
+#: server.js:6295
 msgid "Key for {url}: {key}"
 msgstr "Kľúč pre {url}: {key}"
 
-#: server.js:6277
+#: server.js:6296
 msgid ""
 "Paste this into that server's Operator panel -- also readable from the table "
 "above any time."
@@ -3824,15 +3842,15 @@ msgstr ""
 "Vlož ho do panelu Operátor toho servera – kedykoľvek ho nájdeš aj v tabuľke "
 "vyššie."
 
-#: server.js:6279
+#: server.js:6298
 msgid "All registered keys"
 msgstr "Všetky registrované kľúče"
 
-#: server.js:6279
+#: server.js:6298
 msgid "Your keys"
 msgstr "Tvoje kľúče"
 
-#: server.js:6280
+#: server.js:6299
 msgid ""
 "This instance ({url}) is the designated bzo list server -- every other bzo "
 "instance reports here, so its own {list} can show the {table} above."
@@ -3841,476 +3859,476 @@ msgstr ""
 "inštancia bzo, takže sa na jej vlastnej stránke {list} zobrazí {table} "
 "vyššie."
 
-#: server.js:6283
+#: server.js:6302
 msgid "bzo servers table"
 msgstr "tabuľka serverov bzo"
 
-#: server.js:6285
+#: server.js:6304
 msgid "A {bzfs} server's key is a different one, from {link}."
 msgstr "Kľúč servera {bzfs} je iný, z {link}."
 
-#: server.js:6291
+#: server.js:6310
 msgid "Key"
 msgstr "Kľúč"
 
-#: server.js:6292
+#: server.js:6311
 msgid "Requested"
 msgstr "Vyžiadané"
 
-#: server.js:6292
+#: server.js:6311
 msgid "Last checked"
 msgstr "Naposledy overené"
 
-#: server.js:6293
+#: server.js:6312
 msgid "Status"
 msgstr "Stav"
 
-#: server.js:7612
+#: server.js:7631
 msgid "Match duration is {duration}"
 msgstr "Dĺžka zápasu: {duration}"
 
-#: server.js:7622
+#: server.js:7641
 msgid "Match started"
 msgstr "Zápas sa začal"
 
-#: server.js:8029
+#: server.js:8048
 msgid "Your score record will be saved while you are in observer mode."
 msgstr "Tvoje skóre zostane uložené, kým si v režime pozorovateľa."
 
-#: server.js:8034
+#: server.js:8053
 msgid "Your score has been restored."
 msgstr "Tvoje skóre bolo obnovené."
 
 #. TRANSLATORS: /me is a command name; keep it as it is
-#: server.js:8669
+#: server.js:8688
 msgid "{player}, the /me command requires an argument"
 msgstr "{player}, príkaz /me vyžaduje argument"
 
-#: server.js:8727
+#: server.js:8746
 msgid "Commands (use /<command>? for one of them):"
 msgstr "Príkazy (pre pomoc k jednému použi /<command>?):"
 
-#: server.js:8772
+#: server.js:8791
 msgid "Recording started"
 msgstr "Nahrávanie spustené"
 
-#: server.js:8780 server.js:8837 server/messages-operator.cjs:332
+#: server.js:8799 server.js:8856 server/messages-operator.cjs:332
 msgid "Could not open for writing: {name} ({error})"
 msgstr "Nedá sa otvoriť na zápis: {name} ({error})"
 
-#: server.js:8784
+#: server.js:8803
 msgid "Recording stopped"
 msgstr "Nahrávanie zastavené"
 
-#: server.js:8792
+#: server.js:8811
 msgid "Record size set to {mbytes}"
 msgstr "Veľkosť záznamu nastavená: {mbytes}"
 
-#: server.js:8800
+#: server.js:8819
 msgid "Record rate set to {seconds}"
 msgstr "Frekvencia záznamu nastavená: {seconds}"
 
-#: server.js:8804
+#: server.js:8823
 msgid "Not Recording"
 msgstr "Nenahráva sa"
 
-#: server.js:8808
+#: server.js:8827
 msgid "Filename:  {name}"
 msgstr "   Súbor:  {name}"
 
-#: server.js:8809
+#: server.js:8828
 msgid "   saved:  {bytes} bytes / {packets} packets / {seconds} seconds"
 msgstr "  Uložené:  {bytes} bajtov / {packets} paketov / {seconds} sekúnd"
 
-#: server.js:8815
+#: server.js:8834
 msgid "Buffered:  {bytes} bytes / {packets} packets / {seconds} seconds"
 msgstr "V bufferi:  {bytes} bajtov / {packets} paketov / {seconds} sekúnd"
 
-#: server.js:8829 server/messages-operator.cjs:323
+#: server.js:8848 server/messages-operator.cjs:323
 msgid "No buffer to save"
 msgstr "Žiadny buffer na uloženie"
 
-#: server.js:8834 server/messages-operator.cjs:328
+#: server.js:8853 server/messages-operator.cjs:328
 msgid "Record buffer saved to: {name}"
 msgstr "Buffer záznamu uložený do: {name}"
 
-#: server.js:8848
+#: server.js:8867
 msgid "Recording to file: {name}"
 msgstr "Nahrávanie do súboru: {name}"
 
-#: server.js:8871 server.js:9820
+#: server.js:8890 server.js:9839
 msgid "BZFS Version: {version}"
 msgstr "Verzia BZFS: {version}"
 
-#: server.js:8909 server.js:10023
+#: server.js:8928 server.js:10042
 msgid "Nobody is here"
 msgstr "Nikto tu nie je"
 
-#: server.js:8916
+#: server.js:8935
 msgid "server: {stats}"
 msgstr "server: {stats}"
 
-#: server.js:8958
+#: server.js:8977
 msgid "Usage: /setteam <#slot|PlayerName> <team>"
 msgstr "Použitie: /setteam <#slot|PlayerName> <team>"
 
 #. TRANSLATORS: /setteam is a command name and {teams} lists team names as typed
-#: server.js:8965
+#: server.js:8984
 msgid "Usage: /setteam <#slot|PlayerName> <team> -- one of {teams}"
 msgstr "Použitie: /setteam <#slot|PlayerName> <team> -- jeden z: {teams}"
 
-#: server.js:8971
+#: server.js:8990
 msgid "\"{player}\" is not on a team to move from"
 msgstr "„{player}“ nie je v žiadnom tíme, z ktorého by sa dal presunúť"
 
-#: server.js:8975
+#: server.js:8994
 msgid "\"{player}\" is already {team}"
 msgstr "„{player}“ už je v tíme: {team}"
 
-#: server.js:8981
+#: server.js:9000
 msgid "\"{player}\" moved to {team}"
 msgstr "„{player}“ presunutý do tímu: {team}"
 
-#: server.js:8982
+#: server.js:9001
 msgid "@{player} moved you to {team}"
 msgstr "@{player} ťa presunul do tímu: {team}"
 
-#: server.js:9011
+#: server.js:9030
 msgid "Moved to {position} facing {bearing}"
 msgstr "Presunutý na {position}, smer {bearing}"
 
-#: server.js:9014
+#: server.js:9033
 msgid "\"{player}\" moved to {position} facing {bearing}"
 msgstr "„{player}“ presunutý na {position}, smer {bearing}"
 
-#: server.js:9015
+#: server.js:9034
 msgid "@{player} moved you to {position} facing {bearing}"
 msgstr "@{player} ťa presunul na {position}, smer {bearing}"
 
-#: server.js:9028
+#: server.js:9047
 msgid "Usage: /msg \"some callsign\" some message"
 msgstr "Použitie: /msg \"prezývka\" správa"
 
-#: server.js:9075
+#: server.js:9094
 msgid "Usage: /kill <#slot|PlayerName> [reason]"
 msgstr "Použitie: /kill <#slot|PlayerName> [reason]"
 
-#: server.js:9080
+#: server.js:9099
 msgid "An observer has no tank to kill"
 msgstr "Pozorovateľ nemá tank, ktorý by sa dal zničiť"
 
-#: server.js:9084
+#: server.js:9103
 msgid "\"{player}\" is already dead"
 msgstr "„{player}“ už je mŕtvy"
 
-#: server.js:9091
+#: server.js:9110
 msgid "\"{player}\" killed"
 msgstr "„{player}“ zabitý"
 
-#: server.js:9092
+#: server.js:9111
 msgid "You were killed by an operator: {reason}"
 msgstr "Zabil ťa operátor: {reason}"
 
-#: server.js:9093
+#: server.js:9112
 msgid "You were killed by an operator"
 msgstr "Zabil ťa operátor"
 
-#: server.js:9141
+#: server.js:9160
 msgid "You were banned from this server"
 msgstr "Na tomto serveri si dostal ban"
 
-#: server.js:9142 server.js:9165
+#: server.js:9161 server.js:9184
 msgid "Reason given: {reason}"
 msgstr "Uvedený dôvod: {reason}"
 
-#: server.js:9143
+#: server.js:9162
 msgid "{player} banned by {admin}, reason: {reason}"
 msgstr "{admin} zabanoval hráča {player}, dôvod: {reason}"
 
-#: server.js:9155
+#: server.js:9174
 msgid "Syntax: /kick <#slot | PlayerName | \"Player Name\"> <reason>"
 msgstr "Syntax: /kick <#slot | PlayerName | \"Player Name\"> <reason>"
 
-#: server.js:9156 server.js:9185
+#: server.js:9175 server.js:9204
 msgid "\tPlease keep in mind that reason is displayed to the user."
 msgstr "\tPamätaj, že dôvod sa používateľovi zobrazí."
 
-#: server.js:9159
+#: server.js:9178
 msgid "player \"{player}\" not found"
 msgstr "hráč „{player}“ sa nenašiel"
 
-#: server.js:9164
+#: server.js:9183
 msgid "You were kicked off the server"
 msgstr "Bol si vyhodený zo servera"
 
-#: server.js:9166
+#: server.js:9185
 msgid "{player} kicked by {admin}, reason: {reason}"
 msgstr "{admin} vyhodil hráča {player}, dôvod: {reason}"
 
-#: server.js:9180
+#: server.js:9199
 msgid ""
 "Syntax: /ban <#slot | PlayerName | \"Player Name\" | ip> <duration> <reason>"
 msgstr ""
 "Syntax: /ban <#slot | PlayerName | \"Player Name\" | ip> <duration> <reason>"
 
-#: server.js:9181
+#: server.js:9200
 msgid "\t<duration> can be 'short' or 'default' for the default ban time "
 msgstr ""
 "\t<duration> môže byť 'short' alebo 'default' pre predvolenú dĺžku banu "
 
-#: server.js:9182
+#: server.js:9201
 msgid "\tor 'forever' or 'max' for infinite bans "
 msgstr "\talebo 'forever' či 'max' pre trvalý ban "
 
-#: server.js:9183
+#: server.js:9202
 msgid "\tor a time in the format <weeks>W<days>D<hours>H<minutes>M "
 msgstr "\talebo čas vo formáte <weeks>W<days>D<hours>H<minutes>M "
 
-#: server.js:9184
+#: server.js:9203
 msgid "\tor just a number of minutes "
 msgstr "\talebo len počet minút "
 
-#: server.js:9207 server.js:9315
+#: server.js:9226 server.js:9334
 msgid "Error: invalid ban duration"
 msgstr "Chyba: neplatná dĺžka banu"
 
-#: server.js:9208 server.js:9316
+#: server.js:9227 server.js:9335
 msgid "Duration examples:  30m 1h  1d  1w  and mixing: 1w2d4h 1w2d1m"
 msgstr "Príklady dĺžky:  30m 1h  1d  1w  a kombinácie: 1w2d4h 1w2d1m"
 
-#: server.js:9217 server.js:9611
+#: server.js:9236 server.js:9630
 msgid "{player} has no trusted address to ban"
 msgstr "{player} nemá dôveryhodnú adresu na zabanovanie"
 
-#: server.js:9223 server.js:9325
+#: server.js:9242 server.js:9344
 msgid "Pattern added to the BZID banlist"
 msgstr "Vzor pridaný do banlistu BZID"
 
-#: server.js:9229
+#: server.js:9248
 msgid "Malformed address or invalid Player/Slot: {target}"
 msgstr "Chybná adresa alebo neplatný hráč/slot: {target}"
 
-#: server.js:9233
+#: server.js:9252
 msgid "Pattern added to the IP banlist"
 msgstr "Vzor pridaný do IP banlistu"
 
-#: server.js:9244
+#: server.js:9263
 msgid "Removed IP pattern from the ban list"
 msgstr "IP vzor odobratý z banlistu"
 
-#: server.js:9246 server.js:9335
+#: server.js:9265 server.js:9354
 msgid "No pattern removed"
 msgstr "Žiadny vzor nebol odobratý"
 
-#: server.js:9261
+#: server.js:9280
 msgid "Syntax: /checkip <ip>"
 msgstr "Syntax: /checkip <ip>"
 
-#: server.js:9266
+#: server.js:9285
 msgid "{address} is not banned."
 msgstr "{address} nie je zabanovaná."
 
-#: server.js:9269
+#: server.js:9288
 msgid "{address} is banned:"
 msgstr "{address} je zabanovaná:"
 
-#: server.js:9277
+#: server.js:9296
 msgid ""
 "Syntax: /idban <#slot|+id|PlayerName|\"Player Name\"> <duration> <reason>"
 msgstr ""
 "Syntax: /idban <#slot|+id|PlayerName|\"Player Name\"> <duration> <reason>"
 
-#: server.js:9278
+#: server.js:9297
 msgid "  Please keep in mind that reason is displayed to the user."
 msgstr "  Pamätaj, že dôvod sa používateľovi zobrazí."
 
-#: server.js:9289
+#: server.js:9308
 msgid "Error: invalid id pattern"
 msgstr "Chyba: neplatný vzor ID"
 
-#: server.js:9297
+#: server.js:9316
 msgid "could not find player ({player})"
 msgstr "hráč sa nenašiel ({player})"
 
-#: server.js:9302
+#: server.js:9321
 msgid "no BZID for player ({player})"
 msgstr "hráč nemá BZID ({player})"
 
-#: server.js:9333
+#: server.js:9352
 msgid "Removed id from the ban list"
 msgstr "ID odobraté z banlistu"
 
-#: server.js:9439
+#: server.js:9458
 msgid "Usage: /poll vote yes|no"
 msgstr "Použitie: /poll vote yes|no"
 
-#: server.js:9440
+#: server.js:9459
 msgid "    or /poll ban playername"
 msgstr "    alebo /poll ban playername"
 
-#: server.js:9441
+#: server.js:9460
 msgid "    or /poll kick playername"
 msgstr "    alebo /poll kick playername"
 
-#: server.js:9442
+#: server.js:9461
 msgid "    or /poll kill playername"
 msgstr "    alebo /poll kill playername"
 
-#: server.js:9443
+#: server.js:9462
 msgid "    or /poll set variable value"
 msgstr "    alebo /poll set variable value"
 
-#: server.js:9444
+#: server.js:9463
 msgid "    or /poll flagreset"
 msgstr "    alebo /poll flagreset"
 
-#: server.js:9446
+#: server.js:9465
 msgid "    or /poll {action} {parameters}"
 msgstr ""
 
 #. TRANSLATORS: /vote is a command name; keep it as it is
-#: server.js:9455
+#: server.js:9474
 msgid "{player}, you are presently not authorized to run /vote"
 msgstr "{player}, momentálne nemáš oprávnenie spustiť /vote"
 
-#: server.js:9459 server.js:9506 server.js:9533
+#: server.js:9478 server.js:9525 server.js:9552
 msgid "ERROR: the poll arbiter has disappeared (this should never happen)"
 msgstr "CHYBA: rozhodca hlasovania zmizol (to by sa nikdy nemalo stať)"
 
-#: server.js:9463
+#: server.js:9482
 msgid "A poll is not presently in progress.  There is nothing to vote on"
 msgstr "Práve neprebieha žiadne hlasovanie. Nie je o čom hlasovať"
 
-#: server.js:9468
+#: server.js:9487
 msgid "{player}, you did not vote in favor or in opposition"
 msgstr "{player}, nehlasoval si za ani proti"
 
-#: server.js:9469
+#: server.js:9488
 msgid "{player}, you did not provide a vote answer"
 msgstr "{player}, neuviedol si odpoveď"
 
-#: server.js:9470
+#: server.js:9489
 msgid "Usage: /vote yes|no|y|n|1|0|yea|nay|si|ja|nein|oui|non|sim|nao"
 msgstr "Použitie: /vote yes|no|y|n|1|0|yea|nay|si|ja|nein|oui|non|sim|nao"
 
 #. TRANSLATORS: {action} is a /poll keyword (ban, kick, kill, set, reset), sent as typed
-#: server.js:9484
+#: server.js:9503
 msgid "{player}, your vote in favor of the {action} has been recorded"
 msgstr "{player}, tvoj hlas za „{action}“ bol zaznamenaný"
 
-#: server.js:9485
+#: server.js:9504
 msgid "{player}, your vote in opposition of the {action} has been recorded"
 msgstr "{player}, tvoj hlas proti „{action}“ bol zaznamenaný"
 
-#: server.js:9487
+#: server.js:9506
 msgid "{player}, you have already voted on the poll to {action} {target}"
 msgstr "{player}, v hlasovaní „{action} {target}“ si už hlasoval"
 
-#: server.js:9491
+#: server.js:9510
 msgid ""
 "{player}, there was an error while voting on the poll to {action} {target}"
 msgstr "{player}, pri hlasovaní „{action} {target}“ nastala chyba"
 
 #. TRANSLATORS: /veto is a command name; keep it as it is
-#: server.js:9502
+#: server.js:9521
 msgid "{player}, you are presently not authorized to run /veto"
 msgstr "{player}, momentálne nemáš oprávnenie spustiť /veto"
 
-#: server.js:9510
+#: server.js:9529
 msgid "{player}, there is presently no active poll to veto"
 msgstr ""
 "{player}, momentálne neprebieha žiadne hlasovanie, ktoré by sa dalo vetovať"
 
-#: server.js:9513
+#: server.js:9532
 msgid "{player}, you have cancelled the poll to {action} {target}"
 msgstr "{player}, zrušil si hlasovanie „{action} {target}“"
 
-#: server.js:9519
+#: server.js:9538
 msgid "The poll was cancelled by {player}"
 msgstr "Hlasovanie zrušil {player}"
 
 #. TRANSLATORS: /poll is a command name; keep it as it is
-#: server.js:9529
+#: server.js:9548
 msgid "{player}, you are presently not authorized to run /poll"
 msgstr "{player}, momentálne nemáš oprávnenie spustiť /poll"
 
-#: server.js:9549
+#: server.js:9568
 msgid "A poll to {action} {target} is presently in progress"
 msgstr "Práve prebieha hlasovanie „{action} {target}“"
 
-#: server.js:9552
+#: server.js:9571
 msgid "Unable to start a new poll until the current one is over"
 msgstr "Nové hlasovanie sa nedá začať, kým neskončí súčasné"
 
-#: server.js:9557
+#: server.js:9576
 msgid ""
 "Unable to initiate a new poll.  There are not enough registered players "
 "playing."
 msgstr "Nové hlasovanie sa nedá začať. Nehrá dosť registrovaných hráčov."
 
-#: server.js:9561
+#: server.js:9580
 msgid ""
 "There needs to be at least {required} other player and only {others} is "
 "available."
 msgstr "Treba ďalších hráčov: aspoň {required}, k dispozícii: {others}."
 
-#: server.js:9562
+#: server.js:9581
 msgid ""
 "There needs to be at least {required} other player and only {others} are "
 "available."
 msgstr "Treba ďalších hráčov: aspoň {required}, k dispozícii: {others}."
 
-#: server.js:9564
+#: server.js:9583
 msgid ""
 "There needs to be at least {required} other players and only {others} is "
 "available."
 msgstr "Treba ďalších hráčov: aspoň {required}, k dispozícii: {others}."
 
-#: server.js:9566
+#: server.js:9585
 msgid ""
 "There needs to be at least {required} other players and only {others} are "
 "available."
 msgstr "Treba ďalších hráčov: aspoň {required}, k dispozícii: {others}."
 
-#: server.js:9576
+#: server.js:9595
 msgid "/poll: incorrect syntax, argument required."
 msgstr "/poll: chybná syntax, treba argument."
 
-#: server.js:9582
+#: server.js:9601
 msgid "{player}, no target was specified for the [{action}] vote"
 msgstr "{player}, pre hlasovanie [{action}] nebol zadaný cieľ"
 
 #. TRANSLATORS: /poll and {action} are a command as typed; keep them as they are
-#: server.js:9584
+#: server.js:9603
 msgid "Usage: /poll {action} target"
 msgstr "Použitie: /poll {action} target"
 
 #. TRANSLATORS: /poll {action} is a command as typed; keep it as it is
-#: server.js:9589
+#: server.js:9608
 msgid "{player}, you may not /poll {action} on this server"
 msgstr "{player}, na tomto serveri nesmieš použiť /poll {action}"
 
-#: server.js:9597
+#: server.js:9616
 msgid "The player specified for a {action} vote is not here"
 msgstr "Hráč zadaný pre hlasovanie „{action}“ tu nie je"
 
-#: server.js:9601
+#: server.js:9620
 msgid "You can't kill an observer!"
 msgstr "Pozorovateľa nemožno zabiť!"
 
-#: server.js:9607
+#: server.js:9626
 msgid "{player} is protected from being polled against."
 msgstr "{player} je chránený pred hlasovaním."
 
-#: server.js:9639
+#: server.js:9658
 msgid "You are not able to request a {action} poll right now, {player}"
 msgstr "{player}, hlasovanie „{action}“ teraz nemôžeš vyvolať"
 
-#: server.js:9644
+#: server.js:9663
 msgid "A poll to {action} {target} has been requested by {player}"
 msgstr "{player} vyvolal hlasovanie „{action} {target}“"
 
-#: server.js:9652
+#: server.js:9671
 msgid ""
 "{available} player is available, {needed} additional affirming vote required "
 "to pass the poll ({percentage} %)"
@@ -4318,7 +4336,7 @@ msgstr ""
 "Dostupní hráči: {available}, na prijatie chýba hlasov za: {needed} "
 "({percentage} %)"
 
-#: server.js:9653
+#: server.js:9672
 msgid ""
 "{available} player is available, {needed} additional affirming votes "
 "required to pass the poll ({percentage} %)"
@@ -4326,7 +4344,7 @@ msgstr ""
 "Dostupní hráči: {available}, na prijatie chýba hlasov za: {needed} "
 "({percentage} %)"
 
-#: server.js:9656
+#: server.js:9675
 msgid ""
 "{available} players are available, {needed} additional affirming vote "
 "required to pass the poll ({percentage} %)"
@@ -4334,7 +4352,7 @@ msgstr ""
 "Dostupní hráči: {available}, na prijatie chýba hlasov za: {needed} "
 "({percentage} %)"
 
-#: server.js:9657
+#: server.js:9676
 msgid ""
 "{available} players are available, {needed} additional affirming votes "
 "required to pass the poll ({percentage} %)"
@@ -4342,25 +4360,25 @@ msgstr ""
 "Dostupní hráči: {available}, na prijatie chýba hlasov za: {needed} "
 "({percentage} %)"
 
-#: server.js:9662
+#: server.js:9681
 msgid "Unable to automatically place your vote for some unknown reason"
 msgstr "Tvoj hlas sa z neznámeho dôvodu nepodarilo automaticky odovzdať"
 
-#: server.js:9690
+#: server.js:9709
 msgid ""
 "You have been temporarily banned due to sufficient votes to have you removed"
 msgstr ""
 "Dostal si dočasný ban, pretože dosť hráčov hlasovalo za tvoje odstránenie"
 
-#: server.js:9696
+#: server.js:9715
 msgid "You have been kicked due to sufficient votes to have you removed"
 msgstr "Bol si vyhodený, pretože dosť hráčov hlasovalo za tvoje odstránenie"
 
-#: server.js:9702
+#: server.js:9721
 msgid "You have been killed due to sufficient votes"
 msgstr "Bol si zabitý na základe hlasovania"
 
-#: server.js:9725
+#: server.js:9744
 msgid ""
 "A poll to {action} {target} has begun.  Players have up to {seconds} seconds "
 "to vote."
@@ -4368,434 +4386,434 @@ msgstr ""
 "Začalo sa hlasovanie „{action} {target}“. Hráči majú na hlasovanie {seconds} "
 "s."
 
-#: server.js:9733
+#: server.js:9752
 msgid "{seconds} seconds remain in the poll to {action} {target}."
 msgstr "Do konca hlasovania „{action} {target}“ zostáva {seconds} s."
 
-#: server.js:9741
+#: server.js:9760
 msgid "Enough votes were collected to {action} {target} early."
 msgstr "Zišlo sa dosť hlasov, „{action} {target}“ prebehne predčasne."
 
-#: server.js:9742
+#: server.js:9761
 msgid "Enough votes were collected to reset all unused flags early."
 msgstr "Zišlo sa dosť hlasov, všetky nepoužité vlajky sa predčasne resetujú."
 
-#: server.js:9758
+#: server.js:9777
 msgid "Poll Results: {yes} in favor, {no} oppose, {abstain} abstain"
 msgstr "Výsledok hlasovania: za {yes}, proti {no}, zdržalo sa {abstain}"
 
-#: server.js:9766
+#: server.js:9785
 msgid "The poll to {action} {target} was not successful"
 msgstr "Hlasovanie „{action} {target}“ neuspelo"
 
-#: server.js:9775
+#: server.js:9794
 msgid ""
 "The poll is now closed and was successful.  {target} is scheduled to be "
 "temporarily banned."
 msgstr "Hlasovanie sa skončilo úspešne. {target} dostane dočasný ban."
 
-#: server.js:9776
+#: server.js:9795
 msgid ""
 "The poll is now closed and was successful.  {target} is scheduled to be "
 "kicked."
 msgstr "Hlasovanie sa skončilo úspešne. {target} bude vyhodený."
 
-#: server.js:9777
+#: server.js:9796
 msgid ""
 "The poll is now closed and was successful.  {target} is scheduled to be "
 "killed."
 msgstr "Hlasovanie sa skončilo úspešne. {target} bude zabitý."
 
-#: server.js:9780
+#: server.js:9799
 msgid ""
 "The poll is now closed and was successful.  {target} is scheduled to be "
 "{action}."
 msgstr "Hlasovanie sa skončilo úspešne. Nasleduje „{action}“: {target}."
 
-#: server.js:9788
+#: server.js:9807
 msgid "{target} has been kicked."
 msgstr "{target} bol vyhodený."
 
-#: server.js:9789
+#: server.js:9808
 msgid "{target} has been killed."
 msgstr "{target} bol zabitý."
 
-#: server.js:9791
+#: server.js:9810
 msgid "{target} has been {action}"
 msgstr "Vykonané „{action}“: {target}"
 
-#: server.js:9806
+#: server.js:9825
 msgid "{player}'s client version:"
 msgstr "Verzia klienta hráča {player}:"
 
-#: server.js:9807
+#: server.js:9826
 msgid "  {version}"
 msgstr "  {version}"
 
-#: server.js:9808
+#: server.js:9827
 msgid "  unknown"
 msgstr "  neznáma"
 
-#: server.js:9814
+#: server.js:9833
 msgid "Player not found."
 msgstr "Hráč sa nenašiel."
 
-#: server.js:9845
+#: server.js:9864
 msgid "Countdown cancelled by {player}."
 msgstr "Odpočet zrušil {player}."
 
-#: server.js:9845
+#: server.js:9864
 msgid "Countdown cancelled"
 msgstr "Odpočet zrušený"
 
-#: server.js:9871
+#: server.js:9890
 msgid "No match is running to pause"
 msgstr "Nebeží žiadny zápas, ktorý by sa dal pozastaviť"
 
-#: server.js:9879
+#: server.js:9898
 msgid "No paused match to resume"
 msgstr "Žiadny pozastavený zápas na pokračovanie"
 
-#: server.js:9886
+#: server.js:9905
 msgid "There is no running countdown to cancel"
 msgstr "Nebeží žiadny odpočet na zrušenie"
 
-#: server.js:9894
+#: server.js:9913
 msgid "Usage: /countdown [<seconds>|pause|resume|cancel]"
 msgstr "Použitie: /countdown [<seconds>|pause|resume|cancel]"
 
-#: server.js:9899
+#: server.js:9918
 msgid "There is a countdown already in progress"
 msgstr "Odpočet už beží"
 
-#: server.js:9903
+#: server.js:9922
 msgid "A game is already in progress"
 msgstr "Hra už prebieha"
 
-#: server.js:9907 server.js:9910
+#: server.js:9926 server.js:9929
 msgid "Countdown set to {seconds} instead of {asked}"
 msgstr "Odpočet nastavený na {seconds} namiesto {asked}"
 
-#: server.js:9919
+#: server.js:9938
 msgid "Countdown started by {player}."
 msgstr "Odpočet spustil {player}."
 
-#: server.js:9920
+#: server.js:9939
 msgid "Match begins in about {duration}"
 msgstr "Zápas začne približne o {duration}"
 
-#: server.js:9928
+#: server.js:9947
 msgid "The match has started!...Good Luck Teams!"
 msgstr "Zápas sa začal!...Veľa šťastia, tímy!"
 
-#: server.js:9932
+#: server.js:9951
 msgid "Start your engines!......"
 msgstr "Naštartujte motory!......"
 
-#: server.js:9934
+#: server.js:9953
 msgid "{seconds}..."
 msgstr "{seconds}..."
 
-#: server.js:9946
+#: server.js:9965
 msgid "No match is running"
 msgstr "Nebeží žiadny zápas"
 
-#: server.js:9958
+#: server.js:9977
 msgid "Usage: /say <message>"
 msgstr "Použitie: /say <message>"
 
-#: server.js:9974
+#: server.js:9993
 msgid "Usage: /mute <#slot|PlayerName>"
 msgstr "Použitie: /mute <#slot|PlayerName>"
 
-#: server.js:9980
+#: server.js:9999
 msgid "\"{player}\" is now muted"
 msgstr "„{player}“ je teraz umlčaný"
 
-#: server.js:9981
+#: server.js:10000
 msgid "You have been muted by an operator"
 msgstr "Operátor ťa umlčal"
 
-#: server.js:9990
+#: server.js:10009
 msgid "Usage: /unmute <#slot|PlayerName>"
 msgstr "Použitie: /unmute <#slot|PlayerName>"
 
-#: server.js:9996
+#: server.js:10015
 msgid "\"{player}\" is no longer muted"
 msgstr "„{player}“ už nie je umlčaný"
 
-#: server.js:9997
+#: server.js:10016
 msgid "You are no longer muted"
 msgstr "Už nie si umlčaný"
 
-#: server.js:10005
+#: server.js:10024
 msgid "Nobody is muted"
 msgstr "Nikto nie je umlčaný"
 
-#: server.js:10118
+#: server.js:10137
 msgid "Usage: /flag drop [#slot|PlayerName]"
 msgstr "Použitie: /flag drop [#slot|PlayerName]"
 
-#: server.js:10125
+#: server.js:10144
 msgid "You are not carrying a flag"
 msgstr "Nenesieš žiadnu vlajku"
 
-#: server.js:10126
+#: server.js:10145
 msgid "\"{player}\" is not carrying a flag"
 msgstr "„{player}“ nenesie žiadnu vlajku"
 
-#: server.js:10135
+#: server.js:10154
 msgid "Dropped {flag} from \"{player}\""
 msgstr "„{player}“: vlajka {flag} zhodená"
 
-#: server.js:10136
+#: server.js:10155
 msgid "Your {flag} flag was dropped"
 msgstr "Tvoja vlajka {flag} bola zhodená"
 
-#: server.js:10150
+#: server.js:10169
 msgid "{count} flags sent up"
 msgstr "Vlajky vyslané nahor: {count}"
 
-#: server.js:10160
+#: server.js:10179
 msgid "{count} flags reset"
 msgstr "Resetované vlajky: {count}"
 
-#: server.js:10165
+#: server.js:10184
 msgid "No flags are in the world"
 msgstr "Vo svete nie sú žiadne vlajky"
 
-#: server.js:10183
+#: server.js:10202
 msgid "Usage: /flag take <#slot|PlayerName>"
 msgstr "Použitie: /flag take <#slot|PlayerName>"
 
 #. TRANSLATORS: /flag take is a command name; keep it as it is
-#: server.js:10190
+#: server.js:10209
 msgid "/flag take: player ({player}) does not have a flag"
 msgstr "/flag take: hráč ({player}) nemá vlajku"
 
-#: server.js:10199
+#: server.js:10218
 msgid "{admin} took flag {flag}/{slot} from {player}"
 msgstr "{admin} vzal vlajku {flag}/{slot} hráčovi {player}"
 
-#: server.js:10211
+#: server.js:10230
 msgid "Usage: /flag give <#slot|PlayerName> <#flagId|FlagAbbr> [force]"
 msgstr "Použitie: /flag give <#slot|PlayerName> <#flagId|FlagAbbr> [force]"
 
-#: server.js:10227
+#: server.js:10246
 msgid "flag {flag} is not in this world"
 msgstr "vlajka {flag} v tomto svete nie je"
 
-#: server.js:10234 server.js:10272
+#: server.js:10253 server.js:10291
 msgid "you may need to use the force"
 msgstr "možno bude treba použiť force"
 
-#: server.js:10241
+#: server.js:10260
 msgid "flag {flag} is an empty slot"
 msgstr "vlajka {flag} je prázdny slot"
 
-#: server.js:10247
+#: server.js:10266
 msgid "bad flag type"
 msgstr "chybný typ vlajky"
 
-#: server.js:10269
+#: server.js:10288
 msgid "flag type not found"
 msgstr "typ vlajky sa nenašiel"
 
-#: server.js:10278
+#: server.js:10297
 msgid "An observer has no tank to carry a flag"
 msgstr "Pozorovateľ nemá tank, ktorý by niesol vlajku"
 
 #. TRANSLATORS: /flag give is a command name; keep it as it is
-#: server.js:10285
+#: server.js:10304
 msgid "/flag give: player ({player}) is not alive"
 msgstr "/flag give: hráč ({player}) nie je nažive"
 
-#: server.js:10306
+#: server.js:10325
 msgid "{admin} gave flag {flag}/{slot} to {player}"
 msgstr "{admin} dal vlajku {flag}/{slot} hráčovi {player}"
 
-#: server.js:10333
+#: server.js:10352
 msgid "Usage: /mv [player] <x,y> [facing]"
 msgstr "Použitie: /mv [player] <x,y> [facing]"
 
-#: server.js:10348
+#: server.js:10367
 msgid "An observer has no tank to move"
 msgstr "Pozorovateľ nemá tank, ktorým by sa dalo pohnúť"
 
-#: server.js:10391
+#: server.js:10410
 msgid "Nowhere to stand at {x},{y}"
 msgstr "Na {x},{y} nie je kde stáť"
 
-#: server.js:10458
+#: server.js:10477
 msgid "Checking another player's position requires operator status"
 msgstr "Zistiť pozíciu iného hráča môže len operátor"
 
-#: server.js:10464
+#: server.js:10483
 msgid "Usage: /pos [player]"
 msgstr "Použitie: /pos [player]"
 
-#: server.js:10470
+#: server.js:10489
 msgid "An observer has no tank position"
 msgstr "Pozorovateľ nemá pozíciu tanku"
 
-#: server.js:10478
+#: server.js:10497
 msgid "You are at {position} facing {bearing}"
 msgstr "Si na {position}, smer {bearing}"
 
-#: server.js:10479
+#: server.js:10498
 msgid "\"{player}\" is at {position} facing {bearing}"
 msgstr "„{player}“ je na {position}, smer {bearing}"
 
-#: server.js:10950
+#: server.js:10969
 msgid "All shots now ricochet"
 msgstr "Všetky strely sa teraz odrážajú"
 
-#: server.js:10950
+#: server.js:10969
 msgid "Shots no longer ricochet"
 msgstr "Strely sa už neodrážajú"
 
-#: server.js:11116
+#: server.js:11135
 msgid "usage: set <name> [<value>]"
 msgstr "použitie: set <name> [<value>]"
 
-#: server.js:11117
+#: server.js:11136
 msgid "bzo's own: {variables}"
 msgstr "vlastné v bzo: {variables}"
 
 #. TRANSLATORS: /set is a command name; keep it as it is
-#: server.js:11137
+#: server.js:11156
 msgid "/set failed, reason: variable {name} does not exist"
 msgstr "/set zlyhal, dôvod: premenná {name} neexistuje"
 
-#: server.js:11138 server.js:11172
+#: server.js:11157 server.js:11191
 msgid "variable {name} does not exist"
 msgstr "premenná {name} neexistuje"
 
-#: server.js:11142
+#: server.js:11161
 msgid "{name} is {value}"
 msgstr "{name} je {value}"
 
 #. TRANSLATORS: /set is a command name; keep it as it is
-#: server.js:11147
+#: server.js:11166
 msgid "/set failed, reason: variable {name} is not writeable"
 msgstr "/set zlyhal, dôvod: do premennej {name} sa nedá zapisovať"
 
-#: server.js:11153
+#: server.js:11172
 msgid "{name} set"
 msgstr "{name} nastavené"
 
-#: server.js:11154
+#: server.js:11173
 msgid "Variable Modification Notice by {player} of set {name} {value}"
 msgstr "Oznámenie o zmene premennej od {player}: set {name} {value}"
 
-#: server.js:11164
+#: server.js:11183
 msgid "usage: reset <name>"
 msgstr "použitie: reset <name>"
 
-#: server.js:11175
+#: server.js:11194
 msgid "variable {name} is not writeable"
 msgstr "do premennej {name} sa nedá zapisovať"
 
-#: server.js:11181
+#: server.js:11200
 msgid "all variables reset"
 msgstr "všetky premenné resetované"
 
-#: server.js:11182
+#: server.js:11201
 msgid "{name} reset"
 msgstr "{name} resetované"
 
-#: server.js:11186
+#: server.js:11205
 msgid "Variable Reset Notice by {player} of reset {name}"
 msgstr "Oznámenie o resete premennej od {player}: reset {name}"
 
-#: server.js:11214
+#: server.js:11233
 msgid "No command starting with {prefix}"
 msgstr "Žiadny príkaz nezačína na {prefix}"
 
-#: server.js:11228
+#: server.js:11247
 msgid "The {command} command is only for players in the game"
 msgstr ""
 
-#: server.js:11234 server.js:11257
+#: server.js:11253 server.js:11276
 msgid "You do not have permission to run the {command} command"
 msgstr "Nemáš oprávnenie spustiť príkaz {command}"
 
-#: server.js:11308
+#: server.js:11327
 msgid "We're sorry, you are not allowed to talk!"
 msgstr "Je nám ľúto, nesmieš hovoriť!"
 
-#: server.js:11548
+#: server.js:11567
 msgid "You signed in as {player} on another device."
 msgstr "Na inom zariadení si sa prihlásil ako {player}."
 
-#: server.js:11570
+#: server.js:11589
 msgid "{player} signed in with that name, so yours is now {name}."
 msgstr "{player} sa prihlásil s týmto menom, tvoje je teraz {name}."
 
-#: server.js:13779
+#: server.js:13798
 msgid "Global login approved!"
 msgstr "Globálne prihlásenie schválené!"
 
-#: server.js:13781
+#: server.js:13800
 msgid "Global login rejected, bad token."
 msgstr "Globálne prihlásenie zamietnuté, chybný token."
 
-#: server.js:13783
+#: server.js:13802
 msgid "This callsign is not registered."
 msgstr "Táto prezývka nie je registrovaná."
 
-#: server.js:13784
+#: server.js:13803
 msgid "You can register it at https://forums.bzflag.org/"
 msgstr "Zaregistrovať ju môžeš na https://forums.bzflag.org/"
 
-#: server.js:14390
+#: server.js:14409
 msgid "{count} shots left"
 msgstr "Zostávajúce strely: {count}"
 
-#: server.js:14391
+#: server.js:14410
 msgid "1 shot left"
 msgstr "Zostáva 1 strela"
 
-#: server.js:14867
+#: server.js:14886
 msgid "I'm sorry, we do not allow autopilot on this server."
 msgstr "Prepáč, na tomto serveri autopilota nepovoľujeme."
 
-#: server.js:16927
+#: server.js:16946
 msgid "Server restarting: {reason}"
 msgstr "Reštart servera: {reason}"
 
-#: server.js:18273
+#: server.js:18292
 msgid "The pilots have not loaded"
 msgstr "Piloti sa nenačítali"
 
 #. TRANSLATORS: a command's syntax; keep it as it is
-#: server.js:18285
+#: server.js:18304
 msgid "Usage: /bot fill <0-{max}> [{pilots}]"
 msgstr "Použitie: /bot fill <0-{max}> [{pilots}]"
 
-#: server.js:18289
+#: server.js:18308
 msgid "No pilot \"{pilot}\"; one of {pilots}"
 msgstr "Pilot „{pilot}“ neexistuje; jeden z: {pilots}"
 
 #. TRANSLATORS: a command's syntax; keep /bot add as it is
-#: server.js:18311
+#: server.js:18330
 msgid "Usage: /bot add [{pilots}] [team] [count]"
 msgstr "Použitie: /bot add [{pilots}] [team] [count]"
 
-#: server.js:18332
+#: server.js:18351
 msgid "{player} paused the bots and autopilots"
 msgstr "{player} pozastavil boty a autopiloty"
 
-#: server.js:18333
+#: server.js:18352
 msgid "{player} resumed the bots and autopilots"
 msgstr "{player} obnovil boty a autopiloty"
 
-#: server.js:18345
+#: server.js:18364
 msgid "Usage: /bot remove <name|all>"
 msgstr "Použitie: /bot remove <name|all>"
 
 #. TRANSLATORS: a command's syntax; keep /bot, fill, add, remove, all, pause and resume as they are
-#: server.js:18357
+#: server.js:18376
 msgid ""
 "Usage: /bot [fill <n> [{pilots}] | add [{pilots}] [team] [count] | remove "
 "<name|all> | pause | resume]"
@@ -4803,51 +4821,51 @@ msgstr ""
 "Použitie: /bot [fill <n> [{pilots}] | add [{pilots}] [team] [count] | remove "
 "<name|all> | pause | resume]"
 
-#: server.js:18384
+#: server.js:18403
 msgid "Server shutting down"
 msgstr "Server sa vypína"
 
-#: server.js:18394
+#: server.js:18413
 msgid "Server restarting"
 msgstr "Server sa reštartuje"
 
-#: server.js:18624
+#: server.js:18643
 msgid "You have been kicked from the server for: {reason}"
 msgstr ""
 
-#: server.js:18625
+#: server.js:18644
 msgid "{player} was kicked for:{reason}"
 msgstr ""
 
-#: server.js:18879
+#: server.js:18898
 msgid "No Plug-ins loaded."
 msgstr ""
 
-#: server.js:18882
+#: server.js:18901
 msgid "Plug-ins loaded:"
 msgstr ""
 
-#: server.js:18891
+#: server.js:18910
 msgid "Usage: /loadplugin plug-in"
 msgstr ""
 
-#: server.js:18899 server.js:18910
+#: server.js:18918 server.js:18929
 msgid "Plug-in load failed."
 msgstr ""
 
-#: server.js:18907
+#: server.js:18926
 msgid "Plug-in loaded."
 msgstr ""
 
-#: server.js:18919
+#: server.js:18938
 msgid "Usage: /unloadplugin plug-in"
 msgstr ""
 
-#: server.js:18925
+#: server.js:18944
 msgid "Plug-In {name} unloaded."
 msgstr ""
 
-#: server.js:18928
+#: server.js:18947
 msgid "Plug-in {name} is not loaded."
 msgstr ""
 

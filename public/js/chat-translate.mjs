@@ -84,9 +84,15 @@ async function detect(text) {
 // A translator from `from` to `to`: one each, made once and kept. `create`
 // is only asked for once the pack is on the device, or from a user gesture
 // (`downloadTranslator`), as the API requires of a download.
-async function translatorFor(from, to) {
+async function translatorFor(from, to, onProgress = null) {
   const key = `${from}>${to}`;
-  if (!translators.has(key)) translators.set(key, scope.Translator.create({ sourceLanguage: from, targetLanguage: to }));
+  if (!translators.has(key)) {
+    const options = { sourceLanguage: from, targetLanguage: to };
+    if (onProgress) {
+      options.monitor = (monitor) => monitor.addEventListener('downloadprogress', (event) => onProgress(event.loaded));
+    }
+    translators.set(key, scope.Translator.create(options));
+  }
   try {
     return await translators.get(key);
   } catch (error) {
@@ -122,9 +128,10 @@ export async function translateLine(line, to, { names = [], flags = [] } = {}) {
 }
 
 // The pack for `from` to `to`, fetched -- from a click, the user gesture a
-// download needs. Resolves once it is ready, or rejects.
-export async function downloadTranslator(from, to) {
-  await translatorFor(baseLanguage(from), baseLanguage(to));
+// download needs. Resolves once it is ready, or rejects. `onProgress` hears
+// the share downloaded, 0 to 1, as the browser reports it.
+export async function downloadTranslator(from, to, onProgress = null) {
+  await translatorFor(baseLanguage(from), baseLanguage(to), onProgress);
 }
 
 // A line the writer sent, in English as well where it is not English and the

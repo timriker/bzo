@@ -3436,8 +3436,11 @@ function chatTranslationContext() {
   return { names, flags: FLAG_ABBREVIATIONS };
 }
 
-// Lines waiting on a language pack still to be downloaded, by language.
+// Lines waiting on a language pack still to be downloaded, by language, and
+// each download under way or failed, `{ percent, error }`, which every line
+// waiting on it shows on its button.
 const chatTranslationOffers = new Map();
+const chatTranslationDownloads = new Map();
 // Counts each translation that lands, for the XR panel, which redraws only
 // when its signature changes.
 let chatTranslationsLanded = 0;
@@ -3449,6 +3452,7 @@ function translateChatEntry(entry, body) {
     if (!result) return;
     if (result.offer) {
       entry.translateOffer = result.offer;
+      entry.translateDownload = chatTranslationDownloads.get(result.offer) || null;
       if (!chatTranslationOffers.has(result.offer)) chatTranslationOffers.set(result.offer, []);
       chatTranslationOffers.get(result.offer).push(entry);
     } else {
@@ -3462,16 +3466,39 @@ function translateChatEntry(entry, body) {
 }
 
 // A click on a line's Translate: the user gesture a pack's download needs.
-// Every line waiting on that language is translated once it is in.
+// Every line waiting on that language shows how far it has got, and is
+// translated once it is in; a download that fails says so, and a click on
+// that tries again.
 function acceptChatTranslation(from) {
-  const waiting = chatTranslationOffers.get(from) || [];
-  chatTranslationOffers.delete(from);
-  waiting.forEach((entry) => { entry.translateOffer = null; });
-  chatWindowDirty = true;
-  updateChatWindow();
-  downloadTranslator(from, getLocale()).then(() => {
-    waiting.forEach((entry) => translateChatEntry(entry, entry.body));
-  }).catch(() => {});
+  const status = { percent: 0, error: null };
+  chatTranslationDownloads.set(from, status);
+  const showStatus = () => {
+    (chatTranslationOffers.get(from) || []).forEach((entry) => { entry.translateDownload = status; });
+    chatWindowDirty = true;
+    updateChatWindow();
+  };
+  showStatus();
+  const onProgress = (loaded) => {
+    const percent = Math.round(Math.max(0, Math.min(1, loaded)) * 100);
+    if (percent === status.percent) return;
+    status.percent = percent;
+    showStatus();
+  };
+  downloadTranslator(from, getLocale(), onProgress).then(() => {
+    chatTranslationDownloads.delete(from);
+    const waiting = chatTranslationOffers.get(from) || [];
+    chatTranslationOffers.delete(from);
+    waiting.forEach((entry) => {
+      entry.translateOffer = null;
+      entry.translateDownload = null;
+      translateChatEntry(entry, entry.body);
+    });
+  }).catch((error) => {
+    status.error = `${error?.name || 'Error'}: ${error?.message || error}`;
+    console.warn(`chat translation ${from}>${getLocale()}`, error);
+    debugLog(`chat translation ${from}>${getLocale()} failed: ${status.error}`);
+    showStatus();
+  });
 }
 
 // What a line shows of `text`, one of its runs: the translation in place of
@@ -18284,8 +18311,13 @@ function updateChatWindow() {
           chatWindowDirty = true;
           updateChatWindow();
         });
+      } else if (msg.translateDownload && !msg.translateDownload.error) {
+        button.textContent = t('Downloading {percent}%', { percent: msg.translateDownload.percent });
+        button.disabled = true;
       } else {
-        button.textContent = t('Translate');
+        const failed = msg.translateDownload?.error;
+        button.textContent = failed ? t('Translation unavailable') : t('Translate');
+        if (failed) button.title = failed;
         button.addEventListener('click', (event) => {
           event.stopPropagation();
           acceptChatTranslation(msg.translateOffer);

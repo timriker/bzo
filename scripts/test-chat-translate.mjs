@@ -13,6 +13,7 @@
 
 import assert from 'node:assert/strict';
 import {
+  downloadTranslator,
   baseLanguage, chatTranslationSupported, englishCopy, holdOut, putBack, translateLine, worthTranslating,
 } from '../public/js/chat-translate.mjs';
 
@@ -50,7 +51,13 @@ globalThis.LanguageDetector = {
 globalThis.Translator = {
   availability: async ({ sourceLanguage, targetLanguage }) => (downloaded.has(`${sourceLanguage}>${targetLanguage}`)
     ? 'available' : 'downloadable'),
-  create: async ({ sourceLanguage, targetLanguage }) => {
+  create: async ({ sourceLanguage, targetLanguage, monitor }) => {
+    if (sourceLanguage === 'fr') throw Object.assign(new Error('Unable to create translator'), { name: 'NotSupportedError' });
+    if (monitor) {
+      const target = new globalThis.EventTarget();
+      monitor(target);
+      for (const loaded of [0.5, 1]) target.dispatchEvent(Object.assign(new globalThis.Event('downloadprogress'), { loaded }));
+    }
     downloaded.add(`${sourceLanguage}>${targetLanguage}`);
     return { translate: async (text) => `[${targetLanguage}] ${text.replace('hola', 'hello')}` };
   },
@@ -72,6 +79,15 @@ assert.equal(chatTranslationSupported(), true);
   downloaded.delete('ru>en');
   assert.equal(await englishCopy('привет всем моим друзьям'), null, 'no download while sending');
   assert.equal(await englishCopy('hello there everyone'), null, 'none for English');
+}
+
+// A pack fetched from a click tells how far it has got, and a failed one
+// rejects rather than going quiet.
+{
+  const seen = [];
+  await downloadTranslator('ru', 'en', (loaded) => seen.push(loaded));
+  assert.deepEqual(seen, [0.5, 1], 'progress as the browser reports it');
+  await assert.rejects(downloadTranslator('fr', 'en'), { name: 'NotSupportedError' });
 }
 
 console.log('chat translation tests passed');
