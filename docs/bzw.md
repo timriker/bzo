@@ -1166,7 +1166,9 @@ presets: `rain`, `snow`, `fatrain`, `frog`, `particle`, `bubble`.
 `maps/weather.bzw` names `rain` and puts a small roofed shelter over the
 origin to preview the roof culling below; view it through Map Viewer
 (`?viewmap=weather.bzw`) -- purely a client render, so no live match is
-needed.
+needed. A server's `/set` of any of them changes the rain as it falls,
+upstream's own callbacks (`public/js/weather-vars.mjs` reads them for the
+map file and for the live match alike).
 
 Every drop falls (or, for `bubble`, rises) from high above the map, resets
 when it reaches the ground or a roof, and -- for the presets that carry

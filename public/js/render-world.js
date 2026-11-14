@@ -1098,6 +1098,17 @@ export class WorldRendering {
     this._mirrorColor = Array.isArray(rgba) ? rgba : null;
   }
 
+  // A mirror already drawn takes a new tint where it is. False when the
+  // ground has to be rebuilt instead: a mirror turned on or off.
+  retintMirror(rgba) {
+    if (!this.mirror || !Array.isArray(rgba)) return false;
+    const [r, g, b, a] = rgba;
+    this._mirrorColor = rgba;
+    this.mirror.material.uniforms.color.value.setRGB(r, g, b);
+    this.mirror.material.uniforms.tintAlpha.value = a;
+    return true;
+  }
+
   _buildMirror(groundExtent) {
     const [r, g, b, a] = this._mirrorColor;
     const pixelRatio = this.renderer?.getPixelRatio?.() || 1;

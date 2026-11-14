@@ -121,6 +121,10 @@ flag scales both halves and not equally -- see AGENTS.md's **Shot timing**.
 over it, and tanks are still held at the edge, as by upstream's
 height-ignoring `WallObstacle`.
 
+A `/set` during play takes effect at once, except in what the world was
+built with: the drawn border wall stays at the old `_wallHeight`, and box
+walls keep their old tiling, until the next map, as for a BZFlag client.
+
 ## Server checks
 
 | variable | default | effect |
@@ -159,7 +163,8 @@ On a server with `"sky": "minecraft"` (AGENTS.md) only `_syncTime` and
 ## Weather
 
 `_rainType` turns weather on; the rest tune it. Each defaults to the preset's
-own value. See **Weather** in [bzw.md](bzw.md) for how it is drawn.
+own value, and a `/set` of any changes the rain as it falls. See **Weather** in
+[bzw.md](bzw.md) for how it is drawn.
 
 | variable | default | effect |
 |---|---|---|

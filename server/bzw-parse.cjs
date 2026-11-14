@@ -13,6 +13,7 @@
 const { BZDB_CONFIG_VARS, bzdbIsTrue, evalBzdb, gameplayFromBzdb, parseColorString, worldConfig } = require('../public/js/bzdb.mjs');
 const { encodeMeshArrays, meshArrays, meshDrawArrays } = require('../public/js/mesh-arrays.mjs');
 const { getObstacleHeight } = require('../public/js/collision.mjs');
+const { WEATHER_RAIN_TYPES, WEATHER_RAIN_NUMERIC_VARS, applyWeatherVar } = require('../public/js/weather-vars.mjs');
 
 // Everything here is built in upstream's own frame, the one a `.bzw` is
 // written in: +Z up, +Y north, x east, an angle counter-clockwise about +Z.
@@ -1196,30 +1197,6 @@ function buildSphereMesh(sphere) {
   };
 }
 
-// `_rainType` (`WeatherRenderer.cxx`): the preset names upstream recognizes.
-// bzo picks one rendering path per effects-menu.md's rule -- textured, spun or
-// billboarded, roof-culled and puddled -- and builds every preset on it rather
-// than porting `doLineRain`'s plain streaks, so "rain" gets the same textured
-// look as "fatrain" rather than upstream's `GL_LINES` streak. See "Weather" in
-// docs/bzw.md.
-
-
-const WEATHER_RAIN_TYPES = new Set(['rain', 'snow', 'fatrain', 'frog', 'particle', 'bubble']);
-
-// The single-value `_rain*` variables bzo's weather reads. Mapped to the `weather` field bzo's own JSON
-// uses, not upstream's BZDB name, since the client never reads a BZDB var.
-const WEATHER_RAIN_NUMERIC_VARS = new Map([
-  ['_rainDensity', 'density'],
-  ['_rainSpread', 'spread'],
-  ['_rainSpeed', 'speed'],
-  ['_rainSpeedMod', 'speedMod'],
-  ['_rainStartZ', 'startZ'],
-  ['_rainEndZ', 'endZ'],
-  ['_rainMaxPuddleTime', 'maxPuddleTime'],
-  ['_rainPuddleSpeed', 'puddleSpeed'],
-  ['_rainRoofs', 'roofs'],
-]);
-
 // Options in a map's `options` block that `parseBZWTeamMode`
 // (server/teams.cjs) reads rather than `parseBZWServerOptions` below. Kept so
 // the unread-option tally does not report an option bzo does in fact act on;
@@ -1450,51 +1427,12 @@ function parseBZWServerOptions(lines) {
     // a map that says so on load.
     if (readOption('-set') && value) {
       setVars.set(value, setValue ?? '');
-      if (value === '_rainType') {
-        // The one weather variable whose value is a preset name rather than a
-        // number. Nothing here turns weather on without it -- a map that sets
-        // only `_rainDensity` or another tuning variable below is read but has
-        // nothing to apply it to, upstream's own `rainType`-less path being an
-        // edge case not worth reproducing.
-        const type = (setValue || '').trim().toLowerCase();
-        if (WEATHER_RAIN_TYPES.has(type)) {
-          options.weather = { ...(options.weather || {}), type };
-        } else if (type && type !== 'none') {
-          options.unreadBZDBVars.push(`_rainType=${setValue}`);
-        }
-      } else if (WEATHER_RAIN_NUMERIC_VARS.has(value)) {
-        const num = evalSet(value);
-        if (Number.isFinite(num)) {
-          options.weather = { ...(options.weather || {}), [WEATHER_RAIN_NUMERIC_VARS.get(value)]: num };
-        }
-      } else if (value === '_useRainPuddles' || value === '_rainSpins') {
-        // `BZDB.isTrue`'s own reading: `atoi(value) != 0`, so "true" is false
-        // and only a nonzero number is true.
-        const parsed = parseInt(setValue, 10);
-        const truthy = Number.isFinite(parsed) && parsed !== 0;
-        const field = value === '_useRainPuddles' ? 'puddles' : 'spin';
-        options.weather = { ...(options.weather || {}), [field]: truthy };
-      } else if (value === '_rainPuddleColor') {
-        // `WeatherRenderer::set` (WeatherRenderer.cxx:322): the puddle tint,
-        // over the preset's own. A colour that will not parse leaves it.
-        const color = parseColorString(setValue || '');
-        if (color) options.weather = { ...(options.weather || {}), puddleColor: color.slice(0, 3) };
-      } else if (value === '_rainBaseColor' || value === '_rainTopColor') {
-        // `WeatherRenderer::set`: the line streak's two vertex colours.
-        const color = parseColorString(setValue || '');
-        if (color) {
-          const field = value === '_rainBaseColor' ? 'rainBaseColor' : 'rainTopColor';
-          options.weather = { ...(options.weather || {}), [field]: color.slice(0, 4) };
-        }
-      } else if (value === '_useLineRain') {
-        const parsed = parseInt(setValue, 10);
-        options.weather = { ...(options.weather || {}), lineRain: Number.isFinite(parsed) && parsed !== 0 };
-      } else if (value === '_rainTexture' || value === '_rainPuddleTexture') {
-        const textureName = (setValue || '').trim().toLowerCase();
-        if (BZW_STOCK_TEXTURES.has(textureName)) {
-          const field = value === '_rainTexture' ? 'texture' : 'puddleTexture';
-          options.weather = { ...(options.weather || {}), [field]: textureName };
-        }
+      const weatherVar = applyWeatherVar(options.weather, value, setValue, {
+        evalNumber: evalSet, isStockTexture: (name) => BZW_STOCK_TEXTURES.has(name),
+      });
+      if (weatherVar) {
+        options.weather = weatherVar.weather;
+        if (weatherVar.unread) options.unreadBZDBVars.push(`${value}=${setValue}`);
       } else if (BZDB_CONFIG_VARS.has(value)) {
         // The world's own physics. Upstream locks every one of these, which
         // means the server states them and each client obeys -- so a map that

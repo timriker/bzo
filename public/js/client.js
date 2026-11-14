@@ -415,7 +415,9 @@ import {
   stepDrive,
   holdDrive,
 } from './drive.mjs';
-import { bzdbFromObject, worldConfig as evaluateWorldConfig } from './bzdb.mjs';
+import { bzdbFromObject, evalBzdb, worldConfig as evaluateWorldConfig } from './bzdb.mjs';
+import { applyWeatherVar } from './weather-vars.mjs';
+import { isStockTextureName } from './texture.js';
 import { normalizeAngle } from './motion.mjs';
 import {
   buildTeleporterIndex,
@@ -3040,7 +3042,7 @@ function applyWorldData(world) {
   renderManager.createMountains(currentWorldMapSize);
   renderManager.buildCloudLayer(currentWorldMapSize);
   renderManager.buildWater(currentWorldMapSize, world?.waterLevel || null);
-  renderManager.buildWeather(currentWorldMapSize, world?.weather || null, OBSTACLES);
+  renderManager.buildWeather(currentWorldMapSize, weatherFor(world), OBSTACLES);
   applyWorldGameplay(world);
   confineViewerToWorld();
 }
@@ -9590,18 +9592,57 @@ function receiveServerConfigUpdate(message) {
 }
 
 // MsgSetVar: one world variable set, or with a null value reset, by the
-// server's `/set` or a bzfs target's. The live world is rebuilt under it,
-// so its scenery switches and sizes follow too; a preview keeps its own
-// map's until it ends.
+// server's `/set` or a bzfs target's. As upstream, nothing rebuilds the world:
+// the fog, the sky and the scene switches are read again, the mirror is
+// retinted, and only a piece built under a switch that changed -- mountains,
+// clouds, ground, rain -- is built again (WeatherRenderer's callbacks,
+// BackgroundRenderer's). A size the world was built at, `_wallHeight` and
+// `_boxHeight`, takes effect with the next map, as it does for a BZFlag
+// client. A preview keeps its own map's until it ends.
+// The rain as the live `_rain*` variables have it, for the world they were
+// set on; the map file's own until one changes.
+let liveWeather = null;
+function weatherFor(world) {
+  return liveWeather?.world === world ? liveWeather.weather : (world?.weather || null);
+}
+
 function receiveSetVar(message) {
   if (typeof message.name !== 'string') return;
   if (message.value === null || message.value === undefined) liveBzdb.delete(message.name);
   else liveBzdb.set(message.name, String(message.value));
+  const before = liveGameConfig;
   recomputeLiveConfig();
-  if (!isPreviewingAltWorld() && currentWorldData) {
-    applyWorldData(currentWorldData);
-  } else {
-    applyWorldGameplay(currentWorldData);
+  applyWorldGameplay(currentWorldData);
+  if (isPreviewingAltWorld() || !currentWorldData) return;
+  applyLiveSceneVars(message.name, before, liveGameConfig);
+}
+
+function applyLiveSceneVars(name, before, after) {
+  const changed = (key) => JSON.stringify(before?.[key]) !== JSON.stringify(after?.[key]);
+  renderManager.setSceneSwitches(after);
+  setTrackFadeTime(after?.TRACK_FADE);
+  const mirrorToggled = Boolean(before?.MIRROR) !== Boolean(after?.MIRROR);
+  if (changed('MIRROR') && !mirrorToggled && !renderManager.retintMirror(after.MIRROR)) {
+    renderManager.setMirror(after.MIRROR);
+  }
+  if (mirrorToggled || changed('DRAW_GROUND')) {
+    renderManager.setMirror(after?.MIRROR ?? null);
+    renderManager.buildGround(currentWorldMapSize, currentWorldData.groundMaterial || null);
+    renderManager.setGroundGridEnabled(showDebugGeometry, currentWorldMapSize);
+  }
+  if (changed('DRAW_MOUNTAINS')) renderManager.createMountains(currentWorldMapSize);
+  if (changed('DRAW_CLOUDS')) {
+    renderManager.buildCloudLayer(currentWorldMapSize);
+    if (currentWorldData.clouds) renderManager.createClouds(currentWorldData.clouds, currentWorldData.cloudBase);
+    else renderManager.clearClouds();
+  }
+  const weather = weatherFor(currentWorldData);
+  const weatherVar = applyWeatherVar(weather, name, liveBzdb.get(name), {
+    evalNumber: (varName) => evalBzdb(liveBzdb, varName), isStockTexture: isStockTextureName,
+  });
+  if (weatherVar && weatherVar.weather !== weather) {
+    liveWeather = { world: currentWorldData, weather: weatherVar.weather };
+    renderManager.buildWeather(currentWorldMapSize, weatherVar.weather, OBSTACLES);
   }
 }
 

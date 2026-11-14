@@ -287,7 +287,17 @@ export class SkyRendering {
     // none, leaves them alone.
     this._skyTint = Array.isArray(gameConfig?.SKY_COLOR) ? gameConfig.SKY_COLOR : null;
 
-    if (fogMode === 'linear') {
+    // Fog a server moves every second is set in place: the same kind of fog
+    // keeps the same shaders.
+    const fog = this.scene.fog;
+    if (fogMode === 'linear' && fog?.isFog) {
+      fog.color.copy(baseFogColor);
+      fog.near = fogStart;
+      fog.far = fogEnd;
+    } else if (fogMode !== 'linear' && fogMode !== 'none' && fog?.isFogExp2) {
+      fog.color.copy(baseFogColor);
+      fog.density = fogDensity;
+    } else if (fogMode === 'linear') {
       this.scene.fog = new THREE.Fog(baseFogColor, fogStart, fogEnd);
     } else if (fogMode === 'exp' || fogMode === 'exp2') {
       this.scene.fog = new THREE.FogExp2(baseFogColor, fogDensity);
