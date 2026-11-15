@@ -6431,7 +6431,7 @@ const SDT_JITTER_ALLOWANCE = 0.25;
 // What GAME_CONFIG holds before server.json touches it, so the startup line
 // can name only what an operator changed.
 const GAME_CONFIG_DEFAULTS = { ...GAME_CONFIG };
-configureBzwParse({ log, gameConfigDefaults: GAME_CONFIG_DEFAULTS, ownHosts: ownHostNames() });
+configureBzwParse({ log, gameConfigDefaults: GAME_CONFIG_DEFAULTS, ownOrigins: ownOrigins() });
 
 
 // server.json's `bzdb`: upstream's command-line `-set`, by upstream's names and
@@ -7034,7 +7034,7 @@ function convertMapFile(fileName, filePath, { quiet = true, keepWorld = true } =
         filePath,
         quiet,
         gameConfigDefaults: GAME_CONFIG_DEFAULTS,
-        ownHosts: ownHostNames(),
+        ownOrigins: ownOrigins(),
         build: worldBuildOptions(fileName),
         writeDir: keepWorld ? MAP_CACHE_DIR : null,
       },
@@ -13457,21 +13457,21 @@ function getBzflagWorld() {
 // (CacheManager.cxx:72), which its DownloadAccess.txt then has to allow. A
 // bare name stays as it is, for the client's own data directory, as upstream.
 // A browser needs none of this: it is sent the path, on its own origin.
-// The host names this server answers at: every `publicUrl`'s and the
-// BZFlag `publicAddr`'s. A map's texture URL on one reaches a browser as a
-// path (`ownPath`, server/bzw-parse.cjs).
-function ownHostNames() {
-  const hosts = new Set();
+// The addresses this server's pages are served at, `host:port`: every
+// `publicUrl`'s, its port as written or its scheme's. A map's texture URL on
+// one reaches a browser as a path (`ownPath`, server/bzw-parse.cjs); the same
+// host on another port is another web server, whose files bzo does not have.
+function ownOrigins() {
+  const origins = new Set();
   for (const url of PUBLIC_URLS) {
     try {
-      hosts.add(new URL(url).hostname);
+      const parsed = new URL(url);
+      origins.add(`${parsed.hostname}:${parsed.port || (parsed.protocol === 'http:' ? '80' : '443')}`);
     } catch {
       // Not a URL; nothing to add.
     }
   }
-  const addr = typeof serverConfig.bzflag?.publicAddr === 'string' ? serverConfig.bzflag.publicAddr.trim() : '';
-  if (addr) hosts.add(addr.replace(/:\d+$/, '').replace(/^\[|\]$/g, ''));
-  return [...hosts];
+  return [...origins];
 }
 
 function nativeTextureName(name) {

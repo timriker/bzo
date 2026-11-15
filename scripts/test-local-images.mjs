@@ -84,20 +84,31 @@ const textureValues = (value, found = new Set()) => {
   return found;
 };
 
-// A texture URL on one of this server's own names reaches a browser as its
-// path; another host's stays a URL.
-configureBzwParse({ ownHosts: ['bz.example.org'] });
+// A texture URL on one of this server's own addresses reaches a browser as its
+// path; another host's stays a URL, and so does our host on another port --
+// a web server beside the bzo, as at whammo.bmbz.org (bzo on 5160, its
+// textures on 443).
+configureBzwParse({ ownOrigins: ['bz.example.org:5154', 'bz.example.org:443'] });
 const own = textureValues(parseBZWMap('own.bzw', { quiet: true, text: [
   'material', '  name a', '  texture http://bz.example.org:5154/img/a.png', 'end',
   'material', '  name b', '  texture https://BZ.example.org/img/b.png', 'end',
   'material', '  name c', '  texture http://images.bzflag.org/x/c.png', 'end',
+  'material', '  name d', '  texture http://bz.example.org:8080/img/d.png', 'end',
   'box', '  position 0 0 0', '  size 10 10 10', '  matref a', 'end',
   'box', '  position 50 0 0', '  size 10 10 10', '  matref b', 'end',
   'box', '  position -50 0 0', '  size 10 10 10', '  matref c', 'end',
+  'box', '  position 0 50 0', '  size 10 10 10', '  matref d', 'end',
 ].join('\n') }));
-assert.deepEqual([...own].sort(), ['//images.bzflag.org/x/c.png', '/img/a.png', '/img/b.png'],
-  'our host becomes a path; another host stays a URL');
-configureBzwParse({ ownHosts: [] });
+assert.deepEqual([...own].sort(),
+  ['//bz.example.org:8080/img/d.png', '//images.bzflag.org/x/c.png', '/img/a.png', '/img/b.png'],
+  'our address becomes a path; another host, or another port, stays a URL');
+configureBzwParse({ ownOrigins: ['whammo.example.org:5160'] });
+const beside = textureValues(parseBZWMap('beside.bzw', { quiet: true, text: [
+  'material', '  name a', '  texture http://whammo.example.org/textures/a.png', 'end',
+  'box', '  position 0 0 0', '  size 10 10 10', '  matref a', 'end',
+].join('\n') }));
+assert.deepEqual([...beside], ['//whammo.example.org/textures/a.png'], 'the web server beside a bzo stays a URL');
+configureBzwParse({ ownOrigins: [] });
 
 // A native client is sent an `/img/` name as an absolute URL, and a bare
 // name as written.

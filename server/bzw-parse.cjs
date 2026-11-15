@@ -29,14 +29,14 @@ const mapOverview = require('./map-overview.cjs');
 const path = require('path');
 
 // Where the parser's own log lines go, the server's config defaults it
-// reads a map's options against, and the host names the server answers at.
+// reads a map's options against, and the `host:port`s its pages are served at.
 let log = () => {};
 let GAME_CONFIG_DEFAULTS = {};
-let OWN_HOSTS = new Set();
+let OWN_ORIGINS = new Set();
 function configureBzwParse(options) {
   if (options.log) log = options.log;
   if (options.gameConfigDefaults) GAME_CONFIG_DEFAULTS = options.gameConfigDefaults;
-  if (options.ownHosts) OWN_HOSTS = new Set(options.ownHosts.map((host) => String(host).toLowerCase()));
+  if (options.ownOrigins) OWN_ORIGINS = new Set(options.ownOrigins.map((origin) => String(origin).toLowerCase()));
 }
 
 // Top-level BZW keywords a real map may use that bzo does not read at all --
@@ -1651,14 +1651,17 @@ function resolveBzwTextureName(rawName) {
   return null;
 }
 
-// A protocol-relative texture URL on one of this server's own host names,
-// as its path alone: a browser loads it from whichever address it opened,
-// with no cross-origin request.
+// A protocol-relative texture URL on one of this server's own addresses, as
+// its path alone: a browser loads it from whichever address it opened, with no
+// cross-origin request. Host and port both: `//whammo.bmbz.org/textures/...`
+// is whammo's web server on 443, not the bzo on 5160 beside it, and a path
+// would send the browser to the bzo, which has no such file. A URL with no
+// port is loaded on 443, the scheme a bzo page is served with.
 function ownPath(url) {
-  if (!url || OWN_HOSTS.size === 0) return url;
+  if (!url || OWN_ORIGINS.size === 0) return url;
   try {
     const parsed = new URL(`https:${url}`);
-    return OWN_HOSTS.has(parsed.hostname.toLowerCase()) ? parsed.pathname : url;
+    return OWN_ORIGINS.has(`${parsed.hostname.toLowerCase()}:${parsed.port || '443'}`) ? parsed.pathname : url;
   } catch {
     return url;
   }
