@@ -6,6 +6,8 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
 
 ## [Unreleased]
 
+## [1.4.2] - 2026-11-15
+
 ### Added
 - `excludeServers` in `server.json` names BZFlag servers whose operators
   asked to be left out of bzo's background checks; players can still open,
