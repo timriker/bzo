@@ -466,6 +466,7 @@ const GUEST_REPLIES = Object.freeze([
 // MsgReject's reasons (Protocol.h) that say nothing about guests: the server
 // is full, or has banned this host. Any other refusal of a well-formed join --
 // a plugin's `bz_eAllowPlayer` comes back as RejectBadRequest -- is one.
+const BANNED_REJECTS = new Set([0x0009, 0x000A, 0x000B]);
 const REJECT_NOT_ABOUT_GUESTS = new Set([
   0x0004, // RejectTeamFull
   0x0005, // RejectServerFull
@@ -523,6 +524,11 @@ async function enterAndProbe(socket, readFrame, selfId, probe = null, motto = IM
   // still there once the variables are, is a yes; turned away for a reason
   // that is not a full server or a ban is a no.
   const guest = {};
+  // A ban on this host (MsgReject's IP, host and ID bans): what /list says of
+  // the server rather than drawing it. A join let in clears it; no answer
+  // leaves whatever was known.
+  if (gone && rejectCode !== null) guest.banned = BANNED_REJECTS.has(rejectCode);
+  else if (accepted) guest.banned = false;
   if (accepted && !gone) {
     guest.watch = 'yes';
     guest.watchDetail = '';

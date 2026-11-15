@@ -461,6 +461,10 @@ window.attachList = function attachList(listId, filterId) {
         : -directions[field];
       const factor = directions[field];
       Array.from(list.children).sort((a, b) => {
+        // A server that bans bzo, or asked to be left out of its checks, stays
+        // at the bottom whatever the column.
+        const pinned = (entryFor(a.firstElementChild).nt || 0) - (entryFor(b.firstElementChild).nt || 0);
+        if (pinned) return pinned;
         const left = entryFor(a.firstElementChild)[field];
         const right = entryFor(b.firstElementChild)[field];
         // A blank goes to the bottom whichever way the column is sorted, so

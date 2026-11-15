@@ -1560,7 +1560,7 @@ msgstr "AutoPilot {pilot}: {intent}"
 msgid "AutoPilot {pilot}"
 msgstr "AutoPilot {pilot}"
 
-#: public/js/client.js:6802 server.js:11401
+#: public/js/client.js:6802 server.js:11428
 msgid "You do not have permission to speak on the admin channel."
 msgstr "Ya ain't allowed to holler on the admin channel."
 
@@ -1888,15 +1888,15 @@ msgstr "{count} teleporter"
 msgid "{count} teleporters"
 msgstr "{count} teleporters"
 
-#: public/js/client.js:10729 server.js:2593
+#: public/js/client.js:10729 server.js:2599
 msgid "water"
 msgstr "water"
 
-#: public/js/client.js:10730 server.js:2593
+#: public/js/client.js:10730 server.js:2599
 msgid "weather"
 msgstr "weather"
 
-#: public/js/client.js:10731 server.js:2593
+#: public/js/client.js:10731 server.js:2599
 msgid "custom ground"
 msgstr "homemade ground"
 
@@ -1908,7 +1908,7 @@ msgstr "Look-see {map}"
 msgid "{server} did not answer"
 msgstr "{server} didn't answer"
 
-#: public/js/client.js:10858 server.js:2523 server.js:2982 server.js:3036
+#: public/js/client.js:10858 server.js:2529 server.js:2997 server.js:3051
 msgid "Watch"
 msgstr "Watch"
 
@@ -1916,7 +1916,7 @@ msgstr "Watch"
 msgid "Watch the live game on {server}"
 msgstr "Watch the game a-goin' on {server}"
 
-#: public/js/client.js:10877 public/js/client.js:10885 server.js:2995
+#: public/js/client.js:10877 public/js/client.js:10885 server.js:3010
 msgid "Re-import"
 msgstr "Fetch again"
 
@@ -2008,7 +2008,7 @@ msgstr "Locked on {player}"
 msgid "Clear ({count})"
 msgstr "Clear ({count})"
 
-#: public/js/client.js:13363 public/js/list-page.js:534
+#: public/js/client.js:13363 public/js/list-page.js:538
 msgid "Clear"
 msgstr "Clear"
 
@@ -2281,19 +2281,19 @@ msgstr "Debug Mode: ON"
 msgid "Debug Mode: OFF"
 msgstr "Debug Mode: OFF"
 
-#: public/js/hud.js:821 server.js:2123
+#: public/js/hud.js:821 server.js:2127
 msgid "Red"
 msgstr "Red"
 
-#: public/js/hud.js:822 server.js:2123
+#: public/js/hud.js:822 server.js:2127
 msgid "Green"
 msgstr "Green"
 
-#: public/js/hud.js:823 server.js:2123
+#: public/js/hud.js:823 server.js:2127
 msgid "Blue"
 msgstr "Blue"
 
-#: public/js/hud.js:824 server.js:2123
+#: public/js/hud.js:824 server.js:2127
 msgid "Purple"
 msgstr "Purple"
 
@@ -2594,7 +2594,7 @@ msgid "{n} more lines"
 msgstr "{n} more lines"
 
 #: public/js/inspect-panel.mjs:123 public/js/inspect-panel.mjs:188
-#: server.js:1956
+#: server.js:1960
 msgid "World"
 msgstr "Whole Shebang"
 
@@ -2727,11 +2727,11 @@ msgstr "don't know no range label called '{label}'"
 msgid "bad range value, '{value}'"
 msgstr "busted range number, '{value}'"
 
-#: public/js/list-page.js:498
+#: public/js/list-page.js:502
 msgid ", filtered {count}"
 msgstr ", whittled down to {count}"
 
-#: public/js/list-page.js:535
+#: public/js/list-page.js:539
 msgid "Clear filter"
 msgstr "Clear out filter"
 
@@ -2927,347 +2927,347 @@ msgstr "Couldn't start grabbin' the microphone."
 msgid "Could not enumerate microphone devices."
 msgstr "Couldn't count up the microphone gadgets."
 
-#: server.js:1889
+#: server.js:1893
 msgid "Map hash"
 msgstr "Map hash"
 
-#: server.js:1928
+#: server.js:1932
 msgid "ignored by bzo"
 msgstr "bzo pays it no mind"
 
-#: server.js:1928
+#: server.js:1932
 msgid "read by bzo"
 msgstr "bzo reads it"
 
-#: server.js:1930
+#: server.js:1934
 msgid "{read}/{total} set"
 msgstr "{read}/{total} set"
 
-#: server.js:1952 server.js:3099
+#: server.js:1956 server.js:3114
 msgid "Version"
 msgstr "Version"
 
-#: server.js:1953
+#: server.js:1957
 msgid "BZFlag hash"
 msgstr "BZFlag hash"
 
-#: server.js:1956
+#: server.js:1960
 msgid "temporary"
 msgstr "just fer now"
 
-#: server.js:1959
+#: server.js:1963
 msgid "Variables"
 msgstr "Variables"
 
-#: server.js:1960
+#: server.js:1964
 msgid "sent/inflated"
 msgstr "sent/blowed up"
 
-#: server.js:2004 server.js:2033
+#: server.js:2008 server.js:2037
 msgid "Classic Capture-the-Flag"
 msgstr "Good Ol' Capture-the-Flag"
 
-#: server.js:2005 server.js:2036
+#: server.js:2009 server.js:2040
 msgid "Rabbit Chase"
 msgstr "Rabbit Chase"
 
-#: server.js:2006
+#: server.js:2010
 msgid "Open (Teamless) Free-For-All"
 msgstr "Open (No Kinfolk) Free-For-All"
 
-#: server.js:2007
+#: server.js:2011
 msgid "Free-style"
 msgstr "Free-style"
 
-#: server.js:2030
+#: server.js:2034
 msgid "Replay server"
 msgstr "Replay server"
 
-#: server.js:2038
+#: server.js:2042
 msgid "Free-for-all"
 msgstr "Free-for-all"
 
-#: server.js:2073
+#: server.js:2077
 msgid "World hash: sorts rows sharing a world together, unhashed last"
 msgstr "World hash: bunches up rows that share a world, unhashed ones last"
 
-#: server.js:2095
+#: server.js:2099
 msgid "just started"
 msgstr "just got goin'"
 
-#: server.js:2096
+#: server.js:2100
 msgid "{minutes}m"
 msgstr "{minutes}m"
 
-#: server.js:2098
+#: server.js:2102
 msgid "{hours}h {minutes}m"
 msgstr "{hours}h {minutes}m"
 
-#: server.js:2099
+#: server.js:2103
 msgid "{days}d {hours}h"
 msgstr "{days}d {hours}h"
 
-#: server.js:2123 server.js:2574 server.js:2815
+#: server.js:2127 server.js:2580 server.js:2824
 msgid "Observers"
 msgstr "Lookers-on"
 
-#: server.js:2142 server.js:2579
+#: server.js:2146 server.js:2585
 msgid "none"
 msgstr "none"
 
-#: server.js:2147
+#: server.js:2151
 msgid "{servers} with {players} player"
 msgstr "{servers} with {players} playah"
 
-#: server.js:2148
+#: server.js:2152
 msgid "{servers} with {players} players"
 msgstr "{servers} with {players} playahs"
 
-#: server.js:2149
+#: server.js:2153
 msgid ", {bots} bot"
 msgstr ", {bots} bot"
 
-#: server.js:2149
+#: server.js:2153
 msgid ", {bots} bots"
 msgstr ", {bots} bots"
 
-#: server.js:2160
+#: server.js:2164
 msgid ", {waiting} without overview"
 msgstr ", {waiting} without no overview"
 
-#: server.js:2186
+#: server.js:2190
 msgid "Super Flags"
 msgstr "Supah Flags"
 
-#: server.js:2187
+#: server.js:2191
 msgid "Antidote Flags"
 msgstr "Antidote Flags"
 
-#: server.js:2191
+#: server.js:2195
 msgid "{secs} sec To Drop Bad Flag"
 msgstr "{secs} sec To Drop Bad Flag"
 
-#: server.js:2192
+#: server.js:2196
 msgid "{secs} secs To Drop Bad Flag"
 msgstr "{secs} secs To Drop Bad Flag"
 
-#: server.js:2196
+#: server.js:2200
 msgid "{wins} Win Drops Bad Flag"
 msgstr "{wins} Win Drops Bad Flag"
 
-#: server.js:2196
+#: server.js:2200
 msgid "{wins} Wins Drops Bad Flag"
 msgstr "{wins} Wins Drops Bad Flag"
 
-#: server.js:2198
+#: server.js:2202
 msgid "No Teamkills"
 msgstr "No Shootin' Kin"
 
-#: server.js:2201
+#: server.js:2205
 msgid "Handicap"
 msgstr "Handicap"
 
-#: server.js:2202
+#: server.js:2206
 msgid "Inertia"
 msgstr "Inertia"
 
-#: server.js:2205
+#: server.js:2209
 msgid "No Bots"
 msgstr "No Bots"
 
-#: server.js:2209
+#: server.js:2213
 msgid "Guests Watch"
 msgstr "Guests Watch"
 
-#: server.js:2210
+#: server.js:2214
 msgid "No Guests"
 msgstr "No Guests"
 
-#: server.js:2211
+#: server.js:2215
 msgid "Guests Play"
 msgstr "Guests Play"
 
-#: server.js:2212
+#: server.js:2216
 msgid "Registered Only"
 msgstr "Registered Folks Only"
 
-#: server.js:2213
+#: server.js:2217
 msgid "Guests Chat"
 msgstr "Guests Chat"
 
-#: server.js:2214
+#: server.js:2218
 msgid "Guests Muted"
 msgstr "Guests Hush"
 
-#: server.js:2217
+#: server.js:2221
 msgid "Time limit"
 msgstr "Time limit"
 
-#: server.js:2218
+#: server.js:2222
 msgid "Max team score"
 msgstr "Max kinfolk score"
 
-#: server.js:2219
+#: server.js:2223
 msgid "Max player score"
 msgstr "Max playah score"
 
-#: server.js:2226
+#: server.js:2230
 msgid "{shots} Shot"
 msgstr "{shots} Shot"
 
-#: server.js:2227
+#: server.js:2231
 msgid "{shots} Shots"
 msgstr "{shots} Shots"
 
-#: server.js:2251
+#: server.js:2255
 msgid "Bots"
 msgstr "Bots"
 
-#: server.js:2290 server.js:2481 server.js:2720
+#: server.js:2296 server.js:2487 server.js:2726
 msgid "None."
 msgstr "None."
 
-#: server.js:2326
+#: server.js:2332
 msgid "hashing…"
 msgstr "hashin'…"
 
-#: server.js:2345
+#: server.js:2351
 msgid "Obj"
 msgstr "Obj"
 
-#: server.js:2349
+#: server.js:2355
 msgid "Obstacles in the world"
 msgstr "Stuff in the way in the world"
 
-#: server.js:2350
+#: server.js:2356
 msgid "Mesh faces in the world"
 msgstr "Mesh faces in the world"
 
-#: server.js:2351 server.js:2613
+#: server.js:2357 server.js:2619
 msgid "World size"
 msgstr "World size"
 
-#: server.js:2353
+#: server.js:2359
 msgid "Map file name"
 msgstr "Map file name"
 
-#: server.js:2353 server.js:2511
+#: server.js:2359 server.js:2517
 msgid "Name"
 msgstr "Name"
 
-#: server.js:2354
+#: server.js:2360
 msgid "Game style the map sets"
 msgstr "Game style the map sets"
 
-#: server.js:2370 server.js:2526 server.js:2930
+#: server.js:2376 server.js:2532 server.js:2945
 msgid "View map"
 msgstr "Look at map"
 
-#: server.js:2371
+#: server.js:2377
 msgid "Still hashing"
 msgstr "Still hashin'"
 
-#: server.js:2461
+#: server.js:2467
 msgid "Overview of {name}"
 msgstr "Overview of {name}"
 
-#: server.js:2493
+#: server.js:2499
 msgid "unreadable: {error}"
 msgstr "cain't read it: {error}"
 
-#: server.js:2494
+#: server.js:2500
 msgid " -- {viewers} watching"
 msgstr " -- {viewers} watchin'"
 
-#: server.js:2507
+#: server.js:2513
 msgid "When it was recorded (UTC)"
 msgstr "When it got recorded (UTC)"
 
-#: server.js:2508
+#: server.js:2514
 msgid "How long it runs"
 msgstr "How long it goes"
 
-#: server.js:2509
+#: server.js:2515
 msgid "Players in it, observers not counted"
 msgstr "Playahs in it, lookers-on not counted"
 
-#: server.js:2511
+#: server.js:2517
 msgid "Replay file name"
 msgstr "Replay file name"
 
-#: server.js:2512
+#: server.js:2518
 msgid "The map it was played on"
 msgstr "The map it got played on"
 
-#: server.js:2524
+#: server.js:2530
 msgid "Unreadable"
 msgstr "Cain't read it"
 
-#: server.js:2557
+#: server.js:2563
 msgid "{viewers} watching, at {time}"
 msgstr "{viewers} watchin', at {time}"
 
-#: server.js:2572
+#: server.js:2578
 msgid "Recorded by"
 msgstr "Recorded by"
 
-#: server.js:2575
+#: server.js:2581
 msgid "Now"
 msgstr "Right now"
 
-#: server.js:2577
+#: server.js:2583
 msgid "Error"
 msgstr "Error"
 
-#: server.js:2605
+#: server.js:2611
 msgid "Boxes"
 msgstr "Boxes"
 
-#: server.js:2606
+#: server.js:2612
 msgid "Pyramids"
 msgstr "Pyramids"
 
-#: server.js:2607
+#: server.js:2613
 msgid "Meshes"
 msgstr "Meshes"
 
-#: server.js:2608
+#: server.js:2614
 msgid "Bases"
 msgstr "Bases"
 
-#: server.js:2609
+#: server.js:2615
 msgid "Teleporters"
 msgstr "Teleporters"
 
-#: server.js:2614
+#: server.js:2620
 msgid "Has"
 msgstr "Got"
 
-#: server.js:2615
+#: server.js:2621
 msgid "Hashed"
 msgstr "Hashed"
 
-#: server.js:2615
+#: server.js:2621
 msgid "generated at boot"
 msgstr "cooked up at boot"
 
-#: server.js:2615
+#: server.js:2621
 msgid "yes"
 msgstr "yep"
 
-#: server.js:2615
+#: server.js:2621
 msgid "not yet"
 msgstr "not yet"
 
-#: server.js:2616
+#: server.js:2622
 msgid "Hash"
 msgstr "Hash"
 
-#: server.js:2617
+#: server.js:2623
 msgid "Modified"
 msgstr "Changed"
 
-#: server.js:2636
+#: server.js:2642
 msgid ""
 "Plain text is a glob over the address, description, version, hash and owner "
 "-- {examples} -- and a word with no {star} or {query} in it is wrapped in "
@@ -3277,7 +3277,7 @@ msgstr ""
 "-- {examples} -- an' a word with no {star} or {query} in it gets wrapped in "
 "both, so it matches anywheres."
 
-#: server.js:2639
+#: server.js:2645
 msgid ""
 "A leading {slash} starts filters instead: comma-separated, combined with "
 "{and}."
@@ -3285,11 +3285,11 @@ msgstr ""
 "A {slash} up front starts filters instead: split up with commas, hitched "
 "together with {and}."
 
-#: server.js:2640
+#: server.js:2646
 msgid "and"
 msgstr "and"
 
-#: server.js:2642
+#: server.js:2648
 msgid ""
 "A second {slash} starts another set, and a server matching either set is "
 "shown."
@@ -3297,79 +3297,79 @@ msgstr ""
 "A second {slash} starts another bunch, an' a server matchin' either bunch "
 "gets shown."
 
-#: server.js:2643
+#: server.js:2649
 msgid "{hash} begins a comment."
 msgstr "{hash} starts a comment."
 
-#: server.js:2644
+#: server.js:2650
 msgid "Booleans -- {on} for on, {off} for off"
 msgstr "True-or-false -- {on} fer on, {off} fer off"
 
-#: server.js:2645
+#: server.js:2651
 msgid "Free-for-all with teams"
 msgstr "Free-for-all with kinfolk"
 
-#: server.js:2646
+#: server.js:2652
 msgid "Open free-for-all, no teams"
 msgstr "Open free-for-all, no kinfolk"
 
-#: server.js:2647
+#: server.js:2653
 msgid "Capture-the-flag"
 msgstr "Capture-the-flag"
 
-#: server.js:2648
+#: server.js:2654
 msgid "Rabbit chase"
 msgstr "Rabbit chase"
 
-#: server.js:2649
+#: server.js:2655
 msgid "Tanks can jump unaided"
 msgstr "Tanks can jump all by theirselves"
 
-#: server.js:2650
+#: server.js:2656
 msgid "Shots ricochet"
 msgstr "Shots bounce"
 
-#: server.js:2651
+#: server.js:2657
 msgid "Score affects tank performance"
 msgstr "Score messes with how yer tank runs"
 
-#: server.js:2652
+#: server.js:2658
 msgid "Tanks have inertia"
 msgstr "Tanks got inertia"
 
-#: server.js:2653
+#: server.js:2659
 msgid "Antidote flags are spawned"
 msgstr "Antidote flags get spawned"
 
-#: server.js:2654
+#: server.js:2660
 msgid "A replay server"
 msgstr "A replay server"
 
-#: server.js:2655
+#: server.js:2661
 msgid "The pane has a map overview"
 msgstr "The pane's got a map overview"
 
-#: server.js:2656
+#: server.js:2662
 msgid "A generated world, which usually changes on restart"
 msgstr "A cooked-up world, which mostly changes on restart"
 
-#: server.js:2657
+#: server.js:2663
 msgid "Autopilot and robots allowed"
 msgstr "Autopilot an' robots allowed"
 
-#: server.js:2658
+#: server.js:2664
 msgid "Players with no bzflag.org login may join to observe"
 msgstr "Folks with no bzflag.org login can come watch"
 
-#: server.js:2659
+#: server.js:2665
 msgid "Players with no bzflag.org login may spawn"
 msgstr "Folks with no bzflag.org login can spawn"
 
-#: server.js:2660
+#: server.js:2666
 msgid "Players with no bzflag.org login may chat"
 msgstr "Folks with no bzflag.org login can chat"
 
-#: server.js:2662
+#: server.js:2668
 msgid ""
 "For {bots}, {guestWatch}, {guests} and {guestChat}, a server bzo has not "
 "found out about matches neither {plus} nor {minus}."
@@ -3377,67 +3377,67 @@ msgstr ""
 "Fer {bots}, {guestWatch}, {guests} an' {guestChat}, a server bzo ain't "
 "figured out yet matches neither {plus} nor {minus}."
 
-#: server.js:2666
+#: server.js:2672
 msgid "Numbers -- a name, then {operators}, then a number"
 msgstr "Numbers -- a name, then {operators}, then a number"
 
-#: server.js:2669
+#: server.js:2675
 msgid "Active shots a tank may have"
 msgstr "Shots a tank can have flyin' at once"
 
-#: server.js:2670
+#: server.js:2676
 msgid "Players now, observers excluded"
 msgstr "Playahs right now, lookers-on left out"
 
-#: server.js:2671
+#: server.js:2677
 msgid "Bots now"
 msgstr "Bots right now"
 
-#: server.js:2672
+#: server.js:2678
 msgid "Playing slots still free"
 msgstr "Playin' spots still open"
 
-#: server.js:2673
+#: server.js:2679
 msgid "Colour teams the server offers"
 msgstr "Color teams the server's got"
 
-#: server.js:2674
+#: server.js:2680
 msgid "Time limit, in seconds"
 msgstr "Time limit, in seconds"
 
-#: server.js:2675
+#: server.js:2681
 msgid "The server's own player ceiling"
 msgstr "The server's own playah ceilin'"
 
-#: server.js:2676
+#: server.js:2682
 msgid "Team score that ends the game"
 msgstr "Team score that ends the game"
 
-#: server.js:2677
+#: server.js:2683
 msgid "Player score that ends the game"
 msgstr "Playah score that ends the game"
 
-#: server.js:2678
+#: server.js:2684
 msgid "Kills that shed a bad flag"
 msgstr "Kills that shake off a bad flag"
 
-#: server.js:2679
+#: server.js:2685
 msgid "Tenths of a second to shed a bad flag"
 msgstr "Tenths of a second to shake off a bad flag"
 
-#: server.js:2680
+#: server.js:2686
 msgid "Players on rogue, red, green, blue, purple, observer"
 msgstr "Playahs on rogue, red, green, blue, purple, observer"
 
-#: server.js:2681
+#: server.js:2687
 msgid "That team's maximum"
 msgstr "That team's most"
 
-#: server.js:2682
+#: server.js:2688
 msgid "That team's free slots"
 msgstr "That team's open spots"
 
-#: server.js:2684
+#: server.js:2690
 msgid ""
 "Patterns -- a name, then {glob} for a glob or {regex} for a regular "
 "expression"
@@ -3445,39 +3445,39 @@ msgstr ""
 "Patterns -- a name, then {glob} fer a glob or {regex} fer a regular "
 "expression"
 
-#: server.js:2687
+#: server.js:2693
 msgid "The address, host and port"
 msgstr "The address, host an' port"
 
-#: server.js:2688
+#: server.js:2694
 msgid "The description"
 msgstr "The description"
 
-#: server.js:2689
+#: server.js:2695
 msgid "Either one"
 msgstr "Either one"
 
-#: server.js:2690
+#: server.js:2696
 msgid "The world hash the pane shows"
 msgstr "The world hash the pane shows"
 
-#: server.js:2691
+#: server.js:2697
 msgid "The server's version: {bzo} or bzfs's own build"
 msgstr "The server's version: {bzo} or bzfs's own build"
 
-#: server.js:2692
+#: server.js:2698
 msgid "The bzflag.org account that registered it"
 msgstr "The bzflag.org account that signed it up"
 
-#: server.js:2693
+#: server.js:2699
 msgid "The IP address the list server has for it"
 msgstr "The IP address the list server's got fer it"
 
-#: server.js:2694
+#: server.js:2700
 msgid "Any one world variable it sets, as {pair}"
 msgstr "Any one world variable it sets, as {pair}"
 
-#: server.js:2696
+#: server.js:2702
 msgid ""
 "A capitalised pattern name matches case-sensitively: {lower} ignores case, "
 "{upper} does not."
@@ -3485,55 +3485,55 @@ msgstr ""
 "A pattern name with a capital letter minds its upper an' lower case: {lower} "
 "don't care, {upper} does."
 
-#: server.js:2699
+#: server.js:2705
 msgid "Examples"
 msgstr "Fer instance"
 
-#: server.js:2700
+#: server.js:2706
 msgid "Two or three shots, and somebody playing"
 msgstr "Two or three shots, an' somebody playin'"
 
-#: server.js:2701
+#: server.js:2707
 msgid "Capture-the-flag between exactly two teams"
 msgstr "Capture-the-flag 'tween exactly two teams"
 
-#: server.js:2702
+#: server.js:2708
 msgid "Leagues, by description"
 msgstr "Leagues, by description"
 
-#: server.js:2703
+#: server.js:2709
 msgid "bzo servers only"
 msgstr "bzo servers only"
 
-#: server.js:2704
+#: server.js:2710
 msgid "No version known yet"
 msgstr "Don't know the version yet"
 
-#: server.js:2705
+#: server.js:2711
 msgid "Somebody is watching"
 msgstr "Somebody's watchin'"
 
-#: server.js:2706
+#: server.js:2712
 msgid "Rabbit chase, ricochet, three shots"
 msgstr "Rabbit chase, bouncin' shots, three shots"
 
-#: server.js:2707
+#: server.js:2713
 msgid "Either capture-the-flag or rabbit chase"
 msgstr "Either capture-the-flag or rabbit chase"
 
-#: server.js:2708
+#: server.js:2714
 msgid "No map overview yet"
 msgstr "No map overview yet"
 
-#: server.js:2709
+#: server.js:2715
 msgid "Lists {variable} at all, on or off; {off} is the one that means off"
 msgstr "Lists {variable} at all, on or off; {off} is the one that means off"
 
-#: server.js:2816
+#: server.js:2825
 msgid "Bots, blank where unknown"
 msgstr "Bots, blank where we don't know"
 
-#: server.js:2818
+#: server.js:2827
 msgid ""
 "Game type: yellow free-for-all, red capture-the-flag, white rabbit chase, "
 "cyan replay"
@@ -3541,135 +3541,143 @@ msgstr ""
 "Game type: yeller free-for-all, red capture-the-flag, white rabbit chase, "
 "cyan replay"
 
-#: server.js:2820
+#: server.js:2829
 msgid "Superflags"
 msgstr "Supahflags"
 
-#: server.js:2823
+#: server.js:2832
 msgid "This server already holds an import of that map"
 msgstr "This server's already got an import of that map"
 
-#: server.js:2827
+#: server.js:2836
 msgid "The name, or the address when a server has none"
 msgstr "The name, or the address when a server ain't got one"
 
-#: server.js:2827
+#: server.js:2836
 msgid "Name & Description"
 msgstr "Name & Description"
 
-#: server.js:2839
+#: server.js:2848
 msgid "Filter syntax"
 msgstr "Filter fixin's"
 
-#: server.js:2963
+#: server.js:2921
+msgid "Left out of bzo's checks at its operator's request"
+msgstr "Left out of bzo's checks 'cause the owner asked"
+
+#: server.js:2922
+msgid "This server bans bzo"
+msgstr "This here server done banned bzo"
+
+#: server.js:2978
 msgid "Address"
 msgstr "Address"
 
-#: server.js:2965 server.js:3087 server.js:3103 server.js:6310
+#: server.js:2980 server.js:3102 server.js:3118 server.js:6337
 msgid "Owner"
 msgstr "Owner"
 
-#: server.js:2966
+#: server.js:2981
 msgid "Imported"
 msgstr "Brung in"
 
-#: server.js:2980 server.js:3049
+#: server.js:2995 server.js:3064
 msgid "Launch"
 msgstr "Fire up"
 
-#: server.js:2986 server.js:3046 server/discovery.cjs:265
+#: server.js:3001 server.js:3061 server/discovery.cjs:265
 msgid "Play"
 msgstr "Play"
 
-#: server.js:2991
+#: server.js:3006
 msgid "Practice"
 msgstr ""
 
-#: server.js:2995
+#: server.js:3010
 msgid "Import"
 msgstr "Bring in"
 
-#: server.js:3036
+#: server.js:3051
 msgid "Enter game"
 msgstr "Git in the game"
 
-#: server.js:3048
+#: server.js:3063
 msgid "Login and Play"
 msgstr "Log in an' Play"
 
-#: server.js:3086
+#: server.js:3101
 msgid "BZFlag server"
 msgstr "BZFlag server"
 
-#: server.js:3088
+#: server.js:3103
 msgid "Carried by"
 msgstr "Toted by"
 
-#: server.js:3102
+#: server.js:3117
 msgid "Up"
 msgstr "Up"
 
-#: server.js:3104
+#: server.js:3119
 msgid "Voice chat"
 msgstr "Voice chat"
 
-#: server.js:3104
+#: server.js:3119
 msgid "configured"
 msgstr "set up"
 
-#: server.js:3106
+#: server.js:3121
 msgid "Also at"
 msgstr "Also at"
 
-#: server.js:3157
+#: server.js:3172
 msgid "(admin)"
 msgstr "(admin)"
 
-#: server.js:3158
+#: server.js:3173
 msgid "Log out"
 msgstr "Log out"
 
-#: server.js:3160
+#: server.js:3175
 msgid "Log in with your bzflag.org account to register a server"
 msgstr "Log in with yer bzflag.org account to sign up a server"
 
-#: server.js:3161
+#: server.js:3176
 msgid "Log in with your bzflag.org account"
 msgstr "Log in with yer bzflag.org account"
 
-#: server.js:3172
+#: server.js:3187
 msgid "maps"
 msgstr "maps"
 
-#: server.js:3172
+#: server.js:3187
 msgid "replays"
 msgstr "replays"
 
-#: server.js:3173
+#: server.js:3188
 msgid "keys"
 msgstr "keys"
 
-#: server.js:3173
+#: server.js:3188
 msgid "help"
 msgstr "he'p"
 
-#: server.js:3177
+#: server.js:3192
 msgid "Imported {file} -- it is in the local maps table below."
 msgstr "Brung in {file} -- it's in the local maps table down yonder."
 
-#: server.js:3179
+#: server.js:3194
 msgid "Import failed: {error}"
 msgstr "Bringin' it in went bust: {error}"
 
-#: server.js:3187
+#: server.js:3202
 msgid "bzo servers"
 msgstr "bzo servers"
 
-#: server.js:3420
+#: server.js:3441
 msgid "Public bzo servers - {count}"
 msgstr "Public bzo servers - {count}"
 
-#: server.js:3421
+#: server.js:3442
 msgid ""
 "From the designated bzo list server, {server} -- pick a row to read it; "
 "Enter, or the pane's own link, goes in."
@@ -3677,15 +3685,15 @@ msgstr ""
 "From the bzo list server in charge, {server} -- pick a row to read up on it; "
 "Enter, or the pane's own link, gits ya in."
 
-#: server.js:3422
+#: server.js:3443
 msgid "disabled on this instance"
 msgstr "turned off on this here instance"
 
-#: server.js:3426
+#: server.js:3447
 msgid "Public BZFlag servers - {count}"
 msgstr "Public BZFlag servers - {count}"
 
-#: server.js:3427
+#: server.js:3448
 msgid ""
 "From the public list server (my.bzflag.org), cached {seconds}s ago -- "
 "{refresh}."
@@ -3693,22 +3701,22 @@ msgstr ""
 "From the public list server (my.bzflag.org), saved {seconds}s ago -- "
 "{refresh}."
 
-#: server.js:3428
+#: server.js:3449
 msgid "refresh"
 msgstr "refresh"
 
-#: server.js:3430
+#: server.js:3451
 msgid ""
 "Pick a row to read it; its link views that map, and does not enter that game."
 msgstr ""
 "Pick a row to read up on it; its link shows that map, an' don't git ya in "
 "that game."
 
-#: server.js:3434
+#: server.js:3455
 msgid "Local maps - {count}"
 msgstr "Local maps - {count}"
 
-#: server.js:3435
+#: server.js:3456
 msgid ""
 "Already in this server's {directory} -- pick a row to read it; its link "
 "views that map."
@@ -3716,11 +3724,11 @@ msgstr ""
 "Already in this server's {directory} -- pick a row to read up on it; its "
 "link shows that map."
 
-#: server.js:3440
+#: server.js:3461
 msgid "Local replays - {count}"
 msgstr "Local replays - {count}"
 
-#: server.js:3441
+#: server.js:3462
 msgid ""
 "bzfs recordings in this server's {directory} -- pick a row to read it; Watch "
 "plays it to everyone watching that replay."
@@ -3728,7 +3736,7 @@ msgstr ""
 "bzfs recordin's in this server's {directory} -- pick a row to read up on it; "
 "Watch plays it fer ever'body watchin' that replay."
 
-#: server.js:3456
+#: server.js:3477
 msgid ""
 "bzo {version} (build {build}): BZFlag in the browser, on desktop, phone and "
 "headset, and this list of the servers to play it on."
@@ -3736,7 +3744,7 @@ msgstr ""
 "bzo {version} (build {build}): BZFlag in the browser, on desktop, phone an' "
 "headset, an' this here list of servers to play it on."
 
-#: server.js:3459
+#: server.js:3480
 msgid ""
 "Copyright (C) 2025-2026 Tim Riker. Free software under the {license}; source "
 "at {source}."
@@ -3744,25 +3752,27 @@ msgstr ""
 "Copyright (C) 2025-2026 Tim Riker. Free software under the {license}; source "
 "at {source}."
 
-#: server.js:3463
+#: server.js:3484
 msgid ""
 "Run a BZFlag server? {page} says when bzo visits it, and how to ask it to "
 "stay away."
-msgstr "Run a BZFlag server? {page} tells ya when bzo comes callin', and how to tell it to git."
+msgstr ""
+"Run a BZFlag server? {page} tells ya when bzo comes callin', and how to tell "
+"it to git."
 
-#: server.js:3464
+#: server.js:3485
 msgid "bzo on your BZFlag server"
 msgstr "bzo on yer BZFlag server"
 
-#: server.js:3522
+#: server.js:3543
 msgid "Could not reach the BZFlag list server. Try again shortly."
 msgstr "Couldn't get ahold of the BZFlag list server. Try again directly."
 
-#: server.js:6267
+#: server.js:6294
 msgid "List server key"
 msgstr "List server key"
 
-#: server.js:6269
+#: server.js:6296
 msgid ""
 "This instance is not the designated bzo list server. Manage this server's "
 "key at {link}."
@@ -3770,15 +3780,15 @@ msgstr ""
 "This instance ain't the bzo list server in charge. Tend to this server's key "
 "at {link}."
 
-#: server.js:6272
+#: server.js:6299
 msgid "The list server is disabled on this instance ({setting} is empty)."
 msgstr "The list server's turned off on this instance ({setting} is empty)."
 
-#: server.js:6279
+#: server.js:6306
 msgid "Generate key"
 msgstr "Make a key"
 
-#: server.js:6281
+#: server.js:6308
 msgid ""
 "Enter the server's own {setting} -- the same address it already answers "
 "admin-whitelist probes on."
@@ -3786,7 +3796,7 @@ msgstr ""
 "Put in the server's own {setting} -- the same address it already answers "
 "admin-whitelist probes on."
 
-#: server.js:6284
+#: server.js:6311
 msgid ""
 "The list server calls this address back to validate a report; it never "
 "trusts one a report claims for itself."
@@ -3794,39 +3804,39 @@ msgstr ""
 "The list server calls this address back to check a report; it don't never "
 "trust one a report claims fer itself."
 
-#: server.js:6286
+#: server.js:6313
 msgid "Log in above to register a server and generate a key."
 msgstr "Log in up yonder to sign up a server an' make a key."
 
-#: server.js:6289
+#: server.js:6316
 msgid "never"
 msgstr "never"
 
-#: server.js:6290
+#: server.js:6317
 msgid "stale"
 msgstr "gone stale"
 
-#: server.js:6291
+#: server.js:6318
 msgid "{players}/{max} players"
 msgstr "{players}/{max} playahs"
 
-#: server.js:6292
+#: server.js:6319
 msgid "never reported"
 msgstr "never checked in"
 
-#: server.js:6293
+#: server.js:6320
 msgid "Revoke"
 msgstr "Take it back"
 
-#: server.js:6294
+#: server.js:6321
 msgid "Failed"
 msgstr "Went bust"
 
-#: server.js:6295
+#: server.js:6322
 msgid "Key for {url}: {key}"
 msgstr "Key fer {url}: {key}"
 
-#: server.js:6296
+#: server.js:6323
 msgid ""
 "Paste this into that server's Operator panel -- also readable from the table "
 "above any time."
@@ -3834,15 +3844,15 @@ msgstr ""
 "Paste this into that server's Operator panel -- you can read it off the "
 "table up yonder any ol' time too."
 
-#: server.js:6298
+#: server.js:6325
 msgid "All registered keys"
 msgstr "All signed-up keys"
 
-#: server.js:6298
+#: server.js:6325
 msgid "Your keys"
 msgstr "Yer keys"
 
-#: server.js:6299
+#: server.js:6326
 msgid ""
 "This instance ({url}) is the designated bzo list server -- every other bzo "
 "instance reports here, so its own {list} can show the {table} above."
@@ -3850,479 +3860,479 @@ msgstr ""
 "This instance ({url}) is the bzo list server in charge -- ever' other bzo "
 "instance reports here, so its own {list} can show the {table} up yonder."
 
-#: server.js:6302
+#: server.js:6329
 msgid "bzo servers table"
 msgstr "bzo servers table"
 
-#: server.js:6304
+#: server.js:6331
 msgid "A {bzfs} server's key is a different one, from {link}."
 msgstr "A {bzfs} server's key is a diff'rent one, from {link}."
 
-#: server.js:6310
+#: server.js:6337
 msgid "Key"
 msgstr "Key"
 
-#: server.js:6311
+#: server.js:6338
 msgid "Requested"
 msgstr "Asked fer"
 
-#: server.js:6311
+#: server.js:6338
 msgid "Last checked"
 msgstr "Last checked"
 
-#: server.js:6312
+#: server.js:6339
 msgid "Status"
 msgstr "How it's doin'"
 
-#: server.js:7631
+#: server.js:7658
 msgid "Match duration is {duration}"
 msgstr "Match is gonna run {duration}"
 
-#: server.js:7641
+#: server.js:7668
 msgid "Match started"
 msgstr "Match done started"
 
-#: server.js:8048
+#: server.js:8075
 msgid "Your score record will be saved while you are in observer mode."
 msgstr "Yer score'll be saved while yer sittin' in observer mode."
 
-#: server.js:8053
+#: server.js:8080
 msgid "Your score has been restored."
 msgstr "Yer score's done been put back."
 
 #. TRANSLATORS: /me is a command name; keep it as it is
-#: server.js:8688
+#: server.js:8715
 msgid "{player}, the /me command requires an argument"
 msgstr "{player}, the /me command needs somethin' after it"
 
-#: server.js:8746
+#: server.js:8773
 msgid "Commands (use /<command>? for one of them):"
 msgstr "Commands (use /<command>? fer any one of 'em):"
 
-#: server.js:8791
+#: server.js:8818
 msgid "Recording started"
 msgstr "Recordin' started"
 
-#: server.js:8799 server.js:8856 server/messages-operator.cjs:332
+#: server.js:8826 server.js:8883 server/messages-operator.cjs:332
 msgid "Could not open for writing: {name} ({error})"
 msgstr "Couldn't open fer writin': {name} ({error})"
 
-#: server.js:8803
+#: server.js:8830
 msgid "Recording stopped"
 msgstr "Recordin' stopped"
 
-#: server.js:8811
+#: server.js:8838
 msgid "Record size set to {mbytes}"
 msgstr "Record size set to {mbytes}"
 
-#: server.js:8819
+#: server.js:8846
 msgid "Record rate set to {seconds}"
 msgstr "Record rate set to {seconds}"
 
-#: server.js:8823
+#: server.js:8850
 msgid "Not Recording"
 msgstr "Ain't Recordin'"
 
-#: server.js:8827
+#: server.js:8854
 msgid "Filename:  {name}"
 msgstr "Filename:  {name}"
 
-#: server.js:8828
+#: server.js:8855
 msgid "   saved:  {bytes} bytes / {packets} packets / {seconds} seconds"
 msgstr "   saved:  {bytes} bytes / {packets} packets / {seconds} seconds"
 
-#: server.js:8834
+#: server.js:8861
 msgid "Buffered:  {bytes} bytes / {packets} packets / {seconds} seconds"
 msgstr "Buffered:  {bytes} bytes / {packets} packets / {seconds} seconds"
 
-#: server.js:8848 server/messages-operator.cjs:323
+#: server.js:8875 server/messages-operator.cjs:323
 msgid "No buffer to save"
 msgstr "Ain't no buffer to save"
 
-#: server.js:8853 server/messages-operator.cjs:328
+#: server.js:8880 server/messages-operator.cjs:328
 msgid "Record buffer saved to: {name}"
 msgstr "Record buffer saved to: {name}"
 
-#: server.js:8867
+#: server.js:8894
 msgid "Recording to file: {name}"
 msgstr "Recordin' to file: {name}"
 
-#: server.js:8890 server.js:9839
+#: server.js:8917 server.js:9866
 msgid "BZFS Version: {version}"
 msgstr "BZFS Version: {version}"
 
-#: server.js:8928 server.js:10042
+#: server.js:8955 server.js:10069
 msgid "Nobody is here"
 msgstr "Ain't nobody here"
 
-#: server.js:8935
+#: server.js:8962
 msgid "server: {stats}"
 msgstr "server: {stats}"
 
-#: server.js:8977
+#: server.js:9004
 msgid "Usage: /setteam <#slot|PlayerName> <team>"
 msgstr "Usage: /setteam <#slot|PlayerName> <team>"
 
 #. TRANSLATORS: /setteam is a command name and {teams} lists team names as typed
-#: server.js:8984
+#: server.js:9011
 msgid "Usage: /setteam <#slot|PlayerName> <team> -- one of {teams}"
 msgstr "Usage: /setteam <#slot|PlayerName> <team> -- one of {teams}"
 
-#: server.js:8990
+#: server.js:9017
 msgid "\"{player}\" is not on a team to move from"
 msgstr "\"{player}\" ain't on a team to move from"
 
-#: server.js:8994
+#: server.js:9021
 msgid "\"{player}\" is already {team}"
 msgstr "\"{player}\" is already {team}"
 
-#: server.js:9000
+#: server.js:9027
 msgid "\"{player}\" moved to {team}"
 msgstr "\"{player}\" got moved to {team}"
 
-#: server.js:9001
+#: server.js:9028
 msgid "@{player} moved you to {team}"
 msgstr "@{player} moved ya to {team}"
 
-#: server.js:9030
+#: server.js:9057
 msgid "Moved to {position} facing {bearing}"
 msgstr "Moved to {position} a-facin' {bearing}"
 
-#: server.js:9033
+#: server.js:9060
 msgid "\"{player}\" moved to {position} facing {bearing}"
 msgstr "\"{player}\" got moved to {position} a-facin' {bearing}"
 
-#: server.js:9034
+#: server.js:9061
 msgid "@{player} moved you to {position} facing {bearing}"
 msgstr "@{player} moved ya to {position} a-facin' {bearing}"
 
-#: server.js:9047
+#: server.js:9074
 msgid "Usage: /msg \"some callsign\" some message"
 msgstr "Usage: /msg \"some callsign\" some message"
 
-#: server.js:9094
+#: server.js:9121
 msgid "Usage: /kill <#slot|PlayerName> [reason]"
 msgstr "Usage: /kill <#slot|PlayerName> [reason]"
 
-#: server.js:9099
+#: server.js:9126
 msgid "An observer has no tank to kill"
 msgstr "An observer ain't got no tank to kill"
 
-#: server.js:9103
+#: server.js:9130
 msgid "\"{player}\" is already dead"
 msgstr "\"{player}\" is already dead as a doornail"
 
-#: server.js:9110
+#: server.js:9137
 msgid "\"{player}\" killed"
 msgstr "\"{player}\" done got killed"
 
-#: server.js:9111
+#: server.js:9138
 msgid "You were killed by an operator: {reason}"
 msgstr "An operator done killed ya: {reason}"
 
-#: server.js:9112
+#: server.js:9139
 msgid "You were killed by an operator"
 msgstr "An operator done killed ya"
 
-#: server.js:9160
+#: server.js:9187
 msgid "You were banned from this server"
 msgstr "Y'all got banned from this here server"
 
-#: server.js:9161 server.js:9184
+#: server.js:9188 server.js:9211
 msgid "Reason given: {reason}"
 msgstr "Reason they give: {reason}"
 
-#: server.js:9162
+#: server.js:9189
 msgid "{player} banned by {admin}, reason: {reason}"
 msgstr "{player} got banned by {admin}, reason: {reason}"
 
-#: server.js:9174
+#: server.js:9201
 msgid "Syntax: /kick <#slot | PlayerName | \"Player Name\"> <reason>"
 msgstr "Syntax: /kick <#slot | PlayerName | \"Player Name\"> <reason>"
 
-#: server.js:9175 server.js:9204
+#: server.js:9202 server.js:9231
 msgid "\tPlease keep in mind that reason is displayed to the user."
 msgstr "\tNow keep in mind the reason gets showed to the feller."
 
-#: server.js:9178
+#: server.js:9205
 msgid "player \"{player}\" not found"
 msgstr "player \"{player}\" ain't nowhere to be found"
 
-#: server.js:9183
+#: server.js:9210
 msgid "You were kicked off the server"
 msgstr "Y'all got kicked off the server"
 
-#: server.js:9185
+#: server.js:9212
 msgid "{player} kicked by {admin}, reason: {reason}"
 msgstr "{player} got kicked by {admin}, reason: {reason}"
 
-#: server.js:9199
+#: server.js:9226
 msgid ""
 "Syntax: /ban <#slot | PlayerName | \"Player Name\" | ip> <duration> <reason>"
 msgstr ""
 "Syntax: /ban <#slot | PlayerName | \"Player Name\" | ip> <duration> <reason>"
 
-#: server.js:9200
+#: server.js:9227
 msgid "\t<duration> can be 'short' or 'default' for the default ban time "
 msgstr "\t<duration> can be 'short' or 'default' fer the regular ban time "
 
-#: server.js:9201
+#: server.js:9228
 msgid "\tor 'forever' or 'max' for infinite bans "
 msgstr "\tor 'forever' or 'max' fer bans that don't never end "
 
-#: server.js:9202
+#: server.js:9229
 msgid "\tor a time in the format <weeks>W<days>D<hours>H<minutes>M "
 msgstr "\tor a time wrote like <weeks>W<days>D<hours>H<minutes>M "
 
-#: server.js:9203
+#: server.js:9230
 msgid "\tor just a number of minutes "
 msgstr "\tor just a number of minutes "
 
-#: server.js:9226 server.js:9334
+#: server.js:9253 server.js:9361
 msgid "Error: invalid ban duration"
 msgstr "Error: that ban duration ain't right"
 
-#: server.js:9227 server.js:9335
+#: server.js:9254 server.js:9362
 msgid "Duration examples:  30m 1h  1d  1w  and mixing: 1w2d4h 1w2d1m"
 msgstr "Duration examples:  30m 1h  1d  1w  and mixin': 1w2d4h 1w2d1m"
 
-#: server.js:9236 server.js:9630
+#: server.js:9263 server.js:9657
 msgid "{player} has no trusted address to ban"
 msgstr "{player} ain't got no trusted address to ban"
 
-#: server.js:9242 server.js:9344
+#: server.js:9269 server.js:9371
 msgid "Pattern added to the BZID banlist"
 msgstr "Pattern added to the BZID banlist"
 
-#: server.js:9248
+#: server.js:9275
 msgid "Malformed address or invalid Player/Slot: {target}"
 msgstr "Busted-up address or no such Player/Slot: {target}"
 
-#: server.js:9252
+#: server.js:9279
 msgid "Pattern added to the IP banlist"
 msgstr "Pattern added to the IP banlist"
 
-#: server.js:9263
+#: server.js:9290
 msgid "Removed IP pattern from the ban list"
 msgstr "Took the IP pattern off the ban list"
 
-#: server.js:9265 server.js:9354
+#: server.js:9292 server.js:9381
 msgid "No pattern removed"
 msgstr "Didn't take off no pattern"
 
-#: server.js:9280
+#: server.js:9307
 msgid "Syntax: /checkip <ip>"
 msgstr "Syntax: /checkip <ip>"
 
-#: server.js:9285
+#: server.js:9312
 msgid "{address} is not banned."
 msgstr "{address} ain't banned."
 
-#: server.js:9288
+#: server.js:9315
 msgid "{address} is banned:"
 msgstr "{address} is banned:"
 
-#: server.js:9296
+#: server.js:9323
 msgid ""
 "Syntax: /idban <#slot|+id|PlayerName|\"Player Name\"> <duration> <reason>"
 msgstr ""
 "Syntax: /idban <#slot|+id|PlayerName|\"Player Name\"> <duration> <reason>"
 
-#: server.js:9297
+#: server.js:9324
 msgid "  Please keep in mind that reason is displayed to the user."
 msgstr "  Now keep in mind the reason gets showed to the feller."
 
-#: server.js:9308
+#: server.js:9335
 msgid "Error: invalid id pattern"
 msgstr "Error: that id pattern ain't right"
 
-#: server.js:9316
+#: server.js:9343
 msgid "could not find player ({player})"
 msgstr "couldn't find no player ({player})"
 
-#: server.js:9321
+#: server.js:9348
 msgid "no BZID for player ({player})"
 msgstr "ain't no BZID fer player ({player})"
 
-#: server.js:9352
+#: server.js:9379
 msgid "Removed id from the ban list"
 msgstr "Took the id off the ban list"
 
-#: server.js:9458
+#: server.js:9485
 msgid "Usage: /poll vote yes|no"
 msgstr "Usage: /poll vote yes|no"
 
-#: server.js:9459
+#: server.js:9486
 msgid "    or /poll ban playername"
 msgstr "    or /poll ban playername"
 
-#: server.js:9460
+#: server.js:9487
 msgid "    or /poll kick playername"
 msgstr "    or /poll kick playername"
 
-#: server.js:9461
+#: server.js:9488
 msgid "    or /poll kill playername"
 msgstr "    or /poll kill playername"
 
-#: server.js:9462
+#: server.js:9489
 msgid "    or /poll set variable value"
 msgstr "    or /poll set variable value"
 
-#: server.js:9463
+#: server.js:9490
 msgid "    or /poll flagreset"
 msgstr "    or /poll flagreset"
 
-#: server.js:9465
+#: server.js:9492
 msgid "    or /poll {action} {parameters}"
 msgstr ""
 
 #. TRANSLATORS: /vote is a command name; keep it as it is
-#: server.js:9474
+#: server.js:9501
 msgid "{player}, you are presently not authorized to run /vote"
 msgstr "{player}, ya ain't allowed to run /vote right now"
 
-#: server.js:9478 server.js:9525 server.js:9552
+#: server.js:9505 server.js:9552 server.js:9579
 msgid "ERROR: the poll arbiter has disappeared (this should never happen)"
 msgstr "ERROR: the poll arbiter done run off (this oughtn't never happen)"
 
-#: server.js:9482
+#: server.js:9509
 msgid "A poll is not presently in progress.  There is nothing to vote on"
 msgstr "There ain't no poll goin' on right now.  Ain't nothin' to vote on"
 
-#: server.js:9487
+#: server.js:9514
 msgid "{player}, you did not vote in favor or in opposition"
 msgstr "{player}, ya didn't vote fer nor agin"
 
-#: server.js:9488
+#: server.js:9515
 msgid "{player}, you did not provide a vote answer"
 msgstr "{player}, ya didn't give no vote answer"
 
-#: server.js:9489
+#: server.js:9516
 msgid "Usage: /vote yes|no|y|n|1|0|yea|nay|si|ja|nein|oui|non|sim|nao"
 msgstr "Usage: /vote yes|no|y|n|1|0|yea|nay|si|ja|nein|oui|non|sim|nao"
 
 #. TRANSLATORS: {action} is a /poll keyword (ban, kick, kill, set, reset), sent as typed
-#: server.js:9503
+#: server.js:9530
 msgid "{player}, your vote in favor of the {action} has been recorded"
 msgstr "{player}, yer vote fer the {action} done been counted"
 
-#: server.js:9504
+#: server.js:9531
 msgid "{player}, your vote in opposition of the {action} has been recorded"
 msgstr "{player}, yer vote agin the {action} done been counted"
 
-#: server.js:9506
+#: server.js:9533
 msgid "{player}, you have already voted on the poll to {action} {target}"
 msgstr "{player}, ya already voted on the poll to {action} {target}"
 
-#: server.js:9510
+#: server.js:9537
 msgid ""
 "{player}, there was an error while voting on the poll to {action} {target}"
 msgstr ""
 "{player}, somethin' went haywire votin' on the poll to {action} {target}"
 
 #. TRANSLATORS: /veto is a command name; keep it as it is
-#: server.js:9521
+#: server.js:9548
 msgid "{player}, you are presently not authorized to run /veto"
 msgstr "{player}, ya ain't allowed to run /veto right now"
 
-#: server.js:9529
+#: server.js:9556
 msgid "{player}, there is presently no active poll to veto"
 msgstr "{player}, there ain't no poll goin' to veto"
 
-#: server.js:9532
+#: server.js:9559
 msgid "{player}, you have cancelled the poll to {action} {target}"
 msgstr "{player}, ya done called off the poll to {action} {target}"
 
-#: server.js:9538
+#: server.js:9565
 msgid "The poll was cancelled by {player}"
 msgstr "{player} done called off the poll"
 
 #. TRANSLATORS: /poll is a command name; keep it as it is
-#: server.js:9548
+#: server.js:9575
 msgid "{player}, you are presently not authorized to run /poll"
 msgstr "{player}, ya ain't allowed to run /poll right now"
 
-#: server.js:9568
+#: server.js:9595
 msgid "A poll to {action} {target} is presently in progress"
 msgstr "A poll to {action} {target} is a-goin' on right now"
 
-#: server.js:9571
+#: server.js:9598
 msgid "Unable to start a new poll until the current one is over"
 msgstr "Can't start no new poll till this'n's over"
 
-#: server.js:9576
+#: server.js:9603
 msgid ""
 "Unable to initiate a new poll.  There are not enough registered players "
 "playing."
 msgstr "Can't start no new poll.  Ain't enough registered players a-playin'."
 
-#: server.js:9580
+#: server.js:9607
 msgid ""
 "There needs to be at least {required} other player and only {others} is "
 "available."
 msgstr ""
 "Gotta be at least {required} other player and there's only {others} around."
 
-#: server.js:9581
+#: server.js:9608
 msgid ""
 "There needs to be at least {required} other player and only {others} are "
 "available."
 msgstr ""
 "Gotta be at least {required} other player and there's only {others} around."
 
-#: server.js:9583
+#: server.js:9610
 msgid ""
 "There needs to be at least {required} other players and only {others} is "
 "available."
 msgstr ""
 "Gotta be at least {required} other players and there's only {others} around."
 
-#: server.js:9585
+#: server.js:9612
 msgid ""
 "There needs to be at least {required} other players and only {others} are "
 "available."
 msgstr ""
 "Gotta be at least {required} other players and there's only {others} around."
 
-#: server.js:9595
+#: server.js:9622
 msgid "/poll: incorrect syntax, argument required."
 msgstr "/poll: syntax ain't right, needs an argument."
 
-#: server.js:9601
+#: server.js:9628
 msgid "{player}, no target was specified for the [{action}] vote"
 msgstr "{player}, ya didn't say who the [{action}] vote's fer"
 
 #. TRANSLATORS: /poll and {action} are a command as typed; keep them as they are
-#: server.js:9603
+#: server.js:9630
 msgid "Usage: /poll {action} target"
 msgstr "Usage: /poll {action} target"
 
 #. TRANSLATORS: /poll {action} is a command as typed; keep it as it is
-#: server.js:9608
+#: server.js:9635
 msgid "{player}, you may not /poll {action} on this server"
 msgstr "{player}, ya can't /poll {action} on this here server"
 
-#: server.js:9616
+#: server.js:9643
 msgid "The player specified for a {action} vote is not here"
 msgstr "The player ya picked fer a {action} vote ain't here"
 
-#: server.js:9620
+#: server.js:9647
 msgid "You can't kill an observer!"
 msgstr "Ya can't kill an observer!"
 
-#: server.js:9626
+#: server.js:9653
 msgid "{player} is protected from being polled against."
 msgstr "{player} is protected from gettin' polled agin."
 
-#: server.js:9658
+#: server.js:9685
 msgid "You are not able to request a {action} poll right now, {player}"
 msgstr "Ya can't ask fer a {action} poll right now, {player}"
 
-#: server.js:9663
+#: server.js:9690
 msgid "A poll to {action} {target} has been requested by {player}"
 msgstr "{player} wants a poll to {action} {target}"
 
-#: server.js:9671
+#: server.js:9698
 msgid ""
 "{available} player is available, {needed} additional affirming vote required "
 "to pass the poll ({percentage} %)"
@@ -4330,7 +4340,7 @@ msgstr ""
 "{available} player around, {needed} more yes vote needed to pass the poll "
 "({percentage} %)"
 
-#: server.js:9672
+#: server.js:9699
 msgid ""
 "{available} player is available, {needed} additional affirming votes "
 "required to pass the poll ({percentage} %)"
@@ -4338,7 +4348,7 @@ msgstr ""
 "{available} player around, {needed} more yes votes needed to pass the poll "
 "({percentage} %)"
 
-#: server.js:9675
+#: server.js:9702
 msgid ""
 "{available} players are available, {needed} additional affirming vote "
 "required to pass the poll ({percentage} %)"
@@ -4346,7 +4356,7 @@ msgstr ""
 "{available} players around, {needed} more yes vote needed to pass the poll "
 "({percentage} %)"
 
-#: server.js:9676
+#: server.js:9703
 msgid ""
 "{available} players are available, {needed} additional affirming votes "
 "required to pass the poll ({percentage} %)"
@@ -4354,24 +4364,24 @@ msgstr ""
 "{available} players around, {needed} more yes votes needed to pass the poll "
 "({percentage} %)"
 
-#: server.js:9681
+#: server.js:9708
 msgid "Unable to automatically place your vote for some unknown reason"
 msgstr "Couldn't cast yer vote fer ya, dunno why"
 
-#: server.js:9709
+#: server.js:9736
 msgid ""
 "You have been temporarily banned due to sufficient votes to have you removed"
 msgstr "Y'all been banned fer a spell 'cause enough folks voted ya out"
 
-#: server.js:9715
+#: server.js:9742
 msgid "You have been kicked due to sufficient votes to have you removed"
 msgstr "Y'all been kicked 'cause enough folks voted ya out"
 
-#: server.js:9721
+#: server.js:9748
 msgid "You have been killed due to sufficient votes"
 msgstr "Y'all been killed 'cause enough folks voted fer it"
 
-#: server.js:9744
+#: server.js:9771
 msgid ""
 "A poll to {action} {target} has begun.  Players have up to {seconds} seconds "
 "to vote."
@@ -4379,27 +4389,27 @@ msgstr ""
 "A poll to {action} {target} done started.  Folks got up to {seconds} seconds "
 "to vote."
 
-#: server.js:9752
+#: server.js:9779
 msgid "{seconds} seconds remain in the poll to {action} {target}."
 msgstr "{seconds} seconds left in the poll to {action} {target}."
 
-#: server.js:9760
+#: server.js:9787
 msgid "Enough votes were collected to {action} {target} early."
 msgstr "Got enough votes to {action} {target} early."
 
-#: server.js:9761
+#: server.js:9788
 msgid "Enough votes were collected to reset all unused flags early."
 msgstr "Got enough votes to reset all them unused flags early."
 
-#: server.js:9777
+#: server.js:9804
 msgid "Poll Results: {yes} in favor, {no} oppose, {abstain} abstain"
 msgstr "Poll Results: {yes} fer, {no} agin, {abstain} sittin' out"
 
-#: server.js:9785
+#: server.js:9812
 msgid "The poll to {action} {target} was not successful"
 msgstr "The poll to {action} {target} didn't pan out"
 
-#: server.js:9794
+#: server.js:9821
 msgid ""
 "The poll is now closed and was successful.  {target} is scheduled to be "
 "temporarily banned."
@@ -4407,408 +4417,408 @@ msgstr ""
 "The poll's closed and it passed.  {target} is fixin' to get banned fer a "
 "spell."
 
-#: server.js:9795
+#: server.js:9822
 msgid ""
 "The poll is now closed and was successful.  {target} is scheduled to be "
 "kicked."
 msgstr "The poll's closed and it passed.  {target} is fixin' to get kicked."
 
-#: server.js:9796
+#: server.js:9823
 msgid ""
 "The poll is now closed and was successful.  {target} is scheduled to be "
 "killed."
 msgstr "The poll's closed and it passed.  {target} is fixin' to get killed."
 
-#: server.js:9799
+#: server.js:9826
 msgid ""
 "The poll is now closed and was successful.  {target} is scheduled to be "
 "{action}."
 msgstr "The poll's closed and it passed.  {target} is fixin' to get {action}."
 
-#: server.js:9807
+#: server.js:9834
 msgid "{target} has been kicked."
 msgstr "{target} done got kicked."
 
-#: server.js:9808
+#: server.js:9835
 msgid "{target} has been killed."
 msgstr "{target} done got killed."
 
-#: server.js:9810
+#: server.js:9837
 msgid "{target} has been {action}"
 msgstr "{target} done got {action}"
 
-#: server.js:9825
+#: server.js:9852
 msgid "{player}'s client version:"
 msgstr "{player}'s client version:"
 
-#: server.js:9826
+#: server.js:9853
 msgid "  {version}"
 msgstr "  {version}"
 
-#: server.js:9827
+#: server.js:9854
 msgid "  unknown"
 msgstr "  dunno"
 
-#: server.js:9833
+#: server.js:9860
 msgid "Player not found."
 msgstr "Can't find that player."
 
-#: server.js:9864
+#: server.js:9891
 msgid "Countdown cancelled by {player}."
 msgstr "{player} called off the countdown."
 
-#: server.js:9864
+#: server.js:9891
 msgid "Countdown cancelled"
 msgstr "Countdown called off"
 
-#: server.js:9890
+#: server.js:9917
 msgid "No match is running to pause"
 msgstr "Ain't no match runnin' to pause"
 
-#: server.js:9898
+#: server.js:9925
 msgid "No paused match to resume"
 msgstr "Ain't no paused match to pick back up"
 
-#: server.js:9905
+#: server.js:9932
 msgid "There is no running countdown to cancel"
 msgstr "Ain't no countdown runnin' to call off"
 
-#: server.js:9913
+#: server.js:9940
 msgid "Usage: /countdown [<seconds>|pause|resume|cancel]"
 msgstr "Usage: /countdown [<seconds>|pause|resume|cancel]"
 
-#: server.js:9918
+#: server.js:9945
 msgid "There is a countdown already in progress"
 msgstr "There's already a countdown a-goin'"
 
-#: server.js:9922
+#: server.js:9949
 msgid "A game is already in progress"
 msgstr "There's already a game a-goin'"
 
-#: server.js:9926 server.js:9929
+#: server.js:9953 server.js:9956
 msgid "Countdown set to {seconds} instead of {asked}"
 msgstr "Countdown set to {seconds} 'stead of {asked}"
 
-#: server.js:9938
+#: server.js:9965
 msgid "Countdown started by {player}."
 msgstr "{player} done started the countdown."
 
-#: server.js:9939
+#: server.js:9966
 msgid "Match begins in about {duration}"
 msgstr "Match starts in 'bout {duration}"
 
-#: server.js:9947
+#: server.js:9974
 msgid "The match has started!...Good Luck Teams!"
 msgstr "The match done started!...Good Luck Teams!"
 
-#: server.js:9951
+#: server.js:9978
 msgid "Start your engines!......"
 msgstr "Fire up them engines!......"
 
-#: server.js:9953
+#: server.js:9980
 msgid "{seconds}..."
 msgstr "{seconds}..."
 
-#: server.js:9965
+#: server.js:9992
 msgid "No match is running"
 msgstr "Ain't no match runnin'"
 
-#: server.js:9977
+#: server.js:10004
 msgid "Usage: /say <message>"
 msgstr "Usage: /say <message>"
 
-#: server.js:9993
+#: server.js:10020
 msgid "Usage: /mute <#slot|PlayerName>"
 msgstr "Usage: /mute <#slot|PlayerName>"
 
-#: server.js:9999
+#: server.js:10026
 msgid "\"{player}\" is now muted"
 msgstr "\"{player}\" done got hushed"
 
-#: server.js:10000
+#: server.js:10027
 msgid "You have been muted by an operator"
 msgstr "An operator done hushed ya"
 
-#: server.js:10009
+#: server.js:10036
 msgid "Usage: /unmute <#slot|PlayerName>"
 msgstr "Usage: /unmute <#slot|PlayerName>"
 
-#: server.js:10015
+#: server.js:10042
 msgid "\"{player}\" is no longer muted"
 msgstr "\"{player}\" ain't hushed no more"
 
-#: server.js:10016
+#: server.js:10043
 msgid "You are no longer muted"
 msgstr "Ya ain't hushed no more"
 
-#: server.js:10024
+#: server.js:10051
 msgid "Nobody is muted"
 msgstr "Ain't nobody hushed"
 
-#: server.js:10137
+#: server.js:10164
 msgid "Usage: /flag drop [#slot|PlayerName]"
 msgstr "Usage: /flag drop [#slot|PlayerName]"
 
-#: server.js:10144
+#: server.js:10171
 msgid "You are not carrying a flag"
 msgstr "Ya ain't carryin' no flag"
 
-#: server.js:10145
+#: server.js:10172
 msgid "\"{player}\" is not carrying a flag"
 msgstr "\"{player}\" ain't carryin' no flag"
 
-#: server.js:10154
+#: server.js:10181
 msgid "Dropped {flag} from \"{player}\""
 msgstr "Dropped {flag} off \"{player}\""
 
-#: server.js:10155
+#: server.js:10182
 msgid "Your {flag} flag was dropped"
 msgstr "Yer {flag} flag got dropped"
 
-#: server.js:10169
+#: server.js:10196
 msgid "{count} flags sent up"
 msgstr "{count} flags sent on up"
 
-#: server.js:10179
+#: server.js:10206
 msgid "{count} flags reset"
 msgstr "{count} flags reset"
 
-#: server.js:10184
+#: server.js:10211
 msgid "No flags are in the world"
 msgstr "Ain't no flags in the world"
 
-#: server.js:10202
+#: server.js:10229
 msgid "Usage: /flag take <#slot|PlayerName>"
 msgstr "Usage: /flag take <#slot|PlayerName>"
 
 #. TRANSLATORS: /flag take is a command name; keep it as it is
-#: server.js:10209
+#: server.js:10236
 msgid "/flag take: player ({player}) does not have a flag"
 msgstr "/flag take: player ({player}) ain't got no flag"
 
-#: server.js:10218
+#: server.js:10245
 msgid "{admin} took flag {flag}/{slot} from {player}"
 msgstr "{admin} took flag {flag}/{slot} off {player}"
 
-#: server.js:10230
+#: server.js:10257
 msgid "Usage: /flag give <#slot|PlayerName> <#flagId|FlagAbbr> [force]"
 msgstr "Usage: /flag give <#slot|PlayerName> <#flagId|FlagAbbr> [force]"
 
-#: server.js:10246
+#: server.js:10273
 msgid "flag {flag} is not in this world"
 msgstr "flag {flag} ain't in this world"
 
-#: server.js:10253 server.js:10291
+#: server.js:10280 server.js:10318
 msgid "you may need to use the force"
 msgstr "ya might need to use the force"
 
-#: server.js:10260
+#: server.js:10287
 msgid "flag {flag} is an empty slot"
 msgstr "flag {flag} is an empty slot"
 
-#: server.js:10266
+#: server.js:10293
 msgid "bad flag type"
 msgstr "busted flag type"
 
-#: server.js:10288
+#: server.js:10315
 msgid "flag type not found"
 msgstr "flag type ain't found"
 
-#: server.js:10297
+#: server.js:10324
 msgid "An observer has no tank to carry a flag"
 msgstr "An observer ain't got no tank to carry a flag"
 
 #. TRANSLATORS: /flag give is a command name; keep it as it is
-#: server.js:10304
+#: server.js:10331
 msgid "/flag give: player ({player}) is not alive"
 msgstr "/flag give: player ({player}) ain't alive"
 
-#: server.js:10325
+#: server.js:10352
 msgid "{admin} gave flag {flag}/{slot} to {player}"
 msgstr "{admin} give flag {flag}/{slot} to {player}"
 
-#: server.js:10352
+#: server.js:10379
 msgid "Usage: /mv [player] <x,y> [facing]"
 msgstr "Usage: /mv [player] <x,y> [facing]"
 
-#: server.js:10367
+#: server.js:10394
 msgid "An observer has no tank to move"
 msgstr "An observer ain't got no tank to move"
 
-#: server.js:10410
+#: server.js:10437
 msgid "Nowhere to stand at {x},{y}"
 msgstr "Ain't nowhere to stand at {x},{y}"
 
-#: server.js:10477
+#: server.js:10504
 msgid "Checking another player's position requires operator status"
 msgstr "Checkin' 'nother player's spot takes operator status"
 
-#: server.js:10483
+#: server.js:10510
 msgid "Usage: /pos [player]"
 msgstr "Usage: /pos [player]"
 
-#: server.js:10489
+#: server.js:10516
 msgid "An observer has no tank position"
 msgstr "An observer ain't got no tank position"
 
-#: server.js:10497
+#: server.js:10524
 msgid "You are at {position} facing {bearing}"
 msgstr "Yer at {position} a-facin' {bearing}"
 
-#: server.js:10498
+#: server.js:10525
 msgid "\"{player}\" is at {position} facing {bearing}"
 msgstr "\"{player}\" is at {position} a-facin' {bearing}"
 
-#: server.js:10969
+#: server.js:10996
 msgid "All shots now ricochet"
 msgstr "Every shot bounces now"
 
-#: server.js:10969
+#: server.js:10996
 msgid "Shots no longer ricochet"
 msgstr "Shots don't bounce no more"
 
-#: server.js:11135
+#: server.js:11162
 msgid "usage: set <name> [<value>]"
 msgstr "usage: set <name> [<value>]"
 
-#: server.js:11136
+#: server.js:11163
 msgid "bzo's own: {variables}"
 msgstr "bzo's own: {variables}"
 
 #. TRANSLATORS: /set is a command name; keep it as it is
-#: server.js:11156
+#: server.js:11183
 msgid "/set failed, reason: variable {name} does not exist"
 msgstr "/set failed, reason: variable {name} don't exist"
 
-#: server.js:11157 server.js:11191
+#: server.js:11184 server.js:11218
 msgid "variable {name} does not exist"
 msgstr "variable {name} don't exist"
 
-#: server.js:11161
+#: server.js:11188
 msgid "{name} is {value}"
 msgstr "{name} is {value}"
 
 #. TRANSLATORS: /set is a command name; keep it as it is
-#: server.js:11166
+#: server.js:11193
 msgid "/set failed, reason: variable {name} is not writeable"
 msgstr "/set failed, reason: variable {name} can't be wrote to"
 
-#: server.js:11172
+#: server.js:11199
 msgid "{name} set"
 msgstr "{name} set"
 
-#: server.js:11173
+#: server.js:11200
 msgid "Variable Modification Notice by {player} of set {name} {value}"
 msgstr "Variable Change Notice from {player}: set {name} {value}"
 
-#: server.js:11183
+#: server.js:11210
 msgid "usage: reset <name>"
 msgstr "usage: reset <name>"
 
-#: server.js:11194
+#: server.js:11221
 msgid "variable {name} is not writeable"
 msgstr "variable {name} can't be wrote to"
 
-#: server.js:11200
+#: server.js:11227
 msgid "all variables reset"
 msgstr "all variables reset"
 
-#: server.js:11201
+#: server.js:11228
 msgid "{name} reset"
 msgstr "{name} reset"
 
-#: server.js:11205
+#: server.js:11232
 msgid "Variable Reset Notice by {player} of reset {name}"
 msgstr "Variable Reset Notice from {player}: reset {name}"
 
-#: server.js:11233
+#: server.js:11260
 msgid "No command starting with {prefix}"
 msgstr "Ain't no command startin' with {prefix}"
 
-#: server.js:11247
+#: server.js:11274
 msgid "The {command} command is only for players in the game"
 msgstr ""
 
-#: server.js:11253 server.js:11276
+#: server.js:11280 server.js:11303
 msgid "You do not have permission to run the {command} command"
 msgstr "Ya ain't allowed to run the {command} command"
 
-#: server.js:11327
+#: server.js:11354
 msgid "We're sorry, you are not allowed to talk!"
 msgstr "Sorry, partner, ya ain't allowed to talk!"
 
-#: server.js:11567
+#: server.js:11594
 msgid "You signed in as {player} on another device."
 msgstr "Ya signed in as {player} on another gizmo."
 
-#: server.js:11589
+#: server.js:11616
 msgid "{player} signed in with that name, so yours is now {name}."
 msgstr "{player} signed in with that name, so yers is {name} now."
 
-#: server.js:13798
+#: server.js:13825
 msgid "Global login approved!"
 msgstr "Global login's good to go!"
 
-#: server.js:13800
+#: server.js:13827
 msgid "Global login rejected, bad token."
 msgstr "Global login got turned down, bad token."
 
-#: server.js:13802
+#: server.js:13829
 msgid "This callsign is not registered."
 msgstr "This here callsign ain't registered."
 
-#: server.js:13803
+#: server.js:13830
 msgid "You can register it at https://forums.bzflag.org/"
 msgstr "Ya can register it at https://forums.bzflag.org/"
 
-#: server.js:14409
+#: server.js:14436
 msgid "{count} shots left"
 msgstr "{count} shots left"
 
-#: server.js:14410
+#: server.js:14437
 msgid "1 shot left"
 msgstr "1 shot left"
 
-#: server.js:14886
+#: server.js:14913
 msgid "I'm sorry, we do not allow autopilot on this server."
 msgstr "Sorry, we don't 'low no autopilot on this here server."
 
-#: server.js:16946
+#: server.js:16973
 msgid "Server restarting: {reason}"
 msgstr "Server's a-restartin': {reason}"
 
-#: server.js:18292
+#: server.js:18319
 msgid "The pilots have not loaded"
 msgstr "The pilots ain't loaded"
 
 #. TRANSLATORS: a command's syntax; keep it as it is
-#: server.js:18304
+#: server.js:18331
 msgid "Usage: /bot fill <0-{max}> [{pilots}]"
 msgstr "Usage: /bot fill <0-{max}> [{pilots}]"
 
-#: server.js:18308
+#: server.js:18335
 msgid "No pilot \"{pilot}\"; one of {pilots}"
 msgstr "Ain't no pilot \"{pilot}\"; one of {pilots}"
 
 #. TRANSLATORS: a command's syntax; keep /bot add as it is
-#: server.js:18330
+#: server.js:18357
 msgid "Usage: /bot add [{pilots}] [team] [count]"
 msgstr "Usage: /bot add [{pilots}] [team] [count]"
 
-#: server.js:18351
+#: server.js:18378
 msgid "{player} paused the bots and autopilots"
 msgstr "{player} done paused the bots an' autopilots"
 
-#: server.js:18352
+#: server.js:18379
 msgid "{player} resumed the bots and autopilots"
 msgstr "{player} done got the bots an' autopilots goin' again"
 
-#: server.js:18364
+#: server.js:18391
 msgid "Usage: /bot remove <name|all>"
 msgstr "Usage: /bot remove <name|all>"
 
 #. TRANSLATORS: a command's syntax; keep /bot, fill, add, remove, all, pause and resume as they are
-#: server.js:18376
+#: server.js:18403
 msgid ""
 "Usage: /bot [fill <n> [{pilots}] | add [{pilots}] [team] [count] | remove "
 "<name|all> | pause | resume]"
@@ -4816,51 +4826,51 @@ msgstr ""
 "Usage: /bot [fill <n> [{pilots}] | add [{pilots}] [team] [count] | remove "
 "<name|all> | pause | resume]"
 
-#: server.js:18403
+#: server.js:18430
 msgid "Server shutting down"
 msgstr "Server's a-shuttin' down"
 
-#: server.js:18413
+#: server.js:18440
 msgid "Server restarting"
 msgstr "Server's a-restartin'"
 
-#: server.js:18643
+#: server.js:18670
 msgid "You have been kicked from the server for: {reason}"
 msgstr ""
 
-#: server.js:18644
+#: server.js:18671
 msgid "{player} was kicked for:{reason}"
 msgstr ""
 
-#: server.js:18898
+#: server.js:18925
 msgid "No Plug-ins loaded."
 msgstr ""
 
-#: server.js:18901
+#: server.js:18928
 msgid "Plug-ins loaded:"
 msgstr ""
 
-#: server.js:18910
+#: server.js:18937
 msgid "Usage: /loadplugin plug-in"
 msgstr ""
 
-#: server.js:18918 server.js:18929
+#: server.js:18945 server.js:18956
 msgid "Plug-in load failed."
 msgstr ""
 
-#: server.js:18926
+#: server.js:18953
 msgid "Plug-in loaded."
 msgstr ""
 
-#: server.js:18938
+#: server.js:18965
 msgid "Usage: /unloadplugin plug-in"
 msgstr ""
 
-#: server.js:18944
+#: server.js:18971
 msgid "Plug-In {name} unloaded."
 msgstr ""
 
-#: server.js:18947
+#: server.js:18974
 msgid "Plug-in {name} is not loaded."
 msgstr ""
 

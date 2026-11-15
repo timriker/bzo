@@ -1758,6 +1758,10 @@ function publishWorldFacts(host, port) {
     guestWatch: guestAnswer(record?.guest?.watch),
     guestChat: guestAnswer(record?.guest?.chat),
     guestSpawn: guestAnswer(record?.guest?.spawn),
+    // Why this server has no picture on purpose: it bans bzo, or its operator
+    // asked to be left out (`excludeServers`, docs/server-check.md).
+    banned: record?.guest?.banned === true || undefined,
+    excluded: isExcludedServer(host, port) || undefined,
   };
   return Object.values(facts).some((value) => value) ? facts : null;
 }
@@ -2257,9 +2261,11 @@ function renderListReadout(entry, hidden, t) {
     + limits
     + `</div>`
     + `</div></div>`
-    + (entry.overviewUrl === undefined
-      ? ''
-      : renderOverview(entry.overviewUrl, entry.desc || entry.addr, t))
+    + (entry.note
+      ? `<div class="overview overviewNote"><p>${escapeHtml(entry.note)}</p></div>`
+      : entry.overviewUrl === undefined
+        ? ''
+        : renderOverview(entry.overviewUrl, entry.desc || entry.addr, t))
     + `</div></div>`;
 }
 
@@ -2727,7 +2733,8 @@ function renderServerList(listId, filterId, unsorted, t) {
   // row with its own count.
   const count = (value) => (typeof value === 'number' ? value : -1);
   const label = (entry) => (entry.desc || entry.addr || '').toLowerCase();
-  const entries = [...unsorted].sort((a, b) => (count(b.players) - count(a.players))
+  const entries = [...unsorted].sort((a, b) => (Boolean(a.note) - Boolean(b.note))
+    || (count(b.players) - count(a.players))
     || (count(b.observers) - count(a.observers))
     || (count(b.bots) - count(a.bots))
     || label(a).localeCompare(label(b))
@@ -2762,6 +2769,8 @@ function renderServerList(listId, filterId, unsorted, t) {
     an: set(entry, GAME_OPTION_BITS.antidote),
     im: entry.imported ? 1 : 0,
     ov: entry.overviewUrl ? 1 : 0,
+    // Banned or left out: pinned below every other row whatever the sort.
+    nt: entry.note ? 1 : 0,
     tmp: /^t/i.test(entry.hash || '') ? 1 : 0,
     // Facts bzo may not have: 1 or 0 where it knows, null where it does not,
     // so neither `+name` nor `-name` claims a server it has not asked.
@@ -2906,8 +2915,14 @@ function renderListTables({ servers, bzoServers, canWatch, locale }) {
     const importedPath = resolveMapFilePath(importFileName);
     const maxima = Array.isArray(info.teamMaximums) ? info.teamMaximums : [];
     const world = s.world || publishWorldFacts(s.host, s.port) || {};
+    // A server bzo is banned from, or one left out of its checks, shows no
+    // picture and says why, and sorts last (`sortListEntries`).
+    const left = world.excluded === true || isExcludedServer(s.host, s.port);
+    const note = left ? t('Left out of bzo\'s checks at its operator\'s request')
+      : (world.banned === true ? t('This server bans bzo') : '');
     return {
       id: `bzfs-pane-${index}`,
+      note,
       addr: `${s.host}:${s.port}`,
       hash: world.hash || '',
       owner: s.owner || '',
@@ -2938,7 +2953,7 @@ function renderListTables({ servers, bzoServers, canWatch, locale }) {
       // this server would actually show you. Otherwise whatever the list
       // server said, which is an absolute URL on the designated instance and
       // is how a server bzo has never imported still has a picture.
-      overviewUrl: bzfsRowOverviewUrl(s.host, s.port) || s.overviewUrl || null,
+      overviewUrl: note ? '' : (bzfsRowOverviewUrl(s.host, s.port) || s.overviewUrl || null),
       style: info.style,
       maxShots: info.maxShots,
       gameOptionsBits: info.gameOptionsBits,
@@ -3368,6 +3383,12 @@ ${discoveryHead}
     place-items: center; border: 1px solid #333; border-radius: 4px;
     background: #12140f; }
   .overviewWaiting img { width: 64px; height: 64px; border: 0; opacity: 0.35; }
+  /* No picture on purpose -- a server that bans bzo, or one left out of its
+     checks -- and why, in the same empty box. */
+  .overviewNote { width: 256px; aspect-ratio: 1; display: grid;
+    place-items: center; border: 1px solid #333; border-radius: 4px;
+    background: #12140f; color: #999; text-align: center; padding: 1rem;
+    box-sizing: border-box; }
   .paneRow { display: flex; gap: 0.6rem; }
   .paneRow span:first-child { color: #999; min-width: 6rem; }
   .paneWords { margin: 0.5rem 0; color: #ccc; }

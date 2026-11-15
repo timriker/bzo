@@ -78,6 +78,15 @@ tracker.noteGuest(server.host, server.port, { spawn: 'yes', spawnDetail: '' });
 assert.equal(tracker.recordFor(server.host, server.port).guest.spawn, 'yes');
 assert.ok(GUEST_RETRY_MS < GUEST_RECHECK_MS);
 
+// A ban is the latest join's answer: kept through a visit that learned
+// nothing about it, cleared by a join that was let in.
+tracker.noteGuest(server.host, server.port, { watch: 'unknown', watchDetail: 'rejected, code 9', banned: true });
+assert.equal(tracker.recordFor(server.host, server.port).guest.banned, true);
+tracker.noteGuest(server.host, server.port, { chat: 'yes' });
+assert.equal(tracker.recordFor(server.host, server.port).guest.banned, true, 'kept by a visit that did not join');
+tracker.noteGuest(server.host, server.port, { watch: 'yes', banned: false });
+assert.equal(tracker.recordFor(server.host, server.port).guest.banned, false);
+
 // A server its operator asked bzo to leave alone (`excludeServers`) is never
 // dialled, for its world or its guest questions, however overdue.
 {

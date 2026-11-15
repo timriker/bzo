@@ -8,11 +8,17 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
 
 ### Added
 - `excludeServers` in `server.json` names BZFlag servers whose operators
-  asked bzo to stay away; this server then never connects to them.
+  asked to be left out of bzo's background checks; players can still open,
+  watch and play there through bzo.
+- `/list` shows a BZFlag server that bans bzo, or one in `excludeServers`,
+  with no picture and a line saying which, at the bottom of the list.
   docs/server-check.md tells such an operator what bzo's visits are and how
   often, linked from `/list`.
 
 ### Fixed
+- A map texture on the same host as a bzo server but another port -- a web
+  server beside it, as at whammo.bmbz.org (bzo on 5160, textures on 443) --
+  is loaded from that server, not asked of the bzo, which does not have it.
 - A variable a server sets during play no longer rebuilds the whole world,
   as upstream: fog, sky and the mirror's tint change in place, a scene
   switch rebuilds only its mountains, clouds or ground, and the `_rain*`

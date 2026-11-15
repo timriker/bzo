@@ -93,6 +93,8 @@ function mergeGuest(previous, fresh, now) {
     }
     next[`${field}At`] = now;
   }
+  // Banned or not is the latest join's answer, whichever way it went.
+  if (typeof fresh?.banned === 'boolean') next.banned = fresh.banned;
   return next;
 }
 
