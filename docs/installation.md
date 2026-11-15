@@ -413,9 +413,9 @@ and what a row carries.
 
 `/list` connects to the BZFlag servers it lists, to draw and show their
 worlds. [server-check.md](server-check.md) says what an operator of one sees
-and how often. An operator who asks you to stay away goes in
-`excludeServers`, `host` or `host:port`, and this server then never connects
-to it.
+and how often. An operator who asks to be left out goes in `excludeServers`,
+`host` or `host:port`: this server then leaves it out of its background checks,
+while its own players can still open, watch and play there.
 
 ### On the BZFlag list
 

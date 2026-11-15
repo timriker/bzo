@@ -4044,8 +4044,9 @@ const bzfsWorlds = createBzfsWorldTracker({
 });
 
 // `excludeServers` in server.json: BZFlag servers whose operators asked this
-// one to stay away (docs/server-check.md). Each is `host` or `host:port`;
-// nothing here ever dials one -- no world check, no import, no visit.
+// one to leave them out of its own background checks (docs/server-check.md).
+// Each is `host` or `host:port`. A player opening, watching or playing one
+// through bzo still can, as with any other client.
 function isExcludedServer(host, port) {
   const entries = Array.isArray(serverConfig.excludeServers) ? serverConfig.excludeServers : [];
   const name = String(host || '').toLowerCase();
@@ -4362,7 +4363,13 @@ function importedWorldHash(fileName) {
 // own address (`dialHost`), not the name its import is filed under.
 async function confirmImportUnchanged(fileName, host, port,
   { current = '', dialHost = host, dialPort = port } = {}) {
-  if (isExcludedServer(host, port)) return false;
+  // Only a server on the public list is dialled: one that has left it, or is
+  // private or restricted, is never contacted (docs/server-check.md). A proxy
+  // target is this server's own operator's, dialled at its own address.
+  if (dialHost === host && dialPort === port
+    && !findPublicServer(await getRemoteServerList().catch(() => remoteServerListCache.servers), host, port)) {
+    return false;
+  }
   const saved = importedWorldHash(fileName);
   if (!isBzfsWorldHash(saved)) return false;
   const record = bzfsWorlds.recordFor(host, port);
@@ -4906,7 +4913,6 @@ function serverCheckMotto() {
 }
 
 async function performRemoteMapImport(host, port, timeout, guest = null) {
-  if (isExcludedServer(host, port)) throw new Error('its operator asked this server not to visit it');
   let publicServers;
   try {
     publicServers = await getRemoteServerList();
