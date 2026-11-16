@@ -3,6 +3,14 @@
 # Copyright 2009 - The Purple Panzer released as Public Domain
 # https://www.bentz-engineering.com/bz/MyMaps.html
 
+metadata
+  title Tricolor
+  version 2
+  author The Purple Panzer
+  license Public Domain
+  description A CTF map for three teams, each with a castle. Symmetric.
+endmetadata
+
 options
   -set _explodeTime 2
   -set _latitude 41.341799

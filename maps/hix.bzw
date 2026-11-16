@@ -4,44 +4,52 @@
 #
 # This is a team play world
 
+metadata
+  title HiX
+  version 3
+  author Tim Riker <timriker@gmail.com>
+  license AGPL-3.0-only
+  description An experimental team play world.
+endmetadata
+
 options
-	# Team play, so the four coloured bases below are capture targets.
-	-c
-	# Per-team player limits, in BZFlag's team order:
-	# rogue, observer, red, green, blue, purple.
-	-mp 10,10,10,10,10,10
-	# Superflags may spawn on, and come to rest on, the buildings.
-	# With as much roof as this world has, the ground-only rule hides most of them.
-	-fb
-	# Tanks may jump. bzo has jumping on unless server.json turns it off,
-	# so this is what turns it back on for this world.
-	-j
-	# Every shot ricochets, whatever flag fired it.
-	+r
-	# Five shots in the air at once, where bzfs gives one. The reload time
-	# follows from it: a slot comes back after shotRange / shotSpeed / this.
-	-ms 5
-	# Superflag slots, each any type, bad ones included. Left off, this is
-	# 16; the world is 800 units across, so it takes more than that to find
-	# one.
-	-s 50
-	# Three of every good flag on top, each always coming back as its own
-	# type: about one flag in eight is bad, where -s alone makes it one in
-	# three.
-	+f good{3}
-	# A bad flag falls off by itself after this many seconds.
-	-st 5
-	# A bad flag also falls off after this many kills.
-	-sw 1
-	# An antidote flag is put in the world for whoever is carrying a bad one,
-	# which sheds it when they drive onto it.
-	-sa
+  # Team play, so the four coloured bases below are capture targets.
+  -c
+  # Per-team player limits, in BZFlag's team order:
+  # rogue, observer, red, green, blue, purple.
+  -mp 10,10,10,10,10,10
+  # Superflags may spawn on, and come to rest on, the buildings.
+  # With as much roof as this world has, the ground-only rule hides most of them.
+  -fb
+  # Tanks may jump. bzo has jumping on unless server.json turns it off,
+  # so this is what turns it back on for this world.
+  -j
+  # Every shot ricochets, whatever flag fired it.
+  +r
+  # Five shots in the air at once, where bzfs gives one. The reload time
+  # follows from it: a slot comes back after shotRange / shotSpeed / this.
+  -ms 5
+  # Superflag slots, each any type, bad ones included. Left off, this is
+  # 16; the world is 800 units across, so it takes more than that to find
+  # one.
+  -s 50
+  # Three of every good flag on top, each always coming back as its own
+  # type: about one flag in eight is bad, where -s alone makes it one in
+  # three.
+  +f good{3}
+  # A bad flag falls off by itself after this many seconds.
+  -st 5
+  # A bad flag also falls off after this many kills.
+  -sw 1
+  # An antidote flag is put in the world for whoever is carrying a bad one,
+  # which sheds it when they drive onto it.
+  -sa
 end
 
 world
-	name HiX 3.0
-	size 400.0
-	flagHeight 0.0
+  name HiX 3.0
+  size 400.0
+  flagHeight 0.0
 end
 
 # One shared look for every box/mesh side on the map -- a bare `matref` sets
@@ -50,35 +58,35 @@ end
 # them, which is exactly what the `top matref concrete` lines below do.
 # Retexturing every side site-wide is one edit here, not one per obstacle.
 material
-	name industrial
-	addtexture http://images.bzflag.org/pmatous/Slate_flooring_2_more_color.png
+  name industrial
+  addtexture http://images.bzflag.org/pmatous/Slate_flooring_2_more_color.png
 end
 
 # a metal texture distinct for struts
 material
-	name strut
-	addtexture http://images.bzflag.org/bz_legacy/louman/thegauntlet/Metal5.png
+  name strut
+  addtexture http://images.bzflag.org/bz_legacy/louman/thegauntlet/Metal5.png
 end
 
 # Every top -- box cap, octagon cap, walkway deck alike. The texture matrix
 # below divides the UVs (`TextureMatrix::finalize` scales by `1 / fixedScale`),
 # so each jigsaw tile covers four times the distance it otherwise would.
 textureMatrix
-	name concreteScale
-	fixedscale 4 4
+  name concreteScale
+  fixedscale 4 4
 end
 
 material
-	name concrete
-	addtexture http://images.bzflag.org/pmatous/concrete-jigsaw-light.png
-	texmat concreteScale
+  name concrete
+  addtexture http://images.bzflag.org/pmatous/concrete-jigsaw-light.png
+  texmat concreteScale
 end
 
 # The ground too -- see "Ground texture" in docs/bzw.md. Asphalt, not the
 # concrete the tops wear, so the driving surface reads apart from the roofs.
 material
-	name GroundMaterial
-	addtexture http://images.bzflag.org/images/zaphod/asphalt.png
+  name GroundMaterial
+  addtexture http://images.bzflag.org/images/zaphod/asphalt.png
 end
 
 # The hazard stripe along every walkway edge. Every wall that wears it runs u
@@ -88,52 +96,52 @@ end
 # object, at 0.4 units per second: a tile every 20 seconds, against a tank's
 # own 25 units per second.
 textureMatrix
-	name cautionCrawl
-	shift -0.05 0
+  name cautionCrawl
+  shift -0.05 0
 end
 
 material
-	name cautiontape
-	addtexture caution
-	texmat cautionCrawl
+  name cautiontape
+  addtexture caution
+  texmat cautionCrawl
 end
 
 # barbed wire fence in use as metal grid on walkways to see up through
 material
-	name seethrough
-	addtexture http://images.bzflag.org/gbratley/Spazzy%20McGee_fence-barbs.png
-	# Clear pixels dropped, not blended: a client with blending off still
-	# sees through, and nothing behind the grid is hidden by its clear parts.
-	alphathresh 0.05
+  name seethrough
+  addtexture http://images.bzflag.org/gbratley/Spazzy%20McGee_fence-barbs.png
+  # Clear pixels dropped, not blended: a client with blending off still
+  # sees through, and nothing behind the grid is hidden by its clear parts.
+  alphathresh 0.05
 end
 
 # top of the world
 # Apothem 9.6568542495 and circumradius 10.4525037190
 arc
-	name totw
-	position 0.0 0.0 29.0
-	rotation -22.5
-	size     10.4525037190 10.4525037190 16.0
-	divisions 8
-	matref industrial
-	top matref concrete
-	# arc's own disc/cap tile size defaults to -8 (1 tile per 8 units) same
-	# as its outside wall -- a plain box's own cap tiles at 2 (`capScale`,
-	# `BOX_TEXTURE_SCALES`, render.js), 4x denser. `du`/`dv` here override
-	# just the disc, leaving `u`/`v` (the outside wall) at their own -8
-	# default to match `sideScale`.
-	texsize -8 -8 -2 -2
+  name totw
+  position 0.0 0.0 29.0
+  rotation -22.5
+  size     10.4525037190 10.4525037190 16.0
+  divisions 8
+  matref industrial
+  top matref concrete
+  # arc's own disc/cap tile size defaults to -8 (1 tile per 8 units) same
+  # as its outside wall -- a plain box's own cap tiles at 2 (`capScale`,
+  # `BOX_TEXTURE_SCALES`, render.js), 4x denser. `du`/`dv` here override
+  # just the disc, leaving `u`/`v` (the outside wall) at their own -8
+  # default to match `sideScale`.
+  texsize -8 -8 -2 -2
 end
 
 # Top of the World roof -- a real octagonal cone (`cone`, 8 divisions)
 cone
-	name totwr
-	position 0.0 0.0 52.0
-	rotation -22.5
-	size     10.4525037190 10.4525037190 5.0
-	divisions 8
-	edge texture pyrwall
-	bottom texture roof
+  name totwr
+  position 0.0 0.0 52.0
+  rotation -22.5
+  size     10.4525037190 10.4525037190 5.0
+  divisions 8
+  edge texture pyrwall
+  bottom texture roof
 end
 
 
@@ -145,402 +153,402 @@ end
 # diagonal -- defined once here and instanced twice below rather than by
 # hand at each radius.
 define support
-	pyramid
-		name core
-		position 0.0 0.0 0.0
-		rotation 45.0
-		size     2.0 2.0 18.0
-		sides matref strut
-	end
-	pyramid
-		name rib0
-		position 0.0 0.0 0.0
-		rotation 0.0
-		size     8.0 1.0 5.0
-		sides matref strut
-	end
-	pyramid
-		name rib90
-		position 0.0 0.0 0.0
-		rotation 90.0
-		size     8.0 1.0 5.0
-		sides matref strut
-	end
-	# real inversion here needs literal `flipz` plus
-	# a *non-negative* height. Flipped, `position.z` is the apex end and the
-	# base lands at `position.z + height`: 12.0/2.0 puts the base flush at
-	# 14.0, against the walkway's own underside (`plat1_ne`/`plat1_sw` both
-	# start at z=14) -- an inverted bracket flaring up to meet the walkway
-	# it holds up, tapering to a point below. `d`'s own sign (`-0.5`) still
-	# matters: the flip step mirrors the mesh, and a second negative axis
-	# cancels that mirror back to a proper rotation so faces stay correctly
-	# wound and lit in a real client.
-	pyramid
-		name cap0
-		position 0.0 0.0 12.0
-		rotation 0.0
-		size     8.0 -0.5 2.0
-		flipz
-		sides matref strut
-	end
-	pyramid
-		name cap90
-		position 0.0 0.0 12.0
-		rotation 90.0
-		size     8.0 -0.5 2.0
-		flipz
-		sides matref strut
-	end
+  pyramid
+    name core
+    position 0.0 0.0 0.0
+    rotation 45.0
+    size     2.0 2.0 18.0
+    sides matref strut
+  end
+  pyramid
+    name rib0
+    position 0.0 0.0 0.0
+    rotation 0.0
+    size     8.0 1.0 5.0
+    sides matref strut
+  end
+  pyramid
+    name rib90
+    position 0.0 0.0 0.0
+    rotation 90.0
+    size     8.0 1.0 5.0
+    sides matref strut
+  end
+  # real inversion here needs literal `flipz` plus
+  # a *non-negative* height. Flipped, `position.z` is the apex end and the
+  # base lands at `position.z + height`: 12.0/2.0 puts the base flush at
+  # 14.0, against the walkway's own underside (`plat1_ne`/`plat1_sw` both
+  # start at z=14) -- an inverted bracket flaring up to meet the walkway
+  # it holds up, tapering to a point below. `d`'s own sign (`-0.5`) still
+  # matters: the flip step mirrors the mesh, and a second negative axis
+  # cancels that mirror back to a proper rotation so faces stay correctly
+  # wound and lit in a real client.
+  pyramid
+    name cap0
+    position 0.0 0.0 12.0
+    rotation 0.0
+    size     8.0 -0.5 2.0
+    flipz
+    sides matref strut
+  end
+  pyramid
+    name cap90
+    position 0.0 0.0 12.0
+    rotation 90.0
+    size     8.0 -0.5 2.0
+    flipz
+    sides matref strut
+  end
 enddef
 
 define diag_quadrant
-	box
-		name xwall
-		position 180.0 180.0 14.0
-		rotation 135.0
-		size     0.5 150.0 15.0
-		top matref concrete
-		sides matref industrial
-	end
-	# internal end of the wall
-	box
-		name wallend1
-		position 80.0 80.0 0.0
-		rotation 0.0
-		size     30.0 30.0 15.0
-		top matref concrete
-		sides matref industrial
-	end
-	# platform 1 cut out to fit between
-	# wallend1 and oct
-	mesh
-		name plat1_ne
-		vertex 199.313708 188 14
-		vertex 261.313708 249.999 14
-		vertex 249.999 249.999 14
-		vertex 249.999 261.313708 14
-		vertex 188 199.313708 14
-		vertex 199.313708 188 15
-		vertex 261.313708 249.999 15
-		vertex 249.999 249.999 15
-		vertex 249.999 261.313708 15
-		vertex 188 199.313708 15
-		texcoord 94 99.656854
-		texcoord 124.9995 130.656854
-		texcoord 124.9995 124.9995
-		texcoord 130.656854 124.9995
-		texcoord 99.656854 94
-		texcoord 99.656854 94
-		texcoord 130.656854 124.9995
-		texcoord 124.9995 124.9995
-		texcoord 124.9995 130.656854
-		texcoord 94 99.656854
-		texcoord 0 0
-		texcoord 10.960067 0
-		texcoord 10.960067 0.125
-		texcoord 0 0.125
-		texcoord 10.960067 0
-		texcoord 12.374405 0
-		texcoord 12.374405 0.125
-		texcoord 10.960067 0.125
-		texcoord 12.374405 0
-		texcoord 13.788744 0
-		texcoord 13.788744 0.125
-		texcoord 12.374405 0.125
-		texcoord 13.788744 0
-		texcoord 24.748811 0
-		texcoord 24.748811 0.125
-		texcoord 13.788744 0.125
-		texcoord 24.748811 0
-		texcoord 26.748811 0
-		texcoord 26.748811 0.125
-		texcoord 24.748811 0.125
-		face
-			vertices 4 3 2 1 0
-			texcoords 0 1 2 3 4
-			matref seethrough
-		endface
-		face
-			vertices 5 6 7 8 9
-			texcoords 5 6 7 8 9
-			matref concrete
-		endface
-		face
-			vertices 0 1 6 5
-			texcoords 10 11 12 13
-			matref cautiontape
-		endface
-		face
-			vertices 1 2 7 6
-			texcoords 14 15 16 17
-			matref industrial
-		endface
-		face
-			vertices 2 3 8 7
-			texcoords 18 19 20 21
-			matref industrial
-		endface
-		face
-			vertices 3 4 9 8
-			texcoords 22 23 24 25
-			matref cautiontape
-		endface
-		face
-			vertices 4 0 5 9
-			texcoords 26 27 28 29
-			matref industrial
-		endface
-	end
-	# octagon under the wall
-	# a real octagon (`arc`, 8 divisions), apothem
-	# 19.3137084990, circumradius 20.9050074380
-	arc
-		name oct
-		position 180.0 180.0 0.0
-		rotation -22.5
-		size     20.9050074380 20.9050074380 15.0
-		divisions 8
-		matref industrial
-		top matref concrete
-		# Same fix as "top of the world" above -- see its own comment.
-		texsize -8 -8 -2 -2
-	end
-	# more platform 1 fitting up against
-	# oct and wallend 2
-	mesh
-		name plat1_sw
-		vertex 160.686292 172 14
-		vertex 98.686292 110.001 14
-		vertex 110.001 110.001 14
-		vertex 110.001 98.686292 14
-		vertex 172 160.686292 14
-		vertex 160.686292 172 15
-		vertex 98.686292 110.001 15
-		vertex 110.001 110.001 15
-		vertex 110.001 98.686292 15
-		vertex 172 160.686292 15
-		texcoord 86 80.343146
-		texcoord 55.0005 49.343146
-		texcoord 55.0005 55.0005
-		texcoord 49.343146 55.0005
-		texcoord 80.343146 86
-		texcoord 80.343146 86
-		texcoord 49.343146 55.0005
-		texcoord 55.0005 55.0005
-		texcoord 55.0005 49.343146
-		texcoord 86 80.343146
-		texcoord 0 0
-		texcoord 10.960067 0
-		texcoord 10.960067 0.125
-		texcoord 0 0.125
-		texcoord 10.960067 0
-		texcoord 12.374405 0
-		texcoord 12.374405 0.125
-		texcoord 10.960067 0.125
-		texcoord 12.374405 0
-		texcoord 13.788744 0
-		texcoord 13.788744 0.125
-		texcoord 12.374405 0.125
-		texcoord 13.788744 0
-		texcoord 24.748811 0
-		texcoord 24.748811 0.125
-		texcoord 13.788744 0.125
-		texcoord 24.748811 0
-		texcoord 26.748811 0
-		texcoord 26.748811 0.125
-		texcoord 24.748811 0.125
-		face
-			vertices 4 3 2 1 0
-			texcoords 0 1 2 3 4
-			matref seethrough
-		endface
-		face
-			vertices 5 6 7 8 9
-			texcoords 5 6 7 8 9
-			matref concrete
-		endface
-		face
-			vertices 0 1 6 5
-			texcoords 10 11 12 13
-			matref cautiontape
-		endface
-		face
-			vertices 1 2 7 6
-			texcoords 14 15 16 17
-			matref industrial
-		endface
-		face
-			vertices 2 3 8 7
-			texcoords 18 19 20 21
-			matref industrial
-		endface
-		face
-			vertices 3 4 9 8
-			texcoords 22 23 24 25
-			matref cautiontape
-		endface
-		face
-			vertices 4 0 5 9
-			texcoords 26 27 28 29
-			matref industrial
-		endface
-	end
-	box
-		name wallend2
-		position 280.0 280.0 0.0
-		rotation 0.0
-		size     30.0 30.0 15.0
-		top matref concrete
-		sides matref industrial
-	end
+  box
+    name xwall
+    position 180.0 180.0 14.0
+    rotation 135.0
+    size     0.5 150.0 15.0
+    top matref concrete
+    sides matref industrial
+  end
+  # internal end of the wall
+  box
+    name wallend1
+    position 80.0 80.0 0.0
+    rotation 0.0
+    size     30.0 30.0 15.0
+    top matref concrete
+    sides matref industrial
+  end
+  # platform 1 cut out to fit between
+  # wallend1 and oct
+  mesh
+    name plat1_ne
+    vertex 199.313708 188 14
+    vertex 261.313708 249.999 14
+    vertex 249.999 249.999 14
+    vertex 249.999 261.313708 14
+    vertex 188 199.313708 14
+    vertex 199.313708 188 15
+    vertex 261.313708 249.999 15
+    vertex 249.999 249.999 15
+    vertex 249.999 261.313708 15
+    vertex 188 199.313708 15
+    texcoord 94 99.656854
+    texcoord 124.9995 130.656854
+    texcoord 124.9995 124.9995
+    texcoord 130.656854 124.9995
+    texcoord 99.656854 94
+    texcoord 99.656854 94
+    texcoord 130.656854 124.9995
+    texcoord 124.9995 124.9995
+    texcoord 124.9995 130.656854
+    texcoord 94 99.656854
+    texcoord 0 0
+    texcoord 10.960067 0
+    texcoord 10.960067 0.125
+    texcoord 0 0.125
+    texcoord 10.960067 0
+    texcoord 12.374405 0
+    texcoord 12.374405 0.125
+    texcoord 10.960067 0.125
+    texcoord 12.374405 0
+    texcoord 13.788744 0
+    texcoord 13.788744 0.125
+    texcoord 12.374405 0.125
+    texcoord 13.788744 0
+    texcoord 24.748811 0
+    texcoord 24.748811 0.125
+    texcoord 13.788744 0.125
+    texcoord 24.748811 0
+    texcoord 26.748811 0
+    texcoord 26.748811 0.125
+    texcoord 24.748811 0.125
+    face
+      vertices 4 3 2 1 0
+      texcoords 0 1 2 3 4
+      matref seethrough
+    endface
+    face
+      vertices 5 6 7 8 9
+      texcoords 5 6 7 8 9
+      matref concrete
+    endface
+    face
+      vertices 0 1 6 5
+      texcoords 10 11 12 13
+      matref cautiontape
+    endface
+    face
+      vertices 1 2 7 6
+      texcoords 14 15 16 17
+      matref industrial
+    endface
+    face
+      vertices 2 3 8 7
+      texcoords 18 19 20 21
+      matref industrial
+    endface
+    face
+      vertices 3 4 9 8
+      texcoords 22 23 24 25
+      matref cautiontape
+    endface
+    face
+      vertices 4 0 5 9
+      texcoords 26 27 28 29
+      matref industrial
+    endface
+  end
+  # octagon under the wall
+  # a real octagon (`arc`, 8 divisions), apothem
+  # 19.3137084990, circumradius 20.9050074380
+  arc
+    name oct
+    position 180.0 180.0 0.0
+    rotation -22.5
+    size     20.9050074380 20.9050074380 15.0
+    divisions 8
+    matref industrial
+    top matref concrete
+    # Same fix as "top of the world" above -- see its own comment.
+    texsize -8 -8 -2 -2
+  end
+  # more platform 1 fitting up against
+  # oct and wallend 2
+  mesh
+    name plat1_sw
+    vertex 160.686292 172 14
+    vertex 98.686292 110.001 14
+    vertex 110.001 110.001 14
+    vertex 110.001 98.686292 14
+    vertex 172 160.686292 14
+    vertex 160.686292 172 15
+    vertex 98.686292 110.001 15
+    vertex 110.001 110.001 15
+    vertex 110.001 98.686292 15
+    vertex 172 160.686292 15
+    texcoord 86 80.343146
+    texcoord 55.0005 49.343146
+    texcoord 55.0005 55.0005
+    texcoord 49.343146 55.0005
+    texcoord 80.343146 86
+    texcoord 80.343146 86
+    texcoord 49.343146 55.0005
+    texcoord 55.0005 55.0005
+    texcoord 55.0005 49.343146
+    texcoord 86 80.343146
+    texcoord 0 0
+    texcoord 10.960067 0
+    texcoord 10.960067 0.125
+    texcoord 0 0.125
+    texcoord 10.960067 0
+    texcoord 12.374405 0
+    texcoord 12.374405 0.125
+    texcoord 10.960067 0.125
+    texcoord 12.374405 0
+    texcoord 13.788744 0
+    texcoord 13.788744 0.125
+    texcoord 12.374405 0.125
+    texcoord 13.788744 0
+    texcoord 24.748811 0
+    texcoord 24.748811 0.125
+    texcoord 13.788744 0.125
+    texcoord 24.748811 0
+    texcoord 26.748811 0
+    texcoord 26.748811 0.125
+    texcoord 24.748811 0.125
+    face
+      vertices 4 3 2 1 0
+      texcoords 0 1 2 3 4
+      matref seethrough
+    endface
+    face
+      vertices 5 6 7 8 9
+      texcoords 5 6 7 8 9
+      matref concrete
+    endface
+    face
+      vertices 0 1 6 5
+      texcoords 10 11 12 13
+      matref cautiontape
+    endface
+    face
+      vertices 1 2 7 6
+      texcoords 14 15 16 17
+      matref industrial
+    endface
+    face
+      vertices 2 3 8 7
+      texcoords 18 19 20 21
+      matref industrial
+    endface
+    face
+      vertices 3 4 9 8
+      texcoords 22 23 24 25
+      matref cautiontape
+    endface
+    face
+      vertices 4 0 5 9
+      texcoords 26 27 28 29
+      matref industrial
+    endface
+  end
+  box
+    name wallend2
+    position 280.0 280.0 0.0
+    rotation 0.0
+    size     30.0 30.0 15.0
+    top matref concrete
+    sides matref industrial
+  end
 
-	# closest to center support
-	group support
-		name in
-		position 140.0 140.0 0.0
-		rotation 0.0
-	end
-	# farthest from center support
-	group support
-		name out
-		position 220.0 220.0 0.0
-		rotation 0.0
-	end
+  # closest to center support
+  group support
+    name in
+    position 140.0 140.0 0.0
+    rotation 0.0
+  end
+  # farthest from center support
+  group support
+    name out
+    position 220.0 220.0 0.0
+    rotation 0.0
+  end
 
-	# teleporter pair for this diagonal arm, at the tip of
-	# the ne instance's own corner -- the group's rotation carries it to
-	# each other corner exactly the way it already does for oct/xwall/the
-	# access boxes.
-	teleporter
-		name tele_low
-		position     390.0 390.0 0.0
-		rotation     45.0
-		size         0.56  4.48  27.7
-		border       1.12
-	end
-	teleporter
-		name tele_high
-		position     390.0 390.0 30.0
-		rotation     45.0
-		size         0.56  4.48  15.0
-		border       1.12
-	end
+  # teleporter pair for this diagonal arm, at the tip of
+  # the ne instance's own corner -- the group's rotation carries it to
+  # each other corner exactly the way it already does for oct/xwall/the
+  # access boxes.
+  teleporter
+    name tele_low
+    position     390.0 390.0 0.0
+    rotation     45.0
+    size         0.56  4.48  27.7
+    border       1.12
+  end
+  teleporter
+    name tele_high
+    position     390.0 390.0 30.0
+    rotation     45.0
+    size         0.56  4.48  15.0
+    border       1.12
+  end
 
-	# One diagonal half of a crossbar walkway -- from the map corner in to
-	# the exact map centre. It runs 8 wide until it reaches the edge ring's
-	# inner wall, then tapers to a point at the corner itself: the two
-	# taper faces run from where this bridge's own side edges cross that
-	# inner wall, at (385, 379.343146) and (379.343146, 385), out to
-	# (400, 400). Each is the very same 25.528526-long quad as the mitre
-	# cut on the `walk` it meets, wound the other way, so all three decks
-	# share the corner vertex and no two z=30 faces overlap anywhere.
-	# The group's own rotation is what
-	# reconstructs a full bridge: this instance plus its `sw` mirror is the
-	# whole ne-sw span, and `nw`/`se` is the whole nw-se span, the same
-	# trick the teleporter pair above already uses. Still a
-	# hand-authored `mesh` rather than a `meshbox`, for the same UV-stretch
-	# reason as `walk`/`plat1` -- every wall's texcoord is its own local
-	# coordinate divided by 8, every top/bottom's by 2
-	# (`render.js`'s `BOX_TEXTURE_SCALES`).
-	mesh
-		name xbar
-		vertex 385 379.343146 29
-		vertex 400 400 29
-		vertex 379.343146 385 29
-		vertex 4 9.656854 29
-		vertex 9.656854 4 29
-		vertex 385 379.343146 30
-		vertex 400 400 30
-		vertex 379.343146 385 30
-		vertex 4 9.656854 30
-		vertex 9.656854 4 30
-		texcoord -2 -270.236111
-		texcoord -2 -4.828427
-		texcoord 2 -4.828427
-		texcoord 2 -270.236111
-		texcoord 0 -282.842712
-		texcoord -2 -270.236111
-		texcoord 0 -282.842712
-		texcoord 2 -270.236111
-		texcoord 2 -4.828427
-		texcoord -2 -4.828427
-		texcoord -1.595533 0
-		texcoord 1.595533 0
-		texcoord 1.595533 0.125
-		texcoord -1.595533 0.125
-		texcoord -1.595533 0
-		texcoord 1.595533 0
-		texcoord 1.595533 0.125
-		texcoord -1.595533 0.125
-		texcoord -67.559028 0
-		texcoord -1.207107 0
-		texcoord -1.207107 0.125
-		texcoord -67.559028 0.125
-		texcoord -0.5 0
-		texcoord 0.5 0
-		texcoord 0.5 0.125
-		texcoord -0.5 0.125
-		texcoord 1.207107 0
-		texcoord 67.559028 0
-		texcoord 67.559028 0.125
-		texcoord 1.207107 0.125
-		face
-			vertices 0 4 3 2 1
-			texcoords 0 1 2 3 4
-			matref seethrough
-		endface
-		face
-			vertices 5 6 7 8 9
-			texcoords 5 6 7 8 9
-			matref concrete
-		endface
-		face
-			vertices 0 1 6 5
-			texcoords 10 11 12 13
-			matref industrial
-		endface
-		face
-			vertices 1 2 7 6
-			texcoords 14 15 16 17
-			matref industrial
-		endface
-		face
-			vertices 2 3 8 7
-			texcoords 18 19 20 21
-			matref cautiontape
-		endface
-		face
-			vertices 3 4 9 8
-			texcoords 22 23 24 25
-			matref industrial
-		endface
-		face
-			vertices 4 0 5 9
-			texcoords 26 27 28 29
-			matref cautiontape
-		endface
-	end
+  # One diagonal half of a crossbar walkway -- from the map corner in to
+  # the exact map centre. It runs 8 wide until it reaches the edge ring's
+  # inner wall, then tapers to a point at the corner itself: the two
+  # taper faces run from where this bridge's own side edges cross that
+  # inner wall, at (385, 379.343146) and (379.343146, 385), out to
+  # (400, 400). Each is the very same 25.528526-long quad as the mitre
+  # cut on the `walk` it meets, wound the other way, so all three decks
+  # share the corner vertex and no two z=30 faces overlap anywhere.
+  # The group's own rotation is what
+  # reconstructs a full bridge: this instance plus its `sw` mirror is the
+  # whole ne-sw span, and `nw`/`se` is the whole nw-se span, the same
+  # trick the teleporter pair above already uses. Still a
+  # hand-authored `mesh` rather than a `meshbox`, for the same UV-stretch
+  # reason as `walk`/`plat1` -- every wall's texcoord is its own local
+  # coordinate divided by 8, every top/bottom's by 2
+  # (`render.js`'s `BOX_TEXTURE_SCALES`).
+  mesh
+    name xbar
+    vertex 385 379.343146 29
+    vertex 400 400 29
+    vertex 379.343146 385 29
+    vertex 4 9.656854 29
+    vertex 9.656854 4 29
+    vertex 385 379.343146 30
+    vertex 400 400 30
+    vertex 379.343146 385 30
+    vertex 4 9.656854 30
+    vertex 9.656854 4 30
+    texcoord -2 -270.236111
+    texcoord -2 -4.828427
+    texcoord 2 -4.828427
+    texcoord 2 -270.236111
+    texcoord 0 -282.842712
+    texcoord -2 -270.236111
+    texcoord 0 -282.842712
+    texcoord 2 -270.236111
+    texcoord 2 -4.828427
+    texcoord -2 -4.828427
+    texcoord -1.595533 0
+    texcoord 1.595533 0
+    texcoord 1.595533 0.125
+    texcoord -1.595533 0.125
+    texcoord -1.595533 0
+    texcoord 1.595533 0
+    texcoord 1.595533 0.125
+    texcoord -1.595533 0.125
+    texcoord -67.559028 0
+    texcoord -1.207107 0
+    texcoord -1.207107 0.125
+    texcoord -67.559028 0.125
+    texcoord -0.5 0
+    texcoord 0.5 0
+    texcoord 0.5 0.125
+    texcoord -0.5 0.125
+    texcoord 1.207107 0
+    texcoord 67.559028 0
+    texcoord 67.559028 0.125
+    texcoord 1.207107 0.125
+    face
+      vertices 0 4 3 2 1
+      texcoords 0 1 2 3 4
+      matref seethrough
+    endface
+    face
+      vertices 5 6 7 8 9
+      texcoords 5 6 7 8 9
+      matref concrete
+    endface
+    face
+      vertices 0 1 6 5
+      texcoords 10 11 12 13
+      matref industrial
+    endface
+    face
+      vertices 1 2 7 6
+      texcoords 14 15 16 17
+      matref industrial
+    endface
+    face
+      vertices 2 3 8 7
+      texcoords 18 19 20 21
+      matref cautiontape
+    endface
+    face
+      vertices 3 4 9 8
+      texcoords 22 23 24 25
+      matref industrial
+    endface
+    face
+      vertices 4 0 5 9
+      texcoords 26 27 28 29
+      matref cautiontape
+    endface
+  end
 enddef
 
 group diag_quadrant
-	name ne
-	position 0.0 0.0 0.0
-	rotation 0.0
+  name ne
+  position 0.0 0.0 0.0
+  rotation 0.0
 end
 group diag_quadrant
-	name nw
-	position 0.0 0.0 0.0
-	rotation 90.0
+  name nw
+  position 0.0 0.0 0.0
+  rotation 90.0
 end
 group diag_quadrant
-	name sw
-	position 0.0 0.0 0.0
-	rotation 180.0
+  name sw
+  position 0.0 0.0 0.0
+  rotation 180.0
 end
 group diag_quadrant
-	name se
-	position 0.0 0.0 0.0
-	rotation 270.0
+  name se
+  position 0.0 0.0 0.0
+  rotation 270.0
 end
 
 # The other quarter-turn symmetry the map carries -- the guard post, edge
@@ -553,170 +561,170 @@ end
 # faces (see docs/bzw.md, "Groups"), never a base's own team field. Verified
 # against the file's own e_/n_/w_/s_ numbers the same way as above.
 define cardinal_quadrant
-	box
-		name guard
-		position 392.5 0.0 29.0
-		rotation 0.0
-		size     7.5 7.5 16.0
-		top matref concrete
-		sides matref industrial
-	end
-	# walkway on the edge -- mitred at both ends against the diagonal
-	# `xbar` bridge tapering into the same corner (see its own comment).
-	# The cut runs from where this walkway's inner wall meets the bridge's
-	# side edge out to the map corner, 35.985 degrees off the walkway's own
-	# run rather than the 45 a plain picture-frame mitre would take, so the
-	# outer wall still reaches the corner and the inner one stops 20.66
-	# short. The cut face and the bridge's taper face are the same quad
-	# pointing opposite ways, which is what leaves backface culling exactly
-	# one of the pair to draw.
-	# overlaps the platforms to prevent flag hiding
-	# Same reasoning as `plat1` above -- a hand-authored `mesh`, not `meshbox`,
-	# for a real per-face UV instead of the disc mapping's stretch.
-	mesh
-		name walk
-		vertex 385 -379.343146 29
-		vertex 400 -400 29
-		vertex 400 400 29
-		vertex 385 379.343146 29
-		vertex 385 -379.343146 30
-		vertex 400 -400 30
-		vertex 400 400 30
-		vertex 385 379.343146 30
-		texcoord -3.75 -189.671573
-		texcoord -3.75 189.671573
-		texcoord 3.75 200
-		texcoord 3.75 -200
-		texcoord -3.75 -189.671573
-		texcoord 3.75 -200
-		texcoord 3.75 200
-		texcoord -3.75 189.671573
-		texcoord -1.595533 0
-		texcoord 1.595533 0
-		texcoord 1.595533 0.125
-		texcoord -1.595533 0.125
-		texcoord -50 0
-		texcoord 50 0
-		texcoord 50 0.125
-		texcoord -50 0.125
-		texcoord 1.595533 0
-		texcoord -1.595533 0
-		texcoord -1.595533 0.125
-		texcoord 1.595533 0.125
-		texcoord -47.417893 0
-		texcoord 47.417893 0
-		texcoord 47.417893 0.125
-		texcoord -47.417893 0.125
-		face
-			vertices 0 3 2 1
-			texcoords 0 1 2 3
-			matref seethrough
-		endface
-		face
-			vertices 4 5 6 7
-			texcoords 4 5 6 7
-			matref concrete
-		endface
-		face
-			vertices 0 1 5 4
-			texcoords 8 9 10 11
-			matref industrial
-		endface
-		face
-			vertices 1 2 6 5
-			texcoords 12 13 14 15
-			matref cautiontape
-		endface
-		face
-			vertices 2 3 7 6
-			texcoords 16 17 18 19
-			matref industrial
-		endface
-		face
-			vertices 3 0 4 7
-			texcoords 20 21 22 23
-			matref cautiontape
-		endface
-	end
+  box
+    name guard
+    position 392.5 0.0 29.0
+    rotation 0.0
+    size     7.5 7.5 16.0
+    top matref concrete
+    sides matref industrial
+  end
+  # walkway on the edge -- mitred at both ends against the diagonal
+  # `xbar` bridge tapering into the same corner (see its own comment).
+  # The cut runs from where this walkway's inner wall meets the bridge's
+  # side edge out to the map corner, 35.985 degrees off the walkway's own
+  # run rather than the 45 a plain picture-frame mitre would take, so the
+  # outer wall still reaches the corner and the inner one stops 20.66
+  # short. The cut face and the bridge's taper face are the same quad
+  # pointing opposite ways, which is what leaves backface culling exactly
+  # one of the pair to draw.
+  # overlaps the platforms to prevent flag hiding
+  # Same reasoning as `plat1` above -- a hand-authored `mesh`, not `meshbox`,
+  # for a real per-face UV instead of the disc mapping's stretch.
+  mesh
+    name walk
+    vertex 385 -379.343146 29
+    vertex 400 -400 29
+    vertex 400 400 29
+    vertex 385 379.343146 29
+    vertex 385 -379.343146 30
+    vertex 400 -400 30
+    vertex 400 400 30
+    vertex 385 379.343146 30
+    texcoord -3.75 -189.671573
+    texcoord -3.75 189.671573
+    texcoord 3.75 200
+    texcoord 3.75 -200
+    texcoord -3.75 -189.671573
+    texcoord 3.75 -200
+    texcoord 3.75 200
+    texcoord -3.75 189.671573
+    texcoord -1.595533 0
+    texcoord 1.595533 0
+    texcoord 1.595533 0.125
+    texcoord -1.595533 0.125
+    texcoord -50 0
+    texcoord 50 0
+    texcoord 50 0.125
+    texcoord -50 0.125
+    texcoord 1.595533 0
+    texcoord -1.595533 0
+    texcoord -1.595533 0.125
+    texcoord 1.595533 0.125
+    texcoord -47.417893 0
+    texcoord 47.417893 0
+    texcoord 47.417893 0.125
+    texcoord -47.417893 0.125
+    face
+      vertices 0 3 2 1
+      texcoords 0 1 2 3
+      matref seethrough
+    endface
+    face
+      vertices 4 5 6 7
+      texcoords 4 5 6 7
+      matref concrete
+    endface
+    face
+      vertices 0 1 5 4
+      texcoords 8 9 10 11
+      matref industrial
+    endface
+    face
+      vertices 1 2 6 5
+      texcoords 12 13 14 15
+      matref cautiontape
+    endface
+    face
+      vertices 2 3 7 6
+      texcoords 16 17 18 19
+      matref industrial
+    endface
+    face
+      vertices 3 0 4 7
+      texcoords 20 21 22 23
+      matref cautiontape
+    endface
+  end
 
-	# boxes for access
-	box
-		name n_edge
-		position 400.0 180.0 0.0
-		rotation 45.0
-		size     30.0 30.0 15.0
-		top matref concrete
-		sides matref industrial
-	end
-	box
-		name s_edge
-		position 400.0 -180.0 0.0
-		rotation 45.0
-		size     30.0 30.0 15.0
-		top matref concrete
-		sides matref industrial
-	end
+  # boxes for access
+  box
+    name n_edge
+    position 400.0 180.0 0.0
+    rotation 45.0
+    size     30.0 30.0 15.0
+    top matref concrete
+    sides matref industrial
+  end
+  box
+    name s_edge
+    position 400.0 -180.0 0.0
+    rotation 45.0
+    size     30.0 30.0 15.0
+    top matref concrete
+    sides matref industrial
+  end
 
-	# box in the middle in front of the base
-	box
-		name mid
-		position 200.0 0.0 0.0
-		rotation 0.0
-		size     30.0 30.0 15.0
-		top matref concrete
-		sides matref industrial
-	end
+  # box in the middle in front of the base
+  box
+    name mid
+    position 200.0 0.0 0.0
+    rotation 0.0
+    size     30.0 30.0 15.0
+    top matref concrete
+    sides matref industrial
+  end
 
-	# pyramids under the base
-	pyramid
-		name pyr1
-		position 340.0 -45.0 0.0
-		rotation 0.0
-		size     7.5 7.5 26.0
-		sides matref strut
-	end
-	pyramid
-		name pyr2
-		position 340.0 45.0 0.0
-		rotation 0.0
-		size     7.5 7.5 26.0
-		sides matref strut
-	end
-	pyramid
-		name pyr3
-		position 295.0 0.0 0.0
-		rotation 0.0
-		size     7.5 7.5 26.0
-		sides matref strut
-	end
-	pyramid
-		name pyr4
-		position 385.0 0.0 0.0
-		rotation 0.0
-		size     7.5 7.5 26.0
-		sides matref strut
-	end
+  # pyramids under the base
+  pyramid
+    name pyr1
+    position 340.0 -45.0 0.0
+    rotation 0.0
+    size     7.5 7.5 26.0
+    sides matref strut
+  end
+  pyramid
+    name pyr2
+    position 340.0 45.0 0.0
+    rotation 0.0
+    size     7.5 7.5 26.0
+    sides matref strut
+  end
+  pyramid
+    name pyr3
+    position 295.0 0.0 0.0
+    rotation 0.0
+    size     7.5 7.5 26.0
+    sides matref strut
+  end
+  pyramid
+    name pyr4
+    position 385.0 0.0 0.0
+    rotation 0.0
+    size     7.5 7.5 26.0
+    sides matref strut
+  end
 enddef
 
 group cardinal_quadrant
-	name e
-	position 0.0 0.0 0.0
-	rotation 0.0
+  name e
+  position 0.0 0.0 0.0
+  rotation 0.0
 end
 group cardinal_quadrant
-	name n
-	position 0.0 0.0 0.0
-	rotation 90.0
+  name n
+  position 0.0 0.0 0.0
+  rotation 90.0
 end
 group cardinal_quadrant
-	name w
-	position 0.0 0.0 0.0
-	rotation 180.0
+  name w
+  position 0.0 0.0 0.0
+  rotation 180.0
 end
 group cardinal_quadrant
-	name s
-	position 0.0 0.0 0.0
-	rotation 270.0
+  name s
+  position 0.0 0.0 0.0
+  rotation 270.0
 end
 
 # The teleporter pair itself now lives once in `diag_quadrant` (see its
@@ -726,124 +734,124 @@ end
 # own pair still needs its own explicit links here, by its qualified
 # name, in and out of every face.
 link
-	from ne:tele_low:f
-	to ne:tele_high:f
+  from ne:tele_low:f
+  to ne:tele_high:f
 end
 link
-	from ne:tele_low:b
-	to ne:tele_high:b
+  from ne:tele_low:b
+  to ne:tele_high:b
 end
 link
-	from ne:tele_high:f
-	to ne:tele_low:f
+  from ne:tele_high:f
+  to ne:tele_low:f
 end
 link
-	from ne:tele_high:b
-	to ne:tele_low:b
+  from ne:tele_high:b
+  to ne:tele_low:b
 end
 link
-	from sw:tele_low:f
-	to sw:tele_high:f
+  from sw:tele_low:f
+  to sw:tele_high:f
 end
 link
-	from sw:tele_low:b
-	to sw:tele_high:b
+  from sw:tele_low:b
+  to sw:tele_high:b
 end
 link
-	from sw:tele_high:f
-	to sw:tele_low:f
+  from sw:tele_high:f
+  to sw:tele_low:f
 end
 link
-	from sw:tele_high:b
-	to sw:tele_low:b
+  from sw:tele_high:b
+  to sw:tele_low:b
 end
 link
-	from se:tele_low:f
-	to se:tele_high:f
+  from se:tele_low:f
+  to se:tele_high:f
 end
 link
-	from se:tele_low:b
-	to se:tele_high:b
+  from se:tele_low:b
+  to se:tele_high:b
 end
 link
-	from se:tele_high:f
-	to se:tele_low:f
+  from se:tele_high:f
+  to se:tele_low:f
 end
 link
-	from se:tele_high:b
-	to se:tele_low:b
+  from se:tele_high:b
+  to se:tele_low:b
 end
 link
-	from nw:tele_low:f
-	to nw:tele_high:f
+  from nw:tele_low:f
+  to nw:tele_high:f
 end
 link
-	from nw:tele_low:b
-	to nw:tele_high:b
+  from nw:tele_low:b
+  to nw:tele_high:b
 end
 link
-	from nw:tele_high:f
-	to nw:tele_low:f
+  from nw:tele_high:f
+  to nw:tele_low:f
 end
 link
-	from nw:tele_high:b
-	to nw:tele_low:b
+  from nw:tele_high:b
+  to nw:tele_low:b
 end
 
 # red base
 base
-	name n_red_base
-	position 0.0 340.0 26.0
-	rotation 45.0
-	size 35.0 35.0 4.0
-	color 1
+  name n_red_base
+  position 0.0 340.0 26.0
+  rotation 45.0
+  size 35.0 35.0 4.0
+  color 1
 end
 # green base
 base
-	name e_green_base
-	position 340.0 0.0 26.0
-	rotation 45.0
-	size 35.0 35.0 4.0
-	color 2
+  name e_green_base
+  position 340.0 0.0 26.0
+  rotation 45.0
+  size 35.0 35.0 4.0
+  color 2
 end
 # blue base
 base
-	name s_blue_base
-	position 0.0 -340.0 26.0
-	rotation 45.0
-	size 35.0 35.0 4.0
-	color 3
+  name s_blue_base
+  position 0.0 -340.0 26.0
+  rotation 45.0
+  size 35.0 35.0 4.0
+  color 3
 end
 # purple base
 base
-	name w_purple_base
-	position -340.0 0.0 26.0
-	rotation 45.0
-	size 35.0 35.0 4.0
-	color 4
+  name w_purple_base
+  position -340.0 0.0 26.0
+  rotation 45.0
+  size 35.0 35.0 4.0
+  color 4
 end
 # safety zones: a team flag dropped on another team's base lands on its own
 zone
-	position 0.0 340.0 30.0
-	rotation 45.0
-	size 20.0 20.0 1.0
-	safety 1
+  position 0.0 340.0 30.0
+  rotation 45.0
+  size 20.0 20.0 1.0
+  safety 1
 end
 zone
-	position 340.0 0.0 30.0
-	rotation 45.0
-	size 20.0 20.0 1.0
-	safety 2
+  position 340.0 0.0 30.0
+  rotation 45.0
+  size 20.0 20.0 1.0
+  safety 2
 end
 zone
-	position 0.0 -340.0 30.0
-	rotation 45.0
-	size 20.0 20.0 1.0
-	safety 3
+  position 0.0 -340.0 30.0
+  rotation 45.0
+  size 20.0 20.0 1.0
+  safety 3
 end
 zone
-	position -340.0 0.0 30.0
-	rotation 45.0
-	size 20.0 20.0 1.0
-	safety 4
+  position -340.0 0.0 30.0
+  rotation 45.0
+  size 20.0 20.0 1.0
+  safety 4
 end

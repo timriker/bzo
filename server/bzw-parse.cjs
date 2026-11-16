@@ -19,6 +19,7 @@ const { WEATHER_RAIN_TYPES, WEATHER_RAIN_NUMERIC_VARS, applyWeatherVar } = requi
 // written in: +Z up, +Y north, x east, an angle counter-clockwise about +Z.
 const crypto = require('crypto');
 const { parseBZWTeamMode, getTeamFromColorIndex } = require('./teams.cjs');
+const { splitBzwMetadata } = require('./bzw-metadata.cjs');
 const { localImageUrl } = require('./local-images.cjs');
 const {
   normalizeShotLimit, normalizeShotSlotCount, WORLD_WEAPON_DEFAULT_DELAY, normalizeWorldWeaponDelays,
@@ -1793,7 +1794,8 @@ function parseBZWMap(filename, { quiet = false, extraMessages = [], text: givenT
   // always this same process's own absolute `maps/` path, which only repeats
   // noise a reader already knows on every line.
   const mapLabel = path.basename(filename);
-  const text = givenText ?? fs.readFileSync(filename, 'utf8');
+  const { metadata, text, unterminated } = splitBzwMetadata(givenText ?? fs.readFileSync(filename, 'utf8'));
+  if (unterminated) warn(`"metadata" with no "endmetadata" in ${mapLabel}: the rest of the file is read as metadata`);
   const lines = textLines(text);
   const teamMode = parseBZWTeamMode(lines);
   const serverOptions = parseBZWServerOptions(lines);
@@ -5671,6 +5673,7 @@ function parseBZWMap(filename, { quiet = false, extraMessages = [], text: givenT
 
   const teleporterGraph = buildTeleporterLinks();
   const world = {
+    metadata,
     obstacles,
     // A definition's geometry once, and the placements sharing it -- only
     // definitions nothing collides with, so these are never in `obstacles`
@@ -5708,8 +5711,9 @@ function parseBZWMap(filename, { quiet = false, extraMessages = [], text: givenT
 // would come out different, so a server does not restore a world it wrote
 // in an older one: 2 is upstream's frame (#182), 4 keeps a mesh face's
 // `nolighting`, 5 its `noshadow`, 6 its `spheremap`, 7 a group's
-// `matswap`, 8 jumping and ricochet in `gameplay`, 9 its flags there.
-const WORLD_FORMAT = 9;
+// `matswap`, 8 jumping and ricochet in `gameplay`, 9 its flags there, 10
+// the `metadata` block.
+const WORLD_FORMAT = 10;
 
 // `instanced 18/22 groups, 15 templates, 52 faces` -- group instances drawn
 // from a shared template rather than a copy apiece (#153).
@@ -5929,6 +5933,7 @@ function summariseMap(entry) {
     water: entry.waterLevel !== null && entry.waterLevel !== undefined,
     weather: Boolean(entry.weather),
     ground: Boolean(entry.groundMaterial),
+    metadata: entry.metadata,
   };
 }
 
@@ -6016,6 +6021,9 @@ function buildWorldFile(map, { gameConfig, serverBzdb, puffClouds, defaultMapSiz
     // too (see `applyWorldData`/`buildGround` in client.js/render-world.js),
     // `null` when the map states no `-gndtex` or `GroundMaterial` block.
     groundMaterial: map.groundMaterial || null,
+    // The map's `metadata` block -- title, authors, licence -- `null` when it
+    // has none (docs/bzw.md, "Metadata").
+    metadata: map.metadata,
     // `gameplay` -- how this map drives and shoots, for a Map Viewer preview
     // to lay over its own `gameConfig` (see `applyWorldData` in client.js).
     // Only what the map itself states, so a preview of a map that says

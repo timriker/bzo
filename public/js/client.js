@@ -10709,6 +10709,11 @@ function canWatchRemoteServers() {
 // so a map with no teleporters says nothing about them rather than "0".
 function describeMapStats(stats) {
   const parts = [];
+  // The map's own words first: its `metadata` title and authors.
+  const title = stats.metadata?.title?.join(' ');
+  if (title) parts.push(title);
+  const authors = stats.metadata?.author?.join(', ');
+  if (authors) parts.push(t('by {authors}', { authors }));
   const counts = stats.counts || {};
   // Spelled out rather than suffixed: "box" takes -es and "pyramid" takes -s,
   // and a language has its own singular and plural forms for each.

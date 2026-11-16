@@ -1,13 +1,8 @@
 # bzo
 # Copyright (c) 1993-2026 Tim Riker
-#
-# This package is free software;  you can redistribute it and/or
-# modify it under the terms of the license found in the file
-# named COPYING that should have accompanied this file.
-#
-# THIS PACKAGE IS PROVIDED ``AS IS'' AND WITHOUT ANY EXPRESS OR
-# IMPLIED WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED
-# WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE.
+# Licensed under the GNU Affero General Public License v3.0 (AGPLv3).
+# Source: https://github.com/timriker/bzo
+# See LICENSE or https://www.gnu.org/licenses/agpl-3.0.html
 
 # The default world: every flag reachable within a short walk of the center,
 # a base on each compass point, and a sample of bzo's obstacle geometry tests
@@ -18,12 +13,20 @@
 # alphabetically, so a `-sa`/`-sw` server exercises one theme at a time. The
 # outer ring is every good flag, alphabetically clockwise from north.
 
+metadata
+  title bzo
+  author Tim Riker <timriker@gmail.com>
+  license AGPL-3.0-only
+  description Every flag within a short walk of the center, a base on each
+  description compass point, and bzo's obstacle geometry tests in the corners.
+endmetadata
+
 options
-	# Team play, so the four coloured bases below are capture targets.
-	-c
-	# Per-team player limits, in BZFlag's team order:
-	# rogue, observer, red, green, blue, purple.
-	-mp 10,10,10,10,10,10
+  # Team play, so the four coloured bases below are capture targets.
+  -c
+  # Per-team player limits, in BZFlag's team order:
+  # rogue, observer, red, green, blue, purple.
+  -mp 10,10,10,10,10,10
   # Tanks may jump
   -j
   # Five shots in the air at once
@@ -788,48 +791,48 @@ end
 # dimension node), where this is one obstacle and, once meshes get an
 # eighth-dimension node of their own, would be one node.
 define Hexagon
-mesh
-  name Prism
-  vertex -12.990381 -7.500000 0
-  vertex 0.000000 -15.000000 0
-  vertex 12.990381 -7.500000 0
-  vertex 12.990381 7.500000 0
-  vertex 0.000000 15.000000 0
-  vertex -12.990381 7.500000 0
-  vertex -12.990381 -7.500000 12
-  vertex 0.000000 -15.000000 12
-  vertex 12.990381 -7.500000 12
-  vertex 12.990381 7.500000 12
-  vertex 0.000000 15.000000 12
-  vertex -12.990381 7.500000 12
-  texture boxwall
-  face
-    vertices 0 1 7 6
-  endface
-  face
-    vertices 1 2 8 7
-  endface
-  face
-    vertices 2 3 9 8
-  endface
-  face
-    vertices 3 4 10 9
-  endface
-  face
-    vertices 4 5 11 10
-  endface
-  face
-    vertices 5 0 6 11
-  endface
-  face
-    vertices 5 4 3 2 1 0
-    texture roof
-  endface
-  face
-    vertices 6 7 8 9 10 11
-    texture roof
-  endface
-end
+  mesh
+    name Prism
+    vertex -12.990381 -7.500000 0
+    vertex 0.000000 -15.000000 0
+    vertex 12.990381 -7.500000 0
+    vertex 12.990381 7.500000 0
+    vertex 0.000000 15.000000 0
+    vertex -12.990381 7.500000 0
+    vertex -12.990381 -7.500000 12
+    vertex 0.000000 -15.000000 12
+    vertex 12.990381 -7.500000 12
+    vertex 12.990381 7.500000 12
+    vertex 0.000000 15.000000 12
+    vertex -12.990381 7.500000 12
+    texture boxwall
+    face
+      vertices 0 1 7 6
+    endface
+    face
+      vertices 1 2 8 7
+    endface
+    face
+      vertices 2 3 9 8
+    endface
+    face
+      vertices 3 4 10 9
+    endface
+    face
+      vertices 4 5 11 10
+    endface
+    face
+      vertices 5 0 6 11
+    endface
+    face
+      vertices 5 4 3 2 1 0
+      texture roof
+    endface
+    face
+      vertices 6 7 8 9 10 11
+      texture roof
+    endface
+  end
 enddef
 
 group Hexagon
@@ -1230,16 +1233,16 @@ end
 # from colliding between the two (`Watchtower#0:Base`, `Watchtower#1:Base`,
 # ...) is on display in the debug label too.
 define Watchtower
-box
-  name Base
-  position 0 0 0
-  size 3 3 6
-end
-box
-  name Cap
-  position 0 0 6
-  size 4 4 1
-end
+  box
+    name Base
+    position 0 0 0
+    size 3 3 6
+  end
+  box
+    name Cap
+    position 0 0 6
+    size 4 4 1
+  end
 enddef
 
 group Watchtower

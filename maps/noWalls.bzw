@@ -4,40 +4,48 @@
 # four sides; nothing stops it either direction, and nothing draws there
 # either. See docs/bzw-plan.md, "World fields".
 #
+
+metadata
+  title No walls
+  author Tim Riker <timriker@gmail.com>
+  license AGPL-3.0-only
+  description A world with no border walls.
+endmetadata
+
 world
-name noWalls
-size 100.0
-flagHeight 0.0
-noWalls
+  name noWalls
+  size 100.0
+  flagHeight 0.0
+  noWalls
 end
 
 # One marker per side, sitting exactly on the line the border would have
 # followed, so the open edge is visible on the ground and on the radar
 # rather than only provable by driving through it.
 box
-name "edge_marker_n"
-position 0.0 100.0 0.0
-rotation 0.0
-size     2.0 2.0 0.5
+  name "edge_marker_n"
+  position 0.0 100.0 0.0
+  rotation 0.0
+  size     2.0 2.0 0.5
 end
 
 box
-name "edge_marker_s"
-position 0.0 -100.0 0.0
-rotation 0.0
-size     2.0 2.0 0.5
+  name "edge_marker_s"
+  position 0.0 -100.0 0.0
+  rotation 0.0
+  size     2.0 2.0 0.5
 end
 
 box
-name "edge_marker_e"
-position 100.0 0.0 0.0
-rotation 0.0
-size     2.0 2.0 0.5
+  name "edge_marker_e"
+  position 100.0 0.0 0.0
+  rotation 0.0
+  size     2.0 2.0 0.5
 end
 
 box
-name "edge_marker_w"
-position -100.0 0.0 0.0
-rotation 0.0
-size     2.0 2.0 0.5
+  name "edge_marker_w"
+  position -100.0 0.0 0.0
+  rotation 0.0
+  size     2.0 2.0 0.5
 end

@@ -839,6 +839,45 @@ understands:
 | `-admsg <text>` | a line said to everyone already playing, repeated every 15 minutes |
 | `-gndtex <name>` | the ground's texture -- a stock name or an external URL, same as any other `texture` line; a map can equally get the same effect with an explicit `material name GroundMaterial ... end` block |
 
+## Metadata
+
+A map's title, authors, version, licence and description, in a `metadata`
+block -- upstream's proposal,
+[BZFlag-Dev/bzflag#361](https://github.com/BZFlag-Dev/bzflag/issues/361),
+which no bzfs reads yet:
+
+```text
+metadata
+  title HiX
+  version 3
+  author Tim Riker <timriker@gmail.com>
+  license AGPL-3.0-only
+  description A team play world on stilts.
+  description A second line of the same description.
+endmetadata
+```
+
+One field a line: the first word is its key, the rest of the line its value.
+Every field is a list, and saying a key again adds to it -- two `author`
+lines are two authors, two `description` lines two lines of one description.
+Any key is kept, so a map may carry a field of its own; the proposal suggests
+an `x-` prefix for one. `license` is an
+[SPDX expression](https://spdx.org/licenses/) where one fits.
+
+bzo shows the title in the map list's pane on the `/list` page, with the
+authors, version, licence and description beside it, and lets the filter box
+find a map by title, author or version. The in-client map picker shows title
+and authors in a row's tooltip. A client gets the block in the world it
+downloads, as `metadata`; a BZFlag client gets nothing, since its world has no
+room for it.
+
+Write a description as repeated `description` lines rather than the
+proposal's `metablock description` ... `endmetablock`. bzo reads both, but a
+stock bzfs reads every line of a `metadata` block as an object of its own: one
+starting with a key is skipped with a warning, while a line of prose starting
+with `box` or `world` opens that object. Repeated keys keep a map loading the
+same in a bzfs that does not know the block.
+
 ## Ground texture
 
 Two ways to the same effect: `-gndtex <name>` in the options table above, or

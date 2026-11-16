@@ -1523,7 +1523,7 @@ msgstr "退出登录会离开 VR。请先退出头显会话。"
 msgid "Global login leaves VR. Exit the headset session first."
 msgstr "全局登录会离开 VR。请先退出头显会话。"
 
-#: public/js/client.js:4866 public/js/client.js:10834
+#: public/js/client.js:4866 public/js/client.js:10839
 msgid "Fetching remote server's map..."
 msgstr "正在获取远程服务器的地图..."
 
@@ -1543,7 +1543,7 @@ msgstr "自动驾驶 {pilot}：{intent}"
 msgid "AutoPilot {pilot}"
 msgstr "自动驾驶 {pilot}"
 
-#: public/js/client.js:6802 server.js:11428
+#: public/js/client.js:6802 server.js:11442
 msgid "You do not have permission to speak on the admin channel."
 msgstr "你无权在管理员频道发言。"
 
@@ -1631,7 +1631,7 @@ msgstr "✓ WebXR VR 模式：开"
 msgid "✗ VR request failed - check server.log"
 msgstr "✗ VR 请求失败 - 请查看 server.log"
 
-#: public/js/client.js:7352 public/js/client.js:18094
+#: public/js/client.js:7352 public/js/client.js:18099
 msgid "WebXR VR Mode: OFF"
 msgstr "WebXR VR 模式：关"
 
@@ -1827,265 +1827,269 @@ msgstr ""
 msgid "nothing uploaded"
 msgstr "没有上传内容"
 
-#: public/js/client.js:10642 public/js/client.js:11117
+#: public/js/client.js:10642 public/js/client.js:11122
 msgid "MOTD: {motd}"
 msgstr "每日消息：{motd}"
 
-#: public/js/client.js:10717
+#: public/js/client.js:10716
+msgid "by {authors}"
+msgstr ""
+
+#: public/js/client.js:10722
 msgid "{count} box"
 msgstr "{count} 个方块"
 
-#: public/js/client.js:10717
+#: public/js/client.js:10722
 msgid "{count} boxes"
 msgstr "{count} 个方块"
 
-#: public/js/client.js:10718
+#: public/js/client.js:10723
 msgid "{count} pyramid"
 msgstr "{count} 个金字塔"
 
-#: public/js/client.js:10718
+#: public/js/client.js:10723
 msgid "{count} pyramids"
 msgstr "{count} 个金字塔"
 
-#: public/js/client.js:10719
+#: public/js/client.js:10724
 msgid "{count} mesh"
 msgstr "{count} 个网格"
 
-#: public/js/client.js:10719
+#: public/js/client.js:10724
 msgid "{count} meshes"
 msgstr "{count} 个网格"
 
-#: public/js/client.js:10724
+#: public/js/client.js:10729
 msgid "{count} base"
 msgstr "{count} 个基地"
 
-#: public/js/client.js:10724
+#: public/js/client.js:10729
 msgid "{count} bases"
 msgstr "{count} 个基地"
 
-#: public/js/client.js:10726
+#: public/js/client.js:10731
 msgid "{count} teleporter"
 msgstr "{count} 个传送器"
 
-#: public/js/client.js:10726
+#: public/js/client.js:10731
 msgid "{count} teleporters"
 msgstr "{count} 个传送器"
 
-#: public/js/client.js:10729 server.js:2599
+#: public/js/client.js:10734 server.js:2604
 msgid "water"
 msgstr "水面"
 
-#: public/js/client.js:10730 server.js:2599
+#: public/js/client.js:10735 server.js:2604
 msgid "weather"
 msgstr "天气"
 
-#: public/js/client.js:10731 server.js:2599
+#: public/js/client.js:10736 server.js:2604
 msgid "custom ground"
 msgstr "自定义地面"
 
-#: public/js/client.js:10769 public/js/client.js:10848
+#: public/js/client.js:10774 public/js/client.js:10853
 msgid "View {map}"
 msgstr "查看 {map}"
 
-#: public/js/client.js:10846
+#: public/js/client.js:10851
 msgid "{server} did not answer"
 msgstr "{server} 没有响应"
 
-#: public/js/client.js:10858 server.js:2529 server.js:2997 server.js:3051
+#: public/js/client.js:10863 server.js:2532 server.js:3007 server.js:3061
 msgid "Watch"
 msgstr "观战"
 
-#: public/js/client.js:10859
+#: public/js/client.js:10864
 msgid "Watch the live game on {server}"
 msgstr "观战 {server} 上的实时游戏"
 
-#: public/js/client.js:10877 public/js/client.js:10885 server.js:3010
+#: public/js/client.js:10882 public/js/client.js:10890 server.js:3020
 msgid "Re-import"
 msgstr "重新导入"
 
-#: public/js/client.js:10881
+#: public/js/client.js:10886
 msgid "Importing…"
 msgstr "正在导入…"
 
-#: public/js/client.js:10924
+#: public/js/client.js:10929
 msgid "Loading map..."
 msgstr "正在加载地图..."
 
-#: public/js/client.js:10932
+#: public/js/client.js:10937
 msgid "Building world geometry..."
 msgstr "正在构建世界几何体..."
 
-#: public/js/client.js:10996
+#: public/js/client.js:11001
 msgid "{count} watching now"
 msgstr "{count} 人正在观看"
 
-#: public/js/client.js:10999
+#: public/js/client.js:11004
 msgid "Watch {name}"
 msgstr "观看 {name}"
 
-#: public/js/client.js:11035
+#: public/js/client.js:11040
 msgid "That server's map could not be fetched"
 msgstr "无法获取该服务器的地图"
 
-#: public/js/client.js:11053
+#: public/js/client.js:11058
 msgid "import failed"
 msgstr "导入失败"
 
-#: public/js/client.js:11053
+#: public/js/client.js:11058
 msgid "Could not load that server's map: {reason}"
 msgstr "无法加载该服务器的地图：{reason}"
 
-#: public/js/client.js:11267
+#: public/js/client.js:11272
 msgid "{team} Limit:"
 msgstr "{team}上限："
 
-#: public/js/client.js:11360
+#: public/js/client.js:11365
 msgid "Failed: {error}"
 msgstr ""
 
-#: public/js/client.js:11465
+#: public/js/client.js:11470
 msgid "No limit"
 msgstr "无限制"
 
-#: public/js/client.js:11574
+#: public/js/client.js:11579
 msgid "Restart"
 msgstr "重新开始"
 
-#: public/js/client.js:11578
+#: public/js/client.js:11583
 msgid "Starts a new game: every player reloads into the new settings"
 msgstr "开始新游戏：所有玩家都会以新设置重新加载"
 
-#: public/js/client.js:11579
+#: public/js/client.js:11584
 msgid "Applies the staged changes"
 msgstr "应用暂存的更改"
 
-#: public/js/client.js:11926
+#: public/js/client.js:11931
 msgid "Paused"
 msgstr "已暂停"
 
-#: public/js/client.js:11927
+#: public/js/client.js:11932
 msgid "Sealed"
 msgstr "已封闭"
 
-#: public/js/client.js:12865
+#: public/js/client.js:12870
 msgid "Already following someone"
 msgstr "已在跟随某人"
 
-#: public/js/client.js:12901 public/js/client.js:13026
+#: public/js/client.js:12906 public/js/client.js:13031
 msgid "Looking at {player}"
 msgstr "正在看 {player}"
 
-#: public/js/client.js:13010
+#: public/js/client.js:13015
 msgid "{player} locked on me"
 msgstr "{player} 锁定了我"
 
-#: public/js/client.js:13020
+#: public/js/client.js:13025
 msgid "Looking at nothing"
 msgstr "未看向任何目标"
 
-#: public/js/client.js:13026
+#: public/js/client.js:13031
 msgid "Locked on {player}"
 msgstr "已锁定 {player}"
 
-#: public/js/client.js:13363
+#: public/js/client.js:13368
 msgid "Clear ({count})"
 msgstr "清除 ({count})"
 
-#: public/js/client.js:13363 public/js/list-page.js:538
+#: public/js/client.js:13368 public/js/list-page.js:538
 msgid "Clear"
 msgstr "清除"
 
-#: public/js/client.js:13463
+#: public/js/client.js:13468
 msgid "SPOTTED: {player}"
 msgstr "发现：{player}"
 
-#: public/js/client.js:13578 public/js/client.js:13584
+#: public/js/client.js:13583 public/js/client.js:13589
 msgid "nobody"
 msgstr "无人"
 
-#: public/js/client.js:13588
+#: public/js/client.js:13593
 msgid "Leader {who}"
 msgstr "领先：{who}"
 
-#: public/js/client.js:13590 public/js/client.js:13595
+#: public/js/client.js:13595 public/js/client.js:13600
 msgid "Tracking {who}"
 msgstr "追踪：{who}"
 
-#: public/js/client.js:13591
+#: public/js/client.js:13596
 msgid "Following {who}"
 msgstr "跟随：{who}"
 
-#: public/js/client.js:13592
+#: public/js/client.js:13597
 msgid "Driving with {who}"
 msgstr "同乘：{who}"
 
-#: public/js/client.js:13597 public/js/hud.js:629 public/js/input.js:1457
+#: public/js/client.js:13602 public/js/hud.js:629 public/js/input.js:1457
 msgid "First Person"
 msgstr "第一人称"
 
-#: public/js/client.js:13598 public/js/hud.js:630 public/js/input.js:1458
+#: public/js/client.js:13603 public/js/hud.js:630 public/js/input.js:1458
 msgid "Third Person"
 msgstr "第三人称"
 
 # review: 俯瞰
-#: public/js/client.js:13599 public/js/hud.js:631 public/js/input.js:1459
+#: public/js/client.js:13604 public/js/hud.js:631 public/js/input.js:1459
 msgid "Overview"
 msgstr "俯瞰"
 
-#: public/js/client.js:13600
+#: public/js/client.js:13605
 msgid "Roaming"
 msgstr "自由视角"
 
-#: public/js/client.js:13888 public/js/client.js:13962
+#: public/js/client.js:13893 public/js/client.js:13967
 msgid "autopilot disabled"
 msgstr "自动驾驶已关闭"
 
-#: public/js/client.js:13897
+#: public/js/client.js:13902
 msgid "autopilot not allowed on this server"
 msgstr "此服务器不允许自动驾驶"
 
-#: public/js/client.js:13909
+#: public/js/client.js:13914
 msgid "{pilot} has the controls"
 msgstr "{pilot} 正在操控"
 
-#: public/js/client.js:13914
+#: public/js/client.js:13919
 msgid "You may not enable the Autopilot more than once every five seconds."
 msgstr "每五秒最多只能开启一次自动驾驶。"
 
-#: public/js/client.js:13919
+#: public/js/client.js:13924
 msgid "autopilot enabled"
 msgstr "自动驾驶已开启"
 
-#: public/js/client.js:13942
+#: public/js/client.js:13947
 msgid "Not allowed"
 msgstr "不允许"
 
-#: public/js/client.js:13942 public/js/input.js:1162 public/js/input.js:1172
+#: public/js/client.js:13947 public/js/input.js:1162 public/js/input.js:1172
 #: public/js/input.js:1176
 msgid "Unavailable"
 msgstr "不可用"
 
-#: public/js/client.js:13945
+#: public/js/client.js:13950
 msgid "None"
 msgstr "无"
 
-#: public/js/client.js:14789
+#: public/js/client.js:14794
 msgid "Zoned"
 msgstr "已进入幻影区"
 
-#: public/js/client.js:14789
+#: public/js/client.js:14794
 msgid "Unzoned"
 msgstr "已离开幻影区"
 
-#: public/js/client.js:15590 public/js/client.js:15607
+#: public/js/client.js:15595 public/js/client.js:15612
 msgid "unidentified"
 msgstr "未识别"
 
-#: public/js/client.js:15627
+#: public/js/client.js:15632
 msgid "unknown"
 msgstr "未知"
 
-#: public/js/client.js:15638
+#: public/js/client.js:15643
 msgid ""
 "This server bounces every shot off walls, whatever flag fired it, so the "
 "Ricochet flag is not in play here."
@@ -2093,99 +2097,99 @@ msgstr ""
 "本服务器上所有子弹都会在墙上反弹，无论由哪面旗帜发射，因此跳弹旗帜在这里不会"
 "出现。"
 
-#: public/js/client.js:15639
+#: public/js/client.js:15644
 msgid "On this server only the Ricochet flag bounces shots off walls."
 msgstr "本服务器上只有跳弹旗帜会让子弹在墙上反弹。"
 
-#: public/js/client.js:15706
+#: public/js/client.js:15711
 msgid "{flag} {release}"
 msgstr "{flag} {release}"
 
-#: public/js/client.js:15717
+#: public/js/client.js:15722
 msgid "Can't drop the flag while zoned"
 msgstr "处于幻影区时无法丢下旗帜"
 
-#: public/js/client.js:15721
+#: public/js/client.js:15726
 msgid "Can't drop a flag while inside a building"
 msgstr "在建筑物内无法丢下旗帜"
 
-#: public/js/client.js:15771
+#: public/js/client.js:15776
 msgid "in {seconds}s"
 msgstr "{seconds} 秒后"
 
-#: public/js/client.js:15772
+#: public/js/client.js:15777
 msgid "after {count} kill"
 msgstr "击杀 {count} 次后"
 
-#: public/js/client.js:15772
+#: public/js/client.js:15777
 msgid "after {count} kills"
 msgstr "击杀 {count} 次后"
 
-#: public/js/client.js:15773
+#: public/js/client.js:15778
 msgid "on the antidote"
 msgstr "碰到解药时"
 
-#: public/js/client.js:15774
+#: public/js/client.js:15779
 msgid "stays until it kills you"
 msgstr "直到你阵亡才会消失"
 
-#: public/js/client.js:15775
+#: public/js/client.js:15780
 msgid "{first} or {second}"
 msgstr "{first}或{second}"
 
-#: public/js/client.js:15776
+#: public/js/client.js:15781
 msgid "shakes off {ways}"
 msgstr "{ways}解除"
 
-#: public/js/client.js:15832
+#: public/js/client.js:15837
 msgid "Flag Alert!!!"
 msgstr "旗帜警报！！！"
 
-#: public/js/client.js:15840
+#: public/js/client.js:15845
 msgid "Team Grab!!!"
 msgstr "队友夺旗！！！"
 
-#: public/js/client.js:15856
+#: public/js/client.js:15861
 msgid "{thief} stole {victim}'s {flag} flag"
 msgstr "{thief} 偷走了 {victim} 的 {flag} 旗帜"
 
-#: public/js/client.js:15887
+#: public/js/client.js:15892
 msgid "Closest Flag: {flag}"
 msgstr "最近的旗帜：{flag}"
 
-#: public/js/client.js:15949
+#: public/js/client.js:15954
 msgid "{player} took their own flag into {team} territory"
 msgstr "{player} 把自己的旗帜带进了 {team} 领地"
 
-#: public/js/client.js:15957
+#: public/js/client.js:15962
 msgid "Don't capture your own flag!!!"
 msgstr "不要夺取自己的旗帜！！！"
 
-#: public/js/client.js:15963
+#: public/js/client.js:15968
 msgid "{player} captured the {team} flag"
 msgstr "{player} 夺取了 {team} 旗帜"
 
-#: public/js/client.js:17590 public/js/client.js:17591
+#: public/js/client.js:17595 public/js/client.js:17596
 msgid "Exit WebXR VR Mode"
 msgstr "退出 WebXR VR 模式"
 
-#: public/js/client.js:18307
+#: public/js/client.js:18312
 msgid "Show translation"
 msgstr "显示译文"
 
-#: public/js/client.js:18307
+#: public/js/client.js:18312
 msgid "Show original"
 msgstr "显示原文"
 
-#: public/js/client.js:18315
+#: public/js/client.js:18320
 msgid "Downloading {percent}%"
 msgstr "正在下载 {percent}%"
 
-#: public/js/client.js:18319
+#: public/js/client.js:18324
 msgid "Translation unavailable"
 msgstr "无法翻译"
 
-#: public/js/client.js:18319
+#: public/js/client.js:18324
 msgid "Translate"
 msgstr "翻译"
 
@@ -2929,7 +2933,7 @@ msgstr "bzo 读取此项"
 msgid "{read}/{total} set"
 msgstr "已设置 {read}/{total}"
 
-#: server.js:1956 server.js:3114
+#: server.js:1956 server.js:2625 server.js:3124
 msgid "Version"
 msgstr "版本"
 
@@ -2993,11 +2997,11 @@ msgstr "{hours}小时{minutes}分"
 msgid "{days}d {hours}h"
 msgstr "{days}天{hours}小时"
 
-#: server.js:2127 server.js:2580 server.js:2824
+#: server.js:2127 server.js:2583 server.js:2834
 msgid "Observers"
 msgstr "观察者"
 
-#: server.js:2146 server.js:2585
+#: server.js:2146 server.js:2588
 msgid "none"
 msgstr "无"
 
@@ -3109,151 +3113,163 @@ msgstr "{shots} 发"
 msgid "Bots"
 msgstr "机器人"
 
-#: server.js:2296 server.js:2487 server.js:2726
+#: server.js:2296 server.js:2490 server.js:2736
 msgid "None."
 msgstr "无。"
 
-#: server.js:2332
+#: server.js:2335
 msgid "hashing…"
 msgstr "正在计算哈希…"
 
-#: server.js:2351
+#: server.js:2354
 msgid "Obj"
 msgstr "物体"
 
-#: server.js:2355
+#: server.js:2358
 msgid "Obstacles in the world"
 msgstr "世界中的障碍物数"
 
-#: server.js:2356
+#: server.js:2359
 msgid "Mesh faces in the world"
 msgstr "世界中的网格面数"
 
-#: server.js:2357 server.js:2619
+#: server.js:2360 server.js:2629
 msgid "World size"
 msgstr "世界大小"
 
-#: server.js:2359
+#: server.js:2362
 msgid "Map file name"
 msgstr "地图文件名"
 
-#: server.js:2359 server.js:2517
+#: server.js:2362 server.js:2520
 msgid "Name"
 msgstr "名称"
 
-#: server.js:2360
+#: server.js:2363
 msgid "Game style the map sets"
 msgstr "地图设定的游戏模式"
 
-#: server.js:2376 server.js:2532 server.js:2945
+#: server.js:2379 server.js:2535 server.js:2955
 msgid "View map"
 msgstr "查看地图"
 
-#: server.js:2377
+#: server.js:2380
 msgid "Still hashing"
 msgstr "仍在计算哈希"
 
-#: server.js:2467
+#: server.js:2470
 msgid "Overview of {name}"
 msgstr "{name} 的概览图"
 
-#: server.js:2499
+#: server.js:2502
 msgid "unreadable: {error}"
 msgstr "无法读取：{error}"
 
-#: server.js:2500
+#: server.js:2503
 msgid " -- {viewers} watching"
 msgstr " — {viewers} 人正在观看"
 
-#: server.js:2513
+#: server.js:2516
 msgid "When it was recorded (UTC)"
 msgstr "录制时间（UTC）"
 
-#: server.js:2514
+#: server.js:2517
 msgid "How long it runs"
 msgstr "时长"
 
-#: server.js:2515
+#: server.js:2518
 msgid "Players in it, observers not counted"
 msgstr "参与玩家数（不含观察者）"
 
-#: server.js:2517
+#: server.js:2520
 msgid "Replay file name"
 msgstr "回放文件名"
 
-#: server.js:2518
+#: server.js:2521
 msgid "The map it was played on"
 msgstr "所用地图"
 
-#: server.js:2530
+#: server.js:2533
 msgid "Unreadable"
 msgstr "无法读取"
 
-#: server.js:2563
+#: server.js:2566
 msgid "{viewers} watching, at {time}"
 msgstr "{viewers} 人正在观看，播放到 {time}"
 
-#: server.js:2578
+#: server.js:2581
 msgid "Recorded by"
 msgstr "录制者"
 
-#: server.js:2581
+#: server.js:2584
 msgid "Now"
 msgstr "当前"
 
-#: server.js:2583
+#: server.js:2586
 msgid "Error"
 msgstr "错误"
 
-#: server.js:2611
+#: server.js:2616
 msgid "Boxes"
 msgstr "方块"
 
-#: server.js:2612
+#: server.js:2617
 msgid "Pyramids"
 msgstr "金字塔"
 
-#: server.js:2613
+#: server.js:2618
 msgid "Meshes"
 msgstr "网格"
 
-#: server.js:2614
+#: server.js:2619
 msgid "Bases"
 msgstr "基地"
 
-#: server.js:2615
+#: server.js:2620
 msgid "Teleporters"
 msgstr "传送器"
 
-#: server.js:2620
+#: server.js:2624
+msgid "Author"
+msgstr ""
+
+#: server.js:2626
+msgid "License"
+msgstr ""
+
+#: server.js:2627
+msgid "Description"
+msgstr ""
+
+#: server.js:2630
 msgid "Has"
 msgstr "包含"
 
-#: server.js:2621
+#: server.js:2631
 msgid "Hashed"
 msgstr "已哈希"
 
-#: server.js:2621
+#: server.js:2631
 msgid "generated at boot"
 msgstr "启动时生成"
 
-#: server.js:2621
+#: server.js:2631
 msgid "yes"
 msgstr "是"
 
-#: server.js:2621
+#: server.js:2631
 msgid "not yet"
 msgstr "尚未"
 
-#: server.js:2622
+#: server.js:2632
 msgid "Hash"
 msgstr "哈希"
 
-#: server.js:2623
+#: server.js:2633
 msgid "Modified"
 msgstr "修改时间"
 
-#: server.js:2642
+#: server.js:2652
 msgid ""
 "Plain text is a glob over the address, description, version, hash and owner "
 "-- {examples} -- and a word with no {star} or {query} in it is wrapped in "
@@ -3262,95 +3278,95 @@ msgstr ""
 "纯文本是对地址、描述、版本、哈希和所有者的通配匹配（{examples}）；不含 "
 "{star} 或 {query} 的词会在两端自动加上通配符，因此可匹配任意位置。"
 
-#: server.js:2645
+#: server.js:2655
 msgid ""
 "A leading {slash} starts filters instead: comma-separated, combined with "
 "{and}."
 msgstr "以 {slash} 开头则改为筛选条件：用逗号分隔，以“{and}”组合。"
 
-#: server.js:2646
+#: server.js:2656
 msgid "and"
 msgstr "且"
 
-#: server.js:2648
+#: server.js:2658
 msgid ""
 "A second {slash} starts another set, and a server matching either set is "
 "shown."
 msgstr "第二个 {slash} 开始另一组条件，符合任一组的服务器都会显示。"
 
-#: server.js:2649
+#: server.js:2659
 msgid "{hash} begins a comment."
 msgstr "{hash} 之后为注释。"
 
-#: server.js:2650
+#: server.js:2660
 msgid "Booleans -- {on} for on, {off} for off"
 msgstr "布尔值 — {on} 表示开，{off} 表示关"
 
-#: server.js:2651
+#: server.js:2661
 msgid "Free-for-all with teams"
 msgstr "有队伍的自由混战"
 
-#: server.js:2652
+#: server.js:2662
 msgid "Open free-for-all, no teams"
 msgstr "无队伍的开放自由混战"
 
-#: server.js:2653
+#: server.js:2663
 msgid "Capture-the-flag"
 msgstr "夺旗"
 
-#: server.js:2654
+#: server.js:2664
 msgid "Rabbit chase"
 msgstr "兔子追逐"
 
-#: server.js:2655
+#: server.js:2665
 msgid "Tanks can jump unaided"
 msgstr "坦克无需旗帜即可跳跃"
 
-#: server.js:2656
+#: server.js:2666
 msgid "Shots ricochet"
 msgstr "子弹会跳弹"
 
-#: server.js:2657
+#: server.js:2667
 msgid "Score affects tank performance"
 msgstr "得分影响坦克性能"
 
-#: server.js:2658
+#: server.js:2668
 msgid "Tanks have inertia"
 msgstr "坦克有惯性"
 
-#: server.js:2659
+#: server.js:2669
 msgid "Antidote flags are spawned"
 msgstr "会生成解药旗帜"
 
-#: server.js:2660
+#: server.js:2670
 msgid "A replay server"
 msgstr "回放服务器"
 
-#: server.js:2661
+#: server.js:2671
 msgid "The pane has a map overview"
 msgstr "面板有地图概览图"
 
-#: server.js:2662
+#: server.js:2672
 msgid "A generated world, which usually changes on restart"
 msgstr "生成的世界，通常重启后会改变"
 
-#: server.js:2663
+#: server.js:2673
 msgid "Autopilot and robots allowed"
 msgstr "允许自动驾驶和机器人"
 
-#: server.js:2664
+#: server.js:2674
 msgid "Players with no bzflag.org login may join to observe"
 msgstr "未登录 bzflag.org 的玩家可加入观战"
 
-#: server.js:2665
+#: server.js:2675
 msgid "Players with no bzflag.org login may spawn"
 msgstr "未登录 bzflag.org 的玩家可参战"
 
-#: server.js:2666
+#: server.js:2676
 msgid "Players with no bzflag.org login may chat"
 msgstr "未登录 bzflag.org 的玩家可聊天"
 
-#: server.js:2668
+#: server.js:2678
 msgid ""
 "For {bots}, {guestWatch}, {guests} and {guestChat}, a server bzo has not "
 "found out about matches neither {plus} nor {minus}."
@@ -3358,301 +3374,301 @@ msgstr ""
 "对于 {bots}、{guestWatch}、{guests} 和 {guestChat}，bzo 尚未探明的服务器既不"
 "匹配 {plus} 也不匹配 {minus}。"
 
-#: server.js:2672
+#: server.js:2682
 msgid "Numbers -- a name, then {operators}, then a number"
 msgstr "数值 — 名称，接 {operators}，再接数字"
 
-#: server.js:2675
+#: server.js:2685
 msgid "Active shots a tank may have"
 msgstr "坦克可同时存在的子弹数"
 
-#: server.js:2676
+#: server.js:2686
 msgid "Players now, observers excluded"
 msgstr "当前玩家数（不含观察者）"
 
-#: server.js:2677
+#: server.js:2687
 msgid "Bots now"
 msgstr "当前机器人数"
 
-#: server.js:2678
+#: server.js:2688
 msgid "Playing slots still free"
 msgstr "剩余玩家名额"
 
-#: server.js:2679
+#: server.js:2689
 msgid "Colour teams the server offers"
 msgstr "服务器提供的彩色队伍数"
 
-#: server.js:2680
+#: server.js:2690
 msgid "Time limit, in seconds"
 msgstr "时间限制（秒）"
 
-#: server.js:2681
+#: server.js:2691
 msgid "The server's own player ceiling"
 msgstr "服务器自身的玩家上限"
 
-#: server.js:2682
+#: server.js:2692
 msgid "Team score that ends the game"
 msgstr "结束游戏的队伍分数"
 
-#: server.js:2683
+#: server.js:2693
 msgid "Player score that ends the game"
 msgstr "结束游戏的玩家分数"
 
-#: server.js:2684
+#: server.js:2694
 msgid "Kills that shed a bad flag"
 msgstr "甩掉坏旗帜所需的击杀数"
 
-#: server.js:2685
+#: server.js:2695
 msgid "Tenths of a second to shed a bad flag"
 msgstr "甩掉坏旗帜所需的时间（单位 0.1 秒）"
 
-#: server.js:2686
+#: server.js:2696
 msgid "Players on rogue, red, green, blue, purple, observer"
 msgstr "独行者、红、绿、蓝、紫队及观察者的玩家数"
 
-#: server.js:2687
+#: server.js:2697
 msgid "That team's maximum"
 msgstr "该队伍的上限"
 
-#: server.js:2688
+#: server.js:2698
 msgid "That team's free slots"
 msgstr "该队伍的剩余名额"
 
-#: server.js:2690
+#: server.js:2700
 msgid ""
 "Patterns -- a name, then {glob} for a glob or {regex} for a regular "
 "expression"
 msgstr "模式 — 名称后接 {glob} 表示通配，接 {regex} 表示正则表达式"
 
-#: server.js:2693
+#: server.js:2703
 msgid "The address, host and port"
 msgstr "地址（主机和端口）"
 
-#: server.js:2694
+#: server.js:2704
 msgid "The description"
 msgstr "描述"
 
-#: server.js:2695
+#: server.js:2705
 msgid "Either one"
 msgstr "任一项"
 
-#: server.js:2696
+#: server.js:2706
 msgid "The world hash the pane shows"
 msgstr "面板显示的世界哈希"
 
-#: server.js:2697
+#: server.js:2707
 msgid "The server's version: {bzo} or bzfs's own build"
 msgstr "服务器版本：{bzo} 或 bzfs 自身的构建版本"
 
-#: server.js:2698
+#: server.js:2708
 msgid "The bzflag.org account that registered it"
 msgstr "注册它的 bzflag.org 账号"
 
-#: server.js:2699
+#: server.js:2709
 msgid "The IP address the list server has for it"
 msgstr "列表服务器记录的 IP 地址"
 
-#: server.js:2700
+#: server.js:2710
 msgid "Any one world variable it sets, as {pair}"
 msgstr "它设置的任一世界变量，格式为 {pair}"
 
-#: server.js:2702
+#: server.js:2712
 msgid ""
 "A capitalised pattern name matches case-sensitively: {lower} ignores case, "
 "{upper} does not."
 msgstr "模式名首字母大写时区分大小写：{lower} 不区分，{upper} 区分。"
 
-#: server.js:2705
+#: server.js:2715
 msgid "Examples"
 msgstr "示例"
 
-#: server.js:2706
+#: server.js:2716
 msgid "Two or three shots, and somebody playing"
 msgstr "两到三发子弹，且有人在玩"
 
-#: server.js:2707
+#: server.js:2717
 msgid "Capture-the-flag between exactly two teams"
 msgstr "恰好两队之间的夺旗"
 
-#: server.js:2708
+#: server.js:2718
 msgid "Leagues, by description"
 msgstr "联赛（按描述）"
 
-#: server.js:2709
+#: server.js:2719
 msgid "bzo servers only"
 msgstr "仅 bzo 服务器"
 
-#: server.js:2710
+#: server.js:2720
 msgid "No version known yet"
 msgstr "尚不知版本"
 
-#: server.js:2711
+#: server.js:2721
 msgid "Somebody is watching"
 msgstr "有人在观战"
 
-#: server.js:2712
+#: server.js:2722
 msgid "Rabbit chase, ricochet, three shots"
 msgstr "兔子追逐、跳弹、三发"
 
-#: server.js:2713
+#: server.js:2723
 msgid "Either capture-the-flag or rabbit chase"
 msgstr "夺旗或 兔子追逐"
 
-#: server.js:2714
+#: server.js:2724
 msgid "No map overview yet"
 msgstr "尚无地图概览图"
 
-#: server.js:2715
+#: server.js:2725
 msgid "Lists {variable} at all, on or off; {off} is the one that means off"
 msgstr "只要列出了 {variable}（无论开关）即匹配；表示关闭的是 {off}"
 
-#: server.js:2825
+#: server.js:2835
 msgid "Bots, blank where unknown"
 msgstr "机器人数（未知则留空）"
 
-#: server.js:2827
+#: server.js:2837
 msgid ""
 "Game type: yellow free-for-all, red capture-the-flag, white rabbit chase, "
 "cyan replay"
 msgstr "游戏类型：黄色为自由混战，红色为夺旗，白色为 兔子追逐，青色为回放"
 
-#: server.js:2829
+#: server.js:2839
 msgid "Superflags"
 msgstr "超级旗帜"
 
-#: server.js:2832
+#: server.js:2842
 msgid "This server already holds an import of that map"
 msgstr "本服务器已导入该地图"
 
-#: server.js:2836
+#: server.js:2846
 msgid "The name, or the address when a server has none"
 msgstr "名称（没有则显示地址）"
 
-#: server.js:2836
+#: server.js:2846
 msgid "Name & Description"
 msgstr "名称和描述"
 
-#: server.js:2848
+#: server.js:2858
 msgid "Filter syntax"
 msgstr "筛选语法"
 
-#: server.js:2921
+#: server.js:2931
 msgid "Left out of bzo's checks at its operator's request"
 msgstr "应其运营者要求，不在 bzo 的检查之列"
 
-#: server.js:2922
+#: server.js:2932
 msgid "This server bans bzo"
 msgstr "此服务器封禁了 bzo"
 
-#: server.js:2978
+#: server.js:2988
 msgid "Address"
 msgstr "地址"
 
-#: server.js:2980 server.js:3102 server.js:3118 server.js:6337
+#: server.js:2990 server.js:3112 server.js:3128 server.js:6347
 msgid "Owner"
 msgstr "所有者"
 
-#: server.js:2981
+#: server.js:2991
 msgid "Imported"
 msgstr "已导入"
 
-#: server.js:2995 server.js:3064
+#: server.js:3005 server.js:3074
 msgid "Launch"
 msgstr "启动"
 
-#: server.js:3001 server.js:3061 server/discovery.cjs:265
+#: server.js:3011 server.js:3071 server/discovery.cjs:265
 msgid "Play"
 msgstr "开始游戏"
 
-#: server.js:3006
+#: server.js:3016
 msgid "Practice"
 msgstr ""
 
-#: server.js:3010
+#: server.js:3020
 msgid "Import"
 msgstr "导入"
 
-#: server.js:3051
+#: server.js:3061
 msgid "Enter game"
 msgstr "进入游戏"
 
-#: server.js:3063
+#: server.js:3073
 msgid "Login and Play"
 msgstr "登录并开始"
 
-#: server.js:3101
+#: server.js:3111
 msgid "BZFlag server"
 msgstr "BZFlag 服务器"
 
-#: server.js:3103
+#: server.js:3113
 msgid "Carried by"
 msgstr "中继者"
 
-#: server.js:3117
+#: server.js:3127
 msgid "Up"
 msgstr "运行时间"
 
-#: server.js:3119
+#: server.js:3129
 msgid "Voice chat"
 msgstr "语音聊天"
 
-#: server.js:3119
+#: server.js:3129
 msgid "configured"
 msgstr "已配置"
 
-#: server.js:3121
+#: server.js:3131
 msgid "Also at"
 msgstr "其他地址"
 
-#: server.js:3172
+#: server.js:3182
 msgid "(admin)"
 msgstr "（管理员）"
 
-#: server.js:3173
+#: server.js:3183
 msgid "Log out"
 msgstr "退出登录"
 
-#: server.js:3175
+#: server.js:3185
 msgid "Log in with your bzflag.org account to register a server"
 msgstr "使用 bzflag.org 账号登录以注册服务器"
 
-#: server.js:3176
+#: server.js:3186
 msgid "Log in with your bzflag.org account"
 msgstr "使用 bzflag.org 账号登录"
 
-#: server.js:3187
+#: server.js:3197
 msgid "maps"
 msgstr "地图"
 
-#: server.js:3187
+#: server.js:3197
 msgid "replays"
 msgstr "回放"
 
-#: server.js:3188
+#: server.js:3198
 msgid "keys"
 msgstr "密钥"
 
-#: server.js:3188
+#: server.js:3198
 msgid "help"
 msgstr "帮助"
 
-#: server.js:3192
+#: server.js:3202
 msgid "Imported {file} -- it is in the local maps table below."
 msgstr "已导入 {file}，见下方本地地图表。"
 
-#: server.js:3194
+#: server.js:3204
 msgid "Import failed: {error}"
 msgstr "导入失败：{error}"
 
-#: server.js:3202
+#: server.js:3212
 msgid "bzo servers"
 msgstr "bzo 服务器"
 
-#: server.js:3441
+#: server.js:3451
 msgid "Public bzo servers - {count}"
 msgstr "公共 bzo 服务器 - {count}"
 
-#: server.js:3442
+#: server.js:3452
 msgid ""
 "From the designated bzo list server, {server} -- pick a row to read it; "
 "Enter, or the pane's own link, goes in."
@@ -3660,45 +3676,45 @@ msgstr ""
 "来自指定的 bzo 列表服务器 {server}。选择一行查看详情；按 Enter 或点击面板中的"
 "链接即可进入。"
 
-#: server.js:3443
+#: server.js:3453
 msgid "disabled on this instance"
 msgstr "此实例已禁用"
 
-#: server.js:3447
+#: server.js:3457
 msgid "Public BZFlag servers - {count}"
 msgstr "公共 BZFlag 服务器 - {count}"
 
-#: server.js:3448
+#: server.js:3458
 msgid ""
 "From the public list server (my.bzflag.org), cached {seconds}s ago -- "
 "{refresh}."
 msgstr "来自公共列表服务器（my.bzflag.org），{seconds} 秒前缓存 — {refresh}。"
 
-#: server.js:3449
+#: server.js:3459
 msgid "refresh"
 msgstr "刷新"
 
-#: server.js:3451
+#: server.js:3461
 msgid ""
 "Pick a row to read it; its link views that map, and does not enter that game."
 msgstr "选择一行查看详情；其链接用于查看该地图，不会进入该游戏。"
 
-#: server.js:3455
+#: server.js:3465
 msgid "Local maps - {count}"
 msgstr "本地地图 - {count}"
 
-#: server.js:3456
+#: server.js:3466
 msgid ""
 "Already in this server's {directory} -- pick a row to read it; its link "
 "views that map."
 msgstr ""
 "已在本服务器的 {directory} 中。选择一行查看详情；其链接用于查看该地图。"
 
-#: server.js:3461
+#: server.js:3471
 msgid "Local replays - {count}"
 msgstr "本地回放 - {count}"
 
-#: server.js:3462
+#: server.js:3472
 msgid ""
 "bzfs recordings in this server's {directory} -- pick a row to read it; Watch "
 "plays it to everyone watching that replay."
@@ -3706,7 +3722,7 @@ msgstr ""
 "本服务器 {directory} 中的 bzfs 录像。选择一行查看详情；“观战”会向所有观看该回"
 "放的人播放。"
 
-#: server.js:3477
+#: server.js:3487
 msgid ""
 "bzo {version} (build {build}): BZFlag in the browser, on desktop, phone and "
 "headset, and this list of the servers to play it on."
@@ -3714,7 +3730,7 @@ msgstr ""
 "bzo {version}（构建 {build}）：浏览器中的 BZFlag，支持桌面、手机和头显，以及"
 "可供游玩的服务器列表。"
 
-#: server.js:3480
+#: server.js:3490
 msgid ""
 "Copyright (C) 2025-2026 Tim Riker. Free software under the {license}; source "
 "at {source}."
@@ -3722,97 +3738,97 @@ msgstr ""
 "Copyright (C) 2025-2026 Tim Riker。依据 {license} 发布的自由软件；源代码见 "
 "{source}。"
 
-#: server.js:3484
+#: server.js:3494
 msgid ""
 "Run a BZFlag server? {page} says when bzo visits it, and how to ask it to "
 "stay away."
 msgstr "在运行 BZFlag 服务器？{page} 说明 bzo 何时访问它，以及如何请它不要来。"
 
-#: server.js:3485
+#: server.js:3495
 msgid "bzo on your BZFlag server"
 msgstr "bzo 与你的 BZFlag 服务器"
 
-#: server.js:3543
+#: server.js:3553
 msgid "Could not reach the BZFlag list server. Try again shortly."
 msgstr "无法连接 BZFlag 列表服务器，请稍后再试。"
 
-#: server.js:6294
+#: server.js:6304
 msgid "List server key"
 msgstr "列表服务器密钥"
 
-#: server.js:6296
+#: server.js:6306
 msgid ""
 "This instance is not the designated bzo list server. Manage this server's "
 "key at {link}."
 msgstr "此实例不是指定的 bzo 列表服务器。请在 {link} 管理本服务器的密钥。"
 
-#: server.js:6299
+#: server.js:6309
 msgid "The list server is disabled on this instance ({setting} is empty)."
 msgstr "此实例已禁用列表服务器（{setting} 为空）。"
 
-#: server.js:6306
+#: server.js:6316
 msgid "Generate key"
 msgstr "生成密钥"
 
-#: server.js:6308
+#: server.js:6318
 msgid ""
 "Enter the server's own {setting} -- the same address it already answers "
 "admin-whitelist probes on."
 msgstr "输入服务器自身的 {setting}——即它已用于响应管理员白名单探测的同一地址。"
 
-#: server.js:6311
+#: server.js:6321
 msgid ""
 "The list server calls this address back to validate a report; it never "
 "trusts one a report claims for itself."
 msgstr "列表服务器会回连此地址以验证报告，绝不信任报告自称的地址。"
 
-#: server.js:6313
+#: server.js:6323
 msgid "Log in above to register a server and generate a key."
 msgstr "请在上方登录以注册服务器并生成密钥。"
 
-#: server.js:6316
+#: server.js:6326
 msgid "never"
 msgstr "从未"
 
-#: server.js:6317
+#: server.js:6327
 msgid "stale"
 msgstr "已过期"
 
-#: server.js:6318
+#: server.js:6328
 msgid "{players}/{max} players"
 msgstr "{players}/{max} 名玩家"
 
-#: server.js:6319
+#: server.js:6329
 msgid "never reported"
 msgstr "从未报告"
 
-#: server.js:6320
+#: server.js:6330
 msgid "Revoke"
 msgstr "吊销"
 
-#: server.js:6321
+#: server.js:6331
 msgid "Failed"
 msgstr "失败"
 
-#: server.js:6322
+#: server.js:6332
 msgid "Key for {url}: {key}"
 msgstr "{url} 的密钥：{key}"
 
-#: server.js:6323
+#: server.js:6333
 msgid ""
 "Paste this into that server's Operator panel -- also readable from the table "
 "above any time."
 msgstr "将其粘贴到该服务器的管理员面板中——也可随时在上方表格中查看。"
 
-#: server.js:6325
+#: server.js:6335
 msgid "All registered keys"
 msgstr "所有已注册密钥"
 
-#: server.js:6325
+#: server.js:6335
 msgid "Your keys"
 msgstr "你的密钥"
 
-#: server.js:6326
+#: server.js:6336
 msgid ""
 "This instance ({url}) is the designated bzo list server -- every other bzo "
 "instance reports here, so its own {list} can show the {table} above."
@@ -3820,952 +3836,952 @@ msgstr ""
 "本实例（{url}）是指定的 bzo 列表服务器——其他所有 bzo 实例都向这里报告，因此它"
 "们各自的 {list} 能显示上方的{table}。"
 
-#: server.js:6329
+#: server.js:6339
 msgid "bzo servers table"
 msgstr "bzo 服务器表"
 
-#: server.js:6331
+#: server.js:6341
 msgid "A {bzfs} server's key is a different one, from {link}."
 msgstr "{bzfs} 服务器的密钥是另一种，从 {link} 获取。"
 
-#: server.js:6337
+#: server.js:6347
 msgid "Key"
 msgstr "密钥"
 
-#: server.js:6338
+#: server.js:6348
 msgid "Requested"
 msgstr "申请时间"
 
-#: server.js:6338
+#: server.js:6348
 msgid "Last checked"
 msgstr "上次检查"
 
-#: server.js:6339
+#: server.js:6349
 msgid "Status"
 msgstr "状态"
 
-#: server.js:7658
+#: server.js:7672
 msgid "Match duration is {duration}"
 msgstr "比赛时长为 {duration}"
 
-#: server.js:7668
+#: server.js:7682
 msgid "Match started"
 msgstr "比赛开始"
 
-#: server.js:8075
+#: server.js:8089
 msgid "Your score record will be saved while you are in observer mode."
 msgstr "你处于观察者模式期间，分数记录会被保留。"
 
-#: server.js:8080
+#: server.js:8094
 msgid "Your score has been restored."
 msgstr "你的分数已恢复。"
 
 #. TRANSLATORS: /me is a command name; keep it as it is
-#: server.js:8715
+#: server.js:8729
 msgid "{player}, the /me command requires an argument"
 msgstr "{player}，/me 命令需要参数"
 
-#: server.js:8773
+#: server.js:8787
 msgid "Commands (use /<command>? for one of them):"
 msgstr "命令（查看单个命令用 /<command>?）："
 
-#: server.js:8818
+#: server.js:8832
 msgid "Recording started"
 msgstr "开始录像"
 
-#: server.js:8826 server.js:8883 server/messages-operator.cjs:332
+#: server.js:8840 server.js:8897 server/messages-operator.cjs:332
 msgid "Could not open for writing: {name} ({error})"
 msgstr "无法打开以写入：{name}（{error}）"
 
-#: server.js:8830
+#: server.js:8844
 msgid "Recording stopped"
 msgstr "录像已停止"
 
-#: server.js:8838
+#: server.js:8852
 msgid "Record size set to {mbytes}"
 msgstr "录像大小设为 {mbytes}"
 
-#: server.js:8846
+#: server.js:8860
 msgid "Record rate set to {seconds}"
 msgstr "录像频率设为 {seconds}"
 
-#: server.js:8850
+#: server.js:8864
 msgid "Not Recording"
 msgstr "未在录像"
 
-#: server.js:8854
+#: server.js:8868
 msgid "Filename:  {name}"
 msgstr "文件名:  {name}"
 
-#: server.js:8855
+#: server.js:8869
 msgid "   saved:  {bytes} bytes / {packets} packets / {seconds} seconds"
 msgstr "   已保存:  {bytes} 字节 / {packets} 个数据包 / {seconds} 秒"
 
-#: server.js:8861
+#: server.js:8875
 msgid "Buffered:  {bytes} bytes / {packets} packets / {seconds} seconds"
 msgstr "缓冲:  {bytes} 字节 / {packets} 个数据包 / {seconds} 秒"
 
-#: server.js:8875 server/messages-operator.cjs:323
+#: server.js:8889 server/messages-operator.cjs:323
 msgid "No buffer to save"
 msgstr "没有可保存的缓冲"
 
-#: server.js:8880 server/messages-operator.cjs:328
+#: server.js:8894 server/messages-operator.cjs:328
 msgid "Record buffer saved to: {name}"
 msgstr "录像缓冲已保存到：{name}"
 
-#: server.js:8894
+#: server.js:8908
 msgid "Recording to file: {name}"
 msgstr "正在录像到文件：{name}"
 
-#: server.js:8917 server.js:9866
+#: server.js:8931 server.js:9880
 msgid "BZFS Version: {version}"
 msgstr "BZFS 版本：{version}"
 
-#: server.js:8955 server.js:10069
+#: server.js:8969 server.js:10083
 msgid "Nobody is here"
 msgstr "这里没有人"
 
-#: server.js:8962
+#: server.js:8976
 msgid "server: {stats}"
 msgstr "服务器：{stats}"
 
-#: server.js:9004
+#: server.js:9018
 msgid "Usage: /setteam <#slot|PlayerName> <team>"
 msgstr "用法：/setteam <#slot|PlayerName> <team>"
 
 #. TRANSLATORS: /setteam is a command name and {teams} lists team names as typed
-#: server.js:9011
+#: server.js:9025
 msgid "Usage: /setteam <#slot|PlayerName> <team> -- one of {teams}"
 msgstr "用法：/setteam <#slot|PlayerName> <team> -- {teams} 之一"
 
-#: server.js:9017
+#: server.js:9031
 msgid "\"{player}\" is not on a team to move from"
 msgstr "“{player}”不在可移出的队伍中"
 
-#: server.js:9021
+#: server.js:9035
 msgid "\"{player}\" is already {team}"
 msgstr "“{player}”已经在{team}"
 
-#: server.js:9027
+#: server.js:9041
 msgid "\"{player}\" moved to {team}"
 msgstr "已将“{player}”移到{team}"
 
-#: server.js:9028
+#: server.js:9042
 msgid "@{player} moved you to {team}"
 msgstr "@{player} 把你移到了{team}"
 
-#: server.js:9057
+#: server.js:9071
 msgid "Moved to {position} facing {bearing}"
 msgstr "已移动到 {position}，朝向 {bearing}"
 
-#: server.js:9060
+#: server.js:9074
 msgid "\"{player}\" moved to {position} facing {bearing}"
 msgstr "已将“{player}”移动到 {position}，朝向 {bearing}"
 
-#: server.js:9061
+#: server.js:9075
 msgid "@{player} moved you to {position} facing {bearing}"
 msgstr "@{player} 把你移到 {position}，朝向 {bearing}"
 
-#: server.js:9074
+#: server.js:9088
 msgid "Usage: /msg \"some callsign\" some message"
 msgstr "用法：/msg \"some callsign\" some message"
 
-#: server.js:9121
+#: server.js:9135
 msgid "Usage: /kill <#slot|PlayerName> [reason]"
 msgstr "用法：/kill <#slot|PlayerName> [reason]"
 
-#: server.js:9126
+#: server.js:9140
 msgid "An observer has no tank to kill"
 msgstr "观察者没有可击杀的坦克"
 
-#: server.js:9130
+#: server.js:9144
 msgid "\"{player}\" is already dead"
 msgstr "“{player}”已经死了"
 
-#: server.js:9137
+#: server.js:9151
 msgid "\"{player}\" killed"
 msgstr "已击杀“{player}”"
 
-#: server.js:9138
+#: server.js:9152
 msgid "You were killed by an operator: {reason}"
 msgstr "你被管理员击杀：{reason}"
 
-#: server.js:9139
+#: server.js:9153
 msgid "You were killed by an operator"
 msgstr "你被管理员击杀了"
 
-#: server.js:9187
+#: server.js:9201
 msgid "You were banned from this server"
 msgstr "你已被此服务器封禁"
 
-#: server.js:9188 server.js:9211
+#: server.js:9202 server.js:9225
 msgid "Reason given: {reason}"
 msgstr "理由：{reason}"
 
-#: server.js:9189
+#: server.js:9203
 msgid "{player} banned by {admin}, reason: {reason}"
 msgstr "{player} 被 {admin} 封禁，理由：{reason}"
 
-#: server.js:9201
+#: server.js:9215
 msgid "Syntax: /kick <#slot | PlayerName | \"Player Name\"> <reason>"
 msgstr "语法：/kick <#slot | PlayerName | \"Player Name\"> <reason>"
 
-#: server.js:9202 server.js:9231
+#: server.js:9216 server.js:9245
 msgid "\tPlease keep in mind that reason is displayed to the user."
 msgstr "\t请注意，理由会显示给该用户。"
 
-#: server.js:9205
+#: server.js:9219
 msgid "player \"{player}\" not found"
 msgstr "找不到玩家“{player}”"
 
-#: server.js:9210
+#: server.js:9224
 msgid "You were kicked off the server"
 msgstr "你被踢出了服务器"
 
-#: server.js:9212
+#: server.js:9226
 msgid "{player} kicked by {admin}, reason: {reason}"
 msgstr "{player} 被 {admin} 踢出，理由：{reason}"
 
-#: server.js:9226
+#: server.js:9240
 msgid ""
 "Syntax: /ban <#slot | PlayerName | \"Player Name\" | ip> <duration> <reason>"
 msgstr ""
 "语法：/ban <#slot | PlayerName | \"Player Name\" | ip> <duration> <reason>"
 
-#: server.js:9227
+#: server.js:9241
 msgid "\t<duration> can be 'short' or 'default' for the default ban time "
 msgstr "\t<duration> 可以是 'short' 或 'default'，表示默认封禁时长 "
 
-#: server.js:9228
+#: server.js:9242
 msgid "\tor 'forever' or 'max' for infinite bans "
 msgstr "\t或 'forever'、'max' 表示永久封禁 "
 
-#: server.js:9229
+#: server.js:9243
 msgid "\tor a time in the format <weeks>W<days>D<hours>H<minutes>M "
 msgstr "\t或 <weeks>W<days>D<hours>H<minutes>M 格式的时间 "
 
-#: server.js:9230
+#: server.js:9244
 msgid "\tor just a number of minutes "
 msgstr "\t或直接写分钟数 "
 
-#: server.js:9253 server.js:9361
+#: server.js:9267 server.js:9375
 msgid "Error: invalid ban duration"
 msgstr "错误：无效的封禁时长"
 
-#: server.js:9254 server.js:9362
+#: server.js:9268 server.js:9376
 msgid "Duration examples:  30m 1h  1d  1w  and mixing: 1w2d4h 1w2d1m"
 msgstr "时长示例：  30m 1h  1d  1w  组合：1w2d4h 1w2d1m"
 
-#: server.js:9263 server.js:9657
+#: server.js:9277 server.js:9671
 msgid "{player} has no trusted address to ban"
 msgstr "{player} 没有可封禁的可信地址"
 
-#: server.js:9269 server.js:9371
+#: server.js:9283 server.js:9385
 msgid "Pattern added to the BZID banlist"
 msgstr "已将规则添加到 BZID 封禁列表"
 
-#: server.js:9275
+#: server.js:9289
 msgid "Malformed address or invalid Player/Slot: {target}"
 msgstr "地址格式错误或玩家/槽位无效：{target}"
 
-#: server.js:9279
+#: server.js:9293
 msgid "Pattern added to the IP banlist"
 msgstr "已将规则添加到 IP 封禁列表"
 
-#: server.js:9290
+#: server.js:9304
 msgid "Removed IP pattern from the ban list"
 msgstr "已从封禁列表移除 IP 规则"
 
-#: server.js:9292 server.js:9381
+#: server.js:9306 server.js:9395
 msgid "No pattern removed"
 msgstr "未移除任何规则"
 
-#: server.js:9307
+#: server.js:9321
 msgid "Syntax: /checkip <ip>"
 msgstr "语法：/checkip <ip>"
 
-#: server.js:9312
+#: server.js:9326
 msgid "{address} is not banned."
 msgstr "{address} 未被封禁。"
 
-#: server.js:9315
+#: server.js:9329
 msgid "{address} is banned:"
 msgstr "{address} 已被封禁："
 
-#: server.js:9323
+#: server.js:9337
 msgid ""
 "Syntax: /idban <#slot|+id|PlayerName|\"Player Name\"> <duration> <reason>"
 msgstr ""
 "语法：/idban <#slot|+id|PlayerName|\"Player Name\"> <duration> <reason>"
 
-#: server.js:9324
+#: server.js:9338
 msgid "  Please keep in mind that reason is displayed to the user."
 msgstr "  请注意，理由会显示给该用户。"
 
-#: server.js:9335
+#: server.js:9349
 msgid "Error: invalid id pattern"
 msgstr "错误：无效的 ID 规则"
 
-#: server.js:9343
+#: server.js:9357
 msgid "could not find player ({player})"
 msgstr "找不到玩家（{player}）"
 
-#: server.js:9348
+#: server.js:9362
 msgid "no BZID for player ({player})"
 msgstr "该玩家没有 BZID（{player}）"
 
-#: server.js:9379
+#: server.js:9393
 msgid "Removed id from the ban list"
 msgstr "已从封禁列表移除 ID"
 
-#: server.js:9485
+#: server.js:9499
 msgid "Usage: /poll vote yes|no"
 msgstr "用法：/poll vote yes|no"
 
-#: server.js:9486
+#: server.js:9500
 msgid "    or /poll ban playername"
 msgstr "    或 /poll ban playername"
 
-#: server.js:9487
+#: server.js:9501
 msgid "    or /poll kick playername"
 msgstr "    或 /poll kick playername"
 
-#: server.js:9488
+#: server.js:9502
 msgid "    or /poll kill playername"
 msgstr "    或 /poll kill playername"
 
-#: server.js:9489
+#: server.js:9503
 msgid "    or /poll set variable value"
 msgstr "    或 /poll set variable value"
 
-#: server.js:9490
+#: server.js:9504
 msgid "    or /poll flagreset"
 msgstr "    或 /poll flagreset"
 
-#: server.js:9492
+#: server.js:9506
 msgid "    or /poll {action} {parameters}"
 msgstr ""
 
 #. TRANSLATORS: /vote is a command name; keep it as it is
-#: server.js:9501
+#: server.js:9515
 msgid "{player}, you are presently not authorized to run /vote"
 msgstr "{player}，你目前无权使用 /vote"
 
-#: server.js:9505 server.js:9552 server.js:9579
+#: server.js:9519 server.js:9566 server.js:9593
 msgid "ERROR: the poll arbiter has disappeared (this should never happen)"
 msgstr "错误：投票仲裁器消失了（不应发生）"
 
-#: server.js:9509
+#: server.js:9523
 msgid "A poll is not presently in progress.  There is nothing to vote on"
 msgstr "当前没有进行中的投票，没有可投的内容"
 
-#: server.js:9514
+#: server.js:9528
 msgid "{player}, you did not vote in favor or in opposition"
 msgstr "{player}，你没有投赞成或反对"
 
-#: server.js:9515
+#: server.js:9529
 msgid "{player}, you did not provide a vote answer"
 msgstr "{player}，你没有给出投票选项"
 
-#: server.js:9516
+#: server.js:9530
 msgid "Usage: /vote yes|no|y|n|1|0|yea|nay|si|ja|nein|oui|non|sim|nao"
 msgstr "用法：/vote yes|no|y|n|1|0|yea|nay|si|ja|nein|oui|non|sim|nao"
 
 #. TRANSLATORS: {action} is a /poll keyword (ban, kick, kill, set, reset), sent as typed
-#: server.js:9530
+#: server.js:9544
 msgid "{player}, your vote in favor of the {action} has been recorded"
 msgstr "{player}，你对 {action} 的赞成票已记录"
 
-#: server.js:9531
+#: server.js:9545
 msgid "{player}, your vote in opposition of the {action} has been recorded"
 msgstr "{player}，你对 {action} 的反对票已记录"
 
-#: server.js:9533
+#: server.js:9547
 msgid "{player}, you have already voted on the poll to {action} {target}"
 msgstr "{player}，你已经在对 {target} 的 {action} 投票中投过票了"
 
-#: server.js:9537
+#: server.js:9551
 msgid ""
 "{player}, there was an error while voting on the poll to {action} {target}"
 msgstr "{player}，对 {target} 的 {action} 投票出错"
 
 #. TRANSLATORS: /veto is a command name; keep it as it is
-#: server.js:9548
+#: server.js:9562
 msgid "{player}, you are presently not authorized to run /veto"
 msgstr "{player}，你目前无权使用 /veto"
 
-#: server.js:9556
+#: server.js:9570
 msgid "{player}, there is presently no active poll to veto"
 msgstr "{player}，当前没有可否决的投票"
 
-#: server.js:9559
+#: server.js:9573
 msgid "{player}, you have cancelled the poll to {action} {target}"
 msgstr "{player}，你取消了对 {target} 的 {action} 投票"
 
-#: server.js:9565
+#: server.js:9579
 msgid "The poll was cancelled by {player}"
 msgstr "投票已被 {player} 取消"
 
 #. TRANSLATORS: /poll is a command name; keep it as it is
-#: server.js:9575
+#: server.js:9589
 msgid "{player}, you are presently not authorized to run /poll"
 msgstr "{player}，你目前无权使用 /poll"
 
-#: server.js:9595
+#: server.js:9609
 msgid "A poll to {action} {target} is presently in progress"
 msgstr "对 {target} 的 {action} 投票正在进行"
 
-#: server.js:9598
+#: server.js:9612
 msgid "Unable to start a new poll until the current one is over"
 msgstr "当前投票结束前无法发起新投票"
 
-#: server.js:9603
+#: server.js:9617
 msgid ""
 "Unable to initiate a new poll.  There are not enough registered players "
 "playing."
 msgstr "无法发起新投票。正在游戏的注册玩家不足。"
 
-#: server.js:9607
+#: server.js:9621
 msgid ""
 "There needs to be at least {required} other player and only {others} is "
 "available."
 msgstr "至少需要 {required} 名其他玩家，但只有 {others} 名。"
 
-#: server.js:9608
+#: server.js:9622
 msgid ""
 "There needs to be at least {required} other player and only {others} are "
 "available."
 msgstr "至少需要 {required} 名其他玩家，但只有 {others} 名。"
 
-#: server.js:9610
+#: server.js:9624
 msgid ""
 "There needs to be at least {required} other players and only {others} is "
 "available."
 msgstr "至少需要 {required} 名其他玩家，但只有 {others} 名。"
 
-#: server.js:9612
+#: server.js:9626
 msgid ""
 "There needs to be at least {required} other players and only {others} are "
 "available."
 msgstr "至少需要 {required} 名其他玩家，但只有 {others} 名。"
 
-#: server.js:9622
+#: server.js:9636
 msgid "/poll: incorrect syntax, argument required."
 msgstr "/poll：语法错误，需要参数。"
 
-#: server.js:9628
+#: server.js:9642
 msgid "{player}, no target was specified for the [{action}] vote"
 msgstr "{player}，[{action}] 投票未指定目标"
 
 #. TRANSLATORS: /poll and {action} are a command as typed; keep them as they are
-#: server.js:9630
+#: server.js:9644
 msgid "Usage: /poll {action} target"
 msgstr "用法：/poll {action} target"
 
 #. TRANSLATORS: /poll {action} is a command as typed; keep it as it is
-#: server.js:9635
+#: server.js:9649
 msgid "{player}, you may not /poll {action} on this server"
 msgstr "{player}，此服务器不允许 /poll {action}"
 
-#: server.js:9643
+#: server.js:9657
 msgid "The player specified for a {action} vote is not here"
 msgstr "{action} 投票指定的玩家不在这里"
 
-#: server.js:9647
+#: server.js:9661
 msgid "You can't kill an observer!"
 msgstr "你不能击杀观察者！"
 
-#: server.js:9653
+#: server.js:9667
 msgid "{player} is protected from being polled against."
 msgstr "{player} 受保护，不能被投票针对。"
 
-#: server.js:9685
+#: server.js:9699
 msgid "You are not able to request a {action} poll right now, {player}"
 msgstr "{player}，你现在不能发起 {action} 投票"
 
-#: server.js:9690
+#: server.js:9704
 msgid "A poll to {action} {target} has been requested by {player}"
 msgstr "{player} 发起了对 {target} 的 {action} 投票"
 
-#: server.js:9698
+#: server.js:9712
 msgid ""
 "{available} player is available, {needed} additional affirming vote required "
 "to pass the poll ({percentage} %)"
 msgstr ""
 "{available} 名玩家可投票，还需 {needed} 张赞成票才能通过（{percentage} %）"
 
-#: server.js:9699
+#: server.js:9713
 msgid ""
 "{available} player is available, {needed} additional affirming votes "
 "required to pass the poll ({percentage} %)"
 msgstr ""
 "{available} 名玩家可投票，还需 {needed} 张赞成票才能通过（{percentage} %）"
 
-#: server.js:9702
+#: server.js:9716
 msgid ""
 "{available} players are available, {needed} additional affirming vote "
 "required to pass the poll ({percentage} %)"
 msgstr ""
 "{available} 名玩家可投票，还需 {needed} 张赞成票才能通过（{percentage} %）"
 
-#: server.js:9703
+#: server.js:9717
 msgid ""
 "{available} players are available, {needed} additional affirming votes "
 "required to pass the poll ({percentage} %)"
 msgstr ""
 "{available} 名玩家可投票，还需 {needed} 张赞成票才能通过（{percentage} %）"
 
-#: server.js:9708
+#: server.js:9722
 msgid "Unable to automatically place your vote for some unknown reason"
 msgstr "因未知原因，无法自动替你投票"
 
-#: server.js:9736
+#: server.js:9750
 msgid ""
 "You have been temporarily banned due to sufficient votes to have you removed"
 msgstr "投票通过，你已被临时封禁"
 
-#: server.js:9742
+#: server.js:9756
 msgid "You have been kicked due to sufficient votes to have you removed"
 msgstr "投票通过，你已被踢出"
 
-#: server.js:9748
+#: server.js:9762
 msgid "You have been killed due to sufficient votes"
 msgstr "投票通过，你已被击杀"
 
-#: server.js:9771
+#: server.js:9785
 msgid ""
 "A poll to {action} {target} has begun.  Players have up to {seconds} seconds "
 "to vote."
 msgstr "对 {target} 的 {action} 投票已开始。玩家最多有 {seconds} 秒可以投票。"
 
-#: server.js:9779
+#: server.js:9793
 msgid "{seconds} seconds remain in the poll to {action} {target}."
 msgstr "对 {target} 的 {action} 投票还剩 {seconds} 秒。"
 
-#: server.js:9787
+#: server.js:9801
 msgid "Enough votes were collected to {action} {target} early."
 msgstr "已收集足够票数，提前对 {target} 执行 {action}。"
 
-#: server.js:9788
+#: server.js:9802
 msgid "Enough votes were collected to reset all unused flags early."
 msgstr "已收集足够票数，提前重置所有未使用的旗帜。"
 
-#: server.js:9804
+#: server.js:9818
 msgid "Poll Results: {yes} in favor, {no} oppose, {abstain} abstain"
 msgstr "投票结果：赞成 {yes}，反对 {no}，弃权 {abstain}"
 
-#: server.js:9812
+#: server.js:9826
 msgid "The poll to {action} {target} was not successful"
 msgstr "对 {target} 的 {action} 投票未通过"
 
-#: server.js:9821
+#: server.js:9835
 msgid ""
 "The poll is now closed and was successful.  {target} is scheduled to be "
 "temporarily banned."
 msgstr "投票结束并已通过。{target} 将被临时封禁。"
 
-#: server.js:9822
+#: server.js:9836
 msgid ""
 "The poll is now closed and was successful.  {target} is scheduled to be "
 "kicked."
 msgstr "投票结束并已通过。{target} 将被踢出。"
 
-#: server.js:9823
+#: server.js:9837
 msgid ""
 "The poll is now closed and was successful.  {target} is scheduled to be "
 "killed."
 msgstr "投票结束并已通过。{target} 将被击杀。"
 
-#: server.js:9826
+#: server.js:9840
 msgid ""
 "The poll is now closed and was successful.  {target} is scheduled to be "
 "{action}."
 msgstr "投票结束并已通过。将对 {target} 执行 {action}。"
 
-#: server.js:9834
+#: server.js:9848
 msgid "{target} has been kicked."
 msgstr "{target} 已被踢出。"
 
-#: server.js:9835
+#: server.js:9849
 msgid "{target} has been killed."
 msgstr "{target} 已被击杀。"
 
-#: server.js:9837
+#: server.js:9851
 msgid "{target} has been {action}"
 msgstr "已对 {target} 执行 {action}"
 
-#: server.js:9852
+#: server.js:9866
 msgid "{player}'s client version:"
 msgstr "{player} 的客户端版本："
 
-#: server.js:9853
+#: server.js:9867
 msgid "  {version}"
 msgstr "  {version}"
 
-#: server.js:9854
+#: server.js:9868
 msgid "  unknown"
 msgstr "  未知"
 
-#: server.js:9860
+#: server.js:9874
 msgid "Player not found."
 msgstr "找不到玩家。"
 
-#: server.js:9891
+#: server.js:9905
 msgid "Countdown cancelled by {player}."
 msgstr "{player} 取消了倒计时。"
 
-#: server.js:9891
+#: server.js:9905
 msgid "Countdown cancelled"
 msgstr "倒计时已取消"
 
-#: server.js:9917
+#: server.js:9931
 msgid "No match is running to pause"
 msgstr "没有可暂停的比赛"
 
-#: server.js:9925
+#: server.js:9939
 msgid "No paused match to resume"
 msgstr "没有可恢复的已暂停比赛"
 
-#: server.js:9932
+#: server.js:9946
 msgid "There is no running countdown to cancel"
 msgstr "没有可取消的倒计时"
 
-#: server.js:9940
+#: server.js:9954
 msgid "Usage: /countdown [<seconds>|pause|resume|cancel]"
 msgstr "用法：/countdown [<seconds>|pause|resume|cancel]"
 
-#: server.js:9945
+#: server.js:9959
 msgid "There is a countdown already in progress"
 msgstr "倒计时已在进行中"
 
-#: server.js:9949
+#: server.js:9963
 msgid "A game is already in progress"
 msgstr "比赛已在进行中"
 
-#: server.js:9953 server.js:9956
+#: server.js:9967 server.js:9970
 msgid "Countdown set to {seconds} instead of {asked}"
 msgstr "倒计时设为 {seconds}，而非 {asked}"
 
-#: server.js:9965
+#: server.js:9979
 msgid "Countdown started by {player}."
 msgstr "{player} 开始了倒计时。"
 
-#: server.js:9966
+#: server.js:9980
 msgid "Match begins in about {duration}"
 msgstr "比赛将在约 {duration} 后开始"
 
-#: server.js:9974
+#: server.js:9988
 msgid "The match has started!...Good Luck Teams!"
 msgstr "比赛开始了！……各队祝好运！"
 
-#: server.js:9978
+#: server.js:9992
 msgid "Start your engines!......"
 msgstr "发动引擎！……"
 
-#: server.js:9980
+#: server.js:9994
 msgid "{seconds}..."
 msgstr "{seconds}..."
 
-#: server.js:9992
+#: server.js:10006
 msgid "No match is running"
 msgstr "没有正在进行的比赛"
 
-#: server.js:10004
+#: server.js:10018
 msgid "Usage: /say <message>"
 msgstr "用法：/say <message>"
 
-#: server.js:10020
+#: server.js:10034
 msgid "Usage: /mute <#slot|PlayerName>"
 msgstr "用法：/mute <#slot|PlayerName>"
 
-#: server.js:10026
+#: server.js:10040
 msgid "\"{player}\" is now muted"
 msgstr "已禁言“{player}”"
 
-#: server.js:10027
+#: server.js:10041
 msgid "You have been muted by an operator"
 msgstr "你已被管理员禁言"
 
-#: server.js:10036
+#: server.js:10050
 msgid "Usage: /unmute <#slot|PlayerName>"
 msgstr "用法：/unmute <#slot|PlayerName>"
 
-#: server.js:10042
+#: server.js:10056
 msgid "\"{player}\" is no longer muted"
 msgstr "“{player}”已解除禁言"
 
-#: server.js:10043
+#: server.js:10057
 msgid "You are no longer muted"
 msgstr "你的禁言已解除"
 
-#: server.js:10051
+#: server.js:10065
 msgid "Nobody is muted"
 msgstr "没有人被禁言"
 
-#: server.js:10164
+#: server.js:10178
 msgid "Usage: /flag drop [#slot|PlayerName]"
 msgstr "用法：/flag drop [#slot|PlayerName]"
 
-#: server.js:10171
+#: server.js:10185
 msgid "You are not carrying a flag"
 msgstr "你没有携带旗帜"
 
-#: server.js:10172
+#: server.js:10186
 msgid "\"{player}\" is not carrying a flag"
 msgstr "“{player}”没有携带旗帜"
 
-#: server.js:10181
+#: server.js:10195
 msgid "Dropped {flag} from \"{player}\""
 msgstr "已让“{player}”丢下 {flag}"
 
-#: server.js:10182
+#: server.js:10196
 msgid "Your {flag} flag was dropped"
 msgstr "你的 {flag} 旗帜被丢下了"
 
-#: server.js:10196
+#: server.js:10210
 msgid "{count} flags sent up"
 msgstr "已将 {count} 面旗帜送上天"
 
-#: server.js:10206
+#: server.js:10220
 msgid "{count} flags reset"
 msgstr "已重置 {count} 面旗帜"
 
-#: server.js:10211
+#: server.js:10225
 msgid "No flags are in the world"
 msgstr "地图上没有旗帜"
 
-#: server.js:10229
+#: server.js:10243
 msgid "Usage: /flag take <#slot|PlayerName>"
 msgstr "用法：/flag take <#slot|PlayerName>"
 
 #. TRANSLATORS: /flag take is a command name; keep it as it is
-#: server.js:10236
+#: server.js:10250
 msgid "/flag take: player ({player}) does not have a flag"
 msgstr "/flag take：玩家（{player}）没有旗帜"
 
-#: server.js:10245
+#: server.js:10259
 msgid "{admin} took flag {flag}/{slot} from {player}"
 msgstr "{admin} 从 {player} 手中收走了旗帜 {flag}/{slot}"
 
-#: server.js:10257
+#: server.js:10271
 msgid "Usage: /flag give <#slot|PlayerName> <#flagId|FlagAbbr> [force]"
 msgstr "用法：/flag give <#slot|PlayerName> <#flagId|FlagAbbr> [force]"
 
-#: server.js:10273
+#: server.js:10287
 msgid "flag {flag} is not in this world"
 msgstr "此世界中没有旗帜 {flag}"
 
-#: server.js:10280 server.js:10318
+#: server.js:10294 server.js:10332
 msgid "you may need to use the force"
 msgstr "可能需要使用 force"
 
-#: server.js:10287
+#: server.js:10301
 msgid "flag {flag} is an empty slot"
 msgstr "旗帜 {flag} 是空槽位"
 
-#: server.js:10293
+#: server.js:10307
 msgid "bad flag type"
 msgstr "无效的旗帜类型"
 
-#: server.js:10315
+#: server.js:10329
 msgid "flag type not found"
 msgstr "找不到旗帜类型"
 
-#: server.js:10324
+#: server.js:10338
 msgid "An observer has no tank to carry a flag"
 msgstr "观察者没有可携带旗帜的坦克"
 
 #. TRANSLATORS: /flag give is a command name; keep it as it is
-#: server.js:10331
+#: server.js:10345
 msgid "/flag give: player ({player}) is not alive"
 msgstr "/flag give：玩家（{player}）未存活"
 
-#: server.js:10352
+#: server.js:10366
 msgid "{admin} gave flag {flag}/{slot} to {player}"
 msgstr "{admin} 把旗帜 {flag}/{slot} 给了 {player}"
 
-#: server.js:10379
+#: server.js:10393
 msgid "Usage: /mv [player] <x,y> [facing]"
 msgstr "用法：/mv [player] <x,y> [facing]"
 
-#: server.js:10394
+#: server.js:10408
 msgid "An observer has no tank to move"
 msgstr "观察者没有可移动的坦克"
 
-#: server.js:10437
+#: server.js:10451
 msgid "Nowhere to stand at {x},{y}"
 msgstr "{x},{y} 处没有可站立的位置"
 
-#: server.js:10504
+#: server.js:10518
 msgid "Checking another player's position requires operator status"
 msgstr "查看其他玩家的位置需要管理员权限"
 
-#: server.js:10510
+#: server.js:10524
 msgid "Usage: /pos [player]"
 msgstr "用法：/pos [player]"
 
-#: server.js:10516
+#: server.js:10530
 msgid "An observer has no tank position"
 msgstr "观察者没有坦克位置"
 
-#: server.js:10524
+#: server.js:10538
 msgid "You are at {position} facing {bearing}"
 msgstr "你在 {position}，朝向 {bearing}"
 
-#: server.js:10525
+#: server.js:10539
 msgid "\"{player}\" is at {position} facing {bearing}"
 msgstr "“{player}”在 {position}，朝向 {bearing}"
 
-#: server.js:10996
+#: server.js:11010
 msgid "All shots now ricochet"
 msgstr "现在所有子弹都会反弹"
 
-#: server.js:10996
+#: server.js:11010
 msgid "Shots no longer ricochet"
 msgstr "子弹不再反弹"
 
-#: server.js:11162
+#: server.js:11176
 msgid "usage: set <name> [<value>]"
 msgstr "用法：set <name> [<value>]"
 
-#: server.js:11163
+#: server.js:11177
 msgid "bzo's own: {variables}"
 msgstr "bzo 专有：{variables}"
 
 #. TRANSLATORS: /set is a command name; keep it as it is
-#: server.js:11183
+#: server.js:11197
 msgid "/set failed, reason: variable {name} does not exist"
 msgstr "/set 失败，原因：变量 {name} 不存在"
 
-#: server.js:11184 server.js:11218
+#: server.js:11198 server.js:11232
 msgid "variable {name} does not exist"
 msgstr "变量 {name} 不存在"
 
-#: server.js:11188
+#: server.js:11202
 msgid "{name} is {value}"
 msgstr "{name} 为 {value}"
 
 #. TRANSLATORS: /set is a command name; keep it as it is
-#: server.js:11193
+#: server.js:11207
 msgid "/set failed, reason: variable {name} is not writeable"
 msgstr "/set 失败，原因：变量 {name} 不可写"
 
-#: server.js:11199
+#: server.js:11213
 msgid "{name} set"
 msgstr "{name} 已设置"
 
-#: server.js:11200
+#: server.js:11214
 msgid "Variable Modification Notice by {player} of set {name} {value}"
 msgstr "变量修改通知：{player} 执行了 set {name} {value}"
 
-#: server.js:11210
+#: server.js:11224
 msgid "usage: reset <name>"
 msgstr "用法：reset <name>"
 
-#: server.js:11221
+#: server.js:11235
 msgid "variable {name} is not writeable"
 msgstr "变量 {name} 不可写"
 
-#: server.js:11227
+#: server.js:11241
 msgid "all variables reset"
 msgstr "所有变量已重置"
 
-#: server.js:11228
+#: server.js:11242
 msgid "{name} reset"
 msgstr "{name} 已重置"
 
-#: server.js:11232
+#: server.js:11246
 msgid "Variable Reset Notice by {player} of reset {name}"
 msgstr "变量重置通知：{player} 执行了 reset {name}"
 
-#: server.js:11260
+#: server.js:11274
 msgid "No command starting with {prefix}"
 msgstr "没有以 {prefix} 开头的命令"
 
-#: server.js:11274
+#: server.js:11288
 msgid "The {command} command is only for players in the game"
 msgstr ""
 
-#: server.js:11280 server.js:11303
+#: server.js:11294 server.js:11317
 msgid "You do not have permission to run the {command} command"
 msgstr "你无权运行 {command} 命令"
 
-#: server.js:11354
+#: server.js:11368
 msgid "We're sorry, you are not allowed to talk!"
 msgstr "抱歉，你不能发言！"
 
-#: server.js:11594
+#: server.js:11608
 msgid "You signed in as {player} on another device."
 msgstr "你在另一台设备上以 {player} 登录了。"
 
-#: server.js:11616
+#: server.js:11630
 msgid "{player} signed in with that name, so yours is now {name}."
 msgstr "{player} 用这个名字登录了，所以你的名字现在是 {name}。"
 
-#: server.js:13825
+#: server.js:13839
 msgid "Global login approved!"
 msgstr "全局登录已通过！"
 
-#: server.js:13827
+#: server.js:13841
 msgid "Global login rejected, bad token."
 msgstr "全局登录被拒绝，令牌无效。"
 
-#: server.js:13829
+#: server.js:13843
 msgid "This callsign is not registered."
 msgstr "此呼号未注册。"
 
-#: server.js:13830
+#: server.js:13844
 msgid "You can register it at https://forums.bzflag.org/"
 msgstr "可在 https://forums.bzflag.org/ 注册"
 
-#: server.js:14436
+#: server.js:14450
 msgid "{count} shots left"
 msgstr "剩余 {count} 发"
 
-#: server.js:14437
+#: server.js:14451
 msgid "1 shot left"
 msgstr "剩余 1 发"
 
-#: server.js:14913
+#: server.js:14927
 msgid "I'm sorry, we do not allow autopilot on this server."
 msgstr "抱歉，此服务器不允许自动驾驶。"
 
-#: server.js:16973
+#: server.js:16987
 msgid "Server restarting: {reason}"
 msgstr "服务器正在重启：{reason}"
 
-#: server.js:18319
+#: server.js:18333
 msgid "The pilots have not loaded"
 msgstr "驾驶员尚未加载"
 
 #. TRANSLATORS: a command's syntax; keep it as it is
-#: server.js:18331
+#: server.js:18345
 msgid "Usage: /bot fill <0-{max}> [{pilots}]"
 msgstr "用法：/bot fill <0-{max}> [{pilots}]"
 
-#: server.js:18335
+#: server.js:18349
 msgid "No pilot \"{pilot}\"; one of {pilots}"
 msgstr "没有驾驶员“{pilot}”；可选：{pilots}"
 
 #. TRANSLATORS: a command's syntax; keep /bot add as it is
-#: server.js:18357
+#: server.js:18371
 msgid "Usage: /bot add [{pilots}] [team] [count]"
 msgstr "用法：/bot add [{pilots}] [team] [count]"
 
-#: server.js:18378
+#: server.js:18392
 msgid "{player} paused the bots and autopilots"
 msgstr "{player} 暂停了机器人和自动驾驶"
 
-#: server.js:18379
+#: server.js:18393
 msgid "{player} resumed the bots and autopilots"
 msgstr "{player} 恢复了机器人和自动驾驶"
 
-#: server.js:18391
+#: server.js:18405
 msgid "Usage: /bot remove <name|all>"
 msgstr "用法：/bot remove <name|all>"
 
 #. TRANSLATORS: a command's syntax; keep /bot, fill, add, remove, all, pause and resume as they are
-#: server.js:18403
+#: server.js:18417
 msgid ""
 "Usage: /bot [fill <n> [{pilots}] | add [{pilots}] [team] [count] | remove "
 "<name|all> | pause | resume]"
@@ -4773,51 +4789,51 @@ msgstr ""
 "用法：/bot [fill <n> [{pilots}] | add [{pilots}] [team] [count] | remove "
 "<name|all> | pause | resume]"
 
-#: server.js:18430
+#: server.js:18444
 msgid "Server shutting down"
 msgstr "服务器正在关闭"
 
-#: server.js:18440
+#: server.js:18454
 msgid "Server restarting"
 msgstr "服务器正在重启"
 
-#: server.js:18670
+#: server.js:18684
 msgid "You have been kicked from the server for: {reason}"
 msgstr ""
 
-#: server.js:18671
+#: server.js:18685
 msgid "{player} was kicked for:{reason}"
 msgstr ""
 
-#: server.js:18925
+#: server.js:18939
 msgid "No Plug-ins loaded."
 msgstr ""
 
-#: server.js:18928
+#: server.js:18942
 msgid "Plug-ins loaded:"
 msgstr ""
 
-#: server.js:18937
+#: server.js:18951
 msgid "Usage: /loadplugin plug-in"
 msgstr ""
 
-#: server.js:18945 server.js:18956
+#: server.js:18959 server.js:18970
 msgid "Plug-in load failed."
 msgstr ""
 
-#: server.js:18953
+#: server.js:18967
 msgid "Plug-in loaded."
 msgstr ""
 
-#: server.js:18965
+#: server.js:18979
 msgid "Usage: /unloadplugin plug-in"
 msgstr ""
 
-#: server.js:18971
+#: server.js:18985
 msgid "Plug-In {name} unloaded."
 msgstr ""
 
-#: server.js:18974
+#: server.js:18988
 msgid "Plug-in {name} is not loaded."
 msgstr ""
 

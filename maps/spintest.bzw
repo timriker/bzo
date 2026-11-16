@@ -12,56 +12,64 @@
 # units from the origin and the two GroupBlade instances reach 35 along each
 # axis, so walls at 50 leave a margin to stand in without the eye having to
 # cross a quarter of a kilometre of empty ground to see what is being tested.
+
+metadata
+  title Spin test
+  author Tim Riker <timriker@gmail.com>
+  license AGPL-3.0-only
+  description Spinning mesh blades, a smoke test for mesh angvel.
+endmetadata
+
 world
-	size 50
+  size 50
 end
 
 material
-	name spinmat
-	diffuse 1 0 0 1
+  name spinmat
+  diffuse 1 0 0 1
 end
 
 mesh
-	name TopLevelSpin
-	angvel 90
-	vertex 25 0 0
-	vertex 35 0 0
-	vertex 30 0 5
-	face
-		vertices 0 1 2
-		matref spinmat
-		passable
-	endface
-	face #backside
-		vertices 0 2 1
-		matref spinmat
-		passable
-	endface
+  name TopLevelSpin
+  angvel 90
+  vertex 25 0 0
+  vertex 35 0 0
+  vertex 30 0 5
+  face
+    vertices 0 1 2
+    matref spinmat
+    passable
+  endface
+  face #backside
+    vertices 0 2 1
+    matref spinmat
+    passable
+  endface
 end
 
 define SpinBlade
-	mesh
-		angvel 45
-		vertex -5 0 0
-		vertex 5 0 0
-		vertex 0 0 8
-		face
-			vertices 0 1 2
-			matref spinmat
-			passable
-		endface
-		face #backside
-			vertices 0 2 1
-			matref spinmat
-			passable
-		endface
-	end
+  mesh
+    angvel 45
+    vertex -5 0 0
+    vertex 5 0 0
+    vertex 0 0 8
+    face
+      vertices 0 1 2
+      matref spinmat
+      passable
+    endface
+    face #backside
+      vertices 0 2 1
+      matref spinmat
+      passable
+    endface
+  end
 enddef
 
 group SpinBlade
-	shift -30 -30 0
+  shift -30 -30 0
 end
 
 group SpinBlade
-	shift 30 30 0
+  shift 30 30 0
 end

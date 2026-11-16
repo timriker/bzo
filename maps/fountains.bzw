@@ -1,5 +1,11 @@
 # This world demonstrates world weapons
 
+metadata
+	author Dave Brosius
+	license LGPL-2.1-only OR MPL-2.0
+	description This world demonstrates world weapons.
+endmetadata
+
 
 box
 position 100 0 0

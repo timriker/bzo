@@ -1,6 +1,14 @@
 #
+
+metadata
+  title Empty
+  author Tim Riker <timriker@gmail.com>
+  license AGPL-3.0-only
+  description An empty world, for testing.
+endmetadata
+
 world
-name test
-size 40.0
-flagHeight 0.0
+  name test
+  size 40.0
+  flagHeight 0.0
 end

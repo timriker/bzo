@@ -21,6 +21,7 @@
 const { BZDB_DEFAULTS } = require('../public/js/bzdb-defaults.mjs');
 const { COLOR_NAMES } = require('../public/js/color-names.mjs');
 const { FLAG_TYPES, FLAG_QUALITY, FLAG_ENDURANCE } = require('../public/js/flags.mjs');
+const { splitBzwMetadata } = require('./bzw-metadata.cjs');
 
 const f = Math.fround;
 const MAX_EXTENT = f(1.0e30);
@@ -2547,7 +2548,10 @@ const compareHeights = (a, b) => {
 // the server's own variables (a Map of names to raw strings) under the map's.
 // `textureName(name)`, when given, renames each material's textures as the
 // world is sent: how a server points native clients at its own `/img/`.
-function compileBzwWorld(text, { bzdb = null, textureName = null } = {}) {
+function compileBzwWorld(bzwText, { bzdb = null, textureName = null } = {}) {
+  // bzfs reads a `metadata` block's lines as objects of their own; this
+  // drops the block whole, as a bzfs that knows it would (bzw-metadata.cjs).
+  const { text } = splitBzwMetadata(bzwText);
   const vars = new Map(bzdb ? [...bzdb] : []);
   for (const [name, value] of optionVars(text)) vars.set(name, value);
   const world = new World(makeBzdb(vars));

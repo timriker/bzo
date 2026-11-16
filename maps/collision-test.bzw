@@ -2,54 +2,62 @@
 # Geometry for automated collision and slide testing. Everything is isolated so
 # a probe tank can be spawned a known distance from exactly one obstacle.
 #
+
+metadata
+  title Collision test
+  author Tim Riker <timriker@gmail.com>
+  license AGPL-3.0-only
+  description Geometry for automated collision and slide testing.
+endmetadata
+
 world
-name collision-test
-size 100.0
-flagHeight 0.0
+  name collision-test
+  size 100.0
+  flagHeight 0.0
 end
 
 # Long axis-aligned wall. Face nearest the origin is what a probe drives into.
 box
-name "wall_flat"
-position 0.0 -40.0 0.0
-rotation 0.0
-size     30.0 2.0 10.0
+  name "wall_flat"
+  position 0.0 -40.0 0.0
+  rotation 0.0
+  size     30.0 2.0 10.0
 end
 
 # Same wall turned 45 degrees, to exercise the oriented-box test.
 box
-name "wall_diag"
-position 70.0 -40.0 0.0
-rotation 45.0
-size     30.0 2.0 10.0
+  name "wall_diag"
+  position 70.0 -40.0 0.0
+  rotation 45.0
+  size     30.0 2.0 10.0
 end
 
 # Upright pyramid on the ground, for slope contact and sliding.
 pyramid
-name "pyr_up"
-position -70.0 -40.0 0.0
-rotation 0.0
-size     12.0 12.0 8.0
+  name "pyr_up"
+  position -70.0 -40.0 0.0
+  rotation 0.0
+  size     12.0 12.0 8.0
 end
 
 # Narrow gap: 12 units clear, which passes a 2.8-wide tank but not lengthwise.
 box
-name "gap_left"
-position -26.0 40.0 0.0
-rotation 0.0
-size     20.0 2.0 10.0
+  name "gap_left"
+  position -26.0 40.0 0.0
+  rotation 0.0
+  size     20.0 2.0 10.0
 end
 box
-name "gap_right"
-position 26.0 40.0 0.0
-rotation 0.0
-size     20.0 2.0 10.0
+  name "gap_right"
+  position 26.0 40.0 0.0
+  rotation 0.0
+  size     20.0 2.0 10.0
 end
 
 # Low platform to drive onto and off, for support and falling tests.
 box
-name "platform"
-position 0.0 0.0 0.0
-rotation 0.0
-size     20.0 20.0 3.0
+  name "platform"
+  position 0.0 0.0 0.0
+  rotation 0.0
+  size     20.0 20.0 3.0
 end

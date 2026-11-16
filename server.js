@@ -2311,13 +2311,16 @@ function renderMapList(listId, filterId, maps, t) {
     };
   });
 
-  // `a`, `d` and `hs` are the fields the filter box's own glob looks at, so on
-  // this list typing a word matches a file name, a style or a hash. The `/` filter
+  // `a`, `d`, `ow`, `ve` and `hs` are the fields the filter box's own glob
+  // looks at, so on this list typing a word matches a file name, a style or
+  // the map's title, its authors, its version or a hash. The `/` filter
   // language is about servers and is not offered here -- there is no `?`
   // beside this box.
   const data = entries.map((entry) => ({
     a: entry.file,
-    d: entry.stats ? entry.stats.style || '' : '',
+    d: [entry.stats?.style, ...(entry.stats?.metadata?.title || [])].filter(Boolean).join(' '),
+    ow: (entry.stats?.metadata?.author || []).join(', '),
+    ve: (entry.stats?.metadata?.version || []).join(' '),
     n: entry.file.toLowerCase(),
     o: entry.stats ? entry.stats.objects || 0 : 0,
     fa: entry.stats ? entry.stats.faces || 0 : 0,
@@ -2595,6 +2598,8 @@ function renderReplayReadout(entry, index, hidden, t) {
 function renderMapReadout(entry, index, hidden, t) {
   const stats = entry.stats || {};
   const counts = stats.counts || {};
+  // The map's `metadata` block, each field a list (docs/bzw.md, "Metadata").
+  const meta = (key, separator) => (stats.metadata?.[key] || []).join(separator);
   const count = (value) => (value ? String(value) : '');
   const featureNames = { water: t('water'), weather: t('weather'), ground: t('custom ground') };
   const features = ['water', 'weather', 'ground']
@@ -2603,7 +2608,7 @@ function renderMapReadout(entry, index, hidden, t) {
     .join(', ');
   return `<div class="pane" id="map-pane-${index}"${hidden ? ' hidden' : ''}>`
     + `<div class="paneMain"><div class="paneBody">`
-    + `<p class="paneTitle">${escapeHtml(entry.file)}</p>`
+    + `<p class="paneTitle">${escapeHtml(meta('title', ' ') || entry.file)}</p>`
     + `<div class="paneCols">`
     + `<div class="paneCol">`
     + paneRow(t('Objects'), count(stats.objects))
@@ -2615,6 +2620,11 @@ function renderMapReadout(entry, index, hidden, t) {
     + paneRow(t('Teleporters'), count(stats.teleporters))
     + `</div>`
     + `<div class="paneCol">`
+    + paneRow(t('File'), entry.file)
+    + paneRow(t('Author'), meta('author', ', '))
+    + paneRow(t('Version'), meta('version', ' '))
+    + paneRow(t('License'), meta('license', ', '))
+    + paneRow(t('Description'), meta('description', ' '))
     + paneRow(t('Style'), stats.style || '')
     + paneRow(t('World size'), count(stats.size))
     + paneRow(t('Has'), features)
@@ -6864,6 +6874,8 @@ let mapWeather = null;
 // no server-side reader, it only rides along in the live map's own JSON
 // (`registerMapFile`) for the client to texture the ground plane itself.
 let mapGroundMaterial = null;
+// The map's `metadata` block, `null` when it has none (server/bzw-metadata.cjs).
+let mapMetadata = null;
 // The live map's own `group` templates and placements (#153). Like `weather`
 // and `groundMaterial` above, no server-side reader: nothing collides with
 // them, so they only ride along in the map's JSON for the client to draw.
@@ -6946,6 +6958,7 @@ if (MAP_SOURCE === 'random') {
   if (mapGroundMaterial) {
     log(`Map option -gndtex: ${mapGroundMaterial.texture || mapGroundMaterial.textureUrl}`);
   }
+  mapMetadata = mapData.metadata;
   WORLD_WEAPONS = mapData.weapons;
 }
 
@@ -7299,6 +7312,7 @@ const LIVE_MAP_ENTRY = registerMapFile(MAP_SOURCE, {
   waterLevel: mapWaterLevel,
   weather: mapWeather,
   groundMaterial: mapGroundMaterial,
+  metadata: mapMetadata,
   serverOptions: mapServerOptions,
   meshTemplates: mapMeshTemplates,
   meshInstances: mapMeshInstances,

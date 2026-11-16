@@ -7,6 +7,13 @@
 # trigger doing nothing at all, and the load saying
 # "Shots: no shot slots -- tanks cannot shoot on this world".
 
+metadata
+  title No shots
+  author Tim Riker <timriker@gmail.com>
+  license AGPL-3.0-only
+  description A world where tanks cannot shoot.
+endmetadata
+
 world
   name No Shots
   size 200

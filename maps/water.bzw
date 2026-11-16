@@ -19,23 +19,31 @@
 # base above the waterline lands exactly on the water's own surface -- the
 # death line itself -- and dies on arrival, in upstream as much as here.
 #
+
+metadata
+  title Water
+  author Tim Riker <timriker@gmail.com>
+  license AGPL-3.0-only
+  description A CTF world over water: floating bases and stepping stones.
+endmetadata
+
 options
-	# Team play, so the four floating bases below are capture targets.
-	-c
-	# Tanks may jump -- the only way from one island to the next.
-	-j
-	-srvmsg "Team bases float above the water; the rogue hub sits at the centre."
-	-srvmsg "Jump stone to stone to cross -- fall in and the water rusts your tank."
+  # Team play, so the four floating bases below are capture targets.
+  -c
+  # Tanks may jump -- the only way from one island to the next.
+  -j
+  -srvmsg "Team bases float above the water; the rogue hub sits at the centre."
+  -srvmsg "Jump stone to stone to cross -- fall in and the water rusts your tank."
 end
 
 world
-name water
-size 140.0
-flagHeight 0.0
+  name water
+  size 140.0
+  flagHeight 0.0
 end
 
 waterLevel
-height 5.0
+  height 5.0
 end
 
 # The hub. Rogue's spawn area, the same role bzo.bzw's own centre zone plays.
@@ -46,137 +54,137 @@ end
 # here would hand a dropped flag's safety lookup a point on the ground, under
 # the platform, not on it.
 zone
-name hub_zone
-position 0.0 0.0 8.0
-size 20.0 20.0 8.0
-team 0
+  name hub_zone
+  position 0.0 0.0 8.0
+  size 20.0 20.0 8.0
+  team 0
 end
 
 box
-name hub_platform
-position 0.0 0.0 0.0
-rotation 0.0
-size     20.0 20.0 8.0
+  name hub_platform
+  position 0.0 0.0 0.0
+  rotation 0.0
+  size     20.0 20.0 8.0
 end
 
 # One stepping stone per spoke, halfway to each base -- close enough that a
 # jump from the hub, or from the stone to the base, clears the water either
 # side without needing the whole 100-unit gap in one leap.
 box
-name stone_n
-position 0.0 50.0 0.0
-rotation 0.0
-size     10.0 10.0 8.0
+  name stone_n
+  position 0.0 50.0 0.0
+  rotation 0.0
+  size     10.0 10.0 8.0
 end
 
 box
-name stone_e
-position 50.0 0.0 0.0
-rotation 0.0
-size     10.0 10.0 8.0
+  name stone_e
+  position 50.0 0.0 0.0
+  rotation 0.0
+  size     10.0 10.0 8.0
 end
 
 box
-name stone_s
-position 0.0 -50.0 0.0
-rotation 0.0
-size     10.0 10.0 8.0
+  name stone_s
+  position 0.0 -50.0 0.0
+  rotation 0.0
+  size     10.0 10.0 8.0
 end
 
 box
-name stone_w
-position -50.0 0.0 0.0
-rotation 0.0
-size     10.0 10.0 8.0
+  name stone_w
+  position -50.0 0.0 0.0
+  rotation 0.0
+  size     10.0 10.0 8.0
 end
 
 # Four floating bases, north red, east green, south blue, west purple --
 # `bzo.bzw`'s own compass/colour convention, elevated onto a platform each.
 
 box
-name n_red_platform
-position 0.0 100.0 0.0
-rotation 0.0
-size     20.0 20.0 12.0
+  name n_red_platform
+  position 0.0 100.0 0.0
+  rotation 0.0
+  size     20.0 20.0 12.0
 end
 
 base
-name n_red_base
-position 0.0 100.0 12.0
-size 20.0 20.0 0.01
-color 1
+  name n_red_base
+  position 0.0 100.0 12.0
+  size 20.0 20.0 0.01
+  color 1
 end
 
 zone
-name n_red_zone
-position 0.0 100.0 12.0
-size 20.0 20.0 12.0
-team 1
-safety 1
+  name n_red_zone
+  position 0.0 100.0 12.0
+  size 20.0 20.0 12.0
+  team 1
+  safety 1
 end
 
 box
-name e_green_platform
-position 100.0 0.0 0.0
-rotation 0.0
-size     20.0 20.0 12.0
+  name e_green_platform
+  position 100.0 0.0 0.0
+  rotation 0.0
+  size     20.0 20.0 12.0
 end
 
 base
-name e_green_base
-position 100.0 0.0 12.0
-size 20.0 20.0 0.01
-color 2
+  name e_green_base
+  position 100.0 0.0 12.0
+  size 20.0 20.0 0.01
+  color 2
 end
 
 zone
-name e_green_zone
-position 100.0 0.0 12.0
-size 20.0 20.0 12.0
-team 2
-safety 2
+  name e_green_zone
+  position 100.0 0.0 12.0
+  size 20.0 20.0 12.0
+  team 2
+  safety 2
 end
 
 box
-name s_blue_platform
-position 0.0 -100.0 0.0
-rotation 0.0
-size     20.0 20.0 12.0
+  name s_blue_platform
+  position 0.0 -100.0 0.0
+  rotation 0.0
+  size     20.0 20.0 12.0
 end
 
 base
-name s_blue_base
-position 0.0 -100.0 12.0
-size 20.0 20.0 0.01
-color 3
+  name s_blue_base
+  position 0.0 -100.0 12.0
+  size 20.0 20.0 0.01
+  color 3
 end
 
 zone
-name s_blue_zone
-position 0.0 -100.0 12.0
-size 20.0 20.0 12.0
-team 3
-safety 3
+  name s_blue_zone
+  position 0.0 -100.0 12.0
+  size 20.0 20.0 12.0
+  team 3
+  safety 3
 end
 
 box
-name w_purple_platform
-position -100.0 0.0 0.0
-rotation 0.0
-size     20.0 20.0 12.0
+  name w_purple_platform
+  position -100.0 0.0 0.0
+  rotation 0.0
+  size     20.0 20.0 12.0
 end
 
 base
-name w_purple_base
-position -100.0 0.0 12.0
-size 20.0 20.0 0.01
-color 4
+  name w_purple_base
+  position -100.0 0.0 12.0
+  size 20.0 20.0 0.01
+  color 4
 end
 
 zone
-name w_purple_zone
-position -100.0 0.0 12.0
-size 20.0 20.0 12.0
-team 4
-safety 4
+  name w_purple_zone
+  position -100.0 0.0 12.0
+  size 20.0 20.0 12.0
+  team 4
+  safety 4
 end

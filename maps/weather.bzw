@@ -8,23 +8,31 @@
 # rather than falling through, and no puddle forms there either, since the
 # ground beneath a roof never actually gets rained on.
 #
+
+metadata
+  title Weather
+  author Tim Riker <timriker@gmail.com>
+  license AGPL-3.0-only
+  description Rain, with a roofed shelter at the centre.
+endmetadata
+
 options
-	-set _rainType rain
+  -set _rainType rain
 end
 
 world
-name weather
-size 200.0
+  name weather
+  size 200.0
 end
 
 box
-name shelter_roof
-position 0.0 0.0 20.0
-size 30.0 30.0 2.0
+  name shelter_roof
+  position 0.0 0.0 20.0
+  size 30.0 30.0 2.0
 end
 
 box
-name shelter_post
-position 0.0 0.0 0.0
-size 3.0 3.0 20.0
+  name shelter_post
+  position 0.0 0.0 0.0
+  size 3.0 3.0 20.0
 end
