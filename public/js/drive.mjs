@@ -186,8 +186,14 @@ const FLAT_TOP_SAMPLES = [[0, 0], [2, 0], [-2, 0], [0, 2], [0, -2]];
 
 // LocalPlayer::doJump's vertical component. Wings has its own; Bouncy's bounce
 // is a random quarter-to-full of the world's, so no two are the same height.
+// A Jumping flag on a world where everyone jumps jumps with
+// `_jumpFlagVelocity` where the world sets one; on a world without jumping
+// it is upstream's JP, the ordinary jump.
 function jumpVelocityFor(tank, airControl, verticalVelocity, config, clock) {
   if (airControl) return getWingsJumpVelocity(config.WINGS_JUMP_VELOCITY, verticalVelocity);
+  if (tank.flag === 'JP' && config.ALLOW_JUMPING === true && config.JUMP_FLAG_VELOCITY > 0) {
+    return config.JUMP_FLAG_VELOCITY;
+  }
   if (getMotionEffects(tank.flag ?? null).bouncy) {
     return getBouncyJumpVelocity(config.JUMP_VELOCITY, clock.random());
   }

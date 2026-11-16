@@ -3831,6 +3831,7 @@ const GAME_CONFIG = {
   // `_explodeTime`.
   REJOIN_TIME: null,
   JUMP_VELOCITY: 19, // BZFlag _jumpVelocity default
+  JUMP_FLAG_VELOCITY: 0, // bzo's _jumpFlagVelocity: a Jumping flag's Super Jump; 0 is off
   GRAVITY: -9.8, // BZFlag _gravity: an acceleration, negative down
   // Wings' four BZDB variables. Locked upstream, which means the server sets
   // them and the client obeys, so they travel with the rest of the world's
@@ -12762,7 +12763,9 @@ const MAP_FORBIDDEN_FLAGS = Object.freeze(mapServerOptions.forbiddenFlags || [])
 function getForbiddenFlags() {
   // -f upstream, whatever the map took out of the pool by name or by quality.
   const forbidden = [...MAP_FORBIDDEN_FLAGS];
-  forbidden.push(ALLOW_JUMPING ? 'JP' : 'NJ');
+  // A world that gives JP a Super Jump (`_jumpFlagVelocity`) keeps it.
+  if (!ALLOW_JUMPING) forbidden.push('NJ');
+  else if (!(GAME_CONFIG.JUMP_FLAG_VELOCITY > 0)) forbidden.push('JP');
   if (GAME_CONFIG.ALL_SHOTS_RICOCHET) forbidden.push('R');
   // "geno only works in team games :)" -- a world with no teams has no team to
   // wipe, so Genocide is an ordinary shot wearing a rare flag's name. Upstream
@@ -14313,6 +14316,7 @@ function sendFlagDrop(flag) {
 // theft is the one that does not send a drop with it.
 function clearFlagShedState(owner) {
   owner.flagShakeWins = 0;
+  sendJumpFlagVelocity(owner, false);
   if (!owner.antidote) return;
   owner.antidote = null;
   sendToPlayer(owner, { type: 'antidoteFlag', position: null });
@@ -14421,9 +14425,27 @@ function grabFlag(player, flag, now = Date.now(), { checkPos = true } = {}) {
   log(`"${player.name}" grabbed ${getFlagType(flag.type).name} flag ${flag.index}`);
   broadcastAll({ type: 'grabFlag', playerId: player.id, flag: getFlagState(flag) });
   sendShotsLeft(player, flag);
+  sendJumpFlagVelocity(player, flag.type === 'JP');
   pluginEvent('bz_eFlagGrabbedEvent', () => ({
     playerID: Number(player.id), flagID: flag.index, flagType: flag.type, pos: pluginPos(flag.position),
   }));
+}
+
+// `_jumpFlagVelocity` for a BZFlag client, which jumps with `_jumpVelocity`
+// whatever flag it holds (LocalPlayer.cxx:1453): the holder of a Jumping flag
+// is sent the Super Jump as its own `_jumpVelocity`, and the world's back
+// when the flag goes. Everyone else keeps the world's.
+function sendJumpFlagVelocity(player, holdsJumpFlag) {
+  if (!player?.native) return;
+  const superJump = holdsJumpFlag && ALLOW_JUMPING && GAME_CONFIG.JUMP_FLAG_VELOCITY > 0;
+  if (superJump === (player.superJumpSent === true)) return;
+  player.superJumpSent = superJump;
+  sendToPlayer(player, {
+    type: 'playerVar',
+    name: '_jumpVelocity',
+    value: superJump ? String(GAME_CONFIG.JUMP_FLAG_VELOCITY) : null,
+    worldValue: String(bzdbValue('_jumpVelocity') ?? GAME_CONFIG.JUMP_VELOCITY),
+  });
 }
 
 // The shots a held flag of a limited type has left, to its holder's HUD. A
@@ -16245,6 +16267,7 @@ function stealFlag(proj, victim) {
     flag: getFlagState(stolen),
   });
   sendShotsLeft(thief, stolen);
+  sendJumpFlagVelocity(thief, stolen.type === 'JP');
   return 'stolen';
 }
 

@@ -208,6 +208,9 @@ class NativeTranslator {
     // on the holder's `FlagActive` in bzfs's, so every flag record that passes
     // through here keeps this current.
     this.zonedFlags = new Map();
+    // Variables this player alone holds a value of; the world's value for
+    // one is not passed on while they do (`playerVar`).
+    this.playerVars = new Map();
     this.accepted = false;
     this.pending = null;
     this.startedAt = Date.now();
@@ -767,8 +770,18 @@ class NativeTranslator {
           this.write('to', new Writer(4).i32(message.timeLeft).done());
         }
         break;
-      case 'setVar':
+      case 'playerVar':
+        // A variable this player alone holds a value of (`sendJumpFlagVelocity`),
+        // or, with `value` null, the world's back.
         if (this.accepted) {
+          if (message.value === null || message.value === undefined) this.playerVars.delete(message.name);
+          else this.playerVars.set(message.name, String(message.value));
+          this.handle({ type: 'setVar', name: message.name, value: message.value ?? message.worldValue, own: true });
+        }
+        break;
+      case 'setVar':
+        // The world's value does not reach a player holding their own.
+        if (this.accepted && (message.own || !this.playerVars.has(message.name))) {
           const nameBytes = Buffer.from(String(message.name), 'latin1').subarray(0, 255);
           const valueBytes = Buffer.from(String(message.value ?? ''), 'latin1').subarray(0, 255);
           this.write('sv', new Writer(4 + nameBytes.length + valueBytes.length)

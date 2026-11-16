@@ -24,6 +24,10 @@ options
   # Tanks may jump. bzo has jumping on unless server.json turns it off,
   # so this is what turns it back on for this world.
   -j
+  # bzo's own: the Jumping flag is a Super Jump: twice the height,
+  # so 1.414 (the square root of 2) times the jump speed.
+  # -setforced, as a stock bzfs refuses to -set a name it does not know.
+  -setforced _jumpFlagVelocity _jumpVelocity*1.414
   # Every shot ricochets, whatever flag fired it.
   +r
   # Five shots in the air at once, where bzfs gives one. The reload time

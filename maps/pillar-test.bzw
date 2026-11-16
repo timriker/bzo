@@ -1,0 +1,2046 @@
+# Pillar fields for testing which tank sizes rest on a hex grid of thin
+# pillars. A tank rests on an obstacle while any part of its box is over
+# one, so the spacing decides who falls between them.
+#
+# West field, spacing 8.5: a normal tank (6 x 2.8) can sit wholly in a gap
+# and drops; an Obese one (15 x 7) always spans a pillar.
+# East field, spacing 3.75: a normal tank always spans a pillar; a Tiny
+# one (2.4 x 1.12) can drop between them.
+#
+# Pillars are 1 x 1 and 1.5 tall; jump onto the step at the south edge of
+# each field, then drive onto the pillars. Obese flags sit beside the west
+# step, Tiny flags beside the east one.
+
+metadata
+  title Pillar test
+  author Tim Riker <timriker@gmail.com>
+  license AGPL-3.0-only
+  description Hex pillar fields that hold Obese but not normal tanks, and normal but not Tiny ones.
+endmetadata
+
+world
+  name Pillar test
+  size 100
+end
+
+options
+  -j
+  -setforced _jumpFlagVelocity _jumpVelocity*1.414
+  -srvmsg "West field: Obese stays up, normal falls. East field: normal stays up, Tiny falls."
+end
+
+box
+  name obese_0_0
+  position -75.000 -20.000 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name obese_0_1
+  position -66.500 -20.000 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name obese_0_2
+  position -58.000 -20.000 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name obese_0_3
+  position -49.500 -20.000 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name obese_0_4
+  position -41.000 -20.000 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name obese_0_5
+  position -32.500 -20.000 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name obese_0_6
+  position -24.000 -20.000 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name obese_0_7
+  position -15.500 -20.000 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name obese_1_0
+  position -70.750 -12.639 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name obese_1_1
+  position -62.250 -12.639 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name obese_1_2
+  position -53.750 -12.639 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name obese_1_3
+  position -45.250 -12.639 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name obese_1_4
+  position -36.750 -12.639 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name obese_1_5
+  position -28.250 -12.639 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name obese_1_6
+  position -19.750 -12.639 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name obese_2_0
+  position -75.000 -5.278 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name obese_2_1
+  position -66.500 -5.278 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name obese_2_2
+  position -58.000 -5.278 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name obese_2_3
+  position -49.500 -5.278 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name obese_2_4
+  position -41.000 -5.278 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name obese_2_5
+  position -32.500 -5.278 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name obese_2_6
+  position -24.000 -5.278 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name obese_2_7
+  position -15.500 -5.278 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name obese_3_0
+  position -70.750 2.084 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name obese_3_1
+  position -62.250 2.084 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name obese_3_2
+  position -53.750 2.084 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name obese_3_3
+  position -45.250 2.084 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name obese_3_4
+  position -36.750 2.084 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name obese_3_5
+  position -28.250 2.084 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name obese_3_6
+  position -19.750 2.084 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name obese_4_0
+  position -75.000 9.445 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name obese_4_1
+  position -66.500 9.445 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name obese_4_2
+  position -58.000 9.445 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name obese_4_3
+  position -49.500 9.445 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name obese_4_4
+  position -41.000 9.445 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name obese_4_5
+  position -32.500 9.445 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name obese_4_6
+  position -24.000 9.445 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name obese_4_7
+  position -15.500 9.445 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name obese_5_0
+  position -70.750 16.806 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name obese_5_1
+  position -62.250 16.806 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name obese_5_2
+  position -53.750 16.806 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name obese_5_3
+  position -45.250 16.806 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name obese_5_4
+  position -36.750 16.806 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name obese_5_5
+  position -28.250 16.806 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name obese_5_6
+  position -19.750 16.806 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name obese_6_0
+  position -75.000 24.167 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name obese_6_1
+  position -66.500 24.167 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name obese_6_2
+  position -58.000 24.167 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name obese_6_3
+  position -49.500 24.167 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name obese_6_4
+  position -41.000 24.167 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name obese_6_5
+  position -32.500 24.167 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name obese_6_6
+  position -24.000 24.167 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name obese_6_7
+  position -15.500 24.167 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name obese_7_0
+  position -70.750 31.529 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name obese_7_1
+  position -62.250 31.529 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name obese_7_2
+  position -53.750 31.529 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name obese_7_3
+  position -45.250 31.529 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name obese_7_4
+  position -36.750 31.529 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name obese_7_5
+  position -28.250 31.529 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name obese_7_6
+  position -19.750 31.529 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name obese_8_0
+  position -75.000 38.890 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name obese_8_1
+  position -66.500 38.890 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name obese_8_2
+  position -58.000 38.890 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name obese_8_3
+  position -49.500 38.890 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name obese_8_4
+  position -41.000 38.890 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name obese_8_5
+  position -32.500 38.890 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name obese_8_6
+  position -24.000 38.890 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name obese_8_7
+  position -15.500 38.890 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name obese_step
+  position -45.000 -25.000 0
+  size 5 4 1.5
+  rotation 0
+end
+
+box
+  name tiny_0_0
+  position 20.000 -15.000 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name tiny_0_1
+  position 23.750 -15.000 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name tiny_0_2
+  position 27.500 -15.000 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name tiny_0_3
+  position 31.250 -15.000 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name tiny_0_4
+  position 35.000 -15.000 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name tiny_0_5
+  position 38.750 -15.000 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name tiny_0_6
+  position 42.500 -15.000 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name tiny_0_7
+  position 46.250 -15.000 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name tiny_0_8
+  position 50.000 -15.000 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name tiny_0_9
+  position 53.750 -15.000 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name tiny_0_10
+  position 57.500 -15.000 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name tiny_0_11
+  position 61.250 -15.000 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name tiny_0_12
+  position 65.000 -15.000 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name tiny_0_13
+  position 68.750 -15.000 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name tiny_1_0
+  position 21.875 -11.752 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name tiny_1_1
+  position 25.625 -11.752 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name tiny_1_2
+  position 29.375 -11.752 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name tiny_1_3
+  position 33.125 -11.752 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name tiny_1_4
+  position 36.875 -11.752 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name tiny_1_5
+  position 40.625 -11.752 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name tiny_1_6
+  position 44.375 -11.752 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name tiny_1_7
+  position 48.125 -11.752 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name tiny_1_8
+  position 51.875 -11.752 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name tiny_1_9
+  position 55.625 -11.752 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name tiny_1_10
+  position 59.375 -11.752 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name tiny_1_11
+  position 63.125 -11.752 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name tiny_1_12
+  position 66.875 -11.752 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name tiny_2_0
+  position 20.000 -8.505 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name tiny_2_1
+  position 23.750 -8.505 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name tiny_2_2
+  position 27.500 -8.505 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name tiny_2_3
+  position 31.250 -8.505 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name tiny_2_4
+  position 35.000 -8.505 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name tiny_2_5
+  position 38.750 -8.505 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name tiny_2_6
+  position 42.500 -8.505 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name tiny_2_7
+  position 46.250 -8.505 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name tiny_2_8
+  position 50.000 -8.505 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name tiny_2_9
+  position 53.750 -8.505 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name tiny_2_10
+  position 57.500 -8.505 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name tiny_2_11
+  position 61.250 -8.505 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name tiny_2_12
+  position 65.000 -8.505 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name tiny_2_13
+  position 68.750 -8.505 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name tiny_3_0
+  position 21.875 -5.257 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name tiny_3_1
+  position 25.625 -5.257 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name tiny_3_2
+  position 29.375 -5.257 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name tiny_3_3
+  position 33.125 -5.257 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name tiny_3_4
+  position 36.875 -5.257 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name tiny_3_5
+  position 40.625 -5.257 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name tiny_3_6
+  position 44.375 -5.257 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name tiny_3_7
+  position 48.125 -5.257 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name tiny_3_8
+  position 51.875 -5.257 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name tiny_3_9
+  position 55.625 -5.257 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name tiny_3_10
+  position 59.375 -5.257 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name tiny_3_11
+  position 63.125 -5.257 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name tiny_3_12
+  position 66.875 -5.257 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name tiny_4_0
+  position 20.000 -2.010 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name tiny_4_1
+  position 23.750 -2.010 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name tiny_4_2
+  position 27.500 -2.010 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name tiny_4_3
+  position 31.250 -2.010 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name tiny_4_4
+  position 35.000 -2.010 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name tiny_4_5
+  position 38.750 -2.010 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name tiny_4_6
+  position 42.500 -2.010 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name tiny_4_7
+  position 46.250 -2.010 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name tiny_4_8
+  position 50.000 -2.010 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name tiny_4_9
+  position 53.750 -2.010 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name tiny_4_10
+  position 57.500 -2.010 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name tiny_4_11
+  position 61.250 -2.010 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name tiny_4_12
+  position 65.000 -2.010 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name tiny_4_13
+  position 68.750 -2.010 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name tiny_5_0
+  position 21.875 1.238 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name tiny_5_1
+  position 25.625 1.238 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name tiny_5_2
+  position 29.375 1.238 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name tiny_5_3
+  position 33.125 1.238 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name tiny_5_4
+  position 36.875 1.238 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name tiny_5_5
+  position 40.625 1.238 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name tiny_5_6
+  position 44.375 1.238 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name tiny_5_7
+  position 48.125 1.238 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name tiny_5_8
+  position 51.875 1.238 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name tiny_5_9
+  position 55.625 1.238 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name tiny_5_10
+  position 59.375 1.238 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name tiny_5_11
+  position 63.125 1.238 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name tiny_5_12
+  position 66.875 1.238 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name tiny_6_0
+  position 20.000 4.486 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name tiny_6_1
+  position 23.750 4.486 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name tiny_6_2
+  position 27.500 4.486 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name tiny_6_3
+  position 31.250 4.486 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name tiny_6_4
+  position 35.000 4.486 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name tiny_6_5
+  position 38.750 4.486 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name tiny_6_6
+  position 42.500 4.486 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name tiny_6_7
+  position 46.250 4.486 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name tiny_6_8
+  position 50.000 4.486 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name tiny_6_9
+  position 53.750 4.486 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name tiny_6_10
+  position 57.500 4.486 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name tiny_6_11
+  position 61.250 4.486 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name tiny_6_12
+  position 65.000 4.486 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name tiny_6_13
+  position 68.750 4.486 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name tiny_7_0
+  position 21.875 7.733 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name tiny_7_1
+  position 25.625 7.733 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name tiny_7_2
+  position 29.375 7.733 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name tiny_7_3
+  position 33.125 7.733 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name tiny_7_4
+  position 36.875 7.733 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name tiny_7_5
+  position 40.625 7.733 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name tiny_7_6
+  position 44.375 7.733 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name tiny_7_7
+  position 48.125 7.733 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name tiny_7_8
+  position 51.875 7.733 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name tiny_7_9
+  position 55.625 7.733 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name tiny_7_10
+  position 59.375 7.733 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name tiny_7_11
+  position 63.125 7.733 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name tiny_7_12
+  position 66.875 7.733 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name tiny_8_0
+  position 20.000 10.981 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name tiny_8_1
+  position 23.750 10.981 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name tiny_8_2
+  position 27.500 10.981 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name tiny_8_3
+  position 31.250 10.981 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name tiny_8_4
+  position 35.000 10.981 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name tiny_8_5
+  position 38.750 10.981 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name tiny_8_6
+  position 42.500 10.981 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name tiny_8_7
+  position 46.250 10.981 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name tiny_8_8
+  position 50.000 10.981 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name tiny_8_9
+  position 53.750 10.981 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name tiny_8_10
+  position 57.500 10.981 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name tiny_8_11
+  position 61.250 10.981 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name tiny_8_12
+  position 65.000 10.981 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name tiny_8_13
+  position 68.750 10.981 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name tiny_9_0
+  position 21.875 14.228 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name tiny_9_1
+  position 25.625 14.228 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name tiny_9_2
+  position 29.375 14.228 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name tiny_9_3
+  position 33.125 14.228 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name tiny_9_4
+  position 36.875 14.228 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name tiny_9_5
+  position 40.625 14.228 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name tiny_9_6
+  position 44.375 14.228 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name tiny_9_7
+  position 48.125 14.228 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name tiny_9_8
+  position 51.875 14.228 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name tiny_9_9
+  position 55.625 14.228 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name tiny_9_10
+  position 59.375 14.228 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name tiny_9_11
+  position 63.125 14.228 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name tiny_9_12
+  position 66.875 14.228 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name tiny_10_0
+  position 20.000 17.476 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name tiny_10_1
+  position 23.750 17.476 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name tiny_10_2
+  position 27.500 17.476 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name tiny_10_3
+  position 31.250 17.476 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name tiny_10_4
+  position 35.000 17.476 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name tiny_10_5
+  position 38.750 17.476 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name tiny_10_6
+  position 42.500 17.476 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name tiny_10_7
+  position 46.250 17.476 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name tiny_10_8
+  position 50.000 17.476 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name tiny_10_9
+  position 53.750 17.476 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name tiny_10_10
+  position 57.500 17.476 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name tiny_10_11
+  position 61.250 17.476 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name tiny_10_12
+  position 65.000 17.476 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name tiny_10_13
+  position 68.750 17.476 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name tiny_11_0
+  position 21.875 20.724 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name tiny_11_1
+  position 25.625 20.724 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name tiny_11_2
+  position 29.375 20.724 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name tiny_11_3
+  position 33.125 20.724 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name tiny_11_4
+  position 36.875 20.724 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name tiny_11_5
+  position 40.625 20.724 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name tiny_11_6
+  position 44.375 20.724 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name tiny_11_7
+  position 48.125 20.724 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name tiny_11_8
+  position 51.875 20.724 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name tiny_11_9
+  position 55.625 20.724 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name tiny_11_10
+  position 59.375 20.724 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name tiny_11_11
+  position 63.125 20.724 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name tiny_11_12
+  position 66.875 20.724 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name tiny_12_0
+  position 20.000 23.971 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name tiny_12_1
+  position 23.750 23.971 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name tiny_12_2
+  position 27.500 23.971 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name tiny_12_3
+  position 31.250 23.971 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name tiny_12_4
+  position 35.000 23.971 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name tiny_12_5
+  position 38.750 23.971 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name tiny_12_6
+  position 42.500 23.971 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name tiny_12_7
+  position 46.250 23.971 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name tiny_12_8
+  position 50.000 23.971 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name tiny_12_9
+  position 53.750 23.971 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name tiny_12_10
+  position 57.500 23.971 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name tiny_12_11
+  position 61.250 23.971 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name tiny_12_12
+  position 65.000 23.971 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name tiny_12_13
+  position 68.750 23.971 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name tiny_13_0
+  position 21.875 27.219 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name tiny_13_1
+  position 25.625 27.219 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name tiny_13_2
+  position 29.375 27.219 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name tiny_13_3
+  position 33.125 27.219 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name tiny_13_4
+  position 36.875 27.219 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name tiny_13_5
+  position 40.625 27.219 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name tiny_13_6
+  position 44.375 27.219 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name tiny_13_7
+  position 48.125 27.219 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name tiny_13_8
+  position 51.875 27.219 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name tiny_13_9
+  position 55.625 27.219 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name tiny_13_10
+  position 59.375 27.219 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name tiny_13_11
+  position 63.125 27.219 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name tiny_13_12
+  position 66.875 27.219 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name tiny_14_0
+  position 20.000 30.466 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name tiny_14_1
+  position 23.750 30.466 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name tiny_14_2
+  position 27.500 30.466 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name tiny_14_3
+  position 31.250 30.466 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name tiny_14_4
+  position 35.000 30.466 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name tiny_14_5
+  position 38.750 30.466 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name tiny_14_6
+  position 42.500 30.466 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name tiny_14_7
+  position 46.250 30.466 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name tiny_14_8
+  position 50.000 30.466 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name tiny_14_9
+  position 53.750 30.466 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name tiny_14_10
+  position 57.500 30.466 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name tiny_14_11
+  position 61.250 30.466 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name tiny_14_12
+  position 65.000 30.466 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name tiny_14_13
+  position 68.750 30.466 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name tiny_15_0
+  position 21.875 33.714 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name tiny_15_1
+  position 25.625 33.714 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name tiny_15_2
+  position 29.375 33.714 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name tiny_15_3
+  position 33.125 33.714 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name tiny_15_4
+  position 36.875 33.714 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name tiny_15_5
+  position 40.625 33.714 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name tiny_15_6
+  position 44.375 33.714 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name tiny_15_7
+  position 48.125 33.714 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name tiny_15_8
+  position 51.875 33.714 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name tiny_15_9
+  position 55.625 33.714 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name tiny_15_10
+  position 59.375 33.714 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name tiny_15_11
+  position 63.125 33.714 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name tiny_15_12
+  position 66.875 33.714 0
+  size 0.5 0.5 1.5
+  rotation 0
+end
+
+box
+  name tiny_step
+  position 45.000 -20.000 0
+  size 5 4 1.5
+  rotation 0
+end
+
+zone
+  name obese_flags
+  position -45 -36.000 0
+  size 6 3 1
+  zoneflag O 4
+end
+
+zone
+  name tiny_flags
+  position 45 -31.000 0
+  size 6 3 1
+  zoneflag T 4
+end

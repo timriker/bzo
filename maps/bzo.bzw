@@ -29,6 +29,10 @@ options
   -mp 10,10,10,10,10,10
   # Tanks may jump
   -j
+  # bzo's own: the Jumping flag is a Super Jump: twice the height,
+  # so 1.414 (the square root of 2) times the jump speed.
+  # -setforced, as a stock bzfs refuses to -set a name it does not know.
+  -setforced _jumpFlagVelocity _jumpVelocity*1.414
   # Five shots in the air at once
   -ms 5
   # How many times `WG` Wings may flap before it needs the ground again.

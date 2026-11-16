@@ -190,6 +190,10 @@ export const BZDB_CONFIG_VARS = new Map([
   // Unchecked, as upstream reads it for each jump (LocalPlayer.cxx:1453): 0 is
   // a jump with no lift, and a negative one pushes down.
   ['_jumpVelocity', { key: 'JUMP_VELOCITY', any: true }],
+  // bzo's own: the jump a Jumping (JP) flag gives on a world where everyone
+  // may jump, a Super Jump, and what keeps JP in that world's pool. Unset or
+  // 0, and on a world without jumping, JP is upstream's.
+  ['_jumpFlagVelocity', { key: 'JUMP_FLAG_VELOCITY' }],
   ['_shotSpeed', { key: 'SHOT_SPEED' }],
   ['_shotRange', { key: 'SHOT_RANGE' }],
   ['_shotRadius', { key: 'SHOT_RADIUS' }],

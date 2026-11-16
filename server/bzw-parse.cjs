@@ -1232,7 +1232,11 @@ function parseBZWServerOptions(lines) {
       inOptions = false;
       continue;
     }
-    const [option, value, rawSetValue] = line.split(/\s+/);
+    const [rawOption, value, rawSetValue] = line.split(/\s+/);
+    // `-setforced` is upstream's `-set` without the check that something
+    // defined the name first (CmdLineOptions.cxx:1210), which is how a map
+    // sets a variable of bzo's own and still loads on a stock bzfs.
+    const option = rawOption === '-setforced' ? '-set' : rawOption;
     // `-set <name> "<value>"`: upstream has world variables whose value is a
     // list (`_ambientLight` and the other colours), and a remote import
     // writes those back out quoted rather than dropping them. Nothing else in
@@ -5797,6 +5801,9 @@ function getJumpApexHeight(config) {
   const apex = (velocity, gravity) => (gravity < 0 ? (velocity * velocity) / (-2 * gravity) : 0);
   return Math.max(
     apex(config.JUMP_VELOCITY, config.GRAVITY),
+    // A Jumping flag's Super Jump, on a jumping world that gives one.
+    config.ALLOW_JUMPING === true && config.JUMP_FLAG_VELOCITY > 0
+      ? apex(config.JUMP_FLAG_VELOCITY, config.GRAVITY) : 0,
     config.WINGS_JUMP_COUNT * apex(config.WINGS_JUMP_VELOCITY, config.WINGS_GRAVITY)
   );
 }
