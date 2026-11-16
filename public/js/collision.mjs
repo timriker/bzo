@@ -6,7 +6,7 @@
  */
 
 import {
-  meshArrays, FACE_SHOOT_THROUGH, FACE_DRIVE_THROUGH, NO_PHYDRV,
+  meshArrays, FACE_SHOOT_THROUGH, FACE_DRIVE_THROUGH, FACE_RICOCHET, NO_PHYDRV,
 } from './mesh-arrays.mjs';
 
 // No face answered. A face is named by its index in the mesh now rather than
@@ -1971,6 +1971,40 @@ export function findShotSegmentImpact(obstacles, from, to, radius) {
 // `hitFace`, for a mesh, is the face the caller's own ray sweep already
 // identified -- see `getMeshHitNormal`'s comment on why that beats
 // re-deriving it here.
+// Whether the surface a shot met bounces it. `ricochet` on a whole obstacle
+// covers every face; on one face it covers that face. A mesh face carries its
+// own (`FACE_RICOCHET`). A box or pyramid with `x+ ricochet` or `sides
+// ricochet` is a mesh upstream (CustomBox.cxx, CustomPyramid.cxx) whose faces
+// each answer for themselves; bzo keeps the primitive, so the face is the one
+// the hit's normal points out of.
+export function obstacleRicochets(obs, hitFace, normal, x, y, z, radius) {
+  if (obs.ricochet === true) return true;
+  if (obs.type === 'mesh') {
+    const f = hitFace >= 0 ? hitFace : findMeshHitFace(obs, x, y, z, radius, radius, 'shootThrough');
+    return f !== NO_FACE && (meshArrays(obs).faceFlags[f] & FACE_RICOCHET) !== 0;
+  }
+  const faces = obs.ricochetFaces;
+  if (!Array.isArray(faces) || faces.length === 0) return false;
+  const cos = Math.cos(obs.angle || 0);
+  const sin = Math.sin(obs.angle || 0);
+  const localX = (normal.x * cos) + (normal.y * sin);
+  const localY = (normal.y * cos) - (normal.x * sin);
+  const side = Math.abs(localX) >= Math.abs(localY)
+    ? (localX > 0 ? 'x+' : 'x-')
+    : (localY > 0 ? 'y+' : 'y-');
+  if (obs.type === 'pyramid') {
+    // The flat end faces straight down, or straight up on a flipped one; the
+    // four walls lean, so theirs keep a sideways part. Upstream's y+ wall
+    // takes its ricochet from x- (CustomPyramid.cxx:474).
+    if (Math.hypot(localX, localY) < 1e-3) return faces.includes('bottom');
+    return faces.includes(side === 'y+' ? 'x-' : side);
+  }
+  if (Math.abs(normal.z) >= Math.max(Math.abs(localX), Math.abs(localY))) {
+    return faces.includes(normal.z > 0 ? 'z+' : 'z-');
+  }
+  return faces.includes(side);
+}
+
 export function getShotObstacleNormal(obs, x, y, z, radius, hitFace = NO_FACE) {
   if (obs.type === 'mesh') return getMeshHitNormal(obs, x, y, z, radius, hitFace);
 
@@ -2452,15 +2486,13 @@ export function traceShotStep({
       // reflecting every shot on a world that says so. Upstream's own border
       // walls are built with it off (`addWall`, bzfs.cxx:1057), so only a shot
       // that ricochets of its own accord bounces off the border.
-      if (!ricochet && impact.obstacle.ricochet !== true) {
+      const hitFace = Number.isInteger(impact.face) ? impact.face : NO_FACE;
+      const normal = getShotObstacleNormal(impact.obstacle, hitX, hitY, hitZ, radius, hitFace);
+      if (!ricochet && !obstacleRicochets(impact.obstacle, hitFace, normal, hitX, hitY, hitZ, radius)) {
         obstacle = impact.obstacle;
         remaining = 0;
         break;
       }
-      const normal = getShotObstacleNormal(
-        impact.obstacle, hitX, hitY, hitZ, radius,
-        Number.isInteger(impact.face) ? impact.face : NO_FACE,
-      );
       const reflected = reflectShotDirection(dX, dY, dZ, normal);
       dX = reflected.x;
       dY = reflected.y;

@@ -19,6 +19,7 @@ import {
   findShotEmbeddedObstacle,
   findShotSegmentImpact,
   getShotObstacleNormal,
+  obstacleRicochets,
   reflectShotDirection,
   SHOT_BOUNCE_CLEARANCE,
   SHOT_COLLISION_RADIUS,
@@ -301,10 +302,15 @@ export function traceBeam(world, start, dir, range, options = {}) {
     // next segment is traced from clear of the surface, along its normal: a
     // grazing bounce leaves almost no perpendicular gap, and it is the
     // perpendicular gap that decides whether the shot still reads as inside.
-    if (ricochet && (reason === 'obstacle' || reason === 'ground' || reason === 'frame_hit')) {
-      const normal = reason === 'ground'
-        ? { x: 0, y: 0, z: 1 }
-        : getShotObstacleNormal(obstacle, end.x, end.y, end.z, SHOT_COLLISION_RADIUS, obstacleFace);
+    // A building that bounces shots itself -- `ricochet` on it or on the face
+    // hit -- bends a beam on any world, as makeSegments asks `canRicochet`
+    // of whatever stopped it (SegmentedShotStrategy.cxx:524).
+    const normal = reason === 'ground'
+      ? { x: 0, y: 0, z: 1 }
+      : (obstacle ? getShotObstacleNormal(obstacle, end.x, end.y, end.z, SHOT_COLLISION_RADIUS, obstacleFace) : null);
+    const bouncesHere = reason === 'obstacle' && !throughBuildings
+      && obstacleRicochets(obstacle, obstacleFace, normal, end.x, end.y, end.z, SHOT_COLLISION_RADIUS);
+    if ((ricochet && (reason === 'obstacle' || reason === 'ground' || reason === 'frame_hit')) || bouncesHere) {
       direction = reflectShotDirection(direction.x, direction.y, direction.z, normal);
       drawFrom = { ...end };
       point = {

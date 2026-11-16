@@ -1499,6 +1499,32 @@ const BZW_TELEPORTER_DEFAULTS = Object.freeze({
   border: 2 * 0.56,
 });
 
+// The faces a selector names for a face's own `ricochet`, by upstream's face
+// names: CustomBox.cxx's six with `top`, `bottom` and `sides`/`outside`, and
+// CustomPyramid.cxx's four walls and `bottom` with `sides`/`edge`. A selector
+// the shape does not have names nothing, as upstream rejects it.
+const BZW_RICOCHET_FACES = {
+  box: new Map([
+    ['x+', ['x+']], ['x-', ['x-']], ['y+', ['y+']], ['y-', ['y-']],
+    ['z+', ['z+']], ['z-', ['z-']], ['top', ['z+']], ['bottom', ['z-']],
+    ['sides', ['x+', 'x-', 'y+', 'y-']], ['outside', ['x+', 'x-', 'y+', 'y-']],
+  ]),
+  pyramid: new Map([
+    ['x+', ['x+']], ['x-', ['x-']], ['y+', ['y+']], ['y-', ['y-']],
+    ['bottom', ['bottom']],
+    ['sides', ['x+', 'x-', 'y+', 'y-']], ['edge', ['x+', 'x-', 'y+', 'y-']],
+  ]),
+};
+
+// `x+ ricochet`, `sides ricochet`: the faces a shot bounces off on an
+// obstacle that does not bounce shots everywhere (collision.mjs,
+// `obstacleRicochets`).
+function addFaceRicochet(obstacle, selector) {
+  const faces = BZW_RICOCHET_FACES[obstacle.type]?.get(selector);
+  if (!faces) return;
+  obstacle.ricochetFaces = [...new Set([...(obstacle.ricochetFaces || []), ...faces])];
+}
+
 const BZW_PASSABILITY_KEYWORDS = new Map([
   ['drivethrough', { driveThrough: true }],
   ['shootthrough', { shootThrough: true }],
@@ -3983,6 +4009,12 @@ function parseBZWMap(filename, { quiet = false, extraMessages = [], text: givenT
         noSorting: false, useTextureAlpha: true, useColorOnTexture: true,
       };
       applyBzwMaterialToken(current.materialOverride, token, line.split(/\s+/));
+    } else if (current && current.type === 'pyramid' && token === 'edge') {
+      // CustomPyramid.cxx's `edge`, a meshpyr name for its four walls: a
+      // per-face command, so it flips isOldPyramid as `sides` does.
+      current.hasFaceCommand = true;
+      current.meshedByBzfs = true;
+      if ((line.split(/\s+/)[1] || '').toLowerCase() === 'ricochet') addFaceRicochet(current, token);
     } else if (current && (BZW_FACE_GROUPS.has(token) || token === 'color' || token === 'diffuse'
       || token === 'matref' || token === 'addtexture' || token === 'texture'
       || token === 'noradar' || token === 'nolighting' || token === 'dyncol' || token === 'texmat')
@@ -4004,6 +4036,7 @@ function parseBZWMap(filename, { quiet = false, extraMessages = [], text: givenT
       const words = line.split(/\s+/);
       const group = BZW_FACE_GROUPS.get(token);
       const keyword = (group ? words[1] || '' : words[0]).toLowerCase();
+      if (group && keyword === 'ricochet') addFaceRicochet(current, token);
       if (keyword === 'color' || keyword === 'diffuse') {
         const tint = parseBzwColor(words.slice(group ? 2 : 1));
         if (tint) {

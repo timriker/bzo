@@ -499,6 +499,56 @@ assert.deepEqual(
   'client and server trace a bouncing shot differently'
 );
 
+// `ricochet` on one face (`x- ricochet`, `sides ricochet`): a shot that would
+// stop bounces off that face and stops on the others, as each face of
+// upstream's meshed box or pyramid answers for itself.
+{
+  const plain = { ...shotArgs, ricochet: false };
+  const faceBox = (faces, angle = 0, pos = [20, 0, 0]) => [{
+    type: 'box', name: 'faced', pos, size: [2, 20, 10], angle, ricochetFaces: faces,
+  }];
+  assert.equal(client.traceShotStep({ ...plain, obstacles: faceBox(['x-']) }).bounces, 1,
+    'the x- face, the one a shot fired along +x meets, bounces it');
+  assert.ok(client.traceShotStep({ ...plain, obstacles: faceBox(['x+']) }).obstacle,
+    'the far face does not make the near one bounce');
+  assert.ok(client.traceShotStep({ ...plain, obstacles: faceBox(['z+']) }).obstacle,
+    'a bouncy top does not bounce a shot off the side');
+  // Turned a quarter, the box's x- face looks down -y.
+  assert.equal(client.traceShotStep({
+    ...plain, dirX: 0, dirY: 1, obstacles: faceBox(['x-'], Math.PI / 2, [0, 20, 0]),
+  }).bounces, 1, 'the face is the box\'s own, turned with it');
+
+  const facePyramid = (faces) => [{
+    type: 'pyramid', name: 'faced', pos: [20, 0, 0], size: [10, 10, 10], angle: 0, ricochetFaces: faces,
+  }];
+  assert.equal(client.traceShotStep({ ...plain, obstacles: facePyramid(['x-']) }).bounces, 1,
+    'a pyramid wall bounces as a box face does');
+  assert.ok(client.traceShotStep({ ...plain, obstacles: facePyramid(['y-']) }).obstacle,
+    'and only the wall named');
+  // Fired along -y at the y+ wall: upstream builds that wall with x-'s flag.
+  const atYPlus = { ...plain, x: 20, y: 40, dirX: 0, dirY: -1, distance: 40 };
+  assert.equal(client.traceShotStep({ ...atYPlus, obstacles: facePyramid(['x-']) }).bounces, 1,
+    'the y+ wall takes its ricochet from x-');
+  assert.ok(client.traceShotStep({ ...atYPlus, obstacles: facePyramid(['y+']) }).obstacle,
+    'and not from its own');
+
+  // A mesh face's own `ricochet`.
+  const { parseBZWMap } = require('../server/bzw-parse.cjs');
+  const mesh = parseBZWMap('faced-mesh.bzw', { quiet: true, text: [
+    'mesh',
+    '  vertex 20 -10 0', '  vertex 20 10 0', '  vertex 20 10 10', '  vertex 20 -10 10',
+    '  vertex 30 -10 0', '  vertex 30 10 0', '  vertex 30 10 10', '  vertex 30 -10 10',
+    '  face', '    vertices 0 3 2 1', '    ricochet', '  endface',
+    '  face', '    vertices 4 5 6 7', '  endface',
+    'end',
+  ].join('\n') });
+  const meshColliders = client.buildCollisionColliders(mesh.obstacles, 200);
+  assert.equal(client.traceShotStep({ ...plain, obstacles: meshColliders, distance: 25 }).bounces, 1,
+    'a mesh face with ricochet bounces the shot');
+  assert.ok(client.traceShotStep({ ...plain, obstacles: meshColliders, x: 50, dirX: -1 }).obstacle,
+    'a face of the same mesh without it stops the shot');
+}
+
 // A shot with somewhere to go passes straight through an empty step.
 const clear = client.traceShotStep({ ...shotArgs, obstacles: [], ricochet: true });
 assert.equal(clear.bounces, 0);

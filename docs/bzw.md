@@ -218,7 +218,13 @@ all four on all four types:
 these are the same question in the same place. `ricochet` is upstream's third
 source of a bounce after the world's `+r` and the Ricochet flag: `makeSegments`
 stops an ordinary shot only when `!building->canRicochet()`, and otherwise gives
-it the same reflection an `R` carrier gets.
+it the same reflection an `R` carrier gets. A laser goes the same way.
+
+`ricochet` can also name faces: `x+ ricochet` or `sides ricochet` on a box (the
+six faces, `top`, `bottom`, `sides`, `outside`), on a pyramid (its four walls,
+`bottom`, `sides`, `edge`; pyramids from 2.4.32), and on a mesh `face`. Only
+those faces bounce. A pyramid's y+ wall takes its ricochet from x-, as upstream
+builds it.
 
 The world border is built from the same two flags rather than from a special
 case. Upstream's border is one `WallObstacle` a side doing two jobs at once --

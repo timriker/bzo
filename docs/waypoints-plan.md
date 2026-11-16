@@ -31,8 +31,10 @@ understand, both sent to that player alone:
 
 - **A team flag at the point.** It gives a radar dot and the HUD's team-flag
   marker on the compass, which a custom flag does not. A client sizes its flag
-  table from the game settings' maximum and does not check an index
-  (`World::getFlag`), so bzo advertises spare slots for waypoints. A client
+  table from the game settings' flag count, and from 2.4.32 drops a flag
+  message whose index is past it (`playing.cxx`, MsgFlagUpdate and the grab,
+  drop and transfer handlers), so bzo counts spare waypoint slots in the
+  number it advertises at join. A client
   grabs any flag on the ground within 0.1 of its height
   (`playing.cxx:4136`); one floating above the ground is never grabbed, or a
   grab can be ignored and read as arrival.

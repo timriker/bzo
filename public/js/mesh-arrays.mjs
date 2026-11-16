@@ -80,6 +80,9 @@ export const FACE_DRIVE_THROUGH = 2;
 // but the radar's, and it belongs with the other per-face bits rather than
 // making the radar reach for a face object to read one flag.
 export const FACE_NO_RADAR = 4;
+// A face's own `ricochet`: a shot that would stop on it bounces instead, as
+// upstream's MeshFace answers `canRicochet` face by face.
+export const FACE_RICOCHET = 8;
 
 // A face with no physics driver. Every distinct driver on a mesh goes in a
 // table beside the arrays and is named here by its index, since a map has a
@@ -168,6 +171,7 @@ export function buildMeshArrays(mesh) {
     if (face.shootThrough) flags |= FACE_SHOOT_THROUGH;
     if (face.driveThrough) flags |= FACE_DRIVE_THROUGH;
     if (face.noRadar) flags |= FACE_NO_RADAR;
+    if (face.ricochet) flags |= FACE_RICOCHET;
     out.faceFlags[f] = flags;
 
     if (face.phydrv) {

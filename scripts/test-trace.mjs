@@ -102,6 +102,22 @@ const teleports = buildTeleporterIndex([a, b], [{ sourceFaceId: 1, destFaceId: 2
   assert.equal(through.segments[0].end, 'range', 'through buildings it passes the wall');
 }
 
+// A wall that bounces shots itself bends a beam on a world that does not, off
+// the face that says so and no other.
+{
+  const facedWall = (faces) => ({
+    colliders: [{ type: 'box', name: 'wall', pos: [50, 100, 0], size: [1, 20, 10], angle: 0, ricochetFaces: faces }],
+    teleports: buildTeleporterIndex([]),
+    mapSize: 400,
+  });
+  const bent = traceBeam(facedWall(['x-']), { x: 0, y: 100, z: 5 }, { x: 1, y: 0, z: 0 }, 200, { ricochet: false });
+  assert.equal(bent.bounces, 1, 'the near face bounces the beam');
+  assert.ok(bent.segments[1].to.x < 0, 'back the way it came');
+  const stopped = traceBeam(facedWall(['x+']), { x: 0, y: 100, z: 5 }, { x: 1, y: 0, z: 0 }, 200, { ricochet: false });
+  assert.equal(stopped.bounces, 0, 'the far face does not');
+  assert.equal(stopped.segments[0].end, 'obstacle');
+}
+
 // The first tank hit ends it.
 {
   const world = { colliders: [], teleports: buildTeleporterIndex([]), mapSize: 400 };
