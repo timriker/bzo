@@ -154,9 +154,13 @@ the key to press as well as the goal.
    right to all. bzo keeps a pool of each flag, one per runner in the
    section, so nobody waits for one.
 10. **Stepping stones.** An Obese pad, then pillars far enough apart that a
-   stock tank drops between them and an Obese one rests across. Untested:
-   whether upstream physics holds a wide tank on two supports must be
-   checked with the real client before this is built.
+   stock tank drops between them and an Obese one rests across. Tested
+   with the real client on
+   [pillar-test.bzw](../maps/pillar-test.bzw): a tank rests while any
+   part of its box is over a pillar, so spacing alone decides who falls.
+   1 x 1 pillars on a hex grid 8.5 apart hold Obese but drop a stock
+   tank; 3.75 apart they hold a stock tank but drop Tiny, a second
+   stepping-stone field for the Tiny pad.
 11. **Storm.** Rain (`_rainType`, `_rainDensity`, live callbacks,
    `WeatherRenderer.cxx:84`) over a stretch of wet ground where the runner
    slides (`_momentumLinAcc`, `_momentumAngAcc`): braking early, steering
@@ -322,8 +326,8 @@ its server checks jumps and bounces against the runner's section.
 
 ## Steps
 
-1. Test the unknowns with real clients under Xvfb: the Obese pillars, a
-   fake player sent to one client only, `MsgKilled` for that fake player
+1. Test the unknowns with real clients under Xvfb: a fake player sent to
+   one client only, `MsgKilled` for that fake player
    drawing an explosion, a Guided Missile locking on to it, a shot sent
    to one client only hitting that client, and `_jumpVelocity 0` arriving
    mid-game for one client.
