@@ -6,6 +6,21 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
 
 ## [Unreleased]
 
+## [1.4.4] - 2026-11-16
+
+### Changed
+- Ace holding the Jumping flag plans with its Super Jump where the world sets
+  `_jumpFlagVelocity`: his routes, jump reach, dodges and squash jumps use
+  that speed.
+
+### Fixed
+- Security hardening from andrewwilke's review: a malformed cookie or a
+  failing plugin page no longer stops the server; names are capped at
+  upstream's 31 characters; the Debug HUD escapes voice peer names; rate
+  limits ignore a forged X-Forwarded-For; login callbacks check the token,
+  callsign and return address; `/list/import` is rate limited and reuses an
+  unchanged copy.
+
 ## [1.4.3] - 2026-11-16
 
 ### Added
