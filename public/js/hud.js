@@ -678,6 +678,12 @@ function formatCount(value) {
   return `${(value / 1000000).toFixed(1)}M`;
 }
 
+// For text another player or the server chose, which the debug HUD builds
+// into innerHTML.
+function escapeHtml(value) {
+  return String(value ?? '').replace(/[&<>"']/g, (ch) => `&#${ch.charCodeAt(0)};`);
+}
+
 // Updates the debug HUD with current stats
 export function updateDebugDisplay({
   fps,
@@ -769,7 +775,7 @@ export function updateDebugDisplay({
       const sending = peer.sending ? 'sending' : 'not sending';
       const audio = peer.audio ? 'audio' : 'no audio';
       const mic = peer.mic ? ', mic' : '';
-      html += `<div><span class="label">&nbsp;&nbsp;${peer.label}:</span><span class="value">${peer.state}, ${sending}, ${audio}, ${peer.playback}${mic}</span></div>`;
+      html += `<div><span class="label">&nbsp;&nbsp;${escapeHtml(peer.label)}:</span><span class="value">${peer.state}, ${sending}, ${audio}, ${peer.playback}${mic}</span></div>`;
     });
   }
 
@@ -804,7 +810,7 @@ export function updateDebugDisplay({
     html += '<div style="margin: 10px 0; border-top: 1px solid #444; padding-top: 10px; font-weight: bold;">PACKETS RECEIVED:</div>';
     const receivedTypes = Array.from(packetsReceived.entries()).sort((a, b) => b[1] - a[1]);
     receivedTypes.forEach(([type, count]) => {
-      html += `<div><span class="label">${type}:</span><span class="value">${count}</span></div>`;
+      html += `<div><span class="label">${escapeHtml(type)}:</span><span class="value">${count}</span></div>`;
     });
   }
   debugContent.innerHTML = html;

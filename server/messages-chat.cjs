@@ -85,11 +85,23 @@ function handleWatchBots(player, ws, message) {
   return;
 }
 
+// The longest debug line a client may log. bzo's own longest run near 800.
+const MAX_DEBUG_LENGTH = 2000;
+
+// One log line, however it was sent: control characters become spaces so a
+// client cannot start a line of its own.
+function logText(value, max) {
+  return Array.from(String(value ?? ''), (ch) => {
+    const code = ch.codePointAt(0);
+    return code < 0x20 || code === 0x7f ? ' ' : ch;
+  }).slice(0, max).join('').trim();
+}
+
 function handleDebug(player, ws, message) {
   // Log debug messages from clients
-  const payloadName = typeof message.name === 'string' ? message.name.trim() : '';
+  const payloadName = logText(message.name, 31);
   const debugFrom = payloadName || player.name || `Player ${player.playerNumber}`;
-  log(`[DEBUG] "${debugFrom}": ${message.message || ''}`);
+  log(`[DEBUG] "${debugFrom}": ${logText(message.message, MAX_DEBUG_LENGTH)}`);
   return;
 }
 

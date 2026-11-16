@@ -57,13 +57,23 @@ function lookup(pairs, folded) {
 // fields join the query's parameters, as upstream's parseParams adds both.
 // `url` is the one the page answers, which after a BZID login is the one the
 // visitor first asked for.
+// A value that is not valid percent-encoding is kept as sent, as a browser
+// would send it back.
+function decodeCookie(value) {
+  try {
+    return decodeURIComponent(value);
+  } catch {
+    return value;
+  }
+}
+
 function makeRequest(req, body, address, url = req.originalUrl) {
   const headers = Object.entries(req.headers).map(([name, value]) => [name, String(value)]);
   const cookies = String(req.headers.cookie || '').split(';')
     .map((part) => part.trim()).filter(Boolean)
     .map((part) => {
       const at = part.indexOf('=');
-      return at < 0 ? [part, ''] : [part.slice(0, at), decodeURIComponent(part.slice(at + 1))];
+      return at < 0 ? [part, ''] : [part.slice(0, at), decodeCookie(part.slice(at + 1))];
     });
   const text = body ? body.toString('utf8') : '';
   const params = [...new URL(url, 'http://x').searchParams];

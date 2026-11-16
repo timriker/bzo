@@ -456,7 +456,12 @@ app.use('/plugins', express.raw({ type: () => true, limit: '1mb' }), (req, res) 
     address: requestAddress(req),
     report: (error) => log(`[PLUGIN] ${page.plugin}: GeneratePage: ${error?.stack || error}`),
     webAuth: pluginWebAuth,
-    base: requestBase(req) || '',
+    base: loginBase(req) || '',
+  }).catch((error) => {
+    // Nothing above this route waits on the promise, and an unhandled
+    // rejection stops the server.
+    log(`[PLUGIN] ${page.plugin}: ${error?.stack || error}`);
+    if (!res.headersSent) res.status(500).type('text/plain').end('Server Error\n');
   });
   // The way back from a BZID login asks bzflag.org about a token, as /login's
   // does, so it is metered as /login is.
@@ -491,13 +496,11 @@ app.use(express.urlencoded({ extended: true }));
 // proxy the README describes is the *proxy* for every player at once: one bucket
 // for the whole internet is a self-inflicted outage rather than a limit. The
 // trusted address where the probe allows one (`trustedClientAddress`), and the
-// header's own first entry until it does -- a key, not a verdict, which is the
-// other reason the ceiling is generous.
+// socket's until it does: an untrusted header is the client's own choice, and
+// a fresh one each request would be a fresh bucket each request.
 function requestAddress(req) {
-  const forwardedFor = req.headers['x-forwarded-for'];
-  const forwarded = typeof forwardedFor === 'string' ? forwardedFor.split(',')[0].trim() : '';
   return trustedClientAddress(req.socket.remoteAddress, req.headers, forwardedForPolicy, forwardedProxyPeer)
-    || forwarded || req.socket.remoteAddress || 'unknown';
+    || req.socket.remoteAddress || 'unknown';
 }
 
 const loginRateLimit = rateLimit({
@@ -871,6 +874,22 @@ function requestBase(req) {
   return `${req.secure || forwarded === 'https' ? 'https' : 'http'}://${host}`;
 }
 
+// Where a login comes back to: the address the player used when it is one of
+// `publicUrl`'s, and the first of those otherwise, so a forged Host cannot
+// name the page bzflag.org sends a token to. Any Host where none is set.
+function loginBase(req, base = requestBase(req)) {
+  if (PUBLIC_URLS.length === 0) return base;
+  const origin = (url) => {
+    try {
+      return new URL(url).origin;
+    } catch {
+      return null;
+    }
+  };
+  const asked = base && origin(base);
+  return origin(PUBLIC_URLS.find((url) => origin(url) === asked) || PUBLIC_URL);
+}
+
 // The browser sets Host from the address the player typed, so it is the name
 // they expect to see. X-Forwarded-Host is not consulted: any client can send it,
 // and a proxy configured as the README describes already preserves Host.
@@ -1138,7 +1157,7 @@ app.get('/login/:returnPage?/:returnView?/:returnTeam?', loginRateLimit, async (
       if (!segment) break;
       carried += `/${segment}`;
     }
-    const callback = `https://${host}/login${carried}?t=%TOKEN%:%USERNAME%`;
+    const callback = `${loginBase(req, `https://${host}`)}/login${carried}?t=%TOKEN%:%USERNAME%`;
     const target = `${BZFLAG_LOGIN_URL}?action=weblogin&url=${callback}`;
     log(`[LOGIN] redirecting to bzflag.org, callback ${callback}`);
     // The header is set rather than sent through `res.redirect`, which runs the
@@ -1172,6 +1191,15 @@ app.get('/login/:returnPage?/:returnView?/:returnTeam?', loginRateLimit, async (
   const separator = packed.indexOf(':');
   const token = separator === -1 ? packed : packed.slice(0, separator);
   const callsign = separator === -1 ? '' : packed.slice(separator + 1);
+  // Refused rather than trimmed: a shortened token or callsign is not the one
+  // bzflag.org issued, and the proxied path below keeps the callsign unasked.
+  // Upstream's TokenLen and CallSignLen, less their NULs.
+  if (!/^[\x21-\x7e]*$/.test(token) || token.length > MAX_TOKEN_LENGTH
+    || sanitizeCallsign(callsign) !== callsign.trim()) {
+    log(`[LOGIN] callback refused: token or callsign too long or malformed`);
+    res.status(400).send('Came back with a malformed token. Start again at /login.\n');
+    return;
+  }
   log(`[LOGIN] callback token=${token} callsign="${callsign}"`);
   if (!callsign) {
     res.status(400).send('Got a token but no callsign. Start again at /login.\n');
@@ -1689,7 +1717,7 @@ app.post('/api/webrtc-test-log', (req, res) => {
   // public/wt-test.html and the renderer bench log the same way, under their
   // own tags.
   const tag = ['wt-test', 'renderer-bench'].includes(req.body?.page) ? req.body.page : 'webrtc-test';
-  const ip = (req.get('x-forwarded-for') || '').split(',')[0].trim() || req.socket.remoteAddress;
+  const ip = requestAddress(req);
   lines.forEach((line) => {
     if (typeof line === 'string') log(`[${tag}] ${ip} ${line.slice(0, 200).replace(/[\r\n]/g, ' ')}`);
   });
@@ -3562,18 +3590,53 @@ app.get('/view', (req, res) => {
 });
 app.get('/list-server', (req, res) => res.redirect(301, '/list#keys'));
 
-app.post('/list/import', (req, res) => {
+// An import joins somebody else's server, so it is metered per address and
+// asked only from bzo's own pages: a form on any other site could otherwise
+// spend this server's visitors on it. A copy held within the hour, or one
+// whose world a status query says is unchanged, is kept rather than fetched.
+const importRateLimit = rateLimit({
+  windowMs: 60 * 1000,
+  limit: 5,
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: requestAddress,
+  validate: { xForwardedForHeader: false },
+  handler: (req, res) => {
+    log(`[IMPORT] rate limited ${requestAddress(req)}`);
+    res.redirect(302, `/list?${new URLSearchParams({ error: 'Too many imports; try again in a minute' })}`);
+  },
+});
+
+function fromOwnPage(req) {
+  const from = req.get('origin') || req.get('referer');
+  if (!from) return false;
+  let origin;
+  try {
+    origin = new URL(from).origin;
+  } catch {
+    return false;
+  }
+  const base = requestBase(req);
+  return origin === (base && new URL(base).origin) || origin === loginBase(req);
+}
+
+app.post('/list/import', importRateLimit, (req, res) => {
+  if (!fromOwnPage(req)) {
+    res.status(403).type('text/plain').send('Import from this server\'s /list page.\n');
+    return;
+  }
   const target = parseHostPort(`${req.body?.host || ''}:${req.body?.port || ''}`);
   if (!target) {
     res.redirect(302, `/list?${new URLSearchParams({ error: 'Expected host:port' })}`);
     return;
   }
   const { host, port } = target;
+  const file = remoteMapFileName(host, port);
   log(`/list is importing a remote map from ${host}:${port}`);
-  performRemoteMapImport(host, port).then(({ safeMapName, byteLength, reused }) => {
-    log(reused
-      ? `/list reused the cached copy of ${host}:${port}, ${safeMapName} (${byteLength} bytes)`
-      : `Imported remote map ${host}:${port} as ${safeMapName} (${byteLength} bytes) via /list`);
+  holdImportedWorld(file).then(({ how, byteLength, file: safeMapName = file }) => {
+    log(how === 'imported'
+      ? `Imported remote map ${host}:${port} as ${safeMapName} (${byteLength} bytes) via /list`
+      : `/list kept the copy of ${host}:${port} it holds, ${safeMapName} (${how})`);
     res.redirect(302, `/list?${new URLSearchParams({ imported: safeMapName })}`);
   }).catch((error) => {
     logError(`Remote map import from ${host}:${port} failed (via /list):`, error);
@@ -4365,8 +4428,8 @@ async function holdImportedWorld(file) {
   if (existing && Date.now() - existing.registeredAt < IMPORT_REUSE_MS) return { how: 'held' };
   if (!existing && await registerFreshImportFromDisk(file)) return { how: 'disk' };
   if (await confirmImportUnchanged(file, host, port)) return { how: 'unchanged' };
-  const { byteLength, reused } = await performRemoteMapImport(host, port);
-  return { how: reused ? 'reused' : 'imported', byteLength };
+  const { safeMapName, byteLength, reused } = await performRemoteMapImport(host, port);
+  return { how: reused ? 'reused' : 'imported', byteLength, file: safeMapName };
 }
 
 // The world hash an import was saved with: the `# world hash` line its header
@@ -11512,9 +11575,24 @@ function stripNameIndicators(requestedName) {
   return typeof requestedName === 'string' ? requestedName.replace(NAME_INDICATOR_PREFIX, '') : requestedName;
 }
 
+// Upstream's `CallSignLen` less its NUL, counted in characters rather than
+// bytes because a bzo name may be any script.
+const MAX_CALLSIGN_LENGTH = 31;
+const MAX_TOKEN_LENGTH = 21;
+
+// Control characters go and the length is capped: a name is logged, drawn on
+// every other player's screen and sent in every `init`.
+function sanitizeCallsign(value) {
+  if (typeof value !== 'string') return '';
+  const clean = Array.from(value).filter((ch) => {
+    const code = ch.codePointAt(0);
+    return code >= 0x20 && code !== 0x7f;
+  }).join('').trim();
+  return Array.from(clean).slice(0, MAX_CALLSIGN_LENGTH).join('').trim();
+}
+
 function nameCheck(requestedName, excludeId = null) {
-  let name = stripNameIndicators(requestedName);
-  name = name && name.trim() ? name.trim() : '';
+  const name = sanitizeCallsign(stripNameIndicators(requestedName));
   // Get the player number for excludeId
   let playerNumber = null;
   if (excludeId) {
@@ -13549,7 +13627,7 @@ app.get('/bzflag/world/:md5.bwc', (req, res) => {
       return;
     }
     // The client's libcurl sends no user agent, so the address says who.
-    const from = (req.get('x-forwarded-for') || '').split(',')[0].trim() || req.socket.remoteAddress;
+    const from = requestAddress(req);
     log(`[BZFLAG] world ${req.params.md5} fetched over HTTP by ${from}`);
     res.set('Cache-Control', 'public, max-age=31536000, immutable');
     res.type('application/octet-stream').send(world.blob);
