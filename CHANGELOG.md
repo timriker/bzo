@@ -6,6 +6,29 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
 
 ## [Unreleased]
 
+## [1.4.3] - 2026-11-16
+
+### Added
+- A map's `metadata` block -- title, authors, version, licence, description,
+  as upstream proposes in BZFlag-Dev/bzflag#361 -- shows in the `/list` map
+  pane and the in-client map picker, and the list's filter searches it. The
+  bundled maps carry one.
+- `_jumpFlagVelocity` makes the Jumping flag a Super Jump on a world where
+  everyone may jump: JP stays in the pool and its holder jumps at that speed,
+  in bzo and in BZFlag clients alike. `hix` and `bzo` set it to twice the
+  jump height. A map sets it with `-setforced`, which bzo now reads and a
+  stock bzfs accepts for a variable it does not know.
+- `ricochet` on one face of a box, pyramid or mesh bounces shots off that
+  face alone (`x+ ricochet`, `sides ricochet`), as upstream 2.4.32 allows on
+  pyramids.
+- `pillar-test.bzw`, hex pillar fields that hold Obese but not a stock tank,
+  and a stock tank but not Tiny.
+- Plans for what bzo can give a stock BZFlag client that bzfs cannot, and
+  for a timed tutorial and challenge course built on it.
+
+### Fixed
+- A laser bends off an obstacle marked `ricochet` on any world, as upstream.
+
 ## [1.4.2] - 2026-11-15
 
 ### Added
