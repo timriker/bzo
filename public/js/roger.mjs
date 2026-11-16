@@ -10,7 +10,7 @@
 // measured against and extends, so improvements go there, not here. The
 // small geometry he works in is exported for Ace to share.
 
-import { canSeeTank, seenOnRadar } from './flags.mjs';
+import { canSeeTank, getJumpVelocity, seenOnRadar } from './flags.mjs';
 import { normalizeAngle } from './motion.mjs';
 
 export const HALF_PI = Math.PI / 2;
@@ -300,6 +300,13 @@ export class Roger {
     return worst ? { ...worst, distance: minDistance } : null;
   }
 
+  // The speed this tank leaves the ground at: a Jumping flag's Super Jump
+  // where the world has one.
+  jumpVelocity(ctx) {
+    const { world } = ctx.view;
+    return getJumpVelocity(ctx.me.flag ?? null, world.allowJumping, world.jumpVelocity, world.jumpFlagVelocity);
+  }
+
   avoidBullet(ctx) {
     const { view, me, out } = ctx;
     if (me.flag === 'N' || me.flag === 'BU') return false; // take our chances
@@ -433,7 +440,7 @@ export class Roger {
         }
         // "assuming 20-50 is a good range"
         if (d > 20 && d < 50 && building.isBox) {
-          const jumpVel = view.world.jumpVelocity;
+          const jumpVel = this.jumpVelocity(ctx);
           const maxJump = (jumpVel * jumpVel) / (-2 * view.world.gravity);
           if (building.top - me.z < maxJump) {
             out.speed = d / 50;

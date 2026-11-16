@@ -14205,6 +14205,7 @@ function buildAutopilotView() {
       tankSpeed: gameConfig.TANK_SPEED,
       shakeTimeout: shakeTimeoutSeconds(gameConfig.FLAG_SHAKE_TIMEOUT),
       jumpVelocity: gameConfig.JUMP_VELOCITY,
+      jumpFlagVelocity: gameConfig.JUMP_FLAG_VELOCITY,
       gravity: gameConfig.GRAVITY,
       lockOnAngle: getFlagTuning().lockOnAngle,
       shotLimits: gameConfig.SHOT_LIMITS || {},

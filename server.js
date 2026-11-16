@@ -18054,6 +18054,7 @@ function botSharedView(now) {
       shakeWins: FLAG_SHAKE_WINS,
       antidoteFlags: ANTIDOTE_FLAGS,
       jumpVelocity: GAME_CONFIG.JUMP_VELOCITY,
+      jumpFlagVelocity: GAME_CONFIG.JUMP_FLAG_VELOCITY,
       gravity: GAME_CONFIG.GRAVITY,
       lockOnAngle: getFlagTuning().lockOnAngle,
       shotLimits: Object.fromEntries(SHOT_LIMITS),

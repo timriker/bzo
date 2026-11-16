@@ -335,9 +335,10 @@ export function createWorldProbes({
 // `obstacles` is the same array for as long as the world is the same.
 // `canJump` is the tank's own: a flag can take jumping away (NJ) or give it
 // where the world does not (JP, WG), so a route only has jump legs for a tank
-// that can take them. A graph is kept for each, rebuilt when the world or its
-// jump changes. `foes` are the ones whose sight a landing is kept out of
-// (`buildNavGraph`'s `findRoute`).
+// that can take them, and a Jumping flag's Super Jump (`superJump`, its
+// velocity) has legs of its own. A graph is kept for each, rebuilt when the
+// world or its jump changes. `foes` are the ones whose sight a landing is kept
+// out of (`buildNavGraph`'s `findRoute`).
 export function createRouter(world) {
   let built = null;
   return (from, to, options = {}) => {
@@ -362,11 +363,14 @@ export function createRouter(world) {
         gravity: wings.gravity ?? current.jump.gravity,
         flaps: Math.max(0, (wings.count ?? 1) - 1),
       }
-      : (current.jump ?? null);
+      : current.jump && options.superJump > 0
+        ? { ...current.jump, velocity: options.superJump }
+        : (current.jump ?? null);
     // Oscillation Overthruster drives through buildings on the ground
     // (`buildNavGraph`'s `phasing`).
     const phasing = !burrowed && options.phasing === true;
-    const key = `${burrowed ? 'burrowed' : wings ? 'wings' : jump ? 'jump' : 'ground'}${phasing ? ':phasing' : ''}`;
+    const kind = burrowed ? 'burrowed' : wings ? 'wings' : jump ? `jump:${jump.velocity}` : 'ground';
+    const key = `${kind}${phasing ? ':phasing' : ''}`;
     if (!built.graphs.has(key)) {
       built.graphs.set(key, buildNavGraph({
         ...current, jump, phasing, teleporterLinks: burrowed ? [] : current.teleporterLinks,
@@ -409,7 +413,7 @@ export function createAsyncRouter(world, post) {
       post({ type: 'world', world: current });
     }
     const key = `${options.canJump ?? current.allowJumping !== false}:${Boolean(options.wings)}:${options.burrowed === true}`
-      + `:${options.phasing === true}`;
+      + `:${options.phasing === true}:${options.superJump ?? ''}`;
     const answer = answers.get(key);
     if (answer && near(answer.from, from, ANSWER_FROM_SLACK) && near(answer.to, to, ANSWER_TO_SLACK)) {
       return answer.nodes;

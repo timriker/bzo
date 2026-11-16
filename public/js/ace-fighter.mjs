@@ -816,7 +816,7 @@ export class AceFighter extends AceDriver {
     if (!foe || foe.flag !== 'BU' || !(foe.z < 0)) return null;
     if (me.inAir || !canTankJump(view.world, me.flag, me.z)) return null;
     if (!canRunOver(me.flag ?? null, 'BU', 0, me.zoned === true)) return null;
-    const v = view.world.jumpVelocity;
+    const v = this.jumpVelocity(ctx);
     const g = -view.world.gravity;
     if (!(v > 0) || !(g > 0)) return null;
     const t = (v + Math.sqrt((v * v) + (2 * g * Math.max(0, me.z)))) / g;
@@ -1653,6 +1653,7 @@ export class AceFighter extends AceDriver {
   jumpArc(ctx, v) {
     const { view, me } = ctx;
     const g = -view.world.gravity;
+    const up = this.jumpVelocity(ctx);
     const radius = 0.99 * TANK.radius * getTankHitRadiusScale(me.flag ?? null);
     const shots = view.shots.filter((shot) => (shot.ownerId !== me.id || shot.bounces > 0)
       && canSeeShot(me.flag, shot.flag) && !(shot.ownerZoned && !me.zoned)
@@ -1668,7 +1669,7 @@ export class AceFighter extends AceDriver {
     let vy = v.y;
     let at = { x: me.x, y: me.y, z: me.z };
     for (let t = JUMP_STEP_SECONDS; t <= JUMP_MAX_SECONDS; t += JUMP_STEP_SECONDS) {
-      const z = me.z + (view.world.jumpVelocity * t) - (0.5 * g * t * t);
+      const z = me.z + (up * t) - (0.5 * g * t * t);
       let next = { x: at.x + (vx * JUMP_STEP_SECONDS), y: at.y + (vy * JUMP_STEP_SECONDS), z: at.z };
       if ((vx || vy) && view.firstHit({ ...at, z: at.z + 0.1 }, { ...next, z: at.z + 0.1 })) {
         vx = 0;
@@ -1684,7 +1685,7 @@ export class AceFighter extends AceDriver {
       at = { x: next.x, y: next.y, z };
       for (let k = 1; k <= DODGE_HIT_STEPS; k++) {
         const s = t - JUMP_STEP_SECONDS + ((JUMP_STEP_SECONDS * k) / DODGE_HIT_STEPS);
-        const zs = me.z + (view.world.jumpVelocity * s) - (0.5 * g * s * s);
+        const zs = me.z + (up * s) - (0.5 * g * s * s);
         const f = k / DODGE_HIT_STEPS;
         if (hits({ x: at.x - (vx * JUMP_STEP_SECONDS * (1 - f)), y: at.y - (vy * JUMP_STEP_SECONDS * (1 - f)), z: zs }, s)) {
           return null;
@@ -1706,7 +1707,7 @@ export class AceFighter extends AceDriver {
     const foe = this.remotePlayers(view).find((p) => p.id === id);
     if (!foe || !foe.alive || foe.paused) return null;
     const g = -view.world.gravity;
-    const v = view.world.jumpVelocity;
+    const v = this.jumpVelocity(ctx);
     const rate = this.turnRate(ctx);
     if (!(g > 0) || !(rate > 0)) return null;
     const drop = (me.z + (me.muzzleHeight ?? TANK.muzzleHeight)) - (foe.z + view.world.tankHeight);
@@ -2173,7 +2174,7 @@ export class AceFighter extends AceDriver {
   canJumpClear(ctx, threat) {
     const { view, me } = ctx;
     if (me.inAir || this.jumpReach(ctx) <= 0) return false;
-    const v = view.world.jumpVelocity;
+    const v = this.jumpVelocity(ctx);
     const g = -view.world.gravity;
     const rise = threat.height + SHOT_COLLISION_RADIUS;
     if (rise <= 0) return true;

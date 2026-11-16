@@ -2124,6 +2124,23 @@ for (const flag of ['US', 'MG', 'ID']) {
   assert.equal(router(from, to, { burrowed: true }), null, 'but not for a burrowed tank');
 }
 
+// A Jumping flag's Super Jump has its own graph: a roof too high for the
+// world's jump is in its reach.
+{
+  const box = {
+    type: 'box', pos: [0, 0, 0], size: [10, 10, 25], angle: 0,
+    bounds: { minX: -10, maxX: 10, minY: -10, maxY: 10, minZ: 0, maxZ: 25 },
+  };
+  const router = createRouter(() => ({
+    obstacles: [box], mapSize: 200, waterLevel: null, teleporterLinks: [], allowJumping: true,
+    jump: { velocity: 19, gravity: -9.8, tankSpeed: 25 },
+  }));
+  const from = { x: 50, y: 0, z: 0 };
+  const to = { x: 0, y: 0, z: 25 };
+  assert.equal(router(from, to), null, 'a 25-unit roof is out of the world\'s jump');
+  assert.ok(router(from, to, { superJump: 19 * 1.414 }), 'but not out of a Super Jump');
+}
+
 // A shell is traced through teleporters as the server flies it: one fired
 // into a doorway can come back out of it, off a wall beyond the far end.
 {

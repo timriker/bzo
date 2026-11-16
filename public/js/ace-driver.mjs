@@ -304,7 +304,8 @@ export class AceDriver extends Roger {
     const { view, me } = ctx;
     const canJump = (view.world.allowJumping || me.flag === 'JP' || me.flag === 'WG') && me.flag !== 'NJ';
     if (!canJump || !(view.world.gravity < 0)) return 0;
-    return (view.world.jumpVelocity * view.world.jumpVelocity) / (-2 * view.world.gravity);
+    const v = this.jumpVelocity(ctx);
+    return (v * v) / (-2 * view.world.gravity);
   }
 
   // Somewhere to be, by a route where there is one and straight there where not.
@@ -405,7 +406,10 @@ export class AceDriver extends Roger {
     // Oscillation Overthruster drives through buildings on the ground, and
     // goes on a take-off (`shedPhasingOnTakeoff`) so a jump up lands.
     const phasing = view.self.flag === 'OO';
-    const nodes = view.findRoute(here, there, { canJump, wings, burrowed, foes, phasing });
+    // A Jumping flag's Super Jump reaches higher: its own graph.
+    const velocity = this.jumpVelocity({ view, me: view.self });
+    const superJump = canJump && !wings && velocity !== view.world.jumpVelocity ? velocity : null;
+    const nodes = view.findRoute(here, there, { canJump, wings, superJump, burrowed, foes, phasing });
     if (nodes === ROUTE_PENDING) return this.awaitRoute(view, here, there);
     // Nowhere to go underground -- a raised base, a lift's far end -- is
     // somewhere Burrow keeps him from: it goes, and the tank comes up.
@@ -1043,7 +1047,7 @@ export class AceDriver extends Roger {
     const { view, me } = ctx;
     const g = -view.world.gravity;
     if (!(g > 0)) return null;
-    const vz = flight.jump ? view.world.jumpVelocity : 0;
+    const vz = flight.jump ? this.jumpVelocity(ctx) : 0;
     const rise = (foe.z + (view.world.tankHeight / 2) - (me.muzzleHeight ?? 1.57)) - here.z;
     const disc = (vz * vz) - (2 * g * rise);
     if (disc < 0) return null;
@@ -1326,7 +1330,7 @@ export class AceDriver extends Roger {
   jumpParams(ctx) {
     const { view, me } = ctx;
     return {
-      velocity: view.world.jumpVelocity,
+      velocity: this.jumpVelocity(ctx),
       gravity: view.world.gravity,
       tankSpeed: me.topSpeed ?? view.world.tankSpeed,
     };

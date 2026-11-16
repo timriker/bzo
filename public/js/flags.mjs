@@ -785,6 +785,12 @@ export function canJump(abbreviation, allowJumping, airborne, flapsLeft, insideB
   return allowJumping || abbreviation === 'JP';
 }
 
+// The Jumping flag jumps with `_jumpFlagVelocity`, its Super Jump, on a world
+// where everyone jumps and that sets one; every other jump is the world's.
+export function getJumpVelocity(abbreviation, allowJumping, jumpVelocity, jumpFlagVelocity) {
+  return abbreviation === 'JP' && allowJumping === true && jumpFlagVelocity > 0 ? jumpFlagVelocity : jumpVelocity;
+}
+
 // CmdLineOptions.cxx:1268-1284: `-st` seconds in, tenths out,
 // `uint16_t(timeout * 10.0f + 0.5f)` between the clamps. Anything that is not a
 // positive number is the switch being off.

@@ -585,6 +585,7 @@ export function createBotGame({
         shakeWins: 0,
         antidoteFlags: false,
         jumpVelocity: config.JUMP_VELOCITY,
+        jumpFlagVelocity: config.JUMP_FLAG_VELOCITY,
         gravity: config.GRAVITY,
         lockOnAngle: getFlagTuning().lockOnAngle,
         shotLimits: config.SHOT_LIMITS || {},
