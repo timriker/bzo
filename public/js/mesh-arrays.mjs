@@ -83,6 +83,18 @@ export const FACE_NO_RADAR = 4;
 // A face's own `ricochet`: a shot that would stop on it bounces instead, as
 // upstream's MeshFace answers `canRicochet` face by face.
 export const FACE_RICOCHET = 8;
+// A draw face that is no surface: one `lines`, `linestrip`, `lineloop` or
+// `points` command of a `drawInfo` block, its corners in the command's own
+// order. Upstream draws these as GL lines and points (`DrawCmd::draw`). Only
+// draw arrays carry them; collision never sees one.
+export const FACE_LINES = 16;
+export const FACE_LINE_STRIP = 32;
+export const FACE_LINE_LOOP = 64;
+export const FACE_POINTS = 128;
+export const FACE_NOT_SURFACE = FACE_LINES | FACE_LINE_STRIP | FACE_LINE_LOOP | FACE_POINTS;
+const PRIMITIVE_FLAGS = {
+  lines: FACE_LINES, linestrip: FACE_LINE_STRIP, lineloop: FACE_LINE_LOOP, points: FACE_POINTS,
+};
 
 // A face with no physics driver. Every distinct driver on a mesh goes in a
 // table beside the arrays and is named here by its index, since a map has a
@@ -172,6 +184,7 @@ export function buildMeshArrays(mesh) {
     if (face.driveThrough) flags |= FACE_DRIVE_THROUGH;
     if (face.noRadar) flags |= FACE_NO_RADAR;
     if (face.ricochet) flags |= FACE_RICOCHET;
+    if (face.primitive) flags |= PRIMITIVE_FLAGS[face.primitive] || 0;
     out.faceFlags[f] = flags;
 
     if (face.phydrv) {

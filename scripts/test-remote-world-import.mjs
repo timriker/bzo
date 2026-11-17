@@ -1,11 +1,12 @@
 import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
+import net from 'node:net';
 import zlib from 'node:zlib';
 
 const require = createRequire(import.meta.url);
 const {
   findPublicServer, collectNonDefaultVariables, OBSTACLE_ORDER,
-  parseWorldDatabase, buildBZWText,
+  parseWorldDatabase, buildBZWText, fetchWorldFromServer, sendFrame, createFrameReader,
 } = require('../server/remote-world-import.cjs');
 const { BZDB_DEFAULTS } = require('../public/js/bzdb-defaults.mjs');
 
@@ -99,5 +100,48 @@ assert.deepEqual(
     i32(3), i32(4), i32(5), i32(6)])),
   ['group stg', '  name stg-0', '  matswap 3 4', '  matswap 5 6', 'end'],
   'the name stops at the NUL and the remap table behind it becomes matswap lines');
+
+// The download asks for many chunks ahead. A stand-in bzfs answers each
+// MsgGetWorld as `sendWorld` (bzfs.cxx) does: from the offset it carries, with
+// what was left before the chunk, or 0 once it is the last.
+async function downloadFromFakeBzfs(world) {
+  const chunkSize = 1024 - (2 * 2) - 4;
+  const server = net.createServer((socket) => {
+    const { readExact, readFrame } = createFrameReader(socket);
+    socket.on('error', () => {});
+    (async () => {
+      await readExact(10);
+      socket.write(Buffer.concat([Buffer.from('BZFS0221'), Buffer.from([0])]));
+      for (;;) {
+        const { code, payload } = await readFrame();
+        if (code === 'qg') sendFrame(socket, 'qg', Buffer.alloc(40));
+        else if (code === 'nf') sendFrame(socket, 'nf');
+        else if (code === 'ws') sendFrame(socket, 'gs', Buffer.alloc(40));
+        else if (code === 'wh') sendFrame(socket, 'wh', Buffer.from(`p${'0'.repeat(32)}\0`));
+        else if (code === 'gw') {
+          const ptr = Math.min(payload.readUInt32BE(0), world.length);
+          const end = Math.min(world.length, ptr + chunkSize);
+          const left = Buffer.alloc(4);
+          left.writeUInt32BE(end >= world.length ? 0 : world.length - ptr);
+          sendFrame(socket, 'gw', Buffer.concat([left, world.subarray(ptr, end)]));
+        }
+      }
+    })().catch(() => {});
+  });
+  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+  try {
+    return await fetchWorldFromServer('127.0.0.1', server.address().port, 5000,
+      { enterForVariables: false });
+  } finally {
+    server.close();
+  }
+}
+
+for (const size of [500, 1016, 1016 * 3, 200000]) {
+  const world = Buffer.alloc(size);
+  for (let i = 0; i < size; i++) world[i] = (i * 7 + (i >> 8)) & 0xff;
+  const result = await downloadFromFakeBzfs(world);
+  assert.ok(result.worldDatabase.equals(world), `a ${size}-byte world arrives whole and in order`);
+}
 
 console.log('remote world import tests passed');

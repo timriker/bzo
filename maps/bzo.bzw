@@ -3052,3 +3052,153 @@ group SpinTank
   name spin_tank
   shift 0 0 13.81
 end
+
+# A dodecahedron around the spinning tank, turning the other way, drawn only
+# in lines and points.
+#
+# Upstream draws a `drawInfo` block's `lines`, `linestrip`, `lineloop` and
+# `points` as GL lines and points (`DrawCmd::draw`), and maps use them:
+# Delirious City (reri.sandybees.com:6019) draws its streets from about 200,000
+# vertices of them, in meshes with no face at all. This is that, small: no
+# face, so nothing collides with it, and the edges textured with the same
+# blue-to-red gradient that map uses, a `texmat` scrolling it along each edge.
+# The vertices are drawn as points in their own material.
+#
+# Its edges are one `lines` command, a pair of corners per edge. Generated
+# once: the twenty corners of a regular dodecahedron, (+-1, +-1, +-1),
+# (0, +-1/phi, +-phi) and its rotations, scaled to a radius of 6.5 and
+# turned so the corner at (1, 1, 1) points straight up and its opposite
+# straight down: a vertex top and bottom, on the axis it spins about.
+#
+# Centred on the tank, at its mid-height (13.81 + 2.08 / 2 = 14.85). The
+# tank reaches 4.98 from there, at the barrel tip; a radius of 6.5 puts every
+# face 5.17 out (0.795 of the radius), so no part of the tank comes through
+# whichever way the two have turned. A mesh no `group` placed spins about the
+# world origin, upstream and here, which is the tank's own axis, so
+# `angvel -30` turns it in place, once every twelve seconds, against the
+# tank's `angvel 45`. The position is written into the vertices themselves:
+# upstream moves a `drawInfo`'s own vertex pool only when a `group` places
+# the mesh, so a `shift` here would place it in one client and not the other.
+# Being only lines, a tank jumping into it passes through.
+textureMatrix
+  name dodeca_scroll
+  shift 0.2 0
+end
+
+material
+  name dodeca_edges
+  texture http://images.bzflag.org/kktl/horizontal_gradient_blue_begin_red_and_transparant_end.png
+  texmat dodeca_scroll
+  nolighting
+  noshadow
+  noradar
+end
+
+material
+  name dodeca_vertices
+  diffuse 1 1 0.4 1
+  nolighting
+  noshadow
+  noradar
+end
+
+mesh
+  name spin_dodecahedron
+  drawinfo
+    angvel -30
+    # 20 vertices, 30 edges; corner 2k and 2k+1 are edge k's ends, at
+    # texcoords 0 and 1, so the gradient runs the length of every edge.
+    vertex 0.000 0.000 8.350
+    vertex -4.333 -4.333 12.683
+    vertex -1.586 5.919 12.683
+    vertex -5.919 1.586 17.017
+    vertex 5.919 -1.586 12.683
+    vertex 1.586 -5.919 17.017
+    vertex 4.333 4.333 17.017
+    vertex 0.000 0.000 21.350
+    vertex 3.996 1.677 10.005
+    vertex -0.546 -4.299 10.005
+    vertex -3.450 2.622 10.005
+    vertex -3.016 -5.335 17.017
+    vertex -3.112 5.279 17.017
+    vertex -6.128 -0.056 12.683
+    vertex 3.016 5.335 12.683
+    vertex 3.112 -5.279 12.683
+    vertex 6.128 0.056 17.017
+    vertex -3.996 -1.677 19.695
+    vertex 0.546 4.299 19.695
+    vertex 3.450 -2.622 19.695
+    normal 0 0 1
+    texcoord 0 0
+    texcoord 1 0
+    corner 0 0 0
+    corner 8 0 1
+    corner 0 0 0
+    corner 9 0 1
+    corner 0 0 0
+    corner 10 0 1
+    corner 1 0 0
+    corner 9 0 1
+    corner 1 0 0
+    corner 11 0 1
+    corner 1 0 0
+    corner 13 0 1
+    corner 2 0 0
+    corner 10 0 1
+    corner 2 0 0
+    corner 12 0 1
+    corner 2 0 0
+    corner 14 0 1
+    corner 3 0 0
+    corner 12 0 1
+    corner 3 0 0
+    corner 13 0 1
+    corner 3 0 0
+    corner 17 0 1
+    corner 4 0 0
+    corner 8 0 1
+    corner 4 0 0
+    corner 15 0 1
+    corner 4 0 0
+    corner 16 0 1
+    corner 5 0 0
+    corner 11 0 1
+    corner 5 0 0
+    corner 15 0 1
+    corner 5 0 0
+    corner 19 0 1
+    corner 6 0 0
+    corner 14 0 1
+    corner 6 0 0
+    corner 16 0 1
+    corner 6 0 0
+    corner 18 0 1
+    corner 7 0 0
+    corner 17 0 1
+    corner 7 0 0
+    corner 18 0 1
+    corner 7 0 0
+    corner 19 0 1
+    corner 8 0 0
+    corner 14 0 1
+    corner 9 0 0
+    corner 15 0 1
+    corner 10 0 0
+    corner 13 0 1
+    corner 11 0 0
+    corner 17 0 1
+    corner 12 0 0
+    corner 18 0 1
+    corner 16 0 0
+    corner 19 0 1
+    lod
+      lengthPerPixel 0
+      matref dodeca_edges
+        lines 0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30 31 32 33 34 35 36 37 38 39 40 41 42 43 44 45 46 47 48 49 50 51 52 53 54 55 56 57 58 59
+      end
+      matref dodeca_vertices
+        points 0 6 12 18 24 30 36 42 1 3 5 9 15 11 17 27 29 23 41 35
+      end
+    end
+  end
+end

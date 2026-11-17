@@ -12,7 +12,9 @@
 
 import { WORLD_WALL_HEIGHT, getObstacleBase, getObstacleHeight, getPyramidSurfaceLocalHeight } from './collision.mjs';
 import { createBuriedTriangleTest } from './face-trim.mjs';
-import { NO_INDEX, meshArrays, meshDrawArrays } from './mesh-arrays.mjs';
+import {
+  FACE_LINE_LOOP, FACE_LINE_STRIP, FACE_NOT_SURFACE, FACE_POINTS, NO_INDEX, meshArrays, meshDrawArrays,
+} from './mesh-arrays.mjs';
 import { getPlayerTeamColor, getTeamFromColorIndex } from './teams.mjs';
 import { createBaseTopTexture, createBaseWallTexture, createBoundaryTexture, createBoxWallTexture, createGroundTexture, createPyramidTexture, createRoofTexture, createStockMaterialTexture, createTeleporterBorderTexture, createTeleporterPortalTexture, getBaseTeamTint, loadExternalTexture } from './texture.js';
 import * as THREE from 'three';
@@ -2032,13 +2034,18 @@ export class WorldRendering {
   setMeshInstances(templates = null, instances = null) {
     if (!this.scene || !templates || !instances || !instances.length) return;
     const built = new Map();
+    const builtLines = new Map();
     for (const [name, templateMeshes] of Object.entries(templates)) {
       const objects = [];
+      const lineSets = [];
       (templateMeshes || []).forEach((meshObs, i) => {
         const object = this._buildMeshObject(meshObs, i);
         if (object) objects.push(object);
+        const lines = this._buildMeshLines(meshObs);
+        if (lines) lineSets.push(lines);
       });
       built.set(name, objects);
+      if (lineSets.length > 0) builtLines.set(name, lineSets);
     }
     // Grouped by definition, because one `InstancedMesh` draws every
     // placement of one template in a single call. A field of 1,905 flowers
@@ -2082,6 +2089,21 @@ export class WorldRendering {
         this.worldFrame.add(this._tagDraws(batch, 'mesh'));
         this.meshObjects.push(batch);
       }
+      // Lines have no instanced form, so each placement gets its own copy,
+      // sharing the template's geometry and materials.
+      for (const lines of builtLines.get(name) || []) {
+        placements.forEach((instance) => {
+          const scale = Array.isArray(instance.scale) ? instance.scale : [1, 1, 1];
+          position.set(instance.x || 0, instance.y || 0, instance.z || 0);
+          quaternion.setFromAxisAngle(zAxis, instance.spin || 0);
+          scaleVector.set(scale[0] || 1, scale[1] || 1, scale[2] || 1);
+          const copy = lines.clone();
+          copy.matrix.compose(position, quaternion, scaleVector);
+          copy.matrixWorldNeedsUpdate = true;
+          this.worldFrame.add(this._tagDraws(copy, 'mesh'));
+          this.meshObjects.push(copy);
+        });
+      }
     }
   }
 
@@ -2090,17 +2112,25 @@ export class WorldRendering {
     this.clearMeshes();
     meshes.forEach((meshObs, i) => {
       const meshMesh = this._buildMeshObject(meshObs, i);
-      if (!meshMesh) return;
+      const lines = this._buildMeshLines(meshObs);
+      if (!meshMesh && !lines) return;
       // `_addDebugLabel` reads the object's own geometry bounding box for
       // where to float the label -- already computed in `_buildMeshObject`,
       // and already in world space, since a mesh's vertices are baked in
       // directly rather than carried as a position a matrix would move.
       // Read before any spin-wrapping below, which repositions the mesh
       // itself but never touches its geometry.
-      this._addDebugLabel(meshMesh, 'mesh');
+      if (meshMesh) this._addDebugLabel(meshMesh, 'mesh');
+      let drawn = meshMesh || lines;
+      if (meshMesh && lines) {
+        drawn = new THREE.Group();
+        drawn.name = meshMesh.name;
+        drawn.matrixAutoUpdate = false;
+        drawn.add(meshMesh, lines);
+      }
       const object3D = (meshObs.angvel && meshObs.spinPivot)
-        ? this._wrapMeshSpin(meshMesh, meshObs.spinPivot, meshObs.angvel, meshObs.spinAxis)
-        : meshMesh;
+        ? this._wrapMeshSpin(drawn, meshObs.spinPivot, meshObs.angvel, meshObs.spinAxis)
+        : drawn;
       this.worldFrame.add(this._tagDraws(object3D, 'mesh'));
       this.meshObjects.push(object3D);
     });
@@ -2194,7 +2224,7 @@ export class WorldRendering {
       const start = arrays.faceStart[f];
       const end = arrays.faceStart[f + 1];
       const cornerCount = end - start;
-      if (cornerCount < 3) continue;
+      if (cornerCount < 3 || (arrays.faceFlags[f] & FACE_NOT_SURFACE)) continue;
       const face = arrays.materials[arrays.faceMaterial[f]];
       const baseVertex = positions.length / 3;
 
@@ -2459,6 +2489,113 @@ export class WorldRendering {
     mesh.castShadow = false;
     mesh.receiveShadow = false;
     return mesh;
+  }
+
+  // The lines and points a mesh's `drawInfo` states, which `_buildMeshObject`
+  // leaves out: one `LineSegments` and one `Points` per material, drawn one
+  // pixel wide as upstream's `DrawCmd::draw` leaves GL's line width and point
+  // size. A line takes its material's texture along its own texcoords, so a
+  // `texmat` scrolls a gradient down it as upstream's does. `null` when the
+  // mesh states none.
+  _buildMeshLines(meshObs) {
+    const arrays = meshDrawArrays(meshObs);
+    if (arrays.vertices.length === 0 || arrays.faceCount === 0) return null;
+    const buckets = new Map();
+    const bucketFor = (materialIndex, isPoints) => {
+      const key = `${materialIndex}|${isPoints ? 'p' : 'l'}`;
+      let bucket = buckets.get(key);
+      if (!bucket) {
+        bucket = { materialIndex, isPoints, positions: [], uvs: [] };
+        buckets.set(key, bucket);
+      }
+      return bucket;
+    };
+    const pushCorner = (bucket, c) => {
+      const v = arrays.corners[c] * 3;
+      bucket.positions.push(arrays.vertices[v], arrays.vertices[v + 1], arrays.vertices[v + 2]);
+      const t = arrays.cornerTexcoord[c];
+      if (t !== NO_INDEX) bucket.uvs.push(arrays.texcoords[t * 2], arrays.texcoords[(t * 2) + 1]);
+      else bucket.uvs.push(0, 0);
+    };
+    for (let f = 0; f < arrays.faceCount; f += 1) {
+      const flags = arrays.faceFlags[f];
+      if (!(flags & FACE_NOT_SURFACE)) continue;
+      const start = arrays.faceStart[f];
+      const end = arrays.faceStart[f + 1];
+      const isPoints = (flags & FACE_POINTS) !== 0;
+      const bucket = bucketFor(arrays.faceMaterial[f], isPoints);
+      if (isPoints) {
+        for (let c = start; c < end; c += 1) pushCorner(bucket, c);
+      } else if (flags & (FACE_LINE_STRIP | FACE_LINE_LOOP)) {
+        for (let c = start; c + 1 < end; c += 1) {
+          pushCorner(bucket, c);
+          pushCorner(bucket, c + 1);
+        }
+        if ((flags & FACE_LINE_LOOP) && end - start > 2) {
+          pushCorner(bucket, end - 1);
+          pushCorner(bucket, start);
+        }
+      } else {
+        for (let c = start; c + 1 < end; c += 2) {
+          pushCorner(bucket, c);
+          pushCorner(bucket, c + 1);
+        }
+      }
+    }
+    if (buckets.size === 0) return null;
+
+    const group = new THREE.Group();
+    group.name = meshObs.name || 'Mesh lines';
+    group.matrixAutoUpdate = false;
+    for (const bucket of buckets.values()) {
+      if (bucket.positions.length === 0) continue;
+      const face = arrays.materials[bucket.materialIndex];
+      const geometry = new THREE.BufferGeometry();
+      geometry.setAttribute('position', new THREE.Float32BufferAttribute(bucket.positions, 3));
+      geometry.setAttribute('uv', new THREE.Float32BufferAttribute(bucket.uvs, 2));
+      geometry.computeBoundingSphere();
+      let material;
+      if (bucket.isPoints) {
+        material = new THREE.PointsMaterial({ size: 1, sizeAttenuation: false });
+      } else {
+        material = new THREE.LineBasicMaterial();
+        if (face.texture || face.textureUrl) {
+          const textureFactory = resolveObstacleTextureFactory(
+            face.texture, face.textureUrl, '/textures/boxwall.png', createBoxWallTexture,
+          );
+          material.map = textureFactory((hasAlpha, minAlpha) => applyTextureAlpha(
+            material, hasAlpha && face.useTextureAlpha !== false, face.texture || face.textureUrl, minAlpha,
+          ));
+        }
+      }
+      if (face.noSorting) material.userData.noSorting = true;
+      const usesOwnColor = face.useColorOnTexture !== false || !material.map;
+      if (face.color && usesOwnColor) {
+        material.color.setRGB(face.color[0] ?? 1, face.color[1] ?? 1, face.color[2] ?? 1);
+        const alpha = face.color[3] ?? 1;
+        if (alpha < 1) {
+          material.transparent = true;
+          material.opacity = alpha;
+          setTransparentDepthWrite(material);
+        }
+      }
+      if (face.dynamicColor) {
+        material.userData.dynamicColor = true;
+        material.transparent = true;
+        setTransparentDepthWrite(material);
+        this._animatedMaterials.push({ material, dynamicColor: face.dynamicColor, source: 'mesh' });
+      }
+      if (face.textureMatrix && material.map) {
+        material.map.matrixAutoUpdate = false;
+        this._animatedMaterials.push({ texture: material.map, textureMatrix: face.textureMatrix, source: 'mesh' });
+      }
+      const object = bucket.isPoints
+        ? new THREE.Points(geometry, material)
+        : new THREE.LineSegments(geometry, material);
+      object.matrixAutoUpdate = false;
+      group.add(object);
+    }
+    return group.children.length > 0 ? group : null;
   }
 
   // A random point-and-triangle cloud inside an arbitrary closed mesh (#77 --

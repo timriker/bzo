@@ -1617,8 +1617,9 @@ What is read:
 - `lod` / `matref <name>` / the draw commands inside -- `tris`, `tristrip`,
   `trifan`, `quads`, `quadstrip` and `polygon` are each expanded into the
   faces they stand for, with GL's own windings. `lines`/`lineloop`/
-  `linestrip`/`points` describe no surface and are dropped, as upstream draws
-  them outside the solid too.
+  `linestrip`/`points` are drawn as one-pixel lines and points, as upstream
+  draws them, a line taking its material's texture along its own texcoords.
+  Nothing collides with them. `bzo.bzw`'s spinning dodecahedron is one.
 - `angvel <degrees/sec>` -- see below.
 
 Only the **first** `lod` is used. Upstream picks one per frame by

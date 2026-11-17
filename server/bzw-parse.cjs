@@ -186,11 +186,11 @@ function buildMeshTransformTool(ops) {
 }
 
 // `MeshDrawInfo`'s own draw commands (`MeshDrawInfo.cxx:681-694`), each an
-// OpenGL primitive over a list of *corner* indices. bzo draws polygons, so
-// every surface mode is expanded here into the faces it stands for and the
-// two line modes and `points` are dropped -- they describe no surface, and
-// upstream's own renderer draws them as lines and points rather than as part
-// of the solid (`DrawCmd::draw`).
+// OpenGL primitive over a list of *corner* indices. Every surface mode is
+// expanded here into the faces it stands for. The line modes and `points`
+// describe no surface and expand to nothing here: upstream draws them as
+// lines and points (`DrawCmd::draw`), and so does bzo, from one draw face per
+// command (`MESH_LINE_MODES`).
 //
 // The windings are GL's, not a guess: a strip alternates so every triangle
 // faces the same way, a fan pivots on its first corner, and a quad strip
@@ -226,6 +226,8 @@ function expandMeshDrawCommand(mode, indices) {
   return polys;
 }
 
+// The modes that draw lines or points rather than a surface.
+const MESH_LINE_MODES = new Set(['points', 'lines', 'lineloop', 'linestrip']);
 // Every mode `setupDrawModeMap` knows, so an unrecognized word inside a draw
 // set is reported rather than silently dropped.
 const MESH_DRAW_MODES = new Set([
@@ -3687,7 +3689,7 @@ function parseBZWMap(filename, { quiet = false, extraMessages = [], text: givenT
           // `lengthPerPixel` against the screen size (`MeshSceneNode::
           // notifyStyleChange`); bzo has no LOD machinery, so it takes the
           // one a map lists first, which is the highest detail.
-          lod: null, set: null,
+          lod: null, openLod: null, set: null,
         };
       } else if (currentMeshFace) {
         // Inside `face` / `endface`. Every property here is scoped to this
@@ -4311,7 +4313,7 @@ function parseBZWMap(filename, { quiet = false, extraMessages = [], text: givenT
       if (token === 'length' || token === 'lengthperpixel') return;
       if (token === 'matref') {
         const set = { materialRef: words[1] || '', commands: [] };
-        if (info.lod) info.lod.sets.push(set);
+        if (info.openLod) info.openLod.sets.push(set);
         info.set = set;
         info.depth = 2;
         return;
@@ -4360,8 +4362,10 @@ function parseBZWMap(filename, { quiet = false, extraMessages = [], text: givenT
       // `radarlod` is a second, coarser copy for the radar alone. bzo draws
       // its radar from the obstacle's own footprint rather than from mesh
       // geometry, so it is walked for its `end` lines and otherwise dropped.
+      // Each one collects its own sets, so the later ones drop with it.
       const lod = { sets: [] };
       if (token === 'lod' && !info.lod) info.lod = lod;
+      info.openLod = lod;
       info.depth = 1;
       return;
     }
@@ -4399,32 +4403,42 @@ function parseBZWMap(filename, { quiet = false, extraMessages = [], text: givenT
         noSorting: false, useTextureAlpha: true, useColorOnTexture: true,
       };
       applyBzwMaterialToken(material, 'matref', ['matref', set.materialRef]);
+      const pushFace = (corners, primitive) => {
+        drawFaces.push({
+          vertexIndices: corners.map((corner) => corner.vertex),
+          normalIndices: corners.every((corner) => corner.normal >= 0)
+            ? corners.map((corner) => corner.normal) : [],
+          texcoordIndices: corners.every((corner) => corner.texcoord >= 0)
+            ? corners.map((corner) => corner.texcoord) : [],
+          ...(primitive ? { primitive } : {}),
+          texture: material.texture,
+          textureUrl: material.textureUrl,
+          color: material.color,
+          noRadar: material.noRadar,
+          noLighting: material.noLighting,
+          specular: material.specular,
+          emission: material.emission,
+          shininess: material.shininess,
+          alphaThreshold: material.alphaThreshold,
+          dynamicColor: material.dynamicColor,
+          textureMatrix: material.textureMatrix,
+          // Only here: this is the one route on which upstream's own
+          // renderer honours `noculling` -- see `applyBzwMaterialToken`.
+          noCulling: !!material.noCulling,
+          ...bzwMaterialFlags(material),
+        });
+      };
       for (const command of set.commands) {
+        if (MESH_LINE_MODES.has(command.mode)) {
+          // One face per command, its corners in order: the renderer draws
+          // it as lines or points, and collision never sees it.
+          const corners = command.indices.map((index) => info.corners[index]).filter(Boolean);
+          if (corners.length >= (command.mode === 'points' ? 1 : 2)) pushFace(corners, command.mode);
+          continue;
+        }
         for (const poly of expandMeshDrawCommand(command.mode, command.indices)) {
           const corners = poly.map((index) => info.corners[index]).filter(Boolean);
-          if (corners.length < 3) continue;
-          drawFaces.push({
-            vertexIndices: corners.map((corner) => corner.vertex),
-            normalIndices: corners.every((corner) => corner.normal >= 0)
-              ? corners.map((corner) => corner.normal) : [],
-            texcoordIndices: corners.every((corner) => corner.texcoord >= 0)
-              ? corners.map((corner) => corner.texcoord) : [],
-            texture: material.texture,
-            textureUrl: material.textureUrl,
-            color: material.color,
-            noRadar: material.noRadar,
-            noLighting: material.noLighting,
-            specular: material.specular,
-            emission: material.emission,
-            shininess: material.shininess,
-            alphaThreshold: material.alphaThreshold,
-            dynamicColor: material.dynamicColor,
-            textureMatrix: material.textureMatrix,
-            // Only here: this is the one route on which upstream's own
-            // renderer honours `noculling` -- see `applyBzwMaterialToken`.
-            noCulling: !!material.noCulling,
-            ...bzwMaterialFlags(material),
-          });
+          if (corners.length >= 3) pushFace(corners, null);
         }
       }
     }
@@ -5749,8 +5763,9 @@ function parseBZWMap(filename, { quiet = false, extraMessages = [], text: givenT
 // in an older one: 2 is upstream's frame (#182), 4 keeps a mesh face's
 // `nolighting`, 5 its `noshadow`, 6 its `spheremap`, 7 a group's
 // `matswap`, 8 jumping and ricochet in `gameplay`, 9 its flags there, 10
-// the `metadata` block.
-const WORLD_FORMAT = 10;
+// the `metadata` block, 11 a `drawInfo` block's lines and points, 12 only
+// its first `lod`'s draw commands.
+const WORLD_FORMAT = 12;
 
 // `instanced 18/22 groups, 15 templates, 52 faces` -- group instances drawn
 // from a shared template rather than a copy apiece (#153).

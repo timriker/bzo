@@ -42,6 +42,18 @@ const DEFAULT_LIST_SERVER = 'https://my.bzflag.org/db/';
 // guard -- a runaway `node` process there is the user's own problem to Ctrl-C).
 const MAX_WORLD_DATABASE_BYTES = 64 * 1024 * 1024;
 
+// Which conversion wrote an import, in its header. Raised whenever the same
+// world would convert differently, so a copy an older one wrote is fetched
+// again rather than kept because its server's world is unchanged. 2 writes a
+// mesh's `drawinfo` block, lines and points included, instead of triangles.
+const IMPORT_FORMAT = 2;
+
+// How many MsgGetWorld requests are in flight at once. bzfs answers each one
+// from the offset it carries and keeps no download state (`sendWorld` in
+// bzfs.cxx), and its chunks are about 1KB, so one request per round trip
+// takes a 3MB world ten minutes from a server 200ms away.
+const WORLD_REQUEST_WINDOW = 64;
+
 // MsgEnter's fixed-width fields (`include/global.h`, `ServerLink::sendEnter`).
 const CALLSIGN_LEN = 32;
 const MOTTO_LEN = 128;
@@ -757,23 +769,51 @@ function fetchWorldFromServer(host, port, timeout, options = {}) {
           if (code === 'sk' || code === 'rj') throw new Error(`server sent ${code} requesting world hash`);
         }
 
-        const parts = [];
-        let ptr = 0;
-        for (;;) {
+        // A chunk's `bytesLeft` is what was left before it, or 0 once it is
+        // the last, so the first one gives the size of the world and of every
+        // chunk but the last. The rest are asked for up to
+        // `WORLD_REQUEST_WINDOW` ahead, and come back in the order asked.
+        function requestChunk(ptr) {
           const req = Buffer.alloc(4);
           req.writeUInt32BE(ptr, 0);
           sendFrame(socket, 'gw', req);
-          let chunk, bytesLeft;
+        }
+        async function readChunk() {
           for (;;) {
             const { code, payload } = await readFrame();
-            if (code === 'gw') { bytesLeft = payload.readUInt32BE(0); chunk = payload.subarray(4); break; }
+            if (code === 'gw') return { bytesLeft: payload.readUInt32BE(0), chunk: payload.subarray(4) };
             if (code === 'sk' || code === 'rj') throw new Error(`server sent ${code} downloading world`);
           }
-          parts.push(chunk);
-          ptr += chunk.length;
-          if (ptr > MAX_WORLD_DATABASE_BYTES) throw new Error('world database exceeded the size limit');
-          if (bytesLeft === 0) break;
         }
+        requestChunk(0);
+        const first = await readChunk();
+        const chunkSize = first.chunk.length;
+        const total = first.bytesLeft === 0 ? chunkSize : first.bytesLeft;
+        if (total > MAX_WORLD_DATABASE_BYTES) throw new Error('world database exceeded the size limit');
+        if (chunkSize === 0 && total > 0) throw new Error('server sent an empty world chunk');
+        const parts = [first.chunk];
+        let requested = chunkSize;
+        let received = chunkSize;
+        let inFlight = 0;
+        while (received < total) {
+          while (inFlight < WORLD_REQUEST_WINDOW && requested < total) {
+            requestChunk(requested);
+            requested += chunkSize;
+            inFlight++;
+          }
+          const { bytesLeft, chunk } = await readChunk();
+          inFlight--;
+          const last = received + chunk.length >= total;
+          if (chunk.length === 0 || received + chunk.length > total
+            || bytesLeft !== (last ? 0 : total - received)) {
+            throw new Error('world chunk out of sequence');
+          }
+          parts.push(chunk);
+          received += chunk.length;
+        }
+        // Answers to requests still in flight are not read: the variables
+        // below are asked for on this socket, so wait them out first.
+        while (inFlight-- > 0) await readChunk();
 
         // Last, so that a rejected join costs the import nothing it has not
         // already got: everything above is answered to an un-entered
@@ -1344,43 +1384,12 @@ function unpackDrawCmd(r) {
   return { drawMode, indices };
 }
 
-// `DrawCmd::DrawModes` (MeshDrawInfo.h) -- expands one OpenGL-style draw
-// command's index list into individual triangles (each a triple of *corner*
-// indices, still one step removed from real vertex/normal/texcoord indices).
-// Points/lines carry no surface to draw and are skipped.
-function drawCmdToTriangles(cmd) {
-  const idx = cmd.indices;
-  const tris = [];
-  switch (cmd.drawMode) {
-    case 4: // DrawTriangles
-      for (let i = 0; i + 2 < idx.length; i += 3) tris.push([idx[i], idx[i + 1], idx[i + 2]]);
-      break;
-    case 5: // DrawTriangleStrip
-      for (let i = 0; i + 2 < idx.length; i++) {
-        tris.push(i % 2 === 0 ? [idx[i], idx[i + 1], idx[i + 2]] : [idx[i + 1], idx[i], idx[i + 2]]);
-      }
-      break;
-    case 6: // DrawTriangleFan
-    case 9: // DrawPolygon (assumed convex, same fan triangulation)
-      for (let i = 1; i + 1 < idx.length; i++) tris.push([idx[0], idx[i], idx[i + 1]]);
-      break;
-    case 7: // DrawQuads
-      for (let i = 0; i + 3 < idx.length; i += 4) {
-        tris.push([idx[i], idx[i + 1], idx[i + 2]]);
-        tris.push([idx[i], idx[i + 2], idx[i + 3]]);
-      }
-      break;
-    case 8: // DrawQuadStrip
-      for (let i = 0; i + 3 < idx.length; i += 2) {
-        tris.push([idx[i], idx[i + 1], idx[i + 3]]);
-        tris.push([idx[i], idx[i + 3], idx[i + 2]]);
-      }
-      break;
-    default:
-      break;
-  }
-  return tris;
-}
+// `DrawCmd::DrawModes` (MeshDrawInfo.h): GL's own primitive numbers, as the
+// words a `drawInfo` block writes them with (`setupDrawModeMap`).
+const DRAW_MODE_NAMES = [
+  'points', 'lines', 'lineloop', 'linestrip',
+  'tris', 'tristrip', 'trifan', 'quads', 'quadstrip', 'polygon',
+];
 
 function unpackDrawSet(r) {
   const cmdCount = r.i32();
@@ -1429,14 +1438,11 @@ function unpackMeshDrawInfo(r) {
   return { name, angvel, corners, rawVerts, rawNorms, rawTxcds, lods };
 }
 
-// Reconstructs the triangles a drawInfo-optimized mesh's own `face` list
-// never carries (#87): only when that list came back empty, since a mesh
-// with real faces already renders and collides normally, and a mapper who
-// wrote both a `face` list and a `drawInfo` block meant the faces to still be
-// what collides. These triangles never do -- `CustomMesh.cxx`'s own
-// decorative/passable hack means upstream itself never gave a *zero-face*
-// drawInfo mesh any collision either, so `driveThrough`/`shootThrough` are
-// forced true here rather than left at the mesh's own state-byte flags.
+// Keeps the draw geometry a drawInfo-optimized mesh carries (#87), its
+// highest-detail LOD, for `printMesh` to write back as the `drawinfo` block
+// a mapper would have written: surfaces, lines and points, drawn and never
+// collided with, as upstream draws them. The mesh's own `face` list, empty or
+// not, stays what collides.
 function applyMeshDrawInfo(r, texcoordStart, texcoordEnd, fakeTexcoordCount, mesh) {
   if (mesh.vertices.length >= 1) mesh.vertices.pop(); // CustomMesh.cxx's extraneous vertex, tacked on only when a drawInfo owner
   if (fakeTexcoordCount < 2) return;
@@ -1458,51 +1464,24 @@ function applyMeshDrawInfo(r, texcoordStart, texcoordEnd, fakeTexcoordCount, mes
 
   if (drawInfo.name) mesh.name = drawInfo.name; // MeshObstacle::unpack: "get the proxied name" -- a mesh has no name of its own on the wire otherwise
   // `MeshDrawInfo::updateAnimation`/`MeshDrawMgr::executeSet` (#88): a
-  // continuous spin about the mesh's own placement, degrees/sec. Carried
-  // straight onto the mesh object so `printMesh` can re-state it as bzo's own
-  // mesh-level `angvel` line -- there is no per-mesh pivot upstream itself
-  // (a hand-authored `drawInfo { angvel N }` spins about world origin), so
-  // stating it as a plain mesh property rather than nesting a whole unused
-  // `drawInfo` sub-grammar loses nothing real.
+  // continuous spin, degrees/sec, about the world origin for a mesh no group
+  // placed. `printMesh` writes it inside the `drawinfo` block, where upstream
+  // reads it, or as bzo's mesh-level `angvel` when there is no block.
   if (drawInfo.angvel) mesh.angvel = drawInfo.angvel;
-  if (mesh.faces.length > 0 || drawInfo.lods.length === 0 || drawInfo.corners.length === 0) return;
-
-  // A raw pool of its own means the drawInfo's corners index into it, not
-  // into the mesh's regular vertex/normal/texcoord lists -- append it so a
-  // single index space covers both (`printMesh` below writes every vertex it
-  // is given, whether or not this mesh's own text ever names the extra ones).
-  const usesRawPool = drawInfo.rawVerts.length > 0;
-  const vertexOffset = usesRawPool ? mesh.vertices.length : 0;
-  const normalOffset = usesRawPool ? mesh.normals.length : 0;
-  const texcoordOffset = usesRawPool ? mesh.texcoords.length : 0;
-  if (usesRawPool) {
-    mesh.vertices = mesh.vertices.concat(drawInfo.rawVerts);
-    mesh.normals = mesh.normals.concat(drawInfo.rawNorms);
-    mesh.texcoords = mesh.texcoords.concat(drawInfo.rawTxcds);
-  }
+  if (drawInfo.lods.length === 0 || drawInfo.corners.length === 0) return;
 
   // `compareLengthPerPixel` (MeshDrawInfo.cxx): smaller lengthPerPixel is
   // higher resolution, meant for a closer camera -- bzo picks that one
   // always, the highest-detail LOD a distance-aware client would only use up
   // close.
   const lod0 = [...drawInfo.lods].sort((a, b) => a.lengthPerPixel - b.lengthPerPixel)[0];
-  const newFaces = [];
-  for (const drawSet of lod0.sets) {
-    for (const cmd of drawSet.cmds) {
-      for (const tri of drawCmdToTriangles(cmd)) {
-        if (tri.some((ci) => !drawInfo.corners[ci])) continue;
-        newFaces.push({
-          vertexIdx: tri.map((ci) => drawInfo.corners[ci].vertex + vertexOffset),
-          normalIdx: tri.map((ci) => drawInfo.corners[ci].normal + normalOffset),
-          texcoordIdx: tri.map((ci) => drawInfo.corners[ci].texcoord + texcoordOffset),
-          matindex: drawSet.material, phydrv: -1,
-          driveThrough: true, shootThrough: true,
-          smoothBounce: false, noclusters: false, ricochet: false,
-        });
-      }
-    }
-  }
-  mesh.faces = newFaces;
+  mesh.drawInfo = {
+    corners: drawInfo.corners,
+    rawVerts: drawInfo.rawVerts,
+    rawNorms: drawInfo.rawNorms,
+    rawTxcds: drawInfo.rawTxcds,
+    sets: lod0.sets,
+  };
 }
 
 function parseMesh(r) {
@@ -1926,11 +1905,8 @@ function buildBZWText(serverMeta, tree, fetchedAt) {
   function printMesh(lines, o, indent) {
     lines.push(`${indent}mesh`);
     if (o.name) lines.push(`${indent}  name ${o.name}`);
-    // `MeshDrawInfo`'s own `angvel` (#88), re-stated as a plain mesh property
-    // rather than the unused `drawInfo { ... }` sub-block it travelled in
-    // upstream -- bzo's own mesh parser reads it directly (see
-    // `docs/bzw.md`'s Mesh section).
-    if (o.angvel) lines.push(`${indent}  angvel ${fmt(o.angvel)}`);
+    // `angvel` (#88) goes inside a `drawinfo` block where there is one, below.
+    if (o.angvel && !o.drawInfo) lines.push(`${indent}  angvel ${fmt(o.angvel)}`);
     for (const c of o.checks) lines.push(`${indent}  ${c.type === 0 ? 'inside' : 'outside'} ${fmt3(c.point)}`);
     for (const v of o.vertices) lines.push(`${indent}  vertex ${fmt3(v)}`);
     for (const n of o.normals) lines.push(`${indent}  normal ${fmt3(n)}`);
@@ -1944,7 +1920,32 @@ function buildBZWText(serverMeta, tree, fetchedAt) {
     }
     if (o.ricochet) lines.push(`${indent}  ricochet`);
     for (const f of o.faces) printMeshFace(lines, f, indent);
+    if (o.drawInfo) printDrawInfo(lines, o, indent);
     lines.push(`${indent}end`);
+  }
+
+  // `MeshDrawInfo::print`'s grammar, one LOD: the pools of its own, the corner
+  // table, and each set's commands under its material.
+  function printDrawInfo(lines, o, indent) {
+    const d = o.drawInfo;
+    lines.push(`${indent}  drawinfo`);
+    if (o.angvel) lines.push(`${indent}    angvel ${fmt(o.angvel)}`);
+    for (const v of d.rawVerts) lines.push(`${indent}    vertex ${fmt3(v)}`);
+    for (const n of d.rawNorms) lines.push(`${indent}    normal ${fmt3(n)}`);
+    for (const t of d.rawTxcds) lines.push(`${indent}    texcoord ${fmt(t[0])} ${fmt(t[1])}`);
+    for (const c of d.corners) lines.push(`${indent}    corner ${c.vertex} ${c.normal} ${c.texcoord}`);
+    lines.push(`${indent}    lod`);
+    lines.push(`${indent}      lengthPerPixel 0`);
+    for (const set of d.sets) {
+      lines.push(`${indent}      matref ${ref(materials, set.material)}`);
+      for (const cmd of set.cmds) {
+        const mode = DRAW_MODE_NAMES[cmd.drawMode];
+        if (mode && cmd.indices.length > 0) lines.push(`${indent}        ${mode} ${cmd.indices.join(' ')}`);
+      }
+      lines.push(`${indent}      end`);
+    }
+    lines.push(`${indent}    end`);
+    lines.push(`${indent}  end`);
   }
 
   function printCurved(lines, kind, o, indent) {
@@ -2128,6 +2129,7 @@ function buildBZWText(serverMeta, tree, fetchedAt) {
   if (serverMeta.ip) lines.push(`# ip ${serverMeta.ip}`);
   if (serverMeta.version) lines.push(`# protocol ${serverMeta.version}`);
   if (serverMeta.worldHash) lines.push(`# world hash ${serverMeta.worldHash}`);
+  lines.push(`# import format ${IMPORT_FORMAT}`);
   lines.push('#');
   lines.push('# this is a reconstruction of the world bzfs sent over the wire, not the');
   lines.push('# original .bzw source -- the server never transmits map file text, only the');
@@ -2215,6 +2217,7 @@ function buildBZWText(serverMeta, tree, fetchedAt) {
 }
 
 module.exports = {
+  IMPORT_FORMAT,
   PROTOCOL_VERSION,
   // The wire plumbing, for `bzfs-session.cjs`: a proxy speaks the same
   // protocol to the same servers, and there is one implementation of it.

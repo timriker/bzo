@@ -36,6 +36,7 @@ const {
   buildBZWText,
   collectNonDefaultVariables,
   decodeSetVars,
+  IMPORT_FORMAT,
 } = require('./server/remote-world-import.cjs');
 const { readReplay, writeReplay, PACKET_MODE: REPLAY_PACKET_MODE } = require('./server/bzfs-replay.cjs');
 const {
@@ -4410,6 +4411,7 @@ async function registerFreshImportFromDisk(fileName) {
   const filePath = path.join(RUNTIME_MAPS_DIR, fileName);
   try {
     if (Date.now() - fs.statSync(filePath).mtimeMs >= IMPORT_REUSE_MS) return false;
+    if (!importIsCurrent(fileName)) return false;
     return Boolean(await parseAndRegisterMap(fileName, filePath));
   } catch {
     return false;
@@ -4425,27 +4427,50 @@ async function registerFreshImportFromDisk(fileName) {
 async function holdImportedWorld(file) {
   const { host, port } = parseImportMapFileName(file);
   const existing = MAP_REGISTRY.get(file);
-  if (existing && Date.now() - existing.registeredAt < IMPORT_REUSE_MS) return { how: 'held' };
+  if (existing && Date.now() - existing.registeredAt < IMPORT_REUSE_MS && importIsCurrent(file)) {
+    return { how: 'held' };
+  }
   if (!existing && await registerFreshImportFromDisk(file)) return { how: 'disk' };
   if (await confirmImportUnchanged(file, host, port)) return { how: 'unchanged' };
   const { safeMapName, byteLength, reused } = await performRemoteMapImport(host, port);
   return { how: reused ? 'reused' : 'imported', byteLength, file: safeMapName };
 }
 
-// The world hash an import was saved with: the `# world hash` line its header
-// carries (remote-world-import.cjs), read without reading the whole world.
-function importedWorldHash(fileName) {
+// An import's header (remote-world-import.cjs), read without reading the
+// whole world. Empty when the file cannot be read.
+function importHeader(fileName) {
   let fd = null;
   try {
     fd = fs.openSync(path.join(RUNTIME_MAPS_DIR, fileName), 'r');
     const head = Buffer.alloc(4096);
-    const length = fs.readSync(fd, head, 0, head.length, 0);
-    return head.toString('utf8', 0, length).match(/^# world hash ([pt][0-9a-f]{32})$/m)?.[1] || '';
+    return head.toString('utf8', 0, fs.readSync(fd, head, 0, head.length, 0));
   } catch {
     return '';
   } finally {
     if (fd !== null) fs.closeSync(fd);
   }
+}
+
+// Whether a header was written by this conversion (`IMPORT_FORMAT`). One with
+// no world hash (a recording's) has no server to fetch it again from, so it
+// counts as current.
+function headerIsCurrent(header) {
+  if (!/^# world hash /m.test(header)) return true;
+  return Number(header.match(/^# import format (\d+)$/m)?.[1] || 1) === IMPORT_FORMAT;
+}
+
+function importIsCurrent(fileName) {
+  const header = importHeader(fileName);
+  return header !== '' && headerIsCurrent(header);
+}
+
+// The world hash an import was saved with, from its `# world hash` line.
+// None for a copy an older conversion wrote, so nothing keeps or shares it as
+// the world it would convert to now.
+function importedWorldHash(fileName) {
+  const header = importHeader(fileName);
+  if (!headerIsCurrent(header)) return '';
+  return header.match(/^# world hash ([pt][0-9a-f]{32})$/m)?.[1] || '';
 }
 
 // An import past `IMPORT_REUSE_MS` whose server still runs the world it was
