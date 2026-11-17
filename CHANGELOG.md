@@ -6,6 +6,21 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
 
 ## [Unreleased]
 
+## [1.4.8] - 2026-11-17
+
+### Added
+- `viewOtherServers` in `server.json`, off by default: whether players may
+  open public BZFlag servers' maps (View map, Practice, Import, `?viewmap=`).
+- `/list` filters on `x` (excluded) for servers bzo leaves out.
+- [docs/server-check.md](docs/server-check.md) lists every callsign bzo joins
+  a BZFlag server as, and why; `/bzo-list` links to it.
+
+### Changed
+- The list check joins as `bzo-list`, and a world fetched for a player as
+  `bzo-view`, with motto `see: <url>/list about: <url>/bzo-list`.
+- A server that bans bzo is only launched from `/list`, never imported, and
+  asked once a month whether the ban stands.
+
 ## [1.4.7] - 2026-11-17
 
 ### Added
