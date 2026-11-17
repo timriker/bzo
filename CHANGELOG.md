@@ -6,6 +6,25 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
 
 ## [Unreleased]
 
+## [1.4.5] - 2026-11-17
+
+### Added
+- A mesh's `drawinfo` lines and points are drawn, as BZFlag draws them: one
+  pixel wide, textured along the line, so a `texmat` scrolls a gradient down
+  it. Delirious City (reri.sandybees.com:6019) draws its streets and sky this
+  way. `bzo.bzw` has a dodecahedron of them turning around the spinning tank.
+
+### Changed
+- An imported world keeps its meshes' `drawinfo`, lines included. Imports
+  written before this are downloaded again the next time they are viewed or
+  checked.
+
+### Fixed
+- A large world downloads in seconds rather than minutes, so a `?viewmap=`
+  link to one no longer times out.
+- Only a `drawinfo` block's first `lod` is drawn; every level of detail used
+  to be drawn at once.
+
 ## [1.4.4] - 2026-11-16
 
 ### Changed
