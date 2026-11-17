@@ -105,7 +105,6 @@ import {
   getGamepadInfo,
   isGameplayInputActive,
   isMenuContextActive,
-  isDialogContextActive,
   adjustSettingsMenuRow,
   activateXRSettingsMenuItem,
   closeSettingsDialog,
@@ -1213,8 +1212,9 @@ function buildShareViewLink() {
   const mapFile = isPreviewingAltWorld() ? previewedMapFile : currentMapFile;
   // A link is only worth handing over for a map this server has hashed and
   // will serve to whoever opens it -- which the served map is, but a `random`
-  // world generated at startup is not.
-  if (!watching && !replaying && (!mapFile || !availableViewMaps.some((entry) => entry.file === mapFile))) return null;
+  // world generated at startup is not. A Map Viewer link opened it already.
+  const served = isMapViewLink() || availableViewMaps.some((entry) => entry.file === mapFile);
+  if (!watching && !replaying && (!mapFile || !served)) return null;
   const camNames = {
     [ROAM_VIEW.FREE]: 'free',
     [ROAM_VIEW.DRIVE_FP]: 'fp',
@@ -1308,6 +1308,14 @@ function isPreviewingAltWorld() {
   return previewedMapFile !== null;
 }
 
+// Whether what a player does in the live match is kept out of this view: any
+// tank but our own while another map is up. Its tanks, shots, explosions,
+// sounds and effects are at the live match's coordinates, which describe
+// nothing in view.
+function hidesLiveMatch(playerId) {
+  return isPreviewingAltWorld() && playerId !== myPlayerId;
+}
+
 // Hides what is already on screen the instant a preview starts, and restores
 // ordinary visibility the instant one ends -- the guards in `addPlayer`,
 // `createProjectile` and `updateFlags` handle everything from here on by
@@ -1381,6 +1389,15 @@ let localDestinationTeams = [];
 // `hix.bzw`. What names the local row in the destination selector.
 let localDestinationMap = '';
 
+// A `?viewmap=` link (issue #68): the map on its own, offline, as practice
+// plays one -- no bots, and the viewer an observer, free to roam or drive. It
+// is not on this server while it looks: the live match's tanks, shots and
+// sounds are not in it, and its players do not see a viewer who is not there.
+function isMapViewLink() {
+  const params = new URLSearchParams(window.location.search);
+  return params.has('viewmap') && !params.has('watch') && !params.has('replay') && !params.has('practice');
+}
+
 // Where this page actually is, read off its own URL rather than remembered, so
 // there is no second copy of the answer to drift from the connection.
 function currentDestination() {
@@ -1397,6 +1414,8 @@ function currentDestination() {
     const level = params.get('practice');
     return `practice:${PRACTICE_LEVELS.includes(level) ? level : 'normal'}`;
   }
+  // Map Viewer is practice with nobody else in it (`isMapViewLink`).
+  if (isMapViewLink()) return 'practice:normal';
   const key = params.get('proxy');
   return key ? `proxy:${key}` : DESTINATION_LOCAL;
 }
@@ -2796,6 +2815,18 @@ function proxyTeamChangeNavigated(team) {
   return true;
 }
 
+// Joining as Map Viewer is opening the map's own link: the map offline, off
+// this server (`isMapViewLink`). True when it has taken over, and the caller
+// sends nothing.
+function mapViewerNavigated() {
+  if (getSelectedPlayerTeam() !== PLAYER_TEAM.MAP_VIEWER || !selectedViewMapFile) return false;
+  // Already that link, and on the server anyway: its map would not load
+  // offline, so it is viewed here as before rather than reloaded forever.
+  if (isMapViewLink() && readViewMapTarget() === selectedViewMapFile) return false;
+  window.location.href = `${window.location.pathname}?viewmap=${encodeURIComponent(selectedViewMapFile)}`;
+  return true;
+}
+
 function getJoinTeamFields() {
   const team = getSelectedPlayerTeam();
   const isMapViewer = team === PLAYER_TEAM.MAP_VIEWER;
@@ -2817,7 +2848,7 @@ function setPendingJoinRequest(name) {
 
 function maybeSendPendingJoinRequest() {
   if (!renderReadyForJoin || gameplayJoinConfirmed || !pendingJoinRequest) return;
-  if (proxyTeamChangeNavigated(getJoinTeamFields().team)) return;
+  if (mapViewerNavigated() || proxyTeamChangeNavigated(getJoinTeamFields().team)) return;
   sendToServer({
     type: 'joinGame',
     name: pendingJoinRequest.name,
@@ -4958,32 +4989,10 @@ function isMyTankFrozenByDeath() {
 // entry and never find its way back to unpaused.
 function shouldAutoPause() {
   if (document.hidden && !isXREnabled()) return true;
-  // A menu over a tank a pilot is flying, or one a pilot is chosen for, is
-  // not a pause: the pilot goes on driving while the menu has the keys
-  // (issue #162). A hidden window still pauses -- the browser stops drawing
-  // it, and with the frames goes the pilot.
-  if (!isMenuContextActive()) return false;
-  return !(isDialogContextActive() && autopilotFliesThroughMenus());
-}
-
-function autopilotFliesThroughMenus() {
-  return canUseAutopilot() && (autopilotOn || autopilotRowId !== null);
-}
-
-// A menu opening with a pilot chosen but not flying puts the pilot on, and
-// closing it takes that pilot off again; one already flying is left alone.
-function syncAutopilotWithMenu() {
-  const covered = isDialogContextActive();
-  if (covered === autopilotMenuCovered) return;
-  autopilotMenuCovered = covered;
-  if (covered) {
-    if (!autopilotOn && autopilotRowId !== null && canUseAutopilot() && isMyTankAlive()) {
-      setAutopilot(autopilotRowId, { remember: false });
-      autopilotMenuEngaged = true;
-    }
-  } else if (autopilotMenuEngaged) {
-    setAutopilot(null, { remember: false });
-  }
+  // A menu over a tank the autopilot is driving is no pause: the pilot goes on
+  // while the menu has the keys. A hidden window still pauses, since the
+  // browser stops drawing it and the pilot with it.
+  return isMenuContextActive() && !(autopilotOn && canUseAutopilot());
 }
 
 // The Unmap/Map pair (playing.cxx:1211, :1246). Every menu and the window's own
@@ -4993,7 +5002,6 @@ function syncAutopilotWithMenu() {
 // the countdown, so both directions are the same toggle the P key sends: it
 // cancels a countdown that has not finished and unpauses one that has.
 function syncAutoPause() {
-  syncAutopilotWithMenu();
   const send = pauseState.syncMenu({
     covered: shouldAutoPause(),
     alive: isMyTankAlive(),
@@ -6596,8 +6604,11 @@ function applyTankDebugVisibility(tank) {
   const ghost = tank?.userData?.ghostMesh;
   if (!ghost) return;
   const isLocalTank = tank.userData.playerState && tank.userData.playerState.id === myPlayerId;
+  // Not over another map: a ghost stands where its tank is in the live match,
+  // which is nowhere on the map in view.
   const shouldShowGhost = showDebugGeometry
     && !tank.userData.cloakHidden
+    && !isPreviewingAltWorld()
     && (!isLocalTank || Boolean(ghost.userData.hasPacketState));
   // Evaluated every frame, written only on a change. The evaluation cannot be
   // event-driven: a cloak *completes* 0.64s after the flag event that started it,
@@ -8378,7 +8389,7 @@ function connectToServer() {
   // Practice is offline play asked for, at a level, rather than fallen into:
   // on the map `&map=` names (`/api/practice/<map>`, kept so it opens again
   // offline), or else the last world played.
-  const practiceMap = params.get('map');
+  const practiceMap = params.get('map') || (isMapViewLink() ? readViewMapTarget() : null);
   if (currentDestination().startsWith('practice:') && practiceMap && !practiceWorldAsked) {
     practiceWorldAsked = true;
     loadPracticeWorld(practiceMap).then((world) => {
@@ -8395,6 +8406,9 @@ function connectToServer() {
     host.postMessage({
       world: practicing ? practiceSource : readOfflineWorld(),
       level: practicing ? currentDestination().slice('practice:'.length) : 'hard',
+      // `&bots=N`: how many Aces practice against; the worker keeps it in range.
+      ...(practicing && /^\d+$/.test(params.get('bots') || '') ? { bots: Number(params.get('bots')) } : {}),
+      ...(practicing && isMapViewLink() ? { bots: 0 } : {}),
     });
     ws = createPortTransport(host);
   } else if (LOOPBACK) {
@@ -8545,9 +8559,13 @@ function applyPlayerMoveMessage(message, isTeleportPacket) {
   // the flag answers instead of a bit in the packet.
   if (oldVerticalVel <= 0 && message.vv > 10) {
     tank.userData.jumpAzimuth = message.a;
-    const wings = hasAirControl(getPlayerFlag(message.id)?.type);
-    renderManager.playSound(wings ? 'flap' : 'jump', tank.position);
-    renderManager.fireTankJumpJets(tank);
+    // Heard and seen only in the world it happens in: a preview of another
+    // map plays none of the live match.
+    if (!hidesLiveMatch(message.id)) {
+      const wings = hasAirControl(getPlayerFlag(message.id)?.type);
+      renderManager.playSound(wings ? 'flap' : 'jump', tank.position);
+      renderManager.fireTankJumpJets(tank);
+    }
   }
 
   // Detect fall start (drove off edge - record direction for air physics).
@@ -8615,7 +8633,7 @@ function applyPlayerMoveMessage(message, isTeleportPacket) {
     // tank that grew out of the floor on arrival read as a respawn, which
     // is a different event with a different meaning. See issue #38.
     const suppressLocalFx = message.id === myPlayerId && performance.now() < suppressLocalTeleportFxUntil;
-    if (!suppressLocalFx) {
+    if (!suppressLocalFx && !hidesLiveMatch(message.id)) {
       renderManager.playSound('teleport', tank.position);
     }
 
@@ -8891,8 +8909,11 @@ function receiveInit(message) {
   // A server that does not offer the observer team cannot honour the
   // spectator link, so the page joins as it otherwise would rather than
   // asking for a team and being refused.
-  const autoObserving = (autoFollowTarget !== null || autoRoamView !== null)
-    && availablePlayerTeams.includes(PLAYER_TEAM.OBSERVER);
+  // A Map Viewer link watches its map offline, as an observer the practice
+  // game takes whatever teams the map has.
+  const viewingOffline = offlinePlay && isMapViewLink();
+  const autoObserving = viewingOffline || ((autoFollowTarget !== null || autoRoamView !== null)
+    && availablePlayerTeams.includes(PLAYER_TEAM.OBSERVER));
   if (autoObserving) {
     // Staged the way the dialog stages it, and not saved: the link decides
     // this page load and nothing after it.
@@ -8953,7 +8974,9 @@ function receiveInit(message) {
     void prepareInitialRender(message, sequenceId);
   };
 
-  if (autoViewingMapAvailable) {
+  if (viewingOffline) {
+    finishInit(false);
+  } else if (autoViewingMapAvailable) {
     finishInit(true);
   } else if (autoViewMapTarget !== null && availablePlayerTeams.includes(PLAYER_TEAM.OBSERVER)) {
     // Not already hashed -- but a remote import's own name still says
@@ -9062,7 +9085,7 @@ function receivePlayerJoined(message) {
         roamCamera = null;
         viewerPlacedByLink = true;
       }
-      else if (isPreviewingAltWorld()) {
+      else if (isPreviewingAltWorld() || isMapViewLink()) {
         const spawn = pickViewerSpawn();
         if (spawn) ({ x: myX, y: myY, z: myZ, azimuth: myAzimuth } = spawn);
         roamCamera = null;
@@ -9251,7 +9274,7 @@ function receivePt(message) {
 // see the note in `applyPlayerMoveMessage` for why there is no effect.
 function receiveTeleport(message) {
   const tank = tanks.get(message.playerId);
-  if (tank) renderManager.playSound('teleport', tank.position);
+  if (tank && !hidesLiveMatch(message.playerId)) renderManager.playSound('teleport', tank.position);
 }
 
 // One WebSocket frame per tick carrying every other tank's move instead
@@ -10945,7 +10968,7 @@ function viewMapFile(file) {
     // where it was, and an overlay left up over it would be the only thing
     // still claiming to be busy.
     hideLoadingOverlay();
-    if (proxyTeamChangeNavigated(getJoinTeamFields().team)) return;
+    if (mapViewerNavigated() || proxyTeamChangeNavigated(getJoinTeamFields().team)) return;
     sendToServer({
       type: 'joinGame',
       name: myPlayerName,
@@ -13456,7 +13479,7 @@ function updateHuntBearing() {
   if (frameEpochMs >= huntPulseUntil) {
     huntPulseUntil = frameEpochMs + HUNT_PULSE_MS;
     const tank = tanks.get(spotted);
-    if (tank) renderManager.playSound('hunt', tank.position);
+    if (tank && !hidesLiveMatch(spotted)) renderManager.playSound('hunt', tank.position);
   }
 }
 
@@ -13861,10 +13884,6 @@ function storeAutopilotRow(id) {
   }
 }
 let autopilotRowId = readStoredAutopilotRow() ?? autopilotRestoreId;
-// Whether the pilot flying was put on by a menu opening, and so comes off
-// when the menu closes.
-let autopilotMenuEngaged = false;
-let autopilotMenuCovered = false;
 let autopilotOn = false;
 let autopilotOutput = null;
 let autopilotEnabledAt = -Infinity;
@@ -13907,8 +13926,6 @@ function engageAutopilot(id) {
   if (autopilotOn) {
     autopilotId = id;
     autopilotOutput = null;
-    // Chosen by the player, so it stays when a menu that put a pilot on closes.
-    autopilotMenuEngaged = false;
     storeAutopilot(id);
     sendToServer({ type: 'autopilot', on: true, pilot: getAutopilotName(id) });
     setHudAlert(0, t('{pilot} has the controls', { pilot: getAutopilotName(id) }), 1);
@@ -13929,11 +13946,12 @@ function setAutopilot(id, { remember = true } = {}) {
   autopilotOn = id !== null;
   if (!autopilotOn) clearAutopilotIntent();
   autopilotReportAt = 0;
-  // A pilot a menu put on is not the player's choice to come back to.
   if (remember) storeAutopilot(id);
-  autopilotMenuEngaged = false;
   autopilotOutput = null;
   sendToServer({ type: 'autopilot', on: autopilotOn, pilot: autopilotOn ? getAutopilotName(id) : null });
+  // Turned on or off with a menu up, the menu's pause follows: off starts it,
+  // on lifts one the menu started.
+  syncAutoPause();
 }
 
 // The Autopilot row: `None`, then each pilot, the one flying marked as the
@@ -15844,7 +15862,7 @@ function handleFlagGrabbedAlerts(grabberId, flag) {
   // plays out in the world rather than in the ear.
   if (grabberTeamIndex === myTeamIndex && flagTeamIndex !== grabberTeamIndex) {
     showMessage(t('Team Grab!!!'));
-    if (grabber) renderManager.playSound('teamGrab', grabber.position);
+    if (grabber && !hidesLiveMatch(grabberId)) renderManager.playSound('teamGrab', grabber.position);
   }
 }
 
@@ -18011,7 +18029,7 @@ function applyXRJoinSelection() {
   applySelectedTankModel(selectedTankModelId);
   if (sendTeamChangeInPlace()) return;
   gameplayJoinConfirmed = false;
-  if (proxyTeamChangeNavigated(getJoinTeamFields().team)) return;
+  if (mapViewerNavigated() || proxyTeamChangeNavigated(getJoinTeamFields().team)) return;
   sendToServer({
     type: 'joinGame',
     name: myPlayerName,

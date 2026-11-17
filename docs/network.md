@@ -151,7 +151,7 @@ omitted rather than sent null.
 | `setTankModel` | `tankModel` | change tank mid-session |
 | `queryPlayers` | -- | ask for a fresh roster |
 | `getMaps` | `requestId` | the map list |
-| `importMapForView` | `file` | import a remote server's world for the Map Viewer |
+| `importMapForView` | `file` | import a remote server's world for a Map Viewer link that could not open it offline (`docs/practice.md`) |
 | `importMap` | `hostPort` | operator: import a remote world into the cache |
 | `listRemoteServers` | -- | ask for the server list |
 | `uploadMap` | `mapName`, `mapContent` | operator: a whole `.bzw` as a string |

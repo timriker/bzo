@@ -25,8 +25,8 @@ second flag that could disagree with the first. The designated instance runs
 the account UI and the registry endpoints below; every other instance is
 only ever a reporting client.
 
-`publicUrl` may be a list, `["https://bz.rikers.org:5154",
-"https://bz.rikers.org"]`: the first is the name its links and the
+`publicUrl` may be a list, `["https://bz.rikers.org",
+"https://bz.rikers.org:5154"]`: the first is the name its links and the
 admin-whitelist probe use. A report carries the whole list as `urls`, and
 each validation calls every other name back with the same signed challenge
 as the key's own URL. The row stays under the key's URL; the names that
@@ -418,14 +418,29 @@ server's version -- `bzo-*` for bzo, bzfs's own build for the rest (see **A
 server's build**) -- which plain text searches too, so `bzo-` alone lists bzo
 servers.
 
+Each list's filter is kept in the page's hash under its heading's id --
+`bzo`, `bzflag`, `maps`, `replays` -- so a filtered list is a link:
+`/list#bzflag=reri` opens on the bzfs servers matching `reri`, scrolled to
+them, and `#bzflag=reri/%2Bj&maps=hix` filters two lists at once. A `+` is
+written `%2B`, as in any query. A list's sort rides beside its filter as
+`.sort` and the field its header sorts by, `-` first for descending:
+`#bzflag=reri&bzflag.sort=d` is the reri servers by description,
+`maps.sort=-fa` the maps with the most faces first. A sort back to the order
+a list arrives in -- most players first, maps by name -- leaves the hash.
+The first key is the
+section the page is at; the links at the top move theirs to the front and
+keep every filter and sort.
+
 Clicking a row selects it rather than following it, because the pane is
 where the detail is and the bar above it holds the way in. Arrow keys move
 the selection and Enter takes it, as upstream's menu does. Ten rows show at
 a time in a scroll box, which is upstream's own page size
 (`ServerMenu.cxx:34`) and the reason its PageUp/PageDown paging was not
 worth copying. The one-character header over each column sorts by that
-column; the list arrives sorted by player count, the only order upstream
-ever shows (`ServerItem::getSortFactor`). Each heading says how many servers
+column, and the last column, a server's address followed by its
+description, sorts by either: **Name** or **Description**. The list arrives
+sorted by player count, the only order upstream ever shows
+(`ServerItem::getSortFactor`). Each heading says how many servers
 are under it and how many people are playing on them -- observers are
 counted as neither, here or anywhere else on the page.
 

@@ -1581,7 +1581,7 @@ app.get('/api/world/file/:file', async (req, res) => {
 });
 
 // A practice game on any map this server holds, bzfs imports included
-// (docs/practice-plan.md): what offline play needs in place of a server's
+// (docs/practice.md): what offline play needs in place of a server's
 // `init` -- the map, and the config it plays by: bzo's defaults with the map's
 // own `-ms`, options and BZDB laid over, as a server running it would. A
 // bzfs server's plugins do not come with it.
@@ -2410,6 +2410,9 @@ function renderMapList(listId, filterId, maps, t) {
       + `${index !== 0 ? ' hidden' : ''}>`
       + (entry.hashed
         ? `<a class="action" href="/?viewmap=${encodeURIComponent(entry.file)}">${escapeHtml(t('View map'))}</a>`
+          // The map offline, against bots, with its own settings, as a bzfs
+          // server's row offers it.
+          + `<a class="action" href="/?practice=normal&amp;map=${encodeURIComponent(entry.file)}">${escapeHtml(t('Practice'))}</a>`
         : `<span class="muted">${escapeHtml(t('Still hashing'))}</span>`)
       + `</div>`).join('')
     + `</div>`
@@ -2875,8 +2878,10 @@ function renderServerList(listId, filterId, unsorted, t) {
       ? `<button class="opt" data-field="im" ${title(t('This server already holds an import of that map'))}>I</button>`
       : '')
     + listHashHeader(t)
-    + `<button class="name" data-field="n" data-text`
-    + ` ${title(t('The name, or the address when a server has none'))}>${escapeHtml(t('Name & Description'))}</button>`
+    // One column, two sorts: the address a row starts with, and the title
+    // after it.
+    + `<span class="name"><button data-field="a" data-text ${title(t('Sort by address'))}>${escapeHtml(t('Name'))}</button>`
+    + ` &amp; <button data-field="d" data-text ${title(t('Sort by description'))}>${escapeHtml(t('Description'))}</button></span>`
     + `</div>`;
   // One column down the left, in the order you use it: the summary of the row
   // you picked, the filter that narrows what you are picking from, then the

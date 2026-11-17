@@ -28,7 +28,11 @@ import { getTeamColorIndex, isColorTeam } from './teams.mjs';
 import { getInitialPlayerColor, getJoinPlayerColor, pickDistinctColor } from './player-colors.mjs';
 
 const PLAYER_ID = '0';
-const BOT_COUNT = 3;
+// How many Aces, unless Practice's `&bots=N` says otherwise: every one runs in
+// this browser, so a phone is the limit, not the map.
+const DEFAULT_BOT_COUNT = 3;
+const MAX_BOT_COUNT = 15;
+let botCount = DEFAULT_BOT_COUNT;
 // The tick's cap, when the page has been away.
 const MAX_TICK_SECONDS = 0.25;
 const TEAMS_THAT_PLAY = ['rogue', 'red', 'green', 'blue', 'purple'];
@@ -46,7 +50,7 @@ let lastTickAt = 0;
 
 const send = (message) => self.postMessage(JSON.stringify(message));
 
-const offlineLine = () => `Offline, against bots, on ${world.init.currentMap || 'the last map played'}.`
+const offlineLine = () => `Offline, ${botCount > 0 ? 'against bots, ' : ''}on ${world.init.currentMap || 'the last map played'}.`
   + ' Reload to reconnect.';
 
 function serverMessage(text) {
@@ -209,7 +213,7 @@ function colorPick(id) {
 }
 
 function addBots() {
-  for (let index = 0; index < BOT_COUNT; index++) {
+  for (let index = 0; index < botCount; index++) {
     const id = String(index + 1);
     const team = pickBotTeam(index);
     const record = game.addBot(id, {
@@ -279,16 +283,24 @@ function die(message) {
 // --- The bots' tick --------------------------------------------------------------
 
 // Where the player is now, by what they last said, as the server extrapolates.
+// Your tank as the bots see it now, run on from your last move as the server
+// runs a player on for its bots (`getExtrapolatedPosition`, `getPlayerMotion`):
+// in the air a client sends nothing until it lands or changes course, so a
+// long fall is one move at the edge, and the arc from there is the bots' to
+// work out.
 function humanView(now) {
   const elapsed = (now - human.at) / 1000;
   const motion = motionOf(human, human.azimuth, config);
+  const gravity = config.GRAVITY;
+  const fall = motion.airborne ? elapsed : 0;
   return {
     id: PLAYER_ID,
     x: human.x + (motion.vx * elapsed),
     y: human.y + (motion.vy * elapsed),
-    z: human.z,
+    z: Math.max(0, human.z + (motion.vz * fall) + (0.5 * gravity * fall * fall)),
     ...motion,
-    gravity: config.GRAVITY,
+    vz: motion.vz + (gravity * fall),
+    gravity,
   };
 }
 
@@ -303,6 +315,7 @@ self.onmessage = ({ data }) => {
   if (!world) {
     world = data.world;
     if (typeof data.level === 'string') level = data.level;
+    if (Number.isInteger(data.bots)) botCount = Math.max(0, Math.min(MAX_BOT_COUNT, data.bots));
     open();
     loadWorld().then(() => {
       // Joined while the map loaded: on a team of the game it turned out to

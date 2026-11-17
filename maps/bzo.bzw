@@ -3058,10 +3058,10 @@ end
 #
 # Upstream draws a `drawInfo` block's `lines`, `linestrip`, `lineloop` and
 # `points` as GL lines and points (`DrawCmd::draw`), and maps use them:
-# Delirious City (reri.sandybees.com:6019) draws its streets from about 200,000
-# vertices of them, in meshes with no face at all. This is that, small: no
-# face, so nothing collides with it, and the edges textured with the same
-# blue-to-red gradient that map uses, a `texmat` scrolling it along each edge.
+# Delirious City (by KTL) draws its streets from about 200,000 vertices of
+# them, in meshes with no face at all. This is that, small: no face, so
+# nothing collides with it, and the edges textured with the same blue-to-red
+# gradient that map uses, a `texmat` scrolling it along each edge.
 # The vertices are drawn as points in their own material.
 #
 # Its edges are one `lines` command, a pair of corners per edge. Generated

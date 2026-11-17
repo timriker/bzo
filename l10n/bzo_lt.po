@@ -1190,72 +1190,72 @@ msgstr "Kita"
 msgid "Debug"
 msgstr "Derinimas"
 
-#: public/js/client.js:894
+#: public/js/client.js:893
 msgid "unlimited"
 msgstr "neribota"
 
-#: public/js/client.js:896
+#: public/js/client.js:895
 msgid "{count} left"
 msgstr "liko: {count}"
 
-#: public/js/client.js:1008
+#: public/js/client.js:1007
 msgid "this is the designated list server"
 msgstr "tai paskirtasis sąrašo serveris"
 
 #. TRANSLATORS: listServerUrl is a server.json setting; keep it as written
-#: public/js/client.js:1011
+#: public/js/client.js:1010
 msgid "disabled (no listServerUrl)"
 msgstr "išjungta (nėra listServerUrl)"
 
-#: public/js/client.js:1013
+#: public/js/client.js:1012
 msgid "reporting to {url}: key configured"
 msgstr "pranešama į {url}: raktas nustatytas"
 
-#: public/js/client.js:1014
+#: public/js/client.js:1013
 msgid "reporting to {url}: no key yet"
 msgstr "pranešama į {url}: rakto dar nėra"
 
-#: public/js/client.js:1036
+#: public/js/client.js:1035
 msgid "{team} won the game"
 msgstr "Laimėjo {team}"
 
-#: public/js/client.js:1041
+#: public/js/client.js:1040
 msgid "{player} won the game"
 msgstr "Laimėjo {player}"
 
-#: public/js/client.js:1288
+#: public/js/client.js:1287
 msgid "Team: {team}"
 msgstr "Komanda: {team}"
 
-#: public/js/client.js:1431
+#: public/js/client.js:1430
 msgid "watching {server}"
 msgstr "stebimas {server}"
 
-#: public/js/client.js:1433 public/js/client.js:10610
+#: public/js/client.js:1432 public/js/client.js:10588
 msgid "replay {name}"
 msgstr "įrašas {name}"
 
-#: public/js/client.js:1435
+#: public/js/client.js:1434
 msgid "Practice offline, {level}"
 msgstr ""
 
-#: public/js/client.js:1446
+#: public/js/client.js:1445
 msgid "local {map}"
 msgstr "vietinis {map}"
 
-#: public/js/client.js:1446
+#: public/js/client.js:1445
 msgid "This server"
 msgstr "Šis serveris"
 
-#: public/js/client.js:1530
+#: public/js/client.js:1529
 msgid "Server: {server}"
 msgstr "Serveris: {server}"
 
-#: public/js/client.js:1590
+#: public/js/client.js:1589
 msgid "Sign in & Play"
 msgstr "Prisijungti ir žaisti"
 
-#: public/js/client.js:1592
+#: public/js/client.js:1591
 msgid ""
 "Playing here needs a bzflag.org global login. This signs you in, then joins "
 "on the team you picked."
@@ -1263,99 +1263,99 @@ msgstr ""
 "Norint čia žaisti, reikia bzflag.org visuotinio prisijungimo. Jis tave "
 "prijungs ir įtrauks į pasirinktą komandą."
 
-#: public/js/client.js:1705 public/js/client.js:1723
+#: public/js/client.js:1704 public/js/client.js:1722
 msgid "a tank"
 msgstr "tankas"
 
-#: public/js/client.js:1854
+#: public/js/client.js:1853
 msgid "You are now the rabbit."
 msgstr "Dabar tu esi triušis."
 
-#: public/js/client.js:1860
+#: public/js/client.js:1859
 msgid "{player} is now the rabbit"
 msgstr "{player} dabar yra triušis"
 
-#: public/js/client.js:1871
+#: public/js/client.js:1870
 msgid "operation failed"
 msgstr "operacija nepavyko"
 
-#: public/js/client.js:1871
+#: public/js/client.js:1870
 msgid "Voice error: {error}"
 msgstr "Balso klaida: {error}"
 
-#: public/js/client.js:2376
+#: public/js/client.js:2375
 msgid "Default microphone"
 msgstr "Numatytasis mikrofonas"
 
-#: public/js/client.js:2384 public/js/voice.js:1218
+#: public/js/client.js:2383 public/js/voice.js:1218
 msgid "Microphone"
 msgstr "Mikrofonas"
 
-#: public/js/client.js:2417 public/js/client.js:2432
+#: public/js/client.js:2416 public/js/client.js:2431
 msgid "Receive only"
 msgstr "Tik klausytis"
 
-#: public/js/client.js:2419 public/js/client.js:2458
+#: public/js/client.js:2418 public/js/client.js:2457
 msgid "Microphone on"
 msgstr "Mikrofonas įjungtas"
 
-#: public/js/client.js:2421
+#: public/js/client.js:2420
 msgid "Permission denied"
 msgstr "Leidimas atmestas"
 
-#: public/js/client.js:2423 public/js/client.js:2425
+#: public/js/client.js:2422 public/js/client.js:2424
 msgid "Microphone unavailable"
 msgstr "Mikrofonas nepasiekiamas"
 
-#: public/js/client.js:2433
+#: public/js/client.js:2432
 msgid "Mic blocked"
 msgstr "Mikrofonas užblokuotas"
 
-#: public/js/client.js:2434
+#: public/js/client.js:2433
 msgid "Mic unavailable"
 msgstr "Mikrofonas nepasiekiamas"
 
-#: public/js/client.js:2435
+#: public/js/client.js:2434
 msgid "Disable Mic"
 msgstr "Išjungti mikrofoną"
 
-#: public/js/client.js:2435
+#: public/js/client.js:2434
 msgid "Enable Mic"
 msgstr "Įjungti mikrofoną"
 
-#: public/js/client.js:2444
+#: public/js/client.js:2443
 msgid "{action} - {channel}"
 msgstr "{action} – {channel}"
 
-#: public/js/client.js:2445
+#: public/js/client.js:2444
 msgid "{channel} voice channel, {status}"
 msgstr "Balso kanalas {channel}, {status}"
 
-#: public/js/client.js:2453
+#: public/js/client.js:2452
 msgid "Microphone permission granted"
 msgstr "Leidimas naudoti mikrofoną suteiktas"
 
-#: public/js/client.js:2466
+#: public/js/client.js:2465
 msgid "Microphone is transmitting on the {channel} channel."
 msgstr "Mikrofonas transliuoja kanale {channel}."
 
-#: public/js/client.js:2467
+#: public/js/client.js:2466
 msgid "Microphone permission granted; transmission is off."
 msgstr "Leidimas naudoti mikrofoną suteiktas; transliacija išjungta."
 
-#: public/js/client.js:2469
+#: public/js/client.js:2468
 msgid "Microphone permission was denied by the browser."
 msgstr "Naršyklė atmetė leidimą naudoti mikrofoną."
 
-#: public/js/client.js:2471
+#: public/js/client.js:2470
 msgid "Microphone capture is unavailable in this browser or context."
 msgstr "Mikrofono įrašymas šioje naršyklėje ar aplinkoje nepasiekiamas."
 
-#: public/js/client.js:2484
+#: public/js/client.js:2483
 msgid "Voice operation failed."
 msgstr "Balso operacija nepavyko."
 
-#: public/js/client.js:2746
+#: public/js/client.js:2745
 msgid ""
 "A proxied connection tells the target which bzo it came through, and nothing "
 "else. Your own motto is used on this server."
@@ -1363,134 +1363,134 @@ msgstr ""
 "Per tarpinį serverį perduotas ryšys praneša tikslui tik tai, per kurį bzo "
 "jis atėjo. Šiame serveryje naudojamas tavo paties šūkis."
 
-#: public/js/client.js:3186
+#: public/js/client.js:3185
 msgid "Preparing battlefield..."
 msgstr "Ruošiamas mūšio laukas..."
 
-#: public/js/client.js:3187
+#: public/js/client.js:3186
 msgid "Building world geometry"
 msgstr "Kuriama pasaulio geometrija"
 
-#: public/js/client.js:3196
+#: public/js/client.js:3195
 msgid "Placing obstacles..."
 msgstr "Statomos kliūtys..."
 
-#: public/js/client.js:3197
+#: public/js/client.js:3196
 msgid "Synchronizing world objects"
 msgstr "Sinchronizuojami pasaulio objektai"
 
-#: public/js/client.js:3225
+#: public/js/client.js:3224
 msgid "Loading vehicle systems..."
 msgstr "Įkeliamos transporto sistemos..."
 
-#: public/js/client.js:3226
+#: public/js/client.js:3225
 msgid "Preparing tank models, textures, and audio"
 msgstr "Ruošiami tankų modeliai, tekstūros ir garsai"
 
-#: public/js/client.js:3243
+#: public/js/client.js:3242
 msgid "Assembling tanks..."
 msgstr "Surenkami tankai..."
 
-#: public/js/client.js:3244
+#: public/js/client.js:3243
 msgid "Creating player vehicles"
 msgstr "Kuriamos žaidėjų mašinos"
 
-#: public/js/client.js:3257
+#: public/js/client.js:3256
 msgid "Entering battle..."
 msgstr "Įžengiama į mūšį..."
 
-#: public/js/client.js:3257
+#: public/js/client.js:3256
 msgid "Render ready"
 msgstr "Vaizdavimas paruoštas"
 
-#: public/js/client.js:3258
+#: public/js/client.js:3257
 msgid "Joining game"
 msgstr "Jungiamasi prie žaidimo"
 
-#: public/js/client.js:3258
+#: public/js/client.js:3257
 msgid "Waiting for player name"
 msgstr "Laukiama žaidėjo vardo"
 
 #. TRANSLATORS: prefix on a chat line this client wrote itself, not the server
-#: public/js/client.js:3616
+#: public/js/client.js:3615
 msgid "local: {message}"
 msgstr "vietinis: {message}"
 
-#: public/js/client.js:3623
+#: public/js/client.js:3622
 msgid "client version: {version}"
 msgstr "kliento versija: {version}"
 
-#: public/js/client.js:3624
+#: public/js/client.js:3623
 msgid "copyright: {copyright}"
 msgstr "autorių teisės: {copyright}"
 
-#: public/js/client.js:3625
+#: public/js/client.js:3624
 msgid "license: {license} ({url})"
 msgstr "licencija: {license} ({url})"
 
-#: public/js/client.js:3789 public/js/client.js:3849
+#: public/js/client.js:3788 public/js/client.js:3848
 msgid "Unsilenced \"{callsign}\""
 msgstr "Nebetildomas „{callsign}“"
 
-#: public/js/client.js:3790 public/js/client.js:3829
+#: public/js/client.js:3789 public/js/client.js:3828
 msgid "Silenced \"{callsign}\""
 msgstr "Nutildytas „{callsign}“"
 
-#: public/js/client.js:3804
+#: public/js/client.js:3803
 msgid "Usage: {command}"
 msgstr "Naudojimas: {command}"
 
 #. TRANSLATORS: /silence and - stay as written
-#: public/js/client.js:3816
+#: public/js/client.js:3815
 msgid "Usage: /silence <callsign>|-"
 msgstr "Naudojimas: /silence <šaukinys>|-"
 
-#: public/js/client.js:3823
+#: public/js/client.js:3822
 msgid "Silencing every unauthenticated player"
 msgstr "Nutildomi visi neautentifikuoti žaidėjai"
 
 #. TRANSLATORS: /unsilence and - stay as written
-#: public/js/client.js:3836
+#: public/js/client.js:3835
 msgid "Usage: /unsilence <callsign>|-"
 msgstr "Naudojimas: /unsilence <šaukinys>|-"
 
-#: public/js/client.js:3843
+#: public/js/client.js:3842
 msgid "No longer silencing unauthenticated players"
 msgstr "Neautentifikuoti žaidėjai nebetildomi"
 
-#: public/js/client.js:3906
+#: public/js/client.js:3905
 msgid "Highlight cleared"
 msgstr "Paryškinimas išvalytas"
 
-#: public/js/client.js:3908
+#: public/js/client.js:3907
 msgid "Invalid highlight pattern: {pattern}"
 msgstr "Netinkamas paryškinimo šablonas: {pattern}"
 
-#: public/js/client.js:3910
+#: public/js/client.js:3909
 msgid "Highlighting \"{pattern}\""
 msgstr "Paryškinama „{pattern}“"
 
-#: public/js/client.js:3934
+#: public/js/client.js:3933
 msgid "Saved messages to: {filename}"
 msgstr "Žinutės išsaugotos: {filename}"
 
-#: public/js/client.js:3942
+#: public/js/client.js:3941
 msgid "Client-side commands: {commands}"
 msgstr "Kliento komandos: {commands}"
 
-#: public/js/client.js:4111
+#: public/js/client.js:4110
 msgid "No recent direct sender to reply to"
 msgstr "Nėra paskutinio asmeninės žinutės siuntėjo, kuriam atsakyti"
 
-#: public/js/client.js:4119
+#: public/js/client.js:4118
 msgid "No nemesis target available"
 msgstr "Nėra priešo taikinio"
 
-#: public/js/client.js:4331
+#: public/js/client.js:4330
 msgid "Show Operator Panel (O)"
 msgstr "Rodyti operatoriaus skydelį (O)"
 
-#: public/js/client.js:4332
+#: public/js/client.js:4331
 msgid ""
 "Operator: sign in with a bzflag.org global callsign that the server grants "
 "admin to"
@@ -1498,15 +1498,15 @@ msgstr ""
 "Operatorius: prisijunk su bzflag.org visuotiniu šaukiniu, kuriam serveris "
 "suteikia administratoriaus teises"
 
-#: public/js/client.js:4373 public/js/client.js:4392
+#: public/js/client.js:4372 public/js/client.js:4391
 msgid "Sign in"
 msgstr "Prisijungti"
 
-#: public/js/client.js:4376
+#: public/js/client.js:4375
 msgid "Global login for {server}"
 msgstr "Visuotinis prisijungimas prie {server}"
 
-#: public/js/client.js:4377
+#: public/js/client.js:4376
 msgid ""
 "Sign in at bzflag.org to play on {server}. A login is needed for each "
 "target, and bzo never sees your password."
@@ -1514,609 +1514,609 @@ msgstr ""
 "Prisijunk bzflag.org, kad galėtum žaisti {server}. Kiekvienam tikslui reikia "
 "atskiro prisijungimo, o bzo niekada nemato tavo slaptažodžio."
 
-#: public/js/client.js:4385
+#: public/js/client.js:4384
 msgid "Signed in as {callsign}. Activate to sign out."
 msgstr "Prisijungta kaip {callsign}. Vykdyk, kad atsijungtum."
 
-#: public/js/client.js:4387
+#: public/js/client.js:4386
 msgid "Signed in, and an admin on this server. Click to sign out."
 msgstr ""
 "Prisijungta, esi šio serverio administratorius. Spustelėk, kad atsijungtum."
 
-#: public/js/client.js:4388
+#: public/js/client.js:4387
 msgid "Signed in with a bzflag.org global callsign. Click to sign out."
 msgstr ""
 "Prisijungta su bzflag.org visuotiniu šaukiniu. Spustelėk, kad atsijungtum."
 
-#: public/js/client.js:4395
+#: public/js/client.js:4394
 msgid "Global login: sign in"
 msgstr "Visuotinis prisijungimas: prisijungti"
 
-#: public/js/client.js:4396
+#: public/js/client.js:4395
 msgid ""
 "Sign in at bzflag.org with a global callsign. bzo never sees your password."
 msgstr ""
 "Prisijunk bzflag.org su visuotiniu šaukiniu. bzo niekada nemato tavo "
 "slaptažodžio."
 
-#: public/js/client.js:4416
+#: public/js/client.js:4415
 msgid "Signing out leaves VR. Exit the headset session first."
 msgstr "Atsijungus išeinama iš VR. Pirmiausia baik sesiją akiniuose."
 
-#: public/js/client.js:4417
+#: public/js/client.js:4416
 msgid "Global login leaves VR. Exit the headset session first."
 msgstr ""
 "Visuotinis prisijungimas išeina iš VR. Pirmiausia baik sesiją akiniuose."
 
-#: public/js/client.js:4866 public/js/client.js:10839
+#: public/js/client.js:4865 public/js/client.js:10817
 msgid "Fetching remote server's map..."
 msgstr "Gaunamas nutolusio serverio žemėlapis..."
 
-#: public/js/client.js:5032
+#: public/js/client.js:5008
 msgid "Pausing in {seconds}"
 msgstr "Pauzė po {seconds}"
 
-#: public/js/client.js:5056 public/js/client.js:6915
+#: public/js/client.js:5032 public/js/client.js:6891
 msgid "Self Destructing in {seconds}"
 msgstr "Susinaikinimas po {seconds}"
 
-#: public/js/client.js:5141
+#: public/js/client.js:5117
 msgid "AutoPilot {pilot}: {intent}"
 msgstr "Autopilotas {pilot}: {intent}"
 
-#: public/js/client.js:5142
+#: public/js/client.js:5118
 msgid "AutoPilot {pilot}"
 msgstr "Autopilotas {pilot}"
 
-#: public/js/client.js:6802 server.js:11442
+#: public/js/client.js:6778 server.js:11540
 msgid "You do not have permission to speak on the admin channel."
 msgstr "Neturi teisės rašyti administratorių kanale."
 
-#: public/js/client.js:6917
+#: public/js/client.js:6893
 msgid "Self Destruct cancelled"
 msgstr "Susinaikinimas atšauktas"
 
-#: public/js/client.js:7087
+#: public/js/client.js:7063
 msgid "Hide Debug Labels"
 msgstr "Slėpti derinimo žymes"
 
-#: public/js/client.js:7090
+#: public/js/client.js:7066
 msgid "Show Debug Labels"
 msgstr "Rodyti derinimo žymes"
 
-#: public/js/client.js:7107
+#: public/js/client.js:7083
 msgid "Disable Dynamic Lighting"
 msgstr "Išjungti dinaminį apšvietimą"
 
-#: public/js/client.js:7108
+#: public/js/client.js:7084
 msgid "Enable Dynamic Lighting"
 msgstr "Įjungti dinaminį apšvietimą"
 
-#: public/js/client.js:7110
+#: public/js/client.js:7086
 msgid "Dynamic Lighting needs more shader uniforms than this browser reports"
 msgstr ""
 "Dinaminiam apšvietimui reikia daugiau šešėliavimo uniform kintamųjų, nei "
 "praneša ši naršyklė"
 
-#: public/js/client.js:7119
+#: public/js/client.js:7095
 msgid "Disable Rumble"
 msgstr "Išjungti vibraciją"
 
-#: public/js/client.js:7120
+#: public/js/client.js:7096
 msgid "Enable Rumble"
 msgstr "Įjungti vibraciją"
 
-#: public/js/client.js:7126
+#: public/js/client.js:7102
 msgid "Disable Anaglyph 3D"
 msgstr "Išjungti anaglifinį 3D"
 
-#: public/js/client.js:7127
+#: public/js/client.js:7103
 msgid "Enable Anaglyph 3D"
 msgstr "Įjungti anaglifinį 3D"
 
-#: public/js/client.js:7130
+#: public/js/client.js:7106
 msgid "Anaglyph 3D is unavailable in VR mode"
 msgstr "Anaglifinis 3D VR režime nepasiekiamas"
 
-#: public/js/client.js:7139
+#: public/js/client.js:7115
 msgid "Hide Debug Geometry"
 msgstr "Slėpti derinimo geometriją"
 
-#: public/js/client.js:7227
+#: public/js/client.js:7203
 msgid "Confirm"
 msgstr "Patvirtinti"
 
-#: public/js/client.js:7283
+#: public/js/client.js:7259
 msgid "Share View Link: only available while viewing a map"
 msgstr "Dalintis vaizdo nuoroda: galima tik peržiūrint žemėlapį"
 
-#: public/js/client.js:7288
+#: public/js/client.js:7264
 msgid "View link copied to clipboard"
 msgstr "Vaizdo nuoroda nukopijuota į iškarpinę"
 
-#: public/js/client.js:7317
+#: public/js/client.js:7293
 msgid "WebXR: {mode}"
 msgstr "WebXR: {mode}"
 
-#: public/js/client.js:7323
+#: public/js/client.js:7299
 msgid "WebXR not supported on this device"
 msgstr "WebXR šiame įrenginyje nepalaikomas"
 
-#: public/js/client.js:7328
+#: public/js/client.js:7304
 msgid "Requesting VR..."
 msgstr "Prašoma VR..."
 
-#: public/js/client.js:7331
+#: public/js/client.js:7307
 msgid "Error: Renderer not available"
 msgstr "Klaida: vaizdavimo variklis nepasiekiamas"
 
-#: public/js/client.js:7344
+#: public/js/client.js:7320
 msgid "✓ WebXR VR Mode: ON"
 msgstr "✓ WebXR VR režimas: ĮJUNGTAS"
 
-#: public/js/client.js:7350
+#: public/js/client.js:7326
 msgid "✗ VR request failed - check server.log"
 msgstr "✗ VR užklausa nepavyko – žr. server.log"
 
-#: public/js/client.js:7352 public/js/client.js:18099
+#: public/js/client.js:7328 public/js/client.js:18073
 msgid "WebXR VR Mode: OFF"
 msgstr "WebXR VR režimas: IŠJUNGTAS"
 
-#: public/js/client.js:7917
+#: public/js/client.js:7893
 msgid "3D renderer unavailable: {reason}"
 msgstr "3D vaizdavimas nepasiekiamas: {reason}"
 
-#: public/js/client.js:7924
+#: public/js/client.js:7900
 msgid "3D renderer failed to initialize."
 msgstr "Nepavyko paleisti 3D vaizdavimo."
 
-#: public/js/client.js:7926
+#: public/js/client.js:7902
 msgid "Open the game in an external browser window for full WebGL support."
 msgstr "Atidaryk žaidimą išorinės naršyklės lange, kad veiktų visas WebGL."
 
-#: public/js/client.js:8415
+#: public/js/client.js:8393
 msgid "Connected to server!"
 msgstr "Prisijungta prie serverio!"
 
-#: public/js/client.js:8421
+#: public/js/client.js:8399
 msgid "Connected to server"
 msgstr "Prisijungta prie serverio"
 
-#: public/js/client.js:8422
+#: public/js/client.js:8400
 msgid "Waiting for world state"
 msgstr "Laukiama pasaulio būsenos"
 
-#: public/js/client.js:8476
+#: public/js/client.js:8454
 msgid "Offline"
 msgstr "Neprisijungta"
 
-#: public/js/client.js:8476
+#: public/js/client.js:8454
 msgid "Cannot reach {host}"
 msgstr "Nepavyksta pasiekti {host}"
 
-#: public/js/client.js:8477
+#: public/js/client.js:8455
 msgid "Trying again..."
 msgstr "Bandoma dar kartą..."
 
-#: public/js/client.js:8488
+#: public/js/client.js:8466
 msgid "Disconnected from server | Kills: {kills} | Deaths: {deaths}"
 msgstr "Atsijungta nuo serverio | Nužudymai: {kills} | Žūtys: {deaths}"
 
-#: public/js/client.js:8493
+#: public/js/client.js:8471
 msgid "Press a key, tap or pull a trigger to rejoin"
 msgstr "Paspausk klavišą, bakstelėk arba nuspausk gaiduką, kad grįžtum"
 
-#: public/js/client.js:8654
+#: public/js/client.js:8632
 msgid "Server error: {error}"
 msgstr "Serverio klaida: {error}"
 
-#: public/js/client.js:8659
+#: public/js/client.js:8637
 msgid "Server: action completed successfully"
 msgstr "Serveris: veiksmas sėkmingai atliktas"
 
-#: public/js/client.js:8741
+#: public/js/client.js:8719
 msgid "Operator Panel (v{version})"
 msgstr "Operatoriaus skydelis (v{version})"
 
-#: public/js/client.js:9160
+#: public/js/client.js:9138
 msgid "{player} joined"
 msgstr "{player} prisijungė"
 
-#: public/js/client.js:9205
+#: public/js/client.js:9183
 msgid "{player} left"
 msgstr "{player} išėjo"
 
-#: public/js/client.js:9221
+#: public/js/client.js:9199
 msgid "{callsign} not responding"
 msgstr "{callsign} neatsako"
 
-#: public/js/client.js:9222
+#: public/js/client.js:9200
 msgid "{callsign} okay"
 msgstr "{callsign} vėl atsako"
 
-#: public/js/client.js:9336
+#: public/js/client.js:9314
 msgid "{player} grabbed {flag}"
 msgstr "{player} paėmė {flag}"
 
-#: public/js/client.js:9387
+#: public/js/client.js:9365
 msgid "{player} dropped {flag}"
 msgstr "{player} numetė {flag}"
 
-#: public/js/client.js:9481
+#: public/js/client.js:9459
 msgid "{player}: {pilot} taking controls"
 msgstr "{player}: {pilot} perima valdymą"
 
-#: public/js/client.js:9482
+#: public/js/client.js:9460
 msgid "{player}: {pilot} releasing controls"
 msgstr "{player}: {pilot} atiduoda valdymą"
 
-#: public/js/client.js:9514
+#: public/js/client.js:9492
 msgid "{player} paused"
 msgstr "{player} sustabdė žaidimą"
 
-#: public/js/client.js:9525
+#: public/js/client.js:9503
 msgid "{player} unpaused"
 msgstr "{player} tęsia žaidimą"
 
-#: public/js/client.js:9703
+#: public/js/client.js:9681
 msgid "Server forced a disconnect"
 msgstr "Serveris nutraukė ryšį"
 
-#: public/js/client.js:9709
+#: public/js/client.js:9687
 msgid "Server updated - reloading..."
 msgstr "Serveris atnaujintas – įkeliama iš naujo..."
 
-#: public/js/client.js:10237
+#: public/js/client.js:10215
 msgid "Got flattened by {player}"
 msgstr "Tave sutraiškė {player}"
 
-#: public/js/client.js:10238
+#: public/js/client.js:10216
 msgid "Teammate hit with Genocide by {player}"
 msgstr "Komandos draugą Genocidu pakirto {player}"
 
-#: public/js/client.js:10239
+#: public/js/client.js:10217
 msgid "Got shot by {player}"
 msgstr "Tave nušovė {player}"
 
-#: public/js/client.js:10241
+#: public/js/client.js:10219
 msgid "Got flattened by teammate {player}"
 msgstr "Tave sutraiškė komandos draugas {player}"
 
-#: public/js/client.js:10242
+#: public/js/client.js:10220
 msgid "Teammate hit with Genocide by teammate {player}"
 msgstr "Komandos draugą Genocidu pakirto komandos draugas {player}"
 
-#: public/js/client.js:10243
+#: public/js/client.js:10221
 msgid "Got shot by teammate {player}"
 msgstr "Tave nušovė komandos draugas {player}"
 
-#: public/js/client.js:10279
+#: public/js/client.js:10257
 msgid "Your team flag was captured!"
 msgstr "Tavo komandos vėliava užgrobta!"
 
-#: public/js/client.js:10281
+#: public/js/client.js:10259
 msgid "Time Expired - GAME OVER"
 msgstr "Laikas baigėsi – ŽAIDIMAS BAIGTAS"
 
-#: public/js/client.js:10283
+#: public/js/client.js:10261
 msgid "Tank Self Destructed"
 msgstr "Tankas susinaikino"
 
-#: public/js/client.js:10285
+#: public/js/client.js:10263
 msgid "Tank Rusted"
 msgstr "Tankas surūdijo"
 
-#: public/js/client.js:10288 public/js/client.js:10292
+#: public/js/client.js:10266 public/js/client.js:10270
 msgid "Killed by the server"
 msgstr "Nužudė serveris"
 
-#: public/js/client.js:10319
+#: public/js/client.js:10297
 msgid "You killed {player}"
 msgstr "Tu nužudei {player}"
 
-#: public/js/client.js:10331
+#: public/js/client.js:10309
 msgid "{player} self-destructed"
 msgstr "{player} susinaikino"
 
-#: public/js/client.js:10335
+#: public/js/client.js:10313
 msgid "{player} fell in the water"
 msgstr "{player} įkrito į vandenį"
 
-#: public/js/client.js:10340
+#: public/js/client.js:10318
 msgid "{player}: {message}"
 msgstr "{player}: {message}"
 
-#: public/js/client.js:10343
+#: public/js/client.js:10321
 msgid "killed by the server"
 msgstr "nužudė serveris"
 
-#: public/js/client.js:10349
+#: public/js/client.js:10327
 msgid "{player} was killed by the server"
 msgstr "{player}: nužudė serveris"
 
-#: public/js/client.js:10354
+#: public/js/client.js:10332
 msgid "{killer} killed {victim}"
 msgstr "{killer} nužudė {victim}"
 
-#: public/js/client.js:10519
+#: public/js/client.js:10497
 msgid "You respawned!"
 msgstr "Tu vėl atgimei!"
 
-#: public/js/client.js:10609
+#: public/js/client.js:10587
 msgid "map {name}"
 msgstr "žemėlapis {name}"
 
-#: public/js/client.js:10611
+#: public/js/client.js:10589
 msgid "plugin {name}"
 msgstr ""
 
-#: public/js/client.js:10615
+#: public/js/client.js:10593
 msgid "nothing uploaded"
 msgstr "nieko neįkelta"
 
-#: public/js/client.js:10642 public/js/client.js:11122
+#: public/js/client.js:10620 public/js/client.js:11100
 msgid "MOTD: {motd}"
 msgstr "MOTD: {motd}"
 
-#: public/js/client.js:10716
+#: public/js/client.js:10694
 msgid "by {authors}"
 msgstr ""
 
-#: public/js/client.js:10722
+#: public/js/client.js:10700
 msgid "{count} box"
 msgstr "{count} dėžė"
 
-#: public/js/client.js:10722
+#: public/js/client.js:10700
 msgid "{count} boxes"
 msgstr "dėžių: {count}"
 
-#: public/js/client.js:10723
+#: public/js/client.js:10701
 msgid "{count} pyramid"
 msgstr "{count} piramidė"
 
-#: public/js/client.js:10723
+#: public/js/client.js:10701
 msgid "{count} pyramids"
 msgstr "piramidžių: {count}"
 
-#: public/js/client.js:10724
+#: public/js/client.js:10702
 msgid "{count} mesh"
 msgstr "{count} tinklas"
 
-#: public/js/client.js:10724
+#: public/js/client.js:10702
 msgid "{count} meshes"
 msgstr "tinklų: {count}"
 
-#: public/js/client.js:10729
+#: public/js/client.js:10707
 msgid "{count} base"
 msgstr "{count} bazė"
 
-#: public/js/client.js:10729
+#: public/js/client.js:10707
 msgid "{count} bases"
 msgstr "bazių: {count}"
 
-#: public/js/client.js:10731
+#: public/js/client.js:10709
 msgid "{count} teleporter"
 msgstr "{count} teleportas"
 
-#: public/js/client.js:10731
+#: public/js/client.js:10709
 msgid "{count} teleporters"
 msgstr "teleportų: {count}"
 
-#: public/js/client.js:10734 server.js:2604
+#: public/js/client.js:10712 server.js:2640
 msgid "water"
 msgstr "vanduo"
 
-#: public/js/client.js:10735 server.js:2604
+#: public/js/client.js:10713 server.js:2640
 msgid "weather"
 msgstr "orai"
 
-#: public/js/client.js:10736 server.js:2604
+#: public/js/client.js:10714 server.js:2640
 msgid "custom ground"
 msgstr "savas pagrindas"
 
-#: public/js/client.js:10774 public/js/client.js:10853
+#: public/js/client.js:10752 public/js/client.js:10831
 msgid "View {map}"
 msgstr "Peržiūrėti {map}"
 
-#: public/js/client.js:10851
+#: public/js/client.js:10829
 msgid "{server} did not answer"
 msgstr "{server} neatsakė"
 
-#: public/js/client.js:10863 server.js:2532 server.js:3007 server.js:3061
+#: public/js/client.js:10841 server.js:2568 server.js:3045 server.js:3099
 msgid "Watch"
 msgstr "Stebėti"
 
-#: public/js/client.js:10864
+#: public/js/client.js:10842
 msgid "Watch the live game on {server}"
 msgstr "Stebėti tiesioginį žaidimą serveryje {server}"
 
-#: public/js/client.js:10882 public/js/client.js:10890 server.js:3020
+#: public/js/client.js:10860 public/js/client.js:10868 server.js:3058
 msgid "Re-import"
 msgstr "Importuoti iš naujo"
 
-#: public/js/client.js:10886
+#: public/js/client.js:10864
 msgid "Importing…"
 msgstr "Importuojama…"
 
-#: public/js/client.js:10929
+#: public/js/client.js:10907
 msgid "Loading map..."
 msgstr "Įkeliamas žemėlapis..."
 
-#: public/js/client.js:10937
+#: public/js/client.js:10915
 msgid "Building world geometry..."
 msgstr "Kuriama pasaulio geometrija..."
 
-#: public/js/client.js:11001
+#: public/js/client.js:10979
 msgid "{count} watching now"
 msgstr "dabar žiūri: {count}"
 
-#: public/js/client.js:11004
+#: public/js/client.js:10982
 msgid "Watch {name}"
 msgstr "Stebėti {name}"
 
-#: public/js/client.js:11040
+#: public/js/client.js:11018
 msgid "That server's map could not be fetched"
 msgstr "To serverio žemėlapio gauti nepavyko"
 
-#: public/js/client.js:11058
+#: public/js/client.js:11036
 msgid "import failed"
 msgstr "importas nepavyko"
 
-#: public/js/client.js:11058
+#: public/js/client.js:11036
 msgid "Could not load that server's map: {reason}"
 msgstr "Nepavyko įkelti to serverio žemėlapio: {reason}"
 
-#: public/js/client.js:11272
+#: public/js/client.js:11250
 msgid "{team} Limit:"
 msgstr "{team}: limitas"
 
-#: public/js/client.js:11365
+#: public/js/client.js:11343
 msgid "Failed: {error}"
 msgstr ""
 
-#: public/js/client.js:11470
+#: public/js/client.js:11448
 msgid "No limit"
 msgstr "Be limito"
 
-#: public/js/client.js:11579
+#: public/js/client.js:11557
 msgid "Restart"
 msgstr "Paleisti iš naujo"
 
-#: public/js/client.js:11583
+#: public/js/client.js:11561
 msgid "Starts a new game: every player reloads into the new settings"
 msgstr ""
 "Pradeda naują žaidimą: visi žaidėjai persikrauna su naujais nustatymais"
 
-#: public/js/client.js:11584
+#: public/js/client.js:11562
 msgid "Applies the staged changes"
 msgstr "Pritaiko paruoštus pakeitimus"
 
-#: public/js/client.js:11931
+#: public/js/client.js:11909
 msgid "Paused"
 msgstr "Pauzė"
 
-#: public/js/client.js:11932
+#: public/js/client.js:11910
 msgid "Sealed"
 msgstr "Užblokuotas"
 
-#: public/js/client.js:12870
+#: public/js/client.js:12848
 msgid "Already following someone"
 msgstr "Jau seki kažką"
 
-#: public/js/client.js:12906 public/js/client.js:13031
+#: public/js/client.js:12884 public/js/client.js:13009
 msgid "Looking at {player}"
 msgstr "Žiūri į {player}"
 
-#: public/js/client.js:13015
+#: public/js/client.js:12993
 msgid "{player} locked on me"
 msgstr "{player} nusitaikė į mane"
 
-#: public/js/client.js:13025
+#: public/js/client.js:13003
 msgid "Looking at nothing"
 msgstr "Niekur nežiūri"
 
-#: public/js/client.js:13031
+#: public/js/client.js:13009
 msgid "Locked on {player}"
 msgstr "Nusitaikyta į {player}"
 
-#: public/js/client.js:13368
+#: public/js/client.js:13346
 msgid "Clear ({count})"
 msgstr "Išvalyti ({count})"
 
-#: public/js/client.js:13368 public/js/list-page.js:538
+#: public/js/client.js:13346 public/js/list-page.js:620
 msgid "Clear"
 msgstr "Išvalyti"
 
-#: public/js/client.js:13468
+#: public/js/client.js:13446
 msgid "SPOTTED: {player}"
 msgstr "PASTEBĖTAS: {player}"
 
-#: public/js/client.js:13583 public/js/client.js:13589
+#: public/js/client.js:13561 public/js/client.js:13567
 msgid "nobody"
 msgstr "niekas"
 
-#: public/js/client.js:13593
+#: public/js/client.js:13571
 msgid "Leader {who}"
 msgstr "Lyderis: {who}"
 
-#: public/js/client.js:13595 public/js/client.js:13600
+#: public/js/client.js:13573 public/js/client.js:13578
 msgid "Tracking {who}"
 msgstr "Stebima: {who}"
 
-#: public/js/client.js:13596
+#: public/js/client.js:13574
 msgid "Following {who}"
 msgstr "Iš paskos: {who}"
 
-#: public/js/client.js:13597
+#: public/js/client.js:13575
 msgid "Driving with {who}"
 msgstr "Važiuoju su: {who}"
 
-#: public/js/client.js:13602 public/js/hud.js:629 public/js/input.js:1457
+#: public/js/client.js:13580 public/js/hud.js:629 public/js/input.js:1457
 msgid "First Person"
 msgstr "Pirmuoju asmeniu"
 
-#: public/js/client.js:13603 public/js/hud.js:630 public/js/input.js:1458
+#: public/js/client.js:13581 public/js/hud.js:630 public/js/input.js:1458
 msgid "Third Person"
 msgstr "Trečiuoju asmeniu"
 
-#: public/js/client.js:13604 public/js/hud.js:631 public/js/input.js:1459
+#: public/js/client.js:13582 public/js/hud.js:631 public/js/input.js:1459
 msgid "Overview"
 msgstr "Apžvalga"
 
-#: public/js/client.js:13605
+#: public/js/client.js:13583
 msgid "Roaming"
 msgstr "Laisvas skrydis"
 
-#: public/js/client.js:13893 public/js/client.js:13967
+#: public/js/client.js:13867 public/js/client.js:13940
 msgid "autopilot disabled"
 msgstr "autopilotas išjungtas"
 
-#: public/js/client.js:13902
+#: public/js/client.js:13876
 msgid "autopilot not allowed on this server"
 msgstr "autopilotas šiame serveryje neleidžiamas"
 
-#: public/js/client.js:13914
+#: public/js/client.js:13886
 msgid "{pilot} has the controls"
 msgstr "{pilot} perėmė valdymą"
 
-#: public/js/client.js:13919
+#: public/js/client.js:13891
 msgid "You may not enable the Autopilot more than once every five seconds."
 msgstr "Autopiloto negalima įjungti dažniau nei kas penkias sekundes."
 
-#: public/js/client.js:13924
+#: public/js/client.js:13896
 msgid "autopilot enabled"
 msgstr "autopilotas įjungtas"
 
-#: public/js/client.js:13947
+#: public/js/client.js:13920
 msgid "Not allowed"
 msgstr "Neleidžiama"
 
-#: public/js/client.js:13947 public/js/input.js:1162 public/js/input.js:1172
+#: public/js/client.js:13920 public/js/input.js:1162 public/js/input.js:1172
 #: public/js/input.js:1176
 msgid "Unavailable"
 msgstr "Nepasiekiama"
 
-#: public/js/client.js:13950
+#: public/js/client.js:13923
 msgid "None"
 msgstr "Nėra"
 
-#: public/js/client.js:14794
+#: public/js/client.js:14768
 msgid "Zoned"
 msgstr "Fantomų zonoje"
 
-#: public/js/client.js:14794
+#: public/js/client.js:14768
 msgid "Unzoned"
 msgstr "Ne fantomų zonoje"
 
-#: public/js/client.js:15595 public/js/client.js:15612
+#: public/js/client.js:15569 public/js/client.js:15586
 msgid "unidentified"
 msgstr "neatpažinta"
 
-#: public/js/client.js:15632
+#: public/js/client.js:15606
 msgid "unknown"
 msgstr "nežinoma"
 
-#: public/js/client.js:15643
+#: public/js/client.js:15617
 msgid ""
 "This server bounces every shot off walls, whatever flag fired it, so the "
 "Ricochet flag is not in play here."
@@ -2124,111 +2124,111 @@ msgstr ""
 "Šis serveris kiekvieną šūvį atmuša nuo sienų, kad ir kokia vėliava jį "
 "iššovė, todėl Rikošeto vėliava čia nenaudojama."
 
-#: public/js/client.js:15644
+#: public/js/client.js:15618
 msgid "On this server only the Ricochet flag bounces shots off walls."
 msgstr "Šiame serveryje šūvius nuo sienų atmuša tik Rikošeto vėliava."
 
-#: public/js/client.js:15711
+#: public/js/client.js:15685
 msgid "{flag} {release}"
 msgstr "{flag}: {release}"
 
-#: public/js/client.js:15722
+#: public/js/client.js:15696
 msgid "Can't drop the flag while zoned"
 msgstr "Negalima numesti vėliavos fantomų zonoje"
 
-#: public/js/client.js:15726
+#: public/js/client.js:15700
 msgid "Can't drop a flag while inside a building"
 msgstr "Negalima numesti vėliavos pastato viduje"
 
-#: public/js/client.js:15776
+#: public/js/client.js:15750
 msgid "in {seconds}s"
 msgstr "po {seconds} s"
 
-#: public/js/client.js:15777
+#: public/js/client.js:15751
 msgid "after {count} kill"
 msgstr "po {count} nužudymo"
 
-#: public/js/client.js:15777
+#: public/js/client.js:15751
 msgid "after {count} kills"
 msgstr "po {count} nužudymų"
 
-#: public/js/client.js:15778
+#: public/js/client.js:15752
 msgid "on the antidote"
 msgstr "ant priešnuodžio"
 
-#: public/js/client.js:15779
+#: public/js/client.js:15753
 msgid "stays until it kills you"
 msgstr "lieka, kol tave nužudo"
 
-#: public/js/client.js:15780
+#: public/js/client.js:15754
 msgid "{first} or {second}"
 msgstr "{first} arba {second}"
 
-#: public/js/client.js:15781
+#: public/js/client.js:15755
 msgid "shakes off {ways}"
 msgstr "nusikratoma {ways}"
 
-#: public/js/client.js:15837
+#: public/js/client.js:15811
 msgid "Flag Alert!!!"
 msgstr "Vėliavos pavojus!!!"
 
-#: public/js/client.js:15845
+#: public/js/client.js:15819
 msgid "Team Grab!!!"
 msgstr "Komanda paėmė!!!"
 
-#: public/js/client.js:15861
+#: public/js/client.js:15835
 msgid "{thief} stole {victim}'s {flag} flag"
 msgstr "{thief} pavogė žaidėjo {victim} vėliavą {flag}"
 
-#: public/js/client.js:15892
+#: public/js/client.js:15866
 msgid "Closest Flag: {flag}"
 msgstr "Artimiausia vėliava: {flag}"
 
-#: public/js/client.js:15954
+#: public/js/client.js:15928
 msgid "{player} took their own flag into {team} territory"
 msgstr "{player} nunešė savo vėliavą į komandos {team} teritoriją"
 
-#: public/js/client.js:15962
+#: public/js/client.js:15936
 msgid "Don't capture your own flag!!!"
 msgstr "Neužgrobk savo vėliavos!!!"
 
-#: public/js/client.js:15968
+#: public/js/client.js:15942
 msgid "{player} captured the {team} flag"
 msgstr "{player} užgrobė komandos {team} vėliavą"
 
-#: public/js/client.js:17595 public/js/client.js:17596
+#: public/js/client.js:17569 public/js/client.js:17570
 msgid "Exit WebXR VR Mode"
 msgstr "Išeiti iš WebXR VR režimo"
 
-#: public/js/client.js:18312
+#: public/js/client.js:18286
 msgid "Show translation"
 msgstr "Rodyti vertimą"
 
-#: public/js/client.js:18312
+#: public/js/client.js:18286
 msgid "Show original"
 msgstr "Rodyti originalą"
 
-#: public/js/client.js:18320
+#: public/js/client.js:18294
 msgid "Downloading {percent}%"
 msgstr "Atsisiunčiama {percent}%"
 
-#: public/js/client.js:18324
+#: public/js/client.js:18298
 msgid "Translation unavailable"
 msgstr "Vertimas negalimas"
 
-#: public/js/client.js:18324
+#: public/js/client.js:18298
 msgid "Translate"
 msgstr "Versti"
 
-#: public/js/flags.mjs:2101
+#: public/js/flags.mjs:2107
 msgid "Team Flags"
 msgstr "Komandų vėliavos"
 
-#: public/js/flags.mjs:2102
+#: public/js/flags.mjs:2108
 msgid "Good Flags"
 msgstr "Geros vėliavos"
 
-#: public/js/flags.mjs:2103
+#: public/js/flags.mjs:2109
 msgid "Bad Flags"
 msgstr "Blogos vėliavos"
 
@@ -2296,107 +2296,107 @@ msgstr "Derinimo režimas: ĮJUNGTAS"
 msgid "Debug Mode: OFF"
 msgstr "Derinimo režimas: IŠJUNGTAS"
 
-#: public/js/hud.js:821 server.js:2127
+#: public/js/hud.js:827 server.js:2160
 msgid "Red"
 msgstr "Raudona"
 
-#: public/js/hud.js:822 server.js:2127
+#: public/js/hud.js:828 server.js:2160
 msgid "Green"
 msgstr "Žalia"
 
-#: public/js/hud.js:823 server.js:2127
+#: public/js/hud.js:829 server.js:2160
 msgid "Blue"
 msgstr "Mėlyna"
 
-#: public/js/hud.js:824 server.js:2127
+#: public/js/hud.js:830 server.js:2160
 msgid "Purple"
 msgstr "Violetinė"
 
-#: public/js/hud.js:877
+#: public/js/hud.js:883
 msgid "GAME OVER"
 msgstr "ŽAIDIMAS BAIGTAS"
 
-#: public/js/hud.js:894
+#: public/js/hud.js:900
 msgid "Score (W-L) Size"
 msgstr "Taškai (L-P) Dydis"
 
-#: public/js/hud.js:994 public/js/hud.js:1038
+#: public/js/hud.js:1000 public/js/hud.js:1044
 msgid "K-D"
 msgstr "N-Ž"
 
-#: public/js/hud.js:994 public/js/hud.js:1038
+#: public/js/hud.js:1000 public/js/hud.js:1044
 msgid "Kills-Deaths"
 msgstr "Nužudymai-Žūtys"
 
-#: public/js/hud.js:995 public/js/hud.js:1475
+#: public/js/hud.js:1001 public/js/hud.js:1481
 msgid "Rank {score}"
 msgstr "Vieta {score}"
 
-#: public/js/hud.js:1033 public/js/hud.js:1421
+#: public/js/hud.js:1039 public/js/hud.js:1427
 msgid "Player"
 msgstr "Žaidėjas"
 
-#: public/js/hud.js:1042
+#: public/js/hud.js:1048
 msgid "1v1"
 msgstr "1v1"
 
-#: public/js/hud.js:1048
+#: public/js/hud.js:1054
 msgid "desktop"
 msgstr "kompiuteris"
 
-#: public/js/hud.js:1049
+#: public/js/hud.js:1055
 msgid "mobile"
 msgstr "mobilusis"
 
-#: public/js/hud.js:1050
+#: public/js/hud.js:1056
 msgid "VR headset"
 msgstr "VR akiniai"
 
-#: public/js/hud.js:1051
+#: public/js/hud.js:1057
 msgid "BZFlag client"
 msgstr "BZFlag klientas"
 
-#: public/js/hud.js:1052
+#: public/js/hud.js:1058
 msgid "robot"
 msgstr "robotas"
 
-#: public/js/hud.js:1053
+#: public/js/hud.js:1059
 msgid "server bot"
 msgstr "serverio botas"
 
-#: public/js/hud.js:1058
+#: public/js/hud.js:1064
 msgid "UDP in"
 msgstr "UDP į"
 
-#: public/js/hud.js:1059
+#: public/js/hud.js:1065
 msgid "UDP both ways"
 msgstr "UDP abiem kryptimis"
 
-#: public/js/hud.js:1061
+#: public/js/hud.js:1067
 msgid "WebRTC both ways"
 msgstr "WebRTC abiem kryptimis"
 
-#: public/js/hud.js:1062
+#: public/js/hud.js:1068
 msgid "WebRTC through TURN"
 msgstr "WebRTC per TURN"
 
-#: public/js/hud.js:1063
+#: public/js/hud.js:1069
 msgid "WebRTC through TURN both ways"
 msgstr "WebRTC per TURN abiem kryptimis"
 
-#: public/js/hud.js:1065
+#: public/js/hud.js:1071
 msgid "WebTransport both ways"
 msgstr "WebTransport abiem kryptimis"
 
-#: public/js/hud.js:1119
+#: public/js/hud.js:1125
 msgid "{n} self"
 msgstr "savižud.: {n}"
 
-#: public/js/hud.js:1173
+#: public/js/hud.js:1179
 msgid "Watching"
 msgstr "Žiūri"
 
-#: public/js/hud.js:1177
+#: public/js/hud.js:1183
 msgid "(rabbit)"
 msgstr "(triušis)"
 
@@ -2610,7 +2610,7 @@ msgid "{n} more lines"
 msgstr "dar eilučių: {n}"
 
 #: public/js/inspect-panel.mjs:123 public/js/inspect-panel.mjs:188
-#: server.js:1960
+#: server.js:1993
 msgid "World"
 msgstr "Pasaulis"
 
@@ -2743,11 +2743,11 @@ msgstr "nežinomas intervalo pavadinimas: „{label}“"
 msgid "bad range value, '{value}'"
 msgstr "bloga intervalo reikšmė: „{value}“"
 
-#: public/js/list-page.js:502
+#: public/js/list-page.js:546
 msgid ", filtered {count}"
 msgstr ", atfiltruota: {count}"
 
-#: public/js/list-page.js:539
+#: public/js/list-page.js:621
 msgid "Clear filter"
 msgstr "Išvalyti filtrą"
 
@@ -2945,362 +2945,366 @@ msgstr "Nepavyko pradėti mikrofono įrašymo."
 msgid "Could not enumerate microphone devices."
 msgstr "Nepavyko išvardyti mikrofonų."
 
-#: server.js:1893
+#: server.js:1926
 msgid "Map hash"
 msgstr "Žemėlapio maiša"
 
-#: server.js:1932
+#: server.js:1965
 msgid "ignored by bzo"
 msgstr "bzo nepaiso"
 
-#: server.js:1932
+#: server.js:1965
 msgid "read by bzo"
 msgstr "bzo skaito"
 
-#: server.js:1934
+#: server.js:1967
 msgid "{read}/{total} set"
 msgstr "nustatyta {read}/{total}"
 
-#: server.js:1956 server.js:2625 server.js:3124
+#: server.js:1989 server.js:2661 server.js:3162
 msgid "Version"
 msgstr "Versija"
 
-#: server.js:1957
+#: server.js:1990
 msgid "BZFlag hash"
 msgstr "BZFlag maiša"
 
-#: server.js:1960
+#: server.js:1993
 msgid "temporary"
 msgstr "laikina"
 
-#: server.js:1963
+#: server.js:1996
 msgid "Variables"
 msgstr "Kintamieji"
 
-#: server.js:1964
+#: server.js:1997
 msgid "sent/inflated"
 msgstr "išsiųsta/išskleista"
 
-#: server.js:2008 server.js:2037
+#: server.js:2041 server.js:2070
 msgid "Classic Capture-the-Flag"
 msgstr "Klasikinis vėliavos užgrobimas"
 
-#: server.js:2009 server.js:2040
+#: server.js:2042 server.js:2073
 msgid "Rabbit Chase"
 msgstr "Triušio gaudynės"
 
-#: server.js:2010
+#: server.js:2043
 msgid "Open (Teamless) Free-For-All"
 msgstr "Atviras (be komandų) visi prieš visus"
 
-#: server.js:2011
+#: server.js:2044
 msgid "Free-style"
 msgstr "Laisvas stilius"
 
-#: server.js:2034
+#: server.js:2067
 msgid "Replay server"
 msgstr "Įrašų serveris"
 
-#: server.js:2042
+#: server.js:2075
 msgid "Free-for-all"
 msgstr "Visi prieš visus"
 
-#: server.js:2077
+#: server.js:2110
 msgid "World hash: sorts rows sharing a world together, unhashed last"
 msgstr ""
 "Pasaulio maiša: eilutes su tuo pačiu pasauliu rikiuoja greta, be maišos – "
 "gale"
 
-#: server.js:2099
+#: server.js:2132
 msgid "just started"
 msgstr "ką tik paleistas"
 
-#: server.js:2100
+#: server.js:2133
 msgid "{minutes}m"
 msgstr "{minutes} min"
 
-#: server.js:2102
+#: server.js:2135
 msgid "{hours}h {minutes}m"
 msgstr "{hours} val. {minutes} min"
 
-#: server.js:2103
+#: server.js:2136
 msgid "{days}d {hours}h"
 msgstr "{days} d. {hours} val."
 
-#: server.js:2127 server.js:2583 server.js:2834
+#: server.js:2160 server.js:2619 server.js:2870
 msgid "Observers"
 msgstr "Stebėtojai"
 
-#: server.js:2146 server.js:2588
+#: server.js:2179 server.js:2624
 msgid "none"
 msgstr "nėra"
 
-#: server.js:2151
+#: server.js:2184
 msgid "{servers} with {players} player"
 msgstr "serverių: {servers}, žaidėjų: {players}"
 
-#: server.js:2152
+#: server.js:2185
 msgid "{servers} with {players} players"
 msgstr "serverių: {servers}, žaidėjų: {players}"
 
-#: server.js:2153
+#: server.js:2186
 msgid ", {bots} bot"
 msgstr ", botų: {bots}"
 
-#: server.js:2153
+#: server.js:2186
 msgid ", {bots} bots"
 msgstr ", botų: {bots}"
 
-#: server.js:2164
+#: server.js:2197
 msgid ", {waiting} without overview"
 msgstr ", be apžvalgos: {waiting}"
 
-#: server.js:2190
+#: server.js:2223
 msgid "Super Flags"
 msgstr "Supervėliavos"
 
-#: server.js:2191
+#: server.js:2224
 msgid "Antidote Flags"
 msgstr "Priešnuodžio vėliavos"
 
-#: server.js:2195
+#: server.js:2228
 msgid "{secs} sec To Drop Bad Flag"
 msgstr "Bloga vėliava nukrenta po {secs} s"
 
-#: server.js:2196
+#: server.js:2229
 msgid "{secs} secs To Drop Bad Flag"
 msgstr "Bloga vėliava nukrenta po {secs} s"
 
-#: server.js:2200
+#: server.js:2233
 msgid "{wins} Win Drops Bad Flag"
 msgstr "Pergalių blogai vėliavai numesti: {wins}"
 
-#: server.js:2200
+#: server.js:2233
 msgid "{wins} Wins Drops Bad Flag"
 msgstr "Pergalių blogai vėliavai numesti: {wins}"
 
-#: server.js:2202
+#: server.js:2235
 msgid "No Teamkills"
 msgstr "Be savųjų žudymo"
 
-#: server.js:2205
+#: server.js:2238
 msgid "Handicap"
 msgstr "Handikapas"
 
-#: server.js:2206
+#: server.js:2239
 msgid "Inertia"
 msgstr "Inercija"
 
-#: server.js:2209
+#: server.js:2242
 msgid "No Bots"
 msgstr "Be botų"
 
-#: server.js:2213
+#: server.js:2246
 msgid "Guests Watch"
 msgstr "Svečiai stebi"
 
-#: server.js:2214
+#: server.js:2247
 msgid "No Guests"
 msgstr "Be svečių"
 
-#: server.js:2215
+#: server.js:2248
 msgid "Guests Play"
 msgstr "Svečiai žaidžia"
 
-#: server.js:2216
+#: server.js:2249
 msgid "Registered Only"
 msgstr "Tik registruoti"
 
-#: server.js:2217
+#: server.js:2250
 msgid "Guests Chat"
 msgstr "Svečiai kalbasi"
 
-#: server.js:2218
+#: server.js:2251
 msgid "Guests Muted"
 msgstr "Svečiai nutildyti"
 
-#: server.js:2221
+#: server.js:2254
 msgid "Time limit"
 msgstr "Laiko limitas"
 
-#: server.js:2222
+#: server.js:2255
 msgid "Max team score"
 msgstr "Didž. komandos taškai"
 
-#: server.js:2223
+#: server.js:2256
 msgid "Max player score"
 msgstr "Didž. žaidėjo taškai"
 
-#: server.js:2230
+#: server.js:2263
 msgid "{shots} Shot"
 msgstr "Šūvių: {shots}"
 
-#: server.js:2231
+#: server.js:2264
 msgid "{shots} Shots"
 msgstr "Šūvių: {shots}"
 
-#: server.js:2255
+#: server.js:2288
 msgid "Bots"
 msgstr "Botai"
 
-#: server.js:2296 server.js:2490 server.js:2736
+#: server.js:2329 server.js:2526 server.js:2772
 msgid "None."
 msgstr "Nėra."
 
-#: server.js:2335
+#: server.js:2368
 msgid "hashing…"
 msgstr "skaičiuojama maiša…"
 
-#: server.js:2354
+#: server.js:2387
 msgid "Obj"
 msgstr "Obj."
 
-#: server.js:2358
+#: server.js:2391
 msgid "Obstacles in the world"
 msgstr "Kliūtys pasaulyje"
 
-#: server.js:2359
+#: server.js:2392
 msgid "Mesh faces in the world"
 msgstr "Tinklų paviršiai pasaulyje"
 
-#: server.js:2360 server.js:2629
+#: server.js:2393 server.js:2665
 msgid "World size"
 msgstr "Pasaulio dydis"
 
-#: server.js:2362
+#: server.js:2395
 msgid "Map file name"
 msgstr "Žemėlapio failo pavadinimas"
 
-#: server.js:2362 server.js:2520
+#: server.js:2395 server.js:2556 server.js:2883
 msgid "Name"
 msgstr "Pavadinimas"
 
-#: server.js:2363
+#: server.js:2396
 msgid "Game style the map sets"
 msgstr "Žaidimo stilius, kurį nustato žemėlapis"
 
-#: server.js:2379 server.js:2535 server.js:2955
+#: server.js:2412 server.js:2571 server.js:2993
 msgid "View map"
 msgstr "Peržiūrėti žemėlapį"
 
-#: server.js:2380
+#: server.js:2415 server.js:3054
+msgid "Practice"
+msgstr ""
+
+#: server.js:2416
 msgid "Still hashing"
 msgstr "Maiša dar skaičiuojama"
 
-#: server.js:2470
+#: server.js:2506
 msgid "Overview of {name}"
 msgstr "Apžvalga: {name}"
 
-#: server.js:2502
+#: server.js:2538
 msgid "unreadable: {error}"
 msgstr "neperskaitoma: {error}"
 
-#: server.js:2503
+#: server.js:2539
 msgid " -- {viewers} watching"
 msgstr " – žiūri: {viewers}"
 
-#: server.js:2516
+#: server.js:2552
 msgid "When it was recorded (UTC)"
 msgstr "Kada įrašyta (UTC)"
 
-#: server.js:2517
+#: server.js:2553
 msgid "How long it runs"
 msgstr "Kiek trunka"
 
-#: server.js:2518
+#: server.js:2554
 msgid "Players in it, observers not counted"
 msgstr "Žaidėjai jame, stebėtojai neskaičiuojami"
 
-#: server.js:2520
+#: server.js:2556
 msgid "Replay file name"
 msgstr "Įrašo failo pavadinimas"
 
-#: server.js:2521
+#: server.js:2557
 msgid "The map it was played on"
 msgstr "Žemėlapis, kuriame žaista"
 
-#: server.js:2533
+#: server.js:2569
 msgid "Unreadable"
 msgstr "Neperskaitoma"
 
-#: server.js:2566
+#: server.js:2602
 msgid "{viewers} watching, at {time}"
 msgstr "žiūri: {viewers}, laikas {time}"
 
-#: server.js:2581
+#: server.js:2617
 msgid "Recorded by"
 msgstr "Įrašė"
 
-#: server.js:2584
+#: server.js:2620
 msgid "Now"
 msgstr "Dabar"
 
-#: server.js:2586
+#: server.js:2622
 msgid "Error"
 msgstr "Klaida"
 
-#: server.js:2616
+#: server.js:2652
 msgid "Boxes"
 msgstr "Dėžės"
 
-#: server.js:2617
+#: server.js:2653
 msgid "Pyramids"
 msgstr "Piramidės"
 
-#: server.js:2618
+#: server.js:2654
 msgid "Meshes"
 msgstr "Tinklai"
 
-#: server.js:2619
+#: server.js:2655
 msgid "Bases"
 msgstr "Bazės"
 
-#: server.js:2620
+#: server.js:2656
 msgid "Teleporters"
 msgstr "Teleportai"
 
-#: server.js:2624
+#: server.js:2660
 msgid "Author"
 msgstr ""
 
-#: server.js:2626
+#: server.js:2662
 msgid "License"
 msgstr ""
 
-#: server.js:2627
+#: server.js:2663 server.js:2884
 msgid "Description"
 msgstr ""
 
-#: server.js:2630
+#: server.js:2666
 msgid "Has"
 msgstr "Turi"
 
-#: server.js:2631
+#: server.js:2667
 msgid "Hashed"
 msgstr "Maiša apskaičiuota"
 
-#: server.js:2631
+#: server.js:2667
 msgid "generated at boot"
 msgstr "sugeneruota paleidžiant"
 
-#: server.js:2631
+#: server.js:2667
 msgid "yes"
 msgstr "taip"
 
-#: server.js:2631
+#: server.js:2667
 msgid "not yet"
 msgstr "dar ne"
 
 # review: Maiša is doubtful for a file hash; maišos reikšmė or santrauka?
-#: server.js:2632
+#: server.js:2668
 msgid "Hash"
 msgstr "Maiša"
 
-#: server.js:2633
+#: server.js:2669
 msgid "Modified"
 msgstr "Pakeista"
 
-#: server.js:2652
+#: server.js:2688
 msgid ""
 "Plain text is a glob over the address, description, version, hash and owner "
 "-- {examples} -- and a word with no {star} or {query} in it is wrapped in "
@@ -3310,7 +3314,7 @@ msgstr ""
 "savininkui – {examples} – o žodis be {star} ar {query} apgaubiamas abiem, "
 "todėl atitinka bet kur."
 
-#: server.js:2655
+#: server.js:2691
 msgid ""
 "A leading {slash} starts filters instead: comma-separated, combined with "
 "{and}."
@@ -3318,11 +3322,11 @@ msgstr ""
 "Pradinis {slash} vietoj to pradeda filtrus: atskirtus kableliais, sujungtus "
 "per {and}."
 
-#: server.js:2656
+#: server.js:2692
 msgid "and"
 msgstr "ir"
 
-#: server.js:2658
+#: server.js:2694
 msgid ""
 "A second {slash} starts another set, and a server matching either set is "
 "shown."
@@ -3330,79 +3334,79 @@ msgstr ""
 "Antras {slash} pradeda kitą rinkinį, ir rodomas serveris, atitinkantis bet "
 "kurį rinkinį."
 
-#: server.js:2659
+#: server.js:2695
 msgid "{hash} begins a comment."
 msgstr "{hash} pradeda komentarą."
 
-#: server.js:2660
+#: server.js:2696
 msgid "Booleans -- {on} for on, {off} for off"
 msgstr "Loginiai – {on} įjungta, {off} išjungta"
 
-#: server.js:2661
+#: server.js:2697
 msgid "Free-for-all with teams"
 msgstr "Visi prieš visus su komandomis"
 
-#: server.js:2662
+#: server.js:2698
 msgid "Open free-for-all, no teams"
 msgstr "Atviras visi prieš visus, be komandų"
 
-#: server.js:2663
+#: server.js:2699
 msgid "Capture-the-flag"
 msgstr "Vėliavos užgrobimas"
 
-#: server.js:2664
+#: server.js:2700
 msgid "Rabbit chase"
 msgstr "Triušio gaudynės"
 
-#: server.js:2665
+#: server.js:2701
 msgid "Tanks can jump unaided"
 msgstr "Tankai gali šokti patys"
 
-#: server.js:2666
+#: server.js:2702
 msgid "Shots ricochet"
 msgstr "Šūviai atšoka"
 
-#: server.js:2667
+#: server.js:2703
 msgid "Score affects tank performance"
 msgstr "Taškai veikia tanko galimybes"
 
-#: server.js:2668
+#: server.js:2704
 msgid "Tanks have inertia"
 msgstr "Tankai turi inerciją"
 
-#: server.js:2669
+#: server.js:2705
 msgid "Antidote flags are spawned"
 msgstr "Atsiranda priešnuodžio vėliavos"
 
-#: server.js:2670
+#: server.js:2706
 msgid "A replay server"
 msgstr "Įrašų serveris"
 
-#: server.js:2671
+#: server.js:2707
 msgid "The pane has a map overview"
 msgstr "Skydelyje yra žemėlapio apžvalga"
 
-#: server.js:2672
+#: server.js:2708
 msgid "A generated world, which usually changes on restart"
 msgstr "Sugeneruotas pasaulis, kuris paprastai keičiasi paleidus iš naujo"
 
-#: server.js:2673
+#: server.js:2709
 msgid "Autopilot and robots allowed"
 msgstr "Autopilotas ir robotai leidžiami"
 
-#: server.js:2674
+#: server.js:2710
 msgid "Players with no bzflag.org login may join to observe"
 msgstr "Žaidėjai be bzflag.org prisijungimo gali jungtis stebėti"
 
-#: server.js:2675
+#: server.js:2711
 msgid "Players with no bzflag.org login may spawn"
 msgstr "Žaidėjai be bzflag.org prisijungimo gali atsirasti žaidime"
 
-#: server.js:2676
+#: server.js:2712
 msgid "Players with no bzflag.org login may chat"
 msgstr "Žaidėjai be bzflag.org prisijungimo gali kalbėtis"
 
-#: server.js:2678
+#: server.js:2714
 msgid ""
 "For {bots}, {guestWatch}, {guests} and {guestChat}, a server bzo has not "
 "found out about matches neither {plus} nor {minus}."
@@ -3410,68 +3414,68 @@ msgstr ""
 "Filtrams {bots}, {guestWatch}, {guests} ir {guestChat} serveris, apie kurį "
 "bzo dar nieko nesužinojo, neatitinka nei {plus}, nei {minus}."
 
-#: server.js:2682
+#: server.js:2718
 msgid "Numbers -- a name, then {operators}, then a number"
 msgstr "Skaičiai – pavadinimas, tada {operators}, tada skaičius"
 
-#: server.js:2685
+#: server.js:2721
 msgid "Active shots a tank may have"
 msgstr "Aktyvūs šūviai, kuriuos gali turėti tankas"
 
-#: server.js:2686
+#: server.js:2722
 msgid "Players now, observers excluded"
 msgstr "Žaidėjai dabar, be stebėtojų"
 
-#: server.js:2687
+#: server.js:2723
 msgid "Bots now"
 msgstr "Botai dabar"
 
-#: server.js:2688
+#: server.js:2724
 msgid "Playing slots still free"
 msgstr "Dar laisvos žaidėjų vietos"
 
-#: server.js:2689
+#: server.js:2725
 msgid "Colour teams the server offers"
 msgstr "Spalvų komandos, kurias siūlo serveris"
 
-#: server.js:2690
+#: server.js:2726
 msgid "Time limit, in seconds"
 msgstr "Laiko limitas sekundėmis"
 
-#: server.js:2691
+#: server.js:2727
 msgid "The server's own player ceiling"
 msgstr "Paties serverio žaidėjų riba"
 
-#: server.js:2692
+#: server.js:2728
 msgid "Team score that ends the game"
 msgstr "Komandos taškai, kuriais baigiasi žaidimas"
 
-#: server.js:2693
+#: server.js:2729
 msgid "Player score that ends the game"
 msgstr "Žaidėjo taškai, kuriais baigiasi žaidimas"
 
-#: server.js:2694
+#: server.js:2730
 msgid "Kills that shed a bad flag"
 msgstr "Nužudymai, po kurių nukrenta bloga vėliava"
 
-#: server.js:2695
+#: server.js:2731
 msgid "Tenths of a second to shed a bad flag"
 msgstr "Sekundės dešimtosios, kol nukrenta bloga vėliava"
 
-#: server.js:2696
+#: server.js:2732
 msgid "Players on rogue, red, green, blue, purple, observer"
 msgstr ""
 "Žaidėjai komandose: vienišiai, raudona, žalia, mėlyna, violetinė, stebėtojai"
 
-#: server.js:2697
+#: server.js:2733
 msgid "That team's maximum"
 msgstr "Tos komandos maksimumas"
 
-#: server.js:2698
+#: server.js:2734
 msgid "That team's free slots"
 msgstr "Tos komandos laisvos vietos"
 
-#: server.js:2700
+#: server.js:2736
 msgid ""
 "Patterns -- a name, then {glob} for a glob or {regex} for a regular "
 "expression"
@@ -3479,39 +3483,39 @@ msgstr ""
 "Šablonai – pavadinimas, tada {glob} glob šablonui arba {regex} reguliariajam "
 "reiškiniui"
 
-#: server.js:2703
+#: server.js:2739
 msgid "The address, host and port"
 msgstr "Adresas, mazgas ir prievadas"
 
-#: server.js:2704
+#: server.js:2740
 msgid "The description"
 msgstr "Aprašymas"
 
-#: server.js:2705
+#: server.js:2741
 msgid "Either one"
 msgstr "Bet kuris iš jų"
 
-#: server.js:2706
+#: server.js:2742
 msgid "The world hash the pane shows"
 msgstr "Pasaulio maiša, kurią rodo skydelis"
 
-#: server.js:2707
+#: server.js:2743
 msgid "The server's version: {bzo} or bzfs's own build"
 msgstr "Serverio versija: {bzo} arba paties bzfs versija"
 
-#: server.js:2708
+#: server.js:2744
 msgid "The bzflag.org account that registered it"
 msgstr "bzflag.org paskyra, kuri jį užregistravo"
 
-#: server.js:2709
+#: server.js:2745
 msgid "The IP address the list server has for it"
 msgstr "IP adresas, kurį jam turi sąrašo serveris"
 
-#: server.js:2710
+#: server.js:2746
 msgid "Any one world variable it sets, as {pair}"
 msgstr "Bet kuris jo nustatomas pasaulio kintamasis, kaip {pair}"
 
-#: server.js:2712
+#: server.js:2748
 msgid ""
 "A capitalised pattern name matches case-sensitively: {lower} ignores case, "
 "{upper} does not."
@@ -3519,56 +3523,56 @@ msgstr ""
 "Šablono pavadinimas didžiąja raide skiria raidžių dydį: {lower} jo neskiria, "
 "{upper} skiria."
 
-#: server.js:2715
+#: server.js:2751
 msgid "Examples"
 msgstr "Pavyzdžiai"
 
-#: server.js:2716
+#: server.js:2752
 msgid "Two or three shots, and somebody playing"
 msgstr "Du ar trys šūviai ir kas nors žaidžia"
 
-#: server.js:2717
+#: server.js:2753
 msgid "Capture-the-flag between exactly two teams"
 msgstr "Vėliavos užgrobimas tarp lygiai dviejų komandų"
 
-#: server.js:2718
+#: server.js:2754
 msgid "Leagues, by description"
 msgstr "Lygos, pagal aprašymą"
 
-#: server.js:2719
+#: server.js:2755
 msgid "bzo servers only"
 msgstr "Tik bzo serveriai"
 
-#: server.js:2720
+#: server.js:2756
 msgid "No version known yet"
 msgstr "Versija dar nežinoma"
 
-#: server.js:2721
+#: server.js:2757
 msgid "Somebody is watching"
 msgstr "Kas nors stebi"
 
-#: server.js:2722
+#: server.js:2758
 msgid "Rabbit chase, ricochet, three shots"
 msgstr "Triušio gaudynės, rikošetas, trys šūviai"
 
-#: server.js:2723
+#: server.js:2759
 msgid "Either capture-the-flag or rabbit chase"
 msgstr "Vėliavos užgrobimas arba triušio gaudynės"
 
-#: server.js:2724
+#: server.js:2760
 msgid "No map overview yet"
 msgstr "Dar nėra žemėlapio apžvalgos"
 
-#: server.js:2725
+#: server.js:2761
 msgid "Lists {variable} at all, on or off; {off} is the one that means off"
 msgstr ""
 "Apskritai nurodo {variable}, įjungtą ar išjungtą; {off} reiškia išjungta"
 
-#: server.js:2835
+#: server.js:2871
 msgid "Bots, blank where unknown"
 msgstr "Botai, tuščia, kai nežinoma"
 
-#: server.js:2837
+#: server.js:2873
 msgid ""
 "Game type: yellow free-for-all, red capture-the-flag, white rabbit chase, "
 "cyan replay"
@@ -3576,143 +3580,139 @@ msgstr ""
 "Žaidimo tipas: geltona – visi prieš visus, raudona – vėliavos užgrobimas, "
 "balta – triušio gaudynės, žydra – įrašas"
 
-#: server.js:2839
+#: server.js:2875
 msgid "Superflags"
 msgstr "Supervėliavos"
 
-#: server.js:2842
+#: server.js:2878
 msgid "This server already holds an import of that map"
 msgstr "Šis serveris jau turi šio žemėlapio importą"
 
-#: server.js:2846
-msgid "The name, or the address when a server has none"
-msgstr "Pavadinimas arba adresas, kai serveris jo neturi"
+#: server.js:2883
+msgid "Sort by address"
+msgstr ""
 
-#: server.js:2846
-msgid "Name & Description"
-msgstr "Pavadinimas ir aprašymas"
+#: server.js:2884
+msgid "Sort by description"
+msgstr ""
 
-#: server.js:2858
+#: server.js:2896
 msgid "Filter syntax"
 msgstr "Filtro sintaksė"
 
-#: server.js:2931
+#: server.js:2969
 msgid "Left out of bzo's checks at its operator's request"
 msgstr "Operatoriaus prašymu neįtrauktas į bzo patikras"
 
-#: server.js:2932
+#: server.js:2970
 msgid "This server bans bzo"
 msgstr "Šis serveris uždraudė bzo"
 
-#: server.js:2988
+#: server.js:3026
 msgid "Address"
 msgstr "Adresas"
 
-#: server.js:2990 server.js:3112 server.js:3128 server.js:6347
+#: server.js:3028 server.js:3150 server.js:3166 server.js:6445
 msgid "Owner"
 msgstr "Savininkas"
 
-#: server.js:2991
+#: server.js:3029
 msgid "Imported"
 msgstr "Importuota"
 
-#: server.js:3005 server.js:3074
+#: server.js:3043 server.js:3112
 msgid "Launch"
 msgstr "Paleisti"
 
-#: server.js:3011 server.js:3071 server/discovery.cjs:265
+#: server.js:3049 server.js:3109 server/discovery.cjs:265
 msgid "Play"
 msgstr "Žaisti"
 
-#: server.js:3016
-msgid "Practice"
-msgstr ""
-
-#: server.js:3020
+#: server.js:3058
 msgid "Import"
 msgstr "Importuoti"
 
-#: server.js:3061
+#: server.js:3099
 msgid "Enter game"
 msgstr "Įeiti į žaidimą"
 
-#: server.js:3073
+#: server.js:3111
 msgid "Login and Play"
 msgstr "Prisijungti ir žaisti"
 
-#: server.js:3111
+#: server.js:3149
 msgid "BZFlag server"
 msgstr "BZFlag serveris"
 
-#: server.js:3113
+#: server.js:3151
 msgid "Carried by"
 msgstr "Per"
 
-#: server.js:3127
+#: server.js:3165
 msgid "Up"
 msgstr "Veikia"
 
-#: server.js:3129
+#: server.js:3167
 msgid "Voice chat"
 msgstr "Balso pokalbis"
 
-#: server.js:3129
+#: server.js:3167
 msgid "configured"
 msgstr "sukonfigūruotas"
 
-#: server.js:3131
+#: server.js:3169
 msgid "Also at"
 msgstr "Taip pat"
 
-#: server.js:3182
+#: server.js:3220
 msgid "(admin)"
 msgstr "(admin)"
 
-#: server.js:3183
+#: server.js:3221
 msgid "Log out"
 msgstr "Atsijungti"
 
-#: server.js:3185
+#: server.js:3223
 msgid "Log in with your bzflag.org account to register a server"
 msgstr "Prisijunk su bzflag.org paskyra, kad užregistruotum serverį"
 
-#: server.js:3186
+#: server.js:3224
 msgid "Log in with your bzflag.org account"
 msgstr "Prisijunk su bzflag.org paskyra"
 
-#: server.js:3197
+#: server.js:3235
 msgid "maps"
 msgstr "žemėlapiai"
 
-#: server.js:3197
+#: server.js:3235
 msgid "replays"
 msgstr "įrašai"
 
-#: server.js:3198
+#: server.js:3236
 msgid "keys"
 msgstr "raktai"
 
-#: server.js:3198
+#: server.js:3236
 msgid "help"
 msgstr "pagalba"
 
-#: server.js:3202
+#: server.js:3240
 msgid "Imported {file} -- it is in the local maps table below."
 msgstr "Importuota: {file} – jis yra vietinių žemėlapių lentelėje žemiau."
 
-#: server.js:3204
+#: server.js:3242
 msgid "Import failed: {error}"
 msgstr "Importuoti nepavyko: {error}"
 
-#: server.js:3212
+#: server.js:3250
 msgid "bzo servers"
 msgstr "bzo serveriai"
 
-#: server.js:3451
+#: server.js:3489
 msgid "Public bzo servers - {count}"
 msgstr "Vieši bzo serveriai – {count}"
 
-#: server.js:3452
+#: server.js:3490
 msgid ""
 "From the designated bzo list server, {server} -- pick a row to read it; "
 "Enter, or the pane's own link, goes in."
@@ -3720,15 +3720,15 @@ msgstr ""
 "Iš paskirtojo bzo sąrašo serverio, {server} – pasirink eilutę, kad ją "
 "perskaitytum; Enter arba paties skydelio nuoroda įveda į žaidimą."
 
-#: server.js:3453
+#: server.js:3491
 msgid "disabled on this instance"
 msgstr "šiame egzemplioriuje išjungta"
 
-#: server.js:3457
+#: server.js:3495
 msgid "Public BZFlag servers - {count}"
 msgstr "Vieši BZFlag serveriai – {count}"
 
-#: server.js:3458
+#: server.js:3496
 msgid ""
 "From the public list server (my.bzflag.org), cached {seconds}s ago -- "
 "{refresh}."
@@ -3736,22 +3736,22 @@ msgstr ""
 "Iš viešo sąrašo serverio (my.bzflag.org), podėlyje prieš {seconds} s – "
 "{refresh}."
 
-#: server.js:3459
+#: server.js:3497
 msgid "refresh"
 msgstr "atnaujinti"
 
-#: server.js:3461
+#: server.js:3499
 msgid ""
 "Pick a row to read it; its link views that map, and does not enter that game."
 msgstr ""
 "Pasirink eilutę, kad ją perskaitytum; jos nuoroda rodo tą žemėlapį, bet į "
 "žaidimą neįveda."
 
-#: server.js:3465
+#: server.js:3503
 msgid "Local maps - {count}"
 msgstr "Vietiniai žemėlapiai – {count}"
 
-#: server.js:3466
+#: server.js:3504
 msgid ""
 "Already in this server's {directory} -- pick a row to read it; its link "
 "views that map."
@@ -3759,11 +3759,11 @@ msgstr ""
 "Jau yra šio serverio kataloge {directory} – pasirink eilutę, kad ją "
 "perskaitytum; jos nuoroda rodo tą žemėlapį."
 
-#: server.js:3471
+#: server.js:3509
 msgid "Local replays - {count}"
 msgstr "Vietiniai įrašai – {count}"
 
-#: server.js:3472
+#: server.js:3510
 msgid ""
 "bzfs recordings in this server's {directory} -- pick a row to read it; Watch "
 "plays it to everyone watching that replay."
@@ -3771,7 +3771,7 @@ msgstr ""
 "bzfs įrašai šio serverio kataloge {directory} – pasirink eilutę, kad ją "
 "perskaitytum; Stebėti paleidžia jį visiems, kas žiūri tą įrašą."
 
-#: server.js:3487
+#: server.js:3525
 msgid ""
 "bzo {version} (build {build}): BZFlag in the browser, on desktop, phone and "
 "headset, and this list of the servers to play it on."
@@ -3779,7 +3779,7 @@ msgstr ""
 "bzo {version} (versija {build}): BZFlag naršyklėje, kompiuteryje, telefone "
 "ir šalme, ir šis serverių, kuriuose galima žaisti, sąrašas."
 
-#: server.js:3490
+#: server.js:3528
 msgid ""
 "Copyright (C) 2025-2026 Tim Riker. Free software under the {license}; source "
 "at {source}."
@@ -3787,7 +3787,7 @@ msgstr ""
 "Copyright (C) 2025-2026 Tim Riker. Laisva programinė įranga pagal {license}; "
 "išeities kodas: {source}."
 
-#: server.js:3494
+#: server.js:3532
 msgid ""
 "Run a BZFlag server? {page} says when bzo visits it, and how to ask it to "
 "stay away."
@@ -3795,19 +3795,19 @@ msgstr ""
 "Valdote BZFlag serverį? {page} paaiškina, kada bzo jį lanko ir kaip "
 "paprašyti to nedaryti."
 
-#: server.js:3495
+#: server.js:3533
 msgid "bzo on your BZFlag server"
 msgstr "bzo jūsų BZFlag serveryje"
 
-#: server.js:3553
+#: server.js:3591
 msgid "Could not reach the BZFlag list server. Try again shortly."
 msgstr "Nepavyko pasiekti BZFlag sąrašo serverio. Netrukus bandyk dar kartą."
 
-#: server.js:6304
+#: server.js:6402
 msgid "List server key"
 msgstr "Sąrašo serverio raktas"
 
-#: server.js:6306
+#: server.js:6404
 msgid ""
 "This instance is not the designated bzo list server. Manage this server's "
 "key at {link}."
@@ -3815,15 +3815,15 @@ msgstr ""
 "Šis egzempliorius nėra paskirtasis bzo sąrašo serveris. Šio serverio raktą "
 "tvarkyk čia: {link}."
 
-#: server.js:6309
+#: server.js:6407
 msgid "The list server is disabled on this instance ({setting} is empty)."
 msgstr "Sąrašo serveris šiame egzemplioriuje išjungtas ({setting} tuščias)."
 
-#: server.js:6316
+#: server.js:6414
 msgid "Generate key"
 msgstr "Sukurti raktą"
 
-#: server.js:6318
+#: server.js:6416
 msgid ""
 "Enter the server's own {setting} -- the same address it already answers "
 "admin-whitelist probes on."
@@ -3831,7 +3831,7 @@ msgstr ""
 "Įvesk paties serverio {setting} – tą patį adresą, kuriuo jis jau atsako į "
 "admin-whitelist patikras."
 
-#: server.js:6321
+#: server.js:6419
 msgid ""
 "The list server calls this address back to validate a report; it never "
 "trusts one a report claims for itself."
@@ -3839,39 +3839,39 @@ msgstr ""
 "Sąrašo serveris skambina šiuo adresu atgal, kad patikrintų pranešimą; jis "
 "niekada nepasitiki adresu, kurį pranešimas nurodo pats."
 
-#: server.js:6323
+#: server.js:6421
 msgid "Log in above to register a server and generate a key."
 msgstr "Prisijunk viršuje, kad galėtum užregistruoti serverį ir sukurti raktą."
 
-#: server.js:6326
+#: server.js:6424
 msgid "never"
 msgstr "niekada"
 
-#: server.js:6327
+#: server.js:6425
 msgid "stale"
 msgstr "pasenęs"
 
-#: server.js:6328
+#: server.js:6426
 msgid "{players}/{max} players"
 msgstr "žaidėjai: {players}/{max}"
 
-#: server.js:6329
+#: server.js:6427
 msgid "never reported"
 msgstr "niekada nepranešė"
 
-#: server.js:6330
+#: server.js:6428
 msgid "Revoke"
 msgstr "Atšaukti"
 
-#: server.js:6331
+#: server.js:6429
 msgid "Failed"
 msgstr "Nepavyko"
 
-#: server.js:6332
+#: server.js:6430
 msgid "Key for {url}: {key}"
 msgstr "Raktas adresui {url}: {key}"
 
-#: server.js:6333
+#: server.js:6431
 msgid ""
 "Paste this into that server's Operator panel -- also readable from the table "
 "above any time."
@@ -3879,15 +3879,15 @@ msgstr ""
 "Įklijuok jį to serverio skydelyje Operatorius – bet kada jį rasi ir "
 "lentelėje aukščiau."
 
-#: server.js:6335
+#: server.js:6433
 msgid "All registered keys"
 msgstr "Visi registruoti raktai"
 
-#: server.js:6335
+#: server.js:6433
 msgid "Your keys"
 msgstr "Tavo raktai"
 
-#: server.js:6336
+#: server.js:6434
 msgid ""
 "This instance ({url}) is the designated bzo list server -- every other bzo "
 "instance reports here, so its own {list} can show the {table} above."
@@ -3896,477 +3896,477 @@ msgstr ""
 "visi kiti bzo egzemplioriai, todėl jų pačių puslapyje {list} matoma {table} "
 "aukščiau."
 
-#: server.js:6339
+#: server.js:6437
 msgid "bzo servers table"
 msgstr "bzo serverių lentelė"
 
-#: server.js:6341
+#: server.js:6439
 msgid "A {bzfs} server's key is a different one, from {link}."
 msgstr "{bzfs} serverio raktas yra kitas, iš {link}."
 
-#: server.js:6347
+#: server.js:6445
 msgid "Key"
 msgstr "Raktas"
 
-#: server.js:6348
+#: server.js:6446
 msgid "Requested"
 msgstr "Paprašyta"
 
-#: server.js:6348
+#: server.js:6446
 msgid "Last checked"
 msgstr "Paskutinį kartą tikrinta"
 
-#: server.js:6349
+#: server.js:6447
 msgid "Status"
 msgstr "Būsena"
 
-#: server.js:7672
+#: server.js:7770
 msgid "Match duration is {duration}"
 msgstr "Mačo trukmė: {duration}"
 
-#: server.js:7682
+#: server.js:7780
 msgid "Match started"
 msgstr "Mačas prasidėjo"
 
-#: server.js:8089
+#: server.js:8187
 msgid "Your score record will be saved while you are in observer mode."
 msgstr "Tavo taškai bus išsaugoti, kol esi stebėtojo režime."
 
-#: server.js:8094
+#: server.js:8192
 msgid "Your score has been restored."
 msgstr "Tavo taškai atkurti."
 
 #. TRANSLATORS: /me is a command name; keep it as it is
-#: server.js:8729
+#: server.js:8827
 msgid "{player}, the /me command requires an argument"
 msgstr "{player}, komandai /me reikia argumento"
 
-#: server.js:8787
+#: server.js:8885
 msgid "Commands (use /<command>? for one of them):"
 msgstr "Komandos (vienos aprašui naudok /<command>?):"
 
-#: server.js:8832
+#: server.js:8930
 msgid "Recording started"
 msgstr "Įrašymas pradėtas"
 
-#: server.js:8840 server.js:8897 server/messages-operator.cjs:332
+#: server.js:8938 server.js:8995 server/messages-operator.cjs:332
 msgid "Could not open for writing: {name} ({error})"
 msgstr "Nepavyko atidaryti rašymui: {name} ({error})"
 
-#: server.js:8844
+#: server.js:8942
 msgid "Recording stopped"
 msgstr "Įrašymas sustabdytas"
 
-#: server.js:8852
+#: server.js:8950
 msgid "Record size set to {mbytes}"
 msgstr "Įrašo dydis nustatytas: {mbytes}"
 
-#: server.js:8860
+#: server.js:8958
 msgid "Record rate set to {seconds}"
 msgstr "Įrašo dažnis nustatytas: {seconds}"
 
-#: server.js:8864
+#: server.js:8962
 msgid "Not Recording"
 msgstr "Neįrašoma"
 
-#: server.js:8868
+#: server.js:8966
 msgid "Filename:  {name}"
 msgstr "   Failas:  {name}"
 
-#: server.js:8869
+#: server.js:8967
 msgid "   saved:  {bytes} bytes / {packets} packets / {seconds} seconds"
 msgstr "Išsaugota:  {bytes} baitų / {packets} paketų / {seconds} sekundžių"
 
-#: server.js:8875
+#: server.js:8973
 msgid "Buffered:  {bytes} bytes / {packets} packets / {seconds} seconds"
 msgstr " Buferyje:  {bytes} baitų / {packets} paketų / {seconds} sekundžių"
 
-#: server.js:8889 server/messages-operator.cjs:323
+#: server.js:8987 server/messages-operator.cjs:323
 msgid "No buffer to save"
 msgstr "Nėra buferio, kurį būtų galima išsaugoti"
 
-#: server.js:8894 server/messages-operator.cjs:328
+#: server.js:8992 server/messages-operator.cjs:328
 msgid "Record buffer saved to: {name}"
 msgstr "Įrašo buferis išsaugotas: {name}"
 
-#: server.js:8908
+#: server.js:9006
 msgid "Recording to file: {name}"
 msgstr "Įrašoma į failą: {name}"
 
-#: server.js:8931 server.js:9880
+#: server.js:9029 server.js:9978
 msgid "BZFS Version: {version}"
 msgstr "BZFS versija: {version}"
 
-#: server.js:8969 server.js:10083
+#: server.js:9067 server.js:10181
 msgid "Nobody is here"
 msgstr "Čia nieko nėra"
 
-#: server.js:8976
+#: server.js:9074
 msgid "server: {stats}"
 msgstr "serveris: {stats}"
 
-#: server.js:9018
+#: server.js:9116
 msgid "Usage: /setteam <#slot|PlayerName> <team>"
 msgstr "Naudojimas: /setteam <#slot|PlayerName> <team>"
 
 #. TRANSLATORS: /setteam is a command name and {teams} lists team names as typed
-#: server.js:9025
+#: server.js:9123
 msgid "Usage: /setteam <#slot|PlayerName> <team> -- one of {teams}"
 msgstr "Naudojimas: /setteam <#slot|PlayerName> <team> -- viena iš: {teams}"
 
-#: server.js:9031
+#: server.js:9129
 msgid "\"{player}\" is not on a team to move from"
 msgstr "„{player}“ nėra jokioje komandoje, iš kurios būtų galima perkelti"
 
-#: server.js:9035
+#: server.js:9133
 msgid "\"{player}\" is already {team}"
 msgstr "„{player}“ jau yra komandoje: {team}"
 
-#: server.js:9041
+#: server.js:9139
 msgid "\"{player}\" moved to {team}"
 msgstr "„{player}“ perkeltas į komandą: {team}"
 
-#: server.js:9042
+#: server.js:9140
 msgid "@{player} moved you to {team}"
 msgstr "@{player} perkėlė tave į komandą: {team}"
 
-#: server.js:9071
+#: server.js:9169
 msgid "Moved to {position} facing {bearing}"
 msgstr "Perkelta į {position}, kryptis {bearing}"
 
-#: server.js:9074
+#: server.js:9172
 msgid "\"{player}\" moved to {position} facing {bearing}"
 msgstr "„{player}“ perkeltas į {position}, kryptis {bearing}"
 
-#: server.js:9075
+#: server.js:9173
 msgid "@{player} moved you to {position} facing {bearing}"
 msgstr "@{player} perkėlė tave į {position}, kryptis {bearing}"
 
-#: server.js:9088
+#: server.js:9186
 msgid "Usage: /msg \"some callsign\" some message"
 msgstr "Naudojimas: /msg \"šaukinys\" žinutė"
 
-#: server.js:9135
+#: server.js:9233
 msgid "Usage: /kill <#slot|PlayerName> [reason]"
 msgstr "Naudojimas: /kill <#slot|PlayerName> [reason]"
 
-#: server.js:9140
+#: server.js:9238
 msgid "An observer has no tank to kill"
 msgstr "Stebėtojas neturi tanko, kurį būtų galima sunaikinti"
 
-#: server.js:9144
+#: server.js:9242
 msgid "\"{player}\" is already dead"
 msgstr "„{player}“ jau žuvęs"
 
-#: server.js:9151
+#: server.js:9249
 msgid "\"{player}\" killed"
 msgstr "„{player}“ nužudytas"
 
-#: server.js:9152
+#: server.js:9250
 msgid "You were killed by an operator: {reason}"
 msgstr "Tave nužudė operatorius: {reason}"
 
-#: server.js:9153
+#: server.js:9251
 msgid "You were killed by an operator"
 msgstr "Tave nužudė operatorius"
 
-#: server.js:9201
+#: server.js:9299
 msgid "You were banned from this server"
 msgstr "Tau uždrausta jungtis prie šio serverio"
 
-#: server.js:9202 server.js:9225
+#: server.js:9300 server.js:9323
 msgid "Reason given: {reason}"
 msgstr "Nurodyta priežastis: {reason}"
 
-#: server.js:9203
+#: server.js:9301
 msgid "{player} banned by {admin}, reason: {reason}"
 msgstr "{admin} užblokavo žaidėją {player}, priežastis: {reason}"
 
-#: server.js:9215
+#: server.js:9313
 msgid "Syntax: /kick <#slot | PlayerName | \"Player Name\"> <reason>"
 msgstr "Sintaksė: /kick <#slot | PlayerName | \"Player Name\"> <reason>"
 
-#: server.js:9216 server.js:9245
+#: server.js:9314 server.js:9343
 msgid "\tPlease keep in mind that reason is displayed to the user."
 msgstr "\tAtmink, kad priežastis rodoma naudotojui."
 
-#: server.js:9219
+#: server.js:9317
 msgid "player \"{player}\" not found"
 msgstr "žaidėjas „{player}“ nerastas"
 
-#: server.js:9224
+#: server.js:9322
 msgid "You were kicked off the server"
 msgstr "Tave išmetė iš serverio"
 
-#: server.js:9226
+#: server.js:9324
 msgid "{player} kicked by {admin}, reason: {reason}"
 msgstr "{admin} išmetė žaidėją {player}, priežastis: {reason}"
 
-#: server.js:9240
+#: server.js:9338
 msgid ""
 "Syntax: /ban <#slot | PlayerName | \"Player Name\" | ip> <duration> <reason>"
 msgstr ""
 "Sintaksė: /ban <#slot | PlayerName | \"Player Name\" | ip> <duration> "
 "<reason>"
 
-#: server.js:9241
+#: server.js:9339
 msgid "\t<duration> can be 'short' or 'default' for the default ban time "
 msgstr ""
 "\t<duration> gali būti 'short' arba 'default' – numatytoji draudimo trukmė "
 
-#: server.js:9242
+#: server.js:9340
 msgid "\tor 'forever' or 'max' for infinite bans "
 msgstr "\tarba 'forever' ar 'max' – neribotas draudimas "
 
-#: server.js:9243
+#: server.js:9341
 msgid "\tor a time in the format <weeks>W<days>D<hours>H<minutes>M "
 msgstr "\tarba laikas formatu <weeks>W<days>D<hours>H<minutes>M "
 
-#: server.js:9244
+#: server.js:9342
 msgid "\tor just a number of minutes "
 msgstr "\tarba tiesiog minučių skaičius "
 
-#: server.js:9267 server.js:9375
+#: server.js:9365 server.js:9473
 msgid "Error: invalid ban duration"
 msgstr "Klaida: netinkama draudimo trukmė"
 
-#: server.js:9268 server.js:9376
+#: server.js:9366 server.js:9474
 msgid "Duration examples:  30m 1h  1d  1w  and mixing: 1w2d4h 1w2d1m"
 msgstr "Trukmės pavyzdžiai:  30m 1h  1d  1w  ir derinant: 1w2d4h 1w2d1m"
 
-#: server.js:9277 server.js:9671
+#: server.js:9375 server.js:9769
 msgid "{player} has no trusted address to ban"
 msgstr "{player} neturi patikimo adreso, kurį būtų galima užblokuoti"
 
-#: server.js:9283 server.js:9385
+#: server.js:9381 server.js:9483
 msgid "Pattern added to the BZID banlist"
 msgstr "Šablonas įtrauktas į BZID draudimų sąrašą"
 
-#: server.js:9289
+#: server.js:9387
 msgid "Malformed address or invalid Player/Slot: {target}"
 msgstr "Netinkamas adresas arba neteisingas žaidėjas / vieta: {target}"
 
-#: server.js:9293
+#: server.js:9391
 msgid "Pattern added to the IP banlist"
 msgstr "Šablonas įtrauktas į IP draudimų sąrašą"
 
-#: server.js:9304
+#: server.js:9402
 msgid "Removed IP pattern from the ban list"
 msgstr "IP šablonas pašalintas iš draudimų sąrašo"
 
-#: server.js:9306 server.js:9395
+#: server.js:9404 server.js:9493
 msgid "No pattern removed"
 msgstr "Joks šablonas nepašalintas"
 
-#: server.js:9321
+#: server.js:9419
 msgid "Syntax: /checkip <ip>"
 msgstr "Sintaksė: /checkip <ip>"
 
-#: server.js:9326
+#: server.js:9424
 msgid "{address} is not banned."
 msgstr "{address} neužblokuotas."
 
-#: server.js:9329
+#: server.js:9427
 msgid "{address} is banned:"
 msgstr "{address} užblokuotas:"
 
-#: server.js:9337
+#: server.js:9435
 msgid ""
 "Syntax: /idban <#slot|+id|PlayerName|\"Player Name\"> <duration> <reason>"
 msgstr ""
 "Sintaksė: /idban <#slot|+id|PlayerName|\"Player Name\"> <duration> <reason>"
 
-#: server.js:9338
+#: server.js:9436
 msgid "  Please keep in mind that reason is displayed to the user."
 msgstr "  Atmink, kad priežastis rodoma naudotojui."
 
-#: server.js:9349
+#: server.js:9447
 msgid "Error: invalid id pattern"
 msgstr "Klaida: netinkamas ID šablonas"
 
-#: server.js:9357
+#: server.js:9455
 msgid "could not find player ({player})"
 msgstr "žaidėjas nerastas ({player})"
 
-#: server.js:9362
+#: server.js:9460
 msgid "no BZID for player ({player})"
 msgstr "žaidėjas neturi BZID ({player})"
 
-#: server.js:9393
+#: server.js:9491
 msgid "Removed id from the ban list"
 msgstr "ID pašalintas iš draudimų sąrašo"
 
-#: server.js:9499
+#: server.js:9597
 msgid "Usage: /poll vote yes|no"
 msgstr "Naudojimas: /poll vote yes|no"
 
-#: server.js:9500
+#: server.js:9598
 msgid "    or /poll ban playername"
 msgstr "    arba /poll ban playername"
 
-#: server.js:9501
+#: server.js:9599
 msgid "    or /poll kick playername"
 msgstr "    arba /poll kick playername"
 
-#: server.js:9502
+#: server.js:9600
 msgid "    or /poll kill playername"
 msgstr "    arba /poll kill playername"
 
-#: server.js:9503
+#: server.js:9601
 msgid "    or /poll set variable value"
 msgstr "    arba /poll set variable value"
 
-#: server.js:9504
+#: server.js:9602
 msgid "    or /poll flagreset"
 msgstr "    arba /poll flagreset"
 
-#: server.js:9506
+#: server.js:9604
 msgid "    or /poll {action} {parameters}"
 msgstr ""
 
 #. TRANSLATORS: /vote is a command name; keep it as it is
-#: server.js:9515
+#: server.js:9613
 msgid "{player}, you are presently not authorized to run /vote"
 msgstr "{player}, šiuo metu neturi teisės vykdyti /vote"
 
-#: server.js:9519 server.js:9566 server.js:9593
+#: server.js:9617 server.js:9664 server.js:9691
 msgid "ERROR: the poll arbiter has disappeared (this should never happen)"
 msgstr "KLAIDA: balsavimo arbitras dingo (taip neturėtų nutikti niekada)"
 
-#: server.js:9523
+#: server.js:9621
 msgid "A poll is not presently in progress.  There is nothing to vote on"
 msgstr "Šiuo metu nevyksta joks balsavimas. Nėra dėl ko balsuoti"
 
-#: server.js:9528
+#: server.js:9626
 msgid "{player}, you did not vote in favor or in opposition"
 msgstr "{player}, nebalsavai nei už, nei prieš"
 
-#: server.js:9529
+#: server.js:9627
 msgid "{player}, you did not provide a vote answer"
 msgstr "{player}, nenurodei atsakymo"
 
-#: server.js:9530
+#: server.js:9628
 msgid "Usage: /vote yes|no|y|n|1|0|yea|nay|si|ja|nein|oui|non|sim|nao"
 msgstr "Naudojimas: /vote yes|no|y|n|1|0|yea|nay|si|ja|nein|oui|non|sim|nao"
 
 #. TRANSLATORS: {action} is a /poll keyword (ban, kick, kill, set, reset), sent as typed
-#: server.js:9544
+#: server.js:9642
 msgid "{player}, your vote in favor of the {action} has been recorded"
 msgstr "{player}, tavo balsas už „{action}“ užregistruotas"
 
-#: server.js:9545
+#: server.js:9643
 msgid "{player}, your vote in opposition of the {action} has been recorded"
 msgstr "{player}, tavo balsas prieš „{action}“ užregistruotas"
 
-#: server.js:9547
+#: server.js:9645
 msgid "{player}, you have already voted on the poll to {action} {target}"
 msgstr "{player}, balsavime „{action} {target}“ jau balsavai"
 
-#: server.js:9551
+#: server.js:9649
 msgid ""
 "{player}, there was an error while voting on the poll to {action} {target}"
 msgstr "{player}, balsuojant „{action} {target}“ įvyko klaida"
 
 #. TRANSLATORS: /veto is a command name; keep it as it is
-#: server.js:9562
+#: server.js:9660
 msgid "{player}, you are presently not authorized to run /veto"
 msgstr "{player}, šiuo metu neturi teisės vykdyti /veto"
 
-#: server.js:9570
+#: server.js:9668
 msgid "{player}, there is presently no active poll to veto"
 msgstr "{player}, šiuo metu nėra aktyvaus balsavimo, kurį būtų galima vetuoti"
 
-#: server.js:9573
+#: server.js:9671
 msgid "{player}, you have cancelled the poll to {action} {target}"
 msgstr "{player}, atšaukei balsavimą „{action} {target}“"
 
-#: server.js:9579
+#: server.js:9677
 msgid "The poll was cancelled by {player}"
 msgstr "Balsavimą atšaukė {player}"
 
 #. TRANSLATORS: /poll is a command name; keep it as it is
-#: server.js:9589
+#: server.js:9687
 msgid "{player}, you are presently not authorized to run /poll"
 msgstr "{player}, šiuo metu neturi teisės vykdyti /poll"
 
-#: server.js:9609
+#: server.js:9707
 msgid "A poll to {action} {target} is presently in progress"
 msgstr "Šiuo metu vyksta balsavimas „{action} {target}“"
 
-#: server.js:9612
+#: server.js:9710
 msgid "Unable to start a new poll until the current one is over"
 msgstr "Naujo balsavimo pradėti negalima, kol nesibaigė dabartinis"
 
-#: server.js:9617
+#: server.js:9715
 msgid ""
 "Unable to initiate a new poll.  There are not enough registered players "
 "playing."
 msgstr ""
 "Naujo balsavimo pradėti negalima. Žaidžia per mažai registruotų žaidėjų."
 
-#: server.js:9621
+#: server.js:9719
 msgid ""
 "There needs to be at least {required} other player and only {others} is "
 "available."
 msgstr "Reikia kitų žaidėjų: bent {required}, yra: {others}."
 
-#: server.js:9622
+#: server.js:9720
 msgid ""
 "There needs to be at least {required} other player and only {others} are "
 "available."
 msgstr "Reikia kitų žaidėjų: bent {required}, yra: {others}."
 
-#: server.js:9624
+#: server.js:9722
 msgid ""
 "There needs to be at least {required} other players and only {others} is "
 "available."
 msgstr "Reikia kitų žaidėjų: bent {required}, yra: {others}."
 
-#: server.js:9626
+#: server.js:9724
 msgid ""
 "There needs to be at least {required} other players and only {others} are "
 "available."
 msgstr "Reikia kitų žaidėjų: bent {required}, yra: {others}."
 
-#: server.js:9636
+#: server.js:9734
 msgid "/poll: incorrect syntax, argument required."
 msgstr "/poll: neteisinga sintaksė, reikia argumento."
 
-#: server.js:9642
+#: server.js:9740
 msgid "{player}, no target was specified for the [{action}] vote"
 msgstr "{player}, balsavimui [{action}] nenurodytas taikinys"
 
 #. TRANSLATORS: /poll and {action} are a command as typed; keep them as they are
-#: server.js:9644
+#: server.js:9742
 msgid "Usage: /poll {action} target"
 msgstr "Naudojimas: /poll {action} target"
 
 #. TRANSLATORS: /poll {action} is a command as typed; keep it as it is
-#: server.js:9649
+#: server.js:9747
 msgid "{player}, you may not /poll {action} on this server"
 msgstr "{player}, šiame serveryje negalima /poll {action}"
 
-#: server.js:9657
+#: server.js:9755
 msgid "The player specified for a {action} vote is not here"
 msgstr "Balsavimui „{action}“ nurodyto žaidėjo čia nėra"
 
-#: server.js:9661
+#: server.js:9759
 msgid "You can't kill an observer!"
 msgstr "Stebėtojo nužudyti negalima!"
 
-#: server.js:9667
+#: server.js:9765
 msgid "{player} is protected from being polled against."
 msgstr "{player} apsaugotas nuo balsavimų prieš jį."
 
-#: server.js:9699
+#: server.js:9797
 msgid "You are not able to request a {action} poll right now, {player}"
 msgstr "{player}, balsavimo „{action}“ dabar pradėti negali"
 
-#: server.js:9704
+#: server.js:9802
 msgid "A poll to {action} {target} has been requested by {player}"
 msgstr "{player} pradėjo balsavimą „{action} {target}“"
 
-#: server.js:9712
+#: server.js:9810
 msgid ""
 "{available} player is available, {needed} additional affirming vote required "
 "to pass the poll ({percentage} %)"
@@ -4374,7 +4374,7 @@ msgstr ""
 "Žaidėjų yra: {available}, balsavimui priimti trūksta balsų už: {needed} "
 "({percentage} %)"
 
-#: server.js:9713
+#: server.js:9811
 msgid ""
 "{available} player is available, {needed} additional affirming votes "
 "required to pass the poll ({percentage} %)"
@@ -4382,7 +4382,7 @@ msgstr ""
 "Žaidėjų yra: {available}, balsavimui priimti trūksta balsų už: {needed} "
 "({percentage} %)"
 
-#: server.js:9716
+#: server.js:9814
 msgid ""
 "{available} players are available, {needed} additional affirming vote "
 "required to pass the poll ({percentage} %)"
@@ -4390,7 +4390,7 @@ msgstr ""
 "Žaidėjų yra: {available}, balsavimui priimti trūksta balsų už: {needed} "
 "({percentage} %)"
 
-#: server.js:9717
+#: server.js:9815
 msgid ""
 "{available} players are available, {needed} additional affirming votes "
 "required to pass the poll ({percentage} %)"
@@ -4398,463 +4398,463 @@ msgstr ""
 "Žaidėjų yra: {available}, balsavimui priimti trūksta balsų už: {needed} "
 "({percentage} %)"
 
-#: server.js:9722
+#: server.js:9820
 msgid "Unable to automatically place your vote for some unknown reason"
 msgstr "Dėl nežinomos priežasties nepavyko automatiškai atiduoti tavo balso"
 
-#: server.js:9750
+#: server.js:9848
 msgid ""
 "You have been temporarily banned due to sufficient votes to have you removed"
 msgstr ""
 "Tau laikinai uždrausta jungtis, nes pakankamai žaidėjų balsavo už tavo "
 "pašalinimą"
 
-#: server.js:9756
+#: server.js:9854
 msgid "You have been kicked due to sufficient votes to have you removed"
 msgstr "Tave išmetė, nes pakankamai žaidėjų balsavo už tavo pašalinimą"
 
-#: server.js:9762
+#: server.js:9860
 msgid "You have been killed due to sufficient votes"
 msgstr "Tave nužudė balsavimo sprendimu"
 
-#: server.js:9785
+#: server.js:9883
 msgid ""
 "A poll to {action} {target} has begun.  Players have up to {seconds} seconds "
 "to vote."
 msgstr ""
 "Prasidėjo balsavimas „{action} {target}“. Žaidėjai turi {seconds} s balsuoti."
 
-#: server.js:9793
+#: server.js:9891
 msgid "{seconds} seconds remain in the poll to {action} {target}."
 msgstr "Iki balsavimo „{action} {target}“ pabaigos liko {seconds} s."
 
-#: server.js:9801
+#: server.js:9899
 msgid "Enough votes were collected to {action} {target} early."
 msgstr "Surinkta pakankamai balsų, „{action} {target}“ įvyks anksčiau."
 
-#: server.js:9802
+#: server.js:9900
 msgid "Enough votes were collected to reset all unused flags early."
 msgstr ""
 "Surinkta pakankamai balsų, visos nenaudojamos vėliavos bus atstatytos "
 "anksčiau."
 
-#: server.js:9818
+#: server.js:9916
 msgid "Poll Results: {yes} in favor, {no} oppose, {abstain} abstain"
 msgstr "Balsavimo rezultatai: už {yes}, prieš {no}, susilaikė {abstain}"
 
-#: server.js:9826
+#: server.js:9924
 msgid "The poll to {action} {target} was not successful"
 msgstr "Balsavimas „{action} {target}“ nepavyko"
 
-#: server.js:9835
+#: server.js:9933
 msgid ""
 "The poll is now closed and was successful.  {target} is scheduled to be "
 "temporarily banned."
 msgstr ""
 "Balsavimas baigtas sėkmingai. {target}: bus laikinai uždrausta jungtis."
 
-#: server.js:9836
+#: server.js:9934
 msgid ""
 "The poll is now closed and was successful.  {target} is scheduled to be "
 "kicked."
 msgstr "Balsavimas baigtas sėkmingai. {target}: bus išmestas."
 
-#: server.js:9837
+#: server.js:9935
 msgid ""
 "The poll is now closed and was successful.  {target} is scheduled to be "
 "killed."
 msgstr "Balsavimas baigtas sėkmingai. {target}: bus nužudytas."
 
-#: server.js:9840
+#: server.js:9938
 msgid ""
 "The poll is now closed and was successful.  {target} is scheduled to be "
 "{action}."
 msgstr "Balsavimas baigtas sėkmingai. Laukia „{action}“: {target}."
 
-#: server.js:9848
+#: server.js:9946
 msgid "{target} has been kicked."
 msgstr "{target}: išmestas."
 
-#: server.js:9849
+#: server.js:9947
 msgid "{target} has been killed."
 msgstr "{target}: nužudytas."
 
-#: server.js:9851
+#: server.js:9949
 msgid "{target} has been {action}"
 msgstr "Atlikta „{action}“: {target}"
 
-#: server.js:9866
+#: server.js:9964
 msgid "{player}'s client version:"
 msgstr "Žaidėjo {player} kliento versija:"
 
-#: server.js:9867
+#: server.js:9965
 msgid "  {version}"
 msgstr "  {version}"
 
-#: server.js:9868
+#: server.js:9966
 msgid "  unknown"
 msgstr "  nežinoma"
 
-#: server.js:9874
+#: server.js:9972
 msgid "Player not found."
 msgstr "Žaidėjas nerastas."
 
-#: server.js:9905
+#: server.js:10003
 msgid "Countdown cancelled by {player}."
 msgstr "Atgalinį skaičiavimą atšaukė {player}."
 
-#: server.js:9905
+#: server.js:10003
 msgid "Countdown cancelled"
 msgstr "Atgalinis skaičiavimas atšauktas"
 
-#: server.js:9931
+#: server.js:10029
 msgid "No match is running to pause"
 msgstr "Nevyksta joks mačas, kurį būtų galima pristabdyti"
 
-#: server.js:9939
+#: server.js:10037
 msgid "No paused match to resume"
 msgstr "Nėra pristabdyto mačo, kurį būtų galima tęsti"
 
-#: server.js:9946
+#: server.js:10044
 msgid "There is no running countdown to cancel"
 msgstr "Nevyksta joks atgalinis skaičiavimas, kurį būtų galima atšaukti"
 
-#: server.js:9954
+#: server.js:10052
 msgid "Usage: /countdown [<seconds>|pause|resume|cancel]"
 msgstr "Naudojimas: /countdown [<seconds>|pause|resume|cancel]"
 
-#: server.js:9959
+#: server.js:10057
 msgid "There is a countdown already in progress"
 msgstr "Atgalinis skaičiavimas jau vyksta"
 
-#: server.js:9963
+#: server.js:10061
 msgid "A game is already in progress"
 msgstr "Žaidimas jau vyksta"
 
-#: server.js:9967 server.js:9970
+#: server.js:10065 server.js:10068
 msgid "Countdown set to {seconds} instead of {asked}"
 msgstr "Atgalinis skaičiavimas nustatytas: {seconds} vietoj {asked}"
 
-#: server.js:9979
+#: server.js:10077
 msgid "Countdown started by {player}."
 msgstr "Atgalinį skaičiavimą pradėjo {player}."
 
-#: server.js:9980
+#: server.js:10078
 msgid "Match begins in about {duration}"
 msgstr "Mačas prasidės maždaug po {duration}"
 
-#: server.js:9988
+#: server.js:10086
 msgid "The match has started!...Good Luck Teams!"
 msgstr "Mačas prasidėjo!...Sėkmės, komandos!"
 
-#: server.js:9992
+#: server.js:10090
 msgid "Start your engines!......"
 msgstr "Užveskite variklius!......"
 
-#: server.js:9994
+#: server.js:10092
 msgid "{seconds}..."
 msgstr "{seconds}..."
 
-#: server.js:10006
+#: server.js:10104
 msgid "No match is running"
 msgstr "Nevyksta joks mačas"
 
-#: server.js:10018
+#: server.js:10116
 msgid "Usage: /say <message>"
 msgstr "Naudojimas: /say <message>"
 
-#: server.js:10034
+#: server.js:10132
 msgid "Usage: /mute <#slot|PlayerName>"
 msgstr "Naudojimas: /mute <#slot|PlayerName>"
 
-#: server.js:10040
+#: server.js:10138
 msgid "\"{player}\" is now muted"
 msgstr "„{player}“ dabar nutildytas"
 
-#: server.js:10041
+#: server.js:10139
 msgid "You have been muted by an operator"
 msgstr "Tave nutildė operatorius"
 
-#: server.js:10050
+#: server.js:10148
 msgid "Usage: /unmute <#slot|PlayerName>"
 msgstr "Naudojimas: /unmute <#slot|PlayerName>"
 
-#: server.js:10056
+#: server.js:10154
 msgid "\"{player}\" is no longer muted"
 msgstr "„{player}“ nebetildomas"
 
-#: server.js:10057
+#: server.js:10155
 msgid "You are no longer muted"
 msgstr "Tu nebetildomas"
 
-#: server.js:10065
+#: server.js:10163
 msgid "Nobody is muted"
 msgstr "Niekas nenutildytas"
 
-#: server.js:10178
+#: server.js:10276
 msgid "Usage: /flag drop [#slot|PlayerName]"
 msgstr "Naudojimas: /flag drop [#slot|PlayerName]"
 
-#: server.js:10185
+#: server.js:10283
 msgid "You are not carrying a flag"
 msgstr "Tu neneši vėliavos"
 
-#: server.js:10186
+#: server.js:10284
 msgid "\"{player}\" is not carrying a flag"
 msgstr "„{player}“ neneša vėliavos"
 
-#: server.js:10195
+#: server.js:10293
 msgid "Dropped {flag} from \"{player}\""
 msgstr "„{player}“: vėliava {flag} numesta"
 
-#: server.js:10196
+#: server.js:10294
 msgid "Your {flag} flag was dropped"
 msgstr "Tavo vėliava {flag} numesta"
 
-#: server.js:10210
+#: server.js:10308
 msgid "{count} flags sent up"
 msgstr "Vėliavų pakelta į orą: {count}"
 
-#: server.js:10220
+#: server.js:10318
 msgid "{count} flags reset"
 msgstr "Vėliavų atstatyta: {count}"
 
-#: server.js:10225
+#: server.js:10323
 msgid "No flags are in the world"
 msgstr "Pasaulyje nėra vėliavų"
 
-#: server.js:10243
+#: server.js:10341
 msgid "Usage: /flag take <#slot|PlayerName>"
 msgstr "Naudojimas: /flag take <#slot|PlayerName>"
 
 #. TRANSLATORS: /flag take is a command name; keep it as it is
-#: server.js:10250
+#: server.js:10348
 msgid "/flag take: player ({player}) does not have a flag"
 msgstr "/flag take: žaidėjas ({player}) neturi vėliavos"
 
-#: server.js:10259
+#: server.js:10357
 msgid "{admin} took flag {flag}/{slot} from {player}"
 msgstr "{admin} atėmė vėliavą {flag}/{slot} iš žaidėjo {player}"
 
-#: server.js:10271
+#: server.js:10369
 msgid "Usage: /flag give <#slot|PlayerName> <#flagId|FlagAbbr> [force]"
 msgstr "Naudojimas: /flag give <#slot|PlayerName> <#flagId|FlagAbbr> [force]"
 
-#: server.js:10287
+#: server.js:10385
 msgid "flag {flag} is not in this world"
 msgstr "vėliavos {flag} šiame pasaulyje nėra"
 
-#: server.js:10294 server.js:10332
+#: server.js:10392 server.js:10430
 msgid "you may need to use the force"
 msgstr "gali tekti naudoti force"
 
-#: server.js:10301
+#: server.js:10399
 msgid "flag {flag} is an empty slot"
 msgstr "vėliava {flag} – tuščia vieta"
 
-#: server.js:10307
+#: server.js:10405
 msgid "bad flag type"
 msgstr "netinkamas vėliavos tipas"
 
-#: server.js:10329
+#: server.js:10427
 msgid "flag type not found"
 msgstr "vėliavos tipas nerastas"
 
-#: server.js:10338
+#: server.js:10436
 msgid "An observer has no tank to carry a flag"
 msgstr "Stebėtojas neturi tanko, kuris neštų vėliavą"
 
 #. TRANSLATORS: /flag give is a command name; keep it as it is
-#: server.js:10345
+#: server.js:10443
 msgid "/flag give: player ({player}) is not alive"
 msgstr "/flag give: žaidėjas ({player}) negyvas"
 
-#: server.js:10366
+#: server.js:10464
 msgid "{admin} gave flag {flag}/{slot} to {player}"
 msgstr "{admin} davė vėliavą {flag}/{slot} žaidėjui {player}"
 
-#: server.js:10393
+#: server.js:10491
 msgid "Usage: /mv [player] <x,y> [facing]"
 msgstr "Naudojimas: /mv [player] <x,y> [facing]"
 
-#: server.js:10408
+#: server.js:10506
 msgid "An observer has no tank to move"
 msgstr "Stebėtojas neturi tanko, kurį būtų galima perkelti"
 
-#: server.js:10451
+#: server.js:10549
 msgid "Nowhere to stand at {x},{y}"
 msgstr "Taške {x},{y} nėra kur stovėti"
 
-#: server.js:10518
+#: server.js:10616
 msgid "Checking another player's position requires operator status"
 msgstr "Kito žaidėjo padėtį gali tikrinti tik operatorius"
 
-#: server.js:10524
+#: server.js:10622
 msgid "Usage: /pos [player]"
 msgstr "Naudojimas: /pos [player]"
 
-#: server.js:10530
+#: server.js:10628
 msgid "An observer has no tank position"
 msgstr "Stebėtojas neturi tanko padėties"
 
-#: server.js:10538
+#: server.js:10636
 msgid "You are at {position} facing {bearing}"
 msgstr "Esi {position}, kryptis {bearing}"
 
-#: server.js:10539
+#: server.js:10637
 msgid "\"{player}\" is at {position} facing {bearing}"
 msgstr "„{player}“ yra {position}, kryptis {bearing}"
 
-#: server.js:11010
+#: server.js:11108
 msgid "All shots now ricochet"
 msgstr "Dabar visi šūviai atšoka"
 
-#: server.js:11010
+#: server.js:11108
 msgid "Shots no longer ricochet"
 msgstr "Šūviai nebeatšoka"
 
-#: server.js:11176
+#: server.js:11274
 msgid "usage: set <name> [<value>]"
 msgstr "naudojimas: set <name> [<value>]"
 
-#: server.js:11177
+#: server.js:11275
 msgid "bzo's own: {variables}"
 msgstr "bzo nuosavi: {variables}"
 
 #. TRANSLATORS: /set is a command name; keep it as it is
-#: server.js:11197
+#: server.js:11295
 msgid "/set failed, reason: variable {name} does not exist"
 msgstr "/set nepavyko, priežastis: kintamojo {name} nėra"
 
-#: server.js:11198 server.js:11232
+#: server.js:11296 server.js:11330
 msgid "variable {name} does not exist"
 msgstr "kintamojo {name} nėra"
 
-#: server.js:11202
+#: server.js:11300
 msgid "{name} is {value}"
 msgstr "{name} = {value}"
 
 #. TRANSLATORS: /set is a command name; keep it as it is
-#: server.js:11207
+#: server.js:11305
 msgid "/set failed, reason: variable {name} is not writeable"
 msgstr "/set nepavyko, priežastis: kintamojo {name} keisti negalima"
 
-#: server.js:11213
+#: server.js:11311
 msgid "{name} set"
 msgstr "{name} nustatytas"
 
-#: server.js:11214
+#: server.js:11312
 msgid "Variable Modification Notice by {player} of set {name} {value}"
 msgstr "Kintamojo keitimo pranešimas, {player}: set {name} {value}"
 
-#: server.js:11224
+#: server.js:11322
 msgid "usage: reset <name>"
 msgstr "naudojimas: reset <name>"
 
-#: server.js:11235
+#: server.js:11333
 msgid "variable {name} is not writeable"
 msgstr "kintamojo {name} keisti negalima"
 
-#: server.js:11241
+#: server.js:11339
 msgid "all variables reset"
 msgstr "visi kintamieji atstatyti"
 
-#: server.js:11242
+#: server.js:11340
 msgid "{name} reset"
 msgstr "{name} atstatytas"
 
-#: server.js:11246
+#: server.js:11344
 msgid "Variable Reset Notice by {player} of reset {name}"
 msgstr "Kintamojo atstatymo pranešimas, {player}: reset {name}"
 
-#: server.js:11274
+#: server.js:11372
 msgid "No command starting with {prefix}"
 msgstr "Nėra komandos, prasidedančios {prefix}"
 
-#: server.js:11288
+#: server.js:11386
 msgid "The {command} command is only for players in the game"
 msgstr ""
 
-#: server.js:11294 server.js:11317
+#: server.js:11392 server.js:11415
 msgid "You do not have permission to run the {command} command"
 msgstr "Neturi teisės vykdyti komandos {command}"
 
-#: server.js:11368
+#: server.js:11466
 msgid "We're sorry, you are not allowed to talk!"
 msgstr "Atsiprašome, tau neleidžiama kalbėti!"
 
-#: server.js:11608
+#: server.js:11721
 msgid "You signed in as {player} on another device."
 msgstr "Kitame įrenginyje prisijungei kaip {player}."
 
-#: server.js:11630
+#: server.js:11743
 msgid "{player} signed in with that name, so yours is now {name}."
 msgstr "{player} prisijungė šiuo vardu, todėl tavo vardas dabar {name}."
 
-#: server.js:13839
+#: server.js:13954
 msgid "Global login approved!"
 msgstr "Visuotinis prisijungimas patvirtintas!"
 
-#: server.js:13841
+#: server.js:13956
 msgid "Global login rejected, bad token."
 msgstr "Visuotinis prisijungimas atmestas, blogas žetonas."
 
-#: server.js:13843
+#: server.js:13958
 msgid "This callsign is not registered."
 msgstr "Šis šaukinys neregistruotas."
 
-#: server.js:13844
+#: server.js:13959
 msgid "You can register it at https://forums.bzflag.org/"
 msgstr "Užregistruoti jį gali https://forums.bzflag.org/"
 
-#: server.js:14450
+#: server.js:14584
 msgid "{count} shots left"
 msgstr "Liko šūvių: {count}"
 
-#: server.js:14451
+#: server.js:14585
 msgid "1 shot left"
 msgstr "Liko 1 šūvis"
 
-#: server.js:14927
+#: server.js:15061
 msgid "I'm sorry, we do not allow autopilot on this server."
 msgstr "Atsiprašome, šiame serveryje autopilotas neleidžiamas."
 
-#: server.js:16987
+#: server.js:17122
 msgid "Server restarting: {reason}"
 msgstr "Serveris paleidžiamas iš naujo: {reason}"
 
-#: server.js:18333
+#: server.js:18469
 msgid "The pilots have not loaded"
 msgstr "Pilotai neįkelti"
 
 #. TRANSLATORS: a command's syntax; keep it as it is
-#: server.js:18345
+#: server.js:18481
 msgid "Usage: /bot fill <0-{max}> [{pilots}]"
 msgstr "Naudojimas: /bot fill <0-{max}> [{pilots}]"
 
-#: server.js:18349
+#: server.js:18485
 msgid "No pilot \"{pilot}\"; one of {pilots}"
 msgstr "Piloto „{pilot}“ nėra; galimi: {pilots}"
 
 #. TRANSLATORS: a command's syntax; keep /bot add as it is
-#: server.js:18371
+#: server.js:18507
 msgid "Usage: /bot add [{pilots}] [team] [count]"
 msgstr "Naudojimas: /bot add [{pilots}] [team] [count]"
 
-#: server.js:18392
+#: server.js:18528
 msgid "{player} paused the bots and autopilots"
 msgstr "{player} pristabdė botus ir autopilotus"
 
-#: server.js:18393
+#: server.js:18529
 msgid "{player} resumed the bots and autopilots"
 msgstr "{player} atnaujino botus ir autopilotus"
 
-#: server.js:18405
+#: server.js:18541
 msgid "Usage: /bot remove <name|all>"
 msgstr "Naudojimas: /bot remove <name|all>"
 
 #. TRANSLATORS: a command's syntax; keep /bot, fill, add, remove, all, pause and resume as they are
-#: server.js:18417
+#: server.js:18553
 msgid ""
 "Usage: /bot [fill <n> [{pilots}] | add [{pilots}] [team] [count] | remove "
 "<name|all> | pause | resume]"
@@ -4862,51 +4862,51 @@ msgstr ""
 "Naudojimas: /bot [fill <n> [{pilots}] | add [{pilots}] [team] [count] | "
 "remove <name|all> | pause | resume]"
 
-#: server.js:18444
+#: server.js:18580
 msgid "Server shutting down"
 msgstr "Serveris išjungiamas"
 
-#: server.js:18454
+#: server.js:18590
 msgid "Server restarting"
 msgstr "Serveris paleidžiamas iš naujo"
 
-#: server.js:18684
+#: server.js:18820
 msgid "You have been kicked from the server for: {reason}"
 msgstr ""
 
-#: server.js:18685
+#: server.js:18821
 msgid "{player} was kicked for:{reason}"
 msgstr ""
 
-#: server.js:18939
+#: server.js:19075
 msgid "No Plug-ins loaded."
 msgstr ""
 
-#: server.js:18942
+#: server.js:19078
 msgid "Plug-ins loaded:"
 msgstr ""
 
-#: server.js:18951
+#: server.js:19087
 msgid "Usage: /loadplugin plug-in"
 msgstr ""
 
-#: server.js:18959 server.js:18970
+#: server.js:19095 server.js:19106
 msgid "Plug-in load failed."
 msgstr ""
 
-#: server.js:18967
+#: server.js:19103
 msgid "Plug-in loaded."
 msgstr ""
 
-#: server.js:18979
+#: server.js:19115
 msgid "Usage: /unloadplugin plug-in"
 msgstr ""
 
-#: server.js:18985
+#: server.js:19121
 msgid "Plug-In {name} unloaded."
 msgstr ""
 
-#: server.js:18988
+#: server.js:19124
 msgid "Plug-in {name} is not loaded."
 msgstr ""
 
@@ -5087,6 +5087,12 @@ msgstr "Komanda pilna: {team}"
 #: server/messages-play.cjs:1263
 msgid "You will join {team} when you next spawn"
 msgstr "Kitą kartą atsiradęs prisijungsi prie komandos: {team}"
+
+#~ msgid "The name, or the address when a server has none"
+#~ msgstr "Pavadinimas arba adresas, kai serveris jo neturi"
+
+#~ msgid "Name & Description"
+#~ msgstr "Pavadinimas ir aprašymas"
 
 #~ msgid "1-on-1"
 #~ msgstr "1 prieš 1"

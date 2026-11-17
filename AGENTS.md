@@ -593,8 +593,9 @@ version appears.
 `docs/tutorial-plan.md` is the plan for what an installed client does when the
 server is unreachable, and for tutorial levels built on top of that.
 
-`docs/practice-plan.md` is the plan for a practice match against bots, offline
-from an installed client: the game's rules out of `server.js` into one module
+`docs/practice.md` is what practice against bots does today: the link and its
+parameters, the bots, and which game a map gets. `docs/practice-plan.md` is
+the plan for the rest: the game's rules out of `server.js` into one module
 the server and a browser Worker both run.
 
 `docs/bzflag-2.6-plan.md` is the plan for serving BZFlag 2.6 native clients
@@ -1664,6 +1665,15 @@ dialog, choose a map, and look around it while the live match keeps running
 underneath. Upstream has nothing like it -- BZFlag joins the one world a
 server runs.
 
+Viewing runs offline, as practice does (`docs/practice.md`): a `?viewmap=`
+link, and joining as Map Viewer from the dialog, which opens one
+(`mapViewerNavigated`), play the map in the page's own Worker with no bots and
+the viewer an observer (`isMapViewLink`). The viewer is not on the server, so
+the live match's tanks, shots, sounds, chat and voice are not in it, and its
+players do not see a viewer. The observer join with `viewMap` below is what
+a link falls back to when its map cannot be loaded for practice, and what the
+entry dialog's backdrop preview still is while a map is being chosen.
+
 ### Observer on the wire, not a team
 
 `player.team` is always `observer` on the wire -- same team limit, same team
@@ -1798,17 +1808,14 @@ instead of a preview. `xrPlayerScreenReturnCameraMode` /
 `entryDialogReturnCameraMode`/`openEntryDialog`/`closeEntryDialog` exactly,
 wired into `setXRSettingsMenuScreen()` and `closeXRSettingsMenu()`.
 
-### The ghost tank stays on as the proximity indicator
+### Nothing of the live match over another map
 
-The packet-motion-debug ghost mesh (gated on the `showDebugGeometry` toggle,
-opt-in) is deliberately **not** hidden during a Map Viewer preview or
-session, unlike the live match's ordinary tanks/shots/flags. It sits at a
-live position in the match's own coordinates, spatially incoherent with
-whatever map is actually on screen -- but a Map Viewer with debug geometry on
-gets a rough sense of who is nearby in the live match, which is what
-proximity voice chat actually gates on, and the toggle is symmetric: anyone
-else with debug geometry on sees a Map Viewer's own ghost the same way.
-Nothing is shown by default.
+Over the entry dialog's preview of another map, nothing from the live
+match is drawn or heard: its tanks, their debug ghosts, shots, flags,
+explosions, jump jets, and world sounds (`hidesLiveMatch`). All of them stand
+at the live match's coordinates, which describe nothing on the map in view.
+A Map Viewer session is offline (above), so it has none of them to begin
+with.
 
 ### A driveable phantom tank, for Observer and Map Viewer alike
 

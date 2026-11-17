@@ -424,7 +424,7 @@ msgid "**With the autopilot on**, the pilot takes the mouse's place, last in lin
 msgstr ""
 
 #: docs/help/controls.md
-msgid "**Menus don't stop the autopilot.** Opening Settings, or any other menu, normally pauses your tank. With the autopilot driving, the menu takes the keys and the pilot goes on driving. With a pilot chosen on the `Settings -> Autopilot` row but not driving, opening a menu turns the autopilot on, and closing the menu turns it off again -- so a menu means \"drive for me a moment\" rather than \"stop\". With the row on `None`, the default, or on a server that refuses bots (`-disableBots`), menus pause as they always have. A hidden window still pauses either way: the browser stops drawing it, and the pilot with it."
+msgid "**Menus pause, unless the autopilot is driving.** Opening Settings, Help or any other menu starts the pause countdown, and closing it puts the tank back as it was: a tank you had paused yourself stays paused. With the autopilot driving, a menu does not pause: the pilot goes on while the menu has the keys, and turning it off from the menu starts the pause then. A hidden window pauses either way."
 msgstr ""
 
 #: docs/help/controls.md

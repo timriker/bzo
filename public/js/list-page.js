@@ -386,7 +386,31 @@ window.parseServerFilter = function parseServerFilter(source) {
 // The list: selection, sorting and the filter box.
 // ---------------------------------------------------------------------------
 
-window.attachList = function attachList(listId, filterId) {
+// Each list's filter rides in the page's hash under its section's name, and
+// its sort under the same name and `.sort` -- `#bzflag=reri&bzflag.sort=d`,
+// a leading `-` for descending -- so a list as you left it is a link that can
+// be sent. The first key is the section the page is at: a bare `#maps` is
+// still just that, and the links at the top move their section to the front,
+// filters and sorts kept.
+const sectionOf = (key) => key.split('.')[0];
+
+function hashParams() {
+  return new URLSearchParams(window.location.hash.replace(/^#/, ''));
+}
+
+// `,` and `/` read better in a link unescaped; a `+` stays escaped, since the
+// hash is read back as a query, where `+` is a space. A key with no filter is
+// written bare, which is what makes `#maps` a plain jump.
+function writeHash(params) {
+  const hash = [...params].map(([key, value]) => (value
+    ? `${key}=${encodeURIComponent(value).replace(/%2C/g, ',').replace(/%2F/g, '/')}`
+    : key)).join('&');
+  window.history.replaceState(null, '', `${window.location.pathname}${window.location.search}${hash ? `#${hash}` : ''}`);
+}
+
+// `defaultSort` is the order a list arrives in, in the hash's own spelling; a
+// sort back to it leaves the hash, so a link carries only a choice.
+window.attachList = function attachList(listId, filterId, hashKey, defaultSort = '') {
   const wrap = document.getElementById(listId);
   if (!wrap) return;
   const list = wrap.querySelector('.srows');
@@ -447,19 +471,12 @@ window.attachList = function attachList(listId, filterId) {
   // first -- and names from A.
   if (head && list) {
     const directions = {};
-    head.addEventListener('click', (e) => {
-      const button = e.target.closest('button[data-field]');
-      if (!button) return;
+    const sortBy = (button, factor) => {
       // A header names the entry field it sorts by, so a new column is a
-      // header and a field and no change here. Text sorts up, numbers down:
-      // names read from A, and every number on these lists is one where more
-      // is the interesting end.
+      // header and a field and no change here.
       const field = button.dataset.field;
       const text = button.dataset.text !== undefined;
-      directions[field] = directions[field] === undefined
-        ? (text ? 1 : -1)
-        : -directions[field];
-      const factor = directions[field];
+      directions[field] = factor;
       Array.from(list.children).sort((a, b) => {
         // A server that bans bzo, or asked to be left out of its checks, stays
         // at the bottom whatever the column.
@@ -472,14 +489,41 @@ window.attachList = function attachList(listId, filterId) {
         // rows sharing a hash next to each other.
         if (text) {
           if (!left !== !right) return left ? -1 : 1;
-          return String(left || '').localeCompare(String(right || '')) * factor;
+          // Case aside, and numbers as numbers: `host:5154` before `host:15154`.
+          return String(left || '').localeCompare(String(right || ''), undefined,
+            { numeric: true, sensitivity: 'base' }) * factor;
         }
         return ((Number(left) || 0) - (Number(right) || 0)) * factor;
       }).forEach((item) => { list.appendChild(item); });
       Array.from(head.querySelectorAll('button')).forEach((other) => {
         other.classList.toggle('active', other === button);
       });
+    };
+    head.addEventListener('click', (e) => {
+      const button = e.target.closest('button[data-field]');
+      if (!button) return;
+      // Text sorts up, numbers down: names read from A, and every number on
+      // these lists is one where more is the interesting end.
+      const field = button.dataset.field;
+      const factor = directions[field] === undefined
+        ? (button.dataset.text !== undefined ? 1 : -1)
+        : -directions[field];
+      sortBy(button, factor);
+      if (hashKey && window.history?.replaceState) {
+        const params = hashParams();
+        const spec = `${factor < 0 ? '-' : ''}${field}`;
+        if (spec === defaultSort) params.delete(`${hashKey}.sort`);
+        else params.set(`${hashKey}.sort`, spec);
+        writeHash(params);
+      }
     });
+    const linkedSort = hashKey ? hashParams().get(`${hashKey}.sort`) : null;
+    if (linkedSort) {
+      const field = linkedSort.replace(/^-/, '');
+      const button = Array.from(head.querySelectorAll('button[data-field]'))
+        .find((candidate) => candidate.dataset.field === field);
+      if (button) sortBy(button, linkedSort.startsWith('-') ? -1 : 1);
+    }
   }
 
   const filterInput = filterId && document.getElementById(filterId);
@@ -501,7 +545,20 @@ window.attachList = function attachList(listId, filterId) {
       if (countNode) {
         countNode.textContent = filterInput.value.trim() ? t(', filtered {count}', { count: shown().length }) : '';
       }
+      if (hashKey && window.history?.replaceState) {
+        const params = hashParams();
+        // Emptied, a key goes, unless it is the section the page is at.
+        if (filterInput.value) params.set(hashKey, filterInput.value);
+        else if (sectionOf([...params.keys()][0] || '') === hashKey) params.set(hashKey, '');
+        else params.delete(hashKey);
+        writeHash(params);
+      }
     });
+    const linked = hashKey ? hashParams().get(hashKey) : null;
+    if (linked) {
+      filterInput.value = linked;
+      filterInput.dispatchEvent(new window.Event('input', { bubbles: true }));
+    }
   }
 };
 
@@ -514,14 +571,39 @@ document.addEventListener('click', (e) => {
   if (panel) panel.hidden = !panel.hidden;
 });
 
-window.attachList('serverList', 'serverFilter');
-window.attachList('bzoServerList', 'bzoServerFilter');
+// The server lists arrive with the most players first, the maps by name, and
+// the replays in no order a header gives.
+window.attachList('serverList', 'serverFilter', 'bzflag', '-p');
+window.attachList('bzoServerList', 'bzoServerFilter', 'bzo', '-p');
 // The maps list is the same shell as a server list, so it is the same code.
 // Only the glob half of the filter language means anything on it, which is why
 // it has no syntax-help button beside its box.
-window.attachList('mapList', 'mapFilter');
+window.attachList('mapList', 'mapFilter', 'maps', 'n');
 // And so is the replays list, for the same reason.
-window.attachList('replayList', 'replayFilter');
+window.attachList('replayList', 'replayFilter', 'replays');
+
+// The section the hash names first, once every list has its filter: the
+// browser scrolls to a bare `#maps` itself, but not to `#maps=hix`.
+{
+  const first = [...hashParams().keys()][0];
+  if (first && window.location.hash.includes('=')) document.getElementById(sectionOf(first))?.scrollIntoView();
+}
+
+// The links at the top jump to a section and keep every list's filter: that
+// section moves to the front of the hash rather than replacing it.
+document.addEventListener('click', (e) => {
+  const anchor = e.target.closest('a[href^="#"]');
+  const key = anchor?.getAttribute('href').slice(1);
+  if (!key || !document.getElementById(`${key}`) || !window.history?.replaceState) return;
+  const params = hashParams();
+  if (![...params].some(([name, value]) => sectionOf(name) !== key && value)) return;
+  e.preventDefault();
+  const reordered = new URLSearchParams([[key, params.get(key) || ''],
+    ...[...params].filter(([name, value]) => name !== key && sectionOf(name) === key && value),
+    ...[...params].filter(([name, value]) => sectionOf(name) !== key && value)]);
+  writeHash(reordered);
+  document.getElementById(key).scrollIntoView();
+});
 
 // An x inside each filter box's right edge, shown while there is text: a
 // click empties the box and filters again, as deleting the text would.

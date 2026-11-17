@@ -1,34 +1,16 @@
 # Practice mode
 
-Plan for a match against bots on any map, in the browser, and offline from an
-installed client. It is stage 4 of [tutorial-plan.md](tutorial-plan.md) -- "bots,
-and a real offline match" -- made concrete now that the bots exist. A
-free-for-all on the last map played, at three levels, is built (steps 4 and
-5); the rest is a plan.
+Plan for practice against bots on any map, in the browser and offline from
+an installed client. It is stage 4 of [tutorial-plan.md](tutorial-plan.md) --
+"bots, and a real offline match". What practice does today is
+[practice.md](practice.md); this is what it still lacks, and how the rules
+come out of `server.js` to give it the server's game rather than its own.
 
 ## What it is
 
 Pick a map the way Map Viewer does, pick how many bots and which pilot, and play
 on it: spawning, shooting, dying, flags, scores, exactly as on a server. With no
 server reachable, an installed client offers the same from the maps it holds.
-
-## What already exists
-
-- **The world in the browser.** Map Viewer builds any world from its
-  `{url, hash}`, and `public/sw.js` keeps `/maps/<hash>.json` once fetched.
-- **The tank.** The client predicts its own motion, shots and flag effects
-  against the `collision`, `motion`, `shots` and `flags` modules, and Map
-  Viewer's phantom tank already drives with no game behind it (issue #68).
-- **The bots.** `public/js/autopilot.mjs` (Roger and Ace) and `public/js/nav.mjs`
-  (routes) are browser ESM already, and so is how a tank moves: the `drive`
-  module (`public/js/drive.mjs`), which the browser's tank and `BotDriver`
-  (`public/js/bot-driver.mjs`) both step, along with the move packet and the
-  shot it builds. `public/js/bot-host.mjs` runs the bots for the server's bot
-  thread and offline play's Worker alike, and talks to its game only through
-  messages a client would send.
-- **The seam.** `sendToServer` and `handleServerMessage` in `public/js/client.js`
-  are the client's whole conversation with a game; a server bot already joins
-  through `acceptConnection` on a socket that never leaves the process.
 
 ## What is missing: the referee
 
@@ -112,69 +94,27 @@ Each slice is moved and the server switched to it in the same change, checked
 against live play: every game bzo runs goes through it, which is the best test
 it could have.
 
-1. **Loopback.** `public/js/port-transport.mjs` is a WebSocket-shaped
-   connection over a `MessagePort` or a `Worker`, so `ws` can be either and
-   nothing that sends or receives knows which. `?loopback` on the game's URL
-   puts every game through it: `public/js/loopback-worker.mjs` relays the
-   port to the server's socket, and UDP stays off so nothing goes around it.
-   Done; a practice Worker answers on the same port.
+1. **Loopback.** Done: `?loopback` ([practice.md](practice.md), "How it
+   runs").
 2. **The core, in slices**, in order of what a first match needs. Each takes
    what a player tells it, as bzfs does; the server goes on deciding its own
    game's shots and deaths around it.
    1. spawn selection
    2. kills declared, respawns, scores
-   3. flags: spawning, grab, drop, capture, antidote, shake (the effects are
-      already the `flags` module). Shared and run by both the server and the
-      offline game: which slots a game has and where each comes into the
-      world (`public/js/flag-spawn.mjs`), what a tank asks for and taking a
-      flag (`public/js/flag-rules.mjs`), and where a dropped one comes to rest
-      (`public/js/flag-drop.mjs`); shaking was shared already (`canShakeFlag`).
-      Offline, a map's `-s`, `+f`, `-f` and `-fb` reach the game through its
-      config, and Shield and Thief act on a bot. On a map with bases for two
-      colour teams or more, practice is capture the flag -- the player and
-      every other bot against the rest -- with a team flag on each base, and
-      a capture sends the flag home, moves the team scores by the shared rule
-      (`getTeamScoreDeltasForCapture`) and kills the losing team. Left: a
-      dropped flag's flight, a team flag's timeout home, and antidotes.
-   4. match rules: clock, rabbit, team scores. The rabbit is shared: who
-      takes it (`public/js/rabbit.mjs`) is the server's rule, and practice on
-      a `-rabbit` server is Rabbit Chase, as is `scripts/arena.mjs` there or
-      with `--rabbit`. Left: the clock.
-3. **Bots that declare their own deaths.** Built for plain shells:
-   `offline-worker.mjs` steps every shell with `traceShotStep` and tests it
-   against each bot with `getShotTankHit`, as the proxied browser does for
-   itself. A flagged shot flies as the server flies it, by the same shared
-   pieces: a Laser traced at once (`traceBeam`), a Shock Wave swelling
-   (`shockWaveHitsTank`), a Guided Missile steering at its lock
-   (`steerGuidedShot`), a Super Bullet through buildings. Left: a shell
-   through a teleporter.
-4. **Practice host.** Built as offline play: `offline-worker.mjs` seats the
-   player in `clientTracesShots` mode and runs three Ace bots, free-for-all,
-   no flags. The game itself -- shells, the bots' deaths, spawns, respawns,
-   tallies and each bot's view -- is `public/js/bot-game.mjs`, which
-   `scripts/arena.mjs` runs too, bots only and faster than real time, so a
-   change to the bots is measured on exactly the game offline players get.
-   Those rules are the game's own until step 2's slices replace them.
-5. **The entry.** Built in part: the entry dialog's Server row offers
-   "Practice offline" at easy, normal and hard once a world has been saved
-   (`?practice=<level>`), on the last map played. A level is Ace's skill
-   (`ACE_LEVELS`): how late he reacts and how many of his shots he takes,
-   raised while he is behind the best foe and lowered while he is ahead. At
-   hard, as on a server, he plays his best until he is well ahead of
-   everyone.
-
-   Any map this server holds can be practised on too, and any public bzfs
-   server's: `/list` gives every bzfs server a Practice link
-   (`?practice=normal&map=<file>`), and `/api/practice/<file>` imports the
-   world first when it is not held, as `?viewmap=` does, then answers
-   with the map and the config it plays by -- bzo's defaults with the map's
-   `-ms`, options and BZDB over them, all but `_disableBots`: practice runs
-   in the player's own browser, so the autopilot stays on offer even where
-   the bzfs server bans client-side bots. The client keeps that answer per map,
-   so the link opens again offline. A bzfs server's plugins do not come with
-   it; a game-play plugin bzo has its own port of could be switched on for
-   that map later. Left: the map, how many bots,
-   which pilot, teams or not, with the settings named as `server.json`'s.
+   3. flags: spawning, grab, drop, capture, antidote, shake. Shared by the
+      server and practice already: `public/js/flag-spawn.mjs`,
+      `public/js/flag-rules.mjs`, `public/js/flag-drop.mjs`, and capture
+      scoring (`getTeamScoreDeltasForCapture`). Left: a dropped flag's
+      flight, a team flag's timeout home, and antidotes.
+   4. match rules: clock, rabbit, team scores. The rabbit is shared
+      (`public/js/rabbit.mjs`). Left: the clock.
+3. **Bots that declare their own deaths.** Done for shells and every flagged
+   shot ([practice.md](practice.md)). Left: a shell through a teleporter.
+4. **Practice host.** Done: `offline-worker.mjs` on `bot-game.mjs`. Those
+   rules are the game's own until step 2's slices replace them.
+5. **The entry.** Done for the level, the map and the bot count. Left:
+   choosing the pilot, and teams or not, with the settings named as
+   `server.json`'s.
 6. **Offline.** The service worker precaches the core, the pilots and the route
    graph; the client remembers the worlds it has played (the `worldRef`s from
    `init`); an installed client with no server offers Practice on those.

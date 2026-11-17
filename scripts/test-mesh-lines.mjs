@@ -8,10 +8,10 @@
 
 // A `drawInfo` block's `lines`, `linestrip`, `lineloop` and `points` reach the
 // draw arrays as one flagged face per command, corners in order, beside the
-// surface its `tris` state. Collision gets none of them. Delirious City
-// (reri.sandybees.com:6019) draws its streets this way, from meshes with no
-// faces at all; `bzo.bzw`'s spinning dodecahedron is the same thing small, and
-// is checked here too.
+// surface its `tris` state. Collision gets none of them. Delirious City (by
+// KTL) draws its streets this way, from meshes with no faces at all;
+// `bzo.bzw`'s spinning dodecahedron is the same thing small, and is checked
+// here too.
 
 import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';

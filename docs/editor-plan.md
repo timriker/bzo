@@ -147,8 +147,9 @@ new session type.
 - **Chat and voice** scoped to the room: a "same map" voice channel, and text
   chat with the same scope.
 - **Follow the editor**: a watcher button that tracks the writer's camera.
-- Editors and watchers are Observers in the game, as Map Viewer is, so they
-  count against the observer limit and show on the scoreboard.
+- Editors and watchers are Observers in the game, on the server rather than
+  offline as Map Viewer is, so they count against the observer limit and show
+  on the scoreboard.
 
 No multi-writer editing. Merging simultaneous edits is not worth its cost.
 
