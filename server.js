@@ -27,6 +27,8 @@ const {
   fetchServerList,
   countServerBots,
   fetchWorldFromServer,
+  IMPORT_CALLSIGN,
+  VIEW_CALLSIGN,
   probeGuestAccess,
   queryServerStatus,
   probeGlobalToken,
@@ -1767,8 +1769,23 @@ function joinSizes(...sizes) {
 // and how many bytes it sent, then what bzo made of it. Exact byte counts --
 // a reader that wants them rounded can round them, and one that wants to
 // compare or sum them still can.
+// Whether a bzfs server's latest answer to a join from this host was a ban.
+// bzo then fetches nothing of its own accord or for anyone else: the world
+// would still come down, since a ban is only checked at the join, but the
+// operator has said no. The monthly guest check asks again (`bzfs-worlds.cjs`),
+// so a lifted ban is noticed.
+function bansBzo(host, port) {
+  return bzfsWorlds.recordFor(host, port)?.guest?.banned === true;
+}
+
 function publishWorldFacts(host, port) {
   const record = bzfsWorlds.recordFor(host, port);
+  // A server that bans bzo shows only that: whatever bzo learned before the
+  // ban -- its variables, version, guest answers -- may be wrong now, and
+  // nothing new is learned until the ban is lifted (`bansBzo`).
+  if (record?.guest?.banned === true) {
+    return { banned: true, excluded: isExcludedServer(host, port) || undefined };
+  }
   const measured = measureImportedWorld(host, port);
   // Measured where the files are still there, remembered where they are not:
   // an import is swept two hours after it was fetched, and the figures it had
@@ -2710,6 +2727,7 @@ function renderFilterHelp(listId, t) {
       ['gw guestWatch', escapeHtml(t('Players with no bzflag.org login may join to observe'))],
       ['gu guests', escapeHtml(t('Players with no bzflag.org login may spawn'))],
       ['gc guestChat', escapeHtml(t('Players with no bzflag.org login may chat'))],
+      ['x excluded', escapeHtml(t('Left out of bzo\'s checks: it bans bzo, or its operator asked'))],
     ])
     + `<p>${l10n.html(t('For {bots}, {guestWatch}, {guests} and {guestChat}, a server bzo has not found out about matches neither {plus} nor {minus}.'), {
       bots: code('bots'), guestWatch: code('guestWatch'), guests: code('guests'), guestChat: code('guestChat'),
@@ -2966,8 +2984,12 @@ function renderListTables({ servers, bzoServers, canWatch, locale }) {
     // A server bzo is banned from, or one left out of its checks, shows no
     // picture and says why, and sorts last (`sortListEntries`).
     const left = world.excluded === true || isExcludedServer(s.host, s.port);
+    const bans = !left && world.banned === true;
     const note = left ? t('Left out of bzo\'s checks at its operator\'s request')
-      : (world.banned === true ? t('This server bans bzo') : '');
+      : (bans ? t('This server bans bzo') : '');
+    // Only launched where this server fetches nothing of it: one that bans
+    // bzo, or any while `viewOtherServers` is off.
+    const opens = !bans && VIEW_OTHER_SERVERS;
     return {
       id: `bzfs-pane-${index}`,
       note,
@@ -2989,8 +3011,8 @@ function renderListTables({ servers, bzoServers, canWatch, locale }) {
       // Always the row's own link, imported or not -- `?viewmap=` already
       // imports on demand (`importMapForView`) the moment nothing this fresh
       // is registered yet, so there is no state where following it is wrong.
-      href: `/?viewmap=${encodeURIComponent(importFileName)}`,
-      action: t('View map'),
+      href: opens ? `/?viewmap=${encodeURIComponent(importFileName)}` : `bzflag://${s.host}:${s.port}`,
+      action: opens ? t('View map') : t('Launch'),
       // The picture of this server's world, when this instance holds an import
       // of it: an import is parsed and registered like any other map, so it
       // already has an overview drawn beside its JSON and there is nothing
@@ -3040,8 +3062,9 @@ function renderListTables({ servers, bzoServers, canWatch, locale }) {
       // search for the address instead of showing it.
       // Hands the address to an installed BZFlag client, so it is offered to
       // everyone: nothing on this server is involved.
-      actions: action(`bzflag://${s.host}:${s.port}`, t('Launch'))
-        + (canWatch
+      // A banning server's row is its Launch already, and offers nothing else.
+      actions: bans ? '' : (opens ? action(`bzflag://${s.host}:${s.port}`, t('Launch')) : '')
+        + ((canWatch
           ? action(`/?watch=${encodeURIComponent(`${s.host}_${s.port}`)}`, t('Watch'))
             // Playing there as `bzo-<callsign>`, unregistered, which a server
             // that keeps guests out refuses (`guestSpawn`).
@@ -3051,11 +3074,12 @@ function renderListTables({ servers, bzoServers, canWatch, locale }) {
         // The same map offline, against bots, imported first when it is not
         // held here (`holdImportedWorld`): its settings come with it, its
         // plugins do not.
-        + action(`/?practice=normal&map=${encodeURIComponent(importFileName)}`, t('Practice'))
-        + `<form method="post" action="/list/import" class="inlineForm">`
-        + `<input type="hidden" name="host" value="${escapeHtml(s.host)}">`
-        + `<input type="hidden" name="port" value="${s.port}">`
-        + `<button type="submit">${escapeHtml(importedPath ? t('Re-import') : t('Import'))}</button></form>`,
+        + (opens ? action(`/?practice=normal&map=${encodeURIComponent(importFileName)}`, t('Practice'))
+          + `<form method="post" action="/list/import" class="inlineForm">`
+          + `<input type="hidden" name="host" value="${escapeHtml(s.host)}">`
+          + `<input type="hidden" name="port" value="${s.port}">`
+          + `<button type="submit">${escapeHtml(importedPath ? t('Re-import') : t('Import'))}</button></form>`
+          : '')),
     };
   });
 
@@ -4131,7 +4155,7 @@ const bzfsWorlds = createBzfsWorldTracker({
   statePath: path.join(CACHE_DIR, 'bzfs-worlds.json'),
   queryServerStatus: (host, port) => queryServerStatus(host, port),
   importWorld: (host, port, guest) =>
-    performRemoteMapImport(host, port, IMPORT_WORLD_BACKGROUND_TIMEOUT_MS, guest),
+    performRemoteMapImport(host, port, IMPORT_WORLD_BACKGROUND_TIMEOUT_MS, guest, IMPORT_CALLSIGN),
   probeGuestAccess: (host, port, { spawn }) =>
     probeGuestAccess(host, port, { spawn, motto: serverCheckMotto() }),
   // A world with a BZFlag hash has a picture once one is saved under that
@@ -4435,11 +4459,15 @@ async function registerFreshImportFromDisk(fileName) {
 // public list with no copy here, or one that will not send its world.
 async function holdImportedWorld(file) {
   const { host, port } = parseImportMapFileName(file);
+  if (bansBzo(host, port)) throw new Error('that server bans bzo');
   const existing = MAP_REGISTRY.get(file);
   if (existing && Date.now() - existing.registeredAt < IMPORT_REUSE_MS && importIsCurrent(file)) {
     return { how: 'held' };
   }
   if (!existing && await registerFreshImportFromDisk(file)) return { how: 'disk' };
+  if (!VIEW_OTHER_SERVERS && !proxyWorldFiles().has(file)) {
+    throw new Error('this server does not open other servers\' maps');
+  }
   if (await confirmImportUnchanged(file, host, port)) return { how: 'unchanged' };
   const { safeMapName, byteLength, reused } = await performRemoteMapImport(host, port);
   return { how: reused ? 'reused' : 'imported', byteLength, file: safeMapName };
@@ -4767,7 +4795,8 @@ async function importProxyWorld(target, { refresh = false } = {}) {
     // arrives with the world either way.
     title: '',
     info: null,
-  }, safeMapName).finally(() => inFlightRemoteImports.delete(safeMapName));
+    // Kept current by the status pass, not for anyone in particular.
+  }, safeMapName, undefined, null, IMPORT_CALLSIGN).finally(() => inFlightRemoteImports.delete(safeMapName));
   inFlightRemoteImports.set(safeMapName, promise);
   return promise;
 }
@@ -5035,13 +5064,19 @@ async function replayRoomFor(name) {
 const IMPORT_WORLD_TIMEOUT_MS = 3 * 60 * 1000;
 const IMPORT_WORLD_BACKGROUND_TIMEOUT_MS = 10 * 60 * 1000;
 
-// What the import's visitor says it is: this server's own /list page, where
-// what it learned about the target is shown.
+// What the list's visitor, `bzo-list`, points to: this server's /list, where
+// what it learned is shown, and `/bzo-list`, which explains the visit.
 function serverCheckMotto() {
-  return PUBLIC_URL ? `bzo server check -- ${PUBLIC_URL.replace(/\/+$/, '')}/list` : undefined;
+  const base = PUBLIC_URL ? PUBLIC_URL.replace(/\/+$/, '') : '';
+  return base ? `see: ${base}/list about: ${base}/bzo-list` : undefined;
 }
 
-async function performRemoteMapImport(host, port, timeout, guest = null) {
+// The page `bzo-list`'s motto names: what it does on a server, and how to be
+// left out of it.
+const SERVER_CHECK_DOC_URL = 'https://github.com/timriker/bzo/blob/main/docs/server-check.md';
+app.get('/bzo-list', (req, res) => res.redirect(302, SERVER_CHECK_DOC_URL));
+
+async function performRemoteMapImport(host, port, timeout, guest = null, callsign = VIEW_CALLSIGN) {
   let publicServers;
   try {
     publicServers = await getRemoteServerList();
@@ -5050,6 +5085,7 @@ async function performRemoteMapImport(host, port, timeout, guest = null) {
     if (publicServers.length === 0) throw error;
   }
   const listedServer = findPublicServer(publicServers, host, port);
+  if (bansBzo(listedServer?.host ?? host, listedServer?.port ?? port)) throw new Error('that server bans bzo');
   if (!listedServer) {
     const cached = reuseCachedImport(host, port);
     if (cached) return cached;
@@ -5059,7 +5095,7 @@ async function performRemoteMapImport(host, port, timeout, guest = null) {
   const safeMapName = remoteMapFileName(listedServer.host, listedServer.port);
   const existing = inFlightRemoteImports.get(safeMapName);
   if (existing) return existing;
-  const promise = performRemoteMapImportNow(listedServer, safeMapName, timeout, guest)
+  const promise = performRemoteMapImportNow(listedServer, safeMapName, timeout, guest, callsign)
     .finally(() => inFlightRemoteImports.delete(safeMapName));
   inFlightRemoteImports.set(safeMapName, promise);
   return promise;
@@ -5070,11 +5106,12 @@ async function performRemoteMapImport(host, port, timeout, guest = null) {
 // header records. They are the same address for an import off the public list,
 // and different for a proxied target, where the name a player sees is public
 // and the address bzo reaches it on is private (`docs/proxy.md`).
-async function performRemoteMapImportNow(listedServer, safeMapName, timeout, guestQuestions = null) {
+async function performRemoteMapImportNow(listedServer, safeMapName, timeout, guestQuestions = null,
+  callsign = VIEW_CALLSIGN) {
   const { host, port, dialHost = host, dialPort = port } = listedServer;
   const { worldDatabase, gameSettings, queryGame, variables, worldHash, guest, serverVersion } =
     await fetchWorldFromServer(dialHost, dialPort, timeout || IMPORT_WORLD_TIMEOUT_MS,
-      { guest: guestQuestions, motto: serverCheckMotto() });
+      { guest: guestQuestions, callsign, motto: serverCheckMotto() });
   const tree = parseWorldDatabase(worldDatabase);
   // Whatever caused this import -- the tracker's own schedule, an operator, or
   // somebody following a `?viewmap=` link -- the world tracker learns the hash
@@ -5334,6 +5371,15 @@ function announceReadyServer() {
 // servers they have no relationship with -- the rows still get pictures for
 // whatever has been imported on demand, just not ahead of being asked.
 const BZFS_WORLD_THUMBNAILS = serverConfig.bzfsWorldThumbnails !== false;
+
+// `viewOtherServers` in server.json: whether a player here may open the map
+// of a public BZFlag server this instance does not proxy -- `?viewmap=`,
+// practice, and `/list`'s View map, Practice and Import -- each of which has
+// this server join that one as `bzo-view` to fetch its world. Off unless the
+// operator turns it on, since it is a connection to a server they have no
+// relationship with. A proxy target's world, and a copy an operator's
+// `/import` already holds, are this server's own either way.
+const VIEW_OTHER_SERVERS = serverConfig.viewOtherServers === true;
 
 // `adminGroups` in `server.json`: the global groups this server would grant
 // admin to. The list server answers about no group it was not asked about, so

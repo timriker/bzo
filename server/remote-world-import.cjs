@@ -72,19 +72,24 @@ const COMPUTER_PLAYER = 1;
 // shape `getAppVersion()` builds (`buildDate.cxx:138-150`): bzfs reads the
 // first three numbers with `sscanf(..., "%d.%d.%d", ...)` and keeps the rest
 // as typed, so an operator reading their log sees which bzo called on them.
-const IMPORT_CALLSIGN = 'bzo-import';
+// `bzo-list` is the list server's own check; `bzo-view` fetches a world because
+// a player asked to see it.
+const IMPORT_CALLSIGN = 'bzo-list';
+const VIEW_CALLSIGN = 'bzo-view';
 // The motto an operator reads off the visitor. A bzo with a `publicUrl` names
 // its own /list page, where what it learned is shown; this is the fallback.
-const IMPORT_MOTTO = 'bzo server check -- https://github.com/timriker/bzo';
-const IMPORT_CLIENT_VERSION = (() => {
-  // Never a made-up number: a release bzo cannot read is said as `unknown`,
-  // which `sscanf` declines rather than believing.
-  let version = 'unknown';
+const IMPORT_MOTTO = 'about: https://github.com/timriker/bzo/blob/main/docs/server-check.md';
+// Never a made-up number: a release bzo cannot read is said as `unknown`,
+// which `sscanf` declines rather than believing.
+const BZO_VERSION = (() => {
   try {
-    version = String(require('../package.json').version);
-  } catch { /* said as unknown */ }
-  return `${version}-bzo-import`;
+    return String(require('../package.json').version);
+  } catch {
+    return 'unknown';
+  }
 })();
+const clientVersion = (callsign) => `${BZO_VERSION}-${callsign}`;
+const IMPORT_CLIENT_VERSION = clientVersion(IMPORT_CALLSIGN);
 // Long enough for a busy server to get through MsgAccept and its BZDB dump,
 // short enough that a server which answers neither does not hold the import
 // open. Failure here is never fatal: the map still imports, without `-set`.
@@ -348,7 +353,7 @@ function createFrameReader(socket) {
 // as one zeroed buffer and written into.
 //
 // The token field is the one a forwarded global login is written into. An
-// import leaves it zeroed: `bzo-import` is an unregistered callsign, which is
+// import leaves it zeroed: `bzo-list` is an unregistered callsign, which is
 // what an anonymous join is, and a server that demands registration rejects
 // it and the import goes on without variables. Every field is NUL-terminated,
 // so each write is capped a byte short of its slot.
@@ -493,7 +498,8 @@ function guestReply(text) {
   return GUEST_REPLIES.find((reply) => text.startsWith(reply.prefix)) || null;
 }
 
-async function enterAndProbe(socket, readFrame, selfId, probe = null, motto = IMPORT_MOTTO) {
+async function enterAndProbe(socket, readFrame, selfId, probe = null,
+  { callsign = IMPORT_CALLSIGN, motto = IMPORT_MOTTO } = {}) {
   const spawn = probe?.spawn === true;
   const chat = probe?.chat === true;
   const read = (until) => {
@@ -511,7 +517,9 @@ async function enterAndProbe(socket, readFrame, selfId, probe = null, motto = IM
   // Enter, take the BZDB dump bzfs sends every accepted player. Bounded by
   // its own clock rather than the caller's watchdog: a server that accepts
   // the join and then says nothing must not strand a world already fetched.
-  sendFrame(socket, 'en', buildEnterPayload({ motto, team: spawn ? AUTOMATIC_TEAM : OBSERVER_TEAM }));
+  sendFrame(socket, 'en', buildEnterPayload({
+    callsign, motto, version: clientVersion(callsign), team: spawn ? AUTOMATIC_TEAM : OBSERVER_TEAM,
+  }));
   const vars = new Map();
   let accepted = false;
   let gone = false;
@@ -674,7 +682,7 @@ function probeGuestAccess(host, port, { spawn = false, motto, timeout = 20000 } 
           throw new Error(`protocol ${version} (bzo speaks ${PROTOCOL_VERSION})`);
         }
         if (playerId === 0xff) throw new Error('rejected (full, banned, or closed)');
-        const { guest, serverVersion } = await enterAndProbe(socket, readFrame, playerId, { chat: true, spawn }, motto);
+        const { guest, serverVersion } = await enterAndProbe(socket, readFrame, playerId, { chat: true, spawn }, { motto });
         // The version rides on the answers; the tracker takes it off.
         done(null, { ...(guest || {}), ...(serverVersion ? { serverVersion } : {}) });
       } catch (err) {
@@ -870,7 +878,8 @@ function fetchWorldFromServer(host, port, timeout, options = {}) {
         let serverVersion = null;
         if (options.enterForVariables !== false) {
           try {
-            const joined = await enterAndProbe(socket, readFrame, playerId, options.guest, options.motto);
+            const joined = await enterAndProbe(socket, readFrame, playerId, options.guest,
+              { callsign: options.callsign, motto: options.motto });
             variables = joined.variables;
             guest = joined.guest;
             serverVersion = joined.serverVersion;
@@ -2285,6 +2294,8 @@ module.exports = {
   fetchServerList,
   countServerBots,
   fetchWorldFromServer,
+  IMPORT_CALLSIGN,
+  VIEW_CALLSIGN,
   probeGuestAccess,
   guestReply,
   queryServerStatus,

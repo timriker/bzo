@@ -409,14 +409,15 @@ free-for-all here (upstream's own table gives the letter to both `ffa` and
 bzo has no favourites to collide with), and `i` and `I` both mean inertia
 (upstream's parser takes the lowercase letter while its help page prints the
 capital). A filter naming a per-team figure leaves out any row bzo has no
-figure for, rather than counting it as zero. bzo adds three booleans of its
+figure for, rather than counting it as zero. bzo adds booleans of its
 own: `b`/`bots`, from a server's `_disableBots`, and `gw`/`guestWatch`,
 `gu`/`guests` and `gc`/`guestChat`, from what bzo has learned about guest
 access (docs/proxy.md, "Guest access"). A server bzo has not found out about
-matches neither `+` nor `-`. And a pattern, `ve`/`ver`/`version`, over the
-server's version -- `bzo-*` for bzo, bzfs's own build for the rest (see **A
-server's build**) -- which plain text searches too, so `bzo-` alone lists bzo
-servers.
+matches neither `+` nor `-`. `x`/`excluded` is a server left out of bzo's
+checks, because it bans bzo or its operator asked (docs/server-check.md).
+And a pattern, `ve`/`ver`/`version`, over the server's version -- `bzo-*`
+for bzo, bzfs's own build for the rest (see **A server's build**) -- which
+plain text searches too, so `bzo-` alone lists bzo servers.
 
 Each list's filter is kept in the page's hash under its heading's id --
 `bzo`, `bzflag`, `maps`, `replays` -- so a filtered list is a link:
@@ -450,10 +451,13 @@ contributes a row per target as well as its own, so the list is one row per
 *game* rather than per instance -- such a row names the target and links to
 that instance's `?proxy=` for it. The selected row's own buttons sit on the
 filter bar rather than in the pane, so the way in stays in one place instead of
-moving as a pane grows or shrinks. A bzfs row offers **View map** and
-**Import**, plus a **Watch** link for a signed-in admin: the same test the
+moving as a pane grows or shrinks. A bzfs row offers **View map**,
+**Practice** and **Import** where `viewOtherServers` is on, and **Launch**
+otherwise, plus a **Watch** link for a signed-in admin: the same test the
 in-client View list makes (`canWatchRemoteServers`), because watching sends
-that server a callsign bzo has verified (`docs/proxy.md`).
+that server a callsign bzo has verified (`docs/proxy.md`). A server that bans
+bzo offers only **Launch**, and bzo refuses to import it for anyone
+(docs/server-check.md).
 
 Sorting, selection and the filter parser are `public/js/list-page.js`, served as
 a file rather than inlined in the page: the parser is long enough that

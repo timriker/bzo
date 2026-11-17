@@ -9,6 +9,7 @@ const require = createRequire(import.meta.url);
 const {
   findPublicServer, collectNonDefaultVariables, OBSTACLE_ORDER,
   parseWorldDatabase, buildBZWText, fetchWorldFromServer, sendFrame, createFrameReader,
+  IMPORT_CALLSIGN, VIEW_CALLSIGN,
 } = require('../server/remote-world-import.cjs');
 const { BZDB_DEFAULTS } = require('../public/js/bzdb-defaults.mjs');
 
@@ -108,9 +109,10 @@ assert.deepEqual(
 // what was left before the chunk, or 0 once it is the last.
 // `cache` offers a cache URL, as `-cacheurl` or the `fastmap` plugin does:
 // the bytes it serves, and the host it names.
-async function downloadFromFakeBzfs(world, cache = null) {
+async function downloadFromFakeBzfs(world, cache = null, options = { enterForVariables: false }) {
   const chunkSize = 1024 - (2 * 2) - 4;
   let gets = 0;
+  let entered = null;
   const web = cache && http.createServer((req, res) => res.end(cache.serves));
   if (web) await new Promise((resolve) => web.listen(0, '127.0.0.1', resolve));
   const md5 = crypto.createHash('md5').update(world).digest('hex');
@@ -138,15 +140,22 @@ async function downloadFromFakeBzfs(world, cache = null) {
           const left = Buffer.alloc(4);
           left.writeUInt32BE(end >= world.length ? 0 : world.length - ptr);
           sendFrame(socket, 'gw', Buffer.concat([left, world.subarray(ptr, end)]));
+        } else if (code === 'en') {
+          // The callsign field, and the version at the end; then the join is
+          // refused (RejectServerFull), which costs the download nothing.
+          entered = {
+            callsign: payload.toString('latin1', 4, 36).replace(/\0.*$/s, ''),
+            version: payload.toString('latin1').match(/-(bzo-[a-z]+)\0/)?.[1],
+          };
+          sendFrame(socket, 'rj', Buffer.from([0, 5]));
         }
       }
     })().catch(() => {});
   });
   await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
   try {
-    const result = await fetchWorldFromServer('127.0.0.1', server.address().port, 5000,
-      { enterForVariables: false });
-    return { ...result, gets };
+    const result = await fetchWorldFromServer('127.0.0.1', server.address().port, 5000, options);
+    return { ...result, gets, entered };
   } finally {
     server.close();
     if (web) web.close();
@@ -173,6 +182,20 @@ for (const size of [500, 1016, 1016 * 3, 200000]) {
   const elsewhere = await downloadFromFakeBzfs(world, { serves: world, host: 'localhost' });
   assert.ok(elsewhere.worldDatabase.equals(world) && !elsewhere.fromCacheUrl && elsewhere.gets > 0,
     'a cache URL on another host than the one dialled is not asked');
+}
+
+// The join after the download says who asked: the list server's own check is
+// `bzo-list`, a world a player wanted is `bzo-view`, and the version says the
+// same.
+{
+  const world = Buffer.from('a world somebody asked to see '.repeat(50));
+  const asked = await downloadFromFakeBzfs(world, null, { callsign: VIEW_CALLSIGN });
+  assert.deepEqual(asked.entered, { callsign: 'bzo-view', version: 'bzo-view' },
+    'a world fetched for a player joins as bzo-view');
+  assert.ok(asked.worldDatabase.equals(world), 'and a refused join still leaves the world');
+  const checked = await downloadFromFakeBzfs(world, null, {});
+  assert.deepEqual(checked.entered, { callsign: IMPORT_CALLSIGN, version: 'bzo-list' },
+    'with no callsign named it is the list check, bzo-list');
 }
 
 console.log('remote world import tests passed');

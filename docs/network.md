@@ -380,7 +380,8 @@ It then does send `MsgEnter`, once the world is already in hand, and this
 costs a seat. A bzfs sends its BZDB only from `addPlayer`, after a player has
 actually been accepted (`bzfs.cxx:2361-2365`), so `_tankSpeed`, `_gravity`
 and every other world variable can only be read by briefly being on the
-server: one observer slot named `bzo-import`, one join and one part in
+server: one observer slot named `bzo-list` (`bzo-view` for a world a player
+asked for), one join and one part in
 everybody's chat, then `MsgExit`. The same visit asks what a guest may do
 there (docs/proxy.md, "Guest access"). What comes back is written into the
 exported map as `-set` lines -- only the values that differ from upstream's

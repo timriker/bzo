@@ -542,6 +542,14 @@ may change once that stops being the dominant cost.
 - Keep the corrected facts here accurate. A stale instruction is worse than a
   missing one, because agents act on it without checking.
 
+## Replies
+
+- **Link file references.** Write a doc or source file mentioned in a reply as
+  a markdown link to its repo-relative path, e.g.
+  `[docs/server-check.md](docs/server-check.md)` or
+  `[server.js:5040](server.js:5040)`. CloudCLI opens such links in its editor;
+  a backticked path is not clickable. Keep backticks for code identifiers.
+
 ## Coding Conventions
 
 - **Always prefer code reuse over duplication.** When implementing new features

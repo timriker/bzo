@@ -97,6 +97,8 @@ const BOOL_LABELS = {
   gw: 'guestWatch', guestWatch: 'guestWatch',
   gu: 'guests', guests: 'guests',
   gc: 'guestChat', guestChat: 'guestChat',
+  // Left out of bzo's checks: its host bans bzo, or its operator asked.
+  x: 'excluded', excluded: 'excluded',
 };
 
 const RANGE_LABELS = {
@@ -308,6 +310,7 @@ function boolValue(entry, key) {
     case 'antidote': return entry.an === 1;
     case 'overview': return entry.ov === 1;
     case 'temp': return entry.tmp === 1;
+    case 'excluded': return entry.nt === 1;
     // Unknown is neither true nor false, so `+name` and `-name` both pass it by.
     case 'bots': return knownBool(entry.bo);
     case 'guestWatch': return knownBool(entry.gw);

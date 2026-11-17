@@ -576,6 +576,7 @@ for a world's variables, and /list shows the answer as **Guests Watch** or
 - **For free**: a guest's real visit through the proxy records what bzfs did
   -- spawned it, refused it, echoed or refused its chat.
 
-The visitor is `bzo-import` with the motto `bzo server check --
-<publicUrl>/list`, so an operator who sees it knows where the answers are;
-[server-check.md](server-check.md) explains the visits to them.
+The visitor is `bzo-list` with the motto `see: <publicUrl>/list about:
+<publicUrl>/bzo-list`, so an operator who sees it knows where the answers
+are; `/bzo-list` sends them to [server-check.md](server-check.md), which
+explains the visits.

@@ -108,6 +108,43 @@ assert.equal(tracker.recordFor(server.host, server.port).guest.banned, false);
   assert.deepEqual(dials, [], 'an excluded server is never dialled');
 }
 
+// A server that bans bzo is not dialled at all for a month -- no hash check,
+// no world -- then asked only whether the ban still stands, with one join.
+{
+  const banning = { host: 'ban.example.org', port: 5156, title: 'b', info: {} };
+  const calls = [];
+  let stillBanned = true;
+  const wary = createBzfsWorldTracker({
+    statePath: path.join(dir, 'banned.json'),
+    queryServerStatus: async () => { calls.push('dial'); return status; },
+    importWorld: async () => { calls.push('import'); },
+    probeGuestAccess: async (host, port, questions) => {
+      calls.push(`join${questions.spawn ? '+spawn' : ''}`);
+      return { watch: stillBanned ? 'unknown' : 'yes', banned: stillBanned };
+    },
+    hasPicture: () => true,
+    log: () => {},
+    logError: () => {},
+  });
+  wary.observe([banning]);
+  wary.noteImport(banning.host, banning.port, status.worldHash, null, []);
+  wary.noteGuest(banning.host, banning.port, { watch: 'unknown', banned: true });
+  clock += 2 * 24 * 60 * 60 * 1000;
+  await wary.tick();
+  assert.deepEqual(calls, [], 'a fresh ban is not dialled, hash check included');
+  clock += GUEST_RECHECK_MS;
+  await wary.tick();
+  assert.deepEqual(calls, ['join'], 'a month on, one join asks whether the ban stands');
+  clock += 2 * 24 * 60 * 60 * 1000;
+  await wary.tick();
+  assert.deepEqual(calls, ['join'], 'and a ban that stands waits another month');
+  stillBanned = false;
+  clock += GUEST_RECHECK_MS;
+  await wary.tick();
+  assert.equal(wary.recordFor(banning.host, banning.port).guest.banned, false, 'a lifted ban is noticed');
+  assert.equal(wary.recordFor(banning.host, banning.port).dueNow, true, 'and the server is due again at once');
+}
+
 Date.now = realNow;
 fs.rmSync(dir, { recursive: true, force: true });
 console.log('guest check tests passed');

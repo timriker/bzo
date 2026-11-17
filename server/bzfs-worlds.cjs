@@ -93,8 +93,12 @@ function mergeGuest(previous, fresh, now) {
     }
     next[`${field}At`] = now;
   }
-  // Banned or not is the latest join's answer, whichever way it went.
-  if (typeof fresh?.banned === 'boolean') next.banned = fresh.banned;
+  // Banned or not is the latest join's answer, whichever way it went, dated so
+  // a ban is asked about again only once a month.
+  if (typeof fresh?.banned === 'boolean') {
+    next.banned = fresh.banned;
+    next.bannedAt = now;
+  }
   return next;
 }
 
@@ -274,6 +278,19 @@ function createBzfsWorldTracker(deps) {
     for (const [key, server] of listed) {
       if (isExcluded(server.host, server.port)) continue;
       const record = records.get(key);
+      // A server that bans bzo is not dialled at all, hash checks included,
+      // until its ban is a month old; then it is only asked whether the ban
+      // still stands (`checkBan`).
+      if (record?.guest?.banned === true) {
+        if (now - (record.guest.bannedAt || 0) < GUEST_RECHECK_MS) continue;
+        // A join waits its turn, so this one is not picked until it may go.
+        if (now - lastGuestVisitAt < GUEST_VISIT_GAP_MS || now - lastImportAt < IMPORT_GAP_MS) continue;
+        if (now - (record.guest.bannedAt || 0) > bestAge) {
+          bestAge = now - (record.guest.bannedAt || 0);
+          best = server;
+        }
+        continue;
+      }
       if (record?.error && now - (record.errorAt || 0) < failureCooldown(record.failCount)) continue;
       let age;
       if (!record) age = Infinity;
@@ -285,9 +302,37 @@ function createBzfsWorldTracker(deps) {
     return best;
   }
 
+  // Whether a server that banned bzo still does: one join, the guest check's,
+  // and nothing else. A lifted ban leaves the server due at once, so its world
+  // and the rest are learned again on the next tick.
+  async function checkBan(server, record, key, now) {
+    if (!probeGuestAccess) return;
+    if (now - lastGuestVisitAt < GUEST_VISIT_GAP_MS || now - lastImportAt < IMPORT_GAP_MS) return;
+    lastImportAt = now;
+    lastGuestVisitAt = now;
+    let guest;
+    try {
+      guest = mergeGuest(record.guest,
+        await probeGuestAccess(server.host, server.port, { chat: true, spawn: false }), now);
+    } catch (error) {
+      guest = mergeGuest(record.guest, { banned: true }, now);
+      log(`[WORLDS] ${key} ban check failed: ${error.message}`);
+    }
+    const lifted = guest.banned !== true;
+    records.set(key, {
+      ...record, guest, fingerprint: listEntryFingerprint(server), checkedAt: now, dueNow: lifted,
+    });
+    log(`[WORLDS] ${key} ${lifted ? 'no longer bans bzo' : 'still bans bzo'}`);
+    save();
+  }
+
   async function check(server, now) {
     const key = serverKey(server.host, server.port);
     const record = records.get(key) || {};
+    if (record.guest?.banned === true) {
+      await checkBan(server, record, key, now);
+      return;
+    }
     const fingerprint = listEntryFingerprint(server);
     let status;
     try {

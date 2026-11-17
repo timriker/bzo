@@ -9,8 +9,9 @@ is what is still unbuilt.
 
 - **The entry dialog.** Once a world has been played, its Server row offers
   "Practice offline" at easy, normal and hard, on the last map played.
-- **`/list`.** Every map this server holds and every bzfs server has a
-  Practice button, at normal.
+- **`/list`.** Every map this server holds has a Practice button, at
+  normal, and so does every bzfs server where the operator set
+  `viewOtherServers`.
 - **A link.** The same thing by hand:
 
 ```text
