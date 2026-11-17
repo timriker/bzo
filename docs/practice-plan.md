@@ -168,7 +168,9 @@ it could have.
    (`?practice=normal&map=<file>`), and `/api/practice/<file>` imports the
    world first when it is not held, as `?viewmap=` does, then answers
    with the map and the config it plays by -- bzo's defaults with the map's
-   `-ms`, options and BZDB over them. The client keeps that answer per map,
+   `-ms`, options and BZDB over them, all but `_disableBots`: practice runs
+   in the player's own browser, so the autopilot stays on offer even where
+   the bzfs server bans client-side bots. The client keeps that answer per map,
    so the link opens again offline. A bzfs server's plugins do not come with
    it; a game-play plugin bzo has its own port of could be switched on for
    that map later. Left: the map, how many bots,

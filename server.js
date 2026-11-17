@@ -1610,7 +1610,11 @@ app.get('/api/practice/:file', async (req, res) => {
     res.status(404).json({ error: 'no such map' });
     return;
   }
-  const bzdb = map.bzdb || {};
+  // All but `_disableBots`: practice runs in the player's own browser against
+  // bzo's bots, so a bzfs server's ban on client-side bots is not this game's
+  // to keep, and the autopilot stays on offer.
+  const bzdb = Object.fromEntries(Object.entries(map.bzdb || {})
+    .filter(([name]) => name.toLowerCase() !== '_disablebots'));
   res.set('Cache-Control', 'no-store');
   res.json({
     init: {
