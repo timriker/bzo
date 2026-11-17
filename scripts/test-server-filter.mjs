@@ -24,8 +24,9 @@ const here = path.dirname(fileURLToPath(import.meta.url));
 // `getElementById` comes back empty, which makes each `attachList` at the
 // bottom of it return before touching anything.
 const context = {
-  window: {},
+  window: { location: { hash: '', pathname: '/list', search: '' } },
   document: { addEventListener() {}, getElementById() { return null; } },
+  URLSearchParams: globalThis.URLSearchParams,
 };
 context.window.document = context.document;
 vm.createContext(context);
