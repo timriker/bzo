@@ -10,8 +10,11 @@ what it does, when, and how to be left out of its checks.
 
 Only what your server sends any BZFlag client that joins it: the binary world
 (`MsgGetWorld`) and the game settings and BZDB variables a client needs to
-play. That is not your `.bzw`. bzfs never sends the map file, so bzo never has
-it, nor its comments, author or license.
+play. Where your server offers a cache URL (`-cache`, or the `fastmap`
+plugin), bzo downloads the world from it as a BZFlag client does, if it is
+on the host bzo dialled and its MD5 matches your world hash; otherwise over
+the game protocol. That is not your `.bzw`. bzfs never sends the map file,
+so bzo never has it, nor its comments, author or license.
 
 bzo rebuilds the world from what your server sent in order to draw it: the
 same world a BZFlag client exports with `/saveworld`. That copy stays on the

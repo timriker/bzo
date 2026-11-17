@@ -1,5 +1,7 @@
 import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
+import crypto from 'node:crypto';
+import http from 'node:http';
 import net from 'node:net';
 import zlib from 'node:zlib';
 
@@ -104,8 +106,14 @@ assert.deepEqual(
 // The download asks for many chunks ahead. A stand-in bzfs answers each
 // MsgGetWorld as `sendWorld` (bzfs.cxx) does: from the offset it carries, with
 // what was left before the chunk, or 0 once it is the last.
-async function downloadFromFakeBzfs(world) {
+// `cache` offers a cache URL, as `-cacheurl` or the `fastmap` plugin does:
+// the bytes it serves, and the host it names.
+async function downloadFromFakeBzfs(world, cache = null) {
   const chunkSize = 1024 - (2 * 2) - 4;
+  let gets = 0;
+  const web = cache && http.createServer((req, res) => res.end(cache.serves));
+  if (web) await new Promise((resolve) => web.listen(0, '127.0.0.1', resolve));
+  const md5 = crypto.createHash('md5').update(world).digest('hex');
   const server = net.createServer((socket) => {
     const { readExact, readFrame } = createFrameReader(socket);
     socket.on('error', () => {});
@@ -117,8 +125,14 @@ async function downloadFromFakeBzfs(world) {
         if (code === 'qg') sendFrame(socket, 'qg', Buffer.alloc(40));
         else if (code === 'nf') sendFrame(socket, 'nf');
         else if (code === 'ws') sendFrame(socket, 'gs', Buffer.alloc(40));
-        else if (code === 'wh') sendFrame(socket, 'wh', Buffer.from(`p${'0'.repeat(32)}\0`));
-        else if (code === 'gw') {
+        else if (code === 'wh') {
+          if (web) {
+            const url = `http://${cache.host || '127.0.0.1'}:${web.address().port}/fastmap/`;
+            sendFrame(socket, 'cu', Buffer.from(`${url}\0`));
+          }
+          sendFrame(socket, 'wh', Buffer.from(`p${md5}\0`));
+        } else if (code === 'gw') {
+          gets += 1;
           const ptr = Math.min(payload.readUInt32BE(0), world.length);
           const end = Math.min(world.length, ptr + chunkSize);
           const left = Buffer.alloc(4);
@@ -130,10 +144,12 @@ async function downloadFromFakeBzfs(world) {
   });
   await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
   try {
-    return await fetchWorldFromServer('127.0.0.1', server.address().port, 5000,
+    const result = await fetchWorldFromServer('127.0.0.1', server.address().port, 5000,
       { enterForVariables: false });
+    return { ...result, gets };
   } finally {
     server.close();
+    if (web) web.close();
   }
 }
 
@@ -142,6 +158,21 @@ for (const size of [500, 1016, 1016 * 3, 200000]) {
   for (let i = 0; i < size; i++) world[i] = (i * 7 + (i >> 8)) & 0xff;
   const result = await downloadFromFakeBzfs(world);
   assert.ok(result.worldDatabase.equals(world), `a ${size}-byte world arrives whole and in order`);
+}
+
+// A cache URL is taken where it serves the world the hash names, on the host
+// dialled, and the game protocol fetches it otherwise.
+{
+  const world = Buffer.from('a world served over http '.repeat(200));
+  const fast = await downloadFromFakeBzfs(world, { serves: world });
+  assert.ok(fast.worldDatabase.equals(world) && fast.fromCacheUrl && fast.gets === 0,
+    'a cache URL serving the right world is downloaded from, with no MsgGetWorld');
+  const wrong = await downloadFromFakeBzfs(world, { serves: Buffer.from('not the world') });
+  assert.ok(wrong.worldDatabase.equals(world) && !wrong.fromCacheUrl && wrong.gets > 0,
+    'a cache URL whose MD5 is not the world hash falls back to the game protocol');
+  const elsewhere = await downloadFromFakeBzfs(world, { serves: world, host: 'localhost' });
+  assert.ok(elsewhere.worldDatabase.equals(world) && !elsewhere.fromCacheUrl && elsewhere.gets > 0,
+    'a cache URL on another host than the one dialled is not asked');
 }
 
 console.log('remote world import tests passed');

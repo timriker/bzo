@@ -28,6 +28,7 @@
 // again the instant the variables arrive, and `enterForVariables: false`
 // turns it off for a caller that would rather stay invisible.
 
+const crypto = require('node:crypto');
 const dgram = require('node:dgram');
 const net = require('node:net');
 const { BZDB_DEFAULTS } = require('../public/js/bzdb-defaults.mjs');
@@ -683,6 +684,42 @@ function probeGuestAccess(host, port, { spawn = false, motto, timeout = 20000 } 
   });
 }
 
+// A world from a bzfs server's cache URL, or null for the game protocol to
+// fetch instead. Only a URL on the host already dialled is asked, which is
+// what `fastmap` names (its own HTTP server, on the game port), and a
+// redirect is refused: the URL comes from the server, and bzo fetches it for
+// whoever views the map, so it may not point bzo anywhere else. What comes
+// back must be the world the server's hash names, an MD5 under its `p`/`t`,
+// as an upstream client checks it.
+async function fetchCachedWorld(cacheUrl, host, worldHash, timeout) {
+  if (!cacheUrl || !/^[pt][0-9a-f]{32}$/.test(worldHash)) return null;
+  let url;
+  try {
+    url = new URL(cacheUrl);
+  } catch {
+    return null;
+  }
+  if ((url.protocol !== 'http:' && url.protocol !== 'https:')
+    || url.hostname.toLowerCase() !== String(host).toLowerCase()) return null;
+  try {
+    const response = await fetch(url, { redirect: 'error', signal: AbortSignal.timeout(timeout) });
+    if (!response.ok || !response.body) return null;
+    const declared = Number(response.headers.get('content-length'));
+    if (declared > MAX_WORLD_DATABASE_BYTES) return null;
+    const chunks = [];
+    let length = 0;
+    for await (const chunk of response.body) {
+      length += chunk.length;
+      if (length > MAX_WORLD_DATABASE_BYTES) return null;
+      chunks.push(Buffer.from(chunk));
+    }
+    const world = Buffer.concat(chunks);
+    return crypto.createHash('md5').update(world).digest('hex') === worldHash.slice(1) ? world : null;
+  } catch {
+    return null;
+  }
+}
+
 function fetchWorldFromServer(host, port, timeout, options = {}) {
   return new Promise((resolve, reject) => {
     // Upstream bzfs does not support IPv6; force IPv4 so dual-stack hosts
@@ -759,61 +796,71 @@ function fetchWorldFromServer(host, port, timeout, options = {}) {
         // (`server/bzfs-worlds.cjs`).
         sendFrame(socket, 'wh');
         let worldHash = '';
+        let cacheUrl = '';
         for (;;) {
           const { code, payload } = await readFrame();
           if (code === 'wh') {
             worldHash = payload.toString('ascii').replace(/\0.*$/, '');
             break;
           }
-          if (code === 'cu') continue; // cache URL offered; we always pull direct
+          if (code === 'cu') cacheUrl = payload.toString('latin1').replace(/\0.*$/, '');
           if (code === 'sk' || code === 'rj') throw new Error(`server sent ${code} requesting world hash`);
         }
 
-        // A chunk's `bytesLeft` is what was left before it, or 0 once it is
-        // the last, so the first one gives the size of the world and of every
-        // chunk but the last. The rest are asked for up to
-        // `WORLD_REQUEST_WINDOW` ahead, and come back in the order asked.
-        function requestChunk(ptr) {
-          const req = Buffer.alloc(4);
-          req.writeUInt32BE(ptr, 0);
-          sendFrame(socket, 'gw', req);
-        }
-        async function readChunk() {
-          for (;;) {
-            const { code, payload } = await readFrame();
-            if (code === 'gw') return { bytesLeft: payload.readUInt32BE(0), chunk: payload.subarray(4) };
-            if (code === 'sk' || code === 'rj') throw new Error(`server sent ${code} downloading world`);
+        // The world from the server's cache URL where it offers one -- its
+        // `-cacheurl`, or the `fastmap` plugin's copy on its own HTTP server
+        // -- as an upstream client takes it (`WorldDownLoader`, playing.cxx),
+        // and from the game protocol below when that fails.
+        const cached = await fetchCachedWorld(cacheUrl, host, worldHash, timeout);
+
+        let parts = cached ? [cached] : null;
+        if (!cached) {
+          // A chunk's `bytesLeft` is what was left before it, or 0 once it is
+          // the last, so the first one gives the size of the world and of every
+          // chunk but the last. The rest are asked for up to
+          // `WORLD_REQUEST_WINDOW` ahead, and come back in the order asked.
+          function requestChunk(ptr) {
+            const req = Buffer.alloc(4);
+            req.writeUInt32BE(ptr, 0);
+            sendFrame(socket, 'gw', req);
           }
-        }
-        requestChunk(0);
-        const first = await readChunk();
-        const chunkSize = first.chunk.length;
-        const total = first.bytesLeft === 0 ? chunkSize : first.bytesLeft;
-        if (total > MAX_WORLD_DATABASE_BYTES) throw new Error('world database exceeded the size limit');
-        if (chunkSize === 0 && total > 0) throw new Error('server sent an empty world chunk');
-        const parts = [first.chunk];
-        let requested = chunkSize;
-        let received = chunkSize;
-        let inFlight = 0;
-        while (received < total) {
-          while (inFlight < WORLD_REQUEST_WINDOW && requested < total) {
-            requestChunk(requested);
-            requested += chunkSize;
-            inFlight++;
+          async function readChunk() {
+            for (;;) {
+              const { code, payload } = await readFrame();
+              if (code === 'gw') return { bytesLeft: payload.readUInt32BE(0), chunk: payload.subarray(4) };
+              if (code === 'sk' || code === 'rj') throw new Error(`server sent ${code} downloading world`);
+            }
           }
-          const { bytesLeft, chunk } = await readChunk();
-          inFlight--;
-          const last = received + chunk.length >= total;
-          if (chunk.length === 0 || received + chunk.length > total
-            || bytesLeft !== (last ? 0 : total - received)) {
-            throw new Error('world chunk out of sequence');
+          requestChunk(0);
+          const first = await readChunk();
+          const chunkSize = first.chunk.length;
+          const total = first.bytesLeft === 0 ? chunkSize : first.bytesLeft;
+          if (total > MAX_WORLD_DATABASE_BYTES) throw new Error('world database exceeded the size limit');
+          if (chunkSize === 0 && total > 0) throw new Error('server sent an empty world chunk');
+          parts = [first.chunk];
+          let requested = chunkSize;
+          let received = chunkSize;
+          let inFlight = 0;
+          while (received < total) {
+            while (inFlight < WORLD_REQUEST_WINDOW && requested < total) {
+              requestChunk(requested);
+              requested += chunkSize;
+              inFlight++;
+            }
+            const { bytesLeft, chunk } = await readChunk();
+            inFlight--;
+            const last = received + chunk.length >= total;
+            if (chunk.length === 0 || received + chunk.length > total
+              || bytesLeft !== (last ? 0 : total - received)) {
+              throw new Error('world chunk out of sequence');
+            }
+            parts.push(chunk);
+            received += chunk.length;
           }
-          parts.push(chunk);
-          received += chunk.length;
+          // Answers to requests still in flight are not read: the variables
+          // below are asked for on this socket, so wait them out first.
+          while (inFlight-- > 0) await readChunk();
         }
-        // Answers to requests still in flight are not read: the variables
-        // below are asked for on this socket, so wait them out first.
-        while (inFlight-- > 0) await readChunk();
 
         // Last, so that a rejected join costs the import nothing it has not
         // already got: everything above is answered to an un-entered
@@ -834,6 +881,7 @@ function fetchWorldFromServer(host, port, timeout, options = {}) {
 
         succeed({
           worldDatabase: Buffer.concat(parts),
+          fromCacheUrl: cached ? cacheUrl : '',
           gameSettings,
           queryGame,
           variables,

@@ -285,7 +285,8 @@ A VDir's `RequiredAuthentiction` is upstream's:
 A refused visitor gets the VDir's `GenerateNoAuthPage`, or a 403. Upstream's
 `SessionData`, templates, resource directories and raw connections
 (`bz_registerNonPlayerConnectionHandler`) are not offered; only fastmap uses
-raw connections upstream, and bzo serves the world itself.
+raw connections upstream, and bzo serves the world itself. An import takes
+a bzfs server's `fastmap` copy where it offers one ([server-check.md](server-check.md)).
 
 ## Translations
 
