@@ -7,6 +7,7 @@ servers. Nothing to install.
 **Play now: <https://bz.rikers.org>** ·
 [Servers](https://bz.rikers.org/list) ·
 [Help: controls and flags](https://bz.rikers.org/help) ·
+[Matrix](https://matrix.to/#/#bzo:matrix.org) ·
 [BZFlag Discord](https://discord.gg/6DHkggcXM9)
 
 ![A match on hix, from the north base: the radar, the targeting box and a red
@@ -15,10 +16,21 @@ tank's wreck](docs/screenshot.jpg)
 ## Try it
 
 <https://bz.rikers.org/list> lists the public bzo servers, and the BZFlag
-servers any of them proxies. Click a row to enter that game.
+servers any of them proxies. Select a row, then Enter game, or Watch or Play
+for a proxied BZFlag server.
 
 The server is Node.js; the client is Three.js, over WebSockets, WebTransport
 and WebRTC.
+
+## Chat on Matrix
+
+bzo's Matrix space is
+[#bzo:matrix.org](https://matrix.to/#/#bzo:matrix.org), which opens in
+Element in a browser or in your own Matrix client. Its
+[#bz-rikers-org](https://app.element.io/#/room/#bz-rikers-org:matrix.org) room is
+bz.rikers.org's game chat, bridged both ways, so you can talk to players
+without joining a game. [docs/matrix.md](docs/matrix.md) sets up the same
+bridge on your own server.
 
 ## Release contents
 

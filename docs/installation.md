@@ -416,10 +416,9 @@ lets your players open their maps too -- View map, Practice and Import on
 `/list`, and `?viewmap=` -- with this server joining each as `bzo-view` to
 fetch its world. Off, those rows only launch BZFlag, and only your own maps
 and proxy targets open here. [server-check.md](server-check.md) says what an
-operator of one sees and how often. An operator who asks to be left out goes
-in `excludeServers`, `host` or `host:port`: this server then leaves it out of
-its background checks, while its own players can still open, watch and play
-there.
+operator of one sees and how often. Only the list server makes background
+checks, so its `excludeServers` (`host` or `host:port`) is the one that
+leaves a server out of them.
 
 ### On the BZFlag list
 

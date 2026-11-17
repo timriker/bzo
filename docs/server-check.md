@@ -92,20 +92,20 @@ reused for an hour before your server is asked anything again.
 
 ## Asking bzo to leave you out
 
-Ask the operator of the bzo server you see (its address is in the visitor's
-motto), or open an issue at
-[github.com/timriker/bzo](https://github.com/timriker/bzo/issues). They add
-your server to `excludeServers` in their `server.json`:
+Background checks come only from bzo's list server, bz.rikers.org. Ask its
+operator, or open an issue at
+[github.com/timriker/bzo](https://github.com/timriker/bzo/issues), to add
+your server to `excludeServers` in its `server.json`:
 
 ```json
 "excludeServers": ["bzflag.example.org:5154", "other.example.org"]
 ```
 
-A bare host covers every port on it. That bzo server then leaves it out of its
-own background checks: no daily hash checks, world fetches, `bzo-list`
+A bare host covers every port on it. The list server then makes no
+background checks of it: no daily hash checks, world fetches, `bzo-list`
 visits or guest checks. A player who opens, watches or plays on your server
-through bzo still can, as with any other BZFlag client: bzo is acting for that
-player.
+through any bzo server still can, as with any other BZFlag client: bzo is
+acting for that player. To stop those too, ban the bzo server's address.
 
 On `/list` such a server has no picture, says it was left out at its
 operator's request, and sorts last.
@@ -123,8 +123,8 @@ ban, which may no longer be true. Its row's buttons:
 | Button | Offered | Why |
 |---|---|---|
 | Launch | yes | a player's own BZFlag client, from their own address |
-| View map, Practice, Import | no | the world would still download, but you have said no to bzo |
-| Watch, Play | no | they join through the bzo server, from the banned address |
+| View map, Practice, Import | no | bzfs would still send the world, but you have said no to bzo |
+| Watch, Play | no | a join through the bzo server would come from the banned address |
 
 bzo refuses the same requests by URL, for anyone. It stops the daily hash
 check and world fetches, and once a month joins once to ask whether the ban
