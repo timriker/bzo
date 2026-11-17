@@ -6,6 +6,16 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
 
 ## [Unreleased]
 
+## [1.4.6] - 2026-11-17
+
+### Changed
+- Practice on a bzfs import keeps the autopilot on offer even where that
+  server sets `_disableBots`: practice runs in the player's own browser.
+
+### Fixed
+- The overview of a large world with mountains turned off, such as Delirious
+  City's import, drew nothing: the far plane now reaches the whole world.
+
 ## [1.4.5] - 2026-11-17
 
 ### Added
