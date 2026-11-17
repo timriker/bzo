@@ -6,6 +6,27 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
 
 ## [Unreleased]
 
+## [1.4.7] - 2026-11-17
+
+### Added
+- Practice takes `&bots=N`, 0 to 15, and every local map on `/list` has a
+  Practice button.
+- `/list` keeps each list's filter and sort in the link's hash, such as
+  `#bzflag=reri&bzflag.sort=d`, so a filtered list can be shared. The server
+  lists sort by Name or by Description.
+- An import uses a bzfs server's `fastmap` (or `-cache`) download where it
+  offers one, checked against the world hash.
+
+### Changed
+- Map Viewer plays the map offline, as practice does: no live tanks, shots
+  or sounds in it, and the server's players no longer see a viewer.
+- Menus pause the tank unless the autopilot is driving; a menu no longer
+  turns the autopilot on.
+
+### Fixed
+- Buildings with a colour animation hide what is behind them again.
+- Practice bots see a human tank where it really is during a long fall.
+
 ## [1.4.6] - 2026-11-17
 
 ### Changed
