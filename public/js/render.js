@@ -1301,6 +1301,24 @@ class RenderManager {
     this._toThree(eye, this.camera.position);
     this._toThree(GAME_UP, this.camera.up);
     this.camera.lookAt(this._toThree(look, CAMERA_LOOK_SCRATCH));
+    // An eye this places can stand well outside the world -- the overview
+    // frames all of it from over a thousand units out -- so the far plane
+    // reaches the ground's farthest corner from here, whether or not
+    // mountains already pushed it past.
+    const half = this._inferMapSizeFromGround() / 2;
+    let reach = 0;
+    for (const x of [-half, half]) {
+      for (const y of [-half, half]) reach = Math.max(reach, Math.hypot(x - eye.x, y - eye.y, eye.z));
+    }
+    this._ensureFarPlane(reach * 1.05);
+  }
+
+  // The far plane only ever grows: whatever pushed it out (the world's size,
+  // the mountains, a camera outside the world) still needs it there.
+  _ensureFarPlane(far) {
+    if (!this.camera || !Number.isFinite(far) || this.camera.far >= far) return;
+    this.camera.far = far;
+    this.camera.updateProjectionMatrix();
   }
 
   // In a session the headset owns the camera, so the world moves instead: the

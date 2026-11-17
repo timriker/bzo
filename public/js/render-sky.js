@@ -1083,11 +1083,7 @@ export class SkyRendering {
   _ensureMountainViewDistance(mapSize) {
     if (!this.camera || !Number.isFinite(mapSize) || mapSize <= 0) return;
     const mountainRadius = 2.25 * mapSize;
-    const desiredFar = mountainRadius + (0.75 * mapSize) + 200;
-    if (this.camera.far < desiredFar) {
-      this.camera.far = desiredFar;
-      this.camera.updateProjectionMatrix();
-    }
+    this._ensureFarPlane(mountainRadius + (0.75 * mapSize) + 200);
   }
 
   createMountains(mapSize) {

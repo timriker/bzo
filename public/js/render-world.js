@@ -1190,6 +1190,9 @@ export class WorldRendering {
     this.ground.renderOrder = GROUND_RENDER_ORDER;
     this.groundExtent = groundExtent;
     this.groundMapSize = mapSize;
+    // Upstream's far plane, `FarPlaneScale * worldSize` (playing.cxx:5880),
+    // before the mountains push it further.
+    this._ensureFarPlane(1.5 * mapSize);
     this._groundCenterX = null;
     this._groundCenterY = null;
     this._setGroundCorner(0, -groundExtent, -groundExtent);
