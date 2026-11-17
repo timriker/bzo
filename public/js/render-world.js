@@ -446,6 +446,24 @@ function evaluateDynamicColorChannel(channel, t) {
   return (channel.min * (1 - factor)) + (channel.max * factor);
 }
 
+// Whether a dynamic colour can ever be translucent: `DynamicColor::finalize`'s
+// `possibleAlpha` (`DynamicColor.cxx:202-257`). One that cannot is drawn
+// opaque, writing depth, as upstream draws it -- Delirious City cycles every
+// building's colour and none of its alpha, and drawn translucent its
+// buildings hid nothing behind them. A sequence of only off and on is
+// transparency rather than translucency, as is an alpha that never moves off
+// a maximum of 1.
+function dynamicColorCanHaveAlpha(dynamicColor) {
+  const alpha = dynamicColor?.channels?.alpha;
+  if (!alpha) return false;
+  if (alpha.min === 1 && alpha.max === 1) return false;
+  const states = alpha.sequence?.states || [];
+  if (states.length > 0 && alpha.min === 0 && alpha.max === 1 && !states.includes(1)) return false;
+  const animated = (alpha.sinusoids || []).length > 0 || (alpha.clampUps || []).length > 0
+    || (alpha.clampDowns || []).length > 0 || states.length > 0;
+  return animated || alpha.max !== 1;
+}
+
 // Returns [r, g, b, a] in [0, 1] -- replaces a material's diffuse outright
 // (`MeshSceneNode.cxx:487-491`'s `mat->colorPtr = dyncol->getColor()`), never
 // multiplies against a static tint.
@@ -665,13 +683,17 @@ export class WorldRendering {
     });
     const { wallDynamicColor, capDynamicColor, wallTextureMatrix, capTextureMatrix } = animation;
     if (wallDynamicColor) {
-      sideMaterial.transparent = true;
-      sideMaterial.depthWrite = false;
+      if (dynamicColorCanHaveAlpha(wallDynamicColor)) {
+        sideMaterial.transparent = true;
+        sideMaterial.depthWrite = false;
+      }
       this._animatedMaterials.push({ material: sideMaterial, dynamicColor: wallDynamicColor, source: 'obstacle' });
     }
     if (capDynamicColor) {
-      capMaterial.transparent = true;
-      capMaterial.depthWrite = false;
+      if (dynamicColorCanHaveAlpha(capDynamicColor)) {
+        capMaterial.transparent = true;
+        capMaterial.depthWrite = false;
+      }
       this._animatedMaterials.push({ material: capMaterial, dynamicColor: capDynamicColor, source: 'obstacle' });
     }
     if (wallTextureMatrix && sideMaterial.map) {
@@ -2427,16 +2449,16 @@ export class WorldRendering {
         // `dyncol` -- replaces this face's diffuse outright (see
         // `evaluateDynamicColor`), so a static `color`/tint above is only
         // ever this material's look before the first animation frame runs.
-        // Its alpha channel can vary too, so it gets the same
-        // depthWrite-off treatment as any other material that might not be
-        // fully opaque (`applyTextureAlpha` above) -- matching bzo's own
-        // "no self-occlusion through the depth buffer" rule rather than
-        // upstream's own `possibleAlpha` micro-optimization, which only ever
-        // skips a sort pass bzo does not have.
+        // Where its alpha channel can vary it gets the same depthWrite-off
+        // treatment as any other material that might not be fully opaque
+        // (`applyTextureAlpha` above); where it cannot, the face stays
+        // opaque and hides what is behind it (`dynamicColorCanHaveAlpha`).
         if (face.dynamicColor) {
-          material.userData.dynamicColor = true;
-          material.transparent = true;
-          setTransparentDepthWrite(material);
+          if (dynamicColorCanHaveAlpha(face.dynamicColor)) {
+            material.userData.dynamicColor = true;
+            material.transparent = true;
+            setTransparentDepthWrite(material);
+          }
           this._animatedMaterials.push({ material, dynamicColor: face.dynamicColor, source: 'mesh' });
         }
         // `texmat` -- a live UV transform on this face's own texture. The
@@ -2583,9 +2605,11 @@ export class WorldRendering {
         }
       }
       if (face.dynamicColor) {
-        material.userData.dynamicColor = true;
-        material.transparent = true;
-        setTransparentDepthWrite(material);
+        if (dynamicColorCanHaveAlpha(face.dynamicColor)) {
+          material.userData.dynamicColor = true;
+          material.transparent = true;
+          setTransparentDepthWrite(material);
+        }
         this._animatedMaterials.push({ material, dynamicColor: face.dynamicColor, source: 'mesh' });
       }
       if (face.textureMatrix && material.map) {
