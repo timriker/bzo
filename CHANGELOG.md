@@ -6,6 +6,30 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
 
 ## [Unreleased]
 
+## [1.4.11] - 2026-11-18
+
+### Added
+- A map's flag banners wave: a thin upright box wearing the flag texture
+  beside a pole is drawn as cloth on the game flags' ripple. BZFlag clients
+  still draw the box.
+- Leaderboard news from laptimer reaches Matrix and Discord, as other
+  server messages to everyone now do through `bz_eServerMsgEvent`.
+- A client whose browser loses its WebGL context reloads, at most once in
+  ten minutes, and each loss is logged as `[GPU]`.
+
+### Changed
+- Laptimer tells a racer their own laps and personal bests, and everyone
+  only of a place on a board.
+- Bots join once their routes are built, instead of waiting at spawn.
+
+### Fixed
+- A mesh face without texcoords tiles by its placement's scale, as
+  upstream's does: TimeTrial's guardrails no longer stretch one brick along
+  the track.
+- The operator panel shows whether jumping is allowed.
+- The plugins page is rate limited, and a map's cache path keeps to its
+  directory.
+
 ## [1.4.10] - 2026-11-18
 
 ### Added
