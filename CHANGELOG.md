@@ -6,6 +6,33 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
 
 ## [Unreleased]
 
+## [1.4.10] - 2026-11-18
+
+### Added
+- Waypoint sounds on bzo clients: a soft bell from the point once a second,
+  and a rising chime on reaching it.
+- The radar shows the flags other tanks carry, in each flag's colour.
+- An admin's `/fireworks [goal] [player]` sets off any lap goal's fireworks.
+- Lap fireworks are rockets that burst overhead, and go off for a top-ten
+  place on any board of any period; the records page lists bzo's boards
+  first and has a Play button.
+
+### Changed
+- A shot takes the tank's whole velocity, a belt's push included, as
+  upstream's does. On TimeTrial shots fly at 250, flags carry three shots
+  each and keep to their zone, ricochet is off, and a teammate may be shot
+  without the shooter dying (`-tk`).
+- A menu's pause lets the tank drive through the countdown, as upstream's
+  does; it stops once the pause lands.
+- Laps no longer score on the scoreboard, which is left to kills.
+- Ace keeps and goes for any flag where only a flag carrier may shoot.
+- A map's picture is redrawn when the drawing changes, and cached a month.
+
+### Fixed
+- A group's `shift` and `spin` apply in the order written, and its `team`
+  sets its bases' colour: reri.sandybees.com:6015's bases sit in their
+  triangles.
+
 ## [1.4.9] - 2026-11-18
 
 ### Added
