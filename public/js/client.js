@@ -4570,6 +4570,7 @@ function getDebugSenderName() {
 // only client.js can send down the socket. Assigned once, here, beside the
 // function itself so the two cannot drift apart.
 renderManager.debugLog = (message, source) => debugLog(message, source);
+renderManager.flushContextReports();
 
 // A map whose texture turned out to be transparent while its material stated
 // no `alphathresh`. bzo draws it correctly on its own default, so nothing is

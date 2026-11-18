@@ -67,6 +67,14 @@ export function standUpGeometry(geometry) {
 }
 
 
+// How long a lost WebGL context is waited for before the page reloads to get
+// one, and where the reason waits for the reloaded page to send it.
+const CONTEXT_RESTORE_WAIT_MS = 3000;
+const CONTEXT_REPORT_KEY = 'bzoContextReport';
+// The least time between two context-loss reloads of one tab, so a GPU that
+// loses the context on every load cannot set a reload loop going.
+const CONTEXT_RELOAD_GAP_MS = 10 * 60 * 1000;
+const CONTEXT_RELOAD_KEY = 'bzoContextReloadAt';
 const BZFlag_DEFAULT_HORIZONTAL_FOV = 60;
 
 // `glPointSize(2.0f)`, and not scaled by distance: a nav light that shrank
@@ -597,34 +605,25 @@ class RenderManager {
       event.preventDefault();
       this.contextLostCount = (this.contextLostCount || 0) + 1;
       const { memory, programs } = this.renderer.info;
-      this.debugLog?.(
+      this.reportContext(
         `renderer.contextLost count=${this.contextLostCount}`
         + ` textures=${memory.textures} geometries=${memory.geometries}`
         + ` programs=${programs ? programs.length : 0}`,
-        'render',
       );
+      // A context the browser never gives back -- its GPU process gone, or
+      // WebGL turned off after too many of those -- fires no
+      // `webglcontextrestored` at all, and leaves a white page and a blank
+      // radar for good. A reload gets a context afresh.
+      clearTimeout(this.contextRestoreTimer);
+      this.contextRestoreTimer = setTimeout(() => {
+        this.reloadForContext(`not restored in ${CONTEXT_RESTORE_WAIT_MS / 1000}s`);
+      }, CONTEXT_RESTORE_WAIT_MS);
     }, false);
     this.renderer.domElement.addEventListener('webglcontextrestored', () => {
+      clearTimeout(this.contextRestoreTimer);
       this.contextRestoredCount = (this.contextRestoredCount || 0) + 1;
-      this.debugLog?.(`renderer.contextRestored count=${this.contextRestoredCount}`, 'render');
-      // Once per page, and remembered across the reload: a driver that keeps
-      // taking the context away would otherwise reload forever, which is worse
-      // than black tanks because it never settles anywhere a log can be read.
-      // Whoever is left looking at a broken frame still has the two lines above.
-      let alreadyReloaded = false;
-      try {
-        alreadyReloaded = sessionStorage.getItem('bzoContextReload') === '1';
-        sessionStorage.setItem('bzoContextReload', '1');
-      } catch {
-        // A browser with storage denied gets the reload; a loop there is the
-        // less likely failure of the two.
-      }
-      if (alreadyReloaded) {
-        this.debugLog?.('renderer.contextRestored: not reloading again this session', 'render');
-        return;
-      }
-      this.debugLog?.('renderer.contextRestored: reloading to rebuild textures', 'render');
-      setTimeout(() => window.location.reload(), 250);
+      this.reportContext(`renderer.contextRestored count=${this.contextRestoredCount}`);
+      this.reloadForContext('restored; rebuilding textures');
     }, false);
 
 
@@ -696,6 +695,54 @@ class RenderManager {
   // the moment that happens. Dropping the sound here is what a player simply
   // not hearing it looks like, which is correct: there is no right moment to
   // play a shot that already happened.
+  // A line about the WebGL context for the server's log (`[GPU]`), held until
+  // the client has given this its `debugLog`, which a context lost while the
+  // page starts can come before.
+  reportContext(line) {
+    if (this.debugLog) this.debugLog(line, 'render');
+    else (this.pendingContextLines ||= []).push(line);
+  }
+
+  // Sends what `reportContext` held, and what the page before a context
+  // reload left to say (`reloadForContext`), once `debugLog` is here.
+  flushContextReports() {
+    for (const line of (this.pendingContextLines || []).splice(0)) this.debugLog?.(line, 'render');
+    try {
+      const left = sessionStorage.getItem(CONTEXT_REPORT_KEY);
+      if (left) {
+        sessionStorage.removeItem(CONTEXT_REPORT_KEY);
+        this.debugLog?.(`renderer.contextReloaded: ${left}`, 'render');
+      }
+    } catch {
+      // Storage denied: nothing was left.
+    }
+  }
+
+  // The one reload a page gets for its context, and remembered across it: a
+  // driver that keeps taking the context away would otherwise reload forever,
+  // which never settles anywhere a log can be read. The reloaded page says why
+  // (`flushContextReports`), since a line sent now may not leave before it.
+  reloadForContext(reason) {
+    let recentlyReloaded = false;
+    try {
+      const last = Number(sessionStorage.getItem(CONTEXT_RELOAD_KEY)) || 0;
+      recentlyReloaded = Date.now() - last < CONTEXT_RELOAD_GAP_MS;
+      if (!recentlyReloaded) {
+        sessionStorage.setItem(CONTEXT_RELOAD_KEY, String(Date.now()));
+        sessionStorage.setItem(CONTEXT_REPORT_KEY, reason);
+      }
+    } catch {
+      // A browser with storage denied gets the reload; a loop there is the
+      // less likely failure of the two.
+    }
+    if (recentlyReloaded) {
+      this.reportContext(`renderer.contextLost: ${reason}; reloaded under ${CONTEXT_RELOAD_GAP_MS / 60000} minutes ago, not reloading`);
+      return;
+    }
+    this.reportContext(`renderer.contextLost: reloading, ${reason}`);
+    setTimeout(() => window.location.reload(), 250);
+  }
+
   playSound(name, position) {
     const buffer = this.soundBuffers.get(name);
     if (!GAME_SOUNDS[name] || !buffer || !this.audioListener) return;

@@ -126,6 +126,17 @@ function getRouter() {
   return router;
 }
 
+// The route graph a bot plans its first route on, built now rather than on
+// that first route: on a big map it takes seconds, and every bot stands still
+// while it builds. Ace's ordinary graph: the world's jump, or the ground where
+// it has none. Answers how long it took, in milliseconds.
+export function prepareRoutes() {
+  const started = Date.now();
+  const at = { x: 0, y: 0, z: 0 };
+  getRouter()(at, at, { canJump: config?.ALLOW_JUMPING === true });
+  return Date.now() - started;
+}
+
 function getProbes() {
   if (!probes) {
     probes = pilotWorld.createWorldProbes({

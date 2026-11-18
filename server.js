@@ -438,9 +438,26 @@ function logError(...args) {
 }
 
 const app = express();
+// Plugins' web pages come ahead of `assetRateLimit` (below), so they carry a
+// limit of their own: a page may read files or ask bzflag.org about a login.
+// Sized as the asset limit is, for a LAN party sharing an address.
+const pluginPageRateLimit = rateLimit({
+  windowMs: 60 * 1000,
+  limit: 2000,
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: requestAddress,
+  validate: { xForwardedForHeader: false },
+  handler: (req, res, _next, options) => {
+    log(`[PLUGIN] rate limited ${requestAddress(req)}:`
+      + ` more than ${options.limit} requests in ${options.windowMs / 1000}s`);
+    res.status(options.statusCode).type('text/plain')
+      .send('Too many requests. Try again in a minute.\n');
+  },
+});
 // Plugins' web pages (server/plugin-http.cjs), ahead of the body parsers so a
 // page gets its body as sent.
-app.use('/plugins', express.raw({ type: () => true, limit: '1mb' }), (req, res) => {
+app.use('/plugins', pluginPageRateLimit, express.raw({ type: () => true, limit: '1mb' }), (req, res) => {
   const [, name = '', ...rest] = req.path.split('/');
   if (!name) {
     res.type('html').send(indexPage(plugins?.webPages() ?? [], req.get('host') || ''));
@@ -4378,6 +4395,13 @@ function parseHostPort(hostPort) {
 // Shared with `/list`'s cross-reference below: the only place either one is
 // allowed to name a remote server's import file, so a check there and the
 // file `performRemoteMapImport` actually writes can never name it two ways.
+// Where a map named by a request lives in the maps directory: its name alone,
+// whatever it says, so no name reaches outside. Import names are already bare
+// (`remoteMapFileName`); this says so where the path is made.
+function runtimeMapPath(fileName) {
+  return path.join(RUNTIME_MAPS_DIR, path.basename(String(fileName)));
+}
+
 function remoteMapFileName(host, port) {
   return `import-${host}_${port}`.replace(/[^A-Za-z0-9._-]/g, '_') + '.bzw';
 }
@@ -4465,7 +4489,7 @@ const inFlightRemoteImports = new Map();
 // Parses and registers an import still on disk and fetched inside
 // `IMPORT_REUSE_MS`, by its mtime. Returns whether it did.
 async function registerFreshImportFromDisk(fileName) {
-  const filePath = path.join(RUNTIME_MAPS_DIR, fileName);
+  const filePath = runtimeMapPath(fileName);
   try {
     if (Date.now() - fs.statSync(filePath).mtimeMs >= IMPORT_REUSE_MS) return false;
     if (!importIsCurrent(fileName)) return false;
@@ -4502,7 +4526,7 @@ async function holdImportedWorld(file) {
 function importHeader(fileName) {
   let fd = null;
   try {
-    fd = fs.openSync(path.join(RUNTIME_MAPS_DIR, fileName), 'r');
+    fd = fs.openSync(runtimeMapPath(fileName), 'r');
     const head = Buffer.alloc(4096);
     return head.toString('utf8', 0, fs.readSync(fd, head, 0, head.length, 0));
   } catch {
@@ -4565,7 +4589,7 @@ async function confirmImportUnchanged(fileName, host, port,
   if (current !== saved) return false;
   // What the tracker would have learned from the same dial.
   bzfsWorlds.noteImport(host, port, current);
-  const filePath = path.join(RUNTIME_MAPS_DIR, fileName);
+  const filePath = runtimeMapPath(fileName);
   const indexed = mapIndex.has(fileName, filePath);
   try {
     const now = new Date();
@@ -10763,7 +10787,9 @@ function getOperatorConfigState() {
     mapFile: serverConfig.mapFile || '',
     teams: serverConfig.teamMode === true || serverConfig.teamMode?.enabled === true,
     rabbit: normalizeRabbitSelection(serverConfig.rabbit) || 'off',
-    jumping: serverConfig.jumping !== false,
+    // In force, a map's `-j` included, as ricochet is shown: server.json's
+    // switch alone is off when absent.
+    jumping: ALLOW_JUMPING,
     timeLimit: GAME_CONFIG.TIME_LIMIT,
     timeManualStart: GAME_CONFIG.TIME_MANUAL_START,
     maxPlayerScore: GAME_CONFIG.MAX_PLAYER_SCORE,
@@ -12680,6 +12706,13 @@ function broadcastPlayerRecord(type, subject) {
 function broadcastAll(message) {
   const data = JSON.stringify(message);
   recordBroadcast(data, message);
+  // bz_eServerMsgEvent (bzfs.cxx:1757): a line the server says to everyone,
+  // for a plugin to pass on -- a chat bridge. One a bridge relayed in from
+  // its network is not said again to it.
+  if (message.type === 'message' && message.src === SERVER_PLAYER && message.dst === ALL_PLAYERS
+    && !message.relay && typeof message.text === 'string') {
+    pluginEvent('bz_eServerMsgEvent', () => ({ to: BZ_ALLUSERS, team: -1, message: message.text }));
+  }
   const byChannel = UDP_CHANNEL_DOWN_TYPES.has(message.type) && data.length <= UDP_CHANNEL_CHUNK_BYTES;
   players.forEach((player) => {
     if (player.ws.readyState !== 1) return;
@@ -18074,6 +18107,11 @@ function getPlayerMotion(player, flagType, now) {
 let botWorker = null;
 let botWorkerBusy = false;
 let botWorkerConfig = '';
+// Whether the worker has built its route graph (`prepare`), and the bots
+// waiting to join until it has: a bot that joined first would stand where it
+// spawned for as long as the build takes, seconds on a big map.
+let botWorkerReady = false;
+const pendingBotJoins = [];
 let lastBotTickAt = 0;
 
 function startBotWorker() {
@@ -18088,6 +18126,10 @@ function startBotWorker() {
     if (message.type === 'results') {
       botWorkerBusy = false;
       applyBotResults(message.bots);
+    } else if (message.type === 'ready') {
+      botWorkerReady = true;
+      log(`[BOT] routes ready in ${(message.ms / 1000).toFixed(1)}s`);
+      for (const join of pendingBotJoins.splice(0)) join();
     } else if (message.type === 'error') {
       const bot = message.id === null ? null : bots.get(message.id);
       logError(`[BOT] ${bot ? `"${bot.player.name}" ` : ''}${message.message}`);
@@ -18118,6 +18160,9 @@ function startBotWorker() {
       ...clientZones(MAP_ZONES),
     },
   });
+  botWorkerReady = false;
+  syncBotWorkerConfig();
+  worker.postMessage({ type: 'prepare' });
   log('[BOT] worker started');
   return worker;
 }
@@ -18403,12 +18448,18 @@ function addBot(pilotId = botFillPilot, team = PLAYER_TEAM.AUTOMATIC, { auto = f
   bot.lastOut = null;
   startBotWorker().postMessage({ type: 'add', id: player.id, pilotId: entry.id });
   bots.set(player.id, bot);
-  socket.say({
-    type: 'joinGame', name, team, tankModel: 'bzflag', motto: entry.name, bot: true,
-  });
-  // A restored score is not this report period's kills and deaths.
-  bot.reportedWins = player.wins;
-  bot.reportedLosses = player.losses;
+  // Into the game once its pilot can plan a route, not before.
+  const join = () => {
+    if (bots.get(player.id) !== bot) return;
+    socket.say({
+      type: 'joinGame', name, team, tankModel: 'bzflag', motto: entry.name, bot: true,
+    });
+    // A restored score is not this report period's kills and deaths.
+    bot.reportedWins = player.wins;
+    bot.reportedLosses = player.losses;
+  };
+  if (botWorkerReady) join();
+  else pendingBotJoins.push(join);
   return { bot };
 }
 

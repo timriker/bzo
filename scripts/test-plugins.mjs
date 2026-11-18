@@ -784,6 +784,7 @@ end
   move(-10, 64000);
   assert.deepEqual(wins, [], 'a lap leaves the scoreboard to kills');
   assert.equal(said.at(-1).text, '{player}: lap {lap} in {time} -- a new lap record!');
+  assert.equal(said.at(-1).to, -1, 'a record, to everyone');
   assert.deepEqual(said.at(-1).params, { player: 'racer', lap: 1, time: '1:01.00', place: 1 },
     'timed from crossing to crossing, each halfway between its two moves');
   assert.equal(fired.length, 4, "a record's fireworks: its first wave of rockets at once");
@@ -850,6 +851,7 @@ end
   botMove(10, 5, 100000);
   botMove(-10, 5, 101000);
   assert.equal(said.at(-1).text, '{player}: lap {lap} in {time}', "a bot's lap is announced");
+  assert.equal(said.at(-1).to, 2, 'to the racer alone: only leaderboard news goes to everyone');
   assert.deepEqual(wins, [], 'and scores nothing either');
   // `/fireworks`: a goal's show on demand, over yourself or a named player.
   const beforeShow = fired.length;

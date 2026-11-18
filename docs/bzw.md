@@ -1608,6 +1608,20 @@ are left expanded. Every copy stays in the world for collision and the radar,
 and the counts (`instanced ... groups, ... templates`) go to the server log
 and to each player on entry with the map's other messages.
 
+A face with no `texcoords` takes them from where its vertices land, as
+upstream's `MeshSceneNodeGenerator::makeTexcoords` does, so its tiling follows
+a placement's `scale`. Such a `define` gets a template per scale, and a scale
+used by one placement alone is drawn from that placement's own copy.
+
+### Banners wave
+
+A thin upright box in a mesh, up to 4 a side, whose two broad faces wear the
+`flag` texture and whose one upright edge stands against the rest of the mesh,
+is drawn as cloth rippling on the game flags' waves (`map-banners.mjs`). It
+hangs from that edge, faces the way the box did, and keeps the face's colour,
+texcoords and `texmat`. Upstream has no such animation, so a BZFlag client
+draws the box.
+
 ### Draw info
 
 `drawInfo { ... }` is upstream's render-optimized copy of a mesh's surface --

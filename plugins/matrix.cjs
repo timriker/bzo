@@ -170,6 +170,7 @@ module.exports = {
     bz.Register(bz.bz_eFilteredChatMessageEvent);
     bz.Register(bz.bz_ePlayerJoinEvent);
     bz.Register(bz.bz_ePlayerPartEvent);
+    bz.Register(bz.bz_eServerMsgEvent);
     if (links.answer) bz.bzhttp_RegisterVDir(linkPage(bz, links));
     bridge.start()
       .then((started) => started && links.start().then(() => commands.start()).then(() => status.update()))
@@ -186,6 +187,12 @@ module.exports = {
     if (data.eventType === 'bz_ePlayerJoinEvent' || data.eventType === 'bz_ePlayerPartEvent') {
       roster.heard(data.record, data.eventType === 'bz_ePlayerJoinEvent');
       status.changed();
+      return;
+    }
+    // What the server says to everyone -- a plugin's lap record, a match
+    // starting -- as a notice, like a join.
+    if (data.eventType === 'bz_eServerMsgEvent') {
+      if (data.to === bz.BZ_ALLUSERS) bridge.event(data.message);
       return;
     }
     if (data.eventType !== 'bz_eFilteredChatMessageEvent') return;

@@ -60,6 +60,10 @@ What goes is what every player in the game sees: chat to all, and `/me`, as
 admin channel, a muted player's lines and every command never leave the game.
 A BZFlag client's colour codes are removed.
 
+What the server says to everyone goes as a notice too
+(`bz_eServerMsgEvent`): a lap record or place from laptimer, a poll, a match
+starting. A line that came in from Matrix or Discord does not go back out.
+
 A person joining or leaving is said too, with who is in after:
 `Foo joined, p 2 o 1 b 1` -- players, observers and bots, each left out at
 none. These go as notices of their own, in grey italics, never in a message

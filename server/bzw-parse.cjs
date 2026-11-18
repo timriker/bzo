@@ -5345,6 +5345,20 @@ function parseBZWMap(filename, { quiet = false, extraMessages = [], text: givenT
     return passable;
   }
 
+  // Whether any face a definition draws states no texcoords, leaving the
+  // renderer to project them from the face's placed vertices.
+  const defineProjectedUvs = new Map();
+  function definesProjectedUvs(defName) {
+    let projected = defineProjectedUvs.get(defName);
+    if (projected === undefined) {
+      const unmapped = (face) => !face.texcoordIndices || face.texcoordIndices.length === 0;
+      projected = resolveDefineMeshes(defName, new Set())
+        .some((mesh) => (mesh.drawFaces || mesh.faces || []).some(unmapped));
+      defineProjectedUvs.set(defName, projected);
+    }
+    return projected;
+  }
+
   const topGroupOrdinals = new Map();
   // A definition's geometry held once, in its own local frame, and the
   // placements that share it (#153). Only definitions nothing collides with
@@ -5360,23 +5374,40 @@ function parseBZWMap(filename, { quiet = false, extraMessages = [], text: givenT
   // The counts the line below logs, returned too so a quiet caller can sum
   // them over many maps instead.
   let instancing = null;
+  // Carried as a template and a transform rather than expanded (#153).
+  //
+  // An instance may name its own material, tint or physics driver, which
+  // makes its copy genuinely different from a plain one's -- so the
+  // template is keyed by the definition *and* those overrides, and every
+  // instance sharing both shares a template. On `bzo.bzw` that is the
+  // difference between 3 of its passable instances being shared and 15:
+  // its flag panels are one definition worn in several colours.
+  //
+  // A face with no texcoords of its own is projected from where its
+  // vertices land (`MeshSceneNodeGenerator::makeTexcoords`), so its tiling
+  // follows the instance's scale; spin and shift move it without changing
+  // it. Such a definition bakes the scale into its template, one template
+  // per scale, and the instance carries only spin and shift.
+  const templateKeyOf = (request) => {
+    const overrideKey = JSON.stringify([
+      request.materialOverride || null, request.matSwap || null, request.tint || null, request.phydrv || null,
+      !!request.driveThrough, !!request.shootThrough, !!request.ricochet,
+    ]);
+    return `${request.groupDefName}\u0000${overrideKey}`
+      + (definesProjectedUvs(request.groupDefName) ? `\u0000${request.scale.join(',')}` : '');
+  };
+  // A baked scale worn by one instance alone shares nothing, and as a
+  // template of its own would cost a draw that the world batch saves.
+  const templateUses = new Map();
+  for (const request of groupInstanceRequests) {
+    const key = templateKeyOf(request);
+    templateUses.set(key, (templateUses.get(key) || 0) + 1);
+  }
   for (const request of groupInstanceRequests) {
     let instancedMeshMembers = false;
     const ordinal = topGroupOrdinals.get(request.groupDefName) || 0;
     topGroupOrdinals.set(request.groupDefName, ordinal + 1);
     const instanceLabel = request.name || `${request.groupDefName}#${ordinal}`;
-    // Carried as a template and a transform rather than expanded (#153).
-    //
-    // An instance may name its own material, tint or physics driver, which
-    // makes its copy genuinely different from a plain one's -- so the
-    // template is keyed by the definition *and* those overrides, and every
-    // instance sharing both shares a template. On `bzo.bzw` that is the
-    // difference between 3 of its passable instances being shared and 15:
-    // its flag panels are one definition worn in several colours.
-    const overrideKey = JSON.stringify([
-      request.materialOverride || null, request.matSwap || null, request.tint || null, request.phydrv || null,
-      !!request.driveThrough, !!request.shootThrough, !!request.ricochet,
-    ]);
     // A definition holding a spinning mesh turns about a pivot placed per
     // instance, which one local template cannot carry -- and there are seven
     // such instances across every map bzo has seen, so they stay expanded.
@@ -5384,8 +5415,9 @@ function parseBZWMap(filename, { quiet = false, extraMessages = [], text: givenT
     // scale/spin/shift cannot carry either.
     const spins = definedMeshesSpin(request.groupDefName) || !!request.transformOps;
     const passable = isPassableDefine(request.groupDefName);
-    if (!spins) {
-      const templateKey = `${request.groupDefName}\u0000${overrideKey}`;
+    const bakeScale = definesProjectedUvs(request.groupDefName);
+    const templateKey = templateKeyOf(request);
+    if (!spins && !(bakeScale && templateUses.get(templateKey) < 2)) {
       let templateName = templateNames.get(templateKey);
       if (templateName === undefined) {
         // One name per definition per override set. The suffix only appears
@@ -5406,10 +5438,12 @@ function parseBZWMap(filename, { quiet = false, extraMessages = [], text: givenT
         // a template placed twice must not have the second placement
         // overwrite the first's.
         const templateMeshes = resolveDefineMeshes(request.groupDefName, new Set())
-          .map((mesh) => applyGroupMeshModifiers(
-            carrySource({ ...mesh, faces: mesh.faces.map((f) => ({ ...f })) }, mesh), request,
-          ))
-          .map((mesh) => dropMeshFaceObjects(finalizeMeshGeometry(mesh)));
+          .map((mesh) => (bakeScale
+            ? { ...applyGroupInstanceTransformToMesh(mesh, { ...request, spin: 0, pos: [0, 0, 0] }, ''), name: mesh.name }
+            : finalizeMeshGeometry(applyGroupMeshModifiers(
+              carrySource({ ...mesh, faces: mesh.faces.map((f) => ({ ...f })) }, mesh), request,
+            ))))
+          .map(dropMeshFaceObjects);
         // A definition made of boxes and pyramids has no meshes to batch --
         // those draw through the obstacle path, which shares its geometry
         // already. Naming an empty template would put an instance on the
@@ -5434,7 +5468,7 @@ function parseBZWMap(filename, { quiet = false, extraMessages = [], text: givenT
         y: request.pos[1],
         z: request.pos[2],
         spin: request.spin,
-        scale: request.scale,
+        scale: bakeScale ? [1, 1, 1] : request.scale,
       }, request));
       passableInstances += 1;
       // Nothing collides with a passable definition, so its copies need not
@@ -5862,8 +5896,9 @@ function parseBZWMap(filename, { quiet = false, extraMessages = [], text: givenT
 // the `metadata` block, 11 a `drawInfo` block's lines and points, 12 only
 // its first `lod`'s draw commands, 13 a physics driver's `angular`, 14 a
 // plugin's objects apart from the unread, 15 the drivers by index, 16 a
-// group's transforms in the order written and its team on a base.
-const WORLD_FORMAT = 16;
+// group's transforms in the order written and its team on a base, 17 a
+// template's scale baked in where its faces project their texcoords.
+const WORLD_FORMAT = 17;
 
 // `instanced 18/22 groups, 15 templates, 52 faces` -- group instances drawn
 // from a shared template rather than a copy apiece (#153).

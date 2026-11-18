@@ -203,6 +203,7 @@ module.exports = {
     bz.Register(bz.bz_eFilteredChatMessageEvent);
     bz.Register(bz.bz_ePlayerJoinEvent);
     bz.Register(bz.bz_ePlayerPartEvent);
+    bz.Register(bz.bz_eServerMsgEvent);
     state.roster = createRoster({
       bz, store: jsonStore(bz, 'discord-roster.json', null), say: (line) => state.mirror.event(line),
       setTimer: bz.setTimeout,
@@ -262,6 +263,12 @@ module.exports = {
     // A person coming or going, with who is in now; bots come and go unsaid.
     if (data.eventType === 'bz_ePlayerJoinEvent' || data.eventType === 'bz_ePlayerPartEvent') {
       roster.heard(data.record, data.eventType === 'bz_ePlayerJoinEvent');
+      return;
+    }
+    // What the server says to everyone -- a plugin's lap record, a match
+    // starting -- as an event line, like a join.
+    if (data.eventType === 'bz_eServerMsgEvent') {
+      if (data.to === bz.BZ_ALLUSERS) mirror.event(data.message);
       return;
     }
     if (data.eventType !== 'bz_eFilteredChatMessageEvent') return;

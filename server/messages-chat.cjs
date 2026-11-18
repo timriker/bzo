@@ -101,7 +101,12 @@ function handleDebug(player, ws, message) {
   // Log debug messages from clients
   const payloadName = logText(message.name, 31);
   const debugFrom = payloadName || player.name || `Player ${player.playerNumber}`;
-  log(`[DEBUG] "${debugFrom}": ${logText(message.message, MAX_DEBUG_LENGTH)}`);
+  const text = logText(message.message, MAX_DEBUG_LENGTH);
+  // A client's WebGL context lost, restored or reloaded for, under a tag of
+  // its own, to count how often players' browsers take the context away.
+  const gpu = text.match(/^\[render\] (renderer\.context\w+.*)$/);
+  if (gpu) log(`[GPU] "${debugFrom}": ${gpu[1]}`);
+  else log(`[DEBUG] "${debugFrom}": ${text}`);
   return;
 }
 

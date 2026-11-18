@@ -547,6 +547,8 @@ module.exports = {
       const rockets = this.fireworks(player, goal);
       bz.bz_debugMessage?.(1, `laptimer: ${goal} fireworks over ${player.callsign}, ${rockets} rocket(s)`);
     }
+    // Leaderboard news to everyone, and on to a chat bridge (bz_eServerMsgEvent);
+    // any other lap to the racer alone.
     if (place === 1) this.say(bz.BZ_ALLUSERS, '{player}: lap {lap} in {time} -- a new lap record!', params);
     else if (place) this.say(bz.BZ_ALLUSERS, '{player}: lap {lap} in {time} -- #{place} on this map', params);
     else if (best) {
@@ -554,8 +556,8 @@ module.exports = {
         { ...params, place: best.place, board: best.board.title, period: best.period.title.toLowerCase() });
     }
     else if (todayPlace === 1) this.say(bz.BZ_ALLUSERS, "{player}: lap {lap} in {time} -- today's fastest", params);
-    else if (personal && racer.laps > 1) this.say(bz.BZ_ALLUSERS, '{player}: lap {lap} in {time} -- a personal best', params);
-    else this.say(bz.BZ_ALLUSERS, '{player}: lap {lap} in {time}', params);
+    else if (personal && racer.laps > 1) this.say(playerID, '{player}: lap {lap} in {time} -- a personal best', params);
+    else this.say(playerID, '{player}: lap {lap} in {time}', params);
   },
 
   // Keeps the lap where it makes a board, each player's best on each client:

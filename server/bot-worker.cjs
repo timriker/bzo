@@ -24,7 +24,10 @@
 //      halt    { bots: [own] } stop every tank where it is, and say so: sent
 //              once a second while nobody is connected, as each bot's
 //              heartbeat
+//      prepare build the route graph now, after the world and config, so no
+//              bot stands still while its first route builds it
 // Out: results { bots: [{ id, pre, self, post, mode, targetId, intent?, report? }] }
+//      ready   { ms } the route graph is built
 //      error   { id, message }
 
 const { parentPort } = require('worker_threads');
@@ -44,6 +47,7 @@ function handle(message) {
     case 'remove': host.removeBot(message.id); break;
     case 'tick': parentPort.postMessage({ type: 'results', bots: host.tick(message) }); break;
     case 'halt': parentPort.postMessage({ type: 'results', bots: host.halt(message) }); break;
+    case 'prepare': parentPort.postMessage({ type: 'ready', ms: host.prepareRoutes() }); break;
     default: break;
   }
 }

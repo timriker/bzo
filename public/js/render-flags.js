@@ -93,6 +93,27 @@ const SKY_BEACON_SCRATCH = new THREE.Vector3();
 const FLAG_INSTANCE_MATRIX = new THREE.Matrix4();
 const FLAG_INSTANCE_COLOR = new THREE.Color();
 
+const BANNER_ALONG = new THREE.Vector3();
+const BANNER_UP = new THREE.Vector3();
+const BANNER_ACROSS = new THREE.Vector3();
+const BANNER_ORIGIN = new THREE.Vector3();
+
+// The game flag's cloth, from its pole edge at `poleSize` up, onto a banner:
+// its width along the banner, its height up the pole edge, and its ripple
+// across, scaled as its width is so the banner waves as a game flag does.
+function flagBannerMatrix(matrix, banner, poleSize) {
+  const { hinge, free, top } = banner;
+  BANNER_ALONG.set(free.x - hinge.x, free.y - hinge.y, free.z - hinge.z);
+  BANNER_UP.set(top.x - hinge.x, top.y - hinge.y, top.z - hinge.z);
+  const width = BANNER_ALONG.length();
+  BANNER_ACROSS.crossVectors(BANNER_UP, BANNER_ALONG).normalize().multiplyScalar(width / BZFLAG_FLAG_WIDTH);
+  BANNER_ALONG.multiplyScalar(1 / BZFLAG_FLAG_WIDTH);
+  BANNER_UP.multiplyScalar(1 / BZFLAG_FLAG_HEIGHT);
+  matrix.makeBasis(BANNER_ALONG, BANNER_ACROSS, BANNER_UP);
+  BANNER_ORIGIN.set(hinge.x, hinge.y, hinge.z).addScaledVector(BANNER_UP, -poleSize);
+  return matrix.setPosition(BANNER_ORIGIN);
+}
+
 export class FlagRendering {
   _getFlagTexture() {
     if (!this._flagTexture) {
@@ -553,6 +574,89 @@ export class FlagRendering {
     this.flagRecords.clear();
   }
 
+  // A map's own banners (`findMeshBanners`) as cloth on the same eight waves.
+  // Each group is one material and one set of texcoords, drawn as an
+  // InstancedMesh per wave set; the cloth's shape is the wave set's own,
+  // copied each frame, and its texcoords are the banner face's, so the map's
+  // `texmat` on that material lands on the cloth as it did on the face.
+  // Hung from the banner's pole edge and facing where the banner faced, not
+  // turned to the viewer: it has a pole of its own that does not turn.
+  addFlagBanners(groups) {
+    const waveSets = this._getFlagWaveSets();
+    const vertexCount = (BZFLAG_FLAG_CHUNKS + 1) * 2;
+    this._flagBanners ??= [];
+    let next = this._flagBanners.reduce((sum, group) => sum + group.count, 0);
+    for (const { material, uvs, banners } of groups) {
+      const uv = new Float32Array(vertexCount * 2);
+      const normals = new Float32Array(vertexCount * 3);
+      for (let chunk = 0; chunk <= BZFLAG_FLAG_CHUNKS; chunk += 1) {
+        const along = chunk / BZFLAG_FLAG_CHUNKS;
+        const u = uvs.hinge[0] + (along * (uvs.free[0] - uvs.hinge[0]));
+        const v = uvs.hinge[1] + (along * (uvs.free[1] - uvs.hinge[1]));
+        uv.set([u + (uvs.top[0] - uvs.hinge[0]), v + (uvs.top[1] - uvs.hinge[1]), u, v], chunk * 4);
+      }
+      // The cloth's front faces its own -y, as a game flag's does.
+      for (let vertex = 0; vertex < vertexCount; vertex += 1) normals[(vertex * 3) + 1] = -1;
+      const placed = waveSets.map(() => []);
+      banners.forEach((banner) => {
+        placed[next % waveSets.length].push(banner);
+        next += 1;
+      });
+      const meshes = [];
+      waveSets.forEach((set, index) => {
+        if (!placed[index].length) return;
+        const geometry = new THREE.BufferGeometry();
+        geometry.setAttribute('position', new THREE.BufferAttribute(set.geometry.attributes.position.array.slice(), 3));
+        geometry.setAttribute('normal', new THREE.BufferAttribute(normals, 3));
+        geometry.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
+        geometry.setIndex(new THREE.BufferAttribute(set.geometry.index.array.slice(), 1));
+        const mesh = new THREE.InstancedMesh(geometry, material, placed[index].length);
+        // Spread over the whole map, as the game flags' batches are.
+        mesh.frustumCulled = false;
+        this._tagDraws(mesh, 'flag');
+        this.worldFrame.add(mesh);
+        meshes.push({ mesh, set, banners: placed[index] });
+      });
+      this._flagBanners.push({ material, meshes, count: banners.length, poleSize: null });
+    }
+    this._stepFlagBanners();
+  }
+
+  clearFlagBanners() {
+    (this._flagBanners || []).forEach(({ material, meshes }) => {
+      meshes.forEach(({ mesh }) => {
+        mesh.parent?.remove(mesh);
+        mesh.geometry.dispose();
+        mesh.dispose();
+      });
+      // The texture is the shared one every face wearing it draws with.
+      material.dispose();
+    });
+    this._flagBanners = [];
+  }
+
+  // The wave sets' new shape onto each banner's copy, and the banners placed
+  // again whenever `_flagPoleSize` moves the cloth the wave sets are built at.
+  _stepFlagBanners() {
+    if (!this._flagBanners?.length) return;
+    const poleSize = getFlagTuning().flagPoleSize;
+    const matrix = FLAG_INSTANCE_MATRIX;
+    for (const group of this._flagBanners) {
+      const place = group.poleSize !== poleSize;
+      group.poleSize = poleSize;
+      for (const { mesh, set, banners } of group.meshes) {
+        const positions = mesh.geometry.attributes.position;
+        positions.array.set(set.geometry.attributes.position.array);
+        positions.needsUpdate = true;
+        if (!place) continue;
+        banners.forEach((banner, i) => {
+          mesh.setMatrixAt(i, flagBannerMatrix(matrix, banner, poleSize));
+        });
+        mesh.instanceMatrix.needsUpdate = true;
+      }
+    }
+  }
+
   // Where the viewer stands, in the game's frame. Read straight off the camera
   // it would carry the player's heading twice in a session, because there it
   // is the world groups that turn.
@@ -565,8 +669,10 @@ export class FlagRendering {
   // One step for every flag in the world: the shared cloth ripples, each
   // visible flag turns to face the camera, and each visible warp re-wobbles.
   updateFlagVisuals(deltaTime) {
-    if (!this.flagRecords?.size) return;
+    if (!this.flagRecords?.size && !this._flagBanners?.length) return;
     this._stepFlagWaveSets(deltaTime);
+    this._stepFlagBanners();
+    if (!this.flagRecords?.size) return;
 
     // A flag turns to face the viewer about its own pole, and about nothing
     // else. Upstream multiplies in the inverse of the whole view rotation

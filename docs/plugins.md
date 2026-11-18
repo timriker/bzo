@@ -131,7 +131,8 @@ the copy already loaded runs until the next restart.
 - Chat: `bz_eRawChatMessageEvent`, which may rewrite or drop a line before
   anything else is asked of it, and `bz_eFilteredChatMessageEvent`, once a
   line has gone to whoever it was for. `messageType` is `eChatMessage` or
-  `eActionMessage` (`/me`).
+  `eActionMessage` (`/me`). `bz_eServerMsgEvent`, a line the server says to
+  everyone, a plugin's included, but not one a chat bridge relayed in.
 - Game: `bz_eGameStartEvent`, `bz_eGameEndEvent`, `bz_eTickEvent` (every
   100 ms while one listens), `bz_eGetWorldEvent`, `bz_eBZDBChange`.
 - Polls: `bz_eAllowPollEvent`, `bz_ePollStartEvent`, `bz_ePollVoteEvent`,
@@ -353,8 +354,10 @@ record -- sets off fireworks over the racer: server Guided
 Missiles launched steeply up and burst high overhead in a Shock Wave and a
 star of shots, none where a roof or a sign is in the way; an admin's
 `/fireworks [personal|today|place|record] [player]` sets any of them off over
-themselves or a player named or numbered. Today's fastest
-registered player follows the server's title on both lists. Each
+themselves or a player named or numbered. A lap that makes a board is
+announced to everyone, and so to a chat bridge; any other lap to the racer
+alone. Today's fastest registered player follows the server's title on both
+lists. Each
 is off until `server.json` names it, and when on does what its upstream does
 by default.
 

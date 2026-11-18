@@ -108,6 +108,10 @@ player. When
 Discord asks bzo to slow down, the lines wait and go when it says, up to 200
 of them.
 
+What the server says to everyone goes in italics too
+(`bz_eServerMsgEvent`): a lap record or place from laptimer, a poll, a match
+starting. A line that came in from Discord or Matrix does not go back out.
+
 A person joining or leaving is said too, in italics with who is in after:
 `Foo joined, p 2 o 1 b 1` -- players, observers and bots, each left out at
 none. Bots coming and going are not. Who the room was last told is in is

@@ -15,6 +15,7 @@ import { createBuriedTriangleTest } from './face-trim.mjs';
 import {
   FACE_LINE_LOOP, FACE_LINE_STRIP, FACE_NOT_SURFACE, FACE_POINTS, NO_INDEX, meshArrays, meshDrawArrays,
 } from './mesh-arrays.mjs';
+import { findMeshBanners, planarFaceUVs } from './map-banners.mjs';
 import { getPlayerTeamColor, getTeamFromColorIndex } from './teams.mjs';
 import { createBaseTopTexture, createBaseWallTexture, createBoundaryTexture, createBoxWallTexture, createGroundTexture, createPyramidTexture, createRoofTexture, createStockMaterialTexture, createTeleporterBorderTexture, createTeleporterPortalTexture, getBaseTeamTint, loadExternalTexture } from './texture.js';
 import * as THREE from 'three';
@@ -128,13 +129,15 @@ const BZFLAG_MIRROR_SHADER = {
 };
 
 const BOX_TEXTURE_SCALES = { sideScale: 8, capScale: 2 };
-// `MeshSceneNodeGenerator::makeTexcoords`'s own `uvScale` -- upstream's tile
-// size for a mesh face's planar-projected default UVs, when it states none
-// of its own. Coincidentally the same 8 units `BOX_TEXTURE_SCALES.sideScale`
-// already tiles a box's own wall at; kept as its own constant since the two
-// are only related by upstream's own choice of matching defaults, not by
-// anything that has to stay in sync.
-const MESH_AUTO_UV_TILE_SIZE = 8;
+// A banner found in a template's own frame, carried to one placement of it.
+const BANNER_POINT = new THREE.Vector3();
+function placeBanner(banner, matrix) {
+  const at = ({ x, y, z }) => {
+    BANNER_POINT.set(x, y, z).applyMatrix4(matrix);
+    return { x: BANNER_POINT.x, y: BANNER_POINT.y, z: BANNER_POINT.z };
+  };
+  return { ...banner, hinge: at(banner.hinge), free: at(banner.free), top: at(banner.top) };
+}
 // BoxGeometry emits its faces in this order, four vertices and six indices each,
 // which is what _prepareBoxGeometry's loops count on.
 const BOX_FACE = Object.freeze({ PX: 0, NX: 1, PY: 2, NY: 3, PZ: 4, NZ: 5 });
@@ -2019,6 +2022,7 @@ export class WorldRendering {
       this._clearObjectForRemoval(object3D);
     });
     this.meshObjects = [];
+    this.clearFlagBanners();
     // A mesh face's `dyncol`/`texmat` registration (see `_buildMeshObject`)
     // is tagged `source: 'mesh'`, dropped here the same way `clearObstacles`
     // drops only its own `'obstacle'`-tagged entries.
@@ -2060,17 +2064,20 @@ export class WorldRendering {
     if (!this.scene || !templates || !instances || !instances.length) return;
     const built = new Map();
     const builtLines = new Map();
+    const builtBanners = new Map();
     for (const [name, templateMeshes] of Object.entries(templates)) {
       const objects = [];
       const lineSets = [];
+      const banners = [];
       (templateMeshes || []).forEach((meshObs, i) => {
-        const object = this._buildMeshObject(meshObs, i);
+        const object = this._buildMeshObject(meshObs, i, banners);
         if (object) objects.push(object);
         const lines = this._buildMeshLines(meshObs);
         if (lines) lineSets.push(lines);
       });
       built.set(name, objects);
       if (lineSets.length > 0) builtLines.set(name, lineSets);
+      if (banners.length > 0) builtBanners.set(name, banners);
     }
     // Grouped by definition, because one `InstancedMesh` draws every
     // placement of one template in a single call. A field of 1,905 flowers
@@ -2089,7 +2096,18 @@ export class WorldRendering {
     const quaternion = new THREE.Quaternion();
     const scaleVector = new THREE.Vector3();
     const zAxis = new THREE.Vector3(0, 0, 1);
+    const placedBanners = [];
     for (const [name, placements] of byDefine) {
+      for (const banner of builtBanners.get(name) || []) {
+        placements.forEach((instance) => {
+          const scale = Array.isArray(instance.scale) ? instance.scale : [1, 1, 1];
+          position.set(instance.x || 0, instance.y || 0, instance.z || 0);
+          quaternion.setFromAxisAngle(zAxis, instance.spin || 0);
+          scaleVector.set(scale[0] || 1, scale[1] || 1, scale[2] || 1);
+          matrix.compose(position, quaternion, scaleVector);
+          placedBanners.push(placeBanner(banner, matrix));
+        });
+      }
       for (const prototype of built.get(name)) {
         const batch = new THREE.InstancedMesh(
           prototype.geometry, prototype.material, placements.length,
@@ -2130,13 +2148,36 @@ export class WorldRendering {
         });
       }
     }
+    this._addMapBanners(placedBanners);
+  }
+
+  // Banners `_buildMeshObject` found, drawn as waving cloth (render-flags.js):
+  // one material per look, so every banner wearing the same face shares it.
+  _addMapBanners(banners) {
+    if (!banners.length) return;
+    const groups = new Map();
+    for (const banner of banners) {
+      const { uvs } = banner;
+      const key = `${JSON.stringify(banner.material)}|${uvs.hinge}|${uvs.free}|${uvs.top}`;
+      let group = groups.get(key);
+      if (!group) {
+        const material = this._meshFaceMaterial(banner.material);
+        material.side = THREE.DoubleSide;
+        group = { material, uvs, banners: [] };
+        groups.set(key, group);
+      }
+      group.banners.push(banner);
+    }
+    this.addFlagBanners([...groups.values()]);
   }
 
   setMeshes(meshes = []) {
     if (!this.scene) return;
     this.clearMeshes();
+    const banners = [];
     meshes.forEach((meshObs, i) => {
-      const meshMesh = this._buildMeshObject(meshObs, i);
+      // A spinning mesh keeps its banner: the cloth has no spin to ride.
+      const meshMesh = this._buildMeshObject(meshObs, i, meshObs.angvel ? null : banners);
       const lines = this._buildMeshLines(meshObs);
       if (!meshMesh && !lines) return;
       // `_addDebugLabel` reads the object's own geometry bounding box for
@@ -2159,6 +2200,7 @@ export class WorldRendering {
       this.worldFrame.add(this._tagDraws(object3D, 'mesh'));
       this.meshObjects.push(object3D);
     });
+    this._addMapBanners(banners);
   }
 
   // Wraps a spinning mesh's own static `THREE.Mesh` (`_buildMeshObject`,
@@ -2196,7 +2238,9 @@ export class WorldRendering {
   // bzo's world frame (`parseBZWMap`'s `vertex`/`normal` conversion), so
   // nothing here repositions the mesh -- it is static geometry the way a
   // box/pyramid fragment already is.
-  _buildMeshObject(meshObs, index) {
+  // `bannersOut`, where given, collects the mesh's banners (`findMeshBanners`)
+  // in the mesh's own frame, and their faces are left out of the mesh.
+  _buildMeshObject(meshObs, index, bannersOut = null) {
     // A `drawInfo` block is upstream's render-optimized copy of the same
     // surface, and where a mesh states one it is what upstream *draws* --
     // `MeshSceneNode` is built from it and the mesh's own `face` list is left
@@ -2214,6 +2258,14 @@ export class WorldRendering {
     // `meshDrawArrays` picks the `drawInfo` copy where there is one.
     const arrays = meshDrawArrays(meshObs);
     if (arrays.vertices.length === 0 || arrays.faceCount === 0) return null;
+    let bannerFaces = null;
+    if (bannersOut) {
+      const found = findMeshBanners(arrays);
+      if (found.banners.length) {
+        bannerFaces = found.dropFaces;
+        bannersOut.push(...found.banners);
+      }
+    }
 
     const positions = [];
     const normalsOut = [];
@@ -2250,6 +2302,7 @@ export class WorldRendering {
       const end = arrays.faceStart[f + 1];
       const cornerCount = end - start;
       if (cornerCount < 3 || (arrays.faceFlags[f] & FACE_NOT_SURFACE)) continue;
+      if (bannerFaces?.has(f)) continue;
       const face = arrays.materials[arrays.faceMaterial[f]];
       const baseVertex = positions.length / 3;
 
@@ -2271,52 +2324,11 @@ export class WorldRendering {
         }
       }
       const hasOwnUvs = arrays.cornerTexcoord[start] !== NO_INDEX;
-      const facePlaneX = arrays.facePlanes[f * 4];
-      const facePlaneY = arrays.facePlanes[(f * 4) + 1];
-      const facePlaneZ = arrays.facePlanes[(f * 4) + 2];
-      const hasPlane = facePlaneX !== 0 || facePlaneY !== 0 || facePlaneZ !== 0;
-
       // A face with no `texcoords` line of its own is planar-projected
-      // instead of left at a single degenerate UV -- upstream's own
-      // `MeshSceneNodeGenerator::makeTexcoords`: vertex 0 pins (0,0), the
-      // first edge becomes the U axis, the face's own plane normal crossed
-      // with that becomes V, and every other vertex is that basis's own dot
-      // product with its offset from vertex 0, both divided by upstream's
-      // same 8-unit tile size (`BOX_TEXTURE_SCALES.sideScale`). Needs the
-      // face's own plane, which only exists once `finalizeMeshGeometry` has
-      // run server-side -- a face on a `define`'s own still-local template
-      // (never placed by any `group`) has none, and stays at (0,0) the way
-      // it always has.
-      let planarUVs = null;
-      if (!hasOwnUvs && hasPlane) {
-        const p0 = point(arrays.corners[start]);
-        const p1 = point(arrays.corners[start + 1]);
-        {
-          const nx = facePlaneX; const ny = facePlaneY; const nz = facePlaneZ;
-          const xLen = Math.hypot(p1.x - p0.x, p1.y - p0.y, p1.z - p0.z);
-          if (xLen > 0) {
-            const ux = (p1.x - p0.x) / xLen;
-            const uy = (p1.y - p0.y) / xLen;
-            const uz = (p1.z - p0.z) / xLen;
-            const vx = (ny * uz) - (nz * uy);
-            const vy = (nz * ux) - (nx * uz);
-            const vz = (nx * uy) - (ny * ux);
-            const vLen = Math.hypot(vx, vy, vz);
-            if (vLen > 0) {
-              const nvx = vx / vLen; const nvy = vy / vLen; const nvz = vz / vLen;
-              planarUVs = [];
-              for (let c = start; c < end; c += 1) {
-                const v = point(arrays.corners[c]);
-                const dx = v.x - p0.x; const dy = v.y - p0.y; const dz = v.z - p0.z;
-                planarUVs.push([
-                  ((dx * ux) + (dy * uy) + (dz * uz)) / MESH_AUTO_UV_TILE_SIZE,
-                  ((dx * nvx) + (dy * nvy) + (dz * nvz)) / MESH_AUTO_UV_TILE_SIZE,
-                ]);
-              }
-            }
-          }
-        }
-      }
+      // instead of left at a single degenerate UV -- see `planarFaceUVs`. A
+      // face on a `define`'s own still-local template (never placed by any
+      // `group`) has no plane, and stays at (0,0) the way it always has.
+      const planarUVs = hasOwnUvs ? null : planarFaceUVs(arrays, f);
 
       for (let c = start; c < end; c += 1) {
         const localIndex = c - start;
@@ -2352,124 +2364,7 @@ export class WorldRendering {
         + `${face.noShadow ? 'h' : ''}${face.useSphereMap ? 'm' : ''}`;
       let materialIndex = materialIndexByKey.get(key);
       if (materialIndex === undefined) {
-        // A generic `mesh` face with no `texture`/`addtexture` at all (unlike
-        // box/pyramid, which upstream always textures with a stock default)
-        // is meant to be flat-colored -- falling back to the boxwall texture
-        // here would draw a wall pattern the map never asked for.
-        // `nolighting` draws the diffuse as it is, whatever the sun is doing
-        // (`MeshSceneNode.cxx:461`), so emission and specular
-        // have nothing to add.
-        const LitClass = face.noLighting ? THREE.MeshBasicMaterial : pickLitMaterialClass(face.specular);
-        const lightingOptions = face.noLighting ? {}
-          : buildLightingMaterialOptions(face.specular, face.shininess, face.emission);
-        // `noculling`, which only a face built from a `drawInfo` block ever
-        // carries: that is the one path where upstream's own scene node has
-        // no plane cull in front of it, so the flag can actually show a far
-        // side (`MeshSceneNode::cull`, `:287-300`). See `applyBzwMaterialToken`
-        // in server.js for why a plain face never gets here.
-        if (face.noCulling) lightingOptions.side = THREE.DoubleSide;
-        // `notexalpha` (`BzMaterial::getUseTextureAlpha`) -- upstream reads
-        // the texture's own alpha channel only where this is left set
-        // (`MeshSceneNode.cxx:429-433`), so a picture that happens to carry
-        // alpha draws fully opaque. bzo's own default alpha test is the
-        // deliberate difference documented in docs/bzw.md; a map turning the
-        // channel off is asking for neither -- but see the alpha test just
-        // below, which upstream applies regardless.
-        const readsTextureAlpha = face.useTextureAlpha !== false;
-        let material;
-        if (face.texture || face.textureUrl) {
-          const textureFactory = resolveObstacleTextureFactory(
-            face.texture, face.textureUrl, '/textures/boxwall.png', createBoxWallTexture,
-          );
-          // `material` declared before the factory runs, same reason
-          // `_getSharedObstacleMaterials` does: `registerAlphaCallback`
-          // (`public/js/texture.js`) always defers to a microtask, so the
-          // callback never actually fires until this statement (and `let`)
-          // has finished, even when the answer was already known.
-          material = new LitClass({
-            map: textureFactory((hasAlpha, minAlpha) => applyTextureAlpha(
-              material, hasAlpha && readsTextureAlpha, face.texture || face.textureUrl, minAlpha,
-            )),
-            ...lightingOptions,
-          });
-          emitThroughTexture(material);
-          if (face.useSphereMap) useSphereMap(material);
-        } else {
-          material = new LitClass(lightingOptions);
-        }
-        // What the map's own material asked for, kept on the material so the
-        // alpha callback can tell a stated threshold from bzo's default -- the
-        // callback fires once the image decodes, long after this returns.
-        if (Number.isFinite(face.alphaThreshold)) {
-          material.userData.alphaThreshold = face.alphaThreshold;
-        }
-        // `nosorting` -- same reason as the threshold above: the alpha
-        // callback runs long after this returns and needs the answer then.
-        if (face.noSorting) material.userData.noSorting = true;
-        // `noshadow`: the face casts none (`MeshSceneNode.cxx:530`); see
-        // `_shadowMaterialFor`.
-        if (face.noShadow) material.userData.noShadow = true;
-        // `alphathresh` is an alpha *test*, and upstream sets it from the
-        // material unconditionally -- `WallSceneNode::setupBlending`
-        // (`:369-370`) and `MeshSceneNode.cxx:523-525` both apply
-        // `GL_GEQUAL` whatever `notexalpha` said, because that flag decides
-        // only whether the texture's alpha reaches the *blend*
-        // (`node->setBlending(alpha)`, `MeshSceneNodeGenerator.cxx:471-477`).
-        // So a `notexalpha` face with a stated threshold still cuts its
-        // transparent pixels away; it just stops blending the partial ones.
-        // The blending path below sets the same test from the callback, once
-        // the image says it has alpha at all.
-        if (!readsTextureAlpha && Number.isFinite(face.alphaThreshold) && face.alphaThreshold !== 0) {
-          material.alphaTest = face.alphaThreshold;
-        }
-        // `notexcolor` (`BzMaterial::getUseColorOnTexture`) -- with a texture
-        // on the material, upstream stops modulating it by the material's own
-        // diffuse and uses plain white instead (`MeshSceneNode.cxx:428`,
-        // `:470-481`), alpha included, so neither the tint nor its
-        // translucency reaches the face. Untextured, the flag means nothing
-        // upstream and nothing here: there is no picture for a colour to be
-        // used *on*.
-        const usesOwnColor = face.useColorOnTexture !== false
-          || !(face.texture || face.textureUrl);
-        if (face.color && usesOwnColor) {
-          material.color.setRGB(face.color[0] ?? 1, face.color[1] ?? 1, face.color[2] ?? 1);
-          // A material's own flat `diffuse`/`color` alpha (`parseBzwColor`,
-          // server.js) -- distinct from a texture's own per-pixel alpha
-          // (`applyTextureAlpha` above). A map that writes `diffuse 0 0 0 0`
-          // wants this face invisible (a common "solid for collision/radar,
-          // drawn as nothing" trick), not opaque black, which is what
-          // dropping this value used to produce.
-          const alpha = face.color[3] ?? 1;
-          if (alpha < 1) {
-            material.transparent = true;
-            material.opacity = alpha;
-            setTransparentDepthWrite(material);
-          }
-        }
-        // `dyncol` -- replaces this face's diffuse outright (see
-        // `evaluateDynamicColor`), so a static `color`/tint above is only
-        // ever this material's look before the first animation frame runs.
-        // Where its alpha channel can vary it gets the same depthWrite-off
-        // treatment as any other material that might not be fully opaque
-        // (`applyTextureAlpha` above); where it cannot, the face stays
-        // opaque and hides what is behind it (`dynamicColorCanHaveAlpha`).
-        if (face.dynamicColor) {
-          if (dynamicColorCanHaveAlpha(face.dynamicColor)) {
-            material.userData.dynamicColor = true;
-            material.transparent = true;
-            setTransparentDepthWrite(material);
-          }
-          this._animatedMaterials.push({ material, dynamicColor: face.dynamicColor, source: 'mesh' });
-        }
-        // `texmat` -- a live UV transform on this face's own texture. The
-        // texture object exists synchronously even though its image loads
-        // later (`resolveObstacleTextureFactory`'s own factories always
-        // return one right away), so it is safe to grab off `material.map`
-        // here rather than waiting on the alpha callback above.
-        if (face.textureMatrix && material.map) {
-          material.map.matrixAutoUpdate = false;
-          this._animatedMaterials.push({ texture: material.map, textureMatrix: face.textureMatrix, source: 'mesh' });
-        }
+        const material = this._meshFaceMaterial(face);
         materialIndex = materials.length;
         materials.push(material);
         materialIndexByKey.set(key, materialIndex);
@@ -2514,6 +2409,129 @@ export class WorldRendering {
     mesh.castShadow = false;
     mesh.receiveShadow = false;
     return mesh;
+  }
+
+  // The material one mesh face draws with, from its deduped descriptor.
+  _meshFaceMaterial(face) {
+    // A generic `mesh` face with no `texture`/`addtexture` at all (unlike
+    // box/pyramid, which upstream always textures with a stock default)
+    // is meant to be flat-colored -- falling back to the boxwall texture
+    // here would draw a wall pattern the map never asked for.
+    // `nolighting` draws the diffuse as it is, whatever the sun is doing
+    // (`MeshSceneNode.cxx:461`), so emission and specular
+    // have nothing to add.
+    const LitClass = face.noLighting ? THREE.MeshBasicMaterial : pickLitMaterialClass(face.specular);
+    const lightingOptions = face.noLighting ? {}
+      : buildLightingMaterialOptions(face.specular, face.shininess, face.emission);
+    // `noculling`, which only a face built from a `drawInfo` block ever
+    // carries: that is the one path where upstream's own scene node has
+    // no plane cull in front of it, so the flag can actually show a far
+    // side (`MeshSceneNode::cull`, `:287-300`). See `applyBzwMaterialToken`
+    // in server.js for why a plain face never gets here.
+    if (face.noCulling) lightingOptions.side = THREE.DoubleSide;
+    // `notexalpha` (`BzMaterial::getUseTextureAlpha`) -- upstream reads
+    // the texture's own alpha channel only where this is left set
+    // (`MeshSceneNode.cxx:429-433`), so a picture that happens to carry
+    // alpha draws fully opaque. bzo's own default alpha test is the
+    // deliberate difference documented in docs/bzw.md; a map turning the
+    // channel off is asking for neither -- but see the alpha test just
+    // below, which upstream applies regardless.
+    const readsTextureAlpha = face.useTextureAlpha !== false;
+    let material;
+    if (face.texture || face.textureUrl) {
+      const textureFactory = resolveObstacleTextureFactory(
+        face.texture, face.textureUrl, '/textures/boxwall.png', createBoxWallTexture,
+      );
+      // `material` declared before the factory runs, same reason
+      // `_getSharedObstacleMaterials` does: `registerAlphaCallback`
+      // (`public/js/texture.js`) always defers to a microtask, so the
+      // callback never actually fires until this statement (and `let`)
+      // has finished, even when the answer was already known.
+      material = new LitClass({
+        map: textureFactory((hasAlpha, minAlpha) => applyTextureAlpha(
+          material, hasAlpha && readsTextureAlpha, face.texture || face.textureUrl, minAlpha,
+        )),
+        ...lightingOptions,
+      });
+      emitThroughTexture(material);
+      if (face.useSphereMap) useSphereMap(material);
+    } else {
+      material = new LitClass(lightingOptions);
+    }
+    // What the map's own material asked for, kept on the material so the
+    // alpha callback can tell a stated threshold from bzo's default -- the
+    // callback fires once the image decodes, long after this returns.
+    if (Number.isFinite(face.alphaThreshold)) {
+      material.userData.alphaThreshold = face.alphaThreshold;
+    }
+    // `nosorting` -- same reason as the threshold above: the alpha
+    // callback runs long after this returns and needs the answer then.
+    if (face.noSorting) material.userData.noSorting = true;
+    // `noshadow`: the face casts none (`MeshSceneNode.cxx:530`); see
+    // `_shadowMaterialFor`.
+    if (face.noShadow) material.userData.noShadow = true;
+    // `alphathresh` is an alpha *test*, and upstream sets it from the
+    // material unconditionally -- `WallSceneNode::setupBlending`
+    // (`:369-370`) and `MeshSceneNode.cxx:523-525` both apply
+    // `GL_GEQUAL` whatever `notexalpha` said, because that flag decides
+    // only whether the texture's alpha reaches the *blend*
+    // (`node->setBlending(alpha)`, `MeshSceneNodeGenerator.cxx:471-477`).
+    // So a `notexalpha` face with a stated threshold still cuts its
+    // transparent pixels away; it just stops blending the partial ones.
+    // The blending path below sets the same test from the callback, once
+    // the image says it has alpha at all.
+    if (!readsTextureAlpha && Number.isFinite(face.alphaThreshold) && face.alphaThreshold !== 0) {
+      material.alphaTest = face.alphaThreshold;
+    }
+    // `notexcolor` (`BzMaterial::getUseColorOnTexture`) -- with a texture
+    // on the material, upstream stops modulating it by the material's own
+    // diffuse and uses plain white instead (`MeshSceneNode.cxx:428`,
+    // `:470-481`), alpha included, so neither the tint nor its
+    // translucency reaches the face. Untextured, the flag means nothing
+    // upstream and nothing here: there is no picture for a colour to be
+    // used *on*.
+    const usesOwnColor = face.useColorOnTexture !== false
+      || !(face.texture || face.textureUrl);
+    if (face.color && usesOwnColor) {
+      material.color.setRGB(face.color[0] ?? 1, face.color[1] ?? 1, face.color[2] ?? 1);
+      // A material's own flat `diffuse`/`color` alpha (`parseBzwColor`,
+      // server.js) -- distinct from a texture's own per-pixel alpha
+      // (`applyTextureAlpha` above). A map that writes `diffuse 0 0 0 0`
+      // wants this face invisible (a common "solid for collision/radar,
+      // drawn as nothing" trick), not opaque black, which is what
+      // dropping this value used to produce.
+      const alpha = face.color[3] ?? 1;
+      if (alpha < 1) {
+        material.transparent = true;
+        material.opacity = alpha;
+        setTransparentDepthWrite(material);
+      }
+    }
+    // `dyncol` -- replaces this face's diffuse outright (see
+    // `evaluateDynamicColor`), so a static `color`/tint above is only
+    // ever this material's look before the first animation frame runs.
+    // Where its alpha channel can vary it gets the same depthWrite-off
+    // treatment as any other material that might not be fully opaque
+    // (`applyTextureAlpha` above); where it cannot, the face stays
+    // opaque and hides what is behind it (`dynamicColorCanHaveAlpha`).
+    if (face.dynamicColor) {
+      if (dynamicColorCanHaveAlpha(face.dynamicColor)) {
+        material.userData.dynamicColor = true;
+        material.transparent = true;
+        setTransparentDepthWrite(material);
+      }
+      this._animatedMaterials.push({ material, dynamicColor: face.dynamicColor, source: 'mesh' });
+    }
+    // `texmat` -- a live UV transform on this face's own texture. The
+    // texture object exists synchronously even though its image loads
+    // later (`resolveObstacleTextureFactory`'s own factories always
+    // return one right away), so it is safe to grab off `material.map`
+    // here rather than waiting on the alpha callback above.
+    if (face.textureMatrix && material.map) {
+      material.map.matrixAutoUpdate = false;
+      this._animatedMaterials.push({ texture: material.map, textureMatrix: face.textureMatrix, source: 'mesh' });
+    }
+    return material;
   }
 
   // The lines and points a mesh's `drawInfo` states, which `_buildMeshObject`
