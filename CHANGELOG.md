@@ -6,6 +6,39 @@ The format is based on Keep a Changelog, and versions use SemVer tags like v1.0.
 
 ## [Unreleased]
 
+## [1.4.9] - 2026-11-18
+
+### Added
+- TimeTrial, LouMan's race track, ships with bzo, with one-shot GM, L, SW and
+  US flags on the course.
+- The laptimer plugin times laps through a map's `finishline` and
+  `checkpoint`s, points each racer's waypoint at the next line, and brings a
+  racer killed on the course back where they died, the lap still running.
+- Lap records at `/plugins/laptimer/`: registered players, each client and
+  everyone, for today, the last seven days and all time. Today's fastest
+  registered player follows the server's title on both lists, and a lap that
+  beats a goal sets off fireworks.
+- Waypoints: a plugin can point a player at a spot, shown to a bzo client as
+  a sky beacon, radar ring and heading marker, and to a BZFlag client as a
+  team flag and a column of shots. Ace drives to his.
+- `angular` physics drivers turn and carry a tank, as upstream's do.
+- `_shotsNeedFlag`: only a tank carrying a flag may fire.
+- Plugins gain `bz_setWaypoint`, `bz_setPublicDescriptionSuffix`,
+  `bz_endServerShot`, `bz_lineIsClear`, and `client` and `autopilot` on a
+  player record.
+
+### Changed
+- A map's `-f` limits only the random flag pool, as upstream's does: its zone
+  and `+f` flags are still laid, and an empty pool means no random flags.
+- The BZFlag list title is cut to 80 characters, which the list stores.
+
+### Fixed
+- Tanks are predicted where they are: a slow client drives in real time, a
+  tank that strays from its last move sends another, and tanks on a
+  conveyor or turntable no longer trip drift warnings.
+- A phone app hidden and shown again before its pause landed is unpaused,
+  rather than left paused.
+
 ## [1.4.8] - 2026-11-17
 
 ### Added
